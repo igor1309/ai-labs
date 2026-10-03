@@ -1,9 +1,11 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io/fs"
@@ -33,18 +35,30 @@ func (s countedStamps) Stamp(now time.Time) string {
 	return fmt.Sprintf("%s-%03d", now.UTC().Format("20060102T150405Z"), *s.n)
 }
 
-// homeSpy counts how often home's settings were staged to check an
-// install's result, and records, in order, taking and releasing the lock
-// and reading and writing home's settings.
+// homeSpy records, in order, taking and releasing the lock and reading and
+// writing home's settings.
 type homeSpy struct {
 	app.InstallHome
-	staged *int
 	events *[]string
 }
 
-func (s homeSpy) Stage(ctx context.Context, docs []definition.Document) (app.InstallSettings, func(), error) {
+// stagerSpy counts the stagings of an install's result, and their
+// removals.
+type stagerSpy struct {
+	app.InstallStager
+	staged, removed *int
+}
+
+func (s stagerSpy) Stage(ctx context.Context, docs []definition.Document) (app.GateDefinitions, func(), error) {
+	staged, remove, err := s.InstallStager.Stage(ctx, docs)
+	if err != nil {
+		return nil, nil, err
+	}
 	*s.staged++
-	return s.InstallHome.Stage(ctx, docs)
+	return staged, func() {
+		*s.removed++
+		remove()
+	}, nil
 }
 
 func (s homeSpy) Lock(ctx context.Context) (func(), error) {
@@ -59,7 +73,7 @@ func (s homeSpy) Lock(ctx context.Context) (func(), error) {
 	}, nil
 }
 
-func (s homeSpy) Documents(ctx context.Context) ([]definition.Document, error) {
+func (s homeSpy) Documents(ctx context.Context) ([]definition.Document, []definition.Source, error) {
 	*s.events = append(*s.events, "Documents")
 	return s.InstallHome.Documents(ctx)
 }
@@ -80,12 +94,14 @@ func (s homeSpy) Remove(ctx context.Context, kind definition.Kind, name string) 
 }
 
 // installing is the production client over home, its installs on a fixed
-// clock and counted stamps, home spied on, and beforeWrite, when set,
-// called before each document an install writes.
+// clock and counted stamps, home and the staging spied on, stages made in
+// a folder of the test's, and beforeWrite, when set, called before each
+// document an install writes.
 type installing struct {
-	client contract.Client
-	staged int
-	events []string
+	client          contract.Client
+	stages          string
+	staged, removed int
+	events          []string
 }
 
 func installClient(t *testing.T, home string, beforeWrite func(path string) error) *installing {
@@ -94,18 +110,21 @@ func installClient(t *testing.T, home string, beforeWrite func(path string) erro
 }
 
 // installClientAdjusted is installClient with what its installs run on
-// adjusted further by adjust.
+// adjusted further by adjust. Each staging is removed once by the end of
+// the test.
 func installClientAdjusted(t *testing.T, home string, adjust func(*app.InstallAdapters)) *installing {
 	t.Helper()
-	in := &installing{}
+	in := &installing{stages: tempDir(t)}
 	stamps := 0
 	compose := composition{
 		worktrees: git.NewWorktrees(filepath.Join(home, "locks", "worktrees")),
-		installing: func(adapters *app.InstallAdapters) {
-			adapters.Home = homeSpy{InstallHome: adapters.Home, staged: &in.staged, events: &in.events}
-			adapters.Clock = &manualClock{now: time.Date(2026, 10, 2, 12, 0, 0, 0, time.UTC)}
-			adapters.Stamps = countedStamps{&stamps}
-			adjust(adapters)
+		stages:    in.stages,
+		adjust: func(infra *app.Infrastructure) {
+			infra.Installer.Home = homeSpy{InstallHome: infra.Installer.Home, events: &in.events}
+			infra.Installer.Clock = &manualClock{now: time.Date(2026, 10, 2, 12, 0, 0, 0, time.UTC)}
+			infra.Installer.Stamps = countedStamps{&stamps}
+			infra.Staging = stagerSpy{InstallStager: infra.Staging, staged: &in.staged, removed: &in.removed}
+			adjust(&infra.Installer)
 		},
 	}
 	client, _, err := compose.wire(cli.Config{Home: home, Cwd: tempDir(t)})
@@ -113,7 +132,38 @@ func installClientAdjusted(t *testing.T, home string, adjust func(*app.InstallAd
 		t.Fatal(err)
 	}
 	in.client = client
+	t.Cleanup(func() { in.stagesRemoved(t) })
 	return in
+}
+
+// stagesRemoved fails t unless each staging was removed, once.
+func (in *installing) stagesRemoved(t *testing.T) {
+	t.Helper()
+	if in.removed != in.staged {
+		t.Errorf("staged %d time(s), removed %d", in.staged, in.removed)
+	}
+	if left := files(t, in.stages); len(left) != 0 {
+		t.Errorf("stages left in %s: %v", in.stages, left)
+	}
+}
+
+// agisterInstalling runs agister as agisterInput does, its installs
+// staged in a folder of the test's, and fails t if a stage is left there.
+func agisterInstalling(t *testing.T, input, home, cwd string, args ...string) result {
+	t.Helper()
+	stages := tempDir(t)
+	var stdout, stderr bytes.Buffer
+	code := cli.Run(context.Background(), append([]string{"--home", home}, args...), cli.IO{
+		Stdin: strings.NewReader(input), Stdout: &stdout, Stderr: &stderr, Cwd: cwd,
+		Getenv: func(string) string { return "" },
+	}, func(config cli.Config) (contract.Client, error) {
+		client, _, err := composition{worktrees: git.NewWorktrees(filepath.Join(config.Home, "locks", "worktrees")), stages: stages}.wire(config)
+		return client, err
+	})
+	if left := files(t, stages); len(left) != 0 {
+		t.Errorf("stages left in %s: %v", stages, left)
+	}
+	return result{code, stdout.String(), stderr.String()}
 }
 
 // installNow approves its own plan, as a user typing yes does.
@@ -148,8 +198,8 @@ func initedHome(t *testing.T) string {
 	return home
 }
 
-// files is every file under dir and its content, but for the log the client
-// appends to and the backups.
+// files is every file under dir and its content, a link where it points,
+// but for the log the client appends to and the backups.
 func files(t *testing.T, dir string) map[string]string {
 	t.Helper()
 	found := map[string]string{}
@@ -160,6 +210,11 @@ func files(t *testing.T, dir string) map[string]string {
 		rel, _ := filepath.Rel(dir, path)
 		if rel == filepath.Join("logs", "agister.jsonl") || strings.HasPrefix(rel, "backups"+string(filepath.Separator)) {
 			return nil
+		}
+		if entry.Type()&fs.ModeSymlink != 0 {
+			target, err := os.Readlink(path)
+			found[rel] = "-> " + target
+			return err
 		}
 		found[rel] = read(t, path)
 		return nil
@@ -241,6 +296,8 @@ func TestInstallPlansEachDocument(t *testing.T) {
 	if in.staged != 1 || !reflect.DeepEqual(files(t, home), before) || backups(t, home) != nil {
 		t.Fatalf("the plan staged %d time(s), backed up %v or wrote", in.staged, backups(t, home))
 	}
+	// The stage is removed once the plan is made.
+	in.stagesRemoved(t)
 }
 
 // A folder home already has, document for document, installs nothing: no
@@ -535,22 +592,40 @@ func TestRestoreRefusesATamperedBackup(t *testing.T) {
 	}
 }
 
-// A file whose name breaks the naming rule is no document: in home it
-// neither stops an install nor is touched by it, and in the source it is
-// named as not installed.
-func TestInstallLeavesFilesWithInvalidNamesAlone(t *testing.T) {
+// checkProblem is the problem home's check reports about subject.
+func checkProblem(t *testing.T, client contract.Client, subject string) string {
+	t.Helper()
+	report, err := client.Check(context.Background(), false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, problem := range report.Problems {
+		if strings.HasPrefix(problem.Message, subject+": ") {
+			return problem.Message
+		}
+	}
+	t.Fatalf("check reports no problem about %s: %+v", subject, report.Problems)
+	return ""
+}
+
+// A file whose name breaks the naming rule is no document: in home it is
+// not planned, but the result is checked with it, as home's check sees
+// it, so its problem refuses the install; in the source it is named as not
+// installed.
+func TestInstallChecksFilesWithInvalidNames(t *testing.T) {
 	t.Run("home", func(t *testing.T) {
 		home := initedHome(t)
 		src := repoSettings(t, home)
-		bad := filepath.Join(home, "agents", "Bad.toml")
-		write(t, bad, "not = \"an agent\"\n")
-		in := installClient(t, home, nil)
-		result, err := in.installNow(t, src)
-		if err != nil || result.Writes() != 2 {
-			t.Fatalf("%+v, %v", result, err)
+		write(t, filepath.Join(home, "agents", "Bad Name.toml"), "not = \"an agent\"\n")
+		before := files(t, home)
+		in := installClient(t, home, func(string) error { t.Fatal("a document was written"); return nil })
+		problem := checkProblem(t, in.client, "agent Bad Name")
+		var input *contract.InputError
+		if _, err := in.installNow(t, src); !errors.As(err, &input) || !strings.Contains(err.Error(), "would not pass check") || !strings.Contains(err.Error(), problem) {
+			t.Fatalf("install: %v, want %q refusing it", err, problem)
 		}
-		if read(t, bad) != "not = \"an agent\"\n" || slices.Contains(result.Kept, bad) {
-			t.Fatalf("Bad.toml touched or planned: kept %v", result.Kept)
+		if !reflect.DeepEqual(files(t, home), before) || backups(t, home) != nil {
+			t.Fatal("a refused install wrote")
 		}
 	})
 	t.Run("source", func(t *testing.T) {
@@ -564,6 +639,65 @@ func TestInstallLeavesFilesWithInvalidNamesAlone(t *testing.T) {
 		}
 		if _, err := os.Stat(filepath.Join(home, "agents", "Bad.toml")); !errors.Is(err, fs.ErrNotExist) {
 			t.Fatalf("Bad.toml installed: %v", err)
+		}
+	})
+}
+
+// A document home lists but cannot read does not stop an install: one the
+// source has replaces it, as nothing readable, and its restore removes
+// it; one the source has not is kept, and refuses the install as check
+// reports it.
+func TestInstallOverADocumentHomeCannotRead(t *testing.T) {
+	dangle := func(t *testing.T, home string) string {
+		path := filepath.Join(home, "prompts", "x.md")
+		if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.Symlink(filepath.Join(home, "prompts", "nowhere.md"), path); err != nil {
+			t.Fatal(err)
+		}
+		return path
+	}
+	t.Run("replaced", func(t *testing.T) {
+		home := initedHome(t)
+		path := dangle(t, home)
+		src := filepath.Join(tempDir(t), ".agister")
+		write(t, filepath.Join(src, "prompts", "x.md"), "Mind the house style.\n")
+		in := installClient(t, home, nil)
+		plan, err := in.client.Install(context.Background(), src, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		want := []contract.InstallDocument{{Kind: "prompts", Name: "x", Path: path, Action: contract.InstallReplace, After: digestText("Mind the house style.\n"),
+			Diff: "--- " + path + "\n+++ " + filepath.Join(src, "prompts", "x.md") + "\n@@ -0,0 +1 @@\n+Mind the house style.\n"}}
+		if digest, ok := plan.Inventory[path]; !reflect.DeepEqual(plan.Documents, want) || !ok || digest != "" {
+			t.Fatalf("plan %+v", plan)
+		}
+		result, err := in.client.Install(context.Background(), src, &plan)
+		if err != nil || result.Stamp == "" || read(t, path) != "Mind the house style.\n" {
+			t.Fatalf("install: %+v, %v", result, err)
+		}
+		restore, err := in.restoreNow(t, result.Stamp)
+		if err != nil || len(restore.Documents) != 1 || restore.Documents[0].Action != contract.RestoreRemove {
+			t.Fatalf("restore: %+v, %v", restore, err)
+		}
+		if _, err := os.Lstat(path); !errors.Is(err, fs.ErrNotExist) {
+			t.Fatalf("not removed by the restore: %v", err)
+		}
+	})
+	t.Run("kept", func(t *testing.T) {
+		home := initedHome(t)
+		dangle(t, home)
+		src := repoSettings(t, home)
+		before := files(t, home)
+		in := installClient(t, home, func(string) error { t.Fatal("a document was written"); return nil })
+		problem := checkProblem(t, in.client, "prompt x")
+		var input *contract.InputError
+		if _, err := in.client.Install(context.Background(), src, nil); !errors.As(err, &input) || !strings.Contains(err.Error(), "would not pass check") || !strings.Contains(err.Error(), problem) {
+			t.Fatalf("install: %v, want %q refusing it", err, problem)
+		}
+		if !reflect.DeepEqual(files(t, home), before) || backups(t, home) != nil {
+			t.Fatal("a refused install wrote")
 		}
 	})
 }
@@ -632,7 +766,7 @@ func TestInstallAndRestoreThroughTheCLI(t *testing.T) {
 	dir := tempDir(t)
 	before := files(t, home)
 	for _, input := range []string{"", "no\n"} {
-		r := agisterInput(t, input, home, dir, "install", src)
+		r := agisterInstalling(t, input, home, dir, "install", src)
 		if r.code != cli.ExitUsage || !strings.Contains(r.stdout, "will REPLACE "+filepath.Join(home, "agents", "reviewer.toml")+"\n--- ") ||
 			!strings.Contains(r.stdout, "will create  "+filepath.Join(home, "prompts", "house.md")) ||
 			!strings.Contains(r.stdout, "unchanged    "+filepath.Join(home, "service.toml")) ||
@@ -645,24 +779,49 @@ func TestInstallAndRestoreThroughTheCLI(t *testing.T) {
 			t.Fatalf("input %q wrote", input)
 		}
 	}
-	r := agisterInput(t, "yes\n", home, dir, "install", src)
+	r := agisterInstalling(t, "yes\n", home, dir, "install", src)
 	match := regexp.MustCompile(`restore with: agister install --restore (\S+)\n`).FindStringSubmatch(r.stdout)
 	if r.code != 0 || match == nil || !strings.Contains(r.stdout, "replaced "+filepath.Join(home, "agents", "reviewer.toml")) || strings.Count(r.stdout+r.stderr, "restore with:") != 1 {
 		t.Fatalf("yes: %d\n%s%s", r.code, r.stdout, r.stderr)
 	}
-	if r := agister(t, home, dir, "install", src); r.code != 0 || !strings.Contains(r.stdout, "nothing to install into "+home) || strings.Contains(r.stderr, "Type yes") {
+	if r := agisterInstalling(t, "", home, dir, "install", src); r.code != 0 || !strings.Contains(r.stdout, "nothing to install into "+home) || strings.Contains(r.stderr, "Type yes") {
 		t.Fatalf("again: %d\n%s%s", r.code, r.stdout, r.stderr)
 	}
-	if r := agisterInput(t, "yes\n", home, dir, "install", "--restore", "20200101T000000Z-abcdef"); r.code != cli.ExitUsage || !strings.Contains(r.stderr, `no install backup "20200101T000000Z-abcdef"`) {
+	if r := agisterInstalling(t, "yes\n", home, dir, "install", "--restore", "20200101T000000Z-abcdef"); r.code != cli.ExitUsage || !strings.Contains(r.stderr, `no install backup "20200101T000000Z-abcdef"`) {
 		t.Fatalf("unknown stamp: %d\n%s%s", r.code, r.stdout, r.stderr)
 	}
-	r = agisterInput(t, "yes\n", home, dir, "install", "--restore", match[1])
+	r = agisterInstalling(t, "yes\n", home, dir, "install", "--restore", match[1])
 	if r.code != 0 || !strings.Contains(r.stdout, "will put back "+filepath.Join(home, "agents", "reviewer.toml")) ||
 		!strings.Contains(r.stdout, "removed  "+filepath.Join(home, "prompts", "house.md")) || !strings.Contains(r.stderr, "Type yes to restore 2 document(s)") {
 		t.Fatalf("restore: %d\n%s%s", r.code, r.stdout, r.stderr)
 	}
 	if !reflect.DeepEqual(files(t, home), before) {
 		t.Fatal("restore did not put home back")
+	}
+}
+
+// With --json, install and restore print what they did as their plans, and
+// show the plans on stderr.
+func TestInstallAndRestorePrintJSON(t *testing.T) {
+	home := initedHome(t)
+	src := repoSettings(t, home)
+	dir := tempDir(t)
+	r := agisterInstalling(t, "yes\n", home, dir, "install", src, "--json")
+	var installed contract.InstallPlan
+	if err := json.Unmarshal([]byte(r.stdout), &installed); err != nil || r.code != 0 {
+		t.Fatalf("install: %d %v\n%s%s", r.code, err, r.stdout, r.stderr)
+	}
+	if installed.Source != src || installed.Writes() != 2 || installed.Stamp == "" ||
+		!strings.Contains(r.stderr, "will REPLACE "+filepath.Join(home, "agents", "reviewer.toml")) || !strings.Contains(r.stderr, "restore with: agister install --restore "+installed.Stamp) {
+		t.Fatalf("install: %+v\n%s", installed, r.stderr)
+	}
+	r = agisterInstalling(t, "yes\n", home, dir, "install", "--restore", installed.Stamp, "--json")
+	var restored contract.RestorePlan
+	if err := json.Unmarshal([]byte(r.stdout), &restored); err != nil || r.code != 0 {
+		t.Fatalf("restore: %d %v\n%s%s", r.code, err, r.stdout, r.stderr)
+	}
+	if restored.Stamp != installed.Stamp || restored.Writes() != 2 || !strings.Contains(r.stderr, "will put back "+filepath.Join(home, "agents", "reviewer.toml")) {
+		t.Fatalf("restore: %+v\n%s", restored, r.stderr)
 	}
 }
 
@@ -679,7 +838,7 @@ func TestInstallRepairsBrokenSettings(t *testing.T) {
 	}
 	src := filepath.Join(tempDir(t), ".agister")
 	write(t, filepath.Join(src, "agents", "reviewer.toml"), good)
-	if r := agisterInput(t, "yes\n", home, dir, "install", src); r.code != 0 {
+	if r := agisterInstalling(t, "yes\n", home, dir, "install", src); r.code != 0 {
 		t.Fatalf("install: %d\n%s%s", r.code, r.stdout, r.stderr)
 	}
 	if r := agister(t, home, dir, "check"); r.code != 0 {
@@ -697,7 +856,7 @@ func TestInstallRefusesASymbolicLink(t *testing.T) {
 		t.Fatal(err)
 	}
 	before := files(t, home)
-	r := agisterInput(t, "yes\n", home, tempDir(t), "install", src)
+	r := agisterInstalling(t, "yes\n", home, tempDir(t), "install", src)
 	if r.code != cli.ExitUsage || !strings.Contains(r.stderr, "linked.md is a symbolic link, so nothing was installed") || strings.Contains(r.stderr, "Type yes") {
 		t.Fatalf("%d\n%s%s", r.code, r.stdout, r.stderr)
 	}

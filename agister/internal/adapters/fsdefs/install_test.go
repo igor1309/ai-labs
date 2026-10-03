@@ -3,6 +3,7 @@ package fsdefs_test
 import (
 	"context"
 	"errors"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -21,6 +22,18 @@ func put(t *testing.T, path, text string) {
 		t.Fatal(err)
 	}
 	if err := os.WriteFile(path, []byte(text), 0o600); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// dangle makes path a symbolic link to nothing: a file listed that cannot
+// be read.
+func dangle(t *testing.T, path string) {
+	t.Helper()
+	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(filepath.Join(filepath.Dir(path), "nowhere"), path); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -84,13 +97,15 @@ func TestSourceRefusesASymbolicLink(t *testing.T) {
 }
 
 // A store's documents are what List names, but for a file whose name
-// breaks the naming rule, which is no document and is not read.
+// breaks the naming rule, which is no document and is not read. One that
+// cannot be read is named as unreadable, not read.
 func TestDocumentsSkipsInvalidNames(t *testing.T) {
 	dir := t.TempDir()
 	for _, name := range []string{"service.toml", "agents/a.toml", "agents/Bad.toml", "verifies/Not A Name.yaml"} {
 		put(t, filepath.Join(dir, name), name)
 	}
-	docs, err := fsdefs.Store{Dir: dir}.Documents(context.Background())
+	dangle(t, filepath.Join(dir, "prompts", "x.md"))
+	docs, unreadable, err := fsdefs.Store{Dir: dir}.Documents(context.Background())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -101,14 +116,22 @@ func TestDocumentsSkipsInvalidNames(t *testing.T) {
 	if !reflect.DeepEqual(read, []string{"agents/a", "service/service"}) {
 		t.Fatalf("read %v", read)
 	}
+	want := []definition.Source{{Kind: definition.KindPrompt, Name: "x", Path: filepath.Join(dir, "prompts", "x.md")}}
+	if !reflect.DeepEqual(unreadable, want) {
+		t.Fatalf("unreadable %+v", unreadable)
+	}
 }
 
 // A stage is read as the store it stages: paths, and where a document not
-// found was expected, are the store's. Its removal removes it.
+// found was expected, are the store's, and what the store lists that the
+// stage lacks is listed and read from the store. Its removal removes it.
 func TestStageReadsAsTheStore(t *testing.T) {
 	root := t.TempDir()
 	home := fsdefs.Store{Dir: t.TempDir()}.StagingIn(root)
 	ctx := context.Background()
+	put(t, filepath.Join(home.Dir, "agents", "Bad Name.toml"), "x")
+	dangle(t, filepath.Join(home.Dir, "prompts", "x.md"))
+	before := tree(t, home.Dir)
 	staged, remove, err := home.Stage(ctx, []definition.Document{{Source: definition.Source{Kind: definition.KindAgent, Name: "a"}, Bytes: []byte("x")}})
 	if err != nil {
 		t.Fatal(err)
@@ -124,16 +147,38 @@ func TestStageReadsAsTheStore(t *testing.T) {
 	if _, err := staged.Read(ctx, definition.KindAgent, "b"); err == nil || !strings.Contains(err.Error(), filepath.Join(home.Dir, "agents", "b.toml")) {
 		t.Fatalf("missing: %v", err)
 	}
-	if names, _ := staged.List(ctx, definition.KindAgent); !reflect.DeepEqual(names, []string{"a"}) {
+	if names, _ := staged.List(ctx, definition.KindAgent); !reflect.DeepEqual(names, []string{"Bad Name", "a"}) {
 		t.Fatalf("list %v", names)
+	}
+	if names, _ := staged.List(ctx, definition.KindPrompt); !reflect.DeepEqual(names, []string{"x"}) {
+		t.Fatalf("list prompts %v", names)
+	}
+	_, want := home.Read(ctx, definition.KindPrompt, "x")
+	if _, err := staged.Read(ctx, definition.KindPrompt, "x"); err == nil || err.Error() != want.Error() {
+		t.Fatalf("unreadable: %v, want %v", err, want)
 	}
 	remove()
 	if entries, _ := os.ReadDir(root); len(entries) != 0 {
 		t.Fatalf("the stage is left after its removal: %v", entries)
 	}
-	if entries, _ := os.ReadDir(home.Dir); len(entries) != 0 {
-		t.Fatalf("staging wrote into the store: %v", entries)
+	if after := tree(t, home.Dir); !reflect.DeepEqual(after, before) {
+		t.Fatalf("staging wrote into the store: %v", after)
 	}
+}
+
+// tree lists every path under dir, relative to it.
+func tree(t *testing.T, dir string) []string {
+	t.Helper()
+	var paths []string
+	err := filepath.WalkDir(dir, func(path string, _ fs.DirEntry, err error) error {
+		rel, _ := filepath.Rel(dir, path)
+		paths = append(paths, rel)
+		return err
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	return paths
 }
 
 // Put replaces a document whole, leaving nothing beside it; Remove takes it

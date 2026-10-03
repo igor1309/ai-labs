@@ -39,16 +39,13 @@ type InstallSource interface {
 
 // InstallHome is home's settings store.
 type InstallHome interface {
-	// Documents reads every settings document in home.
-	Documents(ctx context.Context) ([]definition.Document, error)
+	// Documents reads every settings document in home. One it lists but
+	// cannot read is in unreadable, by its source, with no digest.
+	Documents(ctx context.Context) (docs []definition.Document, unreadable []definition.Source, err error)
 	Read(ctx context.Context, kind definition.Kind, name string) (definition.Document, error)
 	// Current reports where a document would be stored and a digest of the
 	// one there, empty when there is none.
 	Current(ctx context.Context, kind definition.Kind, name string) (path, digest string, err error)
-	// Stage writes docs into a new temporary folder laid out like home, and
-	// returns its settings, read as home's would be, and the folder's
-	// removal.
-	Stage(ctx context.Context, docs []definition.Document) (staged InstallSettings, remove func(), err error)
 	// Lock takes the write lock every writer of home's settings takes, and
 	// returns its release.
 	Lock(ctx context.Context) (unlock func(), err error)
@@ -59,18 +56,12 @@ type InstallHome interface {
 	Remove(ctx context.Context, kind definition.Kind, name string) error
 }
 
-// InstallSettings are staged settings, as check reads them.
-type InstallSettings interface {
-	Read(ctx context.Context, kind definition.Kind, name string) (definition.Document, error)
-	List(ctx context.Context, kind definition.Kind) ([]string, error)
-}
-
-// InstallStaged is an install's result, staged in a folder of its own.
-type InstallStaged struct{ InstallSettings }
-
-// InstallCheck checks an install's staged result as global settings alone.
+// InstallCheck checks an install's result, home's settings with the
+// source's written over them, as global settings alone. What home lists
+// but result lacks, such as a document that cannot be read, is checked as
+// home's check finds it.
 type InstallCheck interface {
-	Check(ctx context.Context, staged InstallStaged) (contract.CheckReport, error)
+	Check(ctx context.Context, result []definition.Document) (contract.CheckReport, error)
 }
 
 // InstallBackups keeps one backup per install, by its stamp.
@@ -122,7 +113,7 @@ type InstallManifestEntry struct {
 	Kind   string
 	Name   string
 	Action string // create | replace
-	Before string // digest; empty for a create
+	Before string // digest; empty for a create, or a replace of one that could not be read
 	After  string // digest
 }
 
@@ -140,7 +131,7 @@ type installWrite struct {
 	doc     definition.Document // the source's
 	path    string              // in home
 	action  string
-	current *definition.Document // home's, for a replace
+	current *definition.Document // home's, for a replace of one it could read
 }
 
 func (i *Installer) Install(ctx context.Context, source string, approved *contract.InstallPlan) (contract.InstallPlan, error) {
@@ -181,16 +172,14 @@ func (i *Installer) Install(ctx context.Context, source string, approved *contra
 		return contract.InstallPlan{}, fmt.Errorf("backing up home's settings failed, so nothing was installed: %w", err)
 	}
 	plan.Stamp = stamp
-	write := func(w installWrite) error {
-		if i.beforeWrite != nil {
-			if err := i.beforeWrite(w.path); err != nil {
-				return err
-			}
-		}
-		return i.home.Put(ctx, w.doc.Source.Kind, w.doc.Source.Name, w.doc.Bytes)
-	}
 	for n, w := range writes {
-		if err := write(w); err != nil {
+		if i.beforeWrite != nil {
+			err = i.beforeWrite(w.path)
+		}
+		if err == nil {
+			err = i.home.Put(ctx, w.doc.Source.Kind, w.doc.Source.Name, w.doc.Bytes)
+		}
+		if err != nil {
 			return plan, fmt.Errorf("install stopped after %d of %d document(s), before %s: %w", n, len(writes), w.path, err)
 		}
 	}
@@ -201,8 +190,10 @@ func (i *Installer) Install(ctx context.Context, source string, approved *contra
 }
 
 // plan reads the source and home's settings and plans each source document
-// against home's. When it writes anything, the result is checked on a
-// staged copy: a problem refuses it, and warnings are the plan's.
+// against home's. One that home lists but cannot read is in the inventory
+// with no digest, and the source's is planned as a replace of nothing
+// readable. When it writes anything, the result is checked: a problem
+// refuses it, and warnings are the plan's.
 func (i *Installer) plan(ctx context.Context, source string) (contract.InstallPlan, []installWrite, error) {
 	plan := contract.InstallPlan{Source: source, Inventory: map[string]string{}}
 	docs, ignored, err := i.source.Source(ctx, source)
@@ -210,7 +201,7 @@ func (i *Installer) plan(ctx context.Context, source string) (contract.InstallPl
 		return contract.InstallPlan{}, nil, err
 	}
 	plan.Ignored = ignored
-	present, err := i.home.Documents(ctx)
+	present, unreadable, err := i.home.Documents(ctx)
 	if err != nil {
 		return contract.InstallPlan{}, nil, err
 	}
@@ -224,6 +215,11 @@ func (i *Installer) plan(ctx context.Context, source string) (contract.InstallPl
 		inHome[key{doc.Source.Kind, doc.Source.Name}] = doc
 		plan.Inventory[doc.Source.Path] = doc.Source.SHA256
 	}
+	unreadableAt := map[key]string{}
+	for _, doc := range unreadable {
+		unreadableAt[key{doc.Kind, doc.Name}] = doc.Path
+		plan.Inventory[doc.Path] = ""
+	}
 	inSource := map[key]bool{}
 	var writes []installWrite
 	for _, doc := range docs {
@@ -232,7 +228,12 @@ func (i *Installer) plan(ctx context.Context, source string) (contract.InstallPl
 		inSource[k] = true
 		current := inHome[k]
 		entry := contract.InstallDocument{Kind: string(k.kind), Name: k.name, After: doc.Source.SHA256}
+		path, isUnreadable := unreadableAt[k]
 		switch {
+		case isUnreadable:
+			// Nothing of home's can be shown or backed up.
+			entry.Path, entry.Action = path, contract.InstallReplace
+			entry.Diff = unifiedDiff(path, doc.Source.Path, nil, doc.Bytes)
 		case current == nil:
 			if entry.Path, _, err = i.home.Current(ctx, k.kind, k.name); err != nil {
 				return contract.InstallPlan{}, nil, err
@@ -254,14 +255,20 @@ func (i *Installer) plan(ctx context.Context, source string) (contract.InstallPl
 			plan.Kept = append(plan.Kept, doc.Source.Path)
 		}
 	}
+	for _, doc := range unreadable {
+		if !inSource[key{doc.Kind, doc.Name}] {
+			plan.Kept = append(plan.Kept, doc.Path)
+		}
+	}
 	sort.Slice(plan.Documents, func(a, b int) bool { return plan.Documents[a].Path < plan.Documents[b].Path })
 	sort.Slice(writes, func(a, b int) bool { return writes[a].path < writes[b].path })
 	sort.Strings(plan.Kept)
 	if len(writes) == 0 {
 		return plan, nil, nil
 	}
-	// The result: home's settings with the source's written over them.
-	result := make([]definition.Document, 0, len(present)+len(writes))
+	// The result: home's settings with the source's written over them. One
+	// home cannot read is not in it: the check finds it as home's does.
+	result := make([]definition.Document, 0, len(present)+len(docs))
 	for _, doc := range present {
 		if !inSource[key{doc.Source.Kind, doc.Source.Name}] {
 			result = append(result, doc)
@@ -270,7 +277,7 @@ func (i *Installer) plan(ctx context.Context, source string) (contract.InstallPl
 	for _, doc := range docs {
 		result = append(result, doc)
 	}
-	report, err := i.checkStaged(ctx, result)
+	report, err := i.check.Check(ctx, result)
 	if err != nil {
 		return contract.InstallPlan{}, nil, err
 	}
@@ -280,17 +287,6 @@ func (i *Installer) plan(ctx context.Context, source string) (contract.InstallPl
 	}
 	plan.Warnings = report.Warnings
 	return plan, writes, nil
-}
-
-// checkStaged checks docs as global settings alone, staged in a folder of
-// their own.
-func (i *Installer) checkStaged(ctx context.Context, docs []definition.Document) (contract.CheckReport, error) {
-	staged, remove, err := i.home.Stage(ctx, docs)
-	if err != nil {
-		return contract.CheckReport{}, err
-	}
-	defer remove()
-	return i.check.Check(ctx, InstallStaged{staged})
 }
 
 // installApproved refuses a plan other than the one approved: home's
@@ -396,7 +392,8 @@ func (i *Installer) Restore(ctx context.Context, stamp string, approved *contrac
 
 // restorePlan plans, from the backup's manifest, putting back each document
 // the install replaced and removing each it created; one already as it was
-// before the install is unchanged.
+// before the install is unchanged. A replace of a document that could not
+// be read saved nothing to put back, so it is undone as a create.
 func (i *Installer) restorePlan(ctx context.Context, stamp string) (contract.RestorePlan, []restoreStep, error) {
 	stamps, err := i.backups.List(ctx)
 	if err != nil {
@@ -419,7 +416,11 @@ func (i *Installer) restorePlan(ctx context.Context, stamp string) (contract.Res
 			return contract.RestorePlan{}, nil, err
 		}
 		doc := contract.RestoreDocument{Kind: entry.Kind, Name: entry.Name, Path: path, Current: current, Action: contract.RestoreUnchanged}
-		switch entry.Action {
+		action := entry.Action
+		if action == contract.InstallReplace && entry.Before == "" {
+			action = contract.InstallCreate
+		}
+		switch action {
 		case contract.InstallReplace:
 			data, err := i.backups.Saved(ctx, stamp, kind, entry.Name)
 			if err != nil {

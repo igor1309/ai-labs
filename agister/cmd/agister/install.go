@@ -8,15 +8,15 @@ import (
 	"github.com/igor1309/ai-labs/agister/internal/domain/definition"
 )
 
-var _ app.InstallHome = installHome{}
+var _ app.InstallStager = installStager{}
 var _ app.InstallBackups = installBackups{}
 
-// installHome is home's settings store as installs take it: its stages
-// read as app's staged settings.
-type installHome struct{ fsdefs.Store }
+// installStager stages an install's result as home's settings store does,
+// its stages read as app's settings.
+type installStager struct{ fsdefs.Store }
 
-func (h installHome) Stage(ctx context.Context, docs []definition.Document) (app.InstallSettings, func(), error) {
-	staged, remove, err := h.Store.Stage(ctx, docs)
+func (s installStager) Stage(ctx context.Context, docs []definition.Document) (app.GateDefinitions, func(), error) {
+	staged, remove, err := s.Store.Stage(ctx, docs)
 	if err != nil {
 		return nil, nil, err
 	}

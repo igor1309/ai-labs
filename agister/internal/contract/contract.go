@@ -133,7 +133,7 @@ type InstallDocument struct {
 	Name   string `json:"name"`
 	Path   string `json:"path"`
 	Action string `json:"action"`           // create | replace | unchanged
-	Before string `json:"before,omitempty"` // digest of home's; empty when none
+	Before string `json:"before,omitempty"` // digest of home's; empty when none, or it cannot be read
 	After  string `json:"after"`            // digest of the source's
 	Diff   string `json:"diff,omitempty"`   // unified, from home's to the source's, for a replace
 }

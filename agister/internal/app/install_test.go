@@ -20,16 +20,16 @@ func (s installSource) Source(context.Context, string) ([]definition.Document, [
 	return s.docs, nil, nil
 }
 
-// installHomeSpy is home's settings in memory; it records what is staged
-// and written.
+// installHomeSpy is home's settings in memory; it records what is written,
+// and fails each Put with putErr and each Remove with removeErr.
 type installHomeSpy struct {
-	docs   []definition.Document
-	staged [][]definition.Document
-	writes []string
+	docs              []definition.Document
+	writes            []string
+	putErr, removeErr error
 }
 
-func (h *installHomeSpy) Documents(context.Context) ([]definition.Document, error) {
-	return h.docs, nil
+func (h *installHomeSpy) Documents(context.Context) ([]definition.Document, []definition.Source, error) {
+	return h.docs, nil, nil
 }
 
 func (h *installHomeSpy) Read(_ context.Context, kind definition.Kind, name string) (definition.Document, error) {
@@ -51,25 +51,26 @@ func (h *installHomeSpy) Current(_ context.Context, kind definition.Kind, name s
 	return path, "", nil
 }
 
-func (h *installHomeSpy) Stage(_ context.Context, docs []definition.Document) (app.InstallSettings, func(), error) {
-	h.staged = append(h.staged, docs)
-	return nil, func() {}, nil
-}
-
 func (h *installHomeSpy) Lock(context.Context) (func(), error) { return func() {}, nil }
 
 func (h *installHomeSpy) Put(_ context.Context, kind definition.Kind, name string, _ []byte) error {
 	h.writes = append(h.writes, "Put "+string(kind)+"/"+name)
-	return nil
+	return h.putErr
 }
 
 func (h *installHomeSpy) Remove(_ context.Context, kind definition.Kind, name string) error {
 	h.writes = append(h.writes, "Remove "+string(kind)+"/"+name)
-	return nil
+	return h.removeErr
 }
 
-// installBackupsSpy records the backups saved.
-type installBackupsSpy struct{ saved []string }
+// installBackupsSpy records the backups saved; it keeps one manifest, and
+// the bytes saved of each document by name. Remove fails with removeErr.
+type installBackupsSpy struct {
+	saved     []string
+	manifest  *app.InstallManifest
+	bytes     map[string][]byte
+	removeErr error
+}
 
 func (b *installBackupsSpy) Save(_ context.Context, stamp string, _ app.InstallManifest, _ []definition.Document) error {
 	b.saved = append(b.saved, stamp)
@@ -79,27 +80,34 @@ func (b *installBackupsSpy) Save(_ context.Context, stamp string, _ app.InstallM
 func (b *installBackupsSpy) List(context.Context) ([]string, error) { return b.saved, nil }
 
 func (b *installBackupsSpy) Manifest(context.Context, string) (app.InstallManifest, error) {
-	return app.InstallManifest{}, errors.New("no manifest")
+	if b.manifest == nil {
+		return app.InstallManifest{}, errors.New("no manifest")
+	}
+	return *b.manifest, nil
 }
 
-func (b *installBackupsSpy) Saved(context.Context, string, definition.Kind, string) ([]byte, error) {
+func (b *installBackupsSpy) Saved(_ context.Context, _ string, _ definition.Kind, name string) ([]byte, error) {
+	if data, ok := b.bytes[name]; ok {
+		return data, nil
+	}
 	return nil, errors.New("nothing saved")
 }
 
-func (b *installBackupsSpy) Remove(context.Context, string) error { return nil }
+func (b *installBackupsSpy) Remove(context.Context, string) error { return b.removeErr }
 
 type installStamps struct{}
 
 func (installStamps) Stamp(time.Time) string { return "stamp-1" }
 
-// installCheckStub answers every check of a staged result with report.
+// installCheckStub answers every check of a result with report, and
+// records the results checked.
 type installCheckStub struct {
-	report contract.CheckReport
-	checks int
+	report  contract.CheckReport
+	checked [][]definition.Document
 }
 
-func (c *installCheckStub) Check(context.Context, app.InstallStaged) (contract.CheckReport, error) {
-	c.checks++
+func (c *installCheckStub) Check(_ context.Context, result []definition.Document) (contract.CheckReport, error) {
+	c.checked = append(c.checked, result)
 	return c.report, nil
 }
 
@@ -140,8 +148,8 @@ func TestInstallerRefusesAResultItsCheckFindsAProblemIn(t *testing.T) {
 	if !reflect.DeepEqual(plan, contract.InstallPlan{}) {
 		t.Errorf("plan = %+v, want none to confirm", plan)
 	}
-	if check.checks != 1 || len(home.staged) != 1 || len(home.staged[0]) != 2 {
-		t.Errorf("checks = %d, staged = %v; want the result, both documents, checked once", check.checks, home.staged)
+	if len(check.checked) != 1 || len(check.checked[0]) != 2 {
+		t.Errorf("checked = %v; want the result, both documents, checked once", check.checked)
 	}
 	if len(home.writes) != 0 || len(backups.saved) != 0 {
 		t.Errorf("writes = %v, backups = %v; want nothing written", home.writes, backups.saved)
@@ -164,8 +172,91 @@ func TestInstallerPlansWithTheWarningsItsCheckReports(t *testing.T) {
 	if plan.Writes() != 2 {
 		t.Errorf("plan = %+v, want the replace and the create to confirm", plan.Documents)
 	}
-	if check.checks != 1 || len(home.writes) != 0 || len(backups.saved) != 0 {
-		t.Errorf("checks = %d, writes = %v, backups = %v; want the result checked once and nothing written before approval",
-			check.checks, home.writes, backups.saved)
+	if len(check.checked) != 1 || len(home.writes) != 0 || len(backups.saved) != 0 {
+		t.Errorf("checked = %v, writes = %v, backups = %v; want the result checked once and nothing written before approval",
+			check.checked, home.writes, backups.saved)
+	}
+}
+
+// A plan approved for another folder installs nothing.
+func TestInstallerRefusesAPlanApprovedForAnotherSource(t *testing.T) {
+	installer, home, backups := installerOver(&installCheckStub{})
+	ctx := context.Background()
+	plan, err := installer.Install(ctx, "src", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	_, err = installer.Install(ctx, "elsewhere", &plan)
+
+	var input *contract.InputError
+	if !errors.As(err, &input) || err.Error() != "not the plan you confirmed, so nothing was installed: elsewhere" {
+		t.Fatalf("err = %v, want the plan for src refused for elsewhere", err)
+	}
+	if len(home.writes) != 0 || len(backups.saved) != 0 {
+		t.Errorf("writes = %v, backups = %v; want nothing written", home.writes, backups.saved)
+	}
+}
+
+// An install whose older backups cannot be removed is still installed, and
+// says how to restore it.
+func TestInstallerReturnsTheStampWhenPruningFails(t *testing.T) {
+	installer, home, backups := installerOver(&installCheckStub{})
+	backups.saved = []string{"s1", "s2", "s3", "s4", "s5"}
+	backups.removeErr = errors.New("busy")
+	ctx := context.Background()
+	plan, err := installer.Install(ctx, "src", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	result, err := installer.Install(ctx, "src", &plan)
+
+	if !errors.Is(err, backups.removeErr) || !strings.Contains(err.Error(), "installed, but removing older backups failed") {
+		t.Fatalf("err = %v, want the prune's failure", err)
+	}
+	if result.Stamp != "stamp-1" || len(home.writes) != 2 {
+		t.Errorf("stamp = %q, writes = %v; want both written and the stamp that restores them", result.Stamp, home.writes)
+	}
+}
+
+// A restore stopped by a failed write says how far it got, and to run it
+// again.
+func TestInstallerRestoreStoppedSaysToRunItAgain(t *testing.T) {
+	for name, tc := range map[string]struct {
+		fail func(*installHomeSpy, error)
+		want string
+	}{
+		"put":    {func(h *installHomeSpy, err error) { h.putErr = err }, "restore stopped after 0 of 2 document(s); run it again"},
+		"remove": {func(h *installHomeSpy, err error) { h.removeErr = err }, "restore stopped after 1 of 2 document(s); run it again"},
+	} {
+		t.Run(name, func(t *testing.T) {
+			home := &installHomeSpy{docs: []definition.Document{
+				installDoc(definition.KindAgent, "reviewer", "tuned\n"),
+				installDoc(definition.KindPrompt, "house", "house\n"),
+			}}
+			backups := &installBackupsSpy{
+				saved: []string{"stamp-1"},
+				manifest: &app.InstallManifest{Stamp: "stamp-1", Documents: []app.InstallManifestEntry{
+					{Kind: string(definition.KindAgent), Name: "reviewer", Action: contract.InstallReplace, Before: sha("old\n"), After: sha("tuned\n")},
+					{Kind: string(definition.KindPrompt), Name: "house", Action: contract.InstallCreate, After: sha("house\n")},
+				}},
+				bytes: map[string][]byte{"reviewer": []byte("old\n")},
+			}
+			installer := app.NewInstaller(app.InstallAdapters{Source: installSource{}, Home: home, Backups: backups, Clock: fixedClock{}, Stamps: installStamps{}}, &installCheckStub{})
+			ctx := context.Background()
+			plan, err := installer.Restore(ctx, "stamp-1", nil)
+			if err != nil {
+				t.Fatal(err)
+			}
+			full := errors.New("disk full")
+			tc.fail(home, full)
+
+			_, err = installer.Restore(ctx, "stamp-1", &plan)
+
+			if !errors.Is(err, full) || !strings.Contains(err.Error(), tc.want) {
+				t.Fatalf("err = %v, want %q", err, tc.want)
+			}
+		})
 	}
 }

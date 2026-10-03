@@ -8,6 +8,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strings"
 	"time"
@@ -33,8 +34,20 @@ func singleton(kind definition.Kind) bool {
 
 // Documents reads every settings document of the store: those List names,
 // and the service when there is one. A file whose name breaks the naming
-// rule is no document, so it is not read.
-func (s Store) Documents(ctx context.Context) ([]definition.Document, error) {
+// rule is no document, so it is not read. One that cannot be read is in
+// unreadable, by its source, with no digest.
+func (s Store) Documents(ctx context.Context) (docs []definition.Document, unreadable []definition.Source, err error) {
+	docs, err = s.documents(ctx, func(doc definition.Document, _ error) error {
+		unreadable = append(unreadable, doc.Source)
+		return nil
+	})
+	return docs, unreadable, err
+}
+
+// documents reads every settings document of the store, as Documents does,
+// and calls unreadable with each one that cannot be read and why; its error
+// stops the read.
+func (s Store) documents(ctx context.Context, unreadable func(definition.Document, error) error) ([]definition.Document, error) {
 	var docs []definition.Document
 	for _, kind := range kinds() {
 		var names []string
@@ -60,7 +73,10 @@ func (s Store) Documents(ctx context.Context) ([]definition.Document, error) {
 			}
 			doc, err := s.Read(ctx, kind, name)
 			if err != nil {
-				return nil, err
+				if err := unreadable(doc, err); err != nil {
+					return nil, err
+				}
+				continue
 			}
 			docs = append(docs, doc)
 		}
@@ -116,7 +132,8 @@ func (s Store) Source(ctx context.Context, dir string) ([]definition.Document, [
 	if err != nil {
 		return nil, nil, err
 	}
-	docs, err := Store{Dir: dir}.Documents(ctx)
+	// A document of the folder that cannot be read refuses it.
+	docs, err := Store{Dir: dir}.documents(ctx, func(_ definition.Document, err error) error { return err })
 	if err != nil {
 		return nil, nil, err
 	}
@@ -135,8 +152,11 @@ func (s Store) Source(ctx context.Context, dir string) ([]definition.Document, [
 }
 
 // Stage writes docs into a new temporary folder laid out like the store.
-// What is read from it is described as the store's: each document's path,
-// and where one not found was expected, are the store's.
+// What is read from it is described as the store's: each document's path
+// is the store's. What the store lists that the stage lacks, a file whose
+// name breaks the naming rule or a document that cannot be read, is listed
+// and read from the store, so a check of the stage finds it as a check of
+// the store does.
 func (s Store) Stage(ctx context.Context, docs []definition.Document) (Staged, func(), error) {
 	dir, err := os.MkdirTemp(s.temp, "agister-install-")
 	if err != nil {
@@ -153,6 +173,13 @@ func (s Store) Stage(ctx context.Context, docs []definition.Document) (Staged, f
 	return Staged{stage: stage, home: s}, remove, nil
 }
 
+// StagingIn returns the store with its stages made in root, in place of the
+// system's temporary folder.
+func (s Store) StagingIn(root string) Store {
+	s.temp = root
+	return s
+}
+
 // Staged is a stage, described as the store it stages.
 type Staged struct {
 	stage Store
@@ -161,20 +188,27 @@ type Staged struct {
 
 func (s Staged) Read(ctx context.Context, kind definition.Kind, name string) (definition.Document, error) {
 	doc, err := s.stage.Read(ctx, kind, name)
-	path, pathErr := s.home.path(kind, name)
-	switch {
-	case pathErr != nil:
-		return doc, err
-	case errors.Is(err, errNotFound):
-		return doc, fmt.Errorf("%w (expected %s)", errNotFound, path)
-	case err == nil:
-		doc.Source.Path = path
+	if errors.Is(err, errNotFound) {
+		return s.home.Read(ctx, kind, name)
+	}
+	if err == nil {
+		doc.Source.Path, _ = s.home.path(kind, name)
 	}
 	return doc, err
 }
 
 func (s Staged) List(ctx context.Context, kind definition.Kind) ([]string, error) {
-	return s.stage.List(ctx, kind)
+	staged, err := s.stage.List(ctx, kind)
+	if err != nil {
+		return nil, err
+	}
+	home, err := s.home.List(ctx, kind)
+	if err != nil {
+		return nil, err
+	}
+	names := append(staged, home...)
+	sort.Strings(names)
+	return slices.Compact(names), nil
 }
 
 // Lock takes the store's write lock, the one Write takes, and returns its
@@ -272,7 +306,7 @@ type ManifestEntry struct {
 	Kind   string `json:"kind"`
 	Name   string `json:"name"`
 	Action string `json:"action"`           // create | replace
-	Before string `json:"before,omitempty"` // digest; empty for a create
+	Before string `json:"before,omitempty"` // digest; empty for a create, or a replace of one that could not be read
 	After  string `json:"after"`            // digest
 }
 

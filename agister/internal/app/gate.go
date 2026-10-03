@@ -71,6 +71,8 @@ type Infrastructure struct {
 	Runs     RunsAdapters
 	// Installer works on home's settings and their backups.
 	Installer InstallAdapters
+	// Staging stages an install's result, where it is checked.
+	Staging InstallStager
 	// Decorate wraps every client the gate builds.
 	Decorate func(contract.Client) contract.Client
 	// Checks makes the checker whose result the resolver and the listings
@@ -104,7 +106,7 @@ func NewClient(infra Infrastructure) contract.Client {
 		return NewChecker(definitions, infra.Checker.Validator, infra.Checker.Runtimes, sources)
 	}
 	// An install checks its result as checkerOn's checkers check home's.
-	installer := NewInstaller(infra.Installer, installCheck(checkerOn))
+	installer := NewInstaller(infra.Installer, installCheck{stager: infra.Staging, on: checkerOn})
 	checksOn := infra.Checks
 	if checksOn == nil {
 		checksOn = func(definitions GateDefinitions) GateCheck { return checkerOn(definitions) }
@@ -143,11 +145,29 @@ func NewClient(infra Infrastructure) contract.Client {
 	return &Gated{Definitions: infra.Definitions, Global: infra.Global, Build: build}
 }
 
-// installCheck checks an install's staged result with the checker on it.
-type installCheck func(GateDefinitions) *Checker
+// InstallStager stages an install's result.
+type InstallStager interface {
+	// Stage writes docs into a new temporary folder laid out like home's
+	// settings, and returns its settings, read as home's would be, and the
+	// folder's removal. What home lists that docs lack is read from home.
+	Stage(ctx context.Context, docs []definition.Document) (staged GateDefinitions, remove func(), err error)
+}
 
-func (on installCheck) Check(ctx context.Context, staged InstallStaged) (contract.CheckReport, error) {
-	return on(staged).Check(ctx, false)
+// installCheck checks an install's result as global settings alone: staged
+// in a folder of its own, checked by the checker on the stage, and the
+// stage removed.
+type installCheck struct {
+	stager InstallStager
+	on     func(GateDefinitions) *Checker
+}
+
+func (c installCheck) Check(ctx context.Context, result []definition.Document) (contract.CheckReport, error) {
+	staged, remove, err := c.stager.Stage(ctx, result)
+	if err != nil {
+		return contract.CheckReport{}, err
+	}
+	defer remove()
+	return c.on(staged).Check(ctx, false)
 }
 
 func (g *Gated) live() contract.Client { return g.Build(g.Definitions, g.Global) }
