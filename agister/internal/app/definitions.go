@@ -41,6 +41,7 @@ type SettingsCheck interface {
 type SettingsChecked struct {
 	Documents []SettingsDocument
 	Problems  []SettingsProblem
+	Blocks    []SettingsBlock
 }
 
 // SettingsDocument is one document the settings list.
@@ -58,6 +59,14 @@ type SettingsProblem struct {
 	Message string // without the document's name
 }
 
+// SettingsBlock is one document the repository blocks (ADR-018): a listing
+// shows what it refuses as it shows what a problem refuses.
+type SettingsBlock struct {
+	Ref    DocumentRef
+	Path   string // of the blocks.yaml
+	Reason string
+}
+
 func (f SettingsChecked) reach() *reach {
 	r := newReach()
 	for _, d := range f.Documents {
@@ -65,6 +74,9 @@ func (f SettingsChecked) reach() *reach {
 	}
 	for _, p := range f.Problems {
 		r.about[p.About] = append(r.about[p.About], reachProblem{message: p.Message})
+	}
+	for _, b := range f.Blocks {
+		r.blocked[b.Ref] = reachBlock{path: b.Path, reason: b.Reason}
 	}
 	return r
 }

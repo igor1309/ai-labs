@@ -332,3 +332,42 @@ func TestWorkspaceSettingsAreAnOptionalSingleton(t *testing.T) {
 		t.Fatalf("project = %+v, %v", doc.Source, err)
 	}
 }
+
+// A repository's blocks are one optional document, blocks.yaml, and only
+// the project's are the repository's (ADR-018 rule 1): home's is read as
+// home's where the project has none, so check can report it, and never
+// over the project's.
+//
+// Contract test: the settings store against the real filesystem.
+func TestBlocksAreTheProjectsOwn(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	global, project := fsdefs.Store{Dir: t.TempDir()}, fsdefs.Store{Dir: t.TempDir()}
+	layered := fsdefs.Layered{Global: global, Project: &project}
+	if names, err := layered.List(ctx, definition.KindBlocks); err != nil || len(names) != 0 {
+		t.Fatalf("none = %v, %v", names, err)
+	}
+
+	globalPath, _, err := global.Write(ctx, definition.KindBlocks, "blocks", []byte("home"), "")
+	if err != nil || globalPath != filepath.Join(global.Dir, "blocks.yaml") {
+		t.Fatalf("written at %s, %v", globalPath, err)
+	}
+	if names, err := layered.List(ctx, definition.KindBlocks); err != nil || !reflect.DeepEqual(names, []string{"blocks"}) {
+		t.Fatalf("home's = %v, %v", names, err)
+	}
+	for name, source := range map[string]fsdefs.Layered{"in a project": layered, "home alone": {Global: global}} {
+		if doc, err := source.Read(ctx, definition.KindBlocks, "blocks"); err != nil || string(doc.Bytes) != "home" || doc.Source.Project || doc.Source.Path != globalPath {
+			t.Fatalf("%s: home's = %+v, %v", name, doc.Source, err)
+		}
+	}
+
+	projectPath, _, _ := project.Write(ctx, definition.KindBlocks, "blocks", []byte("project"), "")
+	if names, err := layered.List(ctx, definition.KindBlocks); err != nil || !reflect.DeepEqual(names, []string{"blocks"}) {
+		t.Fatalf("both = %v, %v", names, err)
+	}
+	doc, err := layered.Read(ctx, definition.KindBlocks, "blocks")
+	if err != nil || string(doc.Bytes) != "project" || doc.Source.Path != projectPath || projectPath != filepath.Join(project.Dir, "blocks.yaml") ||
+		!doc.Source.Project || doc.Source.Overrides != globalPath {
+		t.Fatalf("project's = %+v, %v", doc.Source, err)
+	}
+}

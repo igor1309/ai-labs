@@ -39,14 +39,15 @@ func dangle(t *testing.T, path string) {
 }
 
 // A source folder's settings documents are what the store lists; every
-// other file is named, and a folder that is not a kind's is not read.
+// other file is named, and a folder that is not a kind's is not read. Its
+// blocks.yaml is named and not read: home has no blocks (ADR-018 rule 6).
 //
 // Contract test: the settings store against the real filesystem.
 func TestSourceReadsSettingsAndNamesTheRest(t *testing.T) {
 	t.Parallel()
 	dir := t.TempDir()
 	for _, name := range []string{
-		"service.toml", "workspace.yaml", "agents/a.toml", "prompts/p.md", "verifies/repo.yaml",
+		"service.toml", "workspace.yaml", "blocks.yaml", "agents/a.toml", "prompts/p.md", "verifies/repo.yaml",
 		"notes.txt", ".DS_Store", "agents/a.yaml", "agents/old/b.toml", "agents/Bad.toml", "prompts/Not A Name.md", "runs/r1/record.json",
 	} {
 		put(t, filepath.Join(dir, name), name)
@@ -71,7 +72,7 @@ func TestSourceReadsSettingsAndNamesTheRest(t *testing.T) {
 	if !reflect.DeepEqual(read, wantRead) {
 		t.Fatalf("read %v", read)
 	}
-	wantIgnored := []string{".DS_Store", "agents/Bad.toml", "agents/a.yaml", "agents/old/", "notes.txt", "prompts/Not A Name.md", "runs/"}
+	wantIgnored := []string{".DS_Store", "agents/Bad.toml", "agents/a.yaml", "agents/old/", "blocks.yaml", "notes.txt", "prompts/Not A Name.md", "runs/"}
 	if !reflect.DeepEqual(ignored, wantIgnored) {
 		t.Fatalf("ignored %v", ignored)
 	}

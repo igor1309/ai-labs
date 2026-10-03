@@ -207,6 +207,21 @@ type CheckReport struct {
 	Definitions []Definition `json:"definitions"`
 	// What each problem refuses, in the order of Problems.
 	Reach []ProblemReach `json:"reach"`
+	// What the repository's settings block (ADR-018). Blocks are not
+	// problems: settings with blocks pass.
+	Blocks []Block `json:"blocks"`
+}
+
+// Block is one document a repository's blocks.yaml blocks, and what it
+// refuses (ADR-018).
+type Block struct {
+	Ref    DefinitionRef `json:"ref"`
+	Path   string        `json:"path"` // of the blocks.yaml
+	Reason string        `json:"reason,omitempty"`
+	// The processes and workflows whose calls it refuses, as they are
+	// called without --agent.
+	Processes []string `json:"processes,omitempty"`
+	Workflows []string `json:"workflows,omitempty"`
 }
 
 // ProblemReach is what one problem refuses (ADR-015): every command, or the

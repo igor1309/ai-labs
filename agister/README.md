@@ -76,6 +76,27 @@ exists in neither place is a problem of the settings
 ([ADR-014](docs/adr/014-prompts-are-settings.md)). A text the caller names
 stays a `source: file` input, read relative to the caller's directory.
 
+A repository can also take away what home provides, without copying any
+of home's documents: `.agister/blocks.yaml` names the processes,
+workflows, agents and runtime mappings it blocks
+([ADR-018](docs/adr/018-a-repository-blocks-what-home-allows.md)).
+
+```yaml
+schema: agister.blocks/v1alpha1
+blocks:
+  - ref: agent:codex-implementer-sol-61
+    reason: Codex does not implement in this repository
+  - ref: process:implement_codex
+```
+
+In that repository, every call that depends on a blocked document, through
+any chain of uses and with `--agent` too, is refused before its first turn,
+naming the block's path and reason; `check` lists each block and what it
+refuses, and passes. A `blocks.yaml` that is broken or names a document
+that exists nowhere stops every command, as broken service settings do;
+`install` and `install --restore` still run. One in home blocks nothing
+and is a problem, and `install` does not install one.
+
 Agister is a runner, not a guard: running it in a repository applies that
 repository's `.agister/`, including the commands its agents run. Review
 settings you did not write.

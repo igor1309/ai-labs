@@ -13,12 +13,14 @@ A repository's settings (`<repository>/.agister`) are read over home's
 over home's document of the same kind and name (`fsdefs.Layered`). So a
 repository can add a document or replace one, but it cannot take one away.
 
-The owner wants exactly that in some repositories: home provides a Codex
-implementer, and in one repository Codex must not implement. Today the
-only way is to copy home's documents into the repository and edit them,
-so they drift from home (LAB-59). Replacing a process with a document
-that cannot run is not a way either: it is a broken document, which
-`check` reports as a problem.
+Repositories need to take away a choice they inherit: home provides a
+process, an agent or a runtime that one repository must not use, while
+every other repository keeps it. Replacing documents is the only way
+today, and it pulls the other way: a repository that copies home's
+documents to edit them drifts from home, and home's later changes no
+longer reach it. Replacing a process with a document that cannot run is
+not a way either: it is a broken document, which `check` reports as a
+problem.
 
 [ADR-015](015-a-broken-document-refuses-only-what-uses-it.md) already
 refuses exactly the calls that depend on a document, through any chain
@@ -102,7 +104,10 @@ the refusal, as they do for a problem.
 that exists in neither layer, is a problem that cannot be attributed
 (ADR-015 rule 4): what it was meant to block cannot be known, and running
 anyway could run what the repository blocks. It stops every command in
-that repository, except those ADR-015 rule 4 exempts.
+that repository, except those ADR-015 rule 4 exempts and `agister
+install` and `install --restore`, which ADR-016 rule 9 keeps outside the
+check: a broken `blocks.yaml` never removes the way to repair or restore
+the settings.
 
 A block on a document that exists but has a problem of its own blocks it
 as written; the document's problem is reported as before.
@@ -131,7 +136,8 @@ rule 1).
 
 - **Blocks in the repository's service settings.** Rejected: the
   repository's `service.toml` replaces home's whole, so adding a block
-  there means copying home's service settings, the drift LAB-59 is about.
+  there means copying home's service settings, which then drift from
+  home's.
 - **A stub document that replaces the blocked one.** Rejected: it is a
   broken document, a problem `check` reports, and it says nothing of why.
 - **Blocks in home too, overridden by the repository's.** Rejected: a
@@ -140,7 +146,8 @@ rule 1).
   it.
 - **Block permissions instead of documents** (deny `network` for every
   call in the repository). Not rejected, not decided: it narrows limits
-  ADR-001 rule 3 composes, a different layer; LAB-59 asks for choices.
+  ADR-001 rule 3 composes, a different layer from the choices this ADR
+  takes away.
 - **Skip blocked documents silently.** Rejected: a call would run on
   another agent than the one it names, and ADR-001 rule 7 asks for a
   refusal.

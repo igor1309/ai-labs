@@ -1023,6 +1023,9 @@ func printCheckAs(env IO, report contract.CheckReport, opts options) (int, error
 		if report.Reach == nil {
 			report.Reach = []contract.ProblemReach{}
 		}
+		if report.Blocks == nil {
+			report.Blocks = []contract.Block{}
+		}
 		return code, printJSON(env.Stdout, report)
 	}
 	if opts.tree {
@@ -1117,12 +1120,20 @@ func printTree(w io.Writer, definitions []contract.Definition) {
 }
 
 // printCheck prints a check report and returns its exit code. Overrides
-// are listed either way: a problem is often caused by one. Problems that
-// name something this binary does not know may mean the settings were
-// written for a newer one, and a line says so.
+// and blocks are listed either way: a problem or a refusal is often caused
+// by one. Problems that name something this binary does not know may mean
+// the settings were written for a newer one, and a line says so.
 func printCheck(env IO, report contract.CheckReport) int {
 	for _, override := range report.Overrides {
 		fmt.Fprintln(env.Stdout, "override "+override)
+	}
+	for _, block := range report.Blocks {
+		text := fmt.Sprintf("block %s %s: %s", kindNames[block.Ref.Kind], block.Ref.Name, block.Path)
+		if block.Reason != "" {
+			text += ": " + block.Reason
+		}
+		fmt.Fprintln(env.Stdout, text)
+		fmt.Fprintln(env.Stdout, "  "+reaches(contract.ProblemReach{Processes: block.Processes, Workflows: block.Workflows}))
 	}
 	for _, warning := range report.Warnings {
 		fmt.Fprintln(env.Stderr, "warning "+warning)
@@ -1153,7 +1164,7 @@ func printCheck(env IO, report contract.CheckReport) int {
 	return 0
 }
 
-// reaches says what one problem refuses (ADR-015).
+// reaches says what one problem or block refuses (ADR-015, ADR-018).
 func reaches(reach contract.ProblemReach) string {
 	if reach.Stops {
 		return "stops every command"

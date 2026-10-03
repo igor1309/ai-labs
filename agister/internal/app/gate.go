@@ -10,13 +10,14 @@ import (
 )
 
 // Gated refuses every use of the client while the settings have a problem
-// that stops every command (ADR-015 rule 4), except Init, Install and
-// Restore, which write them, and Check, which reports them. Stopping a run
+// that stops every command (ADR-015 rule 4), a broken blocks.yaml among
+// them (ADR-018 rule 5), except Init, Install and Restore, which write
+// them, and Check, which reports them. Stopping a run
 // is never refused, and a run it admitted stays observable, so editing
 // settings mid-run cannot strand a call that already started. Any other
-// problem refuses only the calls that depend on the document it is about,
-// which the client it builds refuses and its listings and views show
-// refused.
+// problem, and a block, refuses only the calls that depend on the document
+// it is about, which the client it builds refuses and its listings and
+// views show refused.
 //
 // Each gated operation reads the settings (layered, and the global layer
 // alone) once into snapshots, builds its client on them, checks with that client and then runs the
@@ -233,6 +234,9 @@ func (c resolverCheck) Check(ctx context.Context) (ResolverChecked, error) {
 			result.Problems = append(result.Problems, ResolverProblem{About: *p.About, Message: p.Message, Agent: p.Agent})
 		}
 	}
+	for _, b := range found.Blocks {
+		result.Blocks = append(result.Blocks, ResolverBlock(b))
+	}
 	return result, nil
 }
 
@@ -257,6 +261,9 @@ func (c settingsCheck) Check(ctx context.Context) (SettingsChecked, error) {
 		if p.About != nil {
 			result.Problems = append(result.Problems, SettingsProblem{About: *p.About, Message: p.Message})
 		}
+	}
+	for _, b := range found.Blocks {
+		result.Blocks = append(result.Blocks, SettingsBlock(b))
 	}
 	return result, nil
 }

@@ -13,7 +13,7 @@ var allKinds = []definition.Kind{
 	definition.KindService, definition.KindRuntime, definition.KindAgent,
 	definition.KindPolicy, definition.KindVerify, definition.KindPrompt,
 	definition.KindProcess, definition.KindSchema, definition.KindWorkflow,
-	definition.KindWorkspace,
+	definition.KindWorkspace, definition.KindBlocks,
 }
 
 // SnapshotSource is what a snapshot reads and what it gives back: the

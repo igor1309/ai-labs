@@ -56,19 +56,29 @@ func (c *Checker) Check(ctx context.Context, probe bool) (contract.CheckReport, 
 }
 
 // Checked checks the settings, without asking the runtimes, and returns
-// what it found: its report, and each document and problem as the
-// components that refuse what depends on a problem read them.
+// what it found: its report, and each document, problem and block as the
+// components that refuse what depends on a problem or a block read them.
 func (c *Checker) Checked(ctx context.Context) (CheckResult, error) {
 	return c.check(ctx, false)
 }
 
-// CheckResult is what a check finds: its report, and each document and
-// problem as the components that refuse what depends on a problem read
-// them.
+// CheckResult is what a check finds: its report, and each document,
+// problem and block as the components that refuse what depends on a
+// problem or a block read them.
 type CheckResult struct {
 	Report    contract.CheckReport
 	Documents []CheckedDocument
 	Problems  []CheckedProblem
+	// What the repository blocks (ADR-018); none when its blocks.yaml has
+	// a problem, which stops every command.
+	Blocks []CheckedBlock
+}
+
+// CheckedBlock is one document the repository's blocks.yaml blocks.
+type CheckedBlock struct {
+	Ref    DocumentRef
+	Path   string // of the blocks.yaml
+	Reason string
 }
 
 // CheckedDocument is one document the settings list.
@@ -276,7 +286,8 @@ func (c *Checker) check(ctx context.Context, probe bool) (CheckResult, error) {
 			stops("workflow "+ref.Name, "a process has the same name; name one of them otherwise")
 		}
 	}
-	// What each problem refuses, once every problem is known.
+	blocks := c.blocks(ctx, listed, report.Checked, &found)
+	// What each problem and block refuses, once every problem is known.
 	finish := func() CheckResult {
 		sort.SliceStable(found, func(i, j int) bool { return found[i].Text < found[j].Text })
 		reached := newReach()
@@ -308,7 +319,15 @@ func (c *Checker) check(ctx context.Context, probe bool) (CheckResult, error) {
 			}
 			report.Reach = append(report.Reach, item)
 		}
-		return CheckResult{Report: report, Documents: documents, Problems: found}
+		for _, block := range blocks {
+			report.Blocks = append(report.Blocks, contract.Block{
+				Ref:  contract.DefinitionRef{Kind: string(block.Ref.Kind), Name: block.Ref.Name},
+				Path: block.Path, Reason: block.Reason,
+				Processes: reached.refuses(block.Ref, processes),
+				Workflows: reached.refuses(block.Ref, workflows),
+			})
+		}
+		return CheckResult{Report: report, Documents: documents, Problems: found, Blocks: blocks}
 	}
 	// What each definition references, and the reverse.
 	link := func(from DocumentRef, kind definition.Kind, name string) {
@@ -414,6 +433,71 @@ func (c *Checker) check(ctx context.Context, probe bool) (CheckResult, error) {
 		}
 	}
 	return finish(), nil
+}
+
+// blocks reads the repository's blocks.yaml (ADR-018) and returns what it
+// blocks, adding its problems to found. listed is every document the
+// settings list. Only the repository's blocks: home's is a problem of
+// home's settings that refuses nothing (rule 1). A problem of the
+// repository's cannot be attributed: what it was meant to block cannot be
+// known, so it stops every command and blocks nothing itself (rule 5).
+func (c *Checker) blocks(ctx context.Context, listed map[DocumentRef]bool, checked map[string]int, found *[]CheckedProblem) []CheckedBlock {
+	stops := func(subject, message string, unknown bool) {
+		*found = append(*found, CheckedProblem{Text: subject + ": " + message, Message: message, Unknown: unknown})
+	}
+	names, err := c.definitions.List(ctx, definition.KindBlocks)
+	if err != nil {
+		stops("blocks", fmt.Sprintf("cannot be listed: %v", err), false)
+		return nil
+	}
+	var blocks []CheckedBlock
+	for _, name := range names {
+		doc, err := c.definitions.Read(ctx, definition.KindBlocks, name)
+		home := func(path string) {
+			message := "home's settings block nothing: only a repository's settings have blocks; remove it"
+			*found = append(*found, CheckedProblem{Text: "blocks (" + path + "): " + message, About: &blocksRef, Message: message})
+		}
+		if !doc.Source.Project {
+			home(doc.Source.Path)
+			continue
+		}
+		if doc.Source.Overrides != "" {
+			home(doc.Source.Overrides)
+		}
+		subject := "blocks (" + doc.Source.Path + ")"
+		if err != nil {
+			stops(subject, err.Error(), false)
+			continue
+		}
+		checked[string(definition.KindBlocks)]++
+		parsed, err := definition.ParseBlocks(doc)
+		var invalid *definition.InvalidError
+		switch {
+		case errors.As(err, &invalid):
+			for _, p := range invalid.Problems {
+				stops(subject, p.Message, p.Unknown)
+			}
+			continue
+		case err != nil:
+			stops(subject, err.Error(), false)
+			continue
+		}
+		var named []CheckedBlock
+		missing := false
+		for i, block := range parsed.Blocks {
+			ref := DocumentRef{Kind: block.Kind, Name: block.Name}
+			if !listed[ref] {
+				stops(subject, fmt.Sprintf("blocks[%d].ref: %s is in neither the repository's settings nor home's", i, label(ref)), false)
+				missing = true
+				continue
+			}
+			named = append(named, CheckedBlock{Ref: ref, Path: doc.Source.Path, Reason: block.Reason})
+		}
+		if !missing {
+			blocks = append(blocks, named...)
+		}
+	}
+	return blocks
 }
 
 // subjectRef is the document a problem's subject names, as check names it:

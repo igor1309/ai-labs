@@ -70,12 +70,13 @@ type ResolverCheck interface {
 }
 
 // ResolverChecked is what a check of the settings tells a call: each
-// document listed, what it uses, and the problems that refuse what depends
-// on it. A problem that stops every command is not here: the gate refuses
-// every command for it first.
+// document listed, what it uses, and the problems and blocks that refuse
+// what depends on it. A problem that stops every command is not here: the
+// gate refuses every command for it first.
 type ResolverChecked struct {
 	Documents []ResolverDocument
 	Problems  []ResolverProblem
+	Blocks    []ResolverBlock
 }
 
 // ResolverDocument is one document the settings list.
@@ -94,6 +95,13 @@ type ResolverProblem struct {
 	Agent string
 }
 
+// ResolverBlock is one document the repository blocks (ADR-018).
+type ResolverBlock struct {
+	Ref    DocumentRef
+	Path   string // of the blocks.yaml
+	Reason string
+}
+
 func (f ResolverChecked) reach() *reach {
 	r := newReach()
 	for _, d := range f.Documents {
@@ -101,6 +109,9 @@ func (f ResolverChecked) reach() *reach {
 	}
 	for _, p := range f.Problems {
 		r.about[p.About] = append(r.about[p.About], reachProblem{message: p.Message, agent: p.Agent})
+	}
+	for _, b := range f.Blocks {
+		r.blocked[b.Ref] = reachBlock{path: b.Path, reason: b.Reason}
 	}
 	return r
 }
@@ -175,8 +186,8 @@ type overrides struct {
 
 // resolve resolves the process named processName. A refused one's
 // resolution has what was resolved before the refusal. A call that depends
-// on a document with a problem is refused for it, naming each, before its
-// runtime is asked anything (ADR-015).
+// on a document with a problem, or a blocked one, is refused for it, naming
+// each, before its runtime is asked anything (ADR-015, ADR-018).
 func (r *Resolver) resolve(ctx context.Context, processName, agentOverride string, caller overrides) (*resolution, error) {
 	reached, err := r.reach(ctx)
 	if err != nil {
@@ -489,7 +500,8 @@ type workflowResolution struct {
 
 // workflow resolves the workflow named name, refusing one whose nodes
 // cannot run as ADR-003 has them (settings.WorkflowProblems), and one that
-// depends on a document with a problem (ADR-015). found is false when the
+// depends on a document with a problem (ADR-015) or a blocked one
+// (ADR-018). found is false when the
 // settings list no workflow of that name.
 func (r *Resolver) workflow(ctx context.Context, name string) (*workflowResolution, bool, error) {
 	names, err := r.definitions.List(ctx, definition.KindWorkflow)
@@ -502,7 +514,8 @@ func (r *Resolver) workflow(ctx context.Context, name string) (*workflowResoluti
 	}
 	res, err := r.resolveWorkflow(ctx, name)
 	// Refused before any node runs, for a problem in what the workflow or
-	// any node's call depends on (ADR-015 rule 3).
+	// any node's call depends on (ADR-015 rule 3), or a block on it
+	// (ADR-018 rule 2).
 	if refused := reached.workflow(name); refused != nil {
 		return res, true, refused
 	}

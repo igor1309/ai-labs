@@ -29,7 +29,7 @@ func kinds() []definition.Kind {
 
 // singleton kinds are one document at the top of the store, not a folder.
 func singleton(kind definition.Kind) bool {
-	return kind == definition.KindService || kind == definition.KindWorkspace
+	return kind == definition.KindService || kind == definition.KindWorkspace || kind == definition.KindBlocks
 }
 
 // Documents reads every settings document of the store: those List names,
@@ -37,19 +37,19 @@ func singleton(kind definition.Kind) bool {
 // rule is no document, so it is not read. One that cannot be read is in
 // unreadable, by its source, with no digest.
 func (s Store) Documents(ctx context.Context) (docs []definition.Document, unreadable []definition.Source, err error) {
-	docs, err = s.documents(ctx, func(doc definition.Document, _ error) error {
+	docs, err = s.documents(ctx, kinds(), func(doc definition.Document, _ error) error {
 		unreadable = append(unreadable, doc.Source)
 		return nil
 	})
 	return docs, unreadable, err
 }
 
-// documents reads every settings document of the store, as Documents does,
-// and calls unreadable with each one that cannot be read and why; its error
-// stops the read.
-func (s Store) documents(ctx context.Context, unreadable func(definition.Document, error) error) ([]definition.Document, error) {
+// documents reads every settings document of the given kinds, as Documents
+// does, and calls unreadable with each one that cannot be read and why; its
+// error stops the read.
+func (s Store) documents(ctx context.Context, kinds []definition.Kind, unreadable func(definition.Document, error) error) ([]definition.Document, error) {
 	var docs []definition.Document
-	for _, kind := range kinds() {
+	for _, kind := range kinds {
 		var names []string
 		if kind == definition.KindService {
 			path, _ := s.path(kind, string(kind))
@@ -87,8 +87,9 @@ func (s Store) documents(ctx context.Context, unreadable func(definition.Documen
 // Source reads the settings documents of the folder dir, laid out like the
 // store, and names its other files, slash-separated and relative to it; a
 // folder that is not a kind's is named once, with a trailing slash, and not
-// read. A symbolic link in it refuses the whole folder, so nothing outside
-// it is installed.
+// read. Its blocks.yaml is named, not read: home has no blocks (ADR-018 rule
+// 6). A symbolic link in it refuses the whole folder, so nothing outside it
+// is installed.
 func (s Store) Source(ctx context.Context, dir string) ([]definition.Document, []string, error) {
 	info, err := os.Stat(dir)
 	if errors.Is(err, fs.ErrNotExist) {
@@ -132,8 +133,9 @@ func (s Store) Source(ctx context.Context, dir string) ([]definition.Document, [
 	if err != nil {
 		return nil, nil, err
 	}
+	installed := slices.DeleteFunc(kinds(), func(kind definition.Kind) bool { return kind == definition.KindBlocks })
 	// A document of the folder that cannot be read refuses it.
-	docs, err := Store{Dir: dir}.documents(ctx, func(_ definition.Document, err error) error { return err })
+	docs, err := Store{Dir: dir}.documents(ctx, installed, func(_ definition.Document, err error) error { return err })
 	if err != nil {
 		return nil, nil, err
 	}

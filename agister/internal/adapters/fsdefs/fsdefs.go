@@ -1,8 +1,8 @@
 // Package fsdefs stores definition documents as files under Agister's
-// state directory: service.toml, workspace.yaml, agents/*.toml, processes/*.yaml,
-// policies/*.yaml, runtimes/*.yaml, schemas/*.json, workflows/*.yaml,
-// verifies/*.yaml, prompts/*.md. Layered reads a project's own settings over
-// the global ones.
+// state directory: service.toml, workspace.yaml, blocks.yaml, agents/*.toml,
+// processes/*.yaml, policies/*.yaml, runtimes/*.yaml, schemas/*.json,
+// workflows/*.yaml, verifies/*.yaml, prompts/*.md. Layered reads a project's
+// own settings over the global ones.
 package fsdefs
 
 import (
@@ -84,8 +84,9 @@ var extensions = map[definition.Kind]string{
 	definition.KindWorkflow: ".yaml",
 	definition.KindVerify:   ".yaml",
 	definition.KindPrompt:   ".md",
-	// A singleton, like the service.
+	// Singletons, like the service.
 	definition.KindWorkspace: ".yaml",
+	definition.KindBlocks:    ".yaml",
 }
 
 func (s Store) path(kind definition.Kind, name string) (string, error) {
@@ -121,12 +122,12 @@ func (s Store) Read(_ context.Context, kind definition.Kind, name string) (defin
 	}, nil
 }
 
-// List names the documents of kind. The workspace settings are listed when
-// the one document exists, so a missing one reads as none. One that exists
-// but cannot be followed, such as a symlink loop, is listed, so reading it
-// fails as that document's problem.
+// List names the documents of kind. The workspace settings and the blocks
+// are listed when their one document exists, so a missing one reads as
+// none. One that exists but cannot be followed, such as a symlink loop, is
+// listed, so reading it fails as that document's problem.
 func (s Store) List(_ context.Context, kind definition.Kind) ([]string, error) {
-	if kind == definition.KindWorkspace {
+	if kind == definition.KindWorkspace || kind == definition.KindBlocks {
 		path, _ := s.path(kind, string(kind))
 		if _, err := os.Lstat(path); errors.Is(err, fs.ErrNotExist) {
 			return nil, nil
@@ -257,6 +258,10 @@ func digest(data []byte) string {
 // document takes priority over the global document of the same kind and
 // name, and says which one it overrides. Checking the composed result is
 // the core's job, not the store's.
+//
+// Blocks are read the same way, and only a project's block anything
+// (ADR-018 rule 1): Source.Project says whose they are. Home's are still
+// read, where the project has none, so check reports them.
 type Layered struct {
 	Global  Store
 	Project *Store // nil outside a project
