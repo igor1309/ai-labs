@@ -507,7 +507,7 @@ func subjectRef(subject string) (DocumentRef, bool) {
 	if subject == "service" {
 		return serviceRef, true
 	}
-	for _, kind := range allKinds {
+	for _, kind := range allKinds() {
 		if name, ok := strings.CutPrefix(subject, kind.Singular()+" "); ok {
 			return DocumentRef{Kind: kind, Name: name}, true
 		}

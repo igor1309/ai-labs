@@ -74,23 +74,27 @@ func (s Store) lock() (func(), error) {
 	}, nil
 }
 
-var extensions = map[definition.Kind]string{
-	definition.KindService:  ".toml",
-	definition.KindAgent:    ".toml",
-	definition.KindProcess:  ".yaml",
-	definition.KindPolicy:   ".yaml",
-	definition.KindRuntime:  ".yaml",
-	definition.KindSchema:   ".json",
-	definition.KindWorkflow: ".yaml",
-	definition.KindVerify:   ".yaml",
-	definition.KindPrompt:   ".md",
-	// Singletons, like the service.
-	definition.KindWorkspace: ".yaml",
-	definition.KindBlocks:    ".yaml",
+// extensions is the file extension of each kind the store holds. Each call
+// returns a new map.
+func extensions() map[definition.Kind]string {
+	return map[definition.Kind]string{
+		definition.KindService:  ".toml",
+		definition.KindAgent:    ".toml",
+		definition.KindProcess:  ".yaml",
+		definition.KindPolicy:   ".yaml",
+		definition.KindRuntime:  ".yaml",
+		definition.KindSchema:   ".json",
+		definition.KindWorkflow: ".yaml",
+		definition.KindVerify:   ".yaml",
+		definition.KindPrompt:   ".md",
+		// Singletons, like the service.
+		definition.KindWorkspace: ".yaml",
+		definition.KindBlocks:    ".yaml",
+	}
 }
 
 func (s Store) path(kind definition.Kind, name string) (string, error) {
-	extension, ok := extensions[kind]
+	extension, ok := extensions()[kind]
 	if !ok {
 		return "", fmt.Errorf("unknown definition kind %q", kind)
 	}
@@ -171,7 +175,7 @@ func (s Store) List(_ context.Context, kind definition.Kind) ([]string, error) {
 	}
 	var names []string
 	for _, entry := range entries {
-		name, ok := strings.CutSuffix(entry.Name(), extensions[kind])
+		name, ok := strings.CutSuffix(entry.Name(), extensions()[kind])
 		if !ok || entry.IsDir() {
 			continue
 		}

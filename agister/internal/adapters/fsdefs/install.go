@@ -19,8 +19,9 @@ import (
 
 // kinds is every kind the store holds, in a fixed order.
 func kinds() []definition.Kind {
-	all := make([]definition.Kind, 0, len(extensions))
-	for kind := range extensions {
+	known := extensions()
+	all := make([]definition.Kind, 0, len(known))
+	for kind := range known {
 		all = append(all, kind)
 	}
 	sort.Slice(all, func(a, b int) bool { return all[a] < all[b] })
@@ -121,7 +122,7 @@ func (s Store) Source(ctx context.Context, dir string) ([]definition.Document, [
 		}
 		rel = filepath.ToSlash(rel)
 		if entry.IsDir() {
-			if kind := definition.Kind(rel); extensions[kind] != "" && !singleton(kind) {
+			if kind := definition.Kind(rel); extensions()[kind] != "" && !singleton(kind) {
 				return nil
 			}
 			files = append(files, rel+"/")

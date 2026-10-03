@@ -9,13 +9,15 @@ import (
 // BlocksSchema is the schema of a repository's blocks (ADR-018).
 const BlocksSchema = "agister.blocks/v1alpha1"
 
-// blockable are the kinds a block may name, by the prefix of its reference:
-// the choices a call makes (ADR-018 rule 1).
-var blockable = map[string]Kind{
-	"process":  KindProcess,
-	"workflow": KindWorkflow,
-	"agent":    KindAgent,
-	"runtime":  KindRuntime,
+// blockable is the kinds a block may name, by the prefix of its reference:
+// the choices a call makes (ADR-018 rule 1). Each call returns a new map.
+func blockable() map[string]Kind {
+	return map[string]Kind{
+		"process":  KindProcess,
+		"workflow": KindWorkflow,
+		"agent":    KindAgent,
+		"runtime":  KindRuntime,
+	}
 }
 
 // Block is one document a repository blocks, and why.
@@ -27,7 +29,7 @@ type Block struct {
 
 // Ref is the block's reference, as the settings write it: "agent:<name>".
 func (b Block) Ref() string {
-	for prefix, kind := range blockable {
+	for prefix, kind := range blockable() {
 		if kind == b.Kind {
 			return prefix + ":" + b.Name
 		}
@@ -77,7 +79,7 @@ func ParseBlocks(doc Document) (Blocks, error) {
 			continue
 		}
 		prefix, name, found := strings.Cut(ref, ":")
-		kind, known := blockable[prefix]
+		kind, known := blockable()[prefix]
 		switch {
 		case !found:
 			p.add(field+".ref", `must be "<kind>:<name>", one of process, workflow, agent or runtime`)
