@@ -1,6 +1,6 @@
 # ADR-019: A prompt may be optional
 
-- **Status:** Proposed
+- **Status:** Accepted
 - **Date:** 2026-10-03
 - **Scope:** a process's prompt input that some repositories supply and
   others do not
