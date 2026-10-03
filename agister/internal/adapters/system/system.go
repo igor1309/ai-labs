@@ -25,6 +25,12 @@ func (IDs) RunID(now time.Time) string {
 	return now.UTC().Format("20060102T150405Z") + "-" + randomHex(3)
 }
 
+// Stamp names an install's backup: sortable by time, to the microsecond,
+// and told apart from another made in the same one by its random suffix.
+func (IDs) Stamp(now time.Time) string {
+	return now.UTC().Format("20060102T150405.000000Z") + "-" + randomHex(3)
+}
+
 func randomHex(n int) string {
 	b := make([]byte, n)
 	_, _ = rand.Read(b)

@@ -121,7 +121,16 @@ func process(config cli.Config) composition {
 // composition is what one process wires its client over: the one worktree
 // coordinator every adapter that changes a repository's worktrees takes
 // its turn in. Tests wire over a coordinator they hold.
-type composition struct{ worktrees *git.Worktrees }
+type composition struct {
+	worktrees *git.Worktrees
+	// stages, when set, is the folder installs stage their results in, in
+	// place of the system's temporary folder.
+	stages string
+	// adjust, when set, adjusts what the client runs on: tests fix the
+	// clock and the stamps of installs, spy on home and the staging, and
+	// stop an install between its writes.
+	adjust func(*app.Infrastructure)
+}
 
 // workspaceAdapters are the adapters that change a repository's worktrees,
 // each as the component that requires it gets it.
@@ -191,7 +200,7 @@ func (c composition) wire(config cli.Config) (contract.Client, *app.BackgroundRe
 		Reaper: app.NewReaper(evidence, runtimecomposition.Processes{Supervisor: supervisor.Processes{}}, workspaces.discarder, system.Clock{}),
 		Report: func(err error) { log.Error("reaping abandoned runs failed", "error", err.Error()) },
 	}
-	client := app.NewClient(app.Infrastructure{
+	infra := app.Infrastructure{
 		Definitions: fsdefs.Layered{Global: global, Project: local, Absent: absent},
 		Global:      fsdefs.Layered{Global: global},
 		Project:     projectRoot,
@@ -221,11 +230,25 @@ func (c composition) wire(config cli.Config) (contract.Client, *app.BackgroundRe
 		Preparer: app.SetupAdapters{Content: content, Commands: runtimecomposition.SetupCommands{Supervisor: supervisor.Commands{}}, Clock: system.Clock{}},
 		Verifier: app.VerifyAdapters{Content: content, Copies: workspaces.copies, Commands: runtimecomposition.Commands{Supervisor: supervisor.Commands{}}, Clock: system.Clock{}},
 		Runs:     app.RunsAdapters{Reader: evidence},
+		// Installs read a folder laid out like the global settings, and
+		// write the global settings, backed up beside them; each result is
+		// checked on a staged copy.
+		Installer: app.InstallAdapters{
+			Source:  global,
+			Home:    global,
+			Backups: installBackups{fsdefs.Backups{Dir: filepath.Join(config.Home, "backups")}},
+			Clock:   system.Clock{},
+			Stamps:  system.IDs{},
+		},
+		Staging: installStager{global.StagingIn(c.stages)},
 		Decorate: func(client contract.Client) contract.Client {
 			return app.ReapOnSubmit{Client: client, Background: reaping}
 		},
-	})
-	return client, reaping, nil
+	}
+	if c.adjust != nil {
+		c.adjust(&infra)
+	}
+	return app.NewClient(infra), reaping, nil
 }
 
 // project is the settings layer of the repository containing the working

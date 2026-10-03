@@ -28,6 +28,18 @@ type Client interface {
 	// writes nothing and returns the plan; with one it writes, refusing if
 	// the request now plans anything else or any file changed since.
 	Init(ctx context.Context, overwrite bool, approved *InitResult) (InitResult, error)
+	// Install merges a folder of settings into home, document by document
+	// (ADR-016). Without an approved plan it writes nothing and returns the
+	// plan, its result checked on a staged copy; with one it backs up what it
+	// replaces and writes, refusing if home's settings or the folder's
+	// documents changed since. A result with a Stamp can be restored, even
+	// with an error.
+	Install(ctx context.Context, source string, approved *InstallPlan) (InstallPlan, error)
+	// Restore undoes the install that made the backup stamp. Without an
+	// approved plan it writes nothing and returns the plan; with one it puts
+	// back what the install replaced and removes what it created, refusing
+	// if any of those documents changed since.
+	Restore(ctx context.Context, stamp string, approved *RestorePlan) (RestorePlan, error)
 	// CreateAgent writes an agent profile. Without an approved plan it
 	// validates and returns the plan, writing nothing; with one it writes,
 	// refusing if the request now plans anything else or the file changed
@@ -78,6 +90,85 @@ type InitResult struct {
 	Kept     []string
 	Digests  map[string]string // path: digest of the file as planned; empty when absent
 	Contents map[string]string // path: digest of the example to be written
+}
+
+// InstallPlan is what an install does to home's settings.
+type InstallPlan struct {
+	Source string `json:"source"`
+	// Every settings document of the source, by path in home.
+	Documents []InstallDocument `json:"documents"`
+	// Home's settings documents the source has none of; they are kept.
+	Kept []string `json:"kept"`
+	// Files of the source that are not settings documents; they are not
+	// installed. A folder that is not is named once, with a trailing slash.
+	Ignored []string `json:"ignored"`
+	// What check says of the result that is not a problem.
+	Warnings []string `json:"warnings"`
+	// path: digest of each of home's settings documents as planned.
+	Inventory map[string]string `json:"inventory"`
+	// The backup that restores the install, once one is written.
+	Stamp string `json:"stamp,omitempty"`
+}
+
+// Writes counts the documents an install creates or replaces.
+func (p InstallPlan) Writes() int {
+	n := 0
+	for _, doc := range p.Documents {
+		if doc.Action != InstallUnchanged {
+			n++
+		}
+	}
+	return n
+}
+
+// What an install does to one document.
+const (
+	InstallCreate    = "create"
+	InstallReplace   = "replace"
+	InstallUnchanged = "unchanged"
+)
+
+type InstallDocument struct {
+	Kind   string `json:"kind"`
+	Name   string `json:"name"`
+	Path   string `json:"path"`
+	Action string `json:"action"`           // create | replace | unchanged
+	Before string `json:"before,omitempty"` // digest of home's; empty when none, or it cannot be read
+	After  string `json:"after"`            // digest of the source's
+	Diff   string `json:"diff,omitempty"`   // unified, from home's to the source's, for a replace
+}
+
+// RestorePlan is what a restore does to home's settings.
+type RestorePlan struct {
+	Stamp     string            `json:"stamp"`
+	Documents []RestoreDocument `json:"documents"`
+}
+
+// Writes counts the documents a restore puts back or removes.
+func (p RestorePlan) Writes() int {
+	n := 0
+	for _, doc := range p.Documents {
+		if doc.Action != RestoreUnchanged {
+			n++
+		}
+	}
+	return n
+}
+
+// What a restore does to one document.
+const (
+	RestorePutBack   = "put back"
+	RestoreRemove    = "remove"
+	RestoreUnchanged = "unchanged"
+)
+
+type RestoreDocument struct {
+	Kind    string `json:"kind"`
+	Name    string `json:"name"`
+	Path    string `json:"path"`
+	Action  string `json:"action"`            // put back | remove | unchanged (already as before the install)
+	Current string `json:"current,omitempty"` // digest of the document now; empty when none
+	Diff    string `json:"diff,omitempty"`    // unified, from the current one to the one put back
 }
 
 type Agent struct {
