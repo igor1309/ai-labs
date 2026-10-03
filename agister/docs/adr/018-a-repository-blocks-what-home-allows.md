@@ -1,6 +1,6 @@
 # ADR-018: A repository blocks what home allows
 
-- **Status:** Proposed
+- **Status:** Accepted
 - **Date:** 2026-10-03
 - **Scope:** how a repository's settings take away a process, workflow,
   agent or runtime mapping that home's settings provide
