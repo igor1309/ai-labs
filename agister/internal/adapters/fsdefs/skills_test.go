@@ -8,7 +8,9 @@ import (
 	"path/filepath"
 	"reflect"
 	"strings"
+	"syscall"
 	"testing"
+	"time"
 
 	"github.com/igor1309/ai-labs/agister/internal/adapters/fsdefs"
 	"github.com/igor1309/ai-labs/agister/internal/domain/definition"
@@ -170,6 +172,55 @@ func TestASkillFileThatIsNotRegularIsNotRead(t *testing.T) {
 	}
 	if doc.Source.Kind != definition.KindSkill || doc.Source.Name != "special" || doc.Source.Path != file || doc.Bytes != nil {
 		t.Fatalf("document = %+v, %q", doc.Source, doc.Bytes)
+	}
+}
+
+// A SKILL.md replaced by a FIFO after its folder is listed is not read and
+// not waited on: what is opened is checked again, so an unused skill does
+// not hang a call that names none (ADR-021 rules 1 and 4).
+//
+// Contract test: the settings store against a real FIFO with no writer,
+// which a blocking open waits on for ever.
+func TestASkillFileReplacedByAFIFOIsNotWaitedOn(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	dir := t.TempDir()
+	file := filepath.Join(dir, "skills", "review", "SKILL.md")
+	put(t, file, skillText("review"))
+	store := fsdefs.Store{Dir: dir}.Observing(func(point string) {
+		if point != "open" {
+			return
+		}
+		if err := os.Remove(file); err != nil {
+			t.Error(err)
+		}
+		if err := syscall.Mkfifo(file, 0o600); err != nil {
+			t.Error(err)
+		}
+	})
+
+	type read struct {
+		doc definition.Document
+		err error
+	}
+	done := make(chan read, 1)
+	go func() {
+		doc, err := store.Read(ctx, definition.KindSkill, "review")
+		done <- read{doc, err}
+	}()
+	select {
+	case got := <-done:
+		if info, err := os.Lstat(file); err != nil || info.Mode().Type() != fs.ModeNamedPipe {
+			t.Fatalf("fixture = %v, %v: not a FIFO", info, err)
+		}
+		if want := file + " is not a regular file"; got.err == nil || got.err.Error() != want {
+			t.Fatalf("err = %v, want %q", got.err, want)
+		}
+		if got.doc.Source.Kind != definition.KindSkill || got.doc.Source.Name != "review" || got.doc.Source.Path != file || got.doc.Bytes != nil {
+			t.Fatalf("document = %+v, %q", got.doc.Source, got.doc.Bytes)
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("reading a skill whose SKILL.md became a FIFO blocks")
 	}
 }
 

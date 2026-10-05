@@ -11,6 +11,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"io"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -27,7 +28,8 @@ type Store struct {
 	Dir string
 
 	// at, when set, is called at the steps of Write that the lock must
-	// cover; tests use it to observe the lock there.
+	// cover, and between listing a skill's folder and opening its file;
+	// tests use it to observe the lock there, or to change the file.
 	at func(point string)
 	// temp, when set, is the folder Stage makes its stages in, in place of
 	// the system's temporary folder.
@@ -121,7 +123,7 @@ func (s Store) path(kind definition.Kind, name string) (string, error) {
 // anything else, or no such file, is not read: a skill's other files are
 // not given to a call, so one that relies on them would break unseen
 // (ADR-021 rule 1). No folder there is no skill.
-func readSkill(path string) ([]byte, error) {
+func (s Store) readSkill(path string) ([]byte, error) {
 	folder := filepath.Dir(path)
 	info, err := os.Lstat(folder)
 	switch {
@@ -160,7 +162,28 @@ func readSkill(path string) ([]byte, error) {
 	case len(others) > 0:
 		return nil, fmt.Errorf("%s holds %s beside %s: a skill is its %s alone, and its other files are not given to a call", folder, strings.Join(others, ", "), skillFile, skillFile)
 	}
-	return os.ReadFile(path)
+	// The entry may have changed since it was listed: what is opened is
+	// checked again, without following a link or waiting on a special file,
+	// and read through the handle checked.
+	s.point("open")
+	handle, err := os.OpenFile(path, os.O_RDONLY|syscall.O_NOFOLLOW|syscall.O_NONBLOCK, 0)
+	if errors.Is(err, syscall.ELOOP) {
+		return nil, fmt.Errorf("%s is a symbolic link: a skill's %s is a regular file", path, skillFile)
+	}
+	if err != nil {
+		return nil, err
+	}
+	defer handle.Close()
+	opened, err := handle.Stat()
+	switch {
+	case err != nil:
+		return nil, err
+	case opened.IsDir():
+		return nil, fmt.Errorf("%s is a folder: a skill's %s is a regular file", path, skillFile)
+	case !opened.Mode().IsRegular():
+		return nil, fmt.Errorf("%s is not a regular file", path)
+	}
+	return io.ReadAll(handle)
 }
 
 func (s Store) Read(_ context.Context, kind definition.Kind, name string) (definition.Document, error) {
@@ -173,7 +196,7 @@ func (s Store) Read(_ context.Context, kind definition.Kind, name string) (defin
 	if kind == definition.KindSkill {
 		// A skill that is there and broken is not absent: reading it fails
 		// with what is wrong.
-		if data, err = readSkill(path); err != nil {
+		if data, err = s.readSkill(path); err != nil {
 			return doc, err
 		}
 	} else {
