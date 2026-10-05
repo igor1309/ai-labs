@@ -3,7 +3,7 @@ date: 2026-10-05
 author: Igor Malyarov
 model: gpt-6
 name: Code review — architecture
-version: 0.0.5
+version: 0.0.6
 type: prompt
 ---
 
@@ -47,7 +47,7 @@ Go-specific interpretation
 * Implementation details remain unexported or live under internal.
 * Exported identifiers form a deliberately small module surface.
 * Module entrypoints expose the capabilities and data required by callers.
-* Consumer interfaces are declared by the consuming component itself (its type or use case), not in a shared file or package of interfaces. An interface required by more than one component is a finding, even when they need the same capability; one adapter satisfying several components' interfaces is fine. A contract a module offers is not a required interface only where a recorded decision makes it one (ADR-001 rule 15, the client contract, which its decorators implement).
+* Consumer interfaces are declared by the consuming component itself (its type or use case), not in a shared file or package of interfaces. An interface required by more than one component is a finding, even when they need the same capability; one adapter satisfying several components' interfaces is fine. A contract a module offers is not a required interface only where a recorded decision makes it one.
 * Interface shape follows the consumer’s required capability; interface size follows naturally from that responsibility.
 * Constructors such as NewX(...) receive all required dependencies explicitly.
 * Package-level mutable state (a registry, cache, map or singleton that values reach without being given it) is a hidden collaborator and a finding, even when it looks like an implementation detail: instances share it implicitly and tests cannot isolate it. The composition root constructs it and passes it in.

@@ -712,6 +712,45 @@ func TestImplementHasNoCostLimit(t *testing.T) {
 	}
 }
 
+// goPrompts are the optional prompts every implement process of the
+// repository names (ADR-019), by input: each is a copy in .agister/prompts
+// of the prompt of the same name in prompts/.
+var goPrompts = map[string]string{
+	"go_testing":      "go-testing-seams",
+	"go_architecture": "go-architecture",
+}
+
+// Each of the repository's implement processes gives its agent the two Go
+// prompts, and what it gives is the text of prompts/<name>.md: the
+// repository's settings hold a copy, which this test keeps identical.
+func TestImplementersAreGivenTheGoPrompts(t *testing.T) {
+	t.Parallel()
+	root, repo, home := onFakeRuntimes(t)
+	for _, name := range []string{"implement", "implement_codex", "implement_pi", "implement_pi_glm"} {
+		t.Run(name, func(t *testing.T) {
+			args := append([]string{"run", name}, paramArgs(parseProcess(t, root, name).Params)...)
+			if timeout := testTimeouts[name]; timeout != "" {
+				args = append(args, "--timeout", timeout)
+			}
+			created, _ := runRecorded(t, home, repo, args)
+			if len(created) != 1 {
+				t.Fatalf("runs recorded: %v, want one", created)
+			}
+			record := completedRun(t, home, created[0])
+			for input, prompt := range goPrompts {
+				text, err := os.ReadFile(filepath.Join(root, "prompts", prompt+".md"))
+				if err != nil {
+					t.Fatal(err)
+				}
+				digest := "sha256:" + digestOf(string(text))
+				if given := inputOf(t, record, input); given["source"] != "prompt" || given["identity"] != digest {
+					t.Fatalf("%s's %s = %v, want prompts/%s.md (%s)", name, input, given, prompt, digest)
+				}
+			}
+		})
+	}
+}
+
 // judgedReviews runs a review workflow to completion and is its judge's
 // collection, as each node's process and status by node, and the nodes'
 // runs by process. It fails unless the judge received that collection.
