@@ -194,7 +194,10 @@ test('the overview is a matrix of skills and agents, with shared names marked', 
     ['.agents/skills', 'repo', '/r/.agents/skills', 'codex', '2'],
     ['~/.claude/skills', 'home', '/h/.claude/skills', 'claude-code', 'not there'],
   ]);
-  assert.match(p.$('knowledge').textContent, /Agister does not choose an agent’s skills/);
+  // ADR-021 amended ADR-011 rule 5: the tab no longer says Agister does
+  // not choose an agent's skills; editing is still not part of it.
+  assert.doesNotMatch(p.$('knowledge').textContent, /does not choose/);
+  assert.match(p.$('knowledge').textContent, /two lists, shown apart: the skills its settings name.*the skills its runtime would load from the repo and the home.*editing is not part of it/);
 });
 
 test('an agent opens below the overview: what its runtime would load, and apart from it what its runs used', async () => {
@@ -206,7 +209,8 @@ test('an agent opens below the overview: what its runtime would load, and apart 
   assert.equal(p.detail(), 'opus');
   const detail = p.$('agent-detail');
   assert.equal(detail.querySelector('div.facts').textContent, 'runtimeclaude-code — adapter claude-codemodelopusefforthigh');
-  assert.match(detail.textContent, /Agister does not choose an agent’s skills.*\(ADR-006\).*editing is not part of it/);
+  assert.doesNotMatch(detail.textContent, /does not choose/);
+  assert.match(detail.textContent, /two lists, shown apart.*\(ADR-021\).*\(ADR-006\).*editing is not part of it/);
   assert.deepEqual(p.table('agent-loads'), [
     ['big', 'repo', '.claude/skills', 'checks failed: SKILL.md is over 256 KB'],
     ['plan shared', 'repo', '.claude/skills', 'checks passed'],
@@ -513,4 +517,66 @@ test('worst-case 256 KB skills of brackets, emphasis marks and backticks render'
     assert.ok(count <= text.length, `${text.slice(0, 6)}…: ${count} elements for ${text.length} characters`);
     assert.deepEqual(document.markup, []);
   }
+});
+
+// ADR-021, the amendment of ADR-011 rule 5: an agent's card shows the
+// skills its settings name, its own and its processes', each with its
+// layer and checks or marked missing, apart from what its runtime would
+// load and from what its runs used, each labelled.
+test('an agent’s card lists the skills its settings name apart from what its runtime would load', async () => {
+  const skill = (name, description) => `---\nname: ${name}\ndescription: ${description}\n---\n`;
+  const homeFiles = {
+    'skills/plan/SKILL.md': skill('plan', 'Home plan.'),
+    'skills/style/SKILL.md': skill('style', 'Style.'),
+    'skills/style/notes.txt': 'beside',
+  };
+  const named = {
+    ...files,
+    'agents/opus.toml': `${files['agents/opus.toml']}skills = ["plan", "style", "gone"]\n`,
+    'processes/review.yaml': 'name: review\nuses: agent:opus\nskills: [ship]\ninput:\n  instruction: Review.\n',
+    'skills/plan/SKILL.md': skill('plan', 'Repo plan.'),
+  };
+  const beside = 'holds notes.txt beside SKILL.md: a skill is its SKILL.md alone, and its other files are not given to a call';
+  const read = {
+    ...skills,
+    settings: [
+      { scope: 'repo', name: 'plan', path: '/r/.agister/skills/plan', description: 'Repo plan.', checks: { passed: true } },
+      { scope: 'home', name: 'plan', path: '/h/.agister/skills/plan', description: 'Home plan.', checks: { passed: true } },
+      { scope: 'home', name: 'style', path: '/h/.agister/skills/style', description: 'Style.', checks: { passed: false, failed: [beside] } },
+    ],
+  };
+  const p = page({ answers: {
+    'api/settings': () => respond({ path: '/r', dir: '/r/.agister', home: false, files: named, homeFiles }),
+    'api/skills': () => respond(read),
+  } });
+  await p.started;
+  p.open('opus');
+
+  const section = p.$('agent-settings-skills');
+  assert.equal(section.querySelector('h4').textContent, 'Its settings name');
+  assert.match(section.querySelector('p').textContent, /skills\/ folders, which Agister gives the call/);
+  assert.deepEqual(p.table('agent-settings-skills'), [
+    ['plan', 'agent', 'repo, replaces home', 'checks passed'],
+    ['style', 'agent', 'home', `checks failed: ${beside}`],
+    ['gone (missing skill)', 'agent', '—', '—'],
+    ['ship (missing skill)', 'process review', '—', '—'],
+  ]);
+  assert.equal(section.querySelectorAll('span.missing').map((m) => m.title)[0], 'No skill named gone in these settings: Agister refuses the call');
+
+  // The runtime's list is as before and labelled as the runtime's; neither
+  // list holds the other's skills, and observed use is apart from both.
+  assert.equal(p.$('agent-loads').querySelector('h4').textContent, 'Its runtime would load from the repo and the home');
+  assert.deepEqual(p.table('agent-loads'), [
+    ['big', 'repo', '.claude/skills', 'checks failed: SKILL.md is over 256 KB'],
+    ['plan shared', 'repo', '.claude/skills', 'checks passed'],
+    ['torn', 'repo', '.claude/skills', 'checks failed: no front matter'],
+  ]);
+  assert.doesNotMatch(p.$('agent-loads').textContent, /style|gone|ship|process/);
+  assert.doesNotMatch(section.textContent, /\.claude\/skills|torn|big|review \d|run-/);
+  assert.doesNotMatch(p.$('agent-observed').textContent, /style|gone|plan/);
+
+  // An agent whose settings name none says so.
+  p.open('sol');
+  assert.deepEqual(p.table('agent-settings-skills'), []);
+  assert.match(p.$('agent-settings-skills').textContent, /Its settings name no skills, and no process on it does\./);
 });

@@ -192,6 +192,9 @@ func TestSettingsReturnsOnlySettingsFiles(t *testing.T) {
 	write(t, filepath.Join(dir, "agents", "a.toml"), `name = "a"`)
 	write(t, filepath.Join(dir, "verifies", "repo.yaml"), "name: repo")
 	write(t, filepath.Join(dir, "prompts", "review.md"), "Review it.")
+	write(t, filepath.Join(dir, "skills", "plan", "SKILL.md"), skillMD("plan", "P."))
+	write(t, filepath.Join(dir, "skills", "plan", "notes.txt"), "beside")
+	write(t, filepath.Join(dir, "skills", "big", "SKILL.md"), strings.Repeat("x", fileCap+1))
 	write(t, filepath.Join(dir, "processes", "nested", "p.yaml"), "name: p")
 	write(t, filepath.Join(dir, "runs", "r1", "record.json"), "{}")
 	write(t, filepath.Join(dir, "logs", "agister.jsonl"), "{}")
@@ -211,6 +214,8 @@ func TestSettingsReturnsOnlySettingsFiles(t *testing.T) {
 		"agents/a.toml":           `name = "a"`,
 		"verifies/repo.yaml":      "name: repo",
 		"prompts/review.md":       "Review it.",
+		"skills/plan/SKILL.md":    skillMD("plan", "P."),
+		"skills/plan/notes.txt":   "beside",
 		"processes/nested/p.yaml": "name: p",
 	}
 	if !reflect.DeepEqual(got.Files, want) || got.Path != repo || got.Dir != dir {
@@ -490,5 +495,29 @@ func TestMainNeedsARunStore(t *testing.T) {
 	}
 	if c := Main(context.Background(), nil, e); c != 70 || !strings.Contains(stderr.String(), "run store") {
 		t.Errorf("exit %d, stderr %q", c, stderr.String())
+	}
+}
+
+// ADR-021 amendment of ADR-011 rule 5: a layer's skills are settings, read
+// as any document; the page sets the repo's over home's.
+func TestSettingsCarryEachLayersSkills(t *testing.T) {
+	t.Parallel()
+	user := t.TempDir()
+	home := filepath.Join(user, ".agister")
+	write(t, filepath.Join(home, "skills", "plan", "SKILL.md"), skillMD("plan", "Home plan."))
+	write(t, filepath.Join(home, "skills", "go", "SKILL.md"), skillMD("go", "Go."))
+	repo := filepath.Join(user, "repo")
+	write(t, filepath.Join(repo, ".agister", "skills", "plan", "SKILL.md"), skillMD("plan", "Repo plan."))
+
+	var got struct{ Files, HomeFiles map[string]string }
+	if code := get(t, Handler(home, noChoose(t), owners(), SkillHomes{}), "127.0.0.1", "/api/settings?path="+q(repo), &got); code != 200 {
+		t.Fatalf("status %d", code)
+	}
+	if !reflect.DeepEqual(got.Files, map[string]string{"skills/plan/SKILL.md": skillMD("plan", "Repo plan.")}) ||
+		!reflect.DeepEqual(got.HomeFiles, map[string]string{
+			"skills/plan/SKILL.md": skillMD("plan", "Home plan."),
+			"skills/go/SKILL.md":   skillMD("go", "Go."),
+		}) {
+		t.Errorf("got %+v", got)
 	}
 }

@@ -324,9 +324,45 @@ test('a process\'s prompts are found in the composed settings, or marked outside
   assert.deepEqual(alone.processes[0].prompts, [{ name: 'review', outside: true }, { name: 'style', outside: true }]);
 });
 
+// ADR-021: an agent and a process name skills, each a folder of
+// skills/, found in the repo before home; a process's call gets its own,
+// then its agent's, each once.
+test('an agent\'s and a process\'s skills are found in the composed settings, or marked outside', async () => {
+  const skill = (name) => ({ 'SKILL.md': `---\nname: ${name}\ndescription: D.\n---\n` });
+  const home = {
+    agents: { 'opus.toml': 'name = "opus"\nruntime = "claude-code"\nskills = ["go", "plan", "gone", "go"]\n' },
+    processes: { 'review.yaml': 'name: review\nuses: agent:opus\nskills: [plan, style, ghost]\ninput:\n  instruction: Review.\n' },
+    skills: { plan: skill('plan'), go: skill('go'), style: { 'notes.txt': 'only a note' }, 'loose.md': 'a file is no skill' },
+  };
+  const repo = { skills: { plan: skill('plan') } };
+  const m = await C.loadComposed(memDir('.agister', home), memDir('.agister', repo));
+  assert.deepEqual(m.skills.map((s) => [s.name, s.source, !!s.overrides, s.usedBy]), [
+    ['go', 'home', false, ['review']],
+    ['plan', 'repo', true, ['review']],
+    ['style', 'home', false, ['review']],
+  ]);
+  assert.deepEqual(m.agents[0].skills, [
+    { name: 'go', outside: false, source: 'home', overrides: false },
+    { name: 'plan', outside: false, source: 'repo', overrides: true },
+    { name: 'gone', outside: true },
+  ]);
+  const review = m.processes[0];
+  assert.deepEqual(review.skills, [
+    { name: 'plan', outside: false, source: 'repo', overrides: true },
+    { name: 'style', outside: false, source: 'home', overrides: false },
+    { name: 'ghost', outside: true },
+  ]);
+  assert.deepEqual(review.callSkills.map((x) => x.name), ['plan', 'style', 'ghost', 'go', 'gone']);
+
+  const alone = await C.loadAgister(memDir('.agister', { agents: home.agents, processes: home.processes }));
+  assert.deepEqual(alone.agents[0].skills.map((x) => [x.name, x.outside]), [['go', true], ['plan', true], ['gone', true]]);
+  assert.deepEqual(alone.processes[0].callSkills.map((x) => [x.name, x.outside]),
+    [['plan', true], ['style', true], ['ghost', true], ['go', true], ['gone', true]]);
+});
+
 test('missing folders, service.toml and workspace.yaml read as empty', async () => {
   const m = await C.loadAgister(memDir('.agister', {}));
-  assert.deepEqual(m, { service: null, workspace: null, workflows: [], processes: [], agents: [], policies: [], runtimes: [], schemas: [], verifies: [], prompts: [] });
+  assert.deepEqual(m, { service: null, workspace: null, workflows: [], processes: [], agents: [], policies: [], runtimes: [], schemas: [], verifies: [], prompts: [], skills: [] });
 });
 
 for (const path of ['.agister', 'agister/examples/settings']) {

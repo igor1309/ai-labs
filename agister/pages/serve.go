@@ -2,7 +2,8 @@
 // page itself, embedded, and the JSON endpoints it calls: one asking the
 // user to choose a folder in the Mac's own dialog, one returning a
 // .agister folder's settings files, one returning the skills the
-// settings' runtimes load, and three summarising the runs in Agister's
+// settings' runtimes load and the settings' own skills' checks, and three
+// summarising the runs in Agister's
 // home. It listens on the loopback address only and answers
 // requests addressed to it by name, so no other site can read through it.
 package pages
@@ -32,8 +33,8 @@ var assets embed.FS
 // The .agister entries that hold settings; runs and logs are not settings.
 var settingsEntries = map[string]bool{
 	"agents": true, "policies": true, "processes": true, "runtimes": true,
-	"schemas": true, "verifies": true, "prompts": true, "workflows": true,
-	"service.toml":   true,
+	"schemas": true, "verifies": true, "prompts": true, "skills": true,
+	"workflows": true, "service.toml": true,
 	"workspace.yaml": true,
 }
 

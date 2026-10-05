@@ -14,6 +14,7 @@ const settings = {
     { name: 'ghost', runtime: 'gone', model: 'm', effort: null },
     { name: 'bad', file: 'agents/bad.toml', error: 'does not parse' },
   ],
+  processes: [],
   runtimes: [
     { name: 'claude-code', adapter: 'claude-code' },
     { name: 'codex', adapter: 'codex' },
@@ -53,6 +54,59 @@ test('a skill name lists its entries, is shared in several folders, and names th
     ['plan', true, ['.claude/skills', '.agents/skills'], ['opus', 'sol']],
     ['solo', false, ['.claude/skills'], ['opus']],
   ]);
+});
+
+// ADR-021, the amendment of ADR-011 rule 5: an agent's skills are two
+// lists. The ones its settings name (its own, and per process on it the
+// process's) carry their layer and the server's checks of that layer, or
+// are missing; the ones its runtime loads are as before.
+test('an agent’s settings skills are its own and its processes’, with layer, checks or missing, apart from what its runtime loads', () => {
+  const found = (name, source, overrides = false) => ({ name, outside: false, source, overrides });
+  const named = {
+    ...settings,
+    agents: [
+      { ...settings.agents[0], skills: [found('plan', 'repo', true), found('style', 'home'), { name: 'gone', outside: true }] },
+      ...settings.agents.slice(1),
+    ],
+    processes: [
+      { name: 'review', agent: 'opus', skills: [found('go', 'home')] },
+      { name: 'quiet', agent: 'opus', skills: [] },
+      { name: 'elsewhere', agent: 'sol', skills: [found('plan', 'repo', true)] },
+      { name: 'broken', file: 'processes/broken.yaml', error: 'does not parse' },
+    ],
+  };
+  const failed = { passed: false, failed: ['holds notes.txt beside SKILL.md: a skill is its SKILL.md alone, and its other files are not given to a call'] };
+  const read = {
+    ...skills,
+    settings: [
+      { scope: 'repo', name: 'plan', path: '/r/.agister/skills/plan', description: 'Repo plan.', checks: { passed: true } },
+      { scope: 'home', name: 'plan', path: '/h/.agister/skills/plan', description: 'Home plan.', checks: { passed: true } },
+      { scope: 'home', name: 'style', path: '/h/.agister/skills/style', description: 'Style.', checks: failed },
+    ],
+  };
+  const m = K.model(named, read, runs);
+  const opus = m.agents.find((a) => a.name === 'opus');
+  assert.deepEqual(opus.named.own, [
+    { name: 'plan', missing: false, source: 'repo', overrides: true, path: '/r/.agister/skills/plan', state: null, description: 'Repo plan.', checks: { passed: true } },
+    { name: 'style', missing: false, source: 'home', overrides: false, path: '/h/.agister/skills/style', state: null, description: 'Style.', checks: failed },
+    { name: 'gone', missing: true },
+  ]);
+  // review's go is home's, which the server did not read: no checks.
+  assert.deepEqual(opus.named.processes, [{ name: 'review', skills: [
+    { name: 'go', missing: false, source: 'home', overrides: false, path: null, state: null, description: null, checks: null },
+  ] }]);
+  assert.deepEqual(m.agents.find((a) => a.name === 'sol').named.processes.map((p) => [p.name, p.skills.map((x) => x.description)]),
+    [['elsewhere', ['Repo plan.']]]);
+
+  // The runtime's list is what it was without them, and holds none of them.
+  const plain = K.model(settings, skills, runs);
+  assert.deepEqual(m.agents.map((a) => a.loads), plain.agents.map((a) => a.loads));
+  assert.deepEqual(m.skills, plain.skills);
+  assert.ok(!opus.loads.some((e) => e.name === 'style' || e.name === 'gone'));
+
+  // Settings that are not composed (~) are home's only layer.
+  const tilde = K.model({ ...named, agents: [{ ...settings.agents[0], skills: [{ name: 'style', outside: false }] }] }, read, runs);
+  assert.deepEqual([tilde.agents[0].named.own[0].source, tilde.agents[0].named.own[0].checks], ['home', failed]);
 });
 
 test('observed use is the agent’s calls only, counted per skill with its runs', () => {

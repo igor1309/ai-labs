@@ -22,17 +22,19 @@ home`.
     (workspace, timeout, cost cap, what it allows and denies), its output
     schema and verify attempts (of the verification it names, when it
     names one; marked missing when these settings have none of that name),
-    and the prompts it names, each once, marked missing when these
+    the prompts it names, each once, marked missing when these
     settings have none of that name, and for a repo with the layer it
-    comes from, and the setup its checkout runs: its own, or `workspace.yaml`'s, the
-    repo's over home's (ADR-012);
+    comes from; the skills its call gets, its own and then its agent's
+    (ADR-021), listed the same way; and the setup its checkout runs: its
+    own, or `workspace.yaml`'s, the repo's over home's (ADR-012);
   - for a workflow, its calls in one line (`4 × gpt-6.1-sol at once, then
     opus`), then the steps: the ones run at once (`First` when there is
     one) and the one run after them. Each step shows its name, what it
     does, its agent and its policy. Steps are not repeated under
     Processes; they still run alone.
-- **Building blocks**, as tables: agents, policies, runtimes and the service
-  limits, each with what it means.
+- **Building blocks**, as tables: agents (with the skills each names,
+  listed as on a process card), policies, runtimes and the service limits,
+  each with what it means.
 
 A workspace that can be written shows in amber; read-only is not marked. On
 a narrow screen the cards go to one column and each table row becomes label
@@ -70,20 +72,28 @@ failed or interrupted run shows in red.
 
 ## Knowledge
 
-The skills each agent works with, read-only (ADR-011). Agister does not
-choose an agent's skills: a call loads what its runtime loads in the repo
-and the home (ADR-006), so an agent's skills are the skill folders of its
-runtime's adapter, and the view says so. Nothing is edited, reviewed or
-approved here. ↻ reads the settings, the skills and the runs again.
+The skills each agent works with, read-only (ADR-011, as ADR-021 amends
+it). An agent's skills are two lists, shown apart and labelled so: the
+skills its settings name, which Agister gives its calls (ADR-021), and the
+skills its runtime would load from the repo and the home, the skill
+folders of its runtime's adapter (ADR-006). Nothing is edited, reviewed or
+approved here, and the view says so. ↻ reads the settings, the skills and
+the runs again.
 
-- **Overview**: a matrix, a row per skill name and a column per agent
+- **Overview**: what the runtimes would load, as a matrix, a row per
+  skill name and a column per agent
   (its runtime adapter, model and effort, from the settings); `●` where
   the agent's runtime loads a skill of that name, `● ×2` where it loads
   two. A name in several folders is marked `shared ×n`; all are shown, and
   the page does not decide which one a runtime uses. Clicking an agent or
   a skill opens it below; clicking it again closes it.
-- **An agent**: its runtime, adapter, model and effort; the skills its
-  runtime would load, each with `repo` or `home`, its folder and its
+- **An agent**: its runtime, adapter, model and effort; under *Its
+  settings name*, the skills of the settings' `skills/` folders that it
+  names and that each process on it names, each with what names it (the
+  agent, or `process <name>`), its layer (`repo`, `home` or `repo, replaces
+  home`) and its checks, or marked missing when neither layer has it;
+  under *Its runtime would load from the repo and the home*, the skills
+  its runtime would load, each with `repo` or `home`, its folder and its
   checks; what that runtime loads from elsewhere and the list leaves out
   (built-in, plugin and package skills, and per runtime: Claude Code's
   managed-settings skills, `.claude/commands/` and a `.claude/skills`
@@ -108,9 +118,12 @@ approved here. ↻ reads the settings, the skills and the runs again.
 
 The checks are of structure only: `SKILL.md` is there, is a file of at
 most 256 KB, its front matter parses, `name` and `description` are there
-and not empty, and `name` is the folder's name. They read `checks passed`
-or `checks failed: …` with each failed check. A failed check does not mean
-the runtime refuses the skill.
+and not empty, and `name` is the folder's name. A skill of the settings
+is checked the same way, and its `SKILL.md` must be a regular file, not a
+link, and the only thing in its folder: one that holds more fails a check
+that names what else it holds, as Agister refuses it (ADR-021 rule 1).
+They read `checks passed` or `checks failed: …` with each failed check. A
+failed check does not mean the runtime refuses the skill.
 
 For a repo the view shows its working tree; a call on a checkout loads
 what that checkout holds. For `~` it shows the home folders only.
@@ -135,15 +148,17 @@ The server writes nothing and answers these endpoints:
   `X-Agister-Pages` header, which a page on another site cannot send.
 - `GET /api/settings?path=<absolute repo path | ~>`: the settings files of
   `<path>/.agister`, or of Agister home for `~`: `agents`, `policies`,
-  `processes`, `runtimes`, `schemas`, `verifies`, `prompts`, `workflows`,
-  `service.toml` and `workspace.yaml`, each
-  at most 256 KB. `runs/` and `logs/` are skipped.
+  `processes`, `runtimes`, `schemas`, `verifies`, `prompts`, `skills`,
+  `workflows`, `service.toml` and `workspace.yaml`, each regular file at
+  most 256 KB. `runs/` and `logs/` are skipped. The page sets a repo's
+  skill over home's of the same name, as any document.
 - `GET /api/skills?path=<absolute repo path | ~>`: the skill folders of
   ADR-011's table for the runtime adapters the settings at that path
   define (the `adapter` of each `runtimes/` file, the repo's over Agister
   home's of the same name), in the repo and in the home; for `~` the home
-  folders only. No request names a file. It answers `home`, `adapters` and
-  `folders`, repo folders first, each folder once: its `scope` (`repo` or
+  folders only, and the settings' own skills. No request names a file. It
+  answers `home`, `adapters`, `settings` (below) and `folders`, repo
+  folders first, each folder once: its `scope` (`repo` or
   `home`), `folder` (as named: `.claude/skills`, `~/.codex/skills`,
   `$CODEX_HOME/skills` when that is set), `path`, `real` path, `link`
   target when it is a symlink, the `adapters` that load it, a `state` when
@@ -163,7 +178,13 @@ The server writes nothing and answers these endpoints:
   too, the skills sit one level down in groups (`synced/<id>/<name>`); a
   group that is a symlink is not followed. The
   home folders come from pages' own `HOME`, `CODEX_HOME` and
-  `PI_CODING_AGENT_DIR`.
+  `PI_CODING_AGENT_DIR`. `settings` lists the skills of the settings
+  layers, the repo's `.agister/skills` first, then Agister home's (home's
+  only for `~`): each folder there that is not a symlink, with its `scope`
+  (`repo` or `home`), `name`, `path`, `content`, `description` and
+  `checks`, or a `state` as above; a `SKILL.md` that is a link or not a
+  file is `not_a_file`. Only `SKILL.md` is read; of the folder's other
+  entries only the names are, for the check.
 - `GET /api/runs?limit=<n>`: a summary of each run in Agister home's
   `runs/`, newest first, at most `limit` (default 200, at most 1000).
   A run whose `record.json` does not parse is left out and counted in

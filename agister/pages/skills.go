@@ -13,7 +13,8 @@ import (
 )
 
 // Skills: the skill folders the runtimes of the shown settings load, in
-// the repo and the user's home, and each skill's SKILL.md (ADR-011).
+// the repo and the user's home, and each skill's SKILL.md (ADR-011); and
+// the skills of the settings layers, which settings name (ADR-021).
 // Nothing here writes, and nothing of a skill is read but its SKILL.md.
 
 // SkillHomes are the home folders the skill folders are found under, from
@@ -73,6 +74,18 @@ type SkillsReply struct {
 	// define, repo over home.
 	Adapters []string      `json:"adapters"`
 	Folders  []SkillFolder `json:"folders"`
+	// Settings are the skills the settings layers hold (ADR-021), the
+	// repo's first: what an agent's or a process's skills name.
+	Settings []SettingsSkill `json:"settings"`
+}
+
+// SettingsSkill is a skill of a settings layer, skills/<name>/SKILL.md,
+// with its layer's scope, repo or home. Its checks are a skill's, and one
+// more: the folder holds SKILL.md alone, as Agister refuses one that holds
+// anything else (ADR-021 rule 1).
+type SettingsSkill struct {
+	Scope string `json:"scope"`
+	Skill
 }
 
 // SkillFolder is one folder a runtime loads skills from.
@@ -356,6 +369,68 @@ func readSkill(path, inReal, name string, read func(string) ([]byte, error)) (Sk
 	return s, true
 }
 
+// settingsSkillFile is the one file a settings skill's folder holds.
+const settingsSkillFile = "SKILL.md"
+
+// readSettingsSkills reads the skills of the settings layer dir, a
+// .agister folder: each folder in its skills/, its SKILL.md with read. As
+// the settings files are read, a symlinked folder is not followed.
+func readSettingsSkills(scope, dir string, read func(string) ([]byte, error)) []SettingsSkill {
+	skills := []SettingsSkill{}
+	root := filepath.Join(dir, "skills")
+	entries, err := os.ReadDir(root)
+	if err != nil {
+		return skills
+	}
+	for _, entry := range entries {
+		if entry.IsDir() {
+			skills = append(skills, SettingsSkill{Scope: scope, Skill: readSettingsSkill(filepath.Join(root, entry.Name()), entry.Name(), read)})
+		}
+	}
+	return skills
+}
+
+// readSettingsSkill reads the settings skill name at path. Its SKILL.md is
+// read only when it is a regular file, not a link, within the size limit;
+// then the checks of any skill run on it. A folder holding anything else
+// fails one more check, which names what it holds.
+func readSettingsSkill(path, name string, read func(string) ([]byte, error)) Skill {
+	s := Skill{Name: name, Path: path}
+	entries, err := os.ReadDir(path)
+	if err != nil {
+		return failed(s, SkillMissing, "the folder cannot be read")
+	}
+	var others []string
+	for _, entry := range entries {
+		if entry.Name() != settingsSkillFile {
+			others = append(others, entry.Name())
+		}
+	}
+	file := filepath.Join(path, settingsSkillFile)
+	info, err := os.Lstat(file)
+	switch {
+	case err != nil:
+		s = failed(s, SkillMissing, "SKILL.md is missing")
+	case !info.Mode().IsRegular():
+		s = failed(s, SkillNotAFile, "SKILL.md is not a regular file")
+	case info.Size() > fileCap:
+		s = failed(s, SkillTooLarge, "SKILL.md is over 256 KB")
+	default:
+		data, err := read(file)
+		if err != nil {
+			s = failed(s, SkillMissing, "SKILL.md cannot be read")
+			break
+		}
+		s.Content = string(data)
+		s.Description, s.Checks = check(data, name)
+	}
+	if len(others) > 0 {
+		s.Checks = Checks{Failed: append(s.Checks.Failed,
+			"holds "+strings.Join(others, ", ")+" beside SKILL.md: a skill is its SKILL.md alone, and its other files are not given to a call")}
+	}
+	return s
+}
+
 func failed(s Skill, state, check string) Skill {
 	s.State = state
 	s.Checks = Checks{Failed: []string{check}}
@@ -473,9 +548,11 @@ func skillsAt(path, agisterHome string, homes SkillHomes) (SkillsReply, error) {
 	repo := ""
 	if reply.Home {
 		reply.Adapters = runtimeAdapters(agisterHome)
+		reply.Settings = readSettingsSkills("home", agisterHome, os.ReadFile)
 	} else {
 		repo = filepath.Clean(path)
 		reply.Adapters = runtimeAdapters(agisterHome, dir)
+		reply.Settings = append(readSettingsSkills("repo", dir, os.ReadFile), readSettingsSkills("home", agisterHome, os.ReadFile)...)
 	}
 	reply.Folders = ReadSkills(repo, reply.Adapters, homes)
 	return reply, nil

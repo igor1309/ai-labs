@@ -495,3 +495,45 @@ test('a process card in a repo shows the layer each prompt comes from, each prom
   assert.equal(line.textContent, 'rules repo, replaces home, style home');
   assert.deepEqual(line.querySelectorAll('span.chip').map((c) => c.textContent), ['repo, replaces home', 'home']);
 });
+
+// ADR-021, README Settings: a process card lists the skills its call gets,
+// its own then its agent's, each once, with the layer each comes from in a
+// repo, and one these settings do not have marked missing. The agents'
+// table shows each agent's skills.
+test('a process card and the agents table list skills, each once, with their layer or marked missing', async () => {
+  const skill = (name) => `---\nname: ${name}\ndescription: D.\n---\n`;
+  const homeFiles = {
+    'agents/opus.toml': `${agent['agents/opus.toml']}skills = ["go", "plan", "gone"]\n`,
+    'agents/sol.toml': 'name = "sol"\nruntime = "codex"\n',
+    'processes/review.yaml': 'name: review\nuses: agent:opus\nskills: [plan, style, ghost]\ninput:\n  instruction: Review.\n',
+    'skills/plan/SKILL.md': skill('plan'),
+    'skills/go/SKILL.md': skill('go'),
+    'skills/style/SKILL.md': skill('style'),
+  };
+  const files = { 'skills/plan/SKILL.md': skill('plan') };
+  const p = page({
+    storage: fakeStorage({ 'agister-pages:current': '/r' }),
+    answers: { 'api/settings': () => respond({ path: '/r', dir: '/r/.agister', files, homeFiles }) },
+  });
+  await p.started;
+  const facts = p.$('dashboard').querySelector('article#process-review div.facts').children;
+  const line = facts[facts.findIndex((n) => n.textContent === 'skills') + 1];
+  assert.equal(line.textContent, 'plan repo, replaces home, style home, ghost (missing skill), go home, gone (missing skill)');
+  assert.deepEqual(line.querySelectorAll('span.missing').map((m) => m.title), [
+    'No skill named ghost in these settings: Agister refuses the call',
+    'No skill named gone in these settings: Agister refuses the call',
+  ]);
+
+  const head = p.$('dashboard').querySelectorAll('section.card').find((c) => c.querySelector('h3')?.textContent === 'Agents').querySelectorAll('th').map((th) => th.textContent);
+  assert.deepEqual(head, ['Agent', 'Runtime', 'Model', 'Effort', 'Session', 'Skills', 'From']);
+  const cell = (name) => p.$(`Agents-${name}`).querySelectorAll('td').find((td) => td.dataset.label === 'Skills');
+  assert.equal(cell('opus').textContent, 'go home, plan repo, replaces home, gone (missing skill)');
+  assert.equal(cell('opus').querySelector('span.missing').textContent, 'gone (missing skill)');
+  assert.equal(cell('sol').textContent, '—');
+
+  // Agister home alone: no layers, the same missing marks.
+  const tilde = page({ answers: { 'api/settings': () => respond({ path: '~', dir: '/u/.agister', home: true, files: homeFiles }) } });
+  await tilde.started;
+  const own = tilde.$('dashboard').querySelector('article#process-review div.facts').children;
+  assert.equal(own[own.findIndex((n) => n.textContent === 'skills') + 1].textContent, 'plan, style, ghost (missing skill), go, gone (missing skill)');
+});

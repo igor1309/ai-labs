@@ -4,6 +4,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"sort"
 	"strings"
 	"testing"
 )
@@ -551,5 +552,121 @@ func TestSkillsEndpointRefusesWhatSettingsRefuses(t *testing.T) {
 	}
 	if code := get(t, h, "127.0.0.1", "/api/skills?path=~", &tilde); code != 200 || tilde.Adapters == nil || tilde.Folders == nil || len(tilde.Folders) != 0 {
 		t.Errorf("no runtimes: %d %+v", code, tilde)
+	}
+}
+
+// ADR-021 rule 1, ADR-011 rule 7: a settings skill is checked as any skill
+// is, and its folder holds SKILL.md alone; a check names what else it
+// holds. Only a regular SKILL.md within the limit is read.
+func TestASettingsSkillFailsEachCheckAndPassesWhenWhole(t *testing.T) {
+	t.Parallel()
+	dir := realDir(t, t.TempDir())
+	skills := filepath.Join(dir, "skills")
+	for name, text := range map[string]string{
+		"whole":    skillMD("whole", "W."),
+		"no-front": "# Just Markdown\n",
+		"no-name":  "---\ndescription: D.\n---\n",
+		"no-desc":  "---\nname: no-desc\n---\n",
+		"renamed":  skillMD("other", "D."),
+		"extra":    skillMD("extra", "E."),
+		"broken":   "---\nname: broken\n---\n",
+	} {
+		write(t, filepath.Join(skills, name, "SKILL.md"), text)
+	}
+	write(t, filepath.Join(skills, "extra", "notes.txt"), "beside")
+	mkdir(t, filepath.Join(skills, "extra", "scripts"))
+	write(t, filepath.Join(skills, "broken", "notes.txt"), "beside")
+	write(t, filepath.Join(skills, "bare", "notes.txt"), "no SKILL.md")
+	write(t, filepath.Join(skills, "big", "SKILL.md"), "---\nname: big\n---\n"+strings.Repeat("x", fileCap))
+	write(t, filepath.Join(dir, "elsewhere", "SKILL.md"), skillMD("linked", "L."))
+	symlink(t, filepath.Join(dir, "elsewhere", "SKILL.md"), filepath.Join(skills, "linked", "SKILL.md"))
+	mkdir(t, filepath.Join(skills, "dir", "SKILL.md"))
+	// A symlinked skill folder is not followed, as the settings files are not.
+	symlink(t, filepath.Join(dir, "elsewhere"), filepath.Join(skills, "followed"))
+	write(t, filepath.Join(skills, "loose.md"), "a file in skills/ is no skill")
+
+	var reads []string
+	read := func(path string) ([]byte, error) {
+		reads = append(reads, path)
+		return os.ReadFile(path)
+	}
+	got := map[string]SettingsSkill{}
+	for _, s := range readSettingsSkills("repo", dir, read) {
+		got[s.Name] = s
+	}
+	beside := func(what string) string {
+		return "holds " + what + " beside SKILL.md: a skill is its SKILL.md alone, and its other files are not given to a call"
+	}
+	for name, want := range map[string]struct {
+		state  string
+		failed []string
+	}{
+		"whole":    {},
+		"no-front": {failed: []string{"no front matter"}},
+		"no-name":  {failed: []string{"name is missing or empty"}},
+		"no-desc":  {failed: []string{"description is missing or empty"}},
+		"renamed":  {failed: []string{"name other is not the folder's name renamed"}},
+		"extra":    {failed: []string{beside("notes.txt, scripts")}},
+		"broken":   {failed: []string{"description is missing or empty", beside("notes.txt")}},
+		"bare":     {SkillMissing, []string{"SKILL.md is missing", beside("notes.txt")}},
+		"big":      {SkillTooLarge, []string{"SKILL.md is over 256 KB"}},
+		"linked":   {SkillNotAFile, []string{"SKILL.md is not a regular file"}},
+		"dir":      {SkillNotAFile, []string{"SKILL.md is not a regular file"}},
+	} {
+		s, ok := got[name]
+		if !ok {
+			t.Errorf("%s: not listed", name)
+			continue
+		}
+		if s.Scope != "repo" || s.Path != filepath.Join(skills, name) || s.State != want.state ||
+			s.Checks.Passed != (want.failed == nil) || !reflect.DeepEqual(s.Checks.Failed, want.failed) {
+			t.Errorf("%s: %+v, want state %q failed %q", name, s, want.state, want.failed)
+		}
+	}
+	if s := got["whole"]; s.Description != "W." || s.Content != skillMD("whole", "W.") {
+		t.Errorf("whole: %+v", s)
+	}
+	if len(got) != 11 {
+		t.Errorf("listed %d skills, want 11 (no symlinked folder, no file): %v", len(got), got)
+	}
+	var want []string
+	for _, name := range []string{"broken", "extra", "no-desc", "no-front", "no-name", "renamed", "whole"} {
+		want = append(want, filepath.Join(skills, name, "SKILL.md"))
+	}
+	sort.Strings(reads)
+	if !reflect.DeepEqual(reads, want) {
+		t.Errorf("read %q, want %q", reads, want)
+	}
+}
+
+// ADR-021 amendment of ADR-011 rule 5: /api/skills carries the skills of
+// each settings layer, the repo's first; ~ has home's only.
+func TestSkillsEndpointCarriesTheSettingsSkillsOfEachLayer(t *testing.T) {
+	t.Parallel()
+	root := realDir(t, t.TempDir())
+	user := filepath.Join(root, "user")
+	home := filepath.Join(user, ".agister")
+	write(t, filepath.Join(home, "skills", "plan", "SKILL.md"), skillMD("plan", "Home plan."))
+	write(t, filepath.Join(home, "skills", "go", "SKILL.md"), skillMD("go", "Go."))
+	repo := filepath.Join(root, "repo")
+	write(t, filepath.Join(repo, ".agister", "skills", "plan", "SKILL.md"), skillMD("plan", "Repo plan."))
+	h := Handler(home, noChoose(t), owners(), SkillHomes{Home: user})
+
+	layers := func(path string) []string {
+		var got SkillsReply
+		if code := get(t, h, "127.0.0.1", "/api/skills?path="+q(path), &got); code != 200 {
+			t.Fatalf("%s: status %d", path, code)
+		}
+		var out []string
+		for _, s := range got.Settings {
+			out = append(out, s.Scope+" "+s.Name+" "+s.Description)
+		}
+		return out
+	}
+	if got, want := layers(repo), []string{"repo plan Repo plan.", "home go Go.", "home plan Home plan."}; !reflect.DeepEqual(got, want) {
+		t.Errorf("repo: %q, want %q", got, want)
+	}
+	if got, want := layers("~"), []string{"home go Go.", "home plan Home plan."}; !reflect.DeepEqual(got, want) {
+		t.Errorf("~: %q, want %q", got, want)
 	}
 }

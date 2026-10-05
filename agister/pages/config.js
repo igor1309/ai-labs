@@ -303,6 +303,7 @@
       setup: setupOf(doc.workspace?.setup),
       output: doc.output?.schema ?? null,
       prompts: prompts(doc.input),
+      skills: skillNames(doc.skills),
       instruction,
     };
   }
@@ -312,6 +313,13 @@
   function prompts(input) {
     const values = input && typeof input.values === 'object' && input.values ? Object.values(input.values) : [];
     const names = values.filter((v) => v?.source === 'prompt' && typeof v.name === 'string').map((v) => v.name);
+    return [...new Set(names)].map((name) => ({ name }));
+  }
+
+  // The skills an agent or a process names (skills = [...] or skills:
+  // [...]), each once (ADR-021).
+  function skillNames(list) {
+    const names = Array.isArray(list) ? list.filter((name) => typeof name === 'string') : [];
     return [...new Set(names)].map((name) => ({ name }));
   }
 
@@ -329,6 +337,7 @@
       file, name: doc.name ?? stem(file),
       runtime: doc.runtime ?? null, model: doc.model ?? null,
       effort: doc.effort ?? null, session: doc.session ?? null,
+      skills: skillNames(doc.skills),
     };
   }
 
@@ -363,22 +372,41 @@
     return (await fileHandle.getFile()).text();
   }
 
+  // The folder sub of agister, or null when it is missing.
+  async function subfolder(agister, sub) {
+    try {
+      return await agister.getDirectoryHandle(sub);
+    } catch (err) {
+      if (err && (err.name === 'NotFoundError' || err.name === 'TypeMismatchError')) return null;
+      throw err;
+    }
+  }
+
   // [{ file, src }] for the files of sub with one of exts, by name; none
   // when sub is missing.
   async function readFolder(agister, sub, exts) {
-    let dir;
-    try {
-      dir = await agister.getDirectoryHandle(sub);
-    } catch (err) {
-      if (err && (err.name === 'NotFoundError' || err.name === 'TypeMismatchError')) return [];
-      throw err;
-    }
+    const dir = await subfolder(agister, sub);
+    if (!dir) return [];
     const files = [];
     for await (const [name, handle] of dir.entries()) {
       if (handle.kind === 'file' && exts.some((e) => name.endsWith(e))) files.push([name, handle]);
     }
     files.sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0));
     return Promise.all(files.map(async ([file, handle]) => ({ file, src: await readText(handle) })));
+  }
+
+  // The skills of skills/, a folder each (skills/<name>/SKILL.md, ADR-021),
+  // by name: [{ file, name }]. A skill is its folder: the server checks
+  // what it holds.
+  async function readSkills(agister) {
+    const dir = await subfolder(agister, 'skills');
+    if (!dir) return [];
+    const names = [];
+    for await (const [name, handle] of dir.entries()) {
+      if (handle.kind === 'directory') names.push(name);
+    }
+    names.sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
+    return names.map((name) => ({ file: `${name}/SKILL.md`, name }));
   }
 
   // Each file through build; a file that does not parse becomes
@@ -439,7 +467,7 @@
     return link(await readAgister(agister));
   }
 
-  const KINDS = ['workflows', 'processes', 'agents', 'policies', 'runtimes', 'schemas', 'verifies', 'prompts'];
+  const KINDS = ['workflows', 'processes', 'agents', 'policies', 'runtimes', 'schemas', 'verifies', 'prompts', 'skills'];
 
   // What Agister uses in a repo: Agister home's settings with the repo's
   // over them. As in Agister, a repo file replaces the home file of the
@@ -469,7 +497,7 @@
   }
 
   async function readAgister(agister) {
-    const [workflows, processes, agents, policies, runtimes, schemas, verifies, prompts, service, workspace] = await Promise.all([
+    const [workflows, processes, agents, policies, runtimes, schemas, verifies, prompts, skills, service, workspace] = await Promise.all([
       readFolder(agister, 'workflows', ['.yaml', '.yml']),
       readFolder(agister, 'processes', ['.yaml', '.yml']),
       readFolder(agister, 'agents', ['.toml']),
@@ -478,6 +506,7 @@
       readFolder(agister, 'schemas', ['.json']),
       readFolder(agister, 'verifies', ['.yaml', '.yml']),
       readFolder(agister, 'prompts', ['.md']),
+      readSkills(agister),
       loadService(agister),
       loadWorkspace(agister),
     ]);
@@ -492,6 +521,7 @@
       schemas: schemas.map(({ file }) => ({ file, name: stem(file) })),
       verifies: each(verifies, parseYaml, (file, _src, doc) => verifyItem(file, doc)),
       prompts: prompts.map(({ file }) => ({ file, name: stem(file) })),
+      skills,
     };
   }
 
@@ -501,10 +531,21 @@
     const names = (items) => new Set(items.filter((x) => !x.error).map((x) => x.name));
     const processes = names(model.processes);
     const agents = names(model.agents);
+    const byAgent = new Map(model.agents.filter((a) => !a.error).map((a) => [a.name, a]));
     const policies = names(model.policies);
     const runtimes = names(model.runtimes);
     const schemas = new Set(model.schemas.map((s) => s.name));
-    const prompts = new Map(model.prompts.map((s) => [s.name, s]));
+    // A named prompt or skill, found: with the layer it comes from when
+    // composed, or outside these settings.
+    const found = (items) => {
+      const byName = new Map(items.map((s) => [s.name, s]));
+      return (x) => {
+        const item = byName.get(x.name);
+        return { ...x, outside: !item, ...(item?.source && { source: item.source, overrides: !!item.overrides }) };
+      };
+    };
+    const prompt = found(model.prompts);
+    const skill = found(model.skills);
     const usedBy = (items, key, name) => items.filter((x) => !x.error && x[key] === name).map((x) => x.name);
 
     for (const w of model.workflows) {
@@ -517,10 +558,12 @@
       p.policyOutside = !!p.policy && !policies.has(p.policy);
       p.outputOutside = !!p.output && !schemas.has(p.output);
       // Each prompt found, with the layer it comes from when composed (ADR-014).
-      p.prompts = p.prompts.map((x) => {
-        const found = prompts.get(x.name);
-        return { ...x, outside: !found, ...(found?.source && { source: found.source, overrides: !!found.overrides }) };
-      });
+      p.prompts = p.prompts.map(prompt);
+      // The skills it names, found as prompts are; and the ones its call
+      // gets: its own, then its agent's, each once (ADR-021 rule 2).
+      p.skills = p.skills.map(skill);
+      const agentSkills = byAgent.get(p.agent)?.skills.map(skill) ?? [];
+      p.callSkills = [...p.skills, ...agentSkills.filter((x) => !p.skills.some((y) => y.name === x.name))];
       // As Agister resolves it: the process's own setup, or the
       // workspace's for a checkout without one; none without a checkout.
       const defaultSetup = model.workspace?.setup;
@@ -538,6 +581,7 @@
     }
     for (const a of model.agents) {
       if (a.error) continue;
+      a.skills = a.skills.map(skill);
       a.runtimeOutside = !!a.runtime && !runtimes.has(a.runtime);
       a.usedBy = usedBy(model.processes, 'agent', a.name);
     }
@@ -550,6 +594,9 @@
     for (const s of model.schemas) s.usedBy = usedBy(model.processes, 'output', s.name);
     for (const s of model.prompts) {
       s.usedBy = model.processes.filter((p) => !p.error && p.prompts.some((x) => x.name === s.name)).map((p) => p.name);
+    }
+    for (const s of model.skills) {
+      s.usedBy = model.processes.filter((p) => !p.error && p.callSkills.some((x) => x.name === s.name)).map((p) => p.name);
     }
     for (const v of model.verifies) {
       if (!v.error) v.usedBy = model.processes.filter((p) => !p.error && p.verify?.ref === v.name).map((p) => p.name);
