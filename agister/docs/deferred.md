@@ -162,3 +162,17 @@ Against trunk's merge-base (also covers #829 and #831):
   the first repository that leaves an optional prompt out.
 - **Done when:** pages shows a missing optional prompt as optional and not
   found, matching `process show`, with a test.
+
+## 12. The supervisor kills the group after reaping its leader
+
+- **Gap:** `gokit/supervisor` waits for the process (`process.Wait()`,
+  which reaps it) and then sends SIGKILL to its group to end what it left
+  running. Once the leader is reaped and the group is empty, the kernel
+  may reuse the ID, so that kill can reach an unrelated group and be
+  reported as leftovers (code_review `20261005T125640Z-156a04`, LAB-63,
+  which keeps this ordering out of `prompts/go-process-supervision.md`).
+- **Trigger:** the next change to the supervisor's exit or leftover
+  handling, or a leftover report nobody can explain.
+- **Done when:** the supervisor observes the exit without reaping
+  (`waitid` with `WNOWAIT`), kills the group, then reaps, with a contract
+  test on Linux and macOS.
