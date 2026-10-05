@@ -144,7 +144,38 @@ func (c *Checker) check(ctx context.Context, probe bool) (CheckResult, error) {
 		Prompts:   map[string]bool{},
 	}
 
-	// Each document on its own.
+	// Each document on its own: one checks a document read, or not, err
+	// saying why not; each checks every document of a kind the settings
+	// list.
+	one := func(kind definition.Kind, name string, doc definition.Document, err error, parse func(definition.Document) error) {
+		if doc.Source.Overrides != "" {
+			report.Overrides = append(report.Overrides, fmt.Sprintf("%s %s: %s overrides %s", kind.Singular(), name, doc.Source.Path, doc.Source.Overrides))
+		}
+		layer := "global"
+		if doc.Source.Project {
+			layer = "project"
+		}
+		index[DocumentRef{Kind: kind, Name: name}] = len(report.Definitions)
+		report.Definitions = append(report.Definitions, contract.Definition{Kind: string(kind), Name: name, Layer: layer, Path: doc.Source.Path, Overrides: doc.Source.Overrides})
+		documents = append(documents, CheckedDocument{Ref: DocumentRef{Kind: kind, Name: name}, Path: doc.Source.Path})
+		if err != nil {
+			report.Definitions[len(report.Definitions)-1].Invalid = true
+			problem(kind.Singular()+" "+name, "%v", err)
+			return
+		}
+		report.Checked[string(kind)]++
+		if err := parse(doc); err != nil {
+			report.Definitions[len(report.Definitions)-1].Invalid = true
+			var invalid *definition.InvalidError
+			if errors.As(err, &invalid) {
+				for _, p := range invalid.Problems {
+					settingsProblem(settings.Problem{Subject: kind.Singular() + " " + name, Message: p.Message, Unknown: p.Unknown})
+				}
+			} else {
+				problem(kind.Singular()+" "+name, "%v", err)
+			}
+		}
+	}
 	each := func(kind definition.Kind, parse func(definition.Document) error) error {
 		names := []string{"service"}
 		if kind != definition.KindService {
@@ -169,35 +200,13 @@ func (c *Checker) check(ctx context.Context, probe bool) (CheckResult, error) {
 				continue
 			}
 			doc, err := c.definitions.Read(ctx, kind, name)
-			if doc.Source.Overrides != "" {
-				report.Overrides = append(report.Overrides, fmt.Sprintf("%s %s: %s overrides %s", kind.Singular(), name, doc.Source.Path, doc.Source.Overrides))
-			}
-			layer := "global"
-			if doc.Source.Project {
-				layer = "project"
-			}
-			index[DocumentRef{Kind: kind, Name: name}] = len(report.Definitions)
-			report.Definitions = append(report.Definitions, contract.Definition{Kind: string(kind), Name: name, Layer: layer, Path: doc.Source.Path, Overrides: doc.Source.Overrides})
-			documents = append(documents, CheckedDocument{Ref: DocumentRef{Kind: kind, Name: name}, Path: doc.Source.Path})
-			if err != nil {
-				report.Definitions[len(report.Definitions)-1].Invalid = true
-				problem(kind.Singular()+" "+name, "%v", err)
-				continue
-			}
-			report.Checked[string(kind)]++
-			if err := parse(doc); err != nil {
-				report.Definitions[len(report.Definitions)-1].Invalid = true
-				var invalid *definition.InvalidError
-				if errors.As(err, &invalid) {
-					for _, p := range invalid.Problems {
-						settingsProblem(settings.Problem{Subject: kind.Singular() + " " + name, Message: p.Message, Unknown: p.Unknown})
-					}
-				} else {
-					problem(kind.Singular()+" "+name, "%v", err)
-				}
-			}
+			one(kind, name, doc, err, parse)
 		}
 		return nil
+	}
+	parsePrompt := func(d definition.Document) error {
+		_, err := definition.ParsePrompt(d)
+		return err
 	}
 	steps := []struct {
 		kind  definition.Kind
@@ -238,10 +247,7 @@ func (c *Checker) check(ctx context.Context, probe bool) (CheckResult, error) {
 			}
 			return err
 		}},
-		{definition.KindPrompt, func(d definition.Document) error {
-			_, err := definition.ParsePrompt(d)
-			return err
-		}},
+		{definition.KindPrompt, parsePrompt},
 		{definition.KindProcess, func(d definition.Document) error {
 			p, err := definition.ParseProcess(d)
 			if err == nil {
@@ -272,6 +278,24 @@ func (c *Checker) check(ctx context.Context, probe bool) (CheckResult, error) {
 	for _, step := range steps {
 		if err := each(step.kind, step.parse); err != nil {
 			return CheckResult{Report: report}, err
+		}
+	}
+	// A prompt a process names that the settings do not list is read as
+	// a call reads it: only one neither layer has is missing. Anything
+	// else at its path, such as a directory, is a document that cannot be
+	// read, a problem of its own that refuses the process (ADR-019 rule 1).
+	for _, name := range sortedNames(bundle.Processes) {
+		for _, prompt := range bundle.Processes[name].Prompts() {
+			ref := DocumentRef{Kind: definition.KindPrompt, Name: prompt}
+			if listed[ref] {
+				continue
+			}
+			doc, err := c.definitions.Read(ctx, definition.KindPrompt, prompt)
+			if errors.Is(err, definition.ErrNotFound) {
+				continue
+			}
+			listed[ref], bundle.Prompts[prompt] = true, true
+			one(definition.KindPrompt, prompt, doc, err, parsePrompt)
 		}
 	}
 	// File names define the run namespace even when their documents cannot

@@ -33,13 +33,21 @@ type resolution struct {
 	mapping   definition.Mapping
 	schema    []byte
 	prompts   map[string]definition.Prompt // by name
-	absent    map[string]string            // by input: the optional prompt it names that neither layer has (ADR-019)
+	absent    []absentInput                // the optional prompt inputs whose prompt neither layer has (ADR-019)
 	sources   []definition.Source
 	effective policy.Effective
 	identity  RuntimeIdentity
 	plan      enforce.Plan
 	// setup is the setup the call's checkout runs (ADR-012); nil when none.
 	setup *resolvedSetup
+}
+
+// absentInput is an optional prompt input whose prompt neither layer has
+// (ADR-019): the call goes ahead without it, and only it.
+type absentInput struct {
+	index  int // among the process's values
+	input  string
+	prompt string
 }
 
 // resolvedSetup is a call's effective setup and the document it came from.
@@ -330,29 +338,29 @@ func (r *Resolver) resolveCall(ctx context.Context, processName, agentOverride s
 	}
 	// Each prompt a process names is read with the call, from the same
 	// settings, and recorded among its sources (ADR-014 rule 3). An
-	// optional one neither layer has is left out; one that exists is read
-	// as any other (ADR-019 rule 1).
-	for _, value := range res.process.Values {
+	// optional input whose read finds its prompt in neither layer is left
+	// out, and only that input; any other failure to read it refuses the
+	// call, as for any other document (ADR-019 rule 1). Settings whose
+	// prompts cannot be listed are broken, so a read that finds nothing in
+	// them proves no absence either.
+	for i, value := range res.process.Values {
 		name := value.Args["name"]
 		if _, ok := res.prompts[name]; ok || value.Source != definition.PromptSource {
 			continue
 		}
-		if value.Optional() {
-			listed, err := r.definitions.List(ctx, definition.KindPrompt)
-			if err != nil {
-				return res, err
+		subject = DocumentRef{Kind: definition.KindPrompt, Name: name}
+		doc, err = r.definitions.Read(ctx, definition.KindPrompt, name)
+		if value.Optional() && errors.Is(err, definition.ErrNotFound) {
+			if _, err := r.definitions.List(ctx, definition.KindPrompt); err != nil {
+				return res, refuse("input %s: prompt %q: the prompts cannot be listed: %v", value.Name, name, err)
 			}
-			if !contains(listed, name) {
-				if res.absent == nil {
-					res.absent = map[string]string{}
-				}
-				res.absent[value.Name] = name
-				continue
-			}
+			res.absent = append(res.absent, absentInput{index: i, input: value.Name, prompt: name})
+			continue
 		}
-		if doc, err = load(definition.KindPrompt, name); err != nil {
-			return res, refuse("input %s: %v", value.Name, err)
+		if err != nil {
+			return res, refuse("input %s: prompt %q: %v", value.Name, name, err)
 		}
+		res.sources = append(res.sources, doc.Source)
 		prompt, err := definition.ParsePrompt(doc)
 		if err != nil {
 			return res, parsed(err)

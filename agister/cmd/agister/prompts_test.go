@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"os"
 	"path/filepath"
+	"reflect"
 	"regexp"
 	"strings"
 	"testing"
@@ -224,7 +225,7 @@ func TestAnOptionalPromptIsShownAsOptionalFoundOrNot(t *testing.T) {
 		t.Fatalf("run without it: %d\n%s%s", r.code, r.stdout, r.stderr)
 	}
 	last := lastRun(t, home)
-	if absent, _ := last.record["absent_prompts"].(map[string]any); len(absent) != 1 || absent["rules"] != "review" || last.record["inputs"] != nil {
+	if absent, _ := last.record["absent_prompts"].([]any); len(absent) != 1 || !reflect.DeepEqual(absent[0], map[string]any{"input": "rules", "prompt": "review"}) || last.record["inputs"] != nil {
 		t.Fatalf("record: absent_prompts %v, inputs %v", last.record["absent_prompts"], last.record["inputs"])
 	}
 	if given, _ := last.first["prompt"].(string); strings.Contains(given, "## rules") {
@@ -240,5 +241,38 @@ func TestAnOptionalPromptIsShownAsOptionalFoundOrNot(t *testing.T) {
 	r = agister(t, home, repo, "process", "show", "reviewed")
 	if r.code != 0 || !strings.Contains(r.stdout, "inputs       rules <- prompt (optional)\n") || !strings.Contains(r.stdout, "prompts      review: global "+global+" (optional)\n") {
 		t.Fatalf("process show with it: %d\n%s%s", r.code, r.stdout, r.stderr)
+	}
+}
+
+// ADR-019 rule 1, D-10: a directory at an optional prompt's path is not a
+// prompt neither layer has. check reports it as a broken prompt that
+// refuses the process, and a call of it is refused before its first turn,
+// with no absent prompt on its record.
+func TestADirectoryAtAnOptionalPromptsPathRefusesTheCall(t *testing.T) {
+	t.Parallel()
+	home, repo := setup(t, "approve")
+	write(t, filepath.Join(home, "processes", "reviewed.yaml"), strings.Replace(promptingProcess,
+		"{source: prompt, name: review}", "{source: prompt, name: review, optional: true}", 1))
+	prompt := filepath.Join(repo, ".agister", "prompts", "review.md")
+	if err := os.MkdirAll(prompt, 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	r := agister(t, home, repo, "check", "--tree")
+	if r.code != cli.ExitUsage || !regexp.MustCompile(`prompt review: .*is a directory\n  refuses process reviewed\n`).MatchString(r.stderr) || strings.Contains(r.stdout, "not found") {
+		t.Fatalf("check --tree: %d\n%s%s", r.code, r.stdout, r.stderr)
+	}
+	runs := &newRuns{home: home}
+	runs.take(t)
+	want := "process reviewed uses prompt review (" + prompt + "): "
+	if r := agister(t, home, repo, "run", "reviewed", "--quiet", "--timeout", "1m"); r.code != cli.ExitRefused || !strings.Contains(r.stderr, want) || !strings.Contains(r.stderr, "is a directory") {
+		t.Fatalf("run: %d, want %q\n%s%s", r.code, want, r.stdout, r.stderr)
+	}
+	refused := runs.one(t)
+	if refused.first != nil {
+		t.Fatalf("the refused call reached the runtime: %v", refused.first)
+	}
+	if absent, ok := refused.record["absent_prompts"]; ok {
+		t.Fatalf("record: absent_prompts %v", absent)
 	}
 }

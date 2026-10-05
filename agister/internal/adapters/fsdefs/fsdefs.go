@@ -21,7 +21,7 @@ import (
 	"github.com/igor1309/ai-labs/agister/internal/domain/definition"
 )
 
-var errNotFound = errors.New("not found")
+var errNotFound = definition.ErrNotFound
 
 type Store struct {
 	Dir string

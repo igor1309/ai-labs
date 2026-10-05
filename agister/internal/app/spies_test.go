@@ -34,7 +34,7 @@ func (s *definitionsSpy) Read(_ context.Context, kind definition.Kind, name stri
 	s.reads = append(s.reads, string(kind)+"/"+name)
 	text, ok := s.docs[kind][name]
 	if !ok {
-		return definition.Document{}, fmt.Errorf("not found")
+		return definition.Document{}, definition.ErrNotFound
 	}
 	sum := sha256.Sum256([]byte(text))
 	return definition.Document{

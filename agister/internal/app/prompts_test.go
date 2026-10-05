@@ -346,7 +346,7 @@ func TestAMissingOptionalPromptRunsTheCallWithoutItsInput(t *testing.T) {
 	if sources := promptSources(record); len(sources) != 0 {
 		t.Fatalf("prompt sources = %+v", sources)
 	}
-	if want := map[string]string{"go": "go_tests"}; !reflect.DeepEqual(record.AbsentPrompts, want) {
+	if want := []run.AbsentPrompt{{Input: "go", Prompt: "go_tests"}}; !reflect.DeepEqual(record.AbsentPrompts, want) {
 		t.Fatalf("absent prompts = %v, want %v", record.AbsentPrompts, want)
 	}
 	calls := h.runner.calls()
@@ -493,5 +493,63 @@ func TestShowProcessShowsAnOptionalPrompt(t *testing.T) {
 	origin := contract.DefinitionOrigin{Kind: "prompts", Name: "go_tests", Layer: "global", Path: "mem/prompts/go_tests"}
 	if !containsOrigin(view.Sources, origin) || !slices.Contains(view.Inputs, "go <- prompt (optional)") {
 		t.Fatalf("sources %+v, inputs %q", view.Sources, view.Inputs)
+	}
+}
+
+// D-10: absence belongs to the input, not to its name. Of two inputs
+// named alike, the optional one whose prompt neither layer has is left
+// out, and the required one whose prompt is present is given.
+func TestAnAbsentOptionalInputDropsNoOtherOfItsName(t *testing.T) {
+	t.Parallel()
+	h := newHarness()
+	prompted(h, reviewPrompt)
+	h.defs.docs[definition.KindProcess]["p"] = promptingProcess("    rules: {source: prompt, name: go_tests, optional: true}\n    rules: {source: prompt, name: review}\n")
+	record := h.call(t, contract.CallRequest{})
+	if record.Result.Status != run.Completed {
+		t.Fatalf("result %+v: %s", record.Result, message(record))
+	}
+	if calls := h.runner.calls(); len(calls) != 1 || !strings.Contains(calls[0].Prompt, "## rules\n\n```\n"+reviewPrompt) {
+		t.Fatalf("the agent was given: %+v", calls)
+	}
+	if input := promptInput(record); input.Name != "rules" || input.Value != reviewPrompt {
+		t.Fatalf("input = %+v", input)
+	}
+	if want := []run.AbsentPrompt{{Input: "rules", Prompt: "go_tests"}}; !reflect.DeepEqual(record.AbsentPrompts, want) {
+		t.Fatalf("absent prompts = %v, want %v", record.AbsentPrompts, want)
+	}
+}
+
+// D-10: only a read that finds an optional prompt in neither layer makes
+// it absent. Prompts that cannot be listed, or a read that fails
+// otherwise, are a check problem and refuse the call before its first
+// turn, with nothing absent.
+func TestAnOptionalPromptThatCannotBeListedOrReadRefusesTheCall(t *testing.T) {
+	t.Parallel()
+	failure := errors.New("permission denied")
+	for name, live := range map[string]func(*definitionsSpy) failingSource{
+		"listing": func(spy *definitionsSpy) failingSource {
+			return failingSource{definitionsSpy: spy, listErr: map[definition.Kind]error{definition.KindPrompt: failure}}
+		},
+		"read": func(spy *definitionsSpy) failingSource {
+			return failingSource{definitionsSpy: spy, readErr: map[string]error{"prompts/go_tests": failure}}
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			h := newHarness()
+			optionally(h)
+			report, err := app.NewChecker(live(h.defs), h.validator, h.runtimes, []string{"git.revision", "git.diff"}).Check(context.Background(), false)
+			if problems := messages(report.Problems); err != nil || len(problems) != 1 || !strings.Contains(problems[0], failure.Error()) {
+				t.Fatalf("problems %q, %v", problems, err)
+			}
+			h.calls = h.callsOn(live(h.defs))
+			record := h.call(t, contract.CallRequest{})
+			if class(record) != run.ClassRefused || !strings.Contains(message(record), `input go: prompt "go_tests": `) || !strings.Contains(message(record), failure.Error()) {
+				t.Fatalf("result %+v: %q", record.Result, message(record))
+			}
+			if record.AbsentPrompts != nil || len(h.runner.calls()) != 0 {
+				t.Fatalf("absent %v, turns %d after the refusal", record.AbsentPrompts, len(h.runner.calls()))
+			}
+		})
 	}
 }

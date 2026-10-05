@@ -613,7 +613,7 @@ func (r *Resolver) InspectProcess(ctx context.Context, name, agent string) (*Ins
 	}
 	for _, name := range inspected.Process.Prompts {
 		for _, absent := range res.absent {
-			if absent == name && !contains(inspected.Absent, name) {
+			if absent.prompt == name && !contains(inspected.Absent, name) {
 				inspected.Absent = append(inspected.Absent, name)
 			}
 		}

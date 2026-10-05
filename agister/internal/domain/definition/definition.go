@@ -6,6 +6,7 @@ package definition
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"strings"
 	"unicode/utf8"
@@ -66,6 +67,11 @@ type Source struct {
 	// The global definition this project one takes priority over.
 	Overrides string
 }
+
+// ErrNotFound is what reading a document neither settings layer has
+// returns, wrapped: a document that exists but cannot be read gives any
+// other error.
+var ErrNotFound = errors.New("not found")
 
 // Document is a definition's raw bytes with their origin.
 type Document struct {
