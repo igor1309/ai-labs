@@ -809,9 +809,12 @@ func TestReviewPromptsCarryTheirCoverageContract(t *testing.T) {
 // severity checked before merging, a merged item taking the highest
 // supported one; a reject for a finding with no causal chain; a fix cost
 // without its basis counted as unpresented; and the switching condition
-// each item records. An instruction is held by its short phrases standing
-// in one paragraph, as in TestReviewPromptsCarryTheirCoverageContract. The
-// prompts are the repository's own, read as they are.
+// each item records. agister/AGENTS.md, which acts on the rulings, keeps the
+// waive handling: no repair, no backlog issue, and a place in the pull
+// request description with the switching condition. An instruction is held
+// by its short phrases standing in one paragraph, as in
+// TestReviewPromptsCarryTheirCoverageContract. The files are the
+// repository's own, read as they are.
 func TestReviewPromptsCarryTheCaseForValue(t *testing.T) {
 	t.Parallel()
 	root, err := filepath.Abs(filepath.Join("..", "..", ".."))
@@ -822,21 +825,22 @@ func TestReviewPromptsCarryTheCaseForValue(t *testing.T) {
 		[]string{"presents its case for value", "`requirement`", "`consequence`", "`severity_rationale`",
 			"`fix_cost`", "`review-result.json`", "its basis"}}
 	cases := []struct {
-		prompt       string
+		file         string
 		instructions []promptInstruction
 	}{
-		{"code-review-tests.md", []promptInstruction{present}},
-		{"code-review-adversarial.md", []promptInstruction{present}},
-		{"code-review-architecture.md", []promptInstruction{present}},
-		{"code-review-clarity.md", []promptInstruction{present}},
-		{"code-review-adr.md", []promptInstruction{present}},
-		{"code-review-judge.md", []promptInstruction{
+		{"prompts/code-review-tests.md", []promptInstruction{present}},
+		{"prompts/code-review-adversarial.md", []promptInstruction{present}},
+		{"prompts/code-review-architecture.md", []promptInstruction{present}},
+		{"prompts/code-review-clarity.md", []promptInstruction{present}},
+		{"prompts/code-review-adr.md", []promptInstruction{present}},
+		{"prompts/code-review-judge.md", []promptInstruction{
 			{"waive: proven, in the change, the burden for fixing not met", []string{
 				"for an item whose evidence holds and that lies in the change", "the burden for fixing at its severity",
 				"**waive**", "not a reject", "sunk and never counts"}},
 			{"the burden for fixing by severity", []string{
 				"**blocker**: always fixed", "**major**: fix, or `owner`", "grossly disproportionate",
-				"**minor**: fix, or `waive` when the presented cost exceeds", "**nit**: `waive`, or fix when the presented benefit exceeds"}},
+				"**minor**: fix, or `waive` when the presented cost exceeds the presented benefit",
+				"**nit**: `waive`, or fix when the presented benefit exceeds the presented cost"}},
 			{"equal or unresolved economics leave the presumption standing", []string{"equal or unresolved", "presumption"}},
 			{"the owner keeps its trade-offs and stances; fix or waive of one proven finding is the judge's", []string{
 				"**owner**", "a trade-off or a stance only the owner can take",
@@ -848,18 +852,25 @@ func TestReviewPromptsCarryTheCaseForValue(t *testing.T) {
 			{"a fix cost without its basis counts as unpresented", []string{"`fix_cost` whose basis is missing or empty", "unpresented"}},
 			{"each item records its switching condition", []string{"`benefit`", "`cost`", "`switching_condition`", "if circumstances change"}},
 		}},
+		// Its bullets stand in one paragraph, so each phrase is one only the
+		// waive sentence has.
+		{"agister/AGENTS.md", []promptInstruction{
+			{"waive items: no repair, no backlog issue, listed in the pull request with their switching condition", []string{
+				"Waive items get no repair and no backlog issue",
+				"list them in the pull request description with their switching condition"}},
+		}},
 	}
 	for _, c := range cases {
-		t.Run(c.prompt, func(t *testing.T) {
+		t.Run(c.file, func(t *testing.T) {
 			t.Parallel()
-			data, err := os.ReadFile(filepath.Join(root, "prompts", c.prompt))
+			data, err := os.ReadFile(filepath.Join(root, c.file))
 			if err != nil {
 				t.Fatal(err)
 			}
 			for _, instruction := range c.instructions {
 				if !carries(string(data), instruction.phrases) {
-					t.Errorf("prompts/%s lost the instruction %q: no paragraph has all of %q",
-						c.prompt, instruction.name, instruction.phrases)
+					t.Errorf("%s lost the instruction %q: no paragraph has all of %q",
+						c.file, instruction.name, instruction.phrases)
 				}
 			}
 		})
