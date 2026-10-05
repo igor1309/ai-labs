@@ -52,8 +52,9 @@ type snapshot struct {
 // not found, except the verification and the prompts a process names, and
 // the skills a process or an agent names: their reads are kept too, so the
 // refusal of a call or view that lacks one says where it was expected
-// (check lets a missing verification pass, ADR-010 rule 4). One that is found there after all, written since the list, is
-// added to the list, so check checks what the call uses.
+// (check lets a missing verification pass, ADR-010 rule 4). One that is
+// found there after all, written since the list, is added to the list, so
+// check checks what the call uses.
 func Snapshot(ctx context.Context, src SnapshotSource) SnapshotSource {
 	s := &snapshot{
 		reads: map[definition.Kind]map[string]snapshotRead{},

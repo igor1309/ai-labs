@@ -1,7 +1,8 @@
 // Package definition parses and validates Agister's settings documents:
 // agents, processes, workflows, policies, verifications, prompts, skills,
-// runtime permission mappings, the service, the workspace and a repository's blocks.
-// It owns the definition language; callers supply bytes and their origin.
+// runtime permission mappings, the service, the workspace and a
+// repository's blocks. It owns the definition language; callers supply
+// bytes and their origin.
 package definition
 
 import (
