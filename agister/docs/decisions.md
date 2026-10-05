@@ -132,13 +132,23 @@
 - **Rests on:** D-10
 - **Follow-ups:** none
 
-## D-13: May LAB-68 revise the recorded review instructions?
+## D-13: May LAB-63 edit the recorded architecture prompt and implement instructions?
+
+- **Status:** Owner
+- **Asked by:** workflow run 20261005T131604Z-25a2b5 (code_review), judge item "LAB-63 edits existing agent instructions as its brief requests"; advisor run 20261005T132214Z-bc707a answered `owner`
+- **Question:** do LAB-63's two edits to existing agent instructions stay?
+- **Options:** (a) they stay, and an owner decision is appended to decisions.md as D-12 did for LAB-67; (b) revert both to the recorded text and ship only the new prompts and optional inputs.
+- **Excluded:** (b): the edits are the change LAB-63 asks for.
+- **Decision:** (a). The architecture review prompt loses its ADR-001 rule 15 parenthesis, and the four implement instructions gain the sentence on guidance given as further inputs.
+- **Rests on:** none
+
+## D-14: May LAB-68 revise the recorded review instructions?
 
 - **Status:** Owner
 - **Asked by:** workflow run 20261005T132619Z-57d1bc (code_review), judge item "Recorded review instructions (six prompts and agister/AGENTS.md) are revised by this change"
 - **Question:** does the owner accept the LAB-68 revisions to the recorded instructions: the judge prompt's severity check, waive ruling and severity-dependent burdens; the "case for value" obligation in the five reviewer prompts; and the waive handling in agister/AGENTS.md?
 - **Options:** (a) accept them as written and record the disposition here, with no code or test change; (b) decline or amend them, so the instruction edits are changed or taken out of this change before merge.
-- **Excluded:** (b): the edits are the change. The owner accepted ADR-020 and approved LAB-68, whose scope is carrying it out in these prompts and in AGENTS.md. Same question as D-10 and D-12.
+- **Excluded:** (b): the edits are the change. The owner accepted ADR-020 and approved LAB-68, whose scope is carrying it out in these prompts and in AGENTS.md. Same question as D-10, D-12 and D-13.
 - **Decision:** (a). The revisions stay as written.
-- **Rests on:** D-12, ADR-020
+- **Rests on:** D-12, D-13, ADR-020
 - **Follow-ups:** none

@@ -83,7 +83,11 @@ the input is optional: when neither place has the prompt, the call goes
 ahead without that input, and its record lists the input and the prompt
 as absent; anything at the prompt's path that cannot be read, such as a
 directory, is a broken prompt that refuses the call
-([ADR-019](docs/adr/019-a-prompt-may-be-optional.md)). A text the caller
+([ADR-019](docs/adr/019-a-prompt-may-be-optional.md)). This repository's
+`implement` processes name `go-testing-seams` and `go-architecture` this
+way, and its `.agister/prompts/` supplies both as copies of the ones in
+`prompts/`, which a test keeps identical. A
+text the caller
 names stays a `source: file` input, read relative to the caller's
 directory.
 
@@ -150,5 +154,6 @@ A run whose checkout has no changes records `NO_CHANGES` and has no
 The commands are in [AGENTS.md](AGENTS.md); they check `gokit` too. CI:
 `.github/workflows/agister-core.yml`.
 
-Known gaps: [docs/deferred.md](docs/deferred.md). Ideas:
+Known gaps: backlog issues in the Multica project Agister
+([docs/deferred.md](docs/deferred.md)). Ideas:
 [backlog/](backlog/README.md).

@@ -408,10 +408,11 @@ func runtimeCwd(t *testing.T, home, id string) string {
 }
 
 // runtimeStart is the first line of a call's provider.jsonl, which a fake
-// runtime writes with its argv and cwd.
+// runtime writes with its argv, cwd and prompt.
 func runtimeStart(t *testing.T, home, id string) (first struct {
-	Argv []string
-	Cwd  string
+	Argv   []string
+	Cwd    string
+	Prompt string
 }) {
 	t.Helper()
 	provider, err := os.ReadFile(filepath.Join(home, "runs", id, "provider.jsonl"))
@@ -1159,6 +1160,99 @@ func TestImplementHasNoCostLimit(t *testing.T) {
 	}
 	if limit, set := effective["max_cost_usd"]; set {
 		t.Fatalf("implement's effective cost limit is %v, want none", limit)
+	}
+}
+
+// goPrompts are the optional prompts every implement process of the
+// repository names (ADR-019), by input: each is a copy in .agister/prompts
+// of the prompt of the same name in prompts/.
+var goPrompts = map[string]string{
+	"go_testing":      "go-testing-seams",
+	"go_architecture": "go-architecture",
+}
+
+// Each of the repository's implement processes gives its agent the two Go
+// prompts, and what it gives is the text of prompts/<name>.md: the
+// repository's settings hold a copy, which this test keeps identical.
+func TestImplementersAreGivenTheGoPrompts(t *testing.T) {
+	t.Parallel()
+	root, repo, home := onFakeRuntimes(t)
+	for _, name := range []string{"implement", "implement_codex", "implement_pi", "implement_pi_glm"} {
+		t.Run(name, func(t *testing.T) {
+			args := append([]string{"run", name}, paramArgs(parseProcess(t, root, name).Params)...)
+			if timeout := testTimeouts[name]; timeout != "" {
+				args = append(args, "--timeout", timeout)
+			}
+			created, _ := runRecorded(t, home, repo, args)
+			if len(created) != 1 {
+				t.Fatalf("runs recorded: %v, want one", created)
+			}
+			record := completedRun(t, home, created[0])
+			for input, prompt := range goPrompts {
+				text, err := os.ReadFile(filepath.Join(root, "prompts", prompt+".md"))
+				if err != nil {
+					t.Fatal(err)
+				}
+				digest := "sha256:" + digestOf(string(text))
+				if given := inputOf(t, record, input); given["source"] != "prompt" || given["identity"] != digest {
+					t.Fatalf("%s's %s = %v, want prompts/%s.md (%s)", name, input, given, prompt, digest)
+				}
+			}
+		})
+	}
+}
+
+// Each real implement process completes when neither settings layer has
+// the Go prompts, records both as absent, and gives its agent neither input.
+func TestImplementersCanRunWithoutTheGoPrompts(t *testing.T) {
+	t.Parallel()
+	for _, name := range []string{"implement", "implement_codex", "implement_pi", "implement_pi_glm"} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			root, repo, home := onFakeRuntimes(t)
+			// These settings belong to the test. The repository's prompts
+			// directory is a symlink: remove the link, not its target.
+			for _, dir := range []string{filepath.Join(repo, ".agister", "prompts"), filepath.Join(home, "prompts")} {
+				if err := os.RemoveAll(dir); err != nil {
+					t.Fatal(err)
+				}
+				if err := os.MkdirAll(dir, 0o755); err != nil {
+					t.Fatal(err)
+				}
+			}
+			args := append([]string{"run", name}, paramArgs(parseProcess(t, root, name).Params)...)
+			if timeout := testTimeouts[name]; timeout != "" {
+				args = append(args, "--timeout", timeout)
+			}
+			created, _ := runRecorded(t, home, repo, args)
+			if len(created) != 1 {
+				t.Fatalf("runs recorded: %v, want one", created)
+			}
+			record := completedRun(t, home, created[0])
+			absent, _ := record["absent_prompts"].([]any)
+			if len(absent) != len(goPrompts) {
+				t.Fatalf("absent prompts = %v, want both Go prompts", absent)
+			}
+			given := runtimeStart(t, home, created[0]).Prompt
+			if given == "" {
+				t.Fatal("the fake runtime recorded no agent prompt")
+			}
+			for input, prompt := range goPrompts {
+				want := map[string]any{"input": input, "prompt": prompt}
+				if !slices.ContainsFunc(absent, func(entry any) bool { return reflect.DeepEqual(entry, want) }) {
+					t.Fatalf("absent prompts = %v, want %v", absent, want)
+				}
+				inputs, _ := record["inputs"].([]any)
+				for _, entry := range inputs {
+					if entry.(map[string]any)["name"] == input {
+						t.Fatalf("absent input %s was recorded: %v", input, entry)
+					}
+				}
+				if strings.Contains(given, "## "+input) {
+					t.Fatalf("the agent was given absent input %s:\n%s", input, given)
+				}
+			}
+		})
 	}
 }
 
