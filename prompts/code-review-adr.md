@@ -1,14 +1,16 @@
 ---
-date: 2026-09-30
+date: 2026-10-05
 author: Igor Malyarov
 model: gpt-6.1
 name: Code review — architecture decisions
-version: 0.3.0
+version: 0.3.1
 type: prompt
 ---
 
 Review the architecture decision records (ADRs) a change adds or edits. A
 change that touches no ADR has no finding here.
+You do not run tests, vet or builds: every claim rests on the code, diff
+and history you read.
 
 For each ADR the change adds or edits:
 

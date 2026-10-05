@@ -4,7 +4,8 @@
   "required": [
     "verdict",
     "summary",
-    "findings"
+    "findings",
+    "coverage"
   ],
   "properties": {
     "verdict": {
@@ -88,6 +89,42 @@
                 "description": "true if the change introduced the problem or left it in code it touched; false if it lies outside the change."
               }
             }
+          }
+        }
+      }
+    },
+    "coverage": {
+      "type": [
+        "array",
+        "null"
+      ],
+      "description": "What the review checked, one entry per definition-of-done item it reports on, or null when its prompt asks for none.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "item",
+          "status",
+          "detail"
+        ],
+        "properties": {
+          "item": {
+            "type": "string",
+            "description": "The definition-of-done item it reports on, as the prompt words it, shortened."
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "checked",
+              "finding",
+              "rule_only",
+              "not_checked"
+            ],
+            "description": "checked: no finding. finding: reported in findings. rule_only: a rule violation with no concrete case. not_checked: not looked at."
+          },
+          "detail": {
+            "type": "string",
+            "description": "finding: the 1-based finding number(s). rule_only: the rule, the location as path:line, and why no concrete case could be shown. not_checked: why. checked: what was checked, briefly."
           }
         }
       }

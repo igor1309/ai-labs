@@ -1,15 +1,17 @@
 ---
-date: 2026-09-30
+date: 2026-10-05
 author: Igor Malyarov
 model: claude-opus-5-5
 name: Code review — adversarial
-version: 0.1.1
+version: 0.1.2
 type: prompt
 ---
 
 Review the change as a skeptic: try to break it. Assume it is wrong until
 the code shows otherwise, and look for the input, state or ordering that
 makes it misbehave.
+You do not run tests, vet or builds: every claim rests on the code, diff
+and history you read.
 
 Definition of done:
 
