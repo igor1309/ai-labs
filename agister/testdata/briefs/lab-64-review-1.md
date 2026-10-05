@@ -2,7 +2,7 @@
 
 Candidate: the branch head. ADR-019 is implemented; code_review
 `20261003T130421Z-aa12ef` found that absence is inferred wrongly. The
-owner decided (D-10 in `docs/decisions.md`, option b): resolution carries,
+owner decided (D-11 in `docs/decisions.md`, option b): resolution carries,
 per input, a distinguishable not-found result from the read path. Only a
 genuine not-found in both layers omits the input.
 

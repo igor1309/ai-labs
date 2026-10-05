@@ -8,10 +8,10 @@ import (
 
 	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/claudecode"
 	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/runtimetest"
-	supervisor "github.com/igor1309/ai-labs/agister/internal/adapters/runtime/supervisor"
-	"github.com/igor1309/ai-labs/agister/internal/adapters/system/systemtest"
 	"github.com/igor1309/ai-labs/agister/internal/app"
 	composition "github.com/igor1309/ai-labs/agister/internal/composition/runtime"
+	"github.com/igor1309/ai-labs/gokit/clocktest"
+	supervisor "github.com/igor1309/ai-labs/gokit/supervisor"
 )
 
 // The fake this package builds is removed when its tests end.
@@ -33,7 +33,7 @@ func request(prompt string) app.TurnRequest {
 // process under the real supervisor.
 func TestConformance(t *testing.T) {
 	t.Parallel()
-	clock := systemtest.NewClock(time.Date(2026, 10, 3, 12, 0, 0, 0, time.UTC))
+	clock := clocktest.NewClock(time.Date(2026, 10, 3, 12, 0, 0, 0, time.UTC))
 	runtimetest.Conformance(t, runtimetest.Subject{
 		New: func(command string) app.TurnRunner {
 			return composition.AdaptClaudeCode(&claudecode.Runner{Transport: composition.ClaudeCodeTransport{Supervisor: supervisor.Runtime{Timer: clock.Timer}}, Command: command})

@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/supervisor"
+	"github.com/igor1309/ai-labs/gokit/supervisor"
 )
 
 // sleeper starts a process leading its own group, one that never ends on

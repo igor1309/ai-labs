@@ -1,4 +1,4 @@
-package systemtest
+package clocktest
 
 import "time"
 

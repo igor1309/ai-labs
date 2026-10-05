@@ -125,7 +125,7 @@ func (s Store) Read(_ context.Context, kind definition.Kind, name string) (defin
 		}
 		// Nor is a prompt whose file or folder is a dangling symlink: an
 		// optional one would be left out of the call where the settings
-		// are broken (ADR-019 rule 1, D-10).
+		// are broken (ADR-019 rule 1, D-11).
 		if kind == definition.KindPrompt {
 			if _, lerr := os.Lstat(path); lerr == nil {
 				return doc, fmt.Errorf("cannot be resolved: %v", err)

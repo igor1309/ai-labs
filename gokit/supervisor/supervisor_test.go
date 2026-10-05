@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"reflect"
 	"strconv"
 	"strings"
 	"sync"
@@ -13,13 +14,14 @@ import (
 	"testing"
 	"time"
 
-	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/supervisor"
-	"github.com/igor1309/ai-labs/agister/internal/adapters/system/systemtest"
+	"github.com/igor1309/ai-labs/gokit/clocktest"
+	"github.com/igor1309/ai-labs/gokit/fakeproc"
+	"github.com/igor1309/ai-labs/gokit/supervisor"
 )
 
 // The test binary doubles as the runtime's descendants: with helperEnv set
 // it plays the role named there instead of running tests.
-const helperEnv = "AGISTER_SUPERVISOR_HELPER"
+const helperEnv = "GOKIT_SUPERVISOR_HELPER"
 
 func TestMain(m *testing.M) {
 	switch os.Getenv(helperEnv) {
@@ -51,8 +53,10 @@ type runResult struct {
 }
 
 type events struct {
-	mu      sync.Mutex
-	kinds   []string
+	mu    sync.Mutex
+	kinds []string
+	// sources are the events' sources, in step with kinds.
+	sources []string
 	started []string // references, in the order reported
 	// failAt, when positive, makes the report with that number (1-based)
 	// fail.
@@ -63,10 +67,11 @@ type events struct {
 	onStart func(ref string)
 }
 
-func (e *events) Event(_, kind string, _ map[string]any) {
+func (e *events) Event(source, kind string, _ map[string]any) {
 	e.mu.Lock()
 	defer e.mu.Unlock()
 	e.kinds = append(e.kinds, kind)
+	e.sources = append(e.sources, source)
 }
 
 func (e *events) ProcessStarted(ref string) error {
@@ -93,6 +98,19 @@ func (e *events) has(kind string) bool {
 		}
 	}
 	return false
+}
+
+// sourcesOf lists the source of each event of kind, in the order reported.
+func (e *events) sourcesOf(kind string) []string {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	var sources []string
+	for i, k := range e.kinds {
+		if k == kind {
+			sources = append(sources, e.sources[i])
+		}
+	}
+	return sources
 }
 
 func pidFrom(t *testing.T, path string) int {
@@ -166,7 +184,7 @@ func TestStdoutHeldOutsideTheGroupDoesNotHoldTheCall(t *testing.T) {
 	// run runs the escaping process over a manual clock, and returns once
 	// the stdout grace has started and the process's line is read, with
 	// the escaped child's PID.
-	run := func(t *testing.T) (*systemtest.Clock, int, *events, <-chan runResult) {
+	run := func(t *testing.T) (*clocktest.Clock, int, *events, <-chan runResult) {
 		pidFile := filepath.Join(t.TempDir(), "pid")
 		t.Setenv(helperEnv, "escape")
 		t.Setenv("PID_FILE", pidFile)
@@ -179,7 +197,7 @@ func TestStdoutHeldOutsideTheGroupDoesNotHoldTheCall(t *testing.T) {
 				}
 			}
 		})
-		clock := systemtest.NewClock(start)
+		clock := clocktest.NewClock(start)
 		sink := &events{}
 		done, read := make(chan runResult, 1), make(chan struct{}, 1)
 		go func() {
@@ -260,8 +278,8 @@ func cleanUpRun(t *testing.T, sink *events) {
 func TestTheTimeoutEndsTheProcessOnlyOnceItHasPassed(t *testing.T) {
 	t.Parallel()
 	const timeout = time.Hour
-	run := func(t *testing.T, ctx context.Context) (*systemtest.Clock, *events, <-chan supervisor.Evidence) {
-		clock := systemtest.NewClock(start)
+	run := func(t *testing.T, ctx context.Context) (*clocktest.Clock, *events, <-chan supervisor.Evidence) {
+		clock := clocktest.NewClock(start)
 		sink := &events{}
 		cleanUpRun(t, sink)
 		done := make(chan supervisor.Evidence, 1)
@@ -299,6 +317,65 @@ func TestTheTimeoutEndsTheProcessOnlyOnceItHasPassed(t *testing.T) {
 	})
 }
 
+// The supervisor's own decisions about a process, its timeout, an abort
+// and a group it could not record, are reported with the supervisor as
+// their source, not the process: a sink tells them apart by it.
+func TestTheSupervisorsDecisionsAreReportedAsItsOwn(t *testing.T) {
+	t.Parallel()
+	const timeout = time.Hour
+	// run runs a runtime that blocks until it is ended, its timers on the
+	// clock, and returns once its timeout has started.
+	run := func(ctx context.Context, clock *clocktest.Clock, sink *events) <-chan supervisor.Evidence {
+		done := make(chan supervisor.Evidence, 1)
+		go func() {
+			done <- supervisor.Runtime{Starter: program(fakeproc.Process.Block), Timer: clock.Timer}.Run(ctx, supervisor.Spec{
+				Command: "runtime",
+				Timeout: timeout,
+			}, sink, func(string) {})
+		}()
+		clock.Started(timeout)
+		return done
+	}
+	reported := func(t *testing.T, sink *events, kind string) {
+		t.Helper()
+		if sources := sink.sourcesOf(kind); !reflect.DeepEqual(sources, []string{supervisor.SourceSupervisor}) {
+			t.Fatalf("%s from %q, events %v", kind, sources, sink.kinds)
+		}
+	}
+
+	t.Run("timeout", func(t *testing.T) {
+		t.Parallel()
+		clock, sink := clocktest.NewClock(start), &events{}
+		done := run(context.Background(), clock, sink)
+		clock.Advance(timeout)
+		if evidence := <-done; !evidence.TimedOut {
+			t.Fatalf("evidence = %+v", evidence)
+		}
+		reported(t, sink, "TIMEOUT")
+	})
+	t.Run("abort", func(t *testing.T) {
+		t.Parallel()
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+		sink := &events{}
+		done := run(ctx, clocktest.NewClock(start), sink)
+		cancel()
+		if evidence := <-done; !evidence.Aborted {
+			t.Fatalf("evidence = %+v", evidence)
+		}
+		reported(t, sink, "ABORT_REQUESTED")
+	})
+	t.Run("record failed", func(t *testing.T) {
+		t.Parallel()
+		sink := &events{failAt: 1, startErr: errors.New("disk full")}
+		done := run(context.Background(), clocktest.NewClock(start), sink)
+		if evidence := <-done; evidence.RecordError != "disk full" {
+			t.Fatalf("evidence = %+v", evidence)
+		}
+		reported(t, sink, "PROCESS_RECORD_FAILED")
+	})
+}
+
 // A group told to end that ignores it is killed once the kill grace has
 // passed on the runtime's timer, and not a moment before: a moment short
 // of it, the process still ends by itself.
@@ -311,7 +388,7 @@ func TestAGroupThatIgnoresTheTerminationIsKilledOnceTheGraceHasPassed(t *testing
 	// run starts a process that ignores SIGTERM and exits 3 once it reads
 	// a line from the gate, and returns once its timeout has passed and the
 	// grace has started; the gate is the test's to write to.
-	run := func(t *testing.T) (*systemtest.Clock, *os.File, <-chan supervisor.Evidence) {
+	run := func(t *testing.T) (*clocktest.Clock, *os.File, <-chan supervisor.Evidence) {
 		gate := filepath.Join(t.TempDir(), "gate")
 		if err := syscall.Mkfifo(gate, 0o600); err != nil {
 			t.Fatal(err)
@@ -323,7 +400,7 @@ func TestAGroupThatIgnoresTheTerminationIsKilledOnceTheGraceHasPassed(t *testing
 			t.Fatal(err)
 		}
 		t.Cleanup(func() { _ = fifo.Close() })
-		clock := systemtest.NewClock(start)
+		clock := clocktest.NewClock(start)
 		sink := &events{}
 		cleanUpRun(t, sink)
 		ready := make(chan struct{})
@@ -520,13 +597,13 @@ func TestASilentExitLeavesNoTail(t *testing.T) {
 // Contract test: the supervisor against a real process: its group, its
 // pipes and the signals that end it.
 func TestEnvIsAddedToTheInheritedEnvironment(t *testing.T) {
-	t.Setenv("AGISTER_SUPERVISOR_KEPT", "kept")
-	t.Setenv("AGISTER_SUPERVISOR_REPLACED", "inherited")
+	t.Setenv("GOKIT_SUPERVISOR_KEPT", "kept")
+	t.Setenv("GOKIT_SUPERVISOR_REPLACED", "inherited")
 	var lines []string
 	evidence := supervisor.Runtime{}.Run(context.Background(), supervisor.Spec{
 		Command: "/bin/sh",
-		Args:    []string{"-c", `echo "$AGISTER_SUPERVISOR_KEPT $AGISTER_SUPERVISOR_REPLACED $AGISTER_SUPERVISOR_ADDED"`},
-		Env:     []string{"AGISTER_SUPERVISOR_REPLACED=replaced", "AGISTER_SUPERVISOR_ADDED=added"},
+		Args:    []string{"-c", `echo "$GOKIT_SUPERVISOR_KEPT $GOKIT_SUPERVISOR_REPLACED $GOKIT_SUPERVISOR_ADDED"`},
+		Env:     []string{"GOKIT_SUPERVISOR_REPLACED=replaced", "GOKIT_SUPERVISOR_ADDED=added"},
 		Timeout: 30 * time.Second,
 	}, &events{}, func(line string) { lines = append(lines, line) })
 	if evidence.Exit == nil || evidence.Exit.Code == nil || *evidence.Exit.Code != 0 || len(lines) != 1 || lines[0] != "kept replaced added" {

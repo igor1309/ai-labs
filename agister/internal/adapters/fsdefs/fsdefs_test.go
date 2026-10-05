@@ -200,7 +200,7 @@ func TestPromptsAreMarkdownFiles(t *testing.T) {
 
 // A repository's prompts folder, or a prompt's file in it, that is a
 // dangling symlink is not a prompt neither layer has (ADR-019 rule 1,
-// D-10): reading the prompt fails, naming the link, and is not ErrNotFound;
+// D-11): reading the prompt fails, naming the link, and is not ErrNotFound;
 // a folder that is such a link cannot be listed. A folder or file that
 // simply does not exist stays not found.
 //

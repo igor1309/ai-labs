@@ -46,6 +46,18 @@ jobs:
       - name: Test
         run: go test -race -timeout 1m -coverpkg=./internal/...,./cmd/... -coverprofile=cover.out ./...
 
+      - name: Format gokit
+        working-directory: gokit
+        run: test -z "$(gofmt -l .)" || (gofmt -l . && exit 1)
+
+      - name: Vet gokit
+        working-directory: gokit
+        run: go vet ./...
+
+      - name: Test gokit
+        working-directory: gokit
+        run: go test -race -timeout 1m ./...
+
       - name: Pages tests
         run: node --test pages/tests/*.test.js
 

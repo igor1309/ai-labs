@@ -4,9 +4,9 @@ import (
 	"context"
 
 	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/pi"
-	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/supervisor"
 	"github.com/igor1309/ai-labs/agister/internal/app"
 	"github.com/igor1309/ai-labs/agister/internal/domain/run"
+	"github.com/igor1309/ai-labs/gokit/supervisor"
 )
 
 // PiSupervisor is the process dependency this transport consumes.
@@ -19,7 +19,7 @@ type PiSupervisor interface {
 type PiTransport struct{ Supervisor PiSupervisor }
 
 func (t PiTransport) Run(ctx context.Context, spec pi.Spec, sink pi.Sink, onLine func(string)) pi.Evidence {
-	e := t.Supervisor.Run(ctx, supervisor.Spec{Command: spec.Command, Args: spec.Args, Dir: spec.Dir, Stdin: spec.Stdin, Timeout: spec.Timeout, KillGrace: spec.KillGrace}, sink, onLine)
+	e := t.Supervisor.Run(ctx, supervisor.Spec{Command: spec.Command, Args: spec.Args, Dir: spec.Dir, Stdin: spec.Stdin, Timeout: spec.Timeout, KillGrace: spec.KillGrace}, supervisorSink{sink}, onLine)
 	var exit *pi.Exit
 	if e.Exit != nil {
 		exit = &pi.Exit{Code: e.Exit.Code, Signal: e.Exit.Signal}

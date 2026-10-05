@@ -151,6 +151,7 @@ jobs:
               - "agister/**/*.go"
               - "agister/go.mod"
               - "agister/go.sum"
+              - "gokit/**"
               - "agister/examples/**"
               - "agister/pages/**"
               - "research/agister/research/verger/policies/**"

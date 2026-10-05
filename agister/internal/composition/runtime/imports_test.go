@@ -19,9 +19,10 @@ func TestRuntimeModulesImportOnlyTheStandardLibrary(t *testing.T) {
 	const module = "github.com/igor1309/ai-labs/agister"
 	names := []string{"codex", "claudecode", "pi", "opencode", "supervisor"}
 	pkgs := make([]string, len(names))
-	for i, name := range names {
+	for i, name := range names[:4] {
 		pkgs[i] = module + "/internal/adapters/runtime/" + name
 	}
+	pkgs[4] = "github.com/igor1309/ai-labs/gokit/supervisor" // ADR-019
 	command := exec.Command("go", append([]string{"list", "-deps", "-f", depsFormat}, pkgs...)...)
 	output, err := command.CombinedOutput()
 	if err != nil {

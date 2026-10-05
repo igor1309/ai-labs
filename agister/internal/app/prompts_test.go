@@ -527,7 +527,7 @@ func TestShowProcessShowsAnOptionalPrompt(t *testing.T) {
 	}
 }
 
-// D-10: absence belongs to the input, not to its name. Of two inputs
+// D-11: absence belongs to the input, not to its name. Of two inputs
 // named alike, the optional one whose prompt neither layer has is left
 // out, and the required one whose prompt is present is given.
 func TestAnAbsentOptionalInputDropsNoOtherOfItsName(t *testing.T) {
@@ -550,7 +550,7 @@ func TestAnAbsentOptionalInputDropsNoOtherOfItsName(t *testing.T) {
 	}
 }
 
-// D-10: only a read that finds an optional prompt in neither layer makes
+// D-11: only a read that finds an optional prompt in neither layer makes
 // it absent. Prompts that cannot be listed, or a read that fails
 // otherwise, are a check problem and refuse the call before its first
 // turn, with nothing absent.

@@ -18,8 +18,9 @@ import (
 	"github.com/igor1309/ai-labs/agister/internal/domain/run"
 
 	// fresh is the session the fake starts.
-	supervisor "github.com/igor1309/ai-labs/agister/internal/adapters/runtime/supervisor"
-	"github.com/igor1309/ai-labs/agister/internal/adapters/system/systemtest"
+	"github.com/igor1309/ai-labs/gokit/clocktest"
+	supervisor "github.com/igor1309/ai-labs/gokit/supervisor"
+	"github.com/igor1309/ai-labs/gokit/supervisor/supervisortest"
 )
 
 // The fake this package builds is removed when its tests end.
@@ -33,12 +34,12 @@ const fake = "pi"
 // lookup times out unless a test advances a clock of its own, and no grace
 // passes.
 func stillSupervisor() supervisor.Runtime {
-	return stillOver(runtimetest.InProcess{})
+	return stillOver(runtimetest.InProcess{Groups: supervisortest.NewGroups()})
 }
 
 // stillOver is stillSupervisor starting through starter.
 func stillOver(starter runtimetest.InProcess) supervisor.Runtime {
-	return supervisor.Runtime{Starter: starter, Timer: systemtest.NewClock(time.Date(2026, 10, 3, 12, 0, 0, 0, time.UTC)).Timer}
+	return supervisor.Runtime{Starter: starter, Timer: clocktest.NewClock(time.Date(2026, 10, 3, 12, 0, 0, 0, time.UTC)).Timer}
 }
 
 const fresh = "3b0c9a52-6f1e-4d8a-9c47-0e2f5d8b1a63"
@@ -76,7 +77,7 @@ func session(t *testing.T, root, id, cwd string) {
 // under the real supervisor.
 func TestConformance(t *testing.T) {
 	t.Parallel()
-	clock := systemtest.NewClock(time.Date(2026, 10, 3, 12, 0, 0, 0, time.UTC))
+	clock := clocktest.NewClock(time.Date(2026, 10, 3, 12, 0, 0, 0, time.UTC))
 	root, cwd := t.TempDir(), t.TempDir()
 	session(t, root, "7d1c2a4e-0000-4000-8000-000000000001", cwd)
 	runtimetest.Conformance(t, runtimetest.Subject{

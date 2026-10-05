@@ -99,7 +99,18 @@
 - **Rests on:** none
 - **Follow-ups:** none
 
-## D-10: How Agister tells that an optional prompt is absent
+## D-10: May LAB-66 edit the recorded review prompts?
+
+- **Status:** Owner
+- **Asked by:** workflow run 20261005T120632Z-10c77a (code_review), judge item "The change rewrites six recorded review prompts that are owner-controlled"
+- **Question:** do you approve the LAB-66 policy edits to the six recorded prompts (code-review-tests, -adr, -adversarial, -architecture, -clarity, -judge)?
+- **Options:** (a) approve them as the intended LAB-66 change and keep them; (b) restore the recorded prompts and send the policy changes to the owner as a separate decision; (c) keep some edits and restore the rest.
+- **Excluded:** (b), (c): the edits are the change the owner asked for. LAB-66 is the owner's issue, recommending the tests prompt rewrite; the owner decided that reviewers never run tests and that this rule lives in the reviewer prompts.
+- **Decision:** (a). All six prompt edits stay.
+- **Rests on:** none
+- **Follow-ups:** none
+
+## D-11: How Agister tells that an optional prompt is absent
 
 - **Status:** Owner
 - **Asked by:** workflow run 20261003T130421Z-aa12ef (code_review), judge item "Absence is inferred from listing membership and a name-keyed map, and each edge leaks"; advisor run 20261003T130940Z-6a1ce4 answered `owner`

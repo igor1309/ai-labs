@@ -244,7 +244,7 @@ func TestAnOptionalPromptIsShownAsOptionalFoundOrNot(t *testing.T) {
 	}
 }
 
-// ADR-019 rule 1, D-10: a directory at an optional prompt's path is not a
+// ADR-019 rule 1, D-11: a directory at an optional prompt's path is not a
 // prompt neither layer has. check reports it as a broken prompt that
 // refuses the process, and a call of it is refused before its first turn,
 // with no absent prompt on its record.
@@ -277,7 +277,7 @@ func TestADirectoryAtAnOptionalPromptsPathRefusesTheCall(t *testing.T) {
 	}
 }
 
-// ADR-019 rule 1, D-10: nor is a dangling symlink at the repository's
+// ADR-019 rule 1, D-11: nor is a dangling symlink at the repository's
 // prompts folder or at the prompt's file, with home lacking the prompt.
 // check reports it, and a call of it is refused before its first turn,
 // with no absent prompt recorded. A folder that cannot be listed stops

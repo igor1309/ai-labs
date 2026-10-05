@@ -2,7 +2,7 @@
 
 Candidate: the branch head. Review round 2 (`codex exec` fallback,
 because Agister's codex mapping verifies no primitive for codex 0.160.0)
-found two defects against ADR-019 and D-10. Fix both. Do not ban
+found two defects against ADR-019 and D-11. Fix both. Do not ban
 duplicate input names.
 
 ## 1. A dangling symlink is not "not found"

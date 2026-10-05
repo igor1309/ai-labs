@@ -13,7 +13,7 @@ import (
 	"strings"
 
 	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/runtimetest/fakeoutput"
-	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/runtimetest/fakeproc"
+	"github.com/igor1309/ai-labs/gokit/fakeproc"
 )
 
 // Main is the fake as the process p; it returns the code it exits with.

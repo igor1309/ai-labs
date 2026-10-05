@@ -4,9 +4,9 @@ import (
 	"context"
 
 	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/codex"
-	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/supervisor"
 	"github.com/igor1309/ai-labs/agister/internal/app"
 	"github.com/igor1309/ai-labs/agister/internal/domain/run"
+	"github.com/igor1309/ai-labs/gokit/supervisor"
 )
 
 // CodexSupervisor is the process dependency this transport consumes.
@@ -19,7 +19,7 @@ type CodexSupervisor interface {
 type CodexTransport struct{ Supervisor CodexSupervisor }
 
 func (t CodexTransport) Run(ctx context.Context, spec codex.Spec, sink codex.Sink, onLine func(string)) codex.Evidence {
-	e := t.Supervisor.Run(ctx, supervisor.Spec{Command: spec.Command, Args: spec.Args, Dir: spec.Dir, Stdin: spec.Stdin, Timeout: spec.Timeout, KillGrace: spec.KillGrace}, sink, onLine)
+	e := t.Supervisor.Run(ctx, supervisor.Spec{Command: spec.Command, Args: spec.Args, Dir: spec.Dir, Stdin: spec.Stdin, Timeout: spec.Timeout, KillGrace: spec.KillGrace}, supervisorSink{sink}, onLine)
 	var exit *codex.Exit
 	if e.Exit != nil {
 		exit = &codex.Exit{Code: e.Exit.Code, Signal: e.Exit.Signal}

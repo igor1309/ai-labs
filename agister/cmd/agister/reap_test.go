@@ -15,12 +15,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/supervisor"
-	"github.com/igor1309/ai-labs/agister/internal/adapters/system/systemtest"
 	"github.com/igor1309/ai-labs/agister/internal/app"
 	"github.com/igor1309/ai-labs/agister/internal/cli"
 	"github.com/igor1309/ai-labs/agister/internal/contract"
 	domain "github.com/igor1309/ai-labs/agister/internal/domain/run"
+	"github.com/igor1309/ai-labs/gokit/clocktest"
+	"github.com/igor1309/ai-labs/gokit/supervisor"
 )
 
 // eventually polls until check holds. Only the test that SIGKILLs a real
@@ -223,7 +223,7 @@ func TestNextCallReapsWhatAKilledRunLeftBehind(t *testing.T) {
 	// passes its timeout). It is submitted in process so the reap it starts
 	// can be awaited.
 	const timeout = 7 * time.Minute
-	clock := systemtest.NewClock(time.Date(2026, 10, 3, 12, 0, 0, 0, time.UTC))
+	clock := clocktest.NewClock(time.Date(2026, 10, 3, 12, 0, 0, 0, time.UTC))
 	config := cli.Config{Home: home, Cwd: repo}
 	composed := on(config, timeoutOn(clock, timeout))
 	client, background, err := composed.wire(config)
@@ -361,7 +361,7 @@ verify:
 	// The process that is killed: its command's timeout is on a clock that
 	// never moves, so only the test ends the command.
 	const timeout = 40 * time.Second
-	clock := systemtest.NewClock(time.Date(2026, 10, 3, 12, 0, 0, 0, time.UTC))
+	clock := clocktest.NewClock(time.Date(2026, 10, 3, 12, 0, 0, 0, time.UTC))
 	config := cli.Config{Home: home, Cwd: repo}
 	killed := on(config, timeoutOn(clock, timeout))
 	victim, _, err := killed.wire(config)

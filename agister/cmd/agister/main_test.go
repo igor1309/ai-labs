@@ -25,10 +25,11 @@ import (
 	"github.com/igor1309/ai-labs/agister/internal/adapters/fsruns"
 	"github.com/igor1309/ai-labs/agister/internal/adapters/git/gittest"
 	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/runtimetest"
-	"github.com/igor1309/ai-labs/agister/internal/adapters/system/systemtest"
 	"github.com/igor1309/ai-labs/agister/internal/app"
 	"github.com/igor1309/ai-labs/agister/internal/cli"
 	"github.com/igor1309/ai-labs/agister/internal/contract"
+	"github.com/igor1309/ai-labs/gokit/clocktest"
+	"github.com/igor1309/ai-labs/gokit/supervisor/supervisortest"
 )
 
 // The CLI this package builds, and the fake the test that kills it builds,
@@ -78,7 +79,7 @@ var starters sync.Map
 
 // startThrough makes every composition over home in this test start its
 // runtimes through starter: fakes with an environment, or reports, of the
-// test's own.
+// test's own. Its Groups is the composition's (inProcess).
 func startThrough(t testing.TB, home string, starter runtimetest.InProcess) {
 	starters.Store(home, starter)
 	t.Cleanup(func() { starters.Delete(home) })
@@ -152,18 +153,24 @@ var stillAt = time.Date(2026, 10, 3, 12, 0, 0, 0, time.UTC)
 // store signals through appends of its own, as a process of its own does.
 // Its turns and commands wait, and its observing polls, on a clock that
 // never moves, not on the wall clock: such a wait passes only on a clock
-// the test advances (on). It runs over the fake of git the test gave its
-// home, or one that knows no repository; a home on real git keeps the
+// the test advances (on). Its runtimes and its commands, a starter the
+// test gave its home (startThrough) among them, number their process
+// groups from one supervisortest.Groups: no two of its processes share a
+// group, as no two of a machine's do. It runs over the fake of git the
+// test gave its home, or one that knows no repository; a home on real git keeps the
 // process's git adapters, whose worktree coordinator alone keeps the
 // process's timer: the kernel gives no event when a lock file is let go,
 // so the next attempt at one is due in real time.
 func inProcess(config cli.Config) composition {
 	c := process(config, fsruns.NewAppends())
-	c.starter, c.commands = runtimetest.InProcess{}, runtimetest.InProcess{}
-	still := systemtest.NewClock(stillAt)
+	groups := supervisortest.NewGroups()
+	c.starter, c.commands = runtimetest.InProcess{Groups: groups}, runtimetest.InProcess{Groups: groups}
+	still := clocktest.NewClock(stillAt)
 	c.timer, c.poll = still.Timer, still.Timer
 	if starter, ok := starters.Load(config.Home); ok {
-		c.starter = starter.(runtimetest.InProcess)
+		starter := starter.(runtimetest.InProcess)
+		starter.Groups = groups
+		c.starter = starter
 	}
 	switch fake, _ := gits.Load(config.Home); fake := fake.(type) {
 	case realGit:
@@ -187,8 +194,8 @@ type timer = func(wait time.Duration) (fired <-chan time.Time, stop func())
 // timeoutOn is a timer whose waits of timeout are on clock, so the test
 // advances a turn's timeout itself; every other wait, a grace or a
 // staleness limit, never passes.
-func timeoutOn(clock *systemtest.Clock, timeout time.Duration) timer {
-	still := systemtest.NewClock(clock.Now())
+func timeoutOn(clock *clocktest.Clock, timeout time.Duration) timer {
+	still := clocktest.NewClock(clock.Now())
 	return func(wait time.Duration) (<-chan time.Time, func()) {
 		if wait == timeout {
 			return clock.Timer(wait)

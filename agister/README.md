@@ -19,6 +19,11 @@ bin/agister runs show <run-id>
 bin/agister pages           # a page of what the settings can run
 ```
 
+Agister's generic code (the process supervisor, the manual clock, the
+in-process fakes and the test-discipline check) is the `gokit` module next
+to it, [../gokit](../gokit/README.md), which `go.mod` points at with a
+`replace`: build from a checkout of the repository.
+
 `agister pages` serves a local page that shows the workflows and processes
 a repository's settings can run and what they are made of:
 [pages/README.md](pages/README.md).
@@ -142,7 +147,7 @@ A run whose checkout has no changes records `NO_CHANGES` and has no
 
 ## Test
 
-The commands are in [AGENTS.md](AGENTS.md). CI:
+The commands are in [AGENTS.md](AGENTS.md); they check `gokit` too. CI:
 `.github/workflows/agister-core.yml`.
 
 Known gaps: [docs/deferred.md](docs/deferred.md). Ideas:
