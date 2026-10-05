@@ -446,6 +446,37 @@ func TestReferringToAnOptionalPromptIsAProblemOfTheProcess(t *testing.T) {
 	}
 }
 
+// Rule 5 with a repeated name: of two inputs named go, the optional prompt
+// may supply the text a later input refers to, whichever comes first. With
+// one input of the name, required, check has nothing to say.
+func TestReferringToARepeatedNameWithAnOptionalPromptIsAProblemOfTheProcess(t *testing.T) {
+	t.Parallel()
+	required := "    go: {source: prompt, name: review}\n"
+	optional := "    go: {source: prompt, name: go_tests, optional: true}\n"
+	refers := "    other: {source: git.diff, base: \"${value.go}\", head: \"${param.candidate}\"}\n"
+	want := "input.values.other: refers to ${value.go}, an optional prompt, which may be missing"
+	for name, values := range map[string]string{
+		"required, then optional": required + optional + refers,
+		"optional, then required": optional + required + refers,
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			h := newHarness()
+			prompted(h, reviewPrompt)
+			h.defs.docs[definition.KindProcess]["p"] = promptingProcess(values)
+			if problems := messages(checkOf(t, h, false).Problems); len(problems) != 1 || !strings.HasPrefix(problems[0], "process p: ") || !strings.Contains(problems[0], want) {
+				t.Fatalf("problems = %q, want one of process p with %q", problems, want)
+			}
+		})
+	}
+	h := newHarness()
+	prompted(h, reviewPrompt)
+	h.defs.docs[definition.KindProcess]["p"] = promptingProcess(required + refers)
+	if problems := messages(checkOf(t, h, false).Problems); len(problems) != 0 {
+		t.Fatalf("unique name: problems = %q", problems)
+	}
+}
+
 // Rule 4: check --tree links the process to its optional prompt, found
 // or not, as optional.
 func TestCheckLinksAProcessToItsOptionalPrompt(t *testing.T) {

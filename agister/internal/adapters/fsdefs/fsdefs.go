@@ -123,6 +123,17 @@ func (s Store) Read(_ context.Context, kind definition.Kind, name string) (defin
 				return doc, fmt.Errorf("cannot be resolved: %v", err)
 			}
 		}
+		// Nor is a prompt whose file or folder is a dangling symlink: an
+		// optional one would be left out of the call where the settings
+		// are broken (ADR-019 rule 1, D-10).
+		if kind == definition.KindPrompt {
+			if _, lerr := os.Lstat(path); lerr == nil {
+				return doc, fmt.Errorf("cannot be resolved: %v", err)
+			}
+			if err := resolvable(filepath.Dir(path)); err != nil {
+				return doc, err
+			}
+		}
 		return doc, fmt.Errorf("%w (expected %s)", errNotFound, path)
 	}
 	if err != nil {
@@ -166,8 +177,16 @@ func (s Store) List(_ context.Context, kind definition.Kind) ([]string, error) {
 		}
 		return []string{string(kind)}, nil
 	}
-	entries, err := os.ReadDir(filepath.Join(s.Dir, string(kind)))
+	folder := filepath.Join(s.Dir, string(kind))
+	entries, err := os.ReadDir(folder)
 	if errors.Is(err, fs.ErrNotExist) {
+		// A prompts folder that is a dangling symlink cannot be listed:
+		// read as none, it would make every optional prompt absent.
+		if kind == definition.KindPrompt {
+			if err := resolvable(folder); err != nil {
+				return nil, err
+			}
+		}
 		return nil, nil
 	}
 	if err != nil {
@@ -273,6 +292,19 @@ func (s Store) Write(_ context.Context, kind definition.Kind, name string, data 
 		return "", false, err
 	}
 	return path, true, nil
+}
+
+// resolvable fails for a folder that exists as an entry but cannot be
+// followed, a dangling symlink; a folder that does not exist at all is no
+// failure.
+func resolvable(folder string) error {
+	if _, err := os.Lstat(folder); err != nil {
+		return nil
+	}
+	if _, err := os.Stat(folder); errors.Is(err, fs.ErrNotExist) {
+		return fmt.Errorf("%s cannot be resolved: %v", folder, err)
+	}
+	return nil
 }
 
 func digest(data []byte) string {

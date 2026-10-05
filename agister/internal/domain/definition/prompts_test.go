@@ -131,6 +131,32 @@ func TestNoInputRefersToAnOptionalPrompt(t *testing.T) {
 	}
 }
 
+// Rule 5 with names that repeat: a later input of the name supplies its
+// text, so a reference is a problem when any input of that name declared
+// before it is an optional prompt, in either order. One declared after the
+// reference is not referred to.
+func TestNoInputRefersToAnOptionalPromptOfARepeatedName(t *testing.T) {
+	t.Parallel()
+	refers := "    other: {source: git.diff, base: \"${value.rules}\"}\n"
+	required := "    rules: {source: prompt, name: review}\n"
+	optional := "    rules: {source: prompt, name: go_tests, optional: true}\n"
+	want := "\n  input.values.other: refers to ${value.rules}, an optional prompt, which may be missing"
+	for name, values := range map[string]string{
+		"required, then optional": required + optional + refers,
+		"optional, then required": optional + required + refers,
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			if _, err := definition.ParseProcess(doc(definition.KindProcess, "p", promptProcess(values))); err == nil || !strings.Contains(err.Error(), want) {
+				t.Fatalf("err = %v, want %q", err, want)
+			}
+		})
+	}
+	if _, err := definition.ParseProcess(doc(definition.KindProcess, "p", promptProcess(required+refers+optional))); err != nil {
+		t.Fatalf("an optional prompt declared after the reference: %v", err)
+	}
+}
+
 // A workflow's values are resolved once for every node; it names no
 // prompt: the process that needs one does.
 func TestAWorkflowValueIsNoPrompt(t *testing.T) {

@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -195,6 +196,68 @@ func TestPromptsAreMarkdownFiles(t *testing.T) {
 	if _, err := layered.Read(ctx, definition.KindPrompt, "style"); err == nil || err.Error() != want {
 		t.Fatalf("missing = %v, want %q", err, want)
 	}
+}
+
+// A repository's prompts folder, or a prompt's file in it, that is a
+// dangling symlink is not a prompt neither layer has (ADR-019 rule 1,
+// D-10): reading the prompt fails, naming the link, and is not ErrNotFound;
+// a folder that is such a link cannot be listed. A folder or file that
+// simply does not exist stays not found.
+//
+// Contract test: the settings store against the real filesystem.
+func TestADanglingPromptLinkIsNotAbsent(t *testing.T) {
+	t.Parallel()
+	for name, c := range map[string]struct {
+		plant  func(folder string) (link string, err error)
+		listed bool
+	}{
+		"folder": {plant: func(folder string) (string, error) {
+			return folder, os.Symlink(filepath.Join(filepath.Dir(folder), "nowhere"), folder)
+		}, listed: false},
+		"file": {plant: func(folder string) (string, error) {
+			link := filepath.Join(folder, "review.md")
+			if err := os.MkdirAll(folder, 0o700); err != nil {
+				return link, err
+			}
+			return link, os.Symlink(filepath.Join(folder, "nowhere.md"), link)
+		}, listed: true},
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			ctx := context.Background()
+			global, project := fsdefs.Store{Dir: t.TempDir()}, fsdefs.Store{Dir: t.TempDir()}
+			link, err := c.plant(filepath.Join(project.Dir, "prompts"))
+			if err != nil {
+				t.Fatal(err)
+			}
+			layered := fsdefs.Layered{Global: global, Project: &project}
+			names, err := layered.List(ctx, definition.KindPrompt)
+			if c.listed && (err != nil || !reflect.DeepEqual(names, []string{"review"})) || !c.listed && (err == nil || !strings.Contains(err.Error(), link)) {
+				t.Fatalf("listed = %v, %v", names, err)
+			}
+			doc, err := layered.Read(ctx, definition.KindPrompt, "review")
+			if err == nil || errors.Is(err, definition.ErrNotFound) || !strings.Contains(err.Error(), "cannot be resolved") || !doc.Source.Project {
+				t.Fatalf("read = %+v, %v", doc.Source, err)
+			}
+		})
+	}
+	t.Run("missing", func(t *testing.T) {
+		t.Parallel()
+		ctx := context.Background()
+		global, project := fsdefs.Store{Dir: t.TempDir()}, fsdefs.Store{Dir: t.TempDir()}
+		layered := fsdefs.Layered{Global: global, Project: &project}
+		for _, state := range []string{"no folder", "an empty folder"} {
+			if names, err := layered.List(ctx, definition.KindPrompt); err != nil || len(names) != 0 {
+				t.Fatalf("%s: listed = %v, %v", state, names, err)
+			}
+			if _, err := layered.Read(ctx, definition.KindPrompt, "review"); !errors.Is(err, definition.ErrNotFound) {
+				t.Fatalf("%s: read = %v", state, err)
+			}
+			if err := os.MkdirAll(filepath.Join(project.Dir, "prompts"), 0o700); err != nil {
+				t.Fatal(err)
+			}
+		}
+	})
 }
 
 // held reports whether another descriptor cannot take the store's write lock

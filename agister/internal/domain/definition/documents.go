@@ -581,10 +581,13 @@ func hasValue(values []Value, name string) bool {
 	return false
 }
 
+// optionalValue reports whether any of values named name is an optional
+// prompt. Names may repeat, and at run time a later input of the name
+// supplies its text, so the first of them alone does not say.
 func optionalValue(values []Value, name string) bool {
 	for _, value := range values {
-		if value.Name == name {
-			return value.Optional()
+		if value.Name == name && value.Optional() {
+			return true
 		}
 	}
 	return false
