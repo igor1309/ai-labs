@@ -192,6 +192,7 @@ func TestSettingsReturnsOnlySettingsFiles(t *testing.T) {
 	write(t, filepath.Join(dir, "agents", "a.toml"), `name = "a"`)
 	write(t, filepath.Join(dir, "verifies", "repo.yaml"), "name: repo")
 	write(t, filepath.Join(dir, "prompts", "review.md"), "Review it.")
+	// Skills are not settings files here: /api/skills reads them (D-16).
 	write(t, filepath.Join(dir, "skills", "plan", "SKILL.md"), skillMD("plan", "P."))
 	write(t, filepath.Join(dir, "skills", "plan", "notes.txt"), "beside")
 	write(t, filepath.Join(dir, "skills", "big", "SKILL.md"), strings.Repeat("x", fileCap+1))
@@ -214,8 +215,6 @@ func TestSettingsReturnsOnlySettingsFiles(t *testing.T) {
 		"agents/a.toml":           `name = "a"`,
 		"verifies/repo.yaml":      "name: repo",
 		"prompts/review.md":       "Review it.",
-		"skills/plan/SKILL.md":    skillMD("plan", "P."),
-		"skills/plan/notes.txt":   "beside",
 		"processes/nested/p.yaml": "name: p",
 	}
 	if !reflect.DeepEqual(got.Files, want) || got.Path != repo || got.Dir != dir {
@@ -498,26 +497,67 @@ func TestMainNeedsARunStore(t *testing.T) {
 	}
 }
 
-// ADR-021 amendment of ADR-011 rule 5: a layer's skills are settings, read
-// as any document; the page sets the repo's over home's.
-func TestSettingsCarryEachLayersSkills(t *testing.T) {
+// unreadable writes a file at path that cannot be read.
+func unreadable(t *testing.T, path string) {
+	t.Helper()
+	write(t, path, "locked")
+	if err := os.Chmod(path, 0); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// D-16, ADR-011 rule 9: /api/settings reads no file of either layer's
+// skills/, so one that cannot be read does not fail it; the skills come
+// from /api/skills, which reads each skill's SKILL.md alone.
+func TestSettingsEndpointDoesNotReadSkillFiles(t *testing.T) {
 	t.Parallel()
 	user := t.TempDir()
 	home := filepath.Join(user, ".agister")
-	write(t, filepath.Join(home, "skills", "plan", "SKILL.md"), skillMD("plan", "Home plan."))
+	write(t, filepath.Join(home, "agents", "h.toml"), `name = "h"`)
 	write(t, filepath.Join(home, "skills", "go", "SKILL.md"), skillMD("go", "Go."))
+	write(t, filepath.Join(home, "skills", "go", "notes.txt"), "beside")
 	repo := filepath.Join(user, "repo")
-	write(t, filepath.Join(repo, ".agister", "skills", "plan", "SKILL.md"), skillMD("plan", "Repo plan."))
+	dir := filepath.Join(repo, ".agister")
+	write(t, filepath.Join(dir, "agents", "r.toml"), `name = "r"`)
+	write(t, filepath.Join(dir, "skills", "plan", "SKILL.md"), skillMD("plan", "Plan."))
+	unreadable(t, filepath.Join(dir, "skills", "plan", "locked.txt"))
 
+	var reads []string
+	read := func(path string) ([]byte, error) {
+		reads = append(reads, path)
+		return os.ReadFile(path)
+	}
+	h := handler(home, noChoose(t), owners(), SkillHomes{}, read)
 	var got struct{ Files, HomeFiles map[string]string }
-	if code := get(t, Handler(home, noChoose(t), owners(), SkillHomes{}), "127.0.0.1", "/api/settings?path="+q(repo), &got); code != 200 {
+	if code := get(t, h, "127.0.0.1", "/api/settings?path="+q(repo), &got); code != 200 {
 		t.Fatalf("status %d", code)
 	}
-	if !reflect.DeepEqual(got.Files, map[string]string{"skills/plan/SKILL.md": skillMD("plan", "Repo plan.")}) ||
-		!reflect.DeepEqual(got.HomeFiles, map[string]string{
-			"skills/plan/SKILL.md": skillMD("plan", "Home plan."),
-			"skills/go/SKILL.md":   skillMD("go", "Go."),
-		}) {
+	if !reflect.DeepEqual(got.Files, map[string]string{"agents/r.toml": `name = "r"`}) ||
+		!reflect.DeepEqual(got.HomeFiles, map[string]string{"agents/h.toml": `name = "h"`}) {
 		t.Errorf("got %+v", got)
+	}
+	inSkills := func() []string {
+		var out []string
+		for _, path := range reads {
+			if strings.Contains(path, string(filepath.Separator)+"skills"+string(filepath.Separator)) {
+				out = append(out, path)
+			}
+		}
+		return out
+	}
+	if r := inSkills(); r != nil {
+		t.Errorf("/api/settings read %q", r)
+	}
+
+	reads = nil
+	var skills SkillsReply
+	if code := get(t, h, "127.0.0.1", "/api/skills?path="+q(repo), &skills); code != 200 {
+		t.Fatalf("skills: status %d", code)
+	}
+	if want := []string{filepath.Join(dir, "skills", "plan", "SKILL.md"), filepath.Join(home, "skills", "go", "SKILL.md")}; !reflect.DeepEqual(inSkills(), want) {
+		t.Errorf("/api/skills read %q, want %q", inSkills(), want)
+	}
+	if len(skills.Settings) != 2 || skills.Settings[0].Name != "plan" || skills.Settings[0].Checks.Passed {
+		t.Errorf("settings skills: %+v", skills.Settings)
 	}
 }

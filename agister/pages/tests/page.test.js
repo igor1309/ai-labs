@@ -78,6 +78,7 @@ function page({ storage = fakeStorage(), answers = {} } = {}) {
   const asked = (prefix) => calls.filter((u) => u === prefix || u.startsWith(`${prefix}?`)).length;
   const fallback = {
     'api/settings': () => respond({ path: '~', dir: '/u/.agister', home: true, files: {} }),
+    'api/skills': () => respond({ path: '~', home: true, adapters: [], folders: [], settings: [] }),
     'api/runs': () => respond({ runs: [call, workflow], total: 2, skipped: 0 }),
     'api/runs/compare': () => respond(compare),
     'api/runs/call-1': () => respond({ summary: call, record: callRecord }),
@@ -499,21 +500,22 @@ test('a process card in a repo shows the layer each prompt comes from, each prom
 // ADR-021, README Settings: a process card lists the skills its call gets,
 // its own then its agent's, each once, with the layer each comes from in a
 // repo, and one these settings do not have marked missing. The agents'
-// table shows each agent's skills.
+// table shows each agent's skills. The skills are the server's inventory
+// (api/skills' settings), never the settings files (D-16).
 test('a process card and the agents table list skills, each once, with their layer or marked missing', async () => {
-  const skill = (name) => `---\nname: ${name}\ndescription: D.\n---\n`;
+  const skill = (scope, name) => ({ scope, name, path: `/${scope}/skills/${name}`, description: 'D.', checks: { passed: true } });
   const homeFiles = {
     'agents/opus.toml': `${agent['agents/opus.toml']}skills = ["go", "plan", "gone"]\n`,
     'agents/sol.toml': 'name = "sol"\nruntime = "codex"\n',
     'processes/review.yaml': 'name: review\nuses: agent:opus\nskills: [plan, style, ghost]\ninput:\n  instruction: Review.\n',
-    'skills/plan/SKILL.md': skill('plan'),
-    'skills/go/SKILL.md': skill('go'),
-    'skills/style/SKILL.md': skill('style'),
   };
-  const files = { 'skills/plan/SKILL.md': skill('plan') };
+  const settings = [skill('repo', 'plan'), skill('home', 'go'), skill('home', 'plan'), skill('home', 'style')];
   const p = page({
     storage: fakeStorage({ 'agister-pages:current': '/r' }),
-    answers: { 'api/settings': () => respond({ path: '/r', dir: '/r/.agister', files, homeFiles }) },
+    answers: {
+      'api/settings': () => respond({ path: '/r', dir: '/r/.agister', files: {}, homeFiles }),
+      'api/skills': () => respond({ path: '/r', home: false, adapters: [], folders: [], settings }),
+    },
   });
   await p.started;
   const facts = p.$('dashboard').querySelector('article#process-review div.facts').children;
@@ -532,7 +534,10 @@ test('a process card and the agents table list skills, each once, with their lay
   assert.equal(cell('sol').textContent, '—');
 
   // Agister home alone: no layers, the same missing marks.
-  const tilde = page({ answers: { 'api/settings': () => respond({ path: '~', dir: '/u/.agister', home: true, files: homeFiles }) } });
+  const tilde = page({ answers: {
+    'api/settings': () => respond({ path: '~', dir: '/u/.agister', home: true, files: homeFiles }),
+    'api/skills': () => respond({ path: '~', home: true, adapters: [], folders: [], settings: settings.filter((s) => s.scope === 'home') }),
+  } });
   await tilde.started;
   const own = tilde.$('dashboard').querySelector('article#process-review div.facts').children;
   assert.equal(own[own.findIndex((n) => n.textContent === 'skills') + 1].textContent, 'plan, style, ghost (missing skill), go, gone (missing skill)');

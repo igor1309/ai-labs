@@ -326,33 +326,50 @@ test('a process\'s prompts are found in the composed settings, or marked outside
 
 // ADR-021: an agent and a process name skills, each a folder of
 // skills/, found in the repo before home; a process's call gets its own,
-// then its agent's, each once.
+// then its agent's, each once. The skills are the server's inventory of
+// both layers (api/skills' settings), not the folder's files (D-16): one
+// that fails its checks is there all the same.
 test('an agent\'s and a process\'s skills are found in the composed settings, or marked outside', async () => {
-  const skill = (name) => ({ 'SKILL.md': `---\nname: ${name}\ndescription: D.\n---\n` });
+  const passed = { passed: true };
+  const failed = { passed: false, failed: ['SKILL.md is missing'] };
+  const skill = (scope, name, more = {}) => ({ scope, name, path: `/${scope}/skills/${name}`, description: 'D.', checks: passed, ...more });
+  const inventory = [
+    skill('repo', 'plan'),
+    skill('home', 'go'), skill('home', 'plan'),
+    skill('home', 'style', { state: 'missing', description: undefined, checks: failed }),
+  ];
   const home = {
     agents: { 'opus.toml': 'name = "opus"\nruntime = "claude-code"\nskills = ["go", "plan", "gone", "go"]\n' },
     processes: { 'review.yaml': 'name: review\nuses: agent:opus\nskills: [plan, style, ghost]\ninput:\n  instruction: Review.\n' },
-    skills: { plan: skill('plan'), go: skill('go'), style: { 'notes.txt': 'only a note' }, 'loose.md': 'a file is no skill' },
+    // Files under skills/ are not what the skills are.
+    skills: { ghost: { 'SKILL.md': '---\nname: ghost\ndescription: D.\n---\n' } },
   };
-  const repo = { skills: { plan: skill('plan') } };
-  const m = await C.loadComposed(memDir('.agister', home), memDir('.agister', repo));
+  const m = await C.loadComposed(memDir('.agister', home), memDir('.agister', {}), inventory);
   assert.deepEqual(m.skills.map((s) => [s.name, s.source, !!s.overrides, s.usedBy]), [
     ['go', 'home', false, ['review']],
     ['plan', 'repo', true, ['review']],
     ['style', 'home', false, ['review']],
   ]);
+  const found = (name, source, overrides, checks = passed, state = null, description = 'D.') => ({
+    name, outside: false, source, overrides, path: `/${source}/skills/${name}`, state, description, checks,
+  });
   assert.deepEqual(m.agents[0].skills, [
-    { name: 'go', outside: false, source: 'home', overrides: false },
-    { name: 'plan', outside: false, source: 'repo', overrides: true },
+    found('go', 'home', false),
+    found('plan', 'repo', true),
     { name: 'gone', outside: true },
   ]);
   const review = m.processes[0];
   assert.deepEqual(review.skills, [
-    { name: 'plan', outside: false, source: 'repo', overrides: true },
-    { name: 'style', outside: false, source: 'home', overrides: false },
+    found('plan', 'repo', true),
+    found('style', 'home', false, failed, 'missing', null),
     { name: 'ghost', outside: true },
   ]);
   assert.deepEqual(review.callSkills.map((x) => x.name), ['plan', 'style', 'ghost', 'go', 'gone']);
+
+  // One layer alone takes its inventory as it is.
+  const tilde = await C.loadAgister(memDir('.agister', home), inventory.filter((s) => s.scope === 'home'));
+  assert.deepEqual(tilde.agents[0].skills.map((x) => [x.name, x.outside, x.path]),
+    [['go', false, '/home/skills/go'], ['plan', false, '/home/skills/plan'], ['gone', true, undefined]]);
 
   const alone = await C.loadAgister(memDir('.agister', { agents: home.agents, processes: home.processes }));
   assert.deepEqual(alone.agents[0].skills.map((x) => [x.name, x.outside]), [['go', true], ['plan', true], ['gone', true]]);

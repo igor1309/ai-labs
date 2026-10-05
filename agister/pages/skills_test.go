@@ -581,7 +581,8 @@ func TestASettingsSkillFailsEachCheckAndPassesWhenWhole(t *testing.T) {
 	write(t, filepath.Join(dir, "elsewhere", "SKILL.md"), skillMD("linked", "L."))
 	symlink(t, filepath.Join(dir, "elsewhere", "SKILL.md"), filepath.Join(skills, "linked", "SKILL.md"))
 	mkdir(t, filepath.Join(skills, "dir", "SKILL.md"))
-	// A symlinked skill folder is not followed, as the settings files are not.
+	// A symlinked skill folder is listed, as Agister lists it, and fails;
+	// it is not followed (D-16).
 	symlink(t, filepath.Join(dir, "elsewhere"), filepath.Join(skills, "followed"))
 	write(t, filepath.Join(skills, "loose.md"), "a file in skills/ is no skill")
 
@@ -612,6 +613,7 @@ func TestASettingsSkillFailsEachCheckAndPassesWhenWhole(t *testing.T) {
 		"big":      {SkillTooLarge, []string{"SKILL.md is over 256 KB"}},
 		"linked":   {SkillNotAFile, []string{"SKILL.md is not a regular file"}},
 		"dir":      {SkillNotAFile, []string{"SKILL.md is not a regular file"}},
+		"followed": {SkillLinkedFolder, []string{"the folder is a symbolic link: a skill is a folder holding its SKILL.md"}},
 	} {
 		s, ok := got[name]
 		if !ok {
@@ -626,8 +628,13 @@ func TestASettingsSkillFailsEachCheckAndPassesWhenWhole(t *testing.T) {
 	if s := got["whole"]; s.Description != "W." || s.Content != skillMD("whole", "W.") {
 		t.Errorf("whole: %+v", s)
 	}
-	if len(got) != 11 {
-		t.Errorf("listed %d skills, want 11 (no symlinked folder, no file): %v", len(got), got)
+	if s := got["followed"]; s.Link != filepath.Join(dir, "elsewhere") || s.Content != "" {
+		t.Errorf("followed: %+v", s)
+	}
+	// 12, not 11 as before D-16: the symlinked folder is listed now, as a
+	// broken skill; a file is still none.
+	if len(got) != 12 {
+		t.Errorf("listed %d skills, want 12 (no file): %v", len(got), got)
 	}
 	var want []string
 	for _, name := range []string{"broken", "extra", "no-desc", "no-front", "no-name", "renamed", "whole"} {
@@ -640,7 +647,8 @@ func TestASettingsSkillFailsEachCheckAndPassesWhenWhole(t *testing.T) {
 }
 
 // ADR-021 amendment of ADR-011 rule 5: /api/skills carries the skills of
-// each settings layer, the repo's first; ~ has home's only.
+// each settings layer, the repo's first, each with its state and checks as
+// decoded from the wire; ~ has home's only.
 func TestSkillsEndpointCarriesTheSettingsSkillsOfEachLayer(t *testing.T) {
 	t.Parallel()
 	root := realDir(t, t.TempDir())
@@ -650,23 +658,148 @@ func TestSkillsEndpointCarriesTheSettingsSkillsOfEachLayer(t *testing.T) {
 	write(t, filepath.Join(home, "skills", "go", "SKILL.md"), skillMD("go", "Go."))
 	repo := filepath.Join(root, "repo")
 	write(t, filepath.Join(repo, ".agister", "skills", "plan", "SKILL.md"), skillMD("plan", "Repo plan."))
+	write(t, filepath.Join(repo, ".agister", "skills", "torn", "notes.txt"), "no SKILL.md")
 	h := Handler(home, noChoose(t), owners(), SkillHomes{Home: user})
 
-	layers := func(path string) []string {
+	type layer struct {
+		Scope, Name, Description, State string
+		Passed                          bool
+		Failed                          []string
+	}
+	layers := func(path string) []layer {
 		var got SkillsReply
 		if code := get(t, h, "127.0.0.1", "/api/skills?path="+q(path), &got); code != 200 {
 			t.Fatalf("%s: status %d", path, code)
 		}
-		var out []string
+		var out []layer
 		for _, s := range got.Settings {
-			out = append(out, s.Scope+" "+s.Name+" "+s.Description)
+			out = append(out, layer{s.Scope, s.Name, s.Description, s.State, s.Checks.Passed, s.Checks.Failed})
 		}
 		return out
 	}
-	if got, want := layers(repo), []string{"repo plan Repo plan.", "home go Go.", "home plan Home plan."}; !reflect.DeepEqual(got, want) {
-		t.Errorf("repo: %q, want %q", got, want)
+	torn := layer{Scope: "repo", Name: "torn", State: SkillMissing, Failed: []string{
+		"SKILL.md is missing",
+		"holds notes.txt beside SKILL.md: a skill is its SKILL.md alone, and its other files are not given to a call",
+	}}
+	goSkill := layer{Scope: "home", Name: "go", Description: "Go.", Passed: true}
+	homePlan := layer{Scope: "home", Name: "plan", Description: "Home plan.", Passed: true}
+	if got, want := layers(repo), []layer{
+		{Scope: "repo", Name: "plan", Description: "Repo plan.", Passed: true}, torn, goSkill, homePlan,
+	}; !reflect.DeepEqual(got, want) {
+		t.Errorf("repo:\n got %+v\nwant %+v", got, want)
 	}
-	if got, want := layers("~"), []string{"home go Go.", "home plan Home plan."}; !reflect.DeepEqual(got, want) {
-		t.Errorf("~: %q, want %q", got, want)
+	if got, want := layers("~"), []layer{goSkill, homePlan}; !reflect.DeepEqual(got, want) {
+		t.Errorf("~:\n got %+v\nwant %+v", got, want)
+	}
+}
+
+// D-16, ADR-021 rule 1: a repo skill that is there goes over home's of the
+// same name whatever its state, as in Agister, which refuses the call
+// rather than fall back to home's; it shows its failed checks. Only a repo
+// skill that is absent leaves home's in effect.
+func TestSettingsSkillInventoryPreservesBrokenRepoOverride(t *testing.T) {
+	t.Parallel()
+	root := realDir(t, t.TempDir())
+	user := filepath.Join(root, "user")
+	home := filepath.Join(user, ".agister")
+	names := []string{"big", "empty", "blank", "bare", "linked", "linked-md", "absent"}
+	for _, name := range names {
+		write(t, filepath.Join(home, "skills", name, "SKILL.md"), skillMD(name, "Home's."))
+	}
+	repo := filepath.Join(root, "repo")
+	skills := filepath.Join(repo, ".agister", "skills")
+	write(t, filepath.Join(skills, "big", "SKILL.md"), skillMD("big", "Big.")+strings.Repeat("x", fileCap))
+	mkdir(t, filepath.Join(skills, "empty"))
+	write(t, filepath.Join(skills, "blank", "SKILL.md"), "")
+	write(t, filepath.Join(skills, "bare", "notes.txt"), "no SKILL.md")
+	write(t, filepath.Join(root, "shared", "linked", "SKILL.md"), skillMD("linked", "Shared."))
+	symlink(t, filepath.Join(root, "shared", "linked"), filepath.Join(skills, "linked"))
+	symlink(t, filepath.Join(root, "shared", "linked", "SKILL.md"), filepath.Join(skills, "linked-md", "SKILL.md"))
+	h := Handler(home, noChoose(t), owners(), SkillHomes{Home: user})
+
+	var reply SkillsReply
+	if code := get(t, h, "127.0.0.1", "/api/skills?path="+q(repo), &reply); code != 200 {
+		t.Fatalf("status %d", code)
+	}
+	// The skill in effect: the repo's when the repo lists one, else home's.
+	effective := map[string]SettingsSkill{}
+	for _, s := range reply.Settings {
+		if e, ok := effective[s.Name]; !ok || e.Scope != "repo" {
+			effective[s.Name] = s
+		}
+	}
+	beside := "holds notes.txt beside SKILL.md: a skill is its SKILL.md alone, and its other files are not given to a call"
+	for name, want := range map[string]struct {
+		scope, state string
+		failed       []string
+	}{
+		"big":       {"repo", SkillTooLarge, []string{"SKILL.md is over 256 KB"}},
+		"empty":     {"repo", SkillMissing, []string{"SKILL.md is missing"}},
+		"blank":     {"repo", "", []string{"no front matter"}},
+		"bare":      {"repo", SkillMissing, []string{"SKILL.md is missing", beside}},
+		"linked":    {"repo", SkillLinkedFolder, []string{"the folder is a symbolic link: a skill is a folder holding its SKILL.md"}},
+		"linked-md": {"repo", SkillNotAFile, []string{"SKILL.md is not a regular file"}},
+		"absent":    {"home", "", nil},
+	} {
+		s, ok := effective[name]
+		if !ok {
+			t.Errorf("%s: not listed", name)
+			continue
+		}
+		if s.Scope != want.scope || s.State != want.state || s.Checks.Passed != (want.failed == nil) || !reflect.DeepEqual(s.Checks.Failed, want.failed) {
+			t.Errorf("%s: %+v, want %s state %q failed %q", name, s, want.scope, want.state, want.failed)
+		}
+	}
+	if s := effective["absent"]; s.Path != filepath.Join(home, "skills", "absent") || s.Description != "Home's." {
+		t.Errorf("absent: %+v", s)
+	}
+	// Home's skills are listed beside the repo's, each passing.
+	for _, s := range reply.Settings {
+		if s.Scope == "home" && !s.Checks.Passed {
+			t.Errorf("home %s: %+v", s.Name, s)
+		}
+	}
+	if len(reply.Settings) != 2*len(names)-1 {
+		t.Errorf("listed %d settings skills, want %d", len(reply.Settings), 2*len(names)-1)
+	}
+}
+
+// D-16, ADR-011 rule 9: the inventory reads a settings skill's SKILL.md
+// and nothing else of it. Files beside it are named, failing its checks,
+// and never read, an unreadable one too; a SKILL.md that is too large or
+// lies outside its skill is listed and not read.
+func TestSettingsSkillInventoryReadsOnlySKILLMD(t *testing.T) {
+	t.Parallel()
+	dir := realDir(t, t.TempDir())
+	skills := filepath.Join(dir, "skills")
+	write(t, filepath.Join(skills, "plan", "SKILL.md"), skillMD("plan", "P."))
+	write(t, filepath.Join(skills, "plan", "notes.txt"), "beside")
+	unreadable(t, filepath.Join(skills, "plan", "locked.txt"))
+	write(t, filepath.Join(skills, "big", "SKILL.md"), skillMD("big", "B.")+strings.Repeat("x", fileCap))
+	write(t, filepath.Join(dir, "secret.md"), skillMD("outside", "Not this skill's."))
+	symlink(t, filepath.Join(dir, "secret.md"), filepath.Join(skills, "outside", "SKILL.md"))
+
+	var reads []string
+	read := func(path string) ([]byte, error) {
+		reads = append(reads, path)
+		return os.ReadFile(path)
+	}
+	got := map[string]SettingsSkill{}
+	for _, s := range readSettingsSkills("repo", dir, read) {
+		got[s.Name] = s
+	}
+	if want := []string{filepath.Join(skills, "plan", "SKILL.md")}; !reflect.DeepEqual(reads, want) {
+		t.Errorf("read %q, want %q", reads, want)
+	}
+	plan := got["plan"]
+	if want := []string{"holds locked.txt, notes.txt beside SKILL.md: a skill is its SKILL.md alone, and its other files are not given to a call"}; plan.Description != "P." || plan.Content != skillMD("plan", "P.") ||
+		plan.Checks.Passed || !reflect.DeepEqual(plan.Checks.Failed, want) {
+		t.Errorf("plan: %+v", plan)
+	}
+	if s := got["big"]; s.State != SkillTooLarge || s.Content != "" || s.Checks.Passed {
+		t.Errorf("big: %+v", s)
+	}
+	if s := got["outside"]; s.State != SkillNotAFile || s.Content != "" || s.Checks.Passed {
+		t.Errorf("outside: %+v", s)
 	}
 }

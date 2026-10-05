@@ -11,8 +11,10 @@
     const K = globalThis.AgisterKnowledge;
 
     // current: the path shown, ~ for Agister home; view: settings, runs or
-    // knowledge; model: the settings shown, as config.js reads them.
-    const state = { current: null, view: U.readView(localStorage), model: null };
+    // knowledge; model: the settings shown, as config.js reads them; skills:
+    // the api/skills reply read with them, whose settings skills are the
+    // model's (D-16) and whose folders Knowledge shows.
+    const state = { current: null, view: U.readView(localStorage), model: null, skills: null };
     let renderToken = 0;
 
     const $ = (id) => document.getElementById(id);
@@ -72,13 +74,15 @@
     // failure the page says why and keeps what it showed. The user's home
     // folder holds Agister's home, so it shows as ~ and leaves the list.
     // The status is the shown view's: while Runs is shown, a read of the
-    // settings leaves it alone. Knowledge shows the settings' agents, so it
-    // is read after them.
+    // settings leaves it alone. The settings' skills are the server's
+    // inventory of them (api/skills), read with the settings files, which
+    // leave skills out (D-16). Knowledge shows the settings' agents and
+    // those skills, so it is read after them.
     async function open_(path) {
       const token = ++renderToken;
-      let id, files, homeFiles;
+      let id, files, homeFiles, skills;
       try {
-        ({ id, files, homeFiles } = await R.fetchSettings(fetch, path));
+        [{ id, files, homeFiles }, skills] = await Promise.all([R.fetchSettings(fetch, path), R.fetchSkills(fetch, path)]);
         if (id !== path) R.forgetRepo(localStorage, path);
       } catch (err) {
         if (token !== renderToken) return;
@@ -93,7 +97,7 @@
       if (knowledge.path !== id) forgetKnowledge();
       setMenu(false);
       if (state.view !== 'runs') say('status', '');
-      const shown = await render(token, files, homeFiles);
+      const shown = await render(token, files, homeFiles, skills);
       if (shown && state.view === 'knowledge') await loadKnowledge();
     }
 
@@ -121,22 +125,24 @@
     // --- dashboard ---
 
     // files: the shown folder's settings; homeFiles: Agister home's, which a
-    // repo's go over, or null for ~ itself. Says whether they were shown.
-    async function render(token, files, homeFiles) {
+    // repo's go over, or null for ~ itself; skills: the api/skills reply for
+    // them. Says whether they were shown.
+    async function render(token, files, homeFiles, skills) {
       $('picker-label').textContent = label(state.current);
       $('picker-button').title = state.current === R.HOME_ID ? 'Agister home, ~/.agister' : state.current;
       if (state.view === 'settings') stamp('Settings');
       let model;
       try {
         model = homeFiles
-          ? await C.loadComposed(R.agisterFromFiles(homeFiles), R.agisterFromFiles(files))
-          : await C.loadAgister(R.agisterFromFiles(files));
+          ? await C.loadComposed(R.agisterFromFiles(homeFiles), R.agisterFromFiles(files), skills.settings)
+          : await C.loadAgister(R.agisterFromFiles(files), skills.settings);
       } catch (err) {
         if (token === renderToken && state.view !== 'runs') say('status', `Could not read .agister: ${err.message}`);
         return false;
       }
       if (token !== renderToken) return false;
       state.model = model;
+      state.skills = skills;
       $('dashboard').replaceChildren(...dashboard(model, !!homeFiles));
       $('dashboard').hidden = state.view !== 'settings';
       return true;
@@ -272,13 +278,16 @@
 
     // The prompts or skills (kind) a process or an agent names, each marked
     // missing when these settings have none of that name, or with the chip
-    // of the layer it comes from.
+    // of the layer it comes from; a skill whose checks fail says so, as
+    // Agister refuses the call.
     function namedLine(kind, list, chip) {
       if (!list?.length) return null;
       return el('div', {}, ...list.flatMap((x, i) => {
         if (x.outside) return [i ? ', ' : '', missing(kind, x.name)];
         const origin = chip(x);
-        return [i ? ', ' : '', x.name, origin ? ' ' : '', origin];
+        const failed = x.checks && !x.checks.passed
+          ? el('span', { className: 'failed', title: (x.checks.failed ?? []).join('; '), textContent: 'checks failed' }) : null;
+        return [i ? ', ' : '', x.name, origin ? ' ' : '', origin, failed ? ' ' : '', failed];
       }));
     }
 
@@ -688,19 +697,20 @@
 
     const TWO_LISTS = 'An agent’s skills are two lists, shown apart: the skills its settings name, which Agister gives its calls (ADR-021), and the skills its runtime would load from the repo and the home (ADR-006). This page only reads them; editing is not part of it.';
 
-    // Reads the skills of the shown settings and the runs, and shows them
-    // with what was opened before. As with Runs, a read that ends after the
-    // user left Knowledge, after a newer read, or after the settings were
-    // asked for again (open_), leaves the page alone.
+    // Reads the runs, and shows them with the settings and their skills, as
+    // open_ read them, and what was opened before. As with Runs, a read that
+    // ends after the user left Knowledge, after a newer read, or after the
+    // settings were asked for again (open_), leaves the page alone.
     async function loadKnowledge() {
       const token = ++knowledgeToken;
       const opened = renderToken;
       const current = () => token === knowledgeToken && opened === renderToken && state.view === 'knowledge';
       const settings = state.model;
+      const skills = state.skills;
       const path = state.current;
-      let skills, list;
+      let list;
       try {
-        [skills, list] = await Promise.all([R.fetchSkills(fetch, path), R.fetchRuns(fetch)]);
+        list = await R.fetchRuns(fetch);
       } catch (err) {
         if (current()) say('status', err.message);
         return;

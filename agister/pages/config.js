@@ -395,18 +395,16 @@
     return Promise.all(files.map(async ([file, handle]) => ({ file, src: await readText(handle) })));
   }
 
-  // The skills of skills/, a folder each (skills/<name>/SKILL.md, ADR-021),
-  // by name: [{ file, name }]. A skill is its folder: the server checks
-  // what it holds.
-  async function readSkills(agister) {
-    const dir = await subfolder(agister, 'skills');
-    if (!dir) return [];
-    const names = [];
-    for await (const [name, handle] of dir.entries()) {
-      if (handle.kind === 'directory') names.push(name);
-    }
-    names.sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
-    return names.map((name) => ({ file: `${name}/SKILL.md`, name }));
+  // The skills of a layer's skills/ (skills/<name>/SKILL.md, ADR-021), by
+  // name, from the server's inventory of them (api/skills' settings), never
+  // from the settings files: a skill that is there is one whatever its
+  // state, so a broken one still goes over home's (D-16). Each is
+  // { file, name, path, state, description, checks }.
+  function layerSkills(inventory) {
+    return (inventory ?? []).map((s) => ({
+      file: `${s.name}/SKILL.md`, name: s.name, path: s.path ?? null, state: s.state ?? null,
+      description: s.description ?? null, checks: s.checks ?? null,
+    })).sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
   }
 
   // Each file through build; a file that does not parse becomes
@@ -462,9 +460,10 @@
     }
   }
 
-  // The dashboard model of the .agister folder agister.
-  async function loadAgister(agister) {
-    return link(await readAgister(agister));
+  // The dashboard model of the .agister folder agister, whose skills are
+  // skills, the server's inventory of that one layer.
+  async function loadAgister(agister, skills = []) {
+    return link(await readAgister(agister, skills));
   }
 
   const KINDS = ['workflows', 'processes', 'agents', 'policies', 'runtimes', 'schemas', 'verifies', 'prompts', 'skills'];
@@ -473,9 +472,11 @@
   // over them. As in Agister, a repo file replaces the home file of the
   // same kind and name, and the repo's service.toml replaces home's. Each
   // item says where it comes from: source 'repo' or 'home', and overrides
-  // when a repo item replaces a home one.
-  async function loadComposed(home, repo) {
-    return link(compose(await readAgister(home), await readAgister(repo)));
+  // when a repo item replaces a home one. skills is the server's
+  // inventory of both layers' skills, each with its scope, repo or home.
+  async function loadComposed(home, repo, skills = []) {
+    const scope = (s) => (skills ?? []).filter((x) => x.scope === s);
+    return link(compose(await readAgister(home, scope('home')), await readAgister(repo, scope('repo'))));
   }
 
   function compose(home, repo) {
@@ -496,8 +497,8 @@
     return model;
   }
 
-  async function readAgister(agister) {
-    const [workflows, processes, agents, policies, runtimes, schemas, verifies, prompts, skills, service, workspace] = await Promise.all([
+  async function readAgister(agister, skills) {
+    const [workflows, processes, agents, policies, runtimes, schemas, verifies, prompts, service, workspace] = await Promise.all([
       readFolder(agister, 'workflows', ['.yaml', '.yml']),
       readFolder(agister, 'processes', ['.yaml', '.yml']),
       readFolder(agister, 'agents', ['.toml']),
@@ -506,7 +507,6 @@
       readFolder(agister, 'schemas', ['.json']),
       readFolder(agister, 'verifies', ['.yaml', '.yml']),
       readFolder(agister, 'prompts', ['.md']),
-      readSkills(agister),
       loadService(agister),
       loadWorkspace(agister),
     ]);
@@ -521,7 +521,7 @@
       schemas: schemas.map(({ file }) => ({ file, name: stem(file) })),
       verifies: each(verifies, parseYaml, (file, _src, doc) => verifyItem(file, doc)),
       prompts: prompts.map(({ file }) => ({ file, name: stem(file) })),
-      skills,
+      skills: layerSkills(skills),
     };
   }
 
@@ -545,7 +545,14 @@
       };
     };
     const prompt = found(model.prompts);
-    const skill = found(model.skills);
+    // A skill found carries what the server's inventory says of it in its
+    // layer: its path, state, description and checks.
+    const skillFound = found(model.skills);
+    const skillByName = new Map(model.skills.map((s) => [s.name, s]));
+    const skill = (x) => {
+      const item = skillByName.get(x.name);
+      return item ? { ...skillFound(x), path: item.path, state: item.state, description: item.description, checks: item.checks } : skillFound(x);
+    };
     const usedBy = (items, key, name) => items.filter((x) => !x.error && x[key] === name).map((x) => x.name);
 
     for (const w of model.workflows) {

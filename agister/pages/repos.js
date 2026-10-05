@@ -131,7 +131,8 @@
   }
 
   // The skill folders the runtimes of the settings at path load, in the
-  // repo and the home, each with its skills: { home, adapters, folders }.
+  // repo and the home, each with its skills, and the settings layers' own
+  // skills: { home, adapters, folders, settings }.
   async function fetchSkills(fetchFn, path) {
     return getJson(fetchFn, `api/skills?path=${encodeURIComponent(path)}`);
   }
