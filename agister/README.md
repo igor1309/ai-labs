@@ -111,10 +111,16 @@ front matter that does not name and describe it. Either refuses only the
 calls that depend on it, and `check --tree` shows each skill under what
 names it. `install` does not install skills: a folder's `skills/` is
 listed as not settings, so a document it installs can name only a skill
-home already has. No runtime adapter gives a call its skills yet; until
-one does, a call that names a skill is refused before its first turn,
-naming the adapter and the skills, and a call that names none runs as
-before ([ADR-021](docs/adr/021-settings-give-an-agent-its-skills.md)).
+home already has.
+
+Claude Code, Pi and OpenCode give a call its recorded skills on every turn, from a fresh temporary folder outside the workspace, removed when
+the turn ends. Claude Code uses a plugin named `agister` through
+`--plugin-dir`, so its skills are `agister:<name>`; Pi passes each skill
+folder with `--skill`, in order; OpenCode adds the folder to `skills.paths`
+in its inline configuration under `--pure`. Codex still refuses a call
+naming a skill before its first turn, naming the adapter and the skills.
+A call that names none runs as before
+([ADR-021](docs/adr/021-settings-give-an-agent-its-skills.md)).
 
 A repository can also take away what home provides, without copying any
 of home's documents: `.agister/blocks.yaml` names the processes,

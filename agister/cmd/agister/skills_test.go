@@ -1,6 +1,8 @@
 package main
 
 import (
+	"encoding/json"
+	"os"
 	"path/filepath"
 	"reflect"
 	"regexp"
@@ -88,13 +90,12 @@ func ranWithoutSkills(t *testing.T, runs *newRuns, home, repo string, args ...st
 // A skill is found in the settings, the repository's over home's of the
 // same name: check passes and links what names each, process show lists
 // the call's with the layer of each, and the call records them by digest.
-// Until an adapter gives skills (rule 6), the call is refused before its
-// first turn, naming the adapter and the skills, and so is any call that is
-// given one; a call that names none runs.
-func TestACallsSkillsAreFoundInTheSettingsAndRefusedUntilAnAdapterGivesThem(t *testing.T) {
+// Claude Code gives the recorded skills to its runtime (rules 5-6);
+// a call that names none runs without a skills folder.
+func TestACallsSkillsAreFoundInTheSettingsAndGivenToClaudeCode(t *testing.T) {
 	t.Parallel()
 	home, repo := setup(t, "approve")
-	process := skilledSettings(t, home)
+	skilledSettings(t, home)
 	homeReview, homeText := filepath.Join(home, "skills", "review", "SKILL.md"), skillFile("review", "Home's way to review.")
 	style, styleText := filepath.Join(home, "skills", "style", "SKILL.md"), skillFile("style", "The house style.")
 	projectReview, projectText := filepath.Join(repo, ".agister", "skills", "review", "SKILL.md"), skillFile("review", "The repository's way to review.")
@@ -108,41 +109,38 @@ func TestACallsSkillsAreFoundInTheSettingsAndRefusedUntilAnAdapterGivesThem(t *t
 		t.Fatalf("check --tree: %d\n%s%s", r.code, r.stdout, r.stderr)
 	}
 
-	refusal := "process skilled (" + process + "): adapter claude-code of runtime claude-code cannot give a call its skills (ADR-021): "
 	r = agister(t, home, repo, "process", "show", "skilled")
 	for _, want := range []string{
 		"skills       review (process): project " + projectReview + "\n" +
-			"             style (agent): global " + style + "\n" +
-			"plan         REFUSED: " + refusal + "review, style\n",
+			"             style (agent): global " + style + "\n",
 		"skill review: project " + projectReview + " (overrides " + homeReview + ")\n",
 		"skill style: global " + style + "\n",
 	} {
-		if r.code != 0 || !strings.Contains(r.stdout, want) {
+		if r.code != 0 || strings.Contains(r.stdout, "REFUSED") || !strings.Contains(r.stdout, want) {
 			t.Fatalf("process show: %d, want %q\n%s%s", r.code, want, r.stdout, r.stderr)
 		}
 	}
 	// With another agent the process's stay and the agent's are that agent's.
 	r = agister(t, home, repo, "process", "show", "skilled", "--agent", "assistant")
-	if r.code != 0 || !strings.Contains(r.stdout, "skills       review (process): project "+projectReview+"\nplan         REFUSED: "+refusal+"review\n") {
+	if r.code != 0 || !strings.Contains(r.stdout, "skills       review (process): project "+projectReview+"\n") {
 		t.Fatalf("process show --agent assistant: %d\n%s%s", r.code, r.stdout, r.stderr)
 	}
 
 	runs := &newRuns{home: home}
 	runs.take(t)
-	refused := refusedBeforeItsFirstTurn(t, runs, home, repo, refusal+"review, style)", "skilled")
-	// The refused run records the skills the call was resolved with: the
+	ran := ranWithSkills(t, runs, home, repo, "claude-code", map[string]string{"review": projectText, "style": styleText}, "skilled")
+	// The run records the skills the call was resolved with: the
 	// repository's review, whole, and home's style.
 	want := []map[string]any{
 		{"kind": "skills", "name": "review", "path": projectReview, "sha256": digestOf(projectText), "project": true, "overrides": homeReview},
 		{"kind": "skills", "name": "style", "path": style, "sha256": digestOf(styleText)},
 	}
-	if got := skillsOf(refused); !reflect.DeepEqual(got, want) {
+	if got := skillsOf(ran); !reflect.DeepEqual(got, want) {
 		t.Fatalf("recorded skills = %v, want %v", got, want)
 	}
-	// The process's skill alone refuses it, and so does the agent's.
-	refusedBeforeItsFirstTurn(t, runs, home, repo, refusal+"review)", "skilled", "--agent", "assistant")
-	plain := filepath.Join(home, "processes", "plain.yaml")
-	refusedBeforeItsFirstTurn(t, runs, home, repo, "process plain ("+plain+"): adapter claude-code of runtime claude-code cannot give a call its skills (ADR-021): style)", "plain", "--agent", "stylist")
+	// Either the process's or the agent's skills reach the runtime alone.
+	ranWithSkills(t, runs, home, repo, "claude-code", map[string]string{"review": projectText}, "skilled", "--agent", "assistant")
+	ranWithSkills(t, runs, home, repo, "claude-code", map[string]string{"style": styleText}, "plain", "--agent", "stylist")
 
 	ranWithoutSkills(t, runs, home, repo, "plain")
 }
@@ -266,4 +264,91 @@ func TestInstallRefusesAnAgentNamingASkillHomeLacks(t *testing.T) {
 	if !reflect.DeepEqual(files(t, home), before) {
 		t.Fatal("the refused install wrote")
 	}
+}
+
+// A process naming a skill runs on every B1 adapter; Codex remains refused.
+func TestACallNamingASkillRunsOnPiAndOpenCodeAndIsRefusedOnCodex(t *testing.T) {
+	t.Parallel()
+	for _, adapter := range []string{"pi", "opencode", "codex"} {
+		t.Run(adapter, func(t *testing.T) {
+			t.Parallel()
+			home, repo := setup(t, "approve")
+			process := skilledSettings(t, home)
+			// OpenCode requires a nonempty message, apart from the instruction.
+			write(t, process, strings.Replace(skilledProcess, "  instruction: Follow the rules.\n", "  instruction: Follow the rules.\n  params:\n    question: {default: Follow the skills.}\n  values:\n    question: {source: param, name: question}\n", 1))
+			review, style := skillFile("review", "Review rules."), skillFile("style", "Style rules.")
+			write(t, filepath.Join(home, "skills", "review", "SKILL.md"), review)
+			write(t, filepath.Join(home, "skills", "style", "SKILL.md"), style)
+			// Test-owned mappings describe only the tools this fake needs.
+			primitive, contract, version := "read", "pi/1", "0.85."
+			if adapter == "opencode" {
+				primitive, contract, version = "skill", "opencode/1", "1.18."
+			}
+			if adapter == "codex" {
+				primitive, contract, version = "read-only", "codex/2", "0.158."
+			}
+			write(t, filepath.Join(home, "runtimes", adapter+".yaml"), "schema: agister.runtime/v1alpha1\nname: "+adapter+"\nadapter: "+adapter+"\ncontract: "+contract+"\nprimitives:\n  select: any\n  items:\n    "+primitive+": {grants: [repository.read], verified: [\""+version+"\"]}\n")
+			if r := agisterInput(t, "yes\n", home, repo, "agent", "create", "stylist", "--force", "--runtime", adapter, "--command", adapter); r.code != 0 {
+				t.Fatalf("agent create: %d\n%s%s", r.code, r.stdout, r.stderr)
+			}
+			agent := filepath.Join(home, "agents", "stylist.toml")
+			write(t, agent, read(t, agent)+`skills = ["style"]`+"\n")
+			runs := &newRuns{home: home}
+			runs.take(t)
+			if adapter == "codex" {
+				refusedBeforeItsFirstTurn(t, runs, home, repo, "process skilled ("+process+"): adapter codex of runtime codex cannot give a call its skills (ADR-021): review, style)", "skilled")
+			} else {
+				ranWithSkills(t, runs, home, repo, adapter, map[string]string{"review": review, "style": style}, "skilled")
+			}
+		})
+	}
+}
+
+// Assert the actual folder and bytes the fake saw while the call ran,
+// and that the adapter removed the folder once the call ended.
+func ranWithSkills(t *testing.T, runs *newRuns, home, repo, adapter string, skills map[string]string, args ...string) run {
+	t.Helper()
+	result := agister(t, home, repo, append(append([]string{"run"}, args...), "--quiet", "--timeout", "1m")...)
+	if result.code != cli.ExitCompleted {
+		t.Fatalf("run %v: %d\n%s%s", args, result.code, result.stdout, result.stderr)
+	}
+	ran := runs.one(t)
+	data, err := json.Marshal(ran.first["skills"])
+	if err != nil {
+		t.Fatal(err)
+	}
+	var given map[string]map[string]string
+	if err := json.Unmarshal(data, &given); err != nil {
+		t.Fatal(err)
+	}
+	wantFolders := 1
+	if adapter == "pi" {
+		wantFolders = len(skills)
+	}
+	if len(given) != wantFolders {
+		t.Fatalf("runtime folders = %+v", ran.first)
+	}
+	seen := map[string]string{}
+	for dir, files := range given {
+		if _, err := os.Stat(dir); !os.IsNotExist(err) {
+			t.Fatalf("folder %s survived call: %v", dir, err)
+		}
+		for path, text := range files {
+			if path == ".claude-plugin/plugin.json" {
+				if text != "{\"name\":\"agister\"}\n" {
+					t.Fatalf("manifest = %q", text)
+				}
+				continue
+			}
+			name := filepath.Base(filepath.Dir(path))
+			if adapter == "pi" {
+				name = filepath.Base(dir)
+			}
+			seen[name] = text
+		}
+	}
+	if !reflect.DeepEqual(seen, skills) {
+		t.Fatalf("runtime skills = %+v, want %+v", seen, skills)
+	}
+	return ran
 }

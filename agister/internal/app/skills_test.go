@@ -3,6 +3,7 @@ package app_test
 import (
 	"context"
 	"errors"
+	"fmt"
 	"reflect"
 	"slices"
 	"strings"
@@ -673,6 +674,66 @@ func TestAWorkflowWithASkilledNodeIsRefusedOnAnAdapterThatGivesNone(t *testing.T
 	for _, instruction := range []string{"Work as first.", "Work as second.", "Join them."} {
 		if turns := h.runner.turns(instruction); len(turns) != 0 {
 			t.Fatalf("%q ran %d turns", instruction, len(turns))
+		}
+	}
+}
+
+// Rules 5-6: every turn carries the resolved bytes in process/agent order.
+func assertTurnSkills(t *testing.T, turns []app.TurnRequest, count int) {
+	t.Helper()
+	want := []app.TurnSkill{{Name: "review", Bytes: []byte(skillDoc("review"))}, {Name: "tests", Bytes: []byte(skillDoc("tests"))}, {Name: "style", Bytes: []byte(skillDoc("style"))}}
+	if len(turns) != count {
+		t.Fatalf("turns = %+v, want %d", turns, count)
+	}
+	for i, turn := range turns {
+		if !reflect.DeepEqual(turn.Skills, want) {
+			t.Fatalf("turn %d skills = %+v, want %+v", i, turn.Skills, want)
+		}
+	}
+}
+
+func TestTheFirstTurnCarriesTheCallsSkills(t *testing.T) {
+	t.Parallel()
+	h := newHarness()
+	skilled(h)
+	if record := h.call(t, contract.CallRequest{}); record.Result.Status != run.Completed {
+		t.Fatalf("result %+v", record.Result)
+	}
+	assertTurnSkills(t, h.runner.calls(), 1)
+}
+
+func TestAContinuationCarriesTheCallsSkills(t *testing.T) {
+	t.Parallel()
+	h := newHarness()
+	skilled(h)
+	h.defs.docs[definition.KindAgent]["a"] += "session = \"resumable\"\n"
+	patchedRun(h, "run-0", "", 0, 1, "")
+	record := h.call(t, contract.CallRequest{Continue: "run-0"})
+	if record.Result.Status != run.Completed {
+		t.Fatalf("result %+v", record.Result)
+	}
+	assertTurnSkills(t, h.runner.calls(), 1)
+	if h.runner.calls()[0].ResumeSessionID != "prov-0" {
+		t.Fatalf("continuation = %+v", h.runner.calls()[0])
+	}
+}
+
+func TestEveryVerificationRepairCarriesTheCallsSkills(t *testing.T) {
+	t.Parallel()
+	h := newHarness()
+	skilled(h)
+	verifying(h)
+	h.commands.exits = []int{1, 1, 0}
+	identities := 0
+	h.changes.identify = func() string { identities++; return fmt.Sprintf("tree-%d", identities) }
+	record := h.call(t, contract.CallRequest{})
+	if record.Result.Status != run.Completed || len(record.Attempts) != 3 {
+		t.Fatalf("result %+v, attempts %+v", record.Result, record.Attempts)
+	}
+	assertTurnSkills(t, h.runner.calls(), 3)
+	for _, turn := range h.runner.calls()[1:] {
+		if turn.ResumeSessionID != "prov-1" {
+			t.Fatalf("repair = %+v", turn)
 		}
 	}
 }

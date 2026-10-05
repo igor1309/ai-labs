@@ -23,6 +23,7 @@ import (
 	"time"
 
 	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/runtimetest/fakeoutput"
+	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/runtimetest/fakeskills"
 	"github.com/igor1309/ai-labs/gokit/fakeproc"
 )
 
@@ -44,8 +45,14 @@ func Main(p fakeproc.Process) int {
 		return 0
 	}
 	flags := map[string]string{}
+	var skills []string
 	for i := 0; i < len(args); i++ {
 		switch args[i] {
+		case "--skill":
+			if i+1 < len(args) {
+				skills = append(skills, args[i+1])
+				i++
+			}
 		case "--session-dir", "--session", "--model", "--thinking", "--tools", "--append-system-prompt", "--mode":
 			if i+1 < len(args) {
 				flags[args[i]] = args[i+1]
@@ -105,7 +112,7 @@ func Main(p fakeproc.Process) int {
 		save(dir, header)
 	}
 	// The fake's echo: what it was given, beside the header's own fields.
-	echo := map[string]any{"argv": args, "prompt": prompt, "system": system}
+	echo := map[string]any{"argv": args, "prompt": prompt, "system": system, "skills": fakeskills.Given(skills)}
 	for key, value := range header {
 		echo[key] = value
 	}
