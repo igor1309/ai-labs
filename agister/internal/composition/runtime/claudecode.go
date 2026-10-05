@@ -49,7 +49,17 @@ func (s claudecodeSink) ToolStarted(tool claudecode.ToolCall) {
 	s.EventSink.ToolStarted(app.ToolCall(tool))
 }
 func (r claudecodeRunner) RunTurn(ctx context.Context, request app.TurnRequest, sink app.EventSink) run.Turn {
-	return ClaudeCodeResult(r.wrapper.RunTurn(ctx, claudecode.TurnRequest(request), claudecodeSink{sink}))
+	return ClaudeCodeResult(r.wrapper.RunTurn(ctx, ClaudeCodeRequest(request), claudecodeSink{sink}))
+}
+
+// ClaudeCodeRequest translates the application's turn request to the wrapper's,
+// its skills in order.
+func ClaudeCodeRequest(r app.TurnRequest) claudecode.TurnRequest {
+	request := claudecode.TurnRequest{Prompt: r.Prompt, Instruction: r.Instruction, Cwd: r.Cwd, ResumeSessionID: r.ResumeSessionID, MaxCostUSD: r.MaxCostUSD, Model: r.Model, Effort: r.Effort, Primitives: r.Primitives, Timeout: r.Timeout, OutputSchema: r.OutputSchema}
+	for _, skill := range r.Skills {
+		request.Skills = append(request.Skills, claudecode.Skill{Name: skill.Name, Bytes: skill.Bytes})
+	}
+	return request
 }
 
 // ClaudeCodeResult translates a wrapper's reported result to the application's domain.

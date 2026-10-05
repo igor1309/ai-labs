@@ -32,7 +32,7 @@ func TestTheTransportIsHandedTheTurn(t *testing.T) {
 		r.ResumeSessionID = resume
 		runner.RunTurn(context.Background(), r, &sink{})
 
-		args, err := claudecode.Arguments(r)
+		args, err := claudecode.Arguments(r, "")
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -74,9 +74,9 @@ func TestIdentityAsksTheTransportForTheVersion(t *testing.T) {
 	if err != nil || identity.Version != "2.1.286" || identity.Contract != claudecode.Contract {
 		t.Fatalf("identity = %+v, %v", identity, err)
 	}
-	// No adapter gives a call its skills yet (ADR-021 rule 6).
-	if identity.Skills {
-		t.Fatalf("identity = %+v, which gives skills", identity)
+	// The adapter gives a call its skills (ADR-021 rule 6).
+	if !identity.Skills {
+		t.Fatalf("identity = %+v, which gives no skills", identity)
 	}
 	if versions := spy.Versions(); !reflect.DeepEqual(versions, []string{"/opt/claude"}) {
 		t.Fatalf("versions = %q", versions)

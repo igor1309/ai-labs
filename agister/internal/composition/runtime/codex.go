@@ -47,7 +47,14 @@ type codexSink struct{ app.EventSink }
 
 func (s codexSink) ToolStarted(tool codex.ToolCall) { s.EventSink.ToolStarted(app.ToolCall(tool)) }
 func (r codexRunner) RunTurn(ctx context.Context, request app.TurnRequest, sink app.EventSink) run.Turn {
-	return CodexResult(r.wrapper.RunTurn(ctx, codex.TurnRequest(request), codexSink{sink}))
+	return CodexResult(r.wrapper.RunTurn(ctx, CodexRequest(request), codexSink{sink}))
+}
+
+// CodexRequest translates the application's turn request to the wrapper's.
+// Codex is given no skills (ADR-021 rule 6): its identity says so, and the
+// core refuses a call that names one before its first turn.
+func CodexRequest(r app.TurnRequest) codex.TurnRequest {
+	return codex.TurnRequest{Prompt: r.Prompt, Instruction: r.Instruction, Cwd: r.Cwd, ResumeSessionID: r.ResumeSessionID, MaxCostUSD: r.MaxCostUSD, Model: r.Model, Effort: r.Effort, Primitives: r.Primitives, Timeout: r.Timeout, OutputSchema: r.OutputSchema}
 }
 
 // CodexResult translates a wrapper's reported result to the application's domain.

@@ -57,6 +57,16 @@ type TurnRequest struct {
 	Primitives      []string
 	Timeout         time.Duration
 	OutputSchema    json.RawMessage
+	// Skills are the turn's skills, in order, written for the turn into a
+	// folder of its own outside the working directory and given to the
+	// runtime; none: nothing is written or passed.
+	Skills []Skill
+}
+
+// Skill is one skill a turn is given: its name and its whole SKILL.md.
+type Skill struct {
+	Name  string
+	Bytes []byte
 }
 
 type Status string

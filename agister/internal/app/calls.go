@@ -925,6 +925,7 @@ func (c *Calls) execute(ctx context.Context, handle RunHandle, record run.Record
 		Primitives:      res.Plan.Primitives,
 		Timeout:         res.Effective.Timeout,
 		OutputSchema:    res.Schema,
+		Skills:          translated(res.Skills, func(skill CallSkill) TurnSkill { return TurnSkill{Name: skill.Name, Bytes: skill.Bytes} }),
 	}
 	_ = handle.Update(record)
 

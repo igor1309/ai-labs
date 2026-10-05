@@ -52,7 +52,7 @@ func TestTheTransportIsHandedTheTurn(t *testing.T) {
 		}
 		want := opencode.Spec{
 			Command: "/opt/opencode", Args: args, Dir: "/work",
-			Env:   []string{opencode.ConfigVariable + "=" + opencode.Config(r, agent)},
+			Env:   []string{opencode.ConfigVariable + "=" + opencode.Config(r, agent, "")},
 			Stdin: "hello", Timeout: time.Minute, KillGrace: 3 * time.Second,
 		}
 		if !reflect.DeepEqual(specs[0], want) {
@@ -89,9 +89,9 @@ func TestIdentityAsksTheTransportForTheVersion(t *testing.T) {
 	if err != nil || identity.Version != "1.14.2" || identity.Contract != opencode.Contract {
 		t.Fatalf("identity = %+v, %v", identity, err)
 	}
-	// No adapter gives a call its skills yet (ADR-021 rule 6).
-	if identity.Skills {
-		t.Fatalf("identity = %+v, which gives skills", identity)
+	// The adapter gives a call its skills (ADR-021 rule 6).
+	if !identity.Skills {
+		t.Fatalf("identity = %+v, which gives no skills", identity)
 	}
 	if versions := spy.Versions(); !reflect.DeepEqual(versions, []string{"/opt/opencode"}) {
 		t.Fatalf("versions = %q", versions)

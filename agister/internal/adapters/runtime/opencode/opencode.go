@@ -51,6 +51,14 @@
 // it; with the tool denied the list is left out (docs/skills). So a turn
 // not granted skill is refused before OpenCode starts (SkillTools).
 //
+// A turn given skills (ADR-021) gets them from skills.paths in its inline
+// config: before the turn, the adapter writes them into a folder of its own
+// outside the working directory, <folder>/<name>/SKILL.md, names that
+// folder in skills.paths, and removes it when the turn ends. Under --pure
+// OpenCode still reads skills.paths (on 1.18.33 the skill reached the
+// request); they are added to the skills it discovers. A turn given none
+// writes nothing, and its config is the agent alone.
+//
 // Sessions are kept in OpenCode's own store. Agister takes the session ID
 // from the stream's sessionID and never chooses it. A continuation resumes
 // that session in place (-s <id>), and the turn must report that same
@@ -87,6 +95,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"os"
+	"path/filepath"
 	"regexp"
 	"slices"
 	"strings"
@@ -194,7 +204,7 @@ func (r *Runner) Identity(ctx context.Context) (RuntimeIdentity, error) {
 	if version == "" {
 		return RuntimeIdentity{}, fmt.Errorf("unrecognized version output %q", out)
 	}
-	return RuntimeIdentity{Contract: Contract, Version: version, Resume: true, ResumeWhereItRan: true, ToolCalls: reportsToolCalls, SkillTools: slices.Clone(SkillTools)}, nil
+	return RuntimeIdentity{Contract: Contract, Version: version, Resume: true, ResumeWhereItRan: true, ToolCalls: reportsToolCalls, SkillTools: slices.Clone(SkillTools), Skills: true}, nil
 }
 
 // Arguments builds the command line for a turn that runs as the generated
@@ -228,9 +238,11 @@ func Arguments(request TurnRequest, agent string) ([]string, error) {
 }
 
 // Config is the inline config of a turn: the generated agent named agent,
-// and nothing else. Its permission denies everything, then allows each
-// granted primitive; the order of the keys is the order of the rules.
-func Config(request TurnRequest, agent string) string {
+// and, for a turn given skills, the folder skills they are in as the one
+// skills.paths; nothing else. The agent's permission denies everything,
+// then allows each granted primitive; the order of the keys is the order of
+// the rules.
+func Config(request TurnRequest, agent, skills string) string {
 	var permission strings.Builder
 	permission.WriteString(`{"*":"deny"`)
 	for _, tool := range request.Primitives {
@@ -245,10 +257,14 @@ func Config(request TurnRequest, agent string) string {
 		Prompt     string          `json:"prompt,omitempty"`
 		Permission json.RawMessage `json:"permission"`
 	}
-	config, _ := json.Marshal(map[string]any{"agent": map[string]any{
+	config := map[string]any{"agent": map[string]any{
 		agent: generated{Mode: "primary", Prompt: SystemPrompt(request), Permission: json.RawMessage(permission.String())},
-	}})
-	return string(config)
+	}}
+	if len(request.Skills) > 0 {
+		config["skills"] = map[string]any{"paths": []string{skills}}
+	}
+	data, _ := json.Marshal(config)
+	return string(data)
 }
 
 // SystemPrompt is the generated agent's prompt: the instruction, then the
@@ -283,12 +299,24 @@ func (r *Runner) RunTurn(ctx context.Context, request TurnRequest, sink EventSin
 	if err != nil {
 		return failedTurn(ClassInternal, err)
 	}
+	var skills string
+	if len(request.Skills) > 0 {
+		dir, err := os.MkdirTemp("", "agister-opencode-")
+		if err != nil {
+			return failedTurn(ClassInternal, err)
+		}
+		defer os.RemoveAll(dir)
+		skills = filepath.Join(dir, "skills")
+		if err := WriteSkills(skills, request.Skills); err != nil {
+			return failedTurn(ClassInternal, err)
+		}
+	}
 	state := &Stream{ResumedSessionID: request.ResumeSessionID}
 	evidence := r.Transport.Run(ctx, Spec{
 		Command:   r.Command,
 		Args:      args,
 		Dir:       request.Cwd,
-		Env:       []string{ConfigVariable + "=" + Config(request, agent)},
+		Env:       []string{ConfigVariable + "=" + Config(request, agent, skills)},
 		Stdin:     request.Prompt,
 		Timeout:   request.Timeout,
 		KillGrace: r.KillGrace,
@@ -309,6 +337,26 @@ func (r *Runner) RunTurn(ctx context.Context, request TurnRequest, sink EventSin
 		}
 	})
 	return state.Reconcile(evidence, len(request.OutputSchema) > 0)
+}
+
+// WriteSkills writes a turn's skills into the folder dir, which it makes:
+// <dir>/<name>/SKILL.md for each skill, from its bytes.
+func WriteSkills(dir string, skills []Skill) error {
+	if err := os.Mkdir(dir, 0o700); err != nil {
+		return err
+	}
+	for _, skill := range skills {
+		if name := skill.Name; name != filepath.Base(name) || name == "." || name == ".." {
+			return fmt.Errorf("%s cannot give skill %q: not a folder's name", Contract, name)
+		}
+		if err := os.Mkdir(filepath.Join(dir, skill.Name), 0o700); err != nil {
+			return err
+		}
+		if err := os.WriteFile(filepath.Join(dir, skill.Name, "SKILL.md"), skill.Bytes, 0o600); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // Event is what a line of the stream reduces to, in order: a normalized

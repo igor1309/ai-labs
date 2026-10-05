@@ -14,7 +14,7 @@ import (
 
 func TestArgumentsCarryPrimitivesAndContractFlags(t *testing.T) {
 	t.Parallel()
-	args, err := claudecode.Arguments(claudecode.TurnRequest(request("hello")))
+	args, err := claudecode.Arguments(claudecode.TurnRequest(request("hello")), "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -53,7 +53,7 @@ func TestEveryTurnLoadsTheRepositoryAndGetsSkill(t *testing.T) {
 	} {
 		r := request("x")
 		r.Primitives, r.ResumeSessionID = c.primitives, c.resume
-		args, err := claudecode.Arguments(claudecode.TurnRequest(r))
+		args, err := claudecode.Arguments(claudecode.TurnRequest(r), "")
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -68,7 +68,7 @@ func TestInvalidPrimitiveIsRejected(t *testing.T) {
 	t.Parallel()
 	r := request("x")
 	r.Primitives = []string{"Bash(git diff:*)"}
-	if _, err := claudecode.Arguments(claudecode.TurnRequest(r)); err == nil {
+	if _, err := claudecode.Arguments(claudecode.TurnRequest(r), ""); err == nil {
 		t.Fatal("a primitive with spaces must be rejected")
 	}
 }
@@ -174,7 +174,7 @@ func TestResultPrecedence(t *testing.T) {
 // continuation resumes the reported one in place, without forking.
 func TestContinuationResumesInPlaceAndCostLimitIsPassed(t *testing.T) {
 	t.Parallel()
-	fresh, err := claudecode.Arguments(claudecode.TurnRequest(request("x")))
+	fresh, err := claudecode.Arguments(claudecode.TurnRequest(request("x")), "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -185,7 +185,7 @@ func TestContinuationResumesInPlaceAndCostLimitIsPassed(t *testing.T) {
 	r.ResumeSessionID = "earlier"
 	limit := 0.5
 	r.MaxCostUSD = &limit
-	args, err := claudecode.Arguments(claudecode.TurnRequest(r))
+	args, err := claudecode.Arguments(claudecode.TurnRequest(r), "")
 	if err != nil {
 		t.Fatal(err)
 	}

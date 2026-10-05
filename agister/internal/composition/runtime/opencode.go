@@ -49,7 +49,17 @@ func (s opencodeSink) ToolStarted(tool opencode.ToolCall) {
 	s.EventSink.ToolStarted(app.ToolCall(tool))
 }
 func (r opencodeRunner) RunTurn(ctx context.Context, request app.TurnRequest, sink app.EventSink) run.Turn {
-	return OpenCodeResult(r.wrapper.RunTurn(ctx, opencode.TurnRequest(request), opencodeSink{sink}))
+	return OpenCodeResult(r.wrapper.RunTurn(ctx, OpenCodeRequest(request), opencodeSink{sink}))
+}
+
+// OpenCodeRequest translates the application's turn request to the wrapper's,
+// its skills in order.
+func OpenCodeRequest(r app.TurnRequest) opencode.TurnRequest {
+	request := opencode.TurnRequest{Prompt: r.Prompt, Instruction: r.Instruction, Cwd: r.Cwd, ResumeSessionID: r.ResumeSessionID, MaxCostUSD: r.MaxCostUSD, Model: r.Model, Effort: r.Effort, Primitives: r.Primitives, Timeout: r.Timeout, OutputSchema: r.OutputSchema}
+	for _, skill := range r.Skills {
+		request.Skills = append(request.Skills, opencode.Skill{Name: skill.Name, Bytes: skill.Bytes})
+	}
+	return request
 }
 
 // OpenCodeResult translates a wrapper's reported result to the application's domain.

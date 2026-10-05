@@ -68,6 +68,16 @@ type TurnRequest struct {
 	Primitives      []string
 	Timeout         time.Duration
 	OutputSchema    json.RawMessage
+	// Skills are the call's skills, in order, which the adapter gives every
+	// turn of the call (ADR-021 rules 5 and 6); none when it names none.
+	Skills []TurnSkill
+}
+
+// TurnSkill is one skill a turn is given, as the call recorded it.
+type TurnSkill struct {
+	Name string
+	// Bytes are the whole SKILL.md, front matter included.
+	Bytes []byte
 }
 
 // CommandRequest is one run of a process's verification command.
