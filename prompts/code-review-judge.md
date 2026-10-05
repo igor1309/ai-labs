@@ -53,9 +53,12 @@ gave no output, as its entry states it.
      presented case does not meet the burden for fixing at its severity.
      It is not a reject: the reviewer was right. Nor is it an owner item.
    * **owner** — the evidence holds, but what to do is not the reviewers'
-     or yours to settle: a choice between two or more fixes, an option
-     that touches policy, or a major whose presented cost is grossly
-     disproportionate to its benefit. State the question and the options.
+     or yours to settle: a trade-off or a stance only the owner can take,
+     such as a choice between two or more fixes, an option that touches
+     policy, or a major whose presented cost is grossly disproportionate
+     to its benefit. Whether one proven finding is fixed or waived is
+     yours, when the presented case settles it. State the question and the
+     options.
      In doubt whether a question is one of these, `owner`. Doubt about the
      economics is not such a question: the presumption decides.
 
