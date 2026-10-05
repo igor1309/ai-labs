@@ -10,6 +10,12 @@
 # repository.history.write, and its /tmp writes are declared as host.write. Contract codex/2 also resumes a
 # session in place with `codex exec resume`, the sandbox mode passed as
 # -c sandbox_mode; read-only was observed to hold there on 0.159.2.
+# All of the above re-observed on codex-cli 0.160.0 (2026-10-05), in a
+# scratch repository: read-only read a file and ran git show, and refused
+# creating a file in the repository, writing under /tmp, git commit and
+# network; workspace-write wrote in the workspace and under /tmp, and
+# refused writing elsewhere in the home directory, git commit and network;
+# a session resumed with -c sandbox_mode="read-only" refused a write.
 schema: agister.runtime/v1alpha1
 name: codex
 adapter: codex
@@ -20,8 +26,8 @@ primitives:
   items:
     read-only:
       grants: [repository.read, repository.search, repository.diff, repository.history.read, process.execute, host.read]
-      verified: ["0.158.", "0.159."]
+      verified: ["0.158.", "0.159.", "0.160."]
     workspace-write:
       grants: [repository.read, repository.search, repository.diff, repository.history.read, process.execute, host.read,
                repository.write, host.write]
-      verified: ["0.159."]
+      verified: ["0.159.", "0.160."]
