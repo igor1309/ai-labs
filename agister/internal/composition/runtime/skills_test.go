@@ -16,6 +16,7 @@ import (
 	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/runtimetest"
 	"github.com/igor1309/ai-labs/agister/internal/app"
 	"github.com/igor1309/ai-labs/agister/internal/domain/run"
+	"github.com/igor1309/ai-labs/gokit/clocktest"
 	"github.com/igor1309/ai-labs/gokit/supervisor"
 	"github.com/igor1309/ai-labs/gokit/supervisor/supervisortest"
 )
@@ -121,9 +122,16 @@ func hasSkillFlag(args []string, flag, dir string) bool {
 	return false
 }
 
+// stillRuntime is the real supervisor over the fakes run in process, its
+// waits on a manual clock nothing advances: no turn times out and no grace
+// passes.
+func stillRuntime() supervisor.Runtime {
+	return supervisor.Runtime{Starter: runtimetest.InProcess{Groups: supervisortest.NewGroups()}, Timer: clocktest.NewClock(time.Date(2026, 10, 3, 12, 0, 0, 0, time.UTC)).Timer}
+}
+
 func skillRunner(t *testing.T, adapter string) (app.TurnRunner, []string) {
 	t.Helper()
-	transport := supervisor.Runtime{Starter: runtimetest.InProcess{Groups: supervisortest.NewGroups()}}
+	transport := stillRuntime()
 	switch adapter {
 	case "claude-code":
 		return AdaptClaudeCode(claudecode.New("claude", ClaudeCodeTransport{Supervisor: transport})), []string{"Read"}
@@ -174,7 +182,7 @@ func TestSkillsReachCodexThroughAHomeOfItsThread(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	transport := supervisor.Runtime{Starter: runtimetest.InProcess{Groups: supervisortest.NewGroups()}}
+	transport := stillRuntime()
 	runner := NewCodex("codex", root, func() (string, error) { return user, nil }, transport)
 	if identity, err := runner.Identity(context.Background()); err != nil || !identity.Skills {
 		t.Fatalf("identity %+v, %v", identity, err)

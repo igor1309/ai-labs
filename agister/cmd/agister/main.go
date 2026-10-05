@@ -130,6 +130,12 @@ func wire(config cli.Config, appends *fsruns.Appends) (contract.Client, *app.Bac
 // a dead owner left, the user's CODEX_HOME is the environment's, and every
 // wait is on the wall clock.
 func process(config cli.Config, appends *fsruns.Appends) composition {
+	return processIn(config, appends, os.Getenv, os.UserHomeDir)
+}
+
+// processIn is process in the environment getenv reads, for the user whose
+// home userHome tells: they tell the user's CODEX_HOME.
+func processIn(config cli.Config, appends *fsruns.Appends, getenv func(string) string, userHome func() (string, error)) composition {
 	worktrees := git.NewWorktrees(filepath.Join(config.Home, "locks", "worktrees"))
 	worktrees.Clock, worktrees.Timer = system.Clock{}, system.Timer
 	return composition{
@@ -138,7 +144,7 @@ func process(config cli.Config, appends *fsruns.Appends) composition {
 		starter:   supervisor.Exec{},
 		commands:  supervisor.Exec{},
 		processes: supervisor.Processes{},
-		codexHome: runtimecomposition.CodexHome(os.Getenv, os.UserHomeDir),
+		codexHome: runtimecomposition.CodexHome(getenv, userHome),
 		timer:     system.Timer,
 		poll:      system.Timer,
 		hosted:    app.NewHosted(),

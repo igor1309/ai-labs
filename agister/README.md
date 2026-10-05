@@ -127,7 +127,8 @@ skills runs with a home of its own under `<home>/codex/homes`, named by its
 thread once the turn ends: it links your `auth.json`, `AGENTS.md` and
 `AGENTS.override.md` where they exist and each of your skills in
 `$CODEX_HOME/skills` (default `~/.codex`) but `.system`, beside the call's
-skills; a skill of yours with the name of one of the call's is left out.
+skills; a skill of yours with the name of one of the call's is linked as
+`<name>.user`, a folder name no settings skill can take, so both are there.
 Such a thread is not in your `~/.codex`, only a turn with its home resumes
 it, and it misses your Codex memories and state. A turn that resumes it gets
 the call's skills afresh, and the cost lookup reads that home. A Codex run

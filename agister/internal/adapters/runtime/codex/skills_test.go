@@ -142,41 +142,149 @@ func runnerOver(t *testing.T, root, user, thread string) *homes {
 }
 
 // A fresh thread whose call names skills runs with a new home under the
-// root: links to the user's files where they exist, a link to each of the
-// user's skills but .system and the one named as the call's, and the call's
-// skills from their bytes. argv is as without skills. After the turn the
-// home is named by the reported thread.
+// root: links to the user's files where they exist, AGENTS.override.md
+// only in the user's home that has one, a link to each of the user's
+// skills but .system, the user's review, named as one of the call's, as
+// review.user, and the call's skills from their bytes: both reviews are
+// under skills/. argv is as without skills. After the turn the home is
+// named by the reported thread.
 func TestAFreshThreadGivenSkillsRunsWithAHomeOfItsOwn(t *testing.T) {
+	t.Parallel()
+	for name, override := range map[string]bool{"with AGENTS.override.md": true, "without": false} {
+		user, root := userCodexHome(t), filepath.Join(t.TempDir(), "homes")
+		if override {
+			writeFile(t, filepath.Join(user, "AGENTS.override.md"), "user's override\n")
+		}
+		h := runnerOver(t, root, user, fakeThread)
+		r := skilled("hello")
+		turn := h.runner.RunTurn(context.Background(), r, &sink{})
+		if turn.Status != codex.Completed || turn.ProviderSessionID != fakeThread {
+			t.Fatalf("%s: turn = %+v", name, turn)
+		}
+		want := map[string]string{
+			"auth.json":              "-> " + filepath.Join(user, "auth.json"),
+			"AGENTS.md":              "-> " + filepath.Join(user, "AGENTS.md"),
+			"skills/mine":            "-> " + filepath.Join(user, "skills", "mine"),
+			"skills/review.user":     "-> " + filepath.Join(user, "skills", "review"),
+			"skills/review/SKILL.md": "recorded review\n",
+			"skills/style/SKILL.md":  "recorded style\n",
+		}
+		if override {
+			want["AGENTS.override.md"] = "-> " + filepath.Join(user, "AGENTS.override.md")
+		}
+		if len(h.ran) != 1 || filepath.Dir(h.ran[0]) != root || !reflect.DeepEqual(h.held[0], want) {
+			t.Fatalf("%s: ran with %q holding %v, want a home under %s holding %v", name, h.ran, h.held, root, want)
+		}
+		args, err := codex.Arguments(r, "")
+		if err != nil {
+			t.Fatal(err)
+		}
+		if specs := h.spy.Specs(); !reflect.DeepEqual(specs[0].Args, args) {
+			t.Fatalf("%s: args = %q, want %q", name, specs[0].Args, args)
+		}
+		if names := entries(root); !reflect.DeepEqual(names, []string{fakeThread}) {
+			t.Fatalf("%s: homes = %q, want the thread's", name, names)
+		}
+		kept := filepath.Join(root, fakeThread)
+		if held := tree(t, kept); !reflect.DeepEqual(held, want) {
+			t.Fatalf("%s: kept home = %v", name, held)
+		}
+		for path, text := range map[string]string{"review/SKILL.md": "recorded review\n", "review.user/SKILL.md": "user's review\n"} {
+			if data, err := os.ReadFile(filepath.Join(kept, "skills", path)); err != nil || string(data) != text {
+				t.Fatalf("%s: skills/%s = %q, %v, want %q", name, path, data, err, text)
+			}
+		}
+	}
+}
+
+// A user's skill named as one of the call's is linked under a name no
+// other entry of skills/ has: review.user.user when the user also has a
+// review.user, which keeps its own name.
+func TestAUsersSkillNamedAsTheCallsTakesAFreeName(t *testing.T) {
+	t.Parallel()
+	user, root := userCodexHome(t), filepath.Join(t.TempDir(), "homes")
+	writeFile(t, filepath.Join(user, "skills", "review.user", "SKILL.md"), "user's review.user\n")
+	h := runnerOver(t, root, user, fakeThread)
+	r := skilled("hello")
+	r.Skills = r.Skills[:1]
+	if turn := h.runner.RunTurn(context.Background(), r, &sink{}); turn.Status != codex.Completed {
+		t.Fatalf("turn = %+v", turn)
+	}
+	want := map[string]string{
+		"skills/mine":             "-> " + filepath.Join(user, "skills", "mine"),
+		"skills/review.user":      "-> " + filepath.Join(user, "skills", "review.user"),
+		"skills/review.user.user": "-> " + filepath.Join(user, "skills", "review"),
+		"skills/review/SKILL.md":  "recorded review\n",
+	}
+	held := map[string]string{}
+	for path, text := range h.held[0] {
+		if strings.HasPrefix(path, "skills/") {
+			held[path] = text
+		}
+	}
+	if !reflect.DeepEqual(held, want) {
+		t.Fatalf("skills/ = %v, want %v", held, want)
+	}
+}
+
+// A thread's home whose skills/ is a link, here to the user's own skills
+// folder, is rebuilt without following it: the link goes, a folder of the
+// adapter's takes its place, and the user's folder is left as it was. The
+// runtime gets the recorded bytes.
+func TestASkillsFolderThatIsALinkIsReplacedNotFollowed(t *testing.T) {
+	t.Parallel()
+	user, root := userCodexHome(t), filepath.Join(t.TempDir(), "homes")
+	home := filepath.Join(root, fakeThread)
+	if err := os.MkdirAll(home, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(filepath.Join(user, "skills"), filepath.Join(home, "skills")); err != nil {
+		t.Fatal(err)
+	}
+	before := tree(t, user)
+	h := runnerOver(t, root, user, fakeThread)
+	r := skilled("hello")
+	r.ResumeSessionID = fakeThread
+	r.Skills = r.Skills[:1]
+	if turn := h.runner.RunTurn(context.Background(), r, &sink{}); turn.Status != codex.Completed {
+		t.Fatalf("turn = %+v", turn)
+	}
+	if after := tree(t, user); !reflect.DeepEqual(after, before) {
+		t.Fatalf("the user's home = %v, was %v", after, before)
+	}
+	if info, err := os.Lstat(filepath.Join(home, "skills")); err != nil || !info.IsDir() {
+		t.Fatalf("skills/ of the home: %v, %v", info, err)
+	}
+	want := map[string]string{
+		"skills/mine":            "-> " + filepath.Join(user, "skills", "mine"),
+		"skills/review.user":     "-> " + filepath.Join(user, "skills", "review"),
+		"skills/review/SKILL.md": "recorded review\n",
+	}
+	if !reflect.DeepEqual(h.ran, []string{home}) || !reflect.DeepEqual(h.held, []map[string]string{want}) {
+		t.Fatalf("ran with %q holding %v, want %v", h.ran, h.held, want)
+	}
+}
+
+// A skill of the call changed in the thread's home between turns is
+// restored: the turn that resumes the thread naming it runs with the
+// recorded bytes.
+func TestAResumedThreadGetsTheRecordedBytesOfASkillChangedBetweenTurns(t *testing.T) {
 	t.Parallel()
 	user, root := userCodexHome(t), filepath.Join(t.TempDir(), "homes")
 	h := runnerOver(t, root, user, fakeThread)
 	r := skilled("hello")
-	turn := h.runner.RunTurn(context.Background(), r, &sink{})
-	if turn.Status != codex.Completed || turn.ProviderSessionID != fakeThread {
+	r.Skills = r.Skills[:1]
+	if turn := h.runner.RunTurn(context.Background(), r, &sink{}); turn.Status != codex.Completed {
 		t.Fatalf("turn = %+v", turn)
 	}
-	want := map[string]string{
-		"auth.json":              "-> " + filepath.Join(user, "auth.json"),
-		"AGENTS.md":              "-> " + filepath.Join(user, "AGENTS.md"),
-		"skills/mine":            "-> " + filepath.Join(user, "skills", "mine"),
-		"skills/review/SKILL.md": "recorded review\n",
-		"skills/style/SKILL.md":  "recorded style\n",
+	home := filepath.Join(root, fakeThread)
+	writeFile(t, filepath.Join(home, "skills", "review", "SKILL.md"), "changed between turns\n")
+	r.ResumeSessionID = fakeThread
+	if turn := h.runner.RunTurn(context.Background(), r, &sink{}); turn.Status != codex.Completed {
+		t.Fatalf("turn = %+v", turn)
 	}
-	if len(h.ran) != 1 || filepath.Dir(h.ran[0]) != root || !reflect.DeepEqual(h.held[0], want) {
-		t.Fatalf("ran with %q holding %v, want a home under %s holding %v", h.ran, h.held, root, want)
-	}
-	args, err := codex.Arguments(r, "")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if specs := h.spy.Specs(); !reflect.DeepEqual(specs[0].Args, args) {
-		t.Fatalf("args = %q, want %q", specs[0].Args, args)
-	}
-	if names := entries(root); !reflect.DeepEqual(names, []string{fakeThread}) {
-		t.Fatalf("homes = %q, want the thread's", names)
-	}
-	if kept := tree(t, filepath.Join(root, fakeThread)); !reflect.DeepEqual(kept, want) {
-		t.Fatalf("kept home = %v", kept)
+	if len(h.held) != 2 || h.ran[1] != home || h.held[1]["skills/review/SKILL.md"] != "recorded review\n" {
+		t.Fatalf("ran with %q holding %v", h.ran, h.held)
 	}
 }
 
@@ -247,6 +355,7 @@ func TestAResumedThreadRunsWithItsHomeAndItsSkillsRebuilt(t *testing.T) {
 	}
 	withSkill := map[string]string{
 		"skills/mine":            "-> " + filepath.Join(user, "skills", "mine"),
+		"skills/review.user":     "-> " + filepath.Join(user, "skills", "review"),
 		"skills/review/SKILL.md": "recorded review\n",
 	}
 	withoutSkill := map[string]string{

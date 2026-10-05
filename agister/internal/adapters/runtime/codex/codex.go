@@ -22,11 +22,14 @@
 // where they exist, and skills/: a link to each entry of the user's
 // $CODEX_HOME/skills but .system, which Codex writes into the home itself,
 // and the turn's skills, <home>/skills/<name>/SKILL.md from their bytes. A
-// user's skill named as one of the turn's is not linked: one folder cannot
-// hold both. After the turn the home is named by the thread Codex
-// reported, as Pi's sessions are, or removed when it reported none. A turn
-// that resumes a thread whose home is under Homes runs with it, its
-// skills/ rebuilt so before the turn, whatever else Codex keeps there; a
+// user's skill named as one of the turn's is linked as <name>.user, a
+// folder name the naming rule of settings rejects, so no turn's skill can
+// take it: both are given, each with its own front matter (ADR-021 rule
+// 7). After the turn the home is named by the thread Codex reported, as
+// Pi's sessions are, or removed when it reported none. A turn that resumes
+// a thread whose home is under Homes runs with it, its skills/ rebuilt so
+// before the turn, whatever else Codex keeps there: a skills/ that is not
+// a folder, a link among them, is removed, never followed; a
 // thread with no home there ran in the user's CODEX_HOME, where a turn's
 // skills cannot be given, so a turn naming skills is refused before Codex
 // starts. Every other turn runs with the user's CODEX_HOME, its
@@ -459,11 +462,13 @@ func (r *Runner) fill(home string, skills []Skill) error {
 	return giveSkills(home, user, skills)
 }
 
-// giveSkills rebuilds the skills/ of home for a turn: every entry but
-// .system, Codex's own, goes; then each entry of the user's
-// <user>/skills but .system is linked, unless it is named as one of the
-// turn's skills, and each of those is written, <name>/SKILL.md from its
-// bytes. user empty: nothing of the user's is linked.
+// giveSkills rebuilds the skills/ of home for a turn: a skills/ that is not
+// a folder is removed, not followed, and a folder made; every entry but
+// .system, Codex's own, goes; then each entry of the user's <user>/skills
+// but .system is linked, under its own name or, when it is named as one of
+// the turn's skills, under userName's; and each of the turn's is written,
+// <name>/SKILL.md from its bytes. user empty: nothing of the user's is
+// linked.
 func giveSkills(home, user string, skills []Skill) error {
 	given := map[string]bool{}
 	for _, skill := range skills {
@@ -473,7 +478,7 @@ func giveSkills(home, user string, skills []Skill) error {
 		given[skill.Name] = true
 	}
 	dir := filepath.Join(home, "skills")
-	if err := os.MkdirAll(dir, 0o700); err != nil {
+	if err := ownFolder(dir); err != nil {
 		return err
 	}
 	held, err := os.ReadDir(dir)
@@ -492,11 +497,21 @@ func giveSkills(home, user string, skills []Skill) error {
 		if err != nil && !errors.Is(err, fs.ErrNotExist) {
 			return err
 		}
+		taken := map[string]bool{}
 		for _, entry := range mine {
-			if name := entry.Name(); name != systemSkills && !given[name] {
-				if err := os.Symlink(filepath.Join(user, "skills", name), filepath.Join(dir, name)); err != nil {
-					return err
-				}
+			taken[entry.Name()] = true
+		}
+		for _, entry := range mine {
+			name := entry.Name()
+			if name == systemSkills {
+				continue
+			}
+			link := name
+			if given[name] {
+				link = userName(name, func(name string) bool { return taken[name] || given[name] })
+			}
+			if err := os.Symlink(filepath.Join(user, "skills", name), filepath.Join(dir, link)); err != nil {
+				return err
 			}
 		}
 	}
@@ -509,6 +524,37 @@ func giveSkills(home, user string, skills []Skill) error {
 		}
 	}
 	return nil
+}
+
+// ownFolder makes dir a folder the adapter owns: one that is there is
+// kept; anything else at dir, a link to the user's skills among them, is
+// removed itself, never what it links to, and a folder made in its place.
+func ownFolder(dir string) error {
+	info, err := os.Lstat(dir)
+	switch {
+	case errors.Is(err, fs.ErrNotExist):
+	case err != nil:
+		return err
+	case info.IsDir():
+		return nil
+	default:
+		if err := os.Remove(dir); err != nil {
+			return err
+		}
+	}
+	return os.Mkdir(dir, 0o700)
+}
+
+// userName is the folder name a user's skill named as one of a turn's is
+// linked under: <name>.user, which the naming rule of settings rejects, so
+// no turn's skill takes it; another .user is added while taken says the
+// name is in use.
+func userName(name string, taken func(string) bool) string {
+	link := name + ".user"
+	for taken(link) {
+		link += ".user"
+	}
+	return link
 }
 
 // keep names a fresh thread's home after the thread Codex reported, for
