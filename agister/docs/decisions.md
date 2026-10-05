@@ -131,3 +131,14 @@
 - **Decision:** (a). All six prompt edits stay.
 - **Rests on:** D-10
 - **Follow-ups:** none
+
+## D-13: May LAB-63 edit the recorded architecture prompt and implement instructions?
+
+- **Status:** Owner
+- **Asked by:** workflow run 20261005T131604Z-25a2b5 (code_review), judge item "LAB-63 edits existing agent instructions as its brief requests"; advisor run 20261005T132214Z-bc707a answered `owner`
+- **Question:** do LAB-63's two edits to existing agent instructions stay?
+- **Options:** (a) they stay, and an owner decision is appended to decisions.md as D-12 did for LAB-67; (b) revert both to the recorded text and ship only the new prompts and optional inputs.
+- **Excluded:** (b): the edits are the change LAB-63 asks for.
+- **Decision:** (a). The architecture review prompt loses its ADR-001 rule 15 parenthesis, and the four implement instructions gain the sentence on guidance given as further inputs.
+- **Rests on:** none
+- **Follow-ups:** none
