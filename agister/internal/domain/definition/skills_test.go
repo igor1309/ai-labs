@@ -134,6 +134,41 @@ func TestASkillNameIsLiteralAndNamedOnce(t *testing.T) {
 	}
 }
 
+// Rule 2: a second skills does not replace the first, whichever is empty:
+// a process or an agent that names a skill is not read as naming none.
+func TestSkillsDeclaredTwiceIsInvalid(t *testing.T) {
+	t.Parallel()
+	cases := map[string]struct{ toml, yaml string }{
+		"some, then none":  {"skills = [\"review\"]\nskills = []\n", "skills: [review]\nskills: []\n"},
+		"none, then some":  {"skills = []\nskills = [\"review\"]\n", "skills: []\nskills: [review]\n"},
+		"some, then other": {"skills = [\"review\"]\nskills = [\"style\"]\n", "skills: [review]\nskills: [style]\n"},
+	}
+	for name, c := range cases {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			// The TOML parser refuses a key defined twice itself.
+			agent, err := definition.ParseAgent(doc(definition.KindAgent, "a", skilledAgent+c.toml))
+			if want := "(last key \"skills\"): Key 'skills' has already been defined."; err == nil || !strings.Contains(err.Error(), want) || len(agent.Skills) != 0 {
+				t.Errorf("agent: skills %q, err = %v, want %q", agent.Skills, err, want)
+			}
+			_, err = definition.ParseProcess(doc(definition.KindProcess, "p", skilledProcess(c.yaml)))
+			if want := "\n  skills: is declared more than once: one list names the process's skills"; err == nil || !strings.Contains(err.Error(), want) {
+				t.Errorf("process: err = %v, want %q", err, want)
+			}
+		})
+	}
+	// Apart at the two ends of the document, as next to each other.
+	_, err := definition.ParseProcess(doc(definition.KindProcess, "p", skilledProcess("skills: [review]\n")+"skills: []\n"))
+	if err == nil || !strings.Contains(err.Error(), "\n  skills: is declared more than once") {
+		t.Fatalf("apart: err = %v", err)
+	}
+	// A skills that is not the process's own is not a second one.
+	_, err = definition.ParseProcess(doc(definition.KindProcess, "p", skilledProcess("skills: [review]\n")+"  skills: []\n"))
+	if err == nil || strings.Contains(err.Error(), "more than once") || !strings.Contains(err.Error(), "\n  output.skills: unknown field") {
+		t.Fatalf("nested: err = %v", err)
+	}
+}
+
 // Rule 2: the call gets the process's skills, then its agent's, each once.
 func TestACallsSkillsAreTheProcessesThenItsAgents(t *testing.T) {
 	t.Parallel()

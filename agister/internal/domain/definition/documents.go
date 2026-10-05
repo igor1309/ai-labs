@@ -176,6 +176,11 @@ func ParseProcess(doc Document) (Process, error) {
 	if declared(root, "verify") > 1 {
 		p.add("verify", "is declared more than once: the inline fields or one reference, not both")
 	}
+	// So would a second skills: a process could name a skill and run
+	// without it (ADR-021 rule 2).
+	if declared(root, "skills") > 1 {
+		p.add("skills", "is declared more than once: one list names the process's skills")
+	}
 	values := fields(root, "", append([]string{"schema", "name", "status", "type", "uses", "policy", "input", "output", "verify", "skills"}, limitKeys...), p)
 	header(values, ProcessSchema, doc.Source.Name, p)
 	if value, _ := scalar(values["type"], "type", p); value != "process" {

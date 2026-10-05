@@ -2,6 +2,8 @@ package fsdefs_test
 
 import (
 	"context"
+	"io/fs"
+	"net"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -129,6 +131,45 @@ func TestABrokenSkillIsListedAndNotRead(t *testing.T) {
 		if doc.Source.Kind != definition.KindSkill || doc.Source.Name != name || doc.Source.Path != file(name) || doc.Bytes != nil {
 			t.Errorf("%s: document = %+v, %q", name, doc.Source, doc.Bytes)
 		}
+	}
+}
+
+// A SKILL.md that is neither a regular file, a link nor a folder, a socket
+// here, is a broken skill too: listed, and not read.
+//
+// Contract test: the settings store against a real socket file, which only
+// listening on it makes.
+//
+// Serial: it changes the process's working directory, to bind the socket
+// by its name from inside its folder. A socket's path is at most 104 bytes
+// on macOS, and a temporary folder's is longer there.
+func TestASkillFileThatIsNotRegularIsNotRead(t *testing.T) {
+	ctx := context.Background()
+	store := fsdefs.Store{Dir: t.TempDir()}
+	folder := filepath.Join(store.Dir, "skills", "special")
+	file := filepath.Join(folder, "SKILL.md")
+	if err := os.MkdirAll(folder, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	t.Chdir(folder)
+	listener, err := net.Listen("unix", "SKILL.md")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = listener.Close() })
+	if info, err := os.Lstat(file); err != nil || info.Mode().Type() != fs.ModeSocket {
+		t.Fatalf("fixture = %v, %v: not a socket", info, err)
+	}
+
+	if names, err := store.List(ctx, definition.KindSkill); err != nil || !reflect.DeepEqual(names, []string{"special"}) {
+		t.Fatalf("list = %v, %v", names, err)
+	}
+	doc, err := store.Read(ctx, definition.KindSkill, "special")
+	if want := file + " is not a regular file"; err == nil || err.Error() != want {
+		t.Fatalf("err = %v, want %q", err, want)
+	}
+	if doc.Source.Kind != definition.KindSkill || doc.Source.Name != "special" || doc.Source.Path != file || doc.Bytes != nil {
+		t.Fatalf("document = %+v, %q", doc.Source, doc.Bytes)
 	}
 }
 

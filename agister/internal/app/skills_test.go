@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"reflect"
+	"slices"
 	"strings"
 	"testing"
 
@@ -455,6 +456,48 @@ func TestTheRefusalIsOfTheSkillsTheCallIsGiven(t *testing.T) {
 	h.defs.docs[definition.KindSkill] = map[string]string{"style": skillDoc("style")}
 	if record := h.call(t, contract.CallRequest{Agent: "b"}); record.Result.Status != run.Completed || len(h.runner.calls()) != 1 {
 		t.Fatalf("on b: result %+v: %s", record.Result, message(record))
+	}
+}
+
+// A second skills does not empty the first: a process or an agent that
+// declares its skills twice is invalid, so its call is refused before its
+// first turn rather than run without the skill it names.
+func TestACallOfSkillsDeclaredTwiceIsRefused(t *testing.T) {
+	t.Parallel()
+	cases := map[string]struct {
+		kind                definition.Kind
+		name, text, problem string
+	}{
+		"a process": {
+			definition.KindProcess, "p",
+			withSkills(settingsDocs()[definition.KindProcess]["p"], "review") + "skills: []\n",
+			"process p: skills: is declared more than once: one list names the process's skills",
+		},
+		// The TOML parser refuses a key defined twice itself.
+		"an agent": {
+			definition.KindAgent, "a",
+			skilledAgent("a", "review") + "skills = []\n",
+			"agent a: toml: line 9 (last key \"skills\"): Key 'skills' has already been defined.",
+		},
+	}
+	for name, c := range cases {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			h := newHarness()
+			h.defs.docs[c.kind][c.name] = c.text
+			h.defs.docs[definition.KindSkill] = map[string]string{"review": skillDoc("review")}
+			if report := checkOf(t, h, false); !slices.Contains(messages(report.Problems), c.problem) {
+				t.Fatalf("problems = %q, want %q among them", messages(report.Problems), c.problem)
+			}
+			record := h.call(t, contract.CallRequest{})
+			_, want, _ := strings.Cut(c.problem, ": ")
+			if class(record) != run.ClassRefused || !strings.Contains(message(record), want) {
+				t.Fatalf("result %+v: %q, want %q", record.Result, message(record), want)
+			}
+			if len(h.runner.calls()) != 0 || len(h.workspaces.checkouts) != 0 {
+				t.Fatalf("turns %d, checkouts %v after the refusal", len(h.runner.calls()), h.workspaces.checkouts)
+			}
+		})
 	}
 }
 
