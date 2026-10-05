@@ -135,3 +135,18 @@ Against trunk's merge-base (also covers #829 and #831):
   file found with a second document.
 - **Done when:** every YAML settings kind rejects more than one document,
   with a parser test per kind.
+
+## 10. No check that a schema given to Codex lists every property as required
+
+- **Gap:** Codex's strict structured outputs refuse a schema whose
+  `required` omits any property (codex-cli 0.160.0:
+  `400 invalid_json_schema: 'required' is required to be supplied and to
+  be an array including every key in properties`; observed by implement
+  run `20261005T115707Z-6392be`, LAB-66). The review would fail before
+  its turn starts. `TestSchemasGivenToCodexUseNoRefusedCombinator`
+  checks only combinators, so a schema with an optional property passes
+  every test.
+- **Trigger:** the next schema given to a Codex process, or the next
+  change to that test.
+- **Done when:** the test also refuses, in every object of every schema
+  given to a Codex process, a property missing from `required`.
