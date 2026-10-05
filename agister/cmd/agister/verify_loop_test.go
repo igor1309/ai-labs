@@ -60,6 +60,8 @@ func (s *scripted) Identity(context.Context) (app.RuntimeIdentity, error) {
 	return app.RuntimeIdentity{Contract: "fake/1", Version: "1.0.0", Resume: true, CostLimit: true}, nil
 }
 
+func (*scripted) Admit(app.TurnStart) *domain.Error { return nil }
+
 func (s *scripted) RunTurn(_ context.Context, request app.TurnRequest, _ app.EventSink) domain.Turn {
 	s.mu.Lock()
 	n := len(s.requests)

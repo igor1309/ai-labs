@@ -73,6 +73,15 @@ type TurnRequest struct {
 	Skills []TurnSkill
 }
 
+// TurnStart is what a call's first turn carries that a runner may refuse
+// before the call has any effect.
+type TurnStart struct {
+	// The provider session the turn resumes; empty for a fresh one.
+	ResumeSessionID string
+	// Skills are the call's skills, in order, as the turn carries them.
+	Skills []TurnSkill
+}
+
 // TurnSkill is one skill a turn is given, as the call recorded it.
 type TurnSkill struct {
 	Name string

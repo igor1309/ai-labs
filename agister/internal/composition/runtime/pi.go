@@ -43,6 +43,9 @@ func (r piRunner) Identity(ctx context.Context) (app.RuntimeIdentity, error) {
 	return app.RuntimeIdentity(identity), err
 }
 
+// Admit admits every first turn: the runtime can run any it is given.
+func (piRunner) Admit(app.TurnStart) *run.Error { return nil }
+
 type piSink struct{ app.EventSink }
 
 func (s piSink) ToolStarted(tool pi.ToolCall) { s.EventSink.ToolStarted(app.ToolCall(tool)) }

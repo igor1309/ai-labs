@@ -121,6 +121,8 @@ func (r *nodeRunner) Identity(context.Context) (app.RuntimeIdentity, error) {
 	return app.RuntimeIdentity{Contract: "spy/1", Version: "1.2.3", Resume: true, CostLimit: true, Skills: r.skills}, nil
 }
 
+func (*nodeRunner) Admit(app.TurnStart) *run.Error { return nil }
+
 func (r *nodeRunner) RunTurn(ctx context.Context, request app.TurnRequest, sink app.EventSink) run.Turn {
 	instruction, _, _ := strings.Cut(request.Instruction, "\n")
 	r.mu.Lock()

@@ -269,6 +269,13 @@ func Conformance(t *testing.T, subject Subject) {
 		}
 	})
 
+	t.Run("a fresh first turn is admitted", func(t *testing.T) {
+		request := subject.Request("SCENARIO:approve")
+		if fault := subject.New(subject.Fake).Admit(app.TurnStart{Skills: request.Skills}); fault != nil {
+			t.Fatalf("admit = %v", fault)
+		}
+	})
+
 	t.Run("completed turn with structured output", func(t *testing.T) {
 		result, sink := turn(t, "SCENARIO:approve", nil, context.Background())
 		if result.Status != run.Completed || len(result.Output) == 0 || result.ProviderSessionID == "" {

@@ -334,3 +334,66 @@ func TestContinuationAfterRemovingTheLaunchingWorktree(t *testing.T) {
 		})
 	}
 }
+
+// skilledCarrying is carrying with process p naming the skill review, on a
+// runtime whose adapter gives skills, and run-0 to continue.
+func skilledCarrying() (*harness, *[]string) {
+	h, order := carrying()
+	h.defs.docs[definition.KindProcess]["p"] = withSkills(h.defs.docs[definition.KindProcess]["p"], "review")
+	h.defs.docs[definition.KindSkill] = map[string]string{"review": skillDoc("review")}
+	h.runner.identity.Skills = true
+	patchedRun(h, "run-0", "", 0, 1, "diff A\n")
+	return h, order
+}
+
+// A continued call's first turn is put to its runner before the call
+// checks out, carries changes or runs its setup: one the runner refuses
+// costs none of them, and no turn runs (D-15). Any other fault the runner
+// answers with is the call's, as it is.
+func TestAFirstTurnTheRunnerRefusesHasNoEffect(t *testing.T) {
+	t.Parallel()
+	start := app.TurnStart{ResumeSessionID: "prov-0", Skills: []app.TurnSkill{{Name: "review", Bytes: []byte(skillDoc("review"))}}}
+	for _, c := range []struct {
+		name    string
+		fault   *run.Error
+		refused bool
+	}{
+		{"refused", run.Fault(run.ClassRefused, "thread prov-0 ran in the user's CODEX_HOME"), true},
+		{"another fault", run.Fault(run.ClassInternal, "the home cannot be read"), false},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
+			h, order := skilledCarrying()
+			h.runner.refusal = c.fault
+			record := h.call(t, contract.CallRequest{Continue: "run-0"})
+			if class(record) != c.fault.Class || message(record) != c.fault.Message || contains(h.recorder.kinds(), "REFUSED") != c.refused {
+				t.Fatalf("result %+v, events %v", record.Result, h.recorder.kinds())
+			}
+			if got := h.runner.admitted(); !reflect.DeepEqual(got, []app.TurnStart{start}) {
+				t.Fatalf("admitted %+v, want %+v", got, start)
+			}
+			if len(h.runner.calls()) != 0 || len(h.workspaces.checkouts) != 0 || len(h.setup.runs()) != 0 || len(h.changes.applies()) != 0 || len(*order) != 0 {
+				t.Fatalf("turns %d, checkouts %v, setup %v, applied %v, order %v",
+					len(h.runner.calls()), h.workspaces.checkouts, h.setup.runs(), h.changes.applies(), *order)
+			}
+		})
+	}
+}
+
+// A continued call's first turn its runner admits is made ready and run as
+// before: checked out, its changes carried, its setup run.
+func TestAFirstTurnTheRunnerAdmitsRuns(t *testing.T) {
+	t.Parallel()
+	h, order := skilledCarrying()
+	record := h.call(t, contract.CallRequest{Continue: "run-0"})
+	if record.Result.Status != run.Completed || len(h.runner.calls()) != 1 || len(h.workspaces.checkouts) != 1 || len(h.setup.runs()) != 1 {
+		t.Fatalf("result %+v, turns %d, checkouts %v, setup %v", record.Result, len(h.runner.calls()), h.workspaces.checkouts, h.setup.runs())
+	}
+	if want := []string{"check", "setup", "apply", "turn"}; !reflect.DeepEqual(*order, want) {
+		t.Fatalf("order %v, want %v", *order, want)
+	}
+	admitted, turn := h.runner.admitted(), h.runner.calls()[0]
+	if want := []app.TurnStart{{ResumeSessionID: turn.ResumeSessionID, Skills: turn.Skills}}; turn.ResumeSessionID != "prov-0" || len(turn.Skills) != 1 || !reflect.DeepEqual(admitted, want) {
+		t.Fatalf("admitted %+v, turn %+v", admitted, turn)
+	}
+}

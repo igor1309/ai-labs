@@ -43,6 +43,9 @@ func (r claudecodeRunner) Identity(ctx context.Context) (app.RuntimeIdentity, er
 	return app.RuntimeIdentity(identity), err
 }
 
+// Admit admits every first turn: the runtime can run any it is given.
+func (claudecodeRunner) Admit(app.TurnStart) *run.Error { return nil }
+
 type claudecodeSink struct{ app.EventSink }
 
 func (s claudecodeSink) ToolStarted(tool claudecode.ToolCall) {

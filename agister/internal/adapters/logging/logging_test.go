@@ -90,6 +90,8 @@ func (*starter) Identity(context.Context) (app.RuntimeIdentity, error) {
 	return app.RuntimeIdentity{}, nil
 }
 
+func (*starter) Admit(app.TurnStart) *run.Error { return nil }
+
 func (s *starter) RunTurn(_ context.Context, _ app.TurnRequest, sink app.EventSink) run.Turn {
 	s.got = sink.ProcessStarted("ref")
 	return run.Turn{Status: run.Completed}
@@ -122,6 +124,8 @@ func (taking) Identity(context.Context) (app.RuntimeIdentity, error) {
 	return app.RuntimeIdentity{}, nil
 }
 
+func (taking) Admit(app.TurnStart) *run.Error { return nil }
+
 func (r taking) RunTurn(context.Context, app.TurnRequest, app.EventSink) run.Turn {
 	r.clock.Advance(r.takes)
 	return run.Turn{Status: run.Completed}
@@ -147,5 +151,38 @@ func TestTheWallTimeIsReadOnTheRunnersClock(t *testing.T) {
 	}
 	if finished["wall"] != "1m30s" {
 		t.Fatalf("turn.finished = %v", finished)
+	}
+}
+
+// admitting is a runner that admits by its fault.
+type admitting struct {
+	starter
+	fault *run.Error
+	got   []app.TurnStart
+}
+
+func (r *admitting) Admit(start app.TurnStart) *run.Error {
+	r.got = append(r.got, start)
+	return r.fault
+}
+
+// The decorator hands a first turn to the runner as it is, returns its
+// answer unchanged, and logs a fault.
+func TestAdmitPassesThroughAndLogsAFault(t *testing.T) {
+	t.Parallel()
+	var buffer bytes.Buffer
+	log := slog.New(slog.NewJSONHandler(&buffer, nil))
+	inner := &admitting{}
+	runner := logging.Runner{Inner: inner, Adapter: "x", Log: log}
+	start := app.TurnStart{ResumeSessionID: "session", Skills: []app.TurnSkill{{Name: "review", Bytes: []byte("review")}}}
+	if fault := runner.Admit(start); fault != nil || buffer.Len() != 0 {
+		t.Fatalf("admit = %+v, log %s", fault, buffer.String())
+	}
+	inner.fault = run.Fault(run.ClassRefused, "no home")
+	if fault := runner.Admit(start); fault != inner.fault || !strings.Contains(buffer.String(), "runtime.not_admitted") || !strings.Contains(buffer.String(), "no home") {
+		t.Fatalf("admit = %+v, log %s", fault, buffer.String())
+	}
+	if len(inner.got) != 2 || inner.got[1].ResumeSessionID != "session" || inner.got[1].Skills[0].Name != "review" {
+		t.Fatalf("the runner got %+v", inner.got)
 	}
 }

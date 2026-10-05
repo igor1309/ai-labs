@@ -96,6 +96,14 @@ func (r Runner) Identity(ctx context.Context) (app.RuntimeIdentity, error) {
 	return identity, err
 }
 
+func (r Runner) Admit(start app.TurnStart) *run.Error {
+	fault := r.Inner.Admit(start)
+	if fault != nil {
+		r.Log.Warn("runtime.not_admitted", "adapter", r.Adapter, "error", fault.String())
+	}
+	return fault
+}
+
 func (r Runner) RunTurn(ctx context.Context, request app.TurnRequest, sink app.EventSink) run.Turn {
 	started := r.now()
 	r.Log.InfoContext(ctx, "turn.started",

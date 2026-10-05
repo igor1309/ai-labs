@@ -36,7 +36,8 @@
 // fails the turn before Codex starts. A
 // thread with no home there ran in the user's CODEX_HOME, where a turn's
 // skills cannot be given, so a turn naming skills is refused before Codex
-// starts. Every other turn runs with the user's CODEX_HOME, its
+// starts; Admit refuses it by the same rule before the call has any
+// effect. Every other turn runs with the user's CODEX_HOME, its
 // environment unchanged. argv is the same either way.
 //
 // Codex reports no cost. The thread's cost, every turn it had, is
@@ -315,10 +316,7 @@ func (r *Runner) RunTurn(ctx context.Context, request TurnRequest, sink EventSin
 	if err != nil {
 		return failedTurn(ClassInternal, err)
 	}
-	root := r.Homes
-	if root == "" {
-		root = filepath.Join(os.TempDir(), "agister-codex-homes")
-	}
+	root := r.homes()
 	home, fresh, fault := r.home(root, request)
 	if fault != nil {
 		return Turn{Status: StatusOf(fault.Class), Error: fault}
@@ -406,30 +404,61 @@ func (r *Runner) home(root string, request TurnRequest) (home string, fresh bool
 		}
 		return dir, true, nil
 	}
-	if !validID(id) {
-		return "", false, Fault(ClassRuntimeError, "%s cannot resume thread %q: not a thread ID", Contract, id)
-	}
-	dir := filepath.Join(root, id)
-	info, err := os.Lstat(dir)
-	switch {
-	case errors.Is(err, fs.ErrNotExist) && len(request.Skills) == 0:
-		return "", false, nil
-	case errors.Is(err, fs.ErrNotExist):
-		names := make([]string, len(request.Skills))
-		for i, skill := range request.Skills {
-			names[i] = skill.Name
-		}
-		return "", false, Fault(ClassRefused, "thread %s ran in the user's CODEX_HOME, where a call's skills cannot be given (ADR-021): %s; a fresh run gets them",
-			id, strings.Join(names, ", "))
-	case err != nil:
-		return "", false, Fault(ClassInternal, "%v", err)
-	case !info.IsDir():
-		return "", false, Fault(ClassInternal, "%s cannot resume thread %s: %s is not its CODEX_HOME", Contract, id, dir)
+	dir, fault := threadHome(root, id, request.Skills)
+	if dir == "" || fault != nil {
+		return "", false, fault
 	}
 	if err := r.prepare(dir, request.Skills); err != nil {
 		return "", false, Fault(ClassInternal, "%v", err)
 	}
 	return dir, false, nil
+}
+
+// Admit tells, before a call has any effect, whether a turn that resumes
+// thread request.ResumeSessionID with request.Skills can run: by the rule
+// home applies (threadHome), under the same root. A fresh thread can.
+func (r *Runner) Admit(request TurnRequest) *Error {
+	if request.ResumeSessionID == "" {
+		return nil
+	}
+	_, fault := threadHome(r.homes(), request.ResumeSessionID, request.Skills)
+	return fault
+}
+
+// homes is the directory the homes of threads given skills are kept under.
+func (r *Runner) homes() string {
+	if r.Homes == "" {
+		return filepath.Join(os.TempDir(), "agister-codex-homes")
+	}
+	return r.Homes
+}
+
+// threadHome is the home under root resumed thread id ran in; empty when
+// it ran in the user's CODEX_HOME, which a turn with skills cannot resume:
+// the turn is refused. A thread ID that cannot name a folder, or a home
+// under its name that cannot be read or is not a folder, is a fault.
+func threadHome(root, id string, skills []Skill) (string, *Error) {
+	if !validID(id) {
+		return "", Fault(ClassRuntimeError, "%s cannot resume thread %q: not a thread ID", Contract, id)
+	}
+	dir := filepath.Join(root, id)
+	info, err := os.Lstat(dir)
+	switch {
+	case errors.Is(err, fs.ErrNotExist) && len(skills) == 0:
+		return "", nil
+	case errors.Is(err, fs.ErrNotExist):
+		names := make([]string, len(skills))
+		for i, skill := range skills {
+			names[i] = skill.Name
+		}
+		return "", Fault(ClassRefused, "thread %s ran in the user's CODEX_HOME, where a call's skills cannot be given (ADR-021): %s; a fresh run gets them",
+			id, strings.Join(names, ", "))
+	case err != nil:
+		return "", Fault(ClassInternal, "%v", err)
+	case !info.IsDir():
+		return "", Fault(ClassInternal, "%s cannot resume thread %s: %s is not its CODEX_HOME", Contract, id, dir)
+	}
+	return dir, nil
 }
 
 // userHome is the user's own CODEX_HOME, absolute; empty when the runner

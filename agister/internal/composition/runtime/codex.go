@@ -35,6 +35,7 @@ func (t CodexTransport) Version(ctx context.Context, command string) (string, er
 type Codex interface {
 	RunTurn(context.Context, codex.TurnRequest, codex.EventSink) codex.Turn
 	Identity(context.Context) (codex.RuntimeIdentity, error)
+	Admit(codex.TurnRequest) *codex.Error
 }
 type codexRunner struct{ wrapper Codex }
 
@@ -42,6 +43,15 @@ func AdaptCodex(wrapper Codex) app.TurnRunner { return codexRunner{wrapper} }
 func (r codexRunner) Identity(ctx context.Context) (app.RuntimeIdentity, error) {
 	identity, err := r.wrapper.Identity(ctx)
 	return app.RuntimeIdentity(identity), err
+}
+
+// Admit asks the wrapper whether it can run a first turn carrying start.
+func (r codexRunner) Admit(start app.TurnStart) *run.Error {
+	fault := r.wrapper.Admit(CodexRequest(app.TurnRequest{ResumeSessionID: start.ResumeSessionID, Skills: start.Skills}))
+	if fault == nil {
+		return nil
+	}
+	return &run.Error{Class: run.Class(fault.Class), Message: fault.Message}
 }
 
 type codexSink struct{ app.EventSink }

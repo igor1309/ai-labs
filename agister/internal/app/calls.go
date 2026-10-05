@@ -379,6 +379,10 @@ type CallRunners interface {
 // or processes.
 type TurnRunner interface {
 	Identity(ctx context.Context) (RuntimeIdentity, error)
+	// Admit tells, before the call checks out, carries changes or runs its
+	// setup, whether the runner can run a first turn that carries start:
+	// nil when it can, else the fault the turn would end with.
+	Admit(start TurnStart) *run.Error
 	RunTurn(ctx context.Context, request TurnRequest, sink EventSink) run.Turn
 }
 
@@ -815,6 +819,17 @@ func (c *Calls) execute(ctx context.Context, handle RunHandle, record run.Record
 		fail(err)
 		return
 	}
+	skills := translated(res.Skills, func(skill CallSkill) TurnSkill { return TurnSkill{Name: skill.Name, Bytes: skill.Bytes} })
+	// A first turn the runner cannot run costs no checkout, carried changes
+	// or setup: it is refused before any of them.
+	if fault := runner.Admit(TurnStart{ResumeSessionID: resumed.session, Skills: skills}); fault != nil {
+		if fault.Class == run.ClassRefused {
+			fail(refuse("%s", fault.Message))
+		} else {
+			finish(fault)
+		}
+		return
+	}
 
 	inputs, err := c.resolveValues(ctx, "process "+res.Process.Name, res.Process.Params, res.Process.Values, record.Request, collection, res.Prompts, res.Absent)
 	if err != nil {
@@ -925,7 +940,7 @@ func (c *Calls) execute(ctx context.Context, handle RunHandle, record run.Record
 		Primitives:      res.Plan.Primitives,
 		Timeout:         res.Effective.Timeout,
 		OutputSchema:    res.Schema,
-		Skills:          translated(res.Skills, func(skill CallSkill) TurnSkill { return TurnSkill{Name: skill.Name, Bytes: skill.Bytes} }),
+		Skills:          skills,
 	}
 	_ = handle.Update(record)
 

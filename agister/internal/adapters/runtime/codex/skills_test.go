@@ -420,6 +420,47 @@ func TestAResumedThreadWithNoHomeRanInTheUsersHome(t *testing.T) {
 	}
 }
 
+// Before a call has any effect, the runner refuses its first turn by the
+// rule a turn is refused by: a resumed thread with no home under the root
+// with skills, with the turn's own fault. It admits that thread without
+// skills, a thread whose home is there, and a fresh thread. It makes and
+// starts nothing.
+func TestAdmitRefusesWhatTheTurnWould(t *testing.T) {
+	t.Parallel()
+	root := filepath.Join(t.TempDir(), "homes")
+	h := runnerOver(t, root, userCodexHome(t), fakeThread)
+	r := skilled("hello")
+	r.ResumeSessionID = fakeThread
+	fault := h.runner.Admit(r)
+	turn := runnerOver(t, root, userCodexHome(t), fakeThread).runner.RunTurn(context.Background(), r, &sink{})
+	if fault == nil || fault.Class != codex.ClassRefused || turn.Error == nil || *fault != *turn.Error {
+		t.Fatalf("admit = %+v, turn = %+v", fault, turn.Error)
+	}
+
+	bare := r
+	bare.Skills = nil
+	if fault := h.runner.Admit(bare); fault != nil {
+		t.Fatalf("without skills: %+v", fault)
+	}
+	fresh := skilled("hello")
+	if fault := h.runner.Admit(fresh); fault != nil {
+		t.Fatalf("fresh: %+v", fault)
+	}
+	if _, err := os.Stat(root); !errors.Is(err, fs.ErrNotExist) || len(h.spy.Specs()) != 0 {
+		t.Fatalf("homes root: %v, specs %+v", err, h.spy.Specs())
+	}
+
+	if err := os.MkdirAll(filepath.Join(root, fakeThread), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if fault := h.runner.Admit(r); fault != nil {
+		t.Fatalf("with its home: %+v", fault)
+	}
+	if held := tree(t, filepath.Join(root, fakeThread)); len(held) != 0 {
+		t.Fatalf("the home was made ready: %v", held)
+	}
+}
+
 // A thread ID that cannot name a folder is not resumed, as Pi's runner
 // does not resume such a session: the turn fails before Codex starts.
 func TestAThreadIDThatCannotNameAFolderIsNotResumed(t *testing.T) {

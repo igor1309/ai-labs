@@ -43,6 +43,9 @@ func (r opencodeRunner) Identity(ctx context.Context) (app.RuntimeIdentity, erro
 	return app.RuntimeIdentity(identity), err
 }
 
+// Admit admits every first turn: the runtime can run any it is given.
+func (opencodeRunner) Admit(app.TurnStart) *run.Error { return nil }
+
 type opencodeSink struct{ app.EventSink }
 
 func (s opencodeSink) ToolStarted(tool opencode.ToolCall) {

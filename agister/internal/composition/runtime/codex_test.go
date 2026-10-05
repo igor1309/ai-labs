@@ -20,6 +20,13 @@ type codexStandIn struct {
 	identityError error
 	ctx           context.Context
 	recordError   error
+	admitted      codex.TurnRequest
+	refusal       *codex.Error
+}
+
+func (s *codexStandIn) Admit(r codex.TurnRequest) *codex.Error {
+	s.admitted = r
+	return s.refusal
 }
 
 func (s *codexStandIn) Identity(ctx context.Context) (codex.RuntimeIdentity, error) {
@@ -149,6 +156,40 @@ func TestCodexHomeIsTheEnvironmentsOrInTheUsersHome(t *testing.T) {
 		home, err := CodexHome(getenv, c.userHome)()
 		if home != c.want || (err != nil) != c.err {
 			t.Errorf("%s: home %q, err %v", name, home, err)
+		}
+	}
+}
+
+// The Codex adapter puts a first turn to the wrapper as a request that
+// resumes its session with its skills, and the wrapper's fault is the
+// call's, translated.
+func TestCodexAdmitsAsTheWrapperDoes(t *testing.T) {
+	t.Parallel()
+	stub := &codexStandIn{}
+	adapter := AdaptCodex(stub)
+	start := app.TurnStart{ResumeSessionID: "thread", Skills: []app.TurnSkill{{Name: "review", Bytes: []byte("review")}}}
+	if fault := adapter.Admit(start); fault != nil {
+		t.Fatalf("admit = %+v", fault)
+	}
+	if want := (codex.TurnRequest{ResumeSessionID: "thread", Skills: []codex.Skill{{Name: "review", Bytes: []byte("review")}}}); !reflect.DeepEqual(stub.admitted, want) {
+		t.Fatalf("admitted %+v", stub.admitted)
+	}
+	stub.refusal = &codex.Error{Class: codex.ClassRefused, Message: "thread ran in the user's CODEX_HOME"}
+	if fault := adapter.Admit(start); !reflect.DeepEqual(fault, &run.Error{Class: run.ClassRefused, Message: "thread ran in the user's CODEX_HOME"}) {
+		t.Fatalf("admit = %+v", fault)
+	}
+}
+
+// Claude Code, Pi and OpenCode can run any first turn: a resumed session
+// with skills is admitted.
+func TestEveryOtherRuntimeAdmitsAnyFirstTurn(t *testing.T) {
+	t.Parallel()
+	start := app.TurnStart{ResumeSessionID: "session", Skills: []app.TurnSkill{{Name: "review", Bytes: []byte("review")}}}
+	for name, adapter := range map[string]app.TurnRunner{
+		"claude-code": AdaptClaudeCode(&claudecodeStandIn{}), "pi": AdaptPi(&piStandIn{}), "opencode": AdaptOpenCode(&opencodeStandIn{}),
+	} {
+		if fault := adapter.Admit(start); fault != nil {
+			t.Fatalf("%s: admit = %+v", name, fault)
 		}
 	}
 }
