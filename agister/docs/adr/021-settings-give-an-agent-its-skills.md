@@ -1,6 +1,6 @@
 # ADR-021: Settings give an agent its skills
 
-- **Status:** Proposed
+- **Status:** Accepted
 - **Date:** 2026-10-05
 - **Scope:** skills that Agister's settings own and name for an agent or a
   process, and how each runtime adapter gives them to a call
