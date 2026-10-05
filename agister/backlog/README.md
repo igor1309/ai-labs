@@ -8,7 +8,7 @@ version: 0.1.0
 # Backlog
 
 Forward tasks only: never session status, done-markers or findings. Known
-gaps in what Agister already does live in [`../docs/deferred.md`](../docs/deferred.md);
+gaps in what Agister already does are Multica issues ([`../docs/deferred.md`](../docs/deferred.md));
 this is for what it might do next. Promote a topic to its own
 `backlog/<topic>.md` once it reaches roughly three items.
 

@@ -154,5 +154,6 @@ A run whose checkout has no changes records `NO_CHANGES` and has no
 The commands are in [AGENTS.md](AGENTS.md); they check `gokit` too. CI:
 `.github/workflows/agister-core.yml`.
 
-Known gaps: [docs/deferred.md](docs/deferred.md). Ideas:
+Known gaps: backlog issues in the Multica project Agister
+([docs/deferred.md](docs/deferred.md)). Ideas:
 [backlog/](backlog/README.md).

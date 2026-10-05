@@ -23,9 +23,9 @@ still apply.
 - Review a committed candidate with
   `agister run code_review --param base=<rev> --param candidate=<rev>`. Act on
   the rulings as written, without judging them again: fix items go to a
-  fresh `implement` run, owner items to the advisor (below), defer items to
-  `agister/docs/deferred.md`. Rejections for missing evidence are feedback
-  on the reviewers' prompts, not the judge's.
+  fresh `implement` run, owner items to the advisor (below), defer items to a
+  backlog issue in the Multica project Agister. Rejections for missing
+  evidence are feedback on the reviewers' prompts, not the judge's.
 - For an owner item, write the question file: who asked (the workflow run
   and item), the question and the options (the item's `action`, unedited),
   nothing else. Commit what the question is about and run
@@ -37,8 +37,9 @@ still apply.
 - Review a change that adds or edits an ADR with
   `agister run adr_review --param base=<rev> --param candidate=<rev>`,
   before the code that follows it; its rulings are acted on the same way.
-- At most 2 review rounds. Deferred work is `agister/docs/deferred.md`:
-  gap, trigger, done when, for real, observed gaps only.
+- At most 2 review rounds. Deferred work is a backlog issue in the
+  Multica project Agister: gap, trigger, done when, for real, observed
+  gaps only.
 - ADRs reference only earlier ADRs.
 - A failure of Agister itself during this work is a finding about Agister:
   record it and fix it; do not route around it. A Claude Code subagent or
