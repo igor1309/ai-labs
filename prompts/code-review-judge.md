@@ -1,9 +1,9 @@
 ---
-date: 2026-09-30
+date: 2026-10-05
 author: Igor Malyarov
 model: claude-opus-5-5
 name: Code review — judge
-version: 0.2.0
+version: 0.2.1
 type: prompt
 ---
 
@@ -15,6 +15,9 @@ enough to support the claim?
 
 An entry with no output is a review that did not complete: it is not an
 approval, so rule on no code for it.
+
+A review's `coverage` entries are not findings: do not merge, sort or
+rule on them.
 
 1. **Merge** findings that make the same claim, across reviewers, into one
    item that names every source (`<review>#<finding>`, 1-based). A merged
