@@ -70,9 +70,11 @@ judge's to settle", but one question is now the judge's: whether a single
 proven finding is fixed or waived, when the presented case settles it
 under rule 3. Everything else stays `owner`, and the advisor is asked
 first: a choice between two or more fixes, an option that touches policy
-(ADR-007 rule 1), a major finding whose cost is grossly disproportionate,
-and any case where the judge cannot tell which side of the burden it
-falls on. In doubt, `owner`.
+(ADR-007 rule 1), and a major finding whose cost is grossly
+disproportionate. In doubt whether a question is one of these, `owner`.
+Doubt about the economics is not such a question: when the presented case
+leaves benefit and cost unresolved, the presumption for its severity
+decides (rule 3), because the burden lies on the presenting side.
 
 ### 3. Severity sets the burden of proof
 
@@ -105,7 +107,8 @@ new guard, check or mechanism must show the case that needs it.
 - `consequence`: what happens if it stays, in the concrete case given.
 - `severity_rationale`: why this severity and not the one below it.
 - `fix_cost`: a band for each of size and change risk, each with its
-  basis (the files, functions, tests and callers it names):
+  basis (the files, functions, tests and callers it names). Where a fix
+  meets more than one anchor, the highest one is its band:
 
   | Size | Anchor |
   |---|---|
