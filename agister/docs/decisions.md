@@ -141,6 +141,7 @@
 - **Excluded:** (b): the edits are the change LAB-63 asks for.
 - **Decision:** (a). The architecture review prompt loses its ADR-001 rule 15 parenthesis, and the four implement instructions gain the sentence on guidance given as further inputs.
 - **Rests on:** none
+- **Follow-ups:** none
 
 ## D-14: May LAB-68 revise the recorded review instructions?
 
