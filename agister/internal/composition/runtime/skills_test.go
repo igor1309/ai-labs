@@ -131,6 +131,9 @@ func skillRunner(t *testing.T, adapter string) (app.TurnRunner, []string) {
 		return AdaptPi(pi.New("pi", t.TempDir(), PiTransport{Supervisor: transport})), []string{"read"}
 	case "opencode":
 		return AdaptOpenCode(opencode.New("opencode", OpenCodeTransport{Supervisor: transport})), []string{"skill"}
+	case "codex":
+		user := t.TempDir()
+		return NewCodex("codex", filepath.Join(t.TempDir(), "homes"), func() (string, error) { return user, nil }, transport), []string{"read-only"}
 	default:
 		t.Fatalf("unknown adapter %s", adapter)
 		return nil, nil
@@ -140,7 +143,7 @@ func skillRunner(t *testing.T, adapter string) (app.TurnRunner, []string) {
 // Bad input makes writing fail; the transport must never start the runtime.
 func TestASkillWriteFailureStopsEachRuntimeBeforeItStarts(t *testing.T) {
 	t.Parallel()
-	for _, adapter := range []string{"claude-code", "pi", "opencode"} {
+	for _, adapter := range []string{"claude-code", "pi", "opencode", "codex"} {
 		t.Run(adapter, func(t *testing.T) {
 			t.Parallel()
 			runner, primitives := skillRunner(t, adapter)
@@ -150,5 +153,80 @@ func TestASkillWriteFailureStopsEachRuntimeBeforeItStarts(t *testing.T) {
 				t.Fatalf("turn %+v, processes %v", turn, sink.Processes)
 			}
 		})
+	}
+}
+
+// Codex, as composed, gets a call's skills through a home of its thread's
+// (ADR-021 rule 6): the fake reads its CODEX_HOME's skills/ while it runs.
+// A fresh thread without skills runs with the user's home; one with skills
+// gets a home, linking the user's skills but .system, kept by the thread
+// it reported; a turn resuming it runs there with its own skills; a turn
+// with skills resuming a thread of the user's home is refused unstarted.
+func TestSkillsReachCodexThroughAHomeOfItsThread(t *testing.T) {
+	t.Parallel()
+	const thread = "01a0e850-b808-71c2-8401-53ba16d8ae18" // the fake's fresh thread
+	user, root := t.TempDir(), filepath.Join(t.TempDir(), "homes")
+	for path, text := range map[string]string{"auth.json": "{}", "skills/mine/SKILL.md": "user's mine\n", "skills/.system/bundled/SKILL.md": "codex's\n"} {
+		if err := os.MkdirAll(filepath.Dir(filepath.Join(user, path)), 0o700); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(user, path), []byte(text), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	transport := supervisor.Runtime{Starter: runtimetest.InProcess{Groups: supervisortest.NewGroups()}}
+	runner := NewCodex("codex", root, func() (string, error) { return user, nil }, transport)
+	if identity, err := runner.Identity(context.Background()); err != nil || !identity.Skills {
+		t.Fatalf("identity %+v, %v", identity, err)
+	}
+	review, style := app.TurnSkill{Name: "review", Bytes: []byte("recorded review\n")}, app.TurnSkill{Name: "style", Bytes: []byte("recorded style\n")}
+	type echo struct {
+		CodexHome  string   `json:"codex_home"`
+		SkillNames []string `json:"skill_names"`
+		Skills     map[string]map[string]string
+	}
+	home := filepath.Join(root, thread)
+	for _, c := range []struct {
+		resume string
+		skills []app.TurnSkill
+		home   string // "new": a fresh one under root
+		names  []string
+		files  map[string]string
+	}{
+		{"", nil, "", []string{}, nil},
+		{"", []app.TurnSkill{review, style}, "new", []string{"mine", "review", "style"}, map[string]string{"review/SKILL.md": "recorded review\n", "style/SKILL.md": "recorded style\n"}},
+		{thread, []app.TurnSkill{review}, home, []string{"mine", "review"}, map[string]string{"review/SKILL.md": "recorded review\n"}},
+	} {
+		sink := &runtimetest.Recorder{}
+		turn := runner.RunTurn(context.Background(), app.TurnRequest{Prompt: "SCENARIO:approve", Cwd: t.TempDir(), Timeout: time.Minute, Primitives: []string{"read-only"}, ResumeSessionID: c.resume, Skills: c.skills}, sink)
+		if turn.Status != run.Completed || turn.ProviderSessionID != thread || len(sink.Lines) == 0 {
+			t.Fatalf("turn %+v", turn)
+		}
+		var got echo
+		if err := json.Unmarshal([]byte(sink.Lines[0]), &got); err != nil {
+			t.Fatal(err)
+		}
+		if c.home == "new" {
+			if filepath.Dir(got.CodexHome) != root || got.CodexHome == home {
+				t.Fatalf("fresh home %q is not a new one under %s", got.CodexHome, root)
+			}
+			c.home = got.CodexHome
+		}
+		var files map[string]map[string]string
+		if c.files != nil {
+			files = map[string]map[string]string{filepath.Join(c.home, "skills"): c.files}
+		}
+		if got.CodexHome != c.home || !reflect.DeepEqual(got.SkillNames, c.names) || len(got.Skills) != len(files) || len(files) > 0 && !reflect.DeepEqual(got.Skills, files) {
+			t.Fatalf("resume %q, skills %d: echo %+v, want home %q, names %q, files %v", c.resume, len(c.skills), got, c.home, c.names, files)
+		}
+	}
+	if names, _ := os.ReadDir(root); len(names) != 1 || names[0].Name() != thread {
+		t.Fatalf("homes = %v, want the thread's alone", names)
+	}
+
+	sink := &runtimetest.Recorder{}
+	turn := runner.RunTurn(context.Background(), app.TurnRequest{Prompt: "SCENARIO:approve", Cwd: t.TempDir(), Timeout: time.Minute, Primitives: []string{"read-only"}, ResumeSessionID: "019a0000-0000-7000-8000-000000000000", Skills: []app.TurnSkill{review}}, sink)
+	if turn.Status != run.Failed || turn.Error == nil || turn.Error.Class != run.ClassRefused || !strings.Contains(turn.Error.Message, "ran in the user's CODEX_HOME") || len(sink.Processes) != 0 {
+		t.Fatalf("turn %+v, processes %v", turn, sink.Processes)
 	}
 }

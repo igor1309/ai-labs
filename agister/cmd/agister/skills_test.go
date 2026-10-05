@@ -266,42 +266,136 @@ func TestInstallRefusesAnAgentNamingASkillHomeLacks(t *testing.T) {
 	}
 }
 
-// A process naming a skill runs on every B1 adapter; Codex remains refused.
-func TestACallNamingASkillRunsOnPiAndOpenCodeAndIsRefusedOnCodex(t *testing.T) {
+// A process naming a skill runs on every adapter, its skills given.
+func TestACallNamingASkillRunsOnPiOpenCodeAndCodex(t *testing.T) {
 	t.Parallel()
 	for _, adapter := range []string{"pi", "opencode", "codex"} {
 		t.Run(adapter, func(t *testing.T) {
 			t.Parallel()
-			home, repo := setup(t, "approve")
-			process := skilledSettings(t, home)
-			// OpenCode requires a nonempty message, apart from the instruction.
-			write(t, process, strings.Replace(skilledProcess, "  instruction: Follow the rules.\n", "  instruction: Follow the rules.\n  params:\n    question: {default: Follow the skills.}\n  values:\n    question: {source: param, name: question}\n", 1))
-			review, style := skillFile("review", "Review rules."), skillFile("style", "Style rules.")
-			write(t, filepath.Join(home, "skills", "review", "SKILL.md"), review)
-			write(t, filepath.Join(home, "skills", "style", "SKILL.md"), style)
-			// Test-owned mappings describe only the tools this fake needs.
-			primitive, contract, version := "read", "pi/1", "0.85."
-			if adapter == "opencode" {
-				primitive, contract, version = "skill", "opencode/1", "1.18."
-			}
-			if adapter == "codex" {
-				primitive, contract, version = "read-only", "codex/2", "0.158."
-			}
-			write(t, filepath.Join(home, "runtimes", adapter+".yaml"), "schema: agister.runtime/v1alpha1\nname: "+adapter+"\nadapter: "+adapter+"\ncontract: "+contract+"\nprimitives:\n  select: any\n  items:\n    "+primitive+": {grants: [repository.read], verified: [\""+version+"\"]}\n")
-			if r := agisterInput(t, "yes\n", home, repo, "agent", "create", "stylist", "--force", "--runtime", adapter, "--command", adapter); r.code != 0 {
-				t.Fatalf("agent create: %d\n%s%s", r.code, r.stdout, r.stderr)
-			}
+			home, repo, review, style := skilledOn(t, adapter)
 			agent := filepath.Join(home, "agents", "stylist.toml")
 			write(t, agent, read(t, agent)+`skills = ["style"]`+"\n")
 			runs := &newRuns{home: home}
 			runs.take(t)
 			if adapter == "codex" {
-				refusedBeforeItsFirstTurn(t, runs, home, repo, "process skilled ("+process+"): adapter codex of runtime codex cannot give a call its skills (ADR-021): review, style)", "skilled")
+				ranWithCodexSkills(t, runs, home, repo, map[string]string{"review": review, "style": style})
 			} else {
 				ranWithSkills(t, runs, home, repo, adapter, map[string]string{"review": review, "style": style}, "skilled")
 			}
 		})
 	}
+}
+
+// skilledOn is setup's home and repository with the process skilled and
+// the skills review and style (skilledSettings), and the agent stylist on
+// adapter, whose runs can be continued, naming no skill yet. It returns
+// the skills' texts.
+func skilledOn(t *testing.T, adapter string) (home, repo, review, style string) {
+	t.Helper()
+	home, repo = setup(t, "approve")
+	process := skilledSettings(t, home)
+	// OpenCode requires a nonempty message, apart from the instruction.
+	write(t, process, strings.Replace(skilledProcess, "  instruction: Follow the rules.\n", "  instruction: Follow the rules.\n  params:\n    question: {default: Follow the skills.}\n  values:\n    question: {source: param, name: question}\n", 1))
+	review, style = skillFile("review", "Review rules."), skillFile("style", "Style rules.")
+	write(t, filepath.Join(home, "skills", "review", "SKILL.md"), review)
+	write(t, filepath.Join(home, "skills", "style", "SKILL.md"), style)
+	// Test-owned mappings describe only the tools this fake needs.
+	primitive, contract, version := "read", "pi/1", "0.85."
+	if adapter == "opencode" {
+		primitive, contract, version = "skill", "opencode/1", "1.18."
+	}
+	if adapter == "codex" {
+		primitive, contract, version = "read-only", "codex/2", "0.158."
+	}
+	write(t, filepath.Join(home, "runtimes", adapter+".yaml"), "schema: agister.runtime/v1alpha1\nname: "+adapter+"\nadapter: "+adapter+"\ncontract: "+contract+"\nprimitives:\n  select: any\n  items:\n    "+primitive+": {grants: [repository.read], verified: [\""+version+"\"]}\n")
+	if r := agisterInput(t, "yes\n", home, repo, "agent", "create", "stylist", "--force", "--runtime", adapter, "--command", adapter, "--session", "resumable"); r.code != 0 {
+		t.Fatalf("agent create: %d\n%s%s", r.code, r.stdout, r.stderr)
+	}
+	return home, repo, review, style
+}
+
+// codexEcho is what the fake Codex saw of its home while the call ran.
+type codexEcho struct {
+	CodexHome  string                       `json:"codex_home"`
+	SkillNames []string                     `json:"skill_names"`
+	Skills     map[string]map[string]string `json:"skills"`
+}
+
+func codexEchoOf(t *testing.T, r run) codexEcho {
+	t.Helper()
+	data, err := json.Marshal(r.first)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var echo codexEcho
+	if err := json.Unmarshal(data, &echo); err != nil {
+		t.Fatal(err)
+	}
+	return echo
+}
+
+// The skilled call runs on Codex with a home of its thread's under
+// Agister's home: the fake sees the user's skill linked beside the call's,
+// written from the recorded bytes; the home is kept by its thread, and a
+// continuation runs with it.
+func ranWithCodexSkills(t *testing.T, runs *newRuns, home, repo string, skills map[string]string) {
+	t.Helper()
+	user := userCodexHome(home)
+	write(t, filepath.Join(user, "auth.json"), "{}")
+	write(t, filepath.Join(user, "skills", "mine", "SKILL.md"), skillFile("mine", "The user's own."))
+	root := filepath.Join(home, "codex", "homes")
+
+	r := agister(t, home, repo, "run", "skilled", "--quiet", "--timeout", "1m")
+	if r.code != cli.ExitCompleted {
+		t.Fatalf("run skilled: %d\n%s%s", r.code, r.stdout, r.stderr)
+	}
+	ran := runs.one(t)
+	echo := codexEchoOf(t, ran)
+	files := map[string]string{}
+	for name, text := range skills {
+		files[name+"/SKILL.md"] = text
+	}
+	if filepath.Dir(echo.CodexHome) != root || !reflect.DeepEqual(echo.SkillNames, []string{"mine", "review", "style"}) ||
+		!reflect.DeepEqual(echo.Skills, map[string]map[string]string{filepath.Join(echo.CodexHome, "skills"): files}) {
+		t.Fatalf("codex saw %+v", echo)
+	}
+	thread, _ := ran.first["thread_id"].(string)
+	kept := filepath.Join(root, thread)
+	if thread == "" || read(t, filepath.Join(kept, "skills", "review", "SKILL.md")) != skills["review"] {
+		t.Fatalf("thread %q: its home %s is not kept", thread, kept)
+	}
+	if target, err := os.Readlink(filepath.Join(kept, "auth.json")); err != nil || target != filepath.Join(user, "auth.json") {
+		t.Fatalf("auth.json links to %q, %v", target, err)
+	}
+
+	r = agister(t, home, repo, "run", "skilled", "--continue", filepath.Base(ran.dir), "--quiet", "--timeout", "1m")
+	if r.code != cli.ExitCompleted {
+		t.Fatalf("continue: %d\n%s%s", r.code, r.stdout, r.stderr)
+	}
+	if echo := codexEchoOf(t, runs.one(t)); echo.CodexHome != kept || !reflect.DeepEqual(echo.SkillNames, []string{"mine", "review", "style"}) {
+		t.Fatalf("the continuation's codex saw %+v, want home %s", echo, kept)
+	}
+}
+
+// A Codex run without skills ran in the user's CODEX_HOME, where a call
+// that names skills cannot give them: its continuation is refused, and the
+// runtime never starts (ADR-021 rule 6).
+func TestACodexRunWithoutSkillsIsNotContinuedByACallThatNamesSome(t *testing.T) {
+	t.Parallel()
+	home, repo, _, _ := skilledOn(t, "codex")
+	runs := &newRuns{home: home}
+	runs.take(t)
+	r := agister(t, home, repo, "run", "plain", "--agent", "stylist", "--quiet", "--timeout", "1m")
+	if r.code != cli.ExitCompleted {
+		t.Fatalf("run plain: %d\n%s%s", r.code, r.stdout, r.stderr)
+	}
+	plain := runs.one(t)
+	if echo := codexEchoOf(t, plain); echo.CodexHome != "" || len(skillsOf(plain)) != 0 {
+		t.Fatalf("the call without skills ran with %+v", echo)
+	}
+	thread, _ := plain.first["thread_id"].(string)
+	refusedBeforeItsFirstTurn(t, runs, home, repo, "thread "+thread+" ran in the user's CODEX_HOME, where a call's skills cannot be given (ADR-021): review; a fresh run gets them",
+		"skilled", "--continue", filepath.Base(plain.dir))
 }
 
 // Assert the actual folder and bytes the fake saw while the call ran,

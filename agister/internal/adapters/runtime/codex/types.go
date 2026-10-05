@@ -57,6 +57,16 @@ type TurnRequest struct {
 	Primitives      []string
 	Timeout         time.Duration
 	OutputSchema    json.RawMessage
+	// Skills are the turn's skills, in order, written for the turn into
+	// the skills/ of a Codex home of the thread's; none: a fresh thread
+	// runs with the user's CODEX_HOME.
+	Skills []Skill
+}
+
+// Skill is one skill a turn is given: its name and its whole SKILL.md.
+type Skill struct {
+	Name  string
+	Bytes []byte
 }
 
 type Status string

@@ -172,7 +172,7 @@ func TestUnrecordedProcessFailsTheTurnWhateverTheStreamSays(t *testing.T) {
 }
 
 func listing(cost string) codex.Sessions {
-	return func(context.Context, time.Duration, codex.LookupSink) ([]byte, error) {
+	return func(context.Context, time.Duration, string, codex.LookupSink) ([]byte, error) {
 		return []byte(listingJSON(cost)), nil
 	}
 }

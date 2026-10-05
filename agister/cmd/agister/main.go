@@ -127,7 +127,8 @@ func wire(config cli.Config, appends *fsruns.Appends) (contract.Client, *app.Bac
 // processes take turns through under the home, its run store keeps the
 // runs there and signals through appends, its runtimes and its commands
 // are started by the operating system, which also ends the process groups
-// a dead owner left, and every wait is on the wall clock.
+// a dead owner left, the user's CODEX_HOME is the environment's, and every
+// wait is on the wall clock.
 func process(config cli.Config, appends *fsruns.Appends) composition {
 	worktrees := git.NewWorktrees(filepath.Join(config.Home, "locks", "worktrees"))
 	worktrees.Clock, worktrees.Timer = system.Clock{}, system.Timer
@@ -137,6 +138,7 @@ func process(config cli.Config, appends *fsruns.Appends) composition {
 		starter:   supervisor.Exec{},
 		commands:  supervisor.Exec{},
 		processes: supervisor.Processes{},
+		codexHome: runtimecomposition.CodexHome(os.Getenv, os.UserHomeDir),
 		timer:     system.Timer,
 		poll:      system.Timer,
 		hosted:    app.NewHosted(),
@@ -163,6 +165,9 @@ type composition struct {
 	commands supervisor.Starter
 	// processes ends the process groups an abandoned run left on record.
 	processes runtimecomposition.ProcessSupervisor
+	// codexHome tells the user's CODEX_HOME, which a Codex home of
+	// Agister's links to.
+	codexHome func() (string, error)
 	// hosted holds the calls running in this process.
 	hosted *app.Hosted
 	// timer starts the waits of turns and commands: their timeouts,
@@ -240,8 +245,10 @@ func (c composition) wire(config cli.Config) (contract.Client, *app.BackgroundRe
 		"claude-code": func(command string) app.TurnRunner {
 			return logging.Runner{Inner: runtimecomposition.NewClaudeCode(command, processes), Adapter: "claude-code", Log: log, Clock: system.Clock{}}
 		},
+		// The Codex homes of threads given skills are kept under the
+		// home, where a continuation finds them, beside the user's own.
 		"codex": func(command string) app.TurnRunner {
-			return logging.Runner{Inner: runtimecomposition.NewCodex(command, processes), Adapter: "codex", Log: log, Clock: system.Clock{}}
+			return logging.Runner{Inner: runtimecomposition.NewCodex(command, filepath.Join(config.Home, "codex", "homes"), c.codexHome, processes), Adapter: "codex", Log: log, Clock: system.Clock{}}
 		},
 		// Pi's sessions are kept under the home, where a continuation
 		// finds them, not in ~/.pi.

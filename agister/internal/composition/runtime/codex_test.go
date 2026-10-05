@@ -49,9 +49,9 @@ func TestCodexApplicationAdapter(t *testing.T) {
 	stub := &codexStandIn{result: codex.Turn{Status: codex.Failed, Error: &codex.Error{Class: codex.ClassRateLimited, Message: "quota"}, ProviderSessionID: "session", Model: "model", Output: []byte(`{"answer":1}`), Text: "answer", CostUSD: &cost, Usage: &codex.Usage{InputTokens: &tokens, OutputTokens: &tokens, CacheReadTokens: &tokens, CacheWriteTokens: &tokens, ReasoningTokens: &tokens}, RuntimeMS: &runtimeMS, NumTurns: &turns, PermissionDenials: 3, Exit: &codex.Exit{Code: &code, Signal: "signal"}, StderrTail: "tail", StderrOmitted: 55, Session: &codex.SessionTotals{CostUSD: &cost, Usage: &codex.Usage{InputTokens: &tokens, OutputTokens: &tokens, CacheReadTokens: &tokens, CacheWriteTokens: &tokens, ReasoningTokens: &tokens}}}, identity: codex.RuntimeIdentity{Contract: "contract", Version: "1.2.3", Resume: true, ResumeWhereItRan: true, CostLimit: true, ToolCalls: true, SkillTools: []string{"skill"}, Skills: true}}
 	adapter := AdaptCodex(stub)
 	sink := &runtimetest.Recorder{ProcessErr: refusal}
-	request := app.TurnRequest{Prompt: "prompt", Instruction: "instruction", Cwd: "/checkout", ResumeSessionID: "session", MaxCostUSD: &cost, Model: "model", Effort: "high", Primitives: []string{"read"}, Timeout: time.Minute, OutputSchema: []byte(`{"type":"object"}`)}
+	request := app.TurnRequest{Prompt: "prompt", Instruction: "instruction", Cwd: "/checkout", ResumeSessionID: "session", MaxCostUSD: &cost, Model: "model", Effort: "high", Primitives: []string{"read"}, Timeout: time.Minute, OutputSchema: []byte(`{"type":"object"}`), Skills: []app.TurnSkill{{Name: "review", Bytes: []byte("review")}, {Name: "style", Bytes: []byte("style")}}}
 	got := adapter.RunTurn(ctx, request, sink)
-	wantRequest := codex.TurnRequest{Prompt: "prompt", Instruction: "instruction", Cwd: "/checkout", ResumeSessionID: "session", MaxCostUSD: &cost, Model: "model", Effort: "high", Primitives: []string{"read"}, Timeout: time.Minute, OutputSchema: []byte(`{"type":"object"}`)}
+	wantRequest := codex.TurnRequest{Prompt: "prompt", Instruction: "instruction", Cwd: "/checkout", ResumeSessionID: "session", MaxCostUSD: &cost, Model: "model", Effort: "high", Primitives: []string{"read"}, Timeout: time.Minute, OutputSchema: []byte(`{"type":"object"}`), Skills: []codex.Skill{{Name: "review", Bytes: []byte("review")}, {Name: "style", Bytes: []byte("style")}}}
 	usage := &run.Usage{InputTokens: &tokens, OutputTokens: &tokens, CacheReadTokens: &tokens, CacheWriteTokens: &tokens, ReasoningTokens: &tokens}
 	want := run.Turn{Status: run.Failed, Error: &run.Error{Class: run.ClassRateLimited, Message: "quota"}, ProviderSessionID: "session", Model: "model", Output: []byte(`{"answer":1}`), Text: "answer", CostUSD: &cost, Usage: usage, RuntimeMS: &runtimeMS, NumTurns: &turns, PermissionDenials: 3, Exit: &run.Exit{Code: &code, Signal: "signal"}, StderrTail: "tail", StderrOmitted: 55, Session: &run.SessionTotals{CostUSD: &cost, Usage: usage}}
 	if stub.ctx != ctx || !reflect.DeepEqual(stub.request, wantRequest) || !reflect.DeepEqual(got, want) || stub.recordError != refusal {
@@ -90,7 +90,7 @@ func TestCodexSupervisorAdapter(t *testing.T) {
 	refusal := errors.New("record refused")
 	sink := &runtimetest.Recorder{ProcessErr: refusal}
 	var lines []string
-	want := supervisor.Spec{Command: "/cli", Args: []string{"run", "--json"}, Dir: "/checkout", Stdin: "prompt", Timeout: time.Minute, KillGrace: time.Second}
+	want := supervisor.Spec{Command: "/cli", Args: []string{"run", "--json"}, Dir: "/checkout", Env: []string{"CODEX_HOME=/homes/thread"}, Stdin: "prompt", Timeout: time.Minute, KillGrace: time.Second}
 	transport := CodexTransport{Supervisor: supervisorStandIn{run: func(c context.Context, spec supervisor.Spec, s supervisor.Sink, onLine func(string)) supervisor.Evidence {
 		if c != ctx || !reflect.DeepEqual(spec, want) {
 			t.Fatalf("spec %+v", spec)
@@ -108,7 +108,7 @@ func TestCodexSupervisorAdapter(t *testing.T) {
 		}
 		return "1.2.3", refusal
 	}}}
-	spec := codex.Spec{Command: "/cli", Args: []string{"run", "--json"}, Dir: "/checkout", Stdin: "prompt", Timeout: time.Minute, KillGrace: time.Second}
+	spec := codex.Spec{Command: "/cli", Args: []string{"run", "--json"}, Dir: "/checkout", Env: []string{"CODEX_HOME=/homes/thread"}, Stdin: "prompt", Timeout: time.Minute, KillGrace: time.Second}
 	got := transport.Run(ctx, spec, sink, func(line string) { lines = append(lines, line) })
 	expected := codex.Evidence{Exit: &codex.Exit{Code: &code, Signal: "signal"}, SpawnError: "spawn", TimedOut: true, Aborted: true, StderrTail: "tail", StderrOmitted: 123, RecordError: "record"}
 	if !reflect.DeepEqual(got, expected) || !reflect.DeepEqual(lines, []string{"line"}) || !reflect.DeepEqual(sink.Lines, []string{"raw"}) || !reflect.DeepEqual(sink.Processes, []string{"pgid:42"}) || !reflect.DeepEqual(sink.Kinds(), []string{"PROCESS_STARTED"}) {
@@ -122,5 +122,33 @@ func TestCodexSupervisorAdapter(t *testing.T) {
 	}}}
 	if e := empty.Run(ctx, codex.Spec{}, sink, func(string) {}); !reflect.DeepEqual(e, codex.Evidence{}) {
 		t.Fatalf("empty evidence %+v", e)
+	}
+}
+
+// The user's CODEX_HOME is $CODEX_HOME when it is set, else .codex in the
+// user's home.
+func TestCodexHomeIsTheEnvironmentsOrInTheUsersHome(t *testing.T) {
+	t.Parallel()
+	userHome := func() (string, error) { return "/users/me", nil }
+	for name, c := range map[string]struct {
+		env      string
+		userHome func() (string, error)
+		want     string
+		err      bool
+	}{
+		"set":          {"/elsewhere/codex", func() (string, error) { return "", errors.New("unused") }, "/elsewhere/codex", false},
+		"unset":        {"", userHome, "/users/me/.codex", false},
+		"no user home": {"", func() (string, error) { return "", errors.New("$HOME is not defined") }, "", true},
+	} {
+		getenv := func(key string) string {
+			if key == "CODEX_HOME" {
+				return c.env
+			}
+			return "/wrong"
+		}
+		home, err := CodexHome(getenv, c.userHome)()
+		if home != c.want || (err != nil) != c.err {
+			t.Errorf("%s: home %q, err %v", name, home, err)
+		}
 	}
 }

@@ -95,7 +95,7 @@ func listingJSON(cost string) string {
 }
 
 func listing(cost string) codex.Sessions {
-	return func(context.Context, time.Duration, codex.LookupSink) ([]byte, error) {
+	return func(context.Context, time.Duration, string, codex.LookupSink) ([]byte, error) {
 		return []byte(listingJSON(cost)), nil
 	}
 }
@@ -205,7 +205,7 @@ func TestTheLookupGetsOnlyWhatIsLeftOfTheTurnsTimeout(t *testing.T) {
 				}
 				return start.Add(c.used)
 			},
-			Sessions: func(_ context.Context, timeout time.Duration, _ codex.LookupSink) ([]byte, error) {
+			Sessions: func(_ context.Context, timeout time.Duration, _ string, _ codex.LookupSink) ([]byte, error) {
 				given = append(given, timeout)
 				return []byte(listingJSON("0.25")), nil
 			},
@@ -283,8 +283,8 @@ func TestTheLookupEndsWhenTheTurnsTimeoutRunsOut(t *testing.T) {
 			}
 			return start.Add(time.Minute - left)
 		},
-		Sessions: func(ctx context.Context, timeout time.Duration, sink codex.LookupSink) ([]byte, error) {
-			listing, err := lookup(ctx, timeout, sink)
+		Sessions: func(ctx context.Context, timeout time.Duration, home string, sink codex.LookupSink) ([]byte, error) {
+			listing, err := lookup(ctx, timeout, home, sink)
 			lookupErr = err
 			return listing, err
 		},
@@ -312,7 +312,7 @@ func TestNoLookupOnceTheCallIsCancelled(t *testing.T) {
 	runner := &codex.Runner{
 		Transport: composition.CodexTransport{Supervisor: stillSupervisor()},
 		Command:   fake,
-		Sessions: func(context.Context, time.Duration, codex.LookupSink) ([]byte, error) {
+		Sessions: func(context.Context, time.Duration, string, codex.LookupSink) ([]byte, error) {
 			lookups++
 			return []byte(listingJSON("0.25")), nil
 		},
@@ -341,10 +341,10 @@ func TestTurnCostUnknownWithoutCCUsagesPrice(t *testing.T) {
 	groups := supervisortest.NewGroups()
 	for name, sessions := range map[string]codex.Sessions{
 		"zero": listing("0"),
-		"missing": func(context.Context, time.Duration, codex.LookupSink) ([]byte, error) {
+		"missing": func(context.Context, time.Duration, string, codex.LookupSink) ([]byte, error) {
 			return []byte(`{"sessions":[]}`), nil
 		},
-		"failing": func(context.Context, time.Duration, codex.LookupSink) ([]byte, error) {
+		"failing": func(context.Context, time.Duration, string, codex.LookupSink) ([]byte, error) {
 			return nil, errors.New("exit status 1")
 		},
 		"non-zero": codex.CCUsage(composition.CodexTransport{Supervisor: stillOver(withCCUsage(groups, printsListing("0.25", 1)))}, "ccusage", 0),

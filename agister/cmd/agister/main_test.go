@@ -85,6 +85,10 @@ func startThrough(t testing.TB, home string, starter runtimetest.InProcess) {
 	t.Cleanup(func() { starters.Delete(home) })
 }
 
+// userCodexHome is the user's CODEX_HOME of the compositions over home: a
+// folder of the test's, which none makes unless a test does.
+func userCodexHome(home string) string { return filepath.Join(home, "user-codex-home") }
+
 // gits are the fakes of git tests gave the compositions over their homes
 // (gitThrough), or realGit for a home on real git (onRealGit), by home.
 var gits sync.Map
@@ -149,7 +153,8 @@ var stillAt = time.Date(2026, 10, 3, 12, 0, 0, 0, time.UTC)
 
 // inProcess is the process's composition with fakes for its runtimes and
 // for the shell of its setup and verification commands, run in process:
-// neither is started as a process, and none is looked up on PATH. Its run
+// neither is started as a process, and none is looked up on PATH; the
+// user's CODEX_HOME is userCodexHome, never the environment's. Its run
 // store signals through appends of its own, as a process of its own does.
 // Its turns and commands wait, and its observing polls, on a clock that
 // never moves, not on the wall clock: such a wait passes only on a clock
@@ -167,6 +172,7 @@ func inProcess(config cli.Config) composition {
 	c.starter, c.commands = runtimetest.InProcess{Groups: groups}, runtimetest.InProcess{Groups: groups}
 	still := clocktest.NewClock(stillAt)
 	c.timer, c.poll = still.Timer, still.Timer
+	c.codexHome = func() (string, error) { return userCodexHome(config.Home), nil }
 	if starter, ok := starters.Load(config.Home); ok {
 		starter := starter.(runtimetest.InProcess)
 		starter.Groups = groups

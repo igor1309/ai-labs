@@ -2,6 +2,7 @@ package runtime
 
 import (
 	"context"
+	"path/filepath"
 
 	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/codex"
 	"github.com/igor1309/ai-labs/agister/internal/app"
@@ -19,7 +20,7 @@ type CodexSupervisor interface {
 type CodexTransport struct{ Supervisor CodexSupervisor }
 
 func (t CodexTransport) Run(ctx context.Context, spec codex.Spec, sink codex.Sink, onLine func(string)) codex.Evidence {
-	e := t.Supervisor.Run(ctx, supervisor.Spec{Command: spec.Command, Args: spec.Args, Dir: spec.Dir, Stdin: spec.Stdin, Timeout: spec.Timeout, KillGrace: spec.KillGrace}, supervisorSink{sink}, onLine)
+	e := t.Supervisor.Run(ctx, supervisor.Spec{Command: spec.Command, Args: spec.Args, Dir: spec.Dir, Env: spec.Env, Stdin: spec.Stdin, Timeout: spec.Timeout, KillGrace: spec.KillGrace}, supervisorSink{sink}, onLine)
 	var exit *codex.Exit
 	if e.Exit != nil {
 		exit = &codex.Exit{Code: e.Exit.Code, Signal: e.Exit.Signal}
@@ -50,11 +51,14 @@ func (r codexRunner) RunTurn(ctx context.Context, request app.TurnRequest, sink 
 	return CodexResult(r.wrapper.RunTurn(ctx, CodexRequest(request), codexSink{sink}))
 }
 
-// CodexRequest translates the application's turn request to the wrapper's.
-// Codex is given no skills (ADR-021 rule 6): its identity says so, and the
-// core refuses a call that names one before its first turn.
+// CodexRequest translates the application's turn request to the wrapper's,
+// its skills in order.
 func CodexRequest(r app.TurnRequest) codex.TurnRequest {
-	return codex.TurnRequest{Prompt: r.Prompt, Instruction: r.Instruction, Cwd: r.Cwd, ResumeSessionID: r.ResumeSessionID, MaxCostUSD: r.MaxCostUSD, Model: r.Model, Effort: r.Effort, Primitives: r.Primitives, Timeout: r.Timeout, OutputSchema: r.OutputSchema}
+	request := codex.TurnRequest{Prompt: r.Prompt, Instruction: r.Instruction, Cwd: r.Cwd, ResumeSessionID: r.ResumeSessionID, MaxCostUSD: r.MaxCostUSD, Model: r.Model, Effort: r.Effort, Primitives: r.Primitives, Timeout: r.Timeout, OutputSchema: r.OutputSchema}
+	for _, skill := range r.Skills {
+		request.Skills = append(request.Skills, codex.Skill{Name: skill.Name, Bytes: skill.Bytes})
+	}
+	return request
 }
 
 // CodexResult translates a wrapper's reported result to the application's domain.
@@ -80,7 +84,26 @@ func CodexResult(t codex.Turn) run.Turn {
 }
 
 // NewCodex is the Codex runner of command, run with its ccusage lookups on
-// the process supervisor given.
-func NewCodex(command string, processes CodexSupervisor) app.TurnRunner {
-	return AdaptCodex(codex.New(command, CodexTransport{Supervisor: processes}))
+// the process supervisor given, keeping the homes of threads given skills
+// under homes and linking them to the user's CODEX_HOME, as userHome
+// tells it.
+func NewCodex(command, homes string, userHome func() (string, error), processes CodexSupervisor) app.TurnRunner {
+	runner := codex.New(command, CodexTransport{Supervisor: processes})
+	runner.Homes, runner.UserHome = homes, userHome
+	return AdaptCodex(runner)
+}
+
+// CodexHome tells the user's CODEX_HOME: $CODEX_HOME when it is set, else
+// .codex in the user's home.
+func CodexHome(getenv func(string) string, userHome func() (string, error)) func() (string, error) {
+	return func() (string, error) {
+		if home := getenv("CODEX_HOME"); home != "" {
+			return home, nil
+		}
+		home, err := userHome()
+		if err != nil {
+			return "", err
+		}
+		return filepath.Join(home, ".codex"), nil
+	}
 }

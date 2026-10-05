@@ -113,13 +113,27 @@ names it. `install` does not install skills: a folder's `skills/` is
 listed as not settings, so a document it installs can name only a skill
 home already has.
 
-Claude Code, Pi and OpenCode give a call its recorded skills on every turn, from a fresh temporary folder outside the workspace, removed when
+Every adapter gives a call its recorded skills on every turn. Claude Code,
+Pi and OpenCode give them from a fresh temporary folder outside the
+workspace, removed when
 the turn ends. Claude Code uses a plugin named `agister` through
 `--plugin-dir`, so its skills are `agister:<name>`; Pi passes each skill
 folder with `--skill`, in order; OpenCode adds the folder to `skills.paths`
-in its inline configuration under `--pure`. Codex still refuses a call
-naming a skill before its first turn, naming the adapter and the skills.
-A call that names none runs as before
+in its inline configuration under `--pure`.
+
+Codex takes skills only from `$CODEX_HOME/skills` and resumes a thread only
+with the `CODEX_HOME` it ran in, so a fresh Codex thread whose call names
+skills runs with a home of its own under `<home>/codex/homes`, named by its
+thread once the turn ends: it links your `auth.json`, `AGENTS.md` and
+`AGENTS.override.md` where they exist and each of your skills in
+`$CODEX_HOME/skills` (default `~/.codex`) but `.system`, beside the call's
+skills; a skill of yours with the name of one of the call's is left out.
+Such a thread is not in your `~/.codex`, only a turn with its home resumes
+it, and it misses your Codex memories and state. A turn that resumes it gets
+the call's skills afresh, and the cost lookup reads that home. A Codex run
+without skills ran in your own `CODEX_HOME`, so a call that names skills
+cannot continue it: it is refused before Codex starts, and the changed
+settings need a fresh run. A call that names none runs as before
 ([ADR-021](docs/adr/021-settings-give-an-agent-its-skills.md)).
 
 A repository can also take away what home provides, without copying any

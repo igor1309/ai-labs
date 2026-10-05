@@ -14,13 +14,31 @@
 // limit cost. The usage turn.completed reports is the thread's, counting
 // the turns it resumed (observed live with codex-cli 0.159.2).
 //
+// A turn given skills (ADR-021) runs Codex with CODEX_HOME set to a home
+// of its thread's: Codex takes no skill folder, loads skills from
+// $CODEX_HOME/skills, and resumes a thread only with the CODEX_HOME it ran
+// in. A fresh thread whose turn names skills gets a new home under Homes,
+// holding links to the user's auth.json, AGENTS.md and AGENTS.override.md
+// where they exist, and skills/: a link to each entry of the user's
+// $CODEX_HOME/skills but .system, which Codex writes into the home itself,
+// and the turn's skills, <home>/skills/<name>/SKILL.md from their bytes. A
+// user's skill named as one of the turn's is not linked: one folder cannot
+// hold both. After the turn the home is named by the thread Codex
+// reported, as Pi's sessions are, or removed when it reported none. A turn
+// that resumes a thread whose home is under Homes runs with it, its
+// skills/ rebuilt so before the turn, whatever else Codex keeps there; a
+// thread with no home there ran in the user's CODEX_HOME, where a turn's
+// skills cannot be given, so a turn naming skills is refused before Codex
+// starts. Every other turn runs with the user's CODEX_HOME, its
+// environment unchanged. argv is the same either way.
+//
 // Codex reports no cost. The thread's cost, every turn it had, is
 // ccusage's: `ccusage codex session --json` prices each session from its
 // rollout (observed with ccusage 20.0.26), read after the turn within
-// what is left of the turn's timeout. The lookup is supervised as the
-// runtime process is: its group is on record, and ended on timeout or
-// cancellation. A lookup that fails leaves the cost unknown, and nothing
-// else about the turn.
+// what is left of the turn's timeout, with the CODEX_HOME the turn ran
+// with. The lookup is supervised as the runtime process is: its group is
+// on record, and ended on timeout or cancellation. A lookup that fails
+// leaves the cost unknown, and nothing else about the turn.
 //
 // Tool calls are reported as they start and finish: item.started and
 // item.completed of a command execution, file change, MCP call or web
@@ -43,6 +61,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -64,9 +83,12 @@ type Transport interface {
 
 // Spec is the process a turn runs.
 type Spec struct {
-	Command   string
-	Args      []string
-	Dir       string
+	Command string
+	Args    []string
+	Dir     string
+	// Env is added to the environment the process inherits, as
+	// "KEY=value"; it replaces an inherited variable of the same name.
+	Env       []string
 	Stdin     string
 	Timeout   time.Duration
 	KillGrace time.Duration // zero: the transport's default
@@ -101,6 +123,13 @@ type Runner struct {
 	// supervisor.
 	Transport Transport
 	KillGrace time.Duration
+	// Homes is the directory the Codex homes of threads given skills are
+	// kept under, one per thread, named by its ID; empty:
+	// agister-codex-homes in the temporary directory.
+	Homes string
+	// UserHome tells the user's own CODEX_HOME, whose files and skills a
+	// home of Agister's links to; nil: the user has none to link.
+	UserHome func() (string, error)
 	// Sessions lists Codex sessions with their costs, as
 	// `ccusage codex session --json` does; nil: the cost is unknown.
 	Sessions Sessions
@@ -108,10 +137,11 @@ type Runner struct {
 	Now func() time.Time
 }
 
-// Sessions returns the output of `ccusage codex session --json`, ending
-// the lookup once timeout passes or ctx ends. It reports its process to
-// sink as the runtime's is reported.
-type Sessions func(ctx context.Context, timeout time.Duration, sink LookupSink) ([]byte, error)
+// Sessions returns the output of `ccusage codex session --json` with
+// CODEX_HOME set to home (empty: the user's own, the environment
+// unchanged), ending the lookup once timeout passes or ctx ends. It
+// reports its process to sink as the runtime's is reported.
+type Sessions func(ctx context.Context, timeout time.Duration, home string, sink LookupSink) ([]byte, error)
 
 // LookupSink is what a lookup reports to: its events and its process, as
 // the turn's sink takes them. A lookup has no raw output to report.
@@ -139,11 +169,12 @@ type Execution interface {
 // supervisor's default). Anything but a clean exit is an error. Its output
 // is the listing, not the turn's raw output.
 func CCUsage(execution Execution, command string, killGrace time.Duration) Sessions {
-	return func(ctx context.Context, timeout time.Duration, sink LookupSink) ([]byte, error) {
+	return func(ctx context.Context, timeout time.Duration, home string, sink LookupSink) ([]byte, error) {
 		var listing bytes.Buffer
 		evidence := execution.Run(ctx, Spec{
 			Command:   command,
 			Args:      []string{"codex", "session", "--json"},
+			Env:       homeEnv(home),
 			Timeout:   timeout,
 			KillGrace: killGrace,
 		}, lookupSink{sink}, func(line string) {
@@ -213,7 +244,7 @@ func (r *Runner) Identity(ctx context.Context) (RuntimeIdentity, error) {
 	if version == "" {
 		return RuntimeIdentity{}, fmt.Errorf("unrecognized version output %q", out)
 	}
-	return RuntimeIdentity{Contract: Contract, Version: version, Resume: true, ToolCalls: true}, nil
+	return RuntimeIdentity{Contract: Contract, Version: version, Resume: true, ToolCalls: true, Skills: true}, nil
 }
 
 // Arguments builds the command line for a turn.
@@ -277,11 +308,20 @@ func (r *Runner) RunTurn(ctx context.Context, request TurnRequest, sink EventSin
 	if err != nil {
 		return failedTurn(ClassInternal, err)
 	}
+	root := r.Homes
+	if root == "" {
+		root = filepath.Join(os.TempDir(), "agister-codex-homes")
+	}
+	home, fresh, fault := r.home(root, request)
+	if fault != nil {
+		return Turn{Status: StatusOf(fault.Class), Error: fault}
+	}
 	state := &Stream{ResumedThreadID: request.ResumeSessionID}
 	evidence := r.Transport.Run(ctx, Spec{
 		Command:   r.Command,
 		Args:      args,
 		Dir:       request.Cwd,
+		Env:       homeEnv(home),
 		Stdin:     Prompt(request),
 		Timeout:   request.Timeout,
 		KillGrace: r.KillGrace,
@@ -298,20 +338,212 @@ func (r *Runner) RunTurn(ctx context.Context, request TurnRequest, sink EventSin
 		}
 	})
 	turn := state.Reconcile(evidence, schemaPath != "")
-	r.cost(ctx, &turn, request.ResumeSessionID, deadline.Sub(now()), sink)
+	if fresh {
+		if home = keep(root, home, state.ThreadID); home == "" {
+			// No thread is left to price.
+			return turn
+		}
+	}
+	r.cost(ctx, &turn, request.ResumeSessionID, home, deadline.Sub(now()), sink)
 	return turn
 }
 
+// The files of the user's CODEX_HOME a home of Agister's links to, where
+// they exist, and the folder of its skills Codex writes itself.
+var (
+	userFiles    = []string{"auth.json", "AGENTS.md", "AGENTS.override.md"}
+	systemSkills = ".system"
+)
+
+// homeEnv is the environment a process runs with in the CODEX_HOME home;
+// none for the user's own (empty).
+func homeEnv(home string) []string {
+	if home == "" {
+		return nil
+	}
+	return []string{"CODEX_HOME=" + home}
+}
+
+// home is the CODEX_HOME a turn runs with, made ready for it under root:
+// empty for the user's own. A fresh thread given skills gets a new one,
+// which fresh reports; a resumed thread keeps the one it ran in, its
+// skills rebuilt. A fault ends the turn before Codex starts: a thread ID
+// that cannot name a folder, a home that cannot be made, or skills for a
+// thread that ran in the user's CODEX_HOME, which refuses the turn.
+func (r *Runner) home(root string, request TurnRequest) (home string, fresh bool, fault *Error) {
+	id := request.ResumeSessionID
+	if id == "" {
+		if len(request.Skills) == 0 {
+			return "", false, nil
+		}
+		if err := os.MkdirAll(root, 0o700); err != nil {
+			return "", false, Fault(ClassInternal, "%v", err)
+		}
+		dir, err := os.MkdirTemp(root, "new-")
+		if err != nil {
+			return "", false, Fault(ClassInternal, "%v", err)
+		}
+		if err := r.fill(dir, request.Skills); err != nil {
+			os.RemoveAll(dir)
+			return "", false, Fault(ClassInternal, "%v", err)
+		}
+		return dir, true, nil
+	}
+	if !validID(id) {
+		return "", false, Fault(ClassRuntimeError, "%s cannot resume thread %q: not a thread ID", Contract, id)
+	}
+	dir := filepath.Join(root, id)
+	info, err := os.Lstat(dir)
+	switch {
+	case errors.Is(err, fs.ErrNotExist) && len(request.Skills) == 0:
+		return "", false, nil
+	case errors.Is(err, fs.ErrNotExist):
+		names := make([]string, len(request.Skills))
+		for i, skill := range request.Skills {
+			names[i] = skill.Name
+		}
+		return "", false, Fault(ClassRefused, "thread %s ran in the user's CODEX_HOME, where a call's skills cannot be given (ADR-021): %s; a fresh run gets them",
+			id, strings.Join(names, ", "))
+	case err != nil:
+		return "", false, Fault(ClassInternal, "%v", err)
+	case !info.IsDir():
+		return "", false, Fault(ClassInternal, "%s cannot resume thread %s: %s is not its CODEX_HOME", Contract, id, dir)
+	}
+	user, err := r.userHome()
+	if err == nil {
+		err = giveSkills(dir, user, request.Skills)
+	}
+	if err != nil {
+		return "", false, Fault(ClassInternal, "%v", err)
+	}
+	return dir, false, nil
+}
+
+// userHome is the user's own CODEX_HOME, absolute; empty when the runner
+// has none.
+func (r *Runner) userHome() (string, error) {
+	if r.UserHome == nil {
+		return "", nil
+	}
+	home, err := r.UserHome()
+	if err == nil && home == "" {
+		err = errors.New("it is empty")
+	}
+	if err != nil {
+		return "", fmt.Errorf("the user's CODEX_HOME is unknown: %w", err)
+	}
+	return filepath.Abs(home)
+}
+
+// fill makes the new home a Codex home of the user's and of a turn's
+// skills: links to the user's auth.json, AGENTS.md and AGENTS.override.md
+// where they exist, and its skills/ (giveSkills).
+func (r *Runner) fill(home string, skills []Skill) error {
+	user, err := r.userHome()
+	if err != nil {
+		return err
+	}
+	if user != "" {
+		for _, name := range userFiles {
+			target := filepath.Join(user, name)
+			if _, err := os.Stat(target); errors.Is(err, fs.ErrNotExist) {
+				continue
+			} else if err != nil {
+				return err
+			}
+			if err := os.Symlink(target, filepath.Join(home, name)); err != nil {
+				return err
+			}
+		}
+	}
+	return giveSkills(home, user, skills)
+}
+
+// giveSkills rebuilds the skills/ of home for a turn: every entry but
+// .system, Codex's own, goes; then each entry of the user's
+// <user>/skills but .system is linked, unless it is named as one of the
+// turn's skills, and each of those is written, <name>/SKILL.md from its
+// bytes. user empty: nothing of the user's is linked.
+func giveSkills(home, user string, skills []Skill) error {
+	given := map[string]bool{}
+	for _, skill := range skills {
+		if name := skill.Name; name != filepath.Base(name) || name == "." || name == ".." {
+			return fmt.Errorf("%s cannot give skill %q: not a folder's name", Contract, name)
+		}
+		given[skill.Name] = true
+	}
+	dir := filepath.Join(home, "skills")
+	if err := os.MkdirAll(dir, 0o700); err != nil {
+		return err
+	}
+	held, err := os.ReadDir(dir)
+	if err != nil {
+		return err
+	}
+	for _, entry := range held {
+		if entry.Name() != systemSkills {
+			if err := os.RemoveAll(filepath.Join(dir, entry.Name())); err != nil {
+				return err
+			}
+		}
+	}
+	if user != "" {
+		mine, err := os.ReadDir(filepath.Join(user, "skills"))
+		if err != nil && !errors.Is(err, fs.ErrNotExist) {
+			return err
+		}
+		for _, entry := range mine {
+			if name := entry.Name(); name != systemSkills && !given[name] {
+				if err := os.Symlink(filepath.Join(user, "skills", name), filepath.Join(dir, name)); err != nil {
+					return err
+				}
+			}
+		}
+	}
+	for _, skill := range skills {
+		if err := os.Mkdir(filepath.Join(dir, skill.Name), 0o700); err != nil {
+			return err
+		}
+		if err := os.WriteFile(filepath.Join(dir, skill.Name, "SKILL.md"), skill.Bytes, 0o600); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// keep names a fresh thread's home after the thread Codex reported, for
+// the turns that resume it, and returns where the home is; it removes the
+// home, returning empty, when Codex reported no thread, or one that
+// cannot name a folder. A home that cannot be named so stays where it is,
+// and its thread cannot be resumed with it.
+func keep(root, home, id string) string {
+	if !validID(id) {
+		os.RemoveAll(home)
+		return ""
+	}
+	named := filepath.Join(root, id)
+	if err := os.Rename(home, named); err != nil {
+		return home
+	}
+	return named
+}
+
+var idPattern = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._-]*$`)
+
+// validID reports whether id can name a folder under the homes root.
+func validID(id string) bool { return idPattern.MatchString(id) }
+
 // cost sets the thread's cost on a turn that reported the thread it ran
-// on, looking it up within left, what remains of the turn's timeout; a
+// on, looking it up with the CODEX_HOME home the turn ran with (empty:
+// the user's own) within left, what remains of the turn's timeout; a
 // failed, timed-out or cancelled lookup leaves it unknown, and none is
 // started once the turn's time is up or its call is cancelled.
-func (r *Runner) cost(ctx context.Context, turn *Turn, resumed string, left time.Duration, sink LookupSink) {
+func (r *Runner) cost(ctx context.Context, turn *Turn, resumed, home string, left time.Duration, sink LookupSink) {
 	thread := turn.ProviderSessionID
 	if r.Sessions == nil || thread == "" || resumed != "" && thread != resumed || left <= 0 || ctx.Err() != nil {
 		return
 	}
-	listing, err := r.Sessions(ctx, left, sink)
+	listing, err := r.Sessions(ctx, left, home, sink)
 	if err != nil {
 		return
 	}
