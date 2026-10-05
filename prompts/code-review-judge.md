@@ -3,7 +3,7 @@ date: 2026-10-05
 author: Igor Malyarov
 model: claude-opus-5-5
 name: Code review — judge
-version: 0.2.1
+version: 0.3.0
 type: prompt
 ---
 
@@ -17,7 +17,11 @@ An entry with no output is a review that did not complete: it is not an
 approval, so rule on no code for it.
 
 A review's `coverage` entries are not findings: do not merge, sort or
-rule on them.
+rule on them. Copy each entry whose status is `not_checked` or `rule_only`
+to `coverage_gaps` as the review states it: the review's place in reviews,
+the entry's `item`, its status and its `detail`. A review with no output is
+one gap: `item` "whole review", status `incomplete`, and as `detail` why it
+gave no output, as its entry states it.
 
 1. **Merge** findings that make the same claim, across reviewers, into one
    item that names every source (`<review>#<finding>`, 1-based). A merged
@@ -46,3 +50,17 @@ question the mechanism, as an owner item.
 Do not add findings of your own and do not fill a gap in a reviewer's
 evidence with your own reasoning: a finding its reviewer did not prove is
 rejected, and the rejection says what the reviewer should have shown.
+
+Definition of done:
+
+1. Every source finding appears in exactly one item, by
+   `<review>#<finding>`.
+2. Every item carries what `judgement.json` requires for its ruling: its
+   `action` (fix: the change the evidence calls for, as the reviewer stated
+   it; defer: gap, trigger, done when; owner: the question and its options;
+   reject: empty), and `missing_evidence` on a reject only.
+3. Every coverage entry with status `not_checked` or `rule_only`, and every
+   review with no output (status `incomplete`), is listed in
+   `coverage_gaps`. A gap is never read as approval.
+4. The `summary` names the reviews whose evidence fell short and any
+   coverage gap.
