@@ -111,6 +111,9 @@ type Runner struct {
 	// supervisor.
 	Transport Transport
 	KillGrace time.Duration // zero: the supervisor default
+	// TempDir is the folder a turn's own temporary folder is made in;
+	// empty: the system's temporary directory.
+	TempDir string
 }
 
 func New(command string, transport Transport) *Runner {
@@ -183,7 +186,7 @@ func Arguments(request TurnRequest, plugin string) ([]string, error) {
 func (r *Runner) RunTurn(ctx context.Context, request TurnRequest, sink EventSink) Turn {
 	var plugin string
 	if len(request.Skills) > 0 {
-		dir, err := os.MkdirTemp("", "agister-claude-")
+		dir, err := os.MkdirTemp(r.TempDir, "agister-claude-")
 		if err != nil {
 			return failedTurn(ClassInternal, err)
 		}

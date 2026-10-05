@@ -137,9 +137,17 @@ func runnerOver(t *testing.T, root, user, thread string) *homes {
 		}
 		return reports(thread)
 	}}}
-	h.runner = &codex.Runner{Transport: h.spy, Command: "codex", Homes: root, UserHome: func() (string, error) { return user, nil }}
+	h.runner = &codex.Runner{
+		Transport: h.spy, Command: "codex", Homes: root,
+		UserHome: func() (string, error) { return user, nil },
+		Now:      func() time.Time { return testTime },
+	}
 	return h
 }
+
+// testTime is the time a runner of the tests tells; its turns' timeouts
+// do not run down.
+var testTime = time.Date(2026, 10, 5, 12, 0, 0, 0, time.UTC)
 
 // A fresh thread whose call names skills runs with a new home under the
 // root: links to the user's files where they exist, AGENTS.override.md
@@ -256,6 +264,8 @@ func TestASkillsFolderThatIsALinkIsReplacedNotFollowed(t *testing.T) {
 		t.Fatalf("skills/ of the home: %v, %v", info, err)
 	}
 	want := map[string]string{
+		"auth.json":              "-> " + filepath.Join(user, "auth.json"),
+		"AGENTS.md":              "-> " + filepath.Join(user, "AGENTS.md"),
 		"skills/mine":            "-> " + filepath.Join(user, "skills", "mine"),
 		"skills/review.user":     "-> " + filepath.Join(user, "skills", "review"),
 		"skills/review/SKILL.md": "recorded review\n",
@@ -325,7 +335,7 @@ func TestAFreshThreadWithoutSkillsRunsWithTheUsersHome(t *testing.T) {
 }
 
 // A turn that resumes a thread whose home is under the root runs with it:
-// its skills/ is rebuilt from the user's skills and the turn's, and what
+// its links to the user's files are made, its skills/ is rebuilt from the user's skills and the turn's, and what
 // Codex keeps there, .system and its sessions, stays. A turn naming no
 // skill leaves none of Agister's in it, and the user's review, no longer
 // one of the call's, is linked.
@@ -366,6 +376,8 @@ func TestAResumedThreadRunsWithItsHomeAndItsSkillsRebuilt(t *testing.T) {
 		for path, text := range codexOwn {
 			held[path] = text
 		}
+		held["auth.json"] = "-> " + filepath.Join(user, "auth.json")
+		held["AGENTS.md"] = "-> " + filepath.Join(user, "AGENTS.md")
 	}
 	if !reflect.DeepEqual(h.ran, []string{home, home}) || !reflect.DeepEqual(h.held, []map[string]string{withSkill, withoutSkill}) {
 		t.Fatalf("ran with %q holding %v", h.ran, h.held)
@@ -501,5 +513,106 @@ func TestCCUsageRunsWithTheHomeItIsGiven(t *testing.T) {
 	specs := spy.Specs()
 	if len(specs) != 2 || !reflect.DeepEqual(specs[0].Env, []string{"CODEX_HOME=/homes/thread-1"}) || specs[1].Env != nil {
 		t.Fatalf("specs = %+v", specs)
+	}
+}
+
+// A user's instruction file added or removed between two turns of a thread
+// is linked, or no longer, on the turn that resumes it; what Codex wrote
+// in the home stays.
+func TestAResumedThreadLinksTheUsersFilesAsTheyAreNow(t *testing.T) {
+	t.Parallel()
+	for name, added := range map[string]bool{"added": true, "removed": false} {
+		user, root := userCodexHome(t), filepath.Join(t.TempDir(), "homes")
+		override := filepath.Join(user, "AGENTS.override.md")
+		if !added {
+			writeFile(t, override, "user's override\n")
+		}
+		h := runnerOver(t, root, user, fakeThread)
+		r := skilled("hello")
+		r.Skills = r.Skills[:1]
+		if turn := h.runner.RunTurn(context.Background(), r, &sink{}); turn.Status != codex.Completed {
+			t.Fatalf("%s: turn = %+v", name, turn)
+		}
+		home := filepath.Join(root, fakeThread)
+		writeFile(t, filepath.Join(home, "sessions", "rollout.jsonl"), "codex's rollout\n")
+		if added {
+			writeFile(t, override, "user's override\n")
+		} else if err := os.Remove(override); err != nil {
+			t.Fatal(err)
+		}
+		r.ResumeSessionID = fakeThread
+		if turn := h.runner.RunTurn(context.Background(), r, &sink{}); turn.Status != codex.Completed {
+			t.Fatalf("%s: turn = %+v", name, turn)
+		}
+		want := map[string]string{
+			"auth.json":              "-> " + filepath.Join(user, "auth.json"),
+			"AGENTS.md":              "-> " + filepath.Join(user, "AGENTS.md"),
+			"sessions/rollout.jsonl": "codex's rollout\n",
+			"skills/mine":            "-> " + filepath.Join(user, "skills", "mine"),
+			"skills/review.user":     "-> " + filepath.Join(user, "skills", "review"),
+			"skills/review/SKILL.md": "recorded review\n",
+		}
+		if added {
+			want["AGENTS.override.md"] = "-> " + override
+		}
+		if len(h.held) != 2 || h.ran[1] != home || !reflect.DeepEqual(h.held[1], want) {
+			t.Fatalf("%s: ran with %q holding %v, want %v", name, h.ran, h.held, want)
+		}
+	}
+}
+
+// A fresh thread's home that cannot be named by its thread, here because
+// a file takes the name, fails the turn, naming where the home stays.
+func TestAHomeThatCannotBeKeptFailsTheTurn(t *testing.T) {
+	t.Parallel()
+	root := filepath.Join(t.TempDir(), "homes")
+	writeFile(t, filepath.Join(root, fakeThread), "in the way\n")
+	h := runnerOver(t, root, userCodexHome(t), fakeThread)
+	turn := h.runner.RunTurn(context.Background(), skilled("hello"), &sink{})
+	if len(h.ran) != 1 || h.ran[0] == "" {
+		t.Fatalf("ran with %q", h.ran)
+	}
+	if turn.Status != codex.Failed || turn.Error == nil || turn.Error.Class != codex.ClassInternal || !strings.Contains(turn.Error.Message, h.ran[0]) {
+		t.Fatalf("turn = %+v", turn)
+	}
+	if held := tree(t, h.ran[0]); !reflect.DeepEqual(held, h.held[0]) {
+		t.Fatalf("the home that stays = %v, held %v", held, h.held[0])
+	}
+}
+
+// A thread's home under the root that is a link, here to a home elsewhere,
+// is not followed: the turn fails before Codex starts, with or without
+// skills, and what the link names is left as it was.
+func TestAThreadHomeThatIsALinkIsNotFollowed(t *testing.T) {
+	t.Parallel()
+	for name, skills := range map[string]bool{"with skills": true, "without": false} {
+		root, elsewhere := filepath.Join(t.TempDir(), "homes"), t.TempDir()
+		for path, text := range map[string]string{
+			"AGENTS.md":              "elsewhere's instructions\n",
+			"skills/review/SKILL.md": "elsewhere's review\n",
+			"sessions/rollout.jsonl": "elsewhere's rollout\n",
+		} {
+			writeFile(t, filepath.Join(elsewhere, path), text)
+		}
+		if err := os.MkdirAll(root, 0o700); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.Symlink(elsewhere, filepath.Join(root, fakeThread)); err != nil {
+			t.Fatal(err)
+		}
+		before := tree(t, elsewhere)
+		h := runnerOver(t, root, userCodexHome(t), fakeThread)
+		r := skilled("hello")
+		if !skills {
+			r.Skills = nil
+		}
+		r.ResumeSessionID = fakeThread
+		turn := h.runner.RunTurn(context.Background(), r, &sink{})
+		if turn.Status != codex.Failed || turn.Error == nil || turn.Error.Class != codex.ClassInternal || len(h.spy.Specs()) != 0 {
+			t.Fatalf("%s: turn = %+v, specs %+v", name, turn, h.spy.Specs())
+		}
+		if after := tree(t, elsewhere); !reflect.DeepEqual(after, before) {
+			t.Fatalf("%s: the linked home = %v, was %v", name, after, before)
+		}
 	}
 }

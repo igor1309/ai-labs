@@ -26,10 +26,14 @@
 // folder name the naming rule of settings rejects, so no turn's skill can
 // take it: both are given, each with its own front matter (ADR-021 rule
 // 7). After the turn the home is named by the thread Codex reported, as
-// Pi's sessions are, or removed when it reported none. A turn that resumes
-// a thread whose home is under Homes runs with it, its skills/ rebuilt so
-// before the turn, whatever else Codex keeps there: a skills/ that is not
-// a folder, a link among them, is removed, never followed; a
+// Pi's sessions are, or removed when it reported none; a home that cannot
+// be so named fails the turn, naming where it stays. A turn that resumes
+// a thread whose home is under Homes runs with it, made ready as a fresh
+// one is, whatever else Codex keeps there: the links to the user's files
+// as the user's CODEX_HOME holds them now, and skills/ rebuilt; a skills/
+// that is not a folder, a link among them, is removed, never followed; a
+// home under the thread's name that is not a folder, a link among them,
+// fails the turn before Codex starts. A
 // thread with no home there ran in the user's CODEX_HOME, where a turn's
 // skills cannot be given, so a turn naming skills is refused before Codex
 // starts. Every other turn runs with the user's CODEX_HOME, its
@@ -342,7 +346,16 @@ func (r *Runner) RunTurn(ctx context.Context, request TurnRequest, sink EventSin
 	})
 	turn := state.Reconcile(evidence, schemaPath != "")
 	if fresh {
-		if home = keep(root, home, state.ThreadID); home == "" {
+		kept, err := keep(root, home, state.ThreadID)
+		if err != nil {
+			message := fmt.Sprintf("thread %s's CODEX_HOME stays at %s, where no turn resumes it: %v", state.ThreadID, home, err)
+			if turn.Error != nil {
+				message += "; the turn: " + turn.Error.String()
+			}
+			turn.Status, turn.Error = Failed, Fault(ClassInternal, "%s", message)
+			return turn
+		}
+		if home = kept; home == "" {
 			// No thread is left to price.
 			return turn
 		}
@@ -351,12 +364,12 @@ func (r *Runner) RunTurn(ctx context.Context, request TurnRequest, sink EventSin
 	return turn
 }
 
-// The files of the user's CODEX_HOME a home of Agister's links to, where
-// they exist, and the folder of its skills Codex writes itself.
-var (
-	userFiles    = []string{"auth.json", "AGENTS.md", "AGENTS.override.md"}
-	systemSkills = ".system"
-)
+// userFiles are the files of the user's CODEX_HOME a home of Agister's
+// links to, where they exist.
+func userFiles() []string { return []string{"auth.json", "AGENTS.md", "AGENTS.override.md"} }
+
+// systemSkills is the folder of a home's skills Codex writes itself.
+const systemSkills = ".system"
 
 // homeEnv is the environment a process runs with in the CODEX_HOME home;
 // none for the user's own (empty).
@@ -369,10 +382,11 @@ func homeEnv(home string) []string {
 
 // home is the CODEX_HOME a turn runs with, made ready for it under root:
 // empty for the user's own. A fresh thread given skills gets a new one,
-// which fresh reports; a resumed thread keeps the one it ran in, its
-// skills rebuilt. A fault ends the turn before Codex starts: a thread ID
-// that cannot name a folder, a home that cannot be made, or skills for a
-// thread that ran in the user's CODEX_HOME, which refuses the turn.
+// which fresh reports; a resumed thread keeps the one it ran in; either is
+// made ready the same way (prepare). A fault ends the turn before Codex
+// starts: a thread ID that cannot name a folder, a home that cannot be
+// made, or skills for a thread that ran in the user's CODEX_HOME, which
+// refuses the turn.
 func (r *Runner) home(root string, request TurnRequest) (home string, fresh bool, fault *Error) {
 	id := request.ResumeSessionID
 	if id == "" {
@@ -386,7 +400,7 @@ func (r *Runner) home(root string, request TurnRequest) (home string, fresh bool
 		if err != nil {
 			return "", false, Fault(ClassInternal, "%v", err)
 		}
-		if err := r.fill(dir, request.Skills); err != nil {
+		if err := r.prepare(dir, request.Skills); err != nil {
 			os.RemoveAll(dir)
 			return "", false, Fault(ClassInternal, "%v", err)
 		}
@@ -412,11 +426,7 @@ func (r *Runner) home(root string, request TurnRequest) (home string, fresh bool
 	case !info.IsDir():
 		return "", false, Fault(ClassInternal, "%s cannot resume thread %s: %s is not its CODEX_HOME", Contract, id, dir)
 	}
-	user, err := r.userHome()
-	if err == nil {
-		err = giveSkills(dir, user, request.Skills)
-	}
-	if err != nil {
+	if err := r.prepare(dir, request.Skills); err != nil {
 		return "", false, Fault(ClassInternal, "%v", err)
 	}
 	return dir, false, nil
@@ -438,28 +448,54 @@ func (r *Runner) userHome() (string, error) {
 	return filepath.Abs(home)
 }
 
-// fill makes the new home a Codex home of the user's and of a turn's
-// skills: links to the user's auth.json, AGENTS.md and AGENTS.override.md
-// where they exist, and its skills/ (giveSkills).
-func (r *Runner) fill(home string, skills []Skill) error {
+// prepare makes home, new or a resumed thread's, a Codex home of the
+// user's and of a turn's skills, before every turn: its links to the
+// user's files (linkUserFiles) and its skills/ (giveSkills).
+func (r *Runner) prepare(home string, skills []Skill) error {
 	user, err := r.userHome()
 	if err != nil {
 		return err
 	}
-	if user != "" {
-		for _, name := range userFiles {
-			target := filepath.Join(user, name)
-			if _, err := os.Stat(target); errors.Is(err, fs.ErrNotExist) {
-				continue
-			} else if err != nil {
-				return err
-			}
-			if err := os.Symlink(target, filepath.Join(home, name)); err != nil {
+	if err := linkUserFiles(home, user); err != nil {
+		return err
+	}
+	return giveSkills(home, user, skills)
+}
+
+// linkUserFiles makes the links of home to the user's files (userFiles) as
+// the user's CODEX_HOME holds them now: a link already at one of their
+// names goes, and one is made to each that exists. Anything else at one of
+// their names, a file Codex wrote itself, is left as it is. user empty:
+// no link is made.
+func linkUserFiles(home, user string) error {
+	for _, name := range userFiles() {
+		at := filepath.Join(home, name)
+		info, err := os.Lstat(at)
+		switch {
+		case errors.Is(err, fs.ErrNotExist):
+		case err != nil:
+			return err
+		case info.Mode()&fs.ModeSymlink == 0:
+			continue
+		default:
+			if err := os.Remove(at); err != nil {
 				return err
 			}
 		}
+		if user == "" {
+			continue
+		}
+		target := filepath.Join(user, name)
+		if _, err := os.Stat(target); errors.Is(err, fs.ErrNotExist) {
+			continue
+		} else if err != nil {
+			return err
+		}
+		if err := os.Symlink(target, at); err != nil {
+			return err
+		}
 	}
-	return giveSkills(home, user, skills)
+	return nil
 }
 
 // giveSkills rebuilds the skills/ of home for a turn: a skills/ that is not
@@ -561,17 +597,17 @@ func userName(name string, taken func(string) bool) string {
 // the turns that resume it, and returns where the home is; it removes the
 // home, returning empty, when Codex reported no thread, or one that
 // cannot name a folder. A home that cannot be named so stays where it is,
-// and its thread cannot be resumed with it.
-func keep(root, home, id string) string {
+// its thread cannot be resumed with it, and the error says why.
+func keep(root, home, id string) (string, error) {
 	if !validID(id) {
 		os.RemoveAll(home)
-		return ""
+		return "", nil
 	}
 	named := filepath.Join(root, id)
 	if err := os.Rename(home, named); err != nil {
-		return home
+		return home, err
 	}
-	return named
+	return named, nil
 }
 
 var idPattern = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._-]*$`)

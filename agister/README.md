@@ -131,7 +131,8 @@ skills; a skill of yours with the name of one of the call's is linked as
 `<name>.user`, a folder name no settings skill can take, so both are there.
 Such a thread is not in your `~/.codex`, only a turn with its home resumes
 it, and it misses your Codex memories and state. A turn that resumes it gets
-the call's skills afresh, and the cost lookup reads that home. A Codex run
+the call's skills and the links to your files afresh, as your `CODEX_HOME`
+holds them then, and the cost lookup reads that home. A Codex run
 without skills ran in your own `CODEX_HOME`, so a call that names skills
 cannot continue it: it is refused before Codex starts, and the changed
 settings need a fresh run. A call that names none runs as before

@@ -147,6 +147,9 @@ type Runner struct {
 	// supervisor.
 	Transport Transport
 	KillGrace time.Duration // zero: the supervisor default
+	// TempDir is the folder a turn's own temporary folder is made in;
+	// empty: the system's temporary directory.
+	TempDir string
 	// Sessions is the directory Pi's sessions are kept under, one
 	// directory per session, named by its ID; empty: agister-pi-sessions
 	// in the temporary directory.
@@ -241,7 +244,7 @@ func (r *Runner) RunTurn(ctx context.Context, request TurnRequest, sink EventSin
 	// The turn's own files: its system prompt and its skills.
 	var systemPrompt, skills string
 	if text := SystemPrompt(request); text != "" || len(request.Skills) > 0 {
-		dir, err := os.MkdirTemp("", "agister-pi-")
+		dir, err := os.MkdirTemp(r.TempDir, "agister-pi-")
 		if err != nil {
 			return failedTurn(ClassInternal, err)
 		}

@@ -153,3 +153,14 @@
 - **Decision:** (a). The revisions stay as written.
 - **Rests on:** D-12, D-13, ADR-020
 - **Follow-ups:** none
+
+## D-15: Keep the persistent per-thread Codex home, or change the mechanism?
+
+- **Status:** Owner
+- **Asked by:** workflow run 20261005T164518Z-570644 (code_review), judge item "Edge-case findings pile up on the persistent per-thread Codex home" (sources 1#1, 2#1, 3#1, 3#2)
+- **Question:** keep the persistent per-thread Codex home and fix each edge, or change the mechanism?
+- **Options:** (a) keep it and land the four fixes; (b) give every Codex call an Agister-owned home, skilled or not, so continuation never meets a thread run in the user's CODEX_HOME and the late refusal goes away; (c) rebuild the home's managed links and skills on every turn from a single function, so fresh and resumed turns share one path.
+- **Excluded:** (b): it changes ADR-021 rule 6, and every Codex call would leave the user's `~/.codex`.
+- **Decision:** (a). The four fixes land; (c)'s one rebuild path is how the stale-links fix is made.
+- **Rests on:** none
+- **Follow-ups:** the Codex continuation refusal moves before checkout and setup; a Calls test asserts the refusal invokes neither.
