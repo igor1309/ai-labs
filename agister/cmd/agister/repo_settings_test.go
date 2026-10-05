@@ -494,9 +494,11 @@ func TestAdviceSchemaTiesTheAnswerToItsPayload(t *testing.T) {
 
 // The repository's review result schema accepts a review whose coverage
 // holds entries of every status, a null coverage and an empty one; it
-// refuses a review without coverage, an entry with an unknown status, an
-// entry missing its item, status or detail, and an entry with an unexpected
-// field. The payloads are fixed, not built from the schema.
+// refuses a review without coverage, a scalar coverage, an entry that is not
+// an object, an entry with an unknown status, an entry missing its item,
+// status or detail, an entry whose item or detail is not a string, and an
+// entry with an unexpected field. The payloads are fixed, not built from the
+// schema.
 func TestReviewResultSchemaRequiresCoverage(t *testing.T) {
 	t.Parallel()
 	root, err := filepath.Abs(filepath.Join("..", "..", ".."))
@@ -525,6 +527,10 @@ func TestReviewResultSchemaRequiresCoverage(t *testing.T) {
 		{"an entry without its status", `{` + review + `,"coverage":[{"item":"tests","detail":"x"}]}`, false},
 		{"an entry without its detail", `{` + review + `,"coverage":[{"item":"tests","status":"checked"}]}`, false},
 		{"an unexpected field in an entry", `{` + review + `,"coverage":[{"item":"tests","status":"checked","detail":"x","note":"y"}]}`, false},
+		{"a scalar coverage", `{` + review + `,"coverage":"all"}`, false},
+		{"an entry that is not an object", `{` + review + `,"coverage":["tests"]}`, false},
+		{"a non-string item", `{` + review + `,"coverage":[{"item":42,"status":"checked","detail":"x"}]}`, false},
+		{"a non-string detail", `{` + review + `,"coverage":[{"item":"tests","status":"checked","detail":42}]}`, false},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
