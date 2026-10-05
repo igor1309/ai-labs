@@ -492,6 +492,54 @@ func TestAdviceSchemaTiesTheAnswerToItsPayload(t *testing.T) {
 	}
 }
 
+// The repository's review result schema accepts a review whose coverage
+// holds entries of every status, a null coverage and an empty one; it
+// refuses a review without coverage, an entry with an unknown status, an
+// entry missing its item, status or detail, and an entry with an unexpected
+// field. The payloads are fixed, not built from the schema.
+func TestReviewResultSchemaRequiresCoverage(t *testing.T) {
+	t.Parallel()
+	root, err := filepath.Abs(filepath.Join("..", "..", ".."))
+	if err != nil {
+		t.Fatal(err)
+	}
+	document, err := os.ReadFile(filepath.Join(root, ".agister", "schemas", "review-result.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	const review = `"verdict":"approve","summary":"Small change, low risk.","findings":[]`
+	cases := []struct {
+		name, output string
+		valid        bool
+	}{
+		{"coverage of every status", `{` + review + `,"coverage":[` +
+			`{"item":"tests","status":"checked","detail":"each case has a test"},` +
+			`{"item":"errors","status":"finding","detail":"1"},` +
+			`{"item":"naming","status":"rule_only","detail":"rule 3, a.go:4, no concrete case"},` +
+			`{"item":"docs","status":"not_checked","detail":"no docs changed"}]}`, true},
+		{"null coverage", `{` + review + `,"coverage":null}`, true},
+		{"empty coverage", `{` + review + `,"coverage":[]}`, true},
+		{"no coverage", `{` + review + `}`, false},
+		{"an unknown status", `{` + review + `,"coverage":[{"item":"tests","status":"skipped","detail":"x"}]}`, false},
+		{"an entry without its item", `{` + review + `,"coverage":[{"status":"checked","detail":"x"}]}`, false},
+		{"an entry without its status", `{` + review + `,"coverage":[{"item":"tests","detail":"x"}]}`, false},
+		{"an entry without its detail", `{` + review + `,"coverage":[{"item":"tests","status":"checked"}]}`, false},
+		{"an unexpected field in an entry", `{` + review + `,"coverage":[{"item":"tests","status":"checked","detail":"x","note":"y"}]}`, false},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
+			err := (schema.Validator{}).Validate(document, []byte(c.output))
+			if c.valid && err != nil {
+				t.Fatalf("%s refused: %v", c.output, err)
+			}
+			if !c.valid && err == nil {
+				t.Fatalf("%s accepted", c.output)
+			}
+		})
+	}
+}
+
 // No schema this repository gives to Codex uses a combinator Codex's
 // strict structured outputs refuse before the turn starts: oneOf and allOf
 // anywhere, anyOf at the root. The schemas are those of the processes whose
