@@ -121,7 +121,7 @@
 - **Rests on:** none
 - **Follow-ups:** the LAB-64 round 1 fixes: a directory at an optional prompt's path refuses the call; a duplicate input name cannot drop a present required prompt; a prompt-listing error refuses the call, each with a test.
 
-## D-11: May LAB-67 edit the recorded review prompts?
+## D-12: May LAB-67 edit the recorded review prompts?
 
 - **Status:** Owner
 - **Asked by:** workflow run 20261005T124709Z-9e1ae1 (code_review), judge item "Edits to six recorded review prompts need the owner's decision"
