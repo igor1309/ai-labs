@@ -62,7 +62,7 @@ func TestTheTransportIsHandedTheTurn(t *testing.T) {
 		case resume == "" && filepath.Dir(sessionDir) != root:
 			t.Errorf("%s: session dir %s is not a new one under %s", name, sessionDir, root)
 		}
-		args, err := pi.Arguments(r, sessionDir, valueOf(specs[0].Args, "--append-system-prompt"))
+		args, err := pi.Arguments(r, sessionDir, valueOf(specs[0].Args, "--append-system-prompt"), "")
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -128,6 +128,10 @@ func TestIdentityAsksTheTransportForTheVersion(t *testing.T) {
 	identity, err := pi.New("/opt/pi", t.TempDir(), spy).Identity(context.Background())
 	if err != nil || identity.Version != "0.70.2" || identity.Contract != pi.Contract {
 		t.Fatalf("identity = %+v, %v", identity, err)
+	}
+	// The adapter gives a call its skills (ADR-021 rule 6).
+	if !identity.Skills {
+		t.Fatalf("identity = %+v, which gives no skills", identity)
 	}
 	if versions := spy.Versions(); !reflect.DeepEqual(versions, []string{"/opt/pi"}) {
 		t.Fatalf("versions = %q", versions)

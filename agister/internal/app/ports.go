@@ -35,6 +35,10 @@ type RuntimeIdentity struct {
 	// repository's skills, which are used by reading them (ADR-006); none
 	// when the runtime reads them without a granted tool.
 	SkillTools []string
+	// The adapter gives a call the skills its settings name (ADR-021 rule
+	// 6); on one that does not, a call that names a skill is refused before
+	// its first turn.
+	Skills bool
 }
 
 // ToolCall is a tool call the agent started, as the runtime adapter reports
@@ -64,6 +68,25 @@ type TurnRequest struct {
 	Primitives      []string
 	Timeout         time.Duration
 	OutputSchema    json.RawMessage
+	// Skills are the call's skills, in order, which the adapter gives every
+	// turn of the call (ADR-021 rules 5 and 6); none when it names none.
+	Skills []TurnSkill
+}
+
+// TurnStart is what a call's first turn carries that a runner may refuse
+// before the call has any effect.
+type TurnStart struct {
+	// The provider session the turn resumes; empty for a fresh one.
+	ResumeSessionID string
+	// Skills are the call's skills, in order, as the turn carries them.
+	Skills []TurnSkill
+}
+
+// TurnSkill is one skill a turn is given, as the call recorded it.
+type TurnSkill struct {
+	Name string
+	// Bytes are the whole SKILL.md, front matter included.
+	Bytes []byte
 }
 
 // CommandRequest is one run of a process's verification command.

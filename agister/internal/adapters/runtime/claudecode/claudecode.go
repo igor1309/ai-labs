@@ -9,6 +9,15 @@
 // (ADR-006). Permission mappings for this contract describe what each tool
 // grants under exactly these flags.
 //
+// A turn given skills (ADR-021) gets them as a plugin: before the turn,
+// the adapter writes a plugin named agister into a folder of its own
+// outside the working directory, holding only its manifest
+// (.claude-plugin/plugin.json) and skills/<name>/SKILL.md for each skill,
+// passes it as --plugin-dir, and removes it when the turn ends. Its skills
+// are agister:<name>, so they never meet the repository's or the user's;
+// Skill, granted on every turn, uses them. A turn given none writes and
+// passes nothing.
+//
 // Agister never chooses the session ID; Claude Code reports it. A
 // continuation resumes the reported session in place with --resume, and
 // the turn must report that same session, or it fails. A cost limit is
@@ -34,6 +43,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
+	"path/filepath"
 	"regexp"
 	"slices"
 	"strconv"
@@ -48,6 +59,10 @@ const skill = "Skill"
 
 // commandTool is the tool that runs commands.
 const commandTool = "Bash"
+
+// Plugin is the name of the plugin a turn's skills are given in: each is
+// Plugin:<name>.
+const Plugin = "agister"
 
 // Transport is what the runner needs of a process supervisor: to run the
 // runtime to its exit, passing each line of its stdout to onLine, and to
@@ -96,6 +111,9 @@ type Runner struct {
 	// supervisor.
 	Transport Transport
 	KillGrace time.Duration // zero: the supervisor default
+	// TempDir is the folder a turn's own temporary folder is made in;
+	// empty: the system's temporary directory.
+	TempDir string
 }
 
 func New(command string, transport Transport) *Runner {
@@ -116,11 +134,12 @@ func (r *Runner) Identity(ctx context.Context) (RuntimeIdentity, error) {
 	if version == "" {
 		return RuntimeIdentity{}, fmt.Errorf("unrecognized version output %q", out)
 	}
-	return RuntimeIdentity{Contract: Contract, Version: version, Resume: true, CostLimit: true, ToolCalls: true}, nil
+	return RuntimeIdentity{Contract: Contract, Version: version, Resume: true, CostLimit: true, ToolCalls: true, Skills: true}, nil
 }
 
-// Arguments builds the command line for a turn.
-func Arguments(request TurnRequest) ([]string, error) {
+// Arguments builds the command line for a turn whose skills are in the
+// plugin folder plugin (unused when it has none).
+func Arguments(request TurnRequest, plugin string) ([]string, error) {
 	for _, tool := range request.Primitives {
 		if tool == "" || strings.ContainsAny(tool, ", ") {
 			return nil, fmt.Errorf("invalid tool primitive %q", tool)
@@ -146,6 +165,9 @@ func Arguments(request TurnRequest) ([]string, error) {
 		args = append(args, "--max-budget-usd", strconv.FormatFloat(*request.MaxCostUSD, 'f', -1, 64))
 	}
 	args = append(args, "--strict-mcp-config")
+	if len(request.Skills) > 0 {
+		args = append(args, "--plugin-dir", plugin)
+	}
 	if request.Model != "" {
 		args = append(args, "--model", request.Model)
 	}
@@ -162,7 +184,19 @@ func Arguments(request TurnRequest) ([]string, error) {
 }
 
 func (r *Runner) RunTurn(ctx context.Context, request TurnRequest, sink EventSink) Turn {
-	args, err := Arguments(request)
+	var plugin string
+	if len(request.Skills) > 0 {
+		dir, err := os.MkdirTemp(r.TempDir, "agister-claude-")
+		if err != nil {
+			return failedTurn(ClassInternal, err)
+		}
+		defer os.RemoveAll(dir)
+		if err := WritePlugin(dir, request.Skills); err != nil {
+			return failedTurn(ClassInternal, err)
+		}
+		plugin = dir
+	}
+	args, err := Arguments(request, plugin)
 	if err != nil {
 		return failedTurn(ClassInternal, err)
 	}
@@ -187,6 +221,36 @@ func (r *Runner) RunTurn(ctx context.Context, request TurnRequest, sink EventSin
 		}
 	})
 	return state.Reconcile(evidence, len(request.OutputSchema) > 0)
+}
+
+// WritePlugin writes, into the empty folder dir, the plugin a turn's skills
+// are given in: its manifest naming it Plugin, and skills/<name>/SKILL.md
+// for each skill, from its bytes.
+func WritePlugin(dir string, skills []Skill) error {
+	manifest := filepath.Join(dir, ".claude-plugin")
+	if err := os.Mkdir(manifest, 0o700); err != nil {
+		return err
+	}
+	data, _ := json.Marshal(map[string]string{"name": Plugin})
+	if err := os.WriteFile(filepath.Join(manifest, "plugin.json"), append(data, '\n'), 0o600); err != nil {
+		return err
+	}
+	folder := filepath.Join(dir, "skills")
+	if err := os.Mkdir(folder, 0o700); err != nil {
+		return err
+	}
+	for _, skill := range skills {
+		if name := skill.Name; name != filepath.Base(name) || name == "." || name == ".." {
+			return fmt.Errorf("%s cannot give skill %q: not a folder's name", Contract, name)
+		}
+		if err := os.Mkdir(filepath.Join(folder, skill.Name), 0o700); err != nil {
+			return err
+		}
+		if err := os.WriteFile(filepath.Join(folder, skill.Name, "SKILL.md"), skill.Bytes, 0o600); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // Event is a normalized observation from the stream.

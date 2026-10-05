@@ -546,6 +546,30 @@ func TestTheProcessWorktreeCoordinatorLocksUnderTheHome(t *testing.T) {
 	}
 }
 
+// The process tells the user's CODEX_HOME from the environment and home
+// it runs in: $CODEX_HOME when it is set, else .codex in the user's home.
+func TestTheProcessTellsTheUsersCodexHomeFromItsEnvironment(t *testing.T) {
+	t.Parallel()
+	for name, c := range map[string]struct{ env, want string }{
+		"set":   {"/elsewhere/codex", "/elsewhere/codex"},
+		"unset": {"", filepath.Join("/users/me", ".codex")},
+	} {
+		getenv := func(key string) string {
+			if key == "CODEX_HOME" {
+				return c.env
+			}
+			return "/wrong"
+		}
+		composed := processIn(cli.Config{Home: tempDir(t)}, fsruns.NewAppends(), getenv, func() (string, error) { return "/users/me", nil })
+		if composed.codexHome == nil {
+			t.Fatalf("%s: the process tells no CODEX_HOME", name)
+		}
+		if home, err := composed.codexHome(); err != nil || home != c.want {
+			t.Errorf("%s: CODEX_HOME %q, %v, want %q", name, home, err, c.want)
+		}
+	}
+}
+
 // started is a starter that keeps the command of each process it is asked
 // to start, with its arguments, and starts it in process.
 type started struct {

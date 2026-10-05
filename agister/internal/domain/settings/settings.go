@@ -26,6 +26,9 @@ type Bundle struct {
 	// Prompts are the prompt documents the settings have; an unreadable
 	// one is a problem of its own, not of the processes that name it.
 	Prompts map[string]bool
+	// Skills are the skill documents the settings have; a broken one is a
+	// problem of its own, not of the agents and processes that name it.
+	Skills map[string]bool
 }
 
 // Resolved returns the process named name with the verification it names
@@ -95,6 +98,12 @@ func Check(b Bundle, m Mechanisms) []Problem {
 	for _, name := range sortedKeys(b.Agents) {
 		agent := b.Agents[name]
 		subject := "agent " + name
+		// A skill is a problem of what names it (ADR-021 rule 4).
+		for _, skill := range agent.Skills {
+			if !b.Skills[skill] {
+				add(subject, "skill %q does not exist", skill)
+			}
+		}
 		mapping, ok := b.Mappings[agent.Runtime]
 		if !ok {
 			add(subject, "runtime mapping %q does not exist", agent.Runtime)
@@ -125,6 +134,12 @@ func Check(b Bundle, m Mechanisms) []Problem {
 			// input is optional (ADR-019 rule 4).
 			if name := value.Args["name"]; value.Source == definition.PromptSource && name != "" && !b.Prompts[name] && !value.Optional() {
 				add(subject, "input %s: prompt %q does not exist", value.Name, name)
+			}
+		}
+		// So is a skill (ADR-021 rule 4).
+		for _, skill := range process.Skills {
+			if !b.Skills[skill] {
+				add(subject, "skill %q does not exist", skill)
 			}
 		}
 		if process.Output.Format == "json" && !b.Schemas[process.Output.Schema] {

@@ -11,8 +11,10 @@
     const K = globalThis.AgisterKnowledge;
 
     // current: the path shown, ~ for Agister home; view: settings, runs or
-    // knowledge; model: the settings shown, as config.js reads them.
-    const state = { current: null, view: U.readView(localStorage), model: null };
+    // knowledge; model: the settings shown, as config.js reads them; skills:
+    // the api/skills reply read with them, whose settings skills are the
+    // model's (D-16) and whose folders Knowledge shows.
+    const state = { current: null, view: U.readView(localStorage), model: null, skills: null };
     let renderToken = 0;
 
     const $ = (id) => document.getElementById(id);
@@ -72,13 +74,15 @@
     // failure the page says why and keeps what it showed. The user's home
     // folder holds Agister's home, so it shows as ~ and leaves the list.
     // The status is the shown view's: while Runs is shown, a read of the
-    // settings leaves it alone. Knowledge shows the settings' agents, so it
-    // is read after them.
+    // settings leaves it alone. The settings' skills are the server's
+    // inventory of them (api/skills), read with the settings files, which
+    // leave skills out (D-16). Knowledge shows the settings' agents and
+    // those skills, so it is read after them.
     async function open_(path) {
       const token = ++renderToken;
-      let id, files, homeFiles;
+      let id, files, homeFiles, skills;
       try {
-        ({ id, files, homeFiles } = await R.fetchSettings(fetch, path));
+        [{ id, files, homeFiles }, skills] = await Promise.all([R.fetchSettings(fetch, path), R.fetchSkills(fetch, path)]);
         if (id !== path) R.forgetRepo(localStorage, path);
       } catch (err) {
         if (token !== renderToken) return;
@@ -93,7 +97,7 @@
       if (knowledge.path !== id) forgetKnowledge();
       setMenu(false);
       if (state.view !== 'runs') say('status', '');
-      const shown = await render(token, files, homeFiles);
+      const shown = await render(token, files, homeFiles, skills);
       if (shown && state.view === 'knowledge') await loadKnowledge();
     }
 
@@ -121,22 +125,24 @@
     // --- dashboard ---
 
     // files: the shown folder's settings; homeFiles: Agister home's, which a
-    // repo's go over, or null for ~ itself. Says whether they were shown.
-    async function render(token, files, homeFiles) {
+    // repo's go over, or null for ~ itself; skills: the api/skills reply for
+    // them. Says whether they were shown.
+    async function render(token, files, homeFiles, skills) {
       $('picker-label').textContent = label(state.current);
       $('picker-button').title = state.current === R.HOME_ID ? 'Agister home, ~/.agister' : state.current;
       if (state.view === 'settings') stamp('Settings');
       let model;
       try {
         model = homeFiles
-          ? await C.loadComposed(R.agisterFromFiles(homeFiles), R.agisterFromFiles(files))
-          : await C.loadAgister(R.agisterFromFiles(files));
+          ? await C.loadComposed(R.agisterFromFiles(homeFiles), R.agisterFromFiles(files), skills.settings)
+          : await C.loadAgister(R.agisterFromFiles(files), skills.settings);
       } catch (err) {
         if (token === renderToken && state.view !== 'runs') say('status', `Could not read .agister: ${err.message}`);
         return false;
       }
       if (token !== renderToken) return false;
       state.model = model;
+      state.skills = skills;
       $('dashboard').replaceChildren(...dashboard(model, !!homeFiles));
       $('dashboard').hidden = state.view !== 'settings';
       return true;
@@ -270,14 +276,18 @@
       return parts.length ? el('div', {}, ...parts) : null;
     }
 
-    // The prompts a process names, each marked missing when these settings
-    // have none of that name, or with the chip of the layer it comes from.
-    function promptsLine(p, chip) {
-      if (!p.prompts?.length) return null;
-      return el('div', {}, ...p.prompts.flatMap((x, i) => {
-        if (x.outside) return [i ? ', ' : '', missing('prompt', x.name)];
+    // The prompts or skills (kind) a process or an agent names, each marked
+    // missing when these settings have none of that name, or with the chip
+    // of the layer it comes from; a skill whose checks fail says so, as
+    // Agister refuses the call.
+    function namedLine(kind, list, chip) {
+      if (!list?.length) return null;
+      return el('div', {}, ...list.flatMap((x, i) => {
+        if (x.outside) return [i ? ', ' : '', missing(kind, x.name)];
         const origin = chip(x);
-        return [i ? ', ' : '', x.name, origin ? ' ' : '', origin];
+        const failed = x.checks && !x.checks.passed
+          ? el('span', { className: 'failed', title: (x.checks.failed ?? []).join('; '), textContent: 'checks failed' }) : null;
+        return [i ? ', ' : '', x.name, origin ? ' ' : '', origin, failed ? ' ' : '', failed];
       }));
     }
 
@@ -309,7 +319,8 @@
         ['defaults', defaults(p.params)],
         ['agent', agentLine(p.agent, ix)],
         ['policy', policyLines(p.policy, ix)],
-        ['prompts', promptsLine(p, chip)],
+        ['prompts', namedLine('prompt', p.prompts, chip)],
+        ['skills', namedLine('skill', p.callSkills, chip)],
         ['output', outputLine(p)],
         ['setup', setupLine(p)],
       ]));
@@ -388,9 +399,10 @@
 
     function agentsTable(items, composed) {
       return table('Agents', 'resumable: a run can be continued with --continue; fresh-only: every call starts fresh',
-        ['Agent', 'Runtime', 'Model', 'Effort', 'Session'], items, (a) => [
+        ['Agent', 'Runtime', 'Model', 'Effort', 'Session', 'Skills'], items, (a) => [
           a.runtimeOutside ? missing('runtime', a.runtime) : a.runtime,
           a.model, a.effort, a.session,
+          namedLine('skill', a.skills, composed ? sourceChip : () => null),
         ], composed);
     }
 
@@ -683,21 +695,22 @@
       $('knowledge').replaceChildren();
     }
 
-    const NO_ASSIGNMENT = 'Agister does not choose an agent’s skills: a call loads what its runtime loads in the repo and the home (ADR-006). This page only reads them; editing is not part of it.';
+    const TWO_LISTS = 'An agent’s skills are two lists, shown apart: the skills its settings name, which Agister gives its calls (ADR-021), and the skills its runtime would load from the repo and the home (ADR-006). This page only reads them; editing is not part of it.';
 
-    // Reads the skills of the shown settings and the runs, and shows them
-    // with what was opened before. As with Runs, a read that ends after the
-    // user left Knowledge, after a newer read, or after the settings were
-    // asked for again (open_), leaves the page alone.
+    // Reads the runs, and shows them with the settings and their skills, as
+    // open_ read them, and what was opened before. As with Runs, a read that
+    // ends after the user left Knowledge, after a newer read, or after the
+    // settings were asked for again (open_), leaves the page alone.
     async function loadKnowledge() {
       const token = ++knowledgeToken;
       const opened = renderToken;
       const current = () => token === knowledgeToken && opened === renderToken && state.view === 'knowledge';
       const settings = state.model;
+      const skills = state.skills;
       const path = state.current;
-      let skills, list;
+      let list;
       try {
-        [skills, list] = await Promise.all([R.fetchSkills(fetch, path), R.fetchRuns(fetch)]);
+        list = await R.fetchRuns(fetch);
       } catch (err) {
         if (current()) say('status', err.message);
         return;
@@ -714,11 +727,11 @@
       const d = knowledge.data;
       $('knowledge').replaceChildren(
         el('p', { className: 'intro' }, d.home
-          ? 'Agister home, no repo: the skills each agent’s runtime would load from the home folders.'
-          : 'The skills each agent’s runtime would load in this repo’s working tree and from the home folders. A call on a checkout loads what that checkout holds, which can differ.'),
-        el('p', { className: 'intro', textContent: NO_ASSIGNMENT }),
+          ? 'Agister home, no repo: the skills each agent’s settings name, and the skills its runtime would load from the home folders.'
+          : 'The skills each agent’s settings name, and the skills its runtime would load in this repo’s working tree and from the home folders. A call on a checkout loads what that checkout holds, which can differ.'),
+        el('p', { className: 'intro', textContent: TWO_LISTS }),
         el('h2', { className: 'group', textContent: 'Overview' }),
-        el('p', { className: 'group-note', textContent: 'a row per skill name, a column per agent; ● the agent’s runtime loads a skill of that name; shared: the name is in several folders. Click an agent or a skill to open it below.' }),
+        el('p', { className: 'group-note', textContent: 'what the runtimes would load: a row per skill name, a column per agent; ● the agent’s runtime loads a skill of that name; shared: the name is in several folders. The skills an agent’s settings name are in its card. Click an agent or a skill to open it below.' }),
         overview(d),
         el('div', { id: 'knowledge-detail' }),
         foldersCard(d.folders));
@@ -823,8 +836,26 @@
       return link;
     }
 
-    // An agent: what its runtime loads and, apart from that and labelled
-    // observed, what its runs used. A skill no run used says nothing of use.
+    // An agent's skills its settings name: a row per skill, with what names
+    // it (the agent, or a process on it), its layer and its checks; one
+    // these settings do not have is missing.
+    function settingsSkillsTable(a) {
+      const rows = [
+        ...a.named.own.map((x) => [x, 'agent']),
+        ...a.named.processes.flatMap((p) => p.skills.map((x) => [x, `process ${p.name}`])),
+      ];
+      if (!rows.length) return el('p', { className: 'group-note', textContent: 'Its settings name no skills, and no process on it does.' });
+      return simpleTable(['Skill', 'Named by', 'From', 'Checks'], rows.map(([x, by]) => (x.missing
+        ? [missing('skill', x.name), by, '—', '—']
+        : [
+          el('span', { title: x.path ?? '', textContent: x.name }), by, sourceChip(x),
+          x.checks ? checksLine(x) : text('not checked: the server has no such skill', 'failed'),
+        ])));
+    }
+
+    // An agent: the skills its settings name, what its runtime loads and,
+    // apart from both and labelled observed, what its runs used. A skill no
+    // run used says nothing of use.
     function agentCard(a, d) {
       const shared = new Set(d.skills.filter((s) => s.shared).map((s) => s.name));
       const used = a.observed.skills;
@@ -834,9 +865,13 @@
           ['model', a.model],
           ['effort', a.effort],
         ]),
-        el('p', { className: 'purpose', textContent: NO_ASSIGNMENT }),
+        el('p', { className: 'purpose', textContent: TWO_LISTS }),
+        el('section', { className: 'stage', id: 'agent-settings-skills' },
+          el('h4', { textContent: 'Its settings name' }),
+          el('p', { className: 'group-note', textContent: 'skills from these settings’ skills/ folders, which Agister gives the call: the agent’s to each of its calls, a process’s to that process’s calls' }),
+          settingsSkillsTable(a)),
         el('section', { className: 'stage', id: 'agent-loads' },
-          el('h4', { textContent: 'Its runtime would load' }),
+          el('h4', { textContent: 'Its runtime would load from the repo and the home' }),
           a.loads.length
             ? simpleTable(['Skill', 'From', 'Folder', 'Checks'], a.loads.map((e) => [
               el('span', {}, pick('skill', e.name), shared.has(e.name) ? ' ' : null, shared.has(e.name) ? text('shared', 'chip replaces') : null),

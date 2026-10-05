@@ -91,10 +91,27 @@ type runnerSpy struct {
 	// acting, when set, runs while each turn does, with the turn's context
 	// and sink: what the runtime reports of the turn.
 	acting func(context.Context, app.EventSink)
+	// starts are the first turns asked to be admitted; refusal, when set,
+	// is the fault each is refused with.
+	starts  []app.TurnStart
+	refusal *run.Error
 }
 
 func (s *runnerSpy) Identity(context.Context) (app.RuntimeIdentity, error) {
 	return s.identity, s.identityErr
+}
+
+func (s *runnerSpy) Admit(start app.TurnStart) *run.Error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.starts = append(s.starts, start)
+	return s.refusal
+}
+
+func (s *runnerSpy) admitted() []app.TurnStart {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return append([]app.TurnStart(nil), s.starts...)
 }
 
 func (s *runnerSpy) RunTurn(ctx context.Context, request app.TurnRequest, sink app.EventSink) run.Turn {

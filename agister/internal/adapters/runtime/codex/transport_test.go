@@ -127,7 +127,7 @@ func TestALookupThatDidNotExitCleanlyFails(t *testing.T) {
 		spy := &spyRuns{Answer: func(codex.Spec) ([]string, codex.Evidence) {
 			return strings.Split(listingJSON("0.25"), "\n"), evidence
 		}}
-		listing, err := codex.CCUsage(spy, "ccusage", 2*time.Second)(context.Background(), time.Minute, &sink{})
+		listing, err := codex.CCUsage(spy, "ccusage", 2*time.Second)(context.Background(), time.Minute, "", &sink{})
 		if err == nil || listing != nil {
 			t.Errorf("%s: listing %q, err %v", name, listing, err)
 		}
@@ -143,6 +143,11 @@ func TestIdentityAsksTheTransportForTheVersion(t *testing.T) {
 	identity, err := codex.New("/opt/codex", spy).Identity(context.Background())
 	if err != nil || identity.Version != "0.130.0" || identity.Contract != codex.Contract {
 		t.Fatalf("identity = %+v, %v", identity, err)
+	}
+	// Codex gives a call its skills through a home of its thread's
+	// (ADR-021 rule 6).
+	if !identity.Skills {
+		t.Fatalf("identity = %+v, which gives no skills", identity)
 	}
 	if versions := spy.Versions(); !reflect.DeepEqual(versions, []string{"/opt/codex"}) {
 		t.Fatalf("versions = %q", versions)

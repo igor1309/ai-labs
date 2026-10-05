@@ -85,6 +85,10 @@ func startThrough(t testing.TB, home string, starter runtimetest.InProcess) {
 	t.Cleanup(func() { starters.Delete(home) })
 }
 
+// userCodexHome is the user's CODEX_HOME of the compositions over home: a
+// folder of the test's, which none makes unless a test does.
+func userCodexHome(home string) string { return filepath.Join(home, "user-codex-home") }
+
 // gits are the fakes of git tests gave the compositions over their homes
 // (gitThrough), or realGit for a home on real git (onRealGit), by home.
 var gits sync.Map
@@ -149,7 +153,9 @@ var stillAt = time.Date(2026, 10, 3, 12, 0, 0, 0, time.UTC)
 
 // inProcess is the process's composition with fakes for its runtimes and
 // for the shell of its setup and verification commands, run in process:
-// neither is started as a process, and none is looked up on PATH. Its run
+// neither is started as a process, and none is looked up on PATH; its
+// environment, not the process's, sets CODEX_HOME to userCodexHome, which
+// the production wiring reads. Its run
 // store signals through appends of its own, as a process of its own does.
 // Its turns and commands wait, and its observing polls, on a clock that
 // never moves, not on the wall clock: such a wait passes only on a clock
@@ -162,7 +168,12 @@ var stillAt = time.Date(2026, 10, 3, 12, 0, 0, 0, time.UTC)
 // process's timer: the kernel gives no event when a lock file is let go,
 // so the next attempt at one is due in real time.
 func inProcess(config cli.Config) composition {
-	c := process(config, fsruns.NewAppends())
+	c := processIn(config, fsruns.NewAppends(), func(key string) string {
+		if key == "CODEX_HOME" {
+			return userCodexHome(config.Home)
+		}
+		return ""
+	}, func() (string, error) { return "", errors.New("the compositions in process have no user's home") })
 	groups := supervisortest.NewGroups()
 	c.starter, c.commands = runtimetest.InProcess{Groups: groups}, runtimetest.InProcess{Groups: groups}
 	still := clocktest.NewClock(stillAt)

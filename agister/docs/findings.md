@@ -159,6 +159,33 @@
     `synced` skills), `~/.config/opencode/skills`, and built-in skills.
   Claude Code's synced skills sit at
   `~/.claude/skills/synced/<id>/<name>/SKILL.md`.
+- **How each runtime takes a skill from outside the repository and the
+  home, under the adapter's flags.** Checked on 2026-10-05 for ADR-021,
+  in a scratch repository, against a local server that recorded the
+  request and answered 400, unless said otherwise:
+  - Claude Code 2.1.288: `--plugin-dir <folder>` with only
+    `skills/<name>/SKILL.md`, no `.claude-plugin/plugin.json`, listed the
+    skill as `<folder>:<name>`; with a manifest naming the plugin
+    `agister`, as `agister:<name>`. The init event listed both plugins
+    beside the user's.
+  - Pi 0.85.1: `--skill <folder>/<name>` listed the skill, with its
+    path, beside `~/.agents/skills`.
+  - OpenCode 1.18.33: `opencode run --format json --pure` with
+    `skills.paths` in `OPENCODE_CONFIG_CONTENT` sent the skill in the
+    request. `opencode debug skill` with the same `skills.paths`, inline
+    or in `opencode.json`, did not list it.
+  - Codex 0.159.2 and 0.160.0: no option adds a skill folder.
+    `[[skills.config]]` only turns a skill off; `--add-dir` (read-only
+    and workspace-write) loaded no skill from the added folder's
+    `.agents/skills` or `skills`. `$CODEX_HOME/skills` of a fresh
+    `CODEX_HOME` was loaded. Live, with `gpt-6.1-sol` at effort `low`
+    and a `CODEX_HOME` holding a link to `~/.codex/auth.json`, links to
+    `~/.codex/skills/*` and a probe skill: the turn used the skill; `exec
+    resume` with the same `CODEX_HOME` resumed the thread; with the
+    user's own it failed (`no rollout found for thread id`); `ccusage
+    codex session --json` listed the session only with that
+    `CODEX_HOME`. Codex wrote its sessions, state databases and bundled
+    `skills/.system` into that folder.
 - **Claude Code rejects draft 2020-12 schemas** passed with `--json-schema`,
   so example schemas declare no `$schema`. `agister check` still accepts
   one: on 2026-09-29 a project schema with the draft 2020-12 `$schema`

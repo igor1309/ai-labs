@@ -14,7 +14,7 @@ import (
 
 func TestArguments(t *testing.T) {
 	t.Parallel()
-	args, err := pi.Arguments(pi.TurnRequest(request("hello")), "/sessions/new-1", "/tmp/system-prompt.md")
+	args, err := pi.Arguments(pi.TurnRequest(request("hello")), "/sessions/new-1", "/tmp/system-prompt.md", "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -36,7 +36,7 @@ func TestResumeArguments(t *testing.T) {
 	t.Parallel()
 	r := request("hello")
 	r.ResumeSessionID = "s-1"
-	args, err := pi.Arguments(pi.TurnRequest(r), "/sessions/s-1", "/tmp/system-prompt.md")
+	args, err := pi.Arguments(pi.TurnRequest(r), "/sessions/s-1", "/tmp/system-prompt.md", "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -56,7 +56,7 @@ func TestResumeArguments(t *testing.T) {
 // an allowlist.
 func TestDefaults(t *testing.T) {
 	t.Parallel()
-	args, err := pi.Arguments(pi.TurnRequest(pi.TurnRequest{Prompt: "x", Primitives: []string{"read"}}), "/sessions/new-1", "")
+	args, err := pi.Arguments(pi.TurnRequest(pi.TurnRequest{Prompt: "x", Primitives: []string{"read"}}), "/sessions/new-1", "", "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -75,14 +75,14 @@ func TestToolsAndThinkingLevels(t *testing.T) {
 	for _, tool := range pi.Tools {
 		r := request("x")
 		r.Primitives = []string{"read", tool}
-		if args, err := pi.Arguments(pi.TurnRequest(r), "/s", ""); err != nil || !follows(args, "--tools", "read,"+tool) {
+		if args, err := pi.Arguments(pi.TurnRequest(r), "/s", "", ""); err != nil || !follows(args, "--tools", "read,"+tool) {
 			t.Errorf("tool %s: %q, %v", tool, args, err)
 		}
 	}
 	for _, level := range []string{"off", "minimal", "low", "medium", "high", "xhigh", "max"} {
 		r := request("x")
 		r.Effort = level
-		if args, err := pi.Arguments(pi.TurnRequest(r), "/s", ""); err != nil || !follows(args, "--thinking", level) {
+		if args, err := pi.Arguments(pi.TurnRequest(r), "/s", "", ""); err != nil || !follows(args, "--thinking", level) {
 			t.Errorf("effort %s: %q, %v", level, args, err)
 		}
 	}

@@ -16,6 +16,7 @@ import (
 	"strings"
 
 	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/runtimetest/fakeoutput"
+	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/runtimetest/fakeskills"
 	"github.com/igor1309/ai-labs/gokit/fakeproc"
 )
 
@@ -59,7 +60,11 @@ func Main(p fakeproc.Process) int {
 		fmt.Fprintln(p.Stdout, string(data))
 	}
 	cwd := p.Dir
-	emit(map[string]any{"type": "system", "subtype": "init", "session_id": session, "model": "fake-model", "tools": []string{"Read"}, "cwd": cwd, "argv": args, "prompt": prompt})
+	var skills []string
+	if dir := flag("--plugin-dir"); dir != "" {
+		skills = append(skills, dir)
+	}
+	emit(map[string]any{"type": "system", "subtype": "init", "session_id": session, "model": "fake-model", "tools": []string{"Read"}, "cwd": cwd, "argv": args, "prompt": prompt, "skills": fakeskills.Given(skills)})
 
 	switch scenario {
 	case "hang":

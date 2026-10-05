@@ -303,6 +303,7 @@
       setup: setupOf(doc.workspace?.setup),
       output: doc.output?.schema ?? null,
       prompts: prompts(doc.input),
+      skills: skillNames(doc.skills),
       instruction,
     };
   }
@@ -312,6 +313,13 @@
   function prompts(input) {
     const values = input && typeof input.values === 'object' && input.values ? Object.values(input.values) : [];
     const names = values.filter((v) => v?.source === 'prompt' && typeof v.name === 'string').map((v) => v.name);
+    return [...new Set(names)].map((name) => ({ name }));
+  }
+
+  // The skills an agent or a process names (skills = [...] or skills:
+  // [...]), each once (ADR-021).
+  function skillNames(list) {
+    const names = Array.isArray(list) ? list.filter((name) => typeof name === 'string') : [];
     return [...new Set(names)].map((name) => ({ name }));
   }
 
@@ -329,6 +337,7 @@
       file, name: doc.name ?? stem(file),
       runtime: doc.runtime ?? null, model: doc.model ?? null,
       effort: doc.effort ?? null, session: doc.session ?? null,
+      skills: skillNames(doc.skills),
     };
   }
 
@@ -363,22 +372,39 @@
     return (await fileHandle.getFile()).text();
   }
 
+  // The folder sub of agister, or null when it is missing.
+  async function subfolder(agister, sub) {
+    try {
+      return await agister.getDirectoryHandle(sub);
+    } catch (err) {
+      if (err && (err.name === 'NotFoundError' || err.name === 'TypeMismatchError')) return null;
+      throw err;
+    }
+  }
+
   // [{ file, src }] for the files of sub with one of exts, by name; none
   // when sub is missing.
   async function readFolder(agister, sub, exts) {
-    let dir;
-    try {
-      dir = await agister.getDirectoryHandle(sub);
-    } catch (err) {
-      if (err && (err.name === 'NotFoundError' || err.name === 'TypeMismatchError')) return [];
-      throw err;
-    }
+    const dir = await subfolder(agister, sub);
+    if (!dir) return [];
     const files = [];
     for await (const [name, handle] of dir.entries()) {
       if (handle.kind === 'file' && exts.some((e) => name.endsWith(e))) files.push([name, handle]);
     }
     files.sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0));
     return Promise.all(files.map(async ([file, handle]) => ({ file, src: await readText(handle) })));
+  }
+
+  // The skills of a layer's skills/ (skills/<name>/SKILL.md, ADR-021), by
+  // name, from the server's inventory of them (api/skills' settings), never
+  // from the settings files: a skill that is there is one whatever its
+  // state, so a broken one still goes over home's (D-16). Each is
+  // { file, name, path, state, description, checks }.
+  function layerSkills(inventory) {
+    return (inventory ?? []).map((s) => ({
+      file: `${s.name}/SKILL.md`, name: s.name, path: s.path ?? null, state: s.state ?? null,
+      description: s.description ?? null, checks: s.checks ?? null,
+    })).sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
   }
 
   // Each file through build; a file that does not parse becomes
@@ -434,20 +460,23 @@
     }
   }
 
-  // The dashboard model of the .agister folder agister.
-  async function loadAgister(agister) {
-    return link(await readAgister(agister));
+  // The dashboard model of the .agister folder agister, whose skills are
+  // skills, the server's inventory of that one layer.
+  async function loadAgister(agister, skills = []) {
+    return link(await readAgister(agister, skills));
   }
 
-  const KINDS = ['workflows', 'processes', 'agents', 'policies', 'runtimes', 'schemas', 'verifies', 'prompts'];
+  const KINDS = ['workflows', 'processes', 'agents', 'policies', 'runtimes', 'schemas', 'verifies', 'prompts', 'skills'];
 
   // What Agister uses in a repo: Agister home's settings with the repo's
   // over them. As in Agister, a repo file replaces the home file of the
   // same kind and name, and the repo's service.toml replaces home's. Each
   // item says where it comes from: source 'repo' or 'home', and overrides
-  // when a repo item replaces a home one.
-  async function loadComposed(home, repo) {
-    return link(compose(await readAgister(home), await readAgister(repo)));
+  // when a repo item replaces a home one. skills is the server's
+  // inventory of both layers' skills, each with its scope, repo or home.
+  async function loadComposed(home, repo, skills = []) {
+    const scope = (s) => (skills ?? []).filter((x) => x.scope === s);
+    return link(compose(await readAgister(home, scope('home')), await readAgister(repo, scope('repo'))));
   }
 
   function compose(home, repo) {
@@ -468,7 +497,7 @@
     return model;
   }
 
-  async function readAgister(agister) {
+  async function readAgister(agister, skills) {
     const [workflows, processes, agents, policies, runtimes, schemas, verifies, prompts, service, workspace] = await Promise.all([
       readFolder(agister, 'workflows', ['.yaml', '.yml']),
       readFolder(agister, 'processes', ['.yaml', '.yml']),
@@ -492,6 +521,7 @@
       schemas: schemas.map(({ file }) => ({ file, name: stem(file) })),
       verifies: each(verifies, parseYaml, (file, _src, doc) => verifyItem(file, doc)),
       prompts: prompts.map(({ file }) => ({ file, name: stem(file) })),
+      skills: layerSkills(skills),
     };
   }
 
@@ -501,10 +531,28 @@
     const names = (items) => new Set(items.filter((x) => !x.error).map((x) => x.name));
     const processes = names(model.processes);
     const agents = names(model.agents);
+    const byAgent = new Map(model.agents.filter((a) => !a.error).map((a) => [a.name, a]));
     const policies = names(model.policies);
     const runtimes = names(model.runtimes);
     const schemas = new Set(model.schemas.map((s) => s.name));
-    const prompts = new Map(model.prompts.map((s) => [s.name, s]));
+    // A named prompt or skill, found: with the layer it comes from when
+    // composed, or outside these settings.
+    const found = (items) => {
+      const byName = new Map(items.map((s) => [s.name, s]));
+      return (x) => {
+        const item = byName.get(x.name);
+        return { ...x, outside: !item, ...(item?.source && { source: item.source, overrides: !!item.overrides }) };
+      };
+    };
+    const prompt = found(model.prompts);
+    // A skill found carries what the server's inventory says of it in its
+    // layer: its path, state, description and checks.
+    const skillFound = found(model.skills);
+    const skillByName = new Map(model.skills.map((s) => [s.name, s]));
+    const skill = (x) => {
+      const item = skillByName.get(x.name);
+      return item ? { ...skillFound(x), path: item.path, state: item.state, description: item.description, checks: item.checks } : skillFound(x);
+    };
     const usedBy = (items, key, name) => items.filter((x) => !x.error && x[key] === name).map((x) => x.name);
 
     for (const w of model.workflows) {
@@ -517,10 +565,12 @@
       p.policyOutside = !!p.policy && !policies.has(p.policy);
       p.outputOutside = !!p.output && !schemas.has(p.output);
       // Each prompt found, with the layer it comes from when composed (ADR-014).
-      p.prompts = p.prompts.map((x) => {
-        const found = prompts.get(x.name);
-        return { ...x, outside: !found, ...(found?.source && { source: found.source, overrides: !!found.overrides }) };
-      });
+      p.prompts = p.prompts.map(prompt);
+      // The skills it names, found as prompts are; and the ones its call
+      // gets: its own, then its agent's, each once (ADR-021 rule 2).
+      p.skills = p.skills.map(skill);
+      const agentSkills = byAgent.get(p.agent)?.skills.map(skill) ?? [];
+      p.callSkills = [...p.skills, ...agentSkills.filter((x) => !p.skills.some((y) => y.name === x.name))];
       // As Agister resolves it: the process's own setup, or the
       // workspace's for a checkout without one; none without a checkout.
       const defaultSetup = model.workspace?.setup;
@@ -538,6 +588,7 @@
     }
     for (const a of model.agents) {
       if (a.error) continue;
+      a.skills = a.skills.map(skill);
       a.runtimeOutside = !!a.runtime && !runtimes.has(a.runtime);
       a.usedBy = usedBy(model.processes, 'agent', a.name);
     }
@@ -550,6 +601,9 @@
     for (const s of model.schemas) s.usedBy = usedBy(model.processes, 'output', s.name);
     for (const s of model.prompts) {
       s.usedBy = model.processes.filter((p) => !p.error && p.prompts.some((x) => x.name === s.name)).map((p) => p.name);
+    }
+    for (const s of model.skills) {
+      s.usedBy = model.processes.filter((p) => !p.error && p.callSkills.some((x) => x.name === s.name)).map((p) => p.name);
     }
     for (const v of model.verifies) {
       if (!v.error) v.usedBy = model.processes.filter((p) => !p.error && p.verify?.ref === v.name).map((p) => p.name);

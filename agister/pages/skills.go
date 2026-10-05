@@ -3,6 +3,7 @@ package pages
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -13,7 +14,8 @@ import (
 )
 
 // Skills: the skill folders the runtimes of the shown settings load, in
-// the repo and the user's home, and each skill's SKILL.md (ADR-011).
+// the repo and the user's home, and each skill's SKILL.md (ADR-011); and
+// the skills of the settings layers, which settings name (ADR-021).
 // Nothing here writes, and nothing of a skill is read but its SKILL.md.
 
 // SkillHomes are the home folders the skill folders are found under, from
@@ -55,6 +57,9 @@ const (
 	SkillBrokenLink = "broken_link"
 	SkillMissing    = "missing"
 	SkillNotAFile   = "not_a_file"
+	// SkillLinkedFolder: a settings skill whose folder is a symbolic link,
+	// which Agister refuses and pages does not follow (ADR-021 rule 1).
+	SkillLinkedFolder = "linked_folder"
 )
 
 // The checks that fail on the front matter.
@@ -73,6 +78,21 @@ type SkillsReply struct {
 	// define, repo over home.
 	Adapters []string      `json:"adapters"`
 	Folders  []SkillFolder `json:"folders"`
+	// Settings are the skills the settings layers hold (ADR-021), the
+	// repo's first: what an agent's or a process's skills name.
+	Settings []SettingsSkill `json:"settings"`
+}
+
+// SettingsSkill is a skill of a settings layer, skills/<name>/SKILL.md,
+// with its layer's scope, repo or home. Its checks are a skill's, and one
+// more: the folder holds SKILL.md alone, as Agister refuses one that holds
+// anything else (ADR-021 rule 1). It is the page's one source of a
+// settings skill's existence and layer (D-16): a skill that is there is
+// listed whatever its state, so a broken repo skill still goes over
+// home's, as it does in Agister.
+type SettingsSkill struct {
+	Scope string `json:"scope"`
+	Skill
 }
 
 // SkillFolder is one folder a runtime loads skills from.
@@ -356,6 +376,86 @@ func readSkill(path, inReal, name string, read func(string) ([]byte, error)) (Sk
 	return s, true
 }
 
+// settingsSkillFile is the one file a settings skill's folder holds.
+const settingsSkillFile = "SKILL.md"
+
+// readSettingsSkills reads the skills of the settings layer dir, a
+// .agister folder: each folder in its skills/, its SKILL.md with read, the
+// only file it reads. As Agister lists them, a symbolic link there is a
+// skill too, a broken one, and is not followed; a file is no skill. Only a
+// skills/ that does not exist holds no skills: one that cannot be listed is
+// an error, as Agister refuses a call for it rather than take home's.
+func readSettingsSkills(scope, dir string, read func(string) ([]byte, error)) ([]SettingsSkill, error) {
+	skills := []SettingsSkill{}
+	root := filepath.Join(dir, "skills")
+	entries, err := os.ReadDir(root)
+	if errors.Is(err, fs.ErrNotExist) {
+		return skills, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	for _, entry := range entries {
+		path := filepath.Join(root, entry.Name())
+		switch {
+		case entry.Type()&fs.ModeSymlink != 0:
+			s := Skill{Name: entry.Name(), Path: path}
+			s.Link, _ = os.Readlink(path)
+			skills = append(skills, SettingsSkill{Scope: scope, Skill: failed(s, SkillLinkedFolder,
+				"the folder is a symbolic link: a skill is a folder holding its SKILL.md")})
+		case entry.IsDir():
+			skills = append(skills, SettingsSkill{Scope: scope, Skill: readSettingsSkill(path, entry.Name(), read)})
+		}
+	}
+	return skills, nil
+}
+
+// readSettingsSkill reads the settings skill name at path. Its SKILL.md is
+// read only when it is a regular file, not a link, within the size limit;
+// then the checks of any skill run on it, and its name is compared as
+// written, as Agister compares it: a padded name is not the folder's. A
+// folder holding anything else fails one more check, which names what it
+// holds and reads none of it.
+func readSettingsSkill(path, name string, read func(string) ([]byte, error)) Skill {
+	s := Skill{Name: name, Path: path}
+	entries, err := os.ReadDir(path)
+	if err != nil {
+		return failed(s, SkillMissing, "the folder cannot be read")
+	}
+	var others []string
+	for _, entry := range entries {
+		if entry.Name() != settingsSkillFile {
+			others = append(others, entry.Name())
+		}
+	}
+	file := filepath.Join(path, settingsSkillFile)
+	info, err := os.Lstat(file)
+	switch {
+	case err != nil:
+		s = failed(s, SkillMissing, "SKILL.md is missing")
+	case !info.Mode().IsRegular():
+		s = failed(s, SkillNotAFile, "SKILL.md is not a regular file")
+	case info.Size() > fileCap:
+		s = failed(s, SkillTooLarge, "SKILL.md is over 256 KB")
+	default:
+		data, err := read(file)
+		if err != nil {
+			s = failed(s, SkillMissing, "SKILL.md cannot be read")
+			break
+		}
+		s.Content = string(data)
+		s.Description, s.Checks = check(data, name)
+		if declared := literalName(data); declared != name && strings.TrimSpace(declared) == name {
+			s.Checks = Checks{Failed: append(s.Checks.Failed, fmt.Sprintf("name %q is not the folder's name %s", declared, name))}
+		}
+	}
+	if len(others) > 0 {
+		s.Checks = Checks{Failed: append(s.Checks.Failed,
+			"holds "+strings.Join(others, ", ")+" beside SKILL.md: a skill is its SKILL.md alone, and its other files are not given to a call")}
+	}
+	return s
+}
+
 func failed(s Skill, state, check string) Skill {
 	s.State = state
 	s.Checks = Checks{Failed: []string{check}}
@@ -390,6 +490,17 @@ func check(data []byte, folder string) (string, Checks) {
 	return description, Checks{Passed: len(fails) == 0, Failed: fails}
 }
 
+// literalName is the front matter's name as written, untrimmed; empty when
+// it has none.
+func literalName(data []byte) string {
+	front, err := frontMatter(data)
+	if err != nil {
+		return ""
+	}
+	name, _ := front["name"].(string)
+	return name
+}
+
 func text(v any) string {
 	s, _ := v.(string)
 	return strings.TrimSpace(s)
@@ -421,10 +532,10 @@ func frontMatter(data []byte) (map[string]any, error) {
 // name, as the page composes them: only the files settings admits, so a
 // file the page never gets replaces nothing; one that does not parse still
 // does.
-func runtimeAdapters(dirs ...string) []string {
+func runtimeAdapters(read func(string) ([]byte, error), dirs ...string) []string {
 	byStem := map[string]string{}
 	for _, dir := range dirs {
-		files, err := settings(dir)
+		files, err := settings(dir, read)
 		if err != nil {
 			continue
 		}
@@ -457,8 +568,9 @@ func runtimeAdapters(dirs ...string) []string {
 	return adapters
 }
 
-// skillsAt answers /api/skills for path: a repo's absolute path, or ~.
-func skillsAt(path, agisterHome string, homes SkillHomes) (SkillsReply, error) {
+// skillsAt answers /api/skills for path: a repo's absolute path, or ~,
+// reading each file with read.
+func skillsAt(path, agisterHome string, homes SkillHomes, read func(string) ([]byte, error)) (SkillsReply, error) {
 	dir := filepath.Join(path, ".agister")
 	if path == Home {
 		dir = agisterHome
@@ -471,12 +583,23 @@ func skillsAt(path, agisterHome string, homes SkillHomes) (SkillsReply, error) {
 	}
 	reply := SkillsReply{Path: path, Home: filepath.Clean(dir) == filepath.Clean(agisterHome)}
 	repo := ""
+	reply.Settings = []SettingsSkill{}
 	if reply.Home {
-		reply.Adapters = runtimeAdapters(agisterHome)
+		reply.Adapters = runtimeAdapters(read, agisterHome)
 	} else {
 		repo = filepath.Clean(path)
-		reply.Adapters = runtimeAdapters(agisterHome, dir)
+		reply.Adapters = runtimeAdapters(read, agisterHome, dir)
+		repoSkills, err := readSettingsSkills("repo", dir, read)
+		if err != nil {
+			return SkillsReply{}, err
+		}
+		reply.Settings = repoSkills
 	}
-	reply.Folders = ReadSkills(repo, reply.Adapters, homes)
+	homeSkills, err := readSettingsSkills("home", agisterHome, read)
+	if err != nil {
+		return SkillsReply{}, err
+	}
+	reply.Settings = append(reply.Settings, homeSkills...)
+	reply.Folders = readSkills(repo, reply.Adapters, homes, read)
 	return reply, nil
 }

@@ -562,6 +562,79 @@ func TestShowProcessPrintsThePrompts(t *testing.T) {
 	}
 }
 
+// process show lists the call's skills, the process's then its agent's,
+// each with the layer and path it comes from, or as not resolved beside the
+// refusal (ADR-021).
+func TestShowProcessPrintsTheSkills(t *testing.T) {
+	t.Parallel()
+	spy := &clientSpy{view: contract.ProcessView{Name: "p", Agent: "a", Runtime: "rt", Output: "text", Timeout: time.Hour, MaxAttempts: 1,
+		Skills: []string{"review", "tests"}, AgentSkills: []string{"style"},
+		Sources: []contract.DefinitionOrigin{
+			{Kind: "processes", Name: "p", Layer: "global", Path: "/h/processes/p.yaml"},
+			{Kind: "skills", Name: "review", Layer: "project", Path: "/r/.agister/skills/review/SKILL.md", Overrides: "/h/skills/review/SKILL.md"},
+			{Kind: "skills", Name: "tests", Layer: "global", Path: "/h/skills/tests/SKILL.md"},
+			{Kind: "skills", Name: "style", Layer: "global", Path: "/h/skills/style/SKILL.md"},
+		}}}
+	r := run(context.Background(), spy, "process", "show", "p")
+	for _, want := range []string{
+		"skills       review (process): project /r/.agister/skills/review/SKILL.md\n" +
+			"             tests (process): global /h/skills/tests/SKILL.md\n" +
+			"             style (agent): global /h/skills/style/SKILL.md\nplan ",
+		"             skill review: project /r/.agister/skills/review/SKILL.md (overrides /h/skills/review/SKILL.md)\n",
+	} {
+		if r.code != 0 || !strings.Contains(r.stdout, want) {
+			t.Fatalf("missing %q in %d:\n%s", want, r.code, r.stdout)
+		}
+	}
+	// The agent's alone are still the call's.
+	spy.view.Skills, spy.view.Sources = nil, spy.view.Sources[:1]
+	spy.view.Refusal = `agent a names skill "style": not found (expected /r/.agister/skills/style/SKILL.md or /h/skills/style/SKILL.md)`
+	r = run(context.Background(), spy, "process", "show", "p")
+	want := "skills       style (agent, not resolved)\nplan         REFUSED: " + spy.view.Refusal + "\n"
+	if r.code != 0 || !strings.Contains(r.stdout, want) {
+		t.Fatalf("missing %q in %d:\n%s", want, r.code, r.stdout)
+	}
+	// A process whose call has none shows none.
+	spy.view.AgentSkills, spy.view.Refusal = nil, ""
+	if r = run(context.Background(), spy, "process", "show", "p"); r.code != 0 || strings.Contains(r.stdout, "skills") {
+		t.Fatalf("skills shown for a call with none: %d\n%s", r.code, r.stdout)
+	}
+}
+
+// check --tree shows the skills under the agent and the process that name
+// them, a missing one as missing, and one nothing names as unused.
+func TestCheckTreeShowsSkills(t *testing.T) {
+	t.Parallel()
+	ref := func(kind, name string) contract.DefinitionRef { return contract.DefinitionRef{Kind: kind, Name: name} }
+	report := contract.CheckReport{
+		Checked: map[string]int{"processes": 1, "skills": 3},
+		Definitions: []contract.Definition{
+			{Kind: "service", Name: "service", Layer: "global", Path: "/g/service.toml"},
+			{Kind: "runtimes", Name: "rt", Layer: "global", Path: "/g/runtimes/rt.yaml", UsedBy: []contract.DefinitionRef{ref("agents", "a")}},
+			{Kind: "agents", Name: "a", Layer: "global", Path: "/g/agents/a.toml", Uses: []contract.DefinitionRef{ref("runtimes", "rt"), ref("skills", "style")}, UsedBy: []contract.DefinitionRef{ref("processes", "p")}},
+			{Kind: "skills", Name: "review", Layer: "project", Path: "/p/skills/review/SKILL.md", Overrides: "/g/skills/review/SKILL.md", UsedBy: []contract.DefinitionRef{ref("processes", "p")}},
+			{Kind: "skills", Name: "style", Layer: "global", Path: "/g/skills/style/SKILL.md", UsedBy: []contract.DefinitionRef{ref("agents", "a")}},
+			{Kind: "skills", Name: "spare", Layer: "global", Path: "/g/skills/spare/SKILL.md", Invalid: true},
+			{Kind: "processes", Name: "p", Layer: "global", Path: "/g/processes/p.yaml", Uses: []contract.DefinitionRef{ref("agents", "a"), ref("skills", "review"), ref("skills", "lost")}},
+		},
+	}
+	r := run(context.Background(), &clientSpy{report: report}, "check", "--tree")
+	want := `service service    global  /g/service.toml
+process p          global  /g/processes/p.yaml
+├─ agent a         global  /g/agents/a.toml
+│  ├─ runtime rt   global  /g/runtimes/rt.yaml
+│  └─ skill style  global  /g/skills/style/SKILL.md
+├─ skill review    project /p/skills/review/SKILL.md (overrides /g/skills/review/SKILL.md)
+└─ skill lost      MISSING
+unused (no process uses these)
+   skill spare     global  /g/skills/spare/SKILL.md INVALID
+settings OK: 1 processes, 3 skills
+`
+	if r.code != 0 || r.stdout != want {
+		t.Fatalf("tree: %d\n%s", r.code, r.stdout)
+	}
+}
+
 // A client refusal over broken settings prints their report, then the
 // refusal, and exits 64; a bare agister checks before it shows the usage.
 func TestSettingsRefusalPrintsTheReport(t *testing.T) {

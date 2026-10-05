@@ -1,8 +1,8 @@
 // Package fsdefs stores definition documents as files under Agister's
 // state directory: service.toml, workspace.yaml, blocks.yaml, agents/*.toml,
 // processes/*.yaml, policies/*.yaml, runtimes/*.yaml, schemas/*.json,
-// workflows/*.yaml, verifies/*.yaml, prompts/*.md. Layered reads a project's
-// own settings over the global ones.
+// workflows/*.yaml, verifies/*.yaml, prompts/*.md, skills/*/SKILL.md. Layered
+// reads a project's own settings over the global ones.
 package fsdefs
 
 import (
@@ -11,6 +11,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"io"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -27,7 +28,8 @@ type Store struct {
 	Dir string
 
 	// at, when set, is called at the steps of Write that the lock must
-	// cover; tests use it to observe the lock there.
+	// cover, and between listing a skill's folder and opening its file;
+	// tests use it to observe the lock there, or to change the file.
 	at func(point string)
 	// temp, when set, is the folder Stage makes its stages in, in place of
 	// the system's temporary folder.
@@ -87,11 +89,17 @@ func extensions() map[definition.Kind]string {
 		definition.KindWorkflow: ".yaml",
 		definition.KindVerify:   ".yaml",
 		definition.KindPrompt:   ".md",
+		// A folder each, holding the one file skillFile (ADR-021 rule 1).
+		definition.KindSkill: ".md",
 		// Singletons, like the service.
 		definition.KindWorkspace: ".yaml",
 		definition.KindBlocks:    ".yaml",
 	}
 }
+
+// skillFile is the one file a skill's folder holds, the skill's document
+// (ADR-021 rule 1).
+const skillFile = "SKILL.md"
 
 func (s Store) path(kind definition.Kind, name string) (string, error) {
 	extension, ok := extensions()[kind]
@@ -104,7 +112,78 @@ func (s Store) path(kind definition.Kind, name string) (string, error) {
 	if !definition.ValidName(name) {
 		return "", fmt.Errorf("invalid name %q", name)
 	}
+	if kind == definition.KindSkill {
+		return filepath.Join(s.Dir, string(kind), name, skillFile), nil
+	}
 	return filepath.Join(s.Dir, string(kind), name+extension), nil
+}
+
+// readSkill reads the skill whose document is path: its folder holds
+// exactly one entry, the regular file skillFile. A folder that holds
+// anything else, or no such file, is not read: a skill's other files are
+// not given to a call, so one that relies on them would break unseen
+// (ADR-021 rule 1). No folder there is no skill.
+func (s Store) readSkill(path string) ([]byte, error) {
+	folder := filepath.Dir(path)
+	info, err := os.Lstat(folder)
+	switch {
+	case errors.Is(err, fs.ErrNotExist):
+		return nil, fmt.Errorf("%w (expected %s)", errNotFound, path)
+	case err != nil:
+		return nil, err
+	case info.Mode()&fs.ModeSymlink != 0:
+		return nil, fmt.Errorf("%s is a symbolic link: a skill is a folder holding its %s", folder, skillFile)
+	case !info.IsDir():
+		// Not listed either: a file in skills/ is no skill.
+		return nil, fmt.Errorf("%w (expected %s)", errNotFound, path)
+	}
+	entries, err := os.ReadDir(folder)
+	if err != nil {
+		return nil, err
+	}
+	var file fs.DirEntry
+	var others []string
+	for _, entry := range entries {
+		if entry.Name() == skillFile {
+			file = entry
+		} else {
+			others = append(others, entry.Name())
+		}
+	}
+	switch {
+	case file == nil:
+		return nil, fmt.Errorf("%s has no %s", folder, skillFile)
+	case file.Type()&fs.ModeSymlink != 0:
+		return nil, fmt.Errorf("%s is a symbolic link: a skill's %s is a regular file", path, skillFile)
+	case file.IsDir():
+		return nil, fmt.Errorf("%s is a folder: a skill's %s is a regular file", path, skillFile)
+	case !file.Type().IsRegular():
+		return nil, fmt.Errorf("%s is not a regular file", path)
+	case len(others) > 0:
+		return nil, fmt.Errorf("%s holds %s beside %s: a skill is its %s alone, and its other files are not given to a call", folder, strings.Join(others, ", "), skillFile, skillFile)
+	}
+	// The entry may have changed since it was listed: what is opened is
+	// checked again, without following a link or waiting on a special file,
+	// and read through the handle checked.
+	s.point("open")
+	handle, err := os.OpenFile(path, os.O_RDONLY|syscall.O_NOFOLLOW|syscall.O_NONBLOCK, 0)
+	if errors.Is(err, syscall.ELOOP) {
+		return nil, fmt.Errorf("%s is a symbolic link: a skill's %s is a regular file", path, skillFile)
+	}
+	if err != nil {
+		return nil, err
+	}
+	defer handle.Close()
+	opened, err := handle.Stat()
+	switch {
+	case err != nil:
+		return nil, err
+	case opened.IsDir():
+		return nil, fmt.Errorf("%s is a folder: a skill's %s is a regular file", path, skillFile)
+	case !opened.Mode().IsRegular():
+		return nil, fmt.Errorf("%s is not a regular file", path)
+	}
+	return io.ReadAll(handle)
 }
 
 func (s Store) Read(_ context.Context, kind definition.Kind, name string) (definition.Document, error) {
@@ -112,8 +191,17 @@ func (s Store) Read(_ context.Context, kind definition.Kind, name string) (defin
 	if err != nil {
 		return definition.Document{}, err
 	}
-	data, err := os.ReadFile(path)
 	doc := definition.Document{Source: definition.Source{Kind: kind, Name: name, Path: path}}
+	var data []byte
+	if kind == definition.KindSkill {
+		// A skill that is there and broken is not absent: reading it fails
+		// with what is wrong.
+		if data, err = s.readSkill(path); err != nil {
+			return doc, err
+		}
+	} else {
+		data, err = os.ReadFile(path)
+	}
 	if errors.Is(err, fs.ErrNotExist) {
 		// Blocks that exist but cannot be resolved, a dangling symlink, are
 		// not absent: reading them fails, with no fallback to home's
@@ -154,6 +242,9 @@ func (s Store) Read(_ context.Context, kind definition.Kind, name string) (defin
 // exist means no blocks. One that is a directory, a dangling symlink or a
 // symlink loop is listed, so reading it fails and stops every command
 // (ADR-018 rule 5), where reading it as none would admit what it blocks.
+//
+// A skill is a folder of skills/, whatever it holds: a broken one is
+// listed, so reading it fails as that skill's problem (ADR-021 rule 1).
 func (s Store) List(_ context.Context, kind definition.Kind) ([]string, error) {
 	if kind == definition.KindBlocks {
 		path, _ := s.path(kind, string(kind))
@@ -194,6 +285,14 @@ func (s Store) List(_ context.Context, kind definition.Kind) ([]string, error) {
 	}
 	var names []string
 	for _, entry := range entries {
+		if kind == definition.KindSkill {
+			// A symbolic link there may be meant as a skill's folder, which
+			// it is not; a file is no skill.
+			if entry.IsDir() || entry.Type()&fs.ModeSymlink != 0 {
+				names = append(names, entry.Name())
+			}
+			continue
+		}
 		name, ok := strings.CutSuffix(entry.Name(), extensions()[kind])
 		if !ok || entry.IsDir() {
 			continue

@@ -25,6 +25,10 @@ type RuntimeIdentity struct {
 	// repository's skills, which are used by reading them (ADR-006); none
 	// when the runtime reads them without a granted tool.
 	SkillTools []string
+	// The adapter gives a call the skills its settings name (ADR-021 rule
+	// 6); on one that does not, a call that names a skill is refused before
+	// its first turn.
+	Skills bool
 }
 
 // ToolCall describes a tool invocation reported by this CLI.
@@ -53,6 +57,16 @@ type TurnRequest struct {
 	Primitives      []string
 	Timeout         time.Duration
 	OutputSchema    json.RawMessage
+	// Skills are the turn's skills, in order, written for the turn into a
+	// folder of its own outside the working directory and given to the
+	// runtime; none: nothing is written or passed.
+	Skills []Skill
+}
+
+// Skill is one skill a turn is given: its name and its whole SKILL.md.
+type Skill struct {
+	Name  string
+	Bytes []byte
 }
 
 type Status string

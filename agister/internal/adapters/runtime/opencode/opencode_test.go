@@ -65,18 +65,18 @@ func TestConfigIsTheGeneratedAgent(t *testing.T) {
 		"with no other text and no Markdown fence.\n<output-schema>\n{\"type\":\"object\"}\n</output-schema>"
 	prompt, _ := json.Marshal("Do the thing.\n\n" + schema)
 	want := `{"agent":{"agister-1":{"mode":"primary","prompt":` + string(prompt) + `,"permission":{"*":"deny","read":"allow","skill":"allow","bash":"allow"}}}}`
-	if got := opencode.Config(opencode.TurnRequest(request("hello")), "agister-1"); got != want {
+	if got := opencode.Config(opencode.TurnRequest(request("hello")), "agister-1", ""); got != want {
 		t.Fatalf("config =\n%s\nwant\n%s", got, want)
 	}
 	// Neither an instruction nor a schema: no prompt, the same denial.
 	want = `{"agent":{"agister-2":{"mode":"primary","permission":{"*":"deny","skill":"allow"}}}}`
-	if got := opencode.Config(opencode.TurnRequest(opencode.TurnRequest{Prompt: "x", Primitives: []string{"skill"}}), "agister-2"); got != want {
+	if got := opencode.Config(opencode.TurnRequest(opencode.TurnRequest{Prompt: "x", Primitives: []string{"skill"}}), "agister-2", ""); got != want {
 		t.Fatalf("config =\n%s\nwant\n%s", got, want)
 	}
 	// A resumed turn's config is a fresh turn's.
 	r := request("hello")
 	r.ResumeSessionID = "ses_1"
-	if opencode.Config(opencode.TurnRequest(r), "agister-1") != opencode.Config(opencode.TurnRequest(request("hello")), "agister-1") {
+	if opencode.Config(opencode.TurnRequest(r), "agister-1", "") != opencode.Config(opencode.TurnRequest(request("hello")), "agister-1", "") {
 		t.Fatal("a resumed turn's config differs")
 	}
 }
@@ -94,7 +94,7 @@ func TestToolsAndVariants(t *testing.T) {
 		var config struct {
 			Agent map[string]map[string]json.RawMessage
 		}
-		if err := json.Unmarshal([]byte(opencode.Config(opencode.TurnRequest(r), "a")), &config); err != nil {
+		if err := json.Unmarshal([]byte(opencode.Config(opencode.TurnRequest(r), "a", "")), &config); err != nil {
 			t.Fatal(err)
 		}
 		agent := config.Agent["a"]

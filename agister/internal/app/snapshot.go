@@ -14,7 +14,7 @@ func allKinds() []definition.Kind {
 	return []definition.Kind{
 		definition.KindService, definition.KindRuntime, definition.KindAgent,
 		definition.KindPolicy, definition.KindVerify, definition.KindPrompt,
-		definition.KindProcess, definition.KindSchema, definition.KindWorkflow,
+		definition.KindSkill, definition.KindProcess, definition.KindSchema, definition.KindWorkflow,
 		definition.KindWorkspace, definition.KindBlocks,
 	}
 }
@@ -49,11 +49,12 @@ type snapshot struct {
 // check against the snapshot reports what a check against src would. Nothing
 // that reads the snapshot touches src afterwards, so one operation can check
 // settings and use exactly what it checked. A name that was not listed is
-// not found, except the verification and the prompts a process names: their
-// reads are kept too, so the refusal of a call or view that lacks one says
-// where it was expected (check lets a missing verification pass, ADR-010
-// rule 4). One that is found there after all, written since the list, is
-// added to the list, so check checks what the call uses.
+// not found, except the verification and the prompts a process names, and
+// the skills a process or an agent names: their reads are kept too, so the
+// refusal of a call or view that lacks one says where it was expected
+// (check lets a missing verification pass, ADR-010 rule 4). One that is
+// found there after all, written since the list, is added to the list, so
+// check checks what the call uses.
 func Snapshot(ctx context.Context, src SnapshotSource) SnapshotSource {
 	s := &snapshot{
 		reads: map[definition.Kind]map[string]snapshotRead{},
@@ -95,6 +96,18 @@ func Snapshot(ctx context.Context, src SnapshotSource) SnapshotSource {
 		named(definition.KindVerify, process.VerifyName)
 		for _, name := range process.Prompts() {
 			named(definition.KindPrompt, name)
+		}
+		for _, name := range process.Skills {
+			named(definition.KindSkill, name)
+		}
+	}
+	for _, read := range s.reads[definition.KindAgent] {
+		if read.err != nil {
+			continue
+		}
+		agent, _ := definition.ParseAgent(read.doc)
+		for _, name := range agent.Skills {
+			named(definition.KindSkill, name)
 		}
 	}
 	return s

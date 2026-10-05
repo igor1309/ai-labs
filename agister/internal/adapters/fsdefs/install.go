@@ -85,12 +85,20 @@ func (s Store) documents(ctx context.Context, kinds []definition.Kind, unreadabl
 	return docs, nil
 }
 
+// installed reports whether install reads a source folder's documents of
+// kind: not its blocks, as home has none (ADR-018 rule 6), nor its skills,
+// which are not installed (ADR-021).
+func installed(kind definition.Kind) bool {
+	return kind != definition.KindBlocks && kind != definition.KindSkill
+}
+
 // Source reads the settings documents of the folder dir, laid out like the
 // store, and names its other files, slash-separated and relative to it; a
 // folder that is not a kind's is named once, with a trailing slash, and not
 // read. Its blocks.yaml is named, not read: home has no blocks (ADR-018 rule
-// 6). A symbolic link in it refuses the whole folder, so nothing outside it
-// is installed.
+// 6). Its skills/ is named and not read either (ADR-016 rule 1, ADR-021). A
+// symbolic link in it refuses the whole folder, so nothing outside it is
+// installed.
 func (s Store) Source(ctx context.Context, dir string) ([]definition.Document, []string, error) {
 	info, err := os.Stat(dir)
 	if errors.Is(err, fs.ErrNotExist) {
@@ -122,7 +130,7 @@ func (s Store) Source(ctx context.Context, dir string) ([]definition.Document, [
 		}
 		rel = filepath.ToSlash(rel)
 		if entry.IsDir() {
-			if kind := definition.Kind(rel); extensions()[kind] != "" && !singleton(kind) {
+			if kind := definition.Kind(rel); extensions()[kind] != "" && !singleton(kind) && installed(kind) {
 				return nil
 			}
 			files = append(files, rel+"/")
@@ -134,9 +142,9 @@ func (s Store) Source(ctx context.Context, dir string) ([]definition.Document, [
 	if err != nil {
 		return nil, nil, err
 	}
-	installed := slices.DeleteFunc(kinds(), func(kind definition.Kind) bool { return kind == definition.KindBlocks })
+	read := slices.DeleteFunc(kinds(), func(kind definition.Kind) bool { return !installed(kind) })
 	// A document of the folder that cannot be read refuses it.
-	docs, err := Store{Dir: dir}.documents(ctx, installed, func(_ definition.Document, err error) error { return err })
+	docs, err := Store{Dir: dir}.documents(ctx, read, func(_ definition.Document, err error) error { return err })
 	if err != nil {
 		return nil, nil, err
 	}

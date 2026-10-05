@@ -192,6 +192,10 @@ func TestSettingsReturnsOnlySettingsFiles(t *testing.T) {
 	write(t, filepath.Join(dir, "agents", "a.toml"), `name = "a"`)
 	write(t, filepath.Join(dir, "verifies", "repo.yaml"), "name: repo")
 	write(t, filepath.Join(dir, "prompts", "review.md"), "Review it.")
+	// Skills are not settings files here: /api/skills reads them (D-16).
+	write(t, filepath.Join(dir, "skills", "plan", "SKILL.md"), skillMD("plan", "P."))
+	write(t, filepath.Join(dir, "skills", "plan", "notes.txt"), "beside")
+	write(t, filepath.Join(dir, "skills", "big", "SKILL.md"), strings.Repeat("x", fileCap+1))
 	write(t, filepath.Join(dir, "processes", "nested", "p.yaml"), "name: p")
 	write(t, filepath.Join(dir, "runs", "r1", "record.json"), "{}")
 	write(t, filepath.Join(dir, "logs", "agister.jsonl"), "{}")
@@ -490,5 +494,70 @@ func TestMainNeedsARunStore(t *testing.T) {
 	}
 	if c := Main(context.Background(), nil, e); c != 70 || !strings.Contains(stderr.String(), "run store") {
 		t.Errorf("exit %d, stderr %q", c, stderr.String())
+	}
+}
+
+// unreadable writes a file at path that cannot be read.
+func unreadable(t *testing.T, path string) {
+	t.Helper()
+	write(t, path, "locked")
+	if err := os.Chmod(path, 0); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// D-16, ADR-011 rule 9: /api/settings reads no file of either layer's
+// skills/, so one that cannot be read does not fail it; the skills come
+// from /api/skills, which reads each skill's SKILL.md alone.
+func TestSettingsEndpointDoesNotReadSkillFiles(t *testing.T) {
+	t.Parallel()
+	user := t.TempDir()
+	home := filepath.Join(user, ".agister")
+	write(t, filepath.Join(home, "agents", "h.toml"), `name = "h"`)
+	write(t, filepath.Join(home, "skills", "go", "SKILL.md"), skillMD("go", "Go."))
+	write(t, filepath.Join(home, "skills", "go", "notes.txt"), "beside")
+	repo := filepath.Join(user, "repo")
+	dir := filepath.Join(repo, ".agister")
+	write(t, filepath.Join(dir, "agents", "r.toml"), `name = "r"`)
+	write(t, filepath.Join(dir, "skills", "plan", "SKILL.md"), skillMD("plan", "Plan."))
+	unreadable(t, filepath.Join(dir, "skills", "plan", "locked.txt"))
+
+	var reads []string
+	read := func(path string) ([]byte, error) {
+		reads = append(reads, path)
+		return os.ReadFile(path)
+	}
+	h := handler(home, noChoose(t), owners(), SkillHomes{}, read)
+	var got struct{ Files, HomeFiles map[string]string }
+	if code := get(t, h, "127.0.0.1", "/api/settings?path="+q(repo), &got); code != 200 {
+		t.Fatalf("status %d", code)
+	}
+	if !reflect.DeepEqual(got.Files, map[string]string{"agents/r.toml": `name = "r"`}) ||
+		!reflect.DeepEqual(got.HomeFiles, map[string]string{"agents/h.toml": `name = "h"`}) {
+		t.Errorf("got %+v", got)
+	}
+	inSkills := func() []string {
+		var out []string
+		for _, path := range reads {
+			if strings.Contains(path, string(filepath.Separator)+"skills"+string(filepath.Separator)) {
+				out = append(out, path)
+			}
+		}
+		return out
+	}
+	if r := inSkills(); r != nil {
+		t.Errorf("/api/settings read %q", r)
+	}
+
+	reads = nil
+	var skills SkillsReply
+	if code := get(t, h, "127.0.0.1", "/api/skills?path="+q(repo), &skills); code != 200 {
+		t.Fatalf("skills: status %d", code)
+	}
+	if want := []string{filepath.Join(dir, "skills", "plan", "SKILL.md"), filepath.Join(home, "skills", "go", "SKILL.md")}; !reflect.DeepEqual(inSkills(), want) {
+		t.Errorf("/api/skills read %q, want %q", inSkills(), want)
+	}
+	if len(skills.Settings) != 2 || skills.Settings[0].Name != "plan" || skills.Settings[0].Checks.Passed {
+		t.Errorf("settings skills: %+v", skills.Settings)
 	}
 }

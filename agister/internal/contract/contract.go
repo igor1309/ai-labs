@@ -254,7 +254,7 @@ type Problem struct {
 
 // Definition is one settings document in the composed settings.
 type Definition struct {
-	Kind      string          `json:"kind"` // service, agents, processes, policies, runtimes, schemas, workflows, verifies, prompts
+	Kind      string          `json:"kind"` // service, agents, processes, policies, runtimes, schemas, workflows, verifies, prompts, skills
 	Name      string          `json:"name"`
 	Layer     string          `json:"layer"` // global or project
 	Path      string          `json:"path"`
@@ -266,7 +266,7 @@ type Definition struct {
 
 // DefinitionOrigin is where one definition a call uses comes from.
 type DefinitionOrigin struct {
-	Kind      string // agents, processes, policies, runtimes, schemas, verifies, prompts or service
+	Kind      string // agents, processes, policies, runtimes, schemas, verifies, prompts, skills or service
 	Name      string
 	Layer     string // global or project
 	Path      string
@@ -322,6 +322,11 @@ type ProcessView struct {
 	// Absent those of them neither layer has (ADR-019).
 	Optional []string
 	Absent   []string
+	// The skills a call of it is given (ADR-021): Skills those the process
+	// names, AgentSkills those only its agent names. Sources says where
+	// each resolved one comes from.
+	Skills      []string
+	AgentSkills []string
 	// What the user should know before calling it.
 	Warnings []string
 	// Where each definition the call uses comes from.

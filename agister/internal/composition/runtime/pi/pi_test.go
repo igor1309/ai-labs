@@ -104,14 +104,14 @@ func TestRefusesATurnThatCannotReadASkill(t *testing.T) {
 	for _, primitives := range [][]string{nil, {}, {"grep", "find", "ls"}, {"edit", "write"}} {
 		r := request("x")
 		r.Primitives = primitives
-		if args, err := pi.Arguments(pi.TurnRequest(r), "/s", ""); err == nil || err.Error() != "pi/1 needs read or bash to use the repository's skills (ADR-006)" {
+		if args, err := pi.Arguments(composition.PiRequest(r), "/s", "", ""); err == nil || err.Error() != "pi/1 needs read or bash to use the repository's skills (ADR-006)" {
 			t.Errorf("primitives %q: args %q, err = %v", primitives, args, err)
 		}
 	}
 	for _, primitives := range [][]string{{"read"}, {"bash"}, {"grep", "read"}, {"ls", "bash"}} {
 		r := request("x")
 		r.Primitives = primitives
-		if args, err := pi.Arguments(pi.TurnRequest(r), "/s", ""); err != nil || slices.Contains(args, "--no-tools") || !follows(args, "--tools", strings.Join(primitives, ",")) {
+		if args, err := pi.Arguments(composition.PiRequest(r), "/s", "", ""); err != nil || slices.Contains(args, "--no-tools") || !follows(args, "--tools", strings.Join(primitives, ",")) {
 			t.Errorf("primitives %q: args %q, err = %v", primitives, args, err)
 		}
 	}
@@ -142,19 +142,19 @@ func TestRejectsWhatItCannotHonour(t *testing.T) {
 	r := request("x")
 	limit := 1.0
 	r.MaxCostUSD = &limit
-	if _, err := pi.Arguments(pi.TurnRequest(r), "/s", ""); err == nil || err.Error() != "pi/1 cannot limit cost" {
+	if _, err := pi.Arguments(composition.PiRequest(r), "/s", "", ""); err == nil || err.Error() != "pi/1 cannot limit cost" {
 		t.Fatalf("cost limit: err = %v", err)
 	}
 	for _, primitives := range [][]string{{"Bash"}, {"read", "web_fetch"}, {""}} {
 		r := request("x")
 		r.Primitives = primitives
-		if _, err := pi.Arguments(pi.TurnRequest(r), "/s", ""); err == nil || !strings.Contains(err.Error(), "pi/1 has no tool") {
+		if _, err := pi.Arguments(composition.PiRequest(r), "/s", "", ""); err == nil || !strings.Contains(err.Error(), "pi/1 has no tool") {
 			t.Errorf("primitives %q: err = %v", primitives, err)
 		}
 	}
 	r = request("x")
 	r.Effort = "extreme"
-	if _, err := pi.Arguments(pi.TurnRequest(r), "/s", ""); err == nil {
+	if _, err := pi.Arguments(composition.PiRequest(r), "/s", "", ""); err == nil {
 		t.Fatal("an unknown thinking level was accepted")
 	}
 	// Refused before Pi starts.
@@ -172,10 +172,10 @@ func TestRejectsWhatItCannotHonour(t *testing.T) {
 // goes on stdin.
 func TestInstructionAndSchemaGoInTheSystemPrompt(t *testing.T) {
 	t.Parallel()
-	if got := pi.SystemPrompt(pi.TurnRequest(app.TurnRequest{Instruction: "Do the thing."})); got != "Do the thing." {
+	if got := pi.SystemPrompt(composition.PiRequest(app.TurnRequest{Instruction: "Do the thing."})); got != "Do the thing." {
 		t.Fatalf("instruction only: %q", got)
 	}
-	if got := pi.SystemPrompt(pi.TurnRequest(app.TurnRequest{})); got != "" {
+	if got := pi.SystemPrompt(composition.PiRequest(app.TurnRequest{})); got != "" {
 		t.Fatalf("neither: %q", got)
 	}
 	runner := &pi.Runner{Transport: composition.PiTransport{Supervisor: stillSupervisor()}, Command: fake, Sessions: t.TempDir()}
@@ -205,7 +205,7 @@ func TestInstructionAndSchemaGoInTheSystemPrompt(t *testing.T) {
 func TestIdentity(t *testing.T) {
 	t.Parallel()
 	identity, err := pi.New(fake, t.TempDir(), composition.PiTransport{Supervisor: stillSupervisor()}).Identity(context.Background())
-	want := pi.RuntimeIdentity{Contract: "pi/1", Version: "0.85.1", Resume: true, ResumeWhereItRan: true, ToolCalls: true, SkillTools: []string{"read", "bash"}}
+	want := pi.RuntimeIdentity{Contract: "pi/1", Version: "0.85.1", Resume: true, ResumeWhereItRan: true, ToolCalls: true, SkillTools: []string{"read", "bash"}, Skills: true}
 	if err != nil || !reflect.DeepEqual(identity, want) {
 		t.Fatalf("identity = %+v, %v", identity, err)
 	}

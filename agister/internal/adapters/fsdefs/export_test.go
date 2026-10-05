@@ -1,7 +1,8 @@
 package fsdefs
 
 // Observing returns the store with f called at each step of Write that the
-// lock must cover: "create", "compare" and "rename".
+// lock must cover: "create", "compare" and "rename"; and at "open", when Read
+// has listed a skill's folder and is about to open its SKILL.md.
 func (s Store) Observing(f func(point string)) Store {
 	s.at = f
 	return s

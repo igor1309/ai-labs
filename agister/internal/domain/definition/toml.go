@@ -30,7 +30,9 @@ type Agent struct {
 	Effort      string `json:"effort,omitempty"`
 	Session     string `json:"session"` // SessionFresh or SessionResumable
 	Command     string `json:"command,omitempty"`
-	Source      Source `json:"-"`
+	// Skills are the skill documents its calls are given (ADR-021).
+	Skills []string `json:"skills,omitempty"`
+	Source Source   `json:"-"`
 }
 
 // Session modes. A fresh-only agent always starts a new session; a
@@ -120,7 +122,7 @@ func tomlStrings(table map[string]any, key string, p *problems) []string {
 // ParseAgent parses an agent profile.
 func ParseAgent(doc Document) (Agent, error) {
 	p := &problems{}
-	table := decodeTOML(doc.Bytes, doc.Source.Path, []string{"schema", "name", "runtime", "model", "model_family", "effort", "session", "command"}, p)
+	table := decodeTOML(doc.Bytes, doc.Source.Path, []string{"schema", "name", "runtime", "model", "model_family", "effort", "session", "command", "skills"}, p)
 	if table == nil {
 		return Agent{Source: doc.Source}, p.err("agent " + subjectName(doc.Source))
 	}
@@ -134,6 +136,7 @@ func ParseAgent(doc Document) (Agent, error) {
 		Effort:      tomlString(table, "effort", false, p),
 		Session:     tomlString(table, "session", false, p),
 		Command:     tomlString(table, "command", false, p),
+		Skills:      skillNames(tomlStrings(table, "skills", p), "skills", p),
 		Source:      doc.Source,
 	}
 	if agent.Session == "" {
@@ -164,6 +167,10 @@ func FormatAgent(agent Agent) []byte {
 			continue
 		}
 		key, _ := toml.Marshal(map[string]string{entry[0]: entry[1]})
+		buffer.Write(key)
+	}
+	if len(agent.Skills) > 0 {
+		key, _ := toml.Marshal(map[string][]string{"skills": agent.Skills})
 		buffer.Write(key)
 	}
 	return buffer.Bytes()

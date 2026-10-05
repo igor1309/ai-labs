@@ -43,11 +43,24 @@ func (r piRunner) Identity(ctx context.Context) (app.RuntimeIdentity, error) {
 	return app.RuntimeIdentity(identity), err
 }
 
+// Admit admits every first turn: the runtime can run any it is given.
+func (piRunner) Admit(app.TurnStart) *run.Error { return nil }
+
 type piSink struct{ app.EventSink }
 
 func (s piSink) ToolStarted(tool pi.ToolCall) { s.EventSink.ToolStarted(app.ToolCall(tool)) }
 func (r piRunner) RunTurn(ctx context.Context, request app.TurnRequest, sink app.EventSink) run.Turn {
-	return PiResult(r.wrapper.RunTurn(ctx, pi.TurnRequest(request), piSink{sink}))
+	return PiResult(r.wrapper.RunTurn(ctx, PiRequest(request), piSink{sink}))
+}
+
+// PiRequest translates the application's turn request to the wrapper's,
+// its skills in order.
+func PiRequest(r app.TurnRequest) pi.TurnRequest {
+	request := pi.TurnRequest{Prompt: r.Prompt, Instruction: r.Instruction, Cwd: r.Cwd, ResumeSessionID: r.ResumeSessionID, MaxCostUSD: r.MaxCostUSD, Model: r.Model, Effort: r.Effort, Primitives: r.Primitives, Timeout: r.Timeout, OutputSchema: r.OutputSchema}
+	for _, skill := range r.Skills {
+		request.Skills = append(request.Skills, pi.Skill{Name: skill.Name, Bytes: skill.Bytes})
+	}
+	return request
 }
 
 // PiResult translates a wrapper's reported result to the application's domain.
