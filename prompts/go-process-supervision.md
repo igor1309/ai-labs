@@ -3,7 +3,7 @@ date: 2026-10-05
 author: Igor Malyarov
 model: claude-opus-5-5
 name: Go — process supervision
-version: 0.0.1
+version: 0.0.2
 type: prompt
 ---
 
@@ -37,17 +37,30 @@ Ending it
   long are results of their own beside the exit code and the signal, and
   the supervisor's decision is recorded apart from what the process did.
 * A context that has ended already starts nothing.
-* Signal the group only while it is known to exist. Once the leader has
-  been waited for and the group is empty, its ID may be reused: the
-  watcher that fires late checks, under the lock `Wait`'s caller takes,
-  that the process is not reaped yet.
+* Signal the group only while its ID is reserved by the unreaped leader.
+  All watchers and the caller that reaps take the same lock: a watcher
+  checks that the leader is not reaped before signalling, and holds the
+  lock through the signal. A lock alone cannot prevent the kernel from
+  reusing an ID after reaping.
 
 What the child left running
 
-* Right after `Wait` returns, SIGKILL the group once more, under that same
-  lock. A group outlives its leader while members remain, and its ID is
-  not reused while it exists; `ESRCH` means it was empty. A kill that
-  succeeds found leftovers: report it.
+* Observe the leader's exit without reaping it: `waitid` with `WEXITED |
+  WNOWAIT` (`golang.org/x/sys/unix.Waitid`, for that child's PID). No
+  concurrent `Wait` may reap it. The unreaped leader keeps its PID, and
+  therefore the group's ID, reserved. Under the signal/reap lock, send
+  SIGKILL to the group and classify the result; only then reap with
+  `Wait`. Disable later signals before releasing the lock. A supervisor
+  that kills after reaping risks killing an unrelated group that reused
+  the ID, and reporting that stranger as leftovers.
+* Classify the result of that kill; do not read it as done or not done.
+  `ESRCH` means nothing is left in the group. Success means the signal
+  reached at least one process, and whether a zombie leader alone counts
+  as one differs by platform: establish it with a contract test on Linux
+  and another on macOS, each with and without a live descendant, before
+  you report a success as leftovers. `EPERM` proves nothing either way.
+  A result you cannot classify is reported as cleanup unknown, never as
+  leftovers or as none.
 * A descendant that left the group can still hold the output open. Read
   stdout for at most the grace period after the exit, then close the
   reading end and report that it was held. Bound the copying of stdin and
