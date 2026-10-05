@@ -493,9 +493,9 @@ func TestAdviceSchemaTiesTheAnswerToItsPayload(t *testing.T) {
 }
 
 // The repository's review result schema accepts a review whose coverage
-// holds entries of every status, a null coverage and an empty one; it
-// refuses a review without coverage, a scalar coverage, an entry that is not
-// an object, an entry with an unknown status, an entry missing its item,
+// holds entries of every status; it refuses a review without coverage, a
+// null coverage, an empty one, a scalar coverage, an entry that is not an
+// object, an entry with an unknown status, an entry missing its item,
 // status or detail, an entry whose item or detail is not a string, and an
 // entry with an unexpected field. The payloads are fixed, not built from the
 // schema.
@@ -519,8 +519,8 @@ func TestReviewResultSchemaRequiresCoverage(t *testing.T) {
 			`{"item":"errors","status":"finding","detail":"1"},` +
 			`{"item":"naming","status":"rule_only","detail":"rule 3, a.go:4, no concrete case"},` +
 			`{"item":"docs","status":"not_checked","detail":"no docs changed"}]}`, true},
-		{"null coverage", `{` + review + `,"coverage":null}`, true},
-		{"empty coverage", `{` + review + `,"coverage":[]}`, true},
+		{"null coverage", `{` + review + `,"coverage":null}`, false},
+		{"empty coverage", `{` + review + `,"coverage":[]}`, false},
 		{"no coverage", `{` + review + `}`, false},
 		{"an unknown status", `{` + review + `,"coverage":[{"item":"tests","status":"skipped","detail":"x"}]}`, false},
 		{"an entry without its item", `{` + review + `,"coverage":[{"status":"checked","detail":"x"}]}`, false},
@@ -531,6 +531,57 @@ func TestReviewResultSchemaRequiresCoverage(t *testing.T) {
 		{"an entry that is not an object", `{` + review + `,"coverage":["tests"]}`, false},
 		{"a non-string item", `{` + review + `,"coverage":[{"item":42,"status":"checked","detail":"x"}]}`, false},
 		{"a non-string detail", `{` + review + `,"coverage":[{"item":"tests","status":"checked","detail":42}]}`, false},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
+			err := (schema.Validator{}).Validate(document, []byte(c.output))
+			if c.valid && err != nil {
+				t.Fatalf("%s refused: %v", c.output, err)
+			}
+			if !c.valid && err == nil {
+				t.Fatalf("%s accepted", c.output)
+			}
+		})
+	}
+}
+
+// The repository's judgement schema accepts a judgement with no coverage
+// gaps and one whose gaps hold an entry of every status; it refuses a
+// judgement without coverage gaps, an entry with an unknown status, an entry
+// whose review is not an integer, an entry missing its review, item, status
+// or detail, and an entry with an unexpected field. The payloads are fixed,
+// not built from the schema.
+func TestJudgementSchemaRequiresCoverageGaps(t *testing.T) {
+	t.Parallel()
+	root, err := filepath.Abs(filepath.Join("..", "..", ".."))
+	if err != nil {
+		t.Fatal(err)
+	}
+	document, err := os.ReadFile(filepath.Join(root, ".agister", "schemas", "judgement.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	const judgement = `"summary":"One fix; the tests review left an item unchecked.","items":[` +
+		`{"severity":"major","sources":["1#1","3#2"],"title":"A lost error","ruling":"fix",` +
+		`"reason":"The trace shows the error dropped.","action":"Return the error.","missing_evidence":""}]`
+	cases := []struct {
+		name, output string
+		valid        bool
+	}{
+		{"no coverage gaps", `{` + judgement + `,"coverage_gaps":[]}`, true},
+		{"a gap of every status", `{` + judgement + `,"coverage_gaps":[` +
+			`{"review":2,"item":"9. cost","status":"not_checked","detail":"no test changed"},` +
+			`{"review":2,"item":"8. wall clock","status":"rule_only","detail":"rule 8, a_test.go:4, no load condition traced"},` +
+			`{"review":4,"item":"whole review","status":"incomplete","detail":"failed: timeout"}]}`, true},
+		{"no coverage_gaps", `{` + judgement + `}`, false},
+		{"an unknown status", `{` + judgement + `,"coverage_gaps":[{"review":2,"item":"9. cost","status":"checked","detail":"x"}]}`, false},
+		{"a non-integer review", `{` + judgement + `,"coverage_gaps":[{"review":"2","item":"9. cost","status":"not_checked","detail":"x"}]}`, false},
+		{"an entry without its review", `{` + judgement + `,"coverage_gaps":[{"item":"9. cost","status":"not_checked","detail":"x"}]}`, false},
+		{"an entry without its item", `{` + judgement + `,"coverage_gaps":[{"review":2,"status":"not_checked","detail":"x"}]}`, false},
+		{"an entry without its status", `{` + judgement + `,"coverage_gaps":[{"review":2,"item":"9. cost","detail":"x"}]}`, false},
+		{"an entry without its detail", `{` + judgement + `,"coverage_gaps":[{"review":2,"item":"9. cost","status":"not_checked"}]}`, false},
+		{"an unexpected field in an entry", `{` + judgement + `,"coverage_gaps":[{"review":2,"item":"9. cost","status":"not_checked","detail":"x","note":"y"}]}`, false},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {

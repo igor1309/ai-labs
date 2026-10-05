@@ -3,7 +3,7 @@ date: 2026-10-05
 author: Igor Malyarov
 model: gpt-6
 name: Code review — architecture
-version: 0.0.5
+version: 0.0.6
 type: prompt
 ---
 
@@ -64,15 +64,17 @@ Definition of done
 
 Architecture is in good shape when:
 
-* A module can be understood through its API without knowing its internal package graph.
-* A component’s collaborators are visible from its construction.
-* A component can be tested in isolation by supplying implementations of its declared collaborator interfaces.
-* Cross-module calls pass through explicit boundaries.
-* Each side of a boundary retains ownership of its own types.
-* Infrastructure choices can change through composition and adapters while the consuming component remains stable.
-* Cross-cutting behavior can change at composition roots while core component behavior remains stable.
-* Internal implementation changes normally remain contained within the owning module.
-* Adding or replacing a collaborator produces a localized change around the relevant boundary and composition root.
+1. A module can be understood through its API without knowing its internal package graph.
+2. A component’s collaborators are visible from its construction.
+3. A component can be tested in isolation by supplying implementations of its declared collaborator interfaces.
+4. Cross-module calls pass through explicit boundaries.
+5. Each side of a boundary retains ownership of its own types.
+6. Infrastructure choices can change through composition and adapters while the consuming component remains stable.
+7. Cross-cutting behavior can change at composition roots while core component behavior remains stable.
+8. Internal implementation changes normally remain contained within the owning module.
+9. Adding or replacing a collaborator produces a localized change around the relevant boundary and composition root.
+
+Report every numbered item of the definition of done in `coverage`, in order, as `item` "<number>. <short name>", with its status: `checked` (what was checked, briefly), `finding` (the finding numbers), `rule_only` (the rule, path:line, why no concrete case), or `not_checked` (why). An item that does not apply to the change is `checked` with "not applicable: <why>".
 
 Review findings
 
