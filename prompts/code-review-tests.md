@@ -3,7 +3,7 @@ date: 2026-10-05
 author: Igor Malyarov
 model: claude-opus-5-5
 name: Code review — tests
-version: 0.1.1
+version: 0.1.2
 type: prompt
 ---
 
@@ -26,6 +26,11 @@ itself. Ask for a new seam only together with the case that needs it. A
 rule violation for which no concrete case can be shown is not a finding:
 report it in `coverage` with status `rule_only`, naming the rule and the
 location (path:line).
+
+Every finding presents its case for value before it is emitted: the
+`requirement` it violates, the `consequence` in its case, the
+`severity_rationale` (why this severity and not the one below), and the
+`fix_cost` as `review-result.json` bands it, each band with its basis.
 
 Definition of done:
 

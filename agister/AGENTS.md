@@ -24,7 +24,9 @@ still apply.
   `agister run code_review --param base=<rev> --param candidate=<rev>`. Act on
   the rulings as written, without judging them again: fix items go to a
   fresh `implement` run, owner items to the advisor (below), defer items to
-  `agister/docs/deferred.md`. Rejections for missing evidence are feedback
+  `agister/docs/deferred.md`. Waive items get no repair and no deferred
+  record; list them in the pull request description with their switching
+  condition. Rejections for missing evidence are feedback
   on the reviewers' prompts, not the judge's.
 - For an owner item, write the question file: who asked (the workflow run
   and item), the question and the options (the item's `action`, unedited),

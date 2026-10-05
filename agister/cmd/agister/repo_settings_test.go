@@ -547,6 +547,80 @@ func TestReviewResultSchemaRequiresCoverage(t *testing.T) {
 	}
 }
 
+// The repository's review result schema accepts a finding that presents its
+// case for value (ADR-020 rule 4): its requirement, consequence, severity
+// rationale and fix cost, of every size and change risk band. It refuses a
+// finding missing any of the four, a size or change risk out of its bands,
+// a fix cost missing a band or its basis, and a fix cost with an unexpected
+// field. The payloads are fixed, not built from the schema.
+func TestReviewResultSchemaRequiresTheCaseForValue(t *testing.T) {
+	t.Parallel()
+	root, err := filepath.Abs(filepath.Join("..", "..", ".."))
+	if err != nil {
+		t.Fatal(err)
+	}
+	document, err := os.ReadFile(filepath.Join(root, ".agister", "schemas", "review-result.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	const finding = `"severity":"major","file":"a.go","line":4,"title":"A lost error",` +
+		`"detail":"Write drops the error; return it.",` +
+		`"evidence":{"case":"a full disk","trace":["a.go:4 drops the error"],"introduced_by_change":true}`
+	const requirement = `"requirement":"ADR-001 rule 4: a failure is reported"`
+	const consequence = `"consequence":"On a full disk the run records success."`
+	const rationale = `"severity_rationale":"A wrong record, not a crash: major, not blocker."`
+	fixCost := func(size, risk string) string {
+		return `"fix_cost":{"size":"` + size + `","size_basis":"a.go Write and a_test.go",` +
+			`"change_risk":"` + risk + `","change_risk_basis":"no caller outside a.go"}`
+	}
+	const fixCostWithout = `"fix_cost":{"size":"small","size_basis":"a.go","change_risk":"contained","change_risk_basis":"none"}`
+	review := func(fields ...string) string {
+		return `{"verdict":"request_changes","summary":"One lost error.","findings":[{` +
+			strings.Join(append([]string{finding}, fields...), ",") +
+			`}],"coverage":[{"item":"1. paths","status":"finding","detail":"1"}]}`
+	}
+	cases := []struct {
+		name, output string
+		valid        bool
+	}{
+		{"a finding with its case for value", review(requirement, consequence, rationale, fixCost("small", "contained")), true},
+		{"a trivial, moderate fix", review(requirement, consequence, rationale, fixCost("trivial", "moderate")), true},
+		{"a substantial, broad fix", review(requirement, consequence, rationale, fixCost("substantial", "broad")), true},
+		{"a major fix", review(requirement, consequence, rationale, fixCost("major", "contained")), true},
+		{"empty bases", review(requirement, consequence, rationale,
+			`"fix_cost":{"size":"small","size_basis":"","change_risk":"contained","change_risk_basis":""}`), true},
+		{"no requirement", review(consequence, rationale, fixCost("small", "contained")), false},
+		{"no consequence", review(requirement, rationale, fixCost("small", "contained")), false},
+		{"no severity rationale", review(requirement, consequence, fixCost("small", "contained")), false},
+		{"no fix cost", review(requirement, consequence, rationale), false},
+		{"a size out of its bands", review(requirement, consequence, rationale, fixCost("huge", "contained")), false},
+		{"a change risk out of its bands", review(requirement, consequence, rationale, fixCost("small", "none")), false},
+		{"a fix cost without its size", review(requirement, consequence, rationale,
+			strings.Replace(fixCostWithout, `"size":"small",`, "", 1)), false},
+		{"a fix cost without its size basis", review(requirement, consequence, rationale,
+			strings.Replace(fixCostWithout, `"size_basis":"a.go",`, "", 1)), false},
+		{"a fix cost without its change risk", review(requirement, consequence, rationale,
+			strings.Replace(fixCostWithout, `"change_risk":"contained",`, "", 1)), false},
+		{"a fix cost without its change risk basis", review(requirement, consequence, rationale,
+			strings.Replace(fixCostWithout, `,"change_risk_basis":"none"`, "", 1)), false},
+		{"an unexpected field in the fix cost", review(requirement, consequence, rationale,
+			strings.Replace(fixCostWithout, `}`, `,"hours":3}`, 1)), false},
+		{"a scalar fix cost", review(requirement, consequence, rationale, `"fix_cost":"small"`), false},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
+			err := (schema.Validator{}).Validate(document, []byte(c.output))
+			if c.valid && err != nil {
+				t.Fatalf("%s refused: %v", c.output, err)
+			}
+			if !c.valid && err == nil {
+				t.Fatalf("%s accepted", c.output)
+			}
+		})
+	}
+}
+
 // The repository's judgement schema accepts a judgement with no coverage
 // gaps and one whose gaps hold an entry of every status; it refuses a
 // judgement without coverage gaps, null coverage gaps, scalar ones, an entry
@@ -567,7 +641,9 @@ func TestJudgementSchemaRequiresCoverageGaps(t *testing.T) {
 	}
 	const judgement = `"summary":"One fix; the tests review left an item unchecked.","items":[` +
 		`{"severity":"major","sources":["1#1","3#2"],"title":"A lost error","ruling":"fix",` +
-		`"reason":"The trace shows the error dropped.","action":"Return the error.","missing_evidence":""}]`
+		`"reason":"The trace shows the error dropped.","action":"Return the error.","missing_evidence":"",` +
+		`"benefit":"The caller no longer reports success on a failed write.","cost":"One function and its test, contained.",` +
+		`"switching_condition":"A trace showing the caller handles the error."}]`
 	cases := []struct {
 		name, output string
 		valid        bool
@@ -591,6 +667,58 @@ func TestJudgementSchemaRequiresCoverageGaps(t *testing.T) {
 		{"a non-string item", `{` + judgement + `,"coverage_gaps":[{"review":2,"item":9,"status":"not_checked","detail":"x"}]}`, false},
 		{"a non-string detail", `{` + judgement + `,"coverage_gaps":[{"review":2,"item":"9. cost","status":"not_checked","detail":42}]}`, false},
 		{"a fractional review", `{` + judgement + `,"coverage_gaps":[{"review":2.5,"item":"9. cost","status":"not_checked","detail":"x"}]}`, false},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
+			err := (schema.Validator{}).Validate(document, []byte(c.output))
+			if c.valid && err != nil {
+				t.Fatalf("%s refused: %v", c.output, err)
+			}
+			if !c.valid && err == nil {
+				t.Fatalf("%s accepted", c.output)
+			}
+		})
+	}
+}
+
+// The repository's judgement schema accepts an item of every ruling, waive
+// included (ADR-020 rule 2), each with its benefit, cost and switching
+// condition (rule 5), empty where the ruling leaves them so. It refuses an
+// item missing its benefit, cost or switching condition, and an item with
+// an unknown ruling. The payloads are fixed, not built from the schema.
+func TestJudgementSchemaRecordsWhatDecidedARuling(t *testing.T) {
+	t.Parallel()
+	root, err := filepath.Abs(filepath.Join("..", "..", ".."))
+	if err != nil {
+		t.Fatal(err)
+	}
+	document, err := os.ReadFile(filepath.Join(root, ".agister", "schemas", "judgement.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	const benefit = `"benefit":"A clearer name for one local variable."`
+	const cost = `"cost":"Two files and their tests, moderate risk."`
+	const switching = `"switching_condition":"A case where the name misleads a caller."`
+	item := func(ruling, action, missing string, fields ...string) string {
+		return `{"summary":"One item.","items":[{"severity":"nit","sources":["1#1"],"title":"A vague name",` +
+			`"ruling":"` + ruling + `","reason":"The evidence holds.","action":"` + action + `",` +
+			`"missing_evidence":"` + missing + `"` + strings.Join(append([]string{""}, fields...), ",") +
+			`}],"coverage_gaps":[]}`
+	}
+	cases := []struct {
+		name, output string
+		valid        bool
+	}{
+		{"a waive", item("waive", "", "", benefit, cost, switching), true},
+		{"a fix", item("fix", "Rename it.", "", benefit, cost, switching), true},
+		{"an owner item", item("owner", "Rename it, or leave it?", "", benefit, cost, switching), true},
+		{"a reject with only its switching condition", item("reject", "", "A case.", `"benefit":""`, `"cost":""`, switching), true},
+		{"a defer with only its switching condition", item("defer", "Gap, trigger, done when.", "", `"benefit":""`, `"cost":""`, switching), true},
+		{"no benefit", item("waive", "", "", cost, switching), false},
+		{"no cost", item("waive", "", "", benefit, switching), false},
+		{"no switching condition", item("waive", "", "", benefit, cost), false},
+		{"an unknown ruling", item("ignore", "", "", benefit, cost, switching), false},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
@@ -660,6 +788,70 @@ func TestReviewPromptsCarryTheirCoverageContract(t *testing.T) {
 			}
 			for _, instruction := range c.instructions {
 				if !carries(prompt, instruction.phrases) {
+					t.Errorf("prompts/%s lost the instruction %q: no paragraph has all of %q",
+						c.prompt, instruction.name, instruction.phrases)
+				}
+			}
+		})
+	}
+}
+
+// Each review prompt of the repository carries its part of ADR-020. A
+// reviewer's prompt has the instruction that every finding presents its
+// case for value: its requirement, consequence, severity rationale and fix
+// cost as review-result.json bands it, each band with its basis. The
+// judge's has the waive ruling and the two questions it answers; the burden
+// for fixing by severity, blocker to nit, and that equal or unresolved
+// economics leave the presumption standing; the severity checked before
+// merging, a merged item taking the highest supported one; a reject for a
+// finding with no causal chain; a fix cost without its basis counted as
+// unpresented; and the switching condition each item records. An
+// instruction is held by its short phrases standing in one paragraph, as in
+// TestReviewPromptsCarryTheirCoverageContract. The prompts are the
+// repository's own, read as they are.
+func TestReviewPromptsCarryTheCaseForValue(t *testing.T) {
+	t.Parallel()
+	root, err := filepath.Abs(filepath.Join("..", "..", ".."))
+	if err != nil {
+		t.Fatal(err)
+	}
+	present := promptInstruction{"every finding presents its case for value",
+		[]string{"presents its case for value", "`requirement`", "`consequence`", "`severity_rationale`",
+			"`fix_cost`", "`review-result.json`", "its basis"}}
+	cases := []struct {
+		prompt       string
+		instructions []promptInstruction
+	}{
+		{"code-review-tests.md", []promptInstruction{present}},
+		{"code-review-adversarial.md", []promptInstruction{present}},
+		{"code-review-architecture.md", []promptInstruction{present}},
+		{"code-review-clarity.md", []promptInstruction{present}},
+		{"code-review-adr.md", []promptInstruction{present}},
+		{"code-review-judge.md", []promptInstruction{
+			{"waive: proven, in the change, the burden for fixing not met", []string{
+				"for an item whose evidence holds and that lies in the change", "the burden for fixing at its severity",
+				"**waive**", "not a reject", "sunk and never counts"}},
+			{"the burden for fixing by severity", []string{
+				"**blocker**: always fixed", "**major**: fix, or `owner`", "grossly disproportionate",
+				"**minor**: fix, or `waive` when the presented cost exceeds", "**nit**: `waive`, or fix when the presented benefit exceeds"}},
+			{"equal or unresolved economics leave the presumption standing", []string{"equal or unresolved", "presumption"}},
+			{"severity is checked before merging", []string{
+				"before merging", "`severity_rationale`", "the highest severity the evidence supports",
+				"the highest supported severity among its sources"}},
+			{"a finding with no causal chain is rejected", []string{"**reject**", "no causal chain", "`requirement`", "`consequence`"}},
+			{"a fix cost without its basis counts as unpresented", []string{"`fix_cost` whose basis is missing or empty", "unpresented"}},
+			{"each item records its switching condition", []string{"`benefit`", "`cost`", "`switching_condition`", "if circumstances change"}},
+		}},
+	}
+	for _, c := range cases {
+		t.Run(c.prompt, func(t *testing.T) {
+			t.Parallel()
+			data, err := os.ReadFile(filepath.Join(root, "prompts", c.prompt))
+			if err != nil {
+				t.Fatal(err)
+			}
+			for _, instruction := range c.instructions {
+				if !carries(string(data), instruction.phrases) {
 					t.Errorf("prompts/%s lost the instruction %q: no paragraph has all of %q",
 						c.prompt, instruction.name, instruction.phrases)
 				}

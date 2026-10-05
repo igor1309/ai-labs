@@ -3,7 +3,7 @@ date: 2026-10-05
 author: Igor Malyarov
 model: gpt-6
 name: Code review — architecture
-version: 0.0.6
+version: 0.0.7
 type: prompt
 ---
 
@@ -85,6 +85,8 @@ For each meaningful architectural issue, report:
 3. Evidence — concrete dependency, type ownership, wiring, or boundary structure observed.
 4. Impact — how it affects isolation, coupling, ownership, testability, or change propagation.
 5. Improvement — the smallest structural change that restores the intended boundary.
+
+Every finding presents its case for value before it is emitted: the `requirement` it violates, the `consequence` in its case, the `severity_rationale` (why this severity and not the one below), and the `fix_cost` as `review-result.json` bands it, each band with its basis.
 
 A change that extends an existing violation (a new user of a shared interface, a new method on a widened one) is a finding in the change, even though the violation predates it.
 

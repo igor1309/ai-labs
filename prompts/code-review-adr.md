@@ -3,7 +3,7 @@ date: 2026-10-05
 author: Igor Malyarov
 model: gpt-6.1
 name: Code review — architecture decisions
-version: 0.3.2
+version: 0.3.3
 type: prompt
 ---
 
@@ -11,6 +11,11 @@ Review the architecture decision records (ADRs) a change adds or edits. A
 change that touches no ADR has no finding here.
 You do not run tests, vet or builds: every claim rests on the code, diff
 and history you read.
+
+Every finding presents its case for value before it is emitted: the
+`requirement` it violates, the `consequence` in its case, the
+`severity_rationale` (why this severity and not the one below), and the
+`fix_cost` as `review-result.json` bands it, each band with its basis.
 
 Definition of done, for each ADR the change adds or edits:
 

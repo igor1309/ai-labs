@@ -10,15 +10,18 @@
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["severity", "sources", "title", "ruling", "reason", "action", "missing_evidence"],
+        "required": ["severity", "sources", "title", "ruling", "reason", "action", "missing_evidence", "benefit", "cost", "switching_condition"],
         "properties": {
-          "severity": {"type": "string", "enum": ["blocker", "major", "minor", "nit"], "description": "The highest severity among the sources."},
+          "severity": {"type": "string", "enum": ["blocker", "major", "minor", "nit"], "description": "The highest supported severity among the sources: a source's severity its evidence does not support counts at the highest severity it does."},
           "sources": {"type": "array", "minItems": 1, "items": {"type": "string"}, "description": "Source findings as <review>#<finding>, 1-based."},
           "title": {"type": "string"},
-          "ruling": {"type": "string", "enum": ["fix", "defer", "owner", "reject"]},
+          "ruling": {"type": "string", "enum": ["fix", "defer", "owner", "reject", "waive"], "description": "fix, owner, waive: the evidence holds and the change introduced it; waive: its presented case does not meet the burden for fixing at its severity. defer: the evidence holds, outside the change. reject: the evidence does not hold."},
           "reason": {"type": "string", "description": "Why the presented evidence does or does not support the claim."},
-          "action": {"type": "string", "description": "fix: the change the evidence calls for, as the reviewer stated it. defer: gap, trigger, done when. owner: the question and its options. reject: empty."},
-          "missing_evidence": {"type": "string", "description": "reject: what the reviewer should have shown. Otherwise empty."}
+          "action": {"type": "string", "description": "fix: the change the evidence calls for, as the reviewer stated it. defer: gap, trigger, done when. owner: the question and its options. reject: empty. waive: empty."},
+          "missing_evidence": {"type": "string", "description": "reject: what the reviewer should have shown. Otherwise empty."},
+          "benefit": {"type": "string", "description": "fix, owner, waive: the presented benefit of fixing, the consequence avoided, that decided the ruling. reject, defer: empty."},
+          "cost": {"type": "string", "description": "fix, owner, waive: the presented cost of the fix, its verification and the risk it brings, that decided the ruling, or that none was presented. reject, defer: empty."},
+          "switching_condition": {"type": "string", "description": "What would have to be presented for another ruling to win: a named claim, never 'if circumstances change'. Given for every ruling, reject and defer included."}
         }
       }
     },
