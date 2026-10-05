@@ -111,10 +111,14 @@ type nodeRunner struct {
 	requests map[string][]app.TurnRequest
 	// before, when set, runs as a turn starts, with its instruction.
 	before func(instruction string)
+	// skills: the adapter gives a call its skills (ADR-021 rule 6).
+	skills bool
 }
 
 func (r *nodeRunner) Identity(context.Context) (app.RuntimeIdentity, error) {
-	return app.RuntimeIdentity{Contract: "spy/1", Version: "1.2.3", Resume: true, CostLimit: true}, nil
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	return app.RuntimeIdentity{Contract: "spy/1", Version: "1.2.3", Resume: true, CostLimit: true, Skills: r.skills}, nil
 }
 
 func (r *nodeRunner) RunTurn(ctx context.Context, request app.TurnRequest, sink app.EventSink) run.Turn {

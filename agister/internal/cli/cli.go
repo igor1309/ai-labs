@@ -758,6 +758,27 @@ func showProcess(w io.Writer, view contract.ProcessView) {
 		}
 		lines = append(lines, [2]string{label, text})
 	}
+	// The call's skills, the process's then its agent's (ADR-021).
+	skills := false
+	skill := func(name, namer string) {
+		label := ""
+		if !skills {
+			label, skills = "skills", true
+		}
+		text := name + " (" + namer + ", not resolved)"
+		for _, source := range view.Sources {
+			if source.Kind == "skills" && source.Name == name {
+				text = name + " (" + namer + "): " + source.Layer + " " + source.Path
+			}
+		}
+		lines = append(lines, [2]string{label, text})
+	}
+	for _, name := range view.Skills {
+		skill(name, "process")
+	}
+	for _, name := range view.AgentSkills {
+		skill(name, "agent")
+	}
 	if view.Refusal != "" {
 		lines = append(lines, [2]string{"plan", "REFUSED: " + view.Refusal})
 	} else {
@@ -1050,7 +1071,7 @@ var kindNames = map[string]string{
 	"service": "service", "agents": "agent", "processes": "process",
 	"policies": "policy", "runtimes": "runtime", "schemas": "schema",
 	"workflows": "workflow", "verifies": "verification", "prompts": "prompt",
-	"workspace": "workspace",
+	"skills": "skill", "workspace": "workspace",
 }
 
 // printTree prints the service, each process and each workflow with what

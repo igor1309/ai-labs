@@ -46,7 +46,7 @@ func TestClaudeCodeApplicationAdapter(t *testing.T) {
 	turns := 2
 	runtimeMS := int64(75)
 	refusal := errors.New("disk full")
-	stub := &claudecodeStandIn{result: claudecode.Turn{Status: claudecode.Failed, Error: &claudecode.Error{Class: claudecode.ClassRateLimited, Message: "quota"}, ProviderSessionID: "session", Model: "model", Output: []byte(`{"answer":1}`), Text: "answer", CostUSD: &cost, Usage: &claudecode.Usage{InputTokens: &tokens, OutputTokens: &tokens, CacheReadTokens: &tokens, CacheWriteTokens: &tokens, ReasoningTokens: &tokens}, RuntimeMS: &runtimeMS, NumTurns: &turns, PermissionDenials: 3, Exit: &claudecode.Exit{Code: &code, Signal: "signal"}, StderrTail: "tail", StderrOmitted: 55, Session: &claudecode.SessionTotals{CostUSD: &cost, Usage: &claudecode.Usage{InputTokens: &tokens, OutputTokens: &tokens, CacheReadTokens: &tokens, CacheWriteTokens: &tokens, ReasoningTokens: &tokens}}}, identity: claudecode.RuntimeIdentity{Contract: "contract", Version: "1.2.3", Resume: true, ResumeWhereItRan: true, CostLimit: true, ToolCalls: true, SkillTools: []string{"skill"}}}
+	stub := &claudecodeStandIn{result: claudecode.Turn{Status: claudecode.Failed, Error: &claudecode.Error{Class: claudecode.ClassRateLimited, Message: "quota"}, ProviderSessionID: "session", Model: "model", Output: []byte(`{"answer":1}`), Text: "answer", CostUSD: &cost, Usage: &claudecode.Usage{InputTokens: &tokens, OutputTokens: &tokens, CacheReadTokens: &tokens, CacheWriteTokens: &tokens, ReasoningTokens: &tokens}, RuntimeMS: &runtimeMS, NumTurns: &turns, PermissionDenials: 3, Exit: &claudecode.Exit{Code: &code, Signal: "signal"}, StderrTail: "tail", StderrOmitted: 55, Session: &claudecode.SessionTotals{CostUSD: &cost, Usage: &claudecode.Usage{InputTokens: &tokens, OutputTokens: &tokens, CacheReadTokens: &tokens, CacheWriteTokens: &tokens, ReasoningTokens: &tokens}}}, identity: claudecode.RuntimeIdentity{Contract: "contract", Version: "1.2.3", Resume: true, ResumeWhereItRan: true, CostLimit: true, ToolCalls: true, SkillTools: []string{"skill"}, Skills: true}}
 	adapter := AdaptClaudeCode(stub)
 	sink := &runtimetest.Recorder{ProcessErr: refusal}
 	request := app.TurnRequest{Prompt: "prompt", Instruction: "instruction", Cwd: "/checkout", ResumeSessionID: "session", MaxCostUSD: &cost, Model: "model", Effort: "high", Primitives: []string{"read"}, Timeout: time.Minute, OutputSchema: []byte(`{"type":"object"}`)}
@@ -61,7 +61,7 @@ func TestClaudeCodeApplicationAdapter(t *testing.T) {
 		t.Fatalf("sink %+v", sink)
 	}
 	identity, err := adapter.Identity(ctx)
-	wantIdentity := app.RuntimeIdentity{Contract: "contract", Version: "1.2.3", Resume: true, ResumeWhereItRan: true, CostLimit: true, ToolCalls: true, SkillTools: []string{"skill"}}
+	wantIdentity := app.RuntimeIdentity{Contract: "contract", Version: "1.2.3", Resume: true, ResumeWhereItRan: true, CostLimit: true, ToolCalls: true, SkillTools: []string{"skill"}, Skills: true}
 	if err != nil || !reflect.DeepEqual(identity, wantIdentity) || stub.ctx != ctx {
 		t.Fatalf("identity %+v, err %v", identity, err)
 	}

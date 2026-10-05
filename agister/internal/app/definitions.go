@@ -476,14 +476,17 @@ type InspectionResolver interface {
 // InspectedProcess is a process as a call would resolve it, as far as its
 // view shows it.
 type InspectedProcess struct {
-	Process    InspectedDefinition
-	Agent      string // the agent's name
-	Runtime    string // the runtime mapping's name
-	Effective  InspectedLimits
-	Primitives []string // the plan's
-	Withheld   []string // allowed but not provided
-	Sources    []InspectedSource
-	Absent     []string // the optional prompts neither layer has (ADR-019)
+	Process InspectedDefinition
+	Agent   string // the agent's name
+	// AgentSkills are the skills the agent names and the process does not:
+	// with the process's, the call's (ADR-021 rule 2).
+	AgentSkills []string
+	Runtime     string // the runtime mapping's name
+	Effective   InspectedLimits
+	Primitives  []string // the plan's
+	Withheld    []string // allowed but not provided
+	Sources     []InspectedSource
+	Absent      []string // the optional prompts neither layer has (ADR-019)
 }
 
 // InspectedDefinition is what the view shows of a process's definition.
@@ -498,6 +501,7 @@ type InspectedDefinition struct {
 	VerifyName   string           // the verification it names; empty for an inline block
 	Prompts      []string         // the prompts its inputs name
 	Optional     []string         // those of Prompts only optional inputs name (ADR-019)
+	Skills       []string         // the skills it names
 }
 
 // InspectedParam is a param a process or workflow declares.
@@ -595,10 +599,11 @@ func (r *Resolver) InspectProcess(ctx context.Context, name, agent string) (*Ins
 			Name: process.Name, Policy: process.Policy,
 			OutputFormat: process.Output.Format, OutputSchema: process.Output.Schema,
 			Params: inspectedParams(process.Params), Values: inspectedValues(process.Values),
-			VerifyName: process.VerifyName, Prompts: process.Prompts(), Optional: process.OptionalPrompts(),
+			VerifyName: process.VerifyName, Prompts: process.Prompts(), Optional: process.OptionalPrompts(), Skills: process.Skills,
 		},
-		Agent:   res.agent.Name,
-		Runtime: res.mapping.Name,
+		Agent:       res.agent.Name,
+		AgentSkills: definition.CallSkills(process, res.agent)[len(process.Skills):],
+		Runtime:     res.mapping.Name,
 		Effective: InspectedLimits{
 			Timeout: res.effective.Timeout, MaxAttempts: res.effective.MaxAttempts, MaxCostUSD: res.effective.MaxCostUSD,
 			Allow: res.effective.Allow, Deny: res.effective.Deny, Permissions: res.effective.Permissions,
@@ -766,6 +771,8 @@ func (i *Inspection) showProcess(ctx context.Context, name, agent string) (contr
 		Prompts:     res.Process.Prompts,
 		Optional:    res.Process.Optional,
 		Absent:      res.Absent,
+		Skills:      res.Process.Skills,
+		AgentSkills: res.AgentSkills,
 	}
 	if res.Process.OutputSchema != "" {
 		view.Output += ":" + res.Process.OutputSchema

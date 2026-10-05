@@ -142,6 +142,7 @@ func (c *Checker) check(ctx context.Context, probe bool) (CheckResult, error) {
 		Workflows: map[string]definition.Workflow{},
 		Verifies:  map[string]definition.Verification{},
 		Prompts:   map[string]bool{},
+		Skills:    map[string]bool{},
 	}
 
 	// Each document on its own: one checks a document read, or not, err
@@ -194,9 +195,18 @@ func (c *Checker) check(ctx context.Context, probe bool) (CheckResult, error) {
 				// find it.
 				bundle.Prompts[name] = true
 			}
+			if kind == definition.KindSkill {
+				// So is a broken skill (ADR-021 rule 4): what names it still
+				// finds it.
+				bundle.Skills[name] = true
+			}
 			if kind != definition.KindService && !definition.ValidName(name) {
 				// Nothing can name such a document (ADR-015 rule 4).
-				stops(kind.Singular()+" "+name, "%q is not a valid name; rename the file", name)
+				what := "file"
+				if kind == definition.KindSkill {
+					what = "folder"
+				}
+				stops(kind.Singular()+" "+name, "%q is not a valid name; rename the %s", name, what)
 				continue
 			}
 			doc, err := c.definitions.Read(ctx, kind, name)
@@ -248,6 +258,10 @@ func (c *Checker) check(ctx context.Context, probe bool) (CheckResult, error) {
 			return err
 		}},
 		{definition.KindPrompt, parsePrompt},
+		{definition.KindSkill, func(d definition.Document) error {
+			_, err := definition.ParseSkill(d)
+			return err
+		}},
 		{definition.KindProcess, func(d definition.Document) error {
 			p, err := definition.ParseProcess(d)
 			if err == nil {
@@ -367,7 +381,11 @@ func (c *Checker) check(ctx context.Context, probe bool) (CheckResult, error) {
 		}
 	}
 	for _, name := range sortedNames(bundle.Agents) {
-		link(DocumentRef{Kind: definition.KindAgent, Name: name}, definition.KindRuntime, bundle.Agents[name].Runtime, false)
+		agent, from := bundle.Agents[name], DocumentRef{Kind: definition.KindAgent, Name: name}
+		link(from, definition.KindRuntime, agent.Runtime, false)
+		for _, skill := range agent.Skills {
+			link(from, definition.KindSkill, skill, false)
+		}
 	}
 	for _, name := range sortedNames(bundle.Processes) {
 		process, from := bundle.Processes[name], DocumentRef{Kind: definition.KindProcess, Name: name}
@@ -377,6 +395,9 @@ func (c *Checker) check(ctx context.Context, probe bool) (CheckResult, error) {
 		optional := process.OptionalPrompts()
 		for _, prompt := range process.Prompts() {
 			link(from, definition.KindPrompt, prompt, contains(optional, prompt))
+		}
+		for _, skill := range process.Skills {
+			link(from, definition.KindSkill, skill, false)
 		}
 		if process.Output.Format == "json" {
 			link(from, definition.KindSchema, process.Output.Schema, false)

@@ -68,16 +68,28 @@ type CallResolveRequest struct {
 
 // ResolvedCall is everything a call needs before inputs and effects.
 type ResolvedCall struct {
-	Process   CallProcess
-	Agent     CallAgent
-	Mapping   CallMapping
-	Schema    []byte
-	Prompts   map[string]Resolved // by name: each prompt's text, identified by its digest
-	Absent    []CallAbsent        // the optional prompt inputs whose prompt neither layer has (ADR-019)
+	Process CallProcess
+	Agent   CallAgent
+	Mapping CallMapping
+	Schema  []byte
+	Prompts map[string]Resolved // by name: each prompt's text, identified by its digest
+	Absent  []CallAbsent        // the optional prompt inputs whose prompt neither layer has (ADR-019)
+	// Skills are the call's skills, in order: the process's, then its
+	// agent's, each once (ADR-021).
+	Skills    []CallSkill
 	Sources   []CallSource
 	Effective CallLimits
 	Identity  CallRuntime
 	Plan      CallPlan
+}
+
+// CallSkill is one skill a call is given, as it was read with the call: an
+// adapter gives it from here, without reading the settings again.
+type CallSkill struct {
+	Name string
+	// Bytes are the whole SKILL.md, unchanged, front matter included.
+	Bytes    []byte
+	Identity string // sha256:<digest of Bytes>
 }
 
 // CallProcess is what a call reads of its process's definition.
@@ -262,6 +274,9 @@ func (c callResolution) Resolve(ctx context.Context, request CallResolveRequest)
 	}
 	resolved.Absent = translated(res.absent, func(absent absentInput) CallAbsent {
 		return CallAbsent{Index: absent.index, Input: absent.input, Prompt: absent.prompt}
+	})
+	resolved.Skills = translated(res.skills, func(skill definition.Skill) CallSkill {
+		return CallSkill{Name: skill.Name, Bytes: skill.Bytes, Identity: "sha256:" + skill.Source.SHA256}
 	})
 	if setup := res.setup; setup != nil {
 		resolved.Process.Setup = &CallSetup{Command: setup.Command, Timeout: setup.Timeout, From: setup.from, Path: setup.path}

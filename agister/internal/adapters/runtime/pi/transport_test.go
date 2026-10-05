@@ -129,6 +129,10 @@ func TestIdentityAsksTheTransportForTheVersion(t *testing.T) {
 	if err != nil || identity.Version != "0.70.2" || identity.Contract != pi.Contract {
 		t.Fatalf("identity = %+v, %v", identity, err)
 	}
+	// No adapter gives a call its skills yet (ADR-021 rule 6).
+	if identity.Skills {
+		t.Fatalf("identity = %+v, which gives skills", identity)
+	}
 	if versions := spy.Versions(); !reflect.DeepEqual(versions, []string{"/opt/pi"}) {
 		t.Fatalf("versions = %q", versions)
 	}

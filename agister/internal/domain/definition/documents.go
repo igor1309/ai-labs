@@ -99,6 +99,7 @@ type Process struct {
 	Checkout    string   // name of the input whose revision is checked out
 	Setup       *Setup   // its own setup; unset: the workspace's, if any
 	Require     []string // permissions the call cannot work without
+	Skills      []string // the skill documents its calls are given (ADR-021)
 	Output      Output
 	// Verify is the inline block, or the named verification once it is
 	// resolved; unset: no verification, or a named one not resolved.
@@ -175,7 +176,7 @@ func ParseProcess(doc Document) (Process, error) {
 	if declared(root, "verify") > 1 {
 		p.add("verify", "is declared more than once: the inline fields or one reference, not both")
 	}
-	values := fields(root, "", append([]string{"schema", "name", "status", "type", "uses", "policy", "input", "output", "verify"}, limitKeys...), p)
+	values := fields(root, "", append([]string{"schema", "name", "status", "type", "uses", "policy", "input", "output", "verify", "skills"}, limitKeys...), p)
 	header(values, ProcessSchema, doc.Source.Name, p)
 	if value, _ := scalar(values["type"], "type", p); value != "process" {
 		p.add("type", `must be "process"`)
@@ -218,6 +219,9 @@ func ParseProcess(doc Document) (Process, error) {
 			p.add("workspace.setup", "requires workspace.checkout: setup prepares a checkout the call owns")
 		}
 	}
+
+	// Each a literal document name, which nothing is substituted in.
+	process.Skills = skillNames(stringList(values["skills"], "skills", p), "skills", p)
 
 	output := fields(values["output"], "output", []string{"format", "schema", "require_valid"}, p)
 	process.Output.Format = required(output, "format", "output", p)

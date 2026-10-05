@@ -26,14 +26,17 @@ func refuse(format string, args ...any) error { return &Refusal{Reason: fmt.Spri
 // consumer is given its own translation of it (see Resolver.Snapshot and
 // Resolver.InspectProcess).
 type resolution struct {
-	service   definition.Service
-	process   definition.Process
-	policy    *definition.Policy
-	agent     definition.Agent
-	mapping   definition.Mapping
-	schema    []byte
-	prompts   map[string]definition.Prompt // by name
-	absent    []absentInput                // the optional prompt inputs whose prompt neither layer has (ADR-019)
+	service definition.Service
+	process definition.Process
+	policy  *definition.Policy
+	agent   definition.Agent
+	mapping definition.Mapping
+	schema  []byte
+	prompts map[string]definition.Prompt // by name
+	absent  []absentInput                // the optional prompt inputs whose prompt neither layer has (ADR-019)
+	// skills are the call's skills, in order: the process's, then its
+	// agent's, each once (ADR-021 rule 2).
+	skills    []definition.Skill
 	sources   []definition.Source
 	effective policy.Effective
 	identity  RuntimeIdentity
@@ -370,6 +373,22 @@ func (r *Resolver) resolveCall(ctx context.Context, processName, agentOverride s
 		}
 		res.prompts[name] = prompt
 	}
+	// Each skill the process and its agent name is read with the call, from
+	// the same settings, and recorded among its sources (ADR-021 rule 3).
+	for _, name := range definition.CallSkills(res.process, res.agent) {
+		namer := "process " + res.process.Name
+		if !contains(res.process.Skills, name) {
+			namer = "agent " + res.agent.Name
+		}
+		if doc, err = load(definition.KindSkill, name); err != nil {
+			return res, refuse("%s names %v", namer, err)
+		}
+		skill, err := definition.ParseSkill(doc)
+		if err != nil {
+			return res, parsed(err)
+		}
+		res.skills = append(res.skills, skill)
+	}
 
 	subject = root
 	limits := policy.Caller{MaxCostUSD: caller.maxCostUSD}
@@ -414,6 +433,13 @@ func (r *Resolver) resolveCall(ctx context.Context, processName, agentOverride s
 	if res.effective.MaxCostUSD != nil && !res.identity.CostLimit {
 		subject = root
 		return res, refuse("runtime %s cannot enforce the cost limit %g", res.mapping.Name, *res.effective.MaxCostUSD)
+	}
+	// An adapter that cannot give skills refuses a call that names one: it
+	// must not run without them (ADR-021 rule 6).
+	if len(res.skills) > 0 && !res.identity.Skills {
+		subject = root
+		names := translated(res.skills, func(skill definition.Skill) string { return skill.Name })
+		return res, refuse("adapter %s of runtime %s cannot give a call its skills (ADR-021): %s", res.mapping.Adapter, res.mapping.Name, strings.Join(names, ", "))
 	}
 	// The staleness limits on tool calls need the adapter to report them.
 	if stale := res.effective.Stale; !res.identity.ToolCalls {
