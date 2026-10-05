@@ -389,8 +389,12 @@ func parseInputs(input map[string]*yaml.Node, p *problems) ([]Param, []Value) {
 		}
 		// Values resolve in order, so a value refers only to earlier ones.
 		for _, reference := range value.references("value") {
-			if !hasValue(values, reference) {
+			switch {
+			case !hasValue(values, reference):
 				p.add(field, "refers to ${value.%s}, which is not an input value declared before it", reference)
+			case optionalValue(values, reference):
+				// An input never depends on one that may be missing (ADR-019 rule 5).
+				p.add(field, "refers to ${value.%s}, an optional prompt, which may be missing", reference)
 			}
 		}
 		values = append(values, value)
@@ -571,6 +575,18 @@ func hasParam(params []Param, name string) bool {
 func hasValue(values []Value, name string) bool {
 	for _, value := range values {
 		if value.Name == name {
+			return true
+		}
+	}
+	return false
+}
+
+// optionalValue reports whether any of values named name is an optional
+// prompt. Names may repeat, and at run time a later input of the name
+// supplies its text, so the first of them alone does not say.
+func optionalValue(values []Value, name string) bool {
+	for _, value := range values {
+		if value.Name == name && value.Optional() {
 			return true
 		}
 	}

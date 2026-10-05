@@ -67,7 +67,7 @@ func TestAPromptInputNamesItsDocumentLiterally(t *testing.T) {
 		"name missing":       {"    rules: {source: prompt}\n", "input.values.rules.name: is required"},
 		"name interpolated":  {"    rules: {source: prompt, name: \"${param.which}\"}\n", "input.values.rules.name: is not interpolated: name the prompt document literally"},
 		"name partly so":     {"    rules: {source: prompt, name: \"review_${param.which}\"}\n", "input.values.rules.name: is not interpolated"},
-		"an extra argument":  {"    rules: {source: prompt, name: review, path: review.md}\n", "input.values.rules.path: is not an argument of source prompt, which takes only name"},
+		"an extra argument":  {"    rules: {source: prompt, name: review, path: review.md}\n", "input.values.rules.path: is not an argument of source prompt, which takes only name and optional"},
 		"a path, not a name": {"    rules: {source: prompt, name: ../review}\n", `input.values.rules.name: invalid prompt name "../review"`},
 		"an empty name":      {"    rules: {source: prompt, name: \"\"}\n", `input.values.rules.name: invalid prompt name ""`},
 	}
@@ -79,6 +79,81 @@ func TestAPromptInputNamesItsDocumentLiterally(t *testing.T) {
 				t.Fatalf("err = %v, want %q", err, c.want)
 			}
 		})
+	}
+}
+
+// ADR-019 rule 1: a prompt input may be optional; optional takes only
+// true, and leaving it out means required. A prompt that a required input
+// also names is required.
+func TestAPromptInputMayBeOptional(t *testing.T) {
+	t.Parallel()
+	process, err := definition.ParseProcess(doc(definition.KindProcess, "p", promptProcess(
+		"    rules: {source: prompt, name: review}\n    go: {source: prompt, name: go_tests, optional: true}\n    style: {source: prompt, name: style, optional: true}\n    again: {source: prompt, name: review, optional: true}\n")))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var optional []bool
+	for _, value := range process.Values {
+		optional = append(optional, value.Optional())
+	}
+	if !reflect.DeepEqual(optional, []bool{false, true, true, true}) {
+		t.Fatalf("optional = %v", optional)
+	}
+	if got := process.OptionalPrompts(); !reflect.DeepEqual(got, []string{"go_tests", "style"}) {
+		t.Fatalf("optional prompts = %q", got)
+	}
+	if !reflect.DeepEqual(process.Prompts(), []string{"review", "go_tests", "style"}) {
+		t.Fatalf("prompts = %q", process.Prompts())
+	}
+
+	for name, value := range map[string]string{"false": "false", "no": "no", "a string": `"yes"`, "a number": "1", "empty": `""`} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			_, err := definition.ParseProcess(doc(definition.KindProcess, "p", promptProcess("    rules: {source: prompt, name: review, optional: "+value+"}\n")))
+			if want := "\n  input.values.rules.optional: takes only true; leave it out for a required prompt"; err == nil || !strings.Contains(err.Error(), want) {
+				t.Fatalf("err = %v, want %q", err, want)
+			}
+		})
+	}
+}
+
+// ADR-019 rule 5: no other input refers to an optional prompt's value; a
+// required one may be referred to, as before.
+func TestNoInputRefersToAnOptionalPrompt(t *testing.T) {
+	t.Parallel()
+	refers := "    other: {source: git.diff, base: \"${value.rules}\"}\n"
+	_, err := definition.ParseProcess(doc(definition.KindProcess, "p", promptProcess("    rules: {source: prompt, name: review, optional: true}\n"+refers)))
+	if want := "\n  input.values.other: refers to ${value.rules}, an optional prompt, which may be missing"; err == nil || !strings.Contains(err.Error(), want) {
+		t.Fatalf("err = %v, want %q", err, want)
+	}
+	if _, err := definition.ParseProcess(doc(definition.KindProcess, "p", promptProcess("    rules: {source: prompt, name: review}\n"+refers))); err != nil {
+		t.Fatalf("a required prompt referred to: %v", err)
+	}
+}
+
+// Rule 5 with names that repeat: a later input of the name supplies its
+// text, so a reference is a problem when any input of that name declared
+// before it is an optional prompt, in either order. One declared after the
+// reference is not referred to.
+func TestNoInputRefersToAnOptionalPromptOfARepeatedName(t *testing.T) {
+	t.Parallel()
+	refers := "    other: {source: git.diff, base: \"${value.rules}\"}\n"
+	required := "    rules: {source: prompt, name: review}\n"
+	optional := "    rules: {source: prompt, name: go_tests, optional: true}\n"
+	want := "\n  input.values.other: refers to ${value.rules}, an optional prompt, which may be missing"
+	for name, values := range map[string]string{
+		"required, then optional": required + optional + refers,
+		"optional, then required": optional + required + refers,
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			if _, err := definition.ParseProcess(doc(definition.KindProcess, "p", promptProcess(values))); err == nil || !strings.Contains(err.Error(), want) {
+				t.Fatalf("err = %v, want %q", err, want)
+			}
+		})
+	}
+	if _, err := definition.ParseProcess(doc(definition.KindProcess, "p", promptProcess(required+refers+optional))); err != nil {
+		t.Fatalf("an optional prompt declared after the reference: %v", err)
 	}
 }
 

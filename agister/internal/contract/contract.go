@@ -276,6 +276,9 @@ type DefinitionOrigin struct {
 type DefinitionRef struct {
 	Kind string `json:"kind"`
 	Name string `json:"name"`
+	// Optional is set on a process's use of a prompt that only optional
+	// inputs name (ADR-019): the process runs without it.
+	Optional bool `json:"optional,omitempty"`
 }
 
 type Param struct {
@@ -315,6 +318,10 @@ type ProcessView struct {
 	// The prompts its inputs name (ADR-014); Sources says where each
 	// resolved one comes from.
 	Prompts []string
+	// Optional are those of Prompts that only optional inputs name, and
+	// Absent those of them neither layer has (ADR-019).
+	Optional []string
+	Absent   []string
 	// What the user should know before calling it.
 	Warnings []string
 	// Where each definition the call uses comes from.

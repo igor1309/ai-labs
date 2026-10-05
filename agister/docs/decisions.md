@@ -109,3 +109,14 @@
 - **Decision:** (a). All six prompt edits stay.
 - **Rests on:** none
 - **Follow-ups:** none
+
+## D-11: How Agister tells that an optional prompt is absent
+
+- **Status:** Owner
+- **Asked by:** workflow run 20261003T130421Z-aa12ef (code_review), judge item "Absence is inferred from listing membership and a name-keyed map, and each edge leaks"; advisor run 20261003T130940Z-6a1ce4 answered `owner`
+- **Question:** should absence of an optional prompt stay "not in the listing" plus a name-keyed map with each edge patched, or should resolution carry a distinguishable not-found result per input?
+- **Options:** (a) keep the listing inference and the name-keyed map; list matching directories, require unique input names, add a listing-error test; (b) resolution carries, per input, a distinguishable not-found result from the read path, so only a genuine not-found in both layers omits the input and no name collision can suppress a different input.
+- **Excluded:** (a): it patches each edge of an inference that keeps leaking, and its unique-name rule reaches beyond ADR-019.
+- **Decision:** (b).
+- **Rests on:** none
+- **Follow-ups:** the LAB-64 round 1 fixes: a directory at an optional prompt's path refuses the call; a duplicate input name cannot drop a present required prompt; a prompt-listing error refuses the call, each with a test.

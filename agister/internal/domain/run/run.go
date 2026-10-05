@@ -190,6 +190,13 @@ type Turn struct {
 	Stale *Stale `json:"stale,omitempty"`
 }
 
+// AbsentPrompt is an optional prompt input the call went ahead without:
+// the input, and the prompt it names that neither settings layer had.
+type AbsentPrompt struct {
+	Input  string `json:"input"`
+	Prompt string `json:"prompt"`
+}
+
 // Input is one resolved, immutable input.
 type Input struct {
 	Name     string `json:"name"`
@@ -229,8 +236,11 @@ type Record struct {
 	CreatedAt   time.Time          `json:"created_at"`
 	FinishedAt  *time.Time         `json:"finished_at,omitempty"`
 	Definitions []DefinitionSource `json:"definitions,omitempty"`
-	Effective   *EffectivePolicy   `json:"effective,omitempty"`
-	Verify      *Verify            `json:"verify,omitempty"`
+	// AbsentPrompts are the optional prompt inputs whose prompt neither
+	// settings layer had, so the agent was not given them (ADR-019 rule 3).
+	AbsentPrompts []AbsentPrompt   `json:"absent_prompts,omitempty"`
+	Effective     *EffectivePolicy `json:"effective,omitempty"`
+	Verify        *Verify          `json:"verify,omitempty"`
 	// Setup is the setup command the call's checkout runs (ADR-012), as
 	// resolved; SetupRun is its one run, once it ran.
 	Setup     *Setup      `json:"setup,omitempty"`

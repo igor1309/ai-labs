@@ -116,7 +116,8 @@ Against trunk's merge-base (also covers #829 and #831):
   start from the production composition, which keeps `system.Clock{}`
   and the real reaper with a 30 s deadline, and discard the reaper's
   `Wait` handle. Every test built on it inherits both (code_review
-  `20261003T090214Z-2d9680`, LAB-59).
+  `20261003T090214Z-2d9680`, LAB-59; again `20261003T130421Z-aa12ef`
+  and LAB-64 review round 2, whose new CLI prompt tests use it).
 - **Trigger:** the next change to the cmd/agister in-process harness, or
   a test that observes reaper timing.
 - **Done when:** the composition accepts a fake clock and a fake reaper,
@@ -150,3 +151,14 @@ Against trunk's merge-base (also covers #829 and #831):
   change to that test.
 - **Done when:** the test also refuses, in every object of every schema
   given to a Codex process, a property missing from `required`.
+
+## 11. Pages does not know optional prompts
+
+- **Gap:** pages reads settings itself (`pages/config.js`) and marks a
+  prompt that neither layer has as missing: "Agister refuses the call"
+  (`pages/page.js`). It does not read `optional: true` (ADR-019), so it
+  flags a missing optional prompt that `check` and calls accept (LAB-64).
+- **Trigger:** the next change to how pages shows a process's prompts, or
+  the first repository that leaves an optional prompt out.
+- **Done when:** pages shows a missing optional prompt as optional and not
+  found, matching `process show`, with a test.

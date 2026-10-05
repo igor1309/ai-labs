@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strings"
 	"sync"
@@ -72,6 +73,7 @@ type ResolvedCall struct {
 	Mapping   CallMapping
 	Schema    []byte
 	Prompts   map[string]Resolved // by name: each prompt's text, identified by its digest
+	Absent    []CallAbsent        // the optional prompt inputs whose prompt neither layer has (ADR-019)
 	Sources   []CallSource
 	Effective CallLimits
 	Identity  CallRuntime
@@ -106,6 +108,14 @@ type CallValue struct {
 	Name   string
 	Source string
 	Args   map[string]string
+}
+
+// CallAbsent is an optional prompt input whose prompt neither layer has
+// (ADR-019): the call goes ahead without it, and only it.
+type CallAbsent struct {
+	Index  int // among the process's values
+	Input  string
+	Prompt string
 }
 
 // CallVerify is a process's verification command (ADR-002).
@@ -250,6 +260,9 @@ func (c callResolution) Resolve(ctx context.Context, request CallResolveRequest)
 		}
 		resolved.Prompts[name] = Resolved{Value: prompt.Text, Identity: "sha256:" + prompt.Source.SHA256}
 	}
+	resolved.Absent = translated(res.absent, func(absent absentInput) CallAbsent {
+		return CallAbsent{Index: absent.index, Input: absent.input, Prompt: absent.prompt}
+	})
 	if setup := res.setup; setup != nil {
 		resolved.Process.Setup = &CallSetup{Command: setup.Command, Timeout: setup.Timeout, From: setup.from, Path: setup.path}
 	}
@@ -759,6 +772,7 @@ func (c *Calls) execute(ctx context.Context, handle RunHandle, record run.Record
 		Timeout: record.Request.Timeout, MaxCostUSD: record.Request.MaxCostUSD,
 	})
 	record.Definitions = recordSources(res.Sources)
+	record.AbsentPrompts = recordAbsent(res.Absent)
 	if err != nil {
 		fail(err)
 		return
@@ -787,7 +801,7 @@ func (c *Calls) execute(ctx context.Context, handle RunHandle, record run.Record
 		return
 	}
 
-	inputs, err := c.resolveValues(ctx, "process "+res.Process.Name, res.Process.Params, res.Process.Values, record.Request, collection, res.Prompts)
+	inputs, err := c.resolveValues(ctx, "process "+res.Process.Name, res.Process.Params, res.Process.Values, record.Request, collection, res.Prompts, res.Absent)
 	if err != nil {
 		fail(err)
 		return
@@ -1063,7 +1077,7 @@ func (c *Calls) runWorkflow(ctx context.Context, handle RunHandle, record run.Re
 
 	// Resolved once, before any node starts; every fan-out node receives the
 	// same values.
-	inputs, err := c.resolveValues(ctx, "workflow "+workflow.Name, workflow.Params, workflow.Values, record.Request, nil, nil)
+	inputs, err := c.resolveValues(ctx, "workflow "+workflow.Name, workflow.Params, workflow.Values, record.Request, nil, nil, nil)
 	if err != nil {
 		refused(err)
 		return
@@ -1499,8 +1513,10 @@ func (c *Calls) collectChanges(ctx context.Context, handle RunHandle, dir, revis
 // such as a commit hash. subject names the definition, e.g. "process p".
 // Only a join has a collection to receive; a collection input of any other
 // call is refused. prompts are the prompts resolved with the call, by name
-// (ADR-014 rule 3); a workflow has none.
-func (c *Calls) resolveValues(ctx context.Context, subject string, declared []CallParam, values []CallValue, request run.Request, collection *Resolved, prompts map[string]Resolved) ([]run.Input, error) {
+// (ADR-014 rule 3), and absent the optional prompt inputs neither layer has
+// the prompt of, by their index among values, which give no input (ADR-019
+// rule 2); a workflow has none.
+func (c *Calls) resolveValues(ctx context.Context, subject string, declared []CallParam, values []CallValue, request run.Request, collection *Resolved, prompts map[string]Resolved, absent []CallAbsent) ([]run.Input, error) {
 	params := map[string]string{}
 	var unknown []string
 	for name := range request.Params {
@@ -1530,7 +1546,7 @@ func (c *Calls) resolveValues(ctx context.Context, subject string, declared []Ca
 
 	inputs := make([]run.Input, 0, len(values))
 	texts := map[string]string{}
-	for _, value := range values {
+	for i, value := range values {
 		if value.Source == definition.CollectionSource {
 			if collection == nil {
 				return nil, refuse("input %s: %s is given only to a workflow's join", value.Name, definition.CollectionSource)
@@ -1542,6 +1558,9 @@ func (c *Calls) resolveValues(ctx context.Context, subject string, declared []Ca
 			continue
 		}
 		if value.Source == definition.PromptSource {
+			if slices.ContainsFunc(absent, func(a CallAbsent) bool { return a.Index == i }) {
+				continue
+			}
 			prompt, ok := prompts[value.Args["name"]]
 			if !ok {
 				return nil, refuse("input %s: prompt %q was not resolved with the call", value.Name, value.Args["name"])

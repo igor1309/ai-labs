@@ -13,6 +13,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -739,10 +740,20 @@ func showProcess(w io.Writer, view contract.ProcessView) {
 		if i == 0 {
 			label = "prompts"
 		}
+		// A call goes ahead without an optional one neither layer has
+		// (ADR-019).
+		optional, mark := slices.Contains(view.Optional, name), ""
 		text := name + " (not resolved)"
+		if optional {
+			mark = " (optional)"
+			text = name + " (optional, not resolved)"
+		}
+		if slices.Contains(view.Absent, name) {
+			text = name + " (optional, not found)"
+		}
 		for _, source := range view.Sources {
 			if source.Kind == "prompts" && source.Name == name {
-				text = name + ": " + source.Layer + " " + source.Path
+				text = name + ": " + source.Layer + " " + source.Path + mark
 			}
 		}
 		lines = append(lines, [2]string{label, text})
@@ -1052,8 +1063,11 @@ func printTree(w io.Writer, definitions []contract.Definition) {
 	type line struct{ label, detail string }
 	var lines []line
 	describe := func(ref contract.DefinitionRef) string {
-		d, ok := byRef[ref]
-		if !ok {
+		d, ok := byRef[contract.DefinitionRef{Kind: ref.Kind, Name: ref.Name}]
+		switch {
+		case !ok && ref.Optional:
+			return "optional, not found" // the process runs without it (ADR-019)
+		case !ok:
 			return "MISSING"
 		}
 		text := fmt.Sprintf("%-7s %s", d.Layer, d.Path)
@@ -1063,13 +1077,17 @@ func printTree(w io.Writer, definitions []contract.Definition) {
 		if d.Invalid {
 			text += " INVALID"
 		}
+		if ref.Optional {
+			text += " (optional)"
+		}
 		return text
 	}
 	reached := map[contract.DefinitionRef]bool{}
 	var walk func(ref contract.DefinitionRef, prefix, branch string)
-	walk = func(ref contract.DefinitionRef, prefix, branch string) {
+	walk = func(use contract.DefinitionRef, prefix, branch string) {
+		ref := contract.DefinitionRef{Kind: use.Kind, Name: use.Name}
 		reached[ref] = true
-		lines = append(lines, line{prefix + branch + kindNames[ref.Kind] + " " + ref.Name, describe(ref)})
+		lines = append(lines, line{prefix + branch + kindNames[ref.Kind] + " " + ref.Name, describe(use)})
 		children := byRef[ref].Uses
 		next := prefix
 		switch branch {
