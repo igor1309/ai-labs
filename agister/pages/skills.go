@@ -3,6 +3,7 @@ package pages
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -381,13 +382,18 @@ const settingsSkillFile = "SKILL.md"
 // readSettingsSkills reads the skills of the settings layer dir, a
 // .agister folder: each folder in its skills/, its SKILL.md with read, the
 // only file it reads. As Agister lists them, a symbolic link there is a
-// skill too, a broken one, and is not followed; a file is no skill.
-func readSettingsSkills(scope, dir string, read func(string) ([]byte, error)) []SettingsSkill {
+// skill too, a broken one, and is not followed; a file is no skill. Only a
+// skills/ that does not exist holds no skills: one that cannot be listed is
+// an error, as Agister refuses a call for it rather than take home's.
+func readSettingsSkills(scope, dir string, read func(string) ([]byte, error)) ([]SettingsSkill, error) {
 	skills := []SettingsSkill{}
 	root := filepath.Join(dir, "skills")
 	entries, err := os.ReadDir(root)
+	if errors.Is(err, fs.ErrNotExist) {
+		return skills, nil
+	}
 	if err != nil {
-		return skills
+		return nil, err
 	}
 	for _, entry := range entries {
 		path := filepath.Join(root, entry.Name())
@@ -401,13 +407,15 @@ func readSettingsSkills(scope, dir string, read func(string) ([]byte, error)) []
 			skills = append(skills, SettingsSkill{Scope: scope, Skill: readSettingsSkill(path, entry.Name(), read)})
 		}
 	}
-	return skills
+	return skills, nil
 }
 
 // readSettingsSkill reads the settings skill name at path. Its SKILL.md is
 // read only when it is a regular file, not a link, within the size limit;
-// then the checks of any skill run on it. A folder holding anything else
-// fails one more check, which names what it holds and reads none of it.
+// then the checks of any skill run on it, and its name is compared as
+// written, as Agister compares it: a padded name is not the folder's. A
+// folder holding anything else fails one more check, which names what it
+// holds and reads none of it.
 func readSettingsSkill(path, name string, read func(string) ([]byte, error)) Skill {
 	s := Skill{Name: name, Path: path}
 	entries, err := os.ReadDir(path)
@@ -437,6 +445,9 @@ func readSettingsSkill(path, name string, read func(string) ([]byte, error)) Ski
 		}
 		s.Content = string(data)
 		s.Description, s.Checks = check(data, name)
+		if declared := literalName(data); declared != name && strings.TrimSpace(declared) == name {
+			s.Checks = Checks{Failed: append(s.Checks.Failed, fmt.Sprintf("name %q is not the folder's name %s", declared, name))}
+		}
 	}
 	if len(others) > 0 {
 		s.Checks = Checks{Failed: append(s.Checks.Failed,
@@ -477,6 +488,17 @@ func check(data []byte, folder string) (string, Checks) {
 		fails = append(fails, "name "+name+" is not the folder's name "+folder)
 	}
 	return description, Checks{Passed: len(fails) == 0, Failed: fails}
+}
+
+// literalName is the front matter's name as written, untrimmed; empty when
+// it has none.
+func literalName(data []byte) string {
+	front, err := frontMatter(data)
+	if err != nil {
+		return ""
+	}
+	name, _ := front["name"].(string)
+	return name
 }
 
 func text(v any) string {
@@ -561,14 +583,23 @@ func skillsAt(path, agisterHome string, homes SkillHomes, read func(string) ([]b
 	}
 	reply := SkillsReply{Path: path, Home: filepath.Clean(dir) == filepath.Clean(agisterHome)}
 	repo := ""
+	reply.Settings = []SettingsSkill{}
 	if reply.Home {
 		reply.Adapters = runtimeAdapters(read, agisterHome)
-		reply.Settings = readSettingsSkills("home", agisterHome, read)
 	} else {
 		repo = filepath.Clean(path)
 		reply.Adapters = runtimeAdapters(read, agisterHome, dir)
-		reply.Settings = append(readSettingsSkills("repo", dir, read), readSettingsSkills("home", agisterHome, read)...)
+		repoSkills, err := readSettingsSkills("repo", dir, read)
+		if err != nil {
+			return SkillsReply{}, err
+		}
+		reply.Settings = repoSkills
 	}
+	homeSkills, err := readSettingsSkills("home", agisterHome, read)
+	if err != nil {
+		return SkillsReply{}, err
+	}
+	reply.Settings = append(reply.Settings, homeSkills...)
 	reply.Folders = readSkills(repo, reply.Adapters, homes, read)
 	return reply, nil
 }

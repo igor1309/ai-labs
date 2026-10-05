@@ -1,6 +1,7 @@
 package pages
 
 import (
+	"io/fs"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -591,10 +592,7 @@ func TestASettingsSkillFailsEachCheckAndPassesWhenWhole(t *testing.T) {
 		reads = append(reads, path)
 		return os.ReadFile(path)
 	}
-	got := map[string]SettingsSkill{}
-	for _, s := range readSettingsSkills("repo", dir, read) {
-		got[s.Name] = s
-	}
+	got := settingsSkillsIn(t, dir, read)
 	beside := func(what string) string {
 		return "holds " + what + " beside SKILL.md: a skill is its SKILL.md alone, and its other files are not given to a call"
 	}
@@ -784,10 +782,7 @@ func TestSettingsSkillInventoryReadsOnlySKILLMD(t *testing.T) {
 		reads = append(reads, path)
 		return os.ReadFile(path)
 	}
-	got := map[string]SettingsSkill{}
-	for _, s := range readSettingsSkills("repo", dir, read) {
-		got[s.Name] = s
-	}
+	got := settingsSkillsIn(t, dir, read)
 	if want := []string{filepath.Join(skills, "plan", "SKILL.md")}; !reflect.DeepEqual(reads, want) {
 		t.Errorf("read %q, want %q", reads, want)
 	}
@@ -801,5 +796,121 @@ func TestSettingsSkillInventoryReadsOnlySKILLMD(t *testing.T) {
 	}
 	if s := got["outside"]; s.State != SkillNotAFile || s.Content != "" || s.Checks.Passed {
 		t.Errorf("outside: %+v", s)
+	}
+}
+
+// settingsSkillsIn reads the settings skills of dir with read, by name.
+func settingsSkillsIn(t *testing.T, dir string, read func(string) ([]byte, error)) map[string]SettingsSkill {
+	t.Helper()
+	skills, err := readSettingsSkills("repo", dir, read)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := map[string]SettingsSkill{}
+	for _, s := range skills {
+		got[s.Name] = s
+	}
+	return got
+}
+
+// The page reads /api/skills' settings by their JSON keys (D-16): checked
+// on the raw reply, not decoded into a Go type, whose field matching
+// ignores case.
+func TestSkillsEndpointNamesTheSettingsSkillsKeysAsThePageReadsThem(t *testing.T) {
+	t.Parallel()
+	root := realDir(t, t.TempDir())
+	user := filepath.Join(root, "user")
+	home := filepath.Join(user, ".agister")
+	write(t, filepath.Join(home, "skills", "go", "SKILL.md"), skillMD("go", "Go."))
+	repo := filepath.Join(root, "repo")
+	write(t, filepath.Join(repo, ".agister", "skills", "plan", "SKILL.md"), skillMD("plan", "Repo plan."))
+	write(t, filepath.Join(repo, ".agister", "skills", "torn", "notes.txt"), "no SKILL.md")
+	h := Handler(home, noChoose(t), owners(), SkillHomes{Home: user})
+
+	var raw map[string]any
+	if code := get(t, h, "127.0.0.1", "/api/skills?path="+q(repo), &raw); code != 200 {
+		t.Fatalf("status %d", code)
+	}
+	want := []any{
+		map[string]any{
+			"scope": "repo", "name": "plan", "path": filepath.Join(repo, ".agister", "skills", "plan"),
+			"content": skillMD("plan", "Repo plan."), "description": "Repo plan.",
+			"checks": map[string]any{"passed": true},
+		},
+		map[string]any{
+			"scope": "repo", "name": "torn", "path": filepath.Join(repo, ".agister", "skills", "torn"), "state": "missing",
+			"checks": map[string]any{"passed": false, "failed": []any{
+				"SKILL.md is missing",
+				"holds notes.txt beside SKILL.md: a skill is its SKILL.md alone, and its other files are not given to a call",
+			}},
+		},
+		map[string]any{
+			"scope": "home", "name": "go", "path": filepath.Join(home, "skills", "go"),
+			"content": skillMD("go", "Go."), "description": "Go.",
+			"checks": map[string]any{"passed": true},
+		},
+	}
+	if got := raw["settings"]; !reflect.DeepEqual(got, want) {
+		t.Errorf("settings:\n got %#v\nwant %#v", got, want)
+	}
+}
+
+// D-16: only a repo skills/ that does not exist leaves home's skills in
+// effect. One that cannot be listed fails the reply, as Agister refuses
+// the call, rather than show home's skill as the one in effect.
+func TestAnUnreadableRepoSkillsFolderFailsTheInventory(t *testing.T) {
+	t.Parallel()
+	root := realDir(t, t.TempDir())
+	user := filepath.Join(root, "user")
+	home := filepath.Join(user, ".agister")
+	write(t, filepath.Join(home, "skills", "plan", "SKILL.md"), skillMD("plan", "Home plan."))
+	repo := filepath.Join(root, "repo")
+	skills := filepath.Join(repo, ".agister", "skills")
+	write(t, filepath.Join(skills, "plan", "SKILL.md"), skillMD("plan", "Repo plan."))
+	if err := os.Chmod(skills, 0); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.Chmod(skills, 0o755) })
+	h := Handler(home, noChoose(t), owners(), SkillHomes{Home: user})
+
+	var got map[string]any
+	if code := get(t, h, "127.0.0.1", "/api/skills?path="+q(repo), &got); code != 403 {
+		t.Fatalf("status %d, want 403: %v", code, got)
+	}
+	if msg, _ := got["error"].(string); !strings.Contains(msg, skills) || got["settings"] != nil {
+		t.Errorf("reply %v, want an error naming %s and no settings", got, skills)
+	}
+}
+
+// A SKILL.md that cannot be read is shown as such, with no content, not
+// checked as if empty.
+func TestASettingsSkillMDThatCannotBeReadSaysSo(t *testing.T) {
+	t.Parallel()
+	dir := realDir(t, t.TempDir())
+	write(t, filepath.Join(dir, "skills", "plan", "SKILL.md"), skillMD("plan", "P."))
+	read := func(string) ([]byte, error) { return nil, fs.ErrPermission }
+
+	s := settingsSkillsIn(t, dir, read)["plan"]
+	if s.State != SkillMissing || s.Content != "" || s.Description != "" || s.Checks.Passed ||
+		!reflect.DeepEqual(s.Checks.Failed, []string{"SKILL.md cannot be read"}) {
+		t.Errorf("plan: %+v", s)
+	}
+}
+
+// ADR-021 rule 1, ADR-011 rule 7: Agister compares a skill's name as
+// written, so a padded one is not the folder's and fails.
+func TestASettingsSkillsPaddedNameIsNotItsFolders(t *testing.T) {
+	t.Parallel()
+	dir := realDir(t, t.TempDir())
+	write(t, filepath.Join(dir, "skills", "plan", "SKILL.md"), "---\nname: \" plan \"\ndescription: P.\n---\n")
+	write(t, filepath.Join(dir, "skills", "go", "SKILL.md"), "---\nname: go   \ndescription: G.\n---\n")
+
+	got := settingsSkillsIn(t, dir, os.ReadFile)
+	if s := got["plan"]; s.State != "" || s.Checks.Passed || !reflect.DeepEqual(s.Checks.Failed, []string{`name " plan " is not the folder's name plan`}) {
+		t.Errorf("plan: %+v", s)
+	}
+	// YAML drops the spaces after a plain value: the name is go.
+	if s := got["go"]; !s.Checks.Passed {
+		t.Errorf("go: %+v", s)
 	}
 }
