@@ -32,7 +32,11 @@
           "line",
           "title",
           "detail",
-          "evidence"
+          "evidence",
+          "requirement",
+          "consequence",
+          "severity_rationale",
+          "fix_cost"
         ],
         "properties": {
           "severity": {
@@ -61,7 +65,7 @@
           },
           "detail": {
             "type": "string",
-            "description": "What is wrong, why it matters and the smallest fix."
+            "description": "What is wrong and the smallest fix. Why it matters goes in consequence."
           },
           "evidence": {
             "type": "object",
@@ -87,6 +91,58 @@
               "introduced_by_change": {
                 "type": "boolean",
                 "description": "true if the change introduced the problem or left it in code it touched; false if it lies outside the change."
+              }
+            }
+          },
+          "requirement": {
+            "type": "string",
+            "description": "The rule, invariant, recorded decision or contract the finding violates, quoted or named."
+          },
+          "consequence": {
+            "type": "string",
+            "description": "What happens if it stays, in the concrete case given."
+          },
+          "severity_rationale": {
+            "type": "string",
+            "description": "Why this severity and not the one below it."
+          },
+          "fix_cost": {
+            "type": "object",
+            "additionalProperties": false,
+            "description": "The cost of the smallest fix: a band for its size and one for its change risk, each with its basis. Where a fix meets more than one anchor, the highest is its band.",
+            "required": [
+              "size",
+              "size_basis",
+              "change_risk",
+              "change_risk_basis"
+            ],
+            "properties": {
+              "size": {
+                "type": "string",
+                "enum": [
+                  "trivial",
+                  "small",
+                  "substantial",
+                  "major"
+                ],
+                "description": "trivial: one function, no new test. small: one function or file, with its test. substantial: several files, or a new seam for its test. major: crosses a component boundary, or changes a contract."
+              },
+              "size_basis": {
+                "type": "string",
+                "description": "The files, functions and tests the fix touches."
+              },
+              "change_risk": {
+                "type": "string",
+                "enum": [
+                  "contained",
+                  "moderate",
+                  "broad"
+                ],
+                "description": "contained: nothing outside the touched code depends on what changes. moderate: callers inside the same component. broad: other components, stored records, config or CLI users."
+              },
+              "change_risk_basis": {
+                "type": "string",
+                "description": "The callers and users that depend on what changes, or that none do."
               }
             }
           }
