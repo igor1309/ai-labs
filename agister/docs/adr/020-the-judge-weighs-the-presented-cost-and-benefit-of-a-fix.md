@@ -1,14 +1,14 @@
-# ADR draft: The judge weighs the presented cost and benefit of a fix
+# ADR-020: The judge weighs the presented cost and benefit of a fix
 
-- **Status:** Proposed
+- **Status:** Accepted
 - **Date:** 2026-10-05
 - **Scope:** how the review judge disposes of a finding whose evidence
   holds, and what a review finding must present for it to do so
 - **Decision type:** Process
-- **Amends:** [ADR-007](../../agister/docs/adr/007-an-advisor-decides-open-questions.md)
+- **Amends:** [ADR-007](007-an-advisor-decides-open-questions.md)
   rule 1 (what `owner` leaves to the judge)
-- **Relates to:** [ADR-003](../../agister/docs/adr/003-fan-out-and-join-workflow.md)
-- **Source:** [cost-benefit-for-ai-judge-discussion.md](cost-benefit-for-ai-judge-discussion.md)
+- **Relates to:** [ADR-003](003-fan-out-and-join-workflow.md)
+- **Source:** [cost-benefit-for-ai-judge-discussion.md](../../../research/judge/cost-benefit-for-ai-judge-discussion.md)
 
 ## Context
 
