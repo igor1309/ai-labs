@@ -608,9 +608,10 @@ func TestJudgementSchemaRequiresCoverageGaps(t *testing.T) {
 
 // Each review prompt of the repository carries its part of the coverage
 // contract. A reviewer's prompt has a definition of done whose items are
-// numbered from 1, and the instruction to report every numbered item in
-// coverage with one of the four statuses. The judge's has its definition of
-// done, and the instructions that coverage entries are not findings, that
+// numbered 1 to the prompt's own count, in order, with none unnumbered, and
+// the instruction to report every numbered item in coverage with one of the
+// four statuses. The judge's has its definition of done, numbered the same
+// way, and the instructions that coverage entries are not findings, that
 // not_checked and rule_only entries are copied to coverage_gaps, that a
 // review with no output is an incomplete "whole review" gap, and that the
 // summary names coverage gaps. An instruction is held by its short phrases
@@ -626,14 +627,15 @@ func TestReviewPromptsCarryTheirCoverageContract(t *testing.T) {
 		[]string{"every numbered item", "`coverage`", "`checked`", "`finding`", "`rule_only`", "`not_checked`"}}
 	cases := []struct {
 		prompt       string
+		items        int
 		instructions []promptInstruction
 	}{
-		{"code-review-tests.md", []promptInstruction{report}},
-		{"code-review-adversarial.md", []promptInstruction{report}},
-		{"code-review-architecture.md", []promptInstruction{report}},
-		{"code-review-clarity.md", []promptInstruction{report}},
-		{"code-review-adr.md", []promptInstruction{report}},
-		{"code-review-judge.md", []promptInstruction{
+		{"code-review-tests.md", 11, []promptInstruction{report}},
+		{"code-review-adversarial.md", 8, []promptInstruction{report}},
+		{"code-review-architecture.md", 9, []promptInstruction{report}},
+		{"code-review-clarity.md", 9, []promptInstruction{report}},
+		{"code-review-adr.md", 6, []promptInstruction{report}},
+		{"code-review-judge.md", 4, []promptInstruction{
 			{"coverage entries are not findings", []string{"`coverage`", "not findings"}},
 			{"copy not_checked and rule_only entries to coverage_gaps", []string{"`not_checked`", "`rule_only`", "`coverage_gaps`"}},
 			{`a review with no output is an incomplete "whole review" gap`, []string{`"whole review"`, "`incomplete`"}},
@@ -648,8 +650,13 @@ func TestReviewPromptsCarryTheirCoverageContract(t *testing.T) {
 				t.Fatal(err)
 			}
 			prompt := string(data)
-			if !numbersItsDefinitionOfDone(prompt) {
-				t.Errorf("prompts/%s has no \"Definition of done\" with items numbered from 1", c.prompt)
+			want := make([]int, c.items)
+			for i := range want {
+				want[i] = i + 1
+			}
+			if got := definitionOfDoneNumbers(prompt); !slices.Equal(got, want) {
+				t.Errorf("prompts/%s: want a \"Definition of done\" of %d items numbered 1 to %d, found the numbers %v (0 is an unnumbered item)",
+					c.prompt, c.items, c.items, got)
 			}
 			for _, instruction := range c.instructions {
 				if !carries(prompt, instruction.phrases) {
@@ -690,29 +697,37 @@ func TestCarries(t *testing.T) {
 	}
 }
 
-// numbersItsDefinitionOfDone holds for a definition of done whose items
-// start at 1, right after the heading or after a lead-in; it does not for a
-// prompt without the heading, a definition of done with no numbered item,
-// one whose only numbered list stands before the heading, and one whose
-// items start past 1.
-func TestNumbersItsDefinitionOfDone(t *testing.T) {
+// definitionOfDoneNumbers gives the numbers of the items under the
+// "Definition of done" heading, in order, right after it or after a lead-in,
+// up to the next heading, markdown or plain. A missing item, a duplicate,
+// items from 2 and a bullet (as 0) show in what it gives; an indented
+// sub-list is not an item, a list before the heading or under a later
+// heading is not part of it, and a prompt without the heading gives none.
+func TestDefinitionOfDoneNumbers(t *testing.T) {
 	t.Parallel()
 	cases := []struct {
 		name, prompt string
-		want         bool
+		want         []int
 	}{
-		{"items from 1", "Review it.\n\nDefinition of done:\n\n1. One.\n2. Two.\n", true},
-		{"a lead-in before the items", "Definition of done\n\nIt is in good shape when:\n\n1. One.\n", true},
-		{"no definition of done", "Review it.\n\n1. One.\n2. Two.\n", false},
-		{"no numbered item", "Definition of done:\n\nEverything is proven.\n", false},
-		{"a numbered list before the heading only", "1. Merge.\n2. Sort.\n\nDefinition of done:\n\nEverything is ruled on.\n", false},
-		{"items from 2", "Definition of done:\n\n2. Two.\n3. Three.\n", false},
+		{"a complete list", "Review it.\n\nDefinition of done:\n\n1. One.\n2. Two.\n3. Three.\n", []int{1, 2, 3}},
+		{"a lead-in before the items", "Definition of done\n\nIt is in good shape when:\n\n1. One.\n2. Two.\n", []int{1, 2}},
+		{"items wrapped and apart", "Definition of done:\n\n1. One,\n   wrapped.\n\n2. Two.\n\nStop once done.\n", []int{1, 2}},
+		{"a missing item", "Definition of done:\n\n1. One.\n3. Three.\n", []int{1, 3}},
+		{"a duplicate", "Definition of done:\n\n1. One.\n2. Two.\n2. Two again.\n", []int{1, 2, 2}},
+		{"an unnumbered item", "Definition of done:\n\n1. One.\n* Bullet.\n2. Two.\n", []int{1, 0, 2}},
+		{"an unnumbered item with a dash", "Definition of done:\n\n1. One.\n\n- Bullet.\n", []int{1, 0}},
+		{"an indented sub-list", "Definition of done:\n\n1. One:\n   - a part.\n   1. a step.\n2. Two.\n", []int{1, 2}},
+		{"a later list under a plain heading", "Definition of done\n\n1. One.\n2. Two.\n\nReview findings\n\n1. Location.\n", []int{1, 2}},
+		{"a later list under a markdown heading", "## Definition of done\n\n1. One.\n\n## Findings:\n\n1. Location.\n", []int{1}},
+		{"a list before the heading only", "1. Merge.\n2. Sort.\n\nDefinition of done:\n\nEverything is ruled on.\n", nil},
+		{"no definition of done", "Review it.\n\n1. One.\n2. Two.\n", nil},
+		{"items from 2", "Definition of done:\n\n2. Two.\n3. Three.\n", []int{2, 3}},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			t.Parallel()
-			if got := numbersItsDefinitionOfDone(c.prompt); got != c.want {
-				t.Fatalf("numbersItsDefinitionOfDone(%q) = %v, want %v", c.prompt, got, c.want)
+			if got := definitionOfDoneNumbers(c.prompt); !slices.Equal(got, c.want) {
+				t.Fatalf("definitionOfDoneNumbers(%q) = %v, want %v", c.prompt, got, c.want)
 			}
 		})
 	}
@@ -728,8 +743,9 @@ type promptInstruction struct {
 // blankLine separates two paragraphs of a prompt.
 var blankLine = regexp.MustCompile(`\n[ \t]*\n`)
 
-// numberedItem starts a numbered list item of a prompt.
-var numberedItem = regexp.MustCompile(`(?m)^\d+\. `)
+// listItem starts a top-level list item of a prompt: a numbered one, whose
+// number it captures, or a bullet.
+var listItem = regexp.MustCompile(`^(?:(\d+)\.|[*-]) `)
 
 // carries reports whether one paragraph of prompt has every phrase.
 // Whitespace inside a paragraph is one space, so a phrase wrapped across
@@ -745,12 +761,42 @@ func carries(prompt string, phrases []string) bool {
 	return false
 }
 
-// numbersItsDefinitionOfDone reports whether prompt has a "Definition of
-// done" whose items are numbered from 1: the first numbered item after the
-// heading is item 1.
-func numbersItsDefinitionOfDone(prompt string) bool {
+// definitionOfDoneNumbers returns the numbers of the items of prompt's
+// "Definition of done", in order, with 0 for a bullet standing where an item
+// could: the top-level list items from the line after that heading to the
+// next heading or the end of the prompt. It returns nil without the heading.
+func definitionOfDoneNumbers(prompt string) []int {
 	_, after, found := strings.Cut(prompt, "Definition of done")
-	return found && numberedItem.FindString(after) == "1. "
+	if !found {
+		return nil
+	}
+	_, after, _ = strings.Cut(after, "\n")
+	var numbers []int
+	for _, paragraph := range blankLine.Split(after, -1) {
+		if isHeading(paragraph) {
+			break
+		}
+		for _, line := range strings.Split(paragraph, "\n") {
+			if item := listItem.FindStringSubmatch(line); item != nil {
+				number, _ := strconv.Atoi(item[1]) // a bullet has none: 0
+				numbers = append(numbers, number)
+			}
+		}
+	}
+	return numbers
+}
+
+// isHeading reports whether a paragraph of a prompt is a heading: a markdown
+// one, or a plain one as the prompts write "Review findings", a single line
+// that is not indented, is no list item and ends without punctuation.
+func isHeading(paragraph string) bool {
+	paragraph = strings.Trim(paragraph, "\n")
+	if strings.HasPrefix(paragraph, "#") {
+		return true
+	}
+	plain := paragraph != "" && !strings.Contains(paragraph, "\n") &&
+		!strings.HasPrefix(paragraph, " ") && !listItem.MatchString(paragraph)
+	return plain && !strings.ContainsAny(paragraph[len(paragraph)-1:], ".,:;!?")
 }
 
 // No schema this repository gives to Codex uses a combinator Codex's
