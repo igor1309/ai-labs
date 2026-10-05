@@ -802,13 +802,15 @@ func TestReviewPromptsCarryTheirCoverageContract(t *testing.T) {
 // cost as review-result.json bands it, each band with its basis. The
 // judge's has the waive ruling and the two questions it answers; the burden
 // for fixing by severity, blocker to nit, and that equal or unresolved
-// economics leave the presumption standing; the severity checked before
-// merging, a merged item taking the highest supported one; a reject for a
-// finding with no causal chain; a fix cost without its basis counted as
-// unpresented; and the switching condition each item records. An
-// instruction is held by its short phrases standing in one paragraph, as in
-// TestReviewPromptsCarryTheirCoverageContract. The prompts are the
-// repository's own, read as they are.
+// economics leave the presumption standing; that a trade-off or a stance
+// only the owner can take stays an owner question, while fixing or waiving
+// one proven finding is the judge's when its presented case settles it; the
+// severity checked before merging, a merged item taking the highest
+// supported one; a reject for a finding with no causal chain; a fix cost
+// without its basis counted as unpresented; and the switching condition
+// each item records. An instruction is held by its short phrases standing
+// in one paragraph, as in TestReviewPromptsCarryTheirCoverageContract. The
+// prompts are the repository's own, read as they are.
 func TestReviewPromptsCarryTheCaseForValue(t *testing.T) {
 	t.Parallel()
 	root, err := filepath.Abs(filepath.Join("..", "..", ".."))
@@ -835,6 +837,9 @@ func TestReviewPromptsCarryTheCaseForValue(t *testing.T) {
 				"**blocker**: always fixed", "**major**: fix, or `owner`", "grossly disproportionate",
 				"**minor**: fix, or `waive` when the presented cost exceeds", "**nit**: `waive`, or fix when the presented benefit exceeds"}},
 			{"equal or unresolved economics leave the presumption standing", []string{"equal or unresolved", "presumption"}},
+			{"the owner keeps its trade-offs and stances; fix or waive of one proven finding is the judge's", []string{
+				"**owner**", "a trade-off or a stance only the owner can take",
+				"Whether one proven finding is fixed or waived is yours", "when the presented case settles it"}},
 			{"severity is checked before merging", []string{
 				"before merging", "`severity_rationale`", "the highest severity the evidence supports",
 				"the highest supported severity among its sources"}},
