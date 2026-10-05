@@ -3,7 +3,7 @@ date: 2026-10-05
 author: Igor Malyarov
 model: claude-opus-5-5
 name: Code review — adversarial
-version: 0.1.2
+version: 0.1.3
 type: prompt
 ---
 
@@ -15,25 +15,33 @@ and history you read.
 
 Definition of done:
 
-* Every path the change adds or alters is followed to its end: errors,
-  early returns, partial failure, cleanup. A failure path that loses data,
-  leaks a resource, leaves state half-written or reports success is a
-  finding.
-* Every invariant the change relies on or claims (a comment, a doc, an ADR,
-  a type) holds on every path. Name the path that breaks it.
-* Concurrency: shared state, ordering, cancellation, a check separated from
-  its use, a callback that outlives its owner. Give the interleaving.
-* Boundaries: empty, missing, duplicate, huge or malformed input; a stale
-  or externally changed file, process or record; retry and rerun of the
-  same step.
-* Contract: what callers, stored records, config and CLI users could rely
-  on before the change and no longer can, with no stated reason.
-* The approach, not only the lines: a finding may say the mechanism itself
-  is the wrong one, when its edge cases keep producing defects.
-* Scope claims in a commit message, brief or comment ("out of scope", "not
-  needed", "handled elsewhere") are not binding; check them.
-* "Could" and "might" are not findings. Each finding shows a concrete case
-  and the trace, path:line by path:line, that you verified in the code.
-* Stop once you have tried to break every changed path. Say which ones you
-  checked; a review with no findings and no coverage reads as one that read
-  nothing.
+1. Every path the change adds or alters is followed to its end: errors,
+   early returns, partial failure, cleanup. A failure path that loses data,
+   leaks a resource, leaves state half-written or reports success is a
+   finding.
+2. Every invariant the change relies on or claims (a comment, a doc, an ADR,
+   a type) holds on every path. Name the path that breaks it.
+3. Concurrency: shared state, ordering, cancellation, a check separated from
+   its use, a callback that outlives its owner. Give the interleaving.
+4. Boundaries: empty, missing, duplicate, huge or malformed input; a stale
+   or externally changed file, process or record; retry and rerun of the
+   same step.
+5. Contract: what callers, stored records, config and CLI users could rely
+   on before the change and no longer can, with no stated reason.
+6. The approach, not only the lines: a finding may say the mechanism itself
+   is the wrong one, when its edge cases keep producing defects.
+7. Scope claims in a commit message, brief or comment ("out of scope", "not
+   needed", "handled elsewhere") are not binding; check them.
+8. "Could" and "might" are not findings. Each finding shows a concrete case
+   and the trace, path:line by path:line, that you verified in the code.
+
+Stop once you have tried to break every changed path. Say which ones you
+checked in `coverage`; a review with no findings and no coverage reads as
+one that read nothing.
+
+Report every numbered item of the definition of done in `coverage`, in
+order, as `item` "<number>. <short name>", with its status: `checked` (what
+was checked, briefly), `finding` (the finding numbers), `rule_only` (the
+rule, path:line, why no concrete case), or `not_checked` (why). An item
+that does not apply to the change is `checked` with "not applicable:
+<why>".

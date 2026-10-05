@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"regexp"
 	"slices"
 	"sort"
 	"strconv"
@@ -494,9 +495,9 @@ func TestAdviceSchemaTiesTheAnswerToItsPayload(t *testing.T) {
 }
 
 // The repository's review result schema accepts a review whose coverage
-// holds entries of every status, a null coverage and an empty one; it
-// refuses a review without coverage, a scalar coverage, an entry that is not
-// an object, an entry with an unknown status, an entry missing its item,
+// holds entries of every status; it refuses a review without coverage, a
+// null coverage, an empty one, a scalar coverage, an entry that is not an
+// object, an entry with an unknown status, an entry missing its item,
 // status or detail, an entry whose item or detail is not a string, and an
 // entry with an unexpected field. The payloads are fixed, not built from the
 // schema.
@@ -520,8 +521,8 @@ func TestReviewResultSchemaRequiresCoverage(t *testing.T) {
 			`{"item":"errors","status":"finding","detail":"1"},` +
 			`{"item":"naming","status":"rule_only","detail":"rule 3, a.go:4, no concrete case"},` +
 			`{"item":"docs","status":"not_checked","detail":"no docs changed"}]}`, true},
-		{"null coverage", `{` + review + `,"coverage":null}`, true},
-		{"empty coverage", `{` + review + `,"coverage":[]}`, true},
+		{"null coverage", `{` + review + `,"coverage":null}`, false},
+		{"empty coverage", `{` + review + `,"coverage":[]}`, false},
 		{"no coverage", `{` + review + `}`, false},
 		{"an unknown status", `{` + review + `,"coverage":[{"item":"tests","status":"skipped","detail":"x"}]}`, false},
 		{"an entry without its item", `{` + review + `,"coverage":[{"status":"checked","detail":"x"}]}`, false},
@@ -545,6 +546,258 @@ func TestReviewResultSchemaRequiresCoverage(t *testing.T) {
 			}
 		})
 	}
+}
+
+// The repository's judgement schema accepts a judgement with no coverage
+// gaps and one whose gaps hold an entry of every status; it refuses a
+// judgement without coverage gaps, null coverage gaps, scalar ones, an entry
+// that is not an object, an entry with an unknown status, an entry whose
+// review is not an integer (a string, a fraction), an entry missing its
+// review, item, status or detail, an entry whose item or detail is not a
+// string, and an entry with an unexpected field. The payloads are fixed, not
+// built from the schema.
+func TestJudgementSchemaRequiresCoverageGaps(t *testing.T) {
+	t.Parallel()
+	root, err := filepath.Abs(filepath.Join("..", "..", ".."))
+	if err != nil {
+		t.Fatal(err)
+	}
+	document, err := os.ReadFile(filepath.Join(root, ".agister", "schemas", "judgement.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	const judgement = `"summary":"One fix; the tests review left an item unchecked.","items":[` +
+		`{"severity":"major","sources":["1#1","3#2"],"title":"A lost error","ruling":"fix",` +
+		`"reason":"The trace shows the error dropped.","action":"Return the error.","missing_evidence":""}]`
+	cases := []struct {
+		name, output string
+		valid        bool
+	}{
+		{"no coverage gaps", `{` + judgement + `,"coverage_gaps":[]}`, true},
+		{"a gap of every status", `{` + judgement + `,"coverage_gaps":[` +
+			`{"review":2,"item":"9. cost","status":"not_checked","detail":"no test changed"},` +
+			`{"review":2,"item":"8. wall clock","status":"rule_only","detail":"rule 8, a_test.go:4, no load condition traced"},` +
+			`{"review":4,"item":"whole review","status":"incomplete","detail":"failed: timeout"}]}`, true},
+		{"no coverage_gaps", `{` + judgement + `}`, false},
+		{"an unknown status", `{` + judgement + `,"coverage_gaps":[{"review":2,"item":"9. cost","status":"checked","detail":"x"}]}`, false},
+		{"a non-integer review", `{` + judgement + `,"coverage_gaps":[{"review":"2","item":"9. cost","status":"not_checked","detail":"x"}]}`, false},
+		{"an entry without its review", `{` + judgement + `,"coverage_gaps":[{"item":"9. cost","status":"not_checked","detail":"x"}]}`, false},
+		{"an entry without its item", `{` + judgement + `,"coverage_gaps":[{"review":2,"status":"not_checked","detail":"x"}]}`, false},
+		{"an entry without its status", `{` + judgement + `,"coverage_gaps":[{"review":2,"item":"9. cost","detail":"x"}]}`, false},
+		{"an entry without its detail", `{` + judgement + `,"coverage_gaps":[{"review":2,"item":"9. cost","status":"not_checked"}]}`, false},
+		{"an unexpected field in an entry", `{` + judgement + `,"coverage_gaps":[{"review":2,"item":"9. cost","status":"not_checked","detail":"x","note":"y"}]}`, false},
+		{"null coverage_gaps", `{` + judgement + `,"coverage_gaps":null}`, false},
+		{"a scalar coverage_gaps", `{` + judgement + `,"coverage_gaps":"none"}`, false},
+		{"an entry that is not an object", `{` + judgement + `,"coverage_gaps":["9. cost"]}`, false},
+		{"a non-string item", `{` + judgement + `,"coverage_gaps":[{"review":2,"item":9,"status":"not_checked","detail":"x"}]}`, false},
+		{"a non-string detail", `{` + judgement + `,"coverage_gaps":[{"review":2,"item":"9. cost","status":"not_checked","detail":42}]}`, false},
+		{"a fractional review", `{` + judgement + `,"coverage_gaps":[{"review":2.5,"item":"9. cost","status":"not_checked","detail":"x"}]}`, false},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
+			err := (schema.Validator{}).Validate(document, []byte(c.output))
+			if c.valid && err != nil {
+				t.Fatalf("%s refused: %v", c.output, err)
+			}
+			if !c.valid && err == nil {
+				t.Fatalf("%s accepted", c.output)
+			}
+		})
+	}
+}
+
+// Each review prompt of the repository carries its part of the coverage
+// contract. A reviewer's prompt has a definition of done whose items are
+// numbered 1 to the prompt's own count, in order, with none unnumbered, and
+// the instruction to report every numbered item in coverage with one of the
+// four statuses. The judge's has its definition of done, numbered the same
+// way, and the instructions that coverage entries are not findings, that
+// not_checked and rule_only entries are copied to coverage_gaps, that a
+// review with no output is an incomplete "whole review" gap, and that the
+// summary names coverage gaps. An instruction is held by its short phrases
+// standing in one paragraph, not by its wording, so a rewording that keeps
+// them passes. The prompts are the repository's own, read as they are.
+func TestReviewPromptsCarryTheirCoverageContract(t *testing.T) {
+	t.Parallel()
+	root, err := filepath.Abs(filepath.Join("..", "..", ".."))
+	if err != nil {
+		t.Fatal(err)
+	}
+	report := promptInstruction{"report every numbered item in coverage with one of the four statuses",
+		[]string{"every numbered item", "`coverage`", "`checked`", "`finding`", "`rule_only`", "`not_checked`"}}
+	cases := []struct {
+		prompt       string
+		items        int
+		instructions []promptInstruction
+	}{
+		{"code-review-tests.md", 11, []promptInstruction{report}},
+		{"code-review-adversarial.md", 8, []promptInstruction{report}},
+		{"code-review-architecture.md", 9, []promptInstruction{report}},
+		{"code-review-clarity.md", 9, []promptInstruction{report}},
+		{"code-review-adr.md", 6, []promptInstruction{report}},
+		{"code-review-judge.md", 4, []promptInstruction{
+			{"coverage entries are not findings", []string{"`coverage`", "not findings"}},
+			{"copy not_checked and rule_only entries to coverage_gaps", []string{"`not_checked`", "`rule_only`", "`coverage_gaps`"}},
+			{`a review with no output is an incomplete "whole review" gap`, []string{`"whole review"`, "`incomplete`"}},
+			{"the summary names coverage gaps", []string{"`summary`", "coverage gap"}},
+		}},
+	}
+	for _, c := range cases {
+		t.Run(c.prompt, func(t *testing.T) {
+			t.Parallel()
+			data, err := os.ReadFile(filepath.Join(root, "prompts", c.prompt))
+			if err != nil {
+				t.Fatal(err)
+			}
+			prompt := string(data)
+			want := make([]int, c.items)
+			for i := range want {
+				want[i] = i + 1
+			}
+			if got := definitionOfDoneNumbers(prompt); !slices.Equal(got, want) {
+				t.Errorf("prompts/%s: want a \"Definition of done\" of %d items numbered 1 to %d, found the numbers %v (0 is an unnumbered item)",
+					c.prompt, c.items, c.items, got)
+			}
+			for _, instruction := range c.instructions {
+				if !carries(prompt, instruction.phrases) {
+					t.Errorf("prompts/%s lost the instruction %q: no paragraph has all of %q",
+						c.prompt, instruction.name, instruction.phrases)
+				}
+			}
+		})
+	}
+}
+
+// carries holds for phrases that stand in one paragraph, the first or a
+// later one, wrapped across its lines or not; it does not for a missing
+// phrase, for phrases that stand in different paragraphs, and for a phrase
+// that is only part of a longer one.
+func TestCarries(t *testing.T) {
+	t.Parallel()
+	cases := []struct {
+		name, prompt string
+		phrases      []string
+		want         bool
+	}{
+		{"one paragraph", "Report it in `coverage` as `checked`.", []string{"`coverage`", "`checked`"}, true},
+		{"a later paragraph", "Review the change.\n\nReport it in `coverage` as `checked`.", []string{"`coverage`", "`checked`"}, true},
+		{"a phrase wrapped across lines", "Report every numbered\n   item in `coverage`.", []string{"every numbered item", "`coverage`"}, true},
+		{"a missing phrase", "Report it in `coverage` as `checked`.", []string{"`coverage`", "`finding`"}, false},
+		{"phrases in different paragraphs", "Report it in `coverage`.\n\nIts status is `checked`.", []string{"`coverage`", "`checked`"}, false},
+		{"phrases apart by a line of blanks", "Report it in `coverage`.\n \t\nIts status is `checked`.", []string{"`coverage`", "`checked`"}, false},
+		{"part of a longer phrase", "Report it in `coverage` as `not_checked`.", []string{"`coverage`", "`checked`"}, false},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
+			if got := carries(c.prompt, c.phrases); got != c.want {
+				t.Fatalf("carries(%q, %q) = %v, want %v", c.prompt, c.phrases, got, c.want)
+			}
+		})
+	}
+}
+
+// definitionOfDoneNumbers gives the numbers of the items under the
+// "Definition of done" heading, in order, right after it or after a lead-in,
+// up to the next heading, markdown or plain. A missing item, a duplicate,
+// items from 2 and a bullet (as 0) show in what it gives; an indented
+// sub-list is not an item, a list before the heading or under a later
+// heading is not part of it, and a prompt without the heading gives none.
+func TestDefinitionOfDoneNumbers(t *testing.T) {
+	t.Parallel()
+	cases := []struct {
+		name, prompt string
+		want         []int
+	}{
+		{"a complete list", "Review it.\n\nDefinition of done:\n\n1. One.\n2. Two.\n3. Three.\n", []int{1, 2, 3}},
+		{"a lead-in before the items", "Definition of done\n\nIt is in good shape when:\n\n1. One.\n2. Two.\n", []int{1, 2}},
+		{"items wrapped and apart", "Definition of done:\n\n1. One,\n   wrapped.\n\n2. Two.\n\nStop once done.\n", []int{1, 2}},
+		{"a missing item", "Definition of done:\n\n1. One.\n3. Three.\n", []int{1, 3}},
+		{"a duplicate", "Definition of done:\n\n1. One.\n2. Two.\n2. Two again.\n", []int{1, 2, 2}},
+		{"an unnumbered item", "Definition of done:\n\n1. One.\n* Bullet.\n2. Two.\n", []int{1, 0, 2}},
+		{"an unnumbered item with a dash", "Definition of done:\n\n1. One.\n\n- Bullet.\n", []int{1, 0}},
+		{"an indented sub-list", "Definition of done:\n\n1. One:\n   - a part.\n   1. a step.\n2. Two.\n", []int{1, 2}},
+		{"a later list under a plain heading", "Definition of done\n\n1. One.\n2. Two.\n\nReview findings\n\n1. Location.\n", []int{1, 2}},
+		{"a later list under a markdown heading", "## Definition of done\n\n1. One.\n\n## Findings:\n\n1. Location.\n", []int{1}},
+		{"a list before the heading only", "1. Merge.\n2. Sort.\n\nDefinition of done:\n\nEverything is ruled on.\n", nil},
+		{"no definition of done", "Review it.\n\n1. One.\n2. Two.\n", nil},
+		{"items from 2", "Definition of done:\n\n2. Two.\n3. Three.\n", []int{2, 3}},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
+			if got := definitionOfDoneNumbers(c.prompt); !slices.Equal(got, c.want) {
+				t.Fatalf("definitionOfDoneNumbers(%q) = %v, want %v", c.prompt, got, c.want)
+			}
+		})
+	}
+}
+
+// promptInstruction is an instruction a prompt gives, by the name a failure
+// reports it under, with the short phrases that carry it.
+type promptInstruction struct {
+	name    string
+	phrases []string
+}
+
+// blankLine separates two paragraphs of a prompt.
+var blankLine = regexp.MustCompile(`\n[ \t]*\n`)
+
+// listItem starts a top-level list item of a prompt: a numbered one, whose
+// number it captures, or a bullet.
+var listItem = regexp.MustCompile(`^(?:(\d+)\.|[*-]) `)
+
+// carries reports whether one paragraph of prompt has every phrase.
+// Whitespace inside a paragraph is one space, so a phrase wrapped across
+// lines is found.
+func carries(prompt string, phrases []string) bool {
+	for _, paragraph := range blankLine.Split(prompt, -1) {
+		paragraph = strings.Join(strings.Fields(paragraph), " ")
+		lacks := func(phrase string) bool { return !strings.Contains(paragraph, phrase) }
+		if !slices.ContainsFunc(phrases, lacks) {
+			return true
+		}
+	}
+	return false
+}
+
+// definitionOfDoneNumbers returns the numbers of the items of prompt's
+// "Definition of done", in order, with 0 for a bullet standing where an item
+// could: the top-level list items from the line after that heading to the
+// next heading or the end of the prompt. It returns nil without the heading.
+func definitionOfDoneNumbers(prompt string) []int {
+	_, after, found := strings.Cut(prompt, "Definition of done")
+	if !found {
+		return nil
+	}
+	_, after, _ = strings.Cut(after, "\n")
+	var numbers []int
+	for _, paragraph := range blankLine.Split(after, -1) {
+		if isHeading(paragraph) {
+			break
+		}
+		for _, line := range strings.Split(paragraph, "\n") {
+			if item := listItem.FindStringSubmatch(line); item != nil {
+				number, _ := strconv.Atoi(item[1]) // a bullet has none: 0
+				numbers = append(numbers, number)
+			}
+		}
+	}
+	return numbers
+}
+
+// isHeading reports whether a paragraph of a prompt is a heading: a markdown
+// one, or a plain one as the prompts write "Review findings", a single line
+// that is not indented, is no list item and ends without punctuation.
+func isHeading(paragraph string) bool {
+	paragraph = strings.Trim(paragraph, "\n")
+	if strings.HasPrefix(paragraph, "#") {
+		return true
+	}
+	plain := paragraph != "" && !strings.Contains(paragraph, "\n") &&
+		!strings.HasPrefix(paragraph, " ") && !listItem.MatchString(paragraph)
+	return plain && !strings.ContainsAny(paragraph[len(paragraph)-1:], ".,:;!?")
 }
 
 // No schema this repository gives to Codex uses a combinator Codex's

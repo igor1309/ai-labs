@@ -94,11 +94,9 @@
       }
     },
     "coverage": {
-      "type": [
-        "array",
-        "null"
-      ],
-      "description": "What the review checked, one entry per definition-of-done item it reports on, or null when its prompt asks for none.",
+      "type": "array",
+      "minItems": 1,
+      "description": "What the review checked: one entry per numbered definition-of-done item of its prompt, in order.",
       "items": {
         "type": "object",
         "additionalProperties": false,
@@ -110,7 +108,7 @@
         "properties": {
           "item": {
             "type": "string",
-            "description": "The definition-of-done item it reports on, as the prompt words it, shortened."
+            "description": "The definition-of-done item it reports on, as \"<number>. <short name>\"."
           },
           "status": {
             "type": "string",

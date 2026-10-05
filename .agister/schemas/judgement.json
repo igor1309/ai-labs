@@ -1,9 +1,9 @@
 {
   "type": "object",
   "additionalProperties": false,
-  "required": ["summary", "items"],
+  "required": ["summary", "items", "coverage_gaps"],
   "properties": {
-    "summary": {"type": "string", "description": "Two or three sentences: what the rulings add up to, and which reviewers' evidence fell short."},
+    "summary": {"type": "string", "description": "Two or three sentences: what the rulings add up to, which reviewers' evidence fell short, and any coverage gap."},
     "items": {
       "type": "array",
       "description": "One item per distinct claim, duplicates merged, sorted by severity, highest first.",
@@ -19,6 +19,21 @@
           "reason": {"type": "string", "description": "Why the presented evidence does or does not support the claim."},
           "action": {"type": "string", "description": "fix: the change the evidence calls for, as the reviewer stated it. defer: gap, trigger, done when. owner: the question and its options. reject: empty."},
           "missing_evidence": {"type": "string", "description": "reject: what the reviewer should have shown. Otherwise empty."}
+        }
+      }
+    },
+    "coverage_gaps": {
+      "type": "array",
+      "description": "What the reviews did not check: one entry per coverage entry with status not_checked or rule_only, and one per review with no output, copied as the reviews state them. Empty when there are none.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["review", "item", "status", "detail"],
+        "properties": {
+          "review": {"type": "integer", "description": "The review's 1-based place in the collection."},
+          "item": {"type": "string", "description": "The coverage item as the review gave it, or \"whole review\" for a review with no output."},
+          "status": {"type": "string", "enum": ["not_checked", "rule_only", "incomplete"], "description": "not_checked, rule_only: the coverage entry's status. incomplete: the review gave no output."},
+          "detail": {"type": "string", "description": "The review's detail, or why the review gave no output."}
         }
       }
     }
