@@ -95,6 +95,14 @@ func (r *recovery) take(request TurnRequest, before *run.SessionTotals) run.Turn
 	r.fault = nil
 	turn := r.call.Take(request, before)
 	r.turns++
+	// A stale turn that resumed a session and reports another is not in the
+	// call's session (ADR-002 rule 4): no recovery follows it there, and the
+	// call fails as after a repair turn that does. One that reports none has
+	// nothing to resume, and ends as its limit does (rule 6).
+	if resumed, reported := request.ResumeSessionID, turn.ProviderSessionID; endedStale(turn) && resumed != "" && reported != "" && reported != resumed {
+		r.fault = run.Fault(run.ClassRuntimeError, "the stale turn resumed session %s, but the runtime reported session %q", resumed, reported)
+		return turn
+	}
 	for r.fault == nil && endedStale(turn) {
 		stale := *turn.Stale
 		remaining, budget, why := r.admit(turn)

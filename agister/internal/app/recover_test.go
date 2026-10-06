@@ -719,3 +719,89 @@ func TestAStaleRepairTurnIsNotRecoveredOnceTheCallsResumeIsSpent(t *testing.T) {
 		t.Fatalf("runs %d, attempts %+v", len(h.commands.runs()), record.Attempts)
 	}
 }
+
+// A repair turn Agister ended at a staleness limit that reports another
+// session than the one it resumed is not in the call's session: the call
+// fails as a contract violation, not as its limit, and no recovery turn is
+// taken in the other session, though a resume is left.
+func TestAStaleRepairTurnInAnotherSessionFailsTheCall(t *testing.T) {
+	t.Parallel()
+	h, timers := staleHarness(t, "no_event: 5m, recover: {max_resumes: 1, instruction: Recover.}")
+	verifying(h)
+	h.commands.exits = []int{1}
+	fresh(h)
+	// The first turn is valid in prov-1 and its run fails; the repair goes
+	// silent and reports prov-2. The last turn is the recovery that resuming
+	// prov-2 would take, silent there too.
+	play(h, completes(h), silent(timers, "prov-2"), silent(timers, "prov-2"))
+	record := h.call(t, contract.CallRequest{})
+
+	want := `the stale turn resumed session prov-1, but the runtime reported session "prov-2"`
+	if record.Result.Status != run.Failed || class(record) != run.ClassRuntimeError || message(record) != want || record.Result.Output != nil {
+		t.Fatalf("result = %+v", record.Result)
+	}
+	turns := h.runner.calls()
+	if len(turns) != 2 || !strings.HasPrefix(turns[1].Prompt, "The verification command failed.") || turns[1].ResumeSessionID != "prov-1" {
+		t.Fatalf("turns = %+v", turns)
+	}
+	// Nothing was asked of the other session: no recovery was started
+	// there, and none was considered.
+	if len(record.Recoveries) != 0 || len(eventsOf(h, "RECOVERY_STARTED")) != 0 || len(eventsOf(h, "RECOVERY_NOT_STARTED")) != 0 {
+		t.Fatalf("recoveries = %+v, events %v", record.Recoveries, h.recorder.kinds())
+	}
+	// The call's session is the one its first turn was in, and the stale
+	// repair is the turn the second attempt stopped at, with the session it
+	// reported and no run of its own.
+	if record.Result.Session == nil || record.Result.Session.ProviderSessionID != "prov-1" {
+		t.Fatalf("session = %+v", record.Result.Session)
+	}
+	if len(h.commands.runs()) != 1 || len(record.Attempts) != 2 || record.Attempts[1].Run != nil || record.Attempts[1].Session != "prov-2" ||
+		record.Attempts[1].Turn.Stale == nil || record.Attempts[1].Turn.Stale.Limit != run.StaleNoEvent {
+		t.Fatalf("runs %d, attempts %+v", len(h.commands.runs()), record.Attempts)
+	}
+}
+
+// The evidence a call sent stays sent when its verification takes a repair
+// turn: a repair that reaches the limit the first turn was recovered from
+// is not recovered again, though a resume is left. The call ends as that
+// limit ends it, after three turns and one recovery.
+func TestEvidenceSentBeforeARepairTurnIsNotSentAgainAfterIt(t *testing.T) {
+	t.Parallel()
+	h, timers := staleHarness(t, "no_event: 5m, recover: {max_resumes: 2, instruction: Recover.}")
+	verifying(h)
+	h.commands.exits = []int{1}
+	fresh(h)
+	// The first turn goes silent and is recovered; the run on what the
+	// recovery left fails, and the repair goes silent too. The last turn is
+	// the recovery the second resume would take.
+	play(h, silent(timers, "prov-1"), completes(h), silent(timers, "prov-1"), completes(h))
+	record := h.call(t, contract.CallRequest{})
+
+	if record.Result.Status != run.Interrupted || class(record) != run.ClassTimeout ||
+		message(record) != "stale: the runtime reported no event for 5m0s (stale.no_event)" {
+		t.Fatalf("result = %+v", record.Result)
+	}
+	turns := h.runner.calls()
+	if len(turns) != 3 || !strings.HasPrefix(turns[1].Prompt, "Recover.\n\n## stale limit\n\nstale.no_event") ||
+		!strings.HasPrefix(turns[2].Prompt, "The verification command failed.") {
+		t.Fatalf("turns = %+v", turns)
+	}
+	// One recovery, the first turn's: the repair's limit started none.
+	if got := record.Recoveries; len(got) != 1 || got[0].Follows != 1 || got[0].Stale.Limit != run.StaleNoEvent || got[0].Outcome != run.RecoveryCompleted {
+		t.Fatalf("recoveries = %+v", got)
+	}
+	if started := eventsOf(h, "RECOVERY_STARTED"); len(started) != 1 {
+		t.Fatalf("events = %+v", started)
+	}
+	refused := eventsOf(h, "RECOVERY_NOT_STARTED")
+	if len(refused) != 1 || refused[0].Data["limit"] != run.StaleNoEvent ||
+		refused[0].Data["reason"] != "the same evidence was sent before: the limit was reached again on the same thing" {
+		t.Fatalf("events = %+v", refused)
+	}
+	// The stale repair is the turn the second attempt stopped at, with no
+	// run of its own.
+	if len(h.commands.runs()) != 1 || len(record.Attempts) != 2 || record.Attempts[1].Run != nil ||
+		record.Attempts[1].Turn.Stale == nil || record.Attempts[1].Turn.Stale.Limit != run.StaleNoEvent {
+		t.Fatalf("runs %d, attempts %+v", len(h.commands.runs()), record.Attempts)
+	}
+}

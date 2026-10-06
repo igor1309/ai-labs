@@ -8,6 +8,7 @@ import (
 	"slices"
 	"strings"
 	"testing"
+	"unicode/utf8"
 
 	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/claudecode"
 )
@@ -395,7 +396,18 @@ func TestStreamReportsAToolCallsResult(t *testing.T) {
 		t.Fatalf("no content: %+v", got)
 	}
 	half := claudecode.ToolResultBytes / 4
-	if got := result(long); !got.Reported || got.Output != "a"+strings.Repeat("é", half-1)+"\n…\n"+strings.Repeat("é", half) {
-		t.Fatalf("a long one: %d bytes", len(got.Output))
+	if got := result(long); !got.Reported || got.Output != "a"+strings.Repeat("é", half-1)+"\n…\n"+strings.Repeat("é", half) || !utf8.ValidString(got.Output) {
+		t.Fatalf("a long one: %d bytes, valid UTF-8 %t", len(got.Output), utf8.ValidString(got.Output))
+	}
+	// So does the tail's cut: the tail starts after the rune it would split.
+	// wide is count runes of two bytes each.
+	wide := func(count int) string { return strings.Repeat("é", count) }
+	for _, c := range []struct{ name, text, want string }{
+		{"the tail's cut", wide(4*half) + "a", wide(half) + "\n…\n" + wide(half-1) + "a"},
+		{"both cuts", "a" + wide(4*half) + "a", "a" + wide(half-1) + "\n…\n" + wide(half-1) + "a"},
+	} {
+		if got := result(c.text); !got.Reported || got.Output != c.want || !utf8.ValidString(got.Output) {
+			t.Fatalf("%s inside a rune: %d bytes, valid UTF-8 %t", c.name, len(got.Output), utf8.ValidString(got.Output))
+		}
 	}
 }

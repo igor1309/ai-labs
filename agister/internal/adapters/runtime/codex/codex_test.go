@@ -10,6 +10,7 @@ import (
 
 	"testing"
 	"time"
+	"unicode/utf8"
 
 	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/codex"
 )
@@ -274,5 +275,20 @@ func TestStreamReportsACommandsResult(t *testing.T) {
 	half := strings.Repeat("é", codex.ToolResultBytes/4)
 	if got := finished(`{"id":"item_3","type":"command_execution","aggregated_output":` + string(long) + `}`); !got.Reported || got.Output != half+"\n…\n"+half {
 		t.Fatalf("a long one: %d bytes", len(got.Output))
+	}
+	// A cut at a half of the bound that would split a rune moves to the
+	// rune's boundary: the head ends before it, the tail starts after it.
+	// wide is count runes of two bytes each.
+	quarter := codex.ToolResultBytes / 4
+	wide := func(count int) string { return strings.Repeat("é", count) }
+	for _, c := range []struct{ name, text, want string }{
+		{"the head's cut", "a" + wide(4*quarter), "a" + wide(quarter-1) + "\n…\n" + wide(quarter)},
+		{"the tail's cut", wide(4*quarter) + "a", wide(quarter) + "\n…\n" + wide(quarter-1) + "a"},
+		{"both cuts", "a" + wide(4*quarter) + "a", "a" + wide(quarter-1) + "\n…\n" + wide(quarter-1) + "a"},
+	} {
+		text, _ := json.Marshal(c.text)
+		if got := finished(`{"id":"item_3","type":"command_execution","aggregated_output":` + string(text) + `}`); !got.Reported || got.Output != c.want || !utf8.ValidString(got.Output) {
+			t.Fatalf("%s inside a rune: %d bytes, valid UTF-8 %t", c.name, len(got.Output), utf8.ValidString(got.Output))
+		}
 	}
 }
