@@ -42,12 +42,12 @@ Other harnesses react to a stuck agent in one of three ways:
   retry agent and Anthropic's harness for long-running work restart with a
   handoff. None restarts with a fresh context inside the stuck step.
 
-Two findings bound what a nudge can do. A loop mostly means failure: in
-SWE-smith's trajectories a run of ten or more repeated actions goes with a
-failure probability of 89%. And telling a model that it seems stuck does
-not help by itself: a model corrects its reasoning when it is given new
-facts from outside, not when it is asked to think again (Huang et al.,
-*Large Language Models Cannot Self-Correct Reasoning Yet*).
+Two things bound what a nudge can do. A repeated loop indicates no
+progress: a turn that makes the same call again and again is not moving
+towards its result, and more of the same turn does not change that. And
+a bare nudge adds no facts: telling an agent that it seems stuck gives it
+nothing it lacks. What it lacks is a fact from outside its own reasoning,
+such as what was repeated or what hung.
 
 Supervision practice agrees (Erlang/OTP supervisors, AWS's and Google
 SRE's retry guidance): bound the restarts, then escalate; retry only
@@ -300,7 +300,7 @@ Rule 4 becomes:
 >
 > A call takes a further turn in one way only: it resumes its own
 > session. A repair turn, after a failed verification run, and a recovery
-> turn, after a turn that a staleness limit ended (ADR-023), both resume
+> turn, after a turn that a staleness limit ended, both resume
 > the provider session of the call's first turn, in the same checkout, by
 > the session ID the runtime reported: the same resume mechanism as
 > continuation (ADR-001 rules 5 and 12), with no preset ID and no fork.

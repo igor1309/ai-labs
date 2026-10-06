@@ -22,6 +22,15 @@ type CallStale struct {
 	NoOutput          time.Duration // a verification run without output
 	ToolCommand       time.Duration // one command an agent's tool runs
 	RepeatedToolCalls int           // identical tool calls in a row
+	// Recover is what may follow a turn that one of them ended.
+	Recover CallRecover
+}
+
+// CallRecover is a call's recovery of a stale turn (ADR-023 rule 5). It is
+// zero unless the call has a budget.
+type CallRecover struct {
+	MaxResumes  int    // recovery turns the call may take; 0: none
+	Instruction string // what the agent is told with the evidence
 }
 
 // CallTimer starts the wait of a staleness limit: the limit is reached when

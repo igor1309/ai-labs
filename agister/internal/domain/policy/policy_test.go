@@ -310,3 +310,83 @@ func TestStalenessLimitsOnlyNarrow(t *testing.T) {
 		t.Fatalf("caller timeout below the limits: %+v, %v", effective, err)
 	}
 }
+
+// The recovery of a stale call (ADR-023 rule 5): the policy sets the
+// budget's ceiling and a process may only lower it, down to 0; unset is 0.
+// The instruction is text: the process's replaces the policy's. A budget
+// above 0 needs one.
+func TestStaleRecoveryBudgetOnlyNarrows(t *testing.T) {
+	t.Parallel()
+	resumes := func(n int) *int { return &n }
+	cases := []struct {
+		name    string
+		policy  definition.Recover
+		process string
+		want    policy.Recover
+		problem string
+	}{
+		{"unset is 0", definition.Recover{}, "", policy.Recover{}, ""},
+		{"the policy's ceiling", definition.Recover{MaxResumes: resumes(2), Instruction: "Policy."}, "",
+			policy.Recover{MaxResumes: 2, Instruction: "Policy."}, ""},
+		{"a process lowers it", definition.Recover{MaxResumes: resumes(2), Instruction: "Policy."}, "stale: {recover: {max_resumes: 1}}",
+			policy.Recover{MaxResumes: 1, Instruction: "Policy."}, ""},
+		{"a process sets its policy's", definition.Recover{MaxResumes: resumes(2), Instruction: "Policy."}, "stale: {recover: {max_resumes: 2}}",
+			policy.Recover{MaxResumes: 2, Instruction: "Policy."}, ""},
+		// Without a budget nothing is told, so nothing is carried.
+		{"a process lowers it to 0", definition.Recover{MaxResumes: resumes(2), Instruction: "Policy."}, "stale: {recover: {max_resumes: 0}}",
+			policy.Recover{}, ""},
+		{"a process sets 0 where the policy sets none", definition.Recover{}, "stale: {recover: {max_resumes: 0, instruction: Process.}}",
+			policy.Recover{}, ""},
+		{"an instruction without a budget", definition.Recover{Instruction: "Policy."}, "",
+			policy.Recover{}, ""},
+		{"a process widens it", definition.Recover{MaxResumes: resumes(1), Instruction: "Policy."}, "stale: {recover: {max_resumes: 2}}",
+			policy.Recover{}, "stale.recover.max_resumes: 2 widens the policy's 1"},
+		{"a process widens the policy's 0", definition.Recover{MaxResumes: resumes(0), Instruction: "Policy."}, "stale: {recover: {max_resumes: 1}}",
+			policy.Recover{}, "stale.recover.max_resumes: 1 widens the policy's 0"},
+		{"a process sets it where the policy sets none", definition.Recover{}, "stale: {recover: {max_resumes: 1, instruction: Process.}}",
+			policy.Recover{}, "stale.recover.max_resumes: 1 where the policy sets none; a process may only lower its policy's"},
+		{"the process's instruction replaces the policy's", definition.Recover{MaxResumes: resumes(1), Instruction: "Policy."}, "stale: {recover: {instruction: Process.}}",
+			policy.Recover{MaxResumes: 1, Instruction: "Process."}, ""},
+		{"the process gives the instruction", definition.Recover{MaxResumes: resumes(1)}, "stale: {recover: {instruction: Process.}}",
+			policy.Recover{MaxResumes: 1, Instruction: "Process."}, ""},
+		{"a budget without an instruction", definition.Recover{MaxResumes: resumes(1)}, "",
+			policy.Recover{}, "stale.recover.max_resumes 1 needs stale.recover.instruction: neither the process nor its policy gives one"},
+		{"a lowered budget without an instruction", definition.Recover{MaxResumes: resumes(2)}, "stale: {recover: {max_resumes: 1}}",
+			policy.Recover{}, "stale.recover.max_resumes 1 needs stale.recover.instruction: neither the process nor its policy gives one"},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
+			pol := researchPolicy(t)
+			pol.Limits.Stale.Recover = c.policy
+			effective, err := policy.Compose(service, &pol, process(t, c.process), policy.Caller{})
+			if c.problem != "" {
+				if err == nil || !strings.Contains(err.Error(), c.problem) {
+					t.Fatalf("err = %v, want %q", err, c.problem)
+				}
+				return
+			}
+			if err != nil || effective.Stale.Recover != c.want {
+				t.Fatalf("recover = %+v, %v, want %+v", effective.Stale.Recover, err, c.want)
+			}
+		})
+	}
+}
+
+// A process without a policy has no budget to lower.
+func TestStaleRecoveryNeedsAPolicysBudget(t *testing.T) {
+	t.Parallel()
+	alone := func(extra string) definition.Process {
+		p := process(t, "timeout: 10m\n"+extra)
+		p.Policy = ""
+		return p
+	}
+	want := "stale.recover.max_resumes: 1 where the policy sets none; a process may only lower its policy's"
+	if _, err := policy.Compose(service, nil, alone("stale: {recover: {max_resumes: 1, instruction: Process.}}"), policy.Caller{}); err == nil || !strings.Contains(err.Error(), want) {
+		t.Fatalf("err = %v, want %q", err, want)
+	}
+	effective, err := policy.Compose(service, nil, alone("stale: {recover: {max_resumes: 0}}"), policy.Caller{})
+	if err != nil || effective.Stale.Recover != (policy.Recover{}) {
+		t.Fatalf("lowered to 0: %+v, %v", effective.Stale.Recover, err)
+	}
+}

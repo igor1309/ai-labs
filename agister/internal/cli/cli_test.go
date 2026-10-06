@@ -984,6 +984,26 @@ func TestShowProcessPrintsTheStalenessLimits(t *testing.T) {
 	}
 }
 
+// process show prints the effective recovery budget with the other
+// staleness limits when it is above 0, and nothing for it when it is 0.
+func TestShowProcessPrintsTheStaleRecoveryBudget(t *testing.T) {
+	t.Parallel()
+	spy := &clientSpy{view: contract.ProcessView{Name: "p", Agent: "a", Runtime: "rt", Output: "text", Timeout: time.Hour, MaxAttempts: 1,
+		Stale: contract.Stale{NoEvent: 5 * time.Minute, RepeatedToolCalls: 5, MaxResumes: 1}}}
+	r := run(context.Background(), spy, "process", "show", "p")
+	if want := "  stale      no event 5m0s, repeated tool calls 5, recovery resumes 1\n"; r.code != 0 || !strings.Contains(r.stdout, want) {
+		t.Fatalf("missing %q in %d:\n%s", want, r.code, r.stdout)
+	}
+	spy.view.Stale.MaxResumes = 0
+	if r := run(context.Background(), spy, "process", "show", "p"); !strings.Contains(r.stdout, "  stale      no event 5m0s, repeated tool calls 5\n") || strings.Contains(r.stdout, "resumes") {
+		t.Fatalf("a budget of 0:\n%s", r.stdout)
+	}
+	spy.view.Stale = contract.Stale{MaxResumes: 2}
+	if r := run(context.Background(), spy, "process", "show", "p"); !strings.Contains(r.stdout, "  stale      recovery resumes 2\n") {
+		t.Fatalf("a budget alone:\n%s", r.stdout)
+	}
+}
+
 func TestHelpNamesTheSessionsLatestRunAsThePatchSource(t *testing.T) {
 	t.Parallel()
 	r := run(context.Background(), &clientSpy{}, "--help")

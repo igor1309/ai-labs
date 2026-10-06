@@ -45,6 +45,17 @@ type StaleLimits struct {
 	NoOutput          time.Duration `json:"no_output,omitempty"`
 	ToolCommand       time.Duration `json:"tool_command,omitempty"`
 	RepeatedToolCalls int           `json:"repeated_tool_calls,omitempty"`
+	// Recover is the call's recovery of a stale turn; unset when it had no
+	// budget for one.
+	Recover *StaleRecover `json:"recover,omitempty"`
+}
+
+// StaleRecover is the recovery of a stale turn a call ran under (ADR-023
+// rule 5): how many turns might resume its session with the evidence of
+// what went stale, and what they were told.
+type StaleRecover struct {
+	MaxResumes  int    `json:"max_resumes"`
+	Instruction string `json:"instruction"`
 }
 
 // Plan is what the call was granted on its runtime.

@@ -336,6 +336,7 @@ func callStale(stale policy.Stale) CallStale {
 	if stale.RepeatedToolCalls != nil {
 		limits.RepeatedToolCalls = *stale.RepeatedToolCalls
 	}
+	limits.Recover = CallRecover{MaxResumes: stale.Recover.MaxResumes, Instruction: stale.Recover.Instruction}
 	return limits
 }
 

@@ -79,7 +79,12 @@ ends before its timeout, and its record names the limit and what went
 stale. What should follow instead, one resumed turn that is told what
 went stale, is decided in
 [ADR-023](docs/adr/023-a-stale-call-is-resumed-once.md), which is
-proposed and not built yet: today every limit ends the call.
+proposed and not built yet: today every limit ends the call. Its settings
+are read already: `stale.recover.max_resumes`, which a policy sets and a
+process may only lower, down to 0, and `stale.recover.instruction`, which
+a budget above 0 needs. A call with such a budget is refused unless its
+agent's sessions may be continued and its runtime can resume one, and
+`process show` prints the budget.
 
 A prompt the settings fix, such as a reviewer's instructions, is a document
 too: `prompts/review.md`, the whole file its text, no header. A process

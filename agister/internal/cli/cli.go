@@ -1367,6 +1367,9 @@ func stale(limits contract.Stale) string {
 	if limits.RepeatedToolCalls > 0 {
 		parts = append(parts, fmt.Sprintf("repeated tool calls %d", limits.RepeatedToolCalls))
 	}
+	if limits.MaxResumes > 0 {
+		parts = append(parts, fmt.Sprintf("recovery resumes %d", limits.MaxResumes))
+	}
 	return strings.Join(parts, ", ")
 }
 
