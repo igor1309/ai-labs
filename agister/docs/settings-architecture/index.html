@@ -30,6 +30,10 @@
   h1, h2 { font-family: var(--display); font-weight: 400; overflow-wrap: break-word; }
   h1 { margin: 0; font-size: clamp(2rem, 5.5vw, 3rem); line-height: 1.08; letter-spacing: -.01em; text-wrap: balance; }
   h2 { margin: 2.25rem 0 .5rem; font-size: 1.5rem; line-height: 1.25; letter-spacing: -.005em; }
+  h3 {
+    margin: 1.1rem 0 .4rem; font-family: var(--mono); font-weight: 400; font-size: .72rem;
+    letter-spacing: .14em; text-transform: uppercase; color: var(--text-dim);
+  }
   p { margin: 0 0 12px; }
   .intro { font-size: 1.05rem; color: var(--text-dim); }
   code {
@@ -254,8 +258,8 @@ reach Agister's state; those are never granted.</p>
 
 <p>A workflow composes process calls into one run, and its settings fix
 what each call receives, never whoever starts it. It has its own params and
-values. The one shape it has today is fan-out then join: several processes
-over the same inputs, then one process given their results.</p>
+values. Its only shape today is fan-out then join: one or more processes over
+the same inputs, run at once, then one process given their results.</p>
 
 <h2><span class="k-process">Process</span></h2>
 
@@ -263,7 +267,7 @@ over the same inputs, then one process given their results.</p>
 params, input values, the checkout input, its own setup, required
 permissions and limit overrides. Everything else it names.</p>
 
-<h2>What a process names</h2>
+<h3>What a process names</h3>
 
 <p>Its agent, and its supporting documents:</p>
 <ul>
