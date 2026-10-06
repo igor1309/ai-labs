@@ -53,27 +53,47 @@
     margin-top: 32px; padding-top: 14px; border-top: 1px solid var(--line);
     display: flex; gap: 20px; font-size: 15px;
   }
+
+  /* Wide screens: the diagram on the left, the text on the right. */
+  @media (min-width: 900px) {
+    main {
+      max-width: 80rem; padding: 40px 32px 56px;
+      display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 38rem);
+      column-gap: 56px; align-items: start;
+    }
+    main > h1, main > footer { grid-column: 1 / -1; }
+    .intro { grid-column: 2; grid-row: 2; }
+    figure { grid-column: 1; grid-row: 2 / span 2; margin: 4px 0 0; }
+    figure svg { max-width: none; }
+    .text { grid-column: 2; grid-row: 3; }
+  }
+  /* The diagram stays in view while the text scrolls, scaled to fit the
+     viewport with its caption. */
+  @media (min-width: 900px) and (min-height: 560px) {
+    figure { position: sticky; top: 24px; }
+    figure svg { max-height: calc(100vh - 128px); }
+  }
 </style>
 </head>
 <body>
 <main>
 <h1>Agister's settings architecture</h1>
 
-<p>Agister's settings are documents that name each other by name. A
+<p class="intro">Agister's settings are documents that name each other by name. A
 workflow names processes. A process names its agent, policy, output schema,
 verification, prompts and skills. An agent names its runtime mapping and
 its skills. Over all of them sits the service: the permission vocabulary
-and the hard limits that policies and runtime mappings are checked
-against.</p>
+policies and runtime mappings may use, and the hard limits no policy may
+exceed.</p>
 
 <figure>
-<svg viewBox="0 0 420 680" role="img" aria-labelledby="diagram-title diagram-desc">
+<svg viewBox="0 0 420 604" role="img" aria-labelledby="diagram-title diagram-desc">
   <title id="diagram-title">The settings documents and what they name</title>
   <desc id="diagram-desc">A workflow names processes. A process names an
   agent, a policy, an output schema, a verification, prompts and skills. An
-  agent names a runtime mapping and skills. Policies and runtime mappings
-  are checked against the service, the one document with the permission
-  vocabulary and hard limits. Apart from these, one workspace, the default
+  agent names a runtime mapping and skills. A policy uses only the service's
+  permissions, within its hard limits; a runtime mapping grants only the
+  service's permissions. Apart from these, one workspace, the default
   checkout setup, and one blocks document, what the repo refuses.</desc>
   <defs>
     <marker id="head-names" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
@@ -89,9 +109,10 @@ against.</p>
   <text class="sub" x="56" y="56">permission vocabulary, hard limits</text>
 
   <path class="check" d="M322 204V70" marker-end="url(#head-check)"/>
-  <text class="sub check-label" x="314" y="140" text-anchor="end">checked against</text>
-  <path class="check" d="M40 620H20V40H38" marker-end="url(#head-check)"/>
-  <text class="sub check-label" x="14" y="330" text-anchor="middle" transform="rotate(-90 14 330)">checked against</text>
+  <text class="sub check-label" x="314" y="132" text-anchor="end">its permissions,</text>
+  <text class="sub check-label" x="314" y="148" text-anchor="end">within its limits</text>
+  <path class="check" d="M40 512H20V40H38" marker-end="url(#head-check)"/>
+  <text class="sub check-label" x="14" y="276" text-anchor="middle" transform="rotate(-90 14 276)">grants only its permissions</text>
 
   <rect class="doc" x="40" y="100" width="156" height="72" rx="8"/>
   <text class="t" x="52" y="124">workflow</text>
@@ -101,67 +122,69 @@ against.</p>
   <path class="names" d="M118 172V202" marker-end="url(#head-names)"/>
   <text class="sub" x="126" y="192">names</text>
 
-  <rect class="doc" x="40" y="204" width="156" height="264" rx="8"/>
+  <rect class="doc" x="40" y="204" width="156" height="124" rx="8"/>
   <text class="t" x="52" y="228">process</text>
   <text class="sub" x="52" y="248">a named agent call</text>
   <text class="sub" x="52" y="276">instruction, inputs,</text>
   <text class="sub" x="52" y="294">required permissions,</text>
   <text class="sub" x="52" y="312">limit overrides</text>
 
-  <text class="sub" x="218" y="220" text-anchor="middle">names</text>
-  <path class="names" d="M196 228H238" marker-end="url(#head-names)"/>
-  <path class="names" d="M196 286H238" marker-end="url(#head-names)"/>
-  <path class="names" d="M196 344H238" marker-end="url(#head-names)"/>
-  <path class="names" d="M196 402H238" marker-end="url(#head-names)"/>
-  <path class="names" d="M196 452H238" marker-end="url(#head-names)"/>
+  <text class="sub" x="218" y="216" text-anchor="middle">names</text>
+  <path class="names" d="M196 224H238" marker-end="url(#head-names)"/>
+  <path class="names" d="M216 224V402"/>
+  <path class="names" d="M216 270H238" marker-end="url(#head-names)"/>
+  <path class="names" d="M216 316H238" marker-end="url(#head-names)"/>
+  <path class="names" d="M216 362H238" marker-end="url(#head-names)"/>
+  <path class="names" d="M216 402H238" marker-end="url(#head-names)"/>
 
-  <rect class="doc" x="240" y="204" width="164" height="48" rx="8"/>
-  <text class="t" x="252" y="224">policy</text>
-  <text class="sub" x="252" y="242">limits, permissions</text>
+  <rect class="doc" x="240" y="204" width="164" height="40" rx="8"/>
+  <text class="t" x="252" y="223">policy</text>
+  <text class="sub" x="252" y="238">limits, permissions</text>
 
-  <rect class="doc" x="240" y="262" width="164" height="48" rx="8"/>
-  <text class="t" x="252" y="282">output schema</text>
-  <text class="sub" x="252" y="300">a JSON Schema</text>
+  <rect class="doc" x="240" y="250" width="164" height="40" rx="8"/>
+  <text class="t" x="252" y="269">output schema</text>
+  <text class="sub" x="252" y="284">a JSON Schema</text>
 
-  <rect class="doc" x="240" y="320" width="164" height="48" rx="8"/>
-  <text class="t" x="252" y="340">verification</text>
-  <text class="sub" x="252" y="358">command, attempts</text>
+  <rect class="doc" x="240" y="296" width="164" height="40" rx="8"/>
+  <text class="t" x="252" y="315">verification</text>
+  <text class="sub" x="252" y="330">command, attempts</text>
 
-  <rect class="doc" x="240" y="378" width="164" height="48" rx="8"/>
-  <text class="t" x="252" y="398">prompts</text>
-  <text class="sub" x="252" y="416">plain text</text>
+  <rect class="doc" x="240" y="342" width="164" height="40" rx="8"/>
+  <text class="t" x="252" y="361">prompts</text>
+  <text class="sub" x="252" y="376">plain text</text>
 
-  <rect class="doc" x="240" y="436" width="164" height="84" rx="8"/>
-  <text class="t" x="252" y="474">skills</text>
-  <text class="sub" x="252" y="492">one SKILL.md each</text>
+  <rect class="doc" x="240" y="388" width="164" height="56" rx="8"/>
+  <text class="t" x="252" y="411">skills</text>
+  <text class="sub" x="252" y="429">one SKILL.md each</text>
 
-  <path class="names" d="M118 468V490" marker-end="url(#head-names)"/>
+  <path class="names" d="M118 328V374" marker-end="url(#head-names)"/>
 
-  <rect class="doc" x="40" y="492" width="156" height="60" rx="8"/>
-  <text class="t" x="52" y="514">agent</text>
-  <text class="sub" x="52" y="534">model, effort, session</text>
-  <path class="names" d="M196 508H238" marker-end="url(#head-names)"/>
+  <rect class="doc" x="40" y="376" width="156" height="60" rx="8"/>
+  <text class="t" x="52" y="398">agent</text>
+  <text class="sub" x="52" y="418">model, effort, session</text>
+  <path class="names" d="M196 428H238" marker-end="url(#head-names)"/>
 
-  <path class="names" d="M118 552V582" marker-end="url(#head-names)"/>
+  <path class="names" d="M118 436V466" marker-end="url(#head-names)"/>
 
-  <rect class="doc" x="40" y="584" width="156" height="72" rx="8"/>
-  <text class="t" x="52" y="606">runtime mapping</text>
-  <text class="sub" x="52" y="625">one adapter's efforts</text>
-  <text class="sub" x="52" y="642">and primitives</text>
+  <rect class="doc" x="40" y="468" width="156" height="72" rx="8"/>
+  <text class="t" x="52" y="490">runtime mapping</text>
+  <text class="sub" x="52" y="509">one adapter's efforts</text>
+  <text class="sub" x="52" y="526">and primitives</text>
 
-  <rect class="apart" x="240" y="552" width="164" height="116" rx="8"/>
-  <text class="small" x="252" y="569">apart, one of each</text>
-  <rect class="single" x="248" y="578" width="148" height="38" rx="6"/>
-  <text class="t" x="258" y="594">workspace</text>
-  <text class="small" x="258" y="609">default checkout setup</text>
-  <rect class="single" x="248" y="622" width="148" height="38" rx="6"/>
-  <text x="258" y="638"><tspan class="t">blocks</tspan><tspan class="small" dx="6">repo only</tspan></text>
-  <text class="small" x="258" y="653">what the repo refuses</text>
+  <rect class="apart" x="240" y="476" width="164" height="116" rx="8"/>
+  <text class="small" x="252" y="493">apart, one of each</text>
+  <rect class="single" x="248" y="502" width="148" height="38" rx="6"/>
+  <text class="t" x="258" y="518">workspace</text>
+  <text class="small" x="258" y="533">default checkout setup</text>
+  <rect class="single" x="248" y="546" width="148" height="38" rx="6"/>
+  <text x="258" y="562"><tspan class="t">blocks</tspan><tspan class="small" dx="6">repo only</tspan></text>
+  <text class="small" x="258" y="577">what the repo refuses</text>
 </svg>
-<figcaption>Solid arrows name a document; dashed arrows are checked against
-the service. Workspace and blocks stand apart.</figcaption>
+<figcaption>Solid arrows name a document; dashed arrows are the service's
+rules: its permission vocabulary and hard limits. Workspace and blocks stand apart.</figcaption>
 </figure>
 
+<div class="text">
 <p>Every document can come from the repo's <code>.agister</code> or from
 home; the repo's replaces home's of the same kind and name.</p>
 
@@ -217,6 +240,7 @@ never clamped. Denied always wins over allowed.</p>
 enforcement plan. A primitive is granted only if everything it grants is
 allowed. An allowed permission that no primitive provides is withheld, and
 the call is refused if the process requires it.</p>
+</div>
 
 <footer>
 <a href="detailed.html">Details</a>
