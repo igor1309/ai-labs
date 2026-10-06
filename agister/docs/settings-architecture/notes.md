@@ -24,10 +24,18 @@ Fields: `internal/domain/definition/documents.go:24-130`, `toml.go:25-60`,
 `.agister/processes/implement.yaml`, `.agister/workflows/code_review.yaml`,
 `~/.agister/runtimes/claude-code.yaml`, `~/.agister/service.toml`.
 
-- **workflow** names processes: fan-out nodes, each a call of a process
-  over the same resolved inputs, then one join node, a call of a process
-  given the fan-out results. Has its own params and values.
-  (`workflow.go:19`; ADR-003)
+- **workflow** composes process calls into one run; its settings and the
+  calls' records fix what each call receives, never whoever starts it
+  (ADR-003 decision drivers). Has its own params and values. Its one
+  shape today, "the smallest shape the one use needs: no conditions,
+  loops or graphs": fan-out nodes, each a call of a process over the same
+  resolved inputs, then one join node, a call of a process given the
+  fan-out results. (`workflow.go:19`; ADR-003)
+  - Existing workflows (`.agister/workflows/`, also in home):
+    `code_review` (architecture, tests, adversarial and clarity reviews
+    concurrently, then the judge) and `adr_review` (the ADR review, then
+    the judge). (`.agister/workflows/code_review.yaml`,
+    `.agister/workflows/adr_review.yaml`)
 - **process** is a named agent call. It names:
   - its **agent** (`uses: agent:<name>`);
   - its **policy** (`policy: process-policy:<name>`);

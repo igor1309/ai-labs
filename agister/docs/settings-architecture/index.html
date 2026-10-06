@@ -160,8 +160,8 @@ exceed.</p>
     <rect class="card" x="40" y="100" width="156" height="72" rx="2"/>
     <rect class="edge" x="40" y="100" width="3" height="72" rx="1"/>
     <text class="t" x="52" y="124">workflow</text>
-    <text class="sub" x="52" y="143">fans out process</text>
-    <text class="sub" x="52" y="160">calls, then joins</text>
+    <text class="sub" x="52" y="143">process calls composed</text>
+    <text class="sub" x="52" y="160">into one run</text>
   </g>
 
   <path class="names" d="M118 172V202" marker-end="url(#head-names)"/>
@@ -250,9 +250,10 @@ home; the repo's replaces home's of the same kind and name.</p>
 
 <h2><span class="k-workflow">Workflow</span> and <span class="k-process">process</span></h2>
 
-<p>A workflow is a set of process calls: fan-out nodes, each a call of a
-process over the same resolved inputs, then one join node, a call of a
-process given the fan-out results. It has its own params and values. A
+<p>A workflow composes process calls into one run, and its settings fix
+what each call receives, never whoever starts it. It has its own params and
+values. The one shape it has today is fan-out then join: several processes
+over the same inputs, then one process given their results. A
 process is a named agent call. It holds the instruction, caller params,
 input values, the checkout input, its own setup, required permissions and
 limit overrides. Everything else it names: its agent, its policy, the
