@@ -2,6 +2,8 @@ package app
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"strings"
@@ -11,8 +13,9 @@ import (
 
 // Borrower lends an in-place call the caller's worktree (ADR-022): it holds
 // the worktree's lock, refuses while another run may still write there,
-// admits the worktree only as the revision left it, and runs its precheck,
-// all before the call's first turn. It never changes the worktree.
+// admits the worktree only as the revision left it, or, for a continuation,
+// as the session's latest run left it, and runs its precheck, all before
+// the call's first turn. It never changes the worktree.
 type Borrower struct {
 	locks     BorrowLocks
 	worktrees BorrowWorktrees
@@ -63,10 +66,14 @@ type BorrowContent interface {
 }
 
 // BorrowRuns lists every run's record, to find the runs that worked in a
-// worktree.
+// worktree, and reads back the changes a continued session's latest run
+// recorded.
 type BorrowRuns interface {
 	// ListStrict refuses an incomplete listing when any record cannot be read.
 	ListStrict(ctx context.Context) ([]run.Record, error)
+	// Artifact reads back the bytes of an artifact the run stored, as its
+	// record names it.
+	Artifact(ctx context.Context, runID string, artifact run.Artifact) ([]byte, error)
 }
 
 // BorrowProcesses ends a process another run recorded, through the seam
@@ -113,6 +120,10 @@ type BorrowCall struct {
 	Precheck *SetupCommand
 	// Verify is where the call verifies (run.InPlace.Verify).
 	Verify string
+	// Latest is the session's latest run, as recorded, when the call
+	// continues a session (ADR-022 rule 8): the worktree must be as it left
+	// it. Nil for a fresh call.
+	Latest *run.Record
 }
 
 // Borrowed is the worktree as a call holds it.
@@ -127,7 +138,8 @@ type Borrowed struct {
 // Borrow lends the call the worktree at call.Dir, or refuses it, before any
 // turn: the worktree's lock must be free, no run that worked there may
 // still have a writer, the worktree must be exactly the revision's (rule
-// 4), and the precheck, if any, must pass and leave it so (rule 5). The
+// 4), or, continuing, exactly as the session's latest run left it (rule 8),
+// and the precheck, if any, must pass and leave it so (rule 5). The
 // worktree is on the call's record (run.InPlace) once its lock is held. A
 // call refused holds no lock.
 func (b *Borrower) Borrow(ctx context.Context, call BorrowCall) (borrowed *Borrowed, err error) {
@@ -157,14 +169,22 @@ func (b *Borrower) Borrow(ctx context.Context, call BorrowCall) (borrowed *Borro
 	if err := b.writers(ctx, call, key); err != nil {
 		return nil, err
 	}
-	if err := b.admit(ctx, call, ""); err != nil {
+	// The content the worktree must hold: the revision's, or what the
+	// session's latest run left there.
+	expected := ""
+	if call.Latest != nil {
+		if expected, err = b.resumable(ctx, call, key); err != nil {
+			return nil, err
+		}
+	}
+	if err := b.admit(ctx, call, "", expected); err != nil {
 		return nil, err
 	}
 	if precheck := call.Precheck; precheck != nil {
 		if err := b.prechecks.Precheck(ctx, PrecheckCall{Record: call.Record, Event: call.Event, Update: call.Update, Precheck: *precheck, Dir: call.Dir}); err != nil {
 			return nil, err
 		}
-		if err := b.admit(ctx, call, "after the precheck, "); err != nil {
+		if err := b.admit(ctx, call, "after the precheck, ", expected); err != nil {
 			return nil, err
 		}
 	}
@@ -221,9 +241,57 @@ func (b *Borrower) writers(ctx context.Context, call BorrowCall, key string) err
 	return nil
 }
 
+// resumable refuses a continuation unless the session's latest run worked
+// in-place in this worktree, of the same repository and revision, and its
+// changes were captured and still match their record (ADR-022 rule 8),
+// each reason on its own. It returns the content that run left there.
+func (b *Borrower) resumable(ctx context.Context, call BorrowCall, key string) (string, error) {
+	latest := call.Latest
+	refused := func(format string, args ...any) error {
+		reason := fmt.Sprintf(format, args...)
+		call.Event(run.SourceAgister, "WORKTREE_NOT_ADMITTED", map[string]any{"reason": reason, "run": latest.ID})
+		return refuse("%s; a continuation in-place resumes where the session's latest run left the worktree (ADR-022 rule 8)", reason)
+	}
+	worked := latest.InPlace
+	switch {
+	case worked == nil:
+		return "", refused("run %s, the latest run of the session, worked in a checkout of its own, not in-place; a session does not switch from temporary to in-place", latest.ID)
+	case worked.Worktree != key:
+		return "", refused("run %s, the latest run of the session, worked in worktree %s, not %s", latest.ID, worked.Worktree, key)
+	case worked.RepositoryIdentity != call.RepositoryIdentity:
+		return "", refused("run %s, the latest run of the session, worked in repository %s, not %s", latest.ID, worked.RepositoryIdentity, call.RepositoryIdentity)
+	case worked.Revision != call.Revision:
+		return "", refused("run %s, the latest run of the session, worked on revision %s, not %s", latest.ID, worked.Revision, call.Revision)
+	case worked.Content == "":
+		return "", refused("run %s, the latest run of the session, recorded no content its changes were captured from: its capture failed or never ran", latest.ID)
+	}
+	var patch *run.Artifact
+	if latest.Result != nil {
+		for i, artifact := range latest.Result.Artifacts {
+			if artifact.Name == "changes.patch" {
+				patch = &latest.Result.Artifacts[i]
+			}
+		}
+	}
+	// No patch with the content recorded is a run that changed nothing.
+	if patch != nil {
+		data, err := b.runs.Artifact(ctx, latest.ID, *patch)
+		if err != nil {
+			return "", refused("run %s's changes.patch cannot be read: %v", latest.ID, err)
+		}
+		sum := sha256.Sum256(data)
+		if digest := "sha256:" + hex.EncodeToString(sum[:]); digest != patch.Digest {
+			return "", refused("run %s's changes.patch is %s, not %s as recorded", latest.ID, digest, patch.Digest)
+		}
+	}
+	return worked.Content, nil
+}
+
 // admit refuses a worktree that is not exactly the revision's (ADR-022
-// rule 4), each reason on its own; prefix says when it was found.
-func (b *Borrower) admit(ctx context.Context, call BorrowCall, prefix string) error {
+// rule 4), or, when expected names content, one that does not hold it with
+// HEAD at the revision (rule 8), each reason on its own; prefix says when
+// it was found.
+func (b *Borrower) admit(ctx context.Context, call BorrowCall, prefix, expected string) error {
 	state, err := b.worktrees.State(ctx, call.Dir, call.Revision)
 	if err != nil {
 		return fmt.Errorf("reading worktree %s: %w", call.Dir, err)
@@ -231,7 +299,25 @@ func (b *Borrower) admit(ctx context.Context, call BorrowCall, prefix string) er
 	refused := func(format string, args ...any) error {
 		reason := fmt.Sprintf(format, args...)
 		call.Event(run.SourceAgister, "WORKTREE_NOT_ADMITTED", map[string]any{"reason": reason})
+		if expected != "" {
+			return refuse("%sworktree %s %s; a continuation in-place resumes where the session's latest run left the worktree (ADR-022 rule 8)", prefix, call.Dir, reason)
+		}
 		return refuse("%sworktree %s %s; an in-place call starts from the revision exactly (ADR-022 rule 4)", prefix, call.Dir, reason)
+	}
+	if expected != "" {
+		// The session's changes are in the worktree, uncommitted: only HEAD
+		// and the content they left are checked.
+		if state.Head != call.Revision {
+			return refused("is at %s, not revision %s", state.Head, call.Revision)
+		}
+		identity, err := b.content.Identity(ctx, call.Dir, call.Revision)
+		if err != nil {
+			return fmt.Errorf("naming worktree %s's content: %w", call.Dir, err)
+		}
+		if identity != expected {
+			return refused("has content %s, not %s, which run %s, the latest run of the session, left there", identity, expected, call.Latest.ID)
+		}
+		return nil
 	}
 	switch {
 	case state.Head != call.Revision:

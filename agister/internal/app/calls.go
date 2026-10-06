@@ -852,12 +852,6 @@ func (c *Calls) execute(ctx context.Context, handle RunHandle, record run.Record
 		event(run.SourceAgister, "PERMISSIONS_WITHHELD", map[string]any{"permissions": res.Plan.Withheld})
 	}
 
-	// Continuing in the caller's worktree (ADR-022 rule 8) is not
-	// supported yet.
-	if record.Request.Continue != "" && res.Process.InPlace {
-		fail(refuse("process %s works in-place, and continuing a run in-place is not supported yet; run it with --workspace temporary to continue run %s", res.Process.Name, record.Request.Continue))
-		return
-	}
 	resumed, err := c.continuation(ctx, res, record.ID, record.Request.Continue, record.Request.Cwd)
 	if err != nil {
 		fail(err)
@@ -924,6 +918,7 @@ func (c *Calls) execute(ctx context.Context, handle RunHandle, record run.Record
 		borrowed, err := c.borrower.Borrow(ctx, BorrowCall{
 			Record: &record, Event: event, Update: handle.Update,
 			Dir: workspace.Dir, RepositoryIdentity: workspace.RepositoryIdentity, Revision: revision, Precheck: precheck, Verify: verify,
+			Latest: resumed.worktree,
 		})
 		if err != nil {
 			fail(err)
@@ -1019,13 +1014,18 @@ func (c *Calls) execute(ctx context.Context, handle RunHandle, record run.Record
 
 	text := prompt.Inputs(inputs)
 	// A continued call in a checkout of its own is told where it works now,
-	// and what of the session's work is there (ADR-013 rule 4).
-	if record.Request.Continue != "" && workspace.Owned {
+	// and what of the session's work is there (ADR-013 rule 4); one in the
+	// caller's worktree, that the session's work is there already (ADR-022
+	// rule 8).
+	switch {
+	case record.Request.Continue != "" && workspace.Owned:
 		var from string
 		if resumed.carry != nil {
 			from = resumed.carry.from
 		}
 		text = strings.TrimSuffix(prompt.Continues(record.Request.Continue, from, workspace.Dir, revision)+"\n\n"+text, "\n\n")
+	case resumed.worktree != nil:
+		text = strings.TrimSuffix(prompt.ContinuesInPlace(record.Request.Continue, resumed.worktree.ID, workspace.Dir, revision)+"\n\n"+text, "\n\n")
 	}
 	request := TurnRequest{
 		Prompt:          text,
@@ -1371,13 +1371,16 @@ func (c *Calls) startNode(ctx context.Context, parent string, node CallNode, par
 
 // resumption is what a continued call resumes: the provider session, which
 // the runtime resumes in place, its totals before the call's first turn,
-// and, for a call with a checkout, the changes it carries (ADR-013); all
-// unset for a fresh session.
+// and, for a call with a checkout of its own, the changes it carries
+// (ADR-013), or, for an in-place call, the session's latest run, whose
+// changes are already in the worktree (ADR-022 rule 8); all unset for a
+// fresh session.
 type resumption struct {
-	session string
-	latest  string // selected before checkout setup
-	before  *run.SessionTotals
-	carry   *carried
+	session  string
+	latest   string // selected before checkout setup
+	before   *run.SessionTotals
+	carry    *carried
+	worktree *run.Record
 }
 
 // carried is the changes.patch of a continued session's latest run, read and
@@ -1460,7 +1463,9 @@ func (c *Calls) continuation(ctx context.Context, res *ResolvedCall, self, runID
 	case prior.Result == nil || prior.Result.Session == nil || prior.Result.Session.ProviderSessionID == "":
 		return resumption{}, refuse("run %s has no provider session", runID)
 	}
-	if res.Identity.ResumeWhereItRan {
+	// An in-place call resumes where the session's latest run worked, known
+	// only from the session's runs.
+	if res.Identity.ResumeWhereItRan && !res.Process.InPlace {
 		if err := c.whereItRan(ctx, res, prior, cwd); err != nil {
 			return resumption{}, err
 		}
@@ -1480,6 +1485,21 @@ func (c *Calls) continuation(ctx context.Context, res *ResolvedCall, self, runID
 	resumed.latest = latest
 	resumed.before = run.LatestTotals(records, resumed.session, self)
 	if res.Process.Checkout == "" {
+		return resumed, nil
+	}
+	if res.Process.InPlace {
+		// Nothing is carried: the borrower admits the worktree only as the
+		// latest run left it.
+		worked := prior
+		if found, _ := run.Latest(records, resumed.session, self); found != nil {
+			worked = *found
+		}
+		if res.Identity.ResumeWhereItRan {
+			if err := c.whereItRan(ctx, res, worked, cwd); err != nil {
+				return resumption{}, err
+			}
+		}
+		resumed.worktree = &worked
 		return resumed, nil
 	}
 	resumed.carry, err = c.carried(ctx, records, prior, resumed.session, self, cwd)
@@ -1521,8 +1541,9 @@ func (c *Calls) currentResumption(ctx context.Context, resumed resumption, self,
 // changes.patch of the session's latest run, the run continued or a later
 // continuation of it (ADR-013 rule 1). None when that run worked in no
 // checkout or kept no patch. It refuses when the latest run is unknown, when
-// its checkout was of another repository than the call's, or when its patch
-// cannot be read as it was recorded.
+// it worked in-place (ADR-022 rule 8), when its checkout was of another
+// repository than the call's, or when its patch cannot be read as it was
+// recorded.
 func (c *Calls) carried(ctx context.Context, records []run.Record, prior run.Record, session, self, cwd string) (*carried, error) {
 	latest, known := run.Latest(records, session, self)
 	if !known {
@@ -1530,6 +1551,9 @@ func (c *Calls) carried(ctx context.Context, records []run.Record, prior run.Rec
 	}
 	if latest == nil {
 		latest = &prior
+	}
+	if worked := latest.InPlace; worked != nil {
+		return nil, refuse("run %s, the latest run of the session, worked in-place in worktree %s; a session does not switch from in-place to temporary: continue it with --workspace in-place (ADR-022 rule 8)", latest.ID, worked.Dir)
 	}
 	if latest.Effects == nil || latest.Effects.Checkout == nil || latest.Result == nil {
 		return nil, nil
@@ -1580,9 +1604,11 @@ func (c *Calls) carried(ctx context.Context, records []run.Record, prior run.Rec
 // whereItRan refuses a continuation of run prior, on a runtime that
 // resumes a session only in the directory it ran in, that would work
 // anywhere else: in a checkout of its own, made for the call, or in
-// another directory than prior worked in. It makes no workspace.
+// another directory than prior worked in. An in-place call works in the
+// caller's worktree, which may be that directory (ADR-022 rule 8). It makes
+// no workspace.
 func (c *Calls) whereItRan(ctx context.Context, res *ResolvedCall, prior run.Record, cwd string) error {
-	if res.Process.Checkout != "" {
+	if res.Process.Checkout != "" && !res.Process.InPlace {
 		return refuse("runtime %s resumes a session only in the directory it ran in, and process %s works in a checkout of its own; it cannot continue run %s",
 			res.Mapping.Name, res.Process.Name, prior.ID)
 	}

@@ -504,18 +504,3 @@ func TestAnInPlaceCallVerifiesOnACleanCopy(t *testing.T) {
 		t.Fatal("no verification ran")
 	}
 }
-
-// ADR-022 rule 8 is not implemented yet: continuing a run in-place is
-// refused, and says so, before any turn or lock.
-func TestContinuingInPlaceIsRefused(t *testing.T) {
-	t.Parallel()
-	h := newHarness()
-	record := h.call(t, contract.CallRequest{Continue: "run-0", Workspace: "in-place"})
-
-	if class(record) != run.ClassRefused || !strings.Contains(message(record), "continuing a run in-place is not supported yet") {
-		t.Fatalf("result %s %q", class(record), message(record))
-	}
-	if len(h.runner.calls()) != 0 || len(h.locks.locked) != 0 {
-		t.Fatalf("turns %d, locks %v", len(h.runner.calls()), h.locks.locked)
-	}
-}
