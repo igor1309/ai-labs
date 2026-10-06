@@ -1,12 +1,12 @@
 # ADR-023: Reviewers know the goal
 
-- **Status:** Proposed
+- **Status:** Accepted
 - **Date:** 2026-10-06
 - **Scope:** what a review node receives, and how a finding's scope
   decides its ruling
 - **Decision type:** Process
 - **Amends:** [ADR-020](020-the-judge-weighs-the-presented-cost-and-benefit-of-a-fix.md)
-  rules 1 and 4
+  rules 1, 2 and 4
 - **Relates to:** [ADR-003](003-fan-out-and-join-workflow.md) rules 2 and 4
 - **Source:** LAB-101, LAB-93
 
@@ -43,41 +43,54 @@ lacks.
 - Every reviewer receives the same inputs: no process decides which
   reviewer knows what.
 - A brief's claims stay claims: a reviewer checks them.
+- The issue's scope stays the owner's (ADR-007 rule 1).
 - Prompts, schemas and settings only; no code (ADR-001 rule 2).
 
 ## Decision
 
 ### 1. Every review node receives the goal
 
-A review workflow takes a `goal` param: a file holding what the change is
-for, such as its issue or brief. It is resolved once and every review node
-receives it, as it receives the base and the candidate (ADR-003 rule 2).
-The join does not (ADR-003 rule 4). A review run without a goal is a
-caller's choice, and the reviewer then reviews the change alone.
+A review workflow takes a required `goal` param: a file holding what the
+change is for, such as its issue or brief. It is resolved once and every
+review node receives it, as it receives the base and the candidate
+(ADR-003 rule 2). The join does not (ADR-003 rule 4). A required param
+needs no code: Agister refuses a call without it, and an optional file
+param would need code it does not have.
 
 ### 2. A brief's claims are not binding
 
-The goal says what the change must achieve. Its claims about scope ("out of
-scope", "not needed", "handled elsewhere"), design or completeness are
-claims a reviewer checks, as it checks a commit message's.
+The goal says what the change must achieve. Its claims about design or
+completeness ("not needed", "handled elsewhere") are claims a reviewer
+checks, as it checks a commit message's. Its scope exclusions ("out of
+scope") are the owner's: a reviewer may show that one stops the goal, but
+cannot override it. The judge rules such a finding `owner`.
 
 ### 3. A finding's scope has three values
 
 `introduced_by_change` is replaced by `scope`:
 
 - `change`: the change introduced it, or left it in code it touched.
-- `goal`: the change did not cause it, but the goal fails because of it:
-  existing code on the goal's path, or a test the goal needs and lacks.
-  The finding quotes the goal in its `requirement`.
+- `goal`: the change did not cause it, but the goal fails because of it.
+  The finding names a concrete scenario the goal requires and traces how
+  this defect stops its outcome. A missing test counts only with a
+  specific goal behaviour that the existing assertions let break. The
+  finding quotes, in its `requirement`, the goal's condition with every
+  qualification it carries, and where in the goal it stands.
 - `outside`: neither.
+
+`scope` sits in the finding's `evidence`, where `introduced_by_change`
+was.
 
 ### 4. The judge rules `goal` as it rules `change`
 
 A finding whose evidence holds and whose scope is `change` or `goal` is
-ruled fix, waive or owner under ADR-020 rules 1 to 3. One whose scope is
-`outside` is `defer`. The judge still reads no goal: a `goal` finding
-presents the goal it fails as its requirement, and its case and trace show
-that it fails, or it is rejected like any other finding.
+ruled fix, waive or owner under ADR-020 rules 1 to 3; where those rules say
+"the change introduced it", a `goal` finding qualifies too. One whose scope
+is `outside` is `defer`. The judge still reads no goal: a `goal` finding
+presents the goal's condition as its requirement, and its scenario and
+trace show that the goal fails, or it is rejected like any other finding,
+its scope classification included. A `goal` finding that a scope exclusion
+of the goal bars is `owner` (rule 2).
 
 ### 5. Left out
 
@@ -93,9 +106,12 @@ that it fails, or it is rejected like any other finding.
 - Findings on old code that blocks the goal become fixes in the round, so
   a round may grow beyond the diff. That is the purpose; its size is
   measured on recorded collections (LAB-94).
-- Each caller supplies a goal; a review without one behaves as today.
+- Each caller supplies a goal; a review call without one is refused.
+- The schema, the five review prompts, the review processes, both review
+  workflows, `judgement.json` and the judge prompt change together.
 - Recorded reviews keep `introduced_by_change`; a judge given an older
-  collection reads `true` as `change` and `false` as `outside`.
+  collection reads `true` as `change` and `false` as `outside`. A finding
+  never carries both fields.
 
 ## Alternatives considered
 
