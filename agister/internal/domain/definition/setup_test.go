@@ -141,3 +141,46 @@ func TestEffectiveSetup(t *testing.T) {
 		})
 	}
 }
+
+// ADR-022 rules 1 and 5: the workspace settings say whether calls work in
+// the caller's worktree, temporary unless set, and may declare a precheck,
+// whose fields are a setup's, both required.
+func TestWorkspaceModeAndPrecheck(t *testing.T) {
+	t.Parallel()
+	workspace, err := definition.ParseWorkspace(doc(definition.KindWorkspace, "workspace", `schema: agister.workspace/v1alpha1
+mode: in-place
+precheck:
+  command: ./scripts/bound.sh
+  timeout: 30s
+`))
+	if err != nil || workspace.Mode != definition.ModeInPlace || !workspace.InPlace() ||
+		workspace.Precheck == nil || *workspace.Precheck != (definition.Setup{Command: "./scripts/bound.sh", Timeout: 30 * time.Second}) {
+		t.Fatalf("workspace = %+v, %v", workspace, err)
+	}
+	temporary, err := definition.ParseWorkspace(doc(definition.KindWorkspace, "workspace", "schema: agister.workspace/v1alpha1\nmode: temporary\n"))
+	if err != nil || temporary.InPlace() {
+		t.Fatalf("temporary = %+v, %v", temporary, err)
+	}
+	unset, err := definition.ParseWorkspace(doc(definition.KindWorkspace, "workspace", "schema: agister.workspace/v1alpha1\n"))
+	if err != nil || unset.Mode != "" || unset.InPlace() || unset.Precheck != nil {
+		t.Fatalf("unset = %+v, %v", unset, err)
+	}
+	if (*definition.Workspace)(nil).InPlace() {
+		t.Fatal("no workspace settings work in-place")
+	}
+	cases := map[string]struct{ text, want string }{
+		"bad mode":            {"schema: agister.workspace/v1alpha1\nmode: shared\n", `mode: must be "in-place" or "temporary"`},
+		"precheck no timeout": {"schema: agister.workspace/v1alpha1\nprecheck: {command: ./p.sh}\n", "precheck.timeout: is required"},
+		"precheck no command": {"schema: agister.workspace/v1alpha1\nprecheck: {timeout: 1m}\n", "precheck.command: is required"},
+		"precheck bad field":  {"schema: agister.workspace/v1alpha1\nprecheck: {command: ./p.sh, timeout: 1m, shell: zsh}\n", "precheck.shell: unknown field"},
+	}
+	for name, c := range cases {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			_, err := definition.ParseWorkspace(doc(definition.KindWorkspace, "workspace", c.text))
+			if err == nil || !strings.Contains(err.Error(), c.want) {
+				t.Fatalf("err = %v, want %q", err, c.want)
+			}
+		})
+	}
+}

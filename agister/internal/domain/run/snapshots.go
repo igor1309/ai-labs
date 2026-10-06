@@ -62,6 +62,19 @@ type Verify struct {
 	Timeout     time.Duration `json:"timeout"`
 	MaxAttempts int           `json:"max_attempts"`
 	Instruction string        `json:"instruction"`
+	// Where is "workspace" when the verification declares it (ADR-022 rule
+	// 6); empty: a clean copy.
+	Where string `json:"where,omitempty"`
+}
+
+// Precheck is the command that gates an in-place call (ADR-022 rule 5), as
+// resolved from the workspace settings at Path. SHA256 is the hex digest of
+// Command.
+type Precheck struct {
+	Command string        `json:"command"`
+	Timeout time.Duration `json:"timeout"`
+	SHA256  string        `json:"sha256"`
+	Path    string        `json:"path"`
 }
 
 // Setup is the setup command a call's checkout runs (ADR-012), as

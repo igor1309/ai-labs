@@ -53,13 +53,20 @@ type Output struct {
 
 // Verify is a process's verification command (ADR-002): run after a valid
 // turn, on a clean copy of the base with the turn's patch applied
-// (ADR-005), with the operator's authority.
+// (ADR-005), with the operator's authority, or, where it says so, in the
+// worktree of an in-place call (ADR-022 rule 6).
 type Verify struct {
 	Command     string        // one Bash command
 	Timeout     time.Duration // per run
 	MaxAttempts int           // runs, the first included
 	Instruction string        // what the agent is told when a run fails
+	// Where is WhereWorkspace, or empty: a clean copy.
+	Where string
 }
+
+// WhereWorkspace is the only value of a verification's where: an in-place
+// call runs the command in the caller's worktree (ADR-022 rule 6).
+const WhereWorkspace = "workspace"
 
 // Repairs reports whether a failed run may be followed by a repair turn,
 // which resumes the call's session: an agent and runtime that cannot
@@ -82,11 +89,30 @@ type Setup struct {
 }
 
 // Workspace is a repository's workspace settings: the setup every process
-// that checks out a revision and declares none of its own runs.
+// that checks out a revision and declares none of its own runs, and, for
+// every such process, whether its calls work in the caller's worktree and
+// the precheck that gates them there (ADR-022).
 type Workspace struct {
-	Setup  *Setup // unset: no default
-	Source Source
+	Setup *Setup // unset: no default
+	// Mode is ModeInPlace or ModeTemporary; empty: not set, which is
+	// ModeTemporary.
+	Mode string
+	// Precheck gates an in-place call before its first turn; unset: none.
+	// It has a setup's fields, both required.
+	Precheck *Setup
+	Source   Source
 }
+
+// The workspace modes of a call whose process checks out a revision
+// (ADR-022 rule 1): a checkout of its own, or the caller's worktree.
+const (
+	ModeTemporary = "temporary"
+	ModeInPlace   = "in-place"
+)
+
+// InPlace says the calls of a process with a checkout work in the caller's
+// worktree under these settings, unless the call says otherwise.
+func (w *Workspace) InPlace() bool { return w != nil && w.Mode == ModeInPlace }
 
 // Process is a named agent call.
 type Process struct {
@@ -253,7 +279,7 @@ func ParseProcess(doc Document) (Process, error) {
 				p.add("verify", `must be "verify:<name>" or the inline fields`)
 			}
 		} else {
-			process.Verify = parseVerify(fields(node, "verify", verifyKeys, p), "verify", p)
+			process.Verify = parseVerify(fields(node, "verify", verifyFields(), p), "verify", p)
 		}
 		// Verifying a tree the call does not own would check content other
 		// calls can change and the call does not capture.
@@ -274,19 +300,29 @@ func ParseVerify(doc Document) (Verification, error) {
 	if root == nil {
 		return verification, p.err("verification " + subjectName(doc.Source))
 	}
-	values := fields(root, "", append([]string{"schema", "name"}, verifyKeys...), p)
+	values := fields(root, "", append([]string{"schema", "name"}, verifyFields()...), p)
 	header(values, VerifySchema, doc.Source.Name, p)
 	verification.Verify = *parseVerify(values, "", p)
 	return verification, p.err("verification " + subjectName(doc.Source))
 }
 
-var verifyKeys = []string{"command", "timeout", "max_attempts", "instruction"}
+// verifyKeys is a verification's required fields. Each call returns a new
+// slice.
+func verifyKeys() []string {
+	return []string{"command", "timeout", "max_attempts", "instruction"}
+}
+
+// verifyFields is all a verification may hold: its required fields and
+// where, the only optional one. Each call returns a new slice.
+func verifyFields() []string {
+	return append(verifyKeys(), "where")
+}
 
 // parseVerify reads the fields of a verify block, or of a verification
-// document, under field. Every one is required: there is no default
-// command, timeout, attempt count or instruction.
+// document, under field. Every one but where is required: there is no
+// default command, timeout, attempt count or instruction.
 func parseVerify(values map[string]*yaml.Node, field string, p *problems) *Verify {
-	for _, key := range verifyKeys {
+	for _, key := range verifyKeys() {
 		if _, ok := values[key]; !ok {
 			p.add(join(field, key), "is required")
 		}
@@ -303,6 +339,14 @@ func parseVerify(values map[string]*yaml.Node, field string, p *problems) *Verif
 			p.add(join(field, "max_attempts"), "must be at least 1")
 		}
 		verify.MaxAttempts = attempts
+	}
+	if node, ok := values["where"]; ok {
+		if where, ok := scalar(node, join(field, "where"), p); ok {
+			verify.Where = where
+			if where != WhereWorkspace {
+				p.add(join(field, "where"), "must be %q", WhereWorkspace)
+			}
+		}
 	}
 	return verify
 }
@@ -332,11 +376,20 @@ func ParseWorkspace(doc Document) (Workspace, error) {
 	if root == nil {
 		return workspace, p.err("workspace settings")
 	}
-	values := fields(root, "", []string{"schema", "setup"}, p)
+	values := fields(root, "", []string{"schema", "setup", "mode", "precheck"}, p)
 	value, _ := scalar(values["schema"], "schema", p)
 	checkSchema(value, WorkspaceSchema, p)
 	if node, ok := values["setup"]; ok {
 		workspace.Setup = parseSetup(node, "setup", p)
+	}
+	if node, ok := values["mode"]; ok {
+		workspace.Mode, _ = scalar(node, "mode", p)
+		if workspace.Mode != ModeInPlace && workspace.Mode != ModeTemporary {
+			p.add("mode", "must be %q or %q", ModeInPlace, ModeTemporary)
+		}
+	}
+	if node, ok := values["precheck"]; ok {
+		workspace.Precheck = parseSetup(node, "precheck", p)
 	}
 	return workspace, p.err("workspace settings")
 }

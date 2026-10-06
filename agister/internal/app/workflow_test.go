@@ -399,11 +399,13 @@ func newFlowHarness() *flowHarness {
 	}}
 	runtimes := nodeRuntimes{runner: h.runner}
 	changes := &changesSpy{}
+	runs := &runsSpy{records: map[string]run.Record{}, states: map[string]run.State{}}
+	preparer := app.NewPreparer(changes, &setupCommandsSpy{}, fixedClock{})
 	h.calls = app.NewCalls(
 		app.NewResolver(h.defs, runtimes, okValidator{}, resolverCheckStub{}), runtimes,
 		map[string]app.InputProvider{"git.revision": h.inputs, "git.diff": h.inputs, "file": h.inputs},
-		h.workspaces, changes, app.NewPreparer(changes, &setupCommandsSpy{}, fixedClock{}), app.NewVerifier(changes, &copiesSpy{}, &commandsSpy{}, fixedClock{}), okValidator{}, h.store,
-		&runsSpy{records: map[string]run.Record{}, states: map[string]run.State{}},
+		h.workspaces, changes, preparer, app.NewBorrower(app.BorrowAdapters{Locks: &locksSpy{}, Worktrees: &worktreesSpy{}, Content: changes, Runs: runs, Writers: &writersSpy{}}, app.BorrowPreparer{Preparer: preparer}),
+		app.NewVerifier(changes, &copiesSpy{}, &commandsSpy{}, fixedClock{}), okValidator{}, h.store, runs,
 		fixedClock{}, unfired, &seqIDs{}, "/state", h.hosted,
 	)
 	return h
@@ -1049,16 +1051,19 @@ func TestWorkflowJoinReceivesNothingButTheCollection(t *testing.T) {
 	}
 }
 
-// A caller cannot give a workflow an agent, limits or a run to continue:
-// the workflow is refused and no node starts.
+// A caller cannot give a workflow an agent, limits, a run to continue or a
+// workspace mode (ADR-022 rule 1): the workflow is refused and no node
+// starts.
 func TestWorkflowRefusesCallerOverrides(t *testing.T) {
 	t.Parallel()
 	limit := 1.0
 	for name, request := range map[string]contract.CallRequest{
-		"agent":    {Agent: "a"},
-		"timeout":  {Timeout: "1m"},
-		"cost":     {MaxCostUSD: &limit},
-		"continue": {Continue: "run-0"},
+		"agent":     {Agent: "a"},
+		"timeout":   {Timeout: "1m"},
+		"cost":      {MaxCostUSD: &limit},
+		"continue":  {Continue: "run-0"},
+		"in-place":  {Workspace: "in-place"},
+		"temporary": {Workspace: "temporary"},
 	} {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
@@ -1069,6 +1074,23 @@ func TestWorkflowRefusesCallerOverrides(t *testing.T) {
 				t.Fatalf("result %+v, runs %v", record.Result, h.store.ids())
 			}
 		})
+	}
+}
+
+// A workflow whose node would work in-place, as the workspace settings say,
+// is refused before any node starts: a workflow's nodes never share the
+// caller's worktree (ADR-022 rule 1).
+func TestWorkflowWithAnInPlaceNodeIsRefused(t *testing.T) {
+	t.Parallel()
+	h := newFlowHarness()
+	h.defs.docs[definition.KindWorkspace] = map[string]string{"workspace": "schema: agister.workspace/v1alpha1\nmode: in-place\n"}
+	id := h.submit(t, contract.CallRequest{})
+	record := h.store.wait(t, id)
+	if class(record) != run.ClassRefused || !strings.Contains(message(record), "workflow w uses process first, which works in-place") || len(h.store.ids()) != 1 {
+		t.Fatalf("result %+v, runs %v", record.Result, h.store.ids())
+	}
+	if len(h.runner.turns("Work as first.")) != 0 || len(h.runner.turns("Work as second.")) != 0 {
+		t.Fatal("a node ran")
 	}
 }
 

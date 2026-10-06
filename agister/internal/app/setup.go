@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/igor1309/ai-labs/agister/internal/domain/run"
@@ -169,6 +170,58 @@ func (p *Preparer) Setup(ctx context.Context, call SetupCall) *run.Error {
 		fault = run.Fault(run.ClassInternal, "recording the setup's run failed: %v", err)
 	}
 	return fault
+}
+
+// PrecheckCall is the precheck that gates one in-place call (ADR-022 rule
+// 5), where it runs, and what it records to.
+type PrecheckCall struct {
+	Record *run.Record
+	Event  func(source, kind string, data map[string]any)
+	Update func(run.Record) error
+
+	Precheck SetupCommand
+	Dir      string // the caller's worktree
+}
+
+// Precheck runs an in-place call's precheck once in the caller's worktree,
+// before the first turn, with the operator's authority, its process group
+// on record while it runs and ended with it. It refuses the call if the
+// command does not exit zero within its timeout. Whether it left the
+// worktree as it found it is the caller's to check again. The run is on
+// record either way.
+func (p *Preparer) Precheck(ctx context.Context, call PrecheckCall) error {
+	precheck := call.Precheck
+	call.Event(run.SourceAgister, "PRECHECK_STARTED", map[string]any{"command": precheck.Command, "dir": call.Dir, "timeout": precheck.Timeout.String()})
+	started := p.clock.Now()
+	result := p.commands.Run(ctx, SetupCommandRequest{Command: precheck.Command, Dir: call.Dir, Timeout: precheck.Timeout, Bound: setupOutputBound},
+		func(ref string) error { return recordGroup(call.Record, call.Update, "the precheck command", ref) })
+	ran := commandRun(precheck.Command, call.Dir, CommandResult{
+		ExitCode: result.ExitCode, Signal: result.Signal, TimedOut: result.TimedOut, Cancelled: result.Cancelled, Error: result.Error,
+		Head: result.Head, Tail: result.Tail, Bytes: result.Bytes, SHA256: result.SHA256,
+	}, started, p.clock.Now())
+	var err error
+	switch {
+	case ran.Cancelled:
+		err = fmt.Errorf("cancelled during the precheck")
+	case ran.TimedOut:
+		err = refuse("the precheck command exceeded its timeout %s", precheck.Timeout)
+	case ran.Error != "":
+		err = fmt.Errorf("the precheck command could not run: %s", ran.Error)
+	case ran.Exit.Code == nil:
+		err = refuse("the precheck command was killed by %s", ran.Exit.Signal)
+	case *ran.Exit.Code != 0:
+		err = refuse("the precheck command exited with code %d", *ran.Exit.Code)
+	}
+	ran.Passed = err == nil
+	call.Record.PrecheckRun = &ran
+	call.Event(run.SourceAgister, "PRECHECK_FINISHED", map[string]any{
+		"code": ran.Exit.Code, "signal": ran.Exit.Signal, "timed_out": ran.TimedOut, "cancelled": ran.Cancelled,
+		"error": ran.Error, "bytes": ran.Output.Bytes, "sha256": ran.Output.SHA256, "wall_ms": ran.WallMS, "passed": ran.Passed,
+	})
+	if updateErr := call.Update(*call.Record); updateErr != nil && err == nil {
+		err = fmt.Errorf("recording the precheck's run failed: %w", updateErr)
+	}
+	return err
 }
 
 // setupEnded is why the setup's run fails the call by how it ended, if it

@@ -187,3 +187,17 @@
 - **Decision:** Option A: an invariant test that every flag in each `Commands()` entry, and every global flag, is registered with the real parser.
 - **Rests on:** none
 - **Follow-ups:** a test in `internal/cli` that fails when a `Commands()` or `GlobalFlags()` entry names a flag the parser's FlagSet does not register.
+
+## D-18: Accept LAB-88's edits to the agent instructions
+
+- **Status:** Confirmed
+- **Asked by:** code_review workflow run 20261006T132134Z-1984da, judge item 5 (sources 4#1)
+- **Question:** do you accept the changes to agent instructions in this change? These are:
+  - `agister/AGENTS.md`: a change to the CLI or settings is done only when the skill, README, diagrams and Pages match, and its issue names these gates;
+  - `agister/skills/agister/SKILL.md`: do not apply an in-place run's patch again; do not change the worktree while a call runs.
+- **Options:** (a) accept and record the disposition in agister/docs/decisions.md; (b) decline and restore the original text; (c) accept some of the edits and restore the rest.
+- **Excluded:** (b), (c): the owner asked for both edits directly in the LAB-88 session (2026-10-06): the AGENTS.md done gate ("this branch"), and the caller skill update as a done gate of LAB-88.
+- **Decision:** (a) accept and record the disposition in agister/docs/decisions.md.
+- **Rests on:** none
+- **Follow-ups:** none
+- **Confirmed:** by the owner, 2026-10-06, after code_review run 20261006T143919Z-a1b768 item 2 asked whether D-18 was the owner's own decision.

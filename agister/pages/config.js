@@ -297,8 +297,8 @@
       params: params(doc.input),
       // Inline fields, or the name of a verification (verify:<name>).
       verify: typeof doc.verify === 'string'
-        ? { ref: refName(doc.verify), maxAttempts: null }
-        : doc.verify ? { maxAttempts: doc.verify.max_attempts ?? null } : null,
+        ? { ref: refName(doc.verify), maxAttempts: null, where: null }
+        : doc.verify ? { maxAttempts: doc.verify.max_attempts ?? null, where: doc.verify.where ?? null } : null,
       checkout: doc.workspace?.checkout ?? null,
       setup: setupOf(doc.workspace?.setup),
       output: doc.output?.schema ?? null,
@@ -328,8 +328,11 @@
     return setup && typeof setup === 'object' ? { command: setup.command ?? null, timeout: setup.timeout ?? null } : null;
   }
 
+  // A verification document (ADR-010). where is 'workspace' when an
+  // in-place call verifies in the worktree (ADR-022), else null: a clean
+  // copy.
   function verifyItem(file, doc) {
-    return { file, name: doc.name ?? stem(file), maxAttempts: doc.max_attempts ?? null };
+    return { file, name: doc.name ?? stem(file), maxAttempts: doc.max_attempts ?? null, where: doc.where ?? null };
   }
 
   function agentItem(file, doc) {
@@ -443,7 +446,9 @@
   }
 
   // workspace.yaml: the setup every process with a checkout and none of its
-  // own runs (ADR-012). null when the folder has none.
+  // own runs (ADR-012); the default workspace mode of such a process,
+  // 'in-place' or 'temporary', null when unset; and the precheck that gates
+  // an in-place call (ADR-022). null when the folder has none.
   async function loadWorkspace(agister) {
     let handle;
     try {
@@ -454,7 +459,7 @@
     }
     try {
       const doc = parseYaml(await readText(handle));
-      return { setup: setupOf(doc?.setup) };
+      return { setup: setupOf(doc?.setup), mode: doc?.mode ?? null, precheck: setupOf(doc?.precheck) };
     } catch (err) {
       return { error: err.message };
     }
@@ -577,10 +582,18 @@
       p.effectiveSetup = !p.checkout ? null
         : p.setup ? { ...p.setup, from: 'process' }
           : defaultSetup ? { ...defaultSetup, from: 'workspace' } : null;
-      // A named verification, resolved: its attempts, or outside these settings.
+      // Its default workspace mode, which agister run --workspace
+      // overrides: workspace.yaml's, else temporary; and the precheck that
+      // gates it in-place. Neither without a checkout (ADR-022 rules 1, 5).
+      const mode = model.workspace?.mode;
+      p.effectiveMode = !p.checkout ? null
+        : mode ? { mode, from: 'workspace' } : { mode: 'temporary', from: 'default' };
+      p.precheck = p.checkout ? model.workspace?.precheck ?? null : null;
+      // A named verification, resolved: its attempts and where it runs, or
+      // outside these settings.
       if (p.verify?.ref) {
         const named = model.verifies.find((v) => !v.error && v.name === p.verify.ref);
-        p.verify = { ...p.verify, maxAttempts: named?.maxAttempts ?? null, outside: !named };
+        p.verify = { ...p.verify, maxAttempts: named?.maxAttempts ?? null, where: named?.where ?? null, outside: !named };
       }
       p.usedBy = model.workflows
         .filter((w) => !w.error && [...w.fanOut, ...(w.join ? [w.join] : [])].some((n) => n.process === p.name))

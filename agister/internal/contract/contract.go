@@ -382,6 +382,9 @@ type Verify struct {
 	Timeout     time.Duration
 	MaxAttempts int
 	Instruction string
+	// Where is "workspace" when an in-place call runs the command in the
+	// caller's worktree (ADR-022 rule 6); empty: a clean copy.
+	Where string
 }
 
 // CallRequest asks for a call of a process, or a run of a workflow: Process
@@ -393,7 +396,10 @@ type CallRequest struct {
 	Timeout    string   // optional, may only shorten
 	MaxCostUSD *float64 // optional, may only lower
 	Continue   string   // optional: a finished run whose session to continue
-	Cwd        string
+	// Workspace is the workspace mode asked for, "in-place" or "temporary"
+	// (ADR-022 rule 1); optional: the repository's setting applies.
+	Workspace string
+	Cwd       string
 }
 
 type Event struct {

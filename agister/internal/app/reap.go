@@ -188,7 +188,11 @@ func (c *Reaper) reap(ctx context.Context, handle ReapHandle, record run.Record,
 		checkouts[0].checkout, checkouts[0].forget, checkouts[0].keep = effects.Unreleased, func() { effects.Unreleased = nil }, nil
 	}
 	// The runtime's process and the verification command's (ADR-002 rule
-	// 10), each by the reference its runner recorded.
+	// 10), each by the reference its runner recorded. Only a reap that
+	// ended every one, or found it gone, knows they ended (ADR-022 rule 3):
+	// a step that failed leaves the run's processes not known to have
+	// ended, and an in-place call asks about them again.
+	ended := true
 	for _, group := range processes {
 		if group.process == nil {
 			continue
@@ -197,6 +201,9 @@ func (c *Reaper) reap(ctx context.Context, handle ReapHandle, record run.Record,
 		data[group.name] = map[string]any{"ref": group.process.Ref, "outcome": string(reaping)}
 		if err != nil {
 			failures = append(failures, fmt.Sprintf("%s %q: %v", group.name, group.process.Ref, err))
+		}
+		if err != nil || reaping != ReapKilled && reaping != ReapGone {
+			ended = false
 		}
 	}
 	// The call's checkout (ADR-002 rule 10; ADR-008 rule 6 once finished)
@@ -245,6 +252,7 @@ func (c *Reaper) reap(ctx context.Context, handle ReapHandle, record run.Record,
 		errs = append(errs, fmt.Errorf("recording the reap: %w", err))
 	}
 	if !finished {
+		record.ProcessesEnded = &ended
 		result := run.AbandonedResult(record.CreatedAt)
 		result.Timing.FinishedAt = now
 		result.Timing.WallMS = now.Sub(record.CreatedAt).Milliseconds()

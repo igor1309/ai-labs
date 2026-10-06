@@ -62,6 +62,17 @@ gives the refusal with both paths it looked in, and a call of that process
 is refused before its first turn. Other processes still run. Supply the
 document; do not route around the refusal.
 
+A verification, inline or a document, may also hold `where: workspace`.
+Then an in-place call (see Run) runs the command in its worktree, with
+the worktree's build output and ignored files, not on a clean copy. A
+command that changes the content still fails, and the patch must rebuild
+the content that passed. A pass then proves the worktree, ignored files
+included, not that the patch alone reproduces it: a check that must prove
+the patch alone runs elsewhere, such as in CI. Every other call verifies
+on a clean copy: a call in a checkout of its own, whatever `where` says,
+and an in-place call whose verification has no `where`. The record's
+`in_place.verify` says which, `workspace` or `copy`.
+
 ## What a repository provides
 
 - `.agister/`: its own documents, laid out like home's. Each replaces
@@ -69,9 +80,16 @@ document; do not route around the refusal.
   names a verify document, this is where the repository puts its own: one
   shell command that passes on a clean checkout and needs nothing
   untracked.
-- `.agister/workspace.yaml`, optional: a setup command that prepares a
-  fresh checkout, for each process with a checkout and no setup of its
-  own. It may only make files git ignores.
+- `.agister/workspace.yaml`, optional, for the processes with a checkout.
+  Each field is optional:
+  - `setup`, a command and a timeout that prepare a fresh checkout, for
+    each such process with no setup of its own. It may only make files
+    git ignores. It does not run in-place.
+  - `mode`, `in-place` or `temporary`: where their calls work unless the
+    call's `--workspace` says otherwise (see Run). Unset, it is
+    `temporary`.
+  - `precheck`, a command and a timeout that gate an in-place call before
+    its first turn. It runs in the worktree with your authority, once.
 - `.agister/blocks.yaml`, optional: the processes, workflows and agents of
   home that this repository blocks.
 - `AGENTS.md`: the agent's runtime loads it in the checkout. Put the
@@ -109,6 +127,14 @@ agister run <workflow> --param <param>=<value> --json
 - A process may work in a fresh checkout of a revision. The checkout holds
   only the files git tracks at that revision, so commit what the call
   relies on before you launch.
+- `--workspace in-place` makes such a process work in the worktree you
+  launch from, ignored files and all, instead; `--workspace temporary`, in
+  a checkout of its own. Without the flag, the repository's
+  `workspace.yaml` `mode` decides, and `temporary` is the default. The
+  flag is only for a process with a checkout: any other is refused with
+  it. A workflow's nodes never work in-place: a workflow takes no
+  `--workspace`, and one whose node's process the repository sets to
+  `in-place` is refused before any node starts.
 - `--json` prints the result when the run ends: its `run_id`, status,
   output, cost and the absolute path of each artifact. Without it, only
   the output is printed: JSON whenever the run has one, text only when the
@@ -119,6 +145,33 @@ agister run <workflow> --param <param>=<value> --json
   with its own process's agent and limits.
 - Interrupting `agister run` cancels the run.
 - Runs cost money. Do not loop runs unattended.
+
+An in-place call is refused before any turn, with exit 3 and the reason,
+when:
+
+- another in-place call holds the worktree (`is in use`). Calls on one
+  worktree run one at a time; a second is refused, not queued.
+- the worktree overlaps a directory Agister may still remove (`is not
+  the caller's to lend`): the checkout of a run that has not finished, a
+  clean copy or an unreleased checkout a run still has on record, or the
+  directory Agister made to hold one of these, which is removed with it.
+- the worktree overlaps a directory another run worked in and may still
+  write in: the run has not finished, or left a process that Agister
+  cannot end. It ends the ones it can. The run may be in-place, temporary
+  or one without a checkout.
+- HEAD is not the revision. Pass the commit HEAD is at.
+- the tree is not clean: a staged change, a dirty submodule, an untracked
+  file git does not ignore, or a tracked file that differs from the
+  revision, even one marked `assume-unchanged`. Ignored files are
+  allowed.
+- the `precheck` exits non-zero, times out, or changes the content or
+  HEAD (`after the precheck, ...`).
+
+A directory overlaps the worktree when it is the worktree, lies inside it
+or contains it.
+
+`setup` does not run in-place: you prepared the worktree, and the run
+records `SETUP_SKIPPED`.
 
 ## Read the result
 
@@ -157,6 +210,14 @@ git apply <home>/runs/<run-id>/artifacts/changes.patch
 Apply it on the revision the run worked on. Then run the repository's
 testing command yourself, and commit.
 
+An in-place run leaves its changes in the worktree, uncommitted, and
+keeps `changes.patch` too, as the record of them. **Do not apply its
+patch again**: they are already there. Run the testing command and
+commit. A failed, timed-out or interrupted in-place call leaves its
+changes in the tree too, for you to keep or discard: nothing is reset,
+cleaned or removed. An agent that commits in the worktree fails the call
+(`WORKTREE_COMMITTED`), and its commit stays.
+
 ## Continue a run
 
 ```sh
@@ -172,6 +233,15 @@ from another repository or revision is refused. A run that kept no patch
 carries nothing. The new run's patch is again cumulative from the
 revision, so apply only the latest one. A workflow cannot be continued.
 
+An in-place run is continued in-place, from the same worktree, on the
+same revision: launch from it, pass the same commit, and pass
+`--workspace in-place` unless `workspace.yaml` sets it. A session does
+not switch between `temporary` and `in-place`. Nothing is applied: the
+tree must still hold exactly what the session's latest run left there,
+with HEAD at the revision, and that run's `changes.patch` must be as
+recorded. Any other state is refused, and so is a latest run whose
+capture failed. The precheck runs again; `setup` does not.
+
 ## Exit codes
 
 0 completed, 1 failed, 2 interrupted, 3 refused, 4 lost, 64 usage or
@@ -183,6 +253,14 @@ that it passed. What a completed run's output means is yours to read.
 ## Rules
 
 - Never weaken, skip or delete a check to make verification pass.
+- In-place is cooperation, not confinement. Agister checks the worktree
+  before and after the call, but does not confine the agent to it: its
+  permissions may still let it write ignored files, `.git` or other
+  worktrees, and the patch holds none of those. Do not change the
+  worktree while the call runs. That includes other calls: a process
+  without a checkout works in the repository itself, takes no worktree
+  lock and is not refused while an in-place call runs there, so do not
+  start one in a worktree an in-place call holds.
 - Running Agister in a repository applies that repository's `.agister/`,
   including the commands its agents run. Review settings you did not write.
 - Do not edit `<home>` by hand to fix one repository. Use the

@@ -500,6 +500,56 @@ func (Workspaces) Identity(ctx context.Context, dir, revision string) (string, e
 	return tree, err
 }
 
+// State reads what decides whether the worktree at dir is still as
+// revision left it, besides its content: the commit HEAD names, revision's
+// tree, and, as status reports them whatever the configuration says, the
+// staged paths, the dirty submodules and the untracked files that are not
+// ignored. It writes nothing in the worktree, its index included.
+func (Workspaces) State(ctx context.Context, dir, revision string) (app.WorktreeState, error) {
+	var state app.WorktreeState
+	head, err := run(ctx, dir, "rev-parse", "--verify", "HEAD")
+	if err != nil {
+		return state, err
+	}
+	state.Head = strings.TrimSpace(head)
+	tree, err := run(ctx, dir, "rev-parse", "--verify", revision+"^{tree}")
+	if err != nil {
+		return state, err
+	}
+	state.Tree = strings.TrimSpace(tree)
+	status, err := run(ctx, dir, "--no-optional-locks", "status", "--porcelain=v2", "-z", "--untracked-files=normal", "--ignore-submodules=none")
+	if err != nil {
+		return state, err
+	}
+	fields := strings.Split(status, "\x00")
+	for i := 0; i < len(fields); i++ {
+		entry := fields[i]
+		kind, rest, _ := strings.Cut(entry, " ")
+		switch kind {
+		case "?":
+			state.Untracked = append(state.Untracked, rest)
+		case "1", "2", "u":
+			// <XY> <sub> ... <path>; a rename's original path follows in a
+			// field of its own.
+			parts := strings.SplitN(rest, " ", map[string]int{"1": 8, "2": 9, "u": 10}[kind])
+			if kind == "2" {
+				i++
+			}
+			if len(parts) < 3 {
+				return state, fmt.Errorf("git status: unexpected entry %q", entry)
+			}
+			xy, sub, path := parts[0], parts[1], parts[len(parts)-1]
+			if kind == "u" || xy[0] != '.' {
+				state.Staged = append(state.Staged, path)
+			}
+			if strings.HasPrefix(sub, "S") && sub != "S..." {
+				state.DirtySubmodules = append(state.DirtySubmodules, path)
+			}
+		}
+	}
+	return state, nil
+}
+
 // Changes is the binary patch from one tree or commit to another, as plain
 // git would apply it: no external diff, text conversion or colour, and the
 // standard prefixes, whatever the configuration says.
@@ -507,6 +557,31 @@ func (Workspaces) Changes(ctx context.Context, dir, from, to string) ([]byte, er
 	out, err := run(ctx, dir, "diff", "--binary", "--no-ext-diff", "--no-textconv", "--no-color",
 		"--src-prefix=a/", "--dst-prefix=b/", from, to, "--")
 	return []byte(out), err
+}
+
+// Rebuild names the content revision has with patch applied, as Identity
+// names a checkout: the tree it writes through an index of its own, seeded
+// from revision, with the patch applied there. No checkout is made, and
+// nothing in dir, its index included, is read or written but the
+// repository's objects.
+func (Workspaces) Rebuild(ctx context.Context, dir, revision string, patch []byte) (string, error) {
+	var tree string
+	err := scratchIndex(func(env []string) error {
+		if _, err := runWith(ctx, dir, env, nil, "read-tree", revision); err != nil {
+			return err
+		}
+		// An empty patch is no change, which apply would refuse. Its
+		// whitespace is content: apply.whitespace=fix must not rewrite it.
+		if len(patch) > 0 {
+			if _, err := runWith(ctx, dir, env, patch, "apply", "--cached", "--binary", "--whitespace=nowarn", "-"); err != nil {
+				return err
+			}
+		}
+		out, err := runWith(ctx, dir, env, nil, "write-tree")
+		tree = strings.TrimSpace(out)
+		return err
+	})
+	return tree, err
 }
 
 // scratchIndex gives do the environment of a temporary index, removed after.

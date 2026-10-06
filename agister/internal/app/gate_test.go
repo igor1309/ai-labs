@@ -3,12 +3,15 @@ package app_test
 import (
 	"context"
 	"errors"
+	"reflect"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/igor1309/ai-labs/agister/internal/app"
 	"github.com/igor1309/ai-labs/agister/internal/contract"
 	"github.com/igor1309/ai-labs/agister/internal/domain/definition"
+	"github.com/igor1309/ai-labs/agister/internal/domain/run"
 )
 
 // clientFake answers every method and records which were reached.
@@ -366,5 +369,66 @@ func TestGatedWriteScopeChecksTheGlobalSnapshot(t *testing.T) {
 	}
 	if got := global.readCount(); got == 0 {
 		t.Fatal("the global settings were never read")
+	}
+}
+
+// preparerStandIn stands in for the preparer a BorrowPreparer translates: it
+// keeps what it was asked and answers err.
+type preparerStandIn struct {
+	ctx  context.Context
+	call app.PrecheckCall
+	err  error
+}
+
+func (s *preparerStandIn) Precheck(ctx context.Context, call app.PrecheckCall) error {
+	s.ctx, s.call = ctx, call
+	return s.err
+}
+
+// The precheck a borrow asks for reaches the preparer as the preparer
+// reads it: the call's own record, event and update, the command with its
+// timeout and the worktree; and the preparer's answer is the borrower's,
+// unchanged.
+func TestTheBorrowersPrecheckReachesThePreparer(t *testing.T) {
+	t.Parallel()
+	for name, answer := range map[string]error{"passed": nil, "refused": errors.New("the precheck command exited with code 1")} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+			preparer := &preparerStandIn{err: answer}
+			record := &run.Record{ID: "run-1"}
+			var events []string
+			var updated []run.Record
+			failure := errors.New("disk full")
+			err := app.BorrowPreparer{Preparer: preparer}.Precheck(ctx, app.BorrowPrecheckCall{
+				Record: record,
+				Event:  func(source, kind string, _ map[string]any) { events = append(events, source+" "+kind) },
+				Update: func(record run.Record) error {
+					updated = append(updated, record)
+					return failure
+				},
+				Precheck: app.BorrowPrecheck{Command: "make lint", Timeout: 30 * time.Second},
+				Dir:      "/repo",
+			})
+
+			if err != answer || preparer.ctx != ctx {
+				t.Fatalf("the precheck = %v, want %v; its context passed on %v", err, answer, preparer.ctx == ctx)
+			}
+			asked := preparer.call
+			if asked.Record != record || asked.Precheck != (app.SetupCommand{Command: "make lint", Timeout: 30 * time.Second}) || asked.Dir != "/repo" {
+				t.Fatalf("the preparer was asked %+v", asked)
+			}
+			asked.Event(run.SourceAgister, "PRECHECK_STARTED", nil)
+			if err := asked.Update(run.Record{ID: "run-1", Workspace: "/repo"}); err != failure {
+				t.Fatalf("the update = %v, want %v", err, failure)
+			}
+			if want := []string{run.SourceAgister + " PRECHECK_STARTED"}; !reflect.DeepEqual(events, want) {
+				t.Fatalf("events %q, want %q", events, want)
+			}
+			if want := []run.Record{{ID: "run-1", Workspace: "/repo"}}; !reflect.DeepEqual(updated, want) {
+				t.Fatalf("updated %+v, want %+v", updated, want)
+			}
+		})
 	}
 }

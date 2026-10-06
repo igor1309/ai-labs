@@ -1,8 +1,8 @@
 // Package prompt assembles what the agent receives. The words come from the
 // process definition; this package only arranges them with the resolved
 // inputs and the granted permissions, or with a verification run's failure.
-// The one exception is a continuation's notice (Continues), whose facts
-// only Agister knows.
+// The one exception is a continuation's notice (Continues, ContinuesInPlace),
+// whose facts only Agister knows.
 //
 // It depends on the run package's evidence types (run.Input, run.Output):
 // the agent receives exactly what the call records, so the prompt is built
@@ -54,6 +54,15 @@ func Continues(continued, carriedFrom, dir, revision string) string {
 		text += fmt.Sprintf(" The changes of run %s, the latest run of the session, are applied there, uncommitted.", carriedFrom)
 	}
 	return "## continuation\n\n" + text + " The directory the earlier run worked in is gone."
+}
+
+// ContinuesInPlace is Agister's notice to a continued call that works in
+// the caller's worktree (ADR-022 rule 8): the run it continues, the
+// worktree at dir, at revision, and that the session's changes, as its
+// latest run left them, are already there.
+func ContinuesInPlace(continued, latest, dir, revision string) string {
+	return "## continuation\n\n" + fmt.Sprintf("This call continues run %s. It works in the worktree at %s, at revision %s, where the session worked before."+
+		" The session's changes, as run %s, its latest run, left them, are already in this worktree, uncommitted.", continued, dir, revision, latest)
 }
 
 func render(value any) string {

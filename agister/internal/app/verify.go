@@ -17,8 +17,8 @@ import (
 const verifyOutputBound = 8 << 10
 
 // Verifier runs the verification loop of calls whose process declares
-// verify (ADR-002; where the command runs, ADR-005), through the contracts
-// it declares here: one loop per call (Verify).
+// verify (ADR-002; where the command runs, ADR-005 and ADR-022 rule 6),
+// through the contracts it declares here: one loop per call (Verify).
 type Verifier struct {
 	content  VerifyContent
 	copies   VerifyCopies
@@ -114,6 +114,9 @@ type VerifyCall struct {
 	// Repository is the one Dir is a checkout of, where the clean copies
 	// are made.
 	Repository string
+	// InWorkspace runs the command in Dir itself, the caller's worktree an
+	// in-place call holds, and makes no clean copy (ADR-022 rule 6).
+	InWorkspace bool
 	// Request is the call's first turn, which every repair repeats with
 	// the failure as its prompt.
 	Request TurnRequest
@@ -135,7 +138,7 @@ func (v *Verifier) Verify(ctx context.Context, call VerifyCall) (verified string
 	loop := &verification{
 		content: v.content, copies: v.copies, commands: v.commands, clock: v.clock,
 		record: call.Record, result: call.Result, event: call.Event, update: call.Update, artifact: call.Artifact,
-		verify: call.Verify, limit: call.Limit, deadline: call.Deadline, noOutput: call.NoOutput, dir: call.Dir, base: call.Base, repository: call.Repository,
+		verify: call.Verify, limit: call.Limit, deadline: call.Deadline, noOutput: call.NoOutput, dir: call.Dir, base: call.Base, repository: call.Repository, inWorkspace: call.InWorkspace,
 		request: call.Request, session: call.Session, take: call.Take, conclude: call.Conclude,
 	}
 	fault = loop.run(ctx)
@@ -144,9 +147,10 @@ func (v *Verifier) Verify(ctx context.Context, call VerifyCall) (verified string
 
 // verification is one call's verification loop: after a valid turn it runs
 // the process's command in a clean copy of the base with the turn's changes
-// applied, and on a failure with attempts, time and budget left, resumes
-// the call's session in place with the failure and checks again. Every
-// attempt is recorded before the next turn starts.
+// applied, or in the call's worktree itself (inWorkspace), and on a failure
+// with attempts, time and budget left, resumes the call's session in place
+// with the failure and checks again. Every attempt is recorded before the
+// next turn starts.
 type verification struct {
 	content  VerifyContent
 	copies   VerifyCopies
@@ -170,7 +174,9 @@ type verification struct {
 	// repository is the one dir is a checkout of, where the clean copies
 	// are made.
 	repository string
-	request    TurnRequest
+	// inWorkspace runs the command in dir, with no clean copy.
+	inWorkspace bool
+	request     TurnRequest
 	// session is the provider session of the call's first turn, which
 	// every repair resumes.
 	session string
@@ -214,8 +220,21 @@ func (v *verification) run(ctx context.Context) *run.Error {
 		}
 		checked = append(checked, identity)
 
-		ran, timeout, fault, kept := v.check(ctx, number, identity)
+		var ran *run.CommandRun
+		var timeout time.Duration
+		var fault *run.Error
+		var kept error
+		where := run.VerifyOnCopy
+		if v.inWorkspace {
+			where = run.VerifyInWorkspace
+			ran, timeout, fault = v.checkInWorkspace(ctx, number, identity)
+		} else {
+			ran, timeout, fault, kept = v.check(ctx, number, identity)
+		}
 		attempt.Run = ran
+		if ran != nil {
+			attempt.Where = where
+		}
 		if fault != nil {
 			return v.stop(attempt, fault)
 		}
@@ -232,8 +251,12 @@ func (v *verification) run(ctx context.Context) *run.Error {
 			return v.stop(attempt, run.Fault(run.ClassInternal, "attempt %d's run: %s", number, ran.Error))
 		}
 		// The run was in its clean copy, not the checkout: a repair's changes
-		// are from the content checked.
+		// are from the content checked. One in the worktree left there what
+		// it changed, which the repair starts on.
 		from = identity
+		if v.inWorkspace && ran.After != "" {
+			from = ran.After
+		}
 		ran.Passed = ran.Exit.Code != nil && *ran.Exit.Code == 0 && ran.After == ""
 		if ran.Passed {
 			// The node completes only once the passing attempt is recorded.
@@ -388,23 +411,45 @@ func (v *verification) check(ctx context.Context, number int, identity string) (
 	timeout := min(v.verify.Timeout, remaining)
 
 	ran := v.runCommand(ctx, number, dir, timeout)
-	if ran.Cancelled || ran.TimedOut || ran.Stale != nil || ran.Error != "" {
-		return &ran, timeout, nil, nil
-	}
 	// ADR-005 rule 1: a run that changes the content fails, whatever its
 	// exit.
+	return &ran, timeout, v.compare(ctx, number, dir, "the clean copy", identity, &ran), nil
+}
+
+// checkInWorkspace runs the command once in the call's worktree, which an
+// in-place call holds under its lock (ADR-022 rule 6): no clean copy is
+// claimed, made or recorded, and the command sees the worktree as it is,
+// its ignored files included, none of which is removed. The content the
+// attempt named before the run is what it checks, and a run that changes
+// it fails (ADR-002 rule 7). The command gets what is left of the call's
+// time, which the loop found left, up to verify.timeout: the timeout it got
+// is returned.
+func (v *verification) checkInWorkspace(ctx context.Context, number int, identity string) (*run.CommandRun, time.Duration, *run.Error) {
+	timeout := min(v.verify.Timeout, v.deadline.Sub(v.clock.Now()))
+	ran := v.runCommand(ctx, number, v.dir, timeout)
+	return &ran, timeout, v.compare(ctx, number, v.dir, "the worktree", identity, &ran)
+}
+
+// compare names the content a run that ended left in dir, the place named
+// what, and, when it is not the content the run checked, records on the run
+// what it changed: such a run fails, whatever its exit. A run killed or
+// failed to run is not compared.
+func (v *verification) compare(ctx context.Context, number int, dir, what, identity string, ran *run.CommandRun) *run.Error {
+	if ran.Cancelled || ran.TimedOut || ran.Stale != nil || ran.Error != "" {
+		return nil
+	}
 	after, err := v.content.Identity(ctx, dir, v.base)
 	if err != nil {
-		return &ran, timeout, v.failure(ctx, "naming the clean copy's content after the run", err), nil
+		return v.failure(ctx, "naming "+what+"'s content after the run", err)
 	}
 	if after != identity {
 		ran.After = after
 		v.event(run.SourceAgister, "VERIFY_CHANGED_CONTENT", map[string]any{"attempt": number, "checked": identity, "after": after})
 		if ran.AfterChanges, err = v.keep(ctx, fmt.Sprintf("attempt-%d-run.patch", number), identity, after); err != nil {
-			return &ran, timeout, v.failure(ctx, "keeping the run's changes", err), nil
+			return v.failure(ctx, "keeping the run's changes", err)
 		}
 	}
-	return &ran, timeout, nil, nil
+	return nil
 }
 
 // claimCopy records the call's clean copy on the run before it is made, so

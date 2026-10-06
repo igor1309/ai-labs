@@ -702,3 +702,48 @@ verify:
 		t.Fatalf("started %q, want %q", starter.commands, want)
 	}
 }
+
+// The process lends an in-place call the caller's worktree through the
+// borrower it composes (ADR-022): a call through the CLI with --workspace
+// in-place completes, its turn in the worktree it was launched from, with
+// the worktree on its record by the lock's canonical path, the lock taken
+// under the home, and no checkout made for it.
+func TestTheCompositionLendsAnInPlaceCallTheCallersWorktree(t *testing.T) {
+	t.Parallel()
+	home, repo := setup(t, "approve")
+	r := agister(t, home, repo, "run", "adversarial_review", "--param", "base=main", "--timeout", "1m", "--workspace", "in-place")
+	if r.code != cli.ExitCompleted {
+		t.Fatalf("exit %d\n%s", r.code, r.stderr)
+	}
+
+	last := lastRun(t, home)
+	record := last.record
+	if result := record["result"].(map[string]any); result["status"] != "completed" || result["output"].(map[string]any)["verdict"] != "approve" {
+		t.Fatalf("record = %v", record)
+	}
+	// The review changed nothing: the content its changes were captured
+	// from is the revision's.
+	head := revision(t, home, repo, "HEAD")
+	content, err := gitOf(t, home).Identity(context.Background(), repo, head)
+	if err != nil || content == "" {
+		t.Fatalf("the worktree's content = %q, %v", content, err)
+	}
+	want := map[string]any{"dir": repo, "worktree": repo, "repository_identity": filepath.Join(repo, ".git"), "revision": head, "content": content}
+	if !reflect.DeepEqual(record["in_place"], want) || record["workspace"] != repo || record["processes_ended"] != true {
+		t.Fatalf("in place %v, want %v; workspace %v, processes ended %v", record["in_place"], want, record["workspace"], record["processes_ended"])
+	}
+	if effects, _ := record["effects"].(map[string]any); effects["checkout"] != nil || effects["copy"] != nil || effects["unreleased"] != nil {
+		t.Fatalf("effects %v", effects)
+	}
+	noCheckoutLeft(t, home)
+	if last.first["cwd"] != repo {
+		t.Fatalf("the turn ran in %v, not %s", last.first["cwd"], repo)
+	}
+	if kinds := strings.Join(last.kinds(), " "); !strings.Contains(kinds, "WORKTREE_LOCKED WORKTREE_ADMITTED") {
+		t.Fatalf("events %s", kinds)
+	}
+	// The lock is the home's, in the namespace of the in-place calls.
+	if locks, err := os.ReadDir(filepath.Join(home, "locks", "in-place")); err != nil || len(locks) != 1 {
+		t.Fatalf("locks %v, %v", locks, err)
+	}
+}

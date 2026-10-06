@@ -41,6 +41,15 @@ func (p Processes) Reap(ctx context.Context, ref string) (app.Reaping, error) {
 	return app.Reaping(result), err
 }
 
+// BorrowProcesses translates the borrower's process contract to the
+// supervisor.
+type BorrowProcesses struct{ Supervisor ProcessSupervisor }
+
+func (p BorrowProcesses) Reap(ctx context.Context, ref string) (app.BorrowReaping, error) {
+	result, err := p.Supervisor.Reap(ctx, ref)
+	return app.BorrowReaping(result), err
+}
+
 // supervisorSink passes a turn's events from the supervisor to a runtime
 // adapter's sink, the supervisor's own decisions (a timeout, an abort, a
 // failed record) as Agister's: they are not the runtime moving.

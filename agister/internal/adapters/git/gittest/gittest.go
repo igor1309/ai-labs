@@ -1,7 +1,8 @@
 // Package gittest is an in-memory fake of the ports the composition root
 // builds from the git adapter (ADR-017 rule 3, seam 5): the calls'
 // workspaces, the verifier's clean copies, the reaper's discard, the
-// content namer and differ, and the git input sources. A test records a
+// content namer and differ, the state of a borrowed worktree, and the git
+// input sources. A test records a
 // repository's revisions as file trees; the fake answers from them and runs
 // no git.
 //
@@ -308,6 +309,29 @@ func (f *Fake) Identity(_ context.Context, dir, _ string) (string, error) {
 	return identity, nil
 }
 
+// State is the worktree at dir as git status would read it: HEAD is the
+// branch its repository checked out last, and revision's tree the identity
+// of revision's files. The fake knows no index, submodule or ignore rule:
+// nothing is staged or dirty in a submodule, and every file is content, so
+// an untracked one changes the identity.
+func (f *Fake) State(_ context.Context, dir, revision string) (app.WorktreeState, error) {
+	r, err := f.repository(dir)
+	if err != nil {
+		return app.WorktreeState{}, err
+	}
+	f.mu.Lock()
+	head, err := r.resolve("HEAD")
+	f.mu.Unlock()
+	if err != nil {
+		return app.WorktreeState{}, err
+	}
+	content, err := f.revisionOf(r.root, revision)
+	if err != nil {
+		return app.WorktreeState{}, err
+	}
+	return app.WorktreeState{Head: head, Tree: content.identity()}, nil
+}
+
 // Changes is the patch from one recorded content, a revision or an
 // identity, to another; empty when they are the same.
 func (f *Fake) Changes(_ context.Context, _, from, to string) ([]byte, error) {
@@ -328,36 +352,13 @@ func (f *Fake) Changes(_ context.Context, _, from, to string) ([]byte, error) {
 // leaves them, so a file may become a directory and back: it removes before
 // it writes.
 func (f *Fake) Apply(_ context.Context, dir string, patch []byte, check bool) error {
-	files, err := parse(patch)
-	if err != nil {
-		return err
-	}
 	content, err := read(dir)
 	if err != nil {
 		return err
 	}
-	produced := tree{}
-	for path, text := range content {
-		produced[path] = text
-	}
-	for _, file := range files {
-		text, ok := content[file.path]
-		if ok != (file.old != nil) || ok && text != *file.old {
-			return fmt.Errorf("patch does not apply: %s is not as the patch expects", file.path)
-		}
-		if file.new == nil {
-			delete(produced, file.path)
-		} else {
-			produced[file.path] = *file.new
-		}
-	}
-	for path := range produced {
-		for at := path; strings.Contains(at, "/"); {
-			at = at[:strings.LastIndexByte(at, '/')]
-			if _, ok := produced[at]; ok {
-				return fmt.Errorf("patch does not apply: %s would be both a file and a directory", at)
-			}
-		}
+	files, _, err := applied(content, patch)
+	if err != nil {
+		return err
 	}
 	if check {
 		return nil
@@ -382,6 +383,62 @@ func (f *Fake) Apply(_ context.Context, dir string, patch []byte, check bool) er
 		}
 	}
 	return nil
+}
+
+// Rebuild names the content revision has, in the repository dir is in,
+// with patch applied, as Identity names a directory's, and keeps it under
+// that name for Changes. Nothing is written.
+func (f *Fake) Rebuild(_ context.Context, dir, revision string, patch []byte) (string, error) {
+	r, err := f.repository(dir)
+	if err != nil {
+		return "", err
+	}
+	content, err := f.revisionOf(r.root, revision)
+	if err != nil {
+		return "", err
+	}
+	_, produced, err := applied(content, patch)
+	if err != nil {
+		return "", err
+	}
+	identity := produced.identity()
+	f.mu.Lock()
+	f.record(identity, produced)
+	f.mu.Unlock()
+	return identity, nil
+}
+
+// applied is content with patch applied, and the files the patch changes;
+// an error when the patch does not apply.
+func applied(content tree, patch []byte) ([]change, tree, error) {
+	files, err := parse(patch)
+	if err != nil {
+		return nil, nil, err
+	}
+	produced := tree{}
+	for path, text := range content {
+		produced[path] = text
+	}
+	for _, file := range files {
+		text, ok := content[file.path]
+		if ok != (file.old != nil) || ok && text != *file.old {
+			return nil, nil, fmt.Errorf("patch does not apply: %s is not as the patch expects", file.path)
+		}
+		if file.new == nil {
+			delete(produced, file.path)
+		} else {
+			produced[file.path] = *file.new
+		}
+	}
+	for path := range produced {
+		for at := path; strings.Contains(at, "/"); {
+			at = at[:strings.LastIndexByte(at, '/')]
+			if _, ok := produced[at]; ok {
+				return nil, nil, fmt.Errorf("patch does not apply: %s would be both a file and a directory", at)
+			}
+		}
+	}
+	return files, produced, nil
 }
 
 // remove removes a file under dir and the directories its removal leaves

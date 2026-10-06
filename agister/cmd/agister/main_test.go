@@ -114,7 +114,7 @@ func onRealGit(t testing.TB, home string) {
 // fakeGit is the composition's git-backed adapters, all over fake.
 func fakeGit(fake *gittest.Fake) gitAdapters {
 	return gitAdapters{
-		calls: fake, copies: fake, discarder: fake, content: fake,
+		calls: fake, copies: fake, discarder: fake, content: fake, state: fake,
 		revision: fake.Revision(), mergeBase: fake.MergeBase(), diff: fake.Diff(), changedFiles: fake.ChangedFiles(),
 	}
 }

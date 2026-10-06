@@ -223,6 +223,46 @@ func TestApplyRebuildsWhatChangesDiffed(t *testing.T) {
 	}
 }
 
+// Rebuild names what a revision with a patch applied holds, as Identity
+// names a directory with those files, without writing anything; no patch
+// rebuilds the revision, and one that does not apply is an error.
+func TestRebuildNamesTheContentAPatchMakesFromARevision(t *testing.T) {
+	t.Parallel()
+	fake, _, root, main, feature := recorded(t)
+	dir, release, err := fake.Checkout(ctx, root, main)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = release() })
+	want, err := fake.Identity(ctx, dir, main)
+	if err != nil {
+		t.Fatal(err)
+	}
+	patch, err := fake.Changes(ctx, root, main, feature)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if rebuilt, err := fake.Rebuild(ctx, root, main, nil); err != nil || rebuilt != want {
+		t.Fatalf("no patch rebuilt %q, %v; want %s", rebuilt, err, want)
+	}
+	rebuilt, err := fake.Rebuild(ctx, root, main, patch)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := fake.Apply(ctx, dir, patch, false); err != nil {
+		t.Fatal(err)
+	}
+	if applied, err := fake.Identity(ctx, dir, main); err != nil || rebuilt != applied {
+		t.Fatalf("rebuilt %s, applied %s, %v", rebuilt, applied, err)
+	}
+	if again, err := fake.Changes(ctx, root, rebuilt, feature); err != nil || len(again) != 0 {
+		t.Fatalf("the rebuilt content differs from feature's: %q, %v", again, err)
+	}
+	if _, err := fake.Rebuild(ctx, root, feature, patch); err == nil {
+		t.Fatal("a patch that does not apply was rebuilt")
+	}
+}
+
 // A patch Changes made between revisions where a file and a directory
 // trade places applies to a checkout of the first and rebuilds the second,
 // both ways; a patch that would leave a path both a file and a directory

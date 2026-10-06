@@ -83,6 +83,22 @@ func TestProcessAdapter(t *testing.T) {
 	}
 }
 
+func TestBorrowProcessAdapter(t *testing.T) {
+	t.Parallel()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	failure := errors.New("unknown reference")
+	for result, want := range map[supervisor.Reaping]app.BorrowReaping{
+		supervisor.ReapGone: app.BorrowReapGone, supervisor.ReapKilled: app.BorrowReapKilled, supervisor.ReapLeft: app.BorrowReapLeft,
+	} {
+		stub := &processStandIn{result: result, err: failure}
+		got, err := (BorrowProcesses{Supervisor: stub}).Reap(ctx, "pgid:42:token")
+		if stub.ctx != ctx || stub.ref != "pgid:42:token" || got != want || err != failure {
+			t.Fatalf("stub %+v, result %s, want %s, err %v", stub, got, want, err)
+		}
+	}
+}
+
 func TestSetupCommandAdapter(t *testing.T) {
 	t.Parallel()
 	ctx, cancel := context.WithCancel(context.Background())

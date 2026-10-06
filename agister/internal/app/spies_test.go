@@ -297,6 +297,26 @@ type changesSpy struct {
 	// when set, runs first and fails the apply with what it returns.
 	applied  []appliedPatch
 	applying func(check bool) error
+	// rebuilt, when set, names the content a patch rebuilds from a
+	// revision; unset, every rebuild fails. rebuilds lists each one asked.
+	rebuilt  func(revision string, patch []byte) string
+	rebuilds []rebuiltPatch
+}
+
+// rebuiltPatch is one Rebuild: the repository it was asked in, the revision
+// the patch was applied to, and the patch.
+type rebuiltPatch struct {
+	dir, revision, patch string
+}
+
+func (s *changesSpy) Rebuild(_ context.Context, dir, revision string, patch []byte) (string, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.rebuilds = append(s.rebuilds, rebuiltPatch{dir: dir, revision: revision, patch: string(patch)})
+	if s.rebuilt == nil {
+		return "", errors.New("no rebuild was given")
+	}
+	return s.rebuilt(revision, patch), nil
 }
 
 // appliedPatch is one Apply: the checkout, the patch, and whether it was
@@ -891,6 +911,8 @@ type processesSpy struct {
 	mu     sync.Mutex
 	reaped []string // references
 	err    error
+	// outcome is what each Reap finds; ReapKilled when empty.
+	outcome app.Reaping
 	// hook, when set, sees the context each Reap receives.
 	hook func(context.Context)
 }
@@ -902,7 +924,118 @@ func (s *processesSpy) Reap(ctx context.Context, ref string) (app.Reaping, error
 		s.hook(ctx)
 	}
 	s.reaped = append(s.reaped, ref)
+	if s.outcome != "" {
+		return s.outcome, s.err
+	}
 	return app.ReapKilled, s.err
+}
+
+func (s *processesSpy) refs() []string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return append([]string(nil), s.reaped...)
+}
+
+// writersSpy ends the processes a borrower asks about, as the borrower
+// reads it.
+type writersSpy struct {
+	mu     sync.Mutex
+	reaped []string // references
+	err    error
+	// outcome is what each Reap finds; BorrowReapKilled when empty.
+	outcome app.BorrowReaping
+}
+
+func (s *writersSpy) Reap(_ context.Context, ref string) (app.BorrowReaping, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.reaped = append(s.reaped, ref)
+	if s.outcome != "" {
+		return s.outcome, s.err
+	}
+	return app.BorrowReapKilled, s.err
+}
+
+func (s *writersSpy) refs() []string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return append([]string(nil), s.reaped...)
+}
+
+// locksSpy holds the worktree locks of in-place calls, by the directory as
+// given, and keys each by its canonical path: the directory as given,
+// unless canonical says otherwise.
+type locksSpy struct {
+	mu       sync.Mutex
+	held     map[string]bool
+	locked   []string
+	unlocked []string
+	// canonical is the canonical path of each directory that has another
+	// name; empty for a directory that is not there.
+	canonical map[string]string
+	// unreadable is why Key cannot name the canonical path of a directory.
+	unreadable map[string]error
+}
+
+func (s *locksSpy) key(dir string) string {
+	if key, ok := s.canonical[dir]; ok {
+		return key
+	}
+	return dir
+}
+
+func (s *locksSpy) Lock(dir string) (string, func() error, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.held[dir] {
+		return "", nil, fmt.Errorf("%s: %w", dir, app.ErrWorktreeLocked)
+	}
+	if s.held == nil {
+		s.held = map[string]bool{}
+	}
+	s.held[dir] = true
+	s.locked = append(s.locked, dir)
+	return s.key(dir), func() error {
+		s.mu.Lock()
+		defer s.mu.Unlock()
+		delete(s.held, dir)
+		s.unlocked = append(s.unlocked, dir)
+		return nil
+	}, nil
+}
+
+func (s *locksSpy) Key(dir string) (string, error) {
+	if err, ok := s.unreadable[dir]; ok {
+		return "", err
+	}
+	return s.key(dir), nil
+}
+
+func (s *locksSpy) holds(dir string) bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.held[dir]
+}
+
+// worktreesSpy reads the git state of borrowed worktrees: by default each
+// is clean at the revision asked about, its tree "tree", as changesSpy
+// names unchanged content.
+type worktreesSpy struct {
+	mu    sync.Mutex
+	reads int
+	// state, when set, is what the nth read (from 0) finds instead.
+	state func(revision string, n int) app.WorktreeState
+}
+
+func (s *worktreesSpy) State(_ context.Context, _, revision string) (app.WorktreeState, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	n := s.reads
+	s.reads++
+	if s.state != nil {
+		return s.state(revision, n), nil
+	}
+	return app.WorktreeState{Head: revision, Tree: "tree"}, nil
 }
 
 // reapHandle is all a reap has of an adopted run: it appends and finishes,
