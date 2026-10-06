@@ -190,7 +190,7 @@
 
 ## D-18: Accept LAB-88's edits to the agent instructions
 
-- **Status:** Owner
+- **Status:** Confirmed
 - **Asked by:** code_review workflow run 20261006T132134Z-1984da, judge item 5 (sources 4#1)
 - **Question:** do you accept the changes to agent instructions in this change? These are:
   - `agister/AGENTS.md`: a change to the CLI or settings is done only when the skill, README, diagrams and Pages match, and its issue names these gates;
@@ -200,3 +200,4 @@
 - **Decision:** (a) accept and record the disposition in agister/docs/decisions.md.
 - **Rests on:** none
 - **Follow-ups:** none
+- **Confirmed:** by the owner, 2026-10-06, after code_review run 20261006T143919Z-a1b768 item 2 asked whether D-18 was the owner's own decision.
