@@ -12,10 +12,11 @@ import (
 )
 
 // Borrower lends an in-place call the caller's worktree (ADR-022): it holds
-// the worktree's lock, refuses while another run may still write there,
-// admits the worktree only as the revision left it, or, for a continuation,
-// as the session's latest run left it, and runs its precheck, all before
-// the call's first turn. It never changes the worktree.
+// the worktree's lock, refuses a directory Agister made and still removes,
+// refuses while another run may still write there, admits the worktree only
+// as the revision left it, or, for a continuation, as the session's latest
+// run left it, and runs its precheck, all before the call's first turn. It
+// never changes the worktree.
 type Borrower struct {
 	locks     BorrowLocks
 	worktrees BorrowWorktrees
@@ -33,6 +34,11 @@ type BorrowLocks interface {
 	// it, and the release of the lock. A lock another call holds is an
 	// error that wraps ErrWorktreeLocked.
 	Lock(dir string) (key string, unlock func() error, err error)
+	// Key returns the canonical path that would key the directory at dir,
+	// as Lock returns it, and takes no lock: a directory a run recorded is
+	// the worktree only by this path. It is empty for a directory that is
+	// not there, which is no worktree.
+	Key(dir string) (key string, err error)
 }
 
 // ErrWorktreeLocked is what a worktree's lock is refused with while another
@@ -136,13 +142,14 @@ type Borrowed struct {
 }
 
 // Borrow lends the call the worktree at call.Dir, or refuses it, before any
-// turn: the worktree's lock must be free, no run that worked there may
+// turn: the worktree's lock must be free, the directory must not be one
+// Agister made and still removes (rule 2), no run that worked there may
 // still have a writer, the worktree must be exactly the revision's (rule
 // 4), or, continuing, exactly as the session's latest run left it (rule 8),
 // and the precheck, if any, must pass and leave it so (rule 5). The
 // worktree is on the call's record (run.InPlace) once its lock is held. A
-// call refused holds no lock.
-func (b *Borrower) Borrow(ctx context.Context, call BorrowCall) (borrowed *Borrowed, err error) {
+// call refused holds no lock, nor does one a collaborator's panic ends.
+func (b *Borrower) Borrow(ctx context.Context, call BorrowCall) (*Borrowed, error) {
 	key, unlock, err := b.locks.Lock(call.Dir)
 	if errors.Is(err, ErrWorktreeLocked) {
 		return nil, refuse("worktree %s is in use: another in-place call holds it (ADR-022 rule 3)", call.Dir)
@@ -150,11 +157,15 @@ func (b *Borrower) Borrow(ctx context.Context, call BorrowCall) (borrowed *Borro
 	if err != nil {
 		return nil, fmt.Errorf("locking worktree %s: %w", call.Dir, err)
 	}
+	// The lock is the call's only once Borrow hands it over: on any other
+	// way out, a panic included, it is let go here.
+	lent := false
 	defer func() {
-		if err != nil {
-			if unlockErr := unlock(); unlockErr != nil {
-				call.Event(run.SourceAgister, "WORKTREE_UNLOCK_FAILED", map[string]any{"error": unlockErr.Error()})
-			}
+		if lent {
+			return
+		}
+		if unlockErr := unlock(); unlockErr != nil {
+			call.Event(run.SourceAgister, "WORKTREE_UNLOCK_FAILED", map[string]any{"error": unlockErr.Error()})
 		}
 	}()
 	// On record before anything is run there: a call killed from here on
@@ -172,7 +183,16 @@ func (b *Borrower) Borrow(ctx context.Context, call BorrowCall) (borrowed *Borro
 		return nil, fmt.Errorf("recording the worktree failed: %w", err)
 	}
 	call.Event(run.SourceAgister, "WORKTREE_LOCKED", map[string]any{"dir": call.Dir, "worktree": key})
-	if err := b.writers(ctx, call, key); err != nil {
+	records, err := b.runs.ListStrict(ctx)
+	if err != nil {
+		return nil, refuse("the runs that may still write in worktree %s cannot be read: %v", call.Dir, err)
+	}
+	// Before any process is ended for the worktree: a directory that is not
+	// the caller's to lend ends nothing.
+	if err := b.made(call, key, records); err != nil {
+		return nil, err
+	}
+	if err := b.writers(ctx, call, key, records); err != nil {
 		return nil, err
 	}
 	// The content the worktree must hold: the revision's, or what the
@@ -195,6 +215,7 @@ func (b *Borrower) Borrow(ctx context.Context, call BorrowCall) (borrowed *Borro
 		}
 	}
 	call.Event(run.SourceAgister, "WORKTREE_ADMITTED", map[string]any{"dir": call.Dir, "revision": call.Revision})
+	lent = true
 	return &Borrowed{
 		Release: unlock,
 		Head: func(ctx context.Context) (string, error) {
@@ -204,14 +225,53 @@ func (b *Borrower) Borrow(ctx context.Context, call BorrowCall) (borrowed *Borro
 	}, nil
 }
 
+// made refuses a directory Agister made and still removes: the checkout of
+// another run that has not finished, which its release or a reap removes,
+// or a clean copy or an unreleased checkout a run still has on record,
+// which a reap removes. A call lent it would lose its work with it, and
+// nothing of Agister's removes a borrowed worktree (ADR-022 rules 2 and 7).
+// records are every run's.
+func (b *Borrower) made(call BorrowCall, key string, records []run.Record) error {
+	for _, other := range records {
+		if other.ID == call.Record.ID || other.Effects == nil {
+			continue
+		}
+		// A finished run's checkout stays on record, released.
+		var checkout *run.Checkout
+		if other.FinishedAt == nil {
+			checkout = other.Effects.Checkout
+		}
+		for _, made := range []struct {
+			what     string
+			checkout *run.Checkout
+		}{
+			{"the checkout of run " + other.ID + ", which has not finished", checkout},
+			{"a clean copy run " + other.ID + " still has on record", other.Effects.Copy},
+			{"a checkout run " + other.ID + " could not release", other.Effects.Unreleased},
+		} {
+			if made.checkout == nil {
+				continue
+			}
+			recorded, err := b.locks.Key(made.checkout.Dir)
+			if err != nil {
+				return refuse("worktree %s cannot be told apart from %s, which run %s recorded as a checkout: %v", call.Dir, made.checkout.Dir, other.ID, err)
+			}
+			if recorded != key {
+				continue
+			}
+			reason := "is " + made.what
+			call.Event(run.SourceAgister, "WORKTREE_NOT_ADMITTED", map[string]any{"reason": reason, "run": other.ID})
+			return refuse("worktree %s %s: Agister made it and removes it, so it is not the caller's to lend (ADR-022 rule 2)", call.Dir, reason)
+		}
+	}
+	return nil
+}
+
 // writers refuses while a run that worked in the worktree may still write
 // there (ADR-022 rule 3): one unfinished, or one with a process that is not
-// known to have ended, unless that process can be ended now.
-func (b *Borrower) writers(ctx context.Context, call BorrowCall, key string) error {
-	records, err := b.runs.ListStrict(ctx)
-	if err != nil {
-		return refuse("the runs that may still write in worktree %s cannot be read: %v", call.Dir, err)
-	}
+// known to have ended, unless that process can be ended now. records are
+// every run's.
+func (b *Borrower) writers(ctx context.Context, call BorrowCall, key string, records []run.Record) error {
 	for _, other := range records {
 		if other.ID == call.Record.ID || other.InPlace == nil || other.InPlace.Worktree != key {
 			continue

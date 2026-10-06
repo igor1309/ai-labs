@@ -371,6 +371,27 @@ func TestAPrecheckThatFailsOrChangesTheWorktreeRefusesTheCall(t *testing.T) {
 	}
 }
 
+// ADR-022 rule 3: a precheck that panics ends the call with the worktree's
+// lock let go: the lock is the call's only once the worktree is lent, and
+// every other way out of the borrow releases it, not a refusal alone.
+func TestAPrecheckThatPanicsLeavesTheWorktreeUnlocked(t *testing.T) {
+	t.Parallel()
+	h := newHarness()
+	withWorkspace(h, prechecked)
+	h.setup.running = func(app.SetupCommandRequest) { panic("the precheck exploded") }
+	record := h.call(t, contract.CallRequest{})
+
+	if class(record) != run.ClassInternal || message(record) != "the precheck exploded" {
+		t.Fatalf("result %+v", record.Result)
+	}
+	if h.locks.holds("/repo") || !reflect.DeepEqual(h.locks.unlocked, []string{"/repo"}) {
+		t.Fatalf("lock held %v, unlocked %v", h.locks.holds("/repo"), h.locks.unlocked)
+	}
+	if len(h.runner.calls()) != 0 || recorded(h, "WORKTREE_ADMITTED") {
+		t.Fatalf("turns %d, events %v", len(h.runner.calls()), h.recorder.kinds())
+	}
+}
+
 // ADR-022 rule 3: a worktree another in-place call holds is refused, before
 // anything is read or run there.
 func TestAWorktreeInUseIsRefused(t *testing.T) {
@@ -449,6 +470,44 @@ func TestAnotherRunThatMayStillWriteInTheWorktreeRefusesTheCall(t *testing.T) {
 	}
 }
 
+// storedBorrows returns a run store in a directory of the test's own and a
+// borrow that creates run id there and asks a Borrower on that store, over
+// the harness's spies, for /repo; update saves the run's record. What a
+// borrow leaves held, the run's ownership and a lock lent, is let go when
+// the test ends.
+func storedBorrows(t *testing.T, h *harness) (fsruns.Store, func(id string, update func(app.RunHandle, run.Record) error) (*app.Borrowed, error)) {
+	t.Helper()
+	ctx := context.Background()
+	store := fsruns.Store{Dir: t.TempDir(), Appends: fsruns.NewAppends()}
+	borrower := app.NewBorrower(h.locks, h.worktrees, h.changes, store, h.processes, app.NewPreparer(h.changes, h.setup, h.clock))
+	return store, func(id string, update func(app.RunHandle, run.Record) error) (*app.Borrowed, error) {
+		t.Helper()
+		record := run.Record{ID: id}
+		handle, err := store.Create(ctx, record)
+		if err != nil {
+			t.Fatal(err)
+		}
+		// An error is a run that is not held any more: the test gave it up,
+		// or a reap finished it.
+		t.Cleanup(func() { _ = store.Abandon(id) })
+		borrowed, err := borrower.Borrow(ctx, app.BorrowCall{
+			Record: &record,
+			Event: func(source, kind string, data map[string]any) {
+				_ = h.recorder.Append(run.Event{Source: source, Kind: kind, Data: data})
+			},
+			Update: func(record run.Record) error { return update(handle, record) },
+			Dir:    "/repo", RepositoryIdentity: "/repo", Revision: "sha-HEAD",
+		})
+		if err == nil {
+			t.Cleanup(func() { _ = borrowed.Release() })
+		}
+		return borrowed, err
+	}
+}
+
+// saved saves the record through the run's handle.
+func saved(handle app.RunHandle, record run.Record) error { return handle.Update(record) }
+
 // ADR-001 invariant 11, ADR-022 rule 3: a call killed right after its
 // worktree went on record, before it ran anything there, leaves a run a
 // reap finishes, and the worktree is lent to the next call; the worktree
@@ -457,20 +516,7 @@ func TestACallKilledOnceItsWorktreeIsOnRecordIsReaped(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
 	h := newHarness()
-	store := fsruns.Store{Dir: t.TempDir(), Appends: fsruns.NewAppends()}
-	borrower := app.NewBorrower(h.locks, h.worktrees, h.changes, store, h.processes, app.NewPreparer(h.changes, h.setup, h.clock))
-	borrow := func(id string, update func(app.RunHandle, run.Record) error) (*app.Borrowed, error) {
-		record := run.Record{ID: id}
-		handle, err := store.Create(ctx, record)
-		if err != nil {
-			t.Fatal(err)
-		}
-		return borrower.Borrow(ctx, app.BorrowCall{
-			Record: &record, Event: func(string, string, map[string]any) {},
-			Update: func(record run.Record) error { return update(handle, record) },
-			Dir:    "/repo", RepositoryIdentity: "/repo", Revision: "sha-HEAD",
-		})
-	}
+	store, borrow := storedBorrows(t, h)
 	killed := errors.New("killed")
 	if _, err := borrow("run-0", func(handle app.RunHandle, record run.Record) error {
 		if err := handle.Update(record); err != nil {
@@ -494,12 +540,81 @@ func TestACallKilledOnceItsWorktreeIsOnRecordIsReaped(t *testing.T) {
 		t.Fatalf("reaped %+v, %v", reaped, err)
 	}
 	noWorktreeEffect(t, reaped)
-	borrowed, err := borrow("run-1", func(handle app.RunHandle, record run.Record) error { return handle.Update(record) })
+	borrowed, err := borrow("run-1", saved)
 	if err != nil {
 		t.Fatalf("the next borrow = %v", err)
 	}
 	if err := borrowed.Release(); err != nil {
 		t.Fatal(err)
+	}
+}
+
+// ADR-022 rules 2 and 7: a directory Agister made and still removes is not
+// lent, before anything is read or run there: the checkout of another run
+// that has not finished, killed or still running, which its release or a
+// reap removes with the call's work in it, and a clean copy or an
+// unreleased checkout a finished run still has on record. The checkout a
+// finished run released, and a checkout elsewhere, refuse nothing.
+func TestADirectoryAgisterStillRemovesIsNotLent(t *testing.T) {
+	t.Parallel()
+	const killed, running, finished = "killed", "running", "finished"
+	checkout := func(dir string) *run.Checkout { return &run.Checkout{Repository: "/origin", Dir: dir} }
+	for name, c := range map[string]struct {
+		effects run.Effects // what run-0 has on record
+		end     string      // how run-0 was left
+		want    string      // the refusal; none when empty
+	}{
+		"a killed run's checkout":             {effects: run.Effects{Checkout: checkout("/repo")}, end: killed, want: "worktree /repo is the checkout of run run-0, which has not finished"},
+		"a running run's checkout":            {effects: run.Effects{Checkout: checkout("/repo")}, end: running, want: "worktree /repo is the checkout of run run-0, which has not finished"},
+		"a clean copy still on record":        {effects: run.Effects{Checkout: checkout("/gone"), Copy: checkout("/repo")}, end: finished, want: "worktree /repo is a clean copy run run-0 still has on record"},
+		"an unreleased checkout":              {effects: run.Effects{Checkout: checkout("/repo"), Unreleased: checkout("/repo")}, end: finished, want: "worktree /repo is a checkout run run-0 could not release"},
+		"a finished run's released checkout":  {effects: run.Effects{Checkout: checkout("/repo")}, end: finished},
+		"a killed run's checkout elsewhere":   {effects: run.Effects{Checkout: checkout("/elsewhere")}, end: killed},
+		"an unreleased checkout elsewhere":    {effects: run.Effects{Checkout: checkout("/elsewhere"), Unreleased: checkout("/elsewhere")}, end: finished},
+		"a clean copy on record at elsewhere": {effects: run.Effects{Copy: checkout("/elsewhere")}, end: finished},
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			ctx := context.Background()
+			h := newHarness()
+			store, borrow := storedBorrows(t, h)
+			owner := run.Record{ID: "run-0", Effects: &c.effects}
+			handle, err := store.Create(ctx, owner)
+			if err != nil {
+				t.Fatal(err)
+			}
+			t.Cleanup(func() { _ = store.Abandon(owner.ID) })
+			switch c.end {
+			case killed:
+				err = store.Abandon(owner.ID)
+			case finished:
+				at := time.Date(2026, 10, 1, 0, 0, 0, 0, time.UTC)
+				owner.FinishedAt, owner.ProcessesEnded = &at, true
+				err = handle.Finish(owner)
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			borrowed, err := borrow("run-1", saved)
+
+			if c.want == "" {
+				if err != nil || !h.locks.holds("/repo") {
+					t.Fatalf("the borrow = %v, lock held %v", err, h.locks.holds("/repo"))
+				}
+				return
+			}
+			var refusal *app.Refusal
+			if !errors.As(err, &refusal) || !strings.Contains(refusal.Reason, c.want) || !strings.Contains(refusal.Reason, "ADR-022 rule 2") {
+				t.Fatalf("the borrow = %v, want a refusal with %q", err, c.want)
+			}
+			if borrowed != nil || h.locks.holds("/repo") || !reflect.DeepEqual(h.locks.unlocked, []string{"/repo"}) {
+				t.Fatalf("borrowed %+v, lock held %v, unlocked %v", borrowed, h.locks.holds("/repo"), h.locks.unlocked)
+			}
+			if h.worktrees.reads != 0 || len(h.processes.refs()) != 0 || len(h.setup.runs()) != 0 || !recorded(h, "WORKTREE_NOT_ADMITTED") {
+				t.Fatalf("reads %d, reaped %v, precheck runs %v, events %v", h.worktrees.reads, h.processes.refs(), h.setup.runs(), h.recorder.kinds())
+			}
+		})
 	}
 }
 

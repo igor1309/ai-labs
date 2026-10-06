@@ -862,8 +862,10 @@ func TestDiscardRemovesACheckoutUnderTheOldName(t *testing.T) {
 // the revision's tree, the staged paths, the dirty submodules and the
 // untracked files that are not ignored; and the content identity, which a
 // tracked file's change moves off the tree, even one the index marks
-// unchanged. Ignored files count for nothing. Reading writes nothing in the
-// index.
+// unchanged. A path a merge left unmerged is staged, even with its file put
+// back as the revision has it: the content identity is the tree's then,
+// and tells nothing. Ignored files count for nothing. Reading writes
+// nothing in the index.
 //
 // Contract test: the git adapter against real git, in a repository of the
 // test's own.
@@ -911,6 +913,28 @@ func TestWorktreeStateTellsWhatAdmitsAWorktree(t *testing.T) {
 			change: func(t *testing.T, dir string) { os.WriteFile(filepath.Join(dir, "notes.md"), []byte("x\n"), 0o600) },
 			want:   func(s app.WorktreeState) bool { return reflect.DeepEqual(s.Untracked, []string{"notes.md"}) },
 		},
+		"a conflict left unmerged, its file put back": {
+			change: func(t *testing.T, dir string) {
+				sh(t, dir, "checkout", "--quiet", "-b", "other", "main")
+				os.WriteFile(filepath.Join(dir, "a.txt"), []byte("one\nother\n"), 0o600)
+				sh(t, dir, "commit", "--quiet", "-am", "other")
+				sh(t, dir, "checkout", "--quiet", "feature")
+				merge := exec.Command("git", "merge", "--quiet", "other")
+				merge.Dir = dir
+				if out, err := merge.CombinedOutput(); err == nil {
+					t.Fatalf("the merge left no conflict:\n%s", out)
+				}
+				if unmerged := sh(t, dir, "ls-files", "--unmerged", "--", "a.txt"); unmerged == "" {
+					t.Fatal("the index holds no unmerged entry of a.txt")
+				}
+				// As HEAD has it, and not staged: the index keeps the conflict.
+				os.WriteFile(filepath.Join(dir, "a.txt"), []byte("one\ntwo\n"), 0o600)
+			},
+			want: func(s app.WorktreeState) bool {
+				return reflect.DeepEqual(s.Staged, []string{"a.txt"}) && s.Untracked == nil
+			},
+			clean: true,
+		},
 	} {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
@@ -957,7 +981,9 @@ func TestWorktreeStateTellsAMovedHead(t *testing.T) {
 	}
 }
 
-// A submodule with changes of its own is dirty; a clean one is not.
+// A submodule with changes of its own is dirty, even one the repository's
+// configuration has status ignore (submodule.<name>.ignore); a clean one is
+// not.
 //
 // Contract test: the git adapter against real git, in repositories of the
 // test's own.
@@ -971,6 +997,7 @@ func TestWorktreeStateTellsADirtySubmodule(t *testing.T) {
 	if err != nil || state.DirtySubmodules != nil || state.Staged != nil {
 		t.Fatalf("clean: state %+v, %v", state, err)
 	}
+	sh(t, dir, "config", "submodule.lib.ignore", "all")
 	os.WriteFile(filepath.Join(dir, "lib", "a.txt"), []byte("edited\n"), 0o600)
 	state, err = git.Workspaces{}.State(context.Background(), dir, revision)
 	if err != nil || !reflect.DeepEqual(state.DirtySubmodules, []string{"lib"}) || state.Staged != nil {

@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"sync"
@@ -25,11 +26,7 @@ type WorktreeLocks struct{ Dir string }
 // path, symlinks resolved, and the release of the lock. A lock held already
 // is an error that wraps app.ErrWorktreeLocked.
 func (l WorktreeLocks) Lock(dir string) (string, func() error, error) {
-	absolute, err := filepath.Abs(dir)
-	if err != nil {
-		return "", nil, err
-	}
-	key, err := filepath.EvalSymlinks(absolute)
+	key, err := canonical(dir)
 	if err != nil {
 		return "", nil, err
 	}
@@ -62,4 +59,23 @@ func (l WorktreeLocks) Lock(dir string) (string, func() error, error) {
 		once.Do(func() { closed = file.Close() })
 		return closed
 	}, nil
+}
+
+// Key returns the canonical path Lock keys the directory at dir by, and
+// takes no lock. It is empty for a directory that is not there.
+func (WorktreeLocks) Key(dir string) (string, error) {
+	key, err := canonical(dir)
+	if errors.Is(err, fs.ErrNotExist) {
+		return "", nil
+	}
+	return key, err
+}
+
+// canonical is dir's absolute path with its symlinks resolved.
+func canonical(dir string) (string, error) {
+	absolute, err := filepath.Abs(dir)
+	if err != nil {
+		return "", err
+	}
+	return filepath.EvalSymlinks(absolute)
 }

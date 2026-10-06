@@ -74,3 +74,39 @@ func TestAWorktreeLockIsHeldByItsCanonicalPath(t *testing.T) {
 		t.Fatalf("worktree holds %v, %v", entries, err)
 	}
 }
+
+// A directory's key is the canonical path its lock is keyed by: asked
+// through a symlink, it is the worktree's, whether or not the lock is held,
+// and asking takes no lock. A directory that is not there has none.
+//
+// Contract test: symlinks and flock in a directory of the test's own.
+func TestADirectorysKeyIsItsCanonicalPath(t *testing.T) {
+	t.Parallel()
+	base, err := filepath.EvalSymlinks(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	worktree, link := filepath.Join(base, "worktree"), filepath.Join(base, "link")
+	if err := os.Mkdir(worktree, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(worktree, link); err != nil {
+		t.Fatal(err)
+	}
+	locks := system.WorktreeLocks{Dir: filepath.Join(base, "state", "locks", "in-place")}
+
+	if key, err := locks.Key(link); err != nil || key != worktree {
+		t.Fatalf("key = %q, %v", key, err)
+	}
+	locked, unlock, err := locks.Lock(worktree)
+	if err != nil {
+		t.Fatalf("lock after asking for the key = %v", err)
+	}
+	t.Cleanup(func() { unlock() })
+	if key, err := locks.Key(link); err != nil || key != locked {
+		t.Fatalf("key while locked = %q, %v, want %q", key, err, locked)
+	}
+	if key, err := locks.Key(filepath.Join(base, "gone")); err != nil || key != "" {
+		t.Fatalf("key of a directory that is not there = %q, %v", key, err)
+	}
+}

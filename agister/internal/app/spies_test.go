@@ -959,6 +959,8 @@ func (s *locksSpy) Lock(dir string) (string, func() error, error) {
 	}, nil
 }
 
+func (s *locksSpy) Key(dir string) (string, error) { return dir, nil }
+
 func (s *locksSpy) holds(dir string) bool {
 	s.mu.Lock()
 	defer s.mu.Unlock()

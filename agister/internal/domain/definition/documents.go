@@ -279,7 +279,7 @@ func ParseProcess(doc Document) (Process, error) {
 				p.add("verify", `must be "verify:<name>" or the inline fields`)
 			}
 		} else {
-			process.Verify = parseVerify(fields(node, "verify", verifyFields, p), "verify", p)
+			process.Verify = parseVerify(fields(node, "verify", verifyFields(), p), "verify", p)
 		}
 		// Verifying a tree the call does not own would check content other
 		// calls can change and the call does not capture.
@@ -300,24 +300,29 @@ func ParseVerify(doc Document) (Verification, error) {
 	if root == nil {
 		return verification, p.err("verification " + subjectName(doc.Source))
 	}
-	values := fields(root, "", append([]string{"schema", "name"}, verifyFields...), p)
+	values := fields(root, "", append([]string{"schema", "name"}, verifyFields()...), p)
 	header(values, VerifySchema, doc.Source.Name, p)
 	verification.Verify = *parseVerify(values, "", p)
 	return verification, p.err("verification " + subjectName(doc.Source))
 }
 
-// verifyKeys are a verification's required fields; verifyFields all it
-// may hold, where, the only optional one, included.
-var (
-	verifyKeys   = []string{"command", "timeout", "max_attempts", "instruction"}
-	verifyFields = []string{"command", "timeout", "max_attempts", "instruction", "where"}
-)
+// verifyKeys is a verification's required fields. Each call returns a new
+// slice.
+func verifyKeys() []string {
+	return []string{"command", "timeout", "max_attempts", "instruction"}
+}
+
+// verifyFields is all a verification may hold: its required fields and
+// where, the only optional one. Each call returns a new slice.
+func verifyFields() []string {
+	return append(verifyKeys(), "where")
+}
 
 // parseVerify reads the fields of a verify block, or of a verification
 // document, under field. Every one but where is required: there is no
 // default command, timeout, attempt count or instruction.
 func parseVerify(values map[string]*yaml.Node, field string, p *problems) *Verify {
-	for _, key := range verifyKeys {
+	for _, key := range verifyKeys() {
 		if _, ok := values[key]; !ok {
 			p.add(join(field, key), "is required")
 		}
