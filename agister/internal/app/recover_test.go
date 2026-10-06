@@ -389,6 +389,55 @@ func TestAnotherLimitAfterARecovery(t *testing.T) {
 	})
 }
 
+// A tool call or command is the same thing by the digest of its whole input
+// (rule 3), not by the input its stale record keeps, which is cut at 300
+// bytes: a limit reached on a second input that differs from the first only
+// past that cut is new evidence, and gets its own recovery while a resume is
+// left.
+func TestAToolInputThatDiffersPastItsRecordedBytesGetsItsOwnRecovery(t *testing.T) {
+	t.Parallel()
+	// Two inputs alike in more than the bytes a stale record keeps of one.
+	shared := `{"command":"` + strings.Repeat("x", 300)
+	first, second := app.ToolCall{Name: "Bash", Input: shared + ` one"}`}, app.ToolCall{Name: "Bash", Input: shared + ` two"}`}
+	for _, c := range []struct {
+		name   string
+		limits string
+		limit  string
+		stale  func(*timersSpy, app.ToolCall) turnStep
+	}{
+		{"repeated_tool_calls", "repeated_tool_calls: 3", run.StaleRepeatedToolCalls,
+			func(_ *timersSpy, call app.ToolCall) turnStep { return repeating("prov-1", call, "") }},
+		{"tool_command", "tool_command: 4m", run.StaleToolCommand,
+			func(timers *timersSpy, call app.ToolCall) turnStep { return commanding(timers, "prov-1", call) }},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
+			h, timers := recoveryHarness(t, c.limits, 2)
+			play(h, c.stale(timers, first), c.stale(timers, second), completes(h))
+			record := h.call(t, contract.CallRequest{})
+
+			if record.Result.Status != run.Completed || !reflect.DeepEqual(outcomes(record), []string{run.RecoveryDifferentLimit, run.RecoveryCompleted}) {
+				t.Fatalf("result = %+v: %s, recoveries %+v", record.Result, message(record), record.Recoveries)
+			}
+			// The second input's recovery is a turn of its own, in the call's
+			// session, and none was refused.
+			if turns := h.runner.calls(); len(turns) != 3 || turns[2].ResumeSessionID != "prov-1" || len(eventsOf(h, "RECOVERY_NOT_STARTED")) != 0 {
+				t.Fatalf("turns = %+v, events %v", turns, h.recorder.kinds())
+			}
+			// Both records keep the same bounded input, and each the digest
+			// of its own whole input.
+			one, two := record.Recoveries[0].Stale, record.Recoveries[1].Stale
+			if one.Limit != c.limit || two.Limit != c.limit || one.Tool == nil || two.Tool == nil {
+				t.Fatalf("stale = %+v, %+v", one, two)
+			}
+			if one.Tool.Input != two.Tool.Input || len(one.Tool.Input) >= len(first.Input) ||
+				one.Tool.SHA256 != digestOf(first.Input) || two.Tool.SHA256 != digestOf(second.Input) {
+				t.Fatalf("tools = %+v, %+v", one.Tool, two.Tool)
+			}
+		})
+	}
+}
+
 // A stale turn is not recovered where rule 1 does not hold: it reported no
 // session, its cost is unknown under a cost limit, the limit is spent, or
 // no time is left. The call ends with the limit's status and class after
@@ -541,7 +590,8 @@ func TestATurnThatReportedItsOwnEndIsNotRecovered(t *testing.T) {
 // repair turn that does, its output is not the call's, and the record
 // keeps both sessions. So does one that Agister ended at a limit in another
 // session: it is not classified as that limit, and no recovery follows it
-// there, though a resume is left.
+// there, though a resume is left. And so does one that failed in another
+// session: the call does not end with that turn's class.
 func TestARecoveryTurnInAnotherSessionFailsTheCall(t *testing.T) {
 	t.Parallel()
 	valid := func(h *harness, reported string) turnStep {
@@ -550,6 +600,9 @@ func TestARecoveryTurnInAnotherSessionFailsTheCall(t *testing.T) {
 		return elsewhere
 	}
 	stale := func(_ *harness, reported string) turnStep { return repeating(reported, goTest, "") }
+	failed := func(_ *harness, reported string) turnStep {
+		return turnStep{turn: run.Turn{Status: run.Failed, Error: run.Fault(run.ClassRateLimited, "429"), ProviderSessionID: reported}}
+	}
 	for _, c := range []struct {
 		name     string
 		reported string
@@ -558,6 +611,7 @@ func TestARecoveryTurnInAnotherSessionFailsTheCall(t *testing.T) {
 		{"reported prov-2", "prov-2", valid},
 		{"reported ", "", valid},
 		{"stale, reported prov-2", "prov-2", stale},
+		{"failed, reported prov-2", "prov-2", failed},
 	} {
 		t.Run(c.name, func(t *testing.T) {
 			t.Parallel()
@@ -611,18 +665,24 @@ func TestAStaleRecoveryTurnThatReportedNoSessionEndsTheCallAtItsLimit(t *testing
 }
 
 // A recovery turn that fails in any other way ends the call with that
-// turn's status and class, and its record says so.
+// turn's status and class, and its record says so: in the call's session,
+// or before it reported one, which names no other session.
 func TestARecoveryTurnThatFailsEndsTheCallAsItEnded(t *testing.T) {
 	t.Parallel()
-	h, timers := recoveryHarness(t, "no_event: 5m", 2)
-	play(h, silent(timers, "prov-1"), turnStep{turn: run.Turn{Status: run.Failed, Error: run.Fault(run.ClassRateLimited, "429"), ProviderSessionID: "prov-1"}})
-	record := h.call(t, contract.CallRequest{})
+	for _, reported := range []string{"prov-1", ""} {
+		t.Run("reported "+reported, func(t *testing.T) {
+			t.Parallel()
+			h, timers := recoveryHarness(t, "no_event: 5m", 2)
+			play(h, silent(timers, "prov-1"), turnStep{turn: run.Turn{Status: run.Failed, Error: run.Fault(run.ClassRateLimited, "429"), ProviderSessionID: reported}})
+			record := h.call(t, contract.CallRequest{})
 
-	if record.Result.Status != run.Failed || class(record) != run.ClassRateLimited || len(h.runner.calls()) != 2 {
-		t.Fatalf("result = %+v, turns %d", record.Result, len(h.runner.calls()))
-	}
-	if got := record.Recoveries; len(got) != 1 || got[0].Outcome != run.RecoveryFailed || got[0].Error == nil || got[0].Error.Class != run.ClassRateLimited {
-		t.Fatalf("recoveries = %+v", got)
+			if record.Result.Status != run.Failed || class(record) != run.ClassRateLimited || len(h.runner.calls()) != 2 {
+				t.Fatalf("result = %+v, turns %d", record.Result, len(h.runner.calls()))
+			}
+			if got := record.Recoveries; len(got) != 1 || got[0].Session != reported || got[0].Outcome != run.RecoveryFailed || got[0].Error == nil || got[0].Error.Class != run.ClassRateLimited {
+				t.Fatalf("recoveries = %+v", got)
+			}
+		})
 	}
 }
 

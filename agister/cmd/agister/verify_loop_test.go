@@ -1207,7 +1207,10 @@ func TestAStaleTurnIsRecoveredAndRunsShowPrintsTheRecovery(t *testing.T) {
 			turn.Status, turn.Output, turn.Error = domain.Interrupted, nil, domain.Fault(domain.ClassCancelled, "")
 		})
 	}
-	h := newLoop(t, verifySettings{policy: "stale: {repeated_tool_calls: 3, recover: {max_resumes: 1, instruction: Change the approach.}}\n"}, ended, state("pass"))
+	// The recovery turn costs what no other turn of the call does.
+	const cost = 0.25
+	h := newLoop(t, verifySettings{policy: "stale: {repeated_tool_calls: 3, recover: {max_resumes: 1, instruction: Change the approach.}}\n"}, ended,
+		state("pass", func(turn *domain.Turn) { usd := cost; turn.CostUSD = &usd }))
 	h.runner.toolCalls = true
 	h.runner.reports = func(ctx context.Context, sink app.EventSink, n int) {
 		if n != 0 {
@@ -1239,10 +1242,19 @@ func TestAStaleTurnIsRecoveredAndRunsShowPrintsTheRecovery(t *testing.T) {
 	if got := record.Recoveries; len(got) != 1 || got[0].Outcome != domain.RecoveryCompleted || got[0].MessageSHA256 != hex.EncodeToString(digest[:]) {
 		t.Fatalf("recoveries = %+v", got)
 	}
+	// The stored record names what the recovery turn itself cost (rule 9).
+	if got := record.Recoveries[0].CostUSD; got == nil || *got != cost {
+		t.Fatalf("stored recovery cost = %v, want %v", got, cost)
+	}
 
 	r := agister(t, h.home, h.repo, "runs", "show", record.ID)
 	if r.code != 0 || !strings.Contains(r.stdout, `"recoveries":[{"number":1,"follows":1,"stale":{"limit":"repeated_tool_calls"`) ||
 		!strings.Contains(r.stdout, `"resumed":"sess-1","session":"sess-1"`) || !strings.Contains(r.stdout, `"outcome":"completed"`) {
 		t.Fatalf("runs show: %d\n%s%s", r.code, r.stdout, r.stderr)
+	}
+	// So does the record runs show prints.
+	var shown domain.Record
+	if err := json.Unmarshal([]byte(r.stdout), &shown); err != nil || len(shown.Recoveries) != 1 || shown.Recoveries[0].CostUSD == nil || *shown.Recoveries[0].CostUSD != cost {
+		t.Fatalf("runs show: %v, recoveries %+v\n%s", err, shown.Recoveries, r.stdout)
 	}
 }

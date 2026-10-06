@@ -181,13 +181,14 @@ func (r *recovery) resume(request TurnRequest, stale run.Turn, remaining time.Du
 
 	fault := r.call.Conclude(turn)
 	// The session is checked before the recovery is classified (rule 9): a
-	// turn in another session is not the call's, whether it ended validly
-	// or at a limit, and no recovery follows it there. A valid one that
-	// reports no session confirms none: it is not in the call's session,
-	// whatever it did. A stale one that reports none has nothing to resume,
-	// and ends as its limit does (rule 6).
+	// turn in another session is not the call's, however it ended, validly,
+	// at a limit or failed, and no recovery follows it there. A valid one
+	// that reports no session confirms none: it is not in the call's
+	// session, whatever it did. A stale one that reports none has nothing to
+	// resume, and ends as its limit does (rule 6); one that failed and
+	// reports none ends as it failed.
 	reported := turn.ProviderSessionID
-	elsewhere := reported != session && (fault == nil || endedStale(turn) && reported != "")
+	elsewhere := reported != session && (fault == nil || reported != "")
 	switch {
 	case elsewhere:
 		fault = run.Fault(run.ClassRuntimeError, "the recovery turn resumed session %s, but the runtime reported session %q", session, turn.ProviderSessionID)
