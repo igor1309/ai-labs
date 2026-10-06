@@ -1,12 +1,11 @@
 package main
 
 import (
-	"bytes"
 	"context"
-	"io"
 	"path/filepath"
 	"reflect"
 	"regexp"
+	"slices"
 	"strings"
 	"testing"
 
@@ -17,7 +16,8 @@ import (
 
 // The caller skill, skills/agister/SKILL.md, is for the agent that runs
 // Agister. It stays loadable as a settings skill would be (ADR-021 rule 1),
-// and every command and flag it names is one the CLI's usage defines.
+// and every command it names is one the CLI dispatches, with only flags the
+// CLI defines for that command.
 
 // callerSkill is the folder that holds skills/agister, read as a settings
 // directory is.
@@ -43,8 +43,7 @@ func TestTheCallerSkillIsALoadableSkill(t *testing.T) {
 func TestTheCallerSkillNamesOnlyCommandsAndFlagsTheCLIHas(t *testing.T) {
 	t.Parallel()
 	text := read(t, filepath.Join(callerSkill, "skills", "agister", "SKILL.md"))
-	commands := cliCommands(t)
-	named, problems := skillProblems(text, commands)
+	named, problems := skillProblems(text)
 	if named == 0 {
 		t.Fatal("the skill names no agister command in its code")
 	}
@@ -60,7 +59,7 @@ func TestTheSkillCheckFindsWhatTheCLILacks(t *testing.T) {
 	text := "Use `agister runs list`, `agister launch x`, `agister runs\nprune` and `agister process show <name> --agent a`.\n\n" +
 		"~~~sh\nagister run implement --param a=b \\\n  --bogus x && agister check --tree\n~~~\n\n" +
 		"    echo yes | agister install --restore 1 --json --probe\n"
-	named, problems := skillProblems(text, cliCommands(t))
+	named, problems := skillProblems(text)
 	want := []string{ // the blocks', then the spans'
 		"agister run: --bogus is not one of its flags",
 		"agister install: --probe is not one of its flags",
@@ -72,89 +71,18 @@ func TestTheSkillCheckFindsWhatTheCLILacks(t *testing.T) {
 	}
 }
 
-// cliCommands are the commands the CLI's usage defines, each with the flags
-// it takes; the key "" holds the global options, which every command takes.
-func cliCommands(t *testing.T) map[string]map[string]bool {
-	t.Helper()
-	var out bytes.Buffer
-	if code := cli.Run(context.Background(), []string{"--help"}, cli.IO{Stdout: &out, Stderr: io.Discard}, nil); code != 0 {
-		t.Fatalf("--help: %d", code)
-	}
-	commands := parseUsage(out.String())
-	if len(commands) < 2 || len(commands[""]) == 0 {
-		t.Fatalf("no commands or global options in the usage:\n%s", out.String())
-	}
-	return commands
-}
-
 var (
-	flagPattern   = regexp.MustCompile(`--([a-z][a-z-]*)`)
-	flagArgument  = regexp.MustCompile(`^\[?--([a-z][a-z-]*)`)
-	optionPattern = regexp.MustCompile(`^\s+(?:-\w, )?--([a-z][a-z-]*)`)
-	wordPattern   = regexp.MustCompile(`^[a-z][a-z-]*$`)
-	optionalWord  = regexp.MustCompile(`^\[([a-z][a-z-]*)\]$`)
-	columnGap     = regexp.MustCompile(`\s{3,}`)
+	flagArgument = regexp.MustCompile(`^\[?--([a-z][a-z-]*)`)
+	wordPattern  = regexp.MustCompile(`^[a-z][a-z-]*$`)
 )
 
-// parseUsage reads the usage: under "Usage:", an entry is a line "  agister
-// <command> [<subcommand>] ..." and the lines indented below it, and every
-// --flag in it is the command's; under "Options:", the global options.
-func parseUsage(usage string) map[string]map[string]bool {
-	commands := map[string]map[string]bool{"": {}}
-	section := ""
-	var entry []string // the keys of the entry being read
-	for _, line := range strings.Split(usage, "\n") {
-		switch {
-		case line == "Usage:" || line == "Options:":
-			section, entry = line, nil
-			continue
-		case strings.TrimSpace(line) == "":
-			entry = nil
-			continue
-		}
-		if section == "Options:" {
-			if match := optionPattern.FindStringSubmatch(line); match != nil {
-				commands[""][match[1]] = true
-			}
-			continue
-		}
-		if section != "Usage:" {
-			continue
-		}
-		if synopsis, ok := strings.CutPrefix(line, "  agister "); ok {
-			synopsis = columnGap.Split(synopsis, 2)[0]
-			entry = nil
-			var words []string
-			for _, field := range strings.Fields(synopsis) {
-				if optional := optionalWord.FindStringSubmatch(field); optional != nil && len(words) == 1 {
-					entry = append(entry, words[0]+" "+optional[1])
-					break
-				}
-				if !wordPattern.MatchString(field) || len(words) == 2 {
-					break
-				}
-				words = append(words, field)
-			}
-			entry = append(entry, strings.Join(words, " "))
-			for _, key := range entry {
-				if commands[key] == nil {
-					commands[key] = map[string]bool{}
-				}
-			}
-		}
-		for _, match := range flagPattern.FindAllStringSubmatch(line, -1) {
-			for _, key := range entry {
-				commands[key][match[1]] = true
-			}
-		}
-	}
-	return commands
-}
-
 // skillProblems checks each agister command the markdown writes in its
-// code spans and code blocks against commands, as parseUsage reads them,
-// and returns how many it checked and what it found wrong.
-func skillProblems(markdown string, commands map[string]map[string]bool) (int, []string) {
+// code spans and code blocks against the commands the CLI dispatches and
+// the flags each takes, as parsing and dispatch use them, and returns how
+// many it checked and what it found wrong. agister pages, which main runs
+// itself, is not among them.
+func skillProblems(markdown string) (int, []string) {
+	global := cli.GlobalFlags()
 	named := 0
 	var problems []string
 	for _, code := range codeOf(markdown) {
@@ -163,35 +91,27 @@ func skillProblems(markdown string, commands map[string]map[string]bool) (int, [
 				continue // agister itself, named in prose
 			}
 			named++
-			key, flags := "", args
-			if !strings.HasPrefix(args[0], "-") {
-				key, flags = args[0], args[1:]
-				if len(args) > 1 && wordPattern.MatchString(args[1]) && hasSubcommands(commands, args[0]) {
-					key, flags = args[0]+" "+args[1], args[2:]
+			var words []string // the command and its subcommand, if any
+			for _, arg := range args[:min(2, len(args))] {
+				if !wordPattern.MatchString(arg) {
+					break
 				}
-				if commands[key] == nil {
-					problems = append(problems, "agister "+key+": not a command of the CLI")
-					continue
-				}
+				words = append(words, arg)
 			}
-			for _, arg := range flags {
+			command, ok := cli.Lookup(words)
+			if !ok {
+				problems = append(problems, "agister "+command.Name+": not a command of the CLI")
+				continue
+			}
+			for _, arg := range args {
 				match := flagArgument.FindStringSubmatch(arg)
-				if match != nil && !commands[key][match[1]] && !commands[""][match[1]] {
-					problems = append(problems, "agister "+key+": --"+match[1]+" is not one of its flags")
+				if match != nil && !slices.Contains(command.Flags, match[1]) && !slices.Contains(global, match[1]) {
+					problems = append(problems, strings.TrimSpace("agister "+command.Name)+": --"+match[1]+" is not one of its flags")
 				}
 			}
 		}
 	}
 	return named, problems
-}
-
-func hasSubcommands(commands map[string]map[string]bool, command string) bool {
-	for key := range commands {
-		if strings.HasPrefix(key, command+" ") {
-			return true
-		}
-	}
-	return false
 }
 
 var spanPattern = regexp.MustCompile("`([^`]+)`")

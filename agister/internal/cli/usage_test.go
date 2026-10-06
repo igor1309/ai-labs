@@ -11,7 +11,7 @@ import (
 func TestUsageDescribesEveryFlag(t *testing.T) {
 	t.Parallel()
 	opts := options{params: paramFlag{}}
-	flags(&opts).VisitAll(func(f *flag.Flag) {
+	flags(func(string) *options { return &opts }).VisitAll(func(f *flag.Flag) {
 		spelled := "--" + f.Name
 		if len(f.Name) == 1 {
 			spelled = "-" + f.Name

@@ -85,7 +85,9 @@ settings usually have:
    result with its `run_id` and the absolute path of each artifact.
 4. Read the result: `agister runs show <run-id>` prints the run's record
    as JSON. That includes its `result` (status, output, cost, artifacts)
-   and its `attempts`; each attempt's verify run has `passed`.
+   and its `attempts`. An attempt's `run.passed` is present only when the
+   verification command ran; a stopped attempt may contain only `stopped`,
+   which says why verification ended there, and no `run`.
 5. Apply the patch. It is in `~/.agister/runs/<run-id>/artifacts/changes.patch`.
    A run that changed nothing records `NO_CHANGES` and has no patch.
 
