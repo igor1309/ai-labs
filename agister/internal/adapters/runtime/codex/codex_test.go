@@ -216,7 +216,7 @@ func TestStreamReportsToolCalls(t *testing.T) {
 		stream.Reduce(line)
 	}
 	tools := stream.TakeTools()
-	if len(tools) != 3 || tools[0].Started == nil || tools[1].Finished != "item_1" || tools[2].Started == nil {
+	if len(tools) != 3 || tools[0].Started == nil || *tools[1].Finished != (codex.ToolResult{ID: "item_1"}) || tools[2].Started == nil {
 		t.Fatalf("tools = %+v", tools)
 	}
 	if first := *tools[0].Started; first.ID != "item_1" || first.Name == "" || first.Input != long || !first.Command {
@@ -248,5 +248,31 @@ func TestLargeIntegerInputsAreNotRepeatedCalls(t *testing.T) {
 	first, second := *tools[0].Started, *tools[1].Started
 	if first.Name != second.Name || first.Input != `{"offset":9007199254740993}` || second.Input != `{"offset":9007199254740992}` {
 		t.Fatalf("calls = %+v, %+v", first, second)
+	}
+}
+
+// A command's end carries the output its completed item reported, bounded
+// to its head and tail; an item that reports none carries no result.
+func TestStreamReportsACommandsResult(t *testing.T) {
+	t.Parallel()
+	finished := func(item string) codex.ToolResult {
+		stream := &codex.Stream{}
+		stream.Reduce(`{"type":"item.completed","item":` + item + `}`)
+		tools := stream.TakeTools()
+		if len(tools) != 1 || tools[0].Finished == nil {
+			t.Fatalf("tools = %+v", tools)
+		}
+		return *tools[0].Finished
+	}
+	if got := finished(`{"id":"item_1","type":"command_execution","aggregated_output":"FAIL\n","exit_code":1,"status":"failed"}`); got != (codex.ToolResult{ID: "item_1", Output: "FAIL\n", Reported: true}) {
+		t.Fatalf("a command: %+v", got)
+	}
+	if got := finished(`{"id":"item_2","type":"file_change","status":"completed"}`); got != (codex.ToolResult{ID: "item_2"}) {
+		t.Fatalf("no output: %+v", got)
+	}
+	long, _ := json.Marshal(strings.Repeat("é", codex.ToolResultBytes))
+	half := strings.Repeat("é", codex.ToolResultBytes/4)
+	if got := finished(`{"id":"item_3","type":"command_execution","aggregated_output":` + string(long) + `}`); !got.Reported || got.Output != half+"\n…\n"+half {
+		t.Fatalf("a long one: %d bytes", len(got.Output))
 	}
 }

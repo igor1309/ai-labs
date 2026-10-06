@@ -51,6 +51,9 @@ type claudecodeSink struct{ app.EventSink }
 func (s claudecodeSink) ToolStarted(tool claudecode.ToolCall) {
 	s.EventSink.ToolStarted(app.ToolCall(tool))
 }
+func (s claudecodeSink) ToolFinished(result claudecode.ToolResult) {
+	s.EventSink.ToolFinished(app.ToolResult(result))
+}
 func (r claudecodeRunner) RunTurn(ctx context.Context, request app.TurnRequest, sink app.EventSink) run.Turn {
 	return ClaudeCodeResult(r.wrapper.RunTurn(ctx, ClaudeCodeRequest(request), claudecodeSink{sink}))
 }

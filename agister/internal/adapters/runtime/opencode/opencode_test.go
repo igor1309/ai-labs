@@ -392,8 +392,8 @@ func TestToolCallsAreReported(t *testing.T) {
 				t.Fatalf("started = %+v", event.Started)
 			}
 			trace = append(trace, "started")
-		case event.Finished != "":
-			trace = append(trace, "finished "+event.Finished)
+		case event.Finished != nil:
+			trace = append(trace, "finished "+event.Finished.ID)
 		default:
 			if strings.HasPrefix(event.Kind, "TOOL_") && (event.Data["tool_use_id"] != "c1" || event.Data["input"] == input) {
 				t.Fatalf("event = %+v", event)
@@ -411,7 +411,7 @@ func TestToolCallsAreReported(t *testing.T) {
 		t.Fatalf("running: events = %+v", events)
 	}
 	events = stream.Reduce(use("c2", "read", "error", `{"filePath":"a.txt"}`))
-	if len(events) != 2 || events[0].Kind != "TOOL_RESULT" || events[0].Data["is_error"] != true || events[1].Finished != "c2" {
+	if len(events) != 2 || events[0].Kind != "TOOL_RESULT" || events[0].Data["is_error"] != true || events[1].Finished == nil || events[1].Finished.ID != "c2" {
 		t.Fatalf("error: events = %+v", events)
 	}
 	if events = stream.Reduce(use("c2", "read", "error", `{"filePath":"a.txt"}`)); len(events) != 0 {
@@ -464,5 +464,37 @@ func TestUnrecordedProcessFailsTheTurnWhateverTheStreamSays(t *testing.T) {
 	turn := stream.Reconcile(opencode.Evidence{RecordError: "disk full"}, false)
 	if string(turn.Status) != string(opencode.Failed) || turn.Error == nil || string(turn.Error.Class) != string(opencode.ClassInternal) || !strings.Contains(turn.Error.Message, "disk full") {
 		t.Fatalf("turn = %+v", turn)
+	}
+}
+
+// A tool call's end carries what its state reported: a completed call's
+// output, a failed one's error, bounded to its head and tail; a state with
+// neither carries no result.
+func TestAToolCallsResultIsReported(t *testing.T) {
+	t.Parallel()
+	finished := func(state string) opencode.ToolResult {
+		stream := &opencode.Stream{}
+		events := stream.Reduce(`{"type":"tool_use","timestamp":2,"sessionID":"ses_1","part":{"type":"tool","tool":"bash","callID":"c1","state":` + state + `}}`)
+		for _, event := range events {
+			if event.Finished != nil {
+				return *event.Finished
+			}
+		}
+		t.Fatalf("events = %+v", events)
+		return opencode.ToolResult{}
+	}
+	if got := finished(`{"status":"completed","input":{},"output":" a.txt | 1 +"}`); got != (opencode.ToolResult{ID: "c1", Output: " a.txt | 1 +", Reported: true}) {
+		t.Fatalf("completed: %+v", got)
+	}
+	if got := finished(`{"status":"error","input":{},"error":"permission denied"}`); got != (opencode.ToolResult{ID: "c1", Output: "permission denied", Reported: true}) {
+		t.Fatalf("failed: %+v", got)
+	}
+	if got := finished(`{"status":"completed","input":{}}`); got != (opencode.ToolResult{ID: "c1"}) {
+		t.Fatalf("no output: %+v", got)
+	}
+	long, _ := json.Marshal(strings.Repeat("é", opencode.ToolResultBytes))
+	half := strings.Repeat("é", opencode.ToolResultBytes/4)
+	if got := finished(`{"status":"completed","input":{},"output":` + string(long) + `}`); !got.Reported || got.Output != half+"\n…\n"+half {
+		t.Fatalf("a long one: %d bytes", len(got.Output))
 	}
 }

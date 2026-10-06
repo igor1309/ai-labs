@@ -327,7 +327,7 @@ func TestStreamReportsToolCalls(t *testing.T) {
 	started := func(call claudecode.ToolCall) claudecode.Tool { return claudecode.Tool{Started: &call} }
 	want := []claudecode.Tool{
 		started(claudecode.ToolCall{ID: "t1", Name: "Bash", Input: string(bash), Command: true}),
-		{Finished: "t1"},
+		{Finished: &claudecode.ToolResult{ID: "t1"}},
 		started(claudecode.ToolCall{ID: "t2", Name: "Read", Input: `{"file_path":"a.go"}`}),
 	}
 	if got := stream.TakeTools(); !reflect.DeepEqual(got, want) {
@@ -356,5 +356,46 @@ func TestLargeIntegerInputsAreNotRepeatedCalls(t *testing.T) {
 	first, second := *tools[0].Started, *tools[1].Started
 	if first.Name != second.Name || first.Input != `{"offset":9007199254740993}` || second.Input != `{"offset":9007199254740992}` {
 		t.Fatalf("calls = %+v, %+v", first, second)
+	}
+}
+
+// A tool call's end carries the result the stream reported for it: a
+// tool_result's content as text, the string it is or its text blocks, and
+// none where the block has no text. A long one keeps its head and tail,
+// each cut on a rune boundary.
+func TestStreamReportsAToolCallsResult(t *testing.T) {
+	t.Parallel()
+	// A cut at the bound's half would split a rune: the head ends before it.
+	long := "a" + strings.Repeat("é", claudecode.ToolResultBytes)
+	result := func(content any) *claudecode.ToolResult {
+		block := map[string]any{"type": "tool_result", "tool_use_id": "t1"}
+		if content != nil {
+			block["content"] = content
+		}
+		data, _ := json.Marshal(map[string]any{"type": "user", "message": map[string]any{"content": []any{block}}})
+		stream := &claudecode.Stream{}
+		stream.Reduce(string(data))
+		tools := stream.TakeTools()
+		if len(tools) != 1 || tools[0].Finished == nil {
+			t.Fatalf("tools = %+v", tools)
+		}
+		return tools[0].Finished
+	}
+	if got := result("exit status 1"); *got != (claudecode.ToolResult{ID: "t1", Output: "exit status 1", Reported: true}) {
+		t.Fatalf("a string: %+v", got)
+	}
+	blocks := []any{map[string]any{"type": "text", "text": "one"}, map[string]any{"type": "image"}, map[string]any{"type": "text", "text": "two"}}
+	if got := result(blocks); *got != (claudecode.ToolResult{ID: "t1", Output: "one\ntwo", Reported: true}) {
+		t.Fatalf("text blocks: %+v", got)
+	}
+	if got := result([]any{map[string]any{"type": "image"}}); *got != (claudecode.ToolResult{ID: "t1"}) {
+		t.Fatalf("no text: %+v", got)
+	}
+	if got := result(nil); *got != (claudecode.ToolResult{ID: "t1"}) {
+		t.Fatalf("no content: %+v", got)
+	}
+	half := claudecode.ToolResultBytes / 4
+	if got := result(long); !got.Reported || got.Output != "a"+strings.Repeat("é", half-1)+"\n…\n"+strings.Repeat("é", half) {
+		t.Fatalf("a long one: %d bytes", len(got.Output))
 	}
 }

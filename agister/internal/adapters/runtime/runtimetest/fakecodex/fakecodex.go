@@ -106,7 +106,7 @@ func Main(p fakeproc.Process) int {
 		return 0
 	}
 	emit(map[string]any{"type": "item.started", "item": map[string]any{"id": "item_1", "type": "command_execution", "command": "git diff --stat", "status": "in_progress"}})
-	emit(map[string]any{"type": "item.completed", "item": map[string]any{"id": "item_1", "type": "command_execution", "command": "git diff --stat", "exit_code": 0, "status": "completed"}})
+	emit(map[string]any{"type": "item.completed", "item": map[string]any{"id": "item_1", "type": "command_execution", "command": "git diff --stat", "aggregated_output": " a.txt | 1 +\n", "exit_code": 0, "status": "completed"}})
 	text := "All good."
 	if schema != nil {
 		output := map[string]any{"verdict": "approve", "summary": "Looks fine.", "findings": []any{}}

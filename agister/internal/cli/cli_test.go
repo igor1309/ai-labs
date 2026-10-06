@@ -331,6 +331,23 @@ func TestProgressDescribesVerification(t *testing.T) {
 	}
 }
 
+// A stale turn's recovery shows as it happens: the recovery turn, and why
+// one did not start (ADR-023).
+func TestProgressDescribesStaleRecovery(t *testing.T) {
+	t.Parallel()
+	spy := &clientSpy{run: finished("interrupted", "timeout"), events: []contract.Event{
+		{Kind: "RECOVERY_STARTED", Data: map[string]any{"recovery": 1.0, "limit": "no_event", "session": "s-1", "message_sha256": "abc"}},
+		{Kind: "RECOVERY_NOT_STARTED", Data: map[string]any{"limit": "no_event", "reason": "no resume is left of stale.recover.max_resumes 1"}},
+		{Kind: "CALL_FINISHED"},
+	}}
+	r := run(context.Background(), spy, "run", "p")
+	want := "· recovery turn 1 for stale.no_event in session s-1\n" +
+		"! RECOVERY_NOT_STARTED {\"limit\":\"no_event\",\"reason\":\"no resume is left of stale.recover.max_resumes 1\"}\n"
+	if !strings.Contains(r.stderr, want) {
+		t.Fatalf("stderr:\n%s", r.stderr)
+	}
+}
+
 // A workflow's progress says which fan-out nodes its join runs without, and
 // that no join ran when none completed (ADR-004).
 func TestProgressNamesTheNodesThatDidNotComplete(t *testing.T) {

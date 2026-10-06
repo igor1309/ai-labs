@@ -54,19 +54,27 @@ type scripted struct {
 	mu       sync.Mutex
 	steps    []step
 	requests []app.TurnRequest
+	// toolCalls is whether the runtime reports its tool calls; reports,
+	// when set, is what turn n, counted from 0, reports before its step:
+	// it returns once the turn may end. Both are set before the first call.
+	toolCalls bool
+	reports   func(ctx context.Context, sink app.EventSink, n int)
 }
 
 func (s *scripted) Identity(context.Context) (app.RuntimeIdentity, error) {
-	return app.RuntimeIdentity{Contract: "fake/1", Version: "1.0.0", Resume: true, CostLimit: true}, nil
+	return app.RuntimeIdentity{Contract: "fake/1", Version: "1.0.0", Resume: true, CostLimit: true, ToolCalls: s.toolCalls}, nil
 }
 
 func (*scripted) Admit(app.TurnStart) *domain.Error { return nil }
 
-func (s *scripted) RunTurn(_ context.Context, request app.TurnRequest, _ app.EventSink) domain.Turn {
+func (s *scripted) RunTurn(ctx context.Context, request app.TurnRequest, sink app.EventSink) domain.Turn {
 	s.mu.Lock()
 	n := len(s.requests)
 	s.requests = append(s.requests, request)
 	s.mu.Unlock()
+	if s.reports != nil {
+		s.reports(ctx, sink, n)
+	}
 	if n >= len(s.steps) {
 		return domain.Turn{Status: domain.Failed, Error: domain.Fault(domain.ClassRuntimeError, "no turn %d scripted", n+1)}
 	}
@@ -437,7 +445,7 @@ verify:
 	h.calls = app.NewCalls(
 		app.NewResolver(definitions, runtimes, schema.Validator{}, noProblems{}), runtimes,
 		map[string]app.InputProvider{"git.revision": over.revision},
-		over.workspaces, with.changes, preparer, borrower, app.NewVerifier(with.changes, copies, h.commands, with.clock), schema.Validator{},
+		over.workspaces, with.changes, preparer, borrower, app.NewVerifier(with.changes, copies, h.commands, with.clock), app.NewRecoverer(with.clock), schema.Validator{},
 		h.store, h.store, with.clock, still.Timer, system.IDs{}, h.home, h.hosted,
 	)
 	// Observing a call hosted here waits on its appends, never on a poll.
@@ -1100,8 +1108,9 @@ func TestVerifyEvidenceForEveryAttempt(t *testing.T) {
 }
 
 // A run that produces no output for the policy's stale.no_output is killed,
-// group and all, before verify.timeout: the node is interrupted as a
-// timeout, and the attempt's run says what went stale.
+// group and all, before verify.timeout: with no repair to follow it, the
+// node is interrupted as a timeout, and the attempt's run says what went
+// stale.
 func TestVerifyRunWithoutOutputIsKilledAsStale(t *testing.T) {
 	t.Parallel()
 	// The wait for output passes on the command runner's clock once the
@@ -1111,7 +1120,10 @@ func TestVerifyRunWithoutOutputIsKilledAsStale(t *testing.T) {
 	clock := clocktest.NewClock(time.Date(2026, 9, 30, 12, 0, 0, 0, time.UTC))
 	groups := supervisortest.NewGroups()
 	stale := inProcessCommands(groups, clock.Timer)
-	h := newLoopWith(t, seams{commands: runtimecomposition.Commands{Supervisor: stale}, groups: groups}, verifySettings{command: blocks + " & wait", policy: "stale: {no_output: 7s}\n"}, state("one"))
+	// One attempt: since ADR-023 rule 8 such a run is a failed attempt,
+	// which a repair turn follows while attempts are left; with none left
+	// the node ends as it did before.
+	h := newLoopWith(t, seams{commands: runtimecomposition.Commands{Supervisor: stale}, groups: groups}, verifySettings{command: blocks + " & wait", maxAttempts: 1, policy: "stale: {no_output: 7s}\n"}, state("one"))
 	id := h.submit(contract.CallRequest{})
 	cleanupRun(t, h.runs, h.hosted, id)
 	clock.Started(noOutput)
@@ -1135,5 +1147,102 @@ func TestVerifyRunWithoutOutputIsKilledAsStale(t *testing.T) {
 	}
 	if _, _, err := supervisor.ParseRef(record.Effects.Command.Ref); err != nil {
 		t.Fatal(err)
+	}
+}
+
+// A run killed for its silence is a failed attempt (ADR-023 rule 8): with
+// attempts left a repair turn follows it in the call's session, told that
+// the run went without output for the limit and was ended by Agister, with
+// the output the run produced before it hung; the next run passes and the
+// node completes.
+func TestVerifyRunWithoutOutputIsRepaired(t *testing.T) {
+	t.Parallel()
+	const noOutput = 7 * time.Second
+	clock := clocktest.NewClock(time.Date(2026, 9, 30, 12, 0, 0, 0, time.UTC))
+	groups := supervisortest.NewGroups()
+	stale := inProcessCommands(groups, clock.Timer)
+	// The command prints the state, then hangs unless the state says pass.
+	h := newLoopWith(t, seams{commands: runtimecomposition.Commands{Supervisor: stale}, groups: groups},
+		verifySettings{command: passWhenStateSaysPass + " || " + blocks, policy: "stale: {no_output: 7s}\n"}, state("one"), state("pass"))
+	id := h.submit(contract.CallRequest{})
+	cleanupRun(t, h.runs, h.hosted, id)
+	// The first run's wait for output starts twice, at its start and again
+	// at the state it prints; then it is silent for the whole limit.
+	clock.Started(noOutput)
+	clock.Started(noOutput)
+	clock.Advance(noOutput)
+	record := h.wait(id)
+
+	expect(t, record, domain.Completed, "", "")
+	turns := h.runner.turns()
+	if len(turns) != 2 || turns[1].ResumeSessionID != "sess-1" {
+		t.Fatalf("turns = %+v", turns)
+	}
+	for _, want := range []string{"The check failed. Fix the cause, not the check.", "## exit status\n\nno output for 7s, then ended by Agister\n", "4 bytes", "```\none\n```"} {
+		if !strings.Contains(turns[1].Prompt, want) {
+			t.Fatalf("repair prompt misses %q:\n%s", want, turns[1].Prompt)
+		}
+	}
+	ran := runsOf(record)
+	if len(ran) != 2 || ran[0].Passed || ran[0].Stale == nil || ran[0].Stale.Limit != domain.StaleNoOutput || ran[0].Stale.After != noOutput ||
+		!ran[1].Passed || ran[1].Stale != nil {
+		t.Fatalf("attempts = %+v", record.Attempts)
+	}
+	// A verification attempt was spent, not a resume.
+	if len(record.Recoveries) != 0 {
+		t.Fatalf("recoveries = %+v", record.Recoveries)
+	}
+}
+
+// A turn Agister ended at a staleness limit is recovered in its session
+// (ADR-023): the recovery turn receives the policy's instruction with the
+// evidence, verification runs on what it left, and runs show prints the
+// recovery with the record.
+func TestAStaleTurnIsRecoveredAndRunsShowPrintsTheRecovery(t *testing.T) {
+	t.Parallel()
+	// The first turn makes the same call three times and never ends by
+	// itself: it ends, as a runtime's turn does, once Agister ends it.
+	ended := func(*testing.T, app.TurnRequest) domain.Turn {
+		return turn(func(turn *domain.Turn) {
+			turn.Status, turn.Output, turn.Error = domain.Interrupted, nil, domain.Fault(domain.ClassCancelled, "")
+		})
+	}
+	h := newLoop(t, verifySettings{policy: "stale: {repeated_tool_calls: 3, recover: {max_resumes: 1, instruction: Change the approach.}}\n"}, ended, state("pass"))
+	h.runner.toolCalls = true
+	h.runner.reports = func(ctx context.Context, sink app.EventSink, n int) {
+		if n != 0 {
+			return
+		}
+		for _, id := range []string{"t1", "t2", "t3"} {
+			sink.ToolStarted(app.ToolCall{ID: id, Name: "Bash", Input: `{"command":"make"}`})
+			sink.ToolFinished(app.ToolResult{ID: id, Output: "make: *** No rule", Reported: true})
+		}
+		<-ctx.Done()
+	}
+	if r := agisterInput(t, "yes\n", h.home, h.repo, "init"); r.code != 0 {
+		t.Fatalf("init: %d %s", r.code, r.stderr)
+	}
+	record := h.call(contract.CallRequest{})
+
+	expect(t, record, domain.Completed, "", "")
+	turns := h.runner.turns()
+	want := "Change the approach.\n\n## stale limit\n\nstale.repeated_tool_calls: the same tool call was made 3 times in a row, and Agister ended the turn.\n\n" +
+		"## tool call\n\nBash\n\n```\n{\"command\":\"make\"}\n```\n\n## last result\n\n```\nmake: *** No rule\n```"
+	if len(turns) != 2 || turns[1].ResumeSessionID != "sess-1" || turns[1].Prompt != want {
+		t.Fatalf("turns = %+v", turns)
+	}
+	// One verification run, on what the recovery turn left.
+	if ran := runsOf(record); len(ran) != 1 || !ran[0].Passed {
+		t.Fatalf("attempts = %+v", record.Attempts)
+	}
+	digest := sha256.Sum256([]byte(want))
+	if got := record.Recoveries; len(got) != 1 || got[0].Outcome != domain.RecoveryCompleted || got[0].MessageSHA256 != hex.EncodeToString(digest[:]) {
+		t.Fatalf("recoveries = %+v", got)
+	}
+
+	r := agister(t, h.home, h.repo, "runs", "show", record.ID)
+	if r.code != 0 || !strings.Contains(r.stdout, `"recoveries":[{"number":1,"follows":1,"stale":{"limit":"repeated_tool_calls"`) ||
+		!strings.Contains(r.stdout, `"resumed":"sess-1","session":"sess-1"`) || !strings.Contains(r.stdout, `"outcome":"completed"`) {
+		t.Fatalf("runs show: %d\n%s%s", r.code, r.stdout, r.stderr)
 	}
 }

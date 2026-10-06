@@ -57,6 +57,9 @@ func (r codexRunner) Admit(start app.TurnStart) *run.Error {
 type codexSink struct{ app.EventSink }
 
 func (s codexSink) ToolStarted(tool codex.ToolCall) { s.EventSink.ToolStarted(app.ToolCall(tool)) }
+func (s codexSink) ToolFinished(result codex.ToolResult) {
+	s.EventSink.ToolFinished(app.ToolResult(result))
+}
 func (r codexRunner) RunTurn(ctx context.Context, request app.TurnRequest, sink app.EventSink) run.Turn {
 	return CodexResult(r.wrapper.RunTurn(ctx, CodexRequest(request), codexSink{sink}))
 }

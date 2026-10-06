@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"reflect"
+	"strings"
 	"testing"
 	"time"
 
@@ -131,28 +132,36 @@ func TestCheckRejectsAStaleRecoveryBudgetThatDoesNotCompose(t *testing.T) {
 
 // The effective budget and instruction are the call's and are recorded
 // with its other limits (ADR-023 rule 5): the policy's budget as the
-// process lowers it, with the process's instruction. Nothing acts on them
-// yet: a stale turn still ends the call, after one turn.
+// process lowers it, with the process's instruction. The call acts on
+// them: its stale turn is recovered with the process's instruction, and
+// the second stale turn ends it, the process's one resume spent.
 func TestACallCarriesAndRecordsItsStaleRecovery(t *testing.T) {
 	t.Parallel()
-	h, timers := staleHarness(t, "no_event: 5m, recover: {max_resumes: 2, instruction: Policy.}")
+	h, timers := staleHarness(t, "no_event: 5m, tool_command: 4m, recover: {max_resumes: 2, instruction: Policy.}")
 	h.defs.docs[definition.KindAgent]["a"] += "session = \"resumable\"\n"
 	h.defs.docs[definition.KindProcess]["p"] += "stale: {recover: {max_resumes: 1, instruction: Process.}}\n"
-	h.runner.block = true
-	h.runner.acting = func(context.Context, app.EventSink) { timers.advance(6 * time.Minute) }
+	play(h, commanding(timers, "prov-1", tailLog), silent(timers, "prov-1"), completes(h))
 	record := h.call(t, contract.CallRequest{})
 
-	want := &run.StaleLimits{NoEvent: 5 * time.Minute, Recover: &run.StaleRecover{MaxResumes: 1, Instruction: "Process."}}
+	want := &run.StaleLimits{NoEvent: 5 * time.Minute, ToolCommand: 4 * time.Minute, Recover: &run.StaleRecover{MaxResumes: 1, Instruction: "Process."}}
 	if !reflect.DeepEqual(record.Effective.Stale, want) {
 		t.Fatalf("effective stale = %+v, recover %+v", record.Effective.Stale, record.Effective.Stale.Recover)
 	}
 	recorded, err := json.Marshal(record.Effective.Stale)
-	if wantJSON := `{"no_event":300000000000,"recover":{"max_resumes":1,"instruction":"Process."}}`; err != nil || string(recorded) != wantJSON {
+	if wantJSON := `{"no_event":300000000000,"tool_command":240000000000,"recover":{"max_resumes":1,"instruction":"Process."}}`; err != nil || string(recorded) != wantJSON {
 		t.Fatalf("recorded = %s, %v, want %s", recorded, err, wantJSON)
 	}
+	// Until ADR-023's recovery turn was built nothing acted on the budget,
+	// and this asserted the stale turn ended the call after one turn. Now
+	// the budget is spent: the process's 1, not the policy's 2, so the
+	// second stale turn ends the call, after two turns.
+	turns := h.runner.calls()
 	if record.Result.Status != run.Interrupted || class(record) != run.ClassTimeout ||
-		message(record) != "stale: the runtime reported no event for 5m0s (stale.no_event)" || len(h.runner.calls()) != 1 {
-		t.Fatalf("result = %+v, turns %d", record.Result, len(h.runner.calls()))
+		message(record) != "stale: the runtime reported no event for 5m0s (stale.no_event)" || len(turns) != 2 {
+		t.Fatalf("result = %+v, turns %d", record.Result, len(turns))
+	}
+	if !strings.HasPrefix(turns[1].Prompt, "Process.\n\n## stale limit\n\nstale.tool_command") || len(record.Recoveries) != 1 {
+		t.Fatalf("recovery turn = %q, recoveries %+v", turns[1].Prompt, record.Recoveries)
 	}
 }
 

@@ -349,7 +349,7 @@ func TestToolCallsAreReported(t *testing.T) {
 		t.Fatalf("read runs a command: %+v", tools[0].Started)
 	}
 	events = stream.Reduce(`{"type":"tool_execution_end","toolCallId":"c1","toolName":"bash","result":{},"isError":true}`)
-	if tools := stream.TakeTools(); len(tools) != 1 || tools[0].Finished != "c1" {
+	if tools := stream.TakeTools(); len(tools) != 1 || *tools[0].Finished != (pi.ToolResult{ID: "c1"}) {
 		t.Fatalf("tools = %+v", tools)
 	}
 	if events[0].Kind != "TOOL_RESULT" || events[0].Data["is_error"] != true {
@@ -388,5 +388,31 @@ func TestUnrecordedProcessFailsTheTurnWhateverTheStreamSays(t *testing.T) {
 	turn := stream.Reconcile(pi.Evidence{RecordError: "disk full"}, false)
 	if string(turn.Status) != string(pi.Failed) || turn.Error == nil || string(turn.Error.Class) != string(pi.ClassInternal) || !strings.Contains(turn.Error.Message, "disk full") {
 		t.Fatalf("turn = %+v", turn)
+	}
+}
+
+// A tool call's end carries the text of the result the stream reported,
+// bounded to its head and tail; a result without text carries none.
+func TestAToolCallsResultIsReported(t *testing.T) {
+	t.Parallel()
+	finished := func(result string) pi.ToolResult {
+		stream := &pi.Stream{}
+		stream.Reduce(`{"type":"tool_execution_end","toolCallId":"c1","toolName":"bash","result":` + result + `,"isError":false}`)
+		tools := stream.TakeTools()
+		if len(tools) != 1 || tools[0].Finished == nil {
+			t.Fatalf("tools = %+v", tools)
+		}
+		return *tools[0].Finished
+	}
+	if got := finished(`{"content":[{"type":"text","text":"one"},{"type":"image"},{"type":"text","text":"two"}]}`); got != (pi.ToolResult{ID: "c1", Output: "one\ntwo", Reported: true}) {
+		t.Fatalf("text: %+v", got)
+	}
+	if got := finished(`{"content":[{"type":"image"}]}`); got != (pi.ToolResult{ID: "c1"}) {
+		t.Fatalf("no text: %+v", got)
+	}
+	long, _ := json.Marshal(strings.Repeat("é", pi.ToolResultBytes))
+	half := strings.Repeat("é", pi.ToolResultBytes/4)
+	if got := finished(`{"content":[{"type":"text","text":` + string(long) + `}]}`); !got.Reported || got.Output != half+"\n…\n"+half {
+		t.Fatalf("a long one: %d bytes", len(got.Output))
 	}
 }

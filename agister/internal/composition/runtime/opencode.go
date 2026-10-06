@@ -51,6 +51,9 @@ type opencodeSink struct{ app.EventSink }
 func (s opencodeSink) ToolStarted(tool opencode.ToolCall) {
 	s.EventSink.ToolStarted(app.ToolCall(tool))
 }
+func (s opencodeSink) ToolFinished(result opencode.ToolResult) {
+	s.EventSink.ToolFinished(app.ToolResult(result))
+}
 func (r opencodeRunner) RunTurn(ctx context.Context, request app.TurnRequest, sink app.EventSink) run.Turn {
 	return OpenCodeResult(r.wrapper.RunTurn(ctx, OpenCodeRequest(request), opencodeSink{sink}))
 }

@@ -24,6 +24,6 @@ func (*sink) Event(string, string, map[string]any) {}
 func (*sink) Raw(string)                           {}
 func (*sink) ProcessStarted(string) error          { return nil }
 func (*sink) ToolStarted(claudecode.ToolCall)      {}
-func (*sink) ToolFinished(string)                  {}
+func (*sink) ToolFinished(claudecode.ToolResult)   {}
 
 const session = "5145d89d-470e-4b56-a78c-da035d5de49b"
