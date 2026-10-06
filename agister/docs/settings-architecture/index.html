@@ -248,42 +248,57 @@ rules: its permission vocabulary and hard limits. Workspace and blocks stand apa
 <p>Every document can come from the repo's <code>.agister</code> or from
 home; the repo's replaces home's of the same kind and name.</p>
 
-<h2><span class="k-workflow">Workflow</span> and <span class="k-process">process</span></h2>
+<h2>Service</h2>
+
+<p>One document over all the others: the hard limits (max timeout,
+attempts, cost, verify attempts) and the permission vocabulary every policy
+and runtime mapping must use, including which permissions write and which
+reach Agister's state; those are never granted.</p>
+
+<h2><span class="k-workflow">Workflow</span></h2>
 
 <p>A workflow composes process calls into one run, and its settings fix
 what each call receives, never whoever starts it. It has its own params and
 values. The one shape it has today is fan-out then join: several processes
-over the same inputs, then one process given their results. A
-process is a named agent call. It holds the instruction, caller params,
-input values, the checkout input, its own setup, required permissions and
-limit overrides. Everything else it names: its agent, its policy, the
-schema its JSON output must match, its verification (or holds it inline:
-command, timeout, max attempts, failure instruction), its prompts, which
-may be optional, and its skills. A prompt is plain text; a skill is one
-<code>SKILL.md</code>.</p>
+over the same inputs, then one process given their results.</p>
 
-<h2><span class="k-agent">Agent</span> and <span class="k-runtime">runtime mapping</span></h2>
+<h2><span class="k-process">Process</span></h2>
+
+<p>A process is a named agent call. It holds the instruction, caller
+params, input values, the checkout input, its own setup, required
+permissions and limit overrides. Everything else it names.</p>
+
+<h2>What a process names</h2>
+
+<p>Its agent, and its supporting documents:</p>
+<ul>
+<li><b>policy</b>: execution defaults: timeout, attempts, cost cap,
+allowed and denied permissions, workspace access (read-only or read-write)
+and scope (candidate or repository), staleness limits. It speaks in
+permissions, never in runtime primitives.</li>
+<li><b>output schema</b>: the JSON Schema its output must match.</li>
+<li><b>verification</b>: command, timeout, max attempts, failure
+instruction; or held inline in the process.</li>
+<li><b>prompts</b>: plain text, which may be optional.</li>
+<li><b>skills</b>: each one <code>SKILL.md</code>.</li>
+</ul>
+
+<h2><span class="k-agent">Agent</span></h2>
 
 <p>An agent is a runtime profile: model, model family, effort, session
-mode (fresh-only or resumable) and the skills it names. It carries no task
-and no permissions. It names a runtime mapping, which covers one adapter
-(<code>claude-code</code>, <code>codex</code>, <code>pi</code> or
-<code>opencode</code>): the efforts it accepts and each restriction
-primitive, a tool or sandbox mode, with the permissions it grants,
-verified against runtime versions.</p>
+mode (fresh-only or resumable). It carries no task and no permissions. It
+names a runtime mapping and its own skills.</p>
 
-<h2>Policy and service</h2>
+<h2><span class="k-runtime">Runtime mapping</span></h2>
 
-<p>A policy holds execution defaults: timeout, attempts, cost cap, allowed
-and denied permissions, workspace access (read-only or read-write) and
-scope (candidate or repository), staleness limits. It speaks in
-permissions, never in runtime primitives. The service is one document: the
-hard limits (max timeout, attempts, cost, verify attempts) and the
-permission vocabulary every policy and runtime mapping must use, including
-which permissions write and which reach Agister's state; those are never
-granted.</p>
+<p>A runtime mapping covers one adapter (<code>claude-code</code>,
+<code>codex</code>, <code>pi</code> or <code>opencode</code>): the efforts
+it accepts and each restriction primitive, a tool or sandbox mode, with the
+permissions it grants, verified against runtime versions.</p>
 
-<p>Apart from the graph stand two singletons: the workspace, the default
+<h2>Workspace and blocks</h2>
+
+<p>Two singletons stand apart from the graph: the workspace, the default
 checkout setup for processes that check out a revision and declare none,
 and blocks, repo only: the agents, processes, workflows or runtime
 mappings this repo refuses, with reasons.</p>
