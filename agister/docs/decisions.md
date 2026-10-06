@@ -176,3 +176,14 @@
 - **Rests on:** ADR-021 rule 1, ADR-021 rule 4, ADR-021 Amendments: ADR-011 rule 5, ADR-011 rules 7 and 9, AGENTS.md: Verifying fixes, ADR-017 rules 1 and 5
 - **Follow-ups:** Feed the server's per-layer settings-skill inventory through page composition into config.js and both views. Prove with TestSettingsSkillInventoryPreservesBrokenRepoOverride using t.TempDir(), and an endpoint-to-page regression named BrokenRepoOverrideRemainsEffectiveInSettingsAndKnowledge: oversized, empty, missing-SKILL.md and symlinked repo overrides over valid home skills retain repo precedence and show their failed checks; genuine repo absence selects home. Remove skills from generic /api/settings traversal and obtain skill content through the skill inventory reader alone. Prove with TestSettingsEndpointDoesNotReadSkillFiles and TestSettingsSkillInventoryReadsOnlySKILLMD, using t.TempDir() and an injected reader spy: sibling files are never read, extra files fail the settings skill's checks, and oversized or outside-skill SKILL.md files remain inventoried without being read.
 - **Advisor run:** 20261005T175049Z-fd9d17
+
+## D-17: How the CLI's command table and the parser's flag registrations are kept in agreement
+
+- **Status:** Owner
+- **Asked by:** workflow run 20261006T062639Z-6ae9d0 (code_review), judge item 2#2 "Guard's flag catalog is not checked against the parser's actual flag registrations"; advisor run 20261006T064212Z-a3f5dc returned it to the owner
+- **Question:** how should the command table and the parser's flag registrations be kept in agreement?
+- **Options:** Option A: add an invariant test that every flag in each `Commands()` entry is accepted by the real parser registration. Option B: derive both the table's flags and the FlagSet registrations from one source in cli.go, so they cannot differ. Option C: waive, accepting that a table typo would be caught at runtime by the parser's usage error.
+- **Excluded:** B: a larger change to cli.go than the gap needs. C: leaves a table typo unseen until a command line uses the flag.
+- **Decision:** Option A: an invariant test that every flag in each `Commands()` entry, and every global flag, is registered with the real parser.
+- **Rests on:** none
+- **Follow-ups:** a test in `internal/cli` that fails when a `Commands()` or `GlobalFlags()` entry names a flag the parser's FlagSet does not register.
