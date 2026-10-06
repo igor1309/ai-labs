@@ -105,6 +105,16 @@ its usage, cost and timing, and its `outcome`: `completed`, `same_limit`,
 `RECOVERY_NOT_STARTED`; a repeated call's `STALE` event carries the last
 `result` the runtime reported for it, if any.
 
+A policy may also set `retry.max_attempts`, within the service's
+`max_attempts`, and a process may only narrow it. It is composed and
+recorded with a call's limits, and nothing acts on it: a call that ends
+at a staleness limit goes on only as a new call, made by hand. What
+should act on it, a step above the call that starts a fresh attempt in a
+new session, with the earlier attempt's changes carried and a handoff
+assembled from its records, is decided in
+[ADR-025](docs/adr/025-a-stale-call-is-retried-fresh-with-a-handoff.md),
+which is proposed and not built yet.
+
 A prompt the settings fix, such as a reviewer's instructions, is a document
 too: `prompts/review.md`, the whole file its text, no header. A process
 gives it to its agent as an input, `{source: prompt, name: review}`; the
