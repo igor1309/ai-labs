@@ -297,6 +297,20 @@ type changesSpy struct {
 	// when set, runs first and fails the apply with what it returns.
 	applied  []appliedPatch
 	applying func(check bool) error
+	// rebuilt, when set, names the content a patch rebuilds from a
+	// revision; unset, every rebuild fails. rebuilds lists each one asked.
+	rebuilt  func(revision string, patch []byte) string
+	rebuilds []appliedPatch
+}
+
+func (s *changesSpy) Rebuild(_ context.Context, dir, revision string, patch []byte) (string, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.rebuilds = append(s.rebuilds, appliedPatch{dir: dir, patch: string(patch)})
+	if s.rebuilt == nil {
+		return "", errors.New("no rebuild was given")
+	}
+	return s.rebuilt(revision, patch), nil
 }
 
 // appliedPatch is one Apply: the checkout, the patch, and whether it was

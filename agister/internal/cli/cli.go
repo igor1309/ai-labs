@@ -828,6 +828,9 @@ func showProcess(w io.Writer, view contract.ProcessView) {
 			[2]string{"  limits", fmt.Sprintf("timeout %s, attempts %d", verify.Timeout, verify.MaxAttempts)},
 			[2]string{"  on failure", verify.Instruction},
 		)
+		if verify.Where != "" {
+			lines = append(lines, [2]string{"  where", verify.Where + " (an in-place call verifies in the caller's worktree; any other on a clean copy)"})
+		}
 		if view.VerifyName != "" {
 			lines = append(lines, [2]string{"  from", "verify:" + view.VerifyName})
 		}

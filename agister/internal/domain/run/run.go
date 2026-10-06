@@ -316,7 +316,8 @@ type InPlace struct {
 	RepositoryIdentity string `json:"repository_identity"`
 	Revision           string `json:"revision"`
 	// Verify is where the call's verification runs (ADR-022 rule 6):
-	// VerifyOnCopy; empty when the call verifies nothing.
+	// VerifyInWorkspace or VerifyOnCopy; empty when the call verifies
+	// nothing.
 	Verify string `json:"verify,omitempty"`
 	// Content names the worktree's content the call's changes.patch was
 	// captured from (ADR-022 rule 7); empty until then, and when the
@@ -324,8 +325,12 @@ type InPlace struct {
 	Content string `json:"content,omitempty"`
 }
 
-// VerifyOnCopy: verification runs on a clean copy (ADR-005).
-const VerifyOnCopy = "copy"
+// Where verification runs: on a clean copy (ADR-005), or in the caller's
+// worktree an in-place call borrowed (ADR-022 rule 6).
+const (
+	VerifyOnCopy      = "copy"
+	VerifyInWorkspace = "workspace"
+)
 
 // Process is the runtime's process as an opaque reference, made and read
 // only by the runtime adapter that started it. Records of v1alpha2 carry no

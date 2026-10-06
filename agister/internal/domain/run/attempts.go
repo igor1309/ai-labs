@@ -16,6 +16,10 @@ type Attempt struct {
 	// pinned base for the first turn); unset when it changed nothing.
 	Changes *Artifact   `json:"changes,omitempty"`
 	Run     *CommandRun `json:"run,omitempty"`
+	// Where is where its run was: VerifyOnCopy or VerifyInWorkspace; empty
+	// when the command never ran, and on records made before it was
+	// recorded.
+	Where string `json:"where,omitempty"`
 	// Stopped is why verification ended at this attempt without a pass.
 	Stopped string `json:"stopped,omitempty"`
 }

@@ -525,6 +525,7 @@ type InspectedVerify struct {
 	Timeout     time.Duration
 	MaxAttempts int
 	Instruction string
+	Where       string // "workspace", or empty: a clean copy
 }
 
 // InspectedLimits are a call's composed limits.
@@ -614,7 +615,7 @@ func (r *Resolver) InspectProcess(ctx context.Context, name, agent string) (*Ins
 		Sources:    inspectedSources(res.sources),
 	}
 	if verify := process.Verify; verify != nil {
-		inspected.Process.Verify = &InspectedVerify{Command: verify.Command, Timeout: verify.Timeout, MaxAttempts: verify.MaxAttempts, Instruction: verify.Instruction}
+		inspected.Process.Verify = &InspectedVerify{Command: verify.Command, Timeout: verify.Timeout, MaxAttempts: verify.MaxAttempts, Instruction: verify.Instruction, Where: verify.Where}
 	}
 	for _, name := range inspected.Process.Prompts {
 		for _, absent := range res.absent {
@@ -789,7 +790,7 @@ func (i *Inspection) showProcess(ctx context.Context, name, agent string) (contr
 	}
 	view.Sources = origins(res.Sources)
 	if verify := res.Process.Verify; verify != nil {
-		view.Verify = &contract.Verify{Command: verify.Command, Timeout: verify.Timeout, MaxAttempts: verify.MaxAttempts, Instruction: verify.Instruction}
+		view.Verify = &contract.Verify{Command: verify.Command, Timeout: verify.Timeout, MaxAttempts: verify.MaxAttempts, Instruction: verify.Instruction, Where: verify.Where}
 		// A refused call runs no command.
 		if refusal == nil {
 			view.Warnings = append(view.Warnings, VerifyWarning)

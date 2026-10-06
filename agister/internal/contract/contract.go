@@ -382,6 +382,9 @@ type Verify struct {
 	Timeout     time.Duration
 	MaxAttempts int
 	Instruction string
+	// Where is "workspace" when an in-place call runs the command in the
+	// caller's worktree (ADR-022 rule 6); empty: a clean copy.
+	Where string
 }
 
 // CallRequest asks for a call of a process, or a run of a workflow: Process

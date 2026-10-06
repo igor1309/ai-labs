@@ -525,6 +525,23 @@ func TestShowProcessPrintsVerifyAndWarnings(t *testing.T) {
 	}
 }
 
+// process show says where a verification that declares it runs (ADR-022
+// rule 6), and says nothing of where for one that does not.
+func TestShowProcessPrintsWhereTheVerificationRuns(t *testing.T) {
+	t.Parallel()
+	spy := &clientSpy{view: contract.ProcessView{Name: "p", Agent: "a", Runtime: "rt", Output: "text", Timeout: time.Hour, MaxAttempts: 1,
+		Verify: &contract.Verify{Command: "go test ./...", Timeout: 10 * time.Minute, MaxAttempts: 3, Instruction: "Fix the cause.", Where: "workspace"}}}
+	r := run(context.Background(), spy, "process", "show", "p")
+	want := "  on failure Fix the cause.\n  where      workspace (an in-place call verifies in the caller's worktree; any other on a clean copy)\n"
+	if r.code != 0 || !strings.Contains(r.stdout, want) {
+		t.Fatalf("missing %q in %d:\n%s", want, r.code, r.stdout)
+	}
+	spy.view.Verify.Where = ""
+	if r := run(context.Background(), spy, "process", "show", "p"); r.code != 0 || strings.Contains(r.stdout, "where") {
+		t.Fatalf("without where, %d:\n%s", r.code, r.stdout)
+	}
+}
+
 // process show says which verification the verify fields come from, and of
 // one that was not resolved, that it was not, beside the refusal.
 func TestShowProcessPrintsTheNamedVerification(t *testing.T) {

@@ -254,3 +254,41 @@ func TestANamedVerificationWithoutACheckoutIsInvalid(t *testing.T) {
 		t.Fatalf("err = %v", err)
 	}
 }
+
+// ADR-022 rule 6 and its ADR-010 amendment: a verification, inline or a
+// document, may say where an in-place call runs it: workspace, its only
+// value. Without it, it is a clean copy.
+func TestWhereWorkspaceIsParsedInlineAndInADocument(t *testing.T) {
+	t.Parallel()
+	process, err := definition.ParseProcess(doc(definition.KindProcess, "p", verifyingProcess(verifyBlock+"  where: workspace\n")))
+	if err != nil || process.Verify == nil || process.Verify.Where != definition.WhereWorkspace {
+		t.Fatalf("inline: %+v, %v", process.Verify, err)
+	}
+	parsed, err := definition.ParseVerify(doc(definition.KindVerify, "repo", verification+"where: workspace\n"))
+	if err != nil || parsed.Verify.Where != definition.WhereWorkspace {
+		t.Fatalf("document: %+v, %v", parsed.Verify, err)
+	}
+	without, err := definition.ParseVerify(doc(definition.KindVerify, "repo", verification))
+	if err != nil || without.Verify.Where != "" {
+		t.Fatalf("without: %+v, %v", without.Verify, err)
+	}
+}
+
+// ADR-022 rule 6: any other value of where is a problem, inline or in a
+// document.
+func TestWhereOtherThanWorkspaceIsInvalid(t *testing.T) {
+	t.Parallel()
+	for _, value := range []string{"copy", "worktree", `""`, "[workspace]"} {
+		t.Run(value, func(t *testing.T) {
+			t.Parallel()
+			_, err := definition.ParseProcess(doc(definition.KindProcess, "p", verifyingProcess(verifyBlock+"  where: "+value+"\n")))
+			if err == nil || !strings.Contains(err.Error(), "verify.where: must be") {
+				t.Fatalf("inline: err = %v", err)
+			}
+			_, err = definition.ParseVerify(doc(definition.KindVerify, "repo", verification+"where: "+value+"\n"))
+			if err == nil || !strings.Contains(err.Error(), "\n  where: must be") {
+				t.Fatalf("document: err = %v", err)
+			}
+		})
+	}
+}

@@ -559,6 +559,30 @@ func (Workspaces) Changes(ctx context.Context, dir, from, to string) ([]byte, er
 	return []byte(out), err
 }
 
+// Rebuild names the content revision has with patch applied, as Identity
+// names a checkout: the tree it writes through an index of its own, seeded
+// from revision, with the patch applied there. No checkout is made, and
+// nothing in dir, its index included, is read or written but the
+// repository's objects.
+func (Workspaces) Rebuild(ctx context.Context, dir, revision string, patch []byte) (string, error) {
+	var tree string
+	err := scratchIndex(func(env []string) error {
+		if _, err := runWith(ctx, dir, env, nil, "read-tree", revision); err != nil {
+			return err
+		}
+		// An empty patch is no change, which apply would refuse.
+		if len(patch) > 0 {
+			if _, err := runWith(ctx, dir, env, patch, "apply", "--cached", "--binary", "-"); err != nil {
+				return err
+			}
+		}
+		out, err := runWith(ctx, dir, env, nil, "write-tree")
+		tree = strings.TrimSpace(out)
+		return err
+	})
+	return tree, err
+}
+
 // scratchIndex gives do the environment of a temporary index, removed after.
 func scratchIndex(do func(env []string) error) error {
 	scratch, err := os.MkdirTemp("", "agister-index-")

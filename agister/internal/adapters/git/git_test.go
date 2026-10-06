@@ -350,6 +350,49 @@ func TestTrackedIgnoredFilesStayContent(t *testing.T) {
 	}
 }
 
+// Rebuild names, without a checkout, the content revision has with a patch
+// applied: the worktree's own content for the patch Changes took from it,
+// ignored files left out, and the revision's for no patch; a patch that
+// does not apply is an error. The worktree, its index and its ignored files
+// are as they were.
+//
+// Contract test: the git adapter against real git, in a repository of the
+// test's own.
+func TestRebuildNamesTheContentAPatchMakesFromTheRevision(t *testing.T) {
+	t.Parallel()
+	repo := repository(t)
+	ctx := context.Background()
+	workspaces := git.NewWorkspaces(git.NewWorktrees(t.TempDir()))
+	revision := sh(t, repo, "rev-parse", "HEAD")
+	os.WriteFile(filepath.Join(repo, "a.txt"), []byte("edited\n"), 0o600)
+	os.WriteFile(filepath.Join(repo, "d.txt"), []byte("untracked\n"), 0o600)
+	os.WriteFile(filepath.Join(repo, "e.bin"), []byte{0, 1, 2, 0xff}, 0o600)
+	os.WriteFile(filepath.Join(repo, ".gitignore"), []byte("*.log\n"), 0o600)
+	os.WriteFile(filepath.Join(repo, "x.log"), []byte("ignored\n"), 0o600)
+	status := sh(t, repo, "status", "--porcelain", "--ignored")
+
+	identity, err := workspaces.Identity(ctx, repo, revision)
+	if err != nil {
+		t.Fatal(err)
+	}
+	patch, err := workspaces.Changes(ctx, repo, revision, identity)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if rebuilt, err := workspaces.Rebuild(ctx, repo, revision, patch); err != nil || rebuilt != identity {
+		t.Fatalf("rebuilt %q, %v; want %s", rebuilt, err, identity)
+	}
+	if rebuilt, err := workspaces.Rebuild(ctx, repo, revision, nil); err != nil || rebuilt != sh(t, repo, "rev-parse", revision+"^{tree}") {
+		t.Fatalf("no patch: %q, %v", rebuilt, err)
+	}
+	if _, err := workspaces.Rebuild(ctx, repo, revision, []byte("diff --git a/nope b/nope\n--- a/nope\n+++ b/nope\n@@ -1 +1 @@\n-x\n+y\n")); err == nil {
+		t.Fatal("a patch that does not apply was rebuilt")
+	}
+	if after := sh(t, repo, "status", "--porcelain", "--ignored"); after != status {
+		t.Fatalf("worktree status %q, was %q", after, status)
+	}
+}
+
 // copied names the content of a copy of revision with patch applied, and
 // removes the copy, as a verification attempt does.
 func copied(t *testing.T, repo, revision string, patch []byte) string {

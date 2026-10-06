@@ -63,12 +63,16 @@ func recordVerify(verify *CallVerify) *run.Verify {
 	if verify == nil {
 		return nil
 	}
-	return &run.Verify{
+	recorded := &run.Verify{
 		Command:     verify.Command,
 		Timeout:     verify.Timeout,
 		MaxAttempts: verify.MaxAttempts,
 		Instruction: verify.Instruction,
 	}
+	if verify.InWorkspace {
+		recorded.Where = run.VerifyInWorkspace
+	}
+	return recorded
 }
 
 func recordSetup(setup *CallSetup) *run.Setup {

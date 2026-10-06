@@ -62,6 +62,9 @@ type Verify struct {
 	Timeout     time.Duration `json:"timeout"`
 	MaxAttempts int           `json:"max_attempts"`
 	Instruction string        `json:"instruction"`
+	// Where is "workspace" when the verification declares it (ADR-022 rule
+	// 6); empty: a clean copy.
+	Where string `json:"where,omitempty"`
 }
 
 // Precheck is the command that gates an in-place call (ADR-022 rule 5), as

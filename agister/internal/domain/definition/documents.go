@@ -53,13 +53,20 @@ type Output struct {
 
 // Verify is a process's verification command (ADR-002): run after a valid
 // turn, on a clean copy of the base with the turn's patch applied
-// (ADR-005), with the operator's authority.
+// (ADR-005), with the operator's authority, or, where it says so, in the
+// worktree of an in-place call (ADR-022 rule 6).
 type Verify struct {
 	Command     string        // one Bash command
 	Timeout     time.Duration // per run
 	MaxAttempts int           // runs, the first included
 	Instruction string        // what the agent is told when a run fails
+	// Where is WhereWorkspace, or empty: a clean copy.
+	Where string
 }
+
+// WhereWorkspace is the only value of a verification's where: an in-place
+// call runs the command in the caller's worktree (ADR-022 rule 6).
+const WhereWorkspace = "workspace"
 
 // Repairs reports whether a failed run may be followed by a repair turn,
 // which resumes the call's session: an agent and runtime that cannot
@@ -272,7 +279,7 @@ func ParseProcess(doc Document) (Process, error) {
 				p.add("verify", `must be "verify:<name>" or the inline fields`)
 			}
 		} else {
-			process.Verify = parseVerify(fields(node, "verify", verifyKeys, p), "verify", p)
+			process.Verify = parseVerify(fields(node, "verify", verifyFields, p), "verify", p)
 		}
 		// Verifying a tree the call does not own would check content other
 		// calls can change and the call does not capture.
@@ -293,17 +300,22 @@ func ParseVerify(doc Document) (Verification, error) {
 	if root == nil {
 		return verification, p.err("verification " + subjectName(doc.Source))
 	}
-	values := fields(root, "", append([]string{"schema", "name"}, verifyKeys...), p)
+	values := fields(root, "", append([]string{"schema", "name"}, verifyFields...), p)
 	header(values, VerifySchema, doc.Source.Name, p)
 	verification.Verify = *parseVerify(values, "", p)
 	return verification, p.err("verification " + subjectName(doc.Source))
 }
 
-var verifyKeys = []string{"command", "timeout", "max_attempts", "instruction"}
+// verifyKeys are a verification's required fields; verifyFields all it
+// may hold, where, the only optional one, included.
+var (
+	verifyKeys   = []string{"command", "timeout", "max_attempts", "instruction"}
+	verifyFields = []string{"command", "timeout", "max_attempts", "instruction", "where"}
+)
 
 // parseVerify reads the fields of a verify block, or of a verification
-// document, under field. Every one is required: there is no default
-// command, timeout, attempt count or instruction.
+// document, under field. Every one but where is required: there is no
+// default command, timeout, attempt count or instruction.
 func parseVerify(values map[string]*yaml.Node, field string, p *problems) *Verify {
 	for _, key := range verifyKeys {
 		if _, ok := values[key]; !ok {
@@ -322,6 +334,14 @@ func parseVerify(values map[string]*yaml.Node, field string, p *problems) *Verif
 			p.add(join(field, "max_attempts"), "must be at least 1")
 		}
 		verify.MaxAttempts = attempts
+	}
+	if node, ok := values["where"]; ok {
+		if where, ok := scalar(node, join(field, "where"), p); ok {
+			verify.Where = where
+			if where != WhereWorkspace {
+				p.add(join(field, "where"), "must be %q", WhereWorkspace)
+			}
+		}
 	}
 	return verify
 }

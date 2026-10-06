@@ -143,6 +143,9 @@ type CallVerify struct {
 	Timeout     time.Duration // per run
 	MaxAttempts int           // runs, the first included
 	Instruction string        // what the agent is told when a run fails
+	// InWorkspace says the command runs in the worktree of an in-place
+	// call, not on a clean copy (ADR-022 rule 6).
+	InWorkspace bool
 }
 
 // CallSetup is the command that prepares a call's checkout before its
@@ -271,7 +274,8 @@ func (c callResolution) Resolve(ctx context.Context, request CallResolveRequest)
 		Plan:     CallPlan{Primitives: res.plan.Primitives, Granted: res.plan.Granted, Withheld: res.plan.Withheld},
 	}
 	if verify := process.Verify; verify != nil {
-		resolved.Process.Verify = &CallVerify{Command: verify.Command, Timeout: verify.Timeout, MaxAttempts: verify.MaxAttempts, Instruction: verify.Instruction}
+		resolved.Process.Verify = &CallVerify{Command: verify.Command, Timeout: verify.Timeout, MaxAttempts: verify.MaxAttempts, Instruction: verify.Instruction,
+			InWorkspace: verify.Where == definition.WhereWorkspace}
 	}
 	for name, prompt := range res.prompts {
 		if resolved.Prompts == nil {
@@ -486,6 +490,9 @@ type CallChanges interface {
 	// check, it only checks that the whole patch applies, and changes
 	// nothing.
 	Apply(ctx context.Context, dir string, patch []byte, check bool) error
+	// Rebuild names the content revision has with patch applied, as
+	// Identity would name a checkout of it, without making one.
+	Rebuild(ctx context.Context, dir, revision string, patch []byte) (string, error)
 }
 
 // CallPreparer runs a call's checkout's setup once, with the operator's
@@ -896,12 +903,18 @@ func (c *Calls) execute(ctx context.Context, handle RunHandle, record run.Record
 	// The content a passing verification run checked, whose patch is what
 	// the call delivers (ADR-005 rule 1).
 	var verified string
+	// inWorkspace verifies in the caller's worktree, not on a clean copy:
+	// only an in-place call whose verification says so (ADR-022 rule 6).
+	inWorkspace := res.Process.InPlace && res.Process.Verify != nil && res.Process.Verify.InWorkspace
 	if res.Process.InPlace {
 		// The caller's worktree, borrowed: no checkout, setup or release. Its
 		// lock is held until the changes are captured, and nothing in it is
 		// reset, cleaned or removed, whatever the end (ADR-022 rule 7).
 		verify := ""
-		if res.Process.Verify != nil {
+		switch {
+		case inWorkspace:
+			verify = run.VerifyInWorkspace
+		case res.Process.Verify != nil:
 			verify = run.VerifyOnCopy
 		}
 		var precheck *SetupCommand
@@ -933,7 +946,9 @@ func (c *Calls) execute(ctx context.Context, handle RunHandle, record run.Record
 				event(run.SourceAgister, "WORKTREE_COMMITTED", map[string]any{"head": head, "revision": revision})
 				fault = run.Fault(run.ClassCommitted, "the worktree's HEAD is %s, not revision %s: the agent committed in the caller's worktree; its commit stays", head, revision)
 			}
-			artifacts, content, failed := c.collectChanges(ctx, handle, workspace.Dir, revision, verified, event)
+			// What passed in the worktree was never rebuilt from the patch:
+			// the capture is checked to rebuild it (ADR-022 rule 6).
+			artifacts, content, failed := c.collectChanges(ctx, handle, workspace.Dir, revision, verified, inWorkspace, event)
 			result.Artifacts = artifacts
 			record.InPlace.Content = content
 			if fault == nil {
@@ -996,7 +1011,7 @@ func (c *Calls) execute(ctx context.Context, handle RunHandle, record run.Record
 			event(run.SourceAgister, "CHANGES_CARRIED", map[string]any{"run": carry.from, "digest": carry.artifact.Digest, "bytes": carry.artifact.Bytes})
 		}
 		collect = func() *run.Error {
-			artifacts, _, fault := c.collectChanges(ctx, handle, workspace.Dir, revision, verified, event)
+			artifacts, _, fault := c.collectChanges(ctx, handle, workspace.Dir, revision, verified, false, event)
 			result.Artifacts = artifacts
 			return fault
 		}
@@ -1094,7 +1109,7 @@ func (c *Calls) execute(ctx context.Context, handle RunHandle, record run.Record
 		verified, fault = c.verifier.Verify(ctx, VerifyCall{
 			Record: &record, Result: &result, Event: event, Update: handle.Update, Artifact: handle.Artifact,
 			Verify: definition.Verify{Command: verify.Command, Timeout: verify.Timeout, MaxAttempts: verify.MaxAttempts, Instruction: verify.Instruction}, Limit: res.Effective.MaxCostUSD, Deadline: deadline, NoOutput: res.Effective.Stale.NoOutput,
-			Dir: workspace.Dir, Base: revision, Repository: workspace.Repository, Request: request, Session: turn.ProviderSessionID,
+			Dir: workspace.Dir, Base: revision, Repository: workspace.Repository, InWorkspace: inWorkspace, Request: request, Session: turn.ProviderSessionID,
 			Take: take, Conclude: conclude,
 		})
 	}
@@ -1582,14 +1597,15 @@ func (c *Calls) whereItRan(ctx context.Context, res *ResolvedCall, prior run.Rec
 
 // collectChanges keeps a call's changes to its own workspace as an
 // artifact: the patch from revision to the checkout's content, or to
-// verified when it names the content a verification run passed on. That
-// run checked a clean copy of revision with this very patch applied, so the
-// patch delivers exactly what passed (ADR-005 rule 1). No changes store no
-// artifact and are recorded as NO_CHANGES. It returns the content the patch
-// was taken to, empty when none was kept. A failure is recorded; it does
-// not change the call's status, unless the changes were verified: then the
-// call fails.
-func (c *Calls) collectChanges(ctx context.Context, handle RunHandle, dir, revision, verified string, event func(string, string, map[string]any)) ([]run.Artifact, string, *run.Error) {
+// verified when it names the content a verification run passed on. A run
+// on a clean copy checked revision with this very patch applied, so the
+// patch delivers exactly what passed (ADR-005 rule 1); one in the worktree
+// did not (rebuild): the patch must rebuild that content from revision, or
+// it is not kept (ADR-002 rule 7). No changes store no artifact and are
+// recorded as NO_CHANGES. It returns the content the patch was taken to,
+// empty when none was kept. A failure is recorded; it does not change the
+// call's status, unless the changes were verified: then the call fails.
+func (c *Calls) collectChanges(ctx context.Context, handle RunHandle, dir, revision, verified string, rebuild bool, event func(string, string, map[string]any)) ([]run.Artifact, string, *run.Error) {
 	ctx = context.WithoutCancel(ctx)
 	identity := verified
 	var err error
@@ -1599,6 +1615,9 @@ func (c *Calls) collectChanges(ctx context.Context, handle RunHandle, dir, revis
 	var patch []byte
 	if err == nil {
 		patch, err = c.changes.Changes(ctx, dir, revision, identity)
+	}
+	if err == nil && rebuild && verified != "" {
+		err = c.rebuilds(ctx, dir, revision, patch, verified)
 	}
 	var artifacts []run.Artifact
 	switch {
@@ -1620,6 +1639,19 @@ func (c *Calls) collectChanges(ctx context.Context, handle RunHandle, dir, revis
 		return nil, "", nil
 	}
 	return artifacts, identity, nil
+}
+
+// rebuilds fails unless patch, applied to revision, rebuilds the content
+// verified names.
+func (c *Calls) rebuilds(ctx context.Context, dir, revision string, patch []byte, verified string) error {
+	rebuilt, err := c.changes.Rebuild(ctx, dir, revision, patch)
+	if err != nil {
+		return fmt.Errorf("rebuilding the content that passed from the captured changes: %w", err)
+	}
+	if rebuilt != verified {
+		return fmt.Errorf("the captured changes do not rebuild the content that passed: applied to %s they make %s, not %s", revision, rebuilt, verified)
+	}
+	return nil
 }
 
 // resolveValues binds caller params to the params declared and resolves
