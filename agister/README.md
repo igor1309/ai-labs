@@ -194,6 +194,21 @@ carried. A finished run's changes are
 A run whose checkout has no changes records `NO_CHANGES` and has no
 `changes.patch`, so a continuation of it carries nothing.
 
+Home's prompts are kept in git in `prompts/` at the repository root and
+copied into `~/.agister/prompts/` by hand: `install` does not take them
+from there, so a changed prompt reaches home only when it is copied
+(LAB-84). Settings skills (ADR-021) go into `~/.agister/skills/` by hand
+too: `install` lists a folder's `skills/` as not settings (LAB-84).
+
+The caller skill, `skills/agister/SKILL.md` in this folder, is for the
+agent that runs Agister, not a settings skill. Install it by linking the
+folder into each runtime's home skills folder, from `agister/` in the main
+checkout so that the link follows `trunk`:
+`ln -s "$PWD/skills/agister" ~/.claude/skills/agister` and
+`ln -s "$PWD/skills/agister" ~/.agents/skills/agister` (Codex, Pi and
+OpenCode read `~/.agents/skills`, per ADR-011's table). Whether it is
+published for others is LAB-85.
+
 `examples/settings/` is what `init` installs; `examples/codex/`,
 `examples/pi/` and `examples/opencode/` are opt-in.
 
