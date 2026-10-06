@@ -53,10 +53,12 @@ func TestTheCallerSkillNamesOnlyCommandsAndFlagsTheCLIHas(t *testing.T) {
 }
 
 // The check fails a skill that names a command, a subcommand or a flag the
-// CLI lacks, in a code span or a code block, and passes what it has.
+// CLI lacks, in a code span or a code block, and passes what it has. Global
+// flags before the command, with their values, do not hide it.
 func TestTheSkillCheckFindsWhatTheCLILacks(t *testing.T) {
 	t.Parallel()
-	text := "Use `agister runs list`, `agister launch x`, `agister runs\nprune` and `agister process show <name> --agent a`.\n\n" +
+	text := "Use `agister runs list`, `agister launch x`, `agister runs\nprune` and `agister process show <name> --agent a`.\n" +
+		"Also `agister --home /tmp launch`, `agister --quiet --home=/tmp runs prune` and `agister --home /tmp run x --param a=b`.\n\n" +
 		"~~~sh\nagister run implement --param a=b \\\n  --bogus x && agister check --tree\n~~~\n\n" +
 		"    echo yes | agister install --restore 1 --json --probe\n"
 	named, problems := skillProblems(text)
@@ -65,9 +67,21 @@ func TestTheSkillCheckFindsWhatTheCLILacks(t *testing.T) {
 		"agister install: --probe is not one of its flags",
 		"agister launch: not a command of the CLI",
 		"agister runs prune: not a command of the CLI",
+		"agister launch: not a command of the CLI",
+		"agister runs prune: not a command of the CLI",
 	}
-	if named != 7 || !reflect.DeepEqual(problems, want) {
-		t.Errorf("named %d, problems:\n%s\nwant 7:\n%s", named, strings.Join(problems, "\n"), strings.Join(want, "\n"))
+	if named != 10 || !reflect.DeepEqual(problems, want) {
+		t.Errorf("named %d, problems:\n%s\nwant 10:\n%s", named, strings.Join(problems, "\n"), strings.Join(want, "\n"))
+	}
+}
+
+// Every global flag the check skips with its value is one the CLI has.
+func TestTheSkillCheckSkipsOnlyGlobalFlagsWithValues(t *testing.T) {
+	t.Parallel()
+	for _, name := range globalValued {
+		if !slices.Contains(cli.GlobalFlags(), name) {
+			t.Errorf("--%s is not a global flag", name)
+		}
 	}
 }
 
@@ -91,14 +105,7 @@ func skillProblems(markdown string) (int, []string) {
 				continue // agister itself, named in prose
 			}
 			named++
-			var words []string // the command and its subcommand, if any
-			for _, arg := range args[:min(2, len(args))] {
-				if !wordPattern.MatchString(arg) {
-					break
-				}
-				words = append(words, arg)
-			}
-			command, ok := cli.Lookup(words)
+			command, ok := cli.Lookup(commandWords(args, global))
 			if !ok {
 				problems = append(problems, "agister "+command.Name+": not a command of the CLI")
 				continue
@@ -112,6 +119,36 @@ func skillProblems(markdown string) (int, []string) {
 		}
 	}
 	return named, problems
+}
+
+// globalValued are the global flags that take a value, as the parser
+// declares them.
+var globalValued = []string{"home"}
+
+// commandWords are the command and its subcommand, if any, that an
+// invocation's arguments name, as parsing finds them: a global flag before
+// or between them is skipped, with the value it takes unless it is joined
+// by =.
+func commandWords(args, global []string) []string {
+	var words []string
+	for i := 0; i < len(args) && len(words) < 2; i++ {
+		arg := args[i]
+		if strings.HasPrefix(arg, "-") {
+			name, _, joined := strings.Cut(strings.TrimPrefix(arg[1:], "-"), "=")
+			if !slices.Contains(global, name) {
+				break
+			}
+			if !joined && slices.Contains(globalValued, name) {
+				i++
+			}
+			continue
+		}
+		if !wordPattern.MatchString(arg) {
+			break
+		}
+		words = append(words, arg)
+	}
+	return words
 }
 
 var spanPattern = regexp.MustCompile("`([^`]+)`")

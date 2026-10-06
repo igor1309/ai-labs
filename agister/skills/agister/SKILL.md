@@ -9,9 +9,10 @@ This skill is for the agent that runs Agister. It is not a settings skill
 that Agister gives to the agents it starts (ADR-021).
 
 Agister (`agister`, on PATH) runs agent calls and workflows that the
-settings define. Home's settings are in `~/.agister/` (`$AGISTER_HOME` or
-`--home`). A repository's `.agister/` takes priority over them, document by
-document. Each run is recorded in `~/.agister/runs/<run-id>/`.
+settings define. Home's settings are in `<home>`: the directory `--home`
+selects, else `$AGISTER_HOME`, else `~/.agister/` by default. A repository's
+`.agister/` takes priority over them, document by document. Each run is
+recorded in `<home>/runs/<run-id>/`.
 `agister --help` is authoritative, so check it before you rely on a flag.
 For the details, see the Agister source: `README.md` and `docs/adr/`.
 
@@ -88,11 +89,12 @@ settings usually have:
    and its `attempts`. An attempt's `run.passed` is present only when the
    verification command ran; a stopped attempt may contain only `stopped`,
    which says why verification ended there, and no `run`.
-5. Apply the patch. It is in `~/.agister/runs/<run-id>/artifacts/changes.patch`.
+5. Apply the patch. It is in `<home>/runs/<run-id>/artifacts/changes.patch`
+   (`~/.agister/runs/...` by default).
    A run that changed nothing records `NO_CHANGES` and has no patch.
 
    ```sh
-   git apply ~/.agister/runs/<run-id>/artifacts/changes.patch
+   git apply <home>/runs/<run-id>/artifacts/changes.patch
    ```
 
    Then run the testing command yourself, and commit.
