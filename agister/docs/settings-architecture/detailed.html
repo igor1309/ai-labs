@@ -64,11 +64,11 @@
   .lead { font-size: 1.05rem; max-width: 46rem; }
   .note { margin-top: 14px; color: var(--text-dim); font-size: 15px; max-width: 34rem; }
   .body { display: grid; gap: 20px; margin-top: 16px; }
-  .body:empty { display: none; }
-  dl { margin: 0; font-size: 15px; }
-  dt { padding-top: 8px; border-top: 1px solid var(--line-soft); }
-  dd { margin: 2px 0 8px; color: var(--text-dim); }
-  dd b { color: var(--text); font-weight: 600; }
+  table { border-collapse: collapse; width: 100%; font-size: 15px; }
+  th, td { text-align: left; vertical-align: top; padding: 6px 0; border-top: 1px solid var(--line-soft); }
+  th { font-weight: 400; padding-right: 16px; white-space: nowrap; width: 1%; }
+  td { color: var(--text-dim); }
+  td b { color: var(--text); font-weight: 600; }
   .ex { margin: 0; min-width: 0; }
   .ex figcaption {
     font-family: var(--mono); font-size: .72rem; letter-spacing: .06em; color: var(--text-faint);
@@ -86,6 +86,7 @@
     display: flex; gap: 20px; font-family: var(--mono); font-size: .8rem; letter-spacing: .04em;
   }
 
+  @media (max-width: 34rem) { th { white-space: normal; } }
   @media (min-width: 900px) {
     main {
       padding: 0 32px 56px;
@@ -93,11 +94,8 @@
     }
     main > header, main > footer { grid-column: 1 / -1; }
     nav { position: sticky; top: 20px; flex-direction: column; gap: 6px; margin: 0; }
-    .body { gap: 36px; }
-    .body.n3 { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 2.1fr); }
-    .body.n2 { grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr); }
-    .body.n1 { grid-template-columns: minmax(0, 46rem); }
-    .two { display: grid; grid-template-columns: 1fr 1fr; gap: 36px; }
+    .body { grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr); gap: 32px; }
+    .body > :only-child { grid-column: 1 / -1; max-width: 46rem; }
   }
 </style>
 </head>
@@ -125,7 +123,7 @@
 <section id="workflow" class="kind workflow">
 <header><h2>Workflow</h2><p class="path"><code>workflows/&lt;name&gt;.yaml</code> · run with <code>agister run &lt;name&gt;</code></p></header>
 <p class="lead">Composes process calls into one run. Its settings fix what each call receives, never whoever starts it.</p>
-<div class="body n3"><div class="col"><h3>Holds</h3><dl><dt><code>input.params</code></dt><dd>what the caller supplies, each with an optional default</dd><dt><code>input.values</code></dt><dd>resolved once from the params, before any node starts; every fan-out node receives the same ones</dd></dl></div><div class="col"><h3>Names</h3><dl><dt><code>fan_out[].uses</code></dt><dd>a <b>process</b> per node, all run at once over the same inputs</dd><dt><code>join.uses</code></dt><dd>one <b>process</b>, given the fan-out nodes' results</dd></dl></div><figure class="ex"><figcaption>.agister/workflows/code_review.yaml</figcaption><pre>name: code_review
+<div class="body"><div><h3>Holds</h3><table><tr><th><code>input.params</code></th><td>what the caller supplies, each with an optional default</td></tr><tr><th><code>input.values</code></th><td>resolved once from the params, before any node starts; every fan-out node receives the same ones</td></tr></table><h3>Names</h3><table><tr><th><code>fan_out[].uses</code></th><td>a <b>process</b> per node, all run at once over the same inputs</td></tr><tr><th><code>join.uses</code></th><td>one <b>process</b>, given the fan-out nodes' results</td></tr></table><p class="note">Fan-out then join is the only shape today: no conditions, loops or graphs. The other workflow here is <code>adr_review</code>: one ADR review, then the judge.</p></div><figure class="ex"><figcaption>.agister/workflows/code_review.yaml</figcaption><pre>name: code_review
 type: workflow
 
 input:
@@ -142,12 +140,12 @@ fan_out:
   - {node: adversarial, uses: process:adversarial_review_codex}
   - {node: clarity, uses: process:clarity_review_codex}
 
-join: {node: judge, uses: process:review_judge}</pre></figure></div><p class="note">Fan-out then join is the only shape today: no conditions, loops or graphs. The other workflow here is <code>adr_review</code>: one ADR review, then the judge.</p>
+join: {node: judge, uses: process:review_judge}</pre></figure></div>
 </section>
 <section id="process" class="kind process">
 <header><h2>Process</h2><p class="path"><code>processes/&lt;name&gt;.yaml</code> · run with <code>agister run &lt;name&gt;</code></p></header>
 <p class="lead">A named agent call: the task, what it takes in, and what must come out.</p>
-<div class="body n3"><div class="col"><h3>Holds</h3><dl><dt><code>input.instruction</code></dt><dd>the task, in words</dd><dt><code>input.params</code></dt><dd>what the caller supplies</dd><dt><code>input.values</code></dt><dd>the inputs, each from a source: <code>param</code>, <code>file</code>, <code>git.revision</code>, <code>git.merge_base</code>, <code>git.diff</code>, <code>git.changed_files</code>, <code>prompt</code></dd><dt><code>workspace.checkout</code></dt><dd>the value whose revision the call works in</dd><dt><code>workspace.setup</code></dt><dd>its own command to prepare that checkout</dd><dt><code>tools.require</code></dt><dd>permissions the call cannot do without</dd><dt><code>timeout, retry, …</code></dt><dd>limit overrides; they may only narrow its policy</dd></dl></div><div class="col"><h3>Names</h3><dl><dt><code>uses</code></dt><dd>its <b>agent</b></dd><dt><code>policy</code></dt><dd>its <b>policy</b></dd><dt><code>output.schema</code></dt><dd>its <b>output schema</b></dd><dt><code>verify</code></dt><dd>its <b>verification</b>, by name or held inline</dd><dt><code>input.values[].name</code></dt><dd>a <b>prompt</b>, where the source is <code>prompt</code></dd><dt><code>skills</code></dt><dd>its <b>skills</b></dd></dl></div><figure class="ex"><figcaption>.agister/processes/implement.yaml</figcaption><pre>name: implement
+<div class="body"><div><h3>Holds</h3><table><tr><th><code>input.instruction</code></th><td>the task, in words</td></tr><tr><th><code>input.params</code></th><td>what the caller supplies</td></tr><tr><th><code>input.values</code></th><td>the inputs, each from a source: <code>param</code>, <code>file</code>, <code>git.revision</code>, <code>git.merge_base</code>, <code>git.diff</code>, <code>git.changed_files</code>, <code>prompt</code></td></tr><tr><th><code>workspace.checkout</code></th><td>the value whose revision the call works in</td></tr><tr><th><code>workspace.setup</code></th><td>its own command to prepare that checkout</td></tr><tr><th><code>tools.require</code></th><td>permissions the call cannot do without</td></tr><tr><th><code>timeout, retry, …</code></th><td>limit overrides; they may only narrow its policy</td></tr></table><h3>Names</h3><table><tr><th><code>uses</code></th><td>its <b>agent</b></td></tr><tr><th><code>policy</code></th><td>its <b>policy</b></td></tr><tr><th><code>output.schema</code></th><td>its <b>output schema</b></td></tr><tr><th><code>verify</code></th><td>its <b>verification</b>, by name or held inline</td></tr><tr><th><code>input.values[].name</code></th><td>a <b>prompt</b>, where the source is <code>prompt</code></td></tr><tr><th><code>skills</code></th><td>its <b>skills</b></td></tr></table><p class="note">A process with a verification, like this one, is still a process, not a workflow.</p></div><figure class="ex"><figcaption>.agister/processes/implement.yaml</figcaption><pre>name: implement
 type: process
 uses: agent:claude-implementer-opus
 policy: process-policy:implement
@@ -173,12 +171,12 @@ output:
   schema: implementation
   require_valid: true
 
-verify: verify:repo</pre></figure></div><p class="note">A process with a verification, like this one, is still a process, not a workflow.</p>
+verify: verify:repo</pre></figure></div>
 </section>
 <section id="schema" class="kind ">
 <header><h2>Output schema</h2><p class="path"><code>schemas/&lt;name&gt;.json</code></p></header>
 <p class="lead">A JSON Schema the process's output must match.</p>
-<div class="body n2"><div class="col"><p class="note">A process names it as <code>output.schema</code>. Only JSON is supported.</p></div><figure class="ex"><figcaption>.agister/schemas/review-result.json</figcaption><pre>{
+<div class="body"><div><p class="note">A process names it as <code>output.schema</code>. Only JSON is supported.</p></div><figure class="ex"><figcaption>.agister/schemas/review-result.json</figcaption><pre>{
   &quot;type&quot;: &quot;object&quot;,
   &quot;additionalProperties&quot;: false,
   &quot;required&quot;: [&quot;verdict&quot;, &quot;summary&quot;, &quot;findings&quot;, &quot;coverage&quot;],
@@ -194,7 +192,7 @@ verify: verify:repo</pre></figure></div><p class="note">A process with a verific
 <section id="verification" class="kind ">
 <header><h2>Verification</h2><p class="path"><code>verifies/&lt;name&gt;.yaml</code>, or inline in the process</p></header>
 <p class="lead">A command that must pass on the call's changes before the call completes.</p>
-<div class="body n2"><div class="col"><h3>Holds</h3><dl><dt><code>command</code></dt><dd>what to run</dd><dt><code>timeout</code></dt><dd>how long it may take</dd><dt><code>max_attempts</code></dt><dd>how many turns the agent gets to make it pass</dd><dt><code>instruction</code></dt><dd>what the agent is told when it fails</dd></dl></div><figure class="ex"><figcaption>.agister/verifies/repo.yaml</figcaption><pre>name: repo
+<div class="body"><div><h3>Holds</h3><table><tr><th><code>command</code></th><td>what to run</td></tr><tr><th><code>timeout</code></th><td>how long it may take</td></tr><tr><th><code>max_attempts</code></th><td>how many turns the agent gets to make it pass</td></tr><tr><th><code>instruction</code></th><td>what the agent is told when it fails</td></tr></table><p class="note">A process in home can name <code>verify:repo</code>, and each repo supplies its own <code>verifies/repo.yaml</code>.</p></div><figure class="ex"><figcaption>.agister/verifies/repo.yaml</figcaption><pre>name: repo
 command: &gt;-
   cd agister &amp;&amp; test -z &quot;$(gofmt -l .)&quot; &amp;&amp; go vet ./... &amp;&amp;
   go test -count=1 -timeout 1m ./... &amp;&amp; …
@@ -203,24 +201,24 @@ max_attempts: 3
 instruction: &gt;-
   The verification command failed on your changes. Fix
   the cause in the code; do not weaken, skip or delete a
-  check or a test.</pre></figure></div><p class="note">A process in home can name <code>verify:repo</code>, and each repo supplies its own <code>verifies/repo.yaml</code>.</p>
+  check or a test.</pre></figure></div>
 </section>
 <section id="prompts" class="kind ">
 <header><h2>Prompts</h2><p class="path"><code>prompts/&lt;name&gt;.md</code></p></header>
 <p class="lead">Plain text: the file is the value. A process takes one as an input, and may mark it optional; a missing optional prompt is left out.</p>
-<div class="body n2"><div class="col"><p class="note">Here: <code>prompts/go-testing-seams.md</code> and <code>prompts/go-architecture.md</code>.</p></div><figure class="ex"><figcaption>.agister/processes/implement.yaml</figcaption><pre>values:
+<div class="body"><div><p class="note">Here: <code>prompts/go-testing-seams.md</code> and <code>prompts/go-architecture.md</code>.</p></div><figure class="ex"><figcaption>.agister/processes/implement.yaml</figcaption><pre>values:
   go_testing: {source: prompt, name: go-testing-seams, optional: true}
   go_architecture: {source: prompt, name: go-architecture, optional: true}</pre></figure></div>
 </section>
 <section id="skills" class="kind ">
 <header><h2>Skills</h2><p class="path"><code>skills/&lt;name&gt;/SKILL.md</code></p></header>
 <p class="lead">One <code>SKILL.md</code> each, the folder's only file. A process names its skills and an agent names its own; the two lists are separate.</p>
-<div class="body n1"><div class="col"><h3>Names</h3><dl><dt><code>skills (in a process)</code></dt><dd>the skills this call needs for its task</dd><dt><code>skills (in an agent)</code></dt><dd>the skills this agent always carries</dd></dl></div></div>
+<div class="body"><div><h3>Names</h3><table><tr><th><code>skills (in a process)</code></th><td>the skills this call needs for its task</td></tr><tr><th><code>skills (in an agent)</code></th><td>the skills this agent always carries</td></tr></table></div></div>
 </section>
 <section id="policy" class="kind ">
 <header><h2>Policy</h2><p class="path"><code>policies/&lt;name&gt;.yaml</code></p></header>
 <p class="lead">Execution defaults for the processes that name it. It speaks in permissions, never in a runtime's tools.</p>
-<div class="body n2"><div class="col"><h3>Holds</h3><dl><dt><code>workspace.access</code></dt><dd><code>read-only</code> or <code>read-write</code></dd><dt><code>workspace.scope</code></dt><dd><code>candidate</code> or <code>repository</code></dd><dt><code>tools.allow, tools.deny</code></dt><dd>permissions, from the service's vocabulary; denied wins over allowed</dd><dt><code>timeout</code></dt><dd>within the service's maximum</dd><dt><code>retry.max_attempts</code></dt><dd>within the service's maximum</dd><dt><code>max_cost_usd</code></dt><dd>within the service's maximum, if it sets one</dd><dt><code>stale</code></dt><dd>when a silent or looping call is ended</dd></dl></div><figure class="ex"><figcaption>.agister/policies/implement.yaml</figcaption><pre>name: implement
+<div class="body"><div><h3>Holds</h3><table><tr><th><code>workspace.access</code></th><td><code>read-only</code> or <code>read-write</code></td></tr><tr><th><code>workspace.scope</code></th><td><code>candidate</code> or <code>repository</code></td></tr><tr><th><code>tools.allow, tools.deny</code></th><td>permissions, from the service's vocabulary; denied wins over allowed</td></tr><tr><th><code>timeout</code></th><td>within the service's maximum</td></tr><tr><th><code>retry.max_attempts</code></th><td>within the service's maximum</td></tr><tr><th><code>max_cost_usd</code></th><td>within the service's maximum, if it sets one</td></tr><tr><th><code>stale</code></th><td>when a silent or looping call is ended</td></tr></table></div><figure class="ex"><figcaption>.agister/policies/implement.yaml</figcaption><pre>name: implement
 
 workspace:
   access: read-write
@@ -251,7 +249,7 @@ stale:
 <section id="agent" class="kind agent">
 <header><h2>Agent</h2><p class="path"><code>agents/&lt;name&gt;.toml</code></p></header>
 <p class="lead">A runtime profile: who does the work and how hard. It carries no task and no permissions.</p>
-<div class="body n3"><div class="col"><h3>Holds</h3><dl><dt><code>model, model_family</code></dt><dd>which model</dd><dt><code>effort</code></dt><dd>one of the efforts its runtime mapping accepts</dd><dt><code>session</code></dt><dd><code>fresh-only</code> or <code>resumable</code></dd></dl></div><div class="col"><h3>Names</h3><dl><dt><code>runtime</code></dt><dd>its <b>runtime mapping</b></dd><dt><code>skills</code></dt><dd>its own <b>skills</b></dd></dl></div><figure class="ex"><figcaption>.agister/agents/claude-implementer-opus.toml</figcaption><pre>name = &quot;claude-implementer-opus&quot;
+<div class="body"><div><h3>Holds</h3><table><tr><th><code>model, model_family</code></th><td>which model</td></tr><tr><th><code>effort</code></th><td>one of the efforts its runtime mapping accepts</td></tr><tr><th><code>session</code></th><td><code>fresh-only</code> or <code>resumable</code></td></tr></table><h3>Names</h3><table><tr><th><code>runtime</code></th><td>its <b>runtime mapping</b></td></tr><tr><th><code>skills</code></th><td>its own <b>skills</b></td></tr></table></div><figure class="ex"><figcaption>.agister/agents/claude-implementer-opus.toml</figcaption><pre>name = &quot;claude-implementer-opus&quot;
 runtime = &quot;claude-code&quot;
 model = &quot;opus&quot;
 model_family = &quot;anthropic&quot;
@@ -261,7 +259,7 @@ session = &quot;resumable&quot;</pre></figure></div>
 <section id="runtime" class="kind runtime">
 <header><h2>Runtime mapping</h2><p class="path"><code>runtimes/&lt;name&gt;.yaml</code></p></header>
 <p class="lead">One adapter, described in permissions: what each of its tools or sandbox modes lets an agent do.</p>
-<div class="body n2"><div class="col"><h3>Holds</h3><dl><dt><code>adapter</code></dt><dd><code>claude-code</code>, <code>codex</code>, <code>pi</code> or <code>opencode</code></dd><dt><code>efforts</code></dt><dd>the efforts it accepts</dd><dt><code>primitives.select</code></dt><dd><code>one</code> (sandbox modes) or <code>any</code> (tools)</dd><dt><code>primitives.items[].grants</code></dt><dd>the permissions that primitive grants, from the service's vocabulary</dd><dt><code>primitives.items[].verified</code></dt><dd>the runtime versions it was observed on</dd></dl></div><figure class="ex"><figcaption>.agister/runtimes/codex.yaml</figcaption><pre>name: codex
+<div class="body"><div><h3>Holds</h3><table><tr><th><code>adapter</code></th><td><code>claude-code</code>, <code>codex</code>, <code>pi</code> or <code>opencode</code></td></tr><tr><th><code>efforts</code></th><td>the efforts it accepts</td></tr><tr><th><code>primitives.select</code></th><td><code>one</code> (sandbox modes) or <code>any</code> (tools)</td></tr><tr><th><code>primitives.items[].grants</code></th><td>the permissions that primitive grants, from the service's vocabulary</td></tr><tr><th><code>primitives.items[].verified</code></th><td>the runtime versions it was observed on</td></tr></table></div><figure class="ex"><figcaption>.agister/runtimes/codex.yaml</figcaption><pre>name: codex
 adapter: codex
 contract: codex/2
 efforts: [minimal, low, medium, high, xhigh]
@@ -283,7 +281,7 @@ primitives:
 <section id="service" class="kind service">
 <header><h2>Service</h2><p class="path"><code>service.toml</code> · one, with no name</p></header>
 <p class="lead">Applies to every run. No document names it; policies and runtime mappings must keep its rules.</p>
-<div class="body n2"><div class="col"><h3>Holds</h3><dl><dt><code>max_timeout</code></dt><dd>the longest any call may run</dd><dt><code>max_attempts</code></dt><dd>the most attempts any call may have</dd><dt><code>max_verify_attempts</code></dt><dd>the most turns a verification may allow</dd><dt><code>max_cost_usd</code></dt><dd>the most any call may cost, if set</dd><dt><code>permissions</code></dt><dd>the vocabulary: a policy uses only these, a runtime mapping grants only these</dd><dt><code>writing</code></dt><dd>the permissions that change the workspace; read-only access withholds them</dd><dt><code>state_reaching</code></dt><dd>permissions that would reach Agister's own state; never granted</dd></dl></div><figure class="ex"><figcaption>~/.agister/service.toml</figcaption><pre>max_timeout = &quot;1h&quot;
+<div class="body"><div><h3>Holds</h3><table><tr><th><code>max_timeout</code></th><td>the longest any call may run</td></tr><tr><th><code>max_attempts</code></th><td>the most attempts any call may have</td></tr><tr><th><code>max_verify_attempts</code></th><td>the most turns a verification may allow</td></tr><tr><th><code>max_cost_usd</code></th><td>the most any call may cost, if set</td></tr><tr><th><code>permissions</code></th><td>the vocabulary: a policy uses only these, a runtime mapping grants only these</td></tr><tr><th><code>writing</code></th><td>the permissions that change the workspace; read-only access withholds them</td></tr><tr><th><code>state_reaching</code></th><td>permissions that would reach Agister's own state; never granted</td></tr></table></div><figure class="ex"><figcaption>~/.agister/service.toml</figcaption><pre>max_timeout = &quot;1h&quot;
 max_attempts = 1
 max_verify_attempts = 3
 
@@ -306,29 +304,28 @@ state_reaching = []</pre></figure></div>
 <section id="workspace" class="kind ">
 <header><h2>Workspace</h2><p class="path"><code>workspace.yaml</code> · one</p></header>
 <p class="lead">The default checkout setup, for processes that check out a revision and declare none of their own.</p>
-<div class="body n1"><div class="col"><h3>Holds</h3><dl><dt><code>setup.command</code></dt><dd>what prepares a fresh checkout</dd><dt><code>setup.timeout</code></dt><dd>how long it may take</dd></dl></div></div>
+<div class="body"><div><h3>Holds</h3><table><tr><th><code>setup.command</code></th><td>what prepares a fresh checkout</td></tr><tr><th><code>setup.timeout</code></th><td>how long it may take</td></tr></table></div></div>
 </section>
 <section id="blocks" class="kind ">
 <header><h2>Blocks</h2><p class="path"><code>blocks.yaml</code> · one, repo only</p></header>
 <p class="lead">What this repo refuses, even though home allows it.</p>
-<div class="body n1"><div class="col"><h3>Holds</h3><dl><dt><code>blocks[].ref</code></dt><dd><code>agent:&lt;name&gt;</code>, <code>process:&lt;name&gt;</code>, <code>workflow:&lt;name&gt;</code> or <code>runtime:&lt;name&gt;</code></dd><dt><code>blocks[].reason</code></dt><dd>why, optional</dd></dl></div></div>
+<div class="body"><div><h3>Holds</h3><table><tr><th><code>blocks[].ref</code></th><td><code>agent:&lt;name&gt;</code>, <code>process:&lt;name&gt;</code>, <code>workflow:&lt;name&gt;</code> or <code>runtime:&lt;name&gt;</code></td></tr><tr><th><code>blocks[].reason</code></th><td>why, optional</td></tr></table></div></div>
 </section>
 
 <section id="compose">
 <header><h2>How they compose</h2></header>
-<div class="two"><div><h3>Limits only narrow</h3>
+<h3>Limits only narrow</h3>
 <ul>
 <li>The service bounds the policy, the policy bounds the process, the process bounds the caller.</li>
 <li>Asking for more than the level above allows is rejected, never quietly reduced.</li>
 <li>A denied permission always wins over an allowed one.</li>
 </ul>
-</div><div><h3>Where permissions meet primitives</h3>
+<h3>Where permissions meet primitives</h3>
 <ul>
 <li>The call's effective permissions meet its agent's runtime mapping.</li>
 <li>A primitive is granted only if everything it grants is allowed.</li>
 <li>An allowed permission that no primitive provides is withheld. If the process requires it, the call is refused.</li>
 </ul>
-</div></div>
 </section>
 </div>
 
