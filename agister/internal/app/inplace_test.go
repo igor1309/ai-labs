@@ -424,35 +424,112 @@ func inPlaceRun(id, worktree string, finished, ended bool) run.Record {
 	return record
 }
 
-// ADR-022 rule 3: under the lock, a run that worked in the worktree and may
-// still write there refuses the call: one unfinished, or one whose process
-// is not known to have ended and cannot be ended now. One whose process is
-// ended, or is gone, does not; nor does a run in another worktree.
+// checkoutLessRun is a run that worked in the repository at dir itself,
+// without a checkout and not in-place, finished or not, its runtime process
+// recorded.
+func checkoutLessRun(id, dir string, finished, ended bool) run.Record {
+	record := inPlaceRun(id, dir, finished, ended)
+	record.InPlace, record.Workspace = nil, dir
+	return record
+}
+
+// temporaryRun is a finished run that worked in a checkout of its own at
+// dir, released, its runtime process recorded and not known to have ended.
+func temporaryRun(id, dir string) run.Record {
+	record := checkoutLessRun(id, dir, true, false)
+	record.Effects.Checkout = &run.Checkout{Repository: "/origin", Dir: dir}
+	return record
+}
+
+// commandOnly is the record with the process group of a command, such as
+// its verification's, as the only process it recorded.
+func commandOnly(record run.Record) run.Record {
+	record.Effects = &run.Effects{Command: &run.Process{Ref: "cmd-" + record.ID}}
+	return record
+}
+
+// ADR-022 rule 3: under the lock, a run that worked in a directory that
+// overlaps the worktree and may still write there refuses the call: one
+// unfinished, or one whose runtime or command process is not known to have
+// ended and cannot be ended now. One whose process is ended, or is gone,
+// does not; nor does a run in a directory apart from the worktree. It holds
+// for a run of any kind: in-place, in the repository itself without a
+// checkout, or in a checkout of its own; and for a directory that is the
+// worktree, holds it or lies in it.
 func TestAnotherRunThatMayStillWriteInTheWorktreeRefusesTheCall(t *testing.T) {
 	t.Parallel()
 	for name, c := range map[string]struct {
 		other   run.Record
 		outcome app.Reaping
+		err     error  // what ending the process fails with
+		root    string // the worktree asked for; /repo when empty
 		reaped  []string
+		process string // the process the call says it asked to end; none when empty
 		want    string // the refusal; none when empty
 	}{
 		"unfinished":                {other: inPlaceRun("run-0", "/repo", false, false), want: "run run-0 worked in worktree /repo and has not finished"},
-		"its process left":          {other: inPlaceRun("run-0", "/repo", true, false), outcome: app.ReapLeft, reaped: []string{"ref-run-0"}, want: `its runtime process "ref-run-0" may still write there`},
-		"its process killed":        {other: inPlaceRun("run-0", "/repo", true, false), outcome: app.ReapKilled, reaped: []string{"ref-run-0"}},
-		"its process gone":          {other: inPlaceRun("run-0", "/repo", true, false), outcome: app.ReapGone, reaped: []string{"ref-run-0"}},
+		"its process left":          {other: inPlaceRun("run-0", "/repo", true, false), outcome: app.ReapLeft, reaped: []string{"ref-run-0"}, process: "runtime", want: `its runtime process "ref-run-0" may still write there`},
+		"its process killed":        {other: inPlaceRun("run-0", "/repo", true, false), outcome: app.ReapKilled, reaped: []string{"ref-run-0"}, process: "runtime"},
+		"its process gone":          {other: inPlaceRun("run-0", "/repo", true, false), outcome: app.ReapGone, reaped: []string{"ref-run-0"}, process: "runtime"},
 		"its processes known ended": {other: inPlaceRun("run-0", "/repo", true, true)},
 		"unfinished elsewhere":      {other: inPlaceRun("run-0", "/elsewhere", false, false)},
+
+		// A command is a writer as the runtime is: a verification command a
+		// killed call left may still run.
+		"its command left": {other: commandOnly(inPlaceRun("run-0", "/repo", true, false)), outcome: app.ReapLeft, reaped: []string{"cmd-run-0"}, process: "command",
+			want: `run run-0 worked in worktree /repo, and its command process "cmd-run-0" may still write there: it could not be ended: it cannot be told apart from another`},
+		"its command not ended": {other: commandOnly(inPlaceRun("run-0", "/repo", true, false)), err: errors.New("no such group"), reaped: []string{"cmd-run-0"}, process: "command",
+			want: `its command process "cmd-run-0" may still write there: it could not be ended: no such group`},
+		"its command killed":      {other: commandOnly(inPlaceRun("run-0", "/repo", true, false)), outcome: app.ReapKilled, reaped: []string{"cmd-run-0"}, process: "command"},
+		"its command gone":        {other: commandOnly(inPlaceRun("run-0", "/repo", true, false)), outcome: app.ReapGone, reaped: []string{"cmd-run-0"}, process: "command"},
+		"its command known ended": {other: commandOnly(inPlaceRun("run-0", "/repo", true, true))},
+
+		// A run without a checkout worked in the repository itself.
+		"checkout-less, unfinished":                {other: checkoutLessRun("run-0", "/repo", false, false), want: "run run-0 worked in worktree /repo and has not finished"},
+		"checkout-less, its process left":          {other: checkoutLessRun("run-0", "/repo", true, false), outcome: app.ReapLeft, reaped: []string{"ref-run-0"}, process: "runtime", want: `run run-0 worked in worktree /repo, and its runtime process "ref-run-0" may still write there`},
+		"checkout-less, its command left":          {other: commandOnly(checkoutLessRun("run-0", "/repo", true, false)), outcome: app.ReapLeft, reaped: []string{"cmd-run-0"}, process: "command", want: `its command process "cmd-run-0" may still write there`},
+		"checkout-less, its process killed":        {other: checkoutLessRun("run-0", "/repo", true, false), outcome: app.ReapKilled, reaped: []string{"ref-run-0"}, process: "runtime"},
+		"checkout-less, its processes known ended": {other: checkoutLessRun("run-0", "/repo", true, true)},
+		"checkout-less, unfinished elsewhere":      {other: checkoutLessRun("run-0", "/elsewhere", false, false)},
+
+		// The directories overlap without being one.
+		"unfinished in the repository that holds the worktree": {other: checkoutLessRun("run-0", "/repo", false, false), root: "/repo/tool",
+			want: "run run-0 worked in /repo (which holds worktree /repo/tool) and has not finished"},
+		"unfinished in a repository inside the worktree": {other: inPlaceRun("run-0", "/repo/tool", false, false),
+			want: "run run-0 worked in /repo/tool (inside worktree /repo) and has not finished"},
+		"its process left in a released checkout that holds the worktree": {other: temporaryRun("run-0", "/made"), root: "/made/tool", outcome: app.ReapLeft, reaped: []string{"ref-run-0"}, process: "runtime",
+			want: `run run-0 worked in /made (which holds worktree /made/tool), and its runtime process "ref-run-0" may still write there`},
+		"unfinished beside the worktree, its name the start of the worktree's":  {other: checkoutLessRun("run-0", "/rep", false, false)},
+		"unfinished beside the worktree, its name starting with the worktree's": {other: checkoutLessRun("run-0", "/repo-2", false, false)},
 	} {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 			h := newHarness()
 			withWorkspace(h, inPlaceWorkspace)
+			root := "/repo"
+			if c.root != "" {
+				root = c.root
+				h.workspaces.root = root
+			}
 			h.runs.records[c.other.ID] = c.other
-			h.processes.outcome = c.outcome
-			record := h.call(t, contract.CallRequest{})
+			h.processes.outcome, h.processes.err = c.outcome, c.err
+			record := h.call(t, contract.CallRequest{Cwd: root})
 
 			if !reflect.DeepEqual(h.processes.refs(), c.reaped) {
 				t.Fatalf("reaped %v, want %v", h.processes.refs(), c.reaped)
+			}
+			// The call says which of the run's processes it asked to end.
+			var asked, want []string
+			for _, event := range h.recorder.events {
+				if event.Kind == "WORKTREE_WRITER_REAPED" {
+					asked = append(asked, event.Data["process"].(string))
+				}
+			}
+			if c.process != "" {
+				want = []string{c.process}
+			}
+			if !reflect.DeepEqual(asked, want) {
+				t.Fatalf("asked to end the processes %v, want %v", asked, want)
 			}
 			if c.want == "" {
 				if record.Result.Status != run.Completed {
@@ -463,24 +540,44 @@ func TestAnotherRunThatMayStillWriteInTheWorktreeRefusesTheCall(t *testing.T) {
 			if class(record) != run.ClassRefused || !strings.Contains(message(record), c.want) {
 				t.Fatalf("result %s %q, want %q", class(record), message(record), c.want)
 			}
-			if len(h.runner.calls()) != 0 || h.worktrees.reads != 0 || h.locks.holds("/repo") {
+			if len(h.runner.calls()) != 0 || h.worktrees.reads != 0 || h.locks.holds(root) {
 				t.Fatalf("turns %d, reads %d", len(h.runner.calls()), h.worktrees.reads)
 			}
 		})
 	}
 }
 
+// ADR-022 rules 2 and 3: a directory a run that may still write recorded,
+// which cannot be told apart from the worktree, refuses the call: nothing
+// says the run works elsewhere. No process is ended for it, and nothing is
+// read or run in the worktree.
+func TestARecordedDirectoryThatCannotBeToldApartRefusesTheCall(t *testing.T) {
+	t.Parallel()
+	h := newHarness()
+	withWorkspace(h, inPlaceWorkspace)
+	h.runs.records["run-0"] = checkoutLessRun("run-0", "/sealed", true, false)
+	h.locks.unreadable = map[string]error{"/sealed": errors.New("permission denied")}
+	record := h.call(t, contract.CallRequest{})
+
+	if want := "worktree /repo cannot be told apart from /sealed, which run run-0 recorded: permission denied"; class(record) != run.ClassRefused || !strings.Contains(message(record), want) {
+		t.Fatalf("result %s %q, want %q", class(record), message(record), want)
+	}
+	if len(h.processes.refs()) != 0 || len(h.runner.calls()) != 0 || h.worktrees.reads != 0 || h.locks.holds("/repo") {
+		t.Fatalf("reaped %v, turns %d, reads %d, lock held %v", h.processes.refs(), len(h.runner.calls()), h.worktrees.reads, h.locks.holds("/repo"))
+	}
+}
+
 // storedBorrows returns a run store in a directory of the test's own and a
 // borrow that creates run id there and asks a Borrower on that store, over
-// the harness's spies, for /repo; update saves the run's record. What a
-// borrow leaves held, the run's ownership and a lock lent, is let go when
-// the test ends.
-func storedBorrows(t *testing.T, h *harness) (fsruns.Store, func(id string, update func(app.RunHandle, run.Record) error) (*app.Borrowed, error)) {
+// the harness's spies, for the worktree at dir; update saves the run's
+// record. What a borrow leaves held, the run's ownership and a lock lent,
+// is let go when the test ends.
+func storedBorrows(t *testing.T, h *harness) (fsruns.Store, func(id, dir string, update func(app.RunHandle, run.Record) error) (*app.Borrowed, error)) {
 	t.Helper()
 	ctx := context.Background()
 	store := fsruns.Store{Dir: t.TempDir(), Appends: fsruns.NewAppends()}
 	borrower := app.NewBorrower(h.locks, h.worktrees, h.changes, store, h.processes, app.NewPreparer(h.changes, h.setup, h.clock))
-	return store, func(id string, update func(app.RunHandle, run.Record) error) (*app.Borrowed, error) {
+	return store, func(id, dir string, update func(app.RunHandle, run.Record) error) (*app.Borrowed, error) {
 		t.Helper()
 		record := run.Record{ID: id}
 		handle, err := store.Create(ctx, record)
@@ -496,7 +593,7 @@ func storedBorrows(t *testing.T, h *harness) (fsruns.Store, func(id string, upda
 				_ = h.recorder.Append(run.Event{Source: source, Kind: kind, Data: data})
 			},
 			Update: func(record run.Record) error { return update(handle, record) },
-			Dir:    "/repo", RepositoryIdentity: "/repo", Revision: "sha-HEAD",
+			Dir:    dir, RepositoryIdentity: "/repo", Revision: "sha-HEAD",
 		})
 		if err == nil {
 			t.Cleanup(func() { _ = borrowed.Release() })
@@ -518,7 +615,7 @@ func TestACallKilledOnceItsWorktreeIsOnRecordIsReaped(t *testing.T) {
 	h := newHarness()
 	store, borrow := storedBorrows(t, h)
 	killed := errors.New("killed")
-	if _, err := borrow("run-0", func(handle app.RunHandle, record run.Record) error {
+	if _, err := borrow("run-0", "/repo", func(handle app.RunHandle, record run.Record) error {
 		if err := handle.Update(record); err != nil {
 			return err
 		}
@@ -540,7 +637,7 @@ func TestACallKilledOnceItsWorktreeIsOnRecordIsReaped(t *testing.T) {
 		t.Fatalf("reaped %+v, %v", reaped, err)
 	}
 	noWorktreeEffect(t, reaped)
-	borrowed, err := borrow("run-1", saved)
+	borrowed, err := borrow("run-1", "/repo", saved)
 	if err != nil {
 		t.Fatalf("the next borrow = %v", err)
 	}
@@ -549,34 +646,125 @@ func TestACallKilledOnceItsWorktreeIsOnRecordIsReaped(t *testing.T) {
 	}
 }
 
+// ADR-022 rule 3: a run without a checkout, which worked in the repository
+// itself, is a writer there as an in-place run is. Its CLI killed and its
+// runtime's process not ended by the reap that finished it, the run's
+// record says its processes are not known to have ended, and the worktree
+// is not lent while that process cannot be ended; once it can, it is.
+func TestACheckoutLessRunWhoseReapLeftItsWriterRefusesTheCall(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	h := newHarness()
+	store, borrow := storedBorrows(t, h)
+	writer := run.Record{ID: "run-0", Workspace: "/repo", Effects: &run.Effects{Process: &run.Process{Ref: "ref-run-0"}}}
+	if _, err := store.Create(ctx, writer); err != nil {
+		t.Fatal(err)
+	}
+	if err := store.Abandon(writer.ID); err != nil {
+		t.Fatal(err)
+	}
+	h.processes.outcome = app.ReapLeft
+	reaper := app.NewReaper(store, h.processes, h.workspaces, fixedClock{})
+	reaper.ReapContext = func(ctx context.Context) (context.Context, context.CancelFunc) { return context.WithCancel(ctx) }
+	if err := reaper.Reap(ctx); err != nil {
+		t.Fatal(err)
+	}
+	reaped, _, err := store.Get(ctx, writer.ID)
+	if err != nil || reaped.FinishedAt == nil || reaped.ProcessesEnded || reaped.InPlace != nil || reaped.Workspace != "/repo" {
+		t.Fatalf("reaped %+v, %v", reaped, err)
+	}
+
+	// The refused call's own run, which it finishes as any call does.
+	var refused app.RunHandle
+	var last run.Record
+	borrowed, err := borrow("run-1", "/repo", func(handle app.RunHandle, record run.Record) error {
+		refused, last = handle, record
+		return handle.Update(record)
+	})
+
+	var refusal *app.Refusal
+	if want := `run run-0 worked in worktree /repo, and its runtime process "ref-run-0" may still write there`; !errors.As(err, &refusal) || !strings.Contains(refusal.Reason, want) {
+		t.Fatalf("the borrow = %v, want a refusal with %q", err, want)
+	}
+	if borrowed != nil || h.locks.holds("/repo") || h.worktrees.reads != 0 {
+		t.Fatalf("borrowed %+v, lock held %v, reads %d", borrowed, h.locks.holds("/repo"), h.worktrees.reads)
+	}
+	if want := []string{"ref-run-0", "ref-run-0"}; !reflect.DeepEqual(h.processes.refs(), want) {
+		t.Fatalf("asked to end %v, want %v: the reap, then the borrow", h.processes.refs(), want)
+	}
+
+	at := time.Date(2026, 10, 1, 0, 0, 0, 0, time.UTC)
+	last.FinishedAt, last.ProcessesEnded = &at, true
+	if err := refused.Finish(last); err != nil {
+		t.Fatal(err)
+	}
+	h.processes.outcome = app.ReapKilled
+	if _, err := borrow("run-2", "/repo", saved); err != nil || !h.locks.holds("/repo") {
+		t.Fatalf("the borrow once the writer is ended = %v, lock held %v", err, h.locks.holds("/repo"))
+	}
+}
+
 // ADR-022 rules 2 and 7: a directory Agister made and still removes is not
 // lent, before anything is read or run there: the checkout of another run
 // that has not finished, killed or still running, which its release or a
 // reap removes with the call's work in it, and a clean copy or an
-// unreleased checkout a finished run still has on record. The checkout a
-// finished run released, and a checkout elsewhere, refuse nothing.
+// unreleased checkout a finished run still has on record. Nor is a
+// worktree in such a directory, as a repository nested in a checkout is,
+// which the removal takes with it; nor one such a directory lies in. The
+// directories are told apart by their canonical paths, not their names.
+// The checkout a finished run released, a checkout elsewhere, and one that
+// is gone refuse nothing.
 func TestADirectoryAgisterStillRemovesIsNotLent(t *testing.T) {
 	t.Parallel()
 	const killed, running, finished = "killed", "running", "finished"
 	checkout := func(dir string) *run.Checkout { return &run.Checkout{Repository: "/origin", Dir: dir} }
 	for name, c := range map[string]struct {
-		effects run.Effects // what run-0 has on record
-		end     string      // how run-0 was left
-		want    string      // the refusal; none when empty
+		effects   run.Effects       // what run-0 has on record
+		end       string            // how run-0 was left
+		worktree  string            // the directory asked for; /repo when empty
+		canonical map[string]string // the directories with another canonical path
+		want      string            // the refusal; none when empty
 	}{
-		"a killed run's checkout":             {effects: run.Effects{Checkout: checkout("/repo")}, end: killed, want: "worktree /repo is the checkout of run run-0, which has not finished"},
-		"a running run's checkout":            {effects: run.Effects{Checkout: checkout("/repo")}, end: running, want: "worktree /repo is the checkout of run run-0, which has not finished"},
-		"a clean copy still on record":        {effects: run.Effects{Checkout: checkout("/gone"), Copy: checkout("/repo")}, end: finished, want: "worktree /repo is a clean copy run run-0 still has on record"},
-		"an unreleased checkout":              {effects: run.Effects{Checkout: checkout("/repo"), Unreleased: checkout("/repo")}, end: finished, want: "worktree /repo is a checkout run run-0 could not release"},
-		"a finished run's released checkout":  {effects: run.Effects{Checkout: checkout("/repo")}, end: finished},
-		"a killed run's checkout elsewhere":   {effects: run.Effects{Checkout: checkout("/elsewhere")}, end: killed},
-		"an unreleased checkout elsewhere":    {effects: run.Effects{Checkout: checkout("/elsewhere"), Unreleased: checkout("/elsewhere")}, end: finished},
-		"a clean copy on record at elsewhere": {effects: run.Effects{Copy: checkout("/elsewhere")}, end: finished},
+		"a repository nested in a killed run's checkout": {effects: run.Effects{Checkout: checkout("/made")}, end: killed, worktree: "/made/tool",
+			want: "worktree /made/tool is inside the checkout of run run-0, which has not finished (/made)"},
+		"a repository nested in a running run's checkout": {effects: run.Effects{Checkout: checkout("/made")}, end: running, worktree: "/made/tool",
+			want: "worktree /made/tool is inside the checkout of run run-0, which has not finished (/made)"},
+		"a repository nested deep in a clean copy": {effects: run.Effects{Checkout: checkout("/gone"), Copy: checkout("/made")}, end: finished, worktree: "/made/vendor/tool",
+			want: "worktree /made/vendor/tool is inside a clean copy run run-0 still has on record (/made)"},
+		"a repository nested in an unreleased checkout": {effects: run.Effects{Checkout: checkout("/made"), Unreleased: checkout("/made")}, end: finished, worktree: "/made/tool",
+			want: "worktree /made/tool is inside a checkout run run-0 could not release (/made)"},
+		"a killed run's checkout inside the worktree": {effects: run.Effects{Checkout: checkout("/repo/made")}, end: killed,
+			want: "worktree /repo contains the checkout of run run-0, which has not finished (/repo/made)"},
+		"nested by its canonical path, not by its name": {effects: run.Effects{Checkout: checkout("/made")}, end: killed, worktree: "/link",
+			canonical: map[string]string{"/link": "/made/tool"},
+			want:      "worktree /link is inside the checkout of run run-0, which has not finished (/made)"},
+		"nested in a checkout recorded by another name": {effects: run.Effects{Checkout: checkout("/var/made")}, end: killed, worktree: "/private/var/made/tool",
+			canonical: map[string]string{"/var/made": "/private/var/made"},
+			want:      "worktree /private/var/made/tool is inside the checkout of run run-0, which has not finished (/var/made)"},
+		"nested by its name, a link out of the checkout": {effects: run.Effects{Checkout: checkout("/made")}, end: killed, worktree: "/made/out",
+			canonical: map[string]string{"/made/out": "/elsewhere"}},
+		"a repository nested in a finished run's released checkout":             {effects: run.Effects{Checkout: checkout("/made")}, end: finished, worktree: "/made/tool"},
+		"a killed run's checkout that is gone":                                  {effects: run.Effects{Checkout: checkout("/gone")}, end: killed, canonical: map[string]string{"/gone": ""}},
+		"a killed run's checkout beside, its name the start of the worktree's":  {effects: run.Effects{Checkout: checkout("/rep")}, end: killed},
+		"a killed run's checkout beside, its name starting with the worktree's": {effects: run.Effects{Checkout: checkout("/repo-2")}, end: killed},
+		"a killed run's checkout":                                               {effects: run.Effects{Checkout: checkout("/repo")}, end: killed, want: "worktree /repo is the checkout of run run-0, which has not finished"},
+		"a running run's checkout":                                              {effects: run.Effects{Checkout: checkout("/repo")}, end: running, want: "worktree /repo is the checkout of run run-0, which has not finished"},
+		"a clean copy still on record":                                          {effects: run.Effects{Checkout: checkout("/gone"), Copy: checkout("/repo")}, end: finished, want: "worktree /repo is a clean copy run run-0 still has on record"},
+		"an unreleased checkout":                                                {effects: run.Effects{Checkout: checkout("/repo"), Unreleased: checkout("/repo")}, end: finished, want: "worktree /repo is a checkout run run-0 could not release"},
+		"a finished run's released checkout":                                    {effects: run.Effects{Checkout: checkout("/repo")}, end: finished},
+		"a killed run's checkout elsewhere":                                     {effects: run.Effects{Checkout: checkout("/elsewhere")}, end: killed},
+		"an unreleased checkout elsewhere":                                      {effects: run.Effects{Checkout: checkout("/elsewhere"), Unreleased: checkout("/elsewhere")}, end: finished},
+		"a clean copy on record at elsewhere":                                   {effects: run.Effects{Copy: checkout("/elsewhere")}, end: finished},
 	} {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 			ctx := context.Background()
 			h := newHarness()
+			h.locks.canonical = c.canonical
+			worktree := "/repo"
+			if c.worktree != "" {
+				worktree = c.worktree
+			}
 			store, borrow := storedBorrows(t, h)
 			owner := run.Record{ID: "run-0", Effects: &c.effects}
 			handle, err := store.Create(ctx, owner)
@@ -596,11 +784,11 @@ func TestADirectoryAgisterStillRemovesIsNotLent(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			borrowed, err := borrow("run-1", saved)
+			borrowed, err := borrow("run-1", worktree, saved)
 
 			if c.want == "" {
-				if err != nil || !h.locks.holds("/repo") {
-					t.Fatalf("the borrow = %v, lock held %v", err, h.locks.holds("/repo"))
+				if err != nil || !h.locks.holds(worktree) {
+					t.Fatalf("the borrow = %v, lock held %v", err, h.locks.holds(worktree))
 				}
 				return
 			}
@@ -608,8 +796,8 @@ func TestADirectoryAgisterStillRemovesIsNotLent(t *testing.T) {
 			if !errors.As(err, &refusal) || !strings.Contains(refusal.Reason, c.want) || !strings.Contains(refusal.Reason, "ADR-022 rule 2") {
 				t.Fatalf("the borrow = %v, want a refusal with %q", err, c.want)
 			}
-			if borrowed != nil || h.locks.holds("/repo") || !reflect.DeepEqual(h.locks.unlocked, []string{"/repo"}) {
-				t.Fatalf("borrowed %+v, lock held %v, unlocked %v", borrowed, h.locks.holds("/repo"), h.locks.unlocked)
+			if borrowed != nil || h.locks.holds(worktree) || !reflect.DeepEqual(h.locks.unlocked, []string{worktree}) {
+				t.Fatalf("borrowed %+v, lock held %v, unlocked %v", borrowed, h.locks.holds(worktree), h.locks.unlocked)
 			}
 			if h.worktrees.reads != 0 || len(h.processes.refs()) != 0 || len(h.setup.runs()) != 0 || !recorded(h, "WORKTREE_NOT_ADMITTED") {
 				t.Fatalf("reads %d, reaped %v, precheck runs %v, events %v", h.worktrees.reads, h.processes.refs(), h.setup.runs(), h.recorder.kinds())

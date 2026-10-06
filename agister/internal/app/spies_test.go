@@ -300,13 +300,19 @@ type changesSpy struct {
 	// rebuilt, when set, names the content a patch rebuilds from a
 	// revision; unset, every rebuild fails. rebuilds lists each one asked.
 	rebuilt  func(revision string, patch []byte) string
-	rebuilds []appliedPatch
+	rebuilds []rebuiltPatch
+}
+
+// rebuiltPatch is one Rebuild: the repository it was asked in, the revision
+// the patch was applied to, and the patch.
+type rebuiltPatch struct {
+	dir, revision, patch string
 }
 
 func (s *changesSpy) Rebuild(_ context.Context, dir, revision string, patch []byte) (string, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	s.rebuilds = append(s.rebuilds, appliedPatch{dir: dir, patch: string(patch)})
+	s.rebuilds = append(s.rebuilds, rebuiltPatch{dir: dir, revision: revision, patch: string(patch)})
 	if s.rebuilt == nil {
 		return "", errors.New("no rebuild was given")
 	}
@@ -930,13 +936,26 @@ func (s *processesSpy) refs() []string {
 	return append([]string(nil), s.reaped...)
 }
 
-// locksSpy holds the worktree locks of in-place calls, keyed by the
-// directory as given: its paths are canonical already.
+// locksSpy holds the worktree locks of in-place calls, by the directory as
+// given, and keys each by its canonical path: the directory as given,
+// unless canonical says otherwise.
 type locksSpy struct {
 	mu       sync.Mutex
 	held     map[string]bool
 	locked   []string
 	unlocked []string
+	// canonical is the canonical path of each directory that has another
+	// name; empty for a directory that is not there.
+	canonical map[string]string
+	// unreadable is why Key cannot name the canonical path of a directory.
+	unreadable map[string]error
+}
+
+func (s *locksSpy) key(dir string) string {
+	if key, ok := s.canonical[dir]; ok {
+		return key
+	}
+	return dir
 }
 
 func (s *locksSpy) Lock(dir string) (string, func() error, error) {
@@ -950,7 +969,7 @@ func (s *locksSpy) Lock(dir string) (string, func() error, error) {
 	}
 	s.held[dir] = true
 	s.locked = append(s.locked, dir)
-	return dir, func() error {
+	return s.key(dir), func() error {
 		s.mu.Lock()
 		defer s.mu.Unlock()
 		delete(s.held, dir)
@@ -959,7 +978,12 @@ func (s *locksSpy) Lock(dir string) (string, func() error, error) {
 	}, nil
 }
 
-func (s *locksSpy) Key(dir string) (string, error) { return dir, nil }
+func (s *locksSpy) Key(dir string) (string, error) {
+	if err, ok := s.unreadable[dir]; ok {
+		return "", err
+	}
+	return s.key(dir), nil
+}
 
 func (s *locksSpy) holds(dir string) bool {
 	s.mu.Lock()

@@ -44,8 +44,13 @@ var shimFile string
 
 func TestMain(m *testing.M) { os.Exit(runWithShim(m)) }
 
+// warmUpGuard bounds the shim's first run, which only guards a hang: the
+// most a wait in a test may take.
+const warmUpGuard = time.Minute
+
 // runWithShim writes the shim, runs it once so that its first run is paid
-// here, outside any test's guard, runs the tests and removes it.
+// here, outside any test's guard, runs the tests and removes it. A first
+// run that hangs fails the harness before any test runs (warmUp).
 func runWithShim(m *testing.M) int {
 	dir, err := os.MkdirTemp("", "deploy-shim-")
 	if err != nil {
@@ -58,11 +63,26 @@ func runWithShim(m *testing.M) int {
 		fmt.Fprintln(os.Stderr, err)
 		return 1
 	}
-	if err := exec.Command(shimFile, "warm").Run(); err != nil {
-		fmt.Fprintln(os.Stderr, "running the launchctl shim:", err)
+	if err := warmUp(shimFile); err != nil {
+		fmt.Fprintln(os.Stderr, err)
 		return 1
 	}
 	return m.Run()
+}
+
+// warmUp runs the shim once. A run that does not end within warmUpGuard is
+// ended and reported as the harness's failure, not a test's.
+func warmUp(shim string) error {
+	ctx, cancel := context.WithTimeout(context.Background(), warmUpGuard)
+	defer cancel()
+	err := exec.CommandContext(ctx, shim, "warm").Run()
+	if ctx.Err() != nil {
+		return fmt.Errorf("test harness failure: the launchctl shim's first run did not end within %s: %v", warmUpGuard, err)
+	}
+	if err != nil {
+		return fmt.Errorf("running the launchctl shim: %w", err)
+	}
+	return nil
 }
 
 // call is the calls.log line the shim writes for one invocation.

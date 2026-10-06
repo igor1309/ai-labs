@@ -25,10 +25,15 @@ func inTheWorktree(h *harness) {
 	h.defs.docs[definition.KindProcess]["p"] += "  where: workspace\n"
 }
 
-// rebuilding has the harness's changes rebuild, from any patch, the
-// content the worktree has now.
-func rebuilding(h *harness) {
-	h.changes.rebuilt = func(string, []byte) string {
+// rebuilding has the harness's changes rebuild, from any patch applied to
+// revision, the content the worktree has now, and from one applied to any
+// other revision, content no worktree has: a pass rests on the revision
+// the call's changes are from.
+func rebuilding(h *harness, revision string) {
+	h.changes.rebuilt = func(from string, _ []byte) string {
+		if from != revision {
+			return "rebuilt from " + from
+		}
 		if h.changes.identify != nil {
 			return h.changes.identify()
 		}
@@ -58,15 +63,15 @@ func noCopy(t *testing.T, h *harness) {
 // An in-place call whose verification says where: workspace runs the
 // command in the worktree, under the worktree's lock, and never calls the
 // copy seam; the pass completes the call with the patch that rebuilds what
-// passed, and the record says the call and each attempt verified in the
-// workspace.
+// passed from the call's revision, and the record says the call and each
+// attempt verified in the workspace.
 func TestAnInPlaceCallVerifiesInTheWorktreeWhenItsVerificationSaysSo(t *testing.T) {
 	t.Parallel()
 	h := newHarness()
 	inTheWorktree(h)
 	withWorkspace(h, inPlaceWorkspace)
 	changedByTheTurn(h)
-	rebuilding(h)
+	rebuilding(h, "sha-HEAD")
 	var locked []bool
 	h.commands.running = func(request app.CommandRequest) { locked = append(locked, h.locks.holds(request.Dir)) }
 	record := h.call(t, contract.CallRequest{})
@@ -89,7 +94,7 @@ func TestAnInPlaceCallVerifiesInTheWorktreeWhenItsVerificationSaysSo(t *testing.
 	if len(record.Attempts) != 1 || record.Attempts[0].Where != run.VerifyInWorkspace || !record.Attempts[0].Run.Passed || record.Attempts[0].Run.Dir != "/repo" {
 		t.Fatalf("attempts %+v", record.Attempts)
 	}
-	if string(h.recorder.artifacts["changes.patch"]) != "the turn's patch" || !reflect.DeepEqual(h.changes.rebuilds, []appliedPatch{{dir: "/repo", patch: "the turn's patch"}}) {
+	if string(h.recorder.artifacts["changes.patch"]) != "the turn's patch" || !reflect.DeepEqual(h.changes.rebuilds, []rebuiltPatch{{dir: "/repo", revision: "sha-HEAD", patch: "the turn's patch"}}) {
 		t.Fatalf("artifacts %v, rebuilds %+v", h.recorder.artifacts, h.changes.rebuilds)
 	}
 	if h.locks.holds("/repo") {
@@ -105,7 +110,7 @@ func TestAnIgnoredFileTheAgentMadeIsThereForTheCommandAndStays(t *testing.T) {
 	h := newHarness()
 	inTheWorktree(h)
 	withWorkspace(h, inPlaceWorkspace)
-	rebuilding(h)
+	rebuilding(h, "sha-HEAD")
 	worktree := t.TempDir()
 	h.workspaces.root = worktree
 	output := filepath.Join("build", "out.log")
@@ -225,7 +230,7 @@ func TestACommandThatChangesTheWorktreeFailsItsAttempt(t *testing.T) {
 	inTheWorktree(h)
 	withWorkspace(h, inPlaceWorkspace)
 	worktree := turnsMake(h, "after", "repaired")
-	rebuilding(h)
+	rebuilding(h, "sha-HEAD")
 	runs := 0
 	h.commands.running = func(app.CommandRequest) {
 		if runs++; runs == 1 {
@@ -261,7 +266,7 @@ func TestAFailingCommandIsRepairedInTheSameSessionAndWorktree(t *testing.T) {
 	inTheWorktree(h)
 	withWorkspace(h, inPlaceWorkspace)
 	turnsMake(h, "after", "repaired")
-	rebuilding(h)
+	rebuilding(h, "sha-HEAD")
 	h.commands.exits = []int{1, 0}
 	record := h.call(t, contract.CallRequest{})
 
@@ -319,7 +324,7 @@ func TestWhereIsInTheNamedVerificationAndItsDigest(t *testing.T) {
 		named(h, text)
 		withWorkspace(h, inPlaceWorkspace)
 		changedByTheTurn(h)
-		rebuilding(h)
+		rebuilding(h, "sha-HEAD")
 		h.changes.copied = func(string, int) string { return "after" }
 		record := h.call(t, contract.CallRequest{})
 		if record.Result.Status != run.Completed || record.Verify == nil {

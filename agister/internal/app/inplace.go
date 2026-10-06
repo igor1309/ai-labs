@@ -6,17 +6,19 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"path/filepath"
+	"slices"
 	"strings"
 
 	"github.com/igor1309/ai-labs/agister/internal/domain/run"
 )
 
 // Borrower lends an in-place call the caller's worktree (ADR-022): it holds
-// the worktree's lock, refuses a directory Agister made and still removes,
-// refuses while another run may still write there, admits the worktree only
-// as the revision left it, or, for a continuation, as the session's latest
-// run left it, and runs its precheck, all before the call's first turn. It
-// never changes the worktree.
+// the worktree's lock, refuses one that overlaps a directory Agister made
+// and still removes, or one another run may still write in, admits the
+// worktree only as the revision left it, or, for a continuation, as the
+// session's latest run left it, and runs its precheck, all before the
+// call's first turn. It never changes the worktree.
 type Borrower struct {
 	locks     BorrowLocks
 	worktrees BorrowWorktrees
@@ -36,8 +38,8 @@ type BorrowLocks interface {
 	Lock(dir string) (key string, unlock func() error, err error)
 	// Key returns the canonical path that would key the directory at dir,
 	// as Lock returns it, and takes no lock: a directory a run recorded is
-	// the worktree only by this path. It is empty for a directory that is
-	// not there, which is no worktree.
+	// the worktree, holds it or lies in it only by this path. It is empty
+	// for a directory that is not there, which is no worktree.
 	Key(dir string) (key string, err error)
 }
 
@@ -142,10 +144,11 @@ type Borrowed struct {
 }
 
 // Borrow lends the call the worktree at call.Dir, or refuses it, before any
-// turn: the worktree's lock must be free, the directory must not be one
-// Agister made and still removes (rule 2), no run that worked there may
-// still have a writer, the worktree must be exactly the revision's (rule
-// 4), or, continuing, exactly as the session's latest run left it (rule 8),
+// turn: the worktree's lock must be free, no directory Agister made and
+// still removes may overlap it (rule 2), no run that worked in a directory
+// overlapping it may still have a writer (rule 3), the worktree must be
+// exactly the revision's (rule 4), or, continuing, exactly as the session's
+// latest run left it (rule 8),
 // and the precheck, if any, must pass and leave it so (rule 5). The
 // worktree is on the call's record (run.InPlace) once its lock is held. A
 // call refused holds no lock, nor does one a collaborator's panic ends.
@@ -187,12 +190,17 @@ func (b *Borrower) Borrow(ctx context.Context, call BorrowCall) (*Borrowed, erro
 	if err != nil {
 		return nil, refuse("the runs that may still write in worktree %s cannot be read: %v", call.Dir, err)
 	}
-	// Before any process is ended for the worktree: a directory that is not
-	// the caller's to lend ends nothing.
-	if err := b.made(call, key, records); err != nil {
+	// What other runs still hold of the worktree, found once. A directory
+	// Agister removes is refused before any process is ended for the
+	// worktree: one that is not the caller's to lend ends nothing.
+	claims, err := b.claims(call, key, records)
+	if err != nil {
 		return nil, err
 	}
-	if err := b.writers(ctx, call, key, records); err != nil {
+	if err := b.made(call, claims); err != nil {
+		return nil, err
+	}
+	if err := b.writers(ctx, call, claims); err != nil {
 		return nil, err
 	}
 	// The content the worktree must hold: the revision's, or what the
@@ -225,70 +233,176 @@ func (b *Borrower) Borrow(ctx context.Context, call BorrowCall) (*Borrowed, erro
 	}, nil
 }
 
-// made refuses a directory Agister made and still removes: the checkout of
-// another run that has not finished, which its release or a reap removes,
-// or a clean copy or an unreleased checkout a run still has on record,
-// which a reap removes. A call lent it would lose its work with it, and
-// nothing of Agister's removes a borrowed worktree (ADR-022 rules 2 and 7).
-// records are every run's.
-func (b *Borrower) made(call BorrowCall, key string, records []run.Record) error {
-	for _, other := range records {
-		if other.ID == call.Record.ID || other.Effects == nil {
+// claim is a directory another run has on record that overlaps the
+// worktree a call asks for, which that run may still write in or Agister
+// may still remove.
+type claim struct {
+	run *run.Record
+	dir string // as the run recorded it
+	// lies says how the worktree lies to the directory: it "is" it, "is
+	// inside" it or "contains" it.
+	lies string
+	// removed names the directory as one Agister made and still removes;
+	// empty for one the run may only still write in.
+	removed string
+}
+
+// claims lists the directories other runs have on record that overlap the
+// worktree key names, each run's in the order made refuses them. It is the
+// one place that says which of a run's directories count, and what
+// overlapping is (ADR-022 rules 2 and 3), for any run, in-place, in a
+// checkout of its own or in the repository itself: a directory Agister may
+// still remove, which is the checkout of a run that has not finished, a
+// clean copy or an unreleased checkout on record; and every directory of a
+// run that may still write, which is one unfinished or one with a process
+// not known to have ended. A directory overlaps the worktree when it is
+// the worktree, holds it or lies in it, by its canonical path alone: what a
+// removal takes, and where a writer reaches, is everything under a
+// directory. records are every run's.
+func (b *Borrower) claims(call BorrowCall, key string, records []run.Record) ([]claim, error) {
+	var claims []claim
+	for i := range records {
+		other := &records[i]
+		if other.ID == call.Record.ID {
 			continue
 		}
+		var effects run.Effects
+		if other.Effects != nil {
+			effects = *other.Effects
+		}
+		type recorded struct {
+			dir, removed string
+		}
+		var dirs []recorded
 		// A finished run's checkout stays on record, released.
-		var checkout *run.Checkout
-		if other.FinishedAt == nil {
-			checkout = other.Effects.Checkout
+		if checkout := effects.Checkout; checkout != nil && other.FinishedAt == nil {
+			dirs = append(dirs, recorded{checkout.Dir, "the checkout of run " + other.ID + ", which has not finished"})
 		}
-		for _, made := range []struct {
-			what     string
-			checkout *run.Checkout
-		}{
-			{"the checkout of run " + other.ID + ", which has not finished", checkout},
-			{"a clean copy run " + other.ID + " still has on record", other.Effects.Copy},
-			{"a checkout run " + other.ID + " could not release", other.Effects.Unreleased},
-		} {
-			if made.checkout == nil {
-				continue
+		if copied := effects.Copy; copied != nil {
+			dirs = append(dirs, recorded{copied.Dir, "a clean copy run " + other.ID + " still has on record"})
+		}
+		if unreleased := effects.Unreleased; unreleased != nil {
+			dirs = append(dirs, recorded{unreleased.Dir, "a checkout run " + other.ID + " could not release"})
+		}
+		if other.FinishedAt == nil || len(unended(other)) > 0 {
+			// Where its runtime works, and where its commands run.
+			worked := []string{other.Workspace}
+			if other.InPlace != nil {
+				worked = append(worked, other.InPlace.Worktree)
 			}
-			recorded, err := b.locks.Key(made.checkout.Dir)
+			for _, checkout := range []*run.Checkout{effects.Checkout, effects.Copy, effects.Unreleased} {
+				if checkout != nil {
+					worked = append(worked, checkout.Dir)
+				}
+			}
+			for _, dir := range worked {
+				if dir != "" && !slices.ContainsFunc(dirs, func(r recorded) bool { return r.dir == dir }) {
+					dirs = append(dirs, recorded{dir: dir})
+				}
+			}
+		}
+		for _, dir := range dirs {
+			canonical, err := b.locks.Key(dir.dir)
 			if err != nil {
-				return refuse("worktree %s cannot be told apart from %s, which run %s recorded as a checkout: %v", call.Dir, made.checkout.Dir, other.ID, err)
+				return nil, refuse("worktree %s cannot be told apart from %s, which run %s recorded: %v", call.Dir, dir.dir, other.ID, err)
 			}
-			if recorded != key {
-				continue
+			if how := lies(key, canonical); how != "" {
+				claims = append(claims, claim{run: other, dir: dir.dir, lies: how, removed: dir.removed})
 			}
-			reason := "is " + made.what
-			call.Event(run.SourceAgister, "WORKTREE_NOT_ADMITTED", map[string]any{"reason": reason, "run": other.ID})
-			return refuse("worktree %s %s: Agister made it and removes it, so it is not the caller's to lend (ADR-022 rule 2)", call.Dir, reason)
 		}
+	}
+	return claims, nil
+}
+
+// lies says how the worktree lies to a directory, both by their canonical
+// paths: it "is" it, "is inside" it or "contains" it. It is empty when
+// neither holds the other, and for a directory that is not there, whose
+// path is empty.
+func lies(worktree, dir string) string {
+	under := func(path, dir string) bool {
+		separator := string(filepath.Separator)
+		return strings.HasPrefix(path, strings.TrimSuffix(dir, separator)+separator)
+	}
+	switch {
+	case dir == "":
+		return ""
+	case worktree == dir:
+		return "is"
+	case under(worktree, dir):
+		return "is inside"
+	case under(dir, worktree):
+		return "contains"
+	}
+	return ""
+}
+
+// unended are the processes a finished run recorded that are not known to
+// have ended, by name.
+func unended(other *run.Record) []unendedProcess {
+	if other.ProcessesEnded || other.Effects == nil {
+		return nil
+	}
+	var processes []unendedProcess
+	for _, process := range []unendedProcess{{"runtime", other.Effects.Process}, {"command", other.Effects.Command}} {
+		if process.process != nil {
+			processes = append(processes, process)
+		}
+	}
+	return processes
+}
+
+// unendedProcess is a process a run recorded, and what it ran.
+type unendedProcess struct {
+	name    string
+	process *run.Process
+}
+
+// made refuses a worktree that overlaps a directory Agister made and still
+// removes: the checkout of another run that has not finished, which its
+// release or a reap removes, or a clean copy or an unreleased checkout a
+// run still has on record, which a reap removes. The removal takes all that
+// is under the directory, a repository nested in it included: a call lent
+// one would lose its work with it, and nothing of Agister's removes a
+// borrowed worktree or anything in it (ADR-022 rules 2 and 7).
+func (b *Borrower) made(call BorrowCall, claims []claim) error {
+	for _, held := range claims {
+		if held.removed == "" {
+			continue
+		}
+		reason := held.lies + " " + held.removed
+		if held.lies != "is" {
+			reason += " (" + held.dir + ")"
+		}
+		call.Event(run.SourceAgister, "WORKTREE_NOT_ADMITTED", map[string]any{"reason": reason, "run": held.run.ID})
+		return refuse("worktree %s %s: Agister made that directory and removes it with all that is in it, so the worktree is not the caller's to lend (ADR-022 rule 2)", call.Dir, reason)
 	}
 	return nil
 }
 
-// writers refuses while a run that worked in the worktree may still write
-// there (ADR-022 rule 3): one unfinished, or one with a process that is not
-// known to have ended, unless that process can be ended now. records are
-// every run's.
-func (b *Borrower) writers(ctx context.Context, call BorrowCall, key string, records []run.Record) error {
-	for _, other := range records {
-		if other.ID == call.Record.ID || other.InPlace == nil || other.InPlace.Worktree != key {
+// writers refuses while a run that worked in a directory overlapping the
+// worktree may still write there (ADR-022 rule 3): one unfinished, or one
+// with a process that is not known to have ended, unless that process can
+// be ended now. The run may be any: in-place, in the repository itself, or
+// in a checkout of its own.
+func (b *Borrower) writers(ctx context.Context, call BorrowCall, claims []claim) error {
+	var asked []string
+	for _, held := range claims {
+		other := held.run
+		if slices.Contains(asked, other.ID) {
 			continue
+		}
+		asked = append(asked, other.ID)
+		where := "worktree " + call.Dir
+		switch held.lies {
+		case "is inside":
+			where = fmt.Sprintf("%s (which holds worktree %s)", held.dir, call.Dir)
+		case "contains":
+			where = fmt.Sprintf("%s (inside worktree %s)", held.dir, call.Dir)
 		}
 		if other.FinishedAt == nil {
-			return refuse("run %s worked in worktree %s and has not finished: it may still write there", other.ID, call.Dir)
+			return refuse("run %s worked in %s and has not finished: it may still write there", other.ID, where)
 		}
-		if other.ProcessesEnded || other.Effects == nil {
-			continue
-		}
-		for _, process := range []struct {
-			name    string
-			process *run.Process
-		}{{"runtime", other.Effects.Process}, {"command", other.Effects.Command}} {
-			if process.process == nil {
-				continue
-			}
+		for _, process := range unended(other) {
 			reaping, err := b.processes.Reap(ctx, process.process.Ref)
 			data := map[string]any{"run": other.ID, "process": process.name, "ref": process.process.Ref, "outcome": string(reaping)}
 			if err != nil {
@@ -300,7 +414,7 @@ func (b *Borrower) writers(ctx context.Context, call BorrowCall, key string, rec
 				if err != nil {
 					reason = err.Error()
 				}
-				return refuse("run %s worked in worktree %s, and its %s process %q may still write there: it could not be ended: %s", other.ID, call.Dir, process.name, process.process.Ref, reason)
+				return refuse("run %s worked in %s, and its %s process %q may still write there: it could not be ended: %s", other.ID, where, process.name, process.process.Ref, reason)
 			}
 		}
 	}
