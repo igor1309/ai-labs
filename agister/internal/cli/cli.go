@@ -170,9 +170,95 @@ func (p paramFlag) Set(value string) error {
 	return nil
 }
 
+// Command is a command dispatch runs, named as a command line names it
+// ("runs show"), and the flags it takes beyond the global ones.
+type Command struct {
+	Name  string
+	Flags []string
+}
+
+// globalFlags are the flags every command takes.
+var globalFlags = []string{"home", "quiet", "debug", "help", "h", "version"}
+
+// commands are the commands dispatch runs, each with the flags it takes;
+// parse gives a command only those.
+var commands = []Command{
+	{"init", []string{"force"}},
+	{"install", []string{"restore", "json"}},
+	{"check", []string{"probe", "tree", "json"}},
+	{"agent create", []string{"runtime", "model", "model-family", "effort", "session", "command", "force"}},
+	{"agent list", nil},
+	{"process list", nil},
+	{"process show", []string{"agent", "json"}},
+	{"workflow list", nil},
+	{"workflow show", []string{"json"}},
+	{"run", []string{"param", "agent", "timeout", "max-cost", "continue", "json"}},
+	{"runs list", nil},
+	{"runs show", nil},
+	{"runs watch", []string{"after", "json"}},
+	{"version", nil},
+}
+
+// Commands are the commands dispatch runs, each with the flags it takes
+// beyond GlobalFlags.
+func Commands() []Command {
+	list := make([]Command, 0, len(commands))
+	for _, command := range commands {
+		list = append(list, Command{Name: command.Name, Flags: slices.Clone(command.Flags)})
+	}
+	return list
+}
+
+// GlobalFlags are the flags every command takes.
+func GlobalFlags() []string { return slices.Clone(globalFlags) }
+
+// Lookup is the command a command line's positionals name, as dispatch
+// resolves it: the first word, and the second when the first has
+// subcommands ("list" when none is given); the bare command line names
+// Command{}. ok is false for a command dispatch does not run.
+func Lookup(positionals []string) (Command, bool) {
+	if len(positionals) == 0 || positionals[0] == "" {
+		return Command{}, true
+	}
+	name := positionals[0]
+	if slices.ContainsFunc(commands, func(c Command) bool { return strings.HasPrefix(c.Name, name+" ") }) {
+		sub := "list"
+		if len(positionals) > 1 && positionals[1] != "" {
+			sub = positionals[1]
+		}
+		name += " " + sub
+	}
+	for _, command := range commands {
+		if command.Name == name {
+			return Command{Name: name, Flags: slices.Clone(command.Flags)}, true
+		}
+	}
+	return Command{Name: name}, false
+}
+
+// parse reads a command line. Every flag parses on every command, but only
+// the global ones and those its command takes reach the options.
 func parse(args []string) (options, []string, error) {
-	opts := options{params: paramFlag{}}
-	set := flags(&opts)
+	opts, positionals, err := parseTaking(args, func(string) bool { return true })
+	if err != nil {
+		return opts, nil, err
+	}
+	command, _ := Lookup(positionals) // dispatch refuses an unknown one
+	return parseTaking(args, func(name string) bool {
+		return slices.Contains(globalFlags, name) || slices.Contains(command.Flags, name)
+	})
+}
+
+// parseTaking parses args into the options of the flags takes accepts and
+// drops the others.
+func parseTaking(args []string, takes func(name string) bool) (options, []string, error) {
+	opts, dropped := options{params: paramFlag{}}, options{params: paramFlag{}}
+	set := flags(func(name string) *options {
+		if takes(name) {
+			return &opts
+		}
+		return &dropped
+	})
 	// Flags may appear anywhere among positionals.
 	var positionals []string
 	for {
@@ -188,33 +274,34 @@ func parse(args []string) (options, []string, error) {
 	return opts, positionals, nil
 }
 
-// flags declares every option; usage must describe each one.
-func flags(opts *options) *flag.FlagSet {
+// flags declares every option, each bound to the options into gives for
+// its name; usage must describe each one.
+func flags(into func(name string) *options) *flag.FlagSet {
 	set := flag.NewFlagSet("agister", flag.ContinueOnError)
 	set.SetOutput(io.Discard)
-	set.StringVar(&opts.home, "home", "", "")
-	set.StringVar(&opts.runtime, "runtime", "", "")
-	set.StringVar(&opts.model, "model", "", "")
-	set.StringVar(&opts.modelFamily, "model-family", "", "")
-	set.StringVar(&opts.effort, "effort", "", "")
-	set.StringVar(&opts.command, "command", "", "")
-	set.StringVar(&opts.agent, "agent", "", "")
-	set.StringVar(&opts.timeout, "timeout", "", "")
-	set.StringVar(&opts.session, "session", "", "")
-	set.StringVar(&opts.maxCost, "max-cost", "", "")
-	set.StringVar(&opts.continueRun, "continue", "", "")
-	set.StringVar(&opts.restore, "restore", "", "")
-	set.BoolVar(&opts.force, "force", false, "")
-	set.BoolVar(&opts.quiet, "quiet", false, "")
-	set.BoolVar(&opts.debug, "debug", false, "")
-	set.BoolVar(&opts.json, "json", false, "")
-	set.BoolVar(&opts.probe, "probe", false, "")
-	set.BoolVar(&opts.tree, "tree", false, "")
-	set.BoolVar(&opts.help, "help", false, "")
-	set.BoolVar(&opts.help, "h", false, "")
-	set.BoolVar(&opts.version, "version", false, "")
-	set.IntVar(&opts.after, "after", 0, "")
-	set.Var(opts.params, "param", "")
+	set.StringVar(&into("home").home, "home", "", "")
+	set.StringVar(&into("runtime").runtime, "runtime", "", "")
+	set.StringVar(&into("model").model, "model", "", "")
+	set.StringVar(&into("model-family").modelFamily, "model-family", "", "")
+	set.StringVar(&into("effort").effort, "effort", "", "")
+	set.StringVar(&into("command").command, "command", "", "")
+	set.StringVar(&into("agent").agent, "agent", "", "")
+	set.StringVar(&into("timeout").timeout, "timeout", "", "")
+	set.StringVar(&into("session").session, "session", "", "")
+	set.StringVar(&into("max-cost").maxCost, "max-cost", "", "")
+	set.StringVar(&into("continue").continueRun, "continue", "", "")
+	set.StringVar(&into("restore").restore, "restore", "", "")
+	set.BoolVar(&into("force").force, "force", false, "")
+	set.BoolVar(&into("quiet").quiet, "quiet", false, "")
+	set.BoolVar(&into("debug").debug, "debug", false, "")
+	set.BoolVar(&into("json").json, "json", false, "")
+	set.BoolVar(&into("probe").probe, "probe", false, "")
+	set.BoolVar(&into("tree").tree, "tree", false, "")
+	set.BoolVar(&into("help").help, "help", false, "")
+	set.BoolVar(&into("h").help, "h", false, "")
+	set.BoolVar(&into("version").version, "version", false, "")
+	set.IntVar(&into("after").after, "after", 0, "")
+	set.Var(into("param").params, "param", "")
 	return set
 }
 
@@ -274,6 +361,12 @@ func dispatch(ctx context.Context, args []string, env IO, build Build) (int, err
 			return "", usageError{command + " needs " + what}
 		}
 		return rest[i], nil
+	}
+	if found, ok := Lookup(positionals); !ok {
+		if parent, sub, has := strings.Cut(found.Name, " "); has {
+			return 0, usageError{"unknown " + parent + " command: " + sub}
+		}
+		return 0, usageError{"unknown command: " + command}
 	}
 
 	switch command {
@@ -339,7 +432,6 @@ func dispatch(ctx context.Context, args []string, env IO, build Build) (int, err
 			}
 			return 0, nil
 		}
-		return 0, usageError{"unknown agent command: " + sub}
 
 	case "process":
 		sub, _ := arg(0, "a subcommand")
@@ -372,7 +464,6 @@ func dispatch(ctx context.Context, args []string, env IO, build Build) (int, err
 			showProcess(env.Stdout, view)
 			return 0, nil
 		}
-		return 0, usageError{"unknown process command: " + sub}
 
 	case "workflow":
 		sub, _ := arg(0, "a subcommand")
@@ -405,7 +496,6 @@ func dispatch(ctx context.Context, args []string, env IO, build Build) (int, err
 			showWorkflow(env.Stdout, view)
 			return 0, nil
 		}
-		return 0, usageError{"unknown workflow command: " + sub}
 
 	case "run":
 		name, err := arg(0, "a process or workflow name")
@@ -457,8 +547,8 @@ func dispatch(ctx context.Context, args []string, env IO, build Build) (int, err
 			}
 			return follow(ctx, client, id, opts.after, false, env, opts)
 		}
-		return 0, usageError{"unknown runs command: " + sub}
 	}
+	// Lookup refused every command the switch does not run; a test keeps it so.
 	return 0, usageError{"unknown command: " + command}
 }
 
