@@ -72,7 +72,7 @@ type Infrastructure struct {
 	// precheck runs on the preparer (see BorrowPreparer).
 	Borrower BorrowAdapters
 	Verifier VerifyAdapters
-	// Recoverer recovers a call's stale turns (ADR-023).
+	// Recoverer recovers a call's stale turns (ADR-024).
 	Recoverer RecoverAdapters
 	Runs      RunsAdapters
 	// Installer works on home's settings and their backups.

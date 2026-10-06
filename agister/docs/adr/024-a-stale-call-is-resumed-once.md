@@ -1,4 +1,4 @@
-# ADR-023: A stale call is resumed once, with the evidence
+# ADR-024: A stale call is resumed once, with the evidence
 
 - **Status:** Accepted
 - **Date:** 2026-10-06

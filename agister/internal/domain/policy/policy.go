@@ -49,7 +49,7 @@ type Stale struct {
 	Recover Recover
 }
 
-// Recover is a call's composed recovery of a stale turn (ADR-023 rule 5).
+// Recover is a call's composed recovery of a stale turn (ADR-024 rule 5).
 // It is zero unless the call has a budget: without one nothing is told.
 type Recover struct {
 	// MaxResumes is how many recovery turns the call may take; 0: none.
@@ -242,7 +242,7 @@ func narrowStale(add func(string, ...any), base, over definition.Stale) Stale {
 	}
 }
 
-// narrowRecover composes the recovery of a stale call (ADR-023 rule 5). The
+// narrowRecover composes the recovery of a stale call (ADR-024 rule 5). The
 // policy sets the budget's ceiling, and unset is 0: the process may only
 // lower it, so one it sets above 0 without its policy is as invalid as one
 // above its policy's. The instruction is text, not a limit: the process's,

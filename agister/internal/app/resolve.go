@@ -418,7 +418,7 @@ func (r *Resolver) resolveCall(ctx context.Context, processName, agentOverride s
 	if verify := res.process.Verify; verify.Repairs() && res.agent.Session != definition.SessionResumable {
 		return res, refuse("verify.max_attempts %d repairs in the call's session, but agent %s is %s", verify.MaxAttempts, res.agent.Name, res.agent.Session)
 	}
-	// So does a recovery turn (ADR-023 rule 6).
+	// So does a recovery turn (ADR-024 rule 6).
 	if resumes := res.effective.Stale.Recover.MaxResumes; resumes > 0 && res.agent.Session != definition.SessionResumable {
 		return res, refuse("stale.recover.max_resumes %d recovers in the call's session, but agent %s is %s", resumes, res.agent.Name, res.agent.Session)
 	}

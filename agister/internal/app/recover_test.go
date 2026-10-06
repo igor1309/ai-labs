@@ -18,7 +18,7 @@ import (
 	"github.com/igor1309/ai-labs/agister/internal/domain/run"
 )
 
-// Stale recovery (ADR-023) through Calls: the runner is a spy whose turns
+// Stale recovery (ADR-024) through Calls: the runner is a spy whose turns
 // are scripted, and the clock and the timers are the test's.
 
 // turnStep is one scripted turn: what its runtime reports while it runs,

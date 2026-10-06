@@ -37,7 +37,7 @@ type Stale struct {
 	Recover Recover `json:"recover"`
 }
 
-// Recover is the recovery of a stale call (ADR-023 rule 5): the turns that
+// Recover is the recovery of a stale call (ADR-024 rule 5): the turns that
 // resume its session with the evidence of what went stale. Unset, there is
 // none.
 type Recover struct {

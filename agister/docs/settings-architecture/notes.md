@@ -71,7 +71,7 @@ Fields: `internal/domain/definition/documents.go:24-130`, `toml.go:25-60`,
     ended at a staleness limit, each resuming its session with what went
     stale (unset: 0, none), and `instruction`, what the agent is told
     with the evidence, which a budget above 0 needs.
-    (`limits.go:26-48`; ADR-023 rules 4 and 5)
+    (`limits.go:26-48`; ADR-024 rules 4 and 5)
 - **service** (one): hard limits (max timeout, attempts, cost, verify
   attempts) and the permission vocabulary every policy and mapping must use;
   which permissions write, which reach Agister's state (never granted).
@@ -104,7 +104,7 @@ Fields: `internal/domain/definition/documents.go:24-130`, `toml.go:25-60`,
   is text, not a limit. A budget above 0 refuses the call unless its
   agent is resumable and its runtime resumes sessions.
   (`internal/domain/policy/policy.go:250`,
-  `internal/app/resolve.go:421-443`; ADR-023 rules 5 and 6)
+  `internal/app/resolve.go:421-443`; ADR-024 rules 5 and 6)
 - The enforcement plan comes from the effective permissions and the
   agent's runtime mapping: a primitive is granted only if everything it
   grants is allowed; allowed permissions no primitive provides are withheld

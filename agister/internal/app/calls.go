@@ -523,7 +523,7 @@ type CallVerifier interface {
 	Verify(ctx context.Context, call VerifyCall) (verified string, fault *run.Error)
 }
 
-// CallRecoverer gives a call its turns with stale recovery (ADR-023): the
+// CallRecoverer gives a call its turns with stale recovery (ADR-024): the
 // take and conclude it returns are the call's own, where a turn Agister
 // ended at a staleness limit is followed by a recovery turn while the
 // call's budget, time and cost allow, each recorded before the call goes
@@ -1126,7 +1126,7 @@ func (c *Calls) execute(ctx context.Context, handle RunHandle, record run.Record
 		return fault
 	}
 
-	// Every turn of the call is taken with its stale recovery (ADR-023):
+	// Every turn of the call is taken with its stale recovery (ADR-024):
 	// the first, and each the verification loop takes.
 	take, conclude = c.recoverer.Recover(ctx, RecoverCall{
 		Record: &record, Result: &result, Event: event, Update: handle.Update,

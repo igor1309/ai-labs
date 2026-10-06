@@ -548,7 +548,7 @@ type InspectedStale struct {
 	NoOutput          time.Duration
 	ToolCommand       time.Duration
 	RepeatedToolCalls int
-	MaxResumes        int // recovery turns a stale call may take (ADR-023)
+	MaxResumes        int // recovery turns a stale call may take (ADR-024)
 }
 
 func inspectedStale(stale CallStale) InspectedStale {

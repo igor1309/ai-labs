@@ -1120,7 +1120,7 @@ func TestVerifyRunWithoutOutputIsKilledAsStale(t *testing.T) {
 	clock := clocktest.NewClock(time.Date(2026, 9, 30, 12, 0, 0, 0, time.UTC))
 	groups := supervisortest.NewGroups()
 	stale := inProcessCommands(groups, clock.Timer)
-	// One attempt: since ADR-023 rule 8 such a run is a failed attempt,
+	// One attempt: since ADR-024 rule 8 such a run is a failed attempt,
 	// which a repair turn follows while attempts are left; with none left
 	// the node ends as it did before.
 	h := newLoopWith(t, seams{commands: runtimecomposition.Commands{Supervisor: stale}, groups: groups}, verifySettings{command: blocks + " & wait", maxAttempts: 1, policy: "stale: {no_output: 7s}\n"}, state("one"))
@@ -1150,7 +1150,7 @@ func TestVerifyRunWithoutOutputIsKilledAsStale(t *testing.T) {
 	}
 }
 
-// A run killed for its silence is a failed attempt (ADR-023 rule 8): with
+// A run killed for its silence is a failed attempt (ADR-024 rule 8): with
 // attempts left a repair turn follows it in the call's session, told that
 // the run went without output for the limit and was ended by Agister, with
 // the output the run produced before it hung; the next run passes and the
@@ -1195,7 +1195,7 @@ func TestVerifyRunWithoutOutputIsRepaired(t *testing.T) {
 }
 
 // A turn Agister ended at a staleness limit is recovered in its session
-// (ADR-023): the recovery turn receives the policy's instruction with the
+// (ADR-024): the recovery turn receives the policy's instruction with the
 // evidence, verification runs on what it left, and runs show prints the
 // recovery with the record.
 func TestAStaleTurnIsRecoveredAndRunsShowPrintsTheRecovery(t *testing.T) {

@@ -43,7 +43,7 @@ func (b Bundle) Resolved(name string) definition.Process {
 }
 
 // Resumes is how many recovery turns a call of the process named name may
-// take (ADR-023 rule 5). It is 0 where the process's limits do not compose,
+// take (ADR-024 rule 5). It is 0 where the process's limits do not compose,
 // which Check reports.
 func (b Bundle) Resumes(name string) int {
 	process := b.Resolved(name)
@@ -195,7 +195,7 @@ func Check(b Bundle, m Mechanisms) []Problem {
 		if process.Verify.Repairs() && agent.Session != definition.SessionResumable {
 			withAgent("verify.max_attempts %d repairs in the call's session, but agent %s is %s", process.Verify.MaxAttempts, agent.Name, agent.Session)
 		}
-		// So does a recovery turn (ADR-023 rule 6).
+		// So does a recovery turn (ADR-024 rule 6).
 		if resumes := effective.Stale.Recover.MaxResumes; resumes > 0 && agent.Session != definition.SessionResumable {
 			withAgent("stale.recover.max_resumes %d recovers in the call's session, but agent %s is %s", resumes, agent.Name, agent.Session)
 		}

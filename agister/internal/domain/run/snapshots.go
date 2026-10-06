@@ -50,7 +50,7 @@ type StaleLimits struct {
 	Recover *StaleRecover `json:"recover,omitempty"`
 }
 
-// StaleRecover is the recovery of a stale turn a call ran under (ADR-023
+// StaleRecover is the recovery of a stale turn a call ran under (ADR-024
 // rule 5): how many turns might resume its session with the evidence of
 // what went stale, and what they were told.
 type StaleRecover struct {

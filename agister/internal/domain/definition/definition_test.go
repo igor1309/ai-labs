@@ -532,7 +532,7 @@ output:
 `
 
 // A policy and a process declare the recovery of a stale call in the stale
-// block's recover block (ADR-023 rule 5): a budget, which may be 0, and the
+// block's recover block (ADR-024 rule 5): a budget, which may be 0, and the
 // instruction. Each is optional, and unset when the block is.
 func TestPolicyAndProcessDeclareStaleRecovery(t *testing.T) {
 	t.Parallel()

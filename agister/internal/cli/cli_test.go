@@ -332,7 +332,7 @@ func TestProgressDescribesVerification(t *testing.T) {
 }
 
 // A stale turn's recovery shows as it happens: the recovery turn, and why
-// one did not start (ADR-023).
+// one did not start (ADR-024).
 func TestProgressDescribesStaleRecovery(t *testing.T) {
 	t.Parallel()
 	spy := &clientSpy{run: finished("interrupted", "timeout"), events: []contract.Event{

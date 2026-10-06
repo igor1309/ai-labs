@@ -466,7 +466,7 @@ func (c *Checker) check(ctx context.Context, probe bool) (CheckResult, error) {
 					settingsProblem(p)
 				}
 				// Repairs resume the call's session, which only the
-				// runtime can say it supports. So do recoveries (ADR-023
+				// runtime can say it supports. So do recoveries (ADR-024
 				// rule 6).
 				for _, process := range sortedNames(bundle.Processes) {
 					if bundle.Processes[process].Agent != name || identity.Resume {

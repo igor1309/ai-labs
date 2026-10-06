@@ -21,7 +21,7 @@ func recovering(h *harness, recover string) {
 	h.defs.docs[definition.KindAgent]["a"] += "session = \"resumable\"\n"
 }
 
-// ADR-023 rule 6: a recovery turn resumes the call's session, so a budget
+// ADR-024 rule 6: a recovery turn resumes the call's session, so a budget
 // above 0 with an agent or a runtime that cannot continue sessions refuses
 // the call before its first turn, and check reports it: the runtime's part
 // when it probes.
@@ -131,7 +131,7 @@ func TestCheckRejectsAStaleRecoveryBudgetThatDoesNotCompose(t *testing.T) {
 }
 
 // The effective budget and instruction are the call's and are recorded
-// with its other limits (ADR-023 rule 5): the policy's budget as the
+// with its other limits (ADR-024 rule 5): the policy's budget as the
 // process lowers it, with the process's instruction. The call acts on
 // them: its stale turn is recovered with the process's instruction, and
 // the second stale turn ends it, the process's one resume spent.
@@ -151,7 +151,7 @@ func TestACallCarriesAndRecordsItsStaleRecovery(t *testing.T) {
 	if wantJSON := `{"no_event":300000000000,"tool_command":240000000000,"recover":{"max_resumes":1,"instruction":"Process."}}`; err != nil || string(recorded) != wantJSON {
 		t.Fatalf("recorded = %s, %v, want %s", recorded, err, wantJSON)
 	}
-	// Until ADR-023's recovery turn was built nothing acted on the budget,
+	// Until ADR-024's recovery turn was built nothing acted on the budget,
 	// and this asserted the stale turn ended the call after one turn. Now
 	// the budget is spent: the process's 1, not the policy's 2, so the
 	// second stale turn ends the call, after two turns.

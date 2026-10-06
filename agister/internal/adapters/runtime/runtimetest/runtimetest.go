@@ -307,7 +307,7 @@ func Conformance(t *testing.T, subject Subject) {
 			t.Fatalf("tool calls started %+v, finished %q", sink.Tools, sink.Finished)
 		}
 		// The call's result is the evidence a repeated call is recovered
-		// with (ADR-023 rule 2): every fake's stream carries one.
+		// with (ADR-024 rule 2): every fake's stream carries one.
 		if result := sink.Results[0]; !result.Reported || result.Output == "" {
 			t.Fatalf("tool call finished without its result: %+v", result)
 		}

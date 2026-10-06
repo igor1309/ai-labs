@@ -2,7 +2,7 @@ package run
 
 import "time"
 
-// How a recovery turn ended (ADR-023 rule 9). The outcome is the turn's,
+// How a recovery turn ended (ADR-024 rule 9). The outcome is the turn's,
 // not the call's: a call may still fail verification after a completed
 // recovery.
 const (
@@ -12,7 +12,7 @@ const (
 	RecoveryFailed         = "failed"          // any other end
 )
 
-// Recovery is one recovery turn of a call (ADR-023 rule 9): the turn that
+// Recovery is one recovery turn of a call (ADR-024 rule 9): the turn that
 // resumed the call's session after a turn Agister ended at a staleness
 // limit, with the evidence of what went stale.
 type Recovery struct {

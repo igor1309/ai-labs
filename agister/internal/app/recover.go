@@ -11,7 +11,7 @@ import (
 	"github.com/igor1309/ai-labs/agister/internal/domain/run"
 )
 
-// Recoverer follows the stale turns of calls with recovery turns (ADR-023),
+// Recoverer follows the stale turns of calls with recovery turns (ADR-024),
 // through the contract it declares here: one recovery per call (Recover).
 type Recoverer struct {
 	clock RecoverClock

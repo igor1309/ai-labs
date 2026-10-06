@@ -380,7 +380,7 @@ func TestAVerificationRunWithoutOutputEndsTheCall(t *testing.T) {
 	t.Parallel()
 	h, _ := staleHarness(t, "no_output: 2m")
 	verifying(h)
-	// One attempt: since ADR-023 rule 8 such a run is a failed attempt,
+	// One attempt: since ADR-024 rule 8 such a run is a failed attempt,
 	// which a repair turn follows while attempts are left; with none left
 	// the call ends as it did before.
 	h.defs.docs[definition.KindProcess]["p"] = strings.Replace(h.defs.docs[definition.KindProcess]["p"], "max_attempts: 3", "max_attempts: 1", 1)
@@ -413,7 +413,7 @@ func fresh(h *harness) {
 	h.changes.identify = func() string { turns++; return fmt.Sprintf("tree-%d", turns) }
 }
 
-// A verification run ended at stale.no_output is a failed attempt (ADR-023
+// A verification run ended at stale.no_output is a failed attempt (ADR-024
 // rule 8): while attempts are left a repair turn follows it in the call's
 // session, told that the run went without output for the limit and was
 // ended by Agister, with the output the run produced before it hung; the

@@ -77,7 +77,7 @@ narrow them: `no_event`, `tool_command` and `repeated_tool_calls` for an
 agent turn, `no_output` for a verification run. A call that reaches one
 ends before its timeout, and its record names the limit and what went
 stale, unless the settings give it resumes to recover with
-([ADR-023](docs/adr/023-a-stale-call-is-resumed-once.md)):
+([ADR-024](docs/adr/024-a-stale-call-is-resumed-once.md)):
 `stale.recover.max_resumes`, which a policy sets and a process may only
 lower, down to 0, and `stale.recover.instruction`, which a budget above 0
 needs. Unset, the budget is 0, and every limit ends the call. With a

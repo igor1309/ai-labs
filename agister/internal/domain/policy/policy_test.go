@@ -311,7 +311,7 @@ func TestStalenessLimitsOnlyNarrow(t *testing.T) {
 	}
 }
 
-// The recovery of a stale call (ADR-023 rule 5): the policy sets the
+// The recovery of a stale call (ADR-024 rule 5): the policy sets the
 // budget's ceiling and a process may only lower it, down to 0; unset is 0.
 // The instruction is text: the process's replaces the policy's. A budget
 // above 0 needs one.

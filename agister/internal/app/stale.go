@@ -26,7 +26,7 @@ type CallStale struct {
 	Recover CallRecover
 }
 
-// CallRecover is a call's recovery of a stale turn (ADR-023 rule 5). It is
+// CallRecover is a call's recovery of a stale turn (ADR-024 rule 5). It is
 // zero unless the call has a budget.
 type CallRecover struct {
 	MaxResumes  int    // recovery turns the call may take; 0: none

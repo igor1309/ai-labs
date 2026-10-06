@@ -271,7 +271,7 @@ func (v *verification) run(ctx context.Context) *run.Error {
 		}
 
 		// A run ended at stale.no_output is a failed run like any other
-		// (ADR-023 rule 8): a repair follows it under the same conditions.
+		// (ADR-024 rule 8): a repair follows it under the same conditions.
 		if fault := v.exhausted(*ran, previous, number); fault != nil {
 			return v.stop(attempt, unrepaired(*ran, number, fault))
 		}
@@ -334,7 +334,7 @@ func (v *verification) exhausted(ran run.CommandRun, previous *run.CommandRun, n
 
 // unrepaired is the fault of a failed run that no repair follows: why none
 // does, but for a run ended at stale.no_output, which ends the call as its
-// limit does, a timeout (ADR-023 rule 8).
+// limit does, a timeout (ADR-024 rule 8).
 func unrepaired(ran run.CommandRun, number int, why *run.Error) *run.Error {
 	if ran.Stale == nil {
 		return why
@@ -440,7 +440,7 @@ func (v *verification) checkInWorkspace(ctx context.Context, number int, identit
 // what, and, when it is not the content the run checked, records on the run
 // what it changed: such a run fails, whatever its exit. A run cancelled,
 // timed out or failed to run is not compared; one ended at stale.no_output
-// is, as a repair may follow it (ADR-023 rule 8): what it left is the
+// is, as a repair may follow it (ADR-024 rule 8): what it left is the
 // run's, not the repair turn's.
 func (v *verification) compare(ctx context.Context, number int, dir, what, identity string, ran *run.CommandRun) *run.Error {
 	if ran.Cancelled || ran.TimedOut || ran.Error != "" {
