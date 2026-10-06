@@ -72,9 +72,7 @@
   .card { fill: var(--surface-2); stroke: var(--line); }
   .edge { fill: var(--k); }
   .doc { fill: var(--surface); stroke: var(--line-soft); }
-  .apart { fill: none; stroke: var(--text-faint); stroke-dasharray: 4 3; }
   .single { fill: none; stroke: var(--line); stroke-dasharray: 3 3; }
-  svg .apart-group .t { fill: var(--text-dim); }
   .names, .check { fill: none; }
   .names { stroke: var(--text-dim); stroke-width: 1.25; }
   .check { stroke: var(--rule); stroke-width: 1.5; stroke-dasharray: 5 4; }
@@ -94,7 +92,7 @@
   @media (min-width: 900px) {
     main {
       max-width: 80rem; padding: 0 32px 56px;
-      display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 38rem);
+      display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 34rem);
       column-gap: 56px; align-items: start;
     }
     header { padding-top: 56px; margin-bottom: 36px; }
@@ -128,16 +126,14 @@ policies and runtime mappings may use, and the hard limits no policy may
 exceed.</p>
 
 <figure>
-<svg viewBox="0 0 420 612" role="img" aria-labelledby="diagram-title diagram-desc">
+<svg viewBox="0 0 576 540" role="img" aria-labelledby="diagram-title diagram-desc">
   <title id="diagram-title">The settings documents and what they name</title>
-  <desc id="diagram-desc">On top, side by side, the two kinds a run starts
-  at: a workflow, which names processes, and a process. Below the process,
-  what it names: its agent, and a column of a policy, an output schema, a
-  verification, prompts and skills. The agent names a runtime mapping and
-  its own skills. At the bottom, under everything, the service: a policy
-  uses only its permissions, within its hard limits; a runtime mapping
-  grants only its permissions. Apart, in a corner, one workspace, the
-  default checkout setup, and one blocks document, what the repo refuses.</desc>
+  <desc id="diagram-desc">A process sits in the middle; a workflow, on its
+  left, names processes. On the right, what a process names: a policy, an
+  output schema, a verification, prompts and skills. Below the process, its
+  agent, which names its own skills and a runtime mapping. At the bottom,
+  under everything, the service: a policy uses only its permissions, within
+  its hard limits; a runtime mapping grants only its permissions.</desc>
   <defs>
     <marker id="head-names" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
       <path class="head-names" d="M0 0 10 5 0 10z"/>
@@ -148,101 +144,83 @@ exceed.</p>
   </defs>
 
   <g class="kind workflow">
-    <rect class="card" x="30" y="16" width="156" height="72" rx="2"/>
-    <rect class="edge" x="30" y="16" width="3" height="72" rx="1"/>
-    <text x="42" y="40"><tspan class="t">workflow</tspan><tspan class="label" dx="10">run</tspan></text>
-    <text class="sub" x="42" y="59">process calls composed</text>
-    <text class="sub" x="42" y="76">into one run</text>
+    <rect class="card" x="4" y="16" width="160" height="72" rx="2"/>
+    <rect class="edge" x="4" y="16" width="3" height="72" rx="1"/>
+    <text x="16" y="40"><tspan class="t">workflow</tspan><tspan class="label" dx="10">run</tspan></text>
+    <text class="sub" x="16" y="59">process calls composed</text>
+    <text class="sub" x="16" y="76">into one run</text>
   </g>
 
-  <text class="sub" x="219" y="44" text-anchor="middle">names</text>
-  <path class="names" d="M186 52H250" marker-end="url(#head-names)"/>
+  <path class="names" d="M164 52H198" marker-end="url(#head-names)"/>
 
   <g class="kind process">
-    <rect class="card" x="252" y="16" width="156" height="124" rx="2"/>
-    <rect class="edge" x="252" y="16" width="3" height="124" rx="1"/>
-    <text x="264" y="40"><tspan class="t">process</tspan><tspan class="label" dx="10">run</tspan></text>
-    <text class="sub" x="264" y="60">a named agent call</text>
-    <text class="sub" x="264" y="88">instruction, inputs,</text>
-    <text class="sub" x="264" y="106">required permissions,</text>
-    <text class="sub" x="264" y="124">limit overrides</text>
+    <rect class="card" x="200" y="16" width="156" height="124" rx="2"/>
+    <rect class="edge" x="200" y="16" width="3" height="124" rx="1"/>
+    <text x="212" y="40"><tspan class="t">process</tspan><tspan class="label" dx="10">run</tspan></text>
+    <text class="sub" x="212" y="60">a named agent call</text>
+    <text class="sub" x="212" y="88">instruction, inputs,</text>
+    <text class="sub" x="212" y="106">required permissions,</text>
+    <text class="sub" x="212" y="124">limit overrides</text>
   </g>
 
-  <text class="sub" x="222" y="116" text-anchor="middle">names</text>
-  <path class="names" d="M252 124H196" marker-end="url(#head-names)"/>
-  <path class="names" d="M222 124V308"/>
-  <path class="names" d="M222 170H196" marker-end="url(#head-names)"/>
-  <path class="names" d="M222 216H196" marker-end="url(#head-names)"/>
-  <path class="names" d="M222 262H196" marker-end="url(#head-names)"/>
-  <path class="names" d="M222 308H196" marker-end="url(#head-names)"/>
+  <path class="names" d="M356 36H398" marker-end="url(#head-names)"/>
+  <path class="names" d="M376 36V228"/>
+  <path class="names" d="M376 84H398" marker-end="url(#head-names)"/>
+  <path class="names" d="M376 132H398" marker-end="url(#head-names)"/>
+  <path class="names" d="M376 180H398" marker-end="url(#head-names)"/>
+  <path class="names" d="M376 228H398" marker-end="url(#head-names)"/>
 
-  <rect class="doc" x="30" y="104" width="164" height="40" rx="2"/>
-  <text class="t" x="42" y="123">policy</text>
-  <text class="sub" x="42" y="138">limits, permissions</text>
+  <rect class="doc" x="400" y="16" width="150" height="40" rx="2"/>
+  <text class="t" x="412" y="33">policy</text>
+  <text class="sub" x="412" y="48">limits, permissions</text>
+  <rect class="doc" x="400" y="64" width="150" height="40" rx="2"/>
+  <text class="t" x="412" y="81">output schema</text>
+  <text class="sub" x="412" y="96">a JSON Schema</text>
+  <rect class="doc" x="400" y="112" width="150" height="40" rx="2"/>
+  <text class="t" x="412" y="129">verification</text>
+  <text class="sub" x="412" y="144">command, attempts</text>
+  <rect class="doc" x="400" y="160" width="150" height="40" rx="2"/>
+  <text class="t" x="412" y="177">prompts</text>
+  <text class="sub" x="412" y="192">plain text</text>
+  <rect class="doc" x="400" y="208" width="150" height="40" rx="2"/>
+  <text class="t" x="412" y="225">skills</text>
+  <text class="sub" x="412" y="240">one SKILL.md each</text>
 
-  <rect class="doc" x="30" y="150" width="164" height="40" rx="2"/>
-  <text class="t" x="42" y="169">output schema</text>
-  <text class="sub" x="42" y="184">a JSON Schema</text>
-
-  <rect class="doc" x="30" y="196" width="164" height="40" rx="2"/>
-  <text class="t" x="42" y="215">verification</text>
-  <text class="sub" x="42" y="230">command, attempts</text>
-
-  <rect class="doc" x="30" y="242" width="164" height="40" rx="2"/>
-  <text class="t" x="42" y="261">prompts</text>
-  <text class="sub" x="42" y="276">plain text</text>
-
-  <rect class="doc" x="30" y="288" width="164" height="40" rx="2"/>
-  <text class="t" x="42" y="305">skills</text>
-  <text class="sub" x="42" y="320">one SKILL.md each</text>
-
-  <rect class="doc" x="30" y="336" width="164" height="40" rx="2"/>
-  <text class="t" x="42" y="353">skills</text>
-  <text class="sub" x="42" y="368">one SKILL.md each</text>
-
-  <path class="names" d="M330 140V324" marker-end="url(#head-names)"/>
+  <path class="names" d="M278 140V268" marker-end="url(#head-names)"/>
 
   <g class="kind agent">
-    <rect class="card" x="252" y="326" width="156" height="60" rx="2"/>
-    <rect class="edge" x="252" y="326" width="3" height="60" rx="1"/>
-    <text class="t" x="264" y="348">agent</text>
-    <text class="sub" x="264" y="368">model, effort, session</text>
+    <rect class="card" x="200" y="270" width="156" height="60" rx="2"/>
+    <rect class="edge" x="200" y="270" width="3" height="60" rx="1"/>
+    <text class="t" x="212" y="292">agent</text>
+    <text class="sub" x="212" y="312">model, effort, session</text>
   </g>
-  <path class="names" d="M252 356H196" marker-end="url(#head-names)"/>
 
-  <path class="names" d="M330 386V416" marker-end="url(#head-names)"/>
+  <path class="names" d="M356 300H398" marker-end="url(#head-names)"/>
+  <rect class="doc" x="400" y="280" width="150" height="40" rx="2"/>
+  <text class="t" x="412" y="297">skills</text>
+  <text class="sub" x="412" y="312">one SKILL.md each</text>
+
+  <path class="names" d="M278 330V358" marker-end="url(#head-names)"/>
 
   <g class="kind runtime">
-    <rect class="card" x="252" y="418" width="156" height="72" rx="2"/>
-    <rect class="edge" x="252" y="418" width="3" height="72" rx="1"/>
-    <text class="t" x="264" y="440">runtime mapping</text>
-    <text class="sub" x="264" y="459">one adapter's efforts</text>
-    <text class="sub" x="264" y="476">and primitives</text>
+    <rect class="card" x="200" y="360" width="156" height="72" rx="2"/>
+    <rect class="edge" x="200" y="360" width="3" height="72" rx="1"/>
+    <text class="t" x="212" y="382">runtime mapping</text>
+    <text class="sub" x="212" y="401">one adapter's efforts</text>
+    <text class="sub" x="212" y="418">and primitives</text>
   </g>
 
-  <g class="apart-group">
-    <rect class="apart" x="30" y="392" width="164" height="116" rx="3"/>
-    <text class="small" x="42" y="409">apart, one of each</text>
-    <rect class="single" x="38" y="418" width="148" height="38" rx="2"/>
-    <text class="t" x="48" y="434">workspace</text>
-    <text class="small" x="48" y="449">default checkout setup</text>
-    <rect class="single" x="38" y="462" width="148" height="38" rx="2"/>
-    <text x="48" y="478"><tspan class="t">blocks</tspan><tspan class="small" dx="6">repo only</tspan></text>
-    <text class="small" x="48" y="493">what the repo refuses</text>
-  </g>
+  <path class="check" d="M550 36H562V498H552" marker-end="url(#head-check)"/>
+  <text class="sub check-label" x="570" y="270" text-anchor="middle" transform="rotate(90 570 270)">its permissions, within its limits</text>
+  <path class="check" d="M278 432V468" marker-end="url(#head-check)"/>
+  <text class="sub check-label" x="288" y="455">grants only its permissions</text>
 
-  <path class="check" d="M30 124H20V542" marker-end="url(#head-check)"/>
-  <text class="sub check-label" x="14" y="333" text-anchor="middle" transform="rotate(-90 14 333)">its permissions, within its limits</text>
-  <path class="check" d="M270 490V542" marker-end="url(#head-check)"/>
-  <text class="sub check-label" x="278" y="512">grants only</text>
-  <text class="sub check-label" x="278" y="528">its permissions</text>
-
-  <rect class="service" x="8" y="544" width="404" height="56" rx="3"/>
-  <text x="34" y="568"><tspan class="service-t">service</tspan><tspan class="label" dx="10">one</tspan></text>
-  <text class="sub" x="34" y="588">permission vocabulary, hard limits</text>
+  <rect class="service" x="10" y="470" width="540" height="56" rx="3"/>
+  <text x="26" y="494"><tspan class="service-t">service</tspan><tspan class="label" dx="10">one</tspan></text>
+  <text class="sub" x="26" y="514">permission vocabulary, hard limits</text>
 </svg>
 <figcaption><b>run</b> marks what <code>agister run</code> runs. Solid arrows name a document; dashed arrows are the service's
-rules: its permission vocabulary and hard limits. Workspace and blocks stand apart.</figcaption>
+rules: its permission vocabulary and hard limits.</figcaption>
 </figure>
 
 <div class="text">
