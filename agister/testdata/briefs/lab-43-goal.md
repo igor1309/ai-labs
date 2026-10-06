@@ -2,6 +2,8 @@
 
 The issue as filed, then what changed since. The ADR the issue calls ADR-008 is ADR-024: 008 and 023 were taken. The owner confirmed that a silent verification run is a failed attempt whenever `verify.max_attempts` allows a repair, not gated on `stale.recover`. Deferred, as separate issues: LAB-107 (deny a repeated tool call through hooks), LAB-108 (touched paths and denials as evidence), LAB-109 (path and command scope through the tool gate), LAB-110 (fresh-context retry with a handoff).
 
+Done gates (`agister/AGENTS.md`, confirmed as D-18; these edits accepted by the owner as D-19): this change adds settings fields and changes behaviour a caller relies on, so it updates the caller skill `agister/skills/agister/SKILL.md`, `agister/README.md`, and the settings diagrams `agister/docs/settings-architecture/`. The Pages settings view shows no staleness limit, so it is unchanged.
+
 ## Context
 
 LAB-41 researched what Agister should do once LAB-9 finds a call stale. Today every staleness limit ends the turn. The research recommends a small per-kind escalation ladder: **resume once with an evidence-bearing recovery message, then end.** A fresh-context retry stays an outer step, as ADR-002 already says. The full findings and sources are in LAB-41's result comment.
