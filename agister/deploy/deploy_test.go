@@ -20,19 +20,50 @@ import (
 
 const label = "com.igormalyarov.agister-pages"
 
-// shim is a launchctl that appends one line per call to calls.log: the
-// argument count, then each argument in brackets (see call). It answers
-// `print` as loaded only while the loaded marker exists, and fails bootstrap
-// or bootout while a fail-bootstrap or fail-bootout marker exists.
+// shim is a launchctl that appends one line per call to calls.log in the
+// directory it is run from: the argument count, then each argument in
+// brackets (see call). It answers `print` as loaded only while the loaded
+// marker exists there, and fails bootstrap or bootout while a
+// fail-bootstrap or fail-bootout marker exists there.
 const shim = `#!/bin/sh
-{ printf '%%s' "$#"; for a; do printf ' [%%s]' "$a"; done; echo; } >> '%[1]s/calls.log'
+d=${0%/*}
+{ printf '%s' "$#"; for a; do printf ' [%s]' "$a"; done; echo; } >> "$d/calls.log"
 case $1 in
-print) [ -e '%[1]s/loaded' ] || exit 113 ;;
-bootstrap) [ ! -e '%[1]s/fail-bootstrap' ] || exit 5; : > '%[1]s/loaded' ;;
-bootout) [ ! -e '%[1]s/fail-bootout' ] || exit 5; rm -f '%[1]s/loaded' ;;
+print) [ -e "$d/loaded" ] || exit 113 ;;
+bootstrap) [ ! -e "$d/fail-bootstrap" ] || exit 5; : > "$d/loaded" ;;
+bootout) [ ! -e "$d/fail-bootout" ] || exit 5; rm -f "$d/loaded" ;;
 esac
 exit 0
 `
+
+// shimFile is the one shim of the test binary, which each box links to.
+// macOS assesses an executable file the first time it is run, and under
+// load that took longer than a script's guard: a shim written per test made
+// each test wait for it.
+var shimFile string
+
+func TestMain(m *testing.M) { os.Exit(runWithShim(m)) }
+
+// runWithShim writes the shim, runs it once so that its first run is paid
+// here, outside any test's guard, runs the tests and removes it.
+func runWithShim(m *testing.M) int {
+	dir, err := os.MkdirTemp("", "deploy-shim-")
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return 1
+	}
+	defer os.RemoveAll(dir)
+	shimFile = filepath.Join(dir, "launchctl")
+	if err := os.WriteFile(shimFile, []byte(shim), 0o755); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return 1
+	}
+	if err := exec.Command(shimFile, "warm").Run(); err != nil {
+		fmt.Fprintln(os.Stderr, "running the launchctl shim:", err)
+		return 1
+	}
+	return m.Run()
+}
 
 // call is the calls.log line the shim writes for one invocation.
 func call(args ...string) string {
@@ -64,7 +95,7 @@ func newBoxHome(t *testing.T, name string) *box {
 			t.Fatal(err)
 		}
 	}
-	if err := os.WriteFile(filepath.Join(b.shim, "launchctl"), []byte(fmt.Sprintf(shim, b.shim)), 0o755); err != nil {
+	if err := os.Symlink(shimFile, filepath.Join(b.shim, "launchctl")); err != nil {
 		t.Fatal(err)
 	}
 	b.path = b.shim + ":/odd&dir/<bin>:" + os.Getenv("PATH")
