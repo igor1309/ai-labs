@@ -8,6 +8,7 @@
 - **Amends:** [ADR-001](001-agister-cli-architecture.md) rules 11 and 12;
   [ADR-002](002-verify-and-bounded-repair.md) rule 2;
   [ADR-005](005-verify-on-a-clean-copy.md) rule 1;
+  [ADR-010](010-a-process-names-its-verification.md) rule 1;
   [ADR-012](012-a-checkout-runs-its-setup.md) rule 3;
   [ADR-013](013-a-continuation-carries-the-earlier-runs-changes.md)
   rules 1 to 4
@@ -21,16 +22,20 @@ another clean copy (ADR-005). That is the right default when the
 caller's tree is shared or dirty.
 
 Some callers already work in a worktree of their own, made for one task
-and prepared for it: its own simulator, proxy and build cache, bound by
-untracked files in the worktree. One such call (LAB-88) had these costs:
+and prepared for it. Ignored files in the worktree bind it to local
+resources, such as a device, a proxy port or a build cache. A fresh
+checkout, made only of tracked files, loses all of that:
 
-- the fresh checkout had no binding, so the agent reached the right
-  simulator only through a parameter file and the prompt;
-- it built from cold, twice, into 15 GB that nothing tracked;
-- the release deleted the test results the report cited;
-- the caller applied the patch by hand;
-- the clean verification copy would build from cold again, and has no
-  binding to run any check that needs the simulator.
+- the agent has none of the worktree's bindings, so it cannot reach the
+  resources the task needs, or reaches them only through what the caller
+  tells it;
+- it builds from cold, beside a warm cache that goes unused, and its
+  output takes disk that nothing tracks;
+- the release removes evidence the agent produced, such as test results
+  its report cites;
+- the caller must apply the patch to the worktree it already had;
+- the clean verification copy builds from cold again, and has no binding
+  for a check that needs one.
 
 ## Decision
 
@@ -69,10 +74,21 @@ are captured. The lock is separate from ADR-008's lock and in its own
 namespace under the state directory. A call that finds the lock held is
 refused.
 
-The lock ends with the CLI that holds it. A runtime process that a
-killed CLI left behind can still write. So, under the lock, a call is
-also refused while an unfinished run records the same worktree. The
-reap (ADR-001 invariant 11) kills that run's process and finishes it.
+The lock ends with the CLI that holds it. A runtime process, or a
+verification command, that a killed CLI left behind can still write. A
+reap (ADR-001 invariant 11) can finish such a run without ending its
+process, because a reap step may fail. So, under the lock, a call is also
+refused while a run that records the same worktree may still have a
+writer:
+
+- the run is unfinished; or
+- a process the run recorded is not known to have ended. The call asks,
+  through the same seam the reap uses, to end any such process. A process
+  that cannot be ended, or cannot be told apart from another, refuses the
+  call.
+
+The run's record says whether its processes are known to have ended, so
+a call does not have to ask again about runs that ended normally.
 
 Calls with different `--home` values do not coordinate (as in ADR-008).
 
@@ -132,8 +148,9 @@ The call ends in this order:
   ADR-002 rule 7 says for a verified call.
 
 Whatever the end (completed, failed, timed out or interrupted), the
-worktree is never reset or cleaned, and the changes stay in it,
-uncommitted.
+worktree and its git state are kept as they are: nothing is reset,
+cleaned or removed. The changes stay in the worktree, uncommitted, except
+where the agent committed them; that call failed, and its commit stays.
 
 ### 8. A continuation in-place resumes in the same worktree
 
@@ -165,11 +182,14 @@ call runs.
 
 - ADR-001 rule 11: a borrowed worktree is not an effect of the call; the
   call owns only its lock, its runtime process and its record.
-- ADR-001 rule 12: a call may read unfinished runs' records to find
-  whether one still holds the worktree (rule 3).
+- ADR-001 rule 12: a call may read other runs' records, finished or not,
+  to find whether one may still write in the worktree, and may end a
+  process such a run recorded (rule 3).
 - ADR-002 rule 2: a call may verify in the caller's worktree that it
   holds under rule 3, when the verification declares `where: workspace`.
 - ADR-005 rule 1: except as rule 6 says.
+- ADR-010 rule 1: a verification document may also hold `where`, whose
+  only value is `workspace` (rule 6).
 - ADR-012 rule 3: no setup runs in-place.
 - ADR-013 rules 1 to 4: an in-place continuation checks the worktree and
   applies nothing (rule 8).
