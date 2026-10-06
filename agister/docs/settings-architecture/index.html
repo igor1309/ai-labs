@@ -39,11 +39,6 @@
   a { color: var(--text-dim); text-decoration-color: var(--text-faint); text-underline-offset: 3px; }
   a:hover { color: var(--text); }
   :focus-visible { outline: 2px solid var(--text-dim); outline-offset: 2px; }
-  .chain {
-    margin: 8px 0 16px; padding: .7rem 1rem; text-align: center;
-    font-family: var(--display); font-size: 1.2rem;
-    background: var(--surface); border: 1px solid var(--line-soft); border-radius: 3px;
-  }
 
   /* The four main kinds, each in its own colour, in the text and the diagram. */
   .k-workflow { color: var(--workflow); }
@@ -302,13 +297,6 @@ permissions it grants, verified against runtime versions.</p>
 checkout setup for processes that check out a revision and declare none,
 and blocks, repo only: the agents, processes, workflows or runtime
 mappings this repo refuses, with reasons.</p>
-
-<h2>How limits narrow</h2>
-
-<p class="chain">service ⊇ policy ⊇ process ⊇ caller</p>
-
-<p>Each may only narrow what the one before allows. Widening is rejected,
-never clamped. Denied always wins over allowed.</p>
 
 <h2>Where permissions meet primitives</h2>
 
