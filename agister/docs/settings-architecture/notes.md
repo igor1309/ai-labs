@@ -16,6 +16,69 @@ its source. Paths are relative to `agister/`. Checked against trunk at
   A project's settings override global ones unconditionally. (ADR-001,
   "runner, not a guard")
 
+## The documents and what they name
+
+The settings are a graph of documents that name each other by name.
+Fields: `internal/domain/definition/documents.go:24-130`, `toml.go:25-60`,
+`workflow.go:19-35`, `limits.go:11-40`. Shapes as in
+`.agister/processes/implement.yaml`, `.agister/workflows/code_review.yaml`,
+`~/.agister/runtimes/claude-code.yaml`, `~/.agister/service.toml`.
+
+- **workflow** names processes: fan-out nodes, each a call of a process
+  over the same resolved inputs, then one join node, a call of a process
+  given the fan-out results. Has its own params and values.
+  (`workflow.go:19`; ADR-003)
+- **process** is a named agent call. It names:
+  - its **agent** (`uses: agent:<name>`);
+  - its **policy** (`policy: process-policy:<name>`);
+  - its **output schema** (`output.schema`, JSON only);
+  - its **verification**: inline, or `verify: verify:<name>` (ADR-010);
+  - **prompts**, as inputs `{source: prompt, name: ...}`, maybe optional
+    (ADR-014, ADR-019);
+  - **skills** (`skills: [...]`, ADR-021).
+  It also holds the instruction, caller params, input values (sources:
+  `param`, `file`, `git.revision`, `git.merge_base`, `git.diff`,
+  `git.changed_files`, `prompt`; `cmd/agister/main.go` inputs map), the
+  checkout input, its own setup, required permissions, and limit
+  overrides that may only narrow its policy. (`documents.go:92`)
+- **agent** is a runtime profile: it names a **runtime mapping**
+  (`runtime`), and holds model, model family, effort, session mode
+  (fresh-only or resumable), and **skills** it names. It carries no task
+  and no permissions. (`toml.go:25`)
+- **runtime mapping** (`runtimes/`): for one adapter (`claude-code`,
+  `codex`, `pi`, `opencode`) and adapter contract, the efforts it accepts
+  and each restriction primitive (a tool or sandbox mode) with the
+  permissions it grants, verified against runtime versions.
+  (`documents.go:113-130`; ADR-001 terms)
+- **policy** holds execution defaults: timeout, attempts, cost cap,
+  allowed and denied permissions, workspace access (read-only or
+  read-write) and scope (candidate or repository), staleness limits.
+  Policies speak in permissions, never in runtime primitives.
+  (`limits.go:11`; ADR-001 rule 4)
+- **service** (one): hard limits (max timeout, attempts, cost, verify
+  attempts) and the permission vocabulary every policy and mapping must use;
+  which permissions write, which reach Agister's state (never granted).
+  (`toml.go:46`)
+- **schema**: a JSON Schema a process's output must match.
+- **verification**: command, timeout, max attempts, failure instruction.
+  (`documents.go:57-77`)
+- **prompt**: plain text, the file is the value. (ADR-014)
+- **skill**: one `SKILL.md`. (ADR-021)
+- **workspace** (one): the default checkout setup for processes that
+  check out a revision and declare none. (`documents.go:79-90`; ADR-012)
+- **blocks** (one, repo only): agents, processes, workflows or runtime
+  mappings this repo refuses, with reasons. (ADR-018)
+
+### How permissions and limits compose
+
+- Limits only narrow: service ⊇ policy ⊇ process ⊇ caller. Widening is
+  rejected, never clamped. Denied always wins over allowed. (ADR-001 rule 3)
+- The enforcement plan comes from the effective permissions and the
+  agent's runtime mapping: a primitive is granted only if everything it
+  grants is allowed; allowed permissions no primitive provides are withheld
+  and recorded, and the call is refused if the process requires them.
+  (ADR-001 rule 4; `internal/domain/enforce/enforce.go:31`)
+
 ## Where they live: two layers
 
 - **Home** (global): `$AGISTER_HOME`, else `~/.agister`, or `--home`.
