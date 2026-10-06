@@ -20,7 +20,7 @@ its source. Paths are relative to `agister/`. Checked against trunk at
 
 The settings are a graph of documents that name each other by name.
 Fields: `internal/domain/definition/documents.go:24-130`, `toml.go:25-60`,
-`workflow.go:19-35`, `limits.go:11-40`. Shapes as in
+`workflow.go:19-35`, `limits.go:11-48`. Shapes as in
 `.agister/processes/implement.yaml`, `.agister/workflows/code_review.yaml`,
 `~/.agister/runtimes/claude-code.yaml`, `~/.agister/service.toml`.
 
@@ -63,6 +63,13 @@ Fields: `internal/domain/definition/documents.go:24-130`, `toml.go:25-60`,
   read-write) and scope (candidate or repository), staleness limits.
   Policies speak in permissions, never in runtime primitives.
   (`limits.go:11`; ADR-001 rule 4)
+  - Its `stale` block holds the limits `no_event`, `tool_command`,
+    `repeated_tool_calls` and `no_output`, and `recover`:
+    `max_resumes`, how many recovery turns a call may take after a turn
+    ended at a staleness limit, each resuming its session with what went
+    stale (unset: 0, none), and `instruction`, what the agent is told
+    with the evidence, which a budget above 0 needs.
+    (`limits.go:26-48`; ADR-023 rules 4 and 5)
 - **service** (one): hard limits (max timeout, attempts, cost, verify
   attempts) and the permission vocabulary every policy and mapping must use;
   which permissions write, which reach Agister's state (never granted).
@@ -88,6 +95,14 @@ Fields: `internal/domain/definition/documents.go:24-130`, `toml.go:25-60`,
 
 - Limits only narrow: service ⊇ policy ⊇ process ⊇ caller. Widening is
   rejected, never clamped. Denied always wins over allowed. (ADR-001 rule 3)
+- `stale.recover` only narrows: a process may lower its policy's
+  `max_resumes`, down to 0, and one above the policy's, or above 0 where
+  the policy sets none, is invalid; the caller has no override. The
+  process's `instruction`, where it gives one, replaces the policy's: it
+  is text, not a limit. A budget above 0 refuses the call unless its
+  agent is resumable and its runtime resumes sessions.
+  (`internal/domain/policy/policy.go:250`,
+  `internal/app/resolve.go:421-443`; ADR-023 rules 5 and 6)
 - The enforcement plan comes from the effective permissions and the
   agent's runtime mapping: a primitive is granted only if everything it
   grants is allowed; allowed permissions no primitive provides are withheld

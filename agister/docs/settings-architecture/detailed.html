@@ -226,7 +226,7 @@ instruction: &gt;-
 <section id="policy" class="kind ">
 <div class="desc"><header><h2>Policy</h2><p class="path"><code>policies/&lt;name&gt;.yaml</code></p></header>
 <p class="lead">Execution defaults for the processes that name it. It speaks in permissions, never in a runtime's tools.</p>
-<h3>Holds</h3><table><tr><th><code>workspace.access</code></th><td><code>read-only</code> or <code>read-write</code></td></tr><tr><th><code>workspace.scope</code></th><td><code>candidate</code> or <code>repository</code></td></tr><tr><th><code>tools.allow, tools.deny</code></th><td>permissions, from the service's vocabulary; denied wins over allowed</td></tr><tr><th><code>timeout</code></th><td>within the service's maximum</td></tr><tr><th><code>retry.max_attempts</code></th><td>within the service's maximum</td></tr><tr><th><code>max_cost_usd</code></th><td>within the service's maximum, if it sets one</td></tr><tr><th><code>stale</code></th><td>when a silent or looping call is ended</td></tr></table></div>
+<h3>Holds</h3><table><tr><th><code>workspace.access</code></th><td><code>read-only</code> or <code>read-write</code></td></tr><tr><th><code>workspace.scope</code></th><td><code>candidate</code> or <code>repository</code></td></tr><tr><th><code>tools.allow, tools.deny</code></th><td>permissions, from the service's vocabulary; denied wins over allowed</td></tr><tr><th><code>timeout</code></th><td>within the service's maximum</td></tr><tr><th><code>retry.max_attempts</code></th><td>within the service's maximum</td></tr><tr><th><code>max_cost_usd</code></th><td>within the service's maximum, if it sets one</td></tr><tr><th><code>stale</code></th><td>when a silent or looping call is ended</td></tr><tr><th><code>stale.recover.max_resumes</code></th><td>how many recovery turns a call may take after a turn ended at a staleness limit: each resumes its session with what went stale; unset is 0, none</td></tr><tr><th><code>stale.recover.instruction</code></th><td>what the agent is told with the evidence; a budget above 0 needs one</td></tr></table><p class="note"><code>stale.recover</code> only narrows: a process may lower <code>max_resumes</code>, down to 0, never raise it or set one its policy lacks. Its own <code>instruction</code> replaces the policy's. A budget above 0 needs a <code>resumable</code> agent on a runtime that resumes sessions.</p></div>
 <figure class="ex"><figcaption>.agister/policies/implement.yaml</figcaption><pre>name: implement
 
 workspace:
@@ -332,6 +332,7 @@ state_reaching = []</pre></figure>
 <ul>
 <li>The service bounds the policy, the policy bounds the process, the process bounds the caller.</li>
 <li>Asking for more than the level above allows is rejected, never quietly reduced.</li>
+<li>A process narrows its policy's <code>stale</code> block too: a shorter limit, fewer <code>stale.recover.max_resumes</code>. The caller has no override for either.</li>
 <li>A denied permission always wins over an allowed one.</li>
 </ul>
 <h3>Where permissions meet primitives</h3>
