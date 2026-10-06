@@ -497,7 +497,7 @@ func TestAnotherRunThatMayStillWriteInTheWorktreeRefusesTheCall(t *testing.T) {
 	t.Parallel()
 	for name, c := range map[string]struct {
 		other   run.Record
-		outcome app.Reaping
+		outcome app.BorrowReaping
 		err     error  // what ending the process fails with
 		root    string // the worktree asked for; /repo when empty
 		reaped  []string
@@ -505,9 +505,9 @@ func TestAnotherRunThatMayStillWriteInTheWorktreeRefusesTheCall(t *testing.T) {
 		want    string // the refusal; none when empty
 	}{
 		"unfinished":                {other: inPlaceRun("run-0", "/repo", false, false), want: "run run-0 worked in worktree /repo and has not finished"},
-		"its process left":          {other: inPlaceRun("run-0", "/repo", true, false), outcome: app.ReapLeft, reaped: []string{"ref-run-0"}, process: "runtime", want: `its runtime process "ref-run-0" may still write there`},
-		"its process killed":        {other: inPlaceRun("run-0", "/repo", true, false), outcome: app.ReapKilled, reaped: []string{"ref-run-0"}, process: "runtime"},
-		"its process gone":          {other: inPlaceRun("run-0", "/repo", true, false), outcome: app.ReapGone, reaped: []string{"ref-run-0"}, process: "runtime"},
+		"its process left":          {other: inPlaceRun("run-0", "/repo", true, false), outcome: app.BorrowReapLeft, reaped: []string{"ref-run-0"}, process: "runtime", want: `its runtime process "ref-run-0" may still write there`},
+		"its process killed":        {other: inPlaceRun("run-0", "/repo", true, false), outcome: app.BorrowReapKilled, reaped: []string{"ref-run-0"}, process: "runtime"},
+		"its process gone":          {other: inPlaceRun("run-0", "/repo", true, false), outcome: app.BorrowReapGone, reaped: []string{"ref-run-0"}, process: "runtime"},
 		"its processes known ended": {other: inPlaceRun("run-0", "/repo", true, true)},
 		"unfinished elsewhere":      {other: inPlaceRun("run-0", "/elsewhere", false, false)},
 
@@ -515,29 +515,29 @@ func TestAnotherRunThatMayStillWriteInTheWorktreeRefusesTheCall(t *testing.T) {
 		// it by how the run ended: a call that finished its run ended them,
 		// so nothing is asked; a reap that finished it may have left one.
 		"says nothing, finished by its call": {other: unsaid(inPlaceRun("run-0", "/repo", true, false), run.Failed, run.ClassRuntimeError)},
-		"says nothing, finished by a reap, its process left": {other: unsaid(inPlaceRun("run-0", "/repo", true, false), run.Lost, run.ClassAbandoned), outcome: app.ReapLeft, reaped: []string{"ref-run-0"}, process: "runtime",
+		"says nothing, finished by a reap, its process left": {other: unsaid(inPlaceRun("run-0", "/repo", true, false), run.Lost, run.ClassAbandoned), outcome: app.BorrowReapLeft, reaped: []string{"ref-run-0"}, process: "runtime",
 			want: `its runtime process "ref-run-0" may still write there`},
-		"says nothing, finished by a reap, its process gone": {other: unsaid(inPlaceRun("run-0", "/repo", true, false), run.Lost, run.ClassAbandoned), outcome: app.ReapGone, reaped: []string{"ref-run-0"}, process: "runtime"},
+		"says nothing, finished by a reap, its process gone": {other: unsaid(inPlaceRun("run-0", "/repo", true, false), run.Lost, run.ClassAbandoned), outcome: app.BorrowReapGone, reaped: []string{"ref-run-0"}, process: "runtime"},
 		"says nothing, unfinished":                           {other: unsaid(inPlaceRun("run-0", "/repo", false, false), "", ""), want: "run run-0 worked in worktree /repo and has not finished"},
 		"checkout-less, says nothing, finished by its call":  {other: unsaid(checkoutLessRun("run-0", "/repo", true, false), run.Completed, "")},
-		"checkout-less, says nothing, finished by a reap, its process left": {other: unsaid(checkoutLessRun("run-0", "/repo", true, false), run.Lost, run.ClassAbandoned), outcome: app.ReapLeft, reaped: []string{"ref-run-0"}, process: "runtime",
+		"checkout-less, says nothing, finished by a reap, its process left": {other: unsaid(checkoutLessRun("run-0", "/repo", true, false), run.Lost, run.ClassAbandoned), outcome: app.BorrowReapLeft, reaped: []string{"ref-run-0"}, process: "runtime",
 			want: `run run-0 worked in worktree /repo, and its runtime process "ref-run-0" may still write there`},
 
 		// A command is a writer as the runtime is: a verification command a
 		// killed call left may still run.
-		"its command left": {other: commandOnly(inPlaceRun("run-0", "/repo", true, false)), outcome: app.ReapLeft, reaped: []string{"cmd-run-0"}, process: "command",
+		"its command left": {other: commandOnly(inPlaceRun("run-0", "/repo", true, false)), outcome: app.BorrowReapLeft, reaped: []string{"cmd-run-0"}, process: "command",
 			want: `run run-0 worked in worktree /repo, and its command process "cmd-run-0" may still write there: it could not be ended: it cannot be told apart from another`},
 		"its command not ended": {other: commandOnly(inPlaceRun("run-0", "/repo", true, false)), err: errors.New("no such group"), reaped: []string{"cmd-run-0"}, process: "command",
 			want: `its command process "cmd-run-0" may still write there: it could not be ended: no such group`},
-		"its command killed":      {other: commandOnly(inPlaceRun("run-0", "/repo", true, false)), outcome: app.ReapKilled, reaped: []string{"cmd-run-0"}, process: "command"},
-		"its command gone":        {other: commandOnly(inPlaceRun("run-0", "/repo", true, false)), outcome: app.ReapGone, reaped: []string{"cmd-run-0"}, process: "command"},
+		"its command killed":      {other: commandOnly(inPlaceRun("run-0", "/repo", true, false)), outcome: app.BorrowReapKilled, reaped: []string{"cmd-run-0"}, process: "command"},
+		"its command gone":        {other: commandOnly(inPlaceRun("run-0", "/repo", true, false)), outcome: app.BorrowReapGone, reaped: []string{"cmd-run-0"}, process: "command"},
 		"its command known ended": {other: commandOnly(inPlaceRun("run-0", "/repo", true, true))},
 
 		// A run without a checkout worked in the repository itself.
 		"checkout-less, unfinished":                {other: checkoutLessRun("run-0", "/repo", false, false), want: "run run-0 worked in worktree /repo and has not finished"},
-		"checkout-less, its process left":          {other: checkoutLessRun("run-0", "/repo", true, false), outcome: app.ReapLeft, reaped: []string{"ref-run-0"}, process: "runtime", want: `run run-0 worked in worktree /repo, and its runtime process "ref-run-0" may still write there`},
-		"checkout-less, its command left":          {other: commandOnly(checkoutLessRun("run-0", "/repo", true, false)), outcome: app.ReapLeft, reaped: []string{"cmd-run-0"}, process: "command", want: `its command process "cmd-run-0" may still write there`},
-		"checkout-less, its process killed":        {other: checkoutLessRun("run-0", "/repo", true, false), outcome: app.ReapKilled, reaped: []string{"ref-run-0"}, process: "runtime"},
+		"checkout-less, its process left":          {other: checkoutLessRun("run-0", "/repo", true, false), outcome: app.BorrowReapLeft, reaped: []string{"ref-run-0"}, process: "runtime", want: `run run-0 worked in worktree /repo, and its runtime process "ref-run-0" may still write there`},
+		"checkout-less, its command left":          {other: commandOnly(checkoutLessRun("run-0", "/repo", true, false)), outcome: app.BorrowReapLeft, reaped: []string{"cmd-run-0"}, process: "command", want: `its command process "cmd-run-0" may still write there`},
+		"checkout-less, its process killed":        {other: checkoutLessRun("run-0", "/repo", true, false), outcome: app.BorrowReapKilled, reaped: []string{"ref-run-0"}, process: "runtime"},
 		"checkout-less, its processes known ended": {other: checkoutLessRun("run-0", "/repo", true, true)},
 		"checkout-less, unfinished elsewhere":      {other: checkoutLessRun("run-0", "/elsewhere", false, false)},
 
@@ -546,7 +546,7 @@ func TestAnotherRunThatMayStillWriteInTheWorktreeRefusesTheCall(t *testing.T) {
 			want: "run run-0 worked in /repo (which holds worktree /repo/tool) and has not finished"},
 		"unfinished in a repository inside the worktree": {other: inPlaceRun("run-0", "/repo/tool", false, false),
 			want: "run run-0 worked in /repo/tool (inside worktree /repo) and has not finished"},
-		"its process left in a released checkout that holds the worktree": {other: temporaryRun("run-0", "/made"), root: "/made/tool", outcome: app.ReapLeft, reaped: []string{"ref-run-0"}, process: "runtime",
+		"its process left in a released checkout that holds the worktree": {other: temporaryRun("run-0", "/made"), root: "/made/tool", outcome: app.BorrowReapLeft, reaped: []string{"ref-run-0"}, process: "runtime",
 			want: `run run-0 worked in /made (which holds worktree /made/tool), and its runtime process "ref-run-0" may still write there`},
 		// A writer works in its checkout, not in the directory made for it.
 		"its process left in a released checkout beside the worktree":           {other: temporaryRun("run-0", "/made/workspace"), root: "/made/tool"},
@@ -563,11 +563,11 @@ func TestAnotherRunThatMayStillWriteInTheWorktreeRefusesTheCall(t *testing.T) {
 				h.workspaces.root = root
 			}
 			h.runs.records[c.other.ID] = c.other
-			h.processes.outcome, h.processes.err = c.outcome, c.err
+			h.writers.outcome, h.writers.err = c.outcome, c.err
 			record := h.call(t, contract.CallRequest{Cwd: root})
 
-			if !reflect.DeepEqual(h.processes.refs(), c.reaped) {
-				t.Fatalf("reaped %v, want %v", h.processes.refs(), c.reaped)
+			if !reflect.DeepEqual(h.writers.refs(), c.reaped) {
+				t.Fatalf("reaped %v, want %v", h.writers.refs(), c.reaped)
 			}
 			// The call says which of the run's processes it asked to end.
 			var asked, want []string
@@ -613,8 +613,8 @@ func TestARecordedDirectoryThatCannotBeToldApartRefusesTheCall(t *testing.T) {
 	if want := "worktree /repo cannot be told apart from /sealed, which run run-0 recorded: permission denied"; class(record) != run.ClassRefused || !strings.Contains(message(record), want) {
 		t.Fatalf("result %s %q, want %q", class(record), message(record), want)
 	}
-	if len(h.processes.refs()) != 0 || len(h.runner.calls()) != 0 || h.worktrees.reads != 0 || h.locks.holds("/repo") {
-		t.Fatalf("reaped %v, turns %d, reads %d, lock held %v", h.processes.refs(), len(h.runner.calls()), h.worktrees.reads, h.locks.holds("/repo"))
+	if len(h.writers.refs()) != 0 || len(h.runner.calls()) != 0 || h.worktrees.reads != 0 || h.locks.holds("/repo") {
+		t.Fatalf("reaped %v, turns %d, reads %d, lock held %v", h.writers.refs(), len(h.runner.calls()), h.worktrees.reads, h.locks.holds("/repo"))
 	}
 }
 
@@ -627,7 +627,10 @@ func storedBorrows(t *testing.T, h *harness) (fsruns.Store, func(id, dir string,
 	t.Helper()
 	ctx := context.Background()
 	store := fsruns.Store{Dir: t.TempDir(), Appends: fsruns.NewAppends()}
-	borrower := app.NewBorrower(h.locks, h.worktrees, h.changes, store, h.processes, app.NewPreparer(h.changes, h.setup, h.clock))
+	borrower := app.NewBorrower(
+		app.BorrowAdapters{Locks: h.locks, Worktrees: h.worktrees, Content: h.changes, Runs: store, Writers: h.writers},
+		app.BorrowPreparer{Preparer: app.NewPreparer(h.changes, h.setup, h.clock)},
+	)
 	return store, func(id, dir string, update func(app.RunHandle, run.Record) error) (*app.Borrowed, error) {
 		t.Helper()
 		record := run.Record{ID: id}
@@ -645,7 +648,7 @@ func storedBorrows(t *testing.T, h *harness) (fsruns.Store, func(id, dir string,
 			},
 			Update: func(record run.Record) error { return update(handle, record) },
 			Dir:    dir, RepositoryIdentity: "/repo", Revision: "sha-HEAD",
-			Precheck: &app.SetupCommand{Command: "make lint", Timeout: 30 * time.Second},
+			Precheck: &app.BorrowPrecheck{Command: "make lint", Timeout: 30 * time.Second},
 		})
 		if err == nil {
 			t.Cleanup(func() { _ = borrowed.Release() })
@@ -679,8 +682,8 @@ func TestARunRecordThatCannotBeReadRefusesTheCall(t *testing.T) {
 	if want := "the runs that may still write in worktree /repo cannot be read: listing run run-0"; !errors.As(err, &refusal) || !strings.Contains(refusal.Reason, want) {
 		t.Fatalf("the borrow = %v, want a refusal with %q", err, want)
 	}
-	if h.worktrees.reads != 0 || len(h.setup.runs()) != 0 || len(h.processes.refs()) != 0 {
-		t.Fatalf("reads %d, precheck runs %v, reaped %v", h.worktrees.reads, h.setup.runs(), h.processes.refs())
+	if h.worktrees.reads != 0 || len(h.setup.runs()) != 0 || len(h.writers.refs()) != 0 {
+		t.Fatalf("reads %d, precheck runs %v, reaped %v", h.worktrees.reads, h.setup.runs(), h.writers.refs())
 	}
 	if borrowed != nil || h.locks.holds("/repo") || !reflect.DeepEqual(h.locks.unlocked, []string{"/repo"}) {
 		t.Fatalf("borrowed %+v, lock held %v, unlocked %v", borrowed, h.locks.holds("/repo"), h.locks.unlocked)
@@ -789,8 +792,9 @@ func TestACheckoutLessCallKilledOnceItsWorkspaceIsOnRecordIsReaped(t *testing.T)
 	if _, err := borrow("run-2", "/repo", saved); err != nil || !h.locks.holds("/repo") {
 		t.Fatalf("the borrow after the reap = %v, lock held %v", err, h.locks.holds("/repo"))
 	}
-	if len(h.processes.refs()) != 0 {
-		t.Fatalf("asked to end %v", h.processes.refs())
+	// Neither the reap nor the borrow, each through its own processes.
+	if len(h.processes.refs()) != 0 || len(h.writers.refs()) != 0 {
+		t.Fatalf("the reap asked to end %v, the borrow %v", h.processes.refs(), h.writers.refs())
 	}
 }
 
@@ -811,7 +815,7 @@ func TestACheckoutLessRunWhoseReapLeftItsWriterRefusesTheCall(t *testing.T) {
 	if err := store.Abandon(writer.ID); err != nil {
 		t.Fatal(err)
 	}
-	h.processes.outcome = app.ReapLeft
+	h.processes.outcome, h.writers.outcome = app.ReapLeft, app.BorrowReapLeft
 	reaper := app.NewReaper(store, h.processes, h.workspaces, fixedClock{})
 	reaper.ReapContext = func(ctx context.Context) (context.Context, context.CancelFunc) { return context.WithCancel(ctx) }
 	if err := reaper.Reap(ctx); err != nil {
@@ -837,8 +841,10 @@ func TestACheckoutLessRunWhoseReapLeftItsWriterRefusesTheCall(t *testing.T) {
 	if borrowed != nil || h.locks.holds("/repo") || h.worktrees.reads != 0 {
 		t.Fatalf("borrowed %+v, lock held %v, reads %d", borrowed, h.locks.holds("/repo"), h.worktrees.reads)
 	}
-	if want := []string{"ref-run-0", "ref-run-0"}; !reflect.DeepEqual(h.processes.refs(), want) {
-		t.Fatalf("asked to end %v, want %v: the reap, then the borrow", h.processes.refs(), want)
+	// The reap, then the borrow: each asks through processes of its own
+	// type, so each spy saw one of the two.
+	if want := []string{"ref-run-0"}; !reflect.DeepEqual(h.processes.refs(), want) || !reflect.DeepEqual(h.writers.refs(), want) {
+		t.Fatalf("the reap asked to end %v, the borrow %v, want %v of each", h.processes.refs(), h.writers.refs(), want)
 	}
 
 	at := time.Date(2026, 10, 1, 0, 0, 0, 0, time.UTC)
@@ -846,7 +852,7 @@ func TestACheckoutLessRunWhoseReapLeftItsWriterRefusesTheCall(t *testing.T) {
 	if err := refused.Finish(last); err != nil {
 		t.Fatal(err)
 	}
-	h.processes.outcome = app.ReapKilled
+	h.writers.outcome = app.BorrowReapKilled
 	if _, err := borrow("run-2", "/repo", saved); err != nil || !h.locks.holds("/repo") {
 		t.Fatalf("the borrow once the writer is ended = %v, lock held %v", err, h.locks.holds("/repo"))
 	}
@@ -970,8 +976,8 @@ func TestADirectoryAgisterStillRemovesIsNotLent(t *testing.T) {
 			if borrowed != nil || h.locks.holds(worktree) || !reflect.DeepEqual(h.locks.unlocked, []string{worktree}) {
 				t.Fatalf("borrowed %+v, lock held %v, unlocked %v", borrowed, h.locks.holds(worktree), h.locks.unlocked)
 			}
-			if h.worktrees.reads != 0 || len(h.processes.refs()) != 0 || len(h.setup.runs()) != 0 || !recorded(h, "WORKTREE_NOT_ADMITTED") {
-				t.Fatalf("reads %d, reaped %v, precheck runs %v, events %v", h.worktrees.reads, h.processes.refs(), h.setup.runs(), h.recorder.kinds())
+			if h.worktrees.reads != 0 || len(h.writers.refs()) != 0 || len(h.setup.runs()) != 0 || !recorded(h, "WORKTREE_NOT_ADMITTED") {
+				t.Fatalf("reads %d, reaped %v, precheck runs %v, events %v", h.worktrees.reads, h.writers.refs(), h.setup.runs(), h.recorder.kinds())
 			}
 		})
 	}

@@ -69,7 +69,7 @@ type Infrastructure struct {
 	Calls    CallAdapters
 	Preparer SetupAdapters
 	// Borrower lends in-place calls the caller's worktree (ADR-022); its
-	// precheck runs on the preparer.
+	// precheck runs on the preparer (see BorrowPreparer).
 	Borrower BorrowAdapters
 	Verifier VerifyAdapters
 	Runs     RunsAdapters
@@ -108,8 +108,7 @@ func NewClient(infra Infrastructure) contract.Client {
 		hosted = NewHosted()
 	}
 	preparer := NewPreparer(infra.Preparer.Content, infra.Preparer.Commands, infra.Preparer.Clock)
-	lend := infra.Borrower
-	borrower := NewBorrower(lend.Locks, lend.Worktrees, lend.Content, lend.Runs, lend.Writers, preparer)
+	borrower := NewBorrower(infra.Borrower, BorrowPreparer{Preparer: preparer})
 	verifier := NewVerifier(infra.Verifier.Content, infra.Verifier.Copies, infra.Verifier.Commands, infra.Verifier.Clock)
 	sources := make([]string, 0, len(infra.Calls.Inputs))
 	for name := range infra.Calls.Inputs {
@@ -243,6 +242,23 @@ func (c resolverCheck) Check(ctx context.Context) (ResolverChecked, error) {
 		result.Blocks = append(result.Blocks, ResolverBlock(b))
 	}
 	return result, nil
+}
+
+// BorrowPreparer is the preparer as a Borrower reads it: the precheck a
+// borrow asks for is run as the preparer runs one. It is exported for
+// whoever assembles a Borrower beside a Preparer without NewClient.
+type BorrowPreparer struct{ Preparer PrecheckPreparer }
+
+// PrecheckPreparer is the preparer a BorrowPreparer translates.
+type PrecheckPreparer interface {
+	Precheck(ctx context.Context, call PrecheckCall) error
+}
+
+func (p BorrowPreparer) Precheck(ctx context.Context, call BorrowPrecheckCall) error {
+	return p.Preparer.Precheck(ctx, PrecheckCall{
+		Record: call.Record, Event: call.Event, Update: call.Update,
+		Precheck: SetupCommand(call.Precheck), Dir: call.Dir,
+	})
 }
 
 // settingsCheck is a checker as Settings reads it.

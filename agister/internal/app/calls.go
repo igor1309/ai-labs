@@ -912,9 +912,9 @@ func (c *Calls) execute(ctx context.Context, handle RunHandle, record run.Record
 		case res.Process.Verify != nil:
 			verify = run.VerifyOnCopy
 		}
-		var precheck *SetupCommand
+		var precheck *BorrowPrecheck
 		if p := res.Process.Precheck; p != nil {
-			precheck = &SetupCommand{Command: p.Command, Timeout: p.Timeout}
+			precheck = &BorrowPrecheck{Command: p.Command, Timeout: p.Timeout}
 		}
 		borrowed, err := c.borrower.Borrow(ctx, BorrowCall{
 			Record: &record, Event: event, Update: handle.Update,

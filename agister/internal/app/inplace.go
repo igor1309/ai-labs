@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"slices"
 	"strings"
+	"time"
 
 	"github.com/igor1309/ai-labs/agister/internal/domain/run"
 )
@@ -84,19 +85,45 @@ type BorrowRuns interface {
 	Artifact(ctx context.Context, runID string, artifact run.Artifact) ([]byte, error)
 }
 
-// BorrowProcesses ends a process another run recorded, through the seam
-// the reap uses.
+// BorrowProcesses ends a process another run recorded.
 type BorrowProcesses interface {
 	// Reap ends the process the reference names, unless it may be another
-	// one by now: then it is ReapLeft.
-	Reap(ctx context.Context, ref string) (Reaping, error)
+	// one by now: then it is BorrowReapLeft.
+	Reap(ctx context.Context, ref string) (BorrowReaping, error)
 }
+
+// BorrowReaping is what a borrow found of a process another run recorded.
+type BorrowReaping string
+
+const (
+	BorrowReapKilled BorrowReaping = "killed" // the process was killed
+	BorrowReapGone   BorrowReaping = "gone"   // no such process
+	BorrowReapLeft   BorrowReaping = "left"   // not killed: it may be another process by now
+)
 
 // BorrowPrechecks runs the precheck of an in-place call.
 type BorrowPrechecks interface {
 	// Precheck runs it once and records the run; a refusal when it did not
 	// exit zero within its timeout.
-	Precheck(ctx context.Context, call PrecheckCall) error
+	Precheck(ctx context.Context, call BorrowPrecheckCall) error
+}
+
+// BorrowPrecheck is the command that gates an in-place call, and how long
+// it may run.
+type BorrowPrecheck struct {
+	Command string
+	Timeout time.Duration
+}
+
+// BorrowPrecheckCall is the precheck a borrow asks for (ADR-022 rule 5),
+// where it runs, and what it records to.
+type BorrowPrecheckCall struct {
+	Record *run.Record
+	Event  func(source, kind string, data map[string]any)
+	Update func(run.Record) error
+
+	Precheck BorrowPrecheck
+	Dir      string // the caller's worktree
 }
 
 // BorrowAdapters are what a Borrower runs on besides the precheck runner.
@@ -110,8 +137,11 @@ type BorrowAdapters struct {
 
 // NewBorrower returns the component that lends calls the caller's worktree.
 // Every collaborator is required.
-func NewBorrower(locks BorrowLocks, worktrees BorrowWorktrees, content BorrowContent, runs BorrowRuns, processes BorrowProcesses, prechecks BorrowPrechecks) *Borrower {
-	return &Borrower{locks: locks, worktrees: worktrees, content: content, runs: runs, processes: processes, prechecks: prechecks}
+func NewBorrower(adapters BorrowAdapters, prechecks BorrowPrechecks) *Borrower {
+	return &Borrower{
+		locks: adapters.Locks, worktrees: adapters.Worktrees, content: adapters.Content, runs: adapters.Runs, processes: adapters.Writers,
+		prechecks: prechecks,
+	}
 }
 
 // BorrowCall is one in-place call asking for the worktree at Dir, and what
@@ -125,7 +155,7 @@ type BorrowCall struct {
 	RepositoryIdentity string
 	Revision           string
 	// Precheck gates the call; nil when the settings declare none.
-	Precheck *SetupCommand
+	Precheck *BorrowPrecheck
 	// Verify is where the call verifies (run.InPlace.Verify).
 	Verify string
 	// Latest is the session's latest run, as recorded, when the call
@@ -215,7 +245,7 @@ func (b *Borrower) Borrow(ctx context.Context, call BorrowCall) (*Borrowed, erro
 		return nil, err
 	}
 	if precheck := call.Precheck; precheck != nil {
-		if err := b.prechecks.Precheck(ctx, PrecheckCall{Record: call.Record, Event: call.Event, Update: call.Update, Precheck: *precheck, Dir: call.Dir}); err != nil {
+		if err := b.prechecks.Precheck(ctx, BorrowPrecheckCall{Record: call.Record, Event: call.Event, Update: call.Update, Precheck: *precheck, Dir: call.Dir}); err != nil {
 			return nil, err
 		}
 		if err := b.admit(ctx, call, "after the precheck, ", expected); err != nil {
@@ -418,7 +448,7 @@ func (b *Borrower) writers(ctx context.Context, call BorrowCall, claims []claim)
 				data["error"] = err.Error()
 			}
 			call.Event(run.SourceAgister, "WORKTREE_WRITER_REAPED", data)
-			if err != nil || reaping == ReapLeft {
+			if err != nil || reaping == BorrowReapLeft {
 				reason := "it cannot be told apart from another"
 				if err != nil {
 					reason = err.Error()

@@ -89,7 +89,9 @@ func (noProblems) Check(context.Context) (app.ResolverChecked, error) {
 // goneProcesses finds every process an earlier in-place run recorded gone.
 type goneProcesses struct{}
 
-func (goneProcesses) Reap(context.Context, string) (app.Reaping, error) { return app.ReapGone, nil }
+func (goneProcesses) Reap(context.Context, string) (app.BorrowReaping, error) {
+	return app.BorrowReapGone, nil
+}
 
 // fakeRuntimes builds the scripted runtime for the fake adapter.
 type fakeRuntimes struct{ runner *scripted }
@@ -428,7 +430,10 @@ verify:
 		definitions = fsdefs.Layered{Global: global, Project: &fsdefs.Store{Dir: defs}}
 	}
 	preparer := app.NewPreparer(with.changes, h.setup, with.clock)
-	borrower := app.NewBorrower(system.WorktreeLocks{Dir: filepath.Join(h.home, "locks", "in-place")}, over.state, with.changes, h.store, goneProcesses{}, preparer)
+	borrower := app.NewBorrower(app.BorrowAdapters{
+		Locks:     system.WorktreeLocks{Dir: filepath.Join(h.home, "locks", "in-place")},
+		Worktrees: over.state, Content: with.changes, Runs: h.store, Writers: goneProcesses{},
+	}, app.BorrowPreparer{Preparer: preparer})
 	h.calls = app.NewCalls(
 		app.NewResolver(definitions, runtimes, schema.Validator{}, noProblems{}), runtimes,
 		map[string]app.InputProvider{"git.revision": over.revision},

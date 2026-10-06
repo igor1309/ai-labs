@@ -99,10 +99,11 @@ type harness struct {
 	commands  *commandsSpy
 	validator *validatorSpy
 	recorder  *recorderSpy
-	// locks, worktrees and processes are what an in-place call's borrower
-	// runs on.
+	// locks, worktrees and writers are what an in-place call's borrower
+	// runs on; processes is what a reaper beside it ends processes through.
 	locks     *locksSpy
 	worktrees *worktreesSpy
+	writers   *writersSpy
 	processes *processesSpy
 }
 
@@ -122,6 +123,7 @@ func newHarness() *harness {
 		recorder:   newRecorderSpy(),
 		locks:      &locksSpy{},
 		worktrees:  &worktreesSpy{},
+		writers:    &writersSpy{},
 		processes:  &processesSpy{},
 	}
 	h.runtimes = &runtimesSpy{runner: h.runner}
@@ -156,18 +158,18 @@ func (h *harness) callsRecordedWith(src app.ResolverDefinitions, workspaces app.
 		app.NewResolver(src, h.runtimes, h.validator, resolverCheckStub{}),
 		h.runtimes,
 		map[string]app.InputProvider{"git.revision": h.inputs, "git.diff": h.inputs, "git.changed_files": h.inputs, "file": h.inputs, "param": h.inputs},
-		workspaces, changes, preparer, h.borrowerOver(changes, runs, preparer), app.NewVerifier(changes, h.copies, h.commands, h.clock), h.validator, recorder, runs,
+		workspaces, changes, preparer, h.borrowerOver(changes, runs, app.BorrowPreparer{Preparer: preparer}), app.NewVerifier(changes, h.copies, h.commands, h.clock), h.validator, recorder, runs,
 		h.clock, h.timer, ids, "/state", h.hosted,
 	)
 }
 
 // borrower is the borrower of the harness's calls.
 func (h *harness) borrower() *app.Borrower {
-	return h.borrowerOver(h.changes, h.runs, app.NewPreparer(h.changes, h.setup, h.clock))
+	return h.borrowerOver(h.changes, h.runs, app.BorrowPreparer{Preparer: app.NewPreparer(h.changes, h.setup, h.clock)})
 }
 
 func (h *harness) borrowerOver(changes app.CallChanges, runs app.CallRuns, prechecks app.BorrowPrechecks) *app.Borrower {
-	return app.NewBorrower(h.locks, h.worktrees, changes, runs, h.processes, prechecks)
+	return app.NewBorrower(app.BorrowAdapters{Locks: h.locks, Worktrees: h.worktrees, Content: changes, Runs: runs, Writers: h.writers}, prechecks)
 }
 
 func (h *harness) call(t *testing.T, request contract.CallRequest) run.Record {

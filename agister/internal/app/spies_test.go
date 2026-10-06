@@ -936,6 +936,32 @@ func (s *processesSpy) refs() []string {
 	return append([]string(nil), s.reaped...)
 }
 
+// writersSpy ends the processes a borrower asks about, as the borrower
+// reads it.
+type writersSpy struct {
+	mu     sync.Mutex
+	reaped []string // references
+	err    error
+	// outcome is what each Reap finds; BorrowReapKilled when empty.
+	outcome app.BorrowReaping
+}
+
+func (s *writersSpy) Reap(_ context.Context, ref string) (app.BorrowReaping, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.reaped = append(s.reaped, ref)
+	if s.outcome != "" {
+		return s.outcome, s.err
+	}
+	return app.BorrowReapKilled, s.err
+}
+
+func (s *writersSpy) refs() []string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return append([]string(nil), s.reaped...)
+}
+
 // locksSpy holds the worktree locks of in-place calls, by the directory as
 // given, and keys each by its canonical path: the directory as given,
 // unless canonical says otherwise.

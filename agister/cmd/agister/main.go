@@ -312,7 +312,7 @@ func (c composition) wire(config cli.Config) (contract.Client, *app.BackgroundRe
 			Worktrees: workspaces.state,
 			Content:   content,
 			Runs:      evidence,
-			Writers:   runtimecomposition.Processes{Supervisor: c.processes},
+			Writers:   runtimecomposition.BorrowProcesses{Supervisor: c.processes},
 		},
 		Verifier: app.VerifyAdapters{Content: content, Copies: workspaces.copies, Commands: runtimecomposition.Commands{Supervisor: commands}, Clock: system.Clock{}},
 		Runs:     app.RunsAdapters{Reader: evidence, Appends: evidence, Timer: c.poll},
