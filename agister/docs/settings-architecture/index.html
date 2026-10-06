@@ -158,7 +158,7 @@ exceed.</p>
   <g class="kind workflow">
     <rect class="card" x="40" y="100" width="156" height="72" rx="2"/>
     <rect class="edge" x="40" y="100" width="3" height="72" rx="1"/>
-    <text class="t" x="52" y="124">workflow</text>
+    <text x="52" y="124"><tspan class="t">workflow</tspan><tspan class="label" dx="10">run</tspan></text>
     <text class="sub" x="52" y="143">process calls composed</text>
     <text class="sub" x="52" y="160">into one run</text>
   </g>
@@ -169,7 +169,7 @@ exceed.</p>
   <g class="kind process">
     <rect class="card" x="40" y="204" width="156" height="124" rx="2"/>
     <rect class="edge" x="40" y="204" width="3" height="124" rx="1"/>
-    <text class="t" x="52" y="228">process</text>
+    <text x="52" y="228"><tspan class="t">process</tspan><tspan class="label" dx="10">run</tspan></text>
     <text class="sub" x="52" y="248">a named agent call</text>
     <text class="sub" x="52" y="276">instruction, inputs,</text>
     <text class="sub" x="52" y="294">required permissions,</text>
@@ -239,11 +239,15 @@ exceed.</p>
     <text class="small" x="258" y="593">what the repo refuses</text>
   </g>
 </svg>
-<figcaption>Solid arrows name a document; dashed arrows are the service's
+<figcaption><b>run</b> marks what <code>agister run</code> runs. Solid arrows name a document; dashed arrows are the service's
 rules: its permission vocabulary and hard limits. Workspace and blocks stand apart.</figcaption>
 </figure>
 
 <div class="text">
+<p>Two kinds can be run, workflows and processes, both the same way:
+<code>agister run &lt;name&gt;</code>. The other documents are never run;
+a run uses them.</p>
+
 <p>Every document can come from the repo's <code>.agister</code> or from
 home; the repo's replaces home's of the same kind and name.</p>
 
