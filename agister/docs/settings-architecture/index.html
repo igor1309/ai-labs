@@ -1,0 +1,187 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Agister's settings architecture</title>
+<style>
+  :root {
+    color-scheme: light dark;
+    --bg:#ffffff; --fg:#1f2328; --muted:#59636e; --line:#d1d9e0; --stroke:#8c959f;
+    --panel:#f6f8fa; --tint:#e7f1fb; --accent:#0969da; --write:#9a6700;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg:#14161a; --fg:#e6e8ec; --muted:#9aa1ad; --line:#2b2f38; --stroke:#6b7380;
+      --panel:#1c1f26; --tint:#16283d; --accent:#58a6ff; --write:#d29922;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--fg); overflow-wrap: break-word;
+    font: 16px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+  }
+  main { max-width: 40rem; margin: 0 auto; padding: 32px 16px 48px; }
+  h1 { margin: 0 0 16px; font-size: 26px; line-height: 1.25; font-weight: 600; }
+  h2 { margin: 28px 0 6px; font-size: 18px; font-weight: 600; }
+  p { margin: 0 0 12px; }
+  code, .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: .875em; }
+  code { padding: 1px 4px; border-radius: 4px; background: var(--panel); }
+  a { color: var(--accent); text-underline-offset: 2px; }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  figure { margin: 24px 0 28px; }
+  figure svg { display: block; width: 100%; max-width: 27rem; height: auto; margin: 0 auto; }
+  figcaption { margin-top: 10px; color: var(--muted); font-size: 14px; text-align: center; }
+  svg text { fill: var(--fg); font-size: 13px; }
+  svg .t { font-weight: 600; font-size: 14px; }
+  svg .sub { fill: var(--muted); font-size: 12px; }
+  svg .mono { font-size: 12px; }
+  svg .write-label { fill: var(--write); }
+  .settings { fill: var(--tint); stroke: var(--accent); stroke-opacity: .7; }
+  .home, .reader { fill: var(--panel); stroke: var(--stroke); }
+  .rule { fill: var(--bg); stroke: var(--fg); }
+  .live { fill: none; stroke: var(--stroke); stroke-dasharray: 4 3; }
+  .read, .write { fill: none; stroke-width: 1.5; }
+  .read { stroke: var(--fg); }
+  .write { stroke: var(--write); stroke-dasharray: 5 4; }
+  .head-read, .dot { fill: var(--fg); }
+  .head-write { fill: var(--write); }
+
+  footer {
+    margin-top: 32px; padding-top: 14px; border-top: 1px solid var(--line);
+    display: flex; gap: 20px; font-size: 15px;
+  }
+</style>
+</head>
+<body>
+<main>
+<h1>Agister's settings architecture</h1>
+
+<p>Agister runs settings. Agents, processes, policies, output contracts,
+permission mappings, the permission vocabulary and service limits are all
+documents you change without rebuilding it. Code adds only the mechanisms
+settings cannot express: runtimes and input source kinds. Agister does not
+judge whether settings are right or safe.</p>
+
+<p>Settings live in two folders with the same layout, the repo's and
+home's, and every reader takes both.</p>
+
+<figure>
+<svg viewBox="0 0 400 574" role="img" aria-labelledby="diagram-title diagram-desc">
+  <title id="diagram-title">Agister's two settings layers and who uses them</title>
+  <desc id="diagram-desc">The repo's .agister folder is a layer over Agister
+  home. Home holds settings and, apart from them, live state: runs, logs and
+  backups. agister install copies the repo's settings into home after a backup
+  into home's backups. A call and agister pages read the settings of both
+  layers, repo over home by kind and name. A call reads both into one
+  snapshot, checks it and records what it used. agister pages reads both
+  layers read-only.</desc>
+  <defs>
+    <marker id="head-read" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+      <path class="head-read" d="M0 0 10 5 0 10z"/>
+    </marker>
+    <marker id="head-write" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+      <path class="head-write" d="M0 0 10 5 0 10z"/>
+    </marker>
+  </defs>
+
+  <rect class="settings" x="12" y="12" width="340" height="64" rx="8"/>
+  <text x="28" y="38"><tspan class="t">Repo</tspan><tspan class="mono" dx="8">&lt;git root&gt;/.agister</tspan></text>
+  <text class="sub" x="28" y="58">the project's settings</text>
+
+  <rect class="home" x="12" y="140" width="340" height="208" rx="8"/>
+  <text x="28" y="165"><tspan class="t">Agister home</tspan><tspan class="mono" dx="8">~/.agister</tspan></text>
+  <rect class="settings" x="24" y="180" width="316" height="56" rx="6"/>
+  <text class="t" x="40" y="204">Settings</text>
+  <text class="sub" x="40" y="222">global, same layout as the repo's</text>
+  <rect class="live" x="24" y="276" width="316" height="58" rx="6"/>
+  <text x="40" y="300"><tspan class="t">Live state</tspan><tspan class="sub" dx="8">not settings</tspan></text>
+  <text class="sub" x="40" y="320">runs, logs, backups</text>
+
+  <path class="write" d="M316 76V180" marker-end="url(#head-write)"/>
+  <text class="mono write-label" x="304" y="104" text-anchor="end">agister install</text>
+  <text class="sub" x="304" y="122" text-anchor="end">copies the repo's settings into home</text>
+  <path class="write" d="M48 236V276" marker-end="url(#head-write)"/>
+  <text class="sub" x="60" y="260">install backs up first</text>
+
+  <path class="read" d="M352 44H384V372H200V388" marker-end="url(#head-read)"/>
+  <path class="read" d="M340 208H384"/>
+  <circle class="dot" cx="384" cy="208" r="3"/>
+  <text class="sub" x="368" y="37" text-anchor="middle">read</text>
+  <text class="sub" x="368" y="201" text-anchor="middle">read</text>
+
+  <rect class="rule" x="12" y="388" width="376" height="52" rx="26"/>
+  <text class="t" x="200" y="410" text-anchor="middle">repo over home, by kind and name</text>
+  <text class="sub" x="200" y="428" text-anchor="middle">a repo document replaces home's, whole</text>
+
+  <path class="read" d="M122 440V468" marker-end="url(#head-read)"/>
+  <path class="read" d="M316 440V468" marker-end="url(#head-read)"/>
+
+  <rect class="reader" x="12" y="468" width="220" height="94" rx="8"/>
+  <text class="t" x="26" y="492">A call</text>
+  <text x="26" y="512">reads both into one snapshot,</text>
+  <text x="26" y="530">checks it,</text>
+  <text x="26" y="548">records what it used</text>
+
+  <rect class="reader" x="244" y="468" width="144" height="94" rx="8"/>
+  <text class="mono" x="258" y="492">agister pages</text>
+  <text x="258" y="512">reads both layers,</text>
+  <text x="258" y="530">read-only</text>
+</svg>
+<figcaption>Tinted boxes are settings; the dashed box is live state. Solid
+arrows read, dashed arrows are what install writes.</figcaption>
+</figure>
+
+<h2>Two layers</h2>
+
+<p>Home is the global layer: <code>~/.agister</code>, or wherever
+<code>$AGISTER_HOME</code> or <code>--home</code> points. The repo layer is
+the project's: the <code>.agister</code> folder at the root of its git
+repository. Outside a git repo, or without that folder, there is no repo
+layer.</p>
+
+<p>A repo document replaces home's document of the same kind and name,
+whole: fields are not merged. Everything else comes from whichever layer
+has it. The repo's settings override home's unconditionally.</p>
+
+<p>Home also holds live state that is not settings: runs, logs, locks,
+backups and the runtimes' sessions. Agents cannot reach home. They can
+change a repo's <code>.agister</code> when they may write the repo.</p>
+
+<h2>What a call does with them</h2>
+
+<p>A call reads every document once into an in-memory snapshot, checks it,
+and uses exactly what it checked. It records what it used, with digests:
+definitions, prompts, verification and skills.</p>
+
+<p>A call depends on the service settings, its process and what that
+process uses. A broken document refuses only the calls that depend on it,
+naming the chain.</p>
+
+<h2>Install</h2>
+
+<p><code>agister install &lt;dir&gt;</code> copies a settings folder, such
+as a repo's <code>.agister</code>, into home, document by document. It
+plans first: each document is created, replaced (with a diff) or unchanged,
+and documents only home has are kept. It checks the result in a staged
+copy, asks for a yes, backs up to <code>backups/&lt;stamp&gt;/</code> and
+then writes. <code>agister install --restore &lt;stamp&gt;</code> undoes one
+install. Install never deletes, and it leaves out live state, skills and
+the repo's own blocks.</p>
+
+<h2>Pages</h2>
+
+<p><code>agister pages</code> reads the settings files of both layers
+directly and read-only, and serves on loopback only. Its page combines the
+layers by the same rule, repo over home by kind and name, and marks each
+document <code>repo</code>, <code>home</code> or
+<code>repo, replaces home</code>.</p>
+
+<footer>
+<a href="detailed.html">Details</a>
+<a href="notes.md">Sources</a>
+</footer>
+</main>
+</body>
+</html>
