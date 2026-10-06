@@ -5,9 +5,6 @@ description: Drive Agister from outside - set up a repository for it, run an `im
 
 # Agister: the caller's guide
 
-This skill is for the agent that runs Agister. It is not a settings skill
-that Agister gives to the agents it starts (ADR-021).
-
 Agister (`agister`, on PATH) runs agent calls and workflows that the
 settings define. Home's settings are in `<home>`: the directory `--home`
 selects, else `$AGISTER_HOME`, else `~/.agister/` by default. A repository's
@@ -18,10 +15,10 @@ For the details, see the Agister source: `README.md` and `docs/adr/`.
 
 ## What home provides
 
-Processes and workflows are settings, not part of the binary. To see
-what is there, run `agister process list`, `agister workflow list`,
-`agister process show <name>` and `agister workflow show <name>`. Home's
-settings usually have:
+Processes and workflows are settings, not part of the binary.
+`agister process list` and `agister workflow list` show the ones the
+settings define here. `agister process show <name>` and
+`agister workflow show <name>` show one as a call would see it. Look for:
 
 - `implement`, plus variants for other runtimes. It implements a brief in
   a fresh checkout of a revision. It takes the params `brief` (a file) and
@@ -56,14 +53,14 @@ settings usually have:
    It runs with your authority, not the agent's permissions, and it runs
    code the agent wrote.
 3. Put the testing command and the repository's hard rules in `AGENTS.md`.
-   The runtime loads that file in the checkout (ADR-006).
+   The runtime loads that file in the checkout.
 4. Run `agister check`, which ends with `settings OK` and lists warnings.
    Then run `agister process show implement`: the `plan` line lists the
    tools the agent gets, and the `verify` line shows your command.
 5. Optional: `.agister/workspace.yaml` (`setup.command`) prepares a fresh
-   checkout, and may only make files git ignores (ADR-012).
+   checkout, and may only make files git ignores.
    `.agister/blocks.yaml` blocks home's processes, workflows or agents in
-   this repository (ADR-018).
+   this repository.
 6. Commit `.agister/` and `AGENTS.md`.
 
 ## Do one task
@@ -107,7 +104,7 @@ settings usually have:
    Pin the candidate again, to the same revision. The session's latest
    run's `changes.patch` is carried into the new checkout, uncommitted. A
    `NO_CHANGES` run carries nothing. The new run's patch is again
-   cumulative from the revision, so apply only the latest one (ADR-013).
+   cumulative from the revision, so apply only the latest one.
 
 ## Review a change
 
@@ -119,9 +116,11 @@ Always pass `base`. Its default is a setting (`agister workflow show
 code_review`), and it may name a ref that this repository lacks. Use
 `adr_review` the same way for a change to an ADR.
 
-The judge's items come from home's settings, so check the judge's output
-schema there. In the repository that holds the Agister source,
-`.agister/schemas/judgement.json` gives each item `severity` (`blocker`, `major`, `minor`, `nit`), `ruling`,
+Read the judge's item fields in your settings, in the output schema of
+the judge's process: `agister workflow show code_review` names that
+process on its `join` line, and `agister process show <process>` prints
+the schema's name on its `output` line and its file under `sources`. An
+item has `severity` (`blocker`, `major`, `minor`, `nit`), `ruling`,
 `reason`, `action` and `switching_condition`. Here is what to do for each
 ruling:
 
