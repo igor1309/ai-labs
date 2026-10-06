@@ -3,7 +3,7 @@ date: 2026-10-06
 author: Igor Malyarov
 model: claude-opus-5-5
 name: Code review — judge
-version: 0.5.0
+version: 0.5.1
 type: prompt
 ---
 
@@ -73,7 +73,12 @@ item qualifies too. An `outside` finding is `defer`. You read no goal: a
 `goal` finding presents the goal's condition as its `requirement`, quoted
 with every qualification it carries and where in the goal it stands, and
 its case and trace show a concrete scenario the goal requires and how the
-defect stops its outcome. A finding whose evidence does not support its
+defect stops its outcome. A missing test is a `goal` finding too, though
+the code is correct and no outcome is stopped: its case is a specific goal
+behaviour that the existing assertions let break, and its trace shows a
+concrete break of that behaviour (a failed write returned as `nil`, where
+the goal requires the failure reported) under which every assertion still
+passes. A finding whose evidence does not support its
 scope is rejected like any other, and the rejection says what would have
 shown the scope. A `goal` finding that a scope exclusion of the goal bars
 ("out of scope"), as the finding presents it, is `owner`: the exclusion is

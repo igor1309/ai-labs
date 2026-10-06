@@ -1011,13 +1011,17 @@ func TestReviewPromptsCarryTheCaseForValue(t *testing.T) {
 // and its scope exclusions are the owner's. The tests prompt adds that a
 // missing test counts only with the goal behaviour the existing assertions
 // let break, and the adversarial one that the goal widens the changed
-// paths. The judge's has the scope rule: goal ruled as change, outside
-// deferred, an unsupported scope rejected, a goal finding a scope exclusion
-// bars left to the owner, and an older collection's introduced_by_change
-// read as a scope. Each review process's instruction says what its input
-// goal is. An instruction is held by its short phrases standing in one
-// paragraph, as in TestReviewPromptsCarryTheirCoverageContract. The files
-// are the repository's own, read as they are.
+// paths. The ADR prompt's opening keeps a change that touches no ADR from
+// findings of scope change only: its goal can still raise a goal finding.
+// The judge's has the scope rule: goal ruled as change, outside deferred,
+// an unsupported scope rejected, a goal finding a scope exclusion bars left
+// to the owner, and an older collection's introduced_by_change read as a
+// scope; and that a missing test is a goal finding too, with the goal
+// behaviour the existing assertions let break. Each review process's
+// instruction says what its input goal is. An instruction is held by its
+// short phrases standing in one paragraph, as in
+// TestReviewPromptsCarryTheirCoverageContract. The files are the
+// repository's own, read as they are.
 func TestReviewPromptsCarryTheGoal(t *testing.T) {
 	t.Parallel()
 	root, err := filepath.Abs(filepath.Join("..", "..", ".."))
@@ -1040,8 +1044,13 @@ func TestReviewPromptsCarryTheGoal(t *testing.T) {
 				"every changed path", "The goal widens that", "each scenario the goal requires", "changed or not"}}}},
 		{"code-review-architecture.md", []promptInstruction{look}},
 		{"code-review-clarity.md", []promptInstruction{look}},
-		{"code-review-adr.md", []promptInstruction{look}},
+		{"code-review-adr.md", []promptInstruction{look,
+			{"a change that touches no ADR has no change finding; its goal can still raise a goal finding", []string{
+				"A change that touches no ADR", "no finding of scope `change`", "can still raise a `goal` finding"}}}},
 		{"code-review-judge.md", []promptInstruction{
+			{"a missing test is a goal finding with the goal behaviour the existing assertions let break", []string{
+				"A missing test is a `goal` finding too", "the code is correct", "a specific goal behaviour",
+				"existing assertions let break", "every assertion still passes"}},
 			{"a finding's scope decides its ruling", []string{
 				"`evidence.scope`", "Rule a `goal` finding as you rule a `change` one", "An `outside` finding is `defer`",
 				"You read no goal", "is rejected like any other", "a scope exclusion of the goal bars", "is `owner`",

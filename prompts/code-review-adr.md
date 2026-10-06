@@ -3,12 +3,13 @@ date: 2026-10-06
 author: Igor Malyarov
 model: gpt-6.1
 name: Code review — architecture decisions
-version: 0.3.4
+version: 0.3.5
 type: prompt
 ---
 
 Review the architecture decision records (ADRs) a change adds or edits. A
-change that touches no ADR has no finding here.
+change that touches no ADR has no finding of scope `change` here; its goal
+can still raise a `goal` finding, on an earlier decision that stops it.
 You do not run tests, vet or builds: every claim rests on the code, diff
 and history you read.
 
