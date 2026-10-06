@@ -42,6 +42,15 @@ still apply.
 - At most 2 review rounds. Deferred work is a backlog issue in the
   Multica project Agister: gap, trigger, done when, for real, observed
   gaps only.
+- A change to what the CLI or the settings offer, such as a command, a
+  flag, a settings field or a behaviour a caller relies on, is done only
+  when these say the same as the binary:
+  - the caller skill, `skills/agister/SKILL.md`;
+  - `README.md`, with any new ADR in its list;
+  - the settings diagrams, `docs/settings-architecture/`;
+  - the Pages settings view, `pages/`, with its tests.
+
+  Its issue names these as done gates.
 - ADRs reference only earlier ADRs.
 - A failure of Agister itself during this work is a finding about Agister:
   record it and fix it; do not route around it. A Claude Code subagent or
