@@ -1,152 +1,183 @@
 ---
 name: agister
-description: Drive Agister from outside - set up a repository for it, run an `implement` call on a brief, continue a run, apply a run's patch, review a change with the `code_review` or `adr_review` workflow and act on the judge's rulings. Use when asked to "use agister", to implement or review work through Agister, or to set up `.agister/` in a repository.
+description: Drive Agister from outside - find out which processes and workflows the settings in use define and what each takes, run one, continue a run, read a run's record, apply a run's patch, and prepare a repository's `.agister/`. Use when asked to "use agister", to run work through Agister, to read or apply what a run produced, or to set up `.agister/` in a repository.
 ---
 
 # Agister: the caller's guide
 
-Agister (`agister`, on PATH) runs agent calls and workflows that the
-settings define. Home's settings are in `<home>`: the directory `--home`
-selects, else `$AGISTER_HOME`, else `~/.agister/` by default. A repository's
-`.agister/` takes priority over them, document by document. Each run is
-recorded in `<home>/runs/<run-id>/`.
-`agister --help` is authoritative, so check it before you rely on a flag.
-For the details, see the Agister source: `README.md` and `docs/adr/`.
+Agister (`agister`, on PATH) runs agent calls and workflows of them. The
+binary defines none of them: processes, workflows, their params, agents
+and permissions are settings. Home's settings are in `<home>`: the
+directory `--home` selects, else `$AGISTER_HOME`, else `~/.agister/` by
+default. The `.agister/` of the repository you launch from takes priority
+over them, document by document. Each run is recorded in
+`<home>/runs/<run-id>/`.
+`agister --help` is authoritative, so check it before you rely on a
+command or a flag. For the details, see the Agister source: `README.md`
+and `docs/adr/`.
 
-## What home provides
+## Find out what the settings provide
 
-Processes and workflows are settings, not part of the binary.
-`agister process list` and `agister workflow list` show the ones the
-settings define here. `agister process show <name>` and
-`agister workflow show <name>` show one as a call would see it. Look for:
+Names differ from one home to another and from one repository to another.
+Do not assume a process, a workflow, a param or a default: ask, in the
+repository you will run in.
 
-- `implement`, plus variants for other runtimes. It implements a brief in
-  a fresh checkout of a revision. It takes the params `brief` (a file) and
-  `candidate` (a revision, default `HEAD`). It does not commit: Agister
-  keeps the changes as `changes.patch`.
-- `verify:repo`: the process names it, and it runs after each turn on a
-  clean copy of the checkout with the patch applied. A failure goes back to
-  the agent in the same session. Home may not have one, so a repository
-  supplies its own in `.agister/verifies/repo.yaml`. When neither has one,
-  the call is refused.
-- `code_review`: reviewers of `candidate` against `base`, run concurrently,
-  then a judge that rules on every finding. `adr_review` does the same for
-  ADRs. There is also an `advisor` process.
+- `agister process list`, `agister workflow list` and `agister agent list`
+  show what the composed settings define. An entry that is broken, or
+  whose call would be refused, says why.
+- `agister process show <process>` shows one process as a call would see
+  it: its params, each required or with its default; the inputs made from
+  them, each with its source, such as a file or a git revision; its
+  output, text or JSON under a schema it names; the permissions it asks
+  for and the tools its agent gets on its runtime; its limits; its
+  verification, if it has one; the file each document it uses comes from,
+  home's or the repository's, its schema's among them; warnings; and, when
+  a call would be refused now, the reason. With `--agent <agent>` it shows
+  the process as that agent would run it.
+- `agister workflow show <workflow>` shows the workflow's params and their
+  defaults, its fan-out nodes and its join, and for each node its process
+  and what the node receives.
+- `agister check` verifies the composed settings. It exits 0 when they
+  have no problem and 64 when they have one, prints each problem with what
+  it refuses, and prints warnings. `agister check --tree` shows what
+  defines what, and in which file.
 
-## Set up a repository
+## Verification
 
-1. Write a testing command: one shell command that passes on a clean
-   checkout and needs nothing untracked.
-2. Put it in `.agister/verifies/repo.yaml`:
+A process may have a verification: a command that Agister runs after each
+turn of the agent, on a clean copy of the checkout with the turn's changes
+applied. It runs with your authority, not the agent's permissions, and it
+runs code the agent wrote. A failure goes back to the agent in the same
+session, for as many attempts as the verification allows. The run
+completes only when the command passes.
 
-   ```yaml
-   schema: agister.verify/v1alpha1
-   name: repo
-   command: <the testing command>
-   timeout: 10m
-   max_attempts: 3
-   instruction: >-
-     The verification command failed on your changes. Fix the cause in the
-     code; do not weaken, skip or delete the check.
-   ```
+The process holds the command itself, or names a verify document:
+`verify:<name>` is `verifies/<name>.yaml`, the repository's
+`.agister/verifies/<name>.yaml` before home's. `agister process show
+<process>` names the document, and shows its command and the file it comes
+from. When neither place has the document, `agister check` warns, `show`
+gives the refusal with both paths it looked in, and a call of that process
+is refused before its first turn. Other processes still run. Supply the
+document; do not route around the refusal.
 
-   It runs with your authority, not the agent's permissions, and it runs
-   code the agent wrote.
-3. Put the testing command and the repository's hard rules in `AGENTS.md`.
-   The runtime loads that file in the checkout.
-4. Run `agister check`, which ends with `settings OK` and lists warnings.
-   Then run `agister process show implement`: the `plan` line lists the
-   tools the agent gets, and the `verify` line shows your command.
-5. Optional: `.agister/workspace.yaml` (`setup.command`) prepares a fresh
-   checkout, and may only make files git ignores.
-   `.agister/blocks.yaml` blocks home's processes, workflows or agents in
-   this repository.
-6. Commit `.agister/` and `AGENTS.md`.
+## What a repository provides
 
-## Do one task
+- `.agister/`: its own documents, laid out like home's. Each replaces
+  home's document of the same kind and name, whole. For a process that
+  names a verify document, this is where the repository puts its own: one
+  shell command that passes on a clean checkout and needs nothing
+  untracked.
+- `.agister/workspace.yaml`, optional: a setup command that prepares a
+  fresh checkout, for each process with a checkout and no setup of its
+  own. It may only make files git ignores.
+- `.agister/blocks.yaml`, optional: the processes, workflows and agents of
+  home that this repository blocks.
+- `AGENTS.md`: the agent's runtime loads it in the checkout. Put the
+  testing command and the repository's hard rules there.
 
-1. Write a brief: one scoped task, which files and functions it touches,
-   what tests it adds, what it must not touch, and "Done when <testing
-   command> passes. List every file you changed." The implementer starts
-   cold.
-2. Commit the brief and everything it relies on. The checkout holds only
-   the files git tracks at the revision.
-3. Launch from the repository the checkout is of. `HEAD` and other
-   revision defaults resolve in the directory you launch from. Pin the
-   candidate revision:
+`agister init` installs example settings in `<home>`. It lists each file
+first, writes only after you type yes, and keeps a file that exists. To
+read the examples without touching home, run `agister --home <dir> init`
+with a scratch directory. They include a process that works in a checkout
+and names a verification, and the verify document it names. Start from
+that document: copy it into the repository's `.agister/verifies/` and
+replace its command.
 
-   ```sh
-   agister run implement --param candidate=<rev> --param brief=<file> --json
-   ```
+Then run `agister check` in the repository, and `agister process show
+<process>` for each process you will run, to see that it resolves and
+verifies with the repository's command. Commit `AGENTS.md`, because a
+checkout holds only tracked files, and `.agister/` with it.
 
-   Exit 0 means the run completed and verify passed. `--json` prints the
-   result with its `run_id` and the absolute path of each artifact.
-4. Read the result: `agister runs show <run-id>` prints the run's record
-   as JSON. That includes its `result` (status, output, cost, artifacts)
-   and its `attempts`. An attempt's `run.passed` is present only when the
-   verification command ran; a stopped attempt may contain only `stopped`,
-   which says why verification ended there, and no `run`.
-5. Apply the patch. It is in `<home>/runs/<run-id>/artifacts/changes.patch`
-   (`~/.agister/runs/...` by default).
-   A run that changed nothing records `NO_CHANGES` and has no patch.
-
-   ```sh
-   git apply <home>/runs/<run-id>/artifacts/changes.patch
-   ```
-
-   Then run the testing command yourself, and commit.
-6. To continue the same session with a small correction:
-
-   ```sh
-   agister run implement --continue <run-id> --param candidate=<same rev> --param brief=<file>
-   ```
-
-   Pin the candidate again, to the same revision. The session's latest
-   run's `changes.patch` is carried into the new checkout, uncommitted. A
-   `NO_CHANGES` run carries nothing. The new run's patch is again
-   cumulative from the revision, so apply only the latest one.
-
-## Review a change
+## Run
 
 ```sh
-agister run code_review --param base=<rev before the change> --param candidate=<rev>
+agister run <process> --param <param>=<value> --json
+agister run <workflow> --param <param>=<value> --json
 ```
 
-Always pass `base`. Its default is a setting (`agister workflow show
-code_review`), and it may name a ref that this repository lacks. Use
-`adr_review` the same way for a change to an ADR.
+- Give every required param, and each other one whose default is not what
+  you mean. A default is a setting, and may name a ref that this
+  repository lacks.
+- Launch from the repository the run is about. A revision param resolves
+  in the directory you launch from, whether you pass it or leave it to
+  its default, and a file param's path is read relative to that directory.
+  Pin revisions: pass the commit instead of relying on a default.
+- A process may work in a fresh checkout of a revision. The checkout holds
+  only the files git tracks at that revision, so commit what the call
+  relies on before you launch.
+- `--json` prints the result when the run ends: its `run_id`, status,
+  output, cost and the absolute path of each artifact. Without it, the
+  run's output is printed. Progress goes to stderr either way.
+- For a process, `--agent <agent>` runs it with another agent of the
+  settings, and `--timeout <d>` and `--max-cost <usd>` set the call's
+  limits. A workflow takes params only: each node is a run of its own,
+  with its own process's agent and limits.
+- Interrupting `agister run` cancels the run.
+- Runs cost money. Do not loop runs unattended.
 
-Read the judge's item fields in your settings, in the output schema of
-the judge's process: `agister workflow show code_review` names that
-process on its `join` line, and `agister process show <process>` prints
-the schema's name on its `output` line and its file under `sources`. An
-item has `severity` (`blocker`, `major`, `minor`, `nit`), `ruling`,
-`reason`, `action` and `switching_condition`. Here is what to do for each
-ruling:
+## Read the result
 
-- `fix`: write a fresh brief that quotes the item's `action`, run
-  `implement`, apply and commit. Review again for a blocker or major item.
-- `defer`: record it in the repository's deferred work. Its `action`
-  gives the gap, the trigger and when it is done.
-- `owner`: ask the owner. Its `action` gives the question and the options.
-- `waive`, `reject`: no change. The item's `switching_condition` says what
-  would change the ruling.
+- `agister runs list` lists the runs: ID, process or workflow, agent and
+  status.
+- `agister runs show <run-id>` prints the run's record as JSON. That
+  includes its `request`, the `definitions` and `inputs` it ran with, its
+  `attempts` when it has a verification, and its `result` (`status`,
+  `error`, `output` or `text`, `cost`, `timing`, `artifacts`). An
+  attempt's `run.passed` is present only when the verification command
+  ran; a stopped attempt may contain only `stopped`, which says why
+  verification ended there, and no `run`.
+- A workflow's record lists its nodes under `workflow.nodes`, each with
+  the ID of its own `run`. Its `result` carries the join's output. For a
+  fan-out node's output, show that node's run.
+- `agister runs watch <run-id>` follows a run. Stopping a watch leaves the
+  run going.
+- The run's directory holds `record.json`, `events.jsonl` (its events, in
+  order), `provider.jsonl` (the runtime's raw output) and `artifacts/`.
 
-## Watching
+## Apply a run's changes
 
-- `agister runs list`, `agister runs show <run-id>`, `agister runs watch <run-id>`.
-  Stopping a watch leaves the run going. Interrupting `agister run`
-  cancels the run.
-- Exit codes: 0 completed, 1 failed, 2 interrupted, 3 refused, 4 lost,
-  64 usage or invalid settings, 70 internal error, 130 stopped watching.
-- Runs cost money. `--max-cost <usd>` caps a call. Write one scoped brief
-  per run, and do not loop runs unattended.
+A run of a process with a checkout keeps what the call changed there as
+one patch from the revision:
+`<home>/runs/<run-id>/artifacts/changes.patch` (`~/.agister/runs/...` by
+default). A run that changed nothing records the event `NO_CHANGES` and
+has no patch.
+
+```sh
+git apply <home>/runs/<run-id>/artifacts/changes.patch
+```
+
+Apply it on the revision the run worked on. Then run the repository's
+testing command yourself, and commit.
+
+## Continue a run
+
+```sh
+agister run <process> --continue <run-id> --param <param>=<value>
+```
+
+`--continue` resumes the session of a finished run, by the same agent,
+when the agent and its runtime allow it. Pass the params again. For a
+process with a checkout, launch from the same repository and pin the same
+revision: another one is refused. The session's latest run's
+`changes.patch` is carried into the new checkout, uncommitted, whichever
+run of the session you name. A `NO_CHANGES` run carries nothing. The new
+run's patch is again cumulative from the revision, so apply only the
+latest one. A workflow cannot be continued.
+
+## Exit codes
+
+0 completed, 1 failed, 2 interrupted, 3 refused, 4 lost, 64 usage or
+invalid settings, 70 internal error, 130 stopped watching.
+
+Exit 0 says the run completed, and, for a process with a verification,
+that it passed. What a completed run's output means is yours to read.
 
 ## Rules
 
-- Never weaken, skip or delete a check to make verify pass.
+- Never weaken, skip or delete a check to make verification pass.
 - Running Agister in a repository applies that repository's `.agister/`,
   including the commands its agents run. Review settings you did not write.
-- Do not edit `~/.agister/` to fix one repository. Use the repository's
-  `.agister/`. For a change to home, use `agister install <dir>`, which
-  shows a diff, asks before it writes and backs up what it replaces.
+- Do not edit `<home>` by hand to fix one repository. Use the
+  repository's `.agister/`. For a change to home, use
+  `agister install <dir>`, which shows a diff, asks before it writes and
+  backs up what it replaces.
