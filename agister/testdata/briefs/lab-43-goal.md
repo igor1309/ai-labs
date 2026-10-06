@@ -4,6 +4,8 @@ The issue as filed, then what changed since. The ADR the issue calls ADR-008 is 
 
 Done gates (`agister/AGENTS.md`, confirmed as D-18; these edits accepted by the owner as D-19): this change adds settings fields and changes behaviour a caller relies on, so it updates the caller skill `agister/skills/agister/SKILL.md`, `agister/README.md`, and the settings diagrams `agister/docs/settings-architecture/`. The Pages settings view shows no staleness limit, so it is unchanged.
 
+The owner also asked, in this change (2026-10-06): `agister/AGENTS.md` allows at most 3 review rounds, up from 2, now that the reviewers and the judge know the goal.
+
 ## Context
 
 LAB-41 researched what Agister should do once LAB-9 finds a call stale. Today every staleness limit ends the turn. The research recommends a small per-kind escalation ladder: **resume once with an evidence-bearing recovery message, then end.** A fresh-context retry stays an outer step, as ADR-002 already says. The full findings and sources are in LAB-41's result comment.

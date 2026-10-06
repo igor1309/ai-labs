@@ -41,7 +41,7 @@ still apply.
 - Review a change that adds or edits an ADR with
   `agister run adr_review --param base=<rev> --param candidate=<rev> --param goal=<file>`,
   before the code that follows it; its rulings are acted on the same way.
-- At most 2 review rounds. Deferred work is a backlog issue in the
+- At most 3 review rounds. Deferred work is a backlog issue in the
   Multica project Agister: gap, trigger, done when, for real, observed
   gaps only.
 - A change to what the CLI or the settings offer, such as a command, a
