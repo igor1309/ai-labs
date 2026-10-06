@@ -87,7 +87,7 @@ policies and runtime mappings may use, and the hard limits no policy may
 exceed.</p>
 
 <figure>
-<svg viewBox="0 0 420 604" role="img" aria-labelledby="diagram-title diagram-desc">
+<svg viewBox="0 0 420 620" role="img" aria-labelledby="diagram-title diagram-desc">
   <title id="diagram-title">The settings documents and what they name</title>
   <desc id="diagram-desc">A workflow names processes. A process names an
   agent, a policy, an output schema, a verification, prompts and skills. An
@@ -131,11 +131,11 @@ exceed.</p>
 
   <text class="sub" x="218" y="216" text-anchor="middle">names</text>
   <path class="names" d="M196 224H238" marker-end="url(#head-names)"/>
-  <path class="names" d="M216 224V402"/>
+  <path class="names" d="M216 224V408"/>
   <path class="names" d="M216 270H238" marker-end="url(#head-names)"/>
   <path class="names" d="M216 316H238" marker-end="url(#head-names)"/>
   <path class="names" d="M216 362H238" marker-end="url(#head-names)"/>
-  <path class="names" d="M216 402H238" marker-end="url(#head-names)"/>
+  <path class="names" d="M216 408H238" marker-end="url(#head-names)"/>
 
   <rect class="doc" x="240" y="204" width="164" height="40" rx="8"/>
   <text class="t" x="252" y="223">policy</text>
@@ -153,16 +153,20 @@ exceed.</p>
   <text class="t" x="252" y="361">prompts</text>
   <text class="sub" x="252" y="376">plain text</text>
 
-  <rect class="doc" x="240" y="388" width="164" height="56" rx="8"/>
-  <text class="t" x="252" y="411">skills</text>
-  <text class="sub" x="252" y="429">one SKILL.md each</text>
+  <rect class="doc" x="240" y="388" width="164" height="40" rx="8"/>
+  <text class="t" x="252" y="405">skills</text>
+  <text class="sub" x="252" y="420">one SKILL.md each</text>
+
+  <rect class="doc" x="240" y="436" width="164" height="40" rx="8"/>
+  <text class="t" x="252" y="453">skills</text>
+  <text class="sub" x="252" y="468">one SKILL.md each</text>
 
   <path class="names" d="M118 328V374" marker-end="url(#head-names)"/>
 
   <rect class="doc" x="40" y="376" width="156" height="60" rx="8"/>
   <text class="t" x="52" y="398">agent</text>
   <text class="sub" x="52" y="418">model, effort, session</text>
-  <path class="names" d="M196 428H238" marker-end="url(#head-names)"/>
+  <path class="names" d="M196 424H226V456H238" marker-end="url(#head-names)"/>
 
   <path class="names" d="M118 436V466" marker-end="url(#head-names)"/>
 
@@ -171,14 +175,14 @@ exceed.</p>
   <text class="sub" x="52" y="509">one adapter's efforts</text>
   <text class="sub" x="52" y="526">and primitives</text>
 
-  <rect class="apart" x="240" y="476" width="164" height="116" rx="8"/>
-  <text class="small" x="252" y="493">apart, one of each</text>
-  <rect class="single" x="248" y="502" width="148" height="38" rx="6"/>
-  <text class="t" x="258" y="518">workspace</text>
-  <text class="small" x="258" y="533">default checkout setup</text>
-  <rect class="single" x="248" y="546" width="148" height="38" rx="6"/>
-  <text x="258" y="562"><tspan class="t">blocks</tspan><tspan class="small" dx="6">repo only</tspan></text>
-  <text class="small" x="258" y="577">what the repo refuses</text>
+  <rect class="apart" x="240" y="492" width="164" height="116" rx="8"/>
+  <text class="small" x="252" y="509">apart, one of each</text>
+  <rect class="single" x="248" y="518" width="148" height="38" rx="6"/>
+  <text class="t" x="258" y="534">workspace</text>
+  <text class="small" x="258" y="549">default checkout setup</text>
+  <rect class="single" x="248" y="562" width="148" height="38" rx="6"/>
+  <text x="258" y="578"><tspan class="t">blocks</tspan><tspan class="small" dx="6">repo only</tspan></text>
+  <text class="small" x="258" y="593">what the repo refuses</text>
 </svg>
 <figcaption>Solid arrows name a document; dashed arrows are the service's
 rules: its permission vocabulary and hard limits. Workspace and blocks stand apart.</figcaption>
