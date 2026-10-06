@@ -1123,6 +1123,30 @@ func TestClarityPromptCarriesTheDoneGateException(t *testing.T) {
 	}
 }
 
+// agister/AGENTS.md, which calls the review, says what the goal file names
+// so that the clarity reviewer can apply that exception: the done gates the
+// change touches, and any edit to an agent instruction the owner asked for
+// in the change. Its bullets stand in one paragraph, so each phrase is one
+// only that sentence has. An instruction is held by its short phrases
+// standing in one paragraph, as in
+// TestReviewPromptsCarryTheirCoverageContract. The file is the repository's
+// own, read as it is.
+func TestAgentInstructionsSayWhatTheGoalFileNames(t *testing.T) {
+	t.Parallel()
+	const file = "agister/AGENTS.md"
+	data, err := os.ReadFile(filepath.Join("..", "..", "..", file))
+	if err != nil {
+		t.Fatal(err)
+	}
+	instruction := promptInstruction{"the goal file names the done gates and the agent instruction edits the owner asked for", []string{
+		"The goal file names the done gates the change touches",
+		"any edit to an agent instruction the owner asked for in the change"}}
+	if !carries(string(data), instruction.phrases) {
+		t.Errorf("%s lost the instruction %q: no paragraph has all of %q",
+			file, instruction.name, instruction.phrases)
+	}
+}
+
 // carries holds for phrases that stand in one paragraph, the first or a
 // later one, wrapped across its lines or not; it does not for a missing
 // phrase, for phrases that stand in different paragraphs, and for a phrase
