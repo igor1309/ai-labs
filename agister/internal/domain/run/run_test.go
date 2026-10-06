@@ -136,7 +136,8 @@ func TestRecordWithConstraintsStillReads(t *testing.T) {
 // still reads.
 func TestRecordJSONForAnInPlaceWorktreeIsFixed(t *testing.T) {
 	t.Parallel()
-	record := run.Record{ID: "r", ProcessesEnded: true,
+	ended := true
+	record := run.Record{ID: "r", ProcessesEnded: &ended,
 		InPlace: &run.InPlace{Dir: "/repo/sub", Worktree: "/repo", RepositoryIdentity: "/repo/.git", Revision: "abc", Verify: run.VerifyOnCopy, Content: "tree"}}
 	data, err := json.Marshal(record)
 	if err != nil {
@@ -159,8 +160,59 @@ func TestRecordJSONForAnInPlaceWorktreeIsFixed(t *testing.T) {
 	if err := json.Unmarshal([]byte(`{"id":"run-0","effects":{"checkout":{"repository":"/repo","dir":"/tmp/w"}}}`), &old); err != nil {
 		t.Fatal(err)
 	}
-	if old.InPlace != nil || old.ProcessesEnded || old.Effects == nil || old.Effects.Checkout == nil {
+	if old.InPlace != nil || old.ProcessesEnded != nil || old.Effects == nil || old.Effects.Checkout == nil {
 		t.Fatalf("old record %+v", old)
+	}
+}
+
+// A record says whether its processes are known to have ended, and "not
+// known" is written, apart from a record that says neither: one written
+// before records said so. That one's processes are known to have ended only
+// when its call finished it, not when it is unfinished or a reap finished
+// it (ADR-022 rule 3).
+func TestARecordThatDoesNotSayHasItsProcessesEndedByHowItEnded(t *testing.T) {
+	t.Parallel()
+	at := time.Date(2026, 10, 1, 0, 0, 0, 0, time.UTC)
+	yes, no := true, false
+	completed, failed, reaped := run.Result{Status: run.Completed}, run.Result{Status: run.Failed, Error: run.Fault(run.ClassRuntimeError, "fell over")}, run.AbandonedResult(at)
+	for name, c := range map[string]struct {
+		said     *bool
+		finished bool
+		result   *run.Result
+		json     string // the field as written; none when empty
+		known    bool
+	}{
+		"says ended":                            {said: &yes, finished: true, result: &completed, json: "true", known: true},
+		"says not ended":                        {said: &no, finished: true, result: &failed, json: "false"},
+		"says ended, finished by a reap":        {said: &yes, finished: true, result: &reaped, json: "true", known: true},
+		"says nothing, completed":               {finished: true, result: &completed, known: true},
+		"says nothing, failed":                  {finished: true, result: &failed, known: true},
+		"says nothing, finished by a reap":      {finished: true, result: &reaped},
+		"says nothing, unfinished":              {},
+		"says not ended, unfinished, as a reap": {said: &no, json: "false"},
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			record := run.Record{ID: "r", ProcessesEnded: c.said, Result: c.result}
+			if c.finished {
+				record.FinishedAt = &at
+			}
+			data, err := json.Marshal(record)
+			if err != nil {
+				t.Fatal(err)
+			}
+			var fields map[string]json.RawMessage
+			if err := json.Unmarshal(data, &fields); err != nil || string(fields["processes_ended"]) != c.json {
+				t.Fatalf("record %s, %v, want processes_ended %q", data, err, c.json)
+			}
+			var back run.Record
+			if err := json.Unmarshal(data, &back); err != nil || !reflect.DeepEqual(back.ProcessesEnded, c.said) {
+				t.Fatalf("read back %v, %v, want %v", back.ProcessesEnded, err, c.said)
+			}
+			if back.ProcessesKnownEnded() != c.known {
+				t.Fatalf("processes known to have ended = %v, want %v", back.ProcessesKnownEnded(), c.known)
+			}
+		})
 	}
 }
 

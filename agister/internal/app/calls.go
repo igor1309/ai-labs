@@ -765,7 +765,8 @@ func (c *Calls) execute(ctx context.Context, handle RunHandle, record run.Record
 			}
 		}
 		release = func() error { return nil }
-		record.ProcessesEnded = ended
+		known := ended
+		record.ProcessesEnded = &known
 		now := c.clock.Now()
 		record.FinishedAt = &now
 		result.Status, result.Error = run.Completed, fault
@@ -1039,6 +1040,13 @@ func (c *Calls) execute(ctx context.Context, handle RunHandle, record run.Record
 		Timeout:         res.Effective.Timeout,
 		OutputSchema:    res.Schema,
 		Skills:          skills,
+	}
+	// A call without a checkout has its workspace on record from here: one
+	// killed before its runtime's process is on record too leaves a run a
+	// reap finishes, which takes only runs with effects on record, so they
+	// start empty (ADR-022 rule 3).
+	if record.Effects == nil {
+		record.Effects = &run.Effects{}
 	}
 	_ = handle.Update(record)
 

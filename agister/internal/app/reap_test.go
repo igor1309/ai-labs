@@ -626,8 +626,8 @@ func TestAReapRecordsWhetherTheRunsProcessesEnded(t *testing.T) {
 				t.Fatal(err)
 			}
 			old := r.adopter.handles["old"].wait(t)
-			if old.ProcessesEnded != c.ended || old.FinishedAt == nil {
-				t.Fatalf("processes ended %v, want %v", old.ProcessesEnded, c.ended)
+			if !says(old, c.ended) || old.FinishedAt == nil {
+				t.Fatalf("processes ended %s, want %v", said(old), c.ended)
 			}
 			if len(h.workspaces.discarded) != 0 || old.InPlace == nil || old.Effects.Unreleased != nil {
 				t.Fatalf("discarded %v, in place %+v, effects %+v", h.workspaces.discarded, old.InPlace, old.Effects)

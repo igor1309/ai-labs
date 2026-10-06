@@ -253,12 +253,15 @@ type claim struct {
 // overlapping is (ADR-022 rules 2 and 3), for any run, in-place, in a
 // checkout of its own or in the repository itself: a directory Agister may
 // still remove, which is the checkout of a run that has not finished, a
-// clean copy or an unreleased checkout on record; and every directory of a
-// run that may still write, which is one unfinished or one with a process
-// not known to have ended. A directory overlaps the worktree when it is
-// the worktree, holds it or lies in it, by its canonical path alone: what a
-// removal takes, and where a writer reaches, is everything under a
-// directory. records are every run's.
+// clean copy or an unreleased checkout on record, each with the directory
+// made to hold it, its parent, which is removed with it and with whatever
+// else is there, a repository beside the checkout included; and every
+// directory of a run that may still write, which is one unfinished or one
+// with a process not known to have ended. A writer works in the checkout,
+// not in the directory that holds it. A directory overlaps the worktree
+// when it is the worktree, holds it or lies in it, by its canonical path
+// alone: what a removal takes, and where a writer reaches, is everything
+// under a directory. records are every run's.
 func (b *Borrower) claims(call BorrowCall, key string, records []run.Record) ([]claim, error) {
 	var claims []claim
 	for i := range records {
@@ -274,15 +277,20 @@ func (b *Borrower) claims(call BorrowCall, key string, records []run.Record) ([]
 			dir, removed string
 		}
 		var dirs []recorded
+		// The directory first: a worktree that overlaps it is refused as
+		// that, not as one in its parent.
+		removes := func(made *run.Checkout, what string) {
+			dirs = append(dirs, recorded{made.Dir, what}, recorded{filepath.Dir(made.Dir), "the directory made for " + what})
+		}
 		// A finished run's checkout stays on record, released.
 		if checkout := effects.Checkout; checkout != nil && other.FinishedAt == nil {
-			dirs = append(dirs, recorded{checkout.Dir, "the checkout of run " + other.ID + ", which has not finished"})
+			removes(checkout, "the checkout of run "+other.ID+", which has not finished")
 		}
 		if copied := effects.Copy; copied != nil {
-			dirs = append(dirs, recorded{copied.Dir, "a clean copy run " + other.ID + " still has on record"})
+			removes(copied, "a clean copy run "+other.ID+" still has on record")
 		}
 		if unreleased := effects.Unreleased; unreleased != nil {
-			dirs = append(dirs, recorded{unreleased.Dir, "a checkout run " + other.ID + " could not release"})
+			removes(unreleased, "a checkout run "+other.ID+" could not release")
 		}
 		if other.FinishedAt == nil || len(unended(other)) > 0 {
 			// Where its runtime works, and where its commands run.
@@ -339,7 +347,7 @@ func lies(worktree, dir string) string {
 // unended are the processes a finished run recorded that are not known to
 // have ended, by name.
 func unended(other *run.Record) []unendedProcess {
-	if other.ProcessesEnded || other.Effects == nil {
+	if other.ProcessesKnownEnded() || other.Effects == nil {
 		return nil
 	}
 	var processes []unendedProcess
@@ -360,10 +368,11 @@ type unendedProcess struct {
 // made refuses a worktree that overlaps a directory Agister made and still
 // removes: the checkout of another run that has not finished, which its
 // release or a reap removes, or a clean copy or an unreleased checkout a
-// run still has on record, which a reap removes. The removal takes all that
-// is under the directory, a repository nested in it included: a call lent
-// one would lose its work with it, and nothing of Agister's removes a
-// borrowed worktree or anything in it (ADR-022 rules 2 and 7).
+// run still has on record, which a reap removes, and the directory made
+// for any of them, removed with it. The removal takes all that is under the
+// directory, a repository nested in it included: a call lent one would lose
+// its work with it, and nothing of Agister's removes a borrowed worktree or
+// anything in it (ADR-022 rules 2 and 7).
 func (b *Borrower) made(call BorrowCall, claims []claim) error {
 	for _, held := range claims {
 		if held.removed == "" {

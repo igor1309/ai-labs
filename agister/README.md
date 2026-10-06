@@ -195,18 +195,28 @@ launched from (`in-place`)
 any other call with `--workspace` is refused, and so is a workflow, whose
 nodes never work in-place, with `--workspace` or with a node whose
 process the repository sets to `in-place`. An in-place call holds a lock
-on the worktree for the whole call and is refused before any turn if
-another in-place call holds it, if a run that worked there has not
-finished or left a process that may still write there and cannot be
-ended, if HEAD is not the revision, or if the worktree differs from the
-revision: a staged change, a dirty submodule, an untracked file git does
-not ignore, or a changed tracked file, even one marked
-`assume-unchanged`. Ignored files are allowed. Then `precheck` runs, once,
-with your authority in the worktree; a non-zero exit, a timeout, or a
-change to the content or HEAD refuses the call. `setup` does not run
-in-place; the run records `SETUP_SKIPPED`. `check` validates `precheck`
-and never runs it. Calls with different `--home` values do not share the
-lock.
+on the worktree for the whole call and is refused before any turn if:
+
+- another in-place call holds the worktree;
+- the worktree overlaps a directory Agister may still remove: the
+  checkout of a run that has not finished, a clean copy or an unreleased
+  checkout a run still has on record, or the directory Agister made to
+  hold one of these, which is removed with it;
+- the worktree overlaps a directory another run worked in and may still
+  write in, because the run has not finished or left a process that
+  cannot be ended. The run may be in-place, temporary or one without a
+  checkout;
+- HEAD is not the revision;
+- the worktree differs from the revision: a staged change, a dirty
+  submodule, an untracked file git does not ignore, or a changed tracked
+  file, even one marked `assume-unchanged`. Ignored files are allowed.
+
+A directory overlaps the worktree when it is the worktree, lies inside it
+or contains it. Then `precheck` runs, once, with your authority in the
+worktree; a non-zero exit, a timeout, or a change to the content or HEAD
+refuses the call. `setup` does not run in-place; the run records
+`SETUP_SKIPPED`. `check` validates `precheck` and never runs it. Calls
+with different `--home` values do not share the lock.
 
 An in-place call leaves its changes in the worktree, uncommitted, however
 it ends: nothing is reset, cleaned or removed. Its `changes.patch` is the

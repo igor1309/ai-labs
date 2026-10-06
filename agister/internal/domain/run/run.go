@@ -261,8 +261,10 @@ type Record struct {
 	Effects *Effects `json:"effects,omitempty"`
 	// ProcessesEnded says every process the run recorded (Effects.Process
 	// and Effects.Command) is known to have ended: the call ended them
-	// itself, or a reap did. Unset, a process it recorded may still run.
-	ProcessesEnded bool `json:"processes_ended,omitempty"`
+	// itself, or a reap did. False, a process it recorded may still run.
+	// Nil on records written before it was recorded, which
+	// ProcessesKnownEnded reads.
+	ProcessesEnded *bool `json:"processes_ended,omitempty"`
 	// Turn is the latest turn; with verification, Attempts has every one.
 	Turn     *Turn     `json:"turn,omitempty"`
 	Attempts []Attempt `json:"attempts,omitempty"`
@@ -271,6 +273,18 @@ type Record struct {
 	Workflow *Workflow `json:"workflow,omitempty"`
 	Parent   *Parent   `json:"parent,omitempty"`
 	Result   *Result   `json:"result,omitempty"` // set when finished
+}
+
+// ProcessesKnownEnded says whether every process the run recorded is known
+// to have ended: what ProcessesEnded says, when the record has it. A record
+// written before has it only by how the run ended: a call that finished its
+// run ended its processes first, so they are; a run its call left
+// unfinished, or one a reap finished, says nothing of them.
+func (r Record) ProcessesKnownEnded() bool {
+	if r.ProcessesEnded != nil {
+		return *r.ProcessesEnded
+	}
+	return r.FinishedAt != nil && !reaped(r)
 }
 
 // Effects are what a call leaves outside its record, written down as soon

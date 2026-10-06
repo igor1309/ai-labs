@@ -252,7 +252,7 @@ func (c *Reaper) reap(ctx context.Context, handle ReapHandle, record run.Record,
 		errs = append(errs, fmt.Errorf("recording the reap: %w", err))
 	}
 	if !finished {
-		record.ProcessesEnded = ended
+		record.ProcessesEnded = &ended
 		result := run.AbandonedResult(record.CreatedAt)
 		result.Timing.FinishedAt = now
 		result.Timing.WallMS = now.Sub(record.CreatedAt).Milliseconds()

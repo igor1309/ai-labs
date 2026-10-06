@@ -151,9 +151,14 @@ when:
 
 - another in-place call holds the worktree (`is in use`). Calls on one
   worktree run one at a time; a second is refused, not queued.
-- a run that worked in this worktree has not finished, or left a process
-  that may still write there and that Agister cannot end. It ends the
-  ones it can.
+- the worktree overlaps a directory Agister may still remove (`is not
+  the caller's to lend`): the checkout of a run that has not finished, a
+  clean copy or an unreleased checkout a run still has on record, or the
+  directory Agister made to hold one of these, which is removed with it.
+- the worktree overlaps a directory another run worked in and may still
+  write in: the run has not finished, or left a process that Agister
+  cannot end. It ends the ones it can. The run may be in-place, temporary
+  or one without a checkout.
 - HEAD is not the revision. Pass the commit HEAD is at.
 - the tree is not clean: a staged change, a dirty submodule, an untracked
   file git does not ignore, or a tracked file that differs from the
@@ -161,6 +166,9 @@ when:
   allowed.
 - the `precheck` exits non-zero, times out, or changes the content or
   HEAD (`after the precheck, ...`).
+
+A directory overlaps the worktree when it is the worktree, lies inside it
+or contains it.
 
 `setup` does not run in-place: you prepared the worktree, and the run
 records `SETUP_SKIPPED`.
@@ -249,7 +257,10 @@ that it passed. What a completed run's output means is yours to read.
   before and after the call, but does not confine the agent to it: its
   permissions may still let it write ignored files, `.git` or other
   worktrees, and the patch holds none of those. Do not change the
-  worktree while the call runs.
+  worktree while the call runs. That includes other calls: a process
+  without a checkout works in the repository itself, takes no worktree
+  lock and is not refused while an in-place call runs there, so do not
+  start one in a worktree an in-place call holds.
 - Running Agister in a repository applies that repository's `.agister/`,
   including the commands its agents run. Review settings you did not write.
 - Do not edit `<home>` by hand to fix one repository. Use the

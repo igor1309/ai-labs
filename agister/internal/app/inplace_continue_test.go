@@ -34,7 +34,7 @@ func workedInPlace(h *harness, id, continues string, created, finished int, cont
 		Request:   run.Request{Process: "p", Continue: continues, Cwd: "/repo"},
 		CreatedAt: at(created), FinishedAt: &end, Workspace: "/repo",
 		InPlace:        &run.InPlace{Dir: "/repo", Worktree: "/repo", RepositoryIdentity: "/repo", Revision: "sha-HEAD", Content: content},
-		ProcessesEnded: true,
+		ProcessesEnded: known(true),
 		Turn:           &run.Turn{Status: run.Failed, Error: run.Fault(run.ClassRateLimited, "429"), ProviderSessionID: "prov-0"},
 		Result: &run.Result{Status: run.Failed, Error: run.Fault(run.ClassRateLimited, "429"),
 			Session: &run.Session{ProviderSessionID: "prov-0", Continues: continues}},

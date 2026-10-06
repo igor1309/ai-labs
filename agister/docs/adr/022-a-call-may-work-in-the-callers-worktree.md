@@ -77,9 +77,31 @@ refused.
 The lock ends with the CLI that holds it. A runtime process, or a
 verification command, that a killed CLI left behind can still write. A
 reap (ADR-001 invariant 11) can finish such a run without ending its
-process, because a reap step may fail. So, under the lock, a call is also
-refused while a run that records the same worktree may still have a
-writer:
+process, because a reap step may fail. And Agister removes the
+directories it made: a checkout, a clean copy, and with each the
+directory made to hold it.
+
+So, under the lock, a call is also refused while the worktree overlaps a
+directory that another run has on record, and that the run may still
+write in or Agister may still remove. The run may be of any kind:
+in-place, temporary, or one without a checkout, which works in the
+repository itself. A directory overlaps the worktree when it is the
+worktree, lies inside it or contains it, by their canonical paths.
+
+Agister may still remove:
+
+- the checkout of a run that has not finished;
+- a clean copy, or a checkout that could not be released, that a run
+  still has on record;
+- the cleanup parent of any of these: the directory Agister made to hold
+  it, which is removed with it and with everything else in it.
+
+A worktree that overlaps one of these is refused first, and no process is
+ended for it.
+
+A run may still write in the directories it worked in, which are its
+workspace, the worktree it borrowed, its checkout and its clean copy, but
+not their cleanup parents, when:
 
 - the run is unfinished; or
 - a process the run recorded is not known to have ended. The call asks,
@@ -88,7 +110,10 @@ writer:
   call.
 
 The run's record says whether its processes are known to have ended, so
-a call does not have to ask again about runs that ended normally.
+a call does not have to ask again about runs that ended normally. A
+record made before this ADR does not say. Its processes are taken as
+ended when its call finished the run, and as not known when the run is
+unfinished or a reap finished it.
 
 Calls with different `--home` values do not coordinate (as in ADR-008).
 
@@ -178,13 +203,21 @@ ignored files, `.git`, symlink targets or other worktrees, and the patch
 holds none of those. The caller must not change the worktree while the
 call runs.
 
+The coordination of rule 3 is one-sided. An in-place call checks for
+every other run. A call of a process without a checkout, which works in
+the repository itself, takes no worktree lock and does not check for an
+in-place call already running there: Agister starts it in a worktree an
+in-place call holds. Not starting one there is the caller's part.
+
 ## Amendments to earlier ADRs
 
 - ADR-001 rule 11: a borrowed worktree is not an effect of the call; the
   call owns only its lock, its runtime process and its record.
-- ADR-001 rule 12: a call may read other runs' records, finished or not,
-  to find whether one may still write in the worktree, and may end a
-  process such a run recorded (rule 3).
+- ADR-001 rule 12: a call may read the records of other runs of any
+  kind, finished or not, to find whether one has on record a directory
+  that overlaps the worktree, and that the run may still write in or
+  Agister may still remove. It may end a process such a run recorded
+  (rule 3).
 - ADR-002 rule 2: a call may verify in the caller's worktree that it
   holds under rule 3, when the verification declares `where: workspace`.
 - ADR-005 rule 1: except as rule 6 says.

@@ -8,6 +8,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/igor1309/ai-labs/agister/internal/app"
 	"github.com/igor1309/ai-labs/agister/internal/contract"
@@ -100,6 +101,34 @@ func TestAnInPlaceCallVerifiesInTheWorktreeWhenItsVerificationSaysSo(t *testing.
 	if h.locks.holds("/repo") {
 		t.Fatal("the worktree's lock was kept")
 	}
+}
+
+// ADR-002 rule 5: a command run in the worktree gets what is left of the
+// call's time when that is less than its own timeout, so it does not
+// outlast the call: of a 60-second call whose turn took 50, a command with
+// a 30-second timeout gets 10.
+func TestACommandInTheWorktreeGetsOnlyTheCallsRemainingTime(t *testing.T) {
+	t.Parallel()
+	h := newHarness()
+	clock := &settableClock{now: time.Date(2026, 9, 28, 12, 0, 0, 0, time.UTC)}
+	h.clock = clock
+	h.calls = h.callsOn(h.defs)
+	inTheWorktree(h)
+	withWorkspace(h, inPlaceWorkspace)
+	changedByTheTurn(h)
+	rebuilding(h, "sha-HEAD")
+	h.defs.docs[definition.KindProcess]["p"] = strings.Replace(h.defs.docs[definition.KindProcess]["p"], "timeout: 10m", "timeout: 30s", 1)
+	h.runner.during = func(app.TurnRequest) { clock.advance(50 * time.Second) }
+	record := h.call(t, contract.CallRequest{Timeout: "60s"})
+
+	if record.Result.Status != run.Completed {
+		t.Fatalf("result %+v: %s", record.Result, message(record))
+	}
+	runs := h.commands.runs()
+	if len(runs) != 1 || runs[0].Dir != "/repo" || runs[0].Timeout != 10*time.Second {
+		t.Fatalf("command runs %+v, want one in /repo with 10s", runs)
+	}
+	noCopy(t, h)
 }
 
 // What the worktree holds besides its content, such as the build output
