@@ -124,8 +124,8 @@
 <figure>
 <svg viewBox="0 0 680 596" role="img" aria-labelledby="diagram-title diagram-desc">
   <title id="diagram-title">The settings documents and what they name</title>
-  <desc id="diagram-desc">agister run starts either a workflow or a process,
-  and every run is under the service. A workflow names processes. A process
+  <desc id="diagram-desc">The name given to agister run picks one workflow or one
+  process, and the service applies to every run. A workflow names processes. A process
   names its agent, output schema, verification, prompts, skills and policy.
   An agent names its own skills and a runtime mapping. A policy uses only the
   service's permissions, within its limits; a runtime mapping grants only the
@@ -147,9 +147,10 @@
   <text class="cmd" x="94" y="48.5" text-anchor="middle">agister run &lt;name&gt;</text>
   <path class="starts" d="M184 44H218" marker-end="url(#head-starts)"/>
   <path class="starts" d="M110 66V172H218" marker-end="url(#head-starts)"/>
-  <text class="run-label" x="118" y="164">or</text>
+  <text class="run-label" x="118" y="106">&lt;name&gt; picks</text>
+  <text class="run-label" x="118" y="121">one</text>
   <path class="starts" d="M50 66V536H218" marker-end="url(#head-starts)"/>
-  <text class="run-label" x="60" y="526">always under</text>
+  <text class="run-label" x="60" y="526">always applies</text>
 
   <g class="kind workflow">
     <rect class="card" x="220" y="12" width="180" height="64" rx="2"/>
@@ -239,13 +240,13 @@
 
 <div class="text">
 <p class="intro">Agister's settings are documents that name each other by
-name. <code>agister run &lt;name&gt;</code> starts either a
-<span class="k-workflow">workflow</span> or a <span class="k-process">process</span>;
+name. In <code>agister run &lt;name&gt;</code> the name picks one
+<span class="k-workflow">workflow</span> or one <span class="k-process">process</span>;
 nothing else is run. A workflow names processes. A process names its
 <span class="k-agent">agent</span>, output schema, verification, prompts,
 skills and policy. An agent names its <span class="k-runtime">runtime mapping</span>
-and its own skills. Every run is under the service, which no document
-names.</p>
+and its own skills. The service is never picked: it has no name, and it
+applies to every run.</p>
 
 <p>A box holds the document's own fields; an arrow is a document it names.
 Every document can come from the repo's <code>.agister</code> or from home;
@@ -301,7 +302,7 @@ permissions it grants.</p>
 <p>The hard limits (max timeout, attempts, cost, verify attempts) and the
 permission vocabulary, including which permissions write and which reach
 Agister's state; those are never granted. No document names the service;
-every run is under it. A policy uses only its permissions, within its
+it applies to every run. A policy uses only its permissions, within its
 limits; a runtime mapping grants only its permissions.</p>
 
 <h2>Where permissions meet primitives</h2>
