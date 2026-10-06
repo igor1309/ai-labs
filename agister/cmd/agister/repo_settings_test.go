@@ -331,6 +331,79 @@ func TestADRReviewCollectsTheADRReview(t *testing.T) {
 	}
 }
 
+// Each review workflow of the repository refuses a call without a goal
+// (ADR-023 rule 1): the param is required, so the call ends refused, naming
+// it, and no node starts.
+func TestReviewWorkflowsRefuseACallWithoutAGoal(t *testing.T) {
+	t.Parallel()
+	_, repo, home := onFakeRuntimes(t)
+	for _, workflow := range []string{"code_review", "adr_review"} {
+		before := map[string]bool{}
+		for _, entry := range readRuns(t, home) {
+			before[entry.Name()] = true
+		}
+		r := agister(t, home, repo, "run", workflow, "--param", "base=main", "--param", "candidate=feature")
+		if want := "workflow " + workflow + " is missing params: goal"; r.code != cli.ExitRefused || !strings.Contains(r.stderr, want) {
+			t.Fatalf("%s without a goal: exit %d, stderr %q, want refused with %q", workflow, r.code, r.stderr, want)
+		}
+		for _, entry := range readRuns(t, home) {
+			if before[entry.Name()] {
+				continue
+			}
+			var record map[string]any
+			readJSON(t, filepath.Join(home, "runs", entry.Name(), "record.json"), &record)
+			if record["parent"] != nil {
+				t.Fatalf("%s without a goal started node %v (run %v)", workflow, record["parent"], record["id"])
+			}
+		}
+	}
+}
+
+// Each review workflow of the repository resolves the goal file once, as
+// its own input, identified by its digest, and every review node receives
+// its text (ADR-023 rule 1): as the node's input goal, and in the prompt
+// its runtime is given. The judge does not (ADR-003 rule 4): its call takes
+// no param, has no input goal, and its prompt holds no line of the goal.
+func TestReviewNodesReceiveTheGoalAndTheJudgeDoesNot(t *testing.T) {
+	t.Parallel()
+	_, repo, home := onFakeRuntimes(t)
+	sum := sha256.Sum256([]byte(reviewGoal))
+	digest := "sha256:" + hex.EncodeToString(sum[:])
+	for _, workflow := range []string{"code_review", "adr_review"} {
+		reviews, records := judgedReviews(t, home, repo, workflow)
+		if given := inputOf(t, records[workflow], "goal"); given["source"] != "file" || given["identity"] != digest {
+			t.Fatalf("%s's goal = %v, want the goal file (%s)", workflow, given, digest)
+		}
+		for node, review := range reviews {
+			record := records[strings.TrimSuffix(review, " completed")]
+			if record == nil {
+				t.Fatalf("%s: no run of node %s (%s)", workflow, node, review)
+			}
+			if given := inputOf(t, record, "goal"); given["value"] != reviewGoal {
+				t.Fatalf("%s: node %s's goal = %v, want the goal file's text %q", workflow, node, given, reviewGoal)
+			}
+			if prompt := runtimeStart(t, home, record["id"].(string)).Prompt; !strings.Contains(prompt, "## goal\n") || !strings.Contains(prompt, reviewGoal) {
+				t.Fatalf("%s: node %s's prompt lacks the goal:\n%s", workflow, node, prompt)
+			}
+		}
+		judge := records["review_judge"]
+		if params, _ := judge["request"].(map[string]any)["params"].(map[string]any); len(params) != 0 {
+			t.Fatalf("%s: the judge's call took params %v", workflow, params)
+		}
+		for _, input := range judge["inputs"].([]any) {
+			if name := input.(map[string]any)["name"]; name != "reviews" && name != "judge_prompt" {
+				t.Fatalf("%s: the judge was given input %v, want only reviews and judge_prompt", workflow, name)
+			}
+		}
+		prompt := runtimeStart(t, home, judge["id"].(string)).Prompt
+		for _, line := range strings.Split(strings.TrimSpace(reviewGoal), "\n") {
+			if strings.Contains(prompt, line) {
+				t.Fatalf("%s: the judge's prompt holds the goal's line %q:\n%s", workflow, line, prompt)
+			}
+		}
+	}
+}
+
 // The advisor answers a question file on the Codex agent, a model family
 // other than the judge's, in a checkout of the revision, and is given the
 // question and its standing prompt, prompts/advisor.md. Its output is of
@@ -566,7 +639,7 @@ func TestReviewResultSchemaRequiresTheCaseForValue(t *testing.T) {
 	}
 	const finding = `"severity":"major","file":"a.go","line":4,"title":"A lost error",` +
 		`"detail":"Write drops the error; return it.",` +
-		`"evidence":{"case":"a full disk","trace":["a.go:4 drops the error"],"introduced_by_change":true}`
+		`"evidence":{"case":"a full disk","trace":["a.go:4 drops the error"],"scope":"change"}`
 	const requirement = `"requirement":"ADR-001 rule 4: a failure is reported"`
 	const consequence = `"consequence":"On a full disk the run records success."`
 	const rationale = `"severity_rationale":"A wrong record, not a crash: major, not blocker."`
@@ -607,6 +680,59 @@ func TestReviewResultSchemaRequiresTheCaseForValue(t *testing.T) {
 		{"an unexpected field in the fix cost", review(requirement, consequence, rationale,
 			strings.Replace(fixCostWithout, `}`, `,"hours":3}`, 1)), false},
 		{"a scalar fix cost", review(requirement, consequence, rationale, `"fix_cost":"small"`), false},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
+			err := (schema.Validator{}).Validate(document, []byte(c.output))
+			if c.valid && err != nil {
+				t.Fatalf("%s refused: %v", c.output, err)
+			}
+			if !c.valid && err == nil {
+				t.Fatalf("%s accepted", c.output)
+			}
+		})
+	}
+}
+
+// The repository's review result schema accepts a finding whose evidence
+// states its scope (ADR-023 rule 3) as change, goal or outside. It refuses
+// evidence without a scope, a scope out of those three, one that is not a
+// string, and the introduced_by_change it replaces, in its place or beside
+// it. The payloads are fixed, not built from the schema.
+func TestReviewResultSchemaRequiresTheScope(t *testing.T) {
+	t.Parallel()
+	root, err := filepath.Abs(filepath.Join("..", "..", ".."))
+	if err != nil {
+		t.Fatal(err)
+	}
+	document, err := os.ReadFile(filepath.Join(root, ".agister", "schemas", "review-result.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	review := func(scope string) string {
+		return `{"verdict":"request_changes","summary":"One lost error.","findings":[{` +
+			`"severity":"major","file":"a.go","line":4,"title":"A lost error",` +
+			`"detail":"Write drops the error; return it.",` +
+			`"evidence":{"case":"a full disk","trace":["a.go:4 drops the error"]` + scope + `},` +
+			`"requirement":"The goal, Done when: \"a failed write is reported\"",` +
+			`"consequence":"On a full disk the run records success.",` +
+			`"severity_rationale":"A wrong record, not a crash: major, not blocker.",` +
+			`"fix_cost":{"size":"small","size_basis":"a.go","change_risk":"contained","change_risk_basis":"none"}` +
+			`}],"coverage":[{"item":"1. paths","status":"finding","detail":"1"}]}`
+	}
+	cases := []struct {
+		name, output string
+		valid        bool
+	}{
+		{"a finding in the change", review(`,"scope":"change"`), true},
+		{"a finding that stops the goal", review(`,"scope":"goal"`), true},
+		{"a finding outside both", review(`,"scope":"outside"`), true},
+		{"no scope", review(``), false},
+		{"a scope out of the three", review(`,"scope":"module"`), false},
+		{"a scope that is not a string", review(`,"scope":true`), false},
+		{"introduced_by_change in place of the scope", review(`,"introduced_by_change":true`), false},
+		{"introduced_by_change beside the scope", review(`,"scope":"change","introduced_by_change":true`), false},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
@@ -874,6 +1000,86 @@ func TestReviewPromptsCarryTheCaseForValue(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+// Each review prompt of the repository carries its part of ADR-023. A
+// reviewer's prompt has the instruction to look also for what stops the
+// goal: such a finding has scope goal, a concrete scenario the goal
+// requires, and the goal's condition quoted in its requirement with its
+// qualifications and its place in the goal; the goal's claims are checked,
+// and its scope exclusions are the owner's. The tests prompt adds that a
+// missing test counts only with the goal behaviour the existing assertions
+// let break, and the adversarial one that the goal widens the changed
+// paths. The ADR prompt's opening keeps a change that touches no ADR from
+// findings of scope change only: its goal can still raise a goal finding.
+// The judge's has the scope rule: goal ruled as change, outside deferred,
+// an unsupported scope rejected, a goal finding a scope exclusion bars left
+// to the owner, and an older collection's introduced_by_change read as a
+// scope; and that a missing test is a goal finding too, with the goal
+// behaviour the existing assertions let break. Each review process's
+// instruction says what its input goal is. An instruction is held by its
+// short phrases standing in one paragraph, as in
+// TestReviewPromptsCarryTheirCoverageContract. The files are the
+// repository's own, read as they are.
+func TestReviewPromptsCarryTheGoal(t *testing.T) {
+	t.Parallel()
+	root, err := filepath.Abs(filepath.Join("..", "..", ".."))
+	if err != nil {
+		t.Fatal(err)
+	}
+	look := promptInstruction{"look also for what stops the goal, within its bounds",
+		[]string{"the goal of the change", "Look also for what stops the goal", "scope `goal`",
+			"a concrete scenario the goal requires", "`requirement`", "every qualification it carries",
+			"where in the goal it stands", "are claims you check", "scope exclusions", "are the owner's", "you cannot override it"}}
+	cases := []struct {
+		prompt       string
+		instructions []promptInstruction
+	}{
+		{"code-review-tests.md", []promptInstruction{look,
+			{"a missing test counts only with the goal behaviour the existing assertions let break", []string{
+				"A missing test", "a specific goal behaviour", "existing assertions let break"}}}},
+		{"code-review-adversarial.md", []promptInstruction{look,
+			{"the goal widens the changed paths", []string{
+				"every changed path", "The goal widens that", "each scenario the goal requires", "changed or not"}}}},
+		{"code-review-architecture.md", []promptInstruction{look}},
+		{"code-review-clarity.md", []promptInstruction{look}},
+		{"code-review-adr.md", []promptInstruction{look,
+			{"a change that touches no ADR has no change finding; its goal can still raise a goal finding", []string{
+				"A change that touches no ADR", "no finding of scope `change`", "can still raise a `goal` finding"}}}},
+		{"code-review-judge.md", []promptInstruction{
+			{"a missing test is a goal finding with the goal behaviour the existing assertions let break", []string{
+				"A missing test is a `goal` finding too", "the code is correct", "a specific goal behaviour",
+				"existing assertions let break", "every assertion still passes"}},
+			{"a finding's scope decides its ruling", []string{
+				"`evidence.scope`", "Rule a `goal` finding as you rule a `change` one", "An `outside` finding is `defer`",
+				"You read no goal", "is rejected like any other", "a scope exclusion of the goal bars", "is `owner`",
+				"`introduced_by_change`", "read true as `change` and false as `outside`"}},
+			{"fix, waive and owner are for scope change or goal", []string{
+				"for an item whose evidence holds and that lies in the change or stops its goal", "scope `change` or `goal`"}},
+		}},
+	}
+	for _, c := range cases {
+		t.Run(c.prompt, func(t *testing.T) {
+			t.Parallel()
+			data, err := os.ReadFile(filepath.Join(root, "prompts", c.prompt))
+			if err != nil {
+				t.Fatal(err)
+			}
+			for _, instruction := range c.instructions {
+				if !carries(string(data), instruction.phrases) {
+					t.Errorf("prompts/%s lost the instruction %q: no paragraph has all of %q",
+						c.prompt, instruction.name, instruction.phrases)
+				}
+			}
+		})
+	}
+	says := []string{"The input goal says what the change is for", "are claims you check",
+		"Its scope exclusions are the owner's", "you cannot override it", "its scope"}
+	for _, name := range []string{"adr_review_codex", "adversarial_review_codex", "architecture_review_codex", "clarity_review_codex", "tests_review_codex"} {
+		if instruction := parseProcess(t, root, name).Instruction; !carries(instruction, says) {
+			t.Errorf("process %s's instruction does not say what its input goal is: it lacks one of %q:\n%s", name, says, instruction)
+		}
 	}
 }
 
@@ -1267,12 +1473,20 @@ func TestImplementersCanRunWithoutTheGoPrompts(t *testing.T) {
 	}
 }
 
-// judgedReviews runs a review workflow to completion and is its judge's
-// collection, as each node's process and status by node, and the nodes'
-// runs by process. It fails unless the judge received that collection.
+// reviewGoal is the text of the goal file judgedReviews gives a review
+// workflow: no prompt, settings document or fixture holds it.
+const reviewGoal = "Goal: a failed write is reported to the caller.\nOut of scope: the retry policy.\n"
+
+// judgedReviews runs a review workflow to completion, with a goal file of
+// its own that holds reviewGoal, and is its judge's collection, as each
+// node's process and status by node, and the nodes' runs by process, the
+// workflow's own run under the workflow's name. It fails unless the judge
+// received that collection.
 func judgedReviews(t *testing.T, home, repo, workflow string) (reviews map[string]string, records map[string]map[string]any) {
 	t.Helper()
-	created, _ := runRecorded(t, home, repo, []string{"run", workflow, "--param", "base=main", "--param", "candidate=feature"})
+	goal := filepath.Join(tempDir(t), "goal.md")
+	write(t, goal, reviewGoal)
+	created, _ := runRecorded(t, home, repo, []string{"run", workflow, "--param", "base=main", "--param", "candidate=feature", "--param", "goal=" + goal})
 	records = map[string]map[string]any{}
 	var flow map[string]any
 	var flowDir string
@@ -1288,6 +1502,7 @@ func judgedReviews(t *testing.T, home, repo, workflow string) (reviews map[strin
 	if flow == nil || flow["result"].(map[string]any)["status"] != "completed" {
 		t.Fatalf("workflow run = %v among %v", flow, created)
 	}
+	records[workflow] = flow
 
 	artifact := flow["workflow"].(map[string]any)["collection"].(map[string]any)
 	data, err := os.ReadFile(filepath.Join(flowDir, artifact["path"].(string)))

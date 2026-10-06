@@ -3,7 +3,9 @@
 # then the judge's rulings on them. The judge starts once every review ended,
 # if at least one completed (ADR-004), and receives each review's outcome and,
 # if it completed, its recorded output as its collection, and nothing else.
-#   agister run code_review --param base=<rev> --param candidate=<rev>
+# Every review is also given the goal: the file that says what the change is
+# for, such as its issue or brief (ADR-023 rule 1). The judge is not.
+#   agister run code_review --param base=<rev> --param candidate=<rev> --param goal=<file>
 schema: agister.workflow/v1alpha1
 name: code_review
 
@@ -13,10 +15,14 @@ input:
   params:
     base: {default: origin/agister}
     candidate: {default: HEAD}
-  # Resolved once: every review gets the same two commits.
+    # Required: a call without it is refused.
+    goal: {}
+  # Resolved once: every review gets the same two commits and, as its param
+  # goal, the same text of the goal file.
   values:
     base: {source: git.revision, rev: "${param.base}"}
     candidate: {source: git.revision, rev: "${param.candidate}"}
+    goal: {source: file, path: "${param.goal}"}
 
 fan_out:
   - {node: architecture, uses: process:architecture_review_codex}

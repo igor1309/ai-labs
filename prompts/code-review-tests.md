@@ -1,9 +1,9 @@
 ---
-date: 2026-10-05
+date: 2026-10-06
 author: Igor Malyarov
 model: claude-opus-5-5
 name: Code review — tests
-version: 0.1.2
+version: 0.1.3
 type: prompt
 ---
 
@@ -19,7 +19,10 @@ Every finding names its concrete case, one of:
 * a specific product change the tests would still pass: what to remove or
   alter (path:line), and which assertions stay green;
 * for timing, ordering or shared state: the interleaving, load condition
-  or leftover state that flips the result, traced path:line in the code.
+  or leftover state that flips the result, traced path:line in the code;
+* for a test the goal needs and the tests lack: the specific goal
+  behaviour, and the product change that breaks it while the existing
+  assertions stay green.
 
 The rules below say where to look; a rule broken is not a finding by
 itself. Ask for a new seam only together with the case that needs it. A
@@ -32,11 +35,25 @@ Every finding presents its case for value before it is emitted: the
 `severity_rationale` (why this severity and not the one below), and the
 `fix_cost` as `review-result.json` bands it, each band with its basis.
 
+You are given the goal of the change: what it is for. Look also for what
+stops the goal, in code the change did not touch too. Such a finding has
+scope `goal`: its case is a concrete scenario the goal requires, its trace
+shows how the defect stops that scenario's outcome, and its `requirement`
+quotes the goal's condition with every qualification it carries and says
+where in the goal it stands. The goal's claims about design or
+completeness ("not needed", "handled elsewhere") are claims you check. Its
+scope exclusions ("out of scope") are the owner's: you may show that one
+stops the goal, quoting it in the finding, but you cannot override it. A missing test
+counts as stopping the goal only with a specific goal behaviour that the
+existing assertions let break.
+
 Definition of done:
 
 1. Each changed behaviour has a test that fails when the behaviour is
    reverted. Name any fix or guard with no such test; the revert is its
-   case.
+   case. Each behaviour the goal requires has one too, in tests the change
+   did not touch or in new ones; the case is the goal behaviour the
+   existing assertions let break.
 2. Proof rests on normal tests only: deterministic, cheap, rerunnable. Look
    for a test's claim that rests on mutation or revert checks (plants,
    mutation specs, reverting by hand), and for a behaviour no normal test
@@ -112,7 +129,7 @@ Definition of done:
     the product, the finding is the product's missing seam (the state should
     be passed in), not the tests' cleanup; cleanups only hide it.
 
-Stop once the tests prove the change.
+Stop once the tests prove the change and the behaviour its goal requires.
 
 Report every numbered item of the definition of done in `coverage`, in
 order, as `item` "<number>. <short name>", with its status: `checked` (what
