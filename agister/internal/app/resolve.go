@@ -43,6 +43,11 @@ type resolution struct {
 	plan      enforce.Plan
 	// setup is the setup the call's checkout runs (ADR-012); nil when none.
 	setup *resolvedSetup
+	// inPlace says the call works in the caller's worktree (ADR-022 rule 1),
+	// as the caller or the workspace settings ask; precheck gates it there,
+	// nil when none.
+	inPlace  bool
+	precheck *resolvedSetup
 }
 
 // absentInput is an optional prompt input whose prompt neither layer has
@@ -194,6 +199,9 @@ type overrides struct {
 	maxCostUSD *float64
 	// A workflow defers only a missing named verification to its node.
 	deferMissingVerify bool
+	// workspace is the workspace mode the caller asked for (ADR-022 rule
+	// 1); empty: the workspace settings'.
+	workspace string
 }
 
 // resolve resolves the process named processName. A refused one's
@@ -276,7 +284,7 @@ func (r *Resolver) resolveCall(ctx context.Context, processName, agentOverride s
 	if res.process, err = definition.ParseProcess(doc); err != nil {
 		return res, parsed(err)
 	}
-	if err := r.resolveSetup(ctx, res, load, parsed); err != nil {
+	if err := r.resolveSetup(ctx, res, caller.workspace, load, parsed); err != nil {
 		return res, err
 	}
 	if res.process.Policy != "" {
@@ -463,12 +471,22 @@ func (r *Resolver) resolveCall(ctx context.Context, processName, agentOverride s
 }
 
 // resolveSetup fixes the setup a call's checkout runs: the process's own,
-// or the workspace settings' default, read only when it applies, so the
-// call's definitions name the document its setup came from (ADR-012).
-func (r *Resolver) resolveSetup(ctx context.Context, res *resolution, load func(definition.Kind, string) (definition.Document, error), parsed func(error) error) error {
+// or the workspace settings' default (ADR-012), and where the call works:
+// in a checkout of its own or, as the caller's mode or else the settings
+// ask, in the caller's worktree, with the settings' precheck (ADR-022). The
+// workspace settings are read for every process with a checkout, so the
+// call's definitions name the document they came from; a process's own
+// setup replaces only theirs.
+func (r *Resolver) resolveSetup(ctx context.Context, res *resolution, mode string, load func(definition.Kind, string) (definition.Document, error), parsed func(error) error) error {
 	process := res.process
+	switch {
+	case mode != "" && mode != definition.ModeInPlace && mode != definition.ModeTemporary:
+		return refuse("workspace mode %q: must be %q or %q", mode, definition.ModeInPlace, definition.ModeTemporary)
+	case mode != "" && process.Checkout == "":
+		return refuse("process %s works in the repository: it declares no workspace.checkout, so it takes no workspace mode (%s)", process.Name, mode)
+	}
 	var workspace *definition.Workspace
-	if process.Checkout != "" && process.Setup == nil {
+	if process.Checkout != "" {
 		names, err := r.definitions.List(ctx, definition.KindWorkspace)
 		if err != nil {
 			return refuse("workspace settings: %v", err)
@@ -484,6 +502,10 @@ func (r *Resolver) resolveSetup(ctx context.Context, res *resolution, load func(
 			}
 			workspace = &parsedWorkspace
 		}
+	}
+	res.inPlace = process.Checkout != "" && (mode == definition.ModeInPlace || mode == "" && workspace.InPlace())
+	if res.inPlace && workspace != nil && workspace.Precheck != nil {
+		res.precheck = &resolvedSetup{Setup: *workspace.Precheck, from: run.SetupFromWorkspace, path: workspace.Source.Path}
 	}
 	setup, fromWorkspace := process.EffectiveSetup(workspace)
 	switch {
@@ -579,8 +601,14 @@ func (r *Resolver) workflow(ctx context.Context, name string) (*workflowResoluti
 				continue
 			}
 			seen[node.Process] = true
-			if _, problem := r.resolve(ctx, node.Process, "", overrides{deferMissingVerify: true}); problem != nil {
+			resolved, problem := r.resolve(ctx, node.Process, "", overrides{deferMissingVerify: true})
+			switch {
+			case problem != nil:
 				problems = append(problems, "workflow "+name+" uses "+strings.Replace(problem.Error(), " uses ", ", which uses ", 1))
+			case resolved.inPlace:
+				// A workflow's nodes never work in the caller's worktree
+				// (ADR-022 rule 1).
+				problems = append(problems, fmt.Sprintf("workflow %s uses process %s, which works in-place as the workspace settings say (mode: %s), and a workflow's nodes never do", name, node.Process, definition.ModeInPlace))
 			}
 		}
 		if len(problems) > 0 {

@@ -40,6 +40,7 @@ const (
 	ClassRuntimeUnavailable Class = "runtime_unavailable" // the runtime could not be started
 	ClassInternal           Class = "internal"            // Agister's own failure
 	ClassSetupFailed        Class = "setup_failed"        // the checkout's setup command failed (ADR-012)
+	ClassCommitted          Class = "committed"           // the agent committed in the caller's worktree (ADR-022 rule 7)
 	// interrupted
 	ClassTimeout   Class = "timeout"
 	ClassCancelled Class = "cancelled"
@@ -243,13 +244,25 @@ type Record struct {
 	Verify        *Verify          `json:"verify,omitempty"`
 	// Setup is the setup command the call's checkout runs (ADR-012), as
 	// resolved; SetupRun is its one run, once it ran.
-	Setup     *Setup      `json:"setup,omitempty"`
-	SetupRun  *CommandRun `json:"setup_run,omitempty"`
-	Runtime   *Runtime    `json:"runtime,omitempty"`
-	Plan      *Plan       `json:"plan,omitempty"`
-	Inputs    []Input     `json:"inputs,omitempty"`
-	Workspace string      `json:"workspace,omitempty"`
-	Effects   *Effects    `json:"effects,omitempty"`
+	Setup    *Setup      `json:"setup,omitempty"`
+	SetupRun *CommandRun `json:"setup_run,omitempty"`
+	// Precheck is the precheck that gates an in-place call (ADR-022 rule 5),
+	// as resolved; PrecheckRun is its one run, once it ran.
+	Precheck    *Precheck   `json:"precheck,omitempty"`
+	PrecheckRun *CommandRun `json:"precheck_run,omitempty"`
+	Runtime     *Runtime    `json:"runtime,omitempty"`
+	Plan        *Plan       `json:"plan,omitempty"`
+	Inputs      []Input     `json:"inputs,omitempty"`
+	Workspace   string      `json:"workspace,omitempty"`
+	// InPlace is the caller's worktree an in-place call borrowed (ADR-022
+	// rule 2). It is not an effect: no release or reap reads it, and nothing
+	// of Agister's removes it. Unset for any other call.
+	InPlace *InPlace `json:"in_place,omitempty"`
+	Effects *Effects `json:"effects,omitempty"`
+	// ProcessesEnded says every process the run recorded (Effects.Process
+	// and Effects.Command) is known to have ended: the call ended them
+	// itself, or a reap did. Unset, a process it recorded may still run.
+	ProcessesEnded bool `json:"processes_ended,omitempty"`
 	// Turn is the latest turn; with verification, Attempts has every one.
 	Turn     *Turn     `json:"turn,omitempty"`
 	Attempts []Attempt `json:"attempts,omitempty"`
@@ -291,6 +304,29 @@ type Checkout struct {
 	Revision           string `json:"revision,omitempty"`
 }
 
+// InPlace is the caller's worktree a call worked in (ADR-022 rule 2): its
+// directory, its identity, the repository, the revision it started from and
+// how the call verifies.
+type InPlace struct {
+	Dir string `json:"dir"`
+	// Worktree is the worktree's canonical path, symlinks resolved: the key
+	// of its lock, by which runs in one worktree are found.
+	Worktree string `json:"worktree"`
+	// RepositoryIdentity is the canonical Git common directory.
+	RepositoryIdentity string `json:"repository_identity"`
+	Revision           string `json:"revision"`
+	// Verify is where the call's verification runs (ADR-022 rule 6):
+	// VerifyOnCopy; empty when the call verifies nothing.
+	Verify string `json:"verify,omitempty"`
+	// Content names the worktree's content the call's changes.patch was
+	// captured from (ADR-022 rule 7); empty until then, and when the
+	// capture failed.
+	Content string `json:"content,omitempty"`
+}
+
+// VerifyOnCopy: verification runs on a clean copy (ADR-005).
+const VerifyOnCopy = "copy"
+
 // Process is the runtime's process as an opaque reference, made and read
 // only by the runtime adapter that started it. Records of v1alpha2 carry no
 // effects, so the reaper never lists them and what such a run left is not
@@ -312,7 +348,10 @@ type Request struct {
 	MaxCostUSD *float64 `json:"max_cost_usd,omitempty"`
 	// A finished run whose session to continue; empty for a fresh session.
 	Continue string `json:"continue,omitempty"`
-	Cwd      string `json:"cwd"`
+	// Workspace is the workspace mode the caller asked for (ADR-022 rule 1),
+	// "in-place" or "temporary"; empty: the repository's setting.
+	Workspace string `json:"workspace,omitempty"`
+	Cwd       string `json:"cwd"`
 }
 
 // State of a record as read.

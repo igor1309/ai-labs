@@ -393,7 +393,10 @@ type CallRequest struct {
 	Timeout    string   // optional, may only shorten
 	MaxCostUSD *float64 // optional, may only lower
 	Continue   string   // optional: a finished run whose session to continue
-	Cwd        string
+	// Workspace is the workspace mode asked for, "in-place" or "temporary"
+	// (ADR-022 rule 1); optional: the repository's setting applies.
+	Workspace string
+	Cwd       string
 }
 
 type Event struct {

@@ -204,6 +204,8 @@ type gitAdapters struct {
 	discarder app.CheckoutDiscarder
 	// content names and diffs the content of checkouts and revisions.
 	content app.CallChanges
+	// state reads the git state of the worktree an in-place call borrows.
+	state app.BorrowWorktrees
 	// The git inputs: a revision, a merge base, a diff and the files it
 	// changes.
 	revision, mergeBase, diff, changedFiles app.InputProvider
@@ -217,7 +219,7 @@ func gitBacked(worktrees *git.Worktrees) gitAdapters {
 	shared := git.NewWorkspaces(worktrees)
 	return gitAdapters{
 		calls: shared, copies: shared, discarder: shared,
-		content:  git.Workspaces{},
+		content: git.Workspaces{}, state: git.Workspaces{},
 		revision: git.Revision{}, mergeBase: git.MergeBase{}, diff: git.Diff{}, changedFiles: git.ChangedFiles{},
 	}
 }
@@ -302,6 +304,16 @@ func (c composition) wire(config cli.Config) (contract.Client, *app.BackgroundRe
 			StateDir:   config.Home,
 		},
 		Preparer: app.SetupAdapters{Content: content, Commands: runtimecomposition.SetupCommands{Supervisor: commands}, Clock: system.Clock{}},
+		// An in-place call's worktree is locked under the home, apart from
+		// the worktree commands' locks; a process another run left there is
+		// ended as the reaper ends it (ADR-022 rule 3).
+		Borrower: app.BorrowAdapters{
+			Locks:     system.WorktreeLocks{Dir: filepath.Join(config.Home, "locks", "in-place")},
+			Worktrees: workspaces.state,
+			Content:   content,
+			Runs:      evidence,
+			Writers:   runtimecomposition.Processes{Supervisor: c.processes},
+		},
 		Verifier: app.VerifyAdapters{Content: content, Copies: workspaces.copies, Commands: runtimecomposition.Commands{Supervisor: commands}, Clock: system.Clock{}},
 		Runs:     app.RunsAdapters{Reader: evidence, Appends: evidence, Timer: c.poll},
 		// Installs read a folder laid out like the global settings, and

@@ -1,7 +1,8 @@
 // Package gittest is an in-memory fake of the ports the composition root
 // builds from the git adapter (ADR-017 rule 3, seam 5): the calls'
 // workspaces, the verifier's clean copies, the reaper's discard, the
-// content namer and differ, and the git input sources. A test records a
+// content namer and differ, the state of a borrowed worktree, and the git
+// input sources. A test records a
 // repository's revisions as file trees; the fake answers from them and runs
 // no git.
 //
@@ -306,6 +307,29 @@ func (f *Fake) Identity(_ context.Context, dir, _ string) (string, error) {
 	f.record(identity, content)
 	f.mu.Unlock()
 	return identity, nil
+}
+
+// State is the worktree at dir as git status would read it: HEAD is the
+// branch its repository checked out last, and revision's tree the identity
+// of revision's files. The fake knows no index, submodule or ignore rule:
+// nothing is staged or dirty in a submodule, and every file is content, so
+// an untracked one changes the identity.
+func (f *Fake) State(_ context.Context, dir, revision string) (app.WorktreeState, error) {
+	r, err := f.repository(dir)
+	if err != nil {
+		return app.WorktreeState{}, err
+	}
+	f.mu.Lock()
+	head, err := r.resolve("HEAD")
+	f.mu.Unlock()
+	if err != nil {
+		return app.WorktreeState{}, err
+	}
+	content, err := f.revisionOf(r.root, revision)
+	if err != nil {
+		return app.WorktreeState{}, err
+	}
+	return app.WorktreeState{Head: head, Tree: content.identity()}, nil
 }
 
 // Changes is the patch from one recorded content, a revision or an

@@ -106,6 +106,11 @@ func workflowRequest(request run.Request) error {
 	if request.Continue != "" {
 		given = append(given, "a run to continue")
 	}
+	// A workflow's nodes never work in the caller's worktree (ADR-022 rule
+	// 1), and take no mode of the caller's.
+	if request.Workspace != "" {
+		given = append(given, "a workspace mode")
+	}
 	if len(given) > 0 {
 		return refuse("workflow %s takes params only, not %s: each node runs with its own process's agent and limits", request.Process, strings.Join(given, ", "))
 	}

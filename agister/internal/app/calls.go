@@ -29,6 +29,7 @@ type Calls struct {
 	workspaces CallWorkspaces
 	changes    CallChanges
 	preparer   CallPreparer
+	borrower   CallBorrower
 	verifier   CallVerifier
 	validator  CallValidator
 	recorder   RunRecorder
@@ -58,12 +59,14 @@ type CallResolution interface {
 }
 
 // CallResolveRequest is what a call is resolved from: its process, the
-// agent that overrides the process's, and the caller's narrowing limits.
+// agent that overrides the process's, the caller's narrowing limits and the
+// workspace mode the caller asks for (ADR-022 rule 1).
 type CallResolveRequest struct {
 	Process    string
 	Agent      string
 	Timeout    string
 	MaxCostUSD *float64
+	Workspace  string
 }
 
 // ResolvedCall is everything a call needs before inputs and effects.
@@ -104,6 +107,10 @@ type CallProcess struct {
 	// Setup is the setup its checkout runs (ADR-012), the process's own or
 	// the workspace's; unset: none.
 	Setup *CallSetup
+	// InPlace says the call works in the caller's worktree, not a checkout
+	// of its own (ADR-022); Precheck gates it there, unset: none.
+	InPlace  bool
+	Precheck *CallSetup
 }
 
 // CallParam is a param a process or workflow declares.
@@ -243,13 +250,13 @@ func (r *Resolver) Snapshot(ctx context.Context) CallResolution {
 type callResolution struct{ resolver *Resolver }
 
 func (c callResolution) Resolve(ctx context.Context, request CallResolveRequest) (*ResolvedCall, error) {
-	res, err := c.resolver.resolve(ctx, request.Process, request.Agent, overrides{timeout: request.Timeout, maxCostUSD: request.MaxCostUSD})
+	res, err := c.resolver.resolve(ctx, request.Process, request.Agent, overrides{timeout: request.Timeout, maxCostUSD: request.MaxCostUSD, workspace: request.Workspace})
 	process, agent, effective := res.process, res.agent, res.effective
 	resolved := &ResolvedCall{
 		Process: CallProcess{
 			Name: process.Name, Instruction: process.Instruction,
 			Params: callParams(process.Params), Values: callValues(process.Values),
-			Checkout: process.Checkout, Output: process.Output.Format,
+			Checkout: process.Checkout, Output: process.Output.Format, InPlace: res.inPlace,
 		},
 		Agent:   CallAgent{Name: agent.Name, Command: agent.Command, Model: agent.Model, Effort: agent.Effort, Session: agent.Session},
 		Mapping: CallMapping{Name: res.mapping.Name, Adapter: res.mapping.Adapter},
@@ -280,6 +287,9 @@ func (c callResolution) Resolve(ctx context.Context, request CallResolveRequest)
 	})
 	if setup := res.setup; setup != nil {
 		resolved.Process.Setup = &CallSetup{Command: setup.Command, Timeout: setup.Timeout, From: setup.from, Path: setup.path}
+	}
+	if precheck := res.precheck; precheck != nil {
+		resolved.Process.Precheck = &CallSetup{Command: precheck.Command, Timeout: precheck.Timeout, From: precheck.from, Path: precheck.path}
 	}
 	return resolved, err
 }
@@ -485,6 +495,15 @@ type CallPreparer interface {
 	Setup(ctx context.Context, call SetupCall) *run.Error
 }
 
+// CallBorrower lends an in-place call the caller's worktree (ADR-022), or
+// refuses it, before the call's first turn: it holds the worktree's lock,
+// which the call keeps until its changes are captured, and admits the
+// worktree only as the revision left it, after its precheck. It never
+// changes the worktree.
+type CallBorrower interface {
+	Borrow(ctx context.Context, call BorrowCall) (*Borrowed, error)
+}
+
 // CallVerifier runs the verification loop of a call whose process declares
 // verify (ADR-002; where the command runs, ADR-005), after its first turn
 // was valid. It returns the content a passing run checked, on a clean copy
@@ -517,9 +536,10 @@ type CallAdapters struct {
 }
 
 // NewCalls returns the use case that submits and executes calls. Every
-// collaborator is required. timer starts the waits of a call's staleness
-// limits. stateDir is Agister's own state, which no agent workspace may
-// overlap. cancels is where each running call's cancellation is held.
+// collaborator is required. borrower lends in-place calls the caller's
+// worktree. timer starts the waits of a call's staleness limits. stateDir
+// is Agister's own state, which no agent workspace may overlap. cancels is
+// where each running call's cancellation is held.
 func NewCalls(
 	resolver CallResolver,
 	runners CallRunners,
@@ -527,6 +547,7 @@ func NewCalls(
 	workspaces CallWorkspaces,
 	changes CallChanges,
 	preparer CallPreparer,
+	borrower CallBorrower,
 	verifier CallVerifier,
 	validator CallValidator,
 	recorder RunRecorder,
@@ -544,6 +565,7 @@ func NewCalls(
 		workspaces: workspaces,
 		changes:    changes,
 		preparer:   preparer,
+		borrower:   borrower,
 		verifier:   verifier,
 		validator:  validator,
 		recorder:   recorder,
@@ -655,6 +677,7 @@ func (c *Calls) Submit(ctx context.Context, request contract.CallRequest) (strin
 			Timeout:    request.Timeout,
 			MaxCostUSD: request.MaxCostUSD,
 			Continue:   request.Continue,
+			Workspace:  request.Workspace,
 			Cwd:        request.Cwd,
 		},
 	}
@@ -709,6 +732,10 @@ func (c *Calls) execute(ctx context.Context, handle RunHandle, record run.Record
 	// owned is the checkout the call made, whether or not its record took
 	// it: a failed release leaves it for a reap either way.
 	var owned *run.Checkout
+	// ended says the call's processes are known to have ended as it
+	// finishes: every runtime and command run ends its process before it
+	// returns. A panic may leave one.
+	ended := true
 	finish := func(fault *run.Error) {
 		// Cleared first: if it panics, the recovery calls finish again.
 		if pending := collect; pending != nil {
@@ -731,6 +758,7 @@ func (c *Calls) execute(ctx context.Context, handle RunHandle, record run.Record
 			}
 		}
 		release = func() error { return nil }
+		record.ProcessesEnded = ended
 		now := c.clock.Now()
 		record.FinishedAt = &now
 		result.Status, result.Error = run.Completed, fault
@@ -765,6 +793,7 @@ func (c *Calls) execute(ctx context.Context, handle RunHandle, record run.Record
 	}
 	defer func() {
 		if recovered := recover(); recovered != nil {
+			ended = false
 			finish(run.Fault(run.ClassInternal, "%v", recovered))
 		}
 	}()
@@ -789,6 +818,7 @@ func (c *Calls) execute(ctx context.Context, handle RunHandle, record run.Record
 	res, err := resolver.Resolve(ctx, CallResolveRequest{
 		Process: record.Request.Process, Agent: record.Request.Agent,
 		Timeout: record.Request.Timeout, MaxCostUSD: record.Request.MaxCostUSD,
+		Workspace: record.Request.Workspace,
 	})
 	record.Definitions = recordSources(res.Sources)
 	record.AbsentPrompts = recordAbsent(res.Absent)
@@ -806,6 +836,7 @@ func (c *Calls) execute(ctx context.Context, handle RunHandle, record run.Record
 	record.Effective = recordEffective(res.Effective)
 	record.Verify = recordVerify(res.Process.Verify)
 	record.Setup = recordSetup(res.Process.Setup)
+	record.Precheck = recordPrecheck(res.Process.Precheck)
 	record.Runtime = &run.Runtime{Mapping: res.Mapping.Name, Adapter: res.Mapping.Adapter, Contract: res.Identity.Contract, Version: res.Identity.Version}
 	record.Plan = recordPlan(res.Plan)
 	_ = handle.Update(record)
@@ -814,6 +845,12 @@ func (c *Calls) execute(ctx context.Context, handle RunHandle, record run.Record
 		event(run.SourceAgister, "PERMISSIONS_WITHHELD", map[string]any{"permissions": res.Plan.Withheld})
 	}
 
+	// Continuing in the caller's worktree (ADR-022 rule 8) is not
+	// supported yet.
+	if record.Request.Continue != "" && res.Process.InPlace {
+		fail(refuse("process %s works in-place, and continuing a run in-place is not supported yet; run it with --workspace temporary to continue run %s", res.Process.Name, record.Request.Continue))
+		return
+	}
 	resumed, err := c.continuation(ctx, res, record.ID, record.Request.Continue, record.Request.Cwd)
 	if err != nil {
 		fail(err)
@@ -849,7 +886,7 @@ func (c *Calls) execute(ctx context.Context, handle RunHandle, record run.Record
 		}
 	}
 
-	workspace, err := c.prepareWorkspace(ctx, res.Process.Checkout, inputs, record.Request.Cwd)
+	workspace, err := c.prepareWorkspace(ctx, res.Process.Checkout, res.Process.InPlace, inputs, record.Request.Cwd)
 	if err != nil {
 		fail(err)
 		return
@@ -859,6 +896,52 @@ func (c *Calls) execute(ctx context.Context, handle RunHandle, record run.Record
 	// The content a passing verification run checked, whose patch is what
 	// the call delivers (ADR-005 rule 1).
 	var verified string
+	if res.Process.InPlace {
+		// The caller's worktree, borrowed: no checkout, setup or release. Its
+		// lock is held until the changes are captured, and nothing in it is
+		// reset, cleaned or removed, whatever the end (ADR-022 rule 7).
+		verify := ""
+		if res.Process.Verify != nil {
+			verify = run.VerifyOnCopy
+		}
+		var precheck *SetupCommand
+		if p := res.Process.Precheck; p != nil {
+			precheck = &SetupCommand{Command: p.Command, Timeout: p.Timeout}
+		}
+		borrowed, err := c.borrower.Borrow(ctx, BorrowCall{
+			Record: &record, Event: event, Update: handle.Update,
+			Dir: workspace.Dir, RepositoryIdentity: workspace.RepositoryIdentity, Revision: revision, Precheck: precheck, Verify: verify,
+		})
+		if err != nil {
+			fail(err)
+			return
+		}
+		release = borrowed.Release
+		if setup := res.Process.Setup; setup != nil {
+			event(run.SourceAgister, "SETUP_SKIPPED", map[string]any{"command": setup.Command, "reason": "an in-place call works in the worktree its caller prepared (ADR-022 rule 5)"})
+		}
+		collect = func() *run.Error {
+			ctx := context.WithoutCancel(ctx)
+			// A commit the agent made fails the call, and stays; the patch is
+			// still taken from the revision.
+			var fault *run.Error
+			head, err := borrowed.Head(ctx)
+			switch {
+			case err != nil:
+				fault = run.Fault(run.ClassInternal, "reading the worktree's HEAD: %v", err)
+			case head != revision:
+				event(run.SourceAgister, "WORKTREE_COMMITTED", map[string]any{"head": head, "revision": revision})
+				fault = run.Fault(run.ClassCommitted, "the worktree's HEAD is %s, not revision %s: the agent committed in the caller's worktree; its commit stays", head, revision)
+			}
+			artifacts, content, failed := c.collectChanges(ctx, handle, workspace.Dir, revision, verified, event)
+			result.Artifacts = artifacts
+			record.InPlace.Content = content
+			if fault == nil {
+				fault = failed
+			}
+			return fault
+		}
+	}
 	if workspace.Owned {
 		// Recorded before the runtime starts: if this process is killed,
 		// a later reap removes the checkout. A checkout that cannot be
@@ -913,7 +996,7 @@ func (c *Calls) execute(ctx context.Context, handle RunHandle, record run.Record
 			event(run.SourceAgister, "CHANGES_CARRIED", map[string]any{"run": carry.from, "digest": carry.artifact.Digest, "bytes": carry.artifact.Bytes})
 		}
 		collect = func() *run.Error {
-			artifacts, fault := c.collectChanges(ctx, handle, workspace.Dir, revision, verified, event)
+			artifacts, _, fault := c.collectChanges(ctx, handle, workspace.Dir, revision, verified, event)
 			result.Artifacts = artifacts
 			return fault
 		}
@@ -1502,10 +1585,11 @@ func (c *Calls) whereItRan(ctx context.Context, res *ResolvedCall, prior run.Rec
 // verified when it names the content a verification run passed on. That
 // run checked a clean copy of revision with this very patch applied, so the
 // patch delivers exactly what passed (ADR-005 rule 1). No changes store no
-// artifact and are recorded as NO_CHANGES. A failure is recorded; it does
+// artifact and are recorded as NO_CHANGES. It returns the content the patch
+// was taken to, empty when none was kept. A failure is recorded; it does
 // not change the call's status, unless the changes were verified: then the
 // call fails.
-func (c *Calls) collectChanges(ctx context.Context, handle RunHandle, dir, revision, verified string, event func(string, string, map[string]any)) ([]run.Artifact, *run.Error) {
+func (c *Calls) collectChanges(ctx context.Context, handle RunHandle, dir, revision, verified string, event func(string, string, map[string]any)) ([]run.Artifact, string, *run.Error) {
 	ctx = context.WithoutCancel(ctx)
 	identity := verified
 	var err error
@@ -1531,11 +1615,11 @@ func (c *Calls) collectChanges(ctx context.Context, handle RunHandle, dir, revis
 	if err != nil {
 		event(run.SourceAgister, "ARTIFACT_FAILED", map[string]any{"name": "changes.patch", "error": err.Error()})
 		if verified != "" {
-			return nil, run.Fault(run.ClassInternal, "the changes that passed verification could not be kept: %v", err)
+			return nil, "", run.Fault(run.ClassInternal, "the changes that passed verification could not be kept: %v", err)
 		}
-		return nil, nil
+		return nil, "", nil
 	}
-	return artifacts, nil
+	return artifacts, identity, nil
 }
 
 // resolveValues binds caller params to the params declared and resolves
@@ -1643,9 +1727,10 @@ func (c *Calls) workspaceRoot(ctx context.Context, cwd string) string {
 }
 
 // prepareWorkspace returns the agent's working directory: a checkout of the
-// revision of the input checkout names, or, when it names none, the
-// repository. It must not overlap Agister's state.
-func (c *Calls) prepareWorkspace(ctx context.Context, checkout string, inputs []run.Input, cwd string) (preparedWorkspace, error) {
+// revision of the input checkout names, the caller's worktree for an
+// in-place call, which it neither checks nor locks (see CallBorrower), or,
+// when it names none, the repository. It must not overlap Agister's state.
+func (c *Calls) prepareWorkspace(ctx context.Context, checkout string, inPlace bool, inputs []run.Input, cwd string) (preparedWorkspace, error) {
 	noop := func() error { return nil }
 	root := c.workspaceRoot(ctx, cwd)
 	if overlaps(root, c.stateDir) {
@@ -1666,6 +1751,9 @@ func (c *Calls) prepareWorkspace(ctx context.Context, checkout string, inputs []
 	identity, err := c.workspaces.RepositoryIdentity(ctx, root)
 	if err != nil {
 		return preparedWorkspace{}, err
+	}
+	if inPlace {
+		return preparedWorkspace{Dir: root, Repository: root, RepositoryIdentity: identity, Release: noop}, nil
 	}
 	dir, release, err := c.workspaces.Checkout(ctx, root, revision)
 	if err != nil {

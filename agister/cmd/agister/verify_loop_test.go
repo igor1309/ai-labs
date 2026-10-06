@@ -86,6 +86,11 @@ func (noProblems) Check(context.Context) (app.ResolverChecked, error) {
 	return app.ResolverChecked{}, nil
 }
 
+// goneProcesses finds every process an earlier in-place run recorded gone.
+type goneProcesses struct{}
+
+func (goneProcesses) Reap(context.Context, string) (app.Reaping, error) { return app.ReapGone, nil }
+
 // fakeRuntimes builds the scripted runtime for the fake adapter.
 type fakeRuntimes struct{ runner *scripted }
 
@@ -250,6 +255,8 @@ type loopGit struct {
 	content    app.CallChanges
 	copies     app.VerifyCopies
 	revision   app.InputProvider
+	// state reads the worktree an in-place call borrows.
+	state app.BorrowWorktrees
 	// left lists the checkouts and clean copies not yet removed.
 	left func() []string
 	// given gives the git to every composition over home.
@@ -270,7 +277,7 @@ func fakeLoopGit(t *testing.T) loopGit {
 	fake := gittest.New(tempDir(t))
 	fake.Record(repo).Commit("main", base)
 	return loopGit{
-		repo: repo, workspaces: fake, content: fake, copies: fake, revision: fake.Revision(),
+		repo: repo, workspaces: fake, content: fake, copies: fake, revision: fake.Revision(), state: fake,
 		left: func() []string {
 			left, err := fake.Left()
 			if err != nil {
@@ -299,7 +306,7 @@ func realLoopGit(t *testing.T) loopGit {
 	gitCmd(t, repo, "commit", "--quiet", "-m", "base")
 	workspaces := git.NewWorkspaces(git.NewWorktrees(tempDir(t)))
 	return loopGit{
-		repo: repo, workspaces: workspaces, content: workspaces, copies: workspaces, revision: git.Revision{},
+		repo: repo, workspaces: workspaces, content: workspaces, copies: workspaces, revision: git.Revision{}, state: git.Workspaces{},
 		left:  func() []string { return strings.Split(gitCmd(t, repo, "worktree", "list"), "\n")[1:] },
 		given: func(home string) { onRealGit(t, home) },
 	}
@@ -420,10 +427,12 @@ verify:
 		write(t, filepath.Join(global.Dir, "workspace.yaml"), settings.globalWorkspace)
 		definitions = fsdefs.Layered{Global: global, Project: &fsdefs.Store{Dir: defs}}
 	}
+	preparer := app.NewPreparer(with.changes, h.setup, with.clock)
+	borrower := app.NewBorrower(system.WorktreeLocks{Dir: filepath.Join(h.home, "locks", "in-place")}, over.state, with.changes, h.store, goneProcesses{}, preparer)
 	h.calls = app.NewCalls(
 		app.NewResolver(definitions, runtimes, schema.Validator{}, noProblems{}), runtimes,
 		map[string]app.InputProvider{"git.revision": over.revision},
-		over.workspaces, with.changes, app.NewPreparer(with.changes, h.setup, with.clock), app.NewVerifier(with.changes, copies, h.commands, with.clock), schema.Validator{},
+		over.workspaces, with.changes, preparer, borrower, app.NewVerifier(with.changes, copies, h.commands, with.clock), schema.Validator{},
 		h.store, h.store, with.clock, still.Timer, system.IDs{}, h.home, h.hosted,
 	)
 	// Observing a call hosted here waits on its appends, never on a poll.

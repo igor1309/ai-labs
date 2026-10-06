@@ -402,11 +402,11 @@ func (c *Checker) check(ctx context.Context, probe bool) (CheckResult, error) {
 		if process.Output.Format == "json" {
 			link(from, definition.KindSchema, process.Output.Schema, false)
 		}
-		// A call of a checkout without a setup of its own reads the
-		// workspace settings for their default (ADR-012), whether or not
-		// they parse; a missing document is no default, not a missing
-		// reference.
-		if process.Checkout != "" && process.Setup == nil && listed[workspaceRef] {
+		// A call of a checkout reads the workspace settings for their
+		// setup (ADR-012), mode and precheck (ADR-022), whether or not they
+		// parse, even with a setup of its own; a missing document is no
+		// default, not a missing reference.
+		if process.Checkout != "" && listed[workspaceRef] {
 			link(from, definition.KindWorkspace, workspaceRef.Name, false)
 		}
 	}

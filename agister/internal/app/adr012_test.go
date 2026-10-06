@@ -352,10 +352,9 @@ func TestADR012EveryDocumentKindRefusesOnlyItsDependents(t *testing.T) {
 			case definition.KindVerify:
 				docs[definition.KindProcess]["second"] += "verify: verify:repo\n"
 			case definition.KindWorkspace:
-				// first runs a setup of its own, so it does not read the
-				// workspace settings.
-				docs[definition.KindProcess]["first"] = strings.Replace(docs[definition.KindProcess]["first"],
-					"  checkout: candidate_revision\n", "  checkout: candidate_revision\n  setup: {command: ./own.sh, timeout: 30s}\n", 1)
+				// first works in the repository, without a checkout, so it
+				// does not read the workspace settings.
+				docs[definition.KindProcess]["first"] = inTheRepository(docs[definition.KindProcess]["first"])
 			}
 			if docs[tc.kind] == nil {
 				docs[tc.kind] = map[string]string{}
@@ -485,10 +484,9 @@ func TestUnreadableWorkspaceSettingsRefuseOnlyWhatReadsThem(t *testing.T) {
 	ctx := context.Background()
 	h := newHarness()
 	docs := workflowDocs()
-	// first runs a setup of its own, so it does not read the workspace
-	// settings; second does.
-	docs[definition.KindProcess]["first"] = strings.Replace(docs[definition.KindProcess]["first"],
-		"  checkout: candidate_revision\n", "  checkout: candidate_revision\n  setup: {command: ./own.sh, timeout: 30s}\n", 1)
+	// first works in the repository, without a checkout, so it does not
+	// read the workspace settings; second does.
+	docs[definition.KindProcess]["first"] = inTheRepository(docs[definition.KindProcess]["first"])
 	s := settingsFiles(t, docs)
 	path := filepath.Join(s.Dir, "workspace.yaml")
 	// A symlink to itself: it exists, and reading it fails.
@@ -528,4 +526,12 @@ func TestUnreadableWorkspaceSettingsRefuseOnlyWhatReadsThem(t *testing.T) {
 	if len(h.runner.calls()) != 1 {
 		t.Fatalf("%d turns, want the one call that ran", len(h.runner.calls()))
 	}
+}
+
+// inTheRepository is the node process doc without its checkout, under the
+// read-only policy that works in the repository: it reads no workspace
+// settings, whatever they say (ADR-022 rule 1).
+func inTheRepository(doc string) string {
+	doc = strings.Replace(doc, "workspace:\n  checkout: candidate_revision\n", "", 1)
+	return strings.Replace(doc, "process-policy:pol", "process-policy:joining", 1)
 }

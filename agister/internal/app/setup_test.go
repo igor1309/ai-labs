@@ -83,8 +83,8 @@ func TestTheWorkspaceSetupRunsInTheCheckoutBeforeTheFirstTurn(t *testing.T) {
 	}
 }
 
-// A process's own setup replaces the workspace's whole, and the workspace
-// document, unused, is not read.
+// A process's own setup replaces the workspace's whole; the workspace
+// document is still read, for its mode and precheck (ADR-022 rule 1).
 func TestAProcessesOwnSetupReplacesTheWorkspaces(t *testing.T) {
 	t.Parallel()
 	h := newHarness()
@@ -102,7 +102,7 @@ func TestAProcessesOwnSetupReplacesTheWorkspaces(t *testing.T) {
 	if want := (run.Setup{Command: "./own.sh", Timeout: 30 * time.Second, From: run.SetupFromProcess, Path: "mem/processes/p"}); record.Setup == nil || *record.Setup != want {
 		t.Fatalf("setup = %+v", record.Setup)
 	}
-	if kinds := definitionKinds(record); contains(kinds, "workspace") {
+	if kinds := definitionKinds(record); !contains(kinds, "workspace") {
 		t.Fatalf("definitions = %v", kinds)
 	}
 }
@@ -397,7 +397,7 @@ func TestCallsPrepareAndVerifyThroughTheirOwnCollaborators(t *testing.T) {
 	h.calls = app.NewCalls(
 		app.NewResolver(h.defs, h.runtimes, h.validator, resolverCheckStub{}), h.runtimes,
 		map[string]app.InputProvider{"git.revision": h.inputs, "git.diff": h.inputs},
-		h.workspaces, h.changes, preparer, verifier, h.validator, h.recorder, h.runs,
+		h.workspaces, h.changes, preparer, h.borrower(), verifier, h.validator, h.recorder, h.runs,
 		h.clock, h.timer, fixedIDs{}, "/state", h.hosted,
 	)
 	record := h.call(t, contract.CallRequest{})
@@ -438,7 +438,8 @@ func steps(contents ...string) func() string {
 }
 
 // check validates the workspace settings, reports a setup without a
-// checkout, and shows which processes the workspace's setup applies to.
+// checkout, and shows which processes the workspace's settings apply to:
+// every one with a checkout, its own setup or not (ADR-022 rule 1).
 func TestCheckValidatesWorkspaceSettingsAndSetups(t *testing.T) {
 	t.Parallel()
 	h := newHarness()
@@ -460,10 +461,10 @@ func TestCheckValidatesWorkspaceSettingsAndSetups(t *testing.T) {
 		t.Fatalf("checked = %v", report.Checked)
 	}
 	for _, d := range report.Definitions {
-		if d.Kind == "workspace" && !reflect.DeepEqual(d.UsedBy, []contract.DefinitionRef{{Kind: "processes", Name: "p"}}) {
+		if d.Kind == "workspace" && !reflect.DeepEqual(d.UsedBy, []contract.DefinitionRef{{Kind: "processes", Name: "own"}, {Kind: "processes", Name: "p"}}) {
 			t.Fatalf("workspace used by %v", d.UsedBy)
 		}
-		if d.Kind == "processes" && contains(refNames(d.Uses), "workspace") != (d.Name == "p") {
+		if d.Kind == "processes" && contains(refNames(d.Uses), "workspace") != (d.Name == "p" || d.Name == "own") {
 			t.Fatalf("%s uses %v", d.Name, d.Uses)
 		}
 	}

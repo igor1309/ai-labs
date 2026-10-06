@@ -68,6 +68,9 @@ type Infrastructure struct {
 	Resolver ResolverAdapters
 	Calls    CallAdapters
 	Preparer SetupAdapters
+	// Borrower lends in-place calls the caller's worktree (ADR-022); its
+	// precheck runs on the preparer.
+	Borrower BorrowAdapters
 	Verifier VerifyAdapters
 	Runs     RunsAdapters
 	// Installer works on home's settings and their backups.
@@ -98,13 +101,15 @@ type GateCheck interface {
 // refused (ADR-015). Every field of infra is required but Checks and
 // Hosted.
 func NewClient(infra Infrastructure) contract.Client {
-	// The calls hosted in this process, the preparer and the verifier are
-	// shared by every client the gate builds.
+	// The calls hosted in this process, the preparer, the borrower and the
+	// verifier are shared by every client the gate builds.
 	hosted := infra.Hosted
 	if hosted == nil {
 		hosted = NewHosted()
 	}
 	preparer := NewPreparer(infra.Preparer.Content, infra.Preparer.Commands, infra.Preparer.Clock)
+	lend := infra.Borrower
+	borrower := NewBorrower(lend.Locks, lend.Worktrees, lend.Content, lend.Runs, lend.Writers, preparer)
 	verifier := NewVerifier(infra.Verifier.Content, infra.Verifier.Copies, infra.Verifier.Commands, infra.Verifier.Clock)
 	sources := make([]string, 0, len(infra.Calls.Inputs))
 	for name := range infra.Calls.Inputs {
@@ -143,7 +148,7 @@ func NewClient(infra Infrastructure) contract.Client {
 			Checker:    checkerOn(layered),
 			Inspection: NewInspection(resolverOn(layered)),
 			Calls: NewCalls(
-				resolverOn(layered), calls.Runners, calls.Inputs, calls.Workspaces, calls.Changes, preparer, verifier, calls.Validator,
+				resolverOn(layered), calls.Runners, calls.Inputs, calls.Workspaces, calls.Changes, preparer, borrower, verifier, calls.Validator,
 				calls.Recorder, calls.Runs, calls.Clock, calls.Timer, calls.IDs, calls.StateDir, hosted,
 			),
 			Runs:      NewRuns(infra.Runs.Reader, infra.Runs.Appends, hosted, infra.Runs.Timer, 0),

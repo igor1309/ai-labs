@@ -82,11 +82,30 @@ type Setup struct {
 }
 
 // Workspace is a repository's workspace settings: the setup every process
-// that checks out a revision and declares none of its own runs.
+// that checks out a revision and declares none of its own runs, and, for
+// every such process, whether its calls work in the caller's worktree and
+// the precheck that gates them there (ADR-022).
 type Workspace struct {
-	Setup  *Setup // unset: no default
-	Source Source
+	Setup *Setup // unset: no default
+	// Mode is ModeInPlace or ModeTemporary; empty: not set, which is
+	// ModeTemporary.
+	Mode string
+	// Precheck gates an in-place call before its first turn; unset: none.
+	// It has a setup's fields, both required.
+	Precheck *Setup
+	Source   Source
 }
+
+// The workspace modes of a call whose process checks out a revision
+// (ADR-022 rule 1): a checkout of its own, or the caller's worktree.
+const (
+	ModeTemporary = "temporary"
+	ModeInPlace   = "in-place"
+)
+
+// InPlace says the calls of a process with a checkout work in the caller's
+// worktree under these settings, unless the call says otherwise.
+func (w *Workspace) InPlace() bool { return w != nil && w.Mode == ModeInPlace }
 
 // Process is a named agent call.
 type Process struct {
@@ -332,11 +351,20 @@ func ParseWorkspace(doc Document) (Workspace, error) {
 	if root == nil {
 		return workspace, p.err("workspace settings")
 	}
-	values := fields(root, "", []string{"schema", "setup"}, p)
+	values := fields(root, "", []string{"schema", "setup", "mode", "precheck"}, p)
 	value, _ := scalar(values["schema"], "schema", p)
 	checkSchema(value, WorkspaceSchema, p)
 	if node, ok := values["setup"]; ok {
 		workspace.Setup = parseSetup(node, "setup", p)
+	}
+	if node, ok := values["mode"]; ok {
+		workspace.Mode, _ = scalar(node, "mode", p)
+		if workspace.Mode != ModeInPlace && workspace.Mode != ModeTemporary {
+			p.add("mode", "must be %q or %q", ModeInPlace, ModeTemporary)
+		}
+	}
+	if node, ok := values["precheck"]; ok {
+		workspace.Precheck = parseSetup(node, "precheck", p)
 	}
 	return workspace, p.err("workspace settings")
 }

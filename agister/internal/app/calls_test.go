@@ -99,6 +99,11 @@ type harness struct {
 	commands  *commandsSpy
 	validator *validatorSpy
 	recorder  *recorderSpy
+	// locks, worktrees and processes are what an in-place call's borrower
+	// runs on.
+	locks     *locksSpy
+	worktrees *worktreesSpy
+	processes *processesSpy
 }
 
 func newHarness() *harness {
@@ -115,6 +120,9 @@ func newHarness() *harness {
 		commands:   &commandsSpy{},
 		validator:  &validatorSpy{},
 		recorder:   newRecorderSpy(),
+		locks:      &locksSpy{},
+		worktrees:  &worktreesSpy{},
+		processes:  &processesSpy{},
 	}
 	h.runtimes = &runtimesSpy{runner: h.runner}
 	h.runs = &runsSpy{records: map[string]run.Record{}, states: map[string]run.State{}}
@@ -143,13 +151,23 @@ func (h *harness) callsWith(src app.ResolverDefinitions, workspaces app.CallWork
 }
 
 func (h *harness) callsRecordedWith(src app.ResolverDefinitions, workspaces app.CallWorkspaces, changes app.CallChanges, runs app.CallRuns, recorder app.RunRecorder, ids app.IDs) *app.Calls {
+	preparer := app.NewPreparer(changes, h.setup, h.clock)
 	return app.NewCalls(
 		app.NewResolver(src, h.runtimes, h.validator, resolverCheckStub{}),
 		h.runtimes,
 		map[string]app.InputProvider{"git.revision": h.inputs, "git.diff": h.inputs, "git.changed_files": h.inputs, "file": h.inputs, "param": h.inputs},
-		workspaces, changes, app.NewPreparer(changes, h.setup, h.clock), app.NewVerifier(changes, h.copies, h.commands, h.clock), h.validator, recorder, runs,
+		workspaces, changes, preparer, h.borrowerOver(changes, runs, preparer), app.NewVerifier(changes, h.copies, h.commands, h.clock), h.validator, recorder, runs,
 		h.clock, h.timer, ids, "/state", h.hosted,
 	)
+}
+
+// borrower is the borrower of the harness's calls.
+func (h *harness) borrower() *app.Borrower {
+	return h.borrowerOver(h.changes, h.runs, app.NewPreparer(h.changes, h.setup, h.clock))
+}
+
+func (h *harness) borrowerOver(changes app.CallChanges, runs app.CallRuns, prechecks app.BorrowPrechecks) *app.Borrower {
+	return app.NewBorrower(h.locks, h.worktrees, changes, runs, h.processes, prechecks)
 }
 
 func (h *harness) call(t *testing.T, request contract.CallRequest) run.Record {
@@ -1162,7 +1180,7 @@ func TestCallsResolveThroughTheResolutionTheyDeclare(t *testing.T) {
 	h := newHarness()
 	double := &snapshotCounter{reason: "the double refuses"}
 	h.calls = app.NewCalls(
-		double, h.runtimes, map[string]app.InputProvider{}, h.workspaces, h.changes, app.NewPreparer(h.changes, h.setup, h.clock), app.NewVerifier(h.changes, h.copies, h.commands, h.clock),
+		double, h.runtimes, map[string]app.InputProvider{}, h.workspaces, h.changes, app.NewPreparer(h.changes, h.setup, h.clock), h.borrower(), app.NewVerifier(h.changes, h.copies, h.commands, h.clock),
 		h.validator, h.recorder, h.runs, h.clock, h.timer, fixedIDs{}, "/state", h.hosted,
 	)
 	record := h.call(t, contract.CallRequest{})
@@ -1441,7 +1459,7 @@ func TestCallsCancelThroughTheCancelsTheyDeclare(t *testing.T) {
 	h.calls = app.NewCalls(
 		app.NewResolver(h.defs, h.runtimes, h.validator, resolverCheckStub{}), h.runtimes,
 		map[string]app.InputProvider{"git.revision": h.inputs, "git.diff": h.inputs},
-		h.workspaces, h.changes, app.NewPreparer(h.changes, h.setup, h.clock), app.NewVerifier(h.changes, h.copies, h.commands, h.clock), h.validator, h.recorder, h.runs,
+		h.workspaces, h.changes, app.NewPreparer(h.changes, h.setup, h.clock), h.borrower(), app.NewVerifier(h.changes, h.copies, h.commands, h.clock), h.validator, h.recorder, h.runs,
 		h.clock, h.timer, fixedIDs{}, "/state", cancels,
 	)
 	// However the test ends, the blocked turn is released and the call

@@ -597,3 +597,41 @@ func TestAReapThatCannotRecordARunFails(t *testing.T) {
 		})
 	}
 }
+
+// ADR-022 rule 3: a reap records that a run's processes are known to have
+// ended only when it ended each one or found it gone; a step that failed,
+// or a process left, leaves that unsaid, for an in-place call to ask again.
+// An in-place run's worktree is no checkout: the reap leaves it alone.
+func TestAReapRecordsWhetherTheRunsProcessesEnded(t *testing.T) {
+	t.Parallel()
+	for name, c := range map[string]struct {
+		outcome app.Reaping
+		err     error
+		ended   bool
+	}{
+		"killed":        {outcome: app.ReapKilled, ended: true},
+		"gone":          {outcome: app.ReapGone, ended: true},
+		"left":          {outcome: app.ReapLeft},
+		"a failed step": {outcome: app.ReapKilled, err: errors.New("process 777 is alive")},
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			h := newHarness()
+			abandoned := abandonedRun("old")
+			abandoned.Effects.Checkout = nil
+			abandoned.InPlace = &run.InPlace{Dir: "/repo", Worktree: "/repo", Revision: "sha-HEAD"}
+			r := reaping(h, abandoned)
+			r.processes.outcome, r.processes.err = c.outcome, c.err
+			if err := r.reap(); err != nil {
+				t.Fatal(err)
+			}
+			old := r.adopter.handles["old"].wait(t)
+			if old.ProcessesEnded != c.ended || old.FinishedAt == nil {
+				t.Fatalf("processes ended %v, want %v", old.ProcessesEnded, c.ended)
+			}
+			if len(h.workspaces.discarded) != 0 || old.InPlace == nil || old.Effects.Unreleased != nil {
+				t.Fatalf("discarded %v, in place %+v, effects %+v", h.workspaces.discarded, old.InPlace, old.Effects)
+			}
+		})
+	}
+}

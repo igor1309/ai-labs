@@ -1,0 +1,66 @@
+package system_test
+
+import (
+	"errors"
+	"os"
+	"path/filepath"
+	"testing"
+
+	"github.com/igor1309/ai-labs/agister/internal/adapters/system"
+	"github.com/igor1309/ai-labs/agister/internal/app"
+)
+
+// A worktree's lock is keyed by its canonical path: taken through a
+// symlink, it is the same lock, and is refused while held; released, it is
+// free again. Another worktree's lock is its own. Nothing is written in the
+// worktree.
+//
+// Contract test: flock on lock files in a directory of the test's own.
+func TestAWorktreeLockIsHeldByItsCanonicalPath(t *testing.T) {
+	t.Parallel()
+	base, err := filepath.EvalSymlinks(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	worktree, other, link := filepath.Join(base, "worktree"), filepath.Join(base, "other"), filepath.Join(base, "link")
+	for _, dir := range []string{worktree, other} {
+		if err := os.Mkdir(dir, 0o700); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := os.Symlink(worktree, link); err != nil {
+		t.Fatal(err)
+	}
+	locks := system.WorktreeLocks{Dir: filepath.Join(base, "state", "locks", "in-place")}
+
+	key, unlock, err := locks.Lock(link)
+	if err != nil || key != worktree {
+		t.Fatalf("lock = %q, %v", key, err)
+	}
+	if _, _, err := locks.Lock(worktree); !errors.Is(err, app.ErrWorktreeLocked) {
+		t.Fatalf("second lock = %v", err)
+	}
+	otherKey, unlockOther, err := locks.Lock(other)
+	if err != nil || otherKey != other {
+		t.Fatalf("other lock = %q, %v", otherKey, err)
+	}
+	if err := unlockOther(); err != nil {
+		t.Fatal(err)
+	}
+	if err := unlock(); err != nil {
+		t.Fatal(err)
+	}
+	if err := unlock(); err != nil {
+		t.Fatalf("a second release = %v", err)
+	}
+	_, again, err := locks.Lock(worktree)
+	if err != nil {
+		t.Fatalf("lock after release = %v", err)
+	}
+	if err := again(); err != nil {
+		t.Fatal(err)
+	}
+	if entries, err := os.ReadDir(worktree); err != nil || len(entries) != 0 {
+		t.Fatalf("worktree holds %v, %v", entries, err)
+	}
+}

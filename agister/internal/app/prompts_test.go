@@ -184,7 +184,7 @@ func TestAPromptNotResolvedWithTheCallRefusesIt(t *testing.T) {
 	h.calls = app.NewCalls(
 		withoutPrompts{app.NewResolver(h.defs, h.runtimes, h.validator, resolverCheckStub{})}, h.runtimes,
 		map[string]app.InputProvider{"git.revision": h.inputs, "git.diff": h.inputs},
-		h.workspaces, h.changes, app.NewPreparer(h.changes, h.setup, h.clock), app.NewVerifier(h.changes, h.copies, h.commands, h.clock), h.validator, h.recorder, h.runs,
+		h.workspaces, h.changes, app.NewPreparer(h.changes, h.setup, h.clock), h.borrower(), app.NewVerifier(h.changes, h.copies, h.commands, h.clock), h.validator, h.recorder, h.runs,
 		h.clock, h.timer, fixedIDs{}, "/state", h.hosted,
 	)
 	record := h.call(t, contract.CallRequest{})

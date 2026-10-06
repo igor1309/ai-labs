@@ -64,6 +64,16 @@ type Verify struct {
 	Instruction string        `json:"instruction"`
 }
 
+// Precheck is the command that gates an in-place call (ADR-022 rule 5), as
+// resolved from the workspace settings at Path. SHA256 is the hex digest of
+// Command.
+type Precheck struct {
+	Command string        `json:"command"`
+	Timeout time.Duration `json:"timeout"`
+	SHA256  string        `json:"sha256"`
+	Path    string        `json:"path"`
+}
+
 // Setup is the setup command a call's checkout runs (ADR-012), as
 // resolved: the process's own, or its workspace settings' default. From
 // says which, and Path is the document it came from, whose recorded digest

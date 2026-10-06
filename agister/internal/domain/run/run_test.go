@@ -49,7 +49,7 @@ func TestEveryClassBelongsToOneStatus(t *testing.T) {
 	want := map[run.Class]run.Status{
 		run.ClassRefused: run.Failed, run.ClassInvalidOutput: run.Failed, run.ClassBudgetExhausted: run.Failed,
 		run.ClassRateLimited: run.Failed, run.ClassAuth: run.Failed, run.ClassContextOverflow: run.Failed,
-		run.ClassRuntimeError: run.Failed, run.ClassRuntimeUnavailable: run.Failed, run.ClassInternal: run.Failed, run.ClassSetupFailed: run.Failed,
+		run.ClassRuntimeError: run.Failed, run.ClassRuntimeUnavailable: run.Failed, run.ClassInternal: run.Failed, run.ClassSetupFailed: run.Failed, run.ClassCommitted: run.Failed,
 		run.ClassTimeout: run.Interrupted, run.ClassCancelled: run.Interrupted,
 		run.ClassNoResult: run.Lost, run.ClassKilled: run.Lost, run.ClassAbandoned: run.Lost,
 	}
@@ -128,6 +128,39 @@ func TestRecordWithConstraintsStillReads(t *testing.T) {
 		Permissions: []string{"repository.read"}, Access: "read-only", Scope: "candidate"}
 	if record.ID != "run-0" || record.Effective == nil || !reflect.DeepEqual(*record.Effective, want) {
 		t.Fatalf("record = %+v, effective %+v", record, record.Effective)
+	}
+}
+
+// An in-place call's worktree is on its record apart from its effects
+// (ADR-022 rule 2), in fixed JSON; a record written before has none, and
+// still reads.
+func TestRecordJSONForAnInPlaceWorktreeIsFixed(t *testing.T) {
+	t.Parallel()
+	record := run.Record{ID: "r", ProcessesEnded: true,
+		InPlace: &run.InPlace{Dir: "/repo/sub", Worktree: "/repo", RepositoryIdentity: "/repo/.git", Revision: "abc", Verify: run.VerifyOnCopy, Content: "tree"}}
+	data, err := json.Marshal(record)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var got map[string]json.RawMessage
+	if err := json.Unmarshal(data, &got); err != nil {
+		t.Fatal(err)
+	}
+	want := `{"dir":"/repo/sub","worktree":"/repo","repository_identity":"/repo/.git","revision":"abc","verify":"copy","content":"tree"}`
+	if string(got["in_place"]) != want || string(got["processes_ended"]) != "true" || got["effects"] != nil {
+		t.Fatalf("record %s", data)
+	}
+	var back run.Record
+	if err := json.Unmarshal(data, &back); err != nil || !reflect.DeepEqual(back, record) {
+		t.Fatalf("read back %+v, %v", back, err)
+	}
+
+	var old run.Record
+	if err := json.Unmarshal([]byte(`{"id":"run-0","effects":{"checkout":{"repository":"/repo","dir":"/tmp/w"}}}`), &old); err != nil {
+		t.Fatal(err)
+	}
+	if old.InPlace != nil || old.ProcessesEnded || old.Effects == nil || old.Effects.Checkout == nil {
+		t.Fatalf("old record %+v", old)
 	}
 }
 

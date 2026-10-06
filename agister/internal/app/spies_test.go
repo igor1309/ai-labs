@@ -891,6 +891,8 @@ type processesSpy struct {
 	mu     sync.Mutex
 	reaped []string // references
 	err    error
+	// outcome is what each Reap finds; ReapKilled when empty.
+	outcome app.Reaping
 	// hook, when set, sees the context each Reap receives.
 	hook func(context.Context)
 }
@@ -902,7 +904,72 @@ func (s *processesSpy) Reap(ctx context.Context, ref string) (app.Reaping, error
 		s.hook(ctx)
 	}
 	s.reaped = append(s.reaped, ref)
+	if s.outcome != "" {
+		return s.outcome, s.err
+	}
 	return app.ReapKilled, s.err
+}
+
+func (s *processesSpy) refs() []string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return append([]string(nil), s.reaped...)
+}
+
+// locksSpy holds the worktree locks of in-place calls, keyed by the
+// directory as given: its paths are canonical already.
+type locksSpy struct {
+	mu       sync.Mutex
+	held     map[string]bool
+	locked   []string
+	unlocked []string
+}
+
+func (s *locksSpy) Lock(dir string) (string, func() error, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.held[dir] {
+		return "", nil, fmt.Errorf("%s: %w", dir, app.ErrWorktreeLocked)
+	}
+	if s.held == nil {
+		s.held = map[string]bool{}
+	}
+	s.held[dir] = true
+	s.locked = append(s.locked, dir)
+	return dir, func() error {
+		s.mu.Lock()
+		defer s.mu.Unlock()
+		delete(s.held, dir)
+		s.unlocked = append(s.unlocked, dir)
+		return nil
+	}, nil
+}
+
+func (s *locksSpy) holds(dir string) bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.held[dir]
+}
+
+// worktreesSpy reads the git state of borrowed worktrees: by default each
+// is clean at the revision asked about, its tree "tree", as changesSpy
+// names unchanged content.
+type worktreesSpy struct {
+	mu    sync.Mutex
+	reads int
+	// state, when set, is what the nth read (from 0) finds instead.
+	state func(revision string, n int) app.WorktreeState
+}
+
+func (s *worktreesSpy) State(_ context.Context, _, revision string) (app.WorktreeState, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	n := s.reads
+	s.reads++
+	if s.state != nil {
+		return s.state(revision, n), nil
+	}
+	return app.WorktreeState{Head: revision, Tree: "tree"}, nil
 }
 
 // reapHandle is all a reap has of an adopted run: it appends and finishes,
