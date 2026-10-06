@@ -23,7 +23,9 @@ still apply.
 - Review a committed candidate with
   `agister run code_review --param base=<rev> --param candidate=<rev> --param goal=<file>`;
   the goal is the file that says what the change is for, its issue or
-  brief, and a call without it is refused (ADR-023). Act on
+  brief, and a call without it is refused (ADR-023). The goal file names
+  the done gates the change touches, and any edit to an agent instruction
+  the owner asked for in the change. Act on
   the rulings as written, without judging them again: fix items go to a
   fresh `implement` run, owner items to the advisor (below), defer items to a
   backlog issue in the Multica project Agister. Waive items get no repair and

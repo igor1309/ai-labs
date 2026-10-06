@@ -1083,6 +1083,70 @@ func TestReviewPromptsCarryTheGoal(t *testing.T) {
 	}
 }
 
+// The clarity prompt of the repository carries the exception to its rule
+// that a change does not edit a recorded decision. An edit a recorded rule
+// of the project requires, which brings a document the rule names in line
+// with behaviour the change itself built (a done gate), is not such a
+// finding; the reviewer quotes the rule and where it stands in the item's
+// coverage entry; an edit that says more than the change built, that
+// changes a rule, or that no such rule requires is still a finding; and an
+// edit the goal expressly directs is the owner's own. The definition of
+// done stands in one paragraph, so each phrase is one only that item has.
+// An instruction is held by its short phrases standing in one paragraph, as
+// in TestReviewPromptsCarryTheirCoverageContract. The prompt is the
+// repository's own, read as it is.
+func TestClarityPromptCarriesTheDoneGateException(t *testing.T) {
+	t.Parallel()
+	const prompt = "code-review-clarity.md"
+	data, err := os.ReadFile(filepath.Join("..", "..", "..", "prompts", prompt))
+	if err != nil {
+		t.Fatal(err)
+	}
+	instructions := []promptInstruction{
+		{"an edit a recorded rule of the project requires is not a finding", []string{
+			"does not edit a recorded decision", "not such a finding",
+			"a recorded rule of the project requires the change to make it", "a document the rule names",
+			"behaviour the change itself built", "a done gate", "The owner's rule is the decision"}},
+		{"the coverage entry quotes the rule and where it stands", []string{
+			"you check it", "the `coverage` entry for this item", "quotes the rule", "where it stands"}},
+		{"an edit beyond what the change built, or one no rule requires, is still a finding", []string{
+			"still a finding", "says more than the change built", "changes a rule instead of describing behaviour",
+			"that no such rule requires stays a finding"}},
+		{"an edit the goal expressly directs is the owner's own", []string{
+			"An edit the goal expressly directs", "the owner's own", "not a finding either"}},
+	}
+	for _, instruction := range instructions {
+		if !carries(string(data), instruction.phrases) {
+			t.Errorf("prompts/%s lost the instruction %q: no paragraph has all of %q",
+				prompt, instruction.name, instruction.phrases)
+		}
+	}
+}
+
+// agister/AGENTS.md, which calls the review, says what the goal file names
+// so that the clarity reviewer can apply that exception: the done gates the
+// change touches, and any edit to an agent instruction the owner asked for
+// in the change. Its bullets stand in one paragraph, so each phrase is one
+// only that sentence has. An instruction is held by its short phrases
+// standing in one paragraph, as in
+// TestReviewPromptsCarryTheirCoverageContract. The file is the repository's
+// own, read as it is.
+func TestAgentInstructionsSayWhatTheGoalFileNames(t *testing.T) {
+	t.Parallel()
+	const file = "agister/AGENTS.md"
+	data, err := os.ReadFile(filepath.Join("..", "..", "..", file))
+	if err != nil {
+		t.Fatal(err)
+	}
+	instruction := promptInstruction{"the goal file names the done gates and the agent instruction edits the owner asked for", []string{
+		"The goal file names the done gates the change touches",
+		"any edit to an agent instruction the owner asked for in the change"}}
+	if !carries(string(data), instruction.phrases) {
+		t.Errorf("%s lost the instruction %q: no paragraph has all of %q",
+			file, instruction.name, instruction.phrases)
+	}
+}
+
 // carries holds for phrases that stand in one paragraph, the first or a
 // later one, wrapped across its lines or not; it does not for a missing
 // phrase, for phrases that stand in different paragraphs, and for a phrase
