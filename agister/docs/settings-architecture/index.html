@@ -8,12 +8,12 @@
   :root {
     color-scheme: light dark;
     --bg:#ffffff; --fg:#1f2328; --muted:#59636e; --line:#d1d9e0; --stroke:#8c959f;
-    --panel:#f6f8fa; --tint:#e7f1fb; --accent:#0969da; --write:#9a6700;
+    --panel:#f6f8fa; --tint:#e7f1fb; --accent:#0969da; --check:#9a6700;
   }
   @media (prefers-color-scheme: dark) {
     :root {
       --bg:#14161a; --fg:#e6e8ec; --muted:#9aa1ad; --line:#2b2f38; --stroke:#6b7380;
-      --panel:#1c1f26; --tint:#16283d; --accent:#58a6ff; --write:#d29922;
+      --panel:#1c1f26; --tint:#16283d; --accent:#58a6ff; --check:#d29922;
     }
   }
   * { box-sizing: border-box; }
@@ -29,24 +29,25 @@
   code { padding: 1px 4px; border-radius: 4px; background: var(--panel); }
   a { color: var(--accent); text-underline-offset: 2px; }
   :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .chain { margin: 4px 0 12px; text-align: center; font-weight: 600; }
 
   figure { margin: 24px 0 28px; }
-  figure svg { display: block; width: 100%; max-width: 27rem; height: auto; margin: 0 auto; }
+  figure svg { display: block; width: 100%; max-width: 28rem; height: auto; margin: 0 auto; }
   figcaption { margin-top: 10px; color: var(--muted); font-size: 14px; text-align: center; }
   svg text { fill: var(--fg); font-size: 13px; }
   svg .t { font-weight: 600; font-size: 14px; }
   svg .sub { fill: var(--muted); font-size: 12px; }
-  svg .mono { font-size: 12px; }
-  svg .write-label { fill: var(--write); }
-  .settings { fill: var(--tint); stroke: var(--accent); stroke-opacity: .7; }
-  .home, .reader { fill: var(--panel); stroke: var(--stroke); }
-  .rule { fill: var(--bg); stroke: var(--fg); }
-  .live { fill: none; stroke: var(--stroke); stroke-dasharray: 4 3; }
-  .read, .write { fill: none; stroke-width: 1.5; }
-  .read { stroke: var(--fg); }
-  .write { stroke: var(--write); stroke-dasharray: 5 4; }
-  .head-read, .dot { fill: var(--fg); }
-  .head-write { fill: var(--write); }
+  svg .small { fill: var(--muted); font-size: 11px; }
+  svg .check-label { fill: var(--check); }
+  .doc { fill: var(--tint); stroke: var(--accent); stroke-opacity: .7; }
+  .service { fill: var(--bg); stroke: var(--fg); }
+  .single { fill: var(--panel); stroke: var(--stroke); }
+  .apart { fill: none; stroke: var(--stroke); stroke-dasharray: 4 3; }
+  .names, .check { fill: none; stroke-width: 1.5; }
+  .names { stroke: var(--fg); }
+  .check { stroke: var(--check); stroke-dasharray: 5 4; }
+  .head-names { fill: var(--fg); }
+  .head-check { fill: var(--check); }
 
   footer {
     margin-top: 32px; padding-top: 14px; border-top: 1px solid var(--line);
@@ -58,125 +59,164 @@
 <main>
 <h1>Agister's settings architecture</h1>
 
-<p>Agister runs settings. Agents, processes, policies, output contracts,
-permission mappings, the permission vocabulary and service limits are all
-documents you change without rebuilding it. Code adds only the mechanisms
-settings cannot express: runtimes and input source kinds. Agister does not
-judge whether settings are right or safe.</p>
-
-<p>Settings live in two folders with the same layout, the repo's and
-home's, and every reader takes both.</p>
+<p>Agister's settings are documents that name each other by name. A
+workflow names processes. A process names its agent, policy, output schema,
+verification, prompts and skills. An agent names its runtime mapping and
+its skills. Over all of them sits the service: the permission vocabulary
+and the hard limits that policies and runtime mappings are checked
+against.</p>
 
 <figure>
-<svg viewBox="0 0 400 574" role="img" aria-labelledby="diagram-title diagram-desc">
-  <title id="diagram-title">Agister's two settings layers and who uses them</title>
-  <desc id="diagram-desc">The repo's .agister folder is a layer over Agister
-  home. Home holds settings and, apart from them, live state: runs, logs and
-  backups. agister install copies the repo's settings into home after a backup
-  into home's backups. A call and agister pages read the settings of both
-  layers, repo over home by kind and name. A call reads both into one
-  snapshot, checks it and records what it used. agister pages reads both
-  layers read-only.</desc>
+<svg viewBox="0 0 420 680" role="img" aria-labelledby="diagram-title diagram-desc">
+  <title id="diagram-title">The settings documents and what they name</title>
+  <desc id="diagram-desc">A workflow names processes. A process names an
+  agent, a policy, an output schema, a verification, prompts and skills. An
+  agent names a runtime mapping and skills. Policies and runtime mappings
+  are checked against the service, the one document with the permission
+  vocabulary and hard limits. Apart from these, one workspace, the default
+  checkout setup, and one blocks document, what the repo refuses.</desc>
   <defs>
-    <marker id="head-read" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
-      <path class="head-read" d="M0 0 10 5 0 10z"/>
+    <marker id="head-names" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+      <path class="head-names" d="M0 0 10 5 0 10z"/>
     </marker>
-    <marker id="head-write" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
-      <path class="head-write" d="M0 0 10 5 0 10z"/>
+    <marker id="head-check" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+      <path class="head-check" d="M0 0 10 5 0 10z"/>
     </marker>
   </defs>
 
-  <rect class="settings" x="12" y="12" width="340" height="64" rx="8"/>
-  <text x="28" y="38"><tspan class="t">Repo</tspan><tspan class="mono" dx="8">&lt;git root&gt;/.agister</tspan></text>
-  <text class="sub" x="28" y="58">the project's settings</text>
+  <rect class="service" x="40" y="12" width="364" height="56" rx="8"/>
+  <text x="56" y="36"><tspan class="t">service</tspan><tspan class="sub" dx="8">one</tspan></text>
+  <text class="sub" x="56" y="56">permission vocabulary, hard limits</text>
 
-  <rect class="home" x="12" y="140" width="340" height="208" rx="8"/>
-  <text x="28" y="165"><tspan class="t">Agister home</tspan><tspan class="mono" dx="8">~/.agister</tspan></text>
-  <rect class="settings" x="24" y="180" width="316" height="56" rx="6"/>
-  <text class="t" x="40" y="204">Settings</text>
-  <text class="sub" x="40" y="222">global, same layout as the repo's</text>
-  <rect class="live" x="24" y="276" width="316" height="58" rx="6"/>
-  <text x="40" y="300"><tspan class="t">Live state</tspan><tspan class="sub" dx="8">not settings</tspan></text>
-  <text class="sub" x="40" y="320">runs, logs, backups</text>
+  <path class="check" d="M322 204V70" marker-end="url(#head-check)"/>
+  <text class="sub check-label" x="314" y="140" text-anchor="end">checked against</text>
+  <path class="check" d="M40 620H20V40H38" marker-end="url(#head-check)"/>
+  <text class="sub check-label" x="14" y="330" text-anchor="middle" transform="rotate(-90 14 330)">checked against</text>
 
-  <path class="write" d="M316 76V180" marker-end="url(#head-write)"/>
-  <text class="mono write-label" x="304" y="104" text-anchor="end">agister install</text>
-  <text class="sub" x="304" y="122" text-anchor="end">copies the repo's settings into home</text>
-  <path class="write" d="M48 236V276" marker-end="url(#head-write)"/>
-  <text class="sub" x="60" y="260">install backs up first</text>
+  <rect class="doc" x="40" y="100" width="156" height="72" rx="8"/>
+  <text class="t" x="52" y="124">workflow</text>
+  <text class="sub" x="52" y="143">fans out process</text>
+  <text class="sub" x="52" y="160">calls, then joins</text>
 
-  <path class="read" d="M352 44H384V372H200V388" marker-end="url(#head-read)"/>
-  <path class="read" d="M340 208H384"/>
-  <circle class="dot" cx="384" cy="208" r="3"/>
-  <text class="sub" x="368" y="37" text-anchor="middle">read</text>
-  <text class="sub" x="368" y="201" text-anchor="middle">read</text>
+  <path class="names" d="M118 172V202" marker-end="url(#head-names)"/>
+  <text class="sub" x="126" y="192">names</text>
 
-  <rect class="rule" x="12" y="388" width="376" height="52" rx="26"/>
-  <text class="t" x="200" y="410" text-anchor="middle">repo over home, by kind and name</text>
-  <text class="sub" x="200" y="428" text-anchor="middle">a repo document replaces home's, whole</text>
+  <rect class="doc" x="40" y="204" width="156" height="264" rx="8"/>
+  <text class="t" x="52" y="228">process</text>
+  <text class="sub" x="52" y="248">a named agent call</text>
+  <text class="sub" x="52" y="276">instruction, inputs,</text>
+  <text class="sub" x="52" y="294">required permissions,</text>
+  <text class="sub" x="52" y="312">limit overrides</text>
 
-  <path class="read" d="M122 440V468" marker-end="url(#head-read)"/>
-  <path class="read" d="M316 440V468" marker-end="url(#head-read)"/>
+  <text class="sub" x="218" y="220" text-anchor="middle">names</text>
+  <path class="names" d="M196 228H238" marker-end="url(#head-names)"/>
+  <path class="names" d="M196 286H238" marker-end="url(#head-names)"/>
+  <path class="names" d="M196 344H238" marker-end="url(#head-names)"/>
+  <path class="names" d="M196 402H238" marker-end="url(#head-names)"/>
+  <path class="names" d="M196 452H238" marker-end="url(#head-names)"/>
 
-  <rect class="reader" x="12" y="468" width="220" height="94" rx="8"/>
-  <text class="t" x="26" y="492">A call</text>
-  <text x="26" y="512">reads both into one snapshot,</text>
-  <text x="26" y="530">checks it,</text>
-  <text x="26" y="548">records what it used</text>
+  <rect class="doc" x="240" y="204" width="164" height="48" rx="8"/>
+  <text class="t" x="252" y="224">policy</text>
+  <text class="sub" x="252" y="242">limits, permissions</text>
 
-  <rect class="reader" x="244" y="468" width="144" height="94" rx="8"/>
-  <text class="mono" x="258" y="492">agister pages</text>
-  <text x="258" y="512">reads both layers,</text>
-  <text x="258" y="530">read-only</text>
+  <rect class="doc" x="240" y="262" width="164" height="48" rx="8"/>
+  <text class="t" x="252" y="282">output schema</text>
+  <text class="sub" x="252" y="300">a JSON Schema</text>
+
+  <rect class="doc" x="240" y="320" width="164" height="48" rx="8"/>
+  <text class="t" x="252" y="340">verification</text>
+  <text class="sub" x="252" y="358">command, attempts</text>
+
+  <rect class="doc" x="240" y="378" width="164" height="48" rx="8"/>
+  <text class="t" x="252" y="398">prompts</text>
+  <text class="sub" x="252" y="416">plain text</text>
+
+  <rect class="doc" x="240" y="436" width="164" height="84" rx="8"/>
+  <text class="t" x="252" y="474">skills</text>
+  <text class="sub" x="252" y="492">one SKILL.md each</text>
+
+  <path class="names" d="M118 468V490" marker-end="url(#head-names)"/>
+
+  <rect class="doc" x="40" y="492" width="156" height="60" rx="8"/>
+  <text class="t" x="52" y="514">agent</text>
+  <text class="sub" x="52" y="534">model, effort, session</text>
+  <path class="names" d="M196 508H238" marker-end="url(#head-names)"/>
+
+  <path class="names" d="M118 552V582" marker-end="url(#head-names)"/>
+
+  <rect class="doc" x="40" y="584" width="156" height="72" rx="8"/>
+  <text class="t" x="52" y="606">runtime mapping</text>
+  <text class="sub" x="52" y="625">one adapter's efforts</text>
+  <text class="sub" x="52" y="642">and primitives</text>
+
+  <rect class="apart" x="240" y="552" width="164" height="116" rx="8"/>
+  <text class="small" x="252" y="569">apart, one of each</text>
+  <rect class="single" x="248" y="578" width="148" height="38" rx="6"/>
+  <text class="t" x="258" y="594">workspace</text>
+  <text class="small" x="258" y="609">default checkout setup</text>
+  <rect class="single" x="248" y="622" width="148" height="38" rx="6"/>
+  <text x="258" y="638"><tspan class="t">blocks</tspan><tspan class="small" dx="6">repo only</tspan></text>
+  <text class="small" x="258" y="653">what the repo refuses</text>
 </svg>
-<figcaption>Tinted boxes are settings; the dashed box is live state. Solid
-arrows read, dashed arrows are what install writes.</figcaption>
+<figcaption>Solid arrows name a document; dashed arrows are checked against
+the service. Workspace and blocks stand apart.</figcaption>
 </figure>
 
-<h2>Two layers</h2>
+<p>Every document can come from the repo's <code>.agister</code> or from
+home; the repo's replaces home's of the same kind and name.</p>
 
-<p>Home is the global layer: <code>~/.agister</code>, or wherever
-<code>$AGISTER_HOME</code> or <code>--home</code> points. The repo layer is
-the project's: the <code>.agister</code> folder at the root of its git
-repository. Outside a git repo, or without that folder, there is no repo
-layer.</p>
+<h2>Workflow and process</h2>
 
-<p>A repo document replaces home's document of the same kind and name,
-whole: fields are not merged. Everything else comes from whichever layer
-has it. The repo's settings override home's unconditionally.</p>
+<p>A workflow is a set of process calls: fan-out nodes, each a call of a
+process over the same resolved inputs, then one join node, a call of a
+process given the fan-out results. It has its own params and values. A
+process is a named agent call. It holds the instruction, caller params,
+input values, the checkout input, its own setup, required permissions and
+limit overrides. Everything else it names: its agent, its policy, the
+schema its JSON output must match, its verification (or holds it inline:
+command, timeout, max attempts, failure instruction), its prompts, which
+may be optional, and its skills. A prompt is plain text; a skill is one
+<code>SKILL.md</code>.</p>
 
-<p>Home also holds live state that is not settings: runs, logs, locks,
-backups and the runtimes' sessions. Agents cannot reach home. They can
-change a repo's <code>.agister</code> when they may write the repo.</p>
+<h2>Agent and runtime mapping</h2>
 
-<h2>What a call does with them</h2>
+<p>An agent is a runtime profile: model, model family, effort, session
+mode (fresh-only or resumable) and the skills it names. It carries no task
+and no permissions. It names a runtime mapping, which covers one adapter
+(<code>claude-code</code>, <code>codex</code>, <code>pi</code> or
+<code>opencode</code>): the efforts it accepts and each restriction
+primitive, a tool or sandbox mode, with the permissions it grants,
+verified against runtime versions.</p>
 
-<p>A call reads every document once into an in-memory snapshot, checks it,
-and uses exactly what it checked. It records what it used, with digests:
-definitions, prompts, verification and skills.</p>
+<h2>Policy and service</h2>
 
-<p>A call depends on the service settings, its process and what that
-process uses. A broken document refuses only the calls that depend on it,
-naming the chain.</p>
+<p>A policy holds execution defaults: timeout, attempts, cost cap, allowed
+and denied permissions, workspace access (read-only or read-write) and
+scope (candidate or repository), staleness limits. It speaks in
+permissions, never in runtime primitives. The service is one document: the
+hard limits (max timeout, attempts, cost, verify attempts) and the
+permission vocabulary every policy and runtime mapping must use, including
+which permissions write and which reach Agister's state; those are never
+granted.</p>
 
-<h2>Install</h2>
+<p>Apart from the graph stand two singletons: the workspace, the default
+checkout setup for processes that check out a revision and declare none,
+and blocks, repo only: the agents, processes, workflows or runtime
+mappings this repo refuses, with reasons.</p>
 
-<p><code>agister install &lt;dir&gt;</code> copies a settings folder, such
-as a repo's <code>.agister</code>, into home, document by document. It
-plans first: each document is created, replaced (with a diff) or unchanged,
-and documents only home has are kept. It checks the result in a staged
-copy, asks for a yes, backs up to <code>backups/&lt;stamp&gt;/</code> and
-then writes. <code>agister install --restore &lt;stamp&gt;</code> undoes one
-install. Install never deletes, and it leaves out live state, skills and
-the repo's own blocks.</p>
+<h2>How limits narrow</h2>
 
-<h2>Pages</h2>
+<p class="chain">service ⊇ policy ⊇ process ⊇ caller</p>
 
-<p><code>agister pages</code> reads the settings files of both layers
-directly and read-only, and serves on loopback only. Its page combines the
-layers by the same rule, repo over home by kind and name, and marks each
-document <code>repo</code>, <code>home</code> or
-<code>repo, replaces home</code>.</p>
+<p>Each may only narrow what the one before allows. Widening is rejected,
+never clamped. Denied always wins over allowed.</p>
+
+<h2>Where permissions meet primitives</h2>
+
+<p>The effective permissions meet the agent's runtime mapping to make the
+enforcement plan. A primitive is granted only if everything it grants is
+allowed. An allowed permission that no primitive provides is withheld, and
+the call is refused if the process requires it.</p>
 
 <footer>
 <a href="detailed.html">Details</a>
