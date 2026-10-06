@@ -443,24 +443,78 @@ func TestAStaleTurnIsNotRecoveredWhen(t *testing.T) {
 }
 
 // Under a cost limit a recovery turn gets what the turns before it left of
-// it, and the recovery's record keeps what the turn itself cost.
+// it, and the recovery's record keeps what the turn itself cost. Where the
+// runtime reports its session's totals, which count every turn the session
+// had, a recovery turn's own cost and usage are those totals less what the
+// stale turn it resumed reported, and it is that the call's total and the
+// next turn's budget count.
 func TestARecoveryTurnGetsWhatIsLeftOfTheCostLimit(t *testing.T) {
 	t.Parallel()
-	h, timers := recoveryHarness(t, "no_event: 5m", 1)
-	h.defs.docs[definition.KindPolicy]["pol"] += "max_cost_usd: 2\n"
-	spent, cost := 0.5, 0.25
-	stale, recovered := silent(timers, "prov-1"), completes(h)
-	stale.turn.CostUSD, recovered.turn.CostUSD = &spent, &cost
-	play(h, stale, recovered)
-	record := h.call(t, contract.CallRequest{})
+	t.Run("each turn reports its own cost", func(t *testing.T) {
+		t.Parallel()
+		h, timers := recoveryHarness(t, "no_event: 5m", 1)
+		h.defs.docs[definition.KindPolicy]["pol"] += "max_cost_usd: 2\n"
+		spent, cost := 0.5, 0.25
+		stale, recovered := silent(timers, "prov-1"), completes(h)
+		stale.turn.CostUSD, recovered.turn.CostUSD = &spent, &cost
+		play(h, stale, recovered)
+		record := h.call(t, contract.CallRequest{})
 
-	turns := h.runner.calls()
-	if record.Result.Status != run.Completed || len(turns) != 2 || turns[1].MaxCostUSD == nil || *turns[1].MaxCostUSD != 1.5 {
-		t.Fatalf("result = %+v: %s, turns %+v", record.Result, message(record), turns)
-	}
-	if got := record.Recoveries[0]; got.CostUSD == nil || *got.CostUSD != 0.25 || *record.Result.Cost.USD != 0.75 {
-		t.Fatalf("recovery = %+v, call cost %+v", got, record.Result.Cost)
-	}
+		turns := h.runner.calls()
+		if record.Result.Status != run.Completed || len(turns) != 2 || turns[1].MaxCostUSD == nil || *turns[1].MaxCostUSD != 1.5 {
+			t.Fatalf("result = %+v: %s, turns %+v", record.Result, message(record), turns)
+		}
+		if got := record.Recoveries[0]; got.CostUSD == nil || *got.CostUSD != 0.25 || *record.Result.Cost.USD != 0.75 {
+			t.Fatalf("recovery = %+v, call cost %+v", got, record.Result.Cost)
+		}
+	})
+	t.Run("each turn reports its session's totals", func(t *testing.T) {
+		t.Parallel()
+		h, timers := recoveryHarness(t, "no_event: 5m, repeated_tool_calls: 3", 2)
+		h.defs.docs[definition.KindPolicy]["pol"] += "max_cost_usd: 2\n"
+		totals := func(usd float64, input int64) *run.SessionTotals {
+			return &run.SessionTotals{CostUSD: &usd, Usage: &run.Usage{InputTokens: &input}}
+		}
+		// The session's totals after each turn: the stale turn, the recovery
+		// that goes stale at another limit, and the recovery that completes.
+		stale, again, recovered := silent(timers, "prov-1"), repeating("prov-1", goTest, ""), completes(h)
+		stale.turn.Session, again.turn.Session, recovered.turn.Session = totals(0.5, 100), totals(0.75, 150), totals(1.25, 250)
+		play(h, stale, again, recovered)
+		record := h.call(t, contract.CallRequest{})
+
+		turns := h.runner.calls()
+		if record.Result.Status != run.Completed || len(turns) != 3 || len(record.Recoveries) != 2 {
+			t.Fatalf("result = %+v: %s, turns %+v, recoveries %+v", record.Result, message(record), turns, record.Recoveries)
+		}
+		// Each recovery's own: 0.75 less the stale turn's 0.5, then 1.25
+		// less the first recovery's 0.75.
+		for i, want := range []struct {
+			usd   float64
+			input int64
+		}{{0.25, 50}, {0.5, 100}} {
+			got := record.Recoveries[i]
+			if got.CostUSD == nil || *got.CostUSD != want.usd || got.Usage == nil || got.Usage.InputTokens == nil || *got.Usage.InputTokens != want.input {
+				t.Fatalf("recovery %d: cost %v, usage %+v, want %v and %d input tokens", i+1, deref(got.CostUSD), got.Usage, want.usd, want.input)
+			}
+		}
+		// The latest turn resumed the session at what the turn before it
+		// reported, and reported its own totals.
+		if !reflect.DeepEqual(record.Turn.SessionBefore, totals(0.75, 150)) || !reflect.DeepEqual(record.Turn.Session, totals(1.25, 250)) {
+			t.Fatalf("session before %+v, after %+v", record.Turn.SessionBefore, record.Turn.Session)
+		}
+		// The call's total is every turn's own, 0.5, 0.25 and 0.5: not the
+		// sum of the totals reported.
+		if cost, usage := record.Result.Cost, record.Result.Usage; cost.USD == nil || *cost.USD != 1.25 || cost.Source == run.CostUnknown ||
+			usage == nil || usage.InputTokens == nil || *usage.InputTokens != 250 {
+			t.Fatalf("call cost %+v, usage %+v", cost, usage)
+		}
+		// Each turn's budget is the limit less every turn's own before it.
+		for i, want := range []float64{2, 1.5, 1.25} {
+			if got := turns[i].MaxCostUSD; got == nil || *got != want {
+				t.Fatalf("turn %d: cost limit %v, want %v", i+1, deref(got), want)
+			}
+		}
+	})
 }
 
 // A turn that reported its own end before Agister ended it keeps that end
@@ -485,19 +539,33 @@ func TestATurnThatReportedItsOwnEndIsNotRecovered(t *testing.T) {
 // A recovery turn that reports another session, or none, is not in the
 // call's session: the call fails as a contract violation, as after a
 // repair turn that does, its output is not the call's, and the record
-// keeps both sessions.
+// keeps both sessions. So does one that Agister ended at a limit in another
+// session: it is not classified as that limit, and no recovery follows it
+// there, though a resume is left.
 func TestARecoveryTurnInAnotherSessionFailsTheCall(t *testing.T) {
 	t.Parallel()
-	for _, reported := range []string{"prov-2", ""} {
-		t.Run("reported "+reported, func(t *testing.T) {
+	valid := func(h *harness, reported string) turnStep {
+		elsewhere := completes(h)
+		elsewhere.turn.ProviderSessionID = reported
+		return elsewhere
+	}
+	stale := func(_ *harness, reported string) turnStep { return repeating(reported, goTest, "") }
+	for _, c := range []struct {
+		name     string
+		reported string
+		recovery func(h *harness, reported string) turnStep
+	}{
+		{"reported prov-2", "prov-2", valid},
+		{"reported ", "", valid},
+		{"stale, reported prov-2", "prov-2", stale},
+	} {
+		t.Run(c.name, func(t *testing.T) {
 			t.Parallel()
-			h, timers := recoveryHarness(t, "no_event: 5m", 2)
-			elsewhere := completes(h)
-			elsewhere.turn.ProviderSessionID = reported
-			play(h, silent(timers, "prov-1"), elsewhere)
+			h, timers := recoveryHarness(t, "no_event: 5m, repeated_tool_calls: 3", 2)
+			play(h, silent(timers, "prov-1"), c.recovery(h, c.reported), completes(h))
 			record := h.call(t, contract.CallRequest{})
 
-			want := fmt.Sprintf("the recovery turn resumed session prov-1, but the runtime reported session %q", reported)
+			want := fmt.Sprintf("the recovery turn resumed session prov-1, but the runtime reported session %q", c.reported)
 			if record.Result.Status != run.Failed || class(record) != run.ClassRuntimeError || message(record) != want || record.Result.Output != nil {
 				t.Fatalf("result = %+v", record.Result)
 			}
@@ -505,14 +573,40 @@ func TestARecoveryTurnInAnotherSessionFailsTheCall(t *testing.T) {
 				t.Fatalf("turns %d, recoveries %+v", len(h.runner.calls()), record.Recoveries)
 			}
 			got := record.Recoveries[0]
-			if got.Resumed != "prov-1" || got.Session != reported || got.Outcome != run.RecoveryFailed || got.Error == nil || got.Error.Message != want {
+			if got.Resumed != "prov-1" || got.Session != c.reported || got.Outcome != run.RecoveryFailed || got.Error == nil || got.Error.Message != want {
 				t.Fatalf("recovery = %+v", got)
 			}
 			// The call's session is the one its turns were in.
 			if record.Result.Session == nil || record.Result.Session.ProviderSessionID != "prov-1" {
 				t.Fatalf("session = %+v", record.Result.Session)
 			}
+			// Nothing was asked of the other session: no recovery was
+			// started there, and none was considered.
+			if len(eventsOf(h, "RECOVERY_STARTED")) != 1 || len(eventsOf(h, "RECOVERY_NOT_STARTED")) != 0 {
+				t.Fatalf("events = %v", h.recorder.kinds())
+			}
 		})
+	}
+}
+
+// A recovery turn Agister ended at a limit before it reported a session is
+// in no other session: it is that limit's recovery on record, nothing says
+// which session to resume, and the call ends as the limit ends it.
+func TestAStaleRecoveryTurnThatReportedNoSessionEndsTheCallAtItsLimit(t *testing.T) {
+	t.Parallel()
+	h, timers := recoveryHarness(t, "no_event: 5m, repeated_tool_calls: 3", 2)
+	play(h, silent(timers, "prov-1"), repeating("", goTest, ""), completes(h))
+	record := h.call(t, contract.CallRequest{})
+
+	if record.Result.Status != run.Failed || class(record) != run.ClassBudgetExhausted || !strings.Contains(message(record), "(stale.repeated_tool_calls)") {
+		t.Fatalf("result = %+v", record.Result)
+	}
+	if len(h.runner.calls()) != 2 || !reflect.DeepEqual(outcomes(record), []string{run.RecoveryDifferentLimit}) || record.Recoveries[0].Session != "" {
+		t.Fatalf("turns %d, recoveries %+v", len(h.runner.calls()), record.Recoveries)
+	}
+	refused := eventsOf(h, "RECOVERY_NOT_STARTED")
+	if len(refused) != 1 || refused[0].Data["limit"] != run.StaleRepeatedToolCalls || refused[0].Data["reason"] != "the stale turn reported no session to resume" {
+		t.Fatalf("events = %+v", refused)
 	}
 }
 
@@ -580,5 +674,48 @@ func TestAStaleRepairTurnIsRecoveredAndVerificationGoesOn(t *testing.T) {
 	}
 	if got := record.Recoveries; len(got) != 1 || got[0].Follows != 2 || got[0].Outcome != run.RecoveryCompleted || got[0].MessageSHA256 != digestOf(turns[2].Prompt) {
 		t.Fatalf("recoveries = %+v", got)
+	}
+}
+
+// The budget of resumes is the call's, whichever turn went stale: a call
+// that spent its only resume on its first turn takes no recovery turn for a
+// repair turn that reaches another limit. The call ends as that limit ends
+// it, and an event says no resume is left.
+func TestAStaleRepairTurnIsNotRecoveredOnceTheCallsResumeIsSpent(t *testing.T) {
+	t.Parallel()
+	h, timers := staleHarness(t, "no_event: 5m, repeated_tool_calls: 3, recover: {max_resumes: 1, instruction: Recover.}")
+	verifying(h)
+	h.commands.exits = []int{1}
+	fresh(h)
+	// The first turn goes silent and is recovered; the run on what the
+	// recovery left fails, and the repair repeats a call. The last turn is
+	// the recovery a second resume would take.
+	play(h, silent(timers, "prov-1"), completes(h), repeating("prov-1", goTest, ""), completes(h))
+	record := h.call(t, contract.CallRequest{})
+
+	if record.Result.Status != run.Failed || class(record) != run.ClassBudgetExhausted || !strings.Contains(message(record), "(stale.repeated_tool_calls)") {
+		t.Fatalf("result = %+v", record.Result)
+	}
+	turns := h.runner.calls()
+	if len(turns) != 3 || !strings.HasPrefix(turns[1].Prompt, "Recover.\n\n## stale limit\n\nstale.no_event") ||
+		!strings.HasPrefix(turns[2].Prompt, "The verification command failed.") {
+		t.Fatalf("turns = %+v", turns)
+	}
+	// One recovery, the first turn's: the repair's limit started none.
+	if got := record.Recoveries; len(got) != 1 || got[0].Follows != 1 || got[0].Stale.Limit != run.StaleNoEvent || got[0].Outcome != run.RecoveryCompleted {
+		t.Fatalf("recoveries = %+v", got)
+	}
+	if started := eventsOf(h, "RECOVERY_STARTED"); len(started) != 1 || started[0].Data["limit"] != run.StaleNoEvent {
+		t.Fatalf("events = %+v", started)
+	}
+	refused := eventsOf(h, "RECOVERY_NOT_STARTED")
+	if len(refused) != 1 || refused[0].Data["limit"] != run.StaleRepeatedToolCalls || refused[0].Data["reason"] != "no resume is left of stale.recover.max_resumes 1" {
+		t.Fatalf("events = %+v", refused)
+	}
+	// The stale repair is the turn the second attempt stopped at, with no
+	// run of its own.
+	if len(h.commands.runs()) != 1 || len(record.Attempts) != 2 || record.Attempts[1].Run != nil ||
+		record.Attempts[1].Turn.Stale == nil || record.Attempts[1].Turn.Stale.Limit != run.StaleRepeatedToolCalls {
+		t.Fatalf("runs %d, attempts %+v", len(h.commands.runs()), record.Attempts)
 	}
 }

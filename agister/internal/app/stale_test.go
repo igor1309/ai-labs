@@ -406,6 +406,37 @@ func TestAVerificationRunWithoutOutputEndsTheCall(t *testing.T) {
 	}
 }
 
+// A run found silent for stale.no_output never passes, whatever its exit
+// (ADR-024 rule 8): one that exited zero before the kill for its silence
+// landed, its content unchanged, is a failed run of its attempt, and with
+// no repair to follow it the call ends as a timeout.
+func TestAStaleVerificationRunThatExitedZeroDoesNotPass(t *testing.T) {
+	t.Parallel()
+	h, _ := staleHarness(t, "no_output: 2m")
+	verifying(h)
+	h.defs.docs[definition.KindProcess]["p"] = strings.Replace(h.defs.docs[definition.KindProcess]["p"], "max_attempts: 3", "max_attempts: 1", 1)
+	zero := 0
+	h.commands.stale, h.commands.staleExit = true, &zero
+	record := h.call(t, contract.CallRequest{})
+
+	if record.Result.Status != run.Interrupted || class(record) != run.ClassTimeout ||
+		message(record) != "stale: attempt 1's run produced no output for 2m0s (stale.no_output)" {
+		t.Fatalf("result = %+v", record.Result)
+	}
+	if len(record.Attempts) != 1 || record.Attempts[0].Run == nil {
+		t.Fatalf("attempts = %+v", record.Attempts)
+	}
+	// The run is the one the predicate would pass but for its staleness:
+	// exit code zero, and the content it checked unchanged.
+	ran := record.Attempts[0].Run
+	if ran.Passed || ran.Stale == nil || ran.Stale.Limit != run.StaleNoOutput || ran.Exit.Code == nil || *ran.Exit.Code != 0 || ran.After != "" {
+		t.Fatalf("run = %+v, exit %+v, stale %+v", ran, ran.Exit, ran.Stale)
+	}
+	if _, ok := h.recorder.artifacts["changes.patch"]; ok || len(h.runner.calls()) != 1 {
+		t.Fatalf("artifacts %v, turns %d", h.recorder.artifacts, len(h.runner.calls()))
+	}
+}
+
 // fresh makes each turn of the harness's call leave content not checked
 // before, so the verification loop reruns its command after a repair.
 func fresh(h *harness) {

@@ -483,6 +483,9 @@ type commandsSpy struct {
 	running func(app.CommandRequest)
 	// stale, when set, ends each run as one killed for its silence.
 	stale bool
+	// staleExit, when set with stale, is the code each such run exited
+	// with before the kill for its silence landed.
+	staleExit *int
 	// staleRuns ends that many of the first runs as killed for their
 	// silence after the same output; the runs after them end as exits says.
 	staleRuns int
@@ -514,6 +517,10 @@ func (s *commandsSpy) Run(ctx context.Context, request app.CommandRequest, start
 		<-ctx.Done()
 		s.mu.Lock()
 		return app.CommandResult{Cancelled: true, Signal: "killed"}
+	}
+	if s.stale && s.staleExit != nil {
+		code := *s.staleExit
+		return app.CommandResult{Stale: true, ExitCode: &code}
 	}
 	if s.stale {
 		return app.CommandResult{Stale: true, Signal: "killed"}

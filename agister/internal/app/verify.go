@@ -255,7 +255,9 @@ func (v *verification) run(ctx context.Context) *run.Error {
 		if v.inWorkspace && ran.After != "" {
 			from = ran.After
 		}
-		ran.Passed = ran.Exit.Code != nil && *ran.Exit.Code == 0 && ran.After == ""
+		// A run ended at stale.no_output is a failed run whatever its exit
+		// (ADR-024 rule 8): it may have exited before the kill landed.
+		ran.Passed = ran.Exit.Code != nil && *ran.Exit.Code == 0 && ran.After == "" && ran.Stale == nil
 		if ran.Passed {
 			// The node completes only once the passing attempt is recorded.
 			if err := v.save(attempt); err != nil {
