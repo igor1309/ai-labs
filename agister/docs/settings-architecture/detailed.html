@@ -133,9 +133,11 @@ input:
   params:
     base: {default: origin/agister}
     candidate: {default: HEAD}
+    goal: {}
   values:
     base: {source: git.revision, rev: &quot;${param.base}&quot;}
     candidate: {source: git.revision, rev: &quot;${param.candidate}&quot;}
+    goal: {source: file, path: &quot;${param.goal}&quot;}
 
 fan_out:
   - {node: architecture, uses: process:architecture_review_codex}

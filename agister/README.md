@@ -125,6 +125,13 @@ text the caller
 names stays a `source: file` input, read relative to the caller's
 directory.
 
+This repository's review workflows, `code_review` and `adr_review`, take
+a required `goal`: the file that says what the change is for, its issue
+or brief. Every review node receives its text and the judge does not; a
+finding's scope is `change`, `goal` or `outside`, and the judge rules a
+`goal` finding as it rules a `change` one
+([ADR-023](docs/adr/023-reviewers-know-the-goal.md)).
+
 A skill the settings give an agent is a document too:
 `skills/<name>/SKILL.md`, a folder holding that one file. Its front matter
 names it, `name` equal to the folder's, and describes it, `description` not

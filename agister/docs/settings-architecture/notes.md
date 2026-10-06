@@ -34,7 +34,9 @@ Fields: `internal/domain/definition/documents.go:24-130`, `toml.go:25-60`,
   - Existing workflows (`.agister/workflows/`, also in home):
     `code_review` (architecture, tests, adversarial and clarity reviews
     concurrently, then the judge) and `adr_review` (the ADR review, then
-    the judge). (`.agister/workflows/code_review.yaml`,
+    the judge); both take a required `goal` file whose text every review
+    node receives and the judge does not (ADR-023).
+    (`.agister/workflows/code_review.yaml`,
     `.agister/workflows/adr_review.yaml`)
 - **process** is a named agent call. It names:
   - its **agent** (`uses: agent:<name>`);

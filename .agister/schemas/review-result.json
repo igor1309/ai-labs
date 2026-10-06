@@ -73,7 +73,7 @@
             "required": [
               "case",
               "trace",
-              "introduced_by_change"
+              "scope"
             ],
             "properties": {
               "case": {
@@ -88,15 +88,20 @@
                 },
                 "description": "The steps you verified, each as path:line and what happens there."
               },
-              "introduced_by_change": {
-                "type": "boolean",
-                "description": "true if the change introduced the problem or left it in code it touched; false if it lies outside the change."
+              "scope": {
+                "type": "string",
+                "enum": [
+                  "change",
+                  "goal",
+                  "outside"
+                ],
+                "description": "change: the change introduced the problem, or left it in code it touched. goal: the change did not cause it, but the goal fails because of it; case names a concrete scenario the goal requires, trace shows how this defect stops its outcome, and requirement quotes the goal's condition with every qualification it carries, and where in the goal it stands. A missing test is goal only with a specific goal behaviour that the existing assertions let break. outside: neither."
               }
             }
           },
           "requirement": {
             "type": "string",
-            "description": "The rule, invariant, recorded decision or contract the finding violates, quoted or named."
+            "description": "The rule, invariant, recorded decision or contract the finding violates, quoted or named. For a finding of scope goal: the goal's condition, quoted with every qualification it carries, and where in the goal it stands."
           },
           "consequence": {
             "type": "string",

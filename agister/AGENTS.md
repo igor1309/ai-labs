@@ -21,7 +21,9 @@ still apply.
 - Verify the result yourself as the root `AGENTS.md` says:
   `scripts/handoff-check.py`, then the tests. No mutation or revert checks.
 - Review a committed candidate with
-  `agister run code_review --param base=<rev> --param candidate=<rev>`. Act on
+  `agister run code_review --param base=<rev> --param candidate=<rev> --param goal=<file>`;
+  the goal is the file that says what the change is for, its issue or
+  brief, and a call without it is refused (ADR-023). Act on
   the rulings as written, without judging them again: fix items go to a
   fresh `implement` run, owner items to the advisor (below), defer items to a
   backlog issue in the Multica project Agister. Waive items get no repair and
@@ -37,7 +39,7 @@ still apply.
   provisional records in the pull request description. Only an `owner`
   answer goes to the owner.
 - Review a change that adds or edits an ADR with
-  `agister run adr_review --param base=<rev> --param candidate=<rev>`,
+  `agister run adr_review --param base=<rev> --param candidate=<rev> --param goal=<file>`,
   before the code that follows it; its rulings are acted on the same way.
 - At most 2 review rounds. Deferred work is a backlog issue in the
   Multica project Agister: gap, trigger, done when, for real, observed
