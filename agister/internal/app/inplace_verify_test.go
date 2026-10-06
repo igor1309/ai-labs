@@ -286,6 +286,50 @@ func TestACommandThatChangesTheWorktreeFailsItsAttempt(t *testing.T) {
 	noCopy(t, h)
 }
 
+// ADR-024 rule 8 in the worktree: a run ended at stale.no_output is named
+// after it as any run is, so what the silent command changed before it was
+// ended is on the run's record, the repair turn is told of it, and the
+// repair's changes are from what the run left, not taken for the repair's.
+func TestWhatASilentCommandChangedInTheWorktreeIsItsRunsNotTheRepairs(t *testing.T) {
+	t.Parallel()
+	h, _ := staleHarness(t, "no_output: 2m")
+	inTheWorktree(h)
+	withWorkspace(h, inPlaceWorkspace)
+	worktree := turnsMake(h, "after", "repaired")
+	rebuilding(h, "sha-HEAD")
+	h.commands.staleRuns = 1
+	runs := 0
+	h.commands.running = func(app.CommandRequest) {
+		if runs++; runs == 1 {
+			worktree.set("formatted")
+		}
+	}
+	record := h.call(t, contract.CallRequest{})
+
+	if record.Result.Status != run.Completed || len(record.Attempts) != 2 {
+		t.Fatalf("result %+v: %s, attempts %+v", record.Result, message(record), record.Attempts)
+	}
+	first := record.Attempts[0]
+	if first.Run.Passed || first.Run.Stale == nil || first.Run.Stale.Limit != run.StaleNoOutput || first.Run.After != "formatted" ||
+		first.Run.AfterChanges == nil || string(h.recorder.artifacts["attempt-1-run.patch"]) != "after to formatted" {
+		t.Fatalf("first attempt %+v, run %+v", first, first.Run)
+	}
+	if !recorded(h, "VERIFY_CHANGED_CONTENT") {
+		t.Fatalf("events %v", h.recorder.kinds())
+	}
+	turns := h.runner.calls()
+	want := "## exit status\n\nno output for 2m0s, then ended by Agister; the run changed the content it checked\n\n" +
+		"## output\n\n18 bytes, sha256 sha-stale\n\n```\n=== RUN TestHangs\n```"
+	if len(turns) != 2 || !strings.HasSuffix(turns[1].Prompt, want) {
+		t.Fatalf("turns %d, repair message\n%s\nwant it to end\n%s", len(turns), turns[len(turns)-1].Prompt, want)
+	}
+	// The repair's changes are from what the run left.
+	if string(h.recorder.artifacts["attempt-2.patch"]) != "formatted to repaired" || record.InPlace.Content != "repaired" {
+		t.Fatalf("artifacts %v, in place %+v", h.recorder.artifacts, record.InPlace)
+	}
+	noCopy(t, h)
+}
+
 // ADR-002 rule 4 in the worktree: a failing command goes back to the
 // call's own session, whose repair turn works in the same worktree, and
 // the command checks the repair there.

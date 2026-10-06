@@ -75,6 +75,7 @@ import (
 	"regexp"
 	"strings"
 	"time"
+	"unicode/utf8"
 )
 
 const Contract = "codex/2"
@@ -338,7 +339,7 @@ func (r *Runner) RunTurn(ctx context.Context, request TurnRequest, sink EventSin
 			if tool.Started != nil {
 				sink.ToolStarted(*tool.Started)
 			} else {
-				sink.ToolFinished(tool.Finished)
+				sink.ToolFinished(*tool.Finished)
 			}
 		}
 	})
@@ -688,11 +689,11 @@ type Stream struct {
 	tools []Tool
 }
 
-// Tool is a tool call the stream reported: its start, or the ID of the one
-// that finished.
+// Tool is a tool call the stream reported: its start, or the end of one,
+// with its result.
 type Tool struct {
 	Started  *ToolCall
-	Finished string
+	Finished *ToolResult
 }
 
 // TakeTools returns the tool calls reduced since it was last called, in
@@ -766,7 +767,9 @@ func (s *Stream) itemCompleted(item map[string]any) []Event {
 		return []Event{{SourceProtocol, "PROVIDER_ERROR", map[string]any{"message": truncate(fmt.Sprint(item["message"]), 300)}}}
 	case "command_execution", "file_change", "mcp_tool_call", "web_search":
 		if id, _ := item["id"].(string); id != "" {
-			s.tools = append(s.tools, Tool{Finished: id})
+			// Only a command's item carries its output.
+			output, reported := item["aggregated_output"].(string)
+			s.tools = append(s.tools, Tool{Finished: finished(id, output, reported)})
 		}
 		failed := item["status"] == "failed"
 		if code, ok := item["exit_code"].(float64); ok && code != 0 {
@@ -900,4 +903,27 @@ func truncate(text string, max int) string {
 		return text
 	}
 	return text[:max] + "…"
+}
+
+// finished is the end of the call id, with the result's text the stream
+// reported for it, if it reported one: bounded to ToolResultBytes, its head
+// and tail kept, each cut on a rune boundary.
+func finished(id, text string, reported bool) *ToolResult {
+	result := &ToolResult{ID: id, Output: text, Reported: reported}
+	if !reported {
+		result.Output = ""
+		return result
+	}
+	if len(text) <= ToolResultBytes {
+		return result
+	}
+	head, tail := ToolResultBytes/2, len(text)-ToolResultBytes/2
+	for head > 0 && !utf8.RuneStart(text[head]) {
+		head--
+	}
+	for tail < len(text) && !utf8.RuneStart(text[tail]) {
+		tail++
+	}
+	result.Output = text[:head] + "\n…\n" + text[tail:]
+	return result
 }

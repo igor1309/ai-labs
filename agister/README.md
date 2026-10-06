@@ -72,6 +72,39 @@ once. A process whose named verification exists in neither place is not a
 problem of the settings: `check` warns, and only calls of that process are
 refused ([ADR-010](docs/adr/010-a-process-names-its-verification.md)).
 
+A policy may set staleness limits under `stale`, and a process may only
+narrow them: `no_event`, `tool_command` and `repeated_tool_calls` for an
+agent turn, `no_output` for a verification run. A call that reaches one
+ends before its timeout, and its record names the limit and what went
+stale, unless the settings give it resumes to recover with
+([ADR-024](docs/adr/024-a-stale-call-is-resumed-once.md)):
+`stale.recover.max_resumes`, which a policy sets and a process may only
+lower, down to 0, and `stale.recover.instruction`, which a budget above 0
+needs. Unset, the budget is 0, and every limit ends the call. With a
+budget, an agent turn that Agister ended at a limit is followed by a
+recovery turn: the call's session is resumed, in the same workspace, with
+the instruction and the evidence of what went stale. Each recovery turn
+spends one resume. The same limit reached again on the same thing ends
+the call with that limit's status and class, even with resumes left, and
+so does any limit once none is left. A call with a budget is refused
+before its first turn unless its agent's sessions may be continued and
+its runtime can resume one, and `process show` prints the budget
+(`recovery resumes N`).
+
+A verification run ended at `no_output` is a failed attempt, whatever
+`stale.recover` says: a repair turn follows it as it follows a failing
+run, while an attempt is left of `verify.max_attempts`. With one attempt,
+the call ends as interrupted, as before.
+
+The run's record lists its recovery turns under `recoveries`, each with
+its `number`, the turn it `follows` and what went `stale` there, the
+digest of the message, the session it `resumed` and the one it reported,
+its usage, cost and timing, and its `outcome`: `completed`, `same_limit`,
+`different_limit` or `failed`, with the `error`. The events are
+`RECOVERY_STARTED`, `RECOVERY_FINISHED` and, with the reason,
+`RECOVERY_NOT_STARTED`; a repeated call's `STALE` event carries the last
+`result` the runtime reported for it, if any.
+
 A prompt the settings fix, such as a reviewer's instructions, is a document
 too: `prompts/review.md`, the whole file its text, no header. A process
 gives it to its agent as an input, `{source: prompt, name: review}`; the

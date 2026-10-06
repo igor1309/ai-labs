@@ -154,6 +154,6 @@ func (s *countingSink) ProcessStarted(ref string) error {
 
 func (s *countingSink) ToolStarted(call app.ToolCall) { s.inner.ToolStarted(call) }
 
-func (s *countingSink) ToolFinished(id string) { s.inner.ToolFinished(id) }
+func (s *countingSink) ToolFinished(result app.ToolResult) { s.inner.ToolFinished(result) }
 
 func (s *countingSink) Raw(line string) { s.inner.Raw(line) }

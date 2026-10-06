@@ -42,6 +42,29 @@ func (b Bundle) Resolved(name string) definition.Process {
 	return process
 }
 
+// Resumes is how many recovery turns a call of the process named name may
+// take (ADR-024 rule 5). It is 0 where the process's limits do not compose,
+// which Check reports.
+func (b Bundle) Resumes(name string) int {
+	process := b.Resolved(name)
+	var pol *definition.Policy
+	if process.Policy != "" {
+		found, ok := b.Policies[process.Policy]
+		if !ok {
+			return 0
+		}
+		pol = &found
+	}
+	if b.Service == nil {
+		return 0
+	}
+	effective, err := policy.Compose(*b.Service, pol, process, policy.Caller{})
+	if err != nil {
+		return 0
+	}
+	return effective.Stale.Recover.MaxResumes
+}
+
 // Mechanisms are what the code provides, named by settings.
 type Mechanisms struct {
 	Sources  []string // input source kinds
@@ -171,6 +194,10 @@ func Check(b Bundle, m Mechanisms) []Problem {
 		}
 		if process.Verify.Repairs() && agent.Session != definition.SessionResumable {
 			withAgent("verify.max_attempts %d repairs in the call's session, but agent %s is %s", process.Verify.MaxAttempts, agent.Name, agent.Session)
+		}
+		// So does a recovery turn (ADR-024 rule 6).
+		if resumes := effective.Stale.Recover.MaxResumes; resumes > 0 && agent.Session != definition.SessionResumable {
+			withAgent("stale.recover.max_resumes %d recovers in the call's session, but agent %s is %s", resumes, agent.Name, agent.Session)
 		}
 		mapping, ok := b.Mappings[agent.Runtime]
 		if !ok {

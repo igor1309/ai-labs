@@ -27,7 +27,7 @@ func (*sink) Event(string, string, map[string]any) {}
 func (*sink) Raw(string)                           {}
 func (*sink) ProcessStarted(string) error          { return nil }
 func (*sink) ToolStarted(pi.ToolCall)              {}
-func (*sink) ToolFinished(string)                  {}
+func (*sink) ToolFinished(pi.ToolResult)           {}
 func session(t *testing.T, root, id, cwd string) {
 	t.Helper()
 	dir := filepath.Join(root, id)

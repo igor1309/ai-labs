@@ -22,6 +22,15 @@ type CallStale struct {
 	NoOutput          time.Duration // a verification run without output
 	ToolCommand       time.Duration // one command an agent's tool runs
 	RepeatedToolCalls int           // identical tool calls in a row
+	// Recover is what may follow a turn that one of them ended.
+	Recover CallRecover
+}
+
+// CallRecover is a call's recovery of a stale turn (ADR-024 rule 5). It is
+// zero unless the call has a budget.
+type CallRecover struct {
+	MaxResumes  int    // recovery turns the call may take; 0: none
+	Instruction string // what the agent is told with the evidence
 }
 
 // CallTimer starts the wait of a staleness limit: the limit is reached when
@@ -63,10 +72,13 @@ type turnWatch struct {
 	// commands disarms the wait of each tool command in flight, by call ID.
 	commands map[string]func()
 	// repeated is the latest tool call, made count times in a row, the
-	// first of them at first.
+	// first of them at first; streak holds the IDs of those calls, and
+	// result is the last result the runtime reported for one of them.
 	repeated ToolCall
 	count    int
 	first    time.Time
+	streak   map[string]bool
+	result   *string
 }
 
 // watchTurn returns the sink of a turn that starts now. cancel ends the
@@ -115,10 +127,16 @@ func (w *turnWatch) ToolStarted(call ToolCall) {
 		w.count++
 	} else {
 		w.repeated, w.count, w.first = call, 1, now
+		w.streak, w.result = map[string]bool{}, nil
+	}
+	if call.ID != "" {
+		w.streak[call.ID] = true
 	}
 	if limit := w.limits.RepeatedToolCalls; limit > 0 && w.count >= limit {
 		first := w.first
-		w.found(run.Stale{Limit: run.StaleRepeatedToolCalls, Count: w.count, Since: &first, Tool: recordedCall(call)})
+		tool := recordedCall(call)
+		tool.Result = w.result
+		w.found(run.Stale{Limit: run.StaleRepeatedToolCalls, Count: w.count, Since: &first, Tool: tool})
 		return
 	}
 	// A call the runtime does not name has no end to wait for.
@@ -133,12 +151,19 @@ func (w *turnWatch) ToolStarted(call ToolCall) {
 	}
 }
 
-func (w *turnWatch) ToolFinished(id string) {
+// ToolFinished ends the wait of the call's command, if one runs, and keeps
+// the result of a call of the current streak, the evidence a repeated call
+// is recovered with.
+func (w *turnWatch) ToolFinished(result ToolResult) {
 	w.mu.Lock()
 	defer w.mu.Unlock()
-	if disarm, ok := w.commands[id]; ok {
+	if disarm, ok := w.commands[result.ID]; ok {
 		disarm()
-		delete(w.commands, id)
+		delete(w.commands, result.ID)
+	}
+	if result.Reported && w.streak[result.ID] {
+		output := result.Output
+		w.result = &output
 	}
 }
 
@@ -215,6 +240,9 @@ func (w *turnWatch) found(stale run.Stale) {
 	}
 	if tool := stale.Tool; tool != nil {
 		data["tool_use_id"], data["name"], data["input"], data["input_sha256"] = tool.ID, tool.Name, tool.Input, tool.SHA256
+		if tool.Result != nil {
+			data["result"] = *tool.Result
+		}
 	}
 	w.inner.Event(run.SourceAgister, "STALE", data)
 	w.cancel()

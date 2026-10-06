@@ -268,6 +268,8 @@ type Record struct {
 	// Turn is the latest turn; with verification, Attempts has every one.
 	Turn     *Turn     `json:"turn,omitempty"`
 	Attempts []Attempt `json:"attempts,omitempty"`
+	// Recoveries are the call's recovery turns, in order (ADR-024 rule 9).
+	Recoveries []Recovery `json:"recoveries,omitempty"`
 	// Workflow is set on a workflow's own run (ADR-003): its nodes and
 	// barrier. Parent is set on a node's run: the workflow run it belongs to.
 	Workflow *Workflow `json:"workflow,omitempty"`

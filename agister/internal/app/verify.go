@@ -241,8 +241,6 @@ func (v *verification) run(ctx context.Context) *run.Error {
 		switch {
 		case ran.Cancelled:
 			return v.stop(attempt, run.Fault(run.ClassCancelled, "cancelled during attempt %d's run", number))
-		case ran.Stale != nil:
-			return v.stop(attempt, run.Fault(run.ClassTimeout, "stale: attempt %d's run produced no output for %s (stale.no_output)", number, ran.Stale.After))
 		case ran.TimedOut && timeout < v.verify.Timeout:
 			return v.stop(attempt, run.Fault(run.ClassTimeout, "the call's timeout passed during attempt %d's run", number))
 		case ran.TimedOut:
@@ -257,7 +255,9 @@ func (v *verification) run(ctx context.Context) *run.Error {
 		if v.inWorkspace && ran.After != "" {
 			from = ran.After
 		}
-		ran.Passed = ran.Exit.Code != nil && *ran.Exit.Code == 0 && ran.After == ""
+		// A run ended at stale.no_output is a failed run whatever its exit
+		// (ADR-024 rule 8): it may have exited before the kill landed.
+		ran.Passed = ran.Exit.Code != nil && *ran.Exit.Code == 0 && ran.After == "" && ran.Stale == nil
 		if ran.Passed {
 			// The node completes only once the passing attempt is recorded.
 			if err := v.save(attempt); err != nil {
@@ -272,16 +272,18 @@ func (v *verification) run(ctx context.Context) *run.Error {
 			return v.stop(attempt, run.Fault(run.ClassInternal, "attempt %d failed and its clean copy at %s could not be removed: %v", number, v.copy, kept))
 		}
 
+		// A run ended at stale.no_output is a failed run like any other
+		// (ADR-024 rule 8): a repair follows it under the same conditions.
 		if fault := v.exhausted(*ran, previous, number); fault != nil {
-			return v.stop(attempt, fault)
+			return v.stop(attempt, unrepaired(*ran, number, fault))
 		}
 		budget, fault := v.budget()
 		if fault != nil {
-			return v.stop(attempt, fault)
+			return v.stop(attempt, unrepaired(*ran, number, fault))
 		}
 		remaining := v.deadline.Sub(v.clock.Now())
 		if remaining <= 0 {
-			return v.stop(attempt, run.Fault(run.ClassTimeout, "the call's timeout passed after attempt %d's run", number))
+			return v.stop(attempt, unrepaired(*ran, number, run.Fault(run.ClassTimeout, "the call's timeout passed after attempt %d's run", number)))
 		}
 		if ctx.Err() != nil {
 			return v.stop(attempt, run.Fault(run.ClassCancelled, "cancelled after attempt %d's run", number))
@@ -332,22 +334,28 @@ func (v *verification) exhausted(ran run.CommandRun, previous *run.CommandRun, n
 	return nil
 }
 
+// unrepaired is the fault of a failed run that no repair follows: why none
+// does, but for a run ended at stale.no_output, which ends the call as its
+// limit does, a timeout (ADR-024 rule 8).
+func unrepaired(ran run.CommandRun, number int, why *run.Error) *run.Error {
+	if ran.Stale == nil {
+		return why
+	}
+	return run.Fault(run.ClassTimeout, "stale: attempt %d's run produced no output for %s (stale.no_output)", number, ran.Stale.After)
+}
+
 // budget is what a repair turn may spend: the call's cost limit less what
 // every turn so far cost on its own (rule 5). With a limit and a cost unknown, the
 // limit cannot be enforced, and no repair starts.
 func (v *verification) budget() (*float64, *run.Error) {
-	if v.limit == nil {
-		return nil, nil
-	}
-	spent := v.result.Cost
-	if spent.Source == run.CostUnknown || spent.USD == nil {
+	left, known := costLeft(v.limit, v.result.Cost)
+	switch {
+	case !known:
 		return nil, run.Fault(run.ClassBudgetExhausted, "a turn's cost is unknown, so the cost limit %g cannot be enforced for a repair", *v.limit)
-	}
-	left := *v.limit - *spent.USD
-	if left <= 0 {
+	case left != nil && *left <= 0:
 		return nil, run.Fault(run.ClassBudgetExhausted, "the cost limit %g is spent", *v.limit)
 	}
-	return &left, nil
+	return left, nil
 }
 
 // check runs the command once on a clean copy of the base with the
@@ -432,10 +440,12 @@ func (v *verification) checkInWorkspace(ctx context.Context, number int, identit
 
 // compare names the content a run that ended left in dir, the place named
 // what, and, when it is not the content the run checked, records on the run
-// what it changed: such a run fails, whatever its exit. A run killed or
-// failed to run is not compared.
+// what it changed: such a run fails, whatever its exit. A run cancelled,
+// timed out or failed to run is not compared; one ended at stale.no_output
+// is, as a repair may follow it (ADR-024 rule 8): what it left is the
+// run's, not the repair turn's.
 func (v *verification) compare(ctx context.Context, number int, dir, what, identity string, ran *run.CommandRun) *run.Error {
-	if ran.Cancelled || ran.TimedOut || ran.Stale != nil || ran.Error != "" {
+	if ran.Cancelled || ran.TimedOut || ran.Error != "" {
 		return nil
 	}
 	after, err := v.content.Identity(ctx, dir, v.base)
@@ -604,6 +614,13 @@ func (v *verification) failure(ctx context.Context, step string, err error) *run
 
 // ended says how a run ended, as the repair turn is told.
 func ended(ran run.CommandRun) string {
+	if ran.Stale != nil {
+		text := fmt.Sprintf("no output for %s, then ended by Agister", ran.Stale.After)
+		if ran.After != "" {
+			text += "; the run changed the content it checked"
+		}
+		return text
+	}
 	if ran.Exit.Code != nil {
 		text := fmt.Sprintf("exit code %d", *ran.Exit.Code)
 		if ran.After != "" {

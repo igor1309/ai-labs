@@ -747,3 +747,64 @@ func TestTheCompositionLendsAnInPlaceCallTheCallersWorktree(t *testing.T) {
 		t.Fatalf("locks %v, %v", locks, err)
 	}
 }
+
+// The composition gives the recoverer what it recovers on (ADR-024): a
+// call through the composed client whose turn goes without an event for
+// the policy's stale.no_event is resumed in the session that turn
+// reported, with the policy's instruction and the evidence, and completes
+// with the recovery on its record.
+func TestTheCompositionRecoversAStaleTurn(t *testing.T) {
+	t.Parallel()
+	const noEvent = 7 * time.Second
+	home, repo := setup(t, "approve")
+	policy := filepath.Join(home, "policies", "read-only.yaml")
+	write(t, policy, read(t, policy)+"\nstale: {no_event: 7s, recover: {max_resumes: 1, instruction: Go on.}}\n")
+	config := cli.Config{Home: home, Cwd: repo}
+	clock := clocktest.NewClock(stillAt)
+	composed := on(config, clock.Timer)
+	client, _, err := composed.wire(config)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx := context.Background()
+	// The question makes the fake's first turn hang; the recovery's message
+	// does not carry it, so that turn ends.
+	id, err := client.Submit(ctx, contract.CallRequest{Process: "ask", Params: map[string]string{"question": "SCENARIO:hang"}, Timeout: "1m", Cwd: repo})
+	if err != nil {
+		t.Fatal(err)
+	}
+	cleanupRun(t, client, composed.hosted, id)
+	// The first turn's wait for an event starts four times: at the turn's
+	// start, at its process's start, at the line the fake prints before it
+	// hangs and at the event the adapter reports for that line. Then
+	// nothing comes for the whole limit.
+	for range 4 {
+		clock.Started(noEvent)
+	}
+	clock.Advance(noEvent)
+	<-composed.hosted.Done(id)
+
+	record, stored, err := composed.runs.Get(ctx, id)
+	if err != nil || stored != domain.StateFinished || record.Result == nil || record.Result.Status != domain.Completed {
+		t.Fatalf("run %s: %s, %+v, %v", id, stored, record.Result, err)
+	}
+	const session = "00000000-0000-4000-8000-000000000000"
+	digest := sha256.Sum256([]byte("Go on.\n\n## stale limit\n\nstale.no_event: the turn was interrupted after 7s without an event from the runtime."))
+	if len(record.Recoveries) != 1 {
+		t.Fatalf("recoveries = %+v", record.Recoveries)
+	}
+	got := record.Recoveries[0]
+	if got.Number != 1 || got.Follows != 1 || got.Stale.Limit != domain.StaleNoEvent || got.Stale.After != noEvent ||
+		got.MessageSHA256 != hex.EncodeToString(digest[:]) || got.Resumed != session || got.Session != session ||
+		got.Outcome != domain.RecoveryCompleted || got.Error != nil {
+		t.Fatalf("recovery = %+v", got)
+	}
+	// The recovery is timed on the clock the composition gave.
+	if got.StartedAt.IsZero() || got.FinishedAt.Before(got.StartedAt) {
+		t.Fatalf("recovery from %v to %v", got.StartedAt, got.FinishedAt)
+	}
+	// The runtime was started again, to resume the session.
+	if provider := read(t, filepath.Join(home, "runs", id, "provider.jsonl")); !strings.Contains(provider, `"--resume","`+session+`"`) {
+		t.Fatalf("provider evidence:\n%s", provider)
+	}
+}

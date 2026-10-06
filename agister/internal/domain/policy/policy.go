@@ -45,6 +45,18 @@ type Stale struct {
 	// RepeatedToolCalls is how many identical tool calls in a row end the
 	// turn.
 	RepeatedToolCalls *int
+	// Recover is what may follow a turn that one of them ended.
+	Recover Recover
+}
+
+// Recover is a call's composed recovery of a stale turn (ADR-024 rule 5).
+// It is zero unless the call has a budget: without one nothing is told.
+type Recover struct {
+	// MaxResumes is how many recovery turns the call may take; 0: none.
+	MaxResumes int
+	// Instruction is what the agent is told with the evidence; set
+	// whenever MaxResumes is above 0.
+	Instruction string
 }
 
 // InvalidError lists every composition problem.
@@ -226,7 +238,41 @@ func narrowStale(add func(string, ...any), base, over definition.Stale) Stale {
 		NoOutput:          narrowDuration(add, "stale.no_output", base.NoOutput, over.NoOutput),
 		ToolCommand:       narrowDuration(add, "stale.tool_command", base.ToolCommand, over.ToolCommand),
 		RepeatedToolCalls: narrowInt(add, "stale.repeated_tool_calls", base.RepeatedToolCalls, over.RepeatedToolCalls),
+		Recover:           narrowRecover(add, base.Recover, over.Recover),
 	}
+}
+
+// narrowRecover composes the recovery of a stale call (ADR-024 rule 5). The
+// policy sets the budget's ceiling, and unset is 0: the process may only
+// lower it, so one it sets above 0 without its policy is as invalid as one
+// above its policy's. The instruction is text, not a limit: the process's,
+// where it gives one, replaces the policy's. A budget needs one.
+func narrowRecover(add func(string, ...any), base, over definition.Recover) Recover {
+	resumes := 0
+	if base.MaxResumes != nil {
+		resumes = *base.MaxResumes
+	}
+	if value := over.MaxResumes; value != nil {
+		switch {
+		case base.MaxResumes == nil && *value > 0:
+			add("stale.recover.max_resumes: %d where the policy sets none; a process may only lower its policy's", *value)
+		case *value > resumes:
+			add("stale.recover.max_resumes: %d widens the policy's %d", *value, resumes)
+		default:
+			resumes = *value
+		}
+	}
+	if resumes == 0 {
+		return Recover{}
+	}
+	instruction := base.Instruction
+	if over.Instruction != "" {
+		instruction = over.Instruction
+	}
+	if instruction == "" {
+		add("stale.recover.max_resumes %d needs stale.recover.instruction: neither the process nor its policy gives one", resumes)
+	}
+	return Recover{MaxResumes: resumes, Instruction: instruction}
 }
 
 func narrowDuration(add func(string, ...any), field string, base, over *time.Duration) *time.Duration {

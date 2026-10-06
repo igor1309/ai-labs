@@ -521,6 +521,92 @@ func TestStalenessLimitProblems(t *testing.T) {
 	}
 }
 
+const staleProcess = `schema: agister.process/v1alpha1
+name: p
+type: process
+uses: agent:a
+input:
+  instruction: Do it.
+output:
+  format: text
+`
+
+// A policy and a process declare the recovery of a stale call in the stale
+// block's recover block (ADR-024 rule 5): a budget, which may be 0, and the
+// instruction. Each is optional, and unset when the block is.
+func TestPolicyAndProcessDeclareStaleRecovery(t *testing.T) {
+	t.Parallel()
+	const block = `stale:
+  repeated_tool_calls: 5
+  recover:
+    max_resumes: 1
+    instruction: >-
+      Agister ended your previous turn; the evidence
+      follows.
+`
+	const instruction = "Agister ended your previous turn; the evidence follows."
+	policy, err := definition.ParsePolicy(doc(definition.KindPolicy, "pol", stalePolicy+block))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := policy.Limits.Stale.Recover; got.MaxResumes == nil || *got.MaxResumes != 1 || got.Instruction != instruction || *policy.Limits.Stale.RepeatedToolCalls != 5 {
+		t.Fatalf("policy: stale = %+v", policy.Limits.Stale)
+	}
+	process, err := definition.ParseProcess(doc(definition.KindProcess, "p", staleProcess+block))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := process.Limits.Stale.Recover; got.MaxResumes == nil || *got.MaxResumes != 1 || got.Instruction != instruction {
+		t.Fatalf("process: recover = %+v", got)
+	}
+
+	// 0 is a budget a process sets to take none of its policy's.
+	process, err = definition.ParseProcess(doc(definition.KindProcess, "p", staleProcess+"stale: {recover: {max_resumes: 0}}\n"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := process.Limits.Stale.Recover; got.MaxResumes == nil || *got.MaxResumes != 0 || got.Instruction != "" {
+		t.Fatalf("lowered to 0: recover = %+v", got)
+	}
+	process, err = definition.ParseProcess(doc(definition.KindProcess, "p", staleProcess+"stale: {recover: {instruction: Go on.}}\n"))
+	if err != nil || process.Limits.Stale.Recover != (definition.Recover{Instruction: "Go on."}) {
+		t.Fatalf("an instruction alone: %+v, %v", process.Limits.Stale.Recover, err)
+	}
+	policy, err = definition.ParsePolicy(doc(definition.KindPolicy, "pol", stalePolicy+"stale: {no_event: 5m}\n"))
+	if err != nil || policy.Limits.Stale.Recover != (definition.Recover{}) {
+		t.Fatalf("without the block: %+v, %v", policy.Limits.Stale.Recover, err)
+	}
+}
+
+func TestStaleRecoveryProblems(t *testing.T) {
+	t.Parallel()
+	parsers := map[string]func(block string) error{
+		"policy": func(block string) error {
+			_, err := definition.ParsePolicy(doc(definition.KindPolicy, "pol", stalePolicy+block+"\n"))
+			return err
+		},
+		"process": func(block string) error {
+			_, err := definition.ParseProcess(doc(definition.KindProcess, "p", staleProcess+block+"\n"))
+			return err
+		},
+	}
+	for block, want := range map[string]string{
+		"stale: {recover: {max_resumes: -1}}":           "stale.recover.max_resumes: must be at least 0",
+		"stale: {recover: {max_resumes: one}}":          "stale.recover.max_resumes: must be an integer",
+		"stale: {recover: {max_resumes: 1.5}}":          "stale.recover.max_resumes: must be an integer",
+		"stale: {recover: {instruction: ''}}":           "stale.recover.instruction: must not be empty",
+		"stale: {recover: {instruction: [a, b]}}":       "stale.recover.instruction: must be a scalar",
+		"stale: {recover: {max_resumes: 1, nudge: go}}": "stale.recover.nudge: unknown field",
+		"stale: {recover: 1}":                           "stale.recover: ",
+	} {
+		for kind, parse := range parsers {
+			if err := parse(block); err == nil || !strings.Contains(err.Error(), want) {
+				t.Errorf("%s, %s: err = %v, want %q", kind, block, err, want)
+			}
+		}
+	}
+}
+
 // A problem that names something this code does not know, as a document
 // written for a newer Agister would, is marked: an unknown field, and a
 // schema of Agister's shape this code does not read. Any other mistake,

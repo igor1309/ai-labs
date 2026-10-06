@@ -771,11 +771,14 @@ func describe(event contract.Event) string {
 		return fmt.Sprintf("· barrier %v", data["state"])
 	case "REPAIR_STARTED":
 		return fmt.Sprintf("· repair turn for attempt %v in session %v", data["attempt"], data["session"])
+	case "RECOVERY_STARTED":
+		return fmt.Sprintf("· recovery turn %v for stale.%v in session %v", data["recovery"], data["limit"], data["session"])
 	case "NO_CHANGES":
 		return "· no changes in the checkout"
 	case "PROVIDER_ERROR", "PROVIDER_RETRY", "RATE_LIMITED", "TIMEOUT", "ABORT_REQUESTED", "SPAWN_FAILED",
 		"STREAM_PARSE_ERROR", "SESSION_ID_MISMATCH", "TURN_FAILED", "WORKSPACE_RELEASE_FAILED", "ARTIFACT_FAILED",
-		"LEFTOVER_PROCESSES_KILLED", "STDOUT_HELD_OPEN", "VERIFY_CHANGED_CONTENT", "VERIFY_STOPPED", "NODE_NOT_STARTED":
+		"LEFTOVER_PROCESSES_KILLED", "STDOUT_HELD_OPEN", "VERIFY_CHANGED_CONTENT", "VERIFY_STOPPED", "NODE_NOT_STARTED",
+		"RECOVERY_NOT_STARTED":
 		encoded, _ := json.Marshal(data)
 		return fmt.Sprintf("! %s %s", event.Kind, encoded)
 	}
@@ -1366,6 +1369,9 @@ func stale(limits contract.Stale) string {
 	}
 	if limits.RepeatedToolCalls > 0 {
 		parts = append(parts, fmt.Sprintf("repeated tool calls %d", limits.RepeatedToolCalls))
+	}
+	if limits.MaxResumes > 0 {
+		parts = append(parts, fmt.Sprintf("recovery resumes %d", limits.MaxResumes))
 	}
 	return strings.Join(parts, ", ")
 }

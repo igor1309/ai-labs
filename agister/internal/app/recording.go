@@ -44,6 +44,9 @@ func recordEffective(effective CallLimits) *run.EffectivePolicy {
 			ToolCommand:       effective.Stale.ToolCommand,
 			RepeatedToolCalls: effective.Stale.RepeatedToolCalls,
 		}
+		if recover := effective.Stale.Recover; recover != (CallRecover{}) {
+			stale.Recover = &run.StaleRecover{MaxResumes: recover.MaxResumes, Instruction: recover.Instruction}
+		}
 	}
 	return &run.EffectivePolicy{
 		Timeout:     effective.Timeout,

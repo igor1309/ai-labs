@@ -314,8 +314,9 @@ func (c composition) wire(config cli.Config) (contract.Client, *app.BackgroundRe
 			Runs:      evidence,
 			Writers:   runtimecomposition.BorrowProcesses{Supervisor: c.processes},
 		},
-		Verifier: app.VerifyAdapters{Content: content, Copies: workspaces.copies, Commands: runtimecomposition.Commands{Supervisor: commands}, Clock: system.Clock{}},
-		Runs:     app.RunsAdapters{Reader: evidence, Appends: evidence, Timer: c.poll},
+		Verifier:  app.VerifyAdapters{Content: content, Copies: workspaces.copies, Commands: runtimecomposition.Commands{Supervisor: commands}, Clock: system.Clock{}},
+		Recoverer: app.RecoverAdapters{Clock: system.Clock{}},
+		Runs:      app.RunsAdapters{Reader: evidence, Appends: evidence, Timer: c.poll},
 		// Installs read a folder laid out like the global settings, and
 		// write the global settings, backed up beside them; each result is
 		// checked on a staged copy.

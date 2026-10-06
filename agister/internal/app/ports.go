@@ -54,6 +54,18 @@ type ToolCall struct {
 	Command bool
 }
 
+// ToolResult is the end of a tool call, as the runtime adapter reports it:
+// the call's ID and, where the runtime's stream carries it, the result's
+// text, bounded by the adapter.
+type ToolResult struct {
+	ID string
+	// Output is the result's text, as bounded; empty unless Reported.
+	Output string
+	// Reported is whether the runtime reported a result's text for the
+	// call; an adapter whose stream carries none never does.
+	Reported bool
+}
+
 // TurnRequest is one runtime turn, expressed in primitives, not permissions.
 type TurnRequest struct {
 	Prompt      string

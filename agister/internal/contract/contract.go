@@ -374,6 +374,7 @@ type Stale struct {
 	NoOutput          time.Duration // a verification run without output
 	ToolCommand       time.Duration // one command an agent's tool runs
 	RepeatedToolCalls int           // identical tool calls in a row
+	MaxResumes        int           // recovery turns a stale call may take
 }
 
 // Verify is a process's verification command.

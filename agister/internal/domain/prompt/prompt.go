@@ -1,10 +1,12 @@
 // Package prompt assembles what the agent receives. The words come from the
 // process definition; this package only arranges them with the resolved
-// inputs and the granted permissions, or with a verification run's failure.
+// inputs and the granted permissions, with a verification run's failure, or
+// with the evidence of a stale turn.
 // The one exception is a continuation's notice (Continues, ContinuesInPlace),
 // whose facts only Agister knows.
 //
-// It depends on the run package's evidence types (run.Input, run.Output):
+// It depends on the run package's evidence types (run.Input, run.Output,
+// run.Stale):
 // the agent receives exactly what the call records, so the prompt is built
 // from the recorded values rather than from copies of them.
 package prompt
@@ -112,6 +114,39 @@ func Repair(instruction, command, ended string, output run.Output) string {
 		"## command\n\n" + fenced(command),
 		"## exit status\n\n" + ended,
 		fmt.Sprintf("## output\n\n%d bytes, sha256 %s\n\n%s", output.Bytes, output.SHA256, fenced(text)),
+	}
+	return strings.Join(sections, "\n\n")
+}
+
+// Recovery is what a recovery turn receives (ADR-024 rules 2 and 4): the
+// policy's or the process's stale.recover instruction, then the evidence of
+// what went stale, which names the limit. It is the evidence only: what to
+// do about it is the instruction's to say.
+func Recovery(instruction string, stale run.Stale) string {
+	sections := []string{strings.TrimSpace(instruction)}
+	call := func(title string) {
+		if stale.Tool == nil {
+			return
+		}
+		section := "## " + title + "\n\n" + stale.Tool.Name
+		if stale.Tool.Input != "" {
+			section += "\n\n" + fenced(stale.Tool.Input)
+		}
+		sections = append(sections, section)
+	}
+	switch stale.Limit {
+	case run.StaleRepeatedToolCalls:
+		sections = append(sections, fmt.Sprintf("## stale limit\n\nstale.repeated_tool_calls: the same tool call was made %d times in a row, and Agister ended the turn.", stale.Count))
+		call("tool call")
+		// A runtime that reports no result leaves nothing to say of one.
+		if stale.Tool != nil && stale.Tool.Result != nil {
+			sections = append(sections, "## last result\n\n"+fenced(*stale.Tool.Result))
+		}
+	case run.StaleToolCommand:
+		sections = append(sections, fmt.Sprintf("## stale limit\n\nstale.tool_command: a tool's command ran for %s, and Agister ended the turn.", stale.After))
+		call("command")
+	default:
+		sections = append(sections, fmt.Sprintf("## stale limit\n\nstale.%s: the turn was interrupted after %s without an event from the runtime.", stale.Limit, stale.After))
 	}
 	return strings.Join(sections, "\n\n")
 }
