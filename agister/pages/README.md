@@ -26,8 +26,12 @@ home`.
     settings have none of that name, and for a repo with the layer it
     comes from; the skills its call gets, its own and then its agent's
     (ADR-021), listed the same way, each that fails its checks marked
-    `checks failed` (D-16); and the setup its checkout runs: its
-    own, or `workspace.yaml`'s, the repo's over home's (ADR-012);
+    `checks failed` (D-16); the setup its checkout runs: its
+    own, or `workspace.yaml`'s, the repo's over home's (ADR-012); and,
+    for a process with a checkout, its default workspace mode
+    (`workspace.yaml`'s, else `temporary`) and the precheck that gates it
+    in-place (ADR-022), and `where: workspace` beside a verification that
+    runs in the worktree;
   - for a workflow, its calls in one line (`4 × gpt-6.1-sol at once, then
     opus`), then the steps: the ones run at once (`First` when there is
     one) and the one run after them. Each step shows its name, what it

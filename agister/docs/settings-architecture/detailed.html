@@ -197,7 +197,7 @@ verify: verify:repo</pre></figure>
 <section id="verification" class="kind ">
 <div class="desc"><header><h2>Verification</h2><p class="path"><code>verifies/&lt;name&gt;.yaml</code>, or inline in the process</p></header>
 <p class="lead">A command that must pass on the call's changes before the call completes.</p>
-<h3>Holds</h3><table><tr><th><code>command</code></th><td>what to run</td></tr><tr><th><code>timeout</code></th><td>how long it may take</td></tr><tr><th><code>max_attempts</code></th><td>how many turns the agent gets to make it pass</td></tr><tr><th><code>instruction</code></th><td>what the agent is told when it fails</td></tr></table><p class="note">A process in home can name <code>verify:repo</code>, and each repo supplies its own <code>verifies/repo.yaml</code>.</p></div>
+<h3>Holds</h3><table><tr><th><code>command</code></th><td>what to run</td></tr><tr><th><code>timeout</code></th><td>how long it may take</td></tr><tr><th><code>max_attempts</code></th><td>how many turns the agent gets to make it pass</td></tr><tr><th><code>instruction</code></th><td>what the agent is told when it fails</td></tr><tr><th><code>where</code></th><td>optional; only <code>workspace</code>: an in-place call verifies in the worktree, every other call on a clean copy</td></tr></table><p class="note">A process in home can name <code>verify:repo</code>, and each repo supplies its own <code>verifies/repo.yaml</code>.</p></div>
 <figure class="ex"><figcaption>.agister/verifies/repo.yaml</figcaption><pre>name: repo
 command: &gt;-
   cd agister &amp;&amp; test -z &quot;$(gofmt -l .)&quot; &amp;&amp; go vet ./... &amp;&amp;
@@ -315,8 +315,8 @@ state_reaching = []</pre></figure>
 </section>
 <section id="workspace" class="kind ">
 <div class="desc"><header><h2>Workspace</h2><p class="path"><code>workspace.yaml</code> · one</p></header>
-<p class="lead">The default checkout setup, for processes that check out a revision and declare none of their own.</p>
-<h3>Holds</h3><table><tr><th><code>setup.command</code></th><td>what prepares a fresh checkout</td></tr><tr><th><code>setup.timeout</code></th><td>how long it may take</td></tr></table></div>
+<p class="lead">For processes that check out a revision: the default checkout setup, for those that declare none of their own; the default workspace mode; and the precheck that gates an in-place call.</p>
+<h3>Holds</h3><table><tr><th><code>setup.command</code></th><td>what prepares a fresh checkout</td></tr><tr><th><code>setup.timeout</code></th><td>how long it may take</td></tr><tr><th><code>mode</code></th><td><code>in-place</code> (the caller's worktree) or <code>temporary</code> (a checkout of its own, the default); <code>agister run --workspace</code> overrides it</td></tr><tr><th><code>precheck.command</code></th><td>what must pass before an in-place call's first turn; it runs under the worktree's lock</td></tr><tr><th><code>precheck.timeout</code></th><td>how long it may take; required</td></tr></table><p class="note"><code>setup</code> does not run in-place: the caller prepared the worktree.</p></div>
 
 </section>
 <section id="blocks" class="kind ">

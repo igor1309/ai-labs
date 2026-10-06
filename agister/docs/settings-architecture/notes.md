@@ -68,12 +68,19 @@ Fields: `internal/domain/definition/documents.go:24-130`, `toml.go:25-60`,
   which permissions write, which reach Agister's state (never granted).
   (`toml.go:46`)
 - **schema**: a JSON Schema a process's output must match.
-- **verification**: command, timeout, max attempts, failure instruction.
-  (`documents.go:57-77`)
+- **verification**: command, timeout, max attempts, failure instruction,
+  and the optional `where`, whose only value is `workspace`: an in-place
+  call verifies in the worktree, every other call on a clean copy.
+  (`documents.go:54-69`; ADR-010, ADR-022 rule 6)
 - **prompt**: plain text, the file is the value. (ADR-014)
 - **skill**: one `SKILL.md`. (ADR-021)
-- **workspace** (one): the default checkout setup for processes that
-  check out a revision and declare none. (`documents.go:79-90`; ADR-012)
+- **workspace** (one): for processes that check out a revision, the
+  default checkout setup for those that declare none (ADR-012); the
+  default mode, `in-place` or `temporary` (unset: `temporary`), which
+  `agister run --workspace` overrides (ADR-022 rule 1); and `precheck`,
+  a command and a required timeout that gate an in-place call, run under
+  the worktree's lock (ADR-022 rule 5). `setup` does not run in-place.
+  (`documents.go:84-115`; ADR-012, ADR-022)
 - **blocks** (one, repo only): agents, processes, workflows or runtime
   mappings this repo refuses, with reasons. (ADR-018)
 
@@ -118,7 +125,7 @@ Same layout in both layers (`internal/adapters/fsdefs/fsdefs.go:1`,
 | verifies | `verifies/<name>.yaml` (ADR-010) |
 | prompts | `prompts/<name>.md` (ADR-014) |
 | skills | `skills/<name>/SKILL.md`, the folder's only file (ADR-021) |
-| workspace (singleton) | `workspace.yaml`, checkout setup (ADR-012) |
+| workspace (singleton) | `workspace.yaml`, checkout setup (ADR-012), mode and precheck (ADR-022) |
 | blocks (singleton, repo only) | `blocks.yaml` (ADR-018) |
 
 ## How the layers combine

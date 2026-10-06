@@ -431,6 +431,29 @@ test('a process card shows the setup its checkout runs, and where it comes from'
   assert.doesNotMatch(card('own'), /workspace\.yaml/);
 });
 
+// ADR-022: a process card shows the default workspace mode of its call and
+// the precheck that gates it in-place; temporary when workspace.yaml sets
+// no mode.
+test('a process card shows its default workspace mode and precheck, and where they come from', async () => {
+  const fix = { ...agent, 'processes/fix.yaml': 'name: fix\nuses: agent:opus\nworkspace:\n  checkout: rev\n' };
+  const facts = async (files) => {
+    const p = page({ answers: { 'api/settings': () => respond({ path: '~', dir: '/u/.agister', home: true, files }) } });
+    await p.started;
+    const nodes = p.$('dashboard').querySelector('article#process-fix div.facts').children;
+    const value = (label) => {
+      const i = nodes.findIndex((n) => n.textContent === label);
+      return i < 0 ? null : nodes[i + 1].textContent;
+    };
+    return { mode: value('mode'), precheck: value('precheck') };
+  };
+
+  assert.deepEqual(await facts({
+    ...fix,
+    'workspace.yaml': 'schema: agister.workspace/v1alpha1\nmode: in-place\nprecheck:\n  command: ./check-device.sh\n  timeout: 1m\n',
+  }), { mode: 'in-place, from workspace.yaml', precheck: './check-device.sh within 1m, from workspace.yaml' });
+  assert.deepEqual(await facts(fix), { mode: 'temporary', precheck: null });
+});
+
 // README, Settings: a process card shows the attempts of the verification
 // the process names, or marks it missing when these settings have none.
 test('a process card shows the verification its process names, or marks it missing', async () => {
@@ -445,6 +468,10 @@ test('a process card shows the verification its process names, or marks it missi
   const found = await output({ ...naming, 'verifies/repo.yaml': 'name: repo\ncommand: make test\nmax_attempts: 2\n' });
   assert.equal(found.textContent, 'a failed verify (repo) is fixed up to 2×');
   assert.equal(found.querySelector('span.missing'), null);
+
+  const inWorktree = await output({ ...naming, 'verifies/repo.yaml': 'name: repo\ncommand: make test\nmax_attempts: 2\nwhere: workspace\n' });
+  assert.equal(inWorktree.textContent, 'a failed verify (repo) is fixed up to 2×, where: workspace');
+  assert.equal(inWorktree.querySelector('code').textContent, 'where: workspace');
 
   const absent = await output(naming);
   assert.equal(absent.textContent, 'repo (missing verify)');

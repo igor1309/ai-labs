@@ -272,7 +272,11 @@
       const parts = [];
       if (p.output) parts.push(p.outputOutside ? missing('schema', p.output) : `${p.output} schema`);
       if (p.verify?.outside) parts.push(parts.length ? '; ' : '', missing('verify', p.verify.ref));
-      else if (p.verify) parts.push(`${parts.length ? '; ' : ''}a failed verify${p.verify.ref ? ` (${p.verify.ref})` : ''} is fixed up to ${p.verify.maxAttempts ?? '?'}×`);
+      else if (p.verify) {
+        parts.push(`${parts.length ? '; ' : ''}a failed verify${p.verify.ref ? ` (${p.verify.ref})` : ''} is fixed up to ${p.verify.maxAttempts ?? '?'}×`);
+        // In the worktree for an in-place call (ADR-022 rule 6).
+        if (p.verify.where) parts.push(', ', el('code', { textContent: `where: ${p.verify.where}` }));
+      }
       return parts.length ? el('div', {}, ...parts) : null;
     }
 
@@ -300,6 +304,21 @@
         ` within ${s.timeout ?? '?'}${s.from === 'workspace' ? ', from workspace.yaml' : ''}`);
     }
 
+    // The workspace mode its call takes unless agister run --workspace
+    // says otherwise, and whether workspace.yaml sets it (ADR-022).
+    function modeLine(p) {
+      const m = p.effectiveMode;
+      if (!m) return null;
+      return el('div', {}, `${m.mode}${m.from === 'workspace' ? ', from workspace.yaml' : ''}`);
+    }
+
+    // The command that gates its call in-place, from workspace.yaml.
+    function precheckLine(p) {
+      const s = p.precheck;
+      if (!s) return null;
+      return el('div', {}, el('code', { textContent: s.command ?? '?' }), ` within ${s.timeout ?? '?'}, from workspace.yaml`);
+    }
+
     function errorCard(item) {
       return el('article', { className: 'card run' },
         el('header', { className: 'run-head' }, el('h3', { textContent: item.name })),
@@ -323,6 +342,8 @@
         ['skills', namedLine('skill', p.callSkills, chip)],
         ['output', outputLine(p)],
         ['setup', setupLine(p)],
+        ['mode', modeLine(p)],
+        ['precheck', precheckLine(p)],
       ]));
     }
 
