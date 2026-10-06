@@ -570,9 +570,10 @@ func (Workspaces) Rebuild(ctx context.Context, dir, revision string, patch []byt
 		if _, err := runWith(ctx, dir, env, nil, "read-tree", revision); err != nil {
 			return err
 		}
-		// An empty patch is no change, which apply would refuse.
+		// An empty patch is no change, which apply would refuse. Its
+		// whitespace is content: apply.whitespace=fix must not rewrite it.
 		if len(patch) > 0 {
-			if _, err := runWith(ctx, dir, env, patch, "apply", "--cached", "--binary", "-"); err != nil {
+			if _, err := runWith(ctx, dir, env, patch, "apply", "--cached", "--binary", "--whitespace=nowarn", "-"); err != nil {
 				return err
 			}
 		}

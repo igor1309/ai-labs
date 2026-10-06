@@ -393,6 +393,37 @@ func TestRebuildNamesTheContentAPatchMakesFromTheRevision(t *testing.T) {
 	}
 }
 
+// Rebuild keeps a patch's whitespace as it is, even where the repository
+// configures apply.whitespace=fix: an added line with trailing whitespace
+// rebuilds to the worktree's own content.
+//
+// Contract test: the git adapter against real git, in a repository of the
+// test's own.
+func TestRebuildKeepsThePatchWhitespace(t *testing.T) {
+	t.Parallel()
+	repo := repository(t)
+	ctx := context.Background()
+	workspaces := git.NewWorkspaces(git.NewWorktrees(t.TempDir()))
+	sh(t, repo, "config", "apply.whitespace", "fix")
+	revision := sh(t, repo, "rev-parse", "HEAD")
+	os.WriteFile(filepath.Join(repo, "a.txt"), []byte("one\ntwo\nthree  \n"), 0o600)
+
+	identity, err := workspaces.Identity(ctx, repo, revision)
+	if err != nil {
+		t.Fatal(err)
+	}
+	patch, err := workspaces.Changes(ctx, repo, revision, identity)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(patch), "+three  \n") {
+		t.Fatalf("patch:\n%s", patch)
+	}
+	if rebuilt, err := workspaces.Rebuild(ctx, repo, revision, patch); err != nil || rebuilt != identity {
+		t.Fatalf("rebuilt %q, %v; want %s", rebuilt, err, identity)
+	}
+}
+
 // copied names the content of a copy of revision with patch applied, and
 // removes the copy, as a verification attempt does.
 func copied(t *testing.T, repo, revision string, patch []byte) string {

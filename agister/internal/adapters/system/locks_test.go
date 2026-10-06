@@ -34,13 +34,22 @@ func TestAWorktreeLockIsHeldByItsCanonicalPath(t *testing.T) {
 	locks := system.WorktreeLocks{Dir: filepath.Join(base, "state", "locks", "in-place")}
 
 	key, unlock, err := locks.Lock(link)
+	if err == nil {
+		t.Cleanup(func() { unlock() })
+	}
 	if err != nil || key != worktree {
 		t.Fatalf("lock = %q, %v", key, err)
 	}
-	if _, _, err := locks.Lock(worktree); !errors.Is(err, app.ErrWorktreeLocked) {
+	if _, unlockSecond, err := locks.Lock(worktree); !errors.Is(err, app.ErrWorktreeLocked) {
+		if err == nil {
+			t.Cleanup(func() { unlockSecond() })
+		}
 		t.Fatalf("second lock = %v", err)
 	}
 	otherKey, unlockOther, err := locks.Lock(other)
+	if err == nil {
+		t.Cleanup(func() { unlockOther() })
+	}
 	if err != nil || otherKey != other {
 		t.Fatalf("other lock = %q, %v", otherKey, err)
 	}
@@ -57,6 +66,7 @@ func TestAWorktreeLockIsHeldByItsCanonicalPath(t *testing.T) {
 	if err != nil {
 		t.Fatalf("lock after release = %v", err)
 	}
+	t.Cleanup(func() { again() })
 	if err := again(); err != nil {
 		t.Fatal(err)
 	}

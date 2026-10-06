@@ -2,11 +2,13 @@ package app_test
 
 import (
 	"context"
+	"errors"
 	"reflect"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/igor1309/ai-labs/agister/internal/adapters/fsruns"
 	"github.com/igor1309/ai-labs/agister/internal/app"
 	"github.com/igor1309/ai-labs/agister/internal/contract"
 	"github.com/igor1309/ai-labs/agister/internal/domain/definition"
@@ -274,7 +276,19 @@ func TestAPassingPrecheckIsRecorded(t *testing.T) {
 	h := newHarness()
 	withWorkspace(h, prechecked)
 	turnsDuringPrecheck := -1
-	h.setup.running = func(app.SetupCommandRequest) { turnsDuringPrecheck = len(h.runner.calls()) }
+	// The command recorded on the latest record saved while the precheck
+	// runs; empty if none.
+	commandDuringPrecheck := ""
+	h.setup.running = func(app.SetupCommandRequest) {
+		turnsDuringPrecheck = len(h.runner.calls())
+		h.recorder.mu.Lock()
+		defer h.recorder.mu.Unlock()
+		if n := len(h.recorder.updates); n > 0 {
+			if effects := h.recorder.updates[n-1].Effects; effects != nil && effects.Command != nil {
+				commandDuringPrecheck = effects.Command.Ref
+			}
+		}
+	}
 	record := h.call(t, contract.CallRequest{})
 
 	if record.Result.Status != run.Completed || turnsDuringPrecheck != 0 {
@@ -293,6 +307,9 @@ func TestAPassingPrecheckIsRecorded(t *testing.T) {
 	}
 	// The precheck's process group is on record while it runs, as any
 	// command's, and the worktree still is no effect.
+	if commandDuringPrecheck != "ref-cmd" {
+		t.Fatalf("the command on record while the precheck ran = %q", commandDuringPrecheck)
+	}
 	noWorktreeEffect(t, record)
 }
 
@@ -432,6 +449,60 @@ func TestAnotherRunThatMayStillWriteInTheWorktreeRefusesTheCall(t *testing.T) {
 	}
 }
 
+// ADR-001 invariant 11, ADR-022 rule 3: a call killed right after its
+// worktree went on record, before it ran anything there, leaves a run a
+// reap finishes, and the worktree is lent to the next call; the worktree
+// is still no effect.
+func TestACallKilledOnceItsWorktreeIsOnRecordIsReaped(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	h := newHarness()
+	store := fsruns.Store{Dir: t.TempDir(), Appends: fsruns.NewAppends()}
+	borrower := app.NewBorrower(h.locks, h.worktrees, h.changes, store, h.processes, app.NewPreparer(h.changes, h.setup, h.clock))
+	borrow := func(id string, update func(app.RunHandle, run.Record) error) (*app.Borrowed, error) {
+		record := run.Record{ID: id}
+		handle, err := store.Create(ctx, record)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return borrower.Borrow(ctx, app.BorrowCall{
+			Record: &record, Event: func(string, string, map[string]any) {},
+			Update: func(record run.Record) error { return update(handle, record) },
+			Dir:    "/repo", RepositoryIdentity: "/repo", Revision: "sha-HEAD",
+		})
+	}
+	killed := errors.New("killed")
+	if _, err := borrow("run-0", func(handle app.RunHandle, record run.Record) error {
+		if err := handle.Update(record); err != nil {
+			return err
+		}
+		if err := store.Abandon(record.ID); err != nil {
+			return err
+		}
+		return killed
+	}); !errors.Is(err, killed) {
+		t.Fatalf("the first borrow = %v", err)
+	}
+
+	reaper := app.NewReaper(store, h.processes, h.workspaces, fixedClock{})
+	reaper.ReapContext = func(ctx context.Context) (context.Context, context.CancelFunc) { return context.WithCancel(ctx) }
+	if err := reaper.Reap(ctx); err != nil {
+		t.Fatal(err)
+	}
+	reaped, _, err := store.Get(ctx, "run-0")
+	if err != nil || reaped.FinishedAt == nil || !reaped.ProcessesEnded || reaped.InPlace == nil || reaped.InPlace.Worktree != "/repo" {
+		t.Fatalf("reaped %+v, %v", reaped, err)
+	}
+	noWorktreeEffect(t, reaped)
+	borrowed, err := borrow("run-1", func(handle app.RunHandle, record run.Record) error { return handle.Update(record) })
+	if err != nil {
+		t.Fatalf("the next borrow = %v", err)
+	}
+	if err := borrowed.Release(); err != nil {
+		t.Fatal(err)
+	}
+}
+
 // ADR-022 rule 7: a commit the agent made in the worktree fails the call,
 // and stays: the changes are still captured from the revision, and nothing
 // is undone.
@@ -476,6 +547,24 @@ func TestAFailedInPlaceTurnLeavesItsChanges(t *testing.T) {
 		t.Fatalf("artifacts %v, applied %v, discarded %v", h.recorder.artifacts, h.changes.applies(), h.workspaces.discarded)
 	}
 	noWorktreeEffect(t, record)
+}
+
+// ADR-022 rule 3: an in-place call that panics once its runtime's process
+// is on record does not know that process ended: its record says so, and
+// the next call to borrow the worktree asks about the process again.
+func TestAnInPlaceCallThatPanicsLeavesItsProcessesNotKnownToHaveEnded(t *testing.T) {
+	t.Parallel()
+	h := newHarness()
+	withWorkspace(h, inPlaceWorkspace)
+	h.runner.acting = func(context.Context, app.EventSink) { panic("the runner exploded") }
+	record := h.call(t, contract.CallRequest{})
+
+	if class(record) != run.ClassInternal || message(record) != "the runner exploded" {
+		t.Fatalf("result %+v", record.Result)
+	}
+	if record.Effects == nil || record.Effects.Process == nil || record.Effects.Process.Ref != "ref-4242" || record.ProcessesEnded {
+		t.Fatalf("effects %+v, processes ended %v", record.Effects, record.ProcessesEnded)
+	}
 }
 
 // An in-place call that verifies still verifies on a clean copy of the

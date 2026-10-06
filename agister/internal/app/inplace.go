@@ -158,11 +158,17 @@ func (b *Borrower) Borrow(ctx context.Context, call BorrowCall) (borrowed *Borro
 		}
 	}()
 	// On record before anything is run there: a call killed from here on
-	// leaves a run that names the worktree.
+	// leaves a run that names the worktree, and that a reap finishes: the
+	// reap takes only runs with effects on record, and the worktree is not
+	// one of them, so they start empty.
+	previous := call.Record.Effects
+	if previous == nil {
+		call.Record.Effects = &run.Effects{}
+	}
 	call.Record.Workspace = call.Dir
 	call.Record.InPlace = &run.InPlace{Dir: call.Dir, Worktree: key, RepositoryIdentity: call.RepositoryIdentity, Revision: call.Revision, Verify: call.Verify}
 	if err := call.Update(*call.Record); err != nil {
-		call.Record.InPlace = nil
+		call.Record.InPlace, call.Record.Effects = nil, previous
 		return nil, fmt.Errorf("recording the worktree failed: %w", err)
 	}
 	call.Event(run.SourceAgister, "WORKTREE_LOCKED", map[string]any{"dir": call.Dir, "worktree": key})
