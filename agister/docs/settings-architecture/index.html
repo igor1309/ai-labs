@@ -281,8 +281,10 @@ inline in the process.</li>
 <li><b>skills</b>: each one <code>SKILL.md</code>.</li>
 <li><b>policy</b>: execution defaults: timeout, attempts, cost cap,
 allowed and denied permissions, workspace access (read-only or read-write)
-and scope (candidate or repository), staleness limits. It speaks in
-permissions, never in runtime primitives.</li>
+and scope (candidate or repository), staleness limits, and under
+<code>stale.recover</code> how many times a call may resume a stale turn
+and with what instruction. A process may only lower that number. It
+speaks in permissions, never in runtime primitives.</li>
 </ul>
 
 <h2><span class="k-agent">Agent</span></h2>

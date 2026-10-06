@@ -24,7 +24,7 @@ func (*sink) Event(string, string, map[string]any) {}
 func (*sink) Raw(string)                           {}
 func (*sink) ProcessStarted(string) error          { return nil }
 func (*sink) ToolStarted(codex.ToolCall)           {}
-func (*sink) ToolFinished(string)                  {}
+func (*sink) ToolFinished(codex.ToolResult)        {}
 
 const fakeThread = "thread-1"
 

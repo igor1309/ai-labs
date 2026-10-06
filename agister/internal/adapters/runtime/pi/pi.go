@@ -84,6 +84,7 @@ import (
 	"slices"
 	"strings"
 	"time"
+	"unicode/utf8"
 )
 
 const Contract = "pi/1"
@@ -289,7 +290,7 @@ func (r *Runner) RunTurn(ctx context.Context, request TurnRequest, sink EventSin
 			if tool.Started != nil {
 				sink.ToolStarted(*tool.Started)
 			} else {
-				sink.ToolFinished(tool.Finished)
+				sink.ToolFinished(*tool.Finished)
 			}
 		}
 	})
@@ -438,11 +439,11 @@ type Message struct {
 	ErrorMessage string
 }
 
-// Tool is a tool call the stream reported: its start, or the ID of the one
-// that finished.
+// Tool is a tool call the stream reported: its start, or the end of one,
+// with its result.
 type Tool struct {
 	Started  *ToolCall
-	Finished string
+	Finished *ToolResult
 }
 
 // TakeTools returns the tool calls reduced since it was last called, in
@@ -482,7 +483,9 @@ func (s *Stream) Reduce(line string) []Event {
 	case "tool_execution_end":
 		id, _ := message["toolCallId"].(string)
 		if id != "" {
-			s.tools = append(s.tools, Tool{Finished: id})
+			result, _ := message["result"].(map[string]any)
+			text, reported := contentText(result["content"])
+			s.tools = append(s.tools, Tool{Finished: finished(id, text, reported)})
 		}
 		isError, _ := message["isError"].(bool)
 		return []Event{{SourceProtocol, "TOOL_RESULT", map[string]any{"tool_use_id": id, "is_error": isError}}}
@@ -740,4 +743,42 @@ func truncate(text string, max int) string {
 		return text
 	}
 	return text[:max] + "…"
+}
+
+// finished is the end of the call id, with the result's text the stream
+// reported for it, if it reported one: bounded to ToolResultBytes, its head
+// and tail kept, each cut on a rune boundary.
+func finished(id, text string, reported bool) *ToolResult {
+	result := &ToolResult{ID: id, Output: text, Reported: reported}
+	if !reported {
+		result.Output = ""
+		return result
+	}
+	if len(text) <= ToolResultBytes {
+		return result
+	}
+	head, tail := ToolResultBytes/2, len(text)-ToolResultBytes/2
+	for head > 0 && !utf8.RuneStart(text[head]) {
+		head--
+	}
+	for tail < len(text) && !utf8.RuneStart(text[tail]) {
+		tail++
+	}
+	result.Output = text[:head] + "\n…\n" + text[tail:]
+	return result
+}
+
+// contentText is the text of a tool result's content blocks, joined;
+// reported is false when it has none.
+func contentText(content any) (text string, reported bool) {
+	blocks, _ := content.([]any)
+	var texts []string
+	for _, item := range blocks {
+		if block, ok := item.(map[string]any); ok && block["type"] == "text" {
+			if text, ok := block["text"].(string); ok {
+				texts = append(texts, text)
+			}
+		}
+	}
+	return strings.Join(texts, "\n"), len(texts) > 0
 }

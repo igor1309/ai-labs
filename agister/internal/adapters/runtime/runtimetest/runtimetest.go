@@ -108,10 +108,12 @@ type Recorder struct {
 	Events    []run.Event
 	Lines     []string
 	Processes []string // references, in the order reported
-	// Tools are the tool calls reported started, in order, and Finished the
-	// IDs of those reported finished.
+	// Tools are the tool calls reported started, in order, Finished the
+	// IDs of those reported finished, and Results what each finish
+	// reported, in the same order.
 	Tools    []app.ToolCall
 	Finished []string
+	Results  []app.ToolResult
 	// Trace is every event and tool call reported, in the order they
 	// arrived: an event as its kind, followed by the tool call it names if
 	// any ("TOOL_RESULT toolu_1"), a tool call as "ToolStarted <id>" or
@@ -149,11 +151,12 @@ func (r *Recorder) ToolStarted(call app.ToolCall) {
 	r.Trace = append(r.Trace, "ToolStarted "+call.ID)
 }
 
-func (r *Recorder) ToolFinished(id string) {
+func (r *Recorder) ToolFinished(result app.ToolResult) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	r.Finished = append(r.Finished, id)
-	r.Trace = append(r.Trace, "ToolFinished "+id)
+	r.Finished = append(r.Finished, result.ID)
+	r.Results = append(r.Results, result)
+	r.Trace = append(r.Trace, "ToolFinished "+result.ID)
 }
 
 func (r *Recorder) ProcessStarted(ref string) error {
@@ -302,6 +305,11 @@ func Conformance(t *testing.T, subject Subject) {
 		if len(sink.Tools) != 1 || sink.Tools[0].ID == "" || sink.Tools[0].Name == "" || sink.Tools[0].Input == "" ||
 			len(sink.Finished) != 1 || sink.Finished[0] != sink.Tools[0].ID {
 			t.Fatalf("tool calls started %+v, finished %q", sink.Tools, sink.Finished)
+		}
+		// The call's result is the evidence a repeated call is recovered
+		// with (ADR-024 rule 2): every fake's stream carries one.
+		if result := sink.Results[0]; !result.Reported || result.Output == "" {
+			t.Fatalf("tool call finished without its result: %+v", result)
 		}
 		// During the turn, in order: the call is started before its result
 		// is reported, and finished before the turn completes.

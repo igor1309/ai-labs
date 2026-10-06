@@ -43,6 +43,20 @@ type ToolCall struct {
 	Command bool
 }
 
+// ToolResult is the end of a tool call: its ID and the result the CLI
+// reported for it, if it reported one, bounded to ToolResultBytes.
+type ToolResult struct {
+	ID string
+	// Output is the result's text: its head and tail when longer than
+	// ToolResultBytes, with a mark where the middle was cut.
+	Output string
+	// Reported is whether the CLI reported a result's text for the call.
+	Reported bool
+}
+
+// ToolResultBytes bounds the text of a tool call's result as reported.
+const ToolResultBytes = 1 << 10
+
 // TurnRequest asks this wrapper for one CLI turn.
 type TurnRequest struct {
 	Prompt      string
@@ -155,7 +169,7 @@ type EventSink interface {
 	ProcessStarted(ref string) error
 	Raw(line string)
 	ToolStarted(ToolCall)
-	ToolFinished(id string)
+	ToolFinished(ToolResult)
 }
 type Turn struct {
 	Status            Status          `json:"status"`

@@ -31,7 +31,7 @@ func (s *claudecodeStandIn) RunTurn(ctx context.Context, r claudecode.TurnReques
 	s.request = r
 	sink.Event("protocol", "TOOL_REQUESTED", map[string]any{"tool_use_id": "id", "input": "full"})
 	sink.ToolStarted(claudecode.ToolCall{ID: "id", Name: "bash", Input: "full", Command: true})
-	sink.ToolFinished("id")
+	sink.ToolFinished(claudecode.ToolResult{ID: "id", Output: "done", Reported: true})
 	sink.Raw("raw")
 	s.recordError = sink.ProcessStarted("pgid:42")
 	return s.result
@@ -57,7 +57,7 @@ func TestClaudeCodeApplicationAdapter(t *testing.T) {
 	if stub.ctx != ctx || !reflect.DeepEqual(stub.request, wantRequest) || !reflect.DeepEqual(got, want) || stub.recordError != refusal {
 		t.Fatalf("request %+v, result %+v, record error %v", stub.request, got, stub.recordError)
 	}
-	if !reflect.DeepEqual(sink.Trace, []string{"TOOL_REQUESTED id", "ToolStarted id", "ToolFinished id"}) || !reflect.DeepEqual(sink.Tools, []app.ToolCall{{ID: "id", Name: "bash", Input: "full", Command: true}}) || !reflect.DeepEqual(sink.Lines, []string{"raw"}) || !reflect.DeepEqual(sink.Processes, []string{"pgid:42"}) || !reflect.DeepEqual(sink.Events[0].Data, map[string]any{"tool_use_id": "id", "input": "full"}) || sink.Events[0].Source != "protocol" {
+	if !reflect.DeepEqual(sink.Trace, []string{"TOOL_REQUESTED id", "ToolStarted id", "ToolFinished id"}) || !reflect.DeepEqual(sink.Tools, []app.ToolCall{{ID: "id", Name: "bash", Input: "full", Command: true}}) || !reflect.DeepEqual(sink.Results, []app.ToolResult{{ID: "id", Output: "done", Reported: true}}) || !reflect.DeepEqual(sink.Lines, []string{"raw"}) || !reflect.DeepEqual(sink.Processes, []string{"pgid:42"}) || !reflect.DeepEqual(sink.Events[0].Data, map[string]any{"tool_use_id": "id", "input": "full"}) || sink.Events[0].Source != "protocol" {
 		t.Fatalf("sink %+v", sink)
 	}
 	identity, err := adapter.Identity(ctx)

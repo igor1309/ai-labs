@@ -72,7 +72,9 @@ type Infrastructure struct {
 	// precheck runs on the preparer (see BorrowPreparer).
 	Borrower BorrowAdapters
 	Verifier VerifyAdapters
-	Runs     RunsAdapters
+	// Recoverer recovers a call's stale turns (ADR-024).
+	Recoverer RecoverAdapters
+	Runs      RunsAdapters
 	// Installer works on home's settings and their backups.
 	Installer InstallAdapters
 	// Staging stages an install's result, where it is checked.
@@ -101,8 +103,8 @@ type GateCheck interface {
 // refused (ADR-015). Every field of infra is required but Checks and
 // Hosted.
 func NewClient(infra Infrastructure) contract.Client {
-	// The calls hosted in this process, the preparer, the borrower and the
-	// verifier are shared by every client the gate builds.
+	// The calls hosted in this process, the preparer, the borrower, the
+	// verifier and the recoverer are shared by every client the gate builds.
 	hosted := infra.Hosted
 	if hosted == nil {
 		hosted = NewHosted()
@@ -110,6 +112,7 @@ func NewClient(infra Infrastructure) contract.Client {
 	preparer := NewPreparer(infra.Preparer.Content, infra.Preparer.Commands, infra.Preparer.Clock)
 	borrower := NewBorrower(infra.Borrower, BorrowPreparer{Preparer: preparer})
 	verifier := NewVerifier(infra.Verifier.Content, infra.Verifier.Copies, infra.Verifier.Commands, infra.Verifier.Clock)
+	recoverer := NewRecoverer(infra.Recoverer.Clock)
 	sources := make([]string, 0, len(infra.Calls.Inputs))
 	for name := range infra.Calls.Inputs {
 		sources = append(sources, name)
@@ -147,7 +150,7 @@ func NewClient(infra Infrastructure) contract.Client {
 			Checker:    checkerOn(layered),
 			Inspection: NewInspection(resolverOn(layered)),
 			Calls: NewCalls(
-				resolverOn(layered), calls.Runners, calls.Inputs, calls.Workspaces, calls.Changes, preparer, borrower, verifier, calls.Validator,
+				resolverOn(layered), calls.Runners, calls.Inputs, calls.Workspaces, calls.Changes, preparer, borrower, verifier, recoverer, calls.Validator,
 				calls.Recorder, calls.Runs, calls.Clock, calls.Timer, calls.IDs, calls.StateDir, hosted,
 			),
 			Runs:      NewRuns(infra.Runs.Reader, infra.Runs.Appends, hosted, infra.Runs.Timer, 0),

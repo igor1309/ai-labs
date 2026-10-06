@@ -33,6 +33,18 @@ type Stale struct {
 	// RepeatedToolCalls is how many identical tool calls in a row end the
 	// turn; at least 2.
 	RepeatedToolCalls *int `json:"repeated_tool_calls,omitempty"`
+	// Recover is what may follow a turn that one of them ended.
+	Recover Recover `json:"recover"`
+}
+
+// Recover is the recovery of a stale call (ADR-024 rule 5): the turns that
+// resume its session with the evidence of what went stale. Unset, there is
+// none.
+type Recover struct {
+	// MaxResumes is how many recovery turns a call may take; at least 0.
+	MaxResumes *int `json:"max_resumes,omitempty"`
+	// Instruction is what the agent is told with the evidence.
+	Instruction string `json:"instruction,omitempty"`
 }
 
 var limitKeys = []string{"timeout", "max_cost_usd", "retry", "stale", "tools", "workspace", "isolation", "resources", "artifacts"}
@@ -104,7 +116,7 @@ func parseLimits(values map[string]*yaml.Node, toolKeys, workspaceKeys []string,
 // exceed the timeout declared beside it: it would never end anything.
 func parseStale(node *yaml.Node, timeout *time.Duration, p *problems) Stale {
 	var stale Stale
-	values := fields(node, "stale", []string{"no_event", "no_output", "tool_command", "repeated_tool_calls"}, p)
+	values := fields(node, "stale", []string{"no_event", "no_output", "tool_command", "repeated_tool_calls", "recover"}, p)
 	span := func(key string) *time.Duration {
 		field := join("stale", key)
 		text, ok := scalar(values[key], field, p)
@@ -128,5 +140,27 @@ func parseStale(node *yaml.Node, timeout *time.Duration, p *problems) Stale {
 			stale.RepeatedToolCalls = &calls
 		}
 	}
+	if node, ok := values["recover"]; ok {
+		stale.Recover = parseRecover(node, p)
+	}
 	return stale
+}
+
+// parseRecover reads a stale block's recover block. Whether a budget has
+// the instruction it needs is the composed limits' to say: a process may
+// give the instruction for its policy's budget.
+func parseRecover(node *yaml.Node, p *problems) Recover {
+	var recover Recover
+	values := fields(node, "stale.recover", []string{"max_resumes", "instruction"}, p)
+	if resumes, ok := integer(values["max_resumes"], "stale.recover.max_resumes", p); ok {
+		if resumes < 0 {
+			p.add("stale.recover.max_resumes", "must be at least 0")
+		} else {
+			recover.MaxResumes = &resumes
+		}
+	}
+	if node, ok := values["instruction"]; ok {
+		recover.Instruction = nonEmpty(node, "stale.recover.instruction", p)
+	}
+	return recover
 }

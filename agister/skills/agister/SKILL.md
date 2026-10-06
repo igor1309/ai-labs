@@ -50,8 +50,10 @@ agent's turn has completed with valid output, on a clean copy of the
 checkout with the agent's changes applied. It runs with your authority,
 not the agent's permissions, and it runs code the agent wrote. A failing
 command goes back to the agent for a repair in the same session, for at
-most the attempts the verification allows; a command that times out ends
-the run instead. The run completes only when the command passes.
+most the attempts the verification allows. A command that goes silent for
+the `stale.no_output` limit is ended, and is a failed attempt like a
+failing one; a command that times out ends the run instead. The run
+completes only when the command passes.
 
 The process holds the command itself, or names a verify document:
 `verify:<name>` is `verifies/<name>.yaml`, the repository's
@@ -179,11 +181,19 @@ records `SETUP_SKIPPED`.
   status.
 - `agister runs show <run-id>` prints the run's record as JSON. That
   includes its `request`, the `definitions` and `inputs` it ran with, its
-  `attempts` when it has a verification, and its `result` (`status`,
-  `error`, `output` or `text`, `cost`, `timing`, `artifacts`). An
-  attempt's `run.passed` says whether its verification command passed. A
-  stopped attempt has `stopped`, which says why verification ended there,
-  and may have no `run`.
+  `attempts` when it has a verification, its `recoveries` when a stale
+  turn was resumed, and its `result` (`status`, `error`, `output` or
+  `text`, `cost`, `timing`, `artifacts`). An attempt's `run.passed` says
+  whether its verification command passed. A stopped attempt has
+  `stopped`, which says why verification ended there, and may have no
+  `run`.
+- A policy's `stale` limits end an agent turn that stopped moving, before
+  its timeout. With `stale.recover`, a budget of `max_resumes` and an
+  `instruction`, Agister then resumes the turn's session with what went
+  stale instead of ending the call, and each such turn is one of the
+  record's `recoveries`, with what went `stale` and its own `outcome`.
+  That needs an agent and a runtime that resume: any other call with a
+  budget is refused before its first turn.
 - A workflow's record lists its nodes under `workflow.nodes`, each with
   the ID of its own `run`. Its `result` carries the join's output. For a
   fan-out node's output, show that node's run.

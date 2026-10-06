@@ -31,6 +31,7 @@ type Calls struct {
 	preparer   CallPreparer
 	borrower   CallBorrower
 	verifier   CallVerifier
+	recoverer  CallRecoverer
 	validator  CallValidator
 	recorder   RunRecorder
 	runs       CallRuns
@@ -336,6 +337,7 @@ func callStale(stale policy.Stale) CallStale {
 	if stale.RepeatedToolCalls != nil {
 		limits.RepeatedToolCalls = *stale.RepeatedToolCalls
 	}
+	limits.Recover = CallRecover{MaxResumes: stale.Recover.MaxResumes, Instruction: stale.Recover.Instruction}
 	return limits
 }
 
@@ -405,11 +407,12 @@ type TurnRunner interface {
 type EventSink interface {
 	Event(source, kind string, data map[string]any)
 	// ToolStarted reports a tool call the agent started, and ToolFinished
-	// the end of the call of that ID, each beside the event that records it.
-	// An adapter that reports them says so in its identity
+	// the end of the call of the result's ID, with the result where the
+	// runtime reported one, each beside the event that records it. An
+	// adapter that reports them says so in its identity
 	// (RuntimeIdentity.ToolCalls).
 	ToolStarted(call ToolCall)
-	ToolFinished(id string)
+	ToolFinished(result ToolResult)
 	// ProcessStarted records the runtime's process as soon as it exists, as
 	// a reference only the runtime adapter can read (Processes.Reap takes
 	// it back). It may be reported again as more becomes known; the last
@@ -520,13 +523,22 @@ type CallVerifier interface {
 	Verify(ctx context.Context, call VerifyCall) (verified string, fault *run.Error)
 }
 
+// CallRecoverer gives a call its turns with stale recovery (ADR-024): the
+// take and conclude it returns are the call's own, where a turn Agister
+// ended at a staleness limit is followed by a recovery turn while the
+// call's budget, time and cost allow, each recorded before the call goes
+// on. A call without a budget of resumes gets its own back.
+type CallRecoverer interface {
+	Recover(ctx context.Context, call RecoverCall) (take func(TurnRequest, *run.SessionTotals) run.Turn, conclude func(run.Turn) *run.Error)
+}
+
 // RunRecorder creates run records owned by the calling process.
 type RunRecorder interface {
 	Create(ctx context.Context, record run.Record) (RunHandle, error)
 }
 
 // CallAdapters are what Calls run on besides their resolver, preparer,
-// verifier and cancellations. StateDir is Agister's own state, which no
+// verifier, recoverer and cancellations. StateDir is Agister's own state, which no
 // agent workspace may overlap.
 type CallAdapters struct {
 	Runners    CallRunners
@@ -556,6 +568,7 @@ func NewCalls(
 	preparer CallPreparer,
 	borrower CallBorrower,
 	verifier CallVerifier,
+	recoverer CallRecoverer,
 	validator CallValidator,
 	recorder RunRecorder,
 	runs CallRuns,
@@ -574,6 +587,7 @@ func NewCalls(
 		preparer:   preparer,
 		borrower:   borrower,
 		verifier:   verifier,
+		recoverer:  recoverer,
 		validator:  validator,
 		recorder:   recorder,
 		runs:       runs,
@@ -1092,6 +1106,10 @@ func (c *Calls) execute(ctx context.Context, handle RunHandle, record run.Record
 		result.Timing.RuntimeMS = totals.RuntimeMS
 		result.Usage, result.Cost = totals.Usage, totals.Cost
 		result.Text = turn.Text
+		// The call's session is the first one a turn of it reported.
+		if result.Session == nil && turn.ProviderSessionID != "" {
+			result.Session = &run.Session{ProviderSessionID: turn.ProviderSessionID, Continues: record.Request.Continue}
+		}
 		return turn
 	}
 	conclude := func(turn run.Turn) *run.Error {
@@ -1108,10 +1126,15 @@ func (c *Calls) execute(ctx context.Context, handle RunHandle, record run.Record
 		return fault
 	}
 
+	// Every turn of the call is taken with its stale recovery (ADR-024):
+	// the first, and each the verification loop takes.
+	take, conclude = c.recoverer.Recover(ctx, RecoverCall{
+		Record: &record, Result: &result, Event: event, Update: handle.Update,
+		Recover: res.Effective.Stale.Recover, Limit: res.Effective.MaxCostUSD, Deadline: deadline,
+		Take: take, Conclude: conclude,
+	})
+
 	turn := take(request, resumed.before)
-	if turn.ProviderSessionID != "" {
-		result.Session = &run.Session{ProviderSessionID: turn.ProviderSessionID, Continues: record.Request.Continue}
-	}
 	fault := conclude(turn)
 	if verify := res.Process.Verify; fault == nil && verify != nil {
 		verified, fault = c.verifier.Verify(ctx, VerifyCall{

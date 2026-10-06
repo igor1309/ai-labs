@@ -3,6 +3,7 @@ package prompt_test
 import (
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/igor1309/ai-labs/agister/internal/domain/prompt"
 	"github.com/igor1309/ai-labs/agister/internal/domain/run"
@@ -50,6 +51,38 @@ func TestRepairStatesTheFailure(t *testing.T) {
 	want := "Fix it.\n\n## command\n\n```\nmake test\n```\n\n## exit status\n\nexit code 2\n\n## output\n\n99 bytes, sha256 abc\n\n" +
 		"````\nFAIL a\n\n[… 80 bytes omitted …]\n```\nFAIL b\n````"
 	if got != want {
+		t.Fatalf("got\n%s\nwant\n%s", got, want)
+	}
+}
+
+// A recovery turn is told the instruction, then the evidence of the limit
+// reached: a repeated call with how often it was made and its last result,
+// if the runtime reported one; a hung command with how long it ran; a turn
+// without events only that it was interrupted. Nothing else is added.
+func TestRecoveryStatesTheEvidenceOfEachLimit(t *testing.T) {
+	t.Parallel()
+	result := "exit status 1\n```\n"
+	repeated := run.Stale{Limit: run.StaleRepeatedToolCalls, Count: 5, Tool: &run.ToolCall{ID: "t5", Name: "Bash", Input: `{"command":"go test"}`, SHA256: "abc", Result: &result}}
+	want := "Do otherwise.\n\n## stale limit\n\nstale.repeated_tool_calls: the same tool call was made 5 times in a row, and Agister ended the turn.\n\n" +
+		"## tool call\n\nBash\n\n```\n{\"command\":\"go test\"}\n```\n\n## last result\n\n````\nexit status 1\n```\n````"
+	if got := prompt.Recovery(" Do otherwise. ", repeated); got != want {
+		t.Fatalf("got\n%s\nwant\n%s", got, want)
+	}
+	// A runtime that reported no result: the message says nothing of one.
+	repeated.Tool.Result = nil
+	want = "Do otherwise.\n\n## stale limit\n\nstale.repeated_tool_calls: the same tool call was made 5 times in a row, and Agister ended the turn.\n\n" +
+		"## tool call\n\nBash\n\n```\n{\"command\":\"go test\"}\n```"
+	if got := prompt.Recovery("Do otherwise.", repeated); got != want {
+		t.Fatalf("got\n%s\nwant\n%s", got, want)
+	}
+	command := run.Stale{Limit: run.StaleToolCommand, After: 2 * time.Minute, Tool: &run.ToolCall{Name: "Bash", Input: `{"command":"npm start"}`}}
+	want = "Do otherwise.\n\n## stale limit\n\nstale.tool_command: a tool's command ran for 2m0s, and Agister ended the turn.\n\n" +
+		"## command\n\nBash\n\n```\n{\"command\":\"npm start\"}\n```"
+	if got := prompt.Recovery("Do otherwise.", command); got != want {
+		t.Fatalf("got\n%s\nwant\n%s", got, want)
+	}
+	want = "Do otherwise.\n\n## stale limit\n\nstale.no_event: the turn was interrupted after 5m0s without an event from the runtime."
+	if got := prompt.Recovery("Do otherwise.", run.Stale{Limit: run.StaleNoEvent, After: 5 * time.Minute}); got != want {
 		t.Fatalf("got\n%s\nwant\n%s", got, want)
 	}
 }

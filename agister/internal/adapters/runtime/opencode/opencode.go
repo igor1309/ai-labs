@@ -101,6 +101,7 @@ import (
 	"slices"
 	"strings"
 	"time"
+	"unicode/utf8"
 )
 
 const Contract = "opencode/1"
@@ -330,9 +331,9 @@ func (r *Runner) RunTurn(ctx context.Context, request TurnRequest, sink EventSin
 				if reportsToolCalls {
 					sink.ToolStarted(*event.Started)
 				}
-			case event.Finished != "":
+			case event.Finished != nil:
 				if reportsToolCalls {
-					sink.ToolFinished(event.Finished)
+					sink.ToolFinished(*event.Finished)
 				}
 			default:
 				sink.Event(event.Source, event.Kind, event.Data)
@@ -363,15 +364,15 @@ func WriteSkills(dir string, skills []Skill) error {
 }
 
 // Event is what a line of the stream reduces to, in order: a normalized
-// observation, a tool call that started (Started), or the ID of one that
-// finished (Finished).
+// observation, a tool call that started (Started), or the end of one, with
+// its result (Finished).
 type Event struct {
 	Source string
 	Kind   string
 	Data   map[string]any
 
 	Started  *ToolCall
-	Finished string
+	Finished *ToolResult
 }
 
 // Failure is an error the stream reported: its type's name, its message
@@ -502,7 +503,13 @@ func (s *Stream) toolUse(part map[string]any) []Event {
 	if (status == "completed" || status == "error") && !s.finished[id] {
 		events = append(events, Event{Source: SourceProtocol, Kind: "TOOL_RESULT", Data: map[string]any{"tool_use_id": id, "is_error": status == "error"}})
 		if id != "" {
-			events = append(events, Event{Finished: id})
+			// A completed call's state carries its output, a failed one's
+			// its error.
+			text, reported := state["output"].(string)
+			if status == "error" {
+				text, reported = state["error"].(string)
+			}
+			events = append(events, Event{Finished: finished(id, text, reported)})
 		}
 		if s.finished == nil {
 			s.finished = map[string]bool{}
@@ -701,4 +708,27 @@ func truncate(text string, max int) string {
 		return text
 	}
 	return text[:max] + "…"
+}
+
+// finished is the end of the call id, with the result's text the stream
+// reported for it, if it reported one: bounded to ToolResultBytes, its head
+// and tail kept, each cut on a rune boundary.
+func finished(id, text string, reported bool) *ToolResult {
+	result := &ToolResult{ID: id, Output: text, Reported: reported}
+	if !reported {
+		result.Output = ""
+		return result
+	}
+	if len(text) <= ToolResultBytes {
+		return result
+	}
+	head, tail := ToolResultBytes/2, len(text)-ToolResultBytes/2
+	for head > 0 && !utf8.RuneStart(text[head]) {
+		head--
+	}
+	for tail < len(text) && !utf8.RuneStart(text[tail]) {
+		tail++
+	}
+	result.Output = text[:head] + "\n…\n" + text[tail:]
+	return result
 }

@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"errors"
+	"fmt"
 	"reflect"
 	"strings"
 	"sync"
@@ -141,7 +142,7 @@ func TestARepeatedIdenticalToolCallEndsTheTurn(t *testing.T) {
 		call := func(id string, call app.ToolCall) {
 			call.ID = id
 			sink.ToolStarted(call)
-			sink.ToolFinished(id)
+			sink.ToolFinished(app.ToolResult{ID: id})
 		}
 		call("t1", same)
 		call("t2", same)
@@ -180,7 +181,7 @@ func TestAStaleTurnsToolCallIsBoundedWithTheDigestOfTheWhole(t *testing.T) {
 	input := "a" + strings.Repeat("€", 200)
 	h.runner.acting = func(_ context.Context, sink app.EventSink) {
 		sink.ToolStarted(app.ToolCall{ID: "t1", Name: "Write", Input: input})
-		sink.ToolFinished("t1")
+		sink.ToolFinished(app.ToolResult{ID: "t1"})
 		sink.ToolStarted(app.ToolCall{ID: "t2", Name: "Write", Input: input})
 	}
 	record := h.call(t, contract.CallRequest{})
@@ -307,7 +308,7 @@ func TestAToolCommandThatRunsTooLongEndsTheTurn(t *testing.T) {
 	h.runner.acting = func(ctx context.Context, sink app.EventSink) {
 		sink.ToolStarted(app.ToolCall{ID: "c1", Name: "Bash", Input: `{"command":"make"}`, Command: true})
 		timers.advance(9 * time.Minute)
-		sink.ToolFinished("c1")
+		sink.ToolFinished(app.ToolResult{ID: "c1"})
 		// A tool that runs no command is not bounded by the limit.
 		sink.ToolStarted(app.ToolCall{ID: "r1", Name: "Read", Input: `{"file_path":"a.go"}`})
 		sink.ToolStarted(app.ToolCall{ID: "c2", Name: "Bash", Input: `{"command":"tail -f log"}`, Command: true})
@@ -373,12 +374,16 @@ func TestWithoutStalenessLimitsNothingIsWatched(t *testing.T) {
 }
 
 // A verification run that produces no output for stale.no_output is ended
-// by its runner before verify.timeout; the call ends as a timeout and the
-// attempt's run records the cause.
+// by its runner before verify.timeout; with no repair to follow it, the
+// call ends as a timeout and the attempt's run records the cause.
 func TestAVerificationRunWithoutOutputEndsTheCall(t *testing.T) {
 	t.Parallel()
 	h, _ := staleHarness(t, "no_output: 2m")
 	verifying(h)
+	// One attempt: since ADR-024 rule 8 such a run is a failed attempt,
+	// which a repair turn follows while attempts are left; with none left
+	// the call ends as it did before.
+	h.defs.docs[definition.KindProcess]["p"] = strings.Replace(h.defs.docs[definition.KindProcess]["p"], "max_attempts: 3", "max_attempts: 1", 1)
 	h.commands.stale = true
 	record := h.call(t, contract.CallRequest{})
 
@@ -398,6 +403,122 @@ func TestAVerificationRunWithoutOutputEndsTheCall(t *testing.T) {
 	}
 	if len(h.runner.calls()) != 1 {
 		t.Fatalf("a stale run was repaired: %d turns", len(h.runner.calls()))
+	}
+}
+
+// A run found silent for stale.no_output never passes, whatever its exit
+// (ADR-024 rule 8): one that exited zero before the kill for its silence
+// landed, its content unchanged, is a failed run of its attempt, and with
+// no repair to follow it the call ends as a timeout.
+func TestAStaleVerificationRunThatExitedZeroDoesNotPass(t *testing.T) {
+	t.Parallel()
+	h, _ := staleHarness(t, "no_output: 2m")
+	verifying(h)
+	h.defs.docs[definition.KindProcess]["p"] = strings.Replace(h.defs.docs[definition.KindProcess]["p"], "max_attempts: 3", "max_attempts: 1", 1)
+	zero := 0
+	h.commands.stale, h.commands.staleExit = true, &zero
+	record := h.call(t, contract.CallRequest{})
+
+	if record.Result.Status != run.Interrupted || class(record) != run.ClassTimeout ||
+		message(record) != "stale: attempt 1's run produced no output for 2m0s (stale.no_output)" {
+		t.Fatalf("result = %+v", record.Result)
+	}
+	if len(record.Attempts) != 1 || record.Attempts[0].Run == nil {
+		t.Fatalf("attempts = %+v", record.Attempts)
+	}
+	// The run is the one the predicate would pass but for its staleness:
+	// exit code zero, and the content it checked unchanged.
+	ran := record.Attempts[0].Run
+	if ran.Passed || ran.Stale == nil || ran.Stale.Limit != run.StaleNoOutput || ran.Exit.Code == nil || *ran.Exit.Code != 0 || ran.After != "" {
+		t.Fatalf("run = %+v, exit %+v, stale %+v", ran, ran.Exit, ran.Stale)
+	}
+	if _, ok := h.recorder.artifacts["changes.patch"]; ok || len(h.runner.calls()) != 1 {
+		t.Fatalf("artifacts %v, turns %d", h.recorder.artifacts, len(h.runner.calls()))
+	}
+}
+
+// fresh makes each turn of the harness's call leave content not checked
+// before, so the verification loop reruns its command after a repair.
+func fresh(h *harness) {
+	turns := 0
+	h.changes.identify = func() string { turns++; return fmt.Sprintf("tree-%d", turns) }
+}
+
+// A verification run ended at stale.no_output is a failed attempt (ADR-024
+// rule 8): while attempts are left a repair turn follows it in the call's
+// session, told that the run went without output for the limit and was
+// ended by Agister, with the output the run produced before it hung; the
+// next run passes and the call completes. It spends a verification
+// attempt and no resume: the call has no stale.recover at all.
+func TestAVerificationRunWithoutOutputIsRepaired(t *testing.T) {
+	t.Parallel()
+	h, _ := staleHarness(t, "no_output: 2m")
+	verifying(h)
+	fresh(h)
+	h.commands.staleRuns = 1
+	record := h.call(t, contract.CallRequest{})
+
+	if record.Result.Status != run.Completed {
+		t.Fatalf("result = %+v: %s", record.Result, message(record))
+	}
+	turns := h.runner.calls()
+	if len(turns) != 2 || turns[1].ResumeSessionID != "prov-1" {
+		t.Fatalf("turns = %+v", turns)
+	}
+	want := "## command\n\n```\ngo test ./...\n```\n\n" +
+		"## exit status\n\nno output for 2m0s, then ended by Agister\n\n" +
+		"## output\n\n18 bytes, sha256 sha-stale\n\n```\n=== RUN TestHangs\n```"
+	if !strings.HasSuffix(turns[1].Prompt, want) {
+		t.Fatalf("repair message\n%s\nwant it to end\n%s", turns[1].Prompt, want)
+	}
+	if runs := h.commands.runs(); len(runs) != 2 || runs[1].NoOutput != 2*time.Minute {
+		t.Fatalf("command runs = %+v", runs)
+	}
+	if len(record.Attempts) != 2 || record.Attempts[0].Run.Stale == nil || record.Attempts[0].Run.Stale.Limit != run.StaleNoOutput ||
+		record.Attempts[1].Run == nil || !record.Attempts[1].Run.Passed || record.Attempts[1].Run.Stale != nil {
+		t.Fatalf("attempts = %+v", record.Attempts)
+	}
+	if len(record.Recoveries) != 0 || contains(h.recorder.kinds(), "RECOVERY_STARTED") {
+		t.Fatalf("a stale run spent a resume: recoveries %+v, events %v", record.Recoveries, h.recorder.kinds())
+	}
+}
+
+// Content a stale run checked is not run again: a repair turn that leaves
+// it unchanged ends the call for no progress, as after any failed run,
+// and the command, which hung on that content, is not started on it twice.
+func TestUnchangedContentAfterAStaleRunIsNotRerun(t *testing.T) {
+	t.Parallel()
+	h, _ := staleHarness(t, "no_output: 2m")
+	verifying(h)
+	h.commands.staleRuns = 1
+	record := h.call(t, contract.CallRequest{})
+
+	if record.Result.Status != run.Failed || class(record) != run.ClassBudgetExhausted ||
+		message(record) != "no progress: attempt 2's content is what attempt 1 checked" {
+		t.Fatalf("result = %+v", record.Result)
+	}
+	if len(h.runner.calls()) != 2 || len(h.commands.runs()) != 1 {
+		t.Fatalf("turns %d, command runs %d", len(h.runner.calls()), len(h.commands.runs()))
+	}
+}
+
+// A run that goes stale again as the one before it did, after the same
+// output, is no progress: no repair follows it, though attempts are left,
+// and the call ends as its limit ends it, a timeout.
+func TestAStaleRunThatRepeatsEndsTheCall(t *testing.T) {
+	t.Parallel()
+	h, _ := staleHarness(t, "no_output: 2m")
+	verifying(h)
+	fresh(h)
+	h.commands.staleRuns = 2
+	record := h.call(t, contract.CallRequest{})
+
+	if record.Result.Status != run.Interrupted || class(record) != run.ClassTimeout ||
+		message(record) != "stale: attempt 2's run produced no output for 2m0s (stale.no_output)" {
+		t.Fatalf("result = %+v", record.Result)
+	}
+	if len(h.runner.calls()) != 2 || len(h.commands.runs()) != 2 || len(record.Attempts) != 2 {
+		t.Fatalf("turns %d, command runs %d, attempts %+v", len(h.runner.calls()), len(h.commands.runs()), record.Attempts)
 	}
 }
 

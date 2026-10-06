@@ -201,3 +201,14 @@
 - **Rests on:** none
 - **Follow-ups:** none
 - **Confirmed:** by the owner, 2026-10-06, after code_review run 20261006T143919Z-a1b768 item 2 asked whether D-18 was the owner's own decision.
+
+## D-19: Accept LAB-43's edits to the caller skill
+
+- **Status:** Owner
+- **Asked by:** code_review workflow run 20261006T192743Z-715c9c, judge item 4 "The change edits the existing caller skill (SKILL.md)"; advisor run 20261006T193619Z-89fb0f answered `owner`
+- **Question:** do the SKILL.md edits stay in this change?
+- **Options:** (a) restore the three hunks (lines 53, 184, 190) here and make the instruction change separately as the owner's decision, accepting that the skill describes the old behaviour until then; (b) approve the edits as part of this change, as the owner's decision on the instruction.
+- **Excluded:** (a): the skill would describe the old behaviour, against the done gate D-18 confirmed.
+- **Decision:** (b) approve the edits as part of this change.
+- **Rests on:** D-18
+- **Follow-ups:** none

@@ -548,6 +548,14 @@ type InspectedStale struct {
 	NoOutput          time.Duration
 	ToolCommand       time.Duration
 	RepeatedToolCalls int
+	MaxResumes        int // recovery turns a stale call may take (ADR-024)
+}
+
+func inspectedStale(stale CallStale) InspectedStale {
+	return InspectedStale{
+		NoEvent: stale.NoEvent, NoOutput: stale.NoOutput, ToolCommand: stale.ToolCommand,
+		RepeatedToolCalls: stale.RepeatedToolCalls, MaxResumes: stale.Recover.MaxResumes,
+	}
 }
 
 // InspectedSource is where a definition came from.
@@ -608,7 +616,7 @@ func (r *Resolver) InspectProcess(ctx context.Context, name, agent string) (*Ins
 		Effective: InspectedLimits{
 			Timeout: res.effective.Timeout, MaxAttempts: res.effective.MaxAttempts, MaxCostUSD: res.effective.MaxCostUSD,
 			Allow: res.effective.Allow, Deny: res.effective.Deny, Permissions: res.effective.Permissions,
-			Access: res.effective.Access, Scope: res.effective.Scope, Stale: InspectedStale(callStale(res.effective.Stale)),
+			Access: res.effective.Access, Scope: res.effective.Scope, Stale: inspectedStale(callStale(res.effective.Stale)),
 		},
 		Primitives: res.plan.Primitives,
 		Withheld:   res.plan.Withheld,
