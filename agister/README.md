@@ -72,6 +72,15 @@ once. A process whose named verification exists in neither place is not a
 problem of the settings: `check` warns, and only calls of that process are
 refused ([ADR-010](docs/adr/010-a-process-names-its-verification.md)).
 
+A policy may set staleness limits under `stale`, and a process may only
+narrow them: `no_event`, `tool_command` and `repeated_tool_calls` for an
+agent turn, `no_output` for a verification run. A call that reaches one
+ends before its timeout, and its record names the limit and what went
+stale. What should follow instead, one resumed turn that is told what
+went stale, is decided in
+[ADR-023](docs/adr/023-a-stale-call-is-resumed-once.md), which is
+proposed and not built yet: today every limit ends the call.
+
 A prompt the settings fix, such as a reviewer's instructions, is a document
 too: `prompts/review.md`, the whole file its text, no header. A process
 gives it to its agent as an input, `{source: prompt, name: review}`; the
