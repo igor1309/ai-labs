@@ -78,12 +78,14 @@ document; do not route around the refusal.
   testing command and the repository's hard rules there.
 
 `agister init` installs example settings in `<home>`. It lists each file
-first, writes only after you type yes, and keeps a file that exists. To
-read the examples without touching home, run `agister --home <dir> init`
-with a scratch directory. They include a process that works in a checkout
-and names a verification, and the verify document it names. Start from
-that document: copy it into the repository's `.agister/verifies/` and
-replace its command.
+first, writes only after you type yes, and keeps a file that exists. The
+answer is read from stdin, so a caller without a terminal pipes it
+(`echo yes | agister --home <dir> init`); on any other answer, or at EOF,
+it cancels: it writes nothing and exits 64. To read the examples without
+touching home, run `agister --home <dir> init` with a scratch directory.
+They include a process that works in a checkout and names a verification,
+and the verify document it names. Start from that document: copy it into
+the repository's `.agister/verifies/` and replace its command.
 
 Then run `agister check` in the repository, and `agister process show
 <process>` for each process you will run, to see that it resolves and
@@ -186,4 +188,6 @@ that it passed. What a completed run's output means is yours to read.
 - Do not edit `<home>` by hand to fix one repository. Use the
   repository's `.agister/`. For a change to home, use
   `agister install <dir>`, which shows a diff, asks before it writes and
-  backs up what it replaces.
+  backs up what it replaces. It reads the answer from stdin too
+  (`echo yes | agister install <dir>`), and on any other answer, or at
+  EOF, it cancels: it writes nothing and exits 64.
