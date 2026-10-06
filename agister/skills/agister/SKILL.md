@@ -13,8 +13,7 @@ default. The `.agister/` of the repository you launch from takes priority
 over them, document by document. Each run is recorded in
 `<home>/runs/<run-id>/`.
 `agister --help` is authoritative, so check it before you rely on a
-command or a flag. For the details, see the Agister source: `README.md`
-and `docs/adr/`.
+command or a flag. The `README.md` of the Agister source has the details.
 
 ## Find out what the settings provide
 
@@ -23,8 +22,10 @@ Do not assume a process, a workflow, a param or a default: ask, in the
 repository you will run in.
 
 - `agister process list`, `agister workflow list` and `agister agent list`
-  show what the composed settings define. An entry that is broken, or
-  whose call would be refused, says why.
+  show what the composed settings define. An entry that is broken or
+  blocked, or that uses a document that is, says so. A list leaves out a
+  verify document that is missing: `agister check` and `agister process
+  show <process>` report it.
 - `agister process show <process>` shows one process as a call would see
   it: its params, each required or with its default; the inputs made from
   them, each with its source, such as a file or a git revision; its
@@ -44,12 +45,13 @@ repository you will run in.
 
 ## Verification
 
-A process may have a verification: a command that Agister runs after each
-turn of the agent, on a clean copy of the checkout with the turn's changes
-applied. It runs with your authority, not the agent's permissions, and it
-runs code the agent wrote. A failure goes back to the agent in the same
-session, for as many attempts as the verification allows. The run
-completes only when the command passes.
+A process may have a verification: a command that Agister runs once the
+agent's turn has completed with valid output, on a clean copy of the
+checkout with the agent's changes applied. It runs with your authority,
+not the agent's permissions, and it runs code the agent wrote. A failing
+command goes back to the agent for a repair in the same session, for at
+most the attempts the verification allows; a command that times out ends
+the run instead. The run completes only when the command passes.
 
 The process holds the command itself, or names a verify document:
 `verify:<name>` is `verifies/<name>.yaml`, the repository's
@@ -106,8 +108,9 @@ agister run <workflow> --param <param>=<value> --json
   only the files git tracks at that revision, so commit what the call
   relies on before you launch.
 - `--json` prints the result when the run ends: its `run_id`, status,
-  output, cost and the absolute path of each artifact. Without it, the
-  run's output is printed. Progress goes to stderr either way.
+  output, cost and the absolute path of each artifact. Without it, only
+  the output is printed: JSON whenever the run has one, text only when the
+  run completed. Progress goes to stderr either way.
 - For a process, `--agent <agent>` runs it with another agent of the
   settings, and `--timeout <d>` and `--max-cost <usd>` set the call's
   limits. A workflow takes params only: each node is a run of its own,
@@ -123,24 +126,27 @@ agister run <workflow> --param <param>=<value> --json
   includes its `request`, the `definitions` and `inputs` it ran with, its
   `attempts` when it has a verification, and its `result` (`status`,
   `error`, `output` or `text`, `cost`, `timing`, `artifacts`). An
-  attempt's `run.passed` is present only when the verification command
-  ran; a stopped attempt may contain only `stopped`, which says why
-  verification ended there, and no `run`.
+  attempt's `run.passed` says whether its verification command passed. A
+  stopped attempt has `stopped`, which says why verification ended there,
+  and may have no `run`.
 - A workflow's record lists its nodes under `workflow.nodes`, each with
   the ID of its own `run`. Its `result` carries the join's output. For a
   fan-out node's output, show that node's run.
 - `agister runs watch <run-id>` follows a run. Stopping a watch leaves the
   run going.
-- The run's directory holds `record.json`, `events.jsonl` (its events, in
-  order), `provider.jsonl` (the runtime's raw output) and `artifacts/`.
+- The run's directory holds `record.json` and, once the run has written
+  them, `events.jsonl` (its events, in order), `provider.jsonl` (the
+  runtime's raw output) and `artifacts/`.
 
 ## Apply a run's changes
 
 A run of a process with a checkout keeps what the call changed there as
-one patch from the revision:
+one patch from the revision, which its result lists under `artifacts`:
 `<home>/runs/<run-id>/artifacts/changes.patch` (`~/.agister/runs/...` by
 default). A run that changed nothing records the event `NO_CHANGES` and
-has no patch.
+has no patch. A patch that could not be kept is recorded as the event
+`ARTIFACT_FAILED`; without a verification, the run may still complete
+without it.
 
 ```sh
 git apply <home>/runs/<run-id>/artifacts/changes.patch
@@ -158,11 +164,11 @@ agister run <process> --continue <run-id> --param <param>=<value>
 `--continue` resumes the session of a finished run, by the same agent,
 when the agent and its runtime allow it. Pass the params again. For a
 process with a checkout, launch from the same repository and pin the same
-revision: another one is refused. The session's latest run's
-`changes.patch` is carried into the new checkout, uncommitted, whichever
-run of the session you name. A `NO_CHANGES` run carries nothing. The new
-run's patch is again cumulative from the revision, so apply only the
-latest one. A workflow cannot be continued.
+revision. The session's latest run's `changes.patch` is carried into the
+new checkout, uncommitted, whichever run of the session you name; a patch
+from another repository or revision is refused. A run that kept no patch
+carries nothing. The new run's patch is again cumulative from the
+revision, so apply only the latest one. A workflow cannot be continued.
 
 ## Exit codes
 
