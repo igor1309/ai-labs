@@ -618,6 +618,9 @@ func follow(ctx context.Context, client contract.Client, id string, after int, o
 		fmt.Fprintln(env.Stdout, result.Text)
 	}
 	summarize(env.Stderr, run)
+	if result := run.Result; result != nil && result.Error != nil {
+		newerHint(env, result.Error.Unknown)
+	}
 	return exitCode(run), nil
 }
 
@@ -1340,13 +1343,20 @@ func printCheck(env IO, report contract.CheckReport) int {
 			}
 		}
 		fmt.Fprintf(env.Stderr, "%d problem(s) in %s\n", len(report.Problems), strings.Join(kinds, ", "))
-		if unknown > 0 {
-			fmt.Fprintf(env.Stderr, "%d problem(s) name something this binary does not know; the settings may need one newer than agister %s.\n", unknown, version(env))
-		}
+		newerHint(env, unknown)
 		return ExitUsage
 	}
 	fmt.Fprintf(env.Stdout, "settings OK: %s\n", strings.Join(kinds, ", "))
 	return 0
+}
+
+// newerHint says, when unknown problems name something this binary does not
+// know, that the settings may have been written for a newer one: on check,
+// and on a run refused for its settings (LAB-122).
+func newerHint(env IO, unknown int) {
+	if unknown > 0 {
+		fmt.Fprintf(env.Stderr, "%d problem(s) name something this binary does not know; the settings may need one newer than agister %s.\n", unknown, version(env))
+	}
 }
 
 // reaches says what one problem or block refuses (ADR-015, ADR-018).

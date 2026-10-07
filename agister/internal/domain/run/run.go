@@ -65,6 +65,10 @@ func StatusOf(class Class) Status {
 type Error struct {
 	Class   Class  `json:"class"`
 	Message string `json:"message,omitempty"`
+	// Unknown counts, on a refusal for the settings, the problems it names
+	// that name something this binary does not know: the settings may
+	// need a newer one (LAB-122).
+	Unknown int `json:"unknown,omitempty"`
 }
 
 // Fault builds an error; the status follows from its class.

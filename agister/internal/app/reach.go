@@ -34,6 +34,8 @@ type reachDocument struct {
 type reachProblem struct {
 	message string // without its document's name
 	agent   string // the agent it depends on, if it does
+	// It names something this code does not know (definition.Problem).
+	unknown bool
 }
 
 // reachBlock is the block on one document: the repository's blocks.yaml
@@ -170,9 +172,11 @@ func (r *reach) where(ref DocumentRef) string {
 
 // refusal names each document with problems a call of root depends on, its
 // path, its problems and the chain that reaches it, and each blocked one
-// with its block.
+// with its block. It counts the problems it names that name something this
+// code does not know.
 func (r *reach) refusal(root DocumentRef, agent string) error {
 	var parts []string
+	unknown := 0
 	for _, s := range r.walk(root, agent) {
 		if block, ok := r.blocked[s.ref]; ok {
 			parts = append(parts, s.blockedBy(block))
@@ -184,6 +188,9 @@ func (r *reach) refusal(root DocumentRef, agent string) error {
 				continue
 			}
 			messages = append(messages, problem.message)
+			if problem.unknown {
+				unknown++
+			}
 		}
 		if len(messages) == 0 {
 			continue
@@ -193,7 +200,7 @@ func (r *reach) refusal(root DocumentRef, agent string) error {
 	if len(parts) == 0 {
 		return nil
 	}
-	return &Refusal{Reason: strings.Join(parts, "; ")}
+	return &Refusal{Reason: strings.Join(parts, "; "), Unknown: unknown}
 }
 
 // refuses is the roots among roots whose calls, without --agent, depend on

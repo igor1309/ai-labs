@@ -11,13 +11,27 @@ import (
 	"github.com/igor1309/ai-labs/agister/internal/domain/definition"
 	"github.com/igor1309/ai-labs/agister/internal/domain/enforce"
 	"github.com/igor1309/ai-labs/agister/internal/domain/policy"
+	"github.com/igor1309/ai-labs/agister/internal/domain/run"
 	"github.com/igor1309/ai-labs/agister/internal/domain/settings"
 )
 
 // Refusal is why a call cannot proceed. It is recorded as the run's outcome.
-type Refusal struct{ Reason string }
+type Refusal struct {
+	Reason string
+	// Unknown counts the settings problems it names that name something
+	// this code does not know, as settings written for a newer Agister
+	// would (LAB-122).
+	Unknown int
+}
 
 func (r *Refusal) Error() string { return r.Reason }
+
+// fault is the refusal as the run's error.
+func (r *Refusal) fault() *run.Error {
+	fault := run.Fault(run.ClassRefused, "%s", r.Reason)
+	fault.Unknown = r.Unknown
+	return fault
+}
 
 func refuse(format string, args ...any) error { return &Refusal{Reason: fmt.Sprintf(format, args...)} }
 
@@ -100,6 +114,9 @@ type ResolverProblem struct {
 	// Set on a process's problem that depends on the agent it names: a
 	// call that selects another agent does not have it (ADR-015 rule 2).
 	Agent string
+	// Unknown: it names something this code does not know, as settings
+	// written for a newer Agister would.
+	Unknown bool
 }
 
 // ResolverBlock is one document the repository blocks (ADR-018).
@@ -115,7 +132,7 @@ func (f ResolverChecked) reach() *reach {
 		r.documents[d.Ref] = reachDocument{path: d.Path, uses: d.Uses}
 	}
 	for _, p := range f.Problems {
-		r.about[p.About] = append(r.about[p.About], reachProblem{message: p.Message, agent: p.Agent})
+		r.about[p.About] = append(r.about[p.About], reachProblem{message: p.Message, agent: p.Agent, unknown: p.Unknown})
 	}
 	for _, b := range f.Blocks {
 		r.blocked[b.Ref] = reachBlock{path: b.Path, reason: b.Reason}

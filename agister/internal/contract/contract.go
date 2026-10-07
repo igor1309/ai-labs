@@ -447,6 +447,9 @@ type Result struct {
 type Error struct {
 	Class   string `json:"class"`
 	Message string `json:"message,omitempty"`
+	// Unknown counts, on a refusal for the settings, the problems it names
+	// that name something this binary does not know.
+	Unknown int `json:"unknown,omitempty"`
 }
 
 type Usage struct {
