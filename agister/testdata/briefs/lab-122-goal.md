@@ -28,8 +28,10 @@ and a refusal that says what happened when it does.
    carries the existing hint `the settings may need one newer than
    agister <version>`. This covers LAB-119's case: a field under
    `input.values.<name>` whose value is not a scalar, where this binary
-   reads only scalars. A known field with a wrong value, such as a
-   misspelt source, stays an ordinary problem without the hint.
+   reads only scalars. A known field with a wrong value, such as a list
+   of sources or a null, stays an ordinary problem without the hint. (An
+   unknown source name keeps its hint, as today: this binary cannot tell
+   a misspelt source from a newer one.)
 3. **Every refusal shows it.** The hint appears both on `agister check`
    and on a command refused for its settings, such as `agister run`.
    Tested through the CLI with settings in `t.TempDir()`, including the
@@ -58,6 +60,9 @@ and a refusal that says what happened when it does.
 
 - 2026-10-07, owner: take LAB-122, option C of LAB-122 question 1.
   This goal expressly directs the edit to `agister/AGENTS.md`.
+- 2026-10-07: Done when 2's example corrected. It named a misspelt
+  source as an ordinary problem; an unknown source is already marked
+  unknown (`TestCheckMarksWhatThisBinaryDoesNotKnow`), and stays so.
 
 ## Open
 
