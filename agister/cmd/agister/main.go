@@ -292,7 +292,9 @@ func (c composition) wire(config cli.Config) (contract.Client, *app.BackgroundRe
 			},
 			// The working copies of file inputs are kept in the home's
 			// cache, which may be removed at any time (ADR-026 rule 6).
-			Copies:     fscache.Store{Dir: filepath.Join(config.Home, "cache")},
+			Copies: fscache.Store{Dir: filepath.Join(config.Home, "cache")},
+			// The files a brief's parts refer to (ADR-026 rule 8).
+			References: inputs.File{},
 			Workspaces: workspaces.calls,
 			Changes:    content,
 			Validator:  schema.Validator{},

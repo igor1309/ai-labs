@@ -36,7 +36,7 @@ var assets embed.FS
 // one's SKILL.md alone (ADR-011 rule 9, D-16).
 var settingsEntries = map[string]bool{
 	"agents": true, "policies": true, "processes": true, "runtimes": true,
-	"schemas": true, "verifies": true, "prompts": true,
+	"schemas": true, "verifies": true, "prompts": true, "briefs": true,
 	"workflows": true, "service.toml": true,
 }
 

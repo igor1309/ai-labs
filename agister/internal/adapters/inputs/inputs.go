@@ -5,7 +5,9 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 
@@ -23,7 +25,8 @@ func (Param) Resolve(_ context.Context, spec app.InputSpec) (app.Resolved, error
 	return app.Resolved{Value: value, Identity: value}, nil
 }
 
-// File reads {path}, relative to the caller's directory, identified by digest.
+// File reads {path}, relative to the caller's directory, identified by
+// digest. It also tells whether a file a brief refers to exists.
 type File struct{}
 
 func (File) Resolve(_ context.Context, spec app.InputSpec) (app.Resolved, error) {
@@ -40,4 +43,14 @@ func (File) Resolve(_ context.Context, spec app.InputSpec) (app.Resolved, error)
 	}
 	sum := sha256.Sum256(data)
 	return app.Resolved{Value: string(data), Identity: "sha256:" + hex.EncodeToString(sum[:]), File: filepath.Base(path)}, nil
+}
+
+// Exists tells whether path names a file or folder; one that cannot be
+// looked up for any other reason is an error.
+func (File) Exists(_ context.Context, path string) (bool, error) {
+	_, err := os.Stat(path)
+	if errors.Is(err, fs.ErrNotExist) {
+		return false, nil
+	}
+	return err == nil, err
 }

@@ -356,6 +356,34 @@ test('a process\'s prompts are found in the composed settings, or marked outside
   assert.deepEqual(alone.processes[0].prompts, [{ name: 'review', outside: true }, { name: 'style', outside: true }]);
 });
 
+// ADR-026: a process's and a workflow's file inputs name the brief forms
+// their text must have, each once, found in the repo before home; a form
+// says which processes and workflows name it.
+test('the brief forms a process and a workflow name are found in the composed settings, or marked outside', async () => {
+  const home = {
+    processes: { 'implement.yaml': 'name: implement\nuses: agent:opus\ninput:\n  instruction: Implement.\n  values:\n    brief: {source: file, path: "${param.brief}", form: [goal, step]}\n    notes: {source: file, path: notes.md, form: [goal]}\n    plain: {source: file, path: plain.md}\n' },
+    workflows: { 'review.yaml': 'name: review\ninput:\n  values:\n    goal: {source: file, path: "${param.goal}", form: [goal]}\nfan_out:\n  - {node: one, uses: process:implement}\njoin: {node: j, uses: process:implement}\n' },
+    briefs: {
+      'goal.yaml': '# The goal: what a piece of work is for.\nname: goal\nparts:\n  - {heading: "## Intent", required: true}\n  - {heading: "## Sources", required: false}\ntemplate: |\n  ## Intent\n',
+      'step.yaml': 'name: step\nparts:\n  - {heading: "## Goal", required: true, reference: file}\ntemplate: |\n  ## Goal\n',
+    },
+  };
+  const repo = { briefs: { 'goal.yaml': home.briefs['goal.yaml'] } };
+  const m = await C.loadComposed(memDir('.agister', home), memDir('.agister', repo));
+  assert.deepEqual(m.processes[0].forms, [
+    { name: 'goal', outside: false, source: 'repo', overrides: true },
+    { name: 'step', outside: false, source: 'home', overrides: false },
+  ]);
+  assert.deepEqual(m.workflows[0].forms, [{ name: 'goal', outside: false, source: 'repo', overrides: true }]);
+  const goal = m.briefs[0];
+  assert.deepEqual([goal.name, goal.purpose, goal.source, goal.usedBy], ['goal', 'The goal: what a piece of work is for.', 'repo', ['implement', 'review']]);
+  assert.deepEqual(goal.parts, [{ heading: '## Intent', required: true }, { heading: '## Sources', required: false }]);
+
+  const alone = await C.loadAgister(memDir('.agister', { processes: home.processes, workflows: home.workflows }));
+  assert.deepEqual(alone.processes[0].forms, [{ name: 'goal', outside: true }, { name: 'step', outside: true }]);
+  assert.deepEqual(alone.workflows[0].forms, [{ name: 'goal', outside: true }]);
+});
+
 // ADR-021: an agent and a process name skills, each a folder of
 // skills/, found in the repo before home; a process's call gets its own,
 // then its agent's, each once. The skills are the server's inventory of
@@ -411,13 +439,13 @@ test('an agent\'s and a process\'s skills are found in the composed settings, or
 
 test('missing folders and service.toml read as empty', async () => {
   const m = await C.loadAgister(memDir('.agister', {}));
-  assert.deepEqual(m, { service: null, workflows: [], processes: [], agents: [], policies: [], runtimes: [], schemas: [], verifies: [], prompts: [], skills: [] });
+  assert.deepEqual(m, { service: null, workflows: [], processes: [], agents: [], policies: [], runtimes: [], schemas: [], verifies: [], prompts: [], briefs: [], skills: [] });
 });
 
 for (const path of ['.agister', 'agister/examples/settings']) {
   test(`the settings in ${path} load without errors`, async () => {
     const m = await C.loadAgister(diskDir(join(repoRoot, path)));
-    const items = [...m.workflows, ...m.processes, ...m.agents, ...m.policies, ...m.runtimes, ...m.verifies];
+    const items = [...m.workflows, ...m.processes, ...m.agents, ...m.policies, ...m.runtimes, ...m.verifies, ...m.briefs];
     assert.ok(items.length > 0);
     assert.deepEqual(items.filter((x) => x.error).map((x) => `${x.file}: ${x.error}`), []);
     assert.ok(!m.service?.error, m.service?.error);

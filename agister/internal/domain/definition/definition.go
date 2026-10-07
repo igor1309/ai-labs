@@ -1,7 +1,7 @@
 // Package definition parses and validates Agister's settings documents:
 // agents, processes, workflows, policies, verifications, prompts, skills,
-// runtime permission mappings, the service, the workspace and a
-// repository's blocks. It owns the definition language; callers supply
+// brief forms, runtime permission mappings, the service, the workspace and
+// a repository's blocks. It owns the definition language; callers supply
 // bytes and their origin.
 package definition
 
@@ -27,6 +27,9 @@ const (
 	KindVerify   Kind = "verifies"
 	KindPrompt   Kind = "prompts"
 	KindSkill    Kind = "skills"
+	// KindBrief is a brief's form: its parts and its template (ADR-026
+	// rule 5).
+	KindBrief Kind = "briefs"
 	// KindWorkspace is a singleton, like the service, and optional: a
 	// missing document means no workspace settings.
 	KindWorkspace Kind = "workspace"
@@ -56,6 +59,8 @@ func (k Kind) Singular() string {
 		return "prompt"
 	case KindSkill:
 		return "skill"
+	case KindBrief:
+		return "brief"
 	}
 	return string(k)
 }

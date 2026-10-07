@@ -42,6 +42,9 @@ type Value struct {
 	// ${value.<name>}, the resolved text of an input value declared before
 	// this one.
 	Args map[string]string
+	// Forms are the brief forms the text of a file value must have one of
+	// (ADR-026 rule 8), by name; none: its text is not checked.
+	Forms []string
 }
 
 // Output is a process's output contract.
@@ -351,7 +354,18 @@ func parseInputs(input map[string]*yaml.Node, p *problems) ([]Param, []Value) {
 	for _, entry := range mapping(input["values"], "input.values", p) {
 		field := "input.values." + entry.key
 		value := Value{Name: entry.key, Args: map[string]string{}}
+		formed := false
 		for _, arg := range mapping(entry.value, field, p) {
+			if arg.key == "form" {
+				// Literal document names, which nothing is substituted in.
+				formed = true
+				if arg.value.Kind != yaml.SequenceNode {
+					p.add(join(field, "form"), "must be a list of brief names")
+					continue
+				}
+				value.Forms = formNames(stringList(arg.value, join(field, "form"), p), join(field, "form"), p)
+				continue
+			}
 			text, _ := scalar(arg.value, join(field, arg.key), p)
 			if arg.key == "source" {
 				value.Source = text
@@ -361,6 +375,9 @@ func parseInputs(input map[string]*yaml.Node, p *problems) ([]Param, []Value) {
 		}
 		if value.Source == "" {
 			p.add(field+".source", "is required")
+		}
+		if formed && value.Source != FileSource && value.Source != "" {
+			p.add(field+".form", "applies to source %s only: a brief is read from a file", FileSource)
 		}
 		if value.Source == PromptSource {
 			// A literal document name, which nothing is substituted in.

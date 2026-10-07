@@ -1011,6 +1011,25 @@ func messages(problems []contract.Problem) []string {
 	return list
 }
 
+// referencesSpy says a file exists when files holds its path, and records
+// each path it is asked about; err, when set, is every answer's error.
+type referencesSpy struct {
+	mu    sync.Mutex
+	files map[string]bool
+	asked []string
+	err   error
+}
+
+func (s *referencesSpy) Exists(_ context.Context, path string) (bool, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.asked = append(s.asked, path)
+	if s.err != nil {
+		return false, s.err
+	}
+	return s.files[path], nil
+}
+
 // copiesSpy keeps working copies in memory, by path, as /cache/<digest>/<name>,
 // each written once: a copy that already holds the bytes is left as it is,
 // as the cache leaves it. err, when set, is asked, by the file's name,

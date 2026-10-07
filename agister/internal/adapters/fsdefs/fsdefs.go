@@ -1,7 +1,8 @@
 // Package fsdefs stores definition documents as files under Agister's
 // state directory: service.toml, workspace.yaml, blocks.yaml, agents/*.toml,
 // processes/*.yaml, policies/*.yaml, runtimes/*.yaml, schemas/*.json,
-// workflows/*.yaml, verifies/*.yaml, prompts/*.md, skills/*/SKILL.md. Layered
+// workflows/*.yaml, verifies/*.yaml, prompts/*.md, skills/*/SKILL.md,
+// briefs/*.yaml. Layered
 // reads a project's own settings over the global ones.
 package fsdefs
 
@@ -89,6 +90,7 @@ func extensions() map[definition.Kind]string {
 		definition.KindWorkflow: ".yaml",
 		definition.KindVerify:   ".yaml",
 		definition.KindPrompt:   ".md",
+		definition.KindBrief:    ".yaml",
 		// A folder each, holding the one file skillFile (ADR-021 rule 1).
 		definition.KindSkill: ".md",
 		// Singletons, like the service.

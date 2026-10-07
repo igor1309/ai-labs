@@ -191,6 +191,7 @@ func TestSettingsReturnsOnlySettingsFiles(t *testing.T) {
 	write(t, filepath.Join(dir, "agents", "a.toml"), `name = "a"`)
 	write(t, filepath.Join(dir, "verifies", "repo.yaml"), "name: repo")
 	write(t, filepath.Join(dir, "prompts", "review.md"), "Review it.")
+	write(t, filepath.Join(dir, "briefs", "goal.yaml"), "name: goal")
 	// Skills are not settings files here: /api/skills reads them (D-16).
 	write(t, filepath.Join(dir, "skills", "plan", "SKILL.md"), skillMD("plan", "P."))
 	write(t, filepath.Join(dir, "skills", "plan", "notes.txt"), "beside")
@@ -215,6 +216,7 @@ func TestSettingsReturnsOnlySettingsFiles(t *testing.T) {
 		"agents/a.toml":           `name = "a"`,
 		"verifies/repo.yaml":      "name: repo",
 		"prompts/review.md":       "Review it.",
+		"briefs/goal.yaml":        "name: goal",
 		"processes/nested/p.yaml": "name: p",
 	}
 	if !reflect.DeepEqual(got.Files, want) || got.Path != repo || got.Dir != dir {

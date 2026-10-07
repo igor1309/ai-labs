@@ -350,6 +350,8 @@ type flowHarness struct {
 	// copies of its file inputs.
 	runs   *runsSpy
 	copies *copiesSpy
+	// references says which files a brief's parts refer to exist.
+	references *referencesSpy
 
 	mu       sync.Mutex
 	resolved map[string]int // how often each symbolic revision was resolved
@@ -410,10 +412,10 @@ func newFlowHarness() *flowHarness {
 	runtimes := nodeRuntimes{runner: h.runner}
 	changes := &changesSpy{}
 	runs := &runsSpy{records: map[string]run.Record{}, states: map[string]run.State{}}
-	h.runs, h.copies = runs, &copiesSpy{}
+	h.runs, h.copies, h.references = runs, &copiesSpy{}, &referencesSpy{}
 	h.calls = app.NewCalls(
 		app.NewResolver(h.defs, runtimes, okValidator{}, resolverCheckStub{}), runtimes,
-		map[string]app.InputProvider{"git.revision": h.inputs, "git.diff": h.inputs, "file": h.inputs, "param": h.inputs}, h.copies,
+		map[string]app.InputProvider{"git.revision": h.inputs, "git.diff": h.inputs, "file": h.inputs, "param": h.inputs}, h.copies, h.references,
 		h.workspaces, changes, app.NewHolder(app.HoldAdapters{Locks: h.locks, Worktrees: &worktreesSpy{}, Content: changes, Runs: runs, Writers: &writersSpy{}}),
 		app.NewVerifier(changes, &commandsSpy{}, fixedClock{}), app.NewRecoverer(fixedClock{}), okValidator{}, h.store, runs,
 		fixedClock{}, unfired, &seqIDs{}, "/state", h.hosted,

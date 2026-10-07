@@ -29,6 +29,9 @@ type Bundle struct {
 	// Skills are the skill documents the settings have; a broken one is a
 	// problem of its own, not of the agents and processes that name it.
 	Skills map[string]bool
+	// Briefs are the brief forms the settings have; a broken one is a
+	// problem of its own, not of the processes and workflows that name it.
+	Briefs map[string]bool
 }
 
 // Resolved returns the process named name with the verification it names
@@ -158,6 +161,10 @@ func Check(b Bundle, m Mechanisms) []Problem {
 			if name := value.Args["name"]; value.Source == definition.PromptSource && name != "" && !b.Prompts[name] && !value.Optional() {
 				add(subject, "input %s: prompt %q does not exist", value.Name, name)
 			}
+			// So is a form its text must have (ADR-026 rule 8).
+			for _, form := range b.missingForms(value) {
+				add(subject, "input %s: brief %q does not exist", value.Name, form)
+			}
 		}
 		// So is a skill (ADR-021 rule 4).
 		for _, skill := range process.Skills {
@@ -219,6 +226,9 @@ func Check(b Bundle, m Mechanisms) []Problem {
 			if !contains(m.Sources, value.Source) {
 				unknown(subject, "input %s: unknown source %q (available: %s)", value.Name, value.Source, strings.Join(m.Sources, ", "))
 			}
+			for _, form := range b.missingForms(value) {
+				add(subject, "input %s: brief %q does not exist", value.Name, form)
+			}
 		}
 		for _, problem := range WorkflowProblems(workflow, b.Processes) {
 			add(subject, "%s", problem)
@@ -227,6 +237,17 @@ func Check(b Bundle, m Mechanisms) []Problem {
 
 	sort.SliceStable(problems, func(i, j int) bool { return problems[i].Subject < problems[j].Subject })
 	return problems
+}
+
+// missingForms lists the brief forms value names that the bundle lacks.
+func (b Bundle) missingForms(value definition.Value) []string {
+	var missing []string
+	for _, form := range value.Forms {
+		if !b.Briefs[form] {
+			missing = append(missing, form)
+		}
+	}
+	return missing
 }
 
 // planOnSomeVersion succeeds if the plan can be made for at least one

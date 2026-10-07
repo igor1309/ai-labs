@@ -1,0 +1,59 @@
+# The goal: what a piece of work is for, in the owner's words or by
+# reference to them (ADR-026 rule 3). Every review node receives it as
+# goal, and a one-step change passes it as the implementer's brief. A
+# value that names this form refuses a call whose text lacks a required
+# part, leaves one empty, or whose Open does not read None.
+#
+# Copy the template, fill each part, and leave out a conditional part that
+# does not apply. Agister checks the structure, never the meaning.
+schema: agister.brief/v1alpha1
+name: goal
+
+parts:
+  - {heading: "## Intent", required: true}
+  - {heading: "## Done when", required: true}
+  # For a bug fix.
+  - {heading: "## Expected behaviour", required: false}
+  - {heading: "## Out of scope", required: true}
+  # When correctness depends on an upstream artifact.
+  - {heading: "## Sources", required: false}
+  # When the owner has ruled.
+  - {heading: "## Decisions", required: false}
+  # For every run that receives the goal, not only the first.
+  - {heading: "## Open", required: true, reads: None.}
+
+template: |
+  # <issue>: <what the work makes true, in a line>
+
+  ## Intent
+
+  <What should be true and why, or a reference to the artifact that
+  states it: Product Intent, SPEC or issue. A reference is preferred.>
+
+  ## Done when
+
+  1. <An observable criterion; reuse the upstream story or scenario id
+     where there is one.>
+
+  ## Expected behaviour
+
+  <For a bug fix only: the behaviour with its source, or "source
+  missing", and the reproduction. Leave the part out otherwise.>
+
+  ## Out of scope
+
+  None.
+
+  ## Sources
+
+  <When correctness depends on an upstream artifact: references, not
+  copies. Leave the part out otherwise.>
+
+  ## Decisions
+
+  <When the owner has ruled: each decision, dated. Leave the part out
+  otherwise.>
+
+  ## Open
+
+  None.

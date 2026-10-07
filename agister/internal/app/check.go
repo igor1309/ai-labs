@@ -143,6 +143,7 @@ func (c *Checker) check(ctx context.Context, probe bool) (CheckResult, error) {
 		Verifies:  map[string]definition.Verification{},
 		Prompts:   map[string]bool{},
 		Skills:    map[string]bool{},
+		Briefs:    map[string]bool{},
 	}
 
 	// Each document on its own: one checks a document read, or not, err
@@ -199,6 +200,10 @@ func (c *Checker) check(ctx context.Context, probe bool) (CheckResult, error) {
 				// So is a broken skill (ADR-021 rule 4): what names it still
 				// finds it.
 				bundle.Skills[name] = true
+			}
+			if kind == definition.KindBrief {
+				// And a broken brief form (ADR-026 rule 8).
+				bundle.Briefs[name] = true
 			}
 			if kind != definition.KindService && !definition.ValidName(name) {
 				// Nothing can name such a document (ADR-015 rule 4).
@@ -260,6 +265,10 @@ func (c *Checker) check(ctx context.Context, probe bool) (CheckResult, error) {
 		{definition.KindPrompt, parsePrompt},
 		{definition.KindSkill, func(d definition.Document) error {
 			_, err := definition.ParseSkill(d)
+			return err
+		}},
+		{definition.KindBrief, func(d definition.Document) error {
+			_, err := definition.ParseBrief(d)
 			return err
 		}},
 		{definition.KindProcess, func(d definition.Document) error {
@@ -403,11 +412,17 @@ func (c *Checker) check(ctx context.Context, probe bool) (CheckResult, error) {
 		if process.Output.Format == "json" {
 			link(from, definition.KindSchema, process.Output.Schema, false)
 		}
+		for _, form := range process.Forms() {
+			link(from, definition.KindBrief, form, false)
+		}
 	}
 	for _, name := range sortedNames(bundle.Workflows) {
 		from := DocumentRef{Kind: definition.KindWorkflow, Name: name}
 		for _, node := range bundle.Workflows[name].Nodes() {
 			link(from, definition.KindProcess, node.Process, false)
+		}
+		for _, form := range bundle.Workflows[name].Forms() {
+			link(from, definition.KindBrief, form, false)
 		}
 	}
 

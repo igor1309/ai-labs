@@ -481,6 +481,35 @@ test('a process card shows the prompts its process names, and marks a missing on
   assert.equal(marker.title, 'No prompt named style in these settings: Agister refuses the call');
 });
 
+// ADR-026, README Settings: a process card and a workflow card show the
+// brief forms their inputs name, each marked missing when these settings
+// have none of that name.
+test('a process card and a workflow card show the brief forms their inputs name, and mark a missing one', async () => {
+  const naming = {
+    ...agent,
+    'processes/implement.yaml': 'name: implement\nuses: agent:opus\ninput:\n  instruction: Implement.\n  values:\n    brief: {source: file, path: brief.md, form: [goal, step]}\n',
+    'workflows/review.yaml': 'name: review\ninput:\n  values:\n    goal: {source: file, path: goal.md, form: [goal]}\nfan_out:\n  - {node: one, uses: process:review_one}\njoin: {node: j, uses: process:review_one}\n',
+  };
+  const briefs = async (files, card) => {
+    const p = page({ answers: { 'api/settings': () => respond({ path: '~', dir: '/u/.agister', home: true, files }) } });
+    await p.started;
+    const facts = p.$('dashboard').querySelector(`article#${card} div.facts`).children;
+    return facts[facts.findIndex((n) => n.textContent === 'briefs') + 1];
+  };
+  const goal = 'name: goal\nparts:\n  - {heading: "## Intent", required: true}\ntemplate: |\n  ## Intent\n';
+  const step = 'name: step\nparts:\n  - {heading: "## Goal", required: true}\ntemplate: |\n  ## Goal\n';
+  const all = { ...naming, 'briefs/goal.yaml': goal, 'briefs/step.yaml': step };
+
+  const found = await briefs(all, 'process-implement');
+  assert.equal(found.textContent, 'goal, step');
+  assert.equal(found.querySelector('span.missing'), null);
+  assert.equal((await briefs(all, 'workflow-review')).textContent, 'goal');
+
+  const absent = await briefs({ ...naming, 'briefs/goal.yaml': goal }, 'process-implement');
+  assert.equal(absent.textContent, 'goal, step (missing brief)');
+  assert.equal(absent.querySelector('span.missing').title, 'No brief named step in these settings: Agister refuses the call');
+});
+
 // ADR-014: pages show which layer each prompt comes from. In a repo, a
 // prompt of its own replaces home's and says so; one only home has says
 // home. A prompt two inputs name is listed once.

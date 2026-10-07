@@ -26,6 +26,7 @@ type Calls struct {
 	runners    CallRunners
 	inputs     map[string]InputProvider
 	copies     CallWorkingCopies
+	references CallReferences
 	workspaces CallWorkspaces
 	changes    CallChanges
 	holder     CallHolder
@@ -75,6 +76,8 @@ type ResolvedCall struct {
 	Schema  []byte
 	Prompts map[string]Resolved // by name: each prompt's text, identified by its digest
 	Absent  []CallAbsent        // the optional prompt inputs whose prompt neither layer has (ADR-019)
+	// Forms are the brief forms its inputs name, by name (ADR-026 rule 8).
+	Forms map[string]definition.Brief
 	// Skills are the call's skills, in order: the process's, then its
 	// agent's, each once (ADR-021).
 	Skills    []CallSkill
@@ -124,6 +127,9 @@ type CallValue struct {
 	Name   string
 	Source string
 	Args   map[string]string
+	// Forms are the brief forms its text must have one of (ADR-026 rule
+	// 8); none: its text is not checked.
+	Forms []string
 }
 
 // CallAbsent is an optional prompt input whose prompt neither layer has
@@ -203,7 +209,9 @@ type CallPlan struct {
 type ResolvedWorkflow struct {
 	Workflow      CallWorkflow
 	NodeProcesses map[string]CallNodeProcess // by name
-	Sources       []CallSource               // the workflow's document
+	Sources       []CallSource               // the workflow's document, then its brief forms'
+	// Forms are the brief forms its inputs name, by name (ADR-026 rule 8).
+	Forms map[string]definition.Brief
 }
 
 // CallWorkflow is what a run reads of its workflow's definition.
@@ -249,6 +257,7 @@ func (c callResolution) Resolve(ctx context.Context, request CallResolveRequest)
 		Agent:   CallAgent{Name: agent.Name, Command: agent.Command, Model: agent.Model, Effort: agent.Effort, Session: agent.Session},
 		Mapping: CallMapping{Name: res.mapping.Name, Adapter: res.mapping.Adapter},
 		Schema:  res.schema,
+		Forms:   res.forms,
 		Sources: callSources(res.sources),
 		Effective: CallLimits{
 			Timeout: effective.Timeout, MaxAttempts: effective.MaxAttempts, MaxCostUSD: effective.MaxCostUSD,
@@ -291,6 +300,7 @@ func (c callResolution) Workflow(ctx context.Context, name string) (*ResolvedWor
 		},
 		NodeProcesses: make(map[string]CallNodeProcess, len(res.processes)),
 		Sources:       callSources(res.sources),
+		Forms:         res.forms,
 	}
 	for name, process := range res.processes {
 		resolved.NodeProcesses[name] = CallNodeProcess{
@@ -327,7 +337,7 @@ func callParams(params []definition.Param) []CallParam {
 
 func callValues(values []definition.Value) []CallValue {
 	return translated(values, func(value definition.Value) CallValue {
-		return CallValue{Name: value.Name, Source: value.Source, Args: value.Args}
+		return CallValue{Name: value.Name, Source: value.Source, Args: value.Args, Forms: value.Forms}
 	})
 }
 
@@ -455,6 +465,12 @@ type CallWorkingCopies interface {
 	Keep(digest, name string, data []byte) (path string, err error)
 }
 
+// CallReferences tells whether the file a brief's part refers to exists
+// (ADR-026 rule 8). path is absolute.
+type CallReferences interface {
+	Exists(ctx context.Context, path string) (bool, error)
+}
+
 // CallWorkspaces locates the repository and the git worktree a call works
 // in.
 type CallWorkspaces interface {
@@ -520,6 +536,7 @@ type CallAdapters struct {
 	Runners    CallRunners
 	Inputs     map[string]InputProvider
 	Copies     CallWorkingCopies
+	References CallReferences
 	Workspaces CallWorkspaces
 	Changes    CallChanges
 	Validator  CallValidator
@@ -533,7 +550,8 @@ type CallAdapters struct {
 
 // NewCalls returns the use case that submits and executes calls. Every
 // collaborator is required. copies keeps the working copies of the
-// calls' file inputs. holder holds the caller's worktree for each call. timer starts the waits of a call's staleness limits. stateDir
+// calls' file inputs. references tells whether a file a brief refers to
+// exists. holder holds the caller's worktree for each call. timer starts the waits of a call's staleness limits. stateDir
 // is Agister's own state, which no agent workspace may overlap. cancels is
 // where each running call's cancellation is held.
 func NewCalls(
@@ -541,6 +559,7 @@ func NewCalls(
 	runners CallRunners,
 	inputs map[string]InputProvider,
 	copies CallWorkingCopies,
+	references CallReferences,
 	workspaces CallWorkspaces,
 	changes CallChanges,
 	holder CallHolder,
@@ -560,6 +579,7 @@ func NewCalls(
 		runners:    runners,
 		inputs:     inputs,
 		copies:     copies,
+		references: references,
 		workspaces: workspaces,
 		changes:    changes,
 		holder:     holder,
@@ -851,7 +871,7 @@ func (c *Calls) execute(ctx context.Context, handle RunHandle, record run.Record
 		return
 	}
 
-	inputs, files, err := c.resolveValues(ctx, "process "+res.Process.Name, res.Process.Params, res.Process.Values, record.Request, collection, res.Prompts, res.Absent)
+	inputs, files, err := c.resolveValues(ctx, "process "+res.Process.Name, res.Process.Params, res.Process.Values, record.Request, collection, res.Prompts, res.Absent, res.Forms)
 	if err != nil {
 		fail(err)
 		return
@@ -1127,7 +1147,7 @@ func (c *Calls) runWorkflow(ctx context.Context, handle RunHandle, record run.Re
 
 	// Resolved once, before any node starts; every fan-out node receives the
 	// same values.
-	inputs, files, err := c.resolveValues(ctx, "workflow "+workflow.Name, workflow.Params, workflow.Values, record.Request, nil, nil, nil)
+	inputs, files, err := c.resolveValues(ctx, "workflow "+workflow.Name, workflow.Params, workflow.Values, record.Request, nil, nil, nil, res.Forms)
 	if err != nil {
 		refused(err)
 		return
@@ -1483,9 +1503,11 @@ func (c *Calls) rebuilds(ctx context.Context, dir, revision string, patch []byte
 // call is refused. prompts are the prompts resolved with the call, by name
 // (ADR-014 rule 3), and absent the optional prompt inputs neither layer has
 // the prompt of, by their index among values, which give no input (ADR-019
-// rule 2); a workflow has none. files are, by each input's place, the base
-// name of the file it was read from, empty for any other.
-func (c *Calls) resolveValues(ctx context.Context, subject string, declared []CallParam, values []CallValue, request run.Request, collection *Resolved, prompts map[string]Resolved, absent []CallAbsent) (inputs []run.Input, files []string, err error) {
+// rule 2); a workflow has none. forms are the brief forms resolved with
+// the call, by name, which a value's text must have one of (ADR-026 rule
+// 8). files are, by each input's place, the base name of the file it was
+// read from, empty for any other.
+func (c *Calls) resolveValues(ctx context.Context, subject string, declared []CallParam, values []CallValue, request run.Request, collection *Resolved, prompts map[string]Resolved, absent []CallAbsent, forms map[string]definition.Brief) (inputs []run.Input, files []string, err error) {
 	params := map[string]string{}
 	var unknown []string
 	for name := range request.Params {
@@ -1551,12 +1573,59 @@ func (c *Calls) resolveValues(ctx context.Context, subject string, declared []Ca
 		if err != nil {
 			return nil, nil, refuse("input %s: %v", value.Name, err)
 		}
+		if err := c.formed(ctx, value, resolved.Value, forms, request.Cwd); err != nil {
+			return nil, nil, err
+		}
 		if text, ok := resolved.Value.(string); ok {
 			texts[value.Name] = text
 		}
 		inputs, files = append(inputs, run.Input{Name: value.Name, Source: value.Source, Identity: resolved.Identity, Revision: resolved.Revision, Value: resolved.Value}), append(files, resolved.File)
 	}
 	return inputs, files, nil
+}
+
+// formed refuses a value whose text has none of the brief forms it names
+// (ADR-026 rule 8), naming each form and each part it misses or gets
+// wrong. A part's reference to a file is resolved relative to the
+// caller's directory cwd. A value that names no form is not checked.
+func (c *Calls) formed(ctx context.Context, value CallValue, resolved any, forms map[string]definition.Brief, cwd string) error {
+	if len(value.Forms) == 0 {
+		return nil
+	}
+	text, ok := resolved.(string)
+	if !ok {
+		return refuse("input %s: has no text to check against its forms", value.Name)
+	}
+	exists := func(path string) error {
+		full := path
+		if !filepath.IsAbs(full) {
+			full = filepath.Join(cwd, full)
+		}
+		found, err := c.references.Exists(ctx, full)
+		switch {
+		case err != nil:
+			return fmt.Errorf("file %s: %v", path, err)
+		case !found:
+			return fmt.Errorf("file %s does not exist", path)
+		}
+		return nil
+	}
+	var failures []string
+	for _, name := range value.Forms {
+		form, ok := forms[name]
+		if !ok {
+			return refuse("input %s: brief %q was not resolved with the call", value.Name, name)
+		}
+		wrong := form.Check(text, exists)
+		if len(wrong) == 0 {
+			return nil
+		}
+		failures = append(failures, "form "+name+": "+strings.Join(wrong, ", "))
+	}
+	if len(failures) == 1 {
+		return refuse("input %s: does not have its %s", value.Name, failures[0])
+	}
+	return refuse("input %s: has none of its forms: %s", value.Name, strings.Join(failures, "; "))
 }
 
 // preparedWorkspace is where a call's agent works: the root of the
