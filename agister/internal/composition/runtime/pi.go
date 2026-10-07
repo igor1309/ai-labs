@@ -48,7 +48,9 @@ func (piRunner) Admit(app.TurnStart) *run.Error { return nil }
 
 type piSink struct{ app.EventSink }
 
-func (s piSink) ToolStarted(tool pi.ToolCall) { s.EventSink.ToolStarted(app.ToolCall(tool)) }
+func (s piSink) ToolStarted(tool pi.ToolCall) {
+	s.EventSink.ToolStarted(app.ToolCall{ID: tool.ID, Name: tool.Name, Input: tool.Input, Command: tool.Command})
+}
 func (s piSink) ToolFinished(result pi.ToolResult) {
 	s.EventSink.ToolFinished(app.ToolResult(result))
 }

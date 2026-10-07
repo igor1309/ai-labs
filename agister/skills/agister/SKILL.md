@@ -182,11 +182,11 @@ records `SETUP_SKIPPED`.
 - `agister runs show <run-id>` prints the run's record as JSON. That
   includes its `request`, the `definitions` and `inputs` it ran with, its
   `attempts` when it has a verification, its `recoveries` when a stale
-  turn was resumed, and its `result` (`status`, `error`, `output` or
-  `text`, `cost`, `timing`, `artifacts`). An attempt's `run.passed` says
-  whether its verification command passed. A stopped attempt has
-  `stopped`, which says why verification ended there, and may have no
-  `run`.
+  turn was resumed, its `trail` when the runtime reported one, and its
+  `result` (`status`, `error`, `output` or `text`, `cost`, `timing`,
+  `artifacts`). An attempt's `run.passed` says whether its verification
+  command passed. A stopped attempt has `stopped`, which says why
+  verification ended there, and may have no `run`.
 - A policy's `stale` limits end an agent turn that stopped moving, before
   its timeout. With `stale.recover`, a budget of `max_resumes` and an
   `instruction`, Agister then resumes the turn's session with what went
@@ -194,11 +194,26 @@ records `SETUP_SKIPPED`.
   record's `recoveries`, with what went `stale` and its own `outcome`.
   That needs an agent and a runtime that resume: any other call with a
   budget is refused before its first turn.
+- The record's `trail` is what the runtime reported the agent did on the
+  way, over every turn of the call: `touched`, the paths its tool calls
+  wrote, in order, each once with the `tool` of its first write, and
+  `denied`, each tool call the runtime refused for want of a permission,
+  with its `tool` and bounded `input`. A path is as the runtime gave it,
+  neither resolved nor judged, and nothing is blocked by it. Read the
+  trail to see what the agent reached for, such as a path outside its
+  checkout or a denied call it then worked around; the patch says only
+  what the call left. A turn that a staleness limit ended, or that was
+  killed, keeps what it reported before it ended. Claude Code reports
+  both, Codex the paths of its file changes only, OpenCode and Pi
+  neither; a file a shell command wrote is not among the paths. The
+  run's events hold the same in stream order: `TOUCHED` (`path`, `tool`,
+  `tool_use_id`) and `PERMISSION_DENIED` (`tool`, `input`).
 - A workflow's record lists its nodes under `workflow.nodes`, each with
   the ID of its own `run`. Its `result` carries the join's output. For a
   fan-out node's output, show that node's run.
-- `agister runs watch <run-id>` follows a run. Stopping a watch leaves the
-  run going.
+- `agister runs watch <run-id>` follows a run, and prints a line for each
+  path touched and each call denied. Stopping a watch leaves the run
+  going.
 - The run's directory holds `record.json` and, once the run has written
   them, `events.jsonl` (its events, in order), `provider.jsonl` (the
   runtime's raw output) and `artifacts/`.

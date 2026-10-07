@@ -49,7 +49,7 @@ func (opencodeRunner) Admit(app.TurnStart) *run.Error { return nil }
 type opencodeSink struct{ app.EventSink }
 
 func (s opencodeSink) ToolStarted(tool opencode.ToolCall) {
-	s.EventSink.ToolStarted(app.ToolCall(tool))
+	s.EventSink.ToolStarted(app.ToolCall{ID: tool.ID, Name: tool.Name, Input: tool.Input, Command: tool.Command})
 }
 func (s opencodeSink) ToolFinished(result opencode.ToolResult) {
 	s.EventSink.ToolFinished(app.ToolResult(result))

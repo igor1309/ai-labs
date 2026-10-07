@@ -411,3 +411,71 @@ func TestStreamReportsAToolCallsResult(t *testing.T) {
 		}
 	}
 }
+
+// The tools that write a file are reported with the path their input names,
+// as it names it: file_path, or notebook_path for a notebook. A tool that
+// writes none, and an input that names no path, report none.
+func TestStreamReportsThePathAToolCallWrites(t *testing.T) {
+	t.Parallel()
+	for _, c := range []struct {
+		name, input string
+		want        []string
+	}{
+		{"Edit", `{"file_path":"a.go","old_string":"a","new_string":"b"}`, []string{"a.go"}},
+		{"Write", `{"file_path":"../outside/b.go","content":""}`, []string{"../outside/b.go"}},
+		{"MultiEdit", `{"file_path":"/abs/c.go","edits":[]}`, []string{"/abs/c.go"}},
+		{"NotebookEdit", `{"notebook_path":"n.ipynb","new_source":""}`, []string{"n.ipynb"}},
+		{"NotebookEdit", `{"file_path":"not-the-notebook"}`, nil},
+		{"Read", `{"file_path":"a.go"}`, nil},
+		{"Bash", `{"command":"echo x > a.go"}`, nil},
+		{"Write", `{"content":"no path"}`, nil},
+		{"Write", `{"file_path":7}`, nil},
+	} {
+		stream := &claudecode.Stream{}
+		stream.Reduce(`{"type":"assistant","message":{"content":[{"type":"tool_use","id":"t1","name":"` + c.name + `","input":` + c.input + `}]}}`)
+		tools := stream.TakeTools()
+		if len(tools) != 1 || tools[0].Started == nil || !reflect.DeepEqual(tools[0].Started.Writes, c.want) {
+			t.Errorf("%s %s: tools = %+v, want writes %q", c.name, c.input, tools, c.want)
+		}
+	}
+}
+
+// A result's permission denials are reported one for each entry, in order:
+// the tool, and its input bounded as a tool call's is in its event, with
+// its numbers as written. An entry without one of them is still reported,
+// so the denials reported are as many as the turn counts.
+func TestStreamReportsAResultsPermissionDenials(t *testing.T) {
+	t.Parallel()
+	stream := &claudecode.Stream{}
+	long, _ := json.Marshal(strings.Repeat("x", 400))
+	events := stream.Reduce(`{"type":"result","subtype":"success","is_error":false,"permission_denials":[` +
+		`{"tool_name":"Write","tool_use_id":"t1","tool_input":{"file_path":"/etc/hosts","content":` + string(long) + `}},` +
+		`{"tool_name":"Read","tool_use_id":"t2","tool_input":{"offset":9007199254740993}},` +
+		`{"tool_name":"Edit"},` +
+		`"unreadable"]}`)
+	if len(events) != 1 || events[0].Kind != "TURN_COMPLETED" || events[0].Data["permission_denials"] != 4 {
+		t.Fatalf("events = %+v", events)
+	}
+	want := []claudecode.PermissionDenial{
+		{Tool: "Write", Input: `{"content":"` + strings.Repeat("x", 288) + "…"},
+		{Tool: "Read", Input: `{"offset":9007199254740993}`},
+		{Tool: "Edit"},
+		{},
+	}
+	if got := stream.TakeDenials(); !reflect.DeepEqual(got, want) {
+		t.Fatalf("denials = %+v", got)
+	}
+	if again := stream.TakeDenials(); len(again) != 0 {
+		t.Fatalf("taken twice: %+v", again)
+	}
+	code := 0
+	if turn := stream.Reconcile(claudecode.Evidence{Exit: &claudecode.Exit{Code: &code}}, false); turn.PermissionDenials != 4 {
+		t.Fatalf("turn = %+v", turn)
+	}
+	// A result that lists none reports none.
+	none := &claudecode.Stream{}
+	none.Reduce(`{"type":"result","subtype":"success","is_error":false,"permission_denials":[]}`)
+	if got := none.TakeDenials(); len(got) != 0 {
+		t.Fatalf("denials = %+v", got)
+	}
+}

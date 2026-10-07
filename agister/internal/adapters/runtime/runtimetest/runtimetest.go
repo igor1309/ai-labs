@@ -114,6 +114,8 @@ type Recorder struct {
 	Tools    []app.ToolCall
 	Finished []string
 	Results  []app.ToolResult
+	// Denials are the permission denials reported, in order.
+	Denials []app.PermissionDenial
 	// Trace is every event and tool call reported, in the order they
 	// arrived: an event as its kind, followed by the tool call it names if
 	// any ("TOOL_RESULT toolu_1"), a tool call as "ToolStarted <id>" or
@@ -157,6 +159,12 @@ func (r *Recorder) ToolFinished(result app.ToolResult) {
 	r.Finished = append(r.Finished, result.ID)
 	r.Results = append(r.Results, result)
 	r.Trace = append(r.Trace, "ToolFinished "+result.ID)
+}
+
+func (r *Recorder) PermissionDenied(denial app.PermissionDenial) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.Denials = append(r.Denials, denial)
 }
 
 func (r *Recorder) ProcessStarted(ref string) error {

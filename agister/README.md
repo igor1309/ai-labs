@@ -105,6 +105,24 @@ its usage, cost and timing, and its `outcome`: `completed`, `same_limit`,
 `RECOVERY_NOT_STARTED`; a repeated call's `STALE` event carries the last
 `result` the runtime reported for it, if any.
 
+The run's record holds what the runtime reported the agent did on the way
+under `trail`, over every turn of the call, the repair and recovery turns
+too: `touched`, the paths its tool calls wrote, in order, each with the
+`tool` of its first write and kept once, and `denied`, each tool call the
+runtime refused for want of a permission, with its `tool` and bounded
+`input`. The events are `TOUCHED`, one per path a tool call writes, with
+the `path`, the `tool` and the call's `tool_use_id`, recorded when the
+call starts, and `PERMISSION_DENIED`, one per denial, with the `tool` and
+the `input`; `runs watch` prints a line for each. A path is as the runtime
+gave it: Agister neither resolves nor judges it, and blocks nothing by
+it. The trail is evidence of what the agent reached for, where the patch
+is what the call left: a turn that a staleness limit ended, or that was
+killed, keeps what it reported before it ended. Claude Code reports the
+paths of its `Edit`, `Write`, `MultiEdit` and `NotebookEdit` calls, and
+its denials; Codex the paths of its file changes, and no denial, for its
+stream has none. A file a shell command wrote is not among them. OpenCode
+and Pi report neither, and a record with nothing reported has no `trail`.
+
 A prompt the settings fix, such as a reviewer's instructions, is a document
 too: `prompts/review.md`, the whole file its text, no header. A process
 gives it to its agent as an input, `{source: prompt, name: review}`; the
