@@ -19,45 +19,49 @@
 
 ## Context
 
-Agister works as its caller's hands, in the caller's place. A caller is
-an orchestrator, a human or an agent, that owns a task and a worktree
-made for it. What it hands to Agister (implement, review, verify) are
-steps of its own work. They belong where that work lives: the same files
-and the same prepared environment, such as a simulator binding, a proxy
-or a warm build cache.
+Agister is an orchestrator, grown in small, isolated steps rather than
+as a full orchestrated build at once. Each step orchestrates one thing
+well: a call, its verification and repair, a fan-out and join. A step
+it has not taken is left to whoever calls it, a human, an agent, or a
+wider orchestration.
 
-Making worktrees is good practice for orchestrators, and both of
-Agister's callers do it: ai-labs makes a fresh worktree per change, iFora
-a prepared worktree per ticket. It is the orchestrator's concern, not
-Agister's. Agister grew its own instead: a process with
+Agister works as its caller's hands, in the caller's place. The caller
+owns a task and a worktree made for it, and what it hands to Agister
+(implement, review, verify) are steps of that task. They belong where
+the task's work lives: the same files and the same prepared environment,
+such as a simulator binding, a proxy or a warm build cache.
+
+Making and preparing worktrees is one such untaken step. Worktrees are
+the right practice for orchestration, and Agister's callers already make
+them, a fresh one per change or a prepared one per ticket. Agister grew a
+second workspace beside the caller's instead: a process with
 `workspace.checkout` gets a fresh git worktree of the revision (ADR-001
-rule 11), prepared by a setup command (ADR-012), changes delivered as a
-patch that the caller applies, verification on another clean copy
+rule 11), prepared by a setup command (ADR-012), its changes delivered as
+a patch that the caller applies, verification on another clean copy
 (ADR-005), continuations that carry the patch into a new checkout
 (ADR-013), a lock on git's worktree commands (ADR-008), and a reap for
 what a killed call leaves.
 
-That is a second workspace beside the caller's, and the two do not meet
-well:
+The two workspaces do not meet well:
 
 - a checkout is a worse copy of the caller's environment: no bindings, a
   cold build, a setup script to link in what the caller already has;
 - the caller applies a patch to the worktree it already had;
-- ADR-022 let a call borrow the caller's worktree, as an exception to
+- ADR-022 let a call borrow the caller's worktree as an exception to
   keep apart: one call per worktree, never inside a workflow. A
   repository that set `mode: in-place` for its implementer had every
-  workflow refused, its code review included (iFora, 2026-10-06,
-  LAB-114). A review of the caller's change is one of the caller's steps;
-  refusing it, or moving it into a copy, defeats the setting's point.
+  workflow refused, its code review included. A review of the caller's
+  change is one of the caller's steps; refusing it, or moving it into a
+  copy, defeats the setting's point.
 
-The decision is one of separation of concerns. Agister is new and in
-active development, so its run history does not settle it.
+This is a decision about scope, not about measured use: Agister is new
+and changing, and its run history does not settle it.
 
 ## Decision
 
-Agister makes no worktree, checkout or copy. A call works in the
-caller's worktree. Keeping work apart is the caller's: it makes a
-worktree and calls Agister there.
+Agister makes no worktree, checkout or copy: managing worktrees is not a
+step it takes now. A call works in the caller's worktree. Keeping work
+apart is the caller's: it makes a worktree and calls Agister there.
 
 ## Rules
 
@@ -101,7 +105,9 @@ content (ADR-002 rule 7).
 ### 4. Readers share the worktree; a writer has it alone
 
 A call is a writer when its plan grants a permission the service lists
-as `writing`; otherwise it is a reader. For the whole call, until its
+as `writing`, or when its process declares `verify`: the verification
+command runs with the operator's authority, not the plan's (ADR-002 rule
+10), and may change the worktree. Otherwise it is a reader. For the whole call, until its
 processes have ended and its changes are captured, a writer holds the
 worktree alone, and readers hold it together. A call that cannot take
 its hold is refused, not queued. The hold is keyed by the worktree's
@@ -111,7 +117,8 @@ holds it.
 A run that a killed CLI left behind may still write in its worktree.
 Under its hold, a call is also refused while another run that may still
 write there has it on record: a writer's run that is unfinished, or whose
-processes are not known to have ended. The call asks, as the reap does,
+processes, its verification commands included, are not known to have
+ended. The call asks, as the reap does,
 to end such a process (ADR-022 rule 3), and is refused if it cannot.
 
 While the reap still removes what runs made before this ADR left on
@@ -195,8 +202,10 @@ one.
   included.
 - No checkout, setup, clean copy, patch application, worktree lock or
   checkout reap: a large part of Agister's code and settings goes.
-- A caller that wants work kept apart makes the worktree, as orchestrators
-  already do. Two writers at once need two worktrees.
+- A caller that wants work kept apart makes the worktree, as Agister's
+  callers already do. Should managing worktrees become one of Agister's
+  steps, it is a step of its own, around calls, not inside one. Two
+  writers at once need two worktrees.
 - A writer refuses a dirty worktree, so a caller commits or stashes
   before it calls one.
 - Verification proves the worktree, not the patch alone.
