@@ -175,14 +175,17 @@ Same layout in both layers (`internal/adapters/fsdefs/fsdefs.go:1`,
   - LAB-77's done gates: the README's Settings section, the caller
     skill's "What a repository provides" and both diagrams (`index.html`
     on where documents come from, `detailed.html` under "Two layers") now
-    say it. Pages and its README needed no change. Pages reads the
-    settings files with its own parser, which reads only `key: value`
-    and list lines (`pages/config.js:119`), so a file with a `---` line
-    already fails there and is shown as a file it cannot parse
-    (`pages/page.js:308`); a test now holds that
-    (`pages/tests/config.test.js`, 'YAML: a second document fails at its
-    --- line'). `pages/README.md` says its parsers cover what Agister
-    settings use, which a second document is not.
+    say it. Pages changed too. Its page reads the settings files with its
+    own parser, which reads only `key: value` and list lines
+    (`pages/config.js:119`), so a file with a `---` line already failed
+    there and is shown as a file it cannot parse (`pages/page.js:308`); a
+    test now holds that (`pages/tests/config.test.js`, 'YAML: a second
+    document fails at its --- line'). Its server read the runtime files
+    for `/api/skills` with `yaml.Unmarshal`, which takes the first
+    document; it now refuses a runtime file with a second
+    (`runtimeAdapters`, `pages/skills.go`), with the same problem, and
+    `pages/skills_test.go` holds that. `pages/README.md`'s Settings
+    section now states the one-document rule.
 
 ## How the layers combine
 

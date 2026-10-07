@@ -2,6 +2,7 @@ package pages
 
 import (
 	"io/fs"
+	"net/http"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -553,6 +554,41 @@ func TestSkillsEndpointRefusesWhatSettingsRefuses(t *testing.T) {
 	}
 	if code := get(t, h, "127.0.0.1", "/api/skills?path=~", &tilde); code != 200 || tilde.Adapters == nil || tilde.Folders == nil || len(tilde.Folders) != 0 {
 		t.Errorf("no runtimes: %d %+v", code, tilde)
+	}
+}
+
+// A runtime file holds one YAML document (LAB-77): one with a second after
+// a valid first, empty or not, in the repo or the home, is refused, naming
+// the file and Agister's problem, not read for its first document alone.
+func TestSkillsEndpointRefusesARuntimeFileOfTwoDocuments(t *testing.T) {
+	t.Parallel()
+	for name, second := range map[string]string{"a second": "adapter: pi\n", "an empty second": ""} {
+		for _, scope := range []string{"repo", "home"} {
+			t.Run(name+" in the "+scope, func(t *testing.T) {
+				t.Parallel()
+				root := realDir(t, t.TempDir())
+				user := filepath.Join(root, "user")
+				home := filepath.Join(user, ".agister")
+				repo := filepath.Join(root, "repo")
+				write(t, filepath.Join(home, "runtimes", "home.yaml"), "adapter: claude-code\n")
+				write(t, filepath.Join(repo, ".agister", "runtimes", "repo.yaml"), "adapter: claude-code\n")
+				dir := filepath.Join(repo, ".agister")
+				if scope == "home" {
+					dir = home
+				}
+				file := filepath.Join(dir, "runtimes", "main.yaml")
+				write(t, file, "adapter: codex\n---\n"+second)
+				h := Handler(home, noChoose(t), owners(), SkillHomes{Home: user})
+
+				var reply struct{ Error string }
+				if code := get(t, h, "127.0.0.1", "/api/skills?path="+q(repo), &reply); code != http.StatusUnprocessableEntity {
+					t.Fatalf("status %d, want %d: %+v", code, http.StatusUnprocessableEntity, reply)
+				}
+				if want := file + ": must hold exactly one YAML document"; reply.Error != want {
+					t.Errorf("error %q, want %q", reply.Error, want)
+				}
+			})
+		}
 	}
 }
 
