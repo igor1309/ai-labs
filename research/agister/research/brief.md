@@ -168,8 +168,11 @@ finding quotas.
 ## 7. Proposed shape
 
 Agister is an orchestrator grown in small, isolated steps (ADR-025); it does
-not plan. So the brief stays the caller's, and Agister's part is to keep it
-and hand it on.
+not plan. So this step defines the brief as an interface: the shape and
+protocol of what a run takes in, the definition of ready to the
+implementer's definition of done (`schemas/implementation.json`). Writing a
+brief stays outside Agister for now; keeping it and handing it on is
+Agister's.
 
 ### Two layers
 
@@ -183,7 +186,7 @@ and hand it on.
 
 This is the split the owner already practises in both places: SPEC.md and
 BRIEF.md in ios.config, `lab-<n>-goal.md` and `lab-<n>-*.md` in
-`agister/testdata/briefs/`.
+`agister/testdata/briefs/`. What changes is where they live (below).
 
 ### The goal's fields
 
@@ -205,24 +208,31 @@ Size of work changes what `## Intent` holds, not the file:
 
 ### The step brief's fields
 
-`## Goal` (path and digest of the goal), `## Covers` (done id → check),
+`## Goal` (the digest of the goal, as its run recorded it), `## Covers`
+(done id → check),
 `## Acts on`, `## Constraints`, `## Open`. Scaled down, a one-step change
 needs no step brief: the goal is passed as the brief.
 
 ### Who writes it, where it is stored
 
-- The caller writes both and commits them in its own worktree (LAB-114) —
-  the owner, or the caller agent from the issue. Agister does not generate
-  or repair a brief.
+- The caller writes both — the owner, or the caller agent from the issue.
+  Agister does not generate or repair a brief.
+- A brief belongs to the run, not to the repository. It is what the run was
+  given, so Agister stores the bytes in the run's evidence
+  (`artifacts/brief.md`, `artifacts/goal.md`) with their digest. This makes
+  ADR-001 rule 10 ("Anything needed to understand a call is evidence")
+  true for briefs, survives /tmp, and keeps briefs out of the caller's
+  worktree and history. The caller may pass a scratch file; committing one
+  becomes the caller's choice, not the protocol (the 145 "brief for LAB-…"
+  commits in `agister/testdata/briefs/` stop being needed).
 - Templates live in settings (`prompts/` or a `briefs/` directory), so a
   rule exists in one place (Verger L7, L103).
-- Agister stores the bytes it was given in the run's evidence
-  (`artifacts/brief.md`, `artifacts/goal.md`), with the git blob when the
-  file is tracked. This makes ADR-001 rule 10 ("Anything needed to
-  understand a call is evidence") true for briefs, and survives /tmp.
-- A goal is never edited once a run has used it. A change of intent is a new
-  revision, recorded with the reason (ios.config append-only rounds, BMAD
-  frozen block, the open charter-amendment failure).
+- A stored brief is immutable by construction: the run's copy cannot be
+  edited. A change of intent is a new goal, given to the next run, with the
+  reason in its `## Decisions` (ios.config append-only rounds, BMAD frozen
+  block, the open charter-amendment failure).
+- A later run names its goal by digest; `runs show` finds the run that
+  first recorded it.
 
 ### How processes and reviewers get it
 
@@ -239,14 +249,14 @@ needs no step brief: the goal is passed as the brief.
 
 Drafted for Multica (not yet filed):
 
-1. **ADR: the brief.** Goal and step brief, required sections, owner-owned
-   and frozen once used, caller-written. Settles the word: "goal" and
-   "brief" name two layers, not one thing twice.
+1. **ADR: the brief.** The input contract: goal and step brief, required
+   sections, written by the caller, owned by the run that received it.
+   Settles the word: "goal" and "brief" name two layers, not one thing
+   twice.
 2. **Keep the brief's words in the run's evidence.** A `file` input whose
    text exceeds 2000 characters is recorded as a digest only, and a /tmp
-   path is lost (both observed, §1). Store the bytes as an artifact and the
-   git blob when tracked; stop `source: param` copying the goal into every
-   node's identity.
+   path is lost (both observed, §1). Store the bytes as a run artifact;
+   stop `source: param` copying the goal into every node's identity.
 3. **Brief templates in settings and a check.** Templates for the goal and
    the step brief; a check, in the caller skill, that the required sections
    exist and `## Open` reads `None.` before a run.
