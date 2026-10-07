@@ -449,7 +449,7 @@ test('missing folders and service.toml read as empty', async () => {
   assert.deepEqual(m, { service: null, workflows: [], processes: [], agents: [], policies: [], runtimes: [], schemas: [], verifies: [], prompts: [], briefs: [], skills: [] });
 });
 
-for (const path of ['.agister', 'agister/examples/settings']) {
+for (const path of ['.agister', 'agister/home', 'agister/examples/settings']) {
   test(`the settings in ${path} load without errors`, async () => {
     const m = await C.loadAgister(diskDir(join(repoRoot, path)));
     const items = [...m.workflows, ...m.processes, ...m.agents, ...m.policies, ...m.runtimes, ...m.verifies, ...m.briefs];
@@ -458,3 +458,36 @@ for (const path of ['.agister', 'agister/examples/settings']) {
     assert.ok(!m.service?.error, m.service?.error);
   });
 }
+
+// Home's source folder holds every document its processes and workflows
+// name but the verification and the two Go prompts, which this
+// repository's .agister supplies (ADR-027 rules 3 and 6): composed as the
+// page composes home and a repo, nothing they name is missing, and the
+// folder alone lacks only those.
+test('the settings in agister/home, with .agister over them, name nothing missing', async () => {
+  const m = await C.loadComposed(diskDir(join(repoRoot, 'agister/home')), diskDir(join(repoRoot, '.agister')));
+  assert.ok(m.processes.length > 0);
+  assert.ok(m.workflows.length > 0);
+  const own = ['go-testing-seams', 'go-architecture'];
+  for (const p of m.processes) {
+    assert.ok(!p.error, `${p.file}: ${p.error}`);
+    assert.deepEqual([p.agentOutside, p.policyOutside, p.outputOutside], [false, false, false], p.name);
+    for (const prompt of p.prompts) {
+      assert.deepEqual([prompt.outside, prompt.source], [false, own.includes(prompt.name) ? 'repo' : 'home'], `${p.name}: ${prompt.name}`);
+    }
+    for (const form of p.forms) assert.equal(form.outside, false, `${p.name}: ${form.name}`);
+    if (p.verify) assert.deepEqual([p.verify.ref, p.verify.outside], ['repo', false], p.name);
+  }
+  for (const w of m.workflows) {
+    assert.ok(!w.error, `${w.file}: ${w.error}`);
+    for (const node of [...w.fanOut, w.join]) assert.equal(node.outside, false, `${w.name}: ${node.process}`);
+    for (const form of w.forms) assert.equal(form.outside, false, `${w.name}: ${form.name}`);
+  }
+  for (const a of m.agents) assert.equal(a.runtimeOutside, false, a.name);
+  assert.deepEqual(m.verifies.map((v) => [v.name, v.source]), [['repo', 'repo']]);
+
+  const alone = await C.loadAgister(diskDir(join(repoRoot, 'agister/home')));
+  const implement = alone.processes.find((p) => p.name === 'implement');
+  assert.equal(implement.verify.outside, true);
+  assert.deepEqual(implement.prompts, own.map((name) => ({ name, outside: true })));
+});

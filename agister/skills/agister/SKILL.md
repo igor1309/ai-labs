@@ -126,6 +126,33 @@ verifies with the repository's command. Commit `AGENTS.md` and
 `.agister/`: a process that needs a clean worktree refuses an untracked
 file git does not ignore.
 
+## Install home's settings
+
+`agister install <dir>` installs a folder laid out like the settings into
+`<home>`, document by document. It shows what it would create, replace,
+with a diff, and leave unchanged, and the documents only home has, which
+it keeps. It checks the result on a staged copy, then asks: after yes,
+and only if home's settings are still as shown, it backs up what it
+replaces under `<home>/backups/<stamp>/` and writes. It prints the
+command that undoes it, `agister install --restore <stamp>`, which asks
+too; the last five backups are kept. Both run on settings that fail
+`agister check`.
+
+A skill the settings give an agent, `skills/<name>/SKILL.md`, is
+installed as any other document: planned, diffed, checked, backed up and
+restored. A skill folder holding anything beside its `SKILL.md`, or whose
+`SKILL.md` is not a regular file, refuses the install, naming the skill
+and those files. Files that are not settings, a file directly under
+`skills/` and a `blocks.yaml` among them, are listed and not installed; a
+symbolic link in the folder refuses it. Restore removes a skill its
+install created, with its folder when that is then empty.
+
+In the repository that holds Agister's source, home's settings have one
+source in git, `agister/home/` (ADR-027). Change a document of home
+there and install the folder: a difference between home and the folder
+then shows in the install's plan, as a replace with its diff or as a
+document only home has.
+
 ## Run
 
 ```sh
@@ -408,4 +435,6 @@ that it passed. What a completed run's output means is yours to read.
   `agister install <dir>`, which shows a diff, asks before it writes and
   backs up what it replaces. It reads the answer from stdin too
   (`echo yes | agister install <dir>`), and on any other answer, or at
-  EOF, it cancels: it writes nothing and exits 64.
+  EOF, it cancels: it writes nothing and exits 64. Where home has a
+  source folder in git, change the document there and install that
+  folder (above).

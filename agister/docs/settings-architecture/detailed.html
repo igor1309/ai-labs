@@ -127,7 +127,7 @@
 <div class="desc"><header><h2>Workflow</h2><p class="path"><code>workflows/&lt;name&gt;.yaml</code> · run with <code>agister run &lt;name&gt;</code></p></header>
 <p class="lead">Composes process calls into one run. Its settings fix what each call receives, never whoever starts it.</p>
 <h3>Holds</h3><table><tr><th><code>input.params</code></th><td>what the caller supplies, each with an optional default</td></tr><tr><th><code>input.values</code></th><td>resolved once from the params, before any node starts; every fan-out node receives the same ones</td></tr></table><h3>Names</h3><table><tr><th><code>fan_out[].uses</code></th><td>a <b>process</b> per node, all run at once over the same inputs</td></tr><tr><th><code>join.uses</code></th><td>one <b>process</b>, given the fan-out nodes' results</td></tr><tr><th><code>input.values[].form</code></th><td>the <b>brief forms</b> a <code>file</code> value's text must have one of, checked before any node starts</td></tr></table><p class="note">Fan-out then join is the only shape today: no conditions, loops or graphs. The other workflow here is <code>adr_review</code>: one ADR review, then the judge.</p></div>
-<figure class="ex"><figcaption>.agister/workflows/code_review.yaml</figcaption><pre>name: code_review
+<figure class="ex"><figcaption>agister/home/workflows/code_review.yaml</figcaption><pre>name: code_review
 type: workflow
 
 input:
@@ -153,7 +153,7 @@ join: {node: judge, uses: process:review_judge}</pre></figure>
 <div class="desc"><header><h2>Process</h2><p class="path"><code>processes/&lt;name&gt;.yaml</code> · run with <code>agister run &lt;name&gt;</code></p></header>
 <p class="lead">A named agent call: the task, what it takes in, and what must come out.</p>
 <h3>Holds</h3><table><tr><th><code>input.instruction</code></th><td>the task, in words</td></tr><tr><th><code>input.params</code></th><td>what the caller supplies</td></tr><tr><th><code>input.values</code></th><td>the inputs, each from a source: <code>param</code>, <code>file</code>, <code>git.revision</code>, <code>git.merge_base</code>, <code>git.diff</code>, <code>git.changed_files</code>, <code>prompt</code></td></tr><tr><th><code>workspace.revision</code></th><td>the value whose revision HEAD must be at; Agister does not move HEAD</td></tr><tr><th><code>workspace.clean</code></th><td><code>true</code>: a fresh call needs the worktree's content to be HEAD's; unset is <code>false</code></td></tr><tr><th><code>tools.require</code></th><td>permissions the call cannot do without</td></tr><tr><th><code>timeout, retry, …</code></th><td>limit overrides; they may only narrow its policy</td></tr></table><h3>Names</h3><table><tr><th><code>uses</code></th><td>its <b>agent</b></td></tr><tr><th><code>policy</code></th><td>its <b>policy</b></td></tr><tr><th><code>output.schema</code></th><td>its <b>output schema</b></td></tr><tr><th><code>verify</code></th><td>its <b>verification</b>, by name or held inline</td></tr><tr><th><code>input.values[].name</code></th><td>a <b>prompt</b>, where the source is <code>prompt</code></td></tr><tr><th><code>input.values[].form</code></th><td>the <b>brief forms</b> a <code>file</code> value's text must have one of</td></tr><tr><th><code>skills</code></th><td>its <b>skills</b></td></tr></table><p class="note">A process with a verification, like this one, is still a process, not a workflow, and declares both <code>workspace.revision</code> and <code>workspace.clean: true</code>. Every call works in the caller's worktree, or the one <code>--dir</code> names: Agister makes no checkout and runs no setup.</p></div>
-<figure class="ex"><figcaption>.agister/processes/implement.yaml</figcaption><pre>name: implement
+<figure class="ex"><figcaption>agister/home/processes/implement.yaml</figcaption><pre>name: implement
 type: process
 uses: agent:claude-implementer-opus
 policy: process-policy:implement
@@ -186,7 +186,7 @@ verify: verify:repo</pre></figure>
 <div class="desc"><header><h2>Output schema</h2><p class="path"><code>schemas/&lt;name&gt;.json</code></p></header>
 <p class="lead">A JSON Schema the process's output must match.</p>
 <p class="note">A process names it as <code>output.schema</code>. Only JSON is supported.</p></div>
-<figure class="ex"><figcaption>.agister/schemas/review-result.json</figcaption><pre>{
+<figure class="ex"><figcaption>agister/home/schemas/review-result.json</figcaption><pre>{
   &quot;type&quot;: &quot;object&quot;,
   &quot;additionalProperties&quot;: false,
   &quot;required&quot;: [&quot;verdict&quot;, &quot;summary&quot;, &quot;findings&quot;, &quot;coverage&quot;],
@@ -218,7 +218,7 @@ instruction: &gt;-
 <div class="desc"><header><h2>Prompts</h2><p class="path"><code>prompts/&lt;name&gt;.md</code></p></header>
 <p class="lead">Plain text: the file is the value. A process takes one as an input, and may mark it optional; a missing optional prompt is left out.</p>
 <p class="note">Here: <code>prompts/go-testing-seams.md</code> and <code>prompts/go-architecture.md</code>.</p></div>
-<figure class="ex"><figcaption>.agister/processes/implement.yaml</figcaption><pre>values:
+<figure class="ex"><figcaption>agister/home/processes/implement.yaml</figcaption><pre>values:
   go_testing: {source: prompt, name: go-testing-seams, optional: true}
   go_architecture: {source: prompt, name: go-architecture, optional: true}</pre></figure>
 </section>
@@ -232,7 +232,7 @@ instruction: &gt;-
 <div class="desc"><header><h2>Briefs</h2><p class="path"><code>briefs/&lt;name&gt;.yaml</code></p></header>
 <p class="lead">A brief's form: its parts in order and the template a caller copies. Agister checks a text's structure against it, never its meaning.</p>
 <h3>Holds</h3><table><tr><th><code>parts[].heading</code></th><td>the part's Markdown heading line, such as <code>## Intent</code>; the part runs to the next heading of its level or above</td></tr><tr><th><code>parts[].required</code></th><td><code>true</code>: the text must have the part, once and not empty</td></tr><tr><th><code>parts[].reads</code></th><td>the exact text the part must read, as <code>None.</code> for Open</td></tr><tr><th><code>parts[].reference</code></th><td><code>file</code>: the part's first back-quoted path, relative to the caller's directory, must exist</td></tr><tr><th><code>template</code></th><td>the text a caller copies; its headings are the parts', each once and in order</td></tr></table><p class="note">A <code>file</code> value names the forms its text must have one of, as <code>form: [goal, step]</code>; one with no <code>form</code> is not checked. A call whose text has none of them is refused before it starts, exit 3, naming the input, each form and each wrong part. A form neither layer has makes what names it invalid. The examples ship <code>goal</code> and <code>step</code>.</p></div>
-<figure class="ex"><figcaption>.agister/briefs/step.yaml</figcaption><pre>schema: agister.brief/v1alpha1
+<figure class="ex"><figcaption>agister/home/briefs/step.yaml</figcaption><pre>schema: agister.brief/v1alpha1
 name: step
 
 parts:
@@ -254,7 +254,7 @@ template: |
 <div class="desc"><header><h2>Policy</h2><p class="path"><code>policies/&lt;name&gt;.yaml</code></p></header>
 <p class="lead">Execution defaults for the processes that name it. It speaks in permissions, never in a runtime's tools.</p>
 <h3>Holds</h3><table><tr><th><code>workspace.access</code></th><td><code>read-only</code> or <code>read-write</code></td></tr><tr><th><code>workspace.scope</code></th><td><code>candidate</code> or <code>repository</code></td></tr><tr><th><code>tools.allow, tools.deny</code></th><td>permissions, from the service's vocabulary; denied wins over allowed</td></tr><tr><th><code>timeout</code></th><td>within the service's maximum</td></tr><tr><th><code>retry.max_attempts</code></th><td>within the service's maximum</td></tr><tr><th><code>max_cost_usd</code></th><td>within the service's maximum, if it sets one</td></tr><tr><th><code>stale</code></th><td>when a silent or looping call is ended</td></tr><tr><th><code>stale.recover.max_resumes</code></th><td>how many recovery turns a call may take after a turn ended at a staleness limit: each resumes its session with what went stale; unset is 0, none</td></tr><tr><th><code>stale.recover.instruction</code></th><td>what the agent is told with the evidence; a budget above 0 needs one</td></tr></table><p class="note"><code>stale.recover</code> only narrows: a process may lower <code>max_resumes</code>, down to 0, never raise it or set one its policy lacks. Its own <code>instruction</code> replaces the policy's. A budget above 0 needs a <code>resumable</code> agent on a runtime that resumes sessions.</p></div>
-<figure class="ex"><figcaption>.agister/policies/implement.yaml</figcaption><pre>name: implement
+<figure class="ex"><figcaption>agister/home/policies/implement.yaml</figcaption><pre>name: implement
 
 workspace:
   access: read-write
@@ -286,7 +286,7 @@ stale:
 <div class="desc"><header><h2>Agent</h2><p class="path"><code>agents/&lt;name&gt;.toml</code></p></header>
 <p class="lead">A runtime profile: who does the work and how hard. It carries no task and no permissions.</p>
 <h3>Holds</h3><table><tr><th><code>model, model_family</code></th><td>which model</td></tr><tr><th><code>effort</code></th><td>one of the efforts its runtime mapping accepts</td></tr><tr><th><code>session</code></th><td><code>fresh-only</code> or <code>resumable</code></td></tr></table><h3>Names</h3><table><tr><th><code>runtime</code></th><td>its <b>runtime mapping</b></td></tr><tr><th><code>skills</code></th><td>its own <b>skills</b></td></tr></table></div>
-<figure class="ex"><figcaption>.agister/agents/claude-implementer-opus.toml</figcaption><pre>name = &quot;claude-implementer-opus&quot;
+<figure class="ex"><figcaption>agister/home/agents/claude-implementer-opus.toml</figcaption><pre>name = &quot;claude-implementer-opus&quot;
 runtime = &quot;claude-code&quot;
 model = &quot;opus&quot;
 model_family = &quot;anthropic&quot;
@@ -297,7 +297,7 @@ session = &quot;resumable&quot;</pre></figure>
 <div class="desc"><header><h2>Runtime mapping</h2><p class="path"><code>runtimes/&lt;name&gt;.yaml</code></p></header>
 <p class="lead">One adapter, described in permissions: what each of its tools or sandbox modes lets an agent do.</p>
 <h3>Holds</h3><table><tr><th><code>adapter</code></th><td><code>claude-code</code>, <code>codex</code>, <code>pi</code> or <code>opencode</code></td></tr><tr><th><code>efforts</code></th><td>the efforts it accepts</td></tr><tr><th><code>primitives.select</code></th><td><code>one</code> (sandbox modes) or <code>any</code> (tools)</td></tr><tr><th><code>primitives.items[].grants</code></th><td>the permissions that primitive grants, from the service's vocabulary</td></tr><tr><th><code>primitives.items[].verified</code></th><td>the runtime versions it was observed on</td></tr></table></div>
-<figure class="ex"><figcaption>.agister/runtimes/codex.yaml</figcaption><pre>name: codex
+<figure class="ex"><figcaption>agister/home/runtimes/codex.yaml</figcaption><pre>name: codex
 adapter: codex
 contract: codex/2
 efforts: [minimal, low, medium, high, xhigh]

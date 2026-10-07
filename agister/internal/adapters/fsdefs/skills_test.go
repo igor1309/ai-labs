@@ -2,17 +2,22 @@ package fsdefs_test
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
+	"errors"
 	"io/fs"
 	"net"
 	"os"
 	"path/filepath"
 	"reflect"
 	"strings"
+	"sync"
 	"syscall"
 	"testing"
 	"time"
 
 	"github.com/igor1309/ai-labs/agister/internal/adapters/fsdefs"
+	"github.com/igor1309/ai-labs/agister/internal/contract"
 	"github.com/igor1309/ai-labs/agister/internal/domain/definition"
 )
 
@@ -175,6 +180,68 @@ func TestASkillFileThatIsNotRegularIsNotRead(t *testing.T) {
 	}
 }
 
+// letGo registers the cleanup of a test whose workers open the FIFO at
+// path, and returns the group they join. Should the store wait on the FIFO,
+// as the test's guard then reports, the cleanup lets each worker go and
+// waits for it before the fixture is removed: a writer's open ends an open
+// that waits for one, and its close a read that waits for the end. It is
+// called after the t.TempDir that holds path, so that it runs first.
+func letGo(t *testing.T, path string) *sync.WaitGroup {
+	t.Helper()
+	workers := &sync.WaitGroup{}
+	t.Cleanup(func() {
+		gone := make(chan struct{})
+		go func() {
+			workers.Wait()
+			close(gone)
+		}()
+		for deadline := time.Now().Add(5 * time.Second); time.Now().Before(deadline); {
+			select {
+			case <-gone:
+				return
+			case <-time.After(10 * time.Millisecond):
+			}
+			// No FIFO there, or no reader on it, is nothing to let go.
+			if fd, err := syscall.Open(path, syscall.O_WRONLY|syscall.O_NONBLOCK, 0); err == nil {
+				_ = syscall.Close(fd)
+			}
+		}
+		t.Errorf("a worker still waits on %s", path)
+	})
+	return workers
+}
+
+// A worker that waits on a FIFO is let go and waited for when its test
+// ends: none is left blocked on a fixture that is removed.
+//
+// Contract test: the cleanup against a real FIFO with no writer, which a
+// blocking read waits on for ever.
+func TestAWorkerWaitingOnAFIFOIsLetGo(t *testing.T) {
+	t.Parallel()
+	file := filepath.Join(t.TempDir(), "SKILL.md")
+	if err := syscall.Mkfifo(file, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	gone := make(chan error, 1)
+	t.Run("a blocking read", func(t *testing.T) {
+		workers := letGo(t, file)
+		workers.Add(1)
+		go func() {
+			defer workers.Done()
+			_, err := os.ReadFile(file)
+			gone <- err
+		}()
+	})
+	select {
+	case err := <-gone:
+		if err != nil {
+			t.Fatalf("the worker's read = %v", err)
+		}
+	default:
+		t.Fatal("the worker still waits on the FIFO")
+	}
+}
+
 // A SKILL.md replaced by a FIFO after its folder is listed is not read and
 // not waited on: what is opened is checked again, so an unused skill does
 // not hang a call that names none (ADR-021 rules 1 and 4).
@@ -204,7 +271,10 @@ func TestASkillFileReplacedByAFIFOIsNotWaitedOn(t *testing.T) {
 		err error
 	}
 	done := make(chan read, 1)
+	workers := letGo(t, file)
+	workers.Add(1)
 	go func() {
+		defer workers.Done()
 		doc, err := store.Read(ctx, definition.KindSkill, "review")
 		done <- read{doc, err}
 	}()
@@ -294,19 +364,373 @@ func TestHomesSkillsAreItsDocuments(t *testing.T) {
 	}
 }
 
-// A source folder's skills/ is not settings to install: named once, and
-// not read, whatever it holds (ADR-016 rule 1).
-func TestSourceNamesSkillsAndDoesNotReadThem(t *testing.T) {
+// A source folder's skill is a settings document to install, its SKILL.md
+// (ADR-027 rule 8); a file directly in skills/, or a skill folder whose
+// name breaks the naming rule, is named and not read (rule 9).
+//
+// Contract test: the settings store against the real filesystem.
+func TestSourceReadsSkills(t *testing.T) {
 	t.Parallel()
 	dir := t.TempDir()
 	put(t, filepath.Join(dir, "agents", "a.toml"), "a")
 	put(t, filepath.Join(dir, "skills", "review", "SKILL.md"), skillText("review"))
-	put(t, filepath.Join(dir, "skills", "broken", "extra.md"), "x")
+	put(t, filepath.Join(dir, "skills", "notes.md"), "x")
+	put(t, filepath.Join(dir, "skills", "Bad Name", "SKILL.md"), skillText("Bad Name"))
 	docs, ignored, err := fsdefs.Store{Dir: t.TempDir()}.Source(context.Background(), dir)
-	if err != nil || len(docs) != 1 || docs[0].Source.Kind != definition.KindAgent {
-		t.Fatalf("docs = %+v, %v", docs, err)
+	if err != nil {
+		t.Fatal(err)
 	}
-	if !reflect.DeepEqual(ignored, []string{"skills/"}) {
+	var read []string
+	for _, doc := range docs {
+		read = append(read, string(doc.Source.Kind)+"/"+doc.Source.Name+" "+doc.Source.Path+"="+string(doc.Bytes))
+	}
+	want := []string{"agents/a " + filepath.Join(dir, "agents", "a.toml") + "=a", "skills/review " + filepath.Join(dir, "skills", "review", "SKILL.md") + "=" + skillText("review")}
+	if !reflect.DeepEqual(read, want) {
+		t.Fatalf("read %v", read)
+	}
+	if !reflect.DeepEqual(ignored, []string{"skills/Bad Name/SKILL.md", "skills/notes.md"}) {
 		t.Fatalf("ignored = %v", ignored)
+	}
+}
+
+// A source skill folder that is not a skill refuses the folder, naming the
+// skill and what is wrong with it (ADR-027 rule 9, ADR-021 rule 1).
+//
+// Contract test: the settings store against the real filesystem.
+func TestSourceRefusesASkillThatIsNotOne(t *testing.T) {
+	t.Parallel()
+	for name, c := range map[string]struct {
+		make func(t *testing.T, folder string)
+		want string
+	}{
+		"a file beside": {func(t *testing.T, folder string) {
+			put(t, filepath.Join(folder, "SKILL.md"), skillText("review"))
+			put(t, filepath.Join(folder, "checklist.md"), "x")
+		}, " holds checklist.md beside SKILL.md: a skill is its SKILL.md alone"},
+		"a folder beside": {func(t *testing.T, folder string) {
+			put(t, filepath.Join(folder, "SKILL.md"), skillText("review"))
+			put(t, filepath.Join(folder, "scripts", "run.sh"), "x")
+		}, " holds scripts beside SKILL.md: a skill is its SKILL.md alone"},
+		"SKILL.md a folder": {func(t *testing.T, folder string) {
+			put(t, filepath.Join(folder, "SKILL.md", "x.md"), "x")
+		}, "SKILL.md is a folder: a skill's SKILL.md is a regular file"},
+		"no SKILL.md": {func(t *testing.T, folder string) {
+			if err := os.MkdirAll(folder, 0o700); err != nil {
+				t.Fatal(err)
+			}
+		}, " has no SKILL.md"},
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			dir := t.TempDir()
+			put(t, filepath.Join(dir, "agents", "a.toml"), "a")
+			folder := filepath.Join(dir, "skills", "review")
+			c.make(t, folder)
+			var input *contract.InputError
+			_, _, err := fsdefs.Store{Dir: t.TempDir()}.Source(context.Background(), dir)
+			if !errors.As(err, &input) || !strings.HasPrefix(err.Error(), "skill review: "+folder) || !strings.Contains(err.Error(), c.want) || !strings.HasSuffix(err.Error(), "; so nothing was installed") {
+				t.Fatalf("source: %v", err)
+			}
+		})
+	}
+}
+
+// A staged skill reads as home will hold it once its SKILL.md is written:
+// what home's folder holds beside it, a folder in its place, or a folder
+// that is a symbolic link, is that skill's problem, named at home's path
+// (ADR-027 rule 8).
+//
+// Contract test: the settings store against the real filesystem.
+func TestAStagedSkillReadsAsHomeWillHoldIt(t *testing.T) {
+	t.Parallel()
+	for name, c := range map[string]struct {
+		make func(t *testing.T, folder string)
+		want string
+	}{
+		"none":                       {func(*testing.T, string) {}, ""},
+		"replaced":                   {func(t *testing.T, folder string) { put(t, filepath.Join(folder, "SKILL.md"), "old") }, ""},
+		"a link in SKILL.md's place": {func(t *testing.T, folder string) { dangle(t, filepath.Join(folder, "SKILL.md")) }, ""},
+		"a file beside": {func(t *testing.T, folder string) {
+			put(t, filepath.Join(folder, "SKILL.md"), "old")
+			put(t, filepath.Join(folder, "checklist.md"), "x")
+		}, "{folder} holds checklist.md beside SKILL.md: a skill is its SKILL.md alone"},
+		"SKILL.md a folder": {func(t *testing.T, folder string) {
+			put(t, filepath.Join(folder, "SKILL.md", "x.md"), "x")
+		}, "{folder}/SKILL.md is a folder: a skill's SKILL.md is a regular file"},
+		"a linked folder": {func(t *testing.T, folder string) {
+			target := t.TempDir()
+			if err := os.MkdirAll(filepath.Dir(folder), 0o700); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.Symlink(target, folder); err != nil {
+				t.Fatal(err)
+			}
+		}, "{folder} is a symbolic link: a skill is a folder holding its SKILL.md"},
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			ctx := context.Background()
+			home := fsdefs.Store{Dir: t.TempDir()}
+			folder := filepath.Join(home.Dir, "skills", "review")
+			c.make(t, folder)
+			doc := definition.Document{Source: definition.Source{Kind: definition.KindSkill, Name: "review"}, Bytes: []byte(skillText("review"))}
+			staged, remove, err := home.StagingIn(t.TempDir()).Stage(ctx, []definition.Document{doc})
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer remove()
+			got, err := staged.Read(ctx, definition.KindSkill, "review")
+			if c.want == "" {
+				if err != nil || string(got.Bytes) != skillText("review") || got.Source.Path != filepath.Join(folder, "SKILL.md") {
+					t.Fatalf("staged = %+v, %v", got.Source, err)
+				}
+				return
+			}
+			want := strings.ReplaceAll(c.want, "{folder}", folder)
+			if err == nil || !strings.HasPrefix(err.Error(), want) || got.Source.Path != filepath.Join(folder, "SKILL.md") {
+				t.Fatalf("staged = %+v, %v; want %q", got.Source, err, want)
+			}
+		})
+	}
+}
+
+// Removing a skill removes its folder with its SKILL.md when nothing else
+// is left in it, and keeps a folder that holds more (ADR-027 rule 8).
+//
+// Contract test: the settings store against the real filesystem.
+func TestRemovingASkillRemovesItsEmptiedFolder(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	store := fsdefs.Store{Dir: t.TempDir()}
+	for _, name := range []string{"review", "style"} {
+		if err := store.Put(ctx, definition.KindSkill, name, []byte(skillText(name))); err != nil {
+			t.Fatal(err)
+		}
+	}
+	put(t, filepath.Join(store.Dir, "skills", "style", "notes.md"), "mine")
+	for range 2 {
+		for _, name := range []string{"review", "style"} {
+			if err := store.Remove(ctx, definition.KindSkill, name); err != nil {
+				t.Fatal(err)
+			}
+		}
+	}
+	if got := tree(t, filepath.Join(store.Dir, "skills")); !reflect.DeepEqual(got, []string{".", "style", filepath.Join("style", "notes.md")}) {
+		t.Fatalf("left %v", got)
+	}
+}
+
+// Removing a skill whose folder is a symbolic link, or is in a skills/ that
+// is one, is refused, and removes nothing through it: the SKILL.md it
+// reaches is not one an install made, so a restore deletes neither a file
+// outside home nor the folder that holds it (ADR-016 rule 8, ADR-027
+// rule 8).
+//
+// Contract test: the settings store against the real filesystem.
+func TestRemovingASkillThroughALinkedFolderIsRefused(t *testing.T) {
+	t.Parallel()
+	for name, c := range map[string]struct {
+		link string   // the symbolic link, in the store
+		kept string   // the SKILL.md reached through it, in its target
+		left []string // what the target holds, its folders kept too
+		want string
+	}{
+		"the skill's folder": {
+			filepath.Join("skills", "review"), "SKILL.md", []string{".", "SKILL.md"},
+			" is a symbolic link: a skill is a folder holding its SKILL.md",
+		},
+		"skills/": {
+			"skills", filepath.Join("review", "SKILL.md"), []string{".", "review", filepath.Join("review", "SKILL.md")},
+			" is a symbolic link: a skill is a folder in the settings' own skills/",
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			ctx := context.Background()
+			store := fsdefs.Store{Dir: t.TempDir()}
+			target := t.TempDir()
+			kept := filepath.Join(target, c.kept)
+			put(t, kept, skillText("theirs"))
+			link := filepath.Join(store.Dir, c.link)
+			if err := os.MkdirAll(filepath.Dir(link), 0o700); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.Symlink(target, link); err != nil {
+				t.Fatal(err)
+			}
+
+			want := link + c.want
+			if err := store.Remove(ctx, definition.KindSkill, "review"); err == nil || err.Error() != want {
+				t.Fatalf("remove = %v, want %q", err, want)
+			}
+			if data, err := os.ReadFile(kept); err != nil || string(data) != skillText("theirs") {
+				t.Fatalf("the link's target = %q, %v: want it kept", data, err)
+			}
+			if got := tree(t, target); !reflect.DeepEqual(got, c.left) {
+				t.Fatalf("the link's target holds %v, want %v", got, c.left)
+			}
+			if info, err := os.Lstat(link); err != nil || info.Mode()&fs.ModeSymlink == 0 {
+				t.Fatalf("%s = %v, %v: want the link left", link, info, err)
+			}
+			// Nor is what the link reaches taken for the skill there.
+			if path, digest, err := store.Current(ctx, definition.KindSkill, "review"); err == nil || err.Error() != want {
+				t.Fatalf("current = %q, %q, %v, want %q", path, digest, err, want)
+			}
+		})
+	}
+}
+
+// The skill there now is its SKILL.md, a regular file: none, or no folder
+// for one, is no skill and no error, and one that is a FIFO, a symbolic
+// link or a folder is an error. None is waited on or followed, so a restore
+// that reads it under the write lock does not hang (ADR-027 rule 8).
+//
+// Contract test: the settings store against the real filesystem, and a
+// real FIFO with no writer, which a blocking open waits on for ever.
+func TestTheCurrentSkillIsNotWaitedOnOrFollowed(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	store := fsdefs.Store{Dir: t.TempDir()}
+	folder := func(name string) string { return filepath.Join(store.Dir, "skills", name) }
+	file := func(name string) string { return filepath.Join(folder(name), "SKILL.md") }
+
+	put(t, file("regular"), skillText("regular"))
+	// What is beside a SKILL.md does not hide it: a restore removes it.
+	put(t, file("beside"), skillText("beside"))
+	put(t, filepath.Join(folder("beside"), "notes.md"), "mine")
+	if err := os.MkdirAll(folder("empty"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(folder("fifo"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := syscall.Mkfifo(file("fifo"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	workers := letGo(t, file("fifo"))
+	elsewhere := filepath.Join(t.TempDir(), "SKILL.md")
+	put(t, elsewhere, skillText("linked"))
+	if err := os.MkdirAll(folder("linked"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(elsewhere, file("linked")); err != nil {
+		t.Fatal(err)
+	}
+	dangle(t, file("dangling"))
+	if err := os.MkdirAll(file("nested"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+
+	type current struct {
+		path, digest string
+		err          error
+	}
+	read := func(name string) current {
+		t.Helper()
+		done := make(chan current, 1)
+		workers.Add(1)
+		go func() {
+			defer workers.Done()
+			path, digest, err := store.Current(ctx, definition.KindSkill, name)
+			done <- current{path, digest, err}
+		}()
+		select {
+		case got := <-done:
+			return got
+		case <-time.After(5 * time.Second):
+			t.Fatalf("skill %s: reading the current one blocks", name)
+			return current{}
+		}
+	}
+	for _, name := range []string{"regular", "beside"} {
+		sum := sha256.Sum256([]byte(skillText(name)))
+		if got := read(name); got.err != nil || got.path != file(name) || got.digest != hex.EncodeToString(sum[:]) {
+			t.Errorf("skill %s = %+v, want %s with its digest", name, got, file(name))
+		}
+	}
+	for _, name := range []string{"empty", "missing"} {
+		if got := read(name); got.err != nil || got.path != file(name) || got.digest != "" {
+			t.Errorf("skill %s = %+v, want %s with no digest", name, got, file(name))
+		}
+	}
+	for name, want := range map[string]string{
+		"fifo":     file("fifo") + " is not a regular file",
+		"linked":   file("linked") + " is a symbolic link: a skill's SKILL.md is a regular file",
+		"dangling": file("dangling") + " is a symbolic link: a skill's SKILL.md is a regular file",
+		"nested":   file("nested") + " is a folder: a skill's SKILL.md is a regular file",
+	} {
+		if got := read(name); got.err == nil || got.err.Error() != want || got.digest != "" {
+			t.Errorf("skill %s = %+v, want %q", name, got, want)
+		}
+	}
+	if info, err := os.Lstat(file("fifo")); err != nil || info.Mode().Type() != fs.ModeNamedPipe {
+		t.Fatalf("fixture = %v, %v: not a FIFO", info, err)
+	}
+}
+
+// A skill's folder with nothing in it is what a failed write of its
+// SKILL.md left, and Remove removes it; a folder that holds anything, a
+// symbolic link, no folder, or another kind's document leaves nothing
+// (ADR-027 rule 8).
+//
+// Contract test: the settings store against the real filesystem.
+func TestAnEmptySkillFolderIsLeftByAFailedWriteAndRemoved(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	store := fsdefs.Store{Dir: t.TempDir()}
+	skills := filepath.Join(store.Dir, "skills")
+	for _, name := range []string{"empty", "elsewhere"} {
+		if err := os.MkdirAll(filepath.Join(skills, name), 0o700); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := store.Put(ctx, definition.KindSkill, "whole", []byte(skillText("whole"))); err != nil {
+		t.Fatal(err)
+	}
+	put(t, filepath.Join(skills, "notes", "notes.md"), "mine")
+	if err := os.Symlink(filepath.Join(skills, "elsewhere"), filepath.Join(skills, "linked")); err != nil {
+		t.Fatal(err)
+	}
+	for name, want := range map[string]string{
+		"empty":   filepath.Join(skills, "empty"),
+		"whole":   "",
+		"notes":   "",
+		"linked":  "",
+		"missing": "",
+	} {
+		if left, err := store.Left(ctx, definition.KindSkill, name); err != nil || left != want {
+			t.Errorf("skill %s: left %q, %v, want %q", name, left, err, want)
+		}
+	}
+	if left, err := store.Left(ctx, definition.KindPrompt, "empty"); err != nil || left != "" {
+		t.Errorf("prompt empty: left %q, %v, want none", left, err)
+	}
+
+	if err := store.Remove(ctx, definition.KindSkill, "empty"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Lstat(filepath.Join(skills, "empty")); !os.IsNotExist(err) {
+		t.Fatalf("the empty folder is left: %v", err)
+	}
+	if left, err := store.Left(ctx, definition.KindSkill, "empty"); err != nil || left != "" {
+		t.Fatalf("after Remove: left %q, %v, want none", left, err)
+	}
+}
+
+// Removing a document whose folder is not there at all, a skill's or
+// another kind's, is no error: there is nothing to remove.
+//
+// Contract test: the settings store against the real filesystem.
+func TestRemovingFromAnAbsentFolderIsNoError(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	store := fsdefs.Store{Dir: t.TempDir()}
+	for _, kind := range []definition.Kind{definition.KindSkill, definition.KindPrompt} {
+		if err := store.Remove(ctx, kind, "review"); err != nil {
+			t.Errorf("%s: %v", kind, err)
+		}
+	}
+	if got := tree(t, store.Dir); !reflect.DeepEqual(got, []string{"."}) {
+		t.Fatalf("left %v", got)
 	}
 }

@@ -1,6 +1,6 @@
-# Tests review of a candidate against prompts/code-review-tests.md.
+# Clarity review of a candidate against prompts/code-review-clarity.md.
 schema: agister.process/v1alpha1
-name: tests_review_codex
+name: clarity_review_codex
 
 type: process
 uses: agent:codex-sol-61
@@ -31,7 +31,7 @@ input:
     base_revision: {source: git.revision, rev: "${param.base}"}
     candidate_revision: {source: git.revision, rev: "${param.candidate}"}
     changed_files: {source: git.changed_files, base: "${value.base_revision}", head: "${value.candidate_revision}"}
-    review_prompt: {source: file, path: prompts/code-review-tests.md}
+    review_prompt: {source: prompt, name: code-review-clarity}
     goal: {source: param, name: goal}
 
 workspace:

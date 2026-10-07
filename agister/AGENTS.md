@@ -72,11 +72,21 @@ still apply.
   settings, not through the repository's `.agister/`. A refusal of this
   repository's settings that ends `the settings may need one newer than
   agister <version>` is the sign this rule was broken: take the adoption
-  out of `.agister/` until then; do not route around the refusal.
-- After such a change merges and `scripts/finish-merged-pr.sh` rebuilds
-  Agister, update the home settings under `~/.agister` to match what it
-  ships, and check them with the new binary (`agister check`). This step
-  is the agent's, not the owner's.
+  out of `.agister/` until then; do not route around the refusal. The
+  binary does not read `home/` from the worktree: a field adopted there
+  reaches home only through an install, whose staged check refuses it
+  until the installed binary knows it.
+- Home's settings have one source, `home/` (ADR-027): change home's
+  documents there, never in `~/.agister` or this repository's `.agister/`,
+  which keeps only what is this repository's own. After a change to
+  `home/`, or one that `home/` must follow, merges and
+  `scripts/finish-merged-pr.sh` rebuilds Agister, install the folder
+  from `agister/` in the main checkout, `agister install home`, read its
+  plan, answer yes, and check home with the new binary (`agister check`).
+  This step is the agent's, not the owner's. The exception is the
+  folder's first install into home, after LAB-84 merges: it replaces
+  home's hand copies, and the owner runs it (LAB-84, out of scope;
+  ADR-027). Until the owner has, no agent installs the folder.
 - ADRs reference only earlier ADRs.
 - A failure of Agister itself during this work is a finding about Agister:
   record it and fix it; do not route around it. A Claude Code subagent or

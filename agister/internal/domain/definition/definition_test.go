@@ -135,7 +135,7 @@ func TestShippedRevisionInputsUseTheValuesResolvedBeforeThem(t *testing.T) {
 		"examples/codex":    os.DirFS("../../../examples/codex"),
 		"examples/pi":       os.DirFS("../../../examples/pi"),
 		"examples/opencode": os.DirFS("../../../examples/opencode"),
-		".agister":          os.DirFS("../../../../.agister"),
+		"home":              os.DirFS("../../../home"),
 	}
 	exact := regexp.MustCompile(`^\$\{value\.([^}]+)\}$`)
 	checked := 0

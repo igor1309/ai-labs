@@ -1,7 +1,7 @@
-# Review of the architecture decisions a candidate adds or edits, per
-# prompts/code-review-adr.md.
+# Intent review of a candidate against prompts/code-review-intent.md: the
+# goal's readings, the one the change implements, and where they diverge.
 schema: agister.process/v1alpha1
-name: adr_review_codex
+name: intent_review_codex
 
 type: process
 uses: agent:codex-sol-61
@@ -32,7 +32,7 @@ input:
     base_revision: {source: git.revision, rev: "${param.base}"}
     candidate_revision: {source: git.revision, rev: "${param.candidate}"}
     changed_files: {source: git.changed_files, base: "${value.base_revision}", head: "${value.candidate_revision}"}
-    review_prompt: {source: file, path: prompts/code-review-adr.md}
+    review_prompt: {source: prompt, name: code-review-intent}
     goal: {source: param, name: goal}
 
 workspace:

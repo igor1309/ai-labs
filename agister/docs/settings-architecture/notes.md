@@ -22,8 +22,8 @@ its source. Paths are relative to `agister/`. Checked against trunk at
 The settings are a graph of documents that name each other by name.
 Fields: `internal/domain/definition/documents.go:24-130`, `toml.go:25-60`,
 `workflow.go:19-35`, `limits.go:11-48`. Shapes as in
-`.agister/processes/implement.yaml`, `.agister/workflows/code_review.yaml`,
-`~/.agister/runtimes/claude-code.yaml`, `~/.agister/service.toml`.
+`home/processes/implement.yaml`, `home/workflows/code_review.yaml`,
+`home/runtimes/claude-code.yaml`, `home/service.toml`.
 
 - **workflow** composes process calls into one run; its settings and the
   calls' records fix what each call receives, never whoever starts it
@@ -32,14 +32,14 @@ Fields: `internal/domain/definition/documents.go:24-130`, `toml.go:25-60`,
   loops or graphs": fan-out nodes, each a call of a process over the same
   resolved inputs, then one join node, a call of a process given the
   fan-out results. (`workflow.go:19`; ADR-003)
-  - Existing workflows (`.agister/workflows/`, also in home):
+  - Existing workflows (`home/workflows/`, home's source, ADR-027):
     `code_review` (architecture, tests, adversarial, clarity and intent
     reviews concurrently, then the judge) and `adr_review` (the ADR review, then
     the judge); both take a required `goal` file whose text every review
     node receives and the judge does not (ADR-023); `code_review`'s goal
     must have the `goal` brief form (ADR-026).
-    (`.agister/workflows/code_review.yaml`,
-    `.agister/workflows/adr_review.yaml`)
+    (`home/workflows/code_review.yaml`,
+    `home/workflows/adr_review.yaml`)
   - The intent review (LAB-120) needed no change to the caller skill,
     the README or Pages. The skill (`skills/agister/SKILL.md`) names no
     workflow's reviews: it has the caller discover workflows from the
@@ -251,7 +251,7 @@ and ignored, and `check` warns (`internal/app/check.go:289`; ADR-025).
   `CODEX_HOME`). The runtime still loads repo and home skills of its own
   as before. (ADR-021 rules 5-7, ADR-006)
 
-## Installing a repo's settings into home
+## Installing settings into home
 
 - `agister install <dir>` merges a settings folder into home document by
   document: plan (create / replace with diff / unchanged; home-only
@@ -263,8 +263,26 @@ and ignored, and `check` warns (`internal/app/check.go:289`; ADR-025).
   are kept. Install never deletes; restore deletes only what its install
   created. (ADR-016 rules 6-8)
 - Install and restore run even when settings are broken. (ADR-016 rule 9)
-- Not installed: live state, `blocks.yaml`, `skills/`.
-  (`internal/adapters/fsdefs/install.go:91`; ADR-018 rule 6, ADR-021)
+- Not installed: live state, `blocks.yaml`. A skill
+  (`skills/<name>/SKILL.md`) is installed as any document; a skill folder
+  holding anything beside its `SKILL.md` refuses the install.
+  (`internal/adapters/fsdefs/install.go`; ADR-018 rule 6, ADR-027 rules 8-9)
+- Home's settings have one source in git, `home/`, installed with
+  `agister install home`; the repository's `.agister/` keeps only its own
+  (`verifies/repo.yaml`, the Go prompts). A test installs the folder into
+  an empty home and checks it. (`cmd/agister/home_folder_test.go`;
+  ADR-027)
+- LAB-84's done gates. The caller skill, the README, these notes and
+  the example captions of `detailed.html` changed. `index.html` needed
+  no change: it shows the kinds and what each names, and names no
+  install, no source folder and no file of this repository. The Pages
+  settings view and `pages/README.md` needed none either: the page reads
+  the `<home>` in use and the repo's `.agister/`, composes them and marks
+  each item's layer as it finds it, so this repository's shared documents
+  show as `home` without a change; it reads no source folder, shows no
+  install and compares nothing (ADR-027 rule 10). Only its tests
+  changed: they load `home/` alone and with `.agister/` over it.
+  (`pages/serve.go`, `pages/config.js`, `pages/tests/config.test.js`)
 
 ## Who reads settings
 

@@ -51,8 +51,12 @@ type InstallHome interface {
 	Lock(ctx context.Context) (unlock func(), err error)
 	// Put writes data as the document, atomically. Only under the lock.
 	Put(ctx context.Context, kind definition.Kind, name string, data []byte) error
-	// Remove removes the document; none there is no error. Only under the
-	// lock.
+	// Left reports, by its path, what a write of the document that failed
+	// left where there is no document, such as a skill's empty folder; it
+	// is empty when nothing is left. Remove removes it.
+	Left(ctx context.Context, kind definition.Kind, name string) (path string, err error)
+	// Remove removes the document, and what Left names; none there is no
+	// error. Only under the lock.
 	Remove(ctx context.Context, kind definition.Kind, name string) error
 }
 
@@ -399,7 +403,9 @@ func (i *Installer) Restore(ctx context.Context, stamp string, approved *contrac
 // restorePlan plans, from the backup's manifest, putting back each document
 // the install replaced and removing each it created; one already as it was
 // before the install is unchanged. A replace of a document that could not
-// be read saved nothing to put back, so it is undone as a create.
+// be read saved nothing to put back, so it is undone as a create. What a
+// failed write of a created document left in its place is removed as the
+// document would be, under its own path.
 func (i *Installer) restorePlan(ctx context.Context, stamp string) (contract.RestorePlan, []restoreStep, error) {
 	stamps, err := i.backups.List(ctx)
 	if err != nil {
@@ -450,7 +456,16 @@ func (i *Installer) restorePlan(ctx context.Context, stamp string) (contract.Res
 			steps = append(steps, restoreStep{kind: kind, name: entry.Name, action: doc.Action, data: data})
 		case contract.InstallCreate:
 			if current == "" {
-				break
+				// A write that failed made no document, yet may have left
+				// something in its place: that is removed too.
+				left, err := i.home.Left(ctx, kind, entry.Name)
+				if err != nil {
+					return contract.RestorePlan{}, nil, err
+				}
+				if left == "" {
+					break
+				}
+				doc.Path = left
 			}
 			doc.Action = contract.RestoreRemove
 			steps = append(steps, restoreStep{kind: kind, name: entry.Name, action: doc.Action})

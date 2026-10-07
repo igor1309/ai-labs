@@ -24,8 +24,8 @@ test("ciPathFilters_shouldRunAgisterCore_onAgisterProcessChangeOnly", () => {
   assert.equal(jobRuns("agister-core", changedFiles), true);
 });
 
-test("ciPathFilters_shouldRunAgisterCore_onCodeReviewPromptChangeOnly", () => {
-  const changedFiles = ["prompts/code-review-tests.md"];
+test("ciPathFilters_shouldRunAgisterCore_onHomeSettingsChangeOnly", () => {
+  const changedFiles = ["agister/home/prompts/code-review-tests.md"];
 
   assert.equal(matchingFilters(changedFiles).has("agister"), true);
   assert.equal(jobRuns("agister-core", changedFiles), true);

@@ -13,7 +13,7 @@ it to the owner. You are given no lean and no argument: do not look for
 one.
 
 Read the recorded decisions in the checkout first: the ADRs, every
-`AGENTS.md` file and `agister/docs/decisions.md` if it exists.
+`AGENTS.md` file and the project's decisions record (a `decisions.md`) if there is one.
 
 1. **Draw the line.** The question is **policy** if any of its options
    changes or contradicts an accepted ADR, the project's rules
@@ -42,6 +42,6 @@ Do not decide from code. The checkout holds it, and you may read it to
 understand the question, but what the code does now is not a decision: an
 answer rests on what is recorded, or on nothing and says so.
 
-A record in `agister/docs/decisions.md` is a recorded decision, as an ADR
+A record in the decisions record is a recorded decision, as an ADR
 is: follow it unless a later record supersedes it. A record whose status is
 `Owner` is the owner's; a question whose options contradict it is policy.

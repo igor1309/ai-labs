@@ -86,19 +86,20 @@ func (s Store) documents(ctx context.Context, kinds []definition.Kind, unreadabl
 }
 
 // installed reports whether install reads a source folder's documents of
-// kind: not its blocks, as home has none (ADR-018 rule 6), nor its skills,
-// which are not installed (ADR-021).
+// kind: not its blocks, as home has none (ADR-018 rule 6).
 func installed(kind definition.Kind) bool {
-	return kind != definition.KindBlocks && kind != definition.KindSkill
+	return kind != definition.KindBlocks
 }
 
 // Source reads the settings documents of the folder dir, laid out like the
 // store, and names its other files, slash-separated and relative to it; a
-// folder that is not a kind's is named once, with a trailing slash, and not
-// read. Its blocks.yaml is named, not read: home has no blocks (ADR-018 rule
-// 6). Its skills/ is named and not read either (ADR-016 rule 1, ADR-021). A
-// symbolic link in it refuses the whole folder, so nothing outside it is
-// installed.
+// folder that is not a kind's or a skill's is named once, with a trailing
+// slash, and not read. Its blocks.yaml is named, not read: home has no
+// blocks (ADR-018 rule 6). A skill is read as the store reads one (ADR-027
+// rule 8): a skill folder holding anything beside its SKILL.md, or whose
+// SKILL.md is not a regular file, refuses the folder, and a file directly
+// in skills/ is named (rule 9). A symbolic link in it refuses the whole
+// folder, so nothing outside it is installed.
 func (s Store) Source(ctx context.Context, dir string) ([]definition.Document, []string, error) {
 	info, err := os.Stat(dir)
 	if errors.Is(err, fs.ErrNotExist) {
@@ -133,6 +134,10 @@ func (s Store) Source(ctx context.Context, dir string) ([]definition.Document, [
 			if kind := definition.Kind(rel); extensions()[kind] != "" && !singleton(kind) && installed(kind) {
 				return nil
 			}
+			// A skill's folder is read, so what it holds is named.
+			if strings.HasPrefix(rel, string(definition.KindSkill)+"/") && strings.Count(rel, "/") == 1 {
+				return nil
+			}
 			files = append(files, rel+"/")
 			return fs.SkipDir
 		}
@@ -143,8 +148,14 @@ func (s Store) Source(ctx context.Context, dir string) ([]definition.Document, [
 		return nil, nil, err
 	}
 	read := slices.DeleteFunc(kinds(), func(kind definition.Kind) bool { return !installed(kind) })
-	// A document of the folder that cannot be read refuses it.
-	docs, err := Store{Dir: dir}.documents(ctx, read, func(_ definition.Document, err error) error { return err })
+	// A document of the folder that cannot be read refuses it; a skill
+	// that is not one is a problem of that skill (ADR-021 rule 1).
+	docs, err := Store{Dir: dir}.documents(ctx, read, func(doc definition.Document, err error) error {
+		if doc.Source.Kind == definition.KindSkill {
+			return &contract.InputError{Message: fmt.Sprintf("skill %s: %v; so nothing was installed", doc.Source.Name, err)}
+		}
+		return err
+	})
 	if err != nil {
 		return nil, nil, err
 	}
@@ -202,10 +213,38 @@ func (s Staged) Read(ctx context.Context, kind definition.Kind, name string) (de
 	if errors.Is(err, errNotFound) {
 		return s.home.Read(ctx, kind, name)
 	}
-	if err == nil {
-		doc.Source.Path, _ = s.home.path(kind, name)
+	if err != nil {
+		return doc, err
 	}
-	return doc, err
+	doc.Source.Path, _ = s.home.path(kind, name)
+	if kind == definition.KindSkill {
+		// An install writes only a skill's SKILL.md: home's folder keeps
+		// what else it holds, so the staged skill is read as home will
+		// hold it (ADR-027 rule 8).
+		if err := skillWritten(doc.Source.Path); err != nil {
+			return definition.Document{Source: definition.Source{Kind: kind, Name: name, Path: doc.Source.Path}}, err
+		}
+	}
+	return doc, nil
+}
+
+// skillWritten reports what is wrong with the skill whose document is path
+// once its SKILL.md is written there: its folder a symbolic link, a folder
+// in its SKILL.md's place, or anything beside it. A SKILL.md that is a link
+// or another special file is replaced by the write.
+func skillWritten(path string) error {
+	file, others, err := skillFolder(path)
+	switch {
+	case errors.Is(err, errNotFound):
+		return nil
+	case err != nil:
+		return err
+	case file != nil && file.IsDir():
+		return fmt.Errorf("%s is a folder: a skill's %s is a regular file", path, skillFile)
+	case len(others) > 0:
+		return skillBeside(path, others)
+	}
+	return nil
 }
 
 func (s Staged) List(ctx context.Context, kind definition.Kind) ([]string, error) {
@@ -239,17 +278,74 @@ func (s Store) Put(_ context.Context, kind definition.Kind, name string, data []
 	return writeFile(path, data)
 }
 
-// Remove removes the document; none there is no error. It takes no lock:
-// the caller holds it.
+// Left reports what a write of the document that failed left where there
+// is no document: a skill's folder with nothing in it, by its path, as
+// writeFile makes the folder before the file (ADR-027 rule 8). It is empty
+// when nothing is left. Remove removes what it names.
+func (s Store) Left(_ context.Context, kind definition.Kind, name string) (string, error) {
+	if kind != definition.KindSkill {
+		return "", nil
+	}
+	path, err := s.path(kind, name)
+	if err != nil {
+		return "", err
+	}
+	// A symbolic link there is not a folder a write made.
+	folder := filepath.Dir(path)
+	info, err := os.Lstat(folder)
+	if errors.Is(err, fs.ErrNotExist) || err == nil && !info.IsDir() {
+		return "", nil
+	}
+	if err != nil {
+		return "", err
+	}
+	entries, err := os.ReadDir(folder)
+	if err != nil || len(entries) > 0 {
+		return "", err
+	}
+	return folder, nil
+}
+
+// Remove removes the document; none there, or no folder for one, is no
+// error. A skill's folder goes with its SKILL.md when nothing else is
+// left in it (ADR-027 rule 8); one that is a symbolic link, or in a skills/
+// that is one, is refused, and nothing is removed through it. It takes no
+// lock: the caller holds it.
 func (s Store) Remove(_ context.Context, kind definition.Kind, name string) error {
 	path, err := s.path(kind, name)
 	if err != nil {
 		return err
 	}
+	folder := filepath.Dir(path)
+	if kind == definition.KindSkill {
+		// The SKILL.md a linked folder, or a linked skills/, reaches is not
+		// one an install made.
+		if err := skillFolderLinked(folder); err != nil {
+			return err
+		}
+	}
 	if err := os.Remove(path); err != nil && !errors.Is(err, fs.ErrNotExist) {
 		return err
 	}
-	return syncDir(filepath.Dir(path))
+	if kind == definition.KindSkill {
+		entries, err := os.ReadDir(folder)
+		switch {
+		case errors.Is(err, fs.ErrNotExist):
+			folder = filepath.Dir(folder)
+		case err != nil:
+			return err
+		case len(entries) == 0:
+			if err := os.Remove(folder); err != nil {
+				return err
+			}
+			folder = filepath.Dir(folder)
+		}
+	}
+	// With no folder there, nothing was removed and there is none to sync.
+	if err := syncDir(folder); err != nil && !errors.Is(err, fs.ErrNotExist) {
+		return err
+	}
+	return nil
 }
 
 // writeFile writes data at path atomically and durably: a temporary file

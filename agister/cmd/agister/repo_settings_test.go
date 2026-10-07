@@ -31,11 +31,15 @@ import (
 // file of the repository, so a param read as a file resolves; a brief and
 // a goal are a goal of the repository, which has the goal form.
 var repoParams = map[string]string{
-	"prompt":   "prompts/code-review-architecture.md",
+	"prompt":   "agister/home/prompts/code-review-architecture.md",
 	"brief":    repoGoal,
 	"goal":     repoGoal,
-	"question": "prompts/code-review-tests.md",
+	"question": "agister/home/prompts/code-review-tests.md",
 }
+
+// homeFolder is the source of home's settings in this repository
+// (ADR-027 rule 1), relative to its root.
+var homeFolder = filepath.Join("agister", "home")
 
 // repoGoal is a goal of the repository that has the goal form.
 const repoGoal = "agister/testdata/briefs/lab-119-goal.md"
@@ -96,10 +100,10 @@ const verifyFixture = "grep -qx two change.txt"
 // the process's own.
 const verifyFixtureTimeout = "30s"
 
-// Every process and workflow of this repository's own settings
-// (<repository root>/.agister) runs, as the CLI composes them over a global
-// layer, on the fake runtimes, and completes with output its schema
-// accepts. A process that takes a workflow's collection runs only as a
+// Every process and workflow of home's settings folder (homeFolder) runs,
+// installed as home and composed under this repository's own settings
+// (<repository root>/.agister) as the CLI composes them, on the fake
+// runtimes, and completes with output its schema accepts. A process that takes a workflow's collection runs only as a
 // join: it is run through the workflows, and each must be one's join. A process that names a
 // missing agent, policy or schema, a schema that does not compile, an
 // unknown input source or a prompt path that does not resolve from the
@@ -119,7 +123,7 @@ const verifyFixtureTimeout = "30s"
 func TestRepositoryProcessesRunOnFakeRuntimes(t *testing.T) {
 	t.Parallel()
 	root, repo, home := onFakeRuntimes(t)
-	entries, err := os.ReadDir(filepath.Join(root, ".agister", "processes"))
+	entries, err := os.ReadDir(filepath.Join(root, homeFolder, "processes"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -132,11 +136,11 @@ func TestRepositoryProcessesRunOnFakeRuntimes(t *testing.T) {
 	}
 	sort.Strings(names)
 	if len(names) == 0 {
-		t.Fatal("the repository has no processes")
+		t.Fatal("the home folder has no processes")
 	}
 	for name := range codexAgents {
 		if !slices.Contains(names, name) {
-			t.Errorf("process %s, which runs on Codex, is not among the repository's processes", name)
+			t.Errorf("process %s, which runs on Codex, is not among the home folder's processes", name)
 		}
 	}
 	// Processes that take a workflow's collection, to be run as a join.
@@ -177,7 +181,7 @@ func TestRepositoryProcessesRunOnFakeRuntimes(t *testing.T) {
 	}
 
 	// Every workflow runs its nodes and completes with its join's output.
-	workflows, err := filepath.Glob(filepath.Join(root, ".agister", "workflows", "*.yaml"))
+	workflows, err := filepath.Glob(filepath.Join(root, homeFolder, "workflows", "*.yaml"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -238,12 +242,12 @@ func TestRepositoryProcessesRunOnFakeRuntimes(t *testing.T) {
 	}
 	for name := range joins {
 		if !joined[name] {
-			t.Errorf("process %s takes a workflow's collection, but no repository workflow joins with it", name)
+			t.Errorf("process %s takes a workflow's collection, but no workflow of the home folder joins with it", name)
 		}
 	}
 	for name := range staleLimits {
 		if !slices.Contains(names, name) {
-			t.Errorf("process %s, which has stale limits, is not among the repository's processes", name)
+			t.Errorf("process %s, which has stale limits, is not among the home folder's processes", name)
 		}
 	}
 }
@@ -273,8 +277,9 @@ func recordsStaleLimits(t *testing.T, record map[string]any) {
 }
 
 // onFakeRuntimes is this repository's root, and a mirror of it (see mirror
-// and fixVerify) with an initialized Agister home, where git and the
-// claude, codex and pi that run are fakes, in process.
+// and fixVerify) with an Agister home that is homeFolder installed into an
+// empty one (ADR-027 rule 7), where git and the claude, codex and pi that
+// run are fakes, in process.
 func onFakeRuntimes(t *testing.T) (root, repo, home string) {
 	t.Helper()
 	root, repo, home, _ = onFakeRuntimesRecorded(t)
@@ -299,17 +304,18 @@ func onFakeRuntimesRecorded(t *testing.T) (root, repo, home string, recorded *gi
 	// real runtime ever runs, and no ccusage: the starter has none, so
 	// Codex turns cost unknown.
 	startThrough(t, home, runtimetest.InProcess{Env: []string{"FAKE_OUTPUT=schema"}})
-	if r := agisterInput(t, "yes\n", home, tempDir(t), "init"); r.code != 0 {
-		t.Fatalf("init: %d %s", r.code, r.stderr)
+	if r := agisterInstalling(t, "yes\n", home, tempDir(t), "install", filepath.Join(root, homeFolder)); r.code != 0 {
+		t.Fatalf("install %s: %d %s", homeFolder, r.code, r.stderr)
 	}
 	return root, repo, home, recorded
 }
 
 // The judge of code_review rules on the collection of a fixed set of
 // reviews: architecture, tests, adversarial, clarity and intent, the ADR
-// review not among them. The intent reviewer is given its standing prompt,
-// prompts/code-review-intent.md, and declares a valid review-result its
-// required output.
+// review not among them. Each reviewer, and the judge, is given its own
+// standing prompt, the settings prompt of its role (ADR-027 rule 4), so a
+// process that names another role's prompt fails here. The intent reviewer
+// declares a valid review-result its required output.
 func TestCodeReviewCollectsItsFiveReviews(t *testing.T) {
 	t.Parallel()
 	root, repo, home := onFakeRuntimes(t)
@@ -325,21 +331,34 @@ func TestCodeReviewCollectsItsFiveReviews(t *testing.T) {
 		t.Fatalf("code_review's judge collected %v, want %v", reviews, want)
 	}
 
-	prompt, err := os.ReadFile(filepath.Join(root, "prompts", "code-review-intent.md"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	sum := sha256.Sum256(prompt)
-	digest := "sha256:" + hex.EncodeToString(sum[:])
-	if given := inputOf(t, records["intent_review_codex"], "review_prompt"); given["source"] != "file" || given["identity"] != digest {
-		t.Fatalf("intent_review_codex's review_prompt = %v, want prompts/code-review-intent.md (%s)", given, digest)
+	for _, c := range []struct{ process, input, prompt string }{
+		{"architecture_review_codex", "review_prompt", "code-review-architecture"},
+		{"tests_review_codex", "review_prompt", "code-review-tests"},
+		{"adversarial_review_codex", "review_prompt", "code-review-adversarial"},
+		{"clarity_review_codex", "review_prompt", "code-review-clarity"},
+		{"intent_review_codex", "review_prompt", "code-review-intent"},
+		{"review_judge", "judge_prompt", "code-review-judge"},
+	} {
+		prompt, err := os.ReadFile(filepath.Join(root, homeFolder, "prompts", c.prompt+".md"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		sum := sha256.Sum256(prompt)
+		digest := "sha256:" + hex.EncodeToString(sum[:])
+		record := records[c.process]
+		if record == nil {
+			t.Fatalf("code_review: no run of %s", c.process)
+		}
+		if given := inputOf(t, record, c.input); given["source"] != "prompt" || given["identity"] != digest {
+			t.Errorf("%s's %s = %v, want the prompt %s (%s)", c.process, c.input, given, c.prompt, digest)
+		}
 	}
 
 	if output := parseProcess(t, root, "intent_review_codex").Output; output.Format != "json" || output.Schema != "review-result" {
 		t.Fatalf("intent_review_codex's output = %+v, want json of schema review-result", output)
 	}
 	// The parsed process keeps no require_valid: it is read from the document.
-	data, err := os.ReadFile(filepath.Join(root, ".agister", "processes", "intent_review_codex.yaml"))
+	data, err := os.ReadFile(filepath.Join(root, homeFolder, "processes", "intent_review_codex.yaml"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -395,8 +414,8 @@ func TestIntentReviewIsRefusedOffItsCandidate(t *testing.T) {
 }
 
 // The judge of adr_review rules on the collection of the ADR review alone,
-// and the ADR reviewer is given its standing prompt,
-// prompts/code-review-adr.md.
+// and the ADR reviewer is given its standing prompt, the settings prompt
+// code-review-adr (ADR-027 rule 4).
 func TestADRReviewCollectsTheADRReview(t *testing.T) {
 	t.Parallel()
 	root, repo, home := onFakeRuntimes(t)
@@ -406,14 +425,14 @@ func TestADRReviewCollectsTheADRReview(t *testing.T) {
 		t.Fatalf("adr_review's judge collected %v, want %v", reviews, want)
 	}
 
-	prompt, err := os.ReadFile(filepath.Join(root, "prompts", "code-review-adr.md"))
+	prompt, err := os.ReadFile(filepath.Join(root, homeFolder, "prompts", "code-review-adr.md"))
 	if err != nil {
 		t.Fatal(err)
 	}
 	sum := sha256.Sum256(prompt)
 	digest := "sha256:" + hex.EncodeToString(sum[:])
-	if given := inputOf(t, records["adr_review_codex"], "review_prompt"); given["source"] != "file" || given["identity"] != digest {
-		t.Fatalf("adr_review_codex's review_prompt = %v, want prompts/code-review-adr.md (%s)", given, digest)
+	if given := inputOf(t, records["adr_review_codex"], "review_prompt"); given["source"] != "prompt" || given["identity"] != digest {
+		t.Fatalf("adr_review_codex's review_prompt = %v, want the prompt code-review-adr (%s)", given, digest)
 	}
 }
 
@@ -492,8 +511,8 @@ func TestReviewNodesReceiveTheGoalAndTheJudgeDoesNot(t *testing.T) {
 
 // The advisor answers a question file on the Codex agent, a model family
 // other than the judge's, in the caller's worktree (ADR-025), and is given the
-// question and its standing prompt, prompts/advisor.md. Its output is of
-// the advice schema.
+// question and its standing prompt, the settings prompt advisor (ADR-027
+// rule 4). Its output is of the advice schema.
 func TestAdvisorAnswersAQuestionFile(t *testing.T) {
 	t.Parallel()
 	root, repo, home := onFakeRuntimes(t)
@@ -526,15 +545,18 @@ func TestAdvisorAnswersAQuestionFile(t *testing.T) {
 	if advisor, judge := modelFamily(t, root, "codex-sol-61"), modelFamily(t, root, "claude-judge"); advisor == "" || advisor == judge {
 		t.Fatalf("the advisor's model family %q, the judge's %q: want another", advisor, judge)
 	}
-	for name, path := range map[string]string{"question": question, "advisor_prompt": filepath.Join(root, "prompts", "advisor.md")} {
-		data, err := os.ReadFile(path)
+	for _, input := range []struct{ name, source, path string }{
+		{"question", "file", question},
+		{"advisor_prompt", "prompt", filepath.Join(root, homeFolder, "prompts", "advisor.md")},
+	} {
+		data, err := os.ReadFile(input.path)
 		if err != nil {
 			t.Fatal(err)
 		}
 		sum := sha256.Sum256(data)
 		digest := "sha256:" + hex.EncodeToString(sum[:])
-		if given := inputOf(t, record, name); given["source"] != "file" || given["identity"] != digest {
-			t.Fatalf("advisor's %s = %v, want %s (%s)", name, given, path, digest)
+		if given := inputOf(t, record, input.name); given["source"] != input.source || given["identity"] != digest {
+			t.Fatalf("advisor's %s = %v, want %s %s (%s)", input.name, given, input.source, input.path, digest)
 		}
 	}
 	feature := revision(t, home, repo, "feature")
@@ -593,7 +615,7 @@ func follows(argv []string, flag, value string) bool {
 	return false
 }
 
-// The repository's advice schema accepts an owner answer with its reason,
+// The home folder's advice schema accepts an owner answer with its reason,
 // and a decision with its record; it refuses an answer whose payload is the
 // other's, a missing field and an unexpected one. The payloads are fixed,
 // not built from the schema.
@@ -603,7 +625,7 @@ func TestAdviceSchemaTiesTheAnswerToItsPayload(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	document, err := os.ReadFile(filepath.Join(root, ".agister", "schemas", "advice.json"))
+	document, err := os.ReadFile(filepath.Join(root, homeFolder, "schemas", "advice.json"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -652,7 +674,7 @@ func TestAdviceSchemaTiesTheAnswerToItsPayload(t *testing.T) {
 	}
 }
 
-// The repository's review result schema accepts a review whose coverage
+// The home folder's review result schema accepts a review whose coverage
 // holds entries of every status; it refuses a review without coverage, a
 // null coverage, an empty one, a scalar coverage, an entry that is not an
 // object, an entry with an unknown status, an entry missing its item,
@@ -665,7 +687,7 @@ func TestReviewResultSchemaRequiresCoverage(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	document, err := os.ReadFile(filepath.Join(root, ".agister", "schemas", "review-result.json"))
+	document, err := os.ReadFile(filepath.Join(root, homeFolder, "schemas", "review-result.json"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -706,7 +728,7 @@ func TestReviewResultSchemaRequiresCoverage(t *testing.T) {
 	}
 }
 
-// The repository's review result schema accepts a finding that presents its
+// The home folder's review result schema accepts a finding that presents its
 // case for value (ADR-020 rule 4): its requirement, consequence, severity
 // rationale and fix cost, of every size and change risk band. It refuses a
 // finding missing any of the four, a size or change risk out of its bands,
@@ -718,7 +740,7 @@ func TestReviewResultSchemaRequiresTheCaseForValue(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	document, err := os.ReadFile(filepath.Join(root, ".agister", "schemas", "review-result.json"))
+	document, err := os.ReadFile(filepath.Join(root, homeFolder, "schemas", "review-result.json"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -780,7 +802,7 @@ func TestReviewResultSchemaRequiresTheCaseForValue(t *testing.T) {
 	}
 }
 
-// The repository's review result schema accepts a finding whose evidence
+// The home folder's review result schema accepts a finding whose evidence
 // states its scope (ADR-023 rule 3) as change, goal or outside. It refuses
 // evidence without a scope, a scope out of those three, one that is not a
 // string, and the introduced_by_change it replaces, in its place or beside
@@ -791,7 +813,7 @@ func TestReviewResultSchemaRequiresTheScope(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	document, err := os.ReadFile(filepath.Join(root, ".agister", "schemas", "review-result.json"))
+	document, err := os.ReadFile(filepath.Join(root, homeFolder, "schemas", "review-result.json"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -833,7 +855,7 @@ func TestReviewResultSchemaRequiresTheScope(t *testing.T) {
 	}
 }
 
-// The repository's judgement schema accepts a judgement with no coverage
+// The home folder's judgement schema accepts a judgement with no coverage
 // gaps and one whose gaps hold an entry of every status; it refuses a
 // judgement without coverage gaps, null coverage gaps, scalar ones, an entry
 // that is not an object, an entry with an unknown status, an entry whose
@@ -847,7 +869,7 @@ func TestJudgementSchemaRequiresCoverageGaps(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	document, err := os.ReadFile(filepath.Join(root, ".agister", "schemas", "judgement.json"))
+	document, err := os.ReadFile(filepath.Join(root, homeFolder, "schemas", "judgement.json"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -894,7 +916,7 @@ func TestJudgementSchemaRequiresCoverageGaps(t *testing.T) {
 	}
 }
 
-// The repository's judgement schema accepts an item of every ruling, waive
+// The home folder's judgement schema accepts an item of every ruling, waive
 // included (ADR-020 rule 2), each with its benefit, cost and switching
 // condition (rule 5), empty where the ruling leaves them so. It refuses an
 // item missing its benefit, cost or switching condition, and an item with
@@ -905,7 +927,7 @@ func TestJudgementSchemaRecordsWhatDecidedARuling(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	document, err := os.ReadFile(filepath.Join(root, ".agister", "schemas", "judgement.json"))
+	document, err := os.ReadFile(filepath.Join(root, homeFolder, "schemas", "judgement.json"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -986,7 +1008,7 @@ func TestReviewPromptsCarryTheirCoverageContract(t *testing.T) {
 	for _, c := range cases {
 		t.Run(c.prompt, func(t *testing.T) {
 			t.Parallel()
-			data, err := os.ReadFile(filepath.Join(root, "prompts", c.prompt))
+			data, err := os.ReadFile(filepath.Join(root, homeFolder, "prompts", c.prompt))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -996,12 +1018,12 @@ func TestReviewPromptsCarryTheirCoverageContract(t *testing.T) {
 				want[i] = i + 1
 			}
 			if got := definitionOfDoneNumbers(prompt); !slices.Equal(got, want) {
-				t.Errorf("prompts/%s: want a \"Definition of done\" of %d items numbered 1 to %d, found the numbers %v (0 is an unnumbered item)",
+				t.Errorf("agister/home/prompts/%s: want a \"Definition of done\" of %d items numbered 1 to %d, found the numbers %v (0 is an unnumbered item)",
 					c.prompt, c.items, c.items, got)
 			}
 			for _, instruction := range c.instructions {
 				if !carries(prompt, instruction.phrases) {
-					t.Errorf("prompts/%s lost the instruction %q: no paragraph has all of %q",
+					t.Errorf("agister/home/prompts/%s lost the instruction %q: no paragraph has all of %q",
 						c.prompt, instruction.name, instruction.phrases)
 				}
 			}
@@ -1040,13 +1062,13 @@ func TestReviewPromptsCarryTheCaseForValue(t *testing.T) {
 		file         string
 		instructions []promptInstruction
 	}{
-		{"prompts/code-review-tests.md", []promptInstruction{present}},
-		{"prompts/code-review-adversarial.md", []promptInstruction{present}},
-		{"prompts/code-review-architecture.md", []promptInstruction{present}},
-		{"prompts/code-review-clarity.md", []promptInstruction{present}},
-		{"prompts/code-review-intent.md", []promptInstruction{present}},
-		{"prompts/code-review-adr.md", []promptInstruction{present}},
-		{"prompts/code-review-judge.md", []promptInstruction{
+		{"agister/home/prompts/code-review-tests.md", []promptInstruction{present}},
+		{"agister/home/prompts/code-review-adversarial.md", []promptInstruction{present}},
+		{"agister/home/prompts/code-review-architecture.md", []promptInstruction{present}},
+		{"agister/home/prompts/code-review-clarity.md", []promptInstruction{present}},
+		{"agister/home/prompts/code-review-intent.md", []promptInstruction{present}},
+		{"agister/home/prompts/code-review-adr.md", []promptInstruction{present}},
+		{"agister/home/prompts/code-review-judge.md", []promptInstruction{
 			{"waive: proven, in the change, the burden for fixing not met", []string{
 				"for an item whose evidence holds and that lies in the change", "the burden for fixing at its severity",
 				"**waive**", "not a reject", "sunk and never counts"}},
@@ -1150,13 +1172,13 @@ func TestReviewPromptsCarryTheGoal(t *testing.T) {
 	for _, c := range cases {
 		t.Run(c.prompt, func(t *testing.T) {
 			t.Parallel()
-			data, err := os.ReadFile(filepath.Join(root, "prompts", c.prompt))
+			data, err := os.ReadFile(filepath.Join(root, homeFolder, "prompts", c.prompt))
 			if err != nil {
 				t.Fatal(err)
 			}
 			for _, instruction := range c.instructions {
 				if !carries(string(data), instruction.phrases) {
-					t.Errorf("prompts/%s lost the instruction %q: no paragraph has all of %q",
+					t.Errorf("agister/home/prompts/%s lost the instruction %q: no paragraph has all of %q",
 						c.prompt, instruction.name, instruction.phrases)
 				}
 			}
@@ -1185,7 +1207,7 @@ func TestReviewPromptsCarryTheGoal(t *testing.T) {
 func TestIntentPromptCarriesItsDuties(t *testing.T) {
 	t.Parallel()
 	const prompt = "code-review-intent.md"
-	data, err := os.ReadFile(filepath.Join("..", "..", "..", "prompts", prompt))
+	data, err := os.ReadFile(filepath.Join("..", "..", "..", homeFolder, "prompts", prompt))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1208,7 +1230,7 @@ func TestIntentPromptCarriesItsDuties(t *testing.T) {
 	}
 	for _, instruction := range instructions {
 		if !carries(string(data), instruction.phrases) {
-			t.Errorf("prompts/%s lost the instruction %q: no paragraph has all of %q",
+			t.Errorf("agister/home/prompts/%s lost the instruction %q: no paragraph has all of %q",
 				prompt, instruction.name, instruction.phrases)
 		}
 	}
@@ -1229,7 +1251,7 @@ func TestIntentPromptCarriesItsDuties(t *testing.T) {
 func TestClarityPromptCarriesTheDoneGateException(t *testing.T) {
 	t.Parallel()
 	const prompt = "code-review-clarity.md"
-	data, err := os.ReadFile(filepath.Join("..", "..", "..", "prompts", prompt))
+	data, err := os.ReadFile(filepath.Join("..", "..", "..", homeFolder, "prompts", prompt))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1248,7 +1270,7 @@ func TestClarityPromptCarriesTheDoneGateException(t *testing.T) {
 	}
 	for _, instruction := range instructions {
 		if !carries(string(data), instruction.phrases) {
-			t.Errorf("prompts/%s lost the instruction %q: no paragraph has all of %q",
+			t.Errorf("agister/home/prompts/%s lost the instruction %q: no paragraph has all of %q",
 				prompt, instruction.name, instruction.phrases)
 		}
 	}
@@ -1420,7 +1442,7 @@ func TestSchemasGivenToCodexUseNoRefusedCombinator(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	processes, err := filepath.Glob(filepath.Join(root, ".agister", "processes", "*.yaml"))
+	processes, err := filepath.Glob(filepath.Join(root, homeFolder, "processes", "*.yaml"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1432,7 +1454,7 @@ func TestSchemasGivenToCodexUseNoRefusedCombinator(t *testing.T) {
 			continue
 		}
 		checked[name] = true
-		data, err := os.ReadFile(filepath.Join(root, ".agister", "schemas", name+".json"))
+		data, err := os.ReadFile(filepath.Join(root, homeFolder, "schemas", name+".json"))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -1512,22 +1534,22 @@ func refusedCombinators(document any) []string {
 	return refused
 }
 
-// agentRuntime is the runtime of a repository agent.
+// agentRuntime is the runtime of an agent of the home folder.
 func agentRuntime(t *testing.T, root, agent string) string {
 	t.Helper()
 	return parseAgent(t, root, agent).Runtime
 }
 
-// modelFamily is the model family of a repository agent.
+// modelFamily is the model family of an agent of the home folder.
 func modelFamily(t *testing.T, root, agent string) string {
 	t.Helper()
 	return parseAgent(t, root, agent).ModelFamily
 }
 
-// parseAgent parses a repository agent.
+// parseAgent parses an agent of the home folder.
 func parseAgent(t *testing.T, root, agent string) definition.Agent {
 	t.Helper()
-	data, err := os.ReadFile(filepath.Join(root, ".agister", "agents", agent+".toml"))
+	data, err := os.ReadFile(filepath.Join(root, homeFolder, "agents", agent+".toml"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1583,7 +1605,7 @@ var goPrompts = map[string]string{
 	"go_architecture": "go-architecture",
 }
 
-// Each of the repository's implement processes gives its agent the two Go
+// Each implement process of the home folder gives its agent the two Go
 // prompts, and what it gives is the text of prompts/<name>.md: the
 // repository's settings hold a copy, which this test keeps identical.
 func TestImplementersAreGivenTheGoPrompts(t *testing.T) {
@@ -1738,7 +1760,7 @@ func inputOf(t *testing.T, record map[string]any, name string) map[string]any {
 
 func parseProcess(t *testing.T, root, name string) definition.Process {
 	t.Helper()
-	data, err := os.ReadFile(filepath.Join(root, ".agister", "processes", name+".yaml"))
+	data, err := os.ReadFile(filepath.Join(root, homeFolder, "processes", name+".yaml"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1879,7 +1901,7 @@ func mirror(t *testing.T, root, home string) (string, *gittest.Repository) {
 // is written with verifyFixture as its command and verifyFixtureTimeout as
 // its timeout: a process that declares verify inline, and every verify a
 // process names (ADR-010), whose command and timeout are top-level keys. A
-// root without verifies has none in repo either.
+// root without processes or verifies has none in repo either.
 func fixVerify(t *testing.T, root, repo string) {
 	t.Helper()
 	settings := filepath.Join(repo, ".agister")
@@ -1959,21 +1981,19 @@ func fixVerify(t *testing.T, root, repo string) {
 	}
 
 	link(filepath.Join(root, ".agister"), settings, "processes", "verifies")
-	link(filepath.Join(root, ".agister", "processes"), filepath.Join(settings, "processes"))
-	fix(filepath.Join(settings, "processes"), func(process *yaml.Node) *yaml.Node {
-		return valueOf(process, "verify")
-	})
-
-	verifies := filepath.Join(root, ".agister", "verifies")
-	if _, err := os.Stat(verifies); errors.Is(err, fs.ErrNotExist) {
-		return
-	} else if err != nil {
-		t.Fatal(err)
+	for kind, verification := range map[string]func(document *yaml.Node) *yaml.Node{
+		"processes": func(process *yaml.Node) *yaml.Node { return valueOf(process, "verify") },
+		"verifies":  func(verify *yaml.Node) *yaml.Node { return verify },
+	} {
+		dir := filepath.Join(root, ".agister", kind)
+		if _, err := os.Stat(dir); errors.Is(err, fs.ErrNotExist) {
+			continue
+		} else if err != nil {
+			t.Fatal(err)
+		}
+		link(dir, filepath.Join(settings, kind))
+		fix(filepath.Join(settings, kind), verification)
 	}
-	link(verifies, filepath.Join(settings, "verifies"))
-	fix(filepath.Join(settings, "verifies"), func(verify *yaml.Node) *yaml.Node {
-		return verify
-	})
 }
 
 // valueOf is the value of key in mapping, or nil.
