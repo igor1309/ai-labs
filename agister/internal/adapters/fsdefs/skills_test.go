@@ -2,6 +2,8 @@ package fsdefs_test
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"io/fs"
 	"net"
@@ -449,6 +451,129 @@ func TestRemovingASkillRemovesItsEmptiedFolder(t *testing.T) {
 	}
 	if got := tree(t, filepath.Join(store.Dir, "skills")); !reflect.DeepEqual(got, []string{".", "style", filepath.Join("style", "notes.md")}) {
 		t.Fatalf("left %v", got)
+	}
+}
+
+// Removing a skill whose folder is a symbolic link is refused, and removes
+// nothing through it: the SKILL.md it reaches is not one an install made,
+// so a restore does not delete a file outside home (ADR-016 rule 8,
+// ADR-027 rule 8).
+//
+// Contract test: the settings store against the real filesystem.
+func TestRemovingASkillThroughALinkedFolderIsRefused(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	store := fsdefs.Store{Dir: t.TempDir()}
+	target := t.TempDir()
+	kept := filepath.Join(target, "SKILL.md")
+	put(t, kept, skillText("theirs"))
+	skills := filepath.Join(store.Dir, "skills")
+	folder := filepath.Join(skills, "review")
+	if err := os.MkdirAll(skills, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(target, folder); err != nil {
+		t.Fatal(err)
+	}
+
+	want := folder + " is a symbolic link: a skill is a folder holding its SKILL.md"
+	if err := store.Remove(ctx, definition.KindSkill, "review"); err == nil || err.Error() != want {
+		t.Fatalf("remove = %v, want %q", err, want)
+	}
+	if data, err := os.ReadFile(kept); err != nil || string(data) != skillText("theirs") {
+		t.Fatalf("the link's target = %q, %v: want it kept", data, err)
+	}
+	if info, err := os.Lstat(folder); err != nil || info.Mode()&fs.ModeSymlink == 0 {
+		t.Fatalf("the folder = %v, %v: want the link left", info, err)
+	}
+	// Nor is what the link reaches taken for the skill there.
+	if path, digest, err := store.Current(ctx, definition.KindSkill, "review"); err == nil || err.Error() != want {
+		t.Fatalf("current = %q, %q, %v, want %q", path, digest, err, want)
+	}
+}
+
+// The skill there now is its SKILL.md, a regular file: none, or no folder
+// for one, is no skill and no error, and one that is a FIFO, a symbolic
+// link or a folder is an error. None is waited on or followed, so a restore
+// that reads it under the write lock does not hang (ADR-027 rule 8).
+//
+// Contract test: the settings store against the real filesystem, and a
+// real FIFO with no writer, which a blocking open waits on for ever.
+func TestTheCurrentSkillIsNotWaitedOnOrFollowed(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	store := fsdefs.Store{Dir: t.TempDir()}
+	folder := func(name string) string { return filepath.Join(store.Dir, "skills", name) }
+	file := func(name string) string { return filepath.Join(folder(name), "SKILL.md") }
+
+	put(t, file("regular"), skillText("regular"))
+	// What is beside a SKILL.md does not hide it: a restore removes it.
+	put(t, file("beside"), skillText("beside"))
+	put(t, filepath.Join(folder("beside"), "notes.md"), "mine")
+	if err := os.MkdirAll(folder("empty"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(folder("fifo"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := syscall.Mkfifo(file("fifo"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	elsewhere := filepath.Join(t.TempDir(), "SKILL.md")
+	put(t, elsewhere, skillText("linked"))
+	if err := os.MkdirAll(folder("linked"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(elsewhere, file("linked")); err != nil {
+		t.Fatal(err)
+	}
+	dangle(t, file("dangling"))
+	if err := os.MkdirAll(file("nested"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+
+	type current struct {
+		path, digest string
+		err          error
+	}
+	read := func(name string) current {
+		t.Helper()
+		done := make(chan current, 1)
+		go func() {
+			path, digest, err := store.Current(ctx, definition.KindSkill, name)
+			done <- current{path, digest, err}
+		}()
+		select {
+		case got := <-done:
+			return got
+		case <-time.After(5 * time.Second):
+			t.Fatalf("skill %s: reading the current one blocks", name)
+			return current{}
+		}
+	}
+	for _, name := range []string{"regular", "beside"} {
+		sum := sha256.Sum256([]byte(skillText(name)))
+		if got := read(name); got.err != nil || got.path != file(name) || got.digest != hex.EncodeToString(sum[:]) {
+			t.Errorf("skill %s = %+v, want %s with its digest", name, got, file(name))
+		}
+	}
+	for _, name := range []string{"empty", "missing"} {
+		if got := read(name); got.err != nil || got.path != file(name) || got.digest != "" {
+			t.Errorf("skill %s = %+v, want %s with no digest", name, got, file(name))
+		}
+	}
+	for name, want := range map[string]string{
+		"fifo":     file("fifo") + " is not a regular file",
+		"linked":   file("linked") + " is a symbolic link: a skill's SKILL.md is a regular file",
+		"dangling": file("dangling") + " is a symbolic link: a skill's SKILL.md is a regular file",
+		"nested":   file("nested") + " is a folder: a skill's SKILL.md is a regular file",
+	} {
+		if got := read(name); got.err == nil || got.err.Error() != want || got.digest != "" {
+			t.Errorf("skill %s = %+v, want %q", name, got, want)
+		}
+	}
+	if info, err := os.Lstat(file("fifo")); err != nil || info.Mode().Type() != fs.ModeNamedPipe {
+		t.Fatalf("fixture = %v, %v: not a FIFO", info, err)
 	}
 }
 

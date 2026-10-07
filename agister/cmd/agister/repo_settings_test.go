@@ -312,9 +312,10 @@ func onFakeRuntimesRecorded(t *testing.T) (root, repo, home string, recorded *gi
 
 // The judge of code_review rules on the collection of a fixed set of
 // reviews: architecture, tests, adversarial, clarity and intent, the ADR
-// review not among them. The intent reviewer is given its standing prompt,
-// the settings prompt code-review-intent (ADR-027 rule 4), and declares a
-// valid review-result its required output.
+// review not among them. Each reviewer, and the judge, is given its own
+// standing prompt, the settings prompt of its role (ADR-027 rule 4), so a
+// process that names another role's prompt fails here. The intent reviewer
+// declares a valid review-result its required output.
 func TestCodeReviewCollectsItsFiveReviews(t *testing.T) {
 	t.Parallel()
 	root, repo, home := onFakeRuntimes(t)
@@ -330,14 +331,27 @@ func TestCodeReviewCollectsItsFiveReviews(t *testing.T) {
 		t.Fatalf("code_review's judge collected %v, want %v", reviews, want)
 	}
 
-	prompt, err := os.ReadFile(filepath.Join(root, homeFolder, "prompts", "code-review-intent.md"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	sum := sha256.Sum256(prompt)
-	digest := "sha256:" + hex.EncodeToString(sum[:])
-	if given := inputOf(t, records["intent_review_codex"], "review_prompt"); given["source"] != "prompt" || given["identity"] != digest {
-		t.Fatalf("intent_review_codex's review_prompt = %v, want the prompt code-review-intent (%s)", given, digest)
+	for _, c := range []struct{ process, input, prompt string }{
+		{"architecture_review_codex", "review_prompt", "code-review-architecture"},
+		{"tests_review_codex", "review_prompt", "code-review-tests"},
+		{"adversarial_review_codex", "review_prompt", "code-review-adversarial"},
+		{"clarity_review_codex", "review_prompt", "code-review-clarity"},
+		{"intent_review_codex", "review_prompt", "code-review-intent"},
+		{"review_judge", "judge_prompt", "code-review-judge"},
+	} {
+		prompt, err := os.ReadFile(filepath.Join(root, homeFolder, "prompts", c.prompt+".md"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		sum := sha256.Sum256(prompt)
+		digest := "sha256:" + hex.EncodeToString(sum[:])
+		record := records[c.process]
+		if record == nil {
+			t.Fatalf("code_review: no run of %s", c.process)
+		}
+		if given := inputOf(t, record, c.input); given["source"] != "prompt" || given["identity"] != digest {
+			t.Errorf("%s's %s = %v, want the prompt %s (%s)", c.process, c.input, given, c.prompt, digest)
+		}
 	}
 
 	if output := parseProcess(t, root, "intent_review_codex").Output; output.Format != "json" || output.Schema != "review-result" {

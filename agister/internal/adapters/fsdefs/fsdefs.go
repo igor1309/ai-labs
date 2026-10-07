@@ -143,9 +143,15 @@ func (s Store) readSkill(path string) ([]byte, error) {
 		return nil, skillBeside(path, others)
 	}
 	// The entry may have changed since it was listed: what is opened is
-	// checked again, without following a link or waiting on a special file,
-	// and read through the handle checked.
+	// checked again, and read through the handle checked.
 	s.point("open")
+	return readSkillFile(path)
+}
+
+// readSkillFile reads the regular file path, a skill's document, without
+// following a link there or waiting on a special file: either is an error,
+// and so is a folder. It is read through the handle checked.
+func readSkillFile(path string) ([]byte, error) {
 	handle, err := os.OpenFile(path, os.O_RDONLY|syscall.O_NOFOLLOW|syscall.O_NONBLOCK, 0)
 	if errors.Is(err, syscall.ELOOP) {
 		return nil, fmt.Errorf("%s is a symbolic link: a skill's %s is a regular file", path, skillFile)
@@ -166,6 +172,27 @@ func (s Store) readSkill(path string) ([]byte, error) {
 	return io.ReadAll(handle)
 }
 
+// skillFolderLinked fails for a skill's folder that is a symbolic link:
+// what is reached through it is not the store's. No folder there is no
+// failure.
+func skillFolderLinked(folder string) error {
+	info, err := os.Lstat(folder)
+	switch {
+	case errors.Is(err, fs.ErrNotExist):
+		return nil
+	case err != nil:
+		return err
+	case info.Mode()&fs.ModeSymlink != 0:
+		return skillLinked(folder)
+	}
+	return nil
+}
+
+// skillLinked is the problem of the skill whose folder is a symbolic link.
+func skillLinked(folder string) error {
+	return fmt.Errorf("%s is a symbolic link: a skill is a folder holding its %s", folder, skillFile)
+}
+
 // skillFolder lists the folder of the skill whose document is path: its
 // entry skillFile, nil when it holds none, and the names of its other
 // entries. No folder there, or a file, is no skill; a symbolic link is
@@ -179,7 +206,7 @@ func skillFolder(path string) (file fs.DirEntry, others []string, err error) {
 	case err != nil:
 		return nil, nil, err
 	case info.Mode()&fs.ModeSymlink != 0:
-		return nil, nil, fmt.Errorf("%s is a symbolic link: a skill is a folder holding its %s", folder, skillFile)
+		return nil, nil, skillLinked(folder)
 	case !info.IsDir():
 		// Not listed either: a file in skills/ is no skill.
 		return nil, nil, fmt.Errorf("%w (expected %s)", errNotFound, path)
@@ -329,12 +356,26 @@ func (s Store) List(_ context.Context, kind definition.Kind) ([]string, error) {
 	return names, nil
 }
 
+// Current reports where the document is stored and the digest of the one
+// there, empty when there is none. A skill's SKILL.md is opened as Read
+// opens it, without following a link or waiting on a special file, and
+// not through a folder that is a symbolic link: each is an error, so a
+// restore neither hangs on one nor takes a file outside the store for
+// the skill (ADR-027 rule 8).
 func (s Store) Current(_ context.Context, kind definition.Kind, name string) (string, string, error) {
 	path, err := s.path(kind, name)
 	if err != nil {
 		return "", "", err
 	}
-	data, err := os.ReadFile(path)
+	var data []byte
+	if kind == definition.KindSkill {
+		if err := skillFolderLinked(filepath.Dir(path)); err != nil {
+			return "", "", err
+		}
+		data, err = readSkillFile(path)
+	} else {
+		data, err = os.ReadFile(path)
+	}
 	if errors.Is(err, fs.ErrNotExist) {
 		return path, "", nil
 	}

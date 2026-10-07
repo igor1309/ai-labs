@@ -308,16 +308,23 @@ func (s Store) Left(_ context.Context, kind definition.Kind, name string) (strin
 
 // Remove removes the document; none there, or no folder for one, is no
 // error. A skill's folder goes with its SKILL.md when nothing else is
-// left in it (ADR-027 rule 8). It takes no lock: the caller holds it.
+// left in it (ADR-027 rule 8); one that is a symbolic link is refused, and
+// nothing is removed through it. It takes no lock: the caller holds it.
 func (s Store) Remove(_ context.Context, kind definition.Kind, name string) error {
 	path, err := s.path(kind, name)
 	if err != nil {
 		return err
 	}
+	folder := filepath.Dir(path)
+	if kind == definition.KindSkill {
+		// The SKILL.md a linked folder reaches is not one an install made.
+		if err := skillFolderLinked(folder); err != nil {
+			return err
+		}
+	}
 	if err := os.Remove(path); err != nil && !errors.Is(err, fs.ErrNotExist) {
 		return err
 	}
-	folder := filepath.Dir(path)
 	if kind == definition.KindSkill {
 		entries, err := os.ReadDir(folder)
 		switch {
