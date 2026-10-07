@@ -178,10 +178,12 @@ func TestAnInputArtifactThatFailsIsRecorded(t *testing.T) {
 }
 
 // A long param whose artifact cannot be stored keeps its text in the
-// request: no artifact keeps its bytes, so its record does.
+// request: no artifact keeps its bytes, so its record does. Another long
+// input's artifact, stored beside it, does not stand for the param's.
 func TestALongParamWhoseArtifactFailsKeepsItsText(t *testing.T) {
 	t.Parallel()
-	h := keptInputs("a short brief")
+	brief := longText + "brief"
+	h := keptInputs(brief)
 	h.recorder.artifactErr = func(name string) error {
 		if name == "input-goal.txt" {
 			return errors.New("disk full")
@@ -192,6 +194,13 @@ func TestALongParamWhoseArtifactFailsKeepsItsText(t *testing.T) {
 	record := h.call(t, contract.CallRequest{Params: map[string]string{"goal": goal}})
 	if record.Result.Status != run.Completed {
 		t.Fatalf("result = %+v", record.Result)
+	}
+	// The brief's artifact is stored, under its own digest.
+	if kept := inputOf(t, record, "brief"); kept.Artifact == nil || kept.Artifact.Digest != "sha256:"+sha(brief) {
+		t.Fatalf("brief = %+v, artifact %+v", kept, kept.Artifact)
+	}
+	if stored := string(h.recorder.artifacts["input-brief.txt"]); stored != brief {
+		t.Fatalf("brief stored as %q", stored)
 	}
 	if record.Request.Params["goal"] != goal {
 		t.Fatalf("request params = %v, want the goal's text", record.Request.Params)
