@@ -115,8 +115,8 @@ func (r Runtime) Run(ctx context.Context, spec Spec, events Sink, onLine func(st
 		sink.Event(SourceSupervisor, "PROCESS_RECORD_FAILED", map[string]any{"group": pid, "error": recorded.Error(), "killed": true})
 	}
 
-	// Signals go to the group only while it is known to exist: once the
-	// process has been waited for, its group ID may be reused.
+	// Signals go to the group only while the unreaped leader keeps its ID
+	// reserved: once the process has been reaped, the ID may be reused.
 	var mu sync.Mutex
 	var once sync.Once
 	stopKill := func() {}
@@ -189,18 +189,30 @@ func (r Runtime) Run(ctx context.Context, spec Spec, events Sink, onLine func(st
 		}
 	}()
 
+	// What the process left running in its group is killed while the
+	// leader, exited but not reaped, keeps the group's ID from reuse; only
+	// then is it reaped. An exit that cannot be observed so is reaped
+	// first, and nothing is signalled after.
+	cleanup := process.Exited()
+	if cleanup == nil {
+		mu.Lock()
+		stopKill()
+		cleanup = process.Signal(syscall.SIGKILL)
+		reaped = true
+		mu.Unlock()
+	}
 	exit := process.Wait()
-	close(exited)
-
 	mu.Lock()
 	reaped = true
 	stopKill()
-	// The group outlives its leader while members remain, and its ID is
-	// not reused while it exists; an empty group fails with ESRCH.
-	leftovers := process.Signal(syscall.SIGKILL) == nil
 	mu.Unlock()
-	if leftovers {
+	close(exited)
+	switch {
+	case cleanup == nil:
 		sink.Event(SourceProcess, "LEFTOVER_PROCESSES_KILLED", map[string]any{"group": pid})
+	case !errors.Is(cleanup, syscall.ESRCH):
+		// Neither leftovers killed nor none left: it cannot be told.
+		sink.Event(SourceProcess, "LEFTOVER_CLEANUP_UNKNOWN", map[string]any{"group": pid, "error": cleanup.Error()})
 	}
 
 	held, stopHeld := r.timer(grace)
@@ -249,8 +261,8 @@ func (r Runtime) Version(ctx context.Context, command string) (string, error) {
 		_, _ = io.Copy(&out, stdout)
 	}()
 
-	// The group is killed only while it is known to exist: once the
-	// process has been waited for, its group ID may be reused.
+	// The group is killed only while the unreaped leader keeps its ID
+	// reserved: once the process has been reaped, the ID may be reused.
 	var mu sync.Mutex
 	reaped := false
 	var ended error
@@ -273,6 +285,13 @@ func (r Runtime) Version(ctx context.Context, command string) (string, error) {
 			_ = process.Signal(syscall.SIGKILL)
 		}
 	}()
+	// The watcher's kill is disabled once the exit is observed, before the
+	// reap; an exit that cannot be observed so is disabled after it.
+	if process.Exited() == nil {
+		mu.Lock()
+		reaped = true
+		mu.Unlock()
+	}
 	exit := process.Wait()
 	mu.Lock()
 	reaped = true

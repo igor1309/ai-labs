@@ -5,6 +5,7 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"sync/atomic"
 	"syscall"
 	"time"
 )
@@ -47,11 +48,17 @@ type Process interface {
 	// Token identifies the process instance that leads the group (see
 	// Token).
 	Token(ctx context.Context) (string, error)
-	// Signal signals every process of the group, and fails when the group
-	// has none. Once Wait has returned and the group is empty its ID may
-	// be reused: the caller signals only a group it knows to exist.
+	// Signal signals every process of the group, and fails with ESRCH when
+	// the group has none. Once Exited has returned the exited leader is not
+	// counted: a group with nothing else left has none. Once Wait has
+	// returned the group's ID may be reused: the caller signals only before.
 	Signal(syscall.Signal) error
-	// Wait returns once the process has exited, and says how.
+	// Exited returns once the process has exited, without reaping it: until
+	// Wait, its ID, and so the group's, stays reserved. An error means the
+	// exit could not be observed; Wait still reaps the process.
+	Exited() error
+	// Wait reaps the process, waiting for its exit if Exited has not
+	// returned, and says how it exited.
 	Wait() Exit
 }
 
@@ -88,27 +95,53 @@ func (Exec) Start(c Command) (Process, error) {
 		stdout.Close()
 		return nil, err
 	}
-	return execProcess{command: command, stdout: stdout}, nil
+	return &execProcess{command: command, stdout: stdout}, nil
 }
 
 type execProcess struct {
 	command *exec.Cmd
 	stdout  *os.File
+	// exited is set once Exited has observed the exit.
+	exited atomic.Bool
 }
 
-func (p execProcess) Stdout() io.ReadCloser { return p.stdout }
+func (p *execProcess) Stdout() io.ReadCloser { return p.stdout }
 
-func (p execProcess) Group() int { return p.command.Process.Pid }
+func (p *execProcess) Group() int { return p.command.Process.Pid }
 
-func (p execProcess) Token(ctx context.Context) (string, error) {
+func (p *execProcess) Token(ctx context.Context) (string, error) {
 	return Token(ctx, p.command.Process.Pid)
 }
 
-func (p execProcess) Signal(signal syscall.Signal) error {
-	return syscall.Kill(-p.command.Process.Pid, signal)
+// Signal signals the group. Once the leader has exited, whether the kernel
+// counts it, a zombie until Wait, differs by platform: Linux signals it,
+// macOS answers EPERM for a group with nothing else. So the group is
+// signalled only when it has a member that has not exited, and with none
+// it has no process (ESRCH): none can join it after, as no process of the
+// group is left to start one.
+func (p *execProcess) Signal(signal syscall.Signal) error {
+	group := p.command.Process.Pid
+	if p.exited.Load() {
+		live, err := others(group)
+		if err != nil {
+			return err
+		}
+		if !live {
+			return syscall.ESRCH
+		}
+	}
+	return syscall.Kill(-group, signal)
 }
 
-func (p execProcess) Wait() Exit {
+func (p *execProcess) Exited() error {
+	if err := exited(p.command.Process.Pid); err != nil {
+		return err
+	}
+	p.exited.Store(true)
+	return nil
+}
+
+func (p *execProcess) Wait() Exit {
 	waitErr := p.command.Wait()
 	var exit Exit
 	if state := p.command.ProcessState; state != nil {

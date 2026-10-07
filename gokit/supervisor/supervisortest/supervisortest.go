@@ -195,6 +195,13 @@ func (p *inProcess) exit(code int) {
 	p.done, p.code = true, code
 }
 
+// Exited returns once the fake has returned; a fake is never reaped, so
+// its group's number stays its own.
+func (p *inProcess) Exited() error {
+	<-p.exited
+	return nil
+}
+
 // Wait reports a fake signalled before it returned as ended by the signal,
 // as the process would have been.
 func (p *inProcess) Wait() supervisor.Exit {
