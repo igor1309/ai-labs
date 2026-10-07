@@ -169,15 +169,17 @@ func TestLeftoverProcessesAreKilledWhenTheRuntimeExits(t *testing.T) {
 }
 
 // A runtime that leaves nothing in its group has no leftovers: the kill
-// after its exit finds only its leader, exited and not yet reaped.
+// after its exit finds only its leader, exited and not yet reaped. Its
+// timeout is on a manual clock that never moves: the test binary's
+// -timeout guards a hang.
 //
 // Contract test: the supervisor against a real process: its group, its
 // pipes and the signals that end it.
 func TestAnExitThatLeavesNothingHasNoLeftovers(t *testing.T) {
 	t.Parallel()
 	sink := &events{}
-	evidence := supervisor.Runtime{}.Run(context.Background(), supervisor.Spec{
-		Command: "/bin/sh", Args: []string{"-c", "echo done"}, Timeout: 30 * time.Second,
+	evidence := supervisor.Runtime{Starter: supervisor.Exec{}, Timer: clocktest.NewClock(start).Timer}.Run(context.Background(), supervisor.Spec{
+		Command: "/bin/sh", Args: []string{"-c", "echo done"}, Timeout: time.Hour,
 	}, sink, func(string) {})
 	if evidence.Exit == nil || evidence.Exit.Code == nil || *evidence.Exit.Code != 0 {
 		t.Fatalf("evidence = %+v", evidence)

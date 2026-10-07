@@ -2,10 +2,12 @@ package supervisor
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"io"
 	"os"
 	"os/exec"
-	"sync/atomic"
+	"sync"
 	"syscall"
 	"time"
 )
@@ -50,8 +52,9 @@ type Process interface {
 	Token(ctx context.Context) (string, error)
 	// Signal signals every process of the group, and fails with ESRCH when
 	// the group has none. Once Exited has returned the exited leader is not
-	// counted: a group with nothing else left has none. Once Wait has
-	// returned the group's ID may be reused: the caller signals only before.
+	// counted: a group with nothing else left has none, and any other error
+	// says it cannot be told. Once Wait has returned the group's ID may be
+	// reused: the caller signals only before.
 	Signal(syscall.Signal) error
 	// Exited returns once the process has exited, without reaping it: until
 	// Wait, its ID, and so the group's, stays reserved. An error means the
@@ -63,7 +66,9 @@ type Process interface {
 }
 
 // Exec starts processes with the operating system: the program found on
-// PATH, in a process group of its own, its token from ps.
+// PATH, in a process group of its own, its token from ps. Its process
+// signals nothing once Wait has begun, as the group's ID may then be
+// reused at any moment.
 type Exec struct{}
 
 func (Exec) Start(c Command) (Process, error) {
@@ -95,14 +100,18 @@ func (Exec) Start(c Command) (Process, error) {
 		stdout.Close()
 		return nil, err
 	}
-	return &execProcess{command: command, stdout: stdout}, nil
+	pid := command.Process.Pid
+	p := &execProcess{command: command, stdout: stdout}
+	p.leader = &leader{pid: pid, kill: syscall.Kill, observe: exited, others: others, alone: zombieAlone(), reap: p.reap}
+	return p, nil
 }
 
+// execProcess is a process Exec started: its group's signals and its reap
+// are its leader's.
 type execProcess struct {
+	*leader
 	command *exec.Cmd
 	stdout  *os.File
-	// exited is set once Exited has observed the exit.
-	exited atomic.Bool
 }
 
 func (p *execProcess) Stdout() io.ReadCloser { return p.stdout }
@@ -113,35 +122,7 @@ func (p *execProcess) Token(ctx context.Context) (string, error) {
 	return Token(ctx, p.command.Process.Pid)
 }
 
-// Signal signals the group. Once the leader has exited, whether the kernel
-// counts it, a zombie until Wait, differs by platform: Linux signals it,
-// macOS answers EPERM for a group with nothing else. So the group is
-// signalled only when it has a member that has not exited, and with none
-// it has no process (ESRCH): none can join it after, as no process of the
-// group is left to start one.
-func (p *execProcess) Signal(signal syscall.Signal) error {
-	group := p.command.Process.Pid
-	if p.exited.Load() {
-		live, err := others(group)
-		if err != nil {
-			return err
-		}
-		if !live {
-			return syscall.ESRCH
-		}
-	}
-	return syscall.Kill(-group, signal)
-}
-
-func (p *execProcess) Exited() error {
-	if err := exited(p.command.Process.Pid); err != nil {
-		return err
-	}
-	p.exited.Store(true)
-	return nil
-}
-
-func (p *execProcess) Wait() Exit {
+func (p *execProcess) reap() Exit {
 	waitErr := p.command.Wait()
 	var exit Exit
 	if state := p.command.ProcessState; state != nil {
@@ -155,6 +136,96 @@ func (p *execProcess) Wait() Exit {
 		exit.Signal = waitErr.Error()
 	}
 	return exit
+}
+
+// errReaped is what Signal answers once Wait has begun: the leader is
+// reaped, or about to be, and its group's ID may be another's.
+var errReaped = errors.New("supervisor: the group's leader is reaped: its ID may be another's")
+
+// errChanged is what Signal answers when the group's processes changed
+// while they were listed: whether the kill reached leftovers cannot be
+// told.
+var errChanged = errors.New("supervisor: the group's processes changed while they were listed")
+
+// leader is a child of this process that leads its group: the group is
+// signalled only while the leader, running or exited and not yet reaped,
+// keeps its ID reserved. Its system calls are given, so a test drives it
+// with no process.
+type leader struct {
+	pid int
+	// kill is kill(2); observe returns once pid has exited, without
+	// reaping it; others says whether the group has a process other than
+	// its leader that has not exited; alone is what kill answers for the
+	// group of an exited leader alone; reap reaps the leader.
+	kill    func(pid int, signal syscall.Signal) error
+	observe func(pid int) error
+	others  func(group int) (bool, error)
+	alone   error
+	reap    func() Exit
+
+	mu sync.Mutex
+	// exited is set once observe has seen the exit, reaping once Wait has
+	// begun: nothing is signalled from then.
+	exited, reaping bool
+	once            sync.Once
+	exit            Exit
+}
+
+// Signal signals the group, until Wait has begun. Once the leader has
+// exited, the kernel's answer does not tell leftovers from the exited
+// leader alone, whom Linux signals and macOS refuses (EPERM): the group's
+// processes are listed to tell. The kill is sent whatever the listing
+// finds; one that failed, or that the group changed under, leaves the
+// result unknown, an error other than ESRCH.
+func (l *leader) Signal(signal syscall.Signal) error {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	if l.reaping {
+		return errReaped
+	}
+	if !l.exited {
+		return l.kill(-l.pid, signal)
+	}
+	live, listed := l.others(l.pid)
+	killed := l.kill(-l.pid, signal)
+	switch {
+	case errors.Is(killed, syscall.ESRCH):
+		return killed
+	case listed != nil:
+		return fmt.Errorf("listing the group's processes: %w", listed)
+	case live:
+		return killed
+	case !errors.Is(killed, l.alone):
+		// None was listed, yet the kill was answered as for one.
+		return errChanged
+	}
+	// One that joined while the group was listed is there still.
+	if live, listed := l.others(l.pid); listed != nil {
+		return fmt.Errorf("listing the group's processes: %w", listed)
+	} else if live {
+		return errChanged
+	}
+	return syscall.ESRCH
+}
+
+func (l *leader) Exited() error {
+	if err := l.observe(l.pid); err != nil {
+		return err
+	}
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	l.exited = true
+	return nil
+}
+
+// Wait ends the group's signals, then reaps the leader; a later call says
+// the same and reaps nothing.
+func (l *leader) Wait() Exit {
+	l.mu.Lock()
+	l.reaping = true
+	l.mu.Unlock()
+	l.once.Do(func() { l.exit = l.reap() })
+	return l.exit
 }
 
 // starter is s, or the operating system's when s is nil.

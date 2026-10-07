@@ -116,17 +116,18 @@ func (r Runtime) Run(ctx context.Context, spec Spec, events Sink, onLine func(st
 	}
 
 	// Signals go to the group only while the unreaped leader keeps its ID
-	// reserved: once the process has been reaped, the ID may be reused.
+	// reserved: reaping is set, under mu, before the process is reaped,
+	// once the ID may be reused.
 	var mu sync.Mutex
 	var once sync.Once
 	stopKill := func() {}
-	reaped := false
+	reaping := false
 	exited := make(chan struct{})
 	terminate := func() {
 		once.Do(func() {
 			mu.Lock()
 			defer mu.Unlock()
-			if reaped {
+			if reaping {
 				return
 			}
 			_ = process.Signal(syscall.SIGTERM)
@@ -138,7 +139,7 @@ func (r Runtime) Run(ctx context.Context, spec Spec, events Sink, onLine func(st
 				case <-killed:
 					mu.Lock()
 					defer mu.Unlock()
-					if !reaped {
+					if !reaping {
 						_ = process.Signal(syscall.SIGKILL)
 					}
 				}
@@ -191,21 +192,18 @@ func (r Runtime) Run(ctx context.Context, spec Spec, events Sink, onLine func(st
 
 	// What the process left running in its group is killed while the
 	// leader, exited but not reaped, keeps the group's ID from reuse; only
-	// then is it reaped. An exit that cannot be observed so is reaped
-	// first, and nothing is signalled after.
+	// then is it reaped. An exit that cannot be observed so is not waited
+	// for apart from its reap: the watcher's signals end before it, as the
+	// ID may be reused from then.
 	cleanup := process.Exited()
-	if cleanup == nil {
-		mu.Lock()
-		stopKill()
-		cleanup = process.Signal(syscall.SIGKILL)
-		reaped = true
-		mu.Unlock()
-	}
-	exit := process.Wait()
 	mu.Lock()
-	reaped = true
+	if cleanup == nil {
+		cleanup = process.Signal(syscall.SIGKILL)
+	}
+	reaping = true
 	stopKill()
 	mu.Unlock()
+	exit := process.Wait()
 	close(exited)
 	switch {
 	case cleanup == nil:
@@ -262,9 +260,10 @@ func (r Runtime) Version(ctx context.Context, command string) (string, error) {
 	}()
 
 	// The group is killed only while the unreaped leader keeps its ID
-	// reserved: once the process has been reaped, the ID may be reused.
+	// reserved: reaping is set, under mu, before the process is reaped,
+	// once the ID may be reused.
 	var mu sync.Mutex
-	reaped := false
+	reaping := false
 	var ended error
 	exited, watched := make(chan struct{}), make(chan struct{})
 	go func() {
@@ -281,21 +280,22 @@ func (r Runtime) Version(ctx context.Context, command string) (string, error) {
 		}
 		mu.Lock()
 		defer mu.Unlock()
-		if !reaped {
+		if !reaping {
 			_ = process.Signal(syscall.SIGKILL)
 		}
 	}()
-	// The watcher's kill is disabled once the exit is observed, before the
-	// reap; an exit that cannot be observed so is disabled after it.
-	if process.Exited() == nil {
-		mu.Lock()
-		reaped = true
-		mu.Unlock()
-	}
-	exit := process.Wait()
+	// What the process left running in its group is killed once its exit
+	// is observed, before the reap: a descendant holding stderr would hold
+	// the reap, which waits for stderr's copy. The watcher's kill ends
+	// before the reap too, whether the exit could be observed or not.
+	observed := process.Exited()
 	mu.Lock()
-	reaped = true
+	if observed == nil {
+		_ = process.Signal(syscall.SIGKILL)
+	}
+	reaping = true
 	mu.Unlock()
+	exit := process.Wait()
 	close(exited)
 	<-watched
 	if ended != nil {

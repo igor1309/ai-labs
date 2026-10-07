@@ -29,6 +29,10 @@ func exited(pid int) error {
 	}
 }
 
+// zombieAlone is what kill answers for the group of an exited, unreaped
+// leader alone: Linux signals the zombie.
+func zombieAlone() error { return nil }
+
 // others says whether the group has a process other than its leader that
 // has not exited, from /proc/<pid>/stat: its state and process group.
 func others(group int) (bool, error) {

@@ -40,6 +40,10 @@ func exited(pid int) error {
 	}
 }
 
+// zombieAlone is what kill answers for the group of an exited, unreaped
+// leader alone: macOS finds no process it may signal.
+func zombieAlone() error { return syscall.EPERM }
+
 // The process table as sysctl gives it: kern.proc.pgrp.<group> lists the
 // group's processes as kinfo_proc records, each with its state and PID.
 const (

@@ -409,6 +409,23 @@ func TestProgressWarnsOfAWorkingCopyNotKept(t *testing.T) {
 	}
 }
 
+// A watch warns of what the cleanup after a runtime's exit found: the
+// leftovers it killed, or that it cannot tell, with the group and why.
+func TestProgressWarnsOfTheCleanupAfterTheExit(t *testing.T) {
+	t.Parallel()
+	spy := &clientSpy{run: finished("completed", ""), events: []contract.Event{
+		{Kind: "LEFTOVER_PROCESSES_KILLED", Data: map[string]any{"group": 41.0}},
+		{Kind: "LEFTOVER_CLEANUP_UNKNOWN", Data: map[string]any{"group": 42.0, "error": "listing the group's processes: permission denied"}},
+		{Kind: "CALL_FINISHED"},
+	}}
+	r := run(context.Background(), spy, "runs", "watch", "run-1")
+	want := "! LEFTOVER_PROCESSES_KILLED {\"group\":41}\n" +
+		"! LEFTOVER_CLEANUP_UNKNOWN {\"error\":\"listing the group's processes: permission denied\",\"group\":42}\n"
+	if !strings.Contains(r.stderr, want) {
+		t.Fatalf("stderr:\n%s", r.stderr)
+	}
+}
+
 // A watch prints each path a tool call wrote and each tool call denied in
 // a line of its own. A path, a tool name or an input that holds a newline
 // is quoted, so it stays one line and forges no other; an ordinary one

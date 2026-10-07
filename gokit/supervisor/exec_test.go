@@ -7,20 +7,32 @@ import (
 	"runtime"
 	"syscall"
 	"testing"
+	"time"
 
 	"github.com/igor1309/ai-labs/gokit/supervisor"
 )
 
-// started starts script under bash on Exec and ends its group with the
-// test, whatever the test did.
+// started starts script under bash on Exec, and ends it with the test
+// through the process, whose signals end once its reap begins: what a test
+// left of its group before it reaped the leader is killed and reaped, and
+// nothing is signalled after. A test still running at hangBound has its
+// group killed as a hang.
 func started(t *testing.T, script string) supervisor.Process {
 	t.Helper()
 	process, err := supervisor.Exec{}.Start(supervisor.Command{Name: "bash", Args: []string{"-c", script}, Dir: t.TempDir()})
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(func() { process.Stdout().Close() })
-	cleanUpGroup(t, supervisor.Ref(process.Group(), ""))
+	watchdog := time.AfterFunc(hangBound, func() {
+		t.Errorf("group %d still ran after %s: killed as a hang", process.Group(), hangBound)
+		_ = process.Signal(syscall.SIGKILL)
+	})
+	t.Cleanup(func() {
+		watchdog.Stop()
+		_ = process.Signal(syscall.SIGKILL)
+		process.Wait()
+		process.Stdout().Close()
+	})
 	return process
 }
 

@@ -76,13 +76,14 @@ func (c Commands) Run(ctx context.Context, request CommandRequest, started func(
 	}()
 
 	// The group is killed only while the unreaped leader keeps its ID
-	// reserved: once bash has been reaped, the ID may be reused.
+	// reserved: reaping is set, under mu, before bash is reaped, once the
+	// ID may be reused.
 	var mu sync.Mutex
-	reaped := false
+	reaping := false
 	kill := func() {
 		mu.Lock()
 		defer mu.Unlock()
-		if !reaped {
+		if !reaping {
 			_ = process.Signal(syscall.SIGKILL)
 		}
 	}
@@ -97,18 +98,17 @@ func (c Commands) Run(ctx context.Context, request CommandRequest, started func(
 
 	// What bash left running in its group is killed while bash, exited but
 	// not reaped, keeps the group's ID from reuse; only then is it reaped.
-	// An exit that cannot be observed so is reaped first, and nothing is
-	// signalled after. The result has no place for what the kill found.
-	if process.Exited() == nil {
-		mu.Lock()
-		_ = process.Signal(syscall.SIGKILL)
-		reaped = true
-		mu.Unlock()
-	}
-	exit := process.Wait()
+	// An exit that cannot be observed so is not waited for apart from its
+	// reap: the watcher's kill ends before it, as the ID may be reused from
+	// then. The result has no place for what the kill found.
+	observed := process.Exited()
 	mu.Lock()
-	reaped = true
+	if observed == nil {
+		_ = process.Signal(syscall.SIGKILL)
+	}
+	reaping = true
 	mu.Unlock()
+	exit := process.Wait()
 	close(exited)
 	<-watched
 	result.TimedOut, result.Cancelled, result.Stale = timedOut, cancelled, stale
