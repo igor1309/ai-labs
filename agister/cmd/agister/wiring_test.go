@@ -652,13 +652,15 @@ func TestTheCompositionStartsItsRuntimesThroughItsStarter(t *testing.T) {
 // The process's commands start through the operating system, which also
 // reaps what its runs left, over the run store under its home; and a
 // composition starts its commands through the starter it holds: a call
-// over a starter of the test's asks it for bash, once for the checkout's
-// setup and once for the verification, and for no runtime.
+// over a starter of the test's asks it for bash once, for the
+// verification, and for no runtime. The workspace.yaml's setup, obsolete
+// (ADR-025 rule 3), is never started.
 func TestTheCompositionStartsItsCommandsThroughItsStarter(t *testing.T) {
 	t.Parallel()
 	home, repo := setup(t, "approve")
 	write(t, filepath.Join(home, "workspace.yaml"), "schema: agister.workspace/v1alpha1\nsetup:\n  command: echo prepared\n  timeout: 20s\n")
 	shipped := read(t, filepath.Join(home, "processes", "adversarial_review.yaml"))
+	shipped = strings.Replace(shipped, "  checkout: candidate_revision\n", "  checkout: candidate_revision\n  clean: true\n", 1)
 	write(t, filepath.Join(home, "processes", "verified.yaml"), strings.Replace(shipped, "name: adversarial_review", "name: verified", 1)+`
 verify:
   command: test -f a.txt
@@ -698,20 +700,20 @@ verify:
 	}
 	starter.mu.Lock()
 	defer starter.mu.Unlock()
-	if want := [][]string{{"bash", "-c", "echo prepared"}, {"bash", "-c", "test -f a.txt"}}; !reflect.DeepEqual(starter.commands, want) {
+	if want := [][]string{{"bash", "-c", "test -f a.txt"}}; !reflect.DeepEqual(starter.commands, want) {
 		t.Fatalf("started %q, want %q", starter.commands, want)
 	}
 }
 
-// The process lends an in-place call the caller's worktree through the
-// borrower it composes (ADR-022): a call through the CLI with --workspace
-// in-place completes, its turn in the worktree it was launched from, with
-// the worktree on its record by the lock's canonical path, the lock taken
+// The process lends a call the caller's worktree through the borrower it
+// composes (ADR-025): a call through the CLI completes, its turn in the
+// worktree it was launched from, with the worktree on its record by the
+// lock's canonical path, the review on record as a reader, the lock taken
 // under the home, and no checkout made for it.
 func TestTheCompositionLendsAnInPlaceCallTheCallersWorktree(t *testing.T) {
 	t.Parallel()
 	home, repo := setup(t, "approve")
-	r := agister(t, home, repo, "run", "adversarial_review", "--param", "base=main", "--timeout", "1m", "--workspace", "in-place")
+	r := agister(t, home, repo, "run", "adversarial_review", "--param", "base=main", "--timeout", "1m")
 	if r.code != cli.ExitCompleted {
 		t.Fatalf("exit %d\n%s", r.code, r.stderr)
 	}
@@ -728,7 +730,7 @@ func TestTheCompositionLendsAnInPlaceCallTheCallersWorktree(t *testing.T) {
 	if err != nil || content == "" {
 		t.Fatalf("the worktree's content = %q, %v", content, err)
 	}
-	want := map[string]any{"dir": repo, "worktree": repo, "repository_identity": filepath.Join(repo, ".git"), "revision": head, "content": content}
+	want := map[string]any{"dir": repo, "worktree": repo, "repository_identity": filepath.Join(repo, ".git"), "revision": head, "writer": false, "content": content}
 	if !reflect.DeepEqual(record["in_place"], want) || record["workspace"] != repo || record["processes_ended"] != true {
 		t.Fatalf("in place %v, want %v; workspace %v, processes ended %v", record["in_place"], want, record["workspace"], record["processes_ended"])
 	}

@@ -14,18 +14,20 @@ import (
 	"github.com/igor1309/ai-labs/agister/internal/app"
 )
 
-// WorktreeLocks holds one lock per worktree for in-place calls (ADR-022 rule
-// 3): a lock file in Dir, named by a digest of the worktree's canonical
-// path, empty, which holds no state. The lock is the open file's (flock),
-// taken without waiting: it ends when it is released or the process that
-// holds it ends, and two holders in one process exclude each other too.
-// Nothing is written in the worktree for it.
+// WorktreeLocks holds one hold per worktree for calls (ADR-025 rule 4): a
+// lock file in Dir, named by a digest of the worktree's canonical path,
+// empty, which holds no state. The hold is the open file's (flock), shared
+// by readers and held alone by a writer, taken without waiting: it ends
+// when it is released or the process that holds it ends, and two holders
+// in one process exclude each other too. Nothing is written in the
+// worktree for it.
 type WorktreeLocks struct{ Dir string }
 
-// Lock takes the lock of the worktree at dir and returns its canonical
-// path, symlinks resolved, and the release of the lock. A lock held already
-// is an error that wraps app.ErrWorktreeLocked.
-func (l WorktreeLocks) Lock(dir string) (string, func() error, error) {
+// Lock takes the hold of the worktree at dir, alone or shared, and returns
+// its canonical path, symlinks resolved, and the release of the hold. A
+// hold that cannot be taken, one held alone already or, taken alone, one
+// held at all, is an error that wraps app.ErrWorktreeLocked.
+func (l WorktreeLocks) Lock(dir string, alone bool) (string, func() error, error) {
 	key, err := canonical(dir)
 	if err != nil {
 		return "", nil, err
@@ -38,8 +40,12 @@ func (l WorktreeLocks) Lock(dir string) (string, func() error, error) {
 	if err != nil {
 		return "", nil, err
 	}
+	how := syscall.LOCK_SH
+	if alone {
+		how = syscall.LOCK_EX
+	}
 	for {
-		err = syscall.Flock(int(file.Fd()), syscall.LOCK_EX|syscall.LOCK_NB)
+		err = syscall.Flock(int(file.Fd()), how|syscall.LOCK_NB)
 		if !errors.Is(err, syscall.EINTR) {
 			break
 		}

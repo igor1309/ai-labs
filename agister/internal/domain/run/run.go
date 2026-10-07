@@ -254,9 +254,11 @@ type Record struct {
 	Plan        *Plan       `json:"plan,omitempty"`
 	Inputs      []Input     `json:"inputs,omitempty"`
 	Workspace   string      `json:"workspace,omitempty"`
-	// InPlace is the caller's worktree an in-place call borrowed (ADR-022
-	// rule 2). It is not an effect: no release or reap reads it, and nothing
-	// of Agister's removes it. Unset for any other call.
+	// InPlace is the caller's worktree the call worked in (ADR-025 rule 1;
+	// before it, an in-place call's, ADR-022 rule 2). It is not an effect: no
+	// release or reap reads it, and nothing of Agister's removes it. Unset on
+	// a call refused before it held the worktree, and on a record made
+	// before ADR-025 of a call that worked elsewhere.
 	InPlace *InPlace `json:"in_place,omitempty"`
 	Effects *Effects `json:"effects,omitempty"`
 	// ProcessesEnded says every process the run recorded (Effects.Process
@@ -324,17 +326,23 @@ type Checkout struct {
 	Revision           string `json:"revision,omitempty"`
 }
 
-// InPlace is the caller's worktree a call worked in (ADR-022 rule 2): its
-// directory, its identity, the repository, the revision it started from and
-// how the call verifies.
+// InPlace is the caller's worktree a call worked in (ADR-025 rule 1): its
+// directory, its identity, the repository, the revision it started from,
+// how the call verifies and whether it held the worktree as a writer.
 type InPlace struct {
 	Dir string `json:"dir"`
 	// Worktree is the worktree's canonical path, symlinks resolved: the key
 	// of its lock, by which runs in one worktree are found.
 	Worktree string `json:"worktree"`
-	// RepositoryIdentity is the canonical Git common directory.
+	// RepositoryIdentity is the canonical Git common directory; Revision
+	// the revision the call pinned. Both empty for a call whose process
+	// pins none.
 	RepositoryIdentity string `json:"repository_identity"`
 	Revision           string `json:"revision"`
+	// Writer says the call held the worktree alone, as a writer, not with
+	// other readers (ADR-025 rule 4). Nil on records made before it was
+	// recorded, which held it alone: HeldAlone reads it.
+	Writer *bool `json:"writer,omitempty"`
 	// Verify is where the call's verification runs (ADR-022 rule 6):
 	// VerifyInWorkspace or VerifyOnCopy; empty when the call verifies
 	// nothing.
@@ -345,8 +353,12 @@ type InPlace struct {
 	Content string `json:"content,omitempty"`
 }
 
-// Where verification runs: on a clean copy (ADR-005), or in the caller's
-// worktree an in-place call borrowed (ADR-022 rule 6).
+// HeldAlone says the call held the worktree as a writer: what Writer says,
+// when the record has it; a record made before always did (ADR-022 rule 3).
+func (p *InPlace) HeldAlone() bool { return p.Writer == nil || *p.Writer }
+
+// Where verification runs: on a clean copy (ADR-005), before ADR-025, or in
+// the call's worktree (ADR-025 rule 5).
 const (
 	VerifyOnCopy      = "copy"
 	VerifyInWorkspace = "workspace"
@@ -374,9 +386,13 @@ type Request struct {
 	// A finished run whose session to continue; empty for a fresh session.
 	Continue string `json:"continue,omitempty"`
 	// Workspace is the workspace mode the caller asked for (ADR-022 rule 1),
-	// "in-place" or "temporary"; empty: the repository's setting.
+	// "in-place" or "temporary"; empty: the repository's setting. Only on
+	// records made before ADR-025 removed it.
 	Workspace string `json:"workspace,omitempty"`
-	Cwd       string `json:"cwd"`
+	// Cwd is the caller's directory, its working directory or --dir: the
+	// call works in the root of the git worktree that holds it (ADR-025
+	// rule 1).
+	Cwd string `json:"cwd"`
 }
 
 // State of a record as read.

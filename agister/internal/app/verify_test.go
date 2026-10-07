@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
-	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -27,16 +26,37 @@ const verifyBlock = `verify:
 // verifying gives the harness's process p the verify block, a service
 // ceiling of 3 attempts, a resumable agent a and a fresh-only agent f.
 func verifying(h *harness) {
+	cleanly(h)
 	h.defs.docs[definition.KindProcess]["p"] += verifyBlock
 	h.defs.docs[definition.KindService]["service"] += "max_verify_attempts = 3\n"
 	h.defs.docs[definition.KindAgent]["a"] += "session = \"resumable\"\n"
 	h.defs.docs[definition.KindAgent]["f"] = strings.Replace(settingsDocs()[definition.KindAgent]["a"], `name = "a"`, `name = "f"`, 1)
 }
 
+// cleanly has the harness's process p need a clean worktree: a fresh call
+// starts from HEAD's content exactly (ADR-025 rule 3), as a process that
+// declares verify must.
+func cleanly(h *harness) {
+	h.defs.docs[definition.KindProcess]["p"] = strings.Replace(h.defs.docs[definition.KindProcess]["p"],
+		"  checkout: candidate_revision\n", "  checkout: candidate_revision\n  clean: true\n", 1)
+}
+
+// changingEachTurn has each turn of the harness's call leave content not
+// checked before, tree-1, tree-2, ..., in a worktree that holds the
+// revision's content until the first turn.
+func changingEachTurn(h *harness) {
+	h.changes.identify = func() string {
+		if n := len(h.runner.calls()); n > 0 {
+			return fmt.Sprintf("tree-%d", n)
+		}
+		return "tree"
+	}
+}
+
 // A verifying call runs its command after a valid turn, bounded by
-// verify.timeout, with its process group on record, in a clean copy of the
-// base with the turn's patch applied, not in the checkout; it completes on
-// a pass, delivering exactly the patch the pass checked.
+// verify.timeout, with its process group on record, in the call's worktree
+// (ADR-025 rule 6), with no copy made; it completes on a pass, delivering
+// the patch captured from the content that passed.
 func TestAVerifyingCallRunsItsCommandAfterTheTurn(t *testing.T) {
 	t.Parallel()
 	h := newHarness()
@@ -46,413 +66,22 @@ func TestAVerifyingCallRunsItsCommandAfterTheTurn(t *testing.T) {
 	if record.Result.Status != run.Completed || len(h.runner.calls()) != 1 || h.runner.calls()[0].ResumeSessionID != "" {
 		t.Fatalf("result %+v, turns %+v", record.Result, h.runner.calls())
 	}
-	want := []app.CommandRequest{{Command: "go test ./...", Dir: "/work/copy-1", Timeout: 10 * time.Minute, Bound: 8 << 10}}
+	want := []app.CommandRequest{{Command: "go test ./...", Dir: "/repo", Timeout: 10 * time.Minute, Bound: 8 << 10}}
 	if got := h.commands.runs(); !reflect.DeepEqual(got, want) {
 		t.Fatalf("command runs = %+v", got)
 	}
-	if copies := h.copies.copies(); !reflect.DeepEqual(copies, []madeCopy{{"/repo", "sha-HEAD", "diff --git a/x b/x\n", "/work/copy-1"}}) {
-		t.Fatalf("copies = %+v", copies)
+	noCopy(t, h)
+	if delivered := string(h.recorder.artifacts["changes.patch"]); delivered != "diff --git a/x b/x\n" {
+		t.Fatalf("delivered %q", delivered)
 	}
-	if delivered := string(h.recorder.artifacts["changes.patch"]); delivered != h.copies.copies()[0].patch {
-		t.Fatalf("delivered %q, checked %q", delivered, h.copies.copies()[0].patch)
+	if record.Effects == nil || record.Effects.Command == nil || record.Effects.Command.Ref != "ref-cmd" || record.Effects.Copy != nil {
+		t.Fatalf("effects = %+v", record.Effects)
 	}
-	if record.Effects == nil || record.Effects.Command == nil || record.Effects.Command.Ref != "ref-cmd" || record.Effects.Copy != nil || len(h.copies.left()) != 0 {
-		t.Fatalf("effects = %+v, copies left %v", record.Effects, h.copies.left())
-	}
-	if len(record.Attempts) != 1 || !record.Attempts[0].Run.Passed || record.Attempts[0].Identity != "tree" || record.Attempts[0].Run.Dir != "/work/copy-1" {
+	if len(record.Attempts) != 1 || !record.Attempts[0].Run.Passed || record.Attempts[0].Identity != "tree" || record.Attempts[0].Run.Dir != "/repo" {
 		t.Fatalf("attempts %+v", record.Attempts)
 	}
 	if kinds := strings.Join(h.recorder.kinds(), " "); !strings.Contains(kinds, "VERIFY_STARTED VERIFY_FINISHED") {
 		t.Fatalf("events = %s", kinds)
-	}
-}
-
-// The copy is on record while the command runs in it, beside the command's
-// process group, so a reap after a killed CLI removes it.
-func TestTheCleanCopyIsOnRecordWhileTheCommandRuns(t *testing.T) {
-	t.Parallel()
-	h := newHarness()
-	verifying(h)
-	var running *run.Effects
-	h.commands.running = func(app.CommandRequest) {
-		h.recorder.mu.Lock()
-		defer h.recorder.mu.Unlock()
-		running = h.recorder.updates[len(h.recorder.updates)-1].Effects
-	}
-	record := h.call(t, contract.CallRequest{})
-	if record.Result.Status != run.Completed {
-		t.Fatalf("result %+v", record.Result)
-	}
-	if running == nil || running.Command == nil || !reflect.DeepEqual(running.Copy, &run.Checkout{Repository: "/repo", Dir: "/work/copy-1"}) {
-		t.Fatalf("effects while the command ran = %+v", running)
-	}
-}
-
-// The case of LAB-15: the base ignores *.log and has no new.log, and the
-// agent creates new.log, which the check needs. Ignored, it is not the
-// checkout's content and no patch carries it, so the check, which would
-// pass in the checkout, fails on the clean copy: the attempt fails, the
-// failure goes back to the agent in its checkout, and nothing is
-// delivered as verified.
-func TestAnIgnoredFileTheCheckNeedsFailsTheAttempt(t *testing.T) {
-	t.Parallel()
-	h := newHarness()
-	verifying(h)
-	h.defs.docs[definition.KindProcess]["p"] = strings.Replace(h.defs.docs[definition.KindProcess]["p"], "command: go test ./...", "command: test -f new.log", 1)
-	// Where new.log is: the agent's checkout alone. Its content, and the
-	// patch to it, are the base's.
-	files := map[string][]string{"/work/checkout": {"new.log"}}
-	h.commands.exitIn = func(dir string) int {
-		if slices.Contains(files[dir], "new.log") {
-			return 0
-		}
-		return 1
-	}
-	record := h.call(t, contract.CallRequest{})
-	if record.Result.Status == run.Completed || len(record.Attempts) == 0 {
-		t.Fatalf("result %+v, attempts %+v", record.Result, record.Attempts)
-	}
-	first := record.Attempts[0]
-	if first.Run == nil || first.Run.Passed || first.Run.Dir != "/work/copy-1" || *first.Run.Exit.Code != 1 {
-		t.Fatalf("attempt 1 = %+v, run %+v", first, first.Run)
-	}
-	if copies := h.copies.copies(); len(copies) != 1 || copies[0].patch != "" {
-		t.Fatalf("copies = %+v", copies)
-	}
-	turns := h.runner.calls()
-	if len(turns) != 2 || turns[1].Cwd != "/work/checkout" || turns[1].ResumeSessionID != "prov-1" || !strings.Contains(turns[1].Prompt, "test -f new.log") {
-		t.Fatalf("turns = %+v", turns)
-	}
-	if _, delivered := h.recorder.artifacts["changes.patch"]; delivered || len(h.copies.left()) != 0 {
-		t.Fatalf("artifacts %v, copies left %v", h.recorder.artifacts, h.copies.left())
-	}
-}
-
-// A clean copy that cannot be made, recorded or shown to have the content
-// the attempt checks fails the call as internal, as a capture that does
-// not reproduce verified content does: no command runs, no repair starts,
-// and the copy made is removed.
-func TestACleanCopyThatCannotBeCheckedFailsTheCall(t *testing.T) {
-	t.Parallel()
-	cases := []struct {
-		name    string
-		arrange func(*harness)
-		message string
-	}{
-		{"not made", func(h *harness) { h.copies.err = errors.New("no space") }, "making the clean copy to check: no space"},
-		{"not recorded", func(h *harness) {
-			h.recorder.updateErr = func(record run.Record) error {
-				if record.Effects != nil && record.Effects.Copy != nil {
-					return errors.New("disk full")
-				}
-				return nil
-			}
-		}, "recording the clean copy failed: disk full"},
-		{"other content", func(h *harness) { h.changes.copied = func(string, int) string { return "other" } },
-			"the captured changes do not reproduce attempt 1's content: applied to sha-HEAD they make other, not tree"},
-	}
-	for _, c := range cases {
-		t.Run(c.name, func(t *testing.T) {
-			t.Parallel()
-			h := newHarness()
-			verifying(h)
-			c.arrange(h)
-			record := h.call(t, contract.CallRequest{})
-			if record.Result.Status != run.Failed || class(record) != run.ClassInternal || message(record) != c.message {
-				t.Fatalf("result %+v", record.Result.Error)
-			}
-			if len(h.commands.runs()) != 0 || len(h.runner.calls()) != 1 || len(record.Attempts) != 1 || record.Attempts[0].Run != nil || record.Attempts[0].Stopped == "" {
-				t.Fatalf("runs %d, turns %d, attempts %+v", len(h.commands.runs()), len(h.runner.calls()), record.Attempts)
-			}
-			if len(h.copies.left()) != 0 || (record.Effects != nil && record.Effects.Copy != nil) {
-				t.Fatalf("copies left %v, effects %+v", h.copies.left(), record.Effects)
-			}
-		})
-	}
-}
-
-// A clean copy that was never started left nothing to remove: the call
-// fails without a discard, which would wait for the repository again, and
-// the record stops naming the copy.
-func TestACleanCopyNeverStartedIsNotDiscarded(t *testing.T) {
-	t.Parallel()
-	h := newHarness()
-	verifying(h)
-	h.copies.err = fmt.Errorf("%w: %w", app.ErrCopyNotStarted, context.Canceled)
-	record := h.call(t, contract.CallRequest{})
-	if record.Result.Status != run.Failed || class(record) != run.ClassInternal ||
-		message(record) != "making the clean copy to check: the copy was not started: context canceled" {
-		t.Fatalf("result %+v", record.Result.Error)
-	}
-	if len(h.copies.removed) != 0 {
-		t.Fatalf("discarded %v", h.copies.removed)
-	}
-	if len(h.commands.runs()) != 0 || (record.Effects != nil && record.Effects.Copy != nil) {
-		t.Fatalf("runs %d, effects %+v", len(h.commands.runs()), record.Effects)
-	}
-}
-
-// Rule 7 on the clean copy: a run that changes the copy's content fails
-// whatever its exit, and the evidence keeps what it changed. The run never
-// touched the checkout, so a repair that changes nothing there has made no
-// progress.
-func TestARunThatChangesItsCleanCopyFails(t *testing.T) {
-	t.Parallel()
-	h := newHarness()
-	verifying(h)
-	h.changes.changes = []byte("diff --git a/ran.txt b/ran.txt\n")
-	h.changes.copied = func(_ string, named int) string {
-		if named == 0 {
-			return "tree"
-		}
-		return "tree-after-run"
-	}
-	record := h.call(t, contract.CallRequest{})
-	if record.Result.Status != run.Failed || class(record) != run.ClassBudgetExhausted || message(record) != "no progress: attempt 2's content is what attempt 1 checked" {
-		t.Fatalf("result %+v", record.Result.Error)
-	}
-	ran := record.Attempts[0].Run
-	if ran == nil || ran.Passed || *ran.Exit.Code != 0 || ran.After != "tree-after-run" || ran.AfterChanges == nil || ran.AfterChanges.Name != "attempt-1-run.patch" {
-		t.Fatalf("attempt 1's run = %+v", ran)
-	}
-	if turns := h.runner.calls(); len(turns) != 2 || !strings.Contains(turns[1].Prompt, "exit code 0; the run changed the content it checked") {
-		t.Fatalf("turns = %+v", turns)
-	}
-	if !contains(h.recorder.kinds(), "VERIFY_CHANGED_CONTENT") || len(h.copies.left()) != 0 {
-		t.Fatalf("events %v, copies left %v", h.recorder.kinds(), h.copies.left())
-	}
-}
-
-// Every attempt's clean copy is removed when the attempt ends, before any
-// repair turn starts, however the attempt ends, and the record then no
-// longer names it.
-func TestEveryCleanCopyIsRemovedAfterItsAttempt(t *testing.T) {
-	t.Parallel()
-	cases := []struct {
-		name    string
-		arrange func(*harness)
-		status  run.Status
-		copies  int
-	}{
-		{"passed", nil, run.Completed, 1},
-		{"failed, repaired, passed", func(h *harness) {
-			h.commands.exits = []int{1}
-			identities := 0
-			h.changes.identify = func() string { identities++; return fmt.Sprintf("tree-%d", identities) }
-		}, run.Completed, 2},
-		{"failed with no attempts left", func(h *harness) {
-			h.defs.docs[definition.KindProcess]["p"] = strings.Replace(h.defs.docs[definition.KindProcess]["p"], "max_attempts: 3", "max_attempts: 1", 1)
-			h.commands.exits = []int{1}
-		}, run.Failed, 1},
-		{"could not run", func(h *harness) {
-			h.recorder.updateErr = func(record run.Record) error {
-				if record.Effects != nil && record.Effects.Command != nil {
-					return errors.New("disk full")
-				}
-				return nil
-			}
-		}, run.Failed, 1},
-		{"its command panicked", func(h *harness) { h.commands.running = func(app.CommandRequest) { panic("the runner exploded") } }, run.Failed, 1},
-	}
-	for _, c := range cases {
-		t.Run(c.name, func(t *testing.T) {
-			t.Parallel()
-			h := newHarness()
-			verifying(h)
-			if c.arrange != nil {
-				c.arrange(h)
-			}
-			// How many turns had run when each copy was removed.
-			var removedAfter []int
-			h.copies.removing = func(string) { removedAfter = append(removedAfter, len(h.runner.calls())) }
-			record := h.call(t, contract.CallRequest{})
-			if record.Result.Status != c.status {
-				t.Fatalf("result %+v", record.Result)
-			}
-			if len(h.copies.copies()) != c.copies || len(h.copies.left()) != 0 || (record.Effects != nil && record.Effects.Copy != nil) {
-				t.Fatalf("copies %+v, left %v, effects %+v", h.copies.copies(), h.copies.left(), record.Effects)
-			}
-			for i, turns := range removedAfter {
-				if turns != i+1 {
-					t.Fatalf("copy %d removed after %d turns", i+1, turns)
-				}
-			}
-		})
-	}
-}
-
-// A copy that cannot be removed is an event, and the record keeps naming
-// it.
-func TestACleanCopyThatCannotBeRemovedStaysOnRecord(t *testing.T) {
-	t.Parallel()
-	h := newHarness()
-	verifying(h)
-	h.copies.removeErr = errors.New("busy")
-	record := h.call(t, contract.CallRequest{})
-	if record.Result.Status != run.Completed || !contains(h.recorder.kinds(), "VERIFY_COPY_REMOVE_FAILED") {
-		t.Fatalf("result %+v, events %v", record.Result, h.recorder.kinds())
-	}
-	if record.Effects == nil || !reflect.DeepEqual(record.Effects.Copy, &run.Checkout{Repository: "/repo", Dir: "/work/copy-1"}) {
-		t.Fatalf("effects = %+v", record.Effects)
-	}
-}
-
-// A call has one clean copy, at a path it names once and records before
-// the copy is made, so a CLI killed while the copy is made or patched
-// leaves one a reap finds; every attempt makes its copy there. A copy that
-// cannot be recorded is not made.
-func TestTheCleanCopyIsOnRecordBeforeItIsMade(t *testing.T) {
-	t.Parallel()
-	h := newHarness()
-	verifying(h)
-	h.commands.exits = []int{1}
-	identities := 0
-	h.changes.identify = func() string { identities++; return fmt.Sprintf("tree-%d", identities) }
-	var making []*run.Checkout
-	h.copies.copying = func(string) {
-		h.recorder.mu.Lock()
-		defer h.recorder.mu.Unlock()
-		making = append(making, h.recorder.updates[len(h.recorder.updates)-1].Effects.Copy)
-	}
-	record := h.call(t, contract.CallRequest{})
-	if record.Result.Status != run.Completed || len(record.Attempts) != 2 {
-		t.Fatalf("result %+v, attempts %+v", record.Result, record.Attempts)
-	}
-	if !reflect.DeepEqual(h.copies.placed, []string{"run-1"}) {
-		t.Fatalf("placed %v", h.copies.placed)
-	}
-	on := &run.Checkout{Repository: "/repo", Dir: "/work/copy-1"}
-	if !reflect.DeepEqual(making, []*run.Checkout{on, on}) {
-		t.Fatalf("on record while the copies were made: %+v", making)
-	}
-	for _, attempt := range record.Attempts {
-		if attempt.Run.Dir != "/work/copy-1" {
-			t.Fatalf("attempt %d ran in %s", attempt.Number, attempt.Run.Dir)
-		}
-	}
-
-	h = newHarness()
-	verifying(h)
-	h.recorder.updateErr = func(record run.Record) error {
-		if record.Effects != nil && record.Effects.Copy != nil {
-			return errors.New("disk full")
-		}
-		return nil
-	}
-	making = nil
-	h.copies.copying = func(dir string) { making = append(making, &run.Checkout{Dir: dir}) }
-	record = h.call(t, contract.CallRequest{})
-	if record.Result.Status != run.Failed || message(record) != "recording the clean copy failed: disk full" || len(making) != 0 {
-		t.Fatalf("result %+v, copies made %+v", record.Result.Error, making)
-	}
-}
-
-// A failed run whose clean copy cannot be removed ends the call at once:
-// the copy stays on record and no attempt makes its own over it, so no
-// repair turn is paid for. The record keeps the failed attempt, with its
-// patch and run, the removal's error, and the copy for a reap to remove.
-func TestAFailedRunWhoseCopyCannotBeRemovedEndsTheCall(t *testing.T) {
-	t.Parallel()
-	h := newHarness()
-	verifying(h)
-	h.changes.changes = []byte("diff --git a/x b/x\n")
-	h.commands.exits = []int{1}
-	h.copies.removeErr = errors.New("busy")
-	record := h.call(t, contract.CallRequest{})
-	want := "attempt 1 failed and its clean copy at /work/copy-1 could not be removed: busy"
-	if record.Result.Status != run.Failed || class(record) != run.ClassInternal || message(record) != want {
-		t.Fatalf("result %+v", record.Result.Error)
-	}
-	if turns := h.runner.calls(); len(turns) != 1 || contains(h.recorder.kinds(), "REPAIR_STARTED") {
-		t.Fatalf("turns %+v, events %v", turns, h.recorder.kinds())
-	}
-	if len(record.Attempts) != 1 {
-		t.Fatalf("attempts %+v", record.Attempts)
-	}
-	failed := record.Attempts[0]
-	if failed.Run == nil || failed.Run.Passed || *failed.Run.Exit.Code != 1 || failed.Changes == nil || failed.Changes.Name != "attempt-1.patch" || !strings.Contains(failed.Stopped, want) {
-		t.Fatalf("attempt 1 = %+v, run %+v", failed, failed.Run)
-	}
-	if record.Effects == nil || !reflect.DeepEqual(record.Effects.Copy, &run.Checkout{Repository: "/repo", Dir: "/work/copy-1"}) || !reflect.DeepEqual(h.copies.left(), []string{"/work/copy-1"}) {
-		t.Fatalf("effects %+v, copies left %v", record.Effects, h.copies.left())
-	}
-}
-
-// Making the clean copy ends when the call's time does: a copy still being
-// made when the deadline passes is interrupted, the call ends as a timeout,
-// no command runs, and the part of the copy that was made is removed.
-func TestMakingTheCleanCopyIsInterruptedAtTheCallsDeadline(t *testing.T) {
-	t.Parallel()
-	h := newHarness()
-	clock := &settableClock{now: time.Date(2026, 9, 28, 12, 0, 0, 0, time.UTC)}
-	h.clock = clock
-	h.calls = h.callsOn(h.defs)
-	verifying(h)
-	h.defs.docs[definition.KindProcess]["p"] = strings.Replace(h.defs.docs[definition.KindProcess]["p"], "timeout: 10m", "timeout: 30s", 1)
-	// The turn leaves 200ms of the call's minute; the copy takes as long as
-	// it is given.
-	h.runner.during = func(app.TurnRequest) { clock.advance(time.Minute - 200*time.Millisecond) }
-	h.copies.block = true
-	record := h.call(t, contract.CallRequest{Timeout: "60s"})
-	want := "the call's timeout passed while making the clean copy to check for attempt 1: context deadline exceeded"
-	if record.Result.Status != run.Interrupted || class(record) != run.ClassTimeout || message(record) != want {
-		t.Fatalf("result %+v", record.Result)
-	}
-	h.copies.mu.Lock()
-	interrupted := h.copies.interrupted
-	h.copies.mu.Unlock()
-	if !errors.Is(interrupted, context.DeadlineExceeded) || len(h.copies.copies()) != 1 {
-		t.Fatalf("copy ended with %v, copies %+v", interrupted, h.copies.copies())
-	}
-	if len(h.commands.runs()) != 0 || len(h.runner.calls()) != 1 || len(record.Attempts) != 1 || record.Attempts[0].Run != nil {
-		t.Fatalf("runs %d, turns %d, attempts %+v", len(h.commands.runs()), len(h.runner.calls()), record.Attempts)
-	}
-	if len(h.copies.left()) != 0 || (record.Effects != nil && record.Effects.Copy != nil) {
-		t.Fatalf("copies left %v, effects %+v", h.copies.left(), record.Effects)
-	}
-}
-
-// Making the clean copy counts against the call's timeout, and the command
-// gets what is left after it, up to verify.timeout: a 60-second call whose
-// turn ends at second 59 and whose copy takes 2 seconds times out, and
-// one whose copy leaves it 10 seconds runs its command for 10.
-func TestMakingTheCleanCopyCountsAgainstTheCallsTimeout(t *testing.T) {
-	t.Parallel()
-	cases := []struct {
-		name       string
-		turn, copy time.Duration
-		timeout    time.Duration // the command's; zero when it never runs
-		status     run.Status
-		class      run.Class
-		message    string
-	}{
-		{"no time left", 59 * time.Second, 2 * time.Second, 0, run.Interrupted, run.ClassTimeout,
-			"the call's timeout passed while attempt 1's clean copy was made"},
-		{"some time left", 30 * time.Second, 20 * time.Second, 10 * time.Second, run.Completed, "", ""},
-	}
-	for _, c := range cases {
-		t.Run(c.name, func(t *testing.T) {
-			t.Parallel()
-			h := newHarness()
-			clock := &settableClock{now: time.Date(2026, 9, 28, 12, 0, 0, 0, time.UTC)}
-			h.clock = clock
-			h.calls = h.callsOn(h.defs)
-			verifying(h)
-			h.defs.docs[definition.KindProcess]["p"] = strings.Replace(h.defs.docs[definition.KindProcess]["p"], "timeout: 10m", "timeout: 30s", 1)
-			h.runner.during = func(app.TurnRequest) { clock.advance(c.turn) }
-			h.copies.copying = func(string) { clock.advance(c.copy) }
-			record := h.call(t, contract.CallRequest{Timeout: "60s"})
-			if record.Result.Status != c.status || class(record) != c.class || message(record) != c.message {
-				t.Fatalf("result %+v", record.Result)
-			}
-			runs := h.commands.runs()
-			if c.timeout == 0 && len(runs) != 0 || c.timeout != 0 && (len(runs) != 1 || runs[0].Timeout != c.timeout) {
-				t.Fatalf("command runs = %+v", runs)
-			}
-			if len(h.copies.left()) != 0 || (record.Effects != nil && record.Effects.Copy != nil) {
-				t.Fatalf("copies left %v, effects %+v", h.copies.left(), record.Effects)
-			}
-		})
 	}
 }
 
@@ -468,15 +97,13 @@ func TestAFailedRunIsRepairedInTheCallsSession(t *testing.T) {
 	cost := 0.5
 	h.runner.turn.CostUSD = &cost
 	h.commands.exits = []int{1}
-	// Each repair turn names content not checked before.
-	identities := 0
-	h.changes.identify = func() string { identities++; return fmt.Sprintf("tree-%d", identities) }
+	changingEachTurn(h)
 	record := h.call(t, contract.CallRequest{})
 	if record.Result.Status != run.Completed || len(h.commands.runs()) != 2 || len(record.Attempts) != 2 {
 		t.Fatalf("result %+v, attempts %+v", record.Result, record.Attempts)
 	}
 	turns := h.runner.calls()
-	if len(turns) != 2 || turns[1].ResumeSessionID != "prov-1" || turns[1].Cwd != "/work/checkout" || *turns[1].MaxCostUSD != 1.5 || turns[1].Timeout >= 20*time.Minute || turns[1].Timeout < 19*time.Minute ||
+	if len(turns) != 2 || turns[1].ResumeSessionID != "prov-1" || turns[1].Cwd != "/repo" || *turns[1].MaxCostUSD != 1.5 || turns[1].Timeout >= 20*time.Minute || turns[1].Timeout < 19*time.Minute ||
 		!strings.HasPrefix(turns[1].Prompt, "The verification command failed. Fix the cause, not the check.\n\n## command\n\n```\ngo test ./...\n```\n\n## exit status\n\nexit code 1") {
 		t.Fatalf("repair turn = %+v", turns[1])
 	}
@@ -520,8 +147,9 @@ func TestARepairCostsWhatItAddedToTheCallsSession(t *testing.T) {
 				session, request.Continue = "prov-0", "run-0"
 				finished := time.Date(2026, 9, 28, 11, 0, 0, 0, time.UTC)
 				h.runs.records["run-0"] = run.Record{ID: "run-0", Agent: "a", Runtime: &run.Runtime{Adapter: "spy"}, FinishedAt: &finished,
-					Turn:   &run.Turn{ProviderSessionID: "prov-0", Session: &run.SessionTotals{CostUSD: usd(7.75)}},
-					Result: &run.Result{Status: run.Completed, Session: &run.Session{ProviderSessionID: "prov-0"}}}
+					InPlace: &run.InPlace{Dir: "/repo", Worktree: "/repo", RepositoryIdentity: "/repo", Revision: "sha-HEAD", Content: "tree"},
+					Turn:    &run.Turn{ProviderSessionID: "prov-0", Session: &run.SessionTotals{CostUSD: usd(7.75)}},
+					Result:  &run.Result{Status: run.Completed, Session: &run.Session{ProviderSessionID: "prov-0"}}}
 				h.runs.states["run-0"] = run.StateFinished
 			}
 			for _, total := range c.totals {
@@ -532,8 +160,7 @@ func TestARepairCostsWhatItAddedToTheCallsSession(t *testing.T) {
 				h.runner.turns = append(h.runner.turns, turn)
 			}
 			h.commands.exits = []int{1, 1}
-			identities := 0
-			h.changes.identify = func() string { identities++; return fmt.Sprintf("tree-%d", identities) }
+			changingEachTurn(h)
 			record := h.call(t, request)
 			if record.Result.Status != run.Completed || len(record.Attempts) != 3 {
 				t.Fatalf("result %+v, attempts %+v", record.Result, record.Attempts)
@@ -643,8 +270,7 @@ func TestAFailedVerificationKeepsTheLatestValidOutput(t *testing.T) {
 			h.defs.docs[definition.KindProcess]["p"] = strings.Replace(h.defs.docs[definition.KindProcess]["p"], "max_attempts: 3", "max_attempts: 2", 1)
 			h.runner.turns = []run.Turn{h.runner.turn, c.repair}
 			h.commands.exits = []int{1, 1}
-			identities := 0
-			h.changes.identify = func() string { identities++; return fmt.Sprintf("tree-%d", identities) }
+			changingEachTurn(h)
 			record := h.call(t, contract.CallRequest{})
 			if record.Result.Status != run.Failed || class(record) != c.class || len(h.runner.calls()) != 2 {
 				t.Fatalf("result %+v, turns %d", record.Result, len(h.runner.calls()))
@@ -712,7 +338,7 @@ func TestRecordedVerifyIsTheResolvedOneUnderTheProcessDigest(t *testing.T) {
 	if class(record) != "" {
 		t.Fatalf("call failed: %s", message(record))
 	}
-	want := run.Verify{Command: "go test ./...", Timeout: 10 * time.Minute, MaxAttempts: 3, Instruction: "The verification command failed. Fix the cause, not the check."}
+	want := run.Verify{Command: "go test ./...", Timeout: 10 * time.Minute, MaxAttempts: 3, Instruction: "The verification command failed. Fix the cause, not the check.", Where: run.VerifyInWorkspace}
 	if record.Verify == nil || *record.Verify != want {
 		t.Fatalf("verify = %+v", record.Verify)
 	}

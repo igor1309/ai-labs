@@ -1,6 +1,7 @@
 package definition_test
 
 import (
+	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -8,8 +9,8 @@ import (
 	"github.com/igor1309/ai-labs/agister/internal/domain/definition"
 )
 
-// verifyingProcess is a process with a checkout and the given verify block,
-// indented under verify:.
+// verifyingProcess is a process with a checkout that needs a clean
+// worktree and the given verify block, indented under verify:.
 func verifyingProcess(verify string) string {
 	return `schema: agister.process/v1alpha1
 name: p
@@ -21,6 +22,7 @@ input:
     candidate_revision: {source: git.revision, rev: HEAD}
 workspace:
   checkout: candidate_revision
+  clean: true
 output:
   format: text
 verify:
@@ -40,7 +42,7 @@ func TestVerifyIsParsedAsDeclared(t *testing.T) {
 		t.Fatal(err)
 	}
 	want := definition.Verify{Command: "go test ./...", Timeout: 10 * time.Minute, MaxAttempts: 3, Instruction: "The verification command failed. Fix the cause, not the check."}
-	if process.Verify == nil || *process.Verify != want {
+	if process.Verify == nil || !reflect.DeepEqual(*process.Verify, want) {
 		t.Fatalf("verify = %+v", process.Verify)
 	}
 	without, err := definition.ParseProcess(doc(definition.KindProcess, "p", strings.TrimSuffix(verifyingProcess(""), "verify:\n")))
@@ -102,11 +104,11 @@ func TestVerifyMaxAttemptsBelowOneIsInvalid(t *testing.T) {
 	}
 }
 
-// Rule 5 (ADR-002 rule 2): verification runs only in a checkout the call
-// owns.
+// ADR-025 rule 3: verification proves the run's changes from the pinned
+// revision.
 func TestVerifyWithoutACheckoutIsInvalid(t *testing.T) {
 	t.Parallel()
-	text := strings.Replace(verifyingProcess(verifyBlock), "workspace:\n  checkout: candidate_revision\n", "", 1)
+	text := strings.Replace(verifyingProcess(verifyBlock), "  checkout: candidate_revision\n", "", 1)
 	_, err := definition.ParseProcess(doc(definition.KindProcess, "p", text))
 	if err == nil || !strings.Contains(err.Error(), "verify: requires workspace.checkout") {
 		t.Fatalf("err = %v", err)
@@ -155,7 +157,7 @@ func TestVerificationIsParsedAsDeclared(t *testing.T) {
 		t.Fatal(err)
 	}
 	want := definition.Verify{Command: "go test ./...", Timeout: 10 * time.Minute, MaxAttempts: 3, Instruction: "The verification command failed. Fix the cause, not the check."}
-	if parsed.Name != "repo" || parsed.Verify != want || parsed.Source.Kind != definition.KindVerify {
+	if parsed.Name != "repo" || !reflect.DeepEqual(parsed.Verify, want) || parsed.Source.Kind != definition.KindVerify {
 		t.Fatalf("verification = %+v", parsed)
 	}
 }
@@ -248,47 +250,75 @@ func TestAProcessDeclaringVerifyTwiceIsInvalid(t *testing.T) {
 // one with the inline block is.
 func TestANamedVerificationWithoutACheckoutIsInvalid(t *testing.T) {
 	t.Parallel()
-	text := strings.Replace(namingProcess("verify:repo"), "workspace:\n  checkout: candidate_revision\n", "", 1)
+	text := strings.Replace(namingProcess("verify:repo"), "  checkout: candidate_revision\n", "", 1)
 	_, err := definition.ParseProcess(doc(definition.KindProcess, "p", text))
 	if err == nil || !strings.Contains(err.Error(), "verify: requires workspace.checkout") {
 		t.Fatalf("err = %v", err)
 	}
 }
 
-// ADR-022 rule 6 and its ADR-010 amendment: a verification, inline or a
-// document, may say where an in-place call runs it: workspace, its only
-// value. Without it, it is a clean copy.
-func TestWhereWorkspaceIsParsedInlineAndInADocument(t *testing.T) {
+// ADR-025 rule 3: verification proves the run's changes from a clean
+// start, inline or named, so its process declares workspace.clean: true.
+func TestVerifyWithoutACleanWorktreeIsInvalid(t *testing.T) {
 	t.Parallel()
-	process, err := definition.ParseProcess(doc(definition.KindProcess, "p", verifyingProcess(verifyBlock+"  where: workspace\n")))
-	if err != nil || process.Verify == nil || process.Verify.Where != definition.WhereWorkspace {
-		t.Fatalf("inline: %+v, %v", process.Verify, err)
-	}
-	parsed, err := definition.ParseVerify(doc(definition.KindVerify, "repo", verification+"where: workspace\n"))
-	if err != nil || parsed.Verify.Where != definition.WhereWorkspace {
-		t.Fatalf("document: %+v, %v", parsed.Verify, err)
-	}
-	without, err := definition.ParseVerify(doc(definition.KindVerify, "repo", verification))
-	if err != nil || without.Verify.Where != "" {
-		t.Fatalf("without: %+v, %v", without.Verify, err)
+	for name, text := range map[string]string{
+		"inline":   verifyingProcess(verifyBlock),
+		"named":    namingProcess("verify:repo"),
+		"not true": verifyingProcess(verifyBlock),
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			value := ""
+			if name == "not true" {
+				value = "  clean: false\n"
+			}
+			text = strings.Replace(text, "  clean: true\n", value, 1)
+			_, err := definition.ParseProcess(doc(definition.KindProcess, "p", text))
+			if err == nil || !strings.Contains(err.Error(), "verify: requires workspace.clean: true") {
+				t.Fatalf("err = %v", err)
+			}
+		})
 	}
 }
 
-// ADR-022 rule 6: any other value of where is a problem, inline or in a
-// document.
-func TestWhereOtherThanWorkspaceIsInvalid(t *testing.T) {
+// ADR-025 rule 3: a process without verify may declare workspace.clean,
+// which is false unless set.
+func TestWorkspaceCleanIsParsed(t *testing.T) {
 	t.Parallel()
-	for _, value := range []string{"copy", "worktree", `""`, "[workspace]"} {
+	clean, err := definition.ParseProcess(doc(definition.KindProcess, "p", strings.TrimSuffix(verifyingProcess(""), "verify:\n")))
+	if err != nil || !clean.Clean {
+		t.Fatalf("clean: %+v, %v", clean, err)
+	}
+	without, err := definition.ParseProcess(doc(definition.KindProcess, "p", strings.Replace(strings.TrimSuffix(verifyingProcess(""), "verify:\n"), "  clean: true\n", "", 1)))
+	if err != nil || without.Clean {
+		t.Fatalf("without: %+v, %v", without, err)
+	}
+	_, err = definition.ParseProcess(doc(definition.KindProcess, "p", strings.Replace(verifyingProcess(verifyBlock), "clean: true", "clean: yes please", 1)))
+	if err == nil || !strings.Contains(err.Error(), "workspace.clean") {
+		t.Fatalf("a clean that is not a boolean: err = %v", err)
+	}
+}
+
+// ADR-025: a verification's where, inline or in a document, whatever its
+// value, is obsolete: it is read with a warning that names ADR-025 and says
+// it is ignored, and is no problem.
+func TestWhereIsObsoleteInlineAndInADocument(t *testing.T) {
+	t.Parallel()
+	for _, value := range []string{"workspace", "copy", `""`} {
 		t.Run(value, func(t *testing.T) {
 			t.Parallel()
-			_, err := definition.ParseProcess(doc(definition.KindProcess, "p", verifyingProcess(verifyBlock+"  where: "+value+"\n")))
-			if err == nil || !strings.Contains(err.Error(), "verify.where: must be") {
-				t.Fatalf("inline: err = %v", err)
+			process, err := definition.ParseProcess(doc(definition.KindProcess, "p", verifyingProcess(verifyBlock+"  where: "+value+"\n")))
+			if err != nil || len(process.Obsolete) != 1 || !strings.HasPrefix(process.Obsolete[0], "verify.where: is obsolete and ignored (ADR-025)") {
+				t.Fatalf("inline: %q, %v", process.Obsolete, err)
 			}
-			_, err = definition.ParseVerify(doc(definition.KindVerify, "repo", verification+"where: "+value+"\n"))
-			if err == nil || !strings.Contains(err.Error(), "\n  where: must be") {
-				t.Fatalf("document: err = %v", err)
+			parsed, err := definition.ParseVerify(doc(definition.KindVerify, "repo", verification+"where: "+value+"\n"))
+			if err != nil || len(parsed.Verify.Obsolete) != 1 || !strings.HasPrefix(parsed.Verify.Obsolete[0], "where: is obsolete and ignored (ADR-025)") {
+				t.Fatalf("document: %q, %v", parsed.Verify.Obsolete, err)
 			}
 		})
+	}
+	without, err := definition.ParseVerify(doc(definition.KindVerify, "repo", verification))
+	if err != nil || len(without.Verify.Obsolete) != 0 {
+		t.Fatalf("without: %q, %v", without.Verify.Obsolete, err)
 	}
 }

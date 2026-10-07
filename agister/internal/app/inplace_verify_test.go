@@ -1,7 +1,6 @@
 package app_test
 
 import (
-	"context"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -16,15 +15,8 @@ import (
 	"github.com/igor1309/ai-labs/agister/internal/domain/run"
 )
 
-// ADR-022 rule 6: a verification may say that an in-place call runs it in
-// the caller's worktree.
-
-// inTheWorktree gives the harness's process p the verify block with where:
-// workspace, as verifying does without it.
-func inTheWorktree(h *harness) {
-	verifying(h)
-	h.defs.docs[definition.KindProcess]["p"] += "  where: workspace\n"
-}
+// ADR-025 rule 5: a call verifies in the caller's worktree, with the
+// rebuild check; nothing is copied.
 
 // rebuilding has the harness's changes rebuild, from any patch applied to
 // revision, the content the worktree has now, and from one applied to any
@@ -61,16 +53,15 @@ func noCopy(t *testing.T, h *harness) {
 	}
 }
 
-// An in-place call whose verification says where: workspace runs the
-// command in the worktree, under the worktree's lock, and never calls the
-// copy seam; the pass completes the call with the patch that rebuilds what
-// passed from the call's revision, and the record says the call and each
-// attempt verified in the workspace.
+// ADR-025 rule 5: a verifying call runs the command in the worktree, under
+// the worktree's hold, which it has alone, and never calls the copy seam;
+// the pass completes the call with the patch that rebuilds what passed from
+// the call's revision, and the record says the call and each attempt
+// verified in the workspace.
 func TestAnInPlaceCallVerifiesInTheWorktreeWhenItsVerificationSaysSo(t *testing.T) {
 	t.Parallel()
 	h := newHarness()
-	inTheWorktree(h)
-	withWorkspace(h, inPlaceWorkspace)
+	verifying(h)
 	changedByTheTurn(h)
 	rebuilding(h, "sha-HEAD")
 	var locked []bool
@@ -81,8 +72,8 @@ func TestAnInPlaceCallVerifiesInTheWorktreeWhenItsVerificationSaysSo(t *testing.
 		t.Fatalf("result %+v: %s", record.Result, message(record))
 	}
 	runs := h.commands.runs()
-	if len(runs) != 1 || runs[0].Dir != "/repo" || runs[0].Command != "go test ./..." || !reflect.DeepEqual(locked, []bool{true}) {
-		t.Fatalf("command runs %+v, locked while running %v", runs, locked)
+	if len(runs) != 1 || runs[0].Dir != "/repo" || runs[0].Command != "go test ./..." || !reflect.DeepEqual(locked, []bool{true}) || !reflect.DeepEqual(h.locks.writers, []bool{true}) {
+		t.Fatalf("command runs %+v, locked while running %v, held alone %v", runs, locked, h.locks.writers)
 	}
 	noCopy(t, h)
 	noWorktreeEffect(t, record)
@@ -113,8 +104,7 @@ func TestACommandInTheWorktreeGetsOnlyTheCallsRemainingTime(t *testing.T) {
 	clock := &settableClock{now: time.Date(2026, 9, 28, 12, 0, 0, 0, time.UTC)}
 	h.clock = clock
 	h.calls = h.callsOn(h.defs)
-	inTheWorktree(h)
-	withWorkspace(h, inPlaceWorkspace)
+	verifying(h)
 	changedByTheTurn(h)
 	rebuilding(h, "sha-HEAD")
 	h.defs.docs[definition.KindProcess]["p"] = strings.Replace(h.defs.docs[definition.KindProcess]["p"], "timeout: 10m", "timeout: 30s", 1)
@@ -137,8 +127,7 @@ func TestACommandInTheWorktreeGetsOnlyTheCallsRemainingTime(t *testing.T) {
 func TestAnIgnoredFileTheAgentMadeIsThereForTheCommandAndStays(t *testing.T) {
 	t.Parallel()
 	h := newHarness()
-	inTheWorktree(h)
-	withWorkspace(h, inPlaceWorkspace)
+	verifying(h)
 	rebuilding(h, "sha-HEAD")
 	worktree := t.TempDir()
 	h.workspaces.root = worktree
@@ -167,52 +156,30 @@ func TestAnIgnoredFileTheAgentMadeIsThereForTheCommandAndStays(t *testing.T) {
 	noCopy(t, h)
 }
 
-// Where a verification says workspace, only an in-place call verifies
-// there: a call in a checkout of its own still verifies on a clean copy,
-// as one in-place whose verification does not say it does.
-func TestOnlyAnInPlaceCallWhoseVerificationSaysSoVerifiesInTheWorktree(t *testing.T) {
+// ADR-025 rules 3 and 5: a verification that still says where runs in the
+// worktree all the same, the key ignored; nothing is copied.
+func TestAVerificationThatSaysWhereVerifiesInTheWorktree(t *testing.T) {
 	t.Parallel()
-	for name, c := range map[string]struct {
-		arrange func(h *harness)
-		inPlace string // the record's in-place verification; none when empty
-	}{
-		"a temporary call with where: workspace": {arrange: inTheWorktree},
-		"an in-place call without where": {arrange: func(h *harness) {
-			verifying(h)
-			withWorkspace(h, inPlaceWorkspace)
-		}, inPlace: run.VerifyOnCopy},
-	} {
-		t.Run(name, func(t *testing.T) {
+	for _, where := range []string{"workspace", "copy"} {
+		t.Run(where, func(t *testing.T) {
 			t.Parallel()
 			h := newHarness()
-			c.arrange(h)
+			verifying(h)
+			h.defs.docs[definition.KindProcess]["p"] += "  where: " + where + "\n"
 			changedByTheTurn(h)
-			h.changes.copied = func(string, int) string { return "after" }
+			rebuilding(h, "sha-HEAD")
 			record := h.call(t, contract.CallRequest{})
 
 			if record.Result.Status != run.Completed {
 				t.Fatalf("result %+v: %s", record.Result, message(record))
 			}
-			if copies := h.copies.copies(); len(copies) != 1 || copies[0].patch != "the turn's patch" {
-				t.Fatalf("copies %+v", copies)
-			}
-			if runs := h.commands.runs(); len(runs) != 1 || !strings.HasPrefix(runs[0].Dir, copyDirs) {
+			if runs := h.commands.runs(); len(runs) != 1 || runs[0].Dir != "/repo" {
 				t.Fatalf("command runs %+v", runs)
 			}
-			if len(record.Attempts) != 1 || record.Attempts[0].Where != run.VerifyOnCopy {
-				t.Fatalf("attempts %+v", record.Attempts)
+			if len(record.Attempts) != 1 || record.Attempts[0].Where != run.VerifyInWorkspace || record.InPlace == nil || record.InPlace.Verify != run.VerifyInWorkspace {
+				t.Fatalf("attempts %+v, in place %+v", record.Attempts, record.InPlace)
 			}
-			if inPlace := ""; record.InPlace != nil {
-				inPlace = record.InPlace.Verify
-				if inPlace != c.inPlace {
-					t.Fatalf("in place %+v", record.InPlace)
-				}
-			} else if c.inPlace != "" {
-				t.Fatal("not in place")
-			}
-			if len(h.changes.rebuilds) != 0 {
-				t.Fatalf("rebuilt %+v: the copy did", h.changes.rebuilds)
-			}
+			noCopy(t, h)
 		})
 	}
 }
@@ -256,8 +223,7 @@ func turnsMake(h *harness, contents ...string) *worktreeContent {
 func TestACommandThatChangesTheWorktreeFailsItsAttempt(t *testing.T) {
 	t.Parallel()
 	h := newHarness()
-	inTheWorktree(h)
-	withWorkspace(h, inPlaceWorkspace)
+	verifying(h)
 	worktree := turnsMake(h, "after", "repaired")
 	rebuilding(h, "sha-HEAD")
 	runs := 0
@@ -293,8 +259,7 @@ func TestACommandThatChangesTheWorktreeFailsItsAttempt(t *testing.T) {
 func TestWhatASilentCommandChangedInTheWorktreeIsItsRunsNotTheRepairs(t *testing.T) {
 	t.Parallel()
 	h, _ := staleHarness(t, "no_output: 2m")
-	inTheWorktree(h)
-	withWorkspace(h, inPlaceWorkspace)
+	verifying(h)
 	worktree := turnsMake(h, "after", "repaired")
 	rebuilding(h, "sha-HEAD")
 	h.commands.staleRuns = 1
@@ -336,8 +301,7 @@ func TestWhatASilentCommandChangedInTheWorktreeIsItsRunsNotTheRepairs(t *testing
 func TestAFailingCommandIsRepairedInTheSameSessionAndWorktree(t *testing.T) {
 	t.Parallel()
 	h := newHarness()
-	inTheWorktree(h)
-	withWorkspace(h, inPlaceWorkspace)
+	verifying(h)
 	turnsMake(h, "after", "repaired")
 	rebuilding(h, "sha-HEAD")
 	h.commands.exits = []int{1, 0}
@@ -369,8 +333,7 @@ func TestAFailingCommandIsRepairedInTheSameSessionAndWorktree(t *testing.T) {
 func TestAPatchThatDoesNotRebuildWhatPassedInTheWorktreeFailsTheCall(t *testing.T) {
 	t.Parallel()
 	h := newHarness()
-	inTheWorktree(h)
-	withWorkspace(h, inPlaceWorkspace)
+	verifying(h)
 	changedByTheTurn(h)
 	h.changes.rebuilt = func(string, []byte) string { return "other" }
 	record := h.call(t, contract.CallRequest{})
@@ -383,53 +346,5 @@ func TestAPatchThatDoesNotRebuildWhatPassedInTheWorktreeFailsTheCall(t *testing.
 	}
 	if h.locks.holds("/repo") {
 		t.Fatal("the worktree's lock was kept")
-	}
-}
-
-// ADR-022 rule 6 and its ADR-010 amendment: where is part of a named
-// verification, recorded with the call, in the document whose digest is on
-// record; process show shows it.
-func TestWhereIsInTheNamedVerificationAndItsDigest(t *testing.T) {
-	t.Parallel()
-	digests := map[string]string{}
-	for _, text := range []string{verification, verification + "where: workspace\n"} {
-		h := newHarness()
-		named(h, text)
-		withWorkspace(h, inPlaceWorkspace)
-		changedByTheTurn(h)
-		rebuilding(h, "sha-HEAD")
-		h.changes.copied = func(string, int) string { return "after" }
-		record := h.call(t, contract.CallRequest{})
-		if record.Result.Status != run.Completed || record.Verify == nil {
-			t.Fatalf("result %+v: %s", record.Result, message(record))
-		}
-		for _, source := range record.Definitions {
-			if source.Kind == string(definition.KindVerify) {
-				digests[record.Verify.Where] = source.SHA256
-			}
-		}
-		if record.Verify.Where != "" && record.InPlace.Verify != record.Verify.Where {
-			t.Fatalf("verify %+v, in place %+v", record.Verify, record.InPlace)
-		}
-
-		inspection := app.NewInspection(app.NewResolver(h.defs, struct{ app.ResolverIdentities }{h.runtimes}, h.validator, resolverCheckStub{}))
-		view, err := inspection.ShowProcess(context.Background(), "p", "")
-		if err != nil || view.Verify == nil || view.Verify.Where != record.Verify.Where {
-			t.Fatalf("shown %+v, recorded %+v, %v", view.Verify, record.Verify, err)
-		}
-	}
-	if len(digests) != 2 || digests[""] == digests[run.VerifyInWorkspace] || digests[run.VerifyInWorkspace] != sha(verification+"where: workspace\n") {
-		t.Fatalf("digests %v", digests)
-	}
-}
-
-// check reports a verification whose where is not workspace.
-func TestCheckReportsABadWhere(t *testing.T) {
-	t.Parallel()
-	h := newHarness()
-	named(h, verification+"where: copy\n")
-	report := checkOf(t, h, false)
-	if !strings.Contains(strings.Join(messages(report.Problems), "\n"), `where: must be "workspace"`) {
-		t.Fatalf("problems %q", messages(report.Problems))
 	}
 }

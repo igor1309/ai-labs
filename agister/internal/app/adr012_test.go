@@ -206,13 +206,13 @@ func TestADR012WorkflowPreflightsRuntimeProblems(t *testing.T) {
 		{"runtime cannot repair", "second", func(h *harness, docs map[definition.Kind]map[string]string) {
 			docs[definition.KindService]["service"] += "max_verify_attempts = 3\n"
 			docs[definition.KindAgent]["b"] += "session = \"resumable\"\n"
-			docs[definition.KindProcess]["second"] += "verify: verify:repo\n"
+			docs[definition.KindProcess]["second"] = namingVerification(docs[definition.KindProcess]["second"])
 			docs[definition.KindVerify] = map[string]string{"repo": verification}
 			h.runner.identity.Resume = false
 		}, "runtime bad cannot resume sessions", ""},
 		{"missing verification with broken runtime", "second", func(h *harness, docs map[definition.Kind]map[string]string) {
 			docs[definition.KindRuntime]["bad"] = strings.Replace(docs[definition.KindRuntime]["bad"], "contract: spy/1", "contract: spy/2", 1)
-			docs[definition.KindProcess]["second"] += "verify: verify:repo\n"
+			docs[definition.KindProcess]["second"] = namingVerification(docs[definition.KindProcess]["second"])
 		}, "describes adapter contract spy/2", ""},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -261,7 +261,7 @@ func TestADR012AgentOverridesAreResolvedAndAttributed(t *testing.T) {
 				docs[definition.KindService]["service"] += "max_verify_attempts = 3\n"
 				docs[definition.KindAgent]["a"] += "session = \"resumable\"\n"
 				docs[definition.KindVerify] = map[string]string{"repo": verification}
-				docs[definition.KindProcess]["q"] += "verify: verify:repo\n"
+				docs[definition.KindProcess]["q"] = namingVerification(docs[definition.KindProcess]["q"])
 				problem = "agent b is fresh-only"
 			}
 			// p is the same process, with a sound default; select the bad
@@ -289,7 +289,7 @@ func TestADR012MissingVerificationStillRefusesAtItsNode(t *testing.T) {
 	t.Parallel()
 	h := newHarness()
 	docs := workflowDocs()
-	docs[definition.KindProcess]["second"] += "verify: verify:repo\n"
+	docs[definition.KindProcess]["second"] = namingVerification(docs[definition.KindProcess]["second"])
 	s := settingsFiles(t, docs)
 	project := fsdefs.Store{Dir: t.TempDir()}
 	client := h.clientOn(fsdefs.Layered{Global: s, Project: &project})
@@ -334,7 +334,6 @@ func TestADR012EveryDocumentKindRefusesOnlyItsDependents(t *testing.T) {
 		{definition.KindVerify, "repo"},
 		{definition.KindProcess, "second"},
 		{definition.KindWorkflow, "w"},
-		{definition.KindWorkspace, "workspace"},
 	} {
 		t.Run(string(tc.kind), func(t *testing.T) {
 			t.Parallel()
@@ -350,11 +349,7 @@ func TestADR012EveryDocumentKindRefusesOnlyItsDependents(t *testing.T) {
 			case definition.KindSchema:
 				docs[definition.KindProcess]["second"] = strings.Replace(docs[definition.KindProcess]["second"], "schema: s", "schema: broken", 1)
 			case definition.KindVerify:
-				docs[definition.KindProcess]["second"] += "verify: verify:repo\n"
-			case definition.KindWorkspace:
-				// first works in the repository, without a checkout, so it
-				// does not read the workspace settings.
-				docs[definition.KindProcess]["first"] = inTheRepository(docs[definition.KindProcess]["first"])
+				docs[definition.KindProcess]["second"] = namingVerification(docs[definition.KindProcess]["second"])
 			}
 			if docs[tc.kind] == nil {
 				docs[tc.kind] = map[string]string{}
@@ -425,11 +420,10 @@ func TestADR012AgentListingsShowBrokenDependencies(t *testing.T) {
 	}
 }
 
-// A checkout without a setup of its own reads the workspace settings, so
-// workspace settings that do not parse refuse its calls and the workflows
-// on it, and check, listings and the refusal say so, with the document's
-// path and the chain of uses (ADR-012, ADR-015 rules 3 and 5).
-func TestInvalidWorkspaceSettingsRefuseWhatReadsThem(t *testing.T) {
+// ADR-025: no call reads the workspace settings, so settings that do not
+// parse refuse nothing: check warns that they are obsolete and ignored,
+// and the calls and workflows they once refused run.
+func TestInvalidWorkspaceSettingsRefuseNothing(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
 	h := newHarness()
@@ -443,49 +437,31 @@ func TestInvalidWorkspaceSettingsRefuseWhatReadsThem(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	reach := reachOf(t, report, "workspace workspace: setup.timeout: is required")
-	if reach.Stops || *reach.Subject != (contract.DefinitionRef{Kind: "workspace", Name: "workspace"}) ||
-		!reflect.DeepEqual(reach.Processes, []string{"first", "second"}) || !reflect.DeepEqual(reach.Workflows, []string{"w"}) {
-		t.Fatalf("reach = %+v", reach)
+	if len(report.Problems) != 0 || !contains(report.Warnings, "workspace settings "+path+": "+definition.ObsoleteWorkspace) {
+		t.Fatalf("problems %v, warnings %q", messages(report.Problems), report.Warnings)
 	}
-
-	want := "process first uses workspace workspace (" + path + "): setup.timeout: is required"
 	processes, err := client.ListProcesses(ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
-	refusals := map[string]string{}
 	for _, process := range processes {
-		refusals[process.Name] = process.Refusal
+		if process.Refusal != "" {
+			t.Fatalf("process %s refused: %s", process.Name, process.Refusal)
+		}
 	}
-	if refusals["first"] != want || refusals["second"] == "" || refusals["joiner"] != "" {
-		t.Fatalf("refusals = %q", refusals)
-	}
-
-	record := h.submit(t, client, contract.CallRequest{Process: "first"})
-	if class(record) != run.ClassRefused || message(record) != want {
-		t.Fatalf("call of first: %s %q, want %q", class(record), message(record), want)
-	}
-	if len(h.workspaces.checkouts)+len(h.runner.calls())+len(h.setup.runs()) != 0 {
-		t.Fatalf("checkouts %v, turns %d, setup runs %d", h.workspaces.checkouts, len(h.runner.calls()), len(h.setup.runs()))
-	}
-	workflow := h.submit(t, client, contract.CallRequest{Process: "w", Params: map[string]string{"candidate": "HEAD"}})
-	if wantWorkflow := "workflow w uses process first, which uses workspace workspace (" + path + "): setup.timeout: is required"; class(workflow) != run.ClassRefused || message(workflow) != wantWorkflow {
-		t.Fatalf("workflow: %s %q, want %q", class(workflow), message(workflow), wantWorkflow)
+	if record := h.submit(t, client, contract.CallRequest{Process: "first"}); class(record) != "" || len(h.setup.runs()) != 0 {
+		t.Fatalf("call of first: %s %q, setup runs %d", class(record), message(record), len(h.setup.runs()))
 	}
 }
 
 // Workspace settings that cannot be read are the workspace document's
-// problem, not one that stops every command: runs list and the calls that
-// do not read them run, and the calls of a checkout that reads them for
-// its default are refused, naming the document (ADR-015 rules 3 and 4).
-func TestUnreadableWorkspaceSettingsRefuseOnlyWhatReadsThem(t *testing.T) {
+// problem, not one that stops every command, and no call reads them
+// (ADR-025): runs list, and calls with a checkout and without one run.
+func TestUnreadableWorkspaceSettingsRefuseNothing(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
 	h := newHarness()
 	docs := workflowDocs()
-	// first works in the repository, without a checkout, so it does not
-	// read the workspace settings; second does.
 	docs[definition.KindProcess]["first"] = inTheRepository(docs[definition.KindProcess]["first"])
 	s := settingsFiles(t, docs)
 	path := filepath.Join(s.Dir, "workspace.yaml")
@@ -499,38 +475,23 @@ func TestUnreadableWorkspaceSettingsRefuseOnlyWhatReadsThem(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	var reach *contract.ProblemReach
-	for i, item := range report.Reach {
-		if item.Stops {
-			t.Fatalf("a problem stops every command: %q", item.Problem)
-		}
-		if *item.Subject == (contract.DefinitionRef{Kind: "workspace", Name: "workspace"}) {
-			reach = &report.Reach[i]
+	for _, item := range report.Reach {
+		if item.Stops || len(item.Processes) != 0 || len(item.Workflows) != 0 {
+			t.Fatalf("a problem refuses something: %+v", item)
 		}
 	}
-	if reach == nil || !reflect.DeepEqual(reach.Processes, []string{"second"}) || !reflect.DeepEqual(reach.Workflows, []string{"w"}) {
-		t.Fatalf("reach = %+v", report.Reach)
-	}
-
 	if runs, err := client.ListRuns(ctx); err != nil || len(runs) != 1 {
 		t.Fatalf("runs = %v, %v", runs, err)
 	}
-	if record := h.submit(t, client, contract.CallRequest{Process: "first"}); class(record) != "" || len(h.runner.calls()) != 1 {
-		t.Fatalf("call of first: %s %s", class(record), message(record))
-	}
-	record := h.submit(t, client, contract.CallRequest{Process: "second"})
-	if want := "process second uses workspace workspace (" + path + "): "; class(record) != run.ClassRefused ||
-		!strings.HasPrefix(message(record), want) || !strings.Contains(message(record), "too many levels") {
-		t.Fatalf("call of second: %s %q, want %q and the read error", class(record), message(record), want)
-	}
-	if len(h.runner.calls()) != 1 {
-		t.Fatalf("%d turns, want the one call that ran", len(h.runner.calls()))
+	for i, process := range []string{"first", "second"} {
+		if record := h.submit(t, client, contract.CallRequest{Process: process}); class(record) != "" || len(h.runner.calls()) != i+1 {
+			t.Fatalf("call of %s: %s %s", process, class(record), message(record))
+		}
 	}
 }
 
 // inTheRepository is the node process doc without its checkout, under the
-// read-only policy that works in the repository: it reads no workspace
-// settings, whatever they say (ADR-022 rule 1).
+// read-only policy that works in the repository.
 func inTheRepository(doc string) string {
 	doc = strings.Replace(doc, "workspace:\n  checkout: candidate_revision\n", "", 1)
 	return strings.Replace(doc, "process-policy:pol", "process-policy:joining", 1)

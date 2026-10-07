@@ -11,7 +11,6 @@ import (
 	"github.com/igor1309/ai-labs/agister/internal/domain/definition"
 	"github.com/igor1309/ai-labs/agister/internal/domain/enforce"
 	"github.com/igor1309/ai-labs/agister/internal/domain/policy"
-	"github.com/igor1309/ai-labs/agister/internal/domain/run"
 	"github.com/igor1309/ai-labs/agister/internal/domain/settings"
 )
 
@@ -41,13 +40,10 @@ type resolution struct {
 	effective policy.Effective
 	identity  RuntimeIdentity
 	plan      enforce.Plan
-	// setup is the setup the call's checkout runs (ADR-012); nil when none.
-	setup *resolvedSetup
-	// inPlace says the call works in the caller's worktree (ADR-022 rule 1),
-	// as the caller or the workspace settings ask; precheck gates it there,
-	// nil when none.
-	inPlace  bool
-	precheck *resolvedSetup
+	// writer says the call holds the worktree alone (ADR-025 rule 4): its
+	// plan grants a permission the service lists as writing, or its process
+	// declares verify, whose command runs with the operator's authority.
+	writer bool
 }
 
 // absentInput is an optional prompt input whose prompt neither layer has
@@ -56,13 +52,6 @@ type absentInput struct {
 	index  int // among the process's values
 	input  string
 	prompt string
-}
-
-// resolvedSetup is a call's effective setup and the document it came from.
-type resolvedSetup struct {
-	definition.Setup
-	from string // run.SetupFromProcess or run.SetupFromWorkspace
-	path string
 }
 
 // Resolver loads and checks definitions, composes limits, checks the
@@ -199,9 +188,6 @@ type overrides struct {
 	maxCostUSD *float64
 	// A workflow defers only a missing named verification to its node.
 	deferMissingVerify bool
-	// workspace is the workspace mode the caller asked for (ADR-022 rule
-	// 1); empty: the workspace settings'.
-	workspace string
 }
 
 // resolve resolves the process named processName. A refused one's
@@ -283,9 +269,6 @@ func (r *Resolver) resolveCall(ctx context.Context, processName, agentOverride s
 	}
 	if res.process, err = definition.ParseProcess(doc); err != nil {
 		return res, parsed(err)
-	}
-	if err := r.resolveSetup(ctx, res, caller.workspace, load, parsed); err != nil {
-		return res, err
 	}
 	if res.process.Policy != "" {
 		if doc, err = load(definition.KindPolicy, res.process.Policy); err != nil {
@@ -475,55 +458,9 @@ func (r *Resolver) resolveCall(ctx context.Context, processName, agentOverride s
 		return res, refuse("runtime %s needs %s to use the repository's skills (ADR-006), and the plan grants no such tool: %s",
 			res.mapping.Name, strings.Join(tools, " or "), withoutSkillTools(res, tools, verified, unverified))
 	}
+	res.writer = res.process.Verify != nil || res.process.VerifyName != "" ||
+		slices.ContainsFunc(res.plan.Granted, func(permission string) bool { return contains(res.service.Writing, permission) })
 	return res, nil
-}
-
-// resolveSetup fixes the setup a call's checkout runs: the process's own,
-// or the workspace settings' default (ADR-012), and where the call works:
-// in a checkout of its own or, as the caller's mode or else the settings
-// ask, in the caller's worktree, with the settings' precheck (ADR-022). The
-// workspace settings are read for every process with a checkout, so the
-// call's definitions name the document they came from; a process's own
-// setup replaces only theirs.
-func (r *Resolver) resolveSetup(ctx context.Context, res *resolution, mode string, load func(definition.Kind, string) (definition.Document, error), parsed func(error) error) error {
-	process := res.process
-	switch {
-	case mode != "" && mode != definition.ModeInPlace && mode != definition.ModeTemporary:
-		return refuse("workspace mode %q: must be %q or %q", mode, definition.ModeInPlace, definition.ModeTemporary)
-	case mode != "" && process.Checkout == "":
-		return refuse("process %s works in the repository: it declares no workspace.checkout, so it takes no workspace mode (%s)", process.Name, mode)
-	}
-	var workspace *definition.Workspace
-	if process.Checkout != "" {
-		names, err := r.definitions.List(ctx, definition.KindWorkspace)
-		if err != nil {
-			return refuse("workspace settings: %v", err)
-		}
-		if contains(names, string(definition.KindWorkspace)) {
-			doc, err := load(definition.KindWorkspace, string(definition.KindWorkspace))
-			if err != nil {
-				return err
-			}
-			parsedWorkspace, err := definition.ParseWorkspace(doc)
-			if err != nil {
-				return parsed(err)
-			}
-			workspace = &parsedWorkspace
-		}
-	}
-	res.inPlace = process.Checkout != "" && (mode == definition.ModeInPlace || mode == "" && workspace.InPlace())
-	if res.inPlace && workspace != nil && workspace.Precheck != nil {
-		res.precheck = &resolvedSetup{Setup: *workspace.Precheck, from: run.SetupFromWorkspace, path: workspace.Source.Path}
-	}
-	setup, fromWorkspace := process.EffectiveSetup(workspace)
-	switch {
-	case setup == nil:
-	case fromWorkspace:
-		res.setup = &resolvedSetup{Setup: *setup, from: run.SetupFromWorkspace, path: workspace.Source.Path}
-	default:
-		res.setup = &resolvedSetup{Setup: *setup, from: run.SetupFromProcess, path: process.Source.Path}
-	}
-	return nil
 }
 
 // withoutSkillTools says why the plan grants none of tools: each is
@@ -609,14 +546,10 @@ func (r *Resolver) workflow(ctx context.Context, name string) (*workflowResoluti
 				continue
 			}
 			seen[node.Process] = true
-			resolved, problem := r.resolve(ctx, node.Process, "", overrides{deferMissingVerify: true})
-			switch {
-			case problem != nil:
+			// Its nodes work in the caller's worktree, as any call does
+			// (ADR-025 rule 4).
+			if _, problem := r.resolve(ctx, node.Process, "", overrides{deferMissingVerify: true}); problem != nil {
 				problems = append(problems, "workflow "+name+" uses "+strings.Replace(problem.Error(), " uses ", ", which uses ", 1))
-			case resolved.inPlace:
-				// A workflow's nodes never work in the caller's worktree
-				// (ADR-022 rule 1).
-				problems = append(problems, fmt.Sprintf("workflow %s uses process %s, which works in-place as the workspace settings say (mode: %s), and a workflow's nodes never do", name, node.Process, definition.ModeInPlace))
 			}
 		}
 		if len(problems) > 0 {

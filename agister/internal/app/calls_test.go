@@ -16,7 +16,6 @@ import (
 	"github.com/igor1309/ai-labs/agister/internal/app"
 	"github.com/igor1309/ai-labs/agister/internal/contract"
 	"github.com/igor1309/ai-labs/agister/internal/domain/definition"
-	"github.com/igor1309/ai-labs/agister/internal/domain/prompt"
 	"github.com/igor1309/ai-labs/agister/internal/domain/run"
 )
 
@@ -221,9 +220,10 @@ func TestCompletedCallSendsTheComposedPayloads(t *testing.T) {
 	if !reflect.DeepEqual(gotArgs, wantArgs) || h.inputs.specs[0].Cwd != "/repo" {
 		t.Fatalf("input specs = %+v", h.inputs.specs)
 	}
-	// The checkout is of the resolved revision, and released once.
-	if !reflect.DeepEqual(h.workspaces.checkouts, [][2]string{{"/repo", "sha-HEAD"}}) || h.workspaces.releases() != 1 {
-		t.Fatalf("checkouts %v, released %d", h.workspaces.checkouts, h.workspaces.releases())
+	// The call works in the caller's worktree, at the resolved revision,
+	// and lets its hold go once (ADR-025 rule 1).
+	if len(h.workspaces.checkouts) != 0 || record.InPlace == nil || record.InPlace.Revision != "sha-HEAD" || h.locks.releases("/repo") != 1 {
+		t.Fatalf("checkouts %v, in place %+v, released %d", h.workspaces.checkouts, record.InPlace, h.locks.releases("/repo"))
 	}
 	// The turn request carries primitives, not permissions, and a fresh
 	// call names no session: the runtime reports the one it starts.
@@ -233,7 +233,7 @@ func TestCompletedCallSendsTheComposedPayloads(t *testing.T) {
 	}
 	got := requests[0]
 	if !reflect.DeepEqual(got.Primitives, []string{"Read", "Grep"}) ||
-		got.Cwd != "/work/checkout" || got.Model != "m1" || got.Effort != "high" ||
+		got.Cwd != "/repo" || got.Model != "m1" || got.Effort != "high" ||
 		got.Timeout != 20*time.Minute || got.ResumeSessionID != "" || string(got.OutputSchema) != schema {
 		t.Fatalf("turn request = %+v", got)
 	}
@@ -268,7 +268,7 @@ func TestCompletedCallSendsTheComposedPayloads(t *testing.T) {
 		t.Fatalf("profile = %+v", record.Profile)
 	}
 	order := strings.Join(h.recorder.kinds(), " ")
-	if order != "CALL_SUBMITTED PLANNED PERMISSIONS_WITHHELD PROCESS_STARTED NO_CHANGES CALL_FINISHED" {
+	if order != "CALL_SUBMITTED PLANNED PERMISSIONS_WITHHELD WORKTREE_LOCKED WORKTREE_ADMITTED PROCESS_STARTED NO_CHANGES CALL_FINISHED" {
 		t.Fatalf("events = %s", order)
 	}
 	if !reflect.DeepEqual(h.recorder.raw, []string{`{"raw":true}`}) {
@@ -307,8 +307,8 @@ func TestNodeStatusFollowsTheResponses(t *testing.T) {
 			if record.Result.Output != nil {
 				t.Fatalf("output recorded for a node that did not complete: %s", record.Result.Output)
 			}
-			if h.workspaces.releases() != 1 {
-				t.Fatalf("released %d times", h.workspaces.releases())
+			if h.locks.releases("/repo") != 1 {
+				t.Fatalf("released %d times", h.locks.releases("/repo"))
 			}
 		})
 	}
@@ -596,14 +596,23 @@ func reviewOnCodex(t *testing.T, configure func(service string) string) (*harnes
 	return h, h.call(t, contract.CallRequest{Process: "adversarial_review_sandboxed"})
 }
 
+// leftInTheWorktree is record as a run that worked in the worktree /repo
+// at sha-HEAD and left its content tree there, where a continuation
+// resumes it (ADR-025 rule 7).
+func leftInTheWorktree(record run.Record) run.Record {
+	record.Workspace = "/repo"
+	record.InPlace = &run.InPlace{Dir: "/repo", Worktree: "/repo", RepositoryIdentity: "/repo", Revision: "sha-HEAD", Content: "tree"}
+	return record
+}
+
 func TestContinuationResumesAFinishedRunsSession(t *testing.T) {
 	t.Parallel()
 	resumable := func(h *harness) {
 		h.defs.docs[definition.KindAgent]["a"] += "session = \"resumable\"\n"
 	}
 	finished := time.Date(2026, 9, 28, 11, 0, 0, 0, time.UTC)
-	earlier := run.Record{ID: "run-0", Agent: "a", Runtime: &run.Runtime{Adapter: "spy"}, FinishedAt: &finished,
-		Result: &run.Result{Status: run.Interrupted, Session: &run.Session{ProviderSessionID: "prov-0"}}}
+	earlier := leftInTheWorktree(run.Record{ID: "run-0", Agent: "a", Runtime: &run.Runtime{Adapter: "spy"}, FinishedAt: &finished,
+		Result: &run.Result{Status: run.Interrupted, Session: &run.Session{ProviderSessionID: "prov-0"}}})
 
 	h := newHarness()
 	resumable(h)
@@ -657,9 +666,10 @@ func TestContinuationResumesAFinishedRunsSession(t *testing.T) {
 }
 
 // A runtime that resumes a session only in the directory it ran in cannot
-// continue a run anywhere else: not in a checkout made for the call, nor
-// from another directory. Each is refused before any workspace is made;
-// from the directory the run worked in, the session is resumed there.
+// continue a run anywhere else: not one that worked in a checkout of its
+// own, made before ADR-025, nor from another directory. Each is refused
+// before any turn; from the directory the run worked in, the session is
+// resumed there.
 func TestContinuationWhereTheSessionDidNotRunIsRefused(t *testing.T) {
 	t.Parallel()
 	// run-0 left its session's evidence: it worked in checkout A.
@@ -677,6 +687,9 @@ func TestContinuationWhereTheSessionDidNotRunIsRefused(t *testing.T) {
 		}
 		prior := earlier
 		prior.Workspace = workspace
+		if checkout {
+			prior.Effects = &run.Effects{Checkout: &run.Checkout{Repository: "/repo", Dir: workspace, Revision: "sha-HEAD"}}
+		}
 		h.runs.records["run-0"], h.runs.states["run-0"] = prior, run.StateFinished
 		return h
 	}
@@ -686,7 +699,7 @@ func TestContinuationWhereTheSessionDidNotRunIsRefused(t *testing.T) {
 		checkout  bool
 		reason    string
 	}{
-		{"a checkout of its own", "/work/checkout-a", true, "runtime rt resumes a session only in the directory it ran in, and process p works in a checkout of its own; it cannot continue run run-0"},
+		{"a checkout of its own", "/work/checkout-a", true, "run run-0, the latest run of the session, worked in a checkout of its own (/work/checkout-a), made before ADR-025; it cannot be continued"},
 		{"another directory", "/elsewhere", false, "runtime rt resumes a session only in the directory it ran in: run run-0 worked in /elsewhere, not /repo"},
 		{"no directory recorded", "", false, "run run-0 recorded none"},
 	} {
@@ -729,15 +742,19 @@ func TestAContinuationCostsWhatItAddedToItsSession(t *testing.T) {
 	}
 	// run-0 started prov-0; run-0b continued it, after it.
 	recorded := func(id, continues string, created, finished int, totals *run.SessionTotals) run.Record {
-		return run.Record{ID: id, Agent: "a", Runtime: &run.Runtime{Adapter: "spy"}, Request: run.Request{Continue: continues},
+		return leftInTheWorktree(run.Record{ID: id, Agent: "a", Runtime: &run.Runtime{Adapter: "spy"}, Request: run.Request{Continue: continues},
 			CreatedAt: *at(created), FinishedAt: at(finished), Turn: &run.Turn{ProviderSessionID: "prov-0", Session: totals},
-			Result: &run.Result{Status: run.Completed, Session: &run.Session{ProviderSessionID: "prov-0", Continues: continues}}}
+			Result: &run.Result{Status: run.Completed, Session: &run.Session{ProviderSessionID: "prov-0", Continues: continues}}})
 	}
 	// run-0b continued run-0; it ran no turn, and either started its
 	// runtime process and was reaped, or was refused before it.
 	unturned := func(process bool) run.Record {
-		record := run.Record{ID: "run-0b", Agent: "a", Runtime: &run.Runtime{Adapter: "spy"}, Request: run.Request{Continue: "run-0"},
-			CreatedAt: *at(2), FinishedAt: at(3), Result: &run.Result{Status: run.Failed}}
+		record := leftInTheWorktree(run.Record{ID: "run-0b", Agent: "a", Runtime: &run.Runtime{Adapter: "spy"}, Request: run.Request{Continue: "run-0"},
+			CreatedAt: *at(2), FinishedAt: at(3), Result: &run.Result{Status: run.Failed}})
+		// A reader: what it left behind does not refuse the call (ADR-025
+		// rule 4).
+		reader := false
+		record.InPlace.Writer = &reader
 		if process {
 			result := run.AbandonedResult(record.CreatedAt)
 			record.Effects, record.Result = &run.Effects{Process: &run.Process{Ref: "ref-0b"}}, &result
@@ -798,33 +815,33 @@ func TestAContinuationCostsWhatItAddedToItsSession(t *testing.T) {
 	}
 }
 
-// carrying is a harness whose agent resumes sessions and whose process p
-// runs a setup in its checkout, with an empty order of what happened.
-func carrying() (*harness, *[]string) {
+// resuming is a harness whose agent resumes sessions, with an empty order
+// of what happened: each turn, and any patch checked or applied, which a
+// call working in the caller's worktree never does (ADR-025 rule 7).
+func resuming() (*harness, *[]string) {
 	h := newHarness()
 	h.defs.docs[definition.KindAgent]["a"] += "session = \"resumable\"\n"
-	ownSetup(h)
 	order := new([]string)
 	h.changes.applying = func(check bool) error {
 		*order = append(*order, map[bool]string{true: "check", false: "apply"}[check])
 		return nil
 	}
-	h.setup.running = func(app.SetupCommandRequest) { *order = append(*order, "setup") }
 	h.runner.during = func(app.TurnRequest) { *order = append(*order, "turn") }
 	return h, order
 }
 
 // patchedRun records a finished run of p in session prov-0, created and
-// finished at those minutes, that hit a rate limit in a checkout of /repo
-// at sha-HEAD and kept patch as its changes; none when patch is empty.
+// finished at those minutes, that hit a rate limit in the worktree /repo
+// at sha-HEAD, leaving its content tree, and kept patch as its changes;
+// none when patch is empty (ADR-025 rule 7).
 func patchedRun(h *harness, id, continues string, created, finished int, patch string) run.Record {
 	at := func(minute int) time.Time { return time.Date(2026, 9, 28, 11, minute, 0, 0, time.UTC) }
 	end := at(finished)
 	record := run.Record{ID: id, Process: "p", Agent: "a", Runtime: &run.Runtime{Adapter: "spy"},
 		Request:   run.Request{Process: "p", Continue: continues, Cwd: "/repo"},
-		CreatedAt: at(created), FinishedAt: &end,
+		CreatedAt: at(created), FinishedAt: &end, Workspace: "/repo",
 		Inputs:  []run.Input{{Name: "candidate_revision", Source: "git.revision", Identity: "sha-HEAD", Revision: true}},
-		Effects: &run.Effects{Checkout: &run.Checkout{Repository: "/repo", Dir: "/work/checkout-" + id, Revision: "sha-HEAD"}},
+		InPlace: &run.InPlace{Dir: "/repo", Worktree: "/repo", RepositoryIdentity: "/repo", Revision: "sha-HEAD", Content: "tree"},
 		Turn:    &run.Turn{Status: run.Failed, Error: run.Fault(run.ClassRateLimited, "429"), ProviderSessionID: "prov-0"},
 		Result: &run.Result{Status: run.Failed, Error: run.Fault(run.ClassRateLimited, "429"),
 			Session: &run.Session{ProviderSessionID: "prov-0", Continues: continues}},
@@ -835,268 +852,6 @@ func patchedRun(h *harness, id, continues string, created, finished int, patch s
 	}
 	h.runs.records[id], h.runs.states[id] = record, run.StateFinished
 	return record
-}
-
-// A continuation with a checkout carries the changes.patch of its session's
-// latest run (ADR-013): checked before the setup, applied after it, before
-// the first turn, whose prompt says so; the run's events record it. The
-// call's own patch is still from the revision.
-func TestAContinuationCarriesTheLatestRunsChanges(t *testing.T) {
-	t.Parallel()
-	h, order := carrying()
-	patchedRun(h, "run-0", "", 0, 1, "diff A\n")
-	record := h.call(t, contract.CallRequest{Continue: "run-0"})
-	if record.Result.Status != run.Completed || len(h.runner.calls()) != 1 {
-		t.Fatalf("result %+v", record.Result)
-	}
-	if want := []string{"check", "setup", "apply", "turn"}; !reflect.DeepEqual(*order, want) {
-		t.Fatalf("order %v, want %v", *order, want)
-	}
-	if want := []appliedPatch{{"/work/checkout", "diff A\n", true}, {"/work/checkout", "diff A\n", false}}; !reflect.DeepEqual(h.changes.applies(), want) {
-		t.Fatalf("applied %+v", h.changes.applies())
-	}
-	got := h.runner.calls()[0]
-	notice := prompt.Continues("run-0", "run-0", "/work/checkout", "sha-HEAD")
-	if got.ResumeSessionID != "prov-0" || !strings.HasPrefix(got.Prompt, notice+"\n\n## candidate_revision") || strings.Contains(got.Instruction, "continues") {
-		t.Fatalf("request %+v", got)
-	}
-	var carried *run.Event
-	for i, event := range h.recorder.events {
-		if event.Kind == "CHANGES_CARRIED" {
-			carried = &h.recorder.events[i]
-		}
-	}
-	artifact := h.runs.records["run-0"].Result.Artifacts[0]
-	if carried == nil || carried.Data["run"] != "run-0" || carried.Data["digest"] != artifact.Digest || carried.Data["bytes"] != artifact.Bytes {
-		t.Fatalf("events %+v", h.recorder.events)
-	}
-	// The call's own changes, asked last, after the setup's, are from the
-	// revision: they hold the carried ones once.
-	if changed := h.changes.changed; changed[len(changed)-1] != [2]string{"/work/checkout", "sha-HEAD"} {
-		t.Fatalf("changes asked %v", changed)
-	}
-
-	// An older record names no revision: the input its process checked out
-	// does, when it ran the same process.
-	h, order = carrying()
-	legacy := patchedRun(h, "run-0", "", 0, 1, "diff A\n")
-	legacy.Effects.Checkout.Revision = ""
-	h.runs.records["run-0"] = legacy
-	if record := h.call(t, contract.CallRequest{Continue: "run-0"}); record.Result.Status != run.Completed || len(h.changes.applies()) != 2 {
-		t.Fatalf("result %+v, applied %+v", record.Result, h.changes.applies())
-	}
-}
-
-// A continuation keeps the changes of its session so far: the patch it
-// stores, from the revision, holds the carried changes and its turn's,
-// each once.
-func TestAContinuationStoresItsChangesWithTheCarriedOnes(t *testing.T) {
-	t.Parallel()
-	h, _ := carrying()
-	patchedRun(h, "run-0", "", 0, 1, "+A\n")
-	// The checkout holds what was applied to it and what the turn added,
-	// and its content is named apart at each step: the revision's, the
-	// carried changes', the turn's.
-	var content string
-	var carried, turned bool
-	ordered := h.changes.applying
-	h.changes.applying = func(check bool) error {
-		carried = carried || !check
-		return ordered(check)
-	}
-	h.runner.during = func(app.TurnRequest) {
-		for _, applied := range h.changes.applies() {
-			if !applied.check {
-				content += applied.patch
-			}
-		}
-		content += "+B\n"
-		turned = true
-	}
-	h.changes.identify = func() string {
-		switch {
-		case turned:
-			return "tree-turned"
-		case carried:
-			return "tree-carried"
-		}
-		return "tree"
-	}
-	// Only the revision against the content the turn left is the
-	// cumulative patch; a snapshot taken before the turn is not.
-	h.changes.patch = func(from, to string) []byte {
-		switch {
-		case from == "sha-HEAD" && to == "tree":
-			return nil
-		case from == "sha-HEAD" && to == "tree-turned":
-			return []byte(content)
-		}
-		return []byte("from " + from + " to " + to)
-	}
-	record := h.call(t, contract.CallRequest{Continue: "run-0"})
-	stored := string(h.recorder.artifacts["changes.patch"])
-	if record.Result.Status != run.Completed || stored != "+A\n+B\n" {
-		t.Fatalf("result %+v, patch %q", record.Result, stored)
-	}
-	if artifacts := record.Result.Artifacts; len(artifacts) != 1 || artifacts[0].Name != "changes.patch" || artifacts[0].Bytes != int64(len(stored)) {
-		t.Fatalf("artifacts %+v", artifacts)
-	}
-}
-
-// The changes carried are the session's latest run's: continuing a
-// continuation carries that run's patch alone, which holds the earlier
-// one's; continuing the first run again, after the session moved on,
-// carries the later run's too (D-6).
-func TestAContinuationCarriesTheSessionsLatestPatch(t *testing.T) {
-	t.Parallel()
-	for _, continued := range []string{"run-0b", "run-0"} {
-		t.Run(continued, func(t *testing.T) {
-			t.Parallel()
-			h, _ := carrying()
-			patchedRun(h, "run-0", "", 0, 1, "diff A\n")
-			patchedRun(h, "run-0b", "run-0", 2, 3, "diff AB\n")
-			record := h.call(t, contract.CallRequest{Continue: continued})
-			if record.Result.Status != run.Completed {
-				t.Fatalf("result %+v", record.Result)
-			}
-			if want := []appliedPatch{{"/work/checkout", "diff AB\n", true}, {"/work/checkout", "diff AB\n", false}}; !reflect.DeepEqual(h.changes.applies(), want) {
-				t.Fatalf("applied %+v", h.changes.applies())
-			}
-			if !reflect.DeepEqual(h.runs.read, []string{"run-0b/artifacts/changes.patch"}) {
-				t.Fatalf("read %v", h.runs.read)
-			}
-			if notice := prompt.Continues(continued, "run-0b", "/work/checkout", "sha-HEAD"); !strings.HasPrefix(h.runner.calls()[0].Prompt, notice) {
-				t.Fatalf("prompt %q", h.runner.calls()[0].Prompt)
-			}
-		})
-	}
-}
-
-// A latest run that worked in no checkout, or kept no patch, carries
-// nothing: the call runs on the revision, and is told so.
-func TestAContinuationWithNothingToCarryRuns(t *testing.T) {
-	t.Parallel()
-	for _, c := range []struct {
-		name    string
-		arrange func(*harness)
-	}{
-		{"no checkout", func(h *harness) {
-			prior := patchedRun(h, "run-0", "", 0, 1, "diff A\n")
-			prior.Effects = nil
-			h.runs.records["run-0"] = prior
-		}},
-		{"no patch", func(h *harness) { patchedRun(h, "run-0", "", 0, 1, "") }},
-	} {
-		t.Run(c.name, func(t *testing.T) {
-			t.Parallel()
-			h, order := carrying()
-			c.arrange(h)
-			record := h.call(t, contract.CallRequest{Continue: "run-0"})
-			if record.Result.Status != run.Completed || len(h.changes.applies()) != 0 || !reflect.DeepEqual(*order, []string{"setup", "turn"}) {
-				t.Fatalf("result %+v, applied %+v, order %v", record.Result, h.changes.applies(), *order)
-			}
-			if notice := prompt.Continues("run-0", "", "/work/checkout", "sha-HEAD"); !strings.HasPrefix(h.runner.calls()[0].Prompt, notice) {
-				t.Fatalf("prompt %q", h.runner.calls()[0].Prompt)
-			}
-			if contains(h.recorder.kinds(), "CHANGES_CARRIED") {
-				t.Fatalf("events %v", h.recorder.kinds())
-			}
-		})
-	}
-}
-
-// Changes that cannot be carried refuse the call before any turn, and
-// before the checkout is made where that can be told without it; a patch
-// that does not apply costs no setup. The checkout is released either way.
-func TestAContinuationWhoseChangesCannotBeCarriedIsRefused(t *testing.T) {
-	t.Parallel()
-	failing := func(when bool) func(*harness) {
-		return func(h *harness) {
-			patchedRun(h, "run-0", "", 0, 1, "diff A\n")
-			applying := h.changes.applying
-			h.changes.applying = func(check bool) error {
-				if err := applying(check); err != nil || check != when {
-					return err
-				}
-				return errors.New("patch failed: a.txt:1")
-			}
-		}
-	}
-	prior := func(change func(*run.Record)) func(*harness) {
-		return func(h *harness) {
-			record := patchedRun(h, "run-0", "", 0, 1, "diff A\n")
-			change(&record)
-			h.runs.records["run-0"] = record
-		}
-	}
-	for _, c := range []struct {
-		name    string
-		arrange func(*harness)
-		reason  string
-		order   []string // what happened; a checkout was made when set
-	}{
-		{"a patch that does not apply", failing(true),
-			"run run-0's changes do not apply to revision sha-HEAD: patch failed: a.txt:1", []string{"check"}},
-		{"a patch that fails to apply", failing(false),
-			"run run-0's changes could not be applied to revision sha-HEAD: patch failed: a.txt:1", []string{"check", "setup", "apply"}},
-		{"another revision", prior(func(r *run.Record) { r.Effects.Checkout.Revision = "sha-other" }),
-			"run run-0's changes are from revision sha-other, not sha-HEAD", nil},
-		{"another repository", prior(func(r *run.Record) { r.Effects.Checkout.Repository = "/other" }),
-			"run run-0's changes are of repository /other, not /repo; a continuation carries them only into the same repository", nil},
-		{"another stored repository identity", prior(func(r *run.Record) { r.Effects.Checkout.RepositoryIdentity = "/other" }),
-			"run run-0's changes are of repository /other, not /repo; a continuation carries them only into the same repository", nil},
-		{"an older record of another process", prior(func(r *run.Record) {
-			r.Effects.Checkout.Revision, r.Request.Process, r.Process = "", "q", "q"
-		}), "the revision run run-0 worked on is unknown", nil},
-		{"a patch whose digest does not match", prior(func(r *run.Record) { r.Result.Artifacts[0].Digest = "sha256:recorded" }),
-			"run run-0's changes.patch is sha256:" + sha("diff A\n") + ", not sha256:recorded as recorded", nil},
-		{"a patch that cannot be read", prior(func(r *run.Record) { r.Result.Artifacts[0].Path = "artifacts/gone.patch" }),
-			"run run-0's changes.patch cannot be read: no artifact artifacts/gone.patch", nil},
-		{"latest run has another revision", func(h *harness) {
-			patchedRun(h, "run-0", "", 0, 1, "diff A\n")
-			later := patchedRun(h, "run-0b", "run-0", 2, 3, "diff AB\n")
-			later.Effects.Checkout.Revision = "sha-other"
-			h.runs.records[later.ID] = later
-		}, "run run-0b's changes are from revision sha-other, not sha-HEAD", nil},
-		{"latest run has another repository", func(h *harness) {
-			patchedRun(h, "run-0", "", 0, 1, "diff A\n")
-			later := patchedRun(h, "run-0b", "run-0", 2, 3, "diff AB\n")
-			later.Effects.Checkout.Repository = "/other"
-			h.runs.records[later.ID] = later
-		}, "run run-0b's changes are of repository /other, not /repo; a continuation carries them only into the same repository", nil},
-		{"overlapping finished runs", func(h *harness) {
-			patchedRun(h, "run-0", "", 0, 3, "diff A\n")
-			patchedRun(h, "run-0b", "run-0", 2, 4, "diff AB\n")
-		}, "the latest run of run run-0's session is unknown", nil},
-		{"a run of the session still running", func(h *harness) {
-			patchedRun(h, "run-0", "", 0, 1, "diff A\n")
-			later := patchedRun(h, "run-0b", "run-0", 2, 3, "diff AB\n")
-			later.FinishedAt, later.Result = nil, nil
-			h.runs.records["run-0b"], h.runs.states["run-0b"] = later, run.StateRunning
-		}, "the latest run of run run-0's session is unknown", nil},
-	} {
-		t.Run(c.name, func(t *testing.T) {
-			t.Parallel()
-			h, order := carrying()
-			c.arrange(h)
-			record := h.call(t, contract.CallRequest{Continue: "run-0"})
-			if class(record) != run.ClassRefused || !strings.Contains(message(record), c.reason) || !contains(h.recorder.kinds(), "REFUSED") {
-				t.Fatalf("result %+v, want refusal %q", record.Result.Error, c.reason)
-			}
-			if len(h.runner.calls()) != 0 || !reflect.DeepEqual(*order, c.order) {
-				t.Fatalf("turns %d, order %v, want %v", len(h.runner.calls()), *order, c.order)
-			}
-			if checkouts := len(h.workspaces.checkouts); checkouts != h.workspaces.releases() || (checkouts == 1) != (c.order != nil) {
-				t.Fatalf("checkouts %v, released %d", h.workspaces.checkouts, h.workspaces.releases())
-			}
-			if c.order == nil && (len(h.workspaces.checkouts) != 0 || len(h.setup.runs()) != 0 || len(h.changes.applies()) != 0 || record.Effects != nil) {
-				t.Fatalf("checkouts %v, setup %v, applied %v, effects %+v", h.workspaces.checkouts, h.setup.runs(), h.changes.applies(), record.Effects)
-			}
-			if len(record.Result.Artifacts) != 0 || contains(h.recorder.kinds(), "CHANGES_CARRIED") {
-				t.Fatalf("artifacts %+v, events %v", record.Result.Artifacts, h.recorder.kinds())
-			}
-		})
-	}
 }
 
 func TestWorkspaceChangesBecomeArtifacts(t *testing.T) {
@@ -1118,19 +873,19 @@ func TestWorkspaceChangesBecomeArtifacts(t *testing.T) {
 				h.runner.turn = *c.turn
 			}
 			h.changes.changes = []byte("diff --git a/x b/x\n")
-			h.recorder.onArtifact = func() int { return h.workspaces.releases() }
+			h.recorder.onArtifact = func() int { return h.locks.releases("/repo") }
 			record := h.call(t, contract.CallRequest{})
 			if record.Result.Status != c.status {
 				t.Fatalf("result %+v", record.Result)
 			}
-			if !reflect.DeepEqual(h.changes.changed, [][2]string{{"/work/checkout", "sha-HEAD"}}) || string(h.recorder.artifacts["changes.patch"]) != "diff --git a/x b/x\n" {
+			if !reflect.DeepEqual(h.changes.changed, [][2]string{{"/repo", "sha-HEAD"}}) || string(h.recorder.artifacts["changes.patch"]) != "diff --git a/x b/x\n" {
 				t.Fatalf("changes asked %v, stored %v", h.changes.changed, h.recorder.artifacts)
 			}
 			if len(record.Result.Artifacts) != 1 || record.Result.Artifacts[0].Path != "artifacts/changes.patch" || !contains(h.recorder.kinds(), "ARTIFACT_STORED") || contains(h.recorder.kinds(), "NO_CHANGES") {
 				t.Fatalf("artifacts %+v, events %v", record.Result.Artifacts, h.recorder.kinds())
 			}
-			if released, stored := h.recorder.releasedAtArtifact["changes.patch"]; !stored || released != 0 || h.workspaces.releases() != 1 {
-				t.Fatalf("stored %v with %d releases before, %d after", stored, released, h.workspaces.releases())
+			if released, stored := h.recorder.releasedAtArtifact["changes.patch"]; !stored || released != 0 || h.locks.releases("/repo") != 1 {
+				t.Fatalf("stored %v with %d releases before, %d after", stored, released, h.locks.releases("/repo"))
 			}
 		})
 	}
@@ -1168,8 +923,8 @@ func TestPanicInChangeCollectionFinishesTheRecord(t *testing.T) {
 	if class(record) != run.ClassInternal || !strings.Contains(message(record), "changes exploded") {
 		t.Fatalf("result = %+v", record.Result.Error)
 	}
-	if len(h.changes.changed) != 1 || h.workspaces.releases() != 1 {
-		t.Fatalf("changes asked %d times, released %d", len(h.changes.changed), h.workspaces.releases())
+	if len(h.changes.changed) != 1 || h.locks.releases("/repo") != 1 {
+		t.Fatalf("changes asked %d times, released %d", len(h.changes.changed), h.locks.releases("/repo"))
 	}
 }
 
@@ -1416,8 +1171,8 @@ func TestCancelInterruptsAndReleases(t *testing.T) {
 		t.Fatal(err)
 	}
 	record := h.recorder.wait(t)
-	if record.Result.Status != run.Interrupted || class(record) != run.ClassCancelled || h.workspaces.releases() != 1 {
-		t.Fatalf("result = %+v, released %d", record.Result, h.workspaces.releases())
+	if record.Result.Status != run.Interrupted || class(record) != run.ClassCancelled || h.locks.releases("/repo") != 1 {
+		t.Fatalf("result = %+v, released %d", record.Result, h.locks.releases("/repo"))
 	}
 	var input *contract.InputError
 	if err := runs.Cancel(context.Background(), "run-1"); !errors.As(err, &input) {
@@ -1506,20 +1261,20 @@ func TestCallsCancelThroughTheCancelsTheyDeclare(t *testing.T) {
 }
 
 // Done closes once a hosted call has finished: its record is finished and
-// its cleanup attempted, a release that failed recorded on the run. It is
+// its hold let go, a release that failed recorded on the run. It is
 // not closed before, not even as the record is finished. Done of a call
 // not running here is closed already.
 func TestHostedDoneClosesOnceTheCallHasFinished(t *testing.T) {
 	t.Parallel()
 	h := newHarness()
-	h.workspaces.releaseErr = errors.New("worktree busy")
+	h.locks.unlockErr = errors.New("lock file gone")
 	released := make(chan struct{})
 	release := sync.OnceFunc(func() { close(released) })
 	h.runner.block, h.runner.release, h.runner.started = true, released, make(chan struct{})
 	doneAtFinish := true
 	h.recorder.onFinish = func() int {
 		doneAtFinish = isClosed(h.hosted.Done("run-1"))
-		return h.workspaces.releases()
+		return h.locks.releases("/repo")
 	}
 	id, err := h.calls.Submit(context.Background(), contract.CallRequest{Process: "p", Cwd: "/repo"})
 	if err != nil {
@@ -1540,12 +1295,12 @@ func TestHostedDoneClosesOnceTheCallHasFinished(t *testing.T) {
 	}
 	release()
 	<-done
-	record := h.recorder.wait(t)
+	h.recorder.wait(t)
 	if doneAtFinish {
 		t.Fatal("done before the record was finished")
 	}
-	if h.workspaces.releases() != 1 || !contains(h.recorder.kinds(), "WORKSPACE_RELEASE_FAILED") || record.Effects == nil || record.Effects.Unreleased == nil {
-		t.Fatalf("released %d, events %v, effects %+v", h.workspaces.releases(), h.recorder.kinds(), record.Effects)
+	if h.locks.releases("/repo") != 1 || h.recorder.releasedAtFinish != 1 || !contains(h.recorder.kinds(), "WORKSPACE_RELEASE_FAILED") {
+		t.Fatalf("released %d, at finish %d, events %v", h.locks.releases("/repo"), h.recorder.releasedAtFinish, h.recorder.kinds())
 	}
 	if !isClosed(h.hosted.Done(id)) || !isClosed(h.hosted.Done("never-hosted")) {
 		t.Fatal("Done of a call not running here is not closed")
@@ -1609,16 +1364,12 @@ func contains(list []string, value string) bool {
 	return false
 }
 
-// The workspace is released before the record is finished, so a finished
-// run never has a live workspace.
+// The worktree's hold is let go before the record is finished, so a
+// finished run never holds its worktree.
 func TestWorkspaceIsReleasedBeforeTheRunFinishes(t *testing.T) {
 	t.Parallel()
 	h := newHarness()
-	h.recorder.onFinish = func() int {
-		h.workspaces.mu.Lock()
-		defer h.workspaces.mu.Unlock()
-		return h.workspaces.released
-	}
+	h.recorder.onFinish = func() int { return h.locks.releases("/repo") }
 	h.call(t, contract.CallRequest{})
 	if h.recorder.releasedAtFinish != 1 {
 		t.Fatalf("released %d times when the run finished", h.recorder.releasedAtFinish)
@@ -1661,7 +1412,7 @@ func TestCallResolvesFromTheSettingsReadBeforeItsRunWasRecorded(t *testing.T) {
 
 // A value's arguments may use the text of the values resolved before it:
 // the diff is taken between the very commits the call resolved, one of
-// which it checks out, not between names that could move meanwhile.
+// which the call works at, not between names that could move meanwhile.
 func TestInputsUseTheValuesResolvedBeforeThem(t *testing.T) {
 	t.Parallel()
 	h := newHarness()
@@ -1681,8 +1432,8 @@ func TestInputsUseTheValuesResolvedBeforeThem(t *testing.T) {
 	if !reflect.DeepEqual(gotArgs, wantArgs) {
 		t.Fatalf("input args = %v", gotArgs)
 	}
-	if !reflect.DeepEqual(h.workspaces.checkouts, [][2]string{{"/repo", "sha-HEAD"}}) {
-		t.Fatalf("checkouts = %v", h.workspaces.checkouts)
+	if record.InPlace == nil || record.InPlace.Revision != "sha-HEAD" {
+		t.Fatalf("in place %+v", record.InPlace)
 	}
 }
 

@@ -38,6 +38,7 @@ func (h *harness) clientWith(defs app.GateDefinitions, checks func(app.GateDefin
 			Clock: h.clock, Timer: h.timer, IDs: fixedIDs{}, StateDir: "/state",
 		},
 		Preparer:  app.SetupAdapters{Content: h.changes, Commands: h.setup, Clock: h.clock},
+		Borrower:  app.BorrowAdapters{Locks: h.locks, Worktrees: h.worktrees, Content: h.changes, Runs: h.runs, Writers: h.writers},
 		Verifier:  app.VerifyAdapters{Content: h.changes, Copies: h.copies, Commands: h.commands, Clock: h.clock},
 		Recoverer: app.RecoverAdapters{Clock: h.clock},
 		Runs:      app.RunsAdapters{Reader: &readerSpy{record: run.Record{ID: "earlier"}, state: run.StateFinished}},

@@ -1,8 +1,6 @@
 package app
 
 import (
-	"crypto/sha256"
-	"encoding/hex"
 	"slices"
 
 	"github.com/igor1309/ai-labs/agister/internal/domain/run"
@@ -71,27 +69,10 @@ func recordVerify(verify *CallVerify) *run.Verify {
 		Timeout:     verify.Timeout,
 		MaxAttempts: verify.MaxAttempts,
 		Instruction: verify.Instruction,
-	}
-	if verify.InWorkspace {
-		recorded.Where = run.VerifyInWorkspace
+		// It runs in the call's worktree (ADR-025 rule 5).
+		Where: run.VerifyInWorkspace,
 	}
 	return recorded
-}
-
-func recordSetup(setup *CallSetup) *run.Setup {
-	if setup == nil {
-		return nil
-	}
-	return &run.Setup{Command: setup.Command, Timeout: setup.Timeout, From: setup.From, Path: setup.Path}
-}
-
-// recordPrecheck is the precheck as resolved, its command's digest with it.
-func recordPrecheck(precheck *CallSetup) *run.Precheck {
-	if precheck == nil {
-		return nil
-	}
-	sum := sha256.Sum256([]byte(precheck.Command))
-	return &run.Precheck{Command: precheck.Command, Timeout: precheck.Timeout, SHA256: hex.EncodeToString(sum[:]), Path: precheck.Path}
 }
 
 func recordPlan(plan CallPlan) *run.Plan {

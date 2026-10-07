@@ -52,21 +52,17 @@ type Output struct {
 }
 
 // Verify is a process's verification command (ADR-002): run after a valid
-// turn, on a clean copy of the base with the turn's patch applied
-// (ADR-005), with the operator's authority, or, where it says so, in the
-// worktree of an in-place call (ADR-022 rule 6).
+// turn, in the call's worktree, with the operator's authority (ADR-025
+// rule 5).
 type Verify struct {
 	Command     string        // one Bash command
 	Timeout     time.Duration // per run
 	MaxAttempts int           // runs, the first included
 	Instruction string        // what the agent is told when a run fails
-	// Where is WhereWorkspace, or empty: a clean copy.
-	Where string
+	// Obsolete are the warnings for the fields it holds that ADR-025
+	// removed, which are read and ignored: where.
+	Obsolete []string
 }
-
-// WhereWorkspace is the only value of a verification's where: an in-place
-// call runs the command in the caller's worktree (ADR-022 rule 6).
-const WhereWorkspace = "workspace"
 
 // Repairs reports whether a failed run may be followed by a repair turn,
 // which resumes the call's session: an agent and runtime that cannot
@@ -122,17 +118,24 @@ type Process struct {
 	Instruction string
 	Params      []Param
 	Values      []Value
-	Checkout    string   // name of the input whose revision is checked out
-	Setup       *Setup   // its own setup; unset: the workspace's, if any
-	Require     []string // permissions the call cannot work without
-	Skills      []string // the skill documents its calls are given (ADR-021)
-	Output      Output
+	Checkout    string // name of the input whose revision the worktree must be at
+	Setup       *Setup // its own setup; unset: the workspace's, if any. Never read since ADR-025
+	// Clean says a fresh call needs the worktree's content to be HEAD's
+	// (ADR-025 rule 3).
+	Clean   bool
+	Require []string // permissions the call cannot work without
+	Skills  []string // the skill documents its calls are given (ADR-021)
+	Output  Output
 	// Verify is the inline block, or the named verification once it is
 	// resolved; unset: no verification, or a named one not resolved.
 	Verify     *Verify
 	VerifyName string // name of a verification definition, in place of the inline block
 	Limits     Limits // narrowing overrides
-	Source     Source
+	// Obsolete are the warnings for the fields it holds that ADR-025
+	// removed, which are read and ignored: workspace.setup, and verify.where
+	// in its inline block.
+	Obsolete []string
+	Source   Source
 }
 
 // Primitive is one restriction primitive a runtime offers.
@@ -233,7 +236,7 @@ func ParseProcess(doc Document) (Process, error) {
 	process.Instruction = required(input, "instruction", "input", p)
 	process.Params, process.Values = parseInputs(input, p)
 
-	limits, tools, workspace := parseLimits(values, []string{"allow", "require"}, []string{"access", "scope", "checkout", "setup"}, p)
+	limits, tools, workspace := parseLimits(values, []string{"allow", "require"}, []string{"access", "scope", "checkout", "clean", "setup"}, p)
 	process.Limits = limits
 	process.Require = stringList(tools["require"], "tools.require", p)
 	if node, ok := workspace["checkout"]; ok {
@@ -242,13 +245,13 @@ func ParseProcess(doc Document) (Process, error) {
 			p.add("workspace.checkout", "%q is not an input value", process.Checkout)
 		}
 	}
-	if node, ok := workspace["setup"]; ok {
-		process.Setup = parseSetup(node, "workspace.setup", p)
-		// Without a checkout the agent works in the repository itself,
-		// which is prepared already.
-		if process.Checkout == "" {
-			p.add("workspace.setup", "requires workspace.checkout: setup prepares a checkout the call owns")
-		}
+	if node, ok := workspace["clean"]; ok {
+		process.Clean, _ = boolean(node, "workspace.clean", p)
+	}
+	// Settings written before ADR-025 do not break a repository: what it
+	// removed is read and ignored.
+	if _, ok := workspace["setup"]; ok {
+		process.Obsolete = append(process.Obsolete, ObsoleteSetup)
 	}
 
 	// Each a literal document name, which nothing is substituted in.
@@ -280,11 +283,15 @@ func ParseProcess(doc Document) (Process, error) {
 			}
 		} else {
 			process.Verify = parseVerify(fields(node, "verify", verifyFields(), p), "verify", p)
+			process.Obsolete = append(process.Obsolete, process.Verify.Obsolete...)
 		}
-		// Verifying a tree the call does not own would check content other
-		// calls can change and the call does not capture.
+		// Verification proves the run's changes from a known content: the
+		// pinned revision, and a clean start (ADR-025 rule 3).
 		if process.Checkout == "" {
-			p.add("verify", "requires workspace.checkout: verification runs only in a checkout the call owns")
+			p.add("verify", "requires workspace.checkout: verification proves the run's changes from the pinned revision (ADR-025 rule 3)")
+		}
+		if !process.Clean {
+			p.add("verify", "requires workspace.clean: true: verification proves the run's changes from a clean start (ADR-025 rule 3)")
 		}
 	}
 
@@ -313,14 +320,15 @@ func verifyKeys() []string {
 }
 
 // verifyFields is all a verification may hold: its required fields and
-// where, the only optional one. Each call returns a new slice.
+// where, which ADR-025 made obsolete. Each call returns a new slice.
 func verifyFields() []string {
 	return append(verifyKeys(), "where")
 }
 
 // parseVerify reads the fields of a verify block, or of a verification
 // document, under field. Every one but where is required: there is no
-// default command, timeout, attempt count or instruction.
+// default command, timeout, attempt count or instruction. Where is read as
+// obsolete, and ignored (ADR-025 rule 5).
 func parseVerify(values map[string]*yaml.Node, field string, p *problems) *Verify {
 	for _, key := range verifyKeys() {
 		if _, ok := values[key]; !ok {
@@ -340,13 +348,8 @@ func parseVerify(values map[string]*yaml.Node, field string, p *problems) *Verif
 		}
 		verify.MaxAttempts = attempts
 	}
-	if node, ok := values["where"]; ok {
-		if where, ok := scalar(node, join(field, "where"), p); ok {
-			verify.Where = where
-			if where != WhereWorkspace {
-				p.add(join(field, "where"), "must be %q", WhereWorkspace)
-			}
-		}
+	if _, ok := values["where"]; ok {
+		verify.Obsolete = append(verify.Obsolete, join(field, "where")+": "+obsoleteWhere)
 	}
 	return verify
 }
@@ -393,6 +396,15 @@ func ParseWorkspace(doc Document) (Workspace, error) {
 	}
 	return workspace, p.err("workspace settings")
 }
+
+// The warnings for what ADR-025 removed from the settings: each is read and
+// ignored, so settings written before it do not break a repository.
+const (
+	ObsoleteSetup     = "workspace.setup: " + obsoleteSetup
+	obsoleteSetup     = "is obsolete and ignored (ADR-025): a call works in the caller's worktree, which its caller prepares"
+	obsoleteWhere     = "is obsolete and ignored (ADR-025): verification always runs in the call's worktree"
+	ObsoleteWorkspace = "is obsolete and ignored (ADR-025): a call works in the caller's worktree, with no workspace mode, precheck or setup"
+)
 
 // EffectiveSetup is the setup a call of the process runs: its own, or the
 // workspace's default when it checks out a revision and declares none.

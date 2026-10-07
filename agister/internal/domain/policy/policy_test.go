@@ -44,6 +44,7 @@ input:
     candidate_revision: {source: git.revision, rev: HEAD}
 workspace:
   checkout: candidate_revision
+  clean: true
 output:
   format: text
 ` + extra)})

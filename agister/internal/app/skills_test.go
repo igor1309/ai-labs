@@ -3,7 +3,6 @@ package app_test
 import (
 	"context"
 	"errors"
-	"fmt"
 	"reflect"
 	"slices"
 	"strings"
@@ -724,8 +723,7 @@ func TestEveryVerificationRepairCarriesTheCallsSkills(t *testing.T) {
 	skilled(h)
 	verifying(h)
 	h.commands.exits = []int{1, 1, 0}
-	identities := 0
-	h.changes.identify = func() string { identities++; return fmt.Sprintf("tree-%d", identities) }
+	changingEachTurn(h)
 	record := h.call(t, contract.CallRequest{})
 	if record.Result.Status != run.Completed || len(record.Attempts) != 3 {
 		t.Fatalf("result %+v, attempts %+v", record.Result, record.Attempts)

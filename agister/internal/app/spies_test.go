@@ -1,6 +1,7 @@
 package app_test
 
 import (
+	"cmp"
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
@@ -217,6 +218,9 @@ type workspacesSpy struct {
 	discardHook func(ctx context.Context, dir string) error // runs first; a non-nil result is returned
 	identities  map[string]string                           // a path's repository identity; the path itself when absent
 	removed     []string                                    // worktrees gone since; git cannot read them
+	roots       map[string]string                           // a directory's worktree root; root when absent
+	outside     map[string]error                            // why a directory is in no git worktree
+	asked       []string                                    // the directories Root was asked about
 }
 
 func (s *workspacesSpy) identity(path string) (string, error) {
@@ -241,7 +245,18 @@ func (s *workspacesSpy) Discard(ctx context.Context, repository, dir string) err
 	return s.discardErr
 }
 
-func (s *workspacesSpy) Root(context.Context, string) (string, error) { return s.root, nil }
+func (s *workspacesSpy) Root(_ context.Context, dir string) (string, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.asked = append(s.asked, dir)
+	if err, ok := s.outside[dir]; ok {
+		return "", err
+	}
+	if root, ok := s.roots[dir]; ok {
+		return root, nil
+	}
+	return s.root, nil
+}
 
 func (s *workspacesSpy) RepositoryIdentity(_ context.Context, repository string) (string, error) {
 	return s.identity(repository)
@@ -298,7 +313,8 @@ type changesSpy struct {
 	applied  []appliedPatch
 	applying func(check bool) error
 	// rebuilt, when set, names the content a patch rebuilds from a
-	// revision; unset, every rebuild fails. rebuilds lists each one asked.
+	// revision; unset, every patch rebuilds the content the worktree was
+	// last named with. rebuilds lists each one asked.
 	rebuilt  func(revision string, patch []byte) string
 	rebuilds []rebuiltPatch
 }
@@ -314,7 +330,7 @@ func (s *changesSpy) Rebuild(_ context.Context, dir, revision string, patch []by
 	defer s.mu.Unlock()
 	s.rebuilds = append(s.rebuilds, rebuiltPatch{dir: dir, revision: revision, patch: string(patch)})
 	if s.rebuilt == nil {
-		return "", errors.New("no rebuild was given")
+		return cmp.Or(s.identity, "tree"), nil
 	}
 	return s.rebuilt(revision, patch), nil
 }
@@ -975,14 +991,18 @@ func (s *writersSpy) refs() []string {
 	return append([]string(nil), s.reaped...)
 }
 
-// locksSpy holds the worktree locks of in-place calls, by the directory as
-// given, and keys each by its canonical path: the directory as given,
-// unless canonical says otherwise.
+// locksSpy holds the worktree holds of calls, by the directory as given,
+// shared by readers or alone by a writer, and keys each by its canonical
+// path: the directory as given, unless canonical says otherwise.
 type locksSpy struct {
 	mu       sync.Mutex
-	held     map[string]bool
+	held     map[string]int  // how many hold each directory
+	alone    map[string]bool // whether its one holder holds it alone
 	locked   []string
 	unlocked []string
+	writers  []bool // whether each hold taken was taken alone, in order
+	// unlockErr is what letting a hold go returns; it is let go all the same.
+	unlockErr error
 	// canonical is the canonical path of each directory that has another
 	// name; empty for a directory that is not there.
 	canonical map[string]string
@@ -997,23 +1017,31 @@ func (s *locksSpy) key(dir string) string {
 	return dir
 }
 
-func (s *locksSpy) Lock(dir string) (string, func() error, error) {
+func (s *locksSpy) Lock(dir string, alone bool) (string, func() error, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if s.held[dir] {
+	if s.alone[dir] || (alone && s.held[dir] > 0) {
 		return "", nil, fmt.Errorf("%s: %w", dir, app.ErrWorktreeLocked)
 	}
 	if s.held == nil {
-		s.held = map[string]bool{}
+		s.held, s.alone = map[string]int{}, map[string]bool{}
 	}
-	s.held[dir] = true
+	s.held[dir]++
+	s.alone[dir] = alone
 	s.locked = append(s.locked, dir)
+	s.writers = append(s.writers, alone)
+	var once sync.Once
 	return s.key(dir), func() error {
-		s.mu.Lock()
-		defer s.mu.Unlock()
-		delete(s.held, dir)
-		s.unlocked = append(s.unlocked, dir)
-		return nil
+		once.Do(func() {
+			s.mu.Lock()
+			defer s.mu.Unlock()
+			if s.held[dir]--; s.held[dir] == 0 {
+				delete(s.held, dir)
+				delete(s.alone, dir)
+			}
+			s.unlocked = append(s.unlocked, dir)
+		})
+		return s.unlockErr
 	}, nil
 }
 
@@ -1024,10 +1052,23 @@ func (s *locksSpy) Key(dir string) (string, error) {
 	return s.key(dir), nil
 }
 
+// releases is how many holds of dir were let go.
+func (s *locksSpy) releases(dir string) int {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	n := 0
+	for _, unlocked := range s.unlocked {
+		if unlocked == dir {
+			n++
+		}
+	}
+	return n
+}
+
 func (s *locksSpy) holds(dir string) bool {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	return s.held[dir]
+	return s.held[dir] > 0
 }
 
 // worktreesSpy reads the git state of borrowed worktrees: by default each

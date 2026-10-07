@@ -68,8 +68,7 @@ type Infrastructure struct {
 	Resolver ResolverAdapters
 	Calls    CallAdapters
 	Preparer SetupAdapters
-	// Borrower lends in-place calls the caller's worktree (ADR-022); its
-	// precheck runs on the preparer (see BorrowPreparer).
+	// Borrower lends every call the caller's worktree (ADR-025 rule 1).
 	Borrower BorrowAdapters
 	Verifier VerifyAdapters
 	// Recoverer recovers a call's stale turns (ADR-024).

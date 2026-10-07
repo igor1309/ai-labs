@@ -555,12 +555,14 @@ func changed(r *Repository, args map[string]string) (tree, tree, error) {
 	return a, b, nil
 }
 
-// read is the tree of dir's files. A file that is neither a regular file
-// nor a directory is refused: the fake does not name it.
+// read is the tree of dir's files. A symbolic link is left out, as an
+// ignored file: a worktree a call works in (ADR-025) may link to settings
+// no revision of the fake holds. Any other file that is neither a regular
+// file nor a directory is refused: the fake does not name it.
 func read(dir string) (tree, error) {
 	content := tree{}
 	err := filepath.WalkDir(dir, func(path string, entry fs.DirEntry, err error) error {
-		if err != nil || entry.IsDir() {
+		if err != nil || entry.IsDir() || entry.Type()&fs.ModeSymlink != 0 {
 			return err
 		}
 		if !entry.Type().IsRegular() {

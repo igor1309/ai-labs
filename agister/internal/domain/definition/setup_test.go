@@ -25,44 +25,27 @@ workspace:
 ` + workspace
 }
 
-const setupBlock = `  checkout: candidate_revision
-  setup:
-    command: ./scripts/link-config.sh
-    timeout: 2m
-`
-
-func TestSetupIsParsedAsDeclared(t *testing.T) {
+// ADR-025: a process's workspace.setup, whatever it holds, with a checkout
+// or without, is obsolete: it is read with a warning that names ADR-025 and
+// says it is ignored, and is no problem.
+func TestSetupIsObsolete(t *testing.T) {
 	t.Parallel()
-	process, err := definition.ParseProcess(doc(definition.KindProcess, "p", settingUpProcess(setupBlock)))
-	if err != nil {
-		t.Fatal(err)
-	}
-	want := definition.Setup{Command: "./scripts/link-config.sh", Timeout: 2 * time.Minute}
-	if process.Setup == nil || *process.Setup != want {
-		t.Fatalf("setup = %+v", process.Setup)
-	}
-}
-
-// ADR-012 rule 1: both fields are required, there is no default, and a
-// setup prepares only a checkout.
-func TestSetupProblems(t *testing.T) {
-	t.Parallel()
-	cases := map[string]struct{ workspace, want string }{
-		"no command":         {"  checkout: candidate_revision\n  setup: {timeout: 2m}\n", "workspace.setup.command: is required"},
-		"no timeout":         {"  checkout: candidate_revision\n  setup: {command: ./s.sh}\n", "workspace.setup.timeout: is required"},
-		"empty command":      {"  checkout: candidate_revision\n  setup: {command: '', timeout: 2m}\n", "workspace.setup.command: must not be empty"},
-		"bad timeout":        {"  checkout: candidate_revision\n  setup: {command: ./s.sh, timeout: soon}\n", `workspace.setup.timeout: invalid duration "soon"`},
-		"unknown field":      {"  checkout: candidate_revision\n  setup: {command: ./s.sh, timeout: 2m, shell: zsh}\n", "workspace.setup.shell: unknown field"},
-		"without a checkout": {"  setup: {command: ./s.sh, timeout: 2m}\n", "workspace.setup: requires workspace.checkout"},
-	}
-	for name, c := range cases {
+	for name, workspace := range map[string]string{
+		"a setup":            "  checkout: candidate_revision\n  setup: {command: ./s.sh, timeout: 2m}\n",
+		"an invalid one":     "  checkout: candidate_revision\n  setup: {command: '', timeout: soon, shell: zsh}\n",
+		"without a checkout": "  setup: {command: ./s.sh, timeout: 2m}\n",
+	} {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
-			_, err := definition.ParseProcess(doc(definition.KindProcess, "p", settingUpProcess(c.workspace)))
-			if err == nil || !strings.Contains(err.Error(), c.want) {
-				t.Fatalf("err = %v, want %q", err, c.want)
+			process, err := definition.ParseProcess(doc(definition.KindProcess, "p", settingUpProcess(workspace)))
+			if err != nil || len(process.Obsolete) != 1 || process.Obsolete[0] != definition.ObsoleteSetup || !strings.Contains(definition.ObsoleteSetup, "is obsolete and ignored (ADR-025)") {
+				t.Fatalf("obsolete %q, %v", process.Obsolete, err)
 			}
 		})
+	}
+	without, err := definition.ParseProcess(doc(definition.KindProcess, "p", settingUpProcess("  checkout: candidate_revision\n")))
+	if err != nil || len(without.Obsolete) != 0 {
+		t.Fatalf("without: %q, %v", without.Obsolete, err)
 	}
 }
 
