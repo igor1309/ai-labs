@@ -37,7 +37,9 @@ does not have them. Agister checks a brief's structure, never its meaning.
    does not exist is invalid, as a missing prompt or schema is.
 6. **This repository uses it.** `.agister/processes/implement.yaml`'s
    `brief` takes `[goal, step]` and `.agister/workflows/code_review.yaml`'s
-   `goal` takes `[goal]`. This goal file passes the `goal` form.
+   `goal` takes `[goal]`. This goal file passes the `goal` form. The
+   wiring is the change's last commit: the installed binary refuses
+   settings with `form:` until this lands.
 7. Regular tests prove 1 to 5 with the existing seams, including: each
    required part missing, an empty part, `Open` not `None.`, a reference
    that does not resolve, a text that passes either form, an unknown form
@@ -51,7 +53,8 @@ does not have them. Agister checks a brief's structure, never its meaning.
 ## Out of scope
 
 - Judging whether a brief is right (an optional caller process, LAB-120).
-- The home settings under `~/.agister`: the owner updates them.
+- The home settings under `~/.agister`: updated after the deploy, as
+  `agister/AGENTS.md` says.
 - Rewriting the briefs already in `agister/testdata/briefs/`.
 
 ## Sources

@@ -62,6 +62,10 @@ still apply.
   - the Pages settings view, `pages/`, with its tests.
 
   Its issue names these as done gates.
+- After such a change merges and `scripts/finish-merged-pr.sh` rebuilds
+  Agister, update the home settings under `~/.agister` to match what it
+  ships, and check them with the new binary (`agister check`). This step
+  is the agent's, not the owner's.
 - ADRs reference only earlier ADRs.
 - A failure of Agister itself during this work is a finding about Agister:
   record it and fix it; do not route around it. A Claude Code subagent or
