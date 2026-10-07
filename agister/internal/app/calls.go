@@ -657,7 +657,7 @@ func (c *Calls) Submit(ctx context.Context, request contract.CallRequest) (strin
 		CreatedAt: now,
 		Request: run.Request{
 			Process:    request.Process,
-			Params:     request.Params,
+			Params:     recordParams(request.Params),
 			Agent:      request.Agent,
 			Timeout:    request.Timeout,
 			MaxCostUSD: request.MaxCostUSD,
@@ -684,7 +684,7 @@ func (c *Calls) Submit(ctx context.Context, request contract.CallRequest) (strin
 			defer c.cancels.End(record.ID)
 			defer c.cancels.Remove(record.ID)
 			defer cancel()
-			c.runWorkflow(runCtx, handle, record, resolver, workflow, workflowErr, flow)
+			c.runWorkflow(runCtx, handle, record, request.Params, resolver, workflow, workflowErr, flow)
 		}()
 		return record.ID, nil
 	}
@@ -694,16 +694,18 @@ func (c *Calls) Submit(ctx context.Context, request contract.CallRequest) (strin
 		defer c.cancels.End(record.ID)
 		defer c.cancels.Remove(record.ID)
 		defer cancel()
-		c.execute(runCtx, handle, record, resolver, nil)
+		c.execute(runCtx, handle, record, request.Params, resolver, nil)
 	}()
 	return record.ID, nil
 }
 
 // execute runs one call and returns its record as finished. Every refusal
 // happens before the runtime starts and is recorded; every effect is
-// released on every path. collection is what a workflow's join receives
-// through its collection input; nil for any other call.
-func (c *Calls) execute(ctx context.Context, handle RunHandle, record run.Record, resolver CallResolution, collection *Resolved) (final run.Record) {
+// released on every path. params are the call's params as given, which its
+// record may keep as digests (recordParams). collection is what a
+// workflow's join receives through its collection input; nil for any other
+// call.
+func (c *Calls) execute(ctx context.Context, handle RunHandle, record run.Record, params map[string]string, resolver CallResolution, collection *Resolved) (final run.Record) {
 	event := func(source, kind string, data map[string]any) {
 		_ = handle.Append(run.Event{At: c.clock.Now(), Source: source, Kind: kind, Data: data})
 	}
@@ -831,12 +833,12 @@ func (c *Calls) execute(ctx context.Context, handle RunHandle, record run.Record
 		return
 	}
 
-	inputs, err := c.resolveValues(ctx, "process "+res.Process.Name, res.Process.Params, res.Process.Values, record.Request, collection, res.Prompts, res.Absent)
+	inputs, err := c.resolveValues(ctx, "process "+res.Process.Name, res.Process.Params, res.Process.Values, given(record.Request, params), collection, res.Prompts, res.Absent)
 	if err != nil {
 		fail(err)
 		return
 	}
-	record.Inputs = summarize(inputs)
+	record.Inputs = recordInputs(handle, inputs, event)
 	_ = handle.Update(record)
 	revision, _ := revisionOf(inputs, res.Process.Revision)
 
@@ -1010,9 +1012,10 @@ func (c *Calls) execute(ctx context.Context, handle RunHandle, record run.Record
 	return final
 }
 
-// runWorkflow runs one workflow and finishes its run. res and resErr are the
-// workflow as the settings snapshot resolved it.
-func (c *Calls) runWorkflow(ctx context.Context, handle RunHandle, record run.Record, resolver CallResolution, res *ResolvedWorkflow, resErr error, flow *flow) {
+// runWorkflow runs one workflow and finishes its run. params are its
+// params as given, which its record may keep as digests (recordParams).
+// res and resErr are the workflow as the settings snapshot resolved it.
+func (c *Calls) runWorkflow(ctx context.Context, handle RunHandle, record run.Record, params map[string]string, resolver CallResolution, res *ResolvedWorkflow, resErr error, flow *flow) {
 	event := func(kind string, data map[string]any) {
 		_ = handle.Append(run.Event{At: c.clock.Now(), Source: run.SourceAgister, Kind: kind, Data: data})
 	}
@@ -1099,12 +1102,12 @@ func (c *Calls) runWorkflow(ctx context.Context, handle RunHandle, record run.Re
 
 	// Resolved once, before any node starts; every fan-out node receives the
 	// same values.
-	inputs, err := c.resolveValues(ctx, "workflow "+workflow.Name, workflow.Params, workflow.Values, record.Request, nil, nil, nil)
+	inputs, err := c.resolveValues(ctx, "workflow "+workflow.Name, workflow.Params, workflow.Values, given(record.Request, params), nil, nil, nil)
 	if err != nil {
 		refused(err)
 		return
 	}
-	record.Inputs = summarize(inputs)
+	record.Inputs = recordInputs(handle, inputs, func(_, kind string, data map[string]any) { event(kind, data) })
 	_ = handle.Update(record)
 	values, err := passedValues(inputs)
 	if err != nil {
@@ -1245,7 +1248,7 @@ func (c *Calls) startNode(ctx context.Context, parent string, node CallNode, par
 		Process:   node.Process,
 		CreatedAt: now,
 		Parent:    &run.Parent{Run: parent, Node: node.Name},
-		Request:   run.Request{Process: node.Process, Params: params, Cwd: cwd},
+		Request:   run.Request{Process: node.Process, Params: recordParams(params), Cwd: cwd},
 	}
 	handle, err := c.recorder.Create(ctx, record)
 	if err != nil {
@@ -1257,7 +1260,7 @@ func (c *Calls) startNode(ctx context.Context, parent string, node CallNode, par
 		defer c.cancels.End(record.ID)
 		defer c.cancels.Remove(record.ID)
 		defer cancel()
-		ended(c.execute(nodeCtx, handle, record, resolver, collection))
+		ended(c.execute(nodeCtx, handle, record, params, resolver, collection))
 	}()
 	return record.ID, nil
 }
@@ -1654,13 +1657,56 @@ func (s *sink) keep(trail *run.Trail) {
 	s.unsaved = s.handle.Update(*s.record) != nil
 }
 
-func summarize(inputs []run.Input) []run.Input {
+// recordInputs is inputs as the run's record keeps them (ADR-026 rule 6): a
+// text value within inlineInputChars inline, a longer one stored as an
+// artifact of the run, which the input names, and identified by its digest
+// where its identity was the literal itself. An artifact that cannot be
+// stored is recorded as ARTIFACT_FAILED, and its input keeps its identity
+// only. The values the call works with are not changed.
+func recordInputs(handle RunHandle, inputs []run.Input, event func(string, string, map[string]any)) []run.Input {
 	out := make([]run.Input, len(inputs))
 	for i, input := range inputs {
 		out[i] = input
-		if text, ok := input.Value.(string); ok && len(text) > inlineInputChars {
-			out[i].Value = nil
+		text, ok := input.Value.(string)
+		if !ok || len(text) <= inlineInputChars {
+			continue
 		}
+		out[i].Value = nil
+		if input.Identity == text {
+			out[i].Identity = "sha256:" + digestOf([]byte(text))
+		}
+		name := "input-" + input.Name + ".txt"
+		artifact, err := handle.Artifact(name, []byte(text))
+		if err != nil {
+			event(run.SourceAgister, "ARTIFACT_FAILED", map[string]any{"name": name, "input": input.Name, "error": err.Error()})
+			continue
+		}
+		event(run.SourceAgister, "ARTIFACT_STORED", map[string]any{"name": artifact.Name, "input": input.Name, "digest": artifact.Digest, "bytes": artifact.Bytes})
+		out[i].Artifact = &artifact
+	}
+	return out
+}
+
+// given is the request as the caller gave it: with its params, which its
+// record may keep as digests.
+func given(request run.Request, params map[string]string) run.Request {
+	request.Params = params
+	return request
+}
+
+// recordParams is params as a run's record keeps them: a value over
+// inlineInputChars as its digest, whose bytes the input that takes it
+// keeps as an artifact (see recordInputs).
+func recordParams(params map[string]string) map[string]string {
+	if params == nil {
+		return nil
+	}
+	out := make(map[string]string, len(params))
+	for name, value := range params {
+		if len(value) > inlineInputChars {
+			value = "sha256:" + digestOf([]byte(value))
+		}
+		out[name] = value
 	}
 	return out
 }

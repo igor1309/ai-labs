@@ -123,6 +123,19 @@ its denials; Codex the paths of its file changes, and no denial, for its
 stream has none. A file a shell command wrote is not among them. OpenCode
 and Pi report neither, and a record with nothing reported has no `trail`.
 
+The run's record lists the `inputs` it was given, each with its
+`identity`: a commit, a digest, or a short literal itself. A text value
+of up to 2000 bytes is in the record as its `value`. A longer one is kept
+with the run, beside `changes.patch`, as
+`~/.agister/runs/<id>/artifacts/input-<name>.txt`, exactly the bytes the
+agent received, and the input names it under `artifact`, with its
+`digest` and `bytes`; a long literal, such as the goal a workflow passes
+to each node as a param, is recorded by its `sha256:` digest, as its
+`identity` and in the request's `params`. An input's text that could not
+be kept is recorded as the event `ARTIFACT_FAILED`, and the input keeps
+its identity only. A record made before inputs were kept has no
+`artifact`.
+
 A prompt the settings fix, such as a reviewer's instructions, is a document
 too: `prompts/review.md`, the whole file its text, no header. A process
 gives it to its agent as an input, `{source: prompt, name: review}`; the

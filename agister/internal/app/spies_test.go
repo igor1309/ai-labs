@@ -451,6 +451,9 @@ type recorderSpy struct {
 	// by name.
 	onArtifact         func() int
 	releasedAtArtifact map[string]int
+	// artifactErr, when set, is asked, by name, whether storing an
+	// artifact fails; one that fails is not kept.
+	artifactErr func(name string) error
 }
 
 func newRecorderSpy() *recorderSpy { return &recorderSpy{finished: make(chan run.Record, 1)} }
@@ -500,6 +503,11 @@ func (s *recorderSpy) Update(record run.Record) error {
 func (s *recorderSpy) Artifact(name string, data []byte) (run.Artifact, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	if s.artifactErr != nil {
+		if err := s.artifactErr(name); err != nil {
+			return run.Artifact{}, err
+		}
+	}
 	if s.artifacts == nil {
 		s.artifacts = map[string][]byte{}
 	}
@@ -510,7 +518,7 @@ func (s *recorderSpy) Artifact(name string, data []byte) (run.Artifact, error) {
 		}
 		s.releasedAtArtifact[name] = s.onArtifact()
 	}
-	return run.Artifact{Name: name, Path: "artifacts/" + name, Digest: "sha256:spy", Bytes: int64(len(data))}, nil
+	return run.Artifact{Name: name, Path: "artifacts/" + name, Digest: "sha256:" + sha(string(data)), Bytes: int64(len(data))}, nil
 }
 
 func (s *recorderSpy) Finish(record run.Record) error {

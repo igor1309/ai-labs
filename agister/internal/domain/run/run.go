@@ -202,9 +202,13 @@ type AbsentPrompt struct {
 type Input struct {
 	Name     string `json:"name"`
 	Source   string `json:"source"`
-	Identity string `json:"identity"`           // commit, digest, or the literal itself
+	Identity string `json:"identity"`           // commit, digest, or the literal itself; a long literal's digest
 	Revision bool   `json:"revision,omitempty"` // Identity is a commit that can be checked out
 	Value    any    `json:"value,omitempty"`    // omitted from records when large
+	// Artifact keeps a value the record leaves out, beside the run's other
+	// artifacts (ADR-026 rule 6); unset for a value kept inline, and on
+	// records made before inputs were kept.
+	Artifact *Artifact `json:"artifact,omitempty"`
 }
 
 // Runtime identifies the runtime a call ran on.

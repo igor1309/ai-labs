@@ -187,6 +187,15 @@ or contains it.
   attempt's `run.passed` says whether its verification command passed. A
   stopped attempt has `stopped`, which says why verification ended there,
   and may have no `run`.
+- Each of the record's `inputs` has its `identity`: a commit, a digest,
+  or a short literal itself. A text value of up to 2000 bytes is there as
+  its `value`. A longer one is not: its `artifact` names the file that
+  holds exactly what the agent received, `artifacts/input-<name>.txt` in
+  the run's directory, with its `digest` and `bytes`, and a long literal,
+  such as the goal a workflow passes to its nodes as a param, is recorded
+  by its `sha256:` digest, as its `identity` and in `request.params`. A
+  text that could not be kept is the event `ARTIFACT_FAILED`. A run
+  recorded before inputs were kept has no `artifact`.
 - A policy's `stale` limits end an agent turn that stopped moving, before
   its timeout. With `stale.recover`, a budget of `max_resumes` and an
   `instruction`, Agister then resumes the turn's session with what went
