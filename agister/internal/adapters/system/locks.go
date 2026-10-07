@@ -16,11 +16,13 @@ import (
 
 // WorktreeLocks holds one hold per worktree for calls (ADR-025 rule 4): a
 // lock file in Dir, named by a digest of the worktree's canonical path,
-// empty, which holds no state. The hold is the open file's (flock), shared
-// by readers and held alone by a writer, taken without waiting: it ends
-// when it is released or the process that holds it ends, and two holders
-// in one process exclude each other too. Nothing is written in the
-// worktree for it.
+// empty, which holds no state. The hold is the open file's (flock), taken
+// without waiting: readers hold it shared (LOCK_SH), any number together,
+// and a writer holds it alone (LOCK_EX), excluding readers and other
+// writers. Each Lock opens the file anew, so holders in one process share
+// or exclude each other as holders in different processes do. A hold ends
+// when it is released or the process that holds it ends. Nothing is
+// written in the worktree for it.
 type WorktreeLocks struct{ Dir string }
 
 // Lock takes the hold of the worktree at dir, alone or shared, and returns

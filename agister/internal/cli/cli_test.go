@@ -149,6 +149,16 @@ func TestRunWorksInTheDirectoryDirNames(t *testing.T) {
 			t.Errorf("--dir %s: result %+v, submitted %+v, config %+v", dir, r, spy.submitted, spy.config)
 		}
 	}
+	// A workflow call takes --dir as a process call does: its nodes work there.
+	workflow := finished("completed", "")
+	workflow.Process = "w"
+	workflow.Result.Output = json.RawMessage(`{"verdict":"approve"}`)
+	spy := &clientSpy{run: workflow, events: []contract.Event{{Kind: "WORKFLOW_FINISHED"}}}
+	r := run(context.Background(), spy, "run", "w", "--param", "goal=g.md", "--dir", "../other", "--quiet")
+	want := contract.CallRequest{Process: "w", Params: map[string]string{"goal": "g.md"}, Cwd: "/other"}
+	if r.code != cli.ExitCompleted || !reflect.DeepEqual(spy.submitted, []contract.CallRequest{want}) || spy.config.Cwd != "/other" {
+		t.Errorf("workflow --dir: result %+v, submitted %+v, config %+v", r, spy.submitted, spy.config)
+	}
 }
 
 // ADR-025: --workspace is gone; the command refuses it as an unknown flag,
@@ -157,7 +167,7 @@ func TestRunRefusesWorkspaceAsAnUnknownFlag(t *testing.T) {
 	t.Parallel()
 	spy := &clientSpy{run: finished("completed", "")}
 	r := run(context.Background(), spy, "run", "p", "--workspace", "in-place", "--quiet")
-	if r.code != cli.ExitUsage || !strings.Contains(r.stderr, "workspace") || len(spy.submitted) != 0 {
+	if r.code != cli.ExitUsage || !strings.Contains(r.stderr, "flag provided but not defined: -workspace\n") || len(spy.submitted) != 0 {
 		t.Fatalf("result = %+v, submitted %+v", r, spy.submitted)
 	}
 }

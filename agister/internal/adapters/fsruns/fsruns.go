@@ -537,7 +537,11 @@ func (s Store) List(ctx context.Context) ([]run.Record, error) {
 }
 
 // ListStrict returns every run's record or an error: a partial listing
-// cannot establish which run last changed a continued session.
+// cannot establish which run last changed a continued session. A run
+// whose directory holds no record.json yet is being created (Create makes
+// the directory before it writes the record): it has recorded nothing, so
+// nothing of it is on record, and it is left out. A record that exists but
+// cannot be read or parsed fails the listing.
 func (s Store) ListStrict(ctx context.Context) ([]run.Record, error) {
 	return s.list(ctx, true)
 }
@@ -561,7 +565,7 @@ func (s Store) list(ctx context.Context, strict bool) ([]run.Record, error) {
 	for _, id := range ids {
 		record, _, err := s.Get(ctx, id)
 		if err != nil {
-			if strict {
+			if strict && !errors.Is(err, contract.ErrNotFound) {
 				return nil, fmt.Errorf("listing run %s: %w", id, err)
 			}
 			continue
