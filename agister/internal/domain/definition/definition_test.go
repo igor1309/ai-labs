@@ -608,14 +608,22 @@ func TestStaleRecoveryProblems(t *testing.T) {
 }
 
 // A problem that names something this code does not know, as a document
-// written for a newer Agister would, is marked: an unknown field, and a
-// schema of Agister's shape this code does not read. Any other mistake,
-// a schema of another shape included, is not.
+// written for a newer Agister would, is marked: an unknown field, a list or
+// a mapping where an input value's field is read as a scalar (LAB-122), an
+// argument a prompt input does not take, and a schema of Agister's shape
+// this code does not read. Any other mistake, a schema of another shape, a
+// list of sources or a wrong value of a prompt's known argument included,
+// is not.
 func TestProblemsNamingTheUnknownAreMarked(t *testing.T) {
 	t.Parallel()
 	process := func(schema, extra string) string {
 		return "schema: " + schema + "\nname: p\ntype: process\nuses: agent:a\n" + extra +
 			"input:\n  instruction: x\noutput:\n  format: text\n"
+	}
+	// A valid process but for its input values.
+	inputs := func(values string) string {
+		return "schema: agister.process/v1alpha1\nname: p\ntype: process\nuses: agent:a\n" +
+			"input:\n  instruction: x\n  values:\n" + values + "output:\n  format: text\n"
 	}
 	agent := func(schema, extra string) string {
 		return "schema = \"" + schema + "\"\nname = \"a\"\n" + extra
@@ -637,6 +645,12 @@ func TestProblemsNamingTheUnknownAreMarked(t *testing.T) {
 		{"unknown field", "process", process("agister.process/v1alpha1", "future: 1\n"), definition.Problem{Message: "future: unknown field", Unknown: true}},
 		{"newer schema", "process", process("agister.process/v2", ""), definition.Problem{Message: `schema: must be "agister.process/v1alpha1"`, Unknown: true}},
 		{"another schema", "process", process("banana", ""), definition.Problem{Message: `schema: must be "agister.process/v1alpha1"`}},
+		{"input list", "process", inputs("    brief:\n      source: file\n      path: brief.md\n      future: [goal, step]\n"), definition.Problem{Message: "input.values.brief.future: must be a scalar", Unknown: true}},
+		{"input mapping", "process", inputs("    brief:\n      source: file\n      path:\n        from: brief.md\n"), definition.Problem{Message: "input.values.brief.path: must be a scalar", Unknown: true}},
+		{"null input field", "process", inputs("    brief:\n      source: file\n      path:\n"), definition.Problem{Message: "input.values.brief.path: must be a scalar"}},
+		{"a form not listed", "process", inputs("    brief:\n      source: file\n      path: brief.md\n      form: goal\n"), definition.Problem{Message: "input.values.brief.form: must be a list of brief names"}},
+		{"prompt argument", "process", inputs("    rules: {source: prompt, name: review, future: enabled}\n"), definition.Problem{Message: "input.values.rules.future: is not an argument of source prompt, which takes only name and optional", Unknown: true}},
+		{"a prompt's known argument", "process", inputs("    rules: {source: prompt, name: review, optional: false}\n"), definition.Problem{Message: "input.values.rules.optional: takes only true; leave it out for a required prompt"}},
 		{"unknown TOML field", "agent", agent("agister.agent/v1alpha1", "runtime = \"rt\"\nfuture = 1\n"), definition.Problem{Message: "future: unknown field", Unknown: true}},
 		{"newer TOML schema", "agent", agent("agister.agent/v2", "runtime = \"rt\"\n"), definition.Problem{Message: `schema: must be "agister.agent/v1alpha1"`, Unknown: true}},
 		{"another TOML schema", "agent", agent("banana", "runtime = \"rt\"\n"), definition.Problem{Message: `schema: must be "agister.agent/v1alpha1"`}},
@@ -646,5 +660,12 @@ func TestProblemsNamingTheUnknownAreMarked(t *testing.T) {
 		if err := parsers[c.kind](c.text); !errors.As(err, &invalid) || !reflect.DeepEqual(invalid.Problems, []definition.Problem{c.want}) {
 			t.Errorf("%s: %#v, want %#v", c.name, err, c.want)
 		}
+	}
+
+	// A list of sources is a mistake in a field this code knows.
+	want := []definition.Problem{{Message: "input.values.brief.source: must be a scalar"}, {Message: "input.values.brief.source: is required"}}
+	var invalid *definition.InvalidError
+	if err := parsers["process"](inputs("    brief:\n      source: [file]\n      path: brief.md\n")); !errors.As(err, &invalid) || !reflect.DeepEqual(invalid.Problems, want) {
+		t.Errorf("list of sources: %#v, want %#v", err, want)
 	}
 }

@@ -80,7 +80,12 @@ type Client interface {
 
 // InputError is a request mistake outside any call (e.g. an unknown
 // runtime when creating an agent).
-type InputError struct{ Message string }
+type InputError struct {
+	Message string
+	// Unknown counts, on an install refused for the settings it would
+	// leave, the problems that name something this binary does not know.
+	Unknown int
+}
 
 func (e *InputError) Error() string { return e.Message }
 
@@ -463,6 +468,9 @@ type Result struct {
 type Error struct {
 	Class   string `json:"class"`
 	Message string `json:"message,omitempty"`
+	// Unknown counts, on a refusal for the settings, the problems it names
+	// that name something this binary does not know.
+	Unknown int `json:"unknown,omitempty"`
 }
 
 type Usage struct {

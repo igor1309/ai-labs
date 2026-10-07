@@ -62,6 +62,17 @@ still apply.
   - the Pages settings view, `pages/`, with its tests.
 
   Its issue names these as done gates.
+- The installed binary reads this repository's `.agister/` from the
+  worktree it works in, so settings it does not know refuse every later
+  run there: `--continue`, `code_review`, everything (LAB-122). A change
+  that adds a settings field, or a value a field did not accept before,
+  adopts it in this repository's `.agister/` only in the change's last
+  commit, after its reviews, or in a later change after the deploy.
+  Until then the change's tests use the field in their own temp
+  settings, not through the repository's `.agister/`. A refusal of this
+  repository's settings that ends `the settings may need one newer than
+  agister <version>` is the sign this rule was broken: take the adoption
+  out of `.agister/` until then; do not route around the refusal.
 - After such a change merges and `scripts/finish-merged-pr.sh` rebuilds
   Agister, update the home settings under `~/.agister` to match what it
   ships, and check them with the new binary (`agister check`). This step

@@ -834,7 +834,7 @@ func (c *Calls) execute(ctx context.Context, handle RunHandle, record run.Record
 		var refusal *Refusal
 		if errors.As(err, &refusal) {
 			event(run.SourceAgister, "REFUSED", map[string]any{"reason": refusal.Reason})
-			finish(run.Fault(run.ClassRefused, "%s", refusal.Reason))
+			finish(refusal.fault())
 			return
 		}
 		finish(run.Fault(run.ClassInternal, "%v", err))
@@ -1134,7 +1134,7 @@ func (c *Calls) runWorkflow(ctx context.Context, handle RunHandle, record run.Re
 		var refusal *Refusal
 		if errors.As(err, &refusal) {
 			event("REFUSED", map[string]any{"reason": refusal.Reason})
-			finish(run.Failed, run.Fault(run.ClassRefused, "%s", refusal.Reason))
+			finish(run.Failed, refusal.fault())
 			return
 		}
 		finish(run.Failed, run.Fault(run.ClassInternal, "%v", err))

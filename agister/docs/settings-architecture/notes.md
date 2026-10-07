@@ -203,6 +203,18 @@ and ignored, and `check` warns (`internal/app/check.go:289`; ADR-025).
   Only unattributable problems (service settings broken, an unreadable
   name, a name defined twice, a broken `blocks.yaml`) stop every command.
   (ADR-015, ADR-018 rule 5)
+  - Settings newer than the binary (LAB-122) needed no change here or in
+    Pages. LAB-122 adds no settings field, value or document and changes
+    no composition: it marks more problems as naming something this
+    binary does not know (a list or a mapping in an input value's field,
+    an argument a prompt input does not take), and every refusal of those
+    settings, on `check`, a call or an install, then ends with the hint
+    that they may need a newer binary. That is what the binary says of a
+    refusal, which the diagrams do not show: they draw the documents,
+    their layers and what a call depends on, all unchanged. Pages reads
+    the settings files with its own parser and never runs `check` or
+    shows its problems or hints (`pages/serve.go:94`, `pages/page.js:308`
+    shows only a file it cannot parse), so it has nothing to say of them.
 - The call works in the caller's worktree, or the one `--dir` names, with
   its settings: Agister makes no checkout or copy and runs no setup.
   Readers share the worktree; a writer, whose plan grants a `writing`

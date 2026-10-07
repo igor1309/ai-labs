@@ -239,7 +239,7 @@ func (c resolverCheck) Check(ctx context.Context) (ResolverChecked, error) {
 	}
 	for _, p := range found.Problems {
 		if p.About != nil {
-			result.Problems = append(result.Problems, ResolverProblem{About: *p.About, Message: p.Message, Agent: p.Agent})
+			result.Problems = append(result.Problems, ResolverProblem{About: *p.About, Message: p.Message, Agent: p.Agent, Unknown: p.Unknown})
 		}
 	}
 	for _, b := range found.Blocks {

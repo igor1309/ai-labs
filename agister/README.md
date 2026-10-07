@@ -43,9 +43,15 @@ settings directory that cannot be listed, or a workflow named like a
 process stop every command except `init`, `install`, `check`, cancelling a
 run and following an admitted run.
 `check` reports every problem and says what each refuses. When a problem
-names a field, adapter, input source or schema version this binary does
-not know, the check adds a line saying the settings may need a newer
-binary, and `agister --version` names the binary that is running. Runs are
+names a field, a field's shape, an adapter, an input source or a schema
+version this binary does not know, the check adds a line saying the
+settings may need a newer binary, and `agister --version` names the binary
+that is running. A field's shape this binary does not know is a list or a
+mapping where it reads a scalar, such as a field of an input value. A call
+or a workflow refused for such a problem prints the same line after its
+summary, and its record's `result.error.unknown` counts the problems; an
+install refused for such a problem prints it after the problems. A known
+field with a wrong value adds no such line. Runs are
 recorded under `~/.agister/runs/<id>/`.
 
 Listings and shows display refused items. An agent selected with `--agent`

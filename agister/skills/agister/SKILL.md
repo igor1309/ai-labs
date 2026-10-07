@@ -42,6 +42,15 @@ repository you will run in.
   have no problem and 64 when they have one, prints each problem with what
   it refuses, and prints warnings. `agister check --tree` shows what
   defines what, and in which file.
+- A problem that names a field, a field's shape, an adapter, an input
+  source or a schema version this binary does not know adds a last line:
+  `<n> problem(s) name something this binary does not know; the settings
+  may need one newer than agister <version>`. `agister check` prints it,
+  and so does every call those settings refuse and an install they
+  refuse. The line does not prove the settings are newer: they may need
+  a newer binary, such as a branch's own `.agister/` that uses a field
+  the installed binary predates, or the field or source may be misspelt.
+  This binary cannot tell the two apart.
 
 ## Verification
 
@@ -155,6 +164,10 @@ it alone, for the whole call.
 
 A call is refused before any turn, with exit 3 and the reason, when:
 
+- a document it uses has a settings problem, or is blocked: the reason
+  names each, its path, its problems and how the call reaches it. A
+  problem this binary does not know adds the line above after the run's
+  summary, and the record's `result.error.unknown` counts such problems.
 - it cannot take its hold (`is in use`): a writer holds the worktree, or,
   for a writer, any other call holds it. A call is refused, not queued.
 - the worktree overlaps a directory another writer's run worked in and

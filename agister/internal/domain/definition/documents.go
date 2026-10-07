@@ -369,6 +369,14 @@ func parseInputs(input map[string]*yaml.Node, p *problems) ([]Param, []Value) {
 				value.Forms = formNames(stringList(arg.value, join(field, "form"), p), join(field, "form"), p)
 				continue
 			}
+			// This code reads every other field here as a scalar: a list or
+			// a mapping is a field or a shape it does not know, as form was
+			// to the code before it (LAB-122). The source is known, and a
+			// list of sources a mistake.
+			if kind := arg.value.Kind; arg.key != "source" && (kind == yaml.SequenceNode || kind == yaml.MappingNode) {
+				p.unknown(join(field, arg.key), "must be a scalar")
+				continue
+			}
 			text, _ := scalar(arg.value, join(field, arg.key), p)
 			if arg.key == "source" {
 				value.Source = text

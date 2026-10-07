@@ -70,6 +70,8 @@ func (p Process) OptionalPrompts() []string {
 
 // promptArgs reports the problems of a prompt input's arguments: name, a
 // literal document name, and optional, which takes only true (ADR-019).
+// Any other argument is one this code does not know, as a newer Agister's
+// might be (LAB-122).
 func promptArgs(value Value, field string, p *problems) {
 	var extra []string
 	for key := range value.Args {
@@ -79,7 +81,7 @@ func promptArgs(value Value, field string, p *problems) {
 	}
 	sort.Strings(extra)
 	for _, key := range extra {
-		p.add(join(field, key), "is not an argument of source %s, which takes only name and optional", PromptSource)
+		p.unknown(join(field, key), "is not an argument of source %s, which takes only name and optional", PromptSource)
 	}
 	if optional, ok := value.Args["optional"]; ok && optional != "true" {
 		p.add(join(field, "optional"), "takes only true; leave it out for a required prompt")
