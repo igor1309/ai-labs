@@ -73,6 +73,11 @@ This change makes the supervisor follow it.
   the additive event `LEFTOVER_CLEANUP_UNKNOWN`, recorded only when the
   cleanup cannot be classified; `runs watch` shows it with the other
   process events.
+- 2026-10-07, owner (review 2, items 3#2 and 5#2): option (b). On Linux,
+  when the process snapshots cannot prove what the group kill reached
+  (for example a member that becomes a zombie after the kill), the
+  cleanup is reported as unknown (`LEFTOVER_CLEANUP_UNKNOWN`), never as
+  no leftovers.
 
 ## Open
 
