@@ -37,7 +37,7 @@ func (h *harness) clientWith(defs app.GateDefinitions, checks func(app.GateDefin
 			Workspaces: h.workspaces, Changes: h.changes, Validator: h.validator, Recorder: h.recorder, Runs: h.runs,
 			Clock: h.clock, Timer: h.timer, IDs: fixedIDs{}, StateDir: "/state",
 		},
-		Holder:    app.HoldAdapters{Locks: h.locks, Worktrees: h.worktrees, Content: h.changes, Runs: h.runs, Writers: h.writers},
+		Holder:    app.HoldAdapters{Locks: h.locks, Worktrees: h.worktrees, Content: h.changes, Runs: h.runs, Reaper: h.reaper, Writers: h.writers},
 		Verifier:  app.VerifyAdapters{Content: h.changes, Commands: h.commands, Clock: h.clock},
 		Recoverer: app.RecoverAdapters{Clock: h.clock},
 		Runs:      app.RunsAdapters{Reader: &readerSpy{record: run.Record{ID: "earlier"}, state: run.StateFinished}},

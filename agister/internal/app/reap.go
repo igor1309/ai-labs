@@ -18,12 +18,20 @@ const defaultReapTimeout = 30 * time.Second
 // finished, then finishes them, and removes the clean copies (ADR-005 rule
 // 2) and the unreleased checkouts (ADR-008 rule 6) finished runs left on
 // record. It is not part of any call: whoever composes the client starts
-// it (see BackgroundReaper).
+// it (see BackgroundReaper). A call asks it only for the one run that
+// keeps its worktree from it (ReapRun).
 type Reaper struct {
 	adopter   RunAdopter
 	processes Processes
 	discarder CheckoutDiscarder
 	clock     ReapClock
+	// turn is held while the reaper lists the abandoned runs or takes one
+	// (take): a Reap and a ReapRun of one process never meet each other at
+	// a run's owner lock.
+	turn chan struct{}
+	// waiting, when set, is called when the turn is taken, before the wait
+	// for it. Tests take it there.
+	waiting func()
 	// ReapTimeout bounds one Reap; zero means 30s.
 	ReapTimeout time.Duration
 	// ReapContext, when set, replaces the timeout: it returns the context
@@ -70,10 +78,21 @@ type RunAdopter interface {
 	// as live.
 	LiveCheckouts(ctx context.Context) ([]string, error)
 	// Adopt takes ownership of a run Abandoned lists, as its record is now.
-	// It fails if the run is owned by another process, or finished with no
-	// clean copy or unreleased checkout on record.
+	// It fails if the run is owned by another process, with an error that
+	// wraps ErrRunOwned, or finished with no clean copy or unreleased
+	// checkout on record, with one that wraps ErrRunFinished and the
+	// record as it finished.
 	Adopt(ctx context.Context, id string) (ReapHandle, run.Record, error)
 }
+
+var (
+	// ErrRunOwned is what a run is not adopted with while another holds
+	// its owner lock.
+	ErrRunOwned = errors.New("it is owned")
+	// ErrRunFinished is what a run is not adopted with once it finished
+	// and left nothing to remove.
+	ErrRunFinished = errors.New("it is finished")
+)
 
 // ReapHandle records the end of an adopted run. Finish releases ownership.
 type ReapHandle interface {
@@ -87,7 +106,7 @@ type ReapClock interface{ Now() time.Time }
 // NewReaper returns the use case that reaps abandoned runs. Every
 // collaborator is required; ReapTimeout and ReapContext are optional.
 func NewReaper(adopter RunAdopter, processes Processes, discarder CheckoutDiscarder, clock ReapClock) *Reaper {
-	return &Reaper{adopter: adopter, processes: processes, discarder: discarder, clock: clock}
+	return &Reaper{adopter: adopter, processes: processes, discarder: discarder, clock: clock, turn: make(chan struct{}, 1)}
 }
 
 // Reap leaves runs some process still owns alone. Runs not reached by the
@@ -102,7 +121,7 @@ func NewReaper(adopter RunAdopter, processes Processes, discarder CheckoutDiscar
 func (c *Reaper) Reap(ctx context.Context) error {
 	ctx, cancel := c.reapContext(ctx)
 	defer cancel()
-	abandoned, err := c.adopter.Abandoned(ctx)
+	abandoned, err := c.abandoned(ctx)
 	if err != nil {
 		return fmt.Errorf("listing abandoned runs: %w", err)
 	}
@@ -114,23 +133,89 @@ func (c *Reaper) Reap(ctx context.Context) error {
 		if ctx.Err() != nil {
 			break
 		}
-		// Read before adopting: the run adopted next is owned by this
-		// process and would read as live.
-		live, liveErr := c.adopter.LiveCheckouts(ctx)
-		// The deadline may have arrived meanwhile: never adopt after it.
-		if ctx.Err() != nil {
-			break
-		}
 		// Someone else adopting it first is fine: they reap it.
-		handle, record, err := c.adopter.Adopt(ctx, listed.ID)
-		if err != nil {
-			continue
-		}
-		if err := c.reap(ctx, handle, record, live, liveErr); err != nil {
+		if _, adopted, err := c.step(ctx, listed.ID); adopted && err != nil {
 			errs = append(errs, err)
 		}
 	}
 	return errors.Join(errs...)
+}
+
+// ReapRun reaps run id alone, by the step Reap takes for each run it
+// lists, for a call that the run keeps from its worktree: nobody waits for
+// a Reap beside the calls. A run nobody owns has its effects ended and is
+// finished as lost; it is returned as finished, and so is one that
+// finished meanwhile, by another reap or by its owner. A run a process
+// owns is left alone, and owned is true. The reap deadline bounds it, as
+// it bounds a Reap.
+func (c *Reaper) ReapRun(ctx context.Context, id string) (finished run.Record, owned bool, err error) {
+	ctx, cancel := c.reapContext(ctx)
+	defer cancel()
+	record, adopted, err := c.step(ctx, id)
+	switch {
+	case adopted:
+		return record, false, err
+	case errors.Is(err, ErrRunOwned):
+		return run.Record{}, true, nil
+	case errors.Is(err, ErrRunFinished):
+		return record, false, nil
+	}
+	return run.Record{}, false, err
+}
+
+// abandoned lists the abandoned runs, in the reaper's turn.
+func (c *Reaper) abandoned(ctx context.Context) ([]run.Record, error) {
+	release, err := c.take(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer release()
+	return c.adopter.Abandoned(ctx)
+}
+
+// step adopts run id and reaps it, in the reaper's turn. adopted is false
+// for a run it did not take, with why: the deadline arrived, or the
+// adoption failed, the record with it when the run is finished.
+func (c *Reaper) step(ctx context.Context, id string) (record run.Record, adopted bool, err error) {
+	release, err := c.take(ctx)
+	if err != nil {
+		return record, false, err
+	}
+	defer release()
+	// Read before adopting: the run adopted next is owned by this
+	// process and would read as live.
+	live, liveErr := c.adopter.LiveCheckouts(ctx)
+	// The deadline may have arrived meanwhile: never adopt after it.
+	if err := ctx.Err(); err != nil {
+		return record, false, err
+	}
+	handle, record, err := c.adopter.Adopt(ctx, id)
+	if err != nil {
+		return record, false, err
+	}
+	record, err = c.reap(ctx, handle, record, live, liveErr)
+	return record, true, err
+}
+
+// take takes the reaper's turn, and returns its release. The reaper reads
+// and takes the runs' owner locks only in its turn: the flock one of its
+// reaps holds, or holds for the moment it reads a run's state, would read
+// to another of this process as the run's owner. A turn that is free is
+// taken whatever ctx says; the wait for one that is taken ends with ctx.
+func (c *Reaper) take(ctx context.Context) (release func(), err error) {
+	select {
+	case c.turn <- struct{}{}:
+	default:
+		if c.waiting != nil {
+			c.waiting()
+		}
+		select {
+		case c.turn <- struct{}{}:
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		}
+	}
+	return func() { <-c.turn }, nil
 }
 
 // reapContext bounds reaping: Reaper.ReapContext when set, else the reap
@@ -154,9 +239,10 @@ func (c *Reaper) reapContext(ctx context.Context) (context.Context, context.Canc
 // owned records as its own is left in place, and so is one whose users
 // could not be listed. A copy or unreleased checkout removed is no longer
 // on record; the checkout of an unfinished run that could not be removed
-// is put on record as unreleased. It returns the failure to record the reap or finish the run;
-// with the event unrecorded, the error carries the steps that failed.
-func (c *Reaper) reap(ctx context.Context, handle ReapHandle, record run.Record, live []string, liveErr error) error {
+// is put on record as unreleased. It returns the record as it finished the
+// run with, and the failure to record the reap or finish the run; with the
+// event unrecorded, the error carries the steps that failed.
+func (c *Reaper) reap(ctx context.Context, handle ReapHandle, record run.Record, live []string, liveErr error) (run.Record, error) {
 	data := map[string]any{}
 	var failures []string
 	var effects run.Effects
@@ -263,7 +349,7 @@ func (c *Reaper) reap(ctx context.Context, handle ReapHandle, record run.Record,
 		errs = append(errs, fmt.Errorf("finishing the run: %w", err))
 	}
 	if len(errs) > 0 {
-		return fmt.Errorf("reaping run %s: %w", record.ID, errors.Join(errs...))
+		return record, fmt.Errorf("reaping run %s: %w", record.ID, errors.Join(errs...))
 	}
-	return nil
+	return record, nil
 }

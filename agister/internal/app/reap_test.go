@@ -3,6 +3,7 @@ package app_test
 import (
 	"context"
 	"errors"
+	"fmt"
 	"reflect"
 	"strings"
 	"testing"
@@ -614,5 +615,112 @@ func TestAReapRecordsWhetherTheRunsProcessesEnded(t *testing.T) {
 				t.Fatalf("discarded %v, in place %+v, effects %+v", h.workspaces.discarded, old.InPlace, old.Effects)
 			}
 		})
+	}
+}
+
+// LAB-123: a reap of one run takes that run alone, by the step a reap of
+// all takes each run by: the live checkouts are read before the run is
+// adopted, its effects are ended under the reap deadline, and it is
+// finished as lost and abandoned, which is the record the reap returns.
+func TestAReapOfOneRunIsTheReapersStepForThatRun(t *testing.T) {
+	t.Parallel()
+	h := newHarness()
+	r := reaping(h, abandonedRun("a"), abandonedRun("b"))
+	var bounded bool
+	r.processes.hook = func(ctx context.Context) {
+		deadline, ok := ctx.Deadline()
+		bounded = ok && time.Until(deadline) <= 30*time.Second
+	}
+
+	finished, owned, err := r.ReapRun(context.Background(), "b")
+
+	if err != nil || owned || finished.ID != "b" || finished.FinishedAt == nil || finished.Result == nil || finished.Result.Status != run.Lost || class(finished) != run.ClassAbandoned || !says(finished, true) {
+		t.Fatalf("the reap of b = %+v, result %+v, owned %v, %v", finished, finished.Result, owned, err)
+	}
+	if want := []string{"live", "adopt:b"}; !reflect.DeepEqual(r.adopter.order, want) {
+		t.Fatalf("adopter asked in the order %v, want %v", r.adopter.order, want)
+	}
+	// The record it returns is the one it finished the run with.
+	handle := r.adopter.handles["b"]
+	if written := handle.wait(t); !reflect.DeepEqual(written, finished) || !reflect.DeepEqual(handle.kinds(), []string{"EFFECTS_REAPED"}) {
+		t.Fatalf("b was finished as %+v, returned as %+v; its events %v", written, finished, handle.kinds())
+	}
+	if _, taken := r.adopter.handles["a"]; taken {
+		t.Fatal("a was adopted by the reap of b")
+	}
+	if !bounded || !reflect.DeepEqual(r.processes.refs(), []string{"ref-777"}) || !reflect.DeepEqual(h.workspaces.discarded, [][2]string{{"/repo", "/tmp/agister-checkout-1/workspace"}}) {
+		t.Fatalf("bounded %v, reaped %v, discarded %v", bounded, r.processes.refs(), h.workspaces.discarded)
+	}
+}
+
+// A run another holds is its owner's: the reap of it says so and touches
+// nothing of it. One that finished meanwhile, with nothing left to remove,
+// is returned as it finished. Neither is an error; any other reason the run
+// was not adopted is.
+func TestAReapOfOneRunTellsAnOwnedRunFromOneItCannotReap(t *testing.T) {
+	t.Parallel()
+	done := completedRun(abandonedRun("a"))
+	for name, c := range map[string]struct {
+		adoptErr error
+		declined run.Record // what the adoption returns beside its error
+		finished run.Record
+		owned    bool
+		err      string
+	}{
+		"owned":      {adoptErr: fmt.Errorf("run a: %w", app.ErrRunOwned), owned: true},
+		"finished":   {adoptErr: fmt.Errorf("run a: %w", app.ErrRunFinished), declined: done, finished: done},
+		"unreadable": {adoptErr: errors.New("run a: reading its record: bad disk"), err: "run a: reading its record: bad disk"},
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			h := newHarness()
+			r := reaping(h, abandonedRun("a"))
+			r.adopter.adoptErr, r.adopter.declined = map[string]error{"a": c.adoptErr}, map[string]run.Record{"a": c.declined}
+
+			finished, owned, err := r.ReapRun(context.Background(), "a")
+
+			if !reflect.DeepEqual(finished, c.finished) || owned != c.owned || (err == nil) != (c.err == "") || err != nil && err.Error() != c.err {
+				t.Fatalf("the reap of a = %+v, owned %v, %v; want %+v, owned %v, %q", finished, owned, err, c.finished, c.owned, c.err)
+			}
+			if want := []string{"a"}; !reflect.DeepEqual(r.adopter.adopted, want) || len(r.processes.refs()) != 0 || len(h.workspaces.discarded) != 0 {
+				t.Fatalf("adopted %v, want %v; reaped %v, discarded %v", r.adopter.adopted, want, r.processes.refs(), h.workspaces.discarded)
+			}
+		})
+	}
+}
+
+// A reap of one run that waits for the reaper's turn waits no longer than
+// its caller: once the caller's context ends, it gives up with the
+// context's error, and adopts nothing.
+func TestAReapOfOneRunThatWaitsEndsWithItsCaller(t *testing.T) {
+	t.Parallel()
+	h := newHarness()
+	r := reaping(h, abandonedRun("a"), abandonedRun("b"))
+	r.ReapContext = func(ctx context.Context) (context.Context, context.CancelFunc) { return context.WithCancel(ctx) }
+	inFlight, release := make(chan struct{}), make(chan struct{})
+	r.processes.hook = func(context.Context) {
+		close(inFlight)
+		<-release
+	}
+	first := make(chan error, 1)
+	go func() {
+		_, _, err := r.ReapRun(context.Background(), "a")
+		first <- err
+	}()
+	<-inFlight
+	ctx, cancel := context.WithCancel(context.Background())
+	r.OnWaiting(cancel)
+
+	_, owned, err := r.ReapRun(ctx, "b")
+
+	if !errors.Is(err, context.Canceled) || owned {
+		t.Fatalf("the reap of b = owned %v, %v; want the caller's cancellation", owned, err)
+	}
+	close(release)
+	if err := <-first; err != nil {
+		t.Fatal(err)
+	}
+	if want := []string{"a"}; !reflect.DeepEqual(r.adopter.adopted, want) {
+		t.Fatalf("adopted %v, want %v", r.adopter.adopted, want)
 	}
 }

@@ -104,6 +104,13 @@ func (goneProcesses) Reap(context.Context, string) (app.HoldReaping, error) {
 }
 
 // fakeRuntimes builds the scripted runtime for the fake adapter.
+// ownedRuns leaves every unfinished run to its owner.
+type ownedRuns struct{}
+
+func (ownedRuns) ReapRun(context.Context, string) (domain.Record, bool, error) {
+	return domain.Record{}, true, nil
+}
+
 type fakeRuntimes struct{ runner *scripted }
 
 func (f fakeRuntimes) Runner(string, string) (app.TurnRunner, error) { return f.runner, nil }
@@ -405,7 +412,7 @@ verify:
 	var definitions app.ResolverDefinitions = fsdefs.Store{Dir: defs}
 	holder := app.NewHolder(app.HoldAdapters{
 		Locks:     system.WorktreeLocks{Dir: filepath.Join(h.home, "locks", "in-place")},
-		Worktrees: over.state, Content: with.changes, Runs: h.store, Writers: goneProcesses{},
+		Worktrees: over.state, Content: with.changes, Runs: h.store, Reaper: ownedRuns{}, Writers: goneProcesses{},
 	})
 	h.calls = app.NewCalls(
 		app.NewResolver(definitions, runtimes, schema.Validator{}, noProblems{}), runtimes,

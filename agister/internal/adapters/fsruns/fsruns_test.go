@@ -276,8 +276,8 @@ func TestAdoptTakesOnlyAnAbandonedRun(t *testing.T) {
 	if abandoned, _ := store.Abandoned(ctx); len(abandoned) != 0 {
 		t.Fatalf("owned run listed: %+v", abandoned)
 	}
-	if _, _, err := store.Adopt(ctx, "r1"); err == nil {
-		t.Fatal("adopted a run its owner holds")
+	if _, _, err := store.Adopt(ctx, "r1"); !errors.Is(err, app.ErrRunOwned) {
+		t.Fatalf("adopting a run its owner holds = %v, want it owned", err)
 	}
 
 	// The owner disappears: the run is listed and adopted once.
@@ -293,8 +293,8 @@ func TestAdoptTakesOnlyAnAbandonedRun(t *testing.T) {
 	if _, status, _ := store.Get(ctx, "r1"); status != run.StateRunning {
 		t.Fatalf("adopted run reads %s", status)
 	}
-	if _, _, err := store.Adopt(ctx, "r1"); err == nil {
-		t.Fatal("adopted a run twice")
+	if _, _, err := store.Adopt(ctx, "r1"); !errors.Is(err, app.ErrRunOwned) {
+		t.Fatalf("adopting a run twice = %v, want it owned", err)
 	}
 
 	// The adopter can append (numbering on) and finish it.
@@ -398,8 +398,10 @@ func TestAFinishedRunWithAnUnreleasedCheckoutOnRecordIsAdopted(t *testing.T) {
 	if abandoned, err := store.Abandoned(ctx); err != nil || len(abandoned) != 1 || abandoned[0].ID != "unreleased" {
 		t.Fatalf("abandoned = %+v, %v", abandoned, err)
 	}
-	if _, _, err := store.Adopt(ctx, "released"); err == nil {
-		t.Fatal("adopted a finished run with only its Checkout on record")
+	// It is told apart from a run that is owned, and comes with its record
+	// as it finished.
+	if _, finished, err := store.Adopt(ctx, "released"); !errors.Is(err, app.ErrRunFinished) || errors.Is(err, app.ErrRunOwned) || finished.FinishedAt == nil || finished.Result == nil || finished.Result.Status != run.Completed {
+		t.Fatalf("adopting a finished run with only its Checkout on record = %+v, %v", finished, err)
 	}
 	adopted, record, err := store.Adopt(ctx, "unreleased")
 	if err != nil || record.FinishedAt == nil || !reflect.DeepEqual(record.Effects.Unreleased, checkout) {
@@ -1167,8 +1169,8 @@ func TestAHeldReadKeepsWritersOut(t *testing.T) {
 	if _, state, _ := store.Get(ctx, "r1"); state != run.StateAbandoned {
 		t.Fatalf("a held run reads %s", state)
 	}
-	if _, _, err := store.Adopt(ctx, "r1"); err == nil {
-		t.Fatal("adopted a held run")
+	if _, _, err := store.Adopt(ctx, "r1"); !errors.Is(err, app.ErrRunOwned) {
+		t.Fatalf("adopting a held run = %v, want it owned", err)
 	}
 	read.Release()
 	read.Release()

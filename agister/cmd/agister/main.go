@@ -270,8 +270,12 @@ func (c composition) wire(config cli.Config) (contract.Client, *app.BackgroundRe
 	// Abandoned runs are reaped beside the calls, never inside one. A reap
 	// that fails has no caller to tell and no run record to say so: the
 	// log does.
+	// One reaper serves both the reap beside the calls and the call that
+	// meets a run a dead owner left in its worktree: in its turn, neither
+	// reads the other as that run's owner.
+	reaper := app.NewReaper(evidence, runtimecomposition.Processes{Supervisor: c.processes}, workspaces.discarder, system.Clock{})
 	reaping := &app.BackgroundReaper{
-		Reaper: app.NewReaper(evidence, runtimecomposition.Processes{Supervisor: c.processes}, workspaces.discarder, system.Clock{}),
+		Reaper: reaper,
 		Report: func(err error) { log.Error("reaping abandoned runs failed", "error", err.Error()) },
 	}
 	infra := app.Infrastructure{
@@ -307,8 +311,9 @@ func (c composition) wire(config cli.Config) (contract.Client, *app.BackgroundRe
 			StateDir:   config.Home,
 		},
 		// A call's hold of its worktree is kept under the home, apart from
-		// the worktree commands' locks; a process another run left there is
-		// ended as the reaper ends it (ADR-025 rule 4). The directory keeps
+		// the worktree commands' locks; an unfinished run a dead owner left
+		// there is reaped by the reaper, and a process another run left there
+		// is ended as the reaper ends it (ADR-025 rule 4). The directory keeps
 		// the name it had for in-place calls (ADR-022), and the lock files
 		// their names: a binary from before ADR-025, still running, holds
 		// its lock file there, and its hold must exclude this binary's as
@@ -318,6 +323,7 @@ func (c composition) wire(config cli.Config) (contract.Client, *app.BackgroundRe
 			Worktrees: workspaces.state,
 			Content:   content,
 			Runs:      evidence,
+			Reaper:    reaper,
 			Writers:   runtimecomposition.HoldProcesses{Supervisor: c.processes},
 		},
 		Verifier:  app.VerifyAdapters{Content: content, Commands: runtimecomposition.Commands{Supervisor: commands}, Clock: system.Clock{}},

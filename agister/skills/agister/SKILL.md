@@ -201,8 +201,10 @@ A call is refused before any turn, with exit 3 and the reason, when:
 - it cannot take its hold (`is in use`): a writer holds the worktree, or,
   for a writer, any other call holds it. A call is refused, not queued.
 - the worktree overlaps a directory another writer's run worked in and
-  may still write in: the run has not finished, or left a process that
-  Agister cannot end. It ends the ones it can.
+  may still write in: its owner still runs it (`has not finished`), or it
+  left a process that Agister cannot end. It ends the ones it can: a run
+  whose owner was killed is finished as `lost` by the call that meets it
+  (`WORKTREE_RUN_REAPED`), which is then admitted.
 - the worktree overlaps a directory a run made before ADR-025 left on
   record, which Agister may still remove (`is not the caller's to
   lend`): a checkout, a clean copy, or the directory made to hold one.

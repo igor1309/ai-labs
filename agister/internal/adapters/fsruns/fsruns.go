@@ -152,7 +152,9 @@ func (s Store) LiveCheckouts(ctx context.Context) ([]string, error) {
 
 // Adopt takes the owner lock of an unfinished run, or of a finished one
 // whose record still names a clean copy or an unreleased checkout, so
-// exactly one process ends what its dead owner left.
+// exactly one process ends what its dead owner left. A run whose lock
+// another holds is app.ErrRunOwned; one finished with neither on record,
+// app.ErrRunFinished, with its record.
 func (s Store) Adopt(ctx context.Context, id string) (app.ReapHandle, run.Record, error) {
 	var record run.Record
 	if err := checkID(id); err != nil {
@@ -167,12 +169,16 @@ func (s Store) Adopt(ctx context.Context, id string) (app.ReapHandle, run.Record
 	}
 	if err := syscall.Flock(int(lock.Fd()), syscall.LOCK_EX|syscall.LOCK_NB); err != nil {
 		lock.Close()
-		return nil, record, fmt.Errorf("run %s is owned: %w", id, err)
+		// Only a lock another holds says the run is owned.
+		if errors.Is(err, syscall.EWOULDBLOCK) {
+			return nil, record, fmt.Errorf("run %s: %w", id, app.ErrRunOwned)
+		}
+		return nil, record, fmt.Errorf("run %s: taking its owner lock: %w", id, err)
 	}
 	// Read under the lock: the owner may have finished before it was released.
 	record, _, err = s.Get(ctx, id)
 	if err == nil && record.FinishedAt != nil && !reapable(record.Effects) {
-		err = fmt.Errorf("run %s is finished", id)
+		err = fmt.Errorf("run %s: %w", id, app.ErrRunFinished)
 	}
 	if err != nil {
 		lock.Close()

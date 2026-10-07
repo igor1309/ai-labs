@@ -326,8 +326,10 @@ call. A call that cannot take its hold is refused, not queued. It is also
 refused before any turn if:
 
 - the worktree overlaps a directory a writer's run worked in and may
-  still write in, because the run has not finished or left a process that
-  cannot be ended. Agister ends the ones it can;
+  still write in, because its owner still runs it or it left a process
+  that cannot be ended. Agister ends the ones it can: a run its owner was
+  killed in is finished as lost, with its processes ended, by the call
+  that meets it, which is then admitted;
 - the worktree overlaps a directory that a run made before ADR-025 left on
   record and Agister may still remove: a checkout, a clean copy, or the
   directory made to hold one.

@@ -515,13 +515,15 @@ func TestARecordedDirectoryThatCannotBeToldApartRefusesTheCall(t *testing.T) {
 // storedHolds returns a run store in a directory of the test's own and a
 // hold that creates run id there and asks a Holder on that store, over
 // the harness's spies, for the worktree at dir, as a writer; update
-// saves the run's record. What a hold leaves held, the run's ownership
-// and a lock lent, is let go when the test ends.
+// saves the run's record. The Holder's reaper is one over that store,
+// which ends processes through the harness's and tells the time of the
+// fixed clock. What a hold leaves held, the run's ownership and a lock
+// lent, is let go when the test ends.
 func storedHolds(t *testing.T, h *harness) (fsruns.Store, func(id, dir string, update func(app.RunHandle, run.Record) error) (*app.Held, error)) {
 	t.Helper()
 	ctx := context.Background()
 	store := fsruns.Store{Dir: t.TempDir(), Appends: fsruns.NewAppends()}
-	holder := app.NewHolder(app.HoldAdapters{Locks: h.locks, Worktrees: h.worktrees, Content: h.changes, Runs: store, Writers: h.writers})
+	holder := app.NewHolder(app.HoldAdapters{Locks: h.locks, Worktrees: h.worktrees, Content: h.changes, Runs: store, Reaper: storedReaper(h, store), Writers: h.writers})
 	return store, func(id, dir string, update func(app.RunHandle, run.Record) error) (*app.Held, error) {
 		t.Helper()
 		record := run.Record{ID: id}
@@ -546,6 +548,14 @@ func storedHolds(t *testing.T, h *harness) (fsruns.Store, func(id, dir string, u
 		}
 		return held, err
 	}
+}
+
+// storedReaper is a reaper of the runs in store, over the harness's spies,
+// on the fixed clock; only its caller's context bounds it.
+func storedReaper(h *harness, store fsruns.Store) *app.Reaper {
+	reaper := app.NewReaper(store, h.processes, h.workspaces, fixedClock{})
+	reaper.ReapContext = func(ctx context.Context) (context.Context, context.CancelFunc) { return context.WithCancel(ctx) }
+	return reaper
 }
 
 // saved saves the record through the run's handle.
