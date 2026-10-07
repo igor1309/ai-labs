@@ -62,10 +62,12 @@ install's plan.
   installed with `agister install`, which learns skills; `ai-labs/prompts/`
   stops being the source of home's copies.
 - 2026-10-07, owner, on ADR-027 as proposed (adr_review
-  `20261007T183934Z-6c7c05`, approved): keep the `.agister/` copies.
-  The repository's `.agister/` keeps its full settings, so the repository
-  works without home installed, and a test keeps every document it shares
-  with `agister/home/` identical, except those listed with their reason.
+  `20261007T183934Z-6c7c05`, approved): first chose to keep the
+  `.agister/` copies, then, on reflection, one copy: each shared document
+  lives only in `agister/home/`, and `.agister/` keeps only what is the
+  repository's own. The reason: the repository already depends on home
+  (runs live there; only home has `runtimes/claude-code.yaml`), so
+  copies would buy little and make every change twice.
 
 ## Open
 
