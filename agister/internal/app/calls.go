@@ -658,7 +658,7 @@ func (c *Calls) Submit(ctx context.Context, request contract.CallRequest) (strin
 		CreatedAt: now,
 		Request: run.Request{
 			Process:    request.Process,
-			Params:     recordParams(request.Params),
+			Params:     request.Params,
 			Agent:      request.Agent,
 			Timeout:    request.Timeout,
 			MaxCostUSD: request.MaxCostUSD,
@@ -685,7 +685,7 @@ func (c *Calls) Submit(ctx context.Context, request contract.CallRequest) (strin
 			defer c.cancels.End(record.ID)
 			defer c.cancels.Remove(record.ID)
 			defer cancel()
-			c.runWorkflow(runCtx, handle, record, request.Params, resolver, workflow, workflowErr, flow)
+			c.runWorkflow(runCtx, handle, record, resolver, workflow, workflowErr, flow)
 		}()
 		return record.ID, nil
 	}
@@ -695,18 +695,16 @@ func (c *Calls) Submit(ctx context.Context, request contract.CallRequest) (strin
 		defer c.cancels.End(record.ID)
 		defer c.cancels.Remove(record.ID)
 		defer cancel()
-		c.execute(runCtx, handle, record, request.Params, resolver, nil)
+		c.execute(runCtx, handle, record, resolver, nil)
 	}()
 	return record.ID, nil
 }
 
 // execute runs one call and returns its record as finished. Every refusal
 // happens before the runtime starts and is recorded; every effect is
-// released on every path. params are the call's params as given, which its
-// record may keep as digests (recordParams). collection is what a
-// workflow's join receives through its collection input; nil for any other
-// call.
-func (c *Calls) execute(ctx context.Context, handle RunHandle, record run.Record, params map[string]string, resolver CallResolution, collection *Resolved) (final run.Record) {
+// released on every path. collection is what a workflow's join receives
+// through its collection input; nil for any other call.
+func (c *Calls) execute(ctx context.Context, handle RunHandle, record run.Record, resolver CallResolution, collection *Resolved) (final run.Record) {
 	event := func(source, kind string, data map[string]any) {
 		_ = handle.Append(run.Event{At: c.clock.Now(), Source: source, Kind: kind, Data: data})
 	}
@@ -834,12 +832,13 @@ func (c *Calls) execute(ctx context.Context, handle RunHandle, record run.Record
 		return
 	}
 
-	inputs, err := c.resolveValues(ctx, "process "+res.Process.Name, res.Process.Params, res.Process.Values, given(record.Request, params), collection, res.Prompts, res.Absent)
+	inputs, err := c.resolveValues(ctx, "process "+res.Process.Name, res.Process.Params, res.Process.Values, record.Request, collection, res.Prompts, res.Absent)
 	if err != nil {
 		fail(err)
 		return
 	}
 	record.Inputs = recordInputs(handle, inputs, event)
+	record.Request.Params = recordParams(record.Request.Params, record.Inputs)
 	_ = handle.Update(record)
 	revision, _ := revisionOf(inputs, res.Process.Revision)
 
@@ -1013,10 +1012,9 @@ func (c *Calls) execute(ctx context.Context, handle RunHandle, record run.Record
 	return final
 }
 
-// runWorkflow runs one workflow and finishes its run. params are its
-// params as given, which its record may keep as digests (recordParams).
-// res and resErr are the workflow as the settings snapshot resolved it.
-func (c *Calls) runWorkflow(ctx context.Context, handle RunHandle, record run.Record, params map[string]string, resolver CallResolution, res *ResolvedWorkflow, resErr error, flow *flow) {
+// runWorkflow runs one workflow and finishes its run. res and resErr are the
+// workflow as the settings snapshot resolved it.
+func (c *Calls) runWorkflow(ctx context.Context, handle RunHandle, record run.Record, resolver CallResolution, res *ResolvedWorkflow, resErr error, flow *flow) {
 	event := func(kind string, data map[string]any) {
 		_ = handle.Append(run.Event{At: c.clock.Now(), Source: run.SourceAgister, Kind: kind, Data: data})
 	}
@@ -1103,12 +1101,13 @@ func (c *Calls) runWorkflow(ctx context.Context, handle RunHandle, record run.Re
 
 	// Resolved once, before any node starts; every fan-out node receives the
 	// same values.
-	inputs, err := c.resolveValues(ctx, "workflow "+workflow.Name, workflow.Params, workflow.Values, given(record.Request, params), nil, nil, nil)
+	inputs, err := c.resolveValues(ctx, "workflow "+workflow.Name, workflow.Params, workflow.Values, record.Request, nil, nil, nil)
 	if err != nil {
 		refused(err)
 		return
 	}
 	record.Inputs = recordInputs(handle, inputs, func(_, kind string, data map[string]any) { event(kind, data) })
+	record.Request.Params = recordParams(record.Request.Params, record.Inputs)
 	_ = handle.Update(record)
 	values, err := passedValues(inputs)
 	if err != nil {
@@ -1249,7 +1248,7 @@ func (c *Calls) startNode(ctx context.Context, parent string, node CallNode, par
 		Process:   node.Process,
 		CreatedAt: now,
 		Parent:    &run.Parent{Run: parent, Node: node.Name},
-		Request:   run.Request{Process: node.Process, Params: recordParams(params), Cwd: cwd},
+		Request:   run.Request{Process: node.Process, Params: params, Cwd: cwd},
 	}
 	handle, err := c.recorder.Create(ctx, record)
 	if err != nil {
@@ -1261,7 +1260,7 @@ func (c *Calls) startNode(ctx context.Context, parent string, node CallNode, par
 		defer c.cancels.End(record.ID)
 		defer c.cancels.Remove(record.ID)
 		defer cancel()
-		ended(c.execute(nodeCtx, handle, record, params, resolver, collection))
+		ended(c.execute(nodeCtx, handle, record, resolver, collection))
 	}()
 	return record.ID, nil
 }
@@ -1690,8 +1689,9 @@ func recordInputs(handle RunHandle, inputs []run.Input, event func(string, strin
 
 // inputArtifactName is the file name the artifact of inputs[i] is stored
 // under: input-<name>.txt for a name of at most 64 letters, digits, '-'
-// and '_' that no other input has, and otherwise input.<i>.txt, which no
-// such name can produce, so each input's artifact is its own.
+// and '_' that no other input has, in any case, and otherwise
+// input.<i>.txt, which no such name can produce, so each input's artifact
+// is its own, on a file system that ignores case too.
 func inputArtifactName(inputs []run.Input, i int) string {
 	name := inputs[i].Name
 	plain := len(name) > 0 && len(name) <= 64 && !strings.ContainsFunc(name, func(r rune) bool {
@@ -1699,7 +1699,7 @@ func inputArtifactName(inputs []run.Input, i int) string {
 	})
 	repeated := false
 	for j, other := range inputs {
-		repeated = repeated || j != i && other.Name == name
+		repeated = repeated || j != i && asciiLower(other.Name) == asciiLower(name)
 	}
 	if plain && !repeated {
 		return "input-" + name + ".txt"
@@ -1707,24 +1707,32 @@ func inputArtifactName(inputs []run.Input, i int) string {
 	return "input." + strconv.Itoa(i) + ".txt"
 }
 
-// given is the request as the caller gave it: with its params, which its
-// record may keep as digests.
-func given(request run.Request, params map[string]string) run.Request {
-	request.Params = params
-	return request
+// asciiLower is name with its ASCII letters in lower case.
+func asciiLower(name string) string {
+	return strings.Map(func(r rune) rune {
+		if r >= 'A' && r <= 'Z' {
+			return r + 'a' - 'A'
+		}
+		return r
+	}, name)
 }
 
-// recordParams is params as a run's record keeps them: a value over
-// inlineInputChars as its digest, whose bytes the input that takes it
-// keeps as an artifact (see recordInputs).
-func recordParams(params map[string]string) map[string]string {
+// recordParams is params as a run's record keeps them once its inputs are
+// recorded: a value over inlineInputChars whose bytes an input's artifact
+// keeps (see recordInputs) as its digest, and every other value as given.
+// Until then, and on a run refused before, the record keeps params as
+// given, so a long one's text is never lost.
+func recordParams(params map[string]string, inputs []run.Input) map[string]string {
 	if params == nil {
 		return nil
 	}
 	out := make(map[string]string, len(params))
 	for name, value := range params {
 		if len(value) > inlineInputChars {
-			value = "sha256:" + digestOf([]byte(value))
+			digest := "sha256:" + digestOf([]byte(value))
+			if slices.ContainsFunc(inputs, func(input run.Input) bool { return input.Artifact != nil && input.Artifact.Digest == digest }) {
+				value = digest
+			}
 		}
 		out[name] = value
 	}

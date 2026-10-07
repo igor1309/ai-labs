@@ -192,13 +192,15 @@ or contains it.
   its `value`. A longer one is not: its `artifact` names the file that
   holds exactly what the agent received, `artifacts/input-<name>.txt` in
   the run's directory (`artifacts/input.<n>.txt`, `<n>` its place among
-  the `inputs` from 0, when its name is shared, holds anything but
-  letters, digits, `-` and `_`, or runs over 64 characters), with its
-  `digest` and `bytes`, and a long literal,
-  such as the goal a workflow passes to its nodes as a param, is recorded
-  by its `sha256:` digest, as its `identity` and in `request.params`. A
-  text that could not be kept is the event `ARTIFACT_FAILED`. A run
-  recorded before inputs were kept has no `artifact`.
+  the `inputs` from 0, when its name is shared, in any case, holds
+  anything but letters, digits, `-` and `_`, or runs over 64
+  characters), with its `digest` and `bytes`, and a long literal, such
+  as the goal a workflow passes to its nodes as a param, is recorded by
+  its `sha256:` digest, as its `identity` and, once an input's artifact
+  keeps its text, in `request.params`; a run refused before that keeps
+  the param's text there. A text that could not be kept is the event
+  `ARTIFACT_FAILED`. A run recorded before inputs were kept has no
+  `artifact`.
 - A policy's `stale` limits end an agent turn that stopped moving, before
   its timeout. With `stale.recover`, a budget of `max_resumes` and an
   `instruction`, Agister then resumes the turn's session with what went

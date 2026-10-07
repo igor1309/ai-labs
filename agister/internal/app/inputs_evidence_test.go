@@ -18,8 +18,18 @@ import (
 // value too long for the record is stored as an artifact of the run, which
 // the record's input names, and a long literal is recorded by its digest.
 
+// inlineLimit is the longest text the record keeps inline.
+const inlineLimit = 2000
+
 // longText is longer than the record keeps inline.
 var longText = strings.Repeat("The brief says what to do.\n", 100)
+
+// jsonText is text as a JSON document holds it, escaped, so a search of a
+// marshalled record finds it.
+func jsonText(text string) string {
+	data, _ := json.Marshal(text)
+	return string(data[1 : len(data)-1])
+}
 
 // inputOf is the record's input name.
 func inputOf(t *testing.T, record run.Record, name string) run.Input {
@@ -92,7 +102,7 @@ func TestALongInputIsKeptAsAnArtifactOfItsRun(t *testing.T) {
 	}
 	// Nowhere in the record is the literal.
 	data, _ := json.Marshal(record)
-	if strings.Contains(string(data), longText) {
+	if strings.Contains(string(data), jsonText(longText)) {
 		t.Fatalf("the record holds the long text:\n%s", data)
 	}
 
@@ -215,7 +225,7 @@ func TestAWorkflowNodesLongParamIsRecordedAsADigest(t *testing.T) {
 		if stored := string(h.store.handle(t, node).artifacts["input-goal.txt"]); stored != longText {
 			t.Fatalf("%s stored %q", node, stored)
 		}
-		if data, _ := json.Marshal(record); strings.Contains(string(data), longText) {
+		if data, _ := json.Marshal(record); strings.Contains(string(data), jsonText(longText)) {
 			t.Fatalf("%s's record holds the goal's text:\n%s", node, data)
 		}
 	}
@@ -226,16 +236,19 @@ func TestAWorkflowNodesLongParamIsRecordedAsADigest(t *testing.T) {
 	}
 }
 
-// Inputs whose names repeat, or hold what a file name cannot, each keep
-// their own artifact, under a safe name of their place among the inputs.
+// Inputs whose names repeat, hold what a file name cannot, or run over 64
+// characters, each keep their own artifact, under a safe name of their
+// place among the inputs.
 func TestInputArtifactsAreEachInputsOwn(t *testing.T) {
 	t.Parallel()
+	longName := strings.Repeat("a", 65)
 	h := newHarness()
 	h.defs.docs[definition.KindProcess]["p"] = strings.Replace(h.defs.docs[definition.KindProcess]["p"],
 		`    diff: {source: git.diff, base: "${param.base}", head: "${param.candidate}"}`+"\n",
 		`    diff: {source: git.diff, base: "${param.base}", head: "${param.candidate}"}`+"\n"+
-			"    brief: {source: file, path: one.md}\n    brief: {source: file, path: two.md}\n    notes/today: {source: file, path: notes.md}\n", 1)
-	texts := map[string]string{"one.md": longText + "one", "two.md": longText + "two", "notes.md": longText + "notes"}
+			"    brief: {source: file, path: one.md}\n    brief: {source: file, path: two.md}\n    notes/today: {source: file, path: notes.md}\n"+
+			"    "+longName+": {source: file, path: long.md}\n", 1)
+	texts := map[string]string{"one.md": longText + "one", "two.md": longText + "two", "notes.md": longText + "notes", "long.md": longText + "long"}
 	base := h.inputs.respond
 	h.inputs.respond = func(spec app.InputSpec) (app.Resolved, error) {
 		if text, ok := texts[spec.Args["path"]]; ok {
@@ -251,8 +264,9 @@ func TestInputArtifactsAreEachInputsOwn(t *testing.T) {
 		{"brief", texts["one.md"], "input.2.txt"},
 		{"brief", texts["two.md"], "input.3.txt"},
 		{"notes/today", texts["notes.md"], "input.4.txt"},
+		{longName, texts["long.md"], "input.5.txt"},
 	}
-	if len(record.Inputs) != 5 {
+	if len(record.Inputs) != 6 {
 		t.Fatalf("inputs = %+v", record.Inputs)
 	}
 	for i, want := range want {
@@ -266,8 +280,138 @@ func TestInputArtifactsAreEachInputsOwn(t *testing.T) {
 			t.Fatalf("%s holds %q, want %s's text", want.file, stored, want.name)
 		}
 	}
-	if len(h.recorder.artifacts) != 3 {
+	if len(h.recorder.artifacts) != 4 {
 		t.Fatalf("artifacts = %v", h.recorder.artifacts)
+	}
+}
+
+// Inputs whose names differ only in case keep their own artifacts on a file
+// system that ignores case: each under its place among the inputs, while a
+// name no other shares keeps its own.
+func TestInputArtifactsOfNamesThatDifferInCaseAreEachInputsOwn(t *testing.T) {
+	t.Parallel()
+	h := newHarness()
+	h.defs.docs[definition.KindProcess]["p"] = strings.Replace(h.defs.docs[definition.KindProcess]["p"],
+		`    diff: {source: git.diff, base: "${param.base}", head: "${param.candidate}"}`+"\n",
+		`    diff: {source: git.diff, base: "${param.base}", head: "${param.candidate}"}`+"\n"+
+			"    goal: {source: file, path: lower.md}\n    Goal: {source: file, path: upper.md}\n    notes: {source: file, path: notes.md}\n", 1)
+	texts := map[string]string{"lower.md": longText + "lower", "upper.md": longText + "upper", "notes.md": longText + "notes"}
+	base := h.inputs.respond
+	h.inputs.respond = func(spec app.InputSpec) (app.Resolved, error) {
+		if text, ok := texts[spec.Args["path"]]; ok {
+			return app.Resolved{Value: text, Identity: "sha256:" + sha(text)}, nil
+		}
+		return base(spec)
+	}
+	record := h.call(t, contract.CallRequest{})
+	if record.Result.Status != run.Completed {
+		t.Fatalf("result = %+v", record.Result)
+	}
+	want := []struct{ name, text, file string }{
+		{"goal", texts["lower.md"], "input.2.txt"},
+		{"Goal", texts["upper.md"], "input.3.txt"},
+		{"notes", texts["notes.md"], "input-notes.txt"},
+	}
+	if len(record.Inputs) != 5 {
+		t.Fatalf("inputs = %+v", record.Inputs)
+	}
+	folded := map[string]bool{}
+	for i, want := range want {
+		input := record.Inputs[2+i]
+		digest := "sha256:" + sha(want.text)
+		if input.Name != want.name || input.Value != nil || input.Identity != digest || input.Artifact == nil ||
+			*input.Artifact != (run.Artifact{Name: want.file, Path: "artifacts/" + want.file, Digest: digest, Bytes: int64(len(want.text))}) {
+			t.Fatalf("input %d = %+v, artifact %+v", 2+i, input, input.Artifact)
+		}
+		if stored := string(h.recorder.artifacts[want.file]); stored != want.text {
+			t.Fatalf("%s holds %q, want %s's text", want.file, stored, want.name)
+		}
+		folded[strings.ToLower(input.Artifact.Name)] = true
+	}
+	if len(folded) != 3 || len(h.recorder.artifacts) != 3 {
+		t.Fatalf("artifact names, case folded = %v; artifacts = %v", folded, h.recorder.artifacts)
+	}
+}
+
+// A long prompt is kept as an artifact of the run that receives it, with
+// its digest, its identity; the agent receives it unchanged.
+func TestALongPromptIsKeptAsAnArtifactOfItsRun(t *testing.T) {
+	t.Parallel()
+	h := newHarness()
+	text := longText + "Review the change against the rules.\n"
+	prompted(h, text)
+	record := h.call(t, contract.CallRequest{})
+	if record.Result.Status != run.Completed {
+		t.Fatalf("result %+v: %s", record.Result, message(record))
+	}
+	digest := "sha256:" + sha(text)
+	want := run.Artifact{Name: "input-rules.txt", Path: "artifacts/input-rules.txt", Digest: digest, Bytes: int64(len(text))}
+	if rules := inputOf(t, record, "rules"); rules.Source != "prompt" || rules.Value != nil || rules.Identity != digest || rules.Artifact == nil || *rules.Artifact != want {
+		t.Fatalf("rules = %+v, artifact %+v", rules, rules.Artifact)
+	}
+	if stored := string(h.recorder.artifacts["input-rules.txt"]); stored != text {
+		t.Fatalf("rules stored as %q", stored)
+	}
+	if calls := h.runner.calls(); len(calls) != 1 || !strings.Contains(calls[0].Prompt, text) {
+		t.Fatalf("the agent was not given the prompt: %+v", calls)
+	}
+}
+
+// A collection over the inline limit is kept as an artifact of the join
+// that receives it, the same bytes as the workflow's collection.json; the
+// join's agent receives it unchanged.
+func TestALongCollectionIsKeptAsAnArtifactOfTheJoin(t *testing.T) {
+	t.Parallel()
+	h := newFlowHarness()
+	h.script("Work as first.").turn = completed(`{"from":"first","notes":"`+strings.Repeat("n", inlineLimit)+`"}`, 0.1, 1)
+	id := h.submit(t, contract.CallRequest{})
+	record := h.store.wait(t, id)
+	if record.Result.Status != run.Completed {
+		t.Fatalf("result = %+v", record.Result)
+	}
+	collection := string(h.store.handle(t, id).artifacts["collection.json"])
+	if len(collection) <= inlineLimit {
+		t.Fatalf("collection is %d bytes, not over the limit", len(collection))
+	}
+	digest := "sha256:" + sha(collection)
+	want := run.Artifact{Name: "input-gathered.txt", Path: "artifacts/input-gathered.txt", Digest: digest, Bytes: int64(len(collection))}
+	join := h.store.wait(t, "run-4")
+	if gathered := inputOf(t, join, "gathered"); gathered.Value != nil || gathered.Identity != digest || gathered.Artifact == nil || *gathered.Artifact != want {
+		t.Fatalf("gathered = %+v, artifact %+v", gathered, gathered.Artifact)
+	}
+	if stored := string(h.store.handle(t, "run-4").artifacts["input-gathered.txt"]); stored != collection {
+		t.Fatalf("the join stored %q, want the collection %q", stored, collection)
+	}
+	if turns := h.runner.turns("Join them."); len(turns) != 1 || !strings.Contains(turns[0].Prompt, collection) {
+		t.Fatal("the join did not receive the collection")
+	}
+}
+
+// A run refused before its inputs are recorded keeps a long param as it was
+// given: no artifact keeps its bytes, so its record does.
+func TestARefusedRunKeepsALongParamsText(t *testing.T) {
+	t.Parallel()
+	h := keptInputs(longText)
+	h.defs.docs[definition.KindProcess]["p"] = strings.Replace(h.defs.docs[definition.KindProcess]["p"],
+		"    brief: {source: file, path: brief.md}\n    goal: {source: param, name: goal}\n",
+		"    goal: {source: param, name: goal}\n    brief: {source: file, path: missing.md}\n", 1)
+	keep := h.inputs.respond
+	h.inputs.respond = func(spec app.InputSpec) (app.Resolved, error) {
+		if spec.Source == "file" {
+			return app.Resolved{}, errors.New("no such file")
+		}
+		return keep(spec)
+	}
+	goal := longText + "goal"
+	record := h.call(t, contract.CallRequest{Params: map[string]string{"goal": goal}})
+	if class(record) != run.ClassRefused || !strings.Contains(message(record), "input brief: no such file") {
+		t.Fatalf("result = %+v", record.Result)
+	}
+	if record.Request.Params["goal"] != goal {
+		t.Fatalf("request params = %v, want the goal's text", record.Request.Params)
+	}
+	if len(record.Inputs) != 0 || len(h.recorder.artifacts) != 0 {
+		t.Fatalf("inputs = %+v, artifacts %v", record.Inputs, h.recorder.artifacts)
 	}
 }
 

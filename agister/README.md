@@ -128,15 +128,16 @@ The run's record lists the `inputs` it was given, each with its
 of up to 2000 bytes is in the record as its `value`. A longer one is kept
 with the run, beside `changes.patch`, as
 `~/.agister/runs/<id>/artifacts/input-<name>.txt`, exactly the bytes the
-agent received; an input whose name another input shares, or holds
-anything but letters, digits, `-` and `_`, or runs over 64 characters,
-is kept as `input.<n>.txt` instead, `<n>` its place among the record's
-`inputs`, from 0. The input names it under `artifact`, with its
-`digest` and `bytes`; a long literal, such as the goal a workflow passes
-to each node as a param, is recorded by its `sha256:` digest, as its
-`identity` and in the request's `params`. An input's text that could not
-be kept is recorded as the event `ARTIFACT_FAILED`, and the input keeps
-its identity only. A record made before inputs were kept has no
+agent received; an input whose name another input shares, in any case,
+or holds anything but letters, digits, `-` and `_`, or runs over 64
+characters, is kept as `input.<n>.txt` instead, `<n>` its place among
+the record's `inputs`, from 0. The input names it under `artifact`, with
+its `digest` and `bytes`; a long literal, such as the goal a workflow
+passes to each node as a param, is recorded by its `sha256:` digest, as
+its `identity` and, once an input's artifact keeps its text, in the
+request's `params`; a run refused before that keeps the param's text
+there. An input's text that could not be kept is recorded as the event
+`ARTIFACT_FAILED`, and the input keeps its identity only. A record made before inputs were kept has no
 `artifact`.
 
 A prompt the settings fix, such as a reviewer's instructions, is a document
