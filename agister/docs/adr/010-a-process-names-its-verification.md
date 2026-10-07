@@ -1,6 +1,7 @@
 # ADR-010: A process names its verification
 
 - **Status:** Accepted
+- **Amended by:** [ADR-025](025-a-call-works-where-it-is-called.md)
 - **Date:** 2026-10-02
 - **Scope:** where a process's verification command is declared
 - **Decision type:** Architecture

@@ -1,6 +1,6 @@
 # ADR-025: A call works where it is called
 
-- **Status:** Proposed
+- **Status:** Accepted
 - **Date:** 2026-10-07
 - **Scope:** where every call works and verifies, and who makes the
   worktree it works in

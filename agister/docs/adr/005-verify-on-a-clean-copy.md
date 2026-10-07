@@ -1,6 +1,7 @@
 # ADR-005: Verify runs on a clean copy of what is delivered
 
 - **Status:** Accepted
+- **Superseded by:** [ADR-025](025-a-call-works-where-it-is-called.md)
 - **Date:** 2026-09-30
 - **Scope:** where a verification command runs
 - **Decision type:** Architecture
