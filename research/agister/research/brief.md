@@ -176,63 +176,69 @@ Agister's.
 
 ### Two layers
 
-1. **The goal** — one per piece of work (issue). The owner's words; what
-   every reviewer receives as `goal` (ADR-023, unchanged). Linked, never
-   restated, by the steps below.
-2. **The step brief** — one per implementer run. Which of the goal's done
-   items it makes true and the check that proves each; what it acts on; a
-   link to the goal. A review round's brief is a step brief whose items are
-   the judge's fixes.
+1. **The goal**: what a piece of work is for, in the owner's words or by
+   reference to them. Every reviewer receives it as `goal` (ADR-023,
+   unchanged). One per issue is the usual case, not a rule.
+2. **The step brief**: one implementer run. Which of the goal's criteria it
+   makes true, and a reference to the goal. A review round's brief is a
+   step brief whose items are the judge's fixes, and it names the judgement
+   it comes from. A one-step change needs no step brief: the goal is passed
+   as the brief.
 
-This is the split the owner already practises in both places: SPEC.md and
-BRIEF.md in ios.config, `lab-<n>-goal.md` and `lab-<n>-*.md` in
-`agister/testdata/briefs/`. What changes is where they live (below).
+This is the split the owner already practises: SPEC.md and BRIEF.md in
+ios.config, `lab-<n>-goal.md` and `lab-<n>-*.md` in
+`agister/testdata/briefs/`.
 
-### The goal's fields
+### The goal's contract
 
-| Section | Required | Notes |
+A small common contract with conditional parts, not one fixed form at every
+size (§2: ceremony scales down).
+
+| Part | When | Notes |
 |---|---|---|
-| `## Intent` | yes | what should be true after, and why; no *how* |
-| `## Done when` | yes | numbered, stable ids (`D1`, `D2`…), each observable |
-| `## Out of scope` | yes, may be `None.` | binding and the owner's (ADR-023 rule 2) |
-| `## Sources` | no | links to the issue, Product Intent, spec, ADRs; links, not copies |
-| `## Decisions` | no | dated owner rulings, appended |
-| `## Open` | yes | must read `None.` before the first run |
+| Intent | always | prose, or a reference to the upstream artifact that states it (Product Intent, SPEC, issue); a reference is preferred to a restatement (§3: restatement drift) |
+| Done when | always | observable criteria; reuse upstream story or scenario ids where they exist, number them only where none do |
+| Expected behaviour, source, reproduction | bug fix | the expected behaviour comes first with its source, or an explicit "source missing"; the failing-then-passing test is the evidence, not the criterion |
+| Out of scope | always, may be `None.` | the owner's, and challengeable: a reviewer may show an exclusion stops the goal, and the judge rules `owner` (ADR-023 rule 2) |
+| Sources | when correctness depends on an upstream artifact | references, not copies |
+| Decisions | when the owner has ruled | dated; a change of intent lands upstream first (§2), then here |
+| Open | always | must read `None.` for every run that receives it, not only the first |
 
-Size of work changes what `## Intent` holds, not the file:
-- bug fix: Symptom, Reproduction, Expected behaviour source; one done item
-  is "a test that fails before the fix and passes after";
-- minor feature: the behaviour delta, or a link to the Product Intent story;
-- larger work: a link to the Product Intent or spec, and done items that cite
-  its story or scenario ids.
+### The step brief's contract
 
-### The step brief's fields
+- Goal: the goal's reference (below).
+- Covers: the criteria this step makes true. The implementer derives the
+  check that proves each, unless the goal already names one (§3: the caller
+  says *what* correct means, the implementer *how*).
+- Acts on: findings or judge items, when there are any.
+- Constraints: only what the goal does not already say.
+- Open: `None.`
 
-`## Goal` (the digest of the goal, as its run recorded it), `## Covers`
-(done id → check),
-`## Acts on`, `## Constraints`, `## Open`. Scaled down, a one-step change
-needs no step brief: the goal is passed as the brief.
+### Where it lives
 
-### Who writes it, where it is stored
+Owner's rule: a SPEC and its QA belong to the repository, as its truth;
+plans, briefs and goals do not. They are disposable as content and worth
+keeping as research and audit material. Committing them wins only until the
+PR; then a cleanup is due, which is easy to skip and, when done, leaves an
+audit to dig through history.
 
-- The caller writes both — the owner, or the caller agent from the issue.
-  Agister does not generate or repair a brief.
-- A brief belongs to the run, not to the repository. It is what the run was
-  given, so Agister stores the bytes in the run's evidence
-  (`artifacts/brief.md`, `artifacts/goal.md`) with their digest. This makes
-  ADR-001 rule 10 ("Anything needed to understand a call is evidence")
-  true for briefs, survives /tmp, and keeps briefs out of the caller's
-  worktree and history. The caller may pass a scratch file; committing one
-  becomes the caller's choice, not the protocol (the 145 "brief for LAB-…"
-  commits in `agister/testdata/briefs/` stop being needed).
-- Templates live in settings (`prompts/` or a `briefs/` directory), so a
-  rule exists in one place (Verger L7, L103).
-- A stored brief is immutable by construction: the run's copy cannot be
-  edited. A change of intent is a new goal, given to the next run, with the
-  reason in its `## Decisions` (ios.config append-only rounds, BMAD frozen
-  block, the open charter-amendment failure).
-- A later run names its goal by digest; `runs show` finds the run that
-  first recorded it.
+So a brief lives outside the repository:
+
+- **In the run.** Agister stores the bytes it was given in the run's
+  evidence (`artifacts/brief.md`, `artifacts/goal.md`) with their digest.
+  This is the durable copy, for audit, and makes ADR-001 rule 10 ("Anything
+  needed to understand a call is evidence") true for briefs.
+- **In /tmp, as a working copy.** The run records it in a field whose name
+  says it is ephemeral, such as `tmp_link`. Later runs reuse the link while
+  the host has not rebooted. When the file is gone, the run's copy is the
+  source.
+- **Linked explicitly.** A run that serves a goal records the goal's run
+  artifact and digest, not only a path. Nothing is found by searching runs.
+
+A goal's text never changes inside a run. The stored copy is written once
+and the input digest guards it: a later run given different bytes records a
+different goal. A change of intent is a new goal, with the reason in its
+Decisions.
 
 ### How processes and reviewers get it
 
@@ -240,33 +246,38 @@ needs no step brief: the goal is passed as the brief.
 - Every review node: `goal`, as today (ADR-023). Not the step brief: its
   claims are testimony.
 - The intent auditor (LAB-105): one more fan-out node in `code_review` with
-  the same `goal`, giving the descriptive readings / implemented reading /
-  divergence output. It fits ADR-023 (same inputs to every reviewer); its
-  "other reviewers stay blind" premise no longer holds.
-- The judge: stays blind (ADR-003 rule 4, ADR-023).
+  the same `goal`, and its own prompt and duties (the descriptive readings,
+  implemented reading and divergence). Its premise that the other reviewers
+  stay blind no longer holds.
+- The judge stays blind (ADR-003 rule 4, ADR-023).
+
+### Checks at the entry
+
+- Structural, by Agister or the caller skill: the goal resolves, its
+  references resolve, the conditional parts are present, Open reads
+  `None.`. A normal contract check.
+- Semantic, whether the brief is right: an optional caller process, not
+  Agister's ("A bad brief is rejected, never repaired", caller seam).
 
 ## 8. Follow-ups
 
 Drafted for Multica (not yet filed):
 
-1. **ADR: the brief.** The input contract: goal and step brief, required
-   sections, written by the caller, owned by the run that received it.
-   Settles the word: "goal" and "brief" name two layers, not one thing
-   twice.
-2. **Keep the brief's words in the run's evidence.** A `file` input whose
-   text exceeds 2000 characters is recorded as a digest only, and a /tmp
-   path is lost (both observed, §1). Store the bytes as a run artifact;
-   stop `source: param` copying the goal into every node's identity.
-3. **Brief templates in settings and a check.** Templates for the goal and
-   the step brief; a check, in the caller skill, that the required sections
-   exist and `## Open` reads `None.` before a run.
-4. **Re-scope LAB-105 after ADR-023.** The intent auditor becomes one more
-   review node with `goal`; drop "the other reviewers still do not see the
-   brief" and the optional-input question.
-5. **Link a step brief to its goal in the record.** `runs show` names the
-   goal a run served, so review rounds and fresh-context retries (LAB-110)
-   chain to it.
+1. **ADR: the brief.** The thin handoff: goal and step brief, their
+   contracts, the caller writes, the run keeps, the repository does not.
+   Detailed templates stay in settings.
+2. **Keep inputs' words in the run's evidence.** A `file` input whose text
+   exceeds 2000 characters is recorded as a digest only, and a /tmp path is
+   lost (both observed, §1). Store the bytes as a run artifact for process
+   and workflow inputs alike; stop `source: param` copying the goal into
+   every node's identity.
+3. **The ephemeral working copy and the link.** `tmp_link` (or similar) in
+   the record, reuse across runs, fall back to the run's copy; a run records
+   the goal it serves by artifact and digest; a repair round records the
+   judgement it answers.
+4. **Templates in settings and the structural check.** Conditional parts,
+   resolved references, Open `None.`; no semantic judgement.
+5. **Re-scope LAB-105 after ADR-023.** The intent auditor is one more review
+   node with `goal`; drop "the other reviewers still do not see the brief".
 
-Left out, for the owner to decide: whether Agister reviews a brief at entry
-("A bad brief is rejected, never repaired", caller seam), and whether the
-judge ever sees the goal.
+Settled, not reopened: the judge does not see the goal (ADR-023).
