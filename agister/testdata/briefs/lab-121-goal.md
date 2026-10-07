@@ -62,6 +62,8 @@ mechanical, no selection or rewriting.
 - 2026-10-07, owner (review 1, item 5#2): option A. A run that has not
   finished means one still running or being recovered; an abandoned run
   is copied as it was left.
+- 2026-10-07, owner (review 3, item 5#1, question 2): option (a). An
+  export copies a run's files; empty directories are not kept.
 
 ## Open
 
