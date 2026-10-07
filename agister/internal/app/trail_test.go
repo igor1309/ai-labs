@@ -62,8 +62,8 @@ func written(h *harness) *run.Trail {
 // A completed turn's events hold, in the order the runtime reported them,
 // each path a tool call wrote, as given, with its tool and call, and each
 // tool call denied; the record's trail holds each path once, at its first
-// write, and every denial. The paths and the denials are on record as soon
-// as reported.
+// write, and every denial, a repeated one too, in the order reported. The
+// paths and the denials are on record as soon as reported.
 func TestACompletedTurnLeavesItsTrail(t *testing.T) {
 	t.Parallel()
 	h := newHarness()
@@ -77,10 +77,12 @@ func TestACompletedTurnLeavesItsTrail(t *testing.T) {
 		sink.ToolStarted(app.ToolCall{ID: "t4", Name: "Write", Writes: []string{"/work/checkout/a.go"}})
 		during = written(h)
 		sink.Event(run.SourceProtocol, "TURN_COMPLETED", nil)
-		sink.PermissionDenied(app.PermissionDenial{Tool: "Bash", Input: `{"command":"rm b.go"}`})
+		// Ordered by neither tool nor input: only the order reported gives it.
+		sink.PermissionDenied(app.PermissionDenial{Tool: "Write"})
 		denying = written(h)
 		sink.PermissionDenied(app.PermissionDenial{Tool: "Bash", Input: `{"command":"rm b.go"}`})
-		sink.PermissionDenied(app.PermissionDenial{Tool: "Write"})
+		sink.PermissionDenied(app.PermissionDenial{Tool: "Edit", Input: `{"file_path":"e.go"}`})
+		sink.PermissionDenied(app.PermissionDenial{Tool: "Bash", Input: `{"command":"rm b.go"}`})
 	}
 	record := h.call(t, contract.CallRequest{})
 
@@ -95,9 +97,10 @@ func TestACompletedTurnLeavesItsTrail(t *testing.T) {
 		touched("d.go", "file_change", "t3"),
 		touched("/work/checkout/a.go", "Write", "t4"),
 		{"TURN_COMPLETED", nil},
-		denied("Bash", `{"command":"rm b.go"}`),
-		denied("Bash", `{"command":"rm b.go"}`),
 		denied("Write", ""),
+		denied("Bash", `{"command":"rm b.go"}`),
+		denied("Edit", `{"file_path":"e.go"}`),
+		denied("Bash", `{"command":"rm b.go"}`),
 	}
 	if got := trailOf(h, "TOOL_REQUESTED", "TOUCHED", "TURN_COMPLETED", "PERMISSION_DENIED"); !reflect.DeepEqual(got, events) {
 		t.Fatalf("events =\n%v\nwant\n%v", got, events)
@@ -105,7 +108,7 @@ func TestACompletedTurnLeavesItsTrail(t *testing.T) {
 	paths := []run.Touched{{Path: "/work/checkout/a.go", Tool: "Edit"}, {Path: "../outside/c.go", Tool: "file_change"}, {Path: "d.go", Tool: "file_change"}}
 	want := &run.Trail{
 		Touched: paths,
-		Denied:  []run.Denial{{Tool: "Bash", Input: `{"command":"rm b.go"}`}, {Tool: "Bash", Input: `{"command":"rm b.go"}`}, {Tool: "Write"}},
+		Denied:  []run.Denial{{Tool: "Write"}, {Tool: "Bash", Input: `{"command":"rm b.go"}`}, {Tool: "Edit", Input: `{"file_path":"e.go"}`}, {Tool: "Bash", Input: `{"command":"rm b.go"}`}},
 	}
 	if !reflect.DeepEqual(record.Trail, want) {
 		t.Fatalf("trail = %+v", record.Trail)
@@ -129,7 +132,7 @@ func TestACompletedTurnLeavesItsTrail(t *testing.T) {
 		t.Fatal(err)
 	}
 	if got := string(printed.Trail); got != `{"touched":[{"path":"/work/checkout/a.go","tool":"Edit"},{"path":"../outside/c.go","tool":"file_change"},{"path":"d.go","tool":"file_change"}],`+
-		`"denied":[{"tool":"Bash","input":"{\"command\":\"rm b.go\"}"},{"tool":"Bash","input":"{\"command\":\"rm b.go\"}"},{"tool":"Write"}]}` {
+		`"denied":[{"tool":"Write"},{"tool":"Bash","input":"{\"command\":\"rm b.go\"}"},{"tool":"Edit","input":"{\"file_path\":\"e.go\"}"},{"tool":"Bash","input":"{\"command\":\"rm b.go\"}"}]}` {
 		t.Fatalf("printed %s", got)
 	}
 	var read run.Record
