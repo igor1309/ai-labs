@@ -376,6 +376,53 @@ func TestTheSupervisorsDecisionsAreReportedAsItsOwn(t *testing.T) {
 	})
 }
 
+// Run returns only once its watcher has ended: the timeout it reported is
+// in the evidence and before the exit, and its timer is stopped, so a run
+// released when the call returns is not reported to after. The watcher is
+// held at its end until Run is seen waiting for it, so a Run that did not
+// wait for it returns while it is held.
+func TestRunReturnsOnlyOnceItsWatcherHasEnded(t *testing.T) {
+	t.Parallel()
+	const timeout, grace = time.Hour, time.Minute
+	clock, sink := clocktest.NewClock(start), &events{}
+	held, release, joining := make(chan struct{}), make(chan struct{}), make(chan struct{})
+	free := sync.OnceFunc(func() { close(release) })
+	t.Cleanup(free)
+	runtime := supervisor.WithJoin(supervisor.Runtime{Starter: program(fakeproc.Process.Block), Timer: clock.Timer}, func() {
+		close(held)
+		<-release
+	}, joining)
+	done := make(chan supervisor.Evidence, 1)
+	go func() {
+		done <- runtime.Run(context.Background(), supervisor.Spec{
+			Command: "runtime", Timeout: timeout, KillGrace: grace,
+		}, sink, func(string) {})
+	}()
+	clock.Started(timeout)
+	clock.Advance(timeout)
+
+	<-held
+	select {
+	case <-joining:
+	case <-done:
+		t.Fatal("Run returned while its watcher was held at its end")
+	}
+	free()
+	evidence := <-done
+	if !evidence.TimedOut {
+		t.Fatalf("evidence = %+v", evidence)
+	}
+	sink.mu.Lock()
+	kinds := append([]string(nil), sink.kinds...)
+	sink.mu.Unlock()
+	if !reflect.DeepEqual(kinds, []string{"PROCESS_STARTED", "TIMEOUT", "PROCESS_EXITED"}) {
+		t.Fatalf("events %v", kinds)
+	}
+	if pending := clock.Pending(); pending != 0 {
+		t.Fatalf("%d timers still pending", pending)
+	}
+}
+
 // A group told to end that ignores it is killed once the kill grace has
 // passed on the runtime's timer, and not a moment before: a moment short
 // of it, the process still ends by itself.

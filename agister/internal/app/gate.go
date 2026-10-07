@@ -73,6 +73,9 @@ type Infrastructure struct {
 	// Recoverer recovers a call's stale turns (ADR-024).
 	Recoverer RecoverAdapters
 	Runs      RunsAdapters
+	// Exporter copies runs from the run store to a folder the caller
+	// names (ADR-026 rule 7).
+	Exporter ExportAdapters
 	// Installer works on home's settings and their backups.
 	Installer InstallAdapters
 	// Staging stages an install's result, where it is checked.
@@ -151,6 +154,7 @@ func NewClient(infra Infrastructure) contract.Client {
 				calls.Recorder, calls.Runs, calls.Clock, calls.Timer, calls.IDs, calls.StateDir, hosted,
 			),
 			Runs:      NewRuns(infra.Runs.Reader, infra.Runs.Appends, hosted, infra.Runs.Timer, 0),
+			Exporter:  NewExporter(infra.Exporter.Runs, infra.Exporter.Folders),
 			Installer: installer,
 		}
 		return infra.Decorate(host)
@@ -391,4 +395,12 @@ func (g *Gated) ListRuns(ctx context.Context) ([]contract.Run, error) {
 		return nil, err
 	}
 	return client.ListRuns(ctx)
+}
+
+func (g *Gated) Export(ctx context.Context, request contract.ExportRequest) (contract.ExportResult, error) {
+	client, err := g.gate(ctx)
+	if err != nil {
+		return contract.ExportResult{}, err
+	}
+	return client.Export(ctx, request)
 }

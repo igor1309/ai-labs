@@ -10,6 +10,7 @@ type Host struct {
 	*Inspection
 	*Calls
 	*Runs
+	*Exporter
 	*Installer
 }
 

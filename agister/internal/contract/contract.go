@@ -67,6 +67,15 @@ type Client interface {
 	Cancel(ctx context.Context, runID string) error
 	Inspect(ctx context.Context, runID string) (Run, error)
 	ListRuns(ctx context.Context) ([]Run, error)
+	// Export copies each run the request names, and each node's run of a
+	// workflow it names, byte for byte to <To>/<run-id> (ADR-026 rule 7). It
+	// is refused (RefusedError) before it writes anything when To is missing
+	// or not a directory, or a run does not exist, is still running or is
+	// being recovered. A copy that
+	// is there already is kept when identical and never overwritten; the
+	// result says what became of each run. Cancelled, it returns the runs
+	// exported before, with the context's error.
+	Export(ctx context.Context, request ExportRequest) (ExportResult, error)
 }
 
 // InputError is a request mistake outside any call (e.g. an unknown
@@ -79,6 +88,13 @@ type InputError struct {
 }
 
 func (e *InputError) Error() string { return e.Message }
+
+// RefusedError refuses a request outside any call before it has any
+// effect, for a reason the caller can act on, such as an export of a run
+// that has not finished.
+type RefusedError struct{ Message string }
+
+func (e *RefusedError) Error() string { return e.Message }
 
 var ErrNotFound = errors.New("not found")
 
@@ -488,4 +504,47 @@ type Artifact struct {
 type Session struct {
 	ProviderSessionID string `json:"provider_session_id"`
 	Continues         string `json:"continues,omitempty"`
+}
+
+// ExportRequest names the runs to export and the directory the copies go
+// to, which must exist.
+type ExportRequest struct {
+	Runs []string
+	To   string
+}
+
+// ExportResult is what an export did with each run: the runs named, in
+// order, each workflow's followed by its nodes' runs.
+type ExportResult struct {
+	To   string
+	Runs []ExportedRun
+}
+
+// What an export did with one run.
+const (
+	// ExportCopied: a copy was written and read back as recorded.
+	ExportCopied = "copied"
+	// ExportKept: an identical copy was there; it was kept as it is.
+	ExportKept = "kept"
+	// ExportRefused: a copy that differs was there; it was not overwritten.
+	ExportRefused = "refused"
+	// ExportFailed: the copy did not read back as recorded; none was put in
+	// place.
+	ExportFailed = "failed"
+)
+
+// ExportedRun is what an export did with one run.
+type ExportedRun struct {
+	ID string
+	// Workflow is the workflow run it was exported with, as one of its
+	// nodes; empty for a run the request named.
+	Workflow string
+	Dir      string // the copy: <To>/<ID>
+	Action   string // copied | kept | refused | failed
+	// Files and Bytes are those of the copy, written or kept.
+	Files int
+	Bytes int64
+	// Problem says, for a refused or failed run, which file differs or does
+	// not read back as recorded, and how.
+	Problem string
 }

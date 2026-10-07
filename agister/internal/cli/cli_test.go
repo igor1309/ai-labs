@@ -33,6 +33,9 @@ type clientSpy struct {
 	report   contract.CheckReport
 	view     contract.ProcessView
 	observe  func(ctx context.Context) // runs during Observe
+
+	exported  contract.ExportResult // returned by Export
+	exportErr error                 // returned by Export
 }
 
 func (s *clientSpy) ShowProcess(context.Context, string, string) (contract.ProcessView, error) {
@@ -73,6 +76,10 @@ func (s *clientSpy) Cancel(_ context.Context, id string) error {
 }
 
 func (s *clientSpy) Inspect(context.Context, string) (contract.Run, error) { return s.run, nil }
+
+func (s *clientSpy) Export(context.Context, contract.ExportRequest) (contract.ExportResult, error) {
+	return s.exported, s.exportErr
+}
 
 func (s *clientSpy) Check(_ context.Context, probe bool) (contract.CheckReport, error) {
 	s.checked = append(s.checked, probe)
@@ -303,6 +310,19 @@ func TestInterruptCancelsTheRunAndStillReportsIt(t *testing.T) {
 	r := run(ctx, spy, "run", "p", "--quiet")
 	if cancelled != "run-1" || r.code != cli.ExitInterrupted {
 		t.Fatalf("cancelled %q, result %+v", cancelled, r)
+	}
+}
+
+// An export interrupted after some runs still reports those runs, and exits
+// as interrupted, not as an internal failure.
+func TestAnInterruptedExportReportsTheRunsItExported(t *testing.T) {
+	t.Parallel()
+	spy := &clientSpy{exportErr: fmt.Errorf("exporting: %w", context.Canceled), exported: contract.ExportResult{To: "/audit", Runs: []contract.ExportedRun{
+		{ID: "r1", Dir: "/audit/r1", Action: contract.ExportCopied, Files: 3, Bytes: 120},
+	}}}
+	r := run(context.Background(), spy, "runs", "export", "r1", "r2", "--to", "/audit")
+	if r.code != cli.ExitInterrupted || r.stdout != "copied  r1: 3 files, 120 bytes to /audit/r1\n" || !strings.Contains(r.stderr, "export interrupted") {
+		t.Fatalf("result %+v", r)
 	}
 }
 

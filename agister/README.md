@@ -16,6 +16,7 @@ bin/agister install .agister # a repository's settings into ~/.agister
 bin/agister check           # validate the settings
 bin/agister run ask --param question="What does cmd/agister do?"
 bin/agister runs show <run-id>
+bin/agister runs export <run-id> --to <dir> # a run's evidence, for audit
 bin/agister pages           # a page of what the settings can run
 ```
 
@@ -370,6 +371,23 @@ such input or keeps its bytes nowhere, neither inline nor as an artifact,
 and when the judgement's run does not exist or did not complete. Both
 are optional, for a process or a workflow; a run given neither has no
 `links`.
+
+The run store is one host's, so runs, the briefs and goals they keep
+among them, are exported for audit
+([ADR-026](docs/adr/026-the-brief-is-a-runs-input-contract.md) rule 7):
+`agister runs export <run-id>... --to <dir>` copies each run's directory
+byte for byte to `<dir>/<run-id>/`, its owner lock aside, and a workflow
+run brings its nodes' runs; the runs its `links` name are exported by
+name. It is refused, exit 3, before it writes anything when `--to` is
+missing, not a directory or in the run store, under any name, or a run
+does not exist or is still running, or a process is recovering what a
+finished run left. Each run is held against its writers, its owner and
+recovery, until it is copied.
+A copy is renamed into place only once complete and its artifacts read
+back with the recorded digests; one that does not match fails, exit 1.
+An identical copy already there is kept; one that differs is never
+overwritten, and that run is refused, naming the file. An interrupted
+export reports the runs it exported and exits 2.
 
 Home's prompts are kept in git in `prompts/` at the repository root and
 copied into `~/.agister/prompts/` by hand: `install` does not take them

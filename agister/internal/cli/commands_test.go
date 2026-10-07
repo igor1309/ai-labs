@@ -55,6 +55,9 @@ func (c *reachedClient) Inspect(context.Context, string) (contract.Run, error) {
 	return contract.Run{}, c.reach()
 }
 func (c *reachedClient) ListRuns(context.Context) ([]contract.Run, error) { return nil, c.reach() }
+func (c *reachedClient) Export(context.Context, contract.ExportRequest) (contract.ExportResult, error) {
+	return contract.ExportResult{}, c.reach()
+}
 
 func dispatched(client *reachedClient, args ...string) result {
 	var stdout, stderr bytes.Buffer
