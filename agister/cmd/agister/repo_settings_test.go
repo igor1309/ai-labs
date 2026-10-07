@@ -277,13 +277,21 @@ func recordsStaleLimits(t *testing.T, record map[string]any) {
 // claude, codex and pi that run are fakes, in process.
 func onFakeRuntimes(t *testing.T) (root, repo, home string) {
 	t.Helper()
+	root, repo, home, _ = onFakeRuntimesRecorded(t)
+	return root, repo, home
+}
+
+// onFakeRuntimesRecorded is onFakeRuntimes with the mirror's record in the fake of git,
+// for a test that commits to it.
+func onFakeRuntimesRecorded(t *testing.T) (root, repo, home string, recorded *gittest.Repository) {
+	t.Helper()
 	root, err := filepath.Abs(filepath.Join("..", "..", ".."))
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	home = filepath.Join(tempDir(t), "home")
-	repo = mirror(t, root, home)
+	repo, recorded = mirror(t, root, home)
 	fixVerify(t, root, repo)
 	// The fakes answer as claude, codex and pi, each with an output from
 	// the schema it is given, and report their default versions, which the
@@ -294,7 +302,7 @@ func onFakeRuntimes(t *testing.T) (root, repo, home string) {
 	if r := agisterInput(t, "yes\n", home, tempDir(t), "init"); r.code != 0 {
 		t.Fatalf("init: %d %s", r.code, r.stderr)
 	}
-	return root, repo, home
+	return root, repo, home, recorded
 }
 
 // The judge of code_review rules on the collection of a fixed set of
@@ -345,6 +353,44 @@ func TestCodeReviewCollectsItsFiveReviews(t *testing.T) {
 	}
 	if !document.Output.RequireValid {
 		t.Fatal("intent_review_codex's output.require_valid is not true, want its output required valid")
+	}
+}
+
+// The intent reviewer reviews the candidate it is given, in the worktree at
+// that candidate (ADR-025 rule 2): with HEAD at another commit, the call is
+// refused, naming the candidate, and its runtime never starts.
+func TestIntentReviewIsRefusedOffItsCandidate(t *testing.T) {
+	t.Parallel()
+	_, repo, home, recorded := onFakeRuntimesRecorded(t)
+	// HEAD moves past feature, the candidate, to a commit of its own.
+	head := recorded.Commit("later", map[string]string{"change.txt": "one\ntwo\nthree\n"})
+	before := map[string]bool{}
+	for _, entry := range readRuns(t, home) {
+		before[entry.Name()] = true
+	}
+	r := agister(t, home, repo, "run", "intent_review_codex", "--param", "base=main", "--param", "candidate=feature", "--param", "goal="+repoGoal)
+	const pinned = "a call works on the revision its process pins, and Agister does not move HEAD (ADR-025 rule 2)"
+	if r.code != cli.ExitRefused || !strings.Contains(r.stderr, pinned) {
+		t.Fatalf("intent_review_codex off its candidate: exit %d, stderr %q, want refused with %q", r.code, r.stderr, pinned)
+	}
+	var created []string
+	for _, entry := range readRuns(t, home) {
+		if !before[entry.Name()] {
+			created = append(created, entry.Name())
+		}
+	}
+	if len(created) != 1 {
+		t.Fatalf("runs recorded: %v, want one", created)
+	}
+	id := created[0]
+	var record map[string]any
+	readJSON(t, filepath.Join(home, "runs", id, "record.json"), &record)
+	candidate, _ := inputOf(t, record, "candidate_revision")["value"].(string)
+	if want := "is at " + head + ", not revision " + candidate; candidate == head || !strings.Contains(r.stderr, want) {
+		t.Fatalf("stderr %q, want %q", r.stderr, want)
+	}
+	if _, err := os.Stat(filepath.Join(home, "runs", id, "provider.jsonl")); !errors.Is(err, fs.ErrNotExist) {
+		t.Fatalf("run %s: the runtime started (provider.jsonl: %v)", id, err)
 	}
 }
 
@@ -1798,8 +1844,8 @@ func schemaAccepts(t *testing.T, record map[string]any, output any, stdout strin
 // over home, with a base revision on main and a candidate on feature, whose
 // working tree's top-level entries link to those of root, .git aside. The
 // revisions hold only change.txt, so no checkout and no diff carries the
-// links.
-func mirror(t *testing.T, root, home string) string {
+// links. It returns the repository's record in the fake as well.
+func mirror(t *testing.T, root, home string) (string, *gittest.Repository) {
 	t.Helper()
 	dir, err := filepath.EvalSymlinks(tempDir(t))
 	if err != nil {
@@ -1824,7 +1870,7 @@ func mirror(t *testing.T, root, home string) string {
 			t.Fatal(err)
 		}
 	}
-	return dir
+	return dir, r
 }
 
 // fixVerify makes repo's .agister a directory whose entries link to those of
