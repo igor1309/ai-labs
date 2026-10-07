@@ -231,6 +231,77 @@ func TestStreamReportsToolCalls(t *testing.T) {
 	}
 }
 
+// A web search's start carries no query, which is on its completed item
+// only: the search is reported when it completes, started and finished
+// together, with the completed item's query, and its action where that says
+// more, so searches that differ are different calls and identical ones the
+// same. The recorded TOOL_REQUESTED carries that input too. A start that
+// does carry a query is reported at the start, and not again at completion.
+func TestAWebSearchIsReportedWithTheInputItsCompletedItemCarries(t *testing.T) {
+	t.Parallel()
+	started := func(id string) string {
+		return `{"type":"item.started","item":{"id":"` + id + `","type":"web_search","query":"","action":{"type":"other"}}}`
+	}
+	searched := func(id, query string) string {
+		quoted, _ := json.Marshal(query)
+		return `{"type":"item.completed","item":{"id":"` + id + `","type":"web_search","query":` + string(quoted) + `,"action":{"type":"search","query":` + string(quoted) + `},"results":[]}}`
+	}
+	const (
+		first  = `site:github.com/openai/codex "handle_patch_apply_end" "FileChange"`
+		second = `site:github.com/openai/codex "apply_patch" "PatchApplyEnd"`
+		page   = "https://raw.githubusercontent.com/openai/codex/main/x.rs"
+	)
+	stream := &codex.Stream{}
+	var trace []string
+	var calls []codex.ToolCall
+	for _, line := range []string{
+		// Two searches in flight; the later one completes first.
+		started("item_1"),
+		started("item_2"),
+		searched("item_2", first),
+		searched("item_1", second),
+		started("item_3"),
+		searched("item_3", second),
+		started("item_4"),
+		`{"type":"item.completed","item":{"id":"item_4","type":"web_search","query":"` + page + `","action":{"type":"open_page","url":"` + page + `"},"results":[]}}`,
+		`{"type":"item.started","item":{"id":"item_5","type":"web_search","query":"agister"}}`,
+		`{"type":"item.completed","item":{"id":"item_5","type":"web_search","query":"agister","action":{"type":"search","query":"agister"},"results":[]}}`,
+	} {
+		for _, event := range stream.Reduce(line) {
+			entry := event.Kind + " " + event.Data["tool_use_id"].(string)
+			if event.Kind == "TOOL_REQUESTED" {
+				entry += ": " + event.Data["input"].(string)
+			}
+			trace = append(trace, entry)
+		}
+		for _, tool := range stream.TakeTools() {
+			if tool.Started != nil {
+				calls = append(calls, *tool.Started)
+				trace = append(trace, "ToolStarted "+tool.Started.ID+": "+tool.Started.Input)
+			} else {
+				trace = append(trace, "ToolFinished "+tool.Finished.ID)
+			}
+		}
+	}
+	opened := page + ` {"type":"open_page","url":"` + page + `"}`
+	want := []string{
+		"TOOL_REQUESTED item_2: " + first, "TOOL_RESULT item_2", "ToolStarted item_2: " + first, "ToolFinished item_2",
+		"TOOL_REQUESTED item_1: " + second, "TOOL_RESULT item_1", "ToolStarted item_1: " + second, "ToolFinished item_1",
+		"TOOL_REQUESTED item_3: " + second, "TOOL_RESULT item_3", "ToolStarted item_3: " + second, "ToolFinished item_3",
+		"TOOL_REQUESTED item_4: " + opened, "TOOL_RESULT item_4", "ToolStarted item_4: " + opened, "ToolFinished item_4",
+		"TOOL_REQUESTED item_5: agister", "ToolStarted item_5: agister",
+		"TOOL_RESULT item_5", "ToolFinished item_5",
+	}
+	if !reflect.DeepEqual(trace, want) {
+		t.Fatalf("trace =\n%q\nwant\n%q", trace, want)
+	}
+	for _, call := range calls {
+		if call.Name != calls[0].Name || call.Name == "" || call.Command {
+			t.Fatalf("calls = %+v", calls)
+		}
+	}
+}
+
 // Two calls of one tool whose inputs differ only in a large integer are
 // distinct calls, not one repeated: the input keeps its numbers as written.
 func TestLargeIntegerInputsAreNotRepeatedCalls(t *testing.T) {
