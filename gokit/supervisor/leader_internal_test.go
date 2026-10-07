@@ -92,6 +92,35 @@ func TestALeaderSignalsItsGroupOnlyUntilItsReap(t *testing.T) {
 	}
 }
 
+// An exit that cannot be observed says why, and reaps nothing: the leader,
+// perhaps still running, keeps the group's ID, and the group is signalled
+// as before the exit, its kill's answer given as it came, with nothing
+// listed.
+func TestAnExitThatCannotBeObservedKeepsTheGroupSignalledAsBefore(t *testing.T) {
+	t.Parallel()
+	unobservable := errors.New("the exit cannot be observed")
+	refused := errors.New("the kill was refused")
+	spy := &kills{answer: refused}
+	reaps := 0
+	l := &leader{
+		pid: 7, kill: spy.kill, observe: func(int) error { return unobservable }, alone: syscall.EPERM,
+		others: func(int) (bool, error) { panic("an unobserved exit lists nothing") },
+		reap:   func() Exit { reaps++; return Exit{} },
+	}
+	if err := l.Exited(); !errors.Is(err, unobservable) {
+		t.Fatalf("Exited: %v, want %v", err, unobservable)
+	}
+	if reaps != 0 {
+		t.Fatalf("Exited reaped the leader %d times, want none", reaps)
+	}
+	if err := l.Signal(syscall.SIGKILL); !errors.Is(err, refused) {
+		t.Fatalf("Signal after the unobserved exit: %v, want the kill's own answer %v", err, refused)
+	}
+	if want := []string{"-7 killed"}; !reflect.DeepEqual(spy.asked(), want) {
+		t.Fatalf("kills %q, want %q", spy.asked(), want)
+	}
+}
+
 // Once the exit is observed the group is killed whatever its listing
 // finds: the listing only says what the kill reached. A listing that
 // failed, or that the group changed under, says it cannot be told (an

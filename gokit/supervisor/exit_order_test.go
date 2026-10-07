@@ -3,6 +3,7 @@ package supervisor_test
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"reflect"
 	"strings"
@@ -152,27 +153,33 @@ func (p *unobserved) call(name string) {
 // perhaps still running, to the kill before the reap, while its unreaped
 // leader keeps the group's ID from reuse: the watcher's signals end before
 // the reap, so nothing else would end it. A run reports the cleanup as
-// unknown, with the group and why the exit could not be observed. A reap
+// unknown, with the group and why the exit could not be observed, even
+// when that reads as ESRCH: no kill's answer is classified then. A reap
 // before the kill is a hang the binary's -timeout names.
 func TestAnExitThatCannotBeObservedIsKilledBeforeItsReap(t *testing.T) {
 	t.Parallel()
-	for name, run := range ends {
-		t.Run(name, func(t *testing.T) {
-			t.Parallel()
-			observed := errors.New("the exit cannot be observed")
-			p := &unobserved{group: supervisortest.NewGroups().Next(), observed: observed, killed: make(chan struct{})}
-			sink := run(context.Background(), p, clocktest.NewClock(start).Timer)
-			if want := []string{"exited", "signal killed", "reaped"}; !reflect.DeepEqual(p.calls, want) {
-				t.Fatalf("calls %q, want %q", p.calls, want)
-			}
-			if sink == nil {
-				return
-			}
-			want := []map[string]any{{"group": p.group, "error": observed.Error()}}
-			if got := sink.payloadsOf("LEFTOVER_CLEANUP_UNKNOWN"); !reflect.DeepEqual(got, want) || sink.has("LEFTOVER_PROCESSES_KILLED") {
-				t.Fatalf("LEFTOVER_CLEANUP_UNKNOWN %v, want %v (all: %v)", got, want, sink.kinds)
-			}
-		})
+	for why, observed := range map[string]error{
+		"cannot be observed": errors.New("the exit cannot be observed"),
+		"ESRCH":              syscall.ESRCH,
+		"wrapped ESRCH":      fmt.Errorf("observing the exit: %w", syscall.ESRCH),
+	} {
+		for name, run := range ends {
+			t.Run(why+"/"+name, func(t *testing.T) {
+				t.Parallel()
+				p := &unobserved{group: supervisortest.NewGroups().Next(), observed: observed, killed: make(chan struct{})}
+				sink := run(context.Background(), p, clocktest.NewClock(start).Timer)
+				if want := []string{"exited", "signal killed", "reaped"}; !reflect.DeepEqual(p.calls, want) {
+					t.Fatalf("calls %q, want %q", p.calls, want)
+				}
+				if sink == nil {
+					return
+				}
+				want := []map[string]any{{"group": p.group, "error": observed.Error()}}
+				if got := sink.payloadsOf("LEFTOVER_CLEANUP_UNKNOWN"); !reflect.DeepEqual(got, want) || sink.has("LEFTOVER_PROCESSES_KILLED") {
+					t.Fatalf("LEFTOVER_CLEANUP_UNKNOWN %v, want %v (all: %v)", got, want, sink.kinds)
+				}
+			})
+		}
 	}
 }
 

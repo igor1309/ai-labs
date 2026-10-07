@@ -196,23 +196,24 @@ func (r Runtime) Run(ctx context.Context, spec Spec, events Sink, onLine func(st
 	// leader, perhaps still running, to the same kill: the watcher's
 	// signals end before the reap, as the ID may be reused from then, and
 	// nothing would end it otherwise. What that kill reached cannot be
-	// told: the cleanup is the observation's error.
-	cleanup := process.Exited()
+	// told, whatever the observation's error says: the cleanup is unknown,
+	// with that error.
+	observed := process.Exited()
 	mu.Lock()
-	if killed := process.Signal(syscall.SIGKILL); cleanup == nil {
-		cleanup = killed
-	}
+	killed := process.Signal(syscall.SIGKILL)
 	reaping = true
 	stopKill()
 	mu.Unlock()
 	exit := process.Wait()
 	close(exited)
 	switch {
-	case cleanup == nil:
+	case observed != nil:
+		sink.Event(SourceProcess, "LEFTOVER_CLEANUP_UNKNOWN", map[string]any{"group": pid, "error": observed.Error()})
+	case killed == nil:
 		sink.Event(SourceProcess, "LEFTOVER_PROCESSES_KILLED", map[string]any{"group": pid})
-	case !errors.Is(cleanup, syscall.ESRCH):
+	case !errors.Is(killed, syscall.ESRCH):
 		// Neither leftovers killed nor none left: it cannot be told.
-		sink.Event(SourceProcess, "LEFTOVER_CLEANUP_UNKNOWN", map[string]any{"group": pid, "error": cleanup.Error()})
+		sink.Event(SourceProcess, "LEFTOVER_CLEANUP_UNKNOWN", map[string]any{"group": pid, "error": killed.Error()})
 	}
 
 	held, stopHeld := r.timer(grace)
