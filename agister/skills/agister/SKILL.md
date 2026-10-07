@@ -128,43 +128,30 @@ file git does not ignore.
 
 ## Install home's settings
 
-`agister install <dir>` installs a settings folder into `<home>`, document
-by document. It shows creates, replaces with their diffs, unchanged
-documents and documents only home has, which it keeps. It checks the
-result in a staged copy with this binary before asking yes; only then
-does it back up replaces under `<home>/backups/<stamp>/` and write the
-files atomically. If the settings change after the plan, it refuses.
-The printed `agister install --restore <stamp>` undoes that install;
-the last five backups are kept. Install and restore work even when
-home's settings are broken. Both read the answer from stdin: on anything
-but yes, or at EOF, they write nothing and exit 64.
+`agister install <dir>` installs a folder laid out like the settings into
+`<home>`, document by document. It shows what it would create, replace,
+with a diff, and leave unchanged, and the documents only home has, which
+it keeps. It checks the result on a staged copy, then asks: after yes,
+and only if home's settings are still as shown, it backs up what it
+replaces under `<home>/backups/<stamp>/` and writes. It prints the
+command that undoes it, `agister install --restore <stamp>`, which asks
+too; the last five backups are kept. Both run on settings that fail
+`agister check`.
 
-A settings skill is `skills/<name>/SKILL.md`, its folder's only file,
-with front matter naming the folder and a non-empty description. Install
-plans, diffs, checks, backs up, writes and restores it as any document.
-A skill folder with files beside `SKILL.md`, or without a regular
-`SKILL.md`, refuses the install, naming the skill and its problems. A
-symbolic link refuses the source folder. Files that are not settings,
-including a file directly under `skills/`, live state and `blocks.yaml`,
-are listed and not installed. Restore removes a created skill's folder
-when it is then empty.
+A skill the settings give an agent, `skills/<name>/SKILL.md`, is
+installed as any other document: planned, diffed, checked, backed up and
+restored. A skill folder holding anything beside its `SKILL.md`, or whose
+`SKILL.md` is not a regular file, refuses the install, naming the skill
+and those files. Files that are not settings, a file directly under
+`skills/` and a `blocks.yaml` among them, are listed and not installed; a
+symbolic link in the folder refuses it. Restore removes a skill its
+install created, with its folder when that is then empty.
 
-In the repository that holds Agister's source, `agister/home/` is this
-owner's global settings source in git (ADR-027), separate from the
-examples `init` installs. Change global documents there: fixed text is
-a settings prompt (`source: prompt`), and a file input takes the path
-the caller supplies as a param. The folder holds no live state,
-machine-local documents or verification; the repository supplies its
-verification in `.agister/`. This repository's `.agister/` keeps only
-`verifies/repo.yaml` and the two Go prompts; runs take shared documents
-from installed home. After a change to the source merges and the new
-binary is installed, run `agister install home` from `agister/` in the
-main checkout, read the plan, answer yes and run `agister check`.
-Differences from home appear in that plan; do not copy documents by hand.
-
-The caller skill, `agister/skills/agister/SKILL.md`, guides the agent
-running Agister. It is separate from the settings skills Agister gives
-its calls, whose global source is `agister/home/skills/`.
+In the repository that holds Agister's source, home's settings have one
+source in git, `agister/home/` (ADR-027). Change a document of home
+there and install the folder: a difference between home and the folder
+then shows in the install's plan, as a replace with its diff or as a
+document only home has.
 
 ## Run
 
@@ -444,9 +431,10 @@ that it passed. What a completed run's output means is yours to read.
 - Running Agister in a repository applies that repository's `.agister/`,
   including the commands its agents run. Review settings you did not write.
 - Do not edit `<home>` by hand to fix one repository. Use the
-  repository's `.agister/`. For a change to home, edit its source folder
-  (in Agister's own repository, `agister/home/`) and use
+  repository's `.agister/`. For a change to home, use
   `agister install <dir>`, which shows a diff, asks before it writes and
   backs up what it replaces. It reads the answer from stdin too
   (`echo yes | agister install <dir>`), and on any other answer, or at
-  EOF, it cancels: it writes nothing and exits 64.
+  EOF, it cancels: it writes nothing and exits 64. Where home has a
+  source folder in git, change the document there and install that
+  folder (above).

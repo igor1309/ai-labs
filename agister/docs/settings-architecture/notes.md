@@ -251,7 +251,7 @@ and ignored, and `check` warns (`internal/app/check.go:289`; ADR-025).
   `CODEX_HOME`). The runtime still loads repo and home skills of its own
   as before. (ADR-021 rules 5-7, ADR-006)
 
-## Installing a repo's settings into home
+## Installing settings into home
 
 - `agister install <dir>` merges a settings folder into home document by
   document: plan (create / replace with diff / unchanged; home-only
@@ -272,6 +272,17 @@ and ignored, and `check` warns (`internal/app/check.go:289`; ADR-025).
   (`verifies/repo.yaml`, the Go prompts). A test installs the folder into
   an empty home and checks it. (`cmd/agister/home_folder_test.go`;
   ADR-027)
+- LAB-84's done gates. The caller skill, the README, these notes and
+  the example captions of `detailed.html` changed. `index.html` needed
+  no change: it shows the kinds and what each names, and names no
+  install, no source folder and no file of this repository. The Pages
+  settings view and `pages/README.md` needed none either: the page reads
+  the `<home>` in use and the repo's `.agister/`, composes them and marks
+  each item's layer as it finds it, so this repository's shared documents
+  show as `home` without a change; it reads no source folder, shows no
+  install and compares nothing (ADR-027 rule 10). Only its tests
+  changed: they load `home/` alone and with `.agister/` over it.
+  (`pages/serve.go`, `pages/config.js`, `pages/tests/config.test.js`)
 
 ## Who reads settings
 

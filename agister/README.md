@@ -177,19 +177,18 @@ the input is optional: when neither place has the prompt, the call goes
 ahead without that input, and its record lists the input and the prompt
 as absent; anything at the prompt's path that cannot be read, such as a
 directory, is a broken prompt that refuses the call
-([ADR-019](docs/adr/019-a-prompt-may-be-optional.md)). This repository's
-`implement` processes name `go-testing-seams` and `go-architecture` this
-way, and its `.agister/prompts/` supplies both as copies of the ones in
-`prompts/`, which a test keeps identical. A
-text the caller
-names stays a `source: file` input, read relative to the caller's
-directory.
+([ADR-019](docs/adr/019-a-prompt-may-be-optional.md)). The `implement`
+processes of [home/](home/) name `go-testing-seams` and `go-architecture`
+this way, and this repository's `.agister/prompts/` supplies both as
+copies of the ones in `prompts/`, which a test keeps identical. A text
+the caller names stays a `source: file` input, read relative to the
+caller's directory.
 
-This repository's review workflows, `code_review` and `adr_review`, take
-a required `goal`: the file that says what the change is for, its issue
-or brief. Every review node receives its text and the judge does not; a
-finding's scope is `change`, `goal` or `outside`, and the judge rules a
-`goal` finding as it rules a `change` one
+The review workflows of [home/](home/), `code_review` and `adr_review`,
+take a required `goal`: the file that says what the change is for, its
+issue or brief. Every review node receives its text and the judge does
+not; a finding's scope is `change`, `goal` or `outside`, and the judge
+rules a `goal` finding as it rules a `change` one
 ([ADR-023](docs/adr/023-reviewers-know-the-goal.md)).
 
 A brief's form is a document too: `briefs/<name>.yaml`, schema
@@ -215,8 +214,8 @@ of its own; `check --tree` shows each form under what names it
 5 and 8). The example settings ship `goal` (Intent, Done when, Out of
 scope and Open required; Expected behaviour, Sources and Decisions when
 they apply) and `step` (Goal, a reference to the goal file, Covers and
-Open required; Acts on and Constraints when they apply), and this
-repository's `implement` takes a `goal` or a `step` as its brief and
+Open required; Acts on and Constraints when they apply), and in
+[home/](home/) `implement` takes a `goal` or a `step` as its brief and
 `code_review` a `goal` as its goal.
 
 A skill the settings give an agent is a document too:
