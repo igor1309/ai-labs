@@ -40,6 +40,14 @@ Fields: `internal/domain/definition/documents.go:24-130`, `toml.go:25-60`,
     must have the `goal` brief form (ADR-026).
     (`.agister/workflows/code_review.yaml`,
     `.agister/workflows/adr_review.yaml`)
+  - The intent review (LAB-120) needed no change to the caller skill,
+    the README or Pages. The skill (`skills/agister/SKILL.md`) names no
+    workflow's reviews: it has the caller discover workflows from the
+    settings (`agister workflow list`, `workflow show`). The README names
+    the review workflows and their `goal`, not their reviews. Pages reads
+    a workflow's `fan_out` nodes from the settings and renders each
+    (`pages/config.js:286`, `pages/page.js:366`), and its tests use
+    their own fixtures, not this repository's settings.
 - **process** is a named agent call. It names:
   - its **agent** (`uses: agent:<name>`);
   - its **policy** (`policy: process-policy:<name>`);

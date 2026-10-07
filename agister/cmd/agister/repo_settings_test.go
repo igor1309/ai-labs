@@ -300,7 +300,8 @@ func onFakeRuntimes(t *testing.T) (root, repo, home string) {
 // The judge of code_review rules on the collection of a fixed set of
 // reviews: architecture, tests, adversarial, clarity and intent, the ADR
 // review not among them. The intent reviewer is given its standing prompt,
-// prompts/code-review-intent.md.
+// prompts/code-review-intent.md, and declares a valid review-result its
+// required output.
 func TestCodeReviewCollectsItsFiveReviews(t *testing.T) {
 	t.Parallel()
 	root, repo, home := onFakeRuntimes(t)
@@ -324,6 +325,26 @@ func TestCodeReviewCollectsItsFiveReviews(t *testing.T) {
 	digest := "sha256:" + hex.EncodeToString(sum[:])
 	if given := inputOf(t, records["intent_review_codex"], "review_prompt"); given["source"] != "file" || given["identity"] != digest {
 		t.Fatalf("intent_review_codex's review_prompt = %v, want prompts/code-review-intent.md (%s)", given, digest)
+	}
+
+	if output := parseProcess(t, root, "intent_review_codex").Output; output.Format != "json" || output.Schema != "review-result" {
+		t.Fatalf("intent_review_codex's output = %+v, want json of schema review-result", output)
+	}
+	// The parsed process keeps no require_valid: it is read from the document.
+	data, err := os.ReadFile(filepath.Join(root, ".agister", "processes", "intent_review_codex.yaml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var document struct {
+		Output struct {
+			RequireValid bool `yaml:"require_valid"`
+		} `yaml:"output"`
+	}
+	if err := yaml.Unmarshal(data, &document); err != nil {
+		t.Fatal(err)
+	}
+	if !document.Output.RequireValid {
+		t.Fatal("intent_review_codex's output.require_valid is not true, want its output required valid")
 	}
 }
 
