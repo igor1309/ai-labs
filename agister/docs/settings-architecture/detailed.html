@@ -107,7 +107,7 @@
 <h1>The settings, document by document</h1>
 </header>
 
-<nav aria-label="Documents"><a href="#layers">Two layers</a><a href="#workflow">Workflow</a><a href="#process">Process</a><a href="#schema">Output schema</a><a href="#verification">Verification</a><a href="#prompts">Prompts</a><a href="#skills">Skills</a><a href="#policy">Policy</a><a href="#agent">Agent</a><a href="#runtime">Runtime mapping</a><a href="#service">Service</a><a href="#blocks">Blocks</a><a href="#compose">How they compose</a></nav>
+<nav aria-label="Documents"><a href="#layers">Two layers</a><a href="#workflow">Workflow</a><a href="#process">Process</a><a href="#schema">Output schema</a><a href="#verification">Verification</a><a href="#prompts">Prompts</a><a href="#skills">Skills</a><a href="#briefs">Briefs</a><a href="#policy">Policy</a><a href="#agent">Agent</a><a href="#runtime">Runtime mapping</a><a href="#service">Service</a><a href="#blocks">Blocks</a><a href="#compose">How they compose</a></nav>
 
 <div>
 <section id="layers">
@@ -125,7 +125,7 @@
 <section id="workflow" class="kind workflow">
 <div class="desc"><header><h2>Workflow</h2><p class="path"><code>workflows/&lt;name&gt;.yaml</code> · run with <code>agister run &lt;name&gt;</code></p></header>
 <p class="lead">Composes process calls into one run. Its settings fix what each call receives, never whoever starts it.</p>
-<h3>Holds</h3><table><tr><th><code>input.params</code></th><td>what the caller supplies, each with an optional default</td></tr><tr><th><code>input.values</code></th><td>resolved once from the params, before any node starts; every fan-out node receives the same ones</td></tr></table><h3>Names</h3><table><tr><th><code>fan_out[].uses</code></th><td>a <b>process</b> per node, all run at once over the same inputs</td></tr><tr><th><code>join.uses</code></th><td>one <b>process</b>, given the fan-out nodes' results</td></tr></table><p class="note">Fan-out then join is the only shape today: no conditions, loops or graphs. The other workflow here is <code>adr_review</code>: one ADR review, then the judge.</p></div>
+<h3>Holds</h3><table><tr><th><code>input.params</code></th><td>what the caller supplies, each with an optional default</td></tr><tr><th><code>input.values</code></th><td>resolved once from the params, before any node starts; every fan-out node receives the same ones</td></tr></table><h3>Names</h3><table><tr><th><code>fan_out[].uses</code></th><td>a <b>process</b> per node, all run at once over the same inputs</td></tr><tr><th><code>join.uses</code></th><td>one <b>process</b>, given the fan-out nodes' results</td></tr><tr><th><code>input.values[].form</code></th><td>the <b>brief forms</b> a <code>file</code> value's text must have one of, checked before any node starts</td></tr></table><p class="note">Fan-out then join is the only shape today: no conditions, loops or graphs. The other workflow here is <code>adr_review</code>: one ADR review, then the judge.</p></div>
 <figure class="ex"><figcaption>.agister/workflows/code_review.yaml</figcaption><pre>name: code_review
 type: workflow
 
@@ -150,7 +150,7 @@ join: {node: judge, uses: process:review_judge}</pre></figure>
 <section id="process" class="kind process">
 <div class="desc"><header><h2>Process</h2><p class="path"><code>processes/&lt;name&gt;.yaml</code> · run with <code>agister run &lt;name&gt;</code></p></header>
 <p class="lead">A named agent call: the task, what it takes in, and what must come out.</p>
-<h3>Holds</h3><table><tr><th><code>input.instruction</code></th><td>the task, in words</td></tr><tr><th><code>input.params</code></th><td>what the caller supplies</td></tr><tr><th><code>input.values</code></th><td>the inputs, each from a source: <code>param</code>, <code>file</code>, <code>git.revision</code>, <code>git.merge_base</code>, <code>git.diff</code>, <code>git.changed_files</code>, <code>prompt</code></td></tr><tr><th><code>workspace.revision</code></th><td>the value whose revision HEAD must be at; Agister does not move HEAD</td></tr><tr><th><code>workspace.clean</code></th><td><code>true</code>: a fresh call needs the worktree's content to be HEAD's; unset is <code>false</code></td></tr><tr><th><code>tools.require</code></th><td>permissions the call cannot do without</td></tr><tr><th><code>timeout, retry, …</code></th><td>limit overrides; they may only narrow its policy</td></tr></table><h3>Names</h3><table><tr><th><code>uses</code></th><td>its <b>agent</b></td></tr><tr><th><code>policy</code></th><td>its <b>policy</b></td></tr><tr><th><code>output.schema</code></th><td>its <b>output schema</b></td></tr><tr><th><code>verify</code></th><td>its <b>verification</b>, by name or held inline</td></tr><tr><th><code>input.values[].name</code></th><td>a <b>prompt</b>, where the source is <code>prompt</code></td></tr><tr><th><code>skills</code></th><td>its <b>skills</b></td></tr></table><p class="note">A process with a verification, like this one, is still a process, not a workflow, and declares both <code>workspace.revision</code> and <code>workspace.clean: true</code>. Every call works in the caller's worktree, or the one <code>--dir</code> names: Agister makes no checkout and runs no setup.</p></div>
+<h3>Holds</h3><table><tr><th><code>input.instruction</code></th><td>the task, in words</td></tr><tr><th><code>input.params</code></th><td>what the caller supplies</td></tr><tr><th><code>input.values</code></th><td>the inputs, each from a source: <code>param</code>, <code>file</code>, <code>git.revision</code>, <code>git.merge_base</code>, <code>git.diff</code>, <code>git.changed_files</code>, <code>prompt</code></td></tr><tr><th><code>workspace.revision</code></th><td>the value whose revision HEAD must be at; Agister does not move HEAD</td></tr><tr><th><code>workspace.clean</code></th><td><code>true</code>: a fresh call needs the worktree's content to be HEAD's; unset is <code>false</code></td></tr><tr><th><code>tools.require</code></th><td>permissions the call cannot do without</td></tr><tr><th><code>timeout, retry, …</code></th><td>limit overrides; they may only narrow its policy</td></tr></table><h3>Names</h3><table><tr><th><code>uses</code></th><td>its <b>agent</b></td></tr><tr><th><code>policy</code></th><td>its <b>policy</b></td></tr><tr><th><code>output.schema</code></th><td>its <b>output schema</b></td></tr><tr><th><code>verify</code></th><td>its <b>verification</b>, by name or held inline</td></tr><tr><th><code>input.values[].name</code></th><td>a <b>prompt</b>, where the source is <code>prompt</code></td></tr><tr><th><code>input.values[].form</code></th><td>the <b>brief forms</b> a <code>file</code> value's text must have one of</td></tr><tr><th><code>skills</code></th><td>its <b>skills</b></td></tr></table><p class="note">A process with a verification, like this one, is still a process, not a workflow, and declares both <code>workspace.revision</code> and <code>workspace.clean: true</code>. Every call works in the caller's worktree, or the one <code>--dir</code> names: Agister makes no checkout and runs no setup.</p></div>
 <figure class="ex"><figcaption>.agister/processes/implement.yaml</figcaption><pre>name: implement
 type: process
 uses: agent:claude-implementer-opus
@@ -225,6 +225,28 @@ instruction: &gt;-
 <p class="lead">One <code>SKILL.md</code> each, the folder's only file. A process names its skills and an agent names its own; the two lists are separate.</p>
 <h3>Names</h3><table><tr><th><code>skills (in a process)</code></th><td>the skills this call needs for its task</td></tr><tr><th><code>skills (in an agent)</code></th><td>the skills this agent always carries</td></tr></table></div>
 
+</section>
+<section id="briefs" class="kind ">
+<div class="desc"><header><h2>Briefs</h2><p class="path"><code>briefs/&lt;name&gt;.yaml</code></p></header>
+<p class="lead">A brief's form: its parts in order and the template a caller copies. Agister checks a text's structure against it, never its meaning.</p>
+<h3>Holds</h3><table><tr><th><code>parts[].heading</code></th><td>the part's Markdown heading line, such as <code>## Intent</code>; the part runs to the next heading of its level or above</td></tr><tr><th><code>parts[].required</code></th><td><code>true</code>: the text must have the part, once and not empty</td></tr><tr><th><code>parts[].reads</code></th><td>the exact text the part must read, as <code>None.</code> for Open</td></tr><tr><th><code>parts[].reference</code></th><td><code>file</code>: the part's first back-quoted path, relative to the caller's directory, must exist</td></tr><tr><th><code>template</code></th><td>the text a caller copies; its headings are the parts', each once and in order</td></tr></table><p class="note">A <code>file</code> value names the forms its text must have one of, as <code>form: [goal, step]</code>; one with no <code>form</code> is not checked. A call whose text has none of them is refused before it starts, exit 3, naming the input, each form and each wrong part. A form neither layer has makes what names it invalid. The examples ship <code>goal</code> and <code>step</code>.</p></div>
+<figure class="ex"><figcaption>.agister/briefs/step.yaml</figcaption><pre>schema: agister.brief/v1alpha1
+name: step
+
+parts:
+  - {heading: &quot;## Goal&quot;, required: true, reference: file}
+  - {heading: &quot;## Covers&quot;, required: true}
+  - {heading: &quot;## Acts on&quot;, required: false}
+  - {heading: &quot;## Constraints&quot;, required: false}
+  - {heading: &quot;## Open&quot;, required: true, reads: None.}
+
+template: |
+  # &lt;issue&gt; step &lt;n&gt;: &lt;what this run makes true, in a line&gt;
+
+  ## Goal
+
+  `&lt;the goal file, relative to the directory the call is made from&gt;`
+  …</pre></figure>
 </section>
 <section id="policy" class="kind ">
 <div class="desc"><header><h2>Policy</h2><p class="path"><code>policies/&lt;name&gt;.yaml</code></p></header>
