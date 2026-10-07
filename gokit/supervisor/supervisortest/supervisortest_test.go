@@ -148,6 +148,28 @@ func TestInProcessSignallingTheGroupEndsABlockedFake(t *testing.T) {
 	}
 }
 
+// A fake's exit is observed apart from its reap, as a process's is: once
+// it has returned, Exited returns, its group answers a signal with ESRCH
+// as a group with only its exited leader left does, and Wait still says
+// how it exited.
+func TestInProcessExitedReturnsOnceTheFakeHasReturned(t *testing.T) {
+	t.Parallel()
+	process, err := InProcess{Groups: NewGroups(), Fakes: map[string]Fake{"exits": func(fakeproc.Process) int { return 5 }}}.Start(supervisor.Command{Name: "exits"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer process.Stdout().Close()
+	if err := process.Exited(); err != nil {
+		t.Fatal(err)
+	}
+	if err := process.Signal(syscall.SIGKILL); !errors.Is(err, syscall.ESRCH) {
+		t.Fatalf("signalling the group of the exited fake: %v, want ESRCH", err)
+	}
+	if exit := process.Wait(); exit.Code == nil || *exit.Code != 5 || exit.Signal != "" {
+		t.Fatalf("exit = %+v, want code 5", exit)
+	}
+}
+
 // group is the group of a fake started through starter, which has ended.
 func group(t *testing.T, starter InProcess) int {
 	t.Helper()

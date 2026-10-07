@@ -115,18 +115,19 @@ func (r Runtime) Run(ctx context.Context, spec Spec, events Sink, onLine func(st
 		sink.Event(SourceSupervisor, "PROCESS_RECORD_FAILED", map[string]any{"group": pid, "error": recorded.Error(), "killed": true})
 	}
 
-	// Signals go to the group only while it is known to exist: once the
-	// process has been waited for, its group ID may be reused.
+	// Signals go to the group only while the unreaped leader keeps its ID
+	// reserved: reaping is set, under mu, before the process is reaped,
+	// once the ID may be reused.
 	var mu sync.Mutex
 	var once sync.Once
 	stopKill := func() {}
-	reaped := false
+	reaping := false
 	exited := make(chan struct{})
 	terminate := func() {
 		once.Do(func() {
 			mu.Lock()
 			defer mu.Unlock()
-			if reaped {
+			if reaping {
 				return
 			}
 			_ = process.Signal(syscall.SIGTERM)
@@ -138,7 +139,7 @@ func (r Runtime) Run(ctx context.Context, spec Spec, events Sink, onLine func(st
 				case <-killed:
 					mu.Lock()
 					defer mu.Unlock()
-					if !reaped {
+					if !reaping {
 						_ = process.Signal(syscall.SIGKILL)
 					}
 				}
@@ -189,18 +190,30 @@ func (r Runtime) Run(ctx context.Context, spec Spec, events Sink, onLine func(st
 		}
 	}()
 
+	// What the process left running in its group is killed while the
+	// leader, exited but not reaped, keeps the group's ID from reuse; only
+	// then is it reaped. An exit that cannot be observed so leaves the
+	// leader, perhaps still running, to the same kill: the watcher's
+	// signals end before the reap, as the ID may be reused from then, and
+	// nothing would end it otherwise. What that kill reached cannot be
+	// told, whatever the observation's error says: the cleanup is unknown,
+	// with that error.
+	observed := process.Exited()
+	mu.Lock()
+	killed := process.Signal(syscall.SIGKILL)
+	reaping = true
+	stopKill()
+	mu.Unlock()
 	exit := process.Wait()
 	close(exited)
-
-	mu.Lock()
-	reaped = true
-	stopKill()
-	// The group outlives its leader while members remain, and its ID is
-	// not reused while it exists; an empty group fails with ESRCH.
-	leftovers := process.Signal(syscall.SIGKILL) == nil
-	mu.Unlock()
-	if leftovers {
+	switch {
+	case observed != nil:
+		sink.Event(SourceProcess, "LEFTOVER_CLEANUP_UNKNOWN", map[string]any{"group": pid, "error": observed.Error()})
+	case killed == nil:
 		sink.Event(SourceProcess, "LEFTOVER_PROCESSES_KILLED", map[string]any{"group": pid})
+	case !errors.Is(killed, syscall.ESRCH):
+		// Neither leftovers killed nor none left: it cannot be told.
+		sink.Event(SourceProcess, "LEFTOVER_CLEANUP_UNKNOWN", map[string]any{"group": pid, "error": killed.Error()})
 	}
 
 	held, stopHeld := r.timer(grace)
@@ -249,10 +262,11 @@ func (r Runtime) Version(ctx context.Context, command string) (string, error) {
 		_, _ = io.Copy(&out, stdout)
 	}()
 
-	// The group is killed only while it is known to exist: once the
-	// process has been waited for, its group ID may be reused.
+	// The group is killed only while the unreaped leader keeps its ID
+	// reserved: reaping is set, under mu, before the process is reaped,
+	// once the ID may be reused.
 	var mu sync.Mutex
-	reaped := false
+	reaping := false
 	var ended error
 	exited, watched := make(chan struct{}), make(chan struct{})
 	go func() {
@@ -269,14 +283,22 @@ func (r Runtime) Version(ctx context.Context, command string) (string, error) {
 		}
 		mu.Lock()
 		defer mu.Unlock()
-		if !reaped {
+		if !reaping {
 			_ = process.Signal(syscall.SIGKILL)
 		}
 	}()
-	exit := process.Wait()
+	// What the process left running in its group is killed once its exit
+	// is observed, before the reap: a descendant holding stderr would hold
+	// the reap, which waits for stderr's copy. An exit that cannot be
+	// observed so leaves the process, perhaps still running, to the same
+	// kill: the watcher's kill ends before the reap, and nothing would end
+	// it otherwise.
+	_ = process.Exited()
 	mu.Lock()
-	reaped = true
+	_ = process.Signal(syscall.SIGKILL)
+	reaping = true
 	mu.Unlock()
+	exit := process.Wait()
 	close(exited)
 	<-watched
 	if ended != nil {

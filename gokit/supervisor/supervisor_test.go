@@ -55,9 +55,11 @@ type runResult struct {
 type events struct {
 	mu    sync.Mutex
 	kinds []string
-	// sources are the events' sources, in step with kinds.
-	sources []string
-	started []string // references, in the order reported
+	// sources are the events' sources, and payloads their data, in step
+	// with kinds.
+	sources  []string
+	payloads []map[string]any
+	started  []string // references, in the order reported
 	// failAt, when positive, makes the report with that number (1-based)
 	// fail.
 	failAt   int
@@ -67,11 +69,12 @@ type events struct {
 	onStart func(ref string)
 }
 
-func (e *events) Event(source, kind string, _ map[string]any) {
+func (e *events) Event(source, kind string, data map[string]any) {
 	e.mu.Lock()
 	defer e.mu.Unlock()
 	e.kinds = append(e.kinds, kind)
 	e.sources = append(e.sources, source)
+	e.payloads = append(e.payloads, data)
 }
 
 func (e *events) ProcessStarted(ref string) error {
@@ -111,6 +114,19 @@ func (e *events) sourcesOf(kind string) []string {
 		}
 	}
 	return sources
+}
+
+// payloadsOf lists the data of each event of kind, in the order reported.
+func (e *events) payloadsOf(kind string) []map[string]any {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	var payloads []map[string]any
+	for i, k := range e.kinds {
+		if k == kind {
+			payloads = append(payloads, e.payloads[i])
+		}
+	}
+	return payloads
 }
 
 func pidFrom(t *testing.T, path string) int {
@@ -164,6 +180,27 @@ func TestLeftoverProcessesAreKilledWhenTheRuntimeExits(t *testing.T) {
 		t.Fatalf("leftover %d still running (%s)", pid, strings.TrimSpace(string(out)))
 	}
 	if !sink.has("LEFTOVER_PROCESSES_KILLED") {
+		t.Fatalf("events = %v", sink.kinds)
+	}
+}
+
+// A runtime that leaves nothing in its group has no leftovers: the kill
+// after its exit finds only its leader, exited and not yet reaped. Its
+// timeout is on a manual clock that never moves: the test binary's
+// -timeout guards a hang.
+//
+// Contract test: the supervisor against a real process: its group, its
+// pipes and the signals that end it.
+func TestAnExitThatLeavesNothingHasNoLeftovers(t *testing.T) {
+	t.Parallel()
+	sink := &events{}
+	evidence := supervisor.Runtime{Starter: supervisor.Exec{}, Timer: clocktest.NewClock(start).Timer}.Run(context.Background(), supervisor.Spec{
+		Command: "/bin/sh", Args: []string{"-c", "echo done"}, Timeout: time.Hour,
+	}, sink, func(string) {})
+	if evidence.Exit == nil || evidence.Exit.Code == nil || *evidence.Exit.Code != 0 {
+		t.Fatalf("evidence = %+v", evidence)
+	}
+	if sink.has("LEFTOVER_PROCESSES_KILLED") || sink.has("LEFTOVER_CLEANUP_UNKNOWN") {
 		t.Fatalf("events = %v", sink.kinds)
 	}
 }
