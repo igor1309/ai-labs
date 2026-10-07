@@ -33,8 +33,8 @@ Fields: `internal/domain/definition/documents.go:24-130`, `toml.go:25-60`,
   resolved inputs, then one join node, a call of a process given the
   fan-out results. (`workflow.go:19`; ADR-003)
   - Existing workflows (`.agister/workflows/`, also in home):
-    `code_review` (architecture, tests, adversarial and clarity reviews
-    concurrently, then the judge) and `adr_review` (the ADR review, then
+    `code_review` (architecture, tests, adversarial, clarity and intent
+    reviews concurrently, then the judge) and `adr_review` (the ADR review, then
     the judge); both take a required `goal` file whose text every review
     node receives and the judge does not (ADR-023); `code_review`'s goal
     must have the `goal` brief form (ADR-026).
