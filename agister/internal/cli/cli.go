@@ -701,6 +701,21 @@ func printable(text string) string {
 	return out.String()
 }
 
+// inLine is a touched path as a line of a watch shows it: as it is, or
+// quoted as Go quotes a string when it holds what would break the line or
+// read as its end (a newline or another unprintable character, a quote, a
+// backslash). The record keeps the path as given.
+func inLine(path any) any {
+	text, ok := path.(string)
+	if !ok {
+		return path
+	}
+	if quoted := strconv.Quote(text); quoted != `"`+text+`"` {
+		return quoted
+	}
+	return text
+}
+
 // status is the node status, qualified by its failure class.
 func status(run contract.Run) string {
 	result := run.Result
@@ -733,7 +748,7 @@ func describe(event contract.Event) string {
 			return "  ↳ tool error"
 		}
 	case "TOUCHED":
-		return fmt.Sprintf("· touched %v (%v)", data["path"], data["tool"])
+		return fmt.Sprintf("· touched %v (%v)", inLine(data["path"]), data["tool"])
 	case "PERMISSION_DENIED":
 		return fmt.Sprintf("! denied: %v %v", data["tool"], data["input"])
 	case "VERIFY_STARTED":

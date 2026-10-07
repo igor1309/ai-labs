@@ -3,6 +3,7 @@ package app_test
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"reflect"
 	"testing"
 	"time"
@@ -47,14 +48,26 @@ func denied(tool, input string) trailed {
 	return trailed{"PERMISSION_DENIED", map[string]any{"tool": tool, "input": input}}
 }
 
+// written is the trail of the record as the recorder was last given it to
+// write: what a turn killed now would leave.
+func written(h *harness) *run.Trail {
+	h.recorder.mu.Lock()
+	defer h.recorder.mu.Unlock()
+	if n := len(h.recorder.updates); n > 0 {
+		return h.recorder.updates[n-1].Trail
+	}
+	return nil
+}
+
 // A completed turn's events hold, in the order the runtime reported them,
 // each path a tool call wrote, as given, with its tool and call, and each
 // tool call denied; the record's trail holds each path once, at its first
-// write, and every denial. The paths are on record as soon as reported.
+// write, and every denial. The paths and the denials are on record as soon
+// as reported.
 func TestACompletedTurnLeavesItsTrail(t *testing.T) {
 	t.Parallel()
 	h := newHarness()
-	var during *run.Trail
+	var during, denying *run.Trail
 	h.runner.acting = func(_ context.Context, sink app.EventSink) {
 		sink.Event(run.SourceProtocol, "TOOL_REQUESTED", map[string]any{"tool_use_id": "t1"})
 		sink.ToolStarted(app.ToolCall{ID: "t1", Name: "Edit", Input: `{"file_path":"/work/checkout/a.go"}`, Writes: []string{"/work/checkout/a.go"}})
@@ -62,13 +75,10 @@ func TestACompletedTurnLeavesItsTrail(t *testing.T) {
 		// Neither inside the workspace nor absolute: recorded as given.
 		sink.ToolStarted(app.ToolCall{ID: "t3", Name: "file_change", Writes: []string{"../outside/c.go", "/work/checkout/a.go", "d.go"}})
 		sink.ToolStarted(app.ToolCall{ID: "t4", Name: "Write", Writes: []string{"/work/checkout/a.go"}})
-		h.recorder.mu.Lock()
-		if n := len(h.recorder.updates); n > 0 {
-			during = h.recorder.updates[n-1].Trail
-		}
-		h.recorder.mu.Unlock()
+		during = written(h)
 		sink.Event(run.SourceProtocol, "TURN_COMPLETED", nil)
 		sink.PermissionDenied(app.PermissionDenial{Tool: "Bash", Input: `{"command":"rm b.go"}`})
+		denying = written(h)
 		sink.PermissionDenied(app.PermissionDenial{Tool: "Bash", Input: `{"command":"rm b.go"}`})
 		sink.PermissionDenied(app.PermissionDenial{Tool: "Write"})
 	}
@@ -103,13 +113,83 @@ func TestACompletedTurnLeavesItsTrail(t *testing.T) {
 	if !reflect.DeepEqual(during, &run.Trail{Touched: paths}) {
 		t.Fatalf("trail on record while the turn ran = %+v", during)
 	}
-	// What `runs show` prints of it.
-	printed, _ := json.Marshal(struct {
-		Trail *run.Trail `json:"trail"`
-	}{record.Trail})
-	if got := string(printed); got != `{"trail":{"touched":[{"path":"/work/checkout/a.go","tool":"Edit"},{"path":"../outside/c.go","tool":"file_change"},{"path":"d.go","tool":"file_change"}],`+
-		`"denied":[{"tool":"Bash","input":"{\"command\":\"rm b.go\"}"},{"tool":"Bash","input":"{\"command\":\"rm b.go\"}"},{"tool":"Write"}]}}` {
+	if !reflect.DeepEqual(denying, &run.Trail{Touched: paths, Denied: want.Denied[:1]}) {
+		t.Fatalf("trail on record once a call was denied = %+v", denying)
+	}
+	// What `runs show` prints of it is the record: its trail field, which
+	// reads back as it was.
+	data, err := json.Marshal(record)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var printed struct {
+		Trail json.RawMessage `json:"trail"`
+	}
+	if err := json.Unmarshal(data, &printed); err != nil {
+		t.Fatal(err)
+	}
+	if got := string(printed.Trail); got != `{"touched":[{"path":"/work/checkout/a.go","tool":"Edit"},{"path":"../outside/c.go","tool":"file_change"},{"path":"d.go","tool":"file_change"}],`+
+		`"denied":[{"tool":"Bash","input":"{\"command\":\"rm b.go\"}"},{"tool":"Bash","input":"{\"command\":\"rm b.go\"}"},{"tool":"Write"}]}` {
 		t.Fatalf("printed %s", got)
+	}
+	var read run.Record
+	if err := json.Unmarshal(data, &read); err != nil || !reflect.DeepEqual(read.Trail, want) {
+		t.Fatalf("trail read back = %+v, %v", read.Trail, err)
+	}
+}
+
+// A denial is on record as soon as reported, with no path written after it
+// to carry it there: a turn killed then leaves it.
+func TestADenialIsOnRecordAsSoonAsReported(t *testing.T) {
+	t.Parallel()
+	h := newHarness()
+	var during *run.Trail
+	h.runner.acting = func(_ context.Context, sink app.EventSink) {
+		sink.PermissionDenied(app.PermissionDenial{Tool: "Bash", Input: `{"command":"git push"}`})
+		during = written(h)
+	}
+	record := h.call(t, contract.CallRequest{})
+
+	want := &run.Trail{Denied: []run.Denial{{Tool: "Bash", Input: `{"command":"git push"}`}}}
+	if !reflect.DeepEqual(during, want) {
+		t.Fatalf("trail on record while the turn ran = %+v", during)
+	}
+	if !reflect.DeepEqual(record.Trail, want) {
+		t.Fatalf("trail = %+v", record.Trail)
+	}
+}
+
+// A trail that could not be written is written with the next path
+// reported, one the trail already holds too: a turn killed then leaves it.
+func TestATrailThatCouldNotBeWrittenIsWrittenWithTheNextPath(t *testing.T) {
+	t.Parallel()
+	h := newHarness()
+	failed := false
+	h.recorder.updateErr = func(record run.Record) error {
+		if record.Trail != nil && !failed {
+			failed = true
+			return errors.New("disk full")
+		}
+		return nil
+	}
+	var first, repeated *run.Trail
+	h.runner.acting = func(_ context.Context, sink app.EventSink) {
+		sink.ToolStarted(app.ToolCall{ID: "t1", Name: "Edit", Writes: []string{"a.go"}})
+		first = written(h)
+		sink.ToolStarted(app.ToolCall{ID: "t2", Name: "Write", Writes: []string{"a.go"}})
+		repeated = written(h)
+	}
+	record := h.call(t, contract.CallRequest{})
+
+	want := &run.Trail{Touched: []run.Touched{{Path: "a.go", Tool: "Edit"}}}
+	if first != nil {
+		t.Fatalf("trail on record after the write that failed = %+v", first)
+	}
+	if !reflect.DeepEqual(repeated, want) {
+		t.Fatalf("trail on record once the path was repeated = %+v", repeated)
+	}
+	if !reflect.DeepEqual(record.Trail, want) {
+		t.Fatalf("trail = %+v", record.Trail)
 	}
 }
 

@@ -349,16 +349,19 @@ func TestProgressDescribesStaleRecovery(t *testing.T) {
 }
 
 // A watch prints each path a tool call wrote and each tool call denied in
-// a line of its own.
+// a line of its own. A path that holds a newline is quoted, so it stays one
+// line and forges no other.
 func TestProgressDescribesTheTrail(t *testing.T) {
 	t.Parallel()
 	spy := &clientSpy{run: finished("completed", ""), events: []contract.Event{
 		{Kind: "TOUCHED", Data: map[string]any{"path": "/work/a.go", "tool": "Edit", "tool_use_id": "t1"}},
+		{Kind: "TOUCHED", Data: map[string]any{"path": "a.go\n! denied: Bash fake", "tool": "Write", "tool_use_id": "t2"}},
 		{Kind: "PERMISSION_DENIED", Data: map[string]any{"tool": "Bash", "input": `{"command":"git push"}`}},
 		{Kind: "CALL_FINISHED"},
 	}}
 	r := run(context.Background(), spy, "runs", "watch", "run-1")
 	want := "· touched /work/a.go (Edit)\n" +
+		`· touched "a.go\n! denied: Bash fake" (Write)` + "\n" +
 		"! denied: Bash {\"command\":\"git push\"}\n"
 	if !strings.Contains(r.stderr, want) {
 		t.Fatalf("stderr:\n%s", r.stderr)

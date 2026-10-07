@@ -1865,6 +1865,8 @@ type sink struct {
 	handle RunHandle
 	clock  sinkClock
 	record *run.Record
+	// unsaved is whether the record's trail grew and could not be written.
+	unsaved bool
 }
 
 // sinkClock tells the time of a turn's events.
@@ -1914,13 +1916,14 @@ func (s *sink) Denied(denial PermissionDenial) {
 }
 
 // keep puts a trail that grew on the record and writes it. One that cannot
-// be written stays on the record, for its next write.
+// be written stays on the record, and is written again with the next path
+// or denial reported, a path the trail already holds too.
 func (s *sink) keep(trail *run.Trail) {
-	if trail == s.record.Trail {
+	if trail == s.record.Trail && !s.unsaved {
 		return
 	}
 	s.record.Trail = trail
-	_ = s.handle.Update(*s.record)
+	s.unsaved = s.handle.Update(*s.record) != nil
 }
 
 func summarize(inputs []run.Input) []run.Input {
