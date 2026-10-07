@@ -16,52 +16,27 @@
 - **Source:** LAB-84; advisor run `20261007T182802Z-562aca`; the owner's
   choice of option (a), 2026-10-07; the owner's decision on this ADR as
   proposed (adr_review `20261007T183934Z-6c7c05`), 2026-10-07: keep the
-  `.agister/` copies
+  `.agister/` copies; the inventory of home and `.agister/` it rests on,
+  `agister/testdata/briefs/lab-84-inventory.md`
 
 ## Context
 
-Home's settings (`~/.agister`) are made by hand from this repository, and
-nothing shows when a copy drifts. Observed on 2026-10-07:
+Home's settings (`~/.agister`) are copied by hand from this repository:
+its prompts from `prompts/`, a general prompt library that also holds
+prompts that are not settings, and its other documents from the
+repository's `.agister/`, which keeps its own copies of the same
+documents. Settings copied by hand drift apart, and nothing shows when
+they do: a change made in one copy is missing from the others, and no
+step compares them.
 
-- **Home** holds 7 agents, 2 brief forms, 5 policies, 12 processes,
-  8 prompts, 3 runtimes, 4 schemas, 2 workflows and `service.toml`. It
-  has no `skills/`, no `verifies/` and no `blocks.yaml`. Beside them is
-  live state: `runs/`, `logs/`, `locks/`, `backups/`, `cache/`,
-  `pi/sessions/` and `.write.lock`.
-- **Home's prompts** are hand copies of the repository's `prompts/`, a
-  general prompt library that also holds prompts that are not settings.
-  Six are identical; two differ. Home's `advisor.md` speaks of "the
-  project's decisions record", the repository's of
-  `agister/docs/decisions.md`. The repository's `code-review-clarity.md`
-  is version 0.0.6, with the done-gate exception to its item 9; home's is
-  0.0.5.
-- **Home's eight review, judge and advisor processes** read their prompts
-  by absolute path,
-  `{source: file, path: /Users/.../.agister/prompts/<name>.md}`, which no
-  other machine has (ADR-014's context).
-- **The repository's `.agister/`** holds 38 documents. Of those home also
-  has, 7 agents, 2 brief forms, 5 policies, the `codex` and `pi`
-  runtimes, 3 schemas and `workflows/adr_review.yaml` are identical. The
-  rest differ:
-  - the same eight processes read their prompts by a path relative to the
-    caller, `prompts/<name>.md`, found only in this repository;
-  - the four `implement*` processes have the instruction written for
-    ADR-025 ("in this worktree … your changes stay here") and name the
-    two Go prompts as optional (ADR-019); home's still have the older
-    instruction and no Go prompts;
-  - `schemas/advice.json` names `agister/docs/decisions.md` where home's
-    is generic, as with `advisor.md`;
-  - `service.toml` differs from home's only in a comment, and
-    `workflows/code_review.yaml` only in how a comment wraps.
+A process that reads its prompt as a `source: file` input names where
+that file is. An absolute path ties a global process to one machine
+(ADR-014's context); a path relative to the caller ties it to one
+repository. Either way the process is global in name only.
 
-  Only `.agister/` has `verifies/repo.yaml` and `prompts/go-*.md`, the
-  latter copies of `prompts/go-*.md` that a test keeps identical. Only
-  home has `runtimes/claude-code.yaml`.
-- **No agent** names a `command`, so no settings document holds a path of
-  this machine except the eight absolute prompt paths.
-- **`agister install <dir>`** reports a folder's `skills/` as not
-  settings (ADR-016 rule 1, ADR-021's non-decisions), so a settings skill
-  could reach `~/.agister/skills/` only by hand. None is there yet.
+A settings skill cannot reach home except by hand: `agister install
+<dir>` reports a folder's `skills/` as not settings (ADR-016 rule 1,
+ADR-021's non-decisions).
 
 [ADR-016](016-settings-are-installed-into-home-with-a-backup.md) already
 installs a folder of settings into home with a plan, a diff, a staged
@@ -115,7 +90,7 @@ differ, it takes the current one:
   repository without them runs without (ADR-019);
 - `schemas/advice.json` and `service.toml` as home has them;
 - the eight prompts of rule 5, with home's `advisor.md` and the
-  repository's `code-review-clarity.md` (0.0.6).
+  repository's `code-review-clarity.md`.
 
 It starts with no skill: none exists yet. A settings skill that home
 should give is added under `agister/home/skills/`.
@@ -231,8 +206,14 @@ home has, listed and kept. Nothing else compares them.
 
 - A change to home's settings is a reviewed change in git, and reaches
   home only through an install's plan, diff, check and backup.
-- Home's processes work on any machine and in any repository: no
-  absolute path is left in them.
+- Home's processes find their prompts on any machine and in any
+  repository: no path of a machine or a repository is left in them. A
+  process that names a verification, as the `implement*` processes name
+  `verify:repo`, still runs only in a repository that fills that slot:
+  the folder holds no verification (rule 3), and a call whose named
+  verification is in neither layer is refused (ADR-010 rule 4). A
+  passing `check` of the folder (rule 7) does not show that such a
+  process runs in a given repository.
 - Until the owner installs the folder after the merge, home keeps its
   hand copies, which other repositories' runs use; this repository's runs
   take `.agister/`'s documents, installed or not.
