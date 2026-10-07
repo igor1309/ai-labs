@@ -59,6 +59,9 @@ mechanical, no selection or rewriting.
 ## Decisions
 
 - 2026-10-07, owner: take LAB-121.
+- 2026-10-07, owner (review 1, item 5#2): option A. A run that has not
+  finished means one still running or being recovered; an abandoned run
+  is copied as it was left.
 
 ## Open
 
