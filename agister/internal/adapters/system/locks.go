@@ -30,43 +30,65 @@ type WorktreeLocks struct{ Dir string }
 // hold that cannot be taken, one held alone already or, taken alone, one
 // held at all, is an error that wraps app.ErrWorktreeLocked.
 func (l WorktreeLocks) Lock(dir string, alone bool) (string, func() error, error) {
+	key, _, release, err := l.lock(dir, alone)
+	return key, release, err
+}
+
+// lock is Lock, and also returns the open lock file the hold is on.
+func (l WorktreeLocks) lock(dir string, alone bool) (string, *os.File, func() error, error) {
 	key, err := canonical(dir)
 	if err != nil {
-		return "", nil, err
+		return "", nil, nil, err
 	}
 	if err := os.MkdirAll(l.Dir, 0o700); err != nil {
-		return "", nil, err
+		return "", nil, nil, err
 	}
 	sum := sha256.Sum256([]byte(key))
 	file, err := os.OpenFile(filepath.Join(l.Dir, hex.EncodeToString(sum[:])+".lock"), os.O_RDWR|os.O_CREATE, 0o600)
 	if err != nil {
-		return "", nil, err
+		return "", nil, nil, err
 	}
 	how := syscall.LOCK_SH
 	if alone {
 		how = syscall.LOCK_EX
 	}
-	for {
-		err = syscall.Flock(int(file.Fd()), how|syscall.LOCK_NB)
-		if !errors.Is(err, syscall.EINTR) {
-			break
-		}
-	}
+	err = flock(file, how|syscall.LOCK_NB)
 	switch {
 	case errors.Is(err, syscall.EWOULDBLOCK):
 		file.Close()
-		return "", nil, fmt.Errorf("%s: %w", key, app.ErrWorktreeLocked)
+		return "", nil, nil, fmt.Errorf("%s: %w", key, app.ErrWorktreeLocked)
 	case err != nil:
 		file.Close()
-		return "", nil, fmt.Errorf("locking %s: %w", file.Name(), err)
+		return "", nil, nil, fmt.Errorf("locking %s: %w", file.Name(), err)
 	}
-	// Closing the descriptor lets the lock go; the file stays.
+	// The release unlocks before it closes: the lock is the open file
+	// description's, and a process forked meanwhile holds a copy of the
+	// descriptor until its exec closes it. Closing alone would leave the
+	// lock held by that copy; unlocking ends it for every copy. The file
+	// stays.
 	var once sync.Once
-	var closed error
-	return key, func() error {
-		once.Do(func() { closed = file.Close() })
-		return closed
+	var released error
+	return key, file, func() error {
+		once.Do(func() {
+			unlocked := flock(file, syscall.LOCK_UN)
+			if unlocked != nil {
+				unlocked = fmt.Errorf("unlocking %s: %w", file.Name(), unlocked)
+			}
+			released = errors.Join(unlocked, file.Close())
+		})
+		return released
 	}, nil
+}
+
+// flock applies the operation how to file's lock, again while a signal
+// interrupts it.
+func flock(file *os.File, how int) error {
+	for {
+		err := syscall.Flock(int(file.Fd()), how)
+		if !errors.Is(err, syscall.EINTR) {
+			return err
+		}
+	}
 }
 
 // Key returns the canonical path Lock keys the directory at dir by, and

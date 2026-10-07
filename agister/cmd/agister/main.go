@@ -301,9 +301,13 @@ func (c composition) wire(config cli.Config) (contract.Client, *app.BackgroundRe
 		},
 		// A call's hold of its worktree is kept under the home, apart from
 		// the worktree commands' locks; a process another run left there is
-		// ended as the reaper ends it (ADR-025 rule 4).
+		// ended as the reaper ends it (ADR-025 rule 4). The directory keeps
+		// the name it had for in-place calls (ADR-022), and the lock files
+		// their names: a binary from before ADR-025, still running, holds
+		// its lock file there, and its hold must exclude this binary's as
+		// this binary's exclude each other.
 		Holder: app.HoldAdapters{
-			Locks:     system.WorktreeLocks{Dir: filepath.Join(config.Home, "locks", "holds")},
+			Locks:     system.WorktreeLocks{Dir: filepath.Join(config.Home, "locks", "in-place")},
 			Worktrees: workspaces.state,
 			Content:   content,
 			Runs:      evidence,

@@ -31,7 +31,7 @@ func TestAWorktreeLockIsHeldByItsCanonicalPath(t *testing.T) {
 	if err := os.Symlink(worktree, link); err != nil {
 		t.Fatal(err)
 	}
-	locks := system.WorktreeLocks{Dir: filepath.Join(base, "state", "locks", "holds")}
+	locks := system.WorktreeLocks{Dir: filepath.Join(base, "state", "locks", "in-place")}
 
 	key, unlock, err := locks.Lock(link, true)
 	if err == nil {
@@ -93,7 +93,7 @@ func TestADirectorysKeyIsItsCanonicalPath(t *testing.T) {
 	if err := os.Symlink(worktree, link); err != nil {
 		t.Fatal(err)
 	}
-	locks := system.WorktreeLocks{Dir: filepath.Join(base, "state", "locks", "holds")}
+	locks := system.WorktreeLocks{Dir: filepath.Join(base, "state", "locks", "in-place")}
 
 	if key, err := locks.Key(link); err != nil || key != worktree {
 		t.Fatalf("key = %q, %v", key, err)
@@ -126,7 +126,7 @@ func TestReadersShareAWorktreesHoldAndAWriterHoldsItAlone(t *testing.T) {
 	if err := os.Mkdir(worktree, 0o700); err != nil {
 		t.Fatal(err)
 	}
-	locks := system.WorktreeLocks{Dir: filepath.Join(base, "state", "locks", "holds")}
+	locks := system.WorktreeLocks{Dir: filepath.Join(base, "state", "locks", "in-place")}
 	hold := func(alone bool) func() error {
 		t.Helper()
 		_, release, err := locks.Lock(worktree, alone)

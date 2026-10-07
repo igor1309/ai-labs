@@ -467,7 +467,7 @@ func TestCleanupRunCancelsAndDrainsABlockedCall(t *testing.T) {
 	}
 	expect(t, record, domain.Interrupted, domain.ClassCancelled, "cancelled during attempt 1's run")
 	<-command.cancelled
-	_, release, err := system.WorktreeLocks{Dir: filepath.Join(h.home, "locks", "holds")}.Lock(h.repo, true)
+	_, release, err := system.WorktreeLocks{Dir: filepath.Join(h.home, "locks", "in-place")}.Lock(h.repo, true)
 	if err != nil {
 		t.Fatalf("the worktree is still held: %v", err)
 	}

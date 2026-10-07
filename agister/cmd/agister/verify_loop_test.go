@@ -402,7 +402,7 @@ verify:
 	h.hosted = app.NewHosted()
 	var definitions app.ResolverDefinitions = fsdefs.Store{Dir: defs}
 	holder := app.NewHolder(app.HoldAdapters{
-		Locks:     system.WorktreeLocks{Dir: filepath.Join(h.home, "locks", "holds")},
+		Locks:     system.WorktreeLocks{Dir: filepath.Join(h.home, "locks", "in-place")},
 		Worktrees: over.state, Content: with.changes, Runs: h.store, Writers: goneProcesses{},
 	})
 	h.calls = app.NewCalls(

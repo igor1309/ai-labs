@@ -94,7 +94,7 @@ func TestFinishedRecord(t *testing.T) {
 
 // A run whose directory holds no record.json yet is being created and has
 // recorded nothing: the strict listing leaves it out. A record that exists
-// but is not valid JSON still fails it.
+// but is not valid JSON, or cannot be read at all, still fails it.
 //
 // Contract test: the run store against the real filesystem, and the
 // kernel's flock on a run's owner.lock.
@@ -126,6 +126,19 @@ func TestListStrictSkipsARunBeingCreatedAndFailsOnABrokenRecord(t *testing.T) {
 	if err == nil || errors.Is(err, contract.ErrNotFound) || !strings.Contains(err.Error(), "listing run r3: ") || records != nil {
 		t.Fatalf("a broken record must fail the strict listing: listed %+v, err %v", records, err)
 	}
+
+	t.Run("a record that cannot be read", func(t *testing.T) {
+		t.Parallel()
+		store := newStore(t)
+		// A directory where the record is: it exists, and reading it fails.
+		if err := os.MkdirAll(filepath.Join(store.Dir, "r4", "record.json"), 0o700); err != nil {
+			t.Fatal(err)
+		}
+		records, err := store.ListStrict(ctx)
+		if err == nil || errors.Is(err, contract.ErrNotFound) || !strings.Contains(err.Error(), "listing run r4: ") || records != nil {
+			t.Fatalf("a record that cannot be read must fail the strict listing: listed %+v, err %v", records, err)
+		}
+	})
 }
 
 // Contract test: the run store against the real filesystem, and the

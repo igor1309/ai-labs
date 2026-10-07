@@ -15,6 +15,7 @@ import (
 	"slices"
 	"strings"
 	"sync"
+	"syscall"
 	"testing"
 	"time"
 
@@ -750,8 +751,48 @@ func TestTheCompositionLendsAnInPlaceCallTheCallersWorktree(t *testing.T) {
 		t.Fatalf("events %s", kinds)
 	}
 	// The lock is the home's, in the namespace of the holds.
-	if locks, err := os.ReadDir(filepath.Join(home, "locks", "holds")); err != nil || len(locks) != 1 {
+	if locks, err := os.ReadDir(filepath.Join(home, "locks", "in-place")); err != nil || len(locks) != 1 {
 		t.Fatalf("locks %v, %v", locks, err)
+	}
+}
+
+// A hold a binary from before ADR-025 takes, still running, excludes the
+// composition's writer (ADR-025 rule 4): with the worktree's lock file in
+// locks/in-place held shared, as an older reader holds it, a writer call
+// is refused before any turn, and nothing is changed in the worktree.
+//
+// Contract test: the kernel's flock on the composition's lock file, taken
+// here as an older binary takes it.
+func TestAnOlderBinarysHoldExcludesTheCompositionsWriter(t *testing.T) {
+	t.Parallel()
+	home, repo := setup(t, "approve")
+	write(t, filepath.Join(repo, "b.md"), "Do it.\n")
+	key, err := filepath.EvalSymlinks(repo)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// The older binary's lock file: under the home's locks/in-place, named
+	// by a digest of the worktree's canonical path.
+	sum := sha256.Sum256([]byte(key))
+	path := filepath.Join(home, "locks", "in-place", hex.EncodeToString(sum[:])+".lock")
+	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	held, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE, 0o600)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { held.Close() })
+	if err := syscall.Flock(int(held.Fd()), syscall.LOCK_SH|syscall.LOCK_NB); err != nil {
+		t.Fatal(err)
+	}
+
+	r := agister(t, home, repo, "run", "implement", "--quiet", "--param", "candidate=HEAD", "--param", "brief=b.md")
+	if want := "worktree " + repo + " is in use: another call holds it, and a writer holds it alone"; r.code != cli.ExitRefused || !strings.Contains(r.stderr, want) {
+		t.Fatalf("run: %d, want %q\n%s%s", r.code, want, r.stdout, r.stderr)
+	}
+	if kinds := strings.Join(lastRun(t, home).kinds(), " "); strings.Contains(kinds, "WORKTREE_LOCKED") || strings.Contains(kinds, "PROCESS_STARTED") {
+		t.Fatalf("events %s", kinds)
 	}
 }
 
