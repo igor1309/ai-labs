@@ -143,8 +143,8 @@ agister run <process> --dir <worktree> --param <param>=<value> --json
   run completed. Progress goes to stderr either way.
 - For a process, `--agent <agent>` runs it with another agent of the
   settings, and `--timeout <d>` and `--max-cost <usd>` set the call's
-  limits. A workflow takes params and `--dir` only: each node is a run of
-  its own, with its own process's agent and limits.
+  limits. A workflow takes params, `--goal`, `--answers` and `--dir` only:
+  each node is a run of its own, with its own process's agent and limits.
 - Interrupting `agister run` cancels the run.
 - Runs cost money. Do not loop runs unattended.
 
@@ -180,7 +180,8 @@ or contains it.
   status.
 - `agister runs show <run-id>` prints the run's record as JSON. That
   includes its `request`, the `definitions` and `inputs` it ran with, its
-  `in_place`, the worktree it worked in, its `attempts` when it has a
+  `in_place`, the worktree it worked in, its `links` when it was given
+  `--goal` or `--answers` (see below), its `attempts` when it has a
   verification, its `recoveries` when a stale turn was resumed, its
   `trail` when the runtime reported one, and its `result` (`status`,
   `error`, `output` or `text`, `cost`, `timing`, `artifacts`). An
@@ -201,6 +202,15 @@ or contains it.
   the param's text there. A text that could not be kept is the event
   `ARTIFACT_FAILED`. A run recorded before inputs were kept has no
   `artifact`.
+- An input read from a file (`source: file`) also has `cache_path`, a
+  disposable working copy of its bytes,
+  `<home>/cache/<sha256 hex>/<the file's base name>`
+  (`~/.agister/cache/...` by default). The folder is named by the bytes'
+  digest, so the copy never changes; pass that path as a file param and
+  the run reads the same bytes and records the same digest. The cache may
+  be removed at any time: the run's own copy, its `value` or `artifact`,
+  is the source. A copy that could not be written is the event
+  `CACHE_FAILED`, and the input has no `cache_path`; the run goes on.
 - A policy's `stale` limits end an agent turn that stopped moving, before
   its timeout. With `stale.recover`, a budget of `max_resumes` and an
   `instruction`, Agister then resumes the turn's session with what went
@@ -269,6 +279,29 @@ worktree holds exactly what that run left there, and its `changes.patch`
 is as recorded. So is a latest run whose capture failed, and one that
 worked in a checkout before ADR-025. A latest run that pinned no revision
 is continued without the content check. A workflow cannot be continued.
+
+## Link a run to its goal and judgement
+
+```sh
+agister run <process> --goal <run-id>[:<input>] --param <param>=<value>
+agister run <process> --answers <run-id> --param <param>=<value>
+```
+
+Name what a run is for; Agister finds nothing by searching runs. Either
+option, or both, works for a process or a workflow, and is recorded under
+the record's `links`; a run given neither has no `links`.
+
+- `--goal <run-id>[:<input>]` names the goal the run serves: that run's
+  input, `goal` when you name none. `links.goal` records the `run`, the
+  `input`, its `digest` and, when the input's bytes are an artifact of
+  that run, its `artifact`, all read from that run's record. It is
+  refused, exit 3, when the run does not exist, has no such input, or
+  keeps the input's bytes nowhere, neither as its `value` nor as an
+  `artifact`.
+- `--answers <run-id>` names the run whose judgement this one answers,
+  such as a review round's fix run naming the judge's run.
+  `links.judgement` records its `run`. It is refused when the run does not
+  exist or did not complete.
 
 ## Exit codes
 

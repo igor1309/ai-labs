@@ -994,3 +994,37 @@ func messages(problems []contract.Problem) []string {
 	}
 	return list
 }
+
+// copiesSpy keeps working copies in memory, by path, as /cache/<digest>/<name>,
+// each written once: a copy that already holds the bytes is left as it is,
+// as the cache leaves it. err, when set, is asked, by the file's name,
+// whether keeping its copy fails; one that fails is not kept.
+type copiesSpy struct {
+	mu     sync.Mutex
+	kept   map[string][]byte
+	writes []string // the paths written, in order
+	err    func(name string) error
+}
+
+func (s *copiesSpy) Keep(digest, name string, data []byte) (string, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.err != nil {
+		if err := s.err(name); err != nil {
+			return "", err
+		}
+	}
+	if digest != sha(string(data)) {
+		return "", fmt.Errorf("digest %s is not the bytes'", digest)
+	}
+	path := "/cache/" + digest + "/" + name
+	if kept, ok := s.kept[path]; ok && string(kept) == string(data) {
+		return path, nil
+	}
+	if s.kept == nil {
+		s.kept = map[string][]byte{}
+	}
+	s.kept[path] = data
+	s.writes = append(s.writes, path)
+	return path, nil
+}

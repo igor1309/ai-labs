@@ -209,6 +209,12 @@ type Input struct {
 	// artifacts (ADR-026 rule 6); unset for a value kept inline, and on
 	// records made before inputs were kept.
 	Artifact *Artifact `json:"artifact,omitempty"`
+	// CachePath is a disposable working copy of a file input's bytes, under
+	// Agister's cache in a folder named by their digest (ADR-026 rule 6).
+	// The cache may be cleared at any time; the run's own copy, its value
+	// or its artifact, is the source. Unset for any other input, when the
+	// copy could not be written, and on records made before.
+	CachePath string `json:"cache_path,omitempty"`
 }
 
 // Runtime identifies the runtime a call ran on.
@@ -284,7 +290,11 @@ type Record struct {
 	// barrier. Parent is set on a node's run: the workflow run it belongs to.
 	Workflow *Workflow `json:"workflow,omitempty"`
 	Parent   *Parent   `json:"parent,omitempty"`
-	Result   *Result   `json:"result,omitempty"` // set when finished
+	// Links are the earlier runs the caller named this one's goal and
+	// judgement in (ADR-026 rules 2 and 6); unset when it named neither,
+	// and on records made before.
+	Links  *Links  `json:"links,omitempty"`
+	Result *Result `json:"result,omitempty"` // set when finished
 }
 
 // ProcessesKnownEnded says whether every process the run recorded is known
@@ -389,6 +399,11 @@ type Request struct {
 	MaxCostUSD *float64 `json:"max_cost_usd,omitempty"`
 	// A finished run whose session to continue; empty for a fresh session.
 	Continue string `json:"continue,omitempty"`
+	// Goal names the goal the call serves, <run-id>[:<input>], and Answers
+	// the run whose judgement it answers, as given; empty when not named.
+	// What each names is recorded in Record.Links.
+	Goal    string `json:"goal,omitempty"`
+	Answers string `json:"answers,omitempty"`
 	// Workspace is the workspace mode the caller asked for (ADR-022 rule 1),
 	// "in-place" or "temporary"; empty: the repository's setting. Only on
 	// records made before ADR-025 removed it.

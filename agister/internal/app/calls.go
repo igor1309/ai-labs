@@ -25,6 +25,7 @@ type Calls struct {
 	resolver   CallResolver
 	runners    CallRunners
 	inputs     map[string]InputProvider
+	copies     CallWorkingCopies
 	workspaces CallWorkspaces
 	changes    CallChanges
 	holder     CallHolder
@@ -446,6 +447,14 @@ type InputProvider interface {
 	Resolve(ctx context.Context, spec InputSpec) (Resolved, error)
 }
 
+// CallWorkingCopies keeps the disposable working copies of a call's file
+// inputs in Agister's cache (ADR-026 rule 6), each named by the sha256 hex
+// digest of its bytes and the file's base name. Keep returns the copy's
+// path; a copy that already holds the bytes is left as it is.
+type CallWorkingCopies interface {
+	Keep(digest, name string, data []byte) (path string, err error)
+}
+
 // CallWorkspaces locates the repository and the git worktree a call works
 // in.
 type CallWorkspaces interface {
@@ -510,6 +519,7 @@ type RunRecorder interface {
 type CallAdapters struct {
 	Runners    CallRunners
 	Inputs     map[string]InputProvider
+	Copies     CallWorkingCopies
 	Workspaces CallWorkspaces
 	Changes    CallChanges
 	Validator  CallValidator
@@ -522,14 +532,15 @@ type CallAdapters struct {
 }
 
 // NewCalls returns the use case that submits and executes calls. Every
-// collaborator is required. holder holds the caller's worktree for each
-// call. timer starts the waits of a call's staleness limits. stateDir
+// collaborator is required. copies keeps the working copies of the
+// calls' file inputs. holder holds the caller's worktree for each call. timer starts the waits of a call's staleness limits. stateDir
 // is Agister's own state, which no agent workspace may overlap. cancels is
 // where each running call's cancellation is held.
 func NewCalls(
 	resolver CallResolver,
 	runners CallRunners,
 	inputs map[string]InputProvider,
+	copies CallWorkingCopies,
 	workspaces CallWorkspaces,
 	changes CallChanges,
 	holder CallHolder,
@@ -548,6 +559,7 @@ func NewCalls(
 		resolver:   resolver,
 		runners:    runners,
 		inputs:     inputs,
+		copies:     copies,
 		workspaces: workspaces,
 		changes:    changes,
 		holder:     holder,
@@ -663,6 +675,8 @@ func (c *Calls) Submit(ctx context.Context, request contract.CallRequest) (strin
 			Timeout:    request.Timeout,
 			MaxCostUSD: request.MaxCostUSD,
 			Continue:   request.Continue,
+			Goal:       request.Goal,
+			Answers:    request.Answers,
 			Cwd:        request.Cwd,
 		},
 	}
@@ -815,6 +829,11 @@ func (c *Calls) execute(ctx context.Context, handle RunHandle, record run.Record
 		event(run.SourceAgister, "PERMISSIONS_WITHHELD", map[string]any{"permissions": res.Plan.Withheld})
 	}
 
+	if record.Links, err = c.links(ctx, record.Request); err != nil {
+		fail(err)
+		return
+	}
+	_ = handle.Update(record)
 	resumed, err := c.continuation(ctx, res, record.ID, record.Request.Continue, record.Request.Cwd)
 	if err != nil {
 		fail(err)
@@ -832,12 +851,13 @@ func (c *Calls) execute(ctx context.Context, handle RunHandle, record run.Record
 		return
 	}
 
-	inputs, err := c.resolveValues(ctx, "process "+res.Process.Name, res.Process.Params, res.Process.Values, record.Request, collection, res.Prompts, res.Absent)
+	inputs, files, err := c.resolveValues(ctx, "process "+res.Process.Name, res.Process.Params, res.Process.Values, record.Request, collection, res.Prompts, res.Absent)
 	if err != nil {
 		fail(err)
 		return
 	}
 	record.Inputs = recordInputs(handle, inputs, event)
+	c.keepWorkingCopies(record.Inputs, inputs, files, event)
 	record.Request.Params = recordParams(record.Request.Params, record.Inputs)
 	_ = handle.Update(record)
 	revision, _ := revisionOf(inputs, res.Process.Revision)
@@ -1090,6 +1110,12 @@ func (c *Calls) runWorkflow(ctx context.Context, handle RunHandle, record run.Re
 		refused(err)
 		return
 	}
+	links, err := c.links(ctx, record.Request)
+	if err != nil {
+		refused(err)
+		return
+	}
+	record.Links = links
 	workflow := res.Workflow
 	state := &run.Workflow{Barrier: run.Barrier{State: run.BarrierWaiting}}
 	for _, node := range workflow.FanOut {
@@ -1101,12 +1127,13 @@ func (c *Calls) runWorkflow(ctx context.Context, handle RunHandle, record run.Re
 
 	// Resolved once, before any node starts; every fan-out node receives the
 	// same values.
-	inputs, err := c.resolveValues(ctx, "workflow "+workflow.Name, workflow.Params, workflow.Values, record.Request, nil, nil, nil)
+	inputs, files, err := c.resolveValues(ctx, "workflow "+workflow.Name, workflow.Params, workflow.Values, record.Request, nil, nil, nil)
 	if err != nil {
 		refused(err)
 		return
 	}
 	record.Inputs = recordInputs(handle, inputs, func(_, kind string, data map[string]any) { event(kind, data) })
+	c.keepWorkingCopies(record.Inputs, inputs, files, func(_, kind string, data map[string]any) { event(kind, data) })
 	record.Request.Params = recordParams(record.Request.Params, record.Inputs)
 	_ = handle.Update(record)
 	values, err := passedValues(inputs)
@@ -1456,8 +1483,9 @@ func (c *Calls) rebuilds(ctx context.Context, dir, revision string, patch []byte
 // call is refused. prompts are the prompts resolved with the call, by name
 // (ADR-014 rule 3), and absent the optional prompt inputs neither layer has
 // the prompt of, by their index among values, which give no input (ADR-019
-// rule 2); a workflow has none.
-func (c *Calls) resolveValues(ctx context.Context, subject string, declared []CallParam, values []CallValue, request run.Request, collection *Resolved, prompts map[string]Resolved, absent []CallAbsent) ([]run.Input, error) {
+// rule 2); a workflow has none. files are, by each input's place, the base
+// name of the file it was read from, empty for any other.
+func (c *Calls) resolveValues(ctx context.Context, subject string, declared []CallParam, values []CallValue, request run.Request, collection *Resolved, prompts map[string]Resolved, absent []CallAbsent) (inputs []run.Input, files []string, err error) {
 	params := map[string]string{}
 	var unknown []string
 	for name := range request.Params {
@@ -1467,7 +1495,7 @@ func (c *Calls) resolveValues(ctx context.Context, subject string, declared []Ca
 	}
 	if len(unknown) > 0 {
 		sort.Strings(unknown)
-		return nil, refuse("%s takes no params: %s", subject, strings.Join(unknown, ", "))
+		return nil, nil, refuse("%s takes no params: %s", subject, strings.Join(unknown, ", "))
 	}
 	var missing []string
 	for _, param := range declared {
@@ -1482,15 +1510,16 @@ func (c *Calls) resolveValues(ctx context.Context, subject string, declared []Ca
 		}
 	}
 	if len(missing) > 0 {
-		return nil, refuse("%s is missing params: %s", subject, strings.Join(missing, ", "))
+		return nil, nil, refuse("%s is missing params: %s", subject, strings.Join(missing, ", "))
 	}
 
-	inputs := make([]run.Input, 0, len(values))
+	inputs = make([]run.Input, 0, len(values))
+	files = make([]string, 0, len(values))
 	texts := map[string]string{}
 	for i, value := range values {
 		if value.Source == definition.CollectionSource {
 			if collection == nil {
-				return nil, refuse("input %s: %s is given only to a workflow's join", value.Name, definition.CollectionSource)
+				return nil, nil, refuse("input %s: %s is given only to a workflow's join", value.Name, definition.CollectionSource)
 			}
 			if text, ok := collection.Value.(string); ok {
 				texts[value.Name] = text
@@ -1504,7 +1533,7 @@ func (c *Calls) resolveValues(ctx context.Context, subject string, declared []Ca
 			}
 			prompt, ok := prompts[value.Args["name"]]
 			if !ok {
-				return nil, refuse("input %s: prompt %q was not resolved with the call", value.Name, value.Args["name"])
+				return nil, nil, refuse("input %s: prompt %q was not resolved with the call", value.Name, value.Args["name"])
 			}
 			texts[value.Name] = prompt.Value.(string)
 			inputs = append(inputs, run.Input{Name: value.Name, Source: value.Source, Identity: prompt.Identity, Value: prompt.Value})
@@ -1512,22 +1541,22 @@ func (c *Calls) resolveValues(ctx context.Context, subject string, declared []Ca
 		}
 		provider, ok := c.inputs[value.Source]
 		if !ok {
-			return nil, refuse("input %s: unknown source %q", value.Name, value.Source)
+			return nil, nil, refuse("input %s: unknown source %q", value.Name, value.Source)
 		}
 		args, err := definition.Value{Name: value.Name, Source: value.Source, Args: value.Args}.Bind(params, texts)
 		if err != nil {
-			return nil, refuse("input %s: %v", value.Name, err)
+			return nil, nil, refuse("input %s: %v", value.Name, err)
 		}
 		resolved, err := provider.Resolve(ctx, InputSpec{Source: value.Source, Args: args, Params: params, Cwd: request.Cwd})
 		if err != nil {
-			return nil, refuse("input %s: %v", value.Name, err)
+			return nil, nil, refuse("input %s: %v", value.Name, err)
 		}
 		if text, ok := resolved.Value.(string); ok {
 			texts[value.Name] = text
 		}
-		inputs = append(inputs, run.Input{Name: value.Name, Source: value.Source, Identity: resolved.Identity, Revision: resolved.Revision, Value: resolved.Value})
+		inputs, files = append(inputs, run.Input{Name: value.Name, Source: value.Source, Identity: resolved.Identity, Revision: resolved.Revision, Value: resolved.Value}), append(files, resolved.File)
 	}
-	return inputs, nil
+	return inputs, files, nil
 }
 
 // preparedWorkspace is where a call's agent works: the root of the
@@ -1685,6 +1714,27 @@ func recordInputs(handle RunHandle, inputs []run.Input, event func(string, strin
 		out[i].Artifact = &artifact
 	}
 	return out
+}
+
+// keepWorkingCopies gives each input read from a file a disposable working
+// copy of its bytes in Agister's cache, which recorded, its record, names
+// in CachePath (ADR-026 rule 6). files are the inputs' base names, as
+// resolveValues returns them. A copy that cannot be kept is recorded as
+// CACHE_FAILED, as an artifact that fails is, and its input names none; the
+// call goes on.
+func (c *Calls) keepWorkingCopies(recorded, inputs []run.Input, files []string, event func(string, string, map[string]any)) {
+	for i, file := range files {
+		text, ok := inputs[i].Value.(string)
+		if file == "" || !ok {
+			continue
+		}
+		path, err := c.copies.Keep(digestOf([]byte(text)), file, []byte(text))
+		if err != nil {
+			event(run.SourceAgister, "CACHE_FAILED", map[string]any{"name": file, "input": inputs[i].Name, "error": err.Error()})
+			continue
+		}
+		recorded[i].CachePath = path
+	}
 }
 
 // inputArtifactName is the file name the artifact of inputs[i] is stored

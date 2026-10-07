@@ -346,6 +346,10 @@ type flowHarness struct {
 	store      *storeSpy
 	hosted     *app.Hosted
 	calls      *app.Calls
+	// runs are the earlier runs a call reads; copies keeps the working
+	// copies of its file inputs.
+	runs   *runsSpy
+	copies *copiesSpy
 
 	mu       sync.Mutex
 	resolved map[string]int // how often each symbolic revision was resolved
@@ -406,9 +410,10 @@ func newFlowHarness() *flowHarness {
 	runtimes := nodeRuntimes{runner: h.runner}
 	changes := &changesSpy{}
 	runs := &runsSpy{records: map[string]run.Record{}, states: map[string]run.State{}}
+	h.runs, h.copies = runs, &copiesSpy{}
 	h.calls = app.NewCalls(
 		app.NewResolver(h.defs, runtimes, okValidator{}, resolverCheckStub{}), runtimes,
-		map[string]app.InputProvider{"git.revision": h.inputs, "git.diff": h.inputs, "file": h.inputs, "param": h.inputs},
+		map[string]app.InputProvider{"git.revision": h.inputs, "git.diff": h.inputs, "file": h.inputs, "param": h.inputs}, h.copies,
 		h.workspaces, changes, app.NewHolder(app.HoldAdapters{Locks: h.locks, Worktrees: &worktreesSpy{}, Content: changes, Runs: runs, Writers: &writersSpy{}}),
 		app.NewVerifier(changes, &commandsSpy{}, fixedClock{}), app.NewRecoverer(fixedClock{}), okValidator{}, h.store, runs,
 		fixedClock{}, unfired, &seqIDs{}, "/state", h.hosted,

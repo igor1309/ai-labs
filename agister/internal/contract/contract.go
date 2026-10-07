@@ -396,7 +396,13 @@ type CallRequest struct {
 	Timeout    string   // optional, may only shorten
 	MaxCostUSD *float64 // optional, may only lower
 	Continue   string   // optional: a finished run whose session to continue
-	Cwd        string
+	// Goal, optional, names the goal the call serves: an input of an
+	// earlier run, <run-id>[:<input>], the input goal when none is named.
+	Goal string
+	// Answers, optional, names a completed run whose judgement the call
+	// answers.
+	Answers string
+	Cwd     string
 }
 
 type Event struct {

@@ -19,6 +19,7 @@ import (
 	"time"
 
 	"github.com/igor1309/ai-labs/agister/examples"
+	"github.com/igor1309/ai-labs/agister/internal/adapters/fscache"
 	"github.com/igor1309/ai-labs/agister/internal/adapters/fsdefs"
 	"github.com/igor1309/ai-labs/agister/internal/adapters/fsruns"
 	"github.com/igor1309/ai-labs/agister/internal/adapters/git"
@@ -289,6 +290,9 @@ func (c composition) wire(config cli.Config) (contract.Client, *app.BackgroundRe
 				"git.diff":          workspaces.diff,
 				"git.changed_files": workspaces.changedFiles,
 			},
+			// The working copies of file inputs are kept in the home's
+			// cache, which may be removed at any time (ADR-026 rule 6).
+			Copies:     fscache.Store{Dir: filepath.Join(config.Home, "cache")},
 			Workspaces: workspaces.calls,
 			Changes:    content,
 			Validator:  schema.Validator{},

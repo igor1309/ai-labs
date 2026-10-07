@@ -140,6 +140,15 @@ there. An input's text that could not be kept is recorded as the event
 `ARTIFACT_FAILED`, and the input keeps its identity only. A record made before inputs were kept has no
 `artifact`.
 
+An input read from a file also has a disposable working copy,
+`~/.agister/cache/<sha256 hex>/<the file's base name>`, which the input
+names under `cache_path`. The folder is named by the bytes' digest, so a
+copy is never overwritten with other bytes, and one that already holds
+them is left as it is; a later run given that path reads the same bytes
+and records the same digest. The cache may be removed at any time: the
+run's own copy is the source. A copy that could not be written is the
+event `CACHE_FAILED`; the input has no `cache_path`, and the run goes on.
+
 A prompt the settings fix, such as a reviewer's instructions, is a document
 too: `prompts/review.md`, the whole file its text, no header. A process
 gives it to its agent as an input, `{source: prompt, name: review}`; the
@@ -315,6 +324,19 @@ worktree's content is the one that run recorded, and its `changes.patch`
 is as recorded. A latest run whose capture failed, or that worked in a
 checkout before ADR-025, cannot be continued; one that pinned no revision
 is continued without the content check.
+
+A run names the goal it serves and the judgement it answers; nothing is
+found by searching runs
+([ADR-026](docs/adr/026-the-brief-is-a-runs-input-contract.md) rules 2
+and 6). `--goal <run-id>[:<input>]` records `links.goal`: that run's input, `goal` when
+none is named, by its `run`, `input` and `digest`, with the `artifact`
+that keeps its bytes when there is one, all read from that run's record.
+`--answers <run-id>` records `links.judgement`, that run's `run`. A call
+is refused before it starts when the goal's run does not exist, has no
+such input or keeps its bytes nowhere, neither inline nor as an artifact,
+and when the judgement's run does not exist or did not complete. Both
+are optional, for a process or a workflow; a run given neither has no
+`links`.
 
 Home's prompts are kept in git in `prompts/` at the repository root and
 copied into `~/.agister/prompts/` by hand: `install` does not take them

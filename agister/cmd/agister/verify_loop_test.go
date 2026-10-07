@@ -16,6 +16,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/igor1309/ai-labs/agister/internal/adapters/fscache"
 	"github.com/igor1309/ai-labs/agister/internal/adapters/fsdefs"
 	"github.com/igor1309/ai-labs/agister/internal/adapters/fsruns"
 	"github.com/igor1309/ai-labs/agister/internal/adapters/git"
@@ -407,7 +408,7 @@ verify:
 	})
 	h.calls = app.NewCalls(
 		app.NewResolver(definitions, runtimes, schema.Validator{}, noProblems{}), runtimes,
-		map[string]app.InputProvider{"git.revision": over.revision},
+		map[string]app.InputProvider{"git.revision": over.revision}, fscache.Store{Dir: filepath.Join(h.home, "cache")},
 		over.workspaces, with.changes, holder, app.NewVerifier(with.changes, h.commands, with.clock), app.NewRecoverer(with.clock), schema.Validator{},
 		h.store, h.store, with.clock, still.Timer, system.IDs{}, h.home, h.hosted,
 	)
