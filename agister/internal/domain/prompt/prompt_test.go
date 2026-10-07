@@ -87,30 +87,12 @@ func TestRecoveryStatesTheEvidenceOfEachLimit(t *testing.T) {
 	}
 }
 
-// A continued call with a checkout is told which run it continues, where it
-// works now, and whose changes, if any, are applied there.
-func TestContinuesStatesTheCheckoutAndTheChangesCarried(t *testing.T) {
-	t.Parallel()
-	got := prompt.Continues("run-a", "run-b", "/tmp/co", "abc123")
-	want := "## continuation\n\nThis call continues run run-a. It works in a new checkout at /tmp/co, at revision abc123." +
-		" The changes of run run-b, the latest run of the session, are applied there, uncommitted. The directory the earlier run worked in is gone."
-	if got != want {
-		t.Fatalf("got\n%s\nwant\n%s", got, want)
-	}
-	got = prompt.Continues("run-a", "", "/tmp/co", "abc123")
-	want = "## continuation\n\nThis call continues run run-a. It works in a new checkout at /tmp/co, at revision abc123." +
-		" No changes were carried: the checkout holds the revision as committed. The directory the earlier run worked in is gone."
-	if got != want {
-		t.Fatalf("got\n%s\nwant\n%s", got, want)
-	}
-}
-
 // A continued call in the caller's worktree is told which run it continues,
 // where it works, and that the session's changes are already there: no
-// directory is gone (ADR-022 rule 8).
-func TestContinuesInPlaceSaysTheChangesAreAlreadyInTheWorktree(t *testing.T) {
+// directory is gone (ADR-025 rule 7).
+func TestContinuesSaysTheChangesAreAlreadyInTheWorktree(t *testing.T) {
 	t.Parallel()
-	got := prompt.ContinuesInPlace("run-a", "run-b", "/work/tree", "abc123")
+	got := prompt.Continues("run-a", "run-b", "/work/tree", "abc123")
 	want := "## continuation\n\nThis call continues run run-a. It works in the worktree at /work/tree, at revision abc123, where the session worked before." +
 		" The session's changes, as run run-b, its latest run, left them, are already in this worktree, uncommitted."
 	if got != want {

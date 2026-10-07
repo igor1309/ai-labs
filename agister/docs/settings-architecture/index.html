@@ -166,7 +166,7 @@
     <rect class="edge" x="220" y="112" width="3" height="120" rx="1"/>
     <text class="t" x="234" y="138">Process</text>
     <text class="sub" x="234" y="162">instruction · params</text>
-    <text class="sub" x="234" y="181">inputs · checkout · setup</text>
+    <text class="sub" x="234" y="181">inputs · revision · clean</text>
     <text class="sub" x="234" y="200">required permissions</text>
     <text class="sub" x="234" y="219">limit overrides</text>
   </g>
@@ -185,7 +185,7 @@
   <text class="sub" x="484" y="50">a JSON Schema</text>
   <rect class="doc" x="470" y="66" width="190" height="46" rx="2"/>
   <text class="t" x="484" y="86">Verification</text>
-  <text class="sub" x="484" y="104">command · attempts · where</text>
+  <text class="sub" x="484" y="104">command · attempts</text>
   <rect class="doc" x="470" y="120" width="190" height="46" rx="2"/>
   <text class="t" x="484" y="140">Prompts</text>
   <text class="sub" x="484" y="158">plain text</text>
@@ -265,8 +265,10 @@ a workflow is. Examples: <code>code_review</code>, <code>adr_review</code>.</p>
 <h2><span class="k-process">Process</span></h2>
 
 <p>A process is a named agent call. It holds the instruction, caller
-params, input values, the checkout input, its own setup, required
-permissions and limit overrides. A process with a verification, such as
+params, input values, the revision input HEAD must be at, whether a
+fresh call needs a clean worktree, required permissions and limit
+overrides. It works in the caller's worktree; Agister makes no checkout
+and runs no setup. A process with a verification, such as
 <code>implement</code>, is still a process.</p>
 
 <h3>What a process names</h3>
@@ -275,8 +277,8 @@ permissions and limit overrides. A process with a verification, such as
 <ul>
 <li><b>output schema</b>: the JSON Schema its output must match.</li>
 <li><b>verification</b>: command, timeout, max attempts, failure
-instruction, and optionally where an in-place call runs it; or held
-inline in the process.</li>
+instruction; or held inline in the process. It runs in the call's
+worktree.</li>
 <li><b>prompts</b>: plain text, which may be optional.</li>
 <li><b>skills</b>: each one <code>SKILL.md</code>.</li>
 <li><b>policy</b>: execution defaults: timeout, attempts, cost cap,
@@ -315,14 +317,12 @@ enforcement plan. A primitive is granted only if everything it grants is
 allowed. An allowed permission that no primitive provides is withheld, and
 the call is refused if the process requires it.</p>
 
-<h2>Workspace and blocks</h2>
+<h2>Blocks</h2>
 
-<p>Two more documents, not in the diagram: the workspace, for processes
-that check out a revision: the default checkout setup for those that
-declare none, the default mode (<code>in-place</code> or
-<code>temporary</code>) and the precheck that gates an in-place call;
-and blocks, repo only: the agents, processes, workflows or runtime
-mappings this repo refuses, with reasons.</p>
+<p>One more document, not in the diagram: blocks, repo only: the agents,
+processes, workflows or runtime mappings this repo refuses, with reasons.
+There is no workspace document: <code>workspace.yaml</code> is obsolete,
+and <code>check</code> warns about it.</p>
 </div>
 
 <footer>

@@ -2,7 +2,8 @@
 
 The facts behind `index.html` (top level) and `detailed.html`, each with
 its source. Paths are relative to `agister/`. Checked against trunk at
-8c148634 (2026-10-06).
+8c148634 (2026-10-06); where a call works, against ADR-025 at 57a17137
+(2026-10-07).
 
 ## What settings are
 
@@ -48,9 +49,13 @@ Fields: `internal/domain/definition/documents.go:24-130`, `toml.go:25-60`,
   - **skills** (`skills: [...]`, ADR-021).
   It also holds the instruction, caller params, input values (sources:
   `param`, `file`, `git.revision`, `git.merge_base`, `git.diff`,
-  `git.changed_files`, `prompt`; `cmd/agister/main.go` inputs map), the
-  checkout input, its own setup, required permissions, and limit
-  overrides that may only narrow its policy. (`documents.go:92`)
+  `git.changed_files`, `prompt`; `cmd/agister/main.go` inputs map),
+  `workspace.revision`, the input HEAD must be at, `workspace.clean`, a
+  fresh call needs HEAD's content (unset: `false`), required permissions,
+  and limit overrides that may only narrow its policy. A process with a
+  verification declares both. `workspace.checkout` is a problem, now
+  `workspace.revision`; `workspace.setup` is obsolete and ignored, and
+  `check` warns. (`documents.go:80-105`, `:161-270`; ADR-025 rules 2 and 3)
 - **agent** is a runtime profile: it names a **runtime mapping**
   (`runtime`), and holds model, model family, effort, session mode
   (fresh-only or resumable), and **skills** it names. It carries no task
@@ -77,19 +82,11 @@ Fields: `internal/domain/definition/documents.go:24-130`, `toml.go:25-60`,
   which permissions write, which reach Agister's state (never granted).
   (`toml.go:46`)
 - **schema**: a JSON Schema a process's output must match.
-- **verification**: command, timeout, max attempts, failure instruction,
-  and the optional `where`, whose only value is `workspace`: an in-place
-  call verifies in the worktree, every other call on a clean copy.
-  (`documents.go:54-69`; ADR-010, ADR-022 rule 6)
+- **verification**: command, timeout, max attempts, failure instruction.
+  It runs in the call's worktree. `where` is obsolete and ignored, and
+  `check` warns. (`documents.go:56-78`; ADR-010, ADR-025 rule 5)
 - **prompt**: plain text, the file is the value. (ADR-014)
 - **skill**: one `SKILL.md`. (ADR-021)
-- **workspace** (one): for processes that check out a revision, the
-  default checkout setup for those that declare none (ADR-012); the
-  default mode, `in-place` or `temporary` (unset: `temporary`), which
-  `agister run --workspace` overrides (ADR-022 rule 1); and `precheck`,
-  a command and a required timeout that gate an in-place call, run under
-  the worktree's lock (ADR-022 rule 5). `setup` does not run in-place.
-  (`documents.go:84-115`; ADR-012, ADR-022)
 - **blocks** (one, repo only): agents, processes, workflows or runtime
   mappings this repo refuses, with reasons. (ADR-018)
 
@@ -142,7 +139,6 @@ Same layout in both layers (`internal/adapters/fsdefs/fsdefs.go:1`,
 | verifies | `verifies/<name>.yaml` (ADR-010) |
 | prompts | `prompts/<name>.md` (ADR-014) |
 | skills | `skills/<name>/SKILL.md`, the folder's only file (ADR-021) |
-| workspace (singleton) | `workspace.yaml`, checkout setup (ADR-012), mode and precheck (ADR-022) |
 | blocks (singleton, repo only) | `blocks.yaml` (ADR-018) |
 
 ## How the layers combine
@@ -165,6 +161,9 @@ Same layout in both layers (`internal/adapters/fsdefs/fsdefs.go:1`,
   home allows, with a reason; only the repo's `blocks.yaml` counts.
   (ADR-018)
 
+No workspace document: a `workspace.yaml`, in either layer, is obsolete
+and ignored, and `check` warns (`internal/app/check.go:289`; ADR-025).
+
 ## How a call uses them
 
 - The call reads every document once into an in-memory snapshot, checks
@@ -178,8 +177,15 @@ Same layout in both layers (`internal/adapters/fsdefs/fsdefs.go:1`,
   Only unattributable problems (service settings broken, an unreadable
   name, a name defined twice, a broken `blocks.yaml`) stop every command.
   (ADR-015, ADR-018 rule 5)
+- The call works in the caller's worktree, or the one `--dir` names, with
+  its settings: Agister makes no checkout or copy and runs no setup.
+  Readers share the worktree; a writer, whose plan grants a `writing`
+  permission or whose process has a verification, holds it alone. The
+  verification runs there, and the changes stay there; `changes.patch`
+  is evidence. (`internal/app/calls.go:1537-1585`,
+  `internal/app/hold.go`; ADR-025)
 - Skills: the call's skills (its process's and its agent's) are written
-  before each turn into a folder outside the workspace, from the recorded
+  before each turn into a folder outside the worktree, from the recorded
   bytes, and handed to the runtime the adapter's way (Claude Code plugin
   dir, Pi `--skill`, OpenCode `skills.paths`, Codex a per-thread
   `CODEX_HOME`). The runtime still loads repo and home skills of its own

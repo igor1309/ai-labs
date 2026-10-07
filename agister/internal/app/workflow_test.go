@@ -38,7 +38,7 @@ input:
     candidate_revision: {source: git.revision, rev: "${param.candidate}"}
     diff: {source: git.diff, base: "${param.base}", head: "${value.candidate_revision}"}
 workspace:
-  checkout: candidate_revision
+  revision: candidate_revision
 output:
   format: json
   schema: s
@@ -342,6 +342,7 @@ type flowHarness struct {
 	runner     *nodeRunner
 	inputs     *inputsSpy
 	workspaces *workspacesSpy
+	locks      *locksSpy
 	store      *storeSpy
 	hosted     *app.Hosted
 	calls      *app.Calls
@@ -366,6 +367,7 @@ func newFlowHarness() *flowHarness {
 			requests: map[string][]app.TurnRequest{},
 		},
 		workspaces: &workspacesSpy{root: "/repo", dir: "/work/checkout"},
+		locks:      &locksSpy{},
 		store:      newStoreSpy(),
 		hosted:     app.NewHosted(),
 		resolved:   map[string]int{},
@@ -400,12 +402,11 @@ func newFlowHarness() *flowHarness {
 	runtimes := nodeRuntimes{runner: h.runner}
 	changes := &changesSpy{}
 	runs := &runsSpy{records: map[string]run.Record{}, states: map[string]run.State{}}
-	preparer := app.NewPreparer(changes, &setupCommandsSpy{}, fixedClock{})
 	h.calls = app.NewCalls(
 		app.NewResolver(h.defs, runtimes, okValidator{}, resolverCheckStub{}), runtimes,
 		map[string]app.InputProvider{"git.revision": h.inputs, "git.diff": h.inputs, "file": h.inputs},
-		h.workspaces, changes, preparer, app.NewBorrower(app.BorrowAdapters{Locks: &locksSpy{}, Worktrees: &worktreesSpy{}, Content: changes, Runs: runs, Writers: &writersSpy{}}, app.BorrowPreparer{Preparer: preparer}),
-		app.NewVerifier(changes, &copiesSpy{}, &commandsSpy{}, fixedClock{}), app.NewRecoverer(fixedClock{}), okValidator{}, h.store, runs,
+		h.workspaces, changes, app.NewHolder(app.HoldAdapters{Locks: h.locks, Worktrees: &worktreesSpy{}, Content: changes, Runs: runs, Writers: &writersSpy{}}),
+		app.NewVerifier(changes, &commandsSpy{}, fixedClock{}), app.NewRecoverer(fixedClock{}), okValidator{}, h.store, runs,
 		fixedClock{}, unfired, &seqIDs{}, "/state", h.hosted,
 	)
 	return h
@@ -591,11 +592,11 @@ func TestWorkflowResolvesValuesOnceForEveryFanOutNode(t *testing.T) {
 			t.Fatalf("%s inputs = %+v", id, node.Inputs)
 		}
 	}
-	h.workspaces.mu.Lock()
-	checkouts := append([][2]string(nil), h.workspaces.checkouts...)
-	h.workspaces.mu.Unlock()
-	if !reflect.DeepEqual(checkouts, [][2]string{{"/repo", candidate}, {"/repo", candidate}}) {
-		t.Fatalf("checkouts = %v", checkouts)
+	// Each node works in the caller's worktree, at the candidate.
+	for _, id := range []string{"run-2", "run-3"} {
+		if node := h.store.wait(t, id); node.InPlace == nil || node.InPlace.Worktree != "/repo" || node.InPlace.Revision != candidate {
+			t.Fatalf("%s in place %+v", id, node.InPlace)
+		}
 	}
 	if join := h.store.wait(t, "run-4"); len(join.Request.Params) != 0 {
 		t.Fatalf("the join was given params %v", join.Request.Params)
@@ -1051,19 +1052,16 @@ func TestWorkflowJoinReceivesNothingButTheCollection(t *testing.T) {
 	}
 }
 
-// A caller cannot give a workflow an agent, limits, a run to continue or a
-// workspace mode (ADR-022 rule 1): the workflow is refused and no node
-// starts.
+// A caller cannot give a workflow an agent, limits or a run to continue:
+// the workflow is refused and no node starts.
 func TestWorkflowRefusesCallerOverrides(t *testing.T) {
 	t.Parallel()
 	limit := 1.0
 	for name, request := range map[string]contract.CallRequest{
-		"agent":     {Agent: "a"},
-		"timeout":   {Timeout: "1m"},
-		"cost":      {MaxCostUSD: &limit},
-		"continue":  {Continue: "run-0"},
-		"in-place":  {Workspace: "in-place"},
-		"temporary": {Workspace: "temporary"},
+		"agent":    {Agent: "a"},
+		"timeout":  {Timeout: "1m"},
+		"cost":     {MaxCostUSD: &limit},
+		"continue": {Continue: "run-0"},
 	} {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
@@ -1077,20 +1075,25 @@ func TestWorkflowRefusesCallerOverrides(t *testing.T) {
 	}
 }
 
-// A workflow whose node would work in-place, as the workspace settings say,
-// is refused before any node starts: a workflow's nodes never share the
-// caller's worktree (ADR-022 rule 1).
-func TestWorkflowWithAnInPlaceNodeIsRefused(t *testing.T) {
+// ADR-025 rules 1 and 3: a workflow whose workspace settings still say
+// mode: in-place runs as any other, the settings ignored: each node works
+// in the caller's worktree, and the join completes.
+func TestAWorkflowWithInPlaceWorkspaceSettingsRunsInTheWorktree(t *testing.T) {
 	t.Parallel()
 	h := newFlowHarness()
 	h.defs.docs[definition.KindWorkspace] = map[string]string{"workspace": "schema: agister.workspace/v1alpha1\nmode: in-place\n"}
 	id := h.submit(t, contract.CallRequest{})
 	record := h.store.wait(t, id)
-	if class(record) != run.ClassRefused || !strings.Contains(message(record), "workflow w uses process first, which works in-place") || len(h.store.ids()) != 1 {
+	if record.Result.Status != run.Completed || len(h.store.ids()) != 4 {
 		t.Fatalf("result %+v, runs %v", record.Result, h.store.ids())
 	}
-	if len(h.runner.turns("Work as first.")) != 0 || len(h.runner.turns("Work as second.")) != 0 {
-		t.Fatal("a node ran")
+	for _, instruction := range []string{"Work as first.", "Work as second.", "Join them."} {
+		if turns := h.runner.turns(instruction); len(turns) != 1 || turns[0].Cwd != "/repo" {
+			t.Fatalf("%s turns %+v", instruction, turns)
+		}
+	}
+	if h.locks.holds("/repo") {
+		t.Fatal("the worktree is still held")
 	}
 }
 
@@ -1196,6 +1199,14 @@ func TestWorkflowCancelledDuringFanOut(t *testing.T) {
 	id := h.submit(t, contract.CallRequest{})
 	<-h.script("Work as first.").started  // the first node's turn
 	<-h.script("Work as second.").started // the second node's turn
+	// Both nodes are readers, and hold the caller's worktree together
+	// (ADR-025 rule 4).
+	h.locks.mu.Lock()
+	together := h.locks.held["/repo"]
+	h.locks.mu.Unlock()
+	if together != 2 {
+		t.Fatalf("worktree held by %d nodes, want 2", together)
+	}
 	h.cancel(t, id)
 	record := h.store.wait(t, id)
 	if record.Result.Status != run.Interrupted || class(record) != run.ClassCancelled || record.Workflow.Barrier.State != run.BarrierCancelled {
@@ -1209,8 +1220,8 @@ func TestWorkflowCancelledDuringFanOut(t *testing.T) {
 	if len(h.store.ids()) != 3 || len(h.runner.turns("Join them.")) != 0 {
 		t.Fatalf("runs %v", h.store.ids())
 	}
-	if released := h.workspaces.releases(); released != 2 {
-		t.Fatalf("workspaces released %d, want 2", released)
+	if released := h.locks.releases("/repo"); released != 2 || h.locks.holds("/repo") {
+		t.Fatalf("worktree released %d times, want 2", released)
 	}
 }
 

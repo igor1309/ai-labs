@@ -35,8 +35,9 @@
   function scalar(text) {
     const t = text.trim();
     if (t[0] === '"' || t[0] === "'") return unquote(t);
-    if (t === 'true') return true;
-    if (t === 'false') return false;
+    // The spellings Agister's YAML reads as booleans (yaml.v3's !!bool).
+    if (t === 'true' || t === 'True' || t === 'TRUE') return true;
+    if (t === 'false' || t === 'False' || t === 'FALSE') return false;
     if (t === '' || t === 'null' || t === '~') return null;
     if (/^-?\d+(\.\d+)?$/.test(t)) return Number(t);
     return t;
@@ -297,10 +298,13 @@
       params: params(doc.input),
       // Inline fields, or the name of a verification (verify:<name>).
       verify: typeof doc.verify === 'string'
-        ? { ref: refName(doc.verify), maxAttempts: null, where: null }
-        : doc.verify ? { maxAttempts: doc.verify.max_attempts ?? null, where: doc.verify.where ?? null } : null,
-      checkout: doc.workspace?.checkout ?? null,
-      setup: setupOf(doc.workspace?.setup),
+        ? { ref: refName(doc.verify), maxAttempts: null }
+        : doc.verify ? { maxAttempts: doc.verify.max_attempts ?? null } : null,
+      // What its call needs of the caller's worktree (ADR-025 rules 2, 3):
+      // the input whose revision HEAD must be at, null when it pins none;
+      // and whether a fresh call needs HEAD's content.
+      revision: doc.workspace?.revision ?? null,
+      clean: doc.workspace?.clean === true,
       output: doc.output?.schema ?? null,
       prompts: prompts(doc.input),
       skills: skillNames(doc.skills),
@@ -323,16 +327,10 @@
     return [...new Set(names)].map((name) => ({ name }));
   }
 
-  // A setup block (ADR-012) as { command, timeout }; null when none.
-  function setupOf(setup) {
-    return setup && typeof setup === 'object' ? { command: setup.command ?? null, timeout: setup.timeout ?? null } : null;
-  }
-
-  // A verification document (ADR-010). where is 'workspace' when an
-  // in-place call verifies in the worktree (ADR-022), else null: a clean
-  // copy.
+  // A verification document (ADR-010). It runs in the call's worktree
+  // (ADR-025 rule 5).
   function verifyItem(file, doc) {
-    return { file, name: doc.name ?? stem(file), maxAttempts: doc.max_attempts ?? null, where: doc.where ?? null };
+    return { file, name: doc.name ?? stem(file), maxAttempts: doc.max_attempts ?? null };
   }
 
   function agentItem(file, doc) {
@@ -445,26 +443,6 @@
     }
   }
 
-  // workspace.yaml: the setup every process with a checkout and none of its
-  // own runs (ADR-012); the default workspace mode of such a process,
-  // 'in-place' or 'temporary', null when unset; and the precheck that gates
-  // an in-place call (ADR-022). null when the folder has none.
-  async function loadWorkspace(agister) {
-    let handle;
-    try {
-      handle = await agister.getFileHandle('workspace.yaml');
-    } catch (err) {
-      if (err && (err.name === 'NotFoundError' || err.name === 'TypeMismatchError')) return null;
-      throw err;
-    }
-    try {
-      const doc = parseYaml(await readText(handle));
-      return { setup: setupOf(doc?.setup), mode: doc?.mode ?? null, precheck: setupOf(doc?.precheck) };
-    } catch (err) {
-      return { error: err.message };
-    }
-  }
-
   // The dashboard model of the .agister folder agister, whose skills are
   // skills, the server's inventory of that one layer.
   async function loadAgister(agister, skills = []) {
@@ -496,14 +474,11 @@
     model.service = repo.service
       ? { ...repo.service, source: 'repo', overrides: !!home.service }
       : home.service && { ...home.service, source: 'home' };
-    model.workspace = repo.workspace
-      ? { ...repo.workspace, source: 'repo', overrides: !!home.workspace }
-      : home.workspace && { ...home.workspace, source: 'home' };
     return model;
   }
 
   async function readAgister(agister, skills) {
-    const [workflows, processes, agents, policies, runtimes, schemas, verifies, prompts, service, workspace] = await Promise.all([
+    const [workflows, processes, agents, policies, runtimes, schemas, verifies, prompts, service] = await Promise.all([
       readFolder(agister, 'workflows', ['.yaml', '.yml']),
       readFolder(agister, 'processes', ['.yaml', '.yml']),
       readFolder(agister, 'agents', ['.toml']),
@@ -513,11 +488,9 @@
       readFolder(agister, 'verifies', ['.yaml', '.yml']),
       readFolder(agister, 'prompts', ['.md']),
       loadService(agister),
-      loadWorkspace(agister),
     ]);
     return {
       service,
-      workspace,
       workflows: each(workflows, parseYaml, workflowItem),
       processes: each(processes, parseYaml, processItem),
       agents: each(agents, parseToml, (file, _src, doc) => agentItem(file, doc)),
@@ -576,24 +549,11 @@
       p.skills = p.skills.map(skill);
       const agentSkills = byAgent.get(p.agent)?.skills.map(skill) ?? [];
       p.callSkills = [...p.skills, ...agentSkills.filter((x) => !p.skills.some((y) => y.name === x.name))];
-      // As Agister resolves it: the process's own setup, or the
-      // workspace's for a checkout without one; none without a checkout.
-      const defaultSetup = model.workspace?.setup;
-      p.effectiveSetup = !p.checkout ? null
-        : p.setup ? { ...p.setup, from: 'process' }
-          : defaultSetup ? { ...defaultSetup, from: 'workspace' } : null;
-      // Its default workspace mode, which agister run --workspace
-      // overrides: workspace.yaml's, else temporary; and the precheck that
-      // gates it in-place. Neither without a checkout (ADR-022 rules 1, 5).
-      const mode = model.workspace?.mode;
-      p.effectiveMode = !p.checkout ? null
-        : mode ? { mode, from: 'workspace' } : { mode: 'temporary', from: 'default' };
-      p.precheck = p.checkout ? model.workspace?.precheck ?? null : null;
-      // A named verification, resolved: its attempts and where it runs, or
-      // outside these settings.
+      // A named verification, resolved: its attempts, or outside these
+      // settings.
       if (p.verify?.ref) {
         const named = model.verifies.find((v) => !v.error && v.name === p.verify.ref);
-        p.verify = { ...p.verify, maxAttempts: named?.maxAttempts ?? null, where: named?.where ?? null, outside: !named };
+        p.verify = { ...p.verify, maxAttempts: named?.maxAttempts ?? null, outside: !named };
       }
       p.usedBy = model.workflows
         .filter((w) => !w.error && [...w.fanOut, ...(w.join ? [w.join] : [])].some((n) => n.process === p.name))

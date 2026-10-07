@@ -2,7 +2,7 @@
 // process definition; this package only arranges them with the resolved
 // inputs and the granted permissions, with a verification run's failure, or
 // with the evidence of a stale turn.
-// The one exception is a continuation's notice (Continues, ContinuesInPlace),
+// The one exception is a continuation's notice (Continues),
 // whose facts only Agister knows.
 //
 // It depends on the run package's evidence types (run.Input, run.Output,
@@ -43,26 +43,11 @@ func Inputs(inputs []run.Input) string {
 	return strings.Join(sections, "\n\n")
 }
 
-// Continues is Agister's notice to a continued call that works in a
-// checkout of its own (ADR-013 rule 4): the run it continues, the checkout
-// at dir, of revision, and whose changes are applied there. carriedFrom is
-// the session's latest run whose changes were carried, often the run
-// continued; empty when none were.
-func Continues(continued, carriedFrom, dir, revision string) string {
-	text := fmt.Sprintf("This call continues run %s. It works in a new checkout at %s, at revision %s.", continued, dir, revision)
-	if carriedFrom == "" {
-		text += " No changes were carried: the checkout holds the revision as committed."
-	} else {
-		text += fmt.Sprintf(" The changes of run %s, the latest run of the session, are applied there, uncommitted.", carriedFrom)
-	}
-	return "## continuation\n\n" + text + " The directory the earlier run worked in is gone."
-}
-
-// ContinuesInPlace is Agister's notice to a continued call that works in
-// the caller's worktree (ADR-022 rule 8): the run it continues, the
+// Continues is Agister's notice to a continued call, which works in the
+// caller's worktree (ADR-025 rule 7): the run it continues, the
 // worktree at dir, at revision, and that the session's changes, as its
 // latest run left them, are already there.
-func ContinuesInPlace(continued, latest, dir, revision string) string {
+func Continues(continued, latest, dir, revision string) string {
 	return "## continuation\n\n" + fmt.Sprintf("This call continues run %s. It works in the worktree at %s, at revision %s, where the session worked before."+
 		" The session's changes, as run %s, its latest run, left them, are already in this worktree, uncommitted.", continued, dir, revision, latest)
 }

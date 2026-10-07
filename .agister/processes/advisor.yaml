@@ -24,7 +24,7 @@ input:
     advisor_prompt: {source: file, path: prompts/advisor.md}
 
 workspace:
-  checkout: revision
+  revision: revision
 
 output:
   format: json

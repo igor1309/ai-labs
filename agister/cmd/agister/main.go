@@ -117,14 +117,14 @@ func compose(appends *fsruns.Appends) func(cli.Config) (contract.Client, error) 
 	}
 }
 
-// wire wires the client over the process's own worktree coordinator.
+// wire wires the client over the process's own composition.
 func wire(config cli.Config, appends *fsruns.Appends) (contract.Client, *app.BackgroundReaper, error) {
 	return process(config, appends).wire(config)
 }
 
-// process is the composition of the process: its git-backed adapters run
-// git over one worktree coordinator, which keeps the lock files other
-// processes take turns through under the home, its run store keeps the
+// process is the composition of the process: its reap removes the
+// checkouts old runs left through one worktree coordinator, which keeps
+// the lock files other processes take turns through under the home, its run store keeps the
 // runs there and signals through appends, its runtimes and its commands
 // are started by the operating system, which also ends the process groups
 // a dead owner left, the user's CODEX_HOME is the environment's, and every
@@ -158,16 +158,15 @@ func processIn(config cli.Config, appends *fsruns.Appends, getenv func(string) s
 // starters and timers they hold, wait on the hosted calls' Done, and
 // abandon a run through the store in place of killing its owner.
 type composition struct {
-	// git finds the repository, makes the checkouts and clean copies,
-	// names and diffs their content and resolves the git inputs.
+	// git finds the repository and the worktree, names and diffs their
+	// content, removes what old runs left and resolves the git inputs.
 	git gitAdapters
 	// runs is the store of the runs' records and events.
 	runs fsruns.Store
 	// starter starts the runtimes' processes, and what a runtime's adapter
 	// runs beside it.
 	starter supervisor.Starter
-	// commands starts the shell a setup or verification command runs
-	// under.
+	// commands starts the shell a verification command runs under.
 	commands supervisor.Starter
 	// processes ends the process groups an abandoned run left on record.
 	processes runtimecomposition.ProcessSupervisor
@@ -195,30 +194,27 @@ type composition struct {
 // gitAdapters are the adapters backed by git, each as the component that
 // requires it gets it.
 type gitAdapters struct {
-	// calls finds the repository's root and makes and releases the
-	// checkouts calls work in.
+	// calls finds the root of the worktree a call works in, and its
+	// repository.
 	calls app.CallWorkspaces
-	// copies makes and removes the verifier's clean copies.
-	copies app.VerifyCopies
-	// discarder removes what the reaper finds abandoned.
+	// discarder removes the checkouts and clean copies the reaper finds
+	// that runs made before ADR-025 left on record (ADR-025 rule 9).
 	discarder app.CheckoutDiscarder
-	// content names and diffs the content of checkouts and revisions.
+	// content names and diffs the content of worktrees and revisions.
 	content app.CallChanges
-	// state reads the git state of the worktree an in-place call borrows.
-	state app.BorrowWorktrees
+	// state reads the git state of the worktree a call holds.
+	state app.HoldWorktrees
 	// The git inputs: a revision, a merge base, a diff and the files it
 	// changes.
 	revision, mergeBase, diff, changedFiles app.InputProvider
 }
 
-// gitBacked builds the adapters over real git. Those that change worktrees
-// share the coordinator: a caller's checkout, the verifier's copy and the
-// reaper's discard in one repository run one at a time. Naming and diffing
-// content changes no worktree.
+// gitBacked builds the adapters over real git. Only the reaper's discard
+// changes worktrees, and it takes its turn through the coordinator.
+// Locating the worktree and naming and diffing content change none.
 func gitBacked(worktrees *git.Worktrees) gitAdapters {
-	shared := git.NewWorkspaces(worktrees)
 	return gitAdapters{
-		calls: shared, copies: shared, discarder: shared,
+		calls: git.Workspaces{}, discarder: git.NewWorkspaces(worktrees),
 		content: git.Workspaces{}, state: git.Workspaces{},
 		revision: git.Revision{}, mergeBase: git.MergeBase{}, diff: git.Diff{}, changedFiles: git.ChangedFiles{},
 	}
@@ -245,8 +241,8 @@ func (c composition) wire(config cli.Config) (contract.Client, *app.BackgroundRe
 	}
 	evidence := c.runs
 	// Turns and commands wait on the composition's timer. A runtime starts
-	// through the composition's starter, a setup or verification command
-	// through its starter of commands.
+	// through the composition's starter, a verification command through its
+	// starter of commands.
 	processes := supervisor.Runtime{Starter: c.starter, Timer: c.timer}
 	commands := supervisor.Commands{Starter: c.commands, Timer: c.timer}
 	runtimes := runtime.Registry{
@@ -303,18 +299,21 @@ func (c composition) wire(config cli.Config) (contract.Client, *app.BackgroundRe
 			IDs:        system.IDs{},
 			StateDir:   config.Home,
 		},
-		Preparer: app.SetupAdapters{Content: content, Commands: runtimecomposition.SetupCommands{Supervisor: commands}, Clock: system.Clock{}},
-		// An in-place call's worktree is locked under the home, apart from
+		// A call's hold of its worktree is kept under the home, apart from
 		// the worktree commands' locks; a process another run left there is
-		// ended as the reaper ends it (ADR-022 rule 3).
-		Borrower: app.BorrowAdapters{
+		// ended as the reaper ends it (ADR-025 rule 4). The directory keeps
+		// the name it had for in-place calls (ADR-022), and the lock files
+		// their names: a binary from before ADR-025, still running, holds
+		// its lock file there, and its hold must exclude this binary's as
+		// this binary's exclude each other.
+		Holder: app.HoldAdapters{
 			Locks:     system.WorktreeLocks{Dir: filepath.Join(config.Home, "locks", "in-place")},
 			Worktrees: workspaces.state,
 			Content:   content,
 			Runs:      evidence,
-			Writers:   runtimecomposition.BorrowProcesses{Supervisor: c.processes},
+			Writers:   runtimecomposition.HoldProcesses{Supervisor: c.processes},
 		},
-		Verifier:  app.VerifyAdapters{Content: content, Copies: workspaces.copies, Commands: runtimecomposition.Commands{Supervisor: commands}, Clock: system.Clock{}},
+		Verifier:  app.VerifyAdapters{Content: content, Commands: runtimecomposition.Commands{Supervisor: commands}, Clock: system.Clock{}},
 		Recoverer: app.RecoverAdapters{Clock: system.Clock{}},
 		Runs:      app.RunsAdapters{Reader: evidence, Appends: evidence, Timer: c.poll},
 		// Installs read a folder laid out like the global settings, and

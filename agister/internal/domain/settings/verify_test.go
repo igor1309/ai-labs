@@ -33,7 +33,7 @@ func TestVerifyRepairsNeedAResumableAgent(t *testing.T) {
 			agent.Session = c.session
 			b.Agents["a"] = agent
 			p := b.Processes["p"]
-			p.Checkout = "v"
+			p.Revision = "v"
 			p.Verify = &definition.Verify{Command: "go test ./...", Timeout: time.Minute, MaxAttempts: c.attempts, Instruction: "Fix it."}
 			b.Processes["p"] = p
 
@@ -61,7 +61,7 @@ func naming(verify definition.Verify) settings.Bundle {
 	agent.Session = definition.SessionResumable
 	b.Agents["a"] = agent
 	p := b.Processes["p"]
-	p.Checkout = "v"
+	p.Revision = "v"
 	p.VerifyName = "repo"
 	b.Processes["p"] = p
 	b.Verifies = map[string]definition.Verification{"repo": {Name: "repo", Verify: verify}}

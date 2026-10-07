@@ -485,10 +485,7 @@ func TestAStaleVerificationRunThatExitedZeroDoesNotPass(t *testing.T) {
 
 // fresh makes each turn of the harness's call leave content not checked
 // before, so the verification loop reruns its command after a repair.
-func fresh(h *harness) {
-	turns := 0
-	h.changes.identify = func() string { turns++; return fmt.Sprintf("tree-%d", turns) }
-}
+func fresh(h *harness) { changingEachTurn(h) }
 
 // A verification run ended at stale.no_output is a failed attempt (ADR-024
 // rule 8): while attempts are left a repair turn follows it in the call's
@@ -582,8 +579,8 @@ func TestToolCallLimitsNeedARuntimeThatReportsThem(t *testing.T) {
 		if record.Result.Status != run.Failed || class(record) != run.ClassRefused || !strings.Contains(message(record), want) {
 			t.Fatalf("%s: result %+v", limit, record.Result)
 		}
-		if len(h.runner.calls()) != 0 || len(h.workspaces.checkouts) != 0 {
-			t.Fatalf("%s: turns %d, checkouts %v after the refusal", limit, len(h.runner.calls()), h.workspaces.checkouts)
+		if len(h.runner.calls()) != 0 {
+			t.Fatalf("%s: turns %d after the refusal", limit, len(h.runner.calls()))
 		}
 	}
 }

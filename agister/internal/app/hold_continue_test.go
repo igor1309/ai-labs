@@ -13,18 +13,17 @@ import (
 	"github.com/igor1309/ai-labs/agister/internal/domain/run"
 )
 
-// resumingInPlace is a harness whose agent resumes sessions and whose calls
-// work in-place, the worktree holding content.
+// resumingInPlace is a harness whose agent resumes sessions, the worktree
+// holding content.
 func resumingInPlace(content string) *harness {
 	h := newHarness()
 	h.defs.docs[definition.KindAgent]["a"] += "session = \"resumable\"\n"
-	withWorkspace(h, inPlaceWorkspace)
 	h.changes.identity = content
 	return h
 }
 
 // workedInPlace records a finished run of p in session prov-0, created and
-// finished at those minutes, that worked in-place in /repo at sha-HEAD,
+// finished at those minutes, that worked in the worktree /repo at sha-HEAD,
 // left content there and kept patch as its changes; none when patch is
 // empty, as a run that changed nothing (NO_CHANGES).
 func workedInPlace(h *harness, id, continues string, created, finished int, content, patch string) run.Record {
@@ -46,7 +45,7 @@ func workedInPlace(h *harness, id, continues string, created, finished int, cont
 	return record
 }
 
-// ADR-022 rule 8: a continuation in-place, in the worktree the session's
+// ADR-025 rule 7: a continuation in-place, in the worktree the session's
 // latest run left as it recorded, resumes the session there: nothing is
 // carried or applied, the prompt says the changes are already there, and
 // the call's own patch is still from the revision, the content it was
@@ -67,11 +66,11 @@ func TestAnInPlaceContinuationResumesInTheSameWorktree(t *testing.T) {
 	if record.Result.Status != run.Completed || len(h.runner.calls()) != 1 {
 		t.Fatalf("result %+v", record.Result)
 	}
-	if len(h.changes.applies()) != 0 || len(h.workspaces.checkouts) != 0 || contains(h.recorder.kinds(), "CHANGES_CARRIED") {
-		t.Fatalf("applied %+v, checkouts %v, events %v", h.changes.applies(), h.workspaces.checkouts, h.recorder.kinds())
+	if contains(h.recorder.kinds(), "CHANGES_CARRIED") {
+		t.Fatalf("events %v", h.recorder.kinds())
 	}
 	got := h.runner.calls()[0]
-	notice := prompt.ContinuesInPlace("run-0", "run-0", "/repo", "sha-HEAD")
+	notice := prompt.Continues("run-0", "run-0", "/repo", "sha-HEAD")
 	if got.ResumeSessionID != "prov-0" || got.Cwd != "/repo" || !strings.HasPrefix(got.Prompt, notice+"\n\n## candidate_revision") || strings.Contains(got.Prompt, "gone") {
 		t.Fatalf("request %+v", got)
 	}
@@ -90,7 +89,7 @@ func TestAnInPlaceContinuationResumesInTheSameWorktree(t *testing.T) {
 	}
 }
 
-// ADR-022 rule 8: a latest run that changed nothing (NO_CHANGES) recorded
+// ADR-025 rule 7: a latest run that changed nothing (NO_CHANGES) recorded
 // the revision's content; a worktree that still holds it is admitted, and
 // there is no patch to read.
 func TestAnInPlaceContinuationOfARunWithoutChangesIsAdmitted(t *testing.T) {
@@ -102,12 +101,12 @@ func TestAnInPlaceContinuationOfARunWithoutChangesIsAdmitted(t *testing.T) {
 	if record.Result.Status != run.Completed || len(h.runner.calls()) != 1 || h.runner.calls()[0].ResumeSessionID != "prov-0" {
 		t.Fatalf("result %+v", record.Result)
 	}
-	if len(h.runs.read) != 0 || len(h.changes.applies()) != 0 {
-		t.Fatalf("read %v, applied %+v", h.runs.read, h.changes.applies())
+	if len(h.runs.read) != 0 {
+		t.Fatalf("read %v", h.runs.read)
 	}
 }
 
-// ADR-022 rule 8: the session's latest run, not the run named, decides the
+// ADR-025 rule 7: the session's latest run, not the run named, decides the
 // content the worktree must hold: continuing the first run after a later
 // continuation of it expects what the later one left, and reads its patch.
 func TestTheSessionsLatestRunDecidesTheExpectedContent(t *testing.T) {
@@ -138,19 +137,20 @@ func TestTheSessionsLatestRunDecidesTheExpectedContent(t *testing.T) {
 			if record.Result.Status != run.Completed {
 				t.Fatalf("result %+v", record.Result)
 			}
-			if notice := prompt.ContinuesInPlace("run-0", "run-0b", "/repo", "sha-HEAD"); !strings.HasPrefix(h.runner.calls()[0].Prompt, notice) {
+			if notice := prompt.Continues("run-0", "run-0b", "/repo", "sha-HEAD"); !strings.HasPrefix(h.runner.calls()[0].Prompt, notice) {
 				t.Fatalf("prompt %q", h.runner.calls()[0].Prompt)
 			}
 		})
 	}
 }
 
-// ADR-022 rule 8: a continuation in-place is refused, each case with its
-// own reason, before any turn, under the worktree's lock, which is let go,
-// unless the latest run worked in-place in this worktree, repository and
-// revision, its changes were captured and still match their record, and
-// the worktree, HEAD at the revision, holds what it left, after the
-// precheck too. Nothing is applied either way.
+// ADR-025 rule 7: a continuation is refused, each case with its own
+// reason, before any turn, under the worktree's hold, which is let go,
+// unless the latest run worked in this worktree, repository and revision,
+// its changes were captured and still match their record, and the
+// worktree, HEAD at the revision, holds what it left. A latest run that
+// worked in a checkout of its own, made before ADR-025, is refused. Nothing
+// is applied either way.
 func TestAnInPlaceContinuationIsRefusedUnlessTheWorktreeIsAsTheLatestRunLeftIt(t *testing.T) {
 	t.Parallel()
 	for name, c := range map[string]struct {
@@ -186,7 +186,7 @@ func TestAnInPlaceContinuationIsRefusedUnlessTheWorktreeIsAsTheLatestRunLeftIt(t
 				latest.Workspace, latest.InPlace = "/work/checkout-run-0", nil
 				latest.Effects = &run.Effects{Checkout: &run.Checkout{Repository: "/repo", Dir: "/work/checkout-run-0", Revision: "sha-HEAD"}}
 			},
-			want: "run run-0, the latest run of the session, worked in a checkout of its own, not in-place; a session does not switch from temporary to in-place",
+			want: "run run-0, the latest run of the session, worked in a checkout of its own (/work/checkout-run-0), made before ADR-025; it cannot be continued: a call works in the caller's worktree now (ADR-025 rule 7)",
 		},
 		"a patch that does not match its digest": {
 			arrange: func(h *harness, _ *run.Record) {
@@ -197,20 +197,6 @@ func TestAnInPlaceContinuationIsRefusedUnlessTheWorktreeIsAsTheLatestRunLeftIt(t
 		"a capture that failed": {
 			arrange: func(_ *harness, latest *run.Record) { latest.InPlace.Content, latest.Result.Artifacts = "", nil },
 			want:    "run run-0, the latest run of the session, recorded no content its changes were captured from: its capture failed",
-		},
-		"a precheck that changed the tree": {
-			arrange: func(h *harness, _ *run.Record) {
-				withWorkspace(h, prechecked)
-				ran := false
-				h.setup.running = func(app.SetupCommandRequest) { ran = true }
-				h.changes.identify = func() string {
-					if ran {
-						return "formatted"
-					}
-					return "left"
-				}
-			},
-			want: "after the precheck, worktree /repo has content formatted, not left, which run run-0",
 		},
 	} {
 		t.Run(name, func(t *testing.T) {
@@ -224,8 +210,8 @@ func TestAnInPlaceContinuationIsRefusedUnlessTheWorktreeIsAsTheLatestRunLeftIt(t
 			if class(record) != run.ClassRefused || !strings.Contains(message(record), c.want) {
 				t.Fatalf("result %s %q, want %q", class(record), message(record), c.want)
 			}
-			if len(h.runner.calls()) != 0 || len(h.changes.applies()) != 0 || len(h.workspaces.checkouts) != 0 {
-				t.Fatalf("turns %d, applied %+v, checkouts %v", len(h.runner.calls()), h.changes.applies(), h.workspaces.checkouts)
+			if len(h.runner.calls()) != 0 {
+				t.Fatalf("turns %d", len(h.runner.calls()))
 			}
 			if !reflect.DeepEqual(h.locks.locked, []string{"/repo"}) || h.locks.holds("/repo") || !recorded(h, "WORKTREE_NOT_ADMITTED") {
 				t.Fatalf("locked %v, held %v, events %v", h.locks.locked, h.locks.holds("/repo"), h.recorder.kinds())
@@ -234,25 +220,7 @@ func TestAnInPlaceContinuationIsRefusedUnlessTheWorktreeIsAsTheLatestRunLeftIt(t
 	}
 }
 
-// ADR-022 rule 8: a session does not switch from in-place to temporary: a
-// continuation in a checkout of its own of a run that worked in-place is
-// refused before any checkout is made.
-func TestATemporaryContinuationOfAnInPlaceRunIsRefused(t *testing.T) {
-	t.Parallel()
-	h := resumingInPlace("left")
-	workedInPlace(h, "run-0", "", 0, 1, "left", "diff A\n")
-	record := h.call(t, contract.CallRequest{Continue: "run-0", Workspace: "temporary"})
-
-	want := "run run-0, the latest run of the session, worked in-place in worktree /repo; a session does not switch from in-place to temporary"
-	if class(record) != run.ClassRefused || !strings.Contains(message(record), want) {
-		t.Fatalf("result %s %q, want %q", class(record), message(record), want)
-	}
-	if len(h.runner.calls()) != 0 || len(h.workspaces.checkouts) != 0 || len(h.changes.applies()) != 0 || len(h.locks.locked) != 0 {
-		t.Fatalf("turns %d, checkouts %v, applied %+v, locked %v", len(h.runner.calls()), h.workspaces.checkouts, h.changes.applies(), h.locks.locked)
-	}
-}
-
-// ADR-022 rule 8: a runtime that resumes a session only in the directory it
+// ADR-025 rule 7: a runtime that resumes a session only in the directory it
 // ran in continues an in-place run in the same worktree, and refuses one
 // that worked in another directory, before the worktree is locked.
 func TestARuntimeThatResumesOnlyWhereItRanContinuesInTheSameWorktree(t *testing.T) {
@@ -286,5 +254,59 @@ func TestARuntimeThatResumesOnlyWhereItRanContinuesInTheSameWorktree(t *testing.
 				t.Fatalf("turns %d, locked %v", len(h.runner.calls()), h.locks.locked)
 			}
 		})
+	}
+}
+
+// ADR-025 rule 7: a continuation of a run that pinned no revision is
+// checked for the worktree only: whatever HEAD and the content are, it is
+// admitted in the worktree the run worked in, and refused in another.
+func TestAContinuationWithoutARevisionIsCheckedForTheWorktreeOnly(t *testing.T) {
+	t.Parallel()
+	for name, c := range map[string]struct {
+		worktree string
+		want     string // the refusal; none when empty
+	}{
+		"the same worktree": {worktree: "/repo"},
+		"another worktree":  {worktree: "/other", want: "run run-0, the latest run of the session, worked in worktree /other, not /repo"},
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			h := resumingInPlace("edited")
+			inTheRepositoryItself(h)
+			h.worktrees.state = func(string, int) app.WorktreeState { return app.WorktreeState{Head: "sha-moved", Tree: "tree"} }
+			latest := workedInPlace(h, "run-0", "", 0, 1, "", "")
+			latest.Workspace, latest.InPlace = c.worktree, &run.InPlace{Dir: c.worktree, Worktree: c.worktree}
+			h.runs.records["run-0"] = latest
+			record := h.call(t, contract.CallRequest{Continue: "run-0"})
+
+			if c.want == "" {
+				if record.Result.Status != run.Completed || len(h.runner.calls()) != 1 || h.worktrees.reads != 0 {
+					t.Fatalf("result %+v, reads %d", record.Result, h.worktrees.reads)
+				}
+				return
+			}
+			if class(record) != run.ClassRefused || !strings.Contains(message(record), c.want) || len(h.runner.calls()) != 0 {
+				t.Fatalf("result %s %q, want %q", class(record), message(record), c.want)
+			}
+		})
+	}
+}
+
+// ADR-025 rules 3 and 7: a continuation of a process that declares
+// workspace.clean is not checked against HEAD's content: its worktree holds
+// the session's changes, staged, untracked or not, and it is admitted when
+// it holds what the latest run left.
+func TestACleanProcessesContinuationIsNotCheckedAgainstHEAD(t *testing.T) {
+	t.Parallel()
+	h := resumingInPlace("left")
+	cleanly(h)
+	h.worktrees.state = func(revision string, _ int) app.WorktreeState {
+		return app.WorktreeState{Head: revision, Tree: "tree", Staged: []string{"a.go"}, Untracked: []string{"notes.md"}}
+	}
+	workedInPlace(h, "run-0", "", 0, 1, "left", "diff A\n")
+	record := h.call(t, contract.CallRequest{Continue: "run-0"})
+
+	if record.Result.Status != run.Completed || len(h.runner.calls()) != 1 || h.runner.calls()[0].ResumeSessionID != "prov-0" {
+		t.Fatalf("result %+v: %s", record.Result, message(record))
 	}
 }

@@ -1,6 +1,7 @@
 # ADR-008: Worktree changes take turns
 
 - **Status:** Accepted
+- **Superseded by:** [ADR-025](025-a-call-works-where-it-is-called.md)
 - **Date:** 2026-10-01
 - **Scope:** concurrent calls that add and remove checkouts of one
   repository

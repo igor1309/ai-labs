@@ -1,6 +1,7 @@
 # ADR-024: A stale call is resumed once, with the evidence
 
 - **Status:** Accepted
+- **Amended by:** [ADR-025](025-a-call-works-where-it-is-called.md)
 - **Date:** 2026-10-06
 - **Scope:** what follows when a staleness limit ends an agent turn or a
   verification run

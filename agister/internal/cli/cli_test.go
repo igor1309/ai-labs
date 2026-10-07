@@ -123,9 +123,9 @@ func TestRunSubmitsTheRequestBuiltFromArguments(t *testing.T) {
 	t.Parallel()
 	spy := &clientSpy{run: finished("completed", "")}
 	spy.run.Result.Text = "hi"
-	r := run(context.Background(), spy, "run", "p", "--param", "a=1", "--agent", "x", "--param", "b=two=2", "--timeout", "5m", "--max-cost", "0.5", "--continue", "run-0", "--workspace", "in-place", "--quiet")
+	r := run(context.Background(), spy, "run", "p", "--param", "a=1", "--agent", "x", "--param", "b=two=2", "--timeout", "5m", "--max-cost", "0.5", "--continue", "run-0", "--quiet")
 	limit := 0.5
-	want := contract.CallRequest{Process: "p", Params: map[string]string{"a": "1", "b": "two=2"}, Agent: "x", Timeout: "5m", MaxCostUSD: &limit, Continue: "run-0", Workspace: "in-place", Cwd: "/work"}
+	want := contract.CallRequest{Process: "p", Params: map[string]string{"a": "1", "b": "two=2"}, Agent: "x", Timeout: "5m", MaxCostUSD: &limit, Continue: "run-0", Cwd: "/work"}
 	if !reflect.DeepEqual(spy.submitted, []contract.CallRequest{want}) {
 		t.Fatalf("submitted %+v", spy.submitted)
 	}
@@ -137,13 +137,37 @@ func TestRunSubmitsTheRequestBuiltFromArguments(t *testing.T) {
 	}
 }
 
-// ADR-022 rule 1: a workspace mode is in-place or temporary; any other is a
-// usage error, and nothing is submitted.
-func TestRunRefusesAnUnknownWorkspaceMode(t *testing.T) {
+// ADR-025 rule 1: --dir names the directory a call, or a workflow's nodes,
+// work in, relative to the working directory or absolute; the settings are
+// read from it, as from the working directory without it.
+func TestRunWorksInTheDirectoryDirNames(t *testing.T) {
+	t.Parallel()
+	for dir, want := range map[string]string{"../other": "/other", "/repo/sub": "/repo/sub"} {
+		spy := &clientSpy{run: finished("completed", "")}
+		r := run(context.Background(), spy, "run", "p", "--dir", dir, "--quiet")
+		if r.code != cli.ExitCompleted || len(spy.submitted) != 1 || spy.submitted[0].Cwd != want || spy.config.Cwd != want {
+			t.Errorf("--dir %s: result %+v, submitted %+v, config %+v", dir, r, spy.submitted, spy.config)
+		}
+	}
+	// A workflow call takes --dir as a process call does: its nodes work there.
+	workflow := finished("completed", "")
+	workflow.Process = "w"
+	workflow.Result.Output = json.RawMessage(`{"verdict":"approve"}`)
+	spy := &clientSpy{run: workflow, events: []contract.Event{{Kind: "WORKFLOW_FINISHED"}}}
+	r := run(context.Background(), spy, "run", "w", "--param", "goal=g.md", "--dir", "../other", "--quiet")
+	want := contract.CallRequest{Process: "w", Params: map[string]string{"goal": "g.md"}, Cwd: "/other"}
+	if r.code != cli.ExitCompleted || !reflect.DeepEqual(spy.submitted, []contract.CallRequest{want}) || spy.config.Cwd != "/other" {
+		t.Errorf("workflow --dir: result %+v, submitted %+v, config %+v", r, spy.submitted, spy.config)
+	}
+}
+
+// ADR-025: --workspace is gone; the command refuses it as an unknown flag,
+// and nothing is submitted.
+func TestRunRefusesWorkspaceAsAnUnknownFlag(t *testing.T) {
 	t.Parallel()
 	spy := &clientSpy{run: finished("completed", "")}
-	r := run(context.Background(), spy, "run", "p", "--workspace", "shared", "--quiet")
-	if r.code != cli.ExitUsage || !strings.Contains(r.stderr, "--workspace needs in-place or temporary") || len(spy.submitted) != 0 {
+	r := run(context.Background(), spy, "run", "p", "--workspace", "in-place", "--quiet")
+	if r.code != cli.ExitUsage || !strings.Contains(r.stderr, "flag provided but not defined: -workspace\n") || len(spy.submitted) != 0 {
 		t.Fatalf("result = %+v, submitted %+v", r, spy.submitted)
 	}
 }
@@ -569,23 +593,6 @@ func TestShowProcessPrintsVerifyAndWarnings(t *testing.T) {
 	spy.view.Verify, spy.view.Warnings = nil, nil
 	if r := run(context.Background(), spy, "process", "show", "p"); strings.Contains(r.stdout, "verify") || strings.Contains(r.stdout, "WARNING") {
 		t.Fatalf("without verify:\n%s", r.stdout)
-	}
-}
-
-// process show says where a verification that declares it runs (ADR-022
-// rule 6), and says nothing of where for one that does not.
-func TestShowProcessPrintsWhereTheVerificationRuns(t *testing.T) {
-	t.Parallel()
-	spy := &clientSpy{view: contract.ProcessView{Name: "p", Agent: "a", Runtime: "rt", Output: "text", Timeout: time.Hour, MaxAttempts: 1,
-		Verify: &contract.Verify{Command: "go test ./...", Timeout: 10 * time.Minute, MaxAttempts: 3, Instruction: "Fix the cause.", Where: "workspace"}}}
-	r := run(context.Background(), spy, "process", "show", "p")
-	want := "  on failure Fix the cause.\n  where      workspace (an in-place call verifies in the caller's worktree; any other on a clean copy)\n"
-	if r.code != 0 || !strings.Contains(r.stdout, want) {
-		t.Fatalf("missing %q in %d:\n%s", want, r.code, r.stdout)
-	}
-	spy.view.Verify.Where = ""
-	if r := run(context.Background(), spy, "process", "show", "p"); r.code != 0 || strings.Contains(r.stdout, "where") {
-		t.Fatalf("without where, %d:\n%s", r.code, r.stdout)
 	}
 }
 

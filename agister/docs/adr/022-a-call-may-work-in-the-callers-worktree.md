@@ -1,6 +1,7 @@
 # ADR-022: A call may work in the caller's worktree
 
 - **Status:** Accepted
+- **Superseded by:** [ADR-025](025-a-call-works-where-it-is-called.md)
 - **Date:** 2026-10-06
 - **Scope:** calls whose process checks out a revision, and where they
   work and verify

@@ -10,7 +10,6 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"io/fs"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -70,7 +69,10 @@ func commit(ctx context.Context, dir, revision string) (string, error) {
 
 // Worktrees runs Agister's worktree changes in one repository one at a
 // time: git worktree add reads each .git/worktrees/*/commondir, and dies on
-// one a parallel add has created and not yet written. It holds one lock per
+// one a parallel add has created and not yet written. No call adds a
+// worktree since ADR-025: what is left is the reap's removal of the
+// checkouts and clean copies runs made before it left on record (ADR-025
+// rule 9), which still takes its turn with any other Agister's add. It holds one lock per
 // repository, keyed by its git common directory: two paths into a
 // repository, or two of its worktrees, share one. A process builds one and
 // gives it to every Workspaces value it makes. Other processes are held
@@ -265,22 +267,22 @@ type worktreeCommands interface {
 
 var errNoWorktrees = errors.New("git worktree: Workspaces built without NewWorkspaces over NewWorktrees")
 
-// Workspaces locates repositories and makes detached checkouts. Its
-// worktree changes go through worktrees: the zero value makes none.
+// Workspaces locates repositories, names and diffs content, and removes
+// the checkouts runs made before ADR-025 left on record. Its worktree
+// changes go through worktrees: the zero value makes none.
 type Workspaces struct {
-	// Cleanup, when set, gives the bounded context a checkout's release or
-	// a removal runs under, in place of a deadline of cleanupDeadline from
+	// Cleanup, when set, gives the bounded context a removal runs under, in place of a deadline of cleanupDeadline from
 	// now on the worktrees' clock: tests make it pass at will.
 	Cleanup func(ctx context.Context) (context.Context, context.CancelFunc)
 
 	worktrees worktreeCommands
 }
 
-// cleanupDeadline bounds a release or removal, waits for the lock another
-// process holds included.
+// cleanupDeadline bounds a removal, waits for the lock another process
+// holds included.
 const cleanupDeadline = time.Minute
 
-// cleanup bounds ctx for a release or removal.
+// cleanup bounds ctx for a removal.
 func (w Workspaces) cleanup(ctx context.Context) (context.Context, context.CancelFunc) {
 	if w.Cleanup != nil {
 		return w.Cleanup(ctx)
@@ -344,96 +346,18 @@ func commonDirectory(ctx context.Context, repository string) (string, error) {
 	return filepath.EvalSymlinks(common)
 }
 
-func (w Workspaces) Checkout(ctx context.Context, repository, revision string) (string, func() error, error) {
-	parent, err := os.MkdirTemp("", "agister-checkout-")
-	if err != nil {
-		return "", nil, err
-	}
-	dir := filepath.Join(parent, workspace(filepath.Base(parent)))
-	if _, err := w.worktree(ctx, repository, "add", "--detach", "--quiet", dir, revision); err != nil {
-		os.RemoveAll(parent)
-		return "", nil, err
-	}
-	release := func() error {
-		// Independent of the call's cancellation, but bounded.
-		ctx, cancel := w.cleanup(context.WithoutCancel(ctx))
-		defer cancel()
-		_, err := w.worktree(ctx, repository, "remove", "--force", dir)
-		if removeErr := os.RemoveAll(parent); err == nil {
-			err = removeErr
-		}
-		return err
-	}
-	return dir, release, nil
-}
-
-// Place names the directory the clean copies of call are made in: the
-// same for every attempt of the call, one no other call's copies use, and
-// shaped as Discard removes it. Nothing is made there: the call records it
-// first, so a copy is never on disk before it is on record.
-func (Workspaces) Place(call string) string {
-	parent := "agister-checkout-" + call + "-copy"
-	return filepath.Join(os.TempDir(), parent, workspace(parent))
-}
-
-// workspace names the checkout in parent after parent's own unique part:
-// git names a worktree's admin directory after its basename, so checkouts
-// made at the same time in one repository never race on one name.
+// workspace is the name Agister gave a checkout in parent, after parent's
+// own unique part: git names a worktree's admin directory after its
+// basename, so checkouts made at the same time in one repository never
+// raced on one name.
 func workspace(parent string) string {
 	return "workspace-" + strings.TrimPrefix(parent, "agister-checkout-")
 }
 
-// Copy checks revision out at dir, a directory Place named, as Checkout
-// does, and applies patch to its files, not its index: where a
-// verification run checks exactly what the patch delivers. Whatever is at
-// dir already is not this copy's, so Copy refuses without touching it
-// (app.ErrPlaceTaken); a copy it cannot finish, it removes. A copy whose
-// worktree add never started, as when ctx ends while it waits its turn,
-// left nothing in the repository: only the directory made for it is
-// removed, with no second wait, and the error says that nothing is left
-// to discard (app.ErrCopyNotStarted).
-func (w Workspaces) Copy(ctx context.Context, repository, dir, revision string, patch []byte) error {
-	if err := made(dir); err != nil {
-		return err
-	}
-	if err := os.Mkdir(filepath.Dir(dir), 0o700); errors.Is(err, fs.ErrExist) {
-		return fmt.Errorf("%s: %w", filepath.Dir(dir), app.ErrPlaceTaken)
-	} else if err != nil {
-		return err
-	}
-	started, err := w.worktree(ctx, repository, "add", "--detach", "--quiet", dir, revision)
-	if !started {
-		if removeErr := os.Remove(filepath.Dir(dir)); removeErr != nil {
-			return errors.Join(err, removeErr)
-		}
-		return fmt.Errorf("%w: %w", app.ErrCopyNotStarted, err)
-	}
-	if err == nil && len(patch) > 0 {
-		err = w.Apply(ctx, dir, patch, false)
-	}
-	if err != nil {
-		_ = w.Discard(context.WithoutCancel(ctx), repository, dir)
-		return err
-	}
-	return nil
-}
-
-// Apply applies patch, as Changes makes it, to dir's files, not its index;
-// with check, it only checks that the whole patch applies and changes
-// nothing. A patch that does not apply changes nothing either.
-func (Workspaces) Apply(ctx context.Context, dir string, patch []byte, check bool) error {
-	args := []string{"apply", "--binary", "--whitespace=nowarn"}
-	if check {
-		args = append(args, "--check")
-	}
-	_, err := runWith(ctx, dir, nil, patch, append(args, "-")...)
-	return err
-}
-
 // Discard removes a checkout whose call ended without releasing it, or a
-// clean copy. Only a directory Checkout or Copy could have made is touched:
-// <temp>/agister-checkout-<id>/workspace-<id>, or <temp>/agister-checkout-*/workspace
-// as earlier versions made them. The removal is bounded by a deadline of
+// clean copy, made before ADR-025 (rule 9). Only a directory Agister made
+// is touched: <temp>/agister-checkout-<id>/workspace-<id>, or
+// <temp>/agister-checkout-*/workspace as earlier versions made them. The removal is bounded by a deadline of
 // its own, as well as by ctx.
 func (w Workspaces) Discard(ctx context.Context, repository, dir string) error {
 	if err := made(dir); err != nil {
@@ -458,8 +382,9 @@ func (w Workspaces) Discard(ctx context.Context, repository, dir string) error {
 	return err
 }
 
-// made refuses a directory Checkout, Place and Copy could not have made, now
-// or under the name "workspace" earlier versions gave every checkout.
+// made refuses a directory Agister could not have made for a checkout or a
+// clean copy, under its own name or the name "workspace" earlier versions
+// gave every checkout.
 func made(dir string) error {
 	parent := filepath.Dir(dir)
 	if base := filepath.Base(dir); base != "workspace" && base != workspace(filepath.Base(parent)) ||

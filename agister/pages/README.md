@@ -26,12 +26,9 @@ home`.
     settings have none of that name, and for a repo with the layer it
     comes from; the skills its call gets, its own and then its agent's
     (ADR-021), listed the same way, each that fails its checks marked
-    `checks failed` (D-16); the setup its checkout runs: its
-    own, or `workspace.yaml`'s, the repo's over home's (ADR-012); and,
-    for a process with a checkout, its default workspace mode
-    (`workspace.yaml`'s, else `temporary`) and the precheck that gates it
-    in-place (ADR-022), and `where: workspace` beside a verification that
-    runs in the worktree;
+    `checks failed` (D-16); and what its call needs of the caller's
+    worktree (ADR-025): `HEAD at` the input its `workspace.revision`
+    names, and `clean` when it declares `workspace.clean: true`;
   - for a workflow, its calls in one line (`4 × gpt-6.1-sol at once, then
     opus`), then the steps: the ones run at once (`First` when there is
     one) and the one run after them. Each step shows its name, what it
@@ -138,8 +135,8 @@ that names what else it holds, as Agister refuses it (ADR-021 rule 1).
 They read `checks passed` or `checks failed: …` with each failed check. A
 failed check does not mean the runtime refuses the skill.
 
-For a repo the view shows its working tree; a call on a checkout loads
-what that checkout holds. For `~` it shows the home folders only.
+For a repo the view shows its working tree; a call loads what the
+worktree it works in holds. For `~` it shows the home folders only.
 
 ## Run it
 
@@ -162,8 +159,9 @@ The server writes nothing and answers these endpoints:
 - `GET /api/settings?path=<absolute repo path | ~>`: the settings files of
   `<path>/.agister`, or of Agister home for `~`: `agents`, `policies`,
   `processes`, `runtimes`, `schemas`, `verifies`, `prompts`,
-  `workflows`, `service.toml` and `workspace.yaml`, each regular file at
-  most 256 KB. `runs/` and `logs/` are skipped, and so is `skills/`: no
+  `workflows` and `service.toml`, each regular file at most 256 KB.
+  `runs/`, `logs/` and the obsolete `workspace.yaml` (ADR-025) are
+  skipped, and so is `skills/`: no
   file of it is read here, so one that cannot be read fails nothing; the
   settings' skills are `/api/skills`' `settings` (ADR-011 rule 9, D-16).
 - `GET /api/skills?path=<absolute repo path | ~>`: the skill folders of

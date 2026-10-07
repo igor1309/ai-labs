@@ -43,7 +43,8 @@ input:
   values:
     candidate_revision: {source: git.revision, rev: HEAD}
 workspace:
-  checkout: candidate_revision
+  revision: candidate_revision
+  clean: true
 output:
   format: text
 ` + extra)})
@@ -72,8 +73,8 @@ func TestNarrowingIsEnforcedFieldByField(t *testing.T) {
 	cases := map[string]string{
 		"timeout: 30m": "timeout: 30m0s widens the policy's 20m0s",
 		"tools: {allow: [repository.read, network]}":                    "tools.allow: adds network, which policy static-review does not allow",
-		"workspace: {access: read-write, checkout: candidate_revision}": "workspace.access: read-write widens",
-		"workspace: {scope: repository, checkout: candidate_revision}":  "scope cannot be overridden",
+		"workspace: {access: read-write, revision: candidate_revision}": "workspace.access: read-write widens",
+		"workspace: {scope: repository, revision: candidate_revision}":  "scope cannot be overridden",
 		"retry: {max_attempts: 3}":                                      "retry.max_attempts: 3 widens",
 		"tools: {allow: [teleport]}":                                    `unknown permission "teleport"`,
 	}
@@ -228,24 +229,24 @@ output: {format: text}
 	}
 }
 
-// The scope follows workspace.checkout; a declared scope must agree with it.
-func TestScopeFollowsTheCheckout(t *testing.T) {
+// The scope follows workspace.revision; a declared scope must agree with it.
+func TestScopeFollowsTheRevision(t *testing.T) {
 	t.Parallel()
 	compose := func(workspace string) (policy.Effective, error) {
 		t.Helper()
 		return policy.Compose(service, nil, mustProcessWithWorkspace(t, "timeout: 1m\n"+workspace), policy.Caller{})
 	}
-	if effective, err := compose("workspace: {checkout: candidate_revision}"); err != nil || effective.Scope != "candidate" {
-		t.Errorf("checkout: scope %q, %v", effective.Scope, err)
+	if effective, err := compose("workspace: {revision: candidate_revision}"); err != nil || effective.Scope != "candidate" {
+		t.Errorf("revision: scope %q, %v", effective.Scope, err)
 	}
 	if effective, err := compose(""); err != nil || effective.Scope != "repository" {
-		t.Errorf("no checkout: scope %q, %v", effective.Scope, err)
+		t.Errorf("no revision: scope %q, %v", effective.Scope, err)
 	}
-	if _, err := compose("workspace: {scope: repository, checkout: candidate_revision}"); err == nil || !strings.Contains(err.Error(), "scope repository conflicts with workspace.checkout") {
-		t.Errorf("repository with checkout: %v", err)
+	if _, err := compose("workspace: {scope: repository, revision: candidate_revision}"); err == nil || !strings.Contains(err.Error(), "scope repository conflicts with workspace.revision") {
+		t.Errorf("repository with a revision: %v", err)
 	}
-	if _, err := compose("workspace: {scope: candidate}"); err == nil || !strings.Contains(err.Error(), "candidate requires workspace.checkout") {
-		t.Errorf("candidate without checkout: %v", err)
+	if _, err := compose("workspace: {scope: candidate}"); err == nil || !strings.Contains(err.Error(), "candidate requires workspace.revision") {
+		t.Errorf("candidate without a revision: %v", err)
 	}
 }
 

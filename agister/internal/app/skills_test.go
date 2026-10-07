@@ -3,7 +3,6 @@ package app_test
 import (
 	"context"
 	"errors"
-	"fmt"
 	"reflect"
 	"slices"
 	"strings"
@@ -190,8 +189,8 @@ func TestACallNamingAMissingSkillIsRefused(t *testing.T) {
 			if class(record) != run.ClassRefused || message(record) != want {
 				t.Fatalf("result %+v: %q, want %q", record.Result, message(record), want)
 			}
-			if len(h.runner.calls()) != 0 || len(h.workspaces.checkouts) != 0 {
-				t.Fatalf("turns %d, checkouts %v after the refusal", len(h.runner.calls()), h.workspaces.checkouts)
+			if len(h.runner.calls()) != 0 {
+				t.Fatalf("turns %d after the refusal", len(h.runner.calls()))
 			}
 		})
 	}
@@ -415,8 +414,8 @@ func TestACallNamingASkillIsRefusedOnAnAdapterThatGivesNone(t *testing.T) {
 	if class(record) != run.ClassRefused || message(record) != "process p: "+want {
 		t.Fatalf("result %+v: %q, want %q", record.Result, message(record), want)
 	}
-	if len(h.runner.calls()) != 0 || len(h.workspaces.checkouts) != 0 || len(h.inputs.specs) != 0 {
-		t.Fatalf("turns %d, checkouts %v, inputs %d after the refusal", len(h.runner.calls()), h.workspaces.checkouts, len(h.inputs.specs))
+	if len(h.runner.calls()) != 0 || len(h.inputs.specs) != 0 {
+		t.Fatalf("turns %d, inputs %d after the refusal", len(h.runner.calls()), len(h.inputs.specs))
 	}
 	// The refused run still records what the call was resolved from.
 	if want := []run.DefinitionSource{skillSource("review"), skillSource("tests"), skillSource("style")}; !reflect.DeepEqual(skillSources(record), want) {
@@ -495,8 +494,8 @@ func TestACallOfSkillsDeclaredTwiceIsRefused(t *testing.T) {
 			if class(record) != run.ClassRefused || !strings.Contains(message(record), want) {
 				t.Fatalf("result %+v: %q, want %q", record.Result, message(record), want)
 			}
-			if len(h.runner.calls()) != 0 || len(h.workspaces.checkouts) != 0 {
-				t.Fatalf("turns %d, checkouts %v after the refusal", len(h.runner.calls()), h.workspaces.checkouts)
+			if len(h.runner.calls()) != 0 {
+				t.Fatalf("turns %d after the refusal", len(h.runner.calls()))
 			}
 		})
 	}
@@ -724,8 +723,7 @@ func TestEveryVerificationRepairCarriesTheCallsSkills(t *testing.T) {
 	skilled(h)
 	verifying(h)
 	h.commands.exits = []int{1, 1, 0}
-	identities := 0
-	h.changes.identify = func() string { identities++; return fmt.Sprintf("tree-%d", identities) }
+	changingEachTurn(h)
 	record := h.call(t, contract.CallRequest{})
 	if record.Result.Status != run.Completed || len(record.Attempts) != 3 {
 		t.Fatalf("result %+v, attempts %+v", record.Result, record.Attempts)

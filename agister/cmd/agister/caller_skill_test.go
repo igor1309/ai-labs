@@ -52,6 +52,98 @@ func TestTheCallerSkillNamesOnlyCommandsAndFlagsTheCLIHas(t *testing.T) {
 	}
 }
 
+// A call's changes stay in the worktree it worked in, and every call works
+// there (ADR-025 rules 1 and 6): the skill's code applies no patch and
+// chooses no workspace.
+func TestTheCallerSkillAppliesNoPatchAndChoosesNoWorkspace(t *testing.T) {
+	t.Parallel()
+	text := read(t, filepath.Join(callerSkill, "skills", "agister", "SKILL.md"))
+	for _, code := range codeOf(text) {
+		for _, removed := range []string{"git apply", "--workspace"} {
+			if strings.Contains(code, removed) {
+				t.Errorf("the skill's code %q names %s", code, removed)
+			}
+		}
+	}
+}
+
+// Nothing a caller reads tells it to apply a run's changes (ADR-025 rule
+// 1): the skill, its front matter's description and its prose included,
+// and agister/AGENTS.md, whose implementation bullet says how Agister's
+// own work runs. Each says only that nothing is applied.
+func TestTheCallerGuidanceTellsNoOneToApplyARunsChanges(t *testing.T) {
+	t.Parallel()
+	for _, file := range []string{filepath.Join("skills", "agister", "SKILL.md"), "AGENTS.md"} {
+		text := read(t, filepath.Join(callerSkill, file))
+		for _, sentence := range applyInstructions(text) {
+			t.Errorf("%s tells a caller to apply a run's changes: %q", file, sentence)
+		}
+	}
+}
+
+// The check finds each sentence that speaks of applying, in prose, front
+// matter, a heading or code, and passes one that says nothing is applied
+// and the senses that are not about a run's changes.
+func TestTheApplyCheckFindsAnInstructionToApply(t *testing.T) {
+	t.Parallel()
+	found := []string{
+		"description: Drive Agister from outside - run one, read a run's record, apply a run's patch, and prepare a repository's `.agister/`.",
+		"Use when asked to \"use agister\", to read or apply what a run produced.",
+		"- Implement through the `implement` process: commit the candidate, write\n  the brief to a file, run\n  `agister run implement --param candidate=<rev> --param brief=<file>`, and\n  apply the run's `changes.patch`.",
+		"## Apply a run's changes",
+		"Apply it on the revision the run worked on.",
+		"```sh\ngit apply <home>/runs/<run-id>/artifacts/changes.patch\n```",
+		"The verification runs with the agent's changes applied.",
+	}
+	for _, text := range found {
+		if got := applyInstructions(text); len(got) != 1 {
+			t.Errorf("applyInstructions(%q) = %q, want one sentence", text, got)
+		}
+	}
+	passed := []string{
+		"There is\nnothing to apply: run the testing command yourself, and commit.",
+		"**Do not\napply it**: the changes are already in the worktree.",
+		"Its changes are in that worktree; nothing is applied, and `changes.patch` is only the evidence.",
+		"The patch is evidence: nobody applies it. It never applies a patch. No one applies it.",
+		"`--continue` applies nothing: that run's changes are in the worktree.",
+		"- Running Agister in a repository applies that repository's `.agister/`,\n  including the commands its agents run.",
+		"These rules replace the root `AGENTS.md`'s steps; its verification rules\nstill apply.",
+	}
+	for _, text := range passed {
+		if got := applyInstructions(text); len(got) != 0 {
+			t.Errorf("applyInstructions(%q) = %q, want none", text, got)
+		}
+	}
+}
+
+var (
+	paragraphBreak = regexp.MustCompile(`\n[ \t]*\n`)
+	sentenceEnd    = regexp.MustCompile(`[.!?]\s`)
+	applying       = regexp.MustCompile(`(?i)\bappl(?:y|ies|ied|ying)\b`)
+	// Saying that nothing is applied.
+	notApplying = regexp.MustCompile(`(?i)\b(?:not|nothing(?: is)?|nobody|never|no one)\s+(?:to\s+)?appl(?:y|ies|ied|ying)\b|\bappl(?:y|ies)\s+nothing\b`)
+	// The senses of the word that are not about a run's changes: settings
+	// applied in a repository, rules that still apply.
+	otherApplying = regexp.MustCompile("(?i)\\bapplies that repository's `\\.agister/`|\\brules still apply\\b")
+)
+
+// applyInstructions are the markdown's sentences that speak of applying,
+// each paragraph's lines joined, other than to say that nothing is applied
+// or in a sense that is not about a run's changes.
+func applyInstructions(markdown string) []string {
+	var found []string
+	for _, paragraph := range paragraphBreak.Split(markdown, -1) {
+		joined := strings.Join(strings.Fields(paragraph), " ")
+		for _, sentence := range sentenceEnd.Split(joined+" ", -1) {
+			rest := otherApplying.ReplaceAllString(notApplying.ReplaceAllString(sentence, ""), "")
+			if applying.MatchString(rest) {
+				found = append(found, strings.TrimSpace(sentence))
+			}
+		}
+	}
+	return found
+}
+
 // The check fails a skill that names a command, a subcommand or a flag the
 // CLI lacks, in a code span or a code block, and passes what it has. Global
 // flags before the command, with their values, do not hide it.

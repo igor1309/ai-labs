@@ -15,6 +15,7 @@ import (
 	"slices"
 	"strings"
 	"sync"
+	"syscall"
 	"testing"
 	"time"
 
@@ -414,10 +415,26 @@ func TestBuiltReaperLogsAFailedReap(t *testing.T) {
 	}
 }
 
-// The adapters the composition builds share its worktree coordinator:
-// while a caller's checkout holds a repository, the verifier's copy and the
-// reaper's discard there wait for it. What waits is decided by the held
-// command, never by timing.
+// oldCheckout is a checkout of main in repo as runs made them before
+// ADR-025, at <temp>/agister-checkout-<id>/workspace-<id>, left on record
+// for the reap to remove; whatever the test leaves of it is removed at its
+// end.
+func oldCheckout(t *testing.T, repo string) string {
+	t.Helper()
+	parent, err := os.MkdirTemp("", "agister-checkout-")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.RemoveAll(parent) })
+	dir := filepath.Join(parent, "workspace-"+strings.TrimPrefix(filepath.Base(parent), "agister-checkout-"))
+	gitCmd(t, repo, "worktree", "add", "--detach", "--quiet", dir, "main")
+	return dir
+}
+
+// The reaper's discard the composition builds takes its turn in the
+// process's worktree coordinator: while one removal of an old checkout
+// holds a repository, the others there wait for it (ADR-025 rule 9). What
+// waits is decided by the held command, never by timing.
 //
 // Contract test: the composition's worktree coordinator over real git and
 // its lock files.
@@ -464,8 +481,11 @@ func TestBuiltWorkspaceAdaptersShareTheWorktreeCoordinator(t *testing.T) {
 		}()
 		return done
 	}
+	discard := func(dir string) <-chan error {
+		return start(func() error { return adapters.discarder.Discard(ctx, repo, dir) })
+	}
 	// reports fails the test unless worker's worktree command reports want
-	// next; a worker that ends first did not meet the held checkout.
+	// next; a worker that ends first did not meet the held removal.
 	reports := func(worker <-chan error, want, what string) {
 		t.Helper()
 		select {
@@ -474,51 +494,41 @@ func TestBuiltWorkspaceAdaptersShareTheWorktreeCoordinator(t *testing.T) {
 				t.Fatalf("%s %s, not %s", what, got, want)
 			}
 		case err := <-worker:
-			t.Fatalf("%s ended without meeting the held checkout: %v", what, err)
+			t.Fatalf("%s ended without meeting the held removal: %v", what, err)
 		}
 	}
-	var release func() error
-	copied := adapters.copies.Place(fmt.Sprintf("wiring-%d", os.Getpid()))
 	// Whatever point the test reached: the held command is let through and
-	// every worker joined, then the checkout and the copy are removed.
+	// every worker joined.
 	pass := sync.OnceFunc(func() { close(released) })
 	t.Cleanup(func() {
 		pass()
 		workers.Wait()
-		if release != nil {
-			if err := release(); err != nil {
-				t.Errorf("releasing the checkout: %v", err)
-			}
-		}
-		if err := adapters.discarder.Discard(ctx, repo, copied); err != nil {
-			t.Errorf("discarding the copy: %v", err)
-		}
 	})
 
-	checkout := start(func() (err error) {
-		_, release, err = adapters.calls.Checkout(ctx, repo, "main")
-		return err
-	})
-	reports(checkout, runs, "the caller's checkout")
-	copying := start(func() error { return adapters.copies.Copy(ctx, repo, copied, "main", nil) })
-	reports(copying, waits, "the verifier's copy")
+	held := discard(oldCheckout(t, repo))
+	reports(held, runs, "the held discard")
+	waiting := discard(oldCheckout(t, repo))
+	reports(waiting, waits, "the next discard")
 	// A checkout already gone is discarded as success, once it had its turn.
-	gone := adapters.copies.Place(fmt.Sprintf("wiring-%d-gone", os.Getpid()))
-	discarding := start(func() error { return adapters.discarder.Discard(ctx, repo, gone) })
-	reports(discarding, waits, "the reaper's discard")
+	name := fmt.Sprintf("wiring-%d-gone", os.Getpid())
+	gone := discard(filepath.Join(os.TempDir(), "agister-checkout-"+name, "workspace-"+name))
+	reports(gone, waits, "the discard of one gone")
 
 	pass()
 	for what, worker := range map[string]<-chan error{
-		"the caller's checkout": checkout, "the verifier's copy": copying, "the reaper's discard": discarding,
+		"the held discard": held, "the next discard": waiting, "the discard of one gone": gone,
 	} {
 		if err := <-worker; err != nil {
 			t.Errorf("%s: %v", what, err)
 		}
 	}
+	if list := gitCmd(t, repo, "worktree", "list"); strings.Count(list, "\n") != 0 {
+		t.Fatalf("worktrees left:\n%s", list)
+	}
 }
 
 // The process's worktree coordinator keeps its lock files under the home:
-// a checkout and its release leave one there, empty.
+// the removal of an old checkout leaves one there, empty.
 //
 // Contract test: the composition's worktree coordinator over real git and
 // its lock files.
@@ -526,11 +536,7 @@ func TestTheProcessWorktreeCoordinatorLocksUnderTheHome(t *testing.T) {
 	t.Parallel()
 	home, repo := tempDir(t), repository(t, "x")
 	adapters := process(cli.Config{Home: home}, fsruns.NewAppends()).git
-	_, release, err := adapters.calls.Checkout(context.Background(), repo, "main")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := release(); err != nil {
+	if err := adapters.discarder.Discard(context.Background(), repo, oldCheckout(t, repo)); err != nil {
 		t.Fatal(err)
 	}
 	locks := filepath.Join(home, "locks", "worktrees")
@@ -652,13 +658,15 @@ func TestTheCompositionStartsItsRuntimesThroughItsStarter(t *testing.T) {
 // The process's commands start through the operating system, which also
 // reaps what its runs left, over the run store under its home; and a
 // composition starts its commands through the starter it holds: a call
-// over a starter of the test's asks it for bash, once for the checkout's
-// setup and once for the verification, and for no runtime.
+// over a starter of the test's asks it for bash once, for the
+// verification, and for no runtime. The workspace.yaml's setup, obsolete
+// (ADR-025 rule 3), is never started.
 func TestTheCompositionStartsItsCommandsThroughItsStarter(t *testing.T) {
 	t.Parallel()
 	home, repo := setup(t, "approve")
 	write(t, filepath.Join(home, "workspace.yaml"), "schema: agister.workspace/v1alpha1\nsetup:\n  command: echo prepared\n  timeout: 20s\n")
 	shipped := read(t, filepath.Join(home, "processes", "adversarial_review.yaml"))
+	shipped = strings.Replace(shipped, "  revision: candidate_revision\n", "  revision: candidate_revision\n  clean: true\n", 1)
 	write(t, filepath.Join(home, "processes", "verified.yaml"), strings.Replace(shipped, "name: adversarial_review", "name: verified", 1)+`
 verify:
   command: test -f a.txt
@@ -698,20 +706,20 @@ verify:
 	}
 	starter.mu.Lock()
 	defer starter.mu.Unlock()
-	if want := [][]string{{"bash", "-c", "echo prepared"}, {"bash", "-c", "test -f a.txt"}}; !reflect.DeepEqual(starter.commands, want) {
+	if want := [][]string{{"bash", "-c", "test -f a.txt"}}; !reflect.DeepEqual(starter.commands, want) {
 		t.Fatalf("started %q, want %q", starter.commands, want)
 	}
 }
 
-// The process lends an in-place call the caller's worktree through the
-// borrower it composes (ADR-022): a call through the CLI with --workspace
-// in-place completes, its turn in the worktree it was launched from, with
-// the worktree on its record by the lock's canonical path, the lock taken
+// The process holds the caller's worktree for a call through the holder
+// it composes (ADR-025): a call through the CLI completes, its turn in the
+// worktree it was launched from, with the worktree on its record by the
+// lock's canonical path, the review on record as a reader, the lock taken
 // under the home, and no checkout made for it.
 func TestTheCompositionLendsAnInPlaceCallTheCallersWorktree(t *testing.T) {
 	t.Parallel()
 	home, repo := setup(t, "approve")
-	r := agister(t, home, repo, "run", "adversarial_review", "--param", "base=main", "--timeout", "1m", "--workspace", "in-place")
+	r := agister(t, home, repo, "run", "adversarial_review", "--param", "base=main", "--timeout", "1m")
 	if r.code != cli.ExitCompleted {
 		t.Fatalf("exit %d\n%s", r.code, r.stderr)
 	}
@@ -728,7 +736,7 @@ func TestTheCompositionLendsAnInPlaceCallTheCallersWorktree(t *testing.T) {
 	if err != nil || content == "" {
 		t.Fatalf("the worktree's content = %q, %v", content, err)
 	}
-	want := map[string]any{"dir": repo, "worktree": repo, "repository_identity": filepath.Join(repo, ".git"), "revision": head, "content": content}
+	want := map[string]any{"dir": repo, "worktree": repo, "repository_identity": filepath.Join(repo, ".git"), "revision": head, "writer": false, "content": content}
 	if !reflect.DeepEqual(record["in_place"], want) || record["workspace"] != repo || record["processes_ended"] != true {
 		t.Fatalf("in place %v, want %v; workspace %v, processes ended %v", record["in_place"], want, record["workspace"], record["processes_ended"])
 	}
@@ -742,9 +750,49 @@ func TestTheCompositionLendsAnInPlaceCallTheCallersWorktree(t *testing.T) {
 	if kinds := strings.Join(last.kinds(), " "); !strings.Contains(kinds, "WORKTREE_LOCKED WORKTREE_ADMITTED") {
 		t.Fatalf("events %s", kinds)
 	}
-	// The lock is the home's, in the namespace of the in-place calls.
+	// The lock is the home's, in the namespace of the holds.
 	if locks, err := os.ReadDir(filepath.Join(home, "locks", "in-place")); err != nil || len(locks) != 1 {
 		t.Fatalf("locks %v, %v", locks, err)
+	}
+}
+
+// A hold a binary from before ADR-025 takes, still running, excludes the
+// composition's writer (ADR-025 rule 4): with the worktree's lock file in
+// locks/in-place held shared, as an older reader holds it, a writer call
+// is refused before any turn, and nothing is changed in the worktree.
+//
+// Contract test: the kernel's flock on the composition's lock file, taken
+// here as an older binary takes it.
+func TestAnOlderBinarysHoldExcludesTheCompositionsWriter(t *testing.T) {
+	t.Parallel()
+	home, repo := setup(t, "approve")
+	write(t, filepath.Join(repo, "b.md"), "Do it.\n")
+	key, err := filepath.EvalSymlinks(repo)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// The older binary's lock file: under the home's locks/in-place, named
+	// by a digest of the worktree's canonical path.
+	sum := sha256.Sum256([]byte(key))
+	path := filepath.Join(home, "locks", "in-place", hex.EncodeToString(sum[:])+".lock")
+	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	held, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE, 0o600)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { held.Close() })
+	if err := syscall.Flock(int(held.Fd()), syscall.LOCK_SH|syscall.LOCK_NB); err != nil {
+		t.Fatal(err)
+	}
+
+	r := agister(t, home, repo, "run", "implement", "--quiet", "--param", "candidate=HEAD", "--param", "brief=b.md")
+	if want := "worktree " + repo + " is in use: another call holds it, and a writer holds it alone"; r.code != cli.ExitRefused || !strings.Contains(r.stderr, want) {
+		t.Fatalf("run: %d, want %q\n%s%s", r.code, want, r.stdout, r.stderr)
+	}
+	if kinds := strings.Join(lastRun(t, home).kinds(), " "); strings.Contains(kinds, "WORKTREE_LOCKED") || strings.Contains(kinds, "PROCESS_STARTED") {
+		t.Fatalf("events %s", kinds)
 	}
 }
 

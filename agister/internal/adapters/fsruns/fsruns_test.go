@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"strings"
 	"syscall"
 	"testing"
 	"time"
@@ -89,6 +90,55 @@ func TestFinishedRecord(t *testing.T) {
 	if _, err := store.Create(ctx, record); err == nil {
 		t.Fatal("a run ID must not be reused")
 	}
+}
+
+// A run whose directory holds no record.json yet is being created and has
+// recorded nothing: the strict listing leaves it out. A record that exists
+// but is not valid JSON, or cannot be read at all, still fails it.
+//
+// Contract test: the run store against the real filesystem, and the
+// kernel's flock on a run's owner.lock.
+func TestListStrictSkipsARunBeingCreatedAndFailsOnABrokenRecord(t *testing.T) {
+	t.Parallel()
+	store := newStore(t)
+	ctx := context.Background()
+	record := run.Record{Schema: run.RecordSchema, ID: "r1", Process: "p", CreatedAt: time.Now()}
+	h, err := store.Create(ctx, record)
+	if err != nil {
+		t.Fatal(err)
+	}
+	letGo(t, h)
+	if err := os.Mkdir(filepath.Join(store.Dir, "r2"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	records, err := store.ListStrict(ctx)
+	if err != nil || len(records) != 1 || records[0].ID != "r1" {
+		t.Fatalf("listed %+v, err %v", records, err)
+	}
+
+	if err := os.Mkdir(filepath.Join(store.Dir, "r3"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(store.Dir, "r3", "record.json"), []byte("{"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	records, err = store.ListStrict(ctx)
+	if err == nil || errors.Is(err, contract.ErrNotFound) || !strings.Contains(err.Error(), "listing run r3: ") || records != nil {
+		t.Fatalf("a broken record must fail the strict listing: listed %+v, err %v", records, err)
+	}
+
+	t.Run("a record that cannot be read", func(t *testing.T) {
+		t.Parallel()
+		store := newStore(t)
+		// A directory where the record is: it exists, and reading it fails.
+		if err := os.MkdirAll(filepath.Join(store.Dir, "r4", "record.json"), 0o700); err != nil {
+			t.Fatal(err)
+		}
+		records, err := store.ListStrict(ctx)
+		if err == nil || errors.Is(err, contract.ErrNotFound) || !strings.Contains(err.Error(), "listing run r4: ") || records != nil {
+			t.Fatalf("a record that cannot be read must fail the strict listing: listed %+v, err %v", records, err)
+		}
+	})
 }
 
 // Contract test: the run store against the real filesystem, and the

@@ -28,10 +28,17 @@ instruction: The verification command failed. Fix the cause, not the check.
 // service ceiling of 3 attempts and a resumable agent a, and no
 // verification: named adds it.
 func naming(h *harness) {
-	h.defs.docs[definition.KindProcess]["p"] += "verify: verify:repo\n"
+	h.defs.docs[definition.KindProcess]["p"] = namingVerification(h.defs.docs[definition.KindProcess]["p"])
 	h.defs.docs[definition.KindService]["service"] += "max_verify_attempts = 3\n"
 	h.defs.docs[definition.KindAgent]["a"] += "session = \"resumable\"\n"
 	h.defs.docs[definition.KindVerify] = map[string]string{}
+}
+
+// namingVerification is the process document text naming verify:repo, its
+// checkout needing a clean worktree, as a process that declares verify
+// must (ADR-025 rule 3).
+func namingVerification(text string) string {
+	return strings.Replace(text, "  revision: candidate_revision\n", "  revision: candidate_revision\n  clean: true\n", 1) + "verify: verify:repo\n"
 }
 
 func named(h *harness, text string) {
@@ -62,7 +69,7 @@ func TestACallVerifiesWithTheVerificationItsProcessNames(t *testing.T) {
 	if runs := h.commands.runs(); len(runs) != 1 || runs[0].Command != "go test ./..." || runs[0].Timeout != 10*time.Minute {
 		t.Fatalf("command runs = %+v", runs)
 	}
-	want := run.Verify{Command: "go test ./...", Timeout: 10 * time.Minute, MaxAttempts: 3, Instruction: "The verification command failed. Fix the cause, not the check."}
+	want := run.Verify{Command: "go test ./...", Timeout: 10 * time.Minute, MaxAttempts: 3, Instruction: "The verification command failed. Fix the cause, not the check.", Where: run.VerifyInWorkspace}
 	if record.Verify == nil || *record.Verify != want {
 		t.Fatalf("verify = %+v", record.Verify)
 	}
@@ -96,8 +103,8 @@ func TestAMissingVerificationRefusesTheCallNotTheSettings(t *testing.T) {
 	if class(record) != run.ClassRefused || message(record) != `process p names verify:repo: verification "repo": not found` {
 		t.Fatalf("result %+v: %q", record.Result, message(record))
 	}
-	if len(h.runner.calls()) != 0 || len(h.workspaces.checkouts) != 0 || len(h.commands.runs()) != 0 {
-		t.Fatalf("turns %d, checkouts %v, commands %v after the refusal", len(h.runner.calls()), h.workspaces.checkouts, h.commands.runs())
+	if len(h.runner.calls()) != 0 || len(h.commands.runs()) != 0 {
+		t.Fatalf("turns %d, commands %v after the refusal", len(h.runner.calls()), h.commands.runs())
 	}
 
 	other := newHarness()

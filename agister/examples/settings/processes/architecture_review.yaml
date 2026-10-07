@@ -27,7 +27,7 @@ input:
     architecture_context: {source: file, path: "${param.architecture}"}
 
 workspace:
-  checkout: candidate_revision
+  revision: candidate_revision
 
 output:
   format: json

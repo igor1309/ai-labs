@@ -3,7 +3,6 @@ package app_test
 import (
 	"context"
 	"errors"
-	"fmt"
 	"reflect"
 	"strings"
 	"testing"
@@ -45,71 +44,53 @@ func reaping(h *harness, runs ...run.Record) *reaper {
 
 func (r *reaper) reap() error { return r.Reap(context.Background()) }
 
+// The worktree is on record before the runtime starts, and the runtime's
+// process as soon as it exists; the worktree is no effect (ADR-025 rule 1).
 func TestCallRecordsItsEffectsAsSoonAsTheyExist(t *testing.T) {
 	t.Parallel()
 	h := newHarness()
 	record := h.call(t, contract.CallRequest{})
-	if want := (&run.Effects{Checkout: &run.Checkout{Repository: "/repo", RepositoryIdentity: "/repo", Dir: "/work/checkout", Revision: "sha-HEAD"}, Process: &run.Process{Ref: "ref-4242"}}); !reflect.DeepEqual(record.Effects, want) {
+	if want := (&run.Effects{Process: &run.Process{Ref: "ref-4242"}}); !reflect.DeepEqual(record.Effects, want) {
 		t.Fatalf("effects = %+v", record.Effects)
 	}
-	// The checkout was written down before the runtime started.
-	var checkoutOnly bool
+	// The worktree was written down before the runtime started.
+	var worktreeOnly bool
 	for _, update := range h.recorder.updates {
-		if e := update.Effects; e != nil && e.Checkout != nil && e.Process == nil {
-			checkoutOnly = true
+		if update.InPlace != nil && update.InPlace.Worktree == "/repo" && (update.Effects == nil || update.Effects.Process == nil) {
+			worktreeOnly = true
 		}
 	}
-	if !checkoutOnly {
-		t.Fatal("no update carried the checkout before the process")
+	if !worktreeOnly {
+		t.Fatal("no update carried the worktree before the process")
 	}
 }
 
-// A checkout that cannot be recorded is one no reap could find: the call is
-// refused before the runtime starts, and the checkout is released.
-func TestCheckoutThatCannotBeRecordedIsReleasedAndTheCallRefused(t *testing.T) {
+// A worktree that cannot be recorded is one no later call could tell a
+// leftover writer by: the call fails before the runtime starts, and the
+// hold is let go.
+func TestAWorktreeThatCannotBeRecordedIsLetGoAndTheCallRefused(t *testing.T) {
 	t.Parallel()
 	h := newHarness()
 	h.recorder.updateErr = func(record run.Record) error {
-		if record.Effects != nil && record.Effects.Checkout != nil {
+		if record.InPlace != nil {
 			return errors.New("disk full")
 		}
 		return nil
 	}
 	record := h.call(t, contract.CallRequest{})
-	if h.workspaces.releases() != 1 {
-		t.Fatalf("releases = %d", h.workspaces.releases())
+	if h.locks.releases("/repo") != 1 || h.locks.holds("/repo") {
+		t.Fatalf("releases = %d", h.locks.releases("/repo"))
 	}
 	if len(h.runner.calls()) != 0 {
 		t.Fatalf("a turn ran: %+v", h.runner.calls())
 	}
 	if class(record) != run.ClassInternal || record.Result.Status != run.Failed ||
-		!strings.Contains(message(record), "recording the checkout failed") || !strings.Contains(message(record), "disk full") {
+		!strings.Contains(message(record), "recording the worktree failed") || !strings.Contains(message(record), "disk full") {
 		t.Fatalf("result = %+v", record.Result)
 	}
-	// The record does not claim a checkout it could not write down.
-	if record.Effects != nil {
-		t.Fatalf("effects = %+v", record.Effects)
-	}
-}
-
-// A checkout that could not be recorded and then could not be released is
-// still left for a reap: the finished record names it as unreleased.
-func TestACheckoutThatCannotBeRecordedNorReleasedIsLeftForAReap(t *testing.T) {
-	t.Parallel()
-	h := newHarness()
-	h.recorder.updateErr = func(record run.Record) error {
-		if record.Effects != nil && record.Effects.Checkout != nil {
-			return errors.New("disk full")
-		}
-		return nil
-	}
-	h.workspaces.releaseErr = context.DeadlineExceeded
-	record := h.call(t, contract.CallRequest{})
-	if h.workspaces.releases() != 1 || record.FinishedAt == nil || class(record) != run.ClassInternal {
-		t.Fatalf("releases = %d, finished %v, result %+v", h.workspaces.releases(), record.FinishedAt, record.Result)
-	}
-	if checkout := (&run.Checkout{Repository: "/repo", RepositoryIdentity: "/repo", Dir: "/work/checkout", Revision: "sha-HEAD"}); record.Effects == nil || !reflect.DeepEqual(record.Effects.Unreleased, checkout) {
-		t.Fatalf("effects = %+v", record.Effects)
+	// The record does not claim a worktree it could not write down.
+	if record.InPlace != nil || record.Effects != nil {
+		t.Fatalf("in place %+v, effects = %+v", record.InPlace, record.Effects)
 	}
 }
 
@@ -134,7 +115,7 @@ func TestProcessThatCannotBeRecordedIsReportedToTheRuntime(t *testing.T) {
 	if record.Result.Status != run.Failed || !strings.Contains(message(record), "recording the process failed") {
 		t.Fatalf("result = %+v", record.Result)
 	}
-	if record.Effects == nil || record.Effects.Process != nil || record.Effects.Checkout == nil {
+	if record.Effects != nil && record.Effects.Process != nil {
 		t.Fatalf("effects = %+v", record.Effects)
 	}
 }
@@ -264,20 +245,19 @@ func TestAFinishedRunsCleanCopyIsReaped(t *testing.T) {
 	}
 }
 
-// A call whose release fails at its cleanup deadline leaves a finished run
-// that names the checkout as unreleased (ADR-008 rule 6). A reap leaves it
-// while a running run records the directory, and once the lock is free
-// removes it and clears it, while the run keeps its end and its Checkout.
+// A call made before ADR-025 whose release failed at its cleanup deadline
+// left a finished run that names the checkout as unreleased (ADR-008 rule
+// 6). A reap leaves it while a running run records the directory, and once
+// the lock is free removes it and clears it, while the run keeps its end
+// and its Checkout (ADR-025 rule 9).
 func TestACheckoutWhoseReleaseHitTheDeadlineIsReapedLater(t *testing.T) {
 	t.Parallel()
 	h := newHarness()
-	h.workspaces.releaseErr = fmt.Errorf("git worktree remove: %w", context.DeadlineExceeded)
-	finished := h.call(t, contract.CallRequest{})
 	checkout := &run.Checkout{Repository: "/repo", RepositoryIdentity: "/repo", Dir: "/work/checkout", Revision: "sha-HEAD"}
-	if finished.FinishedAt == nil || finished.Effects == nil ||
-		!reflect.DeepEqual(finished.Effects.Unreleased, checkout) || !reflect.DeepEqual(finished.Effects.Checkout, checkout) {
-		t.Fatalf("finished %v, effects %+v", finished.FinishedAt, finished.Effects)
-	}
+	at := time.Date(2026, 9, 28, 11, 30, 0, 0, time.UTC)
+	finished := run.Record{Schema: run.RecordSchema, ID: "run-1", Process: "p", CreatedAt: at, FinishedAt: &at,
+		Effects: &run.Effects{Checkout: checkout, Process: &run.Process{Ref: "ref-4242"}, Unreleased: checkout},
+		Result:  &run.Result{Status: run.Completed}, ProcessesEnded: known(true)}
 
 	r := reaping(h, finished)
 	r.adopter.live = []string{checkout.Dir}
@@ -309,8 +289,9 @@ func TestACheckoutWhoseReleaseHitTheDeadlineIsReapedLater(t *testing.T) {
 	}
 }
 
-// A release that succeeds records nothing for a reap.
-func TestAReleasedCheckoutIsNotLeftForAReap(t *testing.T) {
+// A call works in the caller's worktree and records nothing for a reap to
+// remove (ADR-025 rule 1).
+func TestACallLeavesNothingForAReap(t *testing.T) {
 	t.Parallel()
 	h := newHarness()
 	if record := h.call(t, contract.CallRequest{}); record.Effects == nil || record.Effects.Unreleased != nil {

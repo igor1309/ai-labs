@@ -399,59 +399,37 @@ test('a Settings read that fails while Runs is shown says why only once Settings
   assert.equal(p.$('status').textContent, 'no .agister folder at /gone/.agister');
 });
 
-test('malformed workspace settings show their filename and parse error on the dashboard', async () => {
+// ADR-025 rules 2 and 3: a process card shows what its call needs of the
+// caller's worktree: HEAD at the revision an input names, and clean when
+// a fresh call needs HEAD's content, with a pinned revision or without
+// one. The obsolete workspace.yaml is not
+// read, even broken, and no setup, mode or precheck is shown.
+test('a process card shows what its call needs of the caller\'s worktree', async () => {
   const files = {
     ...agent,
     'workspace.yaml': 'schema: agister.workspace/v1alpha1\nsetup: {command: [}\n',
-    'processes/fix.yaml': 'name: fix\nuses: agent:opus\nworkspace:\n  checkout: rev\n',
+    'processes/fix.yaml': 'name: fix\nuses: agent:opus\nworkspace:\n  revision: rev\n  clean: true\n  setup: {command: ./own.sh, timeout: 30s}\n',
+    'processes/review.yaml': 'name: review\nuses: agent:opus\nworkspace:\n  revision: rev\n',
+    'processes/tidy.yaml': 'name: tidy\nuses: agent:opus\nworkspace:\n  clean: true\n',
+    'processes/ask.yaml': 'name: ask\nuses: agent:opus\n',
   };
   const p = page({ answers: { 'api/settings': () => respond({ path: '~', dir: '/u/.agister', home: true, files }) } });
   await p.started;
-  assert.deepEqual(p.shown(), { settings: true, runs: false });
-  assert.ok(p.$('process-fix'));
-  const errors = p.$('dashboard').querySelectorAll('.error');
-  assert.equal(errors.length, 1);
-  assert.match(errors[0].textContent, /^workspace\.yaml: .+/);
-  assert.match(errors[0].textContent, /column/);
-  assert.match(errors[0].parentNode.textContent, /Workspace settings/);
-});
-
-test('a process card shows the setup its checkout runs, and where it comes from', async () => {
-  const files = {
-    ...agent,
-    'workspace.yaml': 'schema: agister.workspace/v1alpha1\nsetup:\n  command: ./link-config.sh\n  timeout: 2m\n',
-    'processes/fix.yaml': 'name: fix\nuses: agent:opus\nworkspace:\n  checkout: rev\n',
-    'processes/own.yaml': 'name: own\nuses: agent:opus\nworkspace:\n  checkout: rev\n  setup: {command: ./own.sh, timeout: 30s}\n',
+  const facts = (name) => {
+    const nodes = p.$('dashboard').querySelector(`article#process-${name} div.facts`).children;
+    const labels = nodes.filter((_, i) => i % 2 === 0).map((n) => n.textContent);
+    const i = nodes.findIndex((n) => n.textContent === 'worktree');
+    return { labels, worktree: i < 0 ? null : nodes[i + 1] };
   };
-  const p = page({ answers: { 'api/settings': () => respond({ path: '~', dir: '/u/.agister', home: true, files }) } });
-  await p.started;
-  const card = (name) => p.$(`process-${name}`).textContent;
-  assert.match(card('fix'), /setup\.\/link-config\.sh within 2m, from workspace\.yaml/);
-  assert.match(card('own'), /setup\.\/own\.sh within 30s/);
-  assert.doesNotMatch(card('own'), /workspace\.yaml/);
-});
-
-// ADR-022: a process card shows the default workspace mode of its call and
-// the precheck that gates it in-place; temporary when workspace.yaml sets
-// no mode.
-test('a process card shows its default workspace mode and precheck, and where they come from', async () => {
-  const fix = { ...agent, 'processes/fix.yaml': 'name: fix\nuses: agent:opus\nworkspace:\n  checkout: rev\n' };
-  const facts = async (files) => {
-    const p = page({ answers: { 'api/settings': () => respond({ path: '~', dir: '/u/.agister', home: true, files }) } });
-    await p.started;
-    const nodes = p.$('dashboard').querySelector('article#process-fix div.facts').children;
-    const value = (label) => {
-      const i = nodes.findIndex((n) => n.textContent === label);
-      return i < 0 ? null : nodes[i + 1].textContent;
-    };
-    return { mode: value('mode'), precheck: value('precheck') };
-  };
-
-  assert.deepEqual(await facts({
-    ...fix,
-    'workspace.yaml': 'schema: agister.workspace/v1alpha1\nmode: in-place\nprecheck:\n  command: ./check-device.sh\n  timeout: 1m\n',
-  }), { mode: 'in-place, from workspace.yaml', precheck: './check-device.sh within 1m, from workspace.yaml' });
-  assert.deepEqual(await facts(fix), { mode: 'temporary', precheck: null });
+  const fix = facts('fix');
+  assert.equal(fix.worktree.textContent, 'HEAD at rev, clean');
+  assert.equal(fix.worktree.querySelector('code').textContent, 'rev');
+  for (const gone of ['setup', 'mode', 'precheck']) assert.ok(!fix.labels.includes(gone), gone);
+  assert.equal(facts('review').worktree.textContent, 'HEAD at rev');
+  assert.equal(facts('tidy').worktree.textContent, 'clean');
+  assert.equal(facts('ask').worktree, null);
+  assert.equal(p.$('dashboard').querySelectorAll('.error').length, 0);
+  assert.doesNotMatch(p.$('dashboard').textContent, /Workspace settings|workspace\.yaml/);
 });
 
 // README, Settings: a process card shows the attempts of the verification
@@ -469,9 +447,10 @@ test('a process card shows the verification its process names, or marks it missi
   assert.equal(found.textContent, 'a failed verify (repo) is fixed up to 2×');
   assert.equal(found.querySelector('span.missing'), null);
 
-  const inWorktree = await output({ ...naming, 'verifies/repo.yaml': 'name: repo\ncommand: make test\nmax_attempts: 2\nwhere: workspace\n' });
-  assert.equal(inWorktree.textContent, 'a failed verify (repo) is fixed up to 2×, where: workspace');
-  assert.equal(inWorktree.querySelector('code').textContent, 'where: workspace');
+  // ADR-025 rule 5: where is obsolete; every verification runs in the
+  // call's worktree.
+  const obsolete = await output({ ...naming, 'verifies/repo.yaml': 'name: repo\ncommand: make test\nmax_attempts: 2\nwhere: workspace\n' });
+  assert.equal(obsolete.textContent, 'a failed verify (repo) is fixed up to 2×');
 
   const absent = await output(naming);
   assert.equal(absent.textContent, 'repo (missing verify)');

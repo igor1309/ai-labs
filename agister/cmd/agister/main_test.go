@@ -114,7 +114,7 @@ func onRealGit(t testing.TB, home string) {
 // fakeGit is the composition's git-backed adapters, all over fake.
 func fakeGit(fake *gittest.Fake) gitAdapters {
 	return gitAdapters{
-		calls: fake, copies: fake, discarder: fake, content: fake, state: fake,
+		calls: fake, discarder: fake, content: fake, state: fake,
 		revision: fake.Revision(), mergeBase: fake.MergeBase(), diff: fake.Diff(), changedFiles: fake.ChangedFiles(),
 	}
 }
@@ -471,13 +471,11 @@ func TestAgentCallEndToEnd(t *testing.T) {
 	if !strings.HasPrefix(prompt, "## base_revision\n\n") || !strings.Contains(prompt, "## changed_files\n\n- a.txt") {
 		t.Fatalf("prompt = %q", prompt)
 	}
-	// The agent worked in a checkout of the candidate, since released.
+	// The agent worked in the caller's worktree, at the candidate
+	// (ADR-025), and no checkout was made.
 	workspace := record["workspace"].(string)
-	if last.first["cwd"] != workspace || workspace == repo {
+	if last.first["cwd"] != workspace || workspace != repo {
 		t.Fatalf("workspace %s, agent cwd %v", workspace, last.first["cwd"])
-	}
-	if _, err := os.Stat(workspace); !os.IsNotExist(err) {
-		t.Fatalf("workspace not released: %v", err)
 	}
 	noCheckoutLeft(t, home)
 	// Diagnostics are correlated with the run.
@@ -1138,8 +1136,8 @@ func TestContinuationEndToEnd(t *testing.T) {
 	}
 }
 
-// What the agent changed in its own checkout is kept as an artifact before
-// the checkout is released; the repository is untouched.
+// What the agent changed is kept as an artifact, and the changes stay in
+// the caller's worktree, where the agent made them (ADR-025 rule 6).
 //
 // Contract test: the composition over settings on the filesystem and a real
 // git repository. Its runtimes are fakes run in process.
@@ -1156,20 +1154,22 @@ func TestWorkspaceChangesAreKept(t *testing.T) {
 	if len(artifacts) != 1 || !strings.Contains(patch, "+++ b/written-by-agent.txt") || !strings.HasPrefix(artifact["digest"].(string), "sha256:") {
 		t.Fatalf("artifacts %v, patch:\n%s", artifacts, patch)
 	}
-	if status := gitCmd(t, repo, "status", "--porcelain"); status != "" {
-		t.Fatalf("repository changed: %s", status)
+	if status := gitCmd(t, repo, "status", "--porcelain"); status != "?? written-by-agent.txt" {
+		t.Fatalf("the worktree's status = %q", status)
 	}
 }
 
 // A process declaring verify, in settings on disk: check and process show
 // warn of it, a call records it under the process's digest and completes
-// once its fixture command passes on the clean copy, and a caller's timeout
-// shorter than one run refuses the call.
+// once its fixture command passes in the worktree, which the process needs
+// clean (ADR-025 rule 3), and a caller's timeout shorter than one run
+// refuses the call.
 func TestVerifyDeclarationEndToEnd(t *testing.T) {
 	t.Parallel()
 	home, repo := setup(t, "approve")
 	shipped := read(t, filepath.Join(home, "processes", "adversarial_review.yaml"))
-	process := strings.Replace(shipped, "name: adversarial_review", "name: verified", 1) + `
+	process := strings.Replace(shipped, "name: adversarial_review", "name: verified", 1)
+	process = strings.Replace(process, "  revision: candidate_revision\n", "  revision: candidate_revision\n  clean: true\n", 1) + `
 verify:
   command: test -f a.txt
   timeout: 20s

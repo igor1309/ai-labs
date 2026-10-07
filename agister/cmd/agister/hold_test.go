@@ -9,8 +9,9 @@ import (
 	domain "github.com/igor1309/ai-labs/agister/internal/domain/run"
 )
 
-// inPlaceSettings has impl work in the caller's worktree with a precheck,
-// and a setup of its own that an in-place call never runs.
+// inPlaceSettings has impl declare the workspace settings ADR-025 rule 3
+// makes obsolete: a setup of its own, and a workspace.yaml with an
+// in-place mode and a precheck. A call ignores them all.
 func inPlaceSettings() verifySettings {
 	return verifySettings{
 		setup:     `{command: "echo prepared >> config.log", timeout: 20s}`,
@@ -18,11 +19,11 @@ func inPlaceSettings() verifySettings {
 	}
 }
 
-// ADR-022: an in-place call works in the caller's worktree, on real git.
-// The turns run there, the setup is skipped, the precheck runs there first,
-// the verification checks a clean copy, and the changes stay in the
-// worktree, captured from the revision as changes.patch. No worktree is
-// made for the call, and none is left (wait checks that).
+// ADR-025: a call works in the caller's worktree, on real git. The turns
+// run there, with the writer's hold, no setup or precheck runs, the
+// verification runs there too (rule 5), and the changes stay in the
+// worktree, captured from the revision as changes.patch (rule 6). No
+// worktree is made for the call, and none is left (wait checks that).
 //
 // Contract test: real git, in a repository of the test's own.
 func TestAnInPlaceCallWorksInTheCallersWorktree(t *testing.T) {
@@ -37,13 +38,13 @@ func TestAnInPlaceCallWorksInTheCallersWorktree(t *testing.T) {
 			t.Fatalf("a turn ran in %s", turn.Cwd)
 		}
 	}
-	if in := record.InPlace; in == nil || in.Dir != h.repo || in.Worktree != h.repo || in.Revision != revision || in.Verify != domain.VerifyOnCopy || in.Content == "" {
+	if in := record.InPlace; in == nil || in.Dir != h.repo || in.Worktree != h.repo || in.Revision != revision || in.Verify != domain.VerifyInWorkspace || in.Content == "" || in.Writer == nil || !*in.Writer {
 		t.Fatalf("in place %+v", record.InPlace)
 	}
-	if record.SetupRun != nil || record.PrecheckRun == nil || !record.PrecheckRun.Passed || record.PrecheckRun.Dir != h.repo {
+	if record.SetupRun != nil || record.PrecheckRun != nil {
 		t.Fatalf("setup run %+v, precheck run %+v", record.SetupRun, record.PrecheckRun)
 	}
-	if ran := runsOf(record); len(ran) != 2 || ran[0].Dir == h.repo || ran[1].Dir == h.repo || !ran[1].Passed {
+	if ran := runsOf(record); len(ran) != 2 || ran[0].Dir != h.repo || ran[1].Dir != h.repo || !ran[1].Passed {
 		t.Fatalf("verification runs %+v", ran)
 	}
 	if got := read(t, filepath.Join(h.repo, "state")); got != "pass\n" {
@@ -61,8 +62,9 @@ func TestAnInPlaceCallWorksInTheCallersWorktree(t *testing.T) {
 	}
 }
 
-// ADR-022 rule 4, on real git: a worktree that is not exactly the
-// revision's is refused before any turn, and is left as it was.
+// ADR-025 rule 3, on real git: a worktree that is not exactly the
+// revision's is refused before any turn of a process that declares
+// workspace.clean, and is left as it was.
 //
 // Contract test: real git, in a repository of the test's own.
 func TestAnInPlaceCallRefusesAWorktreeItCannotAdmit(t *testing.T) {

@@ -1,6 +1,7 @@
 # ADR-002: Verification and bounded same-session repair
 
 - **Status:** Accepted
+- **Amended by:** [ADR-025](025-a-call-works-where-it-is-called.md)
 - **Date:** 2026-09-30
 - **Scope:** agent calls whose process declares a verification command
 - **Decision type:** Architecture

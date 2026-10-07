@@ -2,7 +2,6 @@ package gittest_test
 
 import (
 	"context"
-	"errors"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -25,25 +24,6 @@ func recorded(t *testing.T) (*gittest.Fake, *gittest.Repository, string, string,
 	main := repository.Commit("main", map[string]string{"a.txt": "one\n"})
 	feature := repository.Commit("feature", map[string]string{"a.txt": "one\ntwo\n", "dir/b.txt": "no newline"})
 	return fake, repository, root, main, feature
-}
-
-// files reads every file under dir, by slash-separated path.
-func files(t *testing.T, dir string) map[string]string {
-	t.Helper()
-	found := map[string]string{}
-	err := filepath.WalkDir(dir, func(path string, entry os.DirEntry, err error) error {
-		if err != nil || entry.IsDir() {
-			return err
-		}
-		data, err := os.ReadFile(path)
-		rel, _ := filepath.Rel(dir, path)
-		found[filepath.ToSlash(rel)] = string(data)
-		return err
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	return found
 }
 
 func left(t *testing.T, fake *gittest.Fake) []string {
@@ -109,49 +89,36 @@ func TestRevisionsResolveAsRecorded(t *testing.T) {
 	}
 }
 
-// A checkout holds the revision's tree in a directory of its own, which
-// its release removes.
-func TestACheckoutHoldsTheRevisionUntilReleased(t *testing.T) {
-	t.Parallel()
-	fake, _, root, main, _ := recorded(t)
-	dir, release, err := fake.Checkout(ctx, root, main)
-	if err != nil {
-		t.Fatal(err)
+// worktree writes files, by slash-separated path, into a directory of the
+// test's own and returns it: a worktree as a call finds it.
+func worktree(t *testing.T, files map[string]string) string {
+	t.Helper()
+	dir := t.TempDir()
+	for path, text := range files {
+		full := filepath.Join(dir, filepath.FromSlash(path))
+		if err := os.MkdirAll(filepath.Dir(full), 0o700); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(full, []byte(text), 0o600); err != nil {
+			t.Fatal(err)
+		}
 	}
-	if got := files(t, dir); !reflect.DeepEqual(got, map[string]string{"a.txt": "one\n"}) {
-		t.Fatalf("checkout holds %v", got)
-	}
-	if got := left(t, fake); len(got) != 1 || got[0] != filepath.Dir(dir) {
-		t.Fatalf("left %v", got)
-	}
-	if err := release(); err != nil {
-		t.Fatal(err)
-	}
-	if got := left(t, fake); len(got) != 0 {
-		t.Fatalf("left after release: %v", got)
-	}
-	if _, _, err := fake.Checkout(ctx, root, "missing"); err == nil {
-		t.Fatal("checked out an unknown revision")
-	}
+	return dir
 }
 
-// A checkout's identity is its revision's content; a change to its files,
-// a new file included, changes it, and Changes is the patch between them,
-// empty for the same content.
+// A worktree's identity is its content; a change to its files, a new file
+// included, changes it, and Changes is the patch between them, empty for
+// the same content.
 func TestIdentityNamesEveryFileAndChangesDiffsContents(t *testing.T) {
 	t.Parallel()
 	fake, _, root, main, feature := recorded(t)
-	dir, release, err := fake.Checkout(ctx, root, feature)
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { _ = release() })
+	dir := worktree(t, map[string]string{"a.txt": "one\ntwo\n", "dir/b.txt": "no newline"})
 	before, err := fake.Identity(ctx, dir, feature)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if patch, err := fake.Changes(ctx, dir, feature, before); err != nil || len(patch) != 0 {
-		t.Fatalf("the checkout's own content differs from its revision: %q, %v", patch, err)
+	if patch, err := fake.Changes(ctx, root, feature, before); err != nil || len(patch) != 0 {
+		t.Fatalf("the worktree's content differs from its revision: %q, %v", patch, err)
 	}
 	if err := os.WriteFile(filepath.Join(dir, "new.log"), []byte("made\n"), 0o600); err != nil {
 		t.Fatal(err)
@@ -160,7 +127,7 @@ func TestIdentityNamesEveryFileAndChangesDiffsContents(t *testing.T) {
 	if err != nil || after == before {
 		t.Fatalf("a new file left the identity %q: %v", after, err)
 	}
-	patch, err := fake.Changes(ctx, dir, main, after)
+	patch, err := fake.Changes(ctx, root, main, after)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -169,72 +136,39 @@ func TestIdentityNamesEveryFileAndChangesDiffsContents(t *testing.T) {
 			t.Errorf("patch lacks %q:\n%s", want, patch)
 		}
 	}
-	if _, err := fake.Changes(ctx, dir, main, "unknown"); err == nil {
+	if _, err := fake.Changes(ctx, root, main, "unknown"); err == nil {
 		t.Error("diffed an unknown content")
 	}
 }
 
-// A patch Changes made, applied to the content it was made from, rebuilds
-// the other: files changed, added, removed, and ending with no newline.
-func TestApplyRebuildsWhatChangesDiffed(t *testing.T) {
+// A patch Changes made, rebuilt on the revision it was made from, names
+// the other content: files changed, added, removed, and ending with no
+// newline.
+func TestRebuildRebuildsWhatChangesDiffed(t *testing.T) {
 	t.Parallel()
 	fake, _, root, _, feature := recorded(t)
-	dir, release, err := fake.Checkout(ctx, root, feature)
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { _ = release() })
-	if err := os.Remove(filepath.Join(dir, "a.txt")); err != nil {
-		t.Fatal(err)
-	}
-	for path, text := range map[string]string{"dir/b.txt": "changed\n\nlast", "c/d.txt": "", "e.txt": "+--\n"} {
-		if err := os.MkdirAll(filepath.Dir(filepath.Join(dir, path)), 0o700); err != nil {
-			t.Fatal(err)
-		}
-		if err := os.WriteFile(filepath.Join(dir, path), []byte(text), 0o600); err != nil {
-			t.Fatal(err)
-		}
-	}
-	want := files(t, dir)
+	dir := worktree(t, map[string]string{"dir/b.txt": "changed\n\nlast", "c/d.txt": "", "e.txt": "+--\n"})
 	identity, err := fake.Identity(ctx, dir, feature)
 	if err != nil {
 		t.Fatal(err)
 	}
-	patch, err := fake.Changes(ctx, dir, feature, identity)
+	patch, err := fake.Changes(ctx, root, feature, identity)
 	if err != nil {
 		t.Fatal(err)
 	}
-	copied, discard, err := fake.Checkout(ctx, root, feature)
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { _ = discard() })
-	if err := fake.Apply(ctx, copied, patch, true); err != nil {
-		t.Fatal(err)
-	}
-	if got := files(t, copied); got["a.txt"] != "one\ntwo\n" {
-		t.Fatalf("a check changed the files: %v", got)
-	}
-	if err := fake.Apply(ctx, copied, patch, false); err != nil {
-		t.Fatal(err)
-	}
-	if got := files(t, copied); !reflect.DeepEqual(got, want) {
-		t.Fatalf("applied:\n%v\nwant:\n%v", got, want)
+	if rebuilt, err := fake.Rebuild(ctx, root, feature, patch); err != nil || rebuilt != identity {
+		t.Fatalf("rebuilt %q, %v; want %s", rebuilt, err, identity)
 	}
 }
 
 // Rebuild names what a revision with a patch applied holds, as Identity
 // names a directory with those files, without writing anything; no patch
-// rebuilds the revision, and one that does not apply is an error.
+// rebuilds the revision, and one that does not apply, or is no patch, is an
+// error.
 func TestRebuildNamesTheContentAPatchMakesFromARevision(t *testing.T) {
 	t.Parallel()
 	fake, _, root, main, feature := recorded(t)
-	dir, release, err := fake.Checkout(ctx, root, main)
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { _ = release() })
-	want, err := fake.Identity(ctx, dir, main)
+	want, err := fake.Identity(ctx, worktree(t, map[string]string{"a.txt": "one\n"}), main)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -249,25 +183,22 @@ func TestRebuildNamesTheContentAPatchMakesFromARevision(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := fake.Apply(ctx, dir, patch, false); err != nil {
-		t.Fatal(err)
-	}
-	if applied, err := fake.Identity(ctx, dir, main); err != nil || rebuilt != applied {
-		t.Fatalf("rebuilt %s, applied %s, %v", rebuilt, applied, err)
-	}
 	if again, err := fake.Changes(ctx, root, rebuilt, feature); err != nil || len(again) != 0 {
 		t.Fatalf("the rebuilt content differs from feature's: %q, %v", again, err)
 	}
+	// feature's tree already has dir/b.txt, which the patch adds.
 	if _, err := fake.Rebuild(ctx, root, feature, patch); err == nil {
 		t.Fatal("a patch that does not apply was rebuilt")
+	}
+	if _, err := fake.Rebuild(ctx, root, main, []byte("not a patch\n")); err == nil {
+		t.Fatal("rebuilt what is not a patch")
 	}
 }
 
 // A patch Changes made between revisions where a file and a directory
-// trade places applies to a checkout of the first and rebuilds the second,
-// both ways; a patch that would leave a path both a file and a directory
-// does not apply.
-func TestApplyReplacesAFileWithADirectoryAndBack(t *testing.T) {
+// trade places rebuilds the second from the first, both ways; a patch that
+// would leave a path both a file and a directory does not apply.
+func TestRebuildReplacesAFileWithADirectoryAndBack(t *testing.T) {
 	t.Parallel()
 	fake := gittest.New(t.TempDir())
 	root := t.TempDir()
@@ -279,10 +210,9 @@ func TestApplyReplacesAFileWithADirectoryAndBack(t *testing.T) {
 	for _, c := range []struct {
 		name     string
 		from, to string
-		want     map[string]string
 	}{
-		{"file to directory", fileRevision, directoryRevision, directory},
-		{"directory to file", directoryRevision, fileRevision, file},
+		{"file to directory", fileRevision, directoryRevision},
+		{"directory to file", directoryRevision, fileRevision},
 	} {
 		t.Run(c.name, func(t *testing.T) {
 			t.Parallel()
@@ -290,109 +220,45 @@ func TestApplyReplacesAFileWithADirectoryAndBack(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			dir, release, err := fake.Checkout(ctx, root, c.from)
+			rebuilt, err := fake.Rebuild(ctx, root, c.from, patch)
 			if err != nil {
 				t.Fatal(err)
 			}
-			t.Cleanup(func() { _ = release() })
-			if err := fake.Apply(ctx, dir, patch, true); err != nil {
-				t.Fatalf("check: %v", err)
-			}
-			if err := fake.Apply(ctx, dir, patch, false); err != nil {
-				t.Fatal(err)
-			}
-			if got := files(t, dir); !reflect.DeepEqual(got, c.want) {
-				t.Fatalf("applied:\n%v\nwant:\n%v", got, c.want)
-			}
-			if identity, err := fake.Identity(ctx, dir, c.to); err != nil {
-				t.Fatal(err)
-			} else if rest, err := fake.Changes(ctx, root, c.to, identity); err != nil || len(rest) != 0 {
-				t.Fatalf("the applied checkout differs from its target: %q, %v", rest, err)
+			if rest, err := fake.Changes(ctx, root, c.to, rebuilt); err != nil || len(rest) != 0 {
+				t.Fatalf("the rebuilt content differs from its target: %q, %v", rest, err)
 			}
 		})
 	}
 	t.Run("both a file and a directory", func(t *testing.T) {
 		t.Parallel()
-		dir, release, err := fake.Checkout(ctx, root, fileRevision)
-		if err != nil {
-			t.Fatal(err)
-		}
-		t.Cleanup(func() { _ = release() })
 		// It adds node/child.txt and leaves node a file.
 		patch := []byte("diff --git a/node/child.txt b/node/child.txt\n--- /dev/null\n+++ b/node/child.txt\n@@ -0,0 +1,1 @@\n+a child\n")
-		for _, check := range []bool{true, false} {
-			if err := fake.Apply(ctx, dir, patch, check); err == nil || !strings.Contains(err.Error(), "both a file and a directory") {
-				t.Fatalf("check %t: a patch made node both a file and a directory: %v", check, err)
-			}
-		}
-		if got := files(t, dir); !reflect.DeepEqual(got, file) {
-			t.Fatalf("a failed apply changed the files: %v", got)
+		if _, err := fake.Rebuild(ctx, root, fileRevision, patch); err == nil || !strings.Contains(err.Error(), "both a file and a directory") {
+			t.Fatalf("a patch made node both a file and a directory: %v", err)
 		}
 	})
 }
 
-// A patch that does not apply, whole, changes nothing.
-func TestAPatchThatDoesNotApplyChangesNothing(t *testing.T) {
+// A checkout or clean copy a run made before ADR-025 is a directory under
+// the scratch directory: Discard removes it, takes one gone as success and
+// refuses a directory the fake did not make (ADR-025 rule 9).
+func TestDiscardRemovesAnOldCheckoutOrCopy(t *testing.T) {
 	t.Parallel()
-	fake, _, root, main, feature := recorded(t)
-	patch, err := fake.Changes(ctx, root, main, feature)
-	if err != nil {
-		t.Fatal(err)
-	}
-	// feature's tree already has dir/b.txt, which the patch adds: only
-	// a.txt would apply.
-	dir, release, err := fake.Checkout(ctx, root, feature)
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { _ = release() })
-	if err := os.WriteFile(filepath.Join(dir, "a.txt"), []byte("one\n"), 0o600); err != nil {
-		t.Fatal(err)
-	}
-	if err := fake.Apply(ctx, dir, patch, false); err == nil {
-		t.Fatal("a patch applied over a file it adds")
-	}
-	if got := files(t, dir); !reflect.DeepEqual(got, map[string]string{"a.txt": "one\n", "dir/b.txt": "no newline"}) {
-		t.Fatalf("a failed apply changed the files: %v", got)
-	}
-	if err := fake.Apply(ctx, dir, []byte("not a patch\n"), true); err == nil {
-		t.Fatal("applied what is not a patch")
-	}
-}
-
-// A clean copy is the revision with the patch applied at the place named
-// for its call. A taken place is refused; a copy that cannot be finished
-// is removed; discard removes it, takes one gone as success and refuses a
-// directory the fake did not make.
-func TestACleanCopyIsMadeAtItsPlaceAndDiscarded(t *testing.T) {
-	t.Parallel()
-	fake, _, root, main, feature := recorded(t)
-	patch, err := fake.Changes(ctx, root, main, feature)
-	if err != nil {
-		t.Fatal(err)
-	}
-	place := fake.Place("call-1")
-	if _, err := os.Stat(place); !errors.Is(err, os.ErrNotExist) {
-		t.Fatalf("Place made %s: %v", place, err)
-	}
-	if err := fake.Copy(ctx, root, place, main, patch); err != nil {
-		t.Fatal(err)
-	}
-	if got := files(t, place); !reflect.DeepEqual(got, map[string]string{"a.txt": "one\ntwo\n", "dir/b.txt": "no newline"}) {
-		t.Fatalf("copy holds %v", got)
-	}
-	if err := fake.Copy(ctx, root, place, main, nil); !errors.Is(err, app.ErrPlaceTaken) {
-		t.Fatalf("copy over a taken place: %v", err)
-	}
-	if err := fake.Discard(ctx, root, place); err != nil {
-		t.Fatal(err)
-	}
-	if err := fake.Discard(ctx, root, place); err != nil {
-		t.Fatalf("discarding a copy already gone: %v", err)
-	}
-	unfinished := fake.Place("call-2")
-	if err := fake.Copy(ctx, root, unfinished, feature, patch); err == nil {
-		t.Fatal("a copy whose patch does not apply was made")
+	scratch := t.TempDir()
+	fake := gittest.New(scratch)
+	root := t.TempDir()
+	fake.Record(root)
+	for _, name := range []string{"checkout-1", "copy-1"} {
+		dir := filepath.Join(scratch, name, "workspace")
+		if err := os.MkdirAll(dir, 0o700); err != nil {
+			t.Fatal(err)
+		}
+		if err := fake.Discard(ctx, root, dir); err != nil {
+			t.Fatal(err)
+		}
+		if err := fake.Discard(ctx, root, dir); err != nil {
+			t.Fatalf("discarding %s already gone: %v", name, err)
+		}
 	}
 	if got := left(t, fake); len(got) != 0 {
 		t.Fatalf("left: %v", got)

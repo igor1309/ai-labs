@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -159,8 +158,8 @@ func lastRunIn(t *testing.T, dir string) run {
 	return r
 }
 
-// A CLI killed while a workflow's fan-out nodes run leaves their runtimes
-// and checkouts behind. The next call's reap treats each node's run like
+// A CLI killed while a workflow's fan-out nodes run in its worktree
+// (ADR-025) leaves their runtimes behind. The next call's reap treats each node's run like
 // any unfinished run: it ends their effects and finishes them lost; the
 // workflow run, unfinished and unowned, reads lost too. The runs are
 // abandoned in process, as the kill leaves them, with their runtimes
@@ -195,7 +194,7 @@ func TestNextCallReapsAKilledWorkflowsNodes(t *testing.T) {
 	// it, whatever point the test reached.
 	cleanupRun(t, victim, killed.hosted, id)
 
-	// Both fan-out nodes run, each with its runtime and checkout on record.
+	// Both fan-out nodes run, each with its runtime and worktree on record.
 	var started []string
 	until(t, victim, id, func(event contract.Event) bool {
 		if node, ok := event.Data["run"].(string); ok && event.Kind == "NODE_STARTED" {
@@ -207,7 +206,7 @@ func TestNextCallReapsAKilledWorkflowsNodes(t *testing.T) {
 	for _, node := range started {
 		until(t, victim, node, func(event contract.Event) bool { return event.Kind == "PROCESS_STARTED" })
 		record, _, err := killed.runs.Get(ctx, node)
-		if err != nil || record.Parent == nil || record.Effects == nil || record.Effects.Process == nil || record.Effects.Checkout == nil {
+		if err != nil || record.Parent == nil || record.Effects == nil || record.Effects.Process == nil || record.InPlace == nil || record.InPlace.Dir != repo {
 			t.Fatalf("node run %s: %+v, %v", node, record.Effects, err)
 		}
 		if _, token, err := supervisor.ParseRef(record.Effects.Process.Ref); err != nil || token == "" {
@@ -247,9 +246,6 @@ func TestNextCallReapsAKilledWorkflowsNodes(t *testing.T) {
 	for _, node := range nodes {
 		if left.alive(node.Effects.Process.Ref) {
 			t.Fatalf("node run %s's runtime was not reaped", node.ID)
-		}
-		if _, err := os.Stat(node.Effects.Checkout.Dir); !errors.Is(err, os.ErrNotExist) {
-			t.Fatalf("checkout left behind: %v", err)
 		}
 		reaped, state, err := composed.runs.Get(ctx, node.ID)
 		if err != nil || state != domain.StateFinished || reaped.Result.Status != domain.Lost || reaped.Result.Error.Class != domain.ClassAbandoned {

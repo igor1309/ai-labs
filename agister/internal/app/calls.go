@@ -2,8 +2,6 @@ package app
 
 import (
 	"context"
-	"crypto/sha256"
-	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -28,8 +26,7 @@ type Calls struct {
 	inputs     map[string]InputProvider
 	workspaces CallWorkspaces
 	changes    CallChanges
-	preparer   CallPreparer
-	borrower   CallBorrower
+	holder     CallHolder
 	verifier   CallVerifier
 	recoverer  CallRecoverer
 	validator  CallValidator
@@ -60,14 +57,12 @@ type CallResolution interface {
 }
 
 // CallResolveRequest is what a call is resolved from: its process, the
-// agent that overrides the process's, the caller's narrowing limits and the
-// workspace mode the caller asks for (ADR-022 rule 1).
+// agent that overrides the process's, and the caller's narrowing limits.
 type CallResolveRequest struct {
 	Process    string
 	Agent      string
 	Timeout    string
 	MaxCostUSD *float64
-	Workspace  string
 }
 
 // ResolvedCall is everything a call needs before inputs and effects.
@@ -85,6 +80,9 @@ type ResolvedCall struct {
 	Effective CallLimits
 	Identity  CallRuntime
 	Plan      CallPlan
+	// Writer says the call holds the caller's worktree alone; a reader
+	// holds it with other readers (ADR-025 rule 4).
+	Writer bool
 }
 
 // CallSkill is one skill a call is given, as it was read with the call: an
@@ -102,16 +100,12 @@ type CallProcess struct {
 	Instruction string
 	Params      []CallParam
 	Values      []CallValue
-	Checkout    string      // name of the input whose revision is checked out
+	Revision    string      // name of the input whose revision HEAD must be (ADR-025 rule 2)
 	Output      string      // the output format, "json" or "text"
 	Verify      *CallVerify // unset: no verification
-	// Setup is the setup its checkout runs (ADR-012), the process's own or
-	// the workspace's; unset: none.
-	Setup *CallSetup
-	// InPlace says the call works in the caller's worktree, not a checkout
-	// of its own (ADR-022); Precheck gates it there, unset: none.
-	InPlace  bool
-	Precheck *CallSetup
+	// Clean says a fresh call needs the worktree's content to be HEAD's
+	// (ADR-025 rule 3).
+	Clean bool
 }
 
 // CallParam is a param a process or workflow declares.
@@ -144,18 +138,6 @@ type CallVerify struct {
 	Timeout     time.Duration // per run
 	MaxAttempts int           // runs, the first included
 	Instruction string        // what the agent is told when a run fails
-	// InWorkspace says the command runs in the worktree of an in-place
-	// call, not on a clean copy (ADR-022 rule 6).
-	InWorkspace bool
-}
-
-// CallSetup is the command that prepares a call's checkout before its
-// first turn (ADR-012), and where it came from.
-type CallSetup struct {
-	Command string
-	Timeout time.Duration
-	From    string // run.SetupFromProcess or run.SetupFromWorkspace
-	Path    string // the document it came from
 }
 
 // CallAgent is the runtime profile a call runs as.
@@ -254,13 +236,13 @@ func (r *Resolver) Snapshot(ctx context.Context) CallResolution {
 type callResolution struct{ resolver *Resolver }
 
 func (c callResolution) Resolve(ctx context.Context, request CallResolveRequest) (*ResolvedCall, error) {
-	res, err := c.resolver.resolve(ctx, request.Process, request.Agent, overrides{timeout: request.Timeout, maxCostUSD: request.MaxCostUSD, workspace: request.Workspace})
+	res, err := c.resolver.resolve(ctx, request.Process, request.Agent, overrides{timeout: request.Timeout, maxCostUSD: request.MaxCostUSD})
 	process, agent, effective := res.process, res.agent, res.effective
 	resolved := &ResolvedCall{
 		Process: CallProcess{
 			Name: process.Name, Instruction: process.Instruction,
 			Params: callParams(process.Params), Values: callValues(process.Values),
-			Checkout: process.Checkout, Output: process.Output.Format, InPlace: res.inPlace,
+			Revision: process.Revision, Output: process.Output.Format, Clean: process.Clean,
 		},
 		Agent:   CallAgent{Name: agent.Name, Command: agent.Command, Model: agent.Model, Effort: agent.Effort, Session: agent.Session},
 		Mapping: CallMapping{Name: res.mapping.Name, Adapter: res.mapping.Adapter},
@@ -273,10 +255,10 @@ func (c callResolution) Resolve(ctx context.Context, request CallResolveRequest)
 		},
 		Identity: CallRuntime{Contract: res.identity.Contract, Version: res.identity.Version, Resume: res.identity.Resume, ResumeWhereItRan: res.identity.ResumeWhereItRan},
 		Plan:     CallPlan{Primitives: res.plan.Primitives, Granted: res.plan.Granted, Withheld: res.plan.Withheld},
+		Writer:   res.writer,
 	}
 	if verify := process.Verify; verify != nil {
-		resolved.Process.Verify = &CallVerify{Command: verify.Command, Timeout: verify.Timeout, MaxAttempts: verify.MaxAttempts, Instruction: verify.Instruction,
-			InWorkspace: verify.Where == definition.WhereWorkspace}
+		resolved.Process.Verify = &CallVerify{Command: verify.Command, Timeout: verify.Timeout, MaxAttempts: verify.MaxAttempts, Instruction: verify.Instruction}
 	}
 	for name, prompt := range res.prompts {
 		if resolved.Prompts == nil {
@@ -290,12 +272,6 @@ func (c callResolution) Resolve(ctx context.Context, request CallResolveRequest)
 	resolved.Skills = translated(res.skills, func(skill definition.Skill) CallSkill {
 		return CallSkill{Name: skill.Name, Bytes: skill.Bytes, Identity: "sha256:" + skill.Source.SHA256}
 	})
-	if setup := res.setup; setup != nil {
-		resolved.Process.Setup = &CallSetup{Command: setup.Command, Timeout: setup.Timeout, From: setup.from, Path: setup.path}
-	}
-	if precheck := res.precheck; precheck != nil {
-		resolved.Process.Precheck = &CallSetup{Command: precheck.Command, Timeout: precheck.Timeout, From: precheck.from, Path: precheck.path}
-	}
 	return resolved, err
 }
 
@@ -395,9 +371,9 @@ type CallRunners interface {
 // or processes.
 type TurnRunner interface {
 	Identity(ctx context.Context) (RuntimeIdentity, error)
-	// Admit tells, before the call checks out, carries changes or runs its
-	// setup, whether the runner can run a first turn that carries start:
-	// nil when it can, else the fault the turn would end with.
+	// Admit tells, before the call holds its worktree, whether the runner
+	// can run a first turn that carries start: nil when it can, else the
+	// fault the turn would end with.
 	Admit(start TurnStart) *run.Error
 	RunTurn(ctx context.Context, request TurnRequest, sink EventSink) run.Turn
 }
@@ -444,9 +420,9 @@ type CallValidator interface {
 }
 
 // CallRuns reads earlier runs' evidence, only to continue a session: the
-// run continued, every run's record for the session's latest run and its
-// totals, and that run's changes to carry (ADR-013). A record that is not
-// finished and no longer owned reads as abandoned.
+// run continued, and every run's record for the session's latest run and
+// its totals (ADR-025 rule 7). A record that is not finished and no longer
+// owned reads as abandoned.
 type CallRuns interface {
 	Get(ctx context.Context, id string) (run.Record, run.State, error)
 	// ListStrict refuses an incomplete listing when any record cannot be read.
@@ -469,8 +445,8 @@ type InputProvider interface {
 	Resolve(ctx context.Context, spec InputSpec) (Resolved, error)
 }
 
-// CallWorkspaces locates repositories and provides isolated checkouts, to
-// prepare where the agent works.
+// CallWorkspaces locates the repository and the git worktree a call works
+// in.
 type CallWorkspaces interface {
 	Root(ctx context.Context, cwd string) (string, error)
 	// RepositoryIdentity is the canonical Git common directory, which survives
@@ -479,49 +455,36 @@ type CallWorkspaces interface {
 	// SameRepository compares repository identities, including distinct
 	// worktrees of one repository.
 	SameRepository(ctx context.Context, first, second string) (bool, error)
-	Checkout(ctx context.Context, repository, revision string) (dir string, release func() error, err error)
 }
 
-// CallChanges names the content of a call's checkout and captures what
-// changed in it, as evidence. It never writes the checkout's own index.
+// CallChanges names the content of a call's worktree and captures what
+// changed in it, as evidence. It never writes the worktree's own index.
 type CallChanges interface {
-	// Identity names the checkout's content: the files of revision as the
-	// checkout has them, and its untracked files that are not ignored,
+	// Identity names the worktree's content: the files of revision as the
+	// worktree has them, and its untracked files that are not ignored,
 	// whatever is committed.
 	Identity(ctx context.Context, dir, revision string) (string, error)
 	// Changes returns the patch from one content, a revision or an
 	// identity, to another; empty when they are the same.
 	Changes(ctx context.Context, dir, from, to string) ([]byte, error)
-	// Apply applies a patch Changes made to the checkout's files; with
-	// check, it only checks that the whole patch applies, and changes
-	// nothing.
-	Apply(ctx context.Context, dir string, patch []byte, check bool) error
 	// Rebuild names the content revision has with patch applied, as
-	// Identity would name a checkout of it, without making one.
+	// Identity would name a worktree of it, without making one.
 	Rebuild(ctx context.Context, dir, revision string, patch []byte) (string, error)
 }
 
-// CallPreparer runs a call's checkout's setup once, with the operator's
-// authority, before its first turn (ADR-012), and returns why the call
-// fails, if it does.
-type CallPreparer interface {
-	Setup(ctx context.Context, call SetupCall) *run.Error
-}
-
-// CallBorrower lends an in-place call the caller's worktree (ADR-022), or
-// refuses it, before the call's first turn: it holds the worktree's lock,
-// which the call keeps until its changes are captured, and admits the
-// worktree only as the revision left it, after its precheck. It never
-// changes the worktree.
-type CallBorrower interface {
-	Borrow(ctx context.Context, call BorrowCall) (*Borrowed, error)
+// CallHolder holds the caller's worktree for a call (ADR-025 rule 4), or
+// refuses it, before the call's first turn: the call keeps the hold until
+// its changes are captured, and the worktree is admitted only as the
+// process needs it. It never changes the worktree.
+type CallHolder interface {
+	Hold(ctx context.Context, call HoldCall) (*Held, error)
 }
 
 // CallVerifier runs the verification loop of a call whose process declares
-// verify (ADR-002; where the command runs, ADR-005), after its first turn
-// was valid. It returns the content a passing run checked, on a clean copy
-// of the base with the patch to that content applied, empty when none
-// passed, and the fault that ended the loop without a pass.
+// verify (ADR-002; where the command runs, ADR-025 rule 5), after its first
+// turn was valid. It returns the content a passing run checked in the
+// worktree, empty when none passed, and the fault that ended the loop
+// without a pass.
 type CallVerifier interface {
 	Verify(ctx context.Context, call VerifyCall) (verified string, fault *run.Error)
 }
@@ -540,7 +503,7 @@ type RunRecorder interface {
 	Create(ctx context.Context, record run.Record) (RunHandle, error)
 }
 
-// CallAdapters are what Calls run on besides their resolver, preparer,
+// CallAdapters are what Calls run on besides their resolver, holder,
 // verifier, recoverer and cancellations. StateDir is Agister's own state, which no
 // agent workspace may overlap.
 type CallAdapters struct {
@@ -558,8 +521,8 @@ type CallAdapters struct {
 }
 
 // NewCalls returns the use case that submits and executes calls. Every
-// collaborator is required. borrower lends in-place calls the caller's
-// worktree. timer starts the waits of a call's staleness limits. stateDir
+// collaborator is required. holder holds the caller's worktree for each
+// call. timer starts the waits of a call's staleness limits. stateDir
 // is Agister's own state, which no agent workspace may overlap. cancels is
 // where each running call's cancellation is held.
 func NewCalls(
@@ -568,8 +531,7 @@ func NewCalls(
 	inputs map[string]InputProvider,
 	workspaces CallWorkspaces,
 	changes CallChanges,
-	preparer CallPreparer,
-	borrower CallBorrower,
+	holder CallHolder,
 	verifier CallVerifier,
 	recoverer CallRecoverer,
 	validator CallValidator,
@@ -587,8 +549,7 @@ func NewCalls(
 		inputs:     inputs,
 		workspaces: workspaces,
 		changes:    changes,
-		preparer:   preparer,
-		borrower:   borrower,
+		holder:     holder,
 		verifier:   verifier,
 		recoverer:  recoverer,
 		validator:  validator,
@@ -701,7 +662,6 @@ func (c *Calls) Submit(ctx context.Context, request contract.CallRequest) (strin
 			Timeout:    request.Timeout,
 			MaxCostUSD: request.MaxCostUSD,
 			Continue:   request.Continue,
-			Workspace:  request.Workspace,
 			Cwd:        request.Cwd,
 		},
 	}
@@ -748,14 +708,11 @@ func (c *Calls) execute(ctx context.Context, handle RunHandle, record run.Record
 		_ = handle.Append(run.Event{At: c.clock.Now(), Source: source, Kind: kind, Data: data})
 	}
 	result := run.Result{Cost: run.Cost{Source: run.CostUnknown}, Timing: run.Timing{StartedAt: record.CreatedAt}}
-	// Effects end before the record does: the workspace's changes are kept
-	// and the workspace released first. Verified changes that cannot be
+	// The hold ends before the record does: the worktree's changes are
+	// captured and its hold let go first. Verified changes that cannot be
 	// kept fail the call.
 	var collect func() *run.Error
 	release := func() error { return nil }
-	// owned is the checkout the call made, whether or not its record took
-	// it: a failed release leaves it for a reap either way.
-	var owned *run.Checkout
 	// ended says the call's processes are known to have ended as it
 	// finishes: every runtime and command run ends its process before it
 	// returns. A panic may leave one.
@@ -770,16 +727,6 @@ func (c *Calls) execute(ctx context.Context, handle RunHandle, record run.Record
 		}
 		if err := release(); err != nil {
 			event(run.SourceAgister, "WORKSPACE_RELEASE_FAILED", map[string]any{"error": err.Error()})
-			// The finished run names the checkout for a later reap to
-			// remove (ADR-008 rule 6).
-			if owned != nil {
-				var unreleased run.Effects
-				if record.Effects != nil {
-					unreleased = *record.Effects
-				}
-				unreleased.Unreleased = owned
-				record.Effects = &unreleased
-			}
 		}
 		release = func() error { return nil }
 		known := ended
@@ -843,7 +790,6 @@ func (c *Calls) execute(ctx context.Context, handle RunHandle, record run.Record
 	res, err := resolver.Resolve(ctx, CallResolveRequest{
 		Process: record.Request.Process, Agent: record.Request.Agent,
 		Timeout: record.Request.Timeout, MaxCostUSD: record.Request.MaxCostUSD,
-		Workspace: record.Request.Workspace,
 	})
 	record.Definitions = recordSources(res.Sources)
 	record.AbsentPrompts = recordAbsent(res.Absent)
@@ -860,8 +806,6 @@ func (c *Calls) execute(ctx context.Context, handle RunHandle, record run.Record
 	record.Profile = &run.Profile{Model: res.Agent.Model, Effort: res.Agent.Effort, Session: res.Agent.Session}
 	record.Effective = recordEffective(res.Effective)
 	record.Verify = recordVerify(res.Process.Verify)
-	record.Setup = recordSetup(res.Process.Setup)
-	record.Precheck = recordPrecheck(res.Process.Precheck)
 	record.Runtime = &run.Runtime{Mapping: res.Mapping.Name, Adapter: res.Mapping.Adapter, Contract: res.Identity.Contract, Version: res.Identity.Version}
 	record.Plan = recordPlan(res.Plan)
 	_ = handle.Update(record)
@@ -876,8 +820,8 @@ func (c *Calls) execute(ctx context.Context, handle RunHandle, record run.Record
 		return
 	}
 	skills := translated(res.Skills, func(skill CallSkill) TurnSkill { return TurnSkill{Name: skill.Name, Bytes: skill.Bytes} })
-	// A first turn the runner cannot run costs no checkout, carried changes
-	// or setup: it is refused before any of them.
+	// A first turn the runner cannot run costs no hold of the worktree: it
+	// is refused before one is taken.
 	if fault := runner.Admit(TurnStart{ResumeSessionID: resumed.session, Skills: skills}); fault != nil {
 		if fault.Class == run.ClassRefused {
 			fail(refuse("%s", fault.Message))
@@ -894,64 +838,40 @@ func (c *Calls) execute(ctx context.Context, handle RunHandle, record run.Record
 	}
 	record.Inputs = summarize(inputs)
 	_ = handle.Update(record)
-	revision, _ := revisionOf(inputs, res.Process.Checkout)
-	// The changes carried go only onto the base they are from (ADR-013 rule
-	// 2), which is known only now. A checkout input that is no revision is
-	// refused as the workspace is prepared.
-	if carry := resumed.carry; carry != nil && revision != "" {
-		if err := carry.onto(res, revision); err != nil {
-			fail(err)
-			return
-		}
-	}
+	revision, _ := revisionOf(inputs, res.Process.Revision)
 
-	workspace, err := c.prepareWorkspace(ctx, res.Process.Checkout, res.Process.InPlace, inputs, record.Request.Cwd)
+	workspace, err := c.prepareWorkspace(ctx, res.Process, inputs, record.Request.Cwd)
 	if err != nil {
 		fail(err)
 		return
 	}
-	release = workspace.Release
-	record.Workspace = workspace.Dir
-	// The content a passing verification run checked, whose patch is what
-	// the call delivers (ADR-005 rule 1).
+	// The content a passing verification run checked in the worktree,
+	// which the captured patch must rebuild (ADR-002 rule 7).
 	var verified string
-	// inWorkspace verifies in the caller's worktree, not on a clean copy:
-	// only an in-place call whose verification says so (ADR-022 rule 6).
-	inWorkspace := res.Process.InPlace && res.Process.Verify != nil && res.Process.Verify.InWorkspace
-	if res.Process.InPlace {
-		// The caller's worktree, borrowed: no checkout, setup or release. Its
-		// lock is held until the changes are captured, and nothing in it is
-		// reset, cleaned or removed, whatever the end (ADR-022 rule 7).
-		verify := ""
-		switch {
-		case inWorkspace:
-			verify = run.VerifyInWorkspace
-		case res.Process.Verify != nil:
-			verify = run.VerifyOnCopy
-		}
-		var precheck *BorrowPrecheck
-		if p := res.Process.Precheck; p != nil {
-			precheck = &BorrowPrecheck{Command: p.Command, Timeout: p.Timeout}
-		}
-		borrowed, err := c.borrower.Borrow(ctx, BorrowCall{
-			Record: &record, Event: event, Update: handle.Update,
-			Dir: workspace.Dir, RepositoryIdentity: workspace.RepositoryIdentity, Revision: revision, Precheck: precheck, Verify: verify,
-			Latest: resumed.worktree,
-		})
-		if err != nil {
-			fail(err)
-			return
-		}
-		release = borrowed.Release
-		if setup := res.Process.Setup; setup != nil {
-			event(run.SourceAgister, "SETUP_SKIPPED", map[string]any{"command": setup.Command, "reason": "an in-place call works in the worktree its caller prepared (ADR-022 rule 5)"})
-		}
+	// The caller's worktree, held. The hold lasts until the changes are
+	// captured, and nothing in the worktree is reset, cleaned or removed,
+	// whatever the end (ADR-025 rules 4 and 6).
+	verify := ""
+	if res.Process.Verify != nil {
+		verify = run.VerifyInWorkspace
+	}
+	held, err := c.holder.Hold(ctx, HoldCall{
+		Record: &record, Event: event, Update: handle.Update,
+		Dir: workspace.Dir, RepositoryIdentity: workspace.RepositoryIdentity, Revision: revision, Verify: verify,
+		Writer: res.Writer, Clean: res.Process.Clean, Latest: resumed.worktree,
+	})
+	if err != nil {
+		fail(err)
+		return
+	}
+	release = held.Release
+	if revision != "" {
 		collect = func() *run.Error {
 			ctx := context.WithoutCancel(ctx)
 			// A commit the agent made fails the call, and stays; the patch is
 			// still taken from the revision.
 			var fault *run.Error
-			head, err := borrowed.Head(ctx)
+			head, err := held.Head(ctx)
 			switch {
 			case err != nil:
 				fault = run.Fault(run.ClassInternal, "reading the worktree's HEAD: %v", err)
@@ -960,8 +880,8 @@ func (c *Calls) execute(ctx context.Context, handle RunHandle, record run.Record
 				fault = run.Fault(run.ClassCommitted, "the worktree's HEAD is %s, not revision %s: the agent committed in the caller's worktree; its commit stays", head, revision)
 			}
 			// What passed in the worktree was never rebuilt from the patch:
-			// the capture is checked to rebuild it (ADR-022 rule 6).
-			artifacts, content, failed := c.collectChanges(ctx, handle, workspace.Dir, revision, verified, inWorkspace, event)
+			// the capture is checked to rebuild it (ADR-025 rule 5).
+			artifacts, content, failed := c.collectChanges(ctx, handle, workspace.Dir, revision, verified, event)
 			result.Artifacts = artifacts
 			record.InPlace.Content = content
 			if fault == nil {
@@ -970,80 +890,19 @@ func (c *Calls) execute(ctx context.Context, handle RunHandle, record run.Record
 			return fault
 		}
 	}
-	if workspace.Owned {
-		// Recorded before the runtime starts: if this process is killed,
-		// a later reap removes the checkout. A checkout that cannot be
-		// recorded is one nobody could find, so it is released and the
-		// call refused.
-		owned = &run.Checkout{Repository: workspace.Repository, RepositoryIdentity: workspace.RepositoryIdentity, Dir: workspace.Dir, Revision: revision}
-		record.Effects = &run.Effects{Checkout: owned}
-		if err := handle.Update(record); err != nil {
-			record.Effects = nil
-			fail(fmt.Errorf("recording the checkout failed: %w", err))
-			return
-		}
-		// Changes that cannot be carried cost no setup (ADR-013 rule 3).
-		carry := resumed.carry
-		if carry != nil {
-			if err := c.changes.Apply(ctx, workspace.Dir, carry.patch, true); err != nil {
-				fail(refuse("run %s's changes do not apply to revision %s: %v", carry.from, revision, err))
-				return
-			}
-		}
-		// The setup prepares the checkout before the runtime reads it, once:
-		// repair turns continue in the same checkout (ADR-012). A failed one
-		// ends the call before any turn, and leaves no changes of the
-		// call's to keep.
-		if setup := res.Process.Setup; setup != nil {
-			if fault := c.preparer.Setup(ctx, SetupCall{
-				Record: &record, Event: event, Update: handle.Update, Artifact: handle.Artifact,
-				Setup: SetupCommand{Command: setup.Command, Timeout: setup.Timeout}, Dir: workspace.Dir, Base: revision,
-			}); fault != nil {
-				finish(fault)
-				return
-			}
-		}
-	}
 
 	// Every continuation's record has been in the session since Create. Check
-	// again after setup, before applying the selected patch or starting a turn.
+	// again under the hold, before starting a turn.
 	if err := c.currentResumption(ctx, resumed, record.ID, record.Request.Continue); err != nil {
 		fail(err)
 		return
 	}
-	if workspace.Owned {
-		carry := resumed.carry
-		// The setup saw the revision's content; the changes carried are the
-		// session's, applied before its first turn here. The call's own patch
-		// is still from the revision, so it holds them once.
-		if carry != nil {
-			if err := c.changes.Apply(ctx, workspace.Dir, carry.patch, false); err != nil {
-				fail(refuse("run %s's changes could not be applied to revision %s: %v", carry.from, revision, err))
-				return
-			}
-			event(run.SourceAgister, "CHANGES_CARRIED", map[string]any{"run": carry.from, "digest": carry.artifact.Digest, "bytes": carry.artifact.Bytes})
-		}
-		collect = func() *run.Error {
-			artifacts, _, fault := c.collectChanges(ctx, handle, workspace.Dir, revision, verified, false, event)
-			result.Artifacts = artifacts
-			return fault
-		}
-	}
 
 	text := prompt.Inputs(inputs)
-	// A continued call in a checkout of its own is told where it works now,
-	// and what of the session's work is there (ADR-013 rule 4); one in the
-	// caller's worktree, that the session's work is there already (ADR-022
-	// rule 8).
-	switch {
-	case record.Request.Continue != "" && workspace.Owned:
-		var from string
-		if resumed.carry != nil {
-			from = resumed.carry.from
-		}
-		text = strings.TrimSuffix(prompt.Continues(record.Request.Continue, from, workspace.Dir, revision)+"\n\n"+text, "\n\n")
-	case resumed.worktree != nil:
-		text = strings.TrimSuffix(prompt.ContinuesInPlace(record.Request.Continue, resumed.worktree.ID, workspace.Dir, revision)+"\n\n"+text, "\n\n")
+	// A continued call is told that the session's work is in this worktree
+	// already (ADR-025 rule 7).
+	if resumed.worktree != nil {
+		text = strings.TrimSuffix(prompt.Continues(record.Request.Continue, resumed.worktree.ID, workspace.Dir, revision)+"\n\n"+text, "\n\n")
 	}
 	request := TurnRequest{
 		Prompt:          text,
@@ -1058,10 +917,10 @@ func (c *Calls) execute(ctx context.Context, handle RunHandle, record run.Record
 		OutputSchema:    res.Schema,
 		Skills:          skills,
 	}
-	// A call without a checkout has its workspace on record from here: one
-	// killed before its runtime's process is on record too leaves a run a
-	// reap finishes, which takes only runs with effects on record, so they
-	// start empty (ADR-022 rule 3).
+	// The call has its worktree on record from here: one killed before its
+	// runtime's process is on record too leaves a run a reap finishes,
+	// which takes only runs with effects on record, so they start empty
+	// (ADR-025 rule 4).
 	if record.Effects == nil {
 		record.Effects = &run.Effects{}
 	}
@@ -1143,7 +1002,7 @@ func (c *Calls) execute(ctx context.Context, handle RunHandle, record run.Record
 		verified, fault = c.verifier.Verify(ctx, VerifyCall{
 			Record: &record, Result: &result, Event: event, Update: handle.Update, Artifact: handle.Artifact,
 			Verify: definition.Verify{Command: verify.Command, Timeout: verify.Timeout, MaxAttempts: verify.MaxAttempts, Instruction: verify.Instruction}, Limit: res.Effective.MaxCostUSD, Deadline: deadline, NoOutput: res.Effective.Stale.NoOutput,
-			Dir: workspace.Dir, Base: revision, Repository: workspace.Repository, InWorkspace: inWorkspace, Request: request, Session: turn.ProviderSessionID,
+			Dir: workspace.Dir, Base: revision, Request: request, Session: turn.ProviderSessionID,
 			Take: take, Conclude: conclude,
 		})
 	}
@@ -1405,68 +1264,13 @@ func (c *Calls) startNode(ctx context.Context, parent string, node CallNode, par
 
 // resumption is what a continued call resumes: the provider session, which
 // the runtime resumes in place, its totals before the call's first turn,
-// and, for a call with a checkout of its own, the changes it carries
-// (ADR-013), or, for an in-place call, the session's latest run, whose
-// changes are already in the worktree (ADR-022 rule 8); all unset for a
-// fresh session.
+// and the session's latest run, whose changes are already in the worktree
+// (ADR-025 rule 7); all unset for a fresh session.
 type resumption struct {
 	session  string
-	latest   string // selected before checkout setup
+	latest   string // selected before the worktree is held
 	before   *run.SessionTotals
-	carry    *carried
 	worktree *run.Record
-}
-
-// carried is the changes.patch of a continued session's latest run, read and
-// matched against its digest, to apply to the call's checkout.
-type carried struct {
-	from     string // the session's latest run
-	artifact run.Artifact
-	patch    []byte
-	// base is the revision the latest run's checkout was of; empty on its
-	// record when made before it was recorded.
-	base string
-	// process and inputs are that run's, which name its revision then.
-	process     string
-	definitions []run.DefinitionSource
-	inputs      []run.Input
-}
-
-// onto refuses changes carried onto another revision than they are from
-// (ADR-013 rule 2). A record that names no revision is taken at its input
-// the call's process checks out, when its recorded definition matches.
-func (c *carried) onto(res *ResolvedCall, revision string) error {
-	process := res.Process
-	base := c.base
-	if base == "" && c.process == process.Name {
-		before := processDigest(c.definitions, c.process)
-		if before == "" || before != processDigest(recordSources(res.Sources), process.Name) {
-			return refuse("the revision run %s worked on is unknown: its process definition cannot be matched to the current process %s; its changes cannot be carried", c.from, process.Name)
-		}
-		for _, input := range c.inputs {
-			if input.Name == process.Checkout && input.Revision {
-				base = input.Identity
-			}
-		}
-	}
-	switch {
-	case base == "" && c.process != process.Name:
-		return refuse("the revision run %s worked on is unknown: its record names none, and it ran process %s, not %s; its changes cannot be carried", c.from, c.process, process.Name)
-	case base == "":
-		return refuse("the revision run %s worked on is unknown: its record names none, nor any input %s; its changes cannot be carried", c.from, process.Checkout)
-	case base != revision:
-		return refuse("run %s's changes are from revision %s, not %s; a continuation carries them only onto the same revision", c.from, base, revision)
-	}
-	return nil
-}
-
-func processDigest(sources []run.DefinitionSource, name string) string {
-	for _, source := range sources {
-		if source.Kind == string(definition.KindProcess) && source.Name == name {
-			return source.SHA256
-		}
-	}
-	return ""
 }
 
 // continuation checks a request to continue an earlier run's session and
@@ -1497,17 +1301,8 @@ func (c *Calls) continuation(ctx context.Context, res *ResolvedCall, self, runID
 	case prior.Result == nil || prior.Result.Session == nil || prior.Result.Session.ProviderSessionID == "":
 		return resumption{}, refuse("run %s has no provider session", runID)
 	}
-	// An in-place call resumes where the session's latest run worked, known
-	// only from the session's runs.
-	if res.Identity.ResumeWhereItRan && !res.Process.InPlace {
-		if err := c.whereItRan(ctx, res, prior, cwd); err != nil {
-			return resumption{}, err
-		}
-	}
 	resumed := resumption{session: prior.Result.Session.ProviderSessionID}
-	// Every continuation must know the session is idle, including calls
-	// without a checkout. Otherwise one can advance a selected patch's session
-	// while its checkout setup is still running.
+	// Every continuation must know the session is idle.
 	records, err := c.runs.ListStrict(ctx)
 	if err != nil {
 		return resumption{}, refuse("the runs of run %s's session cannot be read: %v", runID, err)
@@ -1518,26 +1313,20 @@ func (c *Calls) continuation(ctx context.Context, res *ResolvedCall, self, runID
 	}
 	resumed.latest = latest
 	resumed.before = run.LatestTotals(records, resumed.session, self)
-	if res.Process.Checkout == "" {
-		return resumed, nil
+	// Nothing is carried: the call resumes where the session's latest run
+	// worked, known only from the session's runs, and the holder admits
+	// the worktree only as that run left it (ADR-025 rule 7).
+	worked := prior
+	if found, _ := run.Latest(records, resumed.session, self); found != nil {
+		worked = *found
 	}
-	if res.Process.InPlace {
-		// Nothing is carried: the borrower admits the worktree only as the
-		// latest run left it.
-		worked := prior
-		if found, _ := run.Latest(records, resumed.session, self); found != nil {
-			worked = *found
+	if res.Identity.ResumeWhereItRan {
+		if err := c.whereItRan(ctx, res, worked, cwd); err != nil {
+			return resumption{}, err
 		}
-		if res.Identity.ResumeWhereItRan {
-			if err := c.whereItRan(ctx, res, worked, cwd); err != nil {
-				return resumption{}, err
-			}
-		}
-		resumed.worktree = &worked
-		return resumed, nil
 	}
-	resumed.carry, err = c.carried(ctx, records, prior, resumed.session, self, cwd)
-	return resumed, err
+	resumed.worktree = &worked
+	return resumed, nil
 }
 
 // sessionLatest refuses unfinished or overlapping runs and names the session's
@@ -1571,80 +1360,13 @@ func (c *Calls) currentResumption(ctx context.Context, resumed resumption, self,
 	return nil
 }
 
-// carried reads the changes a continuation with a checkout carries: the
-// changes.patch of the session's latest run, the run continued or a later
-// continuation of it (ADR-013 rule 1). None when that run worked in no
-// checkout or kept no patch. It refuses when the latest run is unknown, when
-// it worked in-place (ADR-022 rule 8), when its checkout was of another
-// repository than the call's, or when its patch cannot be read as it was
-// recorded.
-func (c *Calls) carried(ctx context.Context, records []run.Record, prior run.Record, session, self, cwd string) (*carried, error) {
-	latest, known := run.Latest(records, session, self)
-	if !known {
-		return nil, refuse("the latest run of run %s's session is unknown: one has not finished, or the last to finish overlapped another; its changes cannot be carried", prior.ID)
-	}
-	if latest == nil {
-		latest = &prior
-	}
-	if worked := latest.InPlace; worked != nil {
-		return nil, refuse("run %s, the latest run of the session, worked in-place in worktree %s; a session does not switch from in-place to temporary: continue it with --workspace in-place (ADR-022 rule 8)", latest.ID, worked.Dir)
-	}
-	if latest.Effects == nil || latest.Effects.Checkout == nil || latest.Result == nil {
-		return nil, nil
-	}
-	var patch *run.Artifact
-	for i, artifact := range latest.Result.Artifacts {
-		if artifact.Name == "changes.patch" {
-			patch = &latest.Result.Artifacts[i]
-		}
-	}
-	if patch == nil {
-		return nil, nil
-	}
-	checkout := latest.Effects.Checkout
-	here := c.workspaceRoot(ctx, cwd)
-	var same bool
-	var err error
-	expected, actual := checkout.Repository, here
-	if checkout.RepositoryIdentity != "" {
-		var identity string
-		identity, err = c.workspaces.RepositoryIdentity(ctx, here)
-		expected, actual = checkout.RepositoryIdentity, identity
-		same = actual == expected
-	} else {
-		// Older records only name their launching worktree.
-		same, err = c.workspaces.SameRepository(ctx, here, checkout.Repository)
-	}
-	if err != nil {
-		return nil, refuse("run %s's repository cannot be compared with %s: %v", latest.ID, here, err)
-	}
-	if !same {
-		return nil, refuse("run %s's changes are of repository %s, not %s; a continuation carries them only into the same repository", latest.ID, expected, actual)
-	}
-	data, err := c.runs.Artifact(ctx, latest.ID, *patch)
-	if err != nil {
-		return nil, refuse("run %s's changes.patch cannot be read: %v", latest.ID, err)
-	}
-	sum := sha256.Sum256(data)
-	if digest := "sha256:" + hex.EncodeToString(sum[:]); digest != patch.Digest {
-		return nil, refuse("run %s's changes.patch is %s, not %s as recorded; it is not carried", latest.ID, digest, patch.Digest)
-	}
-	return &carried{
-		from: latest.ID, artifact: *patch, patch: data,
-		base: checkout.Revision, process: latest.Request.Process, definitions: latest.Definitions, inputs: latest.Inputs,
-	}, nil
-}
-
-// whereItRan refuses a continuation of run prior, on a runtime that
-// resumes a session only in the directory it ran in, that would work
-// anywhere else: in a checkout of its own, made for the call, or in
-// another directory than prior worked in. An in-place call works in the
-// caller's worktree, which may be that directory (ADR-022 rule 8). It makes
-// no workspace.
+// whereItRan refuses a continuation of run prior, the session's latest, on
+// a runtime that resumes a session only in the directory it ran in, that
+// would work anywhere else: prior worked in a checkout of its own, or in
+// another directory than the call works in. It makes no workspace.
 func (c *Calls) whereItRan(ctx context.Context, res *ResolvedCall, prior run.Record, cwd string) error {
-	if res.Process.Checkout != "" && !res.Process.InPlace {
-		return refuse("runtime %s resumes a session only in the directory it ran in, and process %s works in a checkout of its own; it cannot continue run %s",
-			res.Mapping.Name, res.Process.Name, prior.ID)
+	if err := workedInACheckout(prior); err != nil {
+		return err
 	}
 	if prior.Workspace == "" {
 		return refuse("runtime %s resumes a session only in the directory it ran in, and run %s recorded none", res.Mapping.Name, prior.ID)
@@ -1655,17 +1377,26 @@ func (c *Calls) whereItRan(ctx context.Context, res *ResolvedCall, prior run.Rec
 	return nil
 }
 
-// collectChanges keeps a call's changes to its own workspace as an
-// artifact: the patch from revision to the checkout's content, or to
-// verified when it names the content a verification run passed on. A run
-// on a clean copy checked revision with this very patch applied, so the
-// patch delivers exactly what passed (ADR-005 rule 1); one in the worktree
-// did not (rebuild): the patch must rebuild that content from revision, or
-// it is not kept (ADR-002 rule 7). No changes store no artifact and are
+// workedInACheckout refuses to continue a session whose latest run worked
+// in a checkout of its own, which a call made before ADR-025: no call works
+// in one any more, and its changes are in no worktree a call works in
+// (ADR-025 rule 7).
+func workedInACheckout(latest run.Record) error {
+	if latest.InPlace == nil && latest.Effects != nil && latest.Effects.Checkout != nil {
+		return refuse("run %s, the latest run of the session, worked in a checkout of its own (%s), made before ADR-025; it cannot be continued: a call works in the caller's worktree now (ADR-025 rule 7)", latest.ID, latest.Effects.Checkout.Dir)
+	}
+	return nil
+}
+
+// collectChanges keeps a call's changes to its worktree as an artifact:
+// the patch from revision to the worktree's content, or to verified when
+// it names the content a verification run passed on. That run checked the
+// worktree, not the patch: the patch must rebuild that content from
+// revision, or it is not kept (ADR-002 rule 7; ADR-025 rule 5). No changes store no artifact and are
 // recorded as NO_CHANGES. It returns the content the patch was taken to,
 // empty when none was kept. A failure is recorded; it does not change the
 // call's status, unless the changes were verified: then the call fails.
-func (c *Calls) collectChanges(ctx context.Context, handle RunHandle, dir, revision, verified string, rebuild bool, event func(string, string, map[string]any)) ([]run.Artifact, string, *run.Error) {
+func (c *Calls) collectChanges(ctx context.Context, handle RunHandle, dir, revision, verified string, event func(string, string, map[string]any)) ([]run.Artifact, string, *run.Error) {
 	ctx = context.WithoutCancel(ctx)
 	identity := verified
 	var err error
@@ -1676,7 +1407,7 @@ func (c *Calls) collectChanges(ctx context.Context, handle RunHandle, dir, revis
 	if err == nil {
 		patch, err = c.changes.Changes(ctx, dir, revision, identity)
 	}
-	if err == nil && rebuild && verified != "" {
+	if err == nil && verified != "" {
 		err = c.rebuilds(ctx, dir, revision, patch, verified)
 	}
 	var artifacts []run.Artifact
@@ -1796,20 +1527,15 @@ func (c *Calls) resolveValues(ctx context.Context, subject string, declared []Ca
 	return inputs, nil
 }
 
-// preparedWorkspace is where a call's agent works.
+// preparedWorkspace is where a call's agent works: the root of the
+// caller's git worktree (ADR-025 rule 1).
 type preparedWorkspace struct {
-	Dir string
-	// Repository is the one Dir belongs to, or is.
-	Repository         string
-	RepositoryIdentity string
-	// Release ends what preparing created; a no-op when it created nothing.
-	Release func() error
-	// Owned is true for a checkout the call created in Repository.
-	Owned bool
+	Dir                string
+	RepositoryIdentity string // empty for a call that pins no revision
 }
 
-// workspaceRoot is the repository of cwd, or cwd outside one: the
-// directory a call without a checkout works in.
+// workspaceRoot is the root of the git worktree that holds cwd, or cwd
+// outside one: the directory a call works in.
 func (c *Calls) workspaceRoot(ctx context.Context, cwd string) string {
 	root, err := c.workspaces.Root(ctx, cwd)
 	if err != nil {
@@ -1818,44 +1544,46 @@ func (c *Calls) workspaceRoot(ctx context.Context, cwd string) string {
 	return root
 }
 
-// prepareWorkspace returns the agent's working directory: a checkout of the
-// revision of the input checkout names, the caller's worktree for an
-// in-place call, which it neither checks nor locks (see CallBorrower), or,
-// when it names none, the repository. It must not overlap Agister's state.
-func (c *Calls) prepareWorkspace(ctx context.Context, checkout string, inPlace bool, inputs []run.Input, cwd string) (preparedWorkspace, error) {
-	noop := func() error { return nil }
-	root := c.workspaceRoot(ctx, cwd)
+// prepareWorkspace returns the agent's working directory: the root of the
+// git worktree that holds the caller's directory cwd, which it neither
+// checks nor holds (see CallHolder), or, outside one, cwd itself. A
+// process that pins a revision, needs a clean worktree or declares verify
+// is refused outside a git worktree (ADR-025 rule 1), and one that pins a
+// revision unless its input is one. It must not overlap Agister's state.
+func (c *Calls) prepareWorkspace(ctx context.Context, process CallProcess, inputs []run.Input, cwd string) (preparedWorkspace, error) {
+	root, rootErr := c.workspaces.Root(ctx, cwd)
+	if rootErr != nil {
+		root = cwd
+	}
 	if overlaps(root, c.stateDir) {
 		return preparedWorkspace{}, refuse("workspace %s overlaps Agister's state %s", root, c.stateDir)
 	}
-	if checkout == "" {
-		return preparedWorkspace{Dir: root, Repository: root, Release: noop}, nil
-	}
-	var revision string
-	for _, input := range inputs {
-		if input.Name == checkout && input.Revision {
-			revision = input.Identity
+	if rootErr != nil {
+		var needs []string
+		if process.Revision != "" {
+			needs = append(needs, "pins a revision (workspace.revision)")
+		}
+		if process.Clean {
+			needs = append(needs, "needs a clean worktree (workspace.clean)")
+		}
+		if process.Verify != nil {
+			needs = append(needs, "declares verify")
+		}
+		if len(needs) > 0 {
+			return preparedWorkspace{}, refuse("directory %s is in no git worktree, and process %s %s: a call works in the caller's git worktree (ADR-025 rule 1): %v", cwd, process.Name, strings.Join(needs, " and "), rootErr)
 		}
 	}
-	if revision == "" {
-		return preparedWorkspace{}, refuse("workspace.checkout: input %s is not a revision", checkout)
+	if process.Revision == "" {
+		return preparedWorkspace{Dir: root}, nil
+	}
+	if _, ok := revisionOf(inputs, process.Revision); !ok {
+		return preparedWorkspace{}, refuse("workspace.revision: input %s is not a revision", process.Revision)
 	}
 	identity, err := c.workspaces.RepositoryIdentity(ctx, root)
 	if err != nil {
 		return preparedWorkspace{}, err
 	}
-	if inPlace {
-		return preparedWorkspace{Dir: root, Repository: root, RepositoryIdentity: identity, Release: noop}, nil
-	}
-	dir, release, err := c.workspaces.Checkout(ctx, root, revision)
-	if err != nil {
-		return preparedWorkspace{}, err
-	}
-	if overlaps(dir, c.stateDir) {
-		_ = release()
-		return preparedWorkspace{}, refuse("workspace %s overlaps Agister's state %s", dir, c.stateDir)
-	}
-	return preparedWorkspace{Dir: dir, Repository: root, RepositoryIdentity: identity, Release: release, Owned: true}, nil
+	return preparedWorkspace{Dir: root, RepositoryIdentity: identity}, nil
 }
 
 // sink records a turn's events, and on the record its process as an effect

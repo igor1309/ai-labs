@@ -1,7 +1,7 @@
 # The repository's verification, which a process names as verify:repo. It
-# runs with your authority, not the agent's permissions, in a clean
-# checkout of the candidate with the agent's patch applied, and runs code
-# the agent may have written. Replace the command with your project's own
+# runs with your authority, not the agent's permissions, in the call's
+# worktree, at the candidate with the agent's changes, and runs code the
+# agent may have written. Replace the command with your project's own
 # check; a repository's own .agister/verifies/repo.yaml replaces this one.
 
 schema: agister.verify/v1alpha1

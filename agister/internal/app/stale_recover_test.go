@@ -52,8 +52,8 @@ func TestAStaleRecoveryBudgetWithoutResumableSessionsRefusesTheCall(t *testing.T
 			if record.Result.Status != run.Failed || class(record) != run.ClassRefused || message(record) != c.reason {
 				t.Fatalf("result %+v, want refused (%s)", record.Result.Error, c.reason)
 			}
-			if len(h.runner.calls()) != 0 || len(h.workspaces.checkouts) != 0 {
-				t.Fatalf("turns %d, checkouts %v after the refusal", len(h.runner.calls()), h.workspaces.checkouts)
+			if len(h.runner.calls()) != 0 {
+				t.Fatalf("turns %d after the refusal", len(h.runner.calls()))
 			}
 			if kinds := h.recorder.kinds(); !contains(kinds, "REFUSED") || contains(kinds, "PLANNED") || kinds[len(kinds)-1] != "CALL_FINISHED" {
 				t.Fatalf("events = %v", kinds)

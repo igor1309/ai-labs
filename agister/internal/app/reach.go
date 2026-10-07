@@ -44,9 +44,8 @@ type reachBlock struct {
 }
 
 var (
-	serviceRef   = DocumentRef{Kind: definition.KindService, Name: "service"}
-	workspaceRef = DocumentRef{Kind: definition.KindWorkspace, Name: string(definition.KindWorkspace)}
-	blocksRef    = DocumentRef{Kind: definition.KindBlocks, Name: string(definition.KindBlocks)}
+	serviceRef = DocumentRef{Kind: definition.KindService, Name: "service"}
+	blocksRef  = DocumentRef{Kind: definition.KindBlocks, Name: string(definition.KindBlocks)}
 )
 
 func newReach() *reach {

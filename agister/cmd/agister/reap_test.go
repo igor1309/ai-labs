@@ -15,6 +15,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/igor1309/ai-labs/agister/internal/adapters/system"
 	"github.com/igor1309/ai-labs/agister/internal/app"
 	"github.com/igor1309/ai-labs/agister/internal/cli"
 	"github.com/igor1309/ai-labs/agister/internal/contract"
@@ -151,8 +152,10 @@ func TestEndRecordedEndsEveryRecordedEffect(t *testing.T) {
 	}
 }
 
-// A run killed with SIGKILL leaves its runtime and its checkout behind; the
-// next call that starts reaps them and finishes the run as lost.
+// A run killed with SIGKILL leaves its runtime behind, and its record of
+// the worktree it worked in (ADR-025); the next call that starts reaps the
+// runtime and finishes the run as lost. No checkout is made, before or
+// after.
 //
 // Contract test: the kernel, at a SIGKILL of the CLI. It releases the
 // run's owner lock and leaves the runtime's process group running, which
@@ -180,7 +183,7 @@ func TestNextCallReapsWhatAKilledRunLeftBehind(t *testing.T) {
 	// Wait until the record shows both effects (the group is reported before its token).
 	var record domain.Record
 	var recordPath string
-	eventually(t, "the record to show the process and the checkout", func() bool {
+	eventually(t, "the record to show the process and the worktree", func() bool {
 		paths, _ := filepath.Glob(filepath.Join(home, "runs", "*", "record.json"))
 		if len(paths) != 1 {
 			return false
@@ -191,7 +194,7 @@ func TestNextCallReapsWhatAKilledRunLeftBehind(t *testing.T) {
 			return false
 		}
 		recordPath = paths[0]
-		if record.Effects == nil || record.Effects.Process == nil || record.Effects.Checkout == nil {
+		if record.InPlace == nil || record.Effects == nil || record.Effects.Process == nil {
 			return false
 		}
 		_, token, err := supervisor.ParseRef(record.Effects.Process.Ref)
@@ -201,7 +204,6 @@ func TestNextCallReapsWhatAKilledRunLeftBehind(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	checkout := record.Effects.Checkout.Dir
 
 	if err := victim.Process.Signal(syscall.SIGKILL); err != nil {
 		t.Fatal(err)
@@ -212,10 +214,7 @@ func TestNextCallReapsWhatAKilledRunLeftBehind(t *testing.T) {
 	if !groupAlive(group) {
 		t.Fatal("the runtime died with agister")
 	}
-	if _, err := os.Stat(checkout); err != nil {
-		t.Fatal(err)
-	}
-	if lines := strings.Split(gitCmd(t, repo, "worktree", "list"), "\n"); len(lines) != 2 {
+	if lines := strings.Split(gitCmd(t, repo, "worktree", "list"), "\n"); len(lines) != 1 {
 		t.Fatalf("worktrees = %v", lines)
 	}
 
@@ -239,13 +238,10 @@ func TestNextCallReapsWhatAKilledRunLeftBehind(t *testing.T) {
 	background.Wait()
 	clock.Started(timeout)
 	clock.Advance(timeout)
-	// The new call ends on its own timeout, taking its runtime and checkout.
+	// The new call ends on its own timeout, taking its runtime.
 	<-composed.hosted.Done(id)
 
 	eventually(t, "the old runtime to be gone", func() bool { return !groupAlive(group) })
-	if _, err := os.Stat(checkout); !errors.Is(err, os.ErrNotExist) {
-		t.Fatalf("checkout left behind: %v", err)
-	}
 	if lines := strings.Split(gitCmd(t, repo, "worktree", "list"), "\n"); len(lines) != 1 {
 		t.Fatalf("worktrees = %v", lines)
 	}
@@ -335,12 +331,15 @@ func abandon(t *testing.T, killed composition, id string) {
 	}
 }
 
-// A run killed while its verification command runs leaves the command's
-// process group and the clean copy it runs in behind, on record; the next
-// call that starts reaps them with the checkout and finishes the run as
-// lost. The run is abandoned in process, as the kill leaves it, with its
-// command blocked; that a SIGKILL leaves a run so is
-// TestNextCallReapsWhatAKilledRunLeftBehind's.
+// A run killed while its verification command runs in its worktree
+// (ADR-025 rule 5) leaves the command's process group behind, on record;
+// the next call that starts reaps it and finishes the run as lost. The run
+// is abandoned in process, as the kill leaves it, with its command
+// blocked; that a SIGKILL leaves a run so is
+// TestNextCallReapsWhatAKilledRunLeftBehind's. The abandoned run's hold on
+// its worktree is still its open file's in the test's process, where a
+// kill would have let it go, so the next call works in a repository of its
+// own.
 //
 // Contract test: the composition's reap over a real git repository and the
 // run store on the filesystem; what is reaped is a fake run in process.
@@ -351,6 +350,7 @@ func abandon(t *testing.T, killed composition, id string) {
 func TestNextCallReapsAKilledRunsVerifyCommand(t *testing.T) {
 	home, repo := setupGit(t, "approve")
 	shipped := read(t, filepath.Join(home, "processes", "adversarial_review.yaml"))
+	shipped = strings.Replace(shipped, "  revision: candidate_revision\n", "  revision: candidate_revision\n  clean: true\n", 1)
 	write(t, filepath.Join(home, "processes", "verified.yaml"), strings.Replace(shipped, "name: adversarial_review", "name: verified", 1)+`
 verify:
   command: `+strconv.Quote(blocks+" & wait")+`
@@ -380,20 +380,20 @@ verify:
 	// its token.
 	clock.Started(timeout)
 	record, _, err := killed.runs.Get(context.Background(), id)
-	if err != nil || record.Effects == nil || record.Effects.Command == nil || record.Effects.Checkout == nil || record.Effects.Copy == nil {
-		t.Fatalf("effects = %+v, %v", record.Effects, err)
+	if err != nil || record.InPlace == nil || record.Effects == nil || record.Effects.Command == nil || record.Effects.Checkout != nil || record.Effects.Copy != nil {
+		t.Fatalf("in place %+v, effects %+v, %v", record.InPlace, record.Effects, err)
 	}
 	command := record.Effects.Command.Ref
 	if _, token, err := supervisor.ParseRef(command); err != nil || token == "" {
 		t.Fatalf("the command's group on record = %q: %v", command, err)
 	}
-	checkout, copied := record.Effects.Checkout.Dir, record.Effects.Copy.Dir
-
 	// The kill: the run is nobody's, and its command's group runs on.
 	abandon(t, killed, id)
 	left := &orphans{}
 	left.leave(command)
 
+	other := repository(t, "approve")
+	config = cli.Config{Home: home, Cwd: other}
 	composed := inProcess(config)
 	composed.processes = left
 	client, background, err := composed.wire(config)
@@ -401,7 +401,7 @@ verify:
 		t.Fatal(err)
 	}
 	next, err := client.Submit(context.Background(), contract.CallRequest{
-		Process: "adversarial_review", Params: map[string]string{"base": "main"}, Timeout: "30s", Cwd: repo,
+		Process: "adversarial_review", Params: map[string]string{"base": "main"}, Timeout: "30s", Cwd: other,
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -413,12 +413,6 @@ verify:
 	if left.alive(command) {
 		t.Fatal("the command's group was not reaped")
 	}
-	if _, err := os.Stat(checkout); !errors.Is(err, os.ErrNotExist) {
-		t.Fatalf("checkout left behind: %v", err)
-	}
-	if _, err := os.Stat(copied); !errors.Is(err, os.ErrNotExist) {
-		t.Fatalf("clean copy left behind: %v", err)
-	}
 	old, state, err := composed.runs.Get(context.Background(), id)
 	if err != nil || state != domain.StateFinished || old.Result == nil || old.Result.Status != domain.Lost || old.Result.Error.Class != domain.ClassAbandoned {
 		t.Fatalf("old run = %s %+v, %v", state, old.Result, err)
@@ -427,12 +421,14 @@ verify:
 	if !strings.Contains(string(events), `"EFFECTS_REAPED"`) || !strings.Contains(string(events), `"command":{"outcome":"killed"`) {
 		t.Fatalf("no reap of the command:\n%s", events)
 	}
-	// The new call ends too, and its checkout goes with it. Until it ends,
-	// it may not have made its checkout yet, and would take its worktree
-	// turn under the home while the test's cleanup removes it.
+	// The new call ends too. Until it ends, it would take its turn under
+	// the home while the test's cleanup removes it. Neither call made a
+	// checkout.
 	<-composed.hosted.Done(next)
-	if lines := strings.Split(gitCmd(t, repo, "worktree", "list"), "\n"); len(lines) != 1 {
-		t.Fatalf("worktrees = %v", lines)
+	for _, dir := range []string{repo, other} {
+		if lines := strings.Split(gitCmd(t, dir, "worktree", "list"), "\n"); len(lines) != 1 {
+			t.Fatalf("worktrees of %s = %v", dir, lines)
+		}
 	}
 }
 
@@ -440,7 +436,10 @@ verify:
 // cleanup registered for it: the call here blocks in its verification
 // command until cancelled, and the test never ends it otherwise. Once the
 // cleanup returns, the run is finished, its command has seen its context
-// end, and its checkout and clean copy are gone.
+// end, and its hold on the worktree is released: a writer takes it again.
+//
+// Contract test: the worktree's hold is the composition's lock file's
+// (flock), taken again here as a writer would.
 func TestCleanupRunCancelsAndDrainsABlockedCall(t *testing.T) {
 	t.Parallel()
 	command := newBlockedCommand()
@@ -454,8 +453,8 @@ func TestCleanupRunCancelsAndDrainsABlockedCall(t *testing.T) {
 
 	<-command.started
 	running, _, err := h.store.Get(context.Background(), id)
-	if err != nil || running.Effects == nil || running.Effects.Command == nil || running.Effects.Checkout == nil || running.Effects.Copy == nil {
-		t.Fatalf("record effects %+v, %v", running.Effects, err)
+	if err != nil || running.InPlace == nil || running.Effects == nil || running.Effects.Command == nil {
+		t.Fatalf("in place %+v, record effects %+v, %v", running.InPlace, running.Effects, err)
 	}
 
 	fake.runCleanups()
@@ -468,10 +467,12 @@ func TestCleanupRunCancelsAndDrainsABlockedCall(t *testing.T) {
 	}
 	expect(t, record, domain.Interrupted, domain.ClassCancelled, "cancelled during attempt 1's run")
 	<-command.cancelled
-	for _, dir := range []string{running.Effects.Checkout.Dir, running.Effects.Copy.Dir} {
-		if _, err := os.Stat(dir); !errors.Is(err, os.ErrNotExist) {
-			t.Fatalf("%s left behind: %v", dir, err)
-		}
+	_, release, err := system.WorktreeLocks{Dir: filepath.Join(h.home, "locks", "in-place")}.Lock(h.repo, true)
+	if err != nil {
+		t.Fatalf("the worktree is still held: %v", err)
+	}
+	if err := release(); err != nil {
+		t.Fatal(err)
 	}
 	if left := h.left(); len(left) != 0 {
 		t.Fatalf("checkouts left: %v", left)

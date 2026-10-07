@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"reflect"
 	"testing"
 	"time"
@@ -289,8 +288,7 @@ func TestARepairTurnAddsToTheTrail(t *testing.T) {
 	verifying(h)
 	h.commands.exits = []int{1}
 	// The repair turn's content was not checked before.
-	identities := 0
-	h.changes.identify = func() string { identities++; return fmt.Sprintf("tree-%d", identities) }
+	changingEachTurn(h)
 	first, repair := completes(h), completes(h)
 	first.act = func(_ context.Context, sink app.EventSink) {
 		sink.ToolStarted(app.ToolCall{ID: "t1", Name: "Edit", Writes: []string{"a.go"}})

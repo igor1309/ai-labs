@@ -80,8 +80,8 @@ var staleLimits = func() map[string]domain.StaleLimits {
 }()
 
 // verifyFixture is the verification command every process that declares
-// verify, inline or by name, runs in the test's repository instead of its own: it passes in a
-// checkout of the candidate. The real command would run this module's own
+// verify, inline or by name, runs in the test's repository instead of its own: it passes in
+// the worktree, at the candidate (ADR-025). The real command would run this module's own
 // tests, this one included.
 const verifyFixture = "grep -qx two change.txt"
 
@@ -405,7 +405,7 @@ func TestReviewNodesReceiveTheGoalAndTheJudgeDoesNot(t *testing.T) {
 }
 
 // The advisor answers a question file on the Codex agent, a model family
-// other than the judge's, in a checkout of the revision, and is given the
+// other than the judge's, in the caller's worktree (ADR-025), and is given the
 // question and its standing prompt, prompts/advisor.md. Its output is of
 // the advice schema.
 func TestAdvisorAnswersAQuestionFile(t *testing.T) {
@@ -426,9 +426,8 @@ func TestAdvisorAnswersAQuestionFile(t *testing.T) {
 	if want := map[string]any{"advice": map[string]any{"kind": "owner", "reason": "fake"}}; !reflect.DeepEqual(output, want) {
 		t.Fatalf("the advisor's output = %v, want %v", output, want)
 	}
-	// The runtime worked in a checkout of the revision, not in the
-	// caller's repository.
-	if workspace, _ := record["workspace"].(string); workspace == "" || runtimeCwd(t, home, created[0]) != workspace || workspace == repo {
+	// The runtime worked in the caller's worktree, at the revision.
+	if workspace, _ := record["workspace"].(string); runtimeCwd(t, home, created[0]) != workspace || workspace != repo {
 		t.Fatalf("the advisor's workspace %q, runtime cwd %q, the caller's repository %s", workspace, runtimeCwd(t, home, created[0]), repo)
 	}
 	// The runtime was started under its read-only sandbox.
@@ -1771,12 +1770,15 @@ func fixVerify(t *testing.T, root, repo string) {
 			}
 		}
 	}
-	// fix writes, in place of each link of dir's *.yaml, its file with the
+	// fix links, in place of each link of dir's *.yaml, its file with the
 	// command and timeout of the mapping verification picks from its
-	// document set to the fixture's; a file whose mapping has no command
-	// stays a link.
+	// document set to the fixture's, written outside repo: the worktree a
+	// call works in holds links only, which the fake of git leaves out of
+	// its content (ADR-025). A file whose mapping has no command stays a
+	// link to root's.
 	fix := func(dir string, verification func(document *yaml.Node) *yaml.Node) {
 		t.Helper()
+		outside := tempDir(t)
 		paths, err := filepath.Glob(filepath.Join(dir, "*.yaml"))
 		if err != nil {
 			t.Fatal(err)
@@ -1810,7 +1812,11 @@ func fixVerify(t *testing.T, root, repo string) {
 			if err := os.Remove(path); err != nil {
 				t.Fatal(err)
 			}
-			if err := os.WriteFile(path, fixed, 0o644); err != nil {
+			written := filepath.Join(outside, filepath.Base(path))
+			if err := os.WriteFile(written, fixed, 0o644); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.Symlink(written, path); err != nil {
 				t.Fatal(err)
 			}
 		}

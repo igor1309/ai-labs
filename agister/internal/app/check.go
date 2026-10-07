@@ -283,10 +283,11 @@ func (c *Checker) check(ctx context.Context, probe bool) (CheckResult, error) {
 			}
 			return err
 		}},
-		// Optional: listed only when the document exists.
+		// Optional: listed only when the document exists. A call reads
+		// none of it (ADR-025): it is reported, not parsed.
 		{definition.KindWorkspace, func(d definition.Document) error {
-			_, err := definition.ParseWorkspace(d)
-			return err
+			report.Warnings = append(report.Warnings, "workspace settings "+d.Source.Path+": "+definition.ObsoleteWorkspace)
+			return nil
 		}},
 	}
 	for _, step := range steps {
@@ -402,13 +403,6 @@ func (c *Checker) check(ctx context.Context, probe bool) (CheckResult, error) {
 		if process.Output.Format == "json" {
 			link(from, definition.KindSchema, process.Output.Schema, false)
 		}
-		// A call of a checkout reads the workspace settings for their
-		// setup (ADR-012), mode and precheck (ADR-022), whether or not they
-		// parse, even with a setup of its own; a missing document is no
-		// default, not a missing reference.
-		if process.Checkout != "" && listed[workspaceRef] {
-			link(from, definition.KindWorkspace, workspaceRef.Name, false)
-		}
 	}
 	for _, name := range sortedNames(bundle.Workflows) {
 		from := DocumentRef{Kind: definition.KindWorkflow, Name: name}
@@ -417,6 +411,17 @@ func (c *Checker) check(ctx context.Context, probe bool) (CheckResult, error) {
 		}
 	}
 
+	// Settings a call no longer reads are ignored, and said so (ADR-025).
+	for _, name := range sortedNames(bundle.Processes) {
+		for _, obsolete := range bundle.Processes[name].Obsolete {
+			report.Warnings = append(report.Warnings, "process "+name+": "+obsolete)
+		}
+	}
+	for _, name := range sortedNames(bundle.Verifies) {
+		for _, obsolete := range bundle.Verifies[name].Verify.Obsolete {
+			report.Warnings = append(report.Warnings, "verification "+name+": "+obsolete)
+		}
+	}
 	for _, name := range sortedNames(bundle.Processes) {
 		process := bundle.Resolved(name)
 		switch {

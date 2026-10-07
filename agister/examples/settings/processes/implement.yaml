@@ -1,4 +1,4 @@
-# Implementation in a checkout of the candidate, verified: the node
+# Implementation in the caller's worktree at the candidate, verified: the node
 # completes only once the verification command passes on the content it
 # delivers, and a failing run goes back to the agent in the same session.
 
@@ -11,8 +11,8 @@ policy: process-policy:implement
 
 input:
   instruction: >-
-    Implement the task given as input brief in this checkout of the
-    candidate. Do not commit; Agister keeps your changes.
+    Implement the task given as input brief in this worktree, at the
+    candidate. Do not commit; your changes stay here, uncommitted.
   params:
     candidate: {default: HEAD}
     brief: {}
@@ -21,12 +21,11 @@ input:
     brief: {source: file, path: "${param.brief}"}
 
 workspace:
-  checkout: candidate_revision
-  # A fresh checkout holds only tracked files. If the agent needs untracked
-  # configuration, a setup command prepares it before the first turn; what
-  # it makes must be ignored by git. `.agister/workspace.yaml` can give one
-  # setup for every process with a checkout.
-  # setup: {command: ./scripts/link-local-config, timeout: 1m}
+  revision: candidate_revision
+  # The call works in the caller's worktree, which must be at the candidate
+  # with HEAD's content exactly: verification proves the agent's changes
+  # from a clean start (ADR-025).
+  clean: true
 
 output:
   format: text
