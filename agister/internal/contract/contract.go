@@ -70,9 +70,11 @@ type Client interface {
 	// Export copies each run the request names, and each node's run of a
 	// workflow it names, byte for byte to <To>/<run-id> (ADR-026 rule 7). It
 	// is refused (RefusedError) before it writes anything when To is missing
-	// or not a directory, or a run does not exist or is still running. A copy that
+	// or not a directory, or a run does not exist, is still running or is
+	// being recovered. A copy that
 	// is there already is kept when identical and never overwritten; the
-	// result says what became of each run.
+	// result says what became of each run. Cancelled, it returns the runs
+	// exported before, with the context's error.
 	Export(ctx context.Context, request ExportRequest) (ExportResult, error)
 }
 

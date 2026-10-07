@@ -349,7 +349,11 @@ is not brought: export it by its ID.
 - It is refused, exit 3, before it writes anything, when `--to` is
   missing, does not exist or is not a directory, or a run does not exist
   or is still running, a workflow's node run included. An abandoned run is
-  copied as it was left.
+  copied as it was left. A finished run is refused while another process
+  is recovering what it left; export it once that is done.
+- Each run is held from the start until it is copied: no process writes
+  it meanwhile, so its record and events are copied as they stood
+  together. Recovery waits for the export.
 - A copy is written beside its place and renamed into it once complete,
   so an interrupted export leaves only a `<run-id>.partial-*` directory,
   which no export takes for a copy; remove it.
@@ -360,7 +364,8 @@ is not brought: export it by its ID.
   copy that differs is never overwritten: that run is refused, exit 3,
   naming the file that differs; the other runs are still exported.
 - It prints a line per run: `copied` with its files and bytes, `kept`,
-  `REFUSED` or `FAILED` with the reason.
+  `REFUSED` or `FAILED` with the reason. Interrupted, it prints the runs
+  it finished and exits 2; a run it had not finished has no copy.
 
 ## Exit codes
 

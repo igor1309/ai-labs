@@ -373,11 +373,14 @@ among them, are exported for audit
 byte for byte to `<dir>/<run-id>/`, its owner lock aside, and a workflow
 run brings its nodes' runs; the runs its `links` name are exported by
 name. It is refused, exit 3, before it writes anything when `--to` is
-missing or not a directory, or a run does not exist or is still running.
+missing or not a directory, or a run does not exist or is still running,
+or a process is recovering what a finished run left. Each run is held
+against its writers, its owner and recovery, until it is copied.
 A copy is renamed into place only once complete and its artifacts read
 back with the recorded digests; one that does not match fails, exit 1.
 An identical copy already there is kept; one that differs is never
-overwritten, and that run is refused, naming the file.
+overwritten, and that run is refused, naming the file. An interrupted
+export reports the runs it exported and exits 2.
 
 Home's prompts are kept in git in `prompts/` at the repository root and
 copied into `~/.agister/prompts/` by hand: `install` does not take them

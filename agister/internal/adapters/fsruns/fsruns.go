@@ -370,40 +370,97 @@ func (s Store) Artifact(_ context.Context, id string, artifact run.Artifact) ([]
 // evidence.
 const ownerLock = "owner.lock"
 
-// Files lists the files of run id's directory by slash-separated path
-// relative to it, sorted: its record, events, provider log and artifacts.
-// The owner lock is the store's own state, not evidence, and is not
-// listed. Anything there that is neither a file nor a directory fails the
-// listing.
-func (s Store) Files(_ context.Context, id string) ([]string, error) {
+// Hold takes a stable read of run id, for an export: a shared hold of its
+// owner lock, which keeps out both its owner and a process adopting it to
+// recover what it left, each of which takes the lock alone. Its record is
+// read once held, and its state told from that record: finished, or
+// abandoned. A run whose lock another process holds is not held
+// (app.RunOwnedError). A run with no owner lock has none to take: nothing
+// can own it, so it is read as it is.
+func (s Store) Hold(ctx context.Context, id string) (app.ExportRead, error) {
 	if err := checkID(id); err != nil {
 		return nil, err
 	}
 	dir := s.runDir(id)
+	lock, err := os.Open(filepath.Join(dir, ownerLock))
+	switch {
+	case errors.Is(err, fs.ErrNotExist):
+		lock = nil
+	case err != nil:
+		return nil, err
+	default:
+		if err := syscall.Flock(int(lock.Fd()), syscall.LOCK_SH|syscall.LOCK_NB); err != nil {
+			lock.Close()
+			if !errors.Is(err, syscall.EWOULDBLOCK) {
+				return nil, fmt.Errorf("run %s: %w", id, err)
+			}
+			record, _, err := s.Get(ctx, id)
+			if err != nil {
+				return nil, err
+			}
+			return nil, &app.RunOwnedError{ID: id, Finished: record.FinishedAt != nil}
+		}
+	}
+	read := &held{id: id, dir: dir, lock: lock, state: run.StateAbandoned}
+	data, err := os.ReadFile(filepath.Join(dir, "record.json"))
+	if errors.Is(err, fs.ErrNotExist) {
+		err = fmt.Errorf("run %s: %w", id, contract.ErrNotFound)
+	}
+	if err == nil {
+		if err = json.Unmarshal(data, &read.record); err != nil {
+			err = fmt.Errorf("run %s: %w", id, err)
+		}
+	}
+	if err != nil {
+		read.Release()
+		return nil, err
+	}
+	if read.record.FinishedAt != nil {
+		read.state = run.StateFinished
+	}
+	return read, nil
+}
+
+// held is a stable read of the run in dir, holding its owner lock shared
+// until it is released; lock is nil for a run that has none.
+type held struct {
+	id, dir string
+	lock    *os.File
+	record  run.Record
+	state   run.State
+}
+
+func (h *held) Record() run.Record { return h.record }
+
+func (h *held) State() run.State { return h.state }
+
+// Files lists the files of the run's directory by slash-separated path
+// relative to it, sorted: its record, events, provider log and artifacts.
+// The owner lock is the store's own state, not evidence, and is not
+// listed. Anything there that is neither a file nor a directory fails the
+// listing.
+func (h *held) Files() ([]string, error) {
 	var files []string
-	err := filepath.WalkDir(dir, func(path string, entry fs.DirEntry, err error) error {
+	err := filepath.WalkDir(h.dir, func(path string, entry fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
 		if entry.IsDir() {
 			return nil
 		}
-		relative, err := filepath.Rel(dir, path)
+		relative, err := filepath.Rel(h.dir, path)
 		if err != nil {
 			return err
 		}
 		relative = filepath.ToSlash(relative)
 		if !entry.Type().IsRegular() {
-			return fmt.Errorf("run %s: %s is not a regular file", id, relative)
+			return fmt.Errorf("run %s: %s is not a regular file", h.id, relative)
 		}
 		if relative != ownerLock {
 			files = append(files, relative)
 		}
 		return nil
 	})
-	if errors.Is(err, fs.ErrNotExist) {
-		return nil, fmt.Errorf("run %s: %w", id, contract.ErrNotFound)
-	}
 	if err != nil {
 		return nil, err
 	}
@@ -411,17 +468,23 @@ func (s Store) Files(_ context.Context, id string) ([]string, error) {
 	return files, nil
 }
 
-// Open opens the file of run id at the slash-separated path, as Files lists
-// it: only a file inside the run's directory, and never its owner lock.
-func (s Store) Open(_ context.Context, id, path string) (io.ReadCloser, error) {
-	if err := checkID(id); err != nil {
-		return nil, err
-	}
+// Open opens the run's file at the slash-separated path, as Files lists it:
+// only a file inside the run's directory, and never its owner lock.
+func (h *held) Open(path string) (io.ReadCloser, error) {
 	local := filepath.FromSlash(path)
 	if !filepath.IsLocal(local) || path == ownerLock {
-		return nil, fmt.Errorf("run %s: invalid file path %q", id, path)
+		return nil, fmt.Errorf("run %s: invalid file path %q", h.id, path)
 	}
-	return os.Open(filepath.Join(s.runDir(id), local))
+	return os.Open(filepath.Join(h.dir, local))
+}
+
+// Release lets go of the owner lock; once released, the read holds
+// nothing.
+func (h *held) Release() {
+	if h.lock != nil {
+		h.lock.Close()
+		h.lock = nil
+	}
 }
 
 func (s Store) Events(ctx context.Context, id string, afterSeq int) ([]run.Event, run.State, error) {

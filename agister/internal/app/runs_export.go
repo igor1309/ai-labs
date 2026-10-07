@@ -25,14 +25,44 @@ type Exporter struct {
 
 // ExportRuns reads the runs an export copies, as the run store keeps them.
 type ExportRuns interface {
-	Get(ctx context.Context, id string) (run.Record, run.State, error)
-	// Files lists the files of run id's directory by slash-separated path
+	// Hold takes a stable read of run id: until it is released, no process
+	// writes the run, neither its owner nor one recovering what it left. A
+	// run a process owns is not held: the error is a *RunOwnedError. A run
+	// that does not exist is contract.ErrNotFound.
+	Hold(ctx context.Context, id string) (ExportRead, error)
+}
+
+// ExportRead is a stable read of one run, held until it is released.
+type ExportRead interface {
+	// Record is the run's record as it stands while the read is held.
+	Record() run.Record
+	// State is the run's state as the store tells it while the read is
+	// held: finished, or abandoned.
+	State() run.State
+	// Files lists the files of the run's directory by slash-separated path
 	// relative to it, sorted: its record, events, provider log and
 	// artifacts. The store's own state, its owner lock, is not evidence and
 	// is not listed.
-	Files(ctx context.Context, id string) ([]string, error)
+	Files() ([]string, error)
 	// Open opens one of the files Files lists.
-	Open(ctx context.Context, id, path string) (io.ReadCloser, error)
+	Open(path string) (io.ReadCloser, error)
+	// Release ends the read: the run may be written again.
+	Release()
+}
+
+// RunOwnedError is what ExportRuns.Hold returns for a run a process owns,
+// and so may write: its owner while it runs, or one recovering what it
+// left. Finished says the record read as finished.
+type RunOwnedError struct {
+	ID       string
+	Finished bool
+}
+
+func (e *RunOwnedError) Error() string {
+	if e.Finished {
+		return fmt.Sprintf("run %s is finished, and a process is recovering what it left", e.ID)
+	}
+	return fmt.Sprintf("run %s is still running", e.ID)
 }
 
 // ExportFolders keeps the copies in the folder the caller names.
@@ -74,22 +104,25 @@ func NewExporter(runs ExportRuns, folders ExportFolders) *Exporter {
 	return &Exporter{runs: runs, folders: folders}
 }
 
-// exported is one run an export copies: its record, and the workflow run
-// it comes with as a node; empty for a run the request named.
+// exported is one run an export copies: the read held of it, and the
+// workflow run it comes with as a node; empty for a run the request named.
 type exported struct {
 	id       string
 	workflow string
-	record   run.Record
+	read     ExportRead
 }
 
 // Export copies each run the request names, and each node's run of a
 // workflow it names, to <To>/<run-id>. It is refused before it writes
 // anything when To is missing or cannot take copies, or a run does not
-// exist or is still running. Each run is then copied, kept or refused on its own: a copy that
-// is there already is kept when it is identical to the run, and refused,
-// never overwritten, when it differs. A new copy is staged, its artifacts
-// read back and checked against the digests the record names, and only
-// then put in place.
+// exist or a process owns it. Each run is held from its planning until it
+// is copied, so no process writes it meanwhile. Each run is then copied,
+// kept or refused on its own: a copy that is there already is kept when it
+// is identical to the run, and refused, never overwritten, when it
+// differs. A new copy is staged, its artifacts read back and checked
+// against the digests the record names, and only then put in place. On
+// cancellation, the result holds the runs exported before it, with the
+// context's error.
 func (e *Exporter) Export(ctx context.Context, request contract.ExportRequest) (contract.ExportResult, error) {
 	if len(request.Runs) == 0 {
 		return contract.ExportResult{}, &contract.InputError{Message: "an export needs a run ID"}
@@ -104,12 +137,20 @@ func (e *Exporter) Export(ctx context.Context, request contract.ExportRequest) (
 	if err != nil {
 		return contract.ExportResult{}, err
 	}
-	result := contract.ExportResult{To: request.To}
-	for _, one := range runs {
-		if err := ctx.Err(); err != nil {
-			return result, err
+	// Each read is released once its run is exported; on an early return,
+	// the reads of the runs not reached are.
+	next := 0
+	defer func() {
+		for _, one := range runs[next:] {
+			one.read.Release()
 		}
+	}()
+	result := contract.ExportResult{To: request.To}
+	for next < len(runs) {
+		one := runs[next]
+		next++
 		done, err := e.export(ctx, request.To, one)
+		one.read.Release()
 		if err != nil {
 			return result, err
 		}
@@ -118,12 +159,20 @@ func (e *Exporter) Export(ctx context.Context, request contract.ExportRequest) (
 	return result, nil
 }
 
-// plan reads each run to export, each named run followed by its nodes'
-// runs, each once. It refuses a run that does not exist or is still
-// running: one being written cannot be copied as it ends. An abandoned run
-// is no longer written, and is copied as it was left.
-func (e *Exporter) plan(ctx context.Context, ids []string) ([]exported, error) {
-	var runs []exported
+// plan holds each run to export, each named run followed by its nodes'
+// runs, each once. It refuses a run that does not exist or that a process
+// owns: one being written cannot be copied as it ends. An abandoned run is
+// no longer written, and is copied as it was left. On an error, it
+// releases every read it took.
+func (e *Exporter) plan(ctx context.Context, ids []string) (runs []exported, err error) {
+	defer func() {
+		if err != nil {
+			for _, one := range runs {
+				one.read.Release()
+			}
+			runs = nil
+		}
+	}()
 	seen := map[string]bool{}
 	var add func(id, workflow, node string) error
 	add = func(id, workflow, node string) error {
@@ -135,19 +184,12 @@ func (e *Exporter) plan(ctx context.Context, ids []string) ([]exported, error) {
 		if workflow != "" {
 			named = fmt.Sprintf("run %s, node %s of workflow run %s,", id, node, workflow)
 		}
-		record, state, err := e.runs.Get(ctx, id)
-		var inputErr *contract.InputError
-		switch {
-		case errors.Is(err, contract.ErrNotFound):
-			return &contract.RefusedError{Message: fmt.Sprintf("%s does not exist", named)}
-		case errors.As(err, &inputErr):
-			return &contract.RefusedError{Message: inputErr.Message}
-		case err != nil:
+		read, err := e.hold(ctx, id, named)
+		if err != nil {
 			return err
-		case state == run.StateRunning:
-			return &contract.RefusedError{Message: fmt.Sprintf("%s has not finished: it is still running", named)}
 		}
-		runs = append(runs, exported{id: id, workflow: workflow, record: record})
+		runs = append(runs, exported{id: id, workflow: workflow, read: read})
+		record := read.Record()
 		if record.Workflow == nil {
 			return nil
 		}
@@ -163,18 +205,50 @@ func (e *Exporter) plan(ctx context.Context, ids []string) ([]exported, error) {
 	}
 	for _, id := range ids {
 		if err := add(id, "", ""); err != nil {
-			return nil, err
+			return runs, err
 		}
 	}
 	return runs, nil
 }
 
+// hold takes the read of run id, named as the refusals name it. A state
+// told finished beside a record that is not was told after the record was
+// read, the run finishing between the two: the record is read again, so
+// the nodes and artifacts planned are the finished record's.
+func (e *Exporter) hold(ctx context.Context, id, named string) (ExportRead, error) {
+	for range 2 {
+		read, err := e.runs.Hold(ctx, id)
+		var inputErr *contract.InputError
+		var owned *RunOwnedError
+		switch {
+		case errors.Is(err, contract.ErrNotFound):
+			return nil, &contract.RefusedError{Message: fmt.Sprintf("%s does not exist", named)}
+		case errors.As(err, &inputErr):
+			return nil, &contract.RefusedError{Message: inputErr.Message}
+		case errors.As(err, &owned) && owned.Finished:
+			return nil, &contract.RefusedError{Message: fmt.Sprintf("%s is finished, and a process is recovering what it left: export it once that is done", named)}
+		case errors.As(err, &owned):
+			return nil, &contract.RefusedError{Message: fmt.Sprintf("%s has not finished: it is still running", named)}
+		case err != nil:
+			return nil, err
+		}
+		if read.State() != run.StateFinished || read.Record().FinishedAt != nil {
+			return read, nil
+		}
+		read.Release()
+	}
+	return nil, fmt.Errorf("%s reads finished, and its record does not", named)
+}
+
 // export copies one run to dir, or keeps the identical copy there, or
-// refuses the one that differs. A file that cannot be read or written, or
-// an artifact that does not read back as recorded, fails the run; the
-// error returned is only the context's.
+// refuses the one that differs, all from the read held of it. A file that
+// cannot be read or written, or an artifact that does not read back as
+// recorded, fails the run; the error returned is only the context's.
 func (e *Exporter) export(ctx context.Context, dir string, one exported) (contract.ExportedRun, error) {
 	done := contract.ExportedRun{ID: one.id, Workflow: one.workflow, Dir: filepath.Join(dir, one.id)}
+	if err := ctx.Err(); err != nil {
+		return done, err
+	}
 	failed := func(format string, args ...any) (contract.ExportedRun, error) {
 		if err := ctx.Err(); err != nil {
 			return done, err
@@ -182,7 +256,8 @@ func (e *Exporter) export(ctx context.Context, dir string, one exported) (contra
 		done.Action, done.Problem = contract.ExportFailed, fmt.Sprintf(format, args...)
 		return done, nil
 	}
-	files, err := e.runs.Files(ctx, one.id)
+	record := one.read.Record()
+	files, err := one.read.Files()
 	if err != nil {
 		return failed("listing the run: %v", err)
 	}
@@ -192,7 +267,7 @@ func (e *Exporter) export(ctx context.Context, dir string, one exported) (contra
 		return done, nil
 	}
 	if ok {
-		differs, size, err := e.compare(ctx, dir, one.id, files, present)
+		differs, size, err := e.compare(dir, one, files, present)
 		if err != nil {
 			return failed("comparing the copy there: %v", err)
 		}
@@ -200,7 +275,7 @@ func (e *Exporter) export(ctx context.Context, dir string, one exported) (contra
 			done.Action, done.Problem = contract.ExportRefused, "the copy there differs, and is not overwritten: "+differs
 			return done, nil
 		}
-		if problem := checkArtifacts(one.record, func(path string) (io.ReadCloser, error) { return e.folders.OpenCopy(dir, one.id, path) }); problem != "" {
+		if problem := checkArtifacts(record, func(path string) (io.ReadCloser, error) { return e.folders.OpenCopy(dir, one.id, path) }); problem != "" {
 			return failed("the copy there: %s", problem)
 		}
 		done.Action, done.Files, done.Bytes = contract.ExportKept, len(present), size
@@ -216,13 +291,13 @@ func (e *Exporter) export(ctx context.Context, dir string, one exported) (contra
 		if err := ctx.Err(); err != nil {
 			return done, err
 		}
-		n, err := e.copyFile(ctx, one.id, path, stage)
+		n, err := copyFile(one.read, path, stage)
 		if err != nil {
 			return failed("copying %s: %v", path, err)
 		}
 		size += n
 	}
-	if problem := checkArtifacts(one.record, stage.Open); problem != "" {
+	if problem := checkArtifacts(record, stage.Open); problem != "" {
 		return failed("%s; no copy was put in place", problem)
 	}
 	if err := stage.Commit(); err != nil {
@@ -234,8 +309,8 @@ func (e *Exporter) export(ctx context.Context, dir string, one exported) (contra
 
 // copyFile copies the run's file at path into the stage and returns its
 // size.
-func (e *Exporter) copyFile(ctx context.Context, id, path string, stage ExportStage) (int64, error) {
-	source, err := e.runs.Open(ctx, id, path)
+func copyFile(read ExportRead, path string, stage ExportStage) (int64, error) {
+	source, err := read.Open(path)
 	if err != nil {
 		return 0, err
 	}
@@ -253,7 +328,7 @@ func (e *Exporter) copyFile(ctx context.Context, id, path string, stage ExportSt
 
 // compare says which file first differs between the run and its copy in
 // dir, empty when none does, and the copy's size when none does.
-func (e *Exporter) compare(ctx context.Context, dir, id string, files, present []string) (differs string, size int64, err error) {
+func (e *Exporter) compare(dir string, one exported, files, present []string) (differs string, size int64, err error) {
 	for _, path := range present {
 		if !slices.Contains(files, path) {
 			return path + " is in the copy, not in the run", 0, nil
@@ -263,7 +338,7 @@ func (e *Exporter) compare(ctx context.Context, dir, id string, files, present [
 		if !slices.Contains(present, path) {
 			return path + " is not in the copy", 0, nil
 		}
-		same, n, err := e.sameFile(ctx, dir, id, path)
+		same, n, err := e.sameFile(dir, one, path)
 		if err != nil {
 			return "", 0, fmt.Errorf("%s: %w", path, err)
 		}
@@ -277,13 +352,13 @@ func (e *Exporter) compare(ctx context.Context, dir, id string, files, present [
 
 // sameFile says whether the run's file at path and the copy's hold the
 // same bytes, and how many when they do.
-func (e *Exporter) sameFile(ctx context.Context, dir, id, path string) (bool, int64, error) {
-	source, err := e.runs.Open(ctx, id, path)
+func (e *Exporter) sameFile(dir string, one exported, path string) (bool, int64, error) {
+	source, err := one.read.Open(path)
 	if err != nil {
 		return false, 0, err
 	}
 	defer source.Close()
-	copied, err := e.folders.OpenCopy(dir, id, path)
+	copied, err := e.folders.OpenCopy(dir, one.id, path)
 	if err != nil {
 		return false, 0, err
 	}

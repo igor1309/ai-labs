@@ -584,10 +584,16 @@ func dispatch(ctx context.Context, args []string, env IO, build Build) (int, err
 				to = absolute(to, env.Cwd)
 			}
 			result, err := client.Export(ctx, contract.ExportRequest{Runs: rest[1:], To: to})
+			// The runs exported before an interrupt are reported as done.
+			code := printExport(env.Stdout, result)
+			if errors.Is(err, context.Canceled) {
+				fmt.Fprintln(env.Stderr, "agister: export interrupted: the runs reported above were exported, the others were not")
+				return ExitInterrupted, nil
+			}
 			if err != nil {
 				return 0, err
 			}
-			return printExport(env.Stdout, result), nil
+			return code, nil
 		}
 	}
 	// Lookup refused every command the switch does not run; a test keeps it so.
