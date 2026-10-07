@@ -1,0 +1,44 @@
+# Intent review of a candidate against prompts/code-review-intent.md: the
+# goal's readings, the one the change implements, and where they diverge.
+schema: agister.process/v1alpha1
+name: intent_review_codex
+
+type: process
+uses: agent:codex-sol-61
+policy: process-policy:codex-review
+
+input:
+  instruction: >-
+    Review the exact candidate, your working directory, against the base,
+    following the review prompt given as input review_prompt. Read the
+    change yourself: git diff <base_revision> <candidate_revision>, whole or
+    per file of changed_files. Report material findings
+    only, with repository-relative paths and candidate line numbers.
+    Each finding carries its evidence: the concrete case, the trace you
+    verified and its scope: in the change, or outside it but stopping the
+    goal, or neither. A judge who never reads the code or the goal rules on
+    that evidence alone; a finding without it is rejected.
+    The input goal says what the change is for. Its claims about design or
+    completeness are claims you check, as you check a commit message's. Its
+    scope exclusions are the owner's: you may show that one stops the goal,
+    but you cannot override it.
+  params:
+    base: {default: origin/agister}
+    candidate: {default: HEAD}
+    # The goal file's text, as a review workflow resolves it once for its
+    # reviews (ADR-023 rule 1).
+    goal: {}
+  values:
+    base_revision: {source: git.revision, rev: "${param.base}"}
+    candidate_revision: {source: git.revision, rev: "${param.candidate}"}
+    changed_files: {source: git.changed_files, base: "${value.base_revision}", head: "${value.candidate_revision}"}
+    review_prompt: {source: file, path: prompts/code-review-intent.md}
+    goal: {source: param, name: goal}
+
+workspace:
+  revision: candidate_revision
+
+output:
+  format: json
+  schema: review-result
+  require_valid: true

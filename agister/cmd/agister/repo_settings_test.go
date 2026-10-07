@@ -59,6 +59,7 @@ var codexAgents = map[string]string{
 	"advisor":                   "codex-sol-61",
 	"architecture_review_codex": "codex-sol-61",
 	"clarity_review_codex":      "codex-sol-61",
+	"intent_review_codex":       "codex-sol-61",
 	"tests_review_codex":        "codex-sol-61",
 	"implement_codex":           "codex-implementer-sol-61",
 }
@@ -79,6 +80,7 @@ var staleLimits = func() map[string]domain.StaleLimits {
 		"advisor":                   review,
 		"architecture_review_codex": review,
 		"clarity_review_codex":      review,
+		"intent_review_codex":       review,
 		"tests_review_codex":        review,
 		"review_judge":              {NoEvent: 3 * time.Minute},
 	}
@@ -275,13 +277,21 @@ func recordsStaleLimits(t *testing.T, record map[string]any) {
 // claude, codex and pi that run are fakes, in process.
 func onFakeRuntimes(t *testing.T) (root, repo, home string) {
 	t.Helper()
+	root, repo, home, _ = onFakeRuntimesRecorded(t)
+	return root, repo, home
+}
+
+// onFakeRuntimesRecorded is onFakeRuntimes with the mirror's record in the fake of git,
+// for a test that commits to it.
+func onFakeRuntimesRecorded(t *testing.T) (root, repo, home string, recorded *gittest.Repository) {
+	t.Helper()
 	root, err := filepath.Abs(filepath.Join("..", "..", ".."))
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	home = filepath.Join(tempDir(t), "home")
-	repo = mirror(t, root, home)
+	repo, recorded = mirror(t, root, home)
 	fixVerify(t, root, repo)
 	// The fakes answer as claude, codex and pi, each with an output from
 	// the schema it is given, and report their default versions, which the
@@ -292,24 +302,95 @@ func onFakeRuntimes(t *testing.T) (root, repo, home string) {
 	if r := agisterInput(t, "yes\n", home, tempDir(t), "init"); r.code != 0 {
 		t.Fatalf("init: %d %s", r.code, r.stderr)
 	}
-	return root, repo, home
+	return root, repo, home, recorded
 }
 
 // The judge of code_review rules on the collection of a fixed set of
-// reviews: architecture, tests, adversarial and clarity, the ADR review not
-// among them.
-func TestCodeReviewCollectsItsFourReviews(t *testing.T) {
+// reviews: architecture, tests, adversarial, clarity and intent, the ADR
+// review not among them. The intent reviewer is given its standing prompt,
+// prompts/code-review-intent.md, and declares a valid review-result its
+// required output.
+func TestCodeReviewCollectsItsFiveReviews(t *testing.T) {
 	t.Parallel()
-	_, repo, home := onFakeRuntimes(t)
-	reviews, _ := judgedReviews(t, home, repo, "code_review")
+	root, repo, home := onFakeRuntimes(t)
+	reviews, records := judgedReviews(t, home, repo, "code_review")
 	want := map[string]string{
 		"architecture": "architecture_review_codex completed",
 		"tests":        "tests_review_codex completed",
 		"adversarial":  "adversarial_review_codex completed",
 		"clarity":      "clarity_review_codex completed",
+		"intent":       "intent_review_codex completed",
 	}
 	if !reflect.DeepEqual(reviews, want) {
 		t.Fatalf("code_review's judge collected %v, want %v", reviews, want)
+	}
+
+	prompt, err := os.ReadFile(filepath.Join(root, "prompts", "code-review-intent.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	sum := sha256.Sum256(prompt)
+	digest := "sha256:" + hex.EncodeToString(sum[:])
+	if given := inputOf(t, records["intent_review_codex"], "review_prompt"); given["source"] != "file" || given["identity"] != digest {
+		t.Fatalf("intent_review_codex's review_prompt = %v, want prompts/code-review-intent.md (%s)", given, digest)
+	}
+
+	if output := parseProcess(t, root, "intent_review_codex").Output; output.Format != "json" || output.Schema != "review-result" {
+		t.Fatalf("intent_review_codex's output = %+v, want json of schema review-result", output)
+	}
+	// The parsed process keeps no require_valid: it is read from the document.
+	data, err := os.ReadFile(filepath.Join(root, ".agister", "processes", "intent_review_codex.yaml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var document struct {
+		Output struct {
+			RequireValid bool `yaml:"require_valid"`
+		} `yaml:"output"`
+	}
+	if err := yaml.Unmarshal(data, &document); err != nil {
+		t.Fatal(err)
+	}
+	if !document.Output.RequireValid {
+		t.Fatal("intent_review_codex's output.require_valid is not true, want its output required valid")
+	}
+}
+
+// The intent reviewer reviews the candidate it is given, in the worktree at
+// that candidate (ADR-025 rule 2): with HEAD at another commit, the call is
+// refused, naming the candidate, and its runtime never starts.
+func TestIntentReviewIsRefusedOffItsCandidate(t *testing.T) {
+	t.Parallel()
+	_, repo, home, recorded := onFakeRuntimesRecorded(t)
+	// HEAD moves past feature, the candidate, to a commit of its own.
+	head := recorded.Commit("later", map[string]string{"change.txt": "one\ntwo\nthree\n"})
+	before := map[string]bool{}
+	for _, entry := range readRuns(t, home) {
+		before[entry.Name()] = true
+	}
+	r := agister(t, home, repo, "run", "intent_review_codex", "--param", "base=main", "--param", "candidate=feature", "--param", "goal="+repoGoal)
+	const pinned = "a call works on the revision its process pins, and Agister does not move HEAD (ADR-025 rule 2)"
+	if r.code != cli.ExitRefused || !strings.Contains(r.stderr, pinned) {
+		t.Fatalf("intent_review_codex off its candidate: exit %d, stderr %q, want refused with %q", r.code, r.stderr, pinned)
+	}
+	var created []string
+	for _, entry := range readRuns(t, home) {
+		if !before[entry.Name()] {
+			created = append(created, entry.Name())
+		}
+	}
+	if len(created) != 1 {
+		t.Fatalf("runs recorded: %v, want one", created)
+	}
+	id := created[0]
+	var record map[string]any
+	readJSON(t, filepath.Join(home, "runs", id, "record.json"), &record)
+	candidate, _ := inputOf(t, record, "candidate_revision")["value"].(string)
+	if want := "is at " + head + ", not revision " + candidate; candidate == head || !strings.Contains(r.stderr, want) {
+		t.Fatalf("stderr %q, want %q", r.stderr, want)
+	}
+	if _, err := os.Stat(filepath.Join(home, "runs", id, "provider.jsonl")); !errors.Is(err, fs.ErrNotExist) {
+		t.Fatalf("run %s: the runtime started (provider.jsonl: %v)", id, err)
 	}
 }
 
@@ -893,6 +974,7 @@ func TestReviewPromptsCarryTheirCoverageContract(t *testing.T) {
 		{"code-review-adversarial.md", 8, []promptInstruction{report}},
 		{"code-review-architecture.md", 9, []promptInstruction{report}},
 		{"code-review-clarity.md", 9, []promptInstruction{report}},
+		{"code-review-intent.md", 5, []promptInstruction{report}},
 		{"code-review-adr.md", 6, []promptInstruction{report}},
 		{"code-review-judge.md", 4, []promptInstruction{
 			{"coverage entries are not findings", []string{"`coverage`", "not findings"}},
@@ -962,6 +1044,7 @@ func TestReviewPromptsCarryTheCaseForValue(t *testing.T) {
 		{"prompts/code-review-adversarial.md", []promptInstruction{present}},
 		{"prompts/code-review-architecture.md", []promptInstruction{present}},
 		{"prompts/code-review-clarity.md", []promptInstruction{present}},
+		{"prompts/code-review-intent.md", []promptInstruction{present}},
 		{"prompts/code-review-adr.md", []promptInstruction{present}},
 		{"prompts/code-review-judge.md", []promptInstruction{
 			{"waive: proven, in the change, the burden for fixing not met", []string{
@@ -1048,6 +1131,7 @@ func TestReviewPromptsCarryTheGoal(t *testing.T) {
 				"every changed path", "The goal widens that", "each scenario the goal requires", "changed or not"}}}},
 		{"code-review-architecture.md", []promptInstruction{look}},
 		{"code-review-clarity.md", []promptInstruction{look}},
+		{"code-review-intent.md", []promptInstruction{look}},
 		{"code-review-adr.md", []promptInstruction{look,
 			{"a change that touches no ADR has no change finding; its goal can still raise a goal finding", []string{
 				"A change that touches no ADR", "no finding of scope `change`", "can still raise a `goal` finding"}}}},
@@ -1080,9 +1164,52 @@ func TestReviewPromptsCarryTheGoal(t *testing.T) {
 	}
 	says := []string{"The input goal says what the change is for", "are claims you check",
 		"Its scope exclusions are the owner's", "you cannot override it", "its scope"}
-	for _, name := range []string{"adr_review_codex", "adversarial_review_codex", "architecture_review_codex", "clarity_review_codex", "tests_review_codex"} {
+	for _, name := range []string{"adr_review_codex", "adversarial_review_codex", "architecture_review_codex", "clarity_review_codex", "intent_review_codex", "tests_review_codex"} {
 		if instruction := parseProcess(t, root, name).Instruction; !carries(instruction, says) {
 			t.Errorf("process %s's instruction does not say what its input goal is: it lacks one of %q:\n%s", name, says, instruction)
+		}
+	}
+}
+
+// The intent prompt of the repository carries its duties (LAB-120): it is
+// descriptive, not prescriptive, and its finding's requirement quotes the
+// goal; its definition of done lists the goal's defensible readings, each
+// quoted from its words, names the one the change implements with its
+// trace, makes each requirement of the goal met or a finding, holds the
+// change to the surface the goal speaks of, and reports what goes beyond
+// every reading; and a divergence between two defensible readings is
+// reported as such, for the owner to settle. An instruction is held by its
+// short phrases standing in one paragraph, as in
+// TestReviewPromptsCarryTheirCoverageContract. The prompt is the
+// repository's own, read as it is.
+func TestIntentPromptCarriesItsDuties(t *testing.T) {
+	t.Parallel()
+	const prompt = "code-review-intent.md"
+	data, err := os.ReadFile(filepath.Join("..", "..", "..", "prompts", prompt))
+	if err != nil {
+		t.Fatal(err)
+	}
+	instructions := []promptInstruction{
+		{"descriptive, not prescriptive; a finding's requirement quotes the goal", []string{
+			"descriptive, not prescriptive", "You do not prescribe more work", "`requirement` quotes the goal"}},
+		{"the defensible readings are listed, each quoted from its words", []string{
+			"The defensible readings of the goal are listed, each quoted from its words"}},
+		{"the implemented reading is named with its trace", []string{
+			"The reading the change implements is named, with the trace that shows it"}},
+		{"each requirement of the goal is met or its absence is a finding", []string{
+			"Each requirement of the goal is met by the change, or its absence is a finding"}},
+		{"the surface the goal speaks of is the one exercised", []string{
+			"The surface the goal speaks of", "is the surface the change and its tests exercise",
+			"a change proven one layer below is a finding"}},
+		{"nothing goes beyond every reading without a stated reason", []string{
+			"Nothing in the change goes beyond every reading of the goal without a stated reason"}},
+		{"a divergence between two defensible readings is reported as such, for the owner", []string{
+			"A divergence between two defensible readings is reported as such", "a stance only the owner can take"}},
+	}
+	for _, instruction := range instructions {
+		if !carries(string(data), instruction.phrases) {
+			t.Errorf("prompts/%s lost the instruction %q: no paragraph has all of %q",
+				prompt, instruction.name, instruction.phrases)
 		}
 	}
 }
@@ -1717,8 +1844,8 @@ func schemaAccepts(t *testing.T, record map[string]any, output any, stdout strin
 // over home, with a base revision on main and a candidate on feature, whose
 // working tree's top-level entries link to those of root, .git aside. The
 // revisions hold only change.txt, so no checkout and no diff carries the
-// links.
-func mirror(t *testing.T, root, home string) string {
+// links. It returns the repository's record in the fake as well.
+func mirror(t *testing.T, root, home string) (string, *gittest.Repository) {
 	t.Helper()
 	dir, err := filepath.EvalSymlinks(tempDir(t))
 	if err != nil {
@@ -1743,7 +1870,7 @@ func mirror(t *testing.T, root, home string) string {
 			t.Fatal(err)
 		}
 	}
-	return dir
+	return dir, r
 }
 
 // fixVerify makes repo's .agister a directory whose entries link to those of

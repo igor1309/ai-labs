@@ -1,10 +1,11 @@
-# Review of one change (ADR-003): the architecture, tests, adversarial and
-# clarity reviews of the same candidate against the same base, concurrently,
-# then the judge's rulings on them. The judge starts once every review ended,
-# if at least one completed (ADR-004), and receives each review's outcome and,
-# if it completed, its recorded output as its collection, and nothing else.
-# Every review is also given the goal: the file that says what the change is
-# for, such as its issue or brief (ADR-023 rule 1). The judge is not.
+# Review of one change (ADR-003): the architecture, tests, adversarial,
+# clarity and intent reviews of the same candidate against the same base,
+# concurrently, then the judge's rulings on them. The judge starts once every
+# review ended, if at least one completed (ADR-004), and receives each
+# review's outcome and, if it completed, its recorded output as its
+# collection, and nothing else. Every review is also given the goal: the file
+# that says what the change is for, such as its issue or brief (ADR-023 rule
+# 1). The judge is not.
 #   agister run code_review --param base=<rev> --param candidate=<rev> --param goal=<file>
 schema: agister.workflow/v1alpha1
 name: code_review
@@ -31,5 +32,6 @@ fan_out:
   - {node: tests, uses: process:tests_review_codex}
   - {node: adversarial, uses: process:adversarial_review_codex}
   - {node: clarity, uses: process:clarity_review_codex}
+  - {node: intent, uses: process:intent_review_codex}
 
 join: {node: judge, uses: process:review_judge}
