@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"slices"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -1675,7 +1676,7 @@ func recordInputs(handle RunHandle, inputs []run.Input, event func(string, strin
 		if input.Identity == text {
 			out[i].Identity = "sha256:" + digestOf([]byte(text))
 		}
-		name := "input-" + input.Name + ".txt"
+		name := inputArtifactName(inputs, i)
 		artifact, err := handle.Artifact(name, []byte(text))
 		if err != nil {
 			event(run.SourceAgister, "ARTIFACT_FAILED", map[string]any{"name": name, "input": input.Name, "error": err.Error()})
@@ -1685,6 +1686,25 @@ func recordInputs(handle RunHandle, inputs []run.Input, event func(string, strin
 		out[i].Artifact = &artifact
 	}
 	return out
+}
+
+// inputArtifactName is the file name the artifact of inputs[i] is stored
+// under: input-<name>.txt for a name of at most 64 letters, digits, '-'
+// and '_' that no other input has, and otherwise input.<i>.txt, which no
+// such name can produce, so each input's artifact is its own.
+func inputArtifactName(inputs []run.Input, i int) string {
+	name := inputs[i].Name
+	plain := len(name) > 0 && len(name) <= 64 && !strings.ContainsFunc(name, func(r rune) bool {
+		return !(r >= 'a' && r <= 'z' || r >= 'A' && r <= 'Z' || r >= '0' && r <= '9' || r == '-' || r == '_')
+	})
+	repeated := false
+	for j, other := range inputs {
+		repeated = repeated || j != i && other.Name == name
+	}
+	if plain && !repeated {
+		return "input-" + name + ".txt"
+	}
+	return "input." + strconv.Itoa(i) + ".txt"
 }
 
 // given is the request as the caller gave it: with its params, which its

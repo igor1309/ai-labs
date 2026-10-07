@@ -191,7 +191,10 @@ or contains it.
   or a short literal itself. A text value of up to 2000 bytes is there as
   its `value`. A longer one is not: its `artifact` names the file that
   holds exactly what the agent received, `artifacts/input-<name>.txt` in
-  the run's directory, with its `digest` and `bytes`, and a long literal,
+  the run's directory (`artifacts/input.<n>.txt`, `<n>` its place among
+  the `inputs` from 0, when its name is shared, holds anything but
+  letters, digits, `-` and `_`, or runs over 64 characters), with its
+  `digest` and `bytes`, and a long literal,
   such as the goal a workflow passes to its nodes as a param, is recorded
   by its `sha256:` digest, as its `identity` and in `request.params`. A
   text that could not be kept is the event `ARTIFACT_FAILED`. A run

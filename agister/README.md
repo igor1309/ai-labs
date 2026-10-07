@@ -128,7 +128,10 @@ The run's record lists the `inputs` it was given, each with its
 of up to 2000 bytes is in the record as its `value`. A longer one is kept
 with the run, beside `changes.patch`, as
 `~/.agister/runs/<id>/artifacts/input-<name>.txt`, exactly the bytes the
-agent received, and the input names it under `artifact`, with its
+agent received; an input whose name another input shares, or holds
+anything but letters, digits, `-` and `_`, or runs over 64 characters,
+is kept as `input.<n>.txt` instead, `<n>` its place among the record's
+`inputs`, from 0. The input names it under `artifact`, with its
 `digest` and `bytes`; a long literal, such as the goal a workflow passes
 to each node as a param, is recorded by its `sha256:` digest, as its
 `identity` and in the request's `params`. An input's text that could not

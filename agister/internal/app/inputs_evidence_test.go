@@ -226,6 +226,92 @@ func TestAWorkflowNodesLongParamIsRecordedAsADigest(t *testing.T) {
 	}
 }
 
+// Inputs whose names repeat, or hold what a file name cannot, each keep
+// their own artifact, under a safe name of their place among the inputs.
+func TestInputArtifactsAreEachInputsOwn(t *testing.T) {
+	t.Parallel()
+	h := newHarness()
+	h.defs.docs[definition.KindProcess]["p"] = strings.Replace(h.defs.docs[definition.KindProcess]["p"],
+		`    diff: {source: git.diff, base: "${param.base}", head: "${param.candidate}"}`+"\n",
+		`    diff: {source: git.diff, base: "${param.base}", head: "${param.candidate}"}`+"\n"+
+			"    brief: {source: file, path: one.md}\n    brief: {source: file, path: two.md}\n    notes/today: {source: file, path: notes.md}\n", 1)
+	texts := map[string]string{"one.md": longText + "one", "two.md": longText + "two", "notes.md": longText + "notes"}
+	base := h.inputs.respond
+	h.inputs.respond = func(spec app.InputSpec) (app.Resolved, error) {
+		if text, ok := texts[spec.Args["path"]]; ok {
+			return app.Resolved{Value: text, Identity: "sha256:" + sha(text)}, nil
+		}
+		return base(spec)
+	}
+	record := h.call(t, contract.CallRequest{})
+	if record.Result.Status != run.Completed {
+		t.Fatalf("result = %+v", record.Result)
+	}
+	want := []struct{ name, text, file string }{
+		{"brief", texts["one.md"], "input.2.txt"},
+		{"brief", texts["two.md"], "input.3.txt"},
+		{"notes/today", texts["notes.md"], "input.4.txt"},
+	}
+	if len(record.Inputs) != 5 {
+		t.Fatalf("inputs = %+v", record.Inputs)
+	}
+	for i, want := range want {
+		input := record.Inputs[2+i]
+		digest := "sha256:" + sha(want.text)
+		if input.Name != want.name || input.Value != nil || input.Identity != digest || input.Artifact == nil ||
+			*input.Artifact != (run.Artifact{Name: want.file, Path: "artifacts/" + want.file, Digest: digest, Bytes: int64(len(want.text))}) {
+			t.Fatalf("input %d = %+v, artifact %+v", 2+i, input, input.Artifact)
+		}
+		if stored := string(h.recorder.artifacts[want.file]); stored != want.text {
+			t.Fatalf("%s holds %q, want %s's text", want.file, stored, want.name)
+		}
+	}
+	if len(h.recorder.artifacts) != 3 {
+		t.Fatalf("artifacts = %v", h.recorder.artifacts)
+	}
+}
+
+// A workflow given a long goal through its params records the goal's
+// digest, in its request and its input, and keeps the bytes as its
+// artifact; its nodes, which take the goal from the workflow, receive the
+// goal's text unchanged, not its digest.
+func TestAWorkflowsLongParamReachesItsNodesWhole(t *testing.T) {
+	t.Parallel()
+	h := newFlowHarness()
+	takesGoal := func(doc string) string {
+		return strings.Replace(strings.Replace(doc,
+			"    candidate: {default: HEAD}\n", "    candidate: {default: HEAD}\n    goal: {}\n", 1),
+			"  values:\n", "  values:\n    goal: {source: param, name: goal}\n", 1)
+	}
+	h.defs.docs[definition.KindProcess]["first"] = takesGoal(nodeProcess("first", "Work as first."))
+	h.defs.docs[definition.KindProcess]["second"] = takesGoal(nodeProcess("second", "Work as second."))
+	h.defs.docs[definition.KindWorkflow]["w"] = strings.Replace(strings.Replace(workflowDoc,
+		"    candidate: {}\n", "    candidate: {}\n    goal: {}\n", 1),
+		"  values:\n", "  values:\n    goal: {source: param, name: goal}\n", 1)
+	goal := longText + "goal"
+	id := h.submit(t, contract.CallRequest{Params: map[string]string{"candidate": "HEAD", "goal": goal}})
+	record := h.store.wait(t, id)
+	if record.Result.Status != run.Completed {
+		t.Fatalf("result = %+v", record.Result)
+	}
+	digest := "sha256:" + sha(goal)
+	if record.Request.Params["goal"] != digest || record.Request.Params["candidate"] != "HEAD" {
+		t.Fatalf("workflow params = %v", record.Request.Params)
+	}
+	want := run.Artifact{Name: "input-goal.txt", Path: "artifacts/input-goal.txt", Digest: digest, Bytes: int64(len(goal))}
+	if kept := inputOf(t, record, "goal"); kept.Value != nil || kept.Identity != digest || kept.Artifact == nil || *kept.Artifact != want {
+		t.Fatalf("workflow goal = %+v", kept)
+	}
+	if stored := string(h.store.handle(t, id).artifacts["input-goal.txt"]); stored != goal {
+		t.Fatalf("workflow stored %q", stored)
+	}
+	for _, instruction := range []string{"Work as first.", "Work as second."} {
+		if turns := h.runner.turns(instruction); len(turns) != 1 || !strings.Contains(turns[0].Prompt, goal) || strings.Contains(turns[0].Prompt, digest) {
+			t.Fatalf("%s did not receive the goal's text", instruction)
+		}
+	}
+}
+
 // A record written before inputs were kept has no input artifact; it still
 // reads, and the record runs show prints names an input's artifact once
 // there is one.
