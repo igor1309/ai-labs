@@ -12,7 +12,7 @@ Agister works as the caller's hands, in the caller's place. A caller (an agent o
 
 A separation of concerns, decided as design, not on run data (Agister is new and in active development).
 
-- Worktrees are the orchestrator's concern, not Agister's. Worktrees are the right practice for orchestrators, and the owner uses them a lot; but making them is the caller's job. Agister does no worktree work unless asked: it works where it is called. Setup/teardown commands could exist, but better not.
+- Agister is an orchestrator, built by exploring small, isolated steps rather than full-blown orchestrated building. Worktrees are the right practice for orchestration, and the owner uses them a lot; but managing them is not a step Agister takes now: the caller makes them. Agister does no worktree work unless asked: it works where it is called. Setup/teardown commands could exist, but better not.
 - "Unless asked" means the caller makes the worktree and points Agister at it (e.g. `--dir`). Agister keeps no checkout path of its own: all checkout code goes (create, setup, release, reap of checkouts, patch handoff).
 - Dirtiness is a setting, per process. A writing process (implementor) is set to refuse a dirty worktree, failing fast. A read-only process (review) runs on a dirty worktree.
 - Many ADRs need superseding: at least ADR-022, ADR-012, ADR-008, ADR-005, ADR-013, and the checkout parts of ADR-001, ADR-002, ADR-010 and ADR-024.
