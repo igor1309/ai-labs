@@ -9,9 +9,9 @@
 The dated inventory and migration observations ADR-027 rests on, moved
 out of the ADR's Context (adr_review `20261007T184903Z-67ed25`). The
 implementation step reads it to fill `agister/home/` (ADR-027 rule 2)
-and to bring `.agister/` to it (rules 4 to 6). It records what was there
-on 2026-10-07; check it against `~/.agister/` and `.agister/` before
-acting on it.
+and to remove from `.agister/` what the folder holds (rule 6). It
+records what was there on 2026-10-07; check it against `~/.agister/` and
+`.agister/` before acting on it.
 
 ## Home (`~/.agister`)
 
@@ -53,8 +53,8 @@ The rest differ, and the current copy of each is:
 
 - **The eight review, judge and advisor processes** read their prompts by
   a path relative to the caller, `prompts/<name>.md`, found only in this
-  repository. Current: neither path; both take the prompt as a settings
-  prompt (ADR-027 rule 4), otherwise the text they share.
+  repository. Current: neither path; the folder's takes the prompt as a
+  settings prompt (ADR-027 rule 4), otherwise the text they share.
   `advisor.yaml`'s header comment: home's generic one.
 - **The four `implement*` processes**: `.agister/`'s have the instruction
   written for ADR-025 ("in this worktree … your changes stay here") and
@@ -62,13 +62,13 @@ The rest differ, and the current copy of each is:
   older instruction and no Go prompts. Current: `.agister/`'s.
 - **`schemas/advice.json`**: `.agister/`'s names
   `agister/docs/decisions.md` where home's is generic, as with
-  `advisor.md`. Current for the folder: home's; `.agister/` keeps its
-  wording, listed with its reason (ADR-027 rule 6).
+  `advisor.md`. Current: home's; `.agister/`'s leaves it, as every
+  shared document does (ADR-027 rule 6).
 - **`service.toml`** differs from home's only in a comment. Current:
   home's.
 - **`workflows/code_review.yaml`** differs only in how a comment wraps.
-  No copy was named current; `.agister/` takes whichever the folder
-  holds (ADR-027 rule 6).
+  No copy was named current; the folder takes either, and `.agister/`'s
+  leaves it (ADR-027 rule 6).
 
 Only `.agister/` has `verifies/repo.yaml` and `prompts/go-*.md`, the
 latter copies of `prompts/go-*.md` that a test keeps identical. Only home

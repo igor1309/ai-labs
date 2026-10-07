@@ -15,8 +15,9 @@
   [ADR-019](019-a-prompt-may-be-optional.md)
 - **Source:** LAB-84; advisor run `20261007T182802Z-562aca`; the owner's
   choice of option (a), 2026-10-07; the owner's decision on this ADR as
-  proposed (adr_review `20261007T183934Z-6c7c05`), 2026-10-07: keep the
-  `.agister/` copies; the inventory of home and `.agister/` it rests on,
+  proposed (adr_review `20261007T183934Z-6c7c05`), 2026-10-07: first to
+  keep the `.agister/` copies, then one copy of each document; the
+  inventory of home and `.agister/` it rests on,
   `agister/testdata/briefs/lab-84-inventory.md`
 
 ## Context
@@ -49,9 +50,8 @@ home's source, and an `install` that takes skills.
 - A difference between home and its source shows, with its diff, before
   it is written.
 - Nothing in the source holds a path of one machine.
-- This repository works without home installed.
-- A document that this repository shares with the source differs from it
-  only where the difference is listed with its reason.
+- A document that a repository means only for itself stays in that
+  repository's `.agister/`, and nothing else does.
 - A skill reaches home the way every other settings document does.
 
 ## Decision
@@ -60,10 +60,8 @@ home's source, and an `install` that takes skills.
 is laid out like home's settings and installed with `agister install
 agister/home`, which learns skills. It names no path of a machine: its
 processes take their prompts as settings prompts. The prompts home uses
-move into it from `prompts/`. The repository's `.agister/` keeps its full
-settings, its processes taking the same prompts as settings prompts, and
-a test keeps every document it shares with the folder identical, except
-those listed with their reason.
+move into it from `prompts/`, and the repository's `.agister/` keeps only
+what is its own.
 
 ## Rules
 
@@ -108,19 +106,12 @@ A document that holds what only one machine has, such as an agent whose
 into the folder. None does today. A document only home has is kept by
 every install and listed in its plan (ADR-016 rules 2 and 8).
 
-### 4. No process names a prompt by path
+### 4. No document of the folder names a path
 
 A process of the folder gives a fixed text as a settings prompt,
 `{source: prompt, name: <name>}` (ADR-014), never as a `source: file`
 input. `source: file` is left for what the caller names, a param; a
 folder process fixes no file path, absolute or relative.
-
-`.agister/`'s processes take their prompts the same way, so each can be
-identical to the folder's. Their prompts are found as any prompt is, the
-project's before the global one (ADR-014): `.agister/` holds its copies
-of the eight prompts in `.agister/prompts/<name>.md`, so this
-repository's runs take them from `.agister/` with or without home
-installed.
 
 ### 5. The prompts home uses move out of `prompts/`
 
@@ -129,29 +120,19 @@ The eight prompts home's processes use, `advisor.md` and
 move with their history from `prompts/` to `agister/home/prompts/` and
 leave `prompts/`. `prompts/` stops being the source of any of home's
 documents; it stays the general prompt library, with its other prompts.
-The eight prompts' copies in `.agister/prompts/` (rule 4) are kept by
-the test of rule 6.
 `prompts/go-architecture.md` and `prompts/go-testing-seams.md` stay where
 they are, with their copies in `.agister/prompts/` that a test keeps
 identical: they are this repository's, not home's.
 
-### 6. `.agister/` keeps its full settings, identical where shared
+### 6. `.agister/` keeps only what is the repository's own
 
-The repository's `.agister/` keeps every settings document its runs use,
-so this repository works without home installed. Beside the documents
-only it has (`verifies/repo.yaml` and the two Go prompts), every document
-it holds is one the folder also holds, by kind and name, the eight
-prompts included (rule 4).
-
-A repository test fails when a document `.agister/` shares with the
-folder differs from the folder's, unless the test lists it with its
-reason. The list starts with this repository's wording, which names
-`agister/docs/decisions.md` where the folder's is generic:
-`prompts/advisor.md` and `schemas/advice.json`. Every other shared
-document takes the folder's text, `processes/advisor.yaml`'s header
-comment and `service.toml` included. A document the repository later
-wants to differ from home's is listed the same way, so no project copy
-replaces home's unseen.
+The repository's `.agister/` holds only documents it means for itself:
+today `verifies/repo.yaml` and the two Go prompts. Every other document
+is removed from it, and this repository's runs take them from home. A
+document the repository wants to differ from home's is added to
+`.agister/` and listed, with its reason, in the repository test of
+rule 7. `.agister/` and the folder share no other document by kind and
+name, so no project copy silently replaces home's.
 
 ### 7. A repository test keeps the folder installable
 
@@ -159,9 +140,9 @@ A test of this repository installs `agister/home/` with this binary into
 an empty temporary home and runs `check` on it as global settings, with
 no project settings: a problem fails it. It also fails when a folder
 process takes a `source: file` input with a fixed path (rule 4), and when
-a document `.agister/` shares with the folder differs from it without
-being listed with its reason (rule 6). The repository tests that run this
-repository's processes take home's settings from the folder.
+`.agister/` holds a document the folder holds without being listed with
+its reason (rule 6). The repository tests that run this repository's
+processes take home's settings from the folder.
 
 ### 8. Install takes a skill as it takes any document
 
@@ -214,17 +195,18 @@ home has, listed and kept. Nothing else compares them.
   verification is in neither layer is refused (ADR-010 rule 4). A
   passing `check` of the folder (rule 7) does not show that such a
   process runs in a given repository.
+- This repository's runs take every shared document from home, so they
+  need home installed. They already did: runs live in home, and only home
+  has `runtimes/claude-code.yaml`. Each document has one copy, and each
+  change is made once.
 - Until the owner installs the folder after the merge, home keeps its
-  hand copies, which other repositories' runs use; this repository's runs
-  take `.agister/`'s documents, installed or not.
-- A change to a shared document is made in the folder and in `.agister/`
-  together; the test of rule 6 fails until both match or the difference
-  is listed.
+  hand copies, and this repository's runs, no longer given `.agister/`'s
+  processes, use those: the older `implement` instruction, without the Go
+  prompts.
 - A settings field adopted in `agister/home/` cannot reach home before
   the binary that knows it: the install's staged check refuses it. The
-  LAB-122 hazard of `agister/AGENTS.md` stays as it is: a shared document
-  adopts a new field in the folder and in `.agister/` together, in the
-  change's last commit.
+  LAB-122 hazard of `agister/AGENTS.md` shrinks to what `.agister/`
+  keeps.
 - `agister/AGENTS.md`'s step "update the home settings under `~/.agister`
   to match what it ships" becomes installing the folder.
 - The repository tests that read `prompts/code-review-*.md` and
@@ -247,11 +229,10 @@ home has, listed and kept. Nothing else compares them.
 - **Show drift instead of preventing it** (`check` comparing a home
   document with a recorded source; option c). Rejected by the owner: a
   difference is still made by hand, and only reported afterwards.
-- **`.agister/` keeps only what is the repository's own** (today
-  `verifies/repo.yaml` and the two Go prompts), every other document
-  removed from it and this repository's runs taking them from home, with
-  one copy of each document and each change made once. Rejected by the
-  owner: the repository must work without home installed.
+- **Keep `.agister/`'s copies and test them identical to the folder.**
+  Rejected by the owner: the repository already depends on home (its runs
+  live there; only home has `runtimes/claude-code.yaml`), so copies would
+  buy little and make every change twice.
 - **The folder at the repository root (`home/`).** Rejected: a generic
   name in a repository of many projects, away from the binary whose
   tests check it.
