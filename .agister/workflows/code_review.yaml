@@ -22,7 +22,9 @@ input:
   values:
     base: {source: git.revision, rev: "${param.base}"}
     candidate: {source: git.revision, rev: "${param.candidate}"}
-    goal: {source: file, path: "${param.goal}"}
+    # The call is refused unless its text has the goal's form (ADR-026),
+    # briefs/goal.yaml.
+    goal: {source: file, path: "${param.goal}", form: [goal]}
 
 fan_out:
   - {node: architecture, uses: process:architecture_review_codex}

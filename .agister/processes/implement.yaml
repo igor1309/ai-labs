@@ -18,7 +18,9 @@ input:
     brief: {}
   values:
     candidate_revision: {source: git.revision, rev: "${param.candidate}"}
-    brief: {source: file, path: "${param.brief}"}
+    # A goal, for a one-step change, or a step brief (ADR-026): the call
+    # is refused unless its text has one of the two forms, briefs/*.yaml.
+    brief: {source: file, path: "${param.brief}", form: [goal, step]}
     go_testing: {source: prompt, name: go-testing-seams, optional: true}
     go_architecture: {source: prompt, name: go-architecture, optional: true}
 

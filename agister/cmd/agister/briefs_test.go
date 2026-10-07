@@ -103,3 +103,56 @@ func TestAStepBriefsGoalIsLookedUpThroughTheComposition(t *testing.T) {
 		t.Fatalf("the refused call reached the runtime: %v", refused.first)
 	}
 }
+
+// The repository's implement takes a goal or a step brief as its brief,
+// and its code review a goal as its goal; LAB-119's own goal has the goal
+// form.
+func TestTheRepositorysCallsNameTheirForms(t *testing.T) {
+	t.Parallel()
+	root, err := filepath.Abs(filepath.Join("..", "..", ".."))
+	if err != nil {
+		t.Fatal(err)
+	}
+	read := func(parts ...string) definition.Document {
+		path := filepath.Join(append([]string{root, ".agister"}, parts...)...)
+		data, err := os.ReadFile(path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return definition.Document{Source: definition.Source{Name: filepath.Base(path[:len(path)-len(filepath.Ext(path))]), Path: path}, Bytes: data}
+	}
+	implement, err := definition.ParseProcess(read("processes", "implement.yaml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	review, err := definition.ParseWorkflow(read("workflows", "code_review.yaml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	formsOf := func(values []definition.Value, name string) []string {
+		for _, value := range values {
+			if value.Name == name {
+				return value.Forms
+			}
+		}
+		return nil
+	}
+	if got := formsOf(implement.Values, "brief"); !reflect.DeepEqual(got, []string{"goal", "step"}) {
+		t.Errorf("implement's brief forms = %q", got)
+	}
+	if got := formsOf(review.Values, "goal"); !reflect.DeepEqual(got, []string{"goal"}) {
+		t.Errorf("code_review's goal forms = %q", got)
+	}
+
+	goal, _ := briefForm(t, filepath.Join(root, ".agister"), "goal")
+	text, err := os.ReadFile(filepath.Join(root, "agister", "testdata", "briefs", "lab-119-goal.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if wrong := goal.Check(string(text), func(path string) error {
+		_, err := os.Stat(filepath.Join(root, path))
+		return err
+	}); wrong != nil {
+		t.Fatalf("LAB-119's goal does not have the goal form: %q", wrong)
+	}
+}
