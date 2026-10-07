@@ -1,6 +1,6 @@
 # ADR-027: Home's settings have one source in git
 
-- **Status:** Proposed
+- **Status:** Accepted
 - **Date:** 2026-10-07
 - **Scope:** where the documents of Agister's home settings are kept in
   git, how they reach home, and how `agister install` takes a skill
