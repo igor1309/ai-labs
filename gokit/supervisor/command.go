@@ -98,14 +98,13 @@ func (c Commands) Run(ctx context.Context, request CommandRequest, started func(
 
 	// What bash left running in its group is killed while bash, exited but
 	// not reaped, keeps the group's ID from reuse; only then is it reaped.
-	// An exit that cannot be observed so is not waited for apart from its
-	// reap: the watcher's kill ends before it, as the ID may be reused from
-	// then. The result has no place for what the kill found.
-	observed := process.Exited()
+	// An exit that cannot be observed so leaves bash, perhaps still
+	// running, to the same kill: the watcher's kill ends before the reap,
+	// as the ID may be reused from then, and nothing would end it
+	// otherwise. The result has no place for what the kill found.
+	_ = process.Exited()
 	mu.Lock()
-	if observed == nil {
-		_ = process.Signal(syscall.SIGKILL)
-	}
+	_ = process.Signal(syscall.SIGKILL)
 	reaping = true
 	mu.Unlock()
 	exit := process.Wait()

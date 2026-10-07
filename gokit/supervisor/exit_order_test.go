@@ -17,12 +17,10 @@ import (
 )
 
 // spied is a process that has exited by the time it is asked, and keeps
-// what it is asked, in order. A signal is answered with signalled, the
-// observing of its exit with observed.
+// what it is asked, in order. A signal is answered with signalled.
 type spied struct {
 	group     int
 	signalled error
-	observed  error
 
 	mu    sync.Mutex
 	calls []string
@@ -43,7 +41,7 @@ func (p *spied) Signal(signal syscall.Signal) error {
 
 func (p *spied) Exited() error {
 	p.call("exited")
-	return p.observed
+	return nil
 }
 
 func (p *spied) Wait() supervisor.Exit {
@@ -104,20 +102,75 @@ func TestTheGroupIsKilledBetweenTheExitAndTheReap(t *testing.T) {
 	}
 }
 
-// An exit that cannot be observed without reaping the process is reaped,
-// and nothing is signalled after: the group's ID may be reused by then.
-func TestAnExitThatCannotBeObservedIsReapedWithoutAKill(t *testing.T) {
+// unobserved is a process whose exit cannot be observed apart from its
+// reap (observed), and which is still running: its reap returns only once
+// its group is killed. It keeps what it is asked, in order.
+type unobserved struct {
+	group    int
+	observed error
+	killed   chan struct{}
+	once     sync.Once
+
+	mu    sync.Mutex
+	calls []string
+}
+
+func (p *unobserved) Start(supervisor.Command) (supervisor.Process, error) { return p, nil }
+
+func (p *unobserved) Stdout() io.ReadCloser { return io.NopCloser(strings.NewReader("")) }
+
+func (p *unobserved) Group() int { return p.group }
+
+func (p *unobserved) Token(context.Context) (string, error) { return "unobserved", nil }
+
+func (p *unobserved) Signal(signal syscall.Signal) error {
+	p.call("signal " + signal.String())
+	if signal == syscall.SIGKILL {
+		p.once.Do(func() { close(p.killed) })
+	}
+	return nil
+}
+
+func (p *unobserved) Exited() error {
+	p.call("exited")
+	return p.observed
+}
+
+func (p *unobserved) Wait() supervisor.Exit {
+	p.call("reaped")
+	<-p.killed
+	return supervisor.Exit{Signal: syscall.SIGKILL.String()}
+}
+
+func (p *unobserved) call(name string) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	p.calls = append(p.calls, name)
+}
+
+// An exit that cannot be observed without reaping the process leaves it,
+// perhaps still running, to the kill before the reap, while its unreaped
+// leader keeps the group's ID from reuse: the watcher's signals end before
+// the reap, so nothing else would end it. A run reports the cleanup as
+// unknown, with the group and why the exit could not be observed. A reap
+// before the kill is a hang the binary's -timeout names.
+func TestAnExitThatCannotBeObservedIsKilledBeforeItsReap(t *testing.T) {
 	t.Parallel()
 	for name, run := range ends {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
-			p := &spied{group: supervisortest.NewGroups().Next(), observed: errors.ErrUnsupported}
-			sink := through(run, p)
-			if want := []string{"exited", "reaped"}; !reflect.DeepEqual(p.calls, want) {
+			observed := errors.New("the exit cannot be observed")
+			p := &unobserved{group: supervisortest.NewGroups().Next(), observed: observed, killed: make(chan struct{})}
+			sink := run(context.Background(), p, clocktest.NewClock(start).Timer)
+			if want := []string{"exited", "signal killed", "reaped"}; !reflect.DeepEqual(p.calls, want) {
 				t.Fatalf("calls %q, want %q", p.calls, want)
 			}
-			if sink != nil && (!sink.has("LEFTOVER_CLEANUP_UNKNOWN") || sink.has("LEFTOVER_PROCESSES_KILLED")) {
-				t.Fatalf("events = %v", sink.kinds)
+			if sink == nil {
+				return
+			}
+			want := []map[string]any{{"group": p.group, "error": observed.Error()}}
+			if got := sink.payloadsOf("LEFTOVER_CLEANUP_UNKNOWN"); !reflect.DeepEqual(got, want) || sink.has("LEFTOVER_PROCESSES_KILLED") {
+				t.Fatalf("LEFTOVER_CLEANUP_UNKNOWN %v, want %v (all: %v)", got, want, sink.kinds)
 			}
 		})
 	}
@@ -125,29 +178,45 @@ func TestAnExitThatCannotBeObservedIsReapedWithoutAKill(t *testing.T) {
 
 // The kill after the exit is classified: one that reached a process killed
 // leftovers, one that found none (ESRCH) killed nothing, and any other
-// answer cannot tell either and says so.
+// answer cannot tell either and says so, with why. Each names the group.
 func TestTheKillAfterTheExitIsClassified(t *testing.T) {
 	t.Parallel()
 	for _, c := range []struct {
 		name      string
 		signalled error
-		want      []string
+		kind      string
+		error     string
 	}{
-		{"reached", nil, []string{"LEFTOVER_PROCESSES_KILLED"}},
-		{"none", syscall.ESRCH, nil},
-		{"refused", syscall.EPERM, []string{"LEFTOVER_CLEANUP_UNKNOWN"}},
+		{"reached", nil, "LEFTOVER_PROCESSES_KILLED", ""},
+		{"none", syscall.ESRCH, "", ""},
+		{"refused", syscall.EPERM, "LEFTOVER_CLEANUP_UNKNOWN", syscall.EPERM.Error()},
 	} {
 		t.Run(c.name, func(t *testing.T) {
 			t.Parallel()
-			sink := through(ends["run"], &spied{group: supervisortest.NewGroups().Next(), signalled: c.signalled})
+			p := &spied{group: supervisortest.NewGroups().Next(), signalled: c.signalled}
+			sink := through(ends["run"], p)
 			var got []string
 			for _, kind := range sink.kinds {
 				if strings.HasPrefix(kind, "LEFTOVER_") {
 					got = append(got, kind)
 				}
 			}
-			if !reflect.DeepEqual(got, c.want) {
-				t.Fatalf("leftover events %q, want %q (all: %v)", got, c.want, sink.kinds)
+			var want []string
+			if c.kind != "" {
+				want = []string{c.kind}
+			}
+			if !reflect.DeepEqual(got, want) {
+				t.Fatalf("leftover events %q, want %q (all: %v)", got, want, sink.kinds)
+			}
+			if c.kind == "" {
+				return
+			}
+			payload := map[string]any{"group": p.group}
+			if c.error != "" {
+				payload["error"] = c.error
+			}
+			if got, want := sink.payloadsOf(c.kind), []map[string]any{payload}; !reflect.DeepEqual(got, want) {
+				t.Fatalf("%s %v, want %v", c.kind, got, want)
 			}
 		})
 	}
@@ -220,7 +289,8 @@ func (f *firing) Timer(time.Duration) (<-chan time.Time, func()) {
 // An exit that cannot be observed apart from its reap ends the watcher's
 // signals before the reap: a timeout or a cancellation that comes while
 // the leader is reaped, its group's ID free for reuse, signals nothing.
-// The watcher has ended once it stops its timer.
+// The one kill is the one before the reap. The watcher has ended once it
+// stops its timer.
 func TestNothingIsSignalledOnceAnUnobservedExitIsReaped(t *testing.T) {
 	t.Parallel()
 	for name, run := range ends {
@@ -245,7 +315,7 @@ func TestNothingIsSignalledOnceAnUnobservedExitIsReaped(t *testing.T) {
 				<-timer.stopped
 				close(p.resume)
 				<-done
-				if want := []string{"exited", "reaped"}; !reflect.DeepEqual(p.calls, want) {
+				if want := []string{"exited", "signal killed", "reaped"}; !reflect.DeepEqual(p.calls, want) {
 					t.Fatalf("calls %q, want %q", p.calls, want)
 				}
 			})

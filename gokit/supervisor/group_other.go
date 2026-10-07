@@ -4,8 +4,9 @@ package supervisor
 
 import "errors"
 
-// exited cannot observe an exit without reaping it here: the process is
-// reaped by Wait alone, and what it left running is not signalled.
+// exited cannot observe an exit without reaping it here: the supervisor,
+// told so, kills the group before it reaps the process, as it does with
+// any exit it cannot observe.
 func exited(int) error { return errors.ErrUnsupported }
 
 // zombieAlone is never asked: no exit is observed before its reap.

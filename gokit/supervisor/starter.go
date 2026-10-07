@@ -58,7 +58,8 @@ type Process interface {
 	Signal(syscall.Signal) error
 	// Exited returns once the process has exited, without reaping it: until
 	// Wait, its ID, and so the group's, stays reserved. An error means the
-	// exit could not be observed; Wait still reaps the process.
+	// exit could not be observed: the process may still be running, Signal
+	// still reaches its group, and Wait still reaps it.
 	Exited() error
 	// Wait reaps the process, waiting for its exit if Exited has not
 	// returned, and says how it exited.

@@ -192,13 +192,15 @@ func (r Runtime) Run(ctx context.Context, spec Spec, events Sink, onLine func(st
 
 	// What the process left running in its group is killed while the
 	// leader, exited but not reaped, keeps the group's ID from reuse; only
-	// then is it reaped. An exit that cannot be observed so is not waited
-	// for apart from its reap: the watcher's signals end before it, as the
-	// ID may be reused from then.
+	// then is it reaped. An exit that cannot be observed so leaves the
+	// leader, perhaps still running, to the same kill: the watcher's
+	// signals end before the reap, as the ID may be reused from then, and
+	// nothing would end it otherwise. What that kill reached cannot be
+	// told: the cleanup is the observation's error.
 	cleanup := process.Exited()
 	mu.Lock()
-	if cleanup == nil {
-		cleanup = process.Signal(syscall.SIGKILL)
+	if killed := process.Signal(syscall.SIGKILL); cleanup == nil {
+		cleanup = killed
 	}
 	reaping = true
 	stopKill()
@@ -286,13 +288,13 @@ func (r Runtime) Version(ctx context.Context, command string) (string, error) {
 	}()
 	// What the process left running in its group is killed once its exit
 	// is observed, before the reap: a descendant holding stderr would hold
-	// the reap, which waits for stderr's copy. The watcher's kill ends
-	// before the reap too, whether the exit could be observed or not.
-	observed := process.Exited()
+	// the reap, which waits for stderr's copy. An exit that cannot be
+	// observed so leaves the process, perhaps still running, to the same
+	// kill: the watcher's kill ends before the reap, and nothing would end
+	// it otherwise.
+	_ = process.Exited()
 	mu.Lock()
-	if observed == nil {
-		_ = process.Signal(syscall.SIGKILL)
-	}
+	_ = process.Signal(syscall.SIGKILL)
 	reaping = true
 	mu.Unlock()
 	exit := process.Wait()

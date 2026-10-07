@@ -1,9 +1,7 @@
 package supervisor
 
 import (
-	"bytes"
 	"os"
-	"strconv"
 	"syscall"
 	"unsafe"
 )
@@ -34,33 +32,5 @@ func exited(pid int) error {
 func zombieAlone() error { return nil }
 
 // others says whether the group has a process other than its leader that
-// has not exited, from /proc/<pid>/stat: its state and process group.
-func others(group int) (bool, error) {
-	entries, err := os.ReadDir("/proc")
-	if err != nil {
-		return false, err
-	}
-	for _, entry := range entries {
-		pid, err := strconv.Atoi(entry.Name())
-		if err != nil || pid == group {
-			continue
-		}
-		stat, err := os.ReadFile("/proc/" + entry.Name() + "/stat")
-		if err != nil {
-			continue // gone since the listing
-		}
-		// "pid (comm) state ppid pgrp ...", where comm may hold anything.
-		end := bytes.LastIndexByte(stat, ')')
-		if end < 0 {
-			continue
-		}
-		fields := bytes.Fields(stat[end+1:])
-		if len(fields) < 3 || string(fields[0]) == "Z" || string(fields[0]) == "X" {
-			continue
-		}
-		if pgrp, err := strconv.Atoi(string(fields[2])); err == nil && pgrp == group {
-			return true, nil
-		}
-	}
-	return false, nil
-}
+// has not exited, from /proc.
+func others(group int) (bool, error) { return procOthers(os.DirFS("/proc"), group) }
