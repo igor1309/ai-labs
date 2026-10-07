@@ -50,8 +50,15 @@
 //
 // Tool calls are reported as they start and finish: item.started and
 // item.completed of a command execution, file change, MCP call or web
-// search, with the item's whole input. A command execution is the tool that
-// runs commands; a file change writes the path of each of its changes.
+// search, with the item's whole input, which identifies the call. A command
+// execution is the tool that runs commands; a file change writes the path of
+// each of its changes. A web search's item.started
+// carries an empty query (observed 2026-10-07): the query is on
+// item.completed only. Such a search is not reported at its start but when
+// its item completes, started and finished together, with the completed
+// item's input: its query, and its action where that says more than a search
+// for the query, as an opened page does. One whose start carries a query is
+// reported at its start, and not again when it completes.
 // Codex's stream lists no tool call it refused for want of a permission, so
 // none is reported.
 //
@@ -691,6 +698,9 @@ type Stream struct {
 	Usage           map[string]any
 	// tools are the tool calls reduced and not yet taken (TakeTools).
 	tools []Tool
+	// searches are the web searches reported at their start and not yet
+	// completed, by item ID: any other is reported when it completes.
+	searches map[string]bool
 }
 
 // Tool is a tool call the stream reported: its start, or the end of one,
@@ -726,12 +736,24 @@ func (s *Stream) Reduce(line string) []Event {
 		item, _ := exactly(line)["item"].(map[string]any)
 		if name := toolName(item); name != "" {
 			id, _ := item["id"].(string)
-			s.tools = append(s.tools, Tool{Started: &ToolCall{ID: id, Name: name, Input: wholeInput(item), Command: item["type"] == "command_execution", Writes: writes(item)}})
-			return []Event{{SourceProtocol, "TOOL_REQUESTED", map[string]any{"tool_use_id": item["id"], "name": name, "input": toolInput(item)}}}
+			if item["type"] == "web_search" {
+				// A search without its query is no call to tell from another:
+				// it is reported when its item completes (itemCompleted).
+				if query, _ := item["query"].(string); query == "" {
+					return nil
+				}
+				if s.searches == nil {
+					s.searches = map[string]bool{}
+				}
+				s.searches[id] = true
+			}
+			input := wholeInput(item)
+			s.tools = append(s.tools, Tool{Started: &ToolCall{ID: id, Name: name, Input: input, Command: item["type"] == "command_execution", Writes: writes(item)}})
+			return []Event{requested(item, name, input)}
 		}
 	case "item.completed":
 		item, _ := message["item"].(map[string]any)
-		return s.itemCompleted(item)
+		return s.itemCompleted(item, line)
 	case "error":
 		s.LastError = fmt.Sprint(message["message"])
 		return []Event{{SourceProtocol, "PROVIDER_ERROR", map[string]any{"message": truncate(s.LastError, 300)}}}
@@ -761,7 +783,8 @@ func exactly(line string) map[string]any {
 	return message
 }
 
-func (s *Stream) itemCompleted(item map[string]any) []Event {
+// itemCompleted reduces the completed item of line.
+func (s *Stream) itemCompleted(item map[string]any, line string) []Event {
 	switch item["type"] {
 	case "agent_message":
 		text, _ := item["text"].(string)
@@ -770,7 +793,20 @@ func (s *Stream) itemCompleted(item map[string]any) []Event {
 	case "error":
 		return []Event{{SourceProtocol, "PROVIDER_ERROR", map[string]any{"message": truncate(fmt.Sprint(item["message"]), 300)}}}
 	case "command_execution", "file_change", "mcp_tool_call", "web_search":
-		if id, _ := item["id"].(string); id != "" {
+		var events []Event
+		id, _ := item["id"].(string)
+		if item["type"] == "web_search" {
+			// A search not reported at its start starts here, with the input
+			// its completed item carries.
+			if !s.searches[id] {
+				whole, _ := exactly(line)["item"].(map[string]any)
+				name, input := toolName(item), searchInput(whole)
+				s.tools = append(s.tools, Tool{Started: &ToolCall{ID: id, Name: name, Input: input}})
+				events = append(events, requested(item, name, input))
+			}
+			delete(s.searches, id)
+		}
+		if id != "" {
 			// Only a command's item carries its output.
 			output, reported := item["aggregated_output"].(string)
 			s.tools = append(s.tools, Tool{Finished: finished(id, output, reported)})
@@ -779,7 +815,7 @@ func (s *Stream) itemCompleted(item map[string]any) []Event {
 		if code, ok := item["exit_code"].(float64); ok && code != 0 {
 			failed = true
 		}
-		return []Event{{SourceProtocol, "TOOL_RESULT", map[string]any{"tool_use_id": item["id"], "is_error": failed}}}
+		return append(events, Event{SourceProtocol, "TOOL_RESULT", map[string]any{"tool_use_id": item["id"], "is_error": failed}})
 	}
 	return nil
 }
@@ -891,9 +927,10 @@ func writes(item map[string]any) []string {
 	return paths
 }
 
-// toolInput is the item's input, bounded, as an event quotes it.
-func toolInput(item map[string]any) string {
-	return truncate(wholeInput(item), 300)
+// requested is the event of the item's tool call, quoting its input
+// bounded.
+func requested(item map[string]any, name, input string) Event {
+	return Event{SourceProtocol, "TOOL_REQUESTED", map[string]any{"tool_use_id": item["id"], "name": name, "input": truncate(input, 300)}}
 }
 
 // wholeInput is the item's input: the same text for the same input.
@@ -908,6 +945,25 @@ func wholeInput(item map[string]any) string {
 		}
 	}
 	return ""
+}
+
+// searchInput is the input of a completed web search: its query, followed
+// by its action where that says more than a search for the query, as an
+// opened page does. The same text for the same input.
+func searchInput(item map[string]any) string {
+	query, _ := item["query"].(string)
+	action, ok := item["action"]
+	if !ok || action == nil {
+		return query
+	}
+	if search, ok := action.(map[string]any); ok && len(search) == 2 && search["type"] == "search" && search["query"] == query {
+		return query
+	}
+	data, _ := json.Marshal(action)
+	if query == "" {
+		return string(data)
+	}
+	return query + " " + string(data)
 }
 
 func contains(list []string, value string) bool {
