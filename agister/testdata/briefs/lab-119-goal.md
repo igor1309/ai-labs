@@ -69,6 +69,12 @@ does not have them. Agister checks a brief's structure, never its meaning.
   `20261007T111941Z-98f33a`: option A. The agent updates the home settings
   after a deploy, as the rule added to `agister/AGENTS.md` says; the owner
   asked for it there.
+- 2026-10-07, owner, on item 4#2 of `code_review` run
+  `20261007T111941Z-98f33a` (again 4#1 of `20261007T113352Z-2772e5` and of
+  `20261007T114500Z-09ecc3`; the advisor, run `20261007T112718Z-9a0cef`,
+  answered `owner`): option A. The caller skill keeps its rule: fix the
+  text and call again; do not drop the form from the settings to get past
+  the refusal.
 
 ## Open
 
