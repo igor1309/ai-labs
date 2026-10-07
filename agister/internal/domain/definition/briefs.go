@@ -153,8 +153,8 @@ func (b Brief) Check(text string, resolve func(path string) error) []string {
 		case body == "" && part.Required:
 			wrong = append(wrong, fmt.Sprintf("part %q is empty", part.Heading))
 			continue
-		case body == "":
-			continue
+		case body == "" && part.Reads == "" && part.Reference == "":
+			continue // an optional part may be present and empty, unless it is constrained
 		case part.Reads != "" && body != part.Reads:
 			wrong = append(wrong, fmt.Sprintf("part %q must read %q", part.Heading, part.Reads))
 		}
@@ -186,29 +186,31 @@ type section struct {
 // sections finds each part's heading in text, outside fenced code, by its
 // index among b.Parts. A section ends at the next heading of its level or
 // above; a part's heading below its level opens a section of its own and
-// stays in its body.
+// stays in its body. A section's body is its lines, each without trailing
+// blanks and ended by a newline, joined once when the section closes.
 func (b Brief) sections(text string) map[int][]section {
 	byHeading := map[string]int{}
 	for i, part := range b.Parts {
 		byHeading[part.Heading] = i
 	}
+	lines := strings.Split(text, "\n")
 	found := map[int][]section{}
 	type reading struct {
 		index, level int
-		section      section
+		line         int // the heading's
 	}
 	var open []reading // the sections being read, outermost first
-	closeFrom := func(level int) {
+	closeFrom := func(level, end int) {
 		for len(open) > 0 && open[len(open)-1].level >= level {
 			last := open[len(open)-1]
-			found[last.index] = append(found[last.index], last.section)
+			found[last.index] = append(found[last.index], section{line: last.line, body: joined(lines[last.line+1 : end])})
 			open = open[:len(open)-1]
 		}
 	}
 	fence := ""
-	for n, line := range strings.Split(text, "\n") {
+	for n, line := range lines {
 		line = strings.TrimRight(line, " \t\r")
-		var starts *reading
+		lines[n] = line
 		if fence != "" {
 			if closesFence(line, fence) {
 				fence = ""
@@ -216,20 +218,29 @@ func (b Brief) sections(text string) map[int][]section {
 		} else if marker := fenceMarker(line); marker != "" {
 			fence = marker
 		} else if level := headingLevel(line); level > 0 {
-			closeFrom(level)
+			closeFrom(level, n)
 			if i, ok := byHeading[line]; ok {
-				starts = &reading{index: i, level: level, section: section{line: n}}
+				open = append(open, reading{index: i, level: level, line: n})
 			}
 		}
-		for i := range open {
-			open[i].section.body += line + "\n"
-		}
-		if starts != nil {
-			open = append(open, *starts)
-		}
 	}
-	closeFrom(1)
+	closeFrom(1, len(lines))
 	return found
+}
+
+// joined is lines, each ended by a newline, built in one allocation.
+func joined(lines []string) string {
+	size := len(lines)
+	for _, line := range lines {
+		size += len(line)
+	}
+	var body strings.Builder
+	body.Grow(size)
+	for _, line := range lines {
+		body.WriteString(line)
+		body.WriteByte('\n')
+	}
+	return body.String()
 }
 
 // fenceIndent is the most a fence's marker may be indented, opening or

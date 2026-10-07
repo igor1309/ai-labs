@@ -17,17 +17,19 @@ func TestNamingABriefTheSettingsLackIsAProblemOfWhatNamesIt(t *testing.T) {
 	b := bundle()
 	p := b.Processes["p"]
 	p.Values = []definition.Value{{Name: "v", Source: "param"},
-		{Name: "brief", Source: "param", Forms: []string{"goal", "step"}}}
+		{Name: "brief", Source: definition.FileSource, Args: map[string]string{"path": "brief.md"}, Forms: []string{"goal", "step"}}}
 	b.Processes["p"] = p
 	b.Workflows = map[string]definition.Workflow{"w": {Name: "w",
-		Values: []definition.Value{{Name: "goal", Source: "param", Forms: []string{"goal"}}},
+		Values: []definition.Value{{Name: "goal", Source: definition.FileSource, Args: map[string]string{"path": "goal.md"}, Forms: []string{"goal"}}},
 		FanOut: []definition.Node{{Name: "n", Process: "p"}}, Join: definition.Node{Name: "j", Process: "p"}}}
 	b.Briefs = map[string]bool{"step": true}
+	// Only a file value names forms: the settings offer the file source.
+	files := settings.Mechanisms{Sources: []string{"param", definition.FileSource}, Adapters: mechanisms.Adapters}
 
 	// The workflow's other problems are not the briefs'.
 	briefProblems := func() []string {
 		var got []string
-		for _, problem := range settings.Check(b, mechanisms) {
+		for _, problem := range settings.Check(b, files) {
 			if strings.HasSuffix(problem.String(), "does not exist") {
 				got = append(got, problem.String())
 			}

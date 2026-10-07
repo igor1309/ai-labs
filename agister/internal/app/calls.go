@@ -77,7 +77,7 @@ type ResolvedCall struct {
 	Prompts map[string]Resolved // by name: each prompt's text, identified by its digest
 	Absent  []CallAbsent        // the optional prompt inputs whose prompt neither layer has (ADR-019)
 	// Forms are the brief forms its inputs name, by name (ADR-026 rule 8).
-	Forms map[string]definition.Brief
+	Forms map[string]CallForm
 	// Skills are the call's skills, in order: the process's, then its
 	// agent's, each once (ADR-021).
 	Skills    []CallSkill
@@ -131,6 +131,12 @@ type CallValue struct {
 	// 8); none: its text is not checked.
 	Forms []string
 }
+
+// CallForm checks a text against a brief form (ADR-026 rule 8): it
+// returns each thing that keeps the text from having the form, none when
+// it has it. resolve is asked, with the path as written, whether a file a
+// part refers to exists.
+type CallForm func(text string, resolve func(path string) error) []string
 
 // CallAbsent is an optional prompt input whose prompt neither layer has
 // (ADR-019): the call goes ahead without it, and only it.
@@ -211,7 +217,7 @@ type ResolvedWorkflow struct {
 	NodeProcesses map[string]CallNodeProcess // by name
 	Sources       []CallSource               // the workflow's document, then its brief forms'
 	// Forms are the brief forms its inputs name, by name (ADR-026 rule 8).
-	Forms map[string]definition.Brief
+	Forms map[string]CallForm
 }
 
 // CallWorkflow is what a run reads of its workflow's definition.
@@ -257,7 +263,7 @@ func (c callResolution) Resolve(ctx context.Context, request CallResolveRequest)
 		Agent:   CallAgent{Name: agent.Name, Command: agent.Command, Model: agent.Model, Effort: agent.Effort, Session: agent.Session},
 		Mapping: CallMapping{Name: res.mapping.Name, Adapter: res.mapping.Adapter},
 		Schema:  res.schema,
-		Forms:   res.forms,
+		Forms:   callForms(res.forms),
 		Sources: callSources(res.sources),
 		Effective: CallLimits{
 			Timeout: effective.Timeout, MaxAttempts: effective.MaxAttempts, MaxCostUSD: effective.MaxCostUSD,
@@ -300,7 +306,7 @@ func (c callResolution) Workflow(ctx context.Context, name string) (*ResolvedWor
 		},
 		NodeProcesses: make(map[string]CallNodeProcess, len(res.processes)),
 		Sources:       callSources(res.sources),
-		Forms:         res.forms,
+		Forms:         callForms(res.forms),
 	}
 	for name, process := range res.processes {
 		resolved.NodeProcesses[name] = CallNodeProcess{
@@ -339,6 +345,18 @@ func callValues(values []definition.Value) []CallValue {
 	return translated(values, func(value definition.Value) CallValue {
 		return CallValue{Name: value.Name, Source: value.Source, Args: value.Args, Forms: value.Forms}
 	})
+}
+
+// callForms is each brief form as a call checks a text against it.
+func callForms(forms map[string]definition.Brief) map[string]CallForm {
+	if forms == nil {
+		return nil
+	}
+	checks := make(map[string]CallForm, len(forms))
+	for name, form := range forms {
+		checks[name] = form.Check
+	}
+	return checks
 }
 
 func callSources(sources []definition.Source) []CallSource {
@@ -1507,7 +1525,7 @@ func (c *Calls) rebuilds(ctx context.Context, dir, revision string, patch []byte
 // the call, by name, which a value's text must have one of (ADR-026 rule
 // 8). files are, by each input's place, the base name of the file it was
 // read from, empty for any other.
-func (c *Calls) resolveValues(ctx context.Context, subject string, declared []CallParam, values []CallValue, request run.Request, collection *Resolved, prompts map[string]Resolved, absent []CallAbsent, forms map[string]definition.Brief) (inputs []run.Input, files []string, err error) {
+func (c *Calls) resolveValues(ctx context.Context, subject string, declared []CallParam, values []CallValue, request run.Request, collection *Resolved, prompts map[string]Resolved, absent []CallAbsent, forms map[string]CallForm) (inputs []run.Input, files []string, err error) {
 	params := map[string]string{}
 	var unknown []string
 	for name := range request.Params {
@@ -1588,7 +1606,7 @@ func (c *Calls) resolveValues(ctx context.Context, subject string, declared []Ca
 // (ADR-026 rule 8), naming each form and each part it misses or gets
 // wrong. A part's reference to a file is resolved relative to the
 // caller's directory cwd. A value that names no form is not checked.
-func (c *Calls) formed(ctx context.Context, value CallValue, resolved any, forms map[string]definition.Brief, cwd string) error {
+func (c *Calls) formed(ctx context.Context, value CallValue, resolved any, forms map[string]CallForm, cwd string) error {
 	if len(value.Forms) == 0 {
 		return nil
 	}
@@ -1612,11 +1630,11 @@ func (c *Calls) formed(ctx context.Context, value CallValue, resolved any, forms
 	}
 	var failures []string
 	for _, name := range value.Forms {
-		form, ok := forms[name]
+		check, ok := forms[name]
 		if !ok {
 			return refuse("input %s: brief %q was not resolved with the call", value.Name, name)
 		}
-		wrong := form.Check(text, exists)
+		wrong := check(text, exists)
 		if len(wrong) == 0 {
 			return nil
 		}

@@ -188,6 +188,80 @@ func TestEachWrongPartIsReported(t *testing.T) {
 	}
 }
 
+// constrainedForm has optional parts held to a text or a reference, and one
+// held to nothing.
+const constrainedForm = `schema: agister.brief/v1alpha1
+name: constrained
+parts:
+  - {heading: "## Covers", required: true}
+  - {heading: "## Notes", required: false}
+  - {heading: "## Status", required: false, reads: Done.}
+  - {heading: "## See", required: false, reference: file}
+template: |
+  ## Covers
+
+  ## Notes
+
+  ## Status
+
+  Done.
+
+  ## See
+`
+
+// An optional part may be left out, and one held to nothing may be given
+// empty; one given that must read a text or refer to a file is held to it,
+// empty or not.
+func TestAGivenOptionalPartIsHeldToItsConstraints(t *testing.T) {
+	t.Parallel()
+	brief, err := definition.ParseBrief(doc(definition.KindBrief, "constrained", constrainedForm))
+	if err != nil {
+		t.Fatal(err)
+	}
+	resolve := existing("goals/lab-1.md")
+	const covers = "## Covers\n\n- 1\n"
+	cases := map[string]struct {
+		text string
+		want []string
+	}{
+		"each optional part left out":   {covers, nil},
+		"an empty part held to nothing": {covers + "\n## Notes\n\n", nil},
+		"each part as it must be":       {covers + "\n## Status\n\nDone.\n\n## See\n\n`goals/lab-1.md`\n", nil},
+		"an empty part that must read":  {covers + "\n## Status\n\n  \n", []string{`part "## Status" must read "Done."`}},
+		"an empty part that refers":     {covers + "\n## See\n\n", []string{`part "## See" names no file in back quotes`}},
+		"both empty, last in the text":  {covers + "\n## Status\n## See", []string{`part "## Status" must read "Done."`, `part "## See" names no file in back quotes`}},
+	}
+	for name, c := range cases {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			if wrong := brief.Check(c.text, resolve); !reflect.DeepEqual(wrong, c.want) {
+				t.Fatalf("wrong = %q, want %q", wrong, c.want)
+			}
+		})
+	}
+}
+
+// A section's body is built once, not copied again with each of its lines:
+// checking a long text costs a number of allocations that does not grow
+// with its lines.
+//
+// Serial: testing.AllocsPerRun counts the allocations of every goroutine,
+// so a test running beside it would add its own.
+func TestALongSectionIsReadWithoutCopyingItAgainPerLine(t *testing.T) {
+	brief := parseStep(t)
+	resolve := existing("goals/lab-1.md")
+	long := strings.Replace(stepText, "- 1\n", strings.Repeat("- a criterion\n", 10000), 1)
+	if wrong := brief.Check(long, resolve); wrong != nil {
+		t.Fatalf("wrong = %q", wrong)
+	}
+	// The same text with one line: a check allocates for the text's lines
+	// and its sections, never for each line of a section.
+	short := testing.AllocsPerRun(10, func() { brief.Check(stepText, resolve) })
+	if allocs := testing.AllocsPerRun(10, func() { brief.Check(long, resolve) }); allocs > short+2 {
+		t.Fatalf("a 10000-line section takes %v allocations, a 1-line one %v", allocs, short)
+	}
+}
+
 // A fence's closing marker is indented three spaces at most, as its opening
 // one: a marker indented more is the block's text, and the parts after it
 // are still inside the block.

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"reflect"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/igor1309/ai-labs/agister/internal/app"
@@ -153,6 +154,105 @@ func TestATextWithoutItsFormIsRefused(t *testing.T) {
 			}
 			if kinds := h.recorder.kinds(); !contains(kinds, "REFUSED") || kinds[len(kinds)-1] != "CALL_FINISHED" {
 				t.Fatalf("events = %v", kinds)
+			}
+		})
+	}
+}
+
+// formStandIn is a CallForm that reports what it is given to report: it
+// keeps the texts it is asked to check, asks resolve for each of its
+// paths, and adds each refusal resolve gives.
+type formStandIn struct {
+	mu    sync.Mutex
+	paths []string
+	wrong []string
+	texts []string
+}
+
+func (f *formStandIn) check(text string, resolve func(path string) error) []string {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.texts = append(f.texts, text)
+	wrong := append([]string(nil), f.wrong...)
+	for _, path := range f.paths {
+		if err := resolve(path); err != nil {
+			wrong = append(wrong, err.Error())
+		}
+	}
+	return wrong
+}
+
+func (f *formStandIn) checked() []string {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return append([]string(nil), f.texts...)
+}
+
+// standInForms is a CallResolver that resolves through the one it wraps,
+// then gives the call the form checks it holds in place of those resolved.
+type standInForms struct {
+	resolver app.CallResolver
+	forms    map[string]app.CallForm
+}
+
+func (s standInForms) Snapshot(ctx context.Context) app.CallResolution {
+	return standInResolution{s.resolver.Snapshot(ctx), s.forms}
+}
+
+type standInResolution struct {
+	app.CallResolution
+	forms map[string]app.CallForm
+}
+
+func (r standInResolution) Resolve(ctx context.Context, request app.CallResolveRequest) (*app.ResolvedCall, error) {
+	res, err := r.CallResolution.Resolve(ctx, request)
+	res.Forms = r.forms
+	return res, err
+}
+
+// A call checks its input's text with the form checks its resolution
+// gives, in the order the input names them: the first the text passes
+// lets it run; none refuses it, with what each check reports. A check
+// resolves a path relative to the caller's directory.
+func TestACallChecksItsTextWithTheFormChecksItIsGiven(t *testing.T) {
+	t.Parallel()
+	const text = "Any text: the checks decide.\n"
+	cases := map[string]struct {
+		step   []string // what the step check reports
+		reason string   // empty: the call runs
+	}{
+		"the second form passes": {nil, ""},
+		"no form passes": {[]string{"no step"},
+			`input brief: has none of its forms: form goal: no goal, file goals/g.md does not exist; form step: no step`},
+	}
+	for name, c := range cases {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			h := briefed(text, ", form: [goal, step]")
+			goal := &formStandIn{wrong: []string{"no goal"}, paths: []string{"goals/g.md"}}
+			step := &formStandIn{wrong: c.step}
+			resolver := standInForms{app.NewResolver(h.defs, h.runtimes, h.validator, resolverCheckStub{}), map[string]app.CallForm{"goal": goal.check, "step": step.check}}
+			h.calls = app.NewCalls(
+				resolver, h.runtimes,
+				map[string]app.InputProvider{"git.revision": h.inputs, "git.diff": h.inputs, "file": h.inputs}, h.copies, h.references,
+				h.workspaces, h.changes, h.holder(), app.NewVerifier(h.changes, h.commands, h.clock), app.NewRecoverer(h.clock), h.validator, h.recorder, h.runs,
+				h.clock, h.timer, fixedIDs{}, "/state", h.hosted,
+			)
+			record := h.call(t, contract.CallRequest{})
+			if !reflect.DeepEqual(goal.checked(), []string{text}) || !reflect.DeepEqual(step.checked(), []string{text}) {
+				t.Fatalf("goal checked %q, step checked %q", goal.checked(), step.checked())
+			}
+			if !reflect.DeepEqual(h.references.asked, []string{"/repo/goals/g.md"}) {
+				t.Fatalf("asked = %q", h.references.asked)
+			}
+			if c.reason == "" {
+				if record.Result.Status != run.Completed {
+					t.Fatalf("result = %+v", record.Result.Error)
+				}
+				return
+			}
+			if class(record) != run.ClassRefused || message(record) != c.reason || len(h.runner.calls()) != 0 {
+				t.Fatalf("result %+v, runner calls %d\nwant refused: %s", record.Result.Error, len(h.runner.calls()), c.reason)
 			}
 		})
 	}
