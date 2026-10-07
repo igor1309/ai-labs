@@ -177,13 +177,12 @@
           ? 'one agent call each; the workflow steps above also run alone'
           : 'one agent call each',
         alone.map((p) => processCard(p, ix, chip))),
-        model.agents.length || model.policies.length || model.runtimes.length || model.service || model.workspace?.error
+        model.agents.length || model.policies.length || model.runtimes.length || model.service
           ? el('h2', { className: 'group', textContent: 'Building blocks' }) : null,
         agentsTable(model.agents, composed),
         policiesTable(model.policies, composed),
         runtimesTable(model.runtimes, composed),
         limitsTable(model.service, composed),
-        workspaceError(model.workspace, composed),
       ].filter(Boolean);
     }
 
@@ -274,8 +273,6 @@
       if (p.verify?.outside) parts.push(parts.length ? '; ' : '', missing('verify', p.verify.ref));
       else if (p.verify) {
         parts.push(`${parts.length ? '; ' : ''}a failed verify${p.verify.ref ? ` (${p.verify.ref})` : ''} is fixed up to ${p.verify.maxAttempts ?? '?'}×`);
-        // In the worktree for an in-place call (ADR-022 rule 6).
-        if (p.verify.where) parts.push(', ', el('code', { textContent: `where: ${p.verify.where}` }));
       }
       return parts.length ? el('div', {}, ...parts) : null;
     }
@@ -295,28 +292,14 @@
       }));
     }
 
-    // The setup its checkout runs before the agent starts, and whether it
-    // is the workspace's default.
-    function setupLine(p) {
-      const s = p.effectiveSetup;
-      if (!s) return null;
-      return el('div', {}, el('code', { textContent: s.command ?? '?' }),
-        ` within ${s.timeout ?? '?'}${s.from === 'workspace' ? ', from workspace.yaml' : ''}`);
-    }
-
-    // The workspace mode its call takes unless agister run --workspace
-    // says otherwise, and whether workspace.yaml sets it (ADR-022).
-    function modeLine(p) {
-      const m = p.effectiveMode;
-      if (!m) return null;
-      return el('div', {}, `${m.mode}${m.from === 'workspace' ? ', from workspace.yaml' : ''}`);
-    }
-
-    // The command that gates its call in-place, from workspace.yaml.
-    function precheckLine(p) {
-      const s = p.precheck;
-      if (!s) return null;
-      return el('div', {}, el('code', { textContent: s.command ?? '?' }), ` within ${s.timeout ?? '?'}, from workspace.yaml`);
+    // What its call needs of the caller's worktree (ADR-025 rules 2, 3):
+    // HEAD at the revision an input names, and HEAD's content exactly for
+    // a fresh call.
+    function worktreeLine(p) {
+      const parts = [];
+      if (p.revision) parts.push('HEAD at ', el('code', { textContent: p.revision }));
+      if (p.clean) parts.push(parts.length ? ', clean' : 'clean');
+      return parts.length ? el('div', {}, ...parts) : null;
     }
 
     function errorCard(item) {
@@ -341,9 +324,7 @@
         ['prompts', namedLine('prompt', p.prompts, chip)],
         ['skills', namedLine('skill', p.callSkills, chip)],
         ['output', outputLine(p)],
-        ['setup', setupLine(p)],
-        ['mode', modeLine(p)],
-        ['precheck', precheckLine(p)],
+        ['worktree', worktreeLine(p)],
       ]));
     }
 
@@ -444,17 +425,6 @@
           r.adapter, r.contract,
           r.verified.length ? r.verified.map((v) => v.replace(/\.$/, '.x')).join(', ') : null,
         ], composed);
-    }
-
-    // A broken workspace document blocks calls that inherit its setup.
-    function workspaceError(workspace, composed) {
-      if (!workspace?.error) return null;
-      const from = composed
-        ? (workspace.source === 'repo' ? 'this repo’s workspace.yaml' : 'Agister home’s workspace.yaml')
-        : 'workspace.yaml';
-      return el('section', { className: 'card' },
-        el('header', { className: 'section-head' }, el('h3', { textContent: 'Workspace settings' })),
-        el('p', { className: 'error', textContent: `${from}: ${workspace.error}` }));
     }
 
     // service.toml: the caps no policy or process may go past.
@@ -749,7 +719,7 @@
       $('knowledge').replaceChildren(
         el('p', { className: 'intro' }, d.home
           ? 'Agister home, no repo: the skills each agent’s settings name, and the skills its runtime would load from the home folders.'
-          : 'The skills each agent’s settings name, and the skills its runtime would load in this repo’s working tree and from the home folders. A call on a checkout loads what that checkout holds, which can differ.'),
+          : 'The skills each agent’s settings name, and the skills its runtime would load in this repo’s working tree and from the home folders. A call loads what the worktree it works in holds, which can differ.'),
         el('p', { className: 'intro', textContent: TWO_LISTS }),
         el('h2', { className: 'group', textContent: 'Overview' }),
         el('p', { className: 'group-note', textContent: 'what the runtimes would load: a row per skill name, a column per agent; ● the agent’s runtime loads a skill of that name; shared: the name is in several folders. The skills an agent’s settings name are in its card. Click an agent or a skill to open it below.' }),

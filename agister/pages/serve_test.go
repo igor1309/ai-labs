@@ -188,7 +188,6 @@ func TestSettingsReturnsOnlySettingsFiles(t *testing.T) {
 	repo := t.TempDir()
 	dir := filepath.Join(repo, ".agister")
 	write(t, filepath.Join(dir, "service.toml"), "max_attempts = 1")
-	write(t, filepath.Join(dir, "workspace.yaml"), "setup: {}")
 	write(t, filepath.Join(dir, "agents", "a.toml"), `name = "a"`)
 	write(t, filepath.Join(dir, "verifies", "repo.yaml"), "name: repo")
 	write(t, filepath.Join(dir, "prompts", "review.md"), "Review it.")
@@ -200,6 +199,8 @@ func TestSettingsReturnsOnlySettingsFiles(t *testing.T) {
 	write(t, filepath.Join(dir, "runs", "r1", "record.json"), "{}")
 	write(t, filepath.Join(dir, "logs", "agister.jsonl"), "{}")
 	write(t, filepath.Join(dir, "notes.md"), "x")
+	// Obsolete since ADR-025: not settings any more.
+	write(t, filepath.Join(dir, "workspace.yaml"), "setup: {}")
 	write(t, filepath.Join(dir, "schemas", "big.json"), strings.Repeat("x", fileCap+1))
 
 	var got struct {
@@ -211,7 +212,6 @@ func TestSettingsReturnsOnlySettingsFiles(t *testing.T) {
 	}
 	want := map[string]string{
 		"service.toml":            "max_attempts = 1",
-		"workspace.yaml":          "setup: {}",
 		"agents/a.toml":           `name = "a"`,
 		"verifies/repo.yaml":      "name: repo",
 		"prompts/review.md":       "Review it.",

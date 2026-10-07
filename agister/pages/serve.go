@@ -31,14 +31,13 @@ import (
 var assets embed.FS
 
 // The .agister entries that hold settings files; runs and logs are not
-// settings. Skills are settings too, but not read here: /api/skills
-// inventories them and reads each one's SKILL.md alone (ADR-011 rule 9,
-// D-16).
+// settings, nor is workspace.yaml, obsolete (ADR-025). Skills are settings
+// too, but not read here: /api/skills inventories them and reads each
+// one's SKILL.md alone (ADR-011 rule 9, D-16).
 var settingsEntries = map[string]bool{
 	"agents": true, "policies": true, "processes": true, "runtimes": true,
 	"schemas": true, "verifies": true, "prompts": true,
 	"workflows": true, "service.toml": true,
-	"workspace.yaml": true,
 }
 
 // fileCap bounds each settings file sent to the page.

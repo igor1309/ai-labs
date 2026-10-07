@@ -107,7 +107,7 @@
 <h1>The settings, document by document</h1>
 </header>
 
-<nav aria-label="Documents"><a href="#layers">Two layers</a><a href="#workflow">Workflow</a><a href="#process">Process</a><a href="#schema">Output schema</a><a href="#verification">Verification</a><a href="#prompts">Prompts</a><a href="#skills">Skills</a><a href="#policy">Policy</a><a href="#agent">Agent</a><a href="#runtime">Runtime mapping</a><a href="#service">Service</a><a href="#workspace">Workspace</a><a href="#blocks">Blocks</a><a href="#compose">How they compose</a></nav>
+<nav aria-label="Documents"><a href="#layers">Two layers</a><a href="#workflow">Workflow</a><a href="#process">Process</a><a href="#schema">Output schema</a><a href="#verification">Verification</a><a href="#prompts">Prompts</a><a href="#skills">Skills</a><a href="#policy">Policy</a><a href="#agent">Agent</a><a href="#runtime">Runtime mapping</a><a href="#service">Service</a><a href="#blocks">Blocks</a><a href="#compose">How they compose</a></nav>
 
 <div>
 <section id="layers">
@@ -150,7 +150,7 @@ join: {node: judge, uses: process:review_judge}</pre></figure>
 <section id="process" class="kind process">
 <div class="desc"><header><h2>Process</h2><p class="path"><code>processes/&lt;name&gt;.yaml</code> · run with <code>agister run &lt;name&gt;</code></p></header>
 <p class="lead">A named agent call: the task, what it takes in, and what must come out.</p>
-<h3>Holds</h3><table><tr><th><code>input.instruction</code></th><td>the task, in words</td></tr><tr><th><code>input.params</code></th><td>what the caller supplies</td></tr><tr><th><code>input.values</code></th><td>the inputs, each from a source: <code>param</code>, <code>file</code>, <code>git.revision</code>, <code>git.merge_base</code>, <code>git.diff</code>, <code>git.changed_files</code>, <code>prompt</code></td></tr><tr><th><code>workspace.checkout</code></th><td>the value whose revision the call works in</td></tr><tr><th><code>workspace.setup</code></th><td>its own command to prepare that checkout</td></tr><tr><th><code>tools.require</code></th><td>permissions the call cannot do without</td></tr><tr><th><code>timeout, retry, …</code></th><td>limit overrides; they may only narrow its policy</td></tr></table><h3>Names</h3><table><tr><th><code>uses</code></th><td>its <b>agent</b></td></tr><tr><th><code>policy</code></th><td>its <b>policy</b></td></tr><tr><th><code>output.schema</code></th><td>its <b>output schema</b></td></tr><tr><th><code>verify</code></th><td>its <b>verification</b>, by name or held inline</td></tr><tr><th><code>input.values[].name</code></th><td>a <b>prompt</b>, where the source is <code>prompt</code></td></tr><tr><th><code>skills</code></th><td>its <b>skills</b></td></tr></table><p class="note">A process with a verification, like this one, is still a process, not a workflow.</p></div>
+<h3>Holds</h3><table><tr><th><code>input.instruction</code></th><td>the task, in words</td></tr><tr><th><code>input.params</code></th><td>what the caller supplies</td></tr><tr><th><code>input.values</code></th><td>the inputs, each from a source: <code>param</code>, <code>file</code>, <code>git.revision</code>, <code>git.merge_base</code>, <code>git.diff</code>, <code>git.changed_files</code>, <code>prompt</code></td></tr><tr><th><code>workspace.revision</code></th><td>the value whose revision HEAD must be at; Agister does not move HEAD</td></tr><tr><th><code>workspace.clean</code></th><td><code>true</code>: a fresh call needs the worktree's content to be HEAD's; unset is <code>false</code></td></tr><tr><th><code>tools.require</code></th><td>permissions the call cannot do without</td></tr><tr><th><code>timeout, retry, …</code></th><td>limit overrides; they may only narrow its policy</td></tr></table><h3>Names</h3><table><tr><th><code>uses</code></th><td>its <b>agent</b></td></tr><tr><th><code>policy</code></th><td>its <b>policy</b></td></tr><tr><th><code>output.schema</code></th><td>its <b>output schema</b></td></tr><tr><th><code>verify</code></th><td>its <b>verification</b>, by name or held inline</td></tr><tr><th><code>input.values[].name</code></th><td>a <b>prompt</b>, where the source is <code>prompt</code></td></tr><tr><th><code>skills</code></th><td>its <b>skills</b></td></tr></table><p class="note">A process with a verification, like this one, is still a process, not a workflow, and declares both <code>workspace.revision</code> and <code>workspace.clean: true</code>. Every call works in the caller's worktree, or the one <code>--dir</code> names: Agister makes no checkout and runs no setup.</p></div>
 <figure class="ex"><figcaption>.agister/processes/implement.yaml</figcaption><pre>name: implement
 type: process
 uses: agent:claude-implementer-opus
@@ -159,7 +159,7 @@ policy: process-policy:implement
 input:
   instruction: &gt;-
     Implement the task given as input brief in this
-    checkout of the candidate. …
+    worktree, at the candidate. …
   params:
     candidate: {default: HEAD}
     brief: {}
@@ -170,7 +170,8 @@ input:
     go_architecture: {source: prompt, name: go-architecture, optional: true}
 
 workspace:
-  checkout: candidate_revision
+  revision: candidate_revision
+  clean: true
 
 output:
   format: json
@@ -199,7 +200,7 @@ verify: verify:repo</pre></figure>
 <section id="verification" class="kind ">
 <div class="desc"><header><h2>Verification</h2><p class="path"><code>verifies/&lt;name&gt;.yaml</code>, or inline in the process</p></header>
 <p class="lead">A command that must pass on the call's changes before the call completes.</p>
-<h3>Holds</h3><table><tr><th><code>command</code></th><td>what to run</td></tr><tr><th><code>timeout</code></th><td>how long it may take</td></tr><tr><th><code>max_attempts</code></th><td>how many turns the agent gets to make it pass</td></tr><tr><th><code>instruction</code></th><td>what the agent is told when it fails</td></tr><tr><th><code>where</code></th><td>optional; only <code>workspace</code>: an in-place call verifies in the worktree, every other call on a clean copy</td></tr></table><p class="note">A process in home can name <code>verify:repo</code>, and each repo supplies its own <code>verifies/repo.yaml</code>.</p></div>
+<h3>Holds</h3><table><tr><th><code>command</code></th><td>what to run</td></tr><tr><th><code>timeout</code></th><td>how long it may take</td></tr><tr><th><code>max_attempts</code></th><td>how many turns the agent gets to make it pass</td></tr><tr><th><code>instruction</code></th><td>what the agent is told when it fails</td></tr></table><p class="note">A process in home can name <code>verify:repo</code>, and each repo supplies its own <code>verifies/repo.yaml</code>. The command runs in the call's worktree.</p></div>
 <figure class="ex"><figcaption>.agister/verifies/repo.yaml</figcaption><pre>name: repo
 command: &gt;-
   cd agister &amp;&amp; test -z &quot;$(gofmt -l .)&quot; &amp;&amp; go vet ./... &amp;&amp;
@@ -294,7 +295,7 @@ primitives:
 <section id="service" class="kind service">
 <div class="desc"><header><h2>Service</h2><p class="path"><code>service.toml</code> · one, with no name</p></header>
 <p class="lead">Applies to every run. No document names it; policies and runtime mappings must keep its rules.</p>
-<h3>Holds</h3><table><tr><th><code>max_timeout</code></th><td>the longest any call may run</td></tr><tr><th><code>max_attempts</code></th><td>the most attempts any call may have</td></tr><tr><th><code>max_verify_attempts</code></th><td>the most turns a verification may allow</td></tr><tr><th><code>max_cost_usd</code></th><td>the most any call may cost, if set</td></tr><tr><th><code>permissions</code></th><td>the vocabulary: a policy uses only these, a runtime mapping grants only these</td></tr><tr><th><code>writing</code></th><td>the permissions that change the workspace; read-only access withholds them</td></tr><tr><th><code>state_reaching</code></th><td>permissions that would reach Agister's own state; never granted</td></tr></table></div>
+<h3>Holds</h3><table><tr><th><code>max_timeout</code></th><td>the longest any call may run</td></tr><tr><th><code>max_attempts</code></th><td>the most attempts any call may have</td></tr><tr><th><code>max_verify_attempts</code></th><td>the most turns a verification may allow</td></tr><tr><th><code>max_cost_usd</code></th><td>the most any call may cost, if set</td></tr><tr><th><code>permissions</code></th><td>the vocabulary: a policy uses only these, a runtime mapping grants only these</td></tr><tr><th><code>writing</code></th><td>the permissions that change the worktree; read-only access withholds them, and a call granted one holds the worktree alone</td></tr><tr><th><code>state_reaching</code></th><td>permissions that would reach Agister's own state; never granted</td></tr></table></div>
 <figure class="ex"><figcaption>~/.agister/service.toml</figcaption><pre>max_timeout = &quot;1h&quot;
 max_attempts = 1
 max_verify_attempts = 3
@@ -314,12 +315,6 @@ permissions = [
 
 writing = [&quot;repository.write&quot;, &quot;repository.history.write&quot;]
 state_reaching = []</pre></figure>
-</section>
-<section id="workspace" class="kind ">
-<div class="desc"><header><h2>Workspace</h2><p class="path"><code>workspace.yaml</code> · one</p></header>
-<p class="lead">For processes that check out a revision: the default checkout setup, for those that declare none of their own; the default workspace mode; and the precheck that gates an in-place call.</p>
-<h3>Holds</h3><table><tr><th><code>setup.command</code></th><td>what prepares a fresh checkout</td></tr><tr><th><code>setup.timeout</code></th><td>how long it may take</td></tr><tr><th><code>mode</code></th><td><code>in-place</code> (the caller's worktree) or <code>temporary</code> (a checkout of its own, the default); <code>agister run --workspace</code> overrides it</td></tr><tr><th><code>precheck.command</code></th><td>what must pass before an in-place call's first turn; it runs under the worktree's lock</td></tr><tr><th><code>precheck.timeout</code></th><td>how long it may take; required</td></tr></table><p class="note"><code>setup</code> does not run in-place: the caller prepared the worktree.</p></div>
-
 </section>
 <section id="blocks" class="kind ">
 <div class="desc"><header><h2>Blocks</h2><p class="path"><code>blocks.yaml</code> · one, repo only</p></header>

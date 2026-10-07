@@ -82,7 +82,7 @@ stale, unless the settings give it resumes to recover with
 lower, down to 0, and `stale.recover.instruction`, which a budget above 0
 needs. Unset, the budget is 0, and every limit ends the call. With a
 budget, an agent turn that Agister ended at a limit is followed by a
-recovery turn: the call's session is resumed, in the same workspace, with
+recovery turn: the call's session is resumed, in the same worktree, with
 the instruction and the evidence of what went stale. Each recovery turn
 spends one resume. The same limit reached again on the same thing ends
 the call with that limit's status and class, even with resumes left, and
@@ -173,7 +173,7 @@ home already has.
 
 Every adapter gives a call its recorded skills on every turn. Claude Code,
 Pi and OpenCode give them from a fresh temporary folder outside the
-workspace, removed when
+worktree, removed when
 the turn ends. Claude Code uses a plugin named `agister` through
 `--plugin-dir`, so its skills are `agister:<name>`; Pi passes each skill
 folder with `--skill`, in order; OpenCode adds the folder to `skills.paths`
@@ -192,9 +192,8 @@ it, and it misses your Codex memories and state. A turn that resumes it gets
 the call's skills and the links to your files afresh, as your `CODEX_HOME`
 holds them then, and the cost lookup reads that home. A Codex run
 without skills ran in your own `CODEX_HOME`, so a call that names skills
-cannot continue it: it is refused before its checkout, carried changes
-and setup are made, and the changed
-settings need a fresh run. A call that names none runs as before
+cannot continue it: it is refused before it holds the worktree, and the
+changed settings need a fresh run. A call that names none runs as before
 ([ADR-021](docs/adr/021-settings-give-an-agent-its-skills.md)).
 
 A repository can also take away what home provides, without copying any
@@ -222,94 +221,81 @@ Agister is a runner, not a guard: running it in a repository applies that
 repository's `.agister/`, including the commands its agents run. Review
 settings you did not write.
 
-A process with `workspace.checkout` runs, by default, in a fresh worktree, which holds
-only what the repository tracks. `workspace.setup` prepares it before the
-agent's first turn ([ADR-012](docs/adr/012-a-checkout-runs-its-setup.md)):
-a command run with your authority in the checkout, once per call. Both
-fields are required. What it makes must be ignored by git; if it fails, runs
-out of time or changes the checkout's content, the call fails before any
-turn. An optional `workspace.yaml` (global or repository, the repository's
-first) gives the setup for every process with a checkout and none of its
-own, and, for every process with a checkout, where its calls work and the
-precheck that gates them there:
+Every call works in the caller's worktree
+([ADR-025](docs/adr/025-a-call-works-where-it-is-called.md)): the root of
+the git worktree that holds the directory `agister run` is launched from,
+or the one `--dir` names, with that worktree's settings. A workflow's
+nodes work there too. Agister makes no checkout or copy, runs no setup
+and does not move HEAD: the caller prepares the worktree, and makes one
+to keep work apart. A process says what it needs of the worktree:
 
 ```yaml
-# .agister/workspace.yaml
-# schema: agister.workspace/v1alpha1
-# setup:
-#   command: ln -s ../config/local.json config/local.json
-#   timeout: 1m
-# mode: in-place          # or temporary, the default
-# precheck:
-#   command: test -f config/local.json
-#   timeout: 1m
+workspace:
+  revision: candidate_revision  # the input HEAD must be at
+  clean: true                   # a fresh call starts from HEAD's content
 ```
 
-A call works in a fresh checkout (`temporary`) or in the worktree it is
-launched from (`in-place`)
-([ADR-022](docs/adr/022-a-call-may-work-in-the-callers-worktree.md)).
-`--workspace in-place|temporary` chooses for one call, over
-`workspace.yaml`'s `mode`. Only a process with a checkout takes a mode:
-any other call with `--workspace` is refused, and so is a workflow, whose
-nodes never work in-place, with `--workspace` or with a node whose
-process the repository sets to `in-place`. An in-place call holds a lock
-on the worktree for the whole call and is refused before any turn if:
+`revision` names an input that resolves to a revision; a call is refused
+before any turn unless HEAD is that revision. `clean: true` refuses a
+fresh call unless the worktree's content is HEAD's: a staged change, a
+dirty submodule, an untracked file git does not ignore, or a changed
+tracked file, even one marked `assume-unchanged`, refuses it. Ignored
+files are allowed. Unset, `clean` is `false`. A process that writes, such
+as an implementer, declares it; a reviewer does not need it. A process
+with a verification must declare both. A call of a process that pins a
+revision, needs a clean worktree or has a verification is refused outside
+a git worktree.
 
-- another in-place call holds the worktree;
-- the worktree overlaps a directory Agister may still remove: the
-  checkout of a run that has not finished, a clean copy or an unreleased
-  checkout a run still has on record, or the directory Agister made to
-  hold one of these, which is removed with it;
-- the worktree overlaps a directory another run worked in and may still
-  write in, because the run has not finished or left a process that
-  cannot be ended. The run may be in-place, temporary or one without a
-  checkout;
-- HEAD is not the revision;
-- the worktree differs from the revision: a staged change, a dirty
-  submodule, an untracked file git does not ignore, or a changed tracked
-  file, even one marked `assume-unchanged`. Ignored files are allowed.
+`workspace.checkout` is now `workspace.revision`, and `check` reports it
+as a problem. `workspace.setup`, a verification's `where` and the
+`workspace.yaml` document, with its `mode`, `precheck` and `setup`, are
+obsolete and ignored, and `check` warns about each. `--workspace` is gone.
+
+A call is a writer when its plan grants a permission the service lists as
+`writing`, or its process has a verification, whose command runs with your
+authority; otherwise it is a reader. Readers share the worktree, so a
+workflow's reviews run together; a writer holds it alone, for the whole
+call. A call that cannot take its hold is refused, not queued. It is also
+refused before any turn if:
+
+- the worktree overlaps a directory a writer's run worked in and may
+  still write in, because the run has not finished or left a process that
+  cannot be ended. Agister ends the ones it can;
+- the worktree overlaps a directory that a run made before ADR-025 left on
+  record and Agister may still remove: a checkout, a clean copy, or the
+  directory made to hold one.
 
 A directory overlaps the worktree when it is the worktree, lies inside it
-or contains it. Then `precheck` runs, once, with your authority in the
-worktree; a non-zero exit, a timeout, or a change to the content or HEAD
-refuses the call. `setup` does not run in-place; the run records
-`SETUP_SKIPPED`. `check` validates `precheck` and never runs it. Calls
-with different `--home` values do not share the lock.
+or contains it. Calls with different `--home` values do not share the
+hold.
 
-An in-place call leaves its changes in the worktree, uncommitted, however
-it ends: nothing is reset, cleaned or removed. Its `changes.patch` is the
-record of them; do not apply it again. An agent that commits in the
-worktree fails the call, and its commit stays. Agister checks the
+A verification runs in the worktree, with its build output and ignored
+files. A run that changes the content fails, and the captured patch must
+rebuild the content that passed. A pass proves the worktree, not the
+changes alone: a check that must prove them alone runs elsewhere, such as
+in CI.
+
+A call leaves its changes in the worktree, uncommitted, however it ends:
+nothing is reset, cleaned or removed. A call whose process pins a revision
+captures them at the end as
+`~/.agister/runs/<id>/artifacts/changes.patch`, from the revision, with
+the content it was taken from (`in_place.content`). The patch is evidence:
+nobody applies it, for the changes are already there. A call that changed
+nothing records `NO_CHANGES` and has no patch. An agent that commits in
+the worktree fails the call, and its commit stays. Agister checks the
 worktree before and after the call but does not confine the agent to it;
-do not change the worktree while the call runs.
+do not change the worktree while a writer works in it.
 
-A verification, inline or a document, may declare `where: workspace`.
-Then an in-place call runs its command in the worktree, with its build
-output and ignored files, instead of on a clean copy; a run that changes
-the content still fails, and the captured patch must rebuild the content
-that passed. Such a pass proves the worktree, not that the patch alone
-reproduces it. Every other call verifies on a clean copy, and the
-record's `in_place.verify` says which, `workspace` or `copy`.
-
-To continue a run of such a process, run from the repository the checkout
-is of, and pin its revision param: a default like `HEAD` resolves in the
-directory you launch from. `--continue <run-id>` resumes the run's session
-and carries the session's latest run's `changes.patch` into the new checkout,
-uncommitted, on the same revision
-([ADR-013](docs/adr/013-a-continuation-carries-the-earlier-runs-changes.md)).
-Whichever run of the session you name, its latest run's changes are
-carried. A finished run's changes are
-`~/.agister/runs/<id>/artifacts/changes.patch`, applied with `git apply`.
-A run whose checkout has no changes records `NO_CHANGES` and has no
-`changes.patch`, so a continuation of it carries nothing.
-
-A continuation of an in-place run is in-place too, in the same worktree
-and on the same revision; a session does not switch between `temporary`
-and `in-place`. It carries nothing: it is refused unless the worktree
-still holds exactly what the session's latest run left there, with HEAD
-at the revision, and that run's `changes.patch` is as it recorded, or it
-recorded `NO_CHANGES`. A latest run whose capture failed cannot be
-continued in-place.
+`--continue <run-id>` resumes the session in the same worktree, after the
+session's latest run, whichever run of the session you name. It applies
+nothing: that run's changes are in the worktree. Launch from it and pin
+the same revision: a default like `HEAD` resolves in the directory you
+launch from. The call is refused unless the latest run worked in the same
+worktree, repository and revision, HEAD is at the revision, the
+worktree's content is the one that run recorded, and its `changes.patch`
+is as recorded. A latest run whose capture failed, or that worked in a
+checkout before ADR-025, cannot be continued; one that pinned no revision
+is continued without the content check.
 
 Home's prompts are kept in git in `prompts/` at the repository root and
 copied into `~/.agister/prompts/` by hand: `install` does not take them

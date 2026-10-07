@@ -52,6 +52,21 @@ func TestTheCallerSkillNamesOnlyCommandsAndFlagsTheCLIHas(t *testing.T) {
 	}
 }
 
+// A call's changes stay in the worktree it worked in, and every call works
+// there (ADR-025 rules 1 and 6): the skill's code applies no patch and
+// chooses no workspace.
+func TestTheCallerSkillAppliesNoPatchAndChoosesNoWorkspace(t *testing.T) {
+	t.Parallel()
+	text := read(t, filepath.Join(callerSkill, "skills", "agister", "SKILL.md"))
+	for _, code := range codeOf(text) {
+		for _, removed := range []string{"git apply", "--workspace"} {
+			if strings.Contains(code, removed) {
+				t.Errorf("the skill's code %q names %s", code, removed)
+			}
+		}
+	}
+}
+
 // The check fails a skill that names a command, a subcommand or a flag the
 // CLI lacks, in a code span or a code block, and passes what it has. Global
 // flags before the command, with their values, do not hide it.
