@@ -63,6 +63,12 @@ and a refusal that says what happened when it does.
 - 2026-10-07: Done when 2's example corrected. It named a misspelt
   source as an ordinary problem; an unknown source is already marked
   unknown (`TestCheckMarksWhatThisBinaryDoesNotKnow`), and stays so.
+- 2026-10-07, owner (review 1 item 5#1 and review 2 item 5#1,
+  question 2): shape-first. A known input argument given a list or a
+  mapping is marked unknown and carries the hint.
+- 2026-10-07, owner (review 2 item 5#2, question 3): option (a).
+  `agister check --json` carries the unknown marker per problem and no
+  hint line; the hint is for text output.
 
 ## Open
 
