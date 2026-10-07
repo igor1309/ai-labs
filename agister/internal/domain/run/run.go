@@ -270,6 +270,10 @@ type Record struct {
 	Attempts []Attempt `json:"attempts,omitempty"`
 	// Recoveries are the call's recovery turns, in order (ADR-024 rule 9).
 	Recoveries []Recovery `json:"recoveries,omitempty"`
+	// Trail is what the runtime reported the agent did on the way, over
+	// every turn of the call: the paths its tool calls wrote and the tool
+	// calls it was denied. Unset when it reported neither.
+	Trail *Trail `json:"trail,omitempty"`
 	// Workflow is set on a workflow's own run (ADR-003): its nodes and
 	// barrier. Parent is set on a node's run: the workflow run it belongs to.
 	Workflow *Workflow `json:"workflow,omitempty"`

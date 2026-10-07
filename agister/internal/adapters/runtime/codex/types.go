@@ -41,6 +41,9 @@ type ToolCall struct {
 	Input string
 	// Command is true when the tool runs a command.
 	Command bool
+	// Writes are the paths the call writes, as the CLI named them; none for
+	// a tool that writes no file.
+	Writes []string
 }
 
 // ToolResult is the end of a tool call: its ID and the result the CLI

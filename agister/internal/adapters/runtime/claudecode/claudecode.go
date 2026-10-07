@@ -28,7 +28,10 @@
 //
 // Tool calls are reported as they start and finish: a tool_use block with
 // its whole input, and the tool_result that answers it. Bash is the tool
-// that runs commands.
+// that runs commands. Edit, Write and MultiEdit write the file their input
+// names as file_path, NotebookEdit the one it names as notebook_path. The
+// tool calls the result lists as permission_denials are reported one by
+// one, each with its tool and its input.
 //
 // Turn status precedence: the runtime's `result` message, then Agister's
 // timeout or cancellation, then the process exit.
@@ -220,6 +223,9 @@ func (r *Runner) RunTurn(ctx context.Context, request TurnRequest, sink EventSin
 				sink.ToolFinished(*tool.Finished)
 			}
 		}
+		for _, denial := range state.TakeDenials() {
+			sink.PermissionDenied(denial)
+		}
 	})
 	return state.Reconcile(evidence, len(request.OutputSchema) > 0)
 }
@@ -274,6 +280,9 @@ type Stream struct {
 	RateLimit         string // set when the provider rejected a request
 	// tools are the tool calls reduced and not yet taken (TakeTools).
 	tools []Tool
+	// denials are the permission denials reduced and not yet taken
+	// (TakeDenials).
+	denials []PermissionDenial
 }
 
 // Tool is a tool call the stream reported: its start, or the end of one,
@@ -289,6 +298,14 @@ func (s *Stream) TakeTools() []Tool {
 	tools := s.tools
 	s.tools = nil
 	return tools
+}
+
+// TakeDenials returns the permission denials reduced since it was last
+// called, in order.
+func (s *Stream) TakeDenials() []PermissionDenial {
+	denials := s.denials
+	s.denials = nil
+	return denials
 }
 
 func (s *Stream) Reduce(line string) []Event {
@@ -307,6 +324,7 @@ func (s *Stream) Reduce(line string) []Event {
 	case "user":
 		return s.user(message)
 	case "result":
+		s.denials = append(s.denials, denials(exactly(line))...)
 		return s.result(message)
 	case "rate_limit_event":
 		info, _ := message["rate_limit_info"].(map[string]any)
@@ -355,7 +373,7 @@ func (s *Stream) assistant(message map[string]any) []Event {
 			input, _ := json.Marshal(block["input"])
 			id, _ := block["id"].(string)
 			name, _ := block["name"].(string)
-			s.tools = append(s.tools, Tool{Started: &ToolCall{ID: id, Name: name, Input: string(input), Command: name == commandTool}})
+			s.tools = append(s.tools, Tool{Started: &ToolCall{ID: id, Name: name, Input: string(input), Command: name == commandTool, Writes: writes(name, block["input"])}})
 			events = append(events, Event{SourceProtocol, "TOOL_REQUESTED", map[string]any{"tool_use_id": block["id"], "name": block["name"], "input": truncate(string(input), 300)}})
 		case "text":
 			if text, _ := block["text"].(string); strings.TrimSpace(text) != "" {
@@ -398,6 +416,46 @@ func (s *Stream) result(message map[string]any) []Event {
 		data["permission_denials"] = len(denials)
 	}
 	return append([]Event{{SourceProtocol, kind, data}}, mismatch...)
+}
+
+// writes are the paths a call of the tool name writes, from its input: the
+// one a tool that writes a file names, as it names it; none for any other
+// tool, or an input that names none.
+func writes(name string, input any) []string {
+	var key string
+	switch name {
+	case "Edit", "Write", "MultiEdit":
+		key = "file_path"
+	case "NotebookEdit":
+		key = "notebook_path"
+	default:
+		return nil
+	}
+	fields, _ := input.(map[string]any)
+	if path, _ := fields[key].(string); path != "" {
+		return []string{path}
+	}
+	return nil
+}
+
+// denials are the tool calls a result lists as permission_denials, in
+// order, one for each entry, so their number is the count the turn reports:
+// the entry's tool_name and its tool_input, bounded as a tool call's input
+// is in its event, each empty where the entry has none.
+func denials(result map[string]any) []PermissionDenial {
+	entries, _ := result["permission_denials"].([]any)
+	var denied []PermissionDenial
+	for _, entry := range entries {
+		fields, _ := entry.(map[string]any)
+		denial := PermissionDenial{}
+		denial.Tool, _ = fields["tool_name"].(string)
+		if input, ok := fields["tool_input"]; ok {
+			data, _ := json.Marshal(input)
+			denial.Input = truncate(string(data), 300)
+		}
+		denied = append(denied, denial)
+	}
+	return denied
 }
 
 // Reconcile decides the turn status from the stream and the transport.

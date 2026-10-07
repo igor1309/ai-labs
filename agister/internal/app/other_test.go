@@ -380,7 +380,11 @@ func TestInspectShowsTheNodeResultAsRecorded(t *testing.T) {
 		Artifacts: []run.Artifact{{Name: "changes.patch", Path: "artifacts/changes.patch", Digest: "sha256:x", Bytes: 1}},
 		Session:   &run.Session{ProviderSessionID: "prov-1", Continues: "run-0"},
 	}
-	reader := &readerSpy{state: run.StateFinished, record: run.Record{ID: "r", Result: result, Turn: &run.Turn{StderrTail: "boom"}}}
+	trail := &run.Trail{
+		Touched: []run.Touched{{Path: "b.go", Tool: "Write"}, {Path: "a.go", Tool: "Edit"}},
+		Denied:  []run.Denial{{Tool: "Write"}, {Tool: "Bash", Input: `{"command":"git push"}`}},
+	}
+	reader := &readerSpy{state: run.StateFinished, record: run.Record{ID: "r", Result: result, Turn: &run.Turn{StderrTail: "boom"}, Trail: trail}}
 	view, err := (app.NewRuns(reader, nil, nil, nil, 0)).Inspect(context.Background(), "r")
 	if err != nil || view.State != "finished" || view.StderrTail != "boom" || view.Dir != "/home/runs/r" {
 		t.Fatalf("view = %+v, %v", view, err)
@@ -390,6 +394,11 @@ func TestInspectShowsTheNodeResultAsRecorded(t *testing.T) {
 	got, _ := json.Marshal(view.Result)
 	if string(got) != string(want) {
 		t.Fatalf("contract result\n%s\nwant\n%s", got, want)
+	}
+	// The record it carries, which `runs show` prints, holds the trail.
+	var shown run.Record
+	if err := json.Unmarshal(view.Record, &shown); err != nil || !reflect.DeepEqual(shown.Trail, trail) {
+		t.Fatalf("trail of the record shown = %+v, %v\n%s", shown.Trail, err, view.Record)
 	}
 }
 

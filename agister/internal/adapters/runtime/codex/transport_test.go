@@ -181,3 +181,42 @@ func TestTheTransportStderrDecidesASilentFailure(t *testing.T) {
 		}
 	}
 }
+
+// A turn reports, in the stream's order, the paths each file change writes
+// as the change starts: the path of each of its changes, as the stream
+// named it. An item that changes no file reports none.
+func TestATurnReportsThePathsAFileChangeWrites(t *testing.T) {
+	t.Parallel()
+	lines := []string{
+		`{"type":"thread.started","thread_id":"t-1"}`,
+		`{"type":"turn.started"}`,
+		`{"type":"item.started","item":{"id":"item_1","type":"file_change","changes":[{"path":"/work/a.go","kind":"update"},{"path":"/work/docs/new.md","kind":"add"}],"status":"in_progress"}}`,
+		`{"type":"item.completed","item":{"id":"item_1","type":"file_change","changes":[{"path":"/work/a.go","kind":"update"},{"path":"/work/docs/new.md","kind":"add"}],"status":"completed"}}`,
+		`{"type":"item.started","item":{"id":"item_2","type":"command_execution","command":"rm /work/b.go","status":"in_progress"}}`,
+		`{"type":"item.started","item":{"id":"item_3","type":"file_change","changes":[{"path":"/work/old.go","kind":"delete"},{"kind":"update"},{"path":"/work/a.go","kind":"update"}],"status":"in_progress"}}`,
+		`{"type":"item.started","item":{"id":"item_4","type":"file_change","status":"in_progress"}}`,
+		`{"type":"turn.completed"}`,
+	}
+	code := 0
+	spy := &spyTransport{Runs: spyRuns{Answer: func(codex.Spec) ([]string, codex.Evidence) {
+		return lines, codex.Evidence{Exit: &codex.Exit{Code: &code}}
+	}}}
+	runner := &codex.Runner{Transport: spy, Command: "codex"}
+	sink := &told{}
+	r := request("hello")
+	r.OutputSchema = nil
+	turn := runner.RunTurn(context.Background(), r, sink)
+
+	want := []string{
+		`started item_1 file_change writes ["/work/a.go" "/work/docs/new.md"]`,
+		`started item_2 command writes []`,
+		`started item_3 file_change writes ["/work/old.go" "/work/a.go"]`,
+		`started item_4 file_change writes []`,
+	}
+	if !reflect.DeepEqual(sink.reports, want) {
+		t.Fatalf("reported\n%q\nwant\n%q", sink.reports, want)
+	}
+	if turn.Status != codex.Completed {
+		t.Fatalf("turn = %+v", turn)
+	}
+}
