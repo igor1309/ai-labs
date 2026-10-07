@@ -154,3 +154,44 @@ func TestATurnReportsThePathsWrittenAndThePermissionsDenied(t *testing.T) {
 		t.Fatalf("turn = %+v", turn)
 	}
 }
+
+// midRun is a transport that feeds its lines through onLine and, before its
+// Run returns, checks what each line has already told the sink.
+type midRun struct {
+	t     *testing.T
+	sink  *told
+	lines []string
+	want  []string
+}
+
+func (m *midRun) Run(_ context.Context, _ claudecode.Spec, _ claudecode.Sink, onLine func(string)) claudecode.Evidence {
+	for _, line := range m.lines {
+		onLine(line)
+	}
+	if !reflect.DeepEqual(m.sink.reports, m.want) {
+		m.t.Errorf("while the transport runs, reported\n%q\nwant\n%q", m.sink.reports, m.want)
+	}
+	code := 0
+	return claudecode.Evidence{Exit: &claudecode.Exit{Code: &code}}
+}
+
+func (*midRun) Version(context.Context, string) (string, error) { return "", nil }
+
+// A turn reports the permissions the result lists as denied as the result
+// line arrives, while the transport still runs: a turn killed before its
+// process exits keeps them.
+func TestATurnReportsTheDenialsWhileTheTransportRuns(t *testing.T) {
+	t.Parallel()
+	sink := &told{}
+	transport := &midRun{t: t, sink: sink, lines: []string{
+		`{"type":"system","subtype":"init","session_id":"s-1","model":"claude-opus-5-5"}`,
+		`{"type":"result","subtype":"success","is_error":false,"session_id":"s-1","result":"done","permission_denials":[` +
+			`{"tool_name":"Bash","tool_use_id":"t1","tool_input":{"command":"rm c.go"}}]}`,
+	}, want: []string{`denied Bash {"command":"rm c.go"}`}}
+	r := request("hello")
+	r.OutputSchema = nil
+	runner := &claudecode.Runner{Transport: transport, Command: "claude"}
+	if turn := runner.RunTurn(context.Background(), r, sink); turn.Status != claudecode.Completed || turn.PermissionDenials != 1 {
+		t.Fatalf("turn = %+v", turn)
+	}
+}
