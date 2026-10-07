@@ -734,6 +734,40 @@ settings OK: 1 processes, 3 skills
 	}
 }
 
+// check --tree shows the brief forms under the process and the workflow
+// whose inputs name them (ADR-026 rule 8), a missing one as missing, and
+// one nothing names as unused.
+func TestCheckTreeShowsBriefs(t *testing.T) {
+	t.Parallel()
+	ref := func(kind, name string) contract.DefinitionRef { return contract.DefinitionRef{Kind: kind, Name: name} }
+	report := contract.CheckReport{
+		Checked: map[string]int{"processes": 1, "workflows": 1, "briefs": 3},
+		Definitions: []contract.Definition{
+			{Kind: "service", Name: "service", Layer: "global", Path: "/g/service.toml"},
+			{Kind: "briefs", Name: "goal", Layer: "project", Path: "/p/briefs/goal.yaml", Overrides: "/g/briefs/goal.yaml", UsedBy: []contract.DefinitionRef{ref("processes", "implement"), ref("workflows", "review")}},
+			{Kind: "briefs", Name: "step", Layer: "global", Path: "/g/briefs/step.yaml", UsedBy: []contract.DefinitionRef{ref("processes", "implement")}},
+			{Kind: "briefs", Name: "plan", Layer: "global", Path: "/g/briefs/plan.yaml", Invalid: true},
+			{Kind: "processes", Name: "implement", Layer: "global", Path: "/g/processes/implement.yaml", Uses: []contract.DefinitionRef{ref("briefs", "goal"), ref("briefs", "step")}},
+			{Kind: "workflows", Name: "review", Layer: "global", Path: "/g/workflows/review.yaml", Uses: []contract.DefinitionRef{ref("briefs", "goal"), ref("briefs", "lost")}},
+		},
+	}
+	r := run(context.Background(), &clientSpy{report: report}, "check", "--tree")
+	want := `service service    global  /g/service.toml
+process implement  global  /g/processes/implement.yaml
+├─ brief goal      project /p/briefs/goal.yaml (overrides /g/briefs/goal.yaml)
+└─ brief step      global  /g/briefs/step.yaml
+workflow review    global  /g/workflows/review.yaml
+├─ brief goal      project /p/briefs/goal.yaml (overrides /g/briefs/goal.yaml)
+└─ brief lost      MISSING
+unused (no process uses these)
+   brief plan      global  /g/briefs/plan.yaml INVALID
+settings OK: 1 processes, 1 workflows, 3 briefs
+`
+	if r.code != 0 || r.stdout != want {
+		t.Fatalf("tree: %d\n%s", r.code, r.stdout)
+	}
+}
+
 // A client refusal over broken settings prints their report, then the
 // refusal, and exits 64; a bare agister checks before it shows the usage.
 func TestSettingsRefusalPrintsTheReport(t *testing.T) {

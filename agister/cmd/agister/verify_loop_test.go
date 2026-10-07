@@ -21,6 +21,7 @@ import (
 	"github.com/igor1309/ai-labs/agister/internal/adapters/fsruns"
 	"github.com/igor1309/ai-labs/agister/internal/adapters/git"
 	"github.com/igor1309/ai-labs/agister/internal/adapters/git/gittest"
+	"github.com/igor1309/ai-labs/agister/internal/adapters/inputs"
 	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/runtimetest"
 	"github.com/igor1309/ai-labs/agister/internal/adapters/schema"
 	"github.com/igor1309/ai-labs/agister/internal/adapters/system"
@@ -408,7 +409,7 @@ verify:
 	})
 	h.calls = app.NewCalls(
 		app.NewResolver(definitions, runtimes, schema.Validator{}, noProblems{}), runtimes,
-		map[string]app.InputProvider{"git.revision": over.revision}, fscache.Store{Dir: filepath.Join(h.home, "cache")},
+		map[string]app.InputProvider{"git.revision": over.revision}, fscache.Store{Dir: filepath.Join(h.home, "cache")}, inputs.File{},
 		over.workspaces, with.changes, holder, app.NewVerifier(with.changes, h.commands, with.clock), app.NewRecoverer(with.clock), schema.Validator{},
 		h.store, h.store, with.clock, still.Timer, system.IDs{}, h.home, h.hosted,
 	)

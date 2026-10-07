@@ -174,6 +174,34 @@ A call is refused before any turn, with exit 3 and the reason, when:
 A directory overlaps the worktree when it is the worktree, lies inside it
 or contains it.
 
+## Give a brief in its form
+
+An input read from a file may name the forms its text must have, such as
+a goal or a step brief. `agister process show <process>` and `agister
+workflow show <workflow>` list them on the input, as `brief <- file (form
+goal, step)`. The form is a settings document, `briefs/<name>.yaml`: the
+repository's `.agister/briefs/` before home's. `process show` names the
+file each form comes from among its sources, and `agister check --tree`
+shows each form under what names it. Copy the form's `template`, fill
+each part, and leave out a part that is not required when it does not
+apply.
+
+A call is refused before it starts, with exit 3, unless the text has one
+of its forms. The reason names the input, each form and each wrong part:
+
+- a required part is missing, empty or given twice. A part is its
+  heading line, exactly as the form gives it, and what follows up to the
+  next heading of its level or above; a heading in fenced code is no
+  part's.
+- a part does not read as the form says: Open reads `None.` and nothing
+  else.
+- a part that refers to a file, such as a step brief's Goal, names none
+  in back quotes, or its first back-quoted path, read relative to the
+  directory you call from, does not exist.
+
+Agister checks the structure, never the meaning. Fix the text and call
+again; do not drop the form from the settings to get past the refusal.
+
 ## Read the result
 
 - `agister runs list` lists the runs: ID, process or workflow, agent and

@@ -26,11 +26,14 @@ home`.
     settings have none of that name, and for a repo with the layer it
     comes from; the skills its call gets, its own and then its agent's
     (ADR-021), listed the same way, each that fails its checks marked
-    `checks failed` (D-16); and what its call needs of the caller's
-    worktree (ADR-025): `HEAD at` the input its `workspace.revision`
-    names, and `clean` when it declares `workspace.clean: true`;
+    `checks failed` (D-16); the brief forms its file inputs name (`form`,
+    ADR-026), listed as prompts are; and what its call needs of the
+    caller's worktree (ADR-025): `HEAD at` the input its
+    `workspace.revision` names, and `clean` when it declares
+    `workspace.clean: true`;
   - for a workflow, its calls in one line (`4 × gpt-6.1-sol at once, then
-    opus`), then the steps: the ones run at once (`First` when there is
+    opus`), the brief forms its inputs name, listed as a process's, then
+    the steps: the ones run at once (`First` when there is
     one) and the one run after them. Each step shows its name, what it
     does, its agent and its policy. Steps are not repeated under
     Processes; they still run alone.
@@ -158,7 +161,7 @@ The server writes nothing and answers these endpoints:
   `X-Agister-Pages` header, which a page on another site cannot send.
 - `GET /api/settings?path=<absolute repo path | ~>`: the settings files of
   `<path>/.agister`, or of Agister home for `~`: `agents`, `policies`,
-  `processes`, `runtimes`, `schemas`, `verifies`, `prompts`,
+  `processes`, `runtimes`, `schemas`, `verifies`, `prompts`, `briefs`,
   `workflows` and `service.toml`, each regular file at most 256 KB.
   `runs/`, `logs/` and the obsolete `workspace.yaml` (ADR-025) are
   skipped, and so is `skills/`: no

@@ -36,7 +36,8 @@ Fields: `internal/domain/definition/documents.go:24-130`, `toml.go:25-60`,
     `code_review` (architecture, tests, adversarial and clarity reviews
     concurrently, then the judge) and `adr_review` (the ADR review, then
     the judge); both take a required `goal` file whose text every review
-    node receives and the judge does not (ADR-023).
+    node receives and the judge does not (ADR-023); `code_review`'s goal
+    must have the `goal` brief form (ADR-026).
     (`.agister/workflows/code_review.yaml`,
     `.agister/workflows/adr_review.yaml`)
 - **process** is a named agent call. It names:
@@ -46,7 +47,10 @@ Fields: `internal/domain/definition/documents.go:24-130`, `toml.go:25-60`,
   - its **verification**: inline, or `verify: verify:<name>` (ADR-010);
   - **prompts**, as inputs `{source: prompt, name: ...}`, maybe optional
     (ADR-014, ADR-019);
-  - **skills** (`skills: [...]`, ADR-021).
+  - **skills** (`skills: [...]`, ADR-021);
+  - **brief forms**, as `form: [...]` on a `file` input: its text must
+    have one of them, or the call is refused before it starts (ADR-026
+    rule 8). A workflow's file inputs may name them too.
   It also holds the instruction, caller params, input values (sources:
   `param`, `file`, `git.revision`, `git.merge_base`, `git.diff`,
   `git.changed_files`, `prompt`; `cmd/agister/main.go` inputs map),
@@ -87,6 +91,14 @@ Fields: `internal/domain/definition/documents.go:24-130`, `toml.go:25-60`,
   `check` warns. (`documents.go:56-78`; ADR-010, ADR-025 rule 5)
 - **prompt**: plain text, the file is the value. (ADR-014)
 - **skill**: one `SKILL.md`. (ADR-021)
+- **brief**: a brief's form: its parts in order, each a Markdown heading
+  line, required or not, maybe the exact text it must read (Open:
+  `None.`) or `reference: file`, a part whose first back-quoted path,
+  relative to the caller's directory, must exist; and the template a
+  caller copies, whose headings are the parts', in order. Agister checks
+  a text's structure against it, never its meaning. The examples ship
+  `goal` and `step`. (`internal/domain/definition/briefs.go`; ADR-026
+  rules 3 to 5 and 8)
 - **blocks** (one, repo only): agents, processes, workflows or runtime
   mappings this repo refuses, with reasons. (ADR-018)
 
@@ -139,6 +151,7 @@ Same layout in both layers (`internal/adapters/fsdefs/fsdefs.go:1`,
 | verifies | `verifies/<name>.yaml` (ADR-010) |
 | prompts | `prompts/<name>.md` (ADR-014) |
 | skills | `skills/<name>/SKILL.md`, the folder's only file (ADR-021) |
+| briefs | `briefs/<name>.yaml` (ADR-026) |
 | blocks (singleton, repo only) | `blocks.yaml` (ADR-018) |
 
 ## How the layers combine
@@ -169,10 +182,12 @@ and ignored, and `check` warns (`internal/app/check.go:289`; ADR-025).
 - The call reads every document once into an in-memory snapshot, checks
   it, and uses exactly what it checked. (`internal/app/snapshot.go:58`,
   `internal/app/gate.go:187`, `internal/app/resolve.go:172`)
-- The call's definitions, prompts, verification and skills are recorded
-  with their digests. (ADR-010 rule 3, ADR-014 rule 3, ADR-021 rule 3)
+- The call's definitions, prompts, verification, skills and brief forms
+  are recorded with their digests. (ADR-010 rule 3, ADR-014 rule 3,
+  ADR-021 rule 3, ADR-026 rule 8)
 - A call depends on the service, its process, and what that uses: agent,
-  runtime mapping, policy, schema, verification, prompts, skills. A broken
+  runtime mapping, policy, schema, verification, prompts, skills, brief
+  forms. A broken
   document refuses only the calls that depend on it, naming the chain.
   Only unattributable problems (service settings broken, an unreadable
   name, a name defined twice, a broken `blocks.yaml`) stop every command.

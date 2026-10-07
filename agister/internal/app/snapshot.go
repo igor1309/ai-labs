@@ -14,7 +14,7 @@ func allKinds() []definition.Kind {
 	return []definition.Kind{
 		definition.KindService, definition.KindRuntime, definition.KindAgent,
 		definition.KindPolicy, definition.KindVerify, definition.KindPrompt,
-		definition.KindSkill, definition.KindProcess, definition.KindSchema, definition.KindWorkflow,
+		definition.KindSkill, definition.KindBrief, definition.KindProcess, definition.KindSchema, definition.KindWorkflow,
 		definition.KindWorkspace, definition.KindBlocks,
 	}
 }

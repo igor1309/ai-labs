@@ -244,7 +244,8 @@ name. In <code>agister run &lt;name&gt;</code> the name picks one
 <span class="k-workflow">workflow</span> or one <span class="k-process">process</span>;
 nothing else is run. A workflow names processes. A process names its
 <span class="k-agent">agent</span>, output schema, verification, prompts,
-skills and policy. An agent names its <span class="k-runtime">runtime mapping</span>
+skills and policy, and a file input may name the brief forms its text must
+have. An agent names its <span class="k-runtime">runtime mapping</span>
 and its own skills. The service is never picked: it has no name, and it
 applies to every run.</p>
 
@@ -256,7 +257,8 @@ the repo's replaces home's of the same kind and name.</p>
 
 <p>A workflow composes process calls into one run, and its settings fix
 what each call receives, never whoever starts it. It has its own params and
-values, and nodes, each naming a process.</p>
+values, and nodes, each naming a process. A file value may name brief
+forms, as a process's may.</p>
 
 <p>Its only shape today: one or more processes over the same inputs, run at
 once, then one process given their results. That is today's limit, not what
@@ -281,6 +283,13 @@ instruction; or held inline in the process. It runs in the call's
 worktree.</li>
 <li><b>prompts</b>: plain text, which may be optional.</li>
 <li><b>skills</b>: each one <code>SKILL.md</code>.</li>
+<li><b>brief forms</b>: <code>briefs/&lt;name&gt;.yaml</code>, named by a
+<code>file</code> input's <code>form: [goal, step]</code>. Each holds its
+parts in order, each a heading, required or not, with the exact text it
+must read (Open: <code>None.</code>) or a file it refers to, and the
+template a caller copies. A call whose text has none of its forms is
+refused before it starts, naming each wrong part. Agister checks the
+structure, never the meaning. Not drawn above.</li>
 <li><b>policy</b>: execution defaults: timeout, attempts, cost cap,
 allowed and denied permissions, workspace access (read-only or read-write)
 and scope (candidate or repository), staleness limits, and under

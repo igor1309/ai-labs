@@ -176,6 +176,33 @@ finding's scope is `change`, `goal` or `outside`, and the judge rules a
 `goal` finding as it rules a `change` one
 ([ADR-023](docs/adr/023-reviewers-know-the-goal.md)).
 
+A brief's form is a document too: `briefs/<name>.yaml`, schema
+`agister.brief/v1alpha1`. Its `parts` are in order, each a Markdown
+`heading` line such as `"## Intent"`, `required: true` or `false`, and
+optionally `reads`, the exact text the part must hold, as `None.` for
+Open, and `reference: file`, for a part whose first back-quoted path,
+relative to the caller's directory, must exist; its `template` is the
+text a caller copies, whose headings are the parts', each once and in
+order. A `source: file` input may name the forms its text must have, with
+literal names: `{source: file, path: "${param.brief}", form: [goal,
+step]}`. A call whose text has none of them is refused before it starts,
+exit code 3, naming the input, each form and each wrong part: a required
+part missing, given twice or empty, a part that does not read as defined,
+or a reference that names no file or one that does not exist. An input
+without `form` is not checked. Agister checks the structure, never the
+meaning. The forms are read with the call and recorded among its
+definitions, and `process show` and `workflow show` give each input's
+forms. `check` reports a form that exists in neither layer as a problem
+of the process or workflow that names it, and a broken form as a problem
+of its own; `check --tree` shows each form under what names it
+([ADR-026](docs/adr/026-the-brief-is-a-runs-input-contract.md) rules 3 to
+5 and 8). The example settings ship `goal` (Intent, Done when, Out of
+scope and Open required; Expected behaviour, Sources and Decisions when
+they apply) and `step` (Goal, a reference to the goal file, Covers and
+Open required; Acts on and Constraints when they apply), and this
+repository's `implement` takes a `goal` or a `step` as its brief and
+`code_review` a `goal` as its goal.
+
 A skill the settings give an agent is a document too:
 `skills/<name>/SKILL.md`, a folder holding that one file. Its front matter
 names it, `name` equal to the folder's, and describes it, `description` not

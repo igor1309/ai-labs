@@ -1217,7 +1217,7 @@ var kindNames = map[string]string{
 	"service": "service", "agents": "agent", "processes": "process",
 	"policies": "policy", "runtimes": "runtime", "schemas": "schema",
 	"workflows": "workflow", "verifies": "verification", "prompts": "prompt",
-	"skills": "skill", "workspace": "workspace",
+	"skills": "skill", "briefs": "brief", "workspace": "workspace",
 }
 
 // printTree prints the service, each process and each workflow with what

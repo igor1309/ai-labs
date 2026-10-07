@@ -33,6 +33,7 @@ type resolution struct {
 	schema  []byte
 	prompts map[string]definition.Prompt // by name
 	absent  []absentInput                // the optional prompt inputs whose prompt neither layer has (ADR-019)
+	forms   map[string]definition.Brief  // by name: the brief forms its inputs name (ADR-026 rule 8)
 	// skills are the call's skills, in order: the process's, then its
 	// agent's, each once (ADR-021 rule 2).
 	skills    []definition.Skill
@@ -364,6 +365,21 @@ func (r *Resolver) resolveCall(ctx context.Context, processName, agentOverride s
 		}
 		res.prompts[name] = prompt
 	}
+	// Each brief form its inputs name is read with the call, from the same
+	// settings, and recorded among its sources (ADR-026 rule 8).
+	for _, name := range res.process.Forms() {
+		if doc, err = load(definition.KindBrief, name); err != nil {
+			return res, refuse("process %s names %v", res.process.Name, err)
+		}
+		brief, err := definition.ParseBrief(doc)
+		if err != nil {
+			return res, parsed(err)
+		}
+		if res.forms == nil {
+			res.forms = map[string]definition.Brief{}
+		}
+		res.forms[name] = brief
+	}
 	// Each skill the process and its agent name is read with the call, from
 	// the same settings, and recorded among its sources (ADR-021 rule 3).
 	for _, name := range definition.CallSkills(res.process, res.agent) {
@@ -512,7 +528,8 @@ func withoutSkillTools(res *resolution, tools []string, verified definition.Mapp
 type workflowResolution struct {
 	workflow  definition.Workflow
 	processes map[string]definition.Process
-	sources   []definition.Source // the workflow's document
+	sources   []definition.Source         // the workflow's document, then its brief forms'
+	forms     map[string]definition.Brief // by name: the brief forms its inputs name (ADR-026 rule 8)
 }
 
 // workflow resolves the workflow named name, refusing one whose nodes
@@ -569,6 +586,23 @@ func (r *Resolver) resolveWorkflow(ctx context.Context, name string) (*workflowR
 	res.sources = append(res.sources, doc.Source)
 	if res.workflow, err = definition.ParseWorkflow(doc); err != nil {
 		return res, refuse("%v", err)
+	}
+	// Each brief form its inputs name is read with the run, from the same
+	// settings, and recorded among its sources (ADR-026 rule 8).
+	for _, form := range res.workflow.Forms() {
+		doc, err := r.definitions.Read(ctx, definition.KindBrief, form)
+		if err != nil {
+			return res, refuse("workflow %s names brief %q: %v", name, form, err)
+		}
+		res.sources = append(res.sources, doc.Source)
+		brief, err := definition.ParseBrief(doc)
+		if err != nil {
+			return res, refuse("%v", err)
+		}
+		if res.forms == nil {
+			res.forms = map[string]definition.Brief{}
+		}
+		res.forms[form] = brief
 	}
 	for _, node := range res.workflow.Nodes() {
 		if _, ok := res.processes[node.Process]; ok {

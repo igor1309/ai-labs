@@ -28,12 +28,17 @@ import (
 
 // repoParams are the values given to a process param that has no default,
 // by param name; any other such param gets fallbackParam. Each is a real
-// file of the repository, so a param read as a file resolves.
+// file of the repository, so a param read as a file resolves; a brief and
+// a goal are a goal of the repository, which has the goal form.
 var repoParams = map[string]string{
 	"prompt":   "prompts/code-review-architecture.md",
-	"brief":    "prompts/code-review-tests.md",
+	"brief":    repoGoal,
+	"goal":     repoGoal,
 	"question": "prompts/code-review-tests.md",
 }
+
+// repoGoal is a goal of the repository that has the goal form.
+const repoGoal = "agister/testdata/briefs/lab-119-goal.md"
 
 const fallbackParam = "AGENTS.md"
 
@@ -397,7 +402,7 @@ func TestReviewNodesReceiveTheGoalAndTheJudgeDoesNot(t *testing.T) {
 		}
 		prompt := runtimeStart(t, home, judge["id"].(string)).Prompt
 		for _, line := range strings.Split(strings.TrimSpace(reviewGoal), "\n") {
-			if strings.Contains(prompt, line) {
+			if line != "" && strings.Contains(prompt, line) {
 				t.Fatalf("%s: the judge's prompt holds the goal's line %q:\n%s", workflow, line, prompt)
 			}
 		}
@@ -1537,8 +1542,12 @@ func TestImplementersCanRunWithoutTheGoPrompts(t *testing.T) {
 }
 
 // reviewGoal is the text of the goal file judgedReviews gives a review
-// workflow: no prompt, settings document or fixture holds it.
-const reviewGoal = "Goal: a failed write is reported to the caller.\nOut of scope: the retry policy.\n"
+// workflow, in the goal form: no prompt, settings document or fixture
+// holds a line of it.
+const reviewGoal = "## Intent\n\nGoal: a failed write is reported to the caller.\n\n" +
+	"## Done when\n\nThe caller of a failed write gets its error.\n\n" +
+	"## Out of scope\n\nOut of scope: the retry policy.\n\n" +
+	"## Open\n\nNone.\n"
 
 // judgedReviews runs a review workflow to completion, with a goal file of
 // its own that holds reviewGoal, and is its judge's collection, as each

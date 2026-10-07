@@ -285,6 +285,7 @@
       params: params(doc.input),
       fanOut: Array.isArray(doc.fan_out) ? doc.fan_out.map(node) : [],
       join: doc.join ? node(doc.join) : null,
+      forms: forms(doc.input),
     };
   }
 
@@ -307,6 +308,7 @@
       clean: doc.workspace?.clean === true,
       output: doc.output?.schema ?? null,
       prompts: prompts(doc.input),
+      forms: forms(doc.input),
       skills: skillNames(doc.skills),
       instruction,
     };
@@ -318,6 +320,26 @@
     const values = input && typeof input.values === 'object' && input.values ? Object.values(input.values) : [];
     const names = values.filter((v) => v?.source === 'prompt' && typeof v.name === 'string').map((v) => v.name);
     return [...new Set(names)].map((name) => ({ name }));
+  }
+
+  // The brief forms a process's or a workflow's file inputs name ({source:
+  // file, path: ..., form: [<name>, ...]}), each once (ADR-026 rule 8).
+  function forms(input) {
+    const values = input && typeof input.values === 'object' && input.values ? Object.values(input.values) : [];
+    const names = values.filter((v) => v?.source === 'file' && Array.isArray(v.form))
+      .flatMap((v) => v.form.filter((name) => typeof name === 'string'));
+    return [...new Set(names)].map((name) => ({ name }));
+  }
+
+  // A brief form (ADR-026 rules 3 to 5): its parts, each a heading, and
+  // whether it is required.
+  function briefItem(file, src, doc) {
+    const parts = Array.isArray(doc.parts) ? doc.parts : [];
+    return {
+      file, name: doc.name ?? stem(file),
+      purpose: firstSentence(leadingComment(src)),
+      parts: parts.map((p) => ({ heading: p?.heading ?? null, required: p?.required === true })),
+    };
   }
 
   // The skills an agent or a process names (skills = [...] or skills:
@@ -449,7 +471,7 @@
     return link(await readAgister(agister, skills));
   }
 
-  const KINDS = ['workflows', 'processes', 'agents', 'policies', 'runtimes', 'schemas', 'verifies', 'prompts', 'skills'];
+  const KINDS = ['workflows', 'processes', 'agents', 'policies', 'runtimes', 'schemas', 'verifies', 'prompts', 'briefs', 'skills'];
 
   // What Agister uses in a repo: Agister home's settings with the repo's
   // over them. As in Agister, a repo file replaces the home file of the
@@ -478,7 +500,7 @@
   }
 
   async function readAgister(agister, skills) {
-    const [workflows, processes, agents, policies, runtimes, schemas, verifies, prompts, service] = await Promise.all([
+    const [workflows, processes, agents, policies, runtimes, schemas, verifies, prompts, briefs, service] = await Promise.all([
       readFolder(agister, 'workflows', ['.yaml', '.yml']),
       readFolder(agister, 'processes', ['.yaml', '.yml']),
       readFolder(agister, 'agents', ['.toml']),
@@ -487,6 +509,7 @@
       readFolder(agister, 'schemas', ['.json']),
       readFolder(agister, 'verifies', ['.yaml', '.yml']),
       readFolder(agister, 'prompts', ['.md']),
+      readFolder(agister, 'briefs', ['.yaml', '.yml']),
       loadService(agister),
     ]);
     return {
@@ -499,6 +522,7 @@
       schemas: schemas.map(({ file }) => ({ file, name: stem(file) })),
       verifies: each(verifies, parseYaml, (file, _src, doc) => verifyItem(file, doc)),
       prompts: prompts.map(({ file }) => ({ file, name: stem(file) })),
+      briefs: each(briefs, parseYaml, briefItem),
       skills: layerSkills(skills),
     };
   }
@@ -523,6 +547,7 @@
       };
     };
     const prompt = found(model.prompts);
+    const brief = found(model.briefs.filter((b) => !b.error));
     // A skill found carries what the server's inventory says of it in its
     // layer: its path, state, description and checks.
     const skillFound = found(model.skills);
@@ -536,6 +561,8 @@
     for (const w of model.workflows) {
       if (w.error) continue;
       for (const n of [...w.fanOut, ...(w.join ? [w.join] : [])]) n.outside = !processes.has(n.process);
+      // Each brief form its goal names, found as prompts are (ADR-026).
+      w.forms = w.forms.map(brief);
     }
     for (const p of model.processes) {
       if (p.error) continue;
@@ -544,6 +571,7 @@
       p.outputOutside = !!p.output && !schemas.has(p.output);
       // Each prompt found, with the layer it comes from when composed (ADR-014).
       p.prompts = p.prompts.map(prompt);
+      p.forms = p.forms.map(brief);
       // The skills it names, found as prompts are; and the ones its call
       // gets: its own, then its agent's, each once (ADR-021 rule 2).
       p.skills = p.skills.map(skill);
@@ -574,6 +602,11 @@
     for (const s of model.schemas) s.usedBy = usedBy(model.processes, 'output', s.name);
     for (const s of model.prompts) {
       s.usedBy = model.processes.filter((p) => !p.error && p.prompts.some((x) => x.name === s.name)).map((p) => p.name);
+    }
+    for (const b of model.briefs) {
+      if (b.error) continue;
+      const names = (items) => items.filter((x) => !x.error && x.forms.some((f) => f.name === b.name)).map((x) => x.name);
+      b.usedBy = [...names(model.processes), ...names(model.workflows)];
     }
     for (const s of model.skills) {
       s.usedBy = model.processes.filter((p) => !p.error && p.callSkills.some((x) => x.name === s.name)).map((p) => p.name);

@@ -198,6 +198,33 @@ func TestPromptsAreMarkdownFiles(t *testing.T) {
 	}
 }
 
+// A brief's form is briefs/<name>.yaml (ADR-026 rule 5), and a project's
+// replaces home's of the same name, as for every other kind.
+//
+// Contract test: the settings store against the real filesystem.
+func TestBriefsAreYAMLFilesAndTheProjectsComeFirst(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	global, project := fsdefs.Store{Dir: t.TempDir()}, fsdefs.Store{Dir: t.TempDir()}
+	globalPath, _, err := global.Write(ctx, definition.KindBrief, "goal", []byte("home"), "")
+	if err != nil || globalPath != filepath.Join(global.Dir, "briefs", "goal.yaml") {
+		t.Fatalf("write = %q, %v", globalPath, err)
+	}
+	global.Write(ctx, definition.KindBrief, "step", []byte("home step"), "")
+	projectPath, _, _ := project.Write(ctx, definition.KindBrief, "goal", []byte("project"), "")
+	layered := fsdefs.Layered{Global: global, Project: &project}
+	if names, err := layered.List(ctx, definition.KindBrief); err != nil || !reflect.DeepEqual(names, []string{"goal", "step"}) {
+		t.Fatalf("list = %v, %v", names, err)
+	}
+	doc, err := layered.Read(ctx, definition.KindBrief, "goal")
+	if err != nil || string(doc.Bytes) != "project" || doc.Source.Path != projectPath || !doc.Source.Project || doc.Source.Overrides != globalPath {
+		t.Fatalf("goal = %+v, %v", doc.Source, err)
+	}
+	if doc, err := layered.Read(ctx, definition.KindBrief, "step"); err != nil || string(doc.Bytes) != "home step" || doc.Source.Project {
+		t.Fatalf("step = %+v, %v", doc.Source, err)
+	}
+}
+
 // A repository's prompts folder, or a prompt's file in it, that is a
 // dangling symlink is not a prompt neither layer has (ADR-019 rule 1,
 // D-11): reading the prompt fails, naming the link, and is not ErrNotFound;
@@ -258,6 +285,53 @@ func TestADanglingPromptLinkIsNotAbsent(t *testing.T) {
 			}
 		}
 	})
+}
+
+// A repository's briefs folder, or a form's file in it, that is a dangling
+// symlink is not a form the project lacks (ADR-015): reading the form
+// fails, naming the link, and home's form of the same name is not read in
+// its place; a folder that is such a link cannot be listed.
+//
+// Contract test: the settings store against the real filesystem.
+func TestADanglingBriefLinkIsNotAbsent(t *testing.T) {
+	t.Parallel()
+	for name, c := range map[string]struct {
+		plant  func(folder string) (link string, err error)
+		listed bool
+	}{
+		"folder": {plant: func(folder string) (string, error) {
+			return folder, os.Symlink(filepath.Join(filepath.Dir(folder), "nowhere"), folder)
+		}, listed: false},
+		"file": {plant: func(folder string) (string, error) {
+			link := filepath.Join(folder, "goal.yaml")
+			if err := os.MkdirAll(folder, 0o700); err != nil {
+				return link, err
+			}
+			return link, os.Symlink(filepath.Join(folder, "nowhere.yaml"), link)
+		}, listed: true},
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			ctx := context.Background()
+			global, project := fsdefs.Store{Dir: t.TempDir()}, fsdefs.Store{Dir: t.TempDir()}
+			if _, _, err := global.Write(ctx, definition.KindBrief, "goal", []byte("home"), ""); err != nil {
+				t.Fatal(err)
+			}
+			link, err := c.plant(filepath.Join(project.Dir, "briefs"))
+			if err != nil {
+				t.Fatal(err)
+			}
+			layered := fsdefs.Layered{Global: global, Project: &project}
+			names, err := layered.List(ctx, definition.KindBrief)
+			if c.listed && (err != nil || !reflect.DeepEqual(names, []string{"goal"})) || !c.listed && (err == nil || !strings.Contains(err.Error(), link)) {
+				t.Fatalf("listed = %v, %v", names, err)
+			}
+			doc, err := layered.Read(ctx, definition.KindBrief, "goal")
+			if err == nil || errors.Is(err, definition.ErrNotFound) || !strings.Contains(err.Error(), "cannot be resolved") || !doc.Source.Project || doc.Bytes != nil {
+				t.Fatalf("read = %+v %q, %v", doc.Source, doc.Bytes, err)
+			}
+		})
+	}
 }
 
 // held reports whether another descriptor cannot take the store's write lock

@@ -277,10 +277,10 @@
       return parts.length ? el('div', {}, ...parts) : null;
     }
 
-    // The prompts or skills (kind) a process or an agent names, each marked
-    // missing when these settings have none of that name, or with the chip
-    // of the layer it comes from; a skill whose checks fail says so, as
-    // Agister refuses the call.
+    // The prompts, skills or brief forms (kind) a process, a workflow or an
+    // agent names, each marked missing when these settings have none of
+    // that name, or with the chip of the layer it comes from; a skill whose
+    // checks fail says so, as Agister refuses the call.
     function namedLine(kind, list, chip) {
       if (!list?.length) return null;
       return el('div', {}, ...list.flatMap((x, i) => {
@@ -322,6 +322,7 @@
         ['agent', agentLine(p.agent, ix)],
         ['policy', policyLines(p.policy, ix)],
         ['prompts', namedLine('prompt', p.prompts, chip)],
+        ['briefs', namedLine('brief', p.forms, chip)],
         ['skills', namedLine('skill', p.callSkills, chip)],
         ['output', outputLine(p)],
         ['worktree', worktreeLine(p)],
@@ -370,7 +371,7 @@
     function workflowCard(w, ix, chip) {
       if (w.error) return errorCard(w);
       return card('workflow', w, chip, command(w.name, w.params),
-        facts([['calls', calls(w, ix)], ['defaults', defaults(w.params)]]),
+        facts([['calls', calls(w, ix)], ['defaults', defaults(w.params)], ['briefs', namedLine('brief', w.forms, chip)]]),
         w.fanOut.length ? stage(w.fanOut.length > 1 ? `${w.fanOut.length} at once` : 'First', w.fanOut.map((n) => step(n, ix))) : null,
         w.join ? stage('Then', [step(w.join, ix)]) : null);
     }

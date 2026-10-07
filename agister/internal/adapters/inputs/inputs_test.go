@@ -35,3 +35,22 @@ func TestFileIsReadRelativeToTheCallerAndDigested(t *testing.T) {
 		t.Fatal("missing file accepted")
 	}
 }
+
+// Contract test: whether a file a brief refers to exists, against the real
+// filesystem; a folder exists too, and a path that cannot be looked up is an
+// error, not an absence.
+func TestFileSaysWhetherAPathExists(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "goal.md"), []byte("goal"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	for path, want := range map[string]bool{filepath.Join(dir, "goal.md"): true, dir: true, filepath.Join(dir, "missing.md"): false} {
+		if found, err := (inputs.File{}).Exists(context.Background(), path); err != nil || found != want {
+			t.Fatalf("%s: %t, %v, want %t", path, found, err, want)
+		}
+	}
+	if _, err := (inputs.File{}).Exists(context.Background(), filepath.Join(dir, "goal.md", "below")); err == nil {
+		t.Fatal("a path below a file was looked up without error")
+	}
+}

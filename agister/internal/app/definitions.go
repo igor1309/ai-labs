@@ -516,7 +516,8 @@ type InspectedParam struct {
 type InspectedValue struct {
 	Name     string
 	Source   string
-	Optional bool // an optional prompt (ADR-019)
+	Optional bool     // an optional prompt (ADR-019)
+	Forms    []string // the brief forms its text must have one of (ADR-026 rule 8)
 }
 
 // InspectedVerify is a process's verification command.
@@ -666,9 +667,18 @@ func inspectedParams(params []definition.Param) []InspectedParam {
 	})
 }
 
+// formed is how an input shows the brief forms its text must have one of,
+// empty for an input that names none.
+func formed(forms []string) string {
+	if len(forms) == 0 {
+		return ""
+	}
+	return " (form " + strings.Join(forms, ", ") + ")"
+}
+
 func inspectedValues(values []definition.Value) []InspectedValue {
 	return translated(values, func(value definition.Value) InspectedValue {
-		return InspectedValue{Name: value.Name, Source: value.Source, Optional: value.Optional()}
+		return InspectedValue{Name: value.Name, Source: value.Source, Optional: value.Optional(), Forms: value.Forms}
 	})
 }
 
@@ -711,7 +721,7 @@ func (i *Inspection) ShowWorkflow(ctx context.Context, name string) (contract.Wo
 	}
 	passed := map[string]bool{}
 	for _, value := range workflow.Values {
-		view.Inputs = append(view.Inputs, value.Name+" <- "+value.Source)
+		view.Inputs = append(view.Inputs, value.Name+" <- "+value.Source+formed(value.Forms))
 		passed[value.Name] = true
 	}
 	node := func(node InspectedNode, join bool) (contract.WorkflowNode, error) {
@@ -789,7 +799,7 @@ func (i *Inspection) showProcess(ctx context.Context, name, agent string) (contr
 		view.Params = append(view.Params, contract.Param{Name: param.Name, Default: param.Default, Required: !param.HasDefault})
 	}
 	for _, value := range res.Process.Values {
-		input := value.Name + " <- " + value.Source
+		input := value.Name + " <- " + value.Source + formed(value.Forms)
 		if value.Optional {
 			input += " (optional)"
 		}

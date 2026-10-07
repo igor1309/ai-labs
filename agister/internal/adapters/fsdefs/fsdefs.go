@@ -1,7 +1,8 @@
 // Package fsdefs stores definition documents as files under Agister's
 // state directory: service.toml, workspace.yaml, blocks.yaml, agents/*.toml,
 // processes/*.yaml, policies/*.yaml, runtimes/*.yaml, schemas/*.json,
-// workflows/*.yaml, verifies/*.yaml, prompts/*.md, skills/*/SKILL.md. Layered
+// workflows/*.yaml, verifies/*.yaml, prompts/*.md, skills/*/SKILL.md,
+// briefs/*.yaml. Layered
 // reads a project's own settings over the global ones.
 package fsdefs
 
@@ -89,6 +90,7 @@ func extensions() map[definition.Kind]string {
 		definition.KindWorkflow: ".yaml",
 		definition.KindVerify:   ".yaml",
 		definition.KindPrompt:   ".md",
+		definition.KindBrief:    ".yaml",
 		// A folder each, holding the one file skillFile (ADR-021 rule 1).
 		definition.KindSkill: ".md",
 		// Singletons, like the service.
@@ -213,8 +215,9 @@ func (s Store) Read(_ context.Context, kind definition.Kind, name string) (defin
 		}
 		// Nor is a prompt whose file or folder is a dangling symlink: an
 		// optional one would be left out of the call where the settings
-		// are broken (ADR-019 rule 1, D-11).
-		if kind == definition.KindPrompt {
+		// are broken (ADR-019 rule 1, D-11). Nor a brief's form: home's
+		// would check the text in place of the project's (ADR-015).
+		if kind == definition.KindPrompt || kind == definition.KindBrief {
 			if _, lerr := os.Lstat(path); lerr == nil {
 				return doc, fmt.Errorf("cannot be resolved: %v", err)
 			}
@@ -272,8 +275,9 @@ func (s Store) List(_ context.Context, kind definition.Kind) ([]string, error) {
 	entries, err := os.ReadDir(folder)
 	if errors.Is(err, fs.ErrNotExist) {
 		// A prompts folder that is a dangling symlink cannot be listed:
-		// read as none, it would make every optional prompt absent.
-		if kind == definition.KindPrompt {
+		// read as none, it would make every optional prompt absent. Nor a
+		// briefs folder: home's forms would stand in for the project's.
+		if kind == definition.KindPrompt || kind == definition.KindBrief {
 			if err := resolvable(folder); err != nil {
 				return nil, err
 			}

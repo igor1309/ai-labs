@@ -183,7 +183,7 @@ func TestAPromptNotResolvedWithTheCallRefusesIt(t *testing.T) {
 	prompted(h, reviewPrompt)
 	h.calls = app.NewCalls(
 		withoutPrompts{app.NewResolver(h.defs, h.runtimes, h.validator, resolverCheckStub{})}, h.runtimes,
-		map[string]app.InputProvider{"git.revision": h.inputs, "git.diff": h.inputs}, h.copies,
+		map[string]app.InputProvider{"git.revision": h.inputs, "git.diff": h.inputs}, h.copies, h.references,
 		h.workspaces, h.changes, h.holder(), app.NewVerifier(h.changes, h.commands, h.clock), app.NewRecoverer(h.clock), h.validator, h.recorder, h.runs,
 		h.clock, h.timer, fixedIDs{}, "/state", h.hosted,
 	)
