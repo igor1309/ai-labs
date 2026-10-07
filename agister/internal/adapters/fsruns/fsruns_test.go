@@ -321,6 +321,63 @@ func TestAdoptTakesOnlyAnAbandonedRun(t *testing.T) {
 	}
 }
 
+// LAB-123: an owner killed while it appended an event leaves half a line
+// at the end of the run's events. Adoption cuts it off under the owner
+// lock and keeps every complete event, so the event the adopter appends,
+// as a reap's EFFECTS_REAPED, reads after them, numbered on.
+//
+// Contract test: the run store against the real filesystem, and the
+// kernel's flock on a run's owner.lock.
+func TestAdoptionCutsTheEventItsDeadOwnerTore(t *testing.T) {
+	t.Parallel()
+	store := newStore(t)
+	ctx := context.Background()
+	record := run.Record{Schema: run.RecordSchema, ID: "r1", Process: "p", CreatedAt: time.Now(), Effects: &run.Effects{}}
+	h, err := store.Create(ctx, record)
+	if err != nil {
+		t.Fatal(err)
+	}
+	letGo(t, h)
+	for _, kind := range []string{"STARTED", "ABORT_REQUESTED"} {
+		if err := h.Append(run.Event{Kind: kind}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	events := filepath.Join(store.RunDir("r1"), "events.jsonl")
+	complete, err := os.ReadFile(events)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// The owner is killed mid-append.
+	if err := os.WriteFile(events, append(complete, `{"seq":3,"kind":"PROC`...), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := store.Abandon("r1"); err != nil {
+		t.Fatal(err)
+	}
+
+	adopted, _, err := store.Adopt(ctx, "r1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	letGo(t, adopted)
+	if err := adopted.Append(run.Event{Kind: "EFFECTS_REAPED"}); err != nil {
+		t.Fatal(err)
+	}
+
+	read, _, err := store.Events(ctx, "r1", 0)
+	var got []string
+	for _, event := range read {
+		got = append(got, fmt.Sprintf("%d %s", event.Seq, event.Kind))
+	}
+	if want := []string{"1 STARTED", "2 ABORT_REQUESTED", "3 EFFECTS_REAPED"}; err != nil || !reflect.DeepEqual(got, want) {
+		t.Fatalf("events = %v, %v; want %v", got, err, want)
+	}
+	if data, err := os.ReadFile(events); err != nil || !bytes.HasPrefix(data, complete) || bytes.Contains(data, []byte("PROC")) {
+		t.Fatalf("events file = %q, %v; want the complete events kept and the torn one gone", data, err)
+	}
+}
+
 // A finished run whose record still names a clean copy is listed and
 // adopted, so a reap removes the copy; one with no copy on record is not.
 //

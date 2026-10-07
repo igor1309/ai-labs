@@ -362,11 +362,66 @@ func TestAReapThatLeavesAProcessStillRefusesTheCall(t *testing.T) {
 	}
 }
 
-// One reaper takes one run at a time: a reap of one run asked for while the
-// reap beside the calls holds that run waits for it, and returns the run as
-// that reap finished it. Without the wait it would find the run's owner
-// lock taken, by its own process, and read the run as owned, which refuses
-// the call that asked.
+// LAB-123, ADR-025 rule 4: a writer killed once its worktree is on record,
+// before its runtime's process is, leaves its run unfinished with no
+// process on record. The next writer call into the worktree does not wait
+// for a reap beside the calls, which there is none of here: it has the run
+// reaped, and is admitted. The killed run's record carries the reap's end,
+// lost and abandoned, and its events the reap; the call's events say it
+// had the run reaped, and how the run ended.
+//
+// Integration test: the holder and the reaper over the run store on the
+// filesystem; the processes are spies.
+func TestAWriterKilledBeforeItsRuntimeStartedIsReapedByTheNextCall(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	h := newHarness()
+	store, hold := storedHolds(t, h)
+	killed := errors.New("killed")
+	if _, err := hold("run-0", "/repo", func(handle app.RunHandle, record run.Record) error {
+		if err := handle.Update(record); err != nil {
+			return err
+		}
+		if err := store.Abandon(record.ID); err != nil {
+			return err
+		}
+		return killed
+	}); !errors.Is(err, killed) {
+		t.Fatalf("the first hold = %v", err)
+	}
+	// As the kill leaves it: nobody's, unfinished, a writer's in the
+	// worktree, with no effect on record.
+	left, state, err := store.Get(ctx, "run-0")
+	if err != nil || state != run.StateAbandoned || left.FinishedAt != nil || left.InPlace == nil || left.InPlace.Worktree != "/repo" || !left.InPlace.HeldAlone() ||
+		left.Effects == nil || !reflect.DeepEqual(*left.Effects, run.Effects{}) {
+		t.Fatalf("the killed run %s: in place %+v, effects %+v, %v", state, left.InPlace, left.Effects, err)
+	}
+
+	holding, err := hold("run-1", "/repo", saved)
+
+	if err != nil || holding == nil || !h.locks.holds("/repo") {
+		t.Fatalf("the next hold = %+v, %v; lock held %v", holding, err, h.locks.holds("/repo"))
+	}
+	reaped, state, err := store.Get(ctx, "run-0")
+	if err != nil || state != run.StateFinished || reaped.Result == nil || reaped.Result.Status != run.Lost || class(reaped) != run.ClassAbandoned || !says(reaped, true) {
+		t.Fatalf("the killed run %s: %+v, processes ended %s, %v", state, reaped.Result, said(reaped), err)
+	}
+	if events, _, err := store.Events(ctx, "run-0", 0); err != nil || kindsOf(events) != "EFFECTS_REAPED" {
+		t.Fatalf("the killed run's events %s, %v", kindsOf(events), err)
+	}
+	if got, want := dataOf(eventsOf(h, "WORKTREE_RUN_REAPED"), "WORKTREE_RUN_REAPED"), []map[string]any{{"run": "run-0", "outcome": "finished", "status": "lost", "class": "abandoned", "processes_ended": true}}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("the call says %v of the run, want %v", got, want)
+	}
+	// No process was on record for the reap or the hold to end.
+	if len(h.processes.refs()) != 0 || len(h.writers.refs()) != 0 {
+		t.Fatalf("the reap asked to end %v, the hold %v", h.processes.refs(), h.writers.refs())
+	}
+}
+
+// A reap of one run asked for while the reap beside the calls holds that
+// run waits for it, and returns the run as that reap finished it. Without
+// the wait it would find the run's owner lock taken, by its own process,
+// and read the run as owned, which refuses the call that asked.
 //
 // Integration test: the reaper over the run store on the filesystem, whose
 // owner lock is the kernel's; the processes are a spy that holds the reap
@@ -384,16 +439,16 @@ func TestAReapOfOneRunWaitsForTheReapersStepInFlight(t *testing.T) {
 	}
 	reaper := storedReaper(h, store)
 	// The reap beside the calls stops while it ends the run's process: it
-	// holds the run, and its turn.
-	inFlight, release := make(chan struct{}), make(chan struct{})
+	// holds the run.
+	inFlight, step := make(chan struct{}), newBlocked()
 	h.processes.hook = func(context.Context) {
 		close(inFlight)
-		<-release
+		<-step.gate
 	}
 	waiting := make(chan struct{})
 	reaper.OnWaiting(func() { close(waiting) })
 	beside := make(chan error, 1)
-	go func() { beside <- reaper.Reap(ctx) }()
+	started(t, step, func() { beside <- reaper.Reap(ctx) })
 	<-inFlight
 
 	type answer struct {
@@ -402,16 +457,16 @@ func TestAReapOfOneRunWaitsForTheReapersStepInFlight(t *testing.T) {
 		err      error
 	}
 	asked := make(chan answer, 1)
-	go func() {
+	started(t, step, func() {
 		finished, owned, err := reaper.ReapRun(ctx, "run-0")
 		asked <- answer{finished, owned, err}
-	}()
+	})
 	select {
 	case <-waiting:
 	case got := <-asked:
 		t.Fatalf("the run was asked for while the reap beside the calls held it: owned %v, %v", got.owned, got.err)
 	}
-	close(release)
+	step.release()
 
 	got := <-asked
 	if got.err != nil || got.owned || got.finished.FinishedAt == nil || class(got.finished) != run.ClassAbandoned || !says(got.finished, true) {
@@ -424,5 +479,88 @@ func TestAReapOfOneRunWaitsForTheReapersStepInFlight(t *testing.T) {
 	events, _, err := store.Events(ctx, "run-0", 0)
 	if err != nil || kindsOf(events) != "EFFECTS_REAPED" || !reflect.DeepEqual(h.processes.refs(), []string{"ref-run-0"}) {
 		t.Fatalf("the run's events %s, %v; asked to end %v", kindsOf(events), err, h.processes.refs())
+	}
+}
+
+// LAB-123: the reap beside the calls holds only the run whose effects it
+// ends. A writer call that meets, meanwhile, the run a dead owner left
+// unfinished in its worktree has that run reaped by the same reaper
+// without waiting for the reap beside the calls, whose removal of another
+// run's clean copy may run past any deadline: the call is admitted while
+// the removal still runs. That reap then finishes its own run, and finds
+// the call's finished.
+//
+// Integration test: the holder and the reap beside the calls, by one
+// reaper, over the run store on the filesystem, whose owner lock is the
+// kernel's; the removal and the processes are spies.
+func TestAWriterCallDoesNotWaitForTheReapOfAnotherRun(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	h := newHarness()
+	store := fsruns.Store{Dir: t.TempDir(), Appends: fsruns.NewAppends()}
+	reaper := storedReaper(h, store)
+	hold := storedHoldsBy(t, h, store, reaper)
+	// A finished run whose clean copy is still on record, listed before
+	// the killed writer: the reap beside the calls takes it first.
+	copied := &run.Checkout{Repository: "/origin", Dir: "/made/copy"}
+	finished, err := store.Create(ctx, run.Record{ID: "legacy-0"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := finished.Finish(completedRun(run.Record{ID: "legacy-0", Effects: &run.Effects{Copy: copied}})); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := store.Create(ctx, inPlaceRun("run-0", "/repo", false, false)); err != nil {
+		t.Fatal(err)
+	}
+	if err := store.Abandon("run-0"); err != nil {
+		t.Fatal(err)
+	}
+	// The copy's removal runs until the test lets it go.
+	removing, removal := make(chan struct{}), newBlocked()
+	h.workspaces.discardHook = func(_ context.Context, dir string) error {
+		if dir == copied.Dir {
+			close(removing)
+			<-removal.gate
+		}
+		return nil
+	}
+	// A wait would last as long as the removal: it is let go, and the test
+	// fails.
+	reaper.OnWaiting(func() {
+		t.Error("the call waited for the reap beside the calls")
+		removal.release()
+	})
+	beside := make(chan error, 1)
+	started(t, removal, func() { beside <- reaper.Reap(ctx) })
+	<-removing
+
+	holding, err := hold("run-1", "/repo", saved)
+
+	if err != nil || holding == nil || !h.locks.holds("/repo") {
+		t.Fatalf("the hold while another run's copy is removed = %+v, %v; lock held %v", holding, err, h.locks.holds("/repo"))
+	}
+	reaped, state, err := store.Get(ctx, "run-0")
+	if err != nil || state != run.StateFinished || reaped.Result == nil || reaped.Result.Status != run.Lost || class(reaped) != run.ClassAbandoned || !says(reaped, true) {
+		t.Fatalf("the killed run %s: %+v, processes ended %s, %v", state, reaped.Result, said(reaped), err)
+	}
+	if got, want := dataOf(eventsOf(h, "WORKTREE_RUN_REAPED"), "WORKTREE_RUN_REAPED"), []map[string]any{{"run": "run-0", "outcome": "finished", "status": "lost", "class": "abandoned", "processes_ended": true}}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("the call says %v of the run, want %v", got, want)
+	}
+	if legacy, _, err := store.Get(ctx, "legacy-0"); err != nil || legacy.Effects == nil || !reflect.DeepEqual(legacy.Effects.Copy, copied) {
+		t.Fatalf("the copy left the record before its removal ended: %+v, %v", legacy.Effects, err)
+	}
+
+	removal.release()
+	if err := <-beside; err != nil {
+		t.Fatal(err)
+	}
+	if legacy, _, err := store.Get(ctx, "legacy-0"); err != nil || legacy.Effects == nil || legacy.Effects.Copy != nil || legacy.Result == nil || legacy.Result.Status != run.Completed {
+		t.Fatalf("the finished run once its copy is removed: effects %+v, result %+v, %v", legacy.Effects, legacy.Result, err)
+	}
+	// The killed run was reaped once, by the call's reap.
+	events, _, err := store.Events(ctx, "run-0", 0)
+	if err != nil || kindsOf(events) != "EFFECTS_REAPED" || !reflect.DeepEqual(h.processes.refs(), []string{"ref-run-0"}) {
+		t.Fatalf("the killed run's events %s, %v; asked to end %v", kindsOf(events), err, h.processes.refs())
 	}
 }

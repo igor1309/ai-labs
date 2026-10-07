@@ -10,8 +10,8 @@ import (
 // callback and calling it. Set it before any run is cancelled.
 func (h *Hosted) OnCaptured(hook func(id string)) { h.captured = hook }
 
-// OnWaiting sets the hook that runs when the reaper finds its turn taken,
-// before it waits for it. Set it before the reaper is used.
+// OnWaiting sets the hook that runs before the reaper waits: for its turn,
+// or for the step that holds a run. Set it before the reaper is used.
 func (c *Reaper) OnWaiting(hook func()) { c.waiting = hook }
 
 // TurnWatch is the watcher of one turn.

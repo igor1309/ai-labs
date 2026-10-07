@@ -521,10 +521,16 @@ func TestARecordedDirectoryThatCannotBeToldApartRefusesTheCall(t *testing.T) {
 // lent, is let go when the test ends.
 func storedHolds(t *testing.T, h *harness) (fsruns.Store, func(id, dir string, update func(app.RunHandle, run.Record) error) (*app.Held, error)) {
 	t.Helper()
-	ctx := context.Background()
 	store := fsruns.Store{Dir: t.TempDir(), Appends: fsruns.NewAppends()}
-	holder := app.NewHolder(app.HoldAdapters{Locks: h.locks, Worktrees: h.worktrees, Content: h.changes, Runs: store, Reaper: storedReaper(h, store), Writers: h.writers})
-	return store, func(id, dir string, update func(app.RunHandle, run.Record) error) (*app.Held, error) {
+	return store, storedHoldsBy(t, h, store, storedReaper(h, store))
+}
+
+// storedHoldsBy is storedHolds' hold, over store, with reaper the Holder's.
+func storedHoldsBy(t *testing.T, h *harness, store fsruns.Store, reaper app.HoldReaper) func(id, dir string, update func(app.RunHandle, run.Record) error) (*app.Held, error) {
+	t.Helper()
+	ctx := context.Background()
+	holder := app.NewHolder(app.HoldAdapters{Locks: h.locks, Worktrees: h.worktrees, Content: h.changes, Runs: store, Reaper: reaper, Writers: h.writers})
+	return func(id, dir string, update func(app.RunHandle, run.Record) error) (*app.Held, error) {
 		t.Helper()
 		record := run.Record{ID: id}
 		handle, err := store.Create(ctx, record)

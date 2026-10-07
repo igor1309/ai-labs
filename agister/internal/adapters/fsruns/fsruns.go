@@ -17,6 +17,7 @@ package fsruns
 
 import (
 	"bufio"
+	"bytes"
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
@@ -154,7 +155,9 @@ func (s Store) LiveCheckouts(ctx context.Context) ([]string, error) {
 // whose record still names a clean copy or an unreleased checkout, so
 // exactly one process ends what its dead owner left. A run whose lock
 // another holds is app.ErrRunOwned; one finished with neither on record,
-// app.ErrRunFinished, with its record.
+// app.ErrRunFinished, with its record. Under the lock, it cuts off an
+// event the dead owner did not finish appending, so the adopter's events
+// read.
 func (s Store) Adopt(ctx context.Context, id string) (app.ReapHandle, run.Record, error) {
 	var record run.Record
 	if err := checkID(id); err != nil {
@@ -184,6 +187,12 @@ func (s Store) Adopt(ctx context.Context, id string) (app.ReapHandle, run.Record
 		lock.Close()
 		return nil, record, err
 	}
+	// An owner killed while it appended an event left half a line: the
+	// adopter's events would follow it on that line, and read as torn too.
+	if err := cutTornTail(filepath.Join(s.runDir(id), "events.jsonl")); err != nil {
+		lock.Close()
+		return nil, record, fmt.Errorf("run %s: repairing its events: %w", id, err)
+	}
 	seq := 0
 	if events, _, err := s.Events(ctx, id, 0); err == nil && len(events) > 0 {
 		seq = events[len(events)-1].Seq
@@ -207,6 +216,26 @@ func (s Store) Abandon(id string) error {
 		return nil
 	}
 	return fmt.Errorf("run %s: no handle in this process holds it", id)
+}
+
+// cutTornTail cuts the events file at path after its last whole line: what
+// follows is an event its writer did not finish appending. The whole lines,
+// every complete event, stay. A run with no events file has none to cut.
+// Only the run's owner may cut it: an owner still appending would lose its
+// event.
+func cutTornTail(path string) error {
+	data, err := os.ReadFile(path)
+	if errors.Is(err, fs.ErrNotExist) {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	whole := bytes.LastIndexByte(data, '\n') + 1
+	if whole == len(data) {
+		return nil
+	}
+	return os.Truncate(path, int64(whole))
 }
 
 // reapable says a finished run's effects leave something to remove: a

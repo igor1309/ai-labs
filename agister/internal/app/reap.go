@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"slices"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/igor1309/ai-labs/agister/internal/domain/run"
@@ -25,12 +26,21 @@ type Reaper struct {
 	processes Processes
 	discarder CheckoutDiscarder
 	clock     ReapClock
-	// turn is held while the reaper lists the abandoned runs or takes one
-	// (take): a Reap and a ReapRun of one process never meet each other at
-	// a run's owner lock.
+	// turn is held for the moments the reaper reads the runs' owner locks
+	// or takes one (take): while it lists the abandoned runs, or reads the
+	// live checkouts and adopts a run. The flock it holds for the moment it
+	// reads a run's state would read to another of its steps as the run's
+	// owner. It is not held while a run's effects are ended.
 	turn chan struct{}
-	// waiting, when set, is called when the turn is taken, before the wait
-	// for it. Tests take it there.
+	// mu guards reaping: the runs a step of the reaper has adopted and not
+	// finished yet, each with the channel closed once it is. The step holds
+	// the run's owner lock until then, which another step for that run
+	// would read as an owner's: that step waits for it (claim). A step for
+	// another run does not.
+	mu      sync.Mutex
+	reaping map[string]chan struct{}
+	// waiting, when set, is called before the reaper waits: for its turn,
+	// or for the step that holds a run. Tests take it there.
 	waiting func()
 	// ReapTimeout bounds one Reap; zero means 30s.
 	ReapTimeout time.Duration
@@ -106,7 +116,7 @@ type ReapClock interface{ Now() time.Time }
 // NewReaper returns the use case that reaps abandoned runs. Every
 // collaborator is required; ReapTimeout and ReapContext are optional.
 func NewReaper(adopter RunAdopter, processes Processes, discarder CheckoutDiscarder, clock ReapClock) *Reaper {
-	return &Reaper{adopter: adopter, processes: processes, discarder: discarder, clock: clock, turn: make(chan struct{}, 1)}
+	return &Reaper{adopter: adopter, processes: processes, discarder: discarder, clock: clock, turn: make(chan struct{}, 1), reaping: map[string]chan struct{}{}}
 }
 
 // Reap leaves runs some process still owns alone. Runs not reached by the
@@ -147,7 +157,8 @@ func (c *Reaper) Reap(ctx context.Context) error {
 // finished as lost; it is returned as finished, and so is one that
 // finished meanwhile, by another reap or by its owner. A run a process
 // owns is left alone, and owned is true. The reap deadline bounds it, as
-// it bounds a Reap.
+// it bounds a Reap. It waits for a step of the reaper that holds this run,
+// never for one that ends another run's effects.
 func (c *Reaper) ReapRun(ctx context.Context, id string) (finished run.Record, owned bool, err error) {
 	ctx, cancel := c.reapContext(ctx)
 	defer cancel()
@@ -173,35 +184,83 @@ func (c *Reaper) abandoned(ctx context.Context) ([]run.Record, error) {
 	return c.adopter.Abandoned(ctx)
 }
 
-// step adopts run id and reaps it, in the reaper's turn. adopted is false
-// for a run it did not take, with why: the deadline arrived, or the
-// adoption failed, the record with it when the run is finished.
+// step adopts run id and reaps it. It adopts in the reaper's turn, once no
+// other step holds the run, and ends the run's effects out of the turn,
+// holding the run alone: a step for another run goes on meanwhile, and
+// one for this run waits. adopted is false for a run it did not take, with
+// why: the deadline arrived, or the adoption failed, the record with it
+// when the run is finished.
 func (c *Reaper) step(ctx context.Context, id string) (record run.Record, adopted bool, err error) {
-	release, err := c.take(ctx)
+	release, err := c.claim(ctx, id)
 	if err != nil {
 		return record, false, err
 	}
-	defer release()
 	// Read before adopting: the run adopted next is owned by this
 	// process and would read as live.
 	live, liveErr := c.adopter.LiveCheckouts(ctx)
 	// The deadline may have arrived meanwhile: never adopt after it.
 	if err := ctx.Err(); err != nil {
+		release()
 		return record, false, err
 	}
 	handle, record, err := c.adopter.Adopt(ctx, id)
 	if err != nil {
+		release()
 		return record, false, err
 	}
+	done := c.hold(id)
+	release()
+	defer done()
 	record, err = c.reap(ctx, handle, record, live, liveErr)
 	return record, true, err
 }
 
-// take takes the reaper's turn, and returns its release. The reaper reads
-// and takes the runs' owner locks only in its turn: the flock one of its
-// reaps holds, or holds for the moment it reads a run's state, would read
-// to another of this process as the run's owner. A turn that is free is
-// taken whatever ctx says; the wait for one that is taken ends with ctx.
+// claim takes the reaper's turn once no step holds run id, and returns the
+// turn's release. A step that holds the run is waited for out of the turn,
+// and the run asked about again once it is done; the wait ends with ctx.
+func (c *Reaper) claim(ctx context.Context, id string) (release func(), err error) {
+	for {
+		release, err := c.take(ctx)
+		if err != nil {
+			return nil, err
+		}
+		c.mu.Lock()
+		held := c.reaping[id]
+		c.mu.Unlock()
+		if held == nil {
+			return release, nil
+		}
+		release()
+		if c.waiting != nil {
+			c.waiting()
+		}
+		select {
+		case <-held:
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		}
+	}
+}
+
+// hold puts run id, just adopted in the turn, among the runs a step holds,
+// and returns the end of the hold, which lets the steps that wait for the
+// run go on.
+func (c *Reaper) hold(id string) (done func()) {
+	held := make(chan struct{})
+	c.mu.Lock()
+	c.reaping[id] = held
+	c.mu.Unlock()
+	return func() {
+		c.mu.Lock()
+		delete(c.reaping, id)
+		c.mu.Unlock()
+		close(held)
+	}
+}
+
+// take takes the reaper's turn, and returns its release. A turn that is
+// free is taken whatever ctx says; the wait for one that is taken ends
+// with ctx.
 func (c *Reaper) take(ctx context.Context) (release func(), err error) {
 	select {
 	case c.turn <- struct{}{}:

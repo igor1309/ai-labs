@@ -267,12 +267,14 @@ func (c composition) wire(config cli.Config) (contract.Client, *app.BackgroundRe
 		},
 	}
 	workspaces, content := c.git, c.git.content
-	// Abandoned runs are reaped beside the calls, never inside one. A reap
-	// that fails has no caller to tell and no run record to say so: the
-	// log does.
-	// One reaper serves both the reap beside the calls and the call that
-	// meets a run a dead owner left in its worktree: in its turn, neither
-	// reads the other as that run's owner.
+	// Abandoned runs are reaped beside the calls, never inside one, but for
+	// the run a dead owner left unfinished in a writer call's worktree,
+	// which that call has reaped before it decides (LAB-123). A reap that
+	// fails has no caller to tell and no run record to say so: the log
+	// does.
+	// One reaper serves both, so neither reads the other's hold of a run as
+	// that run's owner: a step for a run waits for the one that holds it,
+	// not for one ending another run's effects.
 	reaper := app.NewReaper(evidence, runtimecomposition.Processes{Supervisor: c.processes}, workspaces.discarder, system.Clock{})
 	reaping := &app.BackgroundReaper{
 		Reaper: reaper,
