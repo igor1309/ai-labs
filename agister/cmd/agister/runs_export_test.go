@@ -289,31 +289,74 @@ func TestRunsExportKeepsAnIdenticalCopy(t *testing.T) {
 
 // A copy that differs from the run is never overwritten: the export is
 // refused for that run, exit 3, and says which file differs; another run
-// it names is still copied.
+// it names is still copied. A change that keeps the file's length differs
+// as one that does not.
 func TestRunsExportRefusesACopyThatDiffers(t *testing.T) {
 	t.Parallel()
 	home, repo, id := exportedRun(t)
 	record(t, home, finished("other", nil))
-	to := tempDir(t)
-	if r := agister(t, home, repo, "runs", "export", id, "--to", to); r.code != cli.ExitCompleted {
-		t.Fatalf("first export: %d\n%s%s", r.code, r.stdout, r.stderr)
-	}
-	events := filepath.Join(to, id, "events.jsonl")
-	changed := read(t, events) + "{\"seq\":999}\n"
-	write(t, events, changed)
+	for _, c := range []struct {
+		name   string
+		change func(string) string
+	}{
+		{"a line more", func(events string) string { return events + "{\"seq\":999}\n" }},
+		{"the same length", func(events string) string {
+			last := strings.LastIndex(events, "}\n")
+			return events[:last] + "]\n"
+		}},
+	} {
+		to := tempDir(t)
+		if r := agister(t, home, repo, "runs", "export", id, "--to", to); r.code != cli.ExitCompleted {
+			t.Fatalf("%s: first export: %d\n%s%s", c.name, r.code, r.stdout, r.stderr)
+		}
+		events := filepath.Join(to, id, "events.jsonl")
+		stored := read(t, events)
+		changed := c.change(stored)
+		if changed == stored || c.name == "the same length" && len(changed) != len(stored) {
+			t.Fatalf("%s: the change of %q is %q", c.name, stored, changed)
+		}
+		write(t, events, changed)
 
-	r := agister(t, home, repo, "runs", "export", id, "other", "--to", to)
-	if r.code != cli.ExitRefused {
-		t.Fatalf("export: %d\n%s%s", r.code, r.stdout, r.stderr)
+		r := agister(t, home, repo, "runs", "export", id, "other", "--to", to)
+		if r.code != cli.ExitRefused {
+			t.Fatalf("%s: export: %d\n%s%s", c.name, r.code, r.stdout, r.stderr)
+		}
+		refused := fmt.Sprintf("REFUSED %s: %s: the copy there differs, and is not overwritten: events.jsonl differs from the run's\n", id, filepath.Join(to, id))
+		if !strings.HasPrefix(r.stdout, refused) || !strings.Contains(r.stdout, "copied  other: ") {
+			t.Fatalf("%s: report:\n%s\nwant first %q", c.name, r.stdout, refused)
+		}
+		if read(t, events) != changed {
+			t.Fatalf("%s: the differing copy was overwritten", c.name)
+		}
+		sameAsTheStore(t, home, to, "other")
 	}
-	refused := fmt.Sprintf("REFUSED %s: %s: the copy there differs, and is not overwritten: events.jsonl differs from the run's\n", id, filepath.Join(to, id))
-	if !strings.HasPrefix(r.stdout, refused) || !strings.Contains(r.stdout, "copied  other: ") {
-		t.Fatalf("report:\n%s\nwant first %q", r.stdout, refused)
+}
+
+// An export into the run store is refused, exit 3, before it writes
+// anything: into the directory of the run it copies, named as it is or
+// through a link, and into the store's. The run is left as it was.
+func TestRunsExportIsRefusedIntoTheRunStore(t *testing.T) {
+	t.Parallel()
+	home, repo, id := exportedRun(t)
+	runs := filepath.Join(home, "runs")
+	source := filepath.Join(runs, id)
+	links := tempDir(t)
+	alias := filepath.Join(links, "run")
+	if err := os.Symlink(source, alias); err != nil {
+		t.Fatal(err)
 	}
-	if read(t, events) != changed {
-		t.Fatal("the differing copy was overwritten")
+	before := files(t, runs)
+
+	for _, to := range []string{source, alias, runs} {
+		r := agister(t, home, repo, "runs", "export", id, "--to", to)
+		reason := fmt.Sprintf("--to %s: is in the run store %s: the copies go out of it", to, runs)
+		if r.code != cli.ExitRefused || !strings.Contains(r.stderr, reason) || r.stdout != "" {
+			t.Errorf("--to %s: %d, want %q\n%s%s", to, r.code, reason, r.stdout, r.stderr)
+		}
+		if after := files(t, runs); !reflect.DeepEqual(after, before) {
+			t.Fatalf("--to %s: the store holds %v, it held %v", to, keys(after), keys(before))
+		}
 	}
-	sameAsTheStore(t, home, to, "other")
 }
 
 // An artifact that does not read back with the digest the record names

@@ -324,8 +324,8 @@ func (c composition) wire(config cli.Config) (contract.Client, *app.BackgroundRe
 		Recoverer: app.RecoverAdapters{Clock: system.Clock{}},
 		Runs:      app.RunsAdapters{Reader: evidence, Appends: evidence, Timer: c.poll},
 		// An export copies runs from the run store to the folder the caller
-		// names (ADR-026 rule 7).
-		Exporter: app.ExportAdapters{Runs: evidence, Folders: fsexport.Folders{}},
+		// names (ADR-026 rule 7), which is out of the store.
+		Exporter: app.ExportAdapters{Runs: evidence, Folders: fsexport.Folders{Runs: evidence.Dir}},
 		// Installs read a folder laid out like the global settings, and
 		// write the global settings, backed up beside them; each result is
 		// checked on a staged copy.

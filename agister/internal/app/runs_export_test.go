@@ -87,12 +87,15 @@ func (f *exportRunsFake) allReleased(t *testing.T) {
 // exportFoldersFake keeps copies in memory. The stage's Create of failing
 // fails; its Close of closeFailing fails once the file is written, as a
 // sync can; and it keeps the bytes of corrupt otherwise than written.
+// written, when set, is told each file a stage has written, and opened
+// each file of a copy there that is opened.
 type exportFoldersFake struct {
-	copies       map[string]map[string]string
-	failing      string
-	closeFailing string
-	corrupt      string
-	discarded    []string
+	copies          map[string]map[string]string
+	failing         string
+	closeFailing    string
+	corrupt         string
+	discarded       []string
+	written, opened func(id, path string)
 }
 
 func (f *exportFoldersFake) Folder(string) error { return nil }
@@ -103,6 +106,9 @@ func (f *exportFoldersFake) Copy(_, id string) ([]string, bool, error) {
 }
 
 func (f *exportFoldersFake) OpenCopy(_, id, path string) (io.ReadCloser, error) {
+	if f.opened != nil {
+		f.opened(id, path)
+	}
 	return open(f.copies[id], path)
 }
 
@@ -151,6 +157,9 @@ func (f *stagedFile) Close() error {
 		data = "corrupted " + data
 	}
 	f.stage.files[f.path] = data
+	if f.stage.folders.written != nil {
+		f.stage.folders.written(f.stage.id, f.path)
+	}
 	if f.path == f.stage.folders.closeFailing {
 		return errors.New("sync failed")
 	}
@@ -469,4 +478,111 @@ func TestExportCopiesAnAbandonedRun(t *testing.T) {
 	if _, err := exporter.Export(context.Background(), contract.ExportRequest{Runs: []string{"r1"}, To: "/audit"}); !errors.As(err, &refused) {
 		t.Fatalf("running: %v", err)
 	}
+}
+
+// An export cancelled while it copies or compares its last run reports
+// the context's error with the runs it finished: the last one's copy is
+// not put in place, nor the copy there reported kept.
+func TestExportCancelledDuringItsLastRunReportsIt(t *testing.T) {
+	t.Parallel()
+	stored := map[string]string{"events.jsonl": "{}\n", "record.json": "{}"}
+	for _, c := range []struct {
+		name  string
+		there bool
+	}{
+		{"copying", false},
+		{"comparing", true},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
+			runs, folders, exporter := newExport()
+			runs.add(finishedRecord("r1"), run.StateFinished, stored)
+			runs.add(finishedRecord("r2"), run.StateFinished, stored)
+			if c.there {
+				folders.copies["r2"] = maps.Clone(stored)
+			}
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+			// The run's last file, written or read from the copy there.
+			last := func(id, path string) {
+				if id == "r2" && path == "record.json" {
+					cancel()
+				}
+			}
+			folders.written, folders.opened = last, last
+
+			result, err := exporter.Export(ctx, contract.ExportRequest{Runs: []string{"r1", "r2"}, To: "/audit"})
+			if !errors.Is(err, context.Canceled) {
+				t.Fatalf("export: %+v, %v", result, err)
+			}
+			if len(result.Runs) != 1 || result.Runs[0].ID != "r1" || result.Runs[0].Action != contract.ExportCopied {
+				t.Fatalf("the runs reported: %+v", result.Runs)
+			}
+			if c.there {
+				if !maps.Equal(folders.copies["r2"], stored) || len(folders.discarded) != 0 {
+					t.Fatalf("the copy there is now %v; discarded %v", folders.copies["r2"], folders.discarded)
+				}
+			} else if _, ok := folders.copies["r2"]; ok || !slices.Equal(folders.discarded, []string{"r2"}) {
+				t.Fatalf("copies %v, discarded %v", folders.copies, folders.discarded)
+			}
+			runs.allReleased(t)
+		})
+	}
+}
+
+// commitHook is the folders of an export whose stages call committed once
+// each commit has put its copy in place.
+type commitHook struct {
+	*exportFoldersFake
+	committed func(id string)
+}
+
+func (f commitHook) Stage(dir, id string) (app.ExportStage, error) {
+	stage, err := f.exportFoldersFake.Stage(dir, id)
+	if err != nil {
+		return nil, err
+	}
+	return hookedStage{ExportStage: stage, committed: func() { f.committed(id) }}, nil
+}
+
+type hookedStage struct {
+	app.ExportStage
+	committed func()
+}
+
+func (s hookedStage) Commit() error {
+	err := s.ExportStage.Commit()
+	s.committed()
+	return err
+}
+
+// An export cancelled once the first run's copy is put in place reports
+// that run as copied, with the context's error, and copies none of the
+// others.
+func TestExportCancelledKeepsTheRunsItCopied(t *testing.T) {
+	t.Parallel()
+	runs, folders, _ := newExport()
+	for _, id := range []string{"r1", "r2", "r3"} {
+		runs.add(finishedRecord(id), run.StateFinished, map[string]string{"events.jsonl": "{}\n", "record.json": "{}"})
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	exporter := app.NewExporter(runs, commitHook{exportFoldersFake: folders, committed: func(id string) {
+		if id == "r1" {
+			cancel()
+		}
+	}})
+
+	result, err := exporter.Export(ctx, contract.ExportRequest{Runs: []string{"r1", "r2", "r3"}, To: "/audit"})
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("export: %+v, %v", result, err)
+	}
+	want := []contract.ExportedRun{{ID: "r1", Dir: "/audit/r1", Action: contract.ExportCopied, Files: 2, Bytes: 5}}
+	if !slices.Equal(result.Runs, want) {
+		t.Fatalf("the runs reported: %+v, want %+v", result.Runs, want)
+	}
+	if copied := slices.Sorted(maps.Keys(folders.copies)); !slices.Equal(copied, []string{"r1"}) {
+		t.Fatalf("copies of %v", copied)
+	}
+	runs.allReleased(t)
 }

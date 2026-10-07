@@ -36,12 +36,58 @@ func TestFolderTakesOnlyAnExistingDirectory(t *testing.T) {
 	if err := os.WriteFile(file, nil, 0o600); err != nil {
 		t.Fatal(err)
 	}
-	if err := (Folders{}).Folder(dir); err != nil {
+	folders := Folders{Runs: filepath.Join(t.TempDir(), "runs")}
+	if err := folders.Folder(dir); err != nil {
 		t.Fatalf("a directory: %v", err)
 	}
 	for path, want := range map[string]string{filepath.Join(dir, "absent"): "does not exist", file: "is not a directory"} {
-		if err := (Folders{}).Folder(path); err == nil || err.Error() != want {
+		if err := folders.Folder(path); err == nil || err.Error() != want {
 			t.Errorf("%s: %v, want %q", path, err, want)
+		}
+	}
+	if err := (Folders{}).Folder(dir); err == nil || err.Error() != "the run store's directory is not configured" {
+		t.Errorf("no run store: %v", err)
+	}
+}
+
+// No directory in the run store takes copies, under any name: the store's
+// directory, a run's, or one in a run, named as they are or through a
+// link. The directory that holds the store does, and so does one beside
+// it.
+//
+// Contract test: the export folders against the real filesystem.
+func TestFolderRefusesTheRunStore(t *testing.T) {
+	t.Parallel()
+	home := t.TempDir()
+	runs := filepath.Join(home, "runs")
+	run := filepath.Join(runs, "r1")
+	if err := os.MkdirAll(filepath.Join(run, "artifacts"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	links := t.TempDir()
+	for name, target := range map[string]string{"store": runs, "run": run} {
+		if err := os.Symlink(target, filepath.Join(links, name)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	beside := filepath.Join(home, "audit")
+	if err := os.Mkdir(beside, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	folders := Folders{Runs: runs}
+	want := "is in the run store " + runs + ": the copies go out of it"
+	for _, dir := range []string{
+		runs, run, filepath.Join(run, "artifacts"),
+		filepath.Join(links, "store"), filepath.Join(links, "run"), filepath.Join(links, "store", "r1", "artifacts"),
+		filepath.Join(beside, "..", "runs", "r1"),
+	} {
+		if err := folders.Folder(dir); err == nil || err.Error() != want {
+			t.Errorf("%s: %v, want %q", dir, err, want)
+		}
+	}
+	for _, dir := range []string{home, beside, links} {
+		if err := folders.Folder(dir); err != nil {
+			t.Errorf("%s: %v", dir, err)
 		}
 	}
 }

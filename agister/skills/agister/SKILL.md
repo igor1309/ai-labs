@@ -347,10 +347,12 @@ rewritten or summarized. A run a `links.goal` or `links.judgement` names
 is not brought: export it by its ID.
 
 - It is refused, exit 3, before it writes anything, when `--to` is
-  missing, does not exist or is not a directory, or a run does not exist
-  or is still running, a workflow's node run included. An abandoned run is
-  copied as it was left. A finished run is refused while another process
-  is recovering what it left; export it once that is done.
+  missing, does not exist, is not a directory or is in the run store (the
+  store's directory, a run's, or one in them, through a link too), or a
+  run does not exist or is still running, a workflow's node run
+  included. An abandoned run is copied as it was left. A finished run is
+  refused while another process is recovering what it left; export it
+  once that is done.
 - Each run is held from the start until it is copied: no process writes
   it meanwhile, so its record and events are copied as they stood
   together. Recovery waits for the export.

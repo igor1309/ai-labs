@@ -243,7 +243,8 @@ func (e *Exporter) hold(ctx context.Context, id, named string) (ExportRead, erro
 // export copies one run to dir, or keeps the identical copy there, or
 // refuses the one that differs, all from the read held of it. A file that
 // cannot be read or written, or an artifact that does not read back as
-// recorded, fails the run; the error returned is only the context's.
+// recorded, fails the run; the error returned is only the context's, and
+// with it no copy is put in place nor one there kept.
 func (e *Exporter) export(ctx context.Context, dir string, one exported) (contract.ExportedRun, error) {
 	done := contract.ExportedRun{ID: one.id, Workflow: one.workflow, Dir: filepath.Join(dir, one.id)}
 	if err := ctx.Err(); err != nil {
@@ -278,6 +279,10 @@ func (e *Exporter) export(ctx context.Context, dir string, one exported) (contra
 		if problem := checkArtifacts(record, func(path string) (io.ReadCloser, error) { return e.folders.OpenCopy(dir, one.id, path) }); problem != "" {
 			return failed("the copy there: %s", problem)
 		}
+		// A comparison cancelled midway proves nothing identical.
+		if err := ctx.Err(); err != nil {
+			return done, err
+		}
 		done.Action, done.Files, done.Bytes = contract.ExportKept, len(present), size
 		return done, nil
 	}
@@ -299,6 +304,10 @@ func (e *Exporter) export(ctx context.Context, dir string, one exported) (contra
 	}
 	if problem := checkArtifacts(record, stage.Open); problem != "" {
 		return failed("%s; no copy was put in place", problem)
+	}
+	// A copy cancelled while its files were written is not put in place.
+	if err := ctx.Err(); err != nil {
+		return done, err
 	}
 	if err := stage.Commit(); err != nil {
 		return failed("putting the copy in place: %v", err)

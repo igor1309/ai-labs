@@ -7,6 +7,9 @@
 // <dir>/<run-id> only once every file is written and checked. An export
 // interrupted before that leaves only the partial folder, which no export
 // takes for a copy: a run ID has no dot.
+//
+// No folder in the run store takes copies: one there would write into the
+// runs it copies, or beside them.
 package fsexport
 
 import (
@@ -21,14 +24,21 @@ import (
 	"github.com/igor1309/ai-labs/agister/internal/app"
 )
 
-// Folders keeps copies in the folders the caller names.
-type Folders struct{}
+// Folders keeps copies in the folders the caller names, out of the run
+// store at Runs, the directory the copies are made from.
+type Folders struct {
+	Runs string
+}
 
 var _ app.ExportFolders = Folders{}
 
-// Folder says why dir cannot take copies: it does not exist or is not a
-// directory.
-func (Folders) Folder(dir string) error {
+// Folder says why dir cannot take copies: it does not exist, is not a
+// directory, or is in the run store, under any name the filesystem gives
+// it: the store's directory or a run's, or a directory in either.
+func (f Folders) Folder(dir string) error {
+	if f.Runs == "" {
+		return errors.New("the run store's directory is not configured")
+	}
 	info, err := os.Stat(dir)
 	switch {
 	case errors.Is(err, fs.ErrNotExist):
@@ -38,7 +48,49 @@ func (Folders) Folder(dir string) error {
 	case !info.IsDir():
 		return errors.New("is not a directory")
 	}
+	inStore, err := f.inStore(dir)
+	if err != nil {
+		return err
+	}
+	if inStore {
+		return fmt.Errorf("is in the run store %s: the copies go out of it", f.Runs)
+	}
 	return nil
+}
+
+// inStore says whether the directory dir is the run store's directory or
+// one in it. Each directory from dir, its links resolved, up to the root
+// is compared with the store's as a file, so a link, a mount or a name
+// differing only in case does not hide the store.
+func (f Folders) inStore(dir string) (bool, error) {
+	store, err := os.Stat(f.Runs)
+	if errors.Is(err, fs.ErrNotExist) {
+		return false, nil // no store, no run in it
+	}
+	if err != nil {
+		return false, err
+	}
+	path, err := filepath.EvalSymlinks(dir)
+	if err != nil {
+		return false, err
+	}
+	if path, err = filepath.Abs(path); err != nil {
+		return false, err
+	}
+	for {
+		info, err := os.Stat(path)
+		if err != nil {
+			return false, err
+		}
+		if os.SameFile(info, store) {
+			return true, nil
+		}
+		parent := filepath.Dir(path)
+		if parent == path {
+			return false, nil
+		}
+		path = parent
+	}
 }
 
 // Copy lists the files of the copy of run id in dir by slash-separated path

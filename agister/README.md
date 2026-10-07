@@ -373,9 +373,10 @@ among them, are exported for audit
 byte for byte to `<dir>/<run-id>/`, its owner lock aside, and a workflow
 run brings its nodes' runs; the runs its `links` name are exported by
 name. It is refused, exit 3, before it writes anything when `--to` is
-missing or not a directory, or a run does not exist or is still running,
-or a process is recovering what a finished run left. Each run is held
-against its writers, its owner and recovery, until it is copied.
+missing, not a directory or in the run store, under any name, or a run
+does not exist or is still running, or a process is recovering what a
+finished run left. Each run is held against its writers, its owner and
+recovery, until it is copied.
 A copy is renamed into place only once complete and its artifacts read
 back with the recorded digests; one that does not match fails, exit 1.
 An identical copy already there is kept; one that differs is never
