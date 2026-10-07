@@ -569,6 +569,21 @@ type runsSpy struct {
 	artifacts map[string][]byte // by "<run>/<path>"
 	read      []string          // the artifacts read, as "<run>/<path>"
 	listErr   error
+	listed    int // how often the runs were listed
+}
+
+// gets and lists are the runs read by Get, in order, and how often the
+// runs were listed.
+func (s *runsSpy) gets() []string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return append([]string(nil), s.asked...)
+}
+
+func (s *runsSpy) lists() int {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.listed
 }
 
 // store keeps data as an artifact of run id and returns it as the run's
@@ -609,6 +624,7 @@ func (s *runsSpy) Get(_ context.Context, id string) (run.Record, run.State, erro
 func (s *runsSpy) ListStrict(context.Context) ([]run.Record, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	s.listed++
 	records := make([]run.Record, 0, len(s.records))
 	for _, record := range s.records {
 		records = append(records, record)
