@@ -54,6 +54,15 @@ finishes the run.
 ## Decisions
 
 - 2026-10-07, owner: take the fix direction of the exploration comment.
+- 2026-10-08, owner, on code_review `20261007T211031Z-931f60`:
+  - item 5#1: the narrow reading. Done when 1 covers a run that worked
+    in the caller's worktree. A dead run's removable directory (a legacy
+    checkout or a clean copy) that overlaps the call keeps ADR-025's
+    refusal and is not reaped by the call.
+  - item 5#2: a process the per-run reap leaves goes through the
+    holder's existing retry, and the call is admitted if the retry ends
+    it; Done when 2 refuses only when it is still not known to have
+    ended after that.
 
 ## Open
 
