@@ -177,6 +177,39 @@ func TestAnInputArtifactThatFailsIsRecorded(t *testing.T) {
 	}
 }
 
+// A long param whose artifact cannot be stored keeps its text in the
+// request: no artifact keeps its bytes, so its record does.
+func TestALongParamWhoseArtifactFailsKeepsItsText(t *testing.T) {
+	t.Parallel()
+	h := keptInputs("a short brief")
+	h.recorder.artifactErr = func(name string) error {
+		if name == "input-goal.txt" {
+			return errors.New("disk full")
+		}
+		return nil
+	}
+	goal := longText + "goal"
+	record := h.call(t, contract.CallRequest{Params: map[string]string{"goal": goal}})
+	if record.Result.Status != run.Completed {
+		t.Fatalf("result = %+v", record.Result)
+	}
+	if record.Request.Params["goal"] != goal {
+		t.Fatalf("request params = %v, want the goal's text", record.Request.Params)
+	}
+	if kept := inputOf(t, record, "goal"); kept.Artifact != nil {
+		t.Fatalf("goal = %+v, artifact %+v", kept, kept.Artifact)
+	}
+	var failed []map[string]any
+	for _, event := range h.recorder.events {
+		if event.Kind == "ARTIFACT_FAILED" {
+			failed = append(failed, event.Data)
+		}
+	}
+	if want := []map[string]any{{"name": "input-goal.txt", "input": "goal", "error": "disk full"}}; !reflect.DeepEqual(failed, want) {
+		t.Fatalf("failed = %v, want %v", failed, want)
+	}
+}
+
 // A workflow keeps its long goal as its own artifact, and each fan-out
 // node, which receives it as a param, records its digest, in its request
 // and its input, and keeps the bytes as its own artifact; the node's agent
