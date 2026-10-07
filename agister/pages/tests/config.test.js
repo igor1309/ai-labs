@@ -449,7 +449,7 @@ test('missing folders and service.toml read as empty', async () => {
   assert.deepEqual(m, { service: null, workflows: [], processes: [], agents: [], policies: [], runtimes: [], schemas: [], verifies: [], prompts: [], briefs: [], skills: [] });
 });
 
-for (const path of ['.agister', 'agister/examples/settings']) {
+for (const path of ['.agister', 'agister/home', 'agister/examples/settings']) {
   test(`the settings in ${path} load without errors`, async () => {
     const m = await C.loadAgister(diskDir(join(repoRoot, path)));
     const items = [...m.workflows, ...m.processes, ...m.agents, ...m.policies, ...m.runtimes, ...m.verifies, ...m.briefs];

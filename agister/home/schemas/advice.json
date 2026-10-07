@@ -18,7 +18,7 @@
         },
         {
           "type": "object",
-          "description": "decision: the record, appended unedited to agister/docs/decisions.md.",
+          "description": "decision: the record, appended unedited to the project's decisions record.",
           "additionalProperties": false,
           "required": ["kind", "asked_by", "question", "options", "chosen", "excluded", "rests_on", "follow_ups"],
           "properties": {
@@ -40,7 +40,7 @@
                 }
               }
             },
-            "rests_on": {"type": "array", "minItems": 1, "items": {"type": "string"}, "description": "Each recorded decision the answer rests on, as its document and rule or record (ADR-001 rule 9, D-3, agister/AGENTS.md). The one entry \"none\" when no recorded decision bears on the question."},
+            "rests_on": {"type": "array", "minItems": 1, "items": {"type": "string"}, "description": "Each recorded decision the answer rests on, as its document and rule or record (e.g. ADR-002 rule 3, D-3, AGENTS.md). The one entry \"none\" when no recorded decision bears on the question."},
             "follow_ups": {"type": "array", "items": {"type": "string"}, "description": "What the decision leaves to do, one per entry. A follow-up that changes code names the test that proves it."}
           }
         }

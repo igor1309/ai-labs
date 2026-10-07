@@ -156,7 +156,7 @@ jobs:
               - "agister/pages/**"
               - "research/agister/research/verger/policies/**"
               - ".agister/**"
-              - "prompts/code-review-*.md"
+              - "agister/home/**"
             agister-ci:
               - ".github/workflows/agister-core.yml"
             dev-skills:

@@ -5,9 +5,9 @@ Not installed by `agister init`: `agister check` refuses them as shipped.
 - The mapping is not verified against a live Codex (no primitive lists a `verified` version).
 - Both sandbox modes read files outside the workspace (`host.read`), which
   Agister never grants. A repository opts in for Codex in its own
-  `service.toml`, by not listing `host.read` as state-reaching (as this
-  repository's `.agister/service.toml` does), knowing agents can then read
-  Agister's state there. The `sandboxed-review` policy here allows
+  `service.toml`, by not listing `host.read` as state-reaching (as the
+  home settings this repository keeps, `agister/home/service.toml`, do),
+  knowing agents can then read Agister's state there. The `sandboxed-review` policy here allows
   `host.read`, as the shipped `read-only` policy does, so with that opt-in
   the example review runs in Codex's read-only sandbox.
 - Contract `codex/2` continues a session in place (`codex exec resume`),

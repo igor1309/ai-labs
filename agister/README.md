@@ -72,7 +72,12 @@ writes only after you type yes, and only if home's settings are still as
 shown. It backs up what it replaces under `~/.agister/backups/<stamp>/`
 first, and prints the command that undoes it, `agister install --restore
 <stamp>`. The last five backups are kept. Files that are not settings are
-listed and not installed; a symbolic link in the folder refuses it. Like
+listed and not installed; a symbolic link in the folder refuses it. A
+skill, `skills/<name>/SKILL.md`, is installed as any other document
+([ADR-027](docs/adr/027-homes-settings-have-one-source-in-git.md) rules 8
+and 9): planned, diffed, checked, backed up and restored; a skill folder
+holding anything beside its `SKILL.md`, or whose `SKILL.md` is not a
+regular file, refuses the install, naming the skill and those files. Like
 `init`, both work on settings that fail check.
 
 A process declares its verification command inline, or names a document
@@ -231,9 +236,8 @@ names it, and a broken skill as a problem of its own: a folder holding
 anything beside its `SKILL.md`, a `SKILL.md` that is not a regular file, or
 front matter that does not name and describe it. Either refuses only the
 calls that depend on it, and `check --tree` shows each skill under what
-names it. `install` does not install skills: a folder's `skills/` is
-listed as not settings, so a document it installs can name only a skill
-home already has.
+names it. `install` installs a folder's skills with its other documents
+(ADR-027 rule 8).
 
 Every adapter gives a call its recorded skills on every turn. Claude Code,
 Pi and OpenCode give them from a fresh temporary folder outside the
@@ -393,11 +397,19 @@ An identical copy already there is kept; one that differs is never
 overwritten, and that run is refused, naming the file. An interrupted
 export reports the runs it exported and exits 2.
 
-Home's prompts are kept in git in `prompts/` at the repository root and
-copied into `~/.agister/prompts/` by hand: `install` does not take them
-from there, so a changed prompt reaches home only when it is copied
-(LAB-84). Settings skills (ADR-021) go into `~/.agister/skills/` by hand
-too: `install` lists a folder's `skills/` as not settings (LAB-84).
+Home's settings have one source in git, [home/](home/)
+([ADR-027](docs/adr/027-homes-settings-have-one-source-in-git.md)): every
+global document home uses, its prompts and skills among them, laid out as
+home is. Its processes take their prompts as settings prompts, so no
+document names a path of a machine or a repository. Home is brought to it
+with `agister install home` from `agister/` in the main checkout, after a
+change to the folder merges and the binary that checks it is installed:
+any difference shows as a replace, with its diff, in that install's plan.
+Live state, `blocks.yaml` and verifications stay out of it. The
+repository's own `.agister/` keeps only what is this repository's
+(`verifies/repo.yaml` and the two Go prompts), and its runs take every
+other document from home. A test installs the folder into an empty home
+and checks it as global settings.
 
 The caller skill, `skills/agister/SKILL.md` in this folder, is for the
 agent that runs Agister, not a settings skill. Install it by linking the

@@ -19,7 +19,7 @@ input:
     finding presents.
   values:
     reviews: {source: workflow.collection}
-    judge_prompt: {source: file, path: prompts/code-review-judge.md}
+    judge_prompt: {source: prompt, name: code-review-judge}
 
 output:
   format: json
