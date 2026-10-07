@@ -116,6 +116,7 @@
 <ul>
 <li>A repo document replaces home's of the same kind and name, whole. Fields are never merged.</li>
 <li>What exists is the union of both layers.</li>
+<li>A YAML file holds exactly one YAML document. A second, after a <code>---</code>, even an empty one, makes the file invalid; it is never left unread.</li>
 <li>Documents name each other by name, not by path. So a process in home can name <code>verify:repo</code> or a prompt, and each repo supplies its own.</li>
 <li>Home is <code>$AGISTER_HOME</code>, else <code>~/.agister</code>. Agents cannot reach home; they can change a repo's <code>.agister</code> when they may write the repo.</li>
 </ul></div>

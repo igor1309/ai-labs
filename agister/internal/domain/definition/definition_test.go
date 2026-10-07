@@ -60,9 +60,9 @@ func TestExamplesParse(t *testing.T) {
 }
 
 // Every YAML settings document holds exactly one YAML document: a second
-// after a valid first is a problem, not a document left unread, and an
-// empty one is still reported as empty. Each kind's first document is a
-// shipped example, which parses alone.
+// after a valid first, empty or not, is a problem, not a document left
+// unread, and an empty file is still reported as empty. Each kind's first
+// document is a shipped example, which parses alone.
 func TestYAMLSettingsRejectMoreThanOneDocument(t *testing.T) {
 	t.Parallel()
 	parsers := map[definition.Kind]struct {
@@ -105,7 +105,7 @@ func TestYAMLSettingsRejectMoreThanOneDocument(t *testing.T) {
 			if err := parser.parse(first); err != nil {
 				t.Fatalf("the first document alone: %v", err)
 			}
-			for _, text := range []string{first + "---\n" + first, "---\n---\n" + first} {
+			for _, text := range []string{first + "---\n" + first, first + "---\n", "---\n---\n" + first} {
 				var invalid *definition.InvalidError
 				if err := parser.parse(text); !errors.As(err, &invalid) ||
 					!reflect.DeepEqual(invalid.Messages(), []string{"must hold exactly one YAML document"}) {

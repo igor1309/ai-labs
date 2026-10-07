@@ -164,6 +164,13 @@ test('YAML: a line that is not "key: value" fails with its line number', () => {
   assert.throws(() => C.parseYaml('a: [1, 2\n'), /\[1, 2/);
 });
 
+// A settings file holds one YAML document (LAB-77): one with a second,
+// empty or not, does not parse, as Agister refuses it.
+test('YAML: a second document fails at its --- line', () => {
+  assert.throws(() => C.parseYaml('name: x\n---\nname: y\n'), /line 2/);
+  assert.throws(() => C.parseYaml('name: x\n---\n'), /line 2/);
+});
+
 test('TOML: keys, strings, numbers, multi-line arrays and tables', () => {
   const doc = C.parseToml([
     'schema = "agister.service/v1alpha1"',

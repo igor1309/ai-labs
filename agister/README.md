@@ -33,7 +33,11 @@ a repository's settings can run and what they are made of:
 
 Global settings live in `~/.agister/` (`$AGISTER_HOME` or `--home`); a
 repository's own `.agister/` takes priority, document by document. Commands
-check the composed settings before use. A problem refuses only what uses
+check the composed settings before use. A YAML settings file (a process,
+workflow, policy, runtime mapping, verification, brief form or
+`blocks.yaml`) holds exactly one YAML document: a second, after a `---`,
+even an empty one, is a problem of that file (`must hold exactly one YAML
+document`), never left unread. A problem refuses only what uses
 the document it is in: a call whose process, agent, runtime mapping,
 policy, schema, prompt, skill or named verification is broken is refused
 before its first turn and recorded, and a workflow with such a node is
