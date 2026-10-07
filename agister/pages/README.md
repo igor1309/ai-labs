@@ -49,8 +49,9 @@ A name the settings do not define shows in red as missing: Agister refuses
 such a call. A file that does not parse shows its error. Every YAML
 settings file holds exactly one YAML document, as in Agister: one with a
 second after a `---`, even an empty one, does not parse, and a runtime
-file with one is refused by the server's skill inventory with the problem
-`must hold exactly one YAML document`, so the page does not open those
+file with a second document is refused by the server's skill inventory
+with the problem `must hold exactly one YAML document`, unless a repo
+runtime of the same name replaces it, so the page does not open those
 settings. ↻ reads the settings again.
 
 ## Runs

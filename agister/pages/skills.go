@@ -534,9 +534,11 @@ func frontMatter(data []byte) (map[string]any, error) {
 // name, as the page composes them: only the files settings admits, so a
 // file the page never gets replaces nothing; one that does not parse still
 // does. A runtime file holding a second YAML document is refused, as
-// Agister refuses it.
+// Agister refuses it, but only the file that wins its name: one a later
+// dir replaces is never read by Agister.
 func runtimeAdapters(read func(string) ([]byte, error), dirs ...string) ([]string, error) {
 	byStem := map[string]string{}
+	refused := map[string]string{}
 	for _, dir := range dirs {
 		files, err := settings(dir, read)
 		if err != nil {
@@ -553,11 +555,20 @@ func runtimeAdapters(read func(string) ([]byte, error), dirs ...string) ([]strin
 		for _, name := range names {
 			stem := strings.TrimSuffix(name, filepath.Ext(name))
 			adapter, err := runtimeAdapter([]byte(files["runtimes/"+name]))
+			delete(refused, stem)
 			if err != nil {
-				return nil, statusError{http.StatusUnprocessableEntity, filepath.Join(dir, "runtimes", name) + ": " + err.Error()}
+				refused[stem] = filepath.Join(dir, "runtimes", name) + ": " + err.Error()
 			}
 			byStem[stem] = adapter
 		}
+	}
+	if len(refused) > 0 {
+		stems := make([]string, 0, len(refused))
+		for stem := range refused {
+			stems = append(stems, stem)
+		}
+		sort.Strings(stems)
+		return nil, statusError{http.StatusUnprocessableEntity, refused[stems[0]]}
 	}
 	adapters := []string{}
 	for _, adapter := range byStem {
