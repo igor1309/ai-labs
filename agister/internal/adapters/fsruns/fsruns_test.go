@@ -321,61 +321,107 @@ func TestAdoptTakesOnlyAnAbandonedRun(t *testing.T) {
 	}
 }
 
-// LAB-123: an owner killed while it appended an event leaves half a line
-// at the end of the run's events. Adoption cuts it off under the owner
-// lock and keeps every complete event, so the event the adopter appends,
-// as a reap's EFFECTS_REAPED, reads after them, numbered on.
+// LAB-123: an owner killed while it appended an event leaves a last line
+// without its newline. Adoption ends the events on a whole line under the
+// owner lock: it keeps every complete event, the unterminated one too, as
+// a follower has read it already, and cuts off only an incomplete one. The
+// event the adopter appends, as a reap's EFFECTS_REAPED, reads after them,
+// numbered on, and a follower reading after the last event it was given
+// sees it.
 //
 // Contract test: the run store against the real filesystem, and the
 // kernel's flock on a run's owner.lock.
-func TestAdoptionCutsTheEventItsDeadOwnerTore(t *testing.T) {
+func TestAdoptionRepairsTheEventTailItsDeadOwnerLeft(t *testing.T) {
 	t.Parallel()
-	store := newStore(t)
-	ctx := context.Background()
-	record := run.Record{Schema: run.RecordSchema, ID: "r1", Process: "p", CreatedAt: time.Now(), Effects: &run.Effects{}}
-	h, err := store.Create(ctx, record)
-	if err != nil {
-		t.Fatal(err)
-	}
-	letGo(t, h)
-	for _, kind := range []string{"STARTED", "ABORT_REQUESTED"} {
-		if err := h.Append(run.Event{Kind: kind}); err != nil {
-			t.Fatal(err)
-		}
-	}
-	events := filepath.Join(store.RunDir("r1"), "events.jsonl")
-	complete, err := os.ReadFile(events)
-	if err != nil {
-		t.Fatal(err)
-	}
-	// The owner is killed mid-append.
-	if err := os.WriteFile(events, append(complete, `{"seq":3,"kind":"PROC`...), 0o600); err != nil {
-		t.Fatal(err)
-	}
-	if err := store.Abandon("r1"); err != nil {
-		t.Fatal(err)
-	}
+	for _, tc := range []struct {
+		name string
+		// tail is what the owner wrote of its last event, without a newline.
+		tail string
+		// delivered is the last event a follower read before the adoption.
+		delivered int
+		want      []string
+	}{
+		{
+			name:      "an incomplete event is cut off",
+			tail:      `{"seq":3,"kind":"PROC`,
+			delivered: 2,
+			want:      []string{"1 STARTED", "2 ABORT_REQUESTED", "3 EFFECTS_REAPED"},
+		},
+		{
+			name:      "a complete event is kept",
+			tail:      `{"seq":3,"source":"runtime","kind":"PROCESS_STARTED"}`,
+			delivered: 3,
+			want:      []string{"1 STARTED", "2 ABORT_REQUESTED", "3 PROCESS_STARTED", "4 EFFECTS_REAPED"},
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			store := newStore(t)
+			ctx := context.Background()
+			record := run.Record{Schema: run.RecordSchema, ID: "r1", Process: "p", CreatedAt: time.Now(), Effects: &run.Effects{}}
+			h, err := store.Create(ctx, record)
+			if err != nil {
+				t.Fatal(err)
+			}
+			letGo(t, h)
+			for _, kind := range []string{"STARTED", "ABORT_REQUESTED"} {
+				if err := h.Append(run.Event{Kind: kind}); err != nil {
+					t.Fatal(err)
+				}
+			}
+			events := filepath.Join(store.RunDir("r1"), "events.jsonl")
+			complete, err := os.ReadFile(events)
+			if err != nil {
+				t.Fatal(err)
+			}
+			// The owner is killed mid-append.
+			if err := os.WriteFile(events, append(complete, tc.tail...), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			if err := store.Abandon("r1"); err != nil {
+				t.Fatal(err)
+			}
+			before, _, err := store.Events(ctx, "r1", 0)
+			if err != nil || len(before) == 0 || before[len(before)-1].Seq != tc.delivered {
+				t.Fatalf("events before the adoption = %v, %v; want the last delivered seq %d", before, err, tc.delivered)
+			}
 
-	adopted, _, err := store.Adopt(ctx, "r1")
-	if err != nil {
-		t.Fatal(err)
-	}
-	letGo(t, adopted)
-	if err := adopted.Append(run.Event{Kind: "EFFECTS_REAPED"}); err != nil {
-		t.Fatal(err)
-	}
+			adopted, _, err := store.Adopt(ctx, "r1")
+			if err != nil {
+				t.Fatal(err)
+			}
+			letGo(t, adopted)
+			if err := adopted.Append(run.Event{Kind: "EFFECTS_REAPED"}); err != nil {
+				t.Fatal(err)
+			}
 
-	read, _, err := store.Events(ctx, "r1", 0)
+			read, _, err := store.Events(ctx, "r1", 0)
+			if got := seqKinds(read); err != nil || !reflect.DeepEqual(got, tc.want) {
+				t.Fatalf("events = %v, %v; want %v", got, err, tc.want)
+			}
+			after, _, err := store.Events(ctx, "r1", tc.delivered)
+			if got, want := seqKinds(after), tc.want[len(tc.want)-1:]; err != nil || !reflect.DeepEqual(got, want) {
+				t.Fatalf("events after seq %d = %v, %v; want %v", tc.delivered, got, err, want)
+			}
+			data, err := os.ReadFile(events)
+			if err != nil {
+				t.Fatal(err)
+			}
+			lines := strings.Split(strings.TrimSuffix(string(data), "\n"), "\n")
+			if !bytes.HasPrefix(data, complete) || !bytes.HasSuffix(data, []byte("\n")) || len(lines) != len(tc.want) {
+				t.Fatalf("events file = %q; want the complete events kept, one per line, and no torn one", data)
+			}
+		})
+	}
+}
+
+// seqKinds is each of events as its seq and kind.
+func seqKinds(events []run.Event) []string {
 	var got []string
-	for _, event := range read {
+	for _, event := range events {
 		got = append(got, fmt.Sprintf("%d %s", event.Seq, event.Kind))
 	}
-	if want := []string{"1 STARTED", "2 ABORT_REQUESTED", "3 EFFECTS_REAPED"}; err != nil || !reflect.DeepEqual(got, want) {
-		t.Fatalf("events = %v, %v; want %v", got, err, want)
-	}
-	if data, err := os.ReadFile(events); err != nil || !bytes.HasPrefix(data, complete) || bytes.Contains(data, []byte("PROC")) {
-		t.Fatalf("events file = %q, %v; want the complete events kept and the torn one gone", data, err)
-	}
+	return got
 }
 
 // A finished run whose record still names a clean copy is listed and

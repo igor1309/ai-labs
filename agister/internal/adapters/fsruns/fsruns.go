@@ -155,9 +155,10 @@ func (s Store) LiveCheckouts(ctx context.Context) ([]string, error) {
 // whose record still names a clean copy or an unreleased checkout, so
 // exactly one process ends what its dead owner left. A run whose lock
 // another holds is app.ErrRunOwned; one finished with neither on record,
-// app.ErrRunFinished, with its record. Under the lock, it cuts off an
-// event the dead owner did not finish appending, so the adopter's events
-// read.
+// app.ErrRunFinished, with its record. Under the lock, it ends the events
+// on a whole line where the dead owner did not finish appending one,
+// keeping a complete event and cutting off an incomplete one, so the
+// adopter's events read and are numbered after every event delivered.
 func (s Store) Adopt(ctx context.Context, id string) (app.ReapHandle, run.Record, error) {
 	var record run.Record
 	if err := checkID(id); err != nil {
@@ -187,9 +188,10 @@ func (s Store) Adopt(ctx context.Context, id string) (app.ReapHandle, run.Record
 		lock.Close()
 		return nil, record, err
 	}
-	// An owner killed while it appended an event left half a line: the
-	// adopter's events would follow it on that line, and read as torn too.
-	if err := cutTornTail(filepath.Join(s.runDir(id), "events.jsonl")); err != nil {
+	// An owner killed while it appended an event left a line without its
+	// newline: the adopter's events would follow it on that line, and read
+	// as torn too.
+	if err := repairTail(filepath.Join(s.runDir(id), "events.jsonl")); err != nil {
 		lock.Close()
 		return nil, record, fmt.Errorf("run %s: repairing its events: %w", id, err)
 	}
@@ -218,12 +220,14 @@ func (s Store) Abandon(id string) error {
 	return fmt.Errorf("run %s: no handle in this process holds it", id)
 }
 
-// cutTornTail cuts the events file at path after its last whole line: what
-// follows is an event its writer did not finish appending. The whole lines,
-// every complete event, stay. A run with no events file has none to cut.
-// Only the run's owner may cut it: an owner still appending would lose its
-// event.
-func cutTornTail(path string) error {
+// repairTail ends the events file at path on a whole line. What follows its
+// last newline is an event its writer did not finish appending: a complete
+// one, killed before its newline, is kept and given the newline, as a
+// reader has delivered it already; an incomplete one is cut off. The whole
+// lines, every complete event, stay. A run with no events file has none to
+// repair. Only the run's owner may repair it: an owner still appending
+// would lose its event.
+func repairTail(path string) error {
 	data, err := os.ReadFile(path)
 	if errors.Is(err, fs.ErrNotExist) {
 		return nil
@@ -234,6 +238,10 @@ func cutTornTail(path string) error {
 	whole := bytes.LastIndexByte(data, '\n') + 1
 	if whole == len(data) {
 		return nil
+	}
+	var event run.Event
+	if json.Unmarshal(data[whole:], &event) == nil {
+		return appendText(path, "")
 	}
 	return os.Truncate(path, int64(whole))
 }

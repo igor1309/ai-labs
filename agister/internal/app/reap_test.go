@@ -818,3 +818,143 @@ func TestAReapOfOneRunDoesNotWaitForAStepOfAnother(t *testing.T) {
 		t.Fatalf("adopted %v, want %v", r.adopter.adopted, want)
 	}
 }
+
+// A reap of one run that cannot write the run's event or its end has no
+// durable word of the reap: the failure reaches its caller, naming the run,
+// and the run is not read as owned.
+func TestAReapOfOneRunThatCannotRecordTheRunFails(t *testing.T) {
+	t.Parallel()
+	eventsFull, recordFull := errors.New("events full"), errors.New("record full")
+	for name, c := range map[string]struct {
+		fail func(*recorderSpy)
+		err  error
+		want string
+	}{
+		"event": {fail: func(h *recorderSpy) { h.appendErr = eventsFull }, err: eventsFull, want: "reaping run a: recording the reap: events full"},
+		"end":   {fail: func(h *recorderSpy) { h.finishErr = recordFull }, err: recordFull, want: "reaping run a: finishing the run: record full"},
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			h := newHarness()
+			r := reaping(h, abandonedRun("a"))
+			unbounded(r)
+			r.adopter.failing = map[string]func(*recorderSpy){"a": c.fail}
+
+			_, owned, err := r.ReapRun(context.Background(), "a")
+
+			if !errors.Is(err, c.err) || err.Error() != c.want || owned {
+				t.Fatalf("the reap of a = owned %v, %v; want %q", owned, err, c.want)
+			}
+			if want := []string{"a"}; !reflect.DeepEqual(r.adopter.adopted, want) {
+				t.Fatalf("adopted %v, want %v", r.adopter.adopted, want)
+			}
+		})
+	}
+}
+
+// probingAdopter lists the abandoned runs as the run store does, by
+// probing each run's owner lock: while the listing holds its probe, an
+// adoption finds the lock taken and fails with ErrRunOwned. The listing
+// says when it holds the probe (probing) and holds it until the test lets
+// it go (probe). A run it adopted and that finished is declined after as
+// finished, with its end, as the store declines it.
+type probingAdopter struct {
+	*adopterSpy
+	probing chan struct{}
+	probe   *blocked
+
+	mu    sync.Mutex
+	held  bool
+	ends  map[string]run.Record
+	taken []string // the runs it adopted
+}
+
+func newProbingAdopter(runs ...run.Record) *probingAdopter {
+	return &probingAdopter{adopterSpy: &adopterSpy{runs: runs}, probing: make(chan struct{}), probe: newBlocked(), ends: map[string]run.Record{}}
+}
+
+func (a *probingAdopter) Abandoned(ctx context.Context) ([]run.Record, error) {
+	a.mu.Lock()
+	a.held = true
+	a.mu.Unlock()
+	close(a.probing)
+	<-a.probe.gate
+	a.mu.Lock()
+	a.held = false
+	a.mu.Unlock()
+	return a.adopterSpy.Abandoned(ctx)
+}
+
+func (a *probingAdopter) Adopt(ctx context.Context, id string) (app.ReapHandle, run.Record, error) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	if a.held {
+		return nil, run.Record{}, fmt.Errorf("run %s: %w", id, app.ErrRunOwned)
+	}
+	if end, ok := a.ends[id]; ok {
+		return nil, end, fmt.Errorf("run %s: %w", id, app.ErrRunFinished)
+	}
+	handle, record, err := a.adopterSpy.Adopt(ctx, id)
+	if err != nil {
+		return nil, record, err
+	}
+	a.taken = append(a.taken, id)
+	return endedHandle{ReapHandle: handle, ended: func(end run.Record) {
+		a.mu.Lock()
+		defer a.mu.Unlock()
+		a.ends[id] = end
+	}}, record, nil
+}
+
+// adopted are the runs it adopted, in order.
+func (a *probingAdopter) adopted() []string {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	return append([]string(nil), a.taken...)
+}
+
+// endedHandle tells ended the end its run was finished with.
+type endedHandle struct {
+	app.ReapHandle
+	ended func(run.Record)
+}
+
+func (h endedHandle) Finish(record run.Record) error {
+	if err := h.ReapHandle.Finish(record); err != nil {
+		return err
+	}
+	h.ended(record)
+	return nil
+}
+
+// LAB-123: the reaper lists the abandoned runs in its turn. The run store
+// lists them by probing each run's owner lock, which an adoption meanwhile
+// would read as the run's owner. A reap of one run asked for while the
+// listing probes waits for the turn, then has the run finished as lost and
+// abandoned: it does not read the run as owned. The run is reaped once,
+// by whichever step takes it first.
+func TestAReapOfOneRunWaitsForTheListingOfAbandonedRuns(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	h := newHarness()
+	adopter, processes := newProbingAdopter(abandonedRun("a")), &processesSpy{}
+	r := app.NewReaper(adopter, processes, h.workspaces, fixedClock{})
+	r.ReapContext = func(ctx context.Context) (context.Context, context.CancelFunc) { return context.WithCancel(ctx) }
+	// The reap of a waits for the turn: the listing lets its probe go then.
+	r.OnWaiting(adopter.probe.release)
+	beside := make(chan error, 1)
+	started(t, adopter.probe, func() { beside <- r.Reap(ctx) })
+	<-adopter.probing
+
+	finished, owned, err := r.ReapRun(ctx, "a")
+
+	if err != nil || owned || finished.ID != "a" || finished.Result == nil || finished.Result.Status != run.Lost || class(finished) != run.ClassAbandoned || !says(finished, true) {
+		t.Fatalf("the reap of a while the abandoned runs are listed = %+v, owned %v, %v", finished.Result, owned, err)
+	}
+	if err := <-beside; err != nil {
+		t.Fatal(err)
+	}
+	if adopted := adopter.adopted(); !reflect.DeepEqual(adopted, []string{"a"}) || !reflect.DeepEqual(processes.refs(), []string{"ref-777"}) {
+		t.Fatalf("adopted %v, asked to end %v; want a once", adopted, processes.refs())
+	}
+}

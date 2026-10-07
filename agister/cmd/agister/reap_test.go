@@ -529,6 +529,13 @@ func TestAWriterCallIsAdmittedWhereAKilledWriterLeftItsRun(t *testing.T) {
 	if any(holders) != any(background.Reaper) {
 		t.Fatalf("the holder's reaper %p is not the background reaper's %p", holders, background.Reaper)
 	}
+	// The reaps are bounded by the test, not by the reap deadline's real
+	// timer: a hang is the test binary's to report.
+	reaper, ok := background.Reaper.(*app.Reaper)
+	if !ok {
+		t.Fatalf("the background reaper is a %T", background.Reaper)
+	}
+	reaper.ReapContext = func(ctx context.Context) (context.Context, context.CancelFunc) { return context.WithCancel(ctx) }
 	next, err := client.Submit(ctx, request)
 	if err != nil {
 		t.Fatal(err)
