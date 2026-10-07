@@ -46,10 +46,11 @@ repository you will run in.
   source or a schema version this binary does not know adds a last line:
   `<n> problem(s) name something this binary does not know; the settings
   may need one newer than agister <version>`. `agister check` prints it,
-  and so does every call those settings refuse. The settings were written
-  for a newer Agister, such as a branch's own `.agister/` that uses a
-  field the installed binary predates. Run a newer binary, or wait for
-  the deploy; do not drop the field to get past the refusal.
+  and so does every call those settings refuse and an install they
+  refuse. The line does not prove the settings are newer: they may need
+  a newer binary, such as a branch's own `.agister/` that uses a field
+  the installed binary predates, or the field or source may be misspelt.
+  This binary cannot tell the two apart.
 
 ## Verification
 

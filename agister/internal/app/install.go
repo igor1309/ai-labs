@@ -283,7 +283,13 @@ func (i *Installer) plan(ctx context.Context, source string) (contract.InstallPl
 	}
 	if len(report.Problems) > 0 {
 		problems := translated(report.Problems, func(problem contract.Problem) string { return problem.Message })
-		return contract.InstallPlan{}, nil, &contract.InputError{Message: fmt.Sprintf("home's settings would not pass check once %s is installed, so nothing was installed:\n  %s", source, strings.Join(problems, "\n  "))}
+		unknown := 0
+		for _, problem := range report.Problems {
+			if problem.Unknown {
+				unknown++
+			}
+		}
+		return contract.InstallPlan{}, nil, &contract.InputError{Message: fmt.Sprintf("home's settings would not pass check once %s is installed, so nothing was installed:\n  %s", source, strings.Join(problems, "\n  ")), Unknown: unknown}
 	}
 	plan.Warnings = report.Warnings
 	return plan, writes, nil

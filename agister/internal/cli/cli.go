@@ -150,7 +150,10 @@ func Run(ctx context.Context, args []string, env IO, build Build) int {
 	case errors.As(err, &usageErr):
 		fmt.Fprintf(env.Stderr, "\n%s\n", usage)
 		return ExitUsage
-	case errors.As(err, &inputErr), errors.Is(err, contract.ErrNotFound):
+	case errors.As(err, &inputErr):
+		newerHint(env, inputErr.Unknown)
+		return ExitUsage
+	case errors.Is(err, contract.ErrNotFound):
 		return ExitUsage
 	default:
 		return ExitInternal
@@ -1352,7 +1355,8 @@ func printCheck(env IO, report contract.CheckReport) int {
 
 // newerHint says, when unknown problems name something this binary does not
 // know, that the settings may have been written for a newer one: on check,
-// and on a run refused for its settings (LAB-122).
+// on a run refused for its settings and on an install refused for the
+// settings it would leave (LAB-122).
 func newerHint(env IO, unknown int) {
 	if unknown > 0 {
 		fmt.Fprintf(env.Stderr, "%d problem(s) name something this binary does not know; the settings may need one newer than agister %s.\n", unknown, version(env))
