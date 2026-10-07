@@ -379,53 +379,36 @@ func TestTheSupervisorsDecisionsAreReportedAsItsOwn(t *testing.T) {
 // Run returns only once its watcher has ended: the timeout it reported is
 // in the evidence and before the exit, and its timer is stopped, so a run
 // released when the call returns is not reported to after. The watcher is
-// held in stopping its timeout until Run has stopped its own last timer,
-// the one on stdout, so a Run that did not wait for it would return first.
+// held at its end until Run is seen waiting for it, so a Run that did not
+// wait for it returns while it is held.
 func TestRunReturnsOnlyOnceItsWatcherHasEnded(t *testing.T) {
 	t.Parallel()
 	const timeout, grace = time.Hour, time.Minute
 	clock, sink := clocktest.NewClock(start), &events{}
-	// Run's timers of grace are the kill's, which the watcher starts as it
-	// ends the process, then the one on stdout.
-	var mu sync.Mutex
-	graces := 0
-	stdoutStopped, watcherStopped := make(chan struct{}), make(chan struct{})
-	timer := func(wait time.Duration) (<-chan time.Time, func()) {
-		fired, stop := clock.Timer(wait)
-		switch wait {
-		case timeout:
-			return fired, func() {
-				<-stdoutStopped
-				stop()
-				close(watcherStopped)
-			}
-		case grace:
-			mu.Lock()
-			defer mu.Unlock()
-			if graces++; graces == 2 {
-				return fired, func() {
-					stop()
-					close(stdoutStopped)
-				}
-			}
-		}
-		return fired, stop
-	}
+	held, release, joining := make(chan struct{}), make(chan struct{}), make(chan struct{})
+	free := sync.OnceFunc(func() { close(release) })
+	t.Cleanup(free)
+	runtime := supervisor.WithJoin(supervisor.Runtime{Starter: program(fakeproc.Process.Block), Timer: clock.Timer}, func() {
+		close(held)
+		<-release
+	}, joining)
 	done := make(chan supervisor.Evidence, 1)
 	go func() {
-		done <- supervisor.Runtime{Starter: program(fakeproc.Process.Block), Timer: timer}.Run(context.Background(), supervisor.Spec{
+		done <- runtime.Run(context.Background(), supervisor.Spec{
 			Command: "runtime", Timeout: timeout, KillGrace: grace,
 		}, sink, func(string) {})
 	}()
 	clock.Started(timeout)
 	clock.Advance(timeout)
 
-	evidence := <-done
+	<-held
 	select {
-	case <-watcherStopped:
-	default:
-		t.Fatal("Run returned before its watcher stopped its timeout")
+	case <-joining:
+	case <-done:
+		t.Fatal("Run returned while its watcher was held at its end")
 	}
+	free()
+	evidence := <-done
 	if !evidence.TimedOut {
 		t.Fatalf("evidence = %+v", evidence)
 	}

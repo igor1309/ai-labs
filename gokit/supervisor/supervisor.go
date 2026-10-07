@@ -153,6 +153,9 @@ func (r Runtime) Run(ctx context.Context, spec Spec, events Sink, onLine func(st
 	watched := make(chan struct{})
 	go func() {
 		defer close(watched)
+		if r.watcherEnding != nil {
+			defer r.watcherEnding()
+		}
 		late, stop := r.timer(spec.Timeout)
 		defer stop()
 		select {
@@ -210,7 +213,12 @@ func (r Runtime) Run(ctx context.Context, spec Spec, events Sink, onLine func(st
 		<-read
 	}
 	stopHeld()
-	<-watched
+	// joining is nil but in tests, so its case is never taken otherwise.
+	select {
+	case <-watched:
+	case r.joining <- struct{}{}:
+		<-watched
+	}
 
 	evidence.TimedOut, evidence.Aborted = timedOut, aborted
 	evidence.Exit = &exit
