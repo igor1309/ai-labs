@@ -4,7 +4,9 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"io"
 	"io/fs"
+	"net/http"
 	"os"
 	"path/filepath"
 	"sort"
@@ -531,9 +533,12 @@ func frontMatter(data []byte) (map[string]any, error) {
 // define, a later dir's runtime file replacing an earlier one's of the same
 // name, as the page composes them: only the files settings admits, so a
 // file the page never gets replaces nothing; one that does not parse still
-// does.
-func runtimeAdapters(read func(string) ([]byte, error), dirs ...string) []string {
+// does. A runtime file holding a second YAML document is refused, as
+// Agister refuses it, but only the file that wins its name: one a later
+// dir replaces is never read by Agister.
+func runtimeAdapters(read func(string) ([]byte, error), dirs ...string) ([]string, error) {
 	byStem := map[string]string{}
+	refused := map[string]string{}
 	for _, dir := range dirs {
 		files, err := settings(dir, read)
 		if err != nil {
@@ -549,14 +554,21 @@ func runtimeAdapters(read func(string) ([]byte, error), dirs ...string) []string
 		sort.Strings(names)
 		for _, name := range names {
 			stem := strings.TrimSuffix(name, filepath.Ext(name))
-			byStem[stem] = ""
-			var doc struct {
-				Adapter string `yaml:"adapter"`
+			adapter, err := runtimeAdapter([]byte(files["runtimes/"+name]))
+			delete(refused, stem)
+			if err != nil {
+				refused[stem] = filepath.Join(dir, "runtimes", name) + ": " + err.Error()
 			}
-			if yaml.Unmarshal([]byte(files["runtimes/"+name]), &doc) == nil {
-				byStem[stem] = doc.Adapter
-			}
+			byStem[stem] = adapter
 		}
+	}
+	if len(refused) > 0 {
+		stems := make([]string, 0, len(refused))
+		for stem := range refused {
+			stems = append(stems, stem)
+		}
+		sort.Strings(stems)
+		return nil, statusError{http.StatusUnprocessableEntity, refused[stems[0]]}
 	}
 	adapters := []string{}
 	for _, adapter := range byStem {
@@ -565,7 +577,33 @@ func runtimeAdapters(read func(string) ([]byte, error), dirs ...string) []string
 		}
 	}
 	sort.Strings(adapters)
-	return adapters
+	return adapters, nil
+}
+
+// errNotOneDocument is Agister's problem for a settings file holding more
+// than one YAML document (parseOneYAML).
+var errNotOneDocument = errors.New("must hold exactly one YAML document")
+
+// runtimeAdapter is the adapter a runtime file names, empty when it names
+// none or does not parse. A second document after the first, even an
+// empty one, is errNotOneDocument.
+func runtimeAdapter(data []byte) (string, error) {
+	decoder := yaml.NewDecoder(bytes.NewReader(data))
+	var document yaml.Node
+	if err := decoder.Decode(&document); err != nil {
+		return "", nil
+	}
+	var next yaml.Node
+	if err := decoder.Decode(&next); !errors.Is(err, io.EOF) {
+		return "", errNotOneDocument
+	}
+	var doc struct {
+		Adapter string `yaml:"adapter"`
+	}
+	if document.Decode(&doc) != nil {
+		return "", nil
+	}
+	return doc.Adapter, nil
 }
 
 // skillsAt answers /api/skills for path: a repo's absolute path, or ~,
@@ -585,10 +623,18 @@ func skillsAt(path, agisterHome string, homes SkillHomes, read func(string) ([]b
 	repo := ""
 	reply.Settings = []SettingsSkill{}
 	if reply.Home {
-		reply.Adapters = runtimeAdapters(read, agisterHome)
+		adapters, err := runtimeAdapters(read, agisterHome)
+		if err != nil {
+			return SkillsReply{}, err
+		}
+		reply.Adapters = adapters
 	} else {
 		repo = filepath.Clean(path)
-		reply.Adapters = runtimeAdapters(read, agisterHome, dir)
+		adapters, err := runtimeAdapters(read, agisterHome, dir)
+		if err != nil {
+			return SkillsReply{}, err
+		}
+		reply.Adapters = adapters
 		repoSkills, err := readSettingsSkills("repo", dir, read)
 		if err != nil {
 			return SkillsReply{}, err

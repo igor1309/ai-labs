@@ -59,6 +59,70 @@ func TestExamplesParse(t *testing.T) {
 	}
 }
 
+// Every YAML settings document holds exactly one YAML document: a second
+// after a valid first, empty or not, is a problem, not a document left
+// unread, and an empty file is still reported as empty. Each kind's first
+// document is a shipped example, which parses alone.
+func TestYAMLSettingsRejectMoreThanOneDocument(t *testing.T) {
+	t.Parallel()
+	parsers := map[definition.Kind]struct {
+		example string
+		parse   func(string) error
+	}{
+		definition.KindBrief: {"briefs/step.yaml", func(text string) error {
+			_, err := definition.ParseBrief(doc(definition.KindBrief, "step", text))
+			return err
+		}},
+		definition.KindPolicy: {"policies/read-only.yaml", func(text string) error {
+			_, err := definition.ParsePolicy(doc(definition.KindPolicy, "read-only", text))
+			return err
+		}},
+		definition.KindProcess: {"processes/ask.yaml", func(text string) error {
+			_, err := definition.ParseProcess(doc(definition.KindProcess, "ask", text))
+			return err
+		}},
+		definition.KindRuntime: {"runtimes/claude-code.yaml", func(text string) error {
+			_, err := definition.ParseMapping(doc(definition.KindRuntime, "claude-code", text))
+			return err
+		}},
+		definition.KindVerify: {"verifies/repo.yaml", func(text string) error {
+			_, err := definition.ParseVerify(doc(definition.KindVerify, "repo", text))
+			return err
+		}},
+		definition.KindWorkflow: {"workflows/review_panel.yaml", func(text string) error {
+			_, err := definition.ParseWorkflow(doc(definition.KindWorkflow, "review_panel", text))
+			return err
+		}},
+	}
+	for kind, parser := range parsers {
+		t.Run(string(kind), func(t *testing.T) {
+			t.Parallel()
+			data, err := fs.ReadFile(examples.Settings(), parser.example)
+			if err != nil {
+				t.Fatal(err)
+			}
+			first := string(data)
+			if err := parser.parse(first); err != nil {
+				t.Fatalf("the first document alone: %v", err)
+			}
+			for _, text := range []string{first + "---\n" + first, first + "---\n", "---\n---\n" + first} {
+				var invalid *definition.InvalidError
+				if err := parser.parse(text); !errors.As(err, &invalid) ||
+					!reflect.DeepEqual(invalid.Messages(), []string{"must hold exactly one YAML document"}) {
+					t.Errorf("%q: %v", text, err)
+				}
+			}
+			for _, text := range []string{"", "# nothing\n"} {
+				var invalid *definition.InvalidError
+				if err := parser.parse(text); !errors.As(err, &invalid) ||
+					!reflect.DeepEqual(invalid.Messages(), []string{"empty document"}) {
+					t.Errorf("%q: %v", text, err)
+				}
+			}
+		})
+	}
+}
+
 // A diff or changed-files value takes both revisions from git.revision
 // values declared before it: base from the one resolving ${param.base}, head
 // from the one resolving ${param.candidate}. Bound to ${param.*} instead, each

@@ -87,7 +87,10 @@ document; do not route around the refusal.
   home's document of the same kind and name, whole. For a process that
   names a verify document, this is where the repository puts its own: one
   shell command that passes in a clean worktree at the revision, with
-  what you prepared there.
+  what you prepared there. Each YAML file holds exactly one YAML
+  document: one with a second, after a `---`, is a settings problem
+  (`must hold exactly one YAML document`), not a second document. Split
+  it into one file per document.
 - A process says what it needs of the worktree under `workspace`, each
   field optional:
   - `revision`, the input that resolves to a revision: a call is refused

@@ -58,7 +58,7 @@ func ParseWorkflow(doc Document) (Workflow, error) {
 	p := &problems{}
 	subject := "workflow " + subjectName(doc.Source)
 	workflow := Workflow{Name: doc.Source.Name, Source: doc.Source}
-	root := parseYAML(doc.Bytes, p)
+	root := parseOneYAML(doc.Bytes, p)
 	if root == nil {
 		return workflow, p.err(subject)
 	}

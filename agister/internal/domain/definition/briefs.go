@@ -55,7 +55,7 @@ func ParseBrief(doc Document) (Brief, error) {
 	p := &problems{}
 	subject := "brief " + subjectName(doc.Source)
 	brief := Brief{Name: doc.Source.Name, Source: doc.Source}
-	root := parseYAML(doc.Bytes, p)
+	root := parseOneYAML(doc.Bytes, p)
 	if root == nil {
 		return brief, p.err(subject)
 	}
