@@ -68,6 +68,9 @@ install's plan.
   repository's own. The reason: the repository already depends on home
   (runs live there; only home has `runtimes/claude-code.yaml`), so
   copies would buy little and make every change twice.
+- 2026-10-07, owner, on code_review `20261007T193543Z-b1ee93` item 4#1:
+  the change's edits to recorded agent instructions stand (`AGENTS.md`,
+  `advisor.md`, the caller skill), as owner amendments.
 
 ## Open
 
