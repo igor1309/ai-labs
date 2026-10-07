@@ -21,9 +21,11 @@ func (s installSource) Source(context.Context, string) ([]definition.Document, [
 }
 
 // installHomeSpy is home's settings in memory; it records what is written,
-// and fails each Put with putErr and each Remove with removeErr.
+// and fails each Put with putErr and each Remove with removeErr. left is
+// what a failed write left, by kind and name.
 type installHomeSpy struct {
 	docs              []definition.Document
+	left              map[string]string
 	writes            []string
 	putErr, removeErr error
 }
@@ -49,6 +51,10 @@ func (h *installHomeSpy) Current(_ context.Context, kind definition.Kind, name s
 		}
 	}
 	return path, "", nil
+}
+
+func (h *installHomeSpy) Left(_ context.Context, kind definition.Kind, name string) (string, error) {
+	return h.left[string(kind)+"/"+name], nil
 }
 
 func (h *installHomeSpy) Lock(context.Context) (func(), error) { return func() {}, nil }
@@ -264,5 +270,38 @@ func TestInstallerRestoreStoppedSaysToRunItAgain(t *testing.T) {
 				t.Fatalf("err = %v, want %q", err, tc.want)
 			}
 		})
+	}
+}
+
+// A created document that is not there is unchanged, unless a failed write
+// left something in its place: that is planned as a remove, under its own
+// path, and removed as the document would be.
+func TestInstallerRestoreRemovesWhatAFailedWriteLeft(t *testing.T) {
+	t.Parallel()
+	home := &installHomeSpy{left: map[string]string{"skills/review": "home/skills/review"}}
+	backups := &installBackupsSpy{
+		saved: []string{"stamp-1"},
+		manifest: &app.InstallManifest{Stamp: "stamp-1", Documents: []app.InstallManifestEntry{
+			{Kind: string(definition.KindSkill), Name: "review", Action: contract.InstallCreate, After: sha("review\n")},
+			{Kind: string(definition.KindSkill), Name: "style", Action: contract.InstallCreate, After: sha("style\n")},
+		}},
+	}
+	installer := app.NewInstaller(app.InstallAdapters{Source: installSource{}, Home: home, Backups: backups, Clock: fixedClock{}, Stamps: installStamps{}}, &installCheckStub{})
+	ctx := context.Background()
+
+	plan, err := installer.Restore(ctx, "stamp-1", nil)
+
+	want := []contract.RestoreDocument{
+		{Kind: "skills", Name: "review", Path: "home/skills/review", Action: contract.RestoreRemove},
+		{Kind: "skills", Name: "style", Path: "home/skills/style", Action: contract.RestoreUnchanged},
+	}
+	if err != nil || !reflect.DeepEqual(plan.Documents, want) || len(home.writes) != 0 {
+		t.Fatalf("plan %+v, %v, writes %v, want %+v and none", plan.Documents, err, home.writes, want)
+	}
+	if _, err := installer.Restore(ctx, "stamp-1", &plan); err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(home.writes, []string{"Remove skills/review"}) {
+		t.Fatalf("writes = %v, want the one remove", home.writes)
 	}
 }

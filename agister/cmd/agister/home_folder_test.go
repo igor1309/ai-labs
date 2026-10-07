@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"os"
 	"path/filepath"
@@ -10,6 +11,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/igor1309/ai-labs/agister/internal/adapters/fsdefs"
 	"github.com/igor1309/ai-labs/agister/internal/contract"
 	"gopkg.in/yaml.v3"
 )
@@ -38,6 +40,11 @@ func TestTheHomeFolderInstallsAndPassesCheckAsGlobalSettings(t *testing.T) {
 	home := filepath.Join(tempDir(t), "home")
 	nowhere := tempDir(t)
 
+	// files leaves out the backups and the log, live state the folder may
+	// not hold (rule 3): with nothing in it but settings, files is all of it.
+	if ignored := notSettings(t, folder); len(ignored) != 0 {
+		t.Fatalf("%s holds what is not settings, which install does not take: %v", homeFolder, ignored)
+	}
 	if r := agisterInstalling(t, "yes\n", home, nowhere, "install", folder); r.code != 0 {
 		t.Fatalf("install %s: %d\n%s%s", homeFolder, r.code, r.stdout, r.stderr)
 	}
@@ -74,6 +81,29 @@ func TestTheHomeFolderInstallsAndPassesCheckAsGlobalSettings(t *testing.T) {
 		if !slices.Contains(shared, document) {
 			t.Errorf("projectReplacements lists %s, which .agister and %s do not both hold", document, homeFolder)
 		}
+	}
+}
+
+// notSettings finds what a settings folder holds that is not a settings
+// document: live state such as a backup or the log, which files leaves
+// out, a file beside the kinds' folders, and one in a kind's folder that
+// is no document of it. Its documents, a skill among them, are none.
+func TestNotSettings(t *testing.T) {
+	t.Parallel()
+	folder := tempDir(t)
+	for _, path := range []string{"service.toml", "prompts/review.md", "skills/review/SKILL.md"} {
+		write(t, filepath.Join(folder, path), "x\n")
+	}
+	if got := notSettings(t, folder); len(got) != 0 {
+		t.Fatalf("not settings = %q, want none", got)
+	}
+	write(t, filepath.Join(folder, "backups", "leaked", "manifest.json"), "{}\n")
+	write(t, filepath.Join(folder, "logs", "agister.jsonl"), "{}\n")
+	write(t, filepath.Join(folder, "notes.md"), "x\n")
+	write(t, filepath.Join(folder, "prompts", "review.txt"), "x\n")
+	want := []string{"backups/", "logs/", "notes.md", "prompts/review.txt"}
+	if got := notSettings(t, folder); !reflect.DeepEqual(got, want) {
+		t.Fatalf("not settings = %q, want %q", got, want)
 	}
 }
 
@@ -120,6 +150,17 @@ func TestSharedDocuments(t *testing.T) {
 	if got := sharedDocuments(t, project, folder); !reflect.DeepEqual(got, want) {
 		t.Fatalf("shared = %q, want %q", got, want)
 	}
+}
+
+// notSettings are the files and folders of folder that install names as
+// not settings and does not take, as its source reads the folder.
+func notSettings(t *testing.T, folder string) []string {
+	t.Helper()
+	_, ignored, err := fsdefs.Store{}.Source(context.Background(), folder)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return ignored
 }
 
 // fixedFilePaths are the file inputs of folder's processes and workflows

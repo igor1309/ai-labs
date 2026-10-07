@@ -451,3 +451,70 @@ func TestRemovingASkillRemovesItsEmptiedFolder(t *testing.T) {
 		t.Fatalf("left %v", got)
 	}
 }
+
+// A skill's folder with nothing in it is what a failed write of its
+// SKILL.md left, and Remove removes it; a folder that holds anything, a
+// symbolic link, no folder, or another kind's document leaves nothing
+// (ADR-027 rule 8).
+//
+// Contract test: the settings store against the real filesystem.
+func TestAnEmptySkillFolderIsLeftByAFailedWriteAndRemoved(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	store := fsdefs.Store{Dir: t.TempDir()}
+	skills := filepath.Join(store.Dir, "skills")
+	for _, name := range []string{"empty", "elsewhere"} {
+		if err := os.MkdirAll(filepath.Join(skills, name), 0o700); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := store.Put(ctx, definition.KindSkill, "whole", []byte(skillText("whole"))); err != nil {
+		t.Fatal(err)
+	}
+	put(t, filepath.Join(skills, "notes", "notes.md"), "mine")
+	if err := os.Symlink(filepath.Join(skills, "elsewhere"), filepath.Join(skills, "linked")); err != nil {
+		t.Fatal(err)
+	}
+	for name, want := range map[string]string{
+		"empty":   filepath.Join(skills, "empty"),
+		"whole":   "",
+		"notes":   "",
+		"linked":  "",
+		"missing": "",
+	} {
+		if left, err := store.Left(ctx, definition.KindSkill, name); err != nil || left != want {
+			t.Errorf("skill %s: left %q, %v, want %q", name, left, err, want)
+		}
+	}
+	if left, err := store.Left(ctx, definition.KindPrompt, "empty"); err != nil || left != "" {
+		t.Errorf("prompt empty: left %q, %v, want none", left, err)
+	}
+
+	if err := store.Remove(ctx, definition.KindSkill, "empty"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Lstat(filepath.Join(skills, "empty")); !os.IsNotExist(err) {
+		t.Fatalf("the empty folder is left: %v", err)
+	}
+	if left, err := store.Left(ctx, definition.KindSkill, "empty"); err != nil || left != "" {
+		t.Fatalf("after Remove: left %q, %v, want none", left, err)
+	}
+}
+
+// Removing a document whose folder is not there at all, a skill's or
+// another kind's, is no error: there is nothing to remove.
+//
+// Contract test: the settings store against the real filesystem.
+func TestRemovingFromAnAbsentFolderIsNoError(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	store := fsdefs.Store{Dir: t.TempDir()}
+	for _, kind := range []definition.Kind{definition.KindSkill, definition.KindPrompt} {
+		if err := store.Remove(ctx, kind, "review"); err != nil {
+			t.Errorf("%s: %v", kind, err)
+		}
+	}
+	if got := tree(t, store.Dir); !reflect.DeepEqual(got, []string{"."}) {
+		t.Fatalf("left %v", got)
+	}
+}

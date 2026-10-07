@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -273,6 +274,55 @@ func TestInstallTakesASkillAndRestoreUndoesIt(t *testing.T) {
 	}
 	if _, err := os.Lstat(filepath.Dir(homeReview)); !os.IsNotExist(err) {
 		t.Fatalf("the created skill's folder is left: %v", err)
+	}
+}
+
+// A write of a new skill that fails after making the skill's folder leaves
+// it empty: no skill, and a problem of home's settings. The install's
+// restore removes the folder, and home passes check again (ADR-027 rule 8).
+func TestRestoreRemovesTheFolderAFailedSkillWriteLeft(t *testing.T) {
+	t.Parallel()
+	home := initedHome(t)
+	src := filepath.Join(tempDir(t), ".agister")
+	write(t, filepath.Join(src, "skills", "review", "SKILL.md"), skillFile("review", "The repository's way to review."))
+	before := files(t, home)
+	folder := filepath.Join(home, "skills", "review")
+	full := errors.New("no space left on device")
+	// As the write does: the folder is made, then its file is not written.
+	in := installClient(t, home, func(path string) error {
+		if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
+			return err
+		}
+		return full
+	})
+	result, err := in.installNow(t, src)
+	if !errors.Is(err, full) || result.Stamp == "" {
+		t.Fatalf("install: %+v, %v", result, err)
+	}
+	if entries, err := os.ReadDir(folder); err != nil || len(entries) != 0 {
+		t.Fatalf("the failed write did not leave %s empty: %v, %v", folder, entries, err)
+	}
+	dir := tempDir(t)
+	if r := agister(t, home, dir, "check"); r.code != cli.ExitUsage || !strings.Contains(r.stderr, "skill review: "+folder+" has no SKILL.md") {
+		t.Fatalf("check of the failed install: %d\n%s%s", r.code, r.stdout, r.stderr)
+	}
+
+	r := agisterInstalling(t, "yes\n", home, dir, "install", "--restore", result.Stamp)
+	if r.code != 0 || !strings.Contains(r.stdout, "will remove   "+folder+" (the install created it)\n") || !strings.Contains(r.stdout, "removed  "+folder+"\n") {
+		t.Fatalf("restore: %d\n%s%s", r.code, r.stdout, r.stderr)
+	}
+	if _, err := os.Lstat(folder); !os.IsNotExist(err) {
+		t.Fatalf("the skill's folder is left: %v", err)
+	}
+	if !reflect.DeepEqual(files(t, home), before) {
+		t.Fatal("restore did not put home back")
+	}
+	if r := agister(t, home, dir, "check"); r.code != 0 {
+		t.Fatalf("check after restore: %d\n%s", r.code, r.stderr)
+	}
+	r = agisterInstalling(t, "", home, dir, "install", "--restore", result.Stamp)
+	if r.code != 0 || !strings.Contains(r.stdout, "nothing to restore in "+home+"\n") {
+		t.Fatalf("restore again: %d\n%s%s", r.code, r.stdout, r.stderr)
 	}
 }
 

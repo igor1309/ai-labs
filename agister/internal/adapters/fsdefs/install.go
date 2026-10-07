@@ -278,9 +278,37 @@ func (s Store) Put(_ context.Context, kind definition.Kind, name string, data []
 	return writeFile(path, data)
 }
 
-// Remove removes the document; none there is no error. A skill's folder
-// goes with its SKILL.md when nothing else is left in it (ADR-027 rule 8).
-// It takes no lock: the caller holds it.
+// Left reports what a write of the document that failed left where there
+// is no document: a skill's folder with nothing in it, by its path, as
+// writeFile makes the folder before the file (ADR-027 rule 8). It is empty
+// when nothing is left. Remove removes what it names.
+func (s Store) Left(_ context.Context, kind definition.Kind, name string) (string, error) {
+	if kind != definition.KindSkill {
+		return "", nil
+	}
+	path, err := s.path(kind, name)
+	if err != nil {
+		return "", err
+	}
+	// A symbolic link there is not a folder a write made.
+	folder := filepath.Dir(path)
+	info, err := os.Lstat(folder)
+	if errors.Is(err, fs.ErrNotExist) || err == nil && !info.IsDir() {
+		return "", nil
+	}
+	if err != nil {
+		return "", err
+	}
+	entries, err := os.ReadDir(folder)
+	if err != nil || len(entries) > 0 {
+		return "", err
+	}
+	return folder, nil
+}
+
+// Remove removes the document; none there, or no folder for one, is no
+// error. A skill's folder goes with its SKILL.md when nothing else is
+// left in it (ADR-027 rule 8). It takes no lock: the caller holds it.
 func (s Store) Remove(_ context.Context, kind definition.Kind, name string) error {
 	path, err := s.path(kind, name)
 	if err != nil {
@@ -304,7 +332,11 @@ func (s Store) Remove(_ context.Context, kind definition.Kind, name string) erro
 			folder = filepath.Dir(folder)
 		}
 	}
-	return syncDir(folder)
+	// With no folder there, nothing was removed and there is none to sync.
+	if err := syncDir(folder); err != nil && !errors.Is(err, fs.ErrNotExist) {
+		return err
+	}
+	return nil
 }
 
 // writeFile writes data at path atomically and durably: a temporary file

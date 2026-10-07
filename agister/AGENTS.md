@@ -83,7 +83,10 @@ still apply.
   `scripts/finish-merged-pr.sh` rebuilds Agister, install the folder
   from `agister/` in the main checkout, `agister install home`, read its
   plan, answer yes, and check home with the new binary (`agister check`).
-  This step is the agent's, not the owner's.
+  This step is the agent's, not the owner's. The exception is the
+  folder's first install into home, after LAB-84 merges: it replaces
+  home's hand copies, and the owner runs it (LAB-84, out of scope;
+  ADR-027). Until the owner has, no agent installs the folder.
 - ADRs reference only earlier ADRs.
 - A failure of Agister itself during this work is a finding about Agister:
   record it and fix it; do not route around it. A Claude Code subagent or

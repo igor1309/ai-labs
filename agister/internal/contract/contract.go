@@ -186,7 +186,7 @@ const (
 type RestoreDocument struct {
 	Kind    string `json:"kind"`
 	Name    string `json:"name"`
-	Path    string `json:"path"`
+	Path    string `json:"path"`              // the document's, or what a failed write left in its place
 	Action  string `json:"action"`            // put back | remove | unchanged (already as before the install)
 	Current string `json:"current,omitempty"` // digest of the document now; empty when none
 	Diff    string `json:"diff,omitempty"`    // unified, from the current one to the one put back
