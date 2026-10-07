@@ -229,8 +229,9 @@ func TestATurnThatPanicsIsNoLongerWatched(t *testing.T) {
 	}
 }
 
-// The watcher passes a turn on to the sink it declares, records the limit
-// reached there, and ends the turn by the cancel it was given.
+// The watcher passes a turn on to the sink it declares, with the paths its
+// tool calls write and the calls it was denied, records the limit reached
+// there, and ends the turn by the cancel it was given.
 func TestTheWatcherReportsToTheSinkItDeclares(t *testing.T) {
 	t.Parallel()
 	clock := &settableClock{now: fixedClock{}.Now()}
@@ -261,9 +262,23 @@ func TestTheWatcherReportsToTheSinkItDeclares(t *testing.T) {
 	if got := spy.seen(); !reflect.DeepEqual(got, append(want, "event agister STALE")) || cancels != 1 {
 		t.Fatalf("at the limit: passed on %q, %d cancels", got, cancels)
 	}
+	// The paths a tool call writes and a call denied are passed on, after
+	// the limit too, until the turn has returned.
+	watch.ToolStarted(app.ToolCall{ID: "t1", Name: "Read"})
+	watch.ToolStarted(app.ToolCall{ID: "t2", Name: "Edit", Writes: []string{"a.go"}})
+	watch.PermissionDenied(app.PermissionDenial{Tool: "Bash", Input: "git push"})
+	want = append(want, "event agister STALE", `touched t2 ["a.go"]`, "denied Bash git push")
+	if got := spy.seen(); !reflect.DeepEqual(got, want) {
+		t.Fatalf("after the limit: passed on %q", got)
+	}
 	stale := watch.End()
 	if stale == nil || stale.Limit != run.StaleNoEvent || stale.After != 5*time.Minute {
 		t.Fatalf("stale = %+v", stale)
+	}
+	watch.ToolStarted(app.ToolCall{ID: "t3", Name: "Write", Writes: []string{"b.go"}})
+	watch.PermissionDenied(app.PermissionDenial{Tool: "Write"})
+	if got := spy.seen(); !reflect.DeepEqual(got, want) {
+		t.Fatalf("after the turn returned: passed on %q", got)
 	}
 }
 
@@ -290,6 +305,14 @@ func (s *turnSinkSpy) Raw(line string) { s.tell("raw " + line) }
 func (s *turnSinkSpy) ProcessStarted(ref string) error {
 	s.tell("process " + ref)
 	return s.err
+}
+
+func (s *turnSinkSpy) Touched(call app.ToolCall) {
+	s.tell(fmt.Sprintf("touched %s %q", call.ID, call.Writes))
+}
+
+func (s *turnSinkSpy) Denied(denial app.PermissionDenial) {
+	s.tell("denied " + denial.Tool + " " + denial.Input)
 }
 
 func (s *turnSinkSpy) seen() []string {

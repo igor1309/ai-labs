@@ -413,6 +413,9 @@ type EventSink interface {
 	// (RuntimeIdentity.ToolCalls).
 	ToolStarted(call ToolCall)
 	ToolFinished(result ToolResult)
+	// PermissionDenied reports a tool call the runtime refused for want of
+	// a permission, where its stream lists them.
+	PermissionDenied(denial PermissionDenial)
 	// ProcessStarted records the runtime's process as soon as it exists, as
 	// a reference only the runtime adapter can read (Processes.Reap takes
 	// it back). It may be reported again as more becomes known; the last
@@ -1855,8 +1858,9 @@ func (c *Calls) prepareWorkspace(ctx context.Context, checkout string, inPlace b
 	return preparedWorkspace{Dir: dir, Repository: root, RepositoryIdentity: identity, Release: release, Owned: true}, nil
 }
 
-// sink records a turn's events, and its process as an effect on record,
-// which the turn's caller leaves alone while the turn runs.
+// sink records a turn's events, and on the record its process as an effect
+// and its trail; the turn's caller leaves the record alone while the turn
+// runs.
 type sink struct {
 	handle RunHandle
 	clock  sinkClock
@@ -1889,6 +1893,35 @@ func (s *sink) Event(source, kind string, data map[string]any) {
 }
 
 func (s *sink) Raw(line string) { _ = s.handle.Raw(line) }
+
+// Touched records the paths a tool call writes, each as the runtime gave
+// it: an event per path, and on the record's trail the paths it does not
+// hold yet, written down at once, so a turn that never returns leaves them.
+func (s *sink) Touched(call ToolCall) {
+	trail := s.record.Trail
+	for _, path := range call.Writes {
+		s.Event(run.SourceProtocol, "TOUCHED", map[string]any{"path": path, "tool": call.Name, "tool_use_id": call.ID})
+		trail = trail.Touch(path, call.Name)
+	}
+	s.keep(trail)
+}
+
+// Denied records a tool call the runtime refused for want of a permission:
+// an event, and the denial on the record's trail.
+func (s *sink) Denied(denial PermissionDenial) {
+	s.Event(run.SourceProtocol, "PERMISSION_DENIED", map[string]any{"tool": denial.Tool, "input": denial.Input})
+	s.keep(s.record.Trail.Deny(denial.Tool, denial.Input))
+}
+
+// keep puts a trail that grew on the record and writes it. One that cannot
+// be written stays on the record, for its next write.
+func (s *sink) keep(trail *run.Trail) {
+	if trail == s.record.Trail {
+		return
+	}
+	s.record.Trail = trail
+	_ = s.handle.Update(*s.record)
+}
 
 func summarize(inputs []run.Input) []run.Input {
 	out := make([]run.Input, len(inputs))

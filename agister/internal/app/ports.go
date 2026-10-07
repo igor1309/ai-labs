@@ -52,6 +52,17 @@ type ToolCall struct {
 	Input string
 	// Command is true when the tool runs a command.
 	Command bool
+	// Writes are the paths the call writes, as the runtime named them; none
+	// for a tool that writes no file, or an adapter that cannot tell.
+	Writes []string
+}
+
+// PermissionDenial is a tool call the runtime refused for want of a
+// permission, as the runtime adapter reports it: the tool and its input,
+// bounded by the adapter.
+type PermissionDenial struct {
+	Tool  string
+	Input string
 }
 
 // ToolResult is the end of a tool call, as the runtime adapter reports it:

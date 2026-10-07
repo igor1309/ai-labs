@@ -51,7 +51,9 @@
 // Tool calls are reported as they start and finish: item.started and
 // item.completed of a command execution, file change, MCP call or web
 // search, with the item's whole input. A command execution is the tool that
-// runs commands.
+// runs commands; a file change writes the path of each of its changes.
+// Codex's stream lists no tool call it refused for want of a permission, so
+// none is reported.
 //
 // Only turn.completed and turn.failed decide a turn. Top-level `error`
 // events and error items occur mid-turn (reconnects, transport fallback)
@@ -342,6 +344,8 @@ func (r *Runner) RunTurn(ctx context.Context, request TurnRequest, sink EventSin
 				sink.ToolFinished(*tool.Finished)
 			}
 		}
+		// Permission denials would be reported here: Codex's stream has
+		// none, in its events or at the turn's end.
 	})
 	turn := state.Reconcile(evidence, schemaPath != "")
 	if fresh {
@@ -722,7 +726,7 @@ func (s *Stream) Reduce(line string) []Event {
 		item, _ := exactly(line)["item"].(map[string]any)
 		if name := toolName(item); name != "" {
 			id, _ := item["id"].(string)
-			s.tools = append(s.tools, Tool{Started: &ToolCall{ID: id, Name: name, Input: wholeInput(item), Command: item["type"] == "command_execution"}})
+			s.tools = append(s.tools, Tool{Started: &ToolCall{ID: id, Name: name, Input: wholeInput(item), Command: item["type"] == "command_execution", Writes: writes(item)}})
 			return []Event{{SourceProtocol, "TOOL_REQUESTED", map[string]any{"tool_use_id": item["id"], "name": name, "input": toolInput(item)}}}
 		}
 	case "item.completed":
@@ -868,6 +872,23 @@ func toolName(item map[string]any) string {
 		return "web_search"
 	}
 	return ""
+}
+
+// writes are the paths an item writes: for a file change, the path of each
+// of its changes, in order, as Codex names it; none for any other item.
+func writes(item map[string]any) []string {
+	if item["type"] != "file_change" {
+		return nil
+	}
+	changes, _ := item["changes"].([]any)
+	var paths []string
+	for _, change := range changes {
+		fields, _ := change.(map[string]any)
+		if path, _ := fields["path"].(string); path != "" {
+			paths = append(paths, path)
+		}
+	}
+	return paths
 }
 
 // toolInput is the item's input, bounded, as an event quotes it.

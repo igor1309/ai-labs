@@ -41,6 +41,17 @@ type ToolCall struct {
 	Input string
 	// Command is true when the tool runs a command.
 	Command bool
+	// Writes are the paths the call writes, as the CLI named them; none for
+	// a tool that writes no file.
+	Writes []string
+}
+
+// PermissionDenial is a tool call the CLI refused for want of a permission,
+// as its result lists it: the tool and its input, bounded as an event
+// quotes a tool call's.
+type PermissionDenial struct {
+	Tool  string
+	Input string
 }
 
 // ToolResult is the end of a tool call: its ID and the result the CLI
@@ -170,6 +181,7 @@ type EventSink interface {
 	Raw(line string)
 	ToolStarted(ToolCall)
 	ToolFinished(ToolResult)
+	PermissionDenied(PermissionDenial)
 }
 type Turn struct {
 	Status            Status          `json:"status"`

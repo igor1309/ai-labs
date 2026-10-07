@@ -156,4 +156,8 @@ func (s *countingSink) ToolStarted(call app.ToolCall) { s.inner.ToolStarted(call
 
 func (s *countingSink) ToolFinished(result app.ToolResult) { s.inner.ToolFinished(result) }
 
+func (s *countingSink) PermissionDenied(denial app.PermissionDenial) {
+	s.inner.PermissionDenied(denial)
+}
+
 func (s *countingSink) Raw(line string) { s.inner.Raw(line) }

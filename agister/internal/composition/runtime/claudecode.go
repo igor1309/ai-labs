@@ -54,6 +54,9 @@ func (s claudecodeSink) ToolStarted(tool claudecode.ToolCall) {
 func (s claudecodeSink) ToolFinished(result claudecode.ToolResult) {
 	s.EventSink.ToolFinished(app.ToolResult(result))
 }
+func (s claudecodeSink) PermissionDenied(denial claudecode.PermissionDenial) {
+	s.EventSink.PermissionDenied(app.PermissionDenial(denial))
+}
 func (r claudecodeRunner) RunTurn(ctx context.Context, request app.TurnRequest, sink app.EventSink) run.Turn {
 	return ClaudeCodeResult(r.wrapper.RunTurn(ctx, ClaudeCodeRequest(request), claudecodeSink{sink}))
 }

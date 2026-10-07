@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"log/slog"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -95,6 +96,27 @@ func (*starter) Admit(app.TurnStart) *run.Error { return nil }
 func (s *starter) RunTurn(_ context.Context, _ app.TurnRequest, sink app.EventSink) run.Turn {
 	s.got = sink.ProcessStarted("ref")
 	return run.Turn{Status: run.Completed}
+}
+
+// teller is a runner that only reports a path written and a call denied.
+type teller struct{ starter }
+
+func (*teller) RunTurn(_ context.Context, _ app.TurnRequest, sink app.EventSink) run.Turn {
+	sink.ToolStarted(app.ToolCall{ID: "t1", Name: "Edit", Writes: []string{"a.go"}})
+	sink.PermissionDenied(app.PermissionDenial{Tool: "Bash", Input: "git push"})
+	return run.Turn{Status: run.Completed}
+}
+
+// The decorator passes on what the runtime reports of the turn's trail:
+// the paths a tool call writes and each tool call denied.
+func TestTheTrailReachesTheSinkThroughTheDecorator(t *testing.T) {
+	t.Parallel()
+	log := slog.New(slog.NewJSONHandler(&bytes.Buffer{}, nil))
+	sink := &runtimetest.Recorder{}
+	logging.Runner{Inner: &teller{}, Adapter: "x", Log: log, Clock: clocktest.NewClock(start)}.RunTurn(context.Background(), request("p"), sink)
+	if !reflect.DeepEqual(sink.Tools, []app.ToolCall{{ID: "t1", Name: "Edit", Writes: []string{"a.go"}}}) || !reflect.DeepEqual(sink.Denials, []app.PermissionDenial{{Tool: "Bash", Input: "git push"}}) {
+		t.Fatalf("tools %+v, denials %+v", sink.Tools, sink.Denials)
+	}
 }
 
 // The decorator never swallows a failure to record the process: the

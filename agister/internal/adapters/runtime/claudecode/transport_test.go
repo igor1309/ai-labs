@@ -110,3 +110,47 @@ func TestTheTransportStderrDecidesASilentFailure(t *testing.T) {
 		}
 	}
 }
+
+// A turn reports, in the stream's order, the path each tool call writes as
+// the call starts, as the stream named it, and at the result each tool call
+// it lists as denied, with its tool and input; their number stays the
+// turn's count.
+func TestATurnReportsThePathsWrittenAndThePermissionsDenied(t *testing.T) {
+	t.Parallel()
+	lines := []string{
+		`{"type":"system","subtype":"init","session_id":"s-1","model":"claude-opus-5-5"}`,
+		`{"type":"assistant","message":{"content":[{"type":"tool_use","id":"t1","name":"Edit","input":{"file_path":"/work/a.go","old_string":"a","new_string":"b"}}]}}`,
+		`{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"t1","content":"edited"}]}}`,
+		`{"type":"assistant","message":{"content":[{"type":"tool_use","id":"t2","name":"Write","input":{"file_path":"notes/b.md","content":"b"}},{"type":"tool_use","id":"t3","name":"Bash","input":{"command":"rm c.go"}}]}}`,
+		`{"type":"assistant","message":{"content":[{"type":"tool_use","id":"t4","name":"Edit","input":{"file_path":"/work/a.go","old_string":"b","new_string":"c"}}]}}`,
+		`{"type":"assistant","message":{"content":[{"type":"tool_use","id":"t5","name":"Write","input":{"file_path":"/etc/hosts","content":"x"}}]}}`,
+		`{"type":"result","subtype":"success","is_error":false,"session_id":"s-1","result":"done","permission_denials":[` +
+			`{"tool_name":"Bash","tool_use_id":"t3","tool_input":{"command":"rm c.go"}},` +
+			`{"tool_name":"Write","tool_use_id":"t5","tool_input":{"file_path":"/etc/hosts","content":"x"}}]}`,
+	}
+	code := 0
+	spy := &spyTransport{Runs: spyRuns{Answer: func(claudecode.Spec) ([]string, claudecode.Evidence) {
+		return lines, claudecode.Evidence{Exit: &claudecode.Exit{Code: &code}}
+	}}}
+	runner := &claudecode.Runner{Transport: spy, Command: "claude"}
+	sink := &told{}
+	r := request("hello")
+	r.OutputSchema = nil
+	turn := runner.RunTurn(context.Background(), r, sink)
+
+	want := []string{
+		`started t1 Edit writes ["/work/a.go"]`,
+		`started t2 Write writes ["notes/b.md"]`,
+		`started t3 Bash writes []`,
+		`started t4 Edit writes ["/work/a.go"]`,
+		`started t5 Write writes ["/etc/hosts"]`,
+		`denied Bash {"command":"rm c.go"}`,
+		`denied Write {"content":"x","file_path":"/etc/hosts"}`,
+	}
+	if !reflect.DeepEqual(sink.reports, want) {
+		t.Fatalf("reported\n%q\nwant\n%q", sink.reports, want)
+	}
+	if turn.Status != claudecode.Completed || turn.PermissionDenials != 2 {
+		t.Fatalf("turn = %+v", turn)
+	}
+}

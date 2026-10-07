@@ -732,6 +732,10 @@ func describe(event contract.Event) string {
 		if isError, _ := data["is_error"].(bool); isError {
 			return "  ↳ tool error"
 		}
+	case "TOUCHED":
+		return fmt.Sprintf("· touched %v (%v)", data["path"], data["tool"])
+	case "PERMISSION_DENIED":
+		return fmt.Sprintf("! denied: %v %v", data["tool"], data["input"])
 	case "VERIFY_STARTED":
 		return fmt.Sprintf("· verify attempt %v: %v", data["attempt"], data["command"])
 	case "VERIFY_FINISHED":

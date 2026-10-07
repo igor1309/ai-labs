@@ -46,6 +46,10 @@ type turnSink interface {
 	Event(source, kind string, data map[string]any)
 	Raw(line string)
 	ProcessStarted(ref string) error
+	// Touched records the paths a tool call writes, and Denied a tool call
+	// the runtime refused.
+	Touched(call ToolCall)
+	Denied(denial PermissionDenial)
 }
 
 // turnWatch is the sink of one turn. It passes the turn's events on, one at
@@ -114,12 +118,20 @@ func (w *turnWatch) ProcessStarted(ref string) error {
 	return w.inner.ProcessStarted(ref)
 }
 
-// ToolStarted counts the call against the one before it and, when it runs a
-// command, starts the command's wait.
+// ToolStarted has the paths the call writes recorded, counts the call
+// against the one before it and, when it runs a command, starts the
+// command's wait.
 func (w *turnWatch) ToolStarted(call ToolCall) {
 	w.mu.Lock()
 	defer w.mu.Unlock()
-	if w.ended || w.stale != nil {
+	if w.ended {
+		return
+	}
+	// What a call writes is evidence whichever limit was reached before it.
+	if len(call.Writes) > 0 {
+		w.inner.Touched(call)
+	}
+	if w.stale != nil {
 		return
 	}
 	now := w.clock.Now()
@@ -165,6 +177,16 @@ func (w *turnWatch) ToolFinished(result ToolResult) {
 		output := result.Output
 		w.result = &output
 	}
+}
+
+// PermissionDenied has the denial recorded. It counts against no limit.
+func (w *turnWatch) PermissionDenied(denial PermissionDenial) {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	if w.ended {
+		return
+	}
+	w.inner.Denied(denial)
 }
 
 // end stops watching once the turn returned and says which limit ended it,
