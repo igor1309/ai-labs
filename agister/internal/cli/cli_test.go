@@ -516,9 +516,13 @@ func TestCheckHintsAtANewerBinary(t *testing.T) {
 		t.Fatalf("refused run: %d\n%s", r.code, r.stderr)
 	}
 
-	// In JSON, the marker is on the problem.
+	// In JSON, the marker is on the problem, and no hint line is printed:
+	// the hint is for text output.
 	spy = &clientSpy{report: report}
 	r = run(context.Background(), spy, "check", "--json")
+	if r.stderr != "" {
+		t.Fatalf("json prints to stderr: %q", r.stderr)
+	}
 	var got struct {
 		Problems []map[string]any `json:"problems"`
 	}

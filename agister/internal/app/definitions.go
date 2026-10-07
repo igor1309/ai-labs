@@ -274,7 +274,20 @@ func (s *Settings) CreateAgent(ctx context.Context, spec contract.Agent, overwri
 	}
 	mapping, err := definition.ParseMapping(doc)
 	if err != nil {
-		return contract.AgentWrite{}, err
+		var invalid *definition.InvalidError
+		if !errors.As(err, &invalid) {
+			return contract.AgentWrite{}, err
+		}
+		// A runtime mapping this binary cannot read refuses the agent as
+		// the user's input, counting what it names that may be newer
+		// (LAB-122).
+		unknown := 0
+		for _, problem := range invalid.Problems {
+			if problem.Unknown {
+				unknown++
+			}
+		}
+		return contract.AgentWrite{}, &contract.InputError{Message: invalid.Error(), Unknown: unknown}
 	}
 	if agent.Effort != "" && !contains(mapping.Efforts, agent.Effort) {
 		return contract.AgentWrite{}, &contract.InputError{Message: fmt.Sprintf("unsupported %s effort %q (supported: %s)", mapping.Name, agent.Effort, strings.Join(mapping.Efforts, ", "))}

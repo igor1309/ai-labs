@@ -3,6 +3,9 @@ package main
 import (
 	"bytes"
 	"context"
+	"errors"
+	"io/fs"
+	"os"
 	"path/filepath"
 	"reflect"
 	"strings"
@@ -157,5 +160,49 @@ func TestAnInstallOfNewerSettingsIsNamedOnItsRefusal(t *testing.T) {
 	}
 	if !reflect.DeepEqual(files(t, home), before) || backups(t, home) != nil {
 		t.Fatal("a refused install wrote")
+	}
+}
+
+// An agent refused for a runtime mapping with a field this binary does not
+// know says, after the mapping's problems, that the settings may need a
+// newer binary (LAB-122). One refused for a known field's wrong value does
+// not, and neither writes the agent.
+func TestAnAgentOnANewerRuntimeIsNamedOnItsRefusal(t *testing.T) {
+	t.Parallel()
+	home, repo := setup(t, "approve")
+	const version = "v1.2.3 143e31f8 2026-10-07T10:00:00Z"
+	create := func(runtime string) result {
+		var stdout, stderr bytes.Buffer
+		code := cli.Run(context.Background(), []string{"--home", home, "agent", "create", "g", "--runtime", runtime}, cli.IO{
+			Stdin: strings.NewReader(""), Stdout: &stdout, Stderr: &stderr, Cwd: repo, Getenv: func(string) string { return "" }, Version: version,
+		}, composeInProcess)
+		return result{code, stdout.String(), stderr.String()}
+	}
+	shipped := read(t, filepath.Join(home, "runtimes", "claude-code.yaml"))
+	runtime := func(name, from, to string) string {
+		text := strings.Replace(shipped, "name: claude-code", "name: "+name, 1)
+		if !strings.Contains(text, from) {
+			t.Fatalf("the shipped runtime mapping has no %q", from)
+		}
+		path := filepath.Join(repo, ".agister", "runtimes", name+".yaml")
+		write(t, path, strings.Replace(text, from, to, 1))
+		return path
+	}
+
+	newer := runtime("newer-rt", "adapter: claude-code\n", "adapter: claude-code\nfuture: 1\n")
+	r := create("newer-rt")
+	want := "agister: runtime mapping newer-rt (" + newer + ") is invalid:\n  future: unknown field\n" +
+		"1 problem(s) name something this binary does not know; the settings may need one newer than agister " + version + ".\n"
+	if r.code != cli.ExitUsage || !strings.HasSuffix(r.stderr, want) {
+		t.Errorf("unknown field: %d\n%s, want it to end\n%s", r.code, r.stderr, want)
+	}
+
+	wrong := runtime("wrong-rt", "primitives:\n", "efforts: high\nprimitives:\n")
+	r = create("wrong-rt")
+	if r.code != cli.ExitUsage || !strings.HasSuffix(r.stderr, "agister: runtime mapping wrong-rt ("+wrong+") is invalid:\n  efforts: must be a list\n") || strings.Contains(r.stderr, "newer than agister") {
+		t.Errorf("known field: %d\n%s", r.code, r.stderr)
+	}
+	if _, err := os.Stat(filepath.Join(home, "agents", "g.toml")); !errors.Is(err, fs.ErrNotExist) {
+		t.Fatalf("a refused agent was written: %v", err)
 	}
 }
