@@ -237,7 +237,7 @@ func TestADR012WorkflowPreflightsRuntimeProblems(t *testing.T) {
 			if class(record) != run.ClassRefused || message(record) != view.Refusal {
 				t.Fatalf("workflow result: %+v", record.Result)
 			}
-			if record.Workflow != nil || len(h.recorder.created) != 1 || len(h.runner.calls())+len(h.inputs.specs)+len(h.workspaces.checkouts) != 0 {
+			if record.Workflow != nil || len(h.recorder.created) != 1 || len(h.runner.calls())+len(h.inputs.specs) != 0 {
 				t.Fatal("a node or workspace started before the workflow refusal")
 			}
 		})
@@ -449,8 +449,8 @@ func TestInvalidWorkspaceSettingsRefuseNothing(t *testing.T) {
 			t.Fatalf("process %s refused: %s", process.Name, process.Refusal)
 		}
 	}
-	if record := h.submit(t, client, contract.CallRequest{Process: "first"}); class(record) != "" || len(h.setup.runs()) != 0 {
-		t.Fatalf("call of first: %s %q, setup runs %d", class(record), message(record), len(h.setup.runs()))
+	if record := h.submit(t, client, contract.CallRequest{Process: "first"}); class(record) != "" {
+		t.Fatalf("call of first: %s %q", class(record), message(record))
 	}
 }
 
@@ -493,6 +493,6 @@ func TestUnreadableWorkspaceSettingsRefuseNothing(t *testing.T) {
 // inTheRepository is the node process doc without its checkout, under the
 // read-only policy that works in the repository.
 func inTheRepository(doc string) string {
-	doc = strings.Replace(doc, "workspace:\n  checkout: candidate_revision\n", "", 1)
+	doc = strings.Replace(doc, "workspace:\n  revision: candidate_revision\n", "", 1)
 	return strings.Replace(doc, "process-policy:pol", "process-policy:joining", 1)
 }

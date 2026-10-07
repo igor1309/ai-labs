@@ -119,8 +119,8 @@ func TestAMissingPromptIsAProblemOfTheProcessAndRefusesTheCall(t *testing.T) {
 	if class(record) != run.ClassRefused || message(record) != want {
 		t.Fatalf("result %+v: %q, want %q", record.Result, message(record), want)
 	}
-	if len(h.runner.calls()) != 0 || len(h.workspaces.checkouts) != 0 {
-		t.Fatalf("turns %d, checkouts %v after the refusal", len(h.runner.calls()), h.workspaces.checkouts)
+	if len(h.runner.calls()) != 0 {
+		t.Fatalf("turns %d after the refusal", len(h.runner.calls()))
 	}
 }
 
@@ -184,7 +184,7 @@ func TestAPromptNotResolvedWithTheCallRefusesIt(t *testing.T) {
 	h.calls = app.NewCalls(
 		withoutPrompts{app.NewResolver(h.defs, h.runtimes, h.validator, resolverCheckStub{})}, h.runtimes,
 		map[string]app.InputProvider{"git.revision": h.inputs, "git.diff": h.inputs},
-		h.workspaces, h.changes, app.NewPreparer(h.changes, h.setup, h.clock), h.borrower(), app.NewVerifier(h.changes, h.copies, h.commands, h.clock), app.NewRecoverer(h.clock), h.validator, h.recorder, h.runs,
+		h.workspaces, h.changes, h.holder(), app.NewVerifier(h.changes, h.commands, h.clock), app.NewRecoverer(h.clock), h.validator, h.recorder, h.runs,
 		h.clock, h.timer, fixedIDs{}, "/state", h.hosted,
 	)
 	record := h.call(t, contract.CallRequest{})

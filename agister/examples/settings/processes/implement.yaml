@@ -21,7 +21,7 @@ input:
     brief: {source: file, path: "${param.brief}"}
 
 workspace:
-  checkout: candidate_revision
+  revision: candidate_revision
   # The call works in the caller's worktree, which must be at the candidate
   # with HEAD's content exactly: verification proves the agent's changes
   # from a clean start (ADR-025).

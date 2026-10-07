@@ -83,39 +83,18 @@ func TestProcessAdapter(t *testing.T) {
 	}
 }
 
-func TestBorrowProcessAdapter(t *testing.T) {
+func TestHoldProcessAdapter(t *testing.T) {
 	t.Parallel()
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	failure := errors.New("unknown reference")
-	for result, want := range map[supervisor.Reaping]app.BorrowReaping{
-		supervisor.ReapGone: app.BorrowReapGone, supervisor.ReapKilled: app.BorrowReapKilled, supervisor.ReapLeft: app.BorrowReapLeft,
+	for result, want := range map[supervisor.Reaping]app.HoldReaping{
+		supervisor.ReapGone: app.HoldReapGone, supervisor.ReapKilled: app.HoldReapKilled, supervisor.ReapLeft: app.HoldReapLeft,
 	} {
 		stub := &processStandIn{result: result, err: failure}
-		got, err := (BorrowProcesses{Supervisor: stub}).Reap(ctx, "pgid:42:token")
+		got, err := (HoldProcesses{Supervisor: stub}).Reap(ctx, "pgid:42:token")
 		if stub.ctx != ctx || stub.ref != "pgid:42:token" || got != want || err != failure {
 			t.Fatalf("stub %+v, result %s, want %s, err %v", stub, got, want, err)
-		}
-	}
-}
-
-func TestSetupCommandAdapter(t *testing.T) {
-	t.Parallel()
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	code := 7
-	refusal := errors.New("disk full")
-	for _, result := range []supervisor.CommandResult{
-		{},
-		{ExitCode: &code, Signal: "killed", TimedOut: true, Cancelled: true, Stale: true, Error: "record failed", Head: []byte("head"), Tail: []byte("tail"), Bytes: 100, SHA256: "digest"},
-	} {
-		stub := &commandStandIn{result: result}
-		var ref string
-		got := (SetupCommands{Supervisor: stub}).Run(ctx, app.SetupCommandRequest{Command: "./setup.sh", Dir: "/checkout", Timeout: time.Minute, Bound: 64}, func(r string) error { ref = r; return refusal })
-		wantRequest := supervisor.CommandRequest{Command: "./setup.sh", Dir: "/checkout", Timeout: time.Minute, Bound: 64}
-		want := app.SetupCommandResult{ExitCode: result.ExitCode, Signal: result.Signal, TimedOut: result.TimedOut, Cancelled: result.Cancelled, Error: result.Error, Head: result.Head, Tail: result.Tail, Bytes: result.Bytes, SHA256: result.SHA256}
-		if stub.ctx != ctx || !reflect.DeepEqual(stub.request, wantRequest) || !reflect.DeepEqual(got, want) || ref != "pgid:42" || stub.recordError != refusal {
-			t.Fatalf("stub %+v, result %+v, ref %q", stub, got, ref)
 		}
 	}
 }

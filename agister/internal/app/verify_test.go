@@ -38,7 +38,7 @@ func verifying(h *harness) {
 // declares verify must.
 func cleanly(h *harness) {
 	h.defs.docs[definition.KindProcess]["p"] = strings.Replace(h.defs.docs[definition.KindProcess]["p"],
-		"  checkout: candidate_revision\n", "  checkout: candidate_revision\n  clean: true\n", 1)
+		"  revision: candidate_revision\n", "  revision: candidate_revision\n  clean: true\n", 1)
 }
 
 // changingEachTurn has each turn of the harness's call leave content not
@@ -217,8 +217,8 @@ func TestAnAttemptThatCannotBeRecordedStopsTheCall(t *testing.T) {
 			if record.Result.Status != run.Failed || class(record) != run.ClassInternal || message(record) != "recording attempt 1 failed: disk full" {
 				t.Fatalf("result %+v", record.Result)
 			}
-			if len(h.runner.calls()) != 1 || len(h.commands.runs()) != 1 || len(h.copies.left()) != 0 || string(record.Result.Output) != `{"outcome":"no"}` {
-				t.Fatalf("turns %d, runs %d, copies left %v, output %s", len(h.runner.calls()), len(h.commands.runs()), h.copies.left(), record.Result.Output)
+			if len(h.runner.calls()) != 1 || len(h.commands.runs()) != 1 || string(record.Result.Output) != `{"outcome":"no"}` {
+				t.Fatalf("turns %d, runs %d, output %s", len(h.runner.calls()), len(h.commands.runs()), record.Result.Output)
 			}
 		})
 	}
@@ -240,8 +240,8 @@ func TestVerifyTimeoutAboveTheCallersTimeoutRefusesTheCall(t *testing.T) {
 	if record.Result.Status != run.Failed || class(record) != run.ClassRefused || !strings.Contains(message(record), want) {
 		t.Fatalf("result %+v, want refused (%s)", record.Result.Error, want)
 	}
-	if len(h.runner.calls()) != 0 || len(h.workspaces.checkouts) != 0 {
-		t.Fatalf("turns %d, checkouts %v after the refusal", len(h.runner.calls()), h.workspaces.checkouts)
+	if len(h.runner.calls()) != 0 {
+		t.Fatalf("turns %d after the refusal", len(h.runner.calls()))
 	}
 }
 
@@ -310,8 +310,8 @@ func TestVerifyRepairsWithoutResumableSessionsRefuseTheCall(t *testing.T) {
 			if record.Result.Status != run.Failed || class(record) != run.ClassRefused || message(record) != c.reason {
 				t.Fatalf("result %+v, want refused (%s)", record.Result.Error, c.reason)
 			}
-			if len(h.runner.calls()) != 0 || len(h.workspaces.checkouts) != 0 {
-				t.Fatalf("turns %d, checkouts %v after the refusal", len(h.runner.calls()), h.workspaces.checkouts)
+			if len(h.runner.calls()) != 0 {
+				t.Fatalf("turns %d after the refusal", len(h.runner.calls()))
 			}
 			if kinds := h.recorder.kinds(); !contains(kinds, "REFUSED") || contains(kinds, "PLANNED") || kinds[len(kinds)-1] != "CALL_FINISHED" {
 				t.Fatalf("events = %v", kinds)

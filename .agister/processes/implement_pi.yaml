@@ -24,7 +24,7 @@ input:
     go_architecture: {source: prompt, name: go-architecture, optional: true}
 
 workspace:
-  checkout: candidate_revision
+  revision: candidate_revision
   clean: true
 
 output:

@@ -9,12 +9,11 @@ import (
 	"path/filepath"
 	"slices"
 	"strings"
-	"time"
 
 	"github.com/igor1309/ai-labs/agister/internal/domain/run"
 )
 
-// Borrower lends a call the caller's worktree (ADR-025): it takes the
+// Holder holds the caller's worktree for a call (ADR-025): it takes the
 // worktree's hold, shared with other readers or a writer's alone, refuses
 // one that overlaps a directory Agister made and still removes, or one a
 // writer's run left may still write in, and admits the worktree only with
@@ -22,18 +21,17 @@ import (
 // process needs a clean worktree, or, for a continuation, as the session's
 // latest run left it, all before the call's first turn. It never changes
 // the worktree.
-type Borrower struct {
-	locks     BorrowLocks
-	worktrees BorrowWorktrees
-	content   BorrowContent
-	runs      BorrowRuns
-	processes BorrowProcesses
-	prechecks BorrowPrechecks
+type Holder struct {
+	locks     HoldLocks
+	worktrees HoldWorktrees
+	content   HoldContent
+	runs      HoldRuns
+	processes HoldProcesses
 }
 
-// BorrowLocks holds one hold per worktree, in a namespace of its own under
+// HoldLocks holds one hold per worktree, in a namespace of its own under
 // Agister's state, apart from the worktree commands' (ADR-025 rule 4).
-type BorrowLocks interface {
+type HoldLocks interface {
 	// Lock takes the hold of the worktree at dir, without waiting: alone,
 	// for a writer, or shared with other readers. It returns the
 	// worktree's canonical path, symlinks resolved, which keys it, and the
@@ -52,8 +50,8 @@ type BorrowLocks interface {
 // call holds it in a way that excludes it.
 var ErrWorktreeLocked = errors.New("the worktree's hold is taken")
 
-// BorrowWorktrees reads a worktree's git state, and writes nothing in it.
-type BorrowWorktrees interface {
+// HoldWorktrees reads a worktree's git state, and writes nothing in it.
+type HoldWorktrees interface {
 	State(ctx context.Context, dir, revision string) (WorktreeState, error)
 }
 
@@ -71,17 +69,17 @@ type WorktreeState struct {
 	Untracked []string
 }
 
-// BorrowContent names a worktree's content as a patch would: the files of
+// HoldContent names a worktree's content as a patch would: the files of
 // revision as the worktree has them, and its untracked files that are not
 // ignored, whatever its index flags hide.
-type BorrowContent interface {
+type HoldContent interface {
 	Identity(ctx context.Context, dir, revision string) (string, error)
 }
 
-// BorrowRuns lists every run's record, to find the runs that worked in a
+// HoldRuns lists every run's record, to find the runs that worked in a
 // worktree, and reads back the changes a continued session's latest run
 // recorded.
-type BorrowRuns interface {
+type HoldRuns interface {
 	// ListStrict refuses an incomplete listing when any record cannot be read.
 	ListStrict(ctx context.Context) ([]run.Record, error)
 	// Artifact reads back the bytes of an artifact the run stored, as its
@@ -89,69 +87,42 @@ type BorrowRuns interface {
 	Artifact(ctx context.Context, runID string, artifact run.Artifact) ([]byte, error)
 }
 
-// BorrowProcesses ends a process another run recorded.
-type BorrowProcesses interface {
+// HoldProcesses ends a process another run recorded.
+type HoldProcesses interface {
 	// Reap ends the process the reference names, unless it may be another
-	// one by now: then it is BorrowReapLeft.
-	Reap(ctx context.Context, ref string) (BorrowReaping, error)
+	// one by now: then it is HoldReapLeft.
+	Reap(ctx context.Context, ref string) (HoldReaping, error)
 }
 
-// BorrowReaping is what a borrow found of a process another run recorded.
-type BorrowReaping string
+// HoldReaping is what a hold found of a process another run recorded.
+type HoldReaping string
 
 const (
-	BorrowReapKilled BorrowReaping = "killed" // the process was killed
-	BorrowReapGone   BorrowReaping = "gone"   // no such process
-	BorrowReapLeft   BorrowReaping = "left"   // not killed: it may be another process by now
+	HoldReapKilled HoldReaping = "killed" // the process was killed
+	HoldReapGone   HoldReaping = "gone"   // no such process
+	HoldReapLeft   HoldReaping = "left"   // not killed: it may be another process by now
 )
 
-// BorrowPrechecks runs the precheck of an in-place call (ADR-022 rule 5),
-// which no call has since ADR-025.
-type BorrowPrechecks interface {
-	// Precheck runs it once and records the run; a refusal when it did not
-	// exit zero within its timeout.
-	Precheck(ctx context.Context, call BorrowPrecheckCall) error
+// HoldAdapters are what a Holder runs on.
+type HoldAdapters struct {
+	Locks     HoldLocks
+	Worktrees HoldWorktrees
+	Content   HoldContent
+	Runs      HoldRuns
+	Writers   HoldProcesses
 }
 
-// BorrowPrecheck is the command that gates an in-place call, and how long
-// it may run.
-type BorrowPrecheck struct {
-	Command string
-	Timeout time.Duration
-}
-
-// BorrowPrecheckCall is the precheck a borrow asks for (ADR-022 rule 5),
-// where it runs, and what it records to.
-type BorrowPrecheckCall struct {
-	Record *run.Record
-	Event  func(source, kind string, data map[string]any)
-	Update func(run.Record) error
-
-	Precheck BorrowPrecheck
-	Dir      string // the caller's worktree
-}
-
-// BorrowAdapters are what a Borrower runs on besides the precheck runner.
-type BorrowAdapters struct {
-	Locks     BorrowLocks
-	Worktrees BorrowWorktrees
-	Content   BorrowContent
-	Runs      BorrowRuns
-	Writers   BorrowProcesses
-}
-
-// NewBorrower returns the component that lends calls the caller's worktree.
-// Every collaborator is required.
-func NewBorrower(adapters BorrowAdapters, prechecks BorrowPrechecks) *Borrower {
-	return &Borrower{
+// NewHolder returns the component that holds the caller's worktree for
+// calls. Every collaborator is required.
+func NewHolder(adapters HoldAdapters) *Holder {
+	return &Holder{
 		locks: adapters.Locks, worktrees: adapters.Worktrees, content: adapters.Content, runs: adapters.Runs, processes: adapters.Writers,
-		prechecks: prechecks,
 	}
 }
 
-// BorrowCall is one call asking for the worktree at Dir, and what it
+// HoldCall is one call asking for the worktree at Dir, and what it
 // records to.
-type BorrowCall struct {
+type HoldCall struct {
 	Record *run.Record
 	Event  func(source, kind string, data map[string]any)
 	Update func(run.Record) error
@@ -175,8 +146,8 @@ type BorrowCall struct {
 	Latest *run.Record
 }
 
-// Borrowed is the worktree as a call holds it.
-type Borrowed struct {
+// Held is the worktree as a call holds it.
+type Held struct {
 	// Release lets the worktree's hold go. The call keeps it until its
 	// changes are captured.
 	Release func() error
@@ -184,8 +155,8 @@ type Borrowed struct {
 	Head func(ctx context.Context) (string, error)
 }
 
-// Borrow lends the call the worktree at call.Dir, or refuses it, before any
-// turn: the call must take its hold (ADR-025 rule 4), no directory Agister
+// Hold holds the worktree at call.Dir for the call, or refuses it, before
+// any turn: the call must take its hold (ADR-025 rule 4), no directory Agister
 // made and still removes may overlap the worktree, no writer's run that
 // worked in a directory overlapping it may still write there, HEAD must be
 // the revision the process pins (rule 2), the content HEAD's when the
@@ -193,8 +164,8 @@ type Borrowed struct {
 // exactly as the session's latest run left it (rule 7). The worktree is on
 // the call's record (run.InPlace) once its hold is taken. A call refused
 // holds nothing, nor does one a collaborator's panic ends.
-func (b *Borrower) Borrow(ctx context.Context, call BorrowCall) (*Borrowed, error) {
-	key, unlock, err := b.locks.Lock(call.Dir, call.Writer)
+func (h *Holder) Hold(ctx context.Context, call HoldCall) (*Held, error) {
+	key, unlock, err := h.locks.Lock(call.Dir, call.Writer)
 	if errors.Is(err, ErrWorktreeLocked) {
 		if call.Writer {
 			return nil, refuse("worktree %s is in use: another call holds it, and a writer holds it alone (ADR-025 rule 4)", call.Dir)
@@ -204,11 +175,11 @@ func (b *Borrower) Borrow(ctx context.Context, call BorrowCall) (*Borrowed, erro
 	if err != nil {
 		return nil, fmt.Errorf("holding worktree %s: %w", call.Dir, err)
 	}
-	// The hold is the call's only once Borrow hands it over: on any other
+	// The hold is the call's only once Hold hands it over: on any other
 	// way out, a panic included, it is let go here.
-	lent := false
+	handed := false
 	defer func() {
-		if lent {
+		if handed {
 			return
 		}
 		if unlockErr := unlock(); unlockErr != nil {
@@ -231,40 +202,40 @@ func (b *Borrower) Borrow(ctx context.Context, call BorrowCall) (*Borrowed, erro
 		return nil, fmt.Errorf("recording the worktree failed: %w", err)
 	}
 	call.Event(run.SourceAgister, "WORKTREE_LOCKED", map[string]any{"dir": call.Dir, "worktree": key, "writer": writer})
-	records, err := b.runs.ListStrict(ctx)
+	records, err := h.runs.ListStrict(ctx)
 	if err != nil {
 		return nil, refuse("the runs that may still write in worktree %s cannot be read: %v", call.Dir, err)
 	}
 	// What other runs still hold of the worktree, found once. A directory
 	// Agister removes is refused before any process is ended for the
-	// worktree: one that is not the caller's to lend ends nothing.
-	claims, err := b.claims(call, key, records)
+	// worktree: one that is not the caller's to hold ends nothing.
+	claims, err := h.claims(call, key, records)
 	if err != nil {
 		return nil, err
 	}
-	if err := b.made(call, claims); err != nil {
+	if err := h.made(call, claims); err != nil {
 		return nil, err
 	}
-	if err := b.writers(ctx, call, claims); err != nil {
+	if err := h.writers(ctx, call, claims); err != nil {
 		return nil, err
 	}
 	// The content the worktree must hold, continuing: what the session's
 	// latest run left there, when it recorded any.
 	expected := ""
 	if call.Latest != nil {
-		if expected, err = b.resumable(ctx, call, key); err != nil {
+		if expected, err = h.resumable(ctx, call, key); err != nil {
 			return nil, err
 		}
 	}
-	if err := b.admit(ctx, call, expected); err != nil {
+	if err := h.admit(ctx, call, expected); err != nil {
 		return nil, err
 	}
 	call.Event(run.SourceAgister, "WORKTREE_ADMITTED", map[string]any{"dir": call.Dir, "revision": call.Revision})
-	lent = true
-	return &Borrowed{
+	handed = true
+	return &Held{
 		Release: unlock,
 		Head: func(ctx context.Context) (string, error) {
-			state, err := b.worktrees.State(ctx, call.Dir, call.Revision)
+			state, err := h.worktrees.State(ctx, call.Dir, call.Revision)
 			return state.Head, err
 		},
 	}, nil
@@ -300,7 +271,7 @@ type claim struct {
 // when it is the worktree, holds it or lies in it, by its canonical path
 // alone: what a removal takes, and where a writer reaches, is everything
 // under a directory. records are every run's.
-func (b *Borrower) claims(call BorrowCall, key string, records []run.Record) ([]claim, error) {
+func (h *Holder) claims(call HoldCall, key string, records []run.Record) ([]claim, error) {
 	var claims []claim
 	for i := range records {
 		other := &records[i]
@@ -351,7 +322,7 @@ func (b *Borrower) claims(call BorrowCall, key string, records []run.Record) ([]
 			}
 		}
 		for _, dir := range dirs {
-			canonical, err := b.locks.Key(dir.dir)
+			canonical, err := h.locks.Key(dir.dir)
 			if err != nil {
 				return nil, refuse("worktree %s cannot be told apart from %s, which run %s recorded: %v", call.Dir, dir.dir, other.ID, err)
 			}
@@ -411,10 +382,10 @@ type unendedProcess struct {
 // release or a reap removes, or a clean copy or an unreleased checkout a
 // run still has on record, which a reap removes, and the directory made
 // for any of them, removed with it. The removal takes all that is under the
-// directory, a repository nested in it included: a call lent one would lose
+// directory, a repository nested in it included: a call handed one would lose
 // its work with it, and nothing of Agister's removes the caller's worktree
 // or anything in it (ADR-025 rules 4 and 6).
-func (b *Borrower) made(call BorrowCall, claims []claim) error {
+func (h *Holder) made(call HoldCall, claims []claim) error {
 	for _, held := range claims {
 		if held.removed == "" {
 			continue
@@ -435,7 +406,7 @@ func (b *Borrower) made(call BorrowCall, claims []claim) error {
 // that process can be ended now, through the reap's seam. The run may have
 // worked in the caller's worktree or, before ADR-025, in a checkout of its
 // own.
-func (b *Borrower) writers(ctx context.Context, call BorrowCall, claims []claim) error {
+func (h *Holder) writers(ctx context.Context, call HoldCall, claims []claim) error {
 	var asked []string
 	for _, held := range claims {
 		other := held.run
@@ -454,13 +425,13 @@ func (b *Borrower) writers(ctx context.Context, call BorrowCall, claims []claim)
 			return refuse("run %s worked in %s and has not finished: it may still write there", other.ID, where)
 		}
 		for _, process := range unended(other) {
-			reaping, err := b.processes.Reap(ctx, process.process.Ref)
+			reaping, err := h.processes.Reap(ctx, process.process.Ref)
 			data := map[string]any{"run": other.ID, "process": process.name, "ref": process.process.Ref, "outcome": string(reaping)}
 			if err != nil {
 				data["error"] = err.Error()
 			}
 			call.Event(run.SourceAgister, "WORKTREE_WRITER_REAPED", data)
-			if err != nil || reaping == BorrowReapLeft {
+			if err != nil || reaping == HoldReapLeft {
 				reason := "it cannot be told apart from another"
 				if err != nil {
 					reason = err.Error()
@@ -479,7 +450,7 @@ func (b *Borrower) writers(ctx context.Context, call BorrowCall, claims []claim)
 // checkout of its own, made before ADR-025, is refused. It returns the
 // content that run left there; empty for one that pinned no revision,
 // which recorded none.
-func (b *Borrower) resumable(ctx context.Context, call BorrowCall, key string) (string, error) {
+func (h *Holder) resumable(ctx context.Context, call HoldCall, key string) (string, error) {
 	latest := call.Latest
 	refused := func(format string, args ...any) error {
 		reason := fmt.Sprintf(format, args...)
@@ -494,7 +465,7 @@ func (b *Borrower) resumable(ctx context.Context, call BorrowCall, key string) (
 	if worked == nil {
 		// Made before ADR-025 by a call without a checkout, which worked in
 		// the repository itself.
-		dir, err := b.locks.Key(latest.Workspace)
+		dir, err := h.locks.Key(latest.Workspace)
 		if err != nil {
 			return "", refused("worktree %s cannot be told apart from %s, where run %s, the latest run of the session, worked: %v", call.Dir, latest.Workspace, latest.ID, err)
 		}
@@ -523,7 +494,7 @@ func (b *Borrower) resumable(ctx context.Context, call BorrowCall, key string) (
 	}
 	// No patch with the content recorded is a run that changed nothing.
 	if patch != nil {
-		data, err := b.runs.Artifact(ctx, latest.ID, *patch)
+		data, err := h.runs.Artifact(ctx, latest.ID, *patch)
 		if err != nil {
 			return "", refused("run %s's changes.patch cannot be read: %v", latest.ID, err)
 		}
@@ -541,14 +512,14 @@ func (b *Borrower) resumable(ctx context.Context, call BorrowCall, key string) (
 // otherwise, for a process that needs a clean worktree, one whose content
 // is not HEAD's (rule 3), each reason on its own. A fresh call that pins no
 // revision and needs no clean worktree reads nothing.
-func (b *Borrower) admit(ctx context.Context, call BorrowCall, expected string) error {
+func (h *Holder) admit(ctx context.Context, call HoldCall, expected string) error {
 	fresh := call.Latest == nil
 	if call.Revision == "" && (!fresh || !call.Clean) {
 		return nil
 	}
 	// A clean worktree without a pinned revision is HEAD's.
 	revision := or(call.Revision, "HEAD")
-	state, err := b.worktrees.State(ctx, call.Dir, revision)
+	state, err := h.worktrees.State(ctx, call.Dir, revision)
 	if err != nil {
 		return fmt.Errorf("reading worktree %s: %w", call.Dir, err)
 	}
@@ -575,7 +546,7 @@ func (b *Borrower) admit(ctx context.Context, call BorrowCall, expected string) 
 		if expected == "" {
 			return nil
 		}
-		identity, err := b.content.Identity(ctx, call.Dir, call.Revision)
+		identity, err := h.content.Identity(ctx, call.Dir, call.Revision)
 		if err != nil {
 			return fmt.Errorf("naming worktree %s's content: %w", call.Dir, err)
 		}
@@ -595,7 +566,7 @@ func (b *Borrower) admit(ctx context.Context, call BorrowCall, expected string) 
 	case len(state.Untracked) > 0:
 		return refused(clean, "has untracked files that are not ignored: %s", strings.Join(state.Untracked, ", "))
 	}
-	identity, err := b.content.Identity(ctx, call.Dir, revision)
+	identity, err := h.content.Identity(ctx, call.Dir, revision)
 	if err != nil {
 		return fmt.Errorf("naming worktree %s's content: %w", call.Dir, err)
 	}

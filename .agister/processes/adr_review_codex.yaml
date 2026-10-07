@@ -36,7 +36,7 @@ input:
     goal: {source: param, name: goal}
 
 workspace:
-  checkout: candidate_revision
+  revision: candidate_revision
 
 output:
   format: json

@@ -66,11 +66,11 @@ func TestAnInPlaceContinuationResumesInTheSameWorktree(t *testing.T) {
 	if record.Result.Status != run.Completed || len(h.runner.calls()) != 1 {
 		t.Fatalf("result %+v", record.Result)
 	}
-	if len(h.changes.applies()) != 0 || len(h.workspaces.checkouts) != 0 || contains(h.recorder.kinds(), "CHANGES_CARRIED") {
-		t.Fatalf("applied %+v, checkouts %v, events %v", h.changes.applies(), h.workspaces.checkouts, h.recorder.kinds())
+	if contains(h.recorder.kinds(), "CHANGES_CARRIED") {
+		t.Fatalf("events %v", h.recorder.kinds())
 	}
 	got := h.runner.calls()[0]
-	notice := prompt.ContinuesInPlace("run-0", "run-0", "/repo", "sha-HEAD")
+	notice := prompt.Continues("run-0", "run-0", "/repo", "sha-HEAD")
 	if got.ResumeSessionID != "prov-0" || got.Cwd != "/repo" || !strings.HasPrefix(got.Prompt, notice+"\n\n## candidate_revision") || strings.Contains(got.Prompt, "gone") {
 		t.Fatalf("request %+v", got)
 	}
@@ -101,8 +101,8 @@ func TestAnInPlaceContinuationOfARunWithoutChangesIsAdmitted(t *testing.T) {
 	if record.Result.Status != run.Completed || len(h.runner.calls()) != 1 || h.runner.calls()[0].ResumeSessionID != "prov-0" {
 		t.Fatalf("result %+v", record.Result)
 	}
-	if len(h.runs.read) != 0 || len(h.changes.applies()) != 0 {
-		t.Fatalf("read %v, applied %+v", h.runs.read, h.changes.applies())
+	if len(h.runs.read) != 0 {
+		t.Fatalf("read %v", h.runs.read)
 	}
 }
 
@@ -137,7 +137,7 @@ func TestTheSessionsLatestRunDecidesTheExpectedContent(t *testing.T) {
 			if record.Result.Status != run.Completed {
 				t.Fatalf("result %+v", record.Result)
 			}
-			if notice := prompt.ContinuesInPlace("run-0", "run-0b", "/repo", "sha-HEAD"); !strings.HasPrefix(h.runner.calls()[0].Prompt, notice) {
+			if notice := prompt.Continues("run-0", "run-0b", "/repo", "sha-HEAD"); !strings.HasPrefix(h.runner.calls()[0].Prompt, notice) {
 				t.Fatalf("prompt %q", h.runner.calls()[0].Prompt)
 			}
 		})
@@ -210,8 +210,8 @@ func TestAnInPlaceContinuationIsRefusedUnlessTheWorktreeIsAsTheLatestRunLeftIt(t
 			if class(record) != run.ClassRefused || !strings.Contains(message(record), c.want) {
 				t.Fatalf("result %s %q, want %q", class(record), message(record), c.want)
 			}
-			if len(h.runner.calls()) != 0 || len(h.changes.applies()) != 0 || len(h.workspaces.checkouts) != 0 {
-				t.Fatalf("turns %d, applied %+v, checkouts %v", len(h.runner.calls()), h.changes.applies(), h.workspaces.checkouts)
+			if len(h.runner.calls()) != 0 {
+				t.Fatalf("turns %d", len(h.runner.calls()))
 			}
 			if !reflect.DeepEqual(h.locks.locked, []string{"/repo"}) || h.locks.holds("/repo") || !recorded(h, "WORKTREE_NOT_ADMITTED") {
 				t.Fatalf("locked %v, held %v, events %v", h.locks.locked, h.locks.holds("/repo"), h.recorder.kinds())

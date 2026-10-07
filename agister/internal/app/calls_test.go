@@ -69,7 +69,7 @@ input:
     candidate_revision: {source: git.revision, rev: "${param.candidate}"}
     diff: {source: git.diff, base: "${param.base}", head: "${param.candidate}"}
 workspace:
-  checkout: candidate_revision
+  revision: candidate_revision
 output:
   format: json
   schema: s
@@ -91,15 +91,12 @@ type harness struct {
 	inputs     *inputsSpy
 	workspaces *workspacesSpy
 	changes    *changesSpy
-	copies     *copiesSpy
-	// setup runs the checkout's setup commands; commands the
-	// verification's.
-	setup     *setupCommandsSpy
+	// commands runs the verification's commands.
 	commands  *commandsSpy
 	validator *validatorSpy
 	recorder  *recorderSpy
-	// locks, worktrees and writers are what an in-place call's borrower
-	// runs on; processes is what a reaper beside it ends processes through.
+	// locks, worktrees and writers are what a call's holder runs on;
+	// processes is what a reaper beside it ends processes through.
 	locks     *locksSpy
 	worktrees *worktreesSpy
 	writers   *writersSpy
@@ -115,8 +112,6 @@ func newHarness() *harness {
 		},
 		workspaces: &workspacesSpy{root: "/repo", dir: "/work/checkout"},
 		changes:    &changesSpy{},
-		copies:     &copiesSpy{},
-		setup:      &setupCommandsSpy{},
 		commands:   &commandsSpy{},
 		validator:  &validatorSpy{},
 		recorder:   newRecorderSpy(),
@@ -152,23 +147,22 @@ func (h *harness) callsWith(src app.ResolverDefinitions, workspaces app.CallWork
 }
 
 func (h *harness) callsRecordedWith(src app.ResolverDefinitions, workspaces app.CallWorkspaces, changes app.CallChanges, runs app.CallRuns, recorder app.RunRecorder, ids app.IDs) *app.Calls {
-	preparer := app.NewPreparer(changes, h.setup, h.clock)
 	return app.NewCalls(
 		app.NewResolver(src, h.runtimes, h.validator, resolverCheckStub{}),
 		h.runtimes,
 		map[string]app.InputProvider{"git.revision": h.inputs, "git.diff": h.inputs, "git.changed_files": h.inputs, "file": h.inputs, "param": h.inputs},
-		workspaces, changes, preparer, h.borrowerOver(changes, runs, app.BorrowPreparer{Preparer: preparer}), app.NewVerifier(changes, h.copies, h.commands, h.clock), app.NewRecoverer(h.clock), h.validator, recorder, runs,
+		workspaces, changes, h.holderOver(changes, runs), app.NewVerifier(changes, h.commands, h.clock), app.NewRecoverer(h.clock), h.validator, recorder, runs,
 		h.clock, h.timer, ids, "/state", h.hosted,
 	)
 }
 
-// borrower is the borrower of the harness's calls.
-func (h *harness) borrower() *app.Borrower {
-	return h.borrowerOver(h.changes, h.runs, app.BorrowPreparer{Preparer: app.NewPreparer(h.changes, h.setup, h.clock)})
+// holder is the holder of the harness's calls.
+func (h *harness) holder() *app.Holder {
+	return h.holderOver(h.changes, h.runs)
 }
 
-func (h *harness) borrowerOver(changes app.CallChanges, runs app.CallRuns, prechecks app.BorrowPrechecks) *app.Borrower {
-	return app.NewBorrower(app.BorrowAdapters{Locks: h.locks, Worktrees: h.worktrees, Content: changes, Runs: runs, Writers: h.writers}, prechecks)
+func (h *harness) holderOver(changes app.CallChanges, runs app.CallRuns) *app.Holder {
+	return app.NewHolder(app.HoldAdapters{Locks: h.locks, Worktrees: h.worktrees, Content: changes, Runs: runs, Writers: h.writers})
 }
 
 func (h *harness) call(t *testing.T, request contract.CallRequest) run.Record {
@@ -222,8 +216,8 @@ func TestCompletedCallSendsTheComposedPayloads(t *testing.T) {
 	}
 	// The call works in the caller's worktree, at the resolved revision,
 	// and lets its hold go once (ADR-025 rule 1).
-	if len(h.workspaces.checkouts) != 0 || record.InPlace == nil || record.InPlace.Revision != "sha-HEAD" || h.locks.releases("/repo") != 1 {
-		t.Fatalf("checkouts %v, in place %+v, released %d", h.workspaces.checkouts, record.InPlace, h.locks.releases("/repo"))
+	if record.InPlace == nil || record.InPlace.Revision != "sha-HEAD" || h.locks.releases("/repo") != 1 {
+		t.Fatalf("in place %+v, released %d", record.InPlace, h.locks.releases("/repo"))
 	}
 	// The turn request carries primitives, not permissions, and a fresh
 	// call names no session: the runtime reports the one it starts.
@@ -658,7 +652,7 @@ func TestContinuationResumesAFinishedRunsSession(t *testing.T) {
 			if class(record) != run.ClassRefused || !strings.Contains(message(record), c.reason) {
 				t.Fatalf("result %+v, want refusal %q", record.Result.Error, c.reason)
 			}
-			if len(h.runner.calls()) != 0 || len(h.workspaces.checkouts) != 0 {
+			if len(h.runner.calls()) != 0 {
 				t.Fatal("effects before the refusal")
 			}
 		})
@@ -682,7 +676,7 @@ func TestContinuationWhereTheSessionDidNotRunIsRefused(t *testing.T) {
 		h.defs.docs[definition.KindAgent]["a"] += "session = \"resumable\"\n"
 		h.runner.identity.ResumeWhereItRan = true
 		if !checkout {
-			h.defs.docs[definition.KindProcess]["p"] = strings.Replace(h.defs.docs[definition.KindProcess]["p"], "workspace:\n  checkout: candidate_revision\n", "", 1)
+			h.defs.docs[definition.KindProcess]["p"] = strings.Replace(h.defs.docs[definition.KindProcess]["p"], "workspace:\n  revision: candidate_revision\n", "", 1)
 			h.defs.docs[definition.KindPolicy]["pol"] = strings.Replace(h.defs.docs[definition.KindPolicy]["pol"], "scope: candidate", "scope: repository", 1)
 		}
 		prior := earlier
@@ -710,8 +704,8 @@ func TestContinuationWhereTheSessionDidNotRunIsRefused(t *testing.T) {
 			if class(record) != run.ClassRefused || !strings.Contains(message(record), c.reason) {
 				t.Fatalf("result %+v, want refusal %q", record.Result.Error, c.reason)
 			}
-			if len(h.runner.calls()) != 0 || len(h.workspaces.checkouts) != 0 {
-				t.Fatalf("turns %d, checkouts %v before the refusal", len(h.runner.calls()), h.workspaces.checkouts)
+			if len(h.runner.calls()) != 0 {
+				t.Fatalf("turns %d before the refusal", len(h.runner.calls()))
 			}
 		})
 	}
@@ -721,8 +715,8 @@ func TestContinuationWhereTheSessionDidNotRunIsRefused(t *testing.T) {
 	if len(h.runner.calls()) != 1 {
 		t.Fatalf("result %+v", record.Result.Error)
 	}
-	if got := h.runner.calls()[0]; got.ResumeSessionID != "prov-0" || got.Cwd != "/repo" || len(h.workspaces.checkouts) != 0 {
-		t.Fatalf("request %+v, checkouts %v", got, h.workspaces.checkouts)
+	if got := h.runner.calls()[0]; got.ResumeSessionID != "prov-0" || got.Cwd != "/repo" {
+		t.Fatalf("request %+v", got)
 	}
 }
 
@@ -816,16 +810,12 @@ func TestAContinuationCostsWhatItAddedToItsSession(t *testing.T) {
 }
 
 // resuming is a harness whose agent resumes sessions, with an empty order
-// of what happened: each turn, and any patch checked or applied, which a
-// call working in the caller's worktree never does (ADR-025 rule 7).
+// of what happened: each turn. A call working in the caller's worktree
+// carries no patch into it (ADR-025 rule 7).
 func resuming() (*harness, *[]string) {
 	h := newHarness()
 	h.defs.docs[definition.KindAgent]["a"] += "session = \"resumable\"\n"
 	order := new([]string)
-	h.changes.applying = func(check bool) error {
-		*order = append(*order, map[bool]string{true: "check", false: "apply"}[check])
-		return nil
-	}
 	h.runner.during = func(app.TurnRequest) { *order = append(*order, "turn") }
 	return h, order
 }
@@ -905,7 +895,7 @@ func TestWorkspaceChangesBecomeArtifacts(t *testing.T) {
 
 	// A workspace the call does not own is the caller's; its changes are not taken.
 	h = newHarness()
-	h.defs.docs[definition.KindProcess]["p"] = strings.Replace(h.defs.docs[definition.KindProcess]["p"], "workspace:\n  checkout: candidate_revision\n", "", 1)
+	h.defs.docs[definition.KindProcess]["p"] = strings.Replace(h.defs.docs[definition.KindProcess]["p"], "workspace:\n  revision: candidate_revision\n", "", 1)
 	h.defs.docs[definition.KindPolicy]["pol"] = strings.Replace(h.defs.docs[definition.KindPolicy]["pol"], "scope: candidate", "scope: repository", 1)
 	h.changes.changes = []byte("x")
 	if record := h.call(t, contract.CallRequest{}); record.Result.Status != run.Completed || len(h.changes.changed) != 0 {
@@ -937,7 +927,7 @@ func TestCallsResolveThroughTheResolutionTheyDeclare(t *testing.T) {
 	h := newHarness()
 	double := &snapshotCounter{reason: "the double refuses"}
 	h.calls = app.NewCalls(
-		double, h.runtimes, map[string]app.InputProvider{}, h.workspaces, h.changes, app.NewPreparer(h.changes, h.setup, h.clock), h.borrower(), app.NewVerifier(h.changes, h.copies, h.commands, h.clock), app.NewRecoverer(h.clock),
+		double, h.runtimes, map[string]app.InputProvider{}, h.workspaces, h.changes, h.holder(), app.NewVerifier(h.changes, h.commands, h.clock), app.NewRecoverer(h.clock),
 		h.validator, h.recorder, h.runs, h.clock, h.timer, fixedIDs{}, "/state", h.hosted,
 	)
 	record := h.call(t, contract.CallRequest{})
@@ -1006,31 +996,30 @@ func TestCallChecksAndRunsTheRuntimeOfItsAgent(t *testing.T) {
 func TestRefusalsComeBeforeEffects(t *testing.T) {
 	t.Parallel()
 	cases := []struct {
-		name     string
-		arrange  func(*harness)
-		request  contract.CallRequest
-		reason   string
-		checkout bool // whether a checkout may already have happened
+		name    string
+		arrange func(*harness)
+		request contract.CallRequest
+		reason  string
 	}{
-		{"missing definition", func(h *harness) { delete(h.defs.docs[definition.KindPolicy], "pol") }, contract.CallRequest{}, `policy "pol": not found`, false},
-		{"invalid definition", func(h *harness) { h.defs.docs[definition.KindProcess]["p"] += "surprise: 1\n" }, contract.CallRequest{}, "surprise: unknown field", false},
-		{"schema does not compile", func(h *harness) { h.validator.compileErr = errors.New("bad schema") }, contract.CallRequest{}, `schema "s": bad schema`, false},
-		{"runtime unavailable", func(h *harness) { h.runner.identityErr = errors.New("no binary") }, contract.CallRequest{}, "runtime rt is unavailable: no binary", false},
-		{"runner cannot be built", func(h *harness) { h.runtimes.runnerErr = errors.New("no such command") }, contract.CallRequest{}, "runtime mapping rt: no such command", false},
-		{"adapter contract mismatch", func(h *harness) { h.runner.identity.Contract = "spy/2" }, contract.CallRequest{}, "describes adapter contract spy/1, but the adapter implements spy/2", false},
-		{"unverified version", func(h *harness) { h.runner.identity.Version = "2.0.0" }, contract.CallRequest{}, "verifies no primitive for spy version 2.0.0", false},
-		{"caller widens timeout", nil, contract.CallRequest{Timeout: "2h"}, "caller timeout 2h0m0s widens the effective 20m0s", false},
-		{"unknown param", nil, contract.CallRequest{Params: map[string]string{"focus": "x"}}, "takes no params: focus", false},
+		{"missing definition", func(h *harness) { delete(h.defs.docs[definition.KindPolicy], "pol") }, contract.CallRequest{}, `policy "pol": not found`},
+		{"invalid definition", func(h *harness) { h.defs.docs[definition.KindProcess]["p"] += "surprise: 1\n" }, contract.CallRequest{}, "surprise: unknown field"},
+		{"schema does not compile", func(h *harness) { h.validator.compileErr = errors.New("bad schema") }, contract.CallRequest{}, `schema "s": bad schema`},
+		{"runtime unavailable", func(h *harness) { h.runner.identityErr = errors.New("no binary") }, contract.CallRequest{}, "runtime rt is unavailable: no binary"},
+		{"runner cannot be built", func(h *harness) { h.runtimes.runnerErr = errors.New("no such command") }, contract.CallRequest{}, "runtime mapping rt: no such command"},
+		{"adapter contract mismatch", func(h *harness) { h.runner.identity.Contract = "spy/2" }, contract.CallRequest{}, "describes adapter contract spy/1, but the adapter implements spy/2"},
+		{"unverified version", func(h *harness) { h.runner.identity.Version = "2.0.0" }, contract.CallRequest{}, "verifies no primitive for spy version 2.0.0"},
+		{"caller widens timeout", nil, contract.CallRequest{Timeout: "2h"}, "caller timeout 2h0m0s widens the effective 20m0s"},
+		{"unknown param", nil, contract.CallRequest{Params: map[string]string{"focus": "x"}}, "takes no params: focus"},
 		{"input fails", func(h *harness) {
 			h.inputs.respond = func(app.InputSpec) (app.Resolved, error) { return app.Resolved{}, errors.New("not a commit") }
-		}, contract.CallRequest{}, "input candidate_revision: not a commit", false},
-		{"workspace overlaps state", func(h *harness) { h.workspaces.root = "/state/repo" }, contract.CallRequest{}, "workspace /state/repo overlaps Agister's state /state", false},
+		}, contract.CallRequest{}, "input candidate_revision: not a commit"},
+		{"workspace overlaps state", func(h *harness) { h.workspaces.root = "/state/repo" }, contract.CallRequest{}, "workspace /state/repo overlaps Agister's state /state"},
 		{"input uses a value with no text", func(h *harness) {
 			h.defs.docs[definition.KindProcess]["p"] = strings.Replace(h.defs.docs[definition.KindProcess]["p"], `head: "${param.candidate}"`, `head: "${value.candidate_revision}"`, 1)
 			h.inputs.respond = func(app.InputSpec) (app.Resolved, error) {
 				return app.Resolved{Value: []string{"a.go"}, Identity: "sha-x", Revision: true}, nil
 			}
-		}, contract.CallRequest{}, "input diff: refers to ${value.candidate_revision}, which has no text value", false},
+		}, contract.CallRequest{}, "input diff: refers to ${value.candidate_revision}, which has no text value"},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
@@ -1045,9 +1034,6 @@ func TestRefusalsComeBeforeEffects(t *testing.T) {
 			}
 			if len(h.runner.calls()) != 0 {
 				t.Fatal("the runtime ran after a refusal")
-			}
-			if !c.checkout && len(h.workspaces.checkouts) != 0 {
-				t.Fatal("a workspace was checked out before the refusal")
 			}
 			if kinds := h.recorder.kinds(); !contains(kinds, "REFUSED") || kinds[len(kinds)-1] != "CALL_FINISHED" {
 				t.Fatalf("events = %v", kinds)
@@ -1134,7 +1120,7 @@ func TestACallThatCannotReadASkillIsRefused(t *testing.T) {
 			if class(record) != run.ClassRefused || message(record) != c.reason {
 				t.Fatalf("result %+v\nwant refused: %s", record.Result.Error, c.reason)
 			}
-			if len(h.runner.calls()) != 0 || len(h.workspaces.checkouts) != 0 {
+			if len(h.runner.calls()) != 0 {
 				t.Fatal("the call went on after the refusal")
 			}
 			if kinds := h.recorder.kinds(); !contains(kinds, "REFUSED") {
@@ -1199,7 +1185,7 @@ func TestCancelBeforeTheTurnIsCancelled(t *testing.T) {
 	if kinds := h.recorder.kinds(); contains(kinds, "REFUSED") {
 		t.Fatalf("events = %v", kinds)
 	}
-	if len(h.runner.calls()) != 0 || len(h.workspaces.checkouts) != 0 {
+	if len(h.runner.calls()) != 0 {
 		t.Fatal("the call went on after the cancel")
 	}
 }
@@ -1216,7 +1202,7 @@ func TestCallsCancelThroughTheCancelsTheyDeclare(t *testing.T) {
 	h.calls = app.NewCalls(
 		app.NewResolver(h.defs, h.runtimes, h.validator, resolverCheckStub{}), h.runtimes,
 		map[string]app.InputProvider{"git.revision": h.inputs, "git.diff": h.inputs},
-		h.workspaces, h.changes, app.NewPreparer(h.changes, h.setup, h.clock), h.borrower(), app.NewVerifier(h.changes, h.copies, h.commands, h.clock), app.NewRecoverer(h.clock), h.validator, h.recorder, h.runs,
+		h.workspaces, h.changes, h.holder(), app.NewVerifier(h.changes, h.commands, h.clock), app.NewRecoverer(h.clock), h.validator, h.recorder, h.runs,
 		h.clock, h.timer, fixedIDs{}, "/state", cancels,
 	)
 	// However the test ends, the blocked turn is released and the call

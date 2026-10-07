@@ -157,7 +157,7 @@ input:
     diff: {source: git.diff, base: "${param.base}", head: HEAD}
     focus: {source: param, name: focus}
 workspace:
-  checkout: diff
+  revision: diff
 tools:
   require: [repository.read]
 output:
@@ -193,7 +193,7 @@ input:
   values:
     v: {source: file, path: "${param.missing}"}
 workspace:
-  checkout: nothing
+  revision: nothing
 output:
   format: json
   schema: s
@@ -212,7 +212,7 @@ constraints:
 		`uses: must be "agent:<name>"`,
 		`timeout: invalid duration "soon"`,
 		`refers to ${param.missing}`,
-		`workspace.checkout: "nothing" is not an input value`,
+		`workspace.revision: "nothing" is not an input value`,
 		`output.require_valid: must be true`,
 		`output.result: unknown field`,
 		`max_cost_usd: must be positive`,

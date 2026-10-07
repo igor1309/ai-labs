@@ -38,7 +38,7 @@ func naming(h *harness) {
 // checkout needing a clean worktree, as a process that declares verify
 // must (ADR-025 rule 3).
 func namingVerification(text string) string {
-	return strings.Replace(text, "  checkout: candidate_revision\n", "  checkout: candidate_revision\n  clean: true\n", 1) + "verify: verify:repo\n"
+	return strings.Replace(text, "  revision: candidate_revision\n", "  revision: candidate_revision\n  clean: true\n", 1) + "verify: verify:repo\n"
 }
 
 func named(h *harness, text string) {
@@ -103,8 +103,8 @@ func TestAMissingVerificationRefusesTheCallNotTheSettings(t *testing.T) {
 	if class(record) != run.ClassRefused || message(record) != `process p names verify:repo: verification "repo": not found` {
 		t.Fatalf("result %+v: %q", record.Result, message(record))
 	}
-	if len(h.runner.calls()) != 0 || len(h.workspaces.checkouts) != 0 || len(h.commands.runs()) != 0 {
-		t.Fatalf("turns %d, checkouts %v, commands %v after the refusal", len(h.runner.calls()), h.workspaces.checkouts, h.commands.runs())
+	if len(h.runner.calls()) != 0 || len(h.commands.runs()) != 0 {
+		t.Fatalf("turns %d, commands %v after the refusal", len(h.runner.calls()), h.commands.runs())
 	}
 
 	other := newHarness()

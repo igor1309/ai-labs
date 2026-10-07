@@ -17,20 +17,6 @@ func (c Commands) Run(ctx context.Context, request app.CommandRequest, started f
 	return app.CommandResult(c.Supervisor.Run(ctx, supervisor.CommandRequest(request), started))
 }
 
-// SetupCommands translates the preparer's command contract to the supervisor.
-type SetupCommands struct{ Supervisor CommandSupervisor }
-
-func (c SetupCommands) Run(ctx context.Context, request app.SetupCommandRequest, started func(string) error) app.SetupCommandResult {
-	result := c.Supervisor.Run(ctx, supervisor.CommandRequest{
-		Command: request.Command, Dir: request.Dir, Timeout: request.Timeout, Bound: request.Bound,
-	}, started)
-	return app.SetupCommandResult{
-		ExitCode: result.ExitCode, Signal: result.Signal, TimedOut: result.TimedOut,
-		Cancelled: result.Cancelled, Error: result.Error,
-		Head: result.Head, Tail: result.Tail, Bytes: result.Bytes, SHA256: result.SHA256,
-	}
-}
-
 type ProcessSupervisor interface {
 	Reap(context.Context, string) (supervisor.Reaping, error)
 }
@@ -41,13 +27,13 @@ func (p Processes) Reap(ctx context.Context, ref string) (app.Reaping, error) {
 	return app.Reaping(result), err
 }
 
-// BorrowProcesses translates the borrower's process contract to the
+// HoldProcesses translates the holder's process contract to the
 // supervisor.
-type BorrowProcesses struct{ Supervisor ProcessSupervisor }
+type HoldProcesses struct{ Supervisor ProcessSupervisor }
 
-func (p BorrowProcesses) Reap(ctx context.Context, ref string) (app.BorrowReaping, error) {
+func (p HoldProcesses) Reap(ctx context.Context, ref string) (app.HoldReaping, error) {
 	result, err := p.Supervisor.Reap(ctx, ref)
-	return app.BorrowReaping(result), err
+	return app.HoldReaping(result), err
 }
 
 // supervisorSink passes a turn's events from the supervisor to a runtime

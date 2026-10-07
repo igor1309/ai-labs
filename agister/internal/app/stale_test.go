@@ -579,8 +579,8 @@ func TestToolCallLimitsNeedARuntimeThatReportsThem(t *testing.T) {
 		if record.Result.Status != run.Failed || class(record) != run.ClassRefused || !strings.Contains(message(record), want) {
 			t.Fatalf("%s: result %+v", limit, record.Result)
 		}
-		if len(h.runner.calls()) != 0 || len(h.workspaces.checkouts) != 0 {
-			t.Fatalf("%s: turns %d, checkouts %v after the refusal", limit, len(h.runner.calls()), h.workspaces.checkouts)
+		if len(h.runner.calls()) != 0 {
+			t.Fatalf("%s: turns %d after the refusal", limit, len(h.runner.calls()))
 		}
 	}
 }

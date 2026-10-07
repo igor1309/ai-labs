@@ -10,7 +10,6 @@ import (
 	"fmt"
 	"slices"
 	"sort"
-	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -210,9 +209,6 @@ type workspacesSpy struct {
 	mu          sync.Mutex
 	root        string
 	dir         string
-	checkouts   [][2]string
-	released    int
-	releaseErr  error       // what each release returns
 	discarded   [][2]string // repository, dir
 	discardErr  error
 	discardHook func(ctx context.Context, dir string) error // runs first; a non-nil result is returned
@@ -271,47 +267,19 @@ func (s *workspacesSpy) SameRepository(_ context.Context, first, second string) 
 	return a == b, nil
 }
 
-func (s *workspacesSpy) Checkout(_ context.Context, repository, revision string) (string, func() error, error) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	s.checkouts = append(s.checkouts, [2]string{repository, revision})
-	return s.dir, func() error {
-		s.mu.Lock()
-		defer s.mu.Unlock()
-		s.released++
-		return s.releaseErr
-	}, nil
-}
-
-func (s *workspacesSpy) releases() int {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	return s.released
-}
-
-// changesSpy names a checkout's content and captures what an agent left
-// in it. A clean copy (see copiesSpy) has the content the checkout was last
-// named with, unless copied says otherwise.
+// changesSpy names a worktree's content and captures what an agent left
+// in it.
 type changesSpy struct {
 	mu       sync.Mutex
 	changed  [][2]string   // dir, from
 	identity string        // what Identity names; "tree" when empty
-	identify func() string // when set, names the checkout's content instead
+	identify func() string // when set, names the worktree's content instead
 	changes  []byte
 	// patch, when set, is the patch from one content to another, instead
 	// of changes.
 	patch     func(from, to string) []byte
 	changeErr error
 	panics    bool // Changes panics
-	// copied, when set, names a clean copy's content, given how many times
-	// a copy in its directory was named before: 0 before the first
-	// attempt's run, 1 after.
-	copied func(dir string, named int) string
-	named  map[string]int
-	// applied lists every patch applied or checked, in order; applying,
-	// when set, runs first and fails the apply with what it returns.
-	applied  []appliedPatch
-	applying func(check bool) error
 	// rebuilt, when set, names the content a patch rebuilds from a
 	// revision; unset, every patch rebuilds the content the worktree was
 	// last named with. rebuilds lists each one asked.
@@ -335,42 +303,10 @@ func (s *changesSpy) Rebuild(_ context.Context, dir, revision string, patch []by
 	return s.rebuilt(revision, patch), nil
 }
 
-// appliedPatch is one Apply: the checkout, the patch, and whether it was
-// only checked.
-type appliedPatch struct {
-	dir, patch string
-	check      bool
-}
-
-func (s *changesSpy) Apply(_ context.Context, dir string, patch []byte, check bool) error {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	s.applied = append(s.applied, appliedPatch{dir, string(patch), check})
-	if s.applying != nil {
-		return s.applying(check)
-	}
-	return nil
-}
-
-func (s *changesSpy) applies() []appliedPatch {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	return append([]appliedPatch(nil), s.applied...)
-}
-
 func (s *changesSpy) Identity(_ context.Context, dir, _ string) (string, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if strings.HasPrefix(dir, copyDirs) {
-		if s.named == nil {
-			s.named = map[string]int{}
-		}
-		named := s.named[dir]
-		s.named[dir]++
-		if s.copied != nil {
-			return s.copied(dir, named), nil
-		}
-	} else if s.identify != nil {
+	if s.identify != nil {
 		s.identity = s.identify()
 	}
 	if s.identity == "" {
@@ -390,102 +326,6 @@ func (s *changesSpy) Changes(_ context.Context, dir, from, to string) ([]byte, e
 		return s.patch(from, to), s.changeErr
 	}
 	return s.changes, s.changeErr
-}
-
-// copyDirs is where copiesSpy places the copies of its calls: copy-1,
-// copy-2, ...
-const copyDirs = "/work/copy-"
-
-// madeCopy is one clean copy copiesSpy made.
-type madeCopy struct {
-	repository, revision, patch, dir string
-}
-
-// copiesSpy places each call's clean copies in a directory of its own,
-// makes them there, and removes them. Like the real ones, it makes no copy
-// where one is.
-type copiesSpy struct {
-	mu        sync.Mutex
-	placed    []string // the calls whose copies were placed
-	made      []madeCopy
-	present   map[string]bool
-	removed   []string
-	err       error // Copy fails with it
-	removeErr error // removing fails with it
-	// block makes Copy make the copy, then wait for its context to end and
-	// fail with why; interrupted is that reason.
-	block       bool
-	interrupted error
-	// copying, when set, runs as a copy is made; removing as one is
-	// removed.
-	copying  func(dir string)
-	removing func(dir string)
-}
-
-func (s *copiesSpy) Place(call string) string {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	s.placed = append(s.placed, call)
-	return fmt.Sprintf("%s%d", copyDirs, len(s.placed))
-}
-
-func (s *copiesSpy) Copy(ctx context.Context, repository, dir, revision string, patch []byte) error {
-	if s.copying != nil {
-		s.copying(dir)
-	}
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	if s.err != nil {
-		return s.err
-	}
-	if s.present[dir] {
-		return fmt.Errorf("%s: %w", dir, app.ErrPlaceTaken)
-	}
-	if s.present == nil {
-		s.present = map[string]bool{}
-	}
-	s.present[dir] = true
-	s.made = append(s.made, madeCopy{repository, revision, string(patch), dir})
-	if s.block {
-		s.mu.Unlock()
-		<-ctx.Done()
-		s.mu.Lock()
-		s.interrupted = ctx.Err()
-		return s.interrupted
-	}
-	return nil
-}
-
-func (s *copiesSpy) Discard(_ context.Context, _, dir string) error {
-	if s.removing != nil {
-		s.removing(dir)
-	}
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	s.removed = append(s.removed, dir)
-	if s.removeErr != nil {
-		return s.removeErr
-	}
-	delete(s.present, dir)
-	return nil
-}
-
-// left lists the copies made and not removed.
-func (s *copiesSpy) left() []string {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	var left []string
-	for dir := range s.present {
-		left = append(left, dir)
-	}
-	sort.Strings(left)
-	return left
-}
-
-func (s *copiesSpy) copies() []madeCopy {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	return append([]madeCopy(nil), s.made...)
 }
 
 // commandsSpy runs verification commands: each passes unless exits, in
@@ -561,57 +401,6 @@ func (s *commandsSpy) runs() []app.CommandRequest {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	return append([]app.CommandRequest(nil), s.requests...)
-}
-
-type setupCommandsSpy struct {
-	mu       sync.Mutex
-	requests []app.SetupCommandRequest
-	exits    []int
-	// running, when set, runs while the command does.
-	running func(app.SetupCommandRequest)
-	// timedOut, when set, ends each run as one killed at its timeout.
-	timedOut bool
-	// block makes each run wait for its context to end and end as one
-	// killed for it; started, when set, is closed once the first is on
-	// record.
-	block   bool
-	started chan struct{}
-}
-
-func (s *setupCommandsSpy) Run(ctx context.Context, request app.SetupCommandRequest, started func(string) error) app.SetupCommandResult {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	s.requests = append(s.requests, request)
-	if err := started("ref-cmd"); err != nil {
-		return app.SetupCommandResult{Error: err.Error()}
-	}
-	if s.running != nil {
-		s.running(request)
-	}
-	if s.block {
-		if s.started != nil {
-			close(s.started)
-			s.started = nil
-		}
-		s.mu.Unlock()
-		<-ctx.Done()
-		s.mu.Lock()
-		return app.SetupCommandResult{Cancelled: true, Signal: "killed"}
-	}
-	if s.timedOut {
-		return app.SetupCommandResult{TimedOut: true, Signal: "killed"}
-	}
-	code := 0
-	if len(s.exits) > 0 {
-		code, s.exits = s.exits[0], s.exits[1:]
-	}
-	return app.SetupCommandResult{ExitCode: &code, Head: []byte(fmt.Sprintf("exit %d", code)), Bytes: 6, SHA256: fmt.Sprintf("sha-%d-%d", code, len(s.requests))}
-}
-
-func (s *setupCommandsSpy) runs() []app.SetupCommandRequest {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	return append([]app.SetupCommandRequest(nil), s.requests...)
 }
 
 type validatorSpy struct {
@@ -965,24 +754,24 @@ func (s *processesSpy) refs() []string {
 	return append([]string(nil), s.reaped...)
 }
 
-// writersSpy ends the processes a borrower asks about, as the borrower
+// writersSpy ends the processes a holder asks about, as the holder
 // reads it.
 type writersSpy struct {
 	mu     sync.Mutex
 	reaped []string // references
 	err    error
-	// outcome is what each Reap finds; BorrowReapKilled when empty.
-	outcome app.BorrowReaping
+	// outcome is what each Reap finds; HoldReapKilled when empty.
+	outcome app.HoldReaping
 }
 
-func (s *writersSpy) Reap(_ context.Context, ref string) (app.BorrowReaping, error) {
+func (s *writersSpy) Reap(_ context.Context, ref string) (app.HoldReaping, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.reaped = append(s.reaped, ref)
 	if s.outcome != "" {
 		return s.outcome, s.err
 	}
-	return app.BorrowReapKilled, s.err
+	return app.HoldReapKilled, s.err
 }
 
 func (s *writersSpy) refs() []string {
@@ -1071,7 +860,7 @@ func (s *locksSpy) holds(dir string) bool {
 	return s.held[dir] > 0
 }
 
-// worktreesSpy reads the git state of borrowed worktrees: by default each
+// worktreesSpy reads the git state of held worktrees: by default each
 // is clean at the revision asked about, its tree "tree", as changesSpy
 // names unchanged content.
 type worktreesSpy struct {

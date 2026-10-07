@@ -350,7 +350,7 @@ func abandon(t *testing.T, killed composition, id string) {
 func TestNextCallReapsAKilledRunsVerifyCommand(t *testing.T) {
 	home, repo := setupGit(t, "approve")
 	shipped := read(t, filepath.Join(home, "processes", "adversarial_review.yaml"))
-	shipped = strings.Replace(shipped, "  checkout: candidate_revision\n", "  checkout: candidate_revision\n  clean: true\n", 1)
+	shipped = strings.Replace(shipped, "  revision: candidate_revision\n", "  revision: candidate_revision\n  clean: true\n", 1)
 	write(t, filepath.Join(home, "processes", "verified.yaml"), strings.Replace(shipped, "name: adversarial_review", "name: verified", 1)+`
 verify:
   command: `+strconv.Quote(blocks+" & wait")+`
@@ -467,7 +467,7 @@ func TestCleanupRunCancelsAndDrainsABlockedCall(t *testing.T) {
 	}
 	expect(t, record, domain.Interrupted, domain.ClassCancelled, "cancelled during attempt 1's run")
 	<-command.cancelled
-	_, release, err := system.WorktreeLocks{Dir: filepath.Join(h.home, "locks", "in-place")}.Lock(h.repo, true)
+	_, release, err := system.WorktreeLocks{Dir: filepath.Join(h.home, "locks", "holds")}.Lock(h.repo, true)
 	if err != nil {
 		t.Fatalf("the worktree is still held: %v", err)
 	}

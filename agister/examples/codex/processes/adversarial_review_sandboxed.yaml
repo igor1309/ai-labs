@@ -23,7 +23,7 @@ input:
     changed_files: {source: git.changed_files, base: "${value.base_revision}", head: "${value.candidate_revision}"}
 
 workspace:
-  checkout: candidate_revision
+  revision: candidate_revision
 
 output:
   format: json

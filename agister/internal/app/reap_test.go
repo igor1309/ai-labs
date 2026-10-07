@@ -68,7 +68,7 @@ func TestCallRecordsItsEffectsAsSoonAsTheyExist(t *testing.T) {
 // A worktree that cannot be recorded is one no later call could tell a
 // leftover writer by: the call fails before the runtime starts, and the
 // hold is let go.
-func TestCheckoutThatCannotBeRecordedIsReleasedAndTheCallRefused(t *testing.T) {
+func TestAWorktreeThatCannotBeRecordedIsLetGoAndTheCallRefused(t *testing.T) {
 	t.Parallel()
 	h := newHarness()
 	h.recorder.updateErr = func(record run.Record) error {
@@ -291,7 +291,7 @@ func TestACheckoutWhoseReleaseHitTheDeadlineIsReapedLater(t *testing.T) {
 
 // A call works in the caller's worktree and records nothing for a reap to
 // remove (ADR-025 rule 1).
-func TestAReleasedCheckoutIsNotLeftForAReap(t *testing.T) {
+func TestACallLeavesNothingForAReap(t *testing.T) {
 	t.Parallel()
 	h := newHarness()
 	if record := h.call(t, contract.CallRequest{}); record.Effects == nil || record.Effects.Unreleased != nil {

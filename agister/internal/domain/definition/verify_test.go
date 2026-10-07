@@ -21,7 +21,7 @@ input:
   values:
     candidate_revision: {source: git.revision, rev: HEAD}
 workspace:
-  checkout: candidate_revision
+  revision: candidate_revision
   clean: true
 output:
   format: text
@@ -106,11 +106,11 @@ func TestVerifyMaxAttemptsBelowOneIsInvalid(t *testing.T) {
 
 // ADR-025 rule 3: verification proves the run's changes from the pinned
 // revision.
-func TestVerifyWithoutACheckoutIsInvalid(t *testing.T) {
+func TestVerifyWithoutARevisionIsInvalid(t *testing.T) {
 	t.Parallel()
-	text := strings.Replace(verifyingProcess(verifyBlock), "  checkout: candidate_revision\n", "", 1)
+	text := strings.Replace(verifyingProcess(verifyBlock), "  revision: candidate_revision\n", "", 1)
 	_, err := definition.ParseProcess(doc(definition.KindProcess, "p", text))
-	if err == nil || !strings.Contains(err.Error(), "verify: requires workspace.checkout") {
+	if err == nil || !strings.Contains(err.Error(), "verify: requires workspace.revision") {
 		t.Fatalf("err = %v", err)
 	}
 }
@@ -248,11 +248,11 @@ func TestAProcessDeclaringVerifyTwiceIsInvalid(t *testing.T) {
 
 // A process that names a verification is held to the pinned checkout, as
 // one with the inline block is.
-func TestANamedVerificationWithoutACheckoutIsInvalid(t *testing.T) {
+func TestANamedVerificationWithoutARevisionIsInvalid(t *testing.T) {
 	t.Parallel()
-	text := strings.Replace(namingProcess("verify:repo"), "  checkout: candidate_revision\n", "", 1)
+	text := strings.Replace(namingProcess("verify:repo"), "  revision: candidate_revision\n", "", 1)
 	_, err := definition.ParseProcess(doc(definition.KindProcess, "p", text))
-	if err == nil || !strings.Contains(err.Error(), "verify: requires workspace.checkout") {
+	if err == nil || !strings.Contains(err.Error(), "verify: requires workspace.revision") {
 		t.Fatalf("err = %v", err)
 	}
 }

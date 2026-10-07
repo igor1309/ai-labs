@@ -97,8 +97,8 @@ func (noProblems) Check(context.Context) (app.ResolverChecked, error) {
 // goneProcesses finds every process an earlier in-place run recorded gone.
 type goneProcesses struct{}
 
-func (goneProcesses) Reap(context.Context, string) (app.BorrowReaping, error) {
-	return app.BorrowReapGone, nil
+func (goneProcesses) Reap(context.Context, string) (app.HoldReaping, error) {
+	return app.HoldReapGone, nil
 }
 
 // fakeRuntimes builds the scripted runtime for the fake adapter.
@@ -158,11 +158,11 @@ type loopHarness struct {
 	t    *testing.T
 	repo string
 	home string
-	// left lists the checkouts and clean copies not yet removed.
+	// left lists the worktrees beside the repository's own, which no call
+	// makes (ADR-025 rule 1).
 	left     func() []string
 	runner   *scripted
 	commands *recordingCommands
-	setup    *recordingSetupCommands
 	calls    *app.Calls
 	runs     *app.Runs
 	// hosted holds the harness's calls; wait awaits their Done.
@@ -191,25 +191,6 @@ func (c *recordingCommands) requests() []app.CommandRequest {
 	return append([]app.CommandRequest(nil), c.seen...)
 }
 
-// recordingSetupCommands keeps setup requests while preserving command injection.
-type recordingSetupCommands struct {
-	app.SetupCommands
-	mu   sync.Mutex
-	seen []app.SetupCommandRequest
-}
-
-func (c *recordingSetupCommands) Run(ctx context.Context, request app.SetupCommandRequest, started func(string) error) app.SetupCommandResult {
-	c.mu.Lock()
-	c.seen = append(c.seen, request)
-	c.mu.Unlock()
-	return c.SetupCommands.Run(ctx, request, started)
-}
-func (c *recordingSetupCommands) requests() []app.SetupCommandRequest {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	return append([]app.SetupCommandRequest(nil), c.seen...)
-}
-
 // seams are the harness's collaborators a test replaces; each left zero is
 // the harness's own.
 type seams struct {
@@ -220,9 +201,9 @@ type seams struct {
 	clock app.CallClock
 	// commands runs the verification command.
 	commands app.VerifyCommands
-	// groups numbers the process groups of the commands run in process,
-	// verification's and setup's alike: a test that gives commands of its
-	// own (inProcessCommands) gives the Groups they number from.
+	// groups numbers the process groups of the commands run in process: a
+	// test that gives commands of its own (inProcessCommands) gives the
+	// Groups they number from.
 	groups *supervisortest.Groups
 }
 
@@ -258,11 +239,10 @@ type loopGit struct {
 	repo       string
 	workspaces app.CallWorkspaces
 	content    app.CallChanges
-	copies     app.VerifyCopies
 	revision   app.InputProvider
-	// state reads the worktree an in-place call borrows.
-	state app.BorrowWorktrees
-	// left lists the checkouts and clean copies not yet removed.
+	// state reads the worktree a call holds.
+	state app.HoldWorktrees
+	// left lists the worktrees beside the repository's own.
 	left func() []string
 	// given gives the git to every composition over home.
 	given func(home string)
@@ -282,7 +262,7 @@ func fakeLoopGit(t *testing.T) loopGit {
 	fake := gittest.New(tempDir(t))
 	fake.Record(repo).Commit("main", base)
 	return loopGit{
-		repo: repo, workspaces: fake, content: fake, copies: fake, revision: fake.Revision(), state: fake,
+		repo: repo, workspaces: fake, content: fake, revision: fake.Revision(), state: fake,
 		left: func() []string {
 			left, err := fake.Left()
 			if err != nil {
@@ -311,7 +291,7 @@ func realLoopGit(t *testing.T) loopGit {
 	gitCmd(t, repo, "commit", "--quiet", "-m", "base")
 	workspaces := git.NewWorkspaces(git.NewWorktrees(tempDir(t)))
 	return loopGit{
-		repo: repo, workspaces: workspaces, content: workspaces, copies: workspaces, revision: git.Revision{}, state: git.Workspaces{},
+		repo: repo, workspaces: workspaces, content: workspaces, revision: git.Revision{}, state: git.Workspaces{},
 		left:  func() []string { return strings.Split(gitCmd(t, repo, "worktree", "list"), "\n")[1:] },
 		given: func(home string) { onRealGit(t, home) },
 	}
@@ -392,7 +372,7 @@ input:
   values:
     candidate_revision: {source: git.revision, rev: "${param.candidate}"}
 workspace:
-  checkout: candidate_revision
+  revision: candidate_revision
   clean: true
 %soutput:
   format: json
@@ -415,21 +395,20 @@ verify:
 		write(t, filepath.Join(defs, name), text)
 	}
 
-	h := &loopHarness{t: t, repo: repo, home: tempDir(t), left: over.left, runner: &scripted{t: t, steps: steps}, commands: &recordingCommands{VerifyCommands: with.commands}, setup: &recordingSetupCommands{SetupCommands: runtimecomposition.SetupCommands{Supervisor: inProcessCommands(with.groups, still.Timer)}}}
+	h := &loopHarness{t: t, repo: repo, home: tempDir(t), left: over.left, runner: &scripted{t: t, steps: steps}, commands: &recordingCommands{VerifyCommands: with.commands}}
 	h.store = fsruns.Store{Dir: filepath.Join(h.home, "runs"), Appends: fsruns.NewAppends()}
 	over.given(h.home)
 	runtimes := fakeRuntimes{runner: h.runner}
 	h.hosted = app.NewHosted()
 	var definitions app.ResolverDefinitions = fsdefs.Store{Dir: defs}
-	preparer := app.NewPreparer(with.changes, h.setup, with.clock)
-	borrower := app.NewBorrower(app.BorrowAdapters{
-		Locks:     system.WorktreeLocks{Dir: filepath.Join(h.home, "locks", "in-place")},
+	holder := app.NewHolder(app.HoldAdapters{
+		Locks:     system.WorktreeLocks{Dir: filepath.Join(h.home, "locks", "holds")},
 		Worktrees: over.state, Content: with.changes, Runs: h.store, Writers: goneProcesses{},
-	}, app.BorrowPreparer{Preparer: preparer})
+	})
 	h.calls = app.NewCalls(
 		app.NewResolver(definitions, runtimes, schema.Validator{}, noProblems{}), runtimes,
 		map[string]app.InputProvider{"git.revision": over.revision},
-		over.workspaces, with.changes, preparer, borrower, app.NewVerifier(with.changes, over.copies, h.commands, with.clock), app.NewRecoverer(with.clock), schema.Validator{},
+		over.workspaces, with.changes, holder, app.NewVerifier(with.changes, h.commands, with.clock), app.NewRecoverer(with.clock), schema.Validator{},
 		h.store, h.store, with.clock, still.Timer, system.IDs{}, h.home, h.hosted,
 	)
 	// Observing a call hosted here waits on its appends, never on a poll.
@@ -472,8 +451,8 @@ func (h *loopHarness) submit(request contract.CallRequest) string {
 	return id
 }
 
-// wait returns the run's record once the call is done; the checkout and
-// every clean copy are gone by then.
+// wait returns the run's record once the call is done; no worktree is left
+// beside the repository's own.
 func (h *loopHarness) wait(id string) domain.Record {
 	h.t.Helper()
 	<-h.hosted.Done(id)
@@ -482,7 +461,7 @@ func (h *loopHarness) wait(id string) domain.Record {
 		h.t.Fatalf("run %s: %s, %v", id, state, err)
 	}
 	if left := h.left(); len(left) != 0 {
-		h.t.Fatalf("checkout left: %v", left)
+		h.t.Fatalf("worktrees left: %v", left)
 	}
 	return record
 }

@@ -41,8 +41,8 @@ func TestAnInPlaceCallWorksInTheCallersWorktree(t *testing.T) {
 	if in := record.InPlace; in == nil || in.Dir != h.repo || in.Worktree != h.repo || in.Revision != revision || in.Verify != domain.VerifyInWorkspace || in.Content == "" || in.Writer == nil || !*in.Writer {
 		t.Fatalf("in place %+v", record.InPlace)
 	}
-	if record.SetupRun != nil || record.PrecheckRun != nil || len(h.setup.requests()) != 0 {
-		t.Fatalf("setup run %+v, precheck run %+v, setup requests %+v", record.SetupRun, record.PrecheckRun, h.setup.requests())
+	if record.SetupRun != nil || record.PrecheckRun != nil {
+		t.Fatalf("setup run %+v, precheck run %+v", record.SetupRun, record.PrecheckRun)
 	}
 	if ran := runsOf(record); len(ran) != 2 || ran[0].Dir != h.repo || ran[1].Dir != h.repo || !ran[1].Passed {
 		t.Fatalf("verification runs %+v", ran)

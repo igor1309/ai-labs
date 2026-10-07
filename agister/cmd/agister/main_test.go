@@ -114,7 +114,7 @@ func onRealGit(t testing.TB, home string) {
 // fakeGit is the composition's git-backed adapters, all over fake.
 func fakeGit(fake *gittest.Fake) gitAdapters {
 	return gitAdapters{
-		calls: fake, copies: fake, discarder: fake, content: fake, state: fake,
+		calls: fake, discarder: fake, content: fake, state: fake,
 		revision: fake.Revision(), mergeBase: fake.MergeBase(), diff: fake.Diff(), changedFiles: fake.ChangedFiles(),
 	}
 }
@@ -1169,7 +1169,7 @@ func TestVerifyDeclarationEndToEnd(t *testing.T) {
 	home, repo := setup(t, "approve")
 	shipped := read(t, filepath.Join(home, "processes", "adversarial_review.yaml"))
 	process := strings.Replace(shipped, "name: adversarial_review", "name: verified", 1)
-	process = strings.Replace(process, "  checkout: candidate_revision\n", "  checkout: candidate_revision\n  clean: true\n", 1) + `
+	process = strings.Replace(process, "  revision: candidate_revision\n", "  revision: candidate_revision\n  clean: true\n", 1) + `
 verify:
   command: test -f a.txt
   timeout: 20s

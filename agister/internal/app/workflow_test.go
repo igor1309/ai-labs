@@ -38,7 +38,7 @@ input:
     candidate_revision: {source: git.revision, rev: "${param.candidate}"}
     diff: {source: git.diff, base: "${param.base}", head: "${value.candidate_revision}"}
 workspace:
-  checkout: candidate_revision
+  revision: candidate_revision
 output:
   format: json
   schema: s
@@ -402,12 +402,11 @@ func newFlowHarness() *flowHarness {
 	runtimes := nodeRuntimes{runner: h.runner}
 	changes := &changesSpy{}
 	runs := &runsSpy{records: map[string]run.Record{}, states: map[string]run.State{}}
-	preparer := app.NewPreparer(changes, &setupCommandsSpy{}, fixedClock{})
 	h.calls = app.NewCalls(
 		app.NewResolver(h.defs, runtimes, okValidator{}, resolverCheckStub{}), runtimes,
 		map[string]app.InputProvider{"git.revision": h.inputs, "git.diff": h.inputs, "file": h.inputs},
-		h.workspaces, changes, preparer, app.NewBorrower(app.BorrowAdapters{Locks: h.locks, Worktrees: &worktreesSpy{}, Content: changes, Runs: runs, Writers: &writersSpy{}}, app.BorrowPreparer{Preparer: preparer}),
-		app.NewVerifier(changes, &copiesSpy{}, &commandsSpy{}, fixedClock{}), app.NewRecoverer(fixedClock{}), okValidator{}, h.store, runs,
+		h.workspaces, changes, app.NewHolder(app.HoldAdapters{Locks: h.locks, Worktrees: &worktreesSpy{}, Content: changes, Runs: runs, Writers: &writersSpy{}}),
+		app.NewVerifier(changes, &commandsSpy{}, fixedClock{}), app.NewRecoverer(fixedClock{}), okValidator{}, h.store, runs,
 		fixedClock{}, unfired, &seqIDs{}, "/state", h.hosted,
 	)
 	return h
@@ -1093,11 +1092,8 @@ func TestAWorkflowWithInPlaceWorkspaceSettingsRunsInTheWorktree(t *testing.T) {
 			t.Fatalf("%s turns %+v", instruction, turns)
 		}
 	}
-	h.workspaces.mu.Lock()
-	checkouts := len(h.workspaces.checkouts)
-	h.workspaces.mu.Unlock()
-	if checkouts != 0 || h.locks.holds("/repo") {
-		t.Fatalf("checkouts %d, worktree held %t", checkouts, h.locks.holds("/repo"))
+	if h.locks.holds("/repo") {
+		t.Fatal("the worktree is still held")
 	}
 }
 

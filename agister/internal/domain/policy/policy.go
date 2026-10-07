@@ -179,9 +179,9 @@ func Compose(service definition.Service, pol *definition.Policy, process definit
 		}
 	}
 
-	// The scope is where the agent works: a checkout of the candidate or
-	// the repository itself. workspace.checkout decides it; a declared
-	// scope must agree.
+	// The scope is what the agent works on: the candidate, the revision the
+	// process pins, or the repository as it is. workspace.revision decides
+	// it; a declared scope must agree.
 	scope := base.Scope
 	if over.Scope != "" {
 		if scope != "" && scope != over.Scope {
@@ -191,14 +191,14 @@ func Compose(service definition.Service, pol *definition.Policy, process definit
 		}
 	}
 	switch {
-	case scope == "" && process.Checkout != "":
+	case scope == "" && process.Revision != "":
 		scope = "candidate"
 	case scope == "":
 		scope = "repository"
-	case scope == "candidate" && process.Checkout == "":
-		add("workspace.scope candidate requires workspace.checkout")
-	case scope == "repository" && process.Checkout != "":
-		add("workspace.scope repository conflicts with workspace.checkout, which works in a checkout")
+	case scope == "candidate" && process.Revision == "":
+		add("workspace.scope candidate requires workspace.revision")
+	case scope == "repository" && process.Revision != "":
+		add("workspace.scope repository conflicts with workspace.revision, which pins a revision")
 	}
 
 	deny := union(base.Deny, over.Deny)

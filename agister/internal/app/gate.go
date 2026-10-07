@@ -67,9 +67,8 @@ type Infrastructure struct {
 	Checker  CheckAdapters
 	Resolver ResolverAdapters
 	Calls    CallAdapters
-	Preparer SetupAdapters
-	// Borrower lends every call the caller's worktree (ADR-025 rule 1).
-	Borrower BorrowAdapters
+	// Holder holds the caller's worktree for every call (ADR-025 rule 4).
+	Holder   HoldAdapters
 	Verifier VerifyAdapters
 	// Recoverer recovers a call's stale turns (ADR-024).
 	Recoverer RecoverAdapters
@@ -102,15 +101,14 @@ type GateCheck interface {
 // refused (ADR-015). Every field of infra is required but Checks and
 // Hosted.
 func NewClient(infra Infrastructure) contract.Client {
-	// The calls hosted in this process, the preparer, the borrower, the
-	// verifier and the recoverer are shared by every client the gate builds.
+	// The calls hosted in this process, the holder, the verifier and the
+	// recoverer are shared by every client the gate builds.
 	hosted := infra.Hosted
 	if hosted == nil {
 		hosted = NewHosted()
 	}
-	preparer := NewPreparer(infra.Preparer.Content, infra.Preparer.Commands, infra.Preparer.Clock)
-	borrower := NewBorrower(infra.Borrower, BorrowPreparer{Preparer: preparer})
-	verifier := NewVerifier(infra.Verifier.Content, infra.Verifier.Copies, infra.Verifier.Commands, infra.Verifier.Clock)
+	holder := NewHolder(infra.Holder)
+	verifier := NewVerifier(infra.Verifier.Content, infra.Verifier.Commands, infra.Verifier.Clock)
 	recoverer := NewRecoverer(infra.Recoverer.Clock)
 	sources := make([]string, 0, len(infra.Calls.Inputs))
 	for name := range infra.Calls.Inputs {
@@ -149,7 +147,7 @@ func NewClient(infra Infrastructure) contract.Client {
 			Checker:    checkerOn(layered),
 			Inspection: NewInspection(resolverOn(layered)),
 			Calls: NewCalls(
-				resolverOn(layered), calls.Runners, calls.Inputs, calls.Workspaces, calls.Changes, preparer, borrower, verifier, recoverer, calls.Validator,
+				resolverOn(layered), calls.Runners, calls.Inputs, calls.Workspaces, calls.Changes, holder, verifier, recoverer, calls.Validator,
 				calls.Recorder, calls.Runs, calls.Clock, calls.Timer, calls.IDs, calls.StateDir, hosted,
 			),
 			Runs:      NewRuns(infra.Runs.Reader, infra.Runs.Appends, hosted, infra.Runs.Timer, 0),
@@ -244,23 +242,6 @@ func (c resolverCheck) Check(ctx context.Context) (ResolverChecked, error) {
 		result.Blocks = append(result.Blocks, ResolverBlock(b))
 	}
 	return result, nil
-}
-
-// BorrowPreparer is the preparer as a Borrower reads it: the precheck a
-// borrow asks for is run as the preparer runs one. It is exported for
-// whoever assembles a Borrower beside a Preparer without NewClient.
-type BorrowPreparer struct{ Preparer PrecheckPreparer }
-
-// PrecheckPreparer is the preparer a BorrowPreparer translates.
-type PrecheckPreparer interface {
-	Precheck(ctx context.Context, call PrecheckCall) error
-}
-
-func (p BorrowPreparer) Precheck(ctx context.Context, call BorrowPrecheckCall) error {
-	return p.Preparer.Precheck(ctx, PrecheckCall{
-		Record: call.Record, Event: call.Event, Update: call.Update,
-		Precheck: SetupCommand(call.Precheck), Dir: call.Dir,
-	})
 }
 
 // settingsCheck is a checker as Settings reads it.

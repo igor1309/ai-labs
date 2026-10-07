@@ -48,8 +48,8 @@ func TestAContinuationWithAnUnreadableLaterRecordIsRefused(t *testing.T) {
 	if class(record) != run.ClassRefused || !strings.Contains(message(record), "listing run run-0b") || !contains(h.recorder.kinds(), "REFUSED") {
 		t.Fatalf("result %+v, events %v", record.Result, h.recorder.kinds())
 	}
-	if len(h.runner.calls()) != 0 || len(h.workspaces.checkouts) != 0 || len(*order) != 0 || len(h.changes.applies()) != 0 {
-		t.Fatalf("turns %d, checkouts %v, order %v, applied %v", len(h.runner.calls()), h.workspaces.checkouts, *order, h.changes.applies())
+	if len(h.runner.calls()) != 0 || len(*order) != 0 {
+		t.Fatalf("turns %d, order %v", len(h.runner.calls()), *order)
 	}
 }
 
@@ -68,9 +68,6 @@ func TestAContinuationWhenSessionListingFails(t *testing.T) {
 				inTheRepositoryItself(h)
 			}
 			record := h.call(t, contract.CallRequest{Continue: "run-0"})
-			if len(h.workspaces.checkouts) != 0 || len(h.changes.applies()) != 0 {
-				t.Fatalf("checkouts %v, applied %v", h.workspaces.checkouts, h.changes.applies())
-			}
 			if class(record) != run.ClassRefused || !strings.Contains(message(record), "records unavailable") || !contains(h.recorder.kinds(), "REFUSED") {
 				t.Fatalf("result %+v, events %v", record.Result, h.recorder.kinds())
 			}
@@ -180,8 +177,8 @@ func TestAContinuationCannotAdvanceTheSessionWhileAnotherIsUnderWay(t *testing.T
 	if len(second.runner.calls()) != 0 || len(*order) != 0 {
 		t.Fatalf("second turns %d, order %v", len(second.runner.calls()), *order)
 	}
-	if completed.Result.Status != run.Completed || len(first.runner.calls()) != 1 || len(first.changes.applies()) != 0 {
-		t.Fatalf("first result %+v, turns %d, applied %v", completed.Result, len(first.runner.calls()), first.changes.applies())
+	if completed.Result.Status != run.Completed || len(first.runner.calls()) != 1 {
+		t.Fatalf("first result %+v, turns %d", completed.Result, len(first.runner.calls()))
 	}
 }
 
@@ -250,9 +247,8 @@ func TestAFirstTurnTheRunnerRefusesHasNoEffect(t *testing.T) {
 			if got := h.runner.admitted(); !reflect.DeepEqual(got, []app.TurnStart{start}) {
 				t.Fatalf("admitted %+v, want %+v", got, start)
 			}
-			if len(h.runner.calls()) != 0 || len(h.workspaces.checkouts) != 0 || len(h.setup.runs()) != 0 || len(h.changes.applies()) != 0 || len(*order) != 0 {
-				t.Fatalf("turns %d, checkouts %v, setup %v, applied %v, order %v",
-					len(h.runner.calls()), h.workspaces.checkouts, h.setup.runs(), h.changes.applies(), *order)
+			if len(h.runner.calls()) != 0 || len(*order) != 0 {
+				t.Fatalf("turns %d, order %v", len(h.runner.calls()), *order)
 			}
 		})
 	}

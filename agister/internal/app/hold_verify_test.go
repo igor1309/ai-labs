@@ -34,16 +34,9 @@ func rebuilding(h *harness, revision string) {
 	}
 }
 
-// noCopy fails if the copy seam was ever called, or a copy was ever on
-// the call's record.
+// noCopy fails if a copy was ever on the call's record.
 func noCopy(t *testing.T, h *harness) {
 	t.Helper()
-	h.copies.mu.Lock()
-	placed, made, removed := len(h.copies.placed), len(h.copies.made), len(h.copies.removed)
-	h.copies.mu.Unlock()
-	if placed+made+removed != 0 {
-		t.Fatalf("copies placed %d, made %d, removed %d", placed, made, removed)
-	}
 	h.recorder.mu.Lock()
 	defer h.recorder.mu.Unlock()
 	for _, update := range h.recorder.updates {
@@ -54,8 +47,8 @@ func noCopy(t *testing.T, h *harness) {
 }
 
 // ADR-025 rule 5: a verifying call runs the command in the worktree, under
-// the worktree's hold, which it has alone, and never calls the copy seam;
-// the pass completes the call with the patch that rebuilds what passed from
+// the worktree's hold, which it has alone, and makes no copy; the
+// pass completes the call with the patch that rebuilds what passed from
 // the call's revision, and the record says the call and each attempt
 // verified in the workspace.
 func TestAnInPlaceCallVerifiesInTheWorktreeWhenItsVerificationSaysSo(t *testing.T) {
