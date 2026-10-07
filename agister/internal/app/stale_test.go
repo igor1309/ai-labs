@@ -171,6 +171,29 @@ func TestARepeatedIdenticalToolCallEndsTheTurn(t *testing.T) {
 	}
 }
 
+// Calls of one tool whose inputs differ are not one call repeated: made
+// stale.repeated_tool_calls times in a row, they do not end the turn.
+func TestCallsOfOneToolWithDifferentInputsAreNotARepeatedCall(t *testing.T) {
+	t.Parallel()
+	h, _ := staleHarness(t, "repeated_tool_calls: 5")
+	var cancelled error
+	h.runner.acting = func(ctx context.Context, sink app.EventSink) {
+		for i := 1; i <= 5; i++ {
+			id := fmt.Sprintf("t%d", i)
+			sink.ToolStarted(app.ToolCall{ID: id, Name: "web_search", Input: fmt.Sprintf("query %d", i)})
+			sink.ToolFinished(app.ToolResult{ID: id})
+		}
+		cancelled = ctx.Err()
+	}
+	record := h.call(t, contract.CallRequest{})
+	if record.Result.Status != run.Completed || record.Turn.Stale != nil || cancelled != nil {
+		t.Fatalf("result = %+v, stale %+v, turn context %v", record.Result, record.Turn.Stale, cancelled)
+	}
+	if _, ok := staleEvent(h); ok {
+		t.Fatalf("events = %v", h.recorder.kinds())
+	}
+}
+
 // What a stale turn's evidence quotes of a tool call is bounded on a whole
 // character, and the digest beside it is of the whole input.
 func TestAStaleTurnsToolCallIsBoundedWithTheDigestOfTheWhole(t *testing.T) {
