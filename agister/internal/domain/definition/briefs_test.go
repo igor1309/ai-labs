@@ -279,6 +279,22 @@ func TestAnIndentedMarkerDoesNotCloseAFence(t *testing.T) {
 	}
 }
 
+// A line of back quotes with another back quote after them is inline
+// code, not a fence: the parts after it are still the text's. A tilde
+// fence's info may hold back quotes.
+func TestInlineCodeDoesNotOpenAFence(t *testing.T) {
+	t.Parallel()
+	brief := parseStep(t)
+	resolve := existing("goals/lab-1.md")
+	if wrong := brief.Check("```example```\n\n"+stepText, resolve); wrong != nil {
+		t.Fatalf("inline code: wrong = %q", wrong)
+	}
+	want := []string{`part "## Goal" is missing`, `part "## Covers" is missing`, `part "## Open" is missing`}
+	if wrong := brief.Check("~~~ `info`\n"+stepText+"~~~\n", resolve); !reflect.DeepEqual(wrong, want) {
+		t.Fatalf("tilde fence: wrong = %q, want %q", wrong, want)
+	}
+}
+
 // nestedForm declares parts below others: Covers holds a required Detail,
 // and Open, which must read None., an optional Notes.
 const nestedForm = `schema: agister.brief/v1alpha1
@@ -381,6 +397,7 @@ func TestAValuesFormsAreChecked(t *testing.T) {
 		"an invalid one": {`{source: file, path: "${param.brief}", form: [Goal]}`, `input.values.brief.form[0]: invalid brief name "Goal"`},
 		"one twice":      {`{source: file, path: "${param.brief}", form: [goal, goal]}`, `input.values.brief.form[1]: form "goal" is named twice (also input.values.brief.form[0])`},
 		"not a file":     {`{source: git.revision, rev: HEAD, form: [goal]}`, "input.values.brief.form: applies to source file only"},
+		"declared twice": {`{source: file, path: "${param.brief}", form: [missing], form: [goal]}`, "input.values.brief.form: is declared more than once"},
 	}
 	for name, c := range cases {
 		t.Run(name, func(t *testing.T) {
@@ -390,5 +407,16 @@ func TestAValuesFormsAreChecked(t *testing.T) {
 				t.Fatalf("err = %v, want %q", err, c.want)
 			}
 		})
+	}
+}
+
+// A workflow's value that declares form twice is refused, as a process's
+// is: the later list would replace the earlier one unseen.
+func TestAWorkflowValuesFormIsDeclaredOnce(t *testing.T) {
+	t.Parallel()
+	_, err := definition.ParseWorkflow(doc(definition.KindWorkflow, "w", strings.Replace(workflowText,
+		"  values:\n", "  values:\n    goal: {source: file, path: goal.md, form: [missing], form: [goal]}\n", 1)))
+	if want := "input.values.goal.form: is declared more than once"; err == nil || !strings.Contains(err.Error(), want) {
+		t.Fatalf("err = %v, want %q", err, want)
 	}
 }

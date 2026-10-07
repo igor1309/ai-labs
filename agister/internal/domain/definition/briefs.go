@@ -248,7 +248,9 @@ func joined(lines []string) string {
 const fenceIndent = 3
 
 // fenceMarker is the run of back quotes or tildes that opens a fenced code
-// block on line, empty when line opens none.
+// block on line, empty when line opens none. A run of back quotes with
+// another back quote after it opens none: the line is inline code, as
+// CommonMark has it.
 func fenceMarker(line string) string {
 	trimmed := strings.TrimLeft(line, " ")
 	if len(line)-len(trimmed) > fenceIndent {
@@ -256,7 +258,7 @@ func fenceMarker(line string) string {
 	}
 	for _, mark := range []string{"`", "~"} {
 		run := len(trimmed) - len(strings.TrimLeft(trimmed, mark))
-		if run >= 3 {
+		if run >= 3 && !(mark == "`" && strings.Contains(trimmed[run:], "`")) {
 			return strings.Repeat(mark, run)
 		}
 	}

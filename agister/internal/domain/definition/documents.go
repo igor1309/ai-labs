@@ -355,6 +355,9 @@ func parseInputs(input map[string]*yaml.Node, p *problems) ([]Param, []Value) {
 		field := "input.values." + entry.key
 		value := Value{Name: entry.key, Args: map[string]string{}}
 		formed := false
+		if declared(entry.value, "form") > 1 {
+			p.add(join(field, "form"), "is declared more than once: one list names the forms its text must have one of")
+		}
 		for _, arg := range mapping(entry.value, field, p) {
 			if arg.key == "form" {
 				// Literal document names, which nothing is substituted in.

@@ -215,8 +215,9 @@ func (s Store) Read(_ context.Context, kind definition.Kind, name string) (defin
 		}
 		// Nor is a prompt whose file or folder is a dangling symlink: an
 		// optional one would be left out of the call where the settings
-		// are broken (ADR-019 rule 1, D-11).
-		if kind == definition.KindPrompt {
+		// are broken (ADR-019 rule 1, D-11). Nor a brief's form: home's
+		// would check the text in place of the project's (ADR-015).
+		if kind == definition.KindPrompt || kind == definition.KindBrief {
 			if _, lerr := os.Lstat(path); lerr == nil {
 				return doc, fmt.Errorf("cannot be resolved: %v", err)
 			}
@@ -274,8 +275,9 @@ func (s Store) List(_ context.Context, kind definition.Kind) ([]string, error) {
 	entries, err := os.ReadDir(folder)
 	if errors.Is(err, fs.ErrNotExist) {
 		// A prompts folder that is a dangling symlink cannot be listed:
-		// read as none, it would make every optional prompt absent.
-		if kind == definition.KindPrompt {
+		// read as none, it would make every optional prompt absent. Nor a
+		// briefs folder: home's forms would stand in for the project's.
+		if kind == definition.KindPrompt || kind == definition.KindBrief {
 			if err := resolvable(folder); err != nil {
 				return nil, err
 			}

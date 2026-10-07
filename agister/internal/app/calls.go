@@ -890,14 +890,18 @@ func (c *Calls) execute(ctx context.Context, handle RunHandle, record run.Record
 	}
 
 	inputs, files, err := c.resolveValues(ctx, "process "+res.Process.Name, res.Process.Params, res.Process.Values, record.Request, collection, res.Prompts, res.Absent, res.Forms)
+	// A refused text is recorded too: the refusal's evidence (ADR-026 rule
+	// 6).
+	if inputs != nil {
+		record.Inputs = recordInputs(handle, inputs, event)
+		c.keepWorkingCopies(record.Inputs, inputs, files, event)
+		record.Request.Params = recordParams(record.Request.Params, record.Inputs)
+		_ = handle.Update(record)
+	}
 	if err != nil {
 		fail(err)
 		return
 	}
-	record.Inputs = recordInputs(handle, inputs, event)
-	c.keepWorkingCopies(record.Inputs, inputs, files, event)
-	record.Request.Params = recordParams(record.Request.Params, record.Inputs)
-	_ = handle.Update(record)
 	revision, _ := revisionOf(inputs, res.Process.Revision)
 
 	workspace, err := c.prepareWorkspace(ctx, res.Process, inputs, record.Request.Cwd)
@@ -1166,14 +1170,18 @@ func (c *Calls) runWorkflow(ctx context.Context, handle RunHandle, record run.Re
 	// Resolved once, before any node starts; every fan-out node receives the
 	// same values.
 	inputs, files, err := c.resolveValues(ctx, "workflow "+workflow.Name, workflow.Params, workflow.Values, record.Request, nil, nil, nil, res.Forms)
+	// A refused text is recorded too: the refusal's evidence (ADR-026 rule
+	// 6).
+	if inputs != nil {
+		record.Inputs = recordInputs(handle, inputs, func(_, kind string, data map[string]any) { event(kind, data) })
+		c.keepWorkingCopies(record.Inputs, inputs, files, func(_, kind string, data map[string]any) { event(kind, data) })
+		record.Request.Params = recordParams(record.Request.Params, record.Inputs)
+		_ = handle.Update(record)
+	}
 	if err != nil {
 		refused(err)
 		return
 	}
-	record.Inputs = recordInputs(handle, inputs, func(_, kind string, data map[string]any) { event(kind, data) })
-	c.keepWorkingCopies(record.Inputs, inputs, files, func(_, kind string, data map[string]any) { event(kind, data) })
-	record.Request.Params = recordParams(record.Request.Params, record.Inputs)
-	_ = handle.Update(record)
 	values, err := passedValues(inputs)
 	if err != nil {
 		refused(err)
@@ -1524,7 +1532,9 @@ func (c *Calls) rebuilds(ctx context.Context, dir, revision string, patch []byte
 // rule 2); a workflow has none. forms are the brief forms resolved with
 // the call, by name, which a value's text must have one of (ADR-026 rule
 // 8). files are, by each input's place, the base name of the file it was
-// read from, empty for any other.
+// read from, empty for any other. A value its forms refuse refuses the
+// call with the inputs resolved so far, itself the last, to be kept as the
+// refusal's evidence (ADR-026 rule 6); any other refusal returns none.
 func (c *Calls) resolveValues(ctx context.Context, subject string, declared []CallParam, values []CallValue, request run.Request, collection *Resolved, prompts map[string]Resolved, absent []CallAbsent, forms map[string]CallForm) (inputs []run.Input, files []string, err error) {
 	params := map[string]string{}
 	var unknown []string
@@ -1591,13 +1601,13 @@ func (c *Calls) resolveValues(ctx context.Context, subject string, declared []Ca
 		if err != nil {
 			return nil, nil, refuse("input %s: %v", value.Name, err)
 		}
+		inputs, files = append(inputs, run.Input{Name: value.Name, Source: value.Source, Identity: resolved.Identity, Revision: resolved.Revision, Value: resolved.Value}), append(files, resolved.File)
 		if err := c.formed(ctx, value, resolved.Value, forms, request.Cwd); err != nil {
-			return nil, nil, err
+			return inputs, files, err
 		}
 		if text, ok := resolved.Value.(string); ok {
 			texts[value.Name] = text
 		}
-		inputs, files = append(inputs, run.Input{Name: value.Name, Source: value.Source, Identity: resolved.Identity, Revision: resolved.Revision, Value: resolved.Value}), append(files, resolved.File)
 	}
 	return inputs, files, nil
 }

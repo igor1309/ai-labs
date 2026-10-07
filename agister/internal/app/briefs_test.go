@@ -159,6 +159,53 @@ func TestATextWithoutItsFormIsRefused(t *testing.T) {
 	}
 }
 
+// A text refused for its form is the refusal's evidence (ADR-026 rule 6):
+// the run keeps its bytes as an artifact, with their digest, and no
+// runtime starts.
+func TestARefusedTextIsKeptAsItsRunsEvidence(t *testing.T) {
+	t.Parallel()
+	digest := "sha256:" + sha(longText)
+	want := run.Artifact{Name: "input-brief.txt", Path: "artifacts/input-brief.txt", Digest: digest, Bytes: int64(len(longText))}
+	h := briefed(longText, ", form: [goal]")
+	record := h.call(t, contract.CallRequest{})
+	if class(record) != run.ClassRefused || !strings.Contains(message(record), `input brief: does not have its form goal`) {
+		t.Fatalf("result = %+v", record.Result.Error)
+	}
+	if len(h.runner.calls()) != 0 {
+		t.Fatal("the call went on after the refusal")
+	}
+	if brief := inputOf(t, record, "brief"); brief.Value != nil || brief.Identity != digest || brief.Artifact == nil || *brief.Artifact != want {
+		t.Fatalf("brief = %+v, artifact %+v", brief, brief.Artifact)
+	}
+	if stored := string(h.recorder.artifacts["input-brief.txt"]); stored != longText {
+		t.Fatalf("brief stored as %q", stored)
+	}
+}
+
+// A workflow's goal refused for its form is the workflow's evidence: its
+// run keeps the bytes as an artifact, with their digest, and no node
+// starts.
+func TestAWorkflowsRefusedGoalIsKeptAsItsEvidence(t *testing.T) {
+	t.Parallel()
+	digest := "sha256:" + sha(longText)
+	want := run.Artifact{Name: "input-goal.txt", Path: "artifacts/input-goal.txt", Digest: digest, Bytes: int64(len(longText))}
+	h := formedFlow(longText)
+	id := h.submit(t, contract.CallRequest{})
+	record := h.store.wait(t, id)
+	if class(record) != run.ClassRefused || !strings.Contains(message(record), `input goal: does not have its form goal`) {
+		t.Fatalf("result = %+v", record.Result)
+	}
+	if len(h.store.ids()) != 1 || len(h.runner.turns("Work as first.")) != 0 || len(h.runner.turns("Work as second.")) != 0 {
+		t.Fatalf("a node started: runs %v", h.store.ids())
+	}
+	if goal := inputOf(t, record, "goal"); goal.Value != nil || goal.Identity != digest || goal.Artifact == nil || *goal.Artifact != want {
+		t.Fatalf("goal = %+v, artifact %+v", goal, goal.Artifact)
+	}
+	if stored := string(h.store.handle(t, id).artifacts["input-goal.txt"]); stored != longText {
+		t.Fatalf("goal stored as %q", stored)
+	}
+}
+
 // formStandIn is a CallForm that reports what it is given to report: it
 // keeps the texts it is asked to check, asks resolve for each of its
 // paths, and adds each refusal resolve gives.
@@ -258,6 +305,29 @@ func TestACallChecksItsTextWithTheFormChecksItIsGiven(t *testing.T) {
 	}
 }
 
+// A form the input names that its resolution does not give is a refusal of
+// the call, naming the input and the form, not a fault of Agister's; no
+// runtime starts.
+func TestAFormTheResolutionLacksRefusesTheCall(t *testing.T) {
+	t.Parallel()
+	h := briefed(goalText, ", form: [goal, step]")
+	step := &formStandIn{wrong: []string{"no step"}}
+	resolver := standInForms{app.NewResolver(h.defs, h.runtimes, h.validator, resolverCheckStub{}), map[string]app.CallForm{"step": step.check}}
+	h.calls = app.NewCalls(
+		resolver, h.runtimes,
+		map[string]app.InputProvider{"git.revision": h.inputs, "git.diff": h.inputs, "file": h.inputs}, h.copies, h.references,
+		h.workspaces, h.changes, h.holder(), app.NewVerifier(h.changes, h.commands, h.clock), app.NewRecoverer(h.clock), h.validator, h.recorder, h.runs,
+		h.clock, h.timer, fixedIDs{}, "/state", h.hosted,
+	)
+	record := h.call(t, contract.CallRequest{})
+	if want := `input brief: brief "goal" was not resolved with the call`; class(record) != run.ClassRefused || message(record) != want {
+		t.Fatalf("result %+v\nwant refused: %s", record.Result.Error, want)
+	}
+	if len(h.runner.calls()) != 0 || step.checked() != nil {
+		t.Fatalf("runner calls %d, step checked %q", len(h.runner.calls()), step.checked())
+	}
+}
+
 // A value that names no form is not checked: its text may have any shape,
 // and nothing it refers to is looked up.
 func TestAValueWithoutFormIsUnchecked(t *testing.T) {
@@ -335,10 +405,11 @@ func TestShowWorkflowShowsItsForms(t *testing.T) {
 	}
 }
 
-// briefCheck is the check of h's settings, with the file source known.
+// briefCheck is the check of h's settings, with the file and param
+// sources known.
 func briefCheck(t *testing.T, h *harness) contract.CheckReport {
 	t.Helper()
-	report, err := app.NewChecker(h.defs, h.validator, h.runtimes, []string{"git.revision", "git.diff", "file"}).Check(context.Background(), false)
+	report, err := app.NewChecker(h.defs, h.validator, h.runtimes, []string{"git.revision", "git.diff", "file", "param"}).Check(context.Background(), false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -346,14 +417,22 @@ func briefCheck(t *testing.T, h *harness) contract.CheckReport {
 }
 
 // Check reads each brief form as a document of its own, links a process
-// to the forms its inputs name, and reports a form the settings lack as a
-// problem of what names it and a broken one as a problem of its own.
+// and a workflow to the forms their inputs name, and reports a form the
+// settings lack as a problem of what names it and a broken one as a
+// problem of its own.
 func TestCheckReadsBriefsAndLinksWhatNamesThem(t *testing.T) {
 	t.Parallel()
 	ref := func(kind, name string) contract.DefinitionRef { return contract.DefinitionRef{Kind: kind, Name: name} }
 	h := briefed(goalText, ", form: [goal, step]")
+	// And the workflow w, whose goal takes the form goal.
+	flow := formedFlow(goalText).defs.docs
+	for name, doc := range flow[definition.KindProcess] {
+		h.defs.docs[definition.KindProcess][name] = doc
+	}
+	h.defs.docs[definition.KindPolicy]["joining"] = flow[definition.KindPolicy]["joining"]
+	h.defs.docs[definition.KindWorkflow] = map[string]string{"w": flow[definition.KindWorkflow]["w"]}
 	report := briefCheck(t, h)
-	if len(report.Problems) != 0 || report.Checked["briefs"] != 2 {
+	if len(report.Problems) != 0 || report.Checked["briefs"] != 2 || report.Checked["workflows"] != 1 {
 		t.Fatalf("problems %q, checked %v", messages(report.Problems), report.Checked)
 	}
 	got := map[contract.DefinitionRef]contract.Definition{}
@@ -364,8 +443,15 @@ func TestCheckReadsBriefsAndLinksWhatNamesThem(t *testing.T) {
 	if p := got[ref("processes", "p")]; !reflect.DeepEqual(p.Uses, processUses) {
 		t.Fatalf("p = %+v", p)
 	}
-	if goal := got[ref("briefs", "goal")]; !reflect.DeepEqual(goal.UsedBy, []contract.DefinitionRef{ref("processes", "p")}) {
+	workflowUses := []contract.DefinitionRef{ref("processes", "first"), ref("processes", "second"), ref("processes", "joiner"), ref("briefs", "goal")}
+	if w := got[ref("workflows", "w")]; !reflect.DeepEqual(w.Uses, workflowUses) {
+		t.Fatalf("w = %+v", w)
+	}
+	if goal := got[ref("briefs", "goal")]; !reflect.DeepEqual(goal.UsedBy, []contract.DefinitionRef{ref("processes", "p"), ref("workflows", "w")}) {
 		t.Fatalf("goal = %+v", goal)
+	}
+	if step := got[ref("briefs", "step")]; !reflect.DeepEqual(step.UsedBy, []contract.DefinitionRef{ref("processes", "p")}) {
+		t.Fatalf("step = %+v", step)
 	}
 
 	h = briefed(goalText, ", form: [goal, plan]")
