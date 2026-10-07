@@ -83,7 +83,7 @@ func TestSourceReadsSettingsAndNamesTheRest(t *testing.T) {
 // Contract test: the settings store against the real filesystem.
 func TestSourceRefusesASymbolicLink(t *testing.T) {
 	t.Parallel()
-	for _, name := range []string{"agents/a.toml", "agents", "notes"} {
+	for _, name := range []string{"agents/a.toml", "agents", "notes", "skills/review", "skills/style/SKILL.md"} {
 		dir := t.TempDir()
 		put(t, filepath.Join(dir, "service.toml"), "s")
 		target := filepath.Join(t.TempDir(), "target")

@@ -126,35 +126,13 @@ func (s Store) path(kind definition.Kind, name string) (string, error) {
 // not given to a call, so one that relies on them would break unseen
 // (ADR-021 rule 1). No folder there is no skill.
 func (s Store) readSkill(path string) ([]byte, error) {
-	folder := filepath.Dir(path)
-	info, err := os.Lstat(folder)
-	switch {
-	case errors.Is(err, fs.ErrNotExist):
-		return nil, fmt.Errorf("%w (expected %s)", errNotFound, path)
-	case err != nil:
-		return nil, err
-	case info.Mode()&fs.ModeSymlink != 0:
-		return nil, fmt.Errorf("%s is a symbolic link: a skill is a folder holding its %s", folder, skillFile)
-	case !info.IsDir():
-		// Not listed either: a file in skills/ is no skill.
-		return nil, fmt.Errorf("%w (expected %s)", errNotFound, path)
-	}
-	entries, err := os.ReadDir(folder)
+	file, others, err := skillFolder(path)
 	if err != nil {
 		return nil, err
 	}
-	var file fs.DirEntry
-	var others []string
-	for _, entry := range entries {
-		if entry.Name() == skillFile {
-			file = entry
-		} else {
-			others = append(others, entry.Name())
-		}
-	}
 	switch {
 	case file == nil:
-		return nil, fmt.Errorf("%s has no %s", folder, skillFile)
+		return nil, fmt.Errorf("%s has no %s", filepath.Dir(path), skillFile)
 	case file.Type()&fs.ModeSymlink != 0:
 		return nil, fmt.Errorf("%s is a symbolic link: a skill's %s is a regular file", path, skillFile)
 	case file.IsDir():
@@ -162,7 +140,7 @@ func (s Store) readSkill(path string) ([]byte, error) {
 	case !file.Type().IsRegular():
 		return nil, fmt.Errorf("%s is not a regular file", path)
 	case len(others) > 0:
-		return nil, fmt.Errorf("%s holds %s beside %s: a skill is its %s alone, and its other files are not given to a call", folder, strings.Join(others, ", "), skillFile, skillFile)
+		return nil, skillBeside(path, others)
 	}
 	// The entry may have changed since it was listed: what is opened is
 	// checked again, without following a link or waiting on a special file,
@@ -186,6 +164,44 @@ func (s Store) readSkill(path string) ([]byte, error) {
 		return nil, fmt.Errorf("%s is not a regular file", path)
 	}
 	return io.ReadAll(handle)
+}
+
+// skillFolder lists the folder of the skill whose document is path: its
+// entry skillFile, nil when it holds none, and the names of its other
+// entries. No folder there, or a file, is no skill; a symbolic link is
+// not a skill's folder.
+func skillFolder(path string) (file fs.DirEntry, others []string, err error) {
+	folder := filepath.Dir(path)
+	info, err := os.Lstat(folder)
+	switch {
+	case errors.Is(err, fs.ErrNotExist):
+		return nil, nil, fmt.Errorf("%w (expected %s)", errNotFound, path)
+	case err != nil:
+		return nil, nil, err
+	case info.Mode()&fs.ModeSymlink != 0:
+		return nil, nil, fmt.Errorf("%s is a symbolic link: a skill is a folder holding its %s", folder, skillFile)
+	case !info.IsDir():
+		// Not listed either: a file in skills/ is no skill.
+		return nil, nil, fmt.Errorf("%w (expected %s)", errNotFound, path)
+	}
+	entries, err := os.ReadDir(folder)
+	if err != nil {
+		return nil, nil, err
+	}
+	for _, entry := range entries {
+		if entry.Name() == skillFile {
+			file = entry
+		} else {
+			others = append(others, entry.Name())
+		}
+	}
+	return file, others, nil
+}
+
+// skillBeside is the problem of the skill whose document is path, whose
+// folder holds others beside it.
+func skillBeside(path string, others []string) error {
+	return fmt.Errorf("%s holds %s beside %s: a skill is its %s alone, and its other files are not given to a call", filepath.Dir(path), strings.Join(others, ", "), skillFile, skillFile)
 }
 
 func (s Store) Read(_ context.Context, kind definition.Kind, name string) (definition.Document, error) {

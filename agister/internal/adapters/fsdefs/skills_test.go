@@ -2,6 +2,7 @@ package fsdefs_test
 
 import (
 	"context"
+	"errors"
 	"io/fs"
 	"net"
 	"os"
@@ -13,6 +14,7 @@ import (
 	"time"
 
 	"github.com/igor1309/ai-labs/agister/internal/adapters/fsdefs"
+	"github.com/igor1309/ai-labs/agister/internal/contract"
 	"github.com/igor1309/ai-labs/agister/internal/domain/definition"
 )
 
@@ -294,19 +296,158 @@ func TestHomesSkillsAreItsDocuments(t *testing.T) {
 	}
 }
 
-// A source folder's skills/ is not settings to install: named once, and
-// not read, whatever it holds (ADR-016 rule 1).
-func TestSourceNamesSkillsAndDoesNotReadThem(t *testing.T) {
+// A source folder's skill is a settings document to install, its SKILL.md
+// (ADR-027 rule 8); a file directly in skills/, or a skill folder whose
+// name breaks the naming rule, is named and not read (rule 9).
+//
+// Contract test: the settings store against the real filesystem.
+func TestSourceReadsSkills(t *testing.T) {
 	t.Parallel()
 	dir := t.TempDir()
 	put(t, filepath.Join(dir, "agents", "a.toml"), "a")
 	put(t, filepath.Join(dir, "skills", "review", "SKILL.md"), skillText("review"))
-	put(t, filepath.Join(dir, "skills", "broken", "extra.md"), "x")
+	put(t, filepath.Join(dir, "skills", "notes.md"), "x")
+	put(t, filepath.Join(dir, "skills", "Bad Name", "SKILL.md"), skillText("Bad Name"))
 	docs, ignored, err := fsdefs.Store{Dir: t.TempDir()}.Source(context.Background(), dir)
-	if err != nil || len(docs) != 1 || docs[0].Source.Kind != definition.KindAgent {
-		t.Fatalf("docs = %+v, %v", docs, err)
+	if err != nil {
+		t.Fatal(err)
 	}
-	if !reflect.DeepEqual(ignored, []string{"skills/"}) {
+	var read []string
+	for _, doc := range docs {
+		read = append(read, string(doc.Source.Kind)+"/"+doc.Source.Name+" "+doc.Source.Path+"="+string(doc.Bytes))
+	}
+	want := []string{"agents/a " + filepath.Join(dir, "agents", "a.toml") + "=a", "skills/review " + filepath.Join(dir, "skills", "review", "SKILL.md") + "=" + skillText("review")}
+	if !reflect.DeepEqual(read, want) {
+		t.Fatalf("read %v", read)
+	}
+	if !reflect.DeepEqual(ignored, []string{"skills/Bad Name/SKILL.md", "skills/notes.md"}) {
 		t.Fatalf("ignored = %v", ignored)
+	}
+}
+
+// A source skill folder that is not a skill refuses the folder, naming the
+// skill and what is wrong with it (ADR-027 rule 9, ADR-021 rule 1).
+//
+// Contract test: the settings store against the real filesystem.
+func TestSourceRefusesASkillThatIsNotOne(t *testing.T) {
+	t.Parallel()
+	for name, c := range map[string]struct {
+		make func(t *testing.T, folder string)
+		want string
+	}{
+		"a file beside": {func(t *testing.T, folder string) {
+			put(t, filepath.Join(folder, "SKILL.md"), skillText("review"))
+			put(t, filepath.Join(folder, "checklist.md"), "x")
+		}, " holds checklist.md beside SKILL.md: a skill is its SKILL.md alone"},
+		"a folder beside": {func(t *testing.T, folder string) {
+			put(t, filepath.Join(folder, "SKILL.md"), skillText("review"))
+			put(t, filepath.Join(folder, "scripts", "run.sh"), "x")
+		}, " holds scripts beside SKILL.md: a skill is its SKILL.md alone"},
+		"SKILL.md a folder": {func(t *testing.T, folder string) {
+			put(t, filepath.Join(folder, "SKILL.md", "x.md"), "x")
+		}, "SKILL.md is a folder: a skill's SKILL.md is a regular file"},
+		"no SKILL.md": {func(t *testing.T, folder string) {
+			if err := os.MkdirAll(folder, 0o700); err != nil {
+				t.Fatal(err)
+			}
+		}, " has no SKILL.md"},
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			dir := t.TempDir()
+			put(t, filepath.Join(dir, "agents", "a.toml"), "a")
+			folder := filepath.Join(dir, "skills", "review")
+			c.make(t, folder)
+			var input *contract.InputError
+			_, _, err := fsdefs.Store{Dir: t.TempDir()}.Source(context.Background(), dir)
+			if !errors.As(err, &input) || !strings.HasPrefix(err.Error(), "skill review: "+folder) || !strings.Contains(err.Error(), c.want) || !strings.HasSuffix(err.Error(), "; so nothing was installed") {
+				t.Fatalf("source: %v", err)
+			}
+		})
+	}
+}
+
+// A staged skill reads as home will hold it once its SKILL.md is written:
+// what home's folder holds beside it, a folder in its place, or a folder
+// that is a symbolic link, is that skill's problem, named at home's path
+// (ADR-027 rule 8).
+//
+// Contract test: the settings store against the real filesystem.
+func TestAStagedSkillReadsAsHomeWillHoldIt(t *testing.T) {
+	t.Parallel()
+	for name, c := range map[string]struct {
+		make func(t *testing.T, folder string)
+		want string
+	}{
+		"none":                       {func(*testing.T, string) {}, ""},
+		"replaced":                   {func(t *testing.T, folder string) { put(t, filepath.Join(folder, "SKILL.md"), "old") }, ""},
+		"a link in SKILL.md's place": {func(t *testing.T, folder string) { dangle(t, filepath.Join(folder, "SKILL.md")) }, ""},
+		"a file beside": {func(t *testing.T, folder string) {
+			put(t, filepath.Join(folder, "SKILL.md"), "old")
+			put(t, filepath.Join(folder, "checklist.md"), "x")
+		}, "{folder} holds checklist.md beside SKILL.md: a skill is its SKILL.md alone"},
+		"SKILL.md a folder": {func(t *testing.T, folder string) {
+			put(t, filepath.Join(folder, "SKILL.md", "x.md"), "x")
+		}, "{folder}/SKILL.md is a folder: a skill's SKILL.md is a regular file"},
+		"a linked folder": {func(t *testing.T, folder string) {
+			target := t.TempDir()
+			if err := os.MkdirAll(filepath.Dir(folder), 0o700); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.Symlink(target, folder); err != nil {
+				t.Fatal(err)
+			}
+		}, "{folder} is a symbolic link: a skill is a folder holding its SKILL.md"},
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			ctx := context.Background()
+			home := fsdefs.Store{Dir: t.TempDir()}
+			folder := filepath.Join(home.Dir, "skills", "review")
+			c.make(t, folder)
+			doc := definition.Document{Source: definition.Source{Kind: definition.KindSkill, Name: "review"}, Bytes: []byte(skillText("review"))}
+			staged, remove, err := home.StagingIn(t.TempDir()).Stage(ctx, []definition.Document{doc})
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer remove()
+			got, err := staged.Read(ctx, definition.KindSkill, "review")
+			if c.want == "" {
+				if err != nil || string(got.Bytes) != skillText("review") || got.Source.Path != filepath.Join(folder, "SKILL.md") {
+					t.Fatalf("staged = %+v, %v", got.Source, err)
+				}
+				return
+			}
+			want := strings.ReplaceAll(c.want, "{folder}", folder)
+			if err == nil || !strings.HasPrefix(err.Error(), want) || got.Source.Path != filepath.Join(folder, "SKILL.md") {
+				t.Fatalf("staged = %+v, %v; want %q", got.Source, err, want)
+			}
+		})
+	}
+}
+
+// Removing a skill removes its folder with its SKILL.md when nothing else
+// is left in it, and keeps a folder that holds more (ADR-027 rule 8).
+//
+// Contract test: the settings store against the real filesystem.
+func TestRemovingASkillRemovesItsEmptiedFolder(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	store := fsdefs.Store{Dir: t.TempDir()}
+	for _, name := range []string{"review", "style"} {
+		if err := store.Put(ctx, definition.KindSkill, name, []byte(skillText(name))); err != nil {
+			t.Fatal(err)
+		}
+	}
+	put(t, filepath.Join(store.Dir, "skills", "style", "notes.md"), "mine")
+	for range 2 {
+		for _, name := range []string{"review", "style"} {
+			if err := store.Remove(ctx, definition.KindSkill, name); err != nil {
+				t.Fatal(err)
+			}
+		}
+	}
+	if got := tree(t, filepath.Join(store.Dir, "skills")); !reflect.DeepEqual(got, []string{".", "style", filepath.Join("style", "notes.md")}) {
+		t.Fatalf("left %v", got)
 	}
 }

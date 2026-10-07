@@ -218,50 +218,119 @@ func TestASkillFolderWithASecondFileIsAProblemOfItsOwn(t *testing.T) {
 	ranWithoutSkills(t, runs, home, repo, "plain")
 }
 
-// install does not install skills (ADR-016 rule 1, ADR-021): a folder's
-// skills/ is listed as not settings, and home gets none of it. Home's own
-// skills are its documents: one is kept, and an installed agent that names
-// it passes the check of the result.
-func TestInstallReportsASkillsFolderAsNotSettings(t *testing.T) {
+// install takes a skill as any settings document (ADR-027 rule 8): a new
+// one is created and one home has is replaced, with its diff, both checked
+// with the agent that names them, home's backed up; a file directly in
+// skills/ is not settings. Restore puts back the replaced SKILL.md and
+// removes the created one with its folder; a skill only home has is kept.
+func TestInstallTakesASkillAndRestoreUndoesIt(t *testing.T) {
 	t.Parallel()
 	home := initedHome(t)
 	homeStyle, styleText := filepath.Join(home, "skills", "style", "SKILL.md"), skillFile("style", "The house style.")
+	homeMine := filepath.Join(home, "skills", "mine", "SKILL.md")
 	write(t, homeStyle, styleText)
+	write(t, homeMine, skillFile("mine", "Home's own."))
 	src := repoSettings(t, home)
 	reviewer := filepath.Join(src, "agents", "reviewer.toml")
-	write(t, reviewer, read(t, reviewer)+`skills = ["style"]`+"\n")
-	write(t, filepath.Join(src, "skills", "review", "SKILL.md"), skillFile("review", "The repository's way to review."))
-	write(t, filepath.Join(src, "skills", "style", "SKILL.md"), skillFile("style", "The repository's style."))
-	r := agisterInstalling(t, "yes\n", home, tempDir(t), "install", src)
-	if r.code != 0 || !strings.Contains(r.stdout, "not settings, not installed: skills/\n") ||
-		!strings.Contains(r.stdout, "home only, kept "+homeStyle+"\n") || strings.Contains(r.stdout, filepath.Join(home, "skills", "review")) {
+	write(t, reviewer, read(t, reviewer)+`skills = ["review", "style"]`+"\n")
+	reviewText, newStyle := skillFile("review", "The repository's way to review."), skillFile("style", "The repository's style.")
+	write(t, filepath.Join(src, "skills", "review", "SKILL.md"), reviewText)
+	write(t, filepath.Join(src, "skills", "style", "SKILL.md"), newStyle)
+	write(t, filepath.Join(src, "skills", "notes.md"), "not a skill")
+	before := files(t, home)
+	dir := tempDir(t)
+	homeReview := filepath.Join(home, "skills", "review", "SKILL.md")
+
+	r := agisterInstalling(t, "yes\n", home, dir, "install", src)
+	match := regexp.MustCompile(`restore with: agister install --restore (\S+)\n`).FindStringSubmatch(r.stdout)
+	diff := "will REPLACE " + homeStyle + "\n--- " + homeStyle + "\n+++ " + filepath.Join(src, "skills", "style", "SKILL.md") + "\n" +
+		"@@ -1,6 +1,6 @@\n ---\n name: style\n-description: The house style.\n+description: The repository's style.\n ---\n \n # style\n"
+	if r.code != 0 || match == nil || !strings.Contains(r.stdout, "will create  "+homeReview+"\n") || !strings.Contains(r.stdout, diff) ||
+		!strings.Contains(r.stdout, "home only, kept "+homeMine+"\n") || !strings.Contains(r.stdout, "not settings, not installed: skills/notes.md\n") ||
+		!strings.Contains(r.stderr, "Type yes to install 4 document(s)") {
 		t.Fatalf("install: %d\n%s%s", r.code, r.stdout, r.stderr)
 	}
-	if !strings.Contains(read(t, filepath.Join(home, "agents", "reviewer.toml")), `skills = ["style"]`) {
-		t.Fatal("the agent that names home's skill was not installed")
+	if read(t, homeReview) != reviewText || read(t, homeStyle) != newStyle {
+		t.Fatal("the skills were not installed")
 	}
-	for path, text := range files(t, home) {
-		if strings.HasPrefix(path, "skills"+string(filepath.Separator)) && (path != filepath.Join("skills", "style", "SKILL.md") || text != styleText) {
-			t.Fatalf("install wrote %s:\n%s", path, text)
-		}
+	if _, err := os.Stat(filepath.Join(home, "skills", "notes.md")); !os.IsNotExist(err) {
+		t.Fatalf("a file in skills/ was installed: %v", err)
+	}
+	backup := filepath.Join(home, "backups", match[1])
+	if read(t, filepath.Join(backup, "skills", "style", "SKILL.md")) != styleText {
+		t.Fatal("the backup does not hold home's replaced skill")
+	}
+	if r := agister(t, home, dir, "check"); r.code != 0 {
+		t.Fatalf("check after install: %d\n%s", r.code, r.stderr)
+	}
+
+	r = agisterInstalling(t, "yes\n", home, dir, "install", "--restore", match[1])
+	if r.code != 0 || !strings.Contains(r.stdout, "will put back "+homeStyle) || !strings.Contains(r.stdout, "removed  "+homeReview) {
+		t.Fatalf("restore: %d\n%s%s", r.code, r.stdout, r.stderr)
+	}
+	if !reflect.DeepEqual(files(t, home), before) {
+		t.Fatal("restore did not put home back")
+	}
+	if _, err := os.Lstat(filepath.Dir(homeReview)); !os.IsNotExist(err) {
+		t.Fatalf("the created skill's folder is left: %v", err)
 	}
 }
 
-// An installed document that names a skill home lacks adds a problem, so
-// the install is refused: the folder's own skills/ does not come with it.
-func TestInstallRefusesAnAgentNamingASkillHomeLacks(t *testing.T) {
+// A source skill is checked with the rest: one whose front matter does not
+// name it refuses the install, and nothing is written (ADR-027 rule 8).
+func TestInstallRefusesASkillThatFailsCheck(t *testing.T) {
 	t.Parallel()
 	home := initedHome(t)
 	src := repoSettings(t, home)
-	reviewer := filepath.Join(src, "agents", "reviewer.toml")
-	write(t, reviewer, read(t, reviewer)+`skills = ["review"]`+"\n")
+	write(t, filepath.Join(src, "skills", "review", "SKILL.md"), skillFile("other", "Not this skill's name."))
+	before := files(t, home)
+	r := agisterInstalling(t, "yes\n", home, tempDir(t), "install", src)
+	if r.code != cli.ExitUsage || !strings.Contains(r.stderr, "would not pass check") || !strings.Contains(r.stderr, "skill review:") || strings.Contains(r.stderr, "Type yes") {
+		t.Fatalf("install: %d\n%s%s", r.code, r.stdout, r.stderr)
+	}
+	if !reflect.DeepEqual(files(t, home), before) || backups(t, home) != nil {
+		t.Fatal("the refused install wrote")
+	}
+}
+
+// A source skill folder that holds anything beside its SKILL.md refuses
+// the install, naming the skill and what is beside it (ADR-027 rule 9).
+func TestInstallRefusesASkillFolderThatIsNotASkill(t *testing.T) {
+	t.Parallel()
+	home := initedHome(t)
+	src := repoSettings(t, home)
+	folder := filepath.Join(src, "skills", "review")
+	write(t, filepath.Join(folder, "SKILL.md"), skillFile("review", "The repository's way to review."))
+	write(t, filepath.Join(folder, "checklist.md"), "1. Read it.\n")
+	before := files(t, home)
+	r := agisterInstalling(t, "yes\n", home, tempDir(t), "install", src)
+	want := "skill review: " + folder + " holds checklist.md beside SKILL.md: a skill is its SKILL.md alone, and its other files are not given to a call; so nothing was installed"
+	if r.code != cli.ExitUsage || !strings.Contains(r.stderr, want) || strings.Contains(r.stderr, "Type yes") {
+		t.Fatalf("install: %d\n%s%s", r.code, r.stdout, r.stderr)
+	}
+	if !reflect.DeepEqual(files(t, home), before) || backups(t, home) != nil {
+		t.Fatal("the refused install wrote")
+	}
+}
+
+// Home's skill is staged as home has it: a source SKILL.md written into a
+// home folder that holds another file would leave home's skill broken, so
+// the check of the result refuses the install (ADR-027 rule 8).
+func TestInstallRefusesASkillHomesFolderWouldLeaveBroken(t *testing.T) {
+	t.Parallel()
+	home := initedHome(t)
+	folder := filepath.Join(home, "skills", "review")
+	write(t, filepath.Join(folder, "SKILL.md"), skillFile("review", "Home's way to review."))
+	write(t, filepath.Join(folder, "checklist.md"), "1. Read it.\n")
+	src := filepath.Join(tempDir(t), ".agister")
 	write(t, filepath.Join(src, "skills", "review", "SKILL.md"), skillFile("review", "The repository's way to review."))
 	before := files(t, home)
 	r := agisterInstalling(t, "yes\n", home, tempDir(t), "install", src)
-	if r.code == 0 || !strings.Contains(r.stdout+r.stderr, `agent reviewer: skill "review" does not exist`) {
+	if r.code != cli.ExitUsage || !strings.Contains(r.stderr, "would not pass check") ||
+		!strings.Contains(r.stderr, "skill review: "+folder+" holds checklist.md beside SKILL.md") || strings.Contains(r.stderr, "Type yes") {
 		t.Fatalf("install: %d\n%s%s", r.code, r.stdout, r.stderr)
 	}
-	if !reflect.DeepEqual(files(t, home), before) {
+	if !reflect.DeepEqual(files(t, home), before) || backups(t, home) != nil {
 		t.Fatal("the refused install wrote")
 	}
 }
