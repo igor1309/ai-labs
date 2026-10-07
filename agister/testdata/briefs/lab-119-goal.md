@@ -65,7 +65,10 @@ does not have them. Agister checks a brief's structure, never its meaning.
 
 ## Decisions
 
-None.
+- 2026-10-07, owner, on item 4#1 of `code_review` run
+  `20261007T111941Z-98f33a`: option A. The agent updates the home settings
+  after a deploy, as the rule added to `agister/AGENTS.md` says; the owner
+  asked for it there.
 
 ## Open
 
