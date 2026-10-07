@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"slices"
 	"strings"
 
 	"github.com/igor1309/ai-labs/agister/internal/domain/run"
@@ -63,10 +64,28 @@ func (c *Calls) goal(ctx context.Context, named string) (*run.GoalLink, error) {
 			return &run.GoalLink{Run: id, Input: input, Digest: kept.Artifact.Digest, Artifact: kept.Artifact}, nil
 		case inline:
 			return &run.GoalLink{Run: id, Input: input, Digest: "sha256:" + digestOf([]byte(text))}, nil
+		case inlineList(kept.Value):
+			return &run.GoalLink{Run: id, Input: input, Digest: kept.Identity}, nil
 		}
 		return nil, refuse("--goal: run %s keeps the bytes of its input %s nowhere, neither inline nor as an artifact", id, input)
 	}
 	return nil, refuse("--goal: run %s has no input %s", id, input)
+}
+
+// inlineList reports whether value is a list of texts kept inline, whose
+// identity is the digest of its content: as a provider resolves it, or as
+// a record read back from JSON holds it.
+func inlineList(value any) bool {
+	switch list := value.(type) {
+	case []string:
+		return true
+	case []any:
+		return !slices.ContainsFunc(list, func(item any) bool {
+			_, text := item.(string)
+			return !text
+		})
+	}
+	return false
 }
 
 // endedAs is how a run ended, as its state and result say: its status,

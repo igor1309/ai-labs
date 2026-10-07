@@ -17,7 +17,9 @@ import (
 // those runs' records as it starts; nothing is found by searching runs.
 
 // earlierRuns gives runs the earlier runs a call may name: run-g, whose
-// goal is kept as an artifact and whose brief inline, run-old, recorded
+// goal is kept as an artifact, its brief inline, and its lists of files
+// inline, as a provider resolves one and as a record read back from JSON
+// holds one, run-old, recorded
 // before inputs were kept, run-j, completed, run-f, failed, and run-r,
 // still running.
 func earlierRuns(runs *runsSpy) *run.Artifact {
@@ -30,6 +32,8 @@ func earlierRuns(runs *runsSpy) *run.Artifact {
 		"run-g": {run.Record{ID: "run-g", Inputs: []run.Input{
 			{Name: "goal", Source: "file", Identity: artifact.Digest, Artifact: &artifact},
 			{Name: "brief", Source: "file", Identity: "sha256:" + sha("a short brief"), Value: "a short brief"},
+			{Name: "changed", Source: "git.changed_files", Identity: "sha256:" + sha("a.go\nb.go"), Value: []string{"a.go", "b.go"}},
+			{Name: "files", Source: "git.changed_files", Identity: "sha256:" + sha("c.go\nd.go"), Value: []any{"c.go", "d.go"}},
 		}, Result: completed}, run.StateFinished},
 		"run-old": {run.Record{ID: "run-old", Inputs: []run.Input{{Name: "goal", Source: "file", Identity: "sha256:" + sha(longText)}}, Result: completed}, run.StateFinished},
 		"run-j":   {run.Record{ID: "run-j", Result: completed}, run.StateFinished},
@@ -56,6 +60,12 @@ func TestARunRecordsTheGoalItServesAndTheJudgementItAnswers(t *testing.T) {
 		"an input kept inline": {goal: "run-g:brief", want: func(*run.Artifact) *run.Links {
 			return &run.Links{Goal: &run.GoalLink{Run: "run-g", Input: "brief", Digest: "sha256:" + sha("a short brief")}}
 		}},
+		"a list kept inline": {goal: "run-g:changed", want: func(*run.Artifact) *run.Links {
+			return &run.Links{Goal: &run.GoalLink{Run: "run-g", Input: "changed", Digest: "sha256:" + sha("a.go\nb.go")}}
+		}},
+		"a list read back from JSON": {goal: "run-g:files", want: func(*run.Artifact) *run.Links {
+			return &run.Links{Goal: &run.GoalLink{Run: "run-g", Input: "files", Digest: "sha256:" + sha("c.go\nd.go")}}
+		}},
 		"the judgement": {answers: "run-j", want: func(*run.Artifact) *run.Links {
 			return &run.Links{Judgement: &run.JudgementLink{Run: "run-j"}}
 		}},
@@ -69,12 +79,12 @@ func TestARunRecordsTheGoalItServesAndTheJudgementItAnswers(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 			h := newHarness()
-			artifact := earlierRuns(h.runs)
+			artifact := *earlierRuns(h.runs)
 			record := h.call(t, contract.CallRequest{Goal: test.goal, Answers: test.answers})
 			if record.Result.Status != run.Completed {
 				t.Fatalf("result = %+v", record.Result)
 			}
-			if want := test.want(artifact); !reflect.DeepEqual(record.Links, want) {
+			if want := test.want(&artifact); !reflect.DeepEqual(record.Links, want) {
 				t.Fatalf("links = %+v, want %+v", record.Links, want)
 			}
 			if record.Request.Goal != test.goal || record.Request.Answers != test.answers {
@@ -136,10 +146,10 @@ func TestAGoalOrJudgementThatCannotBeReadIsRefused(t *testing.T) {
 func TestAWorkflowRecordsItsLinksOrIsRefused(t *testing.T) {
 	t.Parallel()
 	h := newFlowHarness()
-	artifact := earlierRuns(h.runs)
+	artifact := *earlierRuns(h.runs)
 	record := h.store.wait(t, h.submit(t, contract.CallRequest{Goal: "run-g", Answers: "run-j"}))
 	want := &run.Links{
-		Goal:      &run.GoalLink{Run: "run-g", Input: "goal", Digest: "sha256:" + sha(longText), Artifact: artifact},
+		Goal:      &run.GoalLink{Run: "run-g", Input: "goal", Digest: "sha256:" + sha(longText), Artifact: &artifact},
 		Judgement: &run.JudgementLink{Run: "run-j"},
 	}
 	if record.Result.Status != run.Completed || !reflect.DeepEqual(record.Links, want) {
