@@ -172,18 +172,23 @@ func readSkillFile(path string) ([]byte, error) {
 	return io.ReadAll(handle)
 }
 
-// skillFolderLinked fails for a skill's folder that is a symbolic link:
-// what is reached through it is not the store's. No folder there is no
-// failure.
+// skillFolderLinked fails for a skill's folder that is a symbolic link, or
+// that is in a skills/ that is one: what is reached through either is not
+// the store's. No folder there is no failure.
 func skillFolderLinked(folder string) error {
-	info, err := os.Lstat(folder)
-	switch {
-	case errors.Is(err, fs.ErrNotExist):
-		return nil
-	case err != nil:
-		return err
-	case info.Mode()&fs.ModeSymlink != 0:
-		return skillLinked(folder)
+	skills := filepath.Dir(folder)
+	for _, path := range []string{skills, folder} {
+		info, err := os.Lstat(path)
+		switch {
+		case errors.Is(err, fs.ErrNotExist):
+			return nil
+		case err != nil:
+			return err
+		case info.Mode()&fs.ModeSymlink != 0 && path == skills:
+			return fmt.Errorf("%s is a symbolic link: a skill is a folder in the settings' own %s/", skills, definition.KindSkill)
+		case info.Mode()&fs.ModeSymlink != 0:
+			return skillLinked(folder)
+		}
 	}
 	return nil
 }
@@ -359,9 +364,9 @@ func (s Store) List(_ context.Context, kind definition.Kind) ([]string, error) {
 // Current reports where the document is stored and the digest of the one
 // there, empty when there is none. A skill's SKILL.md is opened as Read
 // opens it, without following a link or waiting on a special file, and
-// not through a folder that is a symbolic link: each is an error, so a
-// restore neither hangs on one nor takes a file outside the store for
-// the skill (ADR-027 rule 8).
+// not through a folder, or a skills/, that is a symbolic link: each is an
+// error, so a restore neither hangs on one nor takes a file outside the
+// store for the skill (ADR-027 rule 8).
 func (s Store) Current(_ context.Context, kind definition.Kind, name string) (string, string, error) {
 	path, err := s.path(kind, name)
 	if err != nil {

@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"strings"
+	"sync"
 	"syscall"
 	"testing"
 	"time"
@@ -179,6 +180,68 @@ func TestASkillFileThatIsNotRegularIsNotRead(t *testing.T) {
 	}
 }
 
+// letGo registers the cleanup of a test whose workers open the FIFO at
+// path, and returns the group they join. Should the store wait on the FIFO,
+// as the test's guard then reports, the cleanup lets each worker go and
+// waits for it before the fixture is removed: a writer's open ends an open
+// that waits for one, and its close a read that waits for the end. It is
+// called after the t.TempDir that holds path, so that it runs first.
+func letGo(t *testing.T, path string) *sync.WaitGroup {
+	t.Helper()
+	workers := &sync.WaitGroup{}
+	t.Cleanup(func() {
+		gone := make(chan struct{})
+		go func() {
+			workers.Wait()
+			close(gone)
+		}()
+		for deadline := time.Now().Add(5 * time.Second); time.Now().Before(deadline); {
+			select {
+			case <-gone:
+				return
+			case <-time.After(10 * time.Millisecond):
+			}
+			// No FIFO there, or no reader on it, is nothing to let go.
+			if fd, err := syscall.Open(path, syscall.O_WRONLY|syscall.O_NONBLOCK, 0); err == nil {
+				_ = syscall.Close(fd)
+			}
+		}
+		t.Errorf("a worker still waits on %s", path)
+	})
+	return workers
+}
+
+// A worker that waits on a FIFO is let go and waited for when its test
+// ends: none is left blocked on a fixture that is removed.
+//
+// Contract test: the cleanup against a real FIFO with no writer, which a
+// blocking read waits on for ever.
+func TestAWorkerWaitingOnAFIFOIsLetGo(t *testing.T) {
+	t.Parallel()
+	file := filepath.Join(t.TempDir(), "SKILL.md")
+	if err := syscall.Mkfifo(file, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	gone := make(chan error, 1)
+	t.Run("a blocking read", func(t *testing.T) {
+		workers := letGo(t, file)
+		workers.Add(1)
+		go func() {
+			defer workers.Done()
+			_, err := os.ReadFile(file)
+			gone <- err
+		}()
+	})
+	select {
+	case err := <-gone:
+		if err != nil {
+			t.Fatalf("the worker's read = %v", err)
+		}
+	default:
+		t.Fatal("the worker still waits on the FIFO")
+	}
+}
+
 // A SKILL.md replaced by a FIFO after its folder is listed is not read and
 // not waited on: what is opened is checked again, so an unused skill does
 // not hang a call that names none (ADR-021 rules 1 and 4).
@@ -208,7 +271,10 @@ func TestASkillFileReplacedByAFIFOIsNotWaitedOn(t *testing.T) {
 		err error
 	}
 	done := make(chan read, 1)
+	workers := letGo(t, file)
+	workers.Add(1)
 	go func() {
+		defer workers.Done()
 		doc, err := store.Read(ctx, definition.KindSkill, "review")
 		done <- read{doc, err}
 	}()
@@ -454,41 +520,63 @@ func TestRemovingASkillRemovesItsEmptiedFolder(t *testing.T) {
 	}
 }
 
-// Removing a skill whose folder is a symbolic link is refused, and removes
-// nothing through it: the SKILL.md it reaches is not one an install made,
-// so a restore does not delete a file outside home (ADR-016 rule 8,
-// ADR-027 rule 8).
+// Removing a skill whose folder is a symbolic link, or is in a skills/ that
+// is one, is refused, and removes nothing through it: the SKILL.md it
+// reaches is not one an install made, so a restore deletes neither a file
+// outside home nor the folder that holds it (ADR-016 rule 8, ADR-027
+// rule 8).
 //
 // Contract test: the settings store against the real filesystem.
 func TestRemovingASkillThroughALinkedFolderIsRefused(t *testing.T) {
 	t.Parallel()
-	ctx := context.Background()
-	store := fsdefs.Store{Dir: t.TempDir()}
-	target := t.TempDir()
-	kept := filepath.Join(target, "SKILL.md")
-	put(t, kept, skillText("theirs"))
-	skills := filepath.Join(store.Dir, "skills")
-	folder := filepath.Join(skills, "review")
-	if err := os.MkdirAll(skills, 0o700); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.Symlink(target, folder); err != nil {
-		t.Fatal(err)
-	}
+	for name, c := range map[string]struct {
+		link string   // the symbolic link, in the store
+		kept string   // the SKILL.md reached through it, in its target
+		left []string // what the target holds, its folders kept too
+		want string
+	}{
+		"the skill's folder": {
+			filepath.Join("skills", "review"), "SKILL.md", []string{".", "SKILL.md"},
+			" is a symbolic link: a skill is a folder holding its SKILL.md",
+		},
+		"skills/": {
+			"skills", filepath.Join("review", "SKILL.md"), []string{".", "review", filepath.Join("review", "SKILL.md")},
+			" is a symbolic link: a skill is a folder in the settings' own skills/",
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			ctx := context.Background()
+			store := fsdefs.Store{Dir: t.TempDir()}
+			target := t.TempDir()
+			kept := filepath.Join(target, c.kept)
+			put(t, kept, skillText("theirs"))
+			link := filepath.Join(store.Dir, c.link)
+			if err := os.MkdirAll(filepath.Dir(link), 0o700); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.Symlink(target, link); err != nil {
+				t.Fatal(err)
+			}
 
-	want := folder + " is a symbolic link: a skill is a folder holding its SKILL.md"
-	if err := store.Remove(ctx, definition.KindSkill, "review"); err == nil || err.Error() != want {
-		t.Fatalf("remove = %v, want %q", err, want)
-	}
-	if data, err := os.ReadFile(kept); err != nil || string(data) != skillText("theirs") {
-		t.Fatalf("the link's target = %q, %v: want it kept", data, err)
-	}
-	if info, err := os.Lstat(folder); err != nil || info.Mode()&fs.ModeSymlink == 0 {
-		t.Fatalf("the folder = %v, %v: want the link left", info, err)
-	}
-	// Nor is what the link reaches taken for the skill there.
-	if path, digest, err := store.Current(ctx, definition.KindSkill, "review"); err == nil || err.Error() != want {
-		t.Fatalf("current = %q, %q, %v, want %q", path, digest, err, want)
+			want := link + c.want
+			if err := store.Remove(ctx, definition.KindSkill, "review"); err == nil || err.Error() != want {
+				t.Fatalf("remove = %v, want %q", err, want)
+			}
+			if data, err := os.ReadFile(kept); err != nil || string(data) != skillText("theirs") {
+				t.Fatalf("the link's target = %q, %v: want it kept", data, err)
+			}
+			if got := tree(t, target); !reflect.DeepEqual(got, c.left) {
+				t.Fatalf("the link's target holds %v, want %v", got, c.left)
+			}
+			if info, err := os.Lstat(link); err != nil || info.Mode()&fs.ModeSymlink == 0 {
+				t.Fatalf("%s = %v, %v: want the link left", link, info, err)
+			}
+			// Nor is what the link reaches taken for the skill there.
+			if path, digest, err := store.Current(ctx, definition.KindSkill, "review"); err == nil || err.Error() != want {
+				t.Fatalf("current = %q, %q, %v, want %q", path, digest, err, want)
+			}
+		})
 	}
 }
 
@@ -519,6 +607,7 @@ func TestTheCurrentSkillIsNotWaitedOnOrFollowed(t *testing.T) {
 	if err := syscall.Mkfifo(file("fifo"), 0o600); err != nil {
 		t.Fatal(err)
 	}
+	workers := letGo(t, file("fifo"))
 	elsewhere := filepath.Join(t.TempDir(), "SKILL.md")
 	put(t, elsewhere, skillText("linked"))
 	if err := os.MkdirAll(folder("linked"), 0o700); err != nil {
@@ -539,7 +628,9 @@ func TestTheCurrentSkillIsNotWaitedOnOrFollowed(t *testing.T) {
 	read := func(name string) current {
 		t.Helper()
 		done := make(chan current, 1)
+		workers.Add(1)
 		go func() {
+			defer workers.Done()
 			path, digest, err := store.Current(ctx, definition.KindSkill, name)
 			done <- current{path, digest, err}
 		}()
