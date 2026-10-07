@@ -1,6 +1,6 @@
 # ADR-026: The brief is a run's input contract
 
-- **Status:** Proposed
+- **Status:** Accepted
 - **Date:** 2026-10-07
 - **Scope:** what a run is given to start from, in which layers, who
   writes it, where it is kept and who receives it
