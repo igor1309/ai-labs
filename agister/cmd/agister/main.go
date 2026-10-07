@@ -21,6 +21,7 @@ import (
 	"github.com/igor1309/ai-labs/agister/examples"
 	"github.com/igor1309/ai-labs/agister/internal/adapters/fscache"
 	"github.com/igor1309/ai-labs/agister/internal/adapters/fsdefs"
+	"github.com/igor1309/ai-labs/agister/internal/adapters/fsexport"
 	"github.com/igor1309/ai-labs/agister/internal/adapters/fsruns"
 	"github.com/igor1309/ai-labs/agister/internal/adapters/git"
 	"github.com/igor1309/ai-labs/agister/internal/adapters/inputs"
@@ -322,6 +323,9 @@ func (c composition) wire(config cli.Config) (contract.Client, *app.BackgroundRe
 		Verifier:  app.VerifyAdapters{Content: content, Commands: runtimecomposition.Commands{Supervisor: commands}, Clock: system.Clock{}},
 		Recoverer: app.RecoverAdapters{Clock: system.Clock{}},
 		Runs:      app.RunsAdapters{Reader: evidence, Appends: evidence, Timer: c.poll},
+		// An export copies runs from the run store to the folder the caller
+		// names (ADR-026 rule 7).
+		Exporter: app.ExportAdapters{Runs: evidence, Folders: fsexport.Folders{}},
 		// Installs read a folder laid out like the global settings, and
 		// write the global settings, backed up beside them; each result is
 		// checked on a staged copy.

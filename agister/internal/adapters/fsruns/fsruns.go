@@ -23,6 +23,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -53,6 +54,7 @@ var _ app.RunsReader = Store{}
 var _ app.RunsAppends = Store{}
 var _ app.RunAdopter = Store{}
 var _ app.CallRuns = Store{}
+var _ app.ExportRuns = Store{}
 
 func (s Store) runDir(id string) string { return filepath.Join(s.Dir, id) }
 
@@ -81,7 +83,7 @@ func (s Store) Create(_ context.Context, record run.Record) (app.RunHandle, erro
 	if err := os.Mkdir(dir, 0o700); err != nil {
 		return nil, err
 	}
-	lock, err := os.OpenFile(filepath.Join(dir, "owner.lock"), os.O_CREATE|os.O_RDWR, 0o600)
+	lock, err := os.OpenFile(filepath.Join(dir, ownerLock), os.O_CREATE|os.O_RDWR, 0o600)
 	if err != nil {
 		return nil, err
 	}
@@ -156,7 +158,7 @@ func (s Store) Adopt(ctx context.Context, id string) (app.ReapHandle, run.Record
 	if err := checkID(id); err != nil {
 		return nil, record, err
 	}
-	lock, err := os.OpenFile(filepath.Join(s.runDir(id), "owner.lock"), os.O_RDWR, 0)
+	lock, err := os.OpenFile(filepath.Join(s.runDir(id), ownerLock), os.O_RDWR, 0)
 	if errors.Is(err, fs.ErrNotExist) {
 		return nil, record, fmt.Errorf("run %s: %w", id, contract.ErrNotFound)
 	}
@@ -362,6 +364,64 @@ func (s Store) Artifact(_ context.Context, id string, artifact run.Artifact) ([]
 		return nil, fmt.Errorf("run %s: artifact %s: %w", id, name, contract.ErrNotFound)
 	}
 	return data, err
+}
+
+// ownerLock is the name of the run's owner lock: the store's own state, not
+// evidence.
+const ownerLock = "owner.lock"
+
+// Files lists the files of run id's directory by slash-separated path
+// relative to it, sorted: its record, events, provider log and artifacts.
+// The owner lock is the store's own state, not evidence, and is not
+// listed. Anything there that is neither a file nor a directory fails the
+// listing.
+func (s Store) Files(_ context.Context, id string) ([]string, error) {
+	if err := checkID(id); err != nil {
+		return nil, err
+	}
+	dir := s.runDir(id)
+	var files []string
+	err := filepath.WalkDir(dir, func(path string, entry fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if entry.IsDir() {
+			return nil
+		}
+		relative, err := filepath.Rel(dir, path)
+		if err != nil {
+			return err
+		}
+		relative = filepath.ToSlash(relative)
+		if !entry.Type().IsRegular() {
+			return fmt.Errorf("run %s: %s is not a regular file", id, relative)
+		}
+		if relative != ownerLock {
+			files = append(files, relative)
+		}
+		return nil
+	})
+	if errors.Is(err, fs.ErrNotExist) {
+		return nil, fmt.Errorf("run %s: %w", id, contract.ErrNotFound)
+	}
+	if err != nil {
+		return nil, err
+	}
+	sort.Strings(files)
+	return files, nil
+}
+
+// Open opens the file of run id at the slash-separated path, as Files lists
+// it: only a file inside the run's directory, and never its owner lock.
+func (s Store) Open(_ context.Context, id, path string) (io.ReadCloser, error) {
+	if err := checkID(id); err != nil {
+		return nil, err
+	}
+	local := filepath.FromSlash(path)
+	if !filepath.IsLocal(local) || path == ownerLock {
+		return nil, fmt.Errorf("run %s: invalid file path %q", id, path)
+	}
+	return os.Open(filepath.Join(s.runDir(id), local))
 }
 
 func (s Store) Events(ctx context.Context, id string, afterSeq int) ([]run.Event, run.State, error) {
@@ -581,7 +641,7 @@ func (s Store) status(id string, record run.Record) run.State {
 	if record.FinishedAt != nil {
 		return run.StateFinished
 	}
-	lock, err := os.Open(filepath.Join(s.runDir(id), "owner.lock"))
+	lock, err := os.Open(filepath.Join(s.runDir(id), ownerLock))
 	if err != nil {
 		return run.StateAbandoned
 	}

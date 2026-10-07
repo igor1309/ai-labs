@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -1034,5 +1035,56 @@ func TestARunAdoptedBeforeItsOwnerReleasesItsSignalKeepsItsOwn(t *testing.T) {
 				t.Fatalf("after the adopter's finish: %s, closed %v", state, closed(finishing))
 			}
 		})
+	}
+}
+
+// Files lists a run's evidence, artifacts among it, and not its owner
+// lock; Open reads each, and nothing outside the run nor the lock.
+//
+// Contract test: the run store against the real filesystem, and the
+// kernel's flock on a run's owner.lock.
+func TestFilesListARunsEvidenceWithoutItsLock(t *testing.T) {
+	t.Parallel()
+	store := newStore(t)
+	ctx := context.Background()
+	record := run.Record{Schema: run.RecordSchema, ID: "r1", Process: "p", CreatedAt: time.Now()}
+	h, err := store.Create(ctx, record)
+	if err != nil {
+		t.Fatal(err)
+	}
+	letGo(t, h)
+	if err := h.Append(run.Event{Kind: "E"}); err != nil {
+		t.Fatal(err)
+	}
+	if err := h.Raw(`{"raw":true}`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := h.Artifact("out.txt", []byte("bytes\n")); err != nil {
+		t.Fatal(err)
+	}
+	files, err := store.Files(ctx, "r1")
+	if want := []string{"artifacts/out.txt", "events.jsonl", "provider.jsonl", "record.json"}; err != nil || !reflect.DeepEqual(files, want) {
+		t.Fatalf("files = %v, %v, want %v", files, err, want)
+	}
+	file, err := store.Open(ctx, "r1", "artifacts/out.txt")
+	if err != nil {
+		t.Fatal(err)
+	}
+	data, err := io.ReadAll(file)
+	file.Close()
+	if err != nil || string(data) != "bytes\n" {
+		t.Fatalf("artifact = %q, %v", data, err)
+	}
+	for _, path := range []string{"owner.lock", "../r2/record.json", "/etc/hosts"} {
+		if file, err := store.Open(ctx, "r1", path); err == nil {
+			file.Close()
+			t.Errorf("opened %s", path)
+		}
+	}
+	if _, err := store.Files(ctx, "absent"); !errors.Is(err, contract.ErrNotFound) {
+		t.Fatalf("an absent run: %v", err)
+	}
+	if _, err := store.Files(ctx, "../r1"); err == nil {
+		t.Fatal("listed a path out of the store")
 	}
 }

@@ -331,6 +331,37 @@ the record's `links`; a run given neither has no `links`.
   `links.judgement` records its `run`. It is refused when the run does not
   exist or did not complete.
 
+## Export runs for audit
+
+```sh
+agister runs export <run-id>... --to <dir>
+```
+
+The run store is one host's, and a run's brief and goal live only there.
+To keep runs as audit material, export them to a durable directory you
+name. Each run's directory is copied byte for byte to `<dir>/<run-id>/`:
+`record.json`, `events.jsonl`, `provider.jsonl` and `artifacts/`, not its
+`owner.lock`. A workflow run brings each node's run its
+`workflow.nodes` name, to `<dir>/<node-run-id>/`. Nothing is selected,
+rewritten or summarized. A run a `links.goal` or `links.judgement` names
+is not brought: export it by its ID.
+
+- It is refused, exit 3, before it writes anything, when `--to` is
+  missing, does not exist or is not a directory, or a run does not exist
+  or is still running, a workflow's node run included. An abandoned run is
+  copied as it was left.
+- A copy is written beside its place and renamed into it once complete,
+  so an interrupted export leaves only a `<run-id>.partial-*` directory,
+  which no export takes for a copy; remove it.
+- Each artifact the record names is read back from the copy and checked
+  against the recorded digest. One that does not match fails that run,
+  exit 1, naming the file, and its copy is not put in place.
+- Exporting again to the same place keeps an identical copy as it is. A
+  copy that differs is never overwritten: that run is refused, exit 3,
+  naming the file that differs; the other runs are still exported.
+- It prints a line per run: `copied` with its files and bytes, `kept`,
+  `REFUSED` or `FAILED` with the reason.
+
 ## Exit codes
 
 0 completed, 1 failed, 2 interrupted, 3 refused, 4 lost, 64 usage or
