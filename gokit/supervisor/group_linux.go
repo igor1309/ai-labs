@@ -32,5 +32,6 @@ func exited(pid int) error {
 func zombieAlone() error { return nil }
 
 // others says whether the group has a process other than its leader that
-// has not exited, from /proc.
+// has not exited, from /proc; it fails when /proc cannot prove there is
+// none.
 func others(group int) (bool, error) { return procOthers(os.DirFS("/proc"), group) }
