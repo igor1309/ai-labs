@@ -15,6 +15,19 @@ the home file of the same kind and name, and the repo's `service.toml`
 replaces home's. Each item is marked `repo`, `home` or `repo, replaces
 home`.
 
+In Agister's source repository, home's documents live in `agister/home/`
+in git (ADR-027). They reach home through `agister install home` from
+`agister/` in the main checkout, after the change merges and the binary
+is installed. Install plans, diffs, checks, backs up and restores skills
+(`skills/<name>/SKILL.md`) with the other documents; it refuses a skill
+folder holding anything beside a regular `SKILL.md`. This repository's
+`.agister/` keeps only its verification and the two Go prompts. The page
+reads installed home, so shared processes and their review prompts are
+marked `home`, the Go prompts and verification `repo`. It does not read
+`agister/home/` from the checkout or compare it with installed home:
+differences appear in the next install's plan. The caller skill under
+`agister/skills/agister/` is separate from these settings skills.
+
 - **Workflows** and **Processes**, as cards: what each does (its leading
   comment), the `agister run` command with its required params (Copy puts
   it on the clipboard), the defaults, and then:

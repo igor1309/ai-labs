@@ -12,7 +12,7 @@ cd agister
 go build -o bin/agister ./cmd/agister
 bin/agister --help          # every command and option
 bin/agister init            # example settings into ~/.agister
-bin/agister install .agister # a repository's settings into ~/.agister
+bin/agister install home    # this owner's global settings into ~/.agister
 bin/agister check           # validate the settings
 bin/agister run ask --param question="What does cmd/agister do?"
 bin/agister runs show <run-id>

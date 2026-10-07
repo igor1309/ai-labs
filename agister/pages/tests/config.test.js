@@ -458,3 +458,52 @@ for (const path of ['.agister', 'agister/home', 'agister/examples/settings']) {
     assert.ok(!m.service?.error, m.service?.error);
   });
 }
+
+// ADR-027: the source folder supplies home's shared documents, while
+// .agister supplies this repository's verification and optional Go prompts.
+// Exercise the composed model that the Settings view renders, rather than
+// only checking that each layer parses on its own.
+test('the repository composed with the home source resolves its calls and shows each document\'s layer', async () => {
+  const m = await C.loadComposed(diskDir(join(repoRoot, 'agister/home')), diskDir(join(repoRoot, '.agister')));
+  assert.ok(m.processes.length > 0);
+  assert.ok(m.workflows.length > 0);
+  const sharedPrompts = {
+    advisor: 'advisor',
+    adr_review_codex: 'code-review-adr',
+    adversarial_review_codex: 'code-review-adversarial',
+    architecture_review_codex: 'code-review-architecture',
+    clarity_review_codex: 'code-review-clarity',
+    intent_review_codex: 'code-review-intent',
+    review_judge: 'code-review-judge',
+    tests_review_codex: 'code-review-tests',
+  };
+  for (const [process, name] of Object.entries(sharedPrompts)) {
+    assert.deepEqual(m.processes.find((p) => p.name === process)?.prompts,
+      [{ name, outside: false, source: 'home', overrides: false }], process);
+  }
+  for (const p of m.processes) {
+    assert.ok(!p.error, `${p.file}: ${p.error}`);
+    assert.deepEqual([p.source, !!p.overrides, p.agentOutside, p.policyOutside, p.outputOutside],
+      ['home', false, false, false, false], p.name);
+    for (const prompt of p.prompts) {
+      const source = ['go-testing-seams', 'go-architecture'].includes(prompt.name) ? 'repo' : 'home';
+      assert.deepEqual([prompt.outside, prompt.source, prompt.overrides], [false, source, false], `${p.name}: ${prompt.name}`);
+    }
+    for (const form of p.forms) assert.deepEqual([form.outside, form.source], [false, 'home'], `${p.name}: ${form.name}`);
+    if (p.verify) assert.deepEqual(p.verify, { ref: 'repo', maxAttempts: 3, outside: false }, p.name);
+  }
+  for (const w of m.workflows) {
+    assert.ok(!w.error, `${w.file}: ${w.error}`);
+    assert.deepEqual([w.source, !!w.overrides], ['home', false], w.name);
+    for (const node of [...w.fanOut, w.join]) assert.equal(node.outside, false, `${w.name}: ${node.process}`);
+    for (const form of w.forms) assert.deepEqual([form.outside, form.source], [false, 'home'], `${w.name}: ${form.name}`);
+  }
+  for (const a of m.agents) assert.deepEqual([a.source, a.runtimeOutside], ['home', false], a.name);
+  assert.deepEqual(m.verifies.map((v) => [v.name, v.source]), [['repo', 'repo']]);
+  assert.equal(m.service.source, 'home');
+
+  const alone = await C.loadAgister(diskDir(join(repoRoot, 'agister/home')));
+  for (const p of alone.processes.filter((p) => p.verify)) assert.equal(p.verify.outside, true, p.name);
+  assert.deepEqual(alone.processes.find((p) => p.name === 'implement').prompts,
+    [{ name: 'go-testing-seams', outside: true }, { name: 'go-architecture', outside: true }]);
+});
