@@ -82,11 +82,13 @@ it wants worked on.
 
 ### 3. A process says whether it needs a clean worktree
 
-`workspace.clean: true` refuses the call before any turn unless the
+`workspace.clean: true` refuses a fresh call before any turn unless the
 worktree's content is HEAD's, measured as ADR-022 rule 4 did: the
 content identity of tracked and unignored files, an index without
 changes, no dirty submodule. Ignored files are allowed. The default is
-`false`.
+`false`. A continuation is not checked against HEAD: its worktree holds
+the earlier run's changes, and rule 7 checks it against the content
+that run recorded.
 
 A process that writes, such as an implementer, declares it, so it fails
 fast instead of mixing its work with the caller's. A read-only process,
@@ -111,6 +113,13 @@ Under its hold, a call is also refused while another run that may still
 write there has it on record: a writer's run that is unfinished, or whose
 processes are not known to have ended. The call asks, as the reap does,
 to end such a process (ADR-022 rule 3), and is refused if it cannot.
+
+While the reap still removes what runs made before this ADR left on
+record (rule 9), a call is also refused, first, while its worktree
+overlaps such a directory: a checkout, a clean copy, or the cleanup
+parent made to hold one, as ADR-022 rule 3 says. A directory overlaps
+the worktree when it is the worktree, lies inside it or contains it, by
+their canonical paths.
 
 A workflow's nodes are calls like any other: its readers run together in
 the caller's worktree. A workflow with a writing node takes no special
