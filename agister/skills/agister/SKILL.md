@@ -223,9 +223,10 @@ or contains it.
 A run's changes are in the worktree it worked in, uncommitted. There is
 nothing to apply: run the repository's testing command yourself, and
 commit. A failed, timed-out or interrupted call leaves its changes there
-too, for you to keep or discard: nothing is reset, cleaned or removed. An
-agent that commits in the worktree fails the call (`WORKTREE_COMMITTED`),
-and its commit stays.
+too, for you to keep or discard: nothing is reset, cleaned or removed.
+When the process pins a revision, an agent that commits in the worktree
+fails the call (`WORKTREE_COMMITTED`), and its commit stays; without a
+pinned revision, a commit is not detected.
 
 A run of a process that pins a revision also keeps what it changed as
 one patch from the revision, the evidence of its changes, which its

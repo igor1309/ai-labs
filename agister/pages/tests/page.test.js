@@ -401,7 +401,8 @@ test('a Settings read that fails while Runs is shown says why only once Settings
 
 // ADR-025 rules 2 and 3: a process card shows what its call needs of the
 // caller's worktree: HEAD at the revision an input names, and clean when
-// a fresh call needs HEAD's content. The obsolete workspace.yaml is not
+// a fresh call needs HEAD's content, with a pinned revision or without
+// one. The obsolete workspace.yaml is not
 // read, even broken, and no setup, mode or precheck is shown.
 test('a process card shows what its call needs of the caller\'s worktree', async () => {
   const files = {
@@ -409,6 +410,7 @@ test('a process card shows what its call needs of the caller\'s worktree', async
     'workspace.yaml': 'schema: agister.workspace/v1alpha1\nsetup: {command: [}\n',
     'processes/fix.yaml': 'name: fix\nuses: agent:opus\nworkspace:\n  revision: rev\n  clean: true\n  setup: {command: ./own.sh, timeout: 30s}\n',
     'processes/review.yaml': 'name: review\nuses: agent:opus\nworkspace:\n  revision: rev\n',
+    'processes/tidy.yaml': 'name: tidy\nuses: agent:opus\nworkspace:\n  clean: true\n',
     'processes/ask.yaml': 'name: ask\nuses: agent:opus\n',
   };
   const p = page({ answers: { 'api/settings': () => respond({ path: '~', dir: '/u/.agister', home: true, files }) } });
@@ -424,6 +426,7 @@ test('a process card shows what its call needs of the caller\'s worktree', async
   assert.equal(fix.worktree.querySelector('code').textContent, 'rev');
   for (const gone of ['setup', 'mode', 'precheck']) assert.ok(!fix.labels.includes(gone), gone);
   assert.equal(facts('review').worktree.textContent, 'HEAD at rev');
+  assert.equal(facts('tidy').worktree.textContent, 'clean');
   assert.equal(facts('ask').worktree, null);
   assert.equal(p.$('dashboard').querySelectorAll('.error').length, 0);
   assert.doesNotMatch(p.$('dashboard').textContent, /Workspace settings|workspace\.yaml/);

@@ -35,8 +35,9 @@
   function scalar(text) {
     const t = text.trim();
     if (t[0] === '"' || t[0] === "'") return unquote(t);
-    if (t === 'true') return true;
-    if (t === 'false') return false;
+    // The spellings Agister's YAML reads as booleans (yaml.v3's !!bool).
+    if (t === 'true' || t === 'True' || t === 'TRUE') return true;
+    if (t === 'false' || t === 'False' || t === 'FALSE') return false;
     if (t === '' || t === 'null' || t === '~') return null;
     if (/^-?\d+(\.\d+)?$/.test(t)) return Number(t);
     return t;

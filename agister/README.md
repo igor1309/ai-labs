@@ -281,8 +281,10 @@ captures them at the end as
 `~/.agister/runs/<id>/artifacts/changes.patch`, from the revision, with
 the content it was taken from (`in_place.content`). The patch is evidence:
 nobody applies it, for the changes are already there. A call that changed
-nothing records `NO_CHANGES` and has no patch. An agent that commits in
-the worktree fails the call, and its commit stays. Agister checks the
+nothing records `NO_CHANGES` and has no patch. When the process pins a
+revision, an agent that commits in the worktree fails the call, and its
+commit stays; without a pinned revision, a commit is not detected.
+Agister checks the
 worktree before and after the call but does not confine the agent to it;
 do not change the worktree while a writer works in it.
 

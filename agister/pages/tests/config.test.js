@@ -83,6 +83,31 @@ test('YAML: nested maps, flow maps, numbers, booleans and comments', () => {
   });
 });
 
+// The spellings Agister's YAML reads as booleans (yaml.v3's !!bool), in a
+// block map, a flow map and a list; quoted, or spelled otherwise, a value
+// stays a string.
+test('YAML: true, True, TRUE, false, False and FALSE are booleans; quoted ones and other spellings are strings', () => {
+  const doc = C.parseYaml([
+    'a: true',
+    'b: True',
+    'c: TRUE',
+    'd: false',
+    'e: False',
+    'f: FALSE',
+    'flow: {clean: True, off: FALSE}',
+    'list: [TRUE, False]',
+    'quoted: ["True", \'FALSE\', "true"]',
+    'other: [tRue, yes, on, y]',
+  ].join('\n'));
+  assert.deepEqual(doc, {
+    a: true, b: true, c: true, d: false, e: false, f: false,
+    flow: { clean: true, off: false },
+    list: [true, false],
+    quoted: ['True', 'FALSE', 'true'],
+    other: ['tRue', 'yes', 'on', 'y'],
+  });
+});
+
 test('YAML: lists of flow maps, of scalars, at the key indent and of block maps', () => {
   const doc = C.parseYaml([
     'fan_out:',
@@ -274,6 +299,9 @@ test('each process shows what its call needs of the caller\'s worktree', async (
   const processes = {
     'fix.yaml': process('fix', '  revision: rev\n  clean: true\n  setup: {command: ./own.sh, timeout: 30s}\n'),
     'review.yaml': process('review', '  revision: rev\n'),
+    'shout.yaml': process('shout', '  clean: TRUE\n'),
+    'title.yaml': process('title', '  revision: rev\n  clean: True\n'),
+    'quoted.yaml': process('quoted', '  clean: "true"\n'),
     'none.yaml': process('none', '  access: read-only\n'),
     'checks.yaml': 'name: checks\nuses: agent:a\nverify:\n  command: make test\n  max_attempts: 2\n  where: workspace\n',
   };
@@ -285,6 +313,9 @@ test('each process shows what its call needs of the caller\'s worktree', async (
   };
   assert.deepEqual(needs('fix'), ['rev', true]);
   assert.deepEqual(needs('review'), ['rev', false]);
+  assert.deepEqual(needs('shout'), [null, true]);
+  assert.deepEqual(needs('title'), ['rev', true]);
+  assert.deepEqual(needs('quoted'), [null, false]); // a string, which Agister refuses
   assert.deepEqual(needs('none'), [null, false]);
   assert.equal(m.workspace, undefined);
   const fix = m.processes.find((x) => x.name === 'fix');
