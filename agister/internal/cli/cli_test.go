@@ -372,6 +372,23 @@ func TestProgressDescribesStaleRecovery(t *testing.T) {
 	}
 }
 
+// A working copy the cache could not keep shows as a warning that names
+// the input, its file and the error; the run still completes.
+func TestProgressWarnsOfAWorkingCopyNotKept(t *testing.T) {
+	t.Parallel()
+	spy := &clientSpy{run: finished("completed", ""), events: []contract.Event{
+		{Kind: "CACHE_FAILED", Data: map[string]any{"name": "brief.md", "input": "brief", "error": "cache full"}},
+		{Kind: "CALL_FINISHED"},
+	}}
+	r := run(context.Background(), spy, "run", "p")
+	if want := "! CACHE_FAILED {\"error\":\"cache full\",\"input\":\"brief\",\"name\":\"brief.md\"}\n"; !strings.Contains(r.stderr, want) {
+		t.Fatalf("stderr:\n%s", r.stderr)
+	}
+	if r.code != cli.ExitCompleted {
+		t.Fatalf("code = %d, want %d", r.code, cli.ExitCompleted)
+	}
+}
+
 // A watch prints each path a tool call wrote and each tool call denied in
 // a line of its own. A path, a tool name or an input that holds a newline
 // is quoted, so it stays one line and forges no other; an ordinary one

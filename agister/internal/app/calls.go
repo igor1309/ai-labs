@@ -1524,7 +1524,7 @@ func (c *Calls) resolveValues(ctx context.Context, subject string, declared []Ca
 			if text, ok := collection.Value.(string); ok {
 				texts[value.Name] = text
 			}
-			inputs = append(inputs, run.Input{Name: value.Name, Source: value.Source, Identity: collection.Identity, Value: collection.Value})
+			inputs, files = append(inputs, run.Input{Name: value.Name, Source: value.Source, Identity: collection.Identity, Value: collection.Value}), append(files, "")
 			continue
 		}
 		if value.Source == definition.PromptSource {
@@ -1536,7 +1536,7 @@ func (c *Calls) resolveValues(ctx context.Context, subject string, declared []Ca
 				return nil, nil, refuse("input %s: prompt %q was not resolved with the call", value.Name, value.Args["name"])
 			}
 			texts[value.Name] = prompt.Value.(string)
-			inputs = append(inputs, run.Input{Name: value.Name, Source: value.Source, Identity: prompt.Identity, Value: prompt.Value})
+			inputs, files = append(inputs, run.Input{Name: value.Name, Source: value.Source, Identity: prompt.Identity, Value: prompt.Value}), append(files, "")
 			continue
 		}
 		provider, ok := c.inputs[value.Source]

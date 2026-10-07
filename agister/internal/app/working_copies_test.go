@@ -162,3 +162,51 @@ func TestAWorkflowRunsFileInputsHaveWorkingCopies(t *testing.T) {
 		})
 	}
 }
+
+// A file input after a resolved prompt has its own working copy, and the
+// prompt input has none.
+func TestAFileInputAfterAPromptHasItsWorkingCopy(t *testing.T) {
+	t.Parallel()
+	h := keptInputs("the brief")
+	diff := `    diff: {source: git.diff, base: "${param.base}", head: "${param.candidate}"}` + "\n"
+	h.defs.docs[definition.KindProcess]["p"] = strings.Replace(h.defs.docs[definition.KindProcess]["p"], diff, diff+"    rules: {source: prompt, name: review}\n", 1)
+	h.defs.docs[definition.KindPrompt] = map[string]string{"review": reviewPrompt}
+	readFrom(h.inputs)
+	record := h.call(t, contract.CallRequest{})
+	if record.Result.Status != run.Completed {
+		t.Fatalf("result %+v: %s", record.Result, message(record))
+	}
+	brief := inputOf(t, record, "brief")
+	if want := "/cache/" + sha("the brief") + "/brief.md"; brief.CachePath != want {
+		t.Fatalf("brief = %+v, want cache_path %s", brief, want)
+	}
+	if want := map[string][]byte{brief.CachePath: []byte("the brief")}; !reflect.DeepEqual(h.copies.kept, want) {
+		t.Fatalf("kept %v, want %v", h.copies.kept, want)
+	}
+	if rules := inputOf(t, record, "rules"); rules.CachePath != "" {
+		t.Fatalf("rules = %+v", rules)
+	}
+}
+
+// A join's file input after its collection has its own working copy, and
+// the collection input has none.
+func TestAFileInputAfterACollectionHasItsWorkingCopy(t *testing.T) {
+	t.Parallel()
+	h := newFlowHarness()
+	readFrom(h.inputs)
+	id := h.submit(t, contract.CallRequest{})
+	if record := h.store.wait(t, id); record.Result.Status != run.Completed {
+		t.Fatalf("result = %+v", record.Result)
+	}
+	join := h.store.wait(t, "run-4")
+	guide := inputOf(t, join, "guide")
+	if want := "/cache/" + sha("the guide") + "/guide.md"; guide.CachePath != want {
+		t.Fatalf("guide = %+v, want cache_path %s", guide, want)
+	}
+	if want := map[string][]byte{guide.CachePath: []byte("the guide")}; !reflect.DeepEqual(h.copies.kept, want) {
+		t.Fatalf("kept %v, want %v", h.copies.kept, want)
+	}
+	if gathered := inputOf(t, join, "gathered"); gathered.CachePath != "" {
+		t.Fatalf("gathered = %+v", gathered)
+	}
+}

@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/igor1309/ai-labs/agister/internal/adapters/fscache"
 )
@@ -32,6 +33,10 @@ func TestACopyIsWrittenOnceUnderItsDigest(t *testing.T) {
 	if data, err := os.ReadFile(path); err != nil || string(data) != "the brief" {
 		t.Fatalf("copy = %q, %v", data, err)
 	}
+	past := time.Date(2001, 2, 3, 4, 5, 6, 0, time.UTC)
+	if err := os.Chtimes(path, past, past); err != nil {
+		t.Fatal(err)
+	}
 	first, err := os.Stat(path)
 	if err != nil {
 		t.Fatal(err)
@@ -44,6 +49,9 @@ func TestACopyIsWrittenOnceUnderItsDigest(t *testing.T) {
 	second, err := os.Stat(path)
 	if err != nil || !os.SameFile(first, second) {
 		t.Fatalf("the copy was written again: %v", err)
+	}
+	if !second.ModTime().Equal(past) {
+		t.Fatalf("the copy was modified at %v, want %v", second.ModTime(), past)
 	}
 
 	other, err := store.Keep(digest("another brief"), "brief.md", []byte("another brief"))
