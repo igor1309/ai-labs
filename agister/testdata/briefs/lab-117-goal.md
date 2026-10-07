@@ -33,6 +33,10 @@ bytes it was given, with their digest). Today it is not:
    receives the goal, records the digest as its identity and in the
    recorded `request.params`, and its bytes in the artifact. The value the
    call works with is unchanged; only what the record holds changes.
+   Except on a refusal (owner, 2026-10-07): a long param stays its literal
+   in the recorded `request.params` until an input's artifact keeps its
+   bytes, and a run refused before that keeps the literal, so its text is
+   never lost.
 3. A record written before this change still reads (`runs show`, Pages,
    the hold that reads `changes.patch`): the new input field is optional.
 4. `agister runs show` names an input's artifact, so a reader can find the
@@ -71,6 +75,11 @@ bytes it was given, with their digest). Today it is not:
 
 - 2026-10-07, owner: briefs and goals belong to the run, not the
   repository (ADR-026).
+- 2026-10-07, owner, on LAB-117 question 1 (judge of `code_review` run
+  `20261007T084631Z-5dedb2`; the advisor, run `20261007T085707Z-689810`,
+  answered `owner`): option (a). Delay redacting `request.params` until
+  matching evidence is kept, and keep the original request on refusal
+  paths. Test: a long goal param followed by a failing file input.
 
 ## Open
 
