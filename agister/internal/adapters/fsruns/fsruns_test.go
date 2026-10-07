@@ -36,6 +36,17 @@ func letGo(t *testing.T, h app.ReapHandle) {
 	t.Cleanup(func() { h.(*handle).abandon() })
 }
 
+// holdErr is the error store gives to a hold of run id; a read it gives
+// instead is let go once the test ends.
+func holdErr(t *testing.T, store Store, id string) error {
+	t.Helper()
+	read, err := store.Hold(context.Background(), id)
+	if err == nil {
+		t.Cleanup(read.Release)
+	}
+	return err
+}
+
 // Contract test: the run store against the real filesystem, and the
 // kernel's flock on a run's owner.lock.
 func TestOwnershipDecidesRunningVersusAbandoned(t *testing.T) {
@@ -1056,6 +1067,7 @@ func TestAHeldReadListsARunsEvidenceWithoutItsLock(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	letGo(t, h)
 	if err := h.Append(run.Event{Kind: "E"}); err != nil {
 		t.Fatal(err)
 	}
@@ -1105,10 +1117,10 @@ func TestAHeldReadListsARunsEvidenceWithoutItsLock(t *testing.T) {
 			t.Errorf("opened %s", path)
 		}
 	}
-	if _, err := store.Hold(ctx, "absent"); !errors.Is(err, contract.ErrNotFound) {
+	if err := holdErr(t, store, "absent"); !errors.Is(err, contract.ErrNotFound) {
 		t.Fatalf("an absent run: %v", err)
 	}
-	if _, err := store.Hold(ctx, "../r1"); err == nil {
+	if err := holdErr(t, store, "../r1"); err == nil {
 		t.Fatal("held a path out of the store")
 	}
 }
@@ -1132,20 +1144,25 @@ func TestAHeldReadKeepsWritersOut(t *testing.T) {
 	}
 	letGo(t, h)
 	var owned *app.RunOwnedError
-	if _, err := store.Hold(ctx, "r1"); !errors.As(err, &owned) || owned.ID != "r1" || owned.Finished {
+	if err := holdErr(t, store, "r1"); !errors.As(err, &owned) || owned.ID != "r1" || owned.Finished {
 		t.Fatalf("a running run: %v", err)
 	}
 
 	// Its owner is killed: the run is abandoned, and is held.
 	h.(*handle).lock.Close()
 	read, err := store.Hold(ctx, "r1")
-	if err != nil || read.State() != run.StateAbandoned {
+	if err != nil {
 		t.Fatalf("an abandoned run: %v", err)
+	}
+	t.Cleanup(read.Release)
+	if state := read.State(); state != run.StateAbandoned {
+		t.Fatalf("an abandoned run is held as %s", state)
 	}
 	other, err := store.Hold(ctx, "r1")
 	if err != nil {
 		t.Fatalf("a second read: %v", err)
 	}
+	t.Cleanup(other.Release)
 	other.Release()
 	if _, state, _ := store.Get(ctx, "r1"); state != run.StateAbandoned {
 		t.Fatalf("a held run reads %s", state)
@@ -1160,7 +1177,8 @@ func TestAHeldReadKeepsWritersOut(t *testing.T) {
 	if err != nil {
 		t.Fatalf("adopting a released run: %v", err)
 	}
-	if _, err := store.Hold(ctx, "r1"); !errors.As(err, &owned) || owned.Finished {
+	letGo(t, adopted)
+	if err := holdErr(t, store, "r1"); !errors.As(err, &owned) || owned.Finished {
 		t.Fatalf("an abandoned run being recovered: %v", err)
 	}
 	now := time.Now()
@@ -1176,7 +1194,7 @@ func TestAHeldReadKeepsWritersOut(t *testing.T) {
 		t.Fatal(err)
 	}
 	letGo(t, adopted)
-	if _, err := store.Hold(ctx, "r1"); !errors.As(err, &owned) || !owned.Finished {
+	if err := holdErr(t, store, "r1"); !errors.As(err, &owned) || !owned.Finished {
 		t.Fatalf("a finished run being recovered: %v", err)
 	}
 }
@@ -1277,7 +1295,6 @@ func TestAnExportHoldsTheRunAgainstRecovery(t *testing.T) {
 			}
 		}},
 		{"abandoned", func(t *testing.T, h app.RunHandle, _ run.Record) {
-			letGo(t, h)
 			h.(*handle).lock.Close()
 		}},
 	} {
@@ -1290,6 +1307,7 @@ func TestAnExportHoldsTheRunAgainstRecovery(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
+			letGo(t, h)
 			if err := h.Append(run.Event{Kind: "E"}); err != nil {
 				t.Fatal(err)
 			}

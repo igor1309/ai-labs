@@ -200,11 +200,19 @@ func (s *stage) Discard() error {
 
 // synced is a file of a copy, synced to the disk as it is closed: a copy
 // renamed into place holds its files' bytes.
-type synced struct{ *os.File }
+type synced struct{ file }
 
+// file is what synced writes to, syncs and closes: an *os.File.
+type file interface {
+	io.Writer
+	Sync() error
+	Close() error
+}
+
+// Close syncs the file and closes it, closed even when the sync fails.
 func (f synced) Close() error {
-	err := f.Sync()
-	if closeErr := f.File.Close(); err == nil {
+	err := f.file.Sync()
+	if closeErr := f.file.Close(); err == nil {
 		err = closeErr
 	}
 	return err

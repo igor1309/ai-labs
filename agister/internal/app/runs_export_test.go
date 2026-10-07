@@ -317,6 +317,34 @@ func TestExportRefusesACopyWithAFileMoreOrLess(t *testing.T) {
 	}
 }
 
+// A copy there identical to the run is kept only once its artifacts read
+// back as recorded: a run and its copy holding the same artifact bytes,
+// which both disagree with the record, fail the export, naming the
+// artifact, and leave the copy as it is.
+func TestExportChecksTheArtifactsOfAnIdenticalCopyThere(t *testing.T) {
+	t.Parallel()
+	runs, folders, exporter := newExport()
+	record := finishedRecord("r1")
+	artifact := artifactOf("out.txt", "bytes\n")
+	record.Result.Artifacts = []run.Artifact{*artifact}
+	held := map[string]string{"record.json": "{}", "artifacts/out.txt": "changed\n"}
+	runs.add(record, run.StateFinished, held)
+	folders.copies["r1"] = maps.Clone(held)
+
+	result, err := exporter.Export(context.Background(), contract.ExportRequest{Runs: []string{"r1"}, To: "/audit"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := "the copy there: artifact artifacts/out.txt reads back as " + artifactOf("out.txt", "changed\n").Digest + ", the record says " + artifact.Digest
+	if done := result.Runs[0]; done.Action != contract.ExportFailed || done.Problem != want {
+		t.Fatalf("export: %+v, want %q", done, want)
+	}
+	if !maps.Equal(folders.copies["r1"], held) || len(folders.discarded) != 0 {
+		t.Fatalf("the copy there is now %v; discarded %v", folders.copies["r1"], folders.discarded)
+	}
+	runs.allReleased(t)
+}
+
 // A workflow's record read before it finished, told with the state it has
 // once finished, is read again: the export plans from the finished record,
 // so it brings the node's run that record names and checks the artifact

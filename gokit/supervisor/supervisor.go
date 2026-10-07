@@ -72,7 +72,7 @@ type Sink interface {
 // Whatever the process leaves running in its group is killed then, and
 // stdout is read for at most the grace period after the exit, so a
 // descendant that keeps it open cannot hold the call. Its timeout and both
-// graces are on r.Timer.
+// graces are on r.Timer. Nothing reports to events once it has returned.
 func (r Runtime) Run(ctx context.Context, spec Spec, events Sink, onLine func(string)) Evidence {
 	// The watcher and the reader both report; the sink sees one at a time.
 	sink := &serialSink{inner: events}
@@ -145,21 +145,24 @@ func (r Runtime) Run(ctx context.Context, spec Spec, events Sink, onLine func(st
 			}()
 		})
 	}
+	// The watcher has ended, its timer stopped and its reports made, once
+	// watched is closed; Run waits for that before it returns, so nothing
+	// it reports comes after the call. timedOut and aborted are its
+	// decisions, read once it has ended.
+	var timedOut, aborted bool
+	watched := make(chan struct{})
 	go func() {
-		timedOut, stop := r.timer(spec.Timeout)
+		defer close(watched)
+		late, stop := r.timer(spec.Timeout)
 		defer stop()
 		select {
 		case <-exited:
-		case <-timedOut:
-			mu.Lock()
-			evidence.TimedOut = true
-			mu.Unlock()
+		case <-late:
+			timedOut = true
 			sink.Event(SourceSupervisor, "TIMEOUT", map[string]any{"timeout": spec.Timeout.String()})
 			terminate()
 		case <-ctx.Done():
-			mu.Lock()
-			evidence.Aborted = true
-			mu.Unlock()
+			aborted = true
 			sink.Event(SourceSupervisor, "ABORT_REQUESTED", nil)
 			terminate()
 		}
@@ -207,9 +210,9 @@ func (r Runtime) Run(ctx context.Context, spec Spec, events Sink, onLine func(st
 		<-read
 	}
 	stopHeld()
+	<-watched
 
-	mu.Lock()
-	defer mu.Unlock()
+	evidence.TimedOut, evidence.Aborted = timedOut, aborted
 	evidence.Exit = &exit
 	evidence.StderrTail, evidence.StderrOmitted = stderr.kept()
 	sink.Event(SourceProcess, "PROCESS_EXITED", map[string]any{"code": exit.Code, "signal": exit.Signal})

@@ -355,7 +355,7 @@ is not brought: export it by its ID.
   once that is done.
 - Each run is held from the start until it is copied: no process writes
   it meanwhile, so its record and events are copied as they stood
-  together. Recovery waits for the export.
+  together. Recovery skips a held run; a later reap recovers it.
 - A copy is written beside its place and renamed into it once complete,
   so an interrupted export leaves only a `<run-id>.partial-*` directory,
   which no export takes for a copy; remove it.

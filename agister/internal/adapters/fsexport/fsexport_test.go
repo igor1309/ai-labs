@@ -1,6 +1,7 @@
 package fsexport
 
 import (
+	"errors"
 	"io"
 	"os"
 	"path/filepath"
@@ -217,5 +218,71 @@ func TestCopyRefusesWhatIsNotACopy(t *testing.T) {
 	}
 	if _, err := folders.Stage(dir, "../r4"); err == nil {
 		t.Fatal("staged a copy out of the folder")
+	}
+}
+
+// fakeFile records what synced does to it; sync, when set, is what Sync
+// returns.
+type fakeFile struct {
+	sync  error
+	calls []string
+}
+
+func (f *fakeFile) Write(p []byte) (int, error) { return len(p), nil }
+
+func (f *fakeFile) Sync() error {
+	f.calls = append(f.calls, "sync")
+	return f.sync
+}
+
+func (f *fakeFile) Close() error {
+	f.calls = append(f.calls, "close")
+	return nil
+}
+
+// A staged file is synced to the disk before it is closed, and a sync that
+// fails fails the close, which still closes the file.
+func TestAStagedFileIsSyncedAsItIsClosed(t *testing.T) {
+	t.Parallel()
+	t.Run("synced", func(t *testing.T) {
+		t.Parallel()
+		file := &fakeFile{}
+		if err := (synced{file}).Close(); err != nil {
+			t.Fatal(err)
+		}
+		if want := []string{"sync", "close"}; !reflect.DeepEqual(file.calls, want) {
+			t.Fatalf("calls = %v, want %v", file.calls, want)
+		}
+	})
+	t.Run("sync fails", func(t *testing.T) {
+		t.Parallel()
+		failed := errors.New("disk failed")
+		file := &fakeFile{sync: failed}
+		if err := (synced{file}).Close(); !errors.Is(err, failed) {
+			t.Fatalf("close = %v, want %v", err, failed)
+		}
+		if want := []string{"sync", "close"}; !reflect.DeepEqual(file.calls, want) {
+			t.Fatalf("calls = %v, want %v", file.calls, want)
+		}
+	})
+}
+
+// What a stage creates is a file synced as it is closed.
+//
+// Contract test: the export folders against the real filesystem.
+func TestAStageCreatesSyncedFiles(t *testing.T) {
+	t.Parallel()
+	stage, err := Folders{}.Stage(t.TempDir(), "r1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = stage.Discard() })
+	created, err := stage.Create("record.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer created.Close()
+	if _, ok := created.(synced); !ok {
+		t.Fatalf("created a %T, not a synced file", created)
 	}
 }
