@@ -78,6 +78,11 @@ This change makes the supervisor follow it.
   (for example a member that becomes a zombie after the kill), the
   cleanup is reported as unknown (`LEFTOVER_CLEANUP_UNKNOWN`), never as
   no leftovers.
+- 2026-10-07, owner: drop the Linux code. Agister runs and is tested on
+  macOS only. Linux takes the same fallback as other non-macOS systems
+  (kill the group before the reap, cleanup reported as unknown). This
+  supersedes Done when 3's and 4's Linux parts and the Linux decision
+  above.
 
 ## Open
 
