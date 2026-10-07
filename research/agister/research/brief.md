@@ -222,16 +222,25 @@ keeping as research and audit material. Committing them wins only until the
 PR; then a cleanup is due, which is easy to skip and, when done, leaves an
 audit to dig through history.
 
+This is not a break with the owner's practice:
+- ios.config already keeps it: ticket folders (SPEC, NOTES, briefs,
+  RECORD) live in the ios.config repository, apart from the app repository
+  the work changes.
+- my-way's "committed to the repository as they are produced"
+  (`docs/my-way/pre-coding-phase.md:265`) is dated 2026-05-27, before
+  Agister; this rule supersedes it for plans and briefs.
+
 So a brief lives outside the repository:
 
 - **In the run.** Agister stores the bytes it was given in the run's
   evidence (`artifacts/brief.md`, `artifacts/goal.md`) with their digest.
   This is the durable copy, for audit, and makes ADR-001 rule 10 ("Anything
   needed to understand a call is evidence") true for briefs.
-- **In /tmp, as a working copy.** The run records it in a field whose name
-  says it is ephemeral, such as `tmp_link`. Later runs reuse the link while
-  the host has not rebooted. When the file is gone, the run's copy is the
-  source.
+- **In `~/.agister/cache/`, as a working copy.** The run records it in a
+  field whose name says it is disposable, such as `cache_path`. Later runs
+  reuse it; a cache may be cleared at any time, and when the file is gone
+  the run's copy is the source. Not /tmp: macOS clears old files there on a
+  schedule, not only on reboot, and a run's inputs must not depend on that.
 - **Linked explicitly.** A run that serves a goal records the goal's run
   artifact and digest, not only a path. Nothing is found by searching runs.
 
@@ -239,6 +248,15 @@ A goal's text never changes inside a run. The stored copy is written once
 and the input digest guards it: a later run given different bytes records a
 different goal. A change of intent is a new goal, with the reason in its
 Decisions.
+
+Two conditions keep this safe:
+- **Decisions go upstream.** A goal's dated owner rulings are truth, not
+  scaffolding. Each one also lands in the SPEC or the issue (§2: the change
+  "lands in the intent artifact first"); a ruling kept only in a run is lost
+  to the next SPEC change.
+- **The run store is one host.** `~/.agister/runs/` is not replicated as a
+  repository is. Audit material needs an export of runs to a durable
+  research or audit place: a mechanical step, unlike a cleanup.
 
 ### How processes and reviewers get it
 
@@ -271,13 +289,17 @@ Drafted for Multica (not yet filed):
    lost (both observed, §1). Store the bytes as a run artifact for process
    and workflow inputs alike; stop `source: param` copying the goal into
    every node's identity.
-3. **The ephemeral working copy and the link.** `tmp_link` (or similar) in
-   the record, reuse across runs, fall back to the run's copy; a run records
+3. **The disposable working copy and the link.** `cache_path` (or
+   similar) under `~/.agister/cache/` in the record, reuse across runs, fall
+   back to the run's copy; a run records
    the goal it serves by artifact and digest; a repair round records the
    judgement it answers.
 4. **Templates in settings and the structural check.** Conditional parts,
    resolved references, Open `None.`; no semantic judgement.
 5. **Re-scope LAB-105 after ADR-023.** The intent auditor is one more review
    node with `goal`; drop "the other reviewers still do not see the brief".
+
+6. **Export runs for audit.** A command that copies a run's record and
+   artifacts to a durable place, since `~/.agister/runs/` is one host.
 
 Settled, not reopened: the judge does not see the goal (ADR-023).
