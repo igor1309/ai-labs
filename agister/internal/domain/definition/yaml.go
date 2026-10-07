@@ -18,24 +18,9 @@ type pair struct {
 	value *yaml.Node
 }
 
-func parseYAML(data []byte, p *problems) *yaml.Node {
-	if !readable(data, p) {
-		return nil
-	}
-	var document yaml.Node
-	if err := yaml.Unmarshal(data, &document); err != nil {
-		p.add("", "%v", err)
-		return nil
-	}
-	if len(document.Content) == 0 {
-		p.add("", "empty document")
-		return nil
-	}
-	return document.Content[0]
-}
-
-// parseOneYAML reads data that must hold exactly one YAML document: a
-// second, even after an empty first, is a problem rather than unread.
+// parseOneYAML reads a YAML settings document, which must hold exactly
+// one YAML document: a second, even after an empty first, is a problem
+// rather than unread.
 func parseOneYAML(data []byte, p *problems) *yaml.Node {
 	if !readable(data, p) {
 		return nil
