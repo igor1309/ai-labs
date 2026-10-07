@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"reflect"
 	"testing"
 	"time"
@@ -275,6 +276,45 @@ func TestTheTrailHoldsEveryTurnOfTheCall(t *testing.T) {
 	}
 	events := []trailed{touched("a.go", "Edit", "t1"), touched("a.go", "Write", "t1"), touched("b.go", "Write", "t2")}
 	if got := trailOf(h, "TOUCHED"); !reflect.DeepEqual(got, events) {
+		t.Fatalf("events = %v", got)
+	}
+}
+
+// A repair turn (ADR-002) adds to the call's trail: its paths come after
+// the first turn's and its denials with them, on record and in the events,
+// in the order the turns reported them around the failed verification run.
+func TestARepairTurnAddsToTheTrail(t *testing.T) {
+	t.Parallel()
+	h := newHarness()
+	verifying(h)
+	h.commands.exits = []int{1}
+	// The repair turn's content was not checked before.
+	identities := 0
+	h.changes.identify = func() string { identities++; return fmt.Sprintf("tree-%d", identities) }
+	first, repair := completes(h), completes(h)
+	first.act = func(_ context.Context, sink app.EventSink) {
+		sink.ToolStarted(app.ToolCall{ID: "t1", Name: "Edit", Writes: []string{"a.go"}})
+	}
+	repair.act = func(_ context.Context, sink app.EventSink) {
+		sink.ToolStarted(app.ToolCall{ID: "t1", Name: "Write", Writes: []string{"b.go"}})
+		sink.PermissionDenied(app.PermissionDenial{Tool: "Bash", Input: `{"command":"git push"}`})
+	}
+	play(h, first, repair)
+	record := h.call(t, contract.CallRequest{})
+
+	if record.Result.Status != run.Completed || len(record.Attempts) != 2 || len(h.runner.calls()) != 2 {
+		t.Fatalf("result = %+v, attempts %+v", record.Result, record.Attempts)
+	}
+	want := &run.Trail{
+		Touched: []run.Touched{{Path: "a.go", Tool: "Edit"}, {Path: "b.go", Tool: "Write"}},
+		Denied:  []run.Denial{{Tool: "Bash", Input: `{"command":"git push"}`}},
+	}
+	if !reflect.DeepEqual(record.Trail, want) {
+		t.Fatalf("trail = %+v", record.Trail)
+	}
+	got := trailOf(h, "TOUCHED", "PERMISSION_DENIED", "VERIFY_FINISHED", "REPAIR_STARTED")
+	if len(got) != 6 || !reflect.DeepEqual(got[0], touched("a.go", "Edit", "t1")) || got[1].kind != "VERIFY_FINISHED" || got[2].kind != "REPAIR_STARTED" ||
+		!reflect.DeepEqual(got[3], touched("b.go", "Write", "t1")) || !reflect.DeepEqual(got[4], denied("Bash", `{"command":"git push"}`)) || got[5].kind != "VERIFY_FINISHED" {
 		t.Fatalf("events = %v", got)
 	}
 }

@@ -701,17 +701,34 @@ func printable(text string) string {
 	return out.String()
 }
 
-// inLine is a touched path as a line of a watch shows it: as it is, or
-// quoted as Go quotes a string when it holds what would break the line or
-// read as its end (a newline or another unprintable character, a quote, a
-// backslash). The record keeps the path as given.
-func inLine(path any) any {
-	text, ok := path.(string)
+// inLine is a field of a trail event (a touched path, a tool's name) as a
+// line of a watch shows it: as it is, or quoted as Go quotes a string when
+// it holds what would break the line or read as its end (a newline or
+// another unprintable character, a quote, a backslash). The record keeps
+// the field as given.
+func inLine(field any) any {
+	text, ok := field.(string)
 	if !ok {
-		return path
+		return field
 	}
 	if quoted := strconv.Quote(text); quoted != `"`+text+`"` {
 		return quoted
+	}
+	return text
+}
+
+// atLineEnd is a denied call's input, which ends its line, as a watch shows
+// it: quoted as inLine quotes a field when it holds a newline or another
+// unprintable character, or starts with a quote as a quoted input would.
+// The quotes and backslashes of the JSON an input is leave it as it is:
+// nothing follows them to be misread. The record keeps the input as given.
+func atLineEnd(input any) any {
+	text, ok := input.(string)
+	if !ok {
+		return input
+	}
+	if strings.HasPrefix(text, `"`) || !utf8.ValidString(text) || strings.ContainsFunc(text, func(r rune) bool { return !strconv.IsPrint(r) }) {
+		return strconv.Quote(text)
 	}
 	return text
 }
@@ -748,9 +765,9 @@ func describe(event contract.Event) string {
 			return "  ↳ tool error"
 		}
 	case "TOUCHED":
-		return fmt.Sprintf("· touched %v (%v)", inLine(data["path"]), data["tool"])
+		return fmt.Sprintf("· touched %v (%v)", inLine(data["path"]), inLine(data["tool"]))
 	case "PERMISSION_DENIED":
-		return fmt.Sprintf("! denied: %v %v", data["tool"], data["input"])
+		return fmt.Sprintf("! denied: %v %v", inLine(data["tool"]), atLineEnd(data["input"]))
 	case "VERIFY_STARTED":
 		return fmt.Sprintf("· verify attempt %v: %v", data["attempt"], data["command"])
 	case "VERIFY_FINISHED":

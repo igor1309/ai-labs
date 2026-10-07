@@ -349,20 +349,30 @@ func TestProgressDescribesStaleRecovery(t *testing.T) {
 }
 
 // A watch prints each path a tool call wrote and each tool call denied in
-// a line of its own. A path that holds a newline is quoted, so it stays one
-// line and forges no other.
+// a line of its own. A path, a tool name or an input that holds a newline
+// is quoted, so it stays one line and forges no other; an ordinary one
+// prints as it is.
 func TestProgressDescribesTheTrail(t *testing.T) {
 	t.Parallel()
 	spy := &clientSpy{run: finished("completed", ""), events: []contract.Event{
 		{Kind: "TOUCHED", Data: map[string]any{"path": "/work/a.go", "tool": "Edit", "tool_use_id": "t1"}},
 		{Kind: "TOUCHED", Data: map[string]any{"path": "a.go\n! denied: Bash fake", "tool": "Write", "tool_use_id": "t2"}},
 		{Kind: "PERMISSION_DENIED", Data: map[string]any{"tool": "Bash", "input": `{"command":"git push"}`}},
+		// A tool name or an input that holds a newline would forge another
+		// line, and an input that starts with a quote would read as one
+		// quoted: each is quoted.
+		{Kind: "TOUCHED", Data: map[string]any{"path": "b.go", "tool": "Edit\n· touched c.go", "tool_use_id": "t3"}},
+		{Kind: "PERMISSION_DENIED", Data: map[string]any{"tool": "Bash\n! denied: Edit", "input": "x\n· touched d.go (Edit)"}},
+		{Kind: "PERMISSION_DENIED", Data: map[string]any{"tool": "Bash", "input": `"x\n· touched d.go (Edit)"`}},
 		{Kind: "CALL_FINISHED"},
 	}}
 	r := run(context.Background(), spy, "runs", "watch", "run-1")
 	want := "· touched /work/a.go (Edit)\n" +
 		`· touched "a.go\n! denied: Bash fake" (Write)` + "\n" +
-		"! denied: Bash {\"command\":\"git push\"}\n"
+		"! denied: Bash {\"command\":\"git push\"}\n" +
+		`· touched b.go ("Edit\n· touched c.go")` + "\n" +
+		`! denied: "Bash\n! denied: Edit" "x\n· touched d.go (Edit)"` + "\n" +
+		`! denied: Bash "\"x\\n· touched d.go (Edit)\""` + "\n"
 	if !strings.Contains(r.stderr, want) {
 		t.Fatalf("stderr:\n%s", r.stderr)
 	}
