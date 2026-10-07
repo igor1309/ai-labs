@@ -14,7 +14,7 @@ type: workflow
 
 input:
   params:
-    base: {default: origin/agister}
+    base: {default: origin/trunk}
     candidate: {default: HEAD}
     # Required: a call without it is refused.
     goal: {}
