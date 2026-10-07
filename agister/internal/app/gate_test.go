@@ -78,6 +78,10 @@ func (c *clientFake) ListRuns(context.Context) ([]contract.Run, error) {
 	c.hit("ListRuns")
 	return nil, nil
 }
+func (c *clientFake) Export(context.Context, contract.ExportRequest) (contract.ExportResult, error) {
+	c.hit("Export")
+	return contract.ExportResult{}, nil
+}
 
 // While the settings have a problem that stops every command, or one whose
 // reach the report does not say, every use is refused before it reaches the
@@ -112,6 +116,7 @@ func TestGatedRefusesUseOfBrokenSettings(t *testing.T) {
 	refused["Observe other"] = gated.Observe(ctx, "other", 0, nil)
 	_, refused["Inspect other"] = gated.Inspect(ctx, "other")
 	_, refused["ListRuns"] = gated.ListRuns(ctx)
+	_, refused["Export"] = gated.Export(ctx, contract.ExportRequest{Runs: []string{"run-1"}, To: "/audit"})
 	for name, err := range refused {
 		var settings *contract.SettingsError
 		if !errors.As(err, &settings) || settings.Report.Problems[0].Message != "agent a: bad" {

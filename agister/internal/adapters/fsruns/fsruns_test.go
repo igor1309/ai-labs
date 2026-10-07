@@ -1,13 +1,16 @@
 package fsruns
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"reflect"
+	"sort"
 	"strings"
 	"syscall"
 	"testing"
@@ -31,6 +34,17 @@ func newStore(t *testing.T) Store {
 func letGo(t *testing.T, h app.ReapHandle) {
 	t.Helper()
 	t.Cleanup(func() { h.(*handle).abandon() })
+}
+
+// holdErr is the error store gives to a hold of run id; a read it gives
+// instead is let go once the test ends.
+func holdErr(t *testing.T, store Store, id string) error {
+	t.Helper()
+	read, err := store.Hold(context.Background(), id)
+	if err == nil {
+		t.Cleanup(read.Release)
+	}
+	return err
 }
 
 // Contract test: the run store against the real filesystem, and the
@@ -1032,6 +1046,313 @@ func TestARunAdoptedBeforeItsOwnerReleasesItsSignalKeepsItsOwn(t *testing.T) {
 			}
 			if _, state, _ := store.Get(ctx, "r"); state != run.StateFinished || !closed(finishing) {
 				t.Fatalf("after the adopter's finish: %s, closed %v", state, closed(finishing))
+			}
+		})
+	}
+}
+
+// A held read lists a run's evidence, artifacts among it, and not its
+// owner lock; it opens each, and nothing outside the run, a neighbouring
+// run's record there included, nor the lock.
+//
+// Contract test: the run store against the real filesystem, and the
+// kernel's flock on a run's owner.lock.
+func TestAHeldReadListsARunsEvidenceWithoutItsLock(t *testing.T) {
+	t.Parallel()
+	store := newStore(t)
+	ctx := context.Background()
+	at := time.Now()
+	record := run.Record{Schema: run.RecordSchema, ID: "r1", Process: "p", CreatedAt: at}
+	h, err := store.Create(ctx, record)
+	if err != nil {
+		t.Fatal(err)
+	}
+	letGo(t, h)
+	if err := h.Append(run.Event{Kind: "E"}); err != nil {
+		t.Fatal(err)
+	}
+	if err := h.Raw(`{"raw":true}`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := h.Artifact("out.txt", []byte("bytes\n")); err != nil {
+		t.Fatal(err)
+	}
+	record.FinishedAt = &at
+	if err := h.Finish(record); err != nil {
+		t.Fatal(err)
+	}
+	neighbour, err := store.Create(ctx, run.Record{Schema: run.RecordSchema, ID: "r2", Process: "p", CreatedAt: at})
+	if err != nil {
+		t.Fatal(err)
+	}
+	letGo(t, neighbour)
+	if _, err := os.Stat(filepath.Join(store.Dir, "r2", "record.json")); err != nil {
+		t.Fatalf("the neighbouring run's record: %v", err)
+	}
+
+	read, err := store.Hold(ctx, "r1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer read.Release()
+	if read.State() != run.StateFinished || read.Record().ID != "r1" || read.Record().FinishedAt == nil {
+		t.Fatalf("held: %s, %+v", read.State(), read.Record())
+	}
+	files, err := read.Files()
+	if want := []string{"artifacts/out.txt", "events.jsonl", "provider.jsonl", "record.json"}; err != nil || !reflect.DeepEqual(files, want) {
+		t.Fatalf("files = %v, %v, want %v", files, err, want)
+	}
+	file, err := read.Open("artifacts/out.txt")
+	if err != nil {
+		t.Fatal(err)
+	}
+	data, err := io.ReadAll(file)
+	file.Close()
+	if err != nil || string(data) != "bytes\n" {
+		t.Fatalf("artifact = %q, %v", data, err)
+	}
+	for _, path := range []string{"owner.lock", "../r2/record.json", "/etc/hosts"} {
+		if file, err := read.Open(path); err == nil {
+			file.Close()
+			t.Errorf("opened %s", path)
+		}
+	}
+	if err := holdErr(t, store, "absent"); !errors.Is(err, contract.ErrNotFound) {
+		t.Fatalf("an absent run: %v", err)
+	}
+	if err := holdErr(t, store, "../r1"); err == nil {
+		t.Fatal("held a path out of the store")
+	}
+}
+
+// A held read keeps every writer out until it is released: a run's owner
+// holds it alone, so a run running is not held; a process adopting a run
+// to recover it takes it alone, so a held run is not adopted, and one
+// being recovered is not held. Reads share a run, and a held run's state
+// still reads as it is.
+//
+// Contract test: the run store against the real filesystem, and the
+// kernel's flock on a run's owner.lock.
+func TestAHeldReadKeepsWritersOut(t *testing.T) {
+	t.Parallel()
+	store := newStore(t)
+	ctx := context.Background()
+	effects := &run.Effects{Checkout: &run.Checkout{Repository: "/repo", Dir: "/tmp/agister-checkout-1/workspace"}}
+	h, err := store.Create(ctx, run.Record{Schema: run.RecordSchema, ID: "r1", Process: "p", CreatedAt: time.Now(), Effects: effects})
+	if err != nil {
+		t.Fatal(err)
+	}
+	letGo(t, h)
+	var owned *app.RunOwnedError
+	if err := holdErr(t, store, "r1"); !errors.As(err, &owned) || owned.ID != "r1" || owned.Finished {
+		t.Fatalf("a running run: %v", err)
+	}
+
+	// Its owner is killed: the run is abandoned, and is held.
+	h.(*handle).lock.Close()
+	read, err := store.Hold(ctx, "r1")
+	if err != nil {
+		t.Fatalf("an abandoned run: %v", err)
+	}
+	t.Cleanup(read.Release)
+	if state := read.State(); state != run.StateAbandoned {
+		t.Fatalf("an abandoned run is held as %s", state)
+	}
+	other, err := store.Hold(ctx, "r1")
+	if err != nil {
+		t.Fatalf("a second read: %v", err)
+	}
+	t.Cleanup(other.Release)
+	other.Release()
+	if _, state, _ := store.Get(ctx, "r1"); state != run.StateAbandoned {
+		t.Fatalf("a held run reads %s", state)
+	}
+	if _, _, err := store.Adopt(ctx, "r1"); err == nil {
+		t.Fatal("adopted a held run")
+	}
+	read.Release()
+	read.Release()
+
+	adopted, record, err := store.Adopt(ctx, "r1")
+	if err != nil {
+		t.Fatalf("adopting a released run: %v", err)
+	}
+	letGo(t, adopted)
+	if err := holdErr(t, store, "r1"); !errors.As(err, &owned) || owned.Finished {
+		t.Fatalf("an abandoned run being recovered: %v", err)
+	}
+	now := time.Now()
+	record.FinishedAt, record.Result = &now, &run.Result{Status: run.Lost}
+	record.Effects = &run.Effects{Checkout: effects.Checkout, Unreleased: effects.Checkout}
+	if err := adopted.Finish(record); err != nil {
+		t.Fatal(err)
+	}
+	// Finished with its checkout unreleased, it is adopted again to remove
+	// it.
+	adopted, _, err = store.Adopt(ctx, "r1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	letGo(t, adopted)
+	if err := holdErr(t, store, "r1"); !errors.As(err, &owned) || !owned.Finished {
+		t.Fatalf("a finished run being recovered: %v", err)
+	}
+}
+
+// memoryFolders keeps the copies an export makes in memory. A stage calls
+// created as it creates each file, before it writes it.
+type memoryFolders struct {
+	copies  map[string]map[string][]byte
+	created func(path string)
+}
+
+func (f *memoryFolders) Folder(string) error { return nil }
+
+func (f *memoryFolders) Copy(_, id string) ([]string, bool, error) {
+	files, ok := f.copies[id]
+	var paths []string
+	for path := range files {
+		paths = append(paths, path)
+	}
+	sort.Strings(paths)
+	return paths, ok, nil
+}
+
+func (f *memoryFolders) OpenCopy(_, id, path string) (io.ReadCloser, error) {
+	return memoryFile(f.copies[id], path)
+}
+
+func (f *memoryFolders) Stage(_, id string) (app.ExportStage, error) {
+	return &memoryStage{folders: f, id: id, files: map[string]*bytes.Buffer{}}, nil
+}
+
+type memoryStage struct {
+	folders *memoryFolders
+	id      string
+	files   map[string]*bytes.Buffer
+}
+
+func (s *memoryStage) Create(path string) (io.WriteCloser, error) {
+	s.folders.created(path)
+	s.files[path] = &bytes.Buffer{}
+	return nopCloser{s.files[path]}, nil
+}
+
+func (s *memoryStage) Open(path string) (io.ReadCloser, error) {
+	return memoryFile(s.written(), path)
+}
+
+func (s *memoryStage) Commit() error {
+	s.folders.copies[s.id] = s.written()
+	return nil
+}
+
+func (s *memoryStage) Discard() error { return nil }
+
+func (s *memoryStage) written() map[string][]byte {
+	files := map[string][]byte{}
+	for path, data := range s.files {
+		files[path] = data.Bytes()
+	}
+	return files
+}
+
+type nopCloser struct{ io.Writer }
+
+func (nopCloser) Close() error { return nil }
+
+func memoryFile(files map[string][]byte, path string) (io.ReadCloser, error) {
+	data, ok := files[path]
+	if !ok {
+		return nil, fmt.Errorf("%s: %w", path, contract.ErrNotFound)
+	}
+	return io.NopCloser(bytes.NewReader(data)), nil
+}
+
+// An export holds the run it copies against recovery: a reap that comes
+// while the export has copied the run's events and not yet its record
+// does not adopt the run, so the copy is the run as it was, its record and
+// events together. Once the export is done, the reap recovers the run.
+// So for a finished run whose checkout was never released, and for an
+// abandoned one.
+//
+// Contract test: the run store against the real filesystem, and the
+// kernel's flock on a run's owner.lock.
+func TestAnExportHoldsTheRunAgainstRecovery(t *testing.T) {
+	t.Parallel()
+	checkout := &run.Checkout{Repository: "/repo", Dir: "/tmp/agister-checkout-1/workspace-1"}
+	for _, c := range []struct {
+		name string
+		// leave leaves the run as its owner did.
+		leave func(t *testing.T, h app.RunHandle, record run.Record)
+	}{
+		{"unreleased", func(t *testing.T, h app.RunHandle, record run.Record) {
+			now := time.Now()
+			record.FinishedAt, record.Result = &now, &run.Result{Status: run.Completed}
+			record.Effects = &run.Effects{Checkout: checkout, Unreleased: checkout}
+			if err := h.Finish(record); err != nil {
+				t.Fatal(err)
+			}
+		}},
+		{"abandoned", func(t *testing.T, h app.RunHandle, _ run.Record) {
+			h.(*handle).lock.Close()
+		}},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
+			store := newStore(t)
+			ctx := context.Background()
+			record := run.Record{Schema: run.RecordSchema, ID: "r1", Process: "p", CreatedAt: time.Now(), Effects: &run.Effects{Checkout: checkout}}
+			h, err := store.Create(ctx, record)
+			if err != nil {
+				t.Fatal(err)
+			}
+			letGo(t, h)
+			if err := h.Append(run.Event{Kind: "E"}); err != nil {
+				t.Fatal(err)
+			}
+			c.leave(t, h, record)
+			before := map[string][]byte{}
+			for _, name := range []string{"record.json", "events.jsonl"} {
+				if before[name], err = os.ReadFile(filepath.Join(store.Dir, "r1", name)); err != nil {
+					t.Fatal(err)
+				}
+			}
+
+			var discarded []string
+			spies := &reapSpies{discard: func(_ context.Context, dir string) error {
+				discarded = append(discarded, dir)
+				return nil
+			}}
+			reaper := app.NewReaper(store, spies, spies, spies)
+			reaper.ReapContext = func(ctx context.Context) (context.Context, context.CancelFunc) { return context.WithCancel(ctx) }
+			var reapErr error
+			reaped := false
+			folders := &memoryFolders{copies: map[string]map[string][]byte{}, created: func(path string) {
+				if path == "record.json" {
+					reaped, reapErr = true, reaper.Reap(ctx)
+				}
+			}}
+
+			result, err := app.NewExporter(store, folders).Export(ctx, contract.ExportRequest{Runs: []string{"r1"}, To: "/audit"})
+			if err != nil || len(result.Runs) != 1 || result.Runs[0].Action != contract.ExportCopied {
+				t.Fatalf("export: %+v, %v", result, err)
+			}
+			if !reaped || reapErr != nil || len(discarded) != 0 {
+				t.Fatalf("the reap during the export: reached %v, %v, discarded %v", reaped, reapErr, discarded)
+			}
+			for name, data := range before {
+				if got := folders.copies["r1"][name]; !bytes.Equal(got, data) {
+					t.Errorf("the copy's %s = %s, the run's was %s", name, got, data)
+				}
+			}
+
+			if err := reaper.Reap(ctx); err != nil {
+				t.Fatal(err)
+			}
+			events, _, err := store.Events(ctx, "r1", 0)
+			if err != nil || len(discarded) != 1 || len(events) != 2 || events[1].Kind != "EFFECTS_REAPED" {
+				t.Fatalf("the reap after the export: discarded %v, events %+v, %v", discarded, events, err)
 			}
 		})
 	}

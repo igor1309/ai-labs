@@ -63,4 +63,12 @@ type Runtime struct {
 	// exit, and the version's timeout: the wait has passed when the channel
 	// it returns delivers, and stop releases it. Nil is the wall clock.
 	Timer func(wait time.Duration) (fired <-chan time.Time, stop func())
+
+	// watcherEnding, when set, is called by Run's watcher once it has
+	// stopped its timer and made its reports, before it says it has ended;
+	// joining, when set, takes a value from Run while it waits for that.
+	// Only tests in the package set them, to hold the watcher at its end
+	// and see Run wait for it.
+	watcherEnding func()
+	joining       chan<- struct{}
 }

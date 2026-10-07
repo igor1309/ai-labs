@@ -85,6 +85,13 @@ Usage:
   agister runs [list]
   agister runs show <run-id>
   agister runs watch <run-id> [--after <seq>]
+  agister runs export <run-id>... --to <dir>
+                                     copy each run, and each node's run of a workflow, byte for byte to
+                                     <dir>/<run-id> for audit, without its owner lock; refused before
+                                     it writes anything when --to is missing or not a directory, or a
+                                     run does not exist or is still running; an identical copy there is
+                                     kept, one that differs is refused and never overwritten; each
+                                     artifact is read back and checked against the record's digest
   agister pages [--addr <host:port>] [--home <dir>] [--no-open]
                                      serve the settings page on this machine and open it; see
                                      agister pages --help
@@ -144,9 +151,12 @@ func Run(ctx context.Context, args []string, env IO, build Build) int {
 	fmt.Fprintf(env.Stderr, "agister: %v\n", err)
 	var usageErr usageError
 	var inputErr *contract.InputError
+	var refusedErr *contract.RefusedError
 	switch {
 	case settingsErr != nil:
 		return ExitUsage
+	case errors.As(err, &refusedErr):
+		return ExitRefused
 	case errors.As(err, &usageErr):
 		fmt.Fprintf(env.Stderr, "\n%s\n", usage)
 		return ExitUsage
@@ -160,7 +170,7 @@ func Run(ctx context.Context, args []string, env IO, build Build) int {
 type options struct {
 	home, runtime, model, modelFamily, effort, session, command string
 	agent, timeout, maxCost, continueRun, restore, dir          string
-	goal, answers                                               string
+	goal, answers, to                                           string
 	force, quiet, debug, json, help, probe, tree, version       bool
 	after                                                       int
 	params                                                      paramFlag
@@ -204,6 +214,7 @@ var commands = []Command{
 	{"runs list", nil},
 	{"runs show", nil},
 	{"runs watch", []string{"after", "json"}},
+	{"runs export", []string{"to"}},
 	{"version", nil},
 }
 
@@ -302,6 +313,7 @@ func flags(into func(name string) *options) *flag.FlagSet {
 	set.StringVar(&into("answers").answers, "answers", "", "")
 	set.StringVar(&into("dir").dir, "dir", "", "")
 	set.StringVar(&into("restore").restore, "restore", "", "")
+	set.StringVar(&into("to").to, "to", "", "")
 	set.BoolVar(&into("force").force, "force", false, "")
 	set.BoolVar(&into("quiet").quiet, "quiet", false, "")
 	set.BoolVar(&into("debug").debug, "debug", false, "")
@@ -563,6 +575,25 @@ func dispatch(ctx context.Context, args []string, env IO, build Build) (int, err
 				return 0, err
 			}
 			return follow(ctx, client, id, opts.after, false, env, opts)
+		case "export":
+			if len(rest) < 2 {
+				return 0, usageError{"runs export needs a run ID"}
+			}
+			to := opts.to
+			if to != "" {
+				to = absolute(to, env.Cwd)
+			}
+			result, err := client.Export(ctx, contract.ExportRequest{Runs: rest[1:], To: to})
+			// The runs exported before an interrupt are reported as done.
+			code := printExport(env.Stdout, result)
+			if errors.Is(err, context.Canceled) {
+				fmt.Fprintln(env.Stderr, "agister: export interrupted: the runs reported above were exported, the others were not")
+				return ExitInterrupted, nil
+			}
+			if err != nil {
+				return 0, err
+			}
+			return code, nil
 		}
 	}
 	// Lookup refused every command the switch does not run; a test keeps it so.
@@ -619,6 +650,34 @@ func follow(ctx context.Context, client contract.Client, id string, after int, o
 	}
 	summarize(env.Stderr, run)
 	return exitCode(run), nil
+}
+
+// printExport reports what an export did with each run, and returns its
+// exit code: failed when a copy did not read back as recorded, else refused
+// when a copy that differs was there.
+func printExport(w io.Writer, result contract.ExportResult) int {
+	code := ExitCompleted
+	for _, exported := range result.Runs {
+		name := exported.ID
+		if exported.Workflow != "" {
+			name += " (node of " + exported.Workflow + ")"
+		}
+		switch exported.Action {
+		case contract.ExportCopied:
+			fmt.Fprintf(w, "copied  %s: %d files, %d bytes to %s\n", name, exported.Files, exported.Bytes, exported.Dir)
+		case contract.ExportKept:
+			fmt.Fprintf(w, "kept    %s: the copy in %s is identical (%d files, %d bytes)\n", name, exported.Dir, exported.Files, exported.Bytes)
+		case contract.ExportRefused:
+			fmt.Fprintf(w, "REFUSED %s: %s: %s\n", name, exported.Dir, printable(exported.Problem))
+			if code == ExitCompleted {
+				code = ExitRefused
+			}
+		default:
+			fmt.Fprintf(w, "FAILED  %s: %s\n", name, printable(exported.Problem))
+			code = ExitFailed
+		}
+	}
+	return code
 }
 
 // printed is a node result as --json prints it: named by its run, each
