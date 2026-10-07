@@ -451,6 +451,9 @@ type recorderSpy struct {
 	// by name.
 	onArtifact         func() int
 	releasedAtArtifact map[string]int
+	// artifactErr, when set, is asked, by name, whether storing an
+	// artifact fails; one that fails is not kept.
+	artifactErr func(name string) error
 }
 
 func newRecorderSpy() *recorderSpy { return &recorderSpy{finished: make(chan run.Record, 1)} }
@@ -500,6 +503,11 @@ func (s *recorderSpy) Update(record run.Record) error {
 func (s *recorderSpy) Artifact(name string, data []byte) (run.Artifact, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	if s.artifactErr != nil {
+		if err := s.artifactErr(name); err != nil {
+			return run.Artifact{}, err
+		}
+	}
 	if s.artifacts == nil {
 		s.artifacts = map[string][]byte{}
 	}
@@ -510,7 +518,7 @@ func (s *recorderSpy) Artifact(name string, data []byte) (run.Artifact, error) {
 		}
 		s.releasedAtArtifact[name] = s.onArtifact()
 	}
-	return run.Artifact{Name: name, Path: "artifacts/" + name, Digest: "sha256:spy", Bytes: int64(len(data))}, nil
+	return run.Artifact{Name: name, Path: "artifacts/" + name, Digest: "sha256:" + sha(string(data)), Bytes: int64(len(data))}, nil
 }
 
 func (s *recorderSpy) Finish(record run.Record) error {
@@ -561,6 +569,21 @@ type runsSpy struct {
 	artifacts map[string][]byte // by "<run>/<path>"
 	read      []string          // the artifacts read, as "<run>/<path>"
 	listErr   error
+	listed    int // how often the runs were listed
+}
+
+// gets and lists are the runs read by Get, in order, and how often the
+// runs were listed.
+func (s *runsSpy) gets() []string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return append([]string(nil), s.asked...)
+}
+
+func (s *runsSpy) lists() int {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.listed
 }
 
 // store keeps data as an artifact of run id and returns it as the run's
@@ -601,6 +624,7 @@ func (s *runsSpy) Get(_ context.Context, id string) (run.Record, run.State, erro
 func (s *runsSpy) ListStrict(context.Context) ([]run.Record, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	s.listed++
 	records := make([]run.Record, 0, len(s.records))
 	for _, record := range s.records {
 		records = append(records, record)
@@ -985,4 +1009,38 @@ func messages(problems []contract.Problem) []string {
 		list = append(list, problem.Message)
 	}
 	return list
+}
+
+// copiesSpy keeps working copies in memory, by path, as /cache/<digest>/<name>,
+// each written once: a copy that already holds the bytes is left as it is,
+// as the cache leaves it. err, when set, is asked, by the file's name,
+// whether keeping its copy fails; one that fails is not kept.
+type copiesSpy struct {
+	mu     sync.Mutex
+	kept   map[string][]byte
+	writes []string // the paths written, in order
+	err    func(name string) error
+}
+
+func (s *copiesSpy) Keep(digest, name string, data []byte) (string, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.err != nil {
+		if err := s.err(name); err != nil {
+			return "", err
+		}
+	}
+	if digest != sha(string(data)) {
+		return "", fmt.Errorf("digest %s is not the bytes'", digest)
+	}
+	path := "/cache/" + digest + "/" + name
+	if kept, ok := s.kept[path]; ok && string(kept) == string(data) {
+		return path, nil
+	}
+	if s.kept == nil {
+		s.kept = map[string][]byte{}
+	}
+	s.kept[path] = data
+	s.writes = append(s.writes, path)
+	return path, nil
 }

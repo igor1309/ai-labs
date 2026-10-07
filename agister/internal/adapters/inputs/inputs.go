@@ -39,5 +39,5 @@ func (File) Resolve(_ context.Context, spec app.InputSpec) (app.Resolved, error)
 		return app.Resolved{}, err
 	}
 	sum := sha256.Sum256(data)
-	return app.Resolved{Value: string(data), Identity: "sha256:" + hex.EncodeToString(sum[:])}, nil
+	return app.Resolved{Value: string(data), Identity: "sha256:" + hex.EncodeToString(sum[:]), File: filepath.Base(path)}, nil
 }

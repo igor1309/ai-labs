@@ -156,6 +156,10 @@ type Resolved struct {
 	Value    any    // string or []string
 	Identity string // commit, content digest, or the literal
 	Revision bool   // Identity is a commit that can be checked out
+	// File is the base name of the file the value was read from, which its
+	// working copy is named by (ADR-026 rule 6); empty for a value not read
+	// from a file.
+	File string
 }
 
 // correlation carries identifying fields for diagnostics through context.

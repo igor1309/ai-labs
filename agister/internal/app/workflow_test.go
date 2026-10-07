@@ -307,7 +307,7 @@ func (r *runSpy) Artifact(name string, data []byte) (run.Artifact, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	r.artifacts[name] = data
-	return run.Artifact{Name: name, Path: "artifacts/" + name, Digest: "sha256:spy", Bytes: int64(len(data))}, nil
+	return run.Artifact{Name: name, Path: "artifacts/" + name, Digest: "sha256:" + sha(string(data)), Bytes: int64(len(data))}, nil
 }
 
 func (r *runSpy) Finish(record run.Record) error {
@@ -346,6 +346,10 @@ type flowHarness struct {
 	store      *storeSpy
 	hosted     *app.Hosted
 	calls      *app.Calls
+	// runs are the earlier runs a call reads; copies keeps the working
+	// copies of its file inputs.
+	runs   *runsSpy
+	copies *copiesSpy
 
 	mu       sync.Mutex
 	resolved map[string]int // how often each symbolic revision was resolved
@@ -396,15 +400,20 @@ func newFlowHarness() *flowHarness {
 				return app.Resolved{}, fmt.Errorf("no such file")
 			}
 			return app.Resolved{Value: "the guide", Identity: "sha256:guide"}, nil
+		case "param":
+			// As inputs.Param: a literal is its own identity.
+			value := spec.Params[spec.Args["name"]]
+			return app.Resolved{Value: value, Identity: value}, nil
 		}
 		return app.Resolved{}, fmt.Errorf("no source %s", spec.Source)
 	}}
 	runtimes := nodeRuntimes{runner: h.runner}
 	changes := &changesSpy{}
 	runs := &runsSpy{records: map[string]run.Record{}, states: map[string]run.State{}}
+	h.runs, h.copies = runs, &copiesSpy{}
 	h.calls = app.NewCalls(
 		app.NewResolver(h.defs, runtimes, okValidator{}, resolverCheckStub{}), runtimes,
-		map[string]app.InputProvider{"git.revision": h.inputs, "git.diff": h.inputs, "file": h.inputs},
+		map[string]app.InputProvider{"git.revision": h.inputs, "git.diff": h.inputs, "file": h.inputs, "param": h.inputs}, h.copies,
 		h.workspaces, changes, app.NewHolder(app.HoldAdapters{Locks: h.locks, Worktrees: &worktreesSpy{}, Content: changes, Runs: runs, Writers: &writersSpy{}}),
 		app.NewVerifier(changes, &commandsSpy{}, fixedClock{}), app.NewRecoverer(fixedClock{}), okValidator{}, h.store, runs,
 		fixedClock{}, unfired, &seqIDs{}, "/state", h.hosted,

@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"slices"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -24,6 +25,7 @@ type Calls struct {
 	resolver   CallResolver
 	runners    CallRunners
 	inputs     map[string]InputProvider
+	copies     CallWorkingCopies
 	workspaces CallWorkspaces
 	changes    CallChanges
 	holder     CallHolder
@@ -445,6 +447,14 @@ type InputProvider interface {
 	Resolve(ctx context.Context, spec InputSpec) (Resolved, error)
 }
 
+// CallWorkingCopies keeps the disposable working copies of a call's file
+// inputs in Agister's cache (ADR-026 rule 6), each named by the sha256 hex
+// digest of its bytes and the file's base name. Keep returns the copy's
+// path; a copy that already holds the bytes is left as it is.
+type CallWorkingCopies interface {
+	Keep(digest, name string, data []byte) (path string, err error)
+}
+
 // CallWorkspaces locates the repository and the git worktree a call works
 // in.
 type CallWorkspaces interface {
@@ -509,6 +519,7 @@ type RunRecorder interface {
 type CallAdapters struct {
 	Runners    CallRunners
 	Inputs     map[string]InputProvider
+	Copies     CallWorkingCopies
 	Workspaces CallWorkspaces
 	Changes    CallChanges
 	Validator  CallValidator
@@ -521,14 +532,15 @@ type CallAdapters struct {
 }
 
 // NewCalls returns the use case that submits and executes calls. Every
-// collaborator is required. holder holds the caller's worktree for each
-// call. timer starts the waits of a call's staleness limits. stateDir
+// collaborator is required. copies keeps the working copies of the
+// calls' file inputs. holder holds the caller's worktree for each call. timer starts the waits of a call's staleness limits. stateDir
 // is Agister's own state, which no agent workspace may overlap. cancels is
 // where each running call's cancellation is held.
 func NewCalls(
 	resolver CallResolver,
 	runners CallRunners,
 	inputs map[string]InputProvider,
+	copies CallWorkingCopies,
 	workspaces CallWorkspaces,
 	changes CallChanges,
 	holder CallHolder,
@@ -547,6 +559,7 @@ func NewCalls(
 		resolver:   resolver,
 		runners:    runners,
 		inputs:     inputs,
+		copies:     copies,
 		workspaces: workspaces,
 		changes:    changes,
 		holder:     holder,
@@ -662,6 +675,8 @@ func (c *Calls) Submit(ctx context.Context, request contract.CallRequest) (strin
 			Timeout:    request.Timeout,
 			MaxCostUSD: request.MaxCostUSD,
 			Continue:   request.Continue,
+			Goal:       request.Goal,
+			Answers:    request.Answers,
 			Cwd:        request.Cwd,
 		},
 	}
@@ -814,6 +829,11 @@ func (c *Calls) execute(ctx context.Context, handle RunHandle, record run.Record
 		event(run.SourceAgister, "PERMISSIONS_WITHHELD", map[string]any{"permissions": res.Plan.Withheld})
 	}
 
+	if record.Links, err = c.links(ctx, record.Request); err != nil {
+		fail(err)
+		return
+	}
+	_ = handle.Update(record)
 	resumed, err := c.continuation(ctx, res, record.ID, record.Request.Continue, record.Request.Cwd)
 	if err != nil {
 		fail(err)
@@ -831,12 +851,14 @@ func (c *Calls) execute(ctx context.Context, handle RunHandle, record run.Record
 		return
 	}
 
-	inputs, err := c.resolveValues(ctx, "process "+res.Process.Name, res.Process.Params, res.Process.Values, record.Request, collection, res.Prompts, res.Absent)
+	inputs, files, err := c.resolveValues(ctx, "process "+res.Process.Name, res.Process.Params, res.Process.Values, record.Request, collection, res.Prompts, res.Absent)
 	if err != nil {
 		fail(err)
 		return
 	}
-	record.Inputs = summarize(inputs)
+	record.Inputs = recordInputs(handle, inputs, event)
+	c.keepWorkingCopies(record.Inputs, inputs, files, event)
+	record.Request.Params = recordParams(record.Request.Params, record.Inputs)
 	_ = handle.Update(record)
 	revision, _ := revisionOf(inputs, res.Process.Revision)
 
@@ -1088,6 +1110,12 @@ func (c *Calls) runWorkflow(ctx context.Context, handle RunHandle, record run.Re
 		refused(err)
 		return
 	}
+	links, err := c.links(ctx, record.Request)
+	if err != nil {
+		refused(err)
+		return
+	}
+	record.Links = links
 	workflow := res.Workflow
 	state := &run.Workflow{Barrier: run.Barrier{State: run.BarrierWaiting}}
 	for _, node := range workflow.FanOut {
@@ -1099,12 +1127,14 @@ func (c *Calls) runWorkflow(ctx context.Context, handle RunHandle, record run.Re
 
 	// Resolved once, before any node starts; every fan-out node receives the
 	// same values.
-	inputs, err := c.resolveValues(ctx, "workflow "+workflow.Name, workflow.Params, workflow.Values, record.Request, nil, nil, nil)
+	inputs, files, err := c.resolveValues(ctx, "workflow "+workflow.Name, workflow.Params, workflow.Values, record.Request, nil, nil, nil)
 	if err != nil {
 		refused(err)
 		return
 	}
-	record.Inputs = summarize(inputs)
+	record.Inputs = recordInputs(handle, inputs, func(_, kind string, data map[string]any) { event(kind, data) })
+	c.keepWorkingCopies(record.Inputs, inputs, files, func(_, kind string, data map[string]any) { event(kind, data) })
+	record.Request.Params = recordParams(record.Request.Params, record.Inputs)
 	_ = handle.Update(record)
 	values, err := passedValues(inputs)
 	if err != nil {
@@ -1453,8 +1483,9 @@ func (c *Calls) rebuilds(ctx context.Context, dir, revision string, patch []byte
 // call is refused. prompts are the prompts resolved with the call, by name
 // (ADR-014 rule 3), and absent the optional prompt inputs neither layer has
 // the prompt of, by their index among values, which give no input (ADR-019
-// rule 2); a workflow has none.
-func (c *Calls) resolveValues(ctx context.Context, subject string, declared []CallParam, values []CallValue, request run.Request, collection *Resolved, prompts map[string]Resolved, absent []CallAbsent) ([]run.Input, error) {
+// rule 2); a workflow has none. files are, by each input's place, the base
+// name of the file it was read from, empty for any other.
+func (c *Calls) resolveValues(ctx context.Context, subject string, declared []CallParam, values []CallValue, request run.Request, collection *Resolved, prompts map[string]Resolved, absent []CallAbsent) (inputs []run.Input, files []string, err error) {
 	params := map[string]string{}
 	var unknown []string
 	for name := range request.Params {
@@ -1464,7 +1495,7 @@ func (c *Calls) resolveValues(ctx context.Context, subject string, declared []Ca
 	}
 	if len(unknown) > 0 {
 		sort.Strings(unknown)
-		return nil, refuse("%s takes no params: %s", subject, strings.Join(unknown, ", "))
+		return nil, nil, refuse("%s takes no params: %s", subject, strings.Join(unknown, ", "))
 	}
 	var missing []string
 	for _, param := range declared {
@@ -1479,20 +1510,21 @@ func (c *Calls) resolveValues(ctx context.Context, subject string, declared []Ca
 		}
 	}
 	if len(missing) > 0 {
-		return nil, refuse("%s is missing params: %s", subject, strings.Join(missing, ", "))
+		return nil, nil, refuse("%s is missing params: %s", subject, strings.Join(missing, ", "))
 	}
 
-	inputs := make([]run.Input, 0, len(values))
+	inputs = make([]run.Input, 0, len(values))
+	files = make([]string, 0, len(values))
 	texts := map[string]string{}
 	for i, value := range values {
 		if value.Source == definition.CollectionSource {
 			if collection == nil {
-				return nil, refuse("input %s: %s is given only to a workflow's join", value.Name, definition.CollectionSource)
+				return nil, nil, refuse("input %s: %s is given only to a workflow's join", value.Name, definition.CollectionSource)
 			}
 			if text, ok := collection.Value.(string); ok {
 				texts[value.Name] = text
 			}
-			inputs = append(inputs, run.Input{Name: value.Name, Source: value.Source, Identity: collection.Identity, Value: collection.Value})
+			inputs, files = append(inputs, run.Input{Name: value.Name, Source: value.Source, Identity: collection.Identity, Value: collection.Value}), append(files, "")
 			continue
 		}
 		if value.Source == definition.PromptSource {
@@ -1501,30 +1533,30 @@ func (c *Calls) resolveValues(ctx context.Context, subject string, declared []Ca
 			}
 			prompt, ok := prompts[value.Args["name"]]
 			if !ok {
-				return nil, refuse("input %s: prompt %q was not resolved with the call", value.Name, value.Args["name"])
+				return nil, nil, refuse("input %s: prompt %q was not resolved with the call", value.Name, value.Args["name"])
 			}
 			texts[value.Name] = prompt.Value.(string)
-			inputs = append(inputs, run.Input{Name: value.Name, Source: value.Source, Identity: prompt.Identity, Value: prompt.Value})
+			inputs, files = append(inputs, run.Input{Name: value.Name, Source: value.Source, Identity: prompt.Identity, Value: prompt.Value}), append(files, "")
 			continue
 		}
 		provider, ok := c.inputs[value.Source]
 		if !ok {
-			return nil, refuse("input %s: unknown source %q", value.Name, value.Source)
+			return nil, nil, refuse("input %s: unknown source %q", value.Name, value.Source)
 		}
 		args, err := definition.Value{Name: value.Name, Source: value.Source, Args: value.Args}.Bind(params, texts)
 		if err != nil {
-			return nil, refuse("input %s: %v", value.Name, err)
+			return nil, nil, refuse("input %s: %v", value.Name, err)
 		}
 		resolved, err := provider.Resolve(ctx, InputSpec{Source: value.Source, Args: args, Params: params, Cwd: request.Cwd})
 		if err != nil {
-			return nil, refuse("input %s: %v", value.Name, err)
+			return nil, nil, refuse("input %s: %v", value.Name, err)
 		}
 		if text, ok := resolved.Value.(string); ok {
 			texts[value.Name] = text
 		}
-		inputs = append(inputs, run.Input{Name: value.Name, Source: value.Source, Identity: resolved.Identity, Revision: resolved.Revision, Value: resolved.Value})
+		inputs, files = append(inputs, run.Input{Name: value.Name, Source: value.Source, Identity: resolved.Identity, Revision: resolved.Revision, Value: resolved.Value}), append(files, resolved.File)
 	}
-	return inputs, nil
+	return inputs, files, nil
 }
 
 // preparedWorkspace is where a call's agent works: the root of the
@@ -1654,13 +1686,105 @@ func (s *sink) keep(trail *run.Trail) {
 	s.unsaved = s.handle.Update(*s.record) != nil
 }
 
-func summarize(inputs []run.Input) []run.Input {
+// recordInputs is inputs as the run's record keeps them (ADR-026 rule 6): a
+// text value within inlineInputChars inline, a longer one stored as an
+// artifact of the run, which the input names, and identified by its digest
+// where its identity was the literal itself. An artifact that cannot be
+// stored is recorded as ARTIFACT_FAILED, and its input keeps its identity
+// only. The values the call works with are not changed.
+func recordInputs(handle RunHandle, inputs []run.Input, event func(string, string, map[string]any)) []run.Input {
 	out := make([]run.Input, len(inputs))
 	for i, input := range inputs {
 		out[i] = input
-		if text, ok := input.Value.(string); ok && len(text) > inlineInputChars {
-			out[i].Value = nil
+		text, ok := input.Value.(string)
+		if !ok || len(text) <= inlineInputChars {
+			continue
 		}
+		out[i].Value = nil
+		if input.Identity == text {
+			out[i].Identity = "sha256:" + digestOf([]byte(text))
+		}
+		name := inputArtifactName(inputs, i)
+		artifact, err := handle.Artifact(name, []byte(text))
+		if err != nil {
+			event(run.SourceAgister, "ARTIFACT_FAILED", map[string]any{"name": name, "input": input.Name, "error": err.Error()})
+			continue
+		}
+		event(run.SourceAgister, "ARTIFACT_STORED", map[string]any{"name": artifact.Name, "input": input.Name, "digest": artifact.Digest, "bytes": artifact.Bytes})
+		out[i].Artifact = &artifact
+	}
+	return out
+}
+
+// keepWorkingCopies gives each input read from a file a disposable working
+// copy of its bytes in Agister's cache, which recorded, its record, names
+// in CachePath (ADR-026 rule 6). files are the inputs' base names, as
+// resolveValues returns them. A copy that cannot be kept is recorded as
+// CACHE_FAILED, as an artifact that fails is, and its input names none; the
+// call goes on.
+func (c *Calls) keepWorkingCopies(recorded, inputs []run.Input, files []string, event func(string, string, map[string]any)) {
+	for i, file := range files {
+		text, ok := inputs[i].Value.(string)
+		if file == "" || !ok {
+			continue
+		}
+		path, err := c.copies.Keep(digestOf([]byte(text)), file, []byte(text))
+		if err != nil {
+			event(run.SourceAgister, "CACHE_FAILED", map[string]any{"name": file, "input": inputs[i].Name, "error": err.Error()})
+			continue
+		}
+		recorded[i].CachePath = path
+	}
+}
+
+// inputArtifactName is the file name the artifact of inputs[i] is stored
+// under: input-<name>.txt for a name of at most 64 letters, digits, '-'
+// and '_' that no other input has, in any case, and otherwise
+// input.<i>.txt, which no such name can produce, so each input's artifact
+// is its own, on a file system that ignores case too.
+func inputArtifactName(inputs []run.Input, i int) string {
+	name := inputs[i].Name
+	plain := len(name) > 0 && len(name) <= 64 && !strings.ContainsFunc(name, func(r rune) bool {
+		return !(r >= 'a' && r <= 'z' || r >= 'A' && r <= 'Z' || r >= '0' && r <= '9' || r == '-' || r == '_')
+	})
+	repeated := false
+	for j, other := range inputs {
+		repeated = repeated || j != i && asciiLower(other.Name) == asciiLower(name)
+	}
+	if plain && !repeated {
+		return "input-" + name + ".txt"
+	}
+	return "input." + strconv.Itoa(i) + ".txt"
+}
+
+// asciiLower is name with its ASCII letters in lower case.
+func asciiLower(name string) string {
+	return strings.Map(func(r rune) rune {
+		if r >= 'A' && r <= 'Z' {
+			return r + 'a' - 'A'
+		}
+		return r
+	}, name)
+}
+
+// recordParams is params as a run's record keeps them once its inputs are
+// recorded: a value over inlineInputChars whose bytes an input's artifact
+// keeps (see recordInputs) as its digest, and every other value as given.
+// Until then, and on a run refused before, the record keeps params as
+// given, so a long one's text is never lost.
+func recordParams(params map[string]string, inputs []run.Input) map[string]string {
+	if params == nil {
+		return nil
+	}
+	out := make(map[string]string, len(params))
+	for name, value := range params {
+		if len(value) > inlineInputChars {
+			digest := "sha256:" + digestOf([]byte(value))
+			if slices.ContainsFunc(inputs, func(input run.Input) bool { return input.Artifact != nil && input.Artifact.Digest == digest }) {
+				value = digest
+			}
+		}
+		out[name] = value
 	}
 	return out
 }

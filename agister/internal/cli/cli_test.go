@@ -123,9 +123,9 @@ func TestRunSubmitsTheRequestBuiltFromArguments(t *testing.T) {
 	t.Parallel()
 	spy := &clientSpy{run: finished("completed", "")}
 	spy.run.Result.Text = "hi"
-	r := run(context.Background(), spy, "run", "p", "--param", "a=1", "--agent", "x", "--param", "b=two=2", "--timeout", "5m", "--max-cost", "0.5", "--continue", "run-0", "--quiet")
+	r := run(context.Background(), spy, "run", "p", "--param", "a=1", "--agent", "x", "--param", "b=two=2", "--timeout", "5m", "--max-cost", "0.5", "--continue", "run-0", "--goal", "run-g:brief", "--answers", "run-j", "--quiet")
 	limit := 0.5
-	want := contract.CallRequest{Process: "p", Params: map[string]string{"a": "1", "b": "two=2"}, Agent: "x", Timeout: "5m", MaxCostUSD: &limit, Continue: "run-0", Cwd: "/work"}
+	want := contract.CallRequest{Process: "p", Params: map[string]string{"a": "1", "b": "two=2"}, Agent: "x", Timeout: "5m", MaxCostUSD: &limit, Continue: "run-0", Goal: "run-g:brief", Answers: "run-j", Cwd: "/work"}
 	if !reflect.DeepEqual(spy.submitted, []contract.CallRequest{want}) {
 		t.Fatalf("submitted %+v", spy.submitted)
 	}
@@ -369,6 +369,23 @@ func TestProgressDescribesStaleRecovery(t *testing.T) {
 		"! RECOVERY_NOT_STARTED {\"limit\":\"no_event\",\"reason\":\"no resume is left of stale.recover.max_resumes 1\"}\n"
 	if !strings.Contains(r.stderr, want) {
 		t.Fatalf("stderr:\n%s", r.stderr)
+	}
+}
+
+// A working copy the cache could not keep shows as a warning that names
+// the input, its file and the error; the run still completes.
+func TestProgressWarnsOfAWorkingCopyNotKept(t *testing.T) {
+	t.Parallel()
+	spy := &clientSpy{run: finished("completed", ""), events: []contract.Event{
+		{Kind: "CACHE_FAILED", Data: map[string]any{"name": "brief.md", "input": "brief", "error": "cache full"}},
+		{Kind: "CALL_FINISHED"},
+	}}
+	r := run(context.Background(), spy, "run", "p")
+	if want := "! CACHE_FAILED {\"error\":\"cache full\",\"input\":\"brief\",\"name\":\"brief.md\"}\n"; !strings.Contains(r.stderr, want) {
+		t.Fatalf("stderr:\n%s", r.stderr)
+	}
+	if r.code != cli.ExitCompleted {
+		t.Fatalf("code = %d, want %d", r.code, cli.ExitCompleted)
 	}
 }
 

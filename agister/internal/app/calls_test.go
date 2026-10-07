@@ -95,6 +95,8 @@ type harness struct {
 	commands  *commandsSpy
 	validator *validatorSpy
 	recorder  *recorderSpy
+	// copies keeps the working copies of the calls' file inputs.
+	copies *copiesSpy
 	// locks, worktrees and writers are what a call's holder runs on;
 	// processes is what a reaper beside it ends processes through.
 	locks     *locksSpy
@@ -115,6 +117,7 @@ func newHarness() *harness {
 		commands:   &commandsSpy{},
 		validator:  &validatorSpy{},
 		recorder:   newRecorderSpy(),
+		copies:     &copiesSpy{},
 		locks:      &locksSpy{},
 		worktrees:  &worktreesSpy{},
 		writers:    &writersSpy{},
@@ -150,7 +153,7 @@ func (h *harness) callsRecordedWith(src app.ResolverDefinitions, workspaces app.
 	return app.NewCalls(
 		app.NewResolver(src, h.runtimes, h.validator, resolverCheckStub{}),
 		h.runtimes,
-		map[string]app.InputProvider{"git.revision": h.inputs, "git.diff": h.inputs, "git.changed_files": h.inputs, "file": h.inputs, "param": h.inputs},
+		map[string]app.InputProvider{"git.revision": h.inputs, "git.diff": h.inputs, "git.changed_files": h.inputs, "file": h.inputs, "param": h.inputs}, h.copies,
 		workspaces, changes, h.holderOver(changes, runs), app.NewVerifier(changes, h.commands, h.clock), app.NewRecoverer(h.clock), h.validator, recorder, runs,
 		h.clock, h.timer, ids, "/state", h.hosted,
 	)
@@ -927,7 +930,7 @@ func TestCallsResolveThroughTheResolutionTheyDeclare(t *testing.T) {
 	h := newHarness()
 	double := &snapshotCounter{reason: "the double refuses"}
 	h.calls = app.NewCalls(
-		double, h.runtimes, map[string]app.InputProvider{}, h.workspaces, h.changes, h.holder(), app.NewVerifier(h.changes, h.commands, h.clock), app.NewRecoverer(h.clock),
+		double, h.runtimes, map[string]app.InputProvider{}, h.copies, h.workspaces, h.changes, h.holder(), app.NewVerifier(h.changes, h.commands, h.clock), app.NewRecoverer(h.clock),
 		h.validator, h.recorder, h.runs, h.clock, h.timer, fixedIDs{}, "/state", h.hosted,
 	)
 	record := h.call(t, contract.CallRequest{})
@@ -1201,7 +1204,7 @@ func TestCallsCancelThroughTheCancelsTheyDeclare(t *testing.T) {
 	cancels := &cancelsSpy{held: map[string]func() bool{}, ended: make(chan string, 1)}
 	h.calls = app.NewCalls(
 		app.NewResolver(h.defs, h.runtimes, h.validator, resolverCheckStub{}), h.runtimes,
-		map[string]app.InputProvider{"git.revision": h.inputs, "git.diff": h.inputs},
+		map[string]app.InputProvider{"git.revision": h.inputs, "git.diff": h.inputs}, h.copies,
 		h.workspaces, h.changes, h.holder(), app.NewVerifier(h.changes, h.commands, h.clock), app.NewRecoverer(h.clock), h.validator, h.recorder, h.runs,
 		h.clock, h.timer, fixedIDs{}, "/state", cancels,
 	)

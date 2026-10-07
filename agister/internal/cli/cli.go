@@ -67,14 +67,19 @@ Usage:
   agister workflow list
   agister workflow show <workflow>   its params, nodes, and each node's process as a call would see it
   agister run <process> [--param <name>=<value>]... [--agent <name>] [--timeout <d>] [--max-cost <usd>]
-                         [--continue <run-id>] [--dir <path>] [--json]
+                         [--continue <run-id>] [--goal <run-id>[:<input>]] [--answers <run-id>]
+                         [--dir <path>] [--json]
                                      (--json: print the node result, with its run_id and each
                                      artifact's path absolute)
                                      the call works in the git worktree that holds --dir (default:
                                      this directory), with its settings, and leaves its changes there
                                      --continue resumes that run's session in the same worktree,
                                      which holds the session's latest run's changes
-  agister run <workflow> [--param <name>=<value>]... [--dir <path>] [--json]
+                                     --goal records the goal the run serves: that run's input (default
+                                     goal), by its digest; --answers records the completed run whose
+                                     judgement it answers; each is refused unless that run has it
+  agister run <workflow> [--param <name>=<value>]... [--goal <run-id>[:<input>]] [--answers <run-id>]
+                         [--dir <path>] [--json]
                                      fan-out nodes run concurrently, the join once all of them ended,
                                      if at least one completed; each node is a run of its own
   agister runs [list]
@@ -155,6 +160,7 @@ func Run(ctx context.Context, args []string, env IO, build Build) int {
 type options struct {
 	home, runtime, model, modelFamily, effort, session, command string
 	agent, timeout, maxCost, continueRun, restore, dir          string
+	goal, answers                                               string
 	force, quiet, debug, json, help, probe, tree, version       bool
 	after                                                       int
 	params                                                      paramFlag
@@ -194,7 +200,7 @@ var commands = []Command{
 	{"process show", []string{"agent", "json"}},
 	{"workflow list", nil},
 	{"workflow show", []string{"json"}},
-	{"run", []string{"param", "agent", "timeout", "max-cost", "continue", "dir", "json"}},
+	{"run", []string{"param", "agent", "timeout", "max-cost", "continue", "goal", "answers", "dir", "json"}},
 	{"runs list", nil},
 	{"runs show", nil},
 	{"runs watch", []string{"after", "json"}},
@@ -292,6 +298,8 @@ func flags(into func(name string) *options) *flag.FlagSet {
 	set.StringVar(&into("session").session, "session", "", "")
 	set.StringVar(&into("max-cost").maxCost, "max-cost", "", "")
 	set.StringVar(&into("continue").continueRun, "continue", "", "")
+	set.StringVar(&into("goal").goal, "goal", "", "")
+	set.StringVar(&into("answers").answers, "answers", "", "")
 	set.StringVar(&into("dir").dir, "dir", "", "")
 	set.StringVar(&into("restore").restore, "restore", "", "")
 	set.BoolVar(&into("force").force, "force", false, "")
@@ -511,7 +519,7 @@ func dispatch(ctx context.Context, args []string, env IO, build Build) (int, err
 		if err != nil {
 			return 0, err
 		}
-		request := contract.CallRequest{Process: name, Params: opts.params, Agent: opts.agent, Timeout: opts.timeout, Continue: opts.continueRun, Cwd: cwd}
+		request := contract.CallRequest{Process: name, Params: opts.params, Agent: opts.agent, Timeout: opts.timeout, Continue: opts.continueRun, Goal: opts.goal, Answers: opts.answers, Cwd: cwd}
 		if opts.maxCost != "" {
 			limit, err := strconv.ParseFloat(opts.maxCost, 64)
 			if err != nil || limit <= 0 {
@@ -812,7 +820,7 @@ func describe(event contract.Event) string {
 	case "NO_CHANGES":
 		return "· no changes in the checkout"
 	case "PROVIDER_ERROR", "PROVIDER_RETRY", "RATE_LIMITED", "TIMEOUT", "ABORT_REQUESTED", "SPAWN_FAILED",
-		"STREAM_PARSE_ERROR", "SESSION_ID_MISMATCH", "TURN_FAILED", "WORKSPACE_RELEASE_FAILED", "ARTIFACT_FAILED",
+		"STREAM_PARSE_ERROR", "SESSION_ID_MISMATCH", "TURN_FAILED", "WORKSPACE_RELEASE_FAILED", "ARTIFACT_FAILED", "CACHE_FAILED",
 		"LEFTOVER_PROCESSES_KILLED", "STDOUT_HELD_OPEN", "VERIFY_CHANGED_CONTENT", "VERIFY_STOPPED", "NODE_NOT_STARTED",
 		"RECOVERY_NOT_STARTED":
 		encoded, _ := json.Marshal(data)

@@ -103,7 +103,7 @@ func TestCallsVerifyThroughTheirOwnVerifier(t *testing.T) {
 	verifier := &verifierSpy{runner: h.runner}
 	h.calls = app.NewCalls(
 		app.NewResolver(h.defs, h.runtimes, h.validator, resolverCheckStub{}), h.runtimes,
-		map[string]app.InputProvider{"git.revision": h.inputs, "git.diff": h.inputs},
+		map[string]app.InputProvider{"git.revision": h.inputs, "git.diff": h.inputs}, h.copies,
 		h.workspaces, h.changes, h.holder(), verifier, app.NewRecoverer(h.clock), h.validator, h.recorder, h.runs,
 		h.clock, h.timer, fixedIDs{}, "/state", h.hosted,
 	)

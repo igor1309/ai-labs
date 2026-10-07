@@ -506,3 +506,36 @@ func deref(f *float64) any {
 	}
 	return *f
 }
+
+// A run's links and its inputs' working copies (ADR-026 rule 6) are in the
+// record Pages shows, as stored; a run recorded before them still lists
+// and reads.
+func TestARunsLinksAndWorkingCopiesAreShownAndAnEarlierRunStillReads(t *testing.T) {
+	t.Parallel()
+	runs := filepath.Join(t.TempDir(), "runs")
+	finished := `,"finished_at":"2026-10-07T10:00:01Z","result":{"status":"completed","cost":{"source":"unknown"},"timing":{"started_at":"2026-10-07T10:00:00Z","finished_at":"2026-10-07T10:00:01Z","wall_ms":1000}}`
+	runRecord(t, runs, "20261007T100000Z-aaaaaa", call("20261007T100000Z-aaaaaa", "implement", "2026-10-07T10:00:00Z",
+		`,"inputs":[{"name":"brief","source":"file","identity":"sha256:b"}]`+finished))
+	links := `{"goal":{"run":"20261007T100000Z-aaaaaa","input":"brief","digest":"sha256:b"},"judgement":{"run":"20261007T100000Z-aaaaaa"}}`
+	runRecord(t, runs, "20261007T110000Z-bbbbbb", call("20261007T110000Z-bbbbbb", "implement", "2026-10-07T11:00:00Z",
+		`,"inputs":[{"name":"brief","source":"file","identity":"sha256:c","value":"the step","cache_path":"/home/.agister/cache/c/brief.md"}],"links":`+links+finished))
+
+	if list := listRuns(t, runs, 10); list.Total != 2 || list.Skipped != 0 {
+		t.Fatalf("list = %+v", list)
+	}
+	var shown map[string]any
+	if err := json.Unmarshal(readRun(t, runs, "20261007T110000Z-bbbbbb").Record, &shown); err != nil {
+		t.Fatal(err)
+	}
+	var want any
+	if err := json.Unmarshal([]byte(links), &want); err != nil {
+		t.Fatal(err)
+	}
+	inputs, _ := shown["inputs"].([]any)
+	if !reflect.DeepEqual(shown["links"], want) || len(inputs) != 1 || inputs[0].(map[string]any)["cache_path"] != "/home/.agister/cache/c/brief.md" {
+		t.Fatalf("record = %v", shown)
+	}
+	if earlier := readRun(t, runs, "20261007T100000Z-aaaaaa"); earlier.Summary.Status != "completed" {
+		t.Fatalf("earlier = %+v", earlier.Summary)
+	}
+}
