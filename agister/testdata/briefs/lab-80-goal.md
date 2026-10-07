@@ -65,6 +65,14 @@ This change makes the supervisor follow it.
 ## Decisions
 
 - 2026-10-07, owner: take LAB-80.
+- 2026-10-07, owner (review 1, item 5#3): option (c). `Commands.Run`
+  kills the group before reaping but does not classify or report the
+  result; Done when 1's classification applies to `Runtime.Run` only.
+  `CommandResult` is unchanged.
+- 2026-10-07, owner (review 1, item 5#4): option (b). Done when 5 allows
+  the additive event `LEFTOVER_CLEANUP_UNKNOWN`, recorded only when the
+  cleanup cannot be classified; `runs watch` shows it with the other
+  process events.
 
 ## Open
 
