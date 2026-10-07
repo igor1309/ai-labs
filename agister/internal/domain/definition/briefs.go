@@ -184,53 +184,63 @@ type section struct {
 }
 
 // sections finds each part's heading in text, outside fenced code, by its
-// index among b.Parts.
+// index among b.Parts. A section ends at the next heading of its level or
+// above; a part's heading below its level opens a section of its own and
+// stays in its body.
 func (b Brief) sections(text string) map[int][]section {
 	byHeading := map[string]int{}
 	for i, part := range b.Parts {
 		byHeading[part.Heading] = i
 	}
 	found := map[int][]section{}
-	var open *section // the section being read, nil outside one
-	openIndex, openLevel := -1, 0
-	closeOpen := func() {
-		if open != nil {
-			found[openIndex] = append(found[openIndex], *open)
-			open = nil
+	type reading struct {
+		index, level int
+		section      section
+	}
+	var open []reading // the sections being read, outermost first
+	closeFrom := func(level int) {
+		for len(open) > 0 && open[len(open)-1].level >= level {
+			last := open[len(open)-1]
+			found[last.index] = append(found[last.index], last.section)
+			open = open[:len(open)-1]
 		}
 	}
 	fence := ""
 	for n, line := range strings.Split(text, "\n") {
 		line = strings.TrimRight(line, " \t\r")
-		if marker := fenceMarker(line); fence == "" && marker != "" {
-			fence = marker
-		} else if fence != "" {
-			if strings.HasPrefix(strings.TrimLeft(line, " "), fence) && strings.Trim(strings.TrimLeft(line, " "), fence[:1]) == "" {
+		var starts *reading
+		if fence != "" {
+			if closesFence(line, fence) {
 				fence = ""
 			}
+		} else if marker := fenceMarker(line); marker != "" {
+			fence = marker
 		} else if level := headingLevel(line); level > 0 {
-			if open != nil && level <= openLevel {
-				closeOpen()
-			}
+			closeFrom(level)
 			if i, ok := byHeading[line]; ok {
-				closeOpen()
-				open, openIndex, openLevel = &section{line: n}, i, level
-				continue
+				starts = &reading{index: i, level: level, section: section{line: n}}
 			}
 		}
-		if open != nil {
-			open.body += line + "\n"
+		for i := range open {
+			open[i].section.body += line + "\n"
+		}
+		if starts != nil {
+			open = append(open, *starts)
 		}
 	}
-	closeOpen()
+	closeFrom(1)
 	return found
 }
+
+// fenceIndent is the most a fence's marker may be indented, opening or
+// closing; a line indented more is the block's text.
+const fenceIndent = 3
 
 // fenceMarker is the run of back quotes or tildes that opens a fenced code
 // block on line, empty when line opens none.
 func fenceMarker(line string) string {
 	trimmed := strings.TrimLeft(line, " ")
-	if len(line)-len(trimmed) > 3 {
+	if len(line)-len(trimmed) > fenceIndent {
 		return ""
 	}
 	for _, mark := range []string{"`", "~"} {
@@ -240,6 +250,14 @@ func fenceMarker(line string) string {
 		}
 	}
 	return ""
+}
+
+// closesFence reports whether line closes the fenced code block that fence
+// opened: the same mark at least as long, indented no more than an opening
+// one may be, with nothing after it.
+func closesFence(line, fence string) bool {
+	trimmed := strings.TrimLeft(line, " ")
+	return len(line)-len(trimmed) <= fenceIndent && strings.HasPrefix(trimmed, fence) && strings.Trim(trimmed, fence[:1]) == ""
 }
 
 // headingLevel is the level of a Markdown ATX heading line, 0 for any

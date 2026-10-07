@@ -174,46 +174,64 @@ func TestAValueWithoutFormIsUnchecked(t *testing.T) {
 	}
 }
 
+// formedFlow is a flow harness whose workflow w takes its goal from
+// goal.md, which reads as goal, with the form goal; both nodes take it.
+func formedFlow(goal string) *flowHarness {
+	h := newFlowHarness()
+	takesGoal := func(doc string) string {
+		return strings.Replace(strings.Replace(doc,
+			"    candidate: {default: HEAD}\n", "    candidate: {default: HEAD}\n    goal: {}\n", 1),
+			"  values:\n", "  values:\n    goal: {source: param, name: goal}\n", 1)
+	}
+	h.defs.docs[definition.KindProcess]["first"] = takesGoal(nodeProcess("first", "Work as first."))
+	h.defs.docs[definition.KindProcess]["second"] = takesGoal(nodeProcess("second", "Work as second."))
+	h.defs.docs[definition.KindBrief] = map[string]string{"goal": goalForm}
+	h.defs.docs[definition.KindWorkflow]["w"] = strings.Replace(workflowDoc, "  values:\n", "  values:\n    goal: {source: file, path: goal.md, form: [goal]}\n", 1)
+	base := h.inputs.respond
+	h.inputs.respond = func(spec app.InputSpec) (app.Resolved, error) {
+		if spec.Source == "file" && spec.Args["path"] == "goal.md" {
+			return app.Resolved{Value: goal, Identity: "sha256:" + sha(goal)}, nil
+		}
+		return base(spec)
+	}
+	return h
+}
+
 // A workflow's goal that lacks its form refuses the workflow before any
 // node starts; one that has it runs, with the form among the workflow's
 // sources.
 func TestAWorkflowsGoalIsCheckedBeforeItsNodesStart(t *testing.T) {
 	t.Parallel()
-	formed := func(goal string) *flowHarness {
-		h := newFlowHarness()
-		takesGoal := func(doc string) string {
-			return strings.Replace(strings.Replace(doc,
-				"    candidate: {default: HEAD}\n", "    candidate: {default: HEAD}\n    goal: {}\n", 1),
-				"  values:\n", "  values:\n    goal: {source: param, name: goal}\n", 1)
-		}
-		h.defs.docs[definition.KindProcess]["first"] = takesGoal(nodeProcess("first", "Work as first."))
-		h.defs.docs[definition.KindProcess]["second"] = takesGoal(nodeProcess("second", "Work as second."))
-		h.defs.docs[definition.KindBrief] = map[string]string{"goal": goalForm}
-		h.defs.docs[definition.KindWorkflow]["w"] = strings.Replace(workflowDoc, "  values:\n", "  values:\n    goal: {source: file, path: goal.md, form: [goal]}\n", 1)
-		base := h.inputs.respond
-		h.inputs.respond = func(spec app.InputSpec) (app.Resolved, error) {
-			if spec.Source == "file" && spec.Args["path"] == "goal.md" {
-				return app.Resolved{Value: goal, Identity: "sha256:" + sha(goal)}, nil
-			}
-			return base(spec)
-		}
-		return h
-	}
-
-	h := formed("Goal: report a failed write.\n")
+	h := formedFlow("Goal: report a failed write.\n")
 	record := h.store.wait(t, h.submit(t, contract.CallRequest{}))
 	want := `input goal: does not have its form goal: part "## Intent" is missing`
 	if class(record) != run.ClassRefused || !strings.Contains(message(record), want) || len(h.store.ids()) != 1 {
 		t.Fatalf("result %+v, runs %v", record.Result, h.store.ids())
 	}
 
-	h = formed(goalText)
+	h = formedFlow(goalText)
 	record = h.store.wait(t, h.submit(t, contract.CallRequest{}))
 	if record.Result.Status != run.Completed {
 		t.Fatalf("result = %+v", record.Result)
 	}
 	if len(record.Definitions) != 2 || record.Definitions[1].Kind != "briefs" || record.Definitions[1].Name != "goal" || record.Definitions[1].SHA256 != sha(goalForm) {
 		t.Fatalf("definitions = %+v", record.Definitions)
+	}
+}
+
+// Workflow show names the forms a workflow's input takes, and the form
+// among the workflow's sources, with the layer and path a caller copies
+// the template from.
+func TestShowWorkflowShowsItsForms(t *testing.T) {
+	t.Parallel()
+	h := formedFlow(goalText)
+	inspection := app.NewInspection(app.NewResolver(h.defs, nodeRuntimes{runner: h.runner}, okValidator{}, resolverCheckStub{}))
+	view, err := inspection.ShowWorkflow(context.Background(), "w")
+	if err != nil || view.Refusal != "" || !contains(view.Inputs, "goal <- file (form goal)") || !contains(view.Inputs, "base <- git.revision") {
+		t.Fatalf("inputs %q, refusal %q, %v", view.Inputs, view.Refusal, err)
+	}
+	if origin := (contract.DefinitionOrigin{Kind: "briefs", Name: "goal", Layer: "global", Path: "mem/briefs/goal"}); !containsOrigin(view.Sources, origin) {
+		t.Fatalf("sources lack goal: %+v", view.Sources)
 	}
 }
 

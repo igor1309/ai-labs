@@ -188,6 +188,75 @@ func TestEachWrongPartIsReported(t *testing.T) {
 	}
 }
 
+// A fence's closing marker is indented three spaces at most, as its opening
+// one: a marker indented more is the block's text, and the parts after it
+// are still inside the block.
+func TestAnIndentedMarkerDoesNotCloseAFence(t *testing.T) {
+	t.Parallel()
+	brief := parseStep(t)
+	resolve := existing("goals/lab-1.md")
+	inside := "```\n    ```\n" + stepText + "```\n"
+	want := []string{`part "## Goal" is missing`, `part "## Covers" is missing`, `part "## Open" is missing`}
+	if wrong := brief.Check(inside, resolve); !reflect.DeepEqual(wrong, want) {
+		t.Fatalf("four spaces: wrong = %q, want %q", wrong, want)
+	}
+	if wrong := brief.Check("```\nan example\n   ```\n"+stepText, resolve); wrong != nil {
+		t.Fatalf("three spaces: wrong = %q", wrong)
+	}
+}
+
+// nestedForm declares parts below others: Covers holds a required Detail,
+// and Open, which must read None., an optional Notes.
+const nestedForm = `schema: agister.brief/v1alpha1
+name: nested
+parts:
+  - {heading: "## Covers", required: true}
+  - {heading: "### Detail", required: true}
+  - {heading: "## Open", required: true, reads: None.}
+  - {heading: "### Notes", required: false}
+template: |
+  ## Covers
+
+  ### Detail
+
+  ## Open
+
+  None.
+
+  ### Notes
+`
+
+// A section runs to the next heading of its level or above: a part's
+// heading below it opens a section of its own, which stays in its parent's
+// body and ends where its parent does.
+func TestADeclaredSubheadingStaysInItsParent(t *testing.T) {
+	t.Parallel()
+	brief, err := definition.ParseBrief(doc(definition.KindBrief, "nested", nestedForm))
+	if err != nil {
+		t.Fatal(err)
+	}
+	none := func(string) error { return nil }
+	const text = "## Covers\n\n### Detail\n\n- 1\n\n## Open\n\nNone.\n"
+	cases := map[string]struct {
+		text string
+		want []string
+	}{
+		"a parent that starts with its child": {text, nil},
+		"a child after its parent's text":     {strings.Replace(text, "## Covers\n\n", "## Covers\n\nThe write.\n\n", 1), nil},
+		"text under a child of Open":          {text + "\n### Notes\n\nExtra text.\n", []string{`part "## Open" must read "None."`}},
+		"a child missing":                     {strings.Replace(text, "### Detail\n\n", "", 1), []string{`part "### Detail" is missing`}},
+		"a child ended by its parent's peer":  {strings.Replace(text, "- 1\n\n", "", 1), []string{`part "### Detail" is empty`}},
+	}
+	for name, c := range cases {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			if wrong := brief.Check(c.text, none); !reflect.DeepEqual(wrong, c.want) {
+				t.Fatalf("wrong = %q, want %q", wrong, c.want)
+			}
+		})
+	}
+}
+
 // formedProcess is a process whose value brief is the file value given.
 func formedProcess(value string) string {
 	return `schema: agister.process/v1alpha1

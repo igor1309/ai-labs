@@ -368,7 +368,7 @@ test('the brief forms a process and a workflow name are found in the composed se
       'step.yaml': 'name: step\nparts:\n  - {heading: "## Goal", required: true, reference: file}\ntemplate: |\n  ## Goal\n',
     },
   };
-  const repo = { briefs: { 'goal.yaml': home.briefs['goal.yaml'] } };
+  const repo = { briefs: { 'goal.yaml': '# The project goal: what this repo\'s work is for.\nname: goal\nparts:\n  - {heading: "## Intent", required: true}\n  - {heading: "## Done when", required: true}\n  - {heading: "## Open", required: true, reads: None.}\ntemplate: |\n  ## Intent\n' } };
   const m = await C.loadComposed(memDir('.agister', home), memDir('.agister', repo));
   assert.deepEqual(m.processes[0].forms, [
     { name: 'goal', outside: false, source: 'repo', overrides: true },
@@ -376,8 +376,8 @@ test('the brief forms a process and a workflow name are found in the composed se
   ]);
   assert.deepEqual(m.workflows[0].forms, [{ name: 'goal', outside: false, source: 'repo', overrides: true }]);
   const goal = m.briefs[0];
-  assert.deepEqual([goal.name, goal.purpose, goal.source, goal.usedBy], ['goal', 'The goal: what a piece of work is for.', 'repo', ['implement', 'review']]);
-  assert.deepEqual(goal.parts, [{ heading: '## Intent', required: true }, { heading: '## Sources', required: false }]);
+  assert.deepEqual([goal.name, goal.purpose, goal.source, goal.usedBy], ['goal', 'The project goal: what this repo\'s work is for.', 'repo', ['implement', 'review']]);
+  assert.deepEqual(goal.parts, [{ heading: '## Intent', required: true }, { heading: '## Done when', required: true }, { heading: '## Open', required: true }]);
 
   const alone = await C.loadAgister(memDir('.agister', { processes: home.processes, workflows: home.workflows }));
   assert.deepEqual(alone.processes[0].forms, [{ name: 'goal', outside: true }, { name: 'step', outside: true }]);
