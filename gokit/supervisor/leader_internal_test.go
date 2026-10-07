@@ -109,7 +109,6 @@ func TestTheKillAfterTheExitIsSentWhateverTheListingFinds(t *testing.T) {
 	}{
 		{"leftovers", syscall.EPERM, nil, []listed{{live: true}}, nil},
 		{"none, as macOS answers", syscall.EPERM, syscall.EPERM, []listed{{}, {}}, syscall.ESRCH},
-		{"none, as Linux answers", nil, nil, []listed{{}, {}}, syscall.ESRCH},
 		{"no process at all", nil, syscall.ESRCH, []listed{{}}, syscall.ESRCH},
 		{"the listing fails", syscall.EPERM, nil, []listed{{err: denied}}, denied},
 		{"one joins as the group is listed", syscall.EPERM, nil, []listed{{}}, errChanged},

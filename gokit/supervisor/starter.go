@@ -174,10 +174,10 @@ type leader struct {
 
 // Signal signals the group, until Wait has begun. Once the leader has
 // exited, the kernel's answer does not tell leftovers from the exited
-// leader alone, whom Linux signals and macOS refuses (EPERM): the group's
-// processes are listed to tell. The kill is sent whatever the listing
-// finds; one that failed, or that the group changed under, leaves the
-// result unknown, an error other than ESRCH.
+// leader alone, whom macOS refuses (EPERM): the group's processes are
+// listed to tell. The kill is sent whatever the listing finds; one that
+// failed, or that the group changed under, leaves the result unknown, an
+// error other than ESRCH.
 func (l *leader) Signal(signal syscall.Signal) error {
 	l.mu.Lock()
 	defer l.mu.Unlock()

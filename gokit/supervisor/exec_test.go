@@ -38,22 +38,16 @@ func started(t *testing.T, script string) supervisor.Process {
 
 // The exit is observed without reaping the leader: its group is still
 // there, holding the exited leader alone, until Wait reaps it. What the
-// kernel answers a kill of that group is the platform's, and pinned here:
-// Linux signals the zombie leader (success), macOS finds no process it may
-// signal (EPERM). Neither is leftovers, so Exec's Signal does not count
-// the leader and answers ESRCH.
+// kernel answers a kill of that group is the platform's, and pinned here
+// for macOS, the only platform whose exit is observed so: it finds no
+// process it may signal (EPERM). That is not leftovers, so Exec's Signal
+// does not count the leader and answers ESRCH.
 //
 // Contract test: Exec against a real process: its group, the exit
 // observed without reaping it, and the kernel's answer to a kill.
 func TestExecObservesTheExitWithoutReapingTheLeader(t *testing.T) {
 	t.Parallel()
-	var zombieAlone error
-	switch runtime.GOOS {
-	case "linux":
-		zombieAlone = nil
-	case "darwin":
-		zombieAlone = syscall.EPERM
-	default:
+	if runtime.GOOS != "darwin" {
 		t.Skipf("no answer is pinned for %s", runtime.GOOS)
 	}
 	process := started(t, "exit 3")
@@ -61,8 +55,8 @@ func TestExecObservesTheExitWithoutReapingTheLeader(t *testing.T) {
 	if err := process.Exited(); err != nil {
 		t.Fatal(err)
 	}
-	if err := syscall.Kill(-group, 0); err != zombieAlone {
-		t.Fatalf("a kill of the group of an exited leader alone: %v, want %v", err, zombieAlone)
+	if err := syscall.Kill(-group, 0); err != syscall.EPERM {
+		t.Fatalf("a kill of the group of an exited leader alone: %v, want EPERM", err)
 	}
 	if err := process.Signal(syscall.SIGKILL); !errors.Is(err, syscall.ESRCH) {
 		t.Fatalf("Signal to the group of an exited leader alone: %v, want ESRCH", err)
