@@ -61,6 +61,11 @@ install's plan.
 - 2026-10-07, owner: option (a), one home settings folder in git,
   installed with `agister install`, which learns skills; `ai-labs/prompts/`
   stops being the source of home's copies.
+- 2026-10-07, owner, on ADR-027 as proposed (adr_review
+  `20261007T183934Z-6c7c05`, approved): keep the `.agister/` copies.
+  The repository's `.agister/` keeps its full settings, so the repository
+  works without home installed, and a test keeps every document it shares
+  with `agister/home/` identical, except those listed with their reason.
 
 ## Open
 
