@@ -8,7 +8,7 @@
 - **Amends:** [ADR-001](001-agister-cli-architecture.md) rule 12: a call
   given a reference reads the output of the finished run it names
 - **Relates to:** [ADR-001](001-agister-cli-architecture.md) rules 6 to
-  10, [ADR-003](003-fan-out-and-join-workflow.md) rule 4,
+  10, [ADR-003](003-fan-out-and-join-workflow.md) rules 4 and 5,
   [ADR-026](026-the-brief-is-a-runs-input-contract.md) rules 6 and 7
 - **Source:** LAB-129; LAB-126 and LAB-127
   (`research/agister/research/pre-implementation-investigation.md`); the
@@ -73,10 +73,16 @@ The value in the record stays, for reading. It is never the source of
 the bytes: a copy is made from the artifact, not by writing the record's
 value again.
 
-A run that did not complete keeps no output artifact. Nor does a
-workflow's own run: its result carries the join's output, and the join's
-run keeps the artifact, so a reference names the join's run. A record
-made before this has none.
+A workflow's run that completes keeps an output artifact of its own, as
+any completed run does. Its output is the join's (ADR-003 rule 5), so
+its artifact is a copy of the join's output artifact: the bytes that
+passed the join's output check, with the same digest and byte count. It
+is never written from the value in a record, the workflow's or the
+join's. The CLI returns the workflow's run ID, and that is the ID a
+caller passes on.
+
+A run that did not complete keeps no output artifact. A record made
+before this has none.
 
 ### 2. The file's name is fixed
 
@@ -93,10 +99,11 @@ artifact is then the source (ADR-026 rule 6).
 
 ### 3. A file param may name a run's output
 
-A file param accepts a reference to a run's output: `run:<run-id>`.
-Agister reads that run's output artifact, checks its bytes against the
-recorded digest, and makes the cache copy again if it is gone. The cache
-is only how the reference is served: the caller has nothing to repair.
+A file param accepts a reference to a run's output: `run:<run-id>`. The
+run is a call's or a workflow's (rule 1). Agister reads that run's
+output artifact, checks its bytes against the recorded digest, and makes
+the cache copy again if it is gone. The cache is only how the reference
+is served: the caller has nothing to repair.
 
 From there the bytes are a file input like any other: resolved once
 (ADR-001 rule 8), given to the agent as its input, and kept by the
@@ -138,6 +145,12 @@ and the judgement it answers, not where an input's bytes were made.
   `ARTIFACT_FAILED`. The run completes, and its output is in its record.
   A reference to that run is refused (rule 3): it keeps no output
   artifact.
+- A workflow's run is treated the same way. Its copy of the join's
+  artifact that cannot be written is `ARTIFACT_FAILED` in the workflow's
+  run. A workflow whose join kept no output artifact has none to copy,
+  and the join's run holds the event. Either way the workflow completes,
+  its output is in its record, and a reference to the workflow's run is
+  refused.
 
 ### 6. The digest proves the bytes, not the code
 
@@ -158,9 +171,10 @@ as its own copy.
 ### 8. Left out
 
 The output artifact, its cache copy and the reference are built in
-LAB-130. That change alters what the CLI and a run's record offer, so it
-is done only when these say the same as the binary
-(`agister/AGENTS.md`):
+LAB-130, for a call's run and for a workflow's: it covers how a
+workflow's run ends, where the join's artifact is copied (rule 1). That
+change alters what the CLI and a run's record offer, so it is done only
+when these say the same as the binary (`agister/AGENTS.md`):
 
 - the caller skill, `agister/skills/agister/SKILL.md`;
 - `agister/README.md`;
@@ -174,12 +188,16 @@ The names of the record's other new fields are LAB-130's.
 - One run's output reaches another without passing through the caller.
   An orchestrating agent hands on a run's ID and spends no context on
   what the run produced.
+- A workflow's output is passed on by the run ID the CLI returned for
+  the workflow. The caller does not read the workflow's record to find
+  the join's run.
 - The record says where an input came from, when it was given by
   reference. A caller that passes a path gives that up.
 - A cleared cache breaks no reference. It still breaks a call that was
   given a cache path.
 - A run's output is stored more than once: as a value in the record, as
-  the artifact, and as a copy in each run that receives it. The cache
+  the artifact, and as a copy in each run that receives it. A workflow's
+  output is kept by two runs, the join's and the workflow's. The cache
   copy is a further one, and disposable.
 - A reference depends on the producing run being in the run store. A run
   removed from the host, or exported and not kept, can no longer be
@@ -207,6 +225,10 @@ The names of the record's other new fields are LAB-130's.
   digest.
 - **The cache as the only copy:** rejected; the run is the source, and
   the cache may be removed at any time.
+- **A workflow's run keeps no artifact, and a reference names its join's
+  run:** rejected; the CLI returns the workflow's run ID, so the caller
+  would read the workflow's record to find the join's run, and a
+  reference by the ID it was given would be refused.
 - **A name the process sets:** rejected; the digest names the bytes, and
   the name would be a settings field nothing needs.
 - **Find the producing run by the digest of a path's bytes:** rejected;

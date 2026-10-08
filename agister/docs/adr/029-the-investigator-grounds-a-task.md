@@ -43,19 +43,17 @@ The implementer is given the brief, the instruction files its runtime
 loads (ADR-006), the optional prompts of its process and the
 repository's check. It is not given the recorded decisions: the advisor
 reads the ADRs and `decisions.md`, after work has already stopped on a
-question (ADR-007). The implementer then finds its own way. In this
-repository it makes a median of 13 tool calls before its first edit, 47%
-of its run's calls. That count includes reading the brief and running
-the tests once: it is a baseline, not a measure of waste.
+question (ADR-007). The implementer then finds its own way, and a large
+share of its run's tool calls come before its first edit.
 
 Existing solutions fall into three families: standing documentation of
 the repository, written once and loaded every time; context computed for
 each request; and an investigation per task, in a context of its own,
-that returns a compact result. The field has moved from the first to the
-third. BMAD built whole-repository documentation and deprecated it. A
-measurement of instruction files found that repository overviews did not
-help, and that such files raised cost by over 20%. A file read on every
-task and updated by hand has nothing that checks it against the code.
+that returns a compact result. Documentation of a whole repository is
+expensive to write and goes stale. A measurement of instruction files
+found that repository overviews did not help, and that such files raised
+cost by over 20%. A file read on every task and updated by hand has
+nothing that checks it against the code.
 
 ios.config already has investigation as a phase with a contract. A
 finding is one sentence, with the scenarios it serves and a citation of
@@ -303,7 +301,10 @@ writes the brief to a file, which is the task, and gives no grounding.
   reads the code or the grounding to do it.
 - Whether this works shows in two figures: the orchestrator's context
   spent per brief, and the implementer's tool calls before its first
-  edit, against the baseline in the Context.
+  edit. The baseline for the second is in
+  `research/agister/research/pre-implementation-investigation.md`
+  section 4. Its count includes reading the brief and running the tests
+  once: it is a baseline, not a measure of waste.
 - Standing instruction files stay as they are (LAB-134).
 
 ## Alternatives considered
