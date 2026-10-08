@@ -7,7 +7,8 @@
 - **Amended by:** [ADR-002](002-verify-and-bounded-repair.md) (rule 1),
   [ADR-003](003-fan-out-and-join-workflow.md) (rules 1 and 12),
   [ADR-025](025-a-call-works-where-it-is-called.md) (rules 6, 11 and 12,
-  invariant 11)
+  invariant 11),
+  [ADR-028](028-a-run-keeps-its-output.md) (rule 12)
 
 ## Context
 

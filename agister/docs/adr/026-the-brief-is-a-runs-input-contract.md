@@ -1,6 +1,8 @@
 # ADR-026: The brief is a run's input contract
 
 - **Status:** Accepted
+- **Amended by:** [ADR-029](029-the-investigator-grounds-a-task.md)
+  (rules 1, 4, 6, 8 and 9)
 - **Date:** 2026-10-07
 - **Scope:** what a run is given to start from, in which layers, who
   writes it, where it is kept and who receives it
@@ -19,7 +21,7 @@ takes a required file param `goal`, resolved once and given to every
 review node; the judge does not get it (ADR-023 rule 1, ADR-003 rule 4).
 Nothing says what either holds.
 
-In practice the owner writes briefs by hand and commits one per run: 145
+In practice the caller's agent writes briefs and commits one per run: 145
 files in `agister/testdata/briefs/`. They are of three kinds: feature
 briefs, goal files for review, and review round briefs that carry the
 judge's fix items and point to the parent brief. Their section names
