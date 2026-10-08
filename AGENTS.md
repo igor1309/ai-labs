@@ -36,7 +36,9 @@
   lists>`: every changed file was claimed. Then the tests pass; do not
   rely on the implementer's own report.
 - Have Codex review the result critically:
-  `codex exec --sandbox read-only -m gpt-6.1-sol -c model_reasoning_effort="high" "<prompt>" < /dev/null`.
+  `codex exec --sandbox read-only --ignore-rules -m gpt-6.1-sol -c model_reasoning_effort="high" "<prompt>" < /dev/null`.
+  Keep `--ignore-rules`: without it, the allow rules in `~/.codex/rules`
+  run commands such as `git commit` outside the sandbox (LAB-125).
 - Keep the loop tight: at most 2 review rounds. Judge each finding; fix
   what belongs to the issue. Record in the project's deferred work only a
   real, observed gap outside the issue; reject a speculative one.
