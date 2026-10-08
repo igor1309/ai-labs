@@ -1,11 +1,16 @@
-# Pre-implementation investigation: what existing solutions do
+# Pre-implementation investigation: existing solutions and our own practice
 
 How existing coding agents and orchestrators handle the work of
 understanding a codebase before changing it, and what they hand to the
-implementer. Collected on 2026-10-08 for Multica LAB-127, which feeds
-LAB-126 (ground the investigator role). What the owner decided from it,
-and the proposals that are still draft, are in
+implementer (sections 1 to 3, collected on 2026-10-08 for Multica
+LAB-127), and what our own repositories already do (sections 4 and 5,
+collected the same day for LAB-126, ground the investigator role). What
+the owner decided from it, and the proposals that are still draft, are in
 [`investigator-draft.md`](investigator-draft.md).
+
+A word on names. The owner ruled on LAB-126 that a brief is what the
+implementer gets: the task and the onboarding. The investigator's output
+is the onboarding part, and this note calls it the **grounding**.
 
 ## Summary
 
@@ -20,7 +25,7 @@ Two findings matter most for our investigator:
 1. **BMAD has reversed its own position.** `bmad-document-project` and `bmad-generate-project-context` are now deprecated. Their replacement writes a small verified block into `AGENTS.md` and explicitly excludes repo overviews, directory trees and tech-stack lists, because "agents read code better than prose about code, and the copy goes stale."
 2. **Independent measurement agrees.** The ETH Zurich study of `AGENTS.md`-style files found they do not generally improve task success and raise inference cost by over 20%; repository overviews in particular did not help. They remain useful for non-standard practices an agent cannot infer.
 
-So the evidence favours an investigator that produces a **task-scoped, commit-pinned brief of facts with file references**, plus a very small standing file reserved for things that cannot be read from code.
+So the evidence favours an investigator that produces a **task-scoped, commit-pinned grounding: facts with file references**, plus a very small standing file reserved for things that cannot be read from code.
 
 Limits of this research: Grok Build has little public material on this topic (details below). MetaGPT, CrewAI and LangGraph are covered briefly because they do not really have a codebase-investigation step. Everything below comes from the linked docs; "reported in practice" rows rely on vendor write-ups and secondary articles, not on our own trials.
 
@@ -120,9 +125,9 @@ Sources: [research_codebase command](https://raw.githubusercontent.com/humanlaye
 
 ### Worth adopting
 
-- **Investigate per task, in an isolated read-only context, and return a compact brief.** Claude Code, Roo and HumanLayer all converge on this; it keeps search noise out of the implementer's context, and a task-scoped result has nothing to go stale.
+- **Investigate per task, in an isolated read-only context, and return a compact grounding.** Claude Code, Roo and HumanLayer all converge on this; it keeps search noise out of the implementer's context, and a task-scoped result has nothing to go stale.
 - **Describe what exists; do not propose.** HumanLayer's "document the codebase as it exists today" rule keeps the investigator's output checkable and stops it from pre-empting the planner or implementer.
-- **Tie every claim to `path:line` and pin the brief to a commit and branch.** This makes the brief verifiable and gives a mechanical staleness test: have the referenced files changed since that commit? BMAD's refresh uses the same idea. It also fits Agister's deterministic verification.
+- **Tie every claim to `path:line` and pin the grounding to a commit and branch.** This makes it verifiable and gives a mechanical staleness test: have the referenced files changed since that commit? BMAD's refresh uses the same idea. It also fits Agister's deterministic verification.
 - **Split investigation into narrow questions**: where the code lives, how it works, which existing pattern to copy. These are the HumanLayer subagent roles, and they map directly onto the parent issue's list (modules, patterns, responsible components, dependencies).
 - **Scope before depth.** BMAD v4's PRD-first order — define the change, then document only the affected modules — was its own recommendation for large codebases. Give the investigator the change request, not "document the repo".
 - **Let the caller set depth** (Claude Code's quick / medium / very thorough), so small changes do not pay for a full investigation.
@@ -131,7 +136,7 @@ Sources: [research_codebase command](https://raw.githubusercontent.com/humanlaye
 - **Compute structural facts instead of writing them down.** Aider's map shows that file, symbol and dependency structure can be derived on demand; the investigator should use tools for this and spend its judgment on intent and conventions.
 - **Keep the standing file tiny and admission-controlled.** Only policy and pitfalls that someone has actually hit (BMAD "record"), with audits that can only shrink it.
 - **Index standing knowledge with one-line descriptions** (Agent OS `index.yml`, OpenHands keyword triggers) so the investigator pulls in only what is relevant.
-- **Put human review at the brief, not only at the diff.** Errors here multiply downstream.
+- **Put human review at the grounding, not only at the diff.** Errors here multiply downstream.
 
 ### Worth avoiding
 
@@ -140,10 +145,101 @@ Sources: [research_codebase command](https://raw.githubusercontent.com/humanlaye
 - **Memory that is read on every task and updated by hand.** Cline's Memory Bank depends entirely on its own accuracy and has no check for it; a wrong file is followed faithfully.
 - **Standards without a verification step.** Agent OS re-syncs the index but never checks that a standard still matches the code.
 - **One large investigation prompt.** HumanLayer reported unreliable instruction-following from prompts with 85+ instructions and moved to smaller stages.
-- **An investigator that also recommends the solution.** It blurs responsibility with the planner and makes the brief harder to verify.
+- **An investigator that also recommends the solution.** It blurs responsibility with the planner and makes the grounding harder to verify.
 - **Explorers that never see repository rules.** Claude Code's Explore and Plan skip `CLAUDE.md` for speed; for us the investigator should read the instruction files, since reconciling them with the code is part of its job.
 - **Relying on role-play pipelines for existing code.** MetaGPT-style document chains work on artifacts they generated themselves and do not transfer to a codebase they did not write.
 
-### Whether briefs are kept
+### Whether the grounding is kept
 
-The sources disagree on whether briefs are kept: HumanLayer stores every research document as searchable history; Claude Code and Roo discard them. The owner decided this on LAB-127: the brief stays in the run that produced it, and a disposable cache copy carries it between runs. See [`investigator-draft.md`](investigator-draft.md).
+The sources disagree on whether it is kept: HumanLayer stores every research document as searchable history; Claude Code and Roo discard them. The owner decided this on LAB-127: it stays in the run that produced it, and a disposable cache copy carries it between runs. See [`investigator-draft.md`](investigator-draft.md).
+
+## 4. Our own practice
+
+What the owner's repositories already do before an implementer starts. Read at `ai-labs` `e93e0992` and `ios.config` `d8717809`. Paths are relative to `ai-labs` unless marked `ios.config:`. The ios.config rows describe a practice that works in production; defects found in that repository are filed in its own workspace, not here.
+
+### In ai-labs the orchestrator does the investigation
+
+Agister has no investigation step. Its home holds 12 processes (`agister/home/processes/`): implementers, reviewers, a judge and the advisor. None reads a repository before a change.
+
+The work is done all the same, by the orchestrating agent, each time it writes a brief. `agister/testdata/briefs/` holds 218 of them; 150 cite code paths and 47 carry a `## Constraints` part. The owner on LAB-126: none were written by the owner, "all were done by orchestrating agent - so this task WAS de facto performed by agent, bloating orchestrator's context numerous times". ADR-026's context and [`brief.md`](brief.md) say the owner writes briefs by hand; both are wrong on this point.
+
+What the implementer is given besides the brief:
+
+| What | Where | How it reaches the implementer |
+|---|---|---|
+| Rules, test commands | `AGENTS.md`, `agister/AGENTS.md` | Loaded by the runtime ([ADR-006](../../../agister/docs/adr/006-a-call-gets-its-repository-instructions.md)) |
+| Patterns | `.agister/prompts/go-architecture.md`, `go-testing-seams.md` | Optional prompt inputs of `agister/home/processes/implement.yaml` |
+| The check | `.agister/verifies/repo.yaml` | Run by Agister after each turn |
+| Prior decisions | `agister/docs/adr/`, `agister/docs/decisions.md`, `agister/docs/deferred.md` | Not given. The advisor (`agister/home/prompts/advisor.md`) reads them, after work has already stopped on a question |
+| Modules, the components responsible, dependencies | — | Only what the orchestrator wrote into the brief |
+
+Nearby skills, none wired to Agister:
+
+- `dev-skills/public/intake/SKILL.md` is the closest existing shape. Its saved output has What I'm Building, What I'm Touching (paths), Findings ("say what you searched and what you excluded"), Key Constraints, Risks & Unknowns, Reproduction and Questions, under the rule "No solution design".
+- `dev-skills/public/cold-start-checkpoint/SKILL.md` step 4: read every referenced document before any live exploration.
+- `dev-skills/public/bug-analysis/SKILL.md`: trace the execution path, rank hypotheses, separate evidence from inference.
+
+### In ios.config investigation is a phase with a contract
+
+| Source | What it does | Output | Consumer |
+|---|---|---|---|
+| `ios.config:.claude/skills/ticket-investigation/SKILL.md` | Traces every SPEC scenario through the code | `## Findings` and `## Open` in the ticket's `NOTES.md` | The delegate phase |
+| `ios.config:.claude/skills/ticket-implementation/SKILL.md` | Splits SPEC and findings into step briefs | `briefs/NN-*.md`, each with the findings it acts on under `## Acts on` | The implementer |
+| `ios.config:.multica/agents/investigator.md`, `lead.md` | The same phase as a Multica role | A report opening with `INVESTIGATION VERDICT: COMPLETE \| BLOCKED` and a reason id | A lead that routes on those lines only |
+| `ios.config:.claude/AGENTS.md`, `.claude/rules/*.md` | Standing orientation: the patterns in use, and path-scoped pointers from a file type to the skill that owns it | Loaded by the runtime | Every agent |
+
+The findings contract, which is the part worth taking:
+
+- One sentence per finding, with the scenario ids it serves and "a direct path-and-symbol citation".
+- Keep only facts that "locate the work, expose a behavior gap, or identify an existing capability or limitation that changes the work needed".
+- "Do not restate SPEC, catalogue inspected code or tests, or propose solutions."
+- An absence claim is checked against the owning code and alternative names: "a search miss alone does not establish missing behavior."
+- Unresolved decisions go to `## Open` with their source and who owes the answer. The folder checker refuses an Open that does not read `None.`.
+- Learning enters the standing files only at the work-end retro, from a real ticket.
+
+One recorded use: ticket DBSNEW-17631, where a single investigation pass wrote seven findings and the first step brief acted on four of them.
+
+### What the run records show
+
+From the Agister run store on the owner's host on 2026-10-08, not reproducible from the repository. Of 398 `implement` runs, those with a Claude tool stream and at least one edit:
+
+| Repository | Runs | Tool calls before the first edit (median) | Share of the run's tool calls |
+|---|---|---|---|
+| ai-labs | 47 | 13 | 47% |
+| ios | 8 | 21.5 | 53% |
+
+The calls before the first edit include reading the brief and baseline test runs, not only orientation, and the ios sample is small. The figure is a baseline to compare against, not a measure of waste.
+
+The same records show rules reaching the wrong reader. The root `AGENTS.md` tells its reader to delegate implementation to a subagent and have Codex review the result; it is loaded by every implementer. A keyword scan of implementer notes flagged 23 of 63, and in 11 of the 14 newest the implementer explains why those steps did not apply to it.
+
+### Gaps
+
+1. No step produces the grounding. The orchestrator does, in its own context, and the result exists only inside a brief.
+2. Nothing gives the implementer the prior decisions that bear on its change.
+3. Rules for the caller and rules for the implementer share one file, with nothing to say which is which.
+4. The check command is written twice, in `agister/AGENTS.md` and `.agister/verifies/repo.yaml`.
+5. `README.md` says `CLAUDE.md` is the canonical instruction file and `AGENTS.md` a symlink to it. The root has a regular `AGENTS.md` and no `CLAUDE.md`.
+6. A lesson from ios.config that applies to any role: artifacts are dropped before anything else. In nine recorded runs of the ios.config pipeline, three produced accurate-sounding reports with nothing on disk, and the platform marked all three completed (`ios.config:research/china/README.md`).
+
+## 5. What our practice changes in section 3
+
+The outside practices hold, with these changes.
+
+- **Cite path and symbol, not `path:line`.** The ios.config contract already does. A line number goes stale with the first edit; a symbol does not.
+- **A pinned revision must allow for steps.** Multi-step work runs each step at the previous step's commit, so the candidate moves away from the grounding's revision by design. The check that works: the grounding's revision is an ancestor of the candidate, and none of the files it cites changed in between.
+- **Gate on open questions, review at first.** Our practice refuses a hand-off whose Open is not `None.` and sends a product question back to the owner. A person's review of every grounding is for the first runs, not a standing rule.
+- **One pass before narrow readers.** The ios.config phase is one pass and its recorded use was enough. Split into where / how / which pattern only if one prompt proves unreliable.
+- **The orchestrator passes a reference.** Its context is what the investigator relieves, so it must not read the grounding in order to hand it on.
+- **No repository map.** The ios.config contract forbids cataloguing inspected code, which is what BMAD arrived at after deprecating its own.
+
+The sections a grounding needs, from the findings contract, the intake skill's output and the list LAB-126 asked for:
+
+1. The task it serves by reference, the repository, the revision and branch read, and the depth asked for.
+2. Where the work lives: one sentence per finding, tied to a criterion of the task, with path and symbol. What exists, the gap, and what is already there to use.
+3. Boundaries touched: the modules involved, and what is shared with code outside the change.
+4. Patterns to follow: a pointer to the rule, prompt or ADR that owns each, with one example file. Never a restatement.
+5. Dependencies of the touched code, internal with direction and external.
+6. Entry points: the build, test and verify commands for the touched area, each with the file that defines it.
+7. Constraints, pitfalls and prior decisions that bear on the change, by reference, and any place where an instruction file contradicts the code or another instruction file.
+8. Coverage: what was searched, what was excluded, and the files the findings rest on.
+9. Open: `None.`, or each question with its source and who owes the answer.
