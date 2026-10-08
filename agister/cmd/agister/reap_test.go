@@ -466,7 +466,7 @@ func (r abortedRun) Append(event domain.Event) error {
 // The next writer call into the same worktree is not refused by it: the
 // call has the composition's reaper finish the run, as lost and abandoned,
 // and end its process, and is then admitted. The reap beside the calls is
-// left out of the next process, so only the call can have reaped the run:
+// left out of both processes, so only the call can have reaped the run:
 // nobody waits for that reap, and a call must not depend on it.
 //
 // Contract test: the composition's hold and reap over the run store on the
@@ -486,9 +486,13 @@ func TestAWriterCallIsAdmittedWhereAKilledWriterLeftItsRun(t *testing.T) {
 	config := cli.Config{Home: home, Cwd: repo}
 	request := contract.CallRequest{Process: "implement", Params: map[string]string{"candidate": "HEAD", "brief": brief}, Cwd: repo}
 
-	// The process that is killed, at its call's abort.
+	// The process that is killed, at its call's abort. A killed process
+	// reaps nothing: its reap beside the calls is left out too.
 	killed := inProcess(config)
-	killed.adjust = func(infra *app.Infrastructure) { infra.Calls.Recorder = killedAtItsAbort{killed.runs} }
+	killed.adjust = func(infra *app.Infrastructure) {
+		infra.Calls.Recorder = killedAtItsAbort{killed.runs}
+		infra.Decorate = func(client contract.Client) contract.Client { return client }
+	}
 	victim, _, err := killed.wire(config)
 	if err != nil {
 		t.Fatal(err)

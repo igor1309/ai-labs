@@ -958,3 +958,36 @@ func TestAReapOfOneRunWaitsForTheListingOfAbandonedRuns(t *testing.T) {
 		t.Fatalf("adopted %v, asked to end %v; want a once", adopted, processes.refs())
 	}
 }
+
+// A reap of one run that waits for the reaper's turn waits no longer than
+// its caller: once the caller's context ends while the abandoned runs are
+// listed, it gives up with the context's error, before the listing lets
+// its turn go, and adopts nothing. The reap beside then reaps the run.
+func TestAReapOfOneRunThatWaitsForTheTurnEndsWithItsCaller(t *testing.T) {
+	t.Parallel()
+	h := newHarness()
+	adopter, processes := newProbingAdopter(abandonedRun("a")), &processesSpy{}
+	r := app.NewReaper(adopter, processes, h.workspaces, fixedClock{})
+	r.ReapContext = func(ctx context.Context) (context.Context, context.CancelFunc) { return context.WithCancel(ctx) }
+	beside := make(chan error, 1)
+	started(t, adopter.probe, func() { beside <- r.Reap(context.Background()) })
+	<-adopter.probing
+	ctx, cancel := context.WithCancel(context.Background())
+	r.OnWaiting(cancel)
+
+	_, owned, err := r.ReapRun(ctx, "a")
+
+	if !errors.Is(err, context.Canceled) || owned {
+		t.Fatalf("the reap of a while the abandoned runs are listed = owned %v, %v; want the caller's cancellation", owned, err)
+	}
+	if adopted := adopter.adopted(); len(adopted) != 0 {
+		t.Fatalf("adopted %v before the listing let its turn go", adopted)
+	}
+	adopter.probe.release()
+	if err := <-beside; err != nil {
+		t.Fatal(err)
+	}
+	if adopted := adopter.adopted(); !reflect.DeepEqual(adopted, []string{"a"}) || !reflect.DeepEqual(processes.refs(), []string{"ref-777"}) {
+		t.Fatalf("adopted %v, asked to end %v; want a once, by the reap beside", adopted, processes.refs())
+	}
+}
