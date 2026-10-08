@@ -16,7 +16,8 @@ import (
 // Holder holds the caller's worktree for a call (ADR-025): it takes the
 // worktree's hold, shared with other readers or a writer's alone, refuses
 // one that overlaps a directory Agister made and still removes, or one a
-// writer's run left may still write in, and admits the worktree only with
+// writer's run left may still write in, once it has reaped the run a dead
+// owner left unfinished there, and admits the worktree only with
 // HEAD at the revision the process pins, its content HEAD's when the
 // process needs a clean worktree, or, for a continuation, as the session's
 // latest run left it, all before the call's first turn. It never changes
@@ -26,6 +27,7 @@ type Holder struct {
 	worktrees HoldWorktrees
 	content   HoldContent
 	runs      HoldRuns
+	reaper    HoldReaper
 	processes HoldProcesses
 }
 
@@ -87,6 +89,15 @@ type HoldRuns interface {
 	Artifact(ctx context.Context, runID string, artifact run.Artifact) ([]byte, error)
 }
 
+// HoldReaper finishes a run its owner left unfinished.
+type HoldReaper interface {
+	// ReapRun ends what run id left and finishes it as lost, as a reap
+	// does, unless a process owns the run: then owned is true, and nothing
+	// of the run is touched. It returns the run's record as finished: by
+	// this reap or, meanwhile, by another or by the run's owner.
+	ReapRun(ctx context.Context, id string) (finished run.Record, owned bool, err error)
+}
+
 // HoldProcesses ends a process another run recorded.
 type HoldProcesses interface {
 	// Reap ends the process the reference names, unless it may be another
@@ -109,14 +120,16 @@ type HoldAdapters struct {
 	Worktrees HoldWorktrees
 	Content   HoldContent
 	Runs      HoldRuns
-	Writers   HoldProcesses
+	// Reaper finishes the unfinished runs nobody owns.
+	Reaper  HoldReaper
+	Writers HoldProcesses
 }
 
 // NewHolder returns the component that holds the caller's worktree for
 // calls. Every collaborator is required.
 func NewHolder(adapters HoldAdapters) *Holder {
 	return &Holder{
-		locks: adapters.Locks, worktrees: adapters.Worktrees, content: adapters.Content, runs: adapters.Runs, processes: adapters.Writers,
+		locks: adapters.Locks, worktrees: adapters.Worktrees, content: adapters.Content, runs: adapters.Runs, reaper: adapters.Reaper, processes: adapters.Writers,
 	}
 }
 
@@ -158,7 +171,8 @@ type Held struct {
 // Hold holds the worktree at call.Dir for the call, or refuses it, before
 // any turn: the call must take its hold (ADR-025 rule 4), no directory Agister
 // made and still removes may overlap the worktree, no writer's run that
-// worked in a directory overlapping it may still write there, HEAD must be
+// worked in a directory overlapping it may still write there, one a dead
+// owner left unfinished being reaped first, HEAD must be
 // the revision the process pins (rule 2), the content HEAD's when the
 // process needs a clean worktree (rule 3), or, continuing, the worktree
 // exactly as the session's latest run left it (rule 7). The worktree is on
@@ -403,9 +417,14 @@ func (h *Holder) made(call HoldCall, claims []claim) error {
 // writers refuses while a writer's run that worked in a directory
 // overlapping the worktree may still write there (ADR-025 rule 4): one
 // unfinished, or one with a process that is not known to have ended, unless
-// that process can be ended now, through the reap's seam. The run may have
-// worked in the caller's worktree or, before ADR-025, in a checkout of its
-// own.
+// that process can be ended now, through the reap's seam. An unfinished run
+// may still write while its owner holds it. One nobody owns was left by a
+// killed owner: it is reaped here, by the reap's own step, which finishes
+// it as lost, and the call then asks about its processes as about any
+// finished run's. The reap beside the calls would finish it too, but
+// nobody waits for that one, and a call refused meanwhile ends before it
+// does. The run may have worked in the caller's worktree or, before
+// ADR-025, in a checkout of its own.
 func (h *Holder) writers(ctx context.Context, call HoldCall, claims []claim) error {
 	var asked []string
 	for _, held := range claims {
@@ -422,7 +441,11 @@ func (h *Holder) writers(ctx context.Context, call HoldCall, claims []claim) err
 			where = fmt.Sprintf("%s (inside worktree %s)", held.dir, call.Dir)
 		}
 		if other.FinishedAt == nil {
-			return refuse("run %s worked in %s and has not finished: it may still write there", other.ID, where)
+			reaped, kept := h.reap(ctx, call, other.ID)
+			if reaped == nil {
+				return refuse("run %s worked in %s and has not finished: it may still write there%s", other.ID, where, kept)
+			}
+			other = reaped
 		}
 		for _, process := range unended(other) {
 			reaping, err := h.processes.Reap(ctx, process.process.Ref)
@@ -441,6 +464,38 @@ func (h *Holder) writers(ctx context.Context, call HoldCall, claims []claim) err
 		}
 	}
 	return nil
+}
+
+// reap has the unfinished run id reaped, and returns its record as
+// finished: by this reap, as lost, or meanwhile by another or by its owner.
+// A run still unfinished returns none, and what kept it so beyond today's
+// reason: nothing for one its owner holds, the failure for one that could
+// not be reaped. The call's events say which it was, and how the run
+// ended.
+func (h *Holder) reap(ctx context.Context, call HoldCall, id string) (finished *run.Record, kept string) {
+	reaped, owned, err := h.reaper.ReapRun(ctx, id)
+	if err == nil && !owned && reaped.FinishedAt == nil {
+		err = errors.New("its record is still unfinished")
+	}
+	data := map[string]any{"run": id}
+	switch {
+	case err != nil:
+		data["outcome"], data["error"] = "unfinished", err.Error()
+		kept = ": it could not be reaped: " + err.Error()
+	case owned:
+		data["outcome"] = "owned"
+	default:
+		finished = &reaped
+		data["outcome"], data["processes_ended"] = "finished", reaped.ProcessesKnownEnded()
+		if result := reaped.Result; result != nil {
+			data["status"] = string(result.Status)
+			if result.Error != nil {
+				data["class"] = string(result.Error.Class)
+			}
+		}
+	}
+	call.Event(run.SourceAgister, "WORKTREE_RUN_REAPED", data)
+	return finished, kept
 }
 
 // resumable refuses a continuation unless the session's latest run worked

@@ -15,6 +15,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/igor1309/ai-labs/agister/internal/adapters/fsruns"
 	"github.com/igor1309/ai-labs/agister/internal/adapters/system"
 	"github.com/igor1309/ai-labs/agister/internal/app"
 	"github.com/igor1309/ai-labs/agister/internal/cli"
@@ -429,6 +430,145 @@ verify:
 		if lines := strings.Split(gitCmd(t, dir, "worktree", "list"), "\n"); len(lines) != 1 {
 			t.Fatalf("worktrees of %s = %v", dir, lines)
 		}
+	}
+}
+
+// killedAtItsAbort is the run store of a process a SIGKILL takes right
+// after its call's abort is on record, while it waits for its runtime to
+// end: the run is left as the kill leaves it (Store.Abandon), and nothing
+// the call does after is saved. The call itself winds down in the test's
+// process, which lets its hold of the worktree go, as the kill would.
+type killedAtItsAbort struct{ fsruns.Store }
+
+func (s killedAtItsAbort) Create(ctx context.Context, record domain.Record) (app.RunHandle, error) {
+	handle, err := s.Store.Create(ctx, record)
+	if err != nil {
+		return nil, err
+	}
+	return abortedRun{RunHandle: handle, store: s.Store, id: record.ID}, nil
+}
+
+type abortedRun struct {
+	app.RunHandle
+	store fsruns.Store
+	id    string
+}
+
+func (r abortedRun) Append(event domain.Event) error {
+	if err := r.RunHandle.Append(event); err != nil || event.Kind != "ABORT_REQUESTED" {
+		return err
+	}
+	return r.store.Abandon(r.id)
+}
+
+// LAB-123, ADR-025 rule 4: a writer whose owner is killed after its abort
+// was requested leaves its run unfinished, its runtime's process on record.
+// The next writer call into the same worktree is not refused by it: the
+// call has the composition's reaper finish the run, as lost and abandoned,
+// and end its process, and is then admitted. The reap beside the calls is
+// left out of both processes, so only the call can have reaped the run:
+// nobody waits for that reap, and a call must not depend on it.
+//
+// Contract test: the composition's hold and reap over the run store on the
+// filesystem, the kernel's flock on a run's owner.lock and on the
+// worktree's lock file; git and the runtime are fakes run in process.
+//
+// Serial: a run's owner lock is its open file's (flock). A process another
+// test starts holds a copy from its fork to its exec, and the lock an
+// abandoned run gave up would read as held.
+func TestAWriterCallIsAdmittedWhereAKilledWriterLeftItsRun(t *testing.T) {
+	home, repo := setup(t, "hang")
+	// The brief is kept out of the worktree, which the process takes as
+	// its HEAD has it; it tells the fake runtime to hang.
+	brief := filepath.Join(tempDir(t), "b.md")
+	write(t, brief, "Do it. SCENARIO:hang\n")
+	ctx := context.Background()
+	config := cli.Config{Home: home, Cwd: repo}
+	request := contract.CallRequest{Process: "implement", Params: map[string]string{"candidate": "HEAD", "brief": brief}, Cwd: repo}
+
+	// The process that is killed, at its call's abort. A killed process
+	// reaps nothing: its reap beside the calls is left out too.
+	killed := inProcess(config)
+	killed.adjust = func(infra *app.Infrastructure) {
+		infra.Calls.Recorder = killedAtItsAbort{killed.runs}
+		infra.Decorate = func(client contract.Client) contract.Client { return client }
+	}
+	victim, _, err := killed.wire(config)
+	if err != nil {
+		t.Fatal(err)
+	}
+	id, err := victim.Submit(ctx, request)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cleanupRun(t, victim, killed.hosted, id)
+	until(t, victim, id, func(event contract.Event) bool { return event.Kind == "PROCESS_STARTED" })
+	cancelAndWait(victim, killed.hosted, id)
+	// As the kill leaves it: nobody's, unfinished, a writer's in the
+	// worktree, its runtime's process on record, its abort its last event.
+	left, state, err := killed.runs.Get(ctx, id)
+	if err != nil || state != domain.StateAbandoned || left.FinishedAt != nil || left.InPlace == nil || left.InPlace.Worktree != repo || !left.InPlace.HeldAlone() ||
+		left.Effects == nil || left.Effects.Process == nil {
+		t.Fatalf("the killed run %s: in place %+v, effects %+v, finished %v, %v", state, left.InPlace, left.Effects, left.FinishedAt, err)
+	}
+	if kinds := readRun(t, filepath.Join(home, "runs", id)).kinds(); kinds[len(kinds)-1] != "ABORT_REQUESTED" {
+		t.Fatalf("the killed run's events %v", kinds)
+	}
+	orphaned := &orphans{}
+	orphaned.leave(left.Effects.Process.Ref)
+
+	// The next process: its composition's holder and its reap beside the
+	// calls share one reaper, and here only the holder asks it.
+	composed := inProcess(config)
+	composed.processes = orphaned
+	var holders app.HoldReaper
+	composed.adjust = func(infra *app.Infrastructure) {
+		holders = infra.Holder.Reaper
+		infra.Decorate = func(client contract.Client) contract.Client { return client }
+	}
+	client, background, err := composed.wire(config)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if any(holders) != any(background.Reaper) {
+		t.Fatalf("the holder's reaper %p is not the background reaper's %p", holders, background.Reaper)
+	}
+	// The reaps are bounded by the test, not by the reap deadline's real
+	// timer: a hang is the test binary's to report.
+	reaper, ok := background.Reaper.(*app.Reaper)
+	if !ok {
+		t.Fatalf("the background reaper is a %T", background.Reaper)
+	}
+	reaper.ReapContext = func(ctx context.Context) (context.Context, context.CancelFunc) { return context.WithCancel(ctx) }
+	next, err := client.Submit(ctx, request)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cleanupRun(t, client, composed.hosted, next)
+	// The call is admitted and starts its runtime, where it hangs.
+	until(t, client, next, func(event contract.Event) bool { return event.Kind == "PROCESS_STARTED" })
+	cancelAndWait(client, composed.hosted, next)
+
+	events := readRun(t, filepath.Join(home, "runs", next))
+	if kinds := strings.Join(events.kinds(), " "); !strings.Contains(kinds, "WORKTREE_LOCKED WORKTREE_RUN_REAPED WORKTREE_ADMITTED") {
+		t.Fatalf("the next call's events %s", kinds)
+	}
+	for _, event := range events.events {
+		if data, _ := event["data"].(map[string]any); event["kind"] == "WORKTREE_RUN_REAPED" &&
+			(data["run"] != id || data["outcome"] != "finished" || data["status"] != "lost" || data["class"] != "abandoned" || data["processes_ended"] != true) {
+			t.Fatalf("the next call says %v of the killed run", data)
+		}
+	}
+	old, state, err := composed.runs.Get(ctx, id)
+	if err != nil || state != domain.StateFinished || old.Result == nil || old.Result.Status != domain.Lost || old.Result.Error.Class != domain.ClassAbandoned ||
+		old.ProcessesEnded == nil || !*old.ProcessesEnded {
+		t.Fatalf("the killed run = %s %+v, processes ended %v, %v", state, old.Result, old.ProcessesEnded, err)
+	}
+	if kinds := strings.Join(readRun(t, filepath.Join(home, "runs", id)).kinds(), " "); !strings.HasSuffix(kinds, " ABORT_REQUESTED EFFECTS_REAPED") {
+		t.Fatalf("the killed run's events %s", kinds)
+	}
+	if orphaned.alive(left.Effects.Process.Ref) {
+		t.Fatal("the killed run's process was not reaped")
 	}
 }
 

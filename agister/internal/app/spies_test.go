@@ -804,6 +804,35 @@ func (s *writersSpy) refs() []string {
 	return append([]string(nil), s.reaped...)
 }
 
+// reaperSpy reaps the unfinished runs a holder asks about, as the holder
+// reads it.
+type reaperSpy struct {
+	mu    sync.Mutex
+	asked []string // run IDs
+	// finished is each run nobody owns, as its reap finishes it; a run not
+	// here is its owner's.
+	finished map[string]run.Record
+	// err is what each reap fails with.
+	err error
+}
+
+func (s *reaperSpy) ReapRun(_ context.Context, id string) (run.Record, bool, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.asked = append(s.asked, id)
+	if s.err != nil {
+		return run.Record{}, false, s.err
+	}
+	finished, unowned := s.finished[id]
+	return finished, !unowned, nil
+}
+
+func (s *reaperSpy) runs() []string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return append([]string(nil), s.asked...)
+}
+
 // locksSpy holds the worktree holds of calls, by the directory as given,
 // shared by readers or alone by a writer, and keys each by its canonical
 // path: the directory as given, unless canonical says otherwise.
@@ -926,6 +955,8 @@ type adopterSpy struct {
 	// order lists LiveCheckouts as "live" and each Adopt as "adopt:<id>".
 	order    []string
 	adoptErr map[string]error
+	// declined is the record Adopt returns beside its error, by run.
+	declined map[string]run.Record
 	handles  map[string]*recorderSpy
 	adopted  []string
 	// listErr fails Abandoned; failing hands out, by run, handles set up
@@ -963,7 +994,7 @@ func (s *adopterSpy) Adopt(_ context.Context, id string) (app.ReapHandle, run.Re
 	s.order = append(s.order, "adopt:"+id)
 	s.adopted = append(s.adopted, id)
 	if err := s.adoptErr[id]; err != nil {
-		return nil, run.Record{}, err
+		return nil, s.declined[id], err
 	}
 	if s.handles == nil {
 		s.handles = map[string]*recorderSpy{}

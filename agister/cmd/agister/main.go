@@ -149,6 +149,7 @@ func processIn(config cli.Config, appends *fsruns.Appends, getenv func(string) s
 		codexHome: runtimecomposition.CodexHome(getenv, userHome),
 		timer:     system.Timer,
 		poll:      system.Timer,
+		readers:   system.Timer,
 		hosted:    app.NewHosted(),
 	}
 }
@@ -184,6 +185,9 @@ type composition struct {
 	// process writes that observing it makes; a run this process writes
 	// is read again as it appends.
 	poll func(wait time.Duration) (fired <-chan time.Time, stop func())
+	// readers starts the waits between two attempts of a reap at a run's
+	// owner lock that processes reading the run hold.
+	readers func(wait time.Duration) (fired <-chan time.Time, stop func())
 	// stages, when set, is the folder installs stage their results in, in
 	// place of the system's temporary folder.
 	stages string
@@ -267,11 +271,20 @@ func (c composition) wire(config cli.Config) (contract.Client, *app.BackgroundRe
 		},
 	}
 	workspaces, content := c.git, c.git.content
-	// Abandoned runs are reaped beside the calls, never inside one. A reap
-	// that fails has no caller to tell and no run record to say so: the
-	// log does.
+	// Abandoned runs are reaped beside the calls, never inside one, but for
+	// the run a dead owner left unfinished in a writer call's worktree,
+	// which that call has reaped before it decides (LAB-123). A reap that
+	// fails has no caller to tell and no run record to say so: the log
+	// does.
+	// One reaper serves both, so neither reads the other's hold of a run as
+	// that run's owner: a step for a run waits for the one that holds it,
+	// not for one ending another run's effects.
+	// It adopts a run once the processes reading it, as a status read or
+	// an export, let go, waiting for them on the composition's timer of
+	// readers.
+	reaper := app.NewReaper(fsruns.NewAdopter(evidence, c.readers), runtimecomposition.Processes{Supervisor: c.processes}, workspaces.discarder, system.Clock{})
 	reaping := &app.BackgroundReaper{
-		Reaper: app.NewReaper(evidence, runtimecomposition.Processes{Supervisor: c.processes}, workspaces.discarder, system.Clock{}),
+		Reaper: reaper,
 		Report: func(err error) { log.Error("reaping abandoned runs failed", "error", err.Error()) },
 	}
 	infra := app.Infrastructure{
@@ -307,8 +320,9 @@ func (c composition) wire(config cli.Config) (contract.Client, *app.BackgroundRe
 			StateDir:   config.Home,
 		},
 		// A call's hold of its worktree is kept under the home, apart from
-		// the worktree commands' locks; a process another run left there is
-		// ended as the reaper ends it (ADR-025 rule 4). The directory keeps
+		// the worktree commands' locks; an unfinished run a dead owner left
+		// there is reaped by the reaper, and a process another run left there
+		// is ended as the reaper ends it (ADR-025 rule 4). The directory keeps
 		// the name it had for in-place calls (ADR-022), and the lock files
 		// their names: a binary from before ADR-025, still running, holds
 		// its lock file there, and its hold must exclude this binary's as
@@ -318,6 +332,7 @@ func (c composition) wire(config cli.Config) (contract.Client, *app.BackgroundRe
 			Worktrees: workspaces.state,
 			Content:   content,
 			Runs:      evidence,
+			Reaper:    reaper,
 			Writers:   runtimecomposition.HoldProcesses{Supervisor: c.processes},
 		},
 		Verifier:  app.VerifyAdapters{Content: content, Commands: runtimecomposition.Commands{Supervisor: commands}, Clock: system.Clock{}},

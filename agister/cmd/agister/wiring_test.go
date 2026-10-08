@@ -598,7 +598,7 @@ func (s *started) Start(command supervisor.Command) (supervisor.Process, error) 
 func TestTheInProcessCompositionWaitsOnAClockThatNeverMoves(t *testing.T) {
 	t.Parallel()
 	c := inProcess(cli.Config{Home: tempDir(t)})
-	for name, timer := range map[string]timer{"its turns and commands": c.timer, "its observing": c.poll} {
+	for name, timer := range map[string]timer{"its turns and commands": c.timer, "its observing": c.poll, "its reaps' waits for readers": c.readers} {
 		fired, stop := timer(0)
 		if at := <-fired; !at.Equal(stillAt) {
 			t.Errorf("%s wait on a clock that tells %v, want %v", name, at, stillAt)

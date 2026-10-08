@@ -244,6 +244,65 @@ and ignored, and `check` warns (`internal/app/check.go:289`; ADR-025).
   verification runs there, and the changes stay there; `changes.patch`
   is evidence. (`internal/app/calls.go:1537-1585`,
   `internal/app/hold.go`; ADR-025)
+  - A writer's run whose owner was killed (LAB-123). A writer call whose
+    hold meets an unfinished writer's run in an overlapping directory,
+    whose owner lock is free, has that run reaped before it decides: the
+    reaper's own per-run step adopts it, ends its effects and finishes it
+    as `lost`, `abandoned`, with `EFFECTS_REAPED` in its events, and the
+    call says so (`WORKTREE_RUN_REAPED`). (`internal/app/hold.go`,
+    `Reaper.ReapRun` in `internal/app/reap.go`; one reaper serves this
+    and the reap beside the calls, `cmd/agister/main.go`)
+  - This departs from ADR-001 invariant 11, which has the reap start
+    beside the next call, never inside it, and has only a continuation
+    read another run, never changing its record. Here the call has one
+    run reaped inside its hold: the one that keeps it from its worktree,
+    and only once its owner lock says nobody owns it. Its record is
+    changed by the reaper, as the reap beside the calls would change it.
+    Everything else is still reaped beside the calls, and nobody waits
+    for that reap. The ADR is not edited.
+  - ADR-025 rule 4 and ADR-022 rule 3 hold as written. A writer's run
+    that is unfinished still refuses the call: one its owner holds is
+    left alone, and one the reap cannot finish stays unfinished. A run
+    the reap finishes is a finished run, asked about by its processes as
+    before: a process the reap left not known to have ended is asked to
+    end through the same seam, and refuses the call if it cannot. A
+    directory a run made before ADR-025 that Agister may still remove is
+    refused first, as before, with no reap (LAB-123 question 1, with the
+    owner).
+  - A step of the reaper holds only the run it adopted, until it is
+    finished; a step for that run waits for it, a step for another run
+    does not. The reaper's turn covers only reading the runs' owner
+    locks and adopting one, never the removal of a directory, which may
+    run past the reap deadline: another run's cleanup does not use up a
+    call's reap.
+  - A reader is not an owner (LAB-123, the owner on `code_review`
+    `20261007T213927Z-21fb29` item 1#1). A run's owner, and a process
+    adopting it, hold its `owner.lock` alone; a status read holds it
+    shared for the moment it reads the run's state, and an export for as
+    long as it copies the run. Adoption refuses a lock held alone at
+    once (`ErrRunOwned`), and waits for one held shared, on its own
+    timer, about a second and never past the reap deadline; readers that
+    still hold it then leave the run unadopted (`ErrRunRead`): an export
+    still holds its run against recovery, and a writer call that meets
+    it is refused, `it is being read`. The lock file and how it is held
+    are unchanged, so runs recorded before read and are adopted as
+    before, and an earlier build's adoption still takes any holder for an
+    owner. (`fsruns.Adopter` in `internal/adapters/fsruns/fsruns.go`;
+    its timer is the composition's `readers`, `cmd/agister/main.go`)
+  - Done gates. The caller skill and the README changed: a refused writer
+    is one whose owner still runs it, and a killed owner's run is
+    finished by the call that meets it, which a reader of its state does
+    not stop and an export does until it is done. `index.html` and
+    `detailed.html` needed no change: LAB-123 adds no settings field,
+    value or document, and its one new collaborator, the reap's timer of
+    readers, is process wiring they do not draw; they draw the documents,
+    their layers and what a call depends on, and say nothing of a hold, a
+    refusal for a writer, a reap or the run store. The Pages settings view needed none: it shows
+    settings. Its runs view needed none either: it tells a run from its
+    record, `running` while its `owner.lock` is held and `lost` once
+    none is, and a run the call reaped carries the same `lost` result a
+    reap beside the calls records; of the events it reads only the
+    skills and tool calls. (`pages/README.md`, `pages/runs.go`)
 - Skills: the call's skills (its process's and its agent's) are written
   before each turn into a folder outside the worktree, from the recorded
   bytes, and handed to the runtime the adapter's way (Claude Code plugin

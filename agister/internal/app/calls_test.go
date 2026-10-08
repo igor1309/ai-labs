@@ -99,12 +99,16 @@ type harness struct {
 	copies *copiesSpy
 	// references says which files a brief's parts refer to exist.
 	references *referencesSpy
-	// locks, worktrees and writers are what a call's holder runs on;
+	// locks, worktrees, reaps and writers are what a call's holder runs on;
 	// processes is what a reaper beside it ends processes through.
 	locks     *locksSpy
 	worktrees *worktreesSpy
+	reaps     *reaperSpy
 	writers   *writersSpy
 	processes *processesSpy
+	// reaper finishes the unfinished runs the holder meets: reaps, unless
+	// a test gives the holder a reaper over its run store.
+	reaper app.HoldReaper
 }
 
 func newHarness() *harness {
@@ -123,9 +127,11 @@ func newHarness() *harness {
 		references: &referencesSpy{},
 		locks:      &locksSpy{},
 		worktrees:  &worktreesSpy{},
+		reaps:      &reaperSpy{},
 		writers:    &writersSpy{},
 		processes:  &processesSpy{},
 	}
+	h.reaper = h.reaps
 	h.runtimes = &runtimesSpy{runner: h.runner}
 	h.runs = &runsSpy{records: map[string]run.Record{}, states: map[string]run.State{}}
 	h.inputs = &inputsSpy{respond: func(spec app.InputSpec) (app.Resolved, error) {
@@ -168,7 +174,7 @@ func (h *harness) holder() *app.Holder {
 }
 
 func (h *harness) holderOver(changes app.CallChanges, runs app.CallRuns) *app.Holder {
-	return app.NewHolder(app.HoldAdapters{Locks: h.locks, Worktrees: h.worktrees, Content: changes, Runs: runs, Writers: h.writers})
+	return app.NewHolder(app.HoldAdapters{Locks: h.locks, Worktrees: h.worktrees, Content: changes, Runs: runs, Reaper: h.reaper, Writers: h.writers})
 }
 
 func (h *harness) call(t *testing.T, request contract.CallRequest) run.Record {
