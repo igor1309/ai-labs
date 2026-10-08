@@ -16,6 +16,19 @@
 # network; workspace-write wrote in the workspace and under /tmp, and
 # refused writing elsewhere in the home directory, git commit and network;
 # a session resumed with -c sandbox_mode="read-only" refused a write.
+# Re-observed on codex-cli 0.161.0 (2026-10-08), in a scratch repository:
+# read-only read a file and ran git show, and refused creating a file in
+# the repository, writing under /tmp, touch in .git, git tag and network;
+# workspace-write wrote in the workspace and under /tmp, and refused
+# writing elsewhere in the home directory, git tag, touch in .git and
+# network; a session resumed with -c sandbox_mode="read-only" refused a
+# write. Those ran as bare codex exec. With the adapter's argv, which adds
+# --ignore-user-config and --ignore-rules, git commit and git add were
+# refused in read-only, in workspace-write and in a session resumed
+# read-only, and a write was refused in read-only. Without --ignore-rules,
+# a host's ~/.codex/rules allow rules run matching commands, such as git
+# commit, outside the sandbox (seen on 0.160.0 and 0.161.0): observe a
+# mapping's git and other ruled commands with the adapter's argv (LAB-125).
 schema: agister.runtime/v1alpha1
 name: codex
 adapter: codex
@@ -26,8 +39,8 @@ primitives:
   items:
     read-only:
       grants: [repository.read, repository.search, repository.diff, repository.history.read, process.execute, host.read]
-      verified: ["0.158.", "0.159.", "0.160."]
+      verified: ["0.158.", "0.159.", "0.160.", "0.161."]
     workspace-write:
       grants: [repository.read, repository.search, repository.diff, repository.history.read, process.execute, host.read,
                repository.write, host.write]
-      verified: ["0.159.", "0.160."]
+      verified: ["0.159.", "0.160.", "0.161."]
