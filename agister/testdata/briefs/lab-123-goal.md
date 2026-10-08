@@ -63,6 +63,10 @@ finishes the run.
     holder's existing retry, and the call is admitted if the retry ends
     it; Done when 2 refuses only when it is still not known to have
     ended after that.
+- 2026-10-08, owner, on code_review `20261007T213927Z-21fb29` item 1#1:
+  option (a), fix it in this change. Adoption tells a transient shared
+  status probe apart from an exclusive owner, and recovery waits, bounded,
+  for transient readers to release; one extra review round is accepted.
 
 ## Open
 
