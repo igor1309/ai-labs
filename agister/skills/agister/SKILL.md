@@ -204,7 +204,10 @@ A call is refused before any turn, with exit 3 and the reason, when:
   may still write in: its owner still runs it (`has not finished`), or it
   left a process that Agister cannot end. It ends the ones it can: a run
   whose owner was killed is finished as `lost` by the call that meets it
-  (`WORKTREE_RUN_REAPED`), which is then admitted.
+  (`WORKTREE_RUN_REAPED`), which is then admitted. A process that only
+  reads that run's state, as `agister runs` or Pages does, delays this
+  for a moment; one exporting it keeps it unfinished, and the call
+  refused (`it is being read`), until the export is done.
 - the worktree overlaps a directory a run made before ADR-025 left on
   record, which Agister may still remove (`is not the caller's to
   lend`): a checkout, a clean copy, or the directory made to hold one.
@@ -400,7 +403,8 @@ is not brought: export it by its ID.
   once that is done.
 - Each run is held from the start until it is copied: no process writes
   it meanwhile, so its record and events are copied as they stood
-  together. Recovery skips a held run; a later reap recovers it.
+  together. Recovery waits for a held run about a second, then skips
+  it; a later reap, or the next writer call that meets it, recovers it.
 - A copy is written beside its place and renamed into it once complete,
   so an interrupted export leaves only a `<run-id>.partial-*` directory,
   which no export takes for a copy; remove it.

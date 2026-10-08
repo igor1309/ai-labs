@@ -3,7 +3,8 @@
 //	record.json     the run record, replaced atomically
 //	events.jsonl    ordered events, appended
 //	provider.jsonl  raw runtime output, appended
-//	owner.lock      held (flock) by the process running the call
+//	owner.lock      held (flock) alone by the process running the call,
+//	                and shared by the readers of its state
 //	artifacts/      files the call produced
 //
 // A record that is not finished and whose lock nobody holds is abandoned.
@@ -33,6 +34,7 @@ import (
 	"strings"
 	"sync"
 	"syscall"
+	"time"
 
 	"github.com/igor1309/ai-labs/agister/internal/app"
 	"github.com/igor1309/ai-labs/agister/internal/contract"
@@ -53,7 +55,6 @@ type Store struct {
 var _ app.RunRecorder = Store{}
 var _ app.RunsReader = Store{}
 var _ app.RunsAppends = Store{}
-var _ app.RunAdopter = Store{}
 var _ app.CallRuns = Store{}
 var _ app.ExportRuns = Store{}
 
@@ -151,15 +152,65 @@ func (s Store) LiveCheckouts(ctx context.Context) ([]string, error) {
 	return dirs, nil
 }
 
+// Adopter adopts the runs of a Store whose owner ended (app.RunAdopter).
+// A run's owner, and a process adopting it, hold its owner lock alone; a
+// reader holds it shared: a status probe for the moment it reads the
+// run's state, an export for as long as it copies the run (Hold). Adopt
+// refuses at once a run whose lock is held alone, and waits, bounded, for
+// the readers of one held shared to let go.
+type Adopter struct {
+	store Store
+	// timer starts the wait between two attempts at a lock readers hold:
+	// the next attempt is due when fired delivers, and stop releases the
+	// wait.
+	timer func(wait time.Duration) (fired <-chan time.Time, stop func())
+}
+
+var _ app.RunAdopter = Adopter{}
+
+// NewAdopter returns the Adopter of store's runs, whose waits for readers
+// start on timer. Both are required.
+func NewAdopter(store Store, timer func(wait time.Duration) (fired <-chan time.Time, stop func())) Adopter {
+	if timer == nil {
+		panic("fsruns.NewAdopter: no timer")
+	}
+	return Adopter{store: store, timer: timer}
+}
+
+// readerRetry is the wait between two attempts at an owner lock readers
+// hold, and readerAttempts how many waits Adopt gives them: about a
+// second, for a status probe holds the lock only for the moment it reads,
+// and an export holds it for as long as it copies the run.
+const (
+	readerRetry    = 10 * time.Millisecond
+	readerAttempts = 100
+)
+
+// Abandoned lists the unfinished runs nobody owns that recorded effects,
+// and the finished runs whose record still names a clean copy or an
+// unreleased checkout.
+func (a Adopter) Abandoned(ctx context.Context) ([]run.Record, error) {
+	return a.store.Abandoned(ctx)
+}
+
+// LiveCheckouts lists the checkout directories, workspaces and clean
+// copies, of unfinished runs that some process still owns.
+func (a Adopter) LiveCheckouts(ctx context.Context) ([]string, error) {
+	return a.store.LiveCheckouts(ctx)
+}
+
 // Adopt takes the owner lock of an unfinished run, or of a finished one
 // whose record still names a clean copy or an unreleased checkout, so
 // exactly one process ends what its dead owner left. A run whose lock
-// another holds is app.ErrRunOwned; one finished with neither on record,
+// another holds alone, its owner or another adopter, is app.ErrRunOwned
+// at once; one whose readers still hold it once the wait for them is
+// over, or ctx is, app.ErrRunRead. One finished with neither on record is
 // app.ErrRunFinished, with its record. Under the lock, it ends the events
 // on a whole line where the dead owner did not finish appending one,
 // keeping a complete event and cutting off an incomplete one, so the
 // adopter's events read and are numbered after every event delivered.
-func (s Store) Adopt(ctx context.Context, id string) (app.ReapHandle, run.Record, error) {
+func (a Adopter) Adopt(ctx context.Context, id string) (app.ReapHandle, run.Record, error) {
+	s := a.store
 	var record run.Record
 	if err := checkID(id); err != nil {
 		return nil, record, err
@@ -171,13 +222,9 @@ func (s Store) Adopt(ctx context.Context, id string) (app.ReapHandle, run.Record
 	if err != nil {
 		return nil, record, err
 	}
-	if err := syscall.Flock(int(lock.Fd()), syscall.LOCK_EX|syscall.LOCK_NB); err != nil {
+	if err := a.lockAlone(ctx, lock); err != nil {
 		lock.Close()
-		// Only a lock another holds says the run is owned.
-		if errors.Is(err, syscall.EWOULDBLOCK) {
-			return nil, record, fmt.Errorf("run %s: %w", id, app.ErrRunOwned)
-		}
-		return nil, record, fmt.Errorf("run %s: taking its owner lock: %w", id, err)
+		return nil, record, fmt.Errorf("run %s: %w", id, err)
 	}
 	// Read under the lock: the owner may have finished before it was released.
 	record, _, err = s.Get(ctx, id)
@@ -202,6 +249,47 @@ func (s Store) Adopt(ctx context.Context, id string) (app.ReapHandle, run.Record
 	h := &handle{dir: s.runDir(id), lock: lock, seq: seq, appends: s.Appends}
 	s.Appends.hold(h.dir, seq, h)
 	return h, record, nil
+}
+
+// lockAlone takes the owner lock open in lock alone. A lock that cannot
+// be had shared either is held alone: app.ErrRunOwned. One that can is
+// held by readers only, and is tried again after readerRetry, up to
+// readerAttempts times while ctx lasts; readers that still hold it then
+// are app.ErrRunRead.
+func (a Adopter) lockAlone(ctx context.Context, lock *os.File) error {
+	fd := int(lock.Fd())
+	for attempt := 0; ; attempt++ {
+		err := syscall.Flock(fd, syscall.LOCK_EX|syscall.LOCK_NB)
+		if err == nil {
+			return nil
+		}
+		if !errors.Is(err, syscall.EWOULDBLOCK) {
+			return fmt.Errorf("taking its owner lock: %w", err)
+		}
+		// Readers share the lock with this one; an owner shares it with
+		// none.
+		err = syscall.Flock(fd, syscall.LOCK_SH|syscall.LOCK_NB)
+		if errors.Is(err, syscall.EWOULDBLOCK) {
+			return app.ErrRunOwned
+		}
+		if err != nil {
+			return fmt.Errorf("asking who holds its owner lock: %w", err)
+		}
+		if err := syscall.Flock(fd, syscall.LOCK_UN); err != nil {
+			return fmt.Errorf("asking who holds its owner lock: %w", err)
+		}
+		if attempt == readerAttempts {
+			return app.ErrRunRead
+		}
+		fired, stop := a.timer(readerRetry)
+		select {
+		case <-fired:
+			stop()
+		case <-ctx.Done():
+			stop()
+			return fmt.Errorf("%w: %w", app.ErrRunRead, ctx.Err())
+		}
+	}
 }
 
 // Abandon leaves run id, whose handle this process holds, as a killed owner

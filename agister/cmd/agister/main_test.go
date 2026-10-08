@@ -157,8 +157,8 @@ var stillAt = time.Date(2026, 10, 3, 12, 0, 0, 0, time.UTC)
 // environment, not the process's, sets CODEX_HOME to userCodexHome, which
 // the production wiring reads. Its run
 // store signals through appends of its own, as a process of its own does.
-// Its turns and commands wait, and its observing polls, on a clock that
-// never moves, not on the wall clock: such a wait passes only on a clock
+// Its turns and commands wait, its observing polls, and its reaps wait for
+// a run's readers, on a clock that never moves, not on the wall clock: such a wait passes only on a clock
 // the test advances (on). Its runtimes and its commands, a starter the
 // test gave its home (startThrough) among them, number their process
 // groups from one supervisortest.Groups: no two of its processes share a
@@ -177,7 +177,7 @@ func inProcess(config cli.Config) composition {
 	groups := supervisortest.NewGroups()
 	c.starter, c.commands = runtimetest.InProcess{Groups: groups}, runtimetest.InProcess{Groups: groups}
 	still := clocktest.NewClock(stillAt)
-	c.timer, c.poll = still.Timer, still.Timer
+	c.timer, c.poll, c.readers = still.Timer, still.Timer, still.Timer
 	if starter, ok := starters.Load(config.Home); ok {
 		starter := starter.(runtimetest.InProcess)
 		starter.Groups = groups

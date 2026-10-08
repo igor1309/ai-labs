@@ -329,7 +329,9 @@ refused before any turn if:
   still write in, because its owner still runs it or it left a process
   that cannot be ended. Agister ends the ones it can: a run its owner was
   killed in is finished as lost, with its processes ended, by the call
-  that meets it, which is then admitted;
+  that meets it, which is then admitted. A process reading that run's
+  state does not stop this; one exporting it (`agister runs export`) does
+  until the export is done;
 - the worktree overlaps a directory that a run made before ADR-025 left on
   record and Agister may still remove: a checkout, a clean copy, or the
   directory made to hold one.

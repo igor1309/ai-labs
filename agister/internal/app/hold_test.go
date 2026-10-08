@@ -522,7 +522,7 @@ func TestARecordedDirectoryThatCannotBeToldApartRefusesTheCall(t *testing.T) {
 func storedHolds(t *testing.T, h *harness) (fsruns.Store, func(id, dir string, update func(app.RunHandle, run.Record) error) (*app.Held, error)) {
 	t.Helper()
 	store := fsruns.Store{Dir: t.TempDir(), Appends: fsruns.NewAppends()}
-	return store, storedHoldsBy(t, h, store, storedReaper(h, store))
+	return store, storedHoldsBy(t, h, store, storedReaper(t, h, store))
 }
 
 // storedHoldsBy is storedHolds' hold, over store, with reaper the Holder's.
@@ -558,10 +558,23 @@ func storedHoldsBy(t *testing.T, h *harness, store fsruns.Store, reaper app.Hold
 
 // storedReaper is a reaper of the runs in store, over the harness's spies,
 // on the fixed clock; only its caller's context bounds it.
-func storedReaper(h *harness, store fsruns.Store) *app.Reaper {
-	reaper := app.NewReaper(store, h.processes, h.workspaces, fixedClock{})
+func storedReaper(t *testing.T, h *harness, store fsruns.Store) *app.Reaper {
+	reaper := app.NewReaper(fsruns.NewAdopter(store, unread(t)), h.processes, h.workspaces, fixedClock{})
 	reaper.ReapContext = func(ctx context.Context) (context.Context, context.CancelFunc) { return context.WithCancel(ctx) }
 	return reaper
+}
+
+// unread is the timer of an adopter that meets no reader of a run: here a
+// run's owner lock is held by its owner alone or by nobody, and only the
+// reaper itself reads a run's state, out of its adoptions. A wait for
+// readers fails the test, and has passed at once.
+func unread(t *testing.T) func(time.Duration) (<-chan time.Time, func()) {
+	return func(wait time.Duration) (<-chan time.Time, func()) {
+		t.Errorf("the adopter waited %v for a run's readers", wait)
+		fired := make(chan time.Time, 1)
+		fired <- time.Time{}
+		return fired, func() {}
+	}
 }
 
 // saved saves the record through the run's handle.
@@ -619,7 +632,7 @@ func TestACallKilledOnceItsWorktreeIsOnRecordIsReaped(t *testing.T) {
 		t.Fatalf("the first hold = %v", err)
 	}
 
-	reaper := app.NewReaper(store, h.processes, h.workspaces, fixedClock{})
+	reaper := app.NewReaper(fsruns.NewAdopter(store, unread(t)), h.processes, h.workspaces, fixedClock{})
 	reaper.ReapContext = func(ctx context.Context) (context.Context, context.CancelFunc) { return context.WithCancel(ctx) }
 	if err := reaper.Reap(ctx); err != nil {
 		t.Fatal(err)
@@ -686,7 +699,7 @@ func TestACheckoutLessCallKilledOnceItsWorkspaceIsOnRecordIsReaped(t *testing.T)
 		t.Fatalf("the killed run %+v, effects %+v, state %s, %v", killed, killed.Effects, state, err)
 	}
 
-	reaper := app.NewReaper(store, h.processes, h.workspaces, fixedClock{})
+	reaper := app.NewReaper(fsruns.NewAdopter(store, unread(t)), h.processes, h.workspaces, fixedClock{})
 	reaper.ReapContext = func(ctx context.Context) (context.Context, context.CancelFunc) { return context.WithCancel(ctx) }
 	if err := reaper.Reap(ctx); err != nil {
 		t.Fatal(err)
@@ -723,7 +736,7 @@ func TestACheckoutLessRunWhoseReapLeftItsWriterRefusesTheCall(t *testing.T) {
 		t.Fatal(err)
 	}
 	h.processes.outcome, h.writers.outcome = app.ReapLeft, app.HoldReapLeft
-	reaper := app.NewReaper(store, h.processes, h.workspaces, fixedClock{})
+	reaper := app.NewReaper(fsruns.NewAdopter(store, unread(t)), h.processes, h.workspaces, fixedClock{})
 	reaper.ReapContext = func(ctx context.Context) (context.Context, context.CancelFunc) { return context.WithCancel(ctx) }
 	if err := reaper.Reap(ctx); err != nil {
 		t.Fatal(err)

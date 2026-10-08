@@ -149,6 +149,7 @@ func processIn(config cli.Config, appends *fsruns.Appends, getenv func(string) s
 		codexHome: runtimecomposition.CodexHome(getenv, userHome),
 		timer:     system.Timer,
 		poll:      system.Timer,
+		readers:   system.Timer,
 		hosted:    app.NewHosted(),
 	}
 }
@@ -184,6 +185,9 @@ type composition struct {
 	// process writes that observing it makes; a run this process writes
 	// is read again as it appends.
 	poll func(wait time.Duration) (fired <-chan time.Time, stop func())
+	// readers starts the waits between two attempts of a reap at a run's
+	// owner lock that processes reading the run hold.
+	readers func(wait time.Duration) (fired <-chan time.Time, stop func())
 	// stages, when set, is the folder installs stage their results in, in
 	// place of the system's temporary folder.
 	stages string
@@ -275,7 +279,10 @@ func (c composition) wire(config cli.Config) (contract.Client, *app.BackgroundRe
 	// One reaper serves both, so neither reads the other's hold of a run as
 	// that run's owner: a step for a run waits for the one that holds it,
 	// not for one ending another run's effects.
-	reaper := app.NewReaper(evidence, runtimecomposition.Processes{Supervisor: c.processes}, workspaces.discarder, system.Clock{})
+	// It adopts a run once the processes reading it, as a status read or
+	// an export, let go, waiting for them on the composition's timer of
+	// readers.
+	reaper := app.NewReaper(fsruns.NewAdopter(evidence, c.readers), runtimecomposition.Processes{Supervisor: c.processes}, workspaces.discarder, system.Clock{})
 	reaping := &app.BackgroundReaper{
 		Reaper: reaper,
 		Report: func(err error) { log.Error("reaping abandoned runs failed", "error", err.Error()) },

@@ -178,7 +178,7 @@ func TestAWriterCallReapsTheRunAKilledWriterLeftInItsWorktree(t *testing.T) {
 	h := newHarness()
 	writing(h)
 	store := fsruns.Store{Dir: t.TempDir(), Appends: fsruns.NewAppends()}
-	h.reaper = storedReaper(h, store)
+	h.reaper = storedReaper(t, h, store)
 	h.calls = h.callsRecordedWith(h.defs, h.workspaces, h.changes, store, killedAtItsAbort{store}, &seqIDs{})
 	// The first call's turn runs until it is aborted, which it reports as
 	// the supervisor of its process does; the next call's turn completes.
@@ -437,7 +437,7 @@ func TestAReapOfOneRunWaitsForTheReapersStepInFlight(t *testing.T) {
 	if err := store.Abandon("run-0"); err != nil {
 		t.Fatal(err)
 	}
-	reaper := storedReaper(h, store)
+	reaper := storedReaper(t, h, store)
 	// The reap beside the calls stops while it ends the run's process: it
 	// holds the run.
 	inFlight, step := make(chan struct{}), newBlocked()
@@ -498,7 +498,7 @@ func TestAWriterCallDoesNotWaitForTheReapOfAnotherRun(t *testing.T) {
 	ctx := context.Background()
 	h := newHarness()
 	store := fsruns.Store{Dir: t.TempDir(), Appends: fsruns.NewAppends()}
-	reaper := storedReaper(h, store)
+	reaper := storedReaper(t, h, store)
 	hold := storedHoldsBy(t, h, store, reaper)
 	// A finished run whose clean copy is still on record, listed before
 	// the killed writer: the reap beside the calls takes it first.

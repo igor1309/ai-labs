@@ -29,8 +29,8 @@ type Reaper struct {
 	// turn is held for the moments the reaper reads the runs' owner locks
 	// or takes one (take): while it lists the abandoned runs, or reads the
 	// live checkouts and adopts a run. The flock it holds for the moment it
-	// reads a run's state would read to another of its steps as the run's
-	// owner. It is not held while a run's effects are ended.
+	// reads a run's state would keep another of its steps waiting for it to
+	// let go. It is not held while a run's effects are ended.
 	turn chan struct{}
 	// mu guards reaping: the runs a step of the reaper has adopted and not
 	// finished yet, each with the channel closed once it is. The step holds
@@ -88,17 +88,24 @@ type RunAdopter interface {
 	// as live.
 	LiveCheckouts(ctx context.Context) ([]string, error)
 	// Adopt takes ownership of a run Abandoned lists, as its record is now.
-	// It fails if the run is owned by another process, with an error that
-	// wraps ErrRunOwned, or finished with no clean copy or unreleased
-	// checkout on record, with one that wraps ErrRunFinished and the
-	// record as it finished.
+	// It fails if the run is owned by another process, at once, with an
+	// error that wraps ErrRunOwned; if processes reading it, as an export
+	// does, still hold it once a wait for them bounded by ctx is over, with
+	// one that wraps ErrRunRead; or if it finished with no clean copy or
+	// unreleased checkout on record, with one that wraps ErrRunFinished and
+	// the record as it finished. A reader that only reads the run's state
+	// lets go within the wait.
 	Adopt(ctx context.Context, id string) (ReapHandle, run.Record, error)
 }
 
 var (
 	// ErrRunOwned is what a run is not adopted with while another holds
-	// its owner lock.
+	// its owner lock alone: its owner, or another process adopting it.
 	ErrRunOwned = errors.New("it is owned")
+	// ErrRunRead is what a run is not adopted with while processes reading
+	// it, as an export does, hold its owner lock: nobody owns it, and it is
+	// recovered once they are done.
+	ErrRunRead = errors.New("it is being read")
 	// ErrRunFinished is what a run is not adopted with once it finished
 	// and left nothing to remove.
 	ErrRunFinished = errors.New("it is finished")
@@ -156,9 +163,11 @@ func (c *Reaper) Reap(ctx context.Context) error {
 // a Reap beside the calls. A run nobody owns has its effects ended and is
 // finished as lost; it is returned as finished, and so is one that
 // finished meanwhile, by another reap or by its owner. A run a process
-// owns is left alone, and owned is true. The reap deadline bounds it, as
-// it bounds a Reap. It waits for a step of the reaper that holds this run,
-// never for one that ends another run's effects.
+// owns is left alone, and owned is true; one that readers, as an export,
+// hold past the adopter's wait for them is left alone too, with an error
+// that wraps ErrRunRead. The reap deadline bounds it, as it bounds a Reap.
+// It waits for a step of the reaper that holds this run, never for one
+// that ends another run's effects.
 func (c *Reaper) ReapRun(ctx context.Context, id string) (finished run.Record, owned bool, err error) {
 	ctx, cancel := c.reapContext(ctx)
 	defer cancel()
