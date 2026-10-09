@@ -235,6 +235,28 @@ func TestCaptureReturnsTheSourceTheAgentsAsReadAndTheClocksTime(t *testing.T) {
 	}
 }
 
+// Each capturer carries the source ID it was given: two capturers of
+// different sources name their own in what they observe.
+func TestEachCapturerCarriesItsOwnSource(t *testing.T) {
+	t.Parallel()
+	for _, source := range []string{"claude-main", "codex-review"} {
+		t.Run(source, func(t *testing.T) {
+			t.Parallel()
+			reader := &readerStub{agents: []capture.Agent{{ID: "agent-1", State: "working"}}}
+			capturer := newCapturer(t, source, reader, &clockStub{now: readAt()})
+
+			observation, err := capturer.Capture(t.Context())
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			if observation.Source != source {
+				t.Errorf("got the source %q, want %q", observation.Source, source)
+			}
+		})
+	}
+}
+
 // ObservedAt is the clock's time in UTC, whatever zone the clock tells it
 // in.
 func TestCaptureTakesObservedAtInUTC(t *testing.T) {
