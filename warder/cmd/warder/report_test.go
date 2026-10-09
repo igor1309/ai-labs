@@ -14,22 +14,26 @@ import (
 
 var _ attempt.Reporter = sourceReporter{}
 
-// writeSpy records every Write and answers each with what the test set.
+// writeSpy records every Write and answers each with what the test's
+// answer returns for it, the count and the error. It fills in nothing
+// else.
 type writeSpy struct {
-	n      int
-	err    error
+	answer func(p []byte) (int, error)
 	writes []string
 }
 
 func (s *writeSpy) Write(p []byte) (int, error) {
 	s.writes = append(s.writes, string(p))
-	return s.n, s.err
+	return s.answer(p)
 }
+
+// writeAll answers a Write as written whole.
+func writeAll(p []byte) (int, error) { return len(p), nil }
 
 // A diagnostic is one line, `warder: <source-id>: <error>`, in one Write.
 func TestReportWritesEachDiagnosticAsOneLineInOneWrite(t *testing.T) {
 	t.Parallel()
-	spy := &writeSpy{}
+	spy := &writeSpy{answer: writeAll}
 	reporter := sourceReporter{source: "claude-main", writer: spy}
 
 	reporter.Report(errors.New("attempt: read failed: exit status 1"))
@@ -48,7 +52,7 @@ func TestReportWritesEachDiagnosticAsOneLineInOneWrite(t *testing.T) {
 // standard error has, is still one line.
 func TestReportKeepsADiagnosticWithLineBreaksOnOneLine(t *testing.T) {
 	t.Parallel()
-	spy := &writeSpy{}
+	spy := &writeSpy{answer: writeAll}
 	reporter := sourceReporter{source: "claude-main", writer: spy}
 
 	reporter.Report(errors.New("exit status 1: not logged in\r\nrun claude login\n\nand retry\n"))
@@ -62,7 +66,7 @@ func TestReportKeepsADiagnosticWithLineBreaksOnOneLine(t *testing.T) {
 // A diagnostic that cannot be written is dropped: Report returns.
 func TestReportDropsADiagnosticThatCannotBeWritten(t *testing.T) {
 	t.Parallel()
-	spy := &writeSpy{err: errors.New("stderr is closed")}
+	spy := &writeSpy{answer: func([]byte) (int, error) { return 0, errors.New("stderr is closed") }}
 	reporter := sourceReporter{source: "claude-main", writer: spy}
 
 	reporter.Report(errors.New("attempt: read failed"))
@@ -76,7 +80,7 @@ func TestReportDropsADiagnosticThatCannotBeWritten(t *testing.T) {
 func TestSerialWriterPassesEachWriteOn(t *testing.T) {
 	t.Parallel()
 	failure := errors.New("stderr is closed")
-	spy := &writeSpy{n: 3, err: failure}
+	spy := &writeSpy{answer: func([]byte) (int, error) { return 3, failure }}
 	writer := &serialWriter{writer: spy}
 
 	n, err := writer.Write([]byte("a line\n"))

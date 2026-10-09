@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -20,17 +21,19 @@ import (
 // fake process of these tests.
 const fakeProcess = "fake-process"
 
-// fakeHang is how long a fake process that hangs sleeps: longer than the
-// test binary runs, so within a test being ended is its only way out, and
-// one that a failed test left behind still ends by itself.
-const fakeHang = 5 * time.Minute
-
 // TestMain runs the tests, or, started as `<test binary> fake-process
-// <scenario> ...`, the fake process of the executor's contract tests: the
-// test binary is their one build.
+// <scenario> ...`, the fake process of the executor's contract tests, or,
+// started as `<test binary> warder-process <scenario> ...`, warder as the
+// process of the process boundary's contract tests: the test binary is
+// their one build.
 func TestMain(m *testing.M) {
-	if len(os.Args) > 1 && os.Args[1] == fakeProcess {
-		os.Exit(runFakeProcess(os.Args[2:]))
+	if len(os.Args) > 1 {
+		switch os.Args[1] {
+		case fakeProcess:
+			os.Exit(runFakeProcess(os.Args[2:]))
+		case warderProcess:
+			os.Exit(runWarderProcess(os.Args[2:]))
+		}
 	}
 	os.Exit(m.Run())
 }
@@ -40,11 +43,16 @@ func TestMain(m *testing.M) {
 //
 //   - succeed: writes to both its outputs and exits 0;
 //   - fail: writes to both its outputs and exits 3;
-//   - hang <fifo>: reports on the FIFO that it started, and hangs;
-//   - hang-with-child <fifo>: starts a child that holds its standard
-//     output and hangs, reports the child's process ID on the FIFO, and
-//     hangs;
-//   - sleep: hangs.
+//   - hang <fifo> <held>: reports its process ID on the FIFO, and hangs;
+//   - hang-with-child <fifo> <held>: starts a child that holds its
+//     standard output and hangs, reports its own process ID and the
+//     child's on the FIFO, and hangs;
+//   - hold: the child, which hangs on the held FIFO it inherits as file
+//     descriptor 3.
+//
+// One that hangs reads the held FIFO, which the test holds open, until it
+// is closed: it lives on no clock of its own, and is killed or ends with
+// the test that holds the FIFO, whichever way that test ends.
 func runFakeProcess(args []string) int {
 	if len(args) == 0 {
 		return 64
@@ -59,24 +67,33 @@ func runFakeProcess(args []string) int {
 		fmt.Fprint(os.Stderr, "fake: no session store\n")
 		return 3
 	case "hang":
-		if err := reportStarted(args[1], "started"); err != nil {
+		held, err := os.Open(args[2])
+		if err != nil {
 			return 1
 		}
-		time.Sleep(fakeHang)
+		if err := reportStarted(args[1], strconv.Itoa(os.Getpid())); err != nil {
+			return 1
+		}
+		_, _ = io.Copy(io.Discard, held)
 		return 0
 	case "hang-with-child":
-		child := exec.Command(os.Args[0], fakeProcess, "sleep")
+		held, err := os.Open(args[2])
+		if err != nil {
+			return 1
+		}
+		child := exec.Command(os.Args[0], fakeProcess, "hold")
 		child.Stdout = os.Stdout
+		child.ExtraFiles = []*os.File{held}
 		if err := child.Start(); err != nil {
 			return 1
 		}
-		if err := reportStarted(args[1], strconv.Itoa(child.Process.Pid)); err != nil {
+		if err := reportStarted(args[1], fmt.Sprintf("%d %d", os.Getpid(), child.Process.Pid)); err != nil {
 			return 1
 		}
-		time.Sleep(fakeHang)
+		_, _ = io.Copy(io.Discard, held)
 		return 0
-	case "sleep":
-		time.Sleep(fakeHang)
+	case "hold":
+		_, _ = io.Copy(io.Discard, os.NewFile(3, "held"))
 		return 0
 	}
 	return 64
@@ -120,6 +137,60 @@ func startedReport(t *testing.T) (fifo string, started <-chan string) {
 		}
 	})
 	return fifo, reports
+}
+
+// heldFIFO makes a FIFO for a fake process to hang on, and holds it open
+// to write until the test ends: the process reads it until then, so it
+// ends with the test however the test ends.
+func heldFIFO(t *testing.T) string {
+	t.Helper()
+	fifo := filepath.Join(t.TempDir(), "held")
+	if err := syscall.Mkfifo(fifo, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	held := make(chan *os.File, 1)
+	go func() {
+		// Blocks until the fake process opens the FIFO to read. A FIFO
+		// that cannot be opened leaves nil, and nothing to close.
+		writer, _ := os.OpenFile(fifo, os.O_WRONLY, 0)
+		held <- writer
+	}()
+	t.Cleanup(func() {
+		// After a test that failed before its process opened the FIFO, the
+		// opening still waits: opening the FIFO to read ends it.
+		if fd, err := syscall.Open(fifo, syscall.O_RDONLY|syscall.O_NONBLOCK, 0); err == nil {
+			defer syscall.Close(fd)
+		}
+		if writer := <-held; writer != nil {
+			writer.Close()
+		}
+	})
+	return fifo
+}
+
+// processIDs reads the process IDs a fake process reported, and kills
+// each of them when the test ends, whatever the executor did.
+func processIDs(t *testing.T, report string) []int {
+	t.Helper()
+	var pids []int
+	for _, field := range strings.Fields(report) {
+		pid, err := strconv.Atoi(field)
+		if err != nil || pid <= 1 {
+			t.Fatalf("the process reported %q, not process IDs", report)
+		}
+		pids = append(pids, pid)
+		t.Cleanup(func() { _ = syscall.Kill(pid, syscall.SIGKILL) })
+	}
+	return pids
+}
+
+// assertGone fails unless no process has the ID pid any more: Execute
+// returns after the process it ran was waited for, and so reaped.
+func assertGone(t *testing.T, pid int) {
+	t.Helper()
+	if err := syscall.Kill(pid, 0); !errors.Is(err, syscall.ESRCH) {
+		t.Errorf("the process %d is not gone: signalling it gave %v, want %v", pid, err, syscall.ESRCH)
+	}
 }
 
 // startExecute executes the test binary as the fake process of scenario in
@@ -207,8 +278,8 @@ func TestExecuteReturnsTheErrorOfACommandThatCannotStart(t *testing.T) {
 }
 
 // Contract test: a real process, the test binary run as the fake one, that
-// would hang for minutes: once its context ends it is killed, and Execute
-// returns an error that wraps the context's cause.
+// hangs until the test ends: once its context ends it is killed and gone,
+// and Execute returns an error that wraps the context's cause.
 func TestExecuteKillsAProcessWhoseContextEnds(t *testing.T) {
 	t.Parallel()
 	processes := osProcesses{waitDelay: processWaitDelay}
@@ -216,21 +287,24 @@ func TestExecuteKillsAProcessWhoseContextEnds(t *testing.T) {
 	stopped := errors.New("the read timed out")
 	ctx, cancel := context.WithCancelCause(t.Context())
 	defer cancel(nil)
-	result := startExecute(ctx, t, processes, "hang", fifo)
-	awaitStarted(t, started, result)
+	result := startExecute(ctx, t, processes, "hang", fifo, heldFIFO(t))
+	pids := processIDs(t, awaitStarted(t, started, result))
+	if len(pids) != 1 {
+		t.Fatalf("the process reported %d process IDs, want its own", len(pids))
+	}
 
 	cancel(stopped)
 
-	// Execute returns only once the process has ended.
 	if err := <-result; !errors.Is(err, stopped) {
 		t.Errorf("got the error %v, want one that wraps %v", err, stopped)
 	}
+	assertGone(t, pids[0])
 }
 
 // Contract test: a real process, the test binary run as the fake one, with
-// a child that holds its standard output and hangs for minutes: once the
-// context ends Execute returns, after its wait delay, while the child still
-// holds the pipe.
+// a child that holds its standard output, both hanging until the test
+// ends: once the context ends the process is killed and gone, and Execute
+// returns, after its wait delay, while the child still holds the pipe.
 func TestExecuteReturnsWhileAChildOfTheKilledProcessHoldsItsOutput(t *testing.T) {
 	t.Parallel()
 	// Short: the test waits it out, and nothing rests on its length.
@@ -238,18 +312,19 @@ func TestExecuteReturnsWhileAChildOfTheKilledProcessHoldsItsOutput(t *testing.T)
 	fifo, started := startedReport(t)
 	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
-	result := startExecute(ctx, t, processes, "hang-with-child", fifo)
-	child, err := strconv.Atoi(strings.TrimSpace(awaitStarted(t, started, result)))
-	if err != nil || child <= 1 {
-		t.Fatalf("the process reported no child process ID: %v", err)
+	result := startExecute(ctx, t, processes, "hang-with-child", fifo, heldFIFO(t))
+	pids := processIDs(t, awaitStarted(t, started, result))
+	if len(pids) != 2 {
+		t.Fatalf("the process reported %d process IDs, want its own and its child's", len(pids))
 	}
-	t.Cleanup(func() { _ = syscall.Kill(child, syscall.SIGKILL) })
+	killed, child := pids[0], pids[1]
 
 	cancel()
 
 	if err := <-result; !errors.Is(err, context.Canceled) {
 		t.Errorf("got the error %v, want one that wraps %v", err, context.Canceled)
 	}
+	assertGone(t, killed)
 	if err := syscall.Kill(child, 0); err != nil {
 		t.Errorf("the child no longer runs, so it did not hold the output: %v", err)
 	}

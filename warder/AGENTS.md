@@ -53,11 +53,18 @@ From the repository root, quiet (never `-v`):
 - Build from `warder/`: `go build ./cmd/warder`.
 - Command line: `warder -claude <source-id>`, the flag repeatable. Each
   enables one Claude Code source under that source ID. No source, an empty
-  or duplicate ID, an unknown flag or a stray argument is a usage error.
+  or duplicate ID, an ID that is not valid UTF-8, an unknown flag or a
+  stray argument is a usage error.
 - Settings, constants in `cmd/warder/main.go`: a Claude source's read is
   limited to 5 seconds, and it waits 5 seconds after each attempt.
 - stdout: one JSON line per successful read, the design's observation
-  contract. Nothing else is written there.
+  contract. Nothing else is written there. SIGPIPE is ignored: a stdout
+  whose reader is gone is an output error, which exits 1.
+- Shutdown: the design allows backpressure on stdout, so a first SIGINT or
+  SIGTERM waits for a pending write to stdout; there is no interruptible
+  output. Once the first signal has cancelled the run, both signals have
+  their default behaviour again: a second SIGINT or SIGTERM ends a run
+  held by a stdout consumer that stopped reading.
 - stderr: one line per read that failed or timed out,
   `warder: <source-id>: <error>`, and warder's own messages,
   `warder: <error>`.

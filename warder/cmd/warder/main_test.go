@@ -173,8 +173,8 @@ func TestASourceIsReadAtOnceAndAgainAfterItsWait(t *testing.T) {
 		t.Errorf("got the first record\n%swant\n%s", got, want)
 	}
 	// The read's deadline, then the wait after the attempt: both 5 seconds.
-	clock.Started(claudeReadTimeout)
-	clock.Started(claudePostAttemptWait)
+	clock.Started(5 * time.Second)
+	clock.Started(5 * time.Second)
 	if got, want := executor.executed(), []string{"claude agents --json"}; !slices.Equal(got, want) {
 		t.Errorf("while the source waits, got the commands %q, want %q", got, want)
 	}
@@ -253,8 +253,8 @@ func TestAFailedReadIsReportedAndTheNextAttemptFollows(t *testing.T) {
 		t.Errorf("got the diagnostic %q, want `warder: claude-main: <a read that failed>: exit status 1: not logged in`", diagnostic)
 	}
 	// The read's deadline, then the wait after the attempt.
-	clock.Started(claudeReadTimeout)
-	clock.Started(claudePostAttemptWait)
+	clock.Started(5 * time.Second)
+	clock.Started(5 * time.Second)
 	assertNoLines(t, "stdout", stdout)
 
 	clock.Advance(5 * time.Second)
@@ -276,7 +276,7 @@ func TestABlockedReadIsEndedByItsDeadlineAndReportedAsATimeout(t *testing.T) {
 	executor := &executorSpy{answer: func(ctx context.Context, _ int) ([]byte, error) { return untilEnded(ctx) }}
 	startApplication(t, stdout, stderr, executor.execute, clock, "warder", "-claude", "claude-main")
 
-	clock.Started(claudeReadTimeout)
+	clock.Started(5 * time.Second)
 	assertNoLines(t, "stderr", stderr)
 
 	clock.Advance(5 * time.Second)
@@ -286,7 +286,7 @@ func TestABlockedReadIsEndedByItsDeadlineAndReportedAsATimeout(t *testing.T) {
 		t.Errorf("got the diagnostic %q, want `warder: claude-main: <a read that timed out>: context deadline exceeded`", diagnostic)
 	}
 	// The wait after the attempt: the attempt has returned.
-	clock.Started(claudePostAttemptWait)
+	clock.Started(5 * time.Second)
 	assertNoLines(t, "stdout", stdout)
 }
 
@@ -301,6 +301,37 @@ func TestAFailingStdoutEndsTheRunWithExitCode1(t *testing.T) {
 
 	if got := app.exitCode(); got != 1 {
 		t.Errorf("got the exit code %d, want 1", got)
+	}
+	got := stderr.all()
+	if len(got) != 1 || !strings.HasPrefix(got[0], "warder: ") || !strings.HasSuffix(got[0], ": the pipe is closed\n") {
+		t.Errorf("got on stderr %q, want one line `warder: <what failed>: the pipe is closed`", got)
+	}
+}
+
+// The two sources publish through one publisher: both reads succeed, held
+// by the executor until both commands arrived, the first record's write to
+// stdout fails, and the other source's record is never written. The run
+// exits 1.
+func TestTwoSourcesShareOnePublisherThatAFailedWriteBreaks(t *testing.T) {
+	t.Parallel()
+	clock := clocktest.NewClock(morning())
+	stdout := &writeSpy{answer: func([]byte) (int, error) { return 0, errors.New("the pipe is closed") }}
+	stderr := newLines()
+	var arrived sync.WaitGroup
+	arrived.Add(2)
+	executor := &executorSpy{answer: func(context.Context, int) ([]byte, error) {
+		arrived.Done()
+		arrived.Wait()
+		return []byte(sessions), nil
+	}}
+	app := startApplication(t, stdout, stderr, executor.execute, clock, "warder", "-claude", "claude-main", "-claude", "claude-side")
+
+	if got := app.exitCode(); got != 1 {
+		t.Errorf("got the exit code %d, want 1", got)
+	}
+	// The run returned after both loops did, each after its publish.
+	if len(stdout.writes) != 1 {
+		t.Errorf("got %d writes to stdout, want 1:\n%s", len(stdout.writes), strings.Join(stdout.writes, ""))
 	}
 	got := stderr.all()
 	if len(got) != 1 || !strings.HasPrefix(got[0], "warder: ") || !strings.HasSuffix(got[0], ": the pipe is closed\n") {
@@ -330,9 +361,9 @@ func TestCancellationEndsTheRunWithExitCode0AfterEveryLoopReturned(t *testing.T)
 	<-blocked
 	stdout.next()
 	// Each source's deadline, then the wait of the one that published.
-	clock.Started(claudeReadTimeout)
-	clock.Started(claudeReadTimeout)
-	clock.Started(claudePostAttemptWait)
+	clock.Started(5 * time.Second)
+	clock.Started(5 * time.Second)
+	clock.Started(5 * time.Second)
 
 	app.cancel()
 
@@ -361,6 +392,9 @@ func TestAUsageErrorExitsWithCode2AndStartsNothing(t *testing.T) {
 		{"no source", []string{"warder"}, "no source enabled"},
 		{"no arguments at all", nil, "no source enabled"},
 		{"an empty ID", []string{"warder", "-claude", ""}, "empty source ID"},
+		{"an ID that is not UTF-8", []string{"warder", "-claude", "\xff"}, `source ID "\xff" is not valid UTF-8`},
+		{"an ID cut inside a character", []string{"warder", "-claude", "claude-\xc3"}, `source ID "claude-\xc3" is not valid UTF-8`},
+		{"an invalid ID after a valid one", []string{"warder", "-claude", "claude-main", "-claude", "claude-\xed\xa0\x80"}, `source ID "claude-\xed\xa0\x80" is not valid UTF-8`},
 		{"a flag with no ID", []string{"warder", "-claude"}, "flag needs an argument: -claude"},
 		{"a duplicate ID", []string{"warder", "-claude", "claude-main", "-claude", "claude-main"}, `source ID "claude-main" is given twice`},
 		{"an unknown flag", []string{"warder", "-claude", "claude-main", "-codex", "codex-main"}, "flag provided but not defined: -codex"},

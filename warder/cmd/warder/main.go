@@ -17,6 +17,7 @@ import (
 	"os/signal"
 	"syscall"
 	"time"
+	"unicode/utf8"
 
 	"github.com/igor1309/ai-labs/warder/internal/attempt"
 	"github.com/igor1309/ai-labs/warder/internal/capture"
@@ -53,10 +54,30 @@ const (
 const usage = "usage: warder -claude <source-id> [-claude <source-id> ...]"
 
 func main() {
+	os.Exit(serve(os.Args, os.Stdout, os.Stderr, osProcesses{waitDelay: processWaitDelay}.Execute, systemClock, realTimer, nil))
+}
+
+// serve is the application as the process: it runs until SIGINT or
+// SIGTERM cancels the run, and returns the exit code. SIGPIPE is ignored,
+// so a write to a stdout or stderr whose reader is gone returns EPIPE, an
+// output error, instead of ending the process.
+//
+// A first signal waits for a write to stdout in progress: its consumer
+// may hold the run. So once that signal has cancelled the run, the default
+// behaviour of both signals is restored, and a second ends the process.
+// released, when set, is called once it is restored; main leaves it
+// unset, it is the event the package's tests wait for.
+func serve(args []string, stdout, stderr io.Writer, execute executeFunc, clock clockFunc, timer timerFunc, released func()) int {
+	signal.Ignore(syscall.SIGPIPE)
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
-	code := run(ctx, os.Args, os.Stdout, os.Stderr, osProcesses{waitDelay: processWaitDelay}.Execute, systemClock, realTimer)
-	stop()
-	os.Exit(code)
+	defer stop()
+	context.AfterFunc(ctx, func() {
+		stop()
+		if released != nil {
+			released()
+		}
+	})
+	return run(ctx, args, stdout, stderr, execute, clock, timer)
 }
 
 // executeFunc executes a command, ends it when ctx is done, and returns
@@ -101,8 +122,9 @@ func run(ctx context.Context, args []string, stdout, stderr io.Writer, execute e
 
 // parseSources reads the command line, args[0] being the program's name,
 // and returns the IDs of the Claude Code sources it enables, in its order:
-// one for each -claude <source-id>. No source, an empty ID, an ID given
-// twice, an unknown flag and a stray argument are errors.
+// one for each -claude <source-id>. No source, an empty ID, an ID that is
+// not valid UTF-8, an ID given twice, an unknown flag and a stray argument
+// are errors.
 func parseSources(args []string) ([]string, error) {
 	flags := flag.NewFlagSet("warder", flag.ContinueOnError)
 	// The caller reports the error, once.
@@ -112,6 +134,9 @@ func parseSources(args []string) ([]string, error) {
 	flags.Func("claude", "enable a Claude Code source with this source ID", func(id string) error {
 		if id == "" {
 			return errors.New("empty source ID")
+		}
+		if !utf8.ValidString(id) {
+			return fmt.Errorf("source ID %q is not valid UTF-8", id)
 		}
 		if enabled[id] {
 			return fmt.Errorf("source ID %q is given twice", id)
