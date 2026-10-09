@@ -78,8 +78,8 @@ judge's, a read-only policy, a prompt and an output schema, run once per
 question:
 `agister run advisor --param question=<file> --param revision=<rev>`.
 Whoever acts on the judge's rulings writes the question file, runs the
-advisor and appends the record; `agister/AGENTS.md` says so in place of
-"owner items to the owner".
+advisor and appends the record; `.claude/skills/deliver/SKILL.md` says so
+in place of "owner items to the owner".
 
 It needs no code. The core knows no advisor and no decision
 ([ADR-001](001-agister-cli-architecture.md) rule 1); the process, prompt and schema are settings (rule 2); an `owner`

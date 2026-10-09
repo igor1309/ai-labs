@@ -33,8 +33,90 @@ func TestTheDeliverSkillIsALoadableSkill(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if skill.Name != "deliver" || skill.Description == "" {
-		t.Errorf("skill %q, description %q", skill.Name, skill.Description)
+	if skill.Name != "deliver" {
+		t.Errorf("skill %q", skill.Name)
+	}
+	// The description is what a session is offered the skill by: it names
+	// the delegating delivery session and excludes an implementer working
+	// on a brief, who would otherwise load the delivery rules. A
+	// description that has both is not empty, which was the check before.
+	for _, phrase := range []string{
+		"For the session that delivers a change by delegating its implementation and review",
+		"Not for an implementer working on a brief",
+	} {
+		if !strings.Contains(skill.Description, phrase) {
+			t.Errorf("the description lacks %q:\n%s", phrase, skill.Description)
+		}
+	}
+}
+
+// The skill's warder part is its own section, which replaces the default
+// for warder/: implement through implement_warder, verify the result,
+// review with code_review, and treat a run refused for an unverified
+// runtime as a block. The phrases of each rule stand in that section, not
+// only somewhere in the skill, whose Agister part has some of them too.
+func TestTheDeliverSkillHasItsWarderPart(t *testing.T) {
+	t.Parallel()
+	skill := read(t, filepath.Join("..", "..", "..", deliverSkillFile))
+	const heading = "## Warder: `warder/`"
+	warder, found := section(skill, heading)
+	if !found {
+		t.Fatalf("%s lacks the section %q", deliverSkillFile, heading)
+	}
+	rules := map[string][]string{
+		"implement through implement_warder": {
+			"Implement through `implement_warder`",
+			"agister run implement_warder --param candidate=HEAD --param brief=<file>",
+		},
+		"verify the result": {
+			"Verify the result yourself",
+			"scripts/handoff-check.py --claimed <files>",
+			"then `warder/scripts/test.sh`",
+		},
+		"review with code_review": {
+			"agister run code_review --param base=<rev> --param candidate=HEAD --param goal=<file>",
+			"send fixes to a fresh `implement_warder` run",
+		},
+		"an unverified runtime is a block": {
+			"A run refused because a runtime's version is not verified",
+			"is a block, not something to work around",
+			"Never fall back to calling the runtime directly",
+		},
+	}
+	for rule, phrases := range rules {
+		for _, phrase := range phrases {
+			if !strings.Contains(warder, phrase) {
+				t.Errorf("the warder section's rule %q lacks %q", rule, phrase)
+			}
+		}
+	}
+}
+
+// section returns the text of document under a second-level heading, up to
+// the next one or the end, and whether the heading is there. Whitespace is
+// one space, so a phrase wrapped across lines is found.
+func section(document, heading string) (string, bool) {
+	_, after, found := strings.Cut("\n"+document, "\n"+heading+"\n")
+	if !found {
+		return "", false
+	}
+	body, _, _ := strings.Cut(after, "\n## ")
+	return strings.Join(strings.Fields(body), " "), true
+}
+
+// The Codex deliver prompt holds no copy of the rules: it sends the
+// session to their one source, the deliver skill, by a path that exists.
+func TestTheCodexDeliverPromptReadsTheDeliverSkill(t *testing.T) {
+	t.Parallel()
+	root := filepath.Join("..", "..", "..")
+	promptFile := filepath.Join(".codex", "prompts", "deliver.md")
+	prompt := read(t, filepath.Join(root, promptFile))
+	instruction := "Read `" + filepath.ToSlash(deliverSkillFile) + "`"
+	if !strings.Contains(prompt, instruction) {
+		t.Errorf("%s does not say %q", promptFile, instruction)
+	}
+	if _, err := os.Stat(filepath.Join(root, deliverSkillFile)); err != nil {
+		t.Errorf("%s points to a skill that is not there: %v", promptFile, err)
 	}
 }
 
