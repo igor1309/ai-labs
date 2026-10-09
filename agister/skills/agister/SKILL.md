@@ -9,8 +9,12 @@ Agister (`agister`, on PATH) runs agent calls and workflows of them. The
 binary defines none of them: processes, workflows, their params, agents
 and permissions are settings. Home's settings are in `<home>`: the
 directory `--home` selects, else `$AGISTER_HOME`, else `~/.agister/` by
-default. The `.agister/` of the repository you run in takes priority
-over them, document by document. Each run is recorded in
+default. Settings compose by field across home, the
+worktree root's `.agister/` and the nearest project `.agister/` below
+that root, selected from the launch directory or `--dir`. Maps merge by
+key at every depth; lists and scalars replace whole, and `[]` means none.
+A partial sets only what it changes. Prompts, skills and schemas are taken
+whole from the nearest layer that holds them. Each run is recorded in
 `<home>/runs/<run-id>/`.
 `agister --help` is authoritative, so check it before you rely on a
 command or a flag. The `README.md` of the Agister source has the details.
@@ -31,9 +35,10 @@ repository you will run in.
   them, each with its source, such as a file or a git revision; its
   output, text or JSON under a schema it names; the permissions it asks
   for and the tools its agent gets on its runtime; its limits; its
-  verification, if it has one; the file each document it uses comes from,
-  home's or the repository's, its schema's among them; warnings; and, when
-  a call would be refused now, the reason. With `--agent <agent>` it shows
+  verification, if it has one; the layer files each document it uses comes from,
+  nearest first, its schema's among them; each composed document's leaf
+  fields with their layers; its `prompt` and `guidance`; warnings;
+  and, when a call would be refused now, the reason. With `--agent <agent>` it shows
   the process as that agent would run it.
 - `agister workflow show <workflow>` shows the workflow's params and their
   defaults, its fan-out nodes and its join, and for each node its process
@@ -41,7 +46,15 @@ repository you will run in.
 - `agister check` verifies the composed settings. It exits 0 when they
   have no problem and 64 when they have one, prints each problem with what
   it refuses, and prints warnings. `agister check --tree` shows what
-  defines what, and in which file.
+  defines what, with each document's layer files, nearest first, and under
+  each but the farthest the fields it gave (`(none)` when it gave none).
+  A prompt taken whole marks the farther files `(replaced)`.
+- `agister check`, `agister process list`, `agister process show`, `agister
+  workflow list` and `agister workflow show` take `--dir <dir>` to read the layers a call launched there uses.
+  Outside a git worktree only home is read. A second project `.agister/`
+  between the nearest one and the root, a project `blocks.yaml` or an
+  invalid `layer.yaml` makes that layer invalid: `check` names its path
+  and reason, and commands launched under it are refused.
 - A problem that names a field, a field's shape, an adapter, an input
   source or a schema version this binary does not know adds a last line:
   `<n> problem(s) name something this binary does not know; the settings
@@ -73,19 +86,20 @@ clean worktree (`workspace.revision` and `workspace.clean: true`, see
 below).
 
 The process holds the command itself, or names a verify document:
-`verify:<name>` is `verifies/<name>.yaml`, the repository's
-`.agister/verifies/<name>.yaml` before home's. `agister process show
-<process>` names the document, and shows its command and the file it comes
-from. When neither place has the document, `agister check` warns, `show`
-gives the refusal with both paths it looked in, and a call of that process
-is refused before its first turn. Other processes still run. Supply the
-document; do not route around the refusal.
+`verify:<name>` is `verifies/<name>.yaml`, composed by field from the
+selected layers. A project fills `verifies/repo.yaml` in its own layer
+for `implement`; the command runs from the worktree root, so name the
+project in it (`cd agister && …`). `agister process show <process>` names
+the layer files and shows the command. If no layer fills the document,
+`check` warns, `show` gives the refusal with the paths it looked in, and
+`implement` is refused before its first turn. Other processes still run.
+Supply the document; do not route around the refusal.
 
 ## What a repository provides
 
-- `.agister/`: its own documents, laid out like home's. Each replaces
-  home's document of the same kind and name, whole. For a process that
-  names a verify document, this is where the repository puts its own: one
+- `.agister/`: its own partial documents, laid out like home's. The same
+  kind and filename compose across the selected layers. For a process
+  that names a verify document, a repository or project supplies its own: one
   shell command that passes in a clean worktree at the revision, with
   what you prepared there. Each YAML file holds exactly one YAML
   document: one with a second, after a `---`, is a settings problem
@@ -98,10 +112,23 @@ document; do not route around the refusal.
   - `clean: true`: a fresh call is refused unless the worktree's content
     is HEAD's. A process that writes, such as an implementer, declares it.
     A reviewer does not need it.
-- `.agister/blocks.yaml`, optional: the processes, workflows and agents of
-  home that this repository blocks.
-- `AGENTS.md`: the agent's runtime loads it in the worktree. Put the
-  testing command and the repository's hard rules there.
+- `.agister/blocks.yaml`, optional: the processes, workflows, agents and
+  runtimes of home that this repository blocks. A project layer holds no
+  `blocks.yaml`; blocks are the repository's alone.
+- A process has one required `prompt` name and a `guidance` list, empty
+  when absent or `[]`. Each name resolves in the nearest layer that has
+  it; a missing name refuses the call. The agent receives its values,
+  then input `prompt`, then `guidance.<name>` in list order, recorded with
+  their digests. `{source: prompt}` and `optional` are refused.
+- `layer.yaml`, repository or project only, names additional prompt folders:
+  `schema: agister.layer/v1alpha1` and `prompts: [prompts]`. Paths are
+  relative to the directory holding `.agister/`, inside it, and must
+  exist. A layer's `.agister/prompts/<name>.md` comes first, then the
+  listed folders in order. Only names a process gives are read there;
+  unrelated library files are neither checked nor shown as unused.
+- `AGENTS.md`: the agent's runtime loads it in the worktree. Guidance a
+  node must follow belongs in that node's `prompt` or `guidance`, resolved
+  and recorded by Agister, never a pointer in `AGENTS.md` or a skill.
 
 Agister makes no checkout, copy or setup: you prepare the worktree, its
 build output and bindings, before you call. `agister check` warns about a
@@ -143,7 +170,7 @@ installed as any other document: planned, diffed, checked, backed up and
 restored. A skill folder holding anything beside its `SKILL.md`, or whose
 `SKILL.md` is not a regular file, refuses the install, naming the skill
 and those files. Files that are not settings, a file directly under
-`skills/` and a `blocks.yaml` among them, are listed and not installed; a
+`skills/` and `blocks.yaml` or `layer.yaml` among them, are listed and not installed; a
 symbolic link in the folder refuses it. Restore removes a skill its
 install created, with its folder when that is then empty.
 
@@ -162,16 +189,16 @@ agister run <process> --dir <worktree> --param <param>=<value> --json
 ```
 
 - Every call works in your worktree: the root of the git worktree that
-  holds the directory you launch from, or the one `--dir` names, with that
-  worktree's settings. A workflow's nodes work there too. Agister makes no
+  holds the launch directory, or the one `--dir` names, with that
+  directory's selected layers. A workflow's nodes work there too. Agister makes no
   checkout or copy of it; to keep work apart, make a worktree and call
   Agister there.
 - Give every required param, and each other one whose default is not what
   you mean. A default is a setting, and may name a ref that this
   repository lacks.
-- A revision param resolves in that directory, whether you pass it or
-  leave it to its default, and a file param's path is read relative to
-  it.
+- A revision param resolves in the worktree root, whether you pass it or
+  leave it to its default; a file param's path is relative to the launch
+  directory.
 - A process that pins a revision works on the one HEAD is at. Check out
   what you want worked on, then pass `HEAD` or that commit.
 - A process that needs a clean worktree works from HEAD's content: commit
@@ -227,8 +254,8 @@ or contains it.
 An input read from a file may name the forms its text must have, such as
 a goal or a step brief. `agister process show <process>` and `agister
 workflow show <workflow>` list them on the input, as `brief <- file (form
-goal, step)`. The form is a settings document, `briefs/<name>.yaml`: the
-repository's `.agister/briefs/` before home's. `process show` names the
+goal, step)`. The form is a settings document, `briefs/<name>.yaml`, composed from
+the project, repository and home layers. `process show` names the
 file each form comes from among its sources, and `agister check --tree`
 shows each form under what names it. Copy the form's `template`, fill
 each part, and leave out a part that is not required when it does not
@@ -255,7 +282,9 @@ again; do not drop the form from the settings to get past the refusal.
 - `agister runs list` lists the runs: ID, process or workflow, agent and
   status.
 - `agister runs show <run-id>` prints the run's record as JSON. That
-  includes its `request`, the `definitions` and `inputs` it ran with, its
+  includes its `request`, the selected `layers`, the `definitions` (each
+  layer file with its digest and the fields it gave) and `inputs` it ran
+  with, its
   `in_place`, the worktree it worked in, its `links` when it was given
   `--goal` or `--answers` (see below), its `attempts` when it has a
   verification, its `recoveries` when a stale turn was resumed, its

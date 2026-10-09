@@ -12,6 +12,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/igor1309/ai-labs/agister/internal/domain/definition"
 	"gopkg.in/yaml.v3"
 )
 
@@ -529,49 +530,40 @@ func frontMatter(data []byte) (map[string]any, error) {
 	return nil, errors.New("front matter does not parse: no closing ---")
 }
 
-// runtimeAdapters are the adapters of the runtimes the settings in dirs
-// define, a later dir's runtime file replacing an earlier one's of the same
-// name, as the page composes them: only the files settings admits, so a
-// file the page never gets replaces nothing; one that does not parse still
-// does. A runtime file holding a second YAML document is refused, as
-// Agister refuses it, but only the file that wins its name: one a later
-// dir replaces is never read by Agister.
+// runtimeAdapters reads adapters from runtime compositions, so a partial
+// retains its parent's adapter. A broken parent file is still refused:
+// every file is read, as for the CLI's composed runtime documents.
 func runtimeAdapters(read func(string) ([]byte, error), dirs ...string) ([]string, error) {
-	byStem := map[string]string{}
-	refused := map[string]string{}
+	byStem := map[string][]definition.LayerText{}
 	for _, dir := range dirs {
 		files, err := settings(dir, read)
 		if err != nil {
 			continue
 		}
-		var names []string
-		for rel := range files {
+		for _, rel := range sortedSettingsFiles(files) {
 			name, ok := strings.CutPrefix(rel, "runtimes/")
 			if ext := filepath.Ext(name); ok && !strings.Contains(name, "/") && (ext == ".yaml" || ext == ".yml") {
-				names = append(names, name)
+				stem := strings.TrimSuffix(name, ext)
+				byStem[stem] = append([]definition.LayerText{{File: definition.LayerFile{Path: filepath.Join(dir, rel)}, Bytes: []byte(files[rel])}}, byStem[stem]...)
 			}
 		}
-		sort.Strings(names)
-		for _, name := range names {
-			stem := strings.TrimSuffix(name, filepath.Ext(name))
-			adapter, err := runtimeAdapter([]byte(files["runtimes/"+name]))
-			delete(refused, stem)
-			if err != nil {
-				refused[stem] = filepath.Join(dir, "runtimes", name) + ": " + err.Error()
-			}
-			byStem[stem] = adapter
-		}
 	}
-	if len(refused) > 0 {
-		stems := make([]string, 0, len(refused))
-		for stem := range refused {
-			stems = append(stems, stem)
-		}
-		sort.Strings(stems)
-		return nil, statusError{http.StatusUnprocessableEntity, refused[stems[0]]}
+	names := make([]string, 0, len(byStem))
+	for name := range byStem {
+		names = append(names, name)
 	}
+	sort.Strings(names)
 	adapters := []string{}
-	for _, adapter := range byStem {
+	for _, name := range names {
+		parts := byStem[name]
+		data, _, err := definition.Compose(definition.KindRuntime, parts)
+		if err != nil {
+			return nil, statusError{http.StatusUnprocessableEntity, err.Error()}
+		}
+		adapter, err := runtimeAdapter(data)
+		if err != nil {
+			return nil, statusError{http.StatusUnprocessableEntity, parts[0].File.Path + ": " + err.Error()}
+		}
 		if adapter != "" && !contains(adapters, adapter) {
 			adapters = append(adapters, adapter)
 		}
@@ -609,43 +601,41 @@ func runtimeAdapter(data []byte) (string, error) {
 // skillsAt answers /api/skills for path: a repo's absolute path, or ~,
 // reading each file with read.
 func skillsAt(path, agisterHome string, homes SkillHomes, read func(string) ([]byte, error)) (SkillsReply, error) {
-	dir := filepath.Join(path, ".agister")
-	if path == Home {
-		dir = agisterHome
-	}
-	if !filepath.IsAbs(dir) {
-		return SkillsReply{}, badRequest("path must be absolute or ~: " + path)
-	}
-	if !isDir(dir) {
-		return SkillsReply{}, notFound("no .agister folder at " + dir)
-	}
-	reply := SkillsReply{Path: path, Home: filepath.Clean(dir) == filepath.Clean(agisterHome)}
-	repo := ""
-	reply.Settings = []SettingsSkill{}
-	if reply.Home {
-		adapters, err := runtimeAdapters(read, agisterHome)
-		if err != nil {
-			return SkillsReply{}, err
-		}
-		reply.Adapters = adapters
-	} else {
-		repo = filepath.Clean(path)
-		adapters, err := runtimeAdapters(read, agisterHome, dir)
-		if err != nil {
-			return SkillsReply{}, err
-		}
-		reply.Adapters = adapters
-		repoSkills, err := readSettingsSkills("repo", dir, read)
-		if err != nil {
-			return SkillsReply{}, err
-		}
-		reply.Settings = repoSkills
-	}
-	homeSkills, err := readSettingsSkills("home", agisterHome, read)
+	layers, err := settingsLayers(path, agisterHome)
 	if err != nil {
 		return SkillsReply{}, err
 	}
-	reply.Settings = append(reply.Settings, homeSkills...)
+	dir := layers[len(layers)-1].Dir
+	if !isDir(dir) {
+		return SkillsReply{}, notFound("no .agister folder at " + dir)
+	}
+	reply := SkillsReply{Path: path, Home: path == Home || filepath.Clean(filepath.Join(path, ".agister")) == filepath.Clean(agisterHome)}
+	repo := ""
+	if !reply.Home {
+		repo = filepath.Dir(dir)
+		for _, layer := range layers {
+			if layer.Layer == "repository" {
+				repo = filepath.Dir(layer.Dir)
+			}
+		}
+	}
+	reply.Adapters, err = runtimeAdapters(read, layerDirectories(layers)...)
+	if err != nil {
+		return SkillsReply{}, err
+	}
+	reply.Settings = []SettingsSkill{}
+	for i := len(layers) - 1; i >= 0; i-- {
+		layer := layers[i]
+		scope := layer.Layer
+		if scope == "repository" {
+			scope = "repo"
+		}
+		layerSkills, err := readSettingsSkills(scope, layer.Dir, read)
+		if err != nil {
+			return SkillsReply{}, err
+		}
+		reply.Settings = append(reply.Settings, layerSkills...)
+	}
 	reply.Folders = readSkills(repo, reply.Adapters, homes, read)
 	return reply, nil
 }

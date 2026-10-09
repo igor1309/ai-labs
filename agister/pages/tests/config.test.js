@@ -344,23 +344,24 @@ test('a named verification is resolved from the composed settings, or marked out
   assert.deepEqual(alone.processes[0].verify, { ref: 'repo', maxAttempts: null, outside: true });
 });
 
-// ADR-014: a process names its prompts, each once, found in the repo
-// before home.
-test('a process\'s prompts are found in the composed settings, or marked outside', async () => {
+// ADR-028: prompt and guidance resolve separately, and obsolete input
+// sources do not name prompts in the view.
+test('prompt and guidance are found in the composed settings, or marked outside', async () => {
   const home = {
-    processes: { 'review.yaml': 'name: review\nuses: agent:opus\ninput:\n  instruction: Review.\n  values:\n    rules: {source: prompt, name: review}\n    again: {source: prompt, name: review}\n    style: {source: prompt, name: style}\n    diff: {source: git.diff}\n' },
+    processes: { 'review.yaml': 'name: review\nuses: agent:opus\nprompt: review\nguidance: [style]\ninput:\n  values:\n    obsolete: {source: prompt, name: obsolete, optional: true}\n' },
     prompts: { 'review.md': 'Home review.\n', 'style.md': 'Home style.\n' },
   };
   const repo = { prompts: { 'review.md': 'Repo review.\n' } };
   const m = await C.loadComposed(memDir('.agister', home), memDir('.agister', repo));
-  assert.deepEqual(m.processes[0].prompts, [
-    { name: 'review', outside: false, source: 'repo', overrides: true },
-    { name: 'style', outside: false, source: 'home', overrides: false },
-  ]);
-  assert.deepEqual([m.prompts[0].name, m.prompts[0].source, m.prompts[0].overrides, m.prompts[0].usedBy], ['review', 'repo', true, ['review']]);
-
+  assert.deepEqual(m.processes[0].prompt, { name: 'review', outside: false, source: 'repo', overrides: true });
+  assert.deepEqual(m.processes[0].guidance, [{ name: 'style', outside: false, source: 'home', overrides: false }]);
+  assert.deepEqual(m.prompts[0].usedBy, ['review']);
   const alone = await C.loadAgister(memDir('.agister', { processes: home.processes }));
-  assert.deepEqual(alone.processes[0].prompts, [{ name: 'review', outside: true }, { name: 'style', outside: true }]);
+  assert.deepEqual(alone.processes[0].prompt, { name: 'review', outside: true });
+  assert.deepEqual(alone.processes[0].guidance, [{ name: 'style', outside: true }]);
+  const empty = await C.loadComposed(memDir('.agister', home), memDir('.agister', { processes: { 'review.yaml': 'guidance: []\n' } }));
+  assert.deepEqual(empty.processes[0].guidance, []);
+  assert.equal(empty.processes[0].prompt.name, 'review');
 });
 
 // ADR-026: a process's and a workflow's file inputs name the brief forms
@@ -463,8 +464,8 @@ for (const path of ['.agister', 'agister/home', 'agister/examples/settings']) {
 // name but the verification, which this repository's .agister supplies
 // (ADR-027 rules 3 and 6): composed as the page composes home and a repo,
 // nothing they name is missing, and the folder alone lacks only that.
-// Home's processes name their prompts in prompt and guidance (ADR-028
-// rule 8), which this page does not read yet: none is among its prompts.
+// Home's processes name prompt and guidance (ADR-028 rule 8); each is
+// resolved and linked in the view.
 test('the settings in agister/home, with .agister over them, name nothing missing', async () => {
   const m = await C.loadComposed(diskDir(join(repoRoot, 'agister/home')), diskDir(join(repoRoot, '.agister')));
   assert.ok(m.processes.length > 0);
@@ -472,7 +473,8 @@ test('the settings in agister/home, with .agister over them, name nothing missin
   for (const p of m.processes) {
     assert.ok(!p.error, `${p.file}: ${p.error}`);
     assert.deepEqual([p.agentOutside, p.policyOutside, p.outputOutside], [false, false, false], p.name);
-    assert.deepEqual(p.prompts, [], p.name);
+    assert.ok(p.prompt && !p.prompt.outside, p.name);
+    for (const prompt of p.guidance) assert.equal(prompt.outside, false, `${p.name}: ${prompt.name}`);
     for (const form of p.forms) assert.equal(form.outside, false, `${p.name}: ${form.name}`);
     if (p.verify) {
       const v = m.verifies.find((x) => x.name === p.verify.ref);
@@ -490,5 +492,49 @@ test('the settings in agister/home, with .agister over them, name nothing missin
   const alone = await C.loadAgister(diskDir(join(repoRoot, 'agister/home')));
   const implement = alone.processes.find((p) => p.name === 'implement');
   assert.equal(implement.verify.outside, true);
-  assert.deepEqual(implement.prompts, []);
+  assert.equal(implement.prompt.name, 'implement');
+  assert.equal(implement.prompt.outside, false);
+  assert.deepEqual(implement.guidance, []);
+});
+
+// The server has already composed the documents with Go. This reader
+// retains that provenance, including a layer that gave no surviving fields.
+test('the reported model keeps three layers, prompt and guidance, and document errors', async () => {
+  const processLayers = [
+    { layer: 'project', path: '/r/docs/.agister/processes/p.yaml', fields: ['guidance'] },
+    { layer: 'repository', path: '/r/.agister/processes/p.yaml', fields: [] },
+    { layer: 'home', path: '/h/processes/p.yaml', fields: ['name', 'prompt', 'uses', 'verify'] },
+  ];
+  const sources = {
+    'processes/p.yaml': { layers: processLayers },
+    'prompts/main.md': { layers: [{ layer: 'repository', path: '/r/prompts/main.md' }, { layer: 'home', path: '/h/prompts/main.md' }] },
+    'processes/bad.yaml': { layers: [{ layer: 'home', path: '/h/processes/bad.yaml', fields: [] }], error: 'must hold exactly one YAML document' },
+    'verifies/repo.yaml': { layers: [{ layer: 'project', path: '/r/docs/.agister/verifies/repo.yaml', fields: ['command'] }] },
+  };
+  const m = await C.loadReported(memDir('.agister', {
+    processes: { 'p.yaml': 'name: p\nprompt: main\nguidance: [missing]\nuses: agent:a\nverify: verify:repo\n' },
+    prompts: { 'main.md': 'Main.' },
+    verifies: { 'repo.yaml': 'command: cd docs && make test\nmax_attempts: 2\n' },
+  }), sources, [
+    { scope: 'home', name: 'rules', path: '/h/skills/rules', description: 'Home.' },
+    { scope: 'project', name: 'rules', path: '/r/docs/.agister/skills/rules', description: 'Project.' },
+  ]);
+  const p = m.processes.find((x) => x.name === 'p');
+  assert.deepEqual(p.layers, processLayers);
+  assert.deepEqual(p.prompt.layers, sources['prompts/main.md'].layers);
+  assert.equal(p.prompt.source, 'repository');
+  assert.deepEqual(p.guidance, [{ name: 'missing', outside: true }]);
+  assert.equal(p.verify.outside, false);
+  assert.equal(m.verifies[0].source, 'project');
+  assert.equal(m.skills[0].description, 'Project.');
+  assert.equal(m.processes.find((x) => x.name === 'bad').error, 'must hold exactly one YAML document');
+});
+
+test('nested partial fields merge and lists replace rather than join in folder fixtures', async () => {
+  const home = memDir('.agister', { processes: { 'p.yaml': 'name: p\nprompt: main\nguidance: [a, b]\ninput:\n  params:\n    candidate: {default: HEAD}\n    brief: {}\n' } });
+  const repo = memDir('.agister', { processes: { 'p.yaml': 'guidance: [c]\ninput:\n  params:\n    candidate: {default: trunk}\n' } });
+  const p = (await C.loadComposed(home, repo)).processes[0];
+  assert.equal(p.prompt.name, 'main');
+  assert.deepEqual(p.guidance, [{ name: 'c', outside: true }]);
+  assert.deepEqual(p.params, [{ name: 'candidate', default: 'trunk' }, { name: 'brief', default: undefined }]);
 });

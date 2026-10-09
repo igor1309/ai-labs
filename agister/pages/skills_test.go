@@ -451,6 +451,7 @@ func TestSkillsEndpointReadsTheFoldersOfTheSettingsRuntimes(t *testing.T) {
 	write(t, filepath.Join(home, "runtimes", "main.yaml"), "adapter: pi\n")
 	write(t, filepath.Join(home, "runtimes", "broken.yaml"), "adapter: [\n")
 	repo := filepath.Join(root, "repo")
+	write(t, filepath.Join(repo, ".git"), "gitdir: settings-test-marker\n")
 	// The repo's main.yml replaces home's main.yaml: codex, not pi.
 	write(t, filepath.Join(repo, ".agister", "runtimes", "main.yml"), "adapter: codex\n")
 	write(t, filepath.Join(repo, ".claude", "skills", "r", "SKILL.md"), skillMD("r", "R."))
@@ -501,10 +502,11 @@ func TestARepoRuntimeSettingsLeavesOutReplacesNothing(t *testing.T) {
 	home := filepath.Join(user, ".agister")
 	write(t, filepath.Join(home, "runtimes", "main.yaml"), "adapter: pi\n")
 	repo := filepath.Join(root, "repo")
+	write(t, filepath.Join(repo, ".git"), "gitdir: settings-test-marker\n")
 	write(t, filepath.Join(repo, ".agister", "runtimes", "main.yaml"), "adapter: codex\n"+strings.Repeat("#", fileCap))
-	// A file Settings admits that does not parse still replaces home's.
+	// A partial retains the parent adapter (ADR-028 rule 4).
 	write(t, filepath.Join(home, "runtimes", "other.yaml"), "adapter: claude-code\n")
-	write(t, filepath.Join(repo, ".agister", "runtimes", "other.yaml"), "adapter: [\n")
+	write(t, filepath.Join(repo, ".agister", "runtimes", "other.yaml"), "primitives: {}\n")
 	write(t, filepath.Join(user, ".pi", "agent", "skills", "p", "SKILL.md"), skillMD("p", "P."))
 	h := Handler(home, noChoose(t), owners(), SkillHomes{Home: user})
 
@@ -521,8 +523,8 @@ func TestARepoRuntimeSettingsLeavesOutReplacesNothing(t *testing.T) {
 	if code := get(t, h, "127.0.0.1", "/api/skills?path="+q(repo), &skills); code != 200 {
 		t.Fatalf("skills: status %d", code)
 	}
-	if !reflect.DeepEqual(skills.Adapters, []string{"pi"}) {
-		t.Fatalf("adapters %v, want home's pi", skills.Adapters)
+	if !reflect.DeepEqual(skills.Adapters, []string{"claude-code", "pi"}) {
+		t.Fatalf("adapters %v, want inherited adapters", skills.Adapters)
 	}
 	for _, f := range skills.Folders {
 		if f.Folder == "~/.pi/agent/skills" && (len(f.Skills) != 1 || f.Skills[0].Name != "p") {
@@ -538,7 +540,7 @@ func TestSkillsEndpointRefusesWhatSettingsRefuses(t *testing.T) {
 	for target, want := range map[string]int{
 		"/api/skills?path=relative":             400,
 		"/api/skills?path=":                     400,
-		"/api/skills?path=" + q(t.TempDir()):    404,
+		"/api/skills?path=" + q(t.TempDir()):    200, // outside git: home alone (ADR-028)
 		"/api/skills?path=" + q("/no/such/dir"): 404,
 	} {
 		if code := get(t, h, "127.0.0.1", target, nil); code != want {
@@ -570,6 +572,7 @@ func TestSkillsEndpointRefusesARuntimeFileOfTwoDocuments(t *testing.T) {
 				user := filepath.Join(root, "user")
 				home := filepath.Join(user, ".agister")
 				repo := filepath.Join(root, "repo")
+				write(t, filepath.Join(repo, ".git"), "gitdir: settings-test-marker\n")
 				write(t, filepath.Join(home, "runtimes", "home.yaml"), "adapter: claude-code\n")
 				write(t, filepath.Join(repo, ".agister", "runtimes", "repo.yaml"), "adapter: claude-code\n")
 				dir := filepath.Join(repo, ".agister")
@@ -598,28 +601,23 @@ func TestSkillsEndpointRefusesARuntimeFileOfTwoDocuments(t *testing.T) {
 	}
 }
 
-// A home runtime file of two documents that a repo runtime of the same name
-// replaces is not refused for the repo (LAB-77): Agister never reads it, and
-// the repo's adapter is the one listed.
-func TestARepoRuntimeReplacesAHomeRuntimeFileOfTwoDocuments(t *testing.T) {
+// ADR-028 rule 5: a malformed parent is not skipped by a partial.
+// Contract test: the endpoint reads malformed files in temporary layers.
+func TestARepoRuntimeRefusesAHomeRuntimeFileOfTwoDocuments(t *testing.T) {
 	t.Parallel()
 	for _, name := range []string{"main.yaml", "main.yml"} {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 			root := realDir(t, t.TempDir())
-			user := filepath.Join(root, "user")
-			home := filepath.Join(user, ".agister")
-			repo := filepath.Join(root, "repo")
-			write(t, filepath.Join(home, "runtimes", "main.yaml"), "adapter: pi\n---\nadapter: pi\n")
+			home, repo := filepath.Join(root, "home"), filepath.Join(root, "repo")
+			bad := filepath.Join(home, "runtimes", "main.yaml")
+			write(t, bad, "adapter: pi\n---\nadapter: pi\n")
 			write(t, filepath.Join(repo, ".agister", "runtimes", name), "adapter: codex\n")
-			h := Handler(home, noChoose(t), owners(), SkillHomes{Home: user})
-
-			var got SkillsReply
-			if code := get(t, h, "127.0.0.1", "/api/skills?path="+q(repo), &got); code != http.StatusOK {
-				t.Fatalf("status %d, want %d", code, http.StatusOK)
-			}
-			if !reflect.DeepEqual(got.Adapters, []string{"codex"}) {
-				t.Errorf("adapters %v, want the repo's codex", got.Adapters)
+			h := Handler(home, noChoose(t), owners(), SkillHomes{})
+			var got struct{ Error string }
+			code := get(t, h, "127.0.0.1", "/api/skills?path="+q(repo), &got)
+			if code != http.StatusUnprocessableEntity || !strings.Contains(got.Error, bad) || !strings.Contains(got.Error, "must hold exactly one YAML document") {
+				t.Fatalf("status %d: %+v", code, got)
 			}
 		})
 	}
@@ -724,6 +722,7 @@ func TestSkillsEndpointCarriesTheSettingsSkillsOfEachLayer(t *testing.T) {
 	write(t, filepath.Join(home, "skills", "plan", "SKILL.md"), skillMD("plan", "Home plan."))
 	write(t, filepath.Join(home, "skills", "go", "SKILL.md"), skillMD("go", "Go."))
 	repo := filepath.Join(root, "repo")
+	write(t, filepath.Join(repo, ".git"), "gitdir: settings-test-marker\n")
 	write(t, filepath.Join(repo, ".agister", "skills", "plan", "SKILL.md"), skillMD("plan", "Repo plan."))
 	write(t, filepath.Join(repo, ".agister", "skills", "torn", "notes.txt"), "no SKILL.md")
 	h := Handler(home, noChoose(t), owners(), SkillHomes{Home: user})
@@ -774,6 +773,7 @@ func TestSettingsSkillInventoryPreservesBrokenRepoOverride(t *testing.T) {
 		write(t, filepath.Join(home, "skills", name, "SKILL.md"), skillMD(name, "Home's."))
 	}
 	repo := filepath.Join(root, "repo")
+	write(t, filepath.Join(repo, ".git"), "gitdir: settings-test-marker\n")
 	skills := filepath.Join(repo, ".agister", "skills")
 	write(t, filepath.Join(skills, "big", "SKILL.md"), skillMD("big", "Big.")+strings.Repeat("x", fileCap))
 	mkdir(t, filepath.Join(skills, "empty"))
@@ -892,6 +892,7 @@ func TestSkillsEndpointNamesTheSettingsSkillsKeysAsThePageReadsThem(t *testing.T
 	home := filepath.Join(user, ".agister")
 	write(t, filepath.Join(home, "skills", "go", "SKILL.md"), skillMD("go", "Go."))
 	repo := filepath.Join(root, "repo")
+	write(t, filepath.Join(repo, ".git"), "gitdir: settings-test-marker\n")
 	write(t, filepath.Join(repo, ".agister", "skills", "plan", "SKILL.md"), skillMD("plan", "Repo plan."))
 	write(t, filepath.Join(repo, ".agister", "skills", "torn", "notes.txt"), "no SKILL.md")
 	h := Handler(home, noChoose(t), owners(), SkillHomes{Home: user})
@@ -934,6 +935,7 @@ func TestAnUnreadableRepoSkillsFolderFailsTheInventory(t *testing.T) {
 	home := filepath.Join(user, ".agister")
 	write(t, filepath.Join(home, "skills", "plan", "SKILL.md"), skillMD("plan", "Home plan."))
 	repo := filepath.Join(root, "repo")
+	write(t, filepath.Join(repo, ".git"), "gitdir: settings-test-marker\n")
 	skills := filepath.Join(repo, ".agister", "skills")
 	write(t, filepath.Join(skills, "plan", "SKILL.md"), skillMD("plan", "Repo plan."))
 	if err := os.Chmod(skills, 0); err != nil {

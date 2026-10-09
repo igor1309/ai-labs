@@ -186,6 +186,7 @@ func TestMacDialogFailureCarriesItsMessage(t *testing.T) {
 func TestSettingsReturnsOnlySettingsFiles(t *testing.T) {
 	t.Parallel()
 	repo := t.TempDir()
+	write(t, filepath.Join(repo, ".git"), "gitdir: settings-test-marker\n")
 	dir := filepath.Join(repo, ".agister")
 	write(t, filepath.Join(dir, "service.toml"), "max_attempts = 1")
 	write(t, filepath.Join(dir, "agents", "a.toml"), `name = "a"`)
@@ -244,6 +245,7 @@ func TestSettingsOfARepoCarryAgisterHomes(t *testing.T) {
 	write(t, filepath.Join(home, "agents", "h.toml"), `name = "h"`)
 	write(t, filepath.Join(home, "runs", "r", "record.json"), "{}")
 	repo := filepath.Join(user, "repo")
+	write(t, filepath.Join(repo, ".git"), "gitdir: settings-test-marker\n")
 	write(t, filepath.Join(repo, ".agister", "agents", "r.toml"), `name = "r"`)
 
 	var got struct{ Files, HomeFiles map[string]string }
@@ -274,6 +276,7 @@ func TestSettingsMarkAgisterHomeHoweverAsked(t *testing.T) {
 	home := filepath.Join(user, ".agister")
 	mkdir(t, home)
 	repo := filepath.Join(user, "repo")
+	write(t, filepath.Join(repo, ".git"), "gitdir: settings-test-marker\n")
 	mkdir(t, filepath.Join(repo, ".agister"))
 	h := Handler(home, noChoose(t), owners(), SkillHomes{})
 	for path, want := range map[string]bool{"~": true, user: true, user + "/": true, repo: false} {
@@ -519,6 +522,7 @@ func TestSettingsEndpointDoesNotReadSkillFiles(t *testing.T) {
 	write(t, filepath.Join(home, "skills", "go", "SKILL.md"), skillMD("go", "Go."))
 	write(t, filepath.Join(home, "skills", "go", "notes.txt"), "beside")
 	repo := filepath.Join(user, "repo")
+	write(t, filepath.Join(repo, ".git"), "gitdir: settings-test-marker\n")
 	dir := filepath.Join(repo, ".agister")
 	write(t, filepath.Join(dir, "agents", "r.toml"), `name = "r"`)
 	write(t, filepath.Join(dir, "skills", "plan", "SKILL.md"), skillMD("plan", "Plan."))

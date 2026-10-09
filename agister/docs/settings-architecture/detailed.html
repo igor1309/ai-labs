@@ -107,18 +107,20 @@
 <h1>The settings, document by document</h1>
 </header>
 
-<nav aria-label="Documents"><a href="#layers">Two layers</a><a href="#workflow">Workflow</a><a href="#process">Process</a><a href="#schema">Output schema</a><a href="#verification">Verification</a><a href="#prompts">Prompts</a><a href="#skills">Skills</a><a href="#briefs">Briefs</a><a href="#policy">Policy</a><a href="#agent">Agent</a><a href="#runtime">Runtime mapping</a><a href="#service">Service</a><a href="#blocks">Blocks</a><a href="#compose">How they compose</a></nav>
+<nav aria-label="Documents"><a href="#layers">Three layers</a><a href="#workflow">Workflow</a><a href="#process">Process</a><a href="#schema">Output schema</a><a href="#verification">Verification</a><a href="#prompts">Prompts</a><a href="#skills">Skills</a><a href="#briefs">Briefs</a><a href="#policy">Policy</a><a href="#agent">Agent</a><a href="#runtime">Runtime mapping</a><a href="#service">Service</a><a href="#blocks">Blocks</a><a href="#compose">How they compose</a></nav>
 
 <div>
 <section id="layers">
-<div class="desc"><header><h2>Two layers</h2><p class="path"><code>&lt;repo&gt;/.agister</code> over <code>~/.agister</code></p></header>
-<p class="lead">Every document below can live in the repo's <code>.agister</code> or in home, in the same layout.</p>
+<div class="desc"><header><h2>Three layers</h2><p class="path"><code>&lt;project&gt;/.agister</code> over <code>&lt;repo&gt;/.agister</code> over <code>~/.agister</code></p></header>
+<p class="lead">The launch directory or <code>--dir</code> selects the nearest project layer below the worktree root; outside git only home is read. Each inherits from its parent only.</p>
 <ul>
-<li>A repo document replaces home's of the same kind and name, whole. Fields are never merged.</li>
-<li>What exists is the union of both layers.</li>
+<li>Documents of the same kind and filename compose by field. Maps merge by key at every depth; lists and scalars replace whole, <code>[]</code> means none. A partial sets only what it changes; prompts, skills and schemas are taken whole.</li>
+<li>What exists is the union of the selected layers.</li>
 <li>A YAML file holds exactly one YAML document. A second, after a <code>---</code>, even an empty one, makes the file invalid; it is never left unread.</li>
 <li>Documents name each other by name, not by path. So a process in home can name <code>verify:repo</code> or a prompt, and each repo supplies its own.</li>
 <li>Home is <code>$AGISTER_HOME</code>, else <code>~/.agister</code>. Agents cannot reach home; they can change a repo's <code>.agister</code> when they may write the repo.</li>
+<li>A second project <code>.agister</code> between the nearest one and the root, a project <code>blocks.yaml</code> or an invalid <code>layer.yaml</code> invalidates the layer and refuses commands launched under it.</li>
+<li><code>process show</code> lists layer files nearest first and each composed document's leaf fields with their layers; <code>check --tree</code> lists files and, under each but the farthest, the fields it gave.</li>
 </ul></div>
 
 </section>
@@ -152,24 +154,22 @@ join: {node: judge, uses: process:review_judge}</pre></figure>
 <section id="process" class="kind process">
 <div class="desc"><header><h2>Process</h2><p class="path"><code>processes/&lt;name&gt;.yaml</code> · run with <code>agister run &lt;name&gt;</code></p></header>
 <p class="lead">A named agent call: the task, what it takes in, and what must come out.</p>
-<h3>Holds</h3><table><tr><th><code>input.instruction</code></th><td>the task, in words</td></tr><tr><th><code>input.params</code></th><td>what the caller supplies</td></tr><tr><th><code>input.values</code></th><td>the inputs, each from a source: <code>param</code>, <code>file</code>, <code>git.revision</code>, <code>git.merge_base</code>, <code>git.diff</code>, <code>git.changed_files</code>, <code>prompt</code></td></tr><tr><th><code>workspace.revision</code></th><td>the value whose revision HEAD must be at; Agister does not move HEAD</td></tr><tr><th><code>workspace.clean</code></th><td><code>true</code>: a fresh call needs the worktree's content to be HEAD's; unset is <code>false</code></td></tr><tr><th><code>tools.require</code></th><td>permissions the call cannot do without</td></tr><tr><th><code>timeout, retry, …</code></th><td>limit overrides; they may only narrow its policy</td></tr></table><h3>Names</h3><table><tr><th><code>uses</code></th><td>its <b>agent</b></td></tr><tr><th><code>policy</code></th><td>its <b>policy</b></td></tr><tr><th><code>output.schema</code></th><td>its <b>output schema</b></td></tr><tr><th><code>verify</code></th><td>its <b>verification</b>, by name or held inline</td></tr><tr><th><code>input.values[].name</code></th><td>a <b>prompt</b>, where the source is <code>prompt</code></td></tr><tr><th><code>input.values[].form</code></th><td>the <b>brief forms</b> a <code>file</code> value's text must have one of</td></tr><tr><th><code>skills</code></th><td>its <b>skills</b></td></tr></table><p class="note">A process with a verification, like this one, is still a process, not a workflow, and declares both <code>workspace.revision</code> and <code>workspace.clean: true</code>. Every call works in the caller's worktree, or the one <code>--dir</code> names: Agister makes no checkout and runs no setup.</p></div>
+<h3>Holds</h3><table><tr><th><code>input.instruction</code></th><td>the task, in words</td></tr><tr><th><code>input.params</code></th><td>what the caller supplies</td></tr><tr><th><code>input.values</code></th><td>the inputs, each from a source: <code>param</code>, <code>file</code>, <code>git.revision</code>, <code>git.merge_base</code>, <code>git.diff</code>, <code>git.changed_files</code></td></tr><tr><th><code>workspace.revision</code></th><td>the value whose revision HEAD must be at; Agister does not move HEAD</td></tr><tr><th><code>workspace.clean</code></th><td><code>true</code>: a fresh call needs the worktree's content to be HEAD's; unset is <code>false</code></td></tr><tr><th><code>tools.require</code></th><td>permissions the call cannot do without</td></tr><tr><th><code>timeout, retry, …</code></th><td>limit overrides; they may only narrow its policy</td></tr></table><h3>Names</h3><table><tr><th><code>uses</code></th><td>its <b>agent</b></td></tr><tr><th><code>policy</code></th><td>its <b>policy</b></td></tr><tr><th><code>output.schema</code></th><td>its <b>output schema</b></td></tr><tr><th><code>verify</code></th><td>its <b>verification</b>, by name or held inline</td></tr><tr><th><code>prompt, guidance</code></th><td>one required <b>prompt</b> and a list of further prompts, which may be empty</td></tr><tr><th><code>input.values[].form</code></th><td>the <b>brief forms</b> a <code>file</code> value's text must have one of</td></tr><tr><th><code>skills</code></th><td>its <b>skills</b></td></tr></table><p class="note">A process with a verification, like this one, is still a process, not a workflow, and declares both <code>workspace.revision</code> and <code>workspace.clean: true</code>. Every call works in the caller's worktree, or the one <code>--dir</code> names: Agister makes no checkout and runs no setup.</p></div>
 <figure class="ex"><figcaption>agister/home/processes/implement.yaml</figcaption><pre>name: implement
 type: process
 uses: agent:claude-implementer-opus
 policy: process-policy:implement
+prompt: implement
 
 input:
-  instruction: &gt;-
-    Implement the task given as input brief in this
-    worktree, at the candidate. …
+  instruction: Implement the task given as input brief,
+    as input prompt says.
   params:
     candidate: {default: HEAD}
     brief: {}
   values:
     candidate_revision: {source: git.revision, rev: &quot;${param.candidate}&quot;}
-    brief: {source: file, path: &quot;${param.brief}&quot;}
-    go_testing: {source: prompt, name: go-testing-seams, optional: true}
-    go_architecture: {source: prompt, name: go-architecture, optional: true}
+    brief: {source: file, path: &quot;${param.brief}&quot;, form: [goal, step]}
 
 workspace:
   revision: candidate_revision
@@ -202,7 +202,7 @@ verify: verify:repo</pre></figure>
 <section id="verification" class="kind ">
 <div class="desc"><header><h2>Verification</h2><p class="path"><code>verifies/&lt;name&gt;.yaml</code>, or inline in the process</p></header>
 <p class="lead">A command that must pass on the call's changes before the call completes.</p>
-<h3>Holds</h3><table><tr><th><code>command</code></th><td>what to run</td></tr><tr><th><code>timeout</code></th><td>how long it may take</td></tr><tr><th><code>max_attempts</code></th><td>how many turns the agent gets to make it pass</td></tr><tr><th><code>instruction</code></th><td>what the agent is told when it fails</td></tr></table><p class="note">A process in home can name <code>verify:repo</code>, and each repo supplies its own <code>verifies/repo.yaml</code>. The command runs in the call's worktree.</p></div>
+<h3>Holds</h3><table><tr><th><code>command</code></th><td>what to run</td></tr><tr><th><code>timeout</code></th><td>how long it may take</td></tr><tr><th><code>max_attempts</code></th><td>how many turns the agent gets to make it pass</td></tr><tr><th><code>instruction</code></th><td>what the agent is told when it fails</td></tr></table><p class="note">A process in home can name <code>verify:repo</code>, and each project fills <code>verifies/repo.yaml</code> in its own layer. If no layer fills it, <code>implement</code> is refused. The command runs from the worktree root, even for a project.</p></div>
 <figure class="ex"><figcaption>.agister/verifies/repo.yaml</figcaption><pre>name: repo
 command: &gt;-
   cd agister &amp;&amp; test -z &quot;$(gofmt -l .)&quot; &amp;&amp; go vet ./... &amp;&amp;
@@ -216,11 +216,10 @@ instruction: &gt;-
 </section>
 <section id="prompts" class="kind ">
 <div class="desc"><header><h2>Prompts</h2><p class="path"><code>prompts/&lt;name&gt;.md</code></p></header>
-<p class="lead">Plain text: the file is the value. A process takes one as an input, and may mark it optional; a missing optional prompt is left out.</p>
-<p class="note">Here: <code>prompts/go-testing-seams.md</code> and <code>prompts/go-architecture.md</code>.</p></div>
-<figure class="ex"><figcaption>agister/home/processes/implement.yaml</figcaption><pre>values:
-  go_testing: {source: prompt, name: go-testing-seams, optional: true}
-  go_architecture: {source: prompt, name: go-architecture, optional: true}</pre></figure>
+<p class="lead">Plain text: the file is the value. The nearest layer that has a named prompt gives it whole; a missing name refuses the call. <code>{source: prompt}</code> and <code>optional</code> are refused.</p>
+<p class="note">A repository or project <code>layer.yaml</code> (<code>schema: agister.layer/v1alpha1</code>, <code>prompts: [prompts]</code>) names extra folders relative to the directory holding <code>.agister</code>. They must exist inside it; its own <code>prompts/</code> comes first. Only names a process gives are read in the listed folders. Guidance a node must follow is in its <code>prompt</code> or <code>guidance</code>, never a pointer in <code>AGENTS.md</code> or a skill.</p></div>
+<figure class="ex"><figcaption>A process composition: prompt from home, guidance from a Go layer</figcaption><pre>prompt: implement
+guidance: [go-testing-seams, go-architecture]</pre></figure>
 </section>
 <section id="skills" class="kind ">
 <div class="desc"><header><h2>Skills</h2><p class="path"><code>skills/&lt;name&gt;/SKILL.md</code></p></header>
@@ -231,7 +230,7 @@ instruction: &gt;-
 <section id="briefs" class="kind ">
 <div class="desc"><header><h2>Briefs</h2><p class="path"><code>briefs/&lt;name&gt;.yaml</code></p></header>
 <p class="lead">A brief's form: its parts in order and the template a caller copies. Agister checks a text's structure against it, never its meaning.</p>
-<h3>Holds</h3><table><tr><th><code>parts[].heading</code></th><td>the part's Markdown heading line, such as <code>## Intent</code>; the part runs to the next heading of its level or above</td></tr><tr><th><code>parts[].required</code></th><td><code>true</code>: the text must have the part, once and not empty</td></tr><tr><th><code>parts[].reads</code></th><td>the exact text the part must read, as <code>None.</code> for Open</td></tr><tr><th><code>parts[].reference</code></th><td><code>file</code>: the part's first back-quoted path, relative to the caller's directory, must exist</td></tr><tr><th><code>template</code></th><td>the text a caller copies; its headings are the parts', each once and in order</td></tr></table><p class="note">A <code>file</code> value names the forms its text must have one of, as <code>form: [goal, step]</code>; one with no <code>form</code> is not checked. A call whose text has none of them is refused before it starts, exit 3, naming the input, each form and each wrong part. A form neither layer has makes what names it invalid. The examples ship <code>goal</code> and <code>step</code>.</p></div>
+<h3>Holds</h3><table><tr><th><code>parts[].heading</code></th><td>the part's Markdown heading line, such as <code>## Intent</code>; the part runs to the next heading of its level or above</td></tr><tr><th><code>parts[].required</code></th><td><code>true</code>: the text must have the part, once and not empty</td></tr><tr><th><code>parts[].reads</code></th><td>the exact text the part must read, as <code>None.</code> for Open</td></tr><tr><th><code>parts[].reference</code></th><td><code>file</code>: the part's first back-quoted path, relative to the caller's directory, must exist</td></tr><tr><th><code>template</code></th><td>the text a caller copies; its headings are the parts', each once and in order</td></tr></table><p class="note">A <code>file</code> value names the forms its text must have one of, as <code>form: [goal, step]</code>; one with no <code>form</code> is not checked. A call whose text has none of them is refused before it starts, exit 3, naming the input, each form and each wrong part. A form no layer has makes what names it invalid. The examples ship <code>goal</code> and <code>step</code>.</p></div>
 <figure class="ex"><figcaption>agister/home/briefs/step.yaml</figcaption><pre>schema: agister.brief/v1alpha1
 name: step
 
@@ -342,7 +341,7 @@ state_reaching = []</pre></figure>
 </section>
 <section id="blocks" class="kind ">
 <div class="desc"><header><h2>Blocks</h2><p class="path"><code>blocks.yaml</code> · one, repo only</p></header>
-<p class="lead">What this repo refuses, even though home allows it.</p>
+<p class="lead">What this repo refuses, even though home allows it; a project layer holds no <code>blocks.yaml</code>.</p>
 <h3>Holds</h3><table><tr><th><code>blocks[].ref</code></th><td><code>agent:&lt;name&gt;</code>, <code>process:&lt;name&gt;</code>, <code>workflow:&lt;name&gt;</code> or <code>runtime:&lt;name&gt;</code></td></tr><tr><th><code>blocks[].reason</code></th><td>why, optional</td></tr></table></div>
 
 </section>

@@ -96,13 +96,21 @@ func handler(agisterHome string, choose Choose, observe Observe, homes SkillHome
 		if path == Home {
 			dir = agisterHome
 		}
+		layers, err := settingsLayers(path, agisterHome)
+		if err != nil {
+			reply(w, nil, err)
+			return
+		}
+		dir = layers[len(layers)-1].Dir
 		files, err := settings(dir, read)
-		// home: dir is Agister's home, asked as ~ or as the folder holding
-		// it (the user's home), so the page shows it as ~.
-		home := filepath.Clean(dir) == filepath.Clean(agisterHome)
+		home := path == Home || filepath.Clean(filepath.Join(path, ".agister")) == filepath.Clean(agisterHome)
 		body := map[string]any{"path": path, "dir": dir, "home": home, "files": files}
-		// A repo's settings go over Agister home's, so the page gets both:
-		// homeFiles, empty when there is no home.
+		if err == nil {
+			var composed map[string]string
+			var sources map[string]any
+			composed, sources, err = settingsComposition(layers, read)
+			body["composedFiles"], body["sources"], body["layers"] = composed, sources, layers
+		}
 		if err == nil && !home {
 			homeFiles, homeErr := settings(agisterHome, read)
 			if homeErr != nil {

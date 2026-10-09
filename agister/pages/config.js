@@ -307,19 +307,14 @@
       revision: doc.workspace?.revision ?? null,
       clean: doc.workspace?.clean === true,
       output: doc.output?.schema ?? null,
-      prompts: prompts(doc.input),
+      prompt: typeof doc.prompt === 'string' ? { name: doc.prompt } : null,
+      guidance: Array.isArray(doc.guidance) ? doc.guidance.map((name) => ({ name })) : [],
+      prompts: [doc.prompt, ...(Array.isArray(doc.guidance) ? doc.guidance : [])]
+        .filter((name) => typeof name === 'string').map((name) => ({ name })),
       forms: forms(doc.input),
       skills: skillNames(doc.skills),
       instruction,
     };
-  }
-
-  // The prompts a process's inputs name ({source: prompt, name: <name>}),
-  // each once (ADR-014).
-  function prompts(input) {
-    const values = input && typeof input.values === 'object' && input.values ? Object.values(input.values) : [];
-    const names = values.filter((v) => v?.source === 'prompt' && typeof v.name === 'string').map((v) => v.name);
-    return [...new Set(names)].map((name) => ({ name }));
   }
 
   // The brief forms a process's or a workflow's file inputs name ({source:
@@ -426,7 +421,7 @@
   function layerSkills(inventory) {
     return (inventory ?? []).map((s) => ({
       file: `${s.name}/SKILL.md`, name: s.name, path: s.path ?? null, state: s.state ?? null,
-      description: s.description ?? null, checks: s.checks ?? null,
+      description: s.description ?? null, checks: s.checks ?? null, ...(s.source && { source: s.source }),
     })).sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
   }
 
@@ -437,7 +432,9 @@
       try {
         const doc = parse(src);
         if (!doc || typeof doc !== 'object' || Array.isArray(doc)) throw new Error('not a map');
-        return build(file, src, doc);
+        const item = build(file, src, doc);
+        Object.defineProperties(item, { doc: { value: doc }, src: { value: src } });
+        return item;
       } catch (err) {
         return { file, name: stem(file), error: err.message };
       }
@@ -454,15 +451,21 @@
     }
     try {
       const doc = parseToml(await readText(handle));
-      return {
-        maxTimeout: doc.max_timeout ?? null,
-        maxAttempts: doc.max_attempts ?? null,
-        maxVerifyAttempts: doc.max_verify_attempts ?? null,
-        permissions: Array.isArray(doc.permissions) ? doc.permissions.length : 0,
-      };
+      return serviceItem(doc);
     } catch (err) {
       return { error: err.message };
     }
+  }
+
+  function serviceItem(doc) {
+    const item = {
+      maxTimeout: doc.max_timeout ?? null,
+      maxAttempts: doc.max_attempts ?? null,
+      maxVerifyAttempts: doc.max_verify_attempts ?? null,
+      permissions: Array.isArray(doc.permissions) ? doc.permissions.length : 0,
+    };
+    Object.defineProperty(item, 'doc', { value: doc });
+    return item;
   }
 
   // The dashboard model of the .agister folder agister, whose skills are
@@ -473,30 +476,81 @@
 
   const KINDS = ['workflows', 'processes', 'agents', 'policies', 'runtimes', 'schemas', 'verifies', 'prompts', 'briefs', 'skills'];
 
-  // What Agister uses in a repo: Agister home's settings with the repo's
-  // over them. As in Agister, a repo file replaces the home file of the
-  // same kind and name, and the repo's service.toml replaces home's. Each
-  // item says where it comes from: source 'repo' or 'home', and overrides
-  // when a repo item replaces a home one. skills is the server's
-  // inventory of both layers' skills, each with its scope, repo or home.
+  // Raw folder readers used by local fixtures. The served view receives
+  // the Go definition language's composed text and provenance instead.
   async function loadComposed(home, repo, skills = []) {
     const scope = (s) => (skills ?? []).filter((x) => x.scope === s);
     return link(compose(await readAgister(home, scope('home')), await readAgister(repo, scope('repo'))));
   }
 
+  const mapValue = (x) => x !== null && typeof x === 'object' && !Array.isArray(x);
+  function merge(base, over) {
+    if (!mapValue(base) || !mapValue(over)) return over;
+    const result = { ...base };
+    for (const [key, value] of Object.entries(over)) result[key] = key in result ? merge(result[key], value) : value;
+    return result;
+  }
+
+  const builders = {
+    workflows: workflowItem, processes: processItem,
+    agents: (file, _src, doc) => agentItem(file, doc),
+    policies: policyItem, runtimes: (file, _src, doc) => runtimeItem(file, doc),
+    verifies: (file, _src, doc) => verifyItem(file, doc), briefs: briefItem,
+  };
+
   function compose(home, repo) {
     const model = {};
     for (const kind of KINDS) {
-      const byFile = new Map(home[kind].map((x) => [stem(x.file), { ...x, source: 'home' }]));
+      const byFile = new Map(home[kind].map((x) => [stem(x.file), { ...x, source: 'home', doc: x.doc }]));
       for (const x of repo[kind]) {
-        byFile.set(stem(x.file), { ...x, source: 'repo', overrides: byFile.has(stem(x.file)) });
+        const base = byFile.get(stem(x.file));
+        const doc = base?.doc && x.doc && builders[kind] ? merge(base.doc, x.doc) : x.doc;
+        const item = doc && builders[kind] ? builders[kind](x.file, x.src, doc) : x;
+        byFile.set(stem(x.file), { ...item, source: 'repo', overrides: !!base, doc });
       }
-      model[kind] = [...byFile.values()].sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
+      model[kind] = [...byFile.values()].map(({ doc, ...x }) => x)
+        .sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
     }
     model.service = repo.service
-      ? { ...repo.service, source: 'repo', overrides: !!home.service }
+      ? { ...(home.service?.doc && repo.service.doc ? serviceItem(merge(home.service.doc, repo.service.doc)) : repo.service), source: 'repo', overrides: !!home.service }
       : home.service && { ...home.service, source: 'home' };
     return model;
+  }
+
+  // The server uses definition.Compose: sources carry each document's
+  // layer files nearest first and their surviving leaf fields, just as
+  // process show and check --tree do. A broken composition is an error
+  // item even when no text could be produced for it.
+  async function loadReported(agister, sources, skills = []) {
+    const model = await readAgister(agister, []);
+    const priority = { project: 3, repository: 2, home: 1 };
+    const selectedSkills = new Map();
+    for (const s of [...skills].sort((a, b) => priority[b.scope === 'repo' ? 'repository' : b.scope] - priority[a.scope === 'repo' ? 'repository' : a.scope])) {
+      const source = s.scope === 'repo' ? 'repository' : s.scope;
+      const layer = { layer: source, path: `${s.path}/SKILL.md` };
+      const previous = selectedSkills.get(s.name);
+      if (previous) {
+        previous.layers.push(layer);
+        previous.overrides = true;
+      } else {
+        selectedSkills.set(s.name, { ...layerSkills([s])[0], source, layers: [layer], overrides: false });
+      }
+    }
+    model.skills = [...selectedSkills.values()];
+    for (const [file, source] of Object.entries(sources ?? {})) {
+      const kind = file === 'service.toml' ? 'service' : file.split('/')[0];
+      if (kind !== 'service' && !KINDS.includes(kind)) continue;
+      const items = kind === 'service' ? [model.service].filter(Boolean) : model[kind];
+      const relative = kind === 'service' ? file : file.slice(kind.length + 1);
+      let item = kind === 'service' ? model.service : items.find((x) => x.file === relative);
+      if (!item && source.error) {
+        item = { file: relative, name: stem(relative), error: source.error };
+        if (kind === 'service') model.service = item;
+        else items.push(item);
+      }
+      if (item) Object.assign(item, source, { source: source.layers?.[0]?.layer, overrides: source.layers?.length > 1 });
+    }
+    return link(model);
   }
 
   async function readAgister(agister, skills) {
@@ -543,7 +597,7 @@
       const byName = new Map(items.map((s) => [s.name, s]));
       return (x) => {
         const item = byName.get(x.name);
-        return { ...x, outside: !item, ...(item?.source && { source: item.source, overrides: !!item.overrides }) };
+        return { ...x, outside: !item, ...(item?.source && { source: item.source, overrides: !!item.overrides }), ...(item?.layers && { layers: item.layers }) };
       };
     };
     const prompt = found(model.prompts);
@@ -571,6 +625,8 @@
       p.outputOutside = !!p.output && !schemas.has(p.output);
       // Each prompt found, with the layer it comes from when composed (ADR-014).
       p.prompts = p.prompts.map(prompt);
+      p.prompt = p.prompt ? prompt(p.prompt) : null;
+      p.guidance = p.guidance.map(prompt);
       p.forms = p.forms.map(brief);
       // The skills it names, found as prompts are; and the ones its call
       // gets: its own, then its agent's, each once (ADR-021 rule 2).
@@ -619,6 +675,6 @@
 
   globalThis.AgisterConfig = {
     parseYaml, parseToml, parseFlow, stripComment,
-    leadingComment, firstSentence, loadAgister, loadComposed,
+    leadingComment, firstSentence, loadAgister, loadComposed, loadReported,
   };
 })();

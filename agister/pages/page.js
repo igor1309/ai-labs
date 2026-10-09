@@ -80,9 +80,9 @@
     // those skills, so it is read after them.
     async function open_(path) {
       const token = ++renderToken;
-      let id, files, homeFiles, skills;
+      let id, files, homeFiles, composedFiles, sources, skills;
       try {
-        [{ id, files, homeFiles }, skills] = await Promise.all([R.fetchSettings(fetch, path), R.fetchSkills(fetch, path)]);
+        [{ id, files, homeFiles, composedFiles, sources }, skills] = await Promise.all([R.fetchSettings(fetch, path), R.fetchSkills(fetch, path)]);
         if (id !== path) R.forgetRepo(localStorage, path);
       } catch (err) {
         if (token !== renderToken) return;
@@ -97,7 +97,7 @@
       if (knowledge.path !== id) forgetKnowledge();
       setMenu(false);
       if (state.view !== 'runs') say('status', '');
-      const shown = await render(token, files, homeFiles, skills);
+      const shown = await render(token, files, homeFiles, skills, composedFiles, sources);
       if (shown && state.view === 'knowledge') await loadKnowledge();
     }
 
@@ -127,13 +127,15 @@
     // files: the shown folder's settings; homeFiles: Agister home's, which a
     // repo's go over, or null for ~ itself; skills: the api/skills reply for
     // them. Says whether they were shown.
-    async function render(token, files, homeFiles, skills) {
+    async function render(token, files, homeFiles, skills, composedFiles, sources) {
       $('picker-label').textContent = label(state.current);
       $('picker-button').title = state.current === R.HOME_ID ? 'Agister home, ~/.agister' : state.current;
       if (state.view === 'settings') stamp('Settings');
       let model;
       try {
-        model = homeFiles
+        model = composedFiles
+          ? await C.loadReported(R.agisterFromFiles(composedFiles), sources, skills.settings)
+          : homeFiles
           ? await C.loadComposed(R.agisterFromFiles(homeFiles), R.agisterFromFiles(files), skills.settings)
           : await C.loadAgister(R.agisterFromFiles(files), skills.settings);
       } catch (err) {
@@ -143,7 +145,7 @@
       if (token !== renderToken) return false;
       state.model = model;
       state.skills = skills;
-      $('dashboard').replaceChildren(...dashboard(model, !!homeFiles));
+      $('dashboard').replaceChildren(...dashboard(model, !!homeFiles || !!sources));
       $('dashboard').hidden = state.view !== 'settings';
       return true;
     }
@@ -168,7 +170,7 @@
       const runnable = model.workflows.length + alone.length;
       return [
         el('p', { className: 'intro' }, composed
-          ? 'What Agister uses in this repo: Agister home’s settings (~/.agister) with this repo’s .agister over them. A repo file replaces the home file of the same kind and name.'
+          ? 'What Agister uses here: home, repository and the selected project compose by field. Maps merge by key; lists and scalars replace whole.'
           : 'Agister home, ~/.agister: the settings every repo starts from. A repo’s .agister goes over them.'),
         runnable ? null : el('p', { className: 'intro' }, 'Nothing to run here: no workflows or processes.'),
         group('Workflows', 'several agent calls at once, then one that brings their results together',
@@ -196,10 +198,21 @@
 
     function sourceChip(item) {
       if (!item.source) return null;
+      if (item.layers) {
+        const composed = item.layers.some((x) => 'fields' in x);
+        const title = item.layers.map((x, i) => `${x.layer} ${x.path}${composed ? `: ${x.fields?.join(', ') || '(none)'}` : i ? ' (replaced)' : ''}`).join('\n');
+        return el('span', { className: 'chip', title, textContent: item.layers.map((x) => x.layer).join(' + ') });
+      }
       if (item.source === 'home') return text('home', 'chip');
       return item.overrides
-        ? el('span', { className: 'chip replaces', title: 'This repo’s file replaces the one in Agister home', textContent: 'repo, replaces home' })
-        : text('repo', 'chip repo');
+        ? el('span', { className: 'chip replaces', title: 'The nearest layer supplies these fields', textContent: `${item.source}, replaces home` })
+        : text(item.source, 'chip repo');
+    }
+
+    function layerLine(item) {
+      if (!item.layers) return null;
+      return el('div', {}, ...item.layers.map((x, i) => el('div', {},
+        `${x.layer} ${x.path}`, 'fields' in x ? `: ${x.fields.join(', ') || '(none)'}` : i ? ' (replaced)' : '')));
     }
 
     const missing = (kind, name) =>
@@ -312,7 +325,7 @@
       return el('article', { className: 'card run', id: `${kind}-${item.name}` },
         el('header', { className: 'run-head' }, el('h3', { textContent: item.name }), chip(item)),
         item.purpose ? el('p', { className: 'purpose', textContent: item.purpose }) : null,
-        ...body);
+        ...body, item.layers ? facts([['layers', layerLine(item)]]) : null);
     }
 
     function processCard(p, ix, chip) {
@@ -321,7 +334,8 @@
         ['defaults', defaults(p.params)],
         ['agent', agentLine(p.agent, ix)],
         ['policy', policyLines(p.policy, ix)],
-        ['prompts', namedLine('prompt', p.prompts, chip)],
+        ['prompt', namedLine('prompt', p.prompt ? [p.prompt] : [], chip)],
+        ['guidance', p.guidance.length ? namedLine('prompt', p.guidance, chip) : text('none')],
         ['briefs', namedLine('brief', p.forms, chip)],
         ['skills', namedLine('skill', p.callSkills, chip)],
         ['output', outputLine(p)],
@@ -431,10 +445,12 @@
     // service.toml: the caps no policy or process may go past.
     function limitsTable(service, composed) {
       if (!service) return null;
-      const from = composed ? (service.source === 'repo' ? 'this repo’s service.toml' : 'Agister home’s service.toml') : 'service.toml';
+      const from = service.layers ? service.layers.map((x) => `${x.layer} ${x.path}`).join(' + ')
+        : composed ? (service.source === 'repo' ? 'this repo’s service.toml' : 'Agister home’s service.toml') : 'service.toml';
       const head = el('header', { className: 'section-head' },
         el('h3', { textContent: 'Service limits' }),
-        el('span', { className: 'note', textContent: `${from}: caps no policy or process may go past` }));
+        el('span', { className: 'note', textContent: `${from}: caps no policy or process may go past` }),
+        service.layers ? sourceChip(service) : null);
       if (service.error) {
         return el('section', { className: 'card' }, head, el('p', { className: 'error', textContent: service.error }));
       }
