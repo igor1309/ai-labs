@@ -1,6 +1,6 @@
 # Coding Agent Monitor — MVP Specification
 
-**Status:** Modular architecture draft for review  
+**Status:** Modular architecture draft for review (Edition 8)  
 **Updated:** 2026-10-09
 
 ## Goal
@@ -25,13 +25,15 @@ Each successful observation is one JSON object on one stdout line:
 | `observedAt` | Completion time of a successful, validated observation, as RFC 3339 UTC. Fractional precision is not fixed. |
 | `agents` | Complete set reported by that source, possibly empty. |
 | `agents[].id` | Nonempty opaque identity, unique within that source observation. |
-| `agents[].state` | `working`, `idle`, or `unknown`. |
+| `agents[].state` | One of `working`, `idle`, or `unknown`. This is a closed vocabulary; introducing a new state requires a compatibility decision. |
 
 Agent identity is `(source, id)`. Each adapter preserves an agent's native identity across observations and monitor restarts **for the same surviving agent**, to the extent the runtime supports that identity. The core imposes no UUID, PID, or format convention.
 
 `unknown` means a discovered agent's state could not be mapped confidently **during an otherwise successful observation**. It does not mean observation failure. Invalid or duplicate agent IDs invalidate the entire source observation. A valid empty set is published.
 
-Records for each source are emitted in observation order; records from different sources have no guaranteed relative order. Consumers parse timestamps as instants, not lexicographically. Consumers ignore unrecognized fields; new optional fields may be additive, while incompatible changes require an explicit compatibility decision.
+If an agent is absent from a subsequent **successful** observation for its source, that source did not report the agent at that time; absence alone does not establish that the agent terminated.
+
+Within each source, **stream record order** is the observation sequence; records from different sources have no guaranteed relative order. `observedAt` is a wall-clock timestamp and may move backwards after clock adjustments; consumers must not use it to reorder a source's records. It marks completion of capture, **not the instant every agent's state was read**; publication can occur later. Consumers parse timestamps as instants and ignore unrecognized fields. New optional fields may be additive; incompatible changes, including new state values, require an explicit compatibility decision.
 
 ## Architecture
 
@@ -48,7 +50,7 @@ Components below are logical units, not prescribed classes, packages, actors, or
 | **Composition root** | Validate configuration, create implementations, and wire ports to providers; no monitoring logic. | None | None; constructs the graph. | One. |
 | **Application runner** | Run source loops concurrently; coordinate cancellation and fatal termination. | `Runnable` | Entry point called by composition root. | One. |
 | **Source loop** | Invoke attempts sequentially with a post-attempt wait. | `Attempt`, `Wait` | Runner's `Runnable` | Per source. |
-| **Observation attempt** | Bound capture, publish success or report failure; propagate fatal publication errors. | `Capture`, `Deadline`, `Publish`, `Report` | Loop's `Attempt` | Per source. |
+| **Observation attempt** | Bound capture; publish only complete successful observations; report recoverable failures; propagate fatal cleanup or publication errors. | `Capture`, `Deadline`, `Publish`, `Report` | Loop's `Attempt` | Per source. |
 | **Observation capture** | Validate agents, timestamp completion, assemble one observation. | `ReadAgents`, `Clock` | Attempt's `Capture` | Per source. |
 | **Runtime adapter** | Discover native agents and normalize IDs and states. | `ExecuteCommand` if CLI-based; runtime-specific ports otherwise. | Capture's `ReadAgents` | Per source. |
 | **JSONL publisher** | Serialize complete JSON Lines records from competing sources. | `RecordWriter` | Each attempt's `Publish` | **One shared instance.** |
@@ -61,9 +63,9 @@ Components below are logical units, not prescribed classes, packages, actors, or
 | **Source loop** | `Attempt` | Run asynchronously to completion or fatal error; on cancellation, propagate cancellation to in-flight work and stop. |
 | **Source loop** | `Wait` | Wait for a configured duration using elapsed/monotonic time; interruption/cancellation must end the wait promptly. |
 | **Observation attempt** | `Capture` | Return **one complete observation or an error**; support cancellation, including cancellation of its `ReadAgents` dependency. |
-| **Observation attempt** | `Deadline` | Bound **capture**, not stdout publication, using elapsed time; on expiry, cancel the in-flight capture and allow its underlying work to terminate/clean up before treating the attempt as finished; report timeout. A timer that merely stops waiting is insufficient. |
+| **Observation attempt** | `Deadline` | Apply a deadline to **capture**, not stdout publication, using elapsed time. On expiry, cancel in-flight work and obtain a cleanup outcome. Timeout triggers cancellation; it does **not** guarantee the attempt finishes at that instant. Failed or impossible cleanup is fatal, and no further attempt starts for that source. |
 | **Observation attempt** | `Publish` | Accept a complete observation, serialize concurrent publication safely through its provider, preserve per-source record order, and propagate write failures as fatal errors. No stream access required of the client. |
-| **Observation attempt** | `Report` | Emit a diagnostic for a recoverable observation failure via an injected sink; emit no observation record on failure. |
+| **Observation attempt** | `Report` | Emit diagnostics through an injected sink. Deciding whether to publish an observation belongs to the observation attempt, not the reporter. |
 | **Observation capture** | `ReadAgents` | Return the **complete normalized set** of agents (including an empty set) or an error; preserve identity semantics; honour cancellation and terminate underlying runtime work. Partial results never count as success. |
 | **Observation capture** | `Clock` | Supply the wall-clock instant at successful completion, for `observedAt`; replaceable with a controlled clock in tests. Distinct from elapsed-time scheduling/deadlines. |
 | **CLI runtime adapter** | `ExecuteCommand` | Launch a configured subprocess, return output/exit status or error, and on cancellation/timeout **terminate and reap** the work it started (including descendants where applicable). Must not accumulate orphaned invocations. |
@@ -71,7 +73,7 @@ Components below are logical units, not prescribed classes, packages, actors, or
 
 **Sharing is a composition decision, not an interface property.** Each observation attempt depends on a `Publish` interface that it owns. The composition root may satisfy every such dependency with **the same concurrency-safe JSONL publisher instance**. The publisher in turn depends on its own `RecordWriter` port backed by stdout. Likewise, source loops are independent instances even when they conform to the same `Runnable` contract.
 
-**Cancellation is transitive where work is in flight:** deadline → capture → runtime adapter → command executor → subprocess termination/reaping. Application cancellation similarly propagates runner → source loop → active attempt and its dependencies. A dependency that cannot be interrupted does **not** satisfy a cancellable port simply because the caller can stop awaiting it. Swift protocols or protocol witnesses must preserve these semantics; the choice of declaration form is an implementation decision.
+**Cancellation is transitive where work is in flight:** deadline → capture → runtime adapter → command executor → subprocess termination/reaping. Application cancellation likewise propagates runner → source loop → active attempt and its dependencies. Stopping an await without stopping underlying work is not cancellation of that work. If cleanup fails, the attempt fails fatally rather than allowing overlapping or orphaned operations.
 
 ### Dependency map
 
@@ -98,8 +100,8 @@ There is **one independent source loop / capture / runtime adapter instance per 
 1. A source loop starts an attempt. The attempt applies its configured capture deadline.
 2. Capture reads a complete normalized set through `ReadAgents`, validates IDs and states, assigns `observedAt` at successful completion through `Clock`, and assembles an observation.
 3. The attempt calls its `Publish` port. The publisher serializes the observation into one JSON line and coordinates writes across all sources.
-4. If capture fails, is invalid, or times out, no stdout record is emitted. The attempt reports the recoverable failure and the source loop resumes after its wait. An unrecoverable publication error is fatal to the application runner.
-5. On timeout, cancelled work is terminated and cleaned up before another attempt for that source. On application shutdown, cancellation propagates through active work and the loop exits rather than retrying.
+4. If capture fails, is invalid, or times out, the **attempt emits no stdout observation**. Recoverable failures are reported; the source loop resumes after its wait. Publication failure is fatal.
+5. On timeout, the attempt cancels capture and awaits its cleanup outcome. Successful cleanup permits the normal retry cycle; failed cleanup is fatal and prevents a further attempt. On application shutdown, cancellation propagates through active work and the loop exits rather than retrying.
 
 Shared stdout can block publication and delay a source's next attempt. Independent polling means one adapter's observation failure or execution delay does not stop other adapters, **except when shared output or application shutdown is involved**. The MVP does not promise backpressure isolation or an unbounded queue.
 
@@ -108,7 +110,7 @@ Shared stdout can block publication and delay a source's next attempt. Independe
 - The caller explicitly selects at least one adapter instance; unknown adapter types, duplicate source IDs, and zero enabled sources fail at startup with a nonzero exit.
 - Each source loop attempts immediately, waits its configured interval **after each completed attempt**, and never overlaps its own attempts.
 - Initial Claude defaults: **5-second capture timeout** and **5-second post-attempt wait**, with the wait configurable; other adapters may have their own settings.
-- A deadline is enforced through cancellation of dependent operations; a CLI executor must terminate and reap timed-out subprocess work. Cleanup completes before the next attempt for that source.
+- A deadline triggers cancellation of dependent operations; cleanup can outlast the deadline. Another attempt for the same source starts only after cleanup succeeds. Cleanup failure is fatal to the monitor.
 - The application runner coordinates graceful cancellation. The publisher never deliberately starts a partial record; abrupt termination or output failure cannot guarantee delivery of an in-progress record.
 - Broken stdout or another unrecoverable publication failure terminates the monitor nonzero. External callers / OS service managers supervise and restart the **monitor process**.
 - Diagnostics pass through the injected reporter (stderr in the CLI tool). Observation data alone goes to stdout.
