@@ -5,6 +5,7 @@ import (
 	"errors"
 	"io"
 	"log/slog"
+	"sync"
 	"time"
 
 	"github.com/igor1309/ai-labs/warder/internal/capture"
@@ -92,41 +93,91 @@ func (r loggedReadAgents) ReadAgents(ctx context.Context) ([]capture.Agent, erro
 }
 
 // loggedCapture decorates a capture, as an attempt's capturer: each
-// capture is made as it is, and recorded.
+// capture is made as it is, and recorded. As it returns, whether the
+// source's limit had ended it is kept in ending, for the deadline's
+// record.
 type loggedCapture struct {
 	capture func(ctx context.Context) (capture.Observation, error)
+	ending  *readEnd
 	log     sourceLog
 }
 
 func (c loggedCapture) Capture(ctx context.Context) (capture.Observation, error) {
 	began := c.log.clock()
 	observation, err := c.capture(ctx)
+	c.ending.captured(ctx)
 	c.log.record(ctx, "capture", began, err)
 	return observation, err
 }
 
 // loggedDeadline decorates a deadline, as an attempt's deadline: each
 // limit is set as it is, and recorded when it is released, with the limit
-// given and whether the limit ended the read.
+// given and whether the limit ended the read, as the source's capture
+// decorator kept it in ending.
 type loggedDeadline struct {
 	limit func(ctx context.Context) (limited context.Context, release func())
 	// given is the limit the wrapped deadline sets, as recorded.
-	given time.Duration
-	log   sourceLog
+	given  time.Duration
+	ending *readEnd
+	log    sourceLog
 }
 
 // Limit returns the limited context as the wrapped deadline does, and a
-// release that releases it, then records the limit. The limit ended the
-// read when the limited context ended with context.DeadlineExceeded as its
-// cause and ctx did not.
+// release that releases it, then records the limit. A limit that fires
+// after the capture returned, while the observation is published, ended
+// nothing.
 func (d loggedDeadline) Limit(ctx context.Context) (limited context.Context, release func()) {
 	began := d.log.clock()
 	limited, releaseLimit := d.limit(ctx)
+	d.ending.set(ctx)
 	return limited, func() {
 		releaseLimit()
-		expired := errors.Is(context.Cause(limited), context.DeadlineExceeded) && !errors.Is(context.Cause(ctx), context.DeadlineExceeded)
-		d.log.record(ctx, "deadline", began, nil, slog.Duration("limit", d.given), slog.Bool("expired", expired))
+		d.log.record(ctx, "deadline", began, nil, slog.Duration("limit", d.given), slog.Bool("expired", d.ending.released()))
 	}
+}
+
+// readEnd carries, from one source's capture decorator to its deadline
+// decorator, whether the limit ended the read: as it was when the capture
+// returned, not when the limit is released. The attempt sets a limit,
+// captures under it and releases it, in turn, so one readEnd serves every
+// attempt of its source.
+type readEnd struct {
+	mu sync.Mutex
+	// parent is the context the current limit was set on, nil while no
+	// limit is set.
+	parent context.Context
+	// expired is whether the limit had ended the capture under it when
+	// that capture returned.
+	expired bool
+}
+
+// set begins a limit set on parent: no capture under it has returned.
+func (r *readEnd) set(parent context.Context) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.parent, r.expired = parent, false
+}
+
+// captured keeps, as a capture under limited returns, whether the limit
+// had ended it: limited ended with context.DeadlineExceeded as its cause
+// and the context the limit was set on did not. With no limit set it
+// keeps nothing.
+func (r *readEnd) captured(limited context.Context) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if r.parent == nil {
+		return
+	}
+	r.expired = errors.Is(context.Cause(limited), context.DeadlineExceeded) && !errors.Is(context.Cause(r.parent), context.DeadlineExceeded)
+}
+
+// released ends the limit and returns whether it ended the read.
+func (r *readEnd) released() bool {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	expired := r.expired
+	r.parent, r.expired = nil, false
+	return expired
 }
 
 // loggedPublish decorates a publish, as an attempt's publisher: each

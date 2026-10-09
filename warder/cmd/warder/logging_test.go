@@ -25,11 +25,11 @@ var (
 	_ loop.Wait                              = loggedWait{}
 )
 
-// recordedLog is the source log of claude-main over the clock, with
-// logging on: its records are written to the lines it returns.
-func recordedLog(clock *clocktest.Clock) (sourceLog, *lines) {
+// recordedLog is the source log of source over the clock, with logging
+// on: its records are written to the lines it returns.
+func recordedLog(clock *clocktest.Clock, source string) (sourceLog, *lines) {
 	records := newLines()
-	return sourceLog{logger: newLogger(records, true), clock: clock.Now, source: "claude-main"}, records
+	return sourceLog{logger: newLogger(records, true), clock: clock.Now, source: source}, records
 }
 
 // assertRecords fails unless the records written are want, in order.
@@ -47,7 +47,7 @@ func assertRecords(t *testing.T, records *lines, want ...string) {
 func TestLoggedExecutePassesTheCommandThroughAndRecordsIt(t *testing.T) {
 	t.Parallel()
 	clock := clocktest.NewClock(morning())
-	log, records := recordedLog(clock)
+	log, records := recordedLog(clock, "claude-main")
 	ctx := context.WithValue(t.Context(), contextKey{}, "the caller's")
 	output := []byte(sessions)
 	execute := logExecute(func(given context.Context, name string, args ...string) ([]byte, error) {
@@ -78,7 +78,7 @@ func TestLoggedExecutePassesTheCommandThroughAndRecordsIt(t *testing.T) {
 func TestLoggedExecutePassesACancellationAndItsErrorThrough(t *testing.T) {
 	t.Parallel()
 	clock := clocktest.NewClock(morning())
-	log, records := recordedLog(clock)
+	log, records := recordedLog(clock, "claude-main")
 	failure := errors.New("the run is stopping")
 	ctx, cancel := context.WithCancelCause(t.Context())
 	cancel(failure)
@@ -106,7 +106,7 @@ func TestLoggedExecutePassesACancellationAndItsErrorThrough(t *testing.T) {
 // adapter rejects.
 func TestLogExecuteOfNoExecutionIsNil(t *testing.T) {
 	t.Parallel()
-	log, _ := recordedLog(clocktest.NewClock(morning()))
+	log, _ := recordedLog(clocktest.NewClock(morning()), "claude-main")
 	if got := logExecute(nil, log); got != nil {
 		t.Errorf("got the decorator %v, want nil", got)
 	}
@@ -117,7 +117,7 @@ func TestLogExecuteOfNoExecutionIsNil(t *testing.T) {
 func TestLoggedReadAgentsPassesTheReadThroughAndRecordsIt(t *testing.T) {
 	t.Parallel()
 	clock := clocktest.NewClock(morning())
-	log, records := recordedLog(clock)
+	log, records := recordedLog(clock, "claude-main")
 	ctx := context.WithValue(t.Context(), contextKey{}, "the caller's")
 	agents := []capture.Agent{{ID: "session-1", State: capture.Working}}
 	read := loggedReadAgents{read: func(given context.Context) ([]capture.Agent, error) {
@@ -145,7 +145,7 @@ func TestLoggedReadAgentsPassesTheReadThroughAndRecordsIt(t *testing.T) {
 func TestLoggedReadAgentsPassesACancellationAndItsErrorThrough(t *testing.T) {
 	t.Parallel()
 	clock := clocktest.NewClock(morning())
-	log, records := recordedLog(clock)
+	log, records := recordedLog(clock, "claude-main")
 	failure := errors.New("the run is stopping")
 	ctx, cancel := context.WithCancelCause(t.Context())
 	cancel(failure)
@@ -173,7 +173,7 @@ func TestLoggedReadAgentsPassesACancellationAndItsErrorThrough(t *testing.T) {
 func TestLoggedCapturePassesTheCaptureThroughAndRecordsIt(t *testing.T) {
 	t.Parallel()
 	clock := clocktest.NewClock(morning())
-	log, records := recordedLog(clock)
+	log, records := recordedLog(clock, "claude-main")
 	ctx := context.WithValue(t.Context(), contextKey{}, "the caller's")
 	observation := capture.Observation{
 		Source:     "claude-main",
@@ -186,7 +186,7 @@ func TestLoggedCapturePassesTheCaptureThroughAndRecordsIt(t *testing.T) {
 		}
 		clock.Advance(time.Second)
 		return observation, nil
-	}, log: log}
+	}, ending: &readEnd{}, log: log}
 
 	got, err := capturer.Capture(ctx)
 
@@ -205,7 +205,7 @@ func TestLoggedCapturePassesTheCaptureThroughAndRecordsIt(t *testing.T) {
 func TestLoggedCapturePassesACancellationAndItsErrorThrough(t *testing.T) {
 	t.Parallel()
 	clock := clocktest.NewClock(morning())
-	log, records := recordedLog(clock)
+	log, records := recordedLog(clock, "claude-main")
 	failure := errors.New("the run is stopping")
 	ctx, cancel := context.WithCancelCause(t.Context())
 	cancel(failure)
@@ -214,7 +214,7 @@ func TestLoggedCapturePassesACancellationAndItsErrorThrough(t *testing.T) {
 			t.Error("the capture was not given the caller's context")
 		}
 		return capture.Observation{}, context.Cause(given)
-	}, log: log}
+	}, ending: &readEnd{}, log: log}
 
 	_, err := capturer.Capture(ctx)
 
@@ -249,10 +249,10 @@ func (d *deadlineStandIn) limit(ctx context.Context) (context.Context, func()) {
 func TestLoggedDeadlinePassesTheLimitThroughAndRecordsItsRelease(t *testing.T) {
 	t.Parallel()
 	clock := clocktest.NewClock(morning())
-	log, records := recordedLog(clock)
+	log, records := recordedLog(clock, "claude-main")
 	ctx := context.WithValue(t.Context(), contextKey{}, "the caller's")
 	standIn := &deadlineStandIn{}
-	deadline := loggedDeadline{limit: standIn.limit, given: 5 * time.Second, log: log}
+	deadline := loggedDeadline{limit: standIn.limit, given: 5 * time.Second, ending: &readEnd{}, log: log}
 
 	limited, release := deadline.Limit(ctx)
 
@@ -272,44 +272,87 @@ func TestLoggedDeadlinePassesTheLimitThroughAndRecordsItsRelease(t *testing.T) {
 		"time=2026-10-09T11:28:12.000+03:00 level=DEBUG msg=deadline source=claude-main limit=5s expired=false outcome=ok duration=2s\n")
 }
 
-// A limit that ended the read, its context ended with
-// context.DeadlineExceeded, is recorded as expired; one whose context ended
-// with the caller's, whatever the caller's cause, is not.
+// A limit that had ended the read when the capture under it returned, its
+// context ended with context.DeadlineExceeded, is recorded as expired; one
+// whose context ended with the caller's, whatever the caller's cause, or
+// that ended only after the capture returned, is not.
 func TestLoggedDeadlineRecordsWhetherTheLimitEndedTheRead(t *testing.T) {
 	t.Parallel()
+	limitEnds := func(standIn *deadlineStandIn, _ context.CancelCauseFunc) { standIn.end(context.DeadlineExceeded) }
 	tests := []struct {
-		name    string
-		end     func(standIn *deadlineStandIn, cancel context.CancelCauseFunc)
-		expired string
+		name                  string
+		duringRead, afterRead func(standIn *deadlineStandIn, cancel context.CancelCauseFunc)
+		expired               string
 	}{
-		{"the limit ended the read", func(standIn *deadlineStandIn, _ context.CancelCauseFunc) {
-			standIn.end(context.DeadlineExceeded)
-		}, "true"},
+		{"the limit ended the read", limitEnds, nil, "true"},
+		{"the limit ended after the read returned", nil, limitEnds, "false"},
 		{"the caller cancelled", func(_ *deadlineStandIn, cancel context.CancelCauseFunc) {
 			cancel(context.Canceled)
-		}, "false"},
+		}, nil, "false"},
 		{"the caller's own deadline", func(_ *deadlineStandIn, cancel context.CancelCauseFunc) {
 			cancel(context.DeadlineExceeded)
-		}, "false"},
+		}, nil, "false"},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
 			clock := clocktest.NewClock(morning())
-			log, records := recordedLog(clock)
+			log, records := recordedLog(clock, "claude-side")
 			ctx, cancel := context.WithCancelCause(t.Context())
 			defer cancel(nil)
 			standIn := &deadlineStandIn{}
-			_, release := loggedDeadline{limit: standIn.limit, given: 5 * time.Second, log: log}.Limit(ctx)
-			clock.Advance(5 * time.Second)
-			test.end(standIn, cancel)
+			ending := &readEnd{}
+			capturer := loggedCapture{capture: func(context.Context) (capture.Observation, error) {
+				clock.Advance(5 * time.Second)
+				if test.duringRead != nil {
+					test.duringRead(standIn, cancel)
+				}
+				return capture.Observation{Source: "claude-side"}, nil
+			}, ending: ending, log: log}
+			limited, release := loggedDeadline{limit: standIn.limit, given: 5 * time.Second, ending: ending, log: log}.Limit(ctx)
+			if _, err := capturer.Capture(limited); err != nil {
+				t.Fatal(err)
+			}
+			if test.afterRead != nil {
+				test.afterRead(standIn, cancel)
+			}
 
 			release()
 
 			assertRecords(t, records,
-				"time=2026-10-09T11:28:15.000+03:00 level=DEBUG msg=deadline source=claude-main limit=5s expired="+test.expired+" outcome=ok duration=5s\n")
+				"time=2026-10-09T11:28:15.000+03:00 level=DEBUG msg=capture source=claude-side outcome=ok duration=5s\n",
+				"time=2026-10-09T11:28:15.000+03:00 level=DEBUG msg=deadline source=claude-side limit=5s expired="+test.expired+" outcome=ok duration=5s\n")
 		})
 	}
+}
+
+// Each limit is recorded by what ended its own read: a limit that ended
+// one attempt's read leaves the next attempt's deadline not expired.
+func TestLoggedDeadlineRecordsEachLimitOnItsOwn(t *testing.T) {
+	t.Parallel()
+	clock := clocktest.NewClock(morning())
+	log, records := recordedLog(clock, "claude-main")
+	ending := &readEnd{}
+	standIn := &deadlineStandIn{}
+	deadline := loggedDeadline{limit: standIn.limit, given: 5 * time.Second, ending: ending, log: log}
+	capturer := loggedCapture{capture: func(ctx context.Context) (capture.Observation, error) {
+		return capture.Observation{}, context.Cause(ctx)
+	}, ending: ending, log: log}
+
+	limited, release := deadline.Limit(t.Context())
+	standIn.end(context.DeadlineExceeded)
+	_, _ = capturer.Capture(limited)
+	release()
+	limited, release = deadline.Limit(t.Context())
+	_, _ = capturer.Capture(limited)
+	release()
+
+	at := "time=2026-10-09T11:28:10.000+03:00 level=DEBUG "
+	assertRecords(t, records,
+		at+`msg=capture source=claude-main outcome=error error="context deadline exceeded" duration=0s`+"\n",
+		at+"msg=deadline source=claude-main limit=5s expired=true outcome=ok duration=0s\n",
+		at+"msg=capture source=claude-main outcome=ok duration=0s\n",
+		at+"msg=deadline source=claude-main limit=5s expired=false outcome=ok duration=0s\n")
 }
 
 // The observation is published as it is, and the publisher's error
@@ -317,7 +360,7 @@ func TestLoggedDeadlineRecordsWhetherTheLimitEndedTheRead(t *testing.T) {
 func TestLoggedPublishPassesTheObservationAndItsErrorThrough(t *testing.T) {
 	t.Parallel()
 	clock := clocktest.NewClock(morning())
-	log, records := recordedLog(clock)
+	log, records := recordedLog(clock, "claude-main")
 	failure := errors.New("jsonl: write record: the pipe is closed")
 	observation := capture.Observation{
 		Source:     "claude-main",
@@ -350,7 +393,7 @@ func TestLoggedPublishPassesTheObservationAndItsErrorThrough(t *testing.T) {
 func TestLoggedPublishRecordsASuccessfulPublish(t *testing.T) {
 	t.Parallel()
 	clock := clocktest.NewClock(morning())
-	log, records := recordedLog(clock)
+	log, records := recordedLog(clock, "claude-main")
 	publish := loggedPublish{publish: func(capture.Observation) error { return nil }, log: log}
 
 	if err := publish.Publish(capture.Observation{Source: "claude-main"}); err != nil {
@@ -365,7 +408,7 @@ func TestLoggedPublishRecordsASuccessfulPublish(t *testing.T) {
 func TestLoggedWaitPassesTheWaitThroughAndRecordsIt(t *testing.T) {
 	t.Parallel()
 	clock := clocktest.NewClock(morning())
-	log, records := recordedLog(clock)
+	log, records := recordedLog(clock, "claude-main")
 	ctx := context.WithValue(t.Context(), contextKey{}, "the caller's")
 	wait := loggedWait{wait: func(given context.Context, interval time.Duration) error {
 		if given != ctx {
@@ -387,7 +430,7 @@ func TestLoggedWaitPassesTheWaitThroughAndRecordsIt(t *testing.T) {
 func TestLoggedWaitPassesACancellationAndItsErrorThrough(t *testing.T) {
 	t.Parallel()
 	clock := clocktest.NewClock(morning())
-	log, records := recordedLog(clock)
+	log, records := recordedLog(clock, "claude-main")
 	ctx, cancel := context.WithCancel(t.Context())
 	cancel()
 	var waitErr error

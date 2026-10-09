@@ -132,11 +132,18 @@ type application struct {
 // test cancels the run and waits for it to return.
 func startApplication(t *testing.T, stdout, stderr io.Writer, execute executeFunc, clock *clocktest.Clock, args ...string) *application {
 	t.Helper()
+	return startObservedApplication(t, stdout, stderr, execute, clock, nil, args...)
+}
+
+// startObservedApplication is startApplication with attempted called as
+// each Write to stderr begins, before it waits for its turn.
+func startObservedApplication(t *testing.T, stdout, stderr io.Writer, execute executeFunc, clock *clocktest.Clock, attempted func(), args ...string) *application {
+	t.Helper()
 	ctx, cancel := context.WithCancel(context.Background())
 	a := &application{cancel: cancel, returned: make(chan struct{})}
 	go func() {
 		defer close(a.returned)
-		a.code = run(ctx, args, stdout, stderr, execute, clock.Now, clock.Timer)
+		a.code = run(ctx, args, stdout, stderr, execute, clock.Now, clock.Timer, attempted)
 	}()
 	t.Cleanup(func() {
 		cancel()
@@ -157,6 +164,91 @@ func assertNoLines(t *testing.T, name string, l *lines) {
 	if got := l.all(); len(got) != 0 {
 		t.Errorf("got on %s\n%s\nwant nothing", name, strings.Join(got, ""))
 	}
+}
+
+// heldWriter holds each Write that holds selects until the test releases
+// them, passes every other on at once, and keeps each in written. It
+// reports each Write that arrives, and through attempt, the hook run
+// takes, each that begins at the serial writer before it waits for its
+// turn. It does not serialize: it counts each Write that arrives while
+// another is in progress as an overlap.
+type heldWriter struct {
+	holds   func(p []byte) bool
+	release chan struct{}
+	written *lines
+
+	mu       sync.Mutex
+	changed  *sync.Cond
+	state    heldState
+	inFlight int
+}
+
+// heldState is what a heldWriter has seen so far.
+type heldState struct {
+	// arrived counts the Writes that reached the writer, attempted those
+	// that began at the serial writer, held those held, and overlaps those
+	// that arrived while another was in progress.
+	arrived, attempted, held, overlaps int
+}
+
+// newHeldWriter is a heldWriter that holds each Write holds selects.
+func newHeldWriter(holds func(p []byte) bool) *heldWriter {
+	w := &heldWriter{holds: holds, release: make(chan struct{}), written: newLines()}
+	w.changed = sync.NewCond(&w.mu)
+	return w
+}
+
+// holdEvery selects every Write.
+func holdEvery([]byte) bool { return true }
+
+func (w *heldWriter) Write(p []byte) (int, error) {
+	held := w.holds(p)
+	w.mu.Lock()
+	w.state.arrived++
+	if w.inFlight > 0 {
+		w.state.overlaps++
+	}
+	w.inFlight++
+	if held {
+		w.state.held++
+	}
+	w.changed.Broadcast()
+	w.mu.Unlock()
+
+	if held {
+		<-w.release
+	}
+	n, err := w.written.Write(p)
+
+	w.mu.Lock()
+	w.inFlight--
+	w.mu.Unlock()
+	return n, err
+}
+
+// attempt reports a Write that began at the serial writer.
+func (w *heldWriter) attempt() {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	w.state.attempted++
+	w.changed.Broadcast()
+}
+
+// waitUntil returns what the writer has seen once reached holds of it. It
+// waits without polling: a state never reached is a hang, which the test
+// binary's -timeout reports.
+func (w *heldWriter) waitUntil(reached func(seen heldState) bool) heldState {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	for !reached(w.state) {
+		w.changed.Wait()
+	}
+	return w.state
+}
+
+// seen is what the writer has seen so far.
+func (w *heldWriter) seen() heldState {
+	return w.waitUntil(func(heldState) bool { return true })
 }
 
 // The first read happens at once and its observation is one JSONL line on
@@ -325,7 +417,7 @@ func TestAFailingStdoutAfterCancellationEndsTheRunWithExitCode1(t *testing.T) {
 		return 0, errors.New("the pipe is closed")
 	}}
 
-	code := run(ctx, []string{"warder", "-claude", "claude-main"}, stdout, stderr, executor.execute, clock.Now, clock.Timer)
+	code := run(ctx, []string{"warder", "-claude", "claude-main"}, stdout, stderr, executor.execute, clock.Now, clock.Timer, nil)
 
 	if code != 1 {
 		t.Errorf("got the exit code %d, want 1", code)
@@ -514,6 +606,48 @@ func TestVerboseRecordsATimedOutReadBesideItsDiagnostic(t *testing.T) {
 	assertNoLines(t, "stdout", stdout)
 }
 
+// With -verbose, a deadline that fires after the read succeeded, while
+// the observation's write to stdout is held, ended nothing: the deadline
+// is recorded as not expired, with the source ID given.
+func TestVerboseRecordsADeadlineThatFiredDuringThePublishAsNotExpired(t *testing.T) {
+	t.Parallel()
+	clock := clocktest.NewClock(morning())
+	stdout, stderr := newHeldWriter(holdEvery), newLines()
+	read := make(chan context.Context, 1)
+	executor := &executorSpy{answer: func(ctx context.Context, _ int) ([]byte, error) {
+		read <- ctx
+		return []byte(sessions), nil
+	}}
+	startApplication(t, stdout, stderr, executor.execute, clock, "warder", "-verbose", "-claude", "claude-side")
+	limited := <-read
+	stdout.waitUntil(func(seen heldState) bool { return seen.held == 1 })
+	clock.Started(5 * time.Second)
+
+	clock.Advance(5 * time.Second)
+	<-limited.Done()
+	if cause := context.Cause(limited); !errors.Is(cause, context.DeadlineExceeded) {
+		t.Fatalf("the read's context ended with %v, want the deadline", cause)
+	}
+	close(stdout.release)
+
+	if got, want := stdout.written.next(), observationLine("claude-side", "2026-10-09T08:28:10Z"); got != want {
+		t.Errorf("got the record\n%swant\n%s", got, want)
+	}
+	read10 := "time=2026-10-09T11:28:10.000+03:00 level=DEBUG "
+	released15 := "time=2026-10-09T11:28:15.000+03:00 level=DEBUG "
+	for _, want := range []string{
+		read10 + "msg=execute source=claude-side command=claude outcome=ok duration=0s\n",
+		read10 + `msg="read agents" source=claude-side outcome=ok duration=0s` + "\n",
+		read10 + "msg=capture source=claude-side outcome=ok duration=0s\n",
+		released15 + "msg=publish source=claude-side outcome=ok duration=5s\n",
+		released15 + "msg=deadline source=claude-side limit=5s expired=false outcome=ok duration=5s\n",
+	} {
+		if got := stderr.next(); got != want {
+			t.Errorf("got on stderr\n%swant\n%s", got, want)
+		}
+	}
+}
+
 // A command line that enables no valid set of sources is a usage error: a
 // message on stderr, exit code 2, nothing on stdout, and nothing started,
 // neither a command nor a timer.
@@ -544,7 +678,7 @@ func TestAUsageErrorExitsWithCode2AndStartsNothing(t *testing.T) {
 			stdout, stderr := newLines(), newLines()
 			executor := &executorSpy{answer: answerSessions}
 
-			code := run(t.Context(), test.args, stdout, stderr, executor.execute, clock.Now, clock.Timer)
+			code := run(t.Context(), test.args, stdout, stderr, executor.execute, clock.Now, clock.Timer, nil)
 
 			if code != 2 {
 				t.Errorf("got the exit code %d, want 2", code)
@@ -648,7 +782,7 @@ func TestAnApplicationThatCannotBeWiredExitsWithCode1(t *testing.T) {
 	clock := clocktest.NewClock(morning())
 	stdout, stderr := newLines(), newLines()
 
-	code := run(t.Context(), []string{"warder", "-claude", "claude-main"}, stdout, stderr, nil, clock.Now, clock.Timer)
+	code := run(t.Context(), []string{"warder", "-claude", "claude-main"}, stdout, stderr, nil, clock.Now, clock.Timer, nil)
 
 	if code != 1 {
 		t.Errorf("got the exit code %d, want 1", code)
@@ -659,6 +793,105 @@ func TestAnApplicationThatCannotBeWiredExitsWithCode1(t *testing.T) {
 	assertNoLines(t, "stdout", stdout)
 	if got := clock.Waits(); len(got) != 0 {
 		t.Errorf("got timers of %v, want none", got)
+	}
+}
+
+// A stderr that is a nil pointer carried as a writer ends the run with
+// exit code 1, and nothing is started, neither a command nor a timer.
+func TestARunWithANilStderrExitsWithCode1AndStartsNothing(t *testing.T) {
+	t.Parallel()
+	clock := clocktest.NewClock(morning())
+	stdout := newLines()
+	executor := &executorSpy{answer: answerSessions}
+
+	code := run(t.Context(), []string{"warder", "-verbose", "-claude", "claude-main"}, stdout, (*lines)(nil), executor.execute, clock.Now, clock.Timer, nil)
+
+	if code != 1 {
+		t.Errorf("got the exit code %d, want 1", code)
+	}
+	assertNoLines(t, "stdout", stdout)
+	if got := executor.executed(); len(got) != 0 {
+		t.Errorf("got the commands %q, want none", got)
+	}
+	if got := clock.Waits(); len(got) != 0 {
+		t.Errorf("got timers of %v, want none", got)
+	}
+}
+
+// With -verbose, the records and the diagnostics of several sources share
+// one serialized writer over stderr. The first source to read fails, and
+// its diagnostic is held at stderr while the other sources' reads are
+// held; once those are let go, the test waits until another Write has
+// begun at the serial writer, or reached stderr past it, then releases
+// stderr. No Write reaches stderr while another is in progress, and each
+// record and diagnostic is one whole Write.
+func TestVerboseRecordsAndDiagnosticsOfSeveralSourcesShareOneSerialWriter(t *testing.T) {
+	t.Parallel()
+	clock := clocktest.NewClock(morning())
+	stdout := newLines()
+	stderr := newHeldWriter(func(p []byte) bool { return strings.HasPrefix(string(p), "warder: ") })
+	proceed := make(chan struct{})
+	executor := &executorSpy{answer: func(_ context.Context, call int) ([]byte, error) {
+		if call == 1 {
+			return nil, errors.New("exit status 1: not logged in")
+		}
+		<-proceed
+		return []byte(sessions), nil
+	}}
+	sources := []string{"claude-main", "claude-side", "claude-third"}
+	startObservedApplication(t, stdout, stderr, executor.execute, clock, stderr.attempt,
+		"warder", "-verbose", "-claude", sources[0], "-claude", sources[1], "-claude", sources[2])
+
+	// The diagnostic is held; every other source is held in its read, so
+	// nothing else writes meanwhile.
+	atHold := stderr.waitUntil(func(seen heldState) bool { return seen.held == 1 })
+	close(proceed)
+	stderr.waitUntil(func(seen heldState) bool {
+		return seen.attempted > atHold.attempted || seen.arrived > atHold.arrived
+	})
+	close(stderr.release)
+	// Each source's deadline, then its wait: every attempt has returned.
+	for range 2 * len(sources) {
+		clock.Started(5 * time.Second)
+	}
+
+	if n := stderr.seen().overlaps; n != 0 {
+		t.Errorf("%d writes reached stderr while another was in progress", n)
+	}
+	got := stderr.written.all()
+	failed := ""
+	for _, line := range got {
+		if rest, ok := strings.CutPrefix(line, "warder: "); ok {
+			failed, _, _ = strings.Cut(rest, ":")
+		}
+	}
+	if !slices.Contains(sources, failed) {
+		t.Fatalf("got on stderr\n%sno diagnostic of a source", strings.Join(got, ""))
+	}
+	at := "time=2026-10-09T11:28:10.000+03:00 level=DEBUG "
+	failure := "claude: execute claude agents --json: exit status 1: not logged in"
+	var want []string
+	for _, source := range sources {
+		if source == failed {
+			want = append(want,
+				at+"msg=execute source="+source+` command=claude outcome=error error="exit status 1: not logged in" duration=0s`+"\n",
+				at+`msg="read agents" source=`+source+` outcome=error error="`+failure+`" duration=0s`+"\n",
+				at+"msg=capture source="+source+` outcome=error error="capture: read agents: `+failure+`" duration=0s`+"\n",
+				"warder: "+source+": attempt: read failed: capture: read agents: "+failure+"\n",
+				at+"msg=deadline source="+source+" limit=5s expired=false outcome=ok duration=0s\n")
+			continue
+		}
+		want = append(want,
+			at+"msg=execute source="+source+" command=claude outcome=ok duration=0s\n",
+			at+`msg="read agents" source=`+source+" outcome=ok duration=0s\n",
+			at+"msg=capture source="+source+" outcome=ok duration=0s\n",
+			at+"msg=publish source="+source+" outcome=ok duration=0s\n",
+			at+"msg=deadline source="+source+" limit=5s expired=false outcome=ok duration=0s\n")
+	}
+	slices.Sort(got)
+	slices.Sort(want)
+	if !slices.Equal(got, want) {
+		t.Errorf("got on stderr\n%swant\n%s", strings.Join(got, ""), strings.Join(want, ""))
 	}
 }
 

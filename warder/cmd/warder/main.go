@@ -79,7 +79,7 @@ func serve(args []string, stdout, stderr io.Writer, execute executeFunc, clock c
 			released()
 		}
 	})
-	return run(ctx, args, stdout, stderr, execute, clock, timer)
+	return run(ctx, args, stdout, stderr, execute, clock, timer, nil)
 }
 
 // executeFunc executes a command, ends it when ctx is done, and returns
@@ -103,14 +103,21 @@ func (now clockFunc) Now() time.Time { return now() }
 // and returns the exit code. It reaches nothing but what it is given:
 // observations go to stdout, diagnostics, the logs -verbose asks for and
 // its own messages to stderr, commands through execute, the time comes
-// from clock and every wait from timer.
-func run(ctx context.Context, args []string, stdout, stderr io.Writer, execute executeFunc, clock clockFunc, timer timerFunc) int {
+// from clock and every wait from timer. A missing stderr, or one that is
+// a nil pointer, map, slice, func or chan carried as a writer, exits 1
+// with nothing started: there is nowhere to say why. attempted, when set,
+// is called as each Write to stderr begins, before it waits for its turn;
+// serve leaves it unset, it is the event the package's tests wait for.
+func run(ctx context.Context, args []string, stdout, stderr io.Writer, execute executeFunc, clock clockFunc, timer timerFunc, attempted func()) int {
+	if missingWriter(stderr) {
+		return exitFailed
+	}
 	command, err := parseCommandLine(args)
 	if err != nil {
 		fmt.Fprintf(stderr, "warder: %v\n%s\n", err, usage)
 		return exitUsage
 	}
-	diagnostics := &serialWriter{writer: stderr}
+	diagnostics := &serialWriter{writer: stderr, attempted: attempted}
 	application, err := wire(command.claudeSources, stdout, diagnostics, newLogger(diagnostics, command.verbose), execute, clock, timer)
 	if err != nil {
 		fmt.Fprintf(stderr, "warder: %v\n", err)
@@ -183,7 +190,7 @@ func parseCommandLine(args []string) (commandLine, error) {
 // A missing boundary, or a stderr that is a nil pointer, map, slice, func
 // or chan carried as a writer, fails here; nothing is started.
 func wire(claudeSources []string, stdout, stderr io.Writer, logger *slog.Logger, execute executeFunc, clock clockFunc, timer timerFunc) (*runner.Runner, error) {
-	if stderr == nil || isNil(reflect.ValueOf(stderr)) {
+	if missingWriter(stderr) {
 		return nil, errors.New("no stderr")
 	}
 	if logger == nil {
@@ -212,7 +219,9 @@ func wire(claudeSources []string, stdout, stderr io.Writer, logger *slog.Logger,
 // wireClaudeSource constructs the loop of one Claude Code source: its
 // adapter over execute, its capture, its attempt and its loop, with the
 // Claude settings. Its execution, read, capture, deadline, publish and
-// wait are each wrapped in the decorator that records it through log.
+// wait are each wrapped in the decorator that records it through log; the
+// capture's decorator tells the deadline's whether the limit ended the
+// read.
 func wireClaudeSource(source string, publish publishJSONL, diagnostics io.Writer, log sourceLog, execute executeFunc, clock clockFunc, timer timerFunc) (*loop.Loop, error) {
 	adapter, err := claude.New(logExecute(execute, log))
 	if err != nil {
@@ -223,9 +232,10 @@ func wireClaudeSource(source string, publish publishJSONL, diagnostics io.Writer
 		return nil, err
 	}
 	deadline := timerDeadline{timer: timer, limit: claudeReadTimeout}
+	ending := &readEnd{}
 	read, err := attempt.New[capture.Observation](
-		loggedCapture{capture: capturer.Capture, log: log},
-		loggedDeadline{limit: deadline.Limit, given: deadline.limit, log: log},
+		loggedCapture{capture: capturer.Capture, ending: ending, log: log},
+		loggedDeadline{limit: deadline.Limit, given: deadline.limit, ending: ending, log: log},
 		loggedPublish{publish: publish.Publish, log: log},
 		sourceReporter{source: source, writer: diagnostics},
 	)
@@ -240,6 +250,12 @@ func wireClaudeSource(source string, publish publishJSONL, diagnostics io.Writer
 // (warder/arch_test.go), so the root takes the element type from the
 // constructor; the compiler still checks each value appended.
 func argumentsOf[E, R any](func(...E) (R, error)) []E { return nil }
+
+// missingWriter tells whether writer is missing: nil, or a nil pointer,
+// map, slice, func or chan carried as a writer.
+func missingWriter(writer io.Writer) bool {
+	return writer == nil || isNil(reflect.ValueOf(writer))
+}
 
 func isNil(value reflect.Value) bool {
 	switch value.Kind() {

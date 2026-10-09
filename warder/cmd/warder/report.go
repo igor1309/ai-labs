@@ -29,13 +29,21 @@ func oneLine(text string) string {
 }
 
 // serialWriter passes each Write on to the writer it is given, one at a
-// time: the sources' reporters share one, so their lines never overlap.
+// time: the sources' reporters and the decorators' logger share one, so
+// their lines never overlap.
 type serialWriter struct {
 	mu     sync.Mutex
 	writer io.Writer
+	// attempted, when set, is called as each Write begins, before it waits
+	// for its turn. run's callers other than the package's tests leave it
+	// unset; it is the event those tests wait for.
+	attempted func()
 }
 
 func (w *serialWriter) Write(p []byte) (int, error) {
+	if w.attempted != nil {
+		w.attempted()
+	}
 	w.mu.Lock()
 	defer w.mu.Unlock()
 	return w.writer.Write(p)
