@@ -47,6 +47,11 @@ func (s *definitionsSpy) Read(_ context.Context, kind definition.Kind, name stri
 	}, nil
 }
 
+// ReadListed reads as Read does: the spy's layer, home, lists no folders.
+func (s *definitionsSpy) ReadListed(ctx context.Context, kind definition.Kind, name string) (definition.Document, error) {
+	return s.Read(ctx, kind, name)
+}
+
 // homeFile is a definition a call records as read from the spy: one layer
 // file, home's.
 func homeFile(kind, name, text string) run.DefinitionSource {

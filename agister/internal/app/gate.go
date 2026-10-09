@@ -47,6 +47,7 @@ type Gated struct {
 // client it builds, and the layers they are read from.
 type GateDefinitions interface {
 	Read(ctx context.Context, kind definition.Kind, name string) (definition.Document, error)
+	ReadListed(ctx context.Context, kind definition.Kind, name string) (definition.Document, error)
 	List(ctx context.Context, kind definition.Kind) ([]string, error)
 	Layers(ctx context.Context) []definition.LayerDir
 }

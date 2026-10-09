@@ -320,3 +320,85 @@ func TestSnapshotKeepsTheReadOfAMissingPrompt(t *testing.T) {
 		t.Fatalf("reading the snapshot read the source %d more times", got-reads)
 	}
 }
+
+// foldedSource is the spy's settings, home's, under a repository layer
+// whose layer.yaml lists a folder that holds folded, prompt texts by name:
+// Read finds one there before home's, as a call reads it, and ReadListed
+// never does, as the settings list it (ADR-028 rule 9).
+type foldedSource struct {
+	*definitionsSpy
+	folded map[string]string
+}
+
+func (s foldedSource) Read(ctx context.Context, kind definition.Kind, name string) (definition.Document, error) {
+	text, ok := s.folded[name]
+	if kind != definition.KindPrompt || !ok {
+		return s.definitionsSpy.Read(ctx, kind, name)
+	}
+	s.record(string(kind) + "/" + name)
+	path := "mem/lib/" + name + ".md"
+	return definition.Document{
+		Source: definition.Source{
+			Kind: kind, Name: name, Layer: definition.LayerRepository, Path: path, SHA256: sha(text),
+			Layers: []definition.LayerFile{{Layer: definition.LayerRepository, Path: path, SHA256: sha(text)}},
+		},
+		Bytes: []byte(text),
+	}, nil
+}
+
+// ADR-028 rule 9: a folder a layer.yaml lists is read for a name a process
+// gives, and is not otherwise settings. A file there named as a prompt no
+// process names, which would fail as a prompt, is neither checked nor
+// shown: check takes home's prompt of that name, and passes. Once a
+// process names it, check reads it as a call does, from the folder before
+// home's, and reports it. Checked so on the settings and on their
+// snapshot alike.
+func TestAListedFolderIsReadOnlyForTheNamesAProcessGives(t *testing.T) {
+	t.Parallel()
+	const notes = "Home's notes.\n"
+	for name, frozen := range map[string]bool{"the settings": false, "their snapshot": true} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			ctx := context.Background()
+			check := func(h *harness) (contract.CheckReport, contract.Definition) {
+				t.Helper()
+				folded := foldedSource{definitionsSpy: h.defs, folded: map[string]string{"notes": "\x00\xff"}}
+				var src app.CheckDefinitions = folded
+				if frozen {
+					src = app.Snapshot(ctx, folded)
+				}
+				report, err := app.NewChecker(src, h.validator, h.runtimes, []string{"git.revision", "git.diff"}).Check(ctx, false)
+				if err != nil {
+					t.Fatal(err)
+				}
+				for _, d := range report.Definitions {
+					if d.Kind == string(definition.KindPrompt) && d.Name == "notes" {
+						return report, d
+					}
+				}
+				t.Fatalf("notes is not listed: %+v", report.Definitions)
+				return report, contract.Definition{}
+			}
+
+			h := newHarness()
+			h.defs.docs[definition.KindPrompt]["notes"] = notes
+			report, listed := check(h)
+			if len(report.Problems) != 0 || report.Checked["prompts"] != 2 {
+				t.Fatalf("unnamed: problems %q, checked %v", messages(report.Problems), report.Checked)
+			}
+			want := contract.Definition{Kind: "prompts", Name: "notes", Layer: "home", Path: "mem/prompts/notes", Layers: []contract.DefinitionLayer{{Layer: "home", Path: "mem/prompts/notes"}}}
+			if !reflect.DeepEqual(listed, want) {
+				t.Fatalf("unnamed: notes = %+v, want %+v", listed, want)
+			}
+
+			guided(h, []string{"notes"}, nil)
+			report, named := check(h)
+			if !reflect.DeepEqual(messages(report.Problems), []string{"prompt notes: not a UTF-8 text file"}) {
+				t.Fatalf("named: problems %q", messages(report.Problems))
+			}
+			if named.Layer != "repository" || named.Path != "mem/lib/notes.md" || !named.Invalid || !reflect.DeepEqual(named.UsedBy, []contract.DefinitionRef{{Kind: "processes", Name: "p"}}) {
+				t.Fatalf("named: notes = %+v", named)
+			}
+		})
+	}
+}

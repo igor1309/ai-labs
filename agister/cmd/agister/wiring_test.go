@@ -68,6 +68,11 @@ func (m *marker) Read(_ context.Context, kind definition.Kind, name string) (def
 	}, err
 }
 
+// ReadListed reads as Read does: home lists no folders.
+func (m *marker) ReadListed(ctx context.Context, kind definition.Kind, name string) (definition.Document, error) {
+	return m.Read(ctx, kind, name)
+}
+
 // Layers are home alone, which the marker stands for.
 func (m *marker) Layers(context.Context) []definition.LayerDir {
 	return []definition.LayerDir{{Layer: definition.LayerHome, Dir: m.name}}

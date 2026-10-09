@@ -11,7 +11,9 @@ import (
 	"reflect"
 	"slices"
 	"strings"
+	"syscall"
 	"testing"
+	"time"
 
 	"github.com/igor1309/ai-labs/agister/internal/adapters/fsdefs"
 	"github.com/igor1309/ai-labs/agister/internal/domain/definition"
@@ -596,4 +598,131 @@ func TestALayerFileThatCannotBeUsedMakesItsLayerInvalid(t *testing.T) {
 			t.Fatalf("layers = %+v", layers)
 		}
 	})
+}
+
+// ADR-028 rule 6: a prompt is taken whole from the nearest layer, and a
+// farther layer's file of it is named, not opened, wherever the layer
+// holds it: in its own prompts/ or in a folder its layer.yaml lists. A
+// FIFO there, which a read would wait on for ever, does not hang the read
+// of the project's prompt.
+//
+// Contract test: the settings store against a real FIFO with no writer,
+// which a blocking read waits on for ever.
+func TestAFartherLayersPromptIsNamedNotOpened(t *testing.T) {
+	t.Parallel()
+	for name, at := range map[string]string{
+		"its own prompts/":  filepath.Join(".agister", "prompts", "x.md"),
+		"a folder it lists": filepath.Join("lib", "x.md"),
+	} {
+		t.Run("in "+name, func(t *testing.T) {
+			t.Parallel()
+			ctx := context.Background()
+			selected, home, repository, project := threeLayers(t)
+			root := filepath.Dir(repository)
+			put(t, filepath.Join(repository, "layer.yaml"), layerFile("lib"))
+			fifo := filepath.Join(root, at)
+			for _, dir := range []string{filepath.Join(root, "lib"), filepath.Dir(fifo)} {
+				if err := os.MkdirAll(dir, 0o700); err != nil {
+					t.Fatal(err)
+				}
+			}
+			if err := syscall.Mkfifo(fifo, 0o600); err != nil {
+				t.Fatal(err)
+			}
+			homePath, path, text := filepath.Join(home, "prompts", "x.md"), filepath.Join(project, "prompts", "x.md"), "The project's x.\n"
+			put(t, homePath, "Home's x.\n")
+			put(t, path, text)
+
+			type read struct {
+				doc definition.Document
+				err error
+			}
+			done := make(chan read, 1)
+			workers := letGo(t, fifo)
+			workers.Add(1)
+			go func() {
+				defer workers.Done()
+				doc, err := selected.Read(ctx, definition.KindPrompt, "x")
+				done <- read{doc, err}
+			}()
+			select {
+			case got := <-done:
+				want := definition.Source{
+					Kind: definition.KindPrompt, Name: "x", Layer: definition.LayerProject, Path: path, SHA256: sum([]byte(text)),
+					Layers: []definition.LayerFile{
+						{Layer: definition.LayerProject, Path: path, SHA256: sum([]byte(text))},
+						{Layer: definition.LayerRepository, Path: fifo},
+						{Layer: definition.LayerHome, Path: homePath},
+					},
+				}
+				if got.err != nil || string(got.doc.Bytes) != text || !reflect.DeepEqual(got.doc.Source, want) {
+					t.Fatalf("x = %+v %q, %v\nwant %+v", got.doc.Source, got.doc.Bytes, got.err, want)
+				}
+			case <-time.After(5 * time.Second):
+				t.Fatal("reading the project's prompt waits on the repository's FIFO")
+			}
+		})
+	}
+}
+
+// ADR-028 rule 9: a file in a folder a layer.yaml lists that cannot be
+// resolved, a dangling symlink, is the layer's prompt all the same:
+// reading it fails, naming it, and home's prompt is not given in its
+// place.
+//
+// Contract test: the settings store against the real filesystem.
+func TestADanglingPromptInAListedFolderIsNotHomes(t *testing.T) {
+	t.Parallel()
+	selected, home, repository, _ := threeLayers(t)
+	put(t, filepath.Join(repository, "layer.yaml"), layerFile("lib"))
+	link := filepath.Join(filepath.Dir(repository), "lib", "x.md")
+	dangle(t, link)
+	put(t, filepath.Join(home, "prompts", "x.md"), "Home's x.\n")
+	doc, err := selected.Read(context.Background(), definition.KindPrompt, "x")
+	if err == nil || errors.Is(err, definition.ErrNotFound) || !strings.Contains(err.Error(), "cannot be resolved") || !strings.Contains(err.Error(), link) {
+		t.Fatalf("x = %q, %v; want it not resolved, naming %s", doc.Bytes, err, link)
+	}
+	if doc.Bytes != nil || doc.Source.Layer != definition.LayerRepository || doc.Source.Path != link {
+		t.Fatalf("x = %+v %q; want the repository's %s, and no text", doc.Source, doc.Bytes, link)
+	}
+}
+
+// ADR-028 rule 9: a folder a layer.yaml lists is read for a name a process
+// gives, and is not otherwise settings. Read as the settings list it, a
+// prompt is each layer's own prompts/ file alone: a file of its name in a
+// listed folder, which would fail as a prompt, neither replaces home's nor
+// is named among its layers, and one only there is not found there and
+// not expected there. Read as a call reads it, the folder's comes first.
+//
+// Contract test: the settings store against the real filesystem.
+func TestAPromptAsTheSettingsListItIsNotTakenFromAListedFolder(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	selected, home, repository, _ := threeLayers(t)
+	put(t, filepath.Join(repository, "layer.yaml"), layerFile("lib"))
+	lib := filepath.Join(filepath.Dir(repository), "lib")
+	homePath, homeText := filepath.Join(home, "prompts", "notes.md"), "Home's notes.\n"
+	put(t, homePath, homeText)
+	put(t, filepath.Join(lib, "notes.md"), "\x00\xff")
+	put(t, filepath.Join(lib, "x.md"), "The library's x.\n")
+
+	listed, err := selected.ReadListed(ctx, definition.KindPrompt, "notes")
+	want := definition.Source{
+		Kind: definition.KindPrompt, Name: "notes", Layer: definition.LayerHome, Path: homePath, SHA256: sum([]byte(homeText)),
+		Layers: []definition.LayerFile{{Layer: definition.LayerHome, Path: homePath, SHA256: sum([]byte(homeText))}},
+	}
+	if err != nil || string(listed.Bytes) != homeText || !reflect.DeepEqual(listed.Source, want) {
+		t.Fatalf("notes listed = %+v %q, %v\nwant %+v", listed.Source, listed.Bytes, err, want)
+	}
+	if _, err := selected.ReadListed(ctx, definition.KindPrompt, "x"); !errors.Is(err, definition.ErrNotFound) || strings.Contains(err.Error(), lib) {
+		t.Fatalf("x listed: %v; want not found, and not expected in %s", err, lib)
+	}
+	if names, err := selected.List(ctx, definition.KindPrompt); err != nil || !reflect.DeepEqual(names, []string{"notes"}) {
+		t.Fatalf("listed %v, %v", names, err)
+	}
+
+	named, err := selected.Read(ctx, definition.KindPrompt, "notes")
+	if err != nil || named.Source.Path != filepath.Join(lib, "notes.md") || !reflect.DeepEqual(named.Source.Layers[1:], []definition.LayerFile{{Layer: definition.LayerHome, Path: homePath}}) {
+		t.Fatalf("notes named = %+v, %v", named.Source, err)
+	}
 }

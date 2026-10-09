@@ -234,6 +234,12 @@ func (s Staged) Read(ctx context.Context, kind definition.Kind, name string) (de
 	return doc, nil
 }
 
+// ReadListed reads the document as Read does: a stage is home, which lists
+// no folders.
+func (s Staged) ReadListed(ctx context.Context, kind definition.Kind, name string) (definition.Document, error) {
+	return s.Read(ctx, kind, name)
+}
+
 // Layers is the one layer a stage is: home, as the install leaves it.
 func (s Staged) Layers(ctx context.Context) []definition.LayerDir { return s.home.Layers(ctx) }
 

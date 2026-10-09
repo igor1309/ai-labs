@@ -21,9 +21,12 @@ type Checker struct {
 }
 
 // CheckDefinitions supplies every definition document and its origin, and
-// the layers they are read from (ADR-028 rule 1).
+// the layers they are read from (ADR-028 rule 1). Read reads a document as
+// a call reads it; ReadListed one as the settings list it, a prompt never
+// from a folder a layer.yaml lists (rule 9), and any other kind as Read.
 type CheckDefinitions interface {
 	Read(ctx context.Context, kind definition.Kind, name string) (definition.Document, error)
+	ReadListed(ctx context.Context, kind definition.Kind, name string) (definition.Document, error)
 	List(ctx context.Context, kind definition.Kind) ([]string, error)
 	Layers(ctx context.Context) []definition.LayerDir
 }
@@ -156,6 +159,12 @@ func (c *Checker) check(ctx context.Context, probe bool) (CheckResult, error) {
 		}
 	}
 
+	// A prompt a process names is read as a call reads it; any other the
+	// settings list, as they list it: a folder a layer.yaml lists is read
+	// only for a name a process gives, and its other files are not
+	// settings (ADR-028 rule 9).
+	named := c.namedPrompts(ctx)
+
 	// Each document on its own: one checks a document read, or not, err
 	// saying why not; each checks every document of a kind the settings
 	// list.
@@ -224,7 +233,11 @@ func (c *Checker) check(ctx context.Context, probe bool) (CheckResult, error) {
 				stops(kind.Singular()+" "+name, "%q is not a valid name; rename the %s", name, what)
 				continue
 			}
-			doc, err := c.definitions.Read(ctx, kind, name)
+			read := c.definitions.Read
+			if kind == definition.KindPrompt && !named[name] {
+				read = c.definitions.ReadListed
+			}
+			doc, err := read(ctx, kind, name)
 			one(kind, name, doc, err, parse)
 		}
 		return nil
@@ -522,6 +535,26 @@ func (c *Checker) check(ctx context.Context, probe bool) (CheckResult, error) {
 	return finish(), nil
 }
 
+// namedPrompts are the prompts the processes that parse name. Those that
+// do not parse are problems of their own, which check reports when it
+// reads them.
+func (c *Checker) namedPrompts(ctx context.Context) map[string]bool {
+	named := map[string]bool{}
+	names, _ := c.definitions.List(ctx, definition.KindProcess)
+	for _, name := range names {
+		doc, err := c.definitions.Read(ctx, definition.KindProcess, name)
+		if err != nil {
+			continue
+		}
+		if process, err := definition.ParseProcess(doc); err == nil {
+			for _, prompt := range process.Prompts() {
+				named[prompt] = true
+			}
+		}
+	}
+	return named
+}
+
 // blocks reads the repository's blocks.yaml (ADR-018) and returns what it
 // blocks, adding its problems to found. listed is every document the
 // settings list. Only the repository's blocks: home's is a problem of
@@ -652,10 +685,19 @@ type withDocument struct {
 }
 
 func (w withDocument) Read(ctx context.Context, kind definition.Kind, name string) (definition.Document, error) {
+	return w.with(ctx, kind, name, w.CheckDefinitions.Read)
+}
+
+func (w withDocument) ReadListed(ctx context.Context, kind definition.Kind, name string) (definition.Document, error) {
+	return w.with(ctx, kind, name, w.CheckDefinitions.ReadListed)
+}
+
+// with is the document as read reads it, with w's home document in place.
+func (w withDocument) with(ctx context.Context, kind definition.Kind, name string, read func(context.Context, definition.Kind, string) (definition.Document, error)) (definition.Document, error) {
 	if kind != w.doc.Source.Kind || name != w.doc.Source.Name {
-		return w.CheckDefinitions.Read(ctx, kind, name)
+		return read(ctx, kind, name)
 	}
-	current, err := w.CheckDefinitions.Read(ctx, kind, name)
+	current, err := read(ctx, kind, name)
 	switch {
 	case err != nil || current.Source.Layer == definition.LayerHome:
 		return w.doc, nil

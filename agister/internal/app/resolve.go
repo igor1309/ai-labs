@@ -139,9 +139,11 @@ type checkedReach struct {
 }
 
 // ResolverDefinitions supplies the documents a call or a view is resolved
-// from, and the layers they are read from.
+// from, and the layers they are read from. ReadListed is read by the
+// snapshot a resolver freezes them in, which its check checks.
 type ResolverDefinitions interface {
 	Read(ctx context.Context, kind definition.Kind, name string) (definition.Document, error)
+	ReadListed(ctx context.Context, kind definition.Kind, name string) (definition.Document, error)
 	List(ctx context.Context, kind definition.Kind) ([]string, error)
 	Layers(ctx context.Context) []definition.LayerDir
 }

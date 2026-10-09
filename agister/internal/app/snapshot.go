@@ -21,9 +21,12 @@ func allKinds() []definition.Kind {
 
 // SnapshotSource is what a snapshot reads and what it gives back: the
 // definition documents and their origin, and the layers they are read
-// from.
+// from. Read reads a document as a call reads it; ReadListed one as the
+// settings list it, a prompt never from a folder a layer.yaml lists
+// (ADR-028 rule 9), and any other kind as Read.
 type SnapshotSource interface {
 	Read(ctx context.Context, kind definition.Kind, name string) (definition.Document, error)
+	ReadListed(ctx context.Context, kind definition.Kind, name string) (definition.Document, error)
 	List(ctx context.Context, kind definition.Kind) ([]string, error)
 	Layers(ctx context.Context) []definition.LayerDir
 }
@@ -41,7 +44,10 @@ type snapshotList struct {
 // snapshot is a SnapshotSource frozen in memory: what was read, and each
 // error the read gave, replayed as it was.
 type snapshot struct {
-	reads  map[definition.Kind]map[string]snapshotRead
+	reads map[definition.Kind]map[string]snapshotRead
+	// listed are the prompts as the settings list them, apart from reads,
+	// which holds a prompt as a call reads it (ADR-028 rule 9).
+	listed map[string]snapshotRead
 	lists  map[definition.Kind]snapshotList
 	layers []definition.LayerDir
 }
@@ -58,9 +64,16 @@ type snapshot struct {
 // (check lets a missing verification pass, ADR-010 rule 4). One that is
 // found there after all, written since the list, is added to the list, so
 // check checks what the call uses.
+//
+// The prompts listed are read with ReadListed, and the prompts a process
+// names with Read, apart: a folder a layer.yaml lists is read only for a
+// name a process gives (ADR-028 rule 9). Read gives only those, and
+// ReadListed only the listed; a prompt a process names is not added to
+// the list, which holds no folder's, and check reads it all the same.
 func Snapshot(ctx context.Context, src SnapshotSource) SnapshotSource {
 	s := &snapshot{
 		reads:  map[definition.Kind]map[string]snapshotRead{},
+		listed: map[string]snapshotRead{},
 		lists:  map[definition.Kind]snapshotList{},
 		layers: cloneLayers(src.Layers(ctx)),
 	}
@@ -76,6 +89,11 @@ func Snapshot(ctx context.Context, src SnapshotSource) SnapshotSource {
 			names = listed
 		}
 		for _, name := range names {
+			if kind == definition.KindPrompt {
+				doc, err := src.ReadListed(ctx, kind, name)
+				s.listed[name] = snapshotRead{doc: cloneDocument(doc), err: err}
+				continue
+			}
 			doc, err := src.Read(ctx, kind, name)
 			s.reads[kind][name] = snapshotRead{doc: cloneDocument(doc), err: err}
 		}
@@ -86,7 +104,7 @@ func Snapshot(ctx context.Context, src SnapshotSource) SnapshotSource {
 		}
 		doc, err := src.Read(ctx, kind, name)
 		s.reads[kind][name] = snapshotRead{doc: cloneDocument(doc), err: err}
-		if list := s.lists[kind]; err == nil && list.err == nil {
+		if list := s.lists[kind]; err == nil && list.err == nil && kind != definition.KindPrompt {
 			list.names = append(list.names, name)
 			sort.Strings(list.names)
 			s.lists[kind] = list
@@ -152,6 +170,19 @@ func cloneLayers(layers []definition.LayerDir) []definition.LayerDir {
 
 func (s *snapshot) Read(_ context.Context, kind definition.Kind, name string) (definition.Document, error) {
 	read, ok := s.reads[kind][name]
+	if !ok {
+		return definition.Document{}, fmt.Errorf("not found in the settings snapshot")
+	}
+	return cloneDocument(read.doc), read.err
+}
+
+// ReadListed gives a prompt as the settings list it, and any other
+// document as Read does.
+func (s *snapshot) ReadListed(ctx context.Context, kind definition.Kind, name string) (definition.Document, error) {
+	if kind != definition.KindPrompt {
+		return s.Read(ctx, kind, name)
+	}
+	read, ok := s.listed[name]
 	if !ok {
 		return definition.Document{}, fmt.Errorf("not found in the settings snapshot")
 	}
