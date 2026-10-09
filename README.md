@@ -67,6 +67,7 @@ The usual pattern is to combine a guide with a prompt when working with a chosen
 | ntfy-sender | Static page | iPhone-friendly page for sending ntfy notifications, deployed to Cloudflare Pages |
 | dashboard-sync-agent | Agent definition | Dashboard and loc-script sync |
 | neris | Framework | Agentic execution layer in Swift |
+| warder | Tool (docs stage) | Local monitor for AI-agent runs: periodically observes active coding-agent sessions and publishes timestamped observations for other programs to consume; MVP specification and name brief only, no code yet |
 | cairana | Product (research) | AI assistant for psychologists. Turns sessions into structured notes, case context, and next steps; working name in naming-validation stage |
 | noreta | Product | Local hub for coding-agent sessions across Claude Code, Codex and Pi — one view of active and past work, with search, grouping, history and project context; read-only macOS MVP; all seven QA features have a domain implementation and a test per scenario; Claude Code adapters read real sessions, their runtime state and transcripts from disk, and `npm start` lists them as plain text; no Codex adapter yet |
 | foliotell | App family | Native document-to-speech apps that read local Markdown and plain-text files aloud: shipping iOS app (release unit `foliotell`, in `ios/`) with Apple speech synthesis; Android sibling app in `android/` (Kotlin/Compose reader with platform TTS, Stage 1 of the Android roadmap) |
