@@ -10,7 +10,9 @@ for convenience. In warder that means:
 
 - Warder is one Go module, `github.com/igor1309/ai-labs/warder`
   (`warder/go.mod`). Each component of the design is one package under
-  `warder/internal/` (for example `internal/jsonl`).
+  `warder/internal/` (for example `internal/jsonl`). Every package is the
+  module root (the architecture test's own), under `internal/` or under
+  `cmd/`.
 - A component package imports no other package of the module. It
   declares the interfaces it requires, with only the methods it calls,
   and its own types, including its own observation and agent types, even
@@ -24,8 +26,10 @@ for convenience. In warder that means:
   back to a real clock, timer, writer or process. No package-level
   mutable state.
 - The architecture test, `warder/arch_test.go`, keeps these rules for the
-  whole module: the package graph from the real import graph, interfaces
-  beside their consumers, and the test markers through gokit's
+  whole module: where each package is and the package graph, from the
+  real import graph; interfaces beside their consumers, every type whose
+  resolved type is an interface (aliases and types defined over one
+  included); and the test markers through gokit's
   `testdiscipline` (gokit at a tagged version, ADR-019). A new package is
   covered without an edit to it.
 

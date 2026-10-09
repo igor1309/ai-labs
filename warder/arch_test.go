@@ -1,7 +1,7 @@
 // Package warder keeps the module's architecture rules: the package graph,
 // the interfaces beside their consumers, and the test markers. Components
-// are packages under internal/, and cmd/warder is the only composition
-// root.
+// are packages under internal/, cmd/warder is the only composition root,
+// and every other package is this one, the module root.
 package warder
 
 import (
@@ -26,10 +26,11 @@ import (
 	"github.com/igor1309/ai-labs/gokit/testdiscipline"
 )
 
-// A package under internal/ imports no other package of the module, only
-// a package under cmd/ imports one under internal/, and nothing imports a
-// package under cmd/. Every package go list finds is checked, test files
-// included, so a new package needs no edit here.
+// Every package is the module root or under internal/ or cmd/, a package
+// under internal/ imports no other package of the module, only a package
+// under cmd/ imports one under internal/, and nothing imports a package
+// under cmd/. Every package go list finds is checked, test files included,
+// so a new package needs no edit here.
 //
 // Contract test: the module's real import graph, from go list.
 func TestThePackageGraphKeepsComponentsApart(t *testing.T) {
@@ -76,8 +77,9 @@ func TestTheModulesTestsKeepTheirMarkers(t *testing.T) {
 	}
 }
 
-// The graph rules accept components that import only the standard library
-// and a composition root that imports them, tests included.
+// The graph rules accept the module root, components that import only the
+// standard library and a composition root that imports them, tests
+// included.
 //
 // Contract test: a fixture module's real import graph, from go list.
 func TestTheGraphCheckAcceptsComponentsApart(t *testing.T) {
@@ -118,6 +120,10 @@ func main() {
 	b.B()
 }
 `,
+		"fixture.go": `package fixture
+
+func F() {}
+`,
 	})
 
 	problems, err := graphProblems(listModule(t, root))
@@ -129,7 +135,9 @@ func main() {
 	}
 }
 
-// The graph rules report, at the import, a component that imports another
+// The graph rules report, at its first file, a package that is neither the
+// module root nor under internal/ or cmd/, a name that only starts like
+// internal included; and, at the import, a component that imports another
 // package of the module, from a test file too; a package outside cmd/ that
 // imports a component; and any import of a package under cmd/.
 //
@@ -176,6 +184,10 @@ import "example.com/fixture/internal/b"
 
 func X() { b.B() }
 `,
+		"internalx/z/z.go": `package z
+
+func Z() {}
+`,
 		"fixture.go": `package fixture
 
 import "example.com/fixture/cmd/tool"
@@ -199,6 +211,8 @@ func main() { b.B() }
 		"internal/a/a.go:3: internal/a imports internal/b: a package under internal/ imports no other package of the module",
 		"internal/a/a_test.go:6: internal/a imports internal/c: a package under internal/ imports no other package of the module",
 		"internal/c/c.go:3: internal/c imports cmd/tool: nothing imports a package under cmd/",
+		"internalx/z/z.go:1: internalx/z is neither the module root nor under internal/ or cmd/: every package is one of them",
+		"pkg/x/x.go:1: pkg/x is neither the module root nor under internal/ or cmd/: every package is one of them",
 		"pkg/x/x.go:3: pkg/x imports internal/b: only a package under cmd/ imports a package under internal/",
 	}
 	if !slices.Equal(problems, want) {
@@ -206,9 +220,11 @@ func main() { b.B() }
 	}
 }
 
-// The interface rules accept interfaces beside their consumers, named in
-// test files elsewhere, and a name that only looks like one: another
-// package's own Store, a local type and a parameter that shadow it.
+// The interface rules accept interfaces beside their consumers, whether
+// declared by a literal, as a type defined over another interface of the
+// module or another package, or as an alias of one; named in test files
+// elsewhere; and a name that only looks like one: another package's own
+// Store, a local type and a parameter that shadow it.
 //
 // Contract test: a fixture module's real packages, loaded through go list.
 func TestTheInterfaceCheckAcceptsInterfacesBesideTheirConsumers(t *testing.T) {
@@ -232,6 +248,27 @@ func shadowed() int {
 
 func parameter(Store string) string { return Store }
 `,
+		"internal/store/forms.go": `package store
+
+import "io"
+
+type Writer io.Writer
+
+type Base interface{ Get() string }
+
+type Derived Base
+
+type Output = io.Writer
+
+type Getter = Base
+
+func forms(w Writer, d Derived, o Output, g Getter) {
+	_, _ = w.Write(nil)
+	_ = d.Get()
+	_, _ = o.Write(nil)
+	_ = g.Get()
+}
+`,
 		"internal/store/store_test.go": `package store
 
 type stubStore struct{}
@@ -239,6 +276,10 @@ type stubStore struct{}
 func (stubStore) Get() string { return "" }
 
 var _ Store = stubStore{}
+
+var _ Getter = stubStore{}
+
+var _ Derived = stubStore{}
 `,
 		"internal/sink/sink.go": `package sink
 
@@ -249,8 +290,8 @@ func Save(store Store) { store.Put("record") }
 	})
 
 	checked, problems := interfaceProblems(listModule(t, root))
-	if checked != 2 {
-		t.Errorf("checked %d interfaces, want 2", checked)
+	if checked != 7 {
+		t.Errorf("checked %d interfaces, want 7", checked)
 	}
 	if len(problems) != 0 {
 		t.Errorf("got problems\n%s\nwant none", strings.Join(problems, "\n"))
@@ -259,7 +300,9 @@ func Save(store Store) { store.Put("record") }
 
 // The interface rules report an interface its file does not use, and each
 // other non-test file that names one, in its package or another, through
-// a renamed or a dot import.
+// a renamed or a dot import; whether it is declared by a literal, as a
+// type defined over another interface of the module or another package,
+// or as an alias of one.
 //
 // Contract test: a fixture module's real packages, loaded through go list.
 func TestTheInterfaceCheckReportsMisplacedInterfaces(t *testing.T) {
@@ -274,6 +317,27 @@ type Clock interface{ Now() int }
 		"internal/store/service.go": `package store
 
 type Service struct{ store Store }
+
+var _ Reader
+`,
+		"internal/store/forms.go": `package store
+
+import "io"
+
+type Sink io.Writer
+
+type Reader = io.Reader
+
+type Base interface{ Get() string }
+
+type Derived Base
+
+type Alias = Base
+
+func forms(r Reader, d Derived) {
+	_, _ = r.Read(nil)
+	_ = d.Get()
+}
 `,
 		"internal/store/local.go": `package store
 
@@ -294,19 +358,25 @@ func main() {}
 import base "example.com/fixture/internal/store"
 
 var _ base.Clock
+
+var _ base.Derived
 `,
 	})
 
 	checked, problems := interfaceProblems(listModule(t, root))
-	if checked != 3 {
-		t.Errorf("checked %d interfaces, want 3", checked)
+	if checked != 8 {
+		t.Errorf("checked %d interfaces, want 8", checked)
 	}
 	want := []string{
 		"cmd/app/dot.go:5: interface Local, declared in internal/store/local.go, is named here: declare it in its consumer's file",
 		"cmd/app/renamed.go:5: interface Clock, declared in internal/store/interfaces.go, is named here: declare it in its consumer's file",
+		"cmd/app/renamed.go:7: interface Derived, declared in internal/store/forms.go, is named here: declare it in its consumer's file",
+		"internal/store/forms.go:13: interface Alias is named nowhere else in its file: declare it beside its consumer",
+		"internal/store/forms.go:5: interface Sink is named nowhere else in its file: declare it beside its consumer",
 		"internal/store/interfaces.go:3: interface Store is named nowhere else in its file: declare it beside its consumer",
 		"internal/store/interfaces.go:5: interface Clock is named nowhere else in its file: declare it beside its consumer",
 		"internal/store/service.go:3: interface Store, declared in internal/store/interfaces.go, is named here: declare it in its consumer's file",
+		"internal/store/service.go:5: interface Reader, declared in internal/store/forms.go, is named here: declare it in its consumer's file",
 	}
 	if !slices.Equal(problems, want) {
 		t.Errorf("got problems\n%s\nwant\n%s", strings.Join(problems, "\n"), strings.Join(want, "\n"))
@@ -458,9 +528,11 @@ func (m listedModule) file(path string) string {
 	return path
 }
 
-// graphProblems checks every import of the module's packages, their test
-// files included, against the package graph's rules, and returns each edge
-// outside them as "<file>:<line>: <problem>", sorted.
+// graphProblems checks where each of the module's packages is and every
+// import of them, their test files included, against the package graph's
+// rules, and returns each package and edge outside them as
+// "<file>:<line>: <problem>", sorted. A misplaced package is reported at
+// the package clause of its first file.
 func graphProblems(module listedModule) ([]string, error) {
 	fset := token.NewFileSet()
 	var problems []string
@@ -468,10 +540,18 @@ func graphProblems(module listedModule) ([]string, error) {
 		if !module.contains(pkg.ImportPath) {
 			continue
 		}
-		for _, name := range slices.Concat(pkg.GoFiles, pkg.CgoFiles, pkg.TestGoFiles, pkg.XTestGoFiles) {
+		names := slices.Concat(pkg.GoFiles, pkg.CgoFiles, pkg.TestGoFiles, pkg.XTestGoFiles)
+		placement := module.placementProblem(pkg.ImportPath)
+		if placement != "" && len(names) == 0 {
+			problems = append(problems, fmt.Sprintf("%s: %s", module.name(pkg.ImportPath), placement))
+		}
+		for i, name := range names {
 			file, err := parser.ParseFile(fset, filepath.Join(pkg.Dir, name), nil, parser.ImportsOnly)
 			if err != nil {
 				return nil, err
+			}
+			if placement != "" && i == 0 {
+				problems = append(problems, fmt.Sprintf("%s: %s", module.position(fset, file.Package), placement))
 			}
 			for _, spec := range file.Imports {
 				imported, err := strconv.Unquote(spec.Path.Value)
@@ -486,6 +566,16 @@ func graphProblems(module listedModule) ([]string, error) {
 	}
 	slices.Sort(problems)
 	return problems, nil
+}
+
+// placementProblem is what is wrong with where a package of the module is,
+// or "" for nothing: every package is the module root, the architecture
+// test's own, or under internal/ or cmd/.
+func (m listedModule) placementProblem(path string) string {
+	if path == m.path || m.within(path, "internal") || m.within(path, "cmd") {
+		return ""
+	}
+	return m.name(path) + " is neither the module root nor under internal/ or cmd/: every package is one of them"
 }
 
 // edgeProblem is what is wrong with one package of the module importing
@@ -510,8 +600,11 @@ func (m listedModule) edgeProblem(from, to string) string {
 // interfaceProblems type-checks the non-test files of the module's
 // packages and checks each interface they declare at package level: it is
 // named in the file that declares it, beside its consumer, and in no other
-// non-test file. Names are resolved by their types, so a dot or renamed
-// import is followed and a shadowing name is not taken for the interface.
+// non-test file. An interface is a type whose resolved type is one, so a
+// type defined over another interface or an alias of one is checked like
+// an interface literal. Names are resolved by their types, so a dot or
+// renamed import is followed and a shadowing name is not taken for the
+// interface.
 // What cannot be resolved is a problem, never a pass. It returns how many
 // interfaces it checked and the problems as "<file>:<line>: <problem>",
 // sorted.
@@ -587,12 +680,11 @@ func interfaceProblems(module listedModule) (int, []string) {
 			}
 			for _, spec := range gen.Specs {
 				typeSpec := spec.(*ast.TypeSpec)
-				if _, ok := typeSpec.Type.(*ast.InterfaceType); !ok {
+				object, ok := info.Defs[typeSpec.Name].(*types.TypeName)
+				if !ok || !types.IsInterface(object.Type()) {
 					continue
 				}
-				if object := info.Defs[typeSpec.Name]; object != nil {
-					declared[object] = fset.Position(typeSpec.Pos()).Filename
-				}
+				declared[object] = fset.Position(typeSpec.Pos()).Filename
 			}
 		}
 	}
