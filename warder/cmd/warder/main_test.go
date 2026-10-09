@@ -128,22 +128,24 @@ type application struct {
 }
 
 // startApplication runs the application with args, over the writers, the
-// executor and the clock given, with the clock's timer. The end of the
-// test cancels the run and waits for it to return.
+// executor and the clock given, with the clock's timer and no Codex home:
+// its sources are Claude Code's. The end of the test cancels the run and
+// waits for it to return.
 func startApplication(t *testing.T, stdout, stderr io.Writer, execute executeFunc, clock *clocktest.Clock, args ...string) *application {
 	t.Helper()
-	return startObservedApplication(t, stdout, stderr, execute, clock, nil, args...)
+	return startObservedApplication(t, stdout, stderr, execute, codexFiles{}, clock, nil, args...)
 }
 
-// startObservedApplication is startApplication with attempted called as
-// each Write to stderr begins, before it waits for its turn.
-func startObservedApplication(t *testing.T, stdout, stderr io.Writer, execute executeFunc, clock *clocktest.Clock, attempted func(), args ...string) *application {
+// startObservedApplication is startApplication over the Codex home that
+// files reads, with attempted called as each Write to stderr begins,
+// before it waits for its turn.
+func startObservedApplication(t *testing.T, stdout, stderr io.Writer, execute executeFunc, files codexFiles, clock *clocktest.Clock, attempted func(), args ...string) *application {
 	t.Helper()
 	ctx, cancel := context.WithCancel(context.Background())
 	a := &application{cancel: cancel, returned: make(chan struct{})}
 	go func() {
 		defer close(a.returned)
-		a.code = run(ctx, args, stdout, stderr, execute, clock.Now, clock.Timer, attempted)
+		a.code = run(ctx, args, stdout, stderr, execute, files, clock.Now, clock.Timer, attempted)
 	}()
 	t.Cleanup(func() {
 		cancel()
@@ -417,7 +419,7 @@ func TestAFailingStdoutAfterCancellationEndsTheRunWithExitCode1(t *testing.T) {
 		return 0, errors.New("the pipe is closed")
 	}}
 
-	code := run(ctx, []string{"warder", "-claude", "claude-main"}, stdout, stderr, executor.execute, clock.Now, clock.Timer, nil)
+	code := run(ctx, []string{"warder", "-claude", "claude-main"}, stdout, stderr, executor.execute, codexFiles{}, clock.Now, clock.Timer, nil)
 
 	if code != 1 {
 		t.Errorf("got the exit code %d, want 1", code)
@@ -659,8 +661,10 @@ func TestVerboseRecordsADeadlineThatFiredDuringThePublishAsNotExpired(t *testing
 }
 
 // A command line that enables no valid set of sources is a usage error: a
-// message on stderr, exit code 2, nothing on stdout, and nothing started,
-// neither a command nor a timer.
+// message on stderr, exit code 2, nothing on stdout, and nothing started
+// or read, neither a command nor a timer nor a file of the Codex home.
+// The ID rules are the same for both runtimes, and one ID is one source,
+// whichever flags give it.
 func TestAUsageErrorExitsWithCode2AndStartsNothing(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
@@ -676,7 +680,16 @@ func TestAUsageErrorExitsWithCode2AndStartsNothing(t *testing.T) {
 		{"an invalid ID after a valid one", []string{"warder", "-claude", "claude-main", "-claude", "claude-\xed\xa0\x80"}, `source ID "claude-\xed\xa0\x80" is not valid UTF-8`},
 		{"a flag with no ID", []string{"warder", "-claude"}, "flag needs an argument: -claude"},
 		{"a duplicate ID", []string{"warder", "-claude", "claude-main", "-claude", "claude-main"}, `source ID "claude-main" is given twice`},
-		{"an unknown flag", []string{"warder", "-claude", "claude-main", "-codex", "codex-main"}, "flag provided but not defined: -codex"},
+		// -codex is a flag since LAB-158, so the unknown flag is another.
+		{"an unknown flag", []string{"warder", "-claude", "claude-main", "-gemini", "gemini-main"}, "flag provided but not defined: -gemini"},
+		{"an empty Codex ID", []string{"warder", "-codex", ""}, "empty source ID"},
+		{"a Codex ID that is not UTF-8", []string{"warder", "-codex", "\xff"}, `source ID "\xff" is not valid UTF-8`},
+		{"an invalid Codex ID after a valid one", []string{"warder", "-claude", "claude-main", "-codex", "codex-\xc3"}, `source ID "codex-\xc3" is not valid UTF-8`},
+		{"a Codex flag with no ID", []string{"warder", "-codex"}, "flag needs an argument: -codex"},
+		{"a duplicate Codex ID", []string{"warder", "-codex", "codex-main", "-codex", "codex-main"}, `source ID "codex-main" is given twice`},
+		{"an ID given to both runtimes", []string{"warder", "-claude", "main", "-codex", "main"}, `source ID "main" is given twice`},
+		{"an ID given to both runtimes, Codex first", []string{"warder", "-codex", "main", "-claude", "main"}, `source ID "main" is given twice`},
+		{"a stray argument after a Codex source", []string{"warder", "-codex", "codex-main", "codex-side"}, `unexpected argument "codex-side"`},
 		{"a stray argument", []string{"warder", "-claude", "claude-main", "claude-side"}, `unexpected argument "claude-side"`},
 		{"a -verbose that is not a boolean", []string{"warder", "-verbose=loud", "-claude", "claude-main"}, `invalid boolean value "loud" for -verbose`},
 		{"-verbose with no source", []string{"warder", "-verbose"}, "no source enabled"},
@@ -687,8 +700,9 @@ func TestAUsageErrorExitsWithCode2AndStartsNothing(t *testing.T) {
 			clock := clocktest.NewClock(morning())
 			stdout, stderr := newLines(), newLines()
 			executor := &executorSpy{answer: answerSessions}
+			home := &codexHomeFake{sessions: threeSessions()}
 
-			code := run(t.Context(), test.args, stdout, stderr, executor.execute, clock.Now, clock.Timer, nil)
+			code := run(t.Context(), test.args, stdout, stderr, executor.execute, home.files(), clock.Now, clock.Timer, nil)
 
 			if code != 2 {
 				t.Errorf("got the exit code %d, want 2", code)
@@ -701,6 +715,9 @@ func TestAUsageErrorExitsWithCode2AndStartsNothing(t *testing.T) {
 			if got := executor.executed(); len(got) != 0 {
 				t.Errorf("got the commands %q, want none", got)
 			}
+			if got := home.asked(); len(got) != 0 {
+				t.Errorf("got the file operations %q, want none", got)
+			}
 			if got := clock.Waits(); len(got) != 0 {
 				t.Errorf("got timers of %v, want none", got)
 			}
@@ -708,15 +725,39 @@ func TestAUsageErrorExitsWithCode2AndStartsNothing(t *testing.T) {
 	}
 }
 
-// The sources are those of every -claude flag, in the order given.
+// The sources of each runtime are those of every flag of it, in the order
+// given, whatever the order of the two flags among themselves.
 func TestParseCommandLineKeepsTheOrderOfTheFlags(t *testing.T) {
 	t.Parallel()
-	got, err := parseCommandLine([]string{"warder", "-claude", "claude-side", "--claude=claude-main"})
+	got, err := parseCommandLine([]string{"warder", "-codex", "codex-side", "-claude", "claude-side", "--codex=codex-main", "--claude=claude-main"})
 	if err != nil {
 		t.Fatal(err)
 	}
 	if want := []string{"claude-side", "claude-main"}; !slices.Equal(got.claudeSources, want) {
-		t.Errorf("got the sources %q, want %q", got.claudeSources, want)
+		t.Errorf("got the Claude Code sources %q, want %q", got.claudeSources, want)
+	}
+	if want := []string{"codex-side", "codex-main"}; !slices.Equal(got.codexSources, want) {
+		t.Errorf("got the Codex sources %q, want %q", got.codexSources, want)
+	}
+}
+
+// One source is enough, of either runtime: a command line with only Codex
+// sources enables no Claude Code source, and the other way round.
+func TestParseCommandLineAcceptsTheSourcesOfOneRuntime(t *testing.T) {
+	t.Parallel()
+	got, err := parseCommandLine([]string{"warder", "-codex", "codex-main"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got.claudeSources) != 0 || !slices.Equal(got.codexSources, []string{"codex-main"}) {
+		t.Errorf("got the Claude Code sources %q and the Codex sources %q, want none and codex-main", got.claudeSources, got.codexSources)
+	}
+	got, err = parseCommandLine([]string{"warder", "-claude", "claude-main"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got.codexSources) != 0 || !slices.Equal(got.claudeSources, []string{"claude-main"}) {
+		t.Errorf("got the Claude Code sources %q and the Codex sources %q, want claude-main and none", got.claudeSources, got.codexSources)
 	}
 }
 
@@ -748,33 +789,40 @@ func TestParseCommandLineTurnsLoggingOnOnlyWithVerbose(t *testing.T) {
 	}
 }
 
-// A missing boundary fails the wiring, with an error that says which.
+// A missing boundary fails the wiring of a source of each runtime, with an
+// error that says which.
 func TestWireRejectsAMissingBoundary(t *testing.T) {
 	t.Parallel()
 	clock := clocktest.NewClock(morning())
 	executor := &executorSpy{answer: answerSessions}
+	home := &codexHomeFake{sessions: threeSessions()}
 	logger := newLogger(newLines(), true)
+	withoutRead := home.files()
+	withoutRead.read = nil
 	tests := []struct {
 		name           string
 		stdout, stderr io.Writer
 		logger         *slog.Logger
 		execute        executeFunc
+		files          codexFiles
 		clock          clockFunc
 		timer          timerFunc
 		says           string
 	}{
-		{"no stdout", nil, newLines(), logger, executor.execute, clock.Now, clock.Timer, "no record writer"},
-		{"no stderr", newLines(), nil, logger, executor.execute, clock.Now, clock.Timer, "no stderr"},
-		{"a nil stderr carried as a writer", newLines(), (*lines)(nil), logger, executor.execute, clock.Now, clock.Timer, "no stderr"},
-		{"no logger", newLines(), newLines(), nil, executor.execute, clock.Now, clock.Timer, "no logger"},
-		{"no executor", newLines(), newLines(), logger, nil, clock.Now, clock.Timer, "no command executor"},
-		{"no clock", newLines(), newLines(), logger, executor.execute, nil, clock.Timer, "no clock"},
-		{"no timer", newLines(), newLines(), logger, executor.execute, clock.Now, nil, "no timer"},
+		{"no stdout", nil, newLines(), logger, executor.execute, home.files(), clock.Now, clock.Timer, "no record writer"},
+		{"no stderr", newLines(), nil, logger, executor.execute, home.files(), clock.Now, clock.Timer, "no stderr"},
+		{"a nil stderr carried as a writer", newLines(), (*lines)(nil), logger, executor.execute, home.files(), clock.Now, clock.Timer, "no stderr"},
+		{"no logger", newLines(), newLines(), nil, executor.execute, home.files(), clock.Now, clock.Timer, "no logger"},
+		{"no executor", newLines(), newLines(), logger, nil, home.files(), clock.Now, clock.Timer, `source "claude-main": claude: no command executor`},
+		{"no files", newLines(), newLines(), logger, executor.execute, codexFiles{}, clock.Now, clock.Timer, `source "codex-main": codex: no files`},
+		{"files with a function missing", newLines(), newLines(), logger, executor.execute, withoutRead, clock.Now, clock.Timer, `source "codex-main": codex: no files`},
+		{"no clock", newLines(), newLines(), logger, executor.execute, home.files(), nil, clock.Timer, "no clock"},
+		{"no timer", newLines(), newLines(), logger, executor.execute, home.files(), clock.Now, nil, "no timer"},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
-			application, err := wire([]string{"claude-main"}, test.stdout, test.stderr, test.logger, test.execute, test.clock, test.timer)
+			application, err := wire([]string{"claude-main"}, []string{"codex-main"}, test.stdout, test.stderr, test.logger, test.execute, test.files, test.clock, test.timer)
 			if err == nil || !strings.Contains(err.Error(), test.says) {
 				t.Errorf("got the error %v, want one that says %q", err, test.says)
 			}
@@ -785,6 +833,37 @@ func TestWireRejectsAMissingBoundary(t *testing.T) {
 	}
 }
 
+// A boundary that only one runtime reaches is missed only by a source of
+// that runtime: Claude Code sources are wired with no Codex files, and
+// Codex sources with no command executor. A clock and a timer are missed
+// by a source of either. Wiring reads nothing.
+func TestWireMissesABoundaryOnlyForASourceThatReachesIt(t *testing.T) {
+	t.Parallel()
+	clock := clocktest.NewClock(morning())
+	executor := &executorSpy{answer: answerSessions}
+	home := &codexHomeFake{sessions: threeSessions()}
+	logger := newLogger(newLines(), false)
+
+	if _, err := wire([]string{"claude-main"}, nil, newLines(), newLines(), logger, executor.execute, codexFiles{}, clock.Now, clock.Timer); err != nil {
+		t.Errorf("Claude Code sources with no Codex files: got the error %v, want none", err)
+	}
+	if _, err := wire(nil, []string{"codex-main"}, newLines(), newLines(), logger, nil, home.files(), clock.Now, clock.Timer); err != nil {
+		t.Errorf("Codex sources with no command executor: got the error %v, want none", err)
+	}
+	if _, err := wire(nil, []string{"codex-main"}, newLines(), newLines(), logger, nil, home.files(), nil, clock.Timer); err == nil || !strings.Contains(err.Error(), "no clock") {
+		t.Errorf("a Codex source with no clock: got the error %v, want one that says no clock", err)
+	}
+	if _, err := wire(nil, []string{"codex-main"}, newLines(), newLines(), logger, nil, home.files(), clock.Now, nil); err == nil || !strings.Contains(err.Error(), "no timer") {
+		t.Errorf("a Codex source with no timer: got the error %v, want one that says no timer", err)
+	}
+	if got := home.asked(); len(got) != 0 {
+		t.Errorf("got the file operations %q, want none", got)
+	}
+	if got := executor.executed(); len(got) != 0 {
+		t.Errorf("got the commands %q, want none", got)
+	}
+}
+
 // An application that cannot be wired ends the run with exit code 1 and a
 // message on stderr, and starts nothing.
 func TestAnApplicationThatCannotBeWiredExitsWithCode1(t *testing.T) {
@@ -792,7 +871,7 @@ func TestAnApplicationThatCannotBeWiredExitsWithCode1(t *testing.T) {
 	clock := clocktest.NewClock(morning())
 	stdout, stderr := newLines(), newLines()
 
-	code := run(t.Context(), []string{"warder", "-claude", "claude-main"}, stdout, stderr, nil, clock.Now, clock.Timer, nil)
+	code := run(t.Context(), []string{"warder", "-claude", "claude-main"}, stdout, stderr, nil, codexFiles{}, clock.Now, clock.Timer, nil)
 
 	if code != 1 {
 		t.Errorf("got the exit code %d, want 1", code)
@@ -814,7 +893,7 @@ func TestARunWithANilStderrExitsWithCode1AndStartsNothing(t *testing.T) {
 	stdout := newLines()
 	executor := &executorSpy{answer: answerSessions}
 
-	code := run(t.Context(), []string{"warder", "-verbose", "-claude", "claude-main"}, stdout, (*lines)(nil), executor.execute, clock.Now, clock.Timer, nil)
+	code := run(t.Context(), []string{"warder", "-verbose", "-claude", "claude-main"}, stdout, (*lines)(nil), executor.execute, codexFiles{}, clock.Now, clock.Timer, nil)
 
 	if code != 1 {
 		t.Errorf("got the exit code %d, want 1", code)
@@ -849,7 +928,7 @@ func TestVerboseRecordsAndDiagnosticsOfSeveralSourcesShareOneSerialWriter(t *tes
 		return []byte(sessions), nil
 	}}
 	sources := []string{"claude-main", "claude-side", "claude-third"}
-	startObservedApplication(t, stdout, stderr, executor.execute, clock, stderr.attempt,
+	startObservedApplication(t, stdout, stderr, executor.execute, codexFiles{}, clock, stderr.attempt,
 		"warder", "-verbose", "-claude", sources[0], "-claude", sources[1], "-claude", sources[2])
 
 	// The diagnostic is held; every other source is held in its read, so

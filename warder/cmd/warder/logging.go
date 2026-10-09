@@ -78,8 +78,60 @@ func (e *loggedExecute) Execute(ctx context.Context, name string, args ...string
 	return stdout, err
 }
 
-// loggedReadAgents decorates the Claude Code read, as a capture's agent
-// reader: each read is made as it is, and recorded.
+// loggedCodexFiles decorates the reading of the Codex home's files, as the
+// Codex adapter's files: each operation is made as it is, and recorded
+// with the path it was asked for.
+type loggedCodexFiles struct {
+	files codexFiles
+	log   sourceLog
+}
+
+// logCodexFiles decorates files. Missing files stay missing, as a nil
+// decorator, so the adapter rejects them as it would files themselves.
+func logCodexFiles(files codexFiles, log sourceLog) *loggedCodexFiles {
+	if files.missing() {
+		return nil
+	}
+	return &loggedCodexFiles{files: files, log: log}
+}
+
+func (f *loggedCodexFiles) List(ctx context.Context, dir string) ([]string, error) {
+	began := f.log.clock()
+	names, err := f.files.list(ctx, dir)
+	f.log.record(ctx, "list directory", began, err, slog.String("path", dir))
+	return names, err
+}
+
+func (f *loggedCodexFiles) Locked(ctx context.Context, file string) (bool, error) {
+	began := f.log.clock()
+	locked, err := f.files.locked(ctx, file)
+	f.log.record(ctx, "probe lock", began, err, slog.String("path", file))
+	return locked, err
+}
+
+func (f *loggedCodexFiles) Find(ctx context.Context, dir, prefix, suffix string) ([]string, error) {
+	began := f.log.clock()
+	files, err := f.files.find(ctx, dir, prefix, suffix)
+	f.log.record(ctx, "find files", began, err, slog.String("path", dir), slog.String("prefix", prefix), slog.String("suffix", suffix))
+	return files, err
+}
+
+func (f *loggedCodexFiles) Size(ctx context.Context, file string) (int64, error) {
+	began := f.log.clock()
+	size, err := f.files.size(ctx, file)
+	f.log.record(ctx, "file size", began, err, slog.String("path", file))
+	return size, err
+}
+
+func (f *loggedCodexFiles) Read(ctx context.Context, file string, offset, length int64) ([]byte, error) {
+	began := f.log.clock()
+	data, err := f.files.read(ctx, file, offset, length)
+	f.log.record(ctx, "read file", began, err, slog.String("path", file), slog.Int64("offset", offset), slog.Int64("length", length))
+	return data, err
+}
+
+// loggedReadAgents decorates a runtime adapter's read, as a capture's
+// agent reader: each read is made as it is, and recorded.
 type loggedReadAgents struct {
 	read func(ctx context.Context) ([]capture.Agent, error)
 	log  sourceLog

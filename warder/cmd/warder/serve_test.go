@@ -35,12 +35,12 @@ func runWarderProcess(args []string) int {
 	switch args[0] {
 	case "closed-stdout":
 		answer := func(context.Context, string, ...string) ([]byte, error) { return []byte(sessions), nil }
-		return serve(append([]string{"warder"}, args[1:]...), os.Stdout, os.Stderr, answer, systemClock, osTimers{newTimer: time.NewTimer}.Start, nil)
+		return serve(append([]string{"warder"}, args[1:]...), os.Stdout, os.Stderr, answer, codexFiles{}, systemClock, osTimers{newTimer: time.NewTimer}.Start, nil)
 	case "held-stdout":
 		fifo := args[1]
 		answer := func(context.Context, string, ...string) ([]byte, error) { return manySessions(4000), nil }
 		released := func() { _ = reportStarted(fifo, "released") }
-		return serve(append([]string{"warder"}, args[2:]...), os.Stdout, os.Stderr, answer, systemClock, osTimers{newTimer: time.NewTimer}.Start, released)
+		return serve(append([]string{"warder"}, args[2:]...), os.Stdout, os.Stderr, answer, codexFiles{}, systemClock, osTimers{newTimer: time.NewTimer}.Start, released)
 	}
 	return 64
 }

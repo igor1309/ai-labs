@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"errors"
+	"fmt"
 	"slices"
 	"strings"
 	"testing"
@@ -12,12 +13,14 @@ import (
 	"github.com/igor1309/ai-labs/warder/internal/attempt"
 	"github.com/igor1309/ai-labs/warder/internal/capture"
 	"github.com/igor1309/ai-labs/warder/internal/claude"
+	"github.com/igor1309/ai-labs/warder/internal/codex"
 	"github.com/igor1309/ai-labs/warder/internal/loop"
 )
 
 // Each decorator satisfies the interface of what it wraps.
 var (
 	_ claude.CommandExecutor                 = (*loggedExecute)(nil)
+	_ codex.Files                            = (*loggedCodexFiles)(nil)
 	_ capture.AgentReader                    = loggedReadAgents{}
 	_ attempt.Capturer[capture.Observation]  = loggedCapture{}
 	_ attempt.Deadline                       = loggedDeadline{}
@@ -109,6 +112,185 @@ func TestLogExecuteOfNoExecutionIsNil(t *testing.T) {
 	log, _ := recordedLog(clocktest.NewClock(morning()), "claude-main")
 	if got := logExecute(nil, log); got != nil {
 		t.Errorf("got the decorator %v, want nil", got)
+	}
+}
+
+// filesStandIn is the files a decorator of them wraps: each operation
+// checks that it was given the caller's context, advances the clock by a
+// second, and returns the answer the test set, or failure.
+type filesStandIn struct {
+	t       *testing.T
+	ctx     context.Context
+	clock   *clocktest.Clock
+	failure error
+
+	names  []string
+	locked bool
+	found  []string
+	size   int64
+	data   []byte
+	// asked is every operation, with what it was asked for.
+	asked []string
+}
+
+func (f *filesStandIn) files() codexFiles {
+	return codexFiles{
+		list: func(given context.Context, dir string) ([]string, error) {
+			f.ask(given, "list "+dir)
+			return f.names, f.failure
+		},
+		locked: func(given context.Context, file string) (bool, error) {
+			f.ask(given, "locked "+file)
+			return f.locked, f.failure
+		},
+		find: func(given context.Context, dir, prefix, suffix string) ([]string, error) {
+			f.ask(given, "find "+dir+" "+prefix+" "+suffix)
+			return f.found, f.failure
+		},
+		size: func(given context.Context, file string) (int64, error) {
+			f.ask(given, "size "+file)
+			return f.size, f.failure
+		},
+		read: func(given context.Context, file string, offset, length int64) ([]byte, error) {
+			f.ask(given, fmt.Sprintf("read %s %d %d", file, offset, length))
+			return f.data, f.failure
+		},
+	}
+}
+
+func (f *filesStandIn) ask(given context.Context, asked string) {
+	f.t.Helper()
+	if given != f.ctx {
+		f.t.Errorf("%s: the operation was not given the caller's context", asked)
+	}
+	f.asked = append(f.asked, asked)
+	f.clock.Advance(time.Second)
+}
+
+// Each operation on the files is made under the caller's context, with
+// what it was asked for, and its answer returned as it is; each is
+// recorded with the source, the path, its outcome and its duration on the
+// clock.
+func TestLoggedCodexFilesPassEachOperationThroughAndRecordIt(t *testing.T) {
+	t.Parallel()
+	clock := clocktest.NewClock(morning())
+	log, records := recordedLog(clock, "codex-main")
+	ctx := context.WithValue(t.Context(), contextKey{}, "the caller's")
+	standIn := &filesStandIn{
+		t: t, ctx: ctx, clock: clock,
+		names:  []string{".coordination.lock", "thread-1.lock"},
+		locked: true,
+		found:  []string{"sessions/2026/10/09/rollout-1-thread-1.jsonl"},
+		size:   16 << 20,
+		data:   []byte(turnStarted),
+	}
+	files := logCodexFiles(standIn.files(), log)
+
+	names, err := files.List(ctx, "thread-writer-locks")
+	if err != nil || len(names) != 2 || &names[0] != &standIn.names[0] {
+		t.Errorf("got the names %q and the error %v, want the listing's own", names, err)
+	}
+	locked, err := files.Locked(ctx, "thread-writer-locks/thread-1.lock")
+	if err != nil || !locked {
+		t.Errorf("got locked %v and the error %v, want true", locked, err)
+	}
+	found, err := files.Find(ctx, "sessions", "rollout-", "-thread-1.jsonl")
+	if err != nil || len(found) != 1 || &found[0] != &standIn.found[0] {
+		t.Errorf("got the files %q and the error %v, want the search's own", found, err)
+	}
+	size, err := files.Size(ctx, "sessions/2026/10/09/rollout-1-thread-1.jsonl")
+	if err != nil || size != 16<<20 {
+		t.Errorf("got the size %d and the error %v, want %d", size, err, 16<<20)
+	}
+	data, err := files.Read(ctx, "sessions/2026/10/09/rollout-1-thread-1.jsonl", 15<<20, 1<<20)
+	if err != nil || len(data) != len(standIn.data) || &data[0] != &standIn.data[0] {
+		t.Errorf("got the data %q and the error %v, want the read's own", data, err)
+	}
+
+	asked := []string{
+		"list thread-writer-locks",
+		"locked thread-writer-locks/thread-1.lock",
+		"find sessions rollout- -thread-1.jsonl",
+		"size sessions/2026/10/09/rollout-1-thread-1.jsonl",
+		"read sessions/2026/10/09/rollout-1-thread-1.jsonl 15728640 1048576",
+	}
+	if !slices.Equal(standIn.asked, asked) {
+		t.Errorf("got the operations %q, want %q", standIn.asked, asked)
+	}
+	assertRecords(t, records,
+		`time=2026-10-09T11:28:11.000+03:00 level=DEBUG msg="list directory" source=codex-main path=thread-writer-locks outcome=ok duration=1s`+"\n",
+		`time=2026-10-09T11:28:12.000+03:00 level=DEBUG msg="probe lock" source=codex-main path=thread-writer-locks/thread-1.lock outcome=ok duration=1s`+"\n",
+		`time=2026-10-09T11:28:13.000+03:00 level=DEBUG msg="find files" source=codex-main path=sessions prefix=rollout- suffix=-thread-1.jsonl outcome=ok duration=1s`+"\n",
+		`time=2026-10-09T11:28:14.000+03:00 level=DEBUG msg="file size" source=codex-main path=sessions/2026/10/09/rollout-1-thread-1.jsonl outcome=ok duration=1s`+"\n",
+		`time=2026-10-09T11:28:15.000+03:00 level=DEBUG msg="read file" source=codex-main path=sessions/2026/10/09/rollout-1-thread-1.jsonl offset=15728640 length=1048576 outcome=ok duration=1s`+"\n")
+}
+
+// A cancelled context reaches each operation as it is, and the
+// operation's error is returned as it is, with what the operation
+// returned, and recorded.
+func TestLoggedCodexFilesPassACancellationAndEachErrorThrough(t *testing.T) {
+	t.Parallel()
+	clock := clocktest.NewClock(morning())
+	log, records := recordedLog(clock, "codex-main")
+	failure := errors.New("the run is stopping")
+	ctx, cancel := context.WithCancelCause(t.Context())
+	cancel(failure)
+	standIn := &filesStandIn{t: t, ctx: ctx, clock: clock, failure: failure}
+	files := logCodexFiles(standIn.files(), log)
+
+	names, listErr := files.List(ctx, "thread-writer-locks")
+	locked, lockedErr := files.Locked(ctx, "thread-writer-locks/thread-1.lock")
+	found, findErr := files.Find(ctx, "sessions", "rollout-", "-thread-1.jsonl")
+	size, sizeErr := files.Size(ctx, "sessions/rollout-1-thread-1.jsonl")
+	data, readErr := files.Read(ctx, "sessions/rollout-1-thread-1.jsonl", 0, 64)
+
+	for operation, err := range map[string]error{"list": listErr, "locked": lockedErr, "find": findErr, "size": sizeErr, "read": readErr} {
+		if err != failure {
+			t.Errorf("%s: got the error %v, want %v itself", operation, err, failure)
+		}
+	}
+	if names != nil || locked || found != nil || size != 0 || data != nil {
+		t.Errorf("got the answers %q, %v, %q, %d and %q, want none", names, locked, found, size, data)
+	}
+	at := func(second int) string {
+		return fmt.Sprintf("time=2026-10-09T11:28:1%d.000+03:00 level=DEBUG ", second)
+	}
+	ended := ` outcome=error error="the run is stopping" duration=1s` + "\n"
+	assertRecords(t, records,
+		at(1)+`msg="list directory" source=codex-main path=thread-writer-locks`+ended,
+		at(2)+`msg="probe lock" source=codex-main path=thread-writer-locks/thread-1.lock`+ended,
+		at(3)+`msg="find files" source=codex-main path=sessions prefix=rollout- suffix=-thread-1.jsonl`+ended,
+		at(4)+`msg="file size" source=codex-main path=sessions/rollout-1-thread-1.jsonl`+ended,
+		at(5)+`msg="read file" source=codex-main path=sessions/rollout-1-thread-1.jsonl offset=0 length=64`+ended)
+}
+
+// Missing files stay missing: the decorator of files with no function, or
+// with one function missing, is nil, which the adapter rejects.
+func TestLogCodexFilesOfMissingFilesIsNil(t *testing.T) {
+	t.Parallel()
+	clock := clocktest.NewClock(morning())
+	log, _ := recordedLog(clock, "codex-main")
+	whole := (&filesStandIn{t: t, ctx: t.Context(), clock: clock}).files()
+	tests := map[string]func(files *codexFiles){
+		"no function": func(files *codexFiles) { *files = codexFiles{} },
+		"no list":     func(files *codexFiles) { files.list = nil },
+		"no locked":   func(files *codexFiles) { files.locked = nil },
+		"no find":     func(files *codexFiles) { files.find = nil },
+		"no size":     func(files *codexFiles) { files.size = nil },
+		"no read":     func(files *codexFiles) { files.read = nil },
+	}
+	for name, remove := range tests {
+		files := whole
+		remove(&files)
+		if got := logCodexFiles(files, log); got != nil {
+			t.Errorf("%s: got the decorator %v, want nil", name, got)
+		}
+		if _, err := codex.New(logCodexFiles(files, log), codex.Scan{Chunk: 1, Cap: 1}); err == nil || err.Error() != "codex: no files" {
+			t.Errorf("%s: the adapter over the decorator: got the error %v, want codex: no files", name, err)
+		}
+	}
+	if got := logCodexFiles(whole, log); got == nil {
+		t.Error("got no decorator of files with every function, want one")
 	}
 }
 
