@@ -56,31 +56,12 @@ From the repository root, quiet (never `-v`):
 
 ## Running
 
-- Build from `warder/`: `go build ./cmd/warder`.
-- Command line: `warder [-verbose] -claude <source-id>`, `-claude`
-  repeatable. Each enables one Claude Code source under that source ID.
-  No source, an empty or duplicate ID, an ID that is not valid UTF-8, a
-  `-verbose` that is not a boolean, an unknown flag or a stray argument is
-  a usage error.
-- Settings, constants in `cmd/warder/main.go`: a Claude source's read is
-  limited to 5 seconds, and it waits 5 seconds after each attempt.
-- stdout: one JSON line per successful read, the design's observation
-  contract. Nothing else is written there. SIGPIPE is ignored: a stdout
-  whose reader is gone is an output error, which exits 1.
-- Shutdown: the design allows backpressure on stdout, so a first SIGINT or
-  SIGTERM waits for a pending write to stdout; there is no interruptible
-  output. Once the first signal has cancelled the run, both signals have
-  their default behaviour again: a second SIGINT or SIGTERM ends a run
-  held by a stdout consumer that stopped reading.
-- stderr: one line per read that failed or timed out,
-  `warder: <source-id>: <error>`, and warder's own messages,
-  `warder: <error>`. With `-verbose`, also one `log/slog` text record per
-  execution, read, capture, deadline, publish and wait, at `level=DEBUG`:
-  `time=<clock time> level=DEBUG msg=<step> source=<source-id> [step's
-  own attributes] outcome=ok|error [error=<error>] duration=<duration>`,
-  the times from the injected clock. Records and diagnostics share one
-  serialized writer, one Write per line. Without `-verbose` logging is
-  off and stderr carries diagnostics only.
-- Exit codes: 0 when SIGINT or SIGTERM cancelled the run, after every
-  source loop returned; 1 for a failure it cannot recover from, as an
-  output error is; 2 for a usage error, with nothing started.
+`README.md` is for whoever runs warder: how to build it, the command line
+and its usage errors, the settings, stdout, stderr and the `-verbose`
+records, shutdown and the exit codes.
+
+- That behaviour is the contract the code and its tests keep. A change to
+  it changes `README.md` in the same change, and every claim there
+  matches the code.
+- In the code a record's time and duration come from the injected clock,
+  never from `log/slog`'s own.
