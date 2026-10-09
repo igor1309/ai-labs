@@ -583,9 +583,19 @@ func TestVerboseRecordsATimedOutReadBesideItsDiagnostic(t *testing.T) {
 	t.Parallel()
 	clock := clocktest.NewClock(morning())
 	stdout, stderr := newLines(), newLines()
-	executor := &executorSpy{answer: func(ctx context.Context, _ int) ([]byte, error) { return untilEnded(ctx) }}
+	blocked := make(chan struct{})
+	executor := &executorSpy{answer: func(ctx context.Context, call int) ([]byte, error) {
+		if call == 1 {
+			close(blocked)
+		}
+		return untilEnded(ctx)
+	}}
 	startApplication(t, stdout, stderr, executor.execute, clock, "warder", "-verbose", "-claude", "claude-main")
 	clock.Started(5 * time.Second)
+	// The deadline's timer starts before the capture, the read and the
+	// execution begin: the command has arrived once each has read the time
+	// it began at.
+	<-blocked
 
 	clock.Advance(5 * time.Second)
 
