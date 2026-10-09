@@ -612,22 +612,31 @@ func TestAFartherLayersPromptIsNamedNotOpened(t *testing.T) {
 	t.Parallel()
 	for name, at := range map[string]string{
 		"its own prompts/":  filepath.Join(".agister", "prompts", "x.md"),
-		"a folder it lists": filepath.Join("lib", "x.md"),
+		"its first folder":  filepath.Join("lib", "x.md"),
+		"its second folder": filepath.Join("later", "x.md"),
 	} {
 		t.Run("in "+name, func(t *testing.T) {
 			t.Parallel()
 			ctx := context.Background()
 			selected, home, repository, project := threeLayers(t)
 			root := filepath.Dir(repository)
-			put(t, filepath.Join(repository, "layer.yaml"), layerFile("lib"))
+			put(t, filepath.Join(repository, "layer.yaml"), layerFile("lib", "later"))
 			fifo := filepath.Join(root, at)
-			for _, dir := range []string{filepath.Join(root, "lib"), filepath.Dir(fifo)} {
+			for _, dir := range []string{filepath.Join(root, "lib"), filepath.Join(root, "later"), filepath.Dir(fifo)} {
 				if err := os.MkdirAll(dir, 0o700); err != nil {
 					t.Fatal(err)
 				}
 			}
 			if err := syscall.Mkfifo(fifo, 0o600); err != nil {
 				t.Fatal(err)
+			}
+			// Metadata uses the same precedence as a read: own prompts/
+			// before listed folders, then the first listed folder found.
+			if at == filepath.Join(".agister", "prompts", "x.md") {
+				put(t, filepath.Join(root, "lib", "x.md"), "The first folder's x.\n")
+			}
+			if at != filepath.Join("later", "x.md") {
+				put(t, filepath.Join(root, "later", "x.md"), "The second folder's x.\n")
 			}
 			homePath, path, text := filepath.Join(home, "prompts", "x.md"), filepath.Join(project, "prompts", "x.md"), "The project's x.\n"
 			put(t, homePath, "Home's x.\n")

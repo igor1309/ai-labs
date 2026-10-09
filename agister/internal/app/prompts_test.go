@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"reflect"
+	"slices"
 	"strings"
 	"testing"
 
@@ -344,6 +345,78 @@ func (s foldedSource) Read(ctx context.Context, kind definition.Kind, name strin
 		},
 		Bytes: []byte(text),
 	}, nil
+}
+
+func (s foldedSource) ReadListed(ctx context.Context, kind definition.Kind, name string) (definition.Document, error) {
+	s.record("inventory/" + string(kind) + "/" + name)
+	return s.definitionsSpy.ReadListed(ctx, kind, name)
+}
+
+// A named prompt is frozen only as the call resolves it. Reading its
+// inventory version as well would touch a shadowed file, which could be
+// a FIFO. The spy tells those reads apart, without kernel waits.
+func TestANamedPromptIsNotAlsoReadFromTheInventory(t *testing.T) {
+	t.Parallel()
+	for name, frozen := range map[string]bool{"the settings": false, "their snapshot": true} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			ctx := context.Background()
+			h := newHarness()
+			h.defs.docs[definition.KindPrompt]["inspect"] = "\x00\xff"
+			h.defs.docs[definition.KindPrompt]["notes"] = "Home's notes.\n"
+			folded := foldedSource{definitionsSpy: h.defs, folded: map[string]string{"inspect": inspectPrompt}}
+			var src app.CheckDefinitions = folded
+			if frozen {
+				src = app.Snapshot(ctx, folded)
+			}
+			report, err := app.NewChecker(src, h.validator, h.runtimes, []string{"git.revision", "git.diff"}).Check(ctx, false)
+			if err != nil || len(report.Problems) != 0 {
+				t.Fatalf("check = %+v, %v", report, err)
+			}
+			doc, err := src.Read(ctx, definition.KindPrompt, "inspect")
+			if err != nil || string(doc.Bytes) != inspectPrompt || doc.Source.Path != "mem/lib/inspect.md" || doc.Source.SHA256 != sha(inspectPrompt) {
+				t.Fatalf("inspect = %+v %q, %v", doc.Source, doc.Bytes, err)
+			}
+			h.defs.mu.Lock()
+			reads := append([]string(nil), h.defs.reads...)
+			h.defs.mu.Unlock()
+			if slices.Contains(reads, "inventory/prompts/inspect") || !slices.Contains(reads, "inventory/prompts/notes") {
+				t.Fatalf("inventory reads = %v; want notes alone", reads)
+			}
+		})
+	}
+}
+
+// A process that cannot be parsed does not select library prompts for
+// inventory checks, on live settings or on their snapshot.
+func TestAnInvalidProcessDoesNotSelectLibraryPrompts(t *testing.T) {
+	t.Parallel()
+	for name, frozen := range map[string]bool{"the settings": false, "their snapshot": true} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			ctx := context.Background()
+			h := newHarness()
+			h.defs.docs[definition.KindProcess]["p"] += "unexpected: true\n"
+			folded := foldedSource{definitionsSpy: h.defs, folded: map[string]string{"inspect": "\x00\xff"}}
+			var src app.CheckDefinitions = folded
+			if frozen {
+				src = app.Snapshot(ctx, folded)
+			}
+			report, err := app.NewChecker(src, h.validator, h.runtimes, []string{"git.revision", "git.diff"}).Check(ctx, false)
+			if want := []string{"process p: unexpected: unknown field"}; err != nil || !reflect.DeepEqual(messages(report.Problems), want) {
+				t.Fatalf("problems = %q, %v; want %q", messages(report.Problems), err, want)
+			}
+			for _, d := range report.Definitions {
+				if d.Kind == "prompts" && d.Name == "inspect" {
+					if d.Layer != "home" || d.Path != "mem/prompts/inspect" || d.Invalid {
+						t.Fatalf("inventory inspect = %+v", d)
+					}
+					return
+				}
+			}
+			t.Fatal("inventory inspect is missing")
+		})
+	}
 }
 
 // ADR-028 rule 9: a folder a layer.yaml lists is read for a name a process

@@ -65,11 +65,13 @@ type snapshot struct {
 // found there after all, written since the list, is added to the list, so
 // check checks what the call uses.
 //
-// The prompts listed are read with ReadListed, and the prompts a process
-// names with Read, apart: a folder a layer.yaml lists is read only for a
-// name a process gives (ADR-028 rule 9). Read gives only those, and
-// ReadListed only the listed; a prompt a process names is not added to
-// the list, which holds no folder's, and check reads it all the same.
+// The prompts a valid process names are read with Read; other listed
+// prompts with ReadListed. Only the read the check uses is frozen: an
+// inventory read of a named prompt could open a file the call replaces
+// with a listed folder's prompt, including a FIFO (ADR-028 rules 6 and 9).
+// Read gives the named prompts, and ReadListed the remaining inventory;
+// a named prompt is not added to the list, which holds no folder's, and
+// check reads it all the same.
 func Snapshot(ctx context.Context, src SnapshotSource) SnapshotSource {
 	s := &snapshot{
 		reads:  map[definition.Kind]map[string]snapshotRead{},
@@ -90,8 +92,8 @@ func Snapshot(ctx context.Context, src SnapshotSource) SnapshotSource {
 		}
 		for _, name := range names {
 			if kind == definition.KindPrompt {
-				doc, err := src.ReadListed(ctx, kind, name)
-				s.listed[name] = snapshotRead{doc: cloneDocument(doc), err: err}
+				// Wait until process references are known before deciding
+				// which prompt read the check needs.
 				continue
 			}
 			doc, err := src.Read(ctx, kind, name)
@@ -114,14 +116,23 @@ func Snapshot(ctx context.Context, src SnapshotSource) SnapshotSource {
 		if read.err != nil {
 			continue
 		}
-		process, _ := definition.ParseProcess(read.doc)
+		process, err := definition.ParseProcess(read.doc)
 		named(definition.KindVerify, process.VerifyName)
-		for _, name := range process.Prompts() {
-			named(definition.KindPrompt, name)
+		if err == nil {
+			for _, name := range process.Prompts() {
+				named(definition.KindPrompt, name)
+			}
 		}
 		for _, name := range process.Skills {
 			named(definition.KindSkill, name)
 		}
+	}
+	for _, name := range s.lists[definition.KindPrompt].names {
+		if _, referenced := s.reads[definition.KindPrompt][name]; referenced {
+			continue
+		}
+		doc, err := src.ReadListed(ctx, definition.KindPrompt, name)
+		s.listed[name] = snapshotRead{doc: cloneDocument(doc), err: err}
 	}
 	for _, read := range s.reads[definition.KindAgent] {
 		if read.err != nil {
@@ -176,8 +187,9 @@ func (s *snapshot) Read(_ context.Context, kind definition.Kind, name string) (d
 	return cloneDocument(read.doc), read.err
 }
 
-// ReadListed gives a prompt as the settings list it, and any other
-// document as Read does.
+// ReadListed gives an unreferenced inventory prompt as the settings list
+// it, and any other kind as Read does. Referenced prompts are frozen only
+// as Read returns them, because that is what the check and call use.
 func (s *snapshot) ReadListed(ctx context.Context, kind definition.Kind, name string) (definition.Document, error) {
 	if kind != definition.KindPrompt {
 		return s.Read(ctx, kind, name)

@@ -143,6 +143,16 @@ func TestRepositoryProcessesRunOnFakeRuntimes(t *testing.T) {
 			t.Errorf("process %s, which runs on Codex, is not among the home folder's processes", name)
 		}
 	}
+	implementers := []string{"implement", "implement_codex", "implement_pi", "implement_pi_glm"}
+	for _, name := range implementers {
+		if !slices.Contains(names, name) {
+			t.Fatalf("home has no implementer %s", name)
+		}
+	}
+	implementPrompt, err := os.ReadFile(filepath.Join(root, homeFolder, "prompts", "implement.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
 	// Processes that take a workflow's collection, to be run as a join.
 	joins := map[string]bool{}
 	for _, name := range names {
@@ -161,6 +171,17 @@ func TestRepositoryProcessesRunOnFakeRuntimes(t *testing.T) {
 				t.Fatalf("runs recorded: %v, want one", created)
 			}
 			record := completedRun(t, home, created[0])
+			if slices.Contains(implementers, name) {
+				text := string(implementPrompt)
+				if given := inputOf(t, record, "prompt"); given["source"] != "prompt" || given["identity"] != "sha256:"+digestOf(text) || given["value"] != text {
+					t.Fatalf("%s's prompt = %v, want home's implement prompt", name, given)
+				}
+				source := definitionOf(t, run{record: record}, "prompts", "implement")
+				want := homeFile("prompts", "implement", filepath.Join(home, "prompts", "implement.md"), text)
+				if !reflect.DeepEqual(source, want) {
+					t.Fatalf("%s's prompt definition = %v, want %v", name, source, want)
+				}
+			}
 			if want, ok := codexAgents[name]; ok && record["agent"] != want {
 				t.Fatalf("agent = %v, want %s", record["agent"], want)
 			}

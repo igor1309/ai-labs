@@ -3,6 +3,7 @@ package main
 import (
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -13,6 +14,7 @@ import (
 	"testing"
 
 	"github.com/igor1309/ai-labs/agister/internal/cli"
+	"github.com/igor1309/ai-labs/agister/internal/contract"
 )
 
 // Prompts are settings (ADR-014), on real settings directories: Agister's
@@ -342,12 +344,15 @@ func TestEachGuidancePromptIsGivenFromTheNearestLayerThatHasIt(t *testing.T) {
 	t.Parallel()
 	names := []string{"style", "testing"}
 	layers := []string{"project", "repository", "home"}
-	for _, where := range [][]string{
-		{},
-		{"project"}, {"repository"}, {"home"}, {"nowhere"},
-		{"project", "repository"}, {"repository", "home"}, {"home", "project"},
-		{"project", "project"}, {"home", "nowhere"}, {"nowhere", "repository"},
-	} {
+	locations := append(append([]string(nil), layers...), "nowhere")
+	cases := [][]string{{}}
+	for _, first := range locations {
+		cases = append(cases, []string{first})
+		for _, second := range locations {
+			cases = append(cases, []string{first, second})
+		}
+	}
+	for _, where := range cases {
 		t.Run(fmt.Sprintf("%d %v", len(where), where), func(t *testing.T) {
 			t.Parallel()
 			home, repo := setup(t, "approve")
@@ -467,6 +472,57 @@ func TestALayerFindsItsPromptsInTheFoldersItsLayerFileLists(t *testing.T) {
 	write(t, own, ownText)
 	if inputs, source, _ := promptRun(t, home, repo); inputs["prompt"]["identity"] != "sha256:"+digestOf(ownText) || nearest(source)["path"] != own {
 		t.Fatalf("with its own: inputs = %v, prompt source = %v", inputs, source)
+	}
+}
+
+// Contract test: check and run against real temporary settings folders.
+// An unrelated invalid library file with a home prompt's name is ignored
+// by inventory reads. Naming it as guidance makes it the layer's prompt
+// and refuses the call before the runtime starts (ADR-028 rule 9).
+func TestAnUnreferencedLibraryFileDoesNotReplaceAnInventoryPrompt(t *testing.T) {
+	t.Parallel()
+	home, repo := setup(t, "approve")
+	process := filepath.Join(home, "processes", "reviewed.yaml")
+	write(t, process, promptingProcess)
+	write(t, filepath.Join(home, "prompts", "review.md"), "Review rules.\n")
+	homeNotes := filepath.Join(home, "prompts", "notes.md")
+	write(t, homeNotes, "Home's notes.\n")
+	write(t, filepath.Join(repo, ".agister", "layer.yaml"), layerFile("lib"))
+	libraryNotes := filepath.Join(repo, "lib", "notes.md")
+	write(t, libraryNotes, "\x00\xff")
+
+	check := agister(t, home, repo, "check", "--json")
+	var report contract.CheckReport
+	if err := json.Unmarshal([]byte(check.stdout), &report); err != nil {
+		t.Fatal(err)
+	}
+	if check.code != 0 || len(report.Problems) != 0 {
+		t.Fatalf("check: %d\n%s%s", check.code, check.stdout, check.stderr)
+	}
+	var notes *contract.Definition
+	for i := range report.Definitions {
+		if d := &report.Definitions[i]; d.Kind == "prompts" && d.Name == "notes" {
+			notes = d
+		}
+	}
+	want := contract.Definition{Kind: "prompts", Name: "notes", Layer: "home", Path: homeNotes, Layers: []contract.DefinitionLayer{{Layer: "home", Path: homeNotes}}}
+	if notes == nil || !reflect.DeepEqual(*notes, want) || strings.Contains(check.stdout, libraryNotes) {
+		t.Fatalf("inventory notes = %+v, want %+v\n%s", notes, want, check.stdout)
+	}
+
+	write(t, process, guidedProcess([]string{"notes"}))
+	check = agister(t, home, repo, "check")
+	if check.code != cli.ExitUsage || !strings.Contains(check.stderr, "prompt notes: not a UTF-8 text file\n  refuses process reviewed\n") {
+		t.Fatalf("named notes: check %d\n%s%s", check.code, check.stdout, check.stderr)
+	}
+	runs := &newRuns{home: home}
+	runs.take(t)
+	r := agister(t, home, repo, "run", "reviewed", "--quiet", "--timeout", "1m")
+	if r.code != cli.ExitRefused || !strings.Contains(r.stderr, "prompt notes ("+libraryNotes+"): not a UTF-8 text file") {
+		t.Fatalf("named notes: run %d\n%s%s", r.code, r.stdout, r.stderr)
+	}
+	if refused := runs.one(t); refused.first != nil {
+		t.Fatalf("the refused call reached the runtime: %v", refused.first)
 	}
 }
 
