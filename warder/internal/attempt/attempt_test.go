@@ -69,6 +69,19 @@ func (s *deadlineStub) Limit(ctx context.Context) (context.Context, func()) {
 	}
 }
 
+// askedContext is a context that runs asked, which the test set, each
+// time its state is asked, before it answers with the state of the context
+// it wraps: so a test can end another context while this one is asked.
+type askedContext struct {
+	context.Context
+	asked func()
+}
+
+func (c askedContext) Err() error {
+	c.asked()
+	return c.Context.Err()
+}
+
 // publisherSpy records every observation it is asked to publish and
 // answers each with the error the test set.
 type publisherSpy struct {
@@ -579,6 +592,34 @@ func TestACaptureEndedByTheCallersContextIsNotReported(t *testing.T) {
 	assertNothingPublished(t, publisher)
 	assertNothingReported(t, reporter)
 	assertOneLimitReleasedOnce(t, deadline)
+}
+
+// A caller's context that ends after the capture failed, while the limit's
+// state is being asked, is still the application stopping: the limit ended
+// with it, and that is not a timeout. Nothing is published, nothing is
+// reported and Run returns nil. The limit's Err ends the caller's context,
+// so the order of the two checks in Run decides.
+func TestACallersContextThatEndsWhileTheLimitIsAskedIsNotATimeout(t *testing.T) {
+	t.Parallel()
+	ctx, stop := context.WithCancel(t.Context())
+	defer stop()
+	deadline := limitFunc(func(ctx context.Context) (context.Context, func()) {
+		limited, end := context.WithCancel(ctx)
+		return askedContext{Context: limited, asked: stop}, end
+	})
+	publisher := &publisherSpy{}
+	reporter := &reporterSpy{}
+	a := newAttempt(t, &capturerStub{err: errors.New("runtime unreachable")}, deadline, publisher, reporter)
+
+	if err := a.Run(ctx); err != nil {
+		t.Errorf("Run returned the error %v, want none", err)
+	}
+
+	if ctx.Err() == nil {
+		t.Fatal("the caller's context is still live: the test ended nothing")
+	}
+	assertNothingPublished(t, publisher)
+	assertNothingReported(t, reporter)
 }
 
 // An attempt under a caller's context that has already ended still

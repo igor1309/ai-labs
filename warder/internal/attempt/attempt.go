@@ -78,10 +78,11 @@ func isNil(value reflect.Value) bool {
 // observation is published, even when the limit or ctx ended while the
 // capture was returning. A capture that failed publishes nothing and is
 // reported once, as a read that timed out when the limit had ended and as
-// a read that failed otherwise, with the capture's error wrapped; when ctx
-// itself had ended the application is stopping, and nothing is reported.
-// The only error Run returns is the publisher's, wrapped: a failed read is
-// left to the next attempt.
+// a read that failed otherwise, with the capture's error wrapped. Any
+// capture failure while ctx itself has ended is the application stopping
+// and is not reported, whatever its cause: the cause of a failure cannot
+// be told reliably. The only error Run returns is the publisher's,
+// wrapped: a failed read is left to the next attempt.
 func (a *Attempt[O]) Run(ctx context.Context) error {
 	limited, release := a.deadline.Limit(ctx)
 	defer release()
