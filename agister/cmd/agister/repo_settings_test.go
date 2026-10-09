@@ -1603,6 +1603,39 @@ func TestImplementersAreGivenTheGoPrompts(t *testing.T) {
 	}
 }
 
+// The architecture review and the tests review of the home folder give
+// their agent the Go prompt that says what they check, the same text the
+// implementers are given.
+func TestReviewersAreGivenTheirGoPrompt(t *testing.T) {
+	t.Parallel()
+	root, repo, home := onFakeRuntimes(t)
+	for name, input := range map[string]string{
+		"architecture_review_codex": "go_architecture",
+		"tests_review_codex":        "go_testing",
+	} {
+		t.Run(name, func(t *testing.T) {
+			args := append([]string{"run", name}, paramArgs(parseProcess(t, root, name).Params)...)
+			if timeout := testTimeouts[name]; timeout != "" {
+				args = append(args, "--timeout", timeout)
+			}
+			created, _ := runRecorded(t, home, repo, args)
+			if len(created) != 1 {
+				t.Fatalf("runs recorded: %v, want one", created)
+			}
+			record := completedRun(t, home, created[0])
+			prompt := goPrompts[input]
+			text, err := os.ReadFile(filepath.Join(root, "prompts", prompt+".md"))
+			if err != nil {
+				t.Fatal(err)
+			}
+			digest := "sha256:" + digestOf(string(text))
+			if given := inputOf(t, record, input); given["source"] != "prompt" || given["identity"] != digest {
+				t.Fatalf("%s's %s = %v, want prompts/%s.md (%s)", name, input, given, prompt, digest)
+			}
+		})
+	}
+}
+
 // Each real implement process completes when neither settings layer has
 // the Go prompts, records both as absent, and gives its agent neither input.
 func TestImplementersCanRunWithoutTheGoPrompts(t *testing.T) {
