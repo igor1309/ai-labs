@@ -135,6 +135,38 @@ func TestListReturnsTheNamesInADirectory(t *testing.T) {
 	assertGoneFile(t, "a directory that does not exist", err)
 }
 
+// Contract test: a real directory, an empty one: when its context ends
+// while List reads it, List fails with the context's cause and no names,
+// though the directory was read.
+func TestListFailsWhenItsContextEndsWhileItReadsTheDirectory(t *testing.T) {
+	t.Parallel()
+	root := t.TempDir()
+	if err := os.Mkdir(filepath.Join(root, "thread-writer-locks"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	stopping := errors.New("the run is stopping")
+	ctx, cancel := context.WithCancelCause(t.Context())
+	defer cancel(nil)
+	var read []string
+	files := osFiles{root: root, readDir: func(name string) ([]fs.DirEntry, error) {
+		read = append(read, filepath.ToSlash(strings.TrimPrefix(name, root)))
+		cancel(stopping)
+		return os.ReadDir(name)
+	}}
+
+	names, err := files.List(ctx, "thread-writer-locks")
+
+	if err != stopping {
+		t.Errorf("got the error %v, want the context's cause", err)
+	}
+	if names != nil {
+		t.Errorf("got the names %#v, want none", names)
+	}
+	if want := []string{"/thread-writer-locks"}; !slices.Equal(read, want) {
+		t.Errorf("got the directories read %q, want %q", read, want)
+	}
+}
+
 // Contract test: a real flock of the kernel: a file on which another open
 // file holds an exclusive lock is locked, and the probe leaves that lock
 // held.
@@ -198,6 +230,37 @@ func TestLockedOfAFileThatIsGoneIsNotExist(t *testing.T) {
 	assertGoneFile(t, "a lock file that does not exist", err)
 	if locked {
 		t.Error("got a held lock, want none")
+	}
+}
+
+// Contract test: a real FIFO, and a real directory, each named as a
+// thread's lock file: the probe of what is no regular file fails, with an
+// error that is no "does not exist", and it does not wait for a writer of
+// the FIFO, which never comes: a probe that did would hang this test.
+func TestLockedFailsForWhatIsNoRegularFile(t *testing.T) {
+	t.Parallel()
+	root := t.TempDir()
+	locks := filepath.Join(root, "thread-writer-locks")
+	if err := os.Mkdir(locks, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := syscall.Mkfifo(filepath.Join(locks, threadWorking+".lock"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Mkdir(filepath.Join(locks, threadIdle+".lock"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	files := filesAt(root)
+
+	for what, thread := range map[string]string{"a FIFO": threadWorking, "a directory": threadIdle} {
+		locked, err := files.Locked(t.Context(), lockOf(thread))
+
+		if err == nil || errors.Is(err, fs.ErrNotExist) || !strings.Contains(err.Error(), "not a regular file") {
+			t.Errorf("%s: got the error %v, want one that says it is not a regular file", what, err)
+		}
+		if locked {
+			t.Errorf("%s: got a held lock, want none", what)
+		}
 	}
 }
 

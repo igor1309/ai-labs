@@ -19,9 +19,11 @@
 // A read that succeeds gives an agent the state unknown when its thread
 // has no rollout file, the file found being gone before it is read
 // included; when the file has no turn marker; and when the scan reached
-// its cap before it found one. A line that is not such a JSON object is
-// not a marker, and an unterminated last line is one being written: both
-// are passed over.
+// its cap before it found one. A marker found within the cap decides, at
+// the cap's last byte too: it is found once the scan has read its line and
+// the line break before it, or the file's beginning. A line that is not
+// such a JSON object is not a marker, and an unterminated last line is one
+// being written: both are passed over.
 //
 // A missing thread-writer-locks directory, an empty one and one with only
 // stale lock files are each a successful read of no agents.
@@ -31,7 +33,8 @@
 // with two rollout files; on any error of the files other than "does not
 // exist", from listing, probing, finding or reading, a read that returns
 // another number of bytes than asked for included; and when its context
-// ends.
+// ends, whatever was read by then: a read whose context is done never
+// succeeds, not even one whose last call of the files had answered.
 package codex
 
 import (
@@ -142,13 +145,16 @@ func isNil(value reflect.Value) bool {
 // ReadAgents reads the lock files once, under ctx, and returns one agent
 // per thread whose lock another process holds, in the order listed: the
 // complete set, empty and never nil when no session is active. Every call
-// of the files is given ctx, and between two lock files the read stops
-// with the cause of a ctx that is done. The package comment says which
-// conditions read as unknown and which fail the read, as a whole and with
-// no agents.
+// of the files is given ctx, and before each lock file and before it
+// returns a set, the empty one included, the read stops with the cause of
+// a ctx that is done. The package comment says which conditions read as
+// unknown and which fail the read, as a whole and with no agents.
 func (a *Adapter) ReadAgents(ctx context.Context) ([]Agent, error) {
 	names, err := a.files.List(ctx, locksDir)
 	if errors.Is(err, fs.ErrNotExist) {
+		if err := ended(ctx); err != nil {
+			return nil, err
+		}
 		// Codex has not run here, or not yet: no session.
 		return []Agent{}, nil
 	}
@@ -159,8 +165,8 @@ func (a *Adapter) ReadAgents(ctx context.Context) ([]Agent, error) {
 	agents := make([]Agent, 0, len(names))
 	listed := map[string]bool{}
 	for _, name := range names {
-		if ctx.Err() != nil {
-			return nil, fmt.Errorf("codex: read %s: %w", locksDir, context.Cause(ctx))
+		if err := ended(ctx); err != nil {
+			return nil, err
 		}
 		id, ok := strings.CutSuffix(name, lockSuffix)
 		if !ok || name == coordinationLock {
@@ -195,7 +201,20 @@ func (a *Adapter) ReadAgents(ctx context.Context) ([]Agent, error) {
 		}
 		agents = append(agents, Agent{ID: id, State: state})
 	}
+	// The last call of the files may have answered as ctx ended.
+	if err := ended(ctx); err != nil {
+		return nil, err
+	}
 	return agents, nil
+}
+
+// ended is the error of a read whose ctx is done, with ctx's cause, and
+// nil while it is not.
+func ended(ctx context.Context) error {
+	if ctx.Err() == nil {
+		return nil
+	}
+	return fmt.Errorf("codex: read %s: %w", locksDir, context.Cause(ctx))
 }
 
 // stateOf is the state of the thread with the ID id, from its rollout

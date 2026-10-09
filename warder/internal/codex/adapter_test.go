@@ -534,7 +534,9 @@ func TestReadAgentsReadsTheSameStateAtEveryChunkSize(t *testing.T) {
 
 // A scan reads no more of a file than its cap, from the end: a marker
 // before that is not found and the state is unknown, with exactly the cap
-// read. A cap that reaches the marker's line finds it.
+// read. A marker found within the cap decides, at the cap's last byte too:
+// a cap whose last byte is the line break before the marker's line finds
+// it, and the state is the marker's, though the scan read all of its cap.
 func TestReadAgentsStopsTheScanAtItsCap(t *testing.T) {
 	t.Parallel()
 	after := rollout(itemCompleted, responseItem, tokenCount, itemCompleted, responseItem, tokenCount)
@@ -777,6 +779,49 @@ func TestReadAgentsStopsBetweenLockFilesWhenItsContextEnds(t *testing.T) {
 				if strings.Contains(asked, threadC) {
 					t.Errorf("after the context ended, the files were asked %q", asked)
 				}
+			}
+		})
+	}
+}
+
+// A context that ends during the read's last call of the files fails the
+// read, with the context's cause and no agents, though that call answered:
+// the listing of a directory with no lock file, the listing of a directory
+// that does not exist, and the rollout file's read of the only session.
+// The files here do not look at the context themselves.
+func TestReadAgentsFailsWhenItsContextEndsDuringItsLastCall(t *testing.T) {
+	t.Parallel()
+	stopped := errors.New("the read timed out")
+	for name, test := range map[string]struct {
+		home *homeFake
+		// during is how the call begins during which the context ends.
+		during string
+	}{
+		"the listing of an empty directory": {&homeFake{locks: []lockFile{}}, "list thread-writer-locks"},
+		"the listing of a missing directory": {
+			&homeFake{listErr: &fs.PathError{Op: "open", Path: "thread-writer-locks", Err: fs.ErrNotExist}},
+			"list thread-writer-locks",
+		},
+		"the rollout read of the only session": {oneSession(rollout(sessionMeta, taskStarted)), "read " + rolloutOf(threadE)},
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			ctx, cancel := context.WithCancelCause(t.Context())
+			defer cancel(nil)
+			test.home.before = func(asked string) {
+				if strings.HasPrefix(asked, test.during) {
+					cancel(stopped)
+				}
+			}
+
+			agents, err := newAdapter(t, test.home, roomy()).ReadAgents(ctx)
+
+			assertNoRead(t, agents, err, "codex: read thread-writer-locks: the read timed out")
+			if !errors.Is(err, stopped) {
+				t.Errorf("got the error %q, want one that is the context's cause %q", err, stopped)
+			}
+			if asked := test.home.asked(); !strings.HasPrefix(asked[len(asked)-1], test.during) {
+				t.Errorf("got the calls %q, want the last one to be the one the context ended in, %q", asked, test.during)
 			}
 		})
 	}

@@ -247,6 +247,42 @@ func TestACodexSourceIsReadAtOnceAndAgainAfterItsWait(t *testing.T) {
 	assertNoLines(t, "stderr", stderr)
 }
 
+// A turn marker further from the end of its rollout file than one chunk of
+// the production scan is found, through the scan as wireCodexSource sets
+// it: the session is published with the marker's state, and the file was
+// read from its end backwards, a production chunk first and then the rest,
+// where the marker is.
+func TestACodexSessionIsPublishedWithTheStateOfAMarkerBeyondTheFirstChunk(t *testing.T) {
+	t.Parallel()
+	clock := clocktest.NewClock(morning())
+	stdout, stderr := newLines(), newLines()
+	// More than a chunk of events after the marker, none of them a marker.
+	content := turnStarted + strings.Repeat(tokensCounted, codexScanChunk/len(tokensCounted)+1)
+	home := &codexHomeFake{sessions: []codexSession{{thread: threadWorking, held: true, rollout: content}}}
+	startCodexApplication(t, stdout, stderr, nil, home, clock, "warder", "-codex", "codex-main")
+
+	want := `{"source":"codex-main","observedAt":"2026-10-09T08:28:10Z","agents":[{"id":"` + threadWorking + `","state":"working"}]}` + "\n"
+	if got := stdout.next(); got != want {
+		t.Errorf("got the record\n%swant\n%s", got, want)
+	}
+	// The read's deadline, then the wait after the attempt.
+	clock.Started(5 * time.Second)
+	clock.Started(5 * time.Second)
+	rest := int64(len(content)) - codexScanChunk
+	read := []string{
+		"list thread-writer-locks",
+		"locked " + lockOf(threadWorking),
+		"find sessions rollout- -" + threadWorking + ".jsonl",
+		"size " + rolloutOf(threadWorking),
+		fmt.Sprintf("read %s %d %d", rolloutOf(threadWorking), rest, codexScanChunk),
+		fmt.Sprintf("read %s 0 %d", rolloutOf(threadWorking), rest),
+	}
+	if got := home.asked(); !slices.Equal(got, read) {
+		t.Errorf("got the file operations\n%s\nwant\n%s", strings.Join(got, "\n"), strings.Join(read, "\n"))
+	}
+	assertNoLines(t, "stderr", stderr)
+}
+
 // A home with no session, as one where Codex never ran is, is observed as
 // no agents: an empty set on stdout, and no diagnostic.
 func TestACodexHomeWithNoSessionIsObservedAsNoAgents(t *testing.T) {

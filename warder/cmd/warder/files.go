@@ -63,7 +63,8 @@ func (o osFiles) path(ctx context.Context, path string) (string, error) {
 	return filepath.Join(o.root, local), nil
 }
 
-// List returns the names of the entries of the directory dir, sorted.
+// List returns the names of the entries of the directory dir, sorted. A
+// ctx that ended while the directory was read fails it too.
 func (o osFiles) List(ctx context.Context, dir string) ([]string, error) {
 	full, err := o.path(ctx, dir)
 	if err != nil {
@@ -72,6 +73,9 @@ func (o osFiles) List(ctx context.Context, dir string) ([]string, error) {
 	entries, err := o.readDir(full)
 	if err != nil {
 		return nil, err
+	}
+	if ctx.Err() != nil {
+		return nil, context.Cause(ctx)
 	}
 	names := make([]string, 0, len(entries))
 	for _, entry := range entries {
@@ -84,17 +88,26 @@ func (o osFiles) List(ctx context.Context, dir string) ([]string, error) {
 // holds an exclusive flock on file: it tries to take a shared one without
 // waiting, and the lock is held when that would block. A lock it took is
 // released at once: while it has it, the file's owner cannot lock the
-// file.
+// file. The file is opened without blocking, so one that is no regular
+// file, as a FIFO nobody writes to is, fails the probe instead of holding
+// it.
 func (o osFiles) Locked(ctx context.Context, file string) (bool, error) {
 	full, err := o.path(ctx, file)
 	if err != nil {
 		return false, err
 	}
-	opened, err := os.Open(full)
+	opened, err := os.OpenFile(full, os.O_RDONLY|syscall.O_NONBLOCK, 0)
 	if err != nil {
 		return false, err
 	}
 	defer opened.Close()
+	info, err := opened.Stat()
+	if err != nil {
+		return false, err
+	}
+	if !info.Mode().IsRegular() {
+		return false, fmt.Errorf("%s is not a regular file", full)
+	}
 	descriptor := int(opened.Fd())
 	err = flock(descriptor, syscall.LOCK_SH|syscall.LOCK_NB)
 	if errors.Is(err, syscall.EWOULDBLOCK) {

@@ -100,7 +100,7 @@ The second adapter is **Codex**. It reads the files of the Codex home (`$CODEX_H
 | Condition | Result |
 |---|---|
 | No `thread-writer-locks` directory, an empty one, or only stale lock files | A successful read of an empty set. |
-| No rollout file for the thread, no turn marker in it, or the scan reached its cap | The agent's state is `unknown`. |
+| No rollout file for the thread, no turn marker in it, or the scan reached its cap without finding one (a marker found within the cap decides, at the cap's last byte too) | The agent's state is `unknown`. |
 | A `.lock` name whose ID is empty or not valid UTF-8; two rollout files for one ID; any file error other than "does not exist" (listing, probing, finding, reading); the read's cancellation | The whole read fails: no observation. |
 
 A Codex home that cannot be resolved (no `$CODEX_HOME` and no user home directory) fails every read, with a diagnostic; it is not an empty set.
