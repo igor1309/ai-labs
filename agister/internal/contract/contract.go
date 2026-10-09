@@ -218,7 +218,8 @@ type ProcessSummary struct {
 type CheckReport struct {
 	Checked  map[string]int `json:"checked"` // definitions checked, by kind
 	Problems []Problem      `json:"problems"`
-	// Project definitions that take priority over global ones.
+	// Documents more than one layer holds: the nearest layer's file and
+	// the farther ones it is composed onto, or replaces (ADR-028).
 	Overrides []string `json:"overrides"`
 	// What the settings do that their user should know, such as a
 	// verification command that runs with the operator's authority. They
@@ -275,23 +276,44 @@ type Problem struct {
 
 // Definition is one settings document in the composed settings.
 type Definition struct {
-	Kind      string          `json:"kind"` // service, agents, processes, policies, runtimes, schemas, workflows, verifies, prompts, skills
-	Name      string          `json:"name"`
-	Layer     string          `json:"layer"` // global or project
-	Path      string          `json:"path"`
-	Overrides string          `json:"overrides,omitempty"` // the global document this one replaces
-	Invalid   bool            `json:"invalid,omitempty"`   // did not parse; see problems
-	Uses      []DefinitionRef `json:"uses,omitempty"`      // whether or not they exist
-	UsedBy    []DefinitionRef `json:"used_by,omitempty"`
+	Kind string `json:"kind"` // service, agents, processes, policies, runtimes, schemas, workflows, verifies, prompts, skills
+	Name string `json:"name"`
+	// Layer is the nearest layer that holds it, home, repository or
+	// project, and Path that layer's file.
+	Layer string `json:"layer"`
+	Path  string `json:"path"`
+	// Layers are the layer files that hold it, nearest first (ADR-028
+	// rule 12).
+	Layers  []DefinitionLayer `json:"layers"`
+	Invalid bool              `json:"invalid,omitempty"` // did not parse; see problems
+	Uses    []DefinitionRef   `json:"uses,omitempty"`    // whether or not they exist
+	UsedBy  []DefinitionRef   `json:"used_by,omitempty"`
+}
+
+// DefinitionLayer is one layer's file of a document.
+type DefinitionLayer struct {
+	Layer string `json:"layer"` // home, repository or project
+	Path  string `json:"path"`
+	// Fields are the fields the file gave the composed document, each the
+	// path of a leaf, its keys joined by "." (ADR-028 rule 11): none when
+	// it gave nothing. Unset on a document taken whole, a prompt, a skill
+	// or a schema, which has no fields.
+	Fields []string `json:"fields,omitzero"`
+	// Replaced is set on a farther layer's file of a document taken whole:
+	// the nearest layer's replaces it.
+	Replaced bool `json:"replaced,omitempty"`
 }
 
 // DefinitionOrigin is where one definition a call uses comes from.
 type DefinitionOrigin struct {
-	Kind      string // agents, processes, policies, runtimes, schemas, verifies, prompts, skills or service
-	Name      string
-	Layer     string // global or project
-	Path      string
-	Overrides string // the global document this one replaces
+	Kind string // agents, processes, policies, runtimes, schemas, verifies, prompts, skills or service
+	Name string
+	// Layer is the nearest layer that holds it, home, repository or
+	// project, and Path that layer's file.
+	Layer string
+	Path  string
+	// Layers are the layer files that hold it, nearest first.
+	Layers []DefinitionLayer
 }
 
 type DefinitionRef struct {

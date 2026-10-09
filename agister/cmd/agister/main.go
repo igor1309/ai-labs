@@ -6,9 +6,6 @@ package main
 import (
 	"bytes"
 	"context"
-	"errors"
-	"fmt"
-	"io/fs"
 	"log/slog"
 	"os"
 	"os/exec"
@@ -237,13 +234,18 @@ func (c composition) wire(config cli.Config) (contract.Client, *app.BackgroundRe
 	}
 
 	global := fsdefs.Store{Dir: config.Home}
-	local, absent, err := project(config, c.git.calls, log)
+	layered, err := layers(config, c.git.calls, log)
 	if err != nil {
 		return nil, nil, err
 	}
+	// The directory whose settings are layered over home's: the project's,
+	// or the repository's root.
 	var projectRoot string
-	if local != nil {
-		projectRoot = filepath.Dir(local.Dir)
+	switch {
+	case layered.Project != nil:
+		projectRoot = filepath.Dir(layered.Project.Dir)
+	case layered.Repository != nil:
+		projectRoot = filepath.Dir(layered.Repository.Dir)
 	}
 	evidence := c.runs
 	// Turns and commands wait on the composition's timer. A runtime starts
@@ -288,8 +290,8 @@ func (c composition) wire(config cli.Config) (contract.Client, *app.BackgroundRe
 		Report: func(err error) { log.Error("reaping abandoned runs failed", "error", err.Error()) },
 	}
 	infra := app.Infrastructure{
-		Definitions: fsdefs.Layered{Global: global, Project: local, Absent: absent},
-		Global:      fsdefs.Layered{Global: global},
+		Definitions: layered,
+		Global:      fsdefs.Layered{Home: global},
 		Project:     projectRoot,
 		Settings:    app.SettingsAdapters{Writer: global, Examples: examples.Settings()},
 		Checker:     app.CheckAdapters{Validator: schema.Validator{}, Runtimes: runtimes},
@@ -363,44 +365,28 @@ func (c composition) wire(config cli.Config) (contract.Client, *app.BackgroundRe
 	return app.NewClient(infra), reaping, nil
 }
 
-// project is the settings layer of the repository containing the working
-// directory, like its .claude or .agents: <root>/.agister, the root as the
-// workspaces find it. None outside a repository, without that directory,
-// or when it is the home itself; why is logged. A .agister that exists but
-// cannot be used is an error, so project settings never silently stop
-// applying. absent is the directory of a repository without one, where a
-// document not found was expected.
-func project(config cli.Config, workspaces app.CallWorkspaces, log *slog.Logger) (local *fsdefs.Store, absent string, err error) {
+// layers selects the settings layers of a command launched in the working
+// directory (ADR-028 rule 1): home, the repository's, <root>/.agister, the
+// root as the workspaces find it, and the project's. Home alone outside a
+// repository; why is logged.
+func layers(config cli.Config, workspaces app.CallWorkspaces, log *slog.Logger) (fsdefs.Layered, error) {
+	home := fsdefs.Store{Dir: config.Home}
 	if config.Cwd == "" {
-		return nil, "", nil
+		return fsdefs.Layered{Home: home}, nil
 	}
 	root, err := workspaces.Root(context.Background(), config.Cwd)
 	if err != nil {
 		log.Debug("no project settings: not in a usable git repository", "cwd", config.Cwd, "error", err.Error())
-		return nil, "", nil
+		return fsdefs.Layered{Home: home}, nil
 	}
-	dir := filepath.Join(root, ".agister")
-	info, err := os.Stat(dir)
-	switch {
-	case errors.Is(err, fs.ErrNotExist):
-		log.Debug("no project settings: directory absent", "dir", dir)
-		return nil, dir, nil
-	case err != nil:
-		return nil, "", fmt.Errorf("project settings %s: %w", dir, err)
-	case !info.IsDir():
-		return nil, "", fmt.Errorf("project settings %s: not a directory", dir)
-	case sameDir(dir, config.Home):
-		log.Debug("no project settings: the repository's .agister is the home", "dir", dir)
-		return nil, "", nil
+	selected, err := fsdefs.Select(home, root, config.Cwd)
+	if err != nil {
+		return fsdefs.Layered{}, err
 	}
-	log.Debug("project settings", "dir", dir)
-	return &fsdefs.Store{Dir: dir}, "", nil
-}
-
-func sameDir(a, b string) bool {
-	infoA, errA := os.Stat(a)
-	infoB, errB := os.Stat(b)
-	return errA == nil && errB == nil && os.SameFile(infoA, infoB)
+	for _, layer := range selected.Layers(context.Background()) {
+		log.Debug("settings layer", "layer", string(layer.Layer), "dir", layer.Dir)
+	}
+	return selected, nil
 }
 
 // diagnostics: info and above to <home>/logs/agister.jsonl; with --debug,

@@ -16,15 +16,20 @@ func recordSources(sources []CallSource) []run.DefinitionSource {
 	recorded := make([]run.DefinitionSource, len(sources))
 	for i, source := range sources {
 		recorded[i] = run.DefinitionSource{
-			Kind:      source.Kind,
-			Name:      source.Name,
-			Path:      source.Path,
-			SHA256:    source.SHA256,
-			Project:   source.Project,
-			Overrides: source.Overrides,
+			Kind: source.Kind,
+			Name: source.Name,
+			Layers: translated(source.Layers, func(layer CallSourceLayer) run.DefinitionLayer {
+				return run.DefinitionLayer{Layer: layer.Layer, Path: layer.Path, SHA256: layer.SHA256, Fields: layer.Fields}
+			}),
 		}
 	}
 	return recorded
+}
+
+func recordLayers(layers []CallLayer) []run.Layer {
+	return translated(layers, func(layer CallLayer) run.Layer {
+		return run.Layer{Layer: layer.Layer, Dir: layer.Dir}
+	})
 }
 
 func recordAbsent(absent []CallAbsent) []run.AbsentPrompt {

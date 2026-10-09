@@ -37,10 +37,34 @@ func (s *definitionsSpy) Read(_ context.Context, kind definition.Kind, name stri
 		return definition.Document{}, definition.ErrNotFound
 	}
 	sum := sha256.Sum256([]byte(text))
+	path, digest := "mem/"+string(kind)+"/"+name, hex.EncodeToString(sum[:])
 	return definition.Document{
-		Source: definition.Source{Kind: kind, Name: name, Path: "mem/" + string(kind) + "/" + name, SHA256: hex.EncodeToString(sum[:])},
-		Bytes:  []byte(text),
+		Source: definition.Source{
+			Kind: kind, Name: name, Path: path, Layer: definition.LayerHome, SHA256: digest,
+			Layers: []definition.LayerFile{{Layer: definition.LayerHome, Path: path, SHA256: digest}},
+		},
+		Bytes: []byte(text),
 	}, nil
+}
+
+// homeFile is a definition a call records as read from the spy: one layer
+// file, home's.
+func homeFile(kind, name, text string) run.DefinitionSource {
+	return run.DefinitionSource{Kind: kind, Name: name, Layers: []run.DefinitionLayer{{Layer: "home", Path: "mem/" + kind + "/" + name, SHA256: sha(text)}}}
+}
+
+// digestRecorded is the digest a call recorded of a definition: its
+// nearest layer file's.
+func digestRecorded(source run.DefinitionSource) string {
+	if len(source.Layers) == 0 {
+		return ""
+	}
+	return source.Layers[0].SHA256
+}
+
+// Layers are home alone, which holds every document of the spy.
+func (s *definitionsSpy) Layers(context.Context) []definition.LayerDir {
+	return []definition.LayerDir{{Layer: definition.LayerHome, Dir: "mem"}}
 }
 
 // set replaces one document of the live settings.

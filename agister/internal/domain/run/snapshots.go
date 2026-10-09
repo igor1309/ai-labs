@@ -9,17 +9,40 @@ import "time"
 // A field removed from these types is dropped when an earlier record is
 // rewritten (a reap finishing it).
 
-// DefinitionSource is where a definition the call used came from, with the
-// digest of what was read.
+// DefinitionSource is a definition the call used, with the layer files it
+// was composed from, nearest first (ADR-028 rule 11). A document taken
+// whole, a prompt, a skill or a schema, has the one layer it was read from.
 type DefinitionSource struct {
-	Kind   string `json:"kind"`
-	Name   string `json:"name"`
+	Kind   string            `json:"kind"`
+	Name   string            `json:"name"`
+	Layers []DefinitionLayer `json:"layers,omitempty"`
+	// Path, SHA256, Project and Overrides are what a record written before
+	// ADR-028 holds in place of Layers: the one file the document was read
+	// from and its digest, whether that was the repository's (Project) and
+	// not home's, and home's file it replaced. They are no longer written.
+	Path      string `json:"path,omitempty"`
+	SHA256    string `json:"sha256,omitempty"`
+	Project   bool   `json:"project,omitempty"`
+	Overrides string `json:"overrides,omitempty"`
+}
+
+// DefinitionLayer is one layer's file of a definition the call used, with
+// the digest of what was read.
+type DefinitionLayer struct {
+	Layer  string `json:"layer"` // home, repository or project
 	Path   string `json:"path"`
 	SHA256 string `json:"sha256"`
-	// From a project's own settings rather than the global ones.
-	Project bool `json:"project,omitempty"`
-	// The global definition this project one takes priority over.
-	Overrides string `json:"overrides,omitempty"`
+	// Fields are the fields the file gave the composition, each the path
+	// of a leaf, its keys joined by ".": none when it gave nothing. Unset
+	// on a document taken whole, which has no fields.
+	Fields []string `json:"fields,omitzero"`
+}
+
+// Layer is one settings layer the call selected, and its directory
+// (ADR-028 rule 11).
+type Layer struct {
+	Layer string `json:"layer"` // home, repository or project
+	Dir   string `json:"dir"`
 }
 
 // EffectivePolicy is the limits a call ran under, composed from the

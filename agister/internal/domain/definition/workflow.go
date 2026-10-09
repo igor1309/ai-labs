@@ -55,7 +55,7 @@ func (p Process) Collects() []string {
 // ParseWorkflow parses a workflow definition. What the nodes' processes
 // declare is checked across documents (settings.WorkflowProblems).
 func ParseWorkflow(doc Document) (Workflow, error) {
-	p := &problems{}
+	p := problemsOf(doc.Source)
 	subject := "workflow " + subjectName(doc.Source)
 	workflow := Workflow{Name: doc.Source.Name, Source: doc.Source}
 	root := parseOneYAML(doc.Bytes, p)

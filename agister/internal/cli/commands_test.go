@@ -116,7 +116,7 @@ func TestLookupResolvesAsDispatchDoes(t *testing.T) {
 		{nil, cli.Command{}, true},
 		{[]string{"runs"}, cli.Command{Name: "runs list"}, true},
 		{[]string{"run", "implement"}, cli.Command{Name: "run", Flags: []string{"param", "agent", "timeout", "max-cost", "continue", "goal", "answers", "dir", "json"}}, true},
-		{[]string{"process", "show", "x"}, cli.Command{Name: "process show", Flags: []string{"agent", "json"}}, true},
+		{[]string{"process", "show", "x"}, cli.Command{Name: "process show", Flags: []string{"agent", "dir", "json"}}, true},
 		{[]string{"runs", "prune"}, cli.Command{Name: "runs prune"}, false},
 		{[]string{"launch", "x"}, cli.Command{Name: "launch"}, false},
 	} {

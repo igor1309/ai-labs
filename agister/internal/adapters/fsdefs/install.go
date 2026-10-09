@@ -72,7 +72,7 @@ func (s Store) documents(ctx context.Context, kinds []definition.Kind, unreadabl
 			if !singleton(kind) && !definition.ValidName(name) {
 				continue
 			}
-			doc, err := s.Read(ctx, kind, name)
+			doc, err := s.read(kind, name)
 			if err != nil {
 				if err := unreadable(doc, err); err != nil {
 					return nil, err
@@ -209,24 +209,33 @@ type Staged struct {
 }
 
 func (s Staged) Read(ctx context.Context, kind definition.Kind, name string) (definition.Document, error) {
-	doc, err := s.stage.Read(ctx, kind, name)
+	doc, err := s.stage.read(kind, name)
 	if errors.Is(err, errNotFound) {
 		return s.home.Read(ctx, kind, name)
 	}
 	if err != nil {
 		return doc, err
 	}
-	doc.Source.Path, _ = s.home.path(kind, name)
+	path, _ := s.home.path(kind, name)
 	if kind == definition.KindSkill {
 		// An install writes only a skill's SKILL.md: home's folder keeps
 		// what else it holds, so the staged skill is read as home will
 		// hold it (ADR-027 rule 8).
-		if err := skillWritten(doc.Source.Path); err != nil {
-			return definition.Document{Source: definition.Source{Kind: kind, Name: name, Path: doc.Source.Path}}, err
+		if err := skillWritten(path); err != nil {
+			return definition.Document{Source: definition.Source{Kind: kind, Name: name, Path: path, Layer: definition.LayerHome}}, err
 		}
+	}
+	// The stage is home as the install leaves it: one layer.
+	file := definition.LayerFile{Layer: definition.LayerHome, Path: path, SHA256: doc.Source.SHA256}
+	doc.Source.Path, doc.Source.Layer, doc.Source.Layers = path, file.Layer, []definition.LayerFile{file}
+	if definition.Composed(kind) {
+		_, doc.Source.Layers, _ = definition.Compose(kind, []definition.LayerText{{File: file, Bytes: doc.Bytes}})
 	}
 	return doc, nil
 }
+
+// Layers is the one layer a stage is: home, as the install leaves it.
+func (s Staged) Layers(ctx context.Context) []definition.LayerDir { return s.home.Layers(ctx) }
 
 // skillWritten reports what is wrong with the skill whose document is path
 // once its SKILL.md is written there: its folder a symbolic link, a folder
@@ -505,12 +514,12 @@ func (b Backups) Manifest(_ context.Context, stamp string) (Manifest, error) {
 	return manifest, nil
 }
 
-func (b Backups) Saved(ctx context.Context, stamp string, kind definition.Kind, name string) ([]byte, error) {
+func (b Backups) Saved(_ context.Context, stamp string, kind definition.Kind, name string) ([]byte, error) {
 	dir, err := b.folder(stamp)
 	if err != nil {
 		return nil, err
 	}
-	doc, err := Store{Dir: dir}.Read(ctx, kind, name)
+	doc, err := Store{Dir: dir}.read(kind, name)
 	return doc.Bytes, err
 }
 

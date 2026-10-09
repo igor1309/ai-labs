@@ -58,11 +58,14 @@ func TestSettingsNewerThanTheBinaryAreNamedOnEveryRefusal(t *testing.T) {
 		return n + " problem(s) name something this binary does not know; the settings may need one newer than agister " + version + ".\n"
 	}
 
+	// A document two layers hold names the layer file that set the field at
+	// fault (ADR-028 rule 5): here the repository's, composed onto home's.
+	set := func(path string) string { return " (set in " + path + ")" }
 	r := agisterAt("check")
 	for _, want := range []string{
-		"process implement: input.values.brief.context: must be a scalar\n",
-		"process implement: input.values.brief.forms: must be a scalar\n",
-		"process adversarial_review: input.values.diff.context: must be a scalar\n",
+		"process implement: input.values.brief.context: must be a scalar" + set(implement) + "\n",
+		"process implement: input.values.brief.forms: must be a scalar" + set(implement) + "\n",
+		"process adversarial_review: input.values.diff.context: must be a scalar" + set(review) + "\n",
 		"process ask: input.values.question.form: applies to source file only",
 		"process reviewed: input.values.rules.future: is not an argument of source prompt, which takes only name and optional\n",
 	} {
@@ -85,11 +88,11 @@ func TestSettingsNewerThanTheBinaryAreNamedOnEveryRefusal(t *testing.T) {
 		unknown float64 // the record's result.error.unknown
 	}{
 		{"process", []string{"run", "implement", "--quiet", "--param", "brief=brief.md"},
-			"process implement (" + implement + "): input.values.brief.context: must be a scalar; input.values.brief.forms: must be a scalar", hint("2"), 2},
+			"process implement (" + implement + "): input.values.brief.context: must be a scalar" + set(implement) + "; input.values.brief.forms: must be a scalar" + set(implement), hint("2"), 2},
 		{"continued", []string{"run", "implement", "--quiet", "--param", "brief=brief.md", "--continue", "20261007T103130Z-66a352"},
-			"process implement (" + implement + "): input.values.brief.context: must be a scalar; input.values.brief.forms: must be a scalar", hint("2"), 2},
+			"process implement (" + implement + "): input.values.brief.context: must be a scalar" + set(implement) + "; input.values.brief.forms: must be a scalar" + set(implement), hint("2"), 2},
 		{"workflow", []string{"run", "review_panel", "--quiet", "--param", "base=main", "--param", "architecture=a.txt"},
-			"workflow review_panel uses process adversarial_review (" + review + "): input.values.diff.context: must be a scalar", hint("1"), 1},
+			"workflow review_panel uses process adversarial_review (" + review + "): input.values.diff.context: must be a scalar" + set(review), hint("1"), 1},
 		{"prompt argument", []string{"run", "reviewed", "--quiet"},
 			"process reviewed (" + reviewed + "): input.values.rules.future: is not an argument of source prompt", hint("1"), 1},
 		{"known field", []string{"run", "ask", "--quiet", "--param", "question=why"},

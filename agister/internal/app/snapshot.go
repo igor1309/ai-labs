@@ -20,10 +20,12 @@ func allKinds() []definition.Kind {
 }
 
 // SnapshotSource is what a snapshot reads and what it gives back: the
-// definition documents and their origin.
+// definition documents and their origin, and the layers they are read
+// from.
 type SnapshotSource interface {
 	Read(ctx context.Context, kind definition.Kind, name string) (definition.Document, error)
 	List(ctx context.Context, kind definition.Kind) ([]string, error)
+	Layers(ctx context.Context) []definition.LayerDir
 }
 
 type snapshotRead struct {
@@ -39,8 +41,9 @@ type snapshotList struct {
 // snapshot is a SnapshotSource frozen in memory: what was read, and each
 // error the read gave, replayed as it was.
 type snapshot struct {
-	reads map[definition.Kind]map[string]snapshotRead
-	lists map[definition.Kind]snapshotList
+	reads  map[definition.Kind]map[string]snapshotRead
+	lists  map[definition.Kind]snapshotList
+	layers []definition.LayerDir
 }
 
 // Snapshot reads every kind's List and every listed document once (the
@@ -57,8 +60,9 @@ type snapshot struct {
 // check checks what the call uses.
 func Snapshot(ctx context.Context, src SnapshotSource) SnapshotSource {
 	s := &snapshot{
-		reads: map[definition.Kind]map[string]snapshotRead{},
-		lists: map[definition.Kind]snapshotList{},
+		reads:  map[definition.Kind]map[string]snapshotRead{},
+		lists:  map[definition.Kind]snapshotList{},
+		layers: cloneLayers(src.Layers(ctx)),
 	}
 	for _, kind := range allKinds() {
 		s.reads[kind] = map[string]snapshotRead{}
@@ -115,7 +119,26 @@ func Snapshot(ctx context.Context, src SnapshotSource) SnapshotSource {
 
 func cloneDocument(doc definition.Document) definition.Document {
 	doc.Bytes = append([]byte(nil), doc.Bytes...)
+	if doc.Source.Layers != nil {
+		doc.Source.Layers = append([]definition.LayerFile(nil), doc.Source.Layers...)
+		for i, layer := range doc.Source.Layers {
+			if layer.Fields != nil {
+				doc.Source.Layers[i].Fields = append([]string{}, layer.Fields...)
+			}
+		}
+	}
 	return doc
+}
+
+func cloneLayers(layers []definition.LayerDir) []definition.LayerDir {
+	if layers == nil {
+		return nil
+	}
+	cloned := append([]definition.LayerDir(nil), layers...)
+	for i, layer := range cloned {
+		cloned[i].Invalid = append([]definition.LayerProblem(nil), layer.Invalid...)
+	}
+	return cloned
 }
 
 func (s *snapshot) Read(_ context.Context, kind definition.Kind, name string) (definition.Document, error) {
@@ -125,6 +148,8 @@ func (s *snapshot) Read(_ context.Context, kind definition.Kind, name string) (d
 	}
 	return cloneDocument(read.doc), read.err
 }
+
+func (s *snapshot) Layers(context.Context) []definition.LayerDir { return cloneLayers(s.layers) }
 
 func (s *snapshot) List(_ context.Context, kind definition.Kind) ([]string, error) {
 	list, ok := s.lists[kind]

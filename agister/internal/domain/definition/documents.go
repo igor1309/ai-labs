@@ -149,7 +149,7 @@ func checkSchema(value, schema string, p *problems) {
 
 // ParsePolicy parses a process policy.
 func ParsePolicy(doc Document) (Policy, error) {
-	p := &problems{}
+	p := problemsOf(doc.Source)
 	root := parseOneYAML(doc.Bytes, p)
 	if root == nil {
 		return Policy{Name: doc.Source.Name, Source: doc.Source}, p.err("policy " + subjectName(doc.Source))
@@ -162,7 +162,7 @@ func ParsePolicy(doc Document) (Policy, error) {
 
 // ParseProcess parses a process definition.
 func ParseProcess(doc Document) (Process, error) {
-	p := &problems{}
+	p := problemsOf(doc.Source)
 	root := parseOneYAML(doc.Bytes, p)
 	if root == nil {
 		return Process{Name: doc.Source.Name, Source: doc.Source}, p.err("process " + subjectName(doc.Source))
@@ -274,7 +274,7 @@ func ParseProcess(doc Document) (Process, error) {
 // ParseVerify parses a verification: the fields of a process's inline
 // verify block, as a document a process names.
 func ParseVerify(doc Document) (Verification, error) {
-	p := &problems{}
+	p := problemsOf(doc.Source)
 	verification := Verification{Name: doc.Source.Name, Source: doc.Source}
 	root := parseOneYAML(doc.Bytes, p)
 	if root == nil {
@@ -418,7 +418,7 @@ func parseInputs(input map[string]*yaml.Node, p *problems) ([]Param, []Value) {
 
 // ParseMapping parses a runtime permission mapping.
 func ParseMapping(doc Document) (Mapping, error) {
-	p := &problems{}
+	p := problemsOf(doc.Source)
 	root := parseOneYAML(doc.Bytes, p)
 	if root == nil {
 		return Mapping{Name: doc.Source.Name, Source: doc.Source}, p.err("runtime mapping " + subjectName(doc.Source))

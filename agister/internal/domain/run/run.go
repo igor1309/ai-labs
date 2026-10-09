@@ -251,6 +251,9 @@ type Record struct {
 	CreatedAt   time.Time          `json:"created_at"`
 	FinishedAt  *time.Time         `json:"finished_at,omitempty"`
 	Definitions []DefinitionSource `json:"definitions,omitempty"`
+	// Layers are the settings layers the call selected, nearest first;
+	// unset on records written before ADR-028.
+	Layers []Layer `json:"layers,omitempty"`
 	// AbsentPrompts are the optional prompt inputs whose prompt neither
 	// settings layer had, so the agent was not given them (ADR-019 rule 3).
 	AbsentPrompts []AbsentPrompt   `json:"absent_prompts,omitempty"`

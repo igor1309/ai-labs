@@ -1845,7 +1845,7 @@ func schemaAccepts(t *testing.T, record map[string]any, output any, stdout strin
 	for _, source := range record["definitions"].([]any) {
 		source := source.(map[string]any)
 		if source["kind"] == string(definition.KindSchema) {
-			schemaPath = source["path"].(string)
+			schemaPath, _ = nearest(source)["path"].(string)
 		}
 	}
 	document, err := os.ReadFile(schemaPath)

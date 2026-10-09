@@ -304,7 +304,7 @@ func (s *Settings) CreateAgent(ctx context.Context, spec contract.Agent, overwri
 	if exists && !overwrite {
 		return contract.AgentWrite{}, &contract.InputError{Message: fmt.Sprintf("agent %s already exists at %s (overwrite to replace it)", agent.Name, path)}
 	}
-	if err := s.keepsSettingsValid(ctx, definition.Document{Source: definition.Source{Kind: definition.KindAgent, Name: agent.Name, Path: path}, Bytes: data}); err != nil {
+	if err := s.keepsSettingsValid(ctx, definition.Document{Source: definition.Source{Kind: definition.KindAgent, Name: agent.Name, Path: path, Layer: definition.LayerHome}, Bytes: data}); err != nil {
 		return contract.AgentWrite{}, err
 	}
 	sum := sha256.Sum256(data)
@@ -571,14 +571,26 @@ func inspectedStale(stale CallStale) InspectedStale {
 	}
 }
 
-// InspectedSource is where a definition came from.
+// InspectedSource is where a definition came from: the nearest layer that
+// holds it and that layer's file, and every layer file that holds it,
+// nearest first.
 type InspectedSource struct {
-	Kind    string
-	Name    string
-	Path    string
-	Project bool
-	// The global definition this project one takes priority over.
-	Overrides string
+	Kind   string
+	Name   string
+	Layer  string // home, repository or project
+	Path   string
+	Layers []InspectedLayer
+}
+
+// InspectedLayer is one layer's file of a definition.
+type InspectedLayer struct {
+	Layer string // home, repository or project
+	Path  string
+	// Fields are the fields the file gave the composition: none when it
+	// gave nothing, nil on a document taken whole.
+	Fields []string
+	// Replaced: a farther layer's file of a document taken whole.
+	Replaced bool
 }
 
 // InspectedWorkflow is a workflow and its nodes' processes, as a run of it
@@ -697,7 +709,12 @@ func inspectedValues(values []definition.Value) []InspectedValue {
 
 func inspectedSources(sources []definition.Source) []InspectedSource {
 	return translated(sources, func(source definition.Source) InspectedSource {
-		return InspectedSource{Kind: string(source.Kind), Name: source.Name, Path: source.Path, Project: source.Project, Overrides: source.Overrides}
+		return InspectedSource{
+			Kind: string(source.Kind), Name: source.Name, Layer: string(source.Layer), Path: source.Path,
+			Layers: translated(definitionLayers(source), func(layer contract.DefinitionLayer) InspectedLayer {
+				return InspectedLayer{Layer: layer.Layer, Path: layer.Path, Fields: layer.Fields, Replaced: layer.Replaced}
+			}),
+		}
 	})
 }
 
@@ -836,11 +853,12 @@ func (i *Inspection) showProcess(ctx context.Context, name, agent string) (contr
 func origins(sources []InspectedSource) []contract.DefinitionOrigin {
 	var shown []contract.DefinitionOrigin
 	for _, source := range sources {
-		layer := "global"
-		if source.Project {
-			layer = "project"
-		}
-		shown = append(shown, contract.DefinitionOrigin{Kind: source.Kind, Name: source.Name, Layer: layer, Path: source.Path, Overrides: source.Overrides})
+		shown = append(shown, contract.DefinitionOrigin{
+			Kind: source.Kind, Name: source.Name, Layer: source.Layer, Path: source.Path,
+			Layers: translated(source.Layers, func(layer InspectedLayer) contract.DefinitionLayer {
+				return contract.DefinitionLayer{Layer: layer.Layer, Path: layer.Path, Fields: layer.Fields, Replaced: layer.Replaced}
+			}),
+		})
 	}
 	return shown
 }

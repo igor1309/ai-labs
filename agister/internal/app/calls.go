@@ -80,8 +80,11 @@ type ResolvedCall struct {
 	Forms map[string]CallForm
 	// Skills are the call's skills, in order: the process's, then its
 	// agent's, each once (ADR-021).
-	Skills    []CallSkill
-	Sources   []CallSource
+	Skills  []CallSkill
+	Sources []CallSource
+	// Layers are the settings layers the call selected, nearest first
+	// (ADR-028 rule 11).
+	Layers    []CallLayer
 	Effective CallLimits
 	Identity  CallRuntime
 	Plan      CallPlan
@@ -169,14 +172,29 @@ type CallMapping struct {
 	Adapter string
 }
 
-// CallSource is where a definition a call resolved came from.
+// CallSource is a definition a call resolved, and the layer files it was
+// composed from, nearest first; a document taken whole has the one it was
+// read from (ADR-028 rule 11).
 type CallSource struct {
-	Kind      string
-	Name      string
-	Path      string
-	SHA256    string
-	Project   bool
-	Overrides string // the global definition this project one takes priority over
+	Kind   string
+	Name   string
+	Layers []CallSourceLayer
+}
+
+// CallSourceLayer is one layer's file of a definition a call resolved.
+type CallSourceLayer struct {
+	Layer  string // home, repository or project
+	Path   string
+	SHA256 string
+	// Fields are the fields the file gave the composition: none when it
+	// gave nothing, nil on a document taken whole.
+	Fields []string
+}
+
+// CallLayer is one settings layer a call selected, and its directory.
+type CallLayer struct {
+	Layer string // home, repository or project
+	Dir   string
 }
 
 // CallLimits are a call's composed limits.
@@ -216,6 +234,9 @@ type ResolvedWorkflow struct {
 	Workflow      CallWorkflow
 	NodeProcesses map[string]CallNodeProcess // by name
 	Sources       []CallSource               // the workflow's document, then its brief forms'
+	// Layers are the settings layers the run selected, nearest first: its
+	// nodes' calls resolve against the same (ADR-028 rule 10).
+	Layers []CallLayer
 	// Forms are the brief forms its inputs name, by name (ADR-026 rule 8).
 	Forms map[string]CallForm
 }
@@ -265,6 +286,7 @@ func (c callResolution) Resolve(ctx context.Context, request CallResolveRequest)
 		Schema:  res.schema,
 		Forms:   callForms(res.forms),
 		Sources: callSources(res.sources),
+		Layers:  callLayers(c.resolver.definitions.Layers(ctx)),
 		Effective: CallLimits{
 			Timeout: effective.Timeout, MaxAttempts: effective.MaxAttempts, MaxCostUSD: effective.MaxCostUSD,
 			Allow: effective.Allow, Deny: effective.Deny, Permissions: effective.Permissions, Require: effective.Require,
@@ -306,6 +328,7 @@ func (c callResolution) Workflow(ctx context.Context, name string) (*ResolvedWor
 		},
 		NodeProcesses: make(map[string]CallNodeProcess, len(res.processes)),
 		Sources:       callSources(res.sources),
+		Layers:        callLayers(c.resolver.definitions.Layers(ctx)),
 		Forms:         callForms(res.forms),
 	}
 	for name, process := range res.processes {
@@ -361,10 +384,22 @@ func callForms(forms map[string]definition.Brief) map[string]CallForm {
 
 func callSources(sources []definition.Source) []CallSource {
 	return translated(sources, func(source definition.Source) CallSource {
-		return CallSource{
-			Kind: string(source.Kind), Name: source.Name, Path: source.Path, SHA256: source.SHA256,
-			Project: source.Project, Overrides: source.Overrides,
+		files := source.Layers
+		if !definition.Composed(source.Kind) && len(files) > 1 {
+			files = files[:1] // the nearest replaces the rest, which the call did not read
 		}
+		return CallSource{
+			Kind: string(source.Kind), Name: source.Name,
+			Layers: translated(files, func(file definition.LayerFile) CallSourceLayer {
+				return CallSourceLayer{Layer: string(file.Layer), Path: file.Path, SHA256: file.SHA256, Fields: file.Fields}
+			}),
+		}
+	})
+}
+
+func callLayers(layers []definition.LayerDir) []CallLayer {
+	return translated(layers, func(layer definition.LayerDir) CallLayer {
+		return CallLayer{Layer: string(layer.Layer), Dir: layer.Dir}
 	})
 }
 
@@ -845,6 +880,7 @@ func (c *Calls) execute(ctx context.Context, handle RunHandle, record run.Record
 		Timeout: record.Request.Timeout, MaxCostUSD: record.Request.MaxCostUSD,
 	})
 	record.Definitions = recordSources(res.Sources)
+	record.Layers = recordLayers(res.Layers)
 	record.AbsentPrompts = recordAbsent(res.Absent)
 	if err != nil {
 		fail(err)
@@ -1143,6 +1179,7 @@ func (c *Calls) runWorkflow(ctx context.Context, handle RunHandle, record run.Re
 
 	if res != nil {
 		record.Definitions = recordSources(res.Sources)
+		record.Layers = recordLayers(res.Layers)
 	}
 	if resErr != nil {
 		refused(resErr)

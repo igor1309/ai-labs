@@ -292,7 +292,7 @@ func TestADR012MissingVerificationStillRefusesAtItsNode(t *testing.T) {
 	docs[definition.KindProcess]["second"] = namingVerification(docs[definition.KindProcess]["second"])
 	s := settingsFiles(t, docs)
 	project := fsdefs.Store{Dir: t.TempDir()}
-	client := h.clientOn(fsdefs.Layered{Global: s, Project: &project})
+	client := h.clientOn(fsdefs.Layered{Home: s, Repository: &project})
 	ctx := context.Background()
 	view, err := client.ShowWorkflow(ctx, "w")
 	if err != nil || view.Refusal != "" || view.FanOut[1].Process.Refusal == "" {

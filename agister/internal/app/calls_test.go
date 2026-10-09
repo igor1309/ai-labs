@@ -257,7 +257,7 @@ func TestCompletedCallSendsTheComposedPayloads(t *testing.T) {
 	var kinds []string
 	for _, source := range record.Definitions {
 		kinds = append(kinds, string(source.Kind)+"/"+source.Name)
-		if len(source.SHA256) != 64 {
+		if len(digestRecorded(source)) != 64 {
 			t.Fatalf("source without digest: %+v", source)
 		}
 	}
@@ -1402,8 +1402,8 @@ func TestCallResolvesFromTheSettingsReadBeforeItsRunWasRecorded(t *testing.T) {
 	}
 	want := sha(settingsDocs()[definition.KindAgent]["a"])
 	for _, source := range record.Definitions {
-		if source.Kind == string(definition.KindAgent) && source.SHA256 != want {
-			t.Errorf("agent recorded %s, want %s", source.SHA256, want)
+		if source.Kind == string(definition.KindAgent) && digestRecorded(source) != want {
+			t.Errorf("agent recorded %s, want %s", digestRecorded(source), want)
 		}
 	}
 }
@@ -1450,9 +1450,12 @@ func TestCallRecordsWhatItResolvedUnderTheRecordsOwnTypes(t *testing.T) {
 		}
 		return string(data)
 	}
-	wantService := `{"kind":"service","name":"service","path":"mem/service/service","sha256":"` + sha(settingsDocs()[definition.KindService]["service"]) + `"}`
+	wantService := `{"kind":"service","name":"service","layers":[{"layer":"home","path":"mem/service/service","sha256":"` + sha(settingsDocs()[definition.KindService]["service"]) + `"}]}`
 	if len(record.Definitions) != 6 || encode(record.Definitions[0]) != wantService {
 		t.Errorf("definitions = %s", encode(record.Definitions))
+	}
+	if got := encode(record.Layers); got != `[{"layer":"home","dir":"mem"}]` {
+		t.Errorf("layers = %s", got)
 	}
 	wantEffective := `{"timeout":1200000000000,"max_attempts":1,` +
 		`"allow":["repository.read","repository.search","repository.diff"],"deny":[],` +

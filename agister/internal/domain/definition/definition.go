@@ -67,17 +67,22 @@ func (k Kind) Singular() string {
 
 // Source identifies where a definition came from, for attribution.
 type Source struct {
-	Kind   Kind
-	Name   string
-	Path   string
+	Kind Kind
+	Name string
+	// Path is the file of the nearest layer that holds the document, and
+	// Layer that layer.
+	Path  string
+	Layer Layer
+	// SHA256 is the digest of the document's text: its one file's, or the
+	// composition's.
 	SHA256 string
-	// From a project's own settings rather than the global ones.
-	Project bool
-	// The global definition this project one takes priority over.
-	Overrides string
+	// Layers are the layer files that hold the document, nearest first. A
+	// composed kind's document is composed from all of them (ADR-028 rule
+	// 4); any other is the first alone, which replaces the rest (rule 6).
+	Layers []LayerFile
 }
 
-// ErrNotFound is what reading a document neither settings layer has
+// ErrNotFound is what reading a document no settings layer has
 // returns, wrapped: a document that exists but cannot be read gives any
 // other error.
 var ErrNotFound = errors.New("not found")
@@ -129,15 +134,21 @@ func readable(data []byte, p *problems) bool {
 // problems collects field-path problems while reading one document.
 type problems struct {
 	list []Problem
+	// source, when it has several layer files, names in each problem the
+	// file that set the field at fault (ADR-028 rule 5).
+	source Source
 }
 
+// problemsOf collects the problems of the document read from source.
+func problemsOf(source Source) *problems { return &problems{source: source} }
+
 func (p *problems) add(field, format string, args ...any) {
-	p.list = append(p.list, Problem{Message: fieldMessage(field, format, args...)})
+	p.list = append(p.list, Problem{Message: p.source.Attribute(field, fieldMessage(field, format, args...))})
 }
 
 // unknown adds a problem that names something this code does not know.
 func (p *problems) unknown(field, format string, args ...any) {
-	p.list = append(p.list, Problem{Message: fieldMessage(field, format, args...), Unknown: true})
+	p.list = append(p.list, Problem{Message: p.source.Attribute(field, fieldMessage(field, format, args...)), Unknown: true})
 }
 
 func fieldMessage(field, format string, args ...any) string {

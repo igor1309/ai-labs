@@ -3,7 +3,8 @@
 // processes/*.yaml, policies/*.yaml, runtimes/*.yaml, schemas/*.json,
 // workflows/*.yaml, verifies/*.yaml, prompts/*.md, skills/*/SKILL.md,
 // briefs/*.yaml. Layered
-// reads a project's own settings over the global ones.
+// reads the layers a command selected, composing each document from the
+// layer files that hold it (ADR-028).
 package fsdefs
 
 import (
@@ -236,7 +237,19 @@ func skillBeside(path string, others []string) error {
 	return fmt.Errorf("%s holds %s beside %s: a skill is its %s alone, and its other files are not given to a call", filepath.Dir(path), strings.Join(others, ", "), skillFile, skillFile)
 }
 
-func (s Store) Read(_ context.Context, kind definition.Kind, name string) (definition.Document, error) {
+// Read reads the document as home's settings alone: a store by itself is
+// one layer, home.
+func (s Store) Read(ctx context.Context, kind definition.Kind, name string) (definition.Document, error) {
+	return Layered{Home: s}.Read(ctx, kind, name)
+}
+
+// Layers is the one layer a store by itself is, home.
+func (s Store) Layers(ctx context.Context) []definition.LayerDir {
+	return Layered{Home: s}.Layers(ctx)
+}
+
+// read reads the store's own file of the document.
+func (s Store) read(kind definition.Kind, name string) (definition.Document, error) {
 	path, err := s.path(kind, name)
 	if err != nil {
 		return definition.Document{}, err
@@ -253,22 +266,18 @@ func (s Store) Read(_ context.Context, kind definition.Kind, name string) (defin
 		data, err = os.ReadFile(path)
 	}
 	if errors.Is(err, fs.ErrNotExist) {
-		// Blocks that exist but cannot be resolved, a dangling symlink, are
-		// not absent: reading them fails, with no fallback to home's
-		// (ADR-018 rule 5).
-		if kind == definition.KindBlocks {
-			if _, lerr := os.Lstat(path); lerr == nil {
-				return doc, fmt.Errorf("cannot be resolved: %v", err)
-			}
+		// A file that exists but cannot be resolved, a dangling symlink, is
+		// not absent: reading it fails, with no fallback to a farther
+		// layer's. Blocks would be home's (ADR-018 rule 5), and a layer's
+		// fields would silently stop applying (ADR-028 rule 5).
+		if _, lerr := os.Lstat(path); lerr == nil {
+			return doc, fmt.Errorf("cannot be resolved: %v", err)
 		}
-		// Nor is a prompt whose file or folder is a dangling symlink: an
-		// optional one would be left out of the call where the settings
-		// are broken (ADR-019 rule 1, D-11). Nor a brief's form: home's
-		// would check the text in place of the project's (ADR-015).
+		// Nor is a prompt whose folder is a dangling symlink: an optional
+		// one would be left out of the call where the settings are broken
+		// (ADR-019 rule 1, D-11). Nor a brief's form: home's would check
+		// the text in place of the project's (ADR-015).
 		if kind == definition.KindPrompt || kind == definition.KindBrief {
-			if _, lerr := os.Lstat(path); lerr == nil {
-				return doc, fmt.Errorf("cannot be resolved: %v", err)
-			}
 			if err := resolvable(filepath.Dir(path)); err != nil {
 				return doc, err
 			}
@@ -477,77 +486,221 @@ func digest(data []byte) string {
 	return hex.EncodeToString(sum[:])
 }
 
-// Layered reads a project's settings over the global ones: a project
-// document takes priority over the global document of the same kind and
-// name, and says which one it overrides. Checking the composed result is
-// the core's job, not the store's.
+// Layered reads the settings of the layers a command selected (ADR-028
+// rule 1): home, the repository's .agister and the .agister of the project
+// directory the command is launched in. A document of a composed kind is
+// composed from every layer file that holds it, the nearest layer winning
+// field by field (rule 4); a prompt, a skill and a schema are taken whole
+// from the nearest layer that holds them (rule 6). Checking the composed
+// result is the core's job, not the store's.
 //
-// Blocks are read the same way, and only a project's block anything
-// (ADR-018 rule 1): Source.Project says whose they are. Home's are still
-// read, where the project has none, so check reports them.
+// Blocks are never composed, and the project layer's are not read (rule
+// 7): only a repository's block anything (ADR-018 rule 1), and
+// Source.Layer says whose they are. Home's are still read, so check
+// reports them.
 type Layered struct {
-	Global  Store
-	Project *Store // nil outside a project
-	// Absent, when Project is nil, is the settings directory of the
-	// repository that has none: a document found in neither layer names
-	// where it was expected there too.
+	Home       Store
+	Repository *Store // nil outside a repository, and in one without .agister
+	Project    *Store // nil for a command launched under no project directory
+	// Nested are the .agister directories between the project layer's and
+	// the root, nearest first: any makes the project layer invalid (rule
+	// 1).
+	Nested []string
+	// Absent, when Repository is nil, is the settings directory of the
+	// repository that has none: a document found in no layer names where
+	// it was expected there too.
 	Absent string
 }
 
-func (l Layered) Read(ctx context.Context, kind definition.Kind, name string) (definition.Document, error) {
-	if l.Project == nil {
-		doc, err := l.Global.Read(ctx, kind, name)
-		if errors.Is(err, errNotFound) && l.Absent != "" {
-			return doc, l.notFound(Store{Dir: l.Absent}, kind, name)
-		}
-		return doc, err
+type layerStore struct {
+	layer definition.Layer
+	store Store
+}
+
+// stores are the layers a document of kind is read from, nearest first.
+func (l Layered) stores(kind definition.Kind) []layerStore {
+	var stores []layerStore
+	if l.Project != nil && kind != definition.KindBlocks {
+		stores = append(stores, layerStore{definition.LayerProject, *l.Project})
 	}
-	doc, err := l.Project.Read(ctx, kind, name)
-	if errors.Is(err, errNotFound) {
-		doc, err = l.Global.Read(ctx, kind, name)
+	if l.Repository != nil {
+		stores = append(stores, layerStore{definition.LayerRepository, *l.Repository})
+	}
+	return append(stores, layerStore{definition.LayerHome, l.Home})
+}
+
+func (l Layered) Read(_ context.Context, kind definition.Kind, name string) (definition.Document, error) {
+	source := definition.Source{Kind: kind, Name: name}
+	stores := l.stores(kind)
+	var texts []definition.LayerText
+	for i, layer := range stores {
+		doc, err := layer.store.read(kind, name)
 		if errors.Is(err, errNotFound) {
-			return doc, l.notFound(*l.Project, kind, name)
+			continue
 		}
-		return doc, err
+		file := definition.LayerFile{Layer: layer.layer, Path: doc.Source.Path, SHA256: doc.Source.SHA256}
+		if len(texts) == 0 {
+			source.Layer, source.Path = file.Layer, file.Path
+		}
+		source.Layers = append(source.Layers, file)
+		if err != nil {
+			// A layer's file that is there and cannot be read breaks the
+			// document: it is not skipped in favour of the parent's
+			// (ADR-028 rule 5).
+			return definition.Document{Source: source}, err
+		}
+		if !definition.Composed(kind) {
+			source.SHA256 = file.SHA256
+			for _, farther := range stores[i+1:] {
+				if path, err := farther.store.path(kind, name); err == nil {
+					if _, err := os.Stat(path); err == nil {
+						source.Layers = append(source.Layers, definition.LayerFile{Layer: farther.layer, Path: path})
+					}
+				}
+			}
+			return definition.Document{Source: source, Bytes: doc.Bytes}, nil
+		}
+		texts = append(texts, definition.LayerText{File: file, Bytes: doc.Bytes})
 	}
-	doc.Source.Project = true
+	if len(texts) == 0 {
+		return definition.Document{Source: source}, l.notFound(kind, name)
+	}
+	data, files, err := definition.Compose(kind, texts)
+	source.Layers = files
 	if err != nil {
-		return doc, err
+		return definition.Document{Source: source}, err
 	}
-	if globalPath, err := l.Global.path(kind, name); err == nil {
-		if _, err := os.Stat(globalPath); err == nil {
-			doc.Source.Overrides = globalPath
+	source.SHA256 = digest(data)
+	return definition.Document{Source: source, Bytes: data}, nil
+}
+
+// notFound says that a document is in no layer, and where each would hold
+// it.
+func (l Layered) notFound(kind definition.Kind, name string) error {
+	var expected []string
+	for _, layer := range l.stores(kind) {
+		if layer.layer == definition.LayerHome && l.Repository == nil && l.Absent != "" {
+			path, _ := Store{Dir: l.Absent}.path(kind, name)
+			expected = append(expected, path)
 		}
+		path, _ := layer.store.path(kind, name)
+		expected = append(expected, path)
 	}
-	return doc, nil
+	return fmt.Errorf("%w (expected %s)", errNotFound, strings.Join(expected, " or "))
 }
 
-// notFound says that a document is in neither project nor the global store,
-// and where each would hold it.
-func (l Layered) notFound(project Store, kind definition.Kind, name string) error {
-	projectPath, _ := project.path(kind, name)
-	globalPath, _ := l.Global.path(kind, name)
-	return fmt.Errorf("%w (expected %s or %s)", errNotFound, projectPath, globalPath)
-}
-
-// List names every document of kind in either layer.
+// List names every document of kind in any layer.
 func (l Layered) List(ctx context.Context, kind definition.Kind) ([]string, error) {
-	names, err := l.Global.List(ctx, kind)
-	if err != nil || l.Project == nil {
-		return names, err
-	}
-	project, err := l.Project.List(ctx, kind)
-	if err != nil {
-		return nil, err
-	}
 	seen := map[string]bool{}
 	var all []string
-	for _, name := range append(names, project...) {
-		if !seen[name] {
-			seen[name] = true
-			all = append(all, name)
+	for _, layer := range l.stores(kind) {
+		names, err := layer.store.List(ctx, kind)
+		if err != nil {
+			return nil, err
+		}
+		for _, name := range names {
+			if !seen[name] {
+				seen[name] = true
+				all = append(all, name)
+			}
 		}
 	}
 	sort.Strings(all)
 	return all, nil
+}
+
+// Layers are the layers selected, nearest first, each with what makes it
+// invalid: a project layer below another .agister (ADR-028 rule 1), or one
+// that holds a blocks.yaml (rule 7).
+func (l Layered) Layers(context.Context) []definition.LayerDir {
+	var layers []definition.LayerDir
+	if l.Project != nil {
+		project := definition.LayerDir{Layer: definition.LayerProject, Dir: l.Project.Dir}
+		for _, nested := range l.Nested {
+			project.Invalid = append(project.Invalid, definition.LayerProblem{
+				Path:   nested,
+				Reason: fmt.Sprintf("a second .agister between %s and the worktree's root: there is no fourth layer, so no command would read it; keep one of the two", l.Project.Dir),
+			})
+		}
+		blocks, _ := l.Project.path(definition.KindBlocks, string(definition.KindBlocks))
+		if _, err := os.Lstat(blocks); !errors.Is(err, fs.ErrNotExist) {
+			project.Invalid = append(project.Invalid, definition.LayerProblem{
+				Path:   blocks,
+				Reason: "a project layer holds no blocks.yaml: blocks are the repository layer's alone (ADR-018), and what this one lists would run; move it to the repository's .agister or remove it",
+			})
+		}
+		layers = append(layers, project)
+	}
+	if l.Repository != nil {
+		layers = append(layers, definition.LayerDir{Layer: definition.LayerRepository, Dir: l.Repository.Dir})
+	}
+	return append(layers, definition.LayerDir{Layer: definition.LayerHome, Dir: l.Home.Dir})
+}
+
+// Select selects the layers of a command launched in the directory launch
+// of the git worktree whose root is root (ADR-028 rule 1): the
+// repository's is <root>/.agister, and the project's the .agister of the
+// nearest directory that holds one, from launch upward and below root. A
+// .agister that is home itself is no layer. One that exists but cannot be
+// used is an error, so a layer's settings never silently stop applying.
+func Select(home Store, root, launch string) (Layered, error) {
+	selected := Layered{Home: home}
+	settings := func(dir string) (string, bool, error) {
+		path := filepath.Join(dir, settingsDir)
+		info, err := os.Stat(path)
+		switch {
+		case errors.Is(err, fs.ErrNotExist):
+			return path, false, nil
+		case err != nil:
+			return path, false, fmt.Errorf("settings %s: %w", path, err)
+		case !info.IsDir():
+			return path, false, fmt.Errorf("settings %s: not a directory", path)
+		}
+		return path, !sameDir(path, home.Dir), nil
+	}
+	// The directories from launch up to root, below it, named from root as
+	// it was given, wherever links lead.
+	var below []string
+	if rel, err := filepath.Rel(resolved(root), resolved(launch)); err == nil && rel != "." && filepath.IsLocal(rel) {
+		for dir := rel; dir != "."; dir = filepath.Dir(dir) {
+			path, layer, err := settings(filepath.Join(root, dir))
+			if err != nil {
+				return Layered{}, err
+			}
+			if layer {
+				below = append(below, path)
+			}
+		}
+	}
+	if len(below) > 0 {
+		selected.Project, selected.Nested = &Store{Dir: below[0]}, below[1:]
+	}
+	path, layer, err := settings(root)
+	switch {
+	case err != nil:
+		return Layered{}, err
+	case layer:
+		selected.Repository = &Store{Dir: path}
+	case !sameDir(path, home.Dir):
+		selected.Absent = path
+	}
+	return selected, nil
+}
+
+// settingsDir is the name of a layer's settings directory in the
+// directory that holds it.
+const settingsDir = ".agister"
+
+// resolved is dir with its links followed, or dir itself where that fails.
+func resolved(dir string) string {
+	if path, err := filepath.EvalSymlinks(dir); err == nil {
+		return path
+	}
+	return dir
+}
+
+func sameDir(a, b string) bool {
+	infoA, errA := os.Stat(a)
+	infoB, errB := os.Stat(b)
+	return errA == nil && errB == nil && os.SameFile(infoA, infoB)
 }

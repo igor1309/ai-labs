@@ -72,6 +72,26 @@ func promptRun(t *testing.T, home, cwd string) (input, source map[string]any, gi
 	return input, source, given
 }
 
+// nearest is the nearest layer file of a definition a run recorded.
+func nearest(source map[string]any) map[string]any {
+	layers, _ := source["layers"].([]any)
+	if len(layers) == 0 {
+		return map[string]any{}
+	}
+	file, _ := layers[0].(map[string]any)
+	return file
+}
+
+// homeFile and repositoryFile are a document taken whole as a run records
+// it: the one layer file it was read from.
+func homeFile(kind, name, path, text string) map[string]any {
+	return map[string]any{"kind": kind, "name": name, "layers": []any{map[string]any{"layer": "home", "path": path, "sha256": digestOf(text)}}}
+}
+
+func repositoryFile(kind, name, path, text string) map[string]any {
+	return map[string]any{"kind": kind, "name": name, "layers": []any{map[string]any{"layer": "repository", "path": path, "sha256": digestOf(text)}}}
+}
+
 func digestOf(text string) string {
 	sum := sha256.Sum256([]byte(text))
 	return hex.EncodeToString(sum[:])
@@ -99,7 +119,7 @@ func TestAPromptIsFoundInTheSettingsNotTheCallersDirectory(t *testing.T) {
 		if input["name"] != "rules" || input["source"] != "prompt" || input["value"] != homeText || input["identity"] != "sha256:"+digestOf(homeText) {
 			t.Fatalf("from %s: input = %v", cwd, input)
 		}
-		if source["name"] != "review" || source["path"] != global || source["sha256"] != digestOf(homeText) || source["project"] != nil || source["overrides"] != nil {
+		if !reflect.DeepEqual(source, homeFile("prompts", "review", global, homeText)) {
 			t.Fatalf("from %s: source = %v", cwd, source)
 		}
 		if !strings.Contains(given, homeText) || strings.Contains(given, "caller's directory") {
@@ -114,7 +134,7 @@ func TestAPromptIsFoundInTheSettingsNotTheCallersDirectory(t *testing.T) {
 		if input["value"] != repoText || input["identity"] != "sha256:"+digestOf(repoText) {
 			t.Fatalf("from %s: input = %v", cwd, input)
 		}
-		if source["path"] != project || source["sha256"] != digestOf(repoText) || source["project"] != true || source["overrides"] != global {
+		if !reflect.DeepEqual(source, repositoryFile("prompts", "review", project, repoText)) {
 			t.Fatalf("from %s: source = %v", cwd, source)
 		}
 		if !strings.Contains(given, repoText) || strings.Contains(given, homeText) {
@@ -123,12 +143,12 @@ func TestAPromptIsFoundInTheSettingsNotTheCallersDirectory(t *testing.T) {
 	}
 
 	r := agister(t, home, repo, "check", "--tree")
-	if r.code != 0 || !regexp.MustCompile(`process reviewed +global .*\n(.*\n)*└─ prompt review +project `+regexp.QuoteMeta(project)+` \(overrides `+regexp.QuoteMeta(global)+`\)\n`).MatchString(r.stdout) {
+	if r.code != 0 || !regexp.MustCompile(`process reviewed +home .*\n(.*\n)*└─ prompt review +repository `+regexp.QuoteMeta(project)+`\n +home +`+regexp.QuoteMeta(global)+` \(replaced\)\n`).MatchString(r.stdout) {
 		t.Fatalf("check --tree: %d\n%s%s", r.code, r.stdout, r.stderr)
 	}
 	r = agister(t, home, repo, "process", "show", "reviewed")
-	if r.code != 0 || !strings.Contains(r.stdout, "prompts      review: project "+project+"\n") ||
-		!strings.Contains(r.stdout, "prompt review: project "+project+" (overrides "+global+")\n") {
+	if r.code != 0 || !strings.Contains(r.stdout, "prompts      review: repository "+project+"\n") ||
+		!regexp.MustCompile(`prompt review: repository `+regexp.QuoteMeta(project)+`\n +home `+regexp.QuoteMeta(global)+` \(replaced\)\n`).MatchString(r.stdout) {
 		t.Fatalf("process show: %d\n%s%s", r.code, r.stdout, r.stderr)
 	}
 }
@@ -235,11 +255,11 @@ func TestAnOptionalPromptIsShownAsOptionalFoundOrNot(t *testing.T) {
 	global := filepath.Join(home, "prompts", "review.md")
 	write(t, global, "Home's review rules.\n")
 	r = agister(t, home, repo, "check", "--tree")
-	if r.code != 0 || !regexp.MustCompile(`└─ prompt review +global +`+regexp.QuoteMeta(global)+` \(optional\)\n`).MatchString(r.stdout) {
+	if r.code != 0 || !regexp.MustCompile(`└─ prompt review +home +`+regexp.QuoteMeta(global)+` \(optional\)\n`).MatchString(r.stdout) {
 		t.Fatalf("check --tree with it: %d\n%s%s", r.code, r.stdout, r.stderr)
 	}
 	r = agister(t, home, repo, "process", "show", "reviewed")
-	if r.code != 0 || !strings.Contains(r.stdout, "inputs       rules <- prompt (optional)\n") || !strings.Contains(r.stdout, "prompts      review: global "+global+" (optional)\n") {
+	if r.code != 0 || !strings.Contains(r.stdout, "inputs       rules <- prompt (optional)\n") || !strings.Contains(r.stdout, "prompts      review: home "+global+" (optional)\n") {
 		t.Fatalf("process show with it: %d\n%s%s", r.code, r.stdout, r.stderr)
 	}
 }

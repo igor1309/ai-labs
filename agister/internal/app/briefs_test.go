@@ -384,7 +384,7 @@ func TestAWorkflowsGoalIsCheckedBeforeItsNodesStart(t *testing.T) {
 	if record.Result.Status != run.Completed {
 		t.Fatalf("result = %+v", record.Result)
 	}
-	if len(record.Definitions) != 2 || record.Definitions[1].Kind != "briefs" || record.Definitions[1].Name != "goal" || record.Definitions[1].SHA256 != sha(goalForm) {
+	if len(record.Definitions) != 2 || record.Definitions[1].Kind != "briefs" || record.Definitions[1].Name != "goal" || digestRecorded(record.Definitions[1]) != sha(goalForm) {
 		t.Fatalf("definitions = %+v", record.Definitions)
 	}
 }
@@ -400,7 +400,7 @@ func TestShowWorkflowShowsItsForms(t *testing.T) {
 	if err != nil || view.Refusal != "" || !contains(view.Inputs, "goal <- file (form goal)") || !contains(view.Inputs, "base <- git.revision") {
 		t.Fatalf("inputs %q, refusal %q, %v", view.Inputs, view.Refusal, err)
 	}
-	if origin := (contract.DefinitionOrigin{Kind: "briefs", Name: "goal", Layer: "global", Path: "mem/briefs/goal"}); !containsOrigin(view.Sources, origin) {
+	if origin := (contract.DefinitionOrigin{Kind: "briefs", Name: "goal", Layer: "home", Path: "mem/briefs/goal"}); !containsOrigin(view.Sources, origin) {
 		t.Fatalf("sources lack goal: %+v", view.Sources)
 	}
 }
@@ -473,7 +473,7 @@ func TestShowProcessShowsItsForms(t *testing.T) {
 		t.Fatalf("inputs %q, refusal %q, %v", view.Inputs, view.Refusal, err)
 	}
 	for _, name := range []string{"goal", "step"} {
-		if origin := (contract.DefinitionOrigin{Kind: "briefs", Name: name, Layer: "global", Path: "mem/briefs/" + name}); !containsOrigin(view.Sources, origin) {
+		if origin := (contract.DefinitionOrigin{Kind: "briefs", Name: name, Layer: "home", Path: "mem/briefs/" + name}); !containsOrigin(view.Sources, origin) {
 			t.Fatalf("sources lack %s: %+v", name, view.Sources)
 		}
 	}

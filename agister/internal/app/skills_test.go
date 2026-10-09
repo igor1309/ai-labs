@@ -64,7 +64,7 @@ func skillSources(record run.Record) []run.DefinitionSource {
 }
 
 func skillSource(name string) run.DefinitionSource {
-	return run.DefinitionSource{Kind: "skills", Name: name, Path: "mem/skills/" + name, SHA256: sha(skillDoc(name))}
+	return homeFile("skills", name, skillDoc(name))
 }
 
 func callSkill(name string) app.CallSkill {
@@ -90,7 +90,7 @@ func TestACallIsResolvedWithItsProcessesSkillsThenItsAgents(t *testing.T) {
 		t.Fatalf("skills = %+v, %v", call.Skills, err)
 	}
 	for _, name := range []string{"review", "tests", "style"} {
-		source := app.CallSource{Kind: "skills", Name: name, Path: "mem/skills/" + name, SHA256: sha(skillDoc(name))}
+		source := app.CallSource{Kind: "skills", Name: name, Layers: []app.CallSourceLayer{{Layer: "home", Path: "mem/skills/" + name, SHA256: sha(skillDoc(name))}}}
 		if !reflect.DeepEqual(skillsAmong(call.Sources, name), []app.CallSource{source}) {
 			t.Fatalf("sources of %s = %+v", name, skillsAmong(call.Sources, name))
 		}
@@ -152,7 +152,7 @@ func TestASkillIsRecordedByItsDigest(t *testing.T) {
 		t.Fatalf("review = %+v, %v", call.Skills[0], err)
 	}
 	record := h.call(t, contract.CallRequest{})
-	if sources := skillSources(record); len(sources) != 3 || sources[0].SHA256 != sha(edited) {
+	if sources := skillSources(record); len(sources) != 3 || digestRecorded(sources[0]) != sha(edited) {
 		t.Fatalf("skill sources = %+v", sources)
 	}
 }
@@ -380,7 +380,7 @@ func TestCheckLinksAnAgentAndAProcessToTheirSkills(t *testing.T) {
 	if p := got[ref("processes", "p")]; !reflect.DeepEqual(p.Uses, processUses) {
 		t.Fatalf("p = %+v", p)
 	}
-	if review := got[ref("skills", "review")]; !reflect.DeepEqual(review.UsedBy, []contract.DefinitionRef{ref("agents", "a"), ref("processes", "p")}) || review.Path != "mem/skills/review" || review.Layer != "global" || len(review.Uses) != 0 {
+	if review := got[ref("skills", "review")]; !reflect.DeepEqual(review.UsedBy, []contract.DefinitionRef{ref("agents", "a"), ref("processes", "p")}) || review.Path != "mem/skills/review" || review.Layer != "home" || len(review.Uses) != 0 {
 		t.Fatalf("review = %+v", review)
 	}
 	if style := got[ref("skills", "style")]; !reflect.DeepEqual(style.UsedBy, []contract.DefinitionRef{ref("agents", "a")}) {
@@ -547,7 +547,7 @@ func TestShowProcessShowsItsSkills(t *testing.T) {
 		t.Fatalf("skills %q, agent's %q, refusal %q, %v", view.Skills, view.AgentSkills, view.Refusal, err)
 	}
 	for _, name := range []string{"review", "tests", "style"} {
-		if origin := (contract.DefinitionOrigin{Kind: "skills", Name: name, Layer: "global", Path: "mem/skills/" + name}); !containsOrigin(view.Sources, origin) {
+		if origin := (contract.DefinitionOrigin{Kind: "skills", Name: name, Layer: "home", Path: "mem/skills/" + name}); !containsOrigin(view.Sources, origin) {
 			t.Fatalf("sources lack %s: %+v", name, view.Sources)
 		}
 	}

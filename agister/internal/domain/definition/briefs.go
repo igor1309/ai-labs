@@ -52,7 +52,7 @@ var headingLine = regexp.MustCompile(`^#{1,6} \S(.*\S)?$`)
 // whether it is required, the text it must read and the reference it
 // holds; and its template, whose headings are the parts', in order.
 func ParseBrief(doc Document) (Brief, error) {
-	p := &problems{}
+	p := problemsOf(doc.Source)
 	subject := "brief " + subjectName(doc.Source)
 	brief := Brief{Name: doc.Source.Name, Source: doc.Source}
 	root := parseOneYAML(doc.Bytes, p)

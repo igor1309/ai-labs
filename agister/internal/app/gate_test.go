@@ -272,8 +272,8 @@ func TestGatedSubmitRecordsTheCheckedSettings(t *testing.T) {
 		t.Fatalf("call failed: %s", message(record))
 	}
 	for _, source := range record.Definitions {
-		if want := original[string(source.Kind)+"/"+source.Name]; source.SHA256 != want {
-			t.Errorf("%s/%s recorded %s, checked %s", source.Kind, source.Name, source.SHA256, want)
+		if want := original[string(source.Kind)+"/"+source.Name]; digestRecorded(source) != want {
+			t.Errorf("%s/%s recorded %s, checked %s", source.Kind, source.Name, digestRecorded(source), want)
 		}
 	}
 	if len(record.Definitions) == 0 {
@@ -325,8 +325,8 @@ func TestGatedSubmitRecordsWhatTheCheckRead(t *testing.T) {
 		if source.Kind == string(definition.KindAgent) && source.Name == "a" {
 			seen = true
 		}
-		if want := original[string(source.Kind)+"/"+source.Name]; source.SHA256 != want {
-			t.Errorf("%s/%s recorded %s, checked %s", source.Kind, source.Name, source.SHA256, want)
+		if want := original[string(source.Kind)+"/"+source.Name]; digestRecorded(source) != want {
+			t.Errorf("%s/%s recorded %s, checked %s", source.Kind, source.Name, digestRecorded(source), want)
 		}
 	}
 	if !seen {

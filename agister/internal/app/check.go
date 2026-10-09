@@ -20,10 +20,12 @@ type Checker struct {
 	sources     []string // input source kinds the code provides
 }
 
-// CheckDefinitions supplies every definition document and its origin.
+// CheckDefinitions supplies every definition document and its origin, and
+// the layers they are read from (ADR-028 rule 1).
 type CheckDefinitions interface {
 	Read(ctx context.Context, kind definition.Kind, name string) (definition.Document, error)
 	List(ctx context.Context, kind definition.Kind) ([]string, error)
+	Layers(ctx context.Context) []definition.LayerDir
 }
 
 // CheckValidator compiles output schemas.
@@ -146,19 +148,27 @@ func (c *Checker) check(ctx context.Context, probe bool) (CheckResult, error) {
 		Briefs:    map[string]bool{},
 	}
 
+	// A layer that is invalid is a problem of no document: it stops every
+	// command launched under it (ADR-028 rules 1 and 7).
+	for _, layer := range c.definitions.Layers(ctx) {
+		for _, invalid := range layer.Invalid {
+			stops(string(layer.Layer)+" layer "+layer.Dir, "%s: %s", invalid.Path, invalid.Reason)
+		}
+	}
+
 	// Each document on its own: one checks a document read, or not, err
 	// saying why not; each checks every document of a kind the settings
 	// list.
 	one := func(kind definition.Kind, name string, doc definition.Document, err error, parse func(definition.Document) error) {
-		if doc.Source.Overrides != "" {
-			report.Overrides = append(report.Overrides, fmt.Sprintf("%s %s: %s overrides %s", kind.Singular(), name, doc.Source.Path, doc.Source.Overrides))
-		}
-		layer := "global"
-		if doc.Source.Project {
-			layer = "project"
+		if farther := doc.Source.Layers; len(farther) > 1 {
+			paths := make([]string, 0, len(farther)-1)
+			for _, layer := range farther[1:] {
+				paths = append(paths, layer.Path)
+			}
+			report.Overrides = append(report.Overrides, fmt.Sprintf("%s %s: %s overrides %s", kind.Singular(), name, doc.Source.Path, strings.Join(paths, ", ")))
 		}
 		index[DocumentRef{Kind: kind, Name: name}] = len(report.Definitions)
-		report.Definitions = append(report.Definitions, contract.Definition{Kind: string(kind), Name: name, Layer: layer, Path: doc.Source.Path, Overrides: doc.Source.Overrides})
+		report.Definitions = append(report.Definitions, contract.Definition{Kind: string(kind), Name: name, Layer: string(doc.Source.Layer), Path: doc.Source.Path, Layers: definitionLayers(doc.Source)})
 		documents = append(documents, CheckedDocument{Ref: DocumentRef{Kind: kind, Name: name}, Path: doc.Source.Path})
 		if err != nil {
 			report.Definitions[len(report.Definitions)-1].Invalid = true
@@ -534,12 +544,14 @@ func (c *Checker) blocks(ctx context.Context, listed map[DocumentRef]bool, check
 			about := blocksRef // each problem its own, so no caller's change reaches another
 			*found = append(*found, CheckedProblem{Text: "blocks (" + path + "): " + message, About: &about, Message: message})
 		}
-		if !doc.Source.Project {
+		if doc.Source.Layer != definition.LayerRepository {
 			home(doc.Source.Path)
 			continue
 		}
-		if doc.Source.Overrides != "" {
-			home(doc.Source.Overrides)
+		for i, farther := range doc.Source.Layers {
+			if i > 0 {
+				home(farther.Path)
+			}
 		}
 		subject := "blocks (" + doc.Source.Path + ")"
 		if err != nil {
@@ -602,7 +614,7 @@ func sortedNames[V any](m map[string]V) []string {
 
 var _ ProposedCheck = (*Checker)(nil)
 
-// ProblemsAdded checks these settings with doc written to the global layer
+// ProblemsAdded checks these settings with doc written to the home layer
 // and reports the problems it adds.
 func (c *Checker) ProblemsAdded(ctx context.Context, doc definition.Document) ([]string, error) {
 	before, err := c.Check(ctx, false)
@@ -628,8 +640,8 @@ func (c *Checker) ProblemsAdded(ctx context.Context, doc definition.Document) ([
 	return added, nil
 }
 
-// withDocument is a definitions source with one global document added or
-// replaced; a project document of the same name still takes priority.
+// withDocument is a definitions source with one home document added or
+// replaced; a nearer layer's document of the same name is read as it is.
 type withDocument struct {
 	CheckDefinitions
 	doc definition.Document
@@ -639,7 +651,7 @@ func (w withDocument) Read(ctx context.Context, kind definition.Kind, name strin
 	if kind != w.doc.Source.Kind || name != w.doc.Source.Name {
 		return w.CheckDefinitions.Read(ctx, kind, name)
 	}
-	if current, err := w.CheckDefinitions.Read(ctx, kind, name); err == nil && current.Source.Project {
+	if current, err := w.CheckDefinitions.Read(ctx, kind, name); err == nil && current.Source.Layer != definition.LayerHome {
 		return current, nil
 	}
 	return w.doc, nil
@@ -653,4 +665,18 @@ func (w withDocument) List(ctx context.Context, kind definition.Kind) ([]string,
 	names = append(append([]string(nil), names...), w.doc.Source.Name)
 	sort.Strings(names)
 	return names, nil
+}
+
+// definitionLayers are a document's layer files as check and show report
+// them, nearest first. The farther files of a document taken whole are
+// replaced by the nearest.
+func definitionLayers(source definition.Source) []contract.DefinitionLayer {
+	layers := make([]contract.DefinitionLayer, 0, len(source.Layers))
+	for i, layer := range source.Layers {
+		layers = append(layers, contract.DefinitionLayer{
+			Layer: string(layer.Layer), Path: layer.Path, Fields: layer.Fields,
+			Replaced: i > 0 && !definition.Composed(source.Kind),
+		})
+	}
+	return layers
 }

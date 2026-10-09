@@ -441,7 +441,7 @@ func TestAgentCallEndToEnd(t *testing.T) {
 	var kinds []string
 	for _, source := range record["definitions"].([]any) {
 		source := source.(map[string]any)
-		if len(source["sha256"].(string)) != 64 {
+		if digest, _ := nearest(source)["sha256"].(string); len(digest) != 64 {
 			t.Fatalf("source without digest: %v", source)
 		}
 		kinds = append(kinds, source["kind"].(string))
@@ -666,7 +666,7 @@ func TestProjectSettingsAddToGlobal(t *testing.T) {
 	}
 	project := filepath.Join(repo, ".agister", "processes", "ask_here.yaml")
 	r := agister(t, home, sub, "process", "show", "ask_here")
-	if r.code != 0 || !strings.Contains(r.stdout, "process ask_here: project "+project) || !strings.Contains(r.stdout, "policy read-only: global "+filepath.Join(home, "policies", "read-only.yaml")) {
+	if r.code != 0 || !strings.Contains(r.stdout, "process ask_here: repository "+project) || !strings.Contains(r.stdout, "policy read-only: home "+filepath.Join(home, "policies", "read-only.yaml")) {
 		t.Fatalf("show in project: %d\n%s%s", r.code, r.stdout, r.stderr)
 	}
 	if r := agister(t, home, sub, "run", "ask_here", "--quiet", "--param", "question=q", "--timeout", "1m"); r.code != cli.ExitCompleted {
@@ -679,7 +679,7 @@ func TestProjectSettingsAddToGlobal(t *testing.T) {
 			process = source
 		}
 	}
-	if !strings.Contains(strings.Join(last.argv(), " "), "PROJECT: answer") || process["path"] != project || process["project"] != true {
+	if !strings.Contains(strings.Join(last.argv(), " "), "PROJECT: answer") || nearest(process)["path"] != project || nearest(process)["layer"] != "repository" {
 		t.Fatalf("project process not used or not attributed: %v, argv %v", process, last.argv())
 	}
 
@@ -707,7 +707,7 @@ func TestProjectOverridesAreNoted(t *testing.T) {
 		t.Fatalf("check: %d\n%s%s", r.code, r.stdout, r.stderr)
 	}
 	r = agister(t, home, repo, "check", "--tree")
-	if r.code != 0 || !regexp.MustCompile(`├─ agent reviewer +project `+regexp.QuoteMeta(project+" (overrides "+global+")")).MatchString(r.stdout) {
+	if r.code != 0 || !regexp.MustCompile(`├─ agent reviewer +repository `+regexp.QuoteMeta(project)+`\n│ +.*model_family.*\n│ +home +`+regexp.QuoteMeta(global)+`\n`).MatchString(r.stdout) {
 		t.Fatalf("check --tree: %d\n%s%s", r.code, r.stdout, r.stderr)
 	}
 	var report contract.CheckReport
@@ -716,19 +716,21 @@ func TestProjectOverridesAreNoted(t *testing.T) {
 		t.Fatalf("check --json: %d %v\n%s", r.code, err, r.stdout)
 	}
 	for _, d := range report.Definitions {
-		if d.Kind == "agents" && d.Name == "reviewer" && (d.Layer != "project" || d.Path != project || d.Overrides != global || len(d.UsedBy) == 0) {
+		if d.Kind == "agents" && d.Name == "reviewer" && (d.Layer != "repository" || d.Path != project || len(d.Layers) != 2 || d.Layers[1].Layer != "home" || d.Layers[1].Path != global || len(d.UsedBy) == 0) {
 			t.Fatalf("reviewer = %+v", d)
 		}
 	}
 	r = agister(t, home, repo, "process", "show", "adversarial_review")
-	if r.code != 0 || !strings.Contains(r.stdout, "agent reviewer: project "+project+" (overrides "+global+")") {
+	if r.code != 0 || !regexp.MustCompile(`agent reviewer: repository `+regexp.QuoteMeta(project)+`\n +home `+regexp.QuoteMeta(global)+`\n`).MatchString(r.stdout) {
 		t.Fatalf("show: %d\n%s%s", r.code, r.stdout, r.stderr)
 	}
 	if r := agister(t, home, repo, "run", "adversarial_review", "--quiet", "--param", "base=main", "--timeout", "1m"); r.code != cli.ExitCompleted {
 		t.Fatalf("run: %d\n%s", r.code, r.stderr)
 	}
 	for _, source := range lastRun(t, home).record["definitions"].([]any) {
-		if source := source.(map[string]any); source["kind"] == "agents" && (source["path"] != project || source["project"] != true || source["overrides"] != global) {
+		source := source.(map[string]any)
+		if layers, _ := source["layers"].([]any); source["kind"] == "agents" && (len(layers) != 2 || nearest(source)["layer"] != "repository" || nearest(source)["path"] != project ||
+			layers[1].(map[string]any)["layer"] != "home" || layers[1].(map[string]any)["path"] != global) {
 			t.Fatalf("agent source = %v", source)
 		}
 	}
@@ -1202,8 +1204,8 @@ verify:
 	}
 	for _, source := range record["definitions"].([]any) {
 		source := source.(map[string]any)
-		if sum := sha256.Sum256([]byte(process)); source["kind"] == "processes" && source["sha256"] != hex.EncodeToString(sum[:]) {
-			t.Fatalf("process digest %v is not of the file as resolved", source["sha256"])
+		if sum := sha256.Sum256([]byte(process)); source["kind"] == "processes" && nearest(source)["sha256"] != hex.EncodeToString(sum[:]) {
+			t.Fatalf("process digest %v is not of the file as resolved", nearest(source)["sha256"])
 		}
 	}
 

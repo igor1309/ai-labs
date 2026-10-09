@@ -49,23 +49,30 @@ Usage:
   agister install --restore <stamp> [--json]
                                      undo that install: put back what it replaced, remove what it
                                      created, after you type yes; the last five installs are kept
-  agister check [--probe] [--tree] [--json]
+  agister check [--probe] [--tree] [--dir <path>] [--json]
                                      verify the composed settings (--probe: also ask each runtime its
-                                     version; --tree: what defines what, and in which file; --json: the
-                                     whole report); each problem refuses what uses the document it
+                                     version; --tree: what defines what, in which layer's file, and
+                                     the fields each nearer layer gave; --json: the whole report);
+                                     each problem refuses what uses the document it
                                      is in, and says what that is; broken service settings, a file
-                                     name that is not a name, an unlistable settings directory or a
-                                     workflow named like a process stop commands except init,
-                                     install, check, cancelling a run and following an admitted run
+                                     name that is not a name, an unlistable settings directory, a
+                                     workflow named like a process or an invalid project layer stop
+                                     commands except init, install, check, cancelling a run and
+                                     following an admitted run
   agister agent create <name> --runtime <runtime> [--model <m>] [--model-family <f>] [--effort <e>]
                          [--session fresh-only|resumable] [--command <path>] [--force]
                                      write an agent to <home>; refused if it adds a problem;
                                      --force replaces an existing one after you type yes
   agister agent list
-  agister process list
-  agister process show <process> [--agent <name>]
-  agister workflow list
-  agister workflow show <workflow>   its params, nodes, and each node's process as a call would see it
+  agister process list [--dir <path>]
+  agister process show <process> [--agent <name>] [--dir <path>]
+                                     the process as a call would see it, each document's layer files
+                                     and each field's layer
+  agister workflow list [--dir <path>]
+  agister workflow show <workflow> [--dir <path>]
+                                     its params, nodes, and each node's process as a call would see it
+                                     check, list and show read the settings a call launched in --dir
+                                     (default: this directory) would get
   agister run <process> [--param <name>=<value>]... [--agent <name>] [--timeout <d>] [--max-cost <usd>]
                          [--continue <run-id>] [--goal <run-id>[:<input>]] [--answers <run-id>]
                          [--dir <path>] [--json]
@@ -99,8 +106,10 @@ Usage:
                                      settings (also --version)
 
 Options:
-  --home <dir>   Agister's state and global settings (default: $AGISTER_HOME, else ~/.agister);
-                 <repository>/.agister takes priority over them, document by document
+  --home <dir>   Agister's state and global settings (default: $AGISTER_HOME, else ~/.agister), the
+                 home layer; the repository layer, <repository>/.agister, and the project layer, the
+                 nearest .agister from the launch directory up and below the repository's root, are
+                 composed over it field by field (a prompt, a skill and a schema are taken whole)
   --quiet        No progress on stderr
   --debug        Diagnostics on stderr (always kept in <home>/logs/agister.jsonl), including why
                  no project settings apply
@@ -206,13 +215,13 @@ var globalFlags = []string{"home", "quiet", "debug", "help", "h", "version"}
 var commands = []Command{
 	{"init", []string{"force"}},
 	{"install", []string{"restore", "json"}},
-	{"check", []string{"probe", "tree", "json"}},
+	{"check", []string{"probe", "tree", "dir", "json"}},
 	{"agent create", []string{"runtime", "model", "model-family", "effort", "session", "command", "force"}},
 	{"agent list", nil},
-	{"process list", nil},
-	{"process show", []string{"agent", "json"}},
-	{"workflow list", nil},
-	{"workflow show", []string{"json"}},
+	{"process list", []string{"dir"}},
+	{"process show", []string{"agent", "dir", "json"}},
+	{"workflow list", []string{"dir"}},
+	{"workflow show", []string{"dir", "json"}},
 	{"run", []string{"param", "agent", "timeout", "max-cost", "continue", "goal", "answers", "dir", "json"}},
 	{"runs list", nil},
 	{"runs show", nil},
@@ -347,7 +356,9 @@ func dispatch(ctx context.Context, args []string, env IO, build Build) (int, err
 		return 0, nil
 	}
 	// A call works in the worktree that holds the caller's directory, with
-	// that worktree's settings (ADR-025 rule 1); only run takes --dir.
+	// the settings of that directory's layers (ADR-025 rule 1, ADR-028
+	// rule 1); run takes --dir, and so do check and the list and show
+	// commands, which read what a call launched there would get (rule 2).
 	cwd := env.Cwd
 	if opts.dir != "" {
 		cwd = absolute(opts.dir, env.Cwd)
@@ -995,17 +1006,7 @@ func showProcess(w io.Writer, view contract.ProcessView) {
 	} else {
 		lines = append(lines, [2]string{"plan", strings.Join(view.Primitives, ", ")}, [2]string{"  withheld", or(strings.Join(view.Withheld, ", "), "(none)")})
 	}
-	for i, source := range view.Sources {
-		label := ""
-		if i == 0 {
-			label = "sources"
-		}
-		text := fmt.Sprintf("%s %s: %s %s", kindNames[source.Kind], source.Name, source.Layer, source.Path)
-		if source.Overrides != "" {
-			text += " (overrides " + source.Overrides + ")"
-		}
-		lines = append(lines, [2]string{label, text})
-	}
+	lines = append(lines, sourceLines(view.Sources)...)
 	for _, warning := range view.Warnings {
 		lines = append(lines, [2]string{"WARNING", warning})
 	}
@@ -1052,23 +1053,64 @@ func showWorkflow(w io.Writer, view contract.WorkflowView) {
 	if view.Refusal != "" {
 		lines = append(lines, [2]string{"run", "REFUSED: " + view.Refusal})
 	}
-	for i, source := range view.Sources {
-		label := ""
-		if i == 0 {
-			label = "sources"
-		}
-		text := fmt.Sprintf("%s %s: %s %s", kindNames[source.Kind], source.Name, source.Layer, source.Path)
-		if source.Overrides != "" {
-			text += " (overrides " + source.Overrides + ")"
-		}
-		lines = append(lines, [2]string{label, text})
-	}
+	lines = append(lines, sourceLines(view.Sources)...)
 	for _, warning := range view.Warnings {
 		lines = append(lines, [2]string{"WARNING", warning})
 	}
 	for _, line := range lines {
 		fmt.Fprintf(w, "%-12s %s\n", line[0], line[1])
 	}
+}
+
+// sourceLines are the lines of a view that say where its definitions come
+// from (ADR-028 rule 12): each document with its layer files, nearest
+// first, then every field of each composed document, with the layer it
+// came from. A document taken whole has no fields.
+func sourceLines(sources []contract.DefinitionOrigin) [][2]string {
+	var lines [][2]string
+	for i, source := range sources {
+		label := ""
+		if i == 0 {
+			label = "sources"
+		}
+		subject := fmt.Sprintf("%s %s: ", kindNames[source.Kind], source.Name)
+		if len(source.Layers) == 0 {
+			lines = append(lines, [2]string{label, subject + source.Layer + " " + source.Path})
+		}
+		for j, layer := range source.Layers {
+			text := layer.Layer + " " + layer.Path
+			if layer.Replaced {
+				text += " (replaced)"
+			}
+			if j == 0 {
+				lines = append(lines, [2]string{label, subject + text})
+				continue
+			}
+			lines = append(lines, [2]string{"", strings.Repeat(" ", utf8.RuneCountInString(subject)) + text})
+		}
+	}
+	label := "fields"
+	for _, source := range sources {
+		if len(source.Layers) == 0 || source.Layers[0].Fields == nil {
+			continue
+		}
+		type field struct{ name, layer string }
+		var fields []field
+		width := 0
+		for _, layer := range source.Layers {
+			for _, name := range layer.Fields {
+				fields = append(fields, field{name, layer.Layer})
+				width = max(width, utf8.RuneCountInString(name))
+			}
+		}
+		sort.SliceStable(fields, func(i, j int) bool { return fields[i].name < fields[j].name })
+		lines = append(lines, [2]string{label, kindNames[source.Kind] + " " + source.Name})
+		label = ""
+		for _, field := range fields {
+			lines = append(lines, [2]string{"", "  " + field.name + strings.Repeat(" ", width-utf8.RuneCountInString(field.name)) + "  " + field.layer})
+		}
+	}
+	return lines
 }
 
 // confirm asks the user to type "yes" before a destructive write; any other
@@ -1294,32 +1336,55 @@ func printTree(w io.Writer, definitions []contract.Definition) {
 	}
 	type line struct{ label, detail string }
 	var lines []line
-	describe := func(ref contract.DefinitionRef) string {
+	// describe is a document's layer files, nearest first, a line each; a
+	// layer other than the farthest is followed by the fields it gave, so
+	// one not listed is the farthest layer's (ADR-028 rule 12).
+	describe := func(ref contract.DefinitionRef) []string {
 		d, ok := byRef[contract.DefinitionRef{Kind: ref.Kind, Name: ref.Name}]
 		switch {
 		case !ok && ref.Optional:
-			return "optional, not found" // the process runs without it (ADR-019)
+			return []string{"optional, not found"} // the process runs without it (ADR-019)
 		case !ok:
-			return "MISSING"
+			return []string{"MISSING"}
 		}
-		text := fmt.Sprintf("%-7s %s", d.Layer, d.Path)
-		if d.Overrides != "" {
-			text += " (overrides " + d.Overrides + ")"
+		layers := d.Layers
+		if len(layers) == 0 {
+			layers = []contract.DefinitionLayer{{Layer: d.Layer, Path: d.Path}}
 		}
-		if d.Invalid {
-			text += " INVALID"
+		var details []string
+		for i, layer := range layers {
+			text := fmt.Sprintf("%-10s %s", layer.Layer, layer.Path)
+			if layer.Replaced {
+				text += " (replaced)"
+			}
+			if i == 0 && d.Invalid {
+				text += " INVALID"
+			}
+			if i == 0 && ref.Optional {
+				text += " (optional)"
+			}
+			details = append(details, text)
+			if i < len(layers)-1 && layer.Fields != nil {
+				details = append(details, strings.Repeat(" ", 13)+or(strings.Join(layer.Fields, ", "), "(none)"))
+			}
 		}
-		if ref.Optional {
-			text += " (optional)"
+		return details
+	}
+	// described adds a document's lines: the first beside its label, the
+	// rest below it, beside rest.
+	described := func(label, rest string, details []string) {
+		for i, detail := range details {
+			if i > 0 {
+				label = rest
+			}
+			lines = append(lines, line{label, detail})
 		}
-		return text
 	}
 	reached := map[contract.DefinitionRef]bool{}
 	var walk func(ref contract.DefinitionRef, prefix, branch string)
 	walk = func(use contract.DefinitionRef, prefix, branch string) {
 		ref := contract.DefinitionRef{Kind: use.Kind, Name: use.Name}
 		reached[ref] = true
-		lines = append(lines, line{prefix + branch + kindNames[ref.Kind] + " " + ref.Name, describe(use)})
 		children := byRef[ref].Uses
 		next := prefix
 		switch branch {
@@ -1328,6 +1393,7 @@ func printTree(w io.Writer, definitions []contract.Definition) {
 		case "└─ ":
 			next += "   "
 		}
+		described(prefix+branch+kindNames[ref.Kind]+" "+ref.Name, next, describe(use))
 		for i, child := range children {
 			childBranch := "├─ "
 			if i == len(children)-1 {
@@ -1351,7 +1417,7 @@ func printTree(w io.Writer, definitions []contract.Definition) {
 	if len(unused) > 0 {
 		lines = append(lines, line{"unused (no process uses these)", ""})
 		for _, ref := range unused {
-			lines = append(lines, line{"   " + kindNames[ref.Kind] + " " + ref.Name, describe(ref)})
+			described("   "+kindNames[ref.Kind]+" "+ref.Name, "", describe(ref))
 		}
 	}
 	width := 0

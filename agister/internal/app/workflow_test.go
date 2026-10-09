@@ -1119,7 +1119,7 @@ func TestWorkflowWithAnInvalidJoinIsRefused(t *testing.T) {
 	if class(record) != run.ClassRefused || !strings.Contains(message(record), "cannot receive the collection") || len(h.store.ids()) != 1 {
 		t.Fatalf("result %+v, runs %v", record.Result, h.store.ids())
 	}
-	if len(record.Definitions) != 1 || record.Definitions[0].Kind != "workflows" || record.Definitions[0].SHA256 != sha(strings.Replace(workflowDoc, "process:joiner", "process:first", 1)) {
+	if len(record.Definitions) != 1 || record.Definitions[0].Kind != "workflows" || digestRecorded(record.Definitions[0]) != sha(strings.Replace(workflowDoc, "process:joiner", "process:first", 1)) {
 		t.Fatalf("definitions = %+v", record.Definitions)
 	}
 }
@@ -1272,7 +1272,7 @@ func TestWorkflowRecordLinksParentAndChildren(t *testing.T) {
 	if record.Process != "w" || record.Parent != nil || record.Agent != "" {
 		t.Fatalf("record = %+v", record)
 	}
-	if len(record.Definitions) != 1 || record.Definitions[0].Kind != "workflows" || record.Definitions[0].Name != "w" || record.Definitions[0].SHA256 != sha(workflowDoc) {
+	if len(record.Definitions) != 1 || record.Definitions[0].Kind != "workflows" || record.Definitions[0].Name != "w" || digestRecorded(record.Definitions[0]) != sha(workflowDoc) {
 		t.Fatalf("definitions = %+v", record.Definitions)
 	}
 	if len(record.Inputs) != 2 || record.Inputs[0].Name != "base" || !record.Inputs[1].Revision {

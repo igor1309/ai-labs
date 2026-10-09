@@ -70,7 +70,7 @@ func TestACallIsGivenThePromptItsProcessNames(t *testing.T) {
 	if got := promptInput(record); !reflect.DeepEqual(got, want) {
 		t.Fatalf("input = %+v, want %+v", got, want)
 	}
-	source := run.DefinitionSource{Kind: "prompts", Name: "review", Path: "mem/prompts/review", SHA256: sha(reviewPrompt)}
+	source := homeFile("prompts", "review", reviewPrompt)
 	if got := promptSources(record); !reflect.DeepEqual(got, []run.DefinitionSource{source}) {
 		t.Fatalf("prompt sources = %+v", got)
 	}
@@ -216,7 +216,7 @@ func TestCheckLinksAProcessToItsPrompts(t *testing.T) {
 	if p := got[ref("processes", "p")]; !reflect.DeepEqual(p.Uses, uses) {
 		t.Fatalf("p = %+v", p)
 	}
-	if review := got[ref("prompts", "review")]; !reflect.DeepEqual(review.UsedBy, []contract.DefinitionRef{ref("processes", "p")}) || review.Path != "mem/prompts/review" || review.Layer != "global" {
+	if review := got[ref("prompts", "review")]; !reflect.DeepEqual(review.UsedBy, []contract.DefinitionRef{ref("processes", "p")}) || review.Path != "mem/prompts/review" || review.Layer != "home" {
 		t.Fatalf("review = %+v", review)
 	}
 
@@ -243,7 +243,7 @@ func TestShowProcessShowsItsPrompts(t *testing.T) {
 	if err != nil || !reflect.DeepEqual(view.Prompts, []string{"review"}) || view.Refusal != "" {
 		t.Fatalf("prompts %q, refusal %q, %v", view.Prompts, view.Refusal, err)
 	}
-	origin := contract.DefinitionOrigin{Kind: "prompts", Name: "review", Layer: "global", Path: "mem/prompts/review"}
+	origin := contract.DefinitionOrigin{Kind: "prompts", Name: "review", Layer: "home", Path: "mem/prompts/review"}
 	if !containsOrigin(view.Sources, origin) {
 		t.Fatalf("sources = %+v", view.Sources)
 	}
@@ -288,7 +288,7 @@ func TestGatedCallIsGivenThePromptCheckSaw(t *testing.T) {
 	if input := promptInput(record); input.Value != reviewPrompt || input.Identity != "sha256:"+sha(reviewPrompt) {
 		t.Fatalf("input = %+v", input)
 	}
-	if sources := promptSources(record); len(sources) != 1 || sources[0].SHA256 != sha(reviewPrompt) {
+	if sources := promptSources(record); len(sources) != 1 || digestRecorded(sources[0]) != sha(reviewPrompt) {
 		t.Fatalf("prompt sources = %+v", sources)
 	}
 }
@@ -521,7 +521,7 @@ func TestShowProcessShowsAnOptionalPrompt(t *testing.T) {
 	if err != nil || view.Refusal != "" || !reflect.DeepEqual(view.Optional, []string{"go_tests"}) || view.Absent != nil {
 		t.Fatalf("found: optional %q, absent %q, refusal %q, %v", view.Optional, view.Absent, view.Refusal, err)
 	}
-	origin := contract.DefinitionOrigin{Kind: "prompts", Name: "go_tests", Layer: "global", Path: "mem/prompts/go_tests"}
+	origin := contract.DefinitionOrigin{Kind: "prompts", Name: "go_tests", Layer: "home", Path: "mem/prompts/go_tests"}
 	if !containsOrigin(view.Sources, origin) || !slices.Contains(view.Inputs, "go <- prompt (optional)") {
 		t.Fatalf("sources %+v, inputs %q", view.Sources, view.Inputs)
 	}
