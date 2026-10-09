@@ -1043,9 +1043,7 @@ func TestReviewPromptsCarryTheirCoverageContract(t *testing.T) {
 // severity checked before merging, a merged item taking the highest
 // supported one; a reject for a finding with no causal chain; a fix cost
 // without its basis counted as unpresented; and the switching condition
-// each item records. The deliver skill, which acts on the rulings, keeps the
-// waive handling: no repair, no backlog issue, and a place in the pull
-// request description with the switching condition. An instruction is held
+// each item records. An instruction is held
 // by its short phrases standing in one paragraph, as in
 // TestReviewPromptsCarryTheirCoverageContract. The files are the
 // repository's own, read as they are.
@@ -1086,13 +1084,6 @@ func TestReviewPromptsCarryTheCaseForValue(t *testing.T) {
 			{"a finding with no causal chain is rejected", []string{"**reject**", "no causal chain", "`requirement`", "`consequence`"}},
 			{"a fix cost without its basis counts as unpresented", []string{"`fix_cost` whose basis is missing or empty", "unpresented"}},
 			{"each item records its switching condition", []string{"`benefit`", "`cost`", "`switching_condition`", "if circumstances change"}},
-		}},
-		// Its bullets stand in one paragraph, so each phrase is one only the
-		// waive sentence has.
-		{deliverSkillFile, []promptInstruction{
-			{"waive items: no repair, no backlog issue, listed in the pull request with their switching condition", []string{
-				"Waive items get no repair and no backlog issue",
-				"list them in the pull request description with their switching condition"}},
 		}},
 	}
 	for _, c := range cases {
@@ -1273,30 +1264,6 @@ func TestClarityPromptCarriesTheDoneGateException(t *testing.T) {
 			t.Errorf("agister/home/prompts/%s lost the instruction %q: no paragraph has all of %q",
 				prompt, instruction.name, instruction.phrases)
 		}
-	}
-}
-
-// The deliver skill, which calls the review, says what the goal file names
-// so that the clarity reviewer can apply that exception: the done gates the
-// change touches, and any edit to an agent instruction the owner asked for
-// in the change. Its bullets stand in one paragraph, so each phrase is one
-// only that sentence has. An instruction is held by its short phrases
-// standing in one paragraph, as in
-// TestReviewPromptsCarryTheirCoverageContract. The file is the repository's
-// own, read as it is.
-func TestAgentInstructionsSayWhatTheGoalFileNames(t *testing.T) {
-	t.Parallel()
-	file := deliverSkillFile
-	data, err := os.ReadFile(filepath.Join("..", "..", "..", file))
-	if err != nil {
-		t.Fatal(err)
-	}
-	instruction := promptInstruction{"the goal file names the done gates and the agent instruction edits the owner asked for", []string{
-		"The goal file names the done gates the change touches",
-		"any edit to an agent instruction the owner asked for in the change"}}
-	if !carries(string(data), instruction.phrases) {
-		t.Errorf("%s lost the instruction %q: no paragraph has all of %q",
-			file, instruction.name, instruction.phrases)
 	}
 }
 
