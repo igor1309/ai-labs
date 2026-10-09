@@ -110,13 +110,12 @@ func TestNotSettings(t *testing.T) {
 // fixedFilePaths finds a fixed path where a process or a workflow of
 // folder takes a file input: its path names no param, and absolute or
 // relative, it is a path of a machine or a repository. A file a param
-// names, or a prompt, is none.
+// names is none.
 func TestFixedFilePaths(t *testing.T) {
 	t.Parallel()
 	folder := tempDir(t)
 	write(t, filepath.Join(folder, "processes", "p.yaml"), "input:\n  values:\n"+
 		"    brief: {source: file, path: \"${param.brief}\"}\n"+
-		"    rules: {source: prompt, name: rules}\n"+
 		"    review: {source: file, path: prompts/review.md}\n"+
 		"    judge: {source: file, path: /home/me/.agister/prompts/judge.md}\n")
 	write(t, filepath.Join(folder, "workflows", "w.yaml"), "input:\n  values:\n"+

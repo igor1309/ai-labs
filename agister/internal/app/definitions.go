@@ -499,7 +499,6 @@ type InspectedProcess struct {
 	Primitives  []string // the plan's
 	Withheld    []string // allowed but not provided
 	Sources     []InspectedSource
-	Absent      []string // the optional prompts neither layer has (ADR-019)
 }
 
 // InspectedDefinition is what the view shows of a process's definition.
@@ -512,8 +511,8 @@ type InspectedDefinition struct {
 	Values       []InspectedValue
 	Verify       *InspectedVerify // unset: no verification, or a named one not resolved
 	VerifyName   string           // the verification it names; empty for an inline block
-	Prompts      []string         // the prompts its inputs name
-	Optional     []string         // those of Prompts only optional inputs name (ADR-019)
+	Prompt       string           // the prompt it names (ADR-028 rule 8)
+	Guidance     []string         // the further prompts it names, in order
 	Skills       []string         // the skills it names
 }
 
@@ -527,10 +526,9 @@ type InspectedParam struct {
 // InspectedValue is an input a process or workflow declares, and its
 // source kind.
 type InspectedValue struct {
-	Name     string
-	Source   string
-	Optional bool     // an optional prompt (ADR-019)
-	Forms    []string // the brief forms its text must have one of (ADR-026 rule 8)
+	Name   string
+	Source string
+	Forms  []string // the brief forms its text must have one of (ADR-026 rule 8)
 }
 
 // InspectedVerify is a process's verification command.
@@ -633,7 +631,7 @@ func (r *Resolver) InspectProcess(ctx context.Context, name, agent string) (*Ins
 			Name: process.Name, Policy: process.Policy,
 			OutputFormat: process.Output.Format, OutputSchema: process.Output.Schema,
 			Params: inspectedParams(process.Params), Values: inspectedValues(process.Values),
-			VerifyName: process.VerifyName, Prompts: process.Prompts(), Optional: process.OptionalPrompts(), Skills: process.Skills,
+			VerifyName: process.VerifyName, Prompt: process.Prompt, Guidance: process.Guidance, Skills: process.Skills,
 		},
 		Agent:       res.agent.Name,
 		AgentSkills: definition.CallSkills(process, res.agent)[len(process.Skills):],
@@ -649,13 +647,6 @@ func (r *Resolver) InspectProcess(ctx context.Context, name, agent string) (*Ins
 	}
 	if verify := process.Verify; verify != nil {
 		inspected.Process.Verify = &InspectedVerify{Command: verify.Command, Timeout: verify.Timeout, MaxAttempts: verify.MaxAttempts, Instruction: verify.Instruction}
-	}
-	for _, name := range inspected.Process.Prompts {
-		for _, absent := range res.absent {
-			if absent.prompt == name && !contains(inspected.Absent, name) {
-				inspected.Absent = append(inspected.Absent, name)
-			}
-		}
 	}
 	return inspected, err
 }
@@ -703,7 +694,7 @@ func formed(forms []string) string {
 
 func inspectedValues(values []definition.Value) []InspectedValue {
 	return translated(values, func(value definition.Value) InspectedValue {
-		return InspectedValue{Name: value.Name, Source: value.Source, Optional: value.Optional(), Forms: value.Forms}
+		return InspectedValue{Name: value.Name, Source: value.Source, Forms: value.Forms}
 	})
 }
 
@@ -816,9 +807,8 @@ func (i *Inspection) showProcess(ctx context.Context, name, agent string) (contr
 		Primitives:  res.Primitives,
 		Withheld:    res.Withheld,
 		VerifyName:  res.Process.VerifyName,
-		Prompts:     res.Process.Prompts,
-		Optional:    res.Process.Optional,
-		Absent:      res.Absent,
+		Prompt:      res.Process.Prompt,
+		Guidance:    res.Process.Guidance,
 		Skills:      res.Process.Skills,
 		AgentSkills: res.AgentSkills,
 	}
@@ -829,11 +819,7 @@ func (i *Inspection) showProcess(ctx context.Context, name, agent string) (contr
 		view.Params = append(view.Params, contract.Param{Name: param.Name, Default: param.Default, Required: !param.HasDefault})
 	}
 	for _, value := range res.Process.Values {
-		input := value.Name + " <- " + value.Source + formed(value.Forms)
-		if value.Optional {
-			input += " (optional)"
-		}
-		view.Inputs = append(view.Inputs, input)
+		view.Inputs = append(view.Inputs, value.Name+" <- "+value.Source+formed(value.Forms))
 	}
 	view.Sources = origins(res.Sources)
 	if verify := res.Process.Verify; verify != nil {

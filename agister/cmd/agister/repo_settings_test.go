@@ -331,13 +331,13 @@ func TestCodeReviewCollectsItsFiveReviews(t *testing.T) {
 		t.Fatalf("code_review's judge collected %v, want %v", reviews, want)
 	}
 
-	for _, c := range []struct{ process, input, prompt string }{
-		{"architecture_review_codex", "review_prompt", "code-review-architecture"},
-		{"tests_review_codex", "review_prompt", "code-review-tests"},
-		{"adversarial_review_codex", "review_prompt", "code-review-adversarial"},
-		{"clarity_review_codex", "review_prompt", "code-review-clarity"},
-		{"intent_review_codex", "review_prompt", "code-review-intent"},
-		{"review_judge", "judge_prompt", "code-review-judge"},
+	for _, c := range []struct{ process, prompt string }{
+		{"architecture_review_codex", "code-review-architecture"},
+		{"tests_review_codex", "code-review-tests"},
+		{"adversarial_review_codex", "code-review-adversarial"},
+		{"clarity_review_codex", "code-review-clarity"},
+		{"intent_review_codex", "code-review-intent"},
+		{"review_judge", "code-review-judge"},
 	} {
 		prompt, err := os.ReadFile(filepath.Join(root, homeFolder, "prompts", c.prompt+".md"))
 		if err != nil {
@@ -349,8 +349,8 @@ func TestCodeReviewCollectsItsFiveReviews(t *testing.T) {
 		if record == nil {
 			t.Fatalf("code_review: no run of %s", c.process)
 		}
-		if given := inputOf(t, record, c.input); given["source"] != "prompt" || given["identity"] != digest {
-			t.Errorf("%s's %s = %v, want the prompt %s (%s)", c.process, c.input, given, c.prompt, digest)
+		if given := inputOf(t, record, "prompt"); given["source"] != "prompt" || given["identity"] != digest {
+			t.Errorf("%s's prompt = %v, want the prompt %s (%s)", c.process, given, c.prompt, digest)
 		}
 	}
 
@@ -431,8 +431,8 @@ func TestADRReviewCollectsTheADRReview(t *testing.T) {
 	}
 	sum := sha256.Sum256(prompt)
 	digest := "sha256:" + hex.EncodeToString(sum[:])
-	if given := inputOf(t, records["adr_review_codex"], "review_prompt"); given["source"] != "prompt" || given["identity"] != digest {
-		t.Fatalf("adr_review_codex's review_prompt = %v, want the prompt code-review-adr (%s)", given, digest)
+	if given := inputOf(t, records["adr_review_codex"], "prompt"); given["source"] != "prompt" || given["identity"] != digest {
+		t.Fatalf("adr_review_codex's prompt = %v, want the prompt code-review-adr (%s)", given, digest)
 	}
 }
 
@@ -496,8 +496,8 @@ func TestReviewNodesReceiveTheGoalAndTheJudgeDoesNot(t *testing.T) {
 			t.Fatalf("%s: the judge's call took params %v", workflow, params)
 		}
 		for _, input := range judge["inputs"].([]any) {
-			if name := input.(map[string]any)["name"]; name != "reviews" && name != "judge_prompt" {
-				t.Fatalf("%s: the judge was given input %v, want only reviews and judge_prompt", workflow, name)
+			if name := input.(map[string]any)["name"]; name != "reviews" && name != "prompt" {
+				t.Fatalf("%s: the judge was given input %v, want only reviews and its prompt", workflow, name)
 			}
 		}
 		prompt := runtimeStart(t, home, judge["id"].(string)).Prompt
@@ -547,7 +547,7 @@ func TestAdvisorAnswersAQuestionFile(t *testing.T) {
 	}
 	for _, input := range []struct{ name, source, path string }{
 		{"question", "file", question},
-		{"advisor_prompt", "prompt", filepath.Join(root, homeFolder, "prompts", "advisor.md")},
+		{"prompt", "prompt", filepath.Join(root, homeFolder, "prompts", "advisor.md")},
 	} {
 		data, err := os.ReadFile(input.path)
 		if err != nil {
@@ -1561,132 +1561,6 @@ func TestImplementHasNoCostLimit(t *testing.T) {
 	}
 	if limit, set := effective["max_cost_usd"]; set {
 		t.Fatalf("implement's effective cost limit is %v, want none", limit)
-	}
-}
-
-// goPrompts are the optional prompts every implement process of the
-// repository names (ADR-019), by input: each is a copy in .agister/prompts
-// of the prompt of the same name in prompts/.
-var goPrompts = map[string]string{
-	"go_testing":      "go-testing-seams",
-	"go_architecture": "go-architecture",
-}
-
-// Each implement process of the home folder gives its agent the two Go
-// prompts, and what it gives is the text of prompts/<name>.md: the
-// repository's settings hold a copy, which this test keeps identical.
-func TestImplementersAreGivenTheGoPrompts(t *testing.T) {
-	t.Parallel()
-	root, repo, home := onFakeRuntimes(t)
-	for _, name := range []string{"implement", "implement_codex", "implement_pi", "implement_pi_glm"} {
-		t.Run(name, func(t *testing.T) {
-			args := append([]string{"run", name}, paramArgs(parseProcess(t, root, name).Params)...)
-			if timeout := testTimeouts[name]; timeout != "" {
-				args = append(args, "--timeout", timeout)
-			}
-			created, _ := runRecorded(t, home, repo, args)
-			if len(created) != 1 {
-				t.Fatalf("runs recorded: %v, want one", created)
-			}
-			record := completedRun(t, home, created[0])
-			for input, prompt := range goPrompts {
-				text, err := os.ReadFile(filepath.Join(root, "prompts", prompt+".md"))
-				if err != nil {
-					t.Fatal(err)
-				}
-				digest := "sha256:" + digestOf(string(text))
-				if given := inputOf(t, record, input); given["source"] != "prompt" || given["identity"] != digest {
-					t.Fatalf("%s's %s = %v, want prompts/%s.md (%s)", name, input, given, prompt, digest)
-				}
-			}
-		})
-	}
-}
-
-// The architecture review and the tests review of the home folder give
-// their agent the Go prompt that says what they check, the same text the
-// implementers are given.
-func TestReviewersAreGivenTheirGoPrompt(t *testing.T) {
-	t.Parallel()
-	root, repo, home := onFakeRuntimes(t)
-	for name, input := range map[string]string{
-		"architecture_review_codex": "go_architecture",
-		"tests_review_codex":        "go_testing",
-	} {
-		t.Run(name, func(t *testing.T) {
-			args := append([]string{"run", name}, paramArgs(parseProcess(t, root, name).Params)...)
-			if timeout := testTimeouts[name]; timeout != "" {
-				args = append(args, "--timeout", timeout)
-			}
-			created, _ := runRecorded(t, home, repo, args)
-			if len(created) != 1 {
-				t.Fatalf("runs recorded: %v, want one", created)
-			}
-			record := completedRun(t, home, created[0])
-			prompt := goPrompts[input]
-			text, err := os.ReadFile(filepath.Join(root, "prompts", prompt+".md"))
-			if err != nil {
-				t.Fatal(err)
-			}
-			digest := "sha256:" + digestOf(string(text))
-			if given := inputOf(t, record, input); given["source"] != "prompt" || given["identity"] != digest {
-				t.Fatalf("%s's %s = %v, want prompts/%s.md (%s)", name, input, given, prompt, digest)
-			}
-		})
-	}
-}
-
-// Each real implement process completes when neither settings layer has
-// the Go prompts, records both as absent, and gives its agent neither input.
-func TestImplementersCanRunWithoutTheGoPrompts(t *testing.T) {
-	t.Parallel()
-	for _, name := range []string{"implement", "implement_codex", "implement_pi", "implement_pi_glm"} {
-		t.Run(name, func(t *testing.T) {
-			t.Parallel()
-			root, repo, home := onFakeRuntimes(t)
-			// These settings belong to the test. The repository's prompts
-			// directory is a symlink: remove the link, not its target.
-			for _, dir := range []string{filepath.Join(repo, ".agister", "prompts"), filepath.Join(home, "prompts")} {
-				if err := os.RemoveAll(dir); err != nil {
-					t.Fatal(err)
-				}
-				if err := os.MkdirAll(dir, 0o755); err != nil {
-					t.Fatal(err)
-				}
-			}
-			args := append([]string{"run", name}, paramArgs(parseProcess(t, root, name).Params)...)
-			if timeout := testTimeouts[name]; timeout != "" {
-				args = append(args, "--timeout", timeout)
-			}
-			created, _ := runRecorded(t, home, repo, args)
-			if len(created) != 1 {
-				t.Fatalf("runs recorded: %v, want one", created)
-			}
-			record := completedRun(t, home, created[0])
-			absent, _ := record["absent_prompts"].([]any)
-			if len(absent) != len(goPrompts) {
-				t.Fatalf("absent prompts = %v, want both Go prompts", absent)
-			}
-			given := runtimeStart(t, home, created[0]).Prompt
-			if given == "" {
-				t.Fatal("the fake runtime recorded no agent prompt")
-			}
-			for input, prompt := range goPrompts {
-				want := map[string]any{"input": input, "prompt": prompt}
-				if !slices.ContainsFunc(absent, func(entry any) bool { return reflect.DeepEqual(entry, want) }) {
-					t.Fatalf("absent prompts = %v, want %v", absent, want)
-				}
-				inputs, _ := record["inputs"].([]any)
-				for _, entry := range inputs {
-					if entry.(map[string]any)["name"] == input {
-						t.Fatalf("absent input %s was recorded: %v", input, entry)
-					}
-				}
-				if strings.Contains(given, "## "+input) {
-					t.Fatalf("the agent was given absent input %s:\n%s", input, given)
-				}
-			}
-		})
 	}
 }
 

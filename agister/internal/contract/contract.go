@@ -319,9 +319,9 @@ type DefinitionOrigin struct {
 type DefinitionRef struct {
 	Kind string `json:"kind"`
 	Name string `json:"name"`
-	// Optional is set on a process's use of a prompt that only optional
-	// inputs name (ADR-019): the process runs without it.
-	Optional bool `json:"optional,omitempty"`
+	// Guidance is set on a process's use of a prompt it names in its
+	// guidance, not as its prompt (ADR-028 rule 8).
+	Guidance bool `json:"guidance,omitempty"`
 }
 
 type Param struct {
@@ -358,13 +358,11 @@ type ProcessView struct {
 	Verify *Verify
 	// The verification the process names; empty for an inline block.
 	VerifyName string
-	// The prompts its inputs name (ADR-014); Sources says where each
-	// resolved one comes from.
-	Prompts []string
-	// Optional are those of Prompts that only optional inputs name, and
-	// Absent those of them neither layer has (ADR-019).
-	Optional []string
-	Absent   []string
+	// The prompt it names and its guidance, the further prompts it names,
+	// in order (ADR-028 rule 8); Sources says where each resolved one comes
+	// from.
+	Prompt   string
+	Guidance []string
 	// The skills a call of it is given (ADR-021): Skills those the process
 	// names, AgentSkills those only its agent names. Sources says where
 	// each resolved one comes from.

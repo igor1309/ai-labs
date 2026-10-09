@@ -32,12 +32,6 @@ func recordLayers(layers []CallLayer) []run.Layer {
 	})
 }
 
-func recordAbsent(absent []CallAbsent) []run.AbsentPrompt {
-	return translated(absent, func(absent CallAbsent) run.AbsentPrompt {
-		return run.AbsentPrompt{Input: absent.Input, Prompt: absent.Prompt}
-	})
-}
-
 func recordEffective(effective CallLimits) *run.EffectivePolicy {
 	var stale *run.StaleLimits
 	if effective.Stale != (CallStale{}) {

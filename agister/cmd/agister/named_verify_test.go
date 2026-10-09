@@ -80,7 +80,7 @@ func TestAGlobalProcessVerifiesWithTheRepositorysVerification(t *testing.T) {
 	}
 
 	r := agister(t, home, repo, "check", "--tree")
-	if r.code != 0 || !regexp.MustCompile(`└─ verification repo +repository `+regexp.QuoteMeta(project)+"\n").MatchString(r.stdout) ||
+	if r.code != 0 || !regexp.MustCompile(`[├└]─ verification repo +repository `+regexp.QuoteMeta(project)+"\n").MatchString(r.stdout) ||
 		!strings.Contains(r.stderr, "warning process implement: verify runs its command with the operator's authority") {
 		t.Fatalf("check --tree: %d\n%s%s", r.code, r.stdout, r.stderr)
 	}
@@ -115,7 +115,7 @@ func TestAVerificationInNeitherLayerRefusesOnlyTheProcessNamingIt(t *testing.T) 
 		t.Fatalf("check: %d\n%s%s", r.code, r.stdout, r.stderr)
 	}
 	r = agister(t, home, repo, "check", "--tree")
-	if r.code != 0 || !regexp.MustCompile(`└─ verification repo +MISSING\n`).MatchString(r.stdout) {
+	if r.code != 0 || !regexp.MustCompile(`[├└]─ verification repo +MISSING\n`).MatchString(r.stdout) {
 		t.Fatalf("check --tree: %d\n%s%s", r.code, r.stdout, r.stderr)
 	}
 
@@ -124,7 +124,7 @@ func TestAVerificationInNeitherLayerRefusesOnlyTheProcessNamingIt(t *testing.T) 
 		t.Fatalf("verify %+v from %q, warnings %q, refusal %q\nwant %q", view.Verify, view.VerifyName, view.Warnings, view.Refusal, reason)
 	}
 	r = agister(t, home, repo, "process", "show", "implement")
-	if r.code != 0 || !strings.Contains(r.stdout, "verify       verify:repo (not resolved)\nplan         REFUSED: "+reason+"\n") {
+	if r.code != 0 || !strings.Contains(r.stdout, "verify       verify:repo (not resolved)\nprompt       implement (not resolved)\nguidance     (none)\nplan         REFUSED: "+reason+"\n") {
 		t.Fatalf("process show: %d\n%s%s", r.code, r.stdout, r.stderr)
 	}
 

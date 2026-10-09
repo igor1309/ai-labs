@@ -71,11 +71,11 @@ func TestCheckReportsWhatDefinesWhat(t *testing.T) {
 		got[ref(d.Kind, d.Name)] = d
 		order = append(order, d.Kind+"/"+d.Name)
 	}
-	if strings.Join(order, " ") != "service/service runtimes/rt agents/a agents/broken policies/pol policies/spare processes/p processes/q schemas/s" {
+	if strings.Join(order, " ") != "service/service runtimes/rt agents/a agents/broken policies/pol policies/spare prompts/inspect processes/p processes/q schemas/s" {
 		t.Fatalf("order = %v", order)
 	}
 	p, a := got[ref("processes", "p")], got[ref("agents", "a")]
-	if !reflect.DeepEqual(p.Uses, []contract.DefinitionRef{ref("agents", "a"), ref("policies", "pol"), ref("schemas", "s")}) || p.Layer != "home" || p.Path != "mem/processes/p" {
+	if !reflect.DeepEqual(p.Uses, []contract.DefinitionRef{ref("agents", "a"), ref("policies", "pol"), ref("prompts", "inspect"), ref("schemas", "s")}) || p.Layer != "home" || p.Path != "mem/processes/p" {
 		t.Fatalf("p = %+v", p)
 	}
 	if !reflect.DeepEqual(a.Uses, []contract.DefinitionRef{ref("runtimes", "rt")}) || !reflect.DeepEqual(a.UsedBy, []contract.DefinitionRef{ref("processes", "p")}) {

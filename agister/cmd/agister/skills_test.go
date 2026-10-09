@@ -22,6 +22,7 @@ name: skilled
 type: process
 uses: agent:stylist
 policy: process-policy:read-only
+prompt: ask
 skills: [review]
 input:
   instruction: Follow the rules.

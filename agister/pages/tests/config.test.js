@@ -460,21 +460,19 @@ for (const path of ['.agister', 'agister/home', 'agister/examples/settings']) {
 }
 
 // Home's source folder holds every document its processes and workflows
-// name but the verification and the two Go prompts, which this
-// repository's .agister supplies (ADR-027 rules 3 and 6): composed as the
-// page composes home and a repo, nothing they name is missing, and the
-// folder alone lacks only those.
+// name but the verification, which this repository's .agister supplies
+// (ADR-027 rules 3 and 6): composed as the page composes home and a repo,
+// nothing they name is missing, and the folder alone lacks only that.
+// Home's processes name their prompts in prompt and guidance (ADR-028
+// rule 8), which this page does not read yet: none is among its prompts.
 test('the settings in agister/home, with .agister over them, name nothing missing', async () => {
   const m = await C.loadComposed(diskDir(join(repoRoot, 'agister/home')), diskDir(join(repoRoot, '.agister')));
   assert.ok(m.processes.length > 0);
   assert.ok(m.workflows.length > 0);
-  const own = ['go-testing-seams', 'go-architecture'];
   for (const p of m.processes) {
     assert.ok(!p.error, `${p.file}: ${p.error}`);
     assert.deepEqual([p.agentOutside, p.policyOutside, p.outputOutside], [false, false, false], p.name);
-    for (const prompt of p.prompts) {
-      assert.deepEqual([prompt.outside, prompt.source], [false, own.includes(prompt.name) ? 'repo' : 'home'], `${p.name}: ${prompt.name}`);
-    }
+    assert.deepEqual(p.prompts, [], p.name);
     for (const form of p.forms) assert.equal(form.outside, false, `${p.name}: ${form.name}`);
     if (p.verify) {
       const v = m.verifies.find((x) => x.name === p.verify.ref);
@@ -492,5 +490,5 @@ test('the settings in agister/home, with .agister over them, name nothing missin
   const alone = await C.loadAgister(diskDir(join(repoRoot, 'agister/home')));
   const implement = alone.processes.find((p) => p.name === 'implement');
   assert.equal(implement.verify.outside, true);
-  assert.deepEqual(implement.prompts, own.map((name) => ({ name, outside: true })));
+  assert.deepEqual(implement.prompts, []);
 });

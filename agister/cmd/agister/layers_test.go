@@ -126,7 +126,7 @@ func TestACallRunsTheSettingsComposedForItsLaunchDirectory(t *testing.T) {
 	want := map[string]any{"kind": "processes", "name": "ask", "layers": []any{
 		map[string]any{"layer": "project", "path": l.project, "sha256": digestOf(projectAsk), "fields": []any{"uses", "input.params.question.default"}},
 		map[string]any{"layer": "repository", "path": l.repository, "sha256": digestOf(repositoryAsk), "fields": []any{"input.instruction"}},
-		map[string]any{"layer": "home", "path": l.global, "sha256": digestOf(read(t, l.global)), "fields": []any{"schema", "name", "type", "policy", "input.values.question.source", "input.values.question.name", "output.format"}},
+		map[string]any{"layer": "home", "path": l.global, "sha256": digestOf(read(t, l.global)), "fields": []any{"schema", "name", "type", "policy", "prompt", "input.values.question.source", "input.values.question.name", "output.format"}},
 	}}
 	if got := definitionOf(t, below, "processes", "ask"); !reflect.DeepEqual(got, want) {
 		t.Fatalf("process recorded as\n%v\nwant\n%v", got, want)
@@ -258,6 +258,7 @@ func TestShowAndTheTreeNameEachFieldsLayer(t *testing.T) {
 		"               name                           home\n" +
 		"               output.format                  home\n" +
 		"               policy                         home\n" +
+		"               prompt                         home\n" +
 		"               schema                         home\n" +
 		"               type                           home\n" +
 		"               uses                           project\n" +
@@ -282,7 +283,7 @@ func TestShowAndTheTreeNameEachFieldsLayer(t *testing.T) {
 	want := []contract.DefinitionLayer{
 		{Layer: "project", Path: l.project, Fields: []string{"uses", "input.params.question.default"}},
 		{Layer: "repository", Path: l.repository, Fields: []string{"input.instruction"}},
-		{Layer: "home", Path: l.global, Fields: []string{"schema", "name", "type", "policy", "input.values.question.source", "input.values.question.name", "output.format"}},
+		{Layer: "home", Path: l.global, Fields: []string{"schema", "name", "type", "policy", "prompt", "input.values.question.source", "input.values.question.name", "output.format"}},
 	}
 	found := false
 	for _, source := range shown.Sources {
@@ -312,7 +313,8 @@ func TestShowAndTheTreeNameEachFieldsLayer(t *testing.T) {
 		`│ +\(none\)\n` +
 		`│ +home +` + regexp.QuoteMeta(filepath.Join(l.home, "agents", "reviewer.toml")) + `\n` +
 		`│  └─ runtime claude-code +home +` + regexp.QuoteMeta(filepath.Join(l.home, "runtimes", "claude-code.yaml")) + `\n` +
-		`└─ policy read-only +home +` + regexp.QuoteMeta(filepath.Join(l.home, "policies", "read-only.yaml")) + `\n`)
+		`├─ policy read-only +home +` + regexp.QuoteMeta(filepath.Join(l.home, "policies", "read-only.yaml")) + `\n` +
+		`└─ prompt ask +home +` + regexp.QuoteMeta(filepath.Join(l.home, "prompts", "ask.md")) + `\n`)
 	if r.code != 0 || !tree.MatchString(r.stdout) {
 		t.Fatalf("check --tree: %d, want %s\ngot\n%s%s", r.code, tree, r.stdout, r.stderr)
 	}

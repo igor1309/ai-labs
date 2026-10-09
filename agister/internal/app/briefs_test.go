@@ -439,7 +439,7 @@ func TestCheckReadsBriefsAndLinksWhatNamesThem(t *testing.T) {
 	for _, d := range report.Definitions {
 		got[ref(d.Kind, d.Name)] = d
 	}
-	processUses := []contract.DefinitionRef{ref("agents", "a"), ref("policies", "pol"), ref("schemas", "s"), ref("briefs", "goal"), ref("briefs", "step")}
+	processUses := []contract.DefinitionRef{ref("agents", "a"), ref("policies", "pol"), ref("prompts", "inspect"), ref("schemas", "s"), ref("briefs", "goal"), ref("briefs", "step")}
 	if p := got[ref("processes", "p")]; !reflect.DeepEqual(p.Uses, processUses) {
 		t.Fatalf("p = %+v", p)
 	}

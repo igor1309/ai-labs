@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"slices"
 	"strings"
 	"testing"
 
@@ -451,4 +452,148 @@ func TestAStoreAloneIsReadAsHome(t *testing.T) {
 	if layers := store.Layers(ctx); !reflect.DeepEqual(layers, []definition.LayerDir{{Layer: definition.LayerHome, Dir: store.Dir}}) {
 		t.Fatalf("layers = %+v", layers)
 	}
+}
+
+// layerFile is a layer.yaml listing folders.
+func layerFile(folders ...string) string {
+	return "schema: agister.layer/v1alpha1\nprompts: [" + strings.Join(folders, ", ") + "]\n"
+}
+
+// ADR-028 rule 9: a layer's prompt is its .agister/prompts file, else the
+// first file of that name in the folders its layer.yaml lists, in order,
+// each relative to the directory that holds the layer's .agister; the
+// layer wins over its parents as any layer does. A prompt no layer has is
+// expected in each place, and a listed folder holds no other document.
+//
+// Contract test: the settings store against the real filesystem.
+func TestALayersPromptsAreAlsoFoundInTheFoldersItsLayerFileLists(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	selected, home, repository, project := threeLayers(t)
+	root := filepath.Dir(repository)
+	put(t, filepath.Join(repository, "layer.yaml"), layerFile("a", "b/c"))
+	put(t, filepath.Join(project, "layer.yaml"), layerFile("p"))
+	for _, folder := range []string{filepath.Join(root, "a"), filepath.Join(root, "b", "c"), filepath.Join(root, "docs", "p")} {
+		if err := os.MkdirAll(folder, 0o700); err != nil {
+			t.Fatal(err)
+		}
+	}
+	read := func(want string) definition.Document {
+		t.Helper()
+		doc, err := selected.Read(ctx, definition.KindPrompt, "x")
+		if err != nil || doc.Source.Path != want || string(doc.Bytes) != want || doc.Source.SHA256 != sum([]byte(want)) {
+			t.Fatalf("x = %+v %q, %v; want %s", doc.Source, doc.Bytes, err, want)
+		}
+		return doc
+	}
+	for _, path := range []string{filepath.Join(home, "prompts", "x.md"), filepath.Join(root, "b", "c", "x.md")} {
+		put(t, path, path)
+	}
+	doc := read(filepath.Join(root, "b", "c", "x.md"))
+	if doc.Source.Layer != definition.LayerRepository || !reflect.DeepEqual(doc.Source.Layers[1:], []definition.LayerFile{{Layer: definition.LayerHome, Path: filepath.Join(home, "prompts", "x.md")}}) {
+		t.Fatalf("x from the second folder = %+v", doc.Source)
+	}
+	// The first folder listed comes first, and the layer's own prompts/
+	// before both; the project's folder before the repository's.
+	for _, path := range []string{filepath.Join(root, "a", "x.md"), filepath.Join(repository, "prompts", "x.md"), filepath.Join(root, "docs", "p", "x.md")} {
+		put(t, path, path)
+		read(path)
+	}
+	doc = read(filepath.Join(root, "docs", "p", "x.md"))
+	if doc.Source.Layer != definition.LayerProject || !reflect.DeepEqual(doc.Source.Layers[1:], []definition.LayerFile{
+		{Layer: definition.LayerRepository, Path: filepath.Join(repository, "prompts", "x.md")},
+		{Layer: definition.LayerHome, Path: filepath.Join(home, "prompts", "x.md")},
+	}) {
+		t.Fatalf("x from the project's folder = %+v", doc.Source)
+	}
+
+	_, err := selected.Read(ctx, definition.KindPrompt, "y")
+	if !errors.Is(err, definition.ErrNotFound) {
+		t.Fatalf("y: %v", err)
+	}
+	for _, path := range []string{filepath.Join(project, "prompts", "y.md"), filepath.Join(root, "docs", "p", "y.md"), filepath.Join(repository, "prompts", "y.md"), filepath.Join(root, "a", "y.md"), filepath.Join(root, "b", "c", "y.md"), filepath.Join(home, "prompts", "y.md")} {
+		if !strings.Contains(err.Error(), path) {
+			t.Fatalf("y: %v; want %s among the paths expected", err, path)
+		}
+	}
+	// A listed folder is not settings: no other kind is read there.
+	put(t, filepath.Join(root, "a", "z.md"), "z")
+	if _, err := selected.Read(ctx, definition.KindPolicy, "z"); !errors.Is(err, definition.ErrNotFound) {
+		t.Fatalf("policy z: %v", err)
+	}
+	if names, err := selected.List(ctx, definition.KindPrompt); err != nil || slices.Contains(names, "z") {
+		t.Fatalf("prompts listed %v, %v", names, err)
+	}
+}
+
+// ADR-028 rule 9: a layer.yaml that cannot be used makes its layer
+// invalid, so it stops every command launched under the layer: one that
+// cannot be read or is not valid, or that lists a folder that does not
+// exist, is not a folder, or that a link leads out of the directory that
+// holds the layer's .agister. Which prompt the layer was meant to give
+// cannot be known, so a prompt its .agister/prompts lacks is not looked
+// for in its parents. Home holds no layer.yaml: one there makes home
+// invalid.
+//
+// Contract test: the settings store against the real filesystem.
+func TestALayerFileThatCannotBeUsedMakesItsLayerInvalid(t *testing.T) {
+	t.Parallel()
+	for name, c := range map[string]struct {
+		plant  func(t *testing.T, dir string) // dir holds the layer's .agister
+		reason string
+	}{
+		"unreadable": {func(t *testing.T, dir string) { dangle(t, filepath.Join(dir, ".agister", "layer.yaml")) }, "cannot be read"},
+		"no schema":  {func(t *testing.T, dir string) { put(t, filepath.Join(dir, ".agister", "layer.yaml"), "prompts: [a]\n") }, "is invalid: schema: is required"},
+		"a list":     {func(t *testing.T, dir string) { put(t, filepath.Join(dir, ".agister", "layer.yaml"), "- a\n") }, "is invalid"},
+		"a folder that does not exist": {func(t *testing.T, dir string) {
+			put(t, filepath.Join(dir, ".agister", "layer.yaml"), layerFile("a"))
+		}, "lists prompts folder a, which does not exist in "},
+		"a file": {func(t *testing.T, dir string) {
+			put(t, filepath.Join(dir, "a"), "")
+			put(t, filepath.Join(dir, ".agister", "layer.yaml"), layerFile("a"))
+		}, "lists prompts folder a, which is not a folder"},
+		"a link that leaves": {func(t *testing.T, dir string) {
+			if err := os.Symlink(t.TempDir(), filepath.Join(dir, "a")); err != nil {
+				t.Fatal(err)
+			}
+			put(t, filepath.Join(dir, ".agister", "layer.yaml"), layerFile("a"))
+		}, "lists prompts folder a, which a link leads out of "},
+	} {
+		for _, at := range []definition.Layer{definition.LayerProject, definition.LayerRepository} {
+			t.Run(name+" in the "+string(at)+" layer", func(t *testing.T) {
+				t.Parallel()
+				ctx := context.Background()
+				selected, home, repository, project := threeLayers(t)
+				dir, index := filepath.Dir(project), 0
+				if at == definition.LayerRepository {
+					dir, index = filepath.Dir(repository), 1
+				}
+				c.plant(t, dir)
+				put(t, filepath.Join(home, "prompts", "x.md"), "home's")
+				file := filepath.Join(dir, ".agister", "layer.yaml")
+				layers := selected.Layers(ctx)
+				for i, layer := range layers {
+					if i != index && len(layer.Invalid) != 0 {
+						t.Fatalf("layer %s is invalid too: %+v", layer.Layer, layer.Invalid)
+					}
+				}
+				if invalid := layers[index].Invalid; len(invalid) != 1 || invalid[0].Path != file || !strings.Contains(invalid[0].Reason, c.reason) {
+					t.Fatalf("%s layer invalid = %+v, want %q", at, invalid, c.reason)
+				}
+				doc, err := selected.Read(ctx, definition.KindPrompt, "x")
+				if err == nil || errors.Is(err, definition.ErrNotFound) || !strings.Contains(err.Error(), file) || doc.Bytes != nil {
+					t.Fatalf("x = %q, %v; want an error naming %s", doc.Bytes, err, file)
+				}
+			})
+		}
+	}
+	t.Run("home's", func(t *testing.T) {
+		t.Parallel()
+		selected, home, _, _ := threeLayers(t)
+		put(t, filepath.Join(home, "layer.yaml"), layerFile())
+		layers := selected.Layers(context.Background())
+		if invalid := layers[2].Invalid; layers[2].Layer != definition.LayerHome || len(invalid) != 1 || invalid[0].Path != filepath.Join(home, "layer.yaml") || !strings.Contains(invalid[0].Reason, "home holds no layer.yaml") {
+			t.Fatalf("layers = %+v", layers)
+		}
+	})
 }

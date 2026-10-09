@@ -447,7 +447,7 @@ func TestAgentCallEndToEnd(t *testing.T) {
 		}
 		kinds = append(kinds, source["kind"].(string))
 	}
-	if strings.Join(kinds, ",") != "service,processes,policies,agents,runtimes,schemas" {
+	if strings.Join(kinds, ",") != "service,processes,policies,agents,runtimes,schemas,prompts" {
 		t.Fatalf("definitions = %v", kinds)
 	}
 	// Inputs are immutable.
@@ -626,9 +626,11 @@ runtime = "docs-runtime"
 command = "claude"
 `)
 	write(t, filepath.Join(home, "schemas", "verdict.json"), `{"type":"object","required":["verdict"],"properties":{"verdict":{"enum":["approve","request_changes"]}}}`)
+	write(t, filepath.Join(home, "prompts", "check-docs.md"), "Check the docs read as the code does.\n")
 	write(t, filepath.Join(home, "processes", "check_docs.yaml"), `schema: agister.process/v1alpha1
 name: check_docs
 type: process
+prompt: check-docs
 uses: agent:writer
 tools: {allow: [docs.read]}
 timeout: 1m
@@ -743,7 +745,8 @@ func TestProjectOverridesAreNoted(t *testing.T) {
 		t.Fatalf("agent recorded as\n%v\nwant\n%v", got, agent)
 	}
 	// Each other document is home's alone: a composed kind's one file gave
-	// every field, and a schema, taken whole, has none (ADR-028 rule 11).
+	// every field, and a schema or a prompt, taken whole, has none (ADR-028
+	// rule 11).
 	for _, source := range last.record["definitions"].([]any) {
 		source := source.(map[string]any)
 		if source["kind"] == "agents" {
@@ -751,7 +754,7 @@ func TestProjectOverridesAreNoted(t *testing.T) {
 		}
 		layers, _ := source["layers"].([]any)
 		fields, given := nearest(source)["fields"].([]any)
-		whole := source["kind"] == "schemas"
+		whole := source["kind"] == "schemas" || source["kind"] == "prompts"
 		if len(layers) != 1 || nearest(source)["layer"] != "home" || given == whole || !whole && !slices.Contains(fields, any("schema")) {
 			t.Fatalf("%v %v recorded as %v", source["kind"], source["name"], source)
 		}

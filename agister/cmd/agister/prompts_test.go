@@ -3,10 +3,12 @@ package main
 import (
 	"crypto/sha256"
 	"encoding/hex"
+	"fmt"
 	"os"
 	"path/filepath"
 	"reflect"
 	"regexp"
+	"slices"
 	"strings"
 	"testing"
 
@@ -14,25 +16,25 @@ import (
 )
 
 // Prompts are settings (ADR-014), on real settings directories: Agister's
-// home and a repository's .agister, composed by the layered store.
+// home and a repository's .agister, composed by the layered store. A
+// process names its prompt in prompt (ADR-028 rule 8).
 
 const promptingProcess = `schema: agister.process/v1alpha1
 name: reviewed
 type: process
 uses: agent:assistant
 policy: process-policy:read-only
+prompt: review
 input:
   instruction: Follow the rules.
-  values:
-    rules: {source: prompt, name: review}
 output:
   format: text
 `
 
 // promptRun runs reviewed from cwd and returns what its record says of
-// the rules input and of the prompt among its definitions, and the prompt
-// the agent was given.
-func promptRun(t *testing.T, home, cwd string) (input, source map[string]any, given string) {
+// each input, by name, and of its prompt review among its definitions,
+// and the prompt the agent was given.
+func promptRun(t *testing.T, home, cwd string) (inputs map[string]map[string]any, source map[string]any, given string) {
 	t.Helper()
 	// Run IDs sort by the second they start in, so the run is the one new.
 	before := map[string]bool{}
@@ -54,14 +56,15 @@ func promptRun(t *testing.T, home, cwd string) (input, source map[string]any, gi
 		t.Fatalf("new runs = %v", added)
 	}
 	last := lastRunIn(t, filepath.Join(home, "runs", added[0]))
-	inputs, _ := last.record["inputs"].([]any)
-	if len(inputs) != 1 {
-		t.Fatalf("inputs = %v", last.record["inputs"])
+	inputs = map[string]map[string]any{}
+	recorded, _ := last.record["inputs"].([]any)
+	for _, input := range recorded {
+		input := input.(map[string]any)
+		inputs[input["name"].(string)] = input
 	}
-	input, _ = inputs[0].(map[string]any)
 	definitions, _ := last.record["definitions"].([]any)
 	for _, d := range definitions {
-		if d := d.(map[string]any); d["kind"] == "prompts" {
+		if d := d.(map[string]any); d["kind"] == "prompts" && d["name"] == "review" {
 			if source != nil {
 				t.Fatalf("the prompt is recorded twice: %v", definitions)
 			}
@@ -69,7 +72,7 @@ func promptRun(t *testing.T, home, cwd string) (input, source map[string]any, gi
 		}
 	}
 	given, _ = last.first["prompt"].(string)
-	return input, source, given
+	return inputs, source, given
 }
 
 // nearest is the nearest layer file of a definition a run recorded.
@@ -115,8 +118,9 @@ func TestAPromptIsFoundInTheSettingsNotTheCallersDirectory(t *testing.T) {
 	write(t, filepath.Join(sub, "prompts", "review.md"), "The caller's directory's rules.\n")
 
 	for _, cwd := range []string{repo, sub} {
-		input, source, given := promptRun(t, home, cwd)
-		if input["name"] != "rules" || input["source"] != "prompt" || input["value"] != homeText || input["identity"] != "sha256:"+digestOf(homeText) {
+		inputs, source, given := promptRun(t, home, cwd)
+		input := inputs["prompt"]
+		if input["source"] != "prompt" || input["value"] != homeText || input["identity"] != "sha256:"+digestOf(homeText) {
 			t.Fatalf("from %s: input = %v", cwd, input)
 		}
 		if !reflect.DeepEqual(source, homeFile("prompts", "review", global, homeText)) {
@@ -130,8 +134,8 @@ func TestAPromptIsFoundInTheSettingsNotTheCallersDirectory(t *testing.T) {
 	project, repoText := filepath.Join(repo, ".agister", "prompts", "review.md"), "The repository's review rules.\n"
 	write(t, project, repoText)
 	for _, cwd := range []string{repo, sub} {
-		input, source, given := promptRun(t, home, cwd)
-		if input["value"] != repoText || input["identity"] != "sha256:"+digestOf(repoText) {
+		inputs, source, given := promptRun(t, home, cwd)
+		if input := inputs["prompt"]; input["value"] != repoText || input["identity"] != "sha256:"+digestOf(repoText) {
 			t.Fatalf("from %s: input = %v", cwd, input)
 		}
 		if !reflect.DeepEqual(source, repositoryFile("prompts", "review", project, repoText)) {
@@ -147,7 +151,7 @@ func TestAPromptIsFoundInTheSettingsNotTheCallersDirectory(t *testing.T) {
 		t.Fatalf("check --tree: %d\n%s%s", r.code, r.stdout, r.stderr)
 	}
 	r = agister(t, home, repo, "process", "show", "reviewed")
-	if r.code != 0 || !strings.Contains(r.stdout, "prompts      review: repository "+project+"\n") ||
+	if r.code != 0 || !strings.Contains(r.stdout, "prompt       review: repository "+project+"\n") ||
 		!regexp.MustCompile(`prompt review: repository `+regexp.QuoteMeta(project)+`\n +home `+regexp.QuoteMeta(global)+` \(replaced\)\n`).MatchString(r.stdout) {
 		t.Fatalf("process show: %d\n%s%s", r.code, r.stdout, r.stderr)
 	}
@@ -161,14 +165,14 @@ func TestAPromptInNeitherLayerIsAProblemOfTheProcess(t *testing.T) {
 	home, repo := setup(t, "approve")
 	process := filepath.Join(home, "processes", "reviewed.yaml")
 	write(t, process, promptingProcess)
-	problem := `process reviewed: input rules: prompt "review" does not exist`
+	problem := `process reviewed: prompt "review" does not exist`
 	r := agister(t, home, repo, "check", "--tree")
 	if r.code != cli.ExitUsage || !strings.Contains(r.stderr, problem+"\n  refuses process reviewed\n") || !regexp.MustCompile(`└─ prompt review +MISSING\n`).MatchString(r.stdout) {
 		t.Fatalf("check --tree: %d\n%s%s", r.code, r.stdout, r.stderr)
 	}
 	runs := &newRuns{home: home}
 	runs.take(t)
-	want := `process reviewed (` + process + `): input rules: prompt "review" does not exist`
+	want := `process reviewed (` + process + `): prompt "review" does not exist`
 	if r := agister(t, home, repo, "run", "reviewed", "--quiet", "--timeout", "1m"); r.code != cli.ExitRefused || !strings.Contains(r.stderr, want) {
 		t.Fatalf("run: %d, want %q\n%s%s", r.code, want, r.stdout, r.stderr)
 	}
@@ -203,83 +207,43 @@ func TestAnUnreadablePromptIsAProblemOfItsOwn(t *testing.T) {
 // ADR-014 rule 5: settings that read a file in prompts/ through source:
 // file keep working, whatever the file's name. One whose name breaks the
 // naming rule is not a prompt document, so check has nothing to say of it,
-// and the call gets the file's text.
+// and the call gets the file's text as a value, before its prompt.
 func TestAFileInPromptsReadThroughSourceFileKeepsWorking(t *testing.T) {
 	t.Parallel()
 	home, repo := setup(t, "approve")
-	path, text := filepath.Join(home, "prompts", "Review.md"), "Legacy review rules.\n"
+	path, text := filepath.Join(home, "prompts", "Legacy_Rules.md"), "Legacy review rules.\n"
 	write(t, path, text)
+	write(t, filepath.Join(home, "prompts", "review.md"), "Home's review rules.\n")
 	write(t, filepath.Join(home, "processes", "reviewed.yaml"), strings.Replace(promptingProcess,
-		"{source: prompt, name: review}", "{source: file, path: "+path+"}", 1))
+		"  instruction: Follow the rules.\n", "  instruction: Follow the rules.\n  values:\n    rules: {source: file, path: "+path+"}\n", 1))
 	if r := agister(t, home, repo, "check"); r.code != 0 || strings.Contains(r.stderr, "problem") {
 		t.Fatalf("check: %d\n%s%s", r.code, r.stdout, r.stderr)
 	}
-	input, source, given := promptRun(t, home, repo)
-	if input["name"] != "rules" || input["source"] != "file" || input["value"] != text || source != nil {
+	inputs, source, given := promptRun(t, home, repo)
+	if input := inputs["rules"]; input["source"] != "file" || input["value"] != text || source["name"] != "review" {
 		t.Fatalf("input = %v, prompt source = %v", input, source)
 	}
-	if !strings.Contains(given, text) {
+	if !strings.Contains(given, text) || strings.Index(given, text) > strings.Index(given, "Home's review rules.") {
 		t.Fatalf("the agent was given:\n%s", given)
 	}
 }
 
-// An optional prompt (ADR-019), shown and run without its document and
-// with it: check --tree and process show mark it optional and say whether
-// it was found; a call without it records it as absent and gives the agent
-// no section for it.
-func TestAnOptionalPromptIsShownAsOptionalFoundOrNot(t *testing.T) {
+// D-11 of ADR-019, kept by ADR-028 rule 6: a directory at the
+// repository's prompt path is not a prompt the layer lacks, so home's is
+// not given in its place. check reports it as a broken prompt that refuses
+// the process, and a call of it is refused before its first turn.
+func TestADirectoryAtAPromptsPathRefusesTheCall(t *testing.T) {
 	t.Parallel()
 	home, repo := setup(t, "approve")
-	write(t, filepath.Join(home, "processes", "reviewed.yaml"), strings.Replace(promptingProcess,
-		"{source: prompt, name: review}", "{source: prompt, name: review, optional: true}", 1))
-
-	r := agister(t, home, repo, "check", "--tree")
-	if r.code != 0 || !regexp.MustCompile(`└─ prompt review +optional, not found\n`).MatchString(r.stdout) {
-		t.Fatalf("check --tree without it: %d\n%s%s", r.code, r.stdout, r.stderr)
-	}
-	r = agister(t, home, repo, "process", "show", "reviewed")
-	if r.code != 0 || !strings.Contains(r.stdout, "inputs       rules <- prompt (optional)\n") || !strings.Contains(r.stdout, "prompts      review (optional, not found)\n") || strings.Contains(r.stdout, "REFUSED") {
-		t.Fatalf("process show without it: %d\n%s%s", r.code, r.stdout, r.stderr)
-	}
-	if r := agister(t, home, repo, "run", "reviewed", "--quiet", "--timeout", "1m"); r.code != cli.ExitCompleted {
-		t.Fatalf("run without it: %d\n%s%s", r.code, r.stdout, r.stderr)
-	}
-	last := lastRun(t, home)
-	if absent, _ := last.record["absent_prompts"].([]any); len(absent) != 1 || !reflect.DeepEqual(absent[0], map[string]any{"input": "rules", "prompt": "review"}) || last.record["inputs"] != nil {
-		t.Fatalf("record: absent_prompts %v, inputs %v", last.record["absent_prompts"], last.record["inputs"])
-	}
-	if given, _ := last.first["prompt"].(string); strings.Contains(given, "## rules") {
-		t.Fatalf("the agent was given:\n%s", given)
-	}
-
-	global := filepath.Join(home, "prompts", "review.md")
-	write(t, global, "Home's review rules.\n")
-	r = agister(t, home, repo, "check", "--tree")
-	if r.code != 0 || !regexp.MustCompile(`└─ prompt review +home +`+regexp.QuoteMeta(global)+` \(optional\)\n`).MatchString(r.stdout) {
-		t.Fatalf("check --tree with it: %d\n%s%s", r.code, r.stdout, r.stderr)
-	}
-	r = agister(t, home, repo, "process", "show", "reviewed")
-	if r.code != 0 || !strings.Contains(r.stdout, "inputs       rules <- prompt (optional)\n") || !strings.Contains(r.stdout, "prompts      review: home "+global+" (optional)\n") {
-		t.Fatalf("process show with it: %d\n%s%s", r.code, r.stdout, r.stderr)
-	}
-}
-
-// ADR-019 rule 1, D-11: a directory at an optional prompt's path is not a
-// prompt neither layer has. check reports it as a broken prompt that
-// refuses the process, and a call of it is refused before its first turn,
-// with no absent prompt on its record.
-func TestADirectoryAtAnOptionalPromptsPathRefusesTheCall(t *testing.T) {
-	t.Parallel()
-	home, repo := setup(t, "approve")
-	write(t, filepath.Join(home, "processes", "reviewed.yaml"), strings.Replace(promptingProcess,
-		"{source: prompt, name: review}", "{source: prompt, name: review, optional: true}", 1))
+	write(t, filepath.Join(home, "processes", "reviewed.yaml"), promptingProcess)
+	write(t, filepath.Join(home, "prompts", "review.md"), "Home's review rules.\n")
 	prompt := filepath.Join(repo, ".agister", "prompts", "review.md")
 	if err := os.MkdirAll(prompt, 0o755); err != nil {
 		t.Fatal(err)
 	}
 
 	r := agister(t, home, repo, "check", "--tree")
-	if r.code != cli.ExitUsage || !regexp.MustCompile(`prompt review: .*is a directory\n  refuses process reviewed\n`).MatchString(r.stderr) || strings.Contains(r.stdout, "not found") {
+	if r.code != cli.ExitUsage || !regexp.MustCompile(`prompt review: .*is a directory\n  refuses process reviewed\n`).MatchString(r.stderr) {
 		t.Fatalf("check --tree: %d\n%s%s", r.code, r.stdout, r.stderr)
 	}
 	runs := &newRuns{home: home}
@@ -288,22 +252,18 @@ func TestADirectoryAtAnOptionalPromptsPathRefusesTheCall(t *testing.T) {
 	if r := agister(t, home, repo, "run", "reviewed", "--quiet", "--timeout", "1m"); r.code != cli.ExitRefused || !strings.Contains(r.stderr, want) || !strings.Contains(r.stderr, "is a directory") {
 		t.Fatalf("run: %d, want %q\n%s%s", r.code, want, r.stdout, r.stderr)
 	}
-	refused := runs.one(t)
-	if refused.first != nil {
+	if refused := runs.one(t); refused.first != nil {
 		t.Fatalf("the refused call reached the runtime: %v", refused.first)
-	}
-	if absent, ok := refused.record["absent_prompts"]; ok {
-		t.Fatalf("record: absent_prompts %v", absent)
 	}
 }
 
-// ADR-019 rule 1, D-11: nor is a dangling symlink at the repository's
-// prompts folder or at the prompt's file, with home lacking the prompt.
-// check reports it, and a call of it is refused before its first turn,
-// with no absent prompt recorded. A folder that cannot be listed stops
-// every command (ADR-015 rule 4), so that call records no run at all; a
-// file that cannot be read refuses the process, and its call's record.
-func TestADanglingLinkAtAnOptionalPromptsPathRefusesTheCall(t *testing.T) {
+// Nor is a dangling symlink at the repository's prompts folder or at the
+// prompt's file, with home holding the prompt. check reports it, and a
+// call of it is refused before its first turn. A folder that cannot be
+// listed stops every command (ADR-015 rule 4), so that call records no run
+// at all; a file that cannot be read refuses the process, and its call's
+// record.
+func TestADanglingLinkAtAPromptsPathRefusesTheCall(t *testing.T) {
 	t.Parallel()
 	for name, c := range map[string]struct {
 		plant func(folder string) (string, error)
@@ -333,15 +293,15 @@ func TestADanglingLinkAtAnOptionalPromptsPathRefusesTheCall(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 			home, repo := setup(t, "approve")
-			write(t, filepath.Join(home, "processes", "reviewed.yaml"), strings.Replace(promptingProcess,
-				"{source: prompt, name: review}", "{source: prompt, name: review, optional: true}", 1))
+			write(t, filepath.Join(home, "processes", "reviewed.yaml"), promptingProcess)
+			write(t, filepath.Join(home, "prompts", "review.md"), "Home's review rules.\n")
 			link, err := c.plant(filepath.Join(repo, ".agister", "prompts"))
 			if err != nil {
 				t.Fatal(err)
 			}
 
 			r := agister(t, home, repo, "check", "--tree")
-			if r.code != cli.ExitUsage || !strings.Contains(r.stderr, c.check) || !strings.Contains(r.stderr, link) || strings.Contains(r.stdout, "not found") {
+			if r.code != cli.ExitUsage || !strings.Contains(r.stderr, c.check) || !strings.Contains(r.stderr, link) {
 				t.Fatalf("check --tree: %d\n%s%s", r.code, r.stdout, r.stderr)
 			}
 			runs := &newRuns{home: home}
@@ -359,12 +319,255 @@ func TestADanglingLinkAtAnOptionalPromptsPathRefusesTheCall(t *testing.T) {
 			if want := "process reviewed uses prompt review (" + link + "): cannot be resolved"; r.code != cli.ExitRefused || !strings.Contains(r.stderr, want) {
 				t.Fatalf("run: %d, want %q\n%s%s", r.code, want, r.stdout, r.stderr)
 			}
-			refused := runs.one(t)
-			if refused.first != nil {
+			if refused := runs.one(t); refused.first != nil {
 				t.Fatalf("the refused call reached the runtime: %v", refused.first)
 			}
-			if absent, ok := refused.record["absent_prompts"]; ok {
-				t.Fatalf("record: absent_prompts %v", absent)
+		})
+	}
+}
+
+// guidedProcess is promptingProcess with names as its guidance.
+func guidedProcess(names []string) string {
+	return strings.Replace(promptingProcess, "prompt: review\n", "prompt: review\nguidance: ["+strings.Join(names, ", ")+"]\n", 1)
+}
+
+// ADR-028 rule 8: the agent is given the prompt as the input prompt, then
+// each guidance prompt, in the list's order, as the input
+// guidance.<name>, each from the nearest layer that has it and recorded
+// with its digest. A guidance name no layer has is a problem of the
+// process and refuses its call before its first turn. Each case lists,
+// for each guidance name in turn, the layer it is nearest in: it is
+// written there and in every layer farther out, each layer's text its own.
+func TestEachGuidancePromptIsGivenFromTheNearestLayerThatHasIt(t *testing.T) {
+	t.Parallel()
+	names := []string{"style", "testing"}
+	layers := []string{"project", "repository", "home"}
+	for _, where := range [][]string{
+		{},
+		{"project"}, {"repository"}, {"home"}, {"nowhere"},
+		{"project", "repository"}, {"repository", "home"}, {"home", "project"},
+		{"project", "project"}, {"home", "nowhere"}, {"nowhere", "repository"},
+	} {
+		t.Run(fmt.Sprintf("%d %v", len(where), where), func(t *testing.T) {
+			t.Parallel()
+			home, repo := setup(t, "approve")
+			launch := filepath.Join(repo, "docs")
+			dirs := map[string]string{"home": home, "repository": filepath.Join(repo, ".agister"), "project": filepath.Join(launch, ".agister")}
+			if err := os.MkdirAll(dirs["project"], 0o755); err != nil {
+				t.Fatal(err)
+			}
+			process := filepath.Join(home, "processes", "reviewed.yaml")
+			guidance := names[:len(where)]
+			write(t, process, guidedProcess(guidance))
+			reviewPath, reviewText := filepath.Join(dirs["repository"], "prompts", "review.md"), "The repository's review rules.\n"
+			write(t, reviewPath, reviewText)
+
+			type given struct{ input, prompt, layer, path, text string }
+			want := []given{{"prompt", "review", "repository", reviewPath, reviewText}}
+			var missing []string
+			for i, name := range guidance {
+				nearest := slices.Index(layers, where[i])
+				if nearest < 0 {
+					missing = append(missing, name)
+					continue
+				}
+				for _, layer := range layers[nearest:] {
+					write(t, filepath.Join(dirs[layer], "prompts", name+".md"), "The "+layer+"'s "+name+" rules.\n")
+				}
+				want = append(want, given{"guidance." + name, name, where[i], filepath.Join(dirs[where[i]], "prompts", name+".md"), "The " + where[i] + "'s " + name + " rules.\n"})
+			}
+
+			runs := &newRuns{home: home}
+			runs.take(t)
+			r := agister(t, home, launch, "run", "reviewed", "--quiet", "--timeout", "1m")
+			if len(missing) > 0 {
+				problem := `guidance: prompt "` + missing[0] + `" does not exist`
+				if check := agister(t, home, launch, "check"); check.code != cli.ExitUsage || !strings.Contains(check.stderr, "process reviewed: "+problem+"\n  refuses process reviewed\n") {
+					t.Fatalf("check: %d, want %q\n%s%s", check.code, problem, check.stdout, check.stderr)
+				}
+				if want := "process reviewed (" + process + "): " + problem; r.code != cli.ExitRefused || !strings.Contains(r.stderr, want) {
+					t.Fatalf("run: %d, want %q\n%s%s", r.code, want, r.stdout, r.stderr)
+				}
+				if refused := runs.one(t); refused.first != nil {
+					t.Fatalf("the refused call reached the runtime: %v", refused.first)
+				}
+				return
+			}
+			if r.code != cli.ExitCompleted {
+				t.Fatalf("run: %d\n%s%s", r.code, r.stdout, r.stderr)
+			}
+			ran := runs.one(t)
+			inputs, _ := ran.record["inputs"].([]any)
+			if len(inputs) != len(want) {
+				t.Fatalf("inputs = %v, want %d", inputs, len(want))
+			}
+			prompt, _ := ran.first["prompt"].(string)
+			at := 0
+			for i, w := range want {
+				input := inputs[i].(map[string]any)
+				if input["name"] != w.input || input["source"] != "prompt" || input["identity"] != "sha256:"+digestOf(w.text) {
+					t.Fatalf("input %d = %v, want %s from %s", i, input, w.input, w.path)
+				}
+				if file := nearest(definitionOf(t, ran, "prompts", w.prompt)); file["layer"] != w.layer || file["path"] != w.path || file["sha256"] != digestOf(w.text) {
+					t.Fatalf("prompt %s recorded from %v, want %s %s", w.prompt, file, w.layer, w.path)
+				}
+				// Each section follows the one before it.
+				next := strings.Index(prompt[at:], "## "+w.input+"\n")
+				if next < 0 || !strings.Contains(prompt[at+next:], w.text) {
+					t.Fatalf("the agent was not given %s after the inputs before it:\n%s", w.input, prompt)
+				}
+				at += next
+			}
+		})
+	}
+}
+
+// layerFile is a layer.yaml listing folders.
+func layerFile(folders ...string) string {
+	return "schema: agister.layer/v1alpha1\nprompts: [" + strings.Join(folders, ", ") + "]\n"
+}
+
+// ADR-028 rule 9: a repository layer's prompt is its .agister/prompts
+// file, else the first file of that name in the folders its layer.yaml
+// lists, in order, each relative to the worktree's root; the layer's
+// wins over home's. A listed folder is read for the names processes give
+// only: its other files are neither checked nor shown.
+func TestALayerFindsItsPromptsInTheFoldersItsLayerFileLists(t *testing.T) {
+	t.Parallel()
+	home, repo := setup(t, "approve")
+	write(t, filepath.Join(home, "processes", "reviewed.yaml"), guidedProcess([]string{"style"}))
+	write(t, filepath.Join(repo, ".agister", "layer.yaml"), layerFile("prompts", "docs/prompts"))
+	first, second := filepath.Join(repo, "prompts"), filepath.Join(repo, "docs", "prompts")
+	texts := map[string]string{
+		filepath.Join(first, "review.md"):          "The first folder's review rules.\n",
+		filepath.Join(second, "review.md"):         "The second folder's review rules.\n",
+		filepath.Join(second, "style.md"):          "The second folder's style rules.\n",
+		filepath.Join(home, "prompts", "style.md"): "Home's style rules.\n",
+		filepath.Join(first, "Not A Name.md"):      "\x00\xff",
+		filepath.Join(first, "notes.md"):           "\x00\xff",
+	}
+	for path, text := range texts {
+		write(t, path, text)
+	}
+
+	review, style := filepath.Join(first, "review.md"), filepath.Join(second, "style.md")
+	r := agister(t, home, repo, "check", "--tree")
+	if r.code != 0 || !regexp.MustCompile(`├─ prompt review +repository `+regexp.QuoteMeta(review)+`\n`).MatchString(r.stdout) ||
+		!regexp.MustCompile(`└─ prompt style +repository `+regexp.QuoteMeta(style)+` \(guidance\)\n +home +`+regexp.QuoteMeta(filepath.Join(home, "prompts", "style.md"))+` \(replaced\)\n`).MatchString(r.stdout) ||
+		strings.Contains(r.stdout+r.stderr, "notes") || strings.Contains(r.stdout+r.stderr, "Not A Name") {
+		t.Fatalf("check --tree: %d\n%s%s", r.code, r.stdout, r.stderr)
+	}
+	inputs, source, _ := promptRun(t, home, repo)
+	if inputs["prompt"]["identity"] != "sha256:"+digestOf(texts[review]) || inputs["guidance.style"]["identity"] != "sha256:"+digestOf(texts[style]) || nearest(source)["path"] != review {
+		t.Fatalf("inputs = %v, prompt source = %v", inputs, source)
+	}
+
+	// The layer's own prompts/ comes before the folders it lists.
+	own, ownText := filepath.Join(repo, ".agister", "prompts", "review.md"), "The repository's own review rules.\n"
+	write(t, own, ownText)
+	if inputs, source, _ := promptRun(t, home, repo); inputs["prompt"]["identity"] != "sha256:"+digestOf(ownText) || nearest(source)["path"] != own {
+		t.Fatalf("with its own: inputs = %v, prompt source = %v", inputs, source)
+	}
+}
+
+// ADR-028 rule 9: a layer.yaml that cannot be used stops every command
+// launched under its layer, as a broken block list does: one that is not
+// valid, or that lists a folder that does not exist, is not a folder, or
+// is not inside the directory that holds the layer's .agister, by an
+// absolute path, a .. or a link that leaves. A project layer's stops only
+// what is launched below it. Home holds no layer.yaml: one there is a
+// problem of home's that stops every command.
+func TestALayerFileThatCannotBeUsedStopsEveryCommandUnderItsLayer(t *testing.T) {
+	t.Parallel()
+	for name, c := range map[string]struct {
+		plant  func(t *testing.T, root string) string // writes the file in root, and returns what the problem says
+		layer  string
+		reason string
+	}{
+		"not YAML": {layer: "repository", plant: func(t *testing.T, root string) string {
+			write(t, filepath.Join(root, ".agister", "layer.yaml"), "prompts: [unclosed\n")
+			return "is invalid"
+		}},
+		"another schema": {layer: "repository", plant: func(t *testing.T, root string) string {
+			write(t, filepath.Join(root, ".agister", "layer.yaml"), "schema: agister.layer/v2\nprompts: [prompts]\n")
+			return "is invalid: schema"
+		}},
+		"an unknown field": {layer: "repository", plant: func(t *testing.T, root string) string {
+			write(t, filepath.Join(root, ".agister", "layer.yaml"), layerFile()+"skills: [skills]\n")
+			return "skills: unknown field"
+		}},
+		"an absolute folder": {layer: "repository", plant: func(t *testing.T, root string) string {
+			write(t, filepath.Join(root, ".agister", "layer.yaml"), layerFile(filepath.Join(root, "prompts")))
+			return "is not inside the directory that holds .agister"
+		}},
+		"a folder above": {layer: "repository", plant: func(t *testing.T, root string) string {
+			write(t, filepath.Join(root, ".agister", "layer.yaml"), layerFile("../prompts"))
+			return "is not inside the directory that holds .agister"
+		}},
+		"a folder that does not exist": {layer: "repository", plant: func(t *testing.T, root string) string {
+			write(t, filepath.Join(root, ".agister", "layer.yaml"), layerFile("prompts"))
+			return "lists prompts folder prompts, which does not exist"
+		}},
+		"a file": {layer: "repository", plant: func(t *testing.T, root string) string {
+			write(t, filepath.Join(root, "prompts"), "not a folder\n")
+			write(t, filepath.Join(root, ".agister", "layer.yaml"), layerFile("prompts"))
+			return "lists prompts folder prompts, which is not a folder"
+		}},
+		"a link that leaves": {layer: "repository", plant: func(t *testing.T, root string) string {
+			if err := os.Symlink(tempDir(t), filepath.Join(root, "prompts")); err != nil {
+				t.Fatal(err)
+			}
+			write(t, filepath.Join(root, ".agister", "layer.yaml"), layerFile("prompts"))
+			return "lists prompts folder prompts, which a link leads out of " + root
+		}},
+		"a project's folder that does not exist": {layer: "project", plant: func(t *testing.T, project string) string {
+			write(t, filepath.Join(project, ".agister", "layer.yaml"), layerFile("prompts"))
+			return "lists prompts folder prompts, which does not exist"
+		}},
+		"home's": {layer: "home", reason: "home holds no layer.yaml"},
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			home, repo := setup(t, "approve")
+			write(t, filepath.Join(home, "processes", "reviewed.yaml"), promptingProcess)
+			write(t, filepath.Join(home, "prompts", "review.md"), "Home's review rules.\n")
+			launch := filepath.Join(repo, "docs")
+			if err := os.MkdirAll(filepath.Join(launch, ".agister"), 0o755); err != nil {
+				t.Fatal(err)
+			}
+			reason, file := c.reason, filepath.Join(repo, ".agister", "layer.yaml")
+			switch c.layer {
+			case "home":
+				file = filepath.Join(home, "layer.yaml")
+				write(t, file, layerFile())
+			case "project":
+				file = filepath.Join(launch, ".agister", "layer.yaml")
+				reason = c.plant(t, launch)
+			default:
+				reason = c.plant(t, repo)
+			}
+
+			r := agister(t, home, launch, "check")
+			if r.code != cli.ExitUsage || !strings.Contains(r.stderr, file+": ") || !strings.Contains(r.stderr, reason) {
+				t.Fatalf("check: %d, want %q\n%s%s", r.code, reason, r.stdout, r.stderr)
+			}
+			runs := &newRuns{home: home}
+			runs.take(t)
+			for _, args := range [][]string{{"run", "reviewed", "--quiet", "--timeout", "1m"}, {"process", "show", "reviewed"}} {
+				if r := agister(t, home, launch, args...); r.code == 0 || r.code == cli.ExitCompleted || !strings.Contains(r.stderr, "stop every command") || !strings.Contains(r.stderr, reason) {
+					t.Fatalf("%v: %d\n%s%s", args, r.code, r.stdout, r.stderr)
+				}
+			}
+			for _, ran := range runs.take(t) {
+				if ran.first != nil {
+					t.Fatalf("the runtime started: %v", ran.record)
+				}
+			}
+			// A project layer's stops nothing launched above it.
+			if c.layer == "project" {
+				if r := agister(t, home, repo, "run", "reviewed", "--quiet", "--timeout", "1m"); r.code != cli.ExitCompleted {
+					t.Fatalf("run at the root: %d\n%s%s", r.code, r.stdout, r.stderr)
+				}
 			}
 		})
 	}

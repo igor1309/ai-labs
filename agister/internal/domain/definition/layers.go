@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
+	"path/filepath"
 	"sort"
 	"strings"
 
@@ -394,4 +395,50 @@ func tableValue(tree *composedNode) any {
 		table[entry.key] = tableValue(entry.value)
 	}
 	return table
+}
+
+// LayerSchema is the schema of a layer's layer.yaml (ADR-028 rule 9).
+const LayerSchema = "agister.layer/v1alpha1"
+
+// LayerSettings is what a repository or project layer's layer.yaml says
+// of the layer itself (ADR-028 rule 9). It is read for its own layer only
+// (rule 7).
+type LayerSettings struct {
+	// Prompts are the folders its prompts are also found in, in order,
+	// each relative to the directory that holds the layer's .agister.
+	Prompts []string
+}
+
+// ParseLayer reads a layer's layer.yaml. Each folder it lists must be a
+// relative path that stays inside the directory it is relative to: not
+// absolute and with no "..". Whether it exists, and where its links lead,
+// is the reader's to check.
+func ParseLayer(data []byte) (LayerSettings, error) {
+	p := &problems{}
+	var settings LayerSettings
+	root := parseOneYAML(data, p)
+	if root == nil {
+		return settings, p.err("layer.yaml")
+	}
+	unique(root, "", p)
+	values := fields(root, "", []string{"schema", "prompts"}, p)
+	if _, ok := values["schema"]; !ok {
+		p.add("schema", "is required")
+	} else if value, ok := scalar(values["schema"], "schema", p); ok {
+		checkSchema(value, LayerSchema, p)
+	}
+	for i, folder := range stringList(values["prompts"], "prompts", p) {
+		at := fieldIndex("prompts", i)
+		switch {
+		case folder == "":
+			p.add(at, "must not be empty")
+		case !filepath.IsLocal(folder):
+			p.add(at, "%q is not inside the directory that holds .agister: name a folder there by a relative path with no ..", folder)
+		case contains(settings.Prompts, filepath.Clean(folder)):
+			p.add(at, "%q is listed twice", folder)
+		default:
+			settings.Prompts = append(settings.Prompts, filepath.Clean(folder))
+		}
+	}
+	return settings, p.err("layer.yaml")
 }

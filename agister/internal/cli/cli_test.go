@@ -673,37 +673,78 @@ func TestShowProcessPrintsTheNamedVerification(t *testing.T) {
 	}
 }
 
-// process show lists the prompts the process names, each with the layer
-// and path it comes from, or as not resolved beside the refusal.
-func TestShowProcessPrintsThePrompts(t *testing.T) {
+// process show names the process's prompt and its guidance, each with the
+// layer and path it comes from, or as not resolved beside the refusal; a
+// process with no guidance says so (ADR-028 rule 8).
+func TestShowProcessPrintsThePromptAndGuidance(t *testing.T) {
 	t.Parallel()
 	spy := &clientSpy{view: contract.ProcessView{Name: "p", Agent: "a", Runtime: "rt", Output: "text", Timeout: time.Hour, MaxAttempts: 1,
-		Inputs: []string{"rules <- prompt", "style <- prompt"}, Prompts: []string{"rules", "style"},
+		Inputs: []string{"diff <- git.diff"}, Prompt: "review", Guidance: []string{"rules", "style"},
 		Sources: []contract.DefinitionOrigin{
 			{Kind: "processes", Name: "p", Layer: "home", Path: "/h/processes/p.yaml"},
+			{Kind: "prompts", Name: "review", Layer: "home", Path: "/h/prompts/review.md"},
 			{Kind: "prompts", Name: "rules", Layer: "repository", Path: "/r/.agister/prompts/rules.md", Layers: []contract.DefinitionLayer{
 				{Layer: "repository", Path: "/r/.agister/prompts/rules.md"}, {Layer: "home", Path: "/h/prompts/rules.md", Replaced: true},
 			}},
-			{Kind: "prompts", Name: "style", Layer: "home", Path: "/h/prompts/style.md"},
+			{Kind: "prompts", Name: "style", Layer: "project", Path: "/r/docs/prompts/style.md"},
 		}}}
 	r := run(context.Background(), spy, "process", "show", "p")
 	for _, want := range []string{
-		"prompts      rules: repository /r/.agister/prompts/rules.md\n             style: home /h/prompts/style.md\nplan ",
+		"prompt       review: home /h/prompts/review.md\n" +
+			"guidance     rules: repository /r/.agister/prompts/rules.md\n" +
+			"             style: project /r/docs/prompts/style.md\nplan ",
 		"sources      process p: home /h/processes/p.yaml\n" +
+			"             prompt review: home /h/prompts/review.md\n" +
 			"             prompt rules: repository /r/.agister/prompts/rules.md\n" +
 			"                           home /h/prompts/rules.md (replaced)\n" +
-			"             prompt style: home /h/prompts/style.md\n",
+			"             prompt style: project /r/docs/prompts/style.md\n",
 	} {
 		if r.code != 0 || !strings.Contains(r.stdout, want) {
 			t.Fatalf("missing %q in %d:\n%s", want, r.code, r.stdout)
 		}
 	}
-	spy.view.Sources = spy.view.Sources[:2]
-	spy.view.Refusal = `input style: prompt "style": not found (expected /r/.agister/prompts/style.md or /h/prompts/style.md)`
+	spy.view.Sources = spy.view.Sources[:3]
+	spy.view.Refusal = `process p names in its guidance prompt "style": not found (expected /r/.agister/prompts/style.md or /h/prompts/style.md)`
 	r = run(context.Background(), spy, "process", "show", "p")
 	want := "             style (not resolved)\nplan         REFUSED: " + spy.view.Refusal + "\n"
 	if r.code != 0 || !strings.Contains(r.stdout, want) {
 		t.Fatalf("missing %q in %d:\n%s", want, r.code, r.stdout)
+	}
+
+	spy.view.Guidance, spy.view.Refusal = nil, ""
+	r = run(context.Background(), spy, "process", "show", "p")
+	if want := "prompt       review: home /h/prompts/review.md\nguidance     (none)\nplan "; r.code != 0 || !strings.Contains(r.stdout, want) {
+		t.Fatalf("missing %q in %d:\n%s", want, r.code, r.stdout)
+	}
+}
+
+// check --tree shows a process's prompt and its guidance under it, each
+// guidance prompt marked so, and a missing one as missing (ADR-028 rule
+// 12).
+func TestCheckTreeShowsThePromptAndGuidance(t *testing.T) {
+	t.Parallel()
+	ref := func(kind, name string) contract.DefinitionRef { return contract.DefinitionRef{Kind: kind, Name: name} }
+	guidance := func(name string) contract.DefinitionRef {
+		return contract.DefinitionRef{Kind: "prompts", Name: name, Guidance: true}
+	}
+	report := contract.CheckReport{
+		Checked: map[string]int{"processes": 1, "prompts": 2},
+		Definitions: []contract.Definition{
+			{Kind: "prompts", Name: "implement", Layer: "home", Path: "/h/prompts/implement.md", UsedBy: []contract.DefinitionRef{ref("processes", "implement")}},
+			{Kind: "prompts", Name: "testing", Layer: "repository", Path: "/r/prompts/testing.md", UsedBy: []contract.DefinitionRef{ref("processes", "implement")}},
+			{Kind: "processes", Name: "implement", Layer: "home", Path: "/h/processes/implement.yaml",
+				Uses: []contract.DefinitionRef{ref("prompts", "implement"), guidance("testing"), guidance("architecture")}},
+		},
+	}
+	r := run(context.Background(), &clientSpy{report: report}, "check", "--tree")
+	want := `process implement       home       /h/processes/implement.yaml
+├─ prompt implement     home       /h/prompts/implement.md
+├─ prompt testing       repository /r/prompts/testing.md (guidance)
+└─ prompt architecture  MISSING (guidance)
+settings OK: 1 processes, 2 prompts
+`
+	if r.code != 0 || r.stdout != want {
+		t.Fatalf("tree: %d\n%s", r.code, r.stdout)
 	}
 }
 

@@ -6,6 +6,7 @@ name: ask
 type: process
 uses: agent:assistant
 policy: process-policy:read-only
+prompt: ask
 
 input:
   instruction: >-

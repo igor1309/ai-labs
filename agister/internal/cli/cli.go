@@ -957,28 +957,29 @@ func showProcess(w io.Writer, view contract.ProcessView) {
 	} else if view.VerifyName != "" {
 		lines = append(lines, [2]string{"verify", "verify:" + view.VerifyName + " (not resolved)"})
 	}
-	for i, name := range view.Prompts {
-		label := ""
-		if i == 0 {
-			label = "prompts"
-		}
-		// A call goes ahead without an optional one neither layer has
-		// (ADR-019).
-		optional, mark := slices.Contains(view.Optional, name), ""
+	// The prompt, then the guidance, each with where it comes from
+	// (ADR-028 rule 8).
+	prompt := func(label, name string) {
 		text := name + " (not resolved)"
-		if optional {
-			mark = " (optional)"
-			text = name + " (optional, not resolved)"
-		}
-		if slices.Contains(view.Absent, name) {
-			text = name + " (optional, not found)"
-		}
 		for _, source := range view.Sources {
 			if source.Kind == "prompts" && source.Name == name {
-				text = name + ": " + source.Layer + " " + source.Path + mark
+				text = name + ": " + source.Layer + " " + source.Path
 			}
 		}
 		lines = append(lines, [2]string{label, text})
+	}
+	if view.Prompt != "" {
+		prompt("prompt", view.Prompt)
+		if len(view.Guidance) == 0 {
+			lines = append(lines, [2]string{"guidance", "(none)"})
+		}
+	}
+	for i, name := range view.Guidance {
+		label := ""
+		if i == 0 {
+			label = "guidance"
+		}
+		prompt(label, name)
 	}
 	// The call's skills, the process's then its agent's (ADR-021).
 	skills := false
@@ -1342,8 +1343,8 @@ func printTree(w io.Writer, definitions []contract.Definition) {
 	describe := func(ref contract.DefinitionRef) []string {
 		d, ok := byRef[contract.DefinitionRef{Kind: ref.Kind, Name: ref.Name}]
 		switch {
-		case !ok && ref.Optional:
-			return []string{"optional, not found"} // the process runs without it (ADR-019)
+		case !ok && ref.Guidance:
+			return []string{"MISSING (guidance)"}
 		case !ok:
 			return []string{"MISSING"}
 		}
@@ -1360,8 +1361,8 @@ func printTree(w io.Writer, definitions []contract.Definition) {
 			if i == 0 && d.Invalid {
 				text += " INVALID"
 			}
-			if i == 0 && ref.Optional {
-				text += " (optional)"
+			if i == 0 && ref.Guidance {
+				text += " (guidance)"
 			}
 			details = append(details, text)
 			if i < len(layers)-1 && layer.Fields != nil {

@@ -273,10 +273,10 @@ func (s Store) read(kind definition.Kind, name string) (definition.Document, err
 		if _, lerr := os.Lstat(path); lerr == nil {
 			return doc, fmt.Errorf("cannot be resolved: %v", err)
 		}
-		// Nor is a prompt whose folder is a dangling symlink: an optional
-		// one would be left out of the call where the settings are broken
-		// (ADR-019 rule 1, D-11). Nor a brief's form: home's would check
-		// the text in place of the project's (ADR-015).
+		// Nor is a prompt whose folder is a dangling symlink: a farther
+		// layer's would be given in place of the layer's (D-11 of
+		// ADR-019). Nor a brief's form: home's would check the text in
+		// place of the project's (ADR-015).
 		if kind == definition.KindPrompt || kind == definition.KindBrief {
 			if err := resolvable(filepath.Dir(path)); err != nil {
 				return doc, err
@@ -517,6 +517,119 @@ type layerStore struct {
 	store Store
 }
 
+// read reads the layer's file of the document. A prompt the layer's own
+// prompts/ does not hold is looked for in each folder its layer.yaml lists,
+// in order, and the first found is the layer's (ADR-028 rule 9). A
+// layer.yaml that cannot be used breaks the read: which prompt the layer
+// was meant to give cannot be known.
+func (l layerStore) read(kind definition.Kind, name string) (definition.Document, error) {
+	doc, err := l.store.read(kind, name)
+	if kind != definition.KindPrompt || l.layer == definition.LayerHome || !errors.Is(err, errNotFound) {
+		return doc, err
+	}
+	folders, invalid := l.store.promptFolders()
+	if len(invalid) > 0 {
+		doc.Source.Path = invalid[0].Path
+		return doc, fmt.Errorf("%s: %s", invalid[0].Path, invalid[0].Reason)
+	}
+	for _, folder := range folders {
+		path := filepath.Join(folder, name+extensions()[kind])
+		data, ferr := os.ReadFile(path)
+		if errors.Is(ferr, fs.ErrNotExist) {
+			if _, lerr := os.Lstat(path); lerr != nil {
+				continue
+			}
+			ferr = fmt.Errorf("cannot be resolved: %v", ferr)
+		}
+		source := definition.Source{Kind: kind, Name: name, Path: path}
+		if ferr != nil {
+			return definition.Document{Source: source}, ferr
+		}
+		source.SHA256 = digest(data)
+		return definition.Document{Source: source, Bytes: data}, nil
+	}
+	return doc, err
+}
+
+// expected are the paths where the layer would hold the document.
+func (l layerStore) expected(kind definition.Kind, name string) []string {
+	path, _ := l.store.path(kind, name)
+	paths := []string{path}
+	if kind == definition.KindPrompt && l.layer != definition.LayerHome {
+		folders, _ := l.store.promptFolders()
+		for _, folder := range folders {
+			paths = append(paths, filepath.Join(folder, name+extensions()[kind]))
+		}
+	}
+	return paths
+}
+
+// layerFile is the document a repository or project layer says of itself
+// in its settings directory (ADR-028 rule 9).
+const layerFile = "layer.yaml"
+
+// promptFolders are the folders the layer's layer.yaml lists, each joined
+// to the directory that holds the layer's settings directory; none when it
+// holds no layer.yaml. A layer.yaml that cannot be read or is invalid, or
+// that lists a folder that does not exist or that a link leads out of that
+// directory, makes the layer invalid, each such a problem (ADR-028 rule 9).
+func (s Store) promptFolders() ([]string, []definition.LayerProblem) {
+	path := filepath.Join(s.Dir, layerFile)
+	if _, err := os.Lstat(path); errors.Is(err, fs.ErrNotExist) {
+		return nil, nil
+	}
+	invalid := func(format string, args ...any) []definition.LayerProblem {
+		return []definition.LayerProblem{{Path: path, Reason: fmt.Sprintf(format, args...)}}
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil, invalid("cannot be read: %v; so which prompts the layer gives cannot be known", err)
+	}
+	settings, err := definition.ParseLayer(data)
+	var parsed *definition.InvalidError
+	if errors.As(err, &parsed) {
+		return nil, invalid("is invalid: %s; so which prompts the layer gives cannot be known", strings.Join(parsed.Messages(), "; "))
+	}
+	base := filepath.Dir(s.Dir)
+	var folders []string
+	var problems []definition.LayerProblem
+	for _, folder := range settings.Prompts {
+		full := filepath.Join(base, folder)
+		info, err := os.Stat(full)
+		var reason string
+		switch {
+		case errors.Is(err, fs.ErrNotExist):
+			reason = "lists prompts folder " + folder + ", which does not exist in " + base
+		case err != nil:
+			reason = fmt.Sprintf("lists prompts folder %s, which cannot be read: %v", folder, err)
+		case !info.IsDir():
+			reason = "lists prompts folder " + folder + ", which is not a folder"
+		case !within(base, full):
+			reason = "lists prompts folder " + folder + ", which a link leads out of " + base
+		}
+		if reason != "" {
+			problems = append(problems, definition.LayerProblem{Path: path, Reason: reason + "; so which prompts the layer gives cannot be known"})
+			continue
+		}
+		folders = append(folders, full)
+	}
+	if len(problems) > 0 {
+		return nil, problems
+	}
+	return folders, nil
+}
+
+// within reports whether path, its links followed, is base or inside it,
+// base's links followed too.
+func within(base, path string) bool {
+	real, err := filepath.EvalSymlinks(path)
+	if err != nil {
+		return false
+	}
+	rel, err := filepath.Rel(resolved(base), real)
+	return err == nil && filepath.IsLocal(rel)
+}
+
 // stores are the layers a document of kind is read from, nearest first.
 func (l Layered) stores(kind definition.Kind) []layerStore {
 	var stores []layerStore
@@ -535,7 +648,7 @@ func (l Layered) Read(_ context.Context, kind definition.Kind, name string) (def
 	var texts []definition.LayerText
 	var missing *definition.LayerFile
 	for i, layer := range stores {
-		doc, err := layer.store.read(kind, name)
+		doc, err := layer.read(kind, name)
 		if errors.Is(err, errNotFound) {
 			if missing == nil {
 				missing = &definition.LayerFile{Layer: layer.layer, Path: doc.Source.Path}
@@ -556,10 +669,8 @@ func (l Layered) Read(_ context.Context, kind definition.Kind, name string) (def
 		if !definition.Composed(kind) {
 			source.SHA256 = file.SHA256
 			for _, farther := range stores[i+1:] {
-				if path, err := farther.store.path(kind, name); err == nil {
-					if _, err := os.Stat(path); err == nil {
-						source.Layers = append(source.Layers, definition.LayerFile{Layer: farther.layer, Path: path})
-					}
+				if doc, err := farther.read(kind, name); err == nil {
+					source.Layers = append(source.Layers, definition.LayerFile{Layer: farther.layer, Path: doc.Source.Path})
 				}
 			}
 			return definition.Document{Source: source, Bytes: doc.Bytes}, nil
@@ -593,8 +704,7 @@ func (l Layered) notFound(kind definition.Kind, name string) error {
 			path, _ := Store{Dir: l.Absent}.path(kind, name)
 			expected = append(expected, path)
 		}
-		path, _ := layer.store.path(kind, name)
-		expected = append(expected, path)
+		expected = append(expected, layer.expected(kind, name)...)
 	}
 	return fmt.Errorf("%w (expected %s)", errNotFound, strings.Join(expected, " or "))
 }
@@ -621,7 +731,8 @@ func (l Layered) List(ctx context.Context, kind definition.Kind) ([]string, erro
 
 // Layers are the layers selected, nearest first, each with what makes it
 // invalid: a project layer below another .agister (ADR-028 rule 1), or one
-// that holds a blocks.yaml (rule 7).
+// that holds a blocks.yaml (rule 7); a layer.yaml that cannot be used
+// (rule 9), and one in home, which has none.
 func (l Layered) Layers(context.Context) []definition.LayerDir {
 	var layers []definition.LayerDir
 	if l.Project != nil {
@@ -639,12 +750,28 @@ func (l Layered) Layers(context.Context) []definition.LayerDir {
 				Reason: "a project layer holds no blocks.yaml: blocks are the repository layer's alone (ADR-018), and what this one lists would run; move it to the repository's .agister or remove it",
 			})
 		}
+		_, invalid := l.Project.promptFolders()
+		project.Invalid = append(project.Invalid, invalid...)
 		layers = append(layers, project)
 	}
 	if l.Repository != nil {
-		layers = append(layers, definition.LayerDir{Layer: definition.LayerRepository, Dir: l.Repository.Dir})
+		_, invalid := l.Repository.promptFolders()
+		layers = append(layers, definition.LayerDir{Layer: definition.LayerRepository, Dir: l.Repository.Dir, Invalid: invalid})
 	}
-	return append(layers, definition.LayerDir{Layer: definition.LayerHome, Dir: l.Home.Dir})
+	home := definition.LayerDir{Layer: definition.LayerHome, Dir: l.Home.Dir}
+	if path := filepath.Join(l.Home.Dir, layerFile); exists(path) {
+		home.Invalid = append(home.Invalid, definition.LayerProblem{
+			Path:   path,
+			Reason: "home holds no layer.yaml: home is one folder and names no path (ADR-027 rule 4); remove it",
+		})
+	}
+	return append(layers, home)
+}
+
+// exists reports whether there is an entry at path, whatever it is.
+func exists(path string) bool {
+	_, err := os.Lstat(path)
+	return !errors.Is(err, fs.ErrNotExist)
 }
 
 // Select selects the layers of a command launched in the directory launch

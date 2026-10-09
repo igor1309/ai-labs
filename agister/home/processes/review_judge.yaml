@@ -10,16 +10,16 @@ name: review_judge
 type: process
 uses: agent:claude-judge
 policy: process-policy:judge
+prompt: code-review-judge
 
 input:
   instruction: >-
     Rule on the review findings given as input reviews, following the prompt
-    given as input judge_prompt. Each review is numbered by its place in
+    given as input prompt. Each review is numbered by its place in
     reviews, from 1. They are all you have: rule on the evidence each
     finding presents.
   values:
     reviews: {source: workflow.collection}
-    judge_prompt: {source: prompt, name: code-review-judge}
 
 output:
   format: json

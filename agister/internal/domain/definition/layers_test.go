@@ -346,6 +346,7 @@ func TestProblemsOfAComposedDocumentNameTheLayerFileAtFault(t *testing.T) {
 	const home = `schema: agister.process/v1alpha1
 name: p
 type: process
+prompt: review
 uses: agent:a
 input:
   instruction: Do it.

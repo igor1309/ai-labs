@@ -315,9 +315,11 @@ func (c *Checker) check(ctx context.Context, probe bool) (CheckResult, error) {
 		}
 	}
 	// A prompt a process names that the settings do not list is read as
-	// a call reads it: only one neither layer has is missing. Anything
-	// else at its path, such as a directory, is a document that cannot be
-	// read, a problem of its own that refuses the process (ADR-019 rule 1).
+	// a call reads it: only one no layer has is missing. One found in a
+	// folder a layer lists is listed only so, under the process that names
+	// it (ADR-028 rule 9). Anything else at its path, such as a directory,
+	// is a document that cannot be read, a problem of its own that refuses
+	// the process.
 	for _, name := range sortedNames(bundle.Processes) {
 		for _, prompt := range bundle.Processes[name].Prompts() {
 			ref := DocumentRef{Kind: definition.KindPrompt, Name: prompt}
@@ -388,14 +390,14 @@ func (c *Checker) check(ctx context.Context, probe bool) (CheckResult, error) {
 		return CheckResult{Report: report, Documents: documents, Problems: found, Blocks: blocks}
 	}
 	// What each definition references, and the reverse.
-	link := func(from DocumentRef, kind definition.Kind, name string, optional bool) {
+	link := func(from DocumentRef, kind definition.Kind, name string, guidance bool) {
 		source, ok := index[from]
 		if name == "" || !ok { // a name unlike its file is reported as a problem
 			return
 		}
 		to := DocumentRef{Kind: kind, Name: name}
 		documents[source].Uses = append(documents[source].Uses, to)
-		report.Definitions[source].Uses = append(report.Definitions[source].Uses, contract.DefinitionRef{Kind: string(to.Kind), Name: to.Name, Optional: optional})
+		report.Definitions[source].Uses = append(report.Definitions[source].Uses, contract.DefinitionRef{Kind: string(to.Kind), Name: to.Name, Guidance: guidance})
 		if i, ok := index[to]; ok {
 			report.Definitions[i].UsedBy = append(report.Definitions[i].UsedBy, contract.DefinitionRef{Kind: string(from.Kind), Name: from.Name})
 		}
@@ -412,9 +414,9 @@ func (c *Checker) check(ctx context.Context, probe bool) (CheckResult, error) {
 		link(from, definition.KindAgent, process.Agent, false)
 		link(from, definition.KindPolicy, process.Policy, false)
 		link(from, definition.KindVerify, process.VerifyName, false)
-		optional := process.OptionalPrompts()
-		for _, prompt := range process.Prompts() {
-			link(from, definition.KindPrompt, prompt, contains(optional, prompt))
+		link(from, definition.KindPrompt, process.Prompt, false)
+		for _, prompt := range process.Guidance {
+			link(from, definition.KindPrompt, prompt, true)
 		}
 		for _, skill := range process.Skills {
 			link(from, definition.KindSkill, skill, false)
@@ -465,9 +467,8 @@ func (c *Checker) check(ctx context.Context, probe bool) (CheckResult, error) {
 
 	// Across documents.
 	known := c.runtimes.Adapters()
-	// The core itself supplies a join's collection (ADR-003 rule 4) and the
-	// prompts a process names, which it reads from the settings (ADR-014).
-	sources := append(append([]string(nil), c.sources...), definition.CollectionSource, definition.PromptSource)
+	// The core itself supplies a join's collection (ADR-003 rule 4).
+	sources := append(append([]string(nil), c.sources...), definition.CollectionSource)
 	for _, p := range settings.Check(bundle, settings.Mechanisms{Sources: sources, Adapters: known}) {
 		settingsProblem(p)
 	}

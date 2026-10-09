@@ -232,7 +232,7 @@ func TestCheckLinksAProcessToItsVerification(t *testing.T) {
 	h := newHarness()
 	named(h, verification)
 	got := definitions(h)
-	uses := []contract.DefinitionRef{ref("agents", "a"), ref("policies", "pol"), ref("verifies", "repo"), ref("schemas", "s")}
+	uses := []contract.DefinitionRef{ref("agents", "a"), ref("policies", "pol"), ref("verifies", "repo"), ref("prompts", "inspect"), ref("schemas", "s")}
 	if p := got[ref("processes", "p")]; !reflect.DeepEqual(p.Uses, uses) {
 		t.Fatalf("p = %+v", p)
 	}

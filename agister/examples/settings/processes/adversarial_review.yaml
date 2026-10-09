@@ -6,6 +6,7 @@ name: adversarial_review
 type: process
 uses: agent:reviewer
 policy: process-policy:static-review
+prompt: adversarial-review
 
 input:
   instruction: >-

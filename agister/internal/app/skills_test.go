@@ -370,7 +370,7 @@ func TestCheckLinksAnAgentAndAProcessToTheirSkills(t *testing.T) {
 		return got
 	}
 	agentUses := []contract.DefinitionRef{ref("runtimes", "rt"), ref("skills", "style"), ref("skills", "review")}
-	processUses := []contract.DefinitionRef{ref("agents", "a"), ref("policies", "pol"), ref("skills", "review"), ref("skills", "tests"), ref("schemas", "s")}
+	processUses := []contract.DefinitionRef{ref("agents", "a"), ref("policies", "pol"), ref("prompts", "inspect"), ref("skills", "review"), ref("skills", "tests"), ref("schemas", "s")}
 	h := newHarness()
 	skilled(h)
 	got := definitions(h)

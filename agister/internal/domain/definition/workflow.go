@@ -71,13 +71,8 @@ func ParseWorkflow(doc Document) (Workflow, error) {
 	input := fields(values["input"], "input", []string{"params", "values"}, p)
 	workflow.Params, workflow.Values = parseInputs(input, p)
 	for _, value := range workflow.Values {
-		switch value.Source {
-		case CollectionSource:
+		if value.Source == CollectionSource {
 			p.add("input.values."+value.Name+".source", "%s is given only to a join", CollectionSource)
-		case PromptSource:
-			// A workflow resolves no settings document as an input; the
-			// process that needs the prompt names it (ADR-014).
-			p.add("input.values."+value.Name+".source", "%s is given only to a process", PromptSource)
 		}
 	}
 

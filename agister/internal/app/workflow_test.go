@@ -29,6 +29,7 @@ name: ` + name + `
 type: process
 uses: agent:a
 policy: process-policy:pol
+prompt: inspect
 input:
   instruction: ` + instruction + `
   params:
@@ -51,6 +52,7 @@ name: joiner
 type: process
 uses: agent:a
 policy: process-policy:joining
+prompt: inspect
 input:
   instruction: Join them.
   values:
@@ -1021,8 +1023,9 @@ func TestWorkflowNoJoinWhenTheFirstNodeCannotStart(t *testing.T) {
 	}
 }
 
-// The join receives the collection and the fixed values its own process
-// declares, and nothing from the caller: no param, no workflow value.
+// The join receives the collection, the fixed values its own process
+// declares and its prompt, and nothing from the caller: no param, no
+// workflow value.
 func TestWorkflowJoinReceivesNothingButTheCollection(t *testing.T) {
 	t.Parallel()
 	h := newFlowHarness()
@@ -1036,7 +1039,7 @@ func TestWorkflowJoinReceivesNothingButTheCollection(t *testing.T) {
 	for _, input := range join.Inputs {
 		names = append(names, input.Name+"<-"+input.Source)
 	}
-	if !reflect.DeepEqual(names, []string{"gathered<-workflow.collection", "guide<-file"}) || len(join.Request.Params) != 0 {
+	if !reflect.DeepEqual(names, []string{"gathered<-workflow.collection", "guide<-file", "prompt<-prompt"}) || len(join.Request.Params) != 0 {
 		t.Fatalf("join inputs %v, params %v", names, join.Request.Params)
 	}
 	if join.Parent == nil || join.Parent.Node != "merge" || join.Request.Continue != "" || join.Result.Session.Continues != "" {

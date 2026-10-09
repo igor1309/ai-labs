@@ -6,11 +6,12 @@ name: adr_review_codex
 type: process
 uses: agent:codex-sol-61
 policy: process-policy:codex-review
+prompt: code-review-adr
 
 input:
   instruction: >-
     Review the exact candidate, your working directory, against the base,
-    following the review prompt given as input review_prompt. Read the
+    following the prompt given as input prompt. Read the
     change yourself: git diff <base_revision> <candidate_revision>, whole or
     per file of changed_files. Report material findings
     only, with repository-relative paths and candidate line numbers.
@@ -32,7 +33,6 @@ input:
     base_revision: {source: git.revision, rev: "${param.base}"}
     candidate_revision: {source: git.revision, rev: "${param.candidate}"}
     changed_files: {source: git.changed_files, base: "${value.base_revision}", head: "${value.candidate_revision}"}
-    review_prompt: {source: prompt, name: code-review-adr}
     goal: {source: param, name: goal}
 
 workspace:
