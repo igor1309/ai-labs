@@ -29,6 +29,17 @@
 # a host's ~/.codex/rules allow rules run matching commands, such as git
 # commit, outside the sandbox (seen on 0.160.0 and 0.161.0): observe a
 # mapping's git and other ruled commands with the adapter's argv (LAB-125).
+# Re-observed on codex-cli 0.162.0 (2026-10-09), in a scratch repository,
+# with the adapter's argv and one shell script run as a single command, so
+# the sandbox, not the model, decided each action: read-only read a file
+# and ran git show, and refused creating a file in the repository, writing
+# under /tmp, writing in the home directory, touch in .git, git tag, git
+# commit and network; workspace-write wrote in the workspace and under
+# /tmp, and refused writing in the home directory, touch in .git, git tag,
+# git commit and network; the workspace-write session resumed with
+# -c sandbox_mode="read-only" refused every write. Asked to run the same
+# actions as separate commands, the model skipped the writes and reported
+# exit codes for commands it never ran: observe with one script.
 schema: agister.runtime/v1alpha1
 name: codex
 adapter: codex
@@ -39,8 +50,8 @@ primitives:
   items:
     read-only:
       grants: [repository.read, repository.search, repository.diff, repository.history.read, process.execute, host.read]
-      verified: ["0.158.", "0.159.", "0.160.", "0.161."]
+      verified: ["0.158.", "0.159.", "0.160.", "0.161.", "0.162."]
     workspace-write:
       grants: [repository.read, repository.search, repository.diff, repository.history.read, process.execute, host.read,
                repository.write, host.write]
-      verified: ["0.159.", "0.160.", "0.161."]
+      verified: ["0.159.", "0.160.", "0.161.", "0.162."]
