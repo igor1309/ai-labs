@@ -1,5 +1,5 @@
 # Warder's check for every process that names verify:warder: format, vet
-# and race tests for each Go module under warder/ (warder/scripts/test.sh).
+# and race tests for the warder module (warder/scripts/test.sh).
 schema: agister.verify/v1alpha1
 name: warder
 command: warder/scripts/test.sh
