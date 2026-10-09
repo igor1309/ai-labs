@@ -30,6 +30,8 @@ An agent is identified by `(source, id)`. The adapter maintains identity accordi
 
 Records from a given source are emitted in observation order. No cross-source order is guaranteed. `observedAt` is a wall-clock completion timestamp, not an ordering key or an exact timestamp for each agent's state.
 
+**Output streams:** stdout carries observations and nothing else. stderr carries diagnostics plus opt-in logs: by default diagnostics only, and with `-verbose` also one `log/slog` text record per logged step. Both go through one serialized stderr writer, so a log record never interleaves with a diagnostic line.
+
 ## Composition and components
 
 **Client-owned interfaces:** A component defines the capabilities it needs from collaborators; the composition root injects implementations. Components are logical boundaries, not prescribed types or packages.
@@ -46,24 +48,29 @@ Records from a given source are emitted in observation order. No cross-source or
 
 Each attempt owns its `Publish` interface. **The composition root injects the same publisher instance** wherever that interface is required. Sharing an implementation does not make an interface shared or change its ownership.
 
-The clock, waiting, deadline, runtime I/O, stdout writer, and stderr reporter are supplied at the boundary rather than accessed as hidden globals. Cancellation of a read propagates through its dependencies; how native I/O releases resources is the relevant adapter's implementation concern.
+The clock, waiting, deadline, runtime I/O, stdout writer, stderr reporter, and logger are supplied at the boundary rather than accessed as hidden globals. Cancellation of a read propagates through its dependencies; how native I/O releases resources is the relevant adapter's implementation concern.
+
+**Logging is decorated, never built in.** The composition root wraps the read (`ReadAgents`), the command execution under it, the capture, the deadline, the publish and the wait in logging decorators. Each implements the interface of what it wraps, changes no argument, result, error or cancellation, and records the source ID, the outcome and the duration, timed by the injected clock, through the one logger the root is given. The components do not know the decorators or the logger.
 
 ### Dependency map
 
-`A —Port→ B` means **A calls its own port, implemented by B**. Arrows indicate calls/dependencies, not construction or ownership. The composition root constructs and connects these components.
+`A —Port→ B` means **A calls its own port, implemented by B**. Arrows indicate calls/dependencies, not construction or ownership. The composition root constructs and connects these components. `[logged]` marks a port the root wraps in a logging decorator: the call passes through the decorator to B unchanged, and B does not know it.
 
 ```text
 Application runner —Runnable→ Source loop (one per source)
 Source loop        —Attempt─→ Observation attempt
-Source loop        —Wait────→ Timer adapter
+Source loop        —Wait────→ Timer adapter                                  [logged]
 
-Observation attempt —Capture─→ Observation capture
-Observation attempt —Publish─→ Shared JSONL publisher —RecordWriter→ stdout adapter
+Observation attempt —Capture─→ Observation capture                         [logged]
+Observation attempt —Publish─→ Shared JSONL publisher —RecordWriter→ stdout adapter   [Publish logged]
 Observation attempt —Report──→ stderr adapter
-Observation attempt —Deadline→ Deadline/timer adapter
+Observation attempt —Deadline→ Deadline/timer adapter                      [logged]
 
-Observation capture —ReadAgents→ Runtime adapter —ExecuteCommand→ OS process adapter [if CLI-based]
+Observation capture —ReadAgents→ Runtime adapter —ExecuteCommand→ OS process adapter [if CLI-based; both logged]
 Observation capture —Clock────→ System-clock adapter
+
+Logging decorators —Logger→ slog text handler —→ stderr adapter (the diagnostics' serialized writer)
+Logging decorators —Clock──→ System-clock adapter
 ```
 
 ## Runtime behavior

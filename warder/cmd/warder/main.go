@@ -13,6 +13,7 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"log/slog"
 	"os"
 	"os/signal"
 	"reflect"
@@ -52,7 +53,7 @@ const (
 	exitUsage = 2
 )
 
-const usage = "usage: warder -claude <source-id> [-claude <source-id> ...]"
+const usage = "usage: warder [-verbose] -claude <source-id> [-claude <source-id> ...]"
 
 func main() {
 	os.Exit(serve(os.Args, os.Stdout, os.Stderr, osProcesses{waitDelay: processWaitDelay}.Execute, systemClock, osTimers{newTimer: time.NewTimer}.Start, nil))
@@ -100,16 +101,17 @@ func (now clockFunc) Now() time.Time { return now() }
 // run is the application: it enables the sources args asks for, args[0]
 // being the program's name, runs them until ctx ends or one of them fails,
 // and returns the exit code. It reaches nothing but what it is given:
-// observations go to stdout, diagnostics and its own messages to stderr,
-// commands through execute, the time comes from clock and every wait from
-// timer.
+// observations go to stdout, diagnostics, the logs -verbose asks for and
+// its own messages to stderr, commands through execute, the time comes
+// from clock and every wait from timer.
 func run(ctx context.Context, args []string, stdout, stderr io.Writer, execute executeFunc, clock clockFunc, timer timerFunc) int {
-	sources, err := parseSources(args)
+	command, err := parseCommandLine(args)
 	if err != nil {
 		fmt.Fprintf(stderr, "warder: %v\n%s\n", err, usage)
 		return exitUsage
 	}
-	application, err := wire(sources, stdout, stderr, execute, clock, timer)
+	diagnostics := &serialWriter{writer: stderr}
+	application, err := wire(command.claudeSources, stdout, diagnostics, newLogger(diagnostics, command.verbose), execute, clock, timer)
 	if err != nil {
 		fmt.Fprintf(stderr, "warder: %v\n", err)
 		return exitFailed
@@ -121,12 +123,22 @@ func run(ctx context.Context, args []string, stdout, stderr io.Writer, execute e
 	return exitStopped
 }
 
-// parseSources reads the command line, args[0] being the program's name,
-// and returns the IDs of the Claude Code sources it enables, in its order:
-// one for each -claude <source-id>. No source, an empty ID, an ID that is
-// not valid UTF-8, an ID given twice, an unknown flag and a stray argument
-// are errors.
-func parseSources(args []string) ([]string, error) {
+// commandLine is what the command line asks for.
+type commandLine struct {
+	// claudeSources are the IDs of the Claude Code sources enabled, in the
+	// order given.
+	claudeSources []string
+	// verbose turns the decorators' logs on.
+	verbose bool
+}
+
+// parseCommandLine reads the command line, args[0] being the program's
+// name: the IDs of the Claude Code sources it enables, in its order, one
+// for each -claude <source-id>, and whether -verbose is given. No source,
+// an empty ID, an ID that is not valid UTF-8, an ID given twice, an
+// unknown flag, a -verbose that is not a boolean and a stray argument are
+// errors.
+func parseCommandLine(args []string) (commandLine, error) {
 	flags := flag.NewFlagSet("warder", flag.ContinueOnError)
 	// The caller reports the error, once.
 	flags.SetOutput(io.Discard)
@@ -146,29 +158,36 @@ func parseSources(args []string) ([]string, error) {
 		sources = append(sources, id)
 		return nil
 	})
+	verbose := flags.Bool("verbose", false, "log each read, capture, deadline, publish and wait on stderr")
 	if len(args) > 0 {
 		args = args[1:]
 	}
 	if err := flags.Parse(args); err != nil {
-		return nil, err
+		return commandLine{}, err
 	}
 	if flags.NArg() > 0 {
-		return nil, fmt.Errorf("unexpected argument %q", flags.Arg(0))
+		return commandLine{}, fmt.Errorf("unexpected argument %q", flags.Arg(0))
 	}
 	if len(sources) == 0 {
-		return nil, errors.New("no source enabled")
+		return commandLine{}, errors.New("no source enabled")
 	}
-	return sources, nil
+	return commandLine{claudeSources: sources, verbose: *verbose}, nil
 }
 
 // wire constructs the application: one source loop for each Claude Code
 // source, all of them publishing through one JSONL publisher over stdout
-// and reporting through one serialized stderr, under one runner. A missing
-// boundary, or a stderr that is a nil pointer, map, slice, func or chan
-// carried as a writer, fails here; nothing is started.
-func wire(claudeSources []string, stdout, stderr io.Writer, execute executeFunc, clock clockFunc, timer timerFunc) (*runner.Runner, error) {
+// and reporting through stderr, under one runner. stderr is written by
+// every source at once, so the caller gives it serialized, as the writer
+// logger writes to: run gives a serialWriter. Each source's collaborators
+// are wrapped in the decorators that log through logger, timed by clock.
+// A missing boundary, or a stderr that is a nil pointer, map, slice, func
+// or chan carried as a writer, fails here; nothing is started.
+func wire(claudeSources []string, stdout, stderr io.Writer, logger *slog.Logger, execute executeFunc, clock clockFunc, timer timerFunc) (*runner.Runner, error) {
 	if stderr == nil || isNil(reflect.ValueOf(stderr)) {
 		return nil, errors.New("no stderr")
+	}
+	if logger == nil {
+		return nil, errors.New("no logger")
 	}
 	if timer == nil {
 		return nil, errors.New("no timer")
@@ -177,11 +196,11 @@ func wire(claudeSources []string, stdout, stderr io.Writer, execute executeFunc,
 	if err != nil {
 		return nil, err
 	}
-	diagnostics := &serialWriter{writer: stderr}
 
 	loops := argumentsOf(runner.New)
 	for _, source := range claudeSources {
-		sourceLoop, err := wireClaudeSource(source, publisher.Publish, diagnostics, execute, clock, timer)
+		log := sourceLog{logger: logger, clock: clock, source: source}
+		sourceLoop, err := wireClaudeSource(source, publisher.Publish, stderr, log, execute, clock, timer)
 		if err != nil {
 			return nil, fmt.Errorf("source %q: %w", source, err)
 		}
@@ -192,26 +211,28 @@ func wire(claudeSources []string, stdout, stderr io.Writer, execute executeFunc,
 
 // wireClaudeSource constructs the loop of one Claude Code source: its
 // adapter over execute, its capture, its attempt and its loop, with the
-// Claude settings.
-func wireClaudeSource(source string, publish publishJSONL, diagnostics io.Writer, execute executeFunc, clock clockFunc, timer timerFunc) (*loop.Loop, error) {
-	adapter, err := claude.New(execute)
+// Claude settings. Its execution, read, capture, deadline, publish and
+// wait are each wrapped in the decorator that records it through log.
+func wireClaudeSource(source string, publish publishJSONL, diagnostics io.Writer, log sourceLog, execute executeFunc, clock clockFunc, timer timerFunc) (*loop.Loop, error) {
+	adapter, err := claude.New(logExecute(execute, log))
 	if err != nil {
 		return nil, err
 	}
-	capturer, err := capture.New(source, readClaudeAgents(adapter.ReadAgents), clock)
+	capturer, err := capture.New(source, loggedReadAgents{read: readClaudeAgents(adapter.ReadAgents).ReadAgents, log: log}, clock)
 	if err != nil {
 		return nil, err
 	}
+	deadline := timerDeadline{timer: timer, limit: claudeReadTimeout}
 	read, err := attempt.New[capture.Observation](
-		capturer,
-		timerDeadline{timer: timer, limit: claudeReadTimeout},
-		publish,
+		loggedCapture{capture: capturer.Capture, log: log},
+		loggedDeadline{limit: deadline.Limit, given: deadline.limit, log: log},
+		loggedPublish{publish: publish.Publish, log: log},
 		sourceReporter{source: source, writer: diagnostics},
 	)
 	if err != nil {
 		return nil, err
 	}
-	return loop.New(read, timerWait{timer: timer}, claudePostAttemptWait)
+	return loop.New(read, loggedWait{wait: timerWait{timer: timer}.Wait, log: log}, claudePostAttemptWait)
 }
 
 // argumentsOf is an empty list of what a variadic constructor takes. A

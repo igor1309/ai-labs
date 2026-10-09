@@ -13,6 +13,12 @@ for convenience. In warder that means:
   `warder/internal/` (for example `internal/jsonl`). Every package is the
   module root (the architecture test's own), under `internal/` or under
   `cmd/`.
+- Logging is a decorator the composition root wraps around a collaborator
+  (`cmd/warder/logging.go`): it implements the interface of what it wraps
+  without naming it, changes no argument, result or error, and logs
+  through the one `*slog.Logger` `wire` is given. Logging never goes
+  inside `internal/`: no component imports `log/slog` or knows it is
+  logged.
 - A component package imports no other package of the module. It
   declares the interfaces it requires, with only the methods it calls,
   and its own types, including its own observation and agent types, even
@@ -51,10 +57,11 @@ From the repository root, quiet (never `-v`):
 ## Running
 
 - Build from `warder/`: `go build ./cmd/warder`.
-- Command line: `warder -claude <source-id>`, the flag repeatable. Each
-  enables one Claude Code source under that source ID. No source, an empty
-  or duplicate ID, an ID that is not valid UTF-8, an unknown flag or a
-  stray argument is a usage error.
+- Command line: `warder [-verbose] -claude <source-id>`, `-claude`
+  repeatable. Each enables one Claude Code source under that source ID.
+  No source, an empty or duplicate ID, an ID that is not valid UTF-8, a
+  `-verbose` that is not a boolean, an unknown flag or a stray argument is
+  a usage error.
 - Settings, constants in `cmd/warder/main.go`: a Claude source's read is
   limited to 5 seconds, and it waits 5 seconds after each attempt.
 - stdout: one JSON line per successful read, the design's observation
@@ -67,7 +74,13 @@ From the repository root, quiet (never `-v`):
   held by a stdout consumer that stopped reading.
 - stderr: one line per read that failed or timed out,
   `warder: <source-id>: <error>`, and warder's own messages,
-  `warder: <error>`.
+  `warder: <error>`. With `-verbose`, also one `log/slog` text record per
+  execution, read, capture, deadline, publish and wait, at `level=DEBUG`:
+  `time=<clock time> level=DEBUG msg=<step> source=<source-id> [step's
+  own attributes] outcome=ok|error [error=<error>] duration=<duration>`,
+  the times from the injected clock. Records and diagnostics share one
+  serialized writer, one Write per line. Without `-verbose` logging is
+  off and stderr carries diagnostics only.
 - Exit codes: 0 when SIGINT or SIGTERM cancelled the run, after every
   source loop returned; 1 for a failure it cannot recover from, as an
   output error is; 2 for a usage error, with nothing started.

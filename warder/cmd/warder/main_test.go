@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"io"
+	"log/slog"
 	"slices"
 	"strings"
 	"sync"
@@ -409,6 +410,110 @@ func TestCancellationEndsTheRunWithExitCode0AfterEveryLoopReturned(t *testing.T)
 	assertNoLines(t, "stderr", stderr)
 }
 
+// With no -verbose, logging is off: a read that fails, then one that
+// succeeds, write on stdout exactly the second's record and on stderr
+// exactly the first's diagnostic, nothing else, through the second
+// attempt's release and into its wait.
+func TestWithoutVerboseStdoutAndStderrCarryNoLog(t *testing.T) {
+	t.Parallel()
+	clock := clocktest.NewClock(morning())
+	stdout, stderr := newLines(), newLines()
+	executor := &executorSpy{answer: func(_ context.Context, call int) ([]byte, error) {
+		if call == 1 {
+			return nil, errors.New("exit status 1: not logged in")
+		}
+		return []byte(sessions), nil
+	}}
+	startApplication(t, stdout, stderr, executor.execute, clock, "warder", "-claude", "claude-main")
+	stderr.next()
+	clock.Started(5 * time.Second)
+	clock.Started(5 * time.Second)
+	clock.Advance(5 * time.Second)
+	stdout.next()
+	// The second attempt's deadline and wait: it released its limit.
+	clock.Started(5 * time.Second)
+	clock.Started(5 * time.Second)
+
+	if got, want := stdout.all(), []string{observationLine("claude-main", "2026-10-09T08:28:15Z")}; !slices.Equal(got, want) {
+		t.Errorf("got on stdout\n%swant\n%s", strings.Join(got, ""), strings.Join(want, ""))
+	}
+	want := []string{"warder: claude-main: attempt: read failed: capture: read agents: claude: execute claude agents --json: exit status 1: not logged in\n"}
+	if got := stderr.all(); !slices.Equal(got, want) {
+		t.Errorf("got on stderr\n%swant\n%s", strings.Join(got, ""), strings.Join(want, ""))
+	}
+}
+
+// With -verbose, each step of a source's attempt is one slog text record
+// on stderr, at Debug, with the source ID, its outcome and its duration on
+// the clock: the execution, the read, the capture, the publish, the
+// deadline once released, and the wait once it ended. stdout carries the
+// same records as without -verbose.
+func TestVerboseRecordsEachStepOfASourceOnStderr(t *testing.T) {
+	t.Parallel()
+	clock := clocktest.NewClock(morning())
+	stdout, stderr := newLines(), newLines()
+	executor := &executorSpy{answer: answerSessions}
+	startApplication(t, stdout, stderr, executor.execute, clock, "warder", "-verbose", "-claude", "claude-main")
+
+	if got, want := stdout.next(), observationLine("claude-main", "2026-10-09T08:28:10Z"); got != want {
+		t.Errorf("got the first record\n%swant\n%s", got, want)
+	}
+	first := "time=2026-10-09T11:28:10.000+03:00 level=DEBUG "
+	for _, want := range []string{
+		first + "msg=execute source=claude-main command=claude outcome=ok duration=0s\n",
+		first + `msg="read agents" source=claude-main outcome=ok duration=0s` + "\n",
+		first + "msg=capture source=claude-main outcome=ok duration=0s\n",
+		first + "msg=publish source=claude-main outcome=ok duration=0s\n",
+		first + "msg=deadline source=claude-main limit=5s expired=false outcome=ok duration=0s\n",
+	} {
+		if got := stderr.next(); got != want {
+			t.Errorf("got on stderr\n%swant\n%s", got, want)
+		}
+	}
+	clock.Started(5 * time.Second)
+	clock.Started(5 * time.Second)
+
+	clock.Advance(5 * time.Second)
+
+	if got, want := stderr.next(), "time=2026-10-09T11:28:15.000+03:00 level=DEBUG msg=wait source=claude-main interval=5s outcome=ok duration=5s\n"; got != want {
+		t.Errorf("got on stderr\n%swant\n%s", got, want)
+	}
+	if got, want := stdout.next(), observationLine("claude-main", "2026-10-09T08:28:15Z"); got != want {
+		t.Errorf("got the second record\n%swant\n%s", got, want)
+	}
+}
+
+// With -verbose, a read that its deadline ended is recorded with its
+// errors and the deadline as expired, and its diagnostic is still one
+// line of its own: every write to stderr is one whole line, a record or
+// the diagnostic. Nothing goes to stdout.
+func TestVerboseRecordsATimedOutReadBesideItsDiagnostic(t *testing.T) {
+	t.Parallel()
+	clock := clocktest.NewClock(morning())
+	stdout, stderr := newLines(), newLines()
+	executor := &executorSpy{answer: func(ctx context.Context, _ int) ([]byte, error) { return untilEnded(ctx) }}
+	startApplication(t, stdout, stderr, executor.execute, clock, "warder", "-verbose", "-claude", "claude-main")
+	clock.Started(5 * time.Second)
+
+	clock.Advance(5 * time.Second)
+
+	at := "time=2026-10-09T11:28:15.000+03:00 level=DEBUG "
+	for _, want := range []string{
+		at + `msg=execute source=claude-main command=claude outcome=error error="context deadline exceeded" duration=5s` + "\n",
+		at + `msg="read agents" source=claude-main outcome=error error="claude: execute claude agents --json: context deadline exceeded" duration=5s` + "\n",
+		at + `msg=capture source=claude-main outcome=error error="capture: read agents: claude: execute claude agents --json: context deadline exceeded" duration=5s` + "\n",
+		"warder: claude-main: attempt: read timed out: capture: read agents: claude: execute claude agents --json: context deadline exceeded\n",
+		at + "msg=deadline source=claude-main limit=5s expired=true outcome=ok duration=5s\n",
+	} {
+		if got := stderr.next(); got != want {
+			t.Errorf("got on stderr\n%swant\n%s", got, want)
+		}
+	}
+	// The wait after the attempt: the attempt has returned.
+	clock.Started(5 * time.Second)
+	assertNoLines(t, "stdout", stdout)
+}
+
 // A command line that enables no valid set of sources is a usage error: a
 // message on stderr, exit code 2, nothing on stdout, and nothing started,
 // neither a command nor a timer.
@@ -429,6 +534,8 @@ func TestAUsageErrorExitsWithCode2AndStartsNothing(t *testing.T) {
 		{"a duplicate ID", []string{"warder", "-claude", "claude-main", "-claude", "claude-main"}, `source ID "claude-main" is given twice`},
 		{"an unknown flag", []string{"warder", "-claude", "claude-main", "-codex", "codex-main"}, "flag provided but not defined: -codex"},
 		{"a stray argument", []string{"warder", "-claude", "claude-main", "claude-side"}, `unexpected argument "claude-side"`},
+		{"a -verbose that is not a boolean", []string{"warder", "-verbose=loud", "-claude", "claude-main"}, `invalid boolean value "loud" for -verbose`},
+		{"-verbose with no source", []string{"warder", "-verbose"}, "no source enabled"},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
@@ -458,14 +565,42 @@ func TestAUsageErrorExitsWithCode2AndStartsNothing(t *testing.T) {
 }
 
 // The sources are those of every -claude flag, in the order given.
-func TestParseSourcesKeepsTheOrderOfTheFlags(t *testing.T) {
+func TestParseCommandLineKeepsTheOrderOfTheFlags(t *testing.T) {
 	t.Parallel()
-	got, err := parseSources([]string{"warder", "-claude", "claude-side", "--claude=claude-main"})
+	got, err := parseCommandLine([]string{"warder", "-claude", "claude-side", "--claude=claude-main"})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if want := []string{"claude-side", "claude-main"}; !slices.Equal(got, want) {
-		t.Errorf("got the sources %q, want %q", got, want)
+	if want := []string{"claude-side", "claude-main"}; !slices.Equal(got.claudeSources, want) {
+		t.Errorf("got the sources %q, want %q", got.claudeSources, want)
+	}
+}
+
+// Logging is off unless -verbose is given, in any of the flag's forms and
+// anywhere among the sources.
+func TestParseCommandLineTurnsLoggingOnOnlyWithVerbose(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		args    []string
+		verbose bool
+	}{
+		{[]string{"warder", "-claude", "claude-main"}, false},
+		{[]string{"warder", "-verbose", "-claude", "claude-main"}, true},
+		{[]string{"warder", "-claude", "claude-main", "--verbose"}, true},
+		{[]string{"warder", "-verbose=true", "-claude", "claude-main"}, true},
+		{[]string{"warder", "-verbose=false", "-claude", "claude-main"}, false},
+	}
+	for _, test := range tests {
+		got, err := parseCommandLine(test.args)
+		if err != nil {
+			t.Fatalf("%q: %v", test.args, err)
+		}
+		if got.verbose != test.verbose {
+			t.Errorf("%q: got verbose %v, want %v", test.args, got.verbose, test.verbose)
+		}
+		if want := []string{"claude-main"}; !slices.Equal(got.claudeSources, want) {
+			t.Errorf("%q: got the sources %q, want %q", test.args, got.claudeSources, want)
+		}
 	}
 }
 
@@ -474,25 +609,28 @@ func TestWireRejectsAMissingBoundary(t *testing.T) {
 	t.Parallel()
 	clock := clocktest.NewClock(morning())
 	executor := &executorSpy{answer: answerSessions}
+	logger := newLogger(newLines(), true)
 	tests := []struct {
 		name           string
 		stdout, stderr io.Writer
+		logger         *slog.Logger
 		execute        executeFunc
 		clock          clockFunc
 		timer          timerFunc
 		says           string
 	}{
-		{"no stdout", nil, newLines(), executor.execute, clock.Now, clock.Timer, "no record writer"},
-		{"no stderr", newLines(), nil, executor.execute, clock.Now, clock.Timer, "no stderr"},
-		{"a nil stderr carried as a writer", newLines(), (*lines)(nil), executor.execute, clock.Now, clock.Timer, "no stderr"},
-		{"no executor", newLines(), newLines(), nil, clock.Now, clock.Timer, "no command executor"},
-		{"no clock", newLines(), newLines(), executor.execute, nil, clock.Timer, "no clock"},
-		{"no timer", newLines(), newLines(), executor.execute, clock.Now, nil, "no timer"},
+		{"no stdout", nil, newLines(), logger, executor.execute, clock.Now, clock.Timer, "no record writer"},
+		{"no stderr", newLines(), nil, logger, executor.execute, clock.Now, clock.Timer, "no stderr"},
+		{"a nil stderr carried as a writer", newLines(), (*lines)(nil), logger, executor.execute, clock.Now, clock.Timer, "no stderr"},
+		{"no logger", newLines(), newLines(), nil, executor.execute, clock.Now, clock.Timer, "no logger"},
+		{"no executor", newLines(), newLines(), logger, nil, clock.Now, clock.Timer, "no command executor"},
+		{"no clock", newLines(), newLines(), logger, executor.execute, nil, clock.Timer, "no clock"},
+		{"no timer", newLines(), newLines(), logger, executor.execute, clock.Now, nil, "no timer"},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
-			application, err := wire([]string{"claude-main"}, test.stdout, test.stderr, test.execute, test.clock, test.timer)
+			application, err := wire([]string{"claude-main"}, test.stdout, test.stderr, test.logger, test.execute, test.clock, test.timer)
 			if err == nil || !strings.Contains(err.Error(), test.says) {
 				t.Errorf("got the error %v, want one that says %q", err, test.says)
 			}
