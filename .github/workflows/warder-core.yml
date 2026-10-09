@@ -16,6 +16,9 @@ jobs:
   core:
     runs-on: [self-hosted, local-mac]
     timeout-minutes: 10
+    env:
+      # warder requires gokit at a tag of this private repository (ADR-019).
+      GOPRIVATE: github.com/igor1309/ai-labs
     steps:
       - name: Checkout
         uses: actions/checkout@v5
