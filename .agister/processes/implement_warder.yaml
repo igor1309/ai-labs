@@ -1,0 +1,39 @@
+schema: agister.process/v1alpha1
+name: implement_warder
+type: process
+uses: agent:claude-implementer-opus
+policy: process-policy:implement
+
+input:
+  instruction: >-
+    Implement the task given as input brief in this worktree, at the
+    candidate. Do not commit; your changes stay here, uncommitted. Before you finish, run
+    your testing command, as your skills and the repository's AGENTS.md
+    describe it, and any further checks the brief asks for, and report each with its exit code and final line; list every
+    file you changed, repository-relative. Run commands in the foreground:
+    once your turn ends, nothing waits for a background command. Any
+    guidance given as further inputs applies to the code it names.
+  params:
+    candidate: {default: HEAD}
+    brief: {}
+  values:
+    candidate_revision: {source: git.revision, rev: "${param.candidate}"}
+    # A goal, for a one-step change, or a step brief (ADR-026): the call
+    # is refused unless its text has one of the two forms, briefs/*.yaml.
+    brief: {source: file, path: "${param.brief}", form: [goal, step]}
+    go_testing: {source: prompt, name: go-testing-seams, optional: true}
+    go_architecture: {source: prompt, name: go-architecture, optional: true}
+
+workspace:
+  revision: candidate_revision
+  clean: true
+
+output:
+  format: json
+  schema: implementation
+  require_valid: true
+
+
+# Warder's check: .agister/verifies/warder.yaml, which runs
+# warder/scripts/test.sh instead of the Agister check verify:repo runs.
+verify: verify:warder

@@ -38,6 +38,8 @@ jobs:
       noreta-ci: ${{ steps.filter.outputs.noreta-ci }}
       agister: ${{ steps.filter.outputs.agister }}
       agister-ci: ${{ steps.filter.outputs.agister-ci }}
+      warder: ${{ steps.filter.outputs.warder }}
+      warder-ci: ${{ steps.filter.outputs.warder-ci }}
       dev-skills: ${{ steps.filter.outputs.dev-skills }}
       agonara: ${{ steps.filter.outputs.agonara }}
       agonara-ci: ${{ steps.filter.outputs.agonara-ci }}
@@ -159,6 +161,14 @@ jobs:
               - "agister/home/**"
             agister-ci:
               - ".github/workflows/agister-core.yml"
+            warder:
+              - "warder/**/*.go"
+              - "warder/**/go.mod"
+              - "warder/**/go.sum"
+              - "warder/**/testdata/**"
+              - "warder/scripts/**"
+            warder-ci:
+              - ".github/workflows/warder-core.yml"
             dev-skills:
               - "dev-skills/public/**"
             agonara:
@@ -246,6 +256,11 @@ jobs:
     needs: [changes]
     if: ${{ github.event_name == 'workflow_dispatch' || needs.changes.outputs.agister == 'true' || needs.changes.outputs.agister-ci == 'true' || needs.changes.outputs.shared == 'true' }}
     uses: ./.github/workflows/agister-core.yml
+
+  warder-core:
+    needs: [changes]
+    if: ${{ github.event_name == 'workflow_dispatch' || needs.changes.outputs.warder == 'true' || needs.changes.outputs.warder-ci == 'true' || needs.changes.outputs.shared == 'true' }}
+    uses: ./.github/workflows/warder-core.yml
 
   agonara-core:
     needs: [changes]
@@ -347,7 +362,7 @@ jobs:
     # run of the same commit reports under another name.
     name: ${{ github.event_name == 'pull_request' && 'report' || format('report ({0})', github.event_name) }}
     if: ${{ always() }}
-    needs: [changes, nomos-core, oracle-core, web-scout-core, corpus-scout-core, reinix-core, clipdeck-core, ntfy-sender-core, noreta-core, agister-core, agonara-core, foliotell-core, foliotell-android-core, notio-core, notio-frontend-core, release-validation, real-provider-smoke, dev-skills-validation]
+    needs: [changes, nomos-core, oracle-core, web-scout-core, corpus-scout-core, reinix-core, clipdeck-core, ntfy-sender-core, noreta-core, agister-core, warder-core, agonara-core, foliotell-core, foliotell-android-core, notio-core, notio-frontend-core, release-validation, real-provider-smoke, dev-skills-validation]
     runs-on: ubuntu-latest
     steps:
       - name: Check all jobs passed
@@ -358,8 +373,8 @@ jobs:
           done
 
   notify:
-    if: ${{ always() && !cancelled() && (needs.changes.result == 'failure' || needs.nomos-core.result == 'failure' || needs.oracle-core.result == 'failure' || needs.web-scout-core.result == 'failure' || needs.corpus-scout-core.result == 'failure' || needs.reinix-core.result == 'failure' || needs.clipdeck-core.result == 'failure' || needs.ntfy-sender-core.result == 'failure' || needs.noreta-core.result == 'failure' || needs.agister-core.result == 'failure' || needs.agonara-core.result == 'failure' || needs.foliotell-core.result == 'failure' || needs.foliotell-android-core.result == 'failure' || needs.notio-core.result == 'failure' || needs.notio-frontend-core.result == 'failure' || needs.release-validation.result == 'failure' || needs.real-provider-smoke.result == 'failure' || needs.dev-skills-validation.result == 'failure') && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork == false) }}
-    needs: [changes, nomos-core, oracle-core, web-scout-core, corpus-scout-core, reinix-core, clipdeck-core, ntfy-sender-core, noreta-core, agister-core, agonara-core, foliotell-core, foliotell-android-core, notio-core, notio-frontend-core, release-validation, real-provider-smoke, dev-skills-validation]
+    if: ${{ always() && !cancelled() && (needs.changes.result == 'failure' || needs.nomos-core.result == 'failure' || needs.oracle-core.result == 'failure' || needs.web-scout-core.result == 'failure' || needs.corpus-scout-core.result == 'failure' || needs.reinix-core.result == 'failure' || needs.clipdeck-core.result == 'failure' || needs.ntfy-sender-core.result == 'failure' || needs.noreta-core.result == 'failure' || needs.agister-core.result == 'failure' || needs.warder-core.result == 'failure' || needs.agonara-core.result == 'failure' || needs.foliotell-core.result == 'failure' || needs.foliotell-android-core.result == 'failure' || needs.notio-core.result == 'failure' || needs.notio-frontend-core.result == 'failure' || needs.release-validation.result == 'failure' || needs.real-provider-smoke.result == 'failure' || needs.dev-skills-validation.result == 'failure') && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork == false) }}
+    needs: [changes, nomos-core, oracle-core, web-scout-core, corpus-scout-core, reinix-core, clipdeck-core, ntfy-sender-core, noreta-core, agister-core, warder-core, agonara-core, foliotell-core, foliotell-android-core, notio-core, notio-frontend-core, release-validation, real-provider-smoke, dev-skills-validation]
     uses: ./.github/workflows/notify-telegram-failure.yml
     with:
       title: "CI"
@@ -376,6 +391,7 @@ jobs:
         ntfy-sender-core=${{ needs.ntfy-sender-core.result }}
         noreta-core=${{ needs.noreta-core.result }}
         agister-core=${{ needs.agister-core.result }}
+        warder-core=${{ needs.warder-core.result }}
         agonara-core=${{ needs.agonara-core.result }}
         foliotell-core=${{ needs.foliotell-core.result }}
         foliotell-android-core=${{ needs.foliotell-android-core.result }}
