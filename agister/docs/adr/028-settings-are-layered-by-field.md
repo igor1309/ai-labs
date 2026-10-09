@@ -1,6 +1,6 @@
 # ADR-028: Settings are layered by field
 
-- **Status:** Proposed
+- **Status:** Accepted
 - **Date:** 2026-10-09
 - **Scope:** which settings layers a call reads, how a document is
   composed from the layers that hold it, and how a process names its
