@@ -146,7 +146,9 @@ const observedSessions = `[
 `
 
 // The observed output is read as one agent per session, in its order, each
-// with its sessionId as its ID, and its other fields ignored.
+// with its sessionId as its ID, and its other fields ignored. The states
+// are the contract's literal values, not the package's constants, so a
+// constant whose value changes fails here.
 func TestReadAgentsReturnsTheObservedSessions(t *testing.T) {
 	t.Parallel()
 
@@ -156,34 +158,36 @@ func TestReadAgentsReturnsTheObservedSessions(t *testing.T) {
 	}
 
 	want := []claude.Agent{
-		{ID: "98d188e1-53ea-420a-b7de-f7ad912ff2b9", State: claude.Unknown},
-		{ID: "bff7633e-c748-44d1-bf38-3633cbca707f", State: claude.Idle},
-		{ID: "91a3675b-0202-465e-a0ef-4447d733b792", State: claude.Working},
+		{ID: "98d188e1-53ea-420a-b7de-f7ad912ff2b9", State: "unknown"},
+		{ID: "bff7633e-c748-44d1-bf38-3633cbca707f", State: "idle"},
+		{ID: "91a3675b-0202-465e-a0ef-4447d733b792", State: "working"},
 	}
 	if !slices.Equal(agents, want) {
 		t.Errorf("got the agents %v, want %v", agents, want)
 	}
 }
 
-// Only a status of busy or idle is a known state. Everything else is
-// unknown: a state, blocked included, whatever status is beside it; an
-// unrecognized status; neither field.
+// Only a status of busy or idle, with no state beside it, is a known
+// state. Everything else is unknown: a state, blocked included; a state
+// and a status together, a shape that was not observed; an unrecognized
+// status; neither field. The states are the contract's literal values.
 func TestReadAgentsMapsOnlyTheObservedStatuses(t *testing.T) {
 	t.Parallel()
 	for name, test := range map[string]struct {
 		fields string
 		want   claude.State
 	}{
-		"status busy":              {`"status":"busy"`, claude.Working},
-		"status idle":              {`"status":"idle"`, claude.Idle},
-		"state blocked":            {`"state":"blocked"`, claude.Unknown},
-		"another state":            {`"state":"running"`, claude.Unknown},
-		"a status beside a state":  {`"state":"blocked","status":"busy"`, claude.Unknown},
-		"an unrecognized status":   {`"status":"waiting"`, claude.Unknown},
-		"a status in another case": {`"status":"Busy"`, claude.Unknown},
-		"a status not a string":    {`"status":1`, claude.Unknown},
-		"a null status":            {`"status":null`, claude.Unknown},
-		"neither field":            {`"kind":"interactive"`, claude.Unknown},
+		"status busy":              {`"status":"busy"`, "working"},
+		"status idle":              {`"status":"idle"`, "idle"},
+		"state blocked":            {`"state":"blocked"`, "unknown"},
+		"another state":            {`"state":"running"`, "unknown"},
+		"a status beside a state":  {`"state":"blocked","status":"busy"`, "unknown"},
+		"a state beside a status":  {`"status":"idle","state":"running"`, "unknown"},
+		"an unrecognized status":   {`"status":"waiting"`, "unknown"},
+		"a status in another case": {`"status":"Busy"`, "unknown"},
+		"a status not a string":    {`"status":1`, "unknown"},
+		"a null status":            {`"status":null`, "unknown"},
+		"neither field":            {`"kind":"interactive"`, "unknown"},
 	} {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
@@ -279,6 +283,25 @@ func TestReadAgentsRejectsOutputThatIsNotOneArray(t *testing.T) {
 			agents, err := readOutput(t, output)
 
 			assertNoRead(t, agents, err, "not one JSON array")
+		})
+	}
+}
+
+// Output that is not valid UTF-8 fails the whole read, the valid elements
+// before the invalid byte included: decoded, the byte would be replaced
+// and the sessionId changed.
+func TestReadAgentsRejectsOutputThatIsNotValidUTF8(t *testing.T) {
+	t.Parallel()
+	for name, element := range map[string]string{
+		"in a sessionId":      "{\"sessionId\":\"session-\xff\",\"status\":\"busy\"}",
+		"in an ignored field": "{\"sessionId\":\"session-2\",\"name\":\"\xff\"}",
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			agents, err := readOutput(t, `[{"sessionId":"session-1","status":"idle"},`+element+`]`)
+
+			assertNoRead(t, agents, err, "not valid UTF-8")
 		})
 	}
 }

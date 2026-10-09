@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"unicode/utf8"
 )
 
 // State is what an agent was doing when it was read.
@@ -62,8 +63,8 @@ func isNil(value reflect.Value) bool {
 // one agent per session it reports, in its order: the complete set, empty
 // and never nil when no session is active. The read fails as a whole, with
 // no agents, when the command fails, ctx's end included, or when its
-// output is not one JSON array of sessions, each with its own nonempty
-// sessionId.
+// output is not valid UTF-8 or not one JSON array of sessions, each with
+// its own nonempty sessionId.
 func (a *Adapter) ReadAgents(ctx context.Context) ([]Agent, error) {
 	// Observed on Claude Code 2.1.295: needs no TTY, exits 0 and prints one
 	// JSON array.
@@ -79,6 +80,11 @@ func (a *Adapter) ReadAgents(ctx context.Context) ([]Agent, error) {
 }
 
 func parse(output []byte) ([]Agent, error) {
+	// Before decoding: encoding/json replaces an invalid byte in a string
+	// instead of failing, which would change a sessionId.
+	if !utf8.Valid(output) {
+		return nil, errors.New("not valid UTF-8")
+	}
 	var elements []json.RawMessage
 	if err := json.Unmarshal(output, &elements); err != nil {
 		return nil, fmt.Errorf("not one JSON array: %w", err)
@@ -114,9 +120,11 @@ func parse(output []byte) ([]Agent, error) {
 	return agents, nil
 }
 
-// stateOf maps the values observed: an interactive session's status, busy
-// or idle. Everything else is unknown: a background session's state,
-// blocked included, whatever status is beside it; another status; neither.
+// stateOf maps only the shapes observed: a session with a status, busy or
+// idle, and no state. Everything else is unknown: a background session's
+// state, blocked included; another status; neither. A session with both a
+// state and a status is unknown too, whatever they say: that shape was not
+// observed, so its status is not taken for the session's state.
 func stateOf(session map[string]json.RawMessage) State {
 	if _, ok := session["state"]; ok {
 		return Unknown
