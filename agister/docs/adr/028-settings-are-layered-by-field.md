@@ -10,16 +10,21 @@
 - **Amends:** [ADR-014](014-prompts-are-settings.md): its decision's input
   source, its driver "a document is still replaced whole" and the layers
   of rule 4;
-  [ADR-018](018-a-repository-blocks-what-home-allows.md) rule 1: a
-  project directory has no blocks;
   [ADR-027](027-homes-settings-have-one-source-in-git.md) rules 2, 4, 5
   and 6 and its non-decision on the Go prompts' source
-- **Relates to:** [ADR-010](010-a-process-names-its-verification.md),
+- **Relates to:** [ADR-006](006-a-call-gets-its-repository-instructions.md),
+  [ADR-010](010-a-process-names-its-verification.md),
   [ADR-015](015-a-broken-document-refuses-only-what-uses-it.md),
+  [ADR-018](018-a-repository-blocks-what-home-allows.md) rule 1,
   [ADR-021](021-settings-give-an-agent-its-skills.md),
   [ADR-025](025-a-call-works-where-it-is-called.md) rule 1,
   [ADR-026](026-the-brief-is-a-runs-input-contract.md)
-- **Source:** LAB-164; the owner's decisions, 2026-10-09
+- **Source:** LAB-164; the owner's decisions, 2026-10-09; the owner's
+  rulings on this ADR as proposed (adr_review `20261009T203520Z-b0301e`),
+  2026-10-09: no blocks in a project layer; verification by a layer's
+  `verifies/repo.yaml` and the end of `{source: prompt}`, both confirmed;
+  rule 13, relayed by the LAB-161 session; the contents of `guidance`
+  per node left to LAB-161
 
 ## Context
 
@@ -32,21 +37,22 @@ holds the directory it is launched from, or the one `--dir` names
 and reads `<root>/.agister`). A call launched in `warder/` therefore gets
 the same settings as one launched at the root.
 
-On trunk, 2026-10-09, this multiplies documents:
+Documents multiply:
 
 - A process names each further prompt as an input with `optional: true`
-  (ADR-019): 12 such lines across 7 processes, 10 of them in six of
-  home's. Adding one prompt edits every process.
-- Home's processes (`agister/home/processes/`) name `go-testing-seams`
-  and `go-architecture`, though home is for every repository.
-- Both prompts exist in `prompts/` and again in `.agister/prompts/`, kept
-  identical by a test (ADR-027 rule 5).
-- A repository that needs one field different copies the document:
-  `.agister/processes/implement_warder.yaml` is `implement` with another
-  `verify`, and exists only for the Claude implementer. `implement_codex`
-  launched for warder still runs Agister's check.
-- The four `implement*` processes of home carry the same instruction
-  text, four times.
+  (ADR-019), a line in every process that takes it. A prompt for several
+  processes is added by editing each.
+- A prompt only some repositories have is still named by home's
+  processes, which are for every repository.
+- A prompt kept in a library outside `.agister/` is a setting only as a
+  second copy in `.agister/prompts/`, which a test must keep identical
+  (ADR-027 rule 5).
+- A repository that needs one field different copies the whole document,
+  and a project that needs it copies the process under a name of its
+  own. The copy no longer follows home's document, and covers one
+  process: the project's calls of any other still get the repository's
+  field.
+- A text several processes share is repeated in each.
 
 ## Decision drivers
 
@@ -68,6 +74,7 @@ Settings have three layers: home, the repository's `.agister/` and the
 is composed from every layer that holds it, field by field, the nearest
 layer winning. A process names one `prompt` and a `guidance` list of
 further prompts in place of prompt inputs; `optional: true` goes.
+Guidance a node must follow is given by those two fields alone.
 
 ## Rules
 
@@ -92,10 +99,17 @@ read, and a repository's `.agister` that is home itself is not a layer,
 both as today.
 
 There is no fourth layer. A second `.agister/` between the project
-layer's directory and the root stops every command launched there, as a
-problem that cannot be attributed does (ADR-015 rule 4), naming both
-directories: read, it would be a layer nobody decided; skipped, settings
-would stop applying unseen.
+layer's directory and the root makes the project layer invalid: read, it
+would be a layer nobody decided; skipped, settings would stop applying
+unseen.
+
+What makes a layer invalid, here and in rules 7 and 9, is a problem of
+the layer and of no document in it, so it cannot be attributed to some
+calls and not to others (ADR-015 rule 4). `check` reports it with the
+layer, the path at fault and the reason, here both directories, and
+every command launched under that layer is refused with that reason, as
+under a broken block list (ADR-018 rule 5). A command launched elsewhere
+in the worktree does not read the layer and runs.
 
 ### 2. The layers select settings, not the place of work
 
@@ -176,7 +190,7 @@ verify: verify:repo
 A repository's `.agister/processes/implement.yaml`, whole:
 
 ```yaml
-guidance: [go-testing-seams, go-architecture]
+guidance: [testing, architecture]
 ```
 
 A project's `docs/.agister/processes/implement.yaml`, whole:
@@ -267,18 +281,19 @@ brief forms.
 
 Two documents say something of a layer itself and are never composed:
 
-- `blocks.yaml` is the repository layer's alone (ADR-018 rule 1), and
-  applies to every call in the worktree, wherever it is launched. A
-  project layer has no blocks: its lists replace whole (rule 4), so its
-  `blocks.yaml` would lift the repository's. One there stops every
-  command launched there, as a broken block list does (ADR-018 rule 5).
+- `blocks.yaml` is the repository layer's alone, as ADR-018 rule 1 has
+  it, and applies to every call in the worktree, wherever it is
+  launched. A `blocks.yaml` in a project layer is an invalid file of
+  that layer (rule 1) and is not read: `check` reports it, and the
+  commands launched there are refused for it. Passed over in silence,
+  the choices it lists would run.
 - `layer.yaml` (rule 9) is read for its own layer only.
 
 ### 8. A process has one prompt and a guidance list
 
 ```yaml
 prompt: code-review-tests
-guidance: [go-testing-seams]
+guidance: [testing]
 ```
 
 - `prompt` names one prompt document and is required: a composed process
@@ -299,7 +314,10 @@ field like any other.
 
 `{source: prompt}` is no longer an input source, and `optional` goes with
 it. A process that holds one is a problem of the process, which names
-`prompt` and `guidance`. An input value may not be named `prompt`.
+`prompt` and `guidance`. An input value may not be named `prompt`. The
+instruction home's `implement*` processes share is home's prompt
+`implement`. Both confirmed by the owner: no input source names a
+prompt, and that instruction is a home prompt.
 
 ### 9. A layer names the folders its prompts are also found in
 
@@ -430,6 +448,20 @@ process implement    project    /w/docs/.agister/processes/implement.yaml
 The prompt and each guidance prompt stand under the process that names
 them, as a prompt does today.
 
+### 13. What a node must follow is in its prompt or guidance
+
+Guidance a node must follow is in that node's `prompt` or `guidance`,
+which Agister resolves with the call and records (rules 8 and 11). No
+process depends on an agent reaching it through a pointer in `AGENTS.md`
+or a skill: nothing records whether a pointer was followed, so two nodes
+of one change can work under different rules unseen. What a runtime
+loads of the repository (ADR-006) is still loaded, for the agent's use.
+
+The done gates follow: the caller skill and the README say this rule
+where they say how a repository's settings are prepared, and the
+settings diagrams and the Pages settings view show a process's `prompt`
+and `guidance` with their layers.
+
 ## Replaced and amended
 
 - **ADR-019:** superseded whole. No input is optional. A prompt only some
@@ -442,10 +474,6 @@ them, as a prompt does today.
   still replaced whole", by rules 4 and 6; "exists in neither layer" in
   rule 4, by "in no layer". Its non-decision on prompts that include
   other prompts stands.
-- **ADR-018 rule 1:** a project directory has no blocks (rule 7). The
-  rest stands. Its reason against blocks in `service.toml`, that the
-  repository's replaces home's whole, no longer holds; blocks stay a
-  document of their own because they belong to one layer.
 - **ADR-027:** `agister/home/` stays home's one source, installed as it
   says. Changed:
   - rule 2: the `implement*` processes name no Go prompt, and their
@@ -463,7 +491,8 @@ them, as a prompt does today.
     has and the folders its layer documents list.
 - **ADR-015 rule 1:** "the prompts its inputs name" are the process's
   prompt and guidance. **ADR-021** stands: a skill is replaced whole
-  (rule 6), and a `skills` list replaces whole (rule 4).
+  (rule 6), and a `skills` list replaces whole (rule 4). **ADR-018**
+  stands: blocks are the repository layer's alone (rule 7).
 
 ## Migration
 
@@ -476,8 +505,13 @@ order is:
 2. **The binary,** proven on temp settings of its tests: the three
    layers, the composition, `layer.yaml`, `prompt` and `guidance`, the
    refusal of `{source: prompt}`, the record, `process show`, `check
-   --tree` and `--dir`. With it, what the built binary reads and the
-   installed one does not: `agister/home/` and the example settings
+   --tree` and `--dir`. Its tests cover the resolution matrix of
+   `guidance`: a list of zero, one and two names, crossed with where
+   each name resolves (the project layer, the repository layer, home,
+   nowhere), so that of two names none, the first only, the second only
+   and both resolve; a name that resolves nowhere refuses the call.
+   With it, what the built binary reads and the installed one does not:
+   `agister/home/` and the example settings
    (`agister/examples/settings/`). Home's processes take `prompt` in
    place of their `*_prompt` input, name it so in their instructions,
    and lose the Go prompts; the four `implement*` processes share the
@@ -491,20 +525,26 @@ order is:
    README, the settings diagrams and the Pages settings view with its
    tests.
 4. **This repository's settings, in the change's last commit, after its
-   reviews:**
-   - `.agister/layer.yaml` lists `prompts`; `.agister/prompts/` goes;
-   - `.agister/processes/` holds one file of `guidance` for each of the
-     four `implement*` processes, `architecture_review_codex` and
-     `tests_review_codex`, as every call in this repository gets the Go
-     prompts today; `implement_warder.yaml` is gone;
+   reviews,** keeping today's behaviour by the smallest means:
+   - `.agister/layer.yaml` lists `prompts`; `.agister/prompts/` goes,
+     and the two paths into it in `warder/AGENTS.md` follow the files
+     to `prompts/`;
+   - each of home's processes that takes a Go prompt as an optional
+     input before this change gets one file in `.agister/processes/`
+     whose `guidance` is exactly those names, in their order, so every
+     call gets the Go prompts it got before and no other. This carries
+     today's inputs over and decides no node's guidance: the contents
+     per node and the audit of pointers (rule 13) are LAB-161's, which
+     replaces these files;
+   - `implement_warder.yaml` is gone;
    - `agister/.agister/verifies/repo.yaml` is Agister's check and
      `warder/.agister/verifies/repo.yaml` warder's, each complete;
      `.agister/verifies/` goes;
-   - `warder/AGENTS.md` names the prompts in `prompts/`;
    - the repository tests assert this state.
 
-   From this commit the installed binary refuses `implement` and both
-   reviews in the worktree. Nothing more is run there before the deploy.
+   From this commit the installed binary refuses, in the worktree, each
+   process that has a file there. Nothing more is run there before the
+   deploy.
 5. **The deploy.** After the merge and the rebuild
    (`scripts/finish-merged-pr.sh`), `agister install home` from
    `agister/` in the main checkout (ADR-027 rule 10), then `agister
@@ -513,14 +553,16 @@ order is:
    home, each for its prompt input; `install` runs outside the check
    (ADR-016 rule 9).
 
-Each project fills the slot home's `implement*` processes already name,
-`verify:repo` (ADR-010), in its own layer. One document then serves all
-four processes, where a `verify` set on `implement` alone would leave
-`implement_codex` with another check, as `implement_warder` does today.
-`implement` launched at the root has no verification and is refused, as
-in any repository without one (ADR-010 rule 4): this repository has many
-projects and no check of its own. A change to `gokit` is launched in
-`agister/`, whose check covers both modules.
+A project sets its verification by filling the slot home's `implement*`
+processes already name, `verify:repo` (ADR-010), in its own layer, not
+by a process partial. One document then serves all four processes, where
+a `verify` set on `implement` alone would leave `implement_codex` with
+another check, as `implement_warder` does today. `implement` launched
+where no layer fills the slot, here at the root, is refused, as in any
+repository without a verification (ADR-010 rule 4): this repository has
+many projects and no check of its own. A change to `gokit` is launched
+in `agister/`, whose check covers both modules. Confirmed by the owner,
+the refusal included.
 
 A worktree branched before the change keeps its old `.agister/` until it
 merges trunk. There the new binary runs `implement` with Agister's check
@@ -545,8 +587,10 @@ reads `process show` after the deploy.
   parent's is still resolved. Unsetting is out of scope until a
   repository needs it.
 - Lists are replaced, so a layer that adds one guidance prompt repeats
-  the others. Adding a Go prompt edits the six files of step 4, one line
-  each.
+  the others, and a prompt several processes take is set in each one's
+  layer file.
+- A rule written only in `AGENTS.md` or a skill binds no node until a
+  layer names it as `prompt` or `guidance` (rule 13).
 - Where a command is launched now changes what it runs. An agent whose
   working directory is inside `warder/` gets warder's settings without
   asking; `process show` there says so, and the record names the layers.
@@ -609,8 +653,8 @@ The migration:
   installed binary would refuse `implement` and the reviews for the rest
   of the change (LAB-122).
 - **`warder/.agister/processes/implement.yaml` sets `verify`,** as the
-  issue sketched. Rejected for the slot: it needs one file per
-  `implement*` process and project.
+  issue sketched. Rejected by the owner for the slot: it needs one file
+  per `implement*` process and project.
 
 The composition:
 
@@ -619,15 +663,19 @@ The composition:
   a list then cannot be shortened, and `[]` could not mean none.
 - **A layer file marks itself a partial.** Rejected: every layer file is
   one, and a complete one is only the case that sets every field.
+- **A project layer's `blocks.yaml` is read.** Rejected by the owner:
+  blocks stay a repository's document (ADR-018 rule 1).
 
 ## Explicit non-decisions
 
 `null`, or any other way to unset a field or remove a key; `extends` or
 inheritance from a sibling; guidance selected by the files a change
-touches; a prompt that extends another; blocks of a project directory;
-a `check` that finds and checks every project layer of a repository;
-refusing a continuation launched in another directory of the worktree
-than the run it continues; keeping the composed document's text with the
-run; search folders for kinds other than prompts; another name for the
-slot `verify:repo`; whether `input.instruction` moves into the prompt;
-the wording of `process show` and `check --tree`.
+touches; a prompt that extends another; which prompts each node's
+`guidance` holds, and the audit of pointers to guidance in `AGENTS.md`
+and skills (LAB-161); a `check` that finds and checks every project
+layer of a repository; refusing a continuation launched in another
+directory of the worktree than the run it continues; keeping the
+composed document's text with the run; search folders for kinds other
+than prompts; another name for the slot `verify:repo`; whether
+`input.instruction` moves into the prompt; the wording of `process show`
+and `check --tree`.
