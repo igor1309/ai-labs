@@ -156,12 +156,34 @@ func TestReleaseStopsTheTimerAndEndsTheLimit(t *testing.T) {
 	}
 }
 
+// The OS timers construct one timer of the wait asked for, and deliver its
+// channel as fired. The spy's timer is never started, so it is not
+// stopped either: Stop panics on a timer that time.NewTimer did not make.
+func TestOSTimersConstructATimerOfTheWaitAskedFor(t *testing.T) {
+	t.Parallel()
+	channel := make(chan time.Time)
+	var waits []time.Duration
+	timers := osTimers{newTimer: func(wait time.Duration) *time.Timer {
+		waits = append(waits, wait)
+		return &time.Timer{C: channel}
+	}}
+
+	fired, _ := timers.Start(3 * time.Second)
+
+	if got, want := waits, []time.Duration{3 * time.Second}; !slices.Equal(got, want) {
+		t.Errorf("got timers of %v, want %v", got, want)
+	}
+	if fired != (<-chan time.Time)(channel) {
+		t.Error("fired is not the constructed timer's channel")
+	}
+}
+
 // Contract test: the operating system's timer, which fires by itself once
 // its wait has passed.
 func TestRealTimerFires(t *testing.T) {
 	t.Parallel()
 	before := time.Now()
-	fired, stop := realTimer(time.Millisecond)
+	fired, stop := osTimers{newTimer: time.NewTimer}.Start(time.Millisecond)
 	defer stop()
 
 	at := <-fired

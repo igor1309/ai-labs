@@ -15,6 +15,7 @@ import (
 	"io"
 	"os"
 	"os/signal"
+	"reflect"
 	"syscall"
 	"time"
 	"unicode/utf8"
@@ -54,7 +55,7 @@ const (
 const usage = "usage: warder -claude <source-id> [-claude <source-id> ...]"
 
 func main() {
-	os.Exit(serve(os.Args, os.Stdout, os.Stderr, osProcesses{waitDelay: processWaitDelay}.Execute, systemClock, realTimer, nil))
+	os.Exit(serve(os.Args, os.Stdout, os.Stderr, osProcesses{waitDelay: processWaitDelay}.Execute, systemClock, osTimers{newTimer: time.NewTimer}.Start, nil))
 }
 
 // serve is the application as the process: it runs until SIGINT or
@@ -163,9 +164,10 @@ func parseSources(args []string) ([]string, error) {
 // wire constructs the application: one source loop for each Claude Code
 // source, all of them publishing through one JSONL publisher over stdout
 // and reporting through one serialized stderr, under one runner. A missing
-// boundary fails here; nothing is started.
+// boundary, or a stderr that is a nil pointer, map, slice, func or chan
+// carried as a writer, fails here; nothing is started.
 func wire(claudeSources []string, stdout, stderr io.Writer, execute executeFunc, clock clockFunc, timer timerFunc) (*runner.Runner, error) {
-	if stderr == nil {
+	if stderr == nil || isNil(reflect.ValueOf(stderr)) {
 		return nil, errors.New("no stderr")
 	}
 	if timer == nil {
@@ -217,3 +219,11 @@ func wireClaudeSource(source string, publish publishJSONL, diagnostics io.Writer
 // (warder/arch_test.go), so the root takes the element type from the
 // constructor; the compiler still checks each value appended.
 func argumentsOf[E, R any](func(...E) (R, error)) []E { return nil }
+
+func isNil(value reflect.Value) bool {
+	switch value.Kind() {
+	case reflect.Pointer, reflect.Map, reflect.Slice, reflect.Func, reflect.Chan, reflect.Interface, reflect.UnsafePointer:
+		return value.IsNil()
+	}
+	return false
+}

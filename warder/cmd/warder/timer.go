@@ -10,10 +10,17 @@ import (
 // application goes through the one it is given.
 type timerFunc = func(wait time.Duration) (fired <-chan time.Time, stop func())
 
-// realTimer starts a timer of the operating system. With systemClock it is
+// osTimers starts timers of the operating system. With systemClock it is
 // the only real time in the module.
-func realTimer(wait time.Duration) (fired <-chan time.Time, stop func()) {
-	timer := time.NewTimer(wait)
+type osTimers struct {
+	// newTimer constructs a timer that fires once its wait has elapsed:
+	// main gives time.NewTimer.
+	newTimer func(wait time.Duration) *time.Timer
+}
+
+// Start starts a timer of wait, as a timerFunc.
+func (o osTimers) Start(wait time.Duration) (fired <-chan time.Time, stop func()) {
+	timer := o.newTimer(wait)
 	return timer.C, func() { timer.Stop() }
 }
 

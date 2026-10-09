@@ -308,6 +308,36 @@ func TestAFailingStdoutEndsTheRunWithExitCode1(t *testing.T) {
 	}
 }
 
+// A stdout whose write fails after the run's context ended still ends the
+// run with exit code 1 and the output error on stderr: the read succeeded,
+// its observation is published, and the cancellation silences only
+// diagnostics, never a fatal output error.
+func TestAFailingStdoutAfterCancellationEndsTheRunWithExitCode1(t *testing.T) {
+	t.Parallel()
+	clock := clocktest.NewClock(morning())
+	stderr := newLines()
+	executor := &executorSpy{answer: answerSessions}
+	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+	stdout := &writeSpy{answer: func([]byte) (int, error) {
+		cancel()
+		return 0, errors.New("the pipe is closed")
+	}}
+
+	code := run(ctx, []string{"warder", "-claude", "claude-main"}, stdout, stderr, executor.execute, clock.Now, clock.Timer)
+
+	if code != 1 {
+		t.Errorf("got the exit code %d, want 1", code)
+	}
+	if len(stdout.writes) != 1 {
+		t.Errorf("got %d writes to stdout, want 1:\n%s", len(stdout.writes), strings.Join(stdout.writes, ""))
+	}
+	got := stderr.all()
+	if len(got) != 1 || !strings.HasPrefix(got[0], "warder: ") || !strings.HasSuffix(got[0], ": the pipe is closed\n") {
+		t.Errorf("got on stderr %q, want one line `warder: <what failed>: the pipe is closed`", got)
+	}
+}
+
 // The two sources publish through one publisher: both reads succeed, held
 // by the executor until both commands arrived, the first record's write to
 // stdout fails, and the other source's record is never written. The run
@@ -454,6 +484,7 @@ func TestWireRejectsAMissingBoundary(t *testing.T) {
 	}{
 		{"no stdout", nil, newLines(), executor.execute, clock.Now, clock.Timer, "no record writer"},
 		{"no stderr", newLines(), nil, executor.execute, clock.Now, clock.Timer, "no stderr"},
+		{"a nil stderr carried as a writer", newLines(), (*lines)(nil), executor.execute, clock.Now, clock.Timer, "no stderr"},
 		{"no executor", newLines(), newLines(), nil, clock.Now, clock.Timer, "no command executor"},
 		{"no clock", newLines(), newLines(), executor.execute, nil, clock.Timer, "no clock"},
 		{"no timer", newLines(), newLines(), executor.execute, clock.Now, nil, "no timer"},

@@ -167,6 +167,8 @@ jobs:
               - "warder/**/go.sum"
               - "warder/**/testdata/**"
               - "warder/scripts/**"
+              - ".agister/verifies/warder.yaml"
+              - ".agister/processes/implement_warder.yaml"
             warder-ci:
               - ".github/workflows/warder-core.yml"
             dev-skills:
