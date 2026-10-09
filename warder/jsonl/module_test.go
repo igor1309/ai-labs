@@ -12,10 +12,12 @@ const module = "github.com/igor1309/ai-labs/warder/jsonl"
 // standard library's or the module's own: no other warder module, nothing
 // from outside.
 //
+// The go process is ended when the test ends.
+//
 // Contract test: the module's real import graph, from go list.
 func TestTheModuleDependsOnTheStandardLibraryOnly(t *testing.T) {
 	t.Parallel()
-	command := exec.Command("go", "list", "-deps", "-test", "-f", "{{if not .Standard}}{{.ImportPath}}{{end}}", "./...")
+	command := exec.CommandContext(t.Context(), "go", "list", "-deps", "-test", "-f", "{{if not .Standard}}{{.ImportPath}}{{end}}", "./...")
 	out, err := command.Output()
 	if err != nil {
 		t.Fatal(err)

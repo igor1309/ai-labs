@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"reflect"
 	"sync"
 	"time"
 )
@@ -43,27 +44,38 @@ type Publisher struct {
 	broken error
 }
 
-// New returns a publisher that writes through writer.
+// New returns a publisher that writes through writer. A nil writer, or a
+// nil pointer, map, slice, func or chan carried as one, is missing.
 func New(writer RecordWriter) (*Publisher, error) {
-	if writer == nil {
+	if writer == nil || isNil(reflect.ValueOf(writer)) {
 		return nil, errors.New("jsonl: no record writer")
 	}
 	return &Publisher{writer: writer}, nil
 }
 
+func isNil(value reflect.Value) bool {
+	switch value.Kind() {
+	case reflect.Pointer, reflect.Map, reflect.Slice, reflect.Func, reflect.Chan, reflect.Interface, reflect.UnsafePointer:
+		return value.IsNil()
+	}
+	return false
+}
+
 // Publish writes the observation as one line, in a single Write call. A
 // write error, or a short write as io.ErrShortWrite, is returned and
-// breaks the publisher.
+// breaks the publisher. An observation that cannot be written is returned
+// as an error and writes nothing; a broken publisher returns its failure
+// instead.
 func (p *Publisher) Publish(observation Observation) error {
-	line, err := encode(observation)
-	if err != nil {
-		return err
-	}
+	line, encodeErr := encode(observation)
 
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	if p.broken != nil {
 		return p.broken
+	}
+	if encodeErr != nil {
+		return encodeErr
 	}
 	n, err := p.writer.Write(line)
 	if err == nil && n < len(line) {
@@ -90,6 +102,11 @@ type agentRecord struct {
 }
 
 func encode(observation Observation) ([]byte, error) {
+	// RFC 3339 has four-digit years only.
+	observedAt := observation.ObservedAt.UTC()
+	if year := observedAt.Year(); year < 0 || year > 9999 {
+		return nil, fmt.Errorf("jsonl: encode record: observedAt %s is outside the years 0 to 9999", observedAt.Format(time.RFC3339))
+	}
 	// Never nil, so an observation with no agents is written as [].
 	agents := make([]agentRecord, 0, len(observation.Agents))
 	for _, agent := range observation.Agents {
@@ -97,7 +114,7 @@ func encode(observation Observation) ([]byte, error) {
 	}
 	line, err := json.Marshal(record{
 		Source:     observation.Source,
-		ObservedAt: observation.ObservedAt.UTC().Format(time.RFC3339),
+		ObservedAt: observedAt.Format(time.RFC3339),
 		Agents:     agents,
 	})
 	if err != nil {
