@@ -39,6 +39,29 @@ type codexSession struct {
 	// rollout is the content of the thread's rollout file: it has none
 	// when this is empty.
 	rollout string
+	// events is how many tokensCounted lines follow rollout in the file.
+	// The home serves them as they are read, and holds none of them.
+	events int
+}
+
+// size is the size of the session's rollout file, in bytes.
+func (s codexSession) size() int64 {
+	return int64(len(s.rollout)) + int64(s.events)*int64(len(tokensCounted))
+}
+
+// bytes returns the length bytes of the session's rollout file from
+// offset on, and fewer where the file ends before that.
+func (s codexSession) bytes(offset, length int64) []byte {
+	data := make([]byte, min(length, s.size()-offset))
+	filled := 0
+	if offset < int64(len(s.rollout)) {
+		filled = copy(data, s.rollout[offset:])
+	}
+	// The first event may begin before offset: it is served from there.
+	for at := (offset + int64(filled) - int64(len(s.rollout))) % int64(len(tokensCounted)); filled < len(data); at = 0 {
+		filled += copy(data[filled:], tokensCounted[at:])
+	}
+	return data
 }
 
 // The thread IDs of these tests, as Codex writes them.
@@ -150,29 +173,29 @@ func (h *codexHomeFake) find(_ context.Context, dir, prefix, suffix string) ([]s
 	return found, nil
 }
 
-// rollout is the content of the rollout file.
-func (h *codexHomeFake) rollout(op, file string) (string, error) {
+// rollout is the session whose rollout file file is.
+func (h *codexHomeFake) rollout(op, file string) (codexSession, error) {
 	for _, session := range h.sessions {
 		if session.rollout != "" && file == rolloutOf(session.thread) {
-			return session.rollout, nil
+			return session, nil
 		}
 	}
-	return "", gone(op, file)
+	return codexSession{}, gone(op, file)
 }
 
 func (h *codexHomeFake) size(_ context.Context, file string) (int64, error) {
 	h.record(false, "size %s", file)
-	content, err := h.rollout("stat", file)
-	return int64(len(content)), err
+	session, err := h.rollout("stat", file)
+	return session.size(), err
 }
 
 func (h *codexHomeFake) read(_ context.Context, file string, offset, length int64) ([]byte, error) {
 	h.record(false, "read %s %d %d", file, offset, length)
-	content, err := h.rollout("open", file)
+	session, err := h.rollout("open", file)
 	if err != nil {
 		return nil, err
 	}
-	return []byte(content[offset:min(offset+length, int64(len(content)))]), nil
+	return session.bytes(offset, length), nil
 }
 
 // endedListing is a listing that never ends by itself: it blocks until its
@@ -283,6 +306,75 @@ func TestACodexSessionIsPublishedWithTheStateOfAMarkerBeyondTheFirstChunk(t *tes
 	assertNoLines(t, "stderr", stderr)
 }
 
+// scanReads is the reads of a production scan of file from its byte end
+// backwards to its byte begin, in order: a production chunk each, and what
+// is left in the last.
+func scanReads(file string, end, begin int64) []string {
+	var reads []string
+	for end > begin {
+		length := min(codexScanChunk, end-begin)
+		reads = append(reads, fmt.Sprintf("read %s %d %d", file, end-length, length))
+		end -= length
+	}
+	return reads
+}
+
+// The production scan cap, as wireCodexSource sets it, bounds the search
+// for a turn marker. A marker at the beginning of a rollout file as long
+// as the cap allows, the cap's length from the file's end, is found: the
+// session is published with its state, and the file was read to its
+// beginning. With one event more, the marker's line begins before the
+// cap: the scan stops at the cap, having read that many bytes and none
+// before them, and the session is published as unknown.
+func TestTheProductionScanCapBoundsTheSearchForATurnMarker(t *testing.T) {
+	t.Parallel()
+	// As many events after the marker as leave the file within the cap.
+	within := (codexScanCap - len(turnStarted)) / len(tokensCounted)
+	tests := []struct {
+		name   string
+		events int
+		// capped is whether the cap ends the scan before the file's
+		// beginning.
+		capped bool
+		state  string
+	}{
+		{"a file as long as the cap allows", within, false, "working"},
+		{"a file one event longer", within + 1, true, "unknown"},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+			clock := clocktest.NewClock(morning())
+			stdout, stderr := newLines(), newLines()
+			session := codexSession{thread: threadWorking, held: true, rollout: turnStarted, events: test.events}
+			home := &codexHomeFake{sessions: []codexSession{session}}
+			startCodexApplication(t, stdout, stderr, nil, home, clock, "warder", "-codex", "codex-main")
+
+			want := `{"source":"codex-main","observedAt":"2026-10-09T08:28:10Z","agents":[{"id":"` + threadWorking + `","state":"` + test.state + `"}]}` + "\n"
+			if got := stdout.next(); got != want {
+				t.Errorf("got the record\n%swant\n%s", got, want)
+			}
+			// The read's deadline, then the wait after the attempt.
+			clock.Started(5 * time.Second)
+			clock.Started(5 * time.Second)
+			size, begin := session.size(), int64(0)
+			if test.capped {
+				begin = size - codexScanCap
+			}
+			read := slices.Concat([]string{
+				"list thread-writer-locks",
+				"locked " + lockOf(threadWorking),
+				"find sessions rollout- -" + threadWorking + ".jsonl",
+				"size " + rolloutOf(threadWorking),
+			}, scanReads(rolloutOf(threadWorking), size, begin))
+			if got := home.asked(); !slices.Equal(got, read) {
+				t.Errorf("got the file operations\n%s\nwant\n%s", strings.Join(got, "\n"), strings.Join(read, "\n"))
+			}
+			assertNoLines(t, "stderr", stderr)
+		})
+	}
+}
+
 // A home with no session, as one where Codex never ran is, is observed as
 // no agents: an empty set on stdout, and no diagnostic.
 func TestACodexHomeWithNoSessionIsObservedAsNoAgents(t *testing.T) {
@@ -373,6 +465,35 @@ func TestAClaudeAndACodexSourcePublishEachUnderItsOwnID(t *testing.T) {
 	}
 	if !slices.Equal(got, want) {
 		t.Errorf("got the records\n%swant\n%s", strings.Join(got, ""), strings.Join(want, ""))
+	}
+	assertNoLines(t, "stderr", stderr)
+}
+
+// Two Codex sources both read the home and publish, each under its own ID,
+// on the one stdout: each -codex flag is a source of its own, with the
+// complete set of the home's sessions in its record.
+func TestTwoCodexSourcesPublishEachUnderItsOwnID(t *testing.T) {
+	t.Parallel()
+	clock := clocktest.NewClock(morning())
+	stdout, stderr := newLines(), newLines()
+	home := &codexHomeFake{sessions: threeSessions()}
+	startCodexApplication(t, stdout, stderr, nil, home, clock, "warder", "-codex", "codex-main", "-codex", "codex-side")
+
+	got := []string{stdout.next(), stdout.next()}
+	slices.Sort(got)
+	want := []string{
+		codexObservationLine("codex-main", "2026-10-09T08:28:10Z"),
+		codexObservationLine("codex-side", "2026-10-09T08:28:10Z"),
+	}
+	if !slices.Equal(got, want) {
+		t.Errorf("got the records\n%swant\n%s", strings.Join(got, ""), strings.Join(want, ""))
+	}
+	// Each source's deadline, then each source's wait after its attempt.
+	for range 4 {
+		clock.Started(5 * time.Second)
+	}
+	if got := stdout.all(); len(got) != 2 {
+		t.Errorf("while both sources wait, got %d records, want 2:\n%s", len(got), strings.Join(got, ""))
 	}
 	assertNoLines(t, "stderr", stderr)
 }
