@@ -8,20 +8,26 @@ project `warder` (parent LAB-135).
 `.agister/prompts/go-architecture.md` applies in full, with no exception
 for convenience. In warder that means:
 
-- Each component of the design is its own Go module under `warder/`, with
-  module path `github.com/igor1309/ai-labs/warder/<name>`.
-- A component module imports no other warder module. It declares the
-  interfaces it requires, with only the methods it calls, and its own
-  types, including its own observation and agent types, even where
-  another module has the same fields.
-- Only the composition root, `cmd/warder`, requires the component
-  modules. It constructs every implementation, and it owns the adapters
-  that translate one module's types into another's and the boundary
-  adapters (clock, timer, deadline, stdout, stderr, OS processes).
+- Warder is one Go module, `github.com/igor1309/ai-labs/warder`
+  (`warder/go.mod`). Each component of the design is one package under
+  `warder/internal/` (for example `internal/jsonl`).
+- A component package imports no other package of the module. It
+  declares the interfaces it requires, with only the methods it calls,
+  and its own types, including its own observation and agent types, even
+  where another package has the same fields.
+- `cmd/warder` is the only composition root, and only it imports the
+  component packages. It constructs every implementation, and it owns the
+  adapters that translate one component's types into another's and the
+  boundary adapters (clock, timer, deadline, stdout, stderr, OS
+  processes).
 - Every constructor receives each collaborator explicitly; nothing falls
   back to a real clock, timer, writer or process. No package-level
   mutable state.
-- Each module keeps its own import rules by a test over its import graph.
+- The architecture test, `warder/arch_test.go`, keeps these rules for the
+  whole module: the package graph from the real import graph, interfaces
+  beside their consumers, and the test markers through gokit's
+  `testdiscipline` (gokit at a tagged version, ADR-019). A new package is
+  covered without an edit to it.
 
 `.agister/prompts/go-testing-seams.md` applies to every test.
 
@@ -29,10 +35,14 @@ for convenience. In warder that means:
 
 From the repository root, quiet (never `-v`):
 
-- One module, from its directory:
-  `test -z "$(gofmt -l .)" && go vet ./... && go test -race -count=1 -timeout 1m ./...`
-- The full check, every module: `warder/scripts/test.sh`. CI runs the same
-  script (`.github/workflows/warder-core.yml`, on the local Mac runner).
+- The full check: `warder/scripts/test.sh`, which runs from `warder/`
+  `test -z "$(gofmt -l .)"`, `go vet ./...` and
+  `go test -race -count=1 -timeout 1m ./...`. CI runs the same script
+  (`.github/workflows/warder-core.yml`, on the local Mac runner).
+- Narrow it while working, from `warder/`:
+  `go test -race -count=1 -timeout 1m ./internal/<name>/...`.
+- `GOPRIVATE=github.com/igor1309/ai-labs` must be set: the module requires
+  gokit from this private repository.
 
 ## Implementation and review
 

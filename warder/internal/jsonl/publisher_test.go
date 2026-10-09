@@ -11,7 +11,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/igor1309/ai-labs/warder/jsonl"
+	"github.com/igor1309/ai-labs/warder/internal/jsonl"
 )
 
 // writerSpy records every Write and answers each with what the test set:
@@ -62,6 +62,20 @@ type writeFunc func(p []byte) (int, error)
 
 func (f writeFunc) Write(p []byte) (int, error) { return f(p) }
 
+// writeMap, writeSlice and writeChan are writers of the other kinds whose
+// nil is a typed nil.
+type writeMap map[string]int
+
+func (m writeMap) Write(p []byte) (int, error) { return len(p), nil }
+
+type writeSlice []byte
+
+func (s writeSlice) Write(p []byte) (int, error) { return len(p), nil }
+
+type writeChan chan []byte
+
+func (c writeChan) Write(p []byte) (int, error) { return len(p), nil }
+
 // A missing writer, nil or a typed nil carried by RecordWriter, fails at
 // construction.
 func TestNewRejectsAMissingWriter(t *testing.T) {
@@ -70,6 +84,9 @@ func TestNewRejectsAMissingWriter(t *testing.T) {
 		"nil":            nil,
 		"nil pointer":    (*writerSpy)(nil),
 		"nil write func": writeFunc(nil),
+		"nil map":        writeMap(nil),
+		"nil slice":      writeSlice(nil),
+		"nil chan":       writeChan(nil),
 	} {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
