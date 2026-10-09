@@ -637,7 +637,8 @@
       // settings.
       if (p.verify?.ref) {
         const named = model.verifies.find((v) => !v.error && v.name === p.verify.ref);
-        p.verify = { ...p.verify, maxAttempts: named?.maxAttempts ?? null, outside: !named };
+        p.verify = { ...p.verify, maxAttempts: named?.maxAttempts ?? null, outside: !named,
+          ...(named?.layers && { layers: named.layers }) };
       }
       p.usedBy = model.workflows
         .filter((w) => !w.error && [...w.fanOut, ...(w.join ? [w.join] : [])].some((n) => n.process === p.name))

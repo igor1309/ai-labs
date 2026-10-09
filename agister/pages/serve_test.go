@@ -185,7 +185,7 @@ func TestMacDialogFailureCarriesItsMessage(t *testing.T) {
 
 func TestSettingsReturnsOnlySettingsFiles(t *testing.T) {
 	t.Parallel()
-	repo := t.TempDir()
+	repo := realDir(t, t.TempDir())
 	write(t, filepath.Join(repo, ".git"), "gitdir: settings-test-marker\n")
 	dir := filepath.Join(repo, ".agister")
 	write(t, filepath.Join(dir, "service.toml"), "max_attempts = 1")
@@ -516,7 +516,7 @@ func unreadable(t *testing.T, path string) {
 // from /api/skills, which reads each skill's SKILL.md alone.
 func TestSettingsEndpointDoesNotReadSkillFiles(t *testing.T) {
 	t.Parallel()
-	user := t.TempDir()
+	user := realDir(t, t.TempDir())
 	home := filepath.Join(user, ".agister")
 	write(t, filepath.Join(home, "agents", "h.toml"), `name = "h"`)
 	write(t, filepath.Join(home, "skills", "go", "SKILL.md"), skillMD("go", "Go."))

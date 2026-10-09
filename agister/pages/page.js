@@ -339,13 +339,18 @@
         ['briefs', namedLine('brief', p.forms, chip)],
         ['skills', namedLine('skill', p.callSkills, chip)],
         ['output', outputLine(p)],
+        ['verification layers', verificationLayers(p)],
         ['worktree', worktreeLine(p)],
       ]));
     }
 
-    // One step of a workflow: the process, what it does in a sentence, and
-    // its agent and policy each on a line.
-    function step(n, ix) {
+    function verificationLayers(p) {
+      return p.verify?.layers ? el('div', {}, p.verify.ref, layerLine(p.verify)) : null;
+    }
+
+    // A workflow step exposes the process's prompt, guidance and field layers
+    // too, since processes used by workflows have no standalone card.
+    function step(n, ix, chip) {
       const p = ix.process.get(n.process);
       if (!p) return el('div', { className: 'step' }, missing('process', n.process));
       const a = ix.agent.get(p.agent);
@@ -357,7 +362,13 @@
           el('div', {}, text('agent  ', 'label'),
             a ? [p.agent, a.model, a.effort && `${a.effort} effort`].filter(Boolean).join(' · ') : missing('agent', p.agent)),
           el('div', {}, text('policy ', 'label'),
-            pol ? el('span', {}, `${p.policy} · `, text(policySummary(pol), `access-${pol.access}`)) : missing('policy', p.policy))));
+            pol ? el('span', {}, `${p.policy} · `, text(policySummary(pol), `access-${pol.access}`)) : missing('policy', p.policy))),
+        facts([
+          ['prompt', namedLine('prompt', p.prompt ? [p.prompt] : [], chip)],
+          ['guidance', p.guidance.length ? namedLine('prompt', p.guidance, chip) : text('none')],
+          ['layers', layerLine(p)],
+          ['verification layers', verificationLayers(p)],
+        ]));
     }
 
     function stage(title, steps) {
@@ -386,8 +397,8 @@
       if (w.error) return errorCard(w);
       return card('workflow', w, chip, command(w.name, w.params),
         facts([['calls', calls(w, ix)], ['defaults', defaults(w.params)], ['briefs', namedLine('brief', w.forms, chip)]]),
-        w.fanOut.length ? stage(w.fanOut.length > 1 ? `${w.fanOut.length} at once` : 'First', w.fanOut.map((n) => step(n, ix))) : null,
-        w.join ? stage('Then', [step(w.join, ix)]) : null);
+        w.fanOut.length ? stage(w.fanOut.length > 1 ? `${w.fanOut.length} at once` : 'First', w.fanOut.map((n) => step(n, ix, chip))) : null,
+        w.join ? stage('Then', [step(w.join, ix, chip)]) : null);
     }
 
     // A reference table; the first cell is the name, then cells(item), then

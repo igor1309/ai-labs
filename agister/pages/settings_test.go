@@ -2,6 +2,8 @@ package pages
 
 import (
 	"context"
+	"fmt"
+	"io/fs"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -17,7 +19,7 @@ import (
 // the endpoint; text and provenance match the binary's filesystem store.
 func TestSettingsEndpointComposesThreeLayersWithTheBinarysProvenance(t *testing.T) {
 	t.Parallel()
-	base := t.TempDir()
+	base := realDir(t, t.TempDir())
 	home, repo := filepath.Join(base, "home"), filepath.Join(base, "repo")
 	project, launch := filepath.Join(repo, "docs"), filepath.Join(repo, "docs", "guide")
 	write(t, filepath.Join(repo, ".git"), "gitdir: unused-by-settings-inspection\n")
@@ -98,7 +100,7 @@ func TestSettingsEndpointRefusesInvalidLayers(t *testing.T) {
 	for _, bad := range []string{"project blocks", "nested project", "missing prompt folder", "home layer"} {
 		t.Run(bad, func(t *testing.T) {
 			t.Parallel()
-			base := t.TempDir()
+			base := realDir(t, t.TempDir())
 			home, repo := filepath.Join(base, "home"), filepath.Join(base, "repo")
 			project := filepath.Join(repo, "docs")
 			write(t, filepath.Join(repo, ".git"), "gitdir: marker\n")
@@ -133,12 +135,12 @@ func TestSettingsEndpointRefusesInvalidLayers(t *testing.T) {
 // than silently handing the page the nearer partial's fields.
 func TestSettingsCompositionKeepsMalformedParentAsAnErrorItem(t *testing.T) {
 	t.Parallel()
-	base := t.TempDir()
+	base := realDir(t, t.TempDir())
 	home, repo := filepath.Join(base, "home"), filepath.Join(base, "repo")
 	bad := filepath.Join(home, "processes", "p.yaml")
 	write(t, bad, "prompt: review\n---\nprompt: ignored\n")
 	write(t, filepath.Join(repo, ".agister", "processes", "p.yaml"), "guidance: []\n")
-	files, sources, err := settingsComposition([]settingsLayer{{"home", home}, {"repository", filepath.Join(repo, ".agister")}}, os.ReadFile)
+	files, sources, err := settingsComposition(fsdefs.Layered{Home: fsdefs.Store{Dir: home}, Repository: &fsdefs.Store{Dir: filepath.Join(repo, ".agister")}}.WithReadFile(pageSettingsReader(os.ReadFile, map[string]string{})))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -148,5 +150,235 @@ func TestSettingsCompositionKeepsMalformedParentAsAnErrorItem(t *testing.T) {
 	source := sources["processes/p.yaml"].(map[string]any)
 	if message, _ := source["error"].(string); !strings.Contains(message, bad) || !strings.Contains(message, "must hold exactly one YAML document") {
 		t.Fatalf("source %+v", source)
+	}
+}
+
+type reportedSettings struct {
+	Files, ComposedFiles map[string]string
+	Sources              map[string]struct {
+		Layers []struct {
+			Layer, Path string
+			Fields      []string
+		}
+	}
+}
+
+func assertReportedDocument(t *testing.T, got reportedSettings, store fsdefs.Layered, file string, kind definition.Kind) {
+	t.Helper()
+	name := strings.TrimSuffix(filepath.Base(file), filepath.Ext(file))
+	doc, err := store.Read(context.Background(), kind, name)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.ComposedFiles[file] != string(doc.Bytes) {
+		t.Fatalf("%s: text %q, want %q", file, got.ComposedFiles[file], doc.Bytes)
+	}
+	layers := got.Sources[file].Layers
+	if len(layers) != len(doc.Source.Layers) {
+		t.Fatalf("%s: layers %+v, want %+v", file, layers, doc.Source.Layers)
+	}
+	for i, want := range doc.Source.Layers {
+		if layers[i].Layer != string(want.Layer) || layers[i].Path != want.Path || !reflect.DeepEqual(layers[i].Fields, want.Fields) {
+			t.Errorf("%s: layer %+v, want %+v", file, layers[i], want)
+		}
+	}
+}
+
+// Contract test: an external directory symlink selects the same temporary
+// worktree and project as its target and the binary's selector.
+func TestSettingsEndpointSelectsLayersThroughLaunchSymlink(t *testing.T) {
+	t.Parallel()
+	base := realDir(t, t.TempDir())
+	home, repo := filepath.Join(base, "home"), filepath.Join(base, "repo")
+	project := filepath.Join(repo, "docs")
+	write(t, filepath.Join(repo, ".git"), "gitdir: marker\n")
+	write(t, filepath.Join(home, "processes", "p.yaml"), "prompt: rules\nguidance: [home]\n")
+	write(t, filepath.Join(repo, ".agister", "processes", "p.yaml"), "uses: agent:a\n")
+	write(t, filepath.Join(project, ".agister", "processes", "p.yaml"), "guidance: [project]\n")
+	link := filepath.Join(base, "outside", "launch")
+	symlink(t, project, link)
+	h := Handler(home, noChoose(t), owners(), SkillHomes{})
+	var target, alias reportedSettings
+	for path, got := range map[string]*reportedSettings{project: &target, link: &alias} {
+		if code := get(t, h, "localhost", "/api/settings?path="+q(path), got); code != 200 {
+			t.Fatalf("%s: status %d", path, code)
+		}
+	}
+	if !reflect.DeepEqual(alias, target) {
+		t.Fatalf("link %+v, target %+v", alias, target)
+	}
+	store, err := fsdefs.Select(fsdefs.Store{Dir: home}, repo, link)
+	if err != nil {
+		t.Fatal(err)
+	}
+	assertReportedDocument(t, alias, store, "processes/p.yaml", definition.KindProcess)
+}
+
+// Contract test: runtime skills are inventoried at the temporary worktree's
+// root even when only home or a project supplies settings.
+func TestEndpointsKeepRootWithoutRepositorySettings(t *testing.T) {
+	t.Parallel()
+	for _, projectSettings := range []bool{false, true} {
+		t.Run(fmt.Sprint(projectSettings), func(t *testing.T) {
+			t.Parallel()
+			base := realDir(t, t.TempDir())
+			home, repo := filepath.Join(base, "home"), filepath.Join(base, "repo")
+			launch := filepath.Join(repo, "docs")
+			write(t, filepath.Join(repo, ".git"), "gitdir: marker\n")
+			mkdir(t, launch)
+			if projectSettings {
+				mkdir(t, filepath.Join(launch, ".agister"))
+			}
+			write(t, filepath.Join(home, "runtimes", "main.yaml"), "adapter: codex\n")
+			write(t, filepath.Join(repo, ".agents", "skills", "rules", "SKILL.md"), skillMD("rules", "Root rules."))
+			// Distinct answers make using the launch directory observable.
+			write(t, filepath.Join(launch, ".agents", "skills", "wrong", "SKILL.md"), skillMD("wrong", "Project rules."))
+			h := Handler(home, noChoose(t), owners(), SkillHomes{})
+			var got reportedSettings
+			if code := get(t, h, "localhost", "/api/settings?path="+q(launch), &got); code != 200 {
+				t.Fatalf("settings status %d", code)
+			}
+			store, err := fsdefs.Select(fsdefs.Store{Dir: home}, repo, launch)
+			if err != nil {
+				t.Fatal(err)
+			}
+			assertReportedDocument(t, got, store, "runtimes/main.yaml", definition.KindRuntime)
+			var skills SkillsReply
+			if code := get(t, h, "localhost", "/api/skills?path="+q(launch), &skills); code != 200 {
+				t.Fatalf("skills status %d", code)
+			}
+			if !reflect.DeepEqual(skills.Adapters, []string{"codex"}) {
+				t.Fatalf("adapters %v", skills.Adapters)
+			}
+			folder := skills.Folders[0]
+			if folder.Path != filepath.Join(repo, ".agents", "skills") || len(folder.Skills) != 1 || folder.Skills[0].Name != "rules" {
+				t.Fatalf("root inventory %+v", folder)
+			}
+		})
+	}
+}
+
+// Contract test: the layered filesystem store opens only the nearest whole
+// prompt/schema, while the read seam deterministically refuses farther files.
+func TestEndpointsDoNotOpenReplacedWholeDocuments(t *testing.T) {
+	t.Parallel()
+	base := realDir(t, t.TempDir())
+	home, repo := filepath.Join(base, "home"), filepath.Join(base, "repo")
+	write(t, filepath.Join(repo, ".git"), "gitdir: marker\n")
+	write(t, filepath.Join(home, "processes", "p.yaml"), "prompt: rules\noutput: schema:result\n")
+	write(t, filepath.Join(home, "runtimes", "main.yaml"), "adapter: codex\n")
+	denied := map[string]bool{}
+	for rel, text := range map[string]string{"prompts/rules.md": "Repo rules.\n", "schemas/result.json": "{}\n"} {
+		path := filepath.Join(home, rel)
+		write(t, path, "farther\n")
+		denied[path] = true
+		write(t, filepath.Join(repo, ".agister", rel), text)
+	}
+	read := func(path string) ([]byte, error) {
+		if denied[path] {
+			t.Errorf("opened replaced whole document %s", path)
+			return nil, &os.PathError{Op: "open", Path: path, Err: fs.ErrPermission}
+		}
+		return os.ReadFile(path)
+	}
+	h := handler(home, noChoose(t), owners(), SkillHomes{}, read)
+	var got reportedSettings
+	if code := get(t, h, "localhost", "/api/settings?path="+q(repo), &got); code != 200 {
+		t.Fatalf("settings status %d", code)
+	}
+	store, err := fsdefs.Select(fsdefs.Store{Dir: home}, repo, repo)
+	if err != nil {
+		t.Fatal(err)
+	}
+	assertReportedDocument(t, got, store, "prompts/rules.md", definition.KindPrompt)
+	assertReportedDocument(t, got, store, "schemas/result.json", definition.KindSchema)
+	// Runtime discovery also must not open an unrelated prompt.
+	unrelated := filepath.Join(home, "prompts", "unrelated.md")
+	write(t, unrelated, "not read by runtime inventory\n")
+	denied[unrelated] = true
+	var skills SkillsReply
+	if code := get(t, h, "localhost", "/api/skills?path="+q(repo), &skills); code != 200 || !reflect.DeepEqual(skills.Adapters, []string{"codex"}) {
+		t.Fatalf("skills status %d: %+v", code, skills)
+	}
+}
+
+// Contract test: a symlinked process partial supplies fields and provenance
+// through the temporary filesystem exactly as the binary's store reads it.
+func TestSettingsEndpointIncludesSymlinkedPartial(t *testing.T) {
+	t.Parallel()
+	base := realDir(t, t.TempDir())
+	home, repo := filepath.Join(base, "home"), filepath.Join(base, "repo")
+	project := filepath.Join(repo, "docs")
+	write(t, filepath.Join(repo, ".git"), "gitdir: marker\n")
+	write(t, filepath.Join(home, "processes", "p.yaml"), "prompt: rules\nguidance: [style]\n")
+	partial := filepath.Join(base, "partial.yaml")
+	write(t, partial, "guidance: []\n")
+	symlink(t, partial, filepath.Join(project, ".agister", "processes", "p.yaml"))
+	var got reportedSettings
+	if code := get(t, Handler(home, noChoose(t), owners(), SkillHomes{}), "localhost", "/api/settings?path="+q(project), &got); code != 200 {
+		t.Fatalf("status %d", code)
+	}
+	store, err := fsdefs.Select(fsdefs.Store{Dir: home}, repo, project)
+	if err != nil {
+		t.Fatal(err)
+	}
+	assertReportedDocument(t, got, store, "processes/p.yaml", definition.KindProcess)
+	if !strings.Contains(got.ComposedFiles["processes/p.yaml"], "guidance: []") {
+		t.Fatalf("symlink partial did not clear guidance: %+v", got)
+	}
+}
+
+// Contract test: ignored .yml files neither supply layers nor break valid
+// temporary settings, even beside a recognized file of the same stem.
+func TestEndpointsIgnoreYmlDocuments(t *testing.T) {
+	t.Parallel()
+	base := realDir(t, t.TempDir())
+	home, repo := filepath.Join(base, "home"), filepath.Join(base, "repo")
+	write(t, filepath.Join(repo, ".git"), "gitdir: marker\n")
+	write(t, filepath.Join(home, "runtimes", "main.yaml"), "adapter: pi\n")
+	write(t, filepath.Join(home, "runtimes", "main.yml"), "adapter: [\n")
+	write(t, filepath.Join(repo, ".agister", "runtimes", "main.yml"), "adapter: codex\n")
+	h := Handler(home, noChoose(t), owners(), SkillHomes{})
+	var got reportedSettings
+	if code := get(t, h, "localhost", "/api/settings?path="+q(repo), &got); code != 200 {
+		t.Fatalf("settings status %d", code)
+	}
+	store, err := fsdefs.Select(fsdefs.Store{Dir: home}, repo, repo)
+	if err != nil {
+		t.Fatal(err)
+	}
+	assertReportedDocument(t, got, store, "runtimes/main.yaml", definition.KindRuntime)
+	if _, found := got.Files["runtimes/main.yml"]; found || len(got.Sources) != 1 {
+		t.Fatalf("ignored file in inventory: %+v", got)
+	}
+	var skills SkillsReply
+	if code := get(t, h, "localhost", "/api/skills?path="+q(repo), &skills); code != 200 || !reflect.DeepEqual(skills.Adapters, []string{"pi"}) {
+		t.Fatalf("skills status %d: %+v", code, skills)
+	}
+}
+
+// Contract test: nonempty guidance resolves text and provenance from a
+// layer.yaml prompt library, through the endpoint and the binary's store.
+func TestSettingsEndpointReadsGuidanceFromLayerPromptFolder(t *testing.T) {
+	t.Parallel()
+	base := realDir(t, t.TempDir())
+	home, repo := filepath.Join(base, "home"), filepath.Join(base, "repo")
+	write(t, filepath.Join(repo, ".git"), "gitdir: marker\n")
+	write(t, filepath.Join(home, "processes", "p.yaml"), "prompt: rules\nguidance: [style]\n")
+	write(t, filepath.Join(home, "prompts", "rules.md"), "Home rules.\n")
+	write(t, filepath.Join(repo, ".agister", "layer.yaml"), "schema: agister.layer/v1alpha1\nprompts: [library]\n")
+	write(t, filepath.Join(repo, "library", "style.md"), "Library style.\n")
+	var got reportedSettings
+	if code := get(t, Handler(home, noChoose(t), owners(), SkillHomes{}), "localhost", "/api/settings?path="+q(repo), &got); code != 200 {
+		t.Fatalf("status %d", code)
+	}
+	store, err := fsdefs.Select(fsdefs.Store{Dir: home}, repo, repo)
+	if err != nil {
+		t.Fatal(err)
+	}
+	assertReportedDocument(t, got, store, "processes/p.yaml", definition.KindProcess)
+	assertReportedDocument(t, got, store, "prompts/style.md", definition.KindPrompt)
+	if got.ComposedFiles["prompts/style.md"] != "Library style.\n" {
+		t.Fatalf("guidance text %+v", got.ComposedFiles)
 	}
 }

@@ -1,14 +1,15 @@
 package pages
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io/fs"
 	"os"
 	"path/filepath"
-	"sort"
 	"strings"
 
+	"github.com/igor1309/ai-labs/agister/internal/adapters/fsdefs"
 	"github.com/igor1309/ai-labs/agister/internal/domain/definition"
 	"gopkg.in/yaml.v3"
 )
@@ -19,144 +20,116 @@ type settingsLayer struct {
 	Dir   string `json:"dir"`
 }
 
-// settingsLayers selects home, the worktree's repository and the nearest
-// project below it. Git worktrees have a .git file instead of a folder;
-// neither is opened. More than one project layer is refused.
-func settingsLayers(path, home string) ([]settingsLayer, error) {
-	if path == Home || filepath.Clean(filepath.Join(path, ".agister")) == filepath.Clean(home) {
-		return []settingsLayer{{"home", home}}, nil
-	}
-	if !filepath.IsAbs(path) {
-		return nil, badRequest("path must be absolute or ~: " + path)
-	}
-	launch := filepath.Clean(path)
-	if !isDir(launch) {
-		return nil, notFound("no folder at " + launch)
-	}
-	root := ""
-	for dir := launch; ; dir = filepath.Dir(dir) {
-		if _, err := os.Stat(filepath.Join(dir, ".git")); err == nil {
-			root = dir
-			break
-		}
-		if filepath.Dir(dir) == dir {
-			break
-		}
-	}
-	layers := []settingsLayer{{"home", home}}
-	if root == "" {
-		return layers, nil // outside a worktree, the binary reads only home
-	}
-	add := func(dir, layer string) error {
-		if filepath.Clean(dir) == filepath.Clean(home) {
-			return nil
-		}
-		info, err := os.Stat(dir)
-		if errors.Is(err, fs.ErrNotExist) {
-			if _, lerr := os.Lstat(dir); errors.Is(lerr, fs.ErrNotExist) {
-				return nil
-			}
-		}
-		if err != nil {
-			return err
-		}
-		if !info.IsDir() {
-			return fmt.Errorf("settings %s: not a directory", dir)
-		}
-		layers = append(layers, settingsLayer{layer, dir})
-		return nil
-	}
-	if err := add(filepath.Join(root, ".agister"), "repository"); err != nil {
-		return nil, err
-	}
-	var project string
-	for dir := launch; dir != root; dir = filepath.Dir(dir) {
-		settings := filepath.Join(dir, ".agister")
-		before := len(layers)
-		if err := add(settings, "project"); err != nil {
-			return nil, err
-		}
-		if len(layers) == before {
-			continue
-		}
-		if project != "" {
-			return nil, fmt.Errorf("project layer %s: a second .agister between it and the worktree's root: %s", project, settings)
-		}
-		project = settings
-	}
-	return layers, nil
+// settingsSelection keeps the worktree root independent of its optional
+// settings folder. The binary selects and validates the settings layers.
+type settingsSelection struct {
+	root   string
+	store  fsdefs.Layered
+	layers []settingsLayer
 }
 
-// settingsComposition uses the definition language's composition and
-// field attribution, also used by the CLI. files stays the selected
-// folder's raw inventory; composedFiles and sources are what the view uses.
-func settingsComposition(layers []settingsLayer, read func(string) ([]byte, error)) (map[string]string, map[string]any, error) {
-	texts := map[string][]definition.LayerText{}
-	folders := map[string][]string{}
-	for _, layer := range layers {
-		files, err := settings(layer.Dir, read)
-		if err != nil {
-			if layer.Layer == "home" && !isDir(layer.Dir) {
-				continue
-			}
-			return nil, nil, err
+func selectSettings(path, home string, read func(string) ([]byte, error)) (settingsSelection, error) {
+	selected := settingsSelection{store: fsdefs.Layered{Home: fsdefs.Store{Dir: home}}}
+	if path != Home && filepath.Clean(filepath.Join(path, ".agister")) != filepath.Clean(home) {
+		if !filepath.IsAbs(path) {
+			return selected, badRequest("path must be absolute or ~: " + path)
 		}
-		if layer.Layer == "project" {
-			if _, err := os.Lstat(filepath.Join(layer.Dir, "blocks.yaml")); !errors.Is(err, fs.ErrNotExist) {
-				return nil, nil, fmt.Errorf("project layer %s holds no blocks.yaml: blocks are the repository layer's alone", layer.Dir)
+		launch, err := filepath.EvalSymlinks(path)
+		if err != nil || !isDir(launch) {
+			return selected, notFound("no folder at " + path)
+		}
+		// Worktrees have a .git file instead of a directory. Pages only
+		// discovers the root here; fsdefs owns settings selection below it.
+		for dir := launch; ; dir = filepath.Dir(dir) {
+			if _, err := os.Stat(filepath.Join(dir, ".git")); err == nil {
+				selected.root = dir
+				break
+			}
+			if filepath.Dir(dir) == dir {
+				break
 			}
 		}
-		layerPath := filepath.Join(layer.Dir, "layer.yaml")
-		if _, err := os.Lstat(layerPath); !errors.Is(err, fs.ErrNotExist) {
-			if layer.Layer == "home" {
-				return nil, nil, fmt.Errorf("home holds no layer.yaml: %s", layerPath)
-			}
-			data, err := read(layerPath)
+		if selected.root != "" {
+			selected.store, err = fsdefs.Select(selected.store.Home, selected.root, launch)
 			if err != nil {
-				return nil, nil, err
+				return selected, err
 			}
-			spec, err := definition.ParseLayer(data)
-			if err != nil {
-				return nil, nil, fmt.Errorf("%s: %w", layerPath, err)
-			}
-			base := filepath.Dir(layer.Dir)
-			for _, folder := range spec.Prompts {
-				path := filepath.Join(base, folder)
-				resolved, err := filepath.EvalSymlinks(path)
-				basePath, baseErr := filepath.EvalSymlinks(base)
-				rel, relErr := filepath.Rel(basePath, resolved)
-				if err != nil || baseErr != nil || relErr != nil || rel != "." && !filepath.IsLocal(rel) || !isDir(path) {
-					return nil, nil, fmt.Errorf("%s: prompts folder %s must exist inside %s", layerPath, folder, base)
-				}
-				folders[layer.Dir] = append(folders[layer.Dir], path)
-			}
-		}
-		for _, file := range sortedSettingsFiles(files) {
-			text := files[file]
-			texts[file] = append([]definition.LayerText{{File: definition.LayerFile{Layer: definition.Layer(layer.Layer), Path: filepath.Join(layer.Dir, filepath.FromSlash(file))}, Bytes: []byte(text)}}, texts[file]...)
 		}
 	}
+	selected.store = selected.store.WithReadFile(read)
+	layers := selected.store.Layers(context.Background())
+	for i := len(layers) - 1; i >= 0; i-- {
+		layer := layers[i]
+		for _, problem := range layer.Invalid {
+			return selected, fmt.Errorf("%s: %s", problem.Path, problem.Reason)
+		}
+		selected.layers = append(selected.layers, settingsLayer{string(layer.Layer), layer.Dir})
+	}
+	return selected, nil
+}
+
+// pageSettingsReader adds Pages' size limit and refuses files that cannot
+// safely be read as text. Definition symlinks are followed, as by the binary.
+// texts records only files the store actually reads; replaced whole documents
+// remain provenance alone and are never opened for the raw inventory either.
+func pageSettingsReader(read func(string) ([]byte, error), texts map[string]string) func(string) ([]byte, error) {
+	return func(path string) ([]byte, error) {
+		info, err := os.Stat(path)
+		if err != nil {
+			return nil, err
+		}
+		if !info.Mode().IsRegular() || info.Size() > fileCap {
+			return nil, definition.ErrNotFound
+		}
+		data, err := read(path)
+		if err == nil && len(data) > fileCap {
+			return nil, definition.ErrNotFound
+		}
+		if err == nil {
+			texts[path] = string(data)
+		}
+		return data, err
+	}
+}
+
+// The store owns filename recognition and discovery. These kinds are the
+// documents the view displays; skills have their own endpoint.
+func settingsKinds() []definition.Kind {
+	return []definition.Kind{definition.KindAgent, definition.KindPolicy,
+		definition.KindProcess, definition.KindRuntime, definition.KindSchema,
+		definition.KindVerify, definition.KindPrompt, definition.KindBrief,
+		definition.KindWorkflow, definition.KindService}
+}
+
+// settingsComposition reads the binary's layered store, including unreferenced
+// documents in its inventory. Prompt libraries supply only names a process gives.
+func settingsComposition(store fsdefs.Layered) (map[string]string, map[string]any, error) {
+	ctx := context.Background()
 	composed := map[string]string{}
 	sources := map[string]any{}
-	compose := func(file string, parts []definition.LayerText) error {
-		kind := definition.Kind(strings.Split(file, "/")[0])
-		if file == "service.toml" {
-			kind = definition.KindService
-		}
-		data, files := parts[0].Bytes, []definition.LayerFile{}
+	add := func(kind definition.Kind, name string, listed bool) error {
+		var doc definition.Document
 		var err error
-		if definition.Composed(kind) {
-			data, files, err = definition.Compose(kind, parts)
+		if listed {
+			doc, err = store.ReadListed(ctx, kind, name)
 		} else {
-			for _, part := range parts {
-				files = append(files, part.File)
-			}
+			doc, err = store.Read(ctx, kind, name)
 		}
-		origin := make([]map[string]any, 0, len(files))
-		for _, file := range files {
-			one := map[string]any{"layer": string(file.Layer), "path": file.Path}
-			if file.Fields != nil {
-				one["fields"] = file.Fields
+		if errors.Is(err, definition.ErrNotFound) {
+			return nil
+		}
+		if errors.Is(err, fs.ErrPermission) {
+			return err
+		}
+		file := string(kind) + "/" + filepath.Base(doc.Source.Path)
+		if kind == definition.KindService {
+			file = "service.toml"
+		}
+		origin := make([]map[string]any, 0, len(doc.Source.Layers))
+		for _, layer := range doc.Source.Layers {
+			one := map[string]any{"layer": string(layer.Layer), "path": layer.Path}
+			if layer.Fields != nil {
+				one["fields"] = layer.Fields
 			}
 			origin = append(origin, one)
 		}
@@ -164,16 +137,28 @@ func settingsComposition(layers []settingsLayer, read func(string) ([]byte, erro
 		if err != nil {
 			source["error"] = err.Error()
 		} else {
-			composed[file] = string(data)
+			composed[file] = string(doc.Bytes)
 		}
 		sources[file] = source
-		return err
+		return nil
 	}
-	for file, parts := range texts {
-		_ = compose(file, parts) // one broken document does not hide the rest
+	for _, kind := range settingsKinds() {
+		var names []string
+		var err error
+		if kind == definition.KindService {
+			names = []string{"service"} // a singleton, not a folder
+		} else {
+			names, err = store.List(ctx, kind)
+		}
+		if err != nil {
+			return nil, nil, err
+		}
+		for _, name := range names {
+			if err := add(kind, name, true); err != nil {
+				return nil, nil, err
+			}
+		}
 	}
-	// Library folders supply only the names a composed process gives.
-	names := map[string]bool{}
 	for file, text := range composed {
 		if !strings.HasPrefix(file, "processes/") {
 			continue
@@ -182,65 +167,17 @@ func settingsComposition(layers []settingsLayer, read func(string) ([]byte, erro
 			Prompt   string   `yaml:"prompt"`
 			Guidance []string `yaml:"guidance"`
 		}
-		if yaml.Unmarshal([]byte(text), &doc) == nil {
-			for _, name := range append(doc.Guidance, doc.Prompt) {
-				if name != "" && filepath.Base(name) == name {
-					names[name] = true
-				}
-			}
+		if yaml.Unmarshal([]byte(text), &doc) != nil {
+			continue
 		}
-	}
-	for name := range names {
-		file := "prompts/" + name + ".md"
-		var parts []definition.LayerText
-		for i := len(layers) - 1; i >= 0; i-- {
-			layer := layers[i]
-			paths := []string{filepath.Join(layer.Dir, "prompts", name+".md")}
-			for _, folder := range folders[layer.Dir] {
-				paths = append(paths, filepath.Join(folder, name+".md"))
+		for _, name := range append(doc.Guidance, doc.Prompt) {
+			if !definition.ValidName(name) {
+				continue
 			}
-			for _, path := range paths {
-				if _, err := os.Lstat(path); errors.Is(err, fs.ErrNotExist) {
-					continue
-				}
-				part := definition.LayerText{File: definition.LayerFile{Layer: definition.Layer(layer.Layer), Path: path}}
-				// Farther prompt files are metadata only, as in the CLI.
-				if len(parts) == 0 {
-					data, err := read(path)
-					if err != nil {
-						return nil, nil, err
-					}
-					if len(data) > fileCap {
-						return nil, nil, fmt.Errorf("prompt %s exceeds the page's file limit", path)
-					}
-					part.Bytes = data
-				}
-				parts = append(parts, part)
-				break
+			if err := add(definition.KindPrompt, name, false); err != nil {
+				return nil, nil, err
 			}
-		}
-		if len(parts) > 0 {
-			_ = compose(file, parts)
 		}
 	}
 	return composed, sources, nil
-}
-
-// layerDirectories is the selected directories for the skill inventory.
-func layerDirectories(layers []settingsLayer) []string {
-	dirs := make([]string, len(layers))
-	for i, layer := range layers {
-		dirs[i] = layer.Dir
-	}
-	return dirs
-}
-
-// sortedSettingsFiles keeps inventory processing stable.
-func sortedSettingsFiles(files map[string]string) []string {
-	names := make([]string, 0, len(files))
-	for name := range files {
-		names = append(names, name)
-	}
-	sort.Strings(names)
-	return names
 }

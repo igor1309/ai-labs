@@ -92,27 +92,29 @@ func handler(agisterHome string, choose Choose, observe Observe, homes SkillHome
 	})
 	mux.HandleFunc("GET /api/settings", func(w http.ResponseWriter, r *http.Request) {
 		path := r.URL.Query().Get("path")
-		dir := filepath.Join(path, ".agister")
-		if path == Home {
-			dir = agisterHome
-		}
-		layers, err := settingsLayers(path, agisterHome)
+		texts := map[string]string{}
+		selected, err := selectSettings(path, agisterHome, pageSettingsReader(read, texts))
 		if err != nil {
 			reply(w, nil, err)
 			return
 		}
-		dir = layers[len(layers)-1].Dir
-		files, err := settings(dir, read)
+		dir := selected.layers[len(selected.layers)-1].Dir
+		if !isDir(dir) {
+			reply(w, nil, notFound("no .agister folder at "+dir))
+			return
+		}
+		composed, sources, err := settingsComposition(selected.store)
+		var files map[string]string
+		if err == nil {
+			files, err = settings(dir, read, texts)
+		}
 		home := path == Home || filepath.Clean(filepath.Join(path, ".agister")) == filepath.Clean(agisterHome)
 		body := map[string]any{"path": path, "dir": dir, "home": home, "files": files}
 		if err == nil {
-			var composed map[string]string
-			var sources map[string]any
-			composed, sources, err = settingsComposition(layers, read)
-			body["composedFiles"], body["sources"], body["layers"] = composed, sources, layers
+			body["composedFiles"], body["sources"], body["layers"] = composed, sources, selected.layers
 		}
 		if err == nil && !home {
-			homeFiles, homeErr := settings(agisterHome, read)
+			homeFiles, homeErr := settings(agisterHome, read, texts)
 			if homeErr != nil {
 				homeFiles = map[string]string{}
 			}
@@ -174,8 +176,10 @@ func isLoopbackIP(host string) bool {
 
 // settings returns the settings files under dir, a .agister folder, by
 // slash-separated path, each read with read: at most fileCap bytes each,
-// larger ones left out.
-func settings(dir string, read func(string) ([]byte, error)) (map[string]string, error) {
+// larger ones left out. Direct documents use the store's reads in texts;
+// replaced whole documents have provenance only. Other inventory files,
+// including nested files no definition names, are read here.
+func settings(dir string, read func(string) ([]byte, error), texts map[string]string) (map[string]string, error) {
 	if !filepath.IsAbs(dir) {
 		return nil, badRequest("path must be absolute or ~: " + dir)
 	}
@@ -200,7 +204,22 @@ func settings(dir string, read func(string) ([]byte, error)) (map[string]string,
 		if entry.IsDir() {
 			return nil
 		}
-		info, err := entry.Info()
+		rel = filepath.ToSlash(rel)
+		if filepath.Ext(rel) == ".yml" {
+			return nil // the binary recognizes .yaml alone
+		}
+		if text, ok := texts[path]; ok {
+			files[rel] = text
+			return nil
+		}
+		_, rest, _ := strings.Cut(rel, "/")
+		if rel == "service.toml" || !strings.Contains(rest, "/") {
+			switch filepath.Ext(rel) {
+			case ".yaml", ".toml", ".json", ".md":
+				return nil // direct documents are read only by the store
+			}
+		}
+		info, err := os.Stat(path)
 		if err != nil || !info.Mode().IsRegular() || info.Size() > fileCap {
 			return nil
 		}
@@ -208,7 +227,9 @@ func settings(dir string, read func(string) ([]byte, error)) (map[string]string,
 		if err != nil {
 			return err
 		}
-		files[filepath.ToSlash(rel)] = string(data)
+		if len(data) <= fileCap {
+			files[rel] = string(data)
+		}
 		return nil
 	})
 	return files, err

@@ -27,7 +27,8 @@ import (
 var errNotFound = definition.ErrNotFound
 
 type Store struct {
-	Dir string
+	Dir      string
+	readFile func(string) ([]byte, error)
 
 	// at, when set, is called at the steps of Write that the lock must
 	// cover, and between listing a skill's folder and opening its file;
@@ -268,7 +269,7 @@ func (s Store) read(kind definition.Kind, name string) (definition.Document, err
 			return doc, err
 		}
 	} else {
-		data, err = os.ReadFile(path)
+		data, err = s.readBytes(path)
 	}
 	if errors.Is(err, fs.ErrNotExist) {
 		// A file that exists but cannot be resolved, a dangling symlink, is
@@ -517,6 +518,35 @@ type Layered struct {
 	Absent string
 }
 
+// WithReadFile returns an inspection copy whose document and layer.yaml
+// contents are read with read. Listing, selection and composition are unchanged;
+// skills retain their checked file-handle reads. A viewer may return
+// definition.ErrNotFound for a file excluded by its own size limit.
+func (l Layered) WithReadFile(read func(string) ([]byte, error)) Layered {
+	if read == nil {
+		panic("fsdefs: missing inspection reader")
+	}
+	l.Home.readFile = read
+	if l.Repository != nil {
+		store := *l.Repository
+		store.readFile = read
+		l.Repository = &store
+	}
+	if l.Project != nil {
+		store := *l.Project
+		store.readFile = read
+		l.Project = &store
+	}
+	return l
+}
+
+func (s Store) readBytes(path string) ([]byte, error) {
+	if s.readFile != nil {
+		return s.readFile(path)
+	}
+	return os.ReadFile(path)
+}
+
 type layerStore struct {
 	layer definition.Layer
 	store Store
@@ -539,7 +569,10 @@ func (l layerStore) read(kind definition.Kind, name string, folders bool) (defin
 	}
 	for _, folder := range listed {
 		path := filepath.Join(folder, name+extensions()[kind])
-		data, ferr := os.ReadFile(path)
+		data, ferr := l.store.readBytes(path)
+		if errors.Is(ferr, errNotFound) {
+			continue
+		}
 		if errors.Is(ferr, fs.ErrNotExist) {
 			if _, lerr := os.Lstat(path); lerr != nil {
 				continue
@@ -620,7 +653,7 @@ func (s Store) promptFolders() ([]string, []definition.LayerProblem) {
 	invalid := func(format string, args ...any) []definition.LayerProblem {
 		return []definition.LayerProblem{{Path: path, Reason: fmt.Sprintf(format, args...)}}
 	}
-	data, err := os.ReadFile(path)
+	data, err := s.readBytes(path)
 	if err != nil {
 		return nil, invalid("cannot be read: %v; so which prompts the layer gives cannot be known", err)
 	}

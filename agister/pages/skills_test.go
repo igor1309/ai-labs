@@ -452,8 +452,8 @@ func TestSkillsEndpointReadsTheFoldersOfTheSettingsRuntimes(t *testing.T) {
 	write(t, filepath.Join(home, "runtimes", "broken.yaml"), "adapter: [\n")
 	repo := filepath.Join(root, "repo")
 	write(t, filepath.Join(repo, ".git"), "gitdir: settings-test-marker\n")
-	// The repo's main.yml replaces home's main.yaml: codex, not pi.
-	write(t, filepath.Join(repo, ".agister", "runtimes", "main.yml"), "adapter: codex\n")
+	// The binary ignores .yml, even beside a recognized .yaml file.
+	write(t, filepath.Join(repo, ".agister", "runtimes", "main.yml"), "adapter: [\n")
 	write(t, filepath.Join(repo, ".claude", "skills", "r", "SKILL.md"), skillMD("r", "R."))
 	write(t, filepath.Join(user, ".claude", "skills", "u", "SKILL.md"), skillMD("u", "U."))
 	write(t, filepath.Join(user, ".pi", "agent", "skills", "p", "SKILL.md"), skillMD("p", "P."))
@@ -467,9 +467,9 @@ func TestSkillsEndpointReadsTheFoldersOfTheSettingsRuntimes(t *testing.T) {
 	for _, f := range got.Folders {
 		folders = append(folders, f.Folder)
 	}
-	if got.Home || !reflect.DeepEqual(got.Adapters, []string{"claude-code", "codex"}) || !reflect.DeepEqual(folders, []string{
-		".claude/skills", ".agents/skills", ".codex/skills",
-		"~/.claude/skills", "~/.claude/skills/synced", "~/.agents/skills", "~/.codex/skills", "~/.codex/skills/.system",
+	if got.Home || !reflect.DeepEqual(got.Adapters, []string{"claude-code", "pi"}) || !reflect.DeepEqual(folders, []string{
+		".claude/skills", ".agents/skills", ".pi/skills",
+		"~/.claude/skills", "~/.claude/skills/synced", "~/.agents/skills", "~/.pi/agent/skills",
 	}) {
 		t.Fatalf("repo: home=%v adapters=%v folders=%q", got.Home, got.Adapters, folders)
 	}
@@ -610,6 +610,7 @@ func TestARepoRuntimeRefusesAHomeRuntimeFileOfTwoDocuments(t *testing.T) {
 			t.Parallel()
 			root := realDir(t, t.TempDir())
 			home, repo := filepath.Join(root, "home"), filepath.Join(root, "repo")
+			write(t, filepath.Join(repo, ".git"), "gitdir: settings-test-marker\n")
 			bad := filepath.Join(home, "runtimes", "main.yaml")
 			write(t, bad, "adapter: pi\n---\nadapter: pi\n")
 			write(t, filepath.Join(repo, ".agister", "runtimes", name), "adapter: codex\n")

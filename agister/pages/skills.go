@@ -2,6 +2,7 @@ package pages
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -12,6 +13,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/igor1309/ai-labs/agister/internal/adapters/fsdefs"
 	"github.com/igor1309/ai-labs/agister/internal/domain/definition"
 	"gopkg.in/yaml.v3"
 )
@@ -533,36 +535,24 @@ func frontMatter(data []byte) (map[string]any, error) {
 // runtimeAdapters reads adapters from runtime compositions, so a partial
 // retains its parent's adapter. A broken parent file is still refused:
 // every file is read, as for the CLI's composed runtime documents.
-func runtimeAdapters(read func(string) ([]byte, error), dirs ...string) ([]string, error) {
-	byStem := map[string][]definition.LayerText{}
-	for _, dir := range dirs {
-		files, err := settings(dir, read)
-		if err != nil {
-			continue
-		}
-		for _, rel := range sortedSettingsFiles(files) {
-			name, ok := strings.CutPrefix(rel, "runtimes/")
-			if ext := filepath.Ext(name); ok && !strings.Contains(name, "/") && (ext == ".yaml" || ext == ".yml") {
-				stem := strings.TrimSuffix(name, ext)
-				byStem[stem] = append([]definition.LayerText{{File: definition.LayerFile{Path: filepath.Join(dir, rel)}, Bytes: []byte(files[rel])}}, byStem[stem]...)
-			}
-		}
+func runtimeAdapters(store fsdefs.Layered) ([]string, error) {
+	ctx := context.Background()
+	names, err := store.List(ctx, definition.KindRuntime)
+	if err != nil {
+		return nil, err
 	}
-	names := make([]string, 0, len(byStem))
-	for name := range byStem {
-		names = append(names, name)
-	}
-	sort.Strings(names)
 	adapters := []string{}
 	for _, name := range names {
-		parts := byStem[name]
-		data, _, err := definition.Compose(definition.KindRuntime, parts)
+		doc, err := store.Read(ctx, definition.KindRuntime, name)
+		if errors.Is(err, definition.ErrNotFound) {
+			continue // Pages' file limit may exclude every layer's file.
+		}
 		if err != nil {
 			return nil, statusError{http.StatusUnprocessableEntity, err.Error()}
 		}
-		adapter, err := runtimeAdapter(data)
+		adapter, err := runtimeAdapter(doc.Bytes)
 		if err != nil {
-			return nil, statusError{http.StatusUnprocessableEntity, parts[0].File.Path + ": " + err.Error()}
+			return nil, statusError{http.StatusUnprocessableEntity, doc.Source.Path + ": " + err.Error()}
 		}
 		if adapter != "" && !contains(adapters, adapter) {
 			adapters = append(adapters, adapter)
@@ -601,25 +591,17 @@ func runtimeAdapter(data []byte) (string, error) {
 // skillsAt answers /api/skills for path: a repo's absolute path, or ~,
 // reading each file with read.
 func skillsAt(path, agisterHome string, homes SkillHomes, read func(string) ([]byte, error)) (SkillsReply, error) {
-	layers, err := settingsLayers(path, agisterHome)
+	selected, err := selectSettings(path, agisterHome, pageSettingsReader(read, map[string]string{}))
 	if err != nil {
 		return SkillsReply{}, err
 	}
+	layers := selected.layers
 	dir := layers[len(layers)-1].Dir
 	if !isDir(dir) {
 		return SkillsReply{}, notFound("no .agister folder at " + dir)
 	}
 	reply := SkillsReply{Path: path, Home: path == Home || filepath.Clean(filepath.Join(path, ".agister")) == filepath.Clean(agisterHome)}
-	repo := ""
-	if !reply.Home {
-		repo = filepath.Dir(dir)
-		for _, layer := range layers {
-			if layer.Layer == "repository" {
-				repo = filepath.Dir(layer.Dir)
-			}
-		}
-	}
-	reply.Adapters, err = runtimeAdapters(read, layerDirectories(layers)...)
+	reply.Adapters, err = runtimeAdapters(selected.store)
 	if err != nil {
 		return SkillsReply{}, err
 	}
@@ -636,6 +618,6 @@ func skillsAt(path, agisterHome string, homes SkillHomes, read func(string) ([]b
 		}
 		reply.Settings = append(reply.Settings, layerSkills...)
 	}
-	reply.Folders = readSkills(repo, reply.Adapters, homes, read)
+	reply.Folders = readSkills(selected.root, reply.Adapters, homes, read)
 	return reply, nil
 }
