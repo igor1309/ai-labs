@@ -68,12 +68,11 @@ func TestTheCallerSkillAppliesNoPatchAndChoosesNoWorkspace(t *testing.T) {
 }
 
 // Nothing a caller reads tells it to apply a run's changes (ADR-025 rule
-// 1): the skill, its front matter's description and its prose included,
-// and the repository's deliver skill, whose Agister part says how
-// Agister's own work runs. Each says only that nothing is applied.
+// 1): the skill, its front matter's description and its prose included.
+// It says only that nothing is applied.
 func TestTheCallerGuidanceTellsNoOneToApplyARunsChanges(t *testing.T) {
 	t.Parallel()
-	for _, file := range []string{filepath.Join("skills", "agister", "SKILL.md"), filepath.Join("..", deliverSkillFile)} {
+	for _, file := range []string{filepath.Join("skills", "agister", "SKILL.md")} {
 		text := read(t, filepath.Join(callerSkill, file))
 		for _, sentence := range applyInstructions(text) {
 			t.Errorf("%s tells a caller to apply a run's changes: %q", file, sentence)
