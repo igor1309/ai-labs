@@ -287,6 +287,13 @@ that exists nowhere stops every command, as broken service settings do;
 `install` and `install --restore` still run. One in home blocks nothing
 and is a problem, and `install` does not install one.
 
+Decided, and not yet in this binary
+([ADR-028](docs/adr/028-settings-are-layered-by-field.md)): settings are
+layered by field across home, the repository's `.agister/` and the
+`.agister/` of the project directory a call is launched in, and a process
+names one `prompt` and a `guidance` list in place of prompt inputs and
+`optional: true`. Until the binary does, this file holds as written.
+
 Agister is a runner, not a guard: running it in a repository applies that
 repository's `.agister/`, including the commands its agents run. Review
 settings you did not write.
