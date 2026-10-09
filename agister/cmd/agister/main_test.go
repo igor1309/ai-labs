@@ -16,6 +16,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"regexp"
+	"slices"
 	"strings"
 	"sync"
 	"testing"
@@ -693,14 +694,17 @@ func TestProjectSettingsAddToGlobal(t *testing.T) {
 	}
 }
 
-// A branch can swap the reviewer's family: the project agent takes priority
-// over the global one, and check, process show and the run record say so.
+// A branch can swap the reviewer's family: the repository's agent file,
+// which sets only the family, takes priority over the global one field by
+// field, and check, process show and the run record say so, the record
+// naming the fields each layer's file gave.
 func TestProjectOverridesAreNoted(t *testing.T) {
 	t.Parallel()
 	home, repo := setup(t, "approve")
 	global := filepath.Join(home, "agents", "reviewer.toml")
 	project := filepath.Join(repo, ".agister", "agents", "reviewer.toml")
-	write(t, project, strings.Replace(read(t, global), `model_family = "anthropic"`, `model_family = "experiment"`, 1))
+	const family = "model_family = \"experiment\"\n"
+	write(t, project, family)
 
 	r := agister(t, home, repo, "check")
 	if r.code != 0 || !strings.Contains(r.stdout, "override agent reviewer: "+project+" overrides "+global) || !strings.Contains(r.stdout, "settings OK") {
@@ -727,11 +731,29 @@ func TestProjectOverridesAreNoted(t *testing.T) {
 	if r := agister(t, home, repo, "run", "adversarial_review", "--quiet", "--param", "base=main", "--timeout", "1m"); r.code != cli.ExitCompleted {
 		t.Fatalf("run: %d\n%s", r.code, r.stderr)
 	}
-	for _, source := range lastRun(t, home).record["definitions"].([]any) {
+	last := lastRun(t, home)
+	if profile, _ := last.record["profile"].(map[string]any); !strings.Contains(strings.Join(last.argv(), " "), "sonnet") || profile["effort"] != "high" {
+		t.Fatalf("the agent ran as %v, by %v", last.record["profile"], last.argv())
+	}
+	agent := map[string]any{"kind": "agents", "name": "reviewer", "layers": []any{
+		map[string]any{"layer": "repository", "path": project, "sha256": digestOf(family), "fields": []any{"model_family"}},
+		map[string]any{"layer": "home", "path": global, "sha256": digestOf(read(t, global)), "fields": []any{"schema", "name", "runtime", "model", "effort", "session", "command"}},
+	}}
+	if got := definitionOf(t, last, "agents", "reviewer"); !reflect.DeepEqual(got, agent) {
+		t.Fatalf("agent recorded as\n%v\nwant\n%v", got, agent)
+	}
+	// Each other document is home's alone: a composed kind's one file gave
+	// every field, and a schema, taken whole, has none (ADR-028 rule 11).
+	for _, source := range last.record["definitions"].([]any) {
 		source := source.(map[string]any)
-		if layers, _ := source["layers"].([]any); source["kind"] == "agents" && (len(layers) != 2 || nearest(source)["layer"] != "repository" || nearest(source)["path"] != project ||
-			layers[1].(map[string]any)["layer"] != "home" || layers[1].(map[string]any)["path"] != global) {
-			t.Fatalf("agent source = %v", source)
+		if source["kind"] == "agents" {
+			continue
+		}
+		layers, _ := source["layers"].([]any)
+		fields, given := nearest(source)["fields"].([]any)
+		whole := source["kind"] == "schemas"
+		if len(layers) != 1 || nearest(source)["layer"] != "home" || given == whole || !whole && !slices.Contains(fields, any("schema")) {
+			t.Fatalf("%v %v recorded as %v", source["kind"], source["name"], source)
 		}
 	}
 }

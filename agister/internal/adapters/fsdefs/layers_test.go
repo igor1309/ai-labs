@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"errors"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -88,8 +89,8 @@ func TestSelectTakesTheNearestProjectLayerBelowTheRoot(t *testing.T) {
 // ADR-028 rule 1: a repository without .agister has no repository layer,
 // and a document found nowhere still names where it would hold it; a
 // .agister that is home itself is no layer, at the root or below it; one
-// that exists and is no directory is an error, so a layer never silently
-// stops applying.
+// that exists and is no directory, or cannot be resolved, is an error, so
+// a layer never silently stops applying.
 //
 // Contract test: the selection of layers against the real filesystem.
 func TestSelectReadsNoLayerThatIsHomeOrAbsent(t *testing.T) {
@@ -149,6 +150,21 @@ func TestSelectReadsNoLayerThatIsHomeOrAbsent(t *testing.T) {
 			}
 			if _, err := fsdefs.Select(home, root, filepath.Join(root, "docs")); err == nil || !strings.Contains(err.Error(), path) || !strings.Contains(err.Error(), "not a directory") {
 				t.Fatalf("selected with %s a file: %v", path, err)
+			}
+		})
+		// A dangling link is there and cannot be used: it is no absent
+		// layer, whose settings would silently stop applying.
+		t.Run("a dangling link "+name, func(t *testing.T) {
+			t.Parallel()
+			home, root := worktree(t)
+			path := filepath.Join(root, at)
+			dangle(t, path)
+			if err := os.MkdirAll(filepath.Join(root, "docs"), 0o700); err != nil {
+				t.Fatal(err)
+			}
+			selected, err := fsdefs.Select(home, root, filepath.Join(root, "docs"))
+			if err == nil || !strings.HasPrefix(err.Error(), "settings "+path+": ") || !errors.Is(err, fs.ErrNotExist) {
+				t.Fatalf("selected with %s a dangling link: %v, %v", path, dirs(selected), err)
 			}
 		})
 	}
@@ -301,6 +317,12 @@ func TestADocumentIsComposedFromEveryLayerThatHoldsIt(t *testing.T) {
 	if !reflect.DeepEqual(doc.Source, want) {
 		t.Fatalf("source = %+v\nwant     %+v", doc.Source, want)
 	}
+	// What each layer's file holds, with the file as the source names it:
+	// what a composition with one of them changed is composed from.
+	texts := []definition.LayerText{{File: want.Layers[0], Bytes: []byte(projectText)}, {File: want.Layers[1], Bytes: []byte(repositoryText)}, {File: want.Layers[2], Bytes: []byte(homeText)}}
+	if !reflect.DeepEqual(doc.Texts, texts) {
+		t.Fatalf("texts = %+v\nwant    %+v", doc.Texts, texts)
+	}
 
 	// One layer alone: its file, byte for byte, and its digest.
 	alone, err := selected.Read(ctx, definition.KindPolicy, "home_only")
@@ -317,8 +339,15 @@ func TestADocumentIsComposedFromEveryLayerThatHoldsIt(t *testing.T) {
 		t.Fatalf("listed %v, %v", names, err)
 	}
 	missing := "not found (expected " + filepath.Join(project, "policies", "gone.yaml") + " or " + filepath.Join(repository, "policies", "gone.yaml") + " or " + filepath.Join(home, "policies", "gone.yaml") + ")"
-	if _, err := selected.Read(ctx, definition.KindPolicy, "gone"); !errors.Is(err, definition.ErrNotFound) || err.Error() != missing {
+	gone, err := selected.Read(ctx, definition.KindPolicy, "gone")
+	if !errors.Is(err, definition.ErrNotFound) || err.Error() != missing {
 		t.Fatalf("missing = %v, want %q", err, missing)
+	}
+	// A document no layer holds is expected in the nearest layer, which
+	// its source names with the path its file would have there.
+	expected := definition.Source{Kind: definition.KindPolicy, Name: "gone", Layer: definition.LayerProject, Path: filepath.Join(project, "policies", "gone.yaml")}
+	if !reflect.DeepEqual(gone.Source, expected) || gone.Bytes != nil || gone.Texts != nil {
+		t.Fatalf("missing source = %+v, want %+v", gone.Source, expected)
 	}
 }
 

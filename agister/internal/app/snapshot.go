@@ -119,6 +119,15 @@ func Snapshot(ctx context.Context, src SnapshotSource) SnapshotSource {
 
 func cloneDocument(doc definition.Document) definition.Document {
 	doc.Bytes = append([]byte(nil), doc.Bytes...)
+	if doc.Texts != nil {
+		doc.Texts = append([]definition.LayerText(nil), doc.Texts...)
+		for i, text := range doc.Texts {
+			doc.Texts[i].Bytes = append([]byte(nil), text.Bytes...)
+			if text.File.Fields != nil {
+				doc.Texts[i].File.Fields = append([]string{}, text.File.Fields...)
+			}
+		}
+	}
 	if doc.Source.Layers != nil {
 		doc.Source.Layers = append([]definition.LayerFile(nil), doc.Source.Layers...)
 		for i, layer := range doc.Source.Layers {

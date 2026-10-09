@@ -2,6 +2,8 @@ package definition
 
 import (
 	"bytes"
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"sort"
 	"strings"
@@ -80,8 +82,10 @@ func tabled(kind Kind) bool { return kind == KindService || kind == KindAgent }
 
 // Attribute names, in the message of a problem of field, the layer file
 // that set the field at fault; a field no layer sets names every layer
-// file read (ADR-028 rule 5). The message of a document one file holds is
-// unchanged: its subject names that file.
+// file read (ADR-028 rule 5). A file sets the field when it gave that leaf
+// or one below it: a map it gave above the field, such as an empty one,
+// sets none of the fields below. The message of a document one file holds
+// is unchanged: its subject names that file.
 func (s Source) Attribute(field, message string) string {
 	if len(s.Layers) < 2 || !Composed(s.Kind) || field == "" {
 		return message
@@ -93,7 +97,7 @@ func (s Source) Attribute(field, message string) string {
 	for _, layer := range s.Layers {
 		read = append(read, layer.Path)
 		for _, leaf := range layer.Fields {
-			if leaf == field || strings.HasPrefix(leaf, field+".") || strings.HasPrefix(field, leaf+".") {
+			if leaf == field || strings.HasPrefix(leaf, field+".") {
 				set = append(set, layer.Path)
 				break
 			}
@@ -151,6 +155,32 @@ func Compose(kind Kind, texts []LayerText) ([]byte, []LayerFile, error) {
 	}
 	data, err := rendered(kind, whole)
 	return data, files, err
+}
+
+// WithHome is doc, a composed kind's document, as writing home to the home
+// layer would make it: composed from the files of doc's nearer layers as
+// doc has them, with home in place of home's file, or beneath them where
+// the home layer holds none (ADR-028 rule 4). A nearer file that does not
+// compose with home breaks it, as Compose says.
+func WithHome(doc Document, home LayerText) (Document, error) {
+	texts := make([]LayerText, 0, len(doc.Texts)+1)
+	for _, text := range doc.Texts {
+		if text.File.Layer != LayerHome {
+			texts = append(texts, text)
+		}
+	}
+	texts = append(texts, home)
+	data, files, err := Compose(doc.Source.Kind, texts)
+	source := Source{Kind: doc.Source.Kind, Name: doc.Source.Name, Layer: texts[0].File.Layer, Path: texts[0].File.Path, Layers: files}
+	if err != nil {
+		return Document{Source: source}, err
+	}
+	for i := range texts {
+		texts[i].File = files[i]
+	}
+	sum := sha256.Sum256(data)
+	source.SHA256 = hex.EncodeToString(sum[:])
+	return Document{Source: source, Bytes: data, Texts: texts}, nil
 }
 
 // composedNode is a value of a layer's file or of the composition: a map,

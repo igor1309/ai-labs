@@ -91,6 +91,11 @@ var ErrNotFound = errors.New("not found")
 type Document struct {
 	Source Source
 	Bytes  []byte
+	// Texts are the layer files a composed kind's document is composed
+	// from, nearest first, each with what it holds: what a composition
+	// with one of them changed is composed from (ADR-028 rule 4). Nil on
+	// a document taken whole.
+	Texts []LayerText
 }
 
 // InvalidError lists every problem found in one definition.

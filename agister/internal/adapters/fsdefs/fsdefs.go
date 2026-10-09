@@ -533,9 +533,13 @@ func (l Layered) Read(_ context.Context, kind definition.Kind, name string) (def
 	source := definition.Source{Kind: kind, Name: name}
 	stores := l.stores(kind)
 	var texts []definition.LayerText
+	var missing *definition.LayerFile
 	for i, layer := range stores {
 		doc, err := layer.store.read(kind, name)
 		if errors.Is(err, errNotFound) {
+			if missing == nil {
+				missing = &definition.LayerFile{Layer: layer.layer, Path: doc.Source.Path}
+			}
 			continue
 		}
 		file := definition.LayerFile{Layer: layer.layer, Path: doc.Source.Path, SHA256: doc.Source.SHA256}
@@ -563,6 +567,9 @@ func (l Layered) Read(_ context.Context, kind definition.Kind, name string) (def
 		texts = append(texts, definition.LayerText{File: file, Bytes: doc.Bytes})
 	}
 	if len(texts) == 0 {
+		// A document no layer holds is expected in the nearest: its check
+		// names that layer and where its file would be.
+		source.Layer, source.Path = missing.Layer, missing.Path
 		return definition.Document{Source: source}, l.notFound(kind, name)
 	}
 	data, files, err := definition.Compose(kind, texts)
@@ -570,8 +577,11 @@ func (l Layered) Read(_ context.Context, kind definition.Kind, name string) (def
 	if err != nil {
 		return definition.Document{Source: source}, err
 	}
+	for i := range texts {
+		texts[i].File = files[i]
+	}
 	source.SHA256 = digest(data)
-	return definition.Document{Source: source, Bytes: data}, nil
+	return definition.Document{Source: source, Bytes: data, Texts: texts}, nil
 }
 
 // notFound says that a document is in no layer, and where each would hold
@@ -648,9 +658,14 @@ func Select(home Store, root, launch string) (Layered, error) {
 	settings := func(dir string) (string, bool, error) {
 		path := filepath.Join(dir, settingsDir)
 		info, err := os.Stat(path)
+		if errors.Is(err, fs.ErrNotExist) {
+			// Only no entry there is no layer: one that cannot be
+			// resolved, a dangling symlink, is a layer that cannot be used.
+			if _, lerr := os.Lstat(path); errors.Is(lerr, fs.ErrNotExist) {
+				return path, false, nil
+			}
+		}
 		switch {
-		case errors.Is(err, fs.ErrNotExist):
-			return path, false, nil
 		case err != nil:
 			return path, false, fmt.Errorf("settings %s: %w", path, err)
 		case !info.IsDir():

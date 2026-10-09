@@ -1,6 +1,8 @@
 package definition_test
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"reflect"
 	"strings"
@@ -396,6 +398,10 @@ output:
 			"input.values.candidate_revision.rev: must be a scalar (set in /w/.agister/processes/p.yaml)"},
 		"a required field no layer sets": {"policy: process-policy:strict\n", strings.Replace(home, "uses: agent:a\n", "", 1),
 			"uses: is required (no layer sets it: /w/.agister/processes/p.yaml, /h/processes/p.yaml)"},
+		// The empty map the nearer layer gave is a leaf above the field: it
+		// sets no field below it.
+		"a required field under an empty map a layer gives": {"output: {}\n", strings.Replace(home, "output:\n  format: text\n", "", 1),
+			"output.format: is required (no layer sets it: /w/.agister/processes/p.yaml, /h/processes/p.yaml)"},
 		"an unknown field, whichever layer sets it": {"future: enabled\n", home,
 			"future: unknown field (set in /w/.agister/processes/p.yaml)"},
 	} {
@@ -414,5 +420,53 @@ output:
 	alone := definition.Document{Source: definition.Source{Kind: definition.KindProcess, Name: "p", Path: "/h/processes/p.yaml", Layer: definition.LayerHome, Layers: files}, Bytes: whole}
 	if got := messages(t, alone); !contains(got, `uses: must be "agent:<name>"`) {
 		t.Fatalf("a document of one layer: problems %q", got)
+	}
+}
+
+// ADR-028 rule 4: what writing a document to the home layer would make of
+// a composed document is composed from its nearer layers' files as they
+// are, with the written document in place of home's file, or beneath them
+// where the home layer holds none.
+func TestWithHomeComposesTheWrittenDocumentBeneathTheNearerLayers(t *testing.T) {
+	t.Parallel()
+	nearer := layer(definition.LayerRepository, "/w/.agister/processes/p.yaml", "uses: agent:b\n")
+	held := layer(definition.LayerHome, "/h/processes/p.yaml", "name: p\nuses: agent:a\ntype: process\n")
+	written := layer(definition.LayerHome, "/h/processes/p.yaml", "name: p\nuses: agent:a\ntype: workflow\npolicy: x\n")
+	const want = "name: p\nuses: agent:b\ntype: workflow\npolicy: x\n"
+	data, files, err := definition.Compose(definition.KindProcess, []definition.LayerText{nearer, held})
+	if err != nil {
+		t.Fatal(err)
+	}
+	source := definition.Source{Kind: definition.KindProcess, Name: "p", Layer: definition.LayerRepository, Path: nearer.File.Path, Layers: files}
+	for name, doc := range map[string]definition.Document{
+		"over home's file": {Source: source, Bytes: data, Texts: []definition.LayerText{nearer, held}},
+		"where home holds none": {
+			Source: definition.Source{Kind: definition.KindProcess, Name: "p", Layer: definition.LayerRepository, Path: nearer.File.Path, Layers: files[:1]},
+			Bytes:  nearer.Bytes, Texts: []definition.LayerText{nearer},
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			got, err := definition.WithHome(doc, written)
+			if err != nil || string(got.Bytes) != want {
+				t.Fatalf("with home = %q, %v; want %q", got.Bytes, err, want)
+			}
+			digest := sha256.Sum256([]byte(want))
+			layers := []definition.LayerFile{
+				{Layer: definition.LayerRepository, Path: nearer.File.Path, SHA256: nearer.File.SHA256, Fields: []string{"uses"}},
+				{Layer: definition.LayerHome, Path: written.File.Path, SHA256: written.File.SHA256, Fields: []string{"name", "type", "policy"}},
+			}
+			wantSource := definition.Source{
+				Kind: definition.KindProcess, Name: "p", Layer: definition.LayerRepository, Path: nearer.File.Path,
+				SHA256: hex.EncodeToString(digest[:]), Layers: layers,
+			}
+			if !reflect.DeepEqual(got.Source, wantSource) {
+				t.Fatalf("source = %+v\nwant     %+v", got.Source, wantSource)
+			}
+			texts := []definition.LayerText{{File: layers[0], Bytes: nearer.Bytes}, {File: layers[1], Bytes: written.Bytes}}
+			if !reflect.DeepEqual(got.Texts, texts) {
+				t.Fatalf("texts = %+v\nwant    %+v", got.Texts, texts)
+			}
+		})
 	}
 }

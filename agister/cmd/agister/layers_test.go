@@ -2,13 +2,16 @@ package main
 
 import (
 	"encoding/json"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"reflect"
 	"regexp"
 	"strings"
 	"testing"
+	"time"
 
+	"github.com/igor1309/ai-labs/agister/internal/adapters/git/gittest"
 	"github.com/igor1309/ai-labs/agister/internal/cli"
 	"github.com/igor1309/ai-labs/agister/internal/contract"
 )
@@ -36,6 +39,45 @@ type threeLayers struct {
 func layered(t *testing.T) threeLayers {
 	t.Helper()
 	home, repo := setup(t, "approve")
+	return layeredIn(t, home, repo)
+}
+
+// layeredCommitted is layered in a repository of the fake of git whose
+// HEAD holds no revision yet but main's: commit records every file its
+// worktree then holds as HEAD's, so a process that declares
+// workspace.clean finds it clean (ADR-025 rule 3).
+func layeredCommitted(t *testing.T) (l threeLayers, commit func()) {
+	t.Helper()
+	home, fake := tempDir(t), gittest.New(tempDir(t))
+	repo, err := filepath.EvalSymlinks(tempDir(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	recorded := fake.Record(repo)
+	recorded.Commit("main", map[string]string{"a.txt": "one\n"})
+	write(t, filepath.Join(repo, "a.txt"), "one\ntwo SCENARIO:approve\n")
+	gitThrough(t, home, fake)
+	setupOn(t, home, repo, "claude")
+	return layeredIn(t, home, repo), func() {
+		files := map[string]string{}
+		err := filepath.WalkDir(repo, func(path string, entry fs.DirEntry, err error) error {
+			if err != nil || entry.IsDir() {
+				return err
+			}
+			rel, err := filepath.Rel(repo, path)
+			files[filepath.ToSlash(rel)] = read(t, path)
+			return err
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		recorded.Commit("feature", files)
+	}
+}
+
+// layeredIn writes layered's settings in home and repo.
+func layeredIn(t *testing.T, home, repo string) threeLayers {
+	t.Helper()
 	l := threeLayers{home: home, repo: repo, docs: filepath.Join(repo, "docs"), guide: filepath.Join(repo, "docs", "guide")}
 	l.global = filepath.Join(home, "processes", "ask.yaml")
 	l.repository = filepath.Join(repo, ".agister", "processes", "ask.yaml")
@@ -387,14 +429,27 @@ func TestBlocksInAProjectLayerStopWhatIsLaunchedThere(t *testing.T) {
 
 // ADR-028 rule 10: a workflow's nodes resolve against the run's layers,
 // the launch directory's, wherever each node's own checkout is: each
-// node's call runs the document composed with the project's fields, and
-// records the run's layers.
+// node's call runs the documents composed with the project's fields, its
+// process's and those of the agent, the policy and the verification it
+// uses, and records them, each layer's file with the fields it gave, and
+// the run's layers.
 func TestAWorkflowsNodesResolveAgainstTheRunsLayers(t *testing.T) {
 	t.Parallel()
-	l := layered(t)
-	const partial = "input:\n  instruction: 'PROJECT: review the candidate.'\n"
+	l, commit := layeredCommitted(t)
+	const partial = "input:\n  instruction: 'PROJECT: review the candidate.'\nworkspace:\n  clean: true\nverify: verify:repo\n"
 	project := filepath.Join(l.docs, ".agister", "processes", "adversarial_review.yaml")
 	write(t, project, partial)
+	// The project's fields of what the node's process uses.
+	const agent, policy, verification = "effort = \"low\"\n", "timeout: 30m\n", "command: \"true\"\nmax_attempts: 1\n"
+	files := map[string]string{
+		"agents":   filepath.Join("agents", "reviewer.toml"),
+		"policies": filepath.Join("policies", "static-review.yaml"),
+		"verifies": filepath.Join("verifies", "repo.yaml"),
+	}
+	write(t, filepath.Join(l.docs, ".agister", files["agents"]), agent)
+	write(t, filepath.Join(l.docs, ".agister", files["policies"]), policy)
+	write(t, filepath.Join(l.docs, ".agister", files["verifies"]), verification)
+	commit()
 	runs := &newRuns{home: l.home}
 	runs.take(t)
 
@@ -427,13 +482,118 @@ func TestAWorkflowsNodesResolveAgainstTheRunsLayers(t *testing.T) {
 		t.Fatalf("the node was run by %v", node.argv())
 	}
 	nearest := nearest(definitionOf(t, *node, "processes", "adversarial_review"))
-	want := map[string]any{"layer": "project", "path": project, "sha256": digestOf(partial), "fields": []any{"input.instruction"}}
+	want := map[string]any{"layer": "project", "path": project, "sha256": digestOf(partial), "fields": []any{"input.instruction", "workspace.clean", "verify"}}
 	if !reflect.DeepEqual(nearest, want) {
 		t.Fatalf("the node's process is recorded from %v, want %v", nearest, want)
+	}
+	// The agent's, the policy's and the verification's fields are the
+	// project's where it sets them, home's elsewhere.
+	if profile, _ := node.record["profile"].(map[string]any); profile["effort"] != "low" || profile["model"] != "sonnet" {
+		t.Fatalf("the node's agent is resolved as %v", node.record["profile"])
+	}
+	if effective, _ := node.record["effective"].(map[string]any); effective["timeout"] != float64(30*time.Minute) || effective["access"] != "read-only" || effective["scope"] != "candidate" {
+		t.Fatalf("the node's policy is resolved as %v", node.record["effective"])
+	}
+	verified := map[string]any{"command": "true", "timeout": float64(10 * time.Minute), "max_attempts": float64(1), "instruction": "The verification command failed on your changes. Fix the cause in the code; do not weaken, skip or delete the check.", "where": "workspace"}
+	if !reflect.DeepEqual(node.record["verify"], verified) {
+		t.Fatalf("the node's verification is resolved as %v, want %v", node.record["verify"], verified)
+	}
+	if attempts, _ := node.record["attempts"].([]any); len(attempts) != 1 || attempts[0].(map[string]any)["run"].(map[string]any)["passed"] != true {
+		t.Fatalf("the node's verification ran as %v", node.record["attempts"])
+	}
+	for kind, c := range map[string]struct {
+		name, text string
+		project    []any
+		home       []any
+	}{
+		"agents":   {"reviewer", agent, []any{"effort"}, []any{"schema", "name", "runtime", "model", "model_family", "session", "command"}},
+		"policies": {"static-review", policy, []any{"timeout"}, []any{"schema", "name", "workspace.access", "workspace.scope", "tools.allow", "retry.max_attempts", "isolation.deny"}},
+		"verifies": {"repo", verification, []any{"command", "max_attempts"}, []any{"schema", "name", "timeout", "instruction"}},
+	} {
+		global := filepath.Join(l.home, files[kind])
+		want := map[string]any{"kind": kind, "name": c.name, "layers": []any{
+			map[string]any{"layer": "project", "path": filepath.Join(l.docs, ".agister", files[kind]), "sha256": digestOf(c.text), "fields": c.project},
+			map[string]any{"layer": "home", "path": global, "sha256": digestOf(read(t, global)), "fields": c.home},
+		}}
+		if got := definitionOf(t, *node, kind, c.name); !reflect.DeepEqual(got, want) {
+			t.Errorf("the node's %s is recorded as\n%v\nwant\n%v", kind, got, want)
+		}
 	}
 	// A document taken whole (rule 6) has one layer and no fields.
 	schema := filepath.Join(l.home, "schemas", "review-result.json")
 	if got := definitionOf(t, *node, "schemas", "review-result"); !reflect.DeepEqual(got, homeFile("schemas", "review-result", schema, read(t, schema))) {
 		t.Fatalf("the node's schema is recorded as %v", got)
+	}
+}
+
+// ADR-028 rules 4 and 5: a document written to home is checked as the
+// settings it would make, composed beneath the nearer layers' files. An
+// agent whose new runtime does not support the effort the repository's
+// layer sets is refused, and home's file is left as it was; one whose
+// runtime supports it is written.
+func TestAHomeWriteIsCheckedComposedBeneathTheNearerLayers(t *testing.T) {
+	t.Parallel()
+	home, repo := setup(t, "approve")
+	nearer := filepath.Join(repo, ".agister", "agents", "reviewer.toml")
+	write(t, nearer, "effort = \"max\"\n")
+	efforts := "efforts: [low, medium, high, xhigh, max]\n"
+	mapping := read(t, filepath.Join(home, "runtimes", "claude-code.yaml"))
+	if !strings.Contains(mapping, efforts) {
+		t.Fatalf("the shipped runtime does not list %q:\n%s", efforts, mapping)
+	}
+	mapping = strings.Replace(strings.Replace(mapping, "name: claude-code\n", "name: limited\n", 1), efforts, "efforts: [low, medium, high]\n", 1)
+	write(t, filepath.Join(home, "runtimes", "limited.yaml"), mapping)
+	if r := agister(t, home, repo, "check"); r.code != 0 {
+		t.Fatalf("check: %d\n%s%s", r.code, r.stdout, r.stderr)
+	}
+	agent := filepath.Join(home, "agents", "reviewer.toml")
+	held := read(t, agent)
+
+	create := []string{"agent", "create", "reviewer", "--force", "--runtime", "limited", "--model-family", "anthropic", "--effort", "high", "--command", "claude"}
+	r := agisterInput(t, "yes\n", home, repo, create...)
+	if r.code == 0 || !strings.Contains(r.stderr, "agent reviewer would break the settings in "+repo) || !strings.Contains(r.stderr, `agent reviewer: effort "max" is not supported by limited`) {
+		t.Fatalf("agent create under the repository's effort: %d\n%s%s", r.code, r.stdout, r.stderr)
+	}
+	if read(t, agent) != held {
+		t.Fatalf("home's agent was written:\n%s", read(t, agent))
+	}
+
+	write(t, nearer, "effort = \"low\"\n")
+	if r := agisterInput(t, "yes\n", home, repo, create...); r.code != 0 || read(t, agent) == held {
+		t.Fatalf("agent create under an effort the runtime supports: %d\n%s%s", r.code, r.stdout, r.stderr)
+	}
+}
+
+// A required document no layer holds is expected in the nearest layer:
+// check's metadata names that layer and the path its file would have
+// there, as the problem names every path it was expected at.
+func TestCheckNamesWhereAMissingDocumentIsExpected(t *testing.T) {
+	t.Parallel()
+	l := layered(t)
+	if err := os.Remove(filepath.Join(l.home, "service.toml")); err != nil {
+		t.Fatal(err)
+	}
+	for cwd, want := range map[string]contract.Definition{
+		l.guide: {Kind: "service", Name: "service", Layer: "project", Path: filepath.Join(l.docs, ".agister", "service.toml"), Invalid: true},
+		l.repo:  {Kind: "service", Name: "service", Layer: "repository", Path: filepath.Join(l.repo, ".agister", "service.toml"), Invalid: true},
+	} {
+		var report contract.CheckReport
+		r := agister(t, l.home, cwd, "check", "--json")
+		if err := json.Unmarshal([]byte(r.stdout), &report); err != nil || r.code != cli.ExitUsage {
+			t.Fatalf("check --json in %s: %d %v\n%s%s", cwd, r.code, err, r.stdout, r.stderr)
+		}
+		var service *contract.Definition
+		for i, d := range report.Definitions {
+			if d.Kind == "service" {
+				service = &report.Definitions[i]
+			}
+		}
+		if service == nil || service.Kind != want.Kind || service.Name != want.Name || service.Layer != want.Layer || service.Path != want.Path || !service.Invalid || len(service.Layers) != 0 {
+			t.Fatalf("in %s the service is %+v, want %+v", cwd, service, want)
+		}
+		expected := "service: not found (expected " + want.Path
+		if !strings.Contains(r.stdout, expected) {
+			t.Fatalf("in %s no problem says %q:\n%s", cwd, expected, r.stdout)
+		}
 	}
 }

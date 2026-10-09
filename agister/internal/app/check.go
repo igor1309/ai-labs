@@ -641,7 +641,10 @@ func (c *Checker) ProblemsAdded(ctx context.Context, doc definition.Document) ([
 }
 
 // withDocument is a definitions source with one home document added or
-// replaced; a nearer layer's document of the same name is read as it is.
+// replaced. Where a nearer layer holds a document of the same name, a
+// composed kind's is composed from the nearer layers' files as they are and
+// the home document beneath them (ADR-028 rule 4); any other kind's is the
+// nearer layer's, which replaces home's whole (rule 6).
 type withDocument struct {
 	CheckDefinitions
 	doc definition.Document
@@ -651,10 +654,15 @@ func (w withDocument) Read(ctx context.Context, kind definition.Kind, name strin
 	if kind != w.doc.Source.Kind || name != w.doc.Source.Name {
 		return w.CheckDefinitions.Read(ctx, kind, name)
 	}
-	if current, err := w.CheckDefinitions.Read(ctx, kind, name); err == nil && current.Source.Layer != definition.LayerHome {
+	current, err := w.CheckDefinitions.Read(ctx, kind, name)
+	switch {
+	case err != nil || current.Source.Layer == definition.LayerHome:
+		return w.doc, nil
+	case !definition.Composed(kind):
 		return current, nil
 	}
-	return w.doc, nil
+	home := definition.LayerFile{Layer: definition.LayerHome, Path: w.doc.Source.Path, SHA256: w.doc.Source.SHA256}
+	return definition.WithHome(current, definition.LayerText{File: home, Bytes: w.doc.Bytes})
 }
 
 func (w withDocument) List(ctx context.Context, kind definition.Kind) ([]string, error) {
