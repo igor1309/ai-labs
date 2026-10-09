@@ -48,6 +48,23 @@ From the repository root, quiet (never `-v`):
 - `GOPRIVATE=github.com/igor1309/ai-labs` must be set: the module requires
   gokit from this private repository.
 
+## Running
+
+- Build from `warder/`: `go build ./cmd/warder`.
+- Command line: `warder -claude <source-id>`, the flag repeatable. Each
+  enables one Claude Code source under that source ID. No source, an empty
+  or duplicate ID, an unknown flag or a stray argument is a usage error.
+- Settings, constants in `cmd/warder/main.go`: a Claude source's read is
+  limited to 5 seconds, and it waits 5 seconds after each attempt.
+- stdout: one JSON line per successful read, the design's observation
+  contract. Nothing else is written there.
+- stderr: one line per read that failed or timed out,
+  `warder: <source-id>: <error>`, and warder's own messages,
+  `warder: <error>`.
+- Exit codes: 0 when SIGINT or SIGTERM cancelled the run, after every
+  source loop returned; 1 for a failure it cannot recover from, as an
+  output error is; 2 for a usage error, with nothing started.
+
 ## Implementation and review
 
 These replace the root `AGENTS.md`'s implementation and review steps; its
