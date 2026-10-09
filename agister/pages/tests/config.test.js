@@ -476,7 +476,10 @@ test('the settings in agister/home, with .agister over them, name nothing missin
       assert.deepEqual([prompt.outside, prompt.source], [false, own.includes(prompt.name) ? 'repo' : 'home'], `${p.name}: ${prompt.name}`);
     }
     for (const form of p.forms) assert.equal(form.outside, false, `${p.name}: ${form.name}`);
-    if (p.verify) assert.deepEqual([p.verify.ref, p.verify.outside], ['repo', false], p.name);
+    if (p.verify) {
+      const v = m.verifies.find((x) => x.name === p.verify.ref);
+      assert.deepEqual([v?.source, p.verify.outside], ['repo', false], `${p.name}: ${p.verify.ref}`);
+    }
   }
   for (const w of m.workflows) {
     assert.ok(!w.error, `${w.file}: ${w.error}`);
@@ -484,7 +487,7 @@ test('the settings in agister/home, with .agister over them, name nothing missin
     for (const form of w.forms) assert.equal(form.outside, false, `${w.name}: ${form.name}`);
   }
   for (const a of m.agents) assert.equal(a.runtimeOutside, false, a.name);
-  assert.deepEqual(m.verifies.map((v) => [v.name, v.source]), [['repo', 'repo']]);
+  assert.deepEqual(m.verifies.map((v) => [v.name, v.source]), [['repo', 'repo'], ['warder', 'repo']]);
 
   const alone = await C.loadAgister(diskDir(join(repoRoot, 'agister/home')));
   const implement = alone.processes.find((p) => p.name === 'implement');
