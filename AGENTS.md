@@ -28,22 +28,6 @@
 - A behaviour no normal test can make fail means the code lacks a seam (an
   injected closure, spy, clock or hook). Add the seam.
 
-## Implementation and review
-
-- Delegate implementation runs to a subagent on Opus 5.5. Brief it with
-  the plan; it delivers the fix with its tests. Verify its result
-  yourself, starting with `scripts/handoff-check.py --claimed <files it
-  lists>`: every changed file was claimed. Then the tests pass; do not
-  rely on the implementer's own report.
-- Have Codex review the result critically:
-  `codex exec --sandbox read-only --ignore-rules -m gpt-6.1-sol -c model_reasoning_effort="high" "<prompt>" < /dev/null`.
-  Keep `--ignore-rules`: without it, the allow rules in `~/.codex/rules`
-  run commands such as `git commit` outside the sandbox (LAB-125).
-- Keep the loop tight: at most 2 review rounds. Judge each finding; fix
-  what belongs to the issue. Record in the project's deferred work only a
-  real, observed gap outside the issue; reject a speculative one.
-- A project's own `AGENTS.md` may replace these steps.
-
 ## Reaching the owner
 
 - When you need the owner and they are away, send one ntfy push:

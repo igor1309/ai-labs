@@ -1043,7 +1043,7 @@ func TestReviewPromptsCarryTheirCoverageContract(t *testing.T) {
 // severity checked before merging, a merged item taking the highest
 // supported one; a reject for a finding with no causal chain; a fix cost
 // without its basis counted as unpresented; and the switching condition
-// each item records. agister/AGENTS.md, which acts on the rulings, keeps the
+// each item records. The deliver skill, which acts on the rulings, keeps the
 // waive handling: no repair, no backlog issue, and a place in the pull
 // request description with the switching condition. An instruction is held
 // by its short phrases standing in one paragraph, as in
@@ -1089,7 +1089,7 @@ func TestReviewPromptsCarryTheCaseForValue(t *testing.T) {
 		}},
 		// Its bullets stand in one paragraph, so each phrase is one only the
 		// waive sentence has.
-		{"agister/AGENTS.md", []promptInstruction{
+		{deliverSkillFile, []promptInstruction{
 			{"waive items: no repair, no backlog issue, listed in the pull request with their switching condition", []string{
 				"Waive items get no repair and no backlog issue",
 				"list them in the pull request description with their switching condition"}},
@@ -1276,7 +1276,7 @@ func TestClarityPromptCarriesTheDoneGateException(t *testing.T) {
 	}
 }
 
-// agister/AGENTS.md, which calls the review, says what the goal file names
+// The deliver skill, which calls the review, says what the goal file names
 // so that the clarity reviewer can apply that exception: the done gates the
 // change touches, and any edit to an agent instruction the owner asked for
 // in the change. Its bullets stand in one paragraph, so each phrase is one
@@ -1286,7 +1286,7 @@ func TestClarityPromptCarriesTheDoneGateException(t *testing.T) {
 // own, read as it is.
 func TestAgentInstructionsSayWhatTheGoalFileNames(t *testing.T) {
 	t.Parallel()
-	const file = "agister/AGENTS.md"
+	file := deliverSkillFile
 	data, err := os.ReadFile(filepath.Join("..", "..", "..", file))
 	if err != nil {
 		t.Fatal(err)
