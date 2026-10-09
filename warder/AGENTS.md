@@ -27,7 +27,7 @@ for convenience. In warder that means:
   component packages. It constructs every implementation, and it owns the
   adapters that translate one component's types into another's and the
   boundary adapters (clock, timer, deadline, stdout, stderr, OS
-  processes).
+  processes, the files of the Codex home).
 - Every constructor receives each collaborator explicitly; nothing falls
   back to a real clock, timer, writer or process. No package-level
   mutable state.
