@@ -97,7 +97,7 @@ which exits 1.
 
   ```text
   warder: local: attempt: read failed: capture: read agents: claude: execute claude agents --json: exec: "claude": executable file not found in $PATH
-  warder: local: attempt: read timed out: capture: read agents: claude: execute claude agents --json: context deadline exceeded
+  warder: local: attempt: read timed out: capture: read agents: claude: execute claude agents --json: ended with its context: context deadline exceeded
   ```
 
 - Warder's own messages, `warder: <error>`: a usage error, or the failure
