@@ -34,11 +34,24 @@ From the repository root, quiet (never `-v`):
 - The full check, every module: `warder/scripts/test.sh`. CI runs the same
   script (`.github/workflows/warder-core.yml`, on the local Mac runner).
 
-## Implementation
+## Implementation and review
 
-Implement through Agister's `implement_warder` process, whose
-verification is `warder/scripts/test.sh`, not the Agister check of
-`implement`. From the change's worktree, with the candidate committed and
-the brief in a file:
-`agister run implement_warder --param candidate=HEAD --param brief=<file>`.
-The root `AGENTS.md` rules for verifying and reviewing still apply.
+These replace the root `AGENTS.md`'s implementation and review steps; its
+verification rules still apply. Use Agister's processes, never a direct
+subagent or a direct `codex exec` review.
+
+- Implement through `implement_warder`, whose verification is
+  `warder/scripts/test.sh`, not the Agister check of `implement`. From the
+  change's worktree, with the candidate committed and the brief in a file:
+  `agister run implement_warder --param candidate=HEAD --param brief=<file>`.
+- Verify the result yourself: `scripts/handoff-check.py --claimed <files>`,
+  then `warder/scripts/test.sh`.
+- Review the committed candidate with
+  `agister run code_review --param base=<rev> --param candidate=HEAD --param goal=<file>`,
+  and send fixes to a fresh `implement_warder` run with their own brief.
+- A run refused because a runtime's version is not verified (for example
+  `runtime mapping codex verifies no primitive for codex version …`) is a
+  block, not something to work around. Verify the new version first, as
+  the mapping's comments describe (`agister/home/runtimes/`), adopt it
+  through `agister install agister/home`, then run the process. Never fall
+  back to calling the runtime directly.
