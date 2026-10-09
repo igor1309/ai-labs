@@ -22,6 +22,11 @@ type Runnable interface {
 // does.
 type Runner struct {
 	runnables []Runnable
+	// handled, when set, is called with a runnable's index once the runner
+	// has handled that runnable's return: its error recorded, and the
+	// others' context ended or left live. New leaves it unset; it is the
+	// event the package's tests wait for.
+	handled func(index int)
 }
 
 // New returns a runner of runnables, which it copies. None is no runner,
@@ -50,10 +55,13 @@ func isNil(value reflect.Value) bool {
 // Run starts every runnable at once, each once in a goroutine of its own
 // and under one context derived from ctx, and returns only after all of
 // them returned. That context ends when ctx ends and when a runnable
-// returns an error: the first such error ends the others and is returned,
-// wrapped, whether ctx has ended or not: it is a failure the monitor
-// cannot recover from. A later error does not replace it. A runnable that
-// returns nil ends nothing, so Run returns nil once all returned nil.
+// returns an error; a runnable that returns nil ends nothing.
+//
+// Run returns the first error a runnable returned, wrapped, whether or not
+// ctx has ended: an error is a failure the monitor cannot recover from, so
+// it is surfaced on shutdown too, and a later error does not replace it.
+// Run returns nil when every runnable returned nil, on cancellation too:
+// the end of ctx is no error of Run's.
 func (r *Runner) Run(ctx context.Context) error {
 	ctx, stop := context.WithCancel(ctx)
 	defer stop()
@@ -67,6 +75,9 @@ func (r *Runner) Run(ctx context.Context) error {
 		running.Add(1)
 		go func() {
 			defer running.Done()
+			// Deferred before the return is handled, so it runs after
+			// all of that.
+			defer r.reportHandled(i)
 			if err := runnable.Run(ctx); err != nil {
 				failed.Do(func() {
 					first = fmt.Errorf("runner: runnable %d: %w", i, err)
@@ -77,4 +88,12 @@ func (r *Runner) Run(ctx context.Context) error {
 	}
 	running.Wait()
 	return first
+}
+
+// reportHandled reports that the runner has handled the return of the
+// runnable at index, when the event is asked for.
+func (r *Runner) reportHandled(index int) {
+	if r.handled != nil {
+		r.handled(index)
+	}
 }

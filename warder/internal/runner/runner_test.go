@@ -38,13 +38,16 @@ func (e *events) all() []string {
 // ended and blocks for the test's answer. It returns the answer, having
 // recorded whether its context had ended by then, and never ends by
 // itself. A second Run of one stub fails at once, and the end of the test
-// fails a Run still held, so no runner outlives its test.
+// fails a Run still held, so no runner outlives its test. handled is
+// closed when the runner of newRunner reports that it has handled the
+// stub's return.
 type runnableStub struct {
 	name      string
 	events    *events
 	started   chan struct{}
 	ended     chan struct{}
 	answer    chan error
+	handled   chan struct{}
 	testEnded <-chan struct{}
 
 	runs          atomic.Int32
@@ -59,6 +62,7 @@ func newStub(t *testing.T, seen *events, name string) *runnableStub {
 		started:   make(chan struct{}),
 		ended:     make(chan struct{}),
 		answer:    make(chan error),
+		handled:   make(chan struct{}),
 		testEnded: t.Context().Done(),
 	}
 }
@@ -119,13 +123,15 @@ func (s *runnableStub) finish(err error) {
 	s.answer <- err
 }
 
+// newRunner returns a runner of stubs that reports to each of them, on
+// its handled, that the runner has handled its return.
 func newRunner(t *testing.T, stubs ...*runnableStub) *runner.Runner {
 	t.Helper()
 	runnables := make([]runner.Runnable, len(stubs))
 	for i, stub := range stubs {
 		runnables[i] = stub
 	}
-	r, err := runner.New(runnables...)
+	r, err := runner.NewReporting(func(index int) { close(stubs[index].handled) }, runnables...)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -409,10 +415,10 @@ func TestAnErrorAfterTheCallersContextEndedIsReturned(t *testing.T) {
 }
 
 // A runnable that returns nil while the context is live does not stop the
-// others: each of them, released after it, returns with its context still
-// live, and Run returns nil once all returned. The runner handles a return
-// out of the test's sight, so the test sees a stop only when it reaches a
-// runnable before the test releases it.
+// others. The test holds them until the runner reports that it has handled
+// that return: their contexts are live then, so no stop of the runner's is
+// still to come. Released after that, each returns with its context still
+// live, and Run returns nil once all returned.
 func TestARunnableThatReturnsNilDoesNotStopTheOthers(t *testing.T) {
 	t.Parallel()
 	seen := &events{}
@@ -425,6 +431,12 @@ func TestARunnableThatReturnsNilDoesNotStopTheOthers(t *testing.T) {
 	<-b.started
 	<-c.started
 	a.release(t, nil)
+	<-a.handled
+	for _, stub := range []*runnableStub{b, c} {
+		if err := stub.ctx.Err(); err != nil {
+			t.Fatalf("the context of %s ended when the runner had handled the nil %s returned: %v", stub.name, a.name, err)
+		}
+	}
 	b.release(t, nil)
 	c.release(t, nil)
 	err := <-result
