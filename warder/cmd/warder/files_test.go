@@ -73,6 +73,40 @@ func assertGoneFile(t *testing.T, what string, err error) {
 	}
 }
 
+// assertNotRegular fails unless err says that the file is no regular one,
+// and is no "does not exist".
+func assertNotRegular(t *testing.T, what string, err error) {
+	t.Helper()
+	if err == nil || errors.Is(err, fs.ErrNotExist) || !strings.Contains(err.Error(), "not a regular file") {
+		t.Errorf("%s: got the error %v, want one that says it is not a regular file", what, err)
+	}
+}
+
+// makeFIFO makes a FIFO at the path from root, with slashes, and the
+// directories it is in. Nobody opens it to write.
+func makeFIFO(t *testing.T, root, path string) {
+	t.Helper()
+	full := filepath.Join(root, filepath.FromSlash(path))
+	if err := os.MkdirAll(filepath.Dir(full), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := syscall.Mkfifo(full, 0o644); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// rolloutsThatAreNoFiles makes, each named as a thread's rollout file, a
+// FIFO nobody writes to and a directory, and returns their paths from
+// root by what they are.
+func rolloutsThatAreNoFiles(t *testing.T, root string) map[string]string {
+	t.Helper()
+	makeFIFO(t, root, rolloutOf(threadWorking))
+	if err := os.Mkdir(filepath.Join(root, filepath.FromSlash(rolloutOf(threadIdle))), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	return map[string]string{"a FIFO": rolloutOf(threadWorking), "a directory": rolloutOf(threadIdle)}
+}
+
 // The Codex home is $CODEX_HOME when it is set, else .codex in the user's
 // home directory, and unknown when neither is known.
 func TestCodexHomeIsTheOneOfTheEnvironmentElseTheUsers(t *testing.T) {
@@ -240,14 +274,8 @@ func TestLockedOfAFileThatIsGoneIsNotExist(t *testing.T) {
 func TestLockedFailsForWhatIsNoRegularFile(t *testing.T) {
 	t.Parallel()
 	root := t.TempDir()
-	locks := filepath.Join(root, "thread-writer-locks")
-	if err := os.Mkdir(locks, 0o755); err != nil {
-		t.Fatal(err)
-	}
-	if err := syscall.Mkfifo(filepath.Join(locks, threadWorking+".lock"), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.Mkdir(filepath.Join(locks, threadIdle+".lock"), 0o755); err != nil {
+	makeFIFO(t, root, lockOf(threadWorking))
+	if err := os.Mkdir(filepath.Join(root, filepath.FromSlash(lockOf(threadIdle))), 0o755); err != nil {
 		t.Fatal(err)
 	}
 	files := filesAt(root)
@@ -255,9 +283,7 @@ func TestLockedFailsForWhatIsNoRegularFile(t *testing.T) {
 	for what, thread := range map[string]string{"a FIFO": threadWorking, "a directory": threadIdle} {
 		locked, err := files.Locked(t.Context(), lockOf(thread))
 
-		if err == nil || errors.Is(err, fs.ErrNotExist) || !strings.Contains(err.Error(), "not a regular file") {
-			t.Errorf("%s: got the error %v, want one that says it is not a regular file", what, err)
-		}
+		assertNotRegular(t, what, err)
 		if locked {
 			t.Errorf("%s: got a held lock, want none", what)
 		}
@@ -328,6 +354,45 @@ func TestSizeReturnsTheSizeOfAFile(t *testing.T) {
 	}
 	_, err = files.Size(t.Context(), "sessions/gone.jsonl")
 	assertGoneFile(t, "a file that does not exist", err)
+}
+
+// Contract test: a real FIFO, and a real directory, each named as a
+// thread's rollout file: what is no regular file has no size, and Size
+// fails with an error that is no "does not exist", so a FIFO, whose size
+// the kernel gives as 0, is not taken for an empty rollout file.
+func TestSizeFailsForWhatIsNoRegularFile(t *testing.T) {
+	t.Parallel()
+	root := t.TempDir()
+	files := filesAt(root)
+
+	for what, path := range rolloutsThatAreNoFiles(t, root) {
+		size, err := files.Size(t.Context(), path)
+
+		assertNotRegular(t, what, err)
+		if size != 0 {
+			t.Errorf("%s: got the size %d, want none", what, size)
+		}
+	}
+}
+
+// Contract test: a real FIFO, and a real directory, each named as a
+// thread's rollout file, as one that took a rollout file's place after its
+// size was read: Read of what is no regular file fails, with an error that
+// is no "does not exist" and no bytes, and it does not wait for a writer
+// of the FIFO, which never comes: a read that did would hang this test.
+func TestReadFailsForWhatIsNoRegularFile(t *testing.T) {
+	t.Parallel()
+	root := t.TempDir()
+	files := filesAt(root)
+
+	for what, path := range rolloutsThatAreNoFiles(t, root) {
+		data, err := files.Read(t.Context(), path, 0, 4)
+
+		assertNotRegular(t, what, err)
+		if data != nil {
+			t.Errorf("%s: got the bytes %q, want none", what, data)
+		}
+	}
 }
 
 // Contract test: a real file: Read returns the bytes of the range asked
@@ -529,6 +594,34 @@ func TestTheCodexAdapterReadsAHomeOnDisk(t *testing.T) {
 	}
 	if !slices.Equal(agents, want) {
 		t.Errorf("got the agents %v, want %v", agents, want)
+	}
+}
+
+// Contract test: a real Codex home on disk, with the kernel's flock and a
+// real FIFO nobody writes to in the place of a held thread's rollout
+// file, read by the Codex adapter through these files: the whole read
+// fails, with no agents, at the size of what is no regular file, so
+// nothing asks to read it, and the thread is not reported as unknown.
+func TestTheCodexAdapterFailsOnARolloutThatIsNoRegularFile(t *testing.T) {
+	t.Parallel()
+	root := t.TempDir()
+	holdLock(t, writeFile(t, root, lockOf(threadIdle), ""))
+	holdLock(t, writeFile(t, root, lockOf(threadWorking), ""))
+	writeFile(t, root, rolloutOf(threadIdle), turnStarted+turnCompleted)
+	makeFIFO(t, root, rolloutOf(threadWorking))
+	adapter, err := codex.New(filesAt(root), codex.Scan{Chunk: codexScanChunk, Cap: codexScanCap})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	agents, err := adapter.ReadAgents(t.Context())
+
+	assertNotRegular(t, "a FIFO as a rollout file", err)
+	if err != nil && !strings.Contains(err.Error(), "size of "+rolloutOf(threadWorking)) {
+		t.Errorf("got the error %v, want the one of the size of the FIFO", err)
+	}
+	if agents != nil {
+		t.Errorf("got the agents %v, want none", agents)
 	}
 }
 

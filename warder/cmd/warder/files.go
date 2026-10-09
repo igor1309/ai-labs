@@ -88,26 +88,17 @@ func (o osFiles) List(ctx context.Context, dir string) ([]string, error) {
 // holds an exclusive flock on file: it tries to take a shared one without
 // waiting, and the lock is held when that would block. A lock it took is
 // released at once: while it has it, the file's owner cannot lock the
-// file. The file is opened without blocking, so one that is no regular
-// file, as a FIFO nobody writes to is, fails the probe instead of holding
-// it.
+// file. What is no regular file fails the probe: see openRegular.
 func (o osFiles) Locked(ctx context.Context, file string) (bool, error) {
 	full, err := o.path(ctx, file)
 	if err != nil {
 		return false, err
 	}
-	opened, err := os.OpenFile(full, os.O_RDONLY|syscall.O_NONBLOCK, 0)
+	opened, err := openRegular(full)
 	if err != nil {
 		return false, err
 	}
 	defer opened.Close()
-	info, err := opened.Stat()
-	if err != nil {
-		return false, err
-	}
-	if !info.Mode().IsRegular() {
-		return false, fmt.Errorf("%s is not a regular file", full)
-	}
 	descriptor := int(opened.Fd())
 	err = flock(descriptor, syscall.LOCK_SH|syscall.LOCK_NB)
 	if errors.Is(err, syscall.EWOULDBLOCK) {
@@ -120,6 +111,32 @@ func (o osFiles) Locked(ctx context.Context, file string) (bool, error) {
 		return false, &fs.PathError{Op: "flock", Path: full, Err: err}
 	}
 	return false, nil
+}
+
+// openRegular opens the regular file at full, to read. It opens without
+// blocking and tells what it opened by the opened descriptor, so what is
+// no regular file, as a FIFO nobody writes to is, fails at once instead of
+// holding its caller, whatever the file was when it was last looked at.
+// Its caller closes the file.
+func openRegular(full string) (*os.File, error) {
+	opened, err := os.OpenFile(full, os.O_RDONLY|syscall.O_NONBLOCK, 0)
+	if err != nil {
+		return nil, err
+	}
+	info, err := opened.Stat()
+	if err == nil && !info.Mode().IsRegular() {
+		err = notRegular(full)
+	}
+	if err != nil {
+		opened.Close()
+		return nil, err
+	}
+	return opened, nil
+}
+
+// notRegular is the error of the file at full, which is no regular file.
+func notRegular(full string) error {
+	return fmt.Errorf("%s is not a regular file", full)
 }
 
 // flock is syscall.Flock, made again when a signal interrupted it.
@@ -169,7 +186,8 @@ func (o osFiles) find(ctx context.Context, dir, prefix, suffix string, found *[]
 	return nil
 }
 
-// Size returns the size of file, in bytes.
+// Size returns the size of file, in bytes. What is no regular file has
+// none, and fails: a FIFO's size of 0 would read as an empty file.
 func (o osFiles) Size(ctx context.Context, file string) (int64, error) {
 	full, err := o.path(ctx, file)
 	if err != nil {
@@ -179,11 +197,15 @@ func (o osFiles) Size(ctx context.Context, file string) (int64, error) {
 	if err != nil {
 		return 0, err
 	}
+	if !info.Mode().IsRegular() {
+		return 0, notRegular(full)
+	}
 	return info.Size(), nil
 }
 
 // Read returns the length bytes of file from offset on, and fewer when
-// the file ends before.
+// the file ends before. What is no regular file fails the read: see
+// openRegular.
 func (o osFiles) Read(ctx context.Context, file string, offset, length int64) ([]byte, error) {
 	full, err := o.path(ctx, file)
 	if err != nil {
@@ -192,7 +214,7 @@ func (o osFiles) Read(ctx context.Context, file string, offset, length int64) ([
 	if offset < 0 || length < 0 {
 		return nil, fmt.Errorf("read %s: no %d bytes at offset %d", full, length, offset)
 	}
-	opened, err := os.Open(full)
+	opened, err := openRegular(full)
 	if err != nil {
 		return nil, err
 	}
