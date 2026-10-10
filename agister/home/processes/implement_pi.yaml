@@ -2,6 +2,7 @@ schema: agister.process/v1alpha1
 name: implement_pi
 type: process
 uses: agent:pi-implementer-m3
+session: resumable
 prompt: implement
 
 input:

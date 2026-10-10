@@ -2,6 +2,7 @@ schema: agister.process/v1alpha1
 name: implement
 type: process
 uses: agent:claude-implementer-opus
+session: resumable
 prompt: implement
 
 input:

@@ -1779,6 +1779,55 @@ func TestTheImplementersRunUnderTheirLimits(t *testing.T) {
 	}
 }
 
+// Each implementer says itself that its call's session may be resumed
+// (ADR-030 rule 3): its home file gives session, and on its agent made
+// fresh-only it is not refused for verify:repo, which repairs in that
+// session, and its run records a resumable session.
+func TestTheImplementersAreResumableOfThemselves(t *testing.T) {
+	t.Parallel()
+	root, repo, home := onFakeRuntimes(t)
+	runs := &newRuns{home: home}
+	for _, name := range implementers {
+		agent := showProcess(t, home, repo, name).Agent
+		path := filepath.Join(home, "agents", agent+".toml")
+		const resumable, fresh = "session = \"resumable\"\n", "session = \"fresh-only\"\n"
+		text := read(t, path)
+		if !strings.Contains(text, resumable) {
+			t.Fatalf("%s's agent %s does not say %q:\n%s", name, agent, resumable, text)
+		}
+		write(t, path, strings.Replace(text, resumable, fresh, 1))
+
+		view := showProcess(t, home, repo, name)
+		if view.Refusal != "" {
+			t.Errorf("%s on the fresh-only %s is refused: %s", name, agent, view.Refusal)
+		}
+		var given []string
+		for _, source := range view.Sources {
+			if source.Kind != "processes" || source.Name != name {
+				continue
+			}
+			for _, layer := range source.Layers {
+				if slices.Contains(layer.Fields, "session") {
+					given = append(given, layer.Path)
+				}
+			}
+		}
+		if want := []string{filepath.Join(home, "processes", name+".yaml")}; !reflect.DeepEqual(given, want) {
+			t.Errorf("%s's session is given by %v, want its home file %v", name, given, want)
+		}
+
+		launch := launchDir(name)
+		args := append([]string{"run", name, "--quiet", "--timeout", "1m"}, paramArgs(t, launch, parseProcess(t, root, name).Params)...)
+		r := agister(t, home, filepath.Join(repo, launch), args...)
+		last := runs.one(t)
+		profile, _ := last.record["profile"].(map[string]any)
+		if r.code != cli.ExitCompleted || last.record["agent"] != agent || profile["session"] != definition.SessionResumable {
+			t.Errorf("%s's run on the fresh-only %s: exit %d, by %v, as %v, want it completed in a resumable session\n%s",
+				name, agent, r.code, last.record["agent"], last.record["profile"], r.stderr)
+		}
+	}
+}
+
 // codexAt is the fake Codex, reporting version as its own.
 func codexAt(version string) supervisortest.Fake {
 	return func(p fakeproc.Process) int {

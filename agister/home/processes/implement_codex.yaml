@@ -2,6 +2,7 @@ schema: agister.process/v1alpha1
 name: implement_codex
 type: process
 uses: agent:codex-implementer-sol-61
+session: resumable
 prompt: implement
 
 input:
