@@ -268,8 +268,31 @@ test('loadAgister links users and marks names defined outside the folder', async
   assert.deepEqual(m.runtimes[0].usedBy, ['sol']);
   assert.deepEqual(m.processes.find((p) => p.name === 'review').usedBy, ['panel']);
   assert.deepEqual(m.policies.find((p) => p.name === 'review').usedBy, ['review']);
-  assert.deepEqual(m.workflows[0].fanOut, [{ node: 'r', process: 'review', outside: false }]);
-  assert.deepEqual(m.workflows[0].join, { node: 'j', process: 'judge', outside: true });
+  assert.deepEqual(m.workflows[0].fanOut, [{ node: 'r', process: 'review', agent: null, outside: false }]);
+  assert.deepEqual(m.workflows[0].join, { node: 'j', process: 'judge', agent: null, outside: true });
+});
+
+// ADR-030 rule 5: a node names the agent its call runs on, by its name
+// alone, in a flow map or a block map; a node that names none has none of
+// its own. A process may name no agent, which marks none outside.
+test('a workflow node keeps the agent it names, and a process may name none', async () => {
+  const m = await C.loadAgister(memDir('.agister', {
+    agents: { 'sol.toml': 'name = "sol"\n' },
+    processes: { 'check.yaml': 'name: check\nuses: agent:sol\n', 'bare.yaml': 'name: bare\n' },
+    workflows: {
+      'panel.yaml': 'name: panel\nfan_out:\n  - {node: one, uses: process:check, agent: opus}\n' +
+        '  - node: two\n    uses: process:bare\n    agent: sol\n  - {node: three, uses: process:check}\n' +
+        'join: {node: j, uses: process:bare, agent: opus}\n',
+    },
+  }));
+  assert.deepEqual(m.workflows[0].fanOut, [
+    { node: 'one', process: 'check', agent: 'opus', outside: false },
+    { node: 'two', process: 'bare', agent: 'sol', outside: false },
+    { node: 'three', process: 'check', agent: null, outside: false },
+  ]);
+  assert.deepEqual(m.workflows[0].join, { node: 'j', process: 'bare', agent: 'opus', outside: false });
+  const bare = m.processes.find((p) => p.name === 'bare');
+  assert.deepEqual([bare.agent, bare.agentOutside, bare.usedBy], [null, false, ['panel']]);
 });
 
 test('a file that does not parse becomes an error item; the rest still load', async () => {

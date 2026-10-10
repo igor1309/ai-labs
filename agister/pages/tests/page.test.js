@@ -740,6 +740,59 @@ test('a process that names no policy shows its own workspace access', async () =
   for (const step of [write, read]) assert.equal(step.querySelector('span.missing'), null);
 });
 
+// ADR-030 rule 5: a step shows the agent its node names, in place of its
+// process's, and its process's where the node names none; the workflow's
+// calls line counts the same models. A process that names no agent is
+// marked nowhere a node binds it. An agent a node names and these settings
+// lack is marked missing; a node and a process that both name none, and
+// such a process on its own card, show none, as Agister refuses them.
+test('a workflow step and the calls line show the agent the node binds, and a process may name none', async () => {
+  const files = {
+    ...agent,
+    'agents/sol.toml': 'name = "sol"\nruntime = "codex"\nmodel = "gpt"\neffort = "low"\n',
+    'processes/check.yaml': 'name: check\nuses: agent:opus\n',
+    'processes/bare.yaml': 'name: bare\n',
+    'processes/lone.yaml': 'name: lone\n',
+    'workflows/panel.yaml': 'name: panel\nfan_out:\n  - {node: one, uses: process:check, agent: sol}\n' +
+      '  - {node: two, uses: process:check}\n  - {node: three, uses: process:bare, agent: sol}\n' +
+      'join: {node: j, uses: process:bare, agent: opus}\n',
+    'workflows/refused.yaml': 'name: refused\nfan_out:\n  - {node: ghost, uses: process:check, agent: gone}\n' +
+      'join: {node: unbound, uses: process:bare}\n',
+  };
+  const p = page({ answers: { 'api/settings': () => respond({ path: '~', dir: '/u/.agister', home: true, files }) } });
+  await p.started;
+  const card = (name) => p.$('dashboard').querySelector(`article#${name}`);
+  const fact = (name, label) => {
+    const nodes = card(name).querySelector('div.facts').children;
+    return nodes[nodes.findIndex((n) => n.textContent === label) + 1];
+  };
+  const agents = (name) => card(name).querySelectorAll('div.step').map((step) => step.querySelector('div.step-meta').children[0]);
+
+  assert.equal(fact('workflow-panel', 'calls').textContent, '2 × gpt + opus at once, then opus');
+  const panel = agents('workflow-panel');
+  assert.deepEqual(panel.map((line) => line.textContent), [
+    'agent  sol · gpt · low effort',
+    'agent  opus · opus · high effort',
+    'agent  sol · gpt · low effort',
+    'agent  opus · opus · high effort',
+  ]);
+  for (const line of panel) assert.equal(line.querySelector('span.missing'), null, line.textContent);
+
+  assert.equal(fact('workflow-refused', 'calls').textContent, 'unknown model, then unknown model');
+  const [ghost, unbound] = agents('workflow-refused');
+  assert.equal(ghost.textContent, 'agent  gone (missing agent)');
+  assert.equal(ghost.querySelector('span.missing').title, 'No agent named gone in these settings: Agister refuses the call');
+  assert.equal(unbound.textContent, 'agent  none');
+  assert.equal(unbound.querySelector('span.missing').title, 'Neither the node nor its process names an agent: Agister refuses the workflow');
+
+  // Bound by a node, a process has no card of its own; unbound, its card
+  // names no agent.
+  for (const name of ['check', 'bare']) assert.equal(card(`process-${name}`), null, name);
+  assert.equal(fact('process-lone', 'agent').textContent, 'none');
+  assert.equal(fact('process-lone', 'agent').querySelector('span.missing').title,
+    'The process names no agent: Agister runs it only as a workflow’s node that names one');
+});
+
 // README, Settings: a process card shows the attempts of the verification
 // the process names, or marks it missing when these settings have none.
 test('a process card shows the verification its process names, or marks it missing', async () => {

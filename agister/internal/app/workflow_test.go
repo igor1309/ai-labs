@@ -1637,6 +1637,42 @@ func TestAProcessWithoutUsesRunsOnlyAsANode(t *testing.T) {
 	})
 }
 
+// ADR-030 rule 8, ADR-015 rule 3: each binding of a process is resolved
+// before any node runs, so two nodes that bind one process to two agents
+// are two bindings. The second's agent is on a runtime whose one primitive
+// grants more than the process allows: the workflow is refused, with no
+// node's run and no turn, though the first's binding can run.
+func TestAProcessBoundTwiceIsCheckedOnEachAgent(t *testing.T) {
+	t.Parallel()
+	h := newFlowHarness()
+	h.defs.set(definition.KindRuntime, "narrow", `schema: agister.runtime/v1alpha1
+name: narrow
+adapter: spy
+contract: spy/1
+efforts: [high]
+primitives:
+  select: one
+  items:
+    Bash: {grants: [process.execute, repository.read], verified: ["1."]}
+`)
+	h.defs.set(definition.KindAgent, "c", strings.NewReplacer(`name = "a"`, `name = "c"`, `runtime = "rt"`, `runtime = "narrow"`).Replace(settingsDocs()[definition.KindAgent]["a"]))
+	twice := strings.Replace(workflowDoc, "{node: two, uses: process:second}", "{node: two, uses: process:first}", 1)
+	h.defs.set(definition.KindWorkflow, "w", boundTo(boundTo(twice, "one", "first", "a"), "two", "first", "c"))
+	record := h.store.wait(t, h.submit(t, contract.CallRequest{}))
+	const want = "workflow w uses process first: runtime narrow: cannot enforce the effective permissions: Bash also grants process.execute"
+	if class(record) != run.ClassRefused || message(record) != want {
+		t.Fatalf("result %+v, want refused: %s", record.Result, want)
+	}
+	if ids := h.store.ids(); !reflect.DeepEqual(ids, []string{record.ID}) || record.Parent != nil {
+		t.Fatalf("runs %v, parent %+v, want the workflow's record alone", ids, record.Parent)
+	}
+	for _, instruction := range []string{"Work as first.", "Work as second.", "Join them."} {
+		if turns := h.runner.turns(instruction); len(turns) != 0 {
+			t.Errorf("%q: %d turns, want none", instruction, len(turns))
+		}
+	}
+}
+
 // workflow show shows each node as its binding runs (ADR-030 rule 7): on
 // the agent the node names, and on its process's where it names none.
 func TestShowWorkflowShowsEachNodeOnTheAgentItBinds(t *testing.T) {

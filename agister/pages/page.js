@@ -220,6 +220,10 @@
       el('span', { className: 'missing', title: `No ${kind} named ${name} in these settings: Agister refuses the call` },
         `${name} (missing ${kind})`);
 
+    // A process no agent is named for: nothing binds it to one, so Agister
+    // refuses its call, for the reason title gives.
+    const noAgent = (title) => el('span', { className: 'missing', title }, 'none');
+
     function copyButton(command) {
       const button = el('button', { type: 'button', className: 'copy', textContent: 'Copy' });
       button.addEventListener('click', async () => {
@@ -256,6 +260,7 @@
     const SESSION = { resumable: 'can be continued (--continue)', 'fresh-only': 'starts fresh every call' };
 
     function agentLine(name, ix) {
+      if (!name) return el('div', {}, noAgent('The process names no agent: Agister runs it only as a workflow’s node that names one'));
       const a = ix.agent.get(name);
       if (!a) return missing('agent', name);
       const parts = [a.model, a.effort && `${a.effort} effort`].filter(Boolean);
@@ -364,20 +369,28 @@
       return p.verify?.layers ? el('div', {}, p.verify.ref, layerLine(p.verify)) : null;
     }
 
+    // The agent a node's call runs on: the one the node names, or its
+    // process's where it names none (ADR-030 rule 5); null when neither
+    // names one.
+    const nodeAgent = (n, ix) => n.agent ?? ix.process.get(n.process)?.agent ?? null;
+
     // A workflow step exposes the process's prompt, guidance, output schema
     // and field layers too, since processes used by workflows have no
     // standalone card.
     function step(n, ix, chip) {
       const p = ix.process.get(n.process);
       if (!p) return el('div', { className: 'step' }, missing('process', n.process));
-      const a = ix.agent.get(p.agent);
+      const agent = nodeAgent(n, ix);
+      const a = ix.agent.get(agent);
       const pol = ix.policy.get(p.policy);
       return el('div', { className: 'step' },
         el('div', { className: 'step-name', textContent: p.name }),
         p.purpose ? el('p', { className: 'step-purpose', textContent: p.purpose }) : null,
         el('div', { className: 'step-meta' },
           el('div', {}, text('agent  ', 'label'),
-            a ? [p.agent, a.model, a.effort && `${a.effort} effort`].filter(Boolean).join(' · ') : missing('agent', p.agent)),
+            a ? [agent, a.model, a.effort && `${a.effort} effort`].filter(Boolean).join(' · ')
+              : agent ? missing('agent', agent)
+                : noAgent('Neither the node nor its process names an agent: Agister refuses the workflow')),
           el('div', {}, text('policy ', 'label'),
             pol ? el('span', {}, `${p.policy} · `, text(policySummary(pol), `access-${pol.access}`))
               : p.policy ? missing('policy', p.policy) : el('span', {}, 'none · ', ownAccess(p)))),
@@ -398,7 +411,7 @@
     function models(steps, ix) {
       const count = new Map();
       for (const n of steps) {
-        const model = ix.agent.get(ix.process.get(n.process)?.agent)?.model ?? 'unknown model';
+        const model = ix.agent.get(nodeAgent(n, ix))?.model ?? 'unknown model';
         count.set(model, (count.get(model) ?? 0) + 1);
       }
       return [...count].map(([model, k]) => (k > 1 ? `${k} × ${model}` : model)).join(' + ');

@@ -271,7 +271,9 @@
   }
 
   function workflowItem(file, _src, doc) {
-    const node = (n) => ({ node: n?.node ?? null, process: refName(n?.uses) });
+    // A node's agent is its name alone, and runs its call in place of its
+    // process's; null when the node names none (ADR-030 rule 5).
+    const node = (n) => ({ node: n?.node ?? null, process: refName(n?.uses), agent: typeof n?.agent === 'string' ? n.agent : null });
     return {
       file, name: doc.name ?? stem(file),
       params: params(doc.input),
