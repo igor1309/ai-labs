@@ -11,6 +11,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/BurntSushi/toml"
 	"github.com/igor1309/ai-labs/agister/internal/adapters/fsdefs"
 	"github.com/igor1309/ai-labs/agister/internal/contract"
 	"gopkg.in/yaml.v3"
@@ -238,4 +239,23 @@ func documents(t *testing.T, dir string) map[string]bool {
 		}
 	}
 	return found
+}
+
+// Home's service treats no permission as state-reaching. Claude Code's
+// Bash, Edit and Write grant host.write and Codex read-only reads the
+// host, so listing either would leave the implementers without their
+// write tools; that reach is accepted.
+func TestHomeTreatsNoPermissionAsStateReaching(t *testing.T) {
+	t.Parallel()
+	var service struct {
+		StateReaching []string `toml:"state_reaching"`
+	}
+	path := filepath.Join("..", "..", "..", homeFolder, "service.toml")
+	meta, err := toml.DecodeFile(path, &service)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !meta.IsDefined("state_reaching") || len(service.StateReaching) != 0 {
+		t.Fatalf("%s: state_reaching = %q, want it set to []", path, service.StateReaching)
+	}
 }

@@ -1345,6 +1345,34 @@ func TestReviewPromptsRefuseHandObservationsAsProof(t *testing.T) {
 	}
 }
 
+// Three prompts name AGENTS.md, and none as a pointer to guidance, which
+// ADR-028 rule 13 forbids (LAB-161's audit). implement leaves the testing
+// command to the agent's skills and AGENTS.md: where the full suite is too
+// slow to run on every change (iFora's takes 15 minutes), choosing the
+// tests is the agent's judgement, which no verification can make. advisor
+// rules from AGENTS.md as material; code-review-clarity reviews an edit to
+// it.
+func TestPromptsNameAgentsMDOnlyAsMaterial(t *testing.T) {
+	t.Parallel()
+	cases := []struct {
+		prompt  string
+		phrases []string
+	}{
+		{"implement.md", []string{"run your testing command", "as your skills and the", "repository's AGENTS.md describe it"}},
+		{"advisor.md", []string{"`AGENTS.md` file", "the project's decisions record"}},
+		{"code-review-clarity.md", []string{"A change does not edit a recorded decision", "AGENTS.md", "is a finding"}},
+	}
+	for _, c := range cases {
+		data, err := os.ReadFile(filepath.Join("..", "..", "..", homeFolder, "prompts", c.prompt))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !carries(string(data), c.phrases) {
+			t.Errorf("agister/home/prompts/%s no longer names AGENTS.md as it did: no paragraph has all of %q", c.prompt, c.phrases)
+		}
+	}
+}
+
 // carries holds for phrases that stand in one paragraph, the first or a
 // later one, wrapped across its lines or not; it does not for a missing
 // phrase, for phrases that stand in different paragraphs, and for a phrase

@@ -215,6 +215,9 @@ agister run <process> --dir <worktree> --param <param>=<value> --json
   settings, and `--timeout <d>` and `--max-cost <usd>` set the call's
   limits. A workflow takes params, `--goal`, `--answers` and `--dir` only:
   each node is a run of its own, with its own process's agent and limits.
+- A process with a `workflow.collection` input, such as a review judge,
+  runs only as a workflow's join, on the nodes' outputs: a call of it
+  alone is refused. Run the workflow.
 - Interrupting `agister run` cancels the run.
 - Runs cost money. Do not loop runs unattended.
 
