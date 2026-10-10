@@ -1312,6 +1312,39 @@ func TestClarityPromptCarriesTheDoneGateException(t *testing.T) {
 	}
 }
 
+// A hand observation is no proof (LAB-163). The clarity prompt makes a
+// comment that records an observation, a hand check or history a finding,
+// to be proved by a test or moved to the commit message; the tests prompt
+// makes a changed setting value a changed behaviour, proved by a contract
+// test where it claims how an external tool behaves. An instruction is
+// held by its short phrases standing in one paragraph, as in
+// TestReviewPromptsCarryTheirCoverageContract. The prompts are the
+// repository's own, read as they are.
+func TestReviewPromptsRefuseHandObservationsAsProof(t *testing.T) {
+	t.Parallel()
+	cases := []struct {
+		prompt      string
+		instruction promptInstruction
+	}{
+		{"code-review-clarity.md", promptInstruction{"a comment recording an observation, a hand check or history is a finding", []string{
+			"A comment that records an observation", "a check done by hand", "history", "is a finding",
+			"behaviour a test should prove", "names that test", "belongs in the commit message"}}},
+		{"code-review-tests.md", promptInstruction{"a changed setting value is a changed behaviour, proved by a contract test", []string{
+			"A changed setting value is a changed", "how an external tool behaves", "a contract test against that",
+			"a hand observation is no test", "the value that could be wrong while every test stays green"}}},
+	}
+	for _, c := range cases {
+		data, err := os.ReadFile(filepath.Join("..", "..", "..", homeFolder, "prompts", c.prompt))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !carries(string(data), c.instruction.phrases) {
+			t.Errorf("agister/home/prompts/%s lost the instruction %q: no paragraph has all of %q",
+				c.prompt, c.instruction.name, c.instruction.phrases)
+		}
+	}
+}
+
 // carries holds for phrases that stand in one paragraph, the first or a
 // later one, wrapped across its lines or not; it does not for a missing
 // phrase, for phrases that stand in different paragraphs, and for a phrase
