@@ -231,6 +231,27 @@ type CheckReport struct {
 	// What the repository's settings block (ADR-018). Blocks are not
 	// problems: settings with blocks pass.
 	Blocks []Block `json:"blocks"`
+	// Every node of every workflow as its call would be planned, on the
+	// agent it binds its process to (ADR-030 rules 7 and 8); one that
+	// cannot be planned is a problem instead.
+	Bindings []Binding `json:"bindings"`
+}
+
+// Binding is one node of a workflow, planned on the runtime of the agent
+// it binds its process to: what the plan withholds.
+type Binding struct {
+	Workflow string `json:"workflow"`
+	Node     string `json:"node"`
+	Process  string `json:"process"`
+	Agent    string `json:"agent"`
+	Runtime  string `json:"runtime"` // the runtime mapping's name
+	// The runtime version it is planned on: the one installed where check
+	// asked the runtimes, otherwise one the mapping verifies.
+	Version string `json:"version"`
+	// Allowed and not required, and not given: not a problem.
+	Withheld []string `json:"withheld,omitempty"`
+	// In tools.require, and withheld: a warning.
+	Required []string `json:"required,omitempty"`
 }
 
 // Block is one document a repository's blocks.yaml blocks, and what it

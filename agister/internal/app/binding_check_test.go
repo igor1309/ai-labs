@@ -185,3 +185,91 @@ func TestAWorkflowWithABindingThatCannotRunIsRefused(t *testing.T) {
 		t.Fatalf("workflow: %s %q, %d runs, %d turns; want refused before any node: %q", class(record), message(record), len(h.recorder.created), len(h.runner.calls()), want)
 	}
 }
+
+// reads is a runtime mapping that grants a call repository.read on
+// versions 1 and 2, and repository.search on version 2 alone.
+const reads = `schema: agister.runtime/v1alpha1
+name: reads
+adapter: spy
+contract: spy/1
+efforts: [high]
+primitives:
+  select: any
+  items:
+    Read: {grants: [repository.read], verified: ["1.", "2."]}
+    Grep: {grants: [repository.search], verified: ["2."]}
+`
+
+// ADR-030 rules 7 and 8: check plans every node of every workflow on the
+// agent it binds, its process's own where it names none, first on the
+// version of its runtime that gives the most and, where it asks the
+// runtimes, on the version installed: it lists what each binding allows
+// and does not require that the plan withholds, and warns of each
+// permission in tools.require it would withhold.
+func TestCheckListsWhatEachBindingWithholds(t *testing.T) {
+	t.Parallel()
+	onReads := func(require bool) *harness {
+		h := onAgentC("reads")
+		h.defs.docs[definition.KindRuntime]["reads"] = reads
+		if require {
+			h.defs.docs[definition.KindProcess]["second"] += "  require: [repository.search]\n"
+			h.defs.docs[definition.KindProcess]["second"] = strings.Replace(h.defs.docs[definition.KindProcess]["second"],
+				"tools: {allow: [repository.read, repository.search, repository.diff]}\n", "tools:\n  allow: [repository.read, repository.search, repository.diff]\n", 1)
+		}
+		return h
+	}
+	check := func(h *harness, probe bool) contract.CheckReport {
+		report, err := h.clientOn(h.defs).Check(context.Background(), probe)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return report
+	}
+	// On agent a, runtime rt gives Read and Grep, never Bash, which grants
+	// process.execute: repository.diff is withheld.
+	onA := func(workflow, node, process, version string, withheld ...string) contract.Binding {
+		return contract.Binding{Workflow: workflow, Node: node, Process: process, Agent: "a", Runtime: "rt", Version: version, Withheld: withheld}
+	}
+	bindings := func(version string, two contract.Binding) []contract.Binding {
+		return []contract.Binding{
+			onA("v", "one", "first", version, "repository.diff"), onA("v", "two", "second", version, "repository.diff"), onA("v", "merge", "joiner", version),
+			onA("w", "one", "first", version, "repository.diff"), two, onA("w", "merge", "joiner", version),
+		}
+	}
+	const warning = "workflow w: fan-out node two: process second: tools.require would withhold repository.search on agent c's runtime reads"
+
+	t.Run("allowed and not required", func(t *testing.T) {
+		t.Parallel()
+		report := check(onReads(false), true)
+		want := bindings("1.2.3", contract.Binding{Workflow: "w", Node: "two", Process: "second", Agent: "c", Runtime: "reads", Version: "1.2.3", Withheld: []string{"repository.search", "repository.diff"}})
+		if !reflect.DeepEqual(report.Bindings, want) {
+			t.Fatalf("bindings = %+v\nwant %+v", report.Bindings, want)
+		}
+		if len(report.Problems) != 0 || len(report.Warnings) != 0 {
+			t.Fatalf("problems %q, warnings %q; want none", messages(report.Problems), report.Warnings)
+		}
+	})
+	t.Run("required, given on a version the runtime verifies", func(t *testing.T) {
+		t.Parallel()
+		report := check(onReads(true), false)
+		want := bindings("1", contract.Binding{Workflow: "w", Node: "two", Process: "second", Agent: "c", Runtime: "reads", Version: "2", Withheld: []string{"repository.diff"}})
+		if !reflect.DeepEqual(report.Bindings, want) {
+			t.Fatalf("bindings = %+v\nwant %+v", report.Bindings, want)
+		}
+		if len(report.Problems) != 0 || len(report.Warnings) != 0 {
+			t.Fatalf("problems %q, warnings %q; want none", messages(report.Problems), report.Warnings)
+		}
+	})
+	t.Run("required, withheld on the version installed", func(t *testing.T) {
+		t.Parallel()
+		report := check(onReads(true), true)
+		want := bindings("1.2.3", contract.Binding{Workflow: "w", Node: "two", Process: "second", Agent: "c", Runtime: "reads", Version: "1.2.3",
+			Withheld: []string{"repository.diff"}, Required: []string{"repository.search"}})
+		if !reflect.DeepEqual(report.Bindings, want) {
+			t.Fatalf("bindings = %+v\nwant %+v", report.Bindings, want)
+		}
+		if want := []string{warning + " version 1.2.3"}; !reflect.DeepEqual(report.Warnings, want) {
+			t.Fatalf("warnings = %q, want %q", report.Warnings, want)
+		}
+	})
+}

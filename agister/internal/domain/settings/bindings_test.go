@@ -259,3 +259,61 @@ func TestABindingToARuntimeThatCannotResumeIsAProblemOfItsWorkflow(t *testing.T)
 		t.Fatalf("agent a: problems = %+v, want %+v", got, want)
 	}
 }
+
+// writable is bound(agent) with process p allowing write beside read, and
+// requiring what is given, on a runtime mapping rt that grants read on
+// versions 1 and 2, and write on version 2 alone.
+func writable(agent string, require ...string) settings.Bundle {
+	b := bound(agent)
+	p := b.Processes["p"]
+	p.Limits.Allow, p.Require = []string{"read", "write"}, require
+	b.Processes["p"] = p
+	rt := b.Mappings["rt"]
+	rt.Primitives = []definition.Primitive{
+		{Name: "Read", Grants: []string{"read"}, Verified: []string{"1.", "2."}},
+		{Name: "Write", Grants: []string{"write"}, Verified: []string{"2."}},
+	}
+	b.Mappings["rt"] = rt
+	return b
+}
+
+// ADR-030 rules 7 and 8: every node of every workflow is planned as its
+// call would be, on the agent it binds its process to, its process's own
+// where it names none: the permissions allowed and not required that the
+// plan does not give, and the required ones it would withhold. A runtime
+// whose installed version is known is planned on it; any other on the
+// version it verifies that withholds the fewest required permissions.
+func TestEveryBindingIsPlanned(t *testing.T) {
+	t.Parallel()
+	merge := settings.BindingPlan{Workflow: "w", Node: "merge", Label: "join node merge", Process: "j", Agent: "a", Runtime: "rt", Version: "1"}
+	one := func(agent, version string, withheld, required []string) []settings.BindingPlan {
+		return []settings.BindingPlan{
+			{Workflow: "w", Node: "one", Label: "fan-out node one", Process: "p", Agent: agent, Runtime: "rt", Version: version, Withheld: withheld, Required: required},
+			merge,
+		}
+	}
+	// Agent c is a's twin, which a node binds p to.
+	onC := writable("c", "write")
+	onC.Agents["c"] = definition.Agent{Name: "c", Runtime: "rt", Effort: "high", ModelFamily: "f"}
+	installed := func(version string) map[string]string { return map[string]string{"a": version} }
+	for name, c := range map[string]struct {
+		bundle    settings.Bundle
+		installed map[string]string
+		want      []settings.BindingPlan
+	}{
+		"allowed, not required, withheld on the installed version": {writable("a"), installed("1.4"),
+			[]settings.BindingPlan{{Workflow: "w", Node: "one", Label: "fan-out node one", Process: "p", Agent: "a", Runtime: "rt", Version: "1.4", Withheld: []string{"write"}}, {Workflow: "w", Node: "merge", Label: "join node merge", Process: "j", Agent: "a", Runtime: "rt", Version: "1.4"}}},
+		"required, withheld on the installed version": {writable("a", "write"), installed("1.4"),
+			[]settings.BindingPlan{{Workflow: "w", Node: "one", Label: "fan-out node one", Process: "p", Agent: "a", Runtime: "rt", Version: "1.4", Required: []string{"write"}}, {Workflow: "w", Node: "merge", Label: "join node merge", Process: "j", Agent: "a", Runtime: "rt", Version: "1.4"}}},
+		"required, given on a version the runtime verifies": {writable("a", "write"), nil, one("a", "2", nil, nil)},
+		"a node that names no agent binds its process's":    {writable("", "write"), nil, one("a", "2", nil, nil)},
+		"a node that binds another agent":                   {onC, map[string]string{"c": "1.4"}, one("c", "1.4", nil, []string{"write"})},
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			if got := settings.BindingPlans(c.bundle, c.installed); !reflect.DeepEqual(got, c.want) {
+				t.Fatalf("plans = %+v\nwant %+v", got, c.want)
+			}
+		})
+	}
+}

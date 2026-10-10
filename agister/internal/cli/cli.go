@@ -1107,7 +1107,7 @@ func showWorkflow(w io.Writer, view contract.WorkflowView) {
 		if process.Refusal != "" {
 			lines = append(lines, [2]string{"  plan", "REFUSED: " + process.Refusal})
 		} else {
-			lines = append(lines, [2]string{"  plan", or(strings.Join(process.Primitives, ", "), "(none)")})
+			lines = append(lines, [2]string{"  plan", or(strings.Join(process.Primitives, ", "), "(none)")}, [2]string{"  withheld", or(strings.Join(process.Withheld, ", "), "(none)")})
 		}
 	}
 	if call := view.Call; call != nil {
@@ -1393,6 +1393,9 @@ func printCheckAs(env IO, report contract.CheckReport, opts options) (int, error
 		if report.Blocks == nil {
 			report.Blocks = []contract.Block{}
 		}
+		if report.Bindings == nil {
+			report.Bindings = []contract.Binding{}
+		}
 		return code, printJSON(env.Stdout, report)
 	}
 	if opts.tree {
@@ -1554,10 +1557,23 @@ func printCheck(env IO, report contract.CheckReport) int {
 		}
 		fmt.Fprintf(env.Stderr, "%d problem(s) in %s\n", len(report.Problems), strings.Join(kinds, ", "))
 		newerHint(env, unknown)
+		printWithheld(env.Stdout, report.Bindings)
 		return ExitUsage
 	}
 	fmt.Fprintf(env.Stdout, "settings OK: %s\n", strings.Join(kinds, ", "))
+	printWithheld(env.Stdout, report.Bindings)
 	return 0
+}
+
+// printWithheld lists what each binding allows and does not require, and
+// its plan withholds: not a problem, but shown (ADR-030 rule 8).
+func printWithheld(w io.Writer, bindings []contract.Binding) {
+	for _, binding := range bindings {
+		if len(binding.Withheld) > 0 {
+			fmt.Fprintf(w, "withheld workflow %s node %s: process %s, agent %s (runtime %s version %s): %s\n",
+				binding.Workflow, binding.Node, binding.Process, binding.Agent, binding.Runtime, binding.Version, strings.Join(binding.Withheld, ", "))
+		}
+	}
 }
 
 // newerHint says, when unknown problems name something this binary does not

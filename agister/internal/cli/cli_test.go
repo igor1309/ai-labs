@@ -1197,7 +1197,7 @@ func TestWorkflowListAndShow(t *testing.T) {
 			Params: []contract.Param{{Name: "candidate", Default: "HEAD"}},
 			Inputs: []string{"candidate <- git.revision"},
 			FanOut: []contract.WorkflowNode{
-				{Name: "one", Process: contract.ProcessView{Name: "p", Agent: "a", Runtime: "rt", Primitives: []string{"Read"}}, Params: []string{"candidate"}},
+				{Name: "one", Process: contract.ProcessView{Name: "p", Agent: "a", Runtime: "rt", Primitives: []string{"Read"}, Withheld: []string{"repository.diff", "network"}}, Params: []string{"candidate"}},
 				{Name: "two", Process: contract.ProcessView{Name: "q", Refusal: "no agent"}},
 			},
 			Join:       contract.WorkflowNode{Name: "merge", Process: contract.ProcessView{Name: "j", Agent: "a", Runtime: "rt"}},
@@ -1219,12 +1219,14 @@ inputs       candidate <- git.revision
 fan-out      one: process p, agent a (runtime rt)
   receives   params candidate
   plan       Read
+  withheld   repository.diff, network
              two: process q
   receives   params (none)
   plan       REFUSED: no agent
 join         merge: process j, agent a (runtime rt)
   receives   the collection as input gathered, and nothing else
   plan       (none)
+  withheld   (none)
 `
 	if code != 0 || stdout.String() != want || !reflect.DeepEqual(spy.shown, []string{"w"}) {
 		t.Fatalf("show: %d\n%s\nwant\n%s", code, stdout.String(), want)
