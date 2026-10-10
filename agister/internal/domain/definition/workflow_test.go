@@ -67,6 +67,44 @@ func TestANodeMayNameItsAgent(t *testing.T) {
 	}
 }
 
+const callText = `schema: agister.workflow/v1alpha1
+name: c
+type: workflow
+call: {node: implement, uses: process:implement, agent: codex-sol-61}
+`
+
+// ADR-030 rule 6: a workflow may be one call, its only node, which names
+// its agent; it declares no inputs, fan-out or join of its own.
+func TestAWorkflowMayBeOneCall(t *testing.T) {
+	t.Parallel()
+	workflow, err := definition.ParseWorkflow(doc(definition.KindWorkflow, "c", callText))
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := definition.Node{Name: "implement", Process: "implement", Agent: "codex-sol-61"}
+	if workflow.Call == nil || *workflow.Call != want || !reflect.DeepEqual(workflow.Nodes(), []definition.Node{want}) {
+		t.Fatalf("call = %+v, nodes %+v, want %+v alone", workflow.Call, workflow.Nodes(), want)
+	}
+	if workflow.FanOut != nil || workflow.Join != (definition.Node{}) || workflow.Params != nil || workflow.Values != nil {
+		t.Fatalf("workflow = %+v, want the call alone", workflow)
+	}
+	for name, c := range map[string]struct{ text, want string }{
+		"no agent":     {strings.Replace(callText, ", agent: codex-sol-61", "", 1), "call.agent: is required"},
+		"a bad agent":  {strings.Replace(callText, "agent: codex-sol-61", "agent: agent:codex-sol-61", 1), `call.agent: must be an agent's name, not "agent:codex-sol-61"`},
+		"no process":   {strings.Replace(callText, "uses: process:implement, ", "", 1), "call.uses: is required"},
+		"an input":     {callText + "input: {params: {brief: {}}}\n", "input: a workflow with call has no input (ADR-030 rule 6)"},
+		"a fan-out":    {callText + "fan_out:\n  - {node: zeta, uses: process:z}\n", "fan_out: a workflow with call has no fan_out (ADR-030 rule 6)"},
+		"a join":       {callText + "join: {node: merge, uses: process:j}\n", "join: a workflow with call has no join (ADR-030 rule 6)"},
+		"not a node":   {strings.Replace(callText, "{node: implement, uses: process:implement, agent: codex-sol-61}", "process:implement", 1), "call: must be a mapping"},
+		"other fields": {strings.Replace(callText, "agent: codex-sol-61", "agent: codex-sol-61, timeout: 1h", 1), "call.timeout: unknown field"},
+	} {
+		_, err := definition.ParseWorkflow(doc(definition.KindWorkflow, "c", c.text))
+		if err == nil || !strings.Contains(err.Error(), c.want) {
+			t.Errorf("%s: err = %v, want %q", name, err, c.want)
+		}
+	}
+}
+
 func TestParseWorkflowProblems(t *testing.T) {
 	t.Parallel()
 	for name, tc := range map[string]struct{ text, want string }{

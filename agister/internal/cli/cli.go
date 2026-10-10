@@ -89,7 +89,10 @@ Usage:
   agister run <workflow> [--param <name>=<value>]... [--goal <run-id>[:<input>]] [--answers <run-id>]
                          [--dir <path>] [--json]
                                      fan-out nodes run concurrently, the join once all of them ended,
-                                     if at least one completed; each node is a run of its own
+                                     if at least one completed; each node is a run of its own; a
+                                     workflow of one call takes its process's params and is that
+                                     call's one run, which also takes --timeout, --max-cost and,
+                                     where its process is resumable, --continue
   agister runs [list]
   agister runs show <run-id>
   agister runs watch <run-id> [--after <seq>]
@@ -571,6 +574,9 @@ func dispatch(ctx context.Context, client contract.Client, log *slog.Logger, opt
 			}
 			for _, workflow := range workflows {
 				line := fmt.Sprintf("%s\t%s\tjoin %s", workflow.Name, strings.Join(workflow.FanOut, ","), workflow.Join)
+				if workflow.Call != "" {
+					line = fmt.Sprintf("%s\tcall %s", workflow.Name, workflow.Call)
+				}
 				if workflow.Problem != "" {
 					line = workflow.Name + "\t" + workflow.Problem
 				}
@@ -1104,14 +1110,18 @@ func showWorkflow(w io.Writer, view contract.WorkflowView) {
 			lines = append(lines, [2]string{"  plan", or(strings.Join(process.Primitives, ", "), "(none)")})
 		}
 	}
-	for i, fanOut := range view.FanOut {
-		label := ""
-		if i == 0 {
-			label = "fan-out"
+	if call := view.Call; call != nil {
+		node("call", *call, "params "+or(strings.Join(call.Params, ", "), "(none)")+": the workflow's, its process's own")
+	} else {
+		for i, fanOut := range view.FanOut {
+			label := ""
+			if i == 0 {
+				label = "fan-out"
+			}
+			node(label, fanOut, "params "+or(strings.Join(fanOut.Params, ", "), "(none)"))
 		}
-		node(label, fanOut, "params "+or(strings.Join(fanOut.Params, ", "), "(none)"))
+		node("join", view.Join, "the collection as input "+or(view.Collection, "(none)")+", and nothing else")
 	}
-	node("join", view.Join, "the collection as input "+or(view.Collection, "(none)")+", and nothing else")
 	if view.Refusal != "" {
 		lines = append(lines, [2]string{"run", "REFUSED: " + view.Refusal})
 	}

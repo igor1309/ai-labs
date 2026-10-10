@@ -300,8 +300,11 @@ type Record struct {
 	Trail *Trail `json:"trail,omitempty"`
 	// Workflow is set on a workflow's own run (ADR-003): its nodes and
 	// barrier. Parent is set on a node's run: the workflow run it belongs to.
+	// Call is set on the run of a workflow of one call instead (ADR-030
+	// rule 6): the call it binds.
 	Workflow *Workflow `json:"workflow,omitempty"`
 	Parent   *Parent   `json:"parent,omitempty"`
+	Call     *Call     `json:"call,omitempty"`
 	// Links are the earlier runs the caller named this one's goal and
 	// judgement in (ADR-026 rules 2 and 6); unset when it named neither,
 	// and on records made before.

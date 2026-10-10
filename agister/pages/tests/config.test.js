@@ -295,6 +295,21 @@ test('a workflow node keeps the agent it names, and a process may name none', as
   assert.deepEqual([bare.agent, bare.agentOutside, bare.usedBy], [null, false, ['panel']]);
 });
 
+// ADR-030 rule 6: a workflow of one call has that call as its one node,
+// with the agent it binds, and takes its process's params.
+test('a workflow of one call keeps its node and takes its process params', async () => {
+  const m = await C.loadAgister(memDir('.agister', {
+    agents: { 'sol.toml': 'name = "sol"\n' },
+    processes: { 'implement.yaml': 'name: implement\ninput:\n  params:\n    brief: {}\n    candidate: {default: HEAD}\n' },
+    workflows: { 'implement_sol.yaml': 'name: implement_sol\ncall: {node: implement, uses: process:implement, agent: sol}\n' },
+  }));
+  const w = m.workflows[0];
+  assert.deepEqual([w.fanOut, w.join], [[], null]);
+  assert.deepEqual(w.call, { node: 'implement', process: 'implement', agent: 'sol', outside: false });
+  assert.deepEqual(w.params, [{ name: 'brief', default: undefined }, { name: 'candidate', default: 'HEAD' }]);
+  assert.deepEqual(m.processes[0].usedBy, ['implement_sol']);
+});
+
 test('a file that does not parse becomes an error item; the rest still load', async () => {
   const m = await C.loadAgister(memDir('.agister', settings));
   const bad = m.policies.find((p) => p.name === 'bad');

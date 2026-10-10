@@ -16,12 +16,13 @@ import (
 // Nothing whoever starts the workflow supplies reaches the join. A node
 // that binds a base, one of bases, binds no work (ADR-030 rule 9), and one
 // that names no agent for a process that names none binds it to no agent
-// (rule 5).
+// (rule 5). A workflow of one call (rule 6) passes nothing and joins
+// nothing: its process must exist, be work, and not take the collection.
 func WorkflowProblems(workflow definition.Workflow, processes map[string]definition.Process, bases map[string][]string) []string {
 	var problems []string
 	add := func(format string, args ...any) { problems = append(problems, fmt.Sprintf(format, args...)) }
-	bound := func(node definition.Node, join bool) (definition.Process, bool) {
-		label, name := nodeLabel(node, join), node.Process
+	bound := func(node definition.Node, i int) (definition.Process, bool) {
+		label, name := nodeLabel(workflow, i, node), node.Process
 		if extenders := bases[name]; len(extenders) > 0 {
 			add("%s: process %s is a base of %s, not work (ADR-030 rule 9): bind a process that extends it", label, name, strings.Join(extenders, ", "))
 			return definition.Process{}, false
@@ -34,13 +35,21 @@ func WorkflowProblems(workflow definition.Workflow, processes map[string]definit
 		}
 		return process, ok
 	}
+	if call := workflow.Call; call != nil {
+		if process, ok := bound(*call, 0); ok {
+			if collects := process.Collects(); len(collects) > 0 {
+				add("call node %s: process %s takes the collection (input %s), which only a join receives", call.Name, process.Name, strings.Join(collects, ", "))
+			}
+		}
+		return problems
+	}
 	passed := map[string]bool{}
 	for _, value := range workflow.Values {
 		passed[value.Name] = true
 	}
 	taken := map[string]bool{}
-	for _, node := range workflow.FanOut {
-		process, ok := bound(node, false)
+	for i, node := range workflow.FanOut {
+		process, ok := bound(node, i)
 		if !ok {
 			continue
 		}
@@ -62,7 +71,7 @@ func WorkflowProblems(workflow definition.Workflow, processes map[string]definit
 	if workflow.Join.Process == "" {
 		return problems
 	}
-	join, ok := bound(workflow.Join, true)
+	join, ok := bound(workflow.Join, len(workflow.FanOut))
 	if !ok {
 		return problems
 	}
@@ -88,9 +97,12 @@ func WorkflowProblems(workflow definition.Workflow, processes map[string]definit
 	return problems
 }
 
-// nodeLabel names a node as a workflow's problems do.
-func nodeLabel(node definition.Node, join bool) string {
-	if join {
+// nodeLabel names the i-th of a workflow's nodes as its problems do.
+func nodeLabel(workflow definition.Workflow, i int, node definition.Node) string {
+	switch {
+	case workflow.Call != nil:
+		return "call node " + node.Name
+	case i == len(workflow.FanOut):
 		return "join node " + node.Name
 	}
 	return "fan-out node " + node.Name

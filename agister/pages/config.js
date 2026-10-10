@@ -279,9 +279,14 @@
       params: params(doc.input),
       fanOut: Array.isArray(doc.fan_out) ? doc.fan_out.map(node) : [],
       join: doc.join ? node(doc.join) : null,
+      // The one node of a workflow of one call (ADR-030 rule 6).
+      call: doc.call ? node(doc.call) : null,
       forms: forms(doc.input),
     };
   }
+
+  // A workflow's nodes: the fan-out, then the join, or its one call.
+  const workflowNodes = (w) => [...w.fanOut, ...(w.join ? [w.join] : []), ...(w.call ? [w.call] : [])];
 
   function processItem(file, _src, doc) {
     const instruction = typeof doc.input?.instruction === 'string' ? doc.input.instruction.trim() : '';
@@ -603,6 +608,7 @@
   function link(model) {
     const names = (items) => new Set(items.filter((x) => !x.error).map((x) => x.name));
     const processes = names(model.processes);
+    const byProcess = new Map(model.processes.filter((p) => !p.error).map((p) => [p.name, p]));
     const agents = names(model.agents);
     const byAgent = new Map(model.agents.filter((a) => !a.error).map((a) => [a.name, a]));
     const policies = names(model.policies);
@@ -633,7 +639,9 @@
 
     for (const w of model.workflows) {
       if (w.error) continue;
-      for (const n of [...w.fanOut, ...(w.join ? [w.join] : [])]) n.outside = !processes.has(n.process);
+      for (const n of workflowNodes(w)) n.outside = !processes.has(n.process);
+      // A workflow of one call takes its process's params (ADR-030 rule 6).
+      if (w.call) w.params = byProcess.get(w.call.process)?.params ?? [];
       // Each brief form its goal names, found as prompts are (ADR-026).
       w.forms = w.forms.map(brief);
     }
@@ -662,7 +670,7 @@
           ...(named?.layers && { layers: named.layers }) };
       }
       p.usedBy = model.workflows
-        .filter((w) => !w.error && [...w.fanOut, ...(w.join ? [w.join] : [])].some((n) => n.process === p.name))
+        .filter((w) => !w.error && workflowNodes(w).some((n) => n.process === p.name))
         .map((w) => w.name);
     }
     for (const a of model.agents) {

@@ -807,6 +807,29 @@ test('a process that names no policy shows its own workspace access', async () =
   for (const step of [write, read]) assert.equal(step.querySelector('span.missing'), null);
 });
 
+// ADR-030 rule 6: a workflow of one call shows its one call, on the
+// agent it binds, and the command it runs with its process's params; the
+// process has no card of its own.
+test('a workflow of one call shows its call and its process params', async () => {
+  const files = {
+    ...agent,
+    'agents/sol.toml': 'name = "sol"\nruntime = "codex"\nmodel = "gpt"\neffort = "low"\n',
+    'processes/implement.yaml': 'name: implement\ninput:\n  params:\n    brief: {}\n    candidate: {default: HEAD}\n',
+    'workflows/implement_sol.yaml': 'name: implement_sol\ncall: {node: implement, uses: process:implement, agent: sol}\n',
+  };
+  const p = page({ answers: { 'api/settings': () => respond({ path: '~', dir: '/u/.agister', home: true, files }) } });
+  await p.started;
+  const card = (name) => p.$('dashboard').querySelector(`article#${name}`);
+  const w = card('workflow-implement_sol');
+  const facts = w.querySelector('div.facts').children;
+  assert.equal(facts[facts.findIndex((n) => n.textContent === 'calls') + 1].textContent, 'gpt');
+  assert.equal(w.querySelector('div.cmd code').textContent, 'agister run implement_sol --param brief=<brief>');
+  const stages = w.querySelectorAll('section.stage');
+  assert.deepEqual(stages.map((stage) => stage.querySelector('h4').textContent), ['One call']);
+  assert.equal(stages[0].querySelector('div.step-meta').children[0].textContent, 'agent  sol · gpt · low effort');
+  assert.equal(card('process-implement'), null);
+});
+
 // ADR-030 rule 5: a step shows the agent its node names, in place of its
 // process's, and its process's where the node names none; the workflow's
 // calls line counts the same models. A process that names no agent is

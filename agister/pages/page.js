@@ -160,7 +160,7 @@
 
     const text = (value, className = '') => el('span', { className, textContent: value });
     const byName = (items) => new Map(items.filter((x) => !x.error).map((x) => [x.name, x]));
-    const nodes = (w) => [...w.fanOut, ...(w.join ? [w.join] : [])];
+    const nodes = (w) => [...w.fanOut, ...(w.join ? [w.join] : []), ...(w.call ? [w.call] : [])];
 
     // What can run first, as cards; what they are made of after, as tables.
     function dashboard(model, composed) {
@@ -422,6 +422,7 @@
       const parts = [];
       if (w.fanOut.length) parts.push(`${models(w.fanOut, ix)}${w.fanOut.length > 1 ? ' at once' : ''}`);
       if (w.join) parts.push(`${parts.length ? 'then ' : ''}${models([w.join], ix)}`);
+      if (w.call) parts.push(models([w.call], ix));
       return parts.length ? text(parts.join(', '), 'name') : null;
     }
 
@@ -430,7 +431,8 @@
       return card('workflow', w, chip, command(w.name, w.params),
         facts([['calls', calls(w, ix)], ['defaults', defaults(w.params)], ['briefs', namedLine('brief', w.forms, chip)]]),
         w.fanOut.length ? stage(w.fanOut.length > 1 ? `${w.fanOut.length} at once` : 'First', w.fanOut.map((n) => step(n, ix, chip))) : null,
-        w.join ? stage('Then', [step(w.join, ix, chip)]) : null);
+        w.join ? stage('Then', [step(w.join, ix, chip)]) : null,
+        w.call ? stage('One call', [step(w.call, ix, chip)]) : null);
     }
 
     // A reference table; the first cell is the name, then cells(item), then

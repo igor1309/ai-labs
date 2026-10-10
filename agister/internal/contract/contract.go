@@ -377,10 +377,13 @@ type ProcessView struct {
 }
 
 type WorkflowSummary struct {
-	Name    string
-	FanOut  []string // node:process, in declaration order
-	Join    string   // node:process
-	Problem string   // set when the definition is invalid
+	Name   string
+	FanOut []string // node:process, in declaration order
+	Join   string   // node:process
+	// Call is the one node of a workflow of one call (ADR-030 rule 6), as
+	// node:process; FanOut and Join are then empty.
+	Call    string
+	Problem string // set when the definition is invalid
 	// Why a run of it would be refused now, for a problem in a document it
 	// or a node's call depends on; empty when none has one.
 	Refusal string
@@ -393,6 +396,10 @@ type WorkflowView struct {
 	Inputs []string // resolved once, before any node starts
 	FanOut []WorkflowNode
 	Join   WorkflowNode
+	// Call is the one node of a workflow of one call (ADR-030 rule 6),
+	// whose params and inputs are the workflow's; FanOut and Join are then
+	// empty.
+	Call *WorkflowNode
 	// Collection is the join's input that receives the collection.
 	Collection string
 	// Why a run of it would be refused now; empty when it would run.
@@ -406,7 +413,8 @@ type WorkflowView struct {
 type WorkflowNode struct {
 	Name    string
 	Process ProcessView
-	// The workflow's inputs it receives as params; none for a join.
+	// The workflow's inputs it receives as params; none for a join, and
+	// every one of its process's for a call.
 	Params []string
 }
 

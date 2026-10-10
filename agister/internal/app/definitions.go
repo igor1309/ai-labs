@@ -465,6 +465,9 @@ func (s *Settings) ListWorkflows(ctx context.Context) ([]contract.WorkflowSummar
 			continue
 		}
 		summary := contract.WorkflowSummary{Name: workflow.Name, Join: workflow.Join.Name + ":" + workflow.Join.Process, Refusal: refusal}
+		if call := workflow.Call; call != nil {
+			summary.Join, summary.Call = "", call.Name+":"+call.Process
+		}
 		for _, node := range workflow.FanOut {
 			summary.FanOut = append(summary.FanOut, node.Name+":"+node.Process)
 		}
@@ -622,6 +625,8 @@ type InspectedWorkflowDefinition struct {
 	Values []InspectedValue
 	FanOut []InspectedNode
 	Join   InspectedNode
+	// Call is the one node of a workflow of one call (ADR-030 rule 6).
+	Call *InspectedNode
 }
 
 // InspectedNode is one node of a workflow, the process it calls and the
@@ -696,6 +701,10 @@ func (r *Resolver) InspectWorkflow(ctx context.Context, name string) (*Inspected
 		},
 		NodeProcesses: make(map[string]InspectedNodeProcess, len(res.processes)),
 		Sources:       inspectedSources(res.sources),
+	}
+	if call := workflow.Call; call != nil {
+		called := node(*call)
+		inspected.Workflow.Call = &called
 	}
 	for name, process := range res.processes {
 		inspected.NodeProcesses[name] = InspectedNodeProcess{
@@ -788,6 +797,26 @@ func (i *Inspection) ShowWorkflow(ctx context.Context, name string) (contract.Wo
 		}
 		return shown, err
 	}
+	warn := func(shown contract.WorkflowNode) {
+		for _, warning := range shown.Process.Warnings {
+			view.Warnings = append(view.Warnings, "node "+shown.Name+": "+warning)
+		}
+	}
+	// A workflow of one call takes its process's params and resolves its
+	// process's inputs, as a call of it (ADR-030 rule 6).
+	if call := workflow.Call; call != nil {
+		shown, err := node(*call, false)
+		if err != nil {
+			return contract.WorkflowView{}, err
+		}
+		view.Params, view.Inputs = shown.Process.Params, shown.Process.Inputs
+		for _, param := range view.Params {
+			shown.Params = append(shown.Params, param.Name)
+		}
+		view.Call = &shown
+		warn(shown)
+		return view, nil
+	}
 	for _, fanOut := range workflow.FanOut {
 		shown, err := node(fanOut, false)
 		if err != nil {
@@ -802,9 +831,7 @@ func (i *Inspection) ShowWorkflow(ctx context.Context, name string) (contract.Wo
 		view.Collection = collects[0]
 	}
 	for _, shown := range append(append([]contract.WorkflowNode(nil), view.FanOut...), view.Join) {
-		for _, warning := range shown.Process.Warnings {
-			view.Warnings = append(view.Warnings, "node "+shown.Name+": "+warning)
-		}
+		warn(shown)
 	}
 	return view, nil
 }

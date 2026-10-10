@@ -25,9 +25,11 @@ type Node struct {
 	Agent string
 }
 
-// Workflow is a settings definition of one fixed shape (ADR-003): fan-out
-// nodes, each a call of its process over the same resolved inputs, then one
-// join node, a call of its process given the fan-out nodes' results.
+// Workflow is a settings definition of one of two shapes (ADR-030 rule 6).
+// The fan-out and join of ADR-003: fan-out nodes, each a call of its process
+// over the same resolved inputs, then one join node, a call of its process
+// given the fan-out nodes' results. Or one call: Call, the one node, whose
+// process's params and inputs are the workflow's.
 type Workflow struct {
 	Name string
 	// Params are what the caller supplies; Values are resolved from them
@@ -38,11 +40,20 @@ type Workflow struct {
 	Values []Value
 	FanOut []Node
 	Join   Node
+	// Call is the one node of a workflow of one call; nil: the workflow
+	// fans out and joins.
+	Call   *Node
 	Source Source
 }
 
-// Nodes lists the fan-out nodes in declaration order, then the join.
-func (w Workflow) Nodes() []Node { return append(append([]Node(nil), w.FanOut...), w.Join) }
+// Nodes lists a workflow's nodes: the one call, or the fan-out nodes in
+// declaration order, then the join.
+func (w Workflow) Nodes() []Node {
+	if w.Call != nil {
+		return []Node{*w.Call}
+	}
+	return append(append([]Node(nil), w.FanOut...), w.Join)
+}
 
 // Collects reports the inputs of a process that receive a workflow's
 // collection.
@@ -66,18 +77,10 @@ func ParseWorkflow(doc Document) (Workflow, error) {
 	if root == nil {
 		return workflow, p.err(subject)
 	}
-	values := fields(root, "", []string{"schema", "name", "status", "type", "input", "fan_out", "join"}, p)
+	values := fields(root, "", []string{"schema", "name", "status", "type", "input", "fan_out", "join", "call"}, p)
 	header(values, WorkflowSchema, doc.Source.Name, p)
 	if value, _ := scalar(values["type"], "type", p); value != "workflow" {
 		p.add("type", `must be "workflow"`)
-	}
-
-	input := fields(values["input"], "input", []string{"params", "values"}, p)
-	workflow.Params, workflow.Values = parseInputs(input, p)
-	for _, value := range workflow.Values {
-		if value.Source == CollectionSource {
-			p.add("input.values."+value.Name+".source", "%s is given only to a join", CollectionSource)
-		}
 	}
 
 	seen := map[string]string{} // node name: the field that declared it first
@@ -99,8 +102,8 @@ func ParseWorkflow(doc Document) (Workflow, error) {
 		} else if uses != "" {
 			p.add(field+".uses", `must be "process:<name>"`)
 		}
-		// The agent's name alone, as ADR-030 rule 5 writes a binding; a node
-		// that names none runs on its process's.
+		// The agent's name alone, as ADR-030 rule 5 writes a binding; a
+		// fan-out or join node that names none runs on its process's.
 		if value, ok := spec["agent"]; ok {
 			if agent := nonEmpty(value, field+".agent", p); ValidName(agent) {
 				n.Agent = agent
@@ -109,6 +112,29 @@ func ParseWorkflow(doc Document) (Workflow, error) {
 			}
 		}
 		return n
+	}
+	// One call is the whole workflow (ADR-030 rule 6): nothing beside it
+	// declares inputs or nodes, and nothing but the node names its agent.
+	if item, ok := values["call"]; ok {
+		for _, field := range []string{"input", "fan_out", "join"} {
+			if _, ok := values[field]; ok {
+				p.add(field, "a workflow with call has no %s (ADR-030 rule 6)", field)
+			}
+		}
+		call := node(item, "call")
+		if declared(item, "agent") == 0 {
+			p.missing("call.agent")
+		}
+		workflow.Call = &call
+		return workflow, p.err(subject)
+	}
+
+	input := fields(values["input"], "input", []string{"params", "values"}, p)
+	workflow.Params, workflow.Values = parseInputs(input, p)
+	for _, value := range workflow.Values {
+		if value.Source == CollectionSource {
+			p.add("input.values."+value.Name+".source", "%s is given only to a join", CollectionSource)
+		}
 	}
 	switch list := values["fan_out"]; {
 	case list == nil:

@@ -263,6 +263,9 @@ type CallWorkflow struct {
 	Values []CallValue
 	FanOut []CallNode
 	Join   CallNode
+	// Call is the one node of a workflow of one call (ADR-030 rule 6),
+	// whose run is the call's own; nil: the workflow fans out and joins.
+	Call *CallNode
 }
 
 // CallNode is one node of a workflow, the process it calls and the agent
@@ -348,6 +351,10 @@ func (c callResolution) Workflow(ctx context.Context, name string) (*ResolvedWor
 		Sources:       callSources(res.sources),
 		Layers:        callLayers(c.resolver.definitions.Layers(ctx)),
 		Forms:         callForms(res.forms),
+	}
+	if call := workflow.Call; call != nil {
+		called := node(*call)
+		resolved.Workflow.Call = &called
 	}
 	for name, process := range res.processes {
 		resolved.NodeProcesses[name] = CallNodeProcess{
@@ -776,11 +783,19 @@ func (c *Calls) Submit(ctx context.Context, request contract.CallRequest) (strin
 	// too.
 	resolver := c.resolver.Snapshot(ctx)
 	workflow, isWorkflow, workflowErr := resolver.Workflow(ctx, request.Process)
+	// A workflow of one call is that call's run, which names the call
+	// from the start (ADR-030 rule 6).
+	var one *called
+	if isWorkflow && workflow != nil && workflow.Workflow.Call != nil {
+		call := workflow.Workflow.Call
+		record.Call = &run.Call{Node: call.Name, Process: call.Process, Agent: call.Agent}
+		one = &called{workflow: workflow, err: workflowErr}
+	}
 	handle, err := c.recorder.Create(ctx, record)
 	if err != nil {
 		return "", err
 	}
-	if isWorkflow {
+	if isWorkflow && one == nil {
 		runCtx, cancel := context.WithCancel(WithCorrelation(context.WithoutCancel(ctx), "workflow_run", record.ID, "workflow", request.Process))
 		// Cancelling the workflow is serialized with starting its nodes.
 		flow := &flow{cancel: cancel}
@@ -799,16 +814,25 @@ func (c *Calls) Submit(ctx context.Context, request contract.CallRequest) (strin
 		defer c.cancels.End(record.ID)
 		defer c.cancels.Remove(record.ID)
 		defer cancel()
-		c.execute(runCtx, handle, record, resolver, nil)
+		c.execute(runCtx, handle, record, resolver, nil, one)
 	}()
 	return record.ID, nil
+}
+
+// called is the workflow of one call a run is (ADR-030 rule 6), as the run
+// resolved it, and what refuses it.
+type called struct {
+	workflow *ResolvedWorkflow
+	err      error
 }
 
 // execute runs one call and returns its record as finished. Every refusal
 // happens before the runtime starts and is recorded; every effect is
 // released on every path. collection is what a workflow's join receives
-// through its collection input; nil for any other call.
-func (c *Calls) execute(ctx context.Context, handle RunHandle, record run.Record, resolver CallResolution, collection *Resolved) (final run.Record) {
+// through its collection input; nil for any other call. one is the
+// workflow of one call the run is, record.Call its call; nil for any
+// other.
+func (c *Calls) execute(ctx context.Context, handle RunHandle, record run.Record, resolver CallResolution, collection *Resolved, one *called) (final run.Record) {
 	event := func(source, kind string, data map[string]any) {
 		_ = handle.Append(run.Event{At: c.clock.Now(), Source: source, Kind: kind, Data: data})
 	}
@@ -874,7 +898,11 @@ func (c *Calls) execute(ctx context.Context, handle RunHandle, record run.Record
 			finish(run.Fault(run.ClassInternal, "%v", recovered))
 		}
 	}()
-	event(run.SourceAgister, "CALL_SUBMITTED", map[string]any{"process": record.Process})
+	submitted := map[string]any{"process": record.Process}
+	if one != nil {
+		submitted["workflow"], submitted["process"] = record.Process, record.Call.Process
+	}
+	event(run.SourceAgister, "CALL_SUBMITTED", submitted)
 
 	fail := func(err error) {
 		// A cancelled call's probes and git fail as a consequence; the
@@ -892,12 +920,31 @@ func (c *Calls) execute(ctx context.Context, handle RunHandle, record run.Record
 		finish(run.Fault(run.ClassInternal, "%v", err))
 	}
 
-	res, err := resolver.Resolve(ctx, CallResolveRequest{
+	resolving := CallResolveRequest{
 		Process: record.Request.Process, Agent: record.Request.Agent,
 		Timeout: record.Request.Timeout, MaxCostUSD: record.Request.MaxCostUSD,
 		Node: record.Parent != nil,
-	})
-	record.Definitions = recordSources(res.Sources)
+	}
+	var sources []run.DefinitionSource
+	if one != nil {
+		// The workflow's node binds the process to its agent, which no
+		// caller chooses (ADR-030 rule 5); its sources come first.
+		if one.workflow != nil {
+			sources = recordSources(one.workflow.Sources)
+			record.Definitions, record.Layers = sources, recordLayers(one.workflow.Layers)
+		}
+		err := one.err
+		if err == nil && record.Request.Agent != "" {
+			err = refuse("workflow %s binds its call to agent %s; it takes no agent of its caller's, not %s (ADR-030 rule 5)", record.Process, record.Call.Agent, record.Request.Agent)
+		}
+		if err != nil {
+			fail(err)
+			return
+		}
+		resolving.Process, resolving.Agent, resolving.Node = record.Call.Process, record.Call.Agent, true
+	}
+	res, err := resolver.Resolve(ctx, resolving)
+	record.Definitions = append(sources, recordSources(res.Sources)...)
 	record.Layers = recordLayers(res.Layers)
 	if err != nil {
 		fail(err)
@@ -925,7 +972,7 @@ func (c *Calls) execute(ctx context.Context, handle RunHandle, record run.Record
 		return
 	}
 	_ = handle.Update(record)
-	resumed, err := c.continuation(ctx, res, record.ID, record.Request.Continue, record.Request.Cwd)
+	resumed, err := c.continuation(ctx, res, record.ID, record.Request.Continue, record.Request.Cwd, record.Call)
 	if err != nil {
 		fail(err)
 		return
@@ -942,7 +989,12 @@ func (c *Calls) execute(ctx context.Context, handle RunHandle, record run.Record
 		return
 	}
 
-	inputs, files, err := c.resolveValues(ctx, "process "+res.Process.Name, res.Process.Params, res.Process.Values, record.Request, collection, res.Prompts, res.Forms)
+	// A workflow of one call takes its process's params as its own.
+	subject := "process " + res.Process.Name
+	if one != nil {
+		subject = "workflow " + record.Process
+	}
+	inputs, files, err := c.resolveValues(ctx, subject, res.Process.Params, res.Process.Values, record.Request, collection, res.Prompts, res.Forms)
 	// A refused text is recorded too: the refusal's evidence (ADR-026 rule
 	// 6).
 	if inputs != nil {
@@ -1387,7 +1439,7 @@ func (c *Calls) startNode(ctx context.Context, parent string, node CallNode, par
 		defer c.cancels.End(record.ID)
 		defer c.cancels.Remove(record.ID)
 		defer cancel()
-		ended(c.execute(nodeCtx, handle, record, resolver, collection))
+		ended(c.execute(nodeCtx, handle, record, resolver, collection, nil))
 	}()
 	return record.ID, nil
 }
@@ -1407,8 +1459,10 @@ type resumption struct {
 // returns what the call resumes. Continuing is deliberate: the process, or
 // its agent where the process says nothing, must allow it (ADR-030 rule
 // 3), the runtime must support it, and the earlier run must be finished,
-// by the same agent, with a session. self is the asking run.
-func (c *Calls) continuation(ctx context.Context, res *ResolvedCall, self, runID, cwd string) (resumption, error) {
+// by the same agent, with a session. self is the asking run. call is the
+// call of the workflow of one call that asks, nil for any other: it
+// continues only a run of a workflow's call of the same process (rule 11).
+func (c *Calls) continuation(ctx context.Context, res *ResolvedCall, self, runID, cwd string, call *run.Call) (resumption, error) {
 	if runID == "" {
 		return resumption{}, nil
 	}
@@ -1425,6 +1479,8 @@ func (c *Calls) continuation(ctx context.Context, res *ResolvedCall, self, runID
 	switch {
 	case state != run.StateFinished:
 		return resumption{}, refuse("run %s is %s, not finished", runID, state)
+	case call != nil && (prior.Call == nil || prior.Call.Process != call.Process):
+		return resumption{}, refuse("run %s is not a run of a workflow's call of process %s: its process and agent are not the ones the workflow binds (ADR-030 rule 11)", runID, call.Process)
 	case prior.Agent != res.Agent.Name:
 		return resumption{}, refuse("run %s ran agent %s; only agent %s's own runs can be continued by it", runID, prior.Agent, res.Agent.Name)
 	case prior.Runtime == nil || prior.Runtime.Adapter != res.Mapping.Adapter:

@@ -39,7 +39,7 @@ func (b Bundle) bindings(workflow definition.Workflow) []binding {
 		if err != nil {
 			continue
 		}
-		bound = append(bound, binding{node: nodeLabel(node, i == len(workflow.FanOut)), process: process, agent: agent, effective: effective})
+		bound = append(bound, binding{node: nodeLabel(workflow, i, node), process: process, agent: agent, effective: effective})
 	}
 	return bound
 }

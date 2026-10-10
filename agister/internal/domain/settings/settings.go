@@ -218,7 +218,7 @@ func Check(b Bundle, m Mechanisms) []Problem {
 		// (ADR-030 rule 5).
 		for i, node := range workflow.Nodes() {
 			if _, ok := b.Agents[node.Agent]; node.Agent != "" && !ok {
-				add(subject, "%s: agent %q does not exist", nodeLabel(node, i == len(workflow.FanOut)), node.Agent)
+				add(subject, "%s: agent %q does not exist", nodeLabel(workflow, i, node), node.Agent)
 			}
 		}
 		// So is the binding: a process that cannot run on the agent a node
