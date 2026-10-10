@@ -524,7 +524,8 @@
         el('p', { className: 'group-note', textContent: 'newest first; click a run to open it' }),
         filters(runs.list.runs),
         el('div', { id: 'run-list' }),
-        runOverlay());
+        runOverlay(),
+        skillOverlay());
       renderRunList();
     }
 
@@ -682,6 +683,7 @@
     // Closes the opened run; the focus goes back to its row.
     function closeRun() {
       detailToken++;
+      if (skillOpen()) closeSkill();
       const id = runs.chosen;
       runs.chosen = null;
       markChosen();
@@ -691,6 +693,76 @@
     }
 
     const runOpen = () => !!$('run-overlay') && !$('run-overlay').hidden;
+    const skillOpen = () => !!$('skill-overlay') && !$('skill-overlay').hidden;
+
+    // A skill a run used shows over the run; Close, Escape or a click beside
+    // it closes it and leaves the run open.
+    function skillOverlay() {
+      const panel = el('div', { id: 'skill-detail', className: 'card panel', tabIndex: -1 });
+      panel.setAttribute('role', 'dialog');
+      panel.setAttribute('aria-modal', 'true');
+      panel.setAttribute('aria-label', 'Skill');
+      const overlay = el('div', { id: 'skill-overlay', className: 'overlay over', hidden: true }, panel);
+      overlay.addEventListener('click', (e) => { if (e.target === overlay) closeSkill(); });
+      return overlay;
+    }
+
+    let skillToken = 0;
+
+    function closeSkill() {
+      skillToken++;
+      $('skill-overlay').hidden = true;
+      $('skill-detail').replaceChildren();
+      $('run-close')?.focus();
+    }
+
+    // Opens the skill name a run used, as it is now: read from the run's
+    // working directory, else the folder the picker shows, else Agister
+    // home, as a run on adapter finds it.
+    async function openSkill(name, cwd, adapter) {
+      const token = ++skillToken;
+      let found = null;
+      const unread = [];
+      for (const place of U.skillPlaces(cwd, state.current, R.HOME_ID)) {
+        try {
+          found = U.findSkill(await R.fetchSkills(fetch, place), name, adapter);
+        } catch {
+          unread.push(place);
+          continue;
+        }
+        if (found) {
+          found.place = place;
+          break;
+        }
+      }
+      if (token !== skillToken) return;
+      const close = el('button', { type: 'button', id: 'skill-close', className: 'close', textContent: '×', title: 'Close (Esc)' });
+      close.setAttribute('aria-label', 'Close');
+      close.addEventListener('click', closeSkill);
+      const label = (p) => (p === R.HOME_ID ? 'Agister home' : p);
+      const why = !cwd ? 'The run’s record names no working directory'
+        : unread.includes(cwd) ? `The run’s working directory, ${cwd}, cannot be read`
+        : 'The run’s working directory has no such skill';
+      const note = !found ? `No skill named ${name} in ${U.skillPlaces(cwd, state.current, R.HOME_ID).map(label).join(', ')}.`
+        : found.place === cwd ? 'As the run’s working directory holds it now; the run may have read an earlier version.'
+        : `${why}: this is the skill as it is here now, which can differ from what the run read.`;
+      $('skill-detail').replaceChildren(el('article', { className: 'skill-card', dataset: { skill: name } },
+        el('header', { className: 'run-head' }, el('div', { className: 'run-title' }, el('h3', { textContent: name })), close),
+        found ? el('p', { className: 'run-when' }, `${found.folder} in ${label(found.place)}`, found.skill.path ? el('span', { className: 'run-id', textContent: ` · ${found.skill.path}` }) : null) : null,
+        el('p', { className: 'group-note', textContent: note }),
+        found?.skill.content ? el('div', { className: 'markdown' }, K.markdown(K.body(found.skill.content)).map(block))
+          : found ? el('p', { className: 'error', textContent: `SKILL.md was not read: ${found.skill.state ?? 'no content'}` }) : null));
+      $('skill-overlay').hidden = false;
+      $('skill-detail').scrollTop = 0;
+      close.focus();
+    }
+
+    // A skill a run used, as a link that opens it over the run.
+    function skillLink(name, cwd, adapter) {
+      const link = el('a', { href: `#${name}`, textContent: name });
+      link.addEventListener('click', (e) => { e.preventDefault(); openSkill(name, cwd, adapter); });
+      return link;
+    }
 
     // Opens the run id over the list, from the server, in place of the one
     // open, if any.
@@ -763,7 +835,8 @@
             joined([policy.timeout_ms ? U.duration(policy.timeout_ms) : '', policy.max_cost_usd != null ? `${U.cost(policy.max_cost_usd)} cap` : '', policy.scope && `scope ${policy.scope}`])) : null],
           ['verify', outcome.verify ? U.verify(outcome.verify, record?.verify?.max_attempts) : null],
           ['timing', joined([outcome.turn_ms != null && `turn ${U.duration(outcome.turn_ms)}`, outcome.runtime_ms != null && `runtime ${U.duration(outcome.runtime_ms)}`]) || null],
-          ['activity', joined([s.tool_calls != null && `${s.tool_calls} tool ${s.tool_calls === 1 ? 'call' : 'calls'}`, U.skills(s.skills) && `skills ${U.skills(s.skills)}`]) || null],
+          ['activity', s.tool_calls != null ? `${s.tool_calls} tool ${s.tool_calls === 1 ? 'call' : 'calls'}` : null],
+          ['skills', s.skills?.length ? line(...s.skills.flatMap((k, i) => [i ? ', ' : null, skillLink(k.name, record?.request?.cwd, impl?.adapter), `×${k.count ?? 0}`])) : null],
           ['workflow', s.parent ? runLink(s.parent, 'the workflow run') : null],
           ['rulings', items ? `${U.counts(items.by_ruling) || 'none'} (${items.total} ${items.total === 1 ? 'item' : 'items'})` : null],
           ['severities', items ? U.counts(items.by_severity) || null : null],
@@ -1141,6 +1214,8 @@
       if (e.key === 'Escape' && !$('picker-menu').hidden) {
         setMenu(false);
         $('picker-button').focus();
+      } else if (e.key === 'Escape' && state.view === 'runs' && skillOpen()) {
+        closeSkill();
       } else if (e.key === 'Escape' && state.view === 'runs' && runOpen()) {
         closeRun();
       }

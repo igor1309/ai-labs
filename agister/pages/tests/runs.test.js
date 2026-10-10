@@ -261,6 +261,29 @@ test('without an output a result reads as its text; an error comes first, its me
   assert.deepEqual(U.runOutput(undefined), { verdict: '', parts: [] });
 });
 
+test('a run\'s skill is looked for in its working directory, the picker\'s folder and home, each once', () => {
+  assert.deepEqual(U.skillPlaces('/w', '/repo', '~'), ['/w', '/repo', '~']);
+  assert.deepEqual(U.skillPlaces('/repo', '/repo', '~'), ['/repo', '~']);
+  assert.deepEqual(U.skillPlaces(undefined, '~', '~'), ['~']);
+});
+
+test('a skill is found as the run\'s runtime finds it: settings first, then its adapter\'s folders, read before unread', () => {
+  const skill = (name, content, path) => ({ name, content, path });
+  const reply = {
+    settings: [skill('named', 'from settings', 's')],
+    folders: [
+      { folder: '.claude/skills', adapters: ['claude-code'], skills: [skill('review', 'claude copy', 'c'), skill('named', 'claude named', 'cn')] },
+      { folder: '.agents/skills', adapters: ['codex'], skills: [skill('review', '', 'unread'), skill('review', 'codex copy', 'x')] },
+    ],
+  };
+  assert.deepEqual(U.findSkill(reply, 'review', 'codex'), { skill: skill('review', 'codex copy', 'x'), folder: '.agents/skills' });
+  assert.deepEqual(U.findSkill(reply, 'review', 'claude-code'), { skill: skill('review', 'claude copy', 'c'), folder: '.claude/skills' });
+  assert.equal(U.findSkill(reply, 'named', 'claude-code').folder, 'settings');
+  assert.equal(U.findSkill({ folders: [{ folder: 'f', adapters: [], skills: [{ name: 'x', state: 'too_large' }] }] }, 'x', 'codex').skill.state, 'too_large');
+  assert.equal(U.findSkill(reply, 'absent', 'codex'), null);
+  assert.equal(U.findSkill(undefined, 'review', 'codex'), null);
+});
+
 test('verdicts, statuses and severities have a tone; other values none', () => {
   assert.deepEqual(['approve', 'checked', 'request_changes', 'finding', 'major', 'minor', 'rule_only', 'fix', 'whatever'].map(U.tone),
     ['ok', 'ok', 'bad', 'bad', 'bad', 'warn', 'warn', '', '']);

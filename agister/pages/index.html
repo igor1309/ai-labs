@@ -185,6 +185,10 @@
     box-shadow: 0 20px 60px rgb(0 0 0 / .5);
   }
   .panel:focus { outline: none; }
+  /* A skill opened from a run, over the run. */
+  .overlay.over { z-index: 30; padding-top: 9vh; background: rgb(0 0 0 / .35); }
+  #skill-detail a { color: var(--accent); }
+  .skill-card .markdown { max-width: 80ch; }
   .run-title { display: flex; align-items: baseline; flex-wrap: wrap; gap: 6px 14px; min-width: 0; }
   .run-title h3 { font-size: 17px; }
   .run-title .mark { font-size: 16px; }

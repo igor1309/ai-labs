@@ -68,7 +68,7 @@ const compare = {
   skipped: 0,
 };
 // Records as stored: a field no summary carries shows they are the record's.
-const callRecord = { id: 'call-1', verify: { max_attempts: 3 }, from_a_newer_agister: { kept: [1, 2] } };
+const callRecord = { id: 'call-1', request: { cwd: '/w/run' }, verify: { max_attempts: 3 }, from_a_newer_agister: { kept: [1, 2] } };
 const workflowRecord = { id: 'wf-1', workflow: { barrier: { state: 'passed' } } };
 const agent = { 'agents/opus.toml': 'name = "opus"\nruntime = "claude-code"\nmodel = "opus"\neffort = "high"\n' };
 
@@ -91,7 +91,7 @@ function page({ storage = fakeStorage(), answers = {} } = {}) {
     const route = url.split('?')[0];
     const answer = answers[route] ?? fallback[route];
     if (!answer) return respond({ error: `no ${url}` }, 404);
-    return answer(asked(route));
+    return answer(asked(route), url);
   };
   const document = pageDocument();
   const location = { protocol: 'http:', hash: '' };
@@ -437,7 +437,8 @@ test('an opened run shows its facts, a workflow its nodes as a table, and the re
     policy: ['read-write workspace · 20m 0s · $5.00 cap · scope candidate'],
     verify: ['2/3 ✓'],
     timing: ['turn 1m 40s · runtime 412ms'],
-    activity: ['12 tool calls · skills review×3, go×1'],
+    activity: ['12 tool calls'],
+    skills: ['review×3, go×1'],
     workflow: ['the workflow run'],
   });
   assert.equal(p.$('run-detail').querySelector('div.nodes'), null);
@@ -516,6 +517,80 @@ test('a failed run shows its error first, then its text, and no verdict', async 
   assert.deepEqual(parts.map((c) => [c.dataset.key, c.querySelector('div.markdown').textContent]),
     [['error', 'Hit the limit.class: rate_limited'], ['text', 'Got as far as this.']]);
   assert.equal(p.$('run-detail').querySelector('span.verdict'), null);
+});
+
+// An api/skills reply holding a skill named review in a folder for adapter.
+const skillsHolding = (content, adapter = 'claude-code', extra = {}) => respond({
+  home: false, adapters: [adapter], settings: [],
+  folders: [{ scope: 'repo', folder: '.claude/skills', adapters: [adapter], skills: [{ name: 'review', path: '/w/run/.claude/skills/review', content, checks: { passed: true }, ...extra }] }],
+});
+
+test('a skill the run used is a link that opens it over the run, from the run\'s working directory', async () => {
+  const p = page({
+    storage: fakeStorage({ [VIEW_KEY]: 'runs' }),
+    answers: { 'api/skills': (n, url) => (url === 'api/skills?path=%2Fw%2Frun' ? skillsHolding('---\nname: review\n---\n# Review\n\nRead **all** of it.') : respond({ home: true, folders: [], settings: [] })) },
+  });
+  await p.started;
+  p.row('call-1').click();
+  await settle();
+  const links = p.$('run-detail').querySelector('div.facts').querySelectorAll('a').filter((a) => a.href === '#review' || a.href === '#go');
+  assert.deepEqual(links.map((a) => a.textContent), ['review', 'go']);
+  assert.ok(links[0].click().defaultPrevented);
+  await settle();
+  assert.equal(p.$('skill-overlay').hidden, false);
+  assert.equal(p.document.activeElement, p.$('skill-close'));
+  const card = p.$('skill-detail').querySelector('article.skill-card');
+  assert.equal(card.dataset.skill, 'review');
+  assert.equal(card.querySelector('h3').textContent, 'review');
+  assert.equal(card.querySelector('p.run-when').textContent, '.claude/skills in /w/run · /w/run/.claude/skills/review');
+  assert.match(card.querySelector('p.group-note').textContent, /^As the run’s working directory holds it now/);
+  assert.equal(card.querySelector('div.markdown').textContent, 'ReviewRead all of it.');
+
+  // Escape closes the skill and leaves the run open; then the run.
+  p.document.dispatchEvent(new Event('keydown', { key: 'Escape' }));
+  assert.equal(p.$('skill-overlay').hidden, true);
+  assert.equal(p.detail(), 'call-1');
+  assert.equal(p.document.activeElement, p.$('run-close'));
+  p.document.dispatchEvent(new Event('keydown', { key: 'Escape' }));
+  assert.equal(p.detail(), null);
+
+  // A click beside the skill closes it alone; closing the run closes both.
+  p.row('call-1').click();
+  await settle();
+  links[0].click();
+  p.$('run-detail').querySelectorAll('a').find((a) => a.href === '#review').click();
+  await settle();
+  p.$('skill-overlay').click();
+  assert.equal(p.$('skill-overlay').hidden, true);
+  assert.equal(p.detail(), 'call-1');
+  p.$('run-detail').querySelectorAll('a').find((a) => a.href === '#review').click();
+  await settle();
+  p.$('run-close').click();
+  assert.equal(p.$('skill-overlay').hidden, true);
+  assert.equal(p.detail(), null);
+});
+
+test('a skill whose run\'s working directory is gone is read from the folder the picker shows, and says so', async () => {
+  const p = page({
+    storage: fakeStorage({ [VIEW_KEY]: 'runs' }),
+    answers: { 'api/skills': (n, url) => (url === 'api/skills?path=%2Fw%2Frun' ? respond({ error: 'no .agister folder at /w/run/.agister' }, 404) : skillsHolding('Home copy.')) },
+  });
+  await p.started;
+  p.row('call-1').click();
+  await settle();
+  p.$('run-detail').querySelectorAll('a').find((a) => a.href === '#review').click();
+  await settle();
+  const card = p.$('skill-detail').querySelector('article.skill-card');
+  assert.equal(card.querySelector('p.run-when').textContent.split(' · ')[0], '.claude/skills in Agister home');
+  assert.equal(card.querySelector('p.group-note').textContent,
+    'The run’s working directory, /w/run, cannot be read: this is the skill as it is here now, which can differ from what the run read.');
+  assert.equal(card.querySelector('div.markdown').textContent, 'Home copy.');
+  assert.deepEqual(p.calls.filter((u) => u.startsWith('api/skills')).slice(-2), ['api/skills?path=%2Fw%2Frun', 'api/skills?path=~']);
+
+  // A skill no place has says where it looked.
+  p.$('run-detail').querySelectorAll('a').find((a) => a.href === '#go').click();
+  await settle();
+  assert.equal(p.$('skill-detail').querySelector('p.group-note').textContent, 'No skill named go in /w/run, Agister home.');
 });
 
 test('the process and status filters show only the runs that match, and clearing them shows all', async () => {

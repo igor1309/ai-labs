@@ -88,8 +88,8 @@ again.
   it closes it. Its head is the process, its status, cost and wall time,
   then when it ran (`4:07 PM – 4:10 PM, 10.10.26`), its agent and, small,
   its ID. Then implementor, policy, verify (`2/3 ✓`, out of the process's
-  most), turn and runtime timing, tool calls and skills, the workflow it
-  belongs to, and for a workflow its judge's items by ruling and by
+  most), turn and runtime timing, tool calls, the skills it used, each a
+  link, the workflow it belongs to, and for a workflow its judge's items by ruling and by
   severity and its nodes as a table: process, status, wall, cost and the
   rulings of the items each node was a source of. A link opens that run in
   its place. Then what its result says: a review's verdict in the head
@@ -101,6 +101,13 @@ again.
   as markdown, the rest as it nests; an implement's checks are left out. Without an output the result's text
   shows; with one, the text is that output as JSON and is left out. The
   record as stored is folded at the bottom.
+- A skill's link opens it over the run, rendered; Close, Escape or a click
+  beside it closes it and leaves the run open. A run keeps no copy of its
+  skills, so this is the skill as it is now, found as the run's runtime
+  would find it (the settings' skills, then the folders its adapter
+  loads): in the run's working directory, else, when that is gone or has
+  no such skill, the folder the picker shows, else Agister home. It says
+  which, and that it can differ from what the run read.
 
 Durations read `1m 47s` or `412ms`, costs `$0.50`, times in local time. A
 failed or interrupted run shows in red.

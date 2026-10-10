@@ -229,6 +229,29 @@
     return { verdict, parts };
   }
 
+  // --- a skill a run used ---
+
+  // Where to look for a skill a run used, nearest first: the run's working
+  // directory, the folder the picker shows, Agister home; each once.
+  function skillPlaces(cwd, current, home) {
+    return [...new Set([cwd, current, home].filter(Boolean))];
+  }
+
+  // The skill name in an api/skills reply, as a run on adapter would find
+  // it: the settings' own skills first, then the folders adapter loads,
+  // then the others; within each, in the reply's order (repo before home).
+  // One whose SKILL.md was read goes before one whose was not. null when
+  // there is none.
+  function findSkill(reply, name, adapter) {
+    const found = [
+      ...(reply?.settings ?? []).map((skill) => ({ skill, folder: 'settings' })),
+      ...[...(reply?.folders ?? [])]
+        .sort((a, b) => Number((b.adapters ?? []).includes(adapter)) - Number((a.adapters ?? []).includes(adapter)))
+        .flatMap((f) => (f.skills ?? []).map((skill) => ({ skill, folder: f.folder }))),
+    ].filter((x) => x.skill?.name === name);
+    return found.find((x) => x.skill.content) ?? found[0] ?? null;
+  }
+
   // --- the run list ---
 
   const sorted = (values) => [...new Set(values.filter(Boolean))].sort();
@@ -282,7 +305,7 @@
   globalThis.AgisterRuns = {
     VIEW_KEY, VIEWS, readView, writeView, readsRuns,
     duration, cost, verify, implementor, reportedModel, skills, counts, nodes, percent, mean, failed,
-    statusMark, timeSpan, nodeRows, tone, outputPart, runOutput,
+    statusMark, timeSpan, nodeRows, tone, outputPart, runOutput, skillPlaces, findSkill,
     processes, statuses, filterRuns, compareTables,
   };
 })();
