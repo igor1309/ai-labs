@@ -40,3 +40,5 @@ agister/home/logs/
 agister/home/pi/sessions/
 agister/home/probes/
 agister/home/runs/
+# and what a write of a settings document cut short leaves beside it
+agister/home/**/.*.*.*

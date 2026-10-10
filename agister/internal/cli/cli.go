@@ -11,6 +11,7 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"slices"
@@ -111,15 +112,15 @@ Options:
                  nearest .agister from the launch directory up and below the repository's root, are
                  composed over it field by field (a prompt, a skill and a schema are taken whole)
   --quiet        No progress on stderr
-  --debug        Diagnostics on stderr, including why no project settings apply and what each
-                 turn did. <home>/logs/agister.jsonl always keeps the warnings and errors no run
-                 records; the cap is per file: the current log stays within 5 MB, a longer
-                 record cut to fit, and at most three older compressed files are kept beside it.
-                 A turn's detail is kept with its run, in <home>/runs/<id>/
   -h, --help     This help; needs no settings
   --version      This binary's version, as agister version prints it
 
 Scripts answer the yes prompts with: echo yes | agister ...
+
+<home>/logs/agister.jsonl keeps the warnings and errors no run records, each command that is
+refused or fails among them, never what a turn did: a turn's detail is kept with its run, in
+<home>/runs/<id>/. The cap is per file: the current log stays within 5 MB, and at most three
+older compressed files are kept beside it.
 
 Exit codes: 0 completed, 1 failed, 2 interrupted, 3 refused, 4 lost, 64 usage or invalid settings,
 70 internal error, 130 stopped watching.`
@@ -138,26 +139,86 @@ type IO struct {
 
 // Config is what the composition root needs to build a client.
 type Config struct {
-	Home  string
-	Cwd   string    // where the project's own settings are looked for
-	Debug io.Writer // non-nil when diagnostics go to the terminal too
+	Home string
+	Cwd  string // where the project's own settings are looked for
 }
 
 // Build constructs the client; supplied by the composition root.
 type Build func(Config) (contract.Client, error)
 
+// Logs opens the log of the home a command works in, where the CLI says
+// what it refuses or fails at; supplied by the composition root.
+type Logs func(Config) (*slog.Logger, error)
+
 type usageError struct{ message string }
 
 func (e usageError) Error() string { return e.message }
 
+// declinedError is the error of a command the user did not confirm.
+type declinedError struct{ message string }
+
+func (e declinedError) Error() string { return e.message }
+
 // Run executes one command line and returns the exit code.
-func Run(ctx context.Context, args []string, env IO, build Build) int {
-	code, err := dispatch(ctx, args, env, build)
-	if err == nil {
-		return code
+func Run(ctx context.Context, args []string, env IO, build Build, logs Logs) int {
+	// A command line that cannot be read names no home, and help and the
+	// version need none: there is no log to open yet.
+	log := slog.New(slog.DiscardHandler)
+	opts, positionals, err := parse(args)
+	if err != nil {
+		return failed(ctx, env, log, err)
 	}
+	if opts.help {
+		fmt.Fprintln(env.Stdout, usage)
+		return 0
+	}
+	// The version names the binary whatever the settings say: it is what to
+	// look at when they need a newer one.
+	if opts.version || len(positionals) > 0 && positionals[0] == "version" {
+		fmt.Fprintln(env.Stdout, "agister "+version(env))
+		return 0
+	}
+	// A call works in the worktree that holds the caller's directory, with
+	// the settings of that directory's layers (ADR-025 rule 1, ADR-028
+	// rule 1); run takes --dir, and so do check and the list and show
+	// commands, which read what a call launched there would get (rule 2).
+	config := Config{Home: home(opts.home, env), Cwd: env.Cwd}
+	if opts.dir != "" {
+		config.Cwd = absolute(opts.dir, env.Cwd)
+	}
+	opened, err := logs(config)
+	if err != nil {
+		return failed(ctx, env, log, err)
+	}
+	command, _ := Lookup(positionals) // dispatch refuses an unknown one
+	log = opened.With("command", command.Name, "cwd", config.Cwd)
+	client, err := build(config)
+	if err != nil {
+		return failed(ctx, env, log, err)
+	}
+	code, err := dispatch(ctx, client, log, opts, positionals, config, env)
+	if err != nil {
+		return failed(ctx, env, log, err)
+	}
+	return code
+}
+
+// failed says err, what the command was refused by or failed at, on stderr
+// and returns its exit code. No run records it, so the log does, as one
+// error, a refusal by the settings with their problems. A command the
+// caller interrupted or did not confirm has not failed, and is not logged.
+func failed(ctx context.Context, env IO, log *slog.Logger, err error) int {
 	var settingsErr *contract.SettingsError
-	if errors.As(err, &settingsErr) {
+	var declinedErr declinedError
+	refused, declined := errors.As(err, &settingsErr), errors.As(err, &declinedErr)
+	switch {
+	case ctx.Err() != nil || declined:
+	case refused:
+		log.ErrorContext(ctx, "the settings refused the command", "error", err.Error(), "problems", messages(settingsErr.Report))
+	default:
+		log.ErrorContext(ctx, "the command failed", "error", err.Error())
+	}
+	if refused {
 		printCheck(env, settingsErr.Report)
 	}
 	fmt.Fprintf(env.Stderr, "agister: %v\n", err)
@@ -165,7 +226,7 @@ func Run(ctx context.Context, args []string, env IO, build Build) int {
 	var inputErr *contract.InputError
 	var refusedErr *contract.RefusedError
 	switch {
-	case settingsErr != nil:
+	case refused, declined:
 		return ExitUsage
 	case errors.As(err, &refusedErr):
 		return ExitRefused
@@ -186,7 +247,7 @@ type options struct {
 	home, runtime, model, modelFamily, effort, session, command string
 	agent, timeout, maxCost, continueRun, restore, dir          string
 	goal, answers, to                                           string
-	force, quiet, debug, json, help, probe, tree, version       bool
+	force, quiet, json, help, probe, tree, version              bool
 	after                                                       int
 	params                                                      paramFlag
 }
@@ -211,7 +272,7 @@ type Command struct {
 }
 
 // globalFlags are the flags every command takes.
-var globalFlags = []string{"home", "quiet", "debug", "help", "h", "version"}
+var globalFlags = []string{"home", "quiet", "help", "h", "version"}
 
 // commands are the commands dispatch runs, each with the flags it takes;
 // parse gives a command only those.
@@ -331,7 +392,6 @@ func flags(into func(name string) *options) *flag.FlagSet {
 	set.StringVar(&into("to").to, "to", "", "")
 	set.BoolVar(&into("force").force, "force", false, "")
 	set.BoolVar(&into("quiet").quiet, "quiet", false, "")
-	set.BoolVar(&into("debug").debug, "debug", false, "")
 	set.BoolVar(&into("json").json, "json", false, "")
 	set.BoolVar(&into("probe").probe, "probe", false, "")
 	set.BoolVar(&into("tree").tree, "tree", false, "")
@@ -343,37 +403,9 @@ func flags(into func(name string) *options) *flag.FlagSet {
 	return set
 }
 
-func dispatch(ctx context.Context, args []string, env IO, build Build) (int, error) {
-	opts, positionals, err := parse(args)
-	if err != nil {
-		return 0, err
-	}
-	if opts.help {
-		fmt.Fprintln(env.Stdout, usage)
-		return 0, nil
-	}
-	// The version names the binary whatever the settings say: it is what to
-	// look at when they need a newer one.
-	if opts.version || len(positionals) > 0 && positionals[0] == "version" {
-		fmt.Fprintln(env.Stdout, "agister "+version(env))
-		return 0, nil
-	}
-	// A call works in the worktree that holds the caller's directory, with
-	// the settings of that directory's layers (ADR-025 rule 1, ADR-028
-	// rule 1); run takes --dir, and so do check and the list and show
-	// commands, which read what a call launched there would get (rule 2).
-	cwd := env.Cwd
-	if opts.dir != "" {
-		cwd = absolute(opts.dir, env.Cwd)
-	}
-	config := Config{Home: home(opts.home, env), Cwd: cwd}
-	if opts.debug {
-		config.Debug = env.Stderr
-	}
-	client, err := build(config)
-	if err != nil {
-		return 0, err
-	}
+// dispatch runs the command the positionals name on client. What it
+// reports as refused or failed without an error, it says in log.
+func dispatch(ctx context.Context, client contract.Client, log *slog.Logger, opts options, positionals []string, config Config, env IO) (int, error) {
 	var command string
 	var rest []string
 	if len(positionals) > 0 {
@@ -386,6 +418,9 @@ func dispatch(ctx context.Context, args []string, env IO, build Build) (int, err
 		report, err := client.Check(ctx, opts.probe)
 		if err != nil {
 			return 0, err
+		}
+		if len(report.Problems) > 0 {
+			log.ErrorContext(ctx, "the settings have problems", "problems", messages(report))
 		}
 		return printCheckAs(env, report, opts)
 	}
@@ -548,7 +583,7 @@ func dispatch(ctx context.Context, args []string, env IO, build Build) (int, err
 		if err != nil {
 			return 0, err
 		}
-		request := contract.CallRequest{Process: name, Params: opts.params, Agent: opts.agent, Timeout: opts.timeout, Continue: opts.continueRun, Goal: opts.goal, Answers: opts.answers, Cwd: cwd}
+		request := contract.CallRequest{Process: name, Params: opts.params, Agent: opts.agent, Timeout: opts.timeout, Continue: opts.continueRun, Goal: opts.goal, Answers: opts.answers, Cwd: config.Cwd}
 		if opts.maxCost != "" {
 			limit, err := strconv.ParseFloat(opts.maxCost, 64)
 			if err != nil || limit <= 0 {
@@ -602,13 +637,16 @@ func dispatch(ctx context.Context, args []string, env IO, build Build) (int, err
 			}
 			result, err := client.Export(ctx, contract.ExportRequest{Runs: rest[1:], To: to})
 			// The runs exported before an interrupt are reported as done.
-			code := printExport(env.Stdout, result)
+			code, problems := printExport(env.Stdout, result)
 			if errors.Is(err, context.Canceled) {
 				fmt.Fprintln(env.Stderr, "agister: export interrupted: the runs reported above were exported, the others were not")
 				return ExitInterrupted, nil
 			}
 			if err != nil {
 				return 0, err
+			}
+			if len(problems) > 0 {
+				log.ErrorContext(ctx, "the export refused or failed", "problems", problems)
 			}
 			return code, nil
 		}
@@ -674,9 +712,9 @@ func follow(ctx context.Context, client contract.Client, id string, after int, o
 
 // printExport reports what an export did with each run, and returns its
 // exit code: failed when a copy did not read back as recorded, else refused
-// when a copy that differs was there.
-func printExport(w io.Writer, result contract.ExportResult) int {
-	code := ExitCompleted
+// when a copy that differs was there. problems are the runs it refused or
+// failed at, each with why.
+func printExport(w io.Writer, result contract.ExportResult) (code int, problems []string) {
 	for _, exported := range result.Runs {
 		name := exported.ID
 		if exported.Workflow != "" {
@@ -689,15 +727,17 @@ func printExport(w io.Writer, result contract.ExportResult) int {
 			fmt.Fprintf(w, "kept    %s: the copy in %s is identical (%d files, %d bytes)\n", name, exported.Dir, exported.Files, exported.Bytes)
 		case contract.ExportRefused:
 			fmt.Fprintf(w, "REFUSED %s: %s: %s\n", name, exported.Dir, printable(exported.Problem))
+			problems = append(problems, exported.ID+": refused: "+exported.Problem)
 			if code == ExitCompleted {
 				code = ExitRefused
 			}
 		default:
 			fmt.Fprintf(w, "FAILED  %s: %s\n", name, printable(exported.Problem))
+			problems = append(problems, exported.ID+": failed: "+exported.Problem)
 			code = ExitFailed
 		}
 	}
-	return code
+	return code, problems
 }
 
 // printed is a node result as --json prints it: named by its run, each
@@ -1126,7 +1166,7 @@ func confirm(env IO, question, cancelled string) error {
 		answer, _ = bufio.NewReader(env.Stdin).ReadString('\n')
 	}
 	if strings.TrimSpace(answer) != "yes" {
-		return &contract.InputError{Message: cancelled}
+		return declinedError{cancelled}
 	}
 	return nil
 }
@@ -1508,6 +1548,15 @@ func reaches(reach contract.ProblemReach) string {
 		return "refuses nothing"
 	}
 	return "refuses " + strings.Join(refused, ", ")
+}
+
+// messages are the report's problems as the log holds them.
+func messages(report contract.CheckReport) []string {
+	problems := make([]string, 0, len(report.Problems))
+	for _, problem := range report.Problems {
+		problems = append(problems, problem.Message)
+	}
+	return problems
 }
 
 // stopsEverything reports whether a problem of the report stops every

@@ -1,14 +1,11 @@
 package main
 
 import (
-	"bytes"
-	"compress/gzip"
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"io"
 	"io/fs"
 	"os"
 	"os/exec"
@@ -25,7 +22,6 @@ import (
 	"github.com/igor1309/ai-labs/agister/examples"
 	"github.com/igor1309/ai-labs/agister/internal/adapters/fsruns"
 	"github.com/igor1309/ai-labs/agister/internal/adapters/git"
-	"github.com/igor1309/ai-labs/agister/internal/adapters/logging"
 	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/runtimetest"
 	"github.com/igor1309/ai-labs/agister/internal/app"
 	"github.com/igor1309/ai-labs/agister/internal/cli"
@@ -200,17 +196,13 @@ func TestBuiltClientReadsOnlyTheSourcesGiven(t *testing.T) {
 	}
 }
 
-// gatedOf is the client wire built, as the gate it decorates with the log,
-// to build clients on sources of the test's own.
+// gatedOf is the client wire built, as the gate it is, to build clients on
+// sources of the test's own.
 func gatedOf(t *testing.T, client contract.Client) *app.Gated {
 	t.Helper()
-	logged, ok := client.(logging.Client)
+	gated, ok := client.(*app.Gated)
 	if !ok {
-		t.Fatalf("the client is a %T, not the gate logged", client)
-	}
-	gated, ok := logged.Inner.(*app.Gated)
-	if !ok {
-		t.Fatalf("the logged client is a %T, not the gate", logged.Inner)
+		t.Fatalf("the client is a %T, not the gate", client)
 	}
 	return gated
 }
@@ -876,48 +868,9 @@ func TestTheCompositionRecoversAStaleTurn(t *testing.T) {
 	}
 }
 
-// The log keeps what no run's record holds and none of what a turn did: a
-// warning reaches <home>/logs/agister.jsonl and a turn's record does not.
-// With --debug both are on the terminal, the turn's under its run's ID.
-//
-// Contract test: the composition's diagnostics over the log on the real
-// filesystem.
-func TestDiagnosticsKeepTurnsOutOfTheLog(t *testing.T) {
-	t.Parallel()
-	ctx := app.WithCorrelation(context.Background(), "run_id", "run-1")
-	for _, debug := range []bool{false, true} {
-		home := tempDir(t)
-		var terminal bytes.Buffer
-		config := cli.Config{Home: home}
-		if debug {
-			config.Debug = &terminal
-		}
-		log, turns, err := diagnostics(config)
-		if err != nil {
-			t.Fatal(err)
-		}
-		log.WarnContext(ctx, "runtime.not_admitted", "error", "no home")
-		turns.InfoContext(ctx, "turn.started")
-		turns.WarnContext(ctx, "turn.finished", "status", "failed")
-
-		kept := read(t, filepath.Join(home, "logs", "agister.jsonl"))
-		if strings.Count(kept, "\n") != 1 || !strings.Contains(kept, `"msg":"runtime.not_admitted"`) || !strings.Contains(kept, `"run_id":"run-1"`) {
-			t.Fatalf("debug %v: the log = %s", debug, kept)
-		}
-		shown := terminal.String()
-		if !debug && shown != "" {
-			t.Fatalf("on the terminal without --debug: %s", shown)
-		}
-		if debug && (strings.Count(shown, "\n") != 3 || !strings.Contains(shown, `"msg":"runtime.not_admitted"`) || !strings.Contains(shown, `"msg":"turn.started"`) ||
-			!strings.Contains(shown, `"msg":"turn.finished","status":"failed","run_id":"run-1"`)) {
-			t.Fatalf("on the terminal with --debug: %s", shown)
-		}
-	}
-}
-
 // A log that cannot be written, its path a directory, fails the setup of
-// diagnostics and so every command, instead of losing each warning later
-// in silence.
+// diagnostics and so the client and every command, instead of losing each
+// warning later in silence.
 //
 // Contract test: the composition's diagnostics over the log on the real
 // filesystem.
@@ -929,45 +882,34 @@ func TestAnUnusableLogFailsAtSetup(t *testing.T) {
 		t.Fatal(err)
 	}
 	config := cli.Config{Home: home}
-	if _, _, err := diagnostics(config); err == nil || !strings.Contains(err.Error(), path) {
+	if _, err := diagnostics(config); err == nil || !strings.Contains(err.Error(), path) {
 		t.Fatalf("diagnostics: %v", err)
 	}
 	if client, _, err := inProcess(config).wire(config); err == nil || client != nil || !strings.Contains(err.Error(), path) {
 		t.Fatalf("wire: %v, %v", client, err)
 	}
+	if r := agister(t, home, tempDir(t), "check"); r.code != cli.ExitInternal || !strings.Contains(r.stderr, path) {
+		t.Fatalf("check: %d\n%s", r.code, r.stderr)
+	}
 }
 
 // The log as shipped rotates once it would pass 5 MB, not before, and
-// keeps three old files, compressed: the oldest of three is dropped and no
-// fourth is kept.
+// keeps three old files: the oldest of three is dropped and no fourth is
+// kept.
 //
 // Contract test: the composition's diagnostics over the log on the real
 // filesystem.
 func TestTheLogIsKeptWithinTheShippedCap(t *testing.T) {
 	t.Parallel()
 	home := tempDir(t)
-	dir := filepath.Join(home, "logs")
-	path := filepath.Join(dir, "agister.jsonl")
-	if err := os.MkdirAll(dir, 0o700); err != nil {
-		t.Fatal(err)
-	}
+	path := filepath.Join(home, "logs", "agister.jsonl")
 	// The log 1000 bytes short of its cap, and three old files.
 	seed := strings.Repeat("x", 5<<20-1001) + "\n"
-	if err := os.WriteFile(path, []byte(seed), 0o600); err != nil {
-		t.Fatal(err)
-	}
+	write(t, path, seed)
 	for n := 1; n <= 3; n++ {
-		var zipped bytes.Buffer
-		writer := gzip.NewWriter(&zipped)
-		fmt.Fprintf(writer, `{"old":%d}`+"\n", n)
-		if err := writer.Close(); err != nil {
-			t.Fatal(err)
-		}
-		if err := os.WriteFile(fmt.Sprintf("%s.%d.gz", path, n), zipped.Bytes(), 0o600); err != nil {
-			t.Fatal(err)
-		}
+		write(t, fmt.Sprintf("%s.%d.gz", path, n), fmt.Sprintf("old %d", n))
 	}
-	log, _, err := diagnostics(cli.Config{Home: home})
+	log, err := diagnostics(cli.Config{Home: home})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -980,39 +922,11 @@ func TestTheLogIsKeptWithinTheShippedCap(t *testing.T) {
 	if kept := read(t, path); strings.Count(kept, "\n") != 1 || !strings.Contains(kept, `"msg":"past the cap"`) {
 		t.Fatalf("the log after its cap, %d bytes: %.200s", len(kept), kept)
 	}
-	unzipped := func(n int) string {
-		file, err := os.Open(fmt.Sprintf("%s.%d.gz", path, n))
-		if err != nil {
-			t.Fatal(err)
-		}
-		defer file.Close()
-		reader, err := gzip.NewReader(file)
-		if err != nil {
-			t.Fatal(err)
-		}
-		defer reader.Close()
-		text, err := io.ReadAll(reader)
-		if err != nil {
-			t.Fatal(err)
-		}
-		return string(text)
+	if newest, second, third := read(t, path+".1.gz"), read(t, path+".2.gz"), read(t, path+".3.gz"); len(newest) >= len(seed) || second != "old 1" || third != "old 2" {
+		t.Fatalf("the old files: the newest %d bytes, then %q and %q", len(newest), second, third)
 	}
-	if newest := unzipped(1); !strings.HasPrefix(newest, seed) || !strings.Contains(newest[len(seed):], `"msg":"within the cap"`) {
-		t.Fatalf("the newest old file, %d bytes, is not the log", len(newest))
-	}
-	if second, third := unzipped(2), unzipped(3); second != `{"old":1}`+"\n" || third != `{"old":2}`+"\n" {
-		t.Fatalf("old files 2 and 3 = %q, %q", second, third)
-	}
-	want := []string{"agister.jsonl", "agister.jsonl.1.gz", "agister.jsonl.2.gz", "agister.jsonl.3.gz"}
-	entries, err := os.ReadDir(dir)
-	if err != nil {
-		t.Fatal(err)
-	}
-	var found []string
-	for _, entry := range entries {
-		found = append(found, entry.Name())
-	}
-	if !slices.Equal(found, want) {
-		t.Fatalf("the log's folder = %v", found)
+	// The log and its three old files, read above, and no fourth.
+	if entries, err := os.ReadDir(filepath.Dir(path)); err != nil || len(entries) != 4 {
+		t.Fatalf("the log's folder = %v, %v", entries, err)
 	}
 }

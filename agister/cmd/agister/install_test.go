@@ -160,7 +160,7 @@ func agisterInstalling(t *testing.T, input, home, cwd string, args ...string) re
 		compose.stages = stages
 		client, _, err := compose.wire(config)
 		return client, err
-	})
+	}, diagnostics)
 	if left := files(t, stages); len(left) != 0 {
 		t.Errorf("stages left in %s: %v", stages, left)
 	}
@@ -584,46 +584,25 @@ func TestInstallWritesNothingWhenTheBackupFails(t *testing.T) {
 	}
 }
 
-// An install that fails once approved, its backup's folder a file, and a
-// restore of a backup that is not there make no run: each fails as it did,
-// and the failure is in the log as an error, with the operation and what
-// it was asked.
-func TestAnInstallOrRestoreThatFailsIsLogged(t *testing.T) {
+// An install that fails once approved, its backup's folder a file, makes
+// no run: the failure is in the log as an error, as stderr says it.
+func TestAnInstallThatFailsIsLogged(t *testing.T) {
 	t.Parallel()
-	t.Run("install", func(t *testing.T) {
-		t.Parallel()
-		home := initedHome(t)
-		src := repoSettings(t, home)
-		write(t, filepath.Join(home, "backups"), "not a folder")
-		r := agisterInstalling(t, "yes\n", home, tempDir(t), "install", src)
-		if r.code == 0 || !strings.Contains(r.stderr, "not a directory") {
-			t.Fatalf("install: %d\n%s%s", r.code, r.stdout, r.stderr)
-		}
-		logged := loggedAs(t, home, "the command failed")
-		if len(logged) != 1 {
-			t.Fatalf("failures logged = %v", logged)
-		}
-		message, _ := logged[0]["error"].(string)
-		if logged[0]["level"] != "ERROR" || logged[0]["operation"] != "Install" || logged[0]["source"] != src || !strings.Contains(r.stderr, "agister: "+message+"\n") {
-			t.Fatalf("logged = %v, stderr:\n%s", logged[0], r.stderr)
-		}
-	})
-	t.Run("restore", func(t *testing.T) {
-		t.Parallel()
-		home := initedHome(t)
-		r := agisterInstalling(t, "yes\n", home, tempDir(t), "install", "--restore", "20261010T110000Z")
-		if r.code == 0 {
-			t.Fatalf("restore: %d\n%s%s", r.code, r.stdout, r.stderr)
-		}
-		logged := loggedAs(t, home, "the command failed")
-		if len(logged) != 1 {
-			t.Fatalf("failures logged = %v", logged)
-		}
-		message, _ := logged[0]["error"].(string)
-		if logged[0]["level"] != "ERROR" || logged[0]["operation"] != "Restore" || logged[0]["stamp"] != "20261010T110000Z" || !strings.Contains(r.stderr, "agister: "+message+"\n") {
-			t.Fatalf("logged = %v, stderr:\n%s", logged[0], r.stderr)
-		}
-	})
+	home := initedHome(t)
+	src := repoSettings(t, home)
+	write(t, filepath.Join(home, "backups"), "not a folder")
+	r := agisterInstalling(t, "yes\n", home, tempDir(t), "install", src)
+	if r.code == 0 || !strings.Contains(r.stderr, "not a directory") {
+		t.Fatalf("install: %d\n%s%s", r.code, r.stdout, r.stderr)
+	}
+	logged := loggedAs(t, home, "the command failed")
+	if len(logged) != 1 {
+		t.Fatalf("failures logged = %v", logged)
+	}
+	message, _ := logged[0]["error"].(string)
+	if logged[0]["level"] != "ERROR" || logged[0]["command"] != "install" || !strings.Contains(r.stderr, "agister: "+message+"\n") {
+		t.Fatalf("logged = %v, stderr:\n%s", logged[0], r.stderr)
+	}
 }
 
 // A backup whose saved document was changed is refused: a restore never

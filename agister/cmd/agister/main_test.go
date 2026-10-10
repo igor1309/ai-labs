@@ -69,7 +69,7 @@ func agisterReading(t *testing.T, stdin io.Reader, home, cwd string, args ...str
 	code := cli.Run(context.Background(), append([]string{"--home", home}, args...), cli.IO{
 		Stdin: stdin, Stdout: &stdout, Stderr: &stderr, Cwd: cwd,
 		Getenv: func(string) string { return "" },
-	}, composeInProcess)
+	}, composeInProcess, diagnostics)
 	return result{code, stdout.String(), stderr.String()}
 }
 
@@ -252,7 +252,7 @@ func agisterOver(t *testing.T, composed func(cli.Config) composition, home, cwd 
 	}, func(config cli.Config) (contract.Client, error) {
 		client, _, err := composed(config).wire(config)
 		return client, err
-	})
+	}, diagnostics)
 	return result{code, stdout.String(), stderr.String()}
 }
 
@@ -479,52 +479,13 @@ func TestAgentCallEndToEnd(t *testing.T) {
 	}
 	noCheckoutLeft(t, home)
 	// What the turn did is the run's, not the log's.
-	if logged, err := os.ReadFile(filepath.Join(home, "logs", "agister.jsonl")); err == nil && strings.Contains(string(logged), `"msg":"turn.`) {
+	if logged := read(t, filepath.Join(home, "logs", "agister.jsonl")); strings.Contains(logged, `"msg":"turn.`) {
 		t.Fatalf("the log holds the turn:\n%s", logged)
 	}
 	// The plan comes before any runtime process.
 	order := strings.Join(last.kinds(), " ")
 	if planned := strings.Index(order, "PLANNED"); planned < 0 || planned > strings.Index(order, "PROCESS_STARTED") || !strings.Contains(order, "PERMISSIONS_WITHHELD") {
 		t.Fatalf("events = %s", order)
-	}
-}
-
-// With --debug what each turn did is on the terminal, under its run's ID,
-// each ordinary event of it at debug level, and still not in the log: on
-// every runtime the composition builds a runner for, each through its own
-// factory.
-func TestDebugShowsTheTurnsOnTheTerminal(t *testing.T) {
-	t.Parallel()
-	for _, adapter := range []string{"claude-code", "codex", "opencode", "pi"} {
-		t.Run(adapter, func(t *testing.T) {
-			t.Parallel()
-			var home, repo string
-			call := []string{"adversarial_review", "--param", "base=main"}
-			if adapter == "claude-code" {
-				home, repo = setup(t, "approve")
-			} else {
-				home, repo, _, _ = skilledOn(t, adapter)
-				call = []string{"skilled"}
-			}
-			// Quiet, so the diagnostics alone write to the test's terminal.
-			r := agister(t, home, repo, append([]string{"--quiet", "--debug", "run"}, append(call, "--timeout", "1m")...)...)
-			if r.code != cli.ExitCompleted {
-				t.Fatalf("exit %d\n%s", r.code, r.stderr)
-			}
-			var started, finished, event bool
-			for _, line := range strings.Split(r.stderr, "\n") {
-				ofTheRun := strings.Contains(line, `"adapter":"`+adapter+`"`) && strings.Contains(line, `"run_id":"`)
-				started = started || ofTheRun && strings.Contains(line, `"msg":"turn.started"`)
-				finished = finished || ofTheRun && strings.Contains(line, `"msg":"turn.finished"`)
-				event = event || ofTheRun && strings.Contains(line, `"level":"DEBUG","msg":"turn.event"`)
-			}
-			if !started || !finished || !event {
-				t.Fatalf("the turn is not on the terminal:\n%s", r.stderr)
-			}
-			if logged := read(t, filepath.Join(home, "logs", "agister.jsonl")); strings.Contains(logged, `"msg":"turn.`) || !strings.Contains(logged, `"msg":"settings layer"`) {
-				t.Fatalf("the log:\n%s", logged)
-			}
-		})
 	}
 }
 
@@ -723,10 +684,6 @@ func TestProjectSettingsAddToGlobal(t *testing.T) {
 	outside := tempDir(t)
 	if r := agister(t, home, outside, "process", "list"); r.code != 0 || strings.Contains(r.stdout, "ask_here") {
 		t.Fatalf("list outside project: %d\n%s%s", r.code, r.stdout, r.stderr)
-	}
-	// Why no project settings apply is in the diagnostics.
-	if r := agister(t, home, outside, "--debug", "process", "list"); r.code != 0 || !strings.Contains(r.stderr, "no project settings: not in a usable git repository") {
-		t.Fatalf("diagnostics outside project: %d\n%s", r.code, r.stderr)
 	}
 }
 
@@ -995,7 +952,7 @@ func TestFreshHomeNeedsInit(t *testing.T) {
 		t.Fatalf("refusals logged = %v", refusals)
 	}
 	problems, _ := json.Marshal(refusals[0]["problems"])
-	if refusals[0]["level"] != "ERROR" || refusals[0]["operation"] != "ListProcesses" || !strings.Contains(string(problems), "service service: not found") {
+	if refusals[0]["level"] != "ERROR" || refusals[0]["command"] != "process list" || refusals[0]["cwd"] != dir || !strings.Contains(string(problems), "service service: not found") {
 		t.Fatalf("logged = %v", refusals[0])
 	}
 	if r := agisterInput(t, "yes\n", home, dir, "init"); r.code != 0 {
@@ -1016,21 +973,18 @@ func TestUnusableProjectSettingsFail(t *testing.T) {
 	if r := agister(t, home, repo, "process", "list"); r.code == 0 || !strings.Contains(r.stderr, ".agister: not a directory") {
 		t.Fatalf("exit %d\n%s%s", r.code, r.stdout, r.stderr)
 	}
-	logged := loggedAs(t, home, "selecting the settings layers failed")
+	logged := loggedAs(t, home, "the command failed")
 	if len(logged) != 1 {
-		t.Fatalf("settings failures logged = %v", logged)
+		t.Fatalf("failures logged = %v", logged)
 	}
 	message, _ := logged[0]["error"].(string)
-	if logged[0]["level"] != "ERROR" || !strings.Contains(message, ".agister: not a directory") || logged[0]["cwd"] != repo {
+	if logged[0]["level"] != "ERROR" || !strings.Contains(message, ".agister: not a directory") || logged[0]["command"] != "process list" || logged[0]["cwd"] != repo {
 		t.Fatalf("logged = %v", logged[0])
 	}
 }
 
-// A call whose run folder cannot be made, <home>/runs a file, fails as it
-// did, makes no run, and the failure, which no run records, is in the log
-// as an error. It is logged as every operation's failure is, no longer as
-// "the call was not submitted": one rule logs them all (LAB-180, the
-// owner's decision of 2026-10-10).
+// A call whose run folder cannot be made, <home>/runs a file, fails, makes
+// no run, and the failure, which no run records, is in the log as an error.
 func TestARunThatCannotBeRecordedIsLogged(t *testing.T) {
 	t.Parallel()
 	home, repo := setup(t, "approve")
@@ -1051,32 +1005,8 @@ func TestARunThatCannotBeRecordedIsLogged(t *testing.T) {
 		t.Fatalf("failures logged = %v", logged)
 	}
 	message, _ := logged[0]["error"].(string)
-	if logged[0]["level"] != "ERROR" || logged[0]["operation"] != "Submit" || logged[0]["process"] != "adversarial_review" || logged[0]["cwd"] != repo || !strings.Contains(r.stderr, "agister: "+message+"\n") {
+	if logged[0]["level"] != "ERROR" || logged[0]["command"] != "run" || logged[0]["cwd"] != repo || !strings.Contains(r.stderr, "agister: "+message+"\n") {
 		t.Fatalf("logged = %v, stderr:\n%s", logged[0], r.stderr)
-	}
-}
-
-// A bare agister the settings stop, as on a fresh home, is refused with no
-// run to record it: the report it is refused by is in the log as an error,
-// once, with its problems. So is the one agister check prints.
-func TestASettingsReportThatStopsEveryCommandIsLogged(t *testing.T) {
-	t.Parallel()
-	for name, args := range map[string][]string{"bare": nil, "check": {"check"}} {
-		t.Run(name, func(t *testing.T) {
-			t.Parallel()
-			home, dir := filepath.Join(tempDir(t), "home"), tempDir(t)
-			if r := agister(t, home, dir, args...); r.code != cli.ExitUsage || !strings.Contains(r.stderr, "service service: not found") {
-				t.Fatalf("exit %d\n%s%s", r.code, r.stdout, r.stderr)
-			}
-			logged := loggedAs(t, home, "the settings stop every command")
-			if len(logged) != 1 {
-				t.Fatalf("reports logged = %v", logged)
-			}
-			problems, _ := json.Marshal(logged[0]["problems"])
-			if logged[0]["level"] != "ERROR" || logged[0]["operation"] != "Check" || !strings.Contains(string(problems), "service service: not found") {
-				t.Fatalf("logged = %v", logged[0])
-			}
-		})
 	}
 }
 

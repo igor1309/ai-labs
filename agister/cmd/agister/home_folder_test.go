@@ -99,9 +99,12 @@ func TestTheHomeFolderInstallsAndPassesCheckAsGlobalSettings(t *testing.T) {
 
 // Live state that turns up in home's settings folder, all Agister writes
 // under a home: home's write lock, a backup, a cached input, a Codex or Pi
-// thread's home or sessions, a lock, the log, a probe and a run, is ignored
-// by git, so it is never committed with the settings (ADR-027: the folder
-// never holds live state).
+// thread's home or sessions, a lock, the log, a probe, a run and what a
+// write of a settings document cut short leaves beside it, is ignored by
+// git, so it is never committed with the settings (ADR-027: the folder
+// never holds live state). The rule that ignores each is the committed
+// .gitignore's, at the repository's root, not an exclusion of the checkout
+// or the user. No settings document is ignored.
 //
 // Contract test: real git, reading this repository's ignore rules.
 func TestGitIgnoresLiveStateInTheHomeFolder(t *testing.T) {
@@ -113,11 +116,17 @@ func TestGitIgnoresLiveStateInTheHomeFolder(t *testing.T) {
 	for _, path := range []string{
 		".write.lock", "backups/b1/manifest.json", "cache/inputs/a.txt", "codex/homes/t1/config.toml", "locks/worktrees/w1.lock",
 		"logs/agister.jsonl", "logs/agister.jsonl.1.gz", "pi/sessions/s1.jsonl", "probes/codex.json", "runs/r1/record.json",
+		".service.toml.1234567890", "agents/.reviewer.toml.1234567890", "skills/review/.SKILL.md.42",
 	} {
 		path := filepath.Join(homeFolder, path)
-		if ignored := gitCmd(t, root, "check-ignore", "--no-index", path); ignored != path {
-			t.Errorf("%s is not ignored: %q", path, ignored)
+		// <source>:<line>:<rule> TAB <path>, the rule one that ignores.
+		rule := gitCmd(t, root, "check-ignore", "--no-index", "--verbose", path)
+		if !strings.HasPrefix(rule, ".gitignore:") || strings.Contains(rule, ":!") || !strings.HasSuffix(rule, "\t"+path) {
+			t.Errorf("%s is not ignored by the committed .gitignore: %q", path, rule)
 		}
+	}
+	if hidden := gitCmd(t, root, "ls-files", "--cached", "--ignored", "--exclude-standard", "--", homeFolder); hidden != "" {
+		t.Errorf("settings documents are ignored:\n%s", hidden)
 	}
 }
 

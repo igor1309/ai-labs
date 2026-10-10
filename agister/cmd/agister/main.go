@@ -50,7 +50,7 @@ func main() {
 		os.Exit(pages.Main(ctx, os.Args[2:], pagesEnv(appends)))
 	}
 	info, _ := debug.ReadBuildInfo()
-	os.Exit(cli.Run(ctx, os.Args[1:], cli.IO{Stdin: os.Stdin, Stdout: os.Stdout, Stderr: os.Stderr, Cwd: cwd, Getenv: os.Getenv, Version: version(info)}, compose(appends)))
+	os.Exit(cli.Run(ctx, os.Args[1:], cli.IO{Stdin: os.Stdin, Stdout: os.Stdout, Stderr: os.Stderr, Cwd: cwd, Getenv: os.Getenv, Version: version(info)}, compose(appends), diagnostics))
 }
 
 // version names the build: its module version, its revision (short, with
@@ -232,21 +232,18 @@ func gitBacked(worktrees *git.Worktrees) gitAdapters {
 }
 
 // wire builds the infrastructure, chooses the decorators and has the core
-// assemble the whole client behind the gate over them, the gate itself
-// decorated with the log. It also returns the
+// assemble the whole client behind the gate over them. It also returns the
 // background reaper every client the gate builds shares, which submitting a
 // call starts (tests wait on it).
 func (c composition) wire(config cli.Config) (contract.Client, *app.BackgroundReaper, error) {
-	log, turns, err := diagnostics(config)
+	log, err := diagnostics(config)
 	if err != nil {
 		return nil, nil, err
 	}
 
 	global := fsdefs.Store{Dir: config.Home}
-	layered, err := layers(config, c.git.calls, log)
+	layered, err := layers(config, c.git.calls)
 	if err != nil {
-		// No run exists yet to record it in: the log does.
-		log.Error("selecting the settings layers failed", "cwd", config.Cwd, "error", err.Error())
 		return nil, nil, err
 	}
 	// The directory whose settings are layered over home's: the project's,
@@ -266,21 +263,21 @@ func (c composition) wire(config cli.Config) (contract.Client, *app.BackgroundRe
 	commands := supervisor.Commands{Starter: c.commands, Timer: c.timer}
 	runtimes := runtime.Registry{
 		"claude-code": func(command string) app.TurnRunner {
-			return logging.NewRunner(runtimecomposition.NewClaudeCode(command, processes), "claude-code", log, turns, system.Clock{})
+			return logging.Runner{Inner: runtimecomposition.NewClaudeCode(command, processes), Adapter: "claude-code", Log: log}
 		},
 		// The Codex homes of threads given skills are kept under the
 		// home, where a continuation finds them, beside the user's own.
 		"codex": func(command string) app.TurnRunner {
-			return logging.NewRunner(runtimecomposition.NewCodex(command, filepath.Join(config.Home, "codex", "homes"), c.codexHome, processes), "codex", log, turns, system.Clock{})
+			return logging.Runner{Inner: runtimecomposition.NewCodex(command, filepath.Join(config.Home, "codex", "homes"), c.codexHome, processes), Adapter: "codex", Log: log}
 		},
 		// Pi's sessions are kept under the home, where a continuation
 		// finds them, not in ~/.pi.
 		// OpenCode keeps its sessions in its own store.
 		"opencode": func(command string) app.TurnRunner {
-			return logging.NewRunner(runtimecomposition.NewOpenCode(command, processes), "opencode", log, turns, system.Clock{})
+			return logging.Runner{Inner: runtimecomposition.NewOpenCode(command, processes), Adapter: "opencode", Log: log}
 		},
 		"pi": func(command string) app.TurnRunner {
-			return logging.NewRunner(runtimecomposition.NewPi(command, filepath.Join(config.Home, "pi", "sessions"), processes), "pi", log, turns, system.Clock{})
+			return logging.Runner{Inner: runtimecomposition.NewPi(command, filepath.Join(config.Home, "pi", "sessions"), processes), Adapter: "pi", Log: log}
 		},
 	}
 	// A runtime version the settings verify no primitive for is probed,
@@ -378,34 +375,23 @@ func (c composition) wire(config cli.Config) (contract.Client, *app.BackgroundRe
 	if c.adjust != nil {
 		c.adjust(&infra)
 	}
-	// What fails before any run exists, a command the settings refuse or
-	// one that fails, has no run to record it: the log does, for every
-	// operation of the client.
-	return logging.Client{Inner: app.NewClient(infra), Log: log}, reaping, nil
+	return app.NewClient(infra), reaping, nil
 }
 
 // layers selects the settings layers of a command launched in the working
 // directory (ADR-028 rule 1): home, the repository's, <root>/.agister, the
 // root as the workspaces find it, and the project's. Home alone outside a
-// repository; why is logged.
-func layers(config cli.Config, workspaces app.CallWorkspaces, log *slog.Logger) (fsdefs.Layered, error) {
+// repository.
+func layers(config cli.Config, workspaces app.CallWorkspaces) (fsdefs.Layered, error) {
 	home := fsdefs.Store{Dir: config.Home}
 	if config.Cwd == "" {
 		return fsdefs.Layered{Home: home}, nil
 	}
 	root, err := workspaces.Root(context.Background(), config.Cwd)
 	if err != nil {
-		log.Debug("no project settings: not in a usable git repository", "cwd", config.Cwd, "error", err.Error())
 		return fsdefs.Layered{Home: home}, nil
 	}
-	selected, err := fsdefs.Select(home, root, config.Cwd)
-	if err != nil {
-		return fsdefs.Layered{}, err
-	}
-	for _, layer := range selected.Layers(context.Background()) {
-		log.Debug("settings layer", "layer", string(layer.Layer), "dir", layer.Dir)
-	}
-	return selected, nil
+	return fsdefs.Select(home, root, config.Cwd)
 }
 
 // The log is kept within logMax bytes, with at most logKeep old files,
@@ -415,30 +401,19 @@ const (
 	logKeep = 3
 )
 
-// diagnostics: the log is <home>/logs/agister.jsonl, info and above, and
-// with --debug, debug and above there and on the terminal. It holds what
-// no run's record does: warnings, errors and what a command outside any
-// run says. What a turn did is its run's, in <home>/runs/<id>/, so the
-// second logger, the turns', reaches only the terminal, and only with
-// --debug. A log that cannot be written fails here, not at its first
-// warning.
-func diagnostics(config cli.Config) (log, turns *slog.Logger, err error) {
-	level := slog.LevelInfo
-	if config.Debug != nil {
-		level = slog.LevelDebug
-	}
+// diagnostics opens the log, <home>/logs/agister.jsonl. It holds what no
+// run's record does: the runtimes' and the reaper's warnings and errors,
+// and each command the CLI says was refused or failed. What a turn did is
+// its run's, in <home>/runs/<id>/. A log that cannot be written fails
+// here, not at its first warning.
+func diagnostics(config cli.Config) (*slog.Logger, error) {
 	dir := filepath.Join(config.Home, "logs")
 	if err := os.MkdirAll(dir, 0o700); err != nil {
-		return nil, nil, err
+		return nil, err
 	}
-	file := logging.File{Path: filepath.Join(dir, "agister.jsonl"), Max: logMax, Keep: logKeep, Append: (*os.File).Write, Rename: os.Rename, Remove: os.Remove}
+	file := logging.File{Path: filepath.Join(dir, "agister.jsonl"), Max: logMax, Keep: logKeep, Append: (*os.File).Write}
 	if err := file.Usable(); err != nil {
-		return nil, nil, err
+		return nil, err
 	}
-	handlers := logging.Fanout{slog.NewJSONHandler(file, &slog.HandlerOptions{Level: level})}
-	if config.Debug == nil {
-		return slog.New(logging.Handler{Handler: handlers}), slog.New(slog.DiscardHandler), nil
-	}
-	terminal := slog.NewJSONHandler(config.Debug, &slog.HandlerOptions{Level: level})
-	return slog.New(logging.Handler{Handler: append(handlers, terminal)}), slog.New(logging.Handler{Handler: terminal}), nil
+	return slog.New(logging.Handler{Handler: slog.NewJSONHandler(file, nil)}), nil
 }
