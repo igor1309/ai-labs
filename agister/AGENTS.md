@@ -1,15 +1,14 @@
 # AGENTS (agister)
 
 What any change to Agister needs, besides the root `AGENTS.md`'s
-verification rules.
+verification rules. Issues are in the Multica project `Agister`, in the
+`ai-labs` workspace.
 
-- Test commands, from `agister/`, quiet (never `-v`: one line per package,
-  details only for failures): `go test -count=1 -timeout 1m ./<pkg>/...` for what you
-  touched, `-run <Test>` to narrow; the full check is
-  `test -z "$(gofmt -l .)" && go vet ./... && go test -count=1 -timeout 1m ./... &&
-  go test -race -count=1 -timeout 1m ./internal/app/...` (about 30 s), and, for
-  the `gokit` module Agister requires (ADR-019), from `gokit/`:
-  `test -z "$(gofmt -l .)" && go vet ./... && go test -race -count=1 -timeout 1m ./...`.
+- The full check is `agister/scripts/test.sh` (about 35 s): format, vet,
+  race tests, the Pages tests and `gokit`'s check, which Agister builds
+  against (ADR-019). CI and `verify:repo` run the same. Narrow it while
+  working, from `agister/`, quiet (never `-v`):
+  `go test -count=1 -timeout 1m ./<pkg>/...`, `-run <Test>` to narrow.
 - A change to what the CLI or the settings offer, such as a command, a
   flag, a settings field or a behaviour a caller relies on, is done only
   when these say the same as the binary:
