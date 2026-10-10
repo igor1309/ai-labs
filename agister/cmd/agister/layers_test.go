@@ -438,8 +438,10 @@ func TestBlocksInAProjectLayerStopWhatIsLaunchedThere(t *testing.T) {
 func TestAWorkflowsNodesResolveAgainstTheRunsLayers(t *testing.T) {
 	t.Parallel()
 	l, commit := layeredCommitted(t)
-	const partial = "input:\n  instruction: 'PROJECT: review the candidate.'\nworkspace:\n  clean: true\nverify: verify:repo\n"
-	project := filepath.Join(l.docs, ".agister", "processes", "adversarial_review.yaml")
+	// The process narrows its policy's limit; the project's timeout is the
+	// one the project's policy allows, and widens home's.
+	const partial = "timeout: 30m\ninput:\n  instruction: 'PROJECT: review the candidate.'\nworkspace:\n  clean: true\nverify: verify:repo\n"
+	project := filepath.Join(l.docs, ".agister", "processes", "architecture_review.yaml")
 	write(t, project, partial)
 	// The project's fields of what the node's process uses.
 	const agent, policy, verification = "effort = \"low\"\n", "timeout: 30m\n", "command: \"true\"\nmax_attempts: 1\n"
@@ -451,6 +453,12 @@ func TestAWorkflowsNodesResolveAgainstTheRunsLayers(t *testing.T) {
 	write(t, filepath.Join(l.docs, ".agister", files["agents"]), agent)
 	write(t, filepath.Join(l.docs, ".agister", files["policies"]), policy)
 	write(t, filepath.Join(l.docs, ".agister", files["verifies"]), verification)
+	// The verification makes the node a writer, which holds the worktree
+	// alone (ADR-025 rule 4): beside a reader node it is refused whenever
+	// that one starts first. The project's fan-out, a list and so taken
+	// whole, leaves it the only node: the one whose process takes every value
+	// the workflow resolves.
+	write(t, filepath.Join(l.docs, ".agister", "workflows", "review_panel.yaml"), "fan_out:\n  - {node: architecture, uses: process:architecture_review}\n")
 	commit()
 	runs := &newRuns{home: l.home}
 	runs.take(t)
@@ -465,26 +473,26 @@ func TestAWorkflowsNodesResolveAgainstTheRunsLayers(t *testing.T) {
 		map[string]any{"layer": "home", "dir": l.home},
 	}
 	recorded := runs.take(t)
-	if len(recorded) != 4 {
-		t.Fatalf("%d runs recorded, want the workflow's and its three nodes'", len(recorded))
+	if len(recorded) != 3 {
+		t.Fatalf("%d runs recorded, want the workflow's, its node's and its join's", len(recorded))
 	}
 	var node *run
 	for i, one := range recorded {
 		if !reflect.DeepEqual(one.record["layers"], layers) {
 			t.Errorf("run of %v records the layers %v, want %v", one.record["process"], one.record["layers"], layers)
 		}
-		if one.record["process"] == "adversarial_review" {
+		if one.record["process"] == "architecture_review" {
 			node = &recorded[i]
 		}
 	}
 	if node == nil {
-		t.Fatal("no run of the node adversarial")
+		t.Fatal("no run of the node architecture")
 	}
 	if !strings.Contains(strings.Join(node.argv(), " "), "PROJECT: review the candidate.") {
 		t.Fatalf("the node was run by %v", node.argv())
 	}
-	nearest := nearest(definitionOf(t, *node, "processes", "adversarial_review"))
-	want := map[string]any{"layer": "project", "path": project, "sha256": digestOf(partial), "fields": []any{"input.instruction", "workspace.clean", "verify"}}
+	nearest := nearest(definitionOf(t, *node, "processes", "architecture_review"))
+	want := map[string]any{"layer": "project", "path": project, "sha256": digestOf(partial), "fields": []any{"timeout", "input.instruction", "workspace.clean", "verify"}}
 	if !reflect.DeepEqual(nearest, want) {
 		t.Fatalf("the node's process is recorded from %v, want %v", nearest, want)
 	}
