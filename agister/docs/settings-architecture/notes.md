@@ -351,7 +351,7 @@ and ignored, and `check` warns (`internal/app/check.go:289`; ADR-025).
   (`internal/adapters/fsdefs/install.go`; ADR-018 rule 6, ADR-027 rules 8-9)
 - Home's settings have one source in git, `home/`, installed with
   `agister install home`; the repository's `.agister/` keeps only its own
-  (`verifies/repo.yaml`, the Go prompts). A test installs the folder into
+  (`layer.yaml`, the Go guidance partials). A test installs the folder into
   an empty home and checks it. (`cmd/agister/home_folder_test.go`;
   ADR-027)
 - LAB-84's done gates. The caller skill, the README, these notes and

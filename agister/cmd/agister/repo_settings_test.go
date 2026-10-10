@@ -1649,15 +1649,17 @@ func TestImplementersAreRefusedAtTheRoot(t *testing.T) {
 var goPrompts = []string{"go-testing-seams", "go-architecture"}
 
 // repositoryGuidance is the guidance the repository's layer sets, by
-// process: for each process of home that took a Go prompt as an optional
-// input before ADR-028, exactly those prompts, in their order (ADR-028
-// Migration step 4).
+// process (LAB-161): the implementers, the architecture review and the
+// adversarial review get both Go prompts, the tests review the testing
+// one. A process it does not name, the clarity and intent reviews and the
+// judge among them, gets none.
 var repositoryGuidance = map[string][]string{
 	"implement":                 goPrompts,
 	"implement_codex":           goPrompts,
 	"implement_pi":              goPrompts,
 	"implement_pi_glm":          goPrompts,
-	"architecture_review_codex": {"go-architecture"},
+	"architecture_review_codex": goPrompts,
+	"adversarial_review_codex":  goPrompts,
 	"tests_review_codex":        {"go-testing-seams"},
 }
 
@@ -1788,15 +1790,17 @@ func TestImplementersAreGivenTheGoPrompts(t *testing.T) {
 	}
 }
 
-// The architecture review and the tests review of the home folder,
-// launched at the root and in each project, give their agent the Go prompt
-// that says what they check as their only guidance, the same text the
-// implementers are given (ADR-028 Migration step 4).
-func TestReviewersAreGivenTheirGoPrompt(t *testing.T) {
+// reviewers are the fan-out processes of code_review.
+var reviewers = []string{"architecture_review_codex", "tests_review_codex", "adversarial_review_codex", "clarity_review_codex", "intent_review_codex"}
+
+// Each review of the home folder, launched at the root and in each
+// project, gives its agent the guidance repositoryGuidance names for it,
+// and none where it names none, each the text the implementers are given.
+func TestReviewersAreGivenTheirGoGuidance(t *testing.T) {
 	t.Parallel()
 	root, repo, home := onFakeRuntimes(t)
 	for _, launch := range append([]string{"."}, projects...) {
-		for _, name := range []string{"architecture_review_codex", "tests_review_codex"} {
+		for _, name := range reviewers {
 			t.Run(launch+" "+name, func(t *testing.T) {
 				args := append([]string{"run", name}, paramArgs(t, launch, parseProcess(t, root, name).Params)...)
 				if timeout := testTimeouts[name]; timeout != "" {
@@ -1808,6 +1812,31 @@ func TestReviewersAreGivenTheirGoPrompt(t *testing.T) {
 				}
 				givesGuidance(t, root, repo, completedRun(t, home, created[0]), repositoryGuidance[name]...)
 			})
+		}
+	}
+}
+
+// A code_review launched in warder/ gives each review and the judge the
+// guidance repositoryGuidance names for it, and each Go prompt a review
+// gets has the digest the implement run launched there recorded: the code
+// is reviewed under the rules it was written under.
+func TestCodeReviewInWarderIsGivenTheImplementersGuidance(t *testing.T) {
+	t.Parallel()
+	root, repo, home := onFakeRuntimes(t)
+	args := append([]string{"run", "implement"}, paramArgs(t, "warder", parseProcess(t, root, "implement").Params)...)
+	created, _ := runRecorded(t, home, filepath.Join(repo, "warder"), args)
+	if len(created) != 1 {
+		t.Fatalf("runs recorded: %v, want one", created)
+	}
+	implemented := completedRun(t, home, created[0])
+	_, records := judgedReviews(t, home, filepath.Join(repo, "warder"), "code_review")
+	for _, name := range append(reviewers, "review_judge") {
+		givesGuidance(t, root, repo, records[name], repositoryGuidance[name]...)
+		for _, prompt := range repositoryGuidance[name] {
+			got, want := inputOf(t, records[name], "guidance."+prompt)["identity"], inputOf(t, implemented, "guidance."+prompt)["identity"]
+			if got != want {
+				t.Fatalf("%s's guidance.%s = %v, the implement run's %v", name, prompt, got, want)
+			}
 		}
 	}
 }
