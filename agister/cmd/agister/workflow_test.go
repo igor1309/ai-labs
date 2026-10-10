@@ -152,9 +152,7 @@ func lastRunIn(t *testing.T, dir string) run {
 	var r run
 	r.dir = dir
 	readJSON(t, filepath.Join(dir, "record.json"), &r.record)
-	if data, err := os.ReadFile(filepath.Join(dir, "provider.jsonl")); err == nil {
-		_ = json.Unmarshal([]byte(strings.SplitN(string(data), "\n", 2)[0]), &r.first)
-	}
+	_ = json.Unmarshal([]byte(runtimeEcho(dir)), &r.first)
 	return r
 }
 

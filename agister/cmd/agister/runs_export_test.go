@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"io/fs"
@@ -111,9 +112,11 @@ func size(files map[string]string) int {
 }
 
 // A finished process run is copied byte for byte to <to>/<run-id>: its
-// record, events, provider log and artifacts, and not its owner lock; the
-// report says how many files and bytes, and nothing else is left in the
-// folder.
+// record, events and artifacts, and not its owner lock; the report says
+// how many files and bytes, and nothing else is left in the folder. The
+// run kept none of its runtime's output, which the fake wrote: neither it
+// nor its copy holds a provider.jsonl, and its record names the runtime's
+// session by ID.
 func TestRunsExportCopiesAProcessRun(t *testing.T) {
 	t.Parallel()
 	home, repo, id := exportedRun(t)
@@ -124,10 +127,21 @@ func TestRunsExportCopiesAProcessRun(t *testing.T) {
 		t.Fatalf("export: %d\n%s%s", r.code, r.stdout, r.stderr)
 	}
 	copied := sameAsTheStore(t, home, to, id)
-	for _, name := range []string{"record.json", "events.jsonl", "provider.jsonl", "artifacts/input-brief.txt"} {
+	for _, name := range []string{"record.json", "events.jsonl", "artifacts/input-brief.txt"} {
 		if _, ok := copied[name]; !ok {
 			t.Fatalf("the copy lacks %s: %v", name, keys(copied))
 		}
+	}
+	if _, ok := copied["provider.jsonl"]; ok || runtimeEcho(filepath.Join(home, "runs", id)) == "" {
+		t.Fatalf("the run kept its runtime's output, or its runtime wrote none: %v", keys(copied))
+	}
+	var record struct {
+		Turn struct {
+			Session string `json:"provider_session_id"`
+		}
+	}
+	if err := json.Unmarshal([]byte(copied["record.json"]), &record); err != nil || record.Turn.Session == "" {
+		t.Fatalf("the record names no provider session: %v", err)
 	}
 	if copied["artifacts/input-brief.txt"] != longBrief {
 		t.Fatalf("the brief's artifact = %q", copied["artifacts/input-brief.txt"])
@@ -138,6 +152,24 @@ func TestRunsExportCopiesAProcessRun(t *testing.T) {
 	}
 	if names := entries(t, to); !reflect.DeepEqual(names, []string{id}) {
 		t.Fatalf("the folder holds %v", names)
+	}
+}
+
+// A run recorded before LAB-181 holds its runtime's output, provider.jsonl:
+// it is copied with the rest, byte for byte.
+func TestRunsExportCopiesAnOlderRunsProviderLog(t *testing.T) {
+	t.Parallel()
+	home, repo, id := exportedRun(t)
+	const provider = "{\"type\":\"system\"}\n{\"type\":\"result\"}\n"
+	write(t, filepath.Join(home, "runs", id, "provider.jsonl"), provider)
+	to := tempDir(t)
+
+	r := agister(t, home, repo, "runs", "export", id, "--to", to)
+	if r.code != cli.ExitCompleted {
+		t.Fatalf("export: %d\n%s%s", r.code, r.stdout, r.stderr)
+	}
+	if copied := sameAsTheStore(t, home, to, id); copied["provider.jsonl"] != provider {
+		t.Fatalf("the copy's provider.jsonl = %q, of %v", copied["provider.jsonl"], keys(copied))
 	}
 }
 

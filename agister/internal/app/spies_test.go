@@ -462,7 +462,6 @@ type recorderSpy struct {
 	created   []run.Record
 	updates   []run.Record
 	events    []run.Event
-	raw       []string
 	artifacts map[string][]byte
 	finished  chan run.Record
 	taken     int // finished records wait returned
@@ -507,13 +506,6 @@ func (s *recorderSpy) Append(event run.Event) error {
 		return s.appendErr
 	}
 	s.events = append(s.events, event)
-	return nil
-}
-
-func (s *recorderSpy) Raw(line string) error {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	s.raw = append(s.raw, line)
 	return nil
 }
 

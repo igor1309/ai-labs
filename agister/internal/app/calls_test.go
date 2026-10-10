@@ -285,9 +285,6 @@ func TestCompletedCallSendsTheComposedPayloads(t *testing.T) {
 	if order != "CALL_SUBMITTED PLANNED PERMISSIONS_WITHHELD WORKTREE_LOCKED WORKTREE_ADMITTED PROCESS_STARTED NO_CHANGES CALL_FINISHED" {
 		t.Fatalf("events = %s", order)
 	}
-	if !reflect.DeepEqual(h.recorder.raw, []string{`{"raw":true}`}) {
-		t.Fatalf("raw = %v", h.recorder.raw)
-	}
 }
 
 func TestNodeStatusFollowsTheResponses(t *testing.T) {

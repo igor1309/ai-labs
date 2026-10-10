@@ -858,7 +858,7 @@ func TestAppendedIsClosedAlreadyWhenALaterEventExists(t *testing.T) {
 }
 
 // The notification closes when the run appends its next event, and not
-// before: raw output, record updates and artifacts do not close it.
+// before: record updates and artifacts do not close it.
 //
 // Contract test: the run store against the real filesystem, and the
 // kernel's flock on a run's owner.lock.
@@ -874,9 +874,6 @@ func TestAppendedClosesOnTheNextAppendAndNotBefore(t *testing.T) {
 	appended, ok := store.Appended(ctx, "r", 0)
 	if !ok || closed(appended) {
 		t.Fatalf("a run with no events: ok %v, closed %v", ok, ok && closed(appended))
-	}
-	if err := h.Raw("line"); err != nil {
-		t.Fatal(err)
 	}
 	if err := h.Update(run.Record{Schema: run.RecordSchema, ID: "r", Process: "p"}); err != nil {
 		t.Fatal(err)
@@ -1070,7 +1067,6 @@ func TestAbandonLeavesTheRunAsAKilledOwnerDoes(t *testing.T) {
 		}
 	}
 	refused("Append", h.Append(run.Event{Kind: "LATE"}))
-	refused("Raw", h.Raw("late"))
 	refused("Update", h.Update(finished))
 	_, err = h.Artifact("late.txt", []byte("late"))
 	refused("Artifact", err)
@@ -1079,10 +1075,8 @@ func TestAbandonLeavesTheRunAsAKilledOwnerDoes(t *testing.T) {
 	if err != nil || state != run.StateAbandoned || len(events) != 1 || events[0].Kind != "E" {
 		t.Fatalf("events after the refused writes = %+v, %s, %v", events, state, err)
 	}
-	for _, name := range []string{"provider.jsonl", "artifacts"} {
-		if _, err := os.Stat(filepath.Join(store.Dir, "r", name)); !errors.Is(err, os.ErrNotExist) {
-			t.Fatalf("%s after the refused writes: %v", name, err)
-		}
+	if _, err := os.Stat(filepath.Join(store.Dir, "r", "artifacts")); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("artifacts after the refused writes: %v", err)
 	}
 
 	// The run is the adopter's now: the abandoned handle's finish neither
@@ -1358,7 +1352,8 @@ func TestAHeldReadListsARunsEvidenceWithoutItsLock(t *testing.T) {
 	if err := h.Append(run.Event{Kind: "E"}); err != nil {
 		t.Fatal(err)
 	}
-	if err := h.Raw(`{"raw":true}`); err != nil {
+	// A run recorded before LAB-181 holds the runtime's raw output too.
+	if err := os.WriteFile(filepath.Join(store.Dir, "r1", "provider.jsonl"), []byte(`{"raw":true}`+"\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := h.Artifact("out.txt", []byte("bytes\n")); err != nil {
