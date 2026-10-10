@@ -208,9 +208,9 @@ func gatedOf(t *testing.T, client contract.Client) *app.Gated {
 	if !ok {
 		t.Fatalf("the client is a %T, not the gate logged", client)
 	}
-	gated, ok := logged.Client.(*app.Gated)
+	gated, ok := logged.Inner.(*app.Gated)
 	if !ok {
-		t.Fatalf("the logged client is a %T, not the gate", logged.Client)
+		t.Fatalf("the logged client is a %T, not the gate", logged.Inner)
 	}
 	return gated
 }

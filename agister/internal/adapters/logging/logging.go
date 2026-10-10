@@ -70,62 +70,63 @@ var warnEvents = map[string]bool{
 
 // Runner logs a runtime runner's turns. What a turn did, its turn.*
 // records, is the run's: its record and events hold it, and it goes to
-// Turns, never to Log. Log gets what no run's record holds: a runtime that
-// cannot be identified or does not admit a turn, before there is a run to
-// record it in, and a process the run could not record.
+// turns, never to log. The log gets what no run's record holds: a runtime
+// that cannot be identified or does not admit a turn, before there is a run
+// to record it in, and a process the run could not record. A turn's wall
+// time is read on clock.
 type Runner struct {
-	Inner   app.TurnRunner
-	Adapter string
-	Log     *slog.Logger
-	// Turns gets the turn.* records. Nil means nobody reads them.
-	Turns *slog.Logger
-	// Clock reads the time a turn's wall time is measured on. Nil means the
-	// wall clock.
-	Clock Clock
+	inner   app.TurnRunner
+	adapter string
+	log     *slog.Logger
+	turns   *slog.Logger
+	clock   Clock
 }
 
 // Clock is what the runner reads the time on.
 type Clock interface{ Now() time.Time }
 
-func (r Runner) now() time.Time {
-	if r.Clock == nil {
-		return time.Now()
+// NewRunner is inner, the runner of adapter, logged: log gets what no
+// run's record holds and turns the turn.* records, which nobody reads when
+// turns discards them. Every one of them is required: a runner missing one
+// is not built.
+func NewRunner(inner app.TurnRunner, adapter string, log, turns *slog.Logger, clock Clock) Runner {
+	switch {
+	case inner == nil:
+		panic("logging.NewRunner: no runner")
+	case log == nil:
+		panic("logging.NewRunner: no log")
+	case turns == nil:
+		panic("logging.NewRunner: no turns")
+	case clock == nil:
+		panic("logging.NewRunner: no clock")
 	}
-	return r.Clock.Now()
-}
-
-func (r Runner) turns() *slog.Logger {
-	if r.Turns == nil {
-		return slog.New(slog.DiscardHandler)
-	}
-	return r.Turns
+	return Runner{inner: inner, adapter: adapter, log: log, turns: turns, clock: clock}
 }
 
 func (r Runner) Identity(ctx context.Context) (app.RuntimeIdentity, error) {
-	identity, err := r.Inner.Identity(ctx)
+	identity, err := r.inner.Identity(ctx)
 	if err != nil {
-		r.Log.WarnContext(ctx, "runtime.identity_failed", "adapter", r.Adapter, "error", err.Error())
+		r.log.WarnContext(ctx, "runtime.identity_failed", "adapter", r.adapter, "error", err.Error())
 	}
 	return identity, err
 }
 
 func (r Runner) Admit(start app.TurnStart) *run.Error {
-	fault := r.Inner.Admit(start)
+	fault := r.inner.Admit(start)
 	if fault != nil {
-		r.Log.Warn("runtime.not_admitted", "adapter", r.Adapter, "error", fault.String())
+		r.log.Warn("runtime.not_admitted", "adapter", r.adapter, "error", fault.String())
 	}
 	return fault
 }
 
 func (r Runner) RunTurn(ctx context.Context, request app.TurnRequest, sink app.EventSink) run.Turn {
-	started := r.now()
-	turns := r.turns()
-	turns.InfoContext(ctx, "turn.started",
-		"adapter", r.Adapter, "cwd", request.Cwd, "model", request.Model, "effort", request.Effort,
+	started := r.clock.Now()
+	r.turns.InfoContext(ctx, "turn.started",
+		"adapter", r.adapter, "cwd", request.Cwd, "model", request.Model, "effort", request.Effort,
 		"primitives", request.Primitives, "timeout", request.Timeout.String(),
 		"output_schema", len(request.OutputSchema) > 0, "prompt_chars", len(request.Prompt))
-	counting := &countingSink{inner: sink, counts: map[string]int{}, log: r.Log, turns: turns, ctx: ctx, adapter: r.Adapter}
-	turn := r.Inner.RunTurn(ctx, request, counting)
+	counting := &countingSink{inner: sink, counts: map[string]int{}, log: r.log, turns: r.turns, ctx: ctx, adapter: r.adapter}
+	turn := r.inner.RunTurn(ctx, request, counting)
 	level := slog.LevelInfo
 	fault := ""
 	if turn.Status != run.Completed {
@@ -134,9 +135,9 @@ func (r Runner) RunTurn(ctx context.Context, request app.TurnRequest, sink app.E
 			fault = turn.Error.String()
 		}
 	}
-	turns.Log(ctx, level, "turn.finished",
-		"adapter", r.Adapter, "status", string(turn.Status), "error", fault,
-		"provider_session_id", turn.ProviderSessionID, "wall", r.now().Sub(started).String(), "events", counting.counts)
+	r.turns.Log(ctx, level, "turn.finished",
+		"adapter", r.adapter, "status", string(turn.Status), "error", fault,
+		"provider_session_id", turn.ProviderSessionID, "wall", r.clock.Now().Sub(started).String(), "events", counting.counts)
 	return turn
 }
 

@@ -1217,6 +1217,28 @@ func TestShowProcessPrintsTheStaleRecoveryBudget(t *testing.T) {
 	}
 }
 
+// The help says of --debug what the log holds and where a turn's detail
+// is: the turns on stderr and with their run, never in the log, which keeps
+// the warnings and errors no run records within its cap, 5 MB a file and
+// three older compressed files.
+func TestHelpSaysWhatDebugShowsAndTheLogKeeps(t *testing.T) {
+	t.Parallel()
+	r := run(context.Background(), &clientSpy{}, "--help")
+	if r.code != 0 {
+		t.Fatalf("help: code %d, stderr %q", r.code, r.stderr)
+	}
+	// The help as one line: its text wraps where the column ends.
+	help := strings.Join(strings.Fields(r.stdout), " ")
+	debug := "--debug Diagnostics on stderr, including why no project settings apply and what each turn did. " +
+		"<home>/logs/agister.jsonl always keeps the warnings and errors no run records; " +
+		"the cap is per file: the current log stays within 5 MB, a longer record cut to fit, " +
+		"and at most three older compressed files are kept beside it. " +
+		"A turn's detail is kept with its run, in <home>/runs/<id>/ -h, --help"
+	if !strings.Contains(help, debug) {
+		t.Fatalf("the help of --debug:\n%s", r.stdout)
+	}
+}
+
 func TestHelpNamesTheSessionsLatestRunAsThePatchSource(t *testing.T) {
 	t.Parallel()
 	r := run(context.Background(), &clientSpy{}, "--help")

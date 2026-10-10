@@ -97,7 +97,7 @@ func TestTheLogStaysWithinItsCap(t *testing.T) {
 	t.Parallel()
 	dir := t.TempDir()
 	path := filepath.Join(dir, "agister.jsonl")
-	file := logging.File{Path: path, Max: 100, Keep: 3, Append: (*os.File).Write}
+	file := logging.File{Path: path, Max: 100, Keep: 3, Append: (*os.File).Write, Rename: os.Rename, Remove: os.Remove}
 	var written []string
 	for i := range 200 {
 		line := fmt.Sprintf(`{"line":%03d}`, i)
@@ -133,7 +133,7 @@ func TestARecordLongerThanTheCapIsCutToFit(t *testing.T) {
 	t.Parallel()
 	dir := t.TempDir()
 	path := filepath.Join(dir, "agister.jsonl")
-	file := logging.File{Path: path, Max: 160, Keep: 2, Append: (*os.File).Write}
+	file := logging.File{Path: path, Max: 160, Keep: 2, Append: (*os.File).Write, Rename: os.Rename, Remove: os.Remove}
 	short := `{"line":"short"}`
 	// Quotes take two bytes each once escaped in the cut record's head.
 	long := `{"time":"2026-10-10T11:00:00Z","level":"WARN","msg":"runtime.identity_failed","output":"` + strings.Repeat(`\"x`, 200) + `"}`
@@ -159,11 +159,21 @@ func TestARecordLongerThanTheCapIsCutToFit(t *testing.T) {
 		cut["truncated"] != float64(len(long)+1) || head == "" || !strings.HasPrefix(long, head) || len(cut) != 5 {
 		t.Fatalf("the cut record = %v", cut)
 	}
+	// As much as fits: the record with one more character of the long one
+	// in its head, encoded as the log encodes it, is past Max.
+	cut["head"] = long[:len(head)+1]
+	longer, err := json.Marshal(cut)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if int64(len(longer)+1) <= file.Max {
+		t.Fatalf("the head holds %d bytes of the record and %d fit: the cut record is %d bytes of %d", len(head), len(head)+1, len(current), file.Max)
+	}
 	if kept := logged(t, path, file.Keep); kept[0] != short || len(kept) != 2 {
 		t.Fatalf("kept = %v", kept)
 	}
 
-	tiny := logging.File{Path: path, Max: 20, Keep: 2, Append: (*os.File).Write}
+	tiny := logging.File{Path: path, Max: 20, Keep: 2, Append: (*os.File).Write, Rename: os.Rename, Remove: os.Remove}
 	if _, err := tiny.Write([]byte(long + "\n")); err == nil || !strings.Contains(err.Error(), "does not fit") {
 		t.Fatalf("a record that does not fit even cut: %v", err)
 	}
@@ -182,7 +192,7 @@ func TestAFailedCompressionKeepsTheOldFiles(t *testing.T) {
 	t.Parallel()
 	dir := t.TempDir()
 	path := filepath.Join(dir, "agister.jsonl")
-	file := logging.File{Path: path, Max: 100, Keep: 3, Append: (*os.File).Write}
+	file := logging.File{Path: path, Max: 100, Keep: 3, Append: (*os.File).Write, Rename: os.Rename, Remove: os.Remove}
 	full := strings.Repeat(`{"line":"full"}`+"\n", 6)
 	if err := os.WriteFile(path, []byte(full), 0o600); err != nil {
 		t.Fatal(err)
@@ -225,6 +235,88 @@ func TestAFailedCompressionKeepsTheOldFiles(t *testing.T) {
 	}
 }
 
+// A rotation that a step of fails, again and again, drops no old file and
+// moves none a second time: each write fails, the old files that were to
+// stay are each still held once, and the log's lines are in no more than
+// one of them. The rotation that then goes through finishes the one cut
+// short: the log is the newest old file, once, only the oldest was dropped,
+// and nothing else is left in the directory.
+//
+// Contract test: the real filesystem, the rotation's renames and removals
+// failing where the test says.
+func TestARotationCutShortIsFinishedOnce(t *testing.T) {
+	t.Parallel()
+	for name, fails := range map[string]func(path, from, to string) bool{
+		"moving the log aside":  func(path, from, _ string) bool { return from == path },
+		"moving an old file on": func(path, from, _ string) bool { return from == path+".1.gz" },
+		"naming the newest":     func(path, _, to string) bool { return to == path+".1.gz" },
+		"the last removal":      func(_, _, to string) bool { return to == "" },
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			dir := t.TempDir()
+			path := filepath.Join(dir, "agister.jsonl")
+			failure := errors.New("operation not permitted")
+			failing := true
+			file := logging.File{Path: path, Max: 100, Keep: 3, Append: (*os.File).Write,
+				Rename: func(from, to string) error {
+					if failing && fails(path, from, to) {
+						return failure
+					}
+					return os.Rename(from, to)
+				},
+				// A removal moves a file nowhere.
+				Remove: func(name string) error {
+					if failing && fails(path, name, "") {
+						return failure
+					}
+					return os.Remove(name)
+				},
+			}
+			full := strings.Repeat(`{"line":"full"}`+"\n", 6)
+			if err := os.WriteFile(path, []byte(full), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			for n := 1; n <= file.Keep; n++ {
+				zipped(t, fmt.Sprintf("%s.%d.gz", path, n), fmt.Sprintf(`{"old":%d}`+"\n", n))
+			}
+			for attempt := range 3 {
+				if _, err := file.Write([]byte(`{"line":"next"}` + "\n")); !errors.Is(err, failure) || !strings.Contains(err.Error(), "rotating") {
+					t.Fatalf("attempt %d: %v", attempt, err)
+				}
+				held := map[string]int{}
+				for n := 1; n <= file.Keep; n++ {
+					old, err := unzip(fmt.Sprintf("%s.%d.gz", path, n))
+					if err != nil && !os.IsNotExist(err) {
+						t.Fatalf("attempt %d: old file %d: %v", attempt, n, err)
+					}
+					held[old]++
+				}
+				if held[`{"old":1}`+"\n"] != 1 || held[`{"old":2}`+"\n"] != 1 || held[full] > 1 {
+					t.Fatalf("attempt %d: the old files hold %v", attempt, held)
+				}
+			}
+
+			failing = false
+			if _, err := file.Write([]byte(`{"line":"next"}` + "\n")); err != nil {
+				t.Fatal(err)
+			}
+			for n, want := range map[int]string{1: full, 2: `{"old":1}` + "\n", 3: `{"old":2}` + "\n"} {
+				if old, err := unzip(fmt.Sprintf("%s.%d.gz", path, n)); err != nil || old != want {
+					t.Fatalf("old file %d = %q, %v", n, old, err)
+				}
+			}
+			if current, _ := os.ReadFile(path); string(current) != `{"line":"next"}`+"\n" {
+				t.Fatalf("the log = %q", current)
+			}
+			want := []string{"agister.jsonl", "agister.jsonl.1.gz", "agister.jsonl.2.gz", "agister.jsonl.3.gz"}
+			if found := names(t, dir); strings.Join(found, " ") != strings.Join(want, " ") {
+				t.Fatalf("files = %v", found)
+			}
+		})
+	}
+}
+
 // A write that stops part way, failing as on a full disk or short without
 // an error, fails and leaves no part of its line: the line before it and
 // the one after are whole, one to a line.
@@ -237,7 +329,7 @@ func TestAWriteThatStopsPartWayLeavesNoPartialLine(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 			path := filepath.Join(t.TempDir(), "agister.jsonl")
-			file := logging.File{Path: path, Max: 1 << 20, Keep: 1, Append: (*os.File).Write}
+			file := logging.File{Path: path, Max: 1 << 20, Keep: 1, Append: (*os.File).Write, Rename: os.Rename, Remove: os.Remove}
 			partWay := file
 			partWay.Append = func(log *os.File, line []byte) (int, error) {
 				n, err := log.Write(line[:len(line)/2])
@@ -266,15 +358,29 @@ func TestAWriteThatStopsPartWayLeavesNoPartialLine(t *testing.T) {
 	}
 }
 
-// A log given no Append writes nothing and says so.
-func TestALogGivenNoAppendFails(t *testing.T) {
+// A log not given what it writes by, its Append, Rename or Remove, is not
+// usable, writes nothing and says which it lacks.
+func TestALogNotGivenWhatItWritesByFails(t *testing.T) {
 	t.Parallel()
-	dir := t.TempDir()
-	if _, err := (logging.File{Path: filepath.Join(dir, "agister.jsonl"), Max: 100, Keep: 1}).Write([]byte("x\n")); err == nil || !strings.Contains(err.Error(), "no Append") {
-		t.Fatalf("err = %v", err)
-	}
-	if found := names(t, dir); len(found) != 0 {
-		t.Fatalf("files = %v", found)
+	for missing, file := range map[string]logging.File{
+		"Append": {Rename: os.Rename, Remove: os.Remove},
+		"Rename": {Append: (*os.File).Write, Remove: os.Remove},
+		"Remove": {Append: (*os.File).Write, Rename: os.Rename},
+	} {
+		t.Run(missing, func(t *testing.T) {
+			t.Parallel()
+			dir := t.TempDir()
+			file.Path, file.Max, file.Keep = filepath.Join(dir, "agister.jsonl"), 100, 1
+			if err := file.Usable(); err == nil || !strings.Contains(err.Error(), "no "+missing) {
+				t.Fatalf("Usable: %v", err)
+			}
+			if _, err := file.Write([]byte("x\n")); err == nil || !strings.Contains(err.Error(), "no "+missing) {
+				t.Fatalf("Write: %v", err)
+			}
+			if found := names(t, dir); len(found) != 0 {
+				t.Fatalf("files = %v", found)
+			}
+		})
 	}
 }
 
@@ -312,7 +418,7 @@ func TestTwoWritersLoseNoLineAcrossRotations(t *testing.T) {
 		wait.Add(1)
 		go func() {
 			defer wait.Done()
-			file := logging.File{Path: path, Max: 200, Keep: keep, Append: held}
+			file := logging.File{Path: path, Max: 200, Keep: keep, Append: held, Rename: os.Rename, Remove: os.Remove}
 			for i := range lines {
 				if _, err := file.Write([]byte(fmt.Sprintf(`{"writer":"%s","line":%03d}`+"\n", writer, i))); err != nil {
 					failures <- err

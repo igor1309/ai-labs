@@ -266,21 +266,21 @@ func (c composition) wire(config cli.Config) (contract.Client, *app.BackgroundRe
 	commands := supervisor.Commands{Starter: c.commands, Timer: c.timer}
 	runtimes := runtime.Registry{
 		"claude-code": func(command string) app.TurnRunner {
-			return logging.Runner{Inner: runtimecomposition.NewClaudeCode(command, processes), Adapter: "claude-code", Log: log, Turns: turns, Clock: system.Clock{}}
+			return logging.NewRunner(runtimecomposition.NewClaudeCode(command, processes), "claude-code", log, turns, system.Clock{})
 		},
 		// The Codex homes of threads given skills are kept under the
 		// home, where a continuation finds them, beside the user's own.
 		"codex": func(command string) app.TurnRunner {
-			return logging.Runner{Inner: runtimecomposition.NewCodex(command, filepath.Join(config.Home, "codex", "homes"), c.codexHome, processes), Adapter: "codex", Log: log, Turns: turns, Clock: system.Clock{}}
+			return logging.NewRunner(runtimecomposition.NewCodex(command, filepath.Join(config.Home, "codex", "homes"), c.codexHome, processes), "codex", log, turns, system.Clock{})
 		},
 		// Pi's sessions are kept under the home, where a continuation
 		// finds them, not in ~/.pi.
 		// OpenCode keeps its sessions in its own store.
 		"opencode": func(command string) app.TurnRunner {
-			return logging.Runner{Inner: runtimecomposition.NewOpenCode(command, processes), Adapter: "opencode", Log: log, Turns: turns, Clock: system.Clock{}}
+			return logging.NewRunner(runtimecomposition.NewOpenCode(command, processes), "opencode", log, turns, system.Clock{})
 		},
 		"pi": func(command string) app.TurnRunner {
-			return logging.Runner{Inner: runtimecomposition.NewPi(command, filepath.Join(config.Home, "pi", "sessions"), processes), Adapter: "pi", Log: log, Turns: turns, Clock: system.Clock{}}
+			return logging.NewRunner(runtimecomposition.NewPi(command, filepath.Join(config.Home, "pi", "sessions"), processes), "pi", log, turns, system.Clock{})
 		},
 	}
 	// A runtime version the settings verify no primitive for is probed,
@@ -378,9 +378,10 @@ func (c composition) wire(config cli.Config) (contract.Client, *app.BackgroundRe
 	if c.adjust != nil {
 		c.adjust(&infra)
 	}
-	// What fails before any run exists, a command the settings refuse or a
-	// call whose run cannot be made, has no run to record it: the log does.
-	return logging.Client{Client: app.NewClient(infra), Log: log}, reaping, nil
+	// What fails before any run exists, a command the settings refuse or
+	// one that fails, has no run to record it: the log does, for every
+	// operation of the client.
+	return logging.Client{Inner: app.NewClient(infra), Log: log}, reaping, nil
 }
 
 // layers selects the settings layers of a command launched in the working
@@ -430,7 +431,7 @@ func diagnostics(config cli.Config) (log, turns *slog.Logger, err error) {
 	if err := os.MkdirAll(dir, 0o700); err != nil {
 		return nil, nil, err
 	}
-	file := logging.File{Path: filepath.Join(dir, "agister.jsonl"), Max: logMax, Keep: logKeep, Append: (*os.File).Write}
+	file := logging.File{Path: filepath.Join(dir, "agister.jsonl"), Max: logMax, Keep: logKeep, Append: (*os.File).Write, Rename: os.Rename, Remove: os.Remove}
 	if err := file.Usable(); err != nil {
 		return nil, nil, err
 	}

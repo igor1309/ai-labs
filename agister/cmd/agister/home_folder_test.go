@@ -98,10 +98,10 @@ func TestTheHomeFolderInstallsAndPassesCheckAsGlobalSettings(t *testing.T) {
 }
 
 // Live state that turns up in home's settings folder, all Agister writes
-// under a home: a backup, a cached input, a Codex or Pi thread's home or
-// sessions, a lock, the log, a probe and a run, is ignored by git, so it is
-// never committed with the settings (ADR-027: the folder never holds live
-// state).
+// under a home: home's write lock, a backup, a cached input, a Codex or Pi
+// thread's home or sessions, a lock, the log, a probe and a run, is ignored
+// by git, so it is never committed with the settings (ADR-027: the folder
+// never holds live state).
 //
 // Contract test: real git, reading this repository's ignore rules.
 func TestGitIgnoresLiveStateInTheHomeFolder(t *testing.T) {
@@ -111,7 +111,7 @@ func TestGitIgnoresLiveStateInTheHomeFolder(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, path := range []string{
-		"backups/b1/manifest.json", "cache/inputs/a.txt", "codex/homes/t1/config.toml", "locks/worktrees/w1.lock",
+		".write.lock", "backups/b1/manifest.json", "cache/inputs/a.txt", "codex/homes/t1/config.toml", "locks/worktrees/w1.lock",
 		"logs/agister.jsonl", "logs/agister.jsonl.1.gz", "pi/sessions/s1.jsonl", "probes/codex.json", "runs/r1/record.json",
 	} {
 		path := filepath.Join(homeFolder, path)

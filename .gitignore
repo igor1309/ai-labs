@@ -31,6 +31,7 @@ playwright-report/
 agister/bin/
 
 # Agister's live state, never settings (ADR-027)
+agister/home/.write.lock
 agister/home/backups/
 agister/home/cache/
 agister/home/codex/homes/
