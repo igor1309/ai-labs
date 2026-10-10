@@ -94,3 +94,168 @@ func TestAProcessWithoutAnAgentAnswersForItsOwnSession(t *testing.T) {
 		}
 	}
 }
+
+// onC is bound("c") with agent c, a's twin but for its session, on the
+// runtime mapping given, whose one primitive is the only one a call uses.
+func onC(session string, mapping definition.Mapping) settings.Bundle {
+	b := bound("c")
+	mapping.Adapter, mapping.Efforts, mapping.Select = "claude-code", []string{"high"}, "one"
+	b.Mappings[mapping.Name] = mapping
+	b.Agents["c"] = definition.Agent{Name: "c", Runtime: mapping.Name, Effort: "high", ModelFamily: "f", Session: session}
+	return b
+}
+
+// wide is a runtime mapping whose one primitive also grants exec, which
+// process p does not allow.
+func wide() definition.Mapping {
+	return definition.Mapping{Name: "wide", Primitives: []definition.Primitive{{Name: "Shell", Grants: []string{"read", "exec"}, Verified: []string{"1."}}}}
+}
+
+// plain is a runtime mapping whose one primitive grants what process p
+// allows.
+func plain() definition.Mapping {
+	return definition.Mapping{Name: "plain", Primitives: []definition.Primitive{{Name: "Read", Grants: []string{"read"}, Verified: []string{"1."}}}}
+}
+
+// split is a runtime mapping that runs process p on version 2 and not on
+// version 1, where its one verified primitive also grants exec.
+func split() definition.Mapping {
+	return definition.Mapping{Name: "split", Primitives: []definition.Primitive{
+		{Name: "Read", Grants: []string{"read"}, Verified: []string{"2."}},
+		{Name: "Shell", Grants: []string{"read", "exec"}, Verified: []string{"1."}},
+	}}
+}
+
+// repairing gives the bundle's process p a verification that repairs, and
+// its own agent a session that may be resumed.
+func repairing(b settings.Bundle, session string) settings.Bundle {
+	b.Service.MaxVerifyAttempts = 3
+	a := b.Agents["a"]
+	a.Session = definition.SessionResumable
+	b.Agents["a"] = a
+	p := b.Processes["p"]
+	p.Session, p.Revision = session, "v"
+	p.Verify = &definition.Verify{Command: "go test ./...", Timeout: time.Minute, MaxAttempts: 3, Instruction: "Fix it."}
+	b.Processes["p"] = p
+	return b
+}
+
+// ADR-030 rule 8: a process that cannot be planned on the runtime of the
+// agent a node binds it to is a problem of the workflow, which names the
+// node, and not of the process, which runs on its own agent. A node that
+// names its process's own agent adds nothing to the process's problem.
+func TestABindingThatCannotBePlannedIsAProblemOfItsWorkflow(t *testing.T) {
+	t.Parallel()
+	const refused = "cannot run on agent c's runtime wide: cannot enforce the effective permissions: Shell also grants exec"
+	onJoin := onC(definition.SessionFresh, wide())
+	workflow := onJoin.Workflows["w"]
+	workflow.FanOut[0].Agent, workflow.Join.Agent = "", "c"
+	onJoin.Workflows["w"] = workflow
+	// Workflow v binds the same process to the agent that runs it.
+	beside := onC(definition.SessionFresh, wide())
+	beside.Workflows["v"] = bound("a").Workflows["w"]
+	own := onC(definition.SessionFresh, wide())
+	p := own.Processes["p"]
+	p.Agent = "c"
+	own.Processes["p"] = p
+	for name, c := range map[string]struct {
+		bundle settings.Bundle
+		want   []string
+	}{
+		"a fan-out node":                    {onC(definition.SessionFresh, wide()), []string{"workflow w: fan-out node one: process p: " + refused}},
+		"the join":                          {onJoin, []string{"workflow w: join node merge: process j: " + refused}},
+		"another workflow binds it to a":    {beside, []string{"workflow w: fan-out node one: process p: " + refused}},
+		"a version of the runtime plans it": {onC(definition.SessionFresh, split()), nil},
+		"the process's own agent":           {own, []string{"process p: " + refused}},
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			if got := problemsOf(c.bundle); !reflect.DeepEqual(got, c.want) {
+				t.Fatalf("problems = %q, want %q", got, c.want)
+			}
+		})
+	}
+}
+
+// ADR-030 rules 3 and 8: a process that leaves its session to its agent
+// and repairs or recovers in it cannot run on a fresh-only agent a node
+// binds it to: a problem of the workflow, which names the node. One that
+// sets session answers for it itself, whatever agent a node binds.
+func TestABindingToAFreshOnlyAgentIsAProblemOfItsWorkflow(t *testing.T) {
+	t.Parallel()
+	recovering := repairing(onC(definition.SessionFresh, plain()), "")
+	p := recovering.Processes["p"]
+	resumes := 1
+	p.Verify, p.Limits.Stale.Recover = nil, definition.Recover{MaxResumes: &resumes, Instruction: "Go on."}
+	recovering.Processes["p"] = p
+	for name, c := range map[string]struct {
+		bundle settings.Bundle
+		want   []string
+	}{
+		"it repairs": {repairing(onC(definition.SessionFresh, plain()), ""),
+			[]string{"workflow w: fan-out node one: process p: verify.max_attempts 3 repairs in the call's session, but agent c is fresh-only"}},
+		"it recovers": {recovering,
+			[]string{"workflow w: fan-out node one: process p: stale.recover.max_resumes 1 recovers in the call's session, but agent c is fresh-only"}},
+		"the node's agent is resumable": {repairing(onC(definition.SessionResumable, plain()), ""), nil},
+		"the process says resumable":    {repairing(onC(definition.SessionFresh, plain()), definition.SessionResumable), nil},
+		"the process says fresh-only": {repairing(onC(definition.SessionFresh, plain()), definition.SessionFresh),
+			[]string{"process p: verify.max_attempts 3 repairs in the call's session, but process p is fresh-only"}},
+		"it neither repairs nor recovers": {onC(definition.SessionFresh, plain()), nil},
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			if got := problemsOf(c.bundle); !reflect.DeepEqual(got, c.want) {
+				t.Fatalf("problems = %q, want %q", got, c.want)
+			}
+		})
+	}
+}
+
+// The runtime's installed version may plan less than some version does:
+// a binding is planned on it as a process on its own agent is, and is the
+// workflow's problem, which no agent lifts. A node that names its
+// process's own agent adds nothing to the process's problem.
+func TestABindingIsPlannedOnTheInstalledVersion(t *testing.T) {
+	t.Parallel()
+	b := onC(definition.SessionFresh, split())
+	b.Processes["q"] = definition.Process{Name: "q", Agent: "c", Output: definition.Output{Format: "text"}, Limits: reading()}
+	workflow := b.Workflows["w"]
+	workflow.FanOut = append(workflow.FanOut, definition.Node{Name: "two", Process: "q", Agent: "c"})
+	b.Workflows["w"] = workflow
+	if got := problemsOf(b); got != nil {
+		t.Fatalf("before the version is known: problems = %q", got)
+	}
+	const refused = "cannot run on agent c's runtime split version 1.4: cannot enforce the effective permissions: Shell also grants exec (not verified for version 1.4: Read)"
+	want := []settings.Problem{
+		{Subject: "process q", Message: refused, Agent: "c"},
+		{Subject: "workflow w", Message: "fan-out node one: process p: " + refused},
+	}
+	if got := settings.PlanProblems(b, b.Agents["c"], "1.4"); !reflect.DeepEqual(got, want) {
+		t.Fatalf("version 1.4: problems = %+v, want %+v", got, want)
+	}
+	if got := settings.PlanProblems(b, b.Agents["c"], "2.0"); got != nil {
+		t.Fatalf("version 2.0: problems = %+v", got)
+	}
+	if got := settings.PlanProblems(b, b.Agents["a"], "1.4"); got != nil {
+		t.Fatalf("agent a: problems = %+v", got)
+	}
+}
+
+// ADR-030 rules 3 and 8: only the runtime can say whether it resumes a
+// session. One that cannot refuses the process that repairs on its own
+// agent, and each node that binds such a process to an agent on it: a
+// problem of the workflow, which names the node.
+func TestABindingToARuntimeThatCannotResumeIsAProblemOfItsWorkflow(t *testing.T) {
+	t.Parallel()
+	b := repairing(onC(definition.SessionResumable, plain()), "")
+	if got := problemsOf(b); got != nil {
+		t.Fatalf("before the runtime is asked: problems = %q", got)
+	}
+	const repairs = "verify.max_attempts 3 repairs in the call's session, but runtime "
+	if got, want := settings.ResumeProblems(b, b.Agents["c"]), []settings.Problem{{Subject: "workflow w", Message: "fan-out node one: process p: " + repairs + "plain cannot resume sessions"}}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("agent c: problems = %+v, want %+v", got, want)
+	}
+	if got, want := settings.ResumeProblems(b, b.Agents["a"]), []settings.Problem{{Subject: "process p", Message: repairs + "rt cannot resume sessions", Agent: "a"}}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("agent a: problems = %+v, want %+v", got, want)
+	}
+}

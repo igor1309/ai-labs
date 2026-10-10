@@ -550,21 +550,9 @@ func (c *Checker) check(ctx context.Context, probe bool) (CheckResult, error) {
 				// Repairs resume the call's session, which only the
 				// runtime can say it supports. So do recoveries (ADR-024
 				// rule 6).
-				for _, process := range sortedNames(bundle.Processes) {
-					if bundle.Processes[process].Agent != name || identity.Resume {
-						continue
-					}
-					if verify := bundle.Resolved(process).Verify; verify.Repairs() {
-						settingsProblem(settings.Problem{
-							Subject: "process " + process, Agent: name,
-							Message: fmt.Sprintf("verify.max_attempts %d repairs in the call's session, but runtime %s cannot resume sessions", verify.MaxAttempts, mapping.Name),
-						})
-					}
-					if resumes := bundle.Resumes(process); resumes > 0 {
-						settingsProblem(settings.Problem{
-							Subject: "process " + process, Agent: name,
-							Message: fmt.Sprintf("stale.recover.max_resumes %d recovers in the call's session, but runtime %s cannot resume sessions", resumes, mapping.Name),
-						})
+				if !identity.Resume {
+					for _, p := range settings.ResumeProblems(bundle, agent) {
+						settingsProblem(p)
 					}
 				}
 			}

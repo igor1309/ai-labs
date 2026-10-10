@@ -1,6 +1,7 @@
 // Package settings checks a whole set of parsed definitions for consistency:
 // references resolve, limits compose, every process can be enforced on its
-// agent's runtime, every workflow's nodes can run as ADR-003 has them. It reports every problem at once.
+// agent's runtime and on that of each agent a workflow's node binds it to,
+// every workflow's nodes can run as ADR-003 has them. It reports every problem at once.
 package settings
 
 import (
@@ -45,21 +46,6 @@ func (b Bundle) Resolved(name string) definition.Process {
 		process.Verify = &verification.Verify
 	}
 	return process
-}
-
-// Resumes is how many recovery turns a call of the process named name may
-// take (ADR-024 rule 5). It is 0 where the process's limits do not compose,
-// which Check reports.
-func (b Bundle) Resumes(name string) int {
-	process := b.Resolved(name)
-	if b.Service == nil {
-		return 0
-	}
-	effective, err := policy.Compose(*b.Service, process, policy.Caller{})
-	if err != nil {
-		return 0
-	}
-	return effective.Stale.Recover.MaxResumes
 }
 
 // Mechanisms are what the code provides, named by settings.
@@ -188,11 +174,8 @@ func Check(b Bundle, m Mechanisms) []Problem {
 			if own {
 				report = func(format string, args ...any) { add(subject, format, args...) }
 			}
-			if process.Verify.Repairs() {
-				report("verify.max_attempts %d repairs in the call's session, but %s is %s", process.Verify.MaxAttempts, by, mode)
-			}
-			if resumes := effective.Stale.Recover.MaxResumes; resumes > 0 {
-				report("stale.recover.max_resumes %d recovers in the call's session, but %s is %s", resumes, by, mode)
+			for _, message := range unresumed(process, effective, by+" is "+mode) {
+				report("%s", message)
 			}
 		}
 		// A process that names no agent is judged on the agent a node binds
@@ -236,6 +219,24 @@ func Check(b Bundle, m Mechanisms) []Problem {
 		for i, node := range workflow.Nodes() {
 			if _, ok := b.Agents[node.Agent]; node.Agent != "" && !ok {
 				add(subject, "%s: agent %q does not exist", nodeLabel(node, i == len(workflow.FanOut)), node.Agent)
+			}
+		}
+		// So is the binding: a process that cannot run on the agent a node
+		// binds it to is a problem of the workflow, which names the node
+		// (ADR-030 rule 8).
+		for _, bound := range b.bindings(workflow) {
+			// A process that sets session answers for it itself (rule 3).
+			if mode, by := definition.CallSession(bound.process, bound.agent); bound.process.Session == "" && mode != definition.SessionResumable {
+				for _, message := range unresumed(bound.process, bound.effective, by+" is "+mode) {
+					problems = append(problems, bound.problem(name, "%s", message))
+				}
+			}
+			mapping, ok := b.Mappings[bound.agent.Runtime]
+			if !ok {
+				continue // reported on the agent
+			}
+			if err := planOnSomeVersion(bound.effective, mapping, b.Service.StateReaching); err != nil {
+				problems = append(problems, bound.problem(name, "cannot run on agent %s's runtime %s: %v", bound.agent.Name, mapping.Name, err))
 			}
 		}
 	}
@@ -282,7 +283,8 @@ func planOnSomeVersion(effective policy.Effective, mapping definition.Mapping, s
 }
 
 // PlanProblems reports the processes of the agent that cannot be planned on
-// the runtime version it was found to have. Composition problems are left
+// the runtime version it was found to have, and each node that binds a
+// process to the agent so (ADR-030 rule 8). Composition problems are left
 // to Check.
 func PlanProblems(b Bundle, agent definition.Agent, version string) []Problem {
 	mapping, ok := b.Mappings[agent.Runtime]
@@ -290,6 +292,13 @@ func PlanProblems(b Bundle, agent definition.Agent, version string) []Problem {
 		return nil
 	}
 	verified, unverified := mapping.ForVersion(version)
+	// refused is why the plan cannot be made, "" when it can.
+	refused := func(effective policy.Effective) string {
+		if _, err := enforce.Make(effective.Permissions, verified, effective.Require, b.Service.StateReaching); err != nil {
+			return fmt.Sprintf("cannot run on agent %s's runtime %s version %s: %v%s", agent.Name, mapping.Name, version, err, unverifiedNote(unverified, version))
+		}
+		return ""
+	}
 	var problems []Problem
 	for _, name := range sortedKeys(b.Processes) {
 		process := b.Resolved(name)
@@ -300,8 +309,54 @@ func PlanProblems(b Bundle, agent definition.Agent, version string) []Problem {
 		if err != nil {
 			continue
 		}
-		if _, err := enforce.Make(effective.Permissions, verified, effective.Require, b.Service.StateReaching); err != nil {
-			problems = append(problems, Problem{Subject: "process " + name, Message: fmt.Sprintf("cannot run on agent %s's runtime %s version %s: %v%s", agent.Name, mapping.Name, version, err, unverifiedNote(unverified, version)), Agent: agent.Name})
+		if message := refused(effective); message != "" {
+			problems = append(problems, Problem{Subject: "process " + name, Message: message, Agent: agent.Name})
+		}
+	}
+	for _, name := range sortedKeys(b.Workflows) {
+		for _, bound := range b.bindings(b.Workflows[name]) {
+			if bound.agent.Name != agent.Name {
+				continue
+			}
+			if message := refused(bound.effective); message != "" {
+				problems = append(problems, bound.problem(name, "%s", message))
+			}
+		}
+	}
+	return problems
+}
+
+// ResumeProblems reports the processes of the agent whose turns resume
+// their call's session, which the agent's runtime was found unable to
+// resume, and each node that binds such a process to the agent (ADR-030
+// rules 3 and 8). Only the runtime can say whether it resumes one.
+func ResumeProblems(b Bundle, agent definition.Agent) []Problem {
+	mapping, ok := b.Mappings[agent.Runtime]
+	if !ok || b.Service == nil {
+		return nil
+	}
+	why := "runtime " + mapping.Name + " cannot resume sessions"
+	var problems []Problem
+	for _, name := range sortedKeys(b.Processes) {
+		process := b.Resolved(name)
+		if process.Agent != agent.Name {
+			continue
+		}
+		// One whose limits do not compose recovers in no session; Check
+		// reports it.
+		effective, _ := policy.Compose(*b.Service, process, policy.Caller{})
+		for _, message := range unresumed(process, effective, why) {
+			problems = append(problems, Problem{Subject: "process " + name, Message: message, Agent: agent.Name})
+		}
+	}
+	for _, name := range sortedKeys(b.Workflows) {
+		for _, bound := range b.bindings(b.Workflows[name]) {
+			if bound.agent.Name != agent.Name {
+				continue
+			}
+			for _, message := range unresumed(bound.process, bound.effective, why) {
+				problems = append(problems, bound.problem(name, "%s", message))
+			}
 		}
 	}
 	return problems
