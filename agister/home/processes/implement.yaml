@@ -24,6 +24,7 @@ tools:
   require:
     - repository.read
     - repository.write
+    - process.execute
   allow:
     - repository.read
     - repository.search

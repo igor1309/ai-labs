@@ -142,8 +142,9 @@ var staleLimits = func() map[string]domain.StaleLimits {
 
 // requiredPermissions are the permissions each of home's processes says it
 // cannot work without (tools.require, ADR-030 rule 8), by process, a base
-// left out, as its run records them: implement reads the repository and
-// writes its change, a review reads the repository and the change's diff,
+// left out, as its run records them: implement reads the repository, writes
+// its change and runs its tests, a review reads the repository and the
+// change's diff,
 // the advisor reads the repository, and the judge, which rules on the
 // reviews it is given, needs none. implement_codex, implement_pi and
 // implement_pi_glm, which go when implement is home's one implementer
@@ -151,7 +152,7 @@ var staleLimits = func() map[string]domain.StaleLimits {
 var requiredPermissions = func() map[string][]string {
 	review := []string{"repository.read", "repository.diff"}
 	return map[string][]string{
-		"implement":                 {"repository.read", "repository.write"},
+		"implement":                 {"repository.read", "repository.write", "process.execute"},
 		"implement_codex":           nil,
 		"implement_pi":              nil,
 		"implement_pi_glm":          nil,
@@ -2261,6 +2262,46 @@ func TestCheckOnHomeWarnsOfNoBinding(t *testing.T) {
 	}
 	if len(want) == 0 || !reflect.DeepEqual(planned, want) {
 		t.Errorf("check plans the bindings %q, want each node of home's workflows %q", planned, want)
+	}
+}
+
+// implement runs its tests, so it requires process.execute (ADR-030 rule
+// 8). On Claude Code only Bash grants it, and Bash grants network as well:
+// with network denied, in home's implement as these temp settings deny it,
+// Bash is withheld, and the run is refused, naming process.execute, before
+// its runtime starts.
+func TestImplementWithoutNetworkIsRefusedForProcessExecute(t *testing.T) {
+	t.Parallel()
+	root, repo, home := onFakeRuntimes(t)
+	path := filepath.Join(home, "processes", "implement.yaml")
+	text := read(t, path)
+	if !strings.Contains(text, "\ntimeout: 45m\n") {
+		t.Fatalf("%s: the shipped timeout was not found", path)
+	}
+	write(t, path, strings.Replace(text, "\ntimeout: 45m\n", "\nisolation:\n  deny: [network]\n\ntimeout: 45m\n", 1))
+
+	before := map[string]bool{}
+	for _, entry := range readRuns(t, home) {
+		before[entry.Name()] = true
+	}
+	launch := launchDir("implement")
+	args := append([]string{"run", "implement"}, paramArgs(t, launch, parseProcess(t, root, "implement").Params)...)
+	r := agister(t, home, filepath.Join(repo, launch), args...)
+	const withheld = "required permissions would be withheld: process.execute"
+	if r.code != cli.ExitRefused || !strings.Contains(r.stderr, withheld) {
+		t.Fatalf("implement without network: exit %d, stderr %q, want refused with %q", r.code, r.stderr, withheld)
+	}
+	var created []string
+	for _, entry := range readRuns(t, home) {
+		if !before[entry.Name()] {
+			created = append(created, entry.Name())
+		}
+	}
+	if len(created) != 1 {
+		t.Fatalf("runs recorded: %v, want one", created)
+	}
+	if started := processesStarted(filepath.Join(home, "runs", created[0])); len(started) != 0 {
+		t.Fatalf("run %s: the runtime started: %v", created[0], started)
 	}
 }
 
