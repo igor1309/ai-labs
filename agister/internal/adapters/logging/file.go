@@ -24,6 +24,9 @@ import (
 // while an install waits for its answer, and a warning must not wait for
 // it. The directory is locked, not a file in it, so the log leaves nothing
 // in it but itself.
+//
+// A write that fails or stops part way, as on a full disk, is cut back
+// off the log, so no partial line is left for the next one to run into.
 type File struct {
 	Path string
 	// Max is the size in bytes the log is kept within. A line longer than
@@ -31,11 +34,17 @@ type File struct {
 	Max int64
 	// Keep is how many old files are kept.
 	Keep int
+	// Append writes line to the open log: (*os.File).Write. Tests give one
+	// that stops part way.
+	Append func(log *os.File, line []byte) (int, error)
 }
 
 // Write appends line, one whole record, rotating first when it would not
 // fit.
 func (f File) Write(line []byte) (int, error) {
+	if f.Append == nil {
+		return 0, fmt.Errorf("writing %s: the log was given no Append", f.Path)
+	}
 	dir, err := os.Open(filepath.Dir(f.Path))
 	if err != nil {
 		return 0, err
@@ -63,8 +72,21 @@ func (f File) Write(line []byte) (int, error) {
 	if err != nil {
 		return 0, err
 	}
-	n, err := file.Write(line)
-	return n, errors.Join(err, file.Close())
+	defer file.Close()
+	// The size before the write, which no other writer changes while the
+	// directory is held.
+	before, err := file.Stat()
+	if err != nil {
+		return 0, err
+	}
+	n, err := f.Append(file, line)
+	if err == nil && n < len(line) {
+		err = io.ErrShortWrite
+	}
+	if err != nil {
+		return 0, errors.Join(err, file.Truncate(before.Size()))
+	}
+	return n, file.Close()
 }
 
 // old is the path of the n-th old file, the newest being the first.

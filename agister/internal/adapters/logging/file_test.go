@@ -2,6 +2,7 @@ package logging_test
 
 import (
 	"compress/gzip"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -9,6 +10,7 @@ import (
 	"sort"
 	"strings"
 	"sync"
+	"syscall"
 	"testing"
 
 	"github.com/igor1309/ai-labs/agister/internal/adapters/logging"
@@ -69,7 +71,7 @@ func TestTheLogStaysWithinItsCap(t *testing.T) {
 	t.Parallel()
 	dir := t.TempDir()
 	path := filepath.Join(dir, "agister.jsonl")
-	file := logging.File{Path: path, Max: 100, Keep: 3}
+	file := logging.File{Path: path, Max: 100, Keep: 3, Append: (*os.File).Write}
 	var written []string
 	for i := range 200 {
 		line := fmt.Sprintf(`{"line":%03d}`, i)
@@ -101,7 +103,7 @@ func TestTheLogStaysWithinItsCap(t *testing.T) {
 func TestALineLongerThanTheCapIsWrittenAlone(t *testing.T) {
 	t.Parallel()
 	path := filepath.Join(t.TempDir(), "agister.jsonl")
-	file := logging.File{Path: path, Max: 10, Keep: 2}
+	file := logging.File{Path: path, Max: 10, Keep: 2, Append: (*os.File).Write}
 	long := strings.Repeat("x", 40)
 	for _, line := range []string{"short", long, "after"} {
 		if _, err := file.Write([]byte(line + "\n")); err != nil {
@@ -113,6 +115,59 @@ func TestALineLongerThanTheCapIsWrittenAlone(t *testing.T) {
 	}
 	if kept := logged(t, path, file.Keep); strings.Join(kept, " ") != "short "+long+" after" {
 		t.Fatalf("kept = %v", kept)
+	}
+}
+
+// A write that stops part way, failing as on a full disk or short without
+// an error, fails and leaves no part of its line: the line before it and
+// the one after are whole, one to a line.
+//
+// Contract test: the real filesystem cut back after the write the test
+// stops.
+func TestAWriteThatStopsPartWayLeavesNoPartialLine(t *testing.T) {
+	t.Parallel()
+	for name, stop := range map[string]error{"failing": syscall.ENOSPC, "short": nil} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			path := filepath.Join(t.TempDir(), "agister.jsonl")
+			file := logging.File{Path: path, Max: 1 << 20, Keep: 1, Append: (*os.File).Write}
+			partWay := file
+			partWay.Append = func(log *os.File, line []byte) (int, error) {
+				n, err := log.Write(line[:len(line)/2])
+				if err != nil {
+					t.Fatal(err)
+				}
+				return n, stop
+			}
+			if _, err := file.Write([]byte(`{"line":"before"}` + "\n")); err != nil {
+				t.Fatal(err)
+			}
+			want := stop
+			if want == nil {
+				want = io.ErrShortWrite
+			}
+			if n, err := partWay.Write([]byte(`{"line":"cut short"}` + "\n")); n != 0 || !errors.Is(err, want) {
+				t.Fatalf("the write that stopped: %d, %v", n, err)
+			}
+			if _, err := file.Write([]byte(`{"line":"after"}` + "\n")); err != nil {
+				t.Fatal(err)
+			}
+			if current, _ := os.ReadFile(path); string(current) != `{"line":"before"}`+"\n"+`{"line":"after"}`+"\n" {
+				t.Fatalf("log = %q", current)
+			}
+		})
+	}
+}
+
+// A log given no Append writes nothing and says so.
+func TestALogGivenNoAppendFails(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	if _, err := (logging.File{Path: filepath.Join(dir, "agister.jsonl"), Max: 100, Keep: 1}).Write([]byte("x\n")); err == nil || !strings.Contains(err.Error(), "no Append") {
+		t.Fatalf("err = %v", err)
+	}
+	if found := names(t, dir); len(found) != 0 {
+		t.Fatalf("files = %v", found)
 	}
 }
 
@@ -132,7 +187,7 @@ func TestTwoWritersLoseNoLineAcrossRotations(t *testing.T) {
 		wait.Add(1)
 		go func() {
 			defer wait.Done()
-			file := logging.File{Path: path, Max: 200, Keep: keep}
+			file := logging.File{Path: path, Max: 200, Keep: keep, Append: (*os.File).Write}
 			for i := range lines {
 				if _, err := file.Write([]byte(fmt.Sprintf(`{"writer":"%s","line":%03d}`+"\n", writer, i))); err != nil {
 					failures <- err

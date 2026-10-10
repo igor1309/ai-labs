@@ -982,13 +982,32 @@ func TestFreshHomeNeedsInit(t *testing.T) {
 }
 
 // A .agister that exists but cannot be used fails every command instead of
-// silently leaving the project's settings out.
+// silently leaving the project's settings out, and the failure, before any
+// run exists, is in the log as an error.
 func TestUnusableProjectSettingsFail(t *testing.T) {
 	t.Parallel()
 	home, repo := setup(t, "approve")
 	write(t, filepath.Join(repo, ".agister"), "not a directory")
 	if r := agister(t, home, repo, "process", "list"); r.code == 0 || !strings.Contains(r.stderr, ".agister: not a directory") {
 		t.Fatalf("exit %d\n%s%s", r.code, r.stdout, r.stderr)
+	}
+	data := read(t, filepath.Join(home, "logs", "agister.jsonl"))
+	var logged []map[string]any
+	for _, line := range strings.Split(strings.TrimSpace(data), "\n") {
+		var entry map[string]any
+		if err := json.Unmarshal([]byte(line), &entry); err != nil {
+			t.Fatalf("log line %q: %v", line, err)
+		}
+		if entry["msg"] == "selecting the settings layers failed" {
+			logged = append(logged, entry)
+		}
+	}
+	if len(logged) != 1 {
+		t.Fatalf("settings failures logged = %d in:\n%s", len(logged), data)
+	}
+	message, _ := logged[0]["error"].(string)
+	if logged[0]["level"] != "ERROR" || !strings.Contains(message, ".agister: not a directory") || logged[0]["cwd"] != repo {
+		t.Fatalf("logged = %v", logged[0])
 	}
 }
 

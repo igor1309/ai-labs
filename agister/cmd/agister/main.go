@@ -244,6 +244,8 @@ func (c composition) wire(config cli.Config) (contract.Client, *app.BackgroundRe
 	global := fsdefs.Store{Dir: config.Home}
 	layered, err := layers(config, c.git.calls, log)
 	if err != nil {
+		// No run exists yet to record it in: the log does.
+		log.Error("selecting the settings layers failed", "cwd", config.Cwd, "error", err.Error())
 		return nil, nil, err
 	}
 	// The directory whose settings are layered over home's: the project's,
@@ -423,7 +425,7 @@ func diagnostics(config cli.Config) (log, turns *slog.Logger, err error) {
 	if err := os.MkdirAll(dir, 0o700); err != nil {
 		return nil, nil, err
 	}
-	file := logging.File{Path: filepath.Join(dir, "agister.jsonl"), Max: logMax, Keep: logKeep}
+	file := logging.File{Path: filepath.Join(dir, "agister.jsonl"), Max: logMax, Keep: logKeep, Append: (*os.File).Write}
 	handlers := logging.Fanout{slog.NewJSONHandler(file, &slog.HandlerOptions{Level: level})}
 	if config.Debug == nil {
 		return slog.New(logging.Handler{Handler: handlers}), slog.New(slog.DiscardHandler), nil
