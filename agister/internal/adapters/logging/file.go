@@ -39,15 +39,21 @@ type File struct {
 	// Append writes line to the open log, while the directory is held:
 	// (*os.File).Write. Tests give one that looks at the hold.
 	Append func(log *os.File, line []byte) (int, error)
+	// Rename moves a file of a rotation to its place, while the directory
+	// is held: os.Rename. Tests give one that looks at the hold.
+	Rename func(from, to string) error
 }
 
 // Usable says whether the log can be written: it was given what it appends
-// by, and it opens the log for appending, creating it, and closes it, so a
-// log that cannot be, as one whose path is a directory, fails where the log
-// is set up, not silently at its first write.
+// and rotates by, and it opens the log for appending, creating it, and
+// closes it, so a log that cannot be, as one whose path is a directory,
+// fails where the log is set up, not silently at its first write.
 func (f File) Usable() error {
 	if f.Append == nil {
 		return fmt.Errorf("writing %s: the log was given no Append", f.Path)
+	}
+	if f.Rename == nil {
+		return fmt.Errorf("writing %s: the log was given no Rename", f.Path)
 	}
 	file, err := os.OpenFile(f.Path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o600)
 	if err != nil {
@@ -109,11 +115,11 @@ func (f File) rotate() error {
 	}
 	// A rename replaces what it lands on, so the oldest goes first.
 	for n := f.Keep; n > 1; n-- {
-		if err := os.Rename(f.old(n-1), f.old(n)); err != nil && !errors.Is(err, fs.ErrNotExist) {
+		if err := f.Rename(f.old(n-1), f.old(n)); err != nil && !errors.Is(err, fs.ErrNotExist) {
 			return err
 		}
 	}
-	if err := os.Rename(zipped, f.old(1)); err != nil {
+	if err := f.Rename(zipped, f.old(1)); err != nil {
 		return err
 	}
 	return os.Remove(f.Path)

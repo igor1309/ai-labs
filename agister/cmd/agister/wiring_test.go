@@ -870,7 +870,8 @@ func TestTheCompositionRecoversAStaleTurn(t *testing.T) {
 
 // A log that cannot be written, its path a directory, fails the setup of
 // diagnostics and so the client and every command, instead of losing each
-// warning later in silence.
+// warning later in silence. A command line that cannot be read is still
+// refused as one.
 //
 // Contract test: the composition's diagnostics over the log on the real
 // filesystem.
@@ -890,6 +891,9 @@ func TestAnUnusableLogFailsAtSetup(t *testing.T) {
 	}
 	if r := agister(t, home, tempDir(t), "check"); r.code != cli.ExitInternal || !strings.Contains(r.stderr, path) {
 		t.Fatalf("check: %d\n%s", r.code, r.stderr)
+	}
+	if r := agister(t, home, tempDir(t), "check", "--bogus"); r.code != cli.ExitUsage || !strings.Contains(r.stderr, "flag provided but not defined: -bogus") || strings.Contains(r.stderr, path) {
+		t.Fatalf("check --bogus: %d\n%s", r.code, r.stderr)
 	}
 }
 

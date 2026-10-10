@@ -118,9 +118,9 @@ Options:
 Scripts answer the yes prompts with: echo yes | agister ...
 
 <home>/logs/agister.jsonl keeps the warnings and errors no run records, each command that is
-refused or fails among them, never what a turn did: a turn's detail is kept with its run, in
-<home>/runs/<id>/. The cap is per file: the current log stays within 5 MB, and at most three
-older compressed files are kept beside it.
+refused or fails and the warnings of each check, one that passes too, among them, never what a
+turn did: a turn's detail is kept with its run, in <home>/runs/<id>/. The cap is per file: the
+current log stays within 5 MB, and at most three older compressed files are kept beside it.
 
 Exit codes: 0 completed, 1 failed, 2 interrupted, 3 refused, 4 lost, 64 usage or invalid settings,
 70 internal error, 130 stopped watching.`
@@ -161,11 +161,17 @@ func (e declinedError) Error() string { return e.message }
 
 // Run executes one command line and returns the exit code.
 func Run(ctx context.Context, args []string, env IO, build Build, logs Logs) int {
-	// A command line that cannot be read names no home, and help and the
-	// version need none: there is no log to open yet.
+	// Help and the version need no home: there is no log to open yet.
 	log := slog.New(slog.DiscardHandler)
 	opts, positionals, err := parse(args)
 	if err != nil {
+		// A command line that cannot be read is refused in the log of the
+		// home it names as far as it was read, without a client; one whose
+		// log cannot be opened is refused all the same.
+		if opened, unopened := logs(Config{Home: home(opts.home, env), Cwd: env.Cwd}); unopened == nil {
+			command, _ := Lookup(positionals)
+			log = opened.With("command", command.Name, "cwd", env.Cwd)
+		}
 		return failed(ctx, env, log, err)
 	}
 	if opts.help {
@@ -336,7 +342,7 @@ func Lookup(positionals []string) (Command, bool) {
 func parse(args []string) (options, []string, error) {
 	opts, positionals, err := parseTaking(args, func(string) bool { return true })
 	if err != nil {
-		return opts, nil, err
+		return opts, positionals, err
 	}
 	command, _ := Lookup(positionals) // dispatch refuses an unknown one
 	return parseTaking(args, func(name string) bool {
@@ -345,7 +351,7 @@ func parse(args []string) (options, []string, error) {
 }
 
 // parseTaking parses args into the options of the flags takes accepts and
-// drops the others.
+// drops the others. With an error it returns what it read before it.
 func parseTaking(args []string, takes func(name string) bool) (options, []string, error) {
 	opts, dropped := options{params: paramFlag{}}, options{params: paramFlag{}}
 	set := flags(func(name string) *options {
@@ -358,7 +364,7 @@ func parseTaking(args []string, takes func(name string) bool) (options, []string
 	var positionals []string
 	for {
 		if err := set.Parse(args); err != nil {
-			return opts, nil, usageError{err.Error()}
+			return opts, positionals, usageError{err.Error()}
 		}
 		if set.NArg() == 0 {
 			break
@@ -404,7 +410,8 @@ func flags(into func(name string) *options) *flag.FlagSet {
 }
 
 // dispatch runs the command the positionals name on client. What it
-// reports as refused or failed without an error, it says in log.
+// reports as refused or failed without an error, and what a check warns of,
+// it says in log.
 func dispatch(ctx context.Context, client contract.Client, log *slog.Logger, opts options, positionals []string, config Config, env IO) (int, error) {
 	var command string
 	var rest []string
@@ -419,7 +426,13 @@ func dispatch(ctx context.Context, client contract.Client, log *slog.Logger, opt
 		if err != nil {
 			return 0, err
 		}
-		if len(report.Problems) > 0 {
+		// No run records a check: the log keeps its warnings, those of one
+		// that passes too, and its problems. A check the caller interrupted
+		// has not failed, and its report is of a probe cut short.
+		if ctx.Err() == nil && len(report.Warnings) > 0 {
+			log.WarnContext(ctx, "the settings have warnings", "warnings", report.Warnings)
+		}
+		if ctx.Err() == nil && len(report.Problems) > 0 {
 			log.ErrorContext(ctx, "the settings have problems", "problems", messages(report))
 		}
 		return printCheckAs(env, report, opts)

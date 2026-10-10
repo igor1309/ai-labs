@@ -90,7 +90,7 @@ func TestTheLogStaysWithinItsCap(t *testing.T) {
 	t.Parallel()
 	dir := t.TempDir()
 	path := filepath.Join(dir, "agister.jsonl")
-	file := logging.File{Path: path, Max: 100, Keep: 3, Append: (*os.File).Write}
+	file := logging.File{Path: path, Max: 100, Keep: 3, Append: (*os.File).Write, Rename: os.Rename}
 	var written []string
 	for i := range 200 {
 		line := fmt.Sprintf(`{"line":%03d}`, i)
@@ -133,7 +133,7 @@ func TestAFailedCompressionKeepsTheOldFiles(t *testing.T) {
 	t.Parallel()
 	dir := t.TempDir()
 	path := filepath.Join(dir, "agister.jsonl")
-	file := logging.File{Path: path, Max: 100, Keep: 3, Append: (*os.File).Write}
+	file := logging.File{Path: path, Max: 100, Keep: 3, Append: (*os.File).Write, Rename: os.Rename}
 	full := strings.Repeat(`{"line":"full"}`+"\n", 6)
 	if err := os.WriteFile(path, []byte(full), 0o600); err != nil {
 		t.Fatal(err)
@@ -174,12 +174,17 @@ func TestAFailedCompressionKeepsTheOldFiles(t *testing.T) {
 	}
 }
 
-// A log not given what it appends by is not usable, and says so.
-func TestALogNotGivenItsAppendIsNotUsable(t *testing.T) {
+// A log not given what it appends by, or what it rotates by, is not
+// usable, and says so.
+func TestALogNotGivenItsAppendOrRenameIsNotUsable(t *testing.T) {
 	t.Parallel()
 	dir := t.TempDir()
-	file := logging.File{Path: filepath.Join(dir, "agister.jsonl"), Max: 100, Keep: 1}
+	file := logging.File{Path: filepath.Join(dir, "agister.jsonl"), Max: 100, Keep: 1, Rename: os.Rename}
 	if err := file.Usable(); err == nil || !strings.Contains(err.Error(), "no Append") {
+		t.Fatalf("Usable: %v", err)
+	}
+	file.Append, file.Rename = (*os.File).Write, nil
+	if err := file.Usable(); err == nil || !strings.Contains(err.Error(), "no Rename") {
 		t.Fatalf("Usable: %v", err)
 	}
 	if found := names(t, dir); len(found) != 0 {
@@ -187,13 +192,63 @@ func TestALogNotGivenItsAppendIsNotUsable(t *testing.T) {
 	}
 }
 
+// unheld is an error unless the directory is held by the kernel's lock,
+// not only within the process: another open of it, as another process's,
+// is refused the lock, even without waiting.
+func unheld(dir string) error {
+	other, err := os.Open(dir)
+	if err != nil {
+		return err
+	}
+	defer other.Close()
+	if err := syscall.Flock(int(other.Fd()), syscall.LOCK_EX|syscall.LOCK_NB); !errors.Is(err, syscall.EWOULDBLOCK) {
+		return fmt.Errorf("another open of the directory locked it: %v", err)
+	}
+	return nil
+}
+
+// One writer holds the directory while it rotates, as it does while it
+// appends: at every move of a rotation and at every append another open of
+// the directory is refused the lock. With no other writer, the hold is the
+// writer's own, on every run.
+//
+// Contract test: the real filesystem and the kernel's flock, which holds
+// between two opens of the directory as it does between two processes.
+func TestAWriterHoldsTheDirectoryWhileItRotates(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	moved, appended := 0, 0
+	file := logging.File{Path: filepath.Join(dir, "agister.jsonl"), Max: 100, Keep: 2,
+		Append: func(log *os.File, line []byte) (int, error) {
+			appended++
+			if err := unheld(dir); err != nil {
+				return 0, fmt.Errorf("while the writer appended: %w", err)
+			}
+			return log.Write(line)
+		},
+		Rename: func(from, to string) error {
+			moved++
+			if err := unheld(dir); err != nil {
+				return fmt.Errorf("while the writer rotated: %w", err)
+			}
+			return os.Rename(from, to)
+		}}
+	const lines = 30
+	for i := range lines {
+		if _, err := file.Write([]byte(fmt.Sprintf(`{"line":%03d}`+"\n", i))); err != nil {
+			t.Fatalf("write %d: %v", i, err)
+		}
+	}
+	if appended != lines || moved == 0 {
+		t.Fatalf("%d appends and %d moves of a rotation looked at the hold", appended, moved)
+	}
+}
+
 // Two writers append across many rotations, each opening the log for
 // itself as two processes do: every line of both is kept whole, once, and
 // each writer's lines stay in its order.
 //
-// While a writer appends, the directory is held by the kernel's lock, not
-// only within the process: another open of it, as another process's, is
-// refused the lock.
+// While a writer appends, the directory is held by the kernel's lock.
 //
 // Contract test: the real filesystem and the kernel's flock, which holds
 // between two opens of the directory as it does between two processes.
@@ -204,16 +259,10 @@ func TestTwoWritersLoseNoLineAcrossRotations(t *testing.T) {
 	const lines, keep = 300, 1000
 	var wait sync.WaitGroup
 	failures := make(chan error, 4*lines)
-	// held appends line once it finds the directory held: an open of its
-	// own cannot take the lock, even without waiting.
+	// held appends line once it finds the directory held.
 	held := func(log *os.File, line []byte) (int, error) {
-		other, err := os.Open(dir)
-		if err != nil {
-			return 0, err
-		}
-		defer other.Close()
-		if err := syscall.Flock(int(other.Fd()), syscall.LOCK_EX|syscall.LOCK_NB); !errors.Is(err, syscall.EWOULDBLOCK) {
-			failures <- fmt.Errorf("another open of the directory locked it while a writer appended: %v", err)
+		if err := unheld(dir); err != nil {
+			failures <- fmt.Errorf("while a writer appended: %w", err)
 		}
 		return log.Write(line)
 	}
@@ -221,7 +270,7 @@ func TestTwoWritersLoseNoLineAcrossRotations(t *testing.T) {
 		wait.Add(1)
 		go func() {
 			defer wait.Done()
-			file := logging.File{Path: path, Max: 200, Keep: keep, Append: held}
+			file := logging.File{Path: path, Max: 200, Keep: keep, Append: held, Rename: os.Rename}
 			for i := range lines {
 				if _, err := file.Write([]byte(fmt.Sprintf(`{"writer":"%s","line":%03d}`+"\n", writer, i))); err != nil {
 					failures <- err

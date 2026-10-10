@@ -403,15 +403,15 @@ const (
 
 // diagnostics opens the log, <home>/logs/agister.jsonl. It holds what no
 // run's record does: the runtimes' and the reaper's warnings and errors,
-// and each command the CLI says was refused or failed. What a turn did is
-// its run's, in <home>/runs/<id>/. A log that cannot be written fails
-// here, not at its first warning.
+// each command the CLI says was refused or failed, and what a check warns
+// of. What a turn did is its run's, in <home>/runs/<id>/. A log that
+// cannot be written fails here, not at its first warning.
 func diagnostics(config cli.Config) (*slog.Logger, error) {
 	dir := filepath.Join(config.Home, "logs")
 	if err := os.MkdirAll(dir, 0o700); err != nil {
 		return nil, err
 	}
-	file := logging.File{Path: filepath.Join(dir, "agister.jsonl"), Max: logMax, Keep: logKeep, Append: (*os.File).Write}
+	file := logging.File{Path: filepath.Join(dir, "agister.jsonl"), Max: logMax, Keep: logKeep, Append: (*os.File).Write, Rename: os.Rename}
 	if err := file.Usable(); err != nil {
 		return nil, err
 	}
