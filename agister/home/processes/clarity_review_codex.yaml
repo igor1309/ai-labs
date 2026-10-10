@@ -5,6 +5,9 @@ name: clarity_review_codex
 type: process
 uses: agent:codex-sol-61
 policy: process-policy:codex-review
+# Prompt code-review-clarity names AGENTS.md as a thing a change may
+# edit, which is a finding, not as guidance the reviewer follows
+# (LAB-161).
 prompt: code-review-clarity
 
 input:

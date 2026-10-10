@@ -433,8 +433,9 @@ with `agister install home` from `agister/` in the main checkout, after a
 change to the folder merges and the binary that checks it is installed:
 any difference shows as a replace, with its diff, in that install's plan.
 Live state, `blocks.yaml`, `layer.yaml` and verifications stay out of it. The
-repository's own `.agister/` keeps only what is this repository's
-(verifications and Go prompts today); project layers can set their own
+repository's own `.agister/` keeps only what is this repository's: its
+`layer.yaml` and the Go guidance of the processes that write and review its
+code (LAB-161); project layers can set their own
 verification and guidance without copying home's processes. A test installs
 the folder into an empty home and checks it as global settings.
 

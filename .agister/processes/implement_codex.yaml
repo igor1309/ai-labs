@@ -1,3 +1,4 @@
-# Carries over the Go prompts home's implement_codex took as optional inputs
-# before ADR-028 (its Migration step 4); LAB-161 replaces this file.
+# The Go guidance this repository gives implement_codex (LAB-161): it
+# writes the code, so it gets both Go prompts. Its other fields come
+# from home.
 guidance: [go-testing-seams, go-architecture]

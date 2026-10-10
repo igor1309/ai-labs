@@ -26,13 +26,13 @@ var projectReplacements = map[string]string{
 	"processes/implement_pi":              goGuidance,
 	"processes/implement_pi_glm":          goGuidance,
 	"processes/architecture_review_codex": goGuidance,
+	"processes/adversarial_review_codex":  goGuidance,
 	"processes/tests_review_codex":        goGuidance,
 }
 
-// goGuidance is why the repository sets the guidance of each process of
-// home that took a Go prompt before ADR-028.
-const goGuidance = "it carries over the Go prompts home's process took as optional inputs before ADR-028, " +
-	"as guidance alone (ADR-028 Migration step 4); LAB-161 replaces it"
+// goGuidance is why the repository sets the guidance of a process of home.
+const goGuidance = "it gives the process the Go prompts this repository's code is written and reviewed under, " +
+	"as guidance alone (LAB-161)"
 
 // Home's settings folder installs into an empty home with this binary, every
 // file of it a settings document installed as it is, and passes check there

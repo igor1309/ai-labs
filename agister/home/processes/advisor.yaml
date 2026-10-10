@@ -8,6 +8,9 @@ name: advisor
 type: process
 uses: agent:codex-sol-61
 policy: process-policy:codex-review
+# Prompt advisor names AGENTS.md as part of the material the advisor
+# rules from, not as guidance it follows (LAB-161): the recorded
+# decisions it reads are the revision's, whatever they are.
 prompt: advisor
 
 input:

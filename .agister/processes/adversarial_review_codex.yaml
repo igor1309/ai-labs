@@ -1,0 +1,5 @@
+# The Go guidance this repository gives adversarial_review_codex
+# (LAB-161): both Go prompts, the rules the implementer wrote the code
+# under, so a departure from one is a finding it can quote. Its other
+# fields come from home.
+guidance: [go-testing-seams, go-architecture]

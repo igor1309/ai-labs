@@ -3,6 +3,11 @@ name: implement
 type: process
 uses: agent:claude-implementer-opus
 policy: process-policy:implement
+# Prompt implement, shared by every implement* process, sends the agent
+# to its skills and the repository's AGENTS.md for its testing command,
+# on purpose (LAB-161): where the full suite is too slow to run on every
+# change (iFora's takes 15 minutes), choosing which tests to run is the
+# agent's judgement, which no verification command can make for it.
 prompt: implement
 
 input:
