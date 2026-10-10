@@ -836,7 +836,7 @@
           ['verify', outcome.verify ? U.verify(outcome.verify, record?.verify?.max_attempts) : null],
           ['timing', joined([outcome.turn_ms != null && `turn ${U.duration(outcome.turn_ms)}`, outcome.runtime_ms != null && `runtime ${U.duration(outcome.runtime_ms)}`]) || null],
           ['activity', s.tool_calls != null ? `${s.tool_calls} tool ${s.tool_calls === 1 ? 'call' : 'calls'}` : null],
-          ['skills', s.skills?.length ? line(...s.skills.flatMap((k, i) => [i ? ', ' : null, skillLink(k.name, record?.request?.cwd, impl?.adapter), `×${k.count ?? 0}`])) : null],
+          ['skills', s.skills?.length ? line(...s.skills.flatMap((k, i) => [i ? ', ' : null, skillLink(k.name, record?.request?.cwd, impl?.adapter), U.usedName(k).slice(k.name.length)])) : null],
           ['workflow', s.parent ? runLink(s.parent, 'the workflow run') : null],
           ['rulings', items ? `${U.counts(items.by_ruling) || 'none'} (${items.total} ${items.total === 1 ? 'item' : 'items'})` : null],
           ['severities', items ? U.counts(items.by_severity) || null : null],

@@ -81,7 +81,7 @@ again.
   when it differs), status (a green ✓ completed, a red ⚠ failed, an amber
   ⚠ interrupted, the word for the others; the status on hover), verify (`2 ✓`: the attempts used and whether
   the last passed; empty without verify), wall time, cost, the skills used
-  (`name×n`) and the tool calls. A workflow's row shows its node count and
+  (`name×n`, the times the run loaded it, when more than once) and the tool calls. A workflow's row shows its node count and
   its judge's rulings instead of implementor and skills. Process and status
   filter the list. Runs whose record does not parse are counted under it.
 - Clicking a run opens it over the page; Close, Escape or a click beside

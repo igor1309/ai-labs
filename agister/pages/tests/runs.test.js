@@ -106,8 +106,9 @@ test('the implementor reads as adapter, model and effort; the reported model onl
   assert.equal(U.reportedModel(undefined), '');
 });
 
-test('skills read as name×count in the order given; none reads as empty', () => {
-  assert.equal(U.skills(call.skills), 'review×3, go×1');
+test('skills read as name×count in the order given, the count only above one; none reads as empty', () => {
+  assert.equal(U.skills(call.skills), 'review×3, go');
+  assert.equal(U.skills([{ name: 'a', count: 2 }, { name: 'b', count: 1 }, { name: 'c' }]), 'a×2, b, c');
   assert.equal(U.skills([]), '');
   assert.equal(U.skills(undefined), '');
 });

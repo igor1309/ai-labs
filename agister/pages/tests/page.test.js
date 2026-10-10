@@ -402,9 +402,9 @@ test('the run list shows what the summaries carry', async () => {
   // The started cell is in local time; the rest as the page writes it.
   assert.ok(p.cells(p.row('call-1'))[0]);
   assert.deepEqual(p.cells(p.row('call-1')).slice(1),
-    ['implement', 'claude-code opus high', '✓', '2 ✓', '1m 47s', '$0.50', 'review×3, go×1', '12']);
+    ['implement', 'claude-code opus high', '✓', '2 ✓', '1m 47s', '$0.50', 'review×3, go', '12']);
   assert.equal(p.row('call-1').children[3].querySelector('span').title, 'completed');
-  assert.equal(p.row('call-1').children[7].title, 'review×3, go×1');
+  assert.equal(p.row('call-1').children[7].title, 'review×3, go');
   assert.equal(p.row('call-1').children[2].querySelector('span').title, 'the runtime reported claude-opus-5-5');
   // A workflow's row: its nodes and its judge's rulings.
   assert.deepEqual(p.cells(p.row('wf-1')).slice(1),
@@ -438,7 +438,7 @@ test('an opened run shows its facts, a workflow its nodes as a table, and the re
     verify: ['2/3 ✓'],
     timing: ['turn 1m 40s · runtime 412ms'],
     activity: ['12 tool calls'],
-    skills: ['review×3, go×1'],
+    skills: ['review×3, go'],
     workflow: ['the workflow run'],
   });
   assert.equal(p.$('run-detail').querySelector('div.nodes'), null);

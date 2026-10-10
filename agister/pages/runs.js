@@ -69,10 +69,11 @@
     return impl?.reported_model && impl.reported_model !== impl.model ? impl.reported_model : '';
   }
 
-  // "review×3, go×1".
+  // "review×3, go": the count of loads only above one.
+  const usedName = (s) => `${s.name}${(s.count ?? 0) > 1 ? `×${s.count}` : ''}`;
   function skills(used) {
     if (!Array.isArray(used)) return '';
-    return used.filter((s) => s?.name).map((s) => `${s.name}×${s.count ?? 0}`).join(', ');
+    return used.filter((s) => s?.name).map(usedName).join(', ');
   }
 
   // "fix 2, defer 1": counts by name, most first, then by name.
@@ -305,7 +306,7 @@
   globalThis.AgisterRuns = {
     VIEW_KEY, VIEWS, readView, writeView, readsRuns,
     duration, cost, verify, implementor, reportedModel, skills, counts, nodes, percent, mean, failed,
-    statusMark, timeSpan, nodeRows, tone, outputPart, runOutput, skillPlaces, findSkill,
+    usedName, statusMark, timeSpan, nodeRows, tone, outputPart, runOutput, skillPlaces, findSkill,
     processes, statuses, filterRuns, compareTables,
   };
 })();
