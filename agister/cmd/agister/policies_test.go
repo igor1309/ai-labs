@@ -1,11 +1,17 @@
 package main
 
 import (
+	"context"
+	"encoding/json"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
+	"time"
 
+	"github.com/igor1309/ai-labs/agister/internal/adapters/fsdefs"
 	"github.com/igor1309/ai-labs/agister/internal/cli"
+	"github.com/igor1309/ai-labs/agister/internal/contract"
 )
 
 // There are no policies (ADR-030 rule 4), on real settings directories:
@@ -78,5 +84,78 @@ func TestCheckReportsAFileInALayersPolicies(t *testing.T) {
 				t.Fatalf("check at the root, above the project: %d\n%s%s", r.code, r.stdout, r.stderr)
 			}
 		})
+	}
+}
+
+// A backup kept from an install made before ADR-030 names the policies
+// that install wrote, and its restore still undoes it whole (ADR-016 rule
+// 6): a policy it replaced is put back, one it created is removed, and so
+// are the backup's other documents. A policy put back is still no
+// settings: check reports it as its layer's problem.
+func TestRestoreUndoesAnInstallThatWrotePolicies(t *testing.T) {
+	t.Parallel()
+	home := initedHome(t)
+	reviewer := filepath.Join(home, "agents", "reviewer.toml")
+	house := filepath.Join(home, "prompts", "house.md")
+	replaced := filepath.Join(home, "policies", "read-only.yaml")
+	created := filepath.Join(home, "policies", "implement.yaml")
+	write(t, replaced, formerPolicy)
+	before := files(t, home)
+
+	// Home as the install left it, and the backup it made.
+	const stamp = "20261001T120000Z-001"
+	agent := read(t, reviewer)
+	implement := strings.Replace(formerPolicy, "name: read-only", "name: implement", 1)
+	write(t, reviewer, agent+"# tuned\n")
+	write(t, house, "Follow the house style.\n")
+	write(t, replaced, formerPolicy+"# tuned\n")
+	write(t, created, implement)
+	backup := filepath.Join(home, "backups", stamp)
+	write(t, filepath.Join(backup, "agents", "reviewer.toml"), agent)
+	write(t, filepath.Join(backup, "policies", "read-only.yaml"), formerPolicy)
+	manifest, err := json.MarshalIndent(fsdefs.Manifest{
+		Stamp: stamp, Source: "/repo/.agister", Installed: time.Date(2026, 10, 1, 12, 0, 0, 0, time.UTC),
+		Documents: []fsdefs.ManifestEntry{
+			{Path: reviewer, Kind: "agents", Name: "reviewer", Action: "replace", Before: digestText(agent), After: digestText(agent + "# tuned\n")},
+			{Path: created, Kind: "policies", Name: "implement", Action: "create", After: digestText(implement)},
+			{Path: replaced, Kind: "policies", Name: "read-only", Action: "replace", Before: digestText(formerPolicy), After: digestText(formerPolicy + "# tuned\n")},
+			{Path: house, Kind: "prompts", Name: "house", Action: "create", After: digestText("Follow the house style.\n")},
+		},
+	}, "", "  ")
+	if err != nil {
+		t.Fatal(err)
+	}
+	write(t, filepath.Join(backup, "manifest.json"), string(manifest)+"\n")
+
+	in := installClient(t, home, nil)
+	plan, err := in.client.Restore(context.Background(), stamp, nil)
+	if err != nil {
+		t.Fatalf("restore plan: %v", err)
+	}
+	type step struct{ kind, name, path, action string }
+	var steps []step
+	for _, doc := range plan.Documents {
+		steps = append(steps, step{doc.Kind, doc.Name, doc.Path, doc.Action})
+	}
+	want := []step{
+		{"agents", "reviewer", reviewer, contract.RestorePutBack},
+		{"policies", "implement", created, contract.RestoreRemove},
+		{"policies", "read-only", replaced, contract.RestorePutBack},
+		{"prompts", "house", house, contract.RestoreRemove},
+	}
+	if !reflect.DeepEqual(steps, want) || !strings.Contains(plan.Documents[2].Diff, "-# tuned\n") {
+		t.Fatalf("restore plan %+v\nwant %+v", plan, want)
+	}
+	if _, err := in.client.Restore(context.Background(), stamp, &plan); err != nil {
+		t.Fatalf("restore: %v", err)
+	}
+	if after := files(t, home); !reflect.DeepEqual(after, before) {
+		t.Fatalf("after restore:\n%v\nwant\n%v", after, before)
+	}
+
+	problem := "home layer " + home + ": " + replaced + ": a layer holds no policies (ADR-030 rule 4): " +
+		"set the policy's fields on each process that names it, then remove it\n"
+	if r := agister(t, home, tempDir(t), "check"); r.code != cli.ExitUsage || !strings.Contains(r.stderr, problem) {
+		t.Fatalf("check: %d, want %q\n%s%s", r.code, problem, r.stdout, r.stderr)
 	}
 }

@@ -254,9 +254,10 @@ func (s Store) Layers(ctx context.Context) []definition.LayerDir {
 }
 
 // File reads the store's own file of the document, as written: a process
-// without the base it extends (ADR-030 rule 9).
+// without the base it extends (ADR-030 rule 9), and one of a retired kind
+// where the store kept it, which a restore reads.
 func (s Store) File(_ context.Context, kind definition.Kind, name string) ([]byte, error) {
-	doc, err := s.read(kind, name)
+	doc, err := s.readBackedUp(kind, name)
 	return doc.Bytes, err
 }
 
@@ -266,6 +267,12 @@ func (s Store) read(kind definition.Kind, name string) (definition.Document, err
 	if err != nil {
 		return definition.Document{}, err
 	}
+	return s.readAt(kind, name, path)
+}
+
+// readAt reads the document from path, the store's own file of it.
+func (s Store) readAt(kind definition.Kind, name, path string) (definition.Document, error) {
+	var err error
 	doc := definition.Document{Source: definition.Source{Kind: kind, Name: name, Path: path}}
 	var data []byte
 	if kind == definition.KindSkill {
@@ -387,9 +394,10 @@ func (s Store) List(_ context.Context, kind definition.Kind) ([]string, error) {
 // opens it, without following a link or waiting on a special file, and
 // not through a folder, or a skills/, that is a symbolic link: each is an
 // error, so a restore neither hangs on one nor takes a file outside the
-// store for the skill (ADR-027 rule 8).
+// store for the skill (ADR-027 rule 8). A restore finds one of a retired
+// kind where the store kept it.
 func (s Store) Current(_ context.Context, kind definition.Kind, name string) (string, string, error) {
-	path, err := s.path(kind, name)
+	path, err := s.backedUp(kind, name)
 	if err != nil {
 		return "", "", err
 	}

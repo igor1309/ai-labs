@@ -33,6 +33,38 @@ func singleton(kind definition.Kind) bool {
 	return kind == definition.KindService || kind == definition.KindWorkspace || kind == definition.KindBlocks
 }
 
+// retired is the file extension of each kind the store held and holds no
+// more: policies (ADR-030 rule 4). An install backup made while it held
+// one names it, and its restore puts that file back or removes it (ADR-016
+// rule 6). A retired kind is no settings: it is not listed, read, written,
+// staged, installed or checked, and no new backup saves one.
+func retired() map[definition.Kind]string {
+	return map[definition.Kind]string{policiesDir: ".yaml"}
+}
+
+// backedUp is where the store keeps the document an install backup names:
+// path, and for a retired kind where the store kept it.
+func (s Store) backedUp(kind definition.Kind, name string) (string, error) {
+	extension, ok := retired()[kind]
+	if !ok {
+		return s.path(kind, name)
+	}
+	if !definition.ValidName(name) {
+		return "", fmt.Errorf("invalid name %q", name)
+	}
+	return filepath.Join(s.Dir, string(kind), name+extension), nil
+}
+
+// readBackedUp reads the store's own file of the document an install
+// backup names, as read does, a retired kind's where the store kept it.
+func (s Store) readBackedUp(kind definition.Kind, name string) (definition.Document, error) {
+	path, err := s.backedUp(kind, name)
+	if err != nil {
+		return definition.Document{}, err
+	}
+	return s.readAt(kind, name, path)
+}
+
 // Documents reads every settings document of the store: those List names,
 // and the service when there is one. A file whose name breaks the naming
 // rule is no document, so it is not read. One that cannot be read is in
@@ -296,10 +328,11 @@ func (s Store) Lock(context.Context) (func(), error) {
 }
 
 // Put writes data as the document atomically: a temporary file in the same
-// folder, synced, then renamed into place. It takes no lock: the caller
-// holds it.
+// folder, synced, then renamed into place. A restore puts back one of a
+// retired kind where the store kept it. It takes no lock: the caller holds
+// it.
 func (s Store) Put(_ context.Context, kind definition.Kind, name string, data []byte) error {
-	path, err := s.path(kind, name)
+	path, err := s.backedUp(kind, name)
 	if err != nil {
 		return err
 	}
@@ -337,10 +370,11 @@ func (s Store) Left(_ context.Context, kind definition.Kind, name string) (strin
 // Remove removes the document; none there, or no folder for one, is no
 // error. A skill's folder goes with its SKILL.md when nothing else is
 // left in it (ADR-027 rule 8); one that is a symbolic link, or in a skills/
-// that is one, is refused, and nothing is removed through it. It takes no
-// lock: the caller holds it.
+// that is one, is refused, and nothing is removed through it. A restore
+// removes one of a retired kind where the store kept it. It takes no lock:
+// the caller holds it.
 func (s Store) Remove(_ context.Context, kind definition.Kind, name string) error {
-	path, err := s.path(kind, name)
+	path, err := s.backedUp(kind, name)
 	if err != nil {
 		return err
 	}
@@ -533,12 +567,14 @@ func (b Backups) Manifest(_ context.Context, stamp string) (Manifest, error) {
 	return manifest, nil
 }
 
+// Saved reads the bytes the backup keeps of a document, one of a retired
+// kind where a backup made while the store held it keeps it.
 func (b Backups) Saved(_ context.Context, stamp string, kind definition.Kind, name string) ([]byte, error) {
 	dir, err := b.folder(stamp)
 	if err != nil {
 		return nil, err
 	}
-	doc, err := Store{Dir: dir}.read(kind, name)
+	doc, err := Store{Dir: dir}.readBackedUp(kind, name)
 	return doc.Bytes, err
 }
 
