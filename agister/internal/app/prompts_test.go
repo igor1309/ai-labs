@@ -211,7 +211,7 @@ func TestCheckLinksAProcessToItsPromptAndGuidance(t *testing.T) {
 		return got
 	}
 	guidance := contract.DefinitionRef{Kind: "prompts", Name: "review", Guidance: true}
-	uses := []contract.DefinitionRef{ref("agents", "a"), ref("policies", "pol"), ref("prompts", "inspect"), guidance, ref("schemas", "s")}
+	uses := []contract.DefinitionRef{ref("agents", "a"), ref("prompts", "inspect"), guidance, ref("schemas", "s")}
 
 	h := newHarness()
 	guided(h, []string{"review"}, map[string]string{"review": reviewPrompt})

@@ -111,7 +111,7 @@ func TestExampleWorkflowJoinsWithoutATimedOutNode(t *testing.T) {
 	// test passes once the turn waits on it.
 	path := filepath.Join(home, "processes", "adversarial_review.yaml")
 	process := strings.Replace(read(t, path), "  values:\n", "  values:\n    stall: {source: file, path: stall.txt}\n", 1)
-	write(t, path, strings.Replace(process, "workspace:\n", "timeout: 7m\n\nworkspace:\n", 1))
+	write(t, path, strings.Replace(process, "timeout: 20m\n", "timeout: 7m\n", 1))
 	write(t, filepath.Join(repo, "stall.txt"), "SCENARIO:hang\n")
 	const timeout = 7 * time.Minute
 	clock := clocktest.NewClock(time.Date(2026, 10, 3, 12, 0, 0, 0, time.UTC))

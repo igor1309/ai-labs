@@ -105,9 +105,9 @@ func TestPagesReadTheSettingsWithTheBinarysStore(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	put(filepath.Join(home, "policies", "p.yaml"), "name: p\n")
-	put(filepath.Join(root, ".agister", "policies", "p.yaml"), "timeout: 1m\n")
-	put(filepath.Join(root, "docs", ".agister", "policies", "p.yaml"), "max_cost_usd: 1\n")
+	put(filepath.Join(home, "verifies", "p.yaml"), "name: p\n")
+	put(filepath.Join(root, ".agister", "verifies", "p.yaml"), "timeout: 1m\n")
+	put(filepath.Join(root, "docs", ".agister", "verifies", "p.yaml"), "max_cost_usd: 1\n")
 	if err := os.MkdirAll(launch, 0o700); err != nil {
 		t.Fatal(err)
 	}
@@ -126,11 +126,11 @@ func TestPagesReadTheSettingsWithTheBinarysStore(t *testing.T) {
 	if got, want := store.Layers(ctx), binary.Layers(ctx); !reflect.DeepEqual(got, want) {
 		t.Fatalf("layers %+v, want %+v", got, want)
 	}
-	got, err := store.Read(ctx, definition.KindPolicy, "p")
+	got, err := store.Read(ctx, definition.KindVerify, "p")
 	if err != nil {
 		t.Fatal(err)
 	}
-	want, err := binary.Read(ctx, definition.KindPolicy, "p")
+	want, err := binary.Read(ctx, definition.KindVerify, "p")
 	if err != nil || string(got.Bytes) != string(want.Bytes) || !reflect.DeepEqual(got.Source, want.Source) {
 		t.Fatalf("p = %+v %q, want %+v %q (%v)", got.Source, got.Bytes, want.Source, want.Bytes, err)
 	}

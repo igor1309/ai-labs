@@ -49,18 +49,6 @@ func TestSetupIsObsolete(t *testing.T) {
 	}
 }
 
-// A policy's workspace block has no setup: it belongs to the process.
-func TestPolicyDeclaresNoSetup(t *testing.T) {
-	t.Parallel()
-	_, err := definition.ParsePolicy(doc(definition.KindPolicy, "pol", `schema: agister.process-policy/v1alpha1
-name: pol
-workspace: {access: read-only, setup: {command: ./s.sh, timeout: 2m}}
-`))
-	if err == nil || !strings.Contains(err.Error(), "workspace.setup: unknown field") {
-		t.Fatalf("err = %v", err)
-	}
-}
-
 // ADR-025: workspace.checkout is now workspace.revision. A process that
 // still declares it is invalid, and the problem names the new field, so
 // the pin is not lost to a field read and ignored.

@@ -414,7 +414,7 @@ func (s *Settings) ListProcesses(ctx context.Context) ([]contract.ProcessSummary
 		if process.Output.Schema != "" {
 			output += ":" + process.Output.Schema
 		}
-		processes = append(processes, contract.ProcessSummary{Name: process.Name, Agent: process.Agent, Policy: process.Policy, Output: output, Refusal: refusal})
+		processes = append(processes, contract.ProcessSummary{Name: process.Name, Agent: process.Agent, Output: output, Refusal: refusal})
 	}
 	return processes, nil
 }
@@ -508,7 +508,6 @@ type InspectedProcess struct {
 // InspectedDefinition is what the view shows of a process's definition.
 type InspectedDefinition struct {
 	Name         string
-	Policy       string
 	OutputFormat string // "json" or "text"
 	OutputSchema string // name of a schema definition (json only)
 	Params       []InspectedParam
@@ -635,7 +634,7 @@ func (r *Resolver) InspectProcess(ctx context.Context, name, agent string) (*Ins
 	process := res.process
 	inspected := &InspectedProcess{
 		Process: InspectedDefinition{
-			Name: process.Name, Policy: process.Policy,
+			Name:         process.Name,
 			OutputFormat: process.Output.Format, OutputSchema: process.Output.Schema,
 			Params: inspectedParams(process.Params), Values: inspectedValues(process.Values),
 			VerifyName: process.VerifyName, Prompt: process.Prompt, Guidance: process.Guidance, Skills: process.Skills,
@@ -800,7 +799,6 @@ func (i *Inspection) showProcess(ctx context.Context, name, agent string) (contr
 		Name:        res.Process.Name,
 		Agent:       res.Agent,
 		Runtime:     res.Runtime,
-		Policy:      res.Process.Policy,
 		Output:      res.Process.OutputFormat,
 		Timeout:     res.Effective.Timeout,
 		MaxAttempts: res.Effective.MaxAttempts,

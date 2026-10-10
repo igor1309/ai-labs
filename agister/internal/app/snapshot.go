@@ -13,7 +13,7 @@ import (
 func allKinds() []definition.Kind {
 	return []definition.Kind{
 		definition.KindService, definition.KindRuntime, definition.KindAgent,
-		definition.KindPolicy, definition.KindVerify, definition.KindPrompt,
+		definition.KindVerify, definition.KindPrompt,
 		definition.KindSkill, definition.KindBrief, definition.KindProcess, definition.KindSchema, definition.KindWorkflow,
 		definition.KindWorkspace, definition.KindBlocks,
 	}

@@ -47,10 +47,10 @@ func TestSnapshotReplaysReadAndListErrors(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
 	spy := &definitionsSpy{docs: settingsDocs()}
-	readFailure, listFailure := errors.New("cannot read process p"), errors.New("cannot list policies")
+	readFailure, listFailure := errors.New("cannot read process p"), errors.New("cannot list verifications")
 	live := failingSource{
 		definitionsSpy: spy,
-		listErr:        map[definition.Kind]error{definition.KindPolicy: listFailure},
+		listErr:        map[definition.Kind]error{definition.KindVerify: listFailure},
 		readErr:        map[string]error{"processes/p": readFailure, "service/service": errors.New("cannot read service")},
 	}
 	snap := app.Snapshot(ctx, live)
@@ -62,7 +62,7 @@ func TestSnapshotReplaysReadAndListErrors(t *testing.T) {
 	if _, err := snap.Read(ctx, definition.KindService, "service"); err == nil || err.Error() != "cannot read service" {
 		t.Errorf("service read error = %v", err)
 	}
-	if _, err := snap.List(ctx, definition.KindPolicy); err != listFailure {
+	if _, err := snap.List(ctx, definition.KindVerify); err != listFailure {
 		t.Errorf("list error = %v", err)
 	}
 	if names, err := snap.List(ctx, definition.KindAgent); err != nil || !reflect.DeepEqual(names, []string{"a"}) {
@@ -77,7 +77,7 @@ func TestSnapshotReplaysReadAndListErrors(t *testing.T) {
 
 	sources := []string{"git.revision", "git.diff", "param"}
 	check := func(src app.SnapshotSource) []string {
-		// The list failure aborts a check, so compare with policies listable.
+		// The list failure aborts a check, so compare with verifications listable.
 		runtimes := &runtimesSpy{runner: &runnerSpy{}}
 		checker := app.NewChecker(src, &validatorSpy{}, runtimes, sources)
 		report, err := checker.Check(ctx, false)
@@ -89,7 +89,7 @@ func TestSnapshotReplaysReadAndListErrors(t *testing.T) {
 	if got, want := check(snap), check(live); !reflect.DeepEqual(got, want) {
 		t.Errorf("check on snapshot = %v, on source = %v", got, want)
 	}
-	delete(live.listErr, definition.KindPolicy)
+	delete(live.listErr, definition.KindVerify)
 	snap = app.Snapshot(ctx, live)
 	if got, want := check(snap), check(live); len(got) == 0 || !reflect.DeepEqual(got, want) {
 		t.Errorf("check on snapshot = %v, on source = %v", got, want)

@@ -3,7 +3,6 @@ name: implement
 
 type: process
 uses: agent:assistant
-policy: process-policy:implement
 prompt: implement
 
 input:
@@ -18,8 +17,20 @@ input:
     brief: {source: file, path: "${param.brief}"}
 
 workspace:
+  access: read-write
+  scope: candidate
   revision: candidate_revision
   clean: true
+
+tools:
+  allow:
+    - repository.read
+    - repository.search
+    - repository.diff
+    - repository.write
+    - process.execute
+
+timeout: 30m
 
 output:
   format: text

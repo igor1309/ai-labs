@@ -50,7 +50,7 @@ type Layer struct {
 }
 
 // EffectivePolicy is the limits a call ran under, composed from the
-// service, policy, process and caller.
+// service, process and caller.
 type EffectivePolicy struct {
 	Timeout     time.Duration `json:"timeout"`
 	MaxAttempts int           `json:"max_attempts"`

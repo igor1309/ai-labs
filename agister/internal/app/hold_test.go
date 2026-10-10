@@ -82,10 +82,10 @@ func TestAnInPlaceCallWorksInTheCallersWorktree(t *testing.T) {
 }
 
 // writing has the harness's plan grant a permission the service lists as
-// writing, under a policy that lets the call write: the call is a writer.
+// writing, in a process that lets the call write: the call is a writer.
 func writing(h *harness) {
 	h.defs.docs[definition.KindService]["service"] = strings.Replace(h.defs.docs[definition.KindService]["service"], "writing = []", "writing = [\"repository.read\"]", 1)
-	h.defs.docs[definition.KindPolicy]["pol"] = strings.Replace(h.defs.docs[definition.KindPolicy]["pol"], "access: read-only", "access: read-write", 1)
+	h.defs.docs[definition.KindProcess]["p"] = strings.Replace(h.defs.docs[definition.KindProcess]["p"], "workspace:\n", "workspace:\n  access: read-write\n", 1)
 }
 
 // ADR-025 rule 4: a call is a writer when its plan grants a permission the
@@ -165,7 +165,6 @@ func TestReadersShareTheWorktreeAndAWriterHasItAlone(t *testing.T) {
 // repository, without a checkout.
 func inTheRepositoryItself(h *harness) {
 	h.defs.docs[definition.KindProcess]["p"] = strings.Replace(h.defs.docs[definition.KindProcess]["p"], "workspace:\n  revision: candidate_revision\n", "", 1)
-	h.defs.docs[definition.KindPolicy]["pol"] = strings.Replace(h.defs.docs[definition.KindPolicy]["pol"], "scope: candidate", "scope: repository", 1)
 }
 
 // ADR-025 rules 2 and 3: a worktree whose HEAD is not the revision the

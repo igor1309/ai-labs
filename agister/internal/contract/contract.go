@@ -207,7 +207,6 @@ type Agent struct {
 type ProcessSummary struct {
 	Name    string
 	Agent   string
-	Policy  string
 	Output  string
 	Problem string // set when the definition is invalid
 	// Why a call of it would be refused now, for a problem in a document it
@@ -276,7 +275,7 @@ type Problem struct {
 
 // Definition is one settings document in the composed settings.
 type Definition struct {
-	Kind string `json:"kind"` // service, agents, processes, policies, runtimes, schemas, workflows, verifies, prompts, skills
+	Kind string `json:"kind"` // service, agents, processes, runtimes, schemas, workflows, verifies, prompts, skills
 	Name string `json:"name"`
 	// Layer is the nearest layer that holds it, home, repository or
 	// project, and Path that layer's file.
@@ -310,7 +309,7 @@ type DefinitionLayer struct {
 
 // DefinitionOrigin is where one definition a call uses comes from.
 type DefinitionOrigin struct {
-	Kind string // agents, processes, policies, runtimes, schemas, verifies, prompts, skills or service
+	Kind string // agents, processes, runtimes, schemas, verifies, prompts, skills or service
 	Name string
 	// Layer is the nearest layer that holds it, home, repository or
 	// project, and Path that layer's file.
@@ -338,7 +337,6 @@ type ProcessView struct {
 	Name        string
 	Agent       string
 	Runtime     string
-	Policy      string
 	Params      []Param
 	Inputs      []string
 	Output      string

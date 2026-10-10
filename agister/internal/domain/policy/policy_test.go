@@ -1,7 +1,6 @@
 package policy_test
 
 import (
-	"os"
 	"strings"
 	"testing"
 	"time"
@@ -17,151 +16,125 @@ var service = definition.Service{
 	Writing:     []string{"repository.write", "repository.history.write"},
 }
 
-func researchPolicy(t *testing.T) definition.Policy {
-	data, err := os.ReadFile("../../../../research/agister/research/verger/policies/static-review.yaml")
-	if err != nil {
-		t.Fatal(err)
-	}
-	// Without the fields Agister refuses.
-	data = withoutTopLevel(data, "constraints", "resources", "artifacts")
-	pol, err := definition.ParsePolicy(definition.Document{Source: definition.Source{Name: "static-review"}, Bytes: data})
-	if err != nil {
-		t.Fatal(err)
-	}
-	return pol
+// review are a static review's limits, by their top-level field: a
+// process of these tests holds each that its extra fields do not set.
+var review = []struct{ field, text string }{
+	{"workspace", "workspace: {access: read-only, scope: candidate, revision: candidate_revision, clean: true}"},
+	{"tools", "tools: {allow: [repository.read, repository.diff, repository.search]}"},
+	{"timeout", "timeout: 20m"},
+	{"retry", "retry: {max_attempts: 1}"},
+	{"isolation", "isolation: {deny: [repository.write, repository.history.write, process.execute, network]}"},
 }
 
+// process is a review process with the static review's limits, extra's
+// top-level fields in place of its own.
 func process(t *testing.T, extra string) definition.Process {
+	t.Helper()
+	set := map[string]bool{}
+	for _, line := range strings.Split(extra, "\n") {
+		if field, _, ok := strings.Cut(line, ":"); ok && !strings.HasPrefix(line, " ") {
+			set[field] = true
+		}
+	}
+	var limits []string
+	for _, limit := range review {
+		if !set[limit.field] {
+			limits = append(limits, limit.text)
+		}
+	}
 	p, err := definition.ParseProcess(definition.Document{Source: definition.Source{Name: "review"}, Bytes: []byte(`
 schema: agister.process/v1alpha1
 name: review
 type: process
 prompt: review
 uses: agent:reviewer
-policy: process-policy:static-review
 input:
   instruction: Review.
   values:
     candidate_revision: {source: git.revision, rev: HEAD}
-workspace:
-  revision: candidate_revision
-  clean: true
 output:
   format: text
-` + extra)})
+` + strings.Join(limits, "\n") + "\n" + extra)})
 	if err != nil {
 		t.Fatal(err)
 	}
 	return p
 }
 
-func TestResearchStaticReviewComposes(t *testing.T) {
+func TestAReviewComposesItsOwnLimits(t *testing.T) {
 	t.Parallel()
-	pol := researchPolicy(t)
-	effective, err := policy.Compose(service, &pol, process(t, ""), policy.Caller{})
+	effective, err := policy.Compose(service, process(t, ""), policy.Caller{})
 	if err != nil {
 		t.Fatal(err)
 	}
 	if strings.Join(effective.Permissions, ",") != "repository.read,repository.diff,repository.search" ||
-		effective.Access != "read-only" || effective.Scope != "candidate" || effective.Timeout != 20*time.Minute {
+		effective.Access != "read-only" || effective.Scope != "candidate" || effective.Timeout != 20*time.Minute || effective.MaxAttempts != 1 {
 		t.Fatalf("effective = %+v", effective)
 	}
 }
 
-func TestNarrowingIsEnforcedFieldByField(t *testing.T) {
+// With no policy, the service's ceilings bound the process's own limits
+// directly (ADR-030 rule 4): one above them is invalid, never clamped.
+func TestTheServiceBoundsTheProcess(t *testing.T) {
 	t.Parallel()
-	pol := researchPolicy(t)
 	cases := map[string]string{
-		"timeout: 30m": "timeout: 30m0s widens the policy's 20m0s",
-		"tools: {allow: [repository.read, network]}":                    "tools.allow: adds network, which policy static-review does not allow",
-		"workspace: {access: read-write, revision: candidate_revision}": "workspace.access: read-write widens",
-		"workspace: {scope: repository, revision: candidate_revision}":  "scope cannot be overridden",
-		"retry: {max_attempts: 3}":                                      "retry.max_attempts: 3 widens",
-		"tools: {allow: [teleport]}":                                    `unknown permission "teleport"`,
+		"timeout: 2h":                "timeout 2h0m0s exceeds the service limit 1h0m0s",
+		"retry: {max_attempts: 3}":   "retry.max_attempts 3 exceeds the service limit 1",
+		"tools: {allow: [teleport]}": `tools.allow: unknown permission "teleport"`,
+		"isolation: {deny: [warp]}":  `isolation.deny: unknown permission "warp"`,
 	}
 	for extra, want := range cases {
-		var p definition.Process
-		if strings.HasPrefix(extra, "workspace:") {
-			p = mustProcessWithWorkspace(t, extra)
-		} else {
-			p = process(t, extra)
-		}
-		_, err := policy.Compose(service, &pol, p, policy.Caller{})
-		if err == nil || !strings.Contains(err.Error(), want) {
+		if _, err := policy.Compose(service, process(t, extra), policy.Caller{}); err == nil || !strings.Contains(err.Error(), want) {
 			t.Errorf("%s: err = %v, want %q", extra, err, want)
 		}
 	}
 }
 
-// mustProcessWithWorkspace replaces the base workspace block.
-func mustProcessWithWorkspace(t *testing.T, workspace string) definition.Process {
-	p, err := definition.ParseProcess(definition.Document{Source: definition.Source{Name: "review"}, Bytes: []byte(`
-schema: agister.process/v1alpha1
-name: review
-type: process
-prompt: review
-uses: agent:reviewer
-policy: process-policy:static-review
-input:
-  instruction: Review.
-  values:
-    candidate_revision: {source: git.revision, rev: HEAD}
-output:
-  format: text
-` + workspace)})
-	if err != nil {
-		t.Fatal(err)
+// A process that sets no timeout has none to run under: nothing else gives
+// one.
+func TestAProcessWithoutATimeoutIsInvalid(t *testing.T) {
+	t.Parallel()
+	p := process(t, "")
+	p.Limits.Timeout = nil
+	if _, err := policy.Compose(service, p, policy.Caller{}); err == nil || !strings.Contains(err.Error(), "timeout: the process sets none") {
+		t.Fatalf("err = %v", err)
 	}
-	return p
 }
 
-func TestNarrowingInThePermittedDirection(t *testing.T) {
+func TestAProcessHoldsItsOwnLimits(t *testing.T) {
 	t.Parallel()
-	pol := researchPolicy(t)
-	effective, err := policy.Compose(service, &pol, process(t, `
-timeout: 5m
-tools: {allow: [repository.read]}
+	effective, err := policy.Compose(service, process(t, `
+timeout: 45m
+retry: {max_attempts: 1}
+tools: {allow: [repository.read, repository.search]}
 isolation: {deny: [repository.search]}
 `), policy.Caller{})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if effective.Timeout != 5*time.Minute || strings.Join(effective.Permissions, ",") != "repository.read" {
+	if effective.Timeout != 45*time.Minute || strings.Join(effective.Permissions, ",") != "repository.read" {
 		t.Fatalf("effective = %+v", effective)
 	}
 }
 
 func TestCallerMayOnlyShorten(t *testing.T) {
 	t.Parallel()
-	pol := researchPolicy(t)
 	short, long := 5*time.Minute, 2*time.Hour
-	if effective, err := policy.Compose(service, &pol, process(t, ""), policy.Caller{Timeout: &short}); err != nil || effective.Timeout != short {
+	if effective, err := policy.Compose(service, process(t, ""), policy.Caller{Timeout: &short}); err != nil || effective.Timeout != short {
 		t.Fatalf("effective = %+v, %v", effective, err)
 	}
-	if _, err := policy.Compose(service, &pol, process(t, ""), policy.Caller{Timeout: &long}); err == nil || !strings.Contains(err.Error(), "caller timeout 2h0m0s widens") {
-		t.Fatalf("err = %v", err)
-	}
-}
-
-func TestPolicyOutsideTheServiceIsInvalidNotClamped(t *testing.T) {
-	t.Parallel()
-	pol := researchPolicy(t)
-	long := 2 * time.Hour
-	pol.Limits.Timeout = &long
-	if _, err := policy.Compose(service, &pol, process(t, ""), policy.Caller{}); err == nil || !strings.Contains(err.Error(), "policy static-review: timeout 2h0m0s exceeds the service limit 1h0m0s") {
+	if _, err := policy.Compose(service, process(t, ""), policy.Caller{Timeout: &long}); err == nil || !strings.Contains(err.Error(), "caller timeout 2h0m0s widens") {
 		t.Fatalf("err = %v", err)
 	}
 }
 
 func TestDenialsWinAndEveryProblemIsReported(t *testing.T) {
 	t.Parallel()
-	pol := researchPolicy(t)
-	pol.Limits.Allow = append(pol.Limits.Allow, "process.execute")
-	effective, err := policy.Compose(service, &pol, process(t, ""), policy.Caller{})
+	effective, err := policy.Compose(service, process(t, "tools: {allow: [repository.read, process.execute]}\n"), policy.Caller{})
 	if err != nil || strings.Contains(strings.Join(effective.Permissions, ","), "process.execute") {
 		t.Fatalf("a denied permission became effective: %+v, %v", effective, err)
 	}
-	_, err = policy.Compose(service, &pol, process(t, "timeout: 2h\ntools: {allow: [network]}\n"), policy.Caller{})
+	_, err = policy.Compose(service, process(t, "timeout: 2h\ntools: {allow: [teleport]}\n"), policy.Caller{})
 	if err == nil || !strings.Contains(err.Error(), "timeout") || !strings.Contains(err.Error(), "tools.allow") {
 		t.Fatalf("err = %v", err)
 	}
@@ -169,29 +142,26 @@ func TestDenialsWinAndEveryProblemIsReported(t *testing.T) {
 
 func TestCostLimitOnlyLowers(t *testing.T) {
 	t.Parallel()
-	pol := researchPolicy(t)
-	if effective, err := policy.Compose(service, &pol, process(t, ""), policy.Caller{}); err != nil || effective.MaxCostUSD != nil {
-		t.Fatalf("no layer sets a cost limit: %+v, %v", effective.MaxCostUSD, err)
+	if effective, err := policy.Compose(service, process(t, ""), policy.Caller{}); err != nil || effective.MaxCostUSD != nil {
+		t.Fatalf("nothing sets a cost limit: %+v, %v", effective.MaxCostUSD, err)
 	}
-	two, five := 2.0, 5.0
-	pol.Limits.MaxCostUSD = &two
-	if effective, err := policy.Compose(service, &pol, process(t, "max_cost_usd: 1.5\n"), policy.Caller{}); err != nil || *effective.MaxCostUSD != 1.5 {
-		t.Fatalf("process lowers: %+v, %v", effective.MaxCostUSD, err)
+	five := 5.0
+	if effective, err := policy.Compose(service, process(t, "max_cost_usd: 1.5\n"), policy.Caller{}); err != nil || *effective.MaxCostUSD != 1.5 {
+		t.Fatalf("the process sets it: %+v, %v", effective.MaxCostUSD, err)
 	}
-	if _, err := policy.Compose(service, &pol, process(t, "max_cost_usd: 3\n"), policy.Caller{}); err == nil || !strings.Contains(err.Error(), "max_cost_usd: the process sets 3, which widens 2") {
+	if _, err := policy.Compose(service, process(t, "max_cost_usd: 2\n"), policy.Caller{MaxCostUSD: &five}); err == nil || !strings.Contains(err.Error(), "max_cost_usd: the caller sets 5, which widens 2") {
 		t.Fatalf("err = %v", err)
 	}
-	if _, err := policy.Compose(service, &pol, process(t, ""), policy.Caller{MaxCostUSD: &five}); err == nil || !strings.Contains(err.Error(), "the caller sets 5") {
-		t.Fatalf("err = %v", err)
-	}
+	two := 2.0
 	capped := service
 	capped.MaxCostUSD = &two
-	pol.Limits.MaxCostUSD = &five
-	if _, err := policy.Compose(capped, &pol, process(t, ""), policy.Caller{}); err == nil || !strings.Contains(err.Error(), "policy static-review sets 5, which widens 2") {
+	if _, err := policy.Compose(capped, process(t, "max_cost_usd: 5\n"), policy.Caller{}); err == nil || !strings.Contains(err.Error(), "max_cost_usd: the process sets 5, which widens 2") {
 		t.Fatalf("err = %v", err)
 	}
-	pol.Limits.MaxCostUSD = nil
-	if effective, err := policy.Compose(capped, &pol, process(t, ""), policy.Caller{}); err != nil || *effective.MaxCostUSD != 2 {
+	if effective, err := policy.Compose(capped, process(t, "max_cost_usd: 1.5\n"), policy.Caller{}); err != nil || *effective.MaxCostUSD != 1.5 {
+		t.Fatalf("the process lowers the service's: %+v, %v", effective.MaxCostUSD, err)
+	}
+	if effective, err := policy.Compose(capped, process(t, ""), policy.Caller{}); err != nil || *effective.MaxCostUSD != 2 {
 		t.Fatalf("the service limit applies when nothing lowers it: %+v, %v", effective.MaxCostUSD, err)
 	}
 }
@@ -201,7 +171,7 @@ func TestCostLimitOnlyLowers(t *testing.T) {
 func TestReadOnlyWithholdsTheVocabularysWritingPermissions(t *testing.T) {
 	t.Parallel()
 	docs := definition.Service{MaxTimeout: time.Hour, MaxAttempts: 1, Permissions: []string{"docs.read", "docs.write"}, Writing: []string{"docs.write"}}
-	compose := func(pol *definition.Policy) []string {
+	compose := func(workspace string) []string {
 		t.Helper()
 		p, err := definition.ParseProcess(definition.Document{Source: definition.Source{Name: "edit"}, Bytes: []byte(`
 schema: agister.process/v1alpha1
@@ -213,21 +183,20 @@ timeout: 1m
 tools: {allow: [docs.read, docs.write]}
 input: {instruction: Edit.}
 output: {format: text}
-`)})
+` + workspace)})
 		if err != nil {
 			t.Fatal(err)
 		}
-		effective, err := policy.Compose(docs, pol, p, policy.Caller{})
+		effective, err := policy.Compose(docs, p, policy.Caller{})
 		if err != nil {
 			t.Fatal(err)
 		}
 		return effective.Permissions
 	}
-	if got := strings.Join(compose(nil), ","); got != "docs.read" {
+	if got := strings.Join(compose(""), ","); got != "docs.read" {
 		t.Errorf("default read-only: permissions %s", got)
 	}
-	writable := &definition.Policy{Name: "writable", Limits: definition.Limits{Access: "read-write"}}
-	if got := strings.Join(compose(writable), ","); got != "docs.read,docs.write" {
+	if got := strings.Join(compose("workspace: {access: read-write}"), ","); got != "docs.read,docs.write" {
 		t.Errorf("read-write: permissions %s", got)
 	}
 }
@@ -237,133 +206,86 @@ func TestScopeFollowsTheRevision(t *testing.T) {
 	t.Parallel()
 	compose := func(workspace string) (policy.Effective, error) {
 		t.Helper()
-		return policy.Compose(service, nil, mustProcessWithWorkspace(t, "timeout: 1m\n"+workspace), policy.Caller{})
+		return policy.Compose(service, process(t, "workspace: {"+workspace+"}"), policy.Caller{})
 	}
-	if effective, err := compose("workspace: {revision: candidate_revision}"); err != nil || effective.Scope != "candidate" {
+	if effective, err := compose("revision: candidate_revision"); err != nil || effective.Scope != "candidate" {
 		t.Errorf("revision: scope %q, %v", effective.Scope, err)
 	}
 	if effective, err := compose(""); err != nil || effective.Scope != "repository" {
 		t.Errorf("no revision: scope %q, %v", effective.Scope, err)
 	}
-	if _, err := compose("workspace: {scope: repository, revision: candidate_revision}"); err == nil || !strings.Contains(err.Error(), "scope repository conflicts with workspace.revision") {
+	if _, err := compose("scope: repository, revision: candidate_revision"); err == nil || !strings.Contains(err.Error(), "scope repository conflicts with workspace.revision") {
 		t.Errorf("repository with a revision: %v", err)
 	}
-	if _, err := compose("workspace: {scope: candidate}"); err == nil || !strings.Contains(err.Error(), "candidate requires workspace.revision") {
+	if _, err := compose("scope: candidate"); err == nil || !strings.Contains(err.Error(), "candidate requires workspace.revision") {
 		t.Errorf("candidate without a revision: %v", err)
 	}
 }
 
-// withoutTopLevel drops the named top-level YAML fields and their blocks.
-func withoutTopLevel(data []byte, keys ...string) []byte {
-	var out []string
-	skipping := false
-	for _, line := range strings.Split(string(data), "\n") {
-		if line != "" && line[0] != ' ' && line[0] != '#' {
-			skipping = false
-			for _, key := range keys {
-				if strings.HasPrefix(line, key+":") {
-					skipping = true
-				}
-			}
-		}
-		if !skipping {
-			out = append(out, line)
-		}
-	}
-	return []byte(strings.Join(out, "\n"))
-}
-
-// Staleness limits come from the policy; a process may only lower them,
-// and one above the timeout the settings declare is invalid. Unset, they
-// stay unset.
-func TestStalenessLimitsOnlyNarrow(t *testing.T) {
+// Staleness limits are the process's own: unset, they stay unset, and one
+// above the timeout the process declares is invalid.
+func TestStalenessLimitsAreTheProcesss(t *testing.T) {
 	t.Parallel()
-	pol := researchPolicy(t)
-	if effective, err := policy.Compose(service, &pol, process(t, ""), policy.Caller{}); err != nil || effective.Stale != (policy.Stale{}) {
+	if effective, err := policy.Compose(service, process(t, ""), policy.Caller{}); err != nil || effective.Stale != (policy.Stale{}) {
 		t.Fatalf("without limits: %+v, %v", effective.Stale, err)
 	}
 
-	minutes := func(n int) *time.Duration { d := time.Duration(n) * time.Minute; return &d }
-	calls := 5
-	pol.Limits.Stale = definition.Stale{NoEvent: minutes(5), NoOutput: minutes(2), ToolCommand: minutes(10), RepeatedToolCalls: &calls}
-	effective, err := policy.Compose(service, &pol, process(t, "stale: {no_event: 3m, repeated_tool_calls: 4}"), policy.Caller{})
+	effective, err := policy.Compose(service, process(t, "stale: {no_event: 5m, no_output: 2m, tool_command: 10m, repeated_tool_calls: 4}"), policy.Caller{})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got := effective.Stale; *got.NoEvent != 3*time.Minute || *got.NoOutput != 2*time.Minute || *got.ToolCommand != 10*time.Minute || *got.RepeatedToolCalls != 4 {
+	if got := effective.Stale; *got.NoEvent != 5*time.Minute || *got.NoOutput != 2*time.Minute || *got.ToolCommand != 10*time.Minute || *got.RepeatedToolCalls != 4 {
 		t.Fatalf("stale = %+v", got)
 	}
 
-	for extra, want := range map[string]string{
-		"stale: {no_event: 6m}":           "stale.no_event: 6m0s widens the policy's 5m0s",
-		"stale: {no_output: 3m}":          "stale.no_output: 3m0s widens the policy's 2m0s",
-		"stale: {tool_command: 11m}":      "stale.tool_command: 11m0s widens the policy's 10m0s",
-		"stale: {repeated_tool_calls: 6}": "stale.repeated_tool_calls: 6 widens the policy's 5",
-		// The process narrows the timeout below a limit its policy sets.
-		"timeout: 4m": "stale.no_event 5m0s exceeds the timeout 4m0s",
+	// Parsing refuses a limit above the timeout of the same document; the
+	// composition refuses it whatever gave the process its limits.
+	above := 21 * time.Minute
+	for field, set := range map[string]func(*definition.Stale){
+		"stale.no_event":     func(s *definition.Stale) { s.NoEvent = &above },
+		"stale.no_output":    func(s *definition.Stale) { s.NoOutput = &above },
+		"stale.tool_command": func(s *definition.Stale) { s.ToolCommand = &above },
 	} {
-		if _, err := policy.Compose(service, &pol, process(t, extra), policy.Caller{}); err == nil || !strings.Contains(err.Error(), want) {
-			t.Errorf("%s: err = %v, want %q", extra, err, want)
+		p := process(t, "")
+		set(&p.Limits.Stale)
+		want := field + " 21m0s exceeds the timeout 20m0s"
+		if _, err := policy.Compose(service, p, policy.Caller{}); err == nil || !strings.Contains(err.Error(), want) {
+			t.Errorf("%s: err = %v, want %q", field, err, want)
 		}
 	}
 
 	// A caller's shorter timeout leaves a limit without effect, not invalid.
 	short := time.Minute
-	effective, err = policy.Compose(service, &pol, process(t, ""), policy.Caller{Timeout: &short})
+	effective, err = policy.Compose(service, process(t, "stale: {no_event: 5m}"), policy.Caller{Timeout: &short})
 	if err != nil || effective.Timeout != time.Minute || *effective.Stale.NoEvent != 5*time.Minute {
 		t.Fatalf("caller timeout below the limits: %+v, %v", effective, err)
 	}
 }
 
-// The recovery of a stale call (ADR-024 rule 5): the policy sets the
-// budget's ceiling and a process may only lower it, down to 0; unset is 0.
-// The instruction is text: the process's replaces the policy's. A budget
-// above 0 needs one.
-func TestStaleRecoveryBudgetOnlyNarrows(t *testing.T) {
+// The recovery of a stale call is the process's own (ADR-024 rule 5, as
+// ADR-030 rule 4 amends it): unset is 0, and a budget above 0 needs an
+// instruction.
+func TestStaleRecoveryIsTheProcesss(t *testing.T) {
 	t.Parallel()
-	resumes := func(n int) *int { return &n }
 	cases := []struct {
 		name    string
-		policy  definition.Recover
 		process string
 		want    policy.Recover
 		problem string
 	}{
-		{"unset is 0", definition.Recover{}, "", policy.Recover{}, ""},
-		{"the policy's ceiling", definition.Recover{MaxResumes: resumes(2), Instruction: "Policy."}, "",
-			policy.Recover{MaxResumes: 2, Instruction: "Policy."}, ""},
-		{"a process lowers it", definition.Recover{MaxResumes: resumes(2), Instruction: "Policy."}, "stale: {recover: {max_resumes: 1}}",
-			policy.Recover{MaxResumes: 1, Instruction: "Policy."}, ""},
-		{"a process sets its policy's", definition.Recover{MaxResumes: resumes(2), Instruction: "Policy."}, "stale: {recover: {max_resumes: 2}}",
-			policy.Recover{MaxResumes: 2, Instruction: "Policy."}, ""},
+		{"unset is 0", "", policy.Recover{}, ""},
+		{"a budget", "stale: {recover: {max_resumes: 2, instruction: Process.}}",
+			policy.Recover{MaxResumes: 2, Instruction: "Process."}, ""},
 		// Without a budget nothing is told, so nothing is carried.
-		{"a process lowers it to 0", definition.Recover{MaxResumes: resumes(2), Instruction: "Policy."}, "stale: {recover: {max_resumes: 0}}",
-			policy.Recover{}, ""},
-		{"a process sets 0 where the policy sets none", definition.Recover{}, "stale: {recover: {max_resumes: 0, instruction: Process.}}",
-			policy.Recover{}, ""},
-		{"an instruction without a budget", definition.Recover{Instruction: "Policy."}, "",
-			policy.Recover{}, ""},
-		{"a process widens it", definition.Recover{MaxResumes: resumes(1), Instruction: "Policy."}, "stale: {recover: {max_resumes: 2}}",
-			policy.Recover{}, "stale.recover.max_resumes: 2 widens the policy's 1"},
-		{"a process widens the policy's 0", definition.Recover{MaxResumes: resumes(0), Instruction: "Policy."}, "stale: {recover: {max_resumes: 1}}",
-			policy.Recover{}, "stale.recover.max_resumes: 1 widens the policy's 0"},
-		{"a process sets it where the policy sets none", definition.Recover{}, "stale: {recover: {max_resumes: 1, instruction: Process.}}",
-			policy.Recover{}, "stale.recover.max_resumes: 1 where the policy sets none; a process may only lower its policy's"},
-		{"the process's instruction replaces the policy's", definition.Recover{MaxResumes: resumes(1), Instruction: "Policy."}, "stale: {recover: {instruction: Process.}}",
-			policy.Recover{MaxResumes: 1, Instruction: "Process."}, ""},
-		{"the process gives the instruction", definition.Recover{MaxResumes: resumes(1)}, "stale: {recover: {instruction: Process.}}",
-			policy.Recover{MaxResumes: 1, Instruction: "Process."}, ""},
-		{"a budget without an instruction", definition.Recover{MaxResumes: resumes(1)}, "",
-			policy.Recover{}, "stale.recover.max_resumes 1 needs stale.recover.instruction: neither the process nor its policy gives one"},
-		{"a lowered budget without an instruction", definition.Recover{MaxResumes: resumes(2)}, "stale: {recover: {max_resumes: 1}}",
-			policy.Recover{}, "stale.recover.max_resumes 1 needs stale.recover.instruction: neither the process nor its policy gives one"},
+		{"0", "stale: {recover: {max_resumes: 0, instruction: Process.}}", policy.Recover{}, ""},
+		{"an instruction without a budget", "stale: {recover: {instruction: Process.}}", policy.Recover{}, ""},
+		{"a budget without an instruction", "stale: {recover: {max_resumes: 1}}",
+			policy.Recover{}, "stale.recover.max_resumes 1 needs stale.recover.instruction: the process gives none"},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			t.Parallel()
-			pol := researchPolicy(t)
-			pol.Limits.Stale.Recover = c.policy
-			effective, err := policy.Compose(service, &pol, process(t, c.process), policy.Caller{})
+			effective, err := policy.Compose(service, process(t, c.process), policy.Caller{})
 			if c.problem != "" {
 				if err == nil || !strings.Contains(err.Error(), c.problem) {
 					t.Fatalf("err = %v, want %q", err, c.problem)
@@ -377,31 +299,10 @@ func TestStaleRecoveryBudgetOnlyNarrows(t *testing.T) {
 	}
 }
 
-// A process without a policy has no budget to lower.
-func TestStaleRecoveryNeedsAPolicysBudget(t *testing.T) {
-	t.Parallel()
-	alone := func(extra string) definition.Process {
-		p := process(t, "timeout: 10m\n"+extra)
-		p.Policy = ""
-		return p
-	}
-	want := "stale.recover.max_resumes: 1 where the policy sets none; a process may only lower its policy's"
-	if _, err := policy.Compose(service, nil, alone("stale: {recover: {max_resumes: 1, instruction: Process.}}"), policy.Caller{}); err == nil || !strings.Contains(err.Error(), want) {
-		t.Fatalf("err = %v, want %q", err, want)
-	}
-	effective, err := policy.Compose(service, nil, alone("stale: {recover: {max_resumes: 0}}"), policy.Caller{})
-	if err != nil || effective.Stale.Recover != (policy.Recover{}) {
-		t.Fatalf("lowered to 0: %+v, %v", effective.Stale.Recover, err)
-	}
-}
-
 // editor is a process that allows a writing permission, with workspace as
-// its workspace block. It names the policy named, or none.
-func editor(t *testing.T, named, workspace string) definition.Process {
+// its workspace block.
+func editor(t *testing.T, workspace string) definition.Process {
 	t.Helper()
-	if named != "" {
-		named = "policy: process-policy:" + named + "\n"
-	}
 	p, err := definition.ParseProcess(definition.Document{Source: definition.Source{Name: "edit"}, Bytes: []byte(`
 schema: agister.process/v1alpha1
 name: edit
@@ -412,19 +313,18 @@ timeout: 1m
 tools: {allow: [repository.read, repository.write]}
 input: {instruction: Edit.}
 output: {format: text}
-` + named + workspace)})
+` + workspace)})
 	if err != nil {
 		t.Fatal(err)
 	}
 	return p
 }
 
-// A process that names no policy holds its own workspace access: one that
-// sets read-write composes read-write, and keeps the writing permissions it
-// allows.
-func TestAProcessWithoutAPolicyMayBeReadWrite(t *testing.T) {
+// A process holds its own workspace access: one that sets read-write
+// composes read-write, and keeps the writing permissions it allows.
+func TestAProcessMayBeReadWrite(t *testing.T) {
 	t.Parallel()
-	effective, err := policy.Compose(service, nil, editor(t, "", "workspace: {access: read-write}"), policy.Caller{})
+	effective, err := policy.Compose(service, editor(t, "workspace: {access: read-write}"), policy.Caller{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -433,33 +333,18 @@ func TestAProcessWithoutAPolicyMayBeReadWrite(t *testing.T) {
 	}
 }
 
-// A process that names no policy and sets no access, or read-only, is
-// read-only: the writing permissions it allows are withheld.
-func TestAProcessWithoutAPolicyIsReadOnlyUnlessItSaysSo(t *testing.T) {
+// A process that sets no access, or read-only, is read-only: the writing
+// permissions it allows are withheld.
+func TestAProcessIsReadOnlyUnlessItSaysSo(t *testing.T) {
 	t.Parallel()
 	for name, workspace := range map[string]string{"no access": "", "read-only": "workspace: {access: read-only}"} {
-		effective, err := policy.Compose(service, nil, editor(t, "", workspace), policy.Caller{})
+		effective, err := policy.Compose(service, editor(t, workspace), policy.Caller{})
 		if err != nil {
 			t.Errorf("%s: %v", name, err)
 			continue
 		}
 		if got := strings.Join(effective.Permissions, ","); effective.Access != "read-only" || got != "repository.read" {
 			t.Errorf("%s: access %q with permissions %s, want read-only with repository.read", name, effective.Access, got)
-		}
-	}
-}
-
-// A process that names a policy may not widen its policy's read-only,
-// whether the policy says read-only or sets no access.
-func TestAProcessMayNotWidenItsPolicysReadOnly(t *testing.T) {
-	t.Parallel()
-	want := "workspace.access: read-write widens policy reader's read-only"
-	for name, pol := range map[string]definition.Policy{
-		"a read-only policy":           {Name: "reader", Limits: definition.Limits{Access: "read-only"}},
-		"a policy that sets no access": {Name: "reader"},
-	} {
-		if _, err := policy.Compose(service, &pol, editor(t, pol.Name, "workspace: {access: read-write}"), policy.Caller{}); err == nil || !strings.Contains(err.Error(), want) {
-			t.Errorf("%s: err = %v, want %q", name, err, want)
 		}
 	}
 }

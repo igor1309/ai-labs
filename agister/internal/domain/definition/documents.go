@@ -10,22 +10,14 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// Hierarchical documents (process, policy, verification, runtime mapping)
-// are YAML.
+// Hierarchical documents (process, verification, runtime mapping) are
+// YAML.
 
 const (
 	ProcessSchema = "agister.process/v1alpha1"
-	PolicySchema  = "agister.process-policy/v1alpha1"
 	RuntimeSchema = "agister.runtime/v1alpha1"
 	VerifySchema  = "agister.verify/v1alpha1"
 )
-
-// Policy is a reusable set of execution defaults.
-type Policy struct {
-	Name   string
-	Limits Limits
-	Source Source
-}
 
 // Param is a value supplied by the caller of a process.
 type Param struct {
@@ -83,7 +75,6 @@ type Verification struct {
 type Process struct {
 	Name        string
 	Agent       string
-	Policy      string
 	Instruction string
 	// Prompt names the prompt its calls are given as the input prompt, and
 	// Guidance the further prompts, each as the input guidance.<name>, in
@@ -103,7 +94,7 @@ type Process struct {
 	// resolved; unset: no verification, or a named one not resolved.
 	Verify     *Verify
 	VerifyName string // name of a verification definition, in place of the inline block
-	Limits     Limits // narrowing overrides
+	Limits     Limits // its own, within the service's ceilings (ADR-030 rule 4)
 	// Obsolete are the warnings for the fields it holds that ADR-025
 	// removed, which are read and ignored: workspace.setup, and verify.where
 	// in its inline block.
@@ -150,19 +141,6 @@ func checkSchema(value, schema string, p *problems) {
 	default:
 		p.add("schema", "must be %q", schema)
 	}
-}
-
-// ParsePolicy parses a process policy.
-func ParsePolicy(doc Document) (Policy, error) {
-	p := problemsOf(doc.Source)
-	root := parseOneYAML(doc.Bytes, p)
-	if root == nil {
-		return Policy{Name: doc.Source.Name, Source: doc.Source}, p.err("policy " + subjectName(doc.Source))
-	}
-	values := fields(root, "", append([]string{"schema", "name", "status"}, limitKeys...), p)
-	header(values, PolicySchema, doc.Source.Name, p)
-	limits, _, _ := parseLimits(values, []string{"allow"}, []string{"access", "scope"}, p)
-	return Policy{Name: doc.Source.Name, Limits: limits, Source: doc.Source}, p.err("policy " + subjectName(doc.Source))
 }
 
 // ParseProcess parses a process definition.
@@ -215,13 +193,9 @@ func parseProcess(doc Document, p *problems) Process {
 	} else if uses != "" {
 		p.add("uses", `must be "agent:<name>"`)
 	}
-	if node, ok := values["policy"]; ok {
-		reference, _ := scalar(node, "policy", p)
-		if policy, ok := strings.CutPrefix(reference, "process-policy:"); ok && policy != "" {
-			process.Policy = policy
-		} else {
-			p.add("policy", `must be "process-policy:<name>"`)
-		}
+	// Policies are gone: a process holds its own limits (ADR-030 rule 4).
+	if _, ok := values["policy"]; ok {
+		p.add("policy", "there are no policies (ADR-030): set the policy's fields on the process and remove policy")
 	}
 
 	// Literal document names, which nothing is substituted in (ADR-028

@@ -54,7 +54,7 @@ type Service struct {
 	// access withholds them.
 	Writing []string
 	// Permissions that would let an agent reach Agister's own state. They
-	// are never granted, whatever a policy allows.
+	// are never granted, whatever a process allows.
 	StateReaching []string
 	Source        Source
 }

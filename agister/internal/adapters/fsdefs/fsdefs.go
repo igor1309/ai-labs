@@ -1,6 +1,6 @@
 // Package fsdefs stores definition documents as files under Agister's
 // state directory: service.toml, workspace.yaml, blocks.yaml, agents/*.toml,
-// processes/*.yaml, policies/*.yaml, runtimes/*.yaml, schemas/*.json,
+// processes/*.yaml, runtimes/*.yaml, schemas/*.json,
 // workflows/*.yaml, verifies/*.yaml, prompts/*.md, skills/*/SKILL.md,
 // briefs/*.yaml. Layered
 // reads the layers a command selected, composing each document from the
@@ -86,7 +86,6 @@ func extensions() map[definition.Kind]string {
 		definition.KindService:  ".toml",
 		definition.KindAgent:    ".toml",
 		definition.KindProcess:  ".yaml",
-		definition.KindPolicy:   ".yaml",
 		definition.KindRuntime:  ".yaml",
 		definition.KindSchema:   ".json",
 		definition.KindWorkflow: ".yaml",
@@ -704,6 +703,30 @@ func (l layerStore) expected(kind definition.Kind, name string, folders bool) []
 // in its settings directory (ADR-028 rule 9).
 const layerFile = "layer.yaml"
 
+// policiesDir is where a layer held its policies, which are no kind of
+// settings: a layer holds none (ADR-030 rule 4).
+const policiesDir = "policies"
+
+// policies are what makes the layer invalid in its policies/: each entry
+// it holds, or itself when it cannot be listed, such as a file of that
+// name. None when there is no policies/, or it is empty.
+func (s Store) policies() []definition.LayerProblem {
+	dir := filepath.Join(s.Dir, policiesDir)
+	if !exists(dir) {
+		return nil
+	}
+	const reason = "a layer holds no policies (ADR-030 rule 4): set the policy's fields on each process that names it, then remove it"
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return []definition.LayerProblem{{Path: dir, Reason: fmt.Sprintf("%s (cannot be listed: %v)", reason, err)}}
+	}
+	var problems []definition.LayerProblem
+	for _, entry := range entries {
+		problems = append(problems, definition.LayerProblem{Path: filepath.Join(dir, entry.Name()), Reason: reason})
+	}
+	return problems
+}
+
 // promptFolders are the folders the layer's layer.yaml lists, each joined
 // to the directory that holds the layer's settings directory; none when it
 // holds no layer.yaml. A layer.yaml that cannot be read or is invalid, or
@@ -910,7 +933,8 @@ func (l Layered) List(ctx context.Context, kind definition.Kind) ([]string, erro
 // Layers are the layers selected, nearest first, each with what makes it
 // invalid: a project layer below another .agister (ADR-028 rule 1), or one
 // that holds a blocks.yaml (rule 7); a layer.yaml that cannot be used
-// (rule 9), and one in home, which has none.
+// (rule 9), and one in home, which has none; a file in any layer's
+// policies/ (ADR-030 rule 4).
 func (l Layered) Layers(context.Context) []definition.LayerDir {
 	var layers []definition.LayerDir
 	if l.Project != nil {
@@ -930,10 +954,12 @@ func (l Layered) Layers(context.Context) []definition.LayerDir {
 		}
 		_, invalid := l.Project.promptFolders()
 		project.Invalid = append(project.Invalid, invalid...)
+		project.Invalid = append(project.Invalid, l.Project.policies()...)
 		layers = append(layers, project)
 	}
 	if l.Repository != nil {
 		_, invalid := l.Repository.promptFolders()
+		invalid = append(invalid, l.Repository.policies()...)
 		layers = append(layers, definition.LayerDir{Layer: definition.LayerRepository, Dir: l.Repository.Dir, Invalid: invalid})
 	}
 	home := definition.LayerDir{Layer: definition.LayerHome, Dir: l.Home.Dir}
@@ -943,6 +969,7 @@ func (l Layered) Layers(context.Context) []definition.LayerDir {
 			Reason: "home holds no layer.yaml: home is one folder and names no path (ADR-027 rule 4); remove it",
 		})
 	}
+	home.Invalid = append(home.Invalid, l.Home.policies()...)
 	return append(layers, home)
 }
 

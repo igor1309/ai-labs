@@ -28,7 +28,6 @@ func nodeProcess(name, instruction string) string {
 name: ` + name + `
 type: process
 uses: agent:a
-policy: process-policy:pol
 prompt: inspect
 input:
   instruction: ` + instruction + `
@@ -44,6 +43,8 @@ output:
   format: json
   schema: s
   require_valid: true
+timeout: 20m
+tools: {allow: [repository.read, repository.search, repository.diff]}
 `
 }
 
@@ -51,7 +52,6 @@ const joinProcess = `schema: agister.process/v1alpha1
 name: joiner
 type: process
 uses: agent:a
-policy: process-policy:joining
 prompt: inspect
 input:
   instruction: Join them.
@@ -62,6 +62,8 @@ output:
   format: json
   schema: s
   require_valid: true
+timeout: 10m
+tools: {allow: [repository.read]}
 `
 
 const workflowDoc = `schema: agister.workflow/v1alpha1
@@ -87,12 +89,6 @@ func workflowDocs() map[definition.Kind]map[string]string {
 		"second": nodeProcess("second", "Work as second."),
 		"joiner": joinProcess,
 	}
-	docs[definition.KindPolicy]["joining"] = `schema: agister.process-policy/v1alpha1
-name: joining
-timeout: 10m
-tools: {allow: [repository.read]}
-workspace: {access: read-only, scope: repository}
-`
 	docs[definition.KindWorkflow] = map[string]string{"w": workflowDoc}
 	return docs
 }

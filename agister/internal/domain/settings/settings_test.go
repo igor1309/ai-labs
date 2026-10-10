@@ -11,6 +11,11 @@ import (
 
 func timeout(d time.Duration) *time.Duration { return &d }
 
+// reading are the limits of a process that reads, for a minute.
+func reading() definition.Limits {
+	return definition.Limits{Timeout: timeout(time.Minute), Allow: []string{"read"}, AllowSet: true}
+}
+
 func bundle() settings.Bundle {
 	return settings.Bundle{
 		Service: &definition.Service{MaxTimeout: time.Hour, MaxAttempts: 1, Permissions: []string{"read", "write", "exec"}},
@@ -21,12 +26,9 @@ func bundle() settings.Bundle {
 			"rt": {Name: "rt", Adapter: "claude-code", Efforts: []string{"high"}, Select: "any",
 				Primitives: []definition.Primitive{{Name: "Read", Grants: []string{"read"}, Verified: []string{"1."}}}},
 		},
-		Policies: map[string]definition.Policy{
-			"pol": {Name: "pol", Limits: definition.Limits{Timeout: timeout(time.Minute), Allow: []string{"read"}, AllowSet: true}},
-		},
 		Processes: map[string]definition.Process{
-			"p": {Name: "p", Agent: "a", Policy: "pol", Output: definition.Output{Format: "json", Schema: "s"},
-				Values: []definition.Value{{Name: "v", Source: "param"}}},
+			"p": {Name: "p", Agent: "a", Output: definition.Output{Format: "json", Schema: "s"},
+				Values: []definition.Value{{Name: "v", Source: "param"}}, Limits: reading()},
 		},
 		Schemas: map[string]bool{"s": true},
 	}
@@ -47,11 +49,11 @@ func TestEveryInconsistencyIsReported(t *testing.T) {
 	b.Agents["b"] = definition.Agent{Name: "b", Runtime: "missing"}
 	b.Agents["a"] = definition.Agent{Name: "a", Runtime: "rt", Effort: "max"}
 	b.Mappings["rt2"] = definition.Mapping{Name: "rt2", Adapter: "gemini", Select: "any", Primitives: []definition.Primitive{{Name: "X", Grants: []string{"teleport"}}}}
-	b.Policies["bad"] = definition.Policy{Name: "bad", Limits: definition.Limits{Allow: []string{"fly"}}}
-	b.Processes["p"] = definition.Process{Name: "p", Agent: "a", Policy: "pol",
+	b.Processes["p"] = definition.Process{Name: "p", Agent: "a",
 		Output: definition.Output{Format: "json", Schema: "gone"},
-		Values: []definition.Value{{Name: "v", Source: "http.get"}}}
-	b.Processes["q"] = definition.Process{Name: "q", Agent: "a", Policy: "nope", Output: definition.Output{Format: "text"}}
+		Values: []definition.Value{{Name: "v", Source: "http.get"}}, Limits: reading()}
+	b.Processes["q"] = definition.Process{Name: "q", Agent: "a", Output: definition.Output{Format: "text"},
+		Limits: definition.Limits{Timeout: timeout(time.Minute), Allow: []string{"fly"}, AllowSet: true}}
 	b.Processes["r"] = definition.Process{Name: "r", Agent: "a", Output: definition.Output{Format: "text"},
 		Limits: definition.Limits{Timeout: timeout(time.Minute), Allow: []string{"write"}, AllowSet: true}, Require: []string{"write"}}
 
@@ -63,10 +65,9 @@ func TestEveryInconsistencyIsReported(t *testing.T) {
 	for _, want := range []string{
 		`agent a: effort "max" is not supported by rt`,
 		`agent b: runtime mapping "missing" does not exist`,
-		`policy bad: unknown permission "fly"`,
 		`process p: input v: unknown source "http.get"`,
 		`process p: output schema "gone" does not exist`,
-		`process q: policy "nope" does not exist`,
+		`process q: tools.allow: unknown permission "fly"`,
 		`process r: cannot run on agent a's runtime rt`,
 		`runtime mapping rt2: unknown adapter "gemini"`,
 		`runtime mapping rt2: grants permissions not in the vocabulary: teleport`,
@@ -140,9 +141,9 @@ func TestProblemsNamingUnknownMechanismsAreMarked(t *testing.T) {
 	t.Parallel()
 	b := bundle()
 	b.Mappings["rt2"] = definition.Mapping{Name: "rt2", Adapter: "opencode", Select: "any", Primitives: []definition.Primitive{{Name: "Read", Grants: []string{"read"}, Verified: []string{"1."}}}}
-	b.Processes["p"] = definition.Process{Name: "p", Agent: "a", Policy: "pol",
+	b.Processes["p"] = definition.Process{Name: "p", Agent: "a",
 		Output: definition.Output{Format: "json", Schema: "gone"},
-		Values: []definition.Value{{Name: "v", Source: "git.future"}}}
+		Values: []definition.Value{{Name: "v", Source: "git.future"}}, Limits: reading()}
 	b.Workflows = map[string]definition.Workflow{"w": {Name: "w", Values: []definition.Value{{Name: "v", Source: "git.future"}},
 		FanOut: []definition.Node{{Name: "n", Process: "p"}}, Join: definition.Node{Name: "j", Process: "p"}}}
 

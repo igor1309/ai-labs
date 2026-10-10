@@ -39,8 +39,6 @@ func TestExamplesParse(t *testing.T) {
 			_, parseErr = definition.ParseAgent(doc(kind, name, string(data)))
 		case definition.KindProcess:
 			_, parseErr = definition.ParseProcess(doc(kind, name, string(data)))
-		case definition.KindPolicy:
-			_, parseErr = definition.ParsePolicy(doc(kind, name, string(data)))
 		case definition.KindRuntime:
 			_, parseErr = definition.ParseMapping(doc(kind, name, string(data)))
 		case definition.KindWorkflow:
@@ -72,10 +70,6 @@ func TestYAMLSettingsRejectMoreThanOneDocument(t *testing.T) {
 	}{
 		definition.KindBrief: {"briefs/step.yaml", func(text string) error {
 			_, err := definition.ParseBrief(doc(definition.KindBrief, "step", text))
-			return err
-		}},
-		definition.KindPolicy: {"policies/read-only.yaml", func(text string) error {
-			_, err := definition.ParsePolicy(doc(definition.KindPolicy, "read-only", text))
 			return err
 		}},
 		definition.KindProcess: {"processes/ask.yaml", func(text string) error {
@@ -207,32 +201,6 @@ func TestShippedRevisionInputsUseTheValuesResolvedBeforeThem(t *testing.T) {
 	}
 }
 
-// The research policy parses as written, except for the fields Agister
-// refuses because it would not enforce them, and its constraints, which
-// Agister does not know.
-func TestResearchPolicyParsesInPlace(t *testing.T) {
-	t.Parallel()
-	data, err := os.ReadFile("../../../../research/agister/research/verger/policies/static-review.yaml")
-	if err != nil {
-		t.Fatal(err)
-	}
-	_, err = definition.ParsePolicy(doc(definition.KindPolicy, "static-review", string(data)))
-	var invalid *definition.InvalidError
-	if !errors.As(err, &invalid) || strings.Join(invalid.Messages(), "; ") != "constraints: unknown field; resources: not supported yet: Agister would not enforce it; artifacts: not supported yet: Agister would not enforce it" {
-		t.Fatalf("err = %v", err)
-	}
-	policy, err := definition.ParsePolicy(doc(definition.KindPolicy, "static-review", string(withoutTopLevel(data, "constraints", "resources", "artifacts"))))
-	if err != nil {
-		t.Fatal(err)
-	}
-	limits := policy.Limits
-	if limits.Timeout.String() != "20m0s" || strings.Join(limits.Allow, ",") != "repository.read,repository.diff,repository.search" ||
-		strings.Join(limits.Deny, ",") != "repository.write,repository.history.write,process.execute,network" ||
-		limits.Access != "read-only" || limits.Scope != "candidate" {
-		t.Fatalf("limits = %+v", limits)
-	}
-}
-
 func TestProcessParsing(t *testing.T) {
 	t.Parallel()
 	process, err := definition.ParseProcess(doc(definition.KindProcess, "p", `
@@ -351,10 +319,6 @@ func TestUnreadableDocumentsReportOneProblem(t *testing.T) {
 		},
 		"agent": func(text string) error {
 			_, err := definition.ParseAgent(doc(definition.KindAgent, "a", text))
-			return err
-		},
-		"policy": func(text string) error {
-			_, err := definition.ParsePolicy(doc(definition.KindPolicy, "p", text))
 			return err
 		},
 		"process": func(text string) error {
@@ -576,20 +540,30 @@ output:
 	}
 }
 
-const stalePolicy = `schema: agister.process-policy/v1alpha1
-name: pol
-timeout: 20m
+const staleProcess = `schema: agister.process/v1alpha1
+name: p
+type: process
+prompt: review
+uses: agent:a
+input:
+  instruction: Do it.
+output:
+  format: text
 `
 
-// A policy declares its staleness limits in a stale block; each is
+// staleTimed is a process with a timeout, which its staleness limits may
+// not exceed.
+const staleTimed = staleProcess + "timeout: 20m\n"
+
+// A process declares its staleness limits in a stale block; each is
 // optional, and unset when the block is.
-func TestPolicyDeclaresStalenessLimits(t *testing.T) {
+func TestProcessDeclaresStalenessLimits(t *testing.T) {
 	t.Parallel()
-	policy, err := definition.ParsePolicy(doc(definition.KindPolicy, "pol", stalePolicy))
-	if err != nil || policy.Limits.Stale != (definition.Stale{}) {
-		t.Fatalf("without the block: %+v, %v", policy.Limits.Stale, err)
+	process, err := definition.ParseProcess(doc(definition.KindProcess, "p", staleTimed))
+	if err != nil || process.Limits.Stale != (definition.Stale{}) {
+		t.Fatalf("without the block: %+v, %v", process.Limits.Stale, err)
 	}
-	policy, err = definition.ParsePolicy(doc(definition.KindPolicy, "pol", stalePolicy+`stale:
+	process, err = definition.ParseProcess(doc(definition.KindProcess, "p", staleTimed+`stale:
   no_event: 5m
   no_output: 2m
   tool_command: 20m
@@ -598,13 +572,13 @@ func TestPolicyDeclaresStalenessLimits(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	stale := policy.Limits.Stale
+	stale := process.Limits.Stale
 	if *stale.NoEvent != 5*time.Minute || *stale.NoOutput != 2*time.Minute || *stale.ToolCommand != 20*time.Minute || *stale.RepeatedToolCalls != 5 {
 		t.Fatalf("stale = %+v", stale)
 	}
-	policy, err = definition.ParsePolicy(doc(definition.KindPolicy, "pol", stalePolicy+"stale: {no_event: 5m}\n"))
-	if err != nil || *policy.Limits.Stale.NoEvent != 5*time.Minute || policy.Limits.Stale.NoOutput != nil || policy.Limits.Stale.RepeatedToolCalls != nil {
-		t.Fatalf("one limit: %+v, %v", policy.Limits.Stale, err)
+	process, err = definition.ParseProcess(doc(definition.KindProcess, "p", staleTimed+"stale: {no_event: 5m}\n"))
+	if err != nil || *process.Limits.Stale.NoEvent != 5*time.Minute || process.Limits.Stale.NoOutput != nil || process.Limits.Stale.RepeatedToolCalls != nil {
+		t.Fatalf("one limit: %+v, %v", process.Limits.Stale, err)
 	}
 }
 
@@ -619,28 +593,17 @@ func TestStalenessLimitProblems(t *testing.T) {
 		"stale: {repeated_tool_calls: two}": "stale.repeated_tool_calls: ",
 		"stale: {idle: 5m}":                 "stale.idle: unknown field",
 	} {
-		_, err := definition.ParsePolicy(doc(definition.KindPolicy, "pol", stalePolicy+block+"\n"))
+		_, err := definition.ParseProcess(doc(definition.KindProcess, "p", staleTimed+block+"\n"))
 		if err == nil || !strings.Contains(err.Error(), want) {
 			t.Errorf("%s: err = %v, want %q", block, err, want)
 		}
 	}
 }
 
-const staleProcess = `schema: agister.process/v1alpha1
-name: p
-type: process
-prompt: review
-uses: agent:a
-input:
-  instruction: Do it.
-output:
-  format: text
-`
-
-// A policy and a process declare the recovery of a stale call in the stale
-// block's recover block (ADR-024 rule 5): a budget, which may be 0, and the
+// A process declares the recovery of a stale call in the stale block's
+// recover block (ADR-024 rule 5): a budget, which may be 0, and the
 // instruction. Each is optional, and unset when the block is.
-func TestPolicyAndProcessDeclareStaleRecovery(t *testing.T) {
+func TestProcessDeclaresStaleRecovery(t *testing.T) {
 	t.Parallel()
 	const block = `stale:
   repeated_tool_calls: 5
@@ -651,51 +614,33 @@ func TestPolicyAndProcessDeclareStaleRecovery(t *testing.T) {
       follows.
 `
 	const instruction = "Agister ended your previous turn; the evidence follows."
-	policy, err := definition.ParsePolicy(doc(definition.KindPolicy, "pol", stalePolicy+block))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if got := policy.Limits.Stale.Recover; got.MaxResumes == nil || *got.MaxResumes != 1 || got.Instruction != instruction || *policy.Limits.Stale.RepeatedToolCalls != 5 {
-		t.Fatalf("policy: stale = %+v", policy.Limits.Stale)
-	}
 	process, err := definition.ParseProcess(doc(definition.KindProcess, "p", staleProcess+block))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got := process.Limits.Stale.Recover; got.MaxResumes == nil || *got.MaxResumes != 1 || got.Instruction != instruction {
-		t.Fatalf("process: recover = %+v", got)
+	if got := process.Limits.Stale.Recover; got.MaxResumes == nil || *got.MaxResumes != 1 || got.Instruction != instruction || *process.Limits.Stale.RepeatedToolCalls != 5 {
+		t.Fatalf("recover = %+v", process.Limits.Stale)
 	}
 
-	// 0 is a budget a process sets to take none of its policy's.
 	process, err = definition.ParseProcess(doc(definition.KindProcess, "p", staleProcess+"stale: {recover: {max_resumes: 0}}\n"))
 	if err != nil {
 		t.Fatal(err)
 	}
 	if got := process.Limits.Stale.Recover; got.MaxResumes == nil || *got.MaxResumes != 0 || got.Instruction != "" {
-		t.Fatalf("lowered to 0: recover = %+v", got)
+		t.Fatalf("0: recover = %+v", got)
 	}
 	process, err = definition.ParseProcess(doc(definition.KindProcess, "p", staleProcess+"stale: {recover: {instruction: Go on.}}\n"))
 	if err != nil || process.Limits.Stale.Recover != (definition.Recover{Instruction: "Go on."}) {
 		t.Fatalf("an instruction alone: %+v, %v", process.Limits.Stale.Recover, err)
 	}
-	policy, err = definition.ParsePolicy(doc(definition.KindPolicy, "pol", stalePolicy+"stale: {no_event: 5m}\n"))
-	if err != nil || policy.Limits.Stale.Recover != (definition.Recover{}) {
-		t.Fatalf("without the block: %+v, %v", policy.Limits.Stale.Recover, err)
+	process, err = definition.ParseProcess(doc(definition.KindProcess, "p", staleProcess+"stale: {no_event: 5m}\n"))
+	if err != nil || process.Limits.Stale.Recover != (definition.Recover{}) {
+		t.Fatalf("without the block: %+v, %v", process.Limits.Stale.Recover, err)
 	}
 }
 
 func TestStaleRecoveryProblems(t *testing.T) {
 	t.Parallel()
-	parsers := map[string]func(block string) error{
-		"policy": func(block string) error {
-			_, err := definition.ParsePolicy(doc(definition.KindPolicy, "pol", stalePolicy+block+"\n"))
-			return err
-		},
-		"process": func(block string) error {
-			_, err := definition.ParseProcess(doc(definition.KindProcess, "p", staleProcess+block+"\n"))
-			return err
-		},
-	}
 	for block, want := range map[string]string{
 		"stale: {recover: {max_resumes: -1}}":           "stale.recover.max_resumes: must be at least 0",
 		"stale: {recover: {max_resumes: one}}":          "stale.recover.max_resumes: must be an integer",
@@ -705,10 +650,22 @@ func TestStaleRecoveryProblems(t *testing.T) {
 		"stale: {recover: {max_resumes: 1, nudge: go}}": "stale.recover.nudge: unknown field",
 		"stale: {recover: 1}":                           "stale.recover: ",
 	} {
-		for kind, parse := range parsers {
-			if err := parse(block); err == nil || !strings.Contains(err.Error(), want) {
-				t.Errorf("%s, %s: err = %v, want %q", kind, block, err, want)
-			}
+		if _, err := definition.ParseProcess(doc(definition.KindProcess, "p", staleProcess+block+"\n")); err == nil || !strings.Contains(err.Error(), want) {
+			t.Errorf("%s: err = %v, want %q", block, err, want)
+		}
+	}
+}
+
+// There are no policies (ADR-030 rule 4): a process that names one has a
+// problem, whatever it names.
+func TestAProcessNamesNoPolicy(t *testing.T) {
+	t.Parallel()
+	const want = "policy: there are no policies (ADR-030): set the policy's fields on the process and remove policy"
+	for _, reference := range []string{"process-policy:read-only", "read-only", "''"} {
+		_, err := definition.ParseProcess(doc(definition.KindProcess, "p", staleTimed+"policy: "+reference+"\n"))
+		var invalid *definition.InvalidError
+		if !errors.As(err, &invalid) || !reflect.DeepEqual(invalid.Messages(), []string{want}) {
+			t.Errorf("policy: %s: err = %v, want only %q", reference, err, want)
 		}
 	}
 }

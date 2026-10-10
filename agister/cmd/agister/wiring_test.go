@@ -808,15 +808,15 @@ func TestAnOlderBinarysHoldExcludesTheCompositionsWriter(t *testing.T) {
 
 // The composition gives the recoverer what it recovers on (ADR-024): a
 // call through the composed client whose turn goes without an event for
-// the policy's stale.no_event is resumed in the session that turn
-// reported, with the policy's instruction and the evidence, and completes
+// the process's stale.no_event is resumed in the session that turn
+// reported, with the process's instruction and the evidence, and completes
 // with the recovery on its record.
 func TestTheCompositionRecoversAStaleTurn(t *testing.T) {
 	t.Parallel()
 	const noEvent = 7 * time.Second
 	home, repo := setup(t, "approve")
-	policy := filepath.Join(home, "policies", "read-only.yaml")
-	write(t, policy, read(t, policy)+"\nstale: {no_event: 7s, recover: {max_resumes: 1, instruction: Go on.}}\n")
+	process := filepath.Join(home, "processes", "ask.yaml")
+	write(t, process, read(t, process)+"\nstale: {no_event: 7s, recover: {max_resumes: 1, instruction: Go on.}}\n")
 	config := cli.Config{Home: home, Cwd: repo}
 	clock := clocktest.NewClock(stillAt)
 	composed := on(config, clock.Timer)

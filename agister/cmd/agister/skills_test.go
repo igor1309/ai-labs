@@ -21,7 +21,8 @@ const skilledProcess = `schema: agister.process/v1alpha1
 name: skilled
 type: process
 uses: agent:stylist
-policy: process-policy:read-only
+timeout: 10m
+tools: {allow: [repository.read, repository.diff, repository.search, repository.history.read, process.execute, host.read]}
 prompt: ask
 skills: [review]
 input:

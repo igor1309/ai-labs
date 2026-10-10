@@ -212,7 +212,7 @@ func TestNewClientTranslatesWhatTheCheckerFound(t *testing.T) {
 		Problems: []app.CheckedProblem{
 			{Text: "process p: needs ghost", About: &process, Message: "needs ghost", Agent: "ghost"},
 			{Text: "agent a: is stubbed", About: &agent, Message: "is stubbed"},
-			{Text: "settings directory policies: stops", Message: "stops"},
+			{Text: "settings directory verifies: stops", Message: "stops"},
 		},
 	}}
 	client := h.clientWith(h.defs, func(app.GateDefinitions) app.GateCheck { return stub })
@@ -327,7 +327,7 @@ func TestProblemsNoDocumentOwnsStopEveryCommand(t *testing.T) {
 	}{
 		{name: "broken service settings", docs: map[definition.Kind]map[string]string{definition.KindService: {"service": "not toml ="}}, problem: "service service: "},
 		{name: "a file name that is not a name", docs: map[definition.Kind]map[string]string{definition.KindAgent: {"Not A Name": "x"}}, problem: `agent Not A Name: "Not A Name" is not a valid name`},
-		{name: "a directory that cannot be listed", listErr: map[definition.Kind]error{definition.KindPolicy: errors.New("permission denied")}, problem: "settings directory policies: cannot be listed: permission denied"},
+		{name: "a directory that cannot be listed", listErr: map[definition.Kind]error{definition.KindVerify: errors.New("permission denied")}, problem: "settings directory verifies: cannot be listed: permission denied"},
 		{name: "blocks that cannot be listed", listErr: map[definition.Kind]error{definition.KindBlocks: errors.New("permission denied")}, problem: "blocks: cannot be listed: permission denied"},
 		{name: "a workflow named like a process", docs: sameName, problem: "workflow p: a process has the same name"},
 	} {

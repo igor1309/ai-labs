@@ -1,7 +1,6 @@
 // Package policy composes a call's effective limits. Limits only narrow:
-// service ⊇ policy ⊇ process ⊇ caller. Widening is rejected, never clamped,
-// and every violation is reported at once. The workspace access of a
-// process that names no policy is the process's own.
+// service ⊇ process ⊇ caller (ADR-030 rule 4). Widening is rejected, never
+// clamped, and every violation is reported at once.
 package policy
 
 import (
@@ -70,18 +69,13 @@ func (e *InvalidError) Error() string {
 	return fmt.Sprintf("process %s is invalid:\n  %s", e.Process, strings.Join(e.Problems, "\n  "))
 }
 
-// Compose narrows service, policy, process and caller into effective limits.
-func Compose(service definition.Service, pol *definition.Policy, process definition.Process, caller Caller) (Effective, error) {
+// Compose composes the effective limits of a call of process: its own,
+// within the service's ceilings, narrowed by the caller (ADR-030 rule 4).
+func Compose(service definition.Service, process definition.Process, caller Caller) (Effective, error) {
 	var problems []string
 	add := func(format string, args ...any) { problems = append(problems, fmt.Sprintf(format, args...)) }
 
-	base := definition.Limits{}
-	origin := "the service"
-	if pol != nil {
-		base = pol.Limits
-		origin = "policy " + pol.Name
-	}
-	over := process.Limits
+	own := process.Limits
 
 	vocabulary := func(field string, names []string) {
 		for _, name := range names {
@@ -90,32 +84,22 @@ func Compose(service definition.Service, pol *definition.Policy, process definit
 			}
 		}
 	}
-	vocabulary("policy tools.allow", base.Allow)
-	vocabulary("policy isolation.deny", base.Deny)
-	vocabulary("tools.allow", over.Allow)
-	vocabulary("isolation.deny", over.Deny)
+	vocabulary("tools.allow", own.Allow)
+	vocabulary("isolation.deny", own.Deny)
 	vocabulary("tools.require", process.Require)
 
-	// The policy must lie within the service limits.
-	if base.Timeout != nil && *base.Timeout > service.MaxTimeout {
-		add("%s: timeout %s exceeds the service limit %s", origin, *base.Timeout, service.MaxTimeout)
-	}
-	if base.MaxAttempts != nil && *base.MaxAttempts > service.MaxAttempts {
-		add("%s: retry.max_attempts %d exceeds the service limit %d", origin, *base.MaxAttempts, service.MaxAttempts)
-	}
-
-	timeout := narrowDuration(add, "timeout", base.Timeout, over.Timeout)
+	timeout := own.Timeout
 	if timeout == nil {
-		add("timeout: neither the process nor its policy sets one")
+		add("timeout: the process sets none")
 		timeout = &service.MaxTimeout
 	}
 	if *timeout > service.MaxTimeout {
 		add("timeout %s exceeds the service limit %s", *timeout, service.MaxTimeout)
 	}
 	// A staleness limit ends a call before its timeout, so one above the
-	// timeout the settings declare is invalid. A caller's shorter timeout
+	// timeout the process declares is invalid. A caller's shorter timeout
 	// only leaves it without effect.
-	stale := narrowStale(add, base.Stale, over.Stale)
+	stale := ownStale(add, own.Stale)
 	for _, limit := range []struct {
 		field string
 		value *time.Duration
@@ -144,55 +128,26 @@ func Compose(service definition.Service, pol *definition.Policy, process definit
 		}
 	}
 
-	cost := narrowCost(add, service, origin, base.MaxCostUSD, over.MaxCostUSD, caller.MaxCostUSD)
+	cost := narrowCost(add, service, own.MaxCostUSD, caller.MaxCostUSD)
 
 	attempts := 1
-	if value := narrowInt(add, "retry.max_attempts", base.MaxAttempts, over.MaxAttempts); value != nil {
-		attempts = *value
+	if own.MaxAttempts != nil {
+		attempts = *own.MaxAttempts
 	}
 	if attempts > service.MaxAttempts {
 		add("retry.max_attempts %d exceeds the service limit %d", attempts, service.MaxAttempts)
 	}
 
-	allow := base.Allow
-	if over.AllowSet {
-		if pol != nil && base.AllowSet {
-			for _, name := range over.Allow {
-				if !contains(base.Allow, name) {
-					add("tools.allow: adds %s, which %s does not allow", name, origin)
-				}
-			}
-			allow = intersect(over.Allow, base.Allow)
-		} else {
-			allow = over.Allow
-		}
-	}
-
-	// A process that names no policy holds its own access, read-only when
-	// it sets none; one that names a policy may only narrow its policy's.
-	access := base.Access
+	// A process holds its own access, read-only when it sets none.
+	access := own.Access
 	if access == "" {
 		access = "read-only"
-	}
-	if over.Access != "" {
-		if pol != nil && access == "read-only" && over.Access == "read-write" {
-			add("workspace.access: read-write widens %s's read-only", origin)
-		} else {
-			access = over.Access
-		}
 	}
 
 	// The scope is what the agent works on: the candidate, the revision the
 	// process pins, or the repository as it is. workspace.revision decides
 	// it; a declared scope must agree.
-	scope := base.Scope
-	if over.Scope != "" {
-		if scope != "" && scope != over.Scope {
-			add("workspace.scope: %s differs from %s's %s; scope cannot be overridden", over.Scope, origin, scope)
-		} else {
-			scope = over.Scope
-		}
-	}
+	scope := own.Scope
 	switch {
 	case scope == "" && process.Revision != "":
 		scope = "candidate"
@@ -204,11 +159,11 @@ func Compose(service definition.Service, pol *definition.Policy, process definit
 		add("workspace.scope repository conflicts with workspace.revision, which pins a revision")
 	}
 
-	deny := union(base.Deny, over.Deny)
+	deny := union(own.Deny)
 	if access == "read-only" {
 		deny = union(deny, service.Writing)
 	}
-	permissions := subtract(allow, deny)
+	permissions := subtract(own.Allow, deny)
 	for _, name := range process.Require {
 		if !contains(permissions, name) {
 			add("tools.require: %s is not an effective permission", name)
@@ -222,7 +177,7 @@ func Compose(service definition.Service, pol *definition.Policy, process definit
 		Timeout:     *timeout,
 		MaxAttempts: attempts,
 		MaxCostUSD:  cost,
-		Allow:       nonNil(allow),
+		Allow:       nonNil(own.Allow),
 		Deny:        nonNil(deny),
 		Permissions: nonNil(permissions),
 		Require:     process.Require,
@@ -232,71 +187,41 @@ func Compose(service definition.Service, pol *definition.Policy, process definit
 	}, nil
 }
 
-// narrowStale composes the staleness limits the definitions declare into
-// the call's own. Each may stay unset; one the policy sets, the process may
-// only lower.
-func narrowStale(add func(string, ...any), base, over definition.Stale) Stale {
+// ownStale are the staleness limits the process declares, each unset
+// unless it sets it.
+func ownStale(add func(string, ...any), own definition.Stale) Stale {
 	return Stale{
-		NoEvent:           narrowDuration(add, "stale.no_event", base.NoEvent, over.NoEvent),
-		NoOutput:          narrowDuration(add, "stale.no_output", base.NoOutput, over.NoOutput),
-		ToolCommand:       narrowDuration(add, "stale.tool_command", base.ToolCommand, over.ToolCommand),
-		RepeatedToolCalls: narrowInt(add, "stale.repeated_tool_calls", base.RepeatedToolCalls, over.RepeatedToolCalls),
-		Recover:           narrowRecover(add, base.Recover, over.Recover),
+		NoEvent:           own.NoEvent,
+		NoOutput:          own.NoOutput,
+		ToolCommand:       own.ToolCommand,
+		RepeatedToolCalls: own.RepeatedToolCalls,
+		Recover:           ownRecover(add, own.Recover),
 	}
 }
 
-// narrowRecover composes the recovery of a stale call (ADR-024 rule 5). The
-// policy sets the budget's ceiling, and unset is 0: the process may only
-// lower it, so one it sets above 0 without its policy is as invalid as one
-// above its policy's. The instruction is text, not a limit: the process's,
-// where it gives one, replaces the policy's. A budget needs one.
-func narrowRecover(add func(string, ...any), base, over definition.Recover) Recover {
-	resumes := 0
-	if base.MaxResumes != nil {
-		resumes = *base.MaxResumes
-	}
-	if value := over.MaxResumes; value != nil {
-		switch {
-		case base.MaxResumes == nil && *value > 0:
-			add("stale.recover.max_resumes: %d where the policy sets none; a process may only lower its policy's", *value)
-		case *value > resumes:
-			add("stale.recover.max_resumes: %d widens the policy's %d", *value, resumes)
-		default:
-			resumes = *value
-		}
-	}
-	if resumes == 0 {
+// ownRecover is the recovery of a stale call the process declares (ADR-024
+// rule 5, as ADR-030 rule 4 amends it): unset is 0, and a budget above 0
+// needs an instruction.
+func ownRecover(add func(string, ...any), own definition.Recover) Recover {
+	if own.MaxResumes == nil || *own.MaxResumes == 0 {
 		return Recover{}
 	}
-	instruction := base.Instruction
-	if over.Instruction != "" {
-		instruction = over.Instruction
+	resumes := *own.MaxResumes
+	if own.Instruction == "" {
+		add("stale.recover.max_resumes %d needs stale.recover.instruction: the process gives none", resumes)
 	}
-	if instruction == "" {
-		add("stale.recover.max_resumes %d needs stale.recover.instruction: neither the process nor its policy gives one", resumes)
-	}
-	return Recover{MaxResumes: resumes, Instruction: instruction}
-}
-
-func narrowDuration(add func(string, ...any), field string, base, over *time.Duration) *time.Duration {
-	if over == nil {
-		return base
-	}
-	if base != nil && *over > *base {
-		add("%s: %s widens the policy's %s", field, *over, *base)
-		return base
-	}
-	return over
+	return Recover{MaxResumes: resumes, Instruction: own.Instruction}
 }
 
 // narrowCost composes the cost limit. Unlike timeout it may stay unset,
-// but once any layer sets it, the layers below may only lower it.
-func narrowCost(add func(string, ...any), service definition.Service, origin string, base, over, caller *float64) *float64 {
+// but once the service or the process sets it, those after may only lower
+// it.
+func narrowCost(add func(string, ...any), service definition.Service, own, caller *float64) *float64 {
 	limit := service.MaxCostUSD
 	for _, layer := range []struct {
 		name  string
 		value *float64
-	}{{origin, base}, {"the process", over}, {"the caller", caller}} {
+	}{{"the process", own}, {"the caller", caller}} {
 		if layer.value == nil {
 			continue
 		}
@@ -307,17 +232,6 @@ func narrowCost(add func(string, ...any), service definition.Service, origin str
 		limit = layer.value
 	}
 	return limit
-}
-
-func narrowInt(add func(string, ...any), field string, base, over *int) *int {
-	if over == nil {
-		return base
-	}
-	if base != nil && *over > *base {
-		add("%s: %d widens the policy's %d", field, *over, *base)
-		return base
-	}
-	return over
 }
 
 func hasValue(values []definition.Value, name string) bool {
@@ -345,16 +259,6 @@ func union(lists ...[]string) []string {
 			if !contains(out, item) {
 				out = append(out, item)
 			}
-		}
-	}
-	return out
-}
-
-func intersect(list, with []string) []string {
-	var out []string
-	for _, item := range list {
-		if contains(with, item) && !contains(out, item) {
-			out = append(out, item)
 		}
 	}
 	return out

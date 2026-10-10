@@ -154,7 +154,6 @@ func (c *Checker) check(ctx context.Context, probe bool) (CheckResult, error) {
 	bundle := settings.Bundle{
 		Agents:    map[string]definition.Agent{},
 		Processes: map[string]definition.Process{},
-		Policies:  map[string]definition.Policy{},
 		Mappings:  map[string]definition.Mapping{},
 		Schemas:   map[string]bool{},
 		Workflows: map[string]definition.Workflow{},
@@ -284,13 +283,6 @@ func (c *Checker) check(ctx context.Context, probe bool) (CheckResult, error) {
 			a, err := definition.ParseAgent(d)
 			if err == nil {
 				bundle.Agents[a.Name] = a
-			}
-			return err
-		}},
-		{definition.KindPolicy, func(d definition.Document) error {
-			p, err := definition.ParsePolicy(d)
-			if err == nil {
-				bundle.Policies[p.Name] = p
 			}
 			return err
 		}},
@@ -444,7 +436,6 @@ func (c *Checker) check(ctx context.Context, probe bool) (CheckResult, error) {
 	for _, name := range sortedNames(bundle.Processes) {
 		process, from := bundle.Processes[name], DocumentRef{Kind: definition.KindProcess, Name: name}
 		link(from, definition.KindAgent, process.Agent, false)
-		link(from, definition.KindPolicy, process.Policy, false)
 		link(from, definition.KindVerify, process.VerifyName, false)
 		link(from, definition.KindPrompt, process.Prompt, false)
 		for _, prompt := range process.Guidance {

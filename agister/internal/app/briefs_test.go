@@ -429,7 +429,6 @@ func TestCheckReadsBriefsAndLinksWhatNamesThem(t *testing.T) {
 	for name, doc := range flow[definition.KindProcess] {
 		h.defs.docs[definition.KindProcess][name] = doc
 	}
-	h.defs.docs[definition.KindPolicy]["joining"] = flow[definition.KindPolicy]["joining"]
 	h.defs.docs[definition.KindWorkflow] = map[string]string{"w": flow[definition.KindWorkflow]["w"]}
 	report := briefCheck(t, h)
 	if len(report.Problems) != 0 || report.Checked["briefs"] != 2 || report.Checked["workflows"] != 1 {
@@ -439,7 +438,7 @@ func TestCheckReadsBriefsAndLinksWhatNamesThem(t *testing.T) {
 	for _, d := range report.Definitions {
 		got[ref(d.Kind, d.Name)] = d
 	}
-	processUses := []contract.DefinitionRef{ref("agents", "a"), ref("policies", "pol"), ref("prompts", "inspect"), ref("schemas", "s"), ref("briefs", "goal"), ref("briefs", "step")}
+	processUses := []contract.DefinitionRef{ref("agents", "a"), ref("prompts", "inspect"), ref("schemas", "s"), ref("briefs", "goal"), ref("briefs", "step")}
 	if p := got[ref("processes", "p")]; !reflect.DeepEqual(p.Uses, processUses) {
 		t.Fatalf("p = %+v", p)
 	}

@@ -254,7 +254,7 @@ func TestADR012AgentOverridesAreResolvedAndAttributed(t *testing.T) {
 			docs[definition.KindRuntime]["bad"] = strings.Replace(docs[definition.KindRuntime]["bad"], "adapter: nowhere", "adapter: spy", 1)
 			var problem string
 			if mode == "planning" {
-				docs[definition.KindProcess]["q"] += "tools: {require: [repository.read]}\n"
+				docs[definition.KindProcess]["q"] = strings.Replace(docs[definition.KindProcess]["q"], "repository.diff]}", "repository.diff], require: [repository.read]}", 1)
 				docs[definition.KindRuntime]["bad"] = strings.Replace(docs[definition.KindRuntime]["bad"], "grants: [repository.read]", "grants: [repository.search]", 1)
 				problem = "required permissions would be withheld"
 			} else {
@@ -329,7 +329,6 @@ func TestADR012EveryDocumentKindRefusesOnlyItsDependents(t *testing.T) {
 	}{
 		{definition.KindAgent, "b"},
 		{definition.KindRuntime, "bad"},
-		{definition.KindPolicy, "broken"},
 		{definition.KindSchema, "broken"},
 		{definition.KindVerify, "repo"},
 		{definition.KindProcess, "second"},
@@ -344,8 +343,6 @@ func TestADR012EveryDocumentKindRefusesOnlyItsDependents(t *testing.T) {
 				docs = withBrokenMapping(docs)
 				docs[definition.KindRuntime]["bad"] = strings.Replace(docs[definition.KindRuntime]["bad"], "adapter: nowhere", "adapter: spy", 1)
 				docs[definition.KindProcess]["second"] = strings.Replace(docs[definition.KindProcess]["second"], "agent:a", "agent:b", 1)
-			case definition.KindPolicy:
-				docs[definition.KindProcess]["second"] = strings.Replace(docs[definition.KindProcess]["second"], "process-policy:pol", "process-policy:broken", 1)
 			case definition.KindSchema:
 				docs[definition.KindProcess]["second"] = strings.Replace(docs[definition.KindProcess]["second"], "schema: s", "schema: broken", 1)
 			case definition.KindVerify:
@@ -490,9 +487,9 @@ func TestUnreadableWorkspaceSettingsRefuseNothing(t *testing.T) {
 	}
 }
 
-// inTheRepository is the node process doc without its checkout, under the
-// read-only policy that works in the repository.
+// inTheRepository is the node process doc without its checkout, with the
+// joiner's limits, which work in the repository.
 func inTheRepository(doc string) string {
 	doc = strings.Replace(doc, "workspace:\n  revision: candidate_revision\n", "", 1)
-	return strings.Replace(doc, "process-policy:pol", "process-policy:joining", 1)
+	return strings.Replace(doc, "timeout: 20m\ntools: {allow: [repository.read, repository.search, repository.diff]}\n", "timeout: 10m\ntools: {allow: [repository.read]}\n", 1)
 }

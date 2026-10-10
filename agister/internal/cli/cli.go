@@ -536,7 +536,7 @@ func dispatch(ctx context.Context, client contract.Client, log *slog.Logger, opt
 				return 0, err
 			}
 			for _, process := range processes {
-				line := fmt.Sprintf("%s\tagent:%s\t%s\t%s", process.Name, process.Agent, or(process.Policy, "-"), process.Output)
+				line := fmt.Sprintf("%s\tagent:%s\t%s", process.Name, process.Agent, process.Output)
 				if process.Problem != "" {
 					line = process.Name + "\t" + process.Problem
 				}
@@ -988,7 +988,6 @@ func showProcess(w io.Writer, view contract.ProcessView) {
 	lines := [][2]string{
 		{"process", view.Name},
 		{"agent", view.Agent + " (runtime " + view.Runtime + ")"},
-		{"policy", or(view.Policy, "(none)")},
 		{"params", or(strings.Join(params, ", "), "(none)")},
 		{"inputs", or(strings.Join(view.Inputs, ", "), "(none)")},
 		{"output", view.Output},
@@ -1389,7 +1388,7 @@ func printCheckAs(env IO, report contract.CheckReport, opts options) (int, error
 
 var kindNames = map[string]string{
 	"service": "service", "agents": "agent", "processes": "process",
-	"policies": "policy", "runtimes": "runtime", "schemas": "schema",
+	"runtimes": "runtime", "schemas": "schema",
 	"workflows": "workflow", "verifies": "verification", "prompts": "prompt",
 	"skills": "skill", "briefs": "brief", "workspace": "workspace",
 }

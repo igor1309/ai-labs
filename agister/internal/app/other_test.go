@@ -23,7 +23,7 @@ func TestCheckReportsEveryProblemAcrossDocuments(t *testing.T) {
 	t.Parallel()
 	h := newHarness()
 	h.defs.docs[definition.KindAgent]["broken"] = "schema = \"agister.agent/v1alpha1\"\nname = \"broken\"\ncolour = \"red\"\n"
-	h.defs.docs[definition.KindProcess]["q"] = strings.Replace(h.defs.docs[definition.KindProcess]["p"], "name: p", "name: q", 1) + "timeout: 2h\n"
+	h.defs.docs[definition.KindProcess]["q"] = strings.Replace(strings.Replace(h.defs.docs[definition.KindProcess]["p"], "name: p", "name: q", 1), "timeout: 20m", "timeout: 2h", 1)
 	h.validator.compileErr = errors.New("not a schema")
 	checker := app.NewChecker(h.defs, h.validator, h.runtimes, []string{"git.revision", "git.diff"})
 
@@ -37,7 +37,7 @@ func TestCheckReportsEveryProblemAcrossDocuments(t *testing.T) {
 		"agent broken: runtime: is required",
 		"schema s: not a schema",
 		`process p: output schema "s" does not exist`,
-		"process q: timeout: 2h0m0s widens the policy's 20m0s",
+		"process q: timeout 2h0m0s exceeds the service limit 1h0m0s",
 	} {
 		if !strings.Contains(joined, want) {
 			t.Errorf("missing %q in:\n%s", want, joined)
@@ -56,7 +56,7 @@ func TestCheckReportsEveryProblemAcrossDocuments(t *testing.T) {
 func TestCheckReportsWhatDefinesWhat(t *testing.T) {
 	t.Parallel()
 	h := newHarness()
-	h.defs.docs[definition.KindPolicy]["spare"] = strings.Replace(h.defs.docs[definition.KindPolicy]["pol"], "name: pol", "name: spare", 1)
+	h.defs.docs[definition.KindPrompt]["spare"] = "Nothing names this prompt.\n"
 	h.defs.docs[definition.KindProcess]["q"] = strings.Replace(strings.Replace(h.defs.docs[definition.KindProcess]["p"], "name: p", "name: q", 1), "agent:a", "agent:ghost", 1)
 	h.defs.docs[definition.KindAgent]["broken"] = "schema = \"agister.agent/v1alpha1\"\nname = \"broken\"\ncolour = \"red\"\n"
 	checker := app.NewChecker(h.defs, h.validator, h.runtimes, []string{"git.revision", "git.diff"})
@@ -71,11 +71,11 @@ func TestCheckReportsWhatDefinesWhat(t *testing.T) {
 		got[ref(d.Kind, d.Name)] = d
 		order = append(order, d.Kind+"/"+d.Name)
 	}
-	if strings.Join(order, " ") != "service/service runtimes/rt agents/a agents/broken policies/pol policies/spare prompts/inspect processes/p processes/q schemas/s" {
+	if strings.Join(order, " ") != "service/service runtimes/rt agents/a agents/broken prompts/inspect prompts/spare processes/p processes/q schemas/s" {
 		t.Fatalf("order = %v", order)
 	}
 	p, a := got[ref("processes", "p")], got[ref("agents", "a")]
-	if !reflect.DeepEqual(p.Uses, []contract.DefinitionRef{ref("agents", "a"), ref("policies", "pol"), ref("prompts", "inspect"), ref("schemas", "s")}) || p.Layer != "home" || p.Path != "mem/processes/p" {
+	if !reflect.DeepEqual(p.Uses, []contract.DefinitionRef{ref("agents", "a"), ref("prompts", "inspect"), ref("schemas", "s")}) || p.Layer != "home" || p.Path != "mem/processes/p" {
 		t.Fatalf("p = %+v", p)
 	}
 	if !reflect.DeepEqual(a.Uses, []contract.DefinitionRef{ref("runtimes", "rt")}) || !reflect.DeepEqual(a.UsedBy, []contract.DefinitionRef{ref("processes", "p")}) {
@@ -84,7 +84,7 @@ func TestCheckReportsWhatDefinesWhat(t *testing.T) {
 	if q := got[ref("processes", "q")]; q.Uses[0] != ref("agents", "ghost") {
 		t.Fatalf("q = %+v", q)
 	}
-	if spare := got[ref("policies", "spare")]; len(spare.UsedBy) != 0 {
+	if spare := got[ref("prompts", "spare")]; len(spare.UsedBy) != 0 {
 		t.Fatalf("spare = %+v", spare)
 	}
 	if broken := got[ref("agents", "broken")]; !broken.Invalid || len(broken.Uses) != 0 {
@@ -133,7 +133,7 @@ func TestCheckProbePlansEachProcessOnTheInstalledVersion(t *testing.T) {
 	t.Parallel()
 	h := newHarness()
 	h.defs.docs[definition.KindRuntime]["rt"] = strings.Replace(h.defs.docs[definition.KindRuntime]["rt"], "Read: {grants: [repository.read], verified: [\"1.\"]}", "Read: {grants: [repository.read], verified: [\"2.\"]}", 1)
-	h.defs.docs[definition.KindProcess]["p"] += "tools: {require: [repository.read]}\n"
+	h.defs.docs[definition.KindProcess]["p"] = strings.Replace(h.defs.docs[definition.KindProcess]["p"], "repository.diff]}", "repository.diff], require: [repository.read]}", 1)
 	checker := app.NewChecker(h.defs, h.validator, h.runtimes, []string{"git.revision", "git.diff"})
 	if report, _ := checker.Check(context.Background(), false); len(messages(report.Problems)) != 0 {
 		t.Fatalf("problems = %v", messages(report.Problems))
@@ -613,8 +613,8 @@ func TestCreateAgentDryRun(t *testing.T) {
 }
 
 // narrowRuntime is a runtime mapping an agent can use alone, but on which
-// process p cannot run: its one primitive also grants a permission p's
-// policy does not allow.
+// process p cannot run: its one primitive also grants a permission p does
+// not allow.
 const narrowRuntime = `schema: agister.runtime/v1alpha1
 name: narrow
 adapter: spy
@@ -698,8 +698,7 @@ func TestShowProcessSourcesAreStructured(t *testing.T) {
 }
 
 // A process view shows the limits the resolver composes for the process:
-// its policy's timeout and permissions, and what its runtime grants of
-// them.
+// its own timeout and permissions, and what its runtime grants of them.
 func TestShowProcessLimitsThroughTheResolver(t *testing.T) {
 	t.Parallel()
 	h := newHarness()
@@ -738,7 +737,7 @@ func TestInspectionShowsThroughTheResolverItDeclares(t *testing.T) {
 	}
 	review := &app.InspectedProcess{
 		Process: app.InspectedDefinition{
-			Name: "review", Policy: "strict",
+			Name:         "review",
 			Params:       []app.InspectedParam{{Name: "diff"}},
 			Values:       []app.InspectedValue{{Name: "diff", Source: "param"}},
 			OutputFormat: "json", OutputSchema: "s",
@@ -783,7 +782,7 @@ func TestInspectionShowsThroughTheResolverItDeclares(t *testing.T) {
 	inspection := app.NewInspection(resolver)
 
 	reviewView := contract.ProcessView{
-		Name: "review", Agent: "b", Runtime: "rt", Policy: "strict",
+		Name: "review", Agent: "b", Runtime: "rt",
 		Params: []contract.Param{{Name: "diff", Required: true}}, Inputs: []string{"diff <- param"},
 		Output: "json:s", Timeout: 5 * time.Minute, MaxAttempts: 2, MaxCostUSD: &cost,
 		Allowed: []string{"repository.read", "repository.diff"}, Denied: []string{"repository.diff"}, Permissions: []string{"repository.read"},

@@ -446,7 +446,7 @@ func TestAgentCallEndToEnd(t *testing.T) {
 		}
 		kinds = append(kinds, source["kind"].(string))
 	}
-	if strings.Join(kinds, ",") != "service,processes,policies,agents,runtimes,schemas,prompts" {
+	if strings.Join(kinds, ",") != "service,processes,agents,runtimes,schemas,prompts" {
 		t.Fatalf("definitions = %v", kinds)
 	}
 	// Inputs are immutable.
@@ -506,20 +506,29 @@ func TestShippedExamplesPassCheck(t *testing.T) {
 	}
 }
 
-// claudeWritePolicy points ask at a policy that allows every permission but
-// process.execute, so Bash, which grants it, is never selected, and makes
-// the call require repository.write. The settings live only in a temp home.
-func claudeWritePolicy(t *testing.T, home string) {
+// ownLimits replaces the limits of the shipped ask, or of an example's
+// copy of it, at path, from its workspace to its timeout, with limits.
+func ownLimits(t *testing.T, path, limits string) {
 	t.Helper()
-	write(t, filepath.Join(home, "policies", "claude-write.yaml"), `schema: agister.process-policy/v1alpha1
-name: claude-write
-workspace: {access: read-write, scope: repository}
+	shipped := regexp.MustCompile(`(?s)\nworkspace:\n.*\ntimeout: 10m\n`)
+	text := read(t, path)
+	if len(shipped.FindAllString(text, -1)) != 1 {
+		t.Fatalf("%s: the shipped limits were not found", path)
+	}
+	write(t, path, shipped.ReplaceAllLiteralString(text, "\n"+limits))
+}
+
+// claudeWriteLimits has ask allow every permission but process.execute, so
+// Bash, which grants it, is never selected, and makes the call require
+// repository.write. The settings live only in a temp home.
+func claudeWriteLimits(t *testing.T, home string) {
+	t.Helper()
+	ownLimits(t, filepath.Join(home, "processes", "ask.yaml"), `workspace: {access: read-write, scope: repository}
 tools:
   allow: [repository.read, repository.search, repository.diff, repository.history.read, repository.write, repository.history.write, network, host.read, host.write]
+  require: [repository.write]
 timeout: 10m
 `)
-	process := filepath.Join(home, "processes", "ask.yaml")
-	write(t, process, strings.Replace(read(t, process), "process-policy:read-only", "process-policy:claude-write", 1)+"\ntools: {require: [repository.write]}\n")
 }
 
 // Edit and Write are verified for 2.1: with host access opted in, a call
@@ -530,7 +539,7 @@ func TestExampleClaudeCodeSettingsGrantTheVerifiedWriteTools(t *testing.T) {
 	home, repo := setup(t, "approve")
 	service := filepath.Join(home, "service.toml")
 	write(t, service, strings.Replace(read(t, service), `state_reaching = ["host.read", "host.write"]`, `state_reaching = []`, 1))
-	claudeWritePolicy(t, home)
+	claudeWriteLimits(t, home)
 	r := agister(t, home, repo, "run", "ask", "--param", "question=What does this repository do?", "--quiet", "--timeout", "1m")
 	if r.code != cli.ExitCompleted {
 		t.Fatalf("exit %d\n%s%s", r.code, r.stdout, r.stderr)
@@ -552,7 +561,7 @@ func TestExampleClaudeCodeSettingsGrantTheVerifiedWriteTools(t *testing.T) {
 func TestExampleClaudeCodeCallRequiringWritesWithoutHostWritesIsRefused(t *testing.T) {
 	t.Parallel()
 	home, repo := setup(t, "approve")
-	claudeWritePolicy(t, home)
+	claudeWriteLimits(t, home)
 	const reason = "process ask: cannot run on agent assistant's runtime claude-code: cannot enforce the effective permissions: required permissions would be withheld: repository.write"
 	r := agister(t, home, repo, "check")
 	if r.code == 0 || !strings.Contains(r.stdout+r.stderr, reason) {
@@ -649,15 +658,15 @@ output:
 	}
 }
 
-// A process that names no policy holds its own workspace access: check
-// finds no problem in one that sets read-write, and process show prints
-// it. The process lives only in a temp home.
-func TestAProcessWithoutAPolicyMayBeReadWrite(t *testing.T) {
+// A process holds its own workspace access: check finds no problem in one
+// that sets read-write, and process show prints it. The process lives only
+// in a temp home.
+func TestAProcessMayBeReadWrite(t *testing.T) {
 	t.Parallel()
 	home, repo := setup(t, "approve")
-	ask := strings.Replace(read(t, filepath.Join(home, "processes", "ask.yaml")), "name: ask\n", "name: edit\n", 1)
-	write(t, filepath.Join(home, "processes", "edit.yaml"), strings.Replace(ask, "policy: process-policy:read-only\n", "", 1)+
-		"\ntimeout: 1m\ntools: {allow: [repository.read, repository.write]}\nworkspace: {access: read-write}\n")
+	edit := filepath.Join(home, "processes", "edit.yaml")
+	write(t, edit, strings.Replace(read(t, filepath.Join(home, "processes", "ask.yaml")), "name: ask\n", "name: edit\n", 1))
+	ownLimits(t, edit, "timeout: 1m\ntools: {allow: [repository.read, repository.write]}\nworkspace: {access: read-write}\n")
 
 	r := agister(t, home, repo, "check")
 	if r.code != 0 || !strings.HasPrefix(r.stdout, "settings OK:") || strings.Contains(r.stdout+r.stderr, "process edit") {
@@ -665,7 +674,6 @@ func TestAProcessWithoutAPolicyMayBeReadWrite(t *testing.T) {
 	}
 	r = agister(t, home, repo, "process", "show", "edit")
 	if r.code != 0 || strings.Contains(r.stdout, "REFUSED") ||
-		!regexp.MustCompile(`(?m)^policy +\(none\)$`).MatchString(r.stdout) ||
 		!regexp.MustCompile(`(?m)^workspace +read-write, scope repository$`).MatchString(r.stdout) ||
 		!regexp.MustCompile(`(?m)^  allowed +repository\.read, repository\.write$`).MatchString(r.stdout) {
 		t.Fatalf("process show: %d\n%s%s", r.code, r.stdout, r.stderr)
@@ -687,7 +695,7 @@ func TestProjectSettingsAddToGlobal(t *testing.T) {
 	}
 	project := filepath.Join(repo, ".agister", "processes", "ask_here.yaml")
 	r := agister(t, home, sub, "process", "show", "ask_here")
-	if r.code != 0 || !strings.Contains(r.stdout, "process ask_here: repository "+project) || !strings.Contains(r.stdout, "policy read-only: home "+filepath.Join(home, "policies", "read-only.yaml")) {
+	if r.code != 0 || !strings.Contains(r.stdout, "process ask_here: repository "+project) {
 		t.Fatalf("show in project: %d\n%s%s", r.code, r.stdout, r.stderr)
 	}
 	if r := agister(t, home, sub, "run", "ask_here", "--quiet", "--param", "question=q", "--timeout", "1m"); r.code != cli.ExitCompleted {

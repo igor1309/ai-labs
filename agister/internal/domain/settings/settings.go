@@ -18,7 +18,6 @@ type Bundle struct {
 	Service   *definition.Service
 	Agents    map[string]definition.Agent
 	Processes map[string]definition.Process
-	Policies  map[string]definition.Policy
 	Mappings  map[string]definition.Mapping
 	Schemas   map[string]bool
 	Workflows map[string]definition.Workflow
@@ -53,18 +52,10 @@ func (b Bundle) Resolved(name string) definition.Process {
 // which Check reports.
 func (b Bundle) Resumes(name string) int {
 	process := b.Resolved(name)
-	var pol *definition.Policy
-	if process.Policy != "" {
-		found, ok := b.Policies[process.Policy]
-		if !ok {
-			return 0
-		}
-		pol = &found
-	}
 	if b.Service == nil {
 		return 0
 	}
-	effective, err := policy.Compose(*b.Service, pol, process, policy.Caller{})
+	effective, err := policy.Compose(*b.Service, process, policy.Caller{})
 	if err != nil {
 		return 0
 	}
@@ -143,15 +134,6 @@ func Check(b Bundle, m Mechanisms) []Problem {
 		}
 	}
 
-	for _, name := range sortedKeys(b.Policies) {
-		limits := b.Policies[name].Limits
-		for _, permission := range append(append([]string{}, limits.Allow...), limits.Deny...) {
-			if !contains(vocabulary, permission) {
-				add("policy "+name, "unknown permission %q", permission)
-			}
-		}
-	}
-
 	for _, name := range sortedKeys(b.Processes) {
 		process := b.Resolved(name)
 		subject := "process " + name
@@ -184,16 +166,7 @@ func Check(b Bundle, m Mechanisms) []Problem {
 		if process.Output.Format == "json" && !b.Schemas[process.Output.Schema] {
 			add(subject, "output schema %q does not exist", process.Output.Schema)
 		}
-		var pol *definition.Policy
-		if process.Policy != "" {
-			found, ok := b.Policies[process.Policy]
-			if !ok {
-				add(subject, "policy %q does not exist", process.Policy)
-				continue
-			}
-			pol = &found
-		}
-		effective, err := policy.Compose(*b.Service, pol, process, policy.Caller{})
+		effective, err := policy.Compose(*b.Service, process, policy.Caller{})
 		if err != nil {
 			add(subject, "%v", strings.TrimPrefix(err.Error(), "process "+name+" is invalid:\n  "))
 			continue
@@ -300,15 +273,7 @@ func PlanProblems(b Bundle, agent definition.Agent, version string) []Problem {
 		if process.Agent != agent.Name {
 			continue
 		}
-		var pol *definition.Policy
-		if process.Policy != "" {
-			found, ok := b.Policies[process.Policy]
-			if !ok {
-				continue
-			}
-			pol = &found
-		}
-		effective, err := policy.Compose(*b.Service, pol, process, policy.Caller{})
+		effective, err := policy.Compose(*b.Service, process, policy.Caller{})
 		if err != nil {
 			continue
 		}

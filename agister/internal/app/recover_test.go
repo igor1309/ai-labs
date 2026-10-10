@@ -93,7 +93,7 @@ func commanding(timers *timersSpy, session string, call app.ToolCall) turnStep {
 // in session prov-1.
 func completes(h *harness) turnStep { return turnStep{turn: h.runner.turn} }
 
-// recoveryHarness is a staleHarness whose policy also gives the budget of
+// recoveryHarness is a staleHarness whose process also gives the budget of
 // resumes, with the instruction "Recover.", and whose agent is resumable.
 func recoveryHarness(t *testing.T, limits string, resumes int) (*harness, *timersSpy) {
 	t.Helper()
@@ -135,7 +135,7 @@ var (
 	tailLog = app.ToolCall{Name: "Bash", Input: `{"command":"tail -f log"}`}
 )
 
-// staleCase is one staleness limit: the policy's limit, a turn that
+// staleCase is one staleness limit: the process's limit, a turn that
 // reaches it, the evidence a recovery turn is sent for it, and how a call
 // it ends is concluded.
 type staleCase struct {
@@ -450,7 +450,7 @@ func TestAStaleTurnIsNotRecoveredWhen(t *testing.T) {
 	}
 	cases := []struct {
 		name   string
-		policy string
+		limit  string
 		stale  func(*timersSpy) turnStep
 		reason string
 	}{
@@ -472,7 +472,7 @@ func TestAStaleTurnIsNotRecoveredWhen(t *testing.T) {
 		t.Run(c.name, func(t *testing.T) {
 			t.Parallel()
 			h, timers := recoveryHarness(t, "no_event: 5m", 1)
-			h.defs.docs[definition.KindPolicy]["pol"] += c.policy
+			h.defs.docs[definition.KindProcess]["p"] += c.limit
 			play(h, c.stale(timers), completes(h))
 			record := h.call(t, contract.CallRequest{})
 
@@ -502,7 +502,7 @@ func TestARecoveryTurnGetsWhatIsLeftOfTheCostLimit(t *testing.T) {
 	t.Run("each turn reports its own cost", func(t *testing.T) {
 		t.Parallel()
 		h, timers := recoveryHarness(t, "no_event: 5m", 1)
-		h.defs.docs[definition.KindPolicy]["pol"] += "max_cost_usd: 2\n"
+		h.defs.docs[definition.KindProcess]["p"] += "max_cost_usd: 2\n"
 		spent, cost := 0.5, 0.25
 		stale, recovered := silent(timers, "prov-1"), completes(h)
 		stale.turn.CostUSD, recovered.turn.CostUSD = &spent, &cost
@@ -520,7 +520,7 @@ func TestARecoveryTurnGetsWhatIsLeftOfTheCostLimit(t *testing.T) {
 	t.Run("each turn reports its session's totals", func(t *testing.T) {
 		t.Parallel()
 		h, timers := recoveryHarness(t, "no_event: 5m, repeated_tool_calls: 3", 2)
-		h.defs.docs[definition.KindPolicy]["pol"] += "max_cost_usd: 2\n"
+		h.defs.docs[definition.KindProcess]["p"] += "max_cost_usd: 2\n"
 		totals := func(usd float64, input int64) *run.SessionTotals {
 			return &run.SessionTotals{CostUSD: &usd, Usage: &run.Usage{InputTokens: &input}}
 		}

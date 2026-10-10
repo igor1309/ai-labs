@@ -76,7 +76,7 @@ type LayerProblem struct {
 // and the obsolete workspace settings.
 func Composed(kind Kind) bool {
 	switch kind {
-	case KindService, KindAgent, KindProcess, KindPolicy, KindRuntime, KindWorkflow, KindVerify, KindBrief:
+	case KindService, KindAgent, KindProcess, KindRuntime, KindWorkflow, KindVerify, KindBrief:
 		return true
 	}
 	return false

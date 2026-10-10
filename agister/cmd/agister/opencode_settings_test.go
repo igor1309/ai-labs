@@ -200,8 +200,8 @@ func TestOpenCodeCallUnderAToolCommandLimitIsRefused(t *testing.T) {
 	home, repo := exampleOpenCodeSettings(t)
 	verifyOpenCodeTools(t, home, "read", "grep", "glob", "skill")
 	allowHostReads(t, home, repo)
-	policy := filepath.Join(home, "policies", "read-only.yaml")
-	write(t, policy, read(t, policy)+"\nstale: {tool_command: 10m}\n")
+	process := filepath.Join(home, "processes", "ask_opencode.yaml")
+	write(t, process, read(t, process)+"\nstale: {tool_command: 10m}\n")
 	const reason = "runtime opencode does not report tool calls, so it cannot enforce stale.tool_command 10m0s"
 	r := agister(t, home, repo, "run", "ask_opencode", "--param", "question=What does this repository do?", "--timeout", "30s")
 	if r.code != cli.ExitRefused || !strings.Contains(r.stderr, reason) {
@@ -223,15 +223,12 @@ func TestExampleOpenCodeSettingsRefuseUnverifiedTools(t *testing.T) {
 			verifyOpenCodeTools(t, home, "read", "grep", "glob", "skill")
 			service := filepath.Join(home, "service.toml")
 			write(t, service, strings.Replace(read(t, service), `state_reaching = ["host.read", "host.write"]`, `state_reaching = []`, 1))
-			write(t, filepath.Join(home, "policies", "opencode-all.yaml"), `schema: agister.process-policy/v1alpha1
-name: opencode-all
-workspace: {access: read-write, scope: repository}
+			ownLimits(t, filepath.Join(home, "processes", "ask_opencode.yaml"), `workspace: {access: read-write, scope: repository}
 tools:
   allow: [repository.read, repository.search, repository.diff, repository.history.read, repository.write, repository.history.write, process.execute, network, host.read, host.write]
+  require: [`+permission+`]
 timeout: 10m
 `)
-			process := filepath.Join(home, "processes", "ask_opencode.yaml")
-			write(t, process, strings.Replace(read(t, process), "process-policy:read-only", "process-policy:opencode-all", 1)+"\ntools: {require: ["+permission+"]}\n")
 			r := agister(t, home, repo, "check")
 			if r.code != cli.ExitUsage ||
 				!strings.Contains(r.stderr, "required permissions would be withheld: "+permission) ||

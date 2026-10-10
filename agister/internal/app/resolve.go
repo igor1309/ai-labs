@@ -41,7 +41,6 @@ func refuse(format string, args ...any) error { return &Refusal{Reason: fmt.Spri
 type resolution struct {
 	service definition.Service
 	process definition.Process
-	policy  *definition.Policy
 	agent   definition.Agent
 	mapping definition.Mapping
 	schema  []byte
@@ -297,16 +296,6 @@ func (r *Resolver) resolveCall(ctx context.Context, processName, agentOverride s
 	if res.process, err = definition.ParseProcess(doc); err != nil {
 		return res, parsed(err)
 	}
-	if res.process.Policy != "" {
-		if doc, err = load(definition.KindPolicy, res.process.Policy); err != nil {
-			return res, err
-		}
-		pol, err := definition.ParsePolicy(doc)
-		if err != nil {
-			return res, parsed(err)
-		}
-		res.policy = &pol
-	}
 	agentName := res.process.Agent
 	if agentOverride != "" {
 		agentName = agentOverride
@@ -419,7 +408,7 @@ func (r *Resolver) resolveCall(ctx context.Context, processName, agentOverride s
 	if caller.maxCostUSD != nil && *caller.maxCostUSD <= 0 {
 		return res, refuse("invalid cost limit %g", *caller.maxCostUSD)
 	}
-	if res.effective, err = policy.Compose(res.service, res.policy, res.process, limits); err != nil {
+	if res.effective, err = policy.Compose(res.service, res.process, limits); err != nil {
 		return res, refuse("%v", err)
 	}
 

@@ -49,17 +49,10 @@ model_family = "fam"
 effort = "high"
 command = "/bin/spy"
 `},
-		definition.KindPolicy: {"pol": `schema: agister.process-policy/v1alpha1
-name: pol
-timeout: 20m
-tools: {allow: [repository.read, repository.search, repository.diff]}
-workspace: {access: read-only, scope: candidate}
-`},
 		definition.KindProcess: {"p": `schema: agister.process/v1alpha1
 name: p
 type: process
 uses: agent:a
-policy: process-policy:pol
 prompt: inspect
 input:
   instruction: Inspect the change.
@@ -75,6 +68,8 @@ output:
   format: json
   schema: s
   require_valid: true
+timeout: 20m
+tools: {allow: [repository.read, repository.search, repository.diff]}
 `},
 		definition.KindSchema: {"s": schema},
 		definition.KindPrompt: {"inspect": inspectPrompt},
@@ -269,7 +264,7 @@ func TestCompletedCallSendsTheComposedPayloads(t *testing.T) {
 			t.Fatalf("source without digest: %+v", source)
 		}
 	}
-	if strings.Join(kinds, ",") != "service/service,processes/p,policies/pol,agents/a,runtimes/rt,schemas/s,prompts/inspect" {
+	if strings.Join(kinds, ",") != "service/service,processes/p,agents/a,runtimes/rt,schemas/s,prompts/inspect" {
 		t.Fatalf("definitions = %v", kinds)
 	}
 	if record.Plan == nil || !reflect.DeepEqual(record.Plan.Withheld, []string{"repository.diff"}) ||
@@ -359,7 +354,7 @@ func TestResultCarriesUsageCostTimingAndSession(t *testing.T) {
 func TestCostLimitReachesTheRuntimeOrRefuses(t *testing.T) {
 	t.Parallel()
 	h := newHarness()
-	h.defs.docs[definition.KindPolicy]["pol"] += "max_cost_usd: 2\n"
+	h.defs.docs[definition.KindProcess]["p"] += "max_cost_usd: 2\n"
 	limit := 0.5
 	record := h.call(t, contract.CallRequest{MaxCostUSD: &limit})
 	if got := h.runner.calls()[0].MaxCostUSD; got == nil || *got != 0.5 || *record.Effective.MaxCostUSD != 0.5 {
@@ -367,7 +362,7 @@ func TestCostLimitReachesTheRuntimeOrRefuses(t *testing.T) {
 	}
 
 	h = newHarness()
-	h.defs.docs[definition.KindPolicy]["pol"] += "max_cost_usd: 2\n"
+	h.defs.docs[definition.KindProcess]["p"] += "max_cost_usd: 2\n"
 	h.runner.identity.CostLimit = false
 	if record := h.call(t, contract.CallRequest{}); class(record) != run.ClassRefused || !strings.Contains(message(record), "cannot enforce the cost limit 2") {
 		t.Fatalf("result = %+v", record.Result)
@@ -391,31 +386,28 @@ func shippedPrompts(t *testing.T, h *harness) {
 	}
 }
 
-// The shipped ask, review and implement processes and their read-only,
-// static-review and implement policies set no cost limit, so a runtime that
-// cannot enforce one runs them.
+// The shipped ask, review and implement processes set no cost limit, so a
+// runtime that cannot enforce one runs them.
 func TestShippedProcessesRunOnARuntimeWithoutACostLimit(t *testing.T) {
 	t.Parallel()
 	for _, c := range []struct {
-		process, policy, agent string
-		params                 map[string]string
-		output                 string
+		process, agent string
+		params         map[string]string
+		output         string
 	}{
-		{"ask", "read-only", "assistant", map[string]string{"question": "What is a.txt?"}, `"an answer"`},
-		{"adversarial_review", "static-review", "reviewer", nil, `{"outcome":"no"}`},
-		{"architecture_review", "static-review", "reviewer", map[string]string{"architecture": "docs/architecture.md"}, `{"outcome":"no"}`},
-		{"implement", "implement", "assistant", map[string]string{"brief": "brief.md"}, `"done"`},
+		{"ask", "assistant", map[string]string{"question": "What is a.txt?"}, `"an answer"`},
+		{"adversarial_review", "reviewer", nil, `{"outcome":"no"}`},
+		{"architecture_review", "reviewer", map[string]string{"architecture": "docs/architecture.md"}, `{"outcome":"no"}`},
+		{"implement", "assistant", map[string]string{"brief": "brief.md"}, `"done"`},
 	} {
 		t.Run(c.process, func(t *testing.T) {
 			t.Parallel()
 			h := newHarness()
-			for kind, name := range map[definition.Kind]string{definition.KindProcess: c.process, definition.KindPolicy: c.policy} {
-				data, err := fs.ReadFile(examples.Settings(), string(kind)+"/"+name+".yaml")
-				if err != nil {
-					t.Fatal(err)
-				}
-				h.defs.docs[kind][name] = string(data)
+			data, err := fs.ReadFile(examples.Settings(), "processes/"+c.process+".yaml")
+			if err != nil {
+				t.Fatal(err)
 			}
+			h.defs.docs[definition.KindProcess][c.process] = string(data)
 			service, err := fs.ReadFile(examples.Settings(), "service.toml")
 			if err != nil {
 				t.Fatal(err)
@@ -445,7 +437,7 @@ func TestShippedProcessesRunOnARuntimeWithoutACostLimit(t *testing.T) {
 	}
 }
 
-// The shipped read-only policy allows everything Codex's read-only sandbox
+// The shipped ask allows everything Codex's read-only sandbox
 // grants under contract codex/2, but the shipped service treats reading the
 // host as state-reaching, so the shipped ask is refused on a Codex agent,
 // naming host.read. A service configured to accept host reads, as a
@@ -494,19 +486,16 @@ func TestShippedAskRunsOnACodexRuntime(t *testing.T) {
 	})
 }
 
-// askOnCodex runs the shipped ask under the shipped read-only policy on a
-// Codex agent, with the shipped service as configure returns it, and
+// askOnCodex runs the shipped ask on a Codex agent, with the shipped service as configure returns it, and
 // returns the harness and the call's record.
 func askOnCodex(t *testing.T, configure func(service string) string) (*harness, run.Record) {
 	t.Helper()
 	h := newHarness()
-	for kind, name := range map[definition.Kind]string{definition.KindProcess: "ask", definition.KindPolicy: "read-only"} {
-		data, err := fs.ReadFile(examples.Settings(), string(kind)+"/"+name+".yaml")
-		if err != nil {
-			t.Fatal(err)
-		}
-		h.defs.docs[kind][name] = string(data)
+	ask, err := fs.ReadFile(examples.Settings(), "processes/ask.yaml")
+	if err != nil {
+		t.Fatal(err)
 	}
+	h.defs.docs[definition.KindProcess]["ask"] = string(ask)
 	service, err := fs.ReadFile(examples.Settings(), "service.toml")
 	if err != nil {
 		t.Fatal(err)
@@ -543,7 +532,7 @@ command = "/bin/codex"
 	return h, h.call(t, contract.CallRequest{Process: "ask", Agent: "codex-agent", Params: map[string]string{"question": "What is a.txt?"}})
 }
 
-// The example Codex review's sandboxed-review policy allows everything
+// The example Codex review allows everything
 // Codex's read-only sandbox grants under contract codex/2, so, as with the
 // shipped ask, the shipped service refuses it on the example agent, naming
 // host.read, and a service that opts in to host reads, as its README
@@ -590,7 +579,7 @@ func TestExampleCodexReviewRunsOnACodexRuntime(t *testing.T) {
 }
 
 // reviewOnCodex runs the example adversarial_review_sandboxed with its
-// policy, agent and runtime from examples/codex, the runtime on the spy
+// agent and runtime from examples/codex, the runtime on the spy
 // adapter and verified for the spy's version, under the shipped service as
 // configure returns it, and returns the harness and the call's record.
 func reviewOnCodex(t *testing.T, configure func(service string) string) (*harness, run.Record) {
@@ -605,7 +594,6 @@ func reviewOnCodex(t *testing.T, configure func(service string) string) (*harnes
 		return string(data)
 	}
 	h.defs.docs[definition.KindProcess]["adversarial_review_sandboxed"] = read(codex, "processes/adversarial_review_sandboxed.yaml")
-	h.defs.docs[definition.KindPolicy]["sandboxed-review"] = read(codex, "policies/sandboxed-review.yaml")
 	h.defs.docs[definition.KindAgent]["codex-reviewer"] = read(codex, "agents/codex-reviewer.toml")
 	h.defs.docs[definition.KindSchema]["review-result"] = schema
 	h.defs.docs[definition.KindService]["service"] = configure(read(examples.Settings(), "service.toml"))
@@ -715,7 +703,6 @@ func TestContinuationWhereTheSessionDidNotRunIsRefused(t *testing.T) {
 		h.runner.identity.ResumeWhereItRan = true
 		if !checkout {
 			h.defs.docs[definition.KindProcess]["p"] = strings.Replace(h.defs.docs[definition.KindProcess]["p"], "workspace:\n  revision: candidate_revision\n", "", 1)
-			h.defs.docs[definition.KindPolicy]["pol"] = strings.Replace(h.defs.docs[definition.KindPolicy]["pol"], "scope: candidate", "scope: repository", 1)
 		}
 		prior := earlier
 		prior.Workspace = workspace
@@ -934,7 +921,6 @@ func TestWorkspaceChangesBecomeArtifacts(t *testing.T) {
 	// A workspace the call does not own is the caller's; its changes are not taken.
 	h = newHarness()
 	h.defs.docs[definition.KindProcess]["p"] = strings.Replace(h.defs.docs[definition.KindProcess]["p"], "workspace:\n  revision: candidate_revision\n", "", 1)
-	h.defs.docs[definition.KindPolicy]["pol"] = strings.Replace(h.defs.docs[definition.KindPolicy]["pol"], "scope: candidate", "scope: repository", 1)
 	h.changes.changes = []byte("x")
 	if record := h.call(t, contract.CallRequest{}); record.Result.Status != run.Completed || len(h.changes.changed) != 0 {
 		t.Fatalf("result %+v, changes asked %v", record.Result, h.changes.changed)
@@ -1039,7 +1025,7 @@ func TestRefusalsComeBeforeEffects(t *testing.T) {
 		request contract.CallRequest
 		reason  string
 	}{
-		{"missing definition", func(h *harness) { delete(h.defs.docs[definition.KindPolicy], "pol") }, contract.CallRequest{}, `policy "pol": not found`},
+		{"missing definition", func(h *harness) { delete(h.defs.docs[definition.KindSchema], "s") }, contract.CallRequest{}, `schema "s": not found`},
 		{"invalid definition", func(h *harness) { h.defs.docs[definition.KindProcess]["p"] += "surprise: 1\n" }, contract.CallRequest{}, "surprise: unknown field"},
 		{"schema does not compile", func(h *harness) { h.validator.compileErr = errors.New("bad schema") }, contract.CallRequest{}, `schema "s": bad schema`},
 		{"runtime unavailable", func(h *harness) { h.runner.identityErr = errors.New("no binary") }, contract.CallRequest{}, "runtime rt is unavailable: no binary"},
@@ -1083,8 +1069,7 @@ func TestRefusalsComeBeforeEffects(t *testing.T) {
 func TestStateReachingPrimitivesAreNeverGranted(t *testing.T) {
 	t.Parallel()
 	h := newHarness()
-	policy := h.defs.docs[definition.KindPolicy]["pol"]
-	h.defs.docs[definition.KindPolicy]["pol"] = strings.Replace(policy, "repository.diff]", "repository.diff, process.execute, host.read]", 1)
+	h.defs.docs[definition.KindProcess]["p"] = strings.Replace(h.defs.docs[definition.KindProcess]["p"], "repository.diff]", "repository.diff, process.execute, host.read]", 1)
 	h.call(t, contract.CallRequest{})
 	if primitives := h.runner.calls()[0].Primitives; contains(primitives, "Bash") {
 		t.Fatalf("Bash reaches host.read but was granted: %v", primitives)
@@ -1109,7 +1094,7 @@ func TestUnverifiedPrimitivesAreNeverGranted(t *testing.T) {
 	// Requiring what only an unverified primitive provides refuses, and says why.
 	h = newHarness()
 	h.defs.docs[definition.KindRuntime]["rt"] = strings.Replace(mapping, "  items:\n", "  items:\n    Diff: {grants: [repository.diff], verified: [\"2.\"]}\n", 1)
-	h.defs.docs[definition.KindProcess]["p"] = strings.Replace(h.defs.docs[definition.KindProcess]["p"], "uses: agent:a\n", "uses: agent:a\ntools: {require: [repository.diff]}\n", 1)
+	h.defs.docs[definition.KindProcess]["p"] = strings.Replace(h.defs.docs[definition.KindProcess]["p"], "repository.diff]}", "repository.diff], require: [repository.diff]}", 1)
 	record := h.call(t, contract.CallRequest{})
 	if class(record) != run.ClassRefused || !strings.Contains(message(record), "required permissions would be withheld: repository.diff (not verified for version 1.2.3: Diff)") {
 		t.Fatalf("result %+v", record.Result.Error)
@@ -1125,8 +1110,7 @@ func TestUnverifiedPrimitivesAreNeverGranted(t *testing.T) {
 func TestACallThatCannotReadASkillIsRefused(t *testing.T) {
 	t.Parallel()
 	widen := func(h *harness) {
-		policy := h.defs.docs[definition.KindPolicy]["pol"]
-		h.defs.docs[definition.KindPolicy]["pol"] = strings.Replace(policy, "repository.diff]", "repository.diff, process.execute, host.read]", 1)
+		h.defs.docs[definition.KindProcess]["p"] = strings.Replace(h.defs.docs[definition.KindProcess]["p"], "repository.diff]", "repository.diff, process.execute, host.read]", 1)
 	}
 	unverified := func(h *harness) {
 		mapping := h.defs.docs[definition.KindRuntime]["rt"]
@@ -1467,7 +1451,7 @@ func TestInputsUseTheValuesResolvedBeforeThem(t *testing.T) {
 func TestCallRecordsWhatItResolvedUnderTheRecordsOwnTypes(t *testing.T) {
 	t.Parallel()
 	h := newHarness()
-	h.defs.docs[definition.KindProcess]["p"] = strings.Replace(h.defs.docs[definition.KindProcess]["p"], "uses: agent:a\n", "uses: agent:a\ntools: {require: [repository.read]}\n", 1)
+	h.defs.docs[definition.KindProcess]["p"] = strings.Replace(h.defs.docs[definition.KindProcess]["p"], "repository.diff]}", "repository.diff], require: [repository.read]}", 1)
 	record := h.call(t, contract.CallRequest{})
 	encode := func(v any) string {
 		data, err := json.Marshal(v)
@@ -1477,7 +1461,7 @@ func TestCallRecordsWhatItResolvedUnderTheRecordsOwnTypes(t *testing.T) {
 		return string(data)
 	}
 	wantService := `{"kind":"service","name":"service","layers":[{"layer":"home","path":"mem/service/service","sha256":"` + sha(settingsDocs()[definition.KindService]["service"]) + `"}]}`
-	if len(record.Definitions) != 7 || encode(record.Definitions[0]) != wantService {
+	if len(record.Definitions) != 6 || encode(record.Definitions[0]) != wantService {
 		t.Errorf("definitions = %s", encode(record.Definitions))
 	}
 	if got := encode(record.Layers); got != `[{"layer":"home","dir":"mem"}]` {

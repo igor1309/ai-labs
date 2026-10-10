@@ -22,7 +22,8 @@ const baseAsk = `schema: agister.process/v1alpha1
 name: base_ask
 type: process
 uses: agent:assistant
-policy: process-policy:read-only
+timeout: 10m
+tools: {allow: [repository.read, repository.diff, repository.search, repository.history.read, process.execute, host.read]}
 input:
   instruction: 'HOME BASE: answer the question.'
   params:
@@ -144,7 +145,7 @@ func TestEachFieldNamesTheProcessWhoseFileGaveIt(t *testing.T) {
 	want := []contract.DefinitionLayer{
 		{Layer: "home", Path: e.child, Process: "child_ask", Fields: []string{"schema", "name", "type", "extends", "prompt", "input.params.question.default"}},
 		{Layer: "repository", Path: e.repoBase, Process: "base_ask", Fields: []string{"input.instruction"}},
-		{Layer: "home", Path: e.base, Process: "base_ask", Fields: []string{"uses", "policy", "input.values.question.source", "input.values.question.name", "output.format"}},
+		{Layer: "home", Path: e.base, Process: "base_ask", Fields: []string{"uses", "timeout", "tools.allow", "input.values.question.source", "input.values.question.name", "output.format"}},
 	}
 
 	var shown struct {

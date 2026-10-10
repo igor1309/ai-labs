@@ -93,7 +93,7 @@ func TestAFailedRunIsRepairedInTheCallsSession(t *testing.T) {
 	h.clock = &steppingClock{now: time.Date(2026, 9, 28, 12, 0, 0, 0, time.UTC)}
 	h.calls = h.callsOn(h.defs)
 	verifying(h)
-	h.defs.docs[definition.KindPolicy]["pol"] += "max_cost_usd: 2\n"
+	h.defs.docs[definition.KindProcess]["p"] += "max_cost_usd: 2\n"
 	cost := 0.5
 	h.runner.turn.CostUSD = &cost
 	h.commands.exits = []int{1}
@@ -141,7 +141,7 @@ func TestARepairCostsWhatItAddedToTheCallsSession(t *testing.T) {
 			t.Parallel()
 			h := newHarness()
 			verifying(h)
-			h.defs.docs[definition.KindPolicy]["pol"] += c.limit
+			h.defs.docs[definition.KindProcess]["p"] += c.limit
 			session, request := "prov-1", contract.CallRequest{}
 			if c.continues {
 				session, request.Continue = "prov-0", "run-0"

@@ -1695,21 +1695,6 @@ func TestTheJudgeRunsUnderItsLimits(t *testing.T) {
 	}
 }
 
-// The judge names no policy: its call's definitions hold its process and no
-// policy.
-func TestTheJudgeNamesNoPolicy(t *testing.T) {
-	t.Parallel()
-	_, repo, home := onFakeRuntimes(t)
-	_, records := judgedReviews(t, home, repo, "code_review")
-	judge := run{record: records["review_judge"]}
-	definitionOf(t, judge, string(definition.KindProcess), "review_judge")
-	for _, d := range judge.record["definitions"].([]any) {
-		if d := d.(map[string]any); d["kind"] == string(definition.KindPolicy) {
-			t.Fatalf("the judge's call read policy %v, want none", d["name"])
-		}
-	}
-}
-
 // The repository's implement runs under no cost limit: its process sets
 // none, so its call's effective limits carry none.
 func TestImplementHasNoCostLimit(t *testing.T) {
@@ -1808,28 +1793,13 @@ func codexAt(version string) supervisortest.Fake {
 	}
 }
 
-// No implementer names a policy: process show prints none and no policy
-// among its sources, and the home folder holds none of the implementers'
-// former policies.
-func TestTheImplementersNameNoPolicy(t *testing.T) {
+// The home folder holds no policies/: a layer holds no policies (ADR-030
+// rule 4).
+func TestTheHomeFolderHoldsNoPolicies(t *testing.T) {
 	t.Parallel()
-	root, repo, home := onFakeRuntimes(t)
-	for _, name := range implementers {
-		view := showProcess(t, home, repo, name)
-		if view.Policy != "" {
-			t.Errorf("%s names policy %s, want none", name, view.Policy)
-		}
-		for _, source := range view.Sources {
-			if source.Kind == "policies" {
-				t.Errorf("%s reads policy %s from %s, want none", name, source.Name, source.Path)
-			}
-		}
-	}
-	for _, policy := range []string{"implement", "implement_codex", "implement_pi"} {
-		path := filepath.Join(root, homeFolder, "policies", policy+".yaml")
-		if _, err := os.Stat(path); !errors.Is(err, fs.ErrNotExist) {
-			t.Errorf("the home folder holds %s (%v), want none", path, err)
-		}
+	path := filepath.Join("..", "..", "..", homeFolder, "policies")
+	if _, err := os.Stat(path); !errors.Is(err, fs.ErrNotExist) {
+		t.Errorf("the home folder holds %s (%v), want none", path, err)
 	}
 }
 
@@ -1866,22 +1836,6 @@ func TestTheAdvisorRunsUnderItsLimits(t *testing.T) {
 	}
 	if want := (contract.Stale{NoEvent: 10 * time.Minute, ToolCommand: 8 * time.Minute, RepeatedToolCalls: 5}); view.Stale != want {
 		t.Errorf("the advisor's stale limits are %+v, want %+v", view.Stale, want)
-	}
-}
-
-// The advisor names no policy: process show prints none and no policy among
-// its sources.
-func TestTheAdvisorNamesNoPolicy(t *testing.T) {
-	t.Parallel()
-	_, repo, home := onFakeRuntimes(t)
-	view := showProcess(t, home, repo, "advisor")
-	if view.Policy != "" {
-		t.Errorf("the advisor names policy %s, want none", view.Policy)
-	}
-	for _, source := range view.Sources {
-		if source.Kind == "policies" {
-			t.Errorf("the advisor reads policy %s from %s, want none", source.Name, source.Path)
-		}
 	}
 }
 
@@ -1982,9 +1936,8 @@ func TestTheReviewsResolveAsBefore(t *testing.T) {
 
 // Each review's file in the home folder holds its schema, name, type, the
 // review base it extends and its prompt, and nothing else (ADR-030 rule 9):
-// process show names no policy, and the base's home file among the files
-// the process is composed from. The home folder holds no codex-review
-// policy, which the reviews named before.
+// process show names the base's home file among the files the process is
+// composed from.
 func TestTheReviewsExtendTheReviewBase(t *testing.T) {
 	t.Parallel()
 	root, repo, home := onFakeRuntimes(t)
@@ -2001,14 +1954,8 @@ func TestTheReviewsExtendTheReviewBase(t *testing.T) {
 			t.Errorf("%s's file holds %v, want %v", name, document, want)
 		}
 		view := showProcess(t, home, repo, name)
-		if view.Policy != "" {
-			t.Errorf("%s names policy %s, want none", name, view.Policy)
-		}
 		var base *contract.DefinitionLayer
 		for _, source := range view.Sources {
-			if source.Kind == "policies" {
-				t.Errorf("%s reads policy %s from %s, want none", name, source.Name, source.Path)
-			}
 			if source.Kind != "processes" || source.Name != name {
 				continue
 			}
@@ -2021,10 +1968,6 @@ func TestTheReviewsExtendTheReviewBase(t *testing.T) {
 		if base == nil || base.Layer != "home" || base.Path != filepath.Join(home, "processes", "review.yaml") {
 			t.Errorf("%s's base file is %+v, want home's processes/review.yaml", name, base)
 		}
-	}
-	path := filepath.Join(root, homeFolder, "policies", "codex-review.yaml")
-	if _, err := os.Stat(path); !errors.Is(err, fs.ErrNotExist) {
-		t.Errorf("the home folder holds %s (%v), want none", path, err)
 	}
 }
 

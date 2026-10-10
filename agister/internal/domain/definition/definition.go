@@ -1,5 +1,5 @@
 // Package definition parses and validates Agister's settings documents:
-// agents, processes, workflows, policies, verifications, prompts, skills,
+// agents, processes, workflows, verifications, prompts, skills,
 // brief forms, runtime permission mappings, the service, the workspace and
 // a repository's blocks. It owns the definition language; callers supply
 // bytes and their origin.
@@ -20,7 +20,6 @@ const (
 	KindService  Kind = "service"
 	KindAgent    Kind = "agents"
 	KindProcess  Kind = "processes"
-	KindPolicy   Kind = "policies"
 	KindRuntime  Kind = "runtimes"
 	KindSchema   Kind = "schemas"
 	KindWorkflow Kind = "workflows"
@@ -43,8 +42,6 @@ func (k Kind) Singular() string {
 	switch k {
 	case KindProcess:
 		return "process"
-	case KindPolicy:
-		return "policy"
 	case KindAgent:
 		return "agent"
 	case KindRuntime:

@@ -3,10 +3,7 @@ name: architecture_review
 
 type: process
 uses: agent:reviewer
-policy: process-policy:static-review
 prompt: architecture-review
-
-timeout: 15m
 
 input:
   instruction: >-
@@ -25,7 +22,26 @@ input:
     architecture_context: {source: file, path: "${param.architecture}"}
 
 workspace:
+  access: read-only
+  scope: candidate
   revision: candidate_revision
+
+tools:
+  allow:
+    - repository.read
+    - repository.diff
+    - repository.search
+
+timeout: 15m
+retry:
+  max_attempts: 1
+
+isolation:
+  deny:
+    - repository.write
+    - repository.history.write
+    - process.execute
+    - network
 
 output:
   format: json

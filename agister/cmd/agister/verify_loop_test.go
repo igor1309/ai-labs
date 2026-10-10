@@ -155,7 +155,7 @@ type verifySettings struct {
 	command     string
 	timeout     string // verify.timeout; 20s when empty
 	maxAttempts int    // 3 when zero
-	policy      string // appended to the policy
+	limits      string // appended to the process
 	// setup is the process's workspace.setup, in flow style; none when
 	// empty. A call ignores it (ADR-025 rule 3).
 	setup string
@@ -362,19 +362,14 @@ model_family = "fam"
 command = "fake"
 session = "resumable"
 `,
-		"policies/impl.yaml": `schema: agister.process-policy/v1alpha1
-name: impl
-timeout: 1m
-tools: {allow: [repository.read, repository.write]}
-workspace: {access: read-write, scope: candidate}
-` + settings.policy,
 		"schemas/done.json": `{"type":"object","required":["done"],"properties":{"done":{"type":"boolean"}}}`,
 		"prompts/impl.md":   "Make the change the check asks for.\n",
 		"processes/impl.yaml": fmt.Sprintf(`schema: agister.process/v1alpha1
 name: impl
 type: process
 uses: agent:impl
-policy: process-policy:impl
+timeout: 1m
+tools: {allow: [repository.read, repository.write]}
 prompt: impl
 input:
   instruction: Make the check pass.
@@ -383,6 +378,8 @@ input:
   values:
     candidate_revision: {source: git.revision, rev: "${param.candidate}"}
 workspace:
+  access: read-write
+  scope: candidate
   revision: candidate_revision
   clean: true
 %soutput:
@@ -394,7 +391,7 @@ verify:
   timeout: %s
   max_attempts: %d
   instruction: The check failed. Fix the cause, not the check.
-`, setupLine(settings.setup), strconv.Quote(settings.command), settings.timeout, settings.maxAttempts),
+`, setupLine(settings.setup), strconv.Quote(settings.command), settings.timeout, settings.maxAttempts) + settings.limits,
 		"workspace.yaml": settings.workspace,
 	} {
 		if text == "" {
@@ -852,7 +849,7 @@ func TestContinuationsCountFromTheSessionsLatestRecordedTurn(t *testing.T) {
 // an earlier turn with an unknown cost blocks repair.
 func TestVerifyUnknownCostBlocksRepair(t *testing.T) {
 	t.Parallel()
-	h := newLoop(t, verifySettings{policy: "max_cost_usd: 5\n"}, state("one", func(turn *domain.Turn) { turn.CostUSD = nil }), state("pass"))
+	h := newLoop(t, verifySettings{limits: "max_cost_usd: 5\n"}, state("one", func(turn *domain.Turn) { turn.CostUSD = nil }), state("pass"))
 	record := h.call(contract.CallRequest{})
 	expect(t, record, domain.Failed, domain.ClassBudgetExhausted, "a turn's cost is unknown, so the cost limit 5 cannot be enforced")
 	if len(h.runner.turns()) != 1 || record.Result.Cost.Source != domain.CostUnknown {
@@ -860,7 +857,7 @@ func TestVerifyUnknownCostBlocksRepair(t *testing.T) {
 	}
 
 	spend := func(usd float64) func(*domain.Turn) { return func(turn *domain.Turn) { turn.CostUSD = &usd } }
-	h = newLoop(t, verifySettings{policy: "max_cost_usd: 5\n"}, state("one", spend(1.5)), state("pass", spend(2)))
+	h = newLoop(t, verifySettings{limits: "max_cost_usd: 5\n"}, state("one", spend(1.5)), state("pass", spend(2)))
 	expect(t, h.call(contract.CallRequest{}), domain.Completed, "", "")
 	if turns := h.runner.turns(); len(turns) != 2 || *turns[0].MaxCostUSD != 5 || *turns[1].MaxCostUSD != 3.5 {
 		t.Fatalf("cost limits sent: %v, %v", *turns[0].MaxCostUSD, turns[1].MaxCostUSD)
@@ -874,7 +871,7 @@ func TestVerifySpentBudgetBlocksRepair(t *testing.T) {
 	for _, usd := range []float64{5, 6} {
 		t.Run(fmt.Sprintf("$%g of $5", usd), func(t *testing.T) {
 			t.Parallel()
-			h := newLoop(t, verifySettings{policy: "max_cost_usd: 5\n"}, state("one", func(turn *domain.Turn) { turn.CostUSD = &usd }), state("pass"))
+			h := newLoop(t, verifySettings{limits: "max_cost_usd: 5\n"}, state("one", func(turn *domain.Turn) { turn.CostUSD = &usd }), state("pass"))
 			record := h.call(contract.CallRequest{})
 			expect(t, record, domain.Failed, domain.ClassBudgetExhausted, "the cost limit 5 is spent")
 			if len(h.runner.turns()) != 1 || len(runsOf(record)) != 1 {
@@ -1060,7 +1057,7 @@ func TestVerifyEvidenceForEveryAttempt(t *testing.T) {
 	}
 }
 
-// A run that produces no output for the policy's stale.no_output is killed,
+// A run that produces no output for the process's stale.no_output is killed,
 // group and all, before verify.timeout: with no repair to follow it, the
 // node is interrupted as a timeout, and the attempt's run says what went
 // stale.
@@ -1076,7 +1073,7 @@ func TestVerifyRunWithoutOutputIsKilledAsStale(t *testing.T) {
 	// One attempt: since ADR-024 rule 8 such a run is a failed attempt,
 	// which a repair turn follows while attempts are left; with none left
 	// the node ends as it did before.
-	h := newLoopWith(t, seams{commands: runtimecomposition.Commands{Supervisor: stale}, groups: groups}, verifySettings{command: blocks + " & wait", maxAttempts: 1, policy: "stale: {no_output: 7s}\n"}, state("one"))
+	h := newLoopWith(t, seams{commands: runtimecomposition.Commands{Supervisor: stale}, groups: groups}, verifySettings{command: blocks + " & wait", maxAttempts: 1, limits: "stale: {no_output: 7s}\n"}, state("one"))
 	id := h.submit(contract.CallRequest{})
 	cleanupRun(t, h.runs, h.hosted, id)
 	clock.Started(noOutput)
@@ -1116,7 +1113,7 @@ func TestVerifyRunWithoutOutputIsRepaired(t *testing.T) {
 	stale := inProcessCommands(groups, clock.Timer)
 	// The command prints the state, then hangs unless the state says pass.
 	h := newLoopWith(t, seams{commands: runtimecomposition.Commands{Supervisor: stale}, groups: groups},
-		verifySettings{command: passWhenStateSaysPass + " || " + blocks, policy: "stale: {no_output: 7s}\n"}, state("one"), state("pass"))
+		verifySettings{command: passWhenStateSaysPass + " || " + blocks, limits: "stale: {no_output: 7s}\n"}, state("one"), state("pass"))
 	id := h.submit(contract.CallRequest{})
 	cleanupRun(t, h.runs, h.hosted, id)
 	// The first run's wait for output starts twice, at its start and again
@@ -1148,7 +1145,7 @@ func TestVerifyRunWithoutOutputIsRepaired(t *testing.T) {
 }
 
 // A turn Agister ended at a staleness limit is recovered in its session
-// (ADR-024): the recovery turn receives the policy's instruction with the
+// (ADR-024): the recovery turn receives the process's instruction with the
 // evidence, verification runs on what it left, and runs show prints the
 // recovery with the record.
 func TestAStaleTurnIsRecoveredAndRunsShowPrintsTheRecovery(t *testing.T) {
@@ -1162,7 +1159,7 @@ func TestAStaleTurnIsRecoveredAndRunsShowPrintsTheRecovery(t *testing.T) {
 	}
 	// The recovery turn costs what no other turn of the call does.
 	const cost = 0.25
-	h := newLoop(t, verifySettings{policy: "stale: {repeated_tool_calls: 3, recover: {max_resumes: 1, instruction: Change the approach.}}\n"}, ended,
+	h := newLoop(t, verifySettings{limits: "stale: {repeated_tool_calls: 3, recover: {max_resumes: 1, instruction: Change the approach.}}\n"}, ended,
 		state("pass", func(turn *domain.Turn) { usd := cost; turn.CostUSD = &usd }))
 	h.runner.toolCalls = true
 	h.runner.reports = func(ctx context.Context, sink app.EventSink, n int) {

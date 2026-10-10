@@ -992,7 +992,7 @@ func TestCheckAndListingsSayWhatIsRefused(t *testing.T) {
 	}
 	stdout.Reset()
 	if code := cli.Run(context.Background(), []string{"process", "list"}, io, build, unlogged); code != 0 ||
-		stdout.String() != "p\tagent:a\t-\ttext\tREFUSED: process p uses agent a, which uses runtime mapping rt (/rt.yaml): bad\ns\tagent:a\t-\ttext\n" {
+		stdout.String() != "p\tagent:a\ttext\tREFUSED: process p uses agent a, which uses runtime mapping rt (/rt.yaml): bad\ns\tagent:a\ttext\n" {
 		t.Fatalf("process list: %d %q %q", code, stdout.String(), stderr.String())
 	}
 }
@@ -1015,10 +1015,10 @@ func TestCheckTreeAndJSON(t *testing.T) {
 			// b is used by no process, so neither is rt2, which only b uses.
 			{Kind: "runtimes", Name: "rt2", Layer: "home", Path: "/g/runtimes/rt2.yaml", UsedBy: []contract.DefinitionRef{ref("agents", "b")}},
 			{Kind: "agents", Name: "b", Layer: "home", Path: "/g/agents/b.toml", Uses: []contract.DefinitionRef{ref("runtimes", "rt2")}},
-			{Kind: "policies", Name: "spare", Layer: "repository", Path: "/p/policies/spare.yaml", Invalid: true},
+			{Kind: "schemas", Name: "spare", Layer: "repository", Path: "/p/schemas/spare.json", Invalid: true},
 			{Kind: "verifies", Name: "repo", Layer: "repository", Path: "/p/verifies/repo.yaml", UsedBy: []contract.DefinitionRef{ref("processes", "p")}},
 			{Kind: "verifies", Name: "spare", Layer: "home", Path: "/g/verifies/spare.yaml"},
-			{Kind: "processes", Name: "p", Layer: "home", Path: "/g/processes/p.yaml", Uses: []contract.DefinitionRef{ref("agents", "a"), ref("policies", "gone"), ref("verifies", "repo"), ref("workspace", "workspace")}},
+			{Kind: "processes", Name: "p", Layer: "home", Path: "/g/processes/p.yaml", Uses: []contract.DefinitionRef{ref("agents", "a"), ref("schemas", "gone"), ref("verifies", "repo"), ref("workspace", "workspace")}},
 			{Kind: "prompts", Name: "rules", Layer: "repository", Path: "/p/prompts/rules.md", UsedBy: []contract.DefinitionRef{ref("processes", "q")}},
 			{Kind: "processes", Name: "q", Layer: "home", Path: "/g/processes/q.yaml", Uses: []contract.DefinitionRef{ref("verifies", "gone"), ref("prompts", "rules"), ref("prompts", "lost")}},
 		},
@@ -1033,7 +1033,7 @@ process p               home       /g/processes/p.yaml
 │                                    (none)
 │                       home       /g/agents/a.toml
 │  └─ runtime rt        home       /g/runtimes/rt.yaml
-├─ policy gone          MISSING
+├─ schema gone          MISSING
 ├─ verification repo    repository /p/verifies/repo.yaml
 └─ workspace workspace  repository /p/workspace.yaml
 process q               home       /g/processes/q.yaml
@@ -1043,7 +1043,7 @@ process q               home       /g/processes/q.yaml
 unused (no process uses these)
    runtime rt2          home       /g/runtimes/rt2.yaml
    agent b              home       /g/agents/b.toml
-   policy spare         repository /p/policies/spare.yaml INVALID
+   schema spare         repository /p/schemas/spare.json INVALID
    verification spare   home       /g/verifies/spare.yaml
 settings OK: 1 processes
 `

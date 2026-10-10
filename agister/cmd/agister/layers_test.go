@@ -126,7 +126,7 @@ func TestACallRunsTheSettingsComposedForItsLaunchDirectory(t *testing.T) {
 	want := map[string]any{"kind": "processes", "name": "ask", "layers": []any{
 		map[string]any{"layer": "project", "path": l.project, "sha256": digestOf(projectAsk), "fields": []any{"uses", "input.params.question.default"}},
 		map[string]any{"layer": "repository", "path": l.repository, "sha256": digestOf(repositoryAsk), "fields": []any{"input.instruction"}},
-		map[string]any{"layer": "home", "path": l.global, "sha256": digestOf(read(t, l.global)), "fields": []any{"schema", "name", "type", "policy", "prompt", "input.values.question.source", "input.values.question.name", "output.format"}},
+		map[string]any{"layer": "home", "path": l.global, "sha256": digestOf(read(t, l.global)), "fields": []any{"schema", "name", "type", "prompt", "input.values.question.source", "input.values.question.name", "workspace.access", "workspace.scope", "tools.allow", "timeout", "output.format"}},
 	}}
 	if got := definitionOf(t, below, "processes", "ask"); !reflect.DeepEqual(got, want) {
 		t.Fatalf("process recorded as\n%v\nwant\n%v", got, want)
@@ -140,11 +140,11 @@ func TestACallRunsTheSettingsComposedForItsLaunchDirectory(t *testing.T) {
 		t.Fatalf("layers recorded as %v, want %v", below.record["layers"], layers)
 	}
 	// A document one layer holds is that layer's: one file, every field.
-	policy := filepath.Join(l.home, "policies", "read-only.yaml")
-	held := homeFile("policies", "read-only", policy, read(t, policy))
-	held["layers"].([]any)[0].(map[string]any)["fields"] = []any{"schema", "name", "workspace.access", "workspace.scope", "tools.allow", "timeout"}
-	if got := definitionOf(t, below, "policies", "read-only"); !reflect.DeepEqual(got, held) {
-		t.Fatalf("policy recorded as %v, want %v", got, held)
+	agent := filepath.Join(l.home, "agents", "reviewer.toml")
+	held := homeFile("agents", "reviewer", agent, read(t, agent))
+	held["layers"].([]any)[0].(map[string]any)["fields"] = []any{"schema", "name", "runtime", "model", "model_family", "effort", "session", "command"}
+	if got := definitionOf(t, below, "agents", "reviewer"); !reflect.DeepEqual(got, held) {
+		t.Fatalf("agent recorded as %v, want %v", got, held)
 	}
 	for _, d := range below.record["definitions"].([]any) {
 		for _, old := range []string{"path", "sha256", "project", "overrides"} {
@@ -204,7 +204,7 @@ func TestCheckChecksTheComposedDocument(t *testing.T) {
 	partial := filepath.Join(l.docs, ".agister", "processes", "partial.yaml")
 	rest := filepath.Join(l.repo, ".agister", "processes", "partial.yaml")
 	write(t, l.project, projectAsk)
-	write(t, partial, "policy: process-policy:read-only\n")
+	write(t, partial, "timeout: 10m\n")
 	write(t, rest, "schema: agister.process/v1alpha1\nname: partial\ntype: process\ninput: {instruction: Answer.}\noutput: {format: text}\n")
 	problem = "process partial: uses: is required (no layer sets it: " + partial + ", " + rest + ")"
 	if r := agister(t, l.home, l.docs, "check"); r.code != cli.ExitUsage || !strings.Contains(r.stderr, problem) {
@@ -245,7 +245,6 @@ func TestShowAndTheTreeNameEachFieldsLayer(t *testing.T) {
 	sources := "             process ask: project " + l.project + "\n" +
 		"                          repository " + l.repository + "\n" +
 		"                          home " + l.global + "\n" +
-		"             policy read-only: home " + filepath.Join(l.home, "policies", "read-only.yaml") + "\n" +
 		"             agent reviewer: project " + agent + "\n" +
 		"                             home " + filepath.Join(l.home, "agents", "reviewer.toml") + "\n"
 	fields := "fields       service service\n" +
@@ -257,12 +256,14 @@ func TestShowAndTheTreeNameEachFieldsLayer(t *testing.T) {
 		"               input.values.question.source   home\n" +
 		"               name                           home\n" +
 		"               output.format                  home\n" +
-		"               policy                         home\n" +
 		"               prompt                         home\n" +
 		"               schema                         home\n" +
+		"               timeout                        home\n" +
+		"               tools.allow                    home\n" +
 		"               type                           home\n" +
 		"               uses                           project\n" +
-		"             policy read-only\n"
+		"               workspace.access               home\n" +
+		"               workspace.scope                home\n"
 	// The project's file gave the agent nothing: every field is home's.
 	nothing := "             agent reviewer\n" +
 		"               command       home\n"
@@ -283,7 +284,7 @@ func TestShowAndTheTreeNameEachFieldsLayer(t *testing.T) {
 	want := []contract.DefinitionLayer{
 		{Layer: "project", Path: l.project, Fields: []string{"uses", "input.params.question.default"}},
 		{Layer: "repository", Path: l.repository, Fields: []string{"input.instruction"}},
-		{Layer: "home", Path: l.global, Fields: []string{"schema", "name", "type", "policy", "prompt", "input.values.question.source", "input.values.question.name", "output.format"}},
+		{Layer: "home", Path: l.global, Fields: []string{"schema", "name", "type", "prompt", "input.values.question.source", "input.values.question.name", "workspace.access", "workspace.scope", "tools.allow", "timeout", "output.format"}},
 	}
 	found := false
 	for _, source := range shown.Sources {
@@ -313,7 +314,6 @@ func TestShowAndTheTreeNameEachFieldsLayer(t *testing.T) {
 		`│ +\(none\)\n` +
 		`│ +home +` + regexp.QuoteMeta(filepath.Join(l.home, "agents", "reviewer.toml")) + `\n` +
 		`│  └─ runtime claude-code +home +` + regexp.QuoteMeta(filepath.Join(l.home, "runtimes", "claude-code.yaml")) + `\n` +
-		`├─ policy read-only +home +` + regexp.QuoteMeta(filepath.Join(l.home, "policies", "read-only.yaml")) + `\n` +
 		`└─ prompt ask +home +` + regexp.QuoteMeta(filepath.Join(l.home, "prompts", "ask.md")) + `\n`)
 	if r.code != 0 || !tree.MatchString(r.stdout) {
 		t.Fatalf("check --tree: %d, want %s\ngot\n%s%s", r.code, tree, r.stdout, r.stderr)
@@ -432,26 +432,23 @@ func TestBlocksInAProjectLayerStopWhatIsLaunchedThere(t *testing.T) {
 // ADR-028 rule 10: a workflow's nodes resolve against the run's layers,
 // the launch directory's, wherever each node's own checkout is: each
 // node's call runs the documents composed with the project's fields, its
-// process's and those of the agent, the policy and the verification it
-// uses, and records them, each layer's file with the fields it gave, and
+// process's and those of the agent and the verification it uses, and
+// records them, each layer's file with the fields it gave, and
 // the run's layers.
 func TestAWorkflowsNodesResolveAgainstTheRunsLayers(t *testing.T) {
 	t.Parallel()
 	l, commit := layeredCommitted(t)
-	// The process narrows its policy's limit; the project's timeout is the
-	// one the project's policy allows, and widens home's.
+	// The project's timeout widens home's, within the service's limit.
 	const partial = "timeout: 30m\ninput:\n  instruction: 'PROJECT: review the candidate.'\nworkspace:\n  clean: true\nverify: verify:repo\n"
 	project := filepath.Join(l.docs, ".agister", "processes", "architecture_review.yaml")
 	write(t, project, partial)
 	// The project's fields of what the node's process uses.
-	const agent, policy, verification = "effort = \"low\"\n", "timeout: 30m\n", "command: \"true\"\nmax_attempts: 1\n"
+	const agent, verification = "effort = \"low\"\n", "command: \"true\"\nmax_attempts: 1\n"
 	files := map[string]string{
 		"agents":   filepath.Join("agents", "reviewer.toml"),
-		"policies": filepath.Join("policies", "static-review.yaml"),
 		"verifies": filepath.Join("verifies", "repo.yaml"),
 	}
 	write(t, filepath.Join(l.docs, ".agister", files["agents"]), agent)
-	write(t, filepath.Join(l.docs, ".agister", files["policies"]), policy)
 	write(t, filepath.Join(l.docs, ".agister", files["verifies"]), verification)
 	// The verification makes the node a writer, which holds the worktree
 	// alone (ADR-025 rule 4): beside a reader node it is refused whenever
@@ -496,13 +493,13 @@ func TestAWorkflowsNodesResolveAgainstTheRunsLayers(t *testing.T) {
 	if !reflect.DeepEqual(nearest, want) {
 		t.Fatalf("the node's process is recorded from %v, want %v", nearest, want)
 	}
-	// The agent's, the policy's and the verification's fields are the
-	// project's where it sets them, home's elsewhere.
+	// The agent's and the verification's fields are the project's where it
+	// sets them, home's elsewhere; the limits are the process's.
 	if profile, _ := node.record["profile"].(map[string]any); profile["effort"] != "low" || profile["model"] != "sonnet" {
 		t.Fatalf("the node's agent is resolved as %v", node.record["profile"])
 	}
 	if effective, _ := node.record["effective"].(map[string]any); effective["timeout"] != float64(30*time.Minute) || effective["access"] != "read-only" || effective["scope"] != "candidate" {
-		t.Fatalf("the node's policy is resolved as %v", node.record["effective"])
+		t.Fatalf("the node's limits are resolved as %v", node.record["effective"])
 	}
 	verified := map[string]any{"command": "true", "timeout": float64(10 * time.Minute), "max_attempts": float64(1), "instruction": "The verification command failed on your changes. Fix the cause in the code; do not weaken, skip or delete the check.", "where": "workspace"}
 	if !reflect.DeepEqual(node.record["verify"], verified) {
@@ -517,7 +514,6 @@ func TestAWorkflowsNodesResolveAgainstTheRunsLayers(t *testing.T) {
 		home       []any
 	}{
 		"agents":   {"reviewer", agent, []any{"effort"}, []any{"schema", "name", "runtime", "model", "model_family", "session", "command"}},
-		"policies": {"static-review", policy, []any{"timeout"}, []any{"schema", "name", "workspace.access", "workspace.scope", "tools.allow", "retry.max_attempts", "isolation.deny"}},
 		"verifies": {"repo", verification, []any{"command", "max_attempts"}, []any{"schema", "name", "timeout", "instruction"}},
 	} {
 		global := filepath.Join(l.home, files[kind])
