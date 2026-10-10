@@ -1,45 +1,5 @@
-# Codex for this repository's reviews. read-only is observed, in the Codex
-# reviews run for the agister-deferred-fixes branch (codex-cli 0.158.0):
-# the agent reads the repository and the host, runs commands such as
-# git show, and cannot write. Re-observed on codex-cli 0.159.2
-# (2026-09-30): it read a file and ran git show; creating a file in the
-# repository and writing under /tmp were refused. workspace-write observed
-# on codex-cli 0.159.2 (2026-09-30), in a scratch repository: writing in the
-# workspace and under /tmp worked; writing elsewhere in the home directory,
-# git commit (.git stays read-only) and network were refused. It grants no
-# repository.history.write, and its /tmp writes are declared as host.write. Contract codex/2 also resumes a
-# session in place with `codex exec resume`, the sandbox mode passed as
-# -c sandbox_mode; read-only was observed to hold there on 0.159.2.
-# All of the above re-observed on codex-cli 0.160.0 (2026-10-05), in a
-# scratch repository: read-only read a file and ran git show, and refused
-# creating a file in the repository, writing under /tmp, git commit and
-# network; workspace-write wrote in the workspace and under /tmp, and
-# refused writing elsewhere in the home directory, git commit and network;
-# a session resumed with -c sandbox_mode="read-only" refused a write.
-# Re-observed on codex-cli 0.161.0 (2026-10-08), in a scratch repository:
-# read-only read a file and ran git show, and refused creating a file in
-# the repository, writing under /tmp, touch in .git, git tag and network;
-# workspace-write wrote in the workspace and under /tmp, and refused
-# writing elsewhere in the home directory, git tag, touch in .git and
-# network; a session resumed with -c sandbox_mode="read-only" refused a
-# write. Those ran as bare codex exec. With the adapter's argv, which adds
-# --ignore-user-config and --ignore-rules, git commit and git add were
-# refused in read-only, in workspace-write and in a session resumed
-# read-only, and a write was refused in read-only. Without --ignore-rules,
-# a host's ~/.codex/rules allow rules run matching commands, such as git
-# commit, outside the sandbox (seen on 0.160.0 and 0.161.0): observe a
-# mapping's git and other ruled commands with the adapter's argv (LAB-125).
-# Re-observed on codex-cli 0.162.0 (2026-10-09), in a scratch repository,
-# with the adapter's argv and one shell script run as a single command, so
-# the sandbox, not the model, decided each action: read-only read a file
-# and ran git show, and refused creating a file in the repository, writing
-# under /tmp, writing in the home directory, touch in .git, git tag, git
-# commit and network; workspace-write wrote in the workspace and under
-# /tmp, and refused writing in the home directory, touch in .git, git tag,
-# git commit and network; the workspace-write session resumed with
-# -c sandbox_mode="read-only" refused every write. Asked to run the same
-# actions as separate commands, the model skipped the writes and reported
-# exit codes for commands it never ran: observe with one script.
+# A version is listed as verified for a primitive once
+# agister/scripts/codex-sandbox-contract.py passes on it.
 schema: agister.runtime/v1alpha1
 name: codex
 adapter: codex

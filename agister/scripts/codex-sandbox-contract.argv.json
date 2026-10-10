@@ -1,0 +1,5 @@
+{
+  "read-only": ["exec", "--json", "--skip-git-repo-check", "--sandbox", "read-only", "--config", "approval_policy=\"never\"", "--ignore-user-config", "--ignore-rules", "--config", "model_reasoning_effort=\"low\"", "-"],
+  "workspace-write": ["exec", "--json", "--skip-git-repo-check", "--sandbox", "workspace-write", "--config", "approval_policy=\"never\"", "--ignore-user-config", "--ignore-rules", "--config", "model_reasoning_effort=\"low\"", "-"],
+  "resumed read-only": ["exec", "resume", "THREAD_ID", "--json", "--skip-git-repo-check", "--config", "sandbox_mode=\"read-only\"", "--config", "approval_policy=\"never\"", "--ignore-user-config", "--ignore-rules", "--config", "model_reasoning_effort=\"low\"", "-"]
+}
