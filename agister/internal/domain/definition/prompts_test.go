@@ -1,6 +1,7 @@
 package definition_test
 
 import (
+	"errors"
 	"reflect"
 	"strings"
 	"testing"
@@ -8,26 +9,29 @@ import (
 	"github.com/igor1309/ai-labs/agister/internal/domain/definition"
 )
 
-// Prompts are settings (ADR-014).
+// Prompts are settings (ADR-014), which a process names as its prompt and
+// its guidance (ADR-028 rule 8).
 
-// promptProcess is a text process whose only input is the value given,
-// indented under input.values.
-func promptProcess(value string) string {
+// promptProcess is a text process with the given top-level fields, its
+// prompt and guidance among them, and the given values indented under
+// input.values.
+func promptProcess(fields, values string) string {
 	return `schema: agister.process/v1alpha1
 name: p
 type: process
 uses: agent:a
-input:
+` + fields + `input:
   instruction: Review it.
   params:
     which: {default: review}
   values:
-` + value + `output:
+    diff: {source: git.diff}
+` + values + `output:
   format: text
 `
 }
 
-// Rule 1: a prompt document is its text, unchanged, with no header.
+// ADR-014 rule 1: a prompt document is its text, unchanged, with no header.
 func TestAPromptIsItsText(t *testing.T) {
 	t.Parallel()
 	text := "# Review\n\nschema: is not a header here.\n  Indented, ${param.x} and all.\n"
@@ -49,116 +53,117 @@ func TestAPromptIsItsText(t *testing.T) {
 	}
 }
 
-// Rule 2: a prompt input has exactly one argument, name, a literal
-// document name.
-func TestAPromptInputNamesItsDocumentLiterally(t *testing.T) {
+// ADR-028 rule 8: a process names one prompt and a guidance list, which in
+// no layer, or [], means none; Prompts lists the prompt, then the
+// guidance, in order.
+func TestAProcessNamesOnePromptAndAGuidanceList(t *testing.T) {
 	t.Parallel()
-	process, err := definition.ParseProcess(doc(definition.KindProcess, "p", promptProcess(
-		"    rules: {source: prompt, name: review}\n    style: {source: prompt, name: style}\n    again: {source: prompt, name: review}\n")))
-	if err != nil {
-		t.Fatal(err)
+	for name, c := range map[string]struct {
+		fields   string
+		guidance []string
+	}{
+		"no guidance":     {"prompt: review\n", nil},
+		"empty guidance":  {"prompt: review\nguidance: []\n", []string{}},
+		"one":             {"prompt: review\nguidance: [testing]\n", []string{"testing"}},
+		"two, in order":   {"prompt: review\nguidance: [style, testing]\n", []string{"style", "testing"}},
+		"guidance before": {"guidance: [testing]\nprompt: review\n", []string{"testing"}},
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			process, err := definition.ParseProcess(doc(definition.KindProcess, "p", promptProcess(c.fields, "")))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if process.Prompt != "review" || len(process.Guidance) != len(c.guidance) || !reflect.DeepEqual(process.Prompts(), append([]string{"review"}, c.guidance...)) {
+				t.Fatalf("prompt %q, guidance %q, prompts %q", process.Prompt, process.Guidance, process.Prompts())
+			}
+		})
 	}
-	want := definition.Value{Name: "rules", Source: "prompt", Args: map[string]string{"name": "review"}}
-	if !reflect.DeepEqual(process.Values[0], want) || !reflect.DeepEqual(process.Prompts(), []string{"review", "style"}) {
-		t.Fatalf("values %+v, prompts %q", process.Values, process.Prompts())
-	}
+}
 
-	cases := map[string]struct{ value, want string }{
-		"name missing":       {"    rules: {source: prompt}\n", "input.values.rules.name: is required"},
-		"name interpolated":  {"    rules: {source: prompt, name: \"${param.which}\"}\n", "input.values.rules.name: is not interpolated: name the prompt document literally"},
-		"name partly so":     {"    rules: {source: prompt, name: \"review_${param.which}\"}\n", "input.values.rules.name: is not interpolated"},
-		"an extra argument":  {"    rules: {source: prompt, name: review, path: review.md}\n", "input.values.rules.path: is not an argument of source prompt, which takes only name and optional"},
-		"a path, not a name": {"    rules: {source: prompt, name: ../review}\n", `input.values.rules.name: invalid prompt name "../review"`},
-		"an empty name":      {"    rules: {source: prompt, name: \"\"}\n", `input.values.rules.name: invalid prompt name ""`},
+// ADR-028 rule 8: prompt is required, and both are literal names, never
+// interpolated (ADR-014 rule 2); guidance names each prompt once, and a
+// further one than the prompt.
+func TestThePromptAndTheGuidanceAreLiteralNames(t *testing.T) {
+	t.Parallel()
+	cases := map[string]struct{ fields, want string }{
+		"no prompt":                  {"guidance: [testing]\n", "prompt: is required"},
+		"an empty prompt":            {"prompt: \"\"\n", "prompt: must not be empty"},
+		"a prompt list":              {"prompt: [review]\n", "prompt: must be a scalar"},
+		"a prompt interpolated":      {"prompt: \"${param.which}\"\n", "prompt: is not interpolated: name the prompt document literally"},
+		"a prompt partly so":         {"prompt: \"review_${param.which}\"\n", "prompt: is not interpolated"},
+		"a prompt path":              {"prompt: ../review\n", `prompt: invalid prompt name "../review"`},
+		"a prompt twice":             {"prompt: review\nprompt: style\n", "prompt: is declared more than once: a process has one prompt"},
+		"guidance a name":            {"prompt: review\nguidance: testing\n", "guidance: must be a list of prompt names; [] for none"},
+		"guidance a map":             {"prompt: review\nguidance: {testing: true}\n", "guidance: must be a list of prompt names; [] for none"},
+		"guidance interpolated":      {"prompt: review\nguidance: [\"${param.which}\"]\n", "guidance[0]: is not interpolated: name the prompt document literally"},
+		"guidance a path":            {"prompt: review\nguidance: [testing, prompts/style.md]\n", `guidance[1]: invalid prompt name "prompts/style.md"`},
+		"guidance an empty name":     {"prompt: review\nguidance: [\"\"]\n", `guidance[0]: invalid prompt name ""`},
+		"guidance a name twice":      {"prompt: review\nguidance: [testing, style, testing]\n", `guidance[2]: prompt "testing" is named twice (also guidance[0])`},
+		"guidance names the prompt":  {"prompt: review\nguidance: [review]\n", `guidance[0]: prompt "review" is the process's prompt: guidance names further prompts`},
+		"guidance declared twice":    {"prompt: review\nguidance: [testing]\nguidance: [style]\n", "guidance: is declared more than once: one list names the process's guidance"},
+		"guidance a list of lists":   {"prompt: review\nguidance: [[testing]]\n", "guidance[0]: must be a scalar"},
+		"guidance null, not a list":  {"prompt: review\nguidance: null\n", "guidance: must be a list of prompt names; [] for none"},
+		"a value named prompt":       {"prompt: review\n", ""},
+		"a value named for guidance": {"prompt: review\n", ""},
+	}
+	values := map[string]struct{ value, want string }{
+		"a value named prompt":       {"    prompt: {source: param, name: which}\n", "input.values.prompt: is the input that gives the process's prompt (ADR-028): name this value otherwise"},
+		"a value named for guidance": {"    guidance.testing: {source: param, name: which}\n", "input.values.guidance.testing: is the name of an input that gives a guidance prompt (ADR-028): name this value otherwise"},
 	}
 	for name, c := range cases {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
-			_, err := definition.ParseProcess(doc(definition.KindProcess, "p", promptProcess(c.value)))
-			if err == nil || !strings.Contains(err.Error(), "\n  "+c.want) {
-				t.Fatalf("err = %v, want %q", err, c.want)
+			value, want := values[name].value, c.want
+			if want == "" {
+				want = values[name].want
 			}
-		})
-	}
-}
-
-// ADR-019 rule 1: a prompt input may be optional; optional takes only
-// true, and leaving it out means required. A prompt that a required input
-// also names is required.
-func TestAPromptInputMayBeOptional(t *testing.T) {
-	t.Parallel()
-	process, err := definition.ParseProcess(doc(definition.KindProcess, "p", promptProcess(
-		"    rules: {source: prompt, name: review}\n    go: {source: prompt, name: go_tests, optional: true}\n    style: {source: prompt, name: style, optional: true}\n    again: {source: prompt, name: review, optional: true}\n")))
-	if err != nil {
-		t.Fatal(err)
-	}
-	var optional []bool
-	for _, value := range process.Values {
-		optional = append(optional, value.Optional())
-	}
-	if !reflect.DeepEqual(optional, []bool{false, true, true, true}) {
-		t.Fatalf("optional = %v", optional)
-	}
-	if got := process.OptionalPrompts(); !reflect.DeepEqual(got, []string{"go_tests", "style"}) {
-		t.Fatalf("optional prompts = %q", got)
-	}
-	if !reflect.DeepEqual(process.Prompts(), []string{"review", "go_tests", "style"}) {
-		t.Fatalf("prompts = %q", process.Prompts())
-	}
-
-	for name, value := range map[string]string{"false": "false", "no": "no", "a string": `"yes"`, "a number": "1", "empty": `""`} {
-		t.Run(name, func(t *testing.T) {
-			t.Parallel()
-			_, err := definition.ParseProcess(doc(definition.KindProcess, "p", promptProcess("    rules: {source: prompt, name: review, optional: "+value+"}\n")))
-			if want := "\n  input.values.rules.optional: takes only true; leave it out for a required prompt"; err == nil || !strings.Contains(err.Error(), want) {
+			_, err := definition.ParseProcess(doc(definition.KindProcess, "p", promptProcess(c.fields, value)))
+			if err == nil || !strings.Contains(err.Error(), "\n  "+want) {
 				t.Fatalf("err = %v, want %q", err, want)
 			}
 		})
 	}
 }
 
-// ADR-019 rule 5: no other input refers to an optional prompt's value; a
-// required one may be referred to, as before.
-func TestNoInputRefersToAnOptionalPrompt(t *testing.T) {
+// ADR-028 rule 8: {source: prompt} is no longer an input source, and
+// optional goes with it, on any input: each is a problem of the process,
+// which names prompt and guidance, and not one a newer Agister's settings
+// would have.
+func TestThePromptSourceAndOptionalAreRefused(t *testing.T) {
 	t.Parallel()
-	refers := "    other: {source: git.diff, base: \"${value.rules}\"}\n"
-	_, err := definition.ParseProcess(doc(definition.KindProcess, "p", promptProcess("    rules: {source: prompt, name: review, optional: true}\n"+refers)))
-	if want := "\n  input.values.other: refers to ${value.rules}, an optional prompt, which may be missing"; err == nil || !strings.Contains(err.Error(), want) {
-		t.Fatalf("err = %v, want %q", err, want)
-	}
-	if _, err := definition.ParseProcess(doc(definition.KindProcess, "p", promptProcess("    rules: {source: prompt, name: review}\n"+refers))); err != nil {
-		t.Fatalf("a required prompt referred to: %v", err)
-	}
-}
-
-// Rule 5 with names that repeat: a later input of the name supplies its
-// text, so a reference is a problem when any input of that name declared
-// before it is an optional prompt, in either order. One declared after the
-// reference is not referred to.
-func TestNoInputRefersToAnOptionalPromptOfARepeatedName(t *testing.T) {
-	t.Parallel()
-	refers := "    other: {source: git.diff, base: \"${value.rules}\"}\n"
-	required := "    rules: {source: prompt, name: review}\n"
-	optional := "    rules: {source: prompt, name: go_tests, optional: true}\n"
-	want := "\n  input.values.other: refers to ${value.rules}, an optional prompt, which may be missing"
-	for name, values := range map[string]string{
-		"required, then optional": required + optional + refers,
-		"optional, then required": optional + required + refers,
+	source := "input.values.rules.source: source prompt is no longer an input source (ADR-028): a process names its prompt in prompt and further prompts in guidance"
+	optional := "input.values.%s.optional: is no longer read (ADR-028): no input is optional; a prompt only some layers have is guidance those layers set"
+	for name, c := range map[string]struct {
+		value string
+		want  []string
+	}{
+		"a prompt input":               {"    rules: {source: prompt, name: review}\n", []string{source}},
+		"an optional prompt input":     {"    rules: {source: prompt, name: review, optional: true}\n", []string{strings.ReplaceAll(optional, "%s", "rules"), source}},
+		"an optional file input":       {"    brief: {source: file, path: brief.md, optional: true}\n", []string{strings.ReplaceAll(optional, "%s", "brief")}},
+		"optional false, on any input": {"    base: {source: param, name: which, optional: false}\n", []string{strings.ReplaceAll(optional, "%s", "base")}},
 	} {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
-			if _, err := definition.ParseProcess(doc(definition.KindProcess, "p", promptProcess(values))); err == nil || !strings.Contains(err.Error(), want) {
-				t.Fatalf("err = %v, want %q", err, want)
+			_, err := definition.ParseProcess(doc(definition.KindProcess, "p", promptProcess("prompt: review\n", c.value)))
+			var invalid *definition.InvalidError
+			if !errors.As(err, &invalid) {
+				t.Fatalf("err = %v", err)
+			}
+			if !reflect.DeepEqual(invalid.Messages(), c.want) {
+				t.Fatalf("problems:\n  %s\nwant:\n  %s", strings.Join(invalid.Messages(), "\n  "), strings.Join(c.want, "\n  "))
+			}
+			for _, problem := range invalid.Problems {
+				if problem.Unknown {
+					t.Fatalf("%q is reported as unknown, as a newer Agister's setting", problem.Message)
+				}
 			}
 		})
-	}
-	if _, err := definition.ParseProcess(doc(definition.KindProcess, "p", promptProcess(required+refers+optional))); err != nil {
-		t.Fatalf("an optional prompt declared after the reference: %v", err)
 	}
 }
 
 // A workflow's values are resolved once for every node; it names no
-// prompt: the process that needs one does.
+// prompt: the process that needs one does, and the source is gone.
 func TestAWorkflowValueIsNoPrompt(t *testing.T) {
 	t.Parallel()
 	text := `schema: agister.workflow/v1alpha1
@@ -172,7 +177,41 @@ fan_out:
 join: {node: j, uses: "process:q"}
 `
 	_, err := definition.ParseWorkflow(doc(definition.KindWorkflow, "w", text))
-	if err == nil || !strings.Contains(err.Error(), "\n  input.values.rules.source: prompt is given only to a process") {
+	if err == nil || !strings.Contains(err.Error(), "\n  input.values.rules.source: source prompt is no longer an input source (ADR-028)") {
 		t.Fatalf("err = %v", err)
+	}
+}
+
+// ADR-028 rule 9: a layer's layer.yaml names the folders its prompts are
+// also found in, each relative to the directory that holds the layer's
+// .agister and inside it.
+func TestALayerNamesItsPromptFolders(t *testing.T) {
+	t.Parallel()
+	settings, err := definition.ParseLayer([]byte("schema: agister.layer/v1alpha1\nprompts:\n  - prompts\n  - docs/./rules/\n"))
+	if err != nil || !reflect.DeepEqual(settings.Prompts, []string{"prompts", "docs/rules"}) {
+		t.Fatalf("settings %+v, %v", settings, err)
+	}
+	if settings, err := definition.ParseLayer([]byte("schema: agister.layer/v1alpha1\n")); err != nil || settings.Prompts != nil {
+		t.Fatalf("no folders: settings %+v, %v", settings, err)
+	}
+	for name, c := range map[string]struct{ text, want string }{
+		"no schema":        {"prompts: [prompts]\n", "schema: is required"},
+		"another schema":   {"schema: agister.process/v1alpha1\nprompts: [prompts]\n", `schema: must be "agister.layer/v1alpha1"`},
+		"an unknown field": {"schema: agister.layer/v1alpha1\nskills: [skills]\n", "skills: unknown field"},
+		"not a list":       {"schema: agister.layer/v1alpha1\nprompts: prompts\n", "prompts: must be a list"},
+		"an absolute path": {"schema: agister.layer/v1alpha1\nprompts: [/etc/prompts]\n", `prompts[0]: "/etc/prompts" is not inside the directory that holds .agister`},
+		"a .. that leaves": {"schema: agister.layer/v1alpha1\nprompts: [prompts, ../prompts]\n", `prompts[1]: "../prompts" is not inside the directory that holds .agister`},
+		"an empty folder":  {"schema: agister.layer/v1alpha1\nprompts: [\"\"]\n", "prompts[0]: must not be empty"},
+		"a folder twice":   {"schema: agister.layer/v1alpha1\nprompts: [prompts, ./prompts]\n", `prompts[1]: "./prompts" is listed twice`},
+		"not one mapping":  {"- prompts\n", "must be a mapping"},
+		"two documents":    {"schema: agister.layer/v1alpha1\n---\nprompts: [prompts]\n", "must hold exactly one YAML document"},
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			_, err := definition.ParseLayer([]byte(c.text))
+			if err == nil || !strings.Contains(err.Error(), c.want) {
+				t.Fatalf("err = %v, want %q", err, c.want)
+			}
+		})
 	}
 }

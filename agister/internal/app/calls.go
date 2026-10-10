@@ -74,14 +74,18 @@ type ResolvedCall struct {
 	Agent   CallAgent
 	Mapping CallMapping
 	Schema  []byte
-	Prompts map[string]Resolved // by name: each prompt's text, identified by its digest
-	Absent  []CallAbsent        // the optional prompt inputs whose prompt neither layer has (ADR-019)
+	// Prompts are the process's prompt, then each guidance prompt, in order,
+	// each as the input that gives it (ADR-028 rule 8).
+	Prompts []CallPrompt
 	// Forms are the brief forms its inputs name, by name (ADR-026 rule 8).
 	Forms map[string]CallForm
 	// Skills are the call's skills, in order: the process's, then its
 	// agent's, each once (ADR-021).
-	Skills    []CallSkill
-	Sources   []CallSource
+	Skills  []CallSkill
+	Sources []CallSource
+	// Layers are the settings layers the call selected, nearest first
+	// (ADR-028 rule 11).
+	Layers    []CallLayer
 	Effective CallLimits
 	Identity  CallRuntime
 	Plan      CallPlan
@@ -138,12 +142,12 @@ type CallValue struct {
 // part refers to exists.
 type CallForm func(text string, resolve func(path string) error) []string
 
-// CallAbsent is an optional prompt input whose prompt neither layer has
-// (ADR-019): the call goes ahead without it, and only it.
-type CallAbsent struct {
-	Index  int // among the process's values
-	Input  string
-	Prompt string
+// CallPrompt is a prompt a call is given, after its process's input
+// values: the input that gives it, prompt or guidance.<name>, and its
+// text, identified by its digest (ADR-028 rule 8).
+type CallPrompt struct {
+	Input string
+	Text  Resolved
 }
 
 // CallVerify is a process's verification command (ADR-002).
@@ -169,14 +173,29 @@ type CallMapping struct {
 	Adapter string
 }
 
-// CallSource is where a definition a call resolved came from.
+// CallSource is a definition a call resolved, and the layer files it was
+// composed from, nearest first; a document taken whole has the one it was
+// read from (ADR-028 rule 11).
 type CallSource struct {
-	Kind      string
-	Name      string
-	Path      string
-	SHA256    string
-	Project   bool
-	Overrides string // the global definition this project one takes priority over
+	Kind   string
+	Name   string
+	Layers []CallSourceLayer
+}
+
+// CallSourceLayer is one layer's file of a definition a call resolved.
+type CallSourceLayer struct {
+	Layer  string // home, repository or project
+	Path   string
+	SHA256 string
+	// Fields are the fields the file gave the composition: none when it
+	// gave nothing, nil on a document taken whole.
+	Fields []string
+}
+
+// CallLayer is one settings layer a call selected, and its directory.
+type CallLayer struct {
+	Layer string // home, repository or project
+	Dir   string
 }
 
 // CallLimits are a call's composed limits.
@@ -216,6 +235,9 @@ type ResolvedWorkflow struct {
 	Workflow      CallWorkflow
 	NodeProcesses map[string]CallNodeProcess // by name
 	Sources       []CallSource               // the workflow's document, then its brief forms'
+	// Layers are the settings layers the run selected, nearest first: its
+	// nodes' calls resolve against the same (ADR-028 rule 10).
+	Layers []CallLayer
 	// Forms are the brief forms its inputs name, by name (ADR-026 rule 8).
 	Forms map[string]CallForm
 }
@@ -265,6 +287,7 @@ func (c callResolution) Resolve(ctx context.Context, request CallResolveRequest)
 		Schema:  res.schema,
 		Forms:   callForms(res.forms),
 		Sources: callSources(res.sources),
+		Layers:  callLayers(c.resolver.definitions.Layers(ctx)),
 		Effective: CallLimits{
 			Timeout: effective.Timeout, MaxAttempts: effective.MaxAttempts, MaxCostUSD: effective.MaxCostUSD,
 			Allow: effective.Allow, Deny: effective.Deny, Permissions: effective.Permissions, Require: effective.Require,
@@ -277,14 +300,12 @@ func (c callResolution) Resolve(ctx context.Context, request CallResolveRequest)
 	if verify := process.Verify; verify != nil {
 		resolved.Process.Verify = &CallVerify{Command: verify.Command, Timeout: verify.Timeout, MaxAttempts: verify.MaxAttempts, Instruction: verify.Instruction}
 	}
-	for name, prompt := range res.prompts {
-		if resolved.Prompts == nil {
-			resolved.Prompts = map[string]Resolved{}
+	resolved.Prompts = translated(res.prompts, func(prompt definition.Prompt) CallPrompt {
+		input := definition.PromptInput
+		if prompt.Name != process.Prompt {
+			input = definition.GuidanceInput + prompt.Name
 		}
-		resolved.Prompts[name] = Resolved{Value: prompt.Text, Identity: "sha256:" + prompt.Source.SHA256}
-	}
-	resolved.Absent = translated(res.absent, func(absent absentInput) CallAbsent {
-		return CallAbsent{Index: absent.index, Input: absent.input, Prompt: absent.prompt}
+		return CallPrompt{Input: input, Text: Resolved{Value: prompt.Text, Identity: "sha256:" + prompt.Source.SHA256}}
 	})
 	resolved.Skills = translated(res.skills, func(skill definition.Skill) CallSkill {
 		return CallSkill{Name: skill.Name, Bytes: skill.Bytes, Identity: "sha256:" + skill.Source.SHA256}
@@ -306,6 +327,7 @@ func (c callResolution) Workflow(ctx context.Context, name string) (*ResolvedWor
 		},
 		NodeProcesses: make(map[string]CallNodeProcess, len(res.processes)),
 		Sources:       callSources(res.sources),
+		Layers:        callLayers(c.resolver.definitions.Layers(ctx)),
 		Forms:         callForms(res.forms),
 	}
 	for name, process := range res.processes {
@@ -361,10 +383,22 @@ func callForms(forms map[string]definition.Brief) map[string]CallForm {
 
 func callSources(sources []definition.Source) []CallSource {
 	return translated(sources, func(source definition.Source) CallSource {
-		return CallSource{
-			Kind: string(source.Kind), Name: source.Name, Path: source.Path, SHA256: source.SHA256,
-			Project: source.Project, Overrides: source.Overrides,
+		files := source.Layers
+		if !definition.Composed(source.Kind) && len(files) > 1 {
+			files = files[:1] // the nearest replaces the rest, which the call did not read
 		}
+		return CallSource{
+			Kind: string(source.Kind), Name: source.Name,
+			Layers: translated(files, func(file definition.LayerFile) CallSourceLayer {
+				return CallSourceLayer{Layer: string(file.Layer), Path: file.Path, SHA256: file.SHA256, Fields: file.Fields}
+			}),
+		}
+	})
+}
+
+func callLayers(layers []definition.LayerDir) []CallLayer {
+	return translated(layers, func(layer definition.LayerDir) CallLayer {
+		return CallLayer{Layer: string(layer.Layer), Dir: layer.Dir}
 	})
 }
 
@@ -845,7 +879,7 @@ func (c *Calls) execute(ctx context.Context, handle RunHandle, record run.Record
 		Timeout: record.Request.Timeout, MaxCostUSD: record.Request.MaxCostUSD,
 	})
 	record.Definitions = recordSources(res.Sources)
-	record.AbsentPrompts = recordAbsent(res.Absent)
+	record.Layers = recordLayers(res.Layers)
 	if err != nil {
 		fail(err)
 		return
@@ -889,7 +923,7 @@ func (c *Calls) execute(ctx context.Context, handle RunHandle, record run.Record
 		return
 	}
 
-	inputs, files, err := c.resolveValues(ctx, "process "+res.Process.Name, res.Process.Params, res.Process.Values, record.Request, collection, res.Prompts, res.Absent, res.Forms)
+	inputs, files, err := c.resolveValues(ctx, "process "+res.Process.Name, res.Process.Params, res.Process.Values, record.Request, collection, res.Prompts, res.Forms)
 	// A refused text is recorded too: the refusal's evidence (ADR-026 rule
 	// 6).
 	if inputs != nil {
@@ -1143,6 +1177,7 @@ func (c *Calls) runWorkflow(ctx context.Context, handle RunHandle, record run.Re
 
 	if res != nil {
 		record.Definitions = recordSources(res.Sources)
+		record.Layers = recordLayers(res.Layers)
 	}
 	if resErr != nil {
 		refused(resErr)
@@ -1169,7 +1204,7 @@ func (c *Calls) runWorkflow(ctx context.Context, handle RunHandle, record run.Re
 
 	// Resolved once, before any node starts; every fan-out node receives the
 	// same values.
-	inputs, files, err := c.resolveValues(ctx, "workflow "+workflow.Name, workflow.Params, workflow.Values, record.Request, nil, nil, nil, res.Forms)
+	inputs, files, err := c.resolveValues(ctx, "workflow "+workflow.Name, workflow.Params, workflow.Values, record.Request, nil, nil, res.Forms)
 	// A refused text is recorded too: the refusal's evidence (ADR-026 rule
 	// 6).
 	if inputs != nil {
@@ -1526,16 +1561,15 @@ func (c *Calls) rebuilds(ctx context.Context, dir, revision string, patch []byte
 // value's arguments may use the text of the values resolved before it,
 // such as a commit hash. subject names the definition, e.g. "process p".
 // Only a join has a collection to receive; a collection input of any other
-// call is refused. prompts are the prompts resolved with the call, by name
-// (ADR-014 rule 3), and absent the optional prompt inputs neither layer has
-// the prompt of, by their index among values, which give no input (ADR-019
-// rule 2); a workflow has none. forms are the brief forms resolved with
+// call is refused. prompts are the prompts resolved with the call (ADR-014
+// rule 3), given after every value, in order (ADR-028 rule 8); a workflow
+// has none. forms are the brief forms resolved with
 // the call, by name, which a value's text must have one of (ADR-026 rule
 // 8). files are, by each input's place, the base name of the file it was
 // read from, empty for any other. A value its forms refuse refuses the
 // call with the inputs resolved so far, itself the last, to be kept as the
 // refusal's evidence (ADR-026 rule 6); any other refusal returns none.
-func (c *Calls) resolveValues(ctx context.Context, subject string, declared []CallParam, values []CallValue, request run.Request, collection *Resolved, prompts map[string]Resolved, absent []CallAbsent, forms map[string]CallForm) (inputs []run.Input, files []string, err error) {
+func (c *Calls) resolveValues(ctx context.Context, subject string, declared []CallParam, values []CallValue, request run.Request, collection *Resolved, prompts []CallPrompt, forms map[string]CallForm) (inputs []run.Input, files []string, err error) {
 	params := map[string]string{}
 	var unknown []string
 	for name := range request.Params {
@@ -1563,10 +1597,10 @@ func (c *Calls) resolveValues(ctx context.Context, subject string, declared []Ca
 		return nil, nil, refuse("%s is missing params: %s", subject, strings.Join(missing, ", "))
 	}
 
-	inputs = make([]run.Input, 0, len(values))
-	files = make([]string, 0, len(values))
+	inputs = make([]run.Input, 0, len(values)+len(prompts))
+	files = make([]string, 0, len(values)+len(prompts))
 	texts := map[string]string{}
-	for i, value := range values {
+	for _, value := range values {
 		if value.Source == definition.CollectionSource {
 			if collection == nil {
 				return nil, nil, refuse("input %s: %s is given only to a workflow's join", value.Name, definition.CollectionSource)
@@ -1575,18 +1609,6 @@ func (c *Calls) resolveValues(ctx context.Context, subject string, declared []Ca
 				texts[value.Name] = text
 			}
 			inputs, files = append(inputs, run.Input{Name: value.Name, Source: value.Source, Identity: collection.Identity, Value: collection.Value}), append(files, "")
-			continue
-		}
-		if value.Source == definition.PromptSource {
-			if slices.ContainsFunc(absent, func(a CallAbsent) bool { return a.Index == i }) {
-				continue
-			}
-			prompt, ok := prompts[value.Args["name"]]
-			if !ok {
-				return nil, nil, refuse("input %s: prompt %q was not resolved with the call", value.Name, value.Args["name"])
-			}
-			texts[value.Name] = prompt.Value.(string)
-			inputs, files = append(inputs, run.Input{Name: value.Name, Source: value.Source, Identity: prompt.Identity, Value: prompt.Value}), append(files, "")
 			continue
 		}
 		provider, ok := c.inputs[value.Source]
@@ -1608,6 +1630,9 @@ func (c *Calls) resolveValues(ctx context.Context, subject string, declared []Ca
 		if text, ok := resolved.Value.(string); ok {
 			texts[value.Name] = text
 		}
+	}
+	for _, prompt := range prompts {
+		inputs, files = append(inputs, run.Input{Name: prompt.Input, Source: definition.PromptSource, Identity: prompt.Text.Identity, Value: prompt.Text.Value}), append(files, "")
 	}
 	return inputs, files, nil
 }

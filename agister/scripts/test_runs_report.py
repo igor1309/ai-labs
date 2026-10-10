@@ -1,5 +1,6 @@
 """Tests for runs-report.py: python3 -m unittest, from agister/scripts."""
 
+import hashlib
 import importlib.util
 import json
 import os
@@ -81,6 +82,41 @@ class CodexRelativeSkillReadTest(unittest.TestCase):
         self.assertEqual(had["codex"], Counter({"demo": 1}))
         self.assertEqual(used["codex"], Counter())
         self.assertEqual(rows[0][-1], "-")
+
+
+class AgentEffortTest(unittest.TestCase):
+    def setUp(self):
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        self.dir = tmp.name
+
+    def layer(self, name, text):
+        path = os.path.join(self.dir, name)
+        with open(path, "w") as f:
+            f.write(text)
+        return {"layer": name, "path": path, "sha256": hashlib.sha256(text.encode()).hexdigest()}
+
+    def effort(self, definition):
+        return runs_report.agent_effort({"definitions": [{"kind": "agents", "name": "a", **definition}]})
+
+    def test_the_nearest_layer_that_sets_the_effort_gives_it(self):
+        project = self.layer("project", 'model = "m"\n')
+        repository = self.layer("repository", 'effort = "low"\n')
+        home = self.layer("home", 'effort = "high"\n')
+        self.assertEqual(self.effort({"layers": [project, repository, home]}), "low")
+        self.assertEqual(self.effort({"layers": [project, home]}), "high")
+        self.assertEqual(self.effort({"layers": [project]}), "-")
+
+    def test_a_layer_file_changed_since_the_run_gives_no_effort(self):
+        project = self.layer("project", 'model = "m"\n')
+        home = self.layer("home", 'effort = "high"\n')
+        with open(project["path"], "w") as f:
+            f.write('effort = "low"\n')
+        self.assertEqual(self.effort({"layers": [project, home]}), "?")
+
+    def test_a_record_from_before_the_layers_names_one_file(self):
+        home = self.layer("home", 'effort = "high"\n')
+        self.assertEqual(self.effort({"path": home["path"], "sha256": home["sha256"]}), "high")
 
 
 if __name__ == "__main__":

@@ -36,6 +36,7 @@ func process(t *testing.T, extra string) definition.Process {
 schema: agister.process/v1alpha1
 name: review
 type: process
+prompt: review
 uses: agent:reviewer
 policy: process-policy:static-review
 input:
@@ -98,6 +99,7 @@ func mustProcessWithWorkspace(t *testing.T, workspace string) definition.Process
 schema: agister.process/v1alpha1
 name: review
 type: process
+prompt: review
 uses: agent:reviewer
 policy: process-policy:static-review
 input:
@@ -205,6 +207,7 @@ func TestReadOnlyWithholdsTheVocabularysWritingPermissions(t *testing.T) {
 schema: agister.process/v1alpha1
 name: edit
 type: process
+prompt: review
 uses: agent:writer
 timeout: 1m
 tools: {allow: [docs.read, docs.write]}

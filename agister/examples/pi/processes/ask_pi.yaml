@@ -6,6 +6,7 @@ name: ask_pi
 type: process
 uses: agent:pi-minimax
 policy: process-policy:read-only
+prompt: ask
 
 input:
   instruction: >-

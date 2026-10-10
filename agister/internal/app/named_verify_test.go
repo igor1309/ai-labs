@@ -76,7 +76,7 @@ func TestACallVerifiesWithTheVerificationItsProcessNames(t *testing.T) {
 	var digest string
 	for _, source := range record.Definitions {
 		if source.Kind == string(definition.KindVerify) && source.Name == "repo" {
-			digest = source.SHA256
+			digest = digestRecorded(source)
 		}
 	}
 	if digest != sha(verification) {
@@ -232,7 +232,7 @@ func TestCheckLinksAProcessToItsVerification(t *testing.T) {
 	h := newHarness()
 	named(h, verification)
 	got := definitions(h)
-	uses := []contract.DefinitionRef{ref("agents", "a"), ref("policies", "pol"), ref("verifies", "repo"), ref("schemas", "s")}
+	uses := []contract.DefinitionRef{ref("agents", "a"), ref("policies", "pol"), ref("verifies", "repo"), ref("prompts", "inspect"), ref("schemas", "s")}
 	if p := got[ref("processes", "p")]; !reflect.DeepEqual(p.Uses, uses) {
 		t.Fatalf("p = %+v", p)
 	}
@@ -266,7 +266,7 @@ func TestShowProcessShowsTheNamedVerification(t *testing.T) {
 	if !reflect.DeepEqual(view.Warnings, []string{app.VerifyWarning}) {
 		t.Fatalf("warnings = %q", view.Warnings)
 	}
-	origin := contract.DefinitionOrigin{Kind: "verifies", Name: "repo", Layer: "global", Path: "mem/verifies/repo"}
+	origin := contract.DefinitionOrigin{Kind: "verifies", Name: "repo", Layer: "home", Path: "mem/verifies/repo"}
 	if !containsOrigin(view.Sources, origin) {
 		t.Fatalf("sources = %+v", view.Sources)
 	}
@@ -285,7 +285,7 @@ func TestShowProcessShowsTheNamedVerification(t *testing.T) {
 
 func containsOrigin(origins []contract.DefinitionOrigin, want contract.DefinitionOrigin) bool {
 	for _, origin := range origins {
-		if origin == want {
+		if origin.Kind == want.Kind && origin.Name == want.Name && origin.Layer == want.Layer && origin.Path == want.Path {
 			return true
 		}
 	}

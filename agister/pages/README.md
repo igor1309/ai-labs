@@ -9,22 +9,35 @@ shown last.
 
 ## Settings
 
-For a repo the page shows what Agister uses there: Agister home's settings
-with the repo's `.agister` over them. As in Agister, a repo file replaces
-the home file of the same kind and name, and the repo's `service.toml`
-replaces home's. Each item is marked `repo`, `home` or `repo, replaces
-home`.
+For a launch directory the page shows home's settings, the worktree root's
+`.agister` and the nearest project `.agister` below that root. Documents
+compose by field: maps merge by key; lists and scalars replace whole.
+Prompts, skills and schemas come whole from the nearest layer. Each item
+names its layer files, nearest first, as `home`, `repository` or `project`;
+a card lists the surviving fields from each file, and a table's layer chip
+shows them on hover. A file that gave no fields says `(none)`. Outside a
+git worktree only home is read. The server selects the layers and reads
+and composes the documents with Agister's own selection and store, given
+to it by `agister`, so the page says what a call launched there would
+use: a launch directory reached through a link is the directory it leads
+to, a farther layer's prompt or schema is named but not opened, a linked
+file is followed, and only the file names Agister reads count (`.yaml`,
+not `.yml`). On top of that the page shows no file over 256 KB, left out
+as if absent, and refuses a layer's file that is not a regular file, which
+it neither waits on nor replaces with the parent's.
 
 - **Workflows** and **Processes**, as cards: what each does (its leading
   comment), the `agister run` command with its required params (Copy puts
   it on the clipboard), the defaults, and then:
   - for a process, its agent (runtime, model, effort, session), its policy
     (workspace, timeout, cost cap, what it allows and denies), its output
-    schema and verify attempts (of the verification it names, when it
+    schema with its layer files and verify attempts (of the verification it names, when it
     names one; marked missing when these settings have none of that name),
-    the prompts it names, each once, marked missing when these
-    settings have none of that name, and for a repo with the layer it
-    comes from; the skills its call gets, its own and then its agent's
+    that verification's layer files with the fields each gave,
+    its required `prompt` and its `guidance` list separately (`none` for
+    an empty list), names marked missing when no layer has them, with
+    their layer files, and one Agister cannot read with its error, as
+    Agister refuses the call; the skills its call gets, its own and then its agent's
     (ADR-021), listed the same way, each that fails its checks marked
     `checks failed` (D-16); the brief forms its file inputs name (`form`,
     ADR-026), listed as prompts are; and what its call needs of the
@@ -35,8 +48,10 @@ home`.
     opus`), the brief forms its inputs name, listed as a process's, then
     the steps: the ones run at once (`First` when there is
     one) and the one run after them. Each step shows its name, what it
-    does, its agent and its policy. Steps are not repeated under
-    Processes; they still run alone.
+    does, its agent and its policy, and, as a process card does, its
+    `prompt`, its `guidance`, its output schema, its layer files and its
+    verification's.
+    Steps are not repeated under Processes; they still run alone.
 - **Building blocks**, as tables: agents (with the skills each names,
   listed as on a process card), policies, runtimes and the service limits,
   each with what it means.
@@ -47,12 +62,12 @@ and value lines.
 
 A name the settings do not define shows in red as missing: Agister refuses
 such a call. A file that does not parse shows its error. Every YAML
-settings file holds exactly one YAML document, as in Agister: one with a
-second after a `---`, even an empty one, does not parse, and a runtime
+settings file holds exactly one YAML document, as in Agister: a `---`
+may open it, but one with a second after a `---`, even an empty one, does
+not parse, and a runtime
 file with a second document is refused by the server's skill inventory
-with the problem `must hold exactly one YAML document`, unless a repo
-runtime of the same name replaces it, so the page does not open those
-settings. ↻ reads the settings again.
+with the problem `must hold exactly one YAML document`, even when a
+nearer layer holds a partial, so the page does not open those settings. ↻ reads the settings again.
 
 ## Runs
 
@@ -92,11 +107,12 @@ the runs again.
 
 A settings skill's existence, layer and checks come from one place, the
 `settings` list of `/api/skills`, read with the settings files, which
-leave skills out (D-16); both views show that. A repo skill that is there
-goes over home's of the same name whatever its state, too large, empty,
+leave skills out (D-16); both views show that. A project or repository skill that is there
+goes over farther layers' skills of the same name whatever its state: too
+large, empty,
 without `SKILL.md` or a symlink, as Agister refuses the call rather than
-fall back to home's; it shows its failed checks. Only a skill the repo
-does not have is home's.
+fall back to a farther layer's; it shows its failed checks. Only a skill
+the nearer layer does not have comes from a farther one.
 
 - **Overview**: what the runtimes would load, as a matrix, a row per
   skill name and a column per agent
@@ -108,8 +124,8 @@ does not have is home's.
 - **An agent**: its runtime, adapter, model and effort; under *Its
   settings name*, the skills of the settings' `skills/` folders that it
   names and that each process on it names, each with what names it (the
-  agent, or `process <name>`), its layer (`repo`, `home` or `repo, replaces
-  home`) and its checks, or marked missing when neither layer has it;
+  agent, or `process <name>`), its layer files (`project`, `repository`,
+  `home`) and its checks, or marked missing when no layer has it;
   under *Its runtime would load from the repo and the home*, the skills
   its runtime would load, each with `repo` or `home`, its folder and its
   checks; what that runtime loads from elsewhere and the list leaves out
@@ -172,6 +188,12 @@ The server writes nothing and answers these endpoints:
   skipped, and so is `skills/`: no
   file of it is read here, so one that cannot be read fails nothing; the
   settings' skills are `/api/skills`' `settings` (ADR-011 rule 9, D-16).
+  With them come `layers`, the layers selected for `<path>`, farthest
+  first; `composedFiles`, each document as Agister composes it, and the
+  prompts a process names as `prompt` or `guidance`, found as a call finds
+  them, in the folders a `layer.yaml` lists too; and `sources`, each
+  document's layer files, nearest first, with the fields each gave, or the
+  error that stops the document.
 - `GET /api/skills?path=<absolute repo path | ~>`: the skill folders of
   ADR-011's table for the runtime adapters the settings at that path
   define (the `adapter` of each `runtimes/` file, the repo's over Agister

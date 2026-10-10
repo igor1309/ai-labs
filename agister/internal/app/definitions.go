@@ -304,7 +304,7 @@ func (s *Settings) CreateAgent(ctx context.Context, spec contract.Agent, overwri
 	if exists && !overwrite {
 		return contract.AgentWrite{}, &contract.InputError{Message: fmt.Sprintf("agent %s already exists at %s (overwrite to replace it)", agent.Name, path)}
 	}
-	if err := s.keepsSettingsValid(ctx, definition.Document{Source: definition.Source{Kind: definition.KindAgent, Name: agent.Name, Path: path}, Bytes: data}); err != nil {
+	if err := s.keepsSettingsValid(ctx, definition.Document{Source: definition.Source{Kind: definition.KindAgent, Name: agent.Name, Path: path, Layer: definition.LayerHome}, Bytes: data}); err != nil {
 		return contract.AgentWrite{}, err
 	}
 	sum := sha256.Sum256(data)
@@ -499,7 +499,6 @@ type InspectedProcess struct {
 	Primitives  []string // the plan's
 	Withheld    []string // allowed but not provided
 	Sources     []InspectedSource
-	Absent      []string // the optional prompts neither layer has (ADR-019)
 }
 
 // InspectedDefinition is what the view shows of a process's definition.
@@ -512,8 +511,8 @@ type InspectedDefinition struct {
 	Values       []InspectedValue
 	Verify       *InspectedVerify // unset: no verification, or a named one not resolved
 	VerifyName   string           // the verification it names; empty for an inline block
-	Prompts      []string         // the prompts its inputs name
-	Optional     []string         // those of Prompts only optional inputs name (ADR-019)
+	Prompt       string           // the prompt it names (ADR-028 rule 8)
+	Guidance     []string         // the further prompts it names, in order
 	Skills       []string         // the skills it names
 }
 
@@ -527,10 +526,9 @@ type InspectedParam struct {
 // InspectedValue is an input a process or workflow declares, and its
 // source kind.
 type InspectedValue struct {
-	Name     string
-	Source   string
-	Optional bool     // an optional prompt (ADR-019)
-	Forms    []string // the brief forms its text must have one of (ADR-026 rule 8)
+	Name   string
+	Source string
+	Forms  []string // the brief forms its text must have one of (ADR-026 rule 8)
 }
 
 // InspectedVerify is a process's verification command.
@@ -571,14 +569,26 @@ func inspectedStale(stale CallStale) InspectedStale {
 	}
 }
 
-// InspectedSource is where a definition came from.
+// InspectedSource is where a definition came from: the nearest layer that
+// holds it and that layer's file, and every layer file that holds it,
+// nearest first.
 type InspectedSource struct {
-	Kind    string
-	Name    string
-	Path    string
-	Project bool
-	// The global definition this project one takes priority over.
-	Overrides string
+	Kind   string
+	Name   string
+	Layer  string // home, repository or project
+	Path   string
+	Layers []InspectedLayer
+}
+
+// InspectedLayer is one layer's file of a definition.
+type InspectedLayer struct {
+	Layer string // home, repository or project
+	Path  string
+	// Fields are the fields the file gave the composition: none when it
+	// gave nothing, nil on a document taken whole.
+	Fields []string
+	// Replaced: a farther layer's file of a document taken whole.
+	Replaced bool
 }
 
 // InspectedWorkflow is a workflow and its nodes' processes, as a run of it
@@ -621,7 +631,7 @@ func (r *Resolver) InspectProcess(ctx context.Context, name, agent string) (*Ins
 			Name: process.Name, Policy: process.Policy,
 			OutputFormat: process.Output.Format, OutputSchema: process.Output.Schema,
 			Params: inspectedParams(process.Params), Values: inspectedValues(process.Values),
-			VerifyName: process.VerifyName, Prompts: process.Prompts(), Optional: process.OptionalPrompts(), Skills: process.Skills,
+			VerifyName: process.VerifyName, Prompt: process.Prompt, Guidance: process.Guidance, Skills: process.Skills,
 		},
 		Agent:       res.agent.Name,
 		AgentSkills: definition.CallSkills(process, res.agent)[len(process.Skills):],
@@ -637,13 +647,6 @@ func (r *Resolver) InspectProcess(ctx context.Context, name, agent string) (*Ins
 	}
 	if verify := process.Verify; verify != nil {
 		inspected.Process.Verify = &InspectedVerify{Command: verify.Command, Timeout: verify.Timeout, MaxAttempts: verify.MaxAttempts, Instruction: verify.Instruction}
-	}
-	for _, name := range inspected.Process.Prompts {
-		for _, absent := range res.absent {
-			if absent.prompt == name && !contains(inspected.Absent, name) {
-				inspected.Absent = append(inspected.Absent, name)
-			}
-		}
 	}
 	return inspected, err
 }
@@ -691,13 +694,18 @@ func formed(forms []string) string {
 
 func inspectedValues(values []definition.Value) []InspectedValue {
 	return translated(values, func(value definition.Value) InspectedValue {
-		return InspectedValue{Name: value.Name, Source: value.Source, Optional: value.Optional(), Forms: value.Forms}
+		return InspectedValue{Name: value.Name, Source: value.Source, Forms: value.Forms}
 	})
 }
 
 func inspectedSources(sources []definition.Source) []InspectedSource {
 	return translated(sources, func(source definition.Source) InspectedSource {
-		return InspectedSource{Kind: string(source.Kind), Name: source.Name, Path: source.Path, Project: source.Project, Overrides: source.Overrides}
+		return InspectedSource{
+			Kind: string(source.Kind), Name: source.Name, Layer: string(source.Layer), Path: source.Path,
+			Layers: translated(definitionLayers(source), func(layer contract.DefinitionLayer) InspectedLayer {
+				return InspectedLayer{Layer: layer.Layer, Path: layer.Path, Fields: layer.Fields, Replaced: layer.Replaced}
+			}),
+		}
 	})
 }
 
@@ -799,9 +807,8 @@ func (i *Inspection) showProcess(ctx context.Context, name, agent string) (contr
 		Primitives:  res.Primitives,
 		Withheld:    res.Withheld,
 		VerifyName:  res.Process.VerifyName,
-		Prompts:     res.Process.Prompts,
-		Optional:    res.Process.Optional,
-		Absent:      res.Absent,
+		Prompt:      res.Process.Prompt,
+		Guidance:    res.Process.Guidance,
 		Skills:      res.Process.Skills,
 		AgentSkills: res.AgentSkills,
 	}
@@ -812,11 +819,7 @@ func (i *Inspection) showProcess(ctx context.Context, name, agent string) (contr
 		view.Params = append(view.Params, contract.Param{Name: param.Name, Default: param.Default, Required: !param.HasDefault})
 	}
 	for _, value := range res.Process.Values {
-		input := value.Name + " <- " + value.Source + formed(value.Forms)
-		if value.Optional {
-			input += " (optional)"
-		}
-		view.Inputs = append(view.Inputs, input)
+		view.Inputs = append(view.Inputs, value.Name+" <- "+value.Source+formed(value.Forms))
 	}
 	view.Sources = origins(res.Sources)
 	if verify := res.Process.Verify; verify != nil {
@@ -836,11 +839,12 @@ func (i *Inspection) showProcess(ctx context.Context, name, agent string) (contr
 func origins(sources []InspectedSource) []contract.DefinitionOrigin {
 	var shown []contract.DefinitionOrigin
 	for _, source := range sources {
-		layer := "global"
-		if source.Project {
-			layer = "project"
-		}
-		shown = append(shown, contract.DefinitionOrigin{Kind: source.Kind, Name: source.Name, Layer: layer, Path: source.Path, Overrides: source.Overrides})
+		shown = append(shown, contract.DefinitionOrigin{
+			Kind: source.Kind, Name: source.Name, Layer: source.Layer, Path: source.Path,
+			Layers: translated(source.Layers, func(layer InspectedLayer) contract.DefinitionLayer {
+				return contract.DefinitionLayer{Layer: layer.Layer, Path: layer.Path, Fields: layer.Fields, Replaced: layer.Replaced}
+			}),
+		})
 	}
 	return shown
 }

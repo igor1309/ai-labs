@@ -45,7 +45,7 @@ func TestASkillIsAFolderOfALayer(t *testing.T) {
 	put(t, filepath.Join(global.Dir, "skills", "notes.md"), "x")
 	put(t, filepath.Join(global.Dir, "skills", "SKILL.md"), "x")
 
-	layered := fsdefs.Layered{Global: global, Project: &project}
+	layered := fsdefs.Layered{Home: global, Repository: &project}
 	if names, err := layered.List(ctx, definition.KindSkill); err != nil || !reflect.DeepEqual(names, []string{"review", "style", "tests"}) {
 		t.Fatalf("list = %v, %v", names, err)
 	}
@@ -53,19 +53,19 @@ func TestASkillIsAFolderOfALayer(t *testing.T) {
 		t.Fatalf("home's = %v, %v", names, err)
 	}
 	review, err := layered.Read(ctx, definition.KindSkill, "review")
-	if err != nil || string(review.Bytes) != skillText("review") || review.Source.Path != projectReview || !review.Source.Project || review.Source.Overrides != homeReview || review.Source.SHA256 == "" {
+	if err != nil || string(review.Bytes) != skillText("review") || review.Source.Path != projectReview || review.Source.Layer != definition.LayerRepository || replaced(review.Source) != homeReview || review.Source.SHA256 == "" {
 		t.Fatalf("review = %+v, %v", review.Source, err)
 	}
 	style, err := layered.Read(ctx, definition.KindSkill, "style")
-	if err != nil || string(style.Bytes) != skillText("style") || style.Source.Path != homeStyle || style.Source.Project || style.Source.Overrides != "" {
+	if err != nil || string(style.Bytes) != skillText("style") || style.Source.Path != homeStyle || style.Source.Layer == definition.LayerRepository || replaced(style.Source) != "" {
 		t.Fatalf("style = %+v, %v", style.Source, err)
 	}
 	tests, err := layered.Read(ctx, definition.KindSkill, "tests")
-	if err != nil || tests.Source.Path != projectTests || !tests.Source.Project || tests.Source.Overrides != "" {
+	if err != nil || tests.Source.Path != projectTests || tests.Source.Layer != definition.LayerRepository || replaced(tests.Source) != "" {
 		t.Fatalf("tests = %+v, %v", tests.Source, err)
 	}
 	// Outside a project, home's is the skill.
-	if doc, err := (fsdefs.Layered{Global: global}).Read(ctx, definition.KindSkill, "review"); err != nil || string(doc.Bytes) != "home's "+skillText("review") || doc.Source.Project {
+	if doc, err := (fsdefs.Layered{Home: global}).Read(ctx, definition.KindSkill, "review"); err != nil || string(doc.Bytes) != "home's "+skillText("review") || doc.Source.Layer == definition.LayerRepository {
 		t.Fatalf("home's review = %+v, %v", doc.Source, err)
 	}
 	want := "not found (expected " + filepath.Join(project.Dir, "skills", "git", "SKILL.md") + " or " + filepath.Join(global.Dir, "skills", "git", "SKILL.md") + ")"
@@ -302,11 +302,11 @@ func TestAProjectsBrokenSkillDoesNotFallBackToHomes(t *testing.T) {
 	global, project := fsdefs.Store{Dir: t.TempDir()}, fsdefs.Store{Dir: t.TempDir()}
 	put(t, filepath.Join(global.Dir, "skills", "review", "SKILL.md"), skillText("review"))
 	put(t, filepath.Join(project.Dir, "skills", "review", "notes.md"), "x")
-	doc, err := fsdefs.Layered{Global: global, Project: &project}.Read(ctx, definition.KindSkill, "review")
+	doc, err := fsdefs.Layered{Home: global, Repository: &project}.Read(ctx, definition.KindSkill, "review")
 	if want := filepath.Join(project.Dir, "skills", "review") + " has no SKILL.md"; err == nil || err.Error() != want {
 		t.Fatalf("err = %v, want %q", err, want)
 	}
-	if !doc.Source.Project || doc.Bytes != nil {
+	if doc.Source.Layer != definition.LayerRepository || doc.Bytes != nil {
 		t.Fatalf("document = %+v, %q", doc.Source, doc.Bytes)
 	}
 }

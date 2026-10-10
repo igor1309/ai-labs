@@ -158,6 +158,7 @@ jobs:
               - "agister/pages/**"
               - "research/agister/research/verger/policies/**"
               - ".agister/**"
+              - "agister/.agister/**"
               - "agister/home/**"
             agister-ci:
               - ".github/workflows/agister-core.yml"
@@ -167,8 +168,7 @@ jobs:
               - "warder/**/go.sum"
               - "warder/**/testdata/**"
               - "warder/scripts/**"
-              - ".agister/verifies/warder.yaml"
-              - ".agister/processes/implement_warder.yaml"
+              - "warder/.agister/**"
             warder-ci:
               - ".github/workflows/warder-core.yml"
             dev-skills:

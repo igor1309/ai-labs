@@ -1,0 +1,4 @@
+# Carries over the Go prompt home's tests_review_codex took as an
+# optional input before ADR-028 (its Migration step 4); LAB-161 replaces
+# this file.
+guidance: [go-testing-seams]

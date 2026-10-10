@@ -126,7 +126,7 @@
   <title id="diagram-title">The settings documents and what they name</title>
   <desc id="diagram-desc">The name given to agister run picks one workflow or one
   process, and the service applies to every run. A workflow names processes. A process
-  names its agent, output schema, verification, prompts, skills and policy.
+  names its agent, output schema, verification, prompt, guidance, skills and policy.
   An agent names its own skills and a runtime mapping. A policy uses only the
   service's permissions, within its limits; a runtime mapping grants only the
   service's permissions.</desc>
@@ -188,7 +188,7 @@
   <text class="sub" x="484" y="104">command · attempts</text>
   <rect class="doc" x="470" y="120" width="190" height="46" rx="2"/>
   <text class="t" x="484" y="140">Prompts</text>
-  <text class="sub" x="484" y="158">plain text</text>
+  <text class="sub" x="484" y="158">prompt · guidance</text>
   <rect class="doc" x="470" y="174" width="190" height="46" rx="2"/>
   <text class="t" x="484" y="194">Skills</text>
   <text class="sub" x="484" y="212">SKILL.md · the process's</text>
@@ -250,8 +250,12 @@ and its own skills. The service is never picked: it has no name, and it
 applies to every run.</p>
 
 <p>A box holds the document's own fields; an arrow is a document it names.
-Every document can come from the repo's <code>.agister</code> or from home;
-the repo's replaces home's of the same kind and name. A YAML file holds
+Documents compose by field across home, the repository's <code>.agister</code>
+and the nearest project's <code>.agister</code> below the worktree root.
+The launch directory or <code>--dir</code> selects the project. Nested maps
+merge by key; scalars and lists replace whole (<code>[]</code> means none).
+A partial sets only what it changes; prompts, skills and schemas are taken
+whole from the nearest layer. A YAML file holds
 exactly one YAML document; one with a second is invalid.</p>
 
 <h2><span class="k-workflow">Workflow</span></h2>
@@ -282,7 +286,7 @@ and runs no setup. A process with a verification, such as
 <li><b>verification</b>: command, timeout, max attempts, failure
 instruction; or held inline in the process. It runs in the call's
 worktree.</li>
-<li><b>prompts</b>: plain text, which may be optional.</li>
+<li><b>prompts</b>: plain text, named by one required <code>prompt</code> and a <code>guidance</code> list; a missing name refuses the call.</li>
 <li><b>skills</b>: each one <code>SKILL.md</code>.</li>
 <li><b>brief forms</b>: <code>briefs/&lt;name&gt;.yaml</code>, named by a
 <code>file</code> input's <code>form: [goal, step]</code>. Each holds its
@@ -329,9 +333,9 @@ the call is refused if the process requires it.</p>
 
 <h2>Blocks</h2>
 
-<p>One more document, not in the diagram: blocks, repo only: the agents,
+<p>Two more documents, not in the diagram: <code>layer.yaml</code> names additional prompt folders in a repository or project; blocks, repo only: the agents,
 processes, workflows or runtime mappings this repo refuses, with reasons.
-There is no workspace document: <code>workspace.yaml</code> is obsolete,
+A project holds no blocks. Guidance a node must follow belongs in its <code>prompt</code> or <code>guidance</code>, never a pointer in <code>AGENTS.md</code> or a skill. There is no workspace document: <code>workspace.yaml</code> is obsolete,
 and <code>check</code> warns about it.</p>
 </div>
 

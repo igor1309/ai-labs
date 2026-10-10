@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readdirSync, readFileSync, statSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import '../config.js';
@@ -169,6 +169,15 @@ test('YAML: a line that is not "key: value" fails with its line number', () => {
 test('YAML: a second document fails at its --- line', () => {
   assert.throws(() => C.parseYaml('name: x\n---\nname: y\n'), /line 2/);
   assert.throws(() => C.parseYaml('name: x\n---\n'), /line 2/);
+});
+
+// Agister's YAML reads a --- that opens the one document; a second after
+// it still fails.
+test('YAML: a leading --- opens the one document; a second still fails', () => {
+  assert.deepEqual(C.parseYaml('---\nname: x\nguidance: [a]\n'), { name: 'x', guidance: ['a'] });
+  assert.deepEqual(C.parseYaml('# head\n--- # opens\nname: x\n'), { name: 'x' });
+  assert.throws(() => C.parseYaml('---\nname: x\n---\nname: y\n'), /line 3/);
+  assert.throws(() => C.parseYaml('---\n---\nname: x\n'), /line 2/);
 });
 
 test('TOML: keys, strings, numbers, multi-line arrays and tables', () => {
@@ -344,23 +353,24 @@ test('a named verification is resolved from the composed settings, or marked out
   assert.deepEqual(alone.processes[0].verify, { ref: 'repo', maxAttempts: null, outside: true });
 });
 
-// ADR-014: a process names its prompts, each once, found in the repo
-// before home.
-test('a process\'s prompts are found in the composed settings, or marked outside', async () => {
+// ADR-028: prompt and guidance resolve separately, and obsolete input
+// sources do not name prompts in the view.
+test('prompt and guidance are found in the composed settings, or marked outside', async () => {
   const home = {
-    processes: { 'review.yaml': 'name: review\nuses: agent:opus\ninput:\n  instruction: Review.\n  values:\n    rules: {source: prompt, name: review}\n    again: {source: prompt, name: review}\n    style: {source: prompt, name: style}\n    diff: {source: git.diff}\n' },
+    processes: { 'review.yaml': 'name: review\nuses: agent:opus\nprompt: review\nguidance: [style]\ninput:\n  values:\n    obsolete: {source: prompt, name: obsolete, optional: true}\n' },
     prompts: { 'review.md': 'Home review.\n', 'style.md': 'Home style.\n' },
   };
   const repo = { prompts: { 'review.md': 'Repo review.\n' } };
   const m = await C.loadComposed(memDir('.agister', home), memDir('.agister', repo));
-  assert.deepEqual(m.processes[0].prompts, [
-    { name: 'review', outside: false, source: 'repo', overrides: true },
-    { name: 'style', outside: false, source: 'home', overrides: false },
-  ]);
-  assert.deepEqual([m.prompts[0].name, m.prompts[0].source, m.prompts[0].overrides, m.prompts[0].usedBy], ['review', 'repo', true, ['review']]);
-
+  assert.deepEqual(m.processes[0].prompt, { name: 'review', outside: false, source: 'repo', overrides: true });
+  assert.deepEqual(m.processes[0].guidance, [{ name: 'style', outside: false, source: 'home', overrides: false }]);
+  assert.deepEqual(m.prompts[0].usedBy, ['review']);
   const alone = await C.loadAgister(memDir('.agister', { processes: home.processes }));
-  assert.deepEqual(alone.processes[0].prompts, [{ name: 'review', outside: true }, { name: 'style', outside: true }]);
+  assert.deepEqual(alone.processes[0].prompt, { name: 'review', outside: true });
+  assert.deepEqual(alone.processes[0].guidance, [{ name: 'style', outside: true }]);
+  const empty = await C.loadComposed(memDir('.agister', home), memDir('.agister', { processes: { 'review.yaml': 'guidance: []\n' } }));
+  assert.deepEqual(empty.processes[0].guidance, []);
+  assert.equal(empty.processes[0].prompt.name, 'review');
 });
 
 // ADR-026: a process's and a workflow's file inputs name the brief forms
@@ -459,38 +469,143 @@ for (const path of ['.agister', 'agister/home', 'agister/examples/settings']) {
   });
 }
 
-// Home's source folder holds every document its processes and workflows
-// name but the verification and the two Go prompts, which this
-// repository's .agister supplies (ADR-027 rules 3 and 6): composed as the
-// page composes home and a repo, nothing they name is missing, and the
-// folder alone lacks only those.
-test('the settings in agister/home, with .agister over them, name nothing missing', async () => {
-  const m = await C.loadComposed(diskDir(join(repoRoot, 'agister/home')), diskDir(join(repoRoot, '.agister')));
-  assert.ok(m.processes.length > 0);
-  assert.ok(m.workflows.length > 0);
-  const own = ['go-testing-seams', 'go-architecture'];
-  for (const p of m.processes) {
-    assert.ok(!p.error, `${p.file}: ${p.error}`);
-    assert.deepEqual([p.agentOutside, p.policyOutside, p.outputOutside], [false, false, false], p.name);
-    for (const prompt of p.prompts) {
-      assert.deepEqual([prompt.outside, prompt.source], [false, own.includes(prompt.name) ? 'repo' : 'home'], `${p.name}: ${prompt.name}`);
-    }
-    for (const form of p.forms) assert.equal(form.outside, false, `${p.name}: ${form.name}`);
-    if (p.verify) {
-      const v = m.verifies.find((x) => x.name === p.verify.ref);
-      assert.deepEqual([v?.source, p.verify.outside], ['repo', false], `${p.name}: ${p.verify.ref}`);
-    }
-  }
-  for (const w of m.workflows) {
-    assert.ok(!w.error, `${w.file}: ${w.error}`);
-    for (const node of [...w.fanOut, w.join]) assert.equal(node.outside, false, `${w.name}: ${node.process}`);
-    for (const form of w.forms) assert.equal(form.outside, false, `${w.name}: ${form.name}`);
-  }
-  for (const a of m.agents) assert.equal(a.runtimeOutside, false, a.name);
-  assert.deepEqual(m.verifies.map((v) => [v.name, v.source]), [['repo', 'repo'], ['warder', 'repo']]);
+// A directory handle over dir whose entries named in extra are those
+// handles instead, or are added.
+function overlay(dir, extra) {
+  return {
+    kind: 'directory',
+    name: dir.name,
+    async *entries() {
+      for await (const [n, handle] of dir.entries()) if (!(n in extra)) yield [n, handle];
+      yield* Object.entries(extra);
+    },
+    async getDirectoryHandle(n) {
+      return n in extra ? extra[n] : dir.getDirectoryHandle(n);
+    },
+    async getFileHandle(n) {
+      return dir.getFileHandle(n);
+    },
+  };
+}
 
+// The repository's layer as a call launched in project reads it, folded
+// into one folder for this two-layer reader: .agister, its prompts read
+// from the library its layer.yaml lists, and the project's own folders,
+// none of which the repository's layer holds (ADR-028 rules 1 and 9). The
+// server composes the three layers with Go.
+function launchedIn(project) {
+  const settings = join(repoRoot, '.agister');
+  const layer = C.parseYaml(readFileSync(join(settings, 'layer.yaml'), 'utf8'));
+  assert.equal(existsSync(join(settings, 'prompts')), false, '.agister/prompts would come before the library');
+  assert.equal(layer.prompts.length, 1, 'this reader folds one library');
+  const extra = { prompts: diskDir(join(repoRoot, layer.prompts[0])) };
+  const own = join(repoRoot, project, '.agister');
+  for (const n of readdirSync(own)) {
+    assert.equal(existsSync(join(settings, n)), false, `${project}/.agister/${n} and .agister/${n} would not fold`);
+    extra[n] = diskDir(join(own, n));
+  }
+  return overlay(diskDir(settings), extra);
+}
+
+// Home's source folder holds every document its processes and workflows
+// name but the verification, which each project's layer of this
+// repository supplies (ADR-027 rules 3 and 6, ADR-028 Migration step 4):
+// composed as the page composes home and a repo, for a call launched in
+// each project, nothing they name is missing, and the folder alone lacks
+// only that. Home's processes name prompt and guidance (ADR-028 rule 8);
+// each is resolved and linked in the view, the Go guidance from the
+// repository's library.
+for (const project of ['agister', 'warder']) {
+  test(`the settings in agister/home, with the layers of ${project}/ over them, name nothing missing`, async () => {
+    const m = await C.loadComposed(diskDir(join(repoRoot, 'agister/home')), launchedIn(project));
+    assert.ok(m.processes.length > 0);
+    assert.ok(m.workflows.length > 0);
+    for (const p of m.processes) {
+      assert.ok(!p.error, `${p.file}: ${p.error}`);
+      assert.deepEqual([p.agentOutside, p.policyOutside, p.outputOutside], [false, false, false], p.name);
+      assert.ok(p.prompt && !p.prompt.outside, p.name);
+      for (const prompt of p.guidance) assert.equal(prompt.outside, false, `${p.name}: ${prompt.name}`);
+      for (const form of p.forms) assert.equal(form.outside, false, `${p.name}: ${form.name}`);
+      if (p.verify) {
+        const v = m.verifies.find((x) => x.name === p.verify.ref);
+        assert.deepEqual([v?.source, p.verify.outside], ['repo', false], `${p.name}: ${p.verify.ref}`);
+      }
+    }
+    for (const w of m.workflows) {
+      assert.ok(!w.error, `${w.file}: ${w.error}`);
+      for (const node of [...w.fanOut, w.join]) assert.equal(node.outside, false, `${w.name}: ${node.process}`);
+      for (const form of w.forms) assert.equal(form.outside, false, `${w.name}: ${form.name}`);
+    }
+    for (const a of m.agents) assert.equal(a.runtimeOutside, false, a.name);
+    assert.deepEqual(m.verifies.map((v) => [v.name, v.source]), [['repo', 'repo']]);
+    const implement = m.processes.find((p) => p.name === 'implement');
+    assert.deepEqual(implement.guidance.map((g) => g.name), ['go-testing-seams', 'go-architecture']);
+  });
+}
+
+test('the settings in agister/home alone lack only the verification', async () => {
   const alone = await C.loadAgister(diskDir(join(repoRoot, 'agister/home')));
   const implement = alone.processes.find((p) => p.name === 'implement');
   assert.equal(implement.verify.outside, true);
-  assert.deepEqual(implement.prompts, own.map((name) => ({ name, outside: true })));
+  assert.equal(implement.prompt.name, 'implement');
+  assert.equal(implement.prompt.outside, false);
+  assert.deepEqual(implement.guidance, []);
+});
+
+// The server has already composed the documents with Go. This reader
+// retains that provenance, including a layer that gave no surviving fields.
+test('the reported model keeps three layers, prompt and guidance, and document errors', async () => {
+  const processLayers = [
+    { layer: 'project', path: '/r/docs/.agister/processes/p.yaml', fields: ['guidance'] },
+    { layer: 'repository', path: '/r/.agister/processes/p.yaml', fields: [] },
+    { layer: 'home', path: '/h/processes/p.yaml', fields: ['name', 'prompt', 'uses', 'verify'] },
+  ];
+  const sources = {
+    'processes/p.yaml': { layers: processLayers },
+    'prompts/main.md': { layers: [{ layer: 'repository', path: '/r/prompts/main.md' }, { layer: 'home', path: '/h/prompts/main.md' }] },
+    'processes/bad.yaml': { layers: [{ layer: 'home', path: '/h/processes/bad.yaml', fields: [] }], error: 'must hold exactly one YAML document' },
+    'verifies/repo.yaml': { layers: [{ layer: 'project', path: '/r/docs/.agister/verifies/repo.yaml', fields: ['command'] }] },
+  };
+  const m = await C.loadReported(memDir('.agister', {
+    processes: { 'p.yaml': 'name: p\nprompt: main\nguidance: [missing]\nuses: agent:a\nverify: verify:repo\n' },
+    prompts: { 'main.md': 'Main.' },
+    verifies: { 'repo.yaml': 'command: cd docs && make test\nmax_attempts: 2\n' },
+  }), sources, [
+    { scope: 'home', name: 'rules', path: '/h/skills/rules', description: 'Home.' },
+    { scope: 'project', name: 'rules', path: '/r/docs/.agister/skills/rules', description: 'Project.' },
+  ]);
+  const p = m.processes.find((x) => x.name === 'p');
+  assert.deepEqual(p.layers, processLayers);
+  assert.deepEqual(p.prompt.layers, sources['prompts/main.md'].layers);
+  assert.equal(p.prompt.source, 'repository');
+  assert.deepEqual(p.guidance, [{ name: 'missing', outside: true }]);
+  assert.equal(p.verify.outside, false);
+  assert.equal(m.verifies[0].source, 'project');
+  assert.equal(m.skills[0].description, 'Project.');
+  assert.equal(m.processes.find((x) => x.name === 'bad').error, 'must hold exactly one YAML document');
+});
+
+test('nested partial fields merge and lists replace rather than join in folder fixtures', async () => {
+  const home = memDir('.agister', { processes: { 'p.yaml': 'name: p\nprompt: main\nguidance: [a, b]\ninput:\n  params:\n    candidate: {default: HEAD}\n    brief: {}\n' } });
+  const repo = memDir('.agister', { processes: { 'p.yaml': 'guidance: [c]\ninput:\n  params:\n    candidate: {default: trunk}\n' } });
+  const p = (await C.loadComposed(home, repo)).processes[0];
+  assert.equal(p.prompt.name, 'main');
+  assert.deepEqual(p.guidance, [{ name: 'c', outside: true }]);
+  assert.deepEqual(p.params, [{ name: 'candidate', default: 'trunk' }, { name: 'brief', default: undefined }]);
+});
+
+// The binary reports a process whose text opens with --- as it is; the
+// reported view reads its prompt, guidance and layers, not an error.
+test('the reported model reads a process that opens with a document marker', async () => {
+  const layers = [{ layer: 'home', path: '/h/processes/p.yaml', fields: ['name', 'prompt', 'guidance'] }];
+  const m = await C.loadReported(memDir('.agister', {
+    processes: { 'p.yaml': '---\nname: p\nprompt: main\nguidance: [style]\n' },
+    prompts: { 'main.md': 'Main.' },
+  }), { 'processes/p.yaml': { layers }, 'prompts/main.md': { layers: [{ layer: 'home', path: '/h/prompts/main.md' }] } });
+  const p = m.processes.find((x) => x.name === 'p');
+  assert.equal(p.error, undefined);
+  assert.deepEqual(p.layers, layers);
+  assert.equal(p.prompt.name, 'main');
+  assert.equal(p.prompt.source, 'home');
+  assert.deepEqual(p.guidance, [{ name: 'style', outside: true }]);
 });

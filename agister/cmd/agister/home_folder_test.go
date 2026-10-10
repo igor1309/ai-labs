@@ -20,7 +20,19 @@ import (
 // that home's settings folder holds too, by kind and name, each with the
 // reason the repository's must differ from home's (ADR-027 rule 6). Every
 // other document of .agister is the repository's own.
-var projectReplacements = map[string]string{}
+var projectReplacements = map[string]string{
+	"processes/implement":                 goGuidance,
+	"processes/implement_codex":           goGuidance,
+	"processes/implement_pi":              goGuidance,
+	"processes/implement_pi_glm":          goGuidance,
+	"processes/architecture_review_codex": goGuidance,
+	"processes/tests_review_codex":        goGuidance,
+}
+
+// goGuidance is why the repository sets the guidance of each process of
+// home that took a Go prompt before ADR-028.
+const goGuidance = "it carries over the Go prompts home's process took as optional inputs before ADR-028, " +
+	"as guidance alone (ADR-028 Migration step 4); LAB-161 replaces it"
 
 // Home's settings folder installs into an empty home with this binary, every
 // file of it a settings document installed as it is, and passes check there
@@ -110,13 +122,12 @@ func TestNotSettings(t *testing.T) {
 // fixedFilePaths finds a fixed path where a process or a workflow of
 // folder takes a file input: its path names no param, and absolute or
 // relative, it is a path of a machine or a repository. A file a param
-// names, or a prompt, is none.
+// names is none.
 func TestFixedFilePaths(t *testing.T) {
 	t.Parallel()
 	folder := tempDir(t)
 	write(t, filepath.Join(folder, "processes", "p.yaml"), "input:\n  values:\n"+
 		"    brief: {source: file, path: \"${param.brief}\"}\n"+
-		"    rules: {source: prompt, name: rules}\n"+
 		"    review: {source: file, path: prompts/review.md}\n"+
 		"    judge: {source: file, path: /home/me/.agister/prompts/judge.md}\n")
 	write(t, filepath.Join(folder, "workflows", "w.yaml"), "input:\n  values:\n"+

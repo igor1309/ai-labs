@@ -51,19 +51,26 @@ def jsonl(path):
 
 
 def agent_effort(record):
-    """The effort in the agent's definition, if the file is still what the
-    run read; the record keeps only its path and digest."""
+    """The effort in the agent's definition, if its files are still what the
+    run read; the record keeps only each layer file's path and digest,
+    nearest first, and the nearest that sets the effort gives it (ADR-028
+    rule 11). A record from before the layers names one file, on the
+    definition itself."""
     for d in record.get("definitions", []):
         if d.get("kind") != "agents":
             continue
-        try:
-            with open(d["path"], "rb") as f:
-                data = f.read()
-        except OSError:
-            return "?"
-        if hashlib.sha256(data).hexdigest() != d.get("sha256"):
-            return "?"
-        return tomllib.loads(data.decode()).get("effort", "-")
+        for layer in d.get("layers") or [d]:
+            try:
+                with open(layer["path"], "rb") as f:
+                    data = f.read()
+            except (OSError, KeyError):
+                return "?"
+            if hashlib.sha256(data).hexdigest() != layer.get("sha256"):
+                return "?"
+            effort = tomllib.loads(data.decode()).get("effort")
+            if effort is not None:
+                return effort
+        return "-"
     return "-"
 
 

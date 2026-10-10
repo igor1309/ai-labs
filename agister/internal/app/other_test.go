@@ -71,11 +71,11 @@ func TestCheckReportsWhatDefinesWhat(t *testing.T) {
 		got[ref(d.Kind, d.Name)] = d
 		order = append(order, d.Kind+"/"+d.Name)
 	}
-	if strings.Join(order, " ") != "service/service runtimes/rt agents/a agents/broken policies/pol policies/spare processes/p processes/q schemas/s" {
+	if strings.Join(order, " ") != "service/service runtimes/rt agents/a agents/broken policies/pol policies/spare prompts/inspect processes/p processes/q schemas/s" {
 		t.Fatalf("order = %v", order)
 	}
 	p, a := got[ref("processes", "p")], got[ref("agents", "a")]
-	if !reflect.DeepEqual(p.Uses, []contract.DefinitionRef{ref("agents", "a"), ref("policies", "pol"), ref("schemas", "s")}) || p.Layer != "global" || p.Path != "mem/processes/p" {
+	if !reflect.DeepEqual(p.Uses, []contract.DefinitionRef{ref("agents", "a"), ref("policies", "pol"), ref("prompts", "inspect"), ref("schemas", "s")}) || p.Layer != "home" || p.Path != "mem/processes/p" {
 		t.Fatalf("p = %+v", p)
 	}
 	if !reflect.DeepEqual(a.Uses, []contract.DefinitionRef{ref("runtimes", "rt")}) || !reflect.DeepEqual(a.UsedBy, []contract.DefinitionRef{ref("processes", "p")}) {
@@ -685,7 +685,10 @@ func TestShowProcessSourcesAreStructured(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := contract.DefinitionOrigin{Kind: "processes", Name: "p", Layer: "global", Path: "mem/processes/p"}
+	want := contract.DefinitionOrigin{
+		Kind: "processes", Name: "p", Layer: "home", Path: "mem/processes/p",
+		Layers: []contract.DefinitionLayer{{Layer: "home", Path: "mem/processes/p"}},
+	}
 	if len(view.Sources) < 2 || !reflect.DeepEqual(view.Sources[1], want) {
 		t.Fatalf("sources = %+v", view.Sources)
 	}
@@ -728,7 +731,7 @@ func TestInspectionShowsThroughTheResolverItDeclares(t *testing.T) {
 	t.Parallel()
 	cost := 0.5
 	source := func(kind definition.Kind, name string) app.InspectedSource {
-		return app.InspectedSource{Kind: string(kind), Name: name, Path: "/project/" + string(kind) + "/" + name, Project: true}
+		return app.InspectedSource{Kind: string(kind), Name: name, Layer: "project", Path: "/project/" + string(kind) + "/" + name}
 	}
 	origin := func(kind definition.Kind, name string) contract.DefinitionOrigin {
 		return contract.DefinitionOrigin{Kind: string(kind), Name: name, Layer: "project", Path: "/project/" + string(kind) + "/" + name}

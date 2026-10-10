@@ -121,7 +121,7 @@ func tomlStrings(table map[string]any, key string, p *problems) []string {
 
 // ParseAgent parses an agent profile.
 func ParseAgent(doc Document) (Agent, error) {
-	p := &problems{}
+	p := problemsOf(doc.Source)
 	table := decodeTOML(doc.Bytes, doc.Source.Path, []string{"schema", "name", "runtime", "model", "model_family", "effort", "session", "command", "skills"}, p)
 	if table == nil {
 		return Agent{Source: doc.Source}, p.err("agent " + subjectName(doc.Source))
@@ -178,7 +178,7 @@ func FormatAgent(agent Agent) []byte {
 
 // ParseService parses the service settings.
 func ParseService(doc Document) (Service, error) {
-	p := &problems{}
+	p := problemsOf(doc.Source)
 	table := decodeTOML(doc.Bytes, doc.Source.Path, []string{"schema", "max_timeout", "max_attempts", "max_verify_attempts", "max_cost_usd", "permissions", "writing", "state_reaching"}, p)
 	if table == nil {
 		return Service{Source: doc.Source}, p.err("service settings")

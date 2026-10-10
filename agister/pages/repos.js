@@ -104,7 +104,8 @@
   async function fetchSettings(fetchFn, path) {
     const body = await getJson(fetchFn, `api/settings?path=${encodeURIComponent(path)}`);
     const home = body.home || !body.homeFiles;
-    return { id: body.home ? HOME_ID : path, files: body.files || {}, homeFiles: home ? null : body.homeFiles };
+    return { id: body.home ? HOME_ID : path, files: body.files || {}, homeFiles: home ? null : body.homeFiles,
+      ...(body.composedFiles && { composedFiles: body.composedFiles, sources: body.sources }) };
   }
 
   // The folder the user chose in the Mac's folder dialog, or null when they

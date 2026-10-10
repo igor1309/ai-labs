@@ -5,7 +5,7 @@ project `warder` (parent LAB-135).
 
 ## Architecture: strict separation
 
-`.agister/prompts/go-architecture.md` applies in full, with no exception
+`prompts/go-architecture.md` applies in full, with no exception
 for convenience. In warder that means:
 
 - Warder is one Go module, `github.com/igor1309/ai-labs/warder`
@@ -39,7 +39,7 @@ for convenience. In warder that means:
   `testdiscipline` (gokit at a tagged version, ADR-019). A new package is
   covered without an edit to it.
 
-`.agister/prompts/go-testing-seams.md` applies to every test.
+`prompts/go-testing-seams.md` applies to every test.
 
 ## Testing
 

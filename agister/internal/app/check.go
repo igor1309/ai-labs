@@ -20,10 +20,15 @@ type Checker struct {
 	sources     []string // input source kinds the code provides
 }
 
-// CheckDefinitions supplies every definition document and its origin.
+// CheckDefinitions supplies every definition document and its origin, and
+// the layers they are read from (ADR-028 rule 1). Read reads a document as
+// a call reads it; ReadListed one as the settings list it, a prompt never
+// from a folder a layer.yaml lists (rule 9), and any other kind as Read.
 type CheckDefinitions interface {
 	Read(ctx context.Context, kind definition.Kind, name string) (definition.Document, error)
+	ReadListed(ctx context.Context, kind definition.Kind, name string) (definition.Document, error)
 	List(ctx context.Context, kind definition.Kind) ([]string, error)
+	Layers(ctx context.Context) []definition.LayerDir
 }
 
 // CheckValidator compiles output schemas.
@@ -146,19 +151,33 @@ func (c *Checker) check(ctx context.Context, probe bool) (CheckResult, error) {
 		Briefs:    map[string]bool{},
 	}
 
+	// A layer that is invalid is a problem of no document: it stops every
+	// command launched under it (ADR-028 rules 1 and 7).
+	for _, layer := range c.definitions.Layers(ctx) {
+		for _, invalid := range layer.Invalid {
+			stops(string(layer.Layer)+" layer "+layer.Dir, "%s: %s", invalid.Path, invalid.Reason)
+		}
+	}
+
+	// A prompt a process names is read as a call reads it; any other the
+	// settings list, as they list it: a folder a layer.yaml lists is read
+	// only for a name a process gives, and its other files are not
+	// settings (ADR-028 rule 9).
+	named := c.namedPrompts(ctx)
+
 	// Each document on its own: one checks a document read, or not, err
 	// saying why not; each checks every document of a kind the settings
 	// list.
 	one := func(kind definition.Kind, name string, doc definition.Document, err error, parse func(definition.Document) error) {
-		if doc.Source.Overrides != "" {
-			report.Overrides = append(report.Overrides, fmt.Sprintf("%s %s: %s overrides %s", kind.Singular(), name, doc.Source.Path, doc.Source.Overrides))
-		}
-		layer := "global"
-		if doc.Source.Project {
-			layer = "project"
+		if farther := doc.Source.Layers; len(farther) > 1 {
+			paths := make([]string, 0, len(farther)-1)
+			for _, layer := range farther[1:] {
+				paths = append(paths, layer.Path)
+			}
+			report.Overrides = append(report.Overrides, fmt.Sprintf("%s %s: %s overrides %s", kind.Singular(), name, doc.Source.Path, strings.Join(paths, ", ")))
 		}
 		index[DocumentRef{Kind: kind, Name: name}] = len(report.Definitions)
-		report.Definitions = append(report.Definitions, contract.Definition{Kind: string(kind), Name: name, Layer: layer, Path: doc.Source.Path, Overrides: doc.Source.Overrides})
+		report.Definitions = append(report.Definitions, contract.Definition{Kind: string(kind), Name: name, Layer: string(doc.Source.Layer), Path: doc.Source.Path, Layers: definitionLayers(doc.Source)})
 		documents = append(documents, CheckedDocument{Ref: DocumentRef{Kind: kind, Name: name}, Path: doc.Source.Path})
 		if err != nil {
 			report.Definitions[len(report.Definitions)-1].Invalid = true
@@ -214,7 +233,11 @@ func (c *Checker) check(ctx context.Context, probe bool) (CheckResult, error) {
 				stops(kind.Singular()+" "+name, "%q is not a valid name; rename the %s", name, what)
 				continue
 			}
-			doc, err := c.definitions.Read(ctx, kind, name)
+			read := c.definitions.Read
+			if kind == definition.KindPrompt && !named[name] {
+				read = c.definitions.ReadListed
+			}
+			doc, err := read(ctx, kind, name)
 			one(kind, name, doc, err, parse)
 		}
 		return nil
@@ -305,9 +328,11 @@ func (c *Checker) check(ctx context.Context, probe bool) (CheckResult, error) {
 		}
 	}
 	// A prompt a process names that the settings do not list is read as
-	// a call reads it: only one neither layer has is missing. Anything
-	// else at its path, such as a directory, is a document that cannot be
-	// read, a problem of its own that refuses the process (ADR-019 rule 1).
+	// a call reads it: only one no layer has is missing. One found in a
+	// folder a layer lists is listed only so, under the process that names
+	// it (ADR-028 rule 9). Anything else at its path, such as a directory,
+	// is a document that cannot be read, a problem of its own that refuses
+	// the process.
 	for _, name := range sortedNames(bundle.Processes) {
 		for _, prompt := range bundle.Processes[name].Prompts() {
 			ref := DocumentRef{Kind: definition.KindPrompt, Name: prompt}
@@ -378,14 +403,14 @@ func (c *Checker) check(ctx context.Context, probe bool) (CheckResult, error) {
 		return CheckResult{Report: report, Documents: documents, Problems: found, Blocks: blocks}
 	}
 	// What each definition references, and the reverse.
-	link := func(from DocumentRef, kind definition.Kind, name string, optional bool) {
+	link := func(from DocumentRef, kind definition.Kind, name string, guidance bool) {
 		source, ok := index[from]
 		if name == "" || !ok { // a name unlike its file is reported as a problem
 			return
 		}
 		to := DocumentRef{Kind: kind, Name: name}
 		documents[source].Uses = append(documents[source].Uses, to)
-		report.Definitions[source].Uses = append(report.Definitions[source].Uses, contract.DefinitionRef{Kind: string(to.Kind), Name: to.Name, Optional: optional})
+		report.Definitions[source].Uses = append(report.Definitions[source].Uses, contract.DefinitionRef{Kind: string(to.Kind), Name: to.Name, Guidance: guidance})
 		if i, ok := index[to]; ok {
 			report.Definitions[i].UsedBy = append(report.Definitions[i].UsedBy, contract.DefinitionRef{Kind: string(from.Kind), Name: from.Name})
 		}
@@ -402,9 +427,9 @@ func (c *Checker) check(ctx context.Context, probe bool) (CheckResult, error) {
 		link(from, definition.KindAgent, process.Agent, false)
 		link(from, definition.KindPolicy, process.Policy, false)
 		link(from, definition.KindVerify, process.VerifyName, false)
-		optional := process.OptionalPrompts()
-		for _, prompt := range process.Prompts() {
-			link(from, definition.KindPrompt, prompt, contains(optional, prompt))
+		link(from, definition.KindPrompt, process.Prompt, false)
+		for _, prompt := range process.Guidance {
+			link(from, definition.KindPrompt, prompt, true)
 		}
 		for _, skill := range process.Skills {
 			link(from, definition.KindSkill, skill, false)
@@ -455,9 +480,8 @@ func (c *Checker) check(ctx context.Context, probe bool) (CheckResult, error) {
 
 	// Across documents.
 	known := c.runtimes.Adapters()
-	// The core itself supplies a join's collection (ADR-003 rule 4) and the
-	// prompts a process names, which it reads from the settings (ADR-014).
-	sources := append(append([]string(nil), c.sources...), definition.CollectionSource, definition.PromptSource)
+	// The core itself supplies a join's collection (ADR-003 rule 4).
+	sources := append(append([]string(nil), c.sources...), definition.CollectionSource)
 	for _, p := range settings.Check(bundle, settings.Mechanisms{Sources: sources, Adapters: known}) {
 		settingsProblem(p)
 	}
@@ -511,6 +535,26 @@ func (c *Checker) check(ctx context.Context, probe bool) (CheckResult, error) {
 	return finish(), nil
 }
 
+// namedPrompts are the prompts the processes that parse name. Those that
+// do not parse are problems of their own, which check reports when it
+// reads them.
+func (c *Checker) namedPrompts(ctx context.Context) map[string]bool {
+	named := map[string]bool{}
+	names, _ := c.definitions.List(ctx, definition.KindProcess)
+	for _, name := range names {
+		doc, err := c.definitions.Read(ctx, definition.KindProcess, name)
+		if err != nil {
+			continue
+		}
+		if process, err := definition.ParseProcess(doc); err == nil {
+			for _, prompt := range process.Prompts() {
+				named[prompt] = true
+			}
+		}
+	}
+	return named
+}
+
 // blocks reads the repository's blocks.yaml (ADR-018) and returns what it
 // blocks, adding its problems to found. listed is every document the
 // settings list. Only the repository's blocks: home's is a problem of
@@ -534,12 +578,14 @@ func (c *Checker) blocks(ctx context.Context, listed map[DocumentRef]bool, check
 			about := blocksRef // each problem its own, so no caller's change reaches another
 			*found = append(*found, CheckedProblem{Text: "blocks (" + path + "): " + message, About: &about, Message: message})
 		}
-		if !doc.Source.Project {
+		if doc.Source.Layer != definition.LayerRepository {
 			home(doc.Source.Path)
 			continue
 		}
-		if doc.Source.Overrides != "" {
-			home(doc.Source.Overrides)
+		for i, farther := range doc.Source.Layers {
+			if i > 0 {
+				home(farther.Path)
+			}
 		}
 		subject := "blocks (" + doc.Source.Path + ")"
 		if err != nil {
@@ -602,7 +648,7 @@ func sortedNames[V any](m map[string]V) []string {
 
 var _ ProposedCheck = (*Checker)(nil)
 
-// ProblemsAdded checks these settings with doc written to the global layer
+// ProblemsAdded checks these settings with doc written to the home layer
 // and reports the problems it adds.
 func (c *Checker) ProblemsAdded(ctx context.Context, doc definition.Document) ([]string, error) {
 	before, err := c.Check(ctx, false)
@@ -628,21 +674,38 @@ func (c *Checker) ProblemsAdded(ctx context.Context, doc definition.Document) ([
 	return added, nil
 }
 
-// withDocument is a definitions source with one global document added or
-// replaced; a project document of the same name still takes priority.
+// withDocument is a definitions source with one home document added or
+// replaced. Where a nearer layer holds a document of the same name, a
+// composed kind's is composed from the nearer layers' files as they are and
+// the home document beneath them (ADR-028 rule 4); any other kind's is the
+// nearer layer's, which replaces home's whole (rule 6).
 type withDocument struct {
 	CheckDefinitions
 	doc definition.Document
 }
 
 func (w withDocument) Read(ctx context.Context, kind definition.Kind, name string) (definition.Document, error) {
+	return w.with(ctx, kind, name, w.CheckDefinitions.Read)
+}
+
+func (w withDocument) ReadListed(ctx context.Context, kind definition.Kind, name string) (definition.Document, error) {
+	return w.with(ctx, kind, name, w.CheckDefinitions.ReadListed)
+}
+
+// with is the document as read reads it, with w's home document in place.
+func (w withDocument) with(ctx context.Context, kind definition.Kind, name string, read func(context.Context, definition.Kind, string) (definition.Document, error)) (definition.Document, error) {
 	if kind != w.doc.Source.Kind || name != w.doc.Source.Name {
-		return w.CheckDefinitions.Read(ctx, kind, name)
+		return read(ctx, kind, name)
 	}
-	if current, err := w.CheckDefinitions.Read(ctx, kind, name); err == nil && current.Source.Project {
+	current, err := read(ctx, kind, name)
+	switch {
+	case err != nil || current.Source.Layer == definition.LayerHome:
+		return w.doc, nil
+	case !definition.Composed(kind):
 		return current, nil
 	}
-	return w.doc, nil
+	home := definition.LayerFile{Layer: definition.LayerHome, Path: w.doc.Source.Path, SHA256: w.doc.Source.SHA256}
+	return definition.WithHome(current, definition.LayerText{File: home, Bytes: w.doc.Bytes})
 }
 
 func (w withDocument) List(ctx context.Context, kind definition.Kind) ([]string, error) {
@@ -653,4 +716,18 @@ func (w withDocument) List(ctx context.Context, kind definition.Kind) ([]string,
 	names = append(append([]string(nil), names...), w.doc.Source.Name)
 	sort.Strings(names)
 	return names, nil
+}
+
+// definitionLayers are a document's layer files as check and show report
+// them, nearest first. The farther files of a document taken whole are
+// replaced by the nearest.
+func definitionLayers(source definition.Source) []contract.DefinitionLayer {
+	layers := make([]contract.DefinitionLayer, 0, len(source.Layers))
+	for i, layer := range source.Layers {
+		layers = append(layers, contract.DefinitionLayer{
+			Layer: string(layer.Layer), Path: layer.Path, Fields: layer.Fields,
+			Replaced: i > 0 && !definition.Composed(source.Kind),
+		})
+	}
+	return layers
 }

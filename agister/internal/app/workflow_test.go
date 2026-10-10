@@ -29,6 +29,7 @@ name: ` + name + `
 type: process
 uses: agent:a
 policy: process-policy:pol
+prompt: inspect
 input:
   instruction: ` + instruction + `
   params:
@@ -51,6 +52,7 @@ name: joiner
 type: process
 uses: agent:a
 policy: process-policy:joining
+prompt: inspect
 input:
   instruction: Join them.
   values:
@@ -1021,8 +1023,9 @@ func TestWorkflowNoJoinWhenTheFirstNodeCannotStart(t *testing.T) {
 	}
 }
 
-// The join receives the collection and the fixed values its own process
-// declares, and nothing from the caller: no param, no workflow value.
+// The join receives the collection, the fixed values its own process
+// declares and its prompt, and nothing from the caller: no param, no
+// workflow value.
 func TestWorkflowJoinReceivesNothingButTheCollection(t *testing.T) {
 	t.Parallel()
 	h := newFlowHarness()
@@ -1036,7 +1039,7 @@ func TestWorkflowJoinReceivesNothingButTheCollection(t *testing.T) {
 	for _, input := range join.Inputs {
 		names = append(names, input.Name+"<-"+input.Source)
 	}
-	if !reflect.DeepEqual(names, []string{"gathered<-workflow.collection", "guide<-file"}) || len(join.Request.Params) != 0 {
+	if !reflect.DeepEqual(names, []string{"gathered<-workflow.collection", "guide<-file", "prompt<-prompt"}) || len(join.Request.Params) != 0 {
 		t.Fatalf("join inputs %v, params %v", names, join.Request.Params)
 	}
 	if join.Parent == nil || join.Parent.Node != "merge" || join.Request.Continue != "" || join.Result.Session.Continues != "" {
@@ -1119,7 +1122,7 @@ func TestWorkflowWithAnInvalidJoinIsRefused(t *testing.T) {
 	if class(record) != run.ClassRefused || !strings.Contains(message(record), "cannot receive the collection") || len(h.store.ids()) != 1 {
 		t.Fatalf("result %+v, runs %v", record.Result, h.store.ids())
 	}
-	if len(record.Definitions) != 1 || record.Definitions[0].Kind != "workflows" || record.Definitions[0].SHA256 != sha(strings.Replace(workflowDoc, "process:joiner", "process:first", 1)) {
+	if len(record.Definitions) != 1 || record.Definitions[0].Kind != "workflows" || digestRecorded(record.Definitions[0]) != sha(strings.Replace(workflowDoc, "process:joiner", "process:first", 1)) {
 		t.Fatalf("definitions = %+v", record.Definitions)
 	}
 }
@@ -1272,7 +1275,7 @@ func TestWorkflowRecordLinksParentAndChildren(t *testing.T) {
 	if record.Process != "w" || record.Parent != nil || record.Agent != "" {
 		t.Fatalf("record = %+v", record)
 	}
-	if len(record.Definitions) != 1 || record.Definitions[0].Kind != "workflows" || record.Definitions[0].Name != "w" || record.Definitions[0].SHA256 != sha(workflowDoc) {
+	if len(record.Definitions) != 1 || record.Definitions[0].Kind != "workflows" || record.Definitions[0].Name != "w" || digestRecorded(record.Definitions[0]) != sha(workflowDoc) {
 		t.Fatalf("definitions = %+v", record.Definitions)
 	}
 	if len(record.Inputs) != 2 || record.Inputs[0].Name != "base" || !record.Inputs[1].Revision {

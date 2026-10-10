@@ -1,0 +1,3 @@
+# Carries over the Go prompts home's implement took as optional inputs
+# before ADR-028 (its Migration step 4); LAB-161 replaces this file.
+guidance: [go-testing-seams, go-architecture]

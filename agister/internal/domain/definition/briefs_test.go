@@ -352,6 +352,7 @@ func formedProcess(value string) string {
 	return `schema: agister.process/v1alpha1
 name: p
 type: process
+prompt: review
 uses: agent:a
 input:
   instruction: Implement it.

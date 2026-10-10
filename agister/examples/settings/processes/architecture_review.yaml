@@ -6,6 +6,7 @@ name: architecture_review
 type: process
 uses: agent:reviewer
 policy: process-policy:static-review
+prompt: architecture-review
 
 # A concrete process may narrow a numeric policy limit.
 timeout: 15m
