@@ -19,7 +19,7 @@ func recordSources(sources []CallSource) []run.DefinitionSource {
 			Kind: source.Kind,
 			Name: source.Name,
 			Layers: translated(source.Layers, func(layer CallSourceLayer) run.DefinitionLayer {
-				return run.DefinitionLayer{Layer: layer.Layer, Path: layer.Path, SHA256: layer.SHA256, Fields: layer.Fields}
+				return run.DefinitionLayer{Layer: layer.Layer, Path: layer.Path, SHA256: layer.SHA256, Fields: layer.Fields, Process: layer.Process}
 			}),
 		}
 	}

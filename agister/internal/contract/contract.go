@@ -302,6 +302,10 @@ type DefinitionLayer struct {
 	// Replaced is set on a farther layer's file of a document taken whole:
 	// the nearest layer's replaces it.
 	Replaced bool `json:"replaced,omitempty"`
+	// Process is set on the files of a process that extends a base: the
+	// process whose file it is, the base or the process itself (ADR-030
+	// rule 9).
+	Process string `json:"process,omitempty"`
 }
 
 // DefinitionOrigin is where one definition a call uses comes from.

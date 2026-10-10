@@ -179,7 +179,8 @@ func (f *processFiles) named(trees []*composedNode) (int, error) {
 // composed first, then the process's over them, farthest first: maps
 // merge by key, lists and scalars replace whole (ADR-028 rule 4), and
 // name and extends are never the base's. Its layers are its own files and
-// then the base's, each with the fields it gave; its texts stay its own.
+// then the base's, each with the fields it gave and the process whose file
+// it is; its texts stay its own.
 //
 // A partial that sets extends, a base that cannot be read, is of another
 // layer or names a base of its own are problems of the process: it is
@@ -244,6 +245,10 @@ func Extended(process Document, own func(name string) (Document, error)) (Docume
 	for i, text := range append(append([]LayerText(nil), texts...), baseTexts...) {
 		file := text.File
 		file.Fields = given(all[i], whole, nil, []string{})
+		file.Process = process.Source.Name
+		if i >= len(texts) {
+			file.Process = name
+		}
 		extended.Source.Layers = append(extended.Source.Layers, file)
 		if i < len(texts) {
 			extended.Texts = append(extended.Texts, LayerText{File: file, Bytes: text.Bytes})

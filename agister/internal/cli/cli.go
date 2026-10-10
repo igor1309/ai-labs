@@ -1122,7 +1122,8 @@ func showWorkflow(w io.Writer, view contract.WorkflowView) {
 // sourceLines are the lines of a view that say where its definitions come
 // from (ADR-028 rule 12): each document with its layer files, nearest
 // first, then every field of each composed document, with the layer it
-// came from. A document taken whole has no fields.
+// came from. A document taken whole has no fields. A process's base's files
+// and the fields they gave name the base (ADR-030 rule 9).
 func sourceLines(sources []contract.DefinitionOrigin) [][2]string {
 	var lines [][2]string
 	for i, source := range sources {
@@ -1135,7 +1136,7 @@ func sourceLines(sources []contract.DefinitionOrigin) [][2]string {
 			lines = append(lines, [2]string{label, subject + source.Layer + " " + source.Path})
 		}
 		for j, layer := range source.Layers {
-			text := layer.Layer + " " + layer.Path
+			text := layer.Layer + " " + layer.Path + ofBase(source.Name, layer)
 			if layer.Replaced {
 				text += " (replaced)"
 			}
@@ -1156,7 +1157,7 @@ func sourceLines(sources []contract.DefinitionOrigin) [][2]string {
 		width := 0
 		for _, layer := range source.Layers {
 			for _, name := range layer.Fields {
-				fields = append(fields, field{name, layer.Layer})
+				fields = append(fields, field{name, layer.Layer + ofBase(source.Name, layer)})
 				width = max(width, utf8.RuneCountInString(name))
 			}
 		}
@@ -1168,6 +1169,15 @@ func sourceLines(sources []contract.DefinitionOrigin) [][2]string {
 		}
 	}
 	return lines
+}
+
+// ofBase names the base a layer's file is of, where it is not the file of
+// the document named name itself (ADR-030 rule 9); "" otherwise.
+func ofBase(name string, layer contract.DefinitionLayer) string {
+	if layer.Process == "" || layer.Process == name {
+		return ""
+	}
+	return " (base " + layer.Process + ")"
 }
 
 // confirm asks the user to type "yes" before a destructive write; any other
@@ -1410,7 +1420,7 @@ func printTree(w io.Writer, definitions []contract.Definition) {
 		}
 		var details []string
 		for i, layer := range layers {
-			text := fmt.Sprintf("%-10s %s", layer.Layer, layer.Path)
+			text := fmt.Sprintf("%-10s %s", layer.Layer, layer.Path) + ofBase(ref.Name, layer)
 			if layer.Replaced {
 				text += " (replaced)"
 			}

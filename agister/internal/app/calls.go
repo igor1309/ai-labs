@@ -190,6 +190,9 @@ type CallSourceLayer struct {
 	// Fields are the fields the file gave the composition: none when it
 	// gave nothing, nil on a document taken whole.
 	Fields []string
+	// Process: on the files of a process that extends a base, the process
+	// whose file it is, the base or the process itself.
+	Process string
 }
 
 // CallLayer is one settings layer a call selected, and its directory.
@@ -390,7 +393,7 @@ func callSources(sources []definition.Source) []CallSource {
 		return CallSource{
 			Kind: string(source.Kind), Name: source.Name,
 			Layers: translated(files, func(file definition.LayerFile) CallSourceLayer {
-				return CallSourceLayer{Layer: string(file.Layer), Path: file.Path, SHA256: file.SHA256, Fields: file.Fields}
+				return CallSourceLayer{Layer: string(file.Layer), Path: file.Path, SHA256: file.SHA256, Fields: file.Fields, Process: file.Process}
 			}),
 		}
 	})

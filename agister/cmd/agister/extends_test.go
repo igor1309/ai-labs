@@ -1,13 +1,16 @@
 package main
 
 import (
+	"encoding/json"
 	"os"
 	"path/filepath"
+	"reflect"
 	"regexp"
 	"strings"
 	"testing"
 
 	"github.com/igor1309/ai-labs/agister/internal/cli"
+	"github.com/igor1309/ai-labs/agister/internal/contract"
 )
 
 // A process may extend one base process (ADR-030 rule 9), on temp settings:
@@ -127,6 +130,83 @@ func TestAProcessRunsOverItsBaseAsItsLayersComposeIt(t *testing.T) {
 				t.Fatalf("layers %v, want %v", paths, want)
 			}
 		})
+	}
+}
+
+// Each field's origin names the process whose layer file gave it (ADR-030
+// rule 9): the base for a field it gave, in its own files, and the process
+// for its own, in process show --json, in process show's text, in check
+// --tree and in the record's definitions.
+func TestEachFieldNamesTheProcessWhoseFileGaveIt(t *testing.T) {
+	t.Parallel()
+	e := extendingSettings(t)
+	write(t, e.repoBase, "input:\n  instruction: 'REPOSITORY BASE: answer the question.'\n")
+	want := []contract.DefinitionLayer{
+		{Layer: "home", Path: e.child, Process: "child_ask", Fields: []string{"schema", "name", "type", "extends", "prompt", "input.params.question.default"}},
+		{Layer: "repository", Path: e.repoBase, Process: "base_ask", Fields: []string{"input.instruction"}},
+		{Layer: "home", Path: e.base, Process: "base_ask", Fields: []string{"uses", "policy", "input.values.question.source", "input.values.question.name", "output.format"}},
+	}
+
+	var shown struct {
+		Sources []struct {
+			Kind, Name string
+			Layers     []contract.DefinitionLayer
+		}
+	}
+	r := agister(t, e.home, e.repo, "process", "show", "child_ask", "--json")
+	if err := json.Unmarshal([]byte(r.stdout), &shown); err != nil || r.code != 0 {
+		t.Fatalf("process show --json: %d %v\n%s%s", r.code, err, r.stdout, r.stderr)
+	}
+	found := false
+	for _, source := range shown.Sources {
+		if source.Kind == "processes" && source.Name == "child_ask" {
+			found = true
+			if !reflect.DeepEqual(source.Layers, want) {
+				t.Fatalf("process show --json layers\n%+v\nwant\n%+v", source.Layers, want)
+			}
+		}
+	}
+	if !found {
+		t.Fatalf("no process child_ask among the sources:\n%s", r.stdout)
+	}
+
+	r = agister(t, e.home, e.repo, "process", "show", "child_ask")
+	sources := "process child_ask: home " + e.child + "\n" +
+		"                                repository " + e.repoBase + " (base base_ask)\n" +
+		"                                home " + e.base + " (base base_ask)\n"
+	fields := "               input.instruction              repository (base base_ask)\n" +
+		"               input.params.question.default  home\n" +
+		"               input.values.question.name     home (base base_ask)\n"
+	if r.code != 0 || !strings.Contains(r.stdout, sources) || !strings.Contains(r.stdout, fields) {
+		t.Fatalf("process show: %d, want\n%s%s\ngot\n%s%s", r.code, sources, fields, r.stdout, r.stderr)
+	}
+	r = agister(t, e.home, e.repo, "check", "--tree")
+	tree := regexp.MustCompile(`(?m)^process child_ask +home +` + regexp.QuoteMeta(e.child) + `\n` +
+		` +schema, name, type, extends, prompt, input\.params\.question\.default\n` +
+		` +repository ` + regexp.QuoteMeta(e.repoBase) + ` \(base base_ask\)\n` +
+		` +input\.instruction\n` +
+		` +home +` + regexp.QuoteMeta(e.base) + ` \(base base_ask\)\n`)
+	if r.code != 0 || !tree.MatchString(r.stdout) {
+		t.Fatalf("check --tree: %d, want %s\ngot\n%s%s", r.code, tree, r.stdout, r.stderr)
+	}
+
+	runs := &newRuns{home: e.home}
+	runs.take(t)
+	if r := agister(t, e.home, e.repo, "run", "child_ask", "--quiet", "--timeout", "1m"); r.code != cli.ExitCompleted {
+		t.Fatalf("run child_ask: %d\n%s%s", r.code, r.stdout, r.stderr)
+	}
+	var recorded []contract.DefinitionLayer
+	for _, layer := range definitionOf(t, runs.one(t), "processes", "child_ask")["layers"].([]any) {
+		layer := layer.(map[string]any)
+		one := contract.DefinitionLayer{Layer: layer["layer"].(string), Path: layer["path"].(string)}
+		one.Process, _ = layer["process"].(string)
+		for _, field := range layer["fields"].([]any) {
+			one.Fields = append(one.Fields, field.(string))
+		}
+		recorded = append(recorded, one)
+	}
+	if !reflect.DeepEqual(recorded, want) {
+		t.Fatalf("the record's layers\n%+v\nwant\n%+v", recorded, want)
 	}
 }
 

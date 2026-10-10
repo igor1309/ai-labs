@@ -593,6 +593,9 @@ type InspectedLayer struct {
 	Fields []string
 	// Replaced: a farther layer's file of a document taken whole.
 	Replaced bool
+	// Process: on the files of a process that extends a base, the process
+	// whose file it is, the base or the process itself.
+	Process string
 }
 
 // InspectedWorkflow is a workflow and its nodes' processes, as a run of it
@@ -707,7 +710,7 @@ func inspectedSources(sources []definition.Source) []InspectedSource {
 		return InspectedSource{
 			Kind: string(source.Kind), Name: source.Name, Layer: string(source.Layer), Path: source.Path,
 			Layers: translated(definitionLayers(source), func(layer contract.DefinitionLayer) InspectedLayer {
-				return InspectedLayer{Layer: layer.Layer, Path: layer.Path, Fields: layer.Fields, Replaced: layer.Replaced}
+				return InspectedLayer{Layer: layer.Layer, Path: layer.Path, Fields: layer.Fields, Replaced: layer.Replaced, Process: layer.Process}
 			}),
 		}
 	})
@@ -846,7 +849,7 @@ func origins(sources []InspectedSource) []contract.DefinitionOrigin {
 		shown = append(shown, contract.DefinitionOrigin{
 			Kind: source.Kind, Name: source.Name, Layer: source.Layer, Path: source.Path,
 			Layers: translated(source.Layers, func(layer InspectedLayer) contract.DefinitionLayer {
-				return contract.DefinitionLayer{Layer: layer.Layer, Path: layer.Path, Fields: layer.Fields, Replaced: layer.Replaced}
+				return contract.DefinitionLayer{Layer: layer.Layer, Path: layer.Path, Fields: layer.Fields, Replaced: layer.Replaced, Process: layer.Process}
 			}),
 		})
 	}

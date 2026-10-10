@@ -780,7 +780,7 @@ func definitionLayers(source definition.Source) []contract.DefinitionLayer {
 	for i, layer := range source.Layers {
 		layers = append(layers, contract.DefinitionLayer{
 			Layer: string(layer.Layer), Path: layer.Path, Fields: layer.Fields,
-			Replaced: i > 0 && !definition.Composed(source.Kind),
+			Replaced: i > 0 && !definition.Composed(source.Kind), Process: layer.Process,
 		})
 	}
 	return layers
