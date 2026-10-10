@@ -74,8 +74,9 @@ nearer layer holds a partial, so the page does not open those settings. ↻ read
 The runs are Agister home's, whatever the picker shows. ↻ reads them
 again.
 
-- Newest first, ten rows tall under a head that stays put while the list
-  scrolls: when it started, the process, the implementor
+- Newest first, as tall as the window leaves room for, so Runs fits one
+  screen, under a head that stays put while the list scrolls: when it
+  started, the process, the implementor
   (`adapter model effort`; the model the runtime reported shows on hover
   when it differs), status (a green ✓ completed, a red ⚠ failed, an amber
   ⚠ interrupted, the word for the others; the status on hover), verify (`2 ✓`: the attempts used and whether
