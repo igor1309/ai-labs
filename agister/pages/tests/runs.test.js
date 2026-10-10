@@ -253,6 +253,9 @@ test('without an output a result reads as its text; an error comes first, its me
     { key: 'error', kind: 'text', text: 'Hit the limit.\n\nclass: rate_limited' },
     { key: 'text', kind: 'text', text: 'partial' },
   ]);
+  // An implement's checks are left out; its files and notes show.
+  assert.deepEqual(U.runOutput({ output: { summary: 's', checks: [{ command: 'go test', exit_code: 0 }], files_changed: ['a.go'], notes: 'n' } }).parts.map((p) => p.key),
+    ['summary', 'files_changed', 'notes']);
   assert.deepEqual(U.runOutput({ output: 'just a string' }).parts, [{ key: 'output', kind: 'text', text: 'just a string' }]);
   assert.deepEqual(U.runOutput({ output: { verdict: { odd: true } } }).parts, [{ key: 'verdict', kind: 'facts', facts: [['odd', { kind: 'text', text: 'true' }]] }]);
   assert.deepEqual(U.runOutput(undefined), { verdict: '', parts: [] });

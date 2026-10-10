@@ -98,7 +98,7 @@ again.
   decisions as cards (severity, ruling, title, file and line, sources; the
   detail, reason and action; the rest folded under *more*), coverage and
   other lists of alike objects as tables, lists of strings as lists, text
-  as markdown, the rest as it nests. Without an output the result's text
+  as markdown, the rest as it nests; an implement's checks are left out. Without an output the result's text
   shows; with one, the text is that output as JSON and is left out. The
   record as stored is folded at the bottom.
 

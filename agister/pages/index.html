@@ -209,11 +209,17 @@
     letter-spacing: .06em; color: var(--dim);
   }
   .part-error h4, .part-error .markdown { color: var(--high); }
-  .part .markdown { margin-top: 0; max-width: none; }
+  /* One size for all of it, prose and monospace alike; what stands out does
+     so by colour. */
+  .output .markdown { margin-top: 0; max-width: none; font-size: 13px; color: var(--fg2); }
+  .part-summary .markdown { color: var(--fg); }
   .part .markdown > :last-child { margin-bottom: 0; }
   .part ul.mono { margin: 0; padding-left: 18px; color: var(--fg2); overflow-wrap: anywhere; }
   .part details summary, .finding .more summary { cursor: pointer; color: var(--fg3); font-size: 12px; }
-  .part-table td { overflow-wrap: anywhere; }
+  /* Cells wrap between words; the first column, an item's name, keeps room
+     for its words and reads brighter. */
+  .part-table td { overflow-wrap: break-word; }
+  .part-table td:first-child { min-width: 11em; color: var(--fg); }
   .part-table td[class^="tone-"] { white-space: nowrap; }
   .part pre.json {
     margin: 0; padding: 10px; white-space: pre-wrap; overflow-wrap: anywhere;
@@ -222,7 +228,7 @@
   .finding { padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); }
   .finding + .finding { margin-top: 8px; }
   .finding-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; margin-bottom: 6px; }
-  .finding-head strong { color: var(--fg); font-size: 13.5px; font-weight: 600; }
+  .finding-head strong { color: var(--fg); font-size: 13px; font-weight: 600; }
   .finding-head .where { font: 12px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--fg3); overflow-wrap: anywhere; }
   .finding-text .label {
     display: block; margin-top: 6px; font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--dim);

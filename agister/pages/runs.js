@@ -143,8 +143,9 @@
   // --- a run's output ---
 
   // The output keys shown first, in this order; the others follow as
-  // written. The verdict goes in the run's head.
-  const OUTPUT_FIRST = ['summary', 'findings', 'items', 'decisions', 'coverage', 'coverage_gaps', 'checks', 'files_changed', 'notes'];
+  // written, but for those left out. The verdict goes in the run's head.
+  const OUTPUT_FIRST = ['summary', 'findings', 'items', 'decisions', 'coverage', 'coverage_gaps', 'files_changed', 'notes'];
+  const OUTPUT_LEFT_OUT = ['checks'];
   // What a finding, item or decision shows in its head, as tags and where;
   // what it shows as text; the rest is folded under it.
   const CARD_TAGS = ['severity', 'ruling', 'decision'];
@@ -221,7 +222,7 @@
     let verdict = '';
     if (isObject(output)) {
       if (typeof output.verdict === 'string') verdict = output.verdict;
-      const keys = Object.keys(output).filter((k) => k !== 'verdict' || typeof output.verdict !== 'string');
+      const keys = Object.keys(output).filter((k) => !OUTPUT_LEFT_OUT.includes(k) && (k !== 'verdict' || typeof output.verdict !== 'string'));
       for (const k of [...OUTPUT_FIRST.filter((k) => keys.includes(k)), ...keys.filter((k) => !OUTPUT_FIRST.includes(k))]) add(k, output[k]);
     } else if (filled(output)) add('output', output);
     else add('text', result?.text);
