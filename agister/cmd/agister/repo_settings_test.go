@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"io/fs"
+	"maps"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -412,17 +413,14 @@ func TestCodeReviewCollectsItsFiveReviews(t *testing.T) {
 	if output := parseProcess(t, root, "intent_review_codex").Output; output.Format != "json" || output.Schema != "review-result" {
 		t.Fatalf("intent_review_codex's output = %+v, want json of schema review-result", output)
 	}
-	// The parsed process keeps no require_valid: it is read from the document.
-	data, err := os.ReadFile(filepath.Join(root, homeFolder, "processes", "intent_review_codex.yaml"))
-	if err != nil {
-		t.Fatal(err)
-	}
+	// The parsed process keeps no require_valid: it is read from the
+	// document, laid over the review base, which gives the output.
 	var document struct {
 		Output struct {
 			RequireValid bool `yaml:"require_valid"`
 		} `yaml:"output"`
 	}
-	if err := yaml.Unmarshal(data, &document); err != nil {
+	if err := yaml.Unmarshal(extendedProcess(t, root, "intent_review_codex").Bytes, &document); err != nil {
 		t.Fatal(err)
 	}
 	if !document.Output.RequireValid {
@@ -1892,97 +1890,141 @@ var reviewPermissions = []string{
 	"repository.read", "repository.diff", "repository.search", "repository.history.read", "process.execute", "host.read",
 }
 
-// The tests review, launched at the root, resolves as it did before it
-// extended the review base: on codex-sol-61, with base, candidate and goal
-// for its params and the review's inputs, a review result for its output,
-// read-only on its candidate with every permission of reviewPermissions,
-// repository.write, repository.history.write and network denied, for 20
-// minutes at most, in one attempt, ended after 10 minutes without a
-// runtime event, 8 minutes on one tool command or 5 identical tool calls in
-// a row, with no cost limit, the prompt code-review-tests and the
-// repository's guidance go-testing-seams: process show prints each. Its
-// instruction is the adversarial review's.
-func TestTheTestsReviewResolvesAsBefore(t *testing.T) {
+// reviewPrompts are the processes on the review base, each with its
+// prompt: code_review's reviewers and adr_review's.
+var reviewPrompts = map[string]string{
+	"adr_review_codex":          "code-review-adr",
+	"adversarial_review_codex":  "code-review-adversarial",
+	"architecture_review_codex": "code-review-architecture",
+	"clarity_review_codex":      "code-review-clarity",
+	"intent_review_codex":       "code-review-intent",
+	"tests_review_codex":        "code-review-tests",
+}
+
+// gainGuidance are the reviews whose instruction lacked the review base's
+// sentence on guidance, and has it on the base: the one intended change of
+// their resolution. The intent review lacked it as the ADR and clarity
+// reviews did.
+var gainGuidance = map[string]bool{"adr_review_codex": true, "clarity_review_codex": true, "intent_review_codex": true}
+
+// guidanceSentence is the review base's sentence on guidance, by its short
+// phrases.
+var guidanceSentence = []string{"Any guidance given as further inputs", "holds the rules the repository",
+	"gives for the code it names", "code in the change that departs from one", "is a finding, which quotes the rule"}
+
+// Each review on the review base, launched where it runs, resolves as it did
+// before it extended the base: on codex-sol-61, with base, candidate and
+// goal for its params and the review's inputs, a review result for its
+// output, read-only on its candidate with every permission of
+// reviewPermissions, repository.write, repository.history.write and network
+// denied, for 20 minutes at most, in one attempt, ended after 10 minutes
+// without a runtime event, 8 minutes on one tool command or 5 identical
+// tool calls in a row, with no cost limit, its prompt of reviewPrompts and
+// the guidance repositoryGuidance names for it: process show prints each.
+// Its instruction is the base's, which says how guidance is used: those of
+// gainGuidance gain that sentence, and each asserts it.
+func TestTheReviewsResolveAsBefore(t *testing.T) {
 	t.Parallel()
 	root, repo, home := onFakeRuntimes(t)
-	view := showProcess(t, home, repo, "tests_review_codex")
-	if view.Refusal != "" {
-		t.Errorf("the tests review is refused: %s", view.Refusal)
+	var base struct {
+		Input struct {
+			Instruction string `yaml:"instruction"`
+		} `yaml:"input"`
 	}
-	if view.Agent != "codex-sol-61" || view.Runtime != "codex" {
-		t.Errorf("the tests review runs on %s (runtime %s), want codex-sol-61 (runtime codex)", view.Agent, view.Runtime)
+	if err := yaml.Unmarshal([]byte(read(t, filepath.Join(root, homeFolder, "processes", "review.yaml"))), &base); err != nil {
+		t.Fatal(err)
 	}
-	params := []contract.Param{{Name: "base", Default: "origin/trunk"}, {Name: "candidate", Default: "HEAD"}, {Name: "goal", Required: true}}
-	if !reflect.DeepEqual(view.Params, params) {
-		t.Errorf("the tests review's params are %+v, want %+v", view.Params, params)
-	}
-	inputs := []string{"base_revision <- git.revision", "candidate_revision <- git.revision", "changed_files <- git.changed_files", "goal <- param"}
-	if !reflect.DeepEqual(view.Inputs, inputs) {
-		t.Errorf("the tests review's inputs are %v, want %v", view.Inputs, inputs)
-	}
-	if view.Output != "json:review-result" {
-		t.Errorf("the tests review's output is %s, want json:review-result", view.Output)
-	}
-	if view.Access != "read-only" || view.Scope != "candidate" {
-		t.Errorf("the tests review's workspace is %s on %s, want read-only on candidate", view.Access, view.Scope)
-	}
-	denied := []string{"repository.write", "repository.history.write", "network"}
-	if !reflect.DeepEqual(view.Allowed, reviewPermissions) || !reflect.DeepEqual(view.Permissions, reviewPermissions) || !reflect.DeepEqual(view.Denied, denied) {
-		t.Errorf("the tests review is allowed %v, denied %v and has %v, want allowed and having %v, denied %v",
-			view.Allowed, view.Denied, view.Permissions, reviewPermissions, denied)
-	}
-	if view.Timeout != 20*time.Minute || view.MaxAttempts != 1 || view.MaxCostUSD != nil {
-		t.Errorf("the tests review's limits are timeout %s, %d attempts, cost %v, want 20m, 1 and none", view.Timeout, view.MaxAttempts, view.MaxCostUSD)
-	}
-	if want := (contract.Stale{NoEvent: 10 * time.Minute, ToolCommand: 8 * time.Minute, RepeatedToolCalls: 5}); view.Stale != want {
-		t.Errorf("the tests review's stale limits are %+v, want %+v", view.Stale, want)
-	}
-	if view.Prompt != "code-review-tests" || !reflect.DeepEqual(view.Guidance, []string{"go-testing-seams"}) {
-		t.Errorf("the tests review's prompt is %s and its guidance %v, want code-review-tests and [go-testing-seams]", view.Prompt, view.Guidance)
-	}
-	if got, want := parseProcess(t, root, "tests_review_codex").Instruction, parseProcess(t, root, "adversarial_review_codex").Instruction; got != want {
-		t.Errorf("the tests review's instruction is\n%s\nwant the adversarial review's\n%s", got, want)
+	for _, name := range slices.Sorted(maps.Keys(reviewPrompts)) {
+		view := showProcess(t, home, repo, name)
+		if view.Refusal != "" {
+			t.Errorf("%s is refused: %s", name, view.Refusal)
+		}
+		if view.Agent != "codex-sol-61" || view.Runtime != "codex" {
+			t.Errorf("%s runs on %s (runtime %s), want codex-sol-61 (runtime codex)", name, view.Agent, view.Runtime)
+		}
+		params := []contract.Param{{Name: "base", Default: "origin/trunk"}, {Name: "candidate", Default: "HEAD"}, {Name: "goal", Required: true}}
+		if !reflect.DeepEqual(view.Params, params) {
+			t.Errorf("%s's params are %+v, want %+v", name, view.Params, params)
+		}
+		inputs := []string{"base_revision <- git.revision", "candidate_revision <- git.revision", "changed_files <- git.changed_files", "goal <- param"}
+		if !reflect.DeepEqual(view.Inputs, inputs) {
+			t.Errorf("%s's inputs are %v, want %v", name, view.Inputs, inputs)
+		}
+		if view.Output != "json:review-result" {
+			t.Errorf("%s's output is %s, want json:review-result", name, view.Output)
+		}
+		if view.Access != "read-only" || view.Scope != "candidate" {
+			t.Errorf("%s's workspace is %s on %s, want read-only on candidate", name, view.Access, view.Scope)
+		}
+		denied := []string{"repository.write", "repository.history.write", "network"}
+		if !reflect.DeepEqual(view.Allowed, reviewPermissions) || !reflect.DeepEqual(view.Permissions, reviewPermissions) || !reflect.DeepEqual(view.Denied, denied) {
+			t.Errorf("%s is allowed %v, denied %v and has %v, want allowed and having %v, denied %v",
+				name, view.Allowed, view.Denied, view.Permissions, reviewPermissions, denied)
+		}
+		if view.Timeout != 20*time.Minute || view.MaxAttempts != 1 || view.MaxCostUSD != nil {
+			t.Errorf("%s's limits are timeout %s, %d attempts, cost %v, want 20m, 1 and none", name, view.Timeout, view.MaxAttempts, view.MaxCostUSD)
+		}
+		if want := (contract.Stale{NoEvent: 10 * time.Minute, ToolCommand: 8 * time.Minute, RepeatedToolCalls: 5}); view.Stale != want {
+			t.Errorf("%s's stale limits are %+v, want %+v", name, view.Stale, want)
+		}
+		if guidance := repositoryGuidance[name]; view.Prompt != reviewPrompts[name] || !reflect.DeepEqual(view.Guidance, guidance) {
+			t.Errorf("%s's prompt is %s and its guidance %v, want %s and %v", name, view.Prompt, view.Guidance, reviewPrompts[name], guidance)
+		}
+		instruction := parseProcess(t, root, name).Instruction
+		if instruction != base.Input.Instruction {
+			t.Errorf("%s's instruction is\n%s\nwant the review base's\n%s", name, instruction, base.Input.Instruction)
+		}
+		if gainGuidance[name] && !carries(instruction, guidanceSentence) {
+			t.Errorf("%s's instruction does not say how guidance is used: it lacks one of %q:\n%s", name, guidanceSentence, instruction)
+		}
 	}
 }
 
-// The tests review's file in the home folder holds its schema, name, type,
-// the review base it extends and its prompt, and nothing else (ADR-030 rule
-// 9): process show names no policy, and the base's home file among the
-// files the process is composed from.
-func TestTheTestsReviewExtendsTheReviewBase(t *testing.T) {
+// Each review's file in the home folder holds its schema, name, type, the
+// review base it extends and its prompt, and nothing else (ADR-030 rule 9):
+// process show names no policy, and the base's home file among the files
+// the process is composed from. The home folder holds no codex-review
+// policy, which the reviews named before.
+func TestTheReviewsExtendTheReviewBase(t *testing.T) {
 	t.Parallel()
 	root, repo, home := onFakeRuntimes(t)
-	var document map[string]any
-	if err := yaml.Unmarshal([]byte(read(t, filepath.Join(root, homeFolder, "processes", "tests_review_codex.yaml"))), &document); err != nil {
-		t.Fatal(err)
-	}
-	want := map[string]any{
-		"schema": "agister.process/v1alpha1", "name": "tests_review_codex", "type": "process",
-		"extends": "process:review", "prompt": "code-review-tests",
-	}
-	if !reflect.DeepEqual(document, want) {
-		t.Errorf("the tests review's file holds %v, want %v", document, want)
-	}
-	view := showProcess(t, home, repo, "tests_review_codex")
-	if view.Policy != "" {
-		t.Errorf("the tests review names policy %s, want none", view.Policy)
-	}
-	var base *contract.DefinitionLayer
-	for _, source := range view.Sources {
-		if source.Kind == "policies" {
-			t.Errorf("the tests review reads policy %s from %s, want none", source.Name, source.Path)
+	for _, name := range slices.Sorted(maps.Keys(reviewPrompts)) {
+		var document map[string]any
+		if err := yaml.Unmarshal([]byte(read(t, filepath.Join(root, homeFolder, "processes", name+".yaml"))), &document); err != nil {
+			t.Fatal(err)
 		}
-		if source.Kind != "processes" || source.Name != "tests_review_codex" {
-			continue
+		want := map[string]any{
+			"schema": "agister.process/v1alpha1", "name": name, "type": "process",
+			"extends": "process:review", "prompt": reviewPrompts[name],
 		}
-		for _, layer := range source.Layers {
-			if layer.Process == "review" {
-				base = &layer
+		if !reflect.DeepEqual(document, want) {
+			t.Errorf("%s's file holds %v, want %v", name, document, want)
+		}
+		view := showProcess(t, home, repo, name)
+		if view.Policy != "" {
+			t.Errorf("%s names policy %s, want none", name, view.Policy)
+		}
+		var base *contract.DefinitionLayer
+		for _, source := range view.Sources {
+			if source.Kind == "policies" {
+				t.Errorf("%s reads policy %s from %s, want none", name, source.Name, source.Path)
+			}
+			if source.Kind != "processes" || source.Name != name {
+				continue
+			}
+			for _, layer := range source.Layers {
+				if layer.Process == "review" {
+					base = &layer
+				}
 			}
 		}
+		if base == nil || base.Layer != "home" || base.Path != filepath.Join(home, "processes", "review.yaml") {
+			t.Errorf("%s's base file is %+v, want home's processes/review.yaml", name, base)
+		}
 	}
-	if base == nil || base.Layer != "home" || base.Path != filepath.Join(home, "processes", "review.yaml") {
-		t.Errorf("the tests review's base file is %+v, want home's processes/review.yaml", base)
+	path := filepath.Join(root, homeFolder, "policies", "codex-review.yaml")
+	if _, err := os.Stat(path); !errors.Is(err, fs.ErrNotExist) {
+		t.Errorf("the home folder holds %s (%v), want none", path, err)
 	}
 }
 
@@ -2289,17 +2331,24 @@ func inputOf(t *testing.T, record map[string]any, name string) map[string]any {
 // extends, if any, as the settings compose it (ADR-030 rule 9).
 func parseProcess(t *testing.T, root, name string) definition.Process {
 	t.Helper()
+	process, err := definition.ParseProcess(extendedProcess(t, root, name))
+	if err != nil {
+		t.Fatal(err)
+	}
+	return process
+}
+
+// extendedProcess is the document of process name in the home folder, laid
+// over the base it extends, if any (ADR-030 rule 9).
+func extendedProcess(t *testing.T, root, name string) definition.Document {
+	t.Helper()
 	doc, err := definition.Extended(homeProcess(t, root, name), func(base string) (definition.Document, error) {
 		return homeProcess(t, root, base), nil
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	process, err := definition.ParseProcess(doc)
-	if err != nil {
-		t.Fatal(err)
-	}
-	return process
+	return doc
 }
 
 // homeProcess is the document of process name in the home folder, as it is.

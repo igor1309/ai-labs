@@ -540,9 +540,20 @@ for (const project of ['agister', 'warder']) {
     assert.deepEqual(m.verifies.map((v) => [v.name, v.source]), [['repo', 'repo']]);
     const implement = m.processes.find((p) => p.name === 'implement');
     assert.deepEqual(implement.guidance.map((g) => g.name), ['go-testing-seams', 'go-architecture']);
-    const tests = m.processes.find((p) => p.name === 'tests_review_codex');
-    assert.deepEqual([tests.extends, tests.agent, tests.output, tests.prompt.name, tests.guidance.map((g) => g.name)],
-      ['review', 'codex-sol-61', 'review-result', 'code-review-tests', ['go-testing-seams']]);
+    const reviews = {
+      adr_review_codex: ['code-review-adr', []],
+      adversarial_review_codex: ['code-review-adversarial', ['go-testing-seams', 'go-architecture']],
+      architecture_review_codex: ['code-review-architecture', ['go-testing-seams', 'go-architecture']],
+      clarity_review_codex: ['code-review-clarity', []],
+      intent_review_codex: ['code-review-intent', []],
+      tests_review_codex: ['code-review-tests', ['go-testing-seams']],
+    };
+    for (const [name, [prompt, guidance]] of Object.entries(reviews)) {
+      const p = m.processes.find((x) => x.name === name);
+      assert.deepEqual([p.extends, p.agent, p.policy, p.output, p.prompt.name, p.guidance.map((g) => g.name)],
+        ['review', 'codex-sol-61', null, 'review-result', prompt, guidance], name);
+    }
+    assert.deepEqual(m.policies, []);
     assert.equal(m.processes.find((p) => p.name === 'review').base, true);
   });
 }
