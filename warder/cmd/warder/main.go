@@ -17,6 +17,7 @@ import (
 	"os"
 	"os/signal"
 	"reflect"
+	"strings"
 	"syscall"
 	"time"
 	"unicode/utf8"
@@ -68,9 +69,20 @@ const (
 	// exitUsage: the command line enables no valid set of sources; nothing
 	// was started.
 	exitUsage = 2
+	// exitHelp: the command line asks for the help; nothing was started.
+	exitHelp = 0
 )
 
 const usage = "usage: warder [-verbose] {-claude|-codex} <source-id> [{-claude|-codex} <source-id> ...]"
+
+// about is what the help says between the usage line and the flags.
+const about = `Warder reads the coding agents of each source at an interval and writes
+each observation as one JSON line on stdout. A failed read, and with
+-verbose a record per step, goes to stderr. SIGINT or SIGTERM stops it.
+Exit codes: 0 stopped, 1 a failure it cannot recover from, 2 a usage error.
+
+Flags:
+`
 
 func main() {
 	files := osFiles{root: codexHome(os.Getenv, os.UserHomeDir), readDir: os.ReadDir}.codexFiles()
@@ -155,6 +167,10 @@ func run(ctx context.Context, args []string, stdout, stderr io.Writer, execute e
 		fmt.Fprintf(stderr, "warder: %v\n%s\n", err, usage)
 		return exitUsage
 	}
+	if command.help != "" {
+		fmt.Fprint(stderr, command.help)
+		return exitHelp
+	}
 	diagnostics := &serialWriter{writer: stderr, attempted: attempted}
 	application, err := wire(command.claudeSources, command.codexSources, stdout, diagnostics, newLogger(diagnostics, command.verbose), execute, files, clock, timer)
 	if err != nil {
@@ -178,6 +194,9 @@ type commandLine struct {
 	codexSources []string
 	// verbose turns the decorators' logs on.
 	verbose bool
+	// help, when not empty, is the help -h or -help asks for; nothing else
+	// is set.
+	help string
 }
 
 // parseCommandLine reads the command line, args[0] being the program's
@@ -186,7 +205,8 @@ type commandLine struct {
 // -codex <source-id>, and whether -verbose is given. No source of either
 // runtime, an empty ID, an ID that is not valid UTF-8, an ID given twice,
 // by one flag or by both, an unknown flag, a -verbose that is not a
-// boolean and a stray argument are errors.
+// boolean and a stray argument are errors. -h or -help, anywhere, asks
+// for the help instead.
 func parseCommandLine(args []string) (commandLine, error) {
 	flags := flag.NewFlagSet("warder", flag.ContinueOnError)
 	// The caller reports the error, once.
@@ -210,13 +230,19 @@ func parseCommandLine(args []string) (commandLine, error) {
 			return nil
 		}
 	}
-	flags.Func("claude", "enable a Claude Code source with this source ID", enable(&command.claudeSources))
-	flags.Func("codex", "enable a Codex source with this source ID", enable(&command.codexSources))
+	flags.Func("claude", "enable a Claude Code source with this `source-id`; repeatable", enable(&command.claudeSources))
+	flags.Func("codex", "enable a Codex source with this `source-id`; repeatable", enable(&command.codexSources))
 	verbose := flags.Bool("verbose", false, "log each read, capture, deadline, publish and wait on stderr")
 	if len(args) > 0 {
 		args = args[1:]
 	}
-	if err := flags.Parse(args); err != nil {
+	if err := flags.Parse(args); errors.Is(err, flag.ErrHelp) {
+		var help strings.Builder
+		help.WriteString(usage + "\n\n" + about)
+		flags.SetOutput(&help)
+		flags.PrintDefaults()
+		return commandLine{help: help.String()}, nil
+	} else if err != nil {
 		return commandLine{}, err
 	}
 	if flags.NArg() > 0 {

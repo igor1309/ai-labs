@@ -385,6 +385,15 @@ primitives:
 	if verified, unverified := mapping.ForAnyVersion(); len(verified.Primitives) != 1 || strings.Join(unverified, ",") != "Y" {
 		t.Fatalf("for any version: %+v, unverified %v", verified.Primitives, unverified)
 	}
+	// A probe verifies the primitives it names for that version only, and
+	// leaves the mapping it was given as it was.
+	probed := mapping.WithVerified("2.2.0", []string{"Y"})
+	if verified, unverified := probed.ForVersion("2.2.0"); len(verified.Primitives) != 1 || verified.Primitives[0].Name != "Y" || strings.Join(unverified, ",") != "X" {
+		t.Fatalf("probed for 2.2.0: %+v, unverified %v", verified.Primitives, unverified)
+	}
+	if probed.Primitives[1].VerifiedFor("2.2.1") || mapping.Primitives[1].VerifiedFor("2.2.0") || !probed.Primitives[0].VerifiedFor("2.1.283") {
+		t.Fatalf("probed = %+v, mapping = %+v", probed.Primitives, mapping.Primitives)
+	}
 	// A prefix matches whole version components, with or without the dot.
 	for prefix, versions := range map[string]map[string]bool{
 		"2.1":  {"2.1.3": true, "2.1": true, "2.10.0": false, "2.11": false, "12.1.0": false},

@@ -106,6 +106,19 @@ func NewCodex(command, homes string, userHome func() (string, error), processes 
 	return AdaptCodex(runner)
 }
 
+// NewCodexProber probes the sandbox of the Codex of command, run on the
+// process supervisor given (ADR-029).
+func NewCodexProber(command string, processes CodexSupervisor) app.RuntimeProber {
+	return codexProber{codex.New(command, CodexTransport{Supervisor: processes})}
+}
+
+type codexProber struct{ runner *codex.Runner }
+
+func (p codexProber) Probe(ctx context.Context) (app.RuntimeProbe, error) {
+	probe, err := p.runner.Probe(ctx)
+	return app.RuntimeProbe{Version: probe.Version, Primitives: probe.Primitives, Report: probe.Report}, err
+}
+
 // CodexHome tells the user's CODEX_HOME: $CODEX_HOME when it is set, else
 // .codex in the user's home.
 func CodexHome(getenv func(string) string, userHome func() (string, error)) func() (string, error) {

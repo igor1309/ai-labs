@@ -27,9 +27,9 @@ import (
 )
 
 // Every package is the module root or under internal/ or cmd/, a package
-// under internal/ imports no other package of the module, only a package
-// under cmd/ imports one under internal/, and nothing imports a package
-// under cmd/. Every package go list finds is checked, test files included,
+// under internal/ imports no other package of the module and no logger,
+// only a package under cmd/ imports one under internal/, and nothing
+// imports a package under cmd/. Every package go list finds is checked, test files included,
 // so a new package needs no edit here.
 //
 // Contract test: the module's real import graph, from go list.
@@ -78,8 +78,8 @@ func TestTheModulesTestsKeepTheirMarkers(t *testing.T) {
 }
 
 // The graph rules accept the module root, components that import only the
-// standard library and a composition root that imports them, tests
-// included.
+// standard library and a composition root that imports them and logs,
+// tests included.
 //
 // Contract test: a fixture module's real import graph, from go list.
 func TestTheGraphCheckAcceptsComponentsApart(t *testing.T) {
@@ -111,6 +111,8 @@ func B() {}
 		"cmd/app/main.go": `package main
 
 import (
+	"log/slog"
+
 	"example.com/fixture/internal/a"
 	"example.com/fixture/internal/b"
 )
@@ -118,6 +120,7 @@ import (
 func main() {
 	_ = a.A()
 	b.B()
+	slog.Info("done")
 }
 `,
 		"fixture.go": `package fixture
@@ -138,7 +141,8 @@ func F() {}
 // The graph rules report, at its first file, a package that is neither the
 // module root nor under internal/ or cmd/, a name that only starts like
 // internal included; and, at the import, a component that imports another
-// package of the module, from a test file too; a package outside cmd/ that
+// package of the module, from a test file too; a component that imports a
+// logger, log/slog or log; a package outside cmd/ that
 // imports a component; and any import of a package under cmd/.
 //
 // Contract test: a fixture module's real import graph, from go list.
@@ -166,7 +170,15 @@ func TestA(t *testing.T) {
 `,
 		"internal/b/b.go": `package b
 
-func B() {}
+import "log/slog"
+
+func B() { slog.Info("b") }
+`,
+		"internal/d/d.go": `package d
+
+import "log"
+
+func D() { log.Print("d") }
 `,
 		"internal/c/c.go": `package c
 
@@ -210,7 +222,9 @@ func main() { b.B() }
 		"fixture.go:3: . imports cmd/tool: nothing imports a package under cmd/",
 		"internal/a/a.go:3: internal/a imports internal/b: a package under internal/ imports no other package of the module",
 		"internal/a/a_test.go:6: internal/a imports internal/c: a package under internal/ imports no other package of the module",
+		"internal/b/b.go:3: internal/b imports log/slog: nothing under internal/ logs; logging is a decorator in cmd/",
 		"internal/c/c.go:3: internal/c imports cmd/tool: nothing imports a package under cmd/",
+		"internal/d/d.go:3: internal/d imports log: nothing under internal/ logs; logging is a decorator in cmd/",
 		"internalx/z/z.go:1: internalx/z is neither the module root nor under internal/ or cmd/: every package is one of them",
 		"pkg/x/x.go:1: pkg/x is neither the module root nor under internal/ or cmd/: every package is one of them",
 		"pkg/x/x.go:3: pkg/x imports internal/b: only a package under cmd/ imports a package under internal/",
@@ -579,9 +593,12 @@ func (m listedModule) placementProblem(path string) string {
 }
 
 // edgeProblem is what is wrong with one package of the module importing
-// another, or "" for nothing. A package's external tests importing it is
-// no edge.
+// another, or a component importing a logger, or "" for nothing. A
+// package's external tests importing it is no edge.
 func (m listedModule) edgeProblem(from, to string) string {
+	if m.within(from, "internal") && (to == "log/slog" || to == "log") {
+		return fmt.Sprintf("%s imports %s: nothing under internal/ logs; logging is a decorator in cmd/", m.name(from), to)
+	}
 	if from == to || !m.contains(to) {
 		return ""
 	}

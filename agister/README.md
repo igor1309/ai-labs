@@ -109,6 +109,18 @@ project fills `verifies/repo.yaml` in its own layer for `implement`, with
 a command written from the worktree root (`cd agister && …`); launched
 where no layer fills it, `implement` is refused.
 
+A runtime mapping lists, per primitive, the runtime versions it is
+`verified` for. A call, or `check --probe`, on a version the mapping
+verifies no primitive for has the adapter probe that version first, where
+the adapter has a probe; Codex's does
+([ADR-029](docs/adr/029-an-unverified-runtime-version-is-probed.md)). It
+runs one script in each sandbox mode, and in a read-only turn that resumes
+a workspace-write thread, on `gpt-6-luna` at effort `low`: about 20
+seconds. The modes whose sandbox held are verified for that version, and
+the probe is kept as `~/.agister/probes/<adapter>/<version>.json`, which
+later calls read. A probe that fails, or proves nothing, refuses the call
+with its outcomes, and is not run again by that process.
+
 A policy may set staleness limits under `stale`, and a process may only
 narrow them: `no_event`, `tool_command` and `repeated_tool_calls` for an
 agent turn, `no_output` for a verification run. A call that reaches one
