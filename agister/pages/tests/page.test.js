@@ -1,5 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import '../repos.js';
 import '../config.js';
 import '../runs.js';
@@ -517,6 +518,72 @@ test('a failed run shows its error first, then its text, and no verdict', async 
   assert.deepEqual(parts.map((c) => [c.dataset.key, c.querySelector('div.markdown').textContent]),
     [['error', 'Hit the limit.class: rate_limited'], ['text', 'Got as far as this.']]);
   assert.equal(p.$('run-detail').querySelector('span.verdict'), null);
+});
+
+// The records committed under testdata/records, runs made before a workflow
+// bound an agent (ADR-030 rule 11), as the page gets them: the list as
+// testdata/pages/runs.json holds it, which cmd/agister's test of these
+// records holds to what their home's pages serve, and each run as its
+// summary there with its record as committed.
+const committed = (path) => JSON.parse(readFileSync(new URL(`../../testdata/${path}`, import.meta.url), 'utf8'));
+const todaysRuns = committed('pages/runs.json');
+const todaysRecord = (id) => committed(`records/${id}/record.json`);
+const todaysAnswers = {
+  'api/runs': () => respond(todaysRuns),
+  ...Object.fromEntries(todaysRuns.runs.map((summary) =>
+    [`api/runs/${summary.id}`, () => respond({ summary, record: todaysRecord(summary.id) })])),
+};
+
+test('the Runs view shows each record of today with its process, agent and status, in a home with no settings', async () => {
+  // The settings read answers with no file: none of what the records name.
+  const p = page({ storage: fakeStorage({ [VIEW_KEY]: 'runs' }), answers: todaysAnswers });
+  await p.started;
+  const refused = '20261006T165603Z-7bcadd';
+  const workflowOfOne = '20261010T095548Z-bac87a';
+  const repaired = '20261009T184118Z-ae4689';
+  const continuation = '20261010T181147Z-999397';
+
+  // A row names its run's process, who did its work and its status; the
+  // agent's name is in the opened run. Newest first.
+  assert.deepEqual(p.rows().map((r) => [r.title, ...p.cells(r).slice(1, 3), r.children[3].querySelector('span.mark').title]), [
+    [continuation, 'implement', 'claude-code opus high', 'completed'],
+    [workflowOfOne, 'adr_review', '2 nodes', 'completed'],
+    [repaired, 'implement_warder', 'claude-code opus high', 'completed'],
+    [refused, 'review_judge', 'claude-code opus high', 'failed'],
+  ]);
+
+  // Each opens as a card that heads with its process and status and names
+  // its agent before its ID, and folds its record as committed.
+  const cards = {};
+  for (const id of [continuation, workflowOfOne, repaired, refused]) {
+    p.row(id).click();
+    await settle();
+    const card = p.$('run-detail').querySelector('article.run-card');
+    assert.equal(card.dataset.run, id);
+    const title = card.querySelector('div.run-title');
+    // After the times: the agent, when the record names one, and the ID.
+    const named = card.querySelector('p.run-when').textContent.split(' · ').slice(1);
+    assert.equal(named.pop(), id);
+    cards[id] = { process: title.querySelector('h3').textContent, agent: named, status: title.querySelector('span.mark').title };
+    assert.deepEqual(JSON.parse(card.querySelector('details.record pre').textContent), todaysRecord(id));
+
+    // The refused run says what refused it; the workflow, which names no
+    // agent, shows its node and its join with the process of each.
+    if (id === refused) {
+      assert.deepEqual(card.querySelector('section.output').children.map((c) => [c.dataset.key, c.querySelector('div.markdown').textContent]),
+        [['error', 'agent claude-judge is fresh-only; it cannot continue run 20261006T135952Z-bfcb4eclass: refused']]);
+    }
+    if (id === workflowOfOne) {
+      assert.deepEqual(card.querySelectorAll('div.nodes tbody tr').map((tr) => [...p.cells(tr).slice(0, 2), tr.querySelector('span.mark').title]),
+        [['adr', 'adr_review_codex', 'completed'], ['judge join', 'review_judge', 'completed']]);
+    }
+  }
+  assert.deepEqual(cards, {
+    [continuation]: { process: 'implement', agent: ['agent claude-implementer-opus'], status: 'completed' },
+    [workflowOfOne]: { process: 'adr_review', agent: [], status: 'completed' },
+    [repaired]: { process: 'implement_warder', agent: ['agent claude-implementer-opus'], status: 'completed' },
+    [refused]: { process: 'review_judge', agent: ['agent claude-judge'], status: 'failed' },
+  });
 });
 
 // An api/skills reply holding a skill named review in a folder for adapter.

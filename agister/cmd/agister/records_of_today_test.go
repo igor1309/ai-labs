@@ -211,7 +211,10 @@ func TestRunsExportReadsTheRecordsOfToday(t *testing.T) {
 
 // The Pages Runs view reads each record of today from the run store the
 // process's pages read: its list names each with its process, agent and
-// status, and each opens as its record, as committed.
+// status, and each opens as its record, as committed. The list is served as
+// testdata/pages/runs.json holds it, which the page's own test of these
+// records renders (pages/tests/page.test.js): what that test shows is what
+// this home's pages serve.
 func TestPagesReadTheRecordsOfToday(t *testing.T) {
 	t.Parallel()
 	home, committed := homeOfTodaysRecords(t)
@@ -220,7 +223,7 @@ func TestPagesReadTheRecordsOfToday(t *testing.T) {
 		return "", nil
 	}
 	handler := pages.Handler(home, noDialog, pagesEnv(fsruns.NewAppends()).Observe, pages.SkillHomes{}, pagesSettings)
-	get := func(target string, out any) {
+	get := func(target string, out any) (body string) {
 		t.Helper()
 		request := httptest.NewRequest(http.MethodGet, target, nil)
 		request.Host = "localhost:7465"
@@ -232,10 +235,14 @@ func TestPagesReadTheRecordsOfToday(t *testing.T) {
 		if err := json.Unmarshal(response.Body.Bytes(), out); err != nil {
 			t.Fatalf("%s: %v: %s", target, err, response.Body)
 		}
+		return response.Body.String()
 	}
 
 	var list pages.RunList
-	get("/api/runs", &list)
+	served := get("/api/runs", &list)
+	if rendered := filepath.Join("..", "..", "testdata", "pages", "runs.json"); !reflect.DeepEqual(decoded(t, served), decoded(t, read(t, rendered))) {
+		t.Errorf("the list is not served as %s holds it:\n%s", rendered, served)
+	}
 	if list.Total != len(todaysRecords) || list.Skipped != 0 || len(list.Runs) != len(todaysRecords) {
 		t.Fatalf("the list = %+v", list)
 	}
