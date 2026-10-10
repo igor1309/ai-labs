@@ -1,7 +1,7 @@
 # AGENTS (warder)
 
 The design is `docs/agent-monitoring-mvp.md`. Issues are in the Multica
-project `warder` (parent LAB-135).
+project `warder`, in the `ai-labs` workspace (parent LAB-135).
 
 - One Go module; each component is one package under `internal/`, and
   `cmd/warder` is the only composition root. `arch_test.go` keeps the
