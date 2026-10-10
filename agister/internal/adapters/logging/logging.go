@@ -68,11 +68,17 @@ var warnEvents = map[string]bool{
 	"SESSION_ID_MISMATCH": true, "TIMEOUT": true, "SPAWN_FAILED": true,
 }
 
-// Runner logs a runtime runner's turns.
+// Runner logs a runtime runner's turns. What a turn did, its turn.*
+// records, is the run's: its record and events hold it, and it goes to
+// Turns, never to Log. Log gets what no run's record holds: a runtime that
+// cannot be identified or does not admit a turn, before there is a run to
+// record it in, and a process the run could not record.
 type Runner struct {
 	Inner   app.TurnRunner
 	Adapter string
 	Log     *slog.Logger
+	// Turns gets the turn.* records. Nil means nobody reads them.
+	Turns *slog.Logger
 	// Clock reads the time a turn's wall time is measured on. Nil means the
 	// wall clock.
 	Clock Clock
@@ -86,6 +92,13 @@ func (r Runner) now() time.Time {
 		return time.Now()
 	}
 	return r.Clock.Now()
+}
+
+func (r Runner) turns() *slog.Logger {
+	if r.Turns == nil {
+		return slog.New(slog.DiscardHandler)
+	}
+	return r.Turns
 }
 
 func (r Runner) Identity(ctx context.Context) (app.RuntimeIdentity, error) {
@@ -106,11 +119,12 @@ func (r Runner) Admit(start app.TurnStart) *run.Error {
 
 func (r Runner) RunTurn(ctx context.Context, request app.TurnRequest, sink app.EventSink) run.Turn {
 	started := r.now()
-	r.Log.InfoContext(ctx, "turn.started",
+	turns := r.turns()
+	turns.InfoContext(ctx, "turn.started",
 		"adapter", r.Adapter, "cwd", request.Cwd, "model", request.Model, "effort", request.Effort,
 		"primitives", request.Primitives, "timeout", request.Timeout.String(),
 		"output_schema", len(request.OutputSchema) > 0, "prompt_chars", len(request.Prompt))
-	counting := &countingSink{inner: sink, counts: map[string]int{}, log: r.Log, ctx: ctx, adapter: r.Adapter}
+	counting := &countingSink{inner: sink, counts: map[string]int{}, log: r.Log, turns: turns, ctx: ctx, adapter: r.Adapter}
 	turn := r.Inner.RunTurn(ctx, request, counting)
 	level := slog.LevelInfo
 	fault := ""
@@ -120,7 +134,7 @@ func (r Runner) RunTurn(ctx context.Context, request app.TurnRequest, sink app.E
 			fault = turn.Error.String()
 		}
 	}
-	r.Log.Log(ctx, level, "turn.finished",
+	turns.Log(ctx, level, "turn.finished",
 		"adapter", r.Adapter, "status", string(turn.Status), "error", fault,
 		"provider_session_id", turn.ProviderSessionID, "wall", r.now().Sub(started).String(), "events", counting.counts)
 	return turn
@@ -130,6 +144,7 @@ type countingSink struct {
 	inner   app.EventSink
 	counts  map[string]int
 	log     *slog.Logger
+	turns   *slog.Logger
 	ctx     context.Context
 	adapter string
 }
@@ -137,9 +152,9 @@ type countingSink struct {
 func (s *countingSink) Event(source, kind string, data map[string]any) {
 	s.counts[kind]++
 	if warnEvents[kind] {
-		s.log.WarnContext(s.ctx, "turn.event", "adapter", s.adapter, "kind", kind, "source", source, "data", data)
+		s.turns.WarnContext(s.ctx, "turn.event", "adapter", s.adapter, "kind", kind, "source", source, "data", data)
 	} else {
-		s.log.DebugContext(s.ctx, "turn.event", "adapter", s.adapter, "kind", kind, "source", source)
+		s.turns.DebugContext(s.ctx, "turn.event", "adapter", s.adapter, "kind", kind, "source", source)
 	}
 	s.inner.Event(source, kind, data)
 }
@@ -147,7 +162,7 @@ func (s *countingSink) Event(source, kind string, data map[string]any) {
 func (s *countingSink) ProcessStarted(ref string) error {
 	err := s.inner.ProcessStarted(ref)
 	if err != nil {
-		s.log.WarnContext(s.ctx, "turn.process_not_recorded", "adapter", s.adapter, "error", err.Error())
+		s.log.WarnContext(s.ctx, "runtime.process_not_recorded", "adapter", s.adapter, "error", err.Error())
 	}
 	return err
 }

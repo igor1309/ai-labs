@@ -111,8 +111,10 @@ Options:
                  nearest .agister from the launch directory up and below the repository's root, are
                  composed over it field by field (a prompt, a skill and a schema are taken whole)
   --quiet        No progress on stderr
-  --debug        Diagnostics on stderr (always kept in <home>/logs/agister.jsonl), including why
-                 no project settings apply
+  --debug        Diagnostics on stderr, including why no project settings apply and what each
+                 turn did. <home>/logs/agister.jsonl always keeps the warnings and errors no run
+                 records, within 5 MB and three older compressed files; a turn's detail is kept
+                 with its run, in <home>/runs/<id>/
   -h, --help     This help; needs no settings
   --version      This binary's version, as agister version prints it
 

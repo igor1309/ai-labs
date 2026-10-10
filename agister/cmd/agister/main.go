@@ -236,7 +236,7 @@ func gitBacked(worktrees *git.Worktrees) gitAdapters {
 // background reaper every client the gate builds shares, which submitting a
 // call starts (tests wait on it).
 func (c composition) wire(config cli.Config) (contract.Client, *app.BackgroundReaper, error) {
-	log, err := diagnostics(config)
+	log, turns, err := diagnostics(config)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -263,21 +263,21 @@ func (c composition) wire(config cli.Config) (contract.Client, *app.BackgroundRe
 	commands := supervisor.Commands{Starter: c.commands, Timer: c.timer}
 	runtimes := runtime.Registry{
 		"claude-code": func(command string) app.TurnRunner {
-			return logging.Runner{Inner: runtimecomposition.NewClaudeCode(command, processes), Adapter: "claude-code", Log: log, Clock: system.Clock{}}
+			return logging.Runner{Inner: runtimecomposition.NewClaudeCode(command, processes), Adapter: "claude-code", Log: log, Turns: turns, Clock: system.Clock{}}
 		},
 		// The Codex homes of threads given skills are kept under the
 		// home, where a continuation finds them, beside the user's own.
 		"codex": func(command string) app.TurnRunner {
-			return logging.Runner{Inner: runtimecomposition.NewCodex(command, filepath.Join(config.Home, "codex", "homes"), c.codexHome, processes), Adapter: "codex", Log: log, Clock: system.Clock{}}
+			return logging.Runner{Inner: runtimecomposition.NewCodex(command, filepath.Join(config.Home, "codex", "homes"), c.codexHome, processes), Adapter: "codex", Log: log, Turns: turns, Clock: system.Clock{}}
 		},
 		// Pi's sessions are kept under the home, where a continuation
 		// finds them, not in ~/.pi.
 		// OpenCode keeps its sessions in its own store.
 		"opencode": func(command string) app.TurnRunner {
-			return logging.Runner{Inner: runtimecomposition.NewOpenCode(command, processes), Adapter: "opencode", Log: log, Clock: system.Clock{}}
+			return logging.Runner{Inner: runtimecomposition.NewOpenCode(command, processes), Adapter: "opencode", Log: log, Turns: turns, Clock: system.Clock{}}
 		},
 		"pi": func(command string) app.TurnRunner {
-			return logging.Runner{Inner: runtimecomposition.NewPi(command, filepath.Join(config.Home, "pi", "sessions"), processes), Adapter: "pi", Log: log, Clock: system.Clock{}}
+			return logging.Runner{Inner: runtimecomposition.NewPi(command, filepath.Join(config.Home, "pi", "sessions"), processes), Adapter: "pi", Log: log, Turns: turns, Clock: system.Clock{}}
 		},
 	}
 	// A runtime version the settings verify no primitive for is probed,
@@ -402,24 +402,32 @@ func layers(config cli.Config, workspaces app.CallWorkspaces, log *slog.Logger) 
 	return selected, nil
 }
 
-// diagnostics: info and above to <home>/logs/agister.jsonl; with --debug,
-// debug and above to the file and to the terminal.
-func diagnostics(config cli.Config) (*slog.Logger, error) {
+// The log is kept within logMax bytes and logKeep old files, compressed.
+const (
+	logMax  = 5 << 20
+	logKeep = 3
+)
+
+// diagnostics: the log is <home>/logs/agister.jsonl, info and above, and
+// with --debug, debug and above there and on the terminal. It holds what
+// no run's record does: warnings, errors and what a command outside any
+// run says. What a turn did is its run's, in <home>/runs/<id>/, so the
+// second logger, the turns', reaches only the terminal, and only with
+// --debug.
+func diagnostics(config cli.Config) (log, turns *slog.Logger, err error) {
 	level := slog.LevelInfo
 	if config.Debug != nil {
 		level = slog.LevelDebug
 	}
 	dir := filepath.Join(config.Home, "logs")
 	if err := os.MkdirAll(dir, 0o700); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	file, err := os.OpenFile(filepath.Join(dir, "agister.jsonl"), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o600)
-	if err != nil {
-		return nil, err
-	}
+	file := logging.File{Path: filepath.Join(dir, "agister.jsonl"), Max: logMax, Keep: logKeep}
 	handlers := logging.Fanout{slog.NewJSONHandler(file, &slog.HandlerOptions{Level: level})}
-	if config.Debug != nil {
-		handlers = append(handlers, slog.NewJSONHandler(config.Debug, &slog.HandlerOptions{Level: level}))
+	if config.Debug == nil {
+		return slog.New(logging.Handler{Handler: handlers}), slog.New(slog.DiscardHandler), nil
 	}
-	return slog.New(logging.Handler{Handler: handlers}), nil
+	terminal := slog.NewJSONHandler(config.Debug, &slog.HandlerOptions{Level: level})
+	return slog.New(logging.Handler{Handler: append(handlers, terminal)}), slog.New(logging.Handler{Handler: terminal}), nil
 }

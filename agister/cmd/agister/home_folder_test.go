@@ -97,6 +97,25 @@ func TestTheHomeFolderInstallsAndPassesCheckAsGlobalSettings(t *testing.T) {
 	}
 }
 
+// Live state that turns up in home's settings folder, a log, a backup or a
+// run, is ignored by git, so it is never committed with the settings
+// (ADR-027: the folder never holds live state).
+//
+// Contract test: real git, reading this repository's ignore rules.
+func TestGitIgnoresLiveStateInTheHomeFolder(t *testing.T) {
+	t.Parallel()
+	root, err := filepath.Abs(filepath.Join("..", "..", ".."))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, path := range []string{"logs/agister.jsonl", "logs/agister.jsonl.1.gz", "backups/b1/manifest.json", "runs/r1/record.json"} {
+		path := filepath.Join(homeFolder, path)
+		if ignored := gitCmd(t, root, "check-ignore", "--no-index", path); ignored != path {
+			t.Errorf("%s is not ignored: %q", path, ignored)
+		}
+	}
+}
+
 // notSettings finds what a settings folder holds that is not a settings
 // document: live state such as a backup or the log, which files leaves
 // out, a file beside the kinds' folders, and one in a kind's folder that

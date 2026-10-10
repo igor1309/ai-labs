@@ -52,10 +52,11 @@ func TestDecoratorConformance(t *testing.T) {
 
 func TestLogsAreCorrelatedAndOmitPrompts(t *testing.T) {
 	t.Parallel()
-	var buffer bytes.Buffer
-	log := slog.New(logging.Handler{Handler: slog.NewJSONHandler(&buffer, &slog.HandlerOptions{Level: slog.LevelInfo})})
+	var buffer, global bytes.Buffer
+	turns := slog.New(logging.Handler{Handler: slog.NewJSONHandler(&buffer, &slog.HandlerOptions{Level: slog.LevelInfo})})
+	log := slog.New(slog.NewJSONHandler(&global, &slog.HandlerOptions{Level: slog.LevelDebug}))
 	clock := clocktest.NewClock(start)
-	runner := logging.Runner{Inner: composition.NewClaudeCode(fake, supervisor.Runtime{Starter: runtimetest.InProcess{Groups: supervisortest.NewGroups()}, Timer: clock.Timer}), Adapter: "claude-code", Log: log, Clock: clock}
+	runner := logging.Runner{Inner: composition.NewClaudeCode(fake, supervisor.Runtime{Starter: runtimetest.InProcess{Groups: supervisortest.NewGroups()}, Timer: clock.Timer}), Adapter: "claude-code", Log: log, Turns: turns, Clock: clock}
 	ctx := app.WithCorrelation(context.Background(), "run_id", "run-1", "process", "p")
 	runner.RunTurn(ctx, request("secret prompt SCENARIO:approve"), &runtimetest.Recorder{})
 
@@ -76,6 +77,31 @@ func TestLogsAreCorrelatedAndOmitPrompts(t *testing.T) {
 	}
 	if strings.Contains(buffer.String(), "secret prompt") {
 		t.Fatal("prompt text was logged")
+	}
+	// What a turn did is its run's: none of it reaches the log, not even
+	// the event that warns.
+	if global.Len() != 0 {
+		t.Fatalf("the log got %s", global.String())
+	}
+}
+
+// failing is a runner whose turn fails.
+type failing struct{ starter }
+
+func (*failing) RunTurn(_ context.Context, _ app.TurnRequest, sink app.EventSink) run.Turn {
+	sink.Event("runtime", "TIMEOUT", nil)
+	return run.Turn{Status: run.Failed, Error: run.Fault(run.ClassRefused, "timed out")}
+}
+
+// A turn that fails is its run's too, and a runner given nobody to tell of
+// its turns tells nobody.
+func TestAFailedTurnStaysOutOfTheLog(t *testing.T) {
+	t.Parallel()
+	var global bytes.Buffer
+	log := slog.New(slog.NewJSONHandler(&global, &slog.HandlerOptions{Level: slog.LevelDebug}))
+	turn := logging.Runner{Inner: &failing{}, Adapter: "x", Log: log}.RunTurn(context.Background(), request("p"), &runtimetest.Recorder{})
+	if turn.Status != run.Failed || global.Len() != 0 {
+		t.Fatalf("turn %+v, the log got %s", turn, global.String())
 	}
 }
 
@@ -131,7 +157,7 @@ func TestFailureToRecordTheProcessReachesTheRuntime(t *testing.T) {
 	if !errors.Is(inner.got, failure) {
 		t.Fatalf("the runtime heard %v", inner.got)
 	}
-	if !strings.Contains(buffer.String(), "disk full") {
+	if !strings.Contains(buffer.String(), "disk full") || strings.Contains(buffer.String(), `"msg":"turn.`) {
 		t.Fatalf("not logged: %s", buffer.String())
 	}
 }
@@ -159,7 +185,7 @@ func TestTheWallTimeIsReadOnTheRunnersClock(t *testing.T) {
 	var buffer bytes.Buffer
 	log := slog.New(slog.NewJSONHandler(&buffer, nil))
 	clock := clocktest.NewClock(start)
-	runner := logging.Runner{Inner: taking{clock: clock, takes: 90 * time.Second}, Adapter: "x", Log: log, Clock: clock}
+	runner := logging.Runner{Inner: taking{clock: clock, takes: 90 * time.Second}, Adapter: "x", Turns: log, Clock: clock}
 	runner.RunTurn(context.Background(), request("p"), &runtimetest.Recorder{})
 	var finished map[string]any
 	for _, line := range strings.Split(strings.TrimSpace(buffer.String()), "\n") {

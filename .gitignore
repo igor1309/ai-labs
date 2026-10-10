@@ -29,3 +29,8 @@ playwright-report/
 
 # Local Go build output
 agister/bin/
+
+# Agister's live state, never settings (ADR-027)
+agister/home/logs/
+agister/home/backups/
+agister/home/runs/

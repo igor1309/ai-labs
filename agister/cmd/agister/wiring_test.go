@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
@@ -864,5 +865,44 @@ func TestTheCompositionRecoversAStaleTurn(t *testing.T) {
 	// The runtime was started again, to resume the session.
 	if provider := read(t, filepath.Join(home, "runs", id, "provider.jsonl")); !strings.Contains(provider, `"--resume","`+session+`"`) {
 		t.Fatalf("provider evidence:\n%s", provider)
+	}
+}
+
+// The log keeps what no run's record holds and none of what a turn did: a
+// warning reaches <home>/logs/agister.jsonl and a turn's record does not.
+// With --debug both are on the terminal, the turn's under its run's ID.
+//
+// Contract test: the composition's diagnostics over the log on the real
+// filesystem.
+func TestDiagnosticsKeepTurnsOutOfTheLog(t *testing.T) {
+	t.Parallel()
+	ctx := app.WithCorrelation(context.Background(), "run_id", "run-1")
+	for _, debug := range []bool{false, true} {
+		home := tempDir(t)
+		var terminal bytes.Buffer
+		config := cli.Config{Home: home}
+		if debug {
+			config.Debug = &terminal
+		}
+		log, turns, err := diagnostics(config)
+		if err != nil {
+			t.Fatal(err)
+		}
+		log.WarnContext(ctx, "runtime.not_admitted", "error", "no home")
+		turns.InfoContext(ctx, "turn.started")
+		turns.WarnContext(ctx, "turn.finished", "status", "failed")
+
+		kept := read(t, filepath.Join(home, "logs", "agister.jsonl"))
+		if strings.Count(kept, "\n") != 1 || !strings.Contains(kept, `"msg":"runtime.not_admitted"`) || !strings.Contains(kept, `"run_id":"run-1"`) {
+			t.Fatalf("debug %v: the log = %s", debug, kept)
+		}
+		shown := terminal.String()
+		if !debug && shown != "" {
+			t.Fatalf("on the terminal without --debug: %s", shown)
+		}
+		if debug && (strings.Count(shown, "\n") != 3 || !strings.Contains(shown, `"msg":"runtime.not_admitted"`) || !strings.Contains(shown, `"msg":"turn.started"`) ||
+			!strings.Contains(shown, `"msg":"turn.finished","status":"failed","run_id":"run-1"`)) {
+			t.Fatalf("on the terminal with --debug: %s", shown)
+		}
 	}
 }

@@ -479,18 +479,36 @@ func TestAgentCallEndToEnd(t *testing.T) {
 		t.Fatalf("workspace %s, agent cwd %v", workspace, last.first["cwd"])
 	}
 	noCheckoutLeft(t, home)
-	// Diagnostics are correlated with the run.
-	var logged bool
-	for _, line := range strings.Split(read(t, filepath.Join(home, "logs", "agister.jsonl")), "\n") {
-		logged = logged || strings.Contains(line, `"msg":"turn.finished"`) && strings.Contains(line, `"run_id":"`+record["id"].(string)+`"`)
-	}
-	if !logged {
-		t.Fatal("turn not logged under its run ID")
+	// What the turn did is the run's, not the log's.
+	if logged, err := os.ReadFile(filepath.Join(home, "logs", "agister.jsonl")); err == nil && strings.Contains(string(logged), `"msg":"turn.`) {
+		t.Fatalf("the log holds the turn:\n%s", logged)
 	}
 	// The plan comes before any runtime process.
 	order := strings.Join(last.kinds(), " ")
 	if planned := strings.Index(order, "PLANNED"); planned < 0 || planned > strings.Index(order, "PROCESS_STARTED") || !strings.Contains(order, "PERMISSIONS_WITHHELD") {
 		t.Fatalf("events = %s", order)
+	}
+}
+
+// With --debug what each turn did is on the terminal, under its run's ID,
+// and still not in the log.
+func TestDebugShowsTheTurnsOnTheTerminal(t *testing.T) {
+	t.Parallel()
+	home, repo := setup(t, "approve")
+	// Quiet, so the diagnostics alone write to the test's terminal.
+	r := agister(t, home, repo, "--quiet", "--debug", "run", "adversarial_review", "--param", "base=main", "--timeout", "1m")
+	if r.code != cli.ExitCompleted {
+		t.Fatalf("exit %d\n%s", r.code, r.stderr)
+	}
+	var shown bool
+	for _, line := range strings.Split(r.stderr, "\n") {
+		shown = shown || strings.Contains(line, `"msg":"turn.finished"`) && strings.Contains(line, `"run_id":"`)
+	}
+	if !shown || !strings.Contains(r.stderr, `"msg":"turn.started"`) {
+		t.Fatalf("the turn is not on the terminal:\n%s", r.stderr)
+	}
+	if logged := read(t, filepath.Join(home, "logs", "agister.jsonl")); strings.Contains(logged, `"msg":"turn.`) || !strings.Contains(logged, `"msg":"settings layer"`) {
+		t.Fatalf("the log:\n%s", logged)
 	}
 }
 
