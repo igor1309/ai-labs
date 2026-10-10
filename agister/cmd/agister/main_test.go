@@ -491,7 +491,7 @@ func TestAgentCallEndToEnd(t *testing.T) {
 }
 
 // With --debug what each turn did is on the terminal, under its run's ID,
-// and still not in the log.
+// each ordinary event of it at debug level, and still not in the log.
 func TestDebugShowsTheTurnsOnTheTerminal(t *testing.T) {
 	t.Parallel()
 	home, repo := setup(t, "approve")
@@ -500,11 +500,12 @@ func TestDebugShowsTheTurnsOnTheTerminal(t *testing.T) {
 	if r.code != cli.ExitCompleted {
 		t.Fatalf("exit %d\n%s", r.code, r.stderr)
 	}
-	var shown bool
+	var shown, event bool
 	for _, line := range strings.Split(r.stderr, "\n") {
 		shown = shown || strings.Contains(line, `"msg":"turn.finished"`) && strings.Contains(line, `"run_id":"`)
+		event = event || strings.Contains(line, `"level":"DEBUG","msg":"turn.event"`) && strings.Contains(line, `"run_id":"`)
 	}
-	if !shown || !strings.Contains(r.stderr, `"msg":"turn.started"`) {
+	if !shown || !event || !strings.Contains(r.stderr, `"msg":"turn.started"`) {
 		t.Fatalf("the turn is not on the terminal:\n%s", r.stderr)
 	}
 	if logged := read(t, filepath.Join(home, "logs", "agister.jsonl")); strings.Contains(logged, `"msg":"turn.`) || !strings.Contains(logged, `"msg":"settings layer"`) {
@@ -973,6 +974,15 @@ func TestFreshHomeNeedsInit(t *testing.T) {
 	if r := agister(t, home, dir, "process", "list"); r.code != cli.ExitUsage || !strings.Contains(r.stderr, "service service: not found") {
 		t.Fatalf("before init: %d\n%s", r.code, r.stderr)
 	}
+	// The refusal, before any run exists, is in the log as an error.
+	refusals := loggedAs(t, home, "the settings refused the command")
+	if len(refusals) != 1 {
+		t.Fatalf("refusals logged = %v", refusals)
+	}
+	problems, _ := json.Marshal(refusals[0]["problems"])
+	if refusals[0]["level"] != "ERROR" || refusals[0]["operation"] != "ListProcesses" || !strings.Contains(string(problems), "service service: not found") {
+		t.Fatalf("logged = %v", refusals[0])
+	}
 	if r := agisterInput(t, "yes\n", home, dir, "init"); r.code != 0 {
 		t.Fatalf("init: %d\n%s", r.code, r.stderr)
 	}
@@ -991,24 +1001,58 @@ func TestUnusableProjectSettingsFail(t *testing.T) {
 	if r := agister(t, home, repo, "process", "list"); r.code == 0 || !strings.Contains(r.stderr, ".agister: not a directory") {
 		t.Fatalf("exit %d\n%s%s", r.code, r.stdout, r.stderr)
 	}
-	data := read(t, filepath.Join(home, "logs", "agister.jsonl"))
-	var logged []map[string]any
-	for _, line := range strings.Split(strings.TrimSpace(data), "\n") {
-		var entry map[string]any
-		if err := json.Unmarshal([]byte(line), &entry); err != nil {
-			t.Fatalf("log line %q: %v", line, err)
-		}
-		if entry["msg"] == "selecting the settings layers failed" {
-			logged = append(logged, entry)
-		}
-	}
+	logged := loggedAs(t, home, "selecting the settings layers failed")
 	if len(logged) != 1 {
-		t.Fatalf("settings failures logged = %d in:\n%s", len(logged), data)
+		t.Fatalf("settings failures logged = %v", logged)
 	}
 	message, _ := logged[0]["error"].(string)
 	if logged[0]["level"] != "ERROR" || !strings.Contains(message, ".agister: not a directory") || logged[0]["cwd"] != repo {
 		t.Fatalf("logged = %v", logged[0])
 	}
+}
+
+// A call whose run folder cannot be made, <home>/runs a file, fails as it
+// did, makes no run, and the failure, which no run records, is in the log
+// as an error.
+func TestARunThatCannotBeRecordedIsLogged(t *testing.T) {
+	t.Parallel()
+	home, repo := setup(t, "approve")
+	runs := filepath.Join(home, "runs")
+	if err := os.RemoveAll(runs); err != nil {
+		t.Fatal(err)
+	}
+	write(t, runs, "not a folder")
+	r := agister(t, home, repo, "--quiet", "run", "adversarial_review", "--param", "base=main", "--timeout", "1m")
+	if r.code == cli.ExitCompleted || !strings.Contains(r.stderr, "not a directory") {
+		t.Fatalf("exit %d\n%s", r.code, r.stderr)
+	}
+	if kept := read(t, runs); kept != "not a folder" {
+		t.Fatalf("runs = %q", kept)
+	}
+	logged := loggedAs(t, home, "the call was not submitted")
+	if len(logged) != 1 {
+		t.Fatalf("failures logged = %v", logged)
+	}
+	message, _ := logged[0]["error"].(string)
+	if logged[0]["level"] != "ERROR" || logged[0]["process"] != "adversarial_review" || logged[0]["cwd"] != repo || !strings.Contains(r.stderr, "agister: "+message+"\n") {
+		t.Fatalf("logged = %v, stderr:\n%s", logged[0], r.stderr)
+	}
+}
+
+// loggedAs is every record in home's log whose message is msg.
+func loggedAs(t *testing.T, home, msg string) []map[string]any {
+	t.Helper()
+	var found []map[string]any
+	for _, line := range strings.Split(strings.TrimSpace(read(t, filepath.Join(home, "logs", "agister.jsonl"))), "\n") {
+		var entry map[string]any
+		if err := json.Unmarshal([]byte(line), &entry); err != nil {
+			t.Fatalf("log line %q: %v", line, err)
+		}
+		if entry["msg"] == msg {
+			found = append(found, entry)
+		}
+	}
+	return found
 }
 
 // Fields that settings once accepted and ignored are refused, so a home

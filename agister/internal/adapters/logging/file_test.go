@@ -1,7 +1,9 @@
 package logging_test
 
 import (
+	"bytes"
 	"compress/gzip"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -21,21 +23,14 @@ func logged(t *testing.T, path string, keep int) []string {
 	t.Helper()
 	var text strings.Builder
 	for n := keep; n >= 1; n-- {
-		file, err := os.Open(fmt.Sprintf("%s.%d.gz", path, n))
+		old, err := unzip(fmt.Sprintf("%s.%d.gz", path, n))
 		if os.IsNotExist(err) {
 			continue
 		}
 		if err != nil {
 			t.Fatal(err)
 		}
-		unzipped, err := gzip.NewReader(file)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if _, err := io.Copy(&text, unzipped); err != nil {
-			t.Fatal(err)
-		}
-		file.Close()
+		text.WriteString(old)
 	}
 	current, err := os.ReadFile(path)
 	if err != nil && !os.IsNotExist(err) {
@@ -46,6 +41,37 @@ func logged(t *testing.T, path string, keep int) []string {
 		return nil
 	}
 	return strings.Split(strings.TrimSuffix(text.String(), "\n"), "\n")
+}
+
+// unzip is what the old file at path holds, the file closed on every path.
+func unzip(path string) (string, error) {
+	file, err := os.Open(path)
+	if err != nil {
+		return "", err
+	}
+	defer file.Close()
+	unzipped, err := gzip.NewReader(file)
+	if err != nil {
+		return "", err
+	}
+	text, err := io.ReadAll(unzipped)
+	return string(text), errors.Join(err, unzipped.Close())
+}
+
+// zipped writes text, gzipped, to the new file at path.
+func zipped(t *testing.T, path, text string) {
+	t.Helper()
+	var buffer bytes.Buffer
+	writer := gzip.NewWriter(&buffer)
+	if _, err := writer.Write([]byte(text)); err != nil {
+		t.Fatal(err)
+	}
+	if err := writer.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(path, buffer.Bytes(), 0o600); err != nil {
+		t.Fatal(err)
+	}
 }
 
 // names is what the directory holds.
@@ -97,24 +123,105 @@ func TestTheLogStaysWithinItsCap(t *testing.T) {
 	}
 }
 
-// A line longer than the cap is still written, alone.
+// A record longer than the cap is stored cut to fit, valid JSON marked as
+// cut, with its time, level and message and as much of its beginning as
+// fits: right after it, the log is within Max. A record that does not fit
+// even cut is refused, and the log is left as it was.
 //
 // Contract test: the real filesystem and the kernel's flock.
-func TestALineLongerThanTheCapIsWrittenAlone(t *testing.T) {
+func TestARecordLongerThanTheCapIsCutToFit(t *testing.T) {
 	t.Parallel()
-	path := filepath.Join(t.TempDir(), "agister.jsonl")
-	file := logging.File{Path: path, Max: 10, Keep: 2, Append: (*os.File).Write}
-	long := strings.Repeat("x", 40)
-	for _, line := range []string{"short", long, "after"} {
-		if _, err := file.Write([]byte(line + "\n")); err != nil {
-			t.Fatal(err)
+	dir := t.TempDir()
+	path := filepath.Join(dir, "agister.jsonl")
+	file := logging.File{Path: path, Max: 160, Keep: 2, Append: (*os.File).Write}
+	short := `{"line":"short"}`
+	// Quotes take two bytes each once escaped in the cut record's head.
+	long := `{"time":"2026-10-10T11:00:00Z","level":"WARN","msg":"runtime.identity_failed","output":"` + strings.Repeat(`\"x`, 200) + `"}`
+	if _, err := file.Write([]byte(short + "\n")); err != nil {
+		t.Fatal(err)
+	}
+	if n, err := file.Write([]byte(long + "\n")); err != nil || n != len(long)+1 {
+		t.Fatalf("the long write: %d, %v", n, err)
+	}
+	current, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if int64(len(current)) > file.Max || !bytes.HasSuffix(current, []byte("\n")) || bytes.Count(current, []byte("\n")) != 1 {
+		t.Fatalf("the log after the long record, %d bytes: %q", len(current), current)
+	}
+	var cut map[string]any
+	if err := json.Unmarshal(current, &cut); err != nil {
+		t.Fatalf("the cut record is not JSON: %v: %q", err, current)
+	}
+	head, _ := cut["head"].(string)
+	if cut["time"] != "2026-10-10T11:00:00Z" || cut["level"] != "WARN" || cut["msg"] != "runtime.identity_failed" ||
+		cut["truncated"] != float64(len(long)+1) || head == "" || !strings.HasPrefix(long, head) || len(cut) != 5 {
+		t.Fatalf("the cut record = %v", cut)
+	}
+	if kept := logged(t, path, file.Keep); kept[0] != short || len(kept) != 2 {
+		t.Fatalf("kept = %v", kept)
+	}
+
+	tiny := logging.File{Path: path, Max: 20, Keep: 2, Append: (*os.File).Write}
+	if _, err := tiny.Write([]byte(long + "\n")); err == nil || !strings.Contains(err.Error(), "does not fit") {
+		t.Fatalf("a record that does not fit even cut: %v", err)
+	}
+	if after, _ := os.ReadFile(path); !bytes.Equal(after, current) {
+		t.Fatalf("the log changed: %q", after)
+	}
+}
+
+// A rotation whose compression fails, again and again, as on a full disk,
+// moves no old file: each write fails, the log and every old file are as
+// they were, and the rotation that then succeeds drops only the oldest.
+//
+// Contract test: the real filesystem, the compressed file's path taken by
+// a directory that cannot be removed.
+func TestAFailedCompressionKeepsTheOldFiles(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	path := filepath.Join(dir, "agister.jsonl")
+	file := logging.File{Path: path, Max: 100, Keep: 3, Append: (*os.File).Write}
+	full := strings.Repeat(`{"line":"full"}`+"\n", 6)
+	if err := os.WriteFile(path, []byte(full), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	for n := 1; n <= file.Keep; n++ {
+		zipped(t, fmt.Sprintf("%s.%d.gz", path, n), fmt.Sprintf(`{"old":%d}`+"\n", n))
+	}
+	obstruction := path + ".1.gz.tmp"
+	if err := os.MkdirAll(filepath.Join(obstruction, "full"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	for attempt := range 3 {
+		if _, err := file.Write([]byte(`{"line":"next"}` + "\n")); err == nil || !strings.Contains(err.Error(), "rotating") {
+			t.Fatalf("attempt %d: %v", attempt, err)
+		}
+		for n := 1; n <= file.Keep; n++ {
+			if old, err := unzip(fmt.Sprintf("%s.%d.gz", path, n)); err != nil || old != fmt.Sprintf(`{"old":%d}`+"\n", n) {
+				t.Fatalf("attempt %d: old file %d = %q, %v", attempt, n, old, err)
+			}
+		}
+		if current, _ := os.ReadFile(path); string(current) != full {
+			t.Fatalf("attempt %d: the log = %q", attempt, current)
 		}
 	}
-	if current, _ := os.ReadFile(path); string(current) != "after\n" {
-		t.Fatalf("log = %q", current)
+
+	if err := os.RemoveAll(obstruction); err != nil {
+		t.Fatal(err)
 	}
-	if kept := logged(t, path, file.Keep); strings.Join(kept, " ") != "short "+long+" after" {
-		t.Fatalf("kept = %v", kept)
+	if _, err := file.Write([]byte(`{"line":"next"}` + "\n")); err != nil {
+		t.Fatal(err)
+	}
+	for n, want := range map[int]string{1: full, 2: `{"old":1}` + "\n", 3: `{"old":2}` + "\n"} {
+		if old, err := unzip(fmt.Sprintf("%s.%d.gz", path, n)); err != nil || old != want {
+			t.Fatalf("old file %d = %q, %v", n, old, err)
+		}
+	}
+	want := []string{"agister.jsonl", "agister.jsonl.1.gz", "agister.jsonl.2.gz", "agister.jsonl.3.gz"}
+	if found := names(t, dir); strings.Join(found, " ") != strings.Join(want, " ") {
+		t.Fatalf("files = %v", found)
 	}
 }
 
@@ -175,19 +282,37 @@ func TestALogGivenNoAppendFails(t *testing.T) {
 // itself as two processes do: every line of both is kept whole, once, and
 // each writer's lines stay in its order.
 //
+// While a writer appends, the directory is held by the kernel's lock, not
+// only within the process: another open of it, as another process's, is
+// refused the lock.
+//
 // Contract test: the real filesystem and the kernel's flock, which holds
 // between two opens of the directory as it does between two processes.
 func TestTwoWritersLoseNoLineAcrossRotations(t *testing.T) {
 	t.Parallel()
-	path := filepath.Join(t.TempDir(), "agister.jsonl")
+	dir := t.TempDir()
+	path := filepath.Join(dir, "agister.jsonl")
 	const lines, keep = 300, 1000
 	var wait sync.WaitGroup
-	failures := make(chan error, 2*lines)
+	failures := make(chan error, 4*lines)
+	// held appends line once it finds the directory held: an open of its
+	// own cannot take the lock, even without waiting.
+	held := func(log *os.File, line []byte) (int, error) {
+		other, err := os.Open(dir)
+		if err != nil {
+			return 0, err
+		}
+		defer other.Close()
+		if err := syscall.Flock(int(other.Fd()), syscall.LOCK_EX|syscall.LOCK_NB); !errors.Is(err, syscall.EWOULDBLOCK) {
+			failures <- fmt.Errorf("another open of the directory locked it while a writer appended: %v", err)
+		}
+		return log.Write(line)
+	}
 	for _, writer := range []string{"a", "b"} {
 		wait.Add(1)
 		go func() {
 			defer wait.Done()
-			file := logging.File{Path: path, Max: 200, Keep: keep, Append: (*os.File).Write}
+			file := logging.File{Path: path, Max: 200, Keep: keep, Append: held}
 			for i := range lines {
 				if _, err := file.Write([]byte(fmt.Sprintf(`{"writer":"%s","line":%03d}`+"\n", writer, i))); err != nil {
 					failures <- err

@@ -99,7 +99,7 @@ func TestAFailedTurnStaysOutOfTheLog(t *testing.T) {
 	t.Parallel()
 	var global bytes.Buffer
 	log := slog.New(slog.NewJSONHandler(&global, &slog.HandlerOptions{Level: slog.LevelDebug}))
-	turn := logging.Runner{Inner: &failing{}, Adapter: "x", Log: log}.RunTurn(context.Background(), request("p"), &runtimetest.Recorder{})
+	turn := logging.Runner{Inner: &failing{}, Adapter: "x", Log: log, Clock: clocktest.NewClock(start)}.RunTurn(context.Background(), request("p"), &runtimetest.Recorder{})
 	if turn.Status != run.Failed || global.Len() != 0 {
 		t.Fatalf("turn %+v, the log got %s", turn, global.String())
 	}

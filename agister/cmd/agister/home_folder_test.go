@@ -97,9 +97,11 @@ func TestTheHomeFolderInstallsAndPassesCheckAsGlobalSettings(t *testing.T) {
 	}
 }
 
-// Live state that turns up in home's settings folder, a log, a backup or a
-// run, is ignored by git, so it is never committed with the settings
-// (ADR-027: the folder never holds live state).
+// Live state that turns up in home's settings folder, all Agister writes
+// under a home: a backup, a cached input, a Codex or Pi thread's home or
+// sessions, a lock, the log, a probe and a run, is ignored by git, so it is
+// never committed with the settings (ADR-027: the folder never holds live
+// state).
 //
 // Contract test: real git, reading this repository's ignore rules.
 func TestGitIgnoresLiveStateInTheHomeFolder(t *testing.T) {
@@ -108,7 +110,10 @@ func TestGitIgnoresLiveStateInTheHomeFolder(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, path := range []string{"logs/agister.jsonl", "logs/agister.jsonl.1.gz", "backups/b1/manifest.json", "runs/r1/record.json"} {
+	for _, path := range []string{
+		"backups/b1/manifest.json", "cache/inputs/a.txt", "codex/homes/t1/config.toml", "locks/worktrees/w1.lock",
+		"logs/agister.jsonl", "logs/agister.jsonl.1.gz", "pi/sessions/s1.jsonl", "probes/codex.json", "runs/r1/record.json",
+	} {
 		path := filepath.Join(homeFolder, path)
 		if ignored := gitCmd(t, root, "check-ignore", "--no-index", path); ignored != path {
 			t.Errorf("%s is not ignored: %q", path, ignored)

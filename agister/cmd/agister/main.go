@@ -232,7 +232,8 @@ func gitBacked(worktrees *git.Worktrees) gitAdapters {
 }
 
 // wire builds the infrastructure, chooses the decorators and has the core
-// assemble the whole client behind the gate over them. It also returns the
+// assemble the whole client behind the gate over them, the gate itself
+// decorated with the log. It also returns the
 // background reaper every client the gate builds shares, which submitting a
 // call starts (tests wait on it).
 func (c composition) wire(config cli.Config) (contract.Client, *app.BackgroundReaper, error) {
@@ -377,7 +378,9 @@ func (c composition) wire(config cli.Config) (contract.Client, *app.BackgroundRe
 	if c.adjust != nil {
 		c.adjust(&infra)
 	}
-	return app.NewClient(infra), reaping, nil
+	// What fails before any run exists, a command the settings refuse or a
+	// call whose run cannot be made, has no run to record it: the log does.
+	return logging.Client{Client: app.NewClient(infra), Log: log}, reaping, nil
 }
 
 // layers selects the settings layers of a command launched in the working
@@ -404,7 +407,8 @@ func layers(config cli.Config, workspaces app.CallWorkspaces, log *slog.Logger) 
 	return selected, nil
 }
 
-// The log is kept within logMax bytes and logKeep old files, compressed.
+// The log is kept within logMax bytes, with at most logKeep old files,
+// compressed, beside it.
 const (
 	logMax  = 5 << 20
 	logKeep = 3
@@ -415,7 +419,8 @@ const (
 // no run's record does: warnings, errors and what a command outside any
 // run says. What a turn did is its run's, in <home>/runs/<id>/, so the
 // second logger, the turns', reaches only the terminal, and only with
-// --debug.
+// --debug. A log that cannot be written fails here, not at its first
+// warning.
 func diagnostics(config cli.Config) (log, turns *slog.Logger, err error) {
 	level := slog.LevelInfo
 	if config.Debug != nil {
@@ -426,6 +431,9 @@ func diagnostics(config cli.Config) (log, turns *slog.Logger, err error) {
 		return nil, nil, err
 	}
 	file := logging.File{Path: filepath.Join(dir, "agister.jsonl"), Max: logMax, Keep: logKeep, Append: (*os.File).Write}
+	if err := file.Usable(); err != nil {
+		return nil, nil, err
+	}
 	handlers := logging.Fanout{slog.NewJSONHandler(file, &slog.HandlerOptions{Level: level})}
 	if config.Debug == nil {
 		return slog.New(logging.Handler{Handler: handlers}), slog.New(slog.DiscardHandler), nil

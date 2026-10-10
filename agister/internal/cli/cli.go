@@ -113,8 +113,9 @@ Options:
   --quiet        No progress on stderr
   --debug        Diagnostics on stderr, including why no project settings apply and what each
                  turn did. <home>/logs/agister.jsonl always keeps the warnings and errors no run
-                 records, within 5 MB and three older compressed files; a turn's detail is kept
-                 with its run, in <home>/runs/<id>/
+                 records; the cap is per file: the current log stays within 5 MB, a longer
+                 record cut to fit, and at most three older compressed files are kept beside it.
+                 A turn's detail is kept with its run, in <home>/runs/<id>/
   -h, --help     This help; needs no settings
   --version      This binary's version, as agister version prints it
 
