@@ -51,7 +51,7 @@ const repoGoal = "agister/testdata/briefs/lab-119-goal.md"
 const fallbackParam = "AGENTS.md"
 
 // testTimeouts are the test's own timeouts for a process run, by process
-// name, in place of its own: the advisor's policy allows 20 minutes,
+// name, in place of its own: the advisor's process allows 20 minutes,
 // implement_pi's process 45.
 var testTimeouts = map[string]string{
 	"advisor":          "1m",
@@ -567,7 +567,7 @@ func TestAdvisorAnswersAQuestionFile(t *testing.T) {
 	root, repo, home := onFakeRuntimes(t)
 	question := filepath.Join(tempDir(t), "question.md")
 	write(t, question, "Asked by: workflow run 1, item 2.\nQuestion: which?\nOptions: (a) one; (b) two.\n")
-	// The timeout is the test's own: the process's policy allows 20 minutes.
+	// The timeout is the test's own: the process allows 20 minutes.
 	created, r := runRecorded(t, home, repo, []string{"run", "advisor", "--param", "question=" + question, "--param", "revision=feature", "--timeout", "1m"})
 	if len(created) != 1 {
 		t.Fatalf("runs recorded: %v, want one", created)
@@ -1821,6 +1821,58 @@ func TestTheImplementersNameNoPolicy(t *testing.T) {
 		path := filepath.Join(root, homeFolder, "policies", policy+".yaml")
 		if _, err := os.Stat(path); !errors.Is(err, fs.ErrNotExist) {
 			t.Errorf("the home folder holds %s (%v), want none", path, err)
+		}
+	}
+}
+
+// advisorPermissions are the permissions the advisor is allowed and has.
+var advisorPermissions = []string{
+	"repository.read", "repository.diff", "repository.search", "repository.history.read", "process.execute", "host.read",
+}
+
+// The advisor runs read-only on its candidate with every permission of
+// advisorPermissions, repository.write, repository.history.write and
+// network denied, for 20 minutes at most, in one attempt, and is ended
+// after 10 minutes without a runtime event, 8 minutes on one tool command
+// or 5 identical tool calls in a row: process show prints each.
+func TestTheAdvisorRunsUnderItsLimits(t *testing.T) {
+	t.Parallel()
+	_, repo, home := onFakeRuntimes(t)
+	view := showProcess(t, home, repo, "advisor")
+	if view.Refusal != "" {
+		t.Errorf("the advisor is refused: %s", view.Refusal)
+	}
+	if view.Access != "read-only" || view.Scope != "candidate" {
+		t.Errorf("the advisor's workspace is %s on %s, want read-only on candidate", view.Access, view.Scope)
+	}
+	denied := []string{"repository.write", "repository.history.write", "network"}
+	if !reflect.DeepEqual(view.Allowed, advisorPermissions) || !reflect.DeepEqual(view.Permissions, advisorPermissions) || !reflect.DeepEqual(view.Denied, denied) {
+		t.Errorf("the advisor is allowed %v, denied %v and has %v, want allowed and having %v, denied %v",
+			view.Allowed, view.Denied, view.Permissions, advisorPermissions, denied)
+	}
+	if view.Timeout != 20*time.Minute {
+		t.Errorf("the advisor's timeout is %s, want 20m", view.Timeout)
+	}
+	if view.MaxAttempts != 1 {
+		t.Errorf("the advisor's attempts are %d, want 1", view.MaxAttempts)
+	}
+	if want := (contract.Stale{NoEvent: 10 * time.Minute, ToolCommand: 8 * time.Minute, RepeatedToolCalls: 5}); view.Stale != want {
+		t.Errorf("the advisor's stale limits are %+v, want %+v", view.Stale, want)
+	}
+}
+
+// The advisor names no policy: process show prints none and no policy among
+// its sources.
+func TestTheAdvisorNamesNoPolicy(t *testing.T) {
+	t.Parallel()
+	_, repo, home := onFakeRuntimes(t)
+	view := showProcess(t, home, repo, "advisor")
+	if view.Policy != "" {
+		t.Errorf("the advisor names policy %s, want none", view.Policy)
+	}
+	for _, source := range view.Sources {
+		if source.Kind == "policies" {
+			t.Errorf("the advisor reads policy %s from %s, want none", source.Name, source.Path)
 		}
 	}
 }

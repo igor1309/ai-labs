@@ -3,7 +3,6 @@ name: advisor
 
 type: process
 uses: agent:codex-sol-61
-policy: process-policy:codex-review
 prompt: advisor
 
 input:
@@ -20,7 +19,33 @@ input:
     question: {source: file, path: "${param.question}"}
 
 workspace:
+  access: read-only
+  scope: candidate
   revision: revision
+
+tools:
+  allow:
+    - repository.read
+    - repository.diff
+    - repository.search
+    - repository.history.read
+    - process.execute
+    - host.read
+
+timeout: 20m
+retry:
+  max_attempts: 1
+
+stale:
+  no_event: 10m
+  tool_command: 8m
+  repeated_tool_calls: 5
+
+isolation:
+  deny:
+    - repository.write
+    - repository.history.write
+    - network
 
 output:
   format: json
