@@ -1106,7 +1106,7 @@ func showWorkflow(w io.Writer, view contract.WorkflowView) {
 		lines = append(lines, [2]string{label, text}, [2]string{"  receives", gets})
 		if process.Refusal != "" {
 			lines = append(lines, [2]string{"  plan", "REFUSED: " + process.Refusal})
-			// What else a plan refused for a required permission withholds.
+			// What else a refused call's plan withholds.
 			if len(process.Withheld) > 0 {
 				lines = append(lines, [2]string{"  withheld", strings.Join(process.Withheld, ", ")})
 			}

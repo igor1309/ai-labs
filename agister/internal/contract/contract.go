@@ -373,7 +373,8 @@ type ProcessView struct {
 	Stale Stale
 	// Plan on the agent's runtime, or why none exists. Withheld is what
 	// the plan withholds that is allowed; on a refusal for a required
-	// permission, what else the refused plan withholds.
+	// permission, or one the settings make, what else the plan refused or
+	// the settings' plan withholds.
 	Primitives []string
 	Withheld   []string
 	Refusal    string

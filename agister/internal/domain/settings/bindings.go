@@ -111,32 +111,64 @@ func BindingPlans(b Bundle, installed map[string]string) []BindingPlan {
 			if version, ok := installed[agent.Name]; ok {
 				versions = []string{version}
 			}
-			best, found := BindingPlan{}, false
-			for _, version := range versions {
-				verified, _ := mapping.ForVersion(version)
-				plan, err := enforce.Make(effective.Permissions, verified, nil, b.Service.StateReaching)
-				if err != nil {
-					continue
-				}
-				planned := BindingPlan{Workflow: name, Node: node.Name, Label: nodeLabel(workflow, i, node), Process: process.Name, Agent: agent.Name, Runtime: mapping.Name, Version: version}
-				for _, permission := range plan.Withheld {
-					if contains(effective.Require, permission) {
-						planned.Required = append(planned.Required, permission)
-					} else {
-						planned.Withheld = append(planned.Withheld, permission)
-					}
-				}
-				if !found || len(planned.Required) < len(best.Required) ||
-					len(planned.Required) == len(best.Required) && len(planned.Withheld) < len(best.Withheld) {
-					best, found = planned, true
-				}
+			version, plan, found := planOn(effective, mapping, versions, b.Service.StateReaching)
+			if !found {
+				continue
 			}
-			if found {
-				plans = append(plans, best)
-			}
+			planned := BindingPlan{Workflow: name, Node: node.Name, Label: nodeLabel(workflow, i, node), Process: process.Name, Agent: agent.Name, Runtime: mapping.Name, Version: version}
+			planned.Required, planned.Withheld = split(plan.Withheld, effective.Require)
+			plans = append(plans, planned)
 		}
 	}
 	return plans
+}
+
+// SettingsPlan is the plan a call composed to effective would be given on
+// mapping, judged on the settings alone, as BindingPlans plans a binding
+// whose runtime was not asked: on the version the mapping verifies that
+// withholds the fewest required permissions, then the fewest others. Its
+// Withheld has the required permissions it withholds too. It is for a view
+// of a call the settings refuse: never one a call is given. found is false
+// where no version can be planned.
+func SettingsPlan(service definition.Service, effective policy.Effective, mapping definition.Mapping) (plan enforce.Plan, found bool) {
+	_, plan, found = planOn(effective, mapping, mapping.Versions(), service.StateReaching)
+	return plan, found
+}
+
+// planOn plans effective on whichever of versions withholds the fewest
+// permissions in tools.require, then the fewest others, the first when
+// tied, required permissions withheld or not; found is false where none
+// can be planned.
+func planOn(effective policy.Effective, mapping definition.Mapping, versions, stateReaching []string) (version string, best enforce.Plan, found bool) {
+	fewest := func(plan enforce.Plan) (required, others int) {
+		withheldRequired, withheld := split(plan.Withheld, effective.Require)
+		return len(withheldRequired), len(withheld)
+	}
+	for _, candidate := range versions {
+		verified, _ := mapping.ForVersion(candidate)
+		plan, err := enforce.Make(effective.Permissions, verified, nil, stateReaching)
+		if err != nil {
+			continue
+		}
+		required, others := fewest(plan)
+		bestRequired, bestOthers := fewest(best)
+		if !found || required < bestRequired || required == bestRequired && others < bestOthers {
+			version, best, found = candidate, plan, true
+		}
+	}
+	return version, best, found
+}
+
+// split divides withheld into the permissions in required and the others.
+func split(withheld, required []string) (inRequired, others []string) {
+	for _, permission := range withheld {
+		if contains(required, permission) {
+			inRequired = append(inRequired, permission)
+		} else {
+			others = append(others, permission)
+		}
+	}
+	return inRequired, others
 }
 
 // unresumed are the turns of the process that resume its call's session, a

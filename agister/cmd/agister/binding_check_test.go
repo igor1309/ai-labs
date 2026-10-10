@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -40,6 +41,9 @@ func TestCheckAndWorkflowShowListWhatEachBindingWithholds(t *testing.T) {
 	if call := report.Bindings[0]; call.Workflow != "asking" || call.Node != "question" || call.Process != "ask" || call.Agent != "reviewer" || call.Runtime != "claude-code" {
 		t.Fatalf("the first binding is %+v, want asking's call", call)
 	}
+	bindingsAre(t, r, `[
+  {"workflow": "asking", "node": "question", "process": "ask", "agent": "reviewer", "runtime": "claude-code", "version": "2.1",
+   "withheld": ["repository.read", "repository.diff", "repository.search", "repository.history.read", "process.execute", "host.read"]},`+reviewPanelBindings+`]`)
 
 	r = agister(t, home, repo, "workflow", "show", "review_panel")
 	for _, line := range []string{
@@ -61,6 +65,10 @@ func TestCheckAndWorkflowShowListWhatEachBindingWithholds(t *testing.T) {
 	if !strings.Contains(r.stderr, warning) {
 		t.Fatalf("check lacks %q: %d\n%s%s", warning, r.code, r.stdout, r.stderr)
 	}
+	bindingsAre(t, agister(t, home, repo, "check", "--json"), `[
+  {"workflow": "asking", "node": "question", "process": "ask", "agent": "reviewer", "runtime": "claude-code", "version": "2.1",
+   "withheld": ["repository.diff", "repository.search", "repository.history.read", "process.execute", "host.read"],
+   "required": ["repository.read"]},`+reviewPanelBindings+`]`)
 }
 
 // A binding refused for a permission in tools.require still shows what
@@ -86,5 +94,59 @@ func TestABindingRefusedForARequiredPermissionShowsWhatElseItWithholds(t *testin
 		"  withheld   " + others + "\n"
 	if !strings.Contains(r.stdout, "  plan       REFUSED: process ask (") || !strings.Contains(r.stdout, call) {
 		t.Fatalf("workflow show lacks %q: %d\n%s%s", call, r.code, r.stdout, r.stderr)
+	}
+}
+
+// A node on its process's own agent whose binding the settings already
+// refuse, for a permission in tools.require, still shows what else its
+// plan withholds, found before its runtime is asked.
+func TestABindingTheSettingsRefuseShowsWhatElseItWithholds(t *testing.T) {
+	t.Parallel()
+	home, repo := setup(t, "approve")
+	process := filepath.Join(home, "processes", "adversarial_review.yaml")
+	write(t, process, strings.Replace(read(t, process), "tools:\n  allow:\n", "tools:\n  require: [repository.read]\n  allow:\n", 1))
+
+	r := agister(t, home, repo, "workflow", "show", "review_panel")
+	const node = "fan-out      adversarial: process adversarial_review, agent reviewer (runtime claude-code)\n" +
+		"  receives   params base, candidate\n" +
+		"  plan       REFUSED: process adversarial_review ("
+	const refused = "/processes/adversarial_review.yaml): cannot run on agent reviewer's runtime claude-code: cannot enforce the effective permissions: required permissions would be withheld: repository.read (not verified for version 2.1: NotebookEdit, WebFetch, WebSearch)\n" +
+		"  withheld   repository.diff, repository.search\n" +
+		"             architecture: process architecture_review"
+	if !strings.Contains(r.stdout, node) || !strings.Contains(r.stdout, refused) {
+		t.Fatalf("workflow show lacks %q or %q: %d\n%s%s", node, refused, r.code, r.stdout, r.stderr)
+	}
+	bindingsAre(t, agister(t, home, repo, "check", "--json"), `[
+  {"workflow": "review_panel", "node": "adversarial", "process": "adversarial_review", "agent": "reviewer", "runtime": "claude-code", "version": "2.1",
+   "withheld": ["repository.diff", "repository.search"], "required": ["repository.read"]},`+reviewPanelOthers+`]`)
+}
+
+// reviewPanelBindings are the bindings check reports of the example
+// review_panel, each of whose nodes runs on its process's own agent;
+// reviewPanelOthers, those of its nodes but adversarial.
+const (
+	reviewPanelBindings = `
+  {"workflow": "review_panel", "node": "adversarial", "process": "adversarial_review", "agent": "reviewer", "runtime": "claude-code", "version": "2.1",
+   "withheld": ["repository.read", "repository.diff", "repository.search"]},` + reviewPanelOthers
+	reviewPanelOthers = `
+  {"workflow": "review_panel", "node": "architecture", "process": "architecture_review", "agent": "reviewer", "runtime": "claude-code", "version": "2.1",
+   "withheld": ["repository.read", "repository.diff", "repository.search"]},
+  {"workflow": "review_panel", "node": "summary", "process": "review_summary", "agent": "reviewer", "runtime": "claude-code", "version": "2.1",
+   "withheld": ["repository.read", "repository.diff", "repository.search", "repository.history.read", "process.execute", "host.read"]}`
+)
+
+// bindingsAre fails the test unless the bindings of the report check
+// --json printed are, key by key, those of want, a JSON array.
+func bindingsAre(t *testing.T, r result, want string) {
+	t.Helper()
+	var report struct {
+		Bindings any `json:"bindings"`
+	}
+	var expected any
+	if err := json.Unmarshal([]byte(want), &expected); err != nil {
+		t.Fatalf("expected bindings: %v", err)
+	}
+	if err := json.Unmarshal([]byte(r.stdout), &report); err != nil || !reflect.DeepEqual(report.Bindings, expected) {
+		t.Fatalf("check --json: %v, bindings\n%v\nwant\n%v\n%s%s", err, report.Bindings, expected, r.stdout, r.stderr)
 	}
 }

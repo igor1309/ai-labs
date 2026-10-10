@@ -515,7 +515,8 @@ type InspectedProcess struct {
 	Effective   InspectedLimits
 	Primitives  []string // the plan's
 	// Withheld is what is allowed but not provided; on a refusal for a
-	// required permission, what else the refused plan withholds.
+	// required permission, or one the settings make, what else the plan
+	// refused or the settings' plan withholds.
 	Withheld []string
 	Sources  []InspectedSource
 }
@@ -680,8 +681,8 @@ func (r *Resolver) inspect(ctx context.Context, name, agent string, caller overr
 		Withheld:   res.plan.Withheld,
 		Sources:    inspectedSources(res.sources),
 	}
-	// A call refused for withholding a required permission still shows what
-	// else its plan withholds.
+	// A call refused for withholding a required permission, or by the
+	// settings, still shows what else its plan withholds.
 	if res.refusedPlan.Withheld != nil {
 		inspected.Withheld = slices.DeleteFunc(slices.Clone(res.refusedPlan.Withheld), func(permission string) bool { return contains(res.effective.Require, permission) })
 	}

@@ -56,8 +56,9 @@ type resolution struct {
 	identity  RuntimeIdentity
 	plan      enforce.Plan
 	// refusedPlan is the plan refused for withholding a required
-	// permission: inspection shows what else it withholds, and no call is
-	// given it.
+	// permission, or, for a call the settings refuse, the plan the
+	// settings would give it (settings.SettingsPlan): inspection shows what
+	// else it withholds, and no call is given it.
 	refusedPlan enforce.Plan
 	// writer says the call holds the worktree alone (ADR-025 rule 4): its
 	// plan grants a permission the service lists as writing, or its process
@@ -433,6 +434,11 @@ func (r *Resolver) resolveCall(ctx context.Context, processName, agentOverride s
 	// has it.
 	if !bound {
 		return res, refuse("names no agent: only a workflow's node binds it to one (ADR-030 rule 5); run a workflow that binds it")
+	}
+	// A call the settings refuse never asks its runtime: its view shows
+	// what the settings' plan withholds, which no call is given.
+	if settingsOnly {
+		res.refusedPlan, _ = settings.SettingsPlan(res.service, res.effective, res.mapping)
 	}
 
 	// Whether the call's session may be resumed is its process's to say,
