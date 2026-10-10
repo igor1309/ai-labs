@@ -254,6 +254,13 @@ func (s Store) Layers(ctx context.Context) []definition.LayerDir {
 	return Layered{Home: s}.Layers(ctx)
 }
 
+// File reads the store's own file of the document, as written: a process
+// without the base it extends (ADR-030 rule 9).
+func (s Store) File(_ context.Context, kind definition.Kind, name string) ([]byte, error) {
+	doc, err := s.read(kind, name)
+	return doc.Bytes, err
+}
+
 // read reads the store's own file of the document.
 func (s Store) read(kind definition.Kind, name string) (definition.Document, error) {
 	path, err := s.path(kind, name)
@@ -604,6 +611,48 @@ func (l layerStore) read(kind definition.Kind, name string, folders bool) (defin
 	return doc, err
 }
 
+// readRegular reads the layer's own file of the document when it is a
+// regular file: it is opened without waiting on a special file, and read
+// through the handle checked. A viewer's reader, where one is given, reads
+// it in its place, as it reads every file.
+func (l layerStore) readRegular(kind definition.Kind, name string) (definition.Document, error) {
+	path, err := l.store.path(kind, name)
+	if err != nil {
+		return definition.Document{}, err
+	}
+	var data []byte
+	if l.store.readFile != nil {
+		data, err = l.store.readFile(path)
+	} else {
+		data, err = readRegularFile(path)
+	}
+	source := definition.Source{Kind: kind, Name: name, Path: path}
+	if err != nil {
+		return definition.Document{Source: source}, err
+	}
+	source.SHA256 = digest(data)
+	return definition.Document{Source: source, Bytes: data}, nil
+}
+
+// readRegularFile reads path, links followed, only when what is opened is
+// a regular file; it never waits on a special file, such as a FIFO with no
+// writer.
+func readRegularFile(path string) ([]byte, error) {
+	handle, err := os.OpenFile(path, os.O_RDONLY|syscall.O_NONBLOCK, 0)
+	if err != nil {
+		return nil, err
+	}
+	defer handle.Close()
+	opened, err := handle.Stat()
+	if err != nil {
+		return nil, err
+	}
+	if !opened.Mode().IsRegular() {
+		return nil, fmt.Errorf("%s is not a regular file", path)
+	}
+	return io.ReadAll(handle)
+}
+
 // locate is the path of the layer's file of the document, found as read
 // finds it, folders included, but without opening it: empty where the
 // layer holds none. A farther layer's file gives nothing, so it is only
@@ -780,13 +829,16 @@ func (l Layered) own(kind definition.Kind, name string, folders bool) (definitio
 			// A layer's file that is there and cannot be read breaks the
 			// document: it is not skipped in favour of the parent's
 			// (ADR-028 rule 5). The texts of the farther ones still say
-			// what it is: a process's base is named in the file that
-			// defines it (ADR-030 rule 9).
+			// what it is: a process's base is named in the nearest file
+			// that holds its whole document (ADR-030 rule 9). They are
+			// read only to say so, so one that is not a regular file is
+			// passed over, and one that a read would wait on, such as a
+			// FIFO, does not hang the command.
 			for _, farther := range stores[i+1:] {
 				if kind != definition.KindProcess {
 					break
 				}
-				if doc, err := farther.read(kind, name, folders); err == nil {
+				if doc, err := farther.readRegular(kind, name); err == nil {
 					texts = append(texts, definition.LayerText{File: definition.LayerFile{Layer: farther.layer, Path: doc.Source.Path, SHA256: doc.Source.SHA256}, Bytes: doc.Bytes})
 				}
 			}

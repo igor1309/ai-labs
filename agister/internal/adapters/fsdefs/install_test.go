@@ -185,16 +185,21 @@ func TestStageLaysAProcessOverItsStagedBase(t *testing.T) {
 	t.Parallel()
 	home := fsdefs.Store{Dir: t.TempDir()}.StagingIn(t.TempDir())
 	ctx := context.Background()
-	put(t, filepath.Join(home.Dir, "processes", "base.yaml"), "name: base\nprompt: home\n")
-	put(t, filepath.Join(home.Dir, "processes", "child.yaml"), "name: child\nextends: process:base\n")
-	staged, remove, err := home.Stage(ctx, []definition.Document{{Source: definition.Source{Kind: definition.KindProcess, Name: "base"}, Bytes: []byte("name: base\nprompt: staged\n")}})
+	// The base leaves out the prompt, which its process sets.
+	base := func(instruction string) string {
+		return "schema: agister.process/v1alpha1\nname: base\ntype: process\nuses: agent:a\ninput:\n  instruction: " + instruction + "\noutput:\n  format: text\n"
+	}
+	put(t, filepath.Join(home.Dir, "processes", "base.yaml"), base("home"))
+	put(t, filepath.Join(home.Dir, "processes", "child.yaml"), "name: child\nextends: process:base\nprompt: p\n")
+	staged, remove, err := home.Stage(ctx, []definition.Document{{Source: definition.Source{Kind: definition.KindProcess, Name: "base"}, Bytes: []byte(base("staged"))}})
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(remove)
 	doc, err := staged.Read(ctx, definition.KindProcess, "child")
-	if err != nil || string(doc.Bytes) != "prompt: staged\nname: child\nextends: process:base\n" {
-		t.Fatalf("read %q, %v", doc.Bytes, err)
+	want := "schema: agister.process/v1alpha1\ntype: process\nuses: agent:a\ninput:\n  instruction: staged\noutput:\n  format: text\nname: child\nextends: process:base\nprompt: p\n"
+	if err != nil || string(doc.Bytes) != want {
+		t.Fatalf("read %q, %v\nwant %q", doc.Bytes, err, want)
 	}
 }
 

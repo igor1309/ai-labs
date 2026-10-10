@@ -726,6 +726,49 @@ func TestAFartherLayersPromptIsNamedNotOpened(t *testing.T) {
 	}
 }
 
+// A process's layer file that cannot be read breaks it (ADR-028 rule 5),
+// and the farther layers' files are read only to say what base it names
+// (ADR-030 rule 9): one that is not a regular file, a FIFO here, is passed
+// over, and the read fails with the nearer file's error instead of waiting
+// on it.
+//
+// Contract test: the settings store against a real FIFO with no writer,
+// which a blocking read waits on for ever.
+func TestABrokenProcessDoesNotWaitOnAFartherFIFO(t *testing.T) {
+	t.Parallel()
+	selected, home, repository, _ := threeLayers(t)
+	link := filepath.Join(repository, "processes", "child.yaml")
+	dangle(t, link)
+	fifo := filepath.Join(home, "processes", "child.yaml")
+	if err := os.MkdirAll(filepath.Dir(fifo), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := syscall.Mkfifo(fifo, 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	type read struct {
+		doc definition.Document
+		err error
+	}
+	done := make(chan read, 1)
+	workers := letGo(t, fifo)
+	workers.Add(1)
+	go func() {
+		defer workers.Done()
+		doc, err := selected.Read(context.Background(), definition.KindProcess, "child")
+		done <- read{doc, err}
+	}()
+	select {
+	case got := <-done:
+		if got.err == nil || !strings.Contains(got.err.Error(), "cannot be resolved") || got.doc.Source.Path != link || len(got.doc.Texts) != 0 {
+			t.Fatalf("child = %+v, %v; want %s not resolved, and no farther text", got.doc.Source, got.err, link)
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("reading the broken process waits on home's FIFO")
+	}
+}
+
 // ADR-028 rule 9: a file in a folder a layer.yaml lists that cannot be
 // resolved, a dangling symlink, is the layer's prompt all the same:
 // reading it fails, naming it, and home's prompt is not given in its

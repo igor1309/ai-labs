@@ -143,6 +143,9 @@ type problems struct {
 	// source, when it has several layer files, names in each problem the
 	// file that set the field at fault (ADR-028 rule 5).
 	source Source
+	// absent are the required fields the document does not set, each also
+	// a problem.
+	absent []string
 }
 
 // problemsOf collects the problems of the document read from source.
@@ -150,6 +153,13 @@ func problemsOf(source Source) *problems { return &problems{source: source} }
 
 func (p *problems) add(field, format string, args ...any) {
 	p.list = append(p.list, Problem{Message: p.source.Attribute(field, fieldMessage(field, format, args...))})
+}
+
+// missing adds the problem of a required field the document does not
+// set.
+func (p *problems) missing(field string) {
+	p.absent = append(p.absent, field)
+	p.add(field, "is required")
 }
 
 // unknown adds a problem that names something this code does not know.

@@ -471,6 +471,45 @@ func TestRestoreUndoesAnInstall(t *testing.T) {
 	}
 }
 
+// A restore puts back the bytes the install replaced, and reads home's
+// file as written: a process the install made extend a base is put back
+// though its base was removed since (ADR-016, ADR-030 rule 9).
+func TestRestorePutsBackAProcessWhoseBaseIsGone(t *testing.T) {
+	t.Parallel()
+	home := initedHome(t)
+	child := filepath.Join(home, "processes", "child_ask.yaml")
+	standalone := strings.NewReplacer("name: base_ask", "name: child_ask").Replace(baseAsk) + "prompt: ask\n"
+	write(t, child, standalone)
+	src := filepath.Join(tempDir(t), ".agister")
+	write(t, filepath.Join(src, "processes", "base_ask.yaml"), baseAsk)
+	write(t, filepath.Join(src, "processes", "child_ask.yaml"), childAsk)
+	in := installClient(t, home, nil)
+	result, err := in.installNow(t, src)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Remove(filepath.Join(home, "processes", "base_ask.yaml")); err != nil {
+		t.Fatal(err)
+	}
+
+	plan, err := in.restoreNow(t, result.Stamp)
+	if err != nil {
+		t.Fatalf("restore: %v", err)
+	}
+	var diff string
+	for _, doc := range plan.Documents {
+		if doc.Path == child {
+			diff = doc.Diff
+		}
+	}
+	if !strings.Contains(diff, "-extends: process:base_ask\n") || !strings.Contains(diff, "+uses: agent:assistant\n") {
+		t.Fatalf("restore plan %+v", plan)
+	}
+	if got := read(t, child); got != standalone {
+		t.Fatalf("after restore %s holds:\n%s", child, got)
+	}
+}
+
 // The yes binds the restore plan: a document it touches changed since, or
 // one the install created already removed, refuses the restore, with
 // nothing written.

@@ -592,13 +592,17 @@ func (c *Checker) namedPrompts(ctx context.Context) map[string]bool {
 
 // bases are the processes some process extends, each with those that
 // extend it (ADR-030 rule 9). A process that cannot be read or does not
-// parse still names its base, in the file that defines it.
+// parse still names its base, in the nearest file that holds its whole
+// document.
 func (c *Checker) bases(ctx context.Context) map[string][]string {
 	bases := map[string][]string{}
 	names, _ := c.definitions.List(ctx, definition.KindProcess)
+	read := func(name string) (definition.Document, error) {
+		return c.definitions.Read(ctx, definition.KindProcess, name)
+	}
 	for _, name := range names {
-		doc, _ := c.definitions.Read(ctx, definition.KindProcess, name)
-		if base := definition.Extends(doc); base != "" && contains(names, base) {
+		doc, _ := read(name)
+		if base := definition.Extends(doc, read); base != "" && contains(names, base) {
 			bases[base] = append(bases[base], name)
 		}
 	}

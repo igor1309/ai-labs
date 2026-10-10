@@ -168,9 +168,15 @@ func ParsePolicy(doc Document) (Policy, error) {
 // ParseProcess parses a process definition.
 func ParseProcess(doc Document) (Process, error) {
 	p := problemsOf(doc.Source)
+	process := parseProcess(doc, p)
+	return process, p.err("process " + subjectName(doc.Source))
+}
+
+// parseProcess parses a process definition, adding its problems to p.
+func parseProcess(doc Document, p *problems) Process {
 	root := parseOneYAML(doc.Bytes, p)
 	if root == nil {
-		return Process{Name: doc.Source.Name, Source: doc.Source}, p.err("process " + subjectName(doc.Source))
+		return Process{Name: doc.Source.Name, Source: doc.Source}
 	}
 	// Read by key, a second verify would replace the first, so a process
 	// could declare both forms (ADR-010 rule 2) and run the one it names
@@ -306,7 +312,7 @@ func ParseProcess(doc Document) (Process, error) {
 		}
 	}
 
-	return process, p.err("process " + subjectName(doc.Source))
+	return process
 }
 
 // ParseVerify parses a verification: the fields of a process's inline
@@ -343,7 +349,7 @@ func verifyFields() []string {
 func parseVerify(values map[string]*yaml.Node, field string, p *problems) *Verify {
 	for _, key := range verifyKeys() {
 		if _, ok := values[key]; !ok {
-			p.add(join(field, key), "is required")
+			p.missing(join(field, key))
 		}
 	}
 	verify := &Verify{
@@ -427,7 +433,7 @@ func parseInputs(input map[string]*yaml.Node, p *problems) ([]Param, []Value) {
 			}
 		}
 		if value.Source == "" {
-			p.add(field+".source", "is required")
+			p.missing(field + ".source")
 		}
 		if formed && value.Source != FileSource && value.Source != "" {
 			p.add(field+".form", "applies to source %s only: a brief is read from a file", FileSource)

@@ -16,38 +16,325 @@ import (
 const processReference = "process:"
 
 // Extends is the base a process's document names in extends: "" where it
-// names none, or none as process:<name>, which ParseProcess reports. The
-// nearest of its layer files that holds the whole document names its base,
-// and only its top-level keys are read: a file with other problems still
-// says what it extends.
-func Extends(doc Document) string {
+// names none, or none as process:<name>, which ParseProcess reports. own
+// reads a base as its own layer files compose it. The nearest of the
+// process's layer files that holds the whole document names its base, and
+// only its top-level keys are read: a file with other problems still says
+// what it extends. A process none of whose files holds the whole document
+// is broken, which Extended reports; the base its farthest file names is
+// still named, so that a broken process does not make its base work.
+func Extends(doc Document, own func(name string) (Document, error)) string {
 	texts := ownTexts(doc)
-	named := topLevel(texts[defining(texts)].Bytes)["extends"]
+	at := newProcessFiles(doc.Source.Name, texts, own).defining()
+	if at < 0 {
+		at = len(texts) - 1
+	}
+	return extendsOf(texts[at])
+}
+
+// extendsOf is the base a layer's file names, when it names one, once, as
+// process:<name>; "" otherwise.
+func extendsOf(text LayerText) string {
+	named := topLevel(text.Bytes)["extends"]
 	if len(named) != 1 {
 		return ""
 	}
 	return baseName(named[0])
 }
 
-// defining is the index, among a process's layer files nearest first, of
-// the nearest that holds the whole document, the one that says what the
-// process extends (ADR-030 rule 9). A file holds the whole document when
-// it gives the header every process begins with, schema, name and type;
-// the farthest does in any case, as the file that defines the process
-// (ADR-028 rule 5). Any other file is a layer's partial.
-func defining(texts []LayerText) int {
-	for i, text := range texts {
-		if whole(text) {
+// processFiles are a process's own layer files, nearest first, read for
+// which of them holds its whole document.
+type processFiles struct {
+	name  string
+	texts []LayerText
+	own   func(name string) (Document, error)
+	// bases are the bases read, by name.
+	bases map[string]composedBase
+	// wholes are what whole has said of each file, by its index.
+	wholes map[int]bool
+}
+
+func newProcessFiles(name string, texts []LayerText, own func(name string) (Document, error)) *processFiles {
+	return &processFiles{name: name, texts: texts, own: own, bases: map[string]composedBase{}, wholes: map[int]bool{}}
+}
+
+// defining is the index of the nearest file that holds the whole
+// document, the one that says what the process extends (ADR-030 rule 9);
+// -1 where none does.
+func (f *processFiles) defining() int {
+	for i := range f.texts {
+		if f.whole(i) {
 			return i
 		}
 	}
-	return len(texts) - 1
+	return -1
 }
 
-// whole reports whether a layer's file gives the header of a process.
-func whole(text LayerText) bool {
-	keys := topLevel(text.Bytes)
-	return len(keys["schema"]) > 0 && len(keys["name"]) > 0 && len(keys["type"]) > 0
+// whole reports whether the file at i holds the whole document: it is
+// complete, so that it is a process on its own (ADR-028 rule 5), or
+// complete over the base it names, which may leave out what the process
+// sets as the process may leave out what the base gives (ADR-030 rule 9).
+// Nothing in a file marks it whole: every layer's file is a partial, and
+// a whole one is only the case that sets every field (ADR-028 rule 4).
+func (f *processFiles) whole(i int) bool {
+	if whole, ok := f.wholes[i]; ok {
+		return whole
+	}
+	unset, ok := f.unset(i)
+	f.wholes[i] = ok && len(unset) == 0
+	return f.wholes[i]
+}
+
+// unset are the fields a process requires that the file at i leaves out,
+// alone or over the base it names, whichever leaves out fewer; ok is false
+// for a file that is not one YAML mapping.
+func (f *processFiles) unset(i int) (fields []string, ok bool) {
+	tree := looseTree(f.texts[i].Bytes)
+	if tree == nil {
+		return nil, false
+	}
+	fields = unsetFields(f.name, tree)
+	if base := extendsOf(f.texts[i]); base != "" && len(fields) > 0 {
+		if composed := f.base(base); composed.err == nil {
+			if over := unsetFields(f.name, merged(composed.tree, tree)); len(over) < len(fields) {
+				fields = over
+			}
+		}
+	}
+	return fields, true
+}
+
+// composedBase is a base as its layers compose it, without name and
+// extends, which are never taken from it; or why it cannot be read or
+// composed.
+type composedBase struct {
+	tree *composedNode
+	err  error
+}
+
+// base is the base name as its layers compose it.
+func (f *processFiles) base(name string) composedBase {
+	if composed, ok := f.bases[name]; ok {
+		return composed
+	}
+	var composed composedBase
+	doc, err := f.own(name)
+	var trees []*composedNode
+	if err == nil {
+		trees, err = layerTrees(ownTexts(doc))
+	}
+	if err != nil {
+		composed.err = fmt.Errorf("extends %s%s: %v", processReference, name, err)
+	} else {
+		for i := len(trees) - 1; i >= 0; i-- {
+			composed.tree = merged(composed.tree, trees[i])
+		}
+		composed.tree = without(without(composed.tree, "name"), "extends")
+	}
+	f.bases[name] = composed
+	return composed
+}
+
+// named is the index of the file that says what the process, its files
+// read as trees, extends: the nearest that holds its whole document, or
+// -1 where none does. It fails where a file names a base other than as
+// process:<name>, or where a layer's partial sets extends, which only
+// that file says (ADR-030 rule 9): so -1 comes with an error unless no
+// file sets extends.
+func (f *processFiles) named(trees []*composedNode) (int, error) {
+	for i, tree := range trees {
+		if node := tree.entry("extends"); node != nil && extendsOf(f.texts[i]) == "" {
+			return -1, fmt.Errorf(`extends: must be "process:<name>" (set in %s)`, f.texts[i].File.Path)
+		}
+	}
+	at := f.defining()
+	for i, tree := range trees {
+		if tree.entry("extends") == nil || f.whole(i) {
+			continue
+		}
+		if at >= 0 {
+			return at, fmt.Errorf("extends: is set in %s, a layer's partial: only the nearest file that holds the whole process, %s, names its base (ADR-030 rule 9)", f.texts[i].File.Path, f.texts[at].File.Path)
+		}
+		// What it is not whole for is said: a base that cannot be read, or
+		// what it leaves out.
+		if err := f.base(extendsOf(f.texts[i])).err; err != nil {
+			return at, err
+		}
+		unset, _ := f.unset(i)
+		return at, fmt.Errorf("extends: is set in %s, which leaves out %s even over the base it names, and so is a layer's partial: only a file that holds the whole process names its base, and none of its files does (ADR-030 rule 9)", f.texts[i].File.Path, strings.Join(unset, ", "))
+	}
+	return at, nil
+}
+
+// Extended is process, composed from its own layer files, laid over the
+// base it names in extends (ADR-030 rule 9); a process that names none,
+// in any of its files, is returned as it is. own reads a process as its
+// own layer files compose it.
+//
+// The nearest of the process's files that holds the whole document says
+// what it extends: the extends of a farther whole file is not composed,
+// and a layer's partial that sets it is a problem of the process. The
+// base must hold the whole document in the layer of the file that names
+// it: its file there, under that one, is complete. The base's files are
+// composed first, then the process's over them, farthest first: maps
+// merge by key, lists and scalars replace whole (ADR-028 rule 4), and
+// name and extends are never the base's. Its layers are its own files and
+// then the base's, each with the fields it gave; its texts stay its own.
+//
+// A partial that sets extends, a base that cannot be read, is of another
+// layer or names a base of its own are problems of the process: it is
+// returned as its own files compose it, with the error. So is a file of a
+// process that declares extends and does not compose: read whole, it
+// would run without the base it names, or past the rules on it.
+func Extended(process Document, own func(name string) (Document, error)) (Document, error) {
+	texts := ownTexts(process)
+	if !declares(texts) {
+		return process, nil
+	}
+	trees, err := layerTrees(texts)
+	if err != nil {
+		return process, err
+	}
+	at, err := newProcessFiles(process.Source.Name, texts, own).named(trees)
+	if err != nil || at < 0 {
+		return process, err // at < 0: no file sets extends
+	}
+	name := extendsOf(texts[at])
+	var whole *composedNode
+	var baseTexts []LayerText
+	var baseTrees []*composedNode
+	if name != "" {
+		base, err := own(name)
+		if err != nil {
+			return process, fmt.Errorf("extends %s%s: %v", processReference, name, err)
+		}
+		baseTexts = ownTexts(base)
+		if baseTrees, err = layerTrees(baseTexts); err != nil {
+			return process, fmt.Errorf("extends %s%s: %v", processReference, name, err)
+		}
+		if declares(baseTexts) {
+			baseAt, err := newProcessFiles(name, baseTexts, own).named(baseTrees)
+			if err != nil {
+				return process, fmt.Errorf("extends %s%s: %v", processReference, name, err)
+			}
+			if baseAt < 0 || extendsOf(baseTexts[baseAt]) != "" {
+				return process, fmt.Errorf("extends %s%s, which names extends too: a base extends nothing, one level only (ADR-030 rule 9)", processReference, name)
+			}
+		}
+		if !holds(process.Source.Name, baseTexts, baseTrees, texts[at].File.Layer, trees[at]) {
+			return process, fmt.Errorf("extends %s%s, which the %s layer of %s does not define: a process extends a base of its own layer (ADR-030 rule 9)", processReference, name, texts[at].File.Layer, texts[at].File.Path)
+		}
+		baseTrees = namedOnce(baseTrees, -1)
+		for i := len(baseTrees) - 1; i >= 0; i-- {
+			whole = merged(whole, baseTrees[i])
+		}
+		whole = without(whole, "name")
+	}
+	trees = namedOnce(trees, at)
+	for i := len(trees) - 1; i >= 0; i-- {
+		whole = merged(whole, trees[i])
+	}
+	data, err := rendered(KindProcess, whole)
+	if err != nil {
+		return process, err
+	}
+	extended := Document{Source: process.Source, Bytes: data}
+	extended.Source.Layers = nil
+	all := append(append([]*composedNode(nil), trees...), baseTrees...)
+	for i, text := range append(append([]LayerText(nil), texts...), baseTexts...) {
+		file := text.File
+		file.Fields = given(all[i], whole, nil, []string{})
+		extended.Source.Layers = append(extended.Source.Layers, file)
+		if i < len(texts) {
+			extended.Texts = append(extended.Texts, LayerText{File: file, Bytes: text.Bytes})
+		}
+	}
+	sum := sha256.Sum256(data)
+	extended.Source.SHA256 = hex.EncodeToString(sum[:])
+	return extended, nil
+}
+
+// namedOnce are trees without extends, but in the tree at at: a farther
+// file that holds the whole document says nothing of the base (ADR-030
+// rule 9).
+func namedOnce(trees []*composedNode, at int) []*composedNode {
+	kept := make([]*composedNode, len(trees))
+	for i, tree := range trees {
+		kept[i] = tree
+		if i != at && tree.entry("extends") != nil {
+			kept[i] = without(tree, "extends")
+		}
+	}
+	return kept
+}
+
+// declares reports whether any of a process's files sets extends.
+func declares(texts []LayerText) bool {
+	for _, text := range texts {
+		if len(topLevel(text.Bytes)["extends"]) > 0 {
+			return true
+		}
+	}
+	return false
+}
+
+// holds reports whether the base, its files texts read as trees, holds its
+// whole document in layer for the process name, whose file there is over:
+// the base's file in layer, under over, is complete (ADR-030 rule 9).
+func holds(name string, texts []LayerText, trees []*composedNode, layer Layer, over *composedNode) bool {
+	for i, text := range texts {
+		if text.File.Layer == layer && len(unsetFields(name, merged(without(without(trees[i], "name"), "extends"), over))) == 0 {
+			return true
+		}
+	}
+	return false
+}
+
+// unsetFields are the fields a process named name requires that tree, a
+// mapping, leaves out.
+func unsetFields(name string, tree *composedNode) []string {
+	data, err := rendered(KindProcess, tree)
+	if err != nil {
+		return []string{"(unreadable)"}
+	}
+	source := Source{Kind: KindProcess, Name: name}
+	p := problemsOf(source)
+	parseProcess(Document{Source: source, Bytes: data}, p)
+	return p.absent
+}
+
+// looseTree reads a process's layer file as ParseProcess reads its keys,
+// so that a file with other problems still says what it sets: a key
+// declared more than once is its last. Nil for a file that is not one YAML
+// mapping, or that holds an alias.
+func looseTree(data []byte) *composedNode {
+	root := parseOneYAML(data, &problems{})
+	if root == nil || root.Kind != yaml.MappingNode || plain(root) != nil {
+		return nil
+	}
+	return looseNode(root)
+}
+
+func looseNode(node *yaml.Node) *composedNode {
+	if node.Kind != yaml.MappingNode {
+		return &composedNode{value: node}
+	}
+	tree := &composedNode{isMap: true, value: node}
+	for i := 0; i+1 < len(node.Content); i += 2 {
+		name, value := node.Content[i], looseNode(node.Content[i+1])
+		at := -1
+		for j := range tree.entries {
+			if tree.entries[j].key == name.Value {
+				at = j
+			}
+		}
+		if at >= 0 {
+			tree.entries[at].value = value
+			continue
+		}
+		tree.entries = append(tree.entries, composedEntry{key: name.Value, name: name, value: value})
+	}
+	return tree
 }
 
 // topLevel are the values of a YAML mapping's top-level keys, each key's
@@ -75,154 +362,6 @@ func baseName(node *yaml.Node) string {
 		return name
 	}
 	return ""
-}
-
-// Extended is process, composed from its own layer files, laid over the
-// base it names in extends (ADR-030 rule 9); a process that names none,
-// in any of its files, is returned as it is. own reads a process as its
-// own layer files compose it.
-//
-// The nearest of the process's files that holds the whole document says
-// what it extends: the extends of a farther whole file is not composed,
-// and a layer's partial that sets it is a problem of the process. The
-// base must hold the whole document in the layer of the file that names
-// it. The base's files are composed first, then the process's over them,
-// farthest first: maps merge by key, lists and scalars replace whole
-// (ADR-028 rule 4), and name and extends are never the base's. Its layers
-// are its own files and then the base's, each with the fields it gave;
-// its texts stay its own.
-//
-// A partial that sets extends, a base that cannot be read, is of another
-// layer or names a base of its own are problems of the process: it is
-// returned as its own files compose it, with the error. So is a file of a
-// process that declares extends and does not compose: read whole, it
-// would run without the base it names, or past the rules on it.
-func Extended(process Document, own func(name string) (Document, error)) (Document, error) {
-	texts := ownTexts(process)
-	trees, err := layerTrees(texts)
-	if err != nil && declares(texts) {
-		return process, err
-	}
-	if err != nil {
-		return process, nil // a problem of its own composition, which ParseProcess reports
-	}
-	at, err := named(texts, trees)
-	if err != nil {
-		return process, err
-	}
-	name := Extends(process)
-	if name == "" && namesOnce(trees, at) {
-		return process, nil
-	}
-	trees = namedOnce(trees, at)
-	var whole *composedNode
-	var baseTexts []LayerText
-	var baseTrees []*composedNode
-	if name != "" {
-		base, err := own(name)
-		if err != nil {
-			return process, fmt.Errorf("extends %s%s: %v", processReference, name, err)
-		}
-		if baseTexts = ownTexts(base); !holds(baseTexts, texts[at].File.Layer) {
-			return process, fmt.Errorf("extends %s%s, which the %s layer of %s does not define: a process extends a base of its own layer (ADR-030 rule 9)", processReference, name, texts[at].File.Layer, texts[at].File.Path)
-		}
-		if baseTrees, err = layerTrees(baseTexts); err != nil {
-			return process, fmt.Errorf("extends %s%s: %v", processReference, name, err)
-		}
-		baseAt, err := named(baseTexts, baseTrees)
-		if err != nil {
-			return process, fmt.Errorf("extends %s%s: %v", processReference, name, err)
-		}
-		if baseTrees[baseAt].entry("extends") != nil {
-			return process, fmt.Errorf("extends %s%s, which names extends too: a base extends nothing, one level only (ADR-030 rule 9)", processReference, name)
-		}
-		baseTrees = namedOnce(baseTrees, -1)
-		for i := len(baseTrees) - 1; i >= 0; i-- {
-			whole = merged(whole, baseTrees[i])
-		}
-		whole = without(whole, "name")
-	}
-	for i := len(trees) - 1; i >= 0; i-- {
-		whole = merged(whole, trees[i])
-	}
-	data, err := rendered(KindProcess, whole)
-	if err != nil {
-		return process, err
-	}
-	extended := Document{Source: process.Source, Bytes: data}
-	extended.Source.Layers = nil
-	all := append(append([]*composedNode(nil), trees...), baseTrees...)
-	for i, text := range append(append([]LayerText(nil), texts...), baseTexts...) {
-		file := text.File
-		file.Fields = given(all[i], whole, nil, []string{})
-		extended.Source.Layers = append(extended.Source.Layers, file)
-		if i < len(texts) {
-			extended.Texts = append(extended.Texts, LayerText{File: file, Bytes: text.Bytes})
-		}
-	}
-	sum := sha256.Sum256(data)
-	extended.Source.SHA256 = hex.EncodeToString(sum[:])
-	return extended, nil
-}
-
-// named is the index of the file that says what the process of texts,
-// read as trees, extends; or why it cannot be said: a layer's partial sets
-// extends, which only a file that holds the whole document says (ADR-030
-// rule 9). A farther whole file may set it, and is not heard.
-func named(texts []LayerText, trees []*composedNode) (int, error) {
-	at := defining(texts)
-	for i, tree := range trees {
-		if tree.entry("extends") != nil && i != at && i != len(texts)-1 && !whole(texts[i]) {
-			return at, fmt.Errorf("extends: is set in %s, a layer's partial: only the nearest file that holds the whole process, %s, names its base (ADR-030 rule 9)", texts[i].File.Path, texts[at].File.Path)
-		}
-	}
-	return at, nil
-}
-
-// namesOnce reports whether no file but the one at at sets extends, so
-// that the trees compose to what they composed to without its base.
-func namesOnce(trees []*composedNode, at int) bool {
-	for i, tree := range trees {
-		if i != at && tree.entry("extends") != nil {
-			return false
-		}
-	}
-	return true
-}
-
-// namedOnce are trees without extends, but in the tree at at: a farther
-// file that holds the whole document says nothing of the base (ADR-030
-// rule 9).
-func namedOnce(trees []*composedNode, at int) []*composedNode {
-	kept := make([]*composedNode, len(trees))
-	for i, tree := range trees {
-		kept[i] = tree
-		if i != at && tree.entry("extends") != nil {
-			kept[i] = without(tree, "extends")
-		}
-	}
-	return kept
-}
-
-// declares reports whether any of a process's files sets extends.
-func declares(texts []LayerText) bool {
-	for _, text := range texts {
-		if len(topLevel(text.Bytes)["extends"]) > 0 {
-			return true
-		}
-	}
-	return false
-}
-
-// holds reports whether one of a base's files in layer holds its whole
-// document.
-func holds(texts []LayerText, layer Layer) bool {
-	for i, text := range texts {
-		if text.File.Layer == layer && (whole(text) || i == len(texts)-1) {
-			return true
-		}
-	}
-	return false
 }
 
 // ownTexts are a process document's own layer files, nearest first: its

@@ -66,36 +66,67 @@ func extendingSettings(t *testing.T) extending {
 
 // The base is composed from its layers first, and the process's layers are
 // laid over it: the repository's partial of the base reaches the process,
-// whose own home file still wins over it. The record names the process,
-// and the base's files among the layers it was composed from. check passes
-// though the base has no prompt: it is checked through its process.
+// whose own home file still wins over it, and the repository's partial of
+// the process wins over both. The record names the process, and the base's
+// files among the layers it was composed from. check passes though the
+// base has no prompt: it is checked through its process.
 func TestAProcessRunsOverItsBaseAsItsLayersComposeIt(t *testing.T) {
 	t.Parallel()
-	e := extendingSettings(t)
-	write(t, e.repoBase, "input:\n  instruction: 'REPOSITORY BASE: answer the question.'\n  params:\n    question: {default: the repository base's question}\n")
-	runs := &newRuns{home: e.home}
-	runs.take(t)
+	for _, c := range []struct {
+		name string
+		// child is the repository's partial of child_ask; none where "".
+		child string
+		// instruction and question are what the runtime is given, and
+		// left what it is not.
+		instruction, question string
+		left                  []string
+		layers                func(e extending) []string
+	}{
+		{"the base's partial", "", "REPOSITORY BASE: answer the question.", "the child's question",
+			[]string{"HOME BASE", "the repository base's question"},
+			func(e extending) []string { return []string{e.child, e.repoBase, e.base} }},
+		{"the process's partial over it", "input:\n  instruction: 'REPOSITORY CHILD: answer the question.'\n  params:\n    question: {default: the repository child's question}\n",
+			"REPOSITORY CHILD: answer the question.", "the repository child's question",
+			[]string{"HOME BASE", "REPOSITORY BASE", "the repository base's question", "the child's question"},
+			func(e extending) []string { return []string{e.repoChild, e.child, e.repoBase, e.base} }},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
+			e := extendingSettings(t)
+			write(t, e.repoBase, "input:\n  instruction: 'REPOSITORY BASE: answer the question.'\n  params:\n    question: {default: the repository base's question}\n")
+			if c.child != "" {
+				write(t, e.repoChild, c.child)
+			}
+			runs := &newRuns{home: e.home}
+			runs.take(t)
 
-	if r := agister(t, e.home, e.repo, "check"); r.code != 0 || !strings.Contains(r.stdout, "settings OK") {
-		t.Fatalf("check: %d\n%s%s", r.code, r.stdout, r.stderr)
-	}
-	if r := agister(t, e.home, e.repo, "run", "child_ask", "--quiet", "--timeout", "1m"); r.code != cli.ExitCompleted {
-		t.Fatalf("run child_ask: %d\n%s%s", r.code, r.stdout, r.stderr)
-	}
-	run := runs.one(t)
-	given, _ := run.first["prompt"].(string)
-	if run.record["process"] != "child_ask" || run.record["agent"] != "assistant" ||
-		!strings.Contains(strings.Join(run.argv(), " "), "REPOSITORY BASE: answer the question.") ||
-		!strings.Contains(given, "the child's question") || strings.Contains(given, "the repository base's question") ||
-		!strings.Contains(given, read(t, filepath.Join(e.home, "prompts", "ask.md"))) {
-		t.Fatalf("process %v on agent %v was run by %v and given:\n%s", run.record["process"], run.record["agent"], run.argv(), given)
-	}
-	var paths []string
-	for _, layer := range definitionOf(t, run, "processes", "child_ask")["layers"].([]any) {
-		paths = append(paths, layer.(map[string]any)["path"].(string))
-	}
-	if strings.Join(paths, " ") != strings.Join([]string{e.child, e.repoBase, e.base}, " ") {
-		t.Fatalf("layers %v", paths)
+			if r := agister(t, e.home, e.repo, "check"); r.code != 0 || !strings.Contains(r.stdout, "settings OK") {
+				t.Fatalf("check: %d\n%s%s", r.code, r.stdout, r.stderr)
+			}
+			if r := agister(t, e.home, e.repo, "run", "child_ask", "--quiet", "--timeout", "1m"); r.code != cli.ExitCompleted {
+				t.Fatalf("run child_ask: %d\n%s%s", r.code, r.stdout, r.stderr)
+			}
+			run := runs.one(t)
+			argv := strings.Join(run.argv(), " ")
+			given, _ := run.first["prompt"].(string)
+			if run.record["process"] != "child_ask" || run.record["agent"] != "assistant" ||
+				!strings.Contains(argv, c.instruction) || !strings.Contains(given, c.question) ||
+				!strings.Contains(given, read(t, filepath.Join(e.home, "prompts", "ask.md"))) {
+				t.Fatalf("process %v on agent %v was run by %v and given:\n%s", run.record["process"], run.record["agent"], run.argv(), given)
+			}
+			for _, left := range c.left {
+				if strings.Contains(argv, left) || strings.Contains(given, left) {
+					t.Fatalf("run by %v and given %q:\n%s", run.argv(), left, given)
+				}
+			}
+			var paths []string
+			for _, layer := range definitionOf(t, run, "processes", "child_ask")["layers"].([]any) {
+				paths = append(paths, layer.(map[string]any)["path"].(string))
+			}
+			if want := c.layers(e); strings.Join(paths, " ") != strings.Join(want, " ") {
+				t.Fatalf("layers %v, want %v", paths, want)
+			}
+		})
 	}
 }
 
@@ -108,9 +139,18 @@ func TestWhatAnExtendingProcessCannotDo(t *testing.T) {
 		change  func(e extending)
 		problem string
 	}{
+		// A file is whole by what it sets, not by a header: one that
+		// leaves out what its base does not give is a partial, the
+		// farthest too, and says nothing of a base.
 		{"the base's name is not taken", func(e extending) {
 			write(t, e.child, strings.Replace(childAsk, "name: child_ask\n", "", 1))
-		}, "process child_ask: name: is required"},
+		}, "process child_ask: extends: is set in HOME_CHILD, which leaves out name even over the base it names, and so is a layer's partial"},
+		{"a process that is not whole over its base names none", func(e extending) {
+			write(t, e.child, strings.Replace(childAsk, "prompt: ask\n", "", 1))
+		}, "process child_ask: extends: is set in HOME_CHILD, which leaves out prompt even over the base it names, and so is a layer's partial"},
+		{"a layer's partial with a header cannot set extends", func(e extending) {
+			write(t, e.repoChild, "schema: agister.process/v1alpha1\nname: child_ask\ntype: process\nextends: process:base_ask\n")
+		}, "process child_ask: extends: is set in REPO_CHILD, a layer's partial: only the nearest file that holds the whole process, HOME_CHILD, names its base"},
 		{"a base extends nothing", func(e extending) {
 			write(t, e.base, baseAsk+"extends: process:ask\n")
 		}, "process child_ask: extends process:base_ask, which names extends too: a base extends nothing"},
@@ -201,8 +241,8 @@ func TestABaseIsNotRun(t *testing.T) {
 }
 
 // The nearest layer file that holds the whole process, here a repository's
-// copy of home's, says what it extends: another base of its own layer, or
-// none. The extends of home's file is not heard, and the record names the
+// copy of home's or a file that is whole over its base, says what it
+// extends: another base of its own layer, or none. The extends of home's file is not heard, and the record names the
 // files the process was composed from.
 func TestTheNearestWholeProcessNamesItsBase(t *testing.T) {
 	t.Parallel()
@@ -213,6 +253,10 @@ func TestTheNearestWholeProcessNamesItsBase(t *testing.T) {
 		instruction, question string
 	}{
 		{"another base", strings.Replace(childAsk, "process:base_ask", "process:repo_ask", 1), func(e extending) []string {
+			return []string{filepath.Join(e.repo, ".agister", "processes", "repo_ask.yaml")}
+		}, "REPOSITORY BASE: answer the question.", "the child's question"},
+		// Whole by what it sets over its base, with no header.
+		{"another base, by a file with no header", "name: child_ask\nextends: process:repo_ask\nprompt: ask\n", func(e extending) []string {
 			return []string{filepath.Join(e.repo, ".agister", "processes", "repo_ask.yaml")}
 		}, "REPOSITORY BASE: answer the question.", "the child's question"},
 		{"no base", strings.NewReplacer("name: base_ask", "name: child_ask", "HOME BASE", "REPOSITORY CHILD").Replace(baseAsk) + "prompt: ask\n",
@@ -286,23 +330,26 @@ func TestABrokenProcessKeepsItsBaseABase(t *testing.T) {
 	}
 }
 
-// A block on a base refuses each process that extends it (ADR-018), before
-// its runtime starts, and check names them.
+// A block on a base refuses each process that extends it (ADR-018), here
+// two, before either runtime starts, and check names them.
 func TestABlockOnABaseRefusesItsProcesses(t *testing.T) {
 	t.Parallel()
 	e := extendingSettings(t)
+	write(t, filepath.Join(e.home, "processes", "other_ask.yaml"), strings.Replace(childAsk, "name: child_ask", "name: other_ask", 1))
 	path := writeBlocks(t, filepath.Join(e.repo, ".agister"), "{ref: 'process:base_ask'}")
 	runs := &newRuns{home: e.home}
 	runs.take(t)
 
-	if r := agister(t, e.home, e.repo, "check"); r.code != 0 || !strings.Contains(r.stdout, "block process base_ask: "+path+"\n  refuses process base_ask, process child_ask\n") {
+	if r := agister(t, e.home, e.repo, "check"); r.code != 0 || !strings.Contains(r.stdout, "block process base_ask: "+path+"\n  refuses process base_ask, process child_ask, process other_ask\n") {
 		t.Fatalf("check: %d\n%s%s", r.code, r.stdout, r.stderr)
 	}
-	want := "process child_ask: process base_ask is blocked by " + path
-	if r := agister(t, e.home, e.repo, "run", "child_ask", "--quiet", "--timeout", "1m"); r.code != cli.ExitRefused || !strings.Contains(r.stderr, want) {
-		t.Fatalf("run child_ask: %d, want %q\n%s%s", r.code, want, r.stdout, r.stderr)
-	}
-	if refused := runs.one(t); refused.first != nil {
-		t.Fatalf("the runtime ran: %v", refused.first)
+	for _, name := range []string{"child_ask", "other_ask"} {
+		want := "process " + name + ": process base_ask is blocked by " + path
+		if r := agister(t, e.home, e.repo, "run", name, "--quiet", "--timeout", "1m"); r.code != cli.ExitRefused || !strings.Contains(r.stderr, want) {
+			t.Fatalf("run %s: %d, want %q\n%s%s", name, r.code, want, r.stdout, r.stderr)
+		}
+		if refused := runs.one(t); refused.record["process"] != name || refused.first != nil {
+			t.Fatalf("run %s: the runtime ran, or another was recorded: %v %v", name, refused.record["process"], refused.first)
+		}
 	}
 }

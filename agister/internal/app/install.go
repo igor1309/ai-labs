@@ -42,7 +42,10 @@ type InstallHome interface {
 	// Documents reads every settings document in home. One it lists but
 	// cannot read is in unreadable, by its source, with no digest.
 	Documents(ctx context.Context) (docs []definition.Document, unreadable []definition.Source, err error)
-	Read(ctx context.Context, kind definition.Kind, name string) (definition.Document, error)
+	// File reads the bytes home's own file of the document holds, as
+	// written: a process's without the base it extends (ADR-030 rule 9),
+	// so a restore reads them whatever became of the base.
+	File(ctx context.Context, kind definition.Kind, name string) ([]byte, error)
 	// Current reports where a document would be stored and a digest of the
 	// one there, empty when there is none.
 	Current(ctx context.Context, kind definition.Kind, name string) (path, digest string, err error)
@@ -446,11 +449,9 @@ func (i *Installer) restorePlan(ctx context.Context, stamp string) (contract.Res
 			}
 			var now []byte
 			if current != "" {
-				home, err := i.home.Read(ctx, kind, entry.Name)
-				if err != nil {
+				if now, err = i.home.File(ctx, kind, entry.Name); err != nil {
 					return contract.RestorePlan{}, nil, err
 				}
-				now = home.Bytes
 			}
 			doc.Action, doc.Diff = contract.RestorePutBack, unifiedDiff(path, path+" (before install "+stamp+")", now, data)
 			steps = append(steps, restoreStep{kind: kind, name: entry.Name, action: doc.Action, data: data})
