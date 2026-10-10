@@ -51,7 +51,7 @@ func TestSettingsNewerThanTheBinaryAreNamedOnEveryRefusal(t *testing.T) {
 		var stdout, stderr bytes.Buffer
 		code := cli.Run(context.Background(), append([]string{"--home", home}, args...), cli.IO{
 			Stdin: strings.NewReader(""), Stdout: &stdout, Stderr: &stderr, Cwd: repo, Getenv: func(string) string { return "" }, Version: version,
-		}, composeInProcess)
+		}, composeInProcess, diagnostics)
 		return result{code, stdout.String(), stderr.String()}
 	}
 	hint := func(n string) string {
@@ -133,7 +133,7 @@ func TestAnInstallOfNewerSettingsIsNamedOnItsRefusal(t *testing.T) {
 			compose.stages = stages
 			client, _, err := compose.wire(config)
 			return client, err
-		})
+		}, diagnostics)
 		return result{code, stdout.String(), stderr.String()}
 	}
 	settings := func(from, to string) string {
@@ -178,7 +178,7 @@ func TestAnAgentOnANewerRuntimeIsNamedOnItsRefusal(t *testing.T) {
 		var stdout, stderr bytes.Buffer
 		code := cli.Run(context.Background(), []string{"--home", home, "agent", "create", "g", "--runtime", runtime}, cli.IO{
 			Stdin: strings.NewReader(""), Stdout: &stdout, Stderr: &stderr, Cwd: repo, Getenv: func(string) string { return "" }, Version: version,
-		}, composeInProcess)
+		}, composeInProcess, diagnostics)
 		return result{code, stdout.String(), stderr.String()}
 	}
 	shipped := read(t, filepath.Join(home, "runtimes", "claude-code.yaml"))

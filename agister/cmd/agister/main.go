@@ -50,7 +50,7 @@ func main() {
 		os.Exit(pages.Main(ctx, os.Args[2:], pagesEnv(appends)))
 	}
 	info, _ := debug.ReadBuildInfo()
-	os.Exit(cli.Run(ctx, os.Args[1:], cli.IO{Stdin: os.Stdin, Stdout: os.Stdout, Stderr: os.Stderr, Cwd: cwd, Getenv: os.Getenv, Version: version(info)}, compose(appends)))
+	os.Exit(cli.Run(ctx, os.Args[1:], cli.IO{Stdin: os.Stdin, Stdout: os.Stdout, Stderr: os.Stderr, Cwd: cwd, Getenv: os.Getenv, Version: version(info)}, compose(appends), diagnostics))
 }
 
 // version names the build: its module version, its revision (short, with
@@ -242,7 +242,7 @@ func (c composition) wire(config cli.Config) (contract.Client, *app.BackgroundRe
 	}
 
 	global := fsdefs.Store{Dir: config.Home}
-	layered, err := layers(config, c.git.calls, log)
+	layered, err := layers(config, c.git.calls)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -263,21 +263,21 @@ func (c composition) wire(config cli.Config) (contract.Client, *app.BackgroundRe
 	commands := supervisor.Commands{Starter: c.commands, Timer: c.timer}
 	runtimes := runtime.Registry{
 		"claude-code": func(command string) app.TurnRunner {
-			return logging.Runner{Inner: runtimecomposition.NewClaudeCode(command, processes), Adapter: "claude-code", Log: log, Clock: system.Clock{}}
+			return logging.Runner{Inner: runtimecomposition.NewClaudeCode(command, processes), Adapter: "claude-code", Log: log}
 		},
 		// The Codex homes of threads given skills are kept under the
 		// home, where a continuation finds them, beside the user's own.
 		"codex": func(command string) app.TurnRunner {
-			return logging.Runner{Inner: runtimecomposition.NewCodex(command, filepath.Join(config.Home, "codex", "homes"), c.codexHome, processes), Adapter: "codex", Log: log, Clock: system.Clock{}}
+			return logging.Runner{Inner: runtimecomposition.NewCodex(command, filepath.Join(config.Home, "codex", "homes"), c.codexHome, processes), Adapter: "codex", Log: log}
 		},
 		// Pi's sessions are kept under the home, where a continuation
 		// finds them, not in ~/.pi.
 		// OpenCode keeps its sessions in its own store.
 		"opencode": func(command string) app.TurnRunner {
-			return logging.Runner{Inner: runtimecomposition.NewOpenCode(command, processes), Adapter: "opencode", Log: log, Clock: system.Clock{}}
+			return logging.Runner{Inner: runtimecomposition.NewOpenCode(command, processes), Adapter: "opencode", Log: log}
 		},
 		"pi": func(command string) app.TurnRunner {
-			return logging.Runner{Inner: runtimecomposition.NewPi(command, filepath.Join(config.Home, "pi", "sessions"), processes), Adapter: "pi", Log: log, Clock: system.Clock{}}
+			return logging.Runner{Inner: runtimecomposition.NewPi(command, filepath.Join(config.Home, "pi", "sessions"), processes), Adapter: "pi", Log: log}
 		},
 	}
 	// A runtime version the settings verify no primitive for is probed,
@@ -381,45 +381,39 @@ func (c composition) wire(config cli.Config) (contract.Client, *app.BackgroundRe
 // layers selects the settings layers of a command launched in the working
 // directory (ADR-028 rule 1): home, the repository's, <root>/.agister, the
 // root as the workspaces find it, and the project's. Home alone outside a
-// repository; why is logged.
-func layers(config cli.Config, workspaces app.CallWorkspaces, log *slog.Logger) (fsdefs.Layered, error) {
+// repository.
+func layers(config cli.Config, workspaces app.CallWorkspaces) (fsdefs.Layered, error) {
 	home := fsdefs.Store{Dir: config.Home}
 	if config.Cwd == "" {
 		return fsdefs.Layered{Home: home}, nil
 	}
 	root, err := workspaces.Root(context.Background(), config.Cwd)
 	if err != nil {
-		log.Debug("no project settings: not in a usable git repository", "cwd", config.Cwd, "error", err.Error())
 		return fsdefs.Layered{Home: home}, nil
 	}
-	selected, err := fsdefs.Select(home, root, config.Cwd)
-	if err != nil {
-		return fsdefs.Layered{}, err
-	}
-	for _, layer := range selected.Layers(context.Background()) {
-		log.Debug("settings layer", "layer", string(layer.Layer), "dir", layer.Dir)
-	}
-	return selected, nil
+	return fsdefs.Select(home, root, config.Cwd)
 }
 
-// diagnostics: info and above to <home>/logs/agister.jsonl; with --debug,
-// debug and above to the file and to the terminal.
+// The log is kept within logMax bytes, with at most logKeep old files,
+// compressed, beside it.
+const (
+	logMax  = 5 << 20
+	logKeep = 3
+)
+
+// diagnostics opens the log, <home>/logs/agister.jsonl. It holds what no
+// run's record does: the runtimes' and the reaper's warnings and errors,
+// each command the CLI says was refused or failed, and what a check warns
+// of. What a turn did is its run's, in <home>/runs/<id>/. A log that
+// cannot be written fails here, not at its first warning.
 func diagnostics(config cli.Config) (*slog.Logger, error) {
-	level := slog.LevelInfo
-	if config.Debug != nil {
-		level = slog.LevelDebug
-	}
 	dir := filepath.Join(config.Home, "logs")
 	if err := os.MkdirAll(dir, 0o700); err != nil {
 		return nil, err
 	}
-	file, err := os.OpenFile(filepath.Join(dir, "agister.jsonl"), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o600)
-	if err != nil {
+	file := logging.File{Path: filepath.Join(dir, "agister.jsonl"), Max: logMax, Keep: logKeep, Append: (*os.File).Write, Rename: os.Rename}
+	if err := file.Usable(); err != nil {
 		return nil, err
 	}
-	handlers := logging.Fanout{slog.NewJSONHandler(file, &slog.HandlerOptions{Level: level})}
-	if config.Debug != nil {
-		handlers = append(handlers, slog.NewJSONHandler(config.Debug, &slog.HandlerOptions{Level: level}))
-	}
-	return slog.New(logging.Handler{Handler: handlers}), nil
+	return slog.New(logging.Handler{Handler: slog.NewJSONHandler(file, nil)}), nil
 }

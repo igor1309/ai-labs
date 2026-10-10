@@ -69,7 +69,7 @@ func agisterReading(t *testing.T, stdin io.Reader, home, cwd string, args ...str
 	code := cli.Run(context.Background(), append([]string{"--home", home}, args...), cli.IO{
 		Stdin: stdin, Stdout: &stdout, Stderr: &stderr, Cwd: cwd,
 		Getenv: func(string) string { return "" },
-	}, composeInProcess)
+	}, composeInProcess, diagnostics)
 	return result{code, stdout.String(), stderr.String()}
 }
 
@@ -252,7 +252,7 @@ func agisterOver(t *testing.T, composed func(cli.Config) composition, home, cwd 
 	}, func(config cli.Config) (contract.Client, error) {
 		client, _, err := composed(config).wire(config)
 		return client, err
-	})
+	}, diagnostics)
 	return result{code, stdout.String(), stderr.String()}
 }
 
@@ -478,13 +478,9 @@ func TestAgentCallEndToEnd(t *testing.T) {
 		t.Fatalf("workspace %s, agent cwd %v", workspace, last.first["cwd"])
 	}
 	noCheckoutLeft(t, home)
-	// Diagnostics are correlated with the run.
-	var logged bool
-	for _, line := range strings.Split(read(t, filepath.Join(home, "logs", "agister.jsonl")), "\n") {
-		logged = logged || strings.Contains(line, `"msg":"turn.finished"`) && strings.Contains(line, `"run_id":"`+record["id"].(string)+`"`)
-	}
-	if !logged {
-		t.Fatal("turn not logged under its run ID")
+	// What the turn did is the run's, not the log's.
+	if logged := read(t, filepath.Join(home, "logs", "agister.jsonl")); strings.Contains(logged, `"msg":"turn.`) {
+		t.Fatalf("the log holds the turn:\n%s", logged)
 	}
 	// The plan comes before any runtime process.
 	order := strings.Join(last.kinds(), " ")
@@ -688,10 +684,6 @@ func TestProjectSettingsAddToGlobal(t *testing.T) {
 	outside := tempDir(t)
 	if r := agister(t, home, outside, "process", "list"); r.code != 0 || strings.Contains(r.stdout, "ask_here") {
 		t.Fatalf("list outside project: %d\n%s%s", r.code, r.stdout, r.stderr)
-	}
-	// Why no project settings apply is in the diagnostics.
-	if r := agister(t, home, outside, "--debug", "process", "list"); r.code != 0 || !strings.Contains(r.stderr, "no project settings: not in a usable git repository") {
-		t.Fatalf("diagnostics outside project: %d\n%s", r.code, r.stderr)
 	}
 }
 
@@ -954,6 +946,15 @@ func TestFreshHomeNeedsInit(t *testing.T) {
 	if r := agister(t, home, dir, "process", "list"); r.code != cli.ExitUsage || !strings.Contains(r.stderr, "service service: not found") {
 		t.Fatalf("before init: %d\n%s", r.code, r.stderr)
 	}
+	// The refusal, before any run exists, is in the log as an error.
+	refusals := loggedAs(t, home, "the settings refused the command")
+	if len(refusals) != 1 {
+		t.Fatalf("refusals logged = %v", refusals)
+	}
+	problems, _ := json.Marshal(refusals[0]["problems"])
+	if refusals[0]["level"] != "ERROR" || refusals[0]["command"] != "process list" || refusals[0]["cwd"] != dir || !strings.Contains(string(problems), "service service: not found") {
+		t.Fatalf("logged = %v", refusals[0])
+	}
 	if r := agisterInput(t, "yes\n", home, dir, "init"); r.code != 0 {
 		t.Fatalf("init: %d\n%s", r.code, r.stderr)
 	}
@@ -963,7 +964,8 @@ func TestFreshHomeNeedsInit(t *testing.T) {
 }
 
 // A .agister that exists but cannot be used fails every command instead of
-// silently leaving the project's settings out.
+// silently leaving the project's settings out, and the failure, before any
+// run exists, is in the log as an error.
 func TestUnusableProjectSettingsFail(t *testing.T) {
 	t.Parallel()
 	home, repo := setup(t, "approve")
@@ -971,6 +973,57 @@ func TestUnusableProjectSettingsFail(t *testing.T) {
 	if r := agister(t, home, repo, "process", "list"); r.code == 0 || !strings.Contains(r.stderr, ".agister: not a directory") {
 		t.Fatalf("exit %d\n%s%s", r.code, r.stdout, r.stderr)
 	}
+	logged := loggedAs(t, home, "the command failed")
+	if len(logged) != 1 {
+		t.Fatalf("failures logged = %v", logged)
+	}
+	message, _ := logged[0]["error"].(string)
+	if logged[0]["level"] != "ERROR" || !strings.Contains(message, ".agister: not a directory") || logged[0]["command"] != "process list" || logged[0]["cwd"] != repo {
+		t.Fatalf("logged = %v", logged[0])
+	}
+}
+
+// A call whose run folder cannot be made, <home>/runs a file, fails, makes
+// no run, and the failure, which no run records, is in the log as an error.
+func TestARunThatCannotBeRecordedIsLogged(t *testing.T) {
+	t.Parallel()
+	home, repo := setup(t, "approve")
+	runs := filepath.Join(home, "runs")
+	if err := os.RemoveAll(runs); err != nil {
+		t.Fatal(err)
+	}
+	write(t, runs, "not a folder")
+	r := agister(t, home, repo, "--quiet", "run", "adversarial_review", "--param", "base=main", "--timeout", "1m")
+	if r.code == cli.ExitCompleted || !strings.Contains(r.stderr, "not a directory") {
+		t.Fatalf("exit %d\n%s", r.code, r.stderr)
+	}
+	if kept := read(t, runs); kept != "not a folder" {
+		t.Fatalf("runs = %q", kept)
+	}
+	logged := loggedAs(t, home, "the command failed")
+	if len(logged) != 1 {
+		t.Fatalf("failures logged = %v", logged)
+	}
+	message, _ := logged[0]["error"].(string)
+	if logged[0]["level"] != "ERROR" || logged[0]["command"] != "run" || logged[0]["cwd"] != repo || !strings.Contains(r.stderr, "agister: "+message+"\n") {
+		t.Fatalf("logged = %v, stderr:\n%s", logged[0], r.stderr)
+	}
+}
+
+// loggedAs is every record in home's log whose message is msg.
+func loggedAs(t *testing.T, home, msg string) []map[string]any {
+	t.Helper()
+	var found []map[string]any
+	for _, line := range strings.Split(strings.TrimSpace(read(t, filepath.Join(home, "logs", "agister.jsonl"))), "\n") {
+		var entry map[string]any
+		if err := json.Unmarshal([]byte(line), &entry); err != nil {
+			t.Fatalf("log line %q: %v", line, err)
+		}
+		if entry["msg"] == msg {
+			found = append(found, entry)
+		}
+	}
+	return found
 }
 
 // Fields that settings once accepted and ignored are refused, so a home

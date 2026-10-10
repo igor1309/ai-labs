@@ -4,7 +4,9 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"log/slog"
 	"reflect"
 	"strings"
 	"testing"
@@ -36,7 +38,29 @@ type clientSpy struct {
 
 	exported  contract.ExportResult // returned by Export
 	exportErr error                 // returned by Export
+
+	buildErr error        // returned by the build in place of the client
+	logged   bytes.Buffer // the log the CLI was given
+	logHome  string       // the home whose log the CLI opened
 }
+
+// logs is what the CLI logged, record by record.
+func (s *clientSpy) logs(t *testing.T) []map[string]any {
+	t.Helper()
+	var records []map[string]any
+	for _, line := range strings.Split(strings.TrimSpace(s.logged.String()), "\n") {
+		var record map[string]any
+		if err := json.Unmarshal([]byte(line), &record); line != "" && err != nil {
+			t.Fatalf("log line %q: %v", line, err)
+		} else if line != "" {
+			records = append(records, record)
+		}
+	}
+	return records
+}
+
+// unlogged opens a log nobody reads.
+func unlogged(cli.Config) (*slog.Logger, error) { return slog.New(slog.DiscardHandler), nil }
 
 func (s *clientSpy) ShowProcess(context.Context, string, string) (contract.ProcessView, error) {
 	return s.view, nil
@@ -112,7 +136,13 @@ func run(ctx context.Context, spy *clientSpy, args ...string) result {
 		return ""
 	}}, func(config cli.Config) (contract.Client, error) {
 		spy.config = config
+		if spy.buildErr != nil {
+			return nil, spy.buildErr
+		}
 		return spy, nil
+	}, func(config cli.Config) (*slog.Logger, error) {
+		spy.logHome = config.Home
+		return slog.New(slog.NewJSONHandler(&spy.logged, nil)), nil
 	})
 	return result{code, stdout.String(), stderr.String()}
 }
@@ -136,7 +166,7 @@ func TestRunSubmitsTheRequestBuiltFromArguments(t *testing.T) {
 	if !reflect.DeepEqual(spy.submitted, []contract.CallRequest{want}) {
 		t.Fatalf("submitted %+v", spy.submitted)
 	}
-	if !reflect.DeepEqual(spy.observed, []string{"run-1@0"}) || spy.config.Home != "/env-home" || spy.config.Debug != nil {
+	if !reflect.DeepEqual(spy.observed, []string{"run-1@0"}) || spy.config.Home != "/env-home" {
 		t.Fatalf("observed %v, config %+v", spy.observed, spy.config)
 	}
 	if r.code != cli.ExitCompleted || r.stdout != "hi\n" {
@@ -590,6 +620,9 @@ func TestVersionNeedsNoSettings(t *testing.T) {
 			func(cli.Config) (contract.Client, error) {
 				built++
 				return nil, fmt.Errorf("no settings")
+			}, func(cli.Config) (*slog.Logger, error) {
+				built++
+				return nil, fmt.Errorf("no home")
 			})
 		if code != 0 || stdout.String() != "agister "+testVersion+"\n" || stderr.Len() != 0 || built != 0 {
 			t.Errorf("%v: %d, built %d times, stdout %q, stderr %q", args, code, built, stdout.String(), stderr.String())
@@ -954,11 +987,11 @@ func TestCheckAndListingsSayWhatIsRefused(t *testing.T) {
 	var stdout, stderr bytes.Buffer
 	build := func(cli.Config) (contract.Client, error) { return spy, nil }
 	io := cli.IO{Stdout: &stdout, Stderr: &stderr, Cwd: "/work", Getenv: func(string) string { return "" }}
-	if code := cli.Run(context.Background(), []string{"agent", "list"}, io, build); code != 0 || stdout.String() != "a\trt\tm\t-\t-\nb\tbroken\t(default model)\t-\t-\tREFUSED: agent b uses runtime mapping broken (/broken.yaml): bad\nz\tinvalid (run `agister check`)\n" {
+	if code := cli.Run(context.Background(), []string{"agent", "list"}, io, build, unlogged); code != 0 || stdout.String() != "a\trt\tm\t-\t-\nb\tbroken\t(default model)\t-\t-\tREFUSED: agent b uses runtime mapping broken (/broken.yaml): bad\nz\tinvalid (run `agister check`)\n" {
 		t.Fatalf("agent list: %d %q %q", code, stdout.String(), stderr.String())
 	}
 	stdout.Reset()
-	if code := cli.Run(context.Background(), []string{"process", "list"}, io, build); code != 0 ||
+	if code := cli.Run(context.Background(), []string{"process", "list"}, io, build, unlogged); code != 0 ||
 		stdout.String() != "p\tagent:a\t-\ttext\tREFUSED: process p uses agent a, which uses runtime mapping rt (/rt.yaml): bad\ns\tagent:a\t-\ttext\n" {
 		t.Fatalf("process list: %d %q %q", code, stdout.String(), stderr.String())
 	}
@@ -1097,7 +1130,7 @@ func TestInstallStoppedSaysHowToRestore(t *testing.T) {
 	var stdout, stderr bytes.Buffer
 	code := cli.Run(context.Background(), []string{"install", "settings"}, cli.IO{
 		Stdin: strings.NewReader("yes\n"), Stdout: &stdout, Stderr: &stderr, Cwd: "/work", Getenv: func(string) string { return "" },
-	}, func(cli.Config) (contract.Client, error) { return spy, nil })
+	}, func(cli.Config) (contract.Client, error) { return spy, nil }, unlogged)
 	if code == 0 || !strings.Contains(stderr.String(), "restore with: agister install --restore stamp-1\n") ||
 		!strings.Contains(stderr.String(), "agister: install stopped after 0 of 1 document(s)") || strings.Contains(stdout.String(), "restore with") {
 		t.Fatalf("%d\n%s%s", code, stdout.String(), stderr.String())
@@ -1152,13 +1185,13 @@ func TestWorkflowListAndShow(t *testing.T) {
 	}
 	var stdout, stderr bytes.Buffer
 	build := func(cli.Config) (contract.Client, error) { return spy, nil }
-	code := cli.Run(context.Background(), []string{"workflow", "list"}, cli.IO{Stdout: &stdout, Stderr: &stderr, Cwd: "/work", Getenv: func(string) string { return "" }}, build)
+	code := cli.Run(context.Background(), []string{"workflow", "list"}, cli.IO{Stdout: &stdout, Stderr: &stderr, Cwd: "/work", Getenv: func(string) string { return "" }}, build, unlogged)
 	if code != 0 || stdout.String() != "w\tone:p,two:q\tjoin merge:j\nbroken\tinvalid (run `agister check`)\tREFUSED: workflow broken (/w/broken.yaml): bad\n"+
 		"stranded\tone:q\tjoin merge:j\tREFUSED: workflow stranded uses process q (/p/q.yaml): bad\n" {
 		t.Fatalf("list: %d %q %q", code, stdout.String(), stderr.String())
 	}
 	stdout.Reset()
-	code = cli.Run(context.Background(), []string{"workflow", "show", "w"}, cli.IO{Stdout: &stdout, Stderr: &stderr, Cwd: "/work", Getenv: func(string) string { return "" }}, build)
+	code = cli.Run(context.Background(), []string{"workflow", "show", "w"}, cli.IO{Stdout: &stdout, Stderr: &stderr, Cwd: "/work", Getenv: func(string) string { return "" }}, build, unlogged)
 	want := `workflow     w
 params       candidate=HEAD
 inputs       candidate <- git.revision
@@ -1214,6 +1247,150 @@ func TestShowProcessPrintsTheStaleRecoveryBudget(t *testing.T) {
 	spy.view.Stale = contract.Stale{MaxResumes: 2}
 	if r := run(context.Background(), spy, "process", "show", "p"); !strings.Contains(r.stdout, "  stale      recovery resumes 2\n") {
 		t.Fatalf("a budget alone:\n%s", r.stdout)
+	}
+}
+
+// The help says what the log holds and where a turn's detail is: the
+// warnings and errors no run records, a check's warnings among them, within
+// its cap, 5 MB a file and three older compressed files, and the turns with
+// their runs. It offers no
+// --debug, and a command line with one is a usage error.
+func TestHelpSaysWhatTheLogKeepsAndOffersNoDebug(t *testing.T) {
+	t.Parallel()
+	r := run(context.Background(), &clientSpy{}, "--help")
+	if r.code != 0 {
+		t.Fatalf("help: code %d, stderr %q", r.code, r.stderr)
+	}
+	// The help as one line: its text wraps where the column ends.
+	help := strings.Join(strings.Fields(r.stdout), " ")
+	log := "<home>/logs/agister.jsonl keeps the warnings and errors no run records, each command that is refused or fails " +
+		"and the warnings of each check, one that passes too, among them, " +
+		"never what a turn did: a turn's detail is kept with its run, in <home>/runs/<id>/. " +
+		"The cap is per file: the current log stays within 5 MB, and at most three older compressed files are kept beside it."
+	if !strings.Contains(help, log) || strings.Contains(help, "debug") {
+		t.Fatalf("the help:\n%s", r.stdout)
+	}
+	spy := &clientSpy{}
+	if r := run(context.Background(), spy, "--debug", "check"); r.code != cli.ExitUsage || !strings.Contains(r.stderr, "flag provided but not defined: -debug") || spy.checked != nil {
+		t.Fatalf("--debug: %+v, checked %v", r, spy.checked)
+	}
+}
+
+// A command that is refused or fails is in the log as one error, by one
+// rule whatever the command: with the command, its directory and the error
+// stderr shows, a refusal by the settings with their problems. So is what
+// the CLI reports without an error: a check whose report has problems and
+// an export that refuses or fails at a run. A check's warnings are in the
+// log as one warning, those of a check that passes too. A command that
+// completes, one the caller interrupts, a check with its report among
+// them, and one the caller does not confirm are not.
+func TestACommandRefusedOrFailedIsLoggedOnce(t *testing.T) {
+	t.Parallel()
+	problems := contract.CheckReport{Problems: []contract.Problem{{Message: "service service: not found"}}}
+	warned := contract.CheckReport{Warnings: []string{"a verification runs with your authority"}}
+	cut := contract.CheckReport{Problems: []contract.Problem{{Message: "runtime unavailable"}}, Warnings: warned.Warnings}
+	refusal := &contract.SettingsError{Report: problems}
+	failure := errors.New("mkdir /env-home/runs: not a directory")
+	interrupted, interrupt := context.WithCancel(context.Background())
+	interrupt()
+	for name, tc := range map[string]struct {
+		ctx  context.Context
+		spy  *clientSpy
+		args []string
+		want map[string]any // nil: nothing is logged
+	}{
+		"the settings refuse": {nil, &clientSpy{refuse: refusal}, []string{"run", "p", "--dir", "/repo"},
+			map[string]any{"msg": "the settings refused the command", "command": "run", "cwd": "/repo", "error": refusal.Error(), "problems": []any{"service service: not found"}}},
+		"a bare agister the settings stop": {nil, &clientSpy{report: problems}, nil,
+			map[string]any{"msg": "the settings refused the command", "command": "", "cwd": "/work", "error": refusal.Error(), "problems": []any{"service service: not found"}}},
+		"the command fails": {nil, &clientSpy{refuse: failure}, []string{"run", "p"},
+			map[string]any{"msg": "the command failed", "command": "run", "cwd": "/work", "error": failure.Error()}},
+		"the client is not built": {nil, &clientSpy{buildErr: failure}, []string{"process", "list"},
+			map[string]any{"msg": "the command failed", "command": "process list", "cwd": "/work", "error": failure.Error()}},
+		"the command is not one": {nil, &clientSpy{}, []string{"bogus"},
+			map[string]any{"msg": "the command failed", "command": "bogus", "cwd": "/work", "error": "unknown command: bogus"}},
+		"check finds problems": {nil, &clientSpy{report: problems}, []string{"check"},
+			map[string]any{"msg": "the settings have problems", "command": "check", "cwd": "/work", "problems": []any{"service service: not found"}}},
+		"an export refuses and fails": {nil, &clientSpy{exported: contract.ExportResult{To: "/audit", Runs: []contract.ExportedRun{
+			{ID: "r1", Action: contract.ExportCopied}, {ID: "r2", Action: contract.ExportRefused, Problem: "a copy that differs is there"}, {ID: "r3", Action: contract.ExportFailed, Problem: "disk full"},
+		}}}, []string{"runs", "export", "r1", "r2", "r3", "--to", "/audit"},
+			map[string]any{"msg": "the export refused or failed", "command": "runs export", "cwd": "/work", "problems": []any{"r2: refused: a copy that differs is there", "r3: failed: disk full"}}},
+		// The owner's decision of 2026-10-10 (LAB-180): a check that passes
+		// with warnings logged nothing, and now logs them.
+		"check warns and passes": {nil, &clientSpy{report: warned}, []string{"check"},
+			map[string]any{"level": "WARN", "msg": "the settings have warnings", "command": "check", "cwd": "/work", "warnings": []any{"a verification runs with your authority"}}},
+		"the command completes":       {nil, &clientSpy{run: finished("completed", "")}, []string{"run", "p", "--quiet"}, nil},
+		"check finds nothing":         {nil, &clientSpy{}, []string{"check"}, nil},
+		"the caller interrupts":       {interrupted, &clientSpy{refuse: fmt.Errorf("submitting: %w", context.Canceled)}, []string{"run", "p"}, nil},
+		"the caller interrupts check": {interrupted, &clientSpy{report: cut}, []string{"check", "--probe"}, nil},
+		"the caller says no":          {nil, &clientSpy{agentExists: true}, []string{"agent", "create", "x", "--runtime", "claude-code", "--force"}, nil},
+		"the run itself fails":        {nil, &clientSpy{run: finished("failed", "refused")}, []string{"run", "p", "--quiet"}, nil},
+		"an export copies it all":     {nil, &clientSpy{exported: contract.ExportResult{Runs: []contract.ExportedRun{{ID: "r1", Action: contract.ExportKept}}}}, []string{"runs", "export", "r1"}, nil},
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			ctx := tc.ctx
+			if ctx == nil {
+				ctx = context.Background()
+			}
+			r := run(ctx, tc.spy, tc.args...)
+			logged := tc.spy.logs(t)
+			if tc.want == nil {
+				if len(logged) != 0 {
+					t.Fatalf("logged = %v, result %+v", logged, r)
+				}
+				return
+			}
+			// An error is of a command that did not complete, a warning of
+			// one that did.
+			if tc.want["level"] == nil {
+				tc.want["level"] = "ERROR"
+			}
+			if len(logged) != 1 || (r.code == cli.ExitCompleted) != (tc.want["level"] == "WARN") {
+				t.Fatalf("logged = %v, result %+v", logged, r)
+			}
+			delete(logged[0], "time")
+			if !reflect.DeepEqual(logged[0], tc.want) {
+				t.Fatalf("logged = %v, want %v", logged[0], tc.want)
+			}
+			if message, said := tc.want["error"].(string); said && !strings.Contains(r.stderr, "agister: "+message+"\n") {
+				t.Fatalf("stderr does not say what the log does:\n%s", r.stderr)
+			}
+		})
+	}
+}
+
+// A command line that cannot be read is refused in the log too, the log of
+// the home it names as far as it was read, the flag's or else the
+// environment's, as the command it named by then. No client is built, and
+// it exits as a usage error with the usage, as before.
+func TestACommandLineThatCannotBeReadIsLoggedInItsHome(t *testing.T) {
+	t.Parallel()
+	for name, tc := range map[string]struct {
+		args                 []string
+		home, command, error string
+	}{
+		"its home a flag's": {[]string{"--home", "/flag-home", "run", "p", "--param", "broken"}, "/flag-home", "run",
+			`invalid value "broken" for flag -param: expected <name>=<value>, got "broken"`},
+		"its home the environment's": {[]string{"--debug", "check"}, "/env-home", "", "flag provided but not defined: -debug"},
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			spy := &clientSpy{}
+			r := run(context.Background(), spy, tc.args...)
+			if r.code != cli.ExitUsage || !strings.Contains(r.stderr, "agister: "+tc.error+"\n\nagister ") || !strings.Contains(r.stderr, "\nUsage:\n") || spy.config != (cli.Config{}) {
+				t.Fatalf("result %+v, client built for %+v", r, spy.config)
+			}
+			logged := spy.logs(t)
+			if len(logged) != 1 || spy.logHome != tc.home {
+				t.Fatalf("logged = %v, in the log of %q", logged, spy.logHome)
+			}
+			delete(logged[0], "time")
+			want := map[string]any{"level": "ERROR", "msg": "the command failed", "command": tc.command, "cwd": "/work", "error": tc.error}
+			if !reflect.DeepEqual(logged[0], want) {
+				t.Fatalf("logged = %v, want %v", logged[0], want)
+			}
+		})
 	}
 }
 

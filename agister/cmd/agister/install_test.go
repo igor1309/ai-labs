@@ -160,7 +160,7 @@ func agisterInstalling(t *testing.T, input, home, cwd string, args ...string) re
 		compose.stages = stages
 		client, _, err := compose.wire(config)
 		return client, err
-	})
+	}, diagnostics)
 	if left := files(t, stages); len(left) != 0 {
 		t.Errorf("stages left in %s: %v", stages, left)
 	}
@@ -581,6 +581,27 @@ func TestInstallWritesNothingWhenTheBackupFails(t *testing.T) {
 	}
 	if !reflect.DeepEqual(files(t, home), before) {
 		t.Fatal("home changed after the backup failed")
+	}
+}
+
+// An install that fails once approved, its backup's folder a file, makes
+// no run: the failure is in the log as an error, as stderr says it.
+func TestAnInstallThatFailsIsLogged(t *testing.T) {
+	t.Parallel()
+	home := initedHome(t)
+	src := repoSettings(t, home)
+	write(t, filepath.Join(home, "backups"), "not a folder")
+	r := agisterInstalling(t, "yes\n", home, tempDir(t), "install", src)
+	if r.code == 0 || !strings.Contains(r.stderr, "not a directory") {
+		t.Fatalf("install: %d\n%s%s", r.code, r.stdout, r.stderr)
+	}
+	logged := loggedAs(t, home, "the command failed")
+	if len(logged) != 1 {
+		t.Fatalf("failures logged = %v", logged)
+	}
+	message, _ := logged[0]["error"].(string)
+	if logged[0]["level"] != "ERROR" || logged[0]["command"] != "install" || !strings.Contains(r.stderr, "agister: "+message+"\n") {
+		t.Fatalf("logged = %v, stderr:\n%s", logged[0], r.stderr)
 	}
 }
 

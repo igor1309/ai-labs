@@ -101,7 +101,7 @@ func TestCheckMarksWhatThisBinaryDoesNotKnow(t *testing.T) {
 		var stdout, stderr bytes.Buffer
 		code := cli.Run(context.Background(), append([]string{"--home", home, "check"}, args...), cli.IO{
 			Stdout: &stdout, Stderr: &stderr, Cwd: repo, Getenv: func(string) string { return "" }, Version: version,
-		}, composeInProcess)
+		}, composeInProcess, diagnostics)
 		return result{code, stdout.String(), stderr.String()}
 	}
 	r := check("--json")

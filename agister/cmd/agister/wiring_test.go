@@ -867,3 +867,70 @@ func TestTheCompositionRecoversAStaleTurn(t *testing.T) {
 		t.Fatalf("the processes started:\n%s", started)
 	}
 }
+
+// A log that cannot be written, its path a directory, fails the setup of
+// diagnostics and so the client and every command, instead of losing each
+// warning later in silence. A command line that cannot be read is still
+// refused as one.
+//
+// Contract test: the composition's diagnostics over the log on the real
+// filesystem.
+func TestAnUnusableLogFailsAtSetup(t *testing.T) {
+	t.Parallel()
+	home := tempDir(t)
+	path := filepath.Join(home, "logs", "agister.jsonl")
+	if err := os.MkdirAll(path, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	config := cli.Config{Home: home}
+	if _, err := diagnostics(config); err == nil || !strings.Contains(err.Error(), path) {
+		t.Fatalf("diagnostics: %v", err)
+	}
+	if client, _, err := inProcess(config).wire(config); err == nil || client != nil || !strings.Contains(err.Error(), path) {
+		t.Fatalf("wire: %v, %v", client, err)
+	}
+	if r := agister(t, home, tempDir(t), "check"); r.code != cli.ExitInternal || !strings.Contains(r.stderr, path) {
+		t.Fatalf("check: %d\n%s", r.code, r.stderr)
+	}
+	if r := agister(t, home, tempDir(t), "check", "--bogus"); r.code != cli.ExitUsage || !strings.Contains(r.stderr, "flag provided but not defined: -bogus") || strings.Contains(r.stderr, path) {
+		t.Fatalf("check --bogus: %d\n%s", r.code, r.stderr)
+	}
+}
+
+// The log as shipped rotates once it would pass 5 MB, not before, and
+// keeps three old files: the oldest of three is dropped and no fourth is
+// kept.
+//
+// Contract test: the composition's diagnostics over the log on the real
+// filesystem.
+func TestTheLogIsKeptWithinTheShippedCap(t *testing.T) {
+	t.Parallel()
+	home := tempDir(t)
+	path := filepath.Join(home, "logs", "agister.jsonl")
+	// The log 1000 bytes short of its cap, and three old files.
+	seed := strings.Repeat("x", 5<<20-1001) + "\n"
+	write(t, path, seed)
+	for n := 1; n <= 3; n++ {
+		write(t, fmt.Sprintf("%s.%d.gz", path, n), fmt.Sprintf("old %d", n))
+	}
+	log, err := diagnostics(cli.Config{Home: home})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	log.Warn("within the cap")
+	if kept := read(t, path); !strings.HasPrefix(kept, seed) || !strings.Contains(kept[len(seed):], `"msg":"within the cap"`) {
+		t.Fatalf("the log was rotated before its cap, %d bytes", len(kept))
+	}
+	log.Warn("past the cap", "padding", strings.Repeat("p", 1000))
+	if kept := read(t, path); strings.Count(kept, "\n") != 1 || !strings.Contains(kept, `"msg":"past the cap"`) {
+		t.Fatalf("the log after its cap, %d bytes: %.200s", len(kept), kept)
+	}
+	if newest, second, third := read(t, path+".1.gz"), read(t, path+".2.gz"), read(t, path+".3.gz"); len(newest) >= len(seed) || second != "old 1" || third != "old 2" {
+		t.Fatalf("the old files: the newest %d bytes, then %q and %q", len(newest), second, third)
+	}
+	// The log and its three old files, read above, and no fourth.
+	if entries, err := os.ReadDir(filepath.Dir(path)); err != nil || len(entries) != 4 {
+		t.Fatalf("the log's folder = %v, %v", entries, err)
+	}
+}

@@ -62,7 +62,7 @@ func (c *reachedClient) Export(context.Context, contract.ExportRequest) (contrac
 func dispatched(client *reachedClient, args ...string) result {
 	var stdout, stderr bytes.Buffer
 	code := cli.Run(context.Background(), args, cli.IO{Stdout: &stdout, Stderr: &stderr, Cwd: "/work", Getenv: func(string) string { return "" }},
-		func(cli.Config) (contract.Client, error) { return client, nil })
+		func(cli.Config) (contract.Client, error) { return client, nil }, unlogged)
 	return result{code, stdout.String(), stderr.String()}
 }
 

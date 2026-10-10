@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"reflect"
 	"slices"
@@ -94,6 +95,79 @@ func TestTheHomeFolderInstallsAndPassesCheckAsGlobalSettings(t *testing.T) {
 		if !slices.Contains(shared, document) {
 			t.Errorf("projectReplacements lists %s, which .agister and %s do not both hold", document, homeFolder)
 		}
+	}
+}
+
+// Live state that turns up in home's settings folder, all Agister writes
+// under a home: home's write lock, a backup, a cached input, a Codex or Pi
+// thread's home or sessions, a lock, the log, a probe, a run and what a
+// write of a settings document cut short leaves beside it, is ignored by
+// git, so it is never committed with the settings (ADR-027: the folder
+// never holds live state). The rule that ignores each is the committed
+// .gitignore's, at the repository's root, not an exclusion of the checkout
+// or the user: the rules are read in a repository of the test's own, which
+// holds nothing but this repository's .gitignore files above the folder
+// and its tracked files, under no configuration of the user or the system.
+// No settings document is ignored.
+//
+// Contract test: real git, reading this repository's ignore rules.
+func TestGitIgnoresLiveStateInTheHomeFolder(t *testing.T) {
+	t.Parallel()
+	root, err := filepath.Abs(filepath.Join("..", "..", ".."))
+	if err != nil {
+		t.Fatal(err)
+	}
+	repo, nowhere := tempDir(t), tempDir(t)
+	git := func(args ...string) string {
+		t.Helper()
+		command := exec.Command("git", args...)
+		command.Dir = repo
+		// Nothing of the caller's environment but where git is: no home, so
+		// no configuration and no exclusions of the user, and no repository
+		// a hook names.
+		command.Env = []string{"PATH=" + os.Getenv("PATH"), "HOME=" + nowhere, "XDG_CONFIG_HOME=" + nowhere, "GIT_CONFIG_NOSYSTEM=1"}
+		out, err := command.CombinedOutput()
+		if err != nil {
+			t.Fatalf("git %v: %v\n%s", args, err, out)
+		}
+		return strings.TrimSpace(string(out))
+	}
+	// No template: a repository git makes holds an info/exclude of its own.
+	git("init", "--quiet", "--template=")
+	for dir := homeFolder; ; dir = filepath.Dir(dir) {
+		rules, err := os.ReadFile(filepath.Join(root, dir, ".gitignore"))
+		if err == nil {
+			write(t, filepath.Join(repo, dir, ".gitignore"), string(rules))
+		} else if !os.IsNotExist(err) {
+			t.Fatal(err)
+		}
+		if dir == "." {
+			break
+		}
+	}
+	for _, path := range []string{
+		".write.lock", "backups/b1/manifest.json", "cache/inputs/a.txt", "codex/homes/t1/config.toml", "locks/worktrees/w1.lock",
+		"logs/agister.jsonl", "logs/agister.jsonl.1.gz", "pi/sessions/s1.jsonl", "probes/codex.json", "runs/r1/record.json",
+		".service.toml.1234567890", "agents/.reviewer.toml.1234567890", "skills/review/.SKILL.md.42",
+	} {
+		path := filepath.Join(homeFolder, path)
+		// <source>:<line>:<rule> TAB <path>, the rule one that ignores.
+		rule := git("check-ignore", "--no-index", "--verbose", path)
+		if !strings.HasPrefix(rule, ".gitignore:") || strings.Contains(rule, ":!") || !strings.HasSuffix(rule, "\t"+path) {
+			t.Errorf("%s is not ignored by the committed .gitignore: %q", path, rule)
+		}
+	}
+	// The settings documents are the folder's tracked files, whatever the
+	// checkout excludes: its index lists them.
+	documents := strings.Split(gitCmd(t, root, "ls-files", "--", homeFolder), "\n")
+	if !slices.Contains(documents, filepath.Join(homeFolder, "service.toml")) {
+		t.Fatalf("the tracked files of %s = %q", homeFolder, documents)
+	}
+	for _, document := range documents {
+		write(t, filepath.Join(repo, document), "")
+	}
+	if hidden := git("ls-files", "--others", "--ignored", "--exclude-standard"); hidden != "" {
+		t.Errorf("settings documents are ignored:\n%s", hidden)
 	}
 }
 
