@@ -122,7 +122,10 @@ func settingsKinds() []definition.Kind {
 }
 
 // settingsComposition reads the binary's layered store, including unreferenced
-// documents in its inventory. Prompt libraries supply only names a process gives.
+// documents in its inventory. Prompt libraries supply only names a process
+// gives, so, as the binary does, the prompts processes name are resolved
+// first, through the libraries, and only the rest of the prompt inventory is
+// read as listed: a farther prompt a library replaces is never opened.
 func settingsComposition(store SettingsStore) (map[string]string, map[string]any, error) {
 	ctx := context.Background()
 	composed := map[string]string{}
@@ -162,6 +165,7 @@ func settingsComposition(store SettingsStore) (map[string]string, map[string]any
 		sources[file] = source
 		return nil
 	}
+	var prompts []string
 	for _, kind := range settingsKinds() {
 		var names []string
 		var err error
@@ -173,12 +177,17 @@ func settingsComposition(store SettingsStore) (map[string]string, map[string]any
 		if err != nil {
 			return nil, nil, err
 		}
+		if kind == definition.KindPrompt {
+			prompts = names // read once the referenced ones are known
+			continue
+		}
 		for _, name := range names {
 			if err := add(kind, name, true); err != nil {
 				return nil, nil, err
 			}
 		}
 	}
+	referenced := map[string]bool{}
 	for file, text := range composed {
 		if !strings.HasPrefix(file, "processes/") {
 			continue
@@ -191,12 +200,21 @@ func settingsComposition(store SettingsStore) (map[string]string, map[string]any
 			continue
 		}
 		for _, name := range append(doc.Guidance, doc.Prompt) {
-			if !definition.ValidName(name) {
+			if !definition.ValidName(name) || referenced[name] {
 				continue
 			}
+			referenced[name] = true
 			if err := add(definition.KindPrompt, name, false); err != nil {
 				return nil, nil, err
 			}
+		}
+	}
+	for _, name := range prompts {
+		if referenced[name] {
+			continue
+		}
+		if err := add(definition.KindPrompt, name, true); err != nil {
+			return nil, nil, err
 		}
 	}
 	return composed, sources, nil

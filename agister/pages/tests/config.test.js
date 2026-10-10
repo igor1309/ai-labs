@@ -171,6 +171,15 @@ test('YAML: a second document fails at its --- line', () => {
   assert.throws(() => C.parseYaml('name: x\n---\n'), /line 2/);
 });
 
+// Agister's YAML reads a --- that opens the one document; a second after
+// it still fails.
+test('YAML: a leading --- opens the one document; a second still fails', () => {
+  assert.deepEqual(C.parseYaml('---\nname: x\nguidance: [a]\n'), { name: 'x', guidance: ['a'] });
+  assert.deepEqual(C.parseYaml('# head\n--- # opens\nname: x\n'), { name: 'x' });
+  assert.throws(() => C.parseYaml('---\nname: x\n---\nname: y\n'), /line 3/);
+  assert.throws(() => C.parseYaml('---\n---\nname: x\n'), /line 2/);
+});
+
 test('TOML: keys, strings, numbers, multi-line arrays and tables', () => {
   const doc = C.parseToml([
     'schema = "agister.service/v1alpha1"',
@@ -537,4 +546,20 @@ test('nested partial fields merge and lists replace rather than join in folder f
   assert.equal(p.prompt.name, 'main');
   assert.deepEqual(p.guidance, [{ name: 'c', outside: true }]);
   assert.deepEqual(p.params, [{ name: 'candidate', default: 'trunk' }, { name: 'brief', default: undefined }]);
+});
+
+// The binary reports a process whose text opens with --- as it is; the
+// reported view reads its prompt, guidance and layers, not an error.
+test('the reported model reads a process that opens with a document marker', async () => {
+  const layers = [{ layer: 'home', path: '/h/processes/p.yaml', fields: ['name', 'prompt', 'guidance'] }];
+  const m = await C.loadReported(memDir('.agister', {
+    processes: { 'p.yaml': '---\nname: p\nprompt: main\nguidance: [style]\n' },
+    prompts: { 'main.md': 'Main.' },
+  }), { 'processes/p.yaml': { layers }, 'prompts/main.md': { layers: [{ layer: 'home', path: '/h/prompts/main.md' }] } });
+  const p = m.processes.find((x) => x.name === 'p');
+  assert.equal(p.error, undefined);
+  assert.deepEqual(p.layers, layers);
+  assert.equal(p.prompt.name, 'main');
+  assert.equal(p.prompt.source, 'home');
+  assert.deepEqual(p.guidance, [{ name: 'style', outside: true }]);
 });

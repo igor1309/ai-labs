@@ -313,6 +313,90 @@ func TestEndpointsDoNotOpenReplacedWholeDocuments(t *testing.T) {
 	}
 }
 
+// A prompt a process names is resolved through the nearer layer's library
+// before the prompt inventory is read, so home's direct prompt of that name,
+// which the library replaces, is never opened (ADR-028 rules 6 and 9).
+//
+// Contract test: temporary settings and a library folder, through the
+// endpoint and the binary's filesystem store, with the read seam refusing
+// the replaced file.
+func TestSettingsEndpointResolvesNamedPromptsBeforeTheInventory(t *testing.T) {
+	t.Parallel()
+	base := realDir(t, t.TempDir())
+	home, repo := filepath.Join(base, "home"), filepath.Join(base, "repo")
+	write(t, filepath.Join(repo, ".git"), "gitdir: marker\n")
+	write(t, filepath.Join(home, "processes", "p.yaml"), "prompt: rules\nguidance: []\n")
+	replaced := filepath.Join(home, "prompts", "rules.md")
+	write(t, replaced, "Home rules.\n")
+	write(t, filepath.Join(repo, ".agister", "layer.yaml"), "schema: agister.layer/v1alpha1\nprompts: [library]\n")
+	write(t, filepath.Join(repo, "library", "rules.md"), "Library rules.\n")
+	read := func(path string) ([]byte, error) {
+		if path == replaced {
+			t.Errorf("opened replaced prompt %s", path)
+			return nil, &os.PathError{Op: "open", Path: path, Err: fs.ErrPermission}
+		}
+		return os.ReadFile(path)
+	}
+	var got reportedSettings
+	h := handler(home, noChoose(t), owners(), SkillHomes{}, binarySettings, read)
+	if code := get(t, h, "localhost", "/api/settings?path="+q(repo), &got); code != http.StatusOK {
+		t.Fatalf("status %d: %+v", code, got)
+	}
+	if got.ComposedFiles["prompts/rules.md"] != "Library rules.\n" {
+		t.Fatalf("prompt text %q", got.ComposedFiles["prompts/rules.md"])
+	}
+	store, err := fsdefs.Select(fsdefs.Store{Dir: home}, repo, repo)
+	if err != nil {
+		t.Fatal(err)
+	}
+	assertReportedDocument(t, got, store, "prompts/rules.md", definition.KindPrompt)
+}
+
+// Pages' size limit holds on what is read, not only on what Stat said: a
+// file small on disk whose read returns more than fileCap bytes is left out
+// of the composed settings and of the raw inventory, as if absent.
+//
+// Contract test: small temporary settings files, through the endpoint and
+// the binary's filesystem store, with the read seam returning too much.
+func TestSettingsEndpointLeavesOutAFileReadOverTheCap(t *testing.T) {
+	t.Parallel()
+	base := realDir(t, t.TempDir())
+	home, repo := filepath.Join(base, "home"), filepath.Join(base, "repo")
+	write(t, filepath.Join(repo, ".git"), "gitdir: marker\n")
+	dir := filepath.Join(repo, ".agister")
+	write(t, filepath.Join(home, "processes", "p.yaml"), "prompt: rules\nguidance: []\noutput: {schema: result}\n")
+	grown := map[string]bool{}
+	for _, rel := range []string{"schemas/result.json", "processes/nested/notes.yaml"} {
+		path := filepath.Join(dir, filepath.FromSlash(rel))
+		write(t, path, "{}\n")
+		grown[path] = true
+	}
+	write(t, filepath.Join(dir, "processes", "nested", "kept.yaml"), "kept: true\n")
+	read := func(path string) ([]byte, error) {
+		if grown[path] {
+			return []byte(strings.Repeat("x", fileCap+1)), nil
+		}
+		return os.ReadFile(path)
+	}
+	var got reportedSettings
+	h := handler(home, noChoose(t), owners(), SkillHomes{}, binarySettings, read)
+	if code := get(t, h, "localhost", "/api/settings?path="+q(repo), &got); code != http.StatusOK {
+		t.Fatalf("status %d", code)
+	}
+	if _, found := got.ComposedFiles["schemas/result.json"]; found {
+		t.Error("an oversized schema read is composed")
+	}
+	if _, found := got.Sources["schemas/result.json"]; found {
+		t.Error("an oversized schema read has provenance")
+	}
+	if !reflect.DeepEqual(got.Files, map[string]string{"processes/nested/kept.yaml": "kept: true\n"}) {
+		t.Errorf("raw inventory %v", got.Files)
+	}
+	if _, found := got.ComposedFiles["processes/p.yaml"]; !found {
+		t.Errorf("home's process is not composed: %v", got.ComposedFiles)
+	}
+}
+
 // Contract test: a symlinked process partial supplies fields and provenance
 // through the temporary filesystem exactly as the binary's store reads it.
 func TestSettingsEndpointIncludesSymlinkedPartial(t *testing.T) {

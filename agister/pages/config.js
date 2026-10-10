@@ -215,6 +215,10 @@
       return header.endsWith('-') ? text : `${text}\n`;
     }
 
+    // A --- may open the one document, as Agister reads it; a second still
+    // fails at its own line.
+    skip();
+    if (i < lines.length && stripComment(lines[i]) === '---') i++;
     const doc = node(0);
     skip();
     if (i < lines.length) fail('unexpected text');
@@ -591,16 +595,18 @@
     const policies = names(model.policies);
     const runtimes = names(model.runtimes);
     const schemas = new Set(model.schemas.map((s) => s.name));
-    // A named prompt or skill, found: with the layer it comes from when
-    // composed, or outside these settings.
+    // A named prompt, schema or skill, found: with the layer it comes from
+    // when composed and the error that breaks it, or outside these settings.
     const found = (items) => {
       const byName = new Map(items.map((s) => [s.name, s]));
       return (x) => {
         const item = byName.get(x.name);
-        return { ...x, outside: !item, ...(item?.source && { source: item.source, overrides: !!item.overrides }), ...(item?.layers && { layers: item.layers }) };
+        return { ...x, outside: !item, ...(item?.source && { source: item.source, overrides: !!item.overrides }),
+          ...(item?.layers && { layers: item.layers }), ...(item?.error && { error: item.error }) };
       };
     };
     const prompt = found(model.prompts);
+    const schema = found(model.schemas);
     const brief = found(model.briefs.filter((b) => !b.error));
     // A skill found carries what the server's inventory says of it in its
     // layer: its path, state, description and checks.
@@ -623,6 +629,8 @@
       p.agentOutside = !!p.agent && !agents.has(p.agent);
       p.policyOutside = !!p.policy && !policies.has(p.policy);
       p.outputOutside = !!p.output && !schemas.has(p.output);
+      // Its output schema found, with the layers the binary reports for it.
+      p.schema = p.output ? schema({ name: p.output }) : null;
       // Each prompt found, with the layer it comes from when composed (ADR-014).
       p.prompts = p.prompts.map(prompt);
       p.prompt = p.prompt ? prompt(p.prompt) : null;

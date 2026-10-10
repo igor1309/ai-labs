@@ -1,6 +1,9 @@
 package pages
 
 import (
+	"context"
+	"errors"
+	"fmt"
 	"io/fs"
 	"net/http"
 	"os"
@@ -9,6 +12,8 @@ import (
 	"sort"
 	"strings"
 	"testing"
+
+	"github.com/igor1309/ai-labs/agister/internal/domain/definition"
 )
 
 func symlink(t *testing.T, target, link string) {
@@ -984,5 +989,68 @@ func TestASettingsSkillsPaddedNameIsNotItsFolders(t *testing.T) {
 	// YAML drops the spaces after a plain value: the name is go.
 	if s := got["go"]; !s.Checks.Passed {
 		t.Errorf("go: %+v", s)
+	}
+}
+
+// runtimeStandIn answers runtime discovery's two reads from a map, nothing
+// more: a name without a document is not found, and failed names one whose
+// read fails.
+type runtimeStandIn struct {
+	docs   map[string]string
+	failed string
+}
+
+func (s runtimeStandIn) List(_ context.Context, kind definition.Kind) ([]string, error) {
+	if kind != definition.KindRuntime {
+		return nil, fmt.Errorf("listed %s", kind)
+	}
+	names := []string{"gone"}
+	for name := range s.docs {
+		names = append(names, name)
+	}
+	if s.failed != "" {
+		names = append(names, s.failed)
+	}
+	sort.Strings(names)
+	return names, nil
+}
+
+func (s runtimeStandIn) Read(_ context.Context, kind definition.Kind, name string) (definition.Document, error) {
+	if kind != definition.KindRuntime {
+		return definition.Document{}, fmt.Errorf("read %s %s", kind, name)
+	}
+	if name == s.failed {
+		return definition.Document{}, errors.New("/s/runtimes/" + name + ".yaml: broken parent")
+	}
+	text, ok := s.docs[name]
+	if !ok {
+		return definition.Document{}, definition.ErrNotFound
+	}
+	return definition.Document{Bytes: []byte(text), Source: definition.Source{Path: "/s/runtimes/" + name + ".yaml"}}, nil
+}
+
+// Runtime discovery needs only the runtimes' names and composed documents:
+// each adapter once, sorted; a runtime not found is skipped, a document
+// naming none adds nothing, and a read or a second document refuses it.
+func TestRuntimeAdaptersReadOnlyRuntimeDocuments(t *testing.T) {
+	t.Parallel()
+	got, err := runtimeAdapters(runtimeStandIn{docs: map[string]string{
+		"main": "adapter: pi\n", "fast": "adapter: codex\n", "again": "adapter: pi\n", "bare": "contract: x\n",
+	}})
+	if err != nil || !reflect.DeepEqual(got, []string{"codex", "pi"}) {
+		t.Fatalf("adapters %v, %v", got, err)
+	}
+	for name, store := range map[string]runtimeStandIn{
+		"failed read":     {docs: map[string]string{"main": "adapter: pi\n"}, failed: "broken"},
+		"second document": {docs: map[string]string{"main": "adapter: pi\n---\n"}},
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			_, err := runtimeAdapters(store)
+			var refused statusError
+			if !errors.As(err, &refused) || refused.status != http.StatusUnprocessableEntity || !strings.Contains(err.Error(), "/s/runtimes/") {
+				t.Fatalf("error %v", err)
+			}
+		})
 	}
 }

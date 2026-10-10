@@ -280,9 +280,10 @@
         p.deny.length ? el('div', { className: 'sub' }, `denies: ${p.deny.join(', ')}`) : null);
     }
 
-    function outputLine(p) {
+    // The output schema, with the layers it comes from, then the verify.
+    function outputLine(p, chip) {
       const parts = [];
-      if (p.output) parts.push(p.outputOutside ? missing('schema', p.output) : `${p.output} schema`);
+      if (p.schema) parts.push(...named('schema', p.schema, chip, `${p.schema.name} schema`));
       if (p.verify?.outside) parts.push(parts.length ? '; ' : '', missing('verify', p.verify.ref));
       else if (p.verify) {
         parts.push(`${parts.length ? '; ' : ''}a failed verify${p.verify.ref ? ` (${p.verify.ref})` : ''} is fixed up to ${p.verify.maxAttempts ?? '?'}×`);
@@ -290,19 +291,24 @@
       return parts.length ? el('div', {}, ...parts) : null;
     }
 
-    // The prompts, skills or brief forms (kind) a process, a workflow or an
-    // agent names, each marked missing when these settings have none of
-    // that name, or with the chip of the layer it comes from; a skill whose
-    // checks fail says so, as Agister refuses the call.
+    // A prompt, schema, skill or brief form (kind) a process, a workflow or
+    // an agent names, shown as label: marked missing when these settings
+    // have none of that name, or with the chip of the layer it comes from; a
+    // read error that breaks it and a skill whose checks fail say so, as
+    // Agister refuses the call.
+    function named(kind, x, chip, label = x.name) {
+      if (x.outside) return [missing(kind, x.name)];
+      const origin = chip(x);
+      const broken = x.error
+        ? el('span', { className: 'error', title: `Agister refuses the call: ${x.error}`, textContent: x.error }) : null;
+      const failed = x.checks && !x.checks.passed
+        ? el('span', { className: 'failed', title: (x.checks.failed ?? []).join('; '), textContent: 'checks failed' }) : null;
+      return [label, origin ? ' ' : '', origin, broken ? ' ' : '', broken, failed ? ' ' : '', failed];
+    }
+
     function namedLine(kind, list, chip) {
       if (!list?.length) return null;
-      return el('div', {}, ...list.flatMap((x, i) => {
-        if (x.outside) return [i ? ', ' : '', missing(kind, x.name)];
-        const origin = chip(x);
-        const failed = x.checks && !x.checks.passed
-          ? el('span', { className: 'failed', title: (x.checks.failed ?? []).join('; '), textContent: 'checks failed' }) : null;
-        return [i ? ', ' : '', x.name, origin ? ' ' : '', origin, failed ? ' ' : '', failed];
-      }));
+      return el('div', {}, ...list.flatMap((x, i) => [i ? ', ' : '', ...named(kind, x, chip)]));
     }
 
     // What its call needs of the caller's worktree (ADR-025 rules 2, 3):
@@ -338,7 +344,7 @@
         ['guidance', p.guidance.length ? namedLine('prompt', p.guidance, chip) : text('none')],
         ['briefs', namedLine('brief', p.forms, chip)],
         ['skills', namedLine('skill', p.callSkills, chip)],
-        ['output', outputLine(p)],
+        ['output', outputLine(p, chip)],
         ['verification layers', verificationLayers(p)],
         ['worktree', worktreeLine(p)],
       ]));
@@ -348,8 +354,9 @@
       return p.verify?.layers ? el('div', {}, p.verify.ref, layerLine(p.verify)) : null;
     }
 
-    // A workflow step exposes the process's prompt, guidance and field layers
-    // too, since processes used by workflows have no standalone card.
+    // A workflow step exposes the process's prompt, guidance, output schema
+    // and field layers too, since processes used by workflows have no
+    // standalone card.
     function step(n, ix, chip) {
       const p = ix.process.get(n.process);
       if (!p) return el('div', { className: 'step' }, missing('process', n.process));
@@ -366,6 +373,7 @@
         facts([
           ['prompt', namedLine('prompt', p.prompt ? [p.prompt] : [], chip)],
           ['guidance', p.guidance.length ? namedLine('prompt', p.guidance, chip) : text('none')],
+          ['output', outputLine(p, chip)],
           ['layers', layerLine(p)],
           ['verification layers', verificationLayers(p)],
         ]));

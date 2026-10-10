@@ -31,12 +31,13 @@ it neither waits on nor replaces with the parent's.
   it on the clipboard), the defaults, and then:
   - for a process, its agent (runtime, model, effort, session), its policy
     (workspace, timeout, cost cap, what it allows and denies), its output
-    schema and verify attempts (of the verification it names, when it
+    schema with its layer files and verify attempts (of the verification it names, when it
     names one; marked missing when these settings have none of that name),
     that verification's layer files with the fields each gave,
     its required `prompt` and its `guidance` list separately (`none` for
     an empty list), names marked missing when no layer has them, with
-    their layer files; the skills its call gets, its own and then its agent's
+    their layer files, and one Agister cannot read with its error, as
+    Agister refuses the call; the skills its call gets, its own and then its agent's
     (ADR-021), listed the same way, each that fails its checks marked
     `checks failed` (D-16); the brief forms its file inputs name (`form`,
     ADR-026), listed as prompts are; and what its call needs of the
@@ -48,7 +49,8 @@ it neither waits on nor replaces with the parent's.
     the steps: the ones run at once (`First` when there is
     one) and the one run after them. Each step shows its name, what it
     does, its agent and its policy, and, as a process card does, its
-    `prompt`, its `guidance`, its layer files and its verification's.
+    `prompt`, its `guidance`, its output schema, its layer files and its
+    verification's.
     Steps are not repeated under Processes; they still run alone.
 - **Building blocks**, as tables: agents (with the skills each names,
   listed as on a process card), policies, runtimes and the service limits,
@@ -60,8 +62,9 @@ and value lines.
 
 A name the settings do not define shows in red as missing: Agister refuses
 such a call. A file that does not parse shows its error. Every YAML
-settings file holds exactly one YAML document, as in Agister: one with a
-second after a `---`, even an empty one, does not parse, and a runtime
+settings file holds exactly one YAML document, as in Agister: a `---`
+may open it, but one with a second after a `---`, even an empty one, does
+not parse, and a runtime
 file with a second document is refused by the server's skill inventory
 with the problem `must hold exactly one YAML document`, even when a
 nearer layer holds a partial, so the page does not open those settings. ↻ reads the settings again.

@@ -531,10 +531,17 @@ func frontMatter(data []byte) (map[string]any, error) {
 	return nil, errors.New("front matter does not parse: no closing ---")
 }
 
+// runtimeDocuments is what runtime discovery reads: the names of the
+// runtimes the settings define and each one's composed document.
+type runtimeDocuments interface {
+	List(ctx context.Context, kind definition.Kind) ([]string, error)
+	Read(ctx context.Context, kind definition.Kind, name string) (definition.Document, error)
+}
+
 // runtimeAdapters reads adapters from runtime compositions, so a partial
 // retains its parent's adapter. A broken parent file is still refused:
 // every file is read, as for the CLI's composed runtime documents.
-func runtimeAdapters(store SettingsStore) ([]string, error) {
+func runtimeAdapters(store runtimeDocuments) ([]string, error) {
 	ctx := context.Background()
 	names, err := store.List(ctx, definition.KindRuntime)
 	if err != nil {

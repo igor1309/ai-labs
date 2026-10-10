@@ -405,6 +405,16 @@ func TestMainServesUntilCancelledAndOpensThePage(t *testing.T) {
 	defer cancel()
 	opened := make(chan string, 1)
 	e.Open = func(u string) error { opened <- u; return nil }
+	// The served endpoints select settings with the selector Main is given.
+	type selection struct {
+		home, root, launch string
+		read               bool
+	}
+	selected := make(chan selection, 1)
+	e.Settings = func(home, root, launch string, read func(string) ([]byte, error)) (SettingsStore, error) {
+		selected <- selection{home, root, launch, read != nil}
+		return nil, errors.New("the selector Main was given")
+	}
 	code := make(chan int, 1)
 	go func() { code <- Main(ctx, nil, e) }()
 
@@ -418,6 +428,21 @@ func TestMainServesUntilCancelledAndOpensThePage(t *testing.T) {
 	resp.Body.Close()
 	if resp.StatusCode != 200 || !strings.Contains(string(body), "<title>Agister</title>") {
 		t.Errorf("GET %s: %d", u, resp.StatusCode)
+	}
+	resp, err = client.Get(u + "api/settings?path=~")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var settings map[string]string
+	if err := json.NewDecoder(resp.Body).Decode(&settings); err != nil {
+		t.Fatal(err)
+	}
+	resp.Body.Close()
+	if resp.StatusCode != http.StatusInternalServerError || settings["error"] != "the selector Main was given" {
+		t.Errorf("GET settings: %d %v", resp.StatusCode, settings)
+	}
+	if got, want := <-selected, (selection{"/home/u/.agister", "", "/home/u/.agister", true}); got != want {
+		t.Errorf("selected %+v, want %+v", got, want)
 	}
 	client.CloseIdleConnections()
 	cancel()

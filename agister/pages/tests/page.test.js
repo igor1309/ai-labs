@@ -583,9 +583,10 @@ test('a process card and the agents table list skills, each once, with their lay
 test('the served process card shows prompt, guidance and all reported field layers', async () => {
   const composedFiles = {
     ...agent,
-    'processes/review.yaml': 'name: review\nuses: agent:opus\nprompt: rules\nguidance: [style, missing]\nskills: [rules]\nverify: verify:repo\n',
+    'processes/review.yaml': 'name: review\nuses: agent:opus\nprompt: rules\nguidance: [style, missing]\nskills: [rules]\nverify: verify:repo\noutput: {schema: result}\n',
     'verifies/repo.yaml': 'timeout: 1m\nmax_attempts: 2\ncommand: cd docs && make test\n',
     'prompts/rules.md': 'Rules.', 'prompts/style.md': 'Style.',
+    'schemas/result.json': '{}',
   };
   const layers = [
     { layer: 'project', path: '/r/docs/.agister/processes/review.yaml', fields: ['guidance'] },
@@ -601,6 +602,7 @@ test('the served process card shows prompt, guidance and all reported field laye
     'processes/review.yaml': { layers },
     'prompts/rules.md': { layers: [{ layer: 'repository', path: '/r/prompts/rules.md' }, { layer: 'home', path: '/h/prompts/rules.md' }] },
     'prompts/style.md': { layers: [{ layer: 'project', path: '/r/docs/prompts/style.md' }] },
+    'schemas/result.json': { layers: [{ layer: 'repository', path: '/r/.agister/schemas/result.json' }, { layer: 'home', path: '/h/schemas/result.json' }] },
   };
   const p = page({
     storage: fakeStorage({ 'agister-pages:current': '/r/docs' }),
@@ -621,7 +623,9 @@ test('the served process card shows prompt, guidance and all reported field laye
   assert.equal(fact('guidance').textContent, 'style project, missing (missing prompt)');
   assert.equal(fact('skills').textContent, 'rules project');
   assert.equal(fact('skills').querySelector('span.chip').title, 'project /r/docs/.agister/skills/rules/SKILL.md');
-  assert.equal(fact('output').textContent, 'a failed verify (repo) is fixed up to 2×');
+  // The output schema comes whole from the nearest layer, which replaces home's.
+  assert.equal(fact('output').textContent, 'result schema repository + home; a failed verify (repo) is fixed up to 2×');
+  assert.equal(fact('output').querySelector('span.chip').title, 'repository /r/.agister/schemas/result.json\nhome /h/schemas/result.json (replaced)');
   assert.equal(fact('verification layers').textContent, 'repoproject /r/docs/.agister/verifies/repo.yaml: commandhome /h/verifies/repo.yaml: timeout, max_attempts');
   const provenance = card.querySelectorAll('div.facts')[1].textContent;
   assert.match(provenance, /project \/r\/docs\/\.agister\/processes\/review.yaml: guidance/);
@@ -644,9 +648,10 @@ test('workflow nodes show their process prompt, guidance and field layers', asyn
   const composedFiles = {
     ...agent,
     'workflows/review.yaml': 'name: review\nfan_out:\n  - {node: one, uses: process:check}\njoin: {node: j, uses: process:check}\n',
-    'processes/check.yaml': 'name: check\nuses: agent:opus\nprompt: rules\nguidance: [style]\nverify: verify:repo\n',
+    'processes/check.yaml': 'name: check\nuses: agent:opus\nprompt: rules\nguidance: [style]\nverify: verify:repo\noutput: {schema: result}\n',
     'verifies/repo.yaml': 'max_attempts: 3\ncommand: make test\n',
     'prompts/rules.md': 'Rules.', 'prompts/style.md': 'Style.',
+    'schemas/result.json': '{}',
   };
   const sources = {
     'processes/check.yaml': { layers: [
@@ -655,6 +660,7 @@ test('workflow nodes show their process prompt, guidance and field layers', asyn
     ] },
     'prompts/rules.md': { layers: [{ layer: 'home', path: '/h/prompts/rules.md' }] },
     'prompts/style.md': { layers: [{ layer: 'project', path: '/r/docs/library/style.md' }] },
+    'schemas/result.json': { layers: [{ layer: 'project', path: '/r/docs/.agister/schemas/result.json' }, { layer: 'home', path: '/h/schemas/result.json' }] },
     'verifies/repo.yaml': { layers: [
       { layer: 'project', path: '/r/docs/.agister/verifies/repo.yaml', fields: ['command'] },
       { layer: 'home', path: '/h/verifies/repo.yaml', fields: ['max_attempts'] },
@@ -677,7 +683,49 @@ test('workflow nodes show their process prompt, guidance and field layers', asyn
     assert.equal(fact('prompt').textContent, 'rules home');
     assert.equal(fact('guidance').textContent, 'style project');
     assert.equal(fact('guidance').querySelector('span.chip').title, 'project /r/docs/library/style.md');
+    assert.equal(fact('output').textContent, 'result schema project + home; a failed verify (repo) is fixed up to 3×');
+    assert.equal(fact('output').querySelector('span.chip').title, 'project /r/docs/.agister/schemas/result.json\nhome /h/schemas/result.json (replaced)');
     assert.equal(fact('layers').textContent, 'project /r/docs/.agister/processes/check.yaml: guidancehome /h/processes/check.yaml: name, uses, prompt, verify');
     assert.equal(fact('verification layers').textContent, 'repoproject /r/docs/.agister/verifies/repo.yaml: commandhome /h/verifies/repo.yaml: max_attempts');
   }
+});
+
+// A prompt the binary cannot read breaks the call (ADR-028 rule 5): the
+// server reports its error with its layers, and the page shows that error
+// beside the reference, on a process card and on each workflow step,
+// rather than as configured guidance.
+test('a prompt reference the binary cannot read shows its error on process cards and workflow steps', async () => {
+  const broken = '/r/.agister/prompts/style.md: not a regular file';
+  const composedFiles = {
+    ...agent,
+    'workflows/panel.yaml': 'name: panel\nfan_out:\n  - {node: one, uses: process:check}\n',
+    'processes/check.yaml': 'name: check\nuses: agent:opus\nprompt: rules\nguidance: [style]\n',
+    'processes/alone.yaml': 'name: alone\nuses: agent:opus\nprompt: style\nguidance: [rules]\n',
+    'prompts/rules.md': 'Rules.',
+  };
+  const sources = {
+    'prompts/rules.md': { layers: [{ layer: 'home', path: '/h/prompts/rules.md' }] },
+    'prompts/style.md': { layers: [{ layer: 'repository', path: '/r/.agister/prompts/style.md' }], error: broken },
+  };
+  const p = page({
+    storage: fakeStorage({ 'agister-pages:current': '/r' }),
+    answers: {
+      'api/settings': () => respond({ path: '/r', files: {}, composedFiles, sources }),
+      'api/skills': () => respond({ path: '/r', home: false, adapters: [], folders: [], settings: [] }),
+    },
+  });
+  await p.started;
+  const factsOf = (root) => {
+    const facts = root.querySelector('div.facts').children;
+    return (name) => facts[facts.findIndex((n) => n.textContent === name) + 1];
+  };
+  const card = factsOf(p.$('dashboard').querySelector('article#process-alone'));
+  assert.equal(card('prompt').textContent, `style repository ${broken}`);
+  assert.equal(card('prompt').querySelector('span.error').title, `Agister refuses the call: ${broken}`);
+  assert.equal(card('guidance').textContent, 'rules home');
+  assert.equal(card('guidance').querySelector('span.error'), null);
+  const step = factsOf(p.$('dashboard').querySelector('article#workflow-panel div.step'));
+  assert.equal(step('prompt').textContent, 'rules home');
+  assert.equal(step('guidance').textContent, `style repository ${broken}`);
+  assert.equal(step('guidance').querySelector('span.error').textContent, broken);
 });
