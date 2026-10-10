@@ -856,7 +856,6 @@
     function partBody(part) {
       switch (part.kind) {
         case 'text': return prose(part.text);
-        case 'none': return text('none', 'sub');
         case 'list': {
           const list = el('ul', { className: 'mono' }, ...part.items.map((i) => el('li', { textContent: i })));
           return part.items.length > 12 ? el('details', {}, el('summary', { textContent: `${part.items.length} entries` }), list) : list;

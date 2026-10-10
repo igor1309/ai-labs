@@ -168,14 +168,14 @@
   const filled = (v) => v != null && v !== '';
 
   // One value of an output as the page shows it: text (markdown), a list,
-  // none (an empty list), cards (objects with a title), a table (other
-  // objects alike), facts (an object, each value shown the same way), or
-  // json for anything else. null for nothing to show.
+  // cards (objects with a title), a table (other objects alike), facts (an
+  // object, each value shown the same way), or json for anything else.
+  // null for nothing to show: an empty list among them.
   function outputPart(value) {
     if (!filled(value)) return null;
     if (isScalar(value)) return { kind: 'text', text: String(value) };
     if (Array.isArray(value)) {
-      if (!value.length) return { kind: 'none' };
+      if (!value.length) return null;
       if (value.every(isScalar)) return { kind: 'list', items: value.map(String) };
       if (value.every(isObject)) {
         if (value.every((o) => typeof o.title === 'string')) return { kind: 'cards', cards: value.map(card) };

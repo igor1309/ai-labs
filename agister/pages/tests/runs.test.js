@@ -240,11 +240,12 @@ test('a review\'s output reads as its verdict, then summary, findings and covera
   assert.deepEqual(said.parts[2], { key: 'coverage', kind: 'table', columns: ['item', 'status', 'detail'], rows: [['1. Paths', 'checked', 'Read it.'], ['2. Tests', 'finding', '']] });
 });
 
-test('a judge\'s items are cards with their ruling, sources, reason and action; an empty list reads as none', () => {
+test('a judge\'s items are cards with their ruling, sources, reason and action; an empty list is left out', () => {
   const said = U.runOutput({ output: { summary: 's', items: [{ title: 'T', ruling: 'fix', severity: 'minor', sources: ['1#1', '3#2'], reason: 'R', action: 'A', missing_evidence: '' }], coverage_gaps: [] } });
   assert.equal(said.verdict, '');
   assert.deepEqual(said.parts[1].cards[0], { tags: ['minor', 'fix'], title: 'T', where: '', sources: '1#1, 3#2', texts: [['reason', 'R'], ['action', 'A']], more: null });
-  assert.deepEqual(said.parts[2], { key: 'coverage_gaps', kind: 'none' });
+  assert.deepEqual(said.parts.map((p) => p.key), ['summary', 'items']);
+  assert.deepEqual(U.runOutput({ output: { summary: 's', findings: [], coverage: [] }, text: 'x' }).parts.map((p) => p.key), ['summary']);
 });
 
 test('without an output a result reads as its text; an error comes first, its message then its class', () => {
