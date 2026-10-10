@@ -68,6 +68,9 @@ type Resolver struct {
 	definitions ResolverDefinitions
 	identities  ResolverIdentities
 	validator   ResolverValidator
+	// probes verify a version the settings verify nothing for; nil: none
+	// is probed.
+	probes ResolverProbes
 	// check checks the definitions the resolver reads, which must not
 	// change under it (a snapshot), so a call that depends on a document
 	// with a problem is refused (ADR-015).
@@ -154,6 +157,13 @@ type ResolverIdentities interface {
 	Identity(ctx context.Context, adapter, command string) (RuntimeIdentity, error)
 }
 
+// ResolverProbes verify a runtime version the settings verify no
+// primitive for (ADR-029): the primitives a probe found holding, none when
+// its adapter has no probe, and an error when the probe failed.
+type ResolverProbes interface {
+	Verified(ctx context.Context, adapter, command, version string) ([]string, error)
+}
+
 // ResolverValidator compiles an output schema.
 type ResolverValidator interface {
 	Compile(schema []byte) error
@@ -164,6 +174,9 @@ type ResolverValidator interface {
 type ResolverAdapters struct {
 	Identities ResolverIdentities
 	Validator  ResolverValidator
+	// Probes verify a runtime version the settings verify no primitive
+	// for (ADR-029); nil: none is probed.
+	Probes ResolverProbes
 }
 
 // NewResolver returns the component that resolves a process into what a
@@ -439,6 +452,15 @@ func (r *Resolver) resolveCall(ctx context.Context, processName, agentOverride s
 		return res, refuse("stale.recover.max_resumes %d recovers in the call's session, but runtime %s cannot resume sessions", resumes, res.mapping.Name)
 	}
 	verified, unverified := res.mapping.ForVersion(res.identity.Version)
+	// A version the settings verify nothing for is probed, once (ADR-029).
+	if len(verified.Primitives) == 0 && r.probes != nil {
+		probed, err := r.probes.Verified(ctx, res.mapping.Adapter, res.agent.Command, res.identity.Version)
+		if err != nil {
+			return res, refuse("runtime mapping %s verifies no primitive for %s version %s%s", res.mapping.Name, res.mapping.Adapter, res.identity.Version, probeRefusal(err))
+		}
+		res.mapping = res.mapping.WithVerified(res.identity.Version, probed)
+		verified, unverified = res.mapping.ForVersion(res.identity.Version)
+	}
 	if len(verified.Primitives) == 0 {
 		return res, refuse("runtime mapping %s verifies no primitive for %s version %s", res.mapping.Name, res.mapping.Adapter, res.identity.Version)
 	}

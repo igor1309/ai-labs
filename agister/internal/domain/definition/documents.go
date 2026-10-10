@@ -528,6 +528,20 @@ func (m Mapping) Verified(version string) bool {
 	return len(verified.Primitives) > 0
 }
 
+// WithVerified is the mapping with the primitives named verified for
+// version too, as a probe of the runtime found them (ADR-029).
+func (m Mapping) WithVerified(version string, names []string) Mapping {
+	with := m
+	with.Primitives = make([]Primitive, len(m.Primitives))
+	for i, primitive := range m.Primitives {
+		if contains(names, primitive.Name) {
+			primitive.Verified = append(append([]string(nil), primitive.Verified...), version)
+		}
+		with.Primitives[i] = primitive
+	}
+	return with
+}
+
 // ForAnyVersion keeps the primitives verified for some version: what a
 // plan can use before the runtime's version is known.
 func (m Mapping) ForAnyVersion() (Mapping, []string) {

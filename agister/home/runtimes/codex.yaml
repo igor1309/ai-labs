@@ -1,5 +1,3 @@
-# A version is listed as verified for a primitive once
-# agister/scripts/codex-sandbox-contract.py passes on it.
 schema: agister.runtime/v1alpha1
 name: codex
 adapter: codex
@@ -10,8 +8,8 @@ primitives:
   items:
     read-only:
       grants: [repository.read, repository.search, repository.diff, repository.history.read, process.execute, host.read]
-      verified: ["0.158.", "0.159.", "0.160.", "0.161.", "0.162."]
+      verified: ["0.158.", "0.159.", "0.160.", "0.161."]
     workspace-write:
       grants: [repository.read, repository.search, repository.diff, repository.history.read, process.execute, host.read,
                repository.write, host.write]
-      verified: ["0.159.", "0.160.", "0.161.", "0.162."]
+      verified: ["0.159.", "0.160.", "0.161."]

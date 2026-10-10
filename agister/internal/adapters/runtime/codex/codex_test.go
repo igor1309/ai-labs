@@ -3,8 +3,6 @@ package codex_test
 import (
 	"context"
 	"encoding/json"
-	"os"
-	"path/filepath"
 
 	"reflect"
 
@@ -16,37 +14,6 @@ import (
 
 	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/codex"
 )
-
-// The sandbox contract script (agister/scripts/codex-sandbox-contract.py),
-// which decides the versions codex.yaml lists as verified, runs Codex with
-// the arguments Arguments builds for each sandbox mode, a resumed
-// read-only turn included: its argv file is what Arguments returns.
-func TestTheSandboxContractRunsTheAdaptersArguments(t *testing.T) {
-	t.Parallel()
-	data, err := os.ReadFile(filepath.Join("..", "..", "..", "..", "scripts", "codex-sandbox-contract.argv.json"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	var script map[string][]string
-	if err := json.Unmarshal(data, &script); err != nil {
-		t.Fatal(err)
-	}
-	want := map[string][]string{}
-	for name, request := range map[string]codex.TurnRequest{
-		"read-only":         {Effort: "low", Primitives: []string{"read-only"}},
-		"workspace-write":   {Effort: "low", Primitives: []string{"workspace-write"}},
-		"resumed read-only": {Effort: "low", Primitives: []string{"read-only"}, ResumeSessionID: "THREAD_ID"},
-	} {
-		args, err := codex.Arguments(request, "")
-		if err != nil {
-			t.Fatal(err)
-		}
-		want[name] = args
-	}
-	if !reflect.DeepEqual(script, want) {
-		t.Errorf("the contract script runs\n%q\nwant what Arguments builds\n%q", script, want)
-	}
-}
 
 func TestArguments(t *testing.T) {
 	t.Parallel()

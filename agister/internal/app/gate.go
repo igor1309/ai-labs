@@ -122,7 +122,9 @@ func NewClient(infra Infrastructure) contract.Client {
 	}
 	sort.Strings(sources)
 	checkerOn := func(definitions GateDefinitions) *Checker {
-		return NewChecker(definitions, infra.Checker.Validator, infra.Checker.Runtimes, sources)
+		checker := NewChecker(definitions, infra.Checker.Validator, infra.Checker.Runtimes, sources)
+		checker.probes = infra.Checker.Probes
+		return checker
 	}
 	// An install checks its result as checkerOn's checkers check home's.
 	installer := NewInstaller(infra.Installer, installCheck{stager: infra.Staging, on: checkerOn})
@@ -133,7 +135,9 @@ func NewClient(infra Infrastructure) contract.Client {
 	// Each use case that resolves a process gets a resolver of its own,
 	// which refuses a call that depends on a document with a problem.
 	resolverOn := func(definitions GateDefinitions) *Resolver {
-		return NewResolver(definitions, infra.Resolver.Identities, infra.Resolver.Validator, resolverCheck{checksOn(definitions)})
+		resolver := NewResolver(definitions, infra.Resolver.Identities, infra.Resolver.Validator, resolverCheck{checksOn(definitions)})
+		resolver.probes = infra.Resolver.Probes
+		return resolver
 	}
 	// build makes the whole client over the sources given: the layered
 	// settings and the global layer alone. The gate builds it on snapshots

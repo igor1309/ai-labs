@@ -18,6 +18,9 @@ type Checker struct {
 	validator   CheckValidator
 	runtimes    CheckRuntimes
 	sources     []string // input source kinds the code provides
+	// probes verify a version the settings verify nothing for; nil: none
+	// is probed.
+	probes CheckProbes
 }
 
 // CheckDefinitions supplies every definition document and its origin, and
@@ -43,10 +46,20 @@ type CheckRuntimes interface {
 	Identity(ctx context.Context, adapter, command string) (RuntimeIdentity, error)
 }
 
+// CheckProbes verify a runtime version the settings verify no primitive
+// for (ADR-029): the primitives a probe found holding, none when its
+// adapter has no probe, and an error when the probe failed.
+type CheckProbes interface {
+	Verified(ctx context.Context, adapter, command, version string) ([]string, error)
+}
+
 // CheckAdapters are what a Checker runs on besides the settings it checks.
 type CheckAdapters struct {
 	Validator CheckValidator
 	Runtimes  CheckRuntimes
+	// Probes verify a runtime version the settings verify no primitive
+	// for (ADR-029); nil: none is probed.
+	Probes CheckProbes
 }
 
 // NewChecker returns the use case that validates all settings. sources are
@@ -498,11 +511,21 @@ func (c *Checker) check(ctx context.Context, probe bool) (CheckResult, error) {
 				continue // reported as an unknown adapter
 			}
 			identity, err := c.runtimes.Identity(ctx, mapping.Adapter, agent.Command)
+			var probeFailed error
+			if err == nil && identity.Contract == mapping.Contract && !mapping.Verified(identity.Version) && c.probes != nil {
+				var probed []string
+				if probed, probeFailed = c.probes.Verified(ctx, mapping.Adapter, agent.Command, identity.Version); probeFailed == nil {
+					mapping = mapping.WithVerified(identity.Version, probed)
+					bundle.Mappings[agent.Runtime] = mapping
+				}
+			}
 			switch {
 			case err != nil:
 				problem("agent "+name, "runtime unavailable: %v", err)
 			case identity.Contract != mapping.Contract:
 				problem("agent "+name, "adapter implements %s, mapping %s describes %s", identity.Contract, mapping.Name, mapping.Contract)
+			case probeFailed != nil:
+				problem("agent "+name, "mapping %s verifies no primitive for runtime version %s%s", mapping.Name, identity.Version, probeRefusal(probeFailed))
 			case !mapping.Verified(identity.Version):
 				problem("agent "+name, "mapping %s verifies no primitive for runtime version %s", mapping.Name, identity.Version)
 			default:
