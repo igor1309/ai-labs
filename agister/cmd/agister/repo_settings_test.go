@@ -19,10 +19,14 @@ import (
 
 	"github.com/igor1309/ai-labs/agister/internal/adapters/git/gittest"
 	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/runtimetest"
+	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/runtimetest/fakecodex"
 	"github.com/igor1309/ai-labs/agister/internal/adapters/schema"
 	"github.com/igor1309/ai-labs/agister/internal/cli"
+	"github.com/igor1309/ai-labs/agister/internal/contract"
 	"github.com/igor1309/ai-labs/agister/internal/domain/definition"
 	domain "github.com/igor1309/ai-labs/agister/internal/domain/run"
+	"github.com/igor1309/ai-labs/gokit/fakeproc"
+	"github.com/igor1309/ai-labs/gokit/supervisor/supervisortest"
 	"gopkg.in/yaml.v3"
 )
 
@@ -47,8 +51,8 @@ const repoGoal = "agister/testdata/briefs/lab-119-goal.md"
 const fallbackParam = "AGENTS.md"
 
 // testTimeouts are the test's own timeouts for a process run, by process
-// name, in place of its policy's: the advisor's policy allows 20 minutes,
-// implement_pi's 45.
+// name, in place of its own: the advisor's policy allows 20 minutes,
+// implement_pi's process 45.
 var testTimeouts = map[string]string{
 	"advisor":          "1m",
 	"implement_pi":     "1m",
@@ -91,8 +95,8 @@ var codexAgents = map[string]string{
 }
 
 // staleLimits are the effective staleness limits recorded for each process's
-// run, by process, as its policy sets them; a process not listed records
-// none.
+// run, by process, as its process or its policy sets them; a process not
+// listed records none.
 var staleLimits = func() map[string]domain.StaleLimits {
 	implement := domain.StaleLimits{NoEvent: 21 * time.Minute, ToolCommand: 15 * time.Minute, RepeatedToolCalls: 5}
 	review := domain.StaleLimits{NoEvent: 10 * time.Minute, ToolCommand: 8 * time.Minute, RepeatedToolCalls: 5}
@@ -1698,7 +1702,7 @@ func TestTheJudgeNamesNoPolicy(t *testing.T) {
 	}
 }
 
-// The repository's implement runs under no cost limit: its policy sets
+// The repository's implement runs under no cost limit: its process sets
 // none, so its call's effective limits carry none.
 func TestImplementHasNoCostLimit(t *testing.T) {
 	t.Parallel()
@@ -1716,6 +1720,108 @@ func TestImplementHasNoCostLimit(t *testing.T) {
 	}
 	if limit, set := effective["max_cost_usd"]; set {
 		t.Fatalf("implement's effective cost limit is %v, want none", limit)
+	}
+}
+
+// implementerPermissions are the permissions every implementer is allowed
+// and has.
+var implementerPermissions = []string{
+	"repository.read", "repository.search", "repository.diff", "repository.history.read", "repository.write",
+	"repository.history.write", "process.execute", "network", "host.read", "host.write",
+}
+
+// showProcess is what process show --json prints for process name, shown
+// from its launchDir in repo.
+func showProcess(t *testing.T, home, repo, name string) contract.ProcessView {
+	t.Helper()
+	r := agister(t, home, filepath.Join(repo, launchDir(name)), "process", "show", name, "--json")
+	var view contract.ProcessView
+	if err := json.Unmarshal([]byte(r.stdout), &view); err != nil || r.code != 0 {
+		t.Fatalf("process show %s: %d %v\n%s%s", name, r.code, err, r.stdout, r.stderr)
+	}
+	return view
+}
+
+// Each implementer runs read-write on its candidate with every permission
+// of implementerPermissions and no denial, for 45 minutes at most, in one
+// attempt, and is ended after 21 minutes without a runtime event, 15
+// minutes on one tool command or 5 identical tool calls in a row: process
+// show prints each. implement_codex runs on Codex, at a version whose
+// workspace-write home's runtime verifies, and its plan withholds network
+// and repository.history.write.
+func TestTheImplementersRunUnderTheirLimits(t *testing.T) {
+	t.Parallel()
+	_, repo, home := onFakeRuntimes(t)
+	startThrough(t, home, runtimetest.InProcess{
+		Env:   []string{"FAKE_OUTPUT=schema"},
+		Fakes: map[string]supervisortest.Fake{"codex": codexAt("0.159.0")},
+	})
+	for _, name := range implementers {
+		view := showProcess(t, home, repo, name)
+		if view.Refusal != "" {
+			t.Errorf("%s is refused: %s", name, view.Refusal)
+		}
+		if view.Access != "read-write" || view.Scope != "candidate" {
+			t.Errorf("%s's workspace is %s on %s, want read-write on candidate", name, view.Access, view.Scope)
+		}
+		if !reflect.DeepEqual(view.Allowed, implementerPermissions) || !reflect.DeepEqual(view.Permissions, implementerPermissions) || len(view.Denied) != 0 {
+			t.Errorf("%s is allowed %v, denied %v and has %v, want allowed and having %v, denied none",
+				name, view.Allowed, view.Denied, view.Permissions, implementerPermissions)
+		}
+		if view.Timeout != 45*time.Minute {
+			t.Errorf("%s's timeout is %s, want 45m", name, view.Timeout)
+		}
+		if view.MaxAttempts != 1 {
+			t.Errorf("%s's attempts are %d, want 1", name, view.MaxAttempts)
+		}
+		if want := (contract.Stale{NoEvent: 21 * time.Minute, ToolCommand: 15 * time.Minute, RepeatedToolCalls: 5}); view.Stale != want {
+			t.Errorf("%s's stale limits are %+v, want %+v", name, view.Stale, want)
+		}
+		if name != "implement_codex" {
+			continue
+		}
+		if want := []string{"repository.history.write", "network"}; !reflect.DeepEqual(view.Withheld, want) {
+			t.Errorf("%s's plan withholds %v, want %v", name, view.Withheld, want)
+		}
+	}
+}
+
+// codexAt is the fake Codex, reporting version as its own.
+func codexAt(version string) supervisortest.Fake {
+	return func(p fakeproc.Process) int {
+		getenv := p.Getenv
+		p.Getenv = func(key string) string {
+			if key == "FAKE_VERSION" {
+				return version
+			}
+			return getenv(key)
+		}
+		return fakecodex.Main(p)
+	}
+}
+
+// No implementer names a policy: process show prints none and no policy
+// among its sources, and the home folder holds none of the implementers'
+// former policies.
+func TestTheImplementersNameNoPolicy(t *testing.T) {
+	t.Parallel()
+	root, repo, home := onFakeRuntimes(t)
+	for _, name := range implementers {
+		view := showProcess(t, home, repo, name)
+		if view.Policy != "" {
+			t.Errorf("%s names policy %s, want none", name, view.Policy)
+		}
+		for _, source := range view.Sources {
+			if source.Kind == "policies" {
+				t.Errorf("%s reads policy %s from %s, want none", name, source.Name, source.Path)
+			}
+		}
+	}
+	for _, policy := range []string{"implement", "implement_codex", "implement_pi"} {
+		path := filepath.Join(root, homeFolder, "policies", policy+".yaml")
+		if _, err := os.Stat(path); !errors.Is(err, fs.ErrNotExist) {
+			t.Errorf("the home folder holds %s (%v), want none", path, err)
+		}
 	}
 }
 
