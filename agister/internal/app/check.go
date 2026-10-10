@@ -558,6 +558,13 @@ func (c *Checker) check(ctx context.Context, probe bool) (CheckResult, error) {
 						settingsProblem(p)
 					}
 				}
+				// So is whether it enforces a cost limit, which a call
+				// under one is refused without.
+				if !identity.CostLimit {
+					for _, p := range settings.CostProblems(bundle, agent) {
+						settingsProblem(p)
+					}
+				}
 			}
 		}
 	}

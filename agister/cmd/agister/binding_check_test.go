@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/igor1309/ai-labs/agister/internal/cli"
 	"github.com/igor1309/ai-labs/agister/internal/contract"
 )
 
@@ -119,6 +120,29 @@ func TestABindingTheSettingsRefuseShowsWhatElseItWithholds(t *testing.T) {
 	bindingsAre(t, agister(t, home, repo, "check", "--json"), `[
   {"workflow": "review_panel", "node": "adversarial", "process": "adversarial_review", "agent": "reviewer", "runtime": "claude-code", "version": "2.1",
    "withheld": ["repository.diff", "repository.search"], "required": ["repository.read"]},`+reviewPanelOthers+`]`)
+}
+
+// A node that binds a process under a cost limit to an agent whose runtime
+// cannot enforce one cannot run, as its call is refused: OpenCode cannot
+// limit cost. Only the runtime says so, so check finds it where it asks
+// the runtimes, a problem of the workflow that names the node, and the
+// process on its own agent still passes.
+func TestCheckRefusesABindingWhoseRuntimeCannotEnforceItsCostLimit(t *testing.T) {
+	t.Parallel()
+	home, repo := exampleOpenCodeSettings(t)
+	verifyOpenCodeTools(t, home, "read", "grep", "glob", "skill")
+	write(t, filepath.Join(home, "workflows", "asking.yaml"), strings.Replace(askingDoc, "agent: reviewer", "agent: opencode-minimax", 1))
+	process := filepath.Join(home, "processes", "ask.yaml")
+	write(t, process, read(t, process)+"\nmax_cost_usd: 1\n")
+
+	if r := agister(t, home, repo, "check"); r.code != 0 || !strings.HasPrefix(r.stdout, "settings OK:") {
+		t.Fatalf("check before the runtimes are asked: %d\n%s%s", r.code, r.stdout, r.stderr)
+	}
+	r := agister(t, home, repo, "check", "--probe")
+	const problem = "workflow asking: call node question: process ask: runtime opencode cannot enforce the cost limit 1\n  refuses workflow asking\n"
+	if r.code != cli.ExitUsage || !strings.Contains(r.stderr, problem) || !strings.Contains(r.stderr, "1 problem(s)") {
+		t.Fatalf("check --probe lacks %q: %d\n%s%s", problem, r.code, r.stdout, r.stderr)
+	}
 }
 
 // reviewPanelBindings are the bindings check reports of the example

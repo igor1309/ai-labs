@@ -485,9 +485,9 @@ func (r *Resolver) resolveCall(ctx context.Context, processName, agentOverride s
 	if len(verified.Primitives) == 0 {
 		return res, refuse("runtime mapping %s verifies no primitive for %s version %s", res.mapping.Name, res.mapping.Adapter, res.identity.Version)
 	}
-	if res.effective.MaxCostUSD != nil && !res.identity.CostLimit {
+	if message := settings.CostRefusal(res.effective, res.mapping.Name, res.identity.CostLimit); message != "" {
 		subject = root
-		return res, refuse("runtime %s cannot enforce the cost limit %g", res.mapping.Name, *res.effective.MaxCostUSD)
+		return res, refuse("%s", message)
 	}
 	// An adapter that cannot give skills refuses a call that names one: it
 	// must not run without them (ADR-021 rule 6).

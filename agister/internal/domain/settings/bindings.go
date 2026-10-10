@@ -171,6 +171,55 @@ func split(withheld, required []string) (inRequired, others []string) {
 	return inRequired, others
 }
 
+// CostRefusal is why a call composed to effective cannot run on the runtime
+// named runtime, which enforces a cost limit only where enforces says so:
+// the limit it sets, which the runtime cannot enforce; "" when the call can
+// run.
+func CostRefusal(effective policy.Effective, runtime string, enforces bool) string {
+	if effective.MaxCostUSD == nil || enforces {
+		return ""
+	}
+	return fmt.Sprintf("runtime %s cannot enforce the cost limit %g", runtime, *effective.MaxCostUSD)
+}
+
+// CostProblems reports the processes of the agent that set a cost limit,
+// which the agent's runtime was found unable to enforce, and each node that
+// binds such a process to the agent (ADR-030 rule 8). Only the runtime can
+// say whether it enforces one.
+func CostProblems(b Bundle, agent definition.Agent) []Problem {
+	mapping, ok := b.Mappings[agent.Runtime]
+	if !ok || b.Service == nil {
+		return nil
+	}
+	var problems []Problem
+	for _, name := range sortedKeys(b.Processes) {
+		process := b.Resolved(name)
+		if process.Agent != agent.Name {
+			continue
+		}
+		// One whose limits do not compose has no cost limit; Check reports
+		// it.
+		effective, err := policy.Compose(*b.Service, process, policy.Caller{})
+		if err != nil {
+			continue
+		}
+		if message := CostRefusal(effective, mapping.Name, false); message != "" {
+			problems = append(problems, Problem{Subject: "process " + name, Message: message, Agent: agent.Name})
+		}
+	}
+	for _, name := range sortedKeys(b.Workflows) {
+		for _, bound := range b.bindings(b.Workflows[name]) {
+			if bound.agent.Name != agent.Name {
+				continue
+			}
+			if message := CostRefusal(bound.effective, mapping.Name, false); message != "" {
+				problems = append(problems, bound.problem(name, "%s", message))
+			}
+		}
+	}
+	return problems
+}
+
 // unresumed are the turns of the process that resume its call's session, a
 // repair turn (ADR-002 rule 4) and a recovery turn (ADR-024 rule 6), each
 // with why the session cannot be resumed.

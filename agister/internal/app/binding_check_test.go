@@ -112,6 +112,16 @@ func TestCheckJudgesEachBindingOfAWorkflow(t *testing.T) {
 			probe:  true,
 			want:   node + repairs + "runtime rt cannot resume sessions",
 			beside: "process second: " + repairs + "runtime rt cannot resume sessions"},
+		{name: "the runtime cannot enforce a cost limit, and the process sets one",
+			arrange: func() *harness {
+				h := onAgentC("rt")
+				h.defs.docs[definition.KindProcess]["second"] += "max_cost_usd: 2\n"
+				h.runner.identity.CostLimit = false
+				return h
+			},
+			probe:  true,
+			want:   node + "runtime rt cannot enforce the cost limit 2",
+			beside: "process second: runtime rt cannot enforce the cost limit 2"},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {

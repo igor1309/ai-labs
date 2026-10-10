@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/igor1309/ai-labs/agister/internal/domain/definition"
+	"github.com/igor1309/ai-labs/agister/internal/domain/policy"
 	"github.com/igor1309/ai-labs/agister/internal/domain/settings"
 )
 
@@ -257,6 +258,52 @@ func TestABindingToARuntimeThatCannotResumeIsAProblemOfItsWorkflow(t *testing.T)
 	}
 	if got, want := settings.ResumeProblems(b, b.Agents["a"]), []settings.Problem{{Subject: "process p", Message: repairs + "rt cannot resume sessions", Agent: "a"}}; !reflect.DeepEqual(got, want) {
 		t.Fatalf("agent a: problems = %+v, want %+v", got, want)
+	}
+}
+
+// ADR-030 rule 8: only the runtime can say whether it enforces a cost
+// limit. One that cannot refuses the process that sets one on its own
+// agent, and each node that binds such a process to an agent on it: a
+// problem of the workflow, which names the node, as a call of it is
+// refused.
+func TestABindingToARuntimeThatCannotEnforceACostLimitIsAProblemOfItsWorkflow(t *testing.T) {
+	t.Parallel()
+	b := onC(definition.SessionFresh, plain())
+	p := b.Processes["p"]
+	limit := 2.0
+	p.Limits.MaxCostUSD = &limit
+	b.Processes["p"] = p
+	if got := problemsOf(b); got != nil {
+		t.Fatalf("before the runtime is asked: problems = %q", got)
+	}
+	if got, want := settings.CostProblems(b, b.Agents["c"]), []settings.Problem{{Subject: "workflow w", Message: "fan-out node one: process p: runtime plain cannot enforce the cost limit 2"}}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("agent c: problems = %+v, want %+v", got, want)
+	}
+	if got, want := settings.CostProblems(b, b.Agents["a"]), []settings.Problem{{Subject: "process p", Message: "runtime rt cannot enforce the cost limit 2", Agent: "a"}}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("agent a: problems = %+v, want %+v", got, want)
+	}
+	if got := settings.CostProblems(bound("c"), b.Agents["c"]); got != nil {
+		t.Fatalf("no cost limit: problems = %+v", got)
+	}
+}
+
+// The rule a call and check share: a call under a cost limit runs only on
+// a runtime that enforces one.
+func TestACostLimitNeedsARuntimeThatEnforcesIt(t *testing.T) {
+	t.Parallel()
+	limit := 0.5
+	for name, c := range map[string]struct {
+		limit    *float64
+		enforces bool
+		want     string
+	}{
+		"a limit the runtime enforces":       {&limit, true, ""},
+		"a limit the runtime cannot":         {&limit, false, "runtime rt cannot enforce the cost limit 0.5"},
+		"no limit, on a runtime that cannot": {nil, false, ""},
+	} {
+		if got := settings.CostRefusal(policy.Effective{MaxCostUSD: c.limit}, "rt", c.enforces); got != c.want {
+			t.Errorf("%s: refusal %q, want %q", name, got, c.want)
+		}
 	}
 }
 
