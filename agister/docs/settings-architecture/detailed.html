@@ -204,9 +204,7 @@ verify: verify:repo</pre></figure>
 <p class="lead">A command that must pass on the call's changes before the call completes.</p>
 <h3>Holds</h3><table><tr><th><code>command</code></th><td>what to run</td></tr><tr><th><code>timeout</code></th><td>how long it may take</td></tr><tr><th><code>max_attempts</code></th><td>how many turns the agent gets to make it pass</td></tr><tr><th><code>instruction</code></th><td>what the agent is told when it fails</td></tr></table><p class="note">A process in home can name <code>verify:repo</code>, and each project fills <code>verifies/repo.yaml</code> in its own layer. If no layer fills it, <code>implement</code> is refused. The command runs from the worktree root, even for a project.</p></div>
 <figure class="ex"><figcaption>.agister/verifies/repo.yaml</figcaption><pre>name: repo
-command: &gt;-
-  cd agister &amp;&amp; test -z &quot;$(gofmt -l .)&quot; &amp;&amp; go vet ./... &amp;&amp;
-  go test -count=1 -timeout 1m ./... &amp;&amp; …
+command: agister/scripts/test.sh
 timeout: 5m
 max_attempts: 3
 instruction: &gt;-
