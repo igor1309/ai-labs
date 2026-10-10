@@ -469,7 +469,6 @@ type EventSink interface {
 // RunHandle writes one run's evidence. Finish releases ownership.
 type RunHandle interface {
 	Append(event run.Event) error
-	Raw(line string) error
 	Update(record run.Record) error
 	// Artifact stores a file the call produced beside its evidence.
 	Artifact(name string, data []byte) (run.Artifact, error)
@@ -1776,7 +1775,9 @@ func (s *sink) Event(source, kind string, data map[string]any) {
 	_ = s.handle.Append(run.Event{At: s.clock.Now(), Source: source, Kind: kind, Data: data})
 }
 
-func (s *sink) Raw(line string) { _ = s.handle.Raw(line) }
+// Raw is a line of the runtime's stdout. It moves the turn (turnWatch),
+// and is not kept: the session is the runtime's, recorded by its ID.
+func (s *sink) Raw(string) {}
 
 // Touched records the paths a tool call writes, each as the runtime gave
 // it: an event per path, and on the record's trail the paths it does not

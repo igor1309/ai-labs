@@ -30,7 +30,6 @@ import (
 	"github.com/igor1309/ai-labs/agister/internal/cli"
 	"github.com/igor1309/ai-labs/agister/internal/contract"
 	"github.com/igor1309/ai-labs/gokit/clocktest"
-	"github.com/igor1309/ai-labs/gokit/supervisor/supervisortest"
 )
 
 // The CLI this package builds, and the fake the test that kills it builds,
@@ -175,7 +174,8 @@ func inProcess(config cli.Config) composition {
 		}
 		return ""
 	}, func() (string, error) { return "", errors.New("the compositions in process have no user's home") })
-	groups := supervisortest.NewGroups()
+	shared := sharedOf(config.Home)
+	groups := shared.groups
 	c.starter, c.commands = runtimetest.InProcess{Groups: groups}, runtimetest.InProcess{Groups: groups}
 	still := clocktest.NewClock(stillAt)
 	c.timer, c.poll, c.readers = still.Timer, still.Timer, still.Timer
@@ -184,6 +184,7 @@ func inProcess(config cli.Config) composition {
 		starter.Groups = groups
 		c.starter = starter
 	}
+	c.starter = echoing{Starter: c.starter, echoes: &shared.echoes}
 	switch fake, _ := gits.Load(config.Home); fake := fake.(type) {
 	case realGit:
 	case *gittest.Fake:
@@ -392,9 +393,7 @@ func readRun(t *testing.T, dir string) run {
 		_ = json.Unmarshal([]byte(line), &event)
 		r.events = append(r.events, event)
 	}
-	if data, err := os.ReadFile(filepath.Join(dir, "provider.jsonl")); err == nil {
-		_ = json.Unmarshal([]byte(strings.SplitN(string(data), "\n", 2)[0]), &r.first)
-	}
+	_ = json.Unmarshal([]byte(runtimeEcho(dir)), &r.first)
 	return r
 }
 
@@ -1258,8 +1257,7 @@ func TestContinuationEndToEnd(t *testing.T) {
 	}
 	earlier, later := first.Result.Session.ProviderSessionID, second.Result.Session.ProviderSessionID
 	var provider map[string]any
-	data, _ := os.ReadFile(filepath.Join(home, "runs", second.ID, "provider.jsonl"))
-	_ = json.Unmarshal([]byte(strings.SplitN(string(data), "\n", 2)[0]), &provider)
+	_ = json.Unmarshal([]byte(runtimeEcho(filepath.Join(home, "runs", second.ID))), &provider)
 	args := fmt.Sprint(provider["argv"])
 	if earlier != later || second.Result.Session.Continues != first.ID || !strings.Contains(args, "--resume "+earlier) ||
 		strings.Contains(args, "--fork-session") || strings.Contains(args, "--session-id") {

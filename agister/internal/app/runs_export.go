@@ -40,9 +40,9 @@ type ExportRead interface {
 	// held: finished, or abandoned.
 	State() run.State
 	// Files lists the files of the run's directory by slash-separated path
-	// relative to it, sorted: its record, events, provider log and
-	// artifacts. The store's own state, its owner lock, is not evidence and
-	// is not listed.
+	// relative to it, sorted: its record, events and artifacts, and
+	// whatever else an older run left there. The store's own state, its
+	// owner lock, is not evidence and is not listed.
 	Files() ([]string, error)
 	// Open opens one of the files Files lists.
 	Open(path string) (io.ReadCloser, error)
