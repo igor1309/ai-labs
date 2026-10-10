@@ -152,7 +152,8 @@ func TestCheckRefusesABindingWhoseRuntimeCannotEnforceItsCostLimit(t *testing.T)
 // not a warning, workflow list shows that workflow alone refused, and its
 // run is refused. Workflow asking_reader binds the same process to agent
 // reader, whose runtime gives the permission, and process ask names that
-// agent: neither is refused.
+// agent: neither is refused, and asking_reader runs to its answer on the
+// same settings.
 func TestABindingWithholdingARequiredPermissionRefusesItsWorkflowAlone(t *testing.T) {
 	t.Parallel()
 	home, repo := setup(t, "approve")
@@ -190,6 +191,22 @@ primitives:
 	const refused = "call node question: process ask: cannot run on agent reviewer's runtime claude-code: cannot enforce the effective permissions: required permissions would be withheld: repository.read"
 	if r.code != cli.ExitRefused || !strings.Contains(r.stderr, refused) {
 		t.Fatalf("run asking: exit %d, want %q\n%s%s", r.code, refused, r.stdout, r.stderr)
+	}
+
+	// The same settings run asking_reader, on the plan of reader's runtime.
+	runs := &newRuns{home: home}
+	runs.take(t)
+	r = agister(t, home, repo, "run", "asking_reader", "--quiet", "--param", "question=What does this repository do?", "--timeout", "1m")
+	if r.code != cli.ExitCompleted || r.stdout != "All good.\n" {
+		t.Fatalf("run asking_reader: %d\n%s%s", r.code, r.stdout, r.stderr)
+	}
+	ran := runs.one(t)
+	result, _ := ran.record["result"].(map[string]any)
+	if result["status"] != "completed" || result["text"] != "All good." ||
+		!reflect.DeepEqual(ran.record["call"], map[string]any{"node": "question", "process": "ask", "agent": "reader"}) ||
+		!reflect.DeepEqual(ran.record["plan"], map[string]any{"primitives": []any{"Read"}, "granted": []any{"repository.read"},
+			"withheld": []any{"repository.diff", "repository.search", "repository.history.read", "process.execute", "host.read"}}) {
+		t.Fatalf("asking_reader ran call %v on plan %v, result %v", ran.record["call"], ran.record["plan"], result)
 	}
 }
 
