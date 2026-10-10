@@ -1647,7 +1647,7 @@ func TestImplementHasNoCostLimit(t *testing.T) {
 // project: each is written from the worktree's root, where it runs
 // (ADR-028 rule 2).
 var projectChecks = map[string]*regexp.Regexp{
-	"agister": regexp.MustCompile(`^cd agister && .* && cd \.\./gokit && `),
+	"agister": regexp.MustCompile(`^agister/scripts/test\.sh$`),
 	"warder":  regexp.MustCompile(`^warder/scripts/test\.sh$`),
 }
 
