@@ -3,6 +3,8 @@ import assert from 'node:assert/strict';
 import '../repos.js';
 import '../config.js';
 import '../runs.js';
+import './markdown-it.js';
+import '../knowledge.js';
 import '../page.js';
 import { pageDocument, Event } from './dom.js';
 
@@ -46,7 +48,7 @@ const workflow = {
   id: 'wf-1', process: 'panel', created_at: '2026-10-01T09:59:00Z', status: 'completed', outcome: { wall_ms: 120000 },
   workflow: {
     nodes: [
-      { name: 'first', process: 'implement', run: 'call-1', status: 'completed' },
+      { name: 'first', process: 'implement', run: 'call-1', status: 'completed', wall_ms: 107000, cost_usd: 0.5 },
       { name: 'judge', process: 'judge', join: true, run: 'judge-1', status: 'failed' },
     ],
     items: {
@@ -66,7 +68,7 @@ const compare = {
   skipped: 0,
 };
 // Records as stored: a field no summary carries shows they are the record's.
-const callRecord = { id: 'call-1', verify: { max_attempts: 3 }, from_a_newer_agister: { kept: [1, 2] } };
+const callRecord = { id: 'call-1', request: { cwd: '/w/run' }, verify: { max_attempts: 3 }, from_a_newer_agister: { kept: [1, 2] } };
 const workflowRecord = { id: 'wf-1', workflow: { barrier: { state: 'passed' } } };
 const agent = { 'agents/opus.toml': 'name = "opus"\nruntime = "claude-code"\nmodel = "opus"\neffort = "high"\n' };
 
@@ -89,7 +91,7 @@ function page({ storage = fakeStorage(), answers = {} } = {}) {
     const route = url.split('?')[0];
     const answer = answers[route] ?? fallback[route];
     if (!answer) return respond({ error: `no ${url}` }, 404);
-    return answer(asked(route));
+    return answer(asked(route), url);
   };
   const document = pageDocument();
   const location = { protocol: 'http:', hash: '' };
@@ -99,13 +101,14 @@ function page({ storage = fakeStorage(), answers = {} } = {}) {
     started, calls, asked, storage, document, location, $,
     rows: () => document.querySelectorAll('#run-list tr.pick'),
     row: (id) => document.querySelectorAll('#run-list tr.pick').find((r) => r.title === id),
-    shown: () => ({ settings: !$('dashboard').hidden, runs: !$('runs').hidden }),
+    shown: () => ({ settings: !$('dashboard').hidden, runs: !$('runs').hidden, compare: !$('compare').hidden }),
     pressed: (view) => $(`view-${view}`).getAttribute('aria-pressed'),
-    detail: () => $('run-detail').querySelector('h3')?.textContent ?? null,
+    // The run opened over the list, by its ID, or null when none shows.
+    detail: () => ($('run-overlay')?.hidden === false ? $('run-detail').querySelector('article')?.dataset.run ?? null : null),
     // The cells of a table row, as text.
     cells: (row) => row.children.map((td) => td.textContent),
     // The compare tables: per process, its rows' cells.
-    compared: () => $('runs').querySelectorAll('section.card').filter((s) => s.parentNode === $('runs')).map((s) => ({
+    compared: () => $('compare').querySelectorAll('section.card').filter((s) => s.parentNode === $('compare')).map((s) => ({
       process: s.querySelector('h3').textContent,
       rows: s.querySelectorAll('tbody tr').map((tr) => tr.children.map((td) => td.textContent)),
     })),
@@ -133,7 +136,7 @@ test('the view chosen is shown and remembered, and the page starts in it next ti
   const storage = fakeStorage();
   const p = page({ storage });
   await p.started;
-  assert.deepEqual(p.shown(), { settings: true, runs: false });
+  assert.deepEqual(p.shown(), { settings: true, runs: false, compare: false });
   assert.equal(p.pressed('settings'), 'true');
   assert.equal(p.asked('api/runs'), 0);
   assert.match(p.$('dashboard').textContent, /Agister home/);
@@ -141,7 +144,7 @@ test('the view chosen is shown and remembered, and the page starts in it next ti
   p.$('view-runs').click();
   await settle();
   assert.equal(storage.raw(VIEW_KEY), 'runs');
-  assert.deepEqual(p.shown(), { settings: false, runs: true });
+  assert.deepEqual(p.shown(), { settings: false, runs: true, compare: false });
   assert.deepEqual([p.pressed('settings'), p.pressed('runs')], ['false', 'true']);
   assert.deepEqual(p.rows().map((r) => r.title), ['call-1', 'wf-1']);
   assert.match(p.$('runs').textContent, /claude-code/);
@@ -151,14 +154,14 @@ test('the view chosen is shown and remembered, and the page starts in it next ti
   // The next visit opens on Runs and reads them.
   const next = page({ storage });
   await next.started;
-  assert.deepEqual(next.shown(), { settings: false, runs: true });
+  assert.deepEqual(next.shown(), { settings: false, runs: true, compare: false });
   assert.equal(next.pressed('runs'), 'true');
   assert.deepEqual(next.rows().map((r) => r.title), ['call-1', 'wf-1']);
 
   next.$('view-settings').click();
   await settle();
   assert.equal(storage.raw(VIEW_KEY), 'settings');
-  assert.deepEqual(next.shown(), { settings: true, runs: false });
+  assert.deepEqual(next.shown(), { settings: true, runs: false, compare: false });
 });
 
 test('refresh reads the shown view again and only that one', async () => {
@@ -192,36 +195,76 @@ test('refresh reads the shown view again and only that one', async () => {
   assert.match(p.$('read-at').title, /^Settings read/);
 });
 
-test('a row opens its run below the table; its workflow link opens the parent run', async () => {
+test('a row opens its run over the list; its links open other runs in its place', async () => {
   const p = page({ storage: fakeStorage({ [VIEW_KEY]: 'runs' }) });
   await p.started;
   assert.equal(p.detail(), null);
+  assert.equal(p.$('run-overlay').hidden, true);
 
   p.row('call-1').click();
   await settle();
   assert.equal(p.calls.at(-1), 'api/runs/call-1');
   assert.equal(p.detail(), 'call-1');
   assert.ok(p.row('call-1').classList.contains('chosen'));
-  assert.equal(p.document.scrolledTo, p.$('run-detail'));
+  assert.equal(p.document.activeElement, p.$('run-close'));
+  assert.equal(p.$('run-detail').getAttribute('role'), 'dialog');
 
-  // The workflow fact links to the parent; following it stays on the page
-  // and opens the parent below the table.
-  const link = p.$('run-detail').querySelectorAll('a').find((a) => a.textContent === 'wf-1');
+  // The workflow fact links to the parent; following it opens the parent
+  // in its place.
+  const link = p.$('run-detail').querySelectorAll('a').find((a) => a.textContent === 'the workflow run');
   assert.equal(link.href, '#wf-1');
-  const click = link.click();
-  assert.ok(click.defaultPrevented);
+  assert.equal(link.title, 'wf-1');
+  assert.ok(link.click().defaultPrevented);
   await settle();
   assert.equal(p.calls.at(-1), 'api/runs/wf-1');
   assert.equal(p.detail(), 'wf-1');
   assert.equal(p.location.hash, '');
   assert.deepEqual(p.rows().filter((r) => r.classList.contains('chosen')).map((r) => r.title), ['wf-1']);
-  assert.match(p.$('run-detail').textContent, /first — implement/);
 
-  // The chosen row again closes it.
+  // A node opens its run.
+  p.$('run-detail').querySelectorAll('a').find((a) => a.textContent === 'first').click();
+  await settle();
+  assert.equal(p.detail(), 'call-1');
+});
+
+test('Close, Escape and a click beside the run close it and give its row the focus', async () => {
+  const p = page({ storage: fakeStorage({ [VIEW_KEY]: 'runs' }) });
+  await p.started;
+  const closed = () => {
+    assert.equal(p.detail(), null);
+    assert.equal(p.$('run-overlay').hidden, true);
+    assert.deepEqual(p.rows().filter((r) => r.classList.contains('chosen')), []);
+  };
+
+  p.row('call-1').click();
+  await settle();
+  p.$('run-close').click();
+  closed();
+  assert.equal(p.document.activeElement, p.row('call-1'));
+
   p.row('wf-1').click();
   await settle();
-  assert.equal(p.detail(), null);
-  assert.deepEqual(p.rows().filter((r) => r.classList.contains('chosen')), []);
+  // A click inside the run leaves it open; one beside it closes it.
+  p.$('run-detail').querySelector('h3').click();
+  assert.equal(p.detail(), 'wf-1');
+  p.$('run-overlay').click();
+  closed();
+  assert.equal(p.document.activeElement, p.row('wf-1'));
+
+  p.row('call-1').click();
+  await settle();
+  p.document.dispatchEvent(new Event('keydown', { key: 'Escape' }));
+  closed();
+
+  // A run that cannot be read says why over the list, and closes the same.
+  const failing = page({ storage: fakeStorage({ [VIEW_KEY]: 'runs' }), answers: { 'api/runs/call-1': () => respond({ error: 'gone' }, 404) } });
+  await failing.started;
+  failing.row('call-1').click();
+  await settle();
+  assert.equal(failing.$('run-overlay').hidden, false);
+  assert.equal(failing.$('run-detail').querySelector('p.error').textContent, 'call-1: gone');
+  failing.$('run-close').click();
+  assert.equal(failing.$('run-overlay').hidden, true);
 });
 
 test('a Runs read that succeeds after the user went to Settings leaves the read time and the status alone', async () => {
@@ -237,7 +280,7 @@ test('a Runs read that succeeds after the user went to Settings leaves the read 
   await settle();
   assert.match(p.$('read-at').title, /^Settings read/);
   assert.equal(p.$('status').hidden, true);
-  assert.deepEqual(p.shown(), { settings: true, runs: false });
+  assert.deepEqual(p.shown(), { settings: true, runs: false, compare: false });
 });
 
 test('a Runs read that fails after the user went to Settings does not show its error', async () => {
@@ -265,43 +308,140 @@ test('a Runs read that fails while Runs is shown says why', async () => {
   assert.equal(p.$('status').textContent, 'the runs could not be read');
 });
 
-test('the comparison and the run list show what the summaries carry', async () => {
-  const p = page({ storage: fakeStorage({ [VIEW_KEY]: 'runs' }) });
+test('Compare is its own view: it reads the comparison only, and Runs the runs only', async () => {
+  const storage = fakeStorage();
+  const p = page({ storage });
   await p.started;
+  p.$('view-compare').click();
+  await settle();
+  assert.equal(storage.raw(VIEW_KEY), 'compare');
+  assert.deepEqual(p.shown(), { settings: false, runs: false, compare: true });
+  assert.deepEqual([p.pressed('runs'), p.pressed('compare')], ['false', 'true']);
+  assert.deepEqual([p.asked('api/runs/compare'), p.asked('api/runs')], [1, 0]);
+  assert.match(p.$('read-at').title, /^Compare read/);
   assert.deepEqual(p.compared(), [
     { process: 'implement', rows: [['claude-code', 'opus', 'high', '3', '2', '67%', '1.5', '1m 47s', '$0.50 (1 unknown)']] },
     { process: 'review', rows: [['codex', 'gpt-6.1-sol', '-', '1', '0', '0%', '', '412ms', '(1 unknown)']] },
   ]);
 
+  p.$('refresh').click();
+  await settle();
+  assert.deepEqual([p.asked('api/runs/compare'), p.asked('api/runs')], [2, 0]);
+
+  p.$('view-runs').click();
+  await settle();
+  assert.deepEqual(p.shown(), { settings: false, runs: true, compare: false });
+  assert.deepEqual([p.asked('api/runs/compare'), p.asked('api/runs')], [2, 1]);
+  assert.equal(p.$('runs').querySelector('section.card table th').textContent, 'Started');
+
+  // The next visit opens on Compare and reads it.
+  const next = page({ storage: fakeStorage({ [VIEW_KEY]: 'compare' }) });
+  await next.started;
+  assert.deepEqual(next.shown(), { settings: false, runs: false, compare: true });
+  assert.equal(next.compared().length, 2);
+});
+
+test('a process in Compare shows Runs with only its runs, whatever was filtered before', async () => {
+  const p = page({ storage: fakeStorage({ [VIEW_KEY]: 'runs' }) });
+  await p.started;
+  p.filter('status', 'completed');
+  p.$('view-compare').click();
+  await settle();
+
+  const link = p.$('compare').querySelectorAll('h3 a').find((a) => a.textContent === 'implement');
+  assert.equal(link.href, '#implement');
+  assert.ok(link.click().defaultPrevented);
+  await settle();
+  assert.deepEqual(p.shown(), { settings: false, runs: true, compare: false });
+  assert.equal(p.location.hash, '');
+  const chosen = (name) => p.$('runs').querySelectorAll('select').find((s) => s.name === name).children.find((o) => o.selected)?.value ?? '';
+  assert.deepEqual([chosen('process'), chosen('status')], ['implement', '']);
+  assert.deepEqual(p.rows().map((r) => r.title), ['call-1']);
+});
+
+test('a Compare read that ends after the user went to Runs leaves the read time and the status alone', async () => {
+  const compared = deferred();
+  const p = page({
+    storage: fakeStorage({ [VIEW_KEY]: 'compare' }),
+    answers: { 'api/runs/compare': () => compared.promise },
+  });
+  await settle();
+  p.$('view-runs').click();
+  await settle();
+  assert.match(p.$('read-at').title, /^Runs read/);
+
+  compared.resolve(respond({ error: 'the runs could not be read' }, 500));
+  await p.started;
+  await settle();
+  assert.match(p.$('read-at').title, /^Runs read/);
+  assert.equal(p.$('status').hidden, true);
+  assert.deepEqual(p.compared(), []);
+});
+
+test('a Settings read that fails while Compare is shown says why only once Settings is shown', async () => {
+  const settings = deferred();
+  const p = page({ storage: fakeStorage({ [VIEW_KEY]: 'compare' }), answers: { 'api/settings': () => settings.promise } });
+  await settle();
+  assert.equal(p.compared().length, 2);
+
+  settings.resolve(respond({ error: 'no .agister folder at /gone/.agister' }, 404));
+  await p.started;
+  await settle();
+  assert.equal(p.$('status').hidden, true);
+  assert.match(p.$('read-at').title, /^Compare read/);
+
+  p.$('view-settings').click();
+  await settle();
+  assert.equal(p.$('status').textContent, 'no .agister folder at /gone/.agister');
+});
+
+test('the run list shows what the summaries carry', async () => {
+  const p = page({ storage: fakeStorage({ [VIEW_KEY]: 'runs' }) });
+  await p.started;
+
   // The started cell is in local time; the rest as the page writes it.
   assert.ok(p.cells(p.row('call-1'))[0]);
   assert.deepEqual(p.cells(p.row('call-1')).slice(1),
-    ['implement', 'claude-code opus high', 'completed', '2 ✓', '1m 47s', '$0.50', 'review×3, go×1', '12']);
+    ['implement', 'claude-code opus high', '✓', '2 ✓', '1m 47s', '$0.50', 'review×3, go', '12']);
+  assert.equal(p.row('call-1').children[3].querySelector('span').title, 'completed');
+  assert.equal(p.row('call-1').children[7].title, 'review×3, go');
   assert.equal(p.row('call-1').children[2].querySelector('span').title, 'the runtime reported claude-opus-5-5');
   // A workflow's row: its nodes and its judge's rulings.
   assert.deepEqual(p.cells(p.row('wf-1')).slice(1),
-    ['panel', '2 nodes', 'completed', '', '2m 0s', '', 'fix 2, defer 1', '']);
+    ['panel', '2 nodes', '✓', '', '2m 0s', '', 'fix 2, defer 1', '']);
 });
 
-test('an opened run shows its facts, its judge counts and its record folded', async () => {
+test('an opened run heads with its process, status, cost and wall, and keeps its ID small', async () => {
+  const p = page({ storage: fakeStorage({ [VIEW_KEY]: 'runs' }) });
+  await p.started;
+  p.row('call-1').click();
+  await settle();
+  const title = p.$('run-detail').querySelector('div.run-title');
+  assert.deepEqual(title.children.map((c) => c.textContent), ['implement', '✓', '$0.50', '1m 47s']);
+  assert.equal(title.querySelector('span.mark').title, 'completed');
+  assert.equal(title.children[2].title, 'cost, from the runtime');
+  const when = p.$('run-detail').querySelector('p.run-when');
+  assert.match(when.textContent, /^\S.* – .*, .* · agent opus · call-1$/);
+  assert.equal(when.querySelector('span.run-id').textContent, 'call-1');
+  assert.deepEqual(p.$('run-detail').querySelectorAll('h3').map((h) => h.textContent), ['implement']);
+});
+
+test('an opened run shows its facts, a workflow its nodes as a table, and the record folded', async () => {
   const p = page({ storage: fakeStorage({ [VIEW_KEY]: 'runs' }) });
   await p.started;
 
   p.row('call-1').click();
   await settle();
-  const opened = p.facts();
-  assert.ok(opened.started[0] && opened.finished[0]);
-  delete opened.started;
-  delete opened.finished;
-  assert.deepEqual(opened, {
-    process: ['implement — agent opus'],
-    implementor: ['claude-code 2.1 · opus · high effort', 'the runtime reported claude-opus-5-5'],
+  assert.deepEqual(p.facts(), {
+    implementor: ['claude-code 2.1 · opus · high effort · the runtime reported claude-opus-5-5'],
     policy: ['read-write workspace · 20m 0s · $5.00 cap · scope candidate'],
-    outcome: ['completed · verify 2/3 ✓', 'wall 1m 47s · turn 1m 40s · runtime 412ms', '$0.50 (runtime)'],
-    skills: ['review×3, go×1'],
-    'tool calls': ['12'],
-    workflow: ['wf-1'],
+    verify: ['2/3 ✓'],
+    timing: ['turn 1m 40s · runtime 412ms'],
+    activity: ['12 tool calls'],
+    skills: ['review×3, go'],
+    workflow: ['the workflow run'],
   });
+  assert.equal(p.$('run-detail').querySelector('div.nodes'), null);
   const record = p.$('run-detail').querySelector('details.record');
   assert.ok(!record.open);
   assert.equal(record.querySelector('summary').textContent, 'Record as stored');
@@ -309,19 +449,148 @@ test('an opened run shows its facts, its judge counts and its record folded', as
 
   p.row('wf-1').click();
   await settle();
-  const workflow = p.facts();
-  assert.ok(workflow.started[0]);
-  delete workflow.started;
-  assert.deepEqual(workflow, {
-    process: ['panel'],
-    outcome: ['completed', 'wall 2m 0s'],
-    nodes: ['first — implement · completed', 'judge — judge, join · failed'],
+  assert.deepEqual(p.facts(), {
     rulings: ['fix 2, defer 1 (3 items)'],
     severities: ['minor 2, major 1'],
-    'by source': ['1 first: fix 2, defer 1'],
   });
-  assert.deepEqual(p.$('run-detail').querySelectorAll('span.failed').map((s) => s.textContent), ['failed']);
+  const nodes = p.$('run-detail').querySelector('div.nodes table');
+  assert.deepEqual(nodes.querySelectorAll('th').map((th) => th.textContent), ['Node', 'Process', 'Status', 'Wall', 'Cost', 'Rulings']);
+  assert.deepEqual(nodes.querySelectorAll('tbody tr').map(p.cells), [
+    ['first', 'implement', '✓', '1m 47s', '$0.50', 'fix 2, defer 1'],
+    ['judge join', 'judge', '⚠\uFE0E', '', '', ''],
+  ]);
+  assert.deepEqual(nodes.querySelectorAll('span.mark').map((m) => [m.title, m.className]), [['completed', 'mark ok'], ['failed', 'mark failed']]);
   assert.deepEqual(JSON.parse(p.$('run-detail').querySelector('details.record pre').textContent), workflowRecord);
+});
+
+test('an opened run shows what its result says above the record: verdict in the head, findings as cards, coverage as a table', async () => {
+  const reviewed = {
+    status: 'completed',
+    output: {
+      verdict: 'request_changes', summary: 'One **real** finding.',
+      findings: [{ severity: 'major', file: 'a.go', line: 12, title: 'A race', detail: 'It races.', fix_cost: { size: 'small' } }],
+      coverage: [{ item: '1. Paths', status: 'checked', detail: 'Read it.' }, { item: '2. Tests', status: 'finding', detail: 'See finding 1.' }],
+    },
+    text: '{"verdict":"request_changes"}',
+  };
+  const p = page({
+    storage: fakeStorage({ [VIEW_KEY]: 'runs' }),
+    answers: { 'api/runs/call-1': () => respond({ summary: call, record: { ...callRecord, result: reviewed } }) },
+  });
+  await p.started;
+  p.row('call-1').click();
+  await settle();
+  const d = p.$('run-detail');
+  const verdict = d.querySelector('div.run-title span.verdict');
+  assert.equal(verdict.textContent, 'request changes');
+  assert.ok(verdict.classList.contains('tone-bad'));
+
+  const card = d.querySelector('article.run-card').children;
+  const output = d.querySelector('section.output');
+  assert.ok(card.indexOf(output) < card.indexOf(d.querySelector('details.record')));
+  assert.deepEqual(output.children.map((c) => c.dataset.key), ['summary', 'findings', 'coverage']);
+  assert.equal(output.children[0].querySelector('strong').textContent, 'real');
+
+  const finding = output.querySelector('article.finding');
+  assert.deepEqual(finding.querySelector('div.finding-head').children.map((c) => c.textContent), ['major', 'A race', 'a.go:12']);
+  assert.ok(finding.querySelector('span.chip').classList.contains('tone-bad'));
+  assert.equal(finding.querySelector('div.finding-text').textContent, 'It races.');
+  assert.match(finding.querySelector('details.more').textContent, /^morefix costsizesmall$/);
+
+  const coverage = output.querySelector('table.part-table');
+  assert.deepEqual(coverage.querySelectorAll('th').map((th) => th.textContent), ['item', 'status', 'detail']);
+  assert.deepEqual(coverage.querySelectorAll('tbody tr').map(p.cells), [['1. Paths', 'checked', 'Read it.'], ['2. Tests', 'finding', 'See finding 1.']]);
+  assert.deepEqual(coverage.querySelectorAll('tbody tr').map((tr) => tr.children[1].className), ['tone-ok', 'tone-bad']);
+  // The text is the output as JSON: not shown again.
+  assert.doesNotMatch(output.textContent, /"verdict"/);
+});
+
+test('a failed run shows its error first, then its text, and no verdict', async () => {
+  const p = page({
+    storage: fakeStorage({ [VIEW_KEY]: 'runs' }),
+    answers: { 'api/runs/call-1': () => respond({ summary: call, record: { result: { status: 'failed', error: { class: 'rate_limited', message: 'Hit the limit.' }, text: 'Got as far as *this*.' } } }) },
+  });
+  await p.started;
+  p.row('call-1').click();
+  await settle();
+  const parts = p.$('run-detail').querySelector('section.output').children;
+  assert.deepEqual(parts.map((c) => [c.dataset.key, c.querySelector('div.markdown').textContent]),
+    [['error', 'Hit the limit.class: rate_limited'], ['text', 'Got as far as this.']]);
+  assert.equal(p.$('run-detail').querySelector('span.verdict'), null);
+});
+
+// An api/skills reply holding a skill named review in a folder for adapter.
+const skillsHolding = (content, adapter = 'claude-code', extra = {}) => respond({
+  home: false, adapters: [adapter], settings: [],
+  folders: [{ scope: 'repo', folder: '.claude/skills', adapters: [adapter], skills: [{ name: 'review', path: '/w/run/.claude/skills/review', content, checks: { passed: true }, ...extra }] }],
+});
+
+test('a skill the run used is a link that opens it over the run, from the run\'s working directory', async () => {
+  const p = page({
+    storage: fakeStorage({ [VIEW_KEY]: 'runs' }),
+    answers: { 'api/skills': (n, url) => (url === 'api/skills?path=%2Fw%2Frun' ? skillsHolding('---\nname: review\n---\n# Review\n\nRead **all** of it.') : respond({ home: true, folders: [], settings: [] })) },
+  });
+  await p.started;
+  p.row('call-1').click();
+  await settle();
+  const links = p.$('run-detail').querySelector('div.facts').querySelectorAll('a').filter((a) => a.href === '#review' || a.href === '#go');
+  assert.deepEqual(links.map((a) => a.textContent), ['review', 'go']);
+  assert.ok(links[0].click().defaultPrevented);
+  await settle();
+  assert.equal(p.$('skill-overlay').hidden, false);
+  assert.equal(p.document.activeElement, p.$('skill-close'));
+  const card = p.$('skill-detail').querySelector('article.skill-card');
+  assert.equal(card.dataset.skill, 'review');
+  assert.equal(card.querySelector('h3').textContent, 'review');
+  assert.equal(card.querySelector('p.run-when').textContent, '.claude/skills in /w/run · /w/run/.claude/skills/review');
+  assert.match(card.querySelector('p.group-note').textContent, /^As the run’s working directory holds it now/);
+  assert.equal(card.querySelector('div.markdown').textContent, 'ReviewRead all of it.');
+
+  // Escape closes the skill and leaves the run open; then the run.
+  p.document.dispatchEvent(new Event('keydown', { key: 'Escape' }));
+  assert.equal(p.$('skill-overlay').hidden, true);
+  assert.equal(p.detail(), 'call-1');
+  assert.equal(p.document.activeElement, p.$('run-close'));
+  p.document.dispatchEvent(new Event('keydown', { key: 'Escape' }));
+  assert.equal(p.detail(), null);
+
+  // A click beside the skill closes it alone; closing the run closes both.
+  p.row('call-1').click();
+  await settle();
+  links[0].click();
+  p.$('run-detail').querySelectorAll('a').find((a) => a.href === '#review').click();
+  await settle();
+  p.$('skill-overlay').click();
+  assert.equal(p.$('skill-overlay').hidden, true);
+  assert.equal(p.detail(), 'call-1');
+  p.$('run-detail').querySelectorAll('a').find((a) => a.href === '#review').click();
+  await settle();
+  p.$('run-close').click();
+  assert.equal(p.$('skill-overlay').hidden, true);
+  assert.equal(p.detail(), null);
+});
+
+test('a skill whose run\'s working directory is gone is read from the folder the picker shows, and says so', async () => {
+  const p = page({
+    storage: fakeStorage({ [VIEW_KEY]: 'runs' }),
+    answers: { 'api/skills': (n, url) => (url === 'api/skills?path=%2Fw%2Frun' ? respond({ error: 'no .agister folder at /w/run/.agister' }, 404) : skillsHolding('Home copy.')) },
+  });
+  await p.started;
+  p.row('call-1').click();
+  await settle();
+  p.$('run-detail').querySelectorAll('a').find((a) => a.href === '#review').click();
+  await settle();
+  const card = p.$('skill-detail').querySelector('article.skill-card');
+  assert.equal(card.querySelector('p.run-when').textContent.split(' · ')[0], '.claude/skills in Agister home');
+  assert.equal(card.querySelector('p.group-note').textContent,
+    'The run’s working directory, /w/run, cannot be read: this is the skill as it is here now, which can differ from what the run read.');
+  assert.equal(card.querySelector('div.markdown').textContent, 'Home copy.');
+  assert.deepEqual(p.calls.filter((u) => u.startsWith('api/skills')).slice(-2), ['api/skills?path=%2Fw%2Frun', 'api/skills?path=~']);
+
+  // A skill no place has says where it looked.
+  p.$('run-detail').querySelectorAll('a').find((a) => a.href === '#go').click();
+  await settle();
+  assert.equal(p.$('skill-detail').querySelector('p.group-note').textContent, 'No skill named go in /w/run, Agister home.');
 });
 
 test('the process and status filters show only the runs that match, and clearing them shows all', async () => {
@@ -377,7 +646,7 @@ test('a Settings read that succeeds after the user went to Runs leaves the Runs 
   await settle();
   assert.equal(p.$('status').hidden, false);
   assert.equal(p.$('status').textContent, 'the runs could not be read');
-  assert.deepEqual(p.shown(), { settings: false, runs: true });
+  assert.deepEqual(p.shown(), { settings: false, runs: true, compare: false });
 });
 
 test('a Settings read that fails while Runs is shown says why only once Settings is shown', async () => {

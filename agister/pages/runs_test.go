@@ -290,6 +290,33 @@ func TestWorkflowSummaryCountsJudgeItems(t *testing.T) {
 	}
 }
 
+func TestAWorkflowRunReadAloneGivesEachNodeItsRunsWallAndCost(t *testing.T) {
+	t.Parallel()
+	runs := t.TempDir()
+	runRecord(t, runs, "wf-1", `{"schema":"agister.run/v1alpha3","id":"wf-1","process":"code_review","request":{"process":"code_review","cwd":"/r"},"created_at":"2026-10-01T10:00:00Z",`+
+		`"workflow":{"nodes":[{"name":"first","process":"review","run":"r-1","status":"completed"},{"name":"second","process":"review","run":"r-2"},`+
+		`{"name":"gone","process":"review","run":"r-3"},{"name":"bad","process":"review","run":"../r-1"},{"name":"unstarted","process":"review"}]}}`)
+	runRecord(t, runs, "r-1", call("r-1", "review", "2026-10-01T10:00:00Z",
+		`,"result":{"status":"completed","cost":{"usd":0.25,"source":"runtime"},"timing":{"started_at":"2026-10-01T10:00:00Z","finished_at":"2026-10-01T10:00:01Z","wall_ms":1200}}`))
+	runRecord(t, runs, "r-2", call("r-2", "review", "2026-10-01T10:00:00Z", ""))
+
+	nodes := readRun(t, runs, "wf-1").Summary.Workflow.Nodes
+	if nodes[0].WallMS == nil || *nodes[0].WallMS != 1200 || deref(nodes[0].CostUSD) != 0.25 {
+		t.Fatalf("finished node: wall %v, cost %v", nodes[0].WallMS, deref(nodes[0].CostUSD))
+	}
+	for _, node := range nodes[1:] {
+		if node.WallMS != nil || node.CostUSD != nil {
+			t.Fatalf("%s: a node whose run is unfinished, missing or not a run ID has no wall or cost: %+v", node.Name, node)
+		}
+	}
+	// The list leaves them out: it would read every node's record.
+	for _, r := range listRuns(t, runs, 10).Runs {
+		if r.Workflow != nil && r.Workflow.Nodes[0].WallMS != nil {
+			t.Fatalf("listed workflow node has a wall: %+v", r.Workflow.Nodes[0])
+		}
+	}
+}
+
 func TestSummaryCountsSkillsAndToolCalls(t *testing.T) {
 	t.Parallel()
 	runs := t.TempDir()

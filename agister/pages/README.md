@@ -3,9 +3,9 @@
 `agister pages` serves a page that shows what Agister can run with a
 repo's settings and what that is made of, and how its runs went. `~` in
 the picker at the top right is Agister home, `~/.agister`; the picker also
-opens repos and lists recent ones. **Settings**, **Runs** and **Knowledge**
-at the top left switch between the three views; the page opens on the one
-shown last.
+opens repos and lists recent ones. **Settings**, **Runs**, **Compare** and
+**Knowledge** at the top left switch between the four views; the page opens
+on the one shown last.
 
 ## Settings
 
@@ -74,26 +74,53 @@ nearer layer holds a partial, so the page does not open those settings. ↻ read
 The runs are Agister home's, whatever the picker shows. ↻ reads them
 again.
 
-- **Compare**: a table per process, a row per runtime adapter, model and
-  effort (`-` when the call asked for none): runs, completed, pass rate,
-  mean verify attempts, median wall time and cost per completed run, with
-  the count of runs of unknown cost when there are any. Workflows are not
-  compared; their steps are.
-- **Runs**, newest first: when it started, the process, the implementor
+- Newest first, as tall as the window leaves room for, so Runs fits one
+  screen, under a head that stays put while the list scrolls: when it
+  started, the process, the implementor
   (`adapter model effort`; the model the runtime reported shows on hover
-  when it differs), status, verify (`2 ✓`: the attempts used and whether
+  when it differs), status (a green ✓ completed, a red ⚠ failed, an amber
+  ⚠ interrupted, the word for the others; the status on hover), verify (`2 ✓`: the attempts used and whether
   the last passed; empty without verify), wall time, cost, the skills used
-  (`name×n`) and the tool calls. A workflow's row shows its node count and
+  (`name×n`, the times the run loaded it, when more than once) and the tool calls. A workflow's row shows its node count and
   its judge's rulings instead of implementor and skills. Process and status
   filter the list. Runs whose record does not parse are counted under it.
-- Clicking a run opens it below the list: implementor, policy, outcome
-  (verify as `2/3 ✓`, out of the process's most), skills, the workflow it
-  belongs to, and for a workflow its nodes and its judge's items by
-  ruling, by severity and per source review. A link opens that run. The
+- Clicking a run opens it over the page; Close, Escape or a click beside
+  it closes it. Its head is the process, its status, cost and wall time,
+  then when it ran (`4:07 PM – 4:10 PM, 10.10.26`), its agent and, small,
+  its ID. Then implementor, policy, verify (`2/3 ✓`, out of the process's
+  most), turn and runtime timing, tool calls, the skills it used, each a
+  link, the workflow it belongs to, and for a workflow its judge's items by ruling and by
+  severity and its nodes as a table: process, status, wall, cost and the
+  rulings of the items each node was a source of. A link opens that run in
+  its place. Then what its result says: a review's verdict in the head
+  (green approve, red request changes), then its error, if any, and its
+  output, a part per key: summary first, then findings, a judge's items and
+  decisions as cards (severity, ruling, title, file and line, sources; the
+  detail, reason and action; the rest folded under *more*), coverage and
+  other lists of alike objects as tables, lists of strings as lists, text
+  as markdown, the rest as it nests; an empty list and an implement's checks are left out. Without an output the result's text
+  shows; with one, the text is that output as JSON and is left out. The
   record as stored is folded at the bottom.
+- A skill's link opens it over the run, rendered; Close, Escape or a click
+  beside it closes it and leaves the run open. A run keeps no copy of its
+  skills, so this is the skill as it is now, found as the run's runtime
+  would find it (the settings' skills, then the folders its adapter
+  loads): in the run's working directory, else, when that is gone or has
+  no such skill, the folder the picker shows, else Agister home. It says
+  which, and that it can differ from what the run read.
 
 Durations read `1m 47s` or `412ms`, costs `$0.50`, times in local time. A
 failed or interrupted run shows in red.
+
+## Compare
+
+The runs Runs lists, compared; ↻ reads the comparison again. A table per
+process, a row per runtime adapter, model and effort (`-` when the call
+asked for none): runs, completed, pass rate, mean verify attempts, median
+wall time and cost per completed run, with the count of runs of unknown
+cost when there are any. Workflows are not compared; their steps are.
+Clicking a process shows Runs filtered to it, with any status filter let
+go; a process none of the listed runs has leaves the list unfiltered.
 
 ## Knowledge
 
@@ -235,7 +262,8 @@ The server writes nothing and answers these endpoints:
   A run whose `record.json` does not parse is left out and counted in
   `skipped`; `total` counts the ones that parse.
 - `GET /api/runs/<run-id>`: one run's `summary` and its `record` as
-  stored. An ID that is not a plain run directory name is refused (400);
+  stored; a workflow's nodes carry their runs' `wall_ms` and `cost_usd`
+  once those have finished, which the list leaves out. An ID that is not a plain run directory name is refused (400);
   a run that is not there is a 404.
 - `GET /api/runs/compare`: the completed and failed calls (not
   workflows), grouped by process, then by runtime adapter, model and
@@ -277,7 +305,7 @@ It listens on loopback only and refuses a request whose Host is not
 The page itself is `index.html`, embedded in the binary with `repos.js`
 (the picker and the calls to the server), `config.js` (reading the
 settings; its YAML and TOML parsers cover what Agister settings use),
-`runs.js` (the Runs view's formatting, filters and compare tables),
+`runs.js` (the Runs and Compare views' formatting, filters, compare tables and how a run's output reads),
 `markdown-it.min.js` (markdown-it 15.0.2, the package's
 `dist/browser/markdown-it.umd.min.js` unchanged under a header with its
 source, checksum and MIT license; no npm dependency, no build step),
@@ -316,8 +344,8 @@ The browser's localStorage keeps, for the page's address:
   recent first, at most 10.
 - `agister-pages:current`: what was shown last (`~` or a repo path); the
   page opens on it.
-- `agister-pages:view`: the view shown last, `settings`, `runs` or
-  `knowledge`; the page opens on it.
+- `agister-pages:view`: the view shown last, `settings`, `runs`,
+  `compare` or `knowledge`; the page opens on it.
 
 ## Test
 

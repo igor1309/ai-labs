@@ -54,9 +54,15 @@ test('the view shown is kept under agister-pages:view; anything else reads as se
   assert.equal(U.readView(storage), 'runs');
   U.writeView(storage, 'knowledge');
   assert.equal(U.readView(storage), 'knowledge');
+  U.writeView(storage, 'compare');
+  assert.equal(U.readView(storage), 'compare');
   assert.equal(U.readView(fakeStorage({ [U.VIEW_KEY]: 'other' })), 'settings');
   assert.equal(U.readView({ getItem() { throw new Error('blocked'); } }), 'settings');
   U.writeView({ setItem() { throw new Error('full'); } }, 'runs');
+});
+
+test('Runs and Compare read Agister home\'s runs; Settings and Knowledge read the settings', () => {
+  assert.deepEqual(U.VIEWS.filter(U.readsRuns), ['runs', 'compare']);
 });
 
 test('a duration reads in ms under a second, then in seconds, minutes and hours', () => {
@@ -100,8 +106,9 @@ test('the implementor reads as adapter, model and effort; the reported model onl
   assert.equal(U.reportedModel(undefined), '');
 });
 
-test('skills read as name×count in the order given; none reads as empty', () => {
-  assert.equal(U.skills(call.skills), 'review×3, go×1');
+test('skills read as name×count in the order given, the count only above one; none reads as empty', () => {
+  assert.equal(U.skills(call.skills), 'review×3, go');
+  assert.equal(U.skills([{ name: 'a', count: 2 }, { name: 'b', count: 1 }, { name: 'c' }]), 'a×2, b, c');
   assert.equal(U.skills([]), '');
   assert.equal(U.skills(undefined), '');
 });
@@ -177,4 +184,109 @@ test('a call recorded before runtimes compares with its configuration as -', () 
   const [table] = U.compareTables([{ process: 'p', adapter: '', model: '', effort: '', runs: 1, completed: 1, pass_rate: 1,
     total_cost_usd: 0, cost_unknown: 0, cost_per_completed_usd: 0 }]);
   assert.deepEqual([table.rows[0].adapter, table.rows[0].model, table.rows[0].effort, table.rows[0].costPerCompleted], ['-', '-', '-', '$0.00']);
+});
+
+test('completed, failed and interrupted show as marks; the other statuses as words', () => {
+  assert.deepEqual(U.statusMark('completed'), { glyph: '✓', tone: 'ok' });
+  assert.deepEqual(U.statusMark('failed'), { glyph: '⚠︎', tone: 'failed' });
+  assert.deepEqual(U.statusMark('interrupted'), { glyph: '⚠︎', tone: 'warn' });
+  assert.equal(U.statusMark('running'), null);
+  assert.equal(U.statusMark('lost'), null);
+});
+
+test('a time span gives the date once when both ends fall on it', () => {
+  const local = (h, m, day = 9) => new Date(2026, 9, day, h, m).toISOString();
+  const time = (iso) => new Date(iso).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+  const [a, b, c] = [local(22, 1), local(22, 13), local(0, 10, 10)];
+  assert.equal(U.timeSpan(a, b), `${time(a)} – ${time(b)}, 09.10.26`);
+  assert.equal(U.timeSpan(a, c), `${time(a)}, 09.10.26 – ${time(c)}, 10.10.26`);
+  assert.equal(U.timeSpan(a, undefined), `${time(a)} –, 09.10.26`);
+  assert.match(U.timeSpan(new Date(2031, 0, 5, 9, 0).toISOString()), /, 05\.01\.31$/);
+  assert.equal(U.timeSpan('', b), '');
+  assert.equal(U.timeSpan('not a time', b), '');
+});
+
+test('a workflow\'s node rows carry their wall, cost and the rulings of the items they were a source of', () => {
+  assert.deepEqual(U.nodeRows(review.workflow).map((n) => [n.name, n.join, n.run, n.rulings]),
+    [['first', false, 'r1', 'fix 2'], ['second', false, 'r2', ''], ['judge', true, 'r3', '']]);
+  assert.deepEqual(U.nodeRows({ nodes: [{ name: 'a', process: 'p', wall_ms: 1500, cost_usd: 0.25 }] }),
+    [{ name: 'a', process: 'p', join: false, run: '', status: '', wall: '2s', cost: '$0.25', rulings: '' }]);
+  assert.deepEqual(U.nodeRows(undefined), []);
+});
+
+test('a review\'s output reads as its verdict, then summary, findings and coverage as text, cards and a table', () => {
+  const said = U.runOutput({
+    status: 'completed',
+    output: {
+      coverage: [{ item: '1. Paths', status: 'checked', detail: 'Read it.' }, { item: '2. Tests', status: 'finding' }],
+      verdict: 'request_changes',
+      findings: [{
+        severity: 'major', file: 'a.go', line: 12, title: 'A race', detail: 'It races.',
+        evidence: { case: 'Run it twice.', trace: ['a.go:12', 'b.go:3'] }, fix_cost: { size: 'small' },
+      }],
+      summary: 'One finding.',
+      extra: 7,
+    },
+    text: '{"verdict":"request_changes"}',
+  });
+  assert.equal(said.verdict, 'request_changes');
+  assert.deepEqual(said.parts.map((p) => [p.key, p.kind]), [['summary', 'text'], ['findings', 'cards'], ['coverage', 'table'], ['extra', 'text']]);
+  assert.deepEqual(said.parts[1].cards[0], {
+    tags: ['major'], title: 'A race', where: 'a.go:12', sources: '', texts: [['detail', 'It races.']],
+    more: { kind: 'facts', facts: [
+      ['evidence', { kind: 'facts', facts: [['case', { kind: 'text', text: 'Run it twice.' }], ['trace', { kind: 'list', items: ['a.go:12', 'b.go:3'] }]] }],
+      ['fix_cost', { kind: 'facts', facts: [['size', { kind: 'text', text: 'small' }]] }],
+    ] },
+  });
+  assert.deepEqual(said.parts[2], { key: 'coverage', kind: 'table', columns: ['item', 'status', 'detail'], rows: [['1. Paths', 'checked', 'Read it.'], ['2. Tests', 'finding', '']] });
+});
+
+test('a judge\'s items are cards with their ruling, sources, reason and action; an empty list is left out', () => {
+  const said = U.runOutput({ output: { summary: 's', items: [{ title: 'T', ruling: 'fix', severity: 'minor', sources: ['1#1', '3#2'], reason: 'R', action: 'A', missing_evidence: '' }], coverage_gaps: [] } });
+  assert.equal(said.verdict, '');
+  assert.deepEqual(said.parts[1].cards[0], { tags: ['minor', 'fix'], title: 'T', where: '', sources: '1#1, 3#2', texts: [['reason', 'R'], ['action', 'A']], more: null });
+  assert.deepEqual(said.parts.map((p) => p.key), ['summary', 'items']);
+  assert.deepEqual(U.runOutput({ output: { summary: 's', findings: [], coverage: [] }, text: 'x' }).parts.map((p) => p.key), ['summary']);
+});
+
+test('without an output a result reads as its text; an error comes first, its message then its class', () => {
+  assert.deepEqual(U.runOutput({ status: 'completed', text: 'Plain *answer*.' }).parts, [{ key: 'text', kind: 'text', text: 'Plain *answer*.' }]);
+  assert.deepEqual(U.runOutput({ status: 'failed', error: { class: 'rate_limited', message: 'Hit the limit.' }, text: 'partial' }).parts, [
+    { key: 'error', kind: 'text', text: 'Hit the limit.\n\nclass: rate_limited' },
+    { key: 'text', kind: 'text', text: 'partial' },
+  ]);
+  // An implement's checks are left out; its files and notes show.
+  assert.deepEqual(U.runOutput({ output: { summary: 's', checks: [{ command: 'go test', exit_code: 0 }], files_changed: ['a.go'], notes: 'n' } }).parts.map((p) => p.key),
+    ['summary', 'files_changed', 'notes']);
+  assert.deepEqual(U.runOutput({ output: 'just a string' }).parts, [{ key: 'output', kind: 'text', text: 'just a string' }]);
+  assert.deepEqual(U.runOutput({ output: { verdict: { odd: true } } }).parts, [{ key: 'verdict', kind: 'facts', facts: [['odd', { kind: 'text', text: 'true' }]] }]);
+  assert.deepEqual(U.runOutput(undefined), { verdict: '', parts: [] });
+});
+
+test('a run\'s skill is looked for in its working directory, the picker\'s folder and home, each once', () => {
+  assert.deepEqual(U.skillPlaces('/w', '/repo', '~'), ['/w', '/repo', '~']);
+  assert.deepEqual(U.skillPlaces('/repo', '/repo', '~'), ['/repo', '~']);
+  assert.deepEqual(U.skillPlaces(undefined, '~', '~'), ['~']);
+});
+
+test('a skill is found as the run\'s runtime finds it: settings first, then its adapter\'s folders, read before unread', () => {
+  const skill = (name, content, path) => ({ name, content, path });
+  const reply = {
+    settings: [skill('named', 'from settings', 's')],
+    folders: [
+      { folder: '.claude/skills', adapters: ['claude-code'], skills: [skill('review', 'claude copy', 'c'), skill('named', 'claude named', 'cn')] },
+      { folder: '.agents/skills', adapters: ['codex'], skills: [skill('review', '', 'unread'), skill('review', 'codex copy', 'x')] },
+    ],
+  };
+  assert.deepEqual(U.findSkill(reply, 'review', 'codex'), { skill: skill('review', 'codex copy', 'x'), folder: '.agents/skills' });
+  assert.deepEqual(U.findSkill(reply, 'review', 'claude-code'), { skill: skill('review', 'claude copy', 'c'), folder: '.claude/skills' });
+  assert.equal(U.findSkill(reply, 'named', 'claude-code').folder, 'settings');
+  assert.equal(U.findSkill({ folders: [{ folder: 'f', adapters: [], skills: [{ name: 'x', state: 'too_large' }] }] }, 'x', 'codex').skill.state, 'too_large');
+  assert.equal(U.findSkill(reply, 'absent', 'codex'), null);
+  assert.equal(U.findSkill(undefined, 'review', 'codex'), null);
+});
+
+test('verdicts, statuses and severities have a tone; other values none', () => {
+  assert.deepEqual(['approve', 'checked', 'request_changes', 'finding', 'major', 'minor', 'rule_only', 'fix', 'whatever'].map(U.tone),
+    ['ok', 'ok', 'bad', 'bad', 'bad', 'warn', 'warn', '', '']);
 });
