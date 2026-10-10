@@ -94,10 +94,15 @@ func baseName(node *yaml.Node) string {
 //
 // A partial that sets extends, a base that cannot be read, is of another
 // layer or names a base of its own are problems of the process: it is
-// returned as its own files compose it, with the error.
+// returned as its own files compose it, with the error. So is a file of a
+// process that declares extends and does not compose: read whole, it
+// would run without the base it names, or past the rules on it.
 func Extended(process Document, own func(name string) (Document, error)) (Document, error) {
 	texts := ownTexts(process)
 	trees, err := layerTrees(texts)
+	if err != nil && declares(texts) {
+		return process, err
+	}
 	if err != nil {
 		return process, nil // a problem of its own composition, which ParseProcess reports
 	}
@@ -197,6 +202,16 @@ func namedOnce(trees []*composedNode, at int) []*composedNode {
 		}
 	}
 	return kept
+}
+
+// declares reports whether any of a process's files sets extends.
+func declares(texts []LayerText) bool {
+	for _, text := range texts {
+		if len(topLevel(text.Bytes)["extends"]) > 0 {
+			return true
+		}
+	}
+	return false
 }
 
 // holds reports whether one of a base's files in layer holds its whole

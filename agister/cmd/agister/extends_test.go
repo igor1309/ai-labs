@@ -130,6 +130,19 @@ func TestWhatAnExtendingProcessCannotDo(t *testing.T) {
 		{"the base exists", func(e extending) {
 			write(t, e.child, strings.Replace(childAsk, "process:base_ask", "process:gone", 1))
 		}, "process child_ask: extends process:gone: not found"},
+		// A file that names a base and does not compose is not read whole
+		// in its place: its last uses would run it without the base.
+		{"a duplicate key does not hide a missing base", func(e extending) {
+			write(t, e.child, strings.Replace(childAsk, "process:base_ask", "process:gone", 1)+"uses: agent:assistant\nuses: agent:assistant\n")
+		}, "process child_ask: HOME_CHILD: uses: is declared more than once"},
+		{"extends is named once", func(e extending) {
+			write(t, e.child, childAsk+"uses: agent:assistant\nextends: process:base_ask\n")
+		}, "process child_ask: HOME_CHILD: extends: is declared more than once"},
+		{"a duplicate key does not hide a base's base", func(e extending) {
+			write(t, filepath.Join(e.home, "processes", "root_ask.yaml"), strings.Replace(baseAsk, "name: base_ask", "name: root_ask", 1))
+			write(t, e.base, baseAsk+"extends: process:root_ask\n")
+			write(t, e.child, childAsk+"uses: agent:assistant\nstatus: draft\nstatus: ready\n")
+		}, "process child_ask: HOME_CHILD: status: is declared more than once"},
 	} {
 		t.Run(c.name, func(t *testing.T) {
 			t.Parallel()
@@ -243,9 +256,11 @@ func TestABrokenProcessKeepsItsBaseABase(t *testing.T) {
 		change  func(t *testing.T, e extending)
 		problem string
 	}{
+		// The file that names a base and does not compose says so, by
+		// its path, before it is parsed.
 		{"a duplicate key", func(t *testing.T, e extending) {
 			write(t, e.child, childAsk+"prompt: ask\n")
-		}, "process child_ask: prompt: is declared more than once"},
+		}, "process child_ask: HOME_CHILD: prompt: is declared more than once"},
 		{"an unreadable partial", func(t *testing.T, e extending) {
 			if err := os.Symlink(filepath.Join(e.repo, "nowhere.yaml"), e.repoChild); err != nil {
 				t.Fatal(err)
@@ -259,8 +274,9 @@ func TestABrokenProcessKeepsItsBaseABase(t *testing.T) {
 				t.Fatal(err)
 			}
 			c.change(t, e)
-			if r := agister(t, e.home, e.repo, "check"); r.code != cli.ExitUsage || !strings.Contains(r.stderr, c.problem) {
-				t.Fatalf("check: %d, want %q\n%s%s", r.code, c.problem, r.stdout, r.stderr)
+			problem := strings.NewReplacer("HOME_CHILD", e.child).Replace(c.problem)
+			if r := agister(t, e.home, e.repo, "check"); r.code != cli.ExitUsage || !strings.Contains(r.stderr, problem) {
+				t.Fatalf("check: %d, want %q\n%s%s", r.code, problem, r.stdout, r.stderr)
 			}
 			want := "process base_ask is a base of child_ask"
 			if r := agister(t, e.home, e.repo, "run", "base_ask", "--quiet", "--timeout", "1m"); r.code != cli.ExitRefused || !strings.Contains(r.stderr, want) {
