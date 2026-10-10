@@ -3,11 +3,6 @@ name: implement
 type: process
 uses: agent:claude-implementer-opus
 policy: process-policy:implement
-# Prompt implement, shared by every implement* process, sends the agent
-# to its skills and the repository's AGENTS.md for its testing command,
-# on purpose (LAB-161): where the full suite is too slow to run on every
-# change (iFora's takes 15 minutes), choosing which tests to run is the
-# agent's judgement, which no verification command can make for it.
 prompt: implement
 
 input:
@@ -17,8 +12,6 @@ input:
     brief: {}
   values:
     candidate_revision: {source: git.revision, rev: "${param.candidate}"}
-    # A goal, for a one-step change, or a step brief (ADR-026): the call
-    # is refused unless its text has one of the two forms, briefs/*.yaml.
     brief: {source: file, path: "${param.brief}", form: [goal, step]}
 
 workspace:
@@ -30,7 +23,4 @@ output:
   schema: implementation
   require_valid: true
 
-
-# The repository's own check: <repo>/.agister/verifies/repo.yaml. Calls
-# are refused in a repository without one (ADR-010).
 verify: verify:repo

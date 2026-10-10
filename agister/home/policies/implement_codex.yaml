@@ -1,8 +1,3 @@
-# Implementation on Codex in a checkout of the candidate: policy implement
-# under its own name. Neither sets a cost limit, which Codex, reporting
-# cost only after a turn, could not enforce; the timeout bounds the call.
-# Codex's workspace-write grants less than this allows
-# (runtimes/codex.yaml): no commits, no network.
 schema: agister.process-policy/v1alpha1
 name: implement_codex
 
@@ -27,7 +22,6 @@ timeout: 45m
 retry:
   max_attempts: 1
 
-# implement's limits, the same work (its own 2 runs: event gap 158 s, command 34 s); no_output unset as there.
 stale:
   no_event: 21m
   tool_command: 15m

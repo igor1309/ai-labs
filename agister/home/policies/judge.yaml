@@ -1,5 +1,3 @@
-# A judge rules on the evidence it is given and reads nothing else: no
-# tools, no repository access.
 schema: agister.process-policy/v1alpha1
 name: judge
 
@@ -13,6 +11,5 @@ timeout: 10m
 retry:
   max_attempts: 1
 
-# 2x+ review_judge's longest event gap (42 s), 09-30..10-01; no tools and no verify, so no other limit.
 stale:
   no_event: 3m

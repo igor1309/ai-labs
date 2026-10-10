@@ -105,6 +105,10 @@ Supply the document; do not route around the refusal.
   document: one with a second, after a `---`, is a settings problem
   (`must hold exactly one YAML document`), not a second document. Split
   it into one file per document.
+- A settings document carries no comments. What it is for is its name
+  and fields; why it is so belongs in its commit's message, and a choice
+  that must hold belongs in a test. No ADR or issue references, no
+  history, no restating what composition does.
 - A process says what it needs of the worktree under `workspace`, each
   field optional:
   - `revision`, the input that resolves to a revision: a call is refused

@@ -1,5 +1,3 @@
-# A plain question about the repository, answered in text.
-
 schema: agister.process/v1alpha1
 name: ask
 

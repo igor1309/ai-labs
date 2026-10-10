@@ -1,6 +1,3 @@
-# Shared execution-policy defaults for static, agent-backed review processes.
-# Concrete work and input/output contracts remain in each process.
-
 schema: agister.process-policy/v1alpha1
 name: static-review
 
@@ -9,8 +6,6 @@ workspace:
   scope: candidate
 
 tools:
-  # This allowlist controls exposed capabilities; isolation.deny removes
-  # permissions from it. Neither contains a runtime that bypasses its tools.
   allow:
     - repository.read
     - repository.diff

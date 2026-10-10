@@ -1,23 +1,10 @@
-# The step brief: one implementer run (ADR-026 rule 4). It refers to its
-# goal and names the goal's criteria it makes true; a review round's brief
-# is a step brief whose items are the judge's fix items. A one-step change
-# needs none: the goal is passed as the brief. A value that names this
-# form refuses a call whose text lacks a required part, leaves one empty,
-# names a goal file that does not exist, or whose Open does not read None.
-#
-# Copy the template and fill each part. Agister checks the structure,
-# never the meaning.
 schema: agister.brief/v1alpha1
 name: step
 
 parts:
-  # Its first back-quoted path, relative to the caller's directory, must
-  # exist.
   - {heading: "## Goal", required: true, reference: file}
   - {heading: "## Covers", required: true}
-  # When there are findings or judge items.
   - {heading: "## Acts on", required: false}
-  # Only what the goal does not already say.
   - {heading: "## Constraints", required: false}
   - {heading: "## Open", required: true, reads: None.}
 

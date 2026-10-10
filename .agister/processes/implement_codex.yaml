@@ -1,4 +1,1 @@
-# The Go guidance this repository gives implement_codex (LAB-161): it
-# writes the code, so it gets both Go prompts. Its other fields come
-# from home.
 guidance: [go-testing-seams, go-architecture]

@@ -1,7 +1,3 @@
-# Implementation in a checkout of the candidate. Claude Code gets Bash,
-# which grants everything its mapping lists (runtimes/claude-code.yaml), so
-# this policy allows all of it; Agister keeps the checkout's changes as a
-# patch artifact.
 schema: agister.process-policy/v1alpha1
 name: implement
 
@@ -26,7 +22,6 @@ timeout: 45m
 retry:
   max_attempts: 1
 
-# 2x+ implement runs' longest event gap (604 s) and command (400 s), 09-30..10-01; no_output unset: verify is quiet until it ends.
 stale:
   no_event: 21m
   tool_command: 15m
