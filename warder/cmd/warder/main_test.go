@@ -725,6 +725,52 @@ func TestAUsageErrorExitsWithCode2AndStartsNothing(t *testing.T) {
 	}
 }
 
+// -h or -help, anywhere on the command line, writes the help on stderr,
+// the usage line first and every flag with its argument, exits 0 and
+// starts nothing. stdout stays the observations' alone.
+func TestHelpGoesToStderrExits0AndStartsNothing(t *testing.T) {
+	t.Parallel()
+	for _, args := range [][]string{
+		{"warder", "-h"},
+		{"warder", "-help"},
+		{"warder", "--help"},
+		{"warder", "-claude", "claude-main", "-h"},
+	} {
+		t.Run(strings.Join(args, " "), func(t *testing.T) {
+			t.Parallel()
+			clock := clocktest.NewClock(morning())
+			stdout, stderr := newLines(), newLines()
+			executor := &executorSpy{answer: answerSessions}
+			home := &codexHomeFake{sessions: threeSessions()}
+
+			code := run(t.Context(), args, stdout, stderr, executor.execute, home.files(), clock.Now, clock.Timer, nil)
+
+			if code != 0 {
+				t.Errorf("got the exit code %d, want 0", code)
+			}
+			help := strings.Join(stderr.all(), "")
+			if !strings.HasPrefix(help, usage+"\n") {
+				t.Errorf("got on stderr %q, want the usage line first", help)
+			}
+			for _, flag := range []string{"-claude source-id", "-codex source-id", "-verbose"} {
+				if !strings.Contains(help, "  "+flag+"\n") {
+					t.Errorf("got on stderr %q, want the flag %q", help, flag)
+				}
+			}
+			assertNoLines(t, "stdout", stdout)
+			if got := executor.executed(); len(got) != 0 {
+				t.Errorf("got the commands %q, want none", got)
+			}
+			if got := home.asked(); len(got) != 0 {
+				t.Errorf("got the file operations %q, want none", got)
+			}
+			if got := clock.Waits(); len(got) != 0 {
+				t.Errorf("got timers of %v, want none", got)
+			}
+		})
+	}
+}
+
 // The sources of each runtime are those of every flag of it, in the order
 // given, whatever the order of the two flags among themselves.
 func TestParseCommandLineKeepsTheOrderOfTheFlags(t *testing.T) {
