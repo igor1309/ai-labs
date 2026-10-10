@@ -1632,7 +1632,7 @@ func parseAgent(t *testing.T, root, agent string) definition.Agent {
 	return parsed
 }
 
-// The judge runs under no cost limit: its policy sets none, so its call's
+// The judge runs under no cost limit: its process sets none, so its call's
 // effective limits carry none.
 func TestTheJudgeHasNoCostLimit(t *testing.T) {
 	t.Parallel()
@@ -1644,6 +1644,57 @@ func TestTheJudgeHasNoCostLimit(t *testing.T) {
 	}
 	if limit, set := effective["max_cost_usd"]; set {
 		t.Fatalf("the judge's effective cost limit is %v, want none", limit)
+	}
+}
+
+// The judge runs read-only and with no permission, for 10 minutes at most,
+// in one attempt, and is ended after 3 minutes without a runtime event: its
+// call's effective limits record each.
+func TestTheJudgeRunsUnderItsLimits(t *testing.T) {
+	t.Parallel()
+	_, repo, home := onFakeRuntimes(t)
+	_, records := judgedReviews(t, home, repo, "code_review")
+	recorded, ok := records["review_judge"]["effective"]
+	if !ok {
+		t.Fatalf("the judge's run records no effective limits: %v", records["review_judge"])
+	}
+	data, err := json.Marshal(recorded)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var got domain.EffectivePolicy
+	if err := json.Unmarshal(data, &got); err != nil {
+		t.Fatalf("the judge's effective limits %s: %v", data, err)
+	}
+	if got.Access != "read-only" {
+		t.Errorf("the judge's workspace access is %q, want read-only", got.Access)
+	}
+	if len(got.Allow) != 0 || len(got.Permissions) != 0 {
+		t.Errorf("the judge is allowed %v and has permissions %v, want none", got.Allow, got.Permissions)
+	}
+	if got.Timeout != 10*time.Minute {
+		t.Errorf("the judge's timeout is %s, want 10m", got.Timeout)
+	}
+	if got.MaxAttempts != 1 {
+		t.Errorf("the judge's attempts are %d, want 1", got.MaxAttempts)
+	}
+	if want := (domain.StaleLimits{NoEvent: 3 * time.Minute}); got.Stale == nil || *got.Stale != want {
+		t.Errorf("the judge's stale limits are %+v, want %+v", got.Stale, want)
+	}
+}
+
+// The judge names no policy: its call's definitions hold its process and no
+// policy.
+func TestTheJudgeNamesNoPolicy(t *testing.T) {
+	t.Parallel()
+	_, repo, home := onFakeRuntimes(t)
+	_, records := judgedReviews(t, home, repo, "code_review")
+	judge := run{record: records["review_judge"]}
+	definitionOf(t, judge, string(definition.KindProcess), "review_judge")
+	for _, d := range judge.record["definitions"].([]any) {
+		if d := d.(map[string]any); d["kind"] == string(definition.KindPolicy) {
+			t.Fatalf("the judge's call read policy %v, want none", d["name"])
+		}
 	}
 }
 

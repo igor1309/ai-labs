@@ -3,8 +3,20 @@ name: review_judge
 
 type: process
 uses: agent:claude-judge
-policy: process-policy:judge
 prompt: code-review-judge
+
+workspace:
+  access: read-only
+
+tools:
+  allow: []
+
+timeout: 10m
+retry:
+  max_attempts: 1
+
+stale:
+  no_event: 3m
 
 input:
   instruction: >-
