@@ -20,7 +20,19 @@ import (
 // that home's settings folder holds too, by kind and name, each with the
 // reason the repository's must differ from home's (ADR-027 rule 6). Every
 // other document of .agister is the repository's own.
-var projectReplacements = map[string]string{}
+var projectReplacements = map[string]string{
+	"processes/implement":                 goGuidance,
+	"processes/implement_codex":           goGuidance,
+	"processes/implement_pi":              goGuidance,
+	"processes/implement_pi_glm":          goGuidance,
+	"processes/architecture_review_codex": goGuidance,
+	"processes/tests_review_codex":        goGuidance,
+}
+
+// goGuidance is why the repository sets the guidance of each process of
+// home that took a Go prompt before ADR-028.
+const goGuidance = "it carries over the Go prompts home's process took as optional inputs before ADR-028, " +
+	"as guidance alone (ADR-028 Migration step 4); LAB-161 replaces it"
 
 // Home's settings folder installs into an empty home with this binary, every
 // file of it a settings document installed as it is, and passes check there

@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readdirSync, readFileSync, statSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import '../config.js';
@@ -469,35 +469,81 @@ for (const path of ['.agister', 'agister/home', 'agister/examples/settings']) {
   });
 }
 
-// Home's source folder holds every document its processes and workflows
-// name but the verification, which this repository's .agister supplies
-// (ADR-027 rules 3 and 6): composed as the page composes home and a repo,
-// nothing they name is missing, and the folder alone lacks only that.
-// Home's processes name prompt and guidance (ADR-028 rule 8); each is
-// resolved and linked in the view.
-test('the settings in agister/home, with .agister over them, name nothing missing', async () => {
-  const m = await C.loadComposed(diskDir(join(repoRoot, 'agister/home')), diskDir(join(repoRoot, '.agister')));
-  assert.ok(m.processes.length > 0);
-  assert.ok(m.workflows.length > 0);
-  for (const p of m.processes) {
-    assert.ok(!p.error, `${p.file}: ${p.error}`);
-    assert.deepEqual([p.agentOutside, p.policyOutside, p.outputOutside], [false, false, false], p.name);
-    assert.ok(p.prompt && !p.prompt.outside, p.name);
-    for (const prompt of p.guidance) assert.equal(prompt.outside, false, `${p.name}: ${prompt.name}`);
-    for (const form of p.forms) assert.equal(form.outside, false, `${p.name}: ${form.name}`);
-    if (p.verify) {
-      const v = m.verifies.find((x) => x.name === p.verify.ref);
-      assert.deepEqual([v?.source, p.verify.outside], ['repo', false], `${p.name}: ${p.verify.ref}`);
-    }
-  }
-  for (const w of m.workflows) {
-    assert.ok(!w.error, `${w.file}: ${w.error}`);
-    for (const node of [...w.fanOut, w.join]) assert.equal(node.outside, false, `${w.name}: ${node.process}`);
-    for (const form of w.forms) assert.equal(form.outside, false, `${w.name}: ${form.name}`);
-  }
-  for (const a of m.agents) assert.equal(a.runtimeOutside, false, a.name);
-  assert.deepEqual(m.verifies.map((v) => [v.name, v.source]), [['repo', 'repo'], ['warder', 'repo']]);
+// A directory handle over dir whose entries named in extra are those
+// handles instead, or are added.
+function overlay(dir, extra) {
+  return {
+    kind: 'directory',
+    name: dir.name,
+    async *entries() {
+      for await (const [n, handle] of dir.entries()) if (!(n in extra)) yield [n, handle];
+      yield* Object.entries(extra);
+    },
+    async getDirectoryHandle(n) {
+      return n in extra ? extra[n] : dir.getDirectoryHandle(n);
+    },
+    async getFileHandle(n) {
+      return dir.getFileHandle(n);
+    },
+  };
+}
 
+// The repository's layer as a call launched in project reads it, folded
+// into one folder for this two-layer reader: .agister, its prompts read
+// from the library its layer.yaml lists, and the project's own folders,
+// none of which the repository's layer holds (ADR-028 rules 1 and 9). The
+// server composes the three layers with Go.
+function launchedIn(project) {
+  const settings = join(repoRoot, '.agister');
+  const layer = C.parseYaml(readFileSync(join(settings, 'layer.yaml'), 'utf8'));
+  assert.equal(existsSync(join(settings, 'prompts')), false, '.agister/prompts would come before the library');
+  assert.equal(layer.prompts.length, 1, 'this reader folds one library');
+  const extra = { prompts: diskDir(join(repoRoot, layer.prompts[0])) };
+  const own = join(repoRoot, project, '.agister');
+  for (const n of readdirSync(own)) {
+    assert.equal(existsSync(join(settings, n)), false, `${project}/.agister/${n} and .agister/${n} would not fold`);
+    extra[n] = diskDir(join(own, n));
+  }
+  return overlay(diskDir(settings), extra);
+}
+
+// Home's source folder holds every document its processes and workflows
+// name but the verification, which each project's layer of this
+// repository supplies (ADR-027 rules 3 and 6, ADR-028 Migration step 4):
+// composed as the page composes home and a repo, for a call launched in
+// each project, nothing they name is missing, and the folder alone lacks
+// only that. Home's processes name prompt and guidance (ADR-028 rule 8);
+// each is resolved and linked in the view, the Go guidance from the
+// repository's library.
+for (const project of ['agister', 'warder']) {
+  test(`the settings in agister/home, with the layers of ${project}/ over them, name nothing missing`, async () => {
+    const m = await C.loadComposed(diskDir(join(repoRoot, 'agister/home')), launchedIn(project));
+    assert.ok(m.processes.length > 0);
+    assert.ok(m.workflows.length > 0);
+    for (const p of m.processes) {
+      assert.ok(!p.error, `${p.file}: ${p.error}`);
+      assert.deepEqual([p.agentOutside, p.policyOutside, p.outputOutside], [false, false, false], p.name);
+      assert.ok(p.prompt && !p.prompt.outside, p.name);
+      for (const prompt of p.guidance) assert.equal(prompt.outside, false, `${p.name}: ${prompt.name}`);
+      for (const form of p.forms) assert.equal(form.outside, false, `${p.name}: ${form.name}`);
+      if (p.verify) {
+        const v = m.verifies.find((x) => x.name === p.verify.ref);
+        assert.deepEqual([v?.source, p.verify.outside], ['repo', false], `${p.name}: ${p.verify.ref}`);
+      }
+    }
+    for (const w of m.workflows) {
+      assert.ok(!w.error, `${w.file}: ${w.error}`);
+      for (const node of [...w.fanOut, w.join]) assert.equal(node.outside, false, `${w.name}: ${node.process}`);
+      for (const form of w.forms) assert.equal(form.outside, false, `${w.name}: ${form.name}`);
+    }
+    for (const a of m.agents) assert.equal(a.runtimeOutside, false, a.name);
+    assert.deepEqual(m.verifies.map((v) => [v.name, v.source]), [['repo', 'repo']]);
+    const implement = m.processes.find((p) => p.name === 'implement');
+    assert.deepEqual(implement.guidance.map((g) => g.name), ['go-testing-seams', 'go-architecture']);
+  });
+}
+
+test('the settings in agister/home alone lack only the verification', async () => {
   const alone = await C.loadAgister(diskDir(join(repoRoot, 'agister/home')));
   const implement = alone.processes.find((p) => p.name === 'implement');
   assert.equal(implement.verify.outside, true);

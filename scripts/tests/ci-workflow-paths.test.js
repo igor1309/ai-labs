@@ -38,15 +38,15 @@ test("ciPathFilters_shouldNotRunAgisterCore_onUnrelatedPromptChange", () => {
   assert.equal(jobRuns("agister-core", changedFiles), false);
 });
 
-test("ciPathFilters_shouldRunWarderCore_onWarderVerifyChangeOnly", () => {
-  const changedFiles = [".agister/verifies/warder.yaml"];
+test("ciPathFilters_shouldRunAgisterCore_onAgisterLayerChangeOnly", () => {
+  const changedFiles = ["agister/.agister/verifies/repo.yaml"];
 
-  assert.equal(matchingFilters(changedFiles).has("warder"), true);
-  assert.equal(jobRuns("warder-core", changedFiles), true);
+  assert.equal(matchingFilters(changedFiles).has("agister"), true);
+  assert.equal(jobRuns("agister-core", changedFiles), true);
 });
 
-test("ciPathFilters_shouldRunWarderCore_onWarderImplementProcessChangeOnly", () => {
-  const changedFiles = [".agister/processes/implement_warder.yaml"];
+test("ciPathFilters_shouldRunWarderCore_onWarderLayerChangeOnly", () => {
+  const changedFiles = ["warder/.agister/verifies/repo.yaml"];
 
   assert.equal(matchingFilters(changedFiles).has("warder"), true);
   assert.equal(jobRuns("warder-core", changedFiles), true);

@@ -1,7 +1,8 @@
-# This repository's check for every process that names verify:repo
-# (ADR-010): run with the operator's authority after each valid turn, in
-# the call's worktree, at the candidate with the turn's changes (ADR-025);
-# the node completes only when it passes.
+# Agister's check for every process that names verify:repo (ADR-010),
+# launched in agister/ (ADR-028 rule 1): run with the operator's authority
+# after each valid turn, in the call's worktree, at the candidate with the
+# turn's changes (ADR-025), from the worktree root (ADR-028 rule 2); the
+# node completes only when it passes. It covers gokit too.
 schema: agister.verify/v1alpha1
 name: repo
 command: >-
