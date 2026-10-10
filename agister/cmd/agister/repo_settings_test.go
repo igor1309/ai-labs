@@ -269,16 +269,7 @@ func TestRepositoryProcessesRunOnFakeRuntimes(t *testing.T) {
 	joined := map[string]bool{}
 	for _, path := range workflows {
 		name := strings.TrimSuffix(filepath.Base(path), ".yaml")
-		data, err := os.ReadFile(path)
-		if err != nil {
-			t.Fatal(err)
-		}
-		workflow, err := definition.ParseWorkflow(definition.Document{
-			Source: definition.Source{Kind: definition.KindWorkflow, Name: name, Path: path}, Bytes: data,
-		})
-		if err != nil {
-			t.Fatal(err)
-		}
+		workflow := parseWorkflow(t, root, name)
 		joined[workflow.Join.Process] = true
 		t.Run("workflow "+name, func(t *testing.T) {
 			args := append([]string{"run", name}, paramArgs(t, ".", workflow.Params)...)
@@ -534,6 +525,82 @@ func TestADRReviewCollectsTheADRReview(t *testing.T) {
 	digest := "sha256:" + hex.EncodeToString(sum[:])
 	if given := inputOf(t, records["adr_review_codex"], "prompt"); given["source"] != "prompt" || given["identity"] != digest {
 		t.Fatalf("adr_review_codex's prompt = %v, want the prompt code-review-adr (%s)", given, digest)
+	}
+}
+
+// workflowAgents is the agent each node of home's review workflows binds
+// its process to, by workflow and node (ADR-030 Migration step 3): the one
+// the node's process named when the process chose it.
+var workflowAgents = map[string]map[string]string{
+	"code_review": {
+		"architecture": "codex-sol-61",
+		"tests":        "codex-sol-61",
+		"adversarial":  "codex-sol-61",
+		"clarity":      "codex-sol-61",
+		"intent":       "codex-sol-61",
+		"judge":        "claude-opus",
+	},
+	"adr_review": {
+		"adr":   "codex-sol-61",
+		"judge": "claude-opus",
+	},
+}
+
+// Each node of code_review and adr_review names its agent (ADR-030 rule
+// 5), the one of workflowAgents: its workflow's file in the home folder
+// says it on the node. The node binds it, not its process: with uses taken
+// from each node's process and from the base it extends, in the installed
+// home, the process names no agent, the workflow completes, and each
+// node's run records what processAgents lists for its process, the agent,
+// runtime, model, effort and session mode it ran on when its process named
+// the agent.
+func TestTheReviewWorkflowsNameTheirAgents(t *testing.T) {
+	t.Parallel()
+	root, repo, home := onFakeRuntimes(t)
+	names := slices.Sorted(maps.Keys(workflowAgents))
+	nodes := map[string][]definition.Node{}
+	unbound := homeBases(t, root)
+	for _, name := range names {
+		nodes[name] = parseWorkflow(t, root, name).Nodes()
+		named := map[string]string{}
+		for _, node := range nodes[name] {
+			named[node.Name] = node.Agent
+			unbound[node.Process] = true
+		}
+		if !reflect.DeepEqual(named, workflowAgents[name]) {
+			t.Errorf("%s's nodes name the agents %v, want %v", name, named, workflowAgents[name])
+		}
+	}
+
+	uses := regexp.MustCompile(`(?m)^uses: agent:\S+\n`)
+	for name := range unbound {
+		path := filepath.Join(home, "processes", name+".yaml")
+		write(t, path, uses.ReplaceAllString(read(t, path), ""))
+	}
+	listed := agister(t, home, repo, "process", "list")
+	for _, name := range names {
+		for _, node := range nodes[name] {
+			if line := node.Process + "\tagent:-\t"; listed.code != 0 || !strings.Contains(listed.stdout, line) {
+				t.Fatalf("process list lacks %q, a process that names no agent: %d\n%s%s", line, listed.code, listed.stdout, listed.stderr)
+			}
+		}
+	}
+
+	for _, name := range names {
+		_, records := judgedReviews(t, home, repo, name)
+		for _, node := range nodes[name] {
+			record := records[node.Process]
+			if record == nil {
+				t.Fatalf("%s: no run of node %s's %s", name, node.Name, node.Process)
+			}
+			if parent, _ := record["parent"].(map[string]any); parent["node"] != node.Name {
+				t.Fatalf("%s: the run of %s is node %v's, want %s's", name, node.Process, parent["node"], node.Name)
+			}
+			if record["agent"] != workflowAgents[name][node.Name] {
+				t.Errorf("%s: node %s ran on %v, want %s", name, node.Name, record["agent"], workflowAgents[name][node.Name])
+			}
+			recordsAgent(t, record)
+		}
 	}
 }
 
@@ -2422,6 +2489,19 @@ func homeProcess(t *testing.T, root, name string) definition.Document {
 		t.Fatal(err)
 	}
 	return definition.Document{Source: definition.Source{Kind: definition.KindProcess, Name: name, Path: name + ".yaml"}, Bytes: data}
+}
+
+// parseWorkflow is workflow name of the home folder.
+func parseWorkflow(t *testing.T, root, name string) definition.Workflow {
+	t.Helper()
+	path := filepath.Join(root, homeFolder, "workflows", name+".yaml")
+	workflow, err := definition.ParseWorkflow(definition.Document{
+		Source: definition.Source{Kind: definition.KindWorkflow, Name: name, Path: path}, Bytes: []byte(read(t, path)),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	return workflow
 }
 
 // homeBases are the bases the home folder's processes extend: each is not

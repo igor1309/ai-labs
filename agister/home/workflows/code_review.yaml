@@ -14,10 +14,10 @@ input:
     goal: {source: file, path: "${param.goal}", form: [goal]}
 
 fan_out:
-  - {node: architecture, uses: process:architecture_review_codex}
-  - {node: tests, uses: process:tests_review_codex}
-  - {node: adversarial, uses: process:adversarial_review_codex}
-  - {node: clarity, uses: process:clarity_review_codex}
-  - {node: intent, uses: process:intent_review_codex}
+  - {node: architecture, uses: process:architecture_review_codex, agent: codex-sol-61}
+  - {node: tests, uses: process:tests_review_codex, agent: codex-sol-61}
+  - {node: adversarial, uses: process:adversarial_review_codex, agent: codex-sol-61}
+  - {node: clarity, uses: process:clarity_review_codex, agent: codex-sol-61}
+  - {node: intent, uses: process:intent_review_codex, agent: codex-sol-61}
 
-join: {node: judge, uses: process:review_judge}
+join: {node: judge, uses: process:review_judge, agent: claude-opus}
