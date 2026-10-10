@@ -208,10 +208,23 @@ type Staged struct {
 	home  Store
 }
 
+// Read reads the document as home will hold it, a process laid over the
+// base it extends as home will hold that (ADR-030 rule 9).
 func (s Staged) Read(ctx context.Context, kind definition.Kind, name string) (definition.Document, error) {
+	doc, err := s.own(ctx, kind, name)
+	if kind != definition.KindProcess || err != nil {
+		return doc, err
+	}
+	return definition.Extended(doc, func(base string) (definition.Document, error) {
+		return s.own(ctx, kind, base)
+	})
+}
+
+// own reads the document as home will hold it, a process without its base.
+func (s Staged) own(ctx context.Context, kind definition.Kind, name string) (definition.Document, error) {
 	doc, err := s.stage.read(kind, name)
 	if errors.Is(err, errNotFound) {
-		return s.home.Read(ctx, kind, name)
+		return Layered{Home: s.home}.own(kind, name, true)
 	}
 	if err != nil {
 		return doc, err

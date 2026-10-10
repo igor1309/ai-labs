@@ -745,8 +745,20 @@ func (l Layered) ReadListed(_ context.Context, kind definition.Kind, name string
 }
 
 // read reads the document from the layers, a prompt also from the folders
-// each layer lists with folders.
+// each layer lists with folders. A process is laid over the base it
+// extends, which is composed from its own layers first (ADR-030 rule 9).
 func (l Layered) read(kind definition.Kind, name string, folders bool) (definition.Document, error) {
+	doc, err := l.own(kind, name, folders)
+	if kind != definition.KindProcess || err != nil {
+		return doc, err
+	}
+	return definition.Extended(doc, func(base string) (definition.Document, error) {
+		return l.own(kind, base, folders)
+	})
+}
+
+// own reads the document from its own layers.
+func (l Layered) own(kind definition.Kind, name string, folders bool) (definition.Document, error) {
 	source := definition.Source{Kind: kind, Name: name}
 	stores := l.stores(kind)
 	var texts []definition.LayerText
@@ -767,8 +779,18 @@ func (l Layered) read(kind definition.Kind, name string, folders bool) (definiti
 		if err != nil {
 			// A layer's file that is there and cannot be read breaks the
 			// document: it is not skipped in favour of the parent's
-			// (ADR-028 rule 5).
-			return definition.Document{Source: source}, err
+			// (ADR-028 rule 5). The texts of the farther ones still say
+			// what it is: a process's base is named in the file that
+			// defines it (ADR-030 rule 9).
+			for _, farther := range stores[i+1:] {
+				if kind != definition.KindProcess {
+					break
+				}
+				if doc, err := farther.read(kind, name, folders); err == nil {
+					texts = append(texts, definition.LayerText{File: definition.LayerFile{Layer: farther.layer, Path: doc.Source.Path, SHA256: doc.Source.SHA256}, Bytes: doc.Bytes})
+				}
+			}
+			return definition.Document{Source: source, Texts: texts}, err
 		}
 		if !definition.Composed(kind) {
 			source.SHA256 = file.SHA256
@@ -790,7 +812,7 @@ func (l Layered) read(kind definition.Kind, name string, folders bool) (definiti
 	data, files, err := definition.Compose(kind, texts)
 	source.Layers = files
 	if err != nil {
-		return definition.Document{Source: source}, err
+		return definition.Document{Source: source, Texts: texts}, err
 	}
 	for i := range texts {
 		texts[i].File = files[i]

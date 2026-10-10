@@ -32,6 +32,9 @@ type Bundle struct {
 	// Briefs are the brief forms the settings have; a broken one is a
 	// problem of its own, not of the processes and workflows that name it.
 	Briefs map[string]bool
+	// Bases are the processes some process extends, each with those that
+	// extend it, whether or not they parsed (ADR-030 rule 9).
+	Bases map[string][]string
 }
 
 // Resolved returns the process named name with the verification it names
@@ -236,7 +239,7 @@ func Check(b Bundle, m Mechanisms) []Problem {
 				add(subject, "input %s: brief %q does not exist", value.Name, form)
 			}
 		}
-		for _, problem := range WorkflowProblems(workflow, b.Processes) {
+		for _, problem := range WorkflowProblems(workflow, b.Processes, b.Bases) {
 			add(subject, "%s", problem)
 		}
 	}

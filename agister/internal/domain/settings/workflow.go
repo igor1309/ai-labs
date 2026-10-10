@@ -13,19 +13,30 @@ import (
 // only a join receives, or needs a param the workflow does not pass; a
 // workflow value no fan-out process takes; and a join process that cannot
 // receive the collection, or whose inputs take a caller-supplied param.
-// Nothing whoever starts the workflow supplies reaches the join.
-func WorkflowProblems(workflow definition.Workflow, processes map[string]definition.Process) []string {
+// Nothing whoever starts the workflow supplies reaches the join. A node
+// that binds a base, one of bases, binds no work (ADR-030 rule 9).
+func WorkflowProblems(workflow definition.Workflow, processes map[string]definition.Process, bases map[string][]string) []string {
 	var problems []string
 	add := func(format string, args ...any) { problems = append(problems, fmt.Sprintf(format, args...)) }
+	bound := func(node, name string) (definition.Process, bool) {
+		if extenders := bases[name]; len(extenders) > 0 {
+			add("%s: process %s is a base of %s, not work (ADR-030 rule 9): bind a process that extends it", node, name, strings.Join(extenders, ", "))
+			return definition.Process{}, false
+		}
+		process, ok := processes[name]
+		if !ok {
+			add("%s: process %q does not exist", node, name)
+		}
+		return process, ok
+	}
 	passed := map[string]bool{}
 	for _, value := range workflow.Values {
 		passed[value.Name] = true
 	}
 	taken := map[string]bool{}
 	for _, node := range workflow.FanOut {
-		process, ok := processes[node.Process]
+		process, ok := bound("fan-out node "+node.Name, node.Process)
 		if !ok {
-			add("fan-out node %s: process %q does not exist", node.Name, node.Process)
 			continue
 		}
 		if collects := process.Collects(); len(collects) > 0 {
@@ -46,9 +57,8 @@ func WorkflowProblems(workflow definition.Workflow, processes map[string]definit
 	if workflow.Join.Process == "" {
 		return problems
 	}
-	join, ok := processes[workflow.Join.Process]
+	join, ok := bound("join node "+workflow.Join.Name, workflow.Join.Process)
 	if !ok {
-		add("join node %s: process %q does not exist", workflow.Join.Name, workflow.Join.Process)
 		return problems
 	}
 	switch collects := join.Collects(); len(collects) {

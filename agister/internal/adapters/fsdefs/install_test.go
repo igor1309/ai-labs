@@ -179,6 +179,25 @@ func TestStageReadsAsTheStore(t *testing.T) {
 	}
 }
 
+// A process is read from a stage laid over its base as home will hold
+// both: home's process over the base the install writes (ADR-030 rule 9).
+func TestStageLaysAProcessOverItsStagedBase(t *testing.T) {
+	t.Parallel()
+	home := fsdefs.Store{Dir: t.TempDir()}.StagingIn(t.TempDir())
+	ctx := context.Background()
+	put(t, filepath.Join(home.Dir, "processes", "base.yaml"), "name: base\nprompt: home\n")
+	put(t, filepath.Join(home.Dir, "processes", "child.yaml"), "name: child\nextends: process:base\n")
+	staged, remove, err := home.Stage(ctx, []definition.Document{{Source: definition.Source{Kind: definition.KindProcess, Name: "base"}, Bytes: []byte("name: base\nprompt: staged\n")}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(remove)
+	doc, err := staged.Read(ctx, definition.KindProcess, "child")
+	if err != nil || string(doc.Bytes) != "prompt: staged\nname: child\nextends: process:base\n" {
+		t.Fatalf("read %q, %v", doc.Bytes, err)
+	}
+}
+
 // tree lists every path under dir, relative to it.
 func tree(t *testing.T, dir string) []string {
 	t.Helper()

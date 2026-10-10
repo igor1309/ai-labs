@@ -191,13 +191,18 @@ func ParseProcess(doc Document) (Process, error) {
 	if declared(root, "guidance") > 1 {
 		p.add("guidance", "is declared more than once: one list names the process's guidance")
 	}
-	values := fields(root, "", append([]string{"schema", "name", "status", "type", "uses", "policy", "prompt", "guidance", "input", "output", "verify", "skills"}, limitKeys...), p)
+	values := fields(root, "", append([]string{"schema", "name", "status", "type", "extends", "uses", "policy", "prompt", "guidance", "input", "output", "verify", "skills"}, limitKeys...), p)
 	header(values, ProcessSchema, doc.Source.Name, p)
 	if value, _ := scalar(values["type"], "type", p); value != "process" {
 		p.add("type", `must be "process"`)
 	}
 
 	process := Process{Name: doc.Source.Name, Source: doc.Source}
+	// The base is composed under the process as it is read (ADR-030 rule
+	// 9): here it is only named.
+	if node, ok := values["extends"]; ok && baseName(node) == "" {
+		p.add("extends", `must be "process:<name>"`)
+	}
 	uses := required(values, "uses", "", p)
 	if agent, ok := strings.CutPrefix(uses, "agent:"); ok && agent != "" {
 		process.Agent = agent

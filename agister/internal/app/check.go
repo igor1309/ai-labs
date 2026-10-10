@@ -177,6 +177,9 @@ func (c *Checker) check(ctx context.Context, probe bool) (CheckResult, error) {
 	// only for a name a process gives, and its other files are not
 	// settings (ADR-028 rule 9).
 	named := c.namedPrompts(ctx)
+	// A base is checked through each process that extends it, so it may
+	// leave out what each of them sets (ADR-030 rule 9).
+	bundle.Bases = c.bases(ctx)
 
 	// Each document on its own: one checks a document read, or not, err
 	// saying why not; each checks every document of a kind the settings
@@ -308,6 +311,9 @@ func (c *Checker) check(ctx context.Context, probe bool) (CheckResult, error) {
 			return err
 		}},
 		{definition.KindProcess, func(d definition.Document) error {
+			if len(bundle.Bases[d.Source.Name]) > 0 {
+				return nil
+			}
 			p, err := definition.ParseProcess(d)
 			if err == nil {
 				bundle.Processes[p.Name] = p
@@ -454,6 +460,12 @@ func (c *Checker) check(ctx context.Context, probe bool) (CheckResult, error) {
 			link(from, definition.KindBrief, form, false)
 		}
 	}
+	// A process uses its base, whose problems and blocks refuse it.
+	for _, base := range sortedNames(bundle.Bases) {
+		for _, name := range bundle.Bases[base] {
+			link(DocumentRef{Kind: definition.KindProcess, Name: name}, definition.KindProcess, base, false)
+		}
+	}
 	for _, name := range sortedNames(bundle.Workflows) {
 		from := DocumentRef{Kind: definition.KindWorkflow, Name: name}
 		for _, node := range bundle.Workflows[name].Nodes() {
@@ -576,6 +588,21 @@ func (c *Checker) namedPrompts(ctx context.Context) map[string]bool {
 		}
 	}
 	return named
+}
+
+// bases are the processes some process extends, each with those that
+// extend it (ADR-030 rule 9). A process that cannot be read or does not
+// parse still names its base, in the file that defines it.
+func (c *Checker) bases(ctx context.Context) map[string][]string {
+	bases := map[string][]string{}
+	names, _ := c.definitions.List(ctx, definition.KindProcess)
+	for _, name := range names {
+		doc, _ := c.definitions.Read(ctx, definition.KindProcess, name)
+		if base := definition.Extends(doc); base != "" && contains(names, base) {
+			bases[base] = append(bases[base], name)
+		}
+	}
+	return bases
 }
 
 // blocks reads the repository's blocks.yaml (ADR-018) and returns what it

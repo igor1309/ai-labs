@@ -637,7 +637,7 @@ func (r *Resolver) resolveWorkflow(ctx context.Context, name string) (*workflowR
 		}
 		res.processes[node.Process] = process
 	}
-	if problems := settings.WorkflowProblems(res.workflow, res.processes); len(problems) > 0 {
+	if problems := settings.WorkflowProblems(res.workflow, res.processes, nil); len(problems) > 0 {
 		return res, refuse("workflow %s: %s", name, strings.Join(problems, "; "))
 	}
 	return res, nil

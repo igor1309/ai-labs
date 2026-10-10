@@ -403,7 +403,11 @@ func (s *Settings) ListProcesses(ctx context.Context) ([]contract.ProcessSummary
 		}
 		process, err := definition.ParseProcess(doc)
 		if err != nil {
-			processes = append(processes, contract.ProcessSummary{Name: name, Problem: "invalid (run `agister check`)", Refusal: refusal})
+			problem := "invalid (run `agister check`)"
+			if len(reached.extenders(DocumentRef{Kind: definition.KindProcess, Name: name})) > 0 {
+				problem = "" // a base is checked through its processes (ADR-030 rule 9)
+			}
+			processes = append(processes, contract.ProcessSummary{Name: name, Problem: problem, Refusal: refusal})
 			continue
 		}
 		output := process.Output.Format

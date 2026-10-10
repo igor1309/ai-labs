@@ -1,6 +1,8 @@
 package app
 
 import (
+	"slices"
+	"sort"
 	"strings"
 
 	"github.com/igor1309/ai-labs/agister/internal/domain/definition"
@@ -177,6 +179,10 @@ func (r *reach) where(ref DocumentRef) string {
 func (r *reach) refusal(root DocumentRef, agent string) error {
 	var parts []string
 	unknown := 0
+	// A base is not work (ADR-030 rule 9).
+	if extenders := r.extenders(root); len(extenders) > 0 {
+		parts = append(parts, label(root)+" is a base of "+strings.Join(extenders, ", ")+", not work, and is not run (ADR-030 rule 9): run a process that extends it")
+	}
 	for _, s := range r.walk(root, agent) {
 		if block, ok := r.blocked[s.ref]; ok {
 			parts = append(parts, s.blockedBy(block))
@@ -201,6 +207,19 @@ func (r *reach) refusal(root DocumentRef, agent string) error {
 		return nil
 	}
 	return &Refusal{Reason: strings.Join(parts, "; "), Unknown: unknown}
+}
+
+// extenders are the processes that use the process ref: those that extend
+// it, when it is a base (ADR-030 rule 9).
+func (r *reach) extenders(ref DocumentRef) []string {
+	var names []string
+	for from, document := range r.documents {
+		if ref.Kind == definition.KindProcess && from.Kind == definition.KindProcess && slices.Contains(document.uses, ref) {
+			names = append(names, from.Name)
+		}
+	}
+	sort.Strings(names)
+	return names
 }
 
 // refuses is the roots among roots whose calls, without --agent, depend on

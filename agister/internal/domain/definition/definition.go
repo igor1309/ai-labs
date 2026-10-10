@@ -94,7 +94,8 @@ type Document struct {
 	// Texts are the layer files a composed kind's document is composed
 	// from, nearest first, each with what it holds: what a composition
 	// with one of them changed is composed from (ADR-028 rule 4). Nil on
-	// a document taken whole.
+	// a document taken whole. A process's are its own, without its base's
+	// (ADR-030 rule 9).
 	Texts []LayerText
 }
 
