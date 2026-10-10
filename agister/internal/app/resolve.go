@@ -59,6 +59,10 @@ type resolution struct {
 	// plan grants a permission the service lists as writing, or its process
 	// declares verify, whose command runs with the operator's authority.
 	writer bool
+	// session is the session mode the call runs under, and sessionBy the
+	// document that says it: its process, or its agent where the process
+	// says nothing (ADR-030 rule 3).
+	session, sessionBy string
 }
 
 // Resolver loads and checks definitions, composes limits, checks the
@@ -412,13 +416,16 @@ func (r *Resolver) resolveCall(ctx context.Context, processName, agentOverride s
 		return res, refuse("%v", err)
 	}
 
+	// Whether the call's session may be resumed is its process's to say,
+	// and its agent's where the process says nothing (ADR-030 rule 3).
+	res.session, res.sessionBy = definition.CallSession(res.process, res.agent)
 	// A repair turn resumes the call's own session (ADR-002 rule 4).
-	if verify := res.process.Verify; verify.Repairs() && res.agent.Session != definition.SessionResumable {
-		return res, refuse("verify.max_attempts %d repairs in the call's session, but agent %s is %s", verify.MaxAttempts, res.agent.Name, res.agent.Session)
+	if verify := res.process.Verify; verify.Repairs() && res.session != definition.SessionResumable {
+		return res, refuse("verify.max_attempts %d repairs in the call's session, but %s is %s", verify.MaxAttempts, res.sessionBy, res.session)
 	}
 	// So does a recovery turn (ADR-024 rule 6).
-	if resumes := res.effective.Stale.Recover.MaxResumes; resumes > 0 && res.agent.Session != definition.SessionResumable {
-		return res, refuse("stale.recover.max_resumes %d recovers in the call's session, but agent %s is %s", resumes, res.agent.Name, res.agent.Session)
+	if resumes := res.effective.Stale.Recover.MaxResumes; resumes > 0 && res.session != definition.SessionResumable {
+		return res, refuse("stale.recover.max_resumes %d recovers in the call's session, but %s is %s", resumes, res.sessionBy, res.session)
 	}
 
 	if settingsOnly {

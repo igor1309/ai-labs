@@ -59,8 +59,9 @@ type Verify struct {
 }
 
 // Repairs reports whether a failed run may be followed by a repair turn,
-// which resumes the call's session: an agent and runtime that cannot
-// continue sessions cannot run it.
+// which resumes the call's session: a call whose session may not be
+// resumed (CallSession), or whose runtime cannot resume one, cannot run
+// it.
 func (v *Verify) Repairs() bool { return v != nil && v.MaxAttempts > 1 }
 
 // Verification is a verification command as a document of its own, which
@@ -95,6 +96,9 @@ type Process struct {
 	Verify     *Verify
 	VerifyName string // name of a verification definition, in place of the inline block
 	Limits     Limits // its own, within the service's ceilings (ADR-030 rule 4)
+	// Session says whether a call's session may be resumed, SessionFresh or
+	// SessionResumable (ADR-030 rule 3); unset: its agent's session says it.
+	Session string
 	// Obsolete are the warnings for the fields it holds that ADR-025
 	// removed, which are read and ignored: workspace.setup, and verify.where
 	// in its inline block.
@@ -175,7 +179,7 @@ func parseProcess(doc Document, p *problems) Process {
 	if declared(root, "guidance") > 1 {
 		p.add("guidance", "is declared more than once: one list names the process's guidance")
 	}
-	values := fields(root, "", append([]string{"schema", "name", "status", "type", "extends", "uses", "policy", "prompt", "guidance", "input", "output", "verify", "skills"}, limitKeys...), p)
+	values := fields(root, "", append([]string{"schema", "name", "status", "type", "extends", "uses", "policy", "session", "prompt", "guidance", "input", "output", "verify", "skills"}, limitKeys...), p)
 	header(values, ProcessSchema, doc.Source.Name, p)
 	if value, _ := scalar(values["type"], "type", p); value != "process" {
 		p.add("type", `must be "process"`)
@@ -196,6 +200,13 @@ func parseProcess(doc Document, p *problems) Process {
 	// Policies are gone: a process holds its own limits (ADR-030 rule 4).
 	if _, ok := values["policy"]; ok {
 		p.add("policy", "there are no policies (ADR-030): set the policy's fields on the process and remove policy")
+	}
+	// Whether its calls' session may be resumed is the process's to say
+	// (ADR-030 rule 3): one that says nothing leaves it to its agent.
+	if node, ok := values["session"]; ok {
+		if mode, ok := scalar(node, "session", p); ok {
+			process.Session = sessionMode(mode, p)
+		}
 	}
 
 	// Literal document names, which nothing is substituted in (ADR-028

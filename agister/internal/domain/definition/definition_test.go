@@ -670,6 +670,58 @@ func TestAProcessNamesNoPolicy(t *testing.T) {
 	}
 }
 
+// A process may say whether its calls' session may be resumed (ADR-030
+// rule 2): session, resumable or fresh-only, and unset when it says
+// nothing, which leaves it to its agent.
+func TestAProcessMaySayItsSession(t *testing.T) {
+	t.Parallel()
+	for text, want := range map[string]string{
+		"":                      "",
+		"session: resumable\n":  definition.SessionResumable,
+		"session: fresh-only\n": definition.SessionFresh,
+	} {
+		process, err := definition.ParseProcess(doc(definition.KindProcess, "p", staleTimed+text))
+		if err != nil || process.Session != want {
+			t.Errorf("%q: session = %q, %v, want %q", text, process.Session, err, want)
+		}
+	}
+	for text, want := range map[string]string{
+		"session: sometimes":   `session: unsupported session mode "sometimes" (supported: fresh-only, resumable)`,
+		"session: ''":          `session: unsupported session mode "" (supported: fresh-only, resumable)`,
+		"session: [resumable]": "session: must be a scalar",
+	} {
+		_, err := definition.ParseProcess(doc(definition.KindProcess, "p", staleTimed+text+"\n"))
+		var invalid *definition.InvalidError
+		if !errors.As(err, &invalid) || !reflect.DeepEqual(invalid.Messages(), []string{want}) {
+			t.Errorf("%s: err = %v, want only %q", text, err, want)
+		}
+	}
+}
+
+// The session mode of a call is its process's where the process sets one,
+// whatever its agent's, and its agent's where it sets none (ADR-030 rule
+// 3), with the document that says it.
+func TestACallsSessionIsItsProcessesWhereItSetsOne(t *testing.T) {
+	t.Parallel()
+	fresh := definition.Agent{Name: "a", Session: definition.SessionFresh}
+	resumable := definition.Agent{Name: "a", Session: definition.SessionResumable}
+	for _, c := range []struct {
+		process  string
+		agent    definition.Agent
+		mode, by string
+	}{
+		{definition.SessionResumable, fresh, definition.SessionResumable, "process p"},
+		{definition.SessionFresh, resumable, definition.SessionFresh, "process p"},
+		{"", resumable, definition.SessionResumable, "agent a"},
+		{"", fresh, definition.SessionFresh, "agent a"},
+	} {
+		mode, by := definition.CallSession(definition.Process{Name: "p", Session: c.process}, c.agent)
+		if mode != c.mode || by != c.by {
+			t.Errorf("process %q on a %s agent: %s by %s, want %s by %s", c.process, c.agent.Session, mode, by, c.mode, c.by)
+		}
+	}
+}
+
 // A problem that names something this code does not know, as a document
 // written for a newer Agister would, is marked: an unknown field, a list or
 // a mapping where an input value's field is read as a scalar (LAB-122), and

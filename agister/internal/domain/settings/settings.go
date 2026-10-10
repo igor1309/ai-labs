@@ -177,16 +177,27 @@ func Check(b Bundle, m Mechanisms) []Problem {
 			problems = append(problems, Problem{Subject: subject, Message: fmt.Sprintf(format, args...), Agent: process.Agent})
 		}
 		agent, ok := b.Agents[process.Agent]
+		// A repair turn resumes the call's session (ADR-002 rule 4), and so
+		// does a recovery turn (ADR-024 rule 6): each needs a session that
+		// may be resumed. A process that sets session says whether it may,
+		// whatever its agent, so the problem is its own; one that sets none
+		// leaves it to its agent (ADR-030 rule 3).
+		own := process.Session != ""
+		if mode, by := definition.CallSession(process, agent); (own || ok) && mode != definition.SessionResumable {
+			report := withAgent
+			if own {
+				report = func(format string, args ...any) { add(subject, format, args...) }
+			}
+			if process.Verify.Repairs() {
+				report("verify.max_attempts %d repairs in the call's session, but %s is %s", process.Verify.MaxAttempts, by, mode)
+			}
+			if resumes := effective.Stale.Recover.MaxResumes; resumes > 0 {
+				report("stale.recover.max_resumes %d recovers in the call's session, but %s is %s", resumes, by, mode)
+			}
+		}
 		if !ok {
 			withAgent("agent %q does not exist", process.Agent)
 			continue
-		}
-		if process.Verify.Repairs() && agent.Session != definition.SessionResumable {
-			withAgent("verify.max_attempts %d repairs in the call's session, but agent %s is %s", process.Verify.MaxAttempts, agent.Name, agent.Session)
-		}
-		// So does a recovery turn (ADR-024 rule 6).
-		if resumes := effective.Stale.Recover.MaxResumes; resumes > 0 && agent.Session != definition.SessionResumable {
-			withAgent("stale.recover.max_resumes %d recovers in the call's session, but agent %s is %s", resumes, agent.Name, agent.Session)
 		}
 		mapping, ok := b.Mappings[agent.Runtime]
 		if !ok {

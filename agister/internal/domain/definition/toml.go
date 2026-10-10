@@ -35,13 +35,6 @@ type Agent struct {
 	Source Source   `json:"-"`
 }
 
-// Session modes. A fresh-only agent always starts a new session; a
-// resumable one may continue a finished run's session when a caller asks.
-const (
-	SessionFresh     = "fresh-only"
-	SessionResumable = "resumable"
-)
-
 // Service holds the hard limits and the permission vocabulary.
 type Service struct {
 	MaxTimeout  time.Duration

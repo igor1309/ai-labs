@@ -232,7 +232,9 @@ type Runtime struct {
 
 // Profile is the agent profile a call ran as: the model and effort it asked
 // for, each empty when the agent left it to the runtime, and the session
-// mode. The model the runtime reports is the turn's.
+// mode the call ran under, its process's or, where the process sets none,
+// its agent's (ADR-030 rule 3). The model the runtime reports is the
+// turn's.
 type Profile struct {
 	Model   string `json:"model,omitempty"`
 	Effort  string `json:"effort,omitempty"`

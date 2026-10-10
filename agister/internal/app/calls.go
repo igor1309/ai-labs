@@ -72,6 +72,7 @@ type CallResolveRequest struct {
 type ResolvedCall struct {
 	Process CallProcess
 	Agent   CallAgent
+	Session CallSession
 	Mapping CallMapping
 	Schema  []byte
 	// Prompts are the process's prompt, then each guidance prompt, in order,
@@ -164,7 +165,14 @@ type CallAgent struct {
 	Command string
 	Model   string
 	Effort  string
-	Session string // definition.SessionFresh or definition.SessionResumable
+}
+
+// CallSession is whether a call's session may be resumed, and the document
+// that says so: its process, or its agent where the process says nothing
+// (ADR-030 rule 3).
+type CallSession struct {
+	Mode string // definition.SessionFresh or definition.SessionResumable
+	By   string // "process <name>" or "agent <name>"
 }
 
 // CallMapping is the runtime permission mapping a call runs on.
@@ -285,7 +293,8 @@ func (c callResolution) Resolve(ctx context.Context, request CallResolveRequest)
 			Params: callParams(process.Params), Values: callValues(process.Values),
 			Revision: process.Revision, Output: process.Output.Format, Clean: process.Clean,
 		},
-		Agent:   CallAgent{Name: agent.Name, Command: agent.Command, Model: agent.Model, Effort: agent.Effort, Session: agent.Session},
+		Agent:   CallAgent{Name: agent.Name, Command: agent.Command, Model: agent.Model, Effort: agent.Effort},
+		Session: CallSession{Mode: res.session, By: res.sessionBy},
 		Mapping: CallMapping{Name: res.mapping.Name, Adapter: res.mapping.Adapter},
 		Schema:  res.schema,
 		Forms:   callForms(res.forms),
@@ -892,7 +901,7 @@ func (c *Calls) execute(ctx context.Context, handle RunHandle, record run.Record
 		return
 	}
 	record.Agent = res.Agent.Name
-	record.Profile = &run.Profile{Model: res.Agent.Model, Effort: res.Agent.Effort, Session: res.Agent.Session}
+	record.Profile = &run.Profile{Model: res.Agent.Model, Effort: res.Agent.Effort, Session: res.Session.Mode}
 	record.Effective = recordEffective(res.Effective)
 	record.Verify = recordVerify(res.Process.Verify)
 	record.Runtime = &run.Runtime{Mapping: res.Mapping.Name, Adapter: res.Mapping.Adapter, Contract: res.Identity.Contract, Version: res.Identity.Version}
@@ -1387,15 +1396,16 @@ type resumption struct {
 }
 
 // continuation checks a request to continue an earlier run's session and
-// returns what the call resumes. Continuing is deliberate: the agent must
-// allow it, the runtime must support it, and the earlier run must be
-// finished, by the same agent, with a session. self is the asking run.
+// returns what the call resumes. Continuing is deliberate: the process, or
+// its agent where the process says nothing, must allow it (ADR-030 rule
+// 3), the runtime must support it, and the earlier run must be finished,
+// by the same agent, with a session. self is the asking run.
 func (c *Calls) continuation(ctx context.Context, res *ResolvedCall, self, runID, cwd string) (resumption, error) {
 	if runID == "" {
 		return resumption{}, nil
 	}
-	if res.Agent.Session != definition.SessionResumable {
-		return resumption{}, refuse("agent %s is %s; it cannot continue run %s", res.Agent.Name, res.Agent.Session, runID)
+	if res.Session.Mode != definition.SessionResumable {
+		return resumption{}, refuse("%s is %s; it cannot continue run %s", res.Session.By, res.Session.Mode, runID)
 	}
 	if !res.Identity.Resume {
 		return resumption{}, refuse("runtime %s cannot continue sessions", res.Mapping.Name)

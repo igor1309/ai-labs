@@ -1,6 +1,7 @@
 package settings_test
 
 import (
+	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -47,6 +48,60 @@ func TestVerifyRepairsNeedAResumableAgent(t *testing.T) {
 			}
 			if !c.problem && len(got) != 0 {
 				t.Fatalf("problems = %q", strings.Join(got, "\n"))
+			}
+		})
+	}
+}
+
+// ADR-030 rule 3: a process that sets session says whether its calls'
+// session may be resumed, where its agent did. A resumable one repairs and
+// recovers on a fresh-only agent; a fresh-only one that repairs or
+// recovers has a problem of its own, on a resumable agent too, which no
+// other agent lifts.
+func TestAProcessThatSetsSessionSaysWhetherItsCallsResume(t *testing.T) {
+	t.Parallel()
+	const (
+		repairs  = "process p: verify.max_attempts 3 repairs in the call's session, but process p is fresh-only"
+		recovers = "process p: stale.recover.max_resumes 2 recovers in the call's session, but process p is fresh-only"
+	)
+	cases := []struct {
+		name     string
+		process  string
+		agent    string
+		attempts int
+		resumes  int
+		want     []string
+	}{
+		{"resumable, repairs and recovers on a fresh-only agent", definition.SessionResumable, definition.SessionFresh, 3, 2, nil},
+		{"fresh-only, repairs on a resumable agent", definition.SessionFresh, definition.SessionResumable, 3, 0, []string{repairs}},
+		{"fresh-only, recovers on a resumable agent", definition.SessionFresh, definition.SessionResumable, 1, 2, []string{recovers}},
+		{"fresh-only, repairs and recovers", definition.SessionFresh, definition.SessionFresh, 3, 2, []string{repairs, recovers}},
+		{"fresh-only, neither", definition.SessionFresh, definition.SessionFresh, 1, 0, nil},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
+			b := bundle()
+			b.Service.MaxVerifyAttempts = 3
+			agent := b.Agents["a"]
+			agent.Session = c.agent
+			b.Agents["a"] = agent
+			p := b.Processes["p"]
+			p.Session = c.process
+			p.Revision = "v"
+			p.Verify = &definition.Verify{Command: "go test ./...", Timeout: time.Minute, MaxAttempts: c.attempts, Instruction: "Fix it."}
+			p.Limits.Stale.Recover = definition.Recover{MaxResumes: &c.resumes, Instruction: "Go on."}
+			b.Processes["p"] = p
+
+			var got []string
+			for _, problem := range settings.Check(b, mechanisms) {
+				got = append(got, problem.String())
+				if problem.Agent != "" {
+					t.Errorf("%q depends on agent %s: it is the process's own", problem, problem.Agent)
+				}
+			}
+			if !reflect.DeepEqual(got, c.want) {
+				t.Fatalf("problems = %q, want %q", got, c.want)
 			}
 		})
 	}
