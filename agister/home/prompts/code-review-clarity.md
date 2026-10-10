@@ -3,7 +3,7 @@ date: 2026-10-06
 author: Igor Malyarov
 model: gpt-6
 name: Code review — clarity
-version: 0.0.6
+version: 0.0.7
 type: prompt
 ---
 
@@ -21,7 +21,7 @@ Definition of done:
 2. Control flow is linear and shallow where practical.
 3. Files, types, objects, and functions have focused responsibilities and remain easy to reason about.
 4. Long parameter lists are replaced with meaningful grouped data where appropriate.
-5. Comments explain why, constraints, or tradeoffs—not what the code already says.
+5. Comments explain why, constraints, or tradeoffs—not what the code already says. A comment that records an observation, a check done by hand, or history (what was tried, seen or changed, and when) is a finding: what it states is either behaviour a test should prove, and the finding names that test, or history, which belongs in the commit message.
 6. Abstractions are earned: abstract shared meaning, not merely similar shape.
 7. Deduplication does not introduce coupling between concepts that may evolve independently.
 8. Indirection is minimized; boundaries exist because they clarify responsibility.

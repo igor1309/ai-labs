@@ -3,7 +3,7 @@ date: 2026-10-06
 author: Igor Malyarov
 model: claude-opus-5-5
 name: Code review — tests
-version: 0.1.3
+version: 0.1.4
 type: prompt
 ---
 
@@ -53,7 +53,11 @@ Definition of done:
    reverted. Name any fix or guard with no such test; the revert is its
    case. Each behaviour the goal requires has one too, in tests the change
    did not touch or in new ones; the case is the goal behaviour the
-   existing assertions let break.
+   existing assertions let break. A changed setting value is a changed
+   behaviour too. Where it claims how an external tool behaves (a version
+   a runtime is verified for), its test is a contract test against that
+   tool; a comment or note recording a hand observation is no test. The
+   case is the value that could be wrong while every test stays green.
 2. Proof rests on normal tests only: deterministic, cheap, rerunnable. Look
    for a test's claim that rests on mutation or revert checks (plants,
    mutation specs, reverting by hand), and for a behaviour no normal test
