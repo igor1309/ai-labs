@@ -212,3 +212,53 @@ test('a workflow\'s node rows carry their wall, cost and the rulings of the item
     [{ name: 'a', process: 'p', join: false, run: '', status: '', wall: '2s', cost: '$0.25', rulings: '' }]);
   assert.deepEqual(U.nodeRows(undefined), []);
 });
+
+test('a review\'s output reads as its verdict, then summary, findings and coverage as text, cards and a table', () => {
+  const said = U.runOutput({
+    status: 'completed',
+    output: {
+      coverage: [{ item: '1. Paths', status: 'checked', detail: 'Read it.' }, { item: '2. Tests', status: 'finding' }],
+      verdict: 'request_changes',
+      findings: [{
+        severity: 'major', file: 'a.go', line: 12, title: 'A race', detail: 'It races.',
+        evidence: { case: 'Run it twice.', trace: ['a.go:12', 'b.go:3'] }, fix_cost: { size: 'small' },
+      }],
+      summary: 'One finding.',
+      extra: 7,
+    },
+    text: '{"verdict":"request_changes"}',
+  });
+  assert.equal(said.verdict, 'request_changes');
+  assert.deepEqual(said.parts.map((p) => [p.key, p.kind]), [['summary', 'text'], ['findings', 'cards'], ['coverage', 'table'], ['extra', 'text']]);
+  assert.deepEqual(said.parts[1].cards[0], {
+    tags: ['major'], title: 'A race', where: 'a.go:12', sources: '', texts: [['detail', 'It races.']],
+    more: { kind: 'facts', facts: [
+      ['evidence', { kind: 'facts', facts: [['case', { kind: 'text', text: 'Run it twice.' }], ['trace', { kind: 'list', items: ['a.go:12', 'b.go:3'] }]] }],
+      ['fix_cost', { kind: 'facts', facts: [['size', { kind: 'text', text: 'small' }]] }],
+    ] },
+  });
+  assert.deepEqual(said.parts[2], { key: 'coverage', kind: 'table', columns: ['item', 'status', 'detail'], rows: [['1. Paths', 'checked', 'Read it.'], ['2. Tests', 'finding', '']] });
+});
+
+test('a judge\'s items are cards with their ruling, sources, reason and action; an empty list reads as none', () => {
+  const said = U.runOutput({ output: { summary: 's', items: [{ title: 'T', ruling: 'fix', severity: 'minor', sources: ['1#1', '3#2'], reason: 'R', action: 'A', missing_evidence: '' }], coverage_gaps: [] } });
+  assert.equal(said.verdict, '');
+  assert.deepEqual(said.parts[1].cards[0], { tags: ['minor', 'fix'], title: 'T', where: '', sources: '1#1, 3#2', texts: [['reason', 'R'], ['action', 'A']], more: null });
+  assert.deepEqual(said.parts[2], { key: 'coverage_gaps', kind: 'none' });
+});
+
+test('without an output a result reads as its text; an error comes first, its message then its class', () => {
+  assert.deepEqual(U.runOutput({ status: 'completed', text: 'Plain *answer*.' }).parts, [{ key: 'text', kind: 'text', text: 'Plain *answer*.' }]);
+  assert.deepEqual(U.runOutput({ status: 'failed', error: { class: 'rate_limited', message: 'Hit the limit.' }, text: 'partial' }).parts, [
+    { key: 'error', kind: 'text', text: 'Hit the limit.\n\nclass: rate_limited' },
+    { key: 'text', kind: 'text', text: 'partial' },
+  ]);
+  assert.deepEqual(U.runOutput({ output: 'just a string' }).parts, [{ key: 'output', kind: 'text', text: 'just a string' }]);
+  assert.deepEqual(U.runOutput({ output: { verdict: { odd: true } } }).parts, [{ key: 'verdict', kind: 'facts', facts: [['odd', { kind: 'text', text: 'true' }]] }]);
+  assert.deepEqual(U.runOutput(undefined), { verdict: '', parts: [] });
+});
+
+test('verdicts, statuses and severities have a tone; other values none', () => {
+  assert.deepEqual(['approve', 'checked', 'request_changes', 'finding', 'major', 'minor', 'rule_only', 'fix', 'whatever'].map(U.tone),
+    ['ok', 'ok', 'bad', 'bad', 'bad', 'warn', 'warn', '', '']);
+});

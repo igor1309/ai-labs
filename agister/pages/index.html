@@ -191,6 +191,40 @@
   .run-id { font: 11px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace; }
   #run-detail a { color: var(--accent); }
   .nodes { margin-top: 16px; }
+  /* What a run's result says: a part per key, values toned as they read. */
+  .tone-ok { color: var(--low); }
+  .tone-bad { color: var(--high); }
+  .tone-warn { color: var(--mid); }
+  .chip.tone-ok { color: var(--low); border-color: #1d4d2a; }
+  .chip.tone-bad { color: var(--high); border-color: #5a2320; }
+  .chip.tone-warn { color: var(--mid); border-color: #4a3a12; }
+  .run-title .verdict { font-size: 12px; align-self: center; }
+  .output { margin-top: 18px; display: grid; gap: 16px; }
+  .part h4 {
+    margin: 0 0 6px; font-size: 11px; font-weight: 600; text-transform: uppercase;
+    letter-spacing: .06em; color: var(--dim);
+  }
+  .part-error h4, .part-error .markdown { color: var(--high); }
+  .part .markdown { margin-top: 0; max-width: none; }
+  .part .markdown > :last-child { margin-bottom: 0; }
+  .part ul.mono { margin: 0; padding-left: 18px; color: var(--fg2); overflow-wrap: anywhere; }
+  .part details summary, .finding .more summary { cursor: pointer; color: var(--fg3); font-size: 12px; }
+  .part-table td { overflow-wrap: anywhere; }
+  .part-table td[class^="tone-"] { white-space: nowrap; }
+  .part pre.json {
+    margin: 0; padding: 10px; white-space: pre-wrap; overflow-wrap: anywhere;
+    background: var(--bg); border: 1px solid var(--line); border-radius: 6px; color: var(--fg2);
+  }
+  .finding { padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); }
+  .finding + .finding { margin-top: 8px; }
+  .finding-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; margin-bottom: 6px; }
+  .finding-head strong { color: var(--fg); font-size: 13.5px; font-weight: 600; }
+  .finding-head .where { font: 12px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--fg3); overflow-wrap: anywhere; }
+  .finding-text .label {
+    display: block; margin-top: 6px; font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--dim);
+  }
+  .finding .more { margin-top: 6px; }
+  .finding .more .facts { margin-top: 6px; }
   .record { margin-top: 14px; }
   .record summary { cursor: pointer; color: var(--fg3); font-size: 12px; }
   .record pre {

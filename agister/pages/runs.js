@@ -140,6 +140,94 @@
     }));
   }
 
+  // --- a run's output ---
+
+  // The output keys shown first, in this order; the others follow as
+  // written. The verdict goes in the run's head.
+  const OUTPUT_FIRST = ['summary', 'findings', 'items', 'decisions', 'coverage', 'coverage_gaps', 'checks', 'files_changed', 'notes'];
+  // What a finding, item or decision shows in its head, as tags and where;
+  // what it shows as text; the rest is folded under it.
+  const CARD_TAGS = ['severity', 'ruling', 'decision'];
+  const CARD_HEAD = [...CARD_TAGS, 'title', 'file', 'line', 'sources'];
+  const CARD_TEXT = ['detail', 'reason', 'action'];
+
+  // The tone a value shows in, whatever its key: a verdict, a status, a
+  // severity; '' for the rest.
+  const TONES = {
+    ok: ['approve', 'approved', 'checked', 'passed', 'pass', 'completed'],
+    bad: ['request_changes', 'reject_change', 'blocked', 'finding', 'failed', 'critical', 'blocker', 'major'],
+    warn: ['comment', 'rule_only', 'unchecked', 'partial', 'minor'],
+  };
+  function tone(value) {
+    return Object.keys(TONES).find((t) => TONES[t].includes(value)) ?? '';
+  }
+
+  const isObject = (v) => v != null && typeof v === 'object' && !Array.isArray(v);
+  const isScalar = (v) => typeof v === 'string' || isNumber(v) || typeof v === 'boolean';
+  const filled = (v) => v != null && v !== '';
+
+  // One value of an output as the page shows it: text (markdown), a list,
+  // none (an empty list), cards (objects with a title), a table (other
+  // objects alike), facts (an object, each value shown the same way), or
+  // json for anything else. null for nothing to show.
+  function outputPart(value) {
+    if (!filled(value)) return null;
+    if (isScalar(value)) return { kind: 'text', text: String(value) };
+    if (Array.isArray(value)) {
+      if (!value.length) return { kind: 'none' };
+      if (value.every(isScalar)) return { kind: 'list', items: value.map(String) };
+      if (value.every(isObject)) {
+        if (value.every((o) => typeof o.title === 'string')) return { kind: 'cards', cards: value.map(card) };
+        const columns = [...new Set(value.flatMap(Object.keys))];
+        return {
+          kind: 'table', columns,
+          rows: value.map((o) => columns.map((c) => (!filled(o[c]) ? '' : isScalar(o[c]) ? String(o[c]) : JSON.stringify(o[c])))),
+        };
+      }
+    }
+    if (isObject(value)) {
+      const facts = Object.entries(value).map(([k, v]) => [k, outputPart(v)]).filter(([, part]) => part);
+      return facts.length ? { kind: 'facts', facts } : null;
+    }
+    return { kind: 'json', text: JSON.stringify(value, null, 2) };
+  }
+
+  function card(o) {
+    const rest = Object.fromEntries(Object.entries(o).filter(([k]) => !CARD_HEAD.includes(k) && !CARD_TEXT.includes(k)));
+    return {
+      tags: CARD_TAGS.filter((k) => filled(o[k]) && isScalar(o[k])).map((k) => String(o[k])),
+      title: o.title,
+      where: typeof o.file === 'string' && o.file ? (filled(o.line) ? `${o.file}:${o.line}` : o.file) : '',
+      sources: Array.isArray(o.sources) ? o.sources.join(', ') : '',
+      texts: CARD_TEXT.filter((k) => filled(o[k]) && isScalar(o[k])).map((k) => [k, String(o[k])]),
+      more: outputPart(rest),
+    };
+  }
+
+  // What a run's result says: its verdict, and its error and output as
+  // parts, each under its key. The text shows only without an output: with
+  // one, it is that output as JSON.
+  function runOutput(result) {
+    const parts = [];
+    const add = (key, value) => {
+      const part = outputPart(value);
+      if (part) parts.push({ key, ...part });
+    };
+    if (isObject(result?.error)) {
+      const { message, ...rest } = result.error;
+      add('error', [message, ...Object.entries(rest).filter(([, v]) => isScalar(v)).map(([k, v]) => `${k}: ${v}`)].filter(filled).join('\n\n'));
+    } else add('error', result?.error);
+    const output = result?.output;
+    let verdict = '';
+    if (isObject(output)) {
+      if (typeof output.verdict === 'string') verdict = output.verdict;
+      const keys = Object.keys(output).filter((k) => k !== 'verdict' || typeof output.verdict !== 'string');
+      for (const k of [...OUTPUT_FIRST.filter((k) => keys.includes(k)), ...keys.filter((k) => !OUTPUT_FIRST.includes(k))]) add(k, output[k]);
+    } else if (filled(output)) add('output', output);
+    else add('text', result?.text);
+    return { verdict, parts };
+  }
+
   // --- the run list ---
 
   const sorted = (values) => [...new Set(values.filter(Boolean))].sort();
@@ -193,7 +281,7 @@
   globalThis.AgisterRuns = {
     VIEW_KEY, VIEWS, readView, writeView, readsRuns,
     duration, cost, verify, implementor, reportedModel, skills, counts, nodes, percent, mean, failed,
-    statusMark, timeSpan, nodeRows,
+    statusMark, timeSpan, nodeRows, tone, outputPart, runOutput,
     processes, statuses, filterRuns, compareTables,
   };
 })();

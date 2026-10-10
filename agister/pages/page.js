@@ -730,14 +730,16 @@
     const line = (...parts) => el('div', {}, ...parts);
     const joined = (parts) => parts.filter(Boolean).join(' · ');
 
-    // The run: what it is, how it ended, what it cost and took, and when, in
-    // its head; its ID small; the rest as facts; a workflow's nodes as a
-    // table; the record as stored folded at the bottom.
+    // The run: what it is, how it ended, its verdict, what it cost and took,
+    // and when, in its head; its ID small; the rest as facts; a workflow's
+    // nodes as a table; what its result says; the record as stored folded
+    // at the bottom.
     function runCard(s, record) {
       const impl = s.implementor;
       const policy = s.policy;
       const outcome = s.outcome ?? {};
       const items = s.workflow?.items;
+      const said = U.runOutput(record?.result);
       const figure = (value, title) => (value ? el('span', { className: 'figure', textContent: value, title }) : null);
       return el('article', { className: 'run-card', dataset: { run: s.id } },
         el('header', { className: 'run-head' },
@@ -745,7 +747,8 @@
             el('h3', { textContent: s.process }),
             status(s.status),
             figure(U.cost(outcome.cost_usd), outcome.cost_source ? `cost, from the ${outcome.cost_source}` : 'cost'),
-            figure(U.duration(outcome.wall_ms), 'wall time')),
+            figure(U.duration(outcome.wall_ms), 'wall time'),
+            said.verdict ? el('span', { className: `chip verdict${toneClass(said.verdict)}`, textContent: said.verdict.replaceAll('_', ' '), title: 'verdict' }) : null),
           closeButton()),
         el('p', { className: 'run-when' },
           joined([U.timeSpan(s.created_at, s.finished_at), s.agent && `agent ${s.agent}`]),
@@ -766,9 +769,47 @@
           ['severities', items ? U.counts(items.by_severity) || null : null],
         ]),
         s.workflow?.nodes.length ? nodesTable(s.workflow) : null,
+        said.parts.length ? el('section', { className: 'output' }, ...said.parts.map((part) => el('div', { className: `part part-${part.key}`, dataset: { key: part.key } },
+          el('h4', { textContent: part.key.replaceAll('_', ' ') }), partBody(part)))) : null,
         el('details', { className: 'record' },
           el('summary', { textContent: 'Record as stored' }),
           el('pre', { className: 'mono', textContent: JSON.stringify(record, null, 2) })));
+    }
+
+    const toneClass = (value) => (U.tone(value) ? ` tone-${U.tone(value)}` : '');
+    const prose = (src) => el('div', { className: 'markdown' }, K.markdown(src).map(block));
+
+    // One part of a run's output, as runs.js reads it.
+    function partBody(part) {
+      switch (part.kind) {
+        case 'text': return prose(part.text);
+        case 'none': return text('none', 'sub');
+        case 'list': {
+          const list = el('ul', { className: 'mono' }, ...part.items.map((i) => el('li', { textContent: i })));
+          return part.items.length > 12 ? el('details', {}, el('summary', { textContent: `${part.items.length} entries` }), list) : list;
+        }
+        case 'table': return el('table', { className: 'part-table' },
+          el('thead', {}, el('tr', {}, ...part.columns.map((c) => el('th', { textContent: c.replaceAll('_', ' ') })))),
+          el('tbody', {}, ...part.rows.map((row) => el('tr', {},
+            ...row.map((v, i) => el('td', { className: toneClass(v).trim(), textContent: v, dataset: { label: part.columns[i] } }))))));
+        case 'cards': return el('div', {}, ...part.cards.map(findingCard));
+        case 'facts': return el('div', { className: 'facts' },
+          ...part.facts.flatMap(([k, p]) => [text(k.replaceAll('_', ' '), 'label'), el('div', { className: 'value' }, partBody(p))]));
+        default: return el('pre', { className: 'mono json', textContent: part.text });
+      }
+    }
+
+    // A finding, item or decision: its tags, title and place; its detail,
+    // reason and action; the rest folded.
+    function findingCard(c) {
+      return el('article', { className: 'finding' },
+        el('div', { className: 'finding-head' },
+          ...c.tags.map((t) => el('span', { className: `chip${toneClass(t)}`, textContent: t })),
+          el('strong', { textContent: c.title }),
+          c.where ? text(c.where, 'where') : null,
+          c.sources ? text(`from ${c.sources}`, 'sub') : null),
+        ...c.texts.map(([k, t]) => el('div', { className: 'finding-text' }, k === 'detail' ? null : text(k, 'label'), prose(t))),
+        c.more ? el('details', { className: 'more' }, el('summary', { textContent: 'more' }), partBody(c.more)) : null);
     }
 
     // A workflow's nodes: each opens its run; the join is marked; the

@@ -3,6 +3,8 @@ import assert from 'node:assert/strict';
 import '../repos.js';
 import '../config.js';
 import '../runs.js';
+import './markdown-it.js';
+import '../knowledge.js';
 import '../page.js';
 import { pageDocument, Event } from './dom.js';
 
@@ -458,6 +460,62 @@ test('an opened run shows its facts, a workflow its nodes as a table, and the re
   ]);
   assert.deepEqual(nodes.querySelectorAll('span.mark').map((m) => [m.title, m.className]), [['completed', 'mark ok'], ['failed', 'mark failed']]);
   assert.deepEqual(JSON.parse(p.$('run-detail').querySelector('details.record pre').textContent), workflowRecord);
+});
+
+test('an opened run shows what its result says above the record: verdict in the head, findings as cards, coverage as a table', async () => {
+  const reviewed = {
+    status: 'completed',
+    output: {
+      verdict: 'request_changes', summary: 'One **real** finding.',
+      findings: [{ severity: 'major', file: 'a.go', line: 12, title: 'A race', detail: 'It races.', fix_cost: { size: 'small' } }],
+      coverage: [{ item: '1. Paths', status: 'checked', detail: 'Read it.' }, { item: '2. Tests', status: 'finding', detail: 'See finding 1.' }],
+    },
+    text: '{"verdict":"request_changes"}',
+  };
+  const p = page({
+    storage: fakeStorage({ [VIEW_KEY]: 'runs' }),
+    answers: { 'api/runs/call-1': () => respond({ summary: call, record: { ...callRecord, result: reviewed } }) },
+  });
+  await p.started;
+  p.row('call-1').click();
+  await settle();
+  const d = p.$('run-detail');
+  const verdict = d.querySelector('div.run-title span.verdict');
+  assert.equal(verdict.textContent, 'request changes');
+  assert.ok(verdict.classList.contains('tone-bad'));
+
+  const card = d.querySelector('article.run-card').children;
+  const output = d.querySelector('section.output');
+  assert.ok(card.indexOf(output) < card.indexOf(d.querySelector('details.record')));
+  assert.deepEqual(output.children.map((c) => c.dataset.key), ['summary', 'findings', 'coverage']);
+  assert.equal(output.children[0].querySelector('strong').textContent, 'real');
+
+  const finding = output.querySelector('article.finding');
+  assert.deepEqual(finding.querySelector('div.finding-head').children.map((c) => c.textContent), ['major', 'A race', 'a.go:12']);
+  assert.ok(finding.querySelector('span.chip').classList.contains('tone-bad'));
+  assert.equal(finding.querySelector('div.finding-text').textContent, 'It races.');
+  assert.match(finding.querySelector('details.more').textContent, /^morefix costsizesmall$/);
+
+  const coverage = output.querySelector('table.part-table');
+  assert.deepEqual(coverage.querySelectorAll('th').map((th) => th.textContent), ['item', 'status', 'detail']);
+  assert.deepEqual(coverage.querySelectorAll('tbody tr').map(p.cells), [['1. Paths', 'checked', 'Read it.'], ['2. Tests', 'finding', 'See finding 1.']]);
+  assert.deepEqual(coverage.querySelectorAll('tbody tr').map((tr) => tr.children[1].className), ['tone-ok', 'tone-bad']);
+  // The text is the output as JSON: not shown again.
+  assert.doesNotMatch(output.textContent, /"verdict"/);
+});
+
+test('a failed run shows its error first, then its text, and no verdict', async () => {
+  const p = page({
+    storage: fakeStorage({ [VIEW_KEY]: 'runs' }),
+    answers: { 'api/runs/call-1': () => respond({ summary: call, record: { result: { status: 'failed', error: { class: 'rate_limited', message: 'Hit the limit.' }, text: 'Got as far as *this*.' } } }) },
+  });
+  await p.started;
+  p.row('call-1').click();
+  await settle();
+  const parts = p.$('run-detail').querySelector('section.output').children;
+  assert.deepEqual(parts.map((c) => [c.dataset.key, c.querySelector('div.markdown').textContent]),
+    [['error', 'Hit the limit.class: rate_limited'], ['text', 'Got as far as this.']]);
+  assert.equal(p.$('run-detail').querySelector('span.verdict'), null);
 });
 
 test('the process and status filters show only the runs that match, and clearing them shows all', async () => {

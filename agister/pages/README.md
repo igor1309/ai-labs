@@ -91,7 +91,15 @@ again.
   belongs to, and for a workflow its judge's items by ruling and by
   severity and its nodes as a table: process, status, wall, cost and the
   rulings of the items each node was a source of. A link opens that run in
-  its place. The record as stored is folded at the bottom.
+  its place. Then what its result says: a review's verdict in the head
+  (green approve, red request changes), then its error, if any, and its
+  output, a part per key: summary first, then findings, a judge's items and
+  decisions as cards (severity, ruling, title, file and line, sources; the
+  detail, reason and action; the rest folded under *more*), coverage and
+  other lists of alike objects as tables, lists of strings as lists, text
+  as markdown, the rest as it nests. Without an output the result's text
+  shows; with one, the text is that output as JSON and is left out. The
+  record as stored is folded at the bottom.
 
 Durations read `1m 47s` or `412ms`, costs `$0.50`, times in local time. A
 failed or interrupted run shows in red.
@@ -289,7 +297,7 @@ It listens on loopback only and refuses a request whose Host is not
 The page itself is `index.html`, embedded in the binary with `repos.js`
 (the picker and the calls to the server), `config.js` (reading the
 settings; its YAML and TOML parsers cover what Agister settings use),
-`runs.js` (the Runs and Compare views' formatting, filters and compare tables),
+`runs.js` (the Runs and Compare views' formatting, filters, compare tables and how a run's output reads),
 `markdown-it.min.js` (markdown-it 15.0.2, the package's
 `dist/browser/markdown-it.umd.min.js` unchanged under a header with its
 source, checksum and MIT license; no npm dependency, no build step),
