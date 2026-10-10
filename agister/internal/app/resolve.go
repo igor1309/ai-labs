@@ -55,6 +55,10 @@ type resolution struct {
 	effective policy.Effective
 	identity  RuntimeIdentity
 	plan      enforce.Plan
+	// refusedPlan is the plan refused for withholding a required
+	// permission: inspection shows what else it withholds, and no call is
+	// given it.
+	refusedPlan enforce.Plan
 	// writer says the call holds the worktree alone (ADR-025 rule 4): its
 	// plan grants a permission the service lists as writing, or its process
 	// declares verify, whose command runs with the operator's authority.
@@ -498,6 +502,9 @@ func (r *Resolver) resolveCall(ctx context.Context, processName, agentOverride s
 	}
 	subject = root
 	if res.plan, err = enforce.Make(res.effective.Permissions, verified, res.effective.Require, res.service.StateReaching); err != nil {
+		if refused := (*enforce.RefusedError)(nil); errors.As(err, &refused) && refused.Plan != nil {
+			res.refusedPlan = *refused.Plan
+		}
 		return res, refuse("runtime %s: %v%s", res.mapping.Name, err, unverifiedNote(unverified, "for version "+res.identity.Version))
 	}
 	if tools := res.identity.SkillTools; len(tools) > 0 && !slices.ContainsFunc(tools, func(tool string) bool { return contains(res.plan.Primitives, tool) }) {

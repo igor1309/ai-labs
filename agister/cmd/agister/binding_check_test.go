@@ -62,3 +62,29 @@ func TestCheckAndWorkflowShowListWhatEachBindingWithholds(t *testing.T) {
 		t.Fatalf("check lacks %q: %d\n%s%s", warning, r.code, r.stdout, r.stderr)
 	}
 }
+
+// A binding refused for a permission in tools.require still shows what
+// else its plan withholds: check lists the others beside the warning, and
+// workflow show beside the refusal.
+func TestABindingRefusedForARequiredPermissionShowsWhatElseItWithholds(t *testing.T) {
+	t.Parallel()
+	home, repo := setup(t, "approve")
+	write(t, filepath.Join(home, "workflows", "asking.yaml"), askingDoc)
+	process := filepath.Join(home, "processes", "ask.yaml")
+	write(t, process, strings.Replace(read(t, process), "tools:\n  allow:\n", "tools:\n  require: [repository.read]\n  allow:\n", 1))
+	const others = "repository.diff, repository.search, repository.history.read, process.execute, host.read"
+
+	r := agister(t, home, repo, "check")
+	const warning = "warning workflow asking: call node question: process ask: tools.require would withhold repository.read on agent reviewer's runtime claude-code\n"
+	const withheld = "withheld workflow asking node question: process ask, agent reviewer (runtime claude-code version 2.1): " + others + "\n"
+	if !strings.Contains(r.stderr, warning) || !strings.Contains(r.stdout, withheld) {
+		t.Fatalf("check lacks %q or %q: %d\n%s%s", warning, withheld, r.code, r.stdout, r.stderr)
+	}
+
+	r = agister(t, home, repo, "workflow", "show", "asking")
+	const call = "/processes/ask.yaml): runtime claude-code: cannot enforce the effective permissions: required permissions would be withheld: repository.read (not verified for version 2.1.283: NotebookEdit, WebFetch, WebSearch)\n" +
+		"  withheld   " + others + "\n"
+	if !strings.Contains(r.stdout, "  plan       REFUSED: process ask (") || !strings.Contains(r.stdout, call) {
+		t.Fatalf("workflow show lacks %q: %d\n%s%s", call, r.code, r.stdout, r.stderr)
+	}
+}

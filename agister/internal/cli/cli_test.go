@@ -1199,6 +1199,7 @@ func TestWorkflowListAndShow(t *testing.T) {
 			FanOut: []contract.WorkflowNode{
 				{Name: "one", Process: contract.ProcessView{Name: "p", Agent: "a", Runtime: "rt", Primitives: []string{"Read"}, Withheld: []string{"repository.diff", "network"}}, Params: []string{"candidate"}},
 				{Name: "two", Process: contract.ProcessView{Name: "q", Refusal: "no agent"}},
+				{Name: "three", Process: contract.ProcessView{Name: "r", Agent: "a", Runtime: "rt", Withheld: []string{"network"}, Refusal: "required permissions would be withheld: repository.diff"}},
 			},
 			Join:       contract.WorkflowNode{Name: "merge", Process: contract.ProcessView{Name: "j", Agent: "a", Runtime: "rt"}},
 			Collection: "gathered",
@@ -1223,6 +1224,10 @@ fan-out      one: process p, agent a (runtime rt)
              two: process q
   receives   params (none)
   plan       REFUSED: no agent
+             three: process r, agent a (runtime rt)
+  receives   params (none)
+  plan       REFUSED: required permissions would be withheld: repository.diff
+  withheld   network
 join         merge: process j, agent a (runtime rt)
   receives   the collection as input gathered, and nothing else
   plan       (none)

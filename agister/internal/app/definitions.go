@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io/fs"
 	"path"
+	"slices"
 	"sort"
 	"strings"
 	"time"
@@ -513,8 +514,10 @@ type InspectedProcess struct {
 	Runtime     string // the runtime mapping's name
 	Effective   InspectedLimits
 	Primitives  []string // the plan's
-	Withheld    []string // allowed but not provided
-	Sources     []InspectedSource
+	// Withheld is what is allowed but not provided; on a refusal for a
+	// required permission, what else the refused plan withholds.
+	Withheld []string
+	Sources  []InspectedSource
 }
 
 // InspectedDefinition is what the view shows of a process's definition.
@@ -676,6 +679,11 @@ func (r *Resolver) inspect(ctx context.Context, name, agent string, caller overr
 		Primitives: res.plan.Primitives,
 		Withheld:   res.plan.Withheld,
 		Sources:    inspectedSources(res.sources),
+	}
+	// A call refused for withholding a required permission still shows what
+	// else its plan withholds.
+	if res.refusedPlan.Withheld != nil {
+		inspected.Withheld = slices.DeleteFunc(slices.Clone(res.refusedPlan.Withheld), func(permission string) bool { return contains(res.effective.Require, permission) })
 	}
 	if verify := process.Verify; verify != nil {
 		inspected.Process.Verify = &InspectedVerify{Command: verify.Command, Timeout: verify.Timeout, MaxAttempts: verify.MaxAttempts, Instruction: verify.Instruction}

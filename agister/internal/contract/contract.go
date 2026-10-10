@@ -371,7 +371,9 @@ type ProcessView struct {
 	Scope       string
 	// The staleness limits a call of it would run under.
 	Stale Stale
-	// Plan on the agent's runtime, or why none exists.
+	// Plan on the agent's runtime, or why none exists. Withheld is what
+	// the plan withholds that is allowed; on a refusal for a required
+	// permission, what else the refused plan withholds.
 	Primitives []string
 	Withheld   []string
 	Refusal    string

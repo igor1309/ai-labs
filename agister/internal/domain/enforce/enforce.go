@@ -20,6 +20,10 @@ type Plan struct {
 // RefusedError explains why no acceptable plan exists.
 type RefusedError struct {
 	Reasons []string
+	// Plan is the plan refused for withholding a required permission, for a
+	// view to show what else it withholds: never one a call is given. Nil
+	// where no plan fits.
+	Plan *Plan
 }
 
 func (e *RefusedError) Error() string {
@@ -80,7 +84,7 @@ func Make(permissions []string, mapping definition.Mapping, required, stateReach
 		}
 	}
 	if len(missing) > 0 {
-		return Plan{}, &RefusedError{Reasons: []string{"required permissions would be withheld: " + strings.Join(missing, ", ")}}
+		return Plan{}, &RefusedError{Reasons: []string{"required permissions would be withheld: " + strings.Join(missing, ", ")}, Plan: &plan}
 	}
 	return plan, nil
 }
