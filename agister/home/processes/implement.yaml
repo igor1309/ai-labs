@@ -21,6 +21,9 @@ workspace:
   clean: true
 
 tools:
+  require:
+    - repository.read
+    - repository.write
   allow:
     - repository.read
     - repository.search

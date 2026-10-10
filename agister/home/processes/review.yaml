@@ -38,6 +38,9 @@ workspace:
   revision: candidate_revision
 
 tools:
+  require:
+    - repository.read
+    - repository.diff
   allow:
     - repository.read
     - repository.diff

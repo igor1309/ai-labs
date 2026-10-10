@@ -24,6 +24,8 @@ workspace:
   revision: revision
 
 tools:
+  require:
+    - repository.read
   allow:
     - repository.read
     - repository.diff

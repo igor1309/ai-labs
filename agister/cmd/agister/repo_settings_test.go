@@ -140,6 +140,32 @@ var staleLimits = func() map[string]domain.StaleLimits {
 	}
 }()
 
+// requiredPermissions are the permissions each of home's processes says it
+// cannot work without (tools.require, ADR-030 rule 8), by process, a base
+// left out, as its run records them: implement reads the repository and
+// writes its change, a review reads the repository and the change's diff,
+// the advisor reads the repository, and the judge, which rules on the
+// reviews it is given, needs none. implement_codex, implement_pi and
+// implement_pi_glm, which go when implement is home's one implementer
+// (ADR-030 Migration step 3), say none.
+var requiredPermissions = func() map[string][]string {
+	review := []string{"repository.read", "repository.diff"}
+	return map[string][]string{
+		"implement":                 {"repository.read", "repository.write"},
+		"implement_codex":           nil,
+		"implement_pi":              nil,
+		"implement_pi_glm":          nil,
+		"adr_review_codex":          review,
+		"adversarial_review_codex":  review,
+		"advisor":                   {"repository.read"},
+		"architecture_review_codex": review,
+		"clarity_review_codex":      review,
+		"intent_review_codex":       review,
+		"tests_review_codex":        review,
+		"review_judge":              nil,
+	}
+}()
+
 // verifyFixture is the verification command every process that declares
 // verify, inline or by name, runs in the test's repository instead of its own: it passes in
 // the worktree, at the candidate (ADR-025). The real command would run this module's own
@@ -165,7 +191,8 @@ const verifyFixtureTimeout = "30s"
 // one is tested without listing it here, but for its agent: each process
 // that is not a base is one of processAgents, and each of those exists.
 // Each process's run, a join's included, records its agent as processAgents
-// has it (recordsAgent) and its staleLimits.
+// has it (recordsAgent), its staleLimits and its requiredPermissions, which
+// list every process that is not a base.
 //
 // The test works in a repository of its own whose top-level entries link to
 // this repository's working tree (settings and prompts as they are, edits
@@ -246,6 +273,7 @@ func TestRepositoryProcessesRunOnFakeRuntimes(t *testing.T) {
 			}
 			recordsAgent(t, record)
 			recordsStaleLimits(t, record)
+			recordsRequired(t, record)
 			if process.Verify != nil {
 				attempts, _ := record["attempts"].([]any)
 				if len(attempts) != 1 {
@@ -299,6 +327,7 @@ func TestRepositoryProcessesRunOnFakeRuntimes(t *testing.T) {
 				child := completedRun(t, home, node["run"].(string))
 				recordsAgent(t, child)
 				recordsStaleLimits(t, child)
+				recordsRequired(t, child)
 				if parent := child["parent"].(map[string]any); parent["run"] != record["id"] || parent["node"] != node["name"] {
 					t.Fatalf("node %v: parent %v", node["name"], parent)
 				}
@@ -321,6 +350,11 @@ func TestRepositoryProcessesRunOnFakeRuntimes(t *testing.T) {
 	for name := range staleLimits {
 		if !slices.Contains(names, name) {
 			t.Errorf("process %s, which has stale limits, is not among the home folder's processes", name)
+		}
+	}
+	for name := range requiredPermissions {
+		if !slices.Contains(names, name) {
+			t.Errorf("process %s, which has required permissions listed, is not among the home folder's processes", name)
 		}
 	}
 }
@@ -368,6 +402,35 @@ func recordsStaleLimits(t *testing.T, record map[string]any) {
 	}
 	if want := staleLimits[process]; got != want {
 		t.Fatalf("%s: effective stale limits %+v, want %+v", process, got, want)
+	}
+}
+
+// recordsRequired checks that a process's run recorded, among its effective
+// limits, the permissions requiredPermissions lists for its process, in
+// their order, or none.
+func recordsRequired(t *testing.T, record map[string]any) {
+	t.Helper()
+	process, _ := record["process"].(string)
+	want, listed := requiredPermissions[process]
+	if !listed {
+		t.Fatalf("%s: no required permissions listed in requiredPermissions", process)
+	}
+	effective, ok := record["effective"].(map[string]any)
+	if !ok {
+		t.Fatalf("%s: no effective limits recorded: %v", process, record)
+	}
+	var got []string
+	if recorded, set := effective["require"]; set {
+		data, err := json.Marshal(recorded)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := json.Unmarshal(data, &got); err != nil {
+			t.Fatalf("%s: require %s: %v", process, data, err)
+		}
+	}
+	if !slices.Equal(got, want) {
+		t.Fatalf("%s: effective tools.require %v, want %v", process, got, want)
 	}
 }
 
@@ -2155,6 +2218,49 @@ func TestTheReviewsExtendTheReviewBase(t *testing.T) {
 		if base == nil || base.Layer != "home" || base.Path != filepath.Join(home, "processes", "review.yaml") {
 			t.Errorf("%s's base file is %+v, want home's processes/review.yaml", name, base)
 		}
+	}
+}
+
+// check on home, as global settings on the fake runtimes, which report
+// versions the mappings verify, finds no problem and plans every node of
+// every workflow of the home folder on the agent it binds, none of them
+// withholding a permission its process requires (ADR-030 rule 8). It warns
+// of nothing but the implement processes' verify:repo, a slot a repository
+// fills (ADR-027 rule 3).
+func TestCheckOnHomeWarnsOfNoBinding(t *testing.T) {
+	t.Parallel()
+	root, _, home := onFakeRuntimes(t)
+	r := agister(t, home, tempDir(t), "check", "--json")
+	var report contract.CheckReport
+	if err := json.Unmarshal([]byte(r.stdout), &report); err != nil || r.code != 0 || len(report.Problems) != 0 {
+		t.Fatalf("check: %d %v\n%s%s", r.code, err, r.stdout, r.stderr)
+	}
+	for _, warning := range report.Warnings {
+		if !strings.Contains(warning, "names verify:repo, which does not exist") {
+			t.Errorf("check warns %q, want only the verify:repo a repository fills", warning)
+		}
+	}
+
+	paths, err := filepath.Glob(filepath.Join(root, homeFolder, "workflows", "*.yaml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var want []string
+	for _, path := range paths {
+		name := strings.TrimSuffix(filepath.Base(path), ".yaml")
+		for _, node := range parseWorkflow(t, root, name).Nodes() {
+			want = append(want, name+" "+node.Name+": process "+node.Process+", agent "+node.Agent)
+		}
+	}
+	var planned []string
+	for _, binding := range report.Bindings {
+		planned = append(planned, binding.Workflow+" "+binding.Node+": process "+binding.Process+", agent "+binding.Agent)
+		if len(binding.Required) != 0 {
+			t.Errorf("workflow %s node %s withholds %v, which process %s requires", binding.Workflow, binding.Node, binding.Required, binding.Process)
+		}
+	}
+	if len(want) == 0 || !reflect.DeepEqual(planned, want) {
+		t.Errorf("check plans the bindings %q, want each node of home's workflows %q", planned, want)
 	}
 }
 

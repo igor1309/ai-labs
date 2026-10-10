@@ -9,6 +9,7 @@ workspace:
   access: read-only
 
 tools:
+  require: []
   allow: []
 
 timeout: 10m
