@@ -100,7 +100,7 @@ function page({ storage = fakeStorage({ [VIEW_KEY]: 'knowledge', 'agister-pages:
   const button = (root, label) => root.querySelectorAll('button').find((b) => b.textContent === label);
   return {
     started, calls, storage, document, $, button,
-    shown: () => ['dashboard', 'runs', 'knowledge'].filter((id) => !$(id).hidden),
+    shown: () => ['dashboard', 'runs', 'compare', 'knowledge'].filter((id) => !$(id).hidden),
     // The overview: its agent columns, and per skill row its cells.
     columns: () => $('knowledge-overview').querySelectorAll('thead th').slice(1).map((th) => th.children.map((c) => c.textContent)),
     matrix: () => Object.fromEntries($('knowledge-overview').querySelectorAll('tbody tr').map((tr) => [tr.children[0].textContent, tr.children.slice(1).map((td) => td.textContent)])),

@@ -1,4 +1,5 @@
-// The page: the folder picker, the Settings, Runs and Knowledge views and
+// The page: the folder picker, the Settings, Runs, Compare and Knowledge
+// views and
 // what reads them again. start runs it over what it is given in place of the
 // browser's document, fetch, localStorage, location, navigator and
 // setTimeout, so a test can run it over fakes.
@@ -10,8 +11,8 @@
     const U = globalThis.AgisterRuns;
     const K = globalThis.AgisterKnowledge;
 
-    // current: the path shown, ~ for Agister home; view: settings, runs or
-    // knowledge; model: the settings shown, as config.js reads them; skills:
+    // current: the path shown, ~ for Agister home; view: settings, runs,
+    // compare or knowledge; model: the settings shown, as config.js reads them; skills:
     // the api/skills reply read with them, whose settings skills are the
     // model's (D-16) and whose folders Knowledge shows.
     const state = { current: null, view: U.readView(localStorage), model: null, skills: null };
@@ -73,8 +74,8 @@
     // them. Only a repo whose .agister was found goes on the recent list; on
     // failure the page says why and keeps what it showed. The user's home
     // folder holds Agister's home, so it shows as ~ and leaves the list.
-    // The status is the shown view's: while Runs is shown, a read of the
-    // settings leaves it alone. The settings' skills are the server's
+    // The status is the shown view's: while Runs or Compare is shown, a read
+    // of the settings leaves it alone. The settings' skills are the server's
     // inventory of them (api/skills), read with the settings files, which
     // leave skills out (D-16). Knowledge shows the settings' agents and
     // those skills, so it is read after them.
@@ -87,7 +88,7 @@
       } catch (err) {
         if (token !== renderToken) return;
         if (!$('picker-menu').hidden) say('picker-status', err.message);
-        else if (state.view !== 'runs') say('status', err.message);
+        else if (!U.readsRuns(state.view)) say('status', err.message);
         return;
       }
       if (token !== renderToken) return;
@@ -96,7 +97,7 @@
       state.current = id;
       if (knowledge.path !== id) forgetKnowledge();
       setMenu(false);
-      if (state.view !== 'runs') say('status', '');
+      if (!U.readsRuns(state.view)) say('status', '');
       const shown = await render(token, files, homeFiles, skills, composedFiles, sources);
       if (shown && state.view === 'knowledge') await loadKnowledge();
     }
@@ -139,7 +140,7 @@
           ? await C.loadComposed(R.agisterFromFiles(homeFiles), R.agisterFromFiles(files), skills.settings)
           : await C.loadAgister(R.agisterFromFiles(files), skills.settings);
       } catch (err) {
-        if (token === renderToken && state.view !== 'runs') say('status', `Could not read .agister: ${err.message}`);
+        if (token === renderToken && !U.readsRuns(state.view)) say('status', `Could not read .agister: ${err.message}`);
         return false;
       }
       if (token !== renderToken) return false;
@@ -491,46 +492,77 @@
     // --- runs ---
 
     // filter: the process and status shown; chosen: the run opened below the
-    // table; list and compare: what the server sent last.
-    const runs = { list: null, compare: null, filter: { process: '', status: '' }, chosen: null };
+    // table; list: what the server sent last.
+    const runs = { list: null, filter: { process: '', status: '' }, chosen: null };
     let runsToken = 0;
     let detailToken = 0;
 
-    // Reads the runs and their comparison again and shows them, with the run
-    // opened before. A read that ends after the user left Runs, or after a
-    // newer read, leaves the page alone: the status and the read time are
-    // the shown view's.
+    // Reads the runs again and shows them, with the run opened before. A
+    // read that ends after the user left Runs, or after a newer read, leaves
+    // the page alone: the status and the read time are the shown view's.
     async function loadRuns() {
       const token = ++runsToken;
       const current = () => token === runsToken && state.view === 'runs';
-      let list, compare;
+      let list;
       try {
-        [list, compare] = await Promise.all([R.fetchRuns(fetch), R.fetchCompare(fetch)]);
+        list = await R.fetchRuns(fetch);
       } catch (err) {
         if (current()) say('status', err.message);
         return;
       }
       if (!current()) return;
       say('status', '');
-      Object.assign(runs, { list, compare });
+      runs.list = list;
       stamp('Runs');
       renderRuns();
       if (runs.chosen) openRun(runs.chosen, false);
     }
 
     function renderRuns() {
-      const { list, compare } = runs;
       $('runs').replaceChildren(
         el('p', { className: 'intro', textContent: 'Runs in Agister home, ~/.agister/runs, whatever the picker shows.' }),
-        el('h2', { className: 'group', textContent: 'Compare' }),
-        el('p', { className: 'group-note', textContent: 'completed and failed calls, not workflows: per process, a row per runtime, model and effort' }),
-        ...compareSections(compare.groups),
-        el('h2', { className: 'group', textContent: 'Runs' }),
         el('p', { className: 'group-note', textContent: 'newest first; click a run to open it below' }),
-        filters(list.runs),
+        filters(runs.list.runs),
         el('div', { id: 'run-list' }),
         el('div', { id: 'run-detail' }));
       renderRunList();
+    }
+
+    // --- compare ---
+
+    let compareToken = 0;
+
+    // Reads the comparison again and shows it; as with Runs, a read that
+    // ends after the user left Compare, or after a newer read, leaves the
+    // page alone.
+    async function loadCompare() {
+      const token = ++compareToken;
+      const current = () => token === compareToken && state.view === 'compare';
+      let compare;
+      try {
+        compare = await R.fetchCompare(fetch);
+      } catch (err) {
+        if (current()) say('status', err.message);
+        return;
+      }
+      if (!current()) return;
+      say('status', '');
+      stamp('Compare');
+      $('compare').replaceChildren(
+        el('p', { className: 'intro', textContent: 'Runs in Agister home, ~/.agister/runs, whatever the picker shows.' }),
+        el('p', { className: 'group-note', textContent: 'completed and failed calls, not workflows: per process, a row per runtime, model and effort; click a process to list its runs' }),
+        ...compareSections(compare.groups));
+    }
+
+    // A link that shows Runs filtered to process.
+    function processInRuns(process) {
+      const link = el('a', { href: `#${process}`, textContent: process });
+      link.addEventListener('click', (e) => {
+        e.preventDefault();
+        runs.filter = { process, status: '' };
+        showView('runs');
+      });
+      return link;
     }
 
     function compareSections(groups) {
@@ -539,7 +571,7 @@
       const head = ['Runtime', 'Model', 'Effort', 'Runs', 'Completed', 'Pass rate', 'Verify attempts', 'Median wall', 'Cost / completed'];
       const keys = ['model', 'effort', 'runs', 'completed', 'passRate', 'verifyAttempts', 'medianWall', 'costPerCompleted'];
       return tables.map((t) => el('section', { className: 'card' },
-        el('header', { className: 'section-head' }, el('h3', { className: 'mono', textContent: t.process })),
+        el('header', { className: 'section-head' }, el('h3', { className: 'mono' }, processInRuns(t.process))),
         el('table', {},
           el('thead', {}, el('tr', {}, ...head.map((c) => el('th', { textContent: c })))),
           el('tbody', {}, ...t.rows.map((row) => el('tr', {},
@@ -977,6 +1009,7 @@
       for (const v of U.VIEWS) $(`view-${v}`).setAttribute('aria-pressed', String(v === view));
       $('dashboard').hidden = view !== 'settings' || !$('dashboard').hasChildNodes();
       $('runs').hidden = view !== 'runs';
+      $('compare').hidden = view !== 'compare';
       $('knowledge').hidden = view !== 'knowledge';
       $('refresh').title = `Refresh: read the ${view} again`;
     }
@@ -991,7 +1024,14 @@
     // Reads the shown view again; Knowledge is read after its settings.
     function reload() {
       if (location.protocol === 'file:') return say('status', R.NO_SERVER);
-      return state.view === 'runs' ? loadRuns() : open_(state.current ?? R.HOME_ID);
+      return readRuns() ?? open_(state.current ?? R.HOME_ID);
+    }
+
+    // Reads Runs or Compare when it is shown; null for the other views.
+    function readRuns() {
+      if (state.view === 'runs') return loadRuns();
+      if (state.view === 'compare') return loadCompare();
+      return null;
     }
 
     // --- start ---
@@ -1024,7 +1064,7 @@
     // with nothing chosen yet, settings at home.
     setView(state.view);
     if (location.protocol === 'file:') return say('status', R.NO_SERVER);
-    return Promise.all([open_(R.readCurrent(localStorage) ?? R.HOME_ID), state.view === 'runs' ? loadRuns() : null]);
+    return Promise.all([open_(R.readCurrent(localStorage) ?? R.HOME_ID), readRuns()]);
   }
 
   globalThis.AgisterPage = { start };

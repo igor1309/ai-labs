@@ -54,9 +54,15 @@ test('the view shown is kept under agister-pages:view; anything else reads as se
   assert.equal(U.readView(storage), 'runs');
   U.writeView(storage, 'knowledge');
   assert.equal(U.readView(storage), 'knowledge');
+  U.writeView(storage, 'compare');
+  assert.equal(U.readView(storage), 'compare');
   assert.equal(U.readView(fakeStorage({ [U.VIEW_KEY]: 'other' })), 'settings');
   assert.equal(U.readView({ getItem() { throw new Error('blocked'); } }), 'settings');
   U.writeView({ setItem() { throw new Error('full'); } }, 'runs');
+});
+
+test('Runs and Compare read Agister home\'s runs; Settings and Knowledge read the settings', () => {
+  assert.deepEqual(U.VIEWS.filter(U.readsRuns), ['runs', 'compare']);
 });
 
 test('a duration reads in ms under a second, then in seconds, minutes and hours', () => {

@@ -1,11 +1,12 @@
-// Agister pages: the Runs view's logic that does not touch the DOM.
+// Agister pages: the Runs and Compare views' logic that does not touch the
+// DOM.
 //
 // A classic script that sets globalThis.AgisterRuns, as repos.js sets
 // AgisterRepos. The runs and comparisons it reads are what agister pages
 // serves at api/runs and api/runs/compare; pages/runs.go writes them.
 (() => {
   const VIEW_KEY = 'agister-pages:view';
-  const VIEWS = ['settings', 'runs', 'knowledge'];
+  const VIEWS = ['settings', 'runs', 'compare', 'knowledge'];
 
   // The view shown last, or settings.
   function readView(storage) {
@@ -15,6 +16,12 @@
     } catch {
       return 'settings';
     }
+  }
+
+  // Whether view shows Agister home's runs, whatever the picker shows, and
+  // not the settings it shows: Runs and Compare.
+  function readsRuns(view) {
+    return view === 'runs' || view === 'compare';
   }
 
   function writeView(storage, view) {
@@ -150,7 +157,7 @@
   }
 
   globalThis.AgisterRuns = {
-    VIEW_KEY, VIEWS, readView, writeView,
+    VIEW_KEY, VIEWS, readView, writeView, readsRuns,
     duration, cost, verify, implementor, reportedModel, skills, counts, nodes, percent, mean, failed,
     processes, statuses, filterRuns, compareTables,
   };

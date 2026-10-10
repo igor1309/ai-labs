@@ -99,13 +99,13 @@ function page({ storage = fakeStorage(), answers = {} } = {}) {
     started, calls, asked, storage, document, location, $,
     rows: () => document.querySelectorAll('#run-list tr.pick'),
     row: (id) => document.querySelectorAll('#run-list tr.pick').find((r) => r.title === id),
-    shown: () => ({ settings: !$('dashboard').hidden, runs: !$('runs').hidden }),
+    shown: () => ({ settings: !$('dashboard').hidden, runs: !$('runs').hidden, compare: !$('compare').hidden }),
     pressed: (view) => $(`view-${view}`).getAttribute('aria-pressed'),
     detail: () => $('run-detail').querySelector('h3')?.textContent ?? null,
     // The cells of a table row, as text.
     cells: (row) => row.children.map((td) => td.textContent),
     // The compare tables: per process, its rows' cells.
-    compared: () => $('runs').querySelectorAll('section.card').filter((s) => s.parentNode === $('runs')).map((s) => ({
+    compared: () => $('compare').querySelectorAll('section.card').filter((s) => s.parentNode === $('compare')).map((s) => ({
       process: s.querySelector('h3').textContent,
       rows: s.querySelectorAll('tbody tr').map((tr) => tr.children.map((td) => td.textContent)),
     })),
@@ -133,7 +133,7 @@ test('the view chosen is shown and remembered, and the page starts in it next ti
   const storage = fakeStorage();
   const p = page({ storage });
   await p.started;
-  assert.deepEqual(p.shown(), { settings: true, runs: false });
+  assert.deepEqual(p.shown(), { settings: true, runs: false, compare: false });
   assert.equal(p.pressed('settings'), 'true');
   assert.equal(p.asked('api/runs'), 0);
   assert.match(p.$('dashboard').textContent, /Agister home/);
@@ -141,7 +141,7 @@ test('the view chosen is shown and remembered, and the page starts in it next ti
   p.$('view-runs').click();
   await settle();
   assert.equal(storage.raw(VIEW_KEY), 'runs');
-  assert.deepEqual(p.shown(), { settings: false, runs: true });
+  assert.deepEqual(p.shown(), { settings: false, runs: true, compare: false });
   assert.deepEqual([p.pressed('settings'), p.pressed('runs')], ['false', 'true']);
   assert.deepEqual(p.rows().map((r) => r.title), ['call-1', 'wf-1']);
   assert.match(p.$('runs').textContent, /claude-code/);
@@ -151,14 +151,14 @@ test('the view chosen is shown and remembered, and the page starts in it next ti
   // The next visit opens on Runs and reads them.
   const next = page({ storage });
   await next.started;
-  assert.deepEqual(next.shown(), { settings: false, runs: true });
+  assert.deepEqual(next.shown(), { settings: false, runs: true, compare: false });
   assert.equal(next.pressed('runs'), 'true');
   assert.deepEqual(next.rows().map((r) => r.title), ['call-1', 'wf-1']);
 
   next.$('view-settings').click();
   await settle();
   assert.equal(storage.raw(VIEW_KEY), 'settings');
-  assert.deepEqual(next.shown(), { settings: true, runs: false });
+  assert.deepEqual(next.shown(), { settings: true, runs: false, compare: false });
 });
 
 test('refresh reads the shown view again and only that one', async () => {
@@ -237,7 +237,7 @@ test('a Runs read that succeeds after the user went to Settings leaves the read 
   await settle();
   assert.match(p.$('read-at').title, /^Settings read/);
   assert.equal(p.$('status').hidden, true);
-  assert.deepEqual(p.shown(), { settings: true, runs: false });
+  assert.deepEqual(p.shown(), { settings: true, runs: false, compare: false });
 });
 
 test('a Runs read that fails after the user went to Settings does not show its error', async () => {
@@ -265,13 +265,96 @@ test('a Runs read that fails while Runs is shown says why', async () => {
   assert.equal(p.$('status').textContent, 'the runs could not be read');
 });
 
-test('the comparison and the run list show what the summaries carry', async () => {
-  const p = page({ storage: fakeStorage({ [VIEW_KEY]: 'runs' }) });
+test('Compare is its own view: it reads the comparison only, and Runs the runs only', async () => {
+  const storage = fakeStorage();
+  const p = page({ storage });
   await p.started;
+  p.$('view-compare').click();
+  await settle();
+  assert.equal(storage.raw(VIEW_KEY), 'compare');
+  assert.deepEqual(p.shown(), { settings: false, runs: false, compare: true });
+  assert.deepEqual([p.pressed('runs'), p.pressed('compare')], ['false', 'true']);
+  assert.deepEqual([p.asked('api/runs/compare'), p.asked('api/runs')], [1, 0]);
+  assert.match(p.$('read-at').title, /^Compare read/);
   assert.deepEqual(p.compared(), [
     { process: 'implement', rows: [['claude-code', 'opus', 'high', '3', '2', '67%', '1.5', '1m 47s', '$0.50 (1 unknown)']] },
     { process: 'review', rows: [['codex', 'gpt-6.1-sol', '-', '1', '0', '0%', '', '412ms', '(1 unknown)']] },
   ]);
+
+  p.$('refresh').click();
+  await settle();
+  assert.deepEqual([p.asked('api/runs/compare'), p.asked('api/runs')], [2, 0]);
+
+  p.$('view-runs').click();
+  await settle();
+  assert.deepEqual(p.shown(), { settings: false, runs: true, compare: false });
+  assert.deepEqual([p.asked('api/runs/compare'), p.asked('api/runs')], [2, 1]);
+  assert.equal(p.$('runs').querySelector('section.card table th').textContent, 'Started');
+
+  // The next visit opens on Compare and reads it.
+  const next = page({ storage: fakeStorage({ [VIEW_KEY]: 'compare' }) });
+  await next.started;
+  assert.deepEqual(next.shown(), { settings: false, runs: false, compare: true });
+  assert.equal(next.compared().length, 2);
+});
+
+test('a process in Compare shows Runs with only its runs, whatever was filtered before', async () => {
+  const p = page({ storage: fakeStorage({ [VIEW_KEY]: 'runs' }) });
+  await p.started;
+  p.filter('status', 'completed');
+  p.$('view-compare').click();
+  await settle();
+
+  const link = p.$('compare').querySelectorAll('h3 a').find((a) => a.textContent === 'implement');
+  assert.equal(link.href, '#implement');
+  assert.ok(link.click().defaultPrevented);
+  await settle();
+  assert.deepEqual(p.shown(), { settings: false, runs: true, compare: false });
+  assert.equal(p.location.hash, '');
+  const chosen = (name) => p.$('runs').querySelectorAll('select').find((s) => s.name === name).children.find((o) => o.selected)?.value ?? '';
+  assert.deepEqual([chosen('process'), chosen('status')], ['implement', '']);
+  assert.deepEqual(p.rows().map((r) => r.title), ['call-1']);
+});
+
+test('a Compare read that ends after the user went to Runs leaves the read time and the status alone', async () => {
+  const compared = deferred();
+  const p = page({
+    storage: fakeStorage({ [VIEW_KEY]: 'compare' }),
+    answers: { 'api/runs/compare': () => compared.promise },
+  });
+  await settle();
+  p.$('view-runs').click();
+  await settle();
+  assert.match(p.$('read-at').title, /^Runs read/);
+
+  compared.resolve(respond({ error: 'the runs could not be read' }, 500));
+  await p.started;
+  await settle();
+  assert.match(p.$('read-at').title, /^Runs read/);
+  assert.equal(p.$('status').hidden, true);
+  assert.deepEqual(p.compared(), []);
+});
+
+test('a Settings read that fails while Compare is shown says why only once Settings is shown', async () => {
+  const settings = deferred();
+  const p = page({ storage: fakeStorage({ [VIEW_KEY]: 'compare' }), answers: { 'api/settings': () => settings.promise } });
+  await settle();
+  assert.equal(p.compared().length, 2);
+
+  settings.resolve(respond({ error: 'no .agister folder at /gone/.agister' }, 404));
+  await p.started;
+  await settle();
+  assert.equal(p.$('status').hidden, true);
+  assert.match(p.$('read-at').title, /^Compare read/);
+
+  p.$('view-settings').click();
+  await settle();
+  assert.equal(p.$('status').textContent, 'no .agister folder at /gone/.agister');
+});
+
+test('the run list shows what the summaries carry', async () => {
+  const p = page({ storage: fakeStorage({ [VIEW_KEY]: 'runs' }) });
+  await p.started;
 
   // The started cell is in local time; the rest as the page writes it.
   assert.ok(p.cells(p.row('call-1'))[0]);
@@ -377,7 +460,7 @@ test('a Settings read that succeeds after the user went to Runs leaves the Runs 
   await settle();
   assert.equal(p.$('status').hidden, false);
   assert.equal(p.$('status').textContent, 'the runs could not be read');
-  assert.deepEqual(p.shown(), { settings: false, runs: true });
+  assert.deepEqual(p.shown(), { settings: false, runs: true, compare: false });
 });
 
 test('a Settings read that fails while Runs is shown says why only once Settings is shown', async () => {

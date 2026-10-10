@@ -3,9 +3,9 @@
 `agister pages` serves a page that shows what Agister can run with a
 repo's settings and what that is made of, and how its runs went. `~` in
 the picker at the top right is Agister home, `~/.agister`; the picker also
-opens repos and lists recent ones. **Settings**, **Runs** and **Knowledge**
-at the top left switch between the three views; the page opens on the one
-shown last.
+opens repos and lists recent ones. **Settings**, **Runs**, **Compare** and
+**Knowledge** at the top left switch between the four views; the page opens
+on the one shown last.
 
 ## Settings
 
@@ -74,12 +74,7 @@ nearer layer holds a partial, so the page does not open those settings. ↻ read
 The runs are Agister home's, whatever the picker shows. ↻ reads them
 again.
 
-- **Compare**: a table per process, a row per runtime adapter, model and
-  effort (`-` when the call asked for none): runs, completed, pass rate,
-  mean verify attempts, median wall time and cost per completed run, with
-  the count of runs of unknown cost when there are any. Workflows are not
-  compared; their steps are.
-- **Runs**, newest first: when it started, the process, the implementor
+- Newest first: when it started, the process, the implementor
   (`adapter model effort`; the model the runtime reported shows on hover
   when it differs), status, verify (`2 ✓`: the attempts used and whether
   the last passed; empty without verify), wall time, cost, the skills used
@@ -94,6 +89,16 @@ again.
 
 Durations read `1m 47s` or `412ms`, costs `$0.50`, times in local time. A
 failed or interrupted run shows in red.
+
+## Compare
+
+The runs Runs lists, compared; ↻ reads the comparison again. A table per
+process, a row per runtime adapter, model and effort (`-` when the call
+asked for none): runs, completed, pass rate, mean verify attempts, median
+wall time and cost per completed run, with the count of runs of unknown
+cost when there are any. Workflows are not compared; their steps are.
+Clicking a process shows Runs filtered to it, with any status filter let
+go; a process none of the listed runs has leaves the list unfiltered.
 
 ## Knowledge
 
@@ -277,7 +282,7 @@ It listens on loopback only and refuses a request whose Host is not
 The page itself is `index.html`, embedded in the binary with `repos.js`
 (the picker and the calls to the server), `config.js` (reading the
 settings; its YAML and TOML parsers cover what Agister settings use),
-`runs.js` (the Runs view's formatting, filters and compare tables),
+`runs.js` (the Runs and Compare views' formatting, filters and compare tables),
 `markdown-it.min.js` (markdown-it 15.0.2, the package's
 `dist/browser/markdown-it.umd.min.js` unchanged under a header with its
 source, checksum and MIT license; no npm dependency, no build step),
@@ -316,8 +321,8 @@ The browser's localStorage keeps, for the page's address:
   recent first, at most 10.
 - `agister-pages:current`: what was shown last (`~` or a repo path); the
   page opens on it.
-- `agister-pages:view`: the view shown last, `settings`, `runs` or
-  `knowledge`; the page opens on it.
+- `agister-pages:view`: the view shown last, `settings`, `runs`,
+  `compare` or `knowledge`; the page opens on it.
 
 ## Test
 
