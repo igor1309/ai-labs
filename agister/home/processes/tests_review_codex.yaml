@@ -1,4 +1,3 @@
-# Tests review of a candidate against prompts/code-review-tests.md.
 schema: agister.process/v1alpha1
 name: tests_review_codex
 
@@ -28,8 +27,6 @@ input:
   params:
     base: {default: origin/trunk}
     candidate: {default: HEAD}
-    # The goal file's text, as a review workflow resolves it once for its
-    # reviews (ADR-023 rule 1).
     goal: {}
   values:
     base_revision: {source: git.revision, rev: "${param.base}"}

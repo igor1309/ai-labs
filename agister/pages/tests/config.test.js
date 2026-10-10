@@ -200,8 +200,7 @@ test('TOML: keys, strings, numbers, multi-line arrays and tables', () => {
   assert.throws(() => C.parseToml('ok = 1\nnot toml\n'), /line 2/);
 });
 
-test('the purpose is the first sentence of the leading comment', () => {
-  assert.equal(C.leadingComment('# One. Two\n# three.\nname: x\n# later\n'), 'One. Two three.');
+test('a purpose is the first sentence of its text', () => {
   assert.equal(C.firstSentence('Review of one change (ADR-003): the reviews. Then more.'),
     'Review of one change (ADR-003): the reviews.');
   assert.equal(C.firstSentence('no stop'), 'no stop');
@@ -252,9 +251,9 @@ test('loadAgister reads each kind into its dashboard fields', async () => {
   assert.equal(impl.output, 'implementation');
   const review = m.policies.find((p) => p.name === 'review');
   assert.deepEqual([review.purpose, review.access, review.timeout, review.allow, review.deny],
-    ['Read-only review.', 'read-only', '20m', ['repository.read'], ['network']]);
+    [undefined, 'read-only', '20m', ['repository.read'], ['network']]);
   assert.deepEqual(m.runtimes[0].verified, ['0.158.', '0.159.']);
-  assert.equal(m.workflows[0].purpose, 'A panel.');
+  assert.equal(m.workflows[0].purpose, undefined, 'a comment is no purpose');
   assert.deepEqual(m.schemas.map((x) => x.name), ['implementation']);
 });
 
@@ -393,7 +392,7 @@ test('the brief forms a process and a workflow name are found in the composed se
   ]);
   assert.deepEqual(m.workflows[0].forms, [{ name: 'goal', outside: false, source: 'repo', overrides: true }]);
   const goal = m.briefs[0];
-  assert.deepEqual([goal.name, goal.purpose, goal.source, goal.usedBy], ['goal', 'The project goal: what this repo\'s work is for.', 'repo', ['implement', 'review']]);
+  assert.deepEqual([goal.name, goal.purpose, goal.source, goal.usedBy], ['goal', undefined, 'repo', ['implement', 'review']]);
   assert.deepEqual(goal.parts, [{ heading: '## Intent', required: true }, { heading: '## Done when', required: true }, { heading: '## Open', required: true }]);
 
   const alone = await C.loadAgister(memDir('.agister', { processes: home.processes, workflows: home.workflows }));

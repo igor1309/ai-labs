@@ -1,5 +1,3 @@
-# A plain question about the repository, answered in text by OpenCode.
-
 schema: agister.process/v1alpha1
 name: ask_opencode
 

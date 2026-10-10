@@ -251,17 +251,6 @@
 
   // --- what the dashboard shows ---
 
-  // The file's leading comment block, as one line.
-  function leadingComment(src) {
-    const out = [];
-    for (const line of src.split(/\r?\n/)) {
-      const t = line.trim();
-      if (!t.startsWith('#')) break;
-      out.push(t.replace(/^#+\s?/, ''));
-    }
-    return out.join(' ').trim();
-  }
-
   // The first sentence of text, or all of it when it has no full stop.
   function firstSentence(text) {
     const t = (text || '').replace(/\s+/g, ' ').trim();
@@ -281,11 +270,10 @@
     }));
   }
 
-  function workflowItem(file, src, doc) {
+  function workflowItem(file, _src, doc) {
     const node = (n) => ({ node: n?.node ?? null, process: refName(n?.uses) });
     return {
       file, name: doc.name ?? stem(file),
-      purpose: firstSentence(leadingComment(src)),
       params: params(doc.input),
       fanOut: Array.isArray(doc.fan_out) ? doc.fan_out.map(node) : [],
       join: doc.join ? node(doc.join) : null,
@@ -293,11 +281,11 @@
     };
   }
 
-  function processItem(file, src, doc) {
+  function processItem(file, _src, doc) {
     const instruction = typeof doc.input?.instruction === 'string' ? doc.input.instruction.trim() : '';
     return {
       file, name: doc.name ?? stem(file),
-      purpose: firstSentence(leadingComment(src) || instruction),
+      purpose: firstSentence(instruction),
       agent: refName(doc.uses),
       policy: refName(doc.policy),
       params: params(doc.input),
@@ -332,11 +320,10 @@
 
   // A brief form (ADR-026 rules 3 to 5): its parts, each a heading, and
   // whether it is required.
-  function briefItem(file, src, doc) {
+  function briefItem(file, _src, doc) {
     const parts = Array.isArray(doc.parts) ? doc.parts : [];
     return {
       file, name: doc.name ?? stem(file),
-      purpose: firstSentence(leadingComment(src)),
       parts: parts.map((p) => ({ heading: p?.heading ?? null, required: p?.required === true })),
     };
   }
@@ -363,10 +350,9 @@
     };
   }
 
-  function policyItem(file, src, doc) {
+  function policyItem(file, _src, doc) {
     return {
       file, name: doc.name ?? stem(file),
-      purpose: firstSentence(leadingComment(src)),
       access: doc.workspace?.access ?? null,
       timeout: doc.timeout ?? null,
       maxCostUsd: doc.max_cost_usd ?? null,
@@ -684,6 +670,6 @@
 
   globalThis.AgisterConfig = {
     parseYaml, parseToml, parseFlow, stripComment,
-    leadingComment, firstSentence, loadAgister, loadComposed, loadReported,
+    firstSentence, loadAgister, loadComposed, loadReported,
   };
 })();

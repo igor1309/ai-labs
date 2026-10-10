@@ -1,7 +1,3 @@
-# The join of the review_panel workflow. Its only input is the workflow's
-# collection: for each review, in the workflow's order, its node, process,
-# run, status and class, and its output if it completed. Called on its own, it is refused: it has nothing to join.
-
 schema: agister.process/v1alpha1
 name: review_summary
 

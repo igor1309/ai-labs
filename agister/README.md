@@ -461,7 +461,12 @@ OpenCode read `~/.agents/skills`, per ADR-011's table). Whether it is
 published for others is LAB-85.
 
 `examples/settings/` is what `init` installs; `examples/codex/`,
-`examples/pi/` and `examples/opencode/` are opt-in.
+`examples/pi/` and `examples/opencode/` are opt-in. The shipped service
+lists `host.read` and `host.write` as `state_reaching`, so on it
+`implement` gets no file tool (Claude Code's reach the host) and a
+process under the `read-only` policy is refused on Codex, whose
+sandbox reads the host. A service that lists neither accepts that
+reach, as `home/service.toml` does.
 
 ## Test
 

@@ -1,5 +1,3 @@
-# Concrete review role instantiated with the reusable reviewer agent profile.
-
 schema: agister.process/v1alpha1
 name: adversarial_review
 

@@ -1,13 +1,9 @@
 schema = "agister.service/v1alpha1"
 
-# Hard limits no policy may exceed. Retries are not supported yet.
 max_timeout = "1h"
 max_attempts = 1
-# Runs of a process's verification command per call, the first included;
-# a process may declare fewer, never more.
 max_verify_attempts = 3
 
-# The permission vocabulary. Policies and runtime mappings may use only these.
 permissions = [
   "repository.read",
   "repository.search",
@@ -21,10 +17,6 @@ permissions = [
   "host.write",
 ]
 
-# Permissions that change the workspace or its history. Read-only
-# workspace access withholds them.
 writing = ["repository.write", "repository.history.write"]
 
-# Reaching beyond the workspace could reach Agister's own state, so these
-# are never granted, whatever a policy allows.
 state_reaching = ["host.read", "host.write"]

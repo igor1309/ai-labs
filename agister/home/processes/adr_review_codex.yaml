@@ -1,5 +1,3 @@
-# Review of the architecture decisions a candidate adds or edits, per
-# prompts/code-review-adr.md.
 schema: agister.process/v1alpha1
 name: adr_review_codex
 
@@ -26,8 +24,6 @@ input:
   params:
     base: {default: origin/trunk}
     candidate: {default: HEAD}
-    # The goal file's text, as a review workflow resolves it once for its
-    # reviews (ADR-023 rule 1).
     goal: {}
   values:
     base_revision: {source: git.revision, rev: "${param.base}"}

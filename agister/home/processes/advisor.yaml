@@ -1,16 +1,9 @@
-# Decides one open build question from the recorded decisions, per
-# ~/.agister/prompts/advisor.md (ADR-007): a decision, to be appended to
-# the project's decisions record, or owner for a policy question.
-#   agister run advisor --param question=<file> --param revision=<rev>
 schema: agister.process/v1alpha1
 name: advisor
 
 type: process
 uses: agent:codex-sol-61
 policy: process-policy:codex-review
-# Prompt advisor names AGENTS.md as part of the material the advisor
-# rules from, not as guidance it follows (LAB-161): the recorded
-# decisions it reads are the revision's, whatever they are.
 prompt: advisor
 
 input:

@@ -1,4 +1,3 @@
-# implement on Pi with MiniMax M3 (agent pi-implementer-m3, policy implement_pi).
 schema: agister.process/v1alpha1
 name: implement_pi
 type: process
@@ -24,7 +23,4 @@ output:
   schema: implementation
   require_valid: true
 
-
-# The repository's own check: <repo>/.agister/verifies/repo.yaml. Calls
-# are refused in a repository without one (ADR-010).
 verify: verify:repo

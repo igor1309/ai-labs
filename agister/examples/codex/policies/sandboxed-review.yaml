@@ -1,10 +1,3 @@
-# Review policy for Codex's read-only sandbox under contract codex/2:
-# unlike static-review it allows what that sandbox grants, which runs
-# commands, reads history and reads the host. A process under this policy
-# runs on Codex only when the repository's service opts in to host reads,
-# by not listing host.read as state-reaching; under the shipped service it
-# is still refused.
-
 schema: agister.process-policy/v1alpha1
 name: sandboxed-review
 

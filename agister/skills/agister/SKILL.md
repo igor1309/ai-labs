@@ -105,6 +105,10 @@ Supply the document; do not route around the refusal.
   document: one with a second, after a `---`, is a settings problem
   (`must hold exactly one YAML document`), not a second document. Split
   it into one file per document.
+- A settings document carries no comments. What it is for is its name
+  and fields; why it is so belongs in its commit's message, and a choice
+  that must hold belongs in a test. No ADR or issue references, no
+  history, no restating what composition does.
 - A process says what it needs of the worktree under `workspace`, each
   field optional:
   - `revision`, the input that resolves to a revision: a call is refused
@@ -211,6 +215,9 @@ agister run <process> --dir <worktree> --param <param>=<value> --json
   settings, and `--timeout <d>` and `--max-cost <usd>` set the call's
   limits. A workflow takes params, `--goal`, `--answers` and `--dir` only:
   each node is a run of its own, with its own process's agent and limits.
+- A process with a `workflow.collection` input, such as a review judge,
+  runs only as a workflow's join, on the nodes' outputs: a call of it
+  alone is refused. Run the workflow.
 - Interrupting `agister run` cancels the run.
 - Runs cost money. Do not loop runs unattended.
 
