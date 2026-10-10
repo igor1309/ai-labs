@@ -89,8 +89,15 @@ func pagesEnv(appends *fsruns.Appends) pages.Env {
 		Open:     func(url string) error { return exec.Command("open", url).Run() },
 		Choose:   pages.MacDialog(runCommand),
 		// The run store reads the runs' owners as agister run leaves them.
-		Observe: func(dir string) pages.RunObserver { return fsruns.Store{Dir: dir, Appends: appends} },
+		Observe:  func(dir string) pages.RunObserver { return fsruns.Store{Dir: dir, Appends: appends} },
+		Settings: pagesSettings,
 	}
+}
+
+// pagesSettings gives the page the binary's own selection of the settings
+// layers and its layered store, so the page cannot say otherwise.
+func pagesSettings(home, root, launch string, read func(string) ([]byte, error)) (pages.SettingsStore, error) {
+	return fsdefs.Inspect(home, root, launch, read)
 }
 
 func runCommand(ctx context.Context, name string, args ...string) ([]byte, []byte, error) {

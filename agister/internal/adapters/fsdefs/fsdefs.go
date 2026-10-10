@@ -518,14 +518,29 @@ type Layered struct {
 	Absent string
 }
 
-// WithReadFile returns an inspection copy whose document and layer.yaml
-// contents are read with read. Listing, selection and composition are unchanged;
-// skills retain their checked file-handle reads. A viewer may return
-// definition.ErrNotFound for a file excluded by its own size limit.
-func (l Layered) WithReadFile(read func(string) ([]byte, error)) Layered {
+// Inspect selects the layers as Select does for a viewer of the settings,
+// home's alone where root is "" (no worktree), and reads every document and
+// layer.yaml with read. Listing, selection and composition are the
+// binary's; skills keep their checked reads. read may return
+// definition.ErrNotFound for a file the viewer leaves out, such as one over
+// its size limit.
+func Inspect(home, root, launch string, read func(string) ([]byte, error)) (Layered, error) {
 	if read == nil {
-		panic("fsdefs: missing inspection reader")
+		return Layered{}, errors.New("fsdefs: no reader to inspect the settings with")
 	}
+	selected := Layered{Home: Store{Dir: home}}
+	if root != "" {
+		var err error
+		if selected, err = Select(selected.Home, root, launch); err != nil {
+			return Layered{}, err
+		}
+	}
+	return selected.withReadFile(read), nil
+}
+
+// withReadFile is a copy of the store reading document and layer.yaml
+// contents with read.
+func (l Layered) withReadFile(read func(string) ([]byte, error)) Layered {
 	l.Home.readFile = read
 	if l.Repository != nil {
 		store := *l.Repository

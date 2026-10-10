@@ -61,14 +61,15 @@ type Observe func(runsDir string) RunObserver
 
 // Handler serves the page and its endpoints. agisterHome is Agister's home
 // (what ~ names); choose asks the user for a folder; observe reads the
-// runs' owners; homes are where the home skill folders are.
-func Handler(agisterHome string, choose Choose, observe Observe, homes SkillHomes) http.Handler {
-	return handler(agisterHome, choose, observe, homes, os.ReadFile)
+// runs' owners; homes are where the home skill folders are; settings
+// selects and reads the settings layers as the binary does.
+func Handler(agisterHome string, choose Choose, observe Observe, homes SkillHomes, settings SelectSettings) http.Handler {
+	return handler(agisterHome, choose, observe, homes, settings, os.ReadFile)
 }
 
 // handler is Handler reading every settings file and SKILL.md with read,
 // the only file contents its settings and skills endpoints read.
-func handler(agisterHome string, choose Choose, observe Observe, homes SkillHomes, read func(string) ([]byte, error)) http.Handler {
+func handler(agisterHome string, choose Choose, observe Observe, homes SkillHomes, selectLayers SelectSettings, read func(string) ([]byte, error)) http.Handler {
 	mux := http.NewServeMux()
 	var dialog sync.Mutex
 	mux.Handle("GET /", http.FileServerFS(assets))
@@ -93,7 +94,7 @@ func handler(agisterHome string, choose Choose, observe Observe, homes SkillHome
 	mux.HandleFunc("GET /api/settings", func(w http.ResponseWriter, r *http.Request) {
 		path := r.URL.Query().Get("path")
 		texts := map[string]string{}
-		selected, err := selectSettings(path, agisterHome, pageSettingsReader(read, texts))
+		selected, err := selectSettings(path, agisterHome, selectLayers, pageSettingsReader(read, texts))
 		if err != nil {
 			reply(w, nil, err)
 			return
@@ -123,7 +124,7 @@ func handler(agisterHome string, choose Choose, observe Observe, homes SkillHome
 		reply(w, body, err)
 	})
 	mux.HandleFunc("GET /api/skills", func(w http.ResponseWriter, r *http.Request) {
-		skills, err := skillsAt(r.URL.Query().Get("path"), agisterHome, homes, read)
+		skills, err := skillsAt(r.URL.Query().Get("path"), agisterHome, homes, selectLayers, read)
 		reply(w, skills, err)
 	})
 	runs := filepath.Join(agisterHome, "runs")
@@ -284,6 +285,8 @@ type Env struct {
 	Listen func(network, address string) (net.Listener, error)
 	// Observe is the run store the runs' owners are read from.
 	Observe Observe
+	// Settings selects and reads the settings layers as the binary does.
+	Settings SelectSettings
 }
 
 // Usage is the help for agister pages.
@@ -341,6 +344,10 @@ func Main(ctx context.Context, args []string, env Env) int {
 		fmt.Fprintln(env.Stderr, "agister pages: no run store to read the runs from")
 		return 70
 	}
+	if env.Settings == nil {
+		fmt.Fprintln(env.Stderr, "agister pages: no settings store to read the settings with")
+		return 70
+	}
 	listen := env.Listen
 	if listen == nil {
 		listen = net.Listen
@@ -355,7 +362,7 @@ func Main(ctx context.Context, args []string, env Env) int {
 		choose = func(context.Context) (string, error) { return "", errors.New("no folder dialog on this system") }
 	}
 	homes := SkillHomesFrom(env.Getenv, userHome)
-	server := &http.Server{Handler: Handler(agisterHome, choose, env.Observe, homes), ReadHeaderTimeout: 10 * time.Second}
+	server := &http.Server{Handler: Handler(agisterHome, choose, env.Observe, homes, env.Settings), ReadHeaderTimeout: 10 * time.Second}
 	url := "http://" + listener.Addr().String() + "/"
 	fmt.Fprintf(env.Stdout, "Agister pages at %s (Ctrl-C stops)\n", url)
 	if env.Open != nil && !*noOpen {

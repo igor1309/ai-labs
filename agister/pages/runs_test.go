@@ -157,7 +157,7 @@ func TestReadRunReturnsTheRecordAsStored(t *testing.T) {
 		Summary RunSummary     `json:"summary"`
 		Record  map[string]any `json:"record"`
 	}
-	if code := get(t, Handler(home, noChoose(t), owners(), SkillHomes{}), "localhost:7465", "/api/runs/run-1", &detail); code != http.StatusOK {
+	if code := get(t, Handler(home, noChoose(t), owners(), SkillHomes{}, binarySettings), "localhost:7465", "/api/runs/run-1", &detail); code != http.StatusOK {
 		t.Fatalf("code %d", code)
 	}
 	var want map[string]any
@@ -187,7 +187,7 @@ func TestAnUnfinishedRunIsRunningWhileOwnedAndLostOnceNot(t *testing.T) {
 		t.Fatalf("left: %+v", detail.Summary)
 	}
 	// The endpoints read the owners from the run store they are given.
-	h := Handler(home, noChoose(t), owners("owned"), SkillHomes{})
+	h := Handler(home, noChoose(t), owners("owned"), SkillHomes{}, binarySettings)
 	var listed RunList
 	if code := get(t, h, "localhost:7465", "/api/runs", &listed); code != http.StatusOK ||
 		listed.Runs[0].Status != "running" || listed.Runs[1].Status != "lost" {
@@ -359,7 +359,7 @@ func TestRunListLimitsDefaultAndCap(t *testing.T) {
 		}
 		return ids
 	}
-	h := Handler(home, noChoose(t), owners(), SkillHomes{})
+	h := Handler(home, noChoose(t), owners(), SkillHomes{}, binarySettings)
 	for target, want := range map[string][]string{
 		"/api/runs":            newest(200),
 		"/api/runs?limit=1001": newest(1000),
@@ -386,7 +386,7 @@ func TestRunEndpoints(t *testing.T) {
 	runRecord(t, runs, "run-1", call("run-1", "p", "2026-10-01T09:00:00Z", ""))
 	runRecord(t, runs, "run-2", call("run-2", "p", "2026-10-01T10:00:00Z", ""))
 	runRecord(t, runs, "bad", `not json`)
-	h := Handler(home, noChoose(t), owners(), SkillHomes{})
+	h := Handler(home, noChoose(t), owners(), SkillHomes{}, binarySettings)
 
 	var list RunList
 	if code := get(t, h, "localhost:7465", "/api/runs?limit=1", &list); code != http.StatusOK ||

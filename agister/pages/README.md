@@ -16,7 +16,15 @@ Prompts, skills and schemas come whole from the nearest layer. Each item
 names its layer files, nearest first, as `home`, `repository` or `project`;
 a card lists the surviving fields from each file, and a table's layer chip
 shows them on hover. A file that gave no fields says `(none)`. Outside a
-git worktree only home is read.
+git worktree only home is read. The server selects the layers and reads
+and composes the documents with Agister's own selection and store, given
+to it by `agister`, so the page says what a call launched there would
+use: a launch directory reached through a link is the directory it leads
+to, a farther layer's prompt or schema is named but not opened, a linked
+file is followed, and only the file names Agister reads count (`.yaml`,
+not `.yml`). On top of that the page shows no file over 256 KB, left out
+as if absent, and refuses a layer's file that is not a regular file, which
+it neither waits on nor replaces with the parent's.
 
 - **Workflows** and **Processes**, as cards: what each does (its leading
   comment), the `agister run` command with its required params (Copy puts
@@ -25,6 +33,7 @@ git worktree only home is read.
     (workspace, timeout, cost cap, what it allows and denies), its output
     schema and verify attempts (of the verification it names, when it
     names one; marked missing when these settings have none of that name),
+    that verification's layer files with the fields each gave,
     its required `prompt` and its `guidance` list separately (`none` for
     an empty list), names marked missing when no layer has them, with
     their layer files; the skills its call gets, its own and then its agent's
@@ -38,8 +47,9 @@ git worktree only home is read.
     opus`), the brief forms its inputs name, listed as a process's, then
     the steps: the ones run at once (`First` when there is
     one) and the one run after them. Each step shows its name, what it
-    does, its agent and its policy. Steps are not repeated under
-    Processes; they still run alone.
+    does, its agent and its policy, and, as a process card does, its
+    `prompt`, its `guidance`, its layer files and its verification's.
+    Steps are not repeated under Processes; they still run alone.
 - **Building blocks**, as tables: agents (with the skills each names,
   listed as on a process card), policies, runtimes and the service limits,
   each with what it means.
@@ -175,6 +185,12 @@ The server writes nothing and answers these endpoints:
   skipped, and so is `skills/`: no
   file of it is read here, so one that cannot be read fails nothing; the
   settings' skills are `/api/skills`' `settings` (ADR-011 rule 9, D-16).
+  With them come `layers`, the layers selected for `<path>`, farthest
+  first; `composedFiles`, each document as Agister composes it, and the
+  prompts a process names as `prompt` or `guidance`, found as a call finds
+  them, in the folders a `layer.yaml` lists too; and `sources`, each
+  document's layer files, nearest first, with the fields each gave, or the
+  error that stops the document.
 - `GET /api/skills?path=<absolute repo path | ~>`: the skill folders of
   ADR-011's table for the runtime adapters the settings at that path
   define (the `adapter` of each `runtimes/` file, the repo's over Agister

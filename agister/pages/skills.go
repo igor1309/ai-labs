@@ -13,7 +13,6 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/igor1309/ai-labs/agister/internal/adapters/fsdefs"
 	"github.com/igor1309/ai-labs/agister/internal/domain/definition"
 	"gopkg.in/yaml.v3"
 )
@@ -535,7 +534,7 @@ func frontMatter(data []byte) (map[string]any, error) {
 // runtimeAdapters reads adapters from runtime compositions, so a partial
 // retains its parent's adapter. A broken parent file is still refused:
 // every file is read, as for the CLI's composed runtime documents.
-func runtimeAdapters(store fsdefs.Layered) ([]string, error) {
+func runtimeAdapters(store SettingsStore) ([]string, error) {
 	ctx := context.Background()
 	names, err := store.List(ctx, definition.KindRuntime)
 	if err != nil {
@@ -589,9 +588,9 @@ func runtimeAdapter(data []byte) (string, error) {
 }
 
 // skillsAt answers /api/skills for path: a repo's absolute path, or ~,
-// reading each file with read.
-func skillsAt(path, agisterHome string, homes SkillHomes, read func(string) ([]byte, error)) (SkillsReply, error) {
-	selected, err := selectSettings(path, agisterHome, pageSettingsReader(read, map[string]string{}))
+// selecting its settings layers with choose and reading each file with read.
+func skillsAt(path, agisterHome string, homes SkillHomes, choose SelectSettings, read func(string) ([]byte, error)) (SkillsReply, error) {
+	selected, err := selectSettings(path, agisterHome, choose, pageSettingsReader(read, map[string]string{}))
 	if err != nil {
 		return SkillsReply{}, err
 	}

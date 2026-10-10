@@ -9,7 +9,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/igor1309/ai-labs/agister/internal/adapters/fsdefs"
 	"github.com/igor1309/ai-labs/agister/internal/domain/definition"
 	"gopkg.in/yaml.v3"
 )
@@ -20,26 +19,44 @@ type settingsLayer struct {
 	Dir   string `json:"dir"`
 }
 
+// SettingsStore is the binary's layered settings store over the layers
+// selected for one launch directory: the view reads, composes and names the
+// layers of every document through it, so it says what the binary does.
+type SettingsStore interface {
+	Layers(ctx context.Context) []definition.LayerDir
+	List(ctx context.Context, kind definition.Kind) ([]string, error)
+	Read(ctx context.Context, kind definition.Kind, name string) (definition.Document, error)
+	ReadListed(ctx context.Context, kind definition.Kind, name string) (definition.Document, error)
+}
+
+// SelectSettings selects the settings layers the binary reads for a command
+// launched in launch, in the worktree whose root is root, or home's alone
+// where root is "", and gives the binary's store over them, reading every
+// document and layer.yaml with read.
+type SelectSettings func(home, root, launch string, read func(string) ([]byte, error)) (SettingsStore, error)
+
 // settingsSelection keeps the worktree root independent of its optional
 // settings folder. The binary selects and validates the settings layers.
 type settingsSelection struct {
 	root   string
-	store  fsdefs.Layered
+	store  SettingsStore
 	layers []settingsLayer
 }
 
-func selectSettings(path, home string, read func(string) ([]byte, error)) (settingsSelection, error) {
-	selected := settingsSelection{store: fsdefs.Layered{Home: fsdefs.Store{Dir: home}}}
+func selectSettings(path, home string, choose SelectSettings, read func(string) ([]byte, error)) (settingsSelection, error) {
+	var selected settingsSelection
+	launch := home
 	if path != Home && filepath.Clean(filepath.Join(path, ".agister")) != filepath.Clean(home) {
 		if !filepath.IsAbs(path) {
 			return selected, badRequest("path must be absolute or ~: " + path)
 		}
-		launch, err := filepath.EvalSymlinks(path)
+		var err error
+		launch, err = filepath.EvalSymlinks(path)
 		if err != nil || !isDir(launch) {
 			return selected, notFound("no folder at " + path)
 		}
 		// Worktrees have a .git file instead of a directory. Pages only
-		// discovers the root here; fsdefs owns settings selection below it.
+		// discovers the root here; the binary's selection owns the layers.
 		for dir := launch; ; dir = filepath.Dir(dir) {
 			if _, err := os.Stat(filepath.Join(dir, ".git")); err == nil {
 				selected.root = dir
@@ -49,15 +66,13 @@ func selectSettings(path, home string, read func(string) ([]byte, error)) (setti
 				break
 			}
 		}
-		if selected.root != "" {
-			selected.store, err = fsdefs.Select(selected.store.Home, selected.root, launch)
-			if err != nil {
-				return selected, err
-			}
-		}
 	}
-	selected.store = selected.store.WithReadFile(read)
-	layers := selected.store.Layers(context.Background())
+	store, err := choose(home, selected.root, launch, read)
+	if err != nil {
+		return selected, err
+	}
+	selected.store = store
+	layers := store.Layers(context.Background())
 	for i := len(layers) - 1; i >= 0; i-- {
 		layer := layers[i]
 		for _, problem := range layer.Invalid {
@@ -68,17 +83,22 @@ func selectSettings(path, home string, read func(string) ([]byte, error)) (setti
 	return selected, nil
 }
 
-// pageSettingsReader adds Pages' size limit and refuses files that cannot
-// safely be read as text. Definition symlinks are followed, as by the binary.
-// texts records only files the store actually reads; replaced whole documents
-// remain provenance alone and are never opened for the raw inventory either.
+// pageSettingsReader adds Pages' size limit, which leaves a larger file out
+// as if absent, and refuses a file that is not regular, which the page
+// cannot read as text and must not wait on. Links are followed, as the
+// binary follows them. texts records only files the store actually reads;
+// replaced whole documents remain provenance alone and are never opened for
+// the raw inventory either.
 func pageSettingsReader(read func(string) ([]byte, error), texts map[string]string) func(string) ([]byte, error) {
 	return func(path string) ([]byte, error) {
 		info, err := os.Stat(path)
 		if err != nil {
 			return nil, err
 		}
-		if !info.Mode().IsRegular() || info.Size() > fileCap {
+		if !info.Mode().IsRegular() {
+			return nil, fmt.Errorf("%s: not a regular file", path)
+		}
+		if info.Size() > fileCap {
 			return nil, definition.ErrNotFound
 		}
 		data, err := read(path)
@@ -103,7 +123,7 @@ func settingsKinds() []definition.Kind {
 
 // settingsComposition reads the binary's layered store, including unreferenced
 // documents in its inventory. Prompt libraries supply only names a process gives.
-func settingsComposition(store fsdefs.Layered) (map[string]string, map[string]any, error) {
+func settingsComposition(store SettingsStore) (map[string]string, map[string]any, error) {
 	ctx := context.Background()
 	composed := map[string]string{}
 	sources := map[string]any{}

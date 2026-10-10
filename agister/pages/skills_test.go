@@ -457,7 +457,7 @@ func TestSkillsEndpointReadsTheFoldersOfTheSettingsRuntimes(t *testing.T) {
 	write(t, filepath.Join(repo, ".claude", "skills", "r", "SKILL.md"), skillMD("r", "R."))
 	write(t, filepath.Join(user, ".claude", "skills", "u", "SKILL.md"), skillMD("u", "U."))
 	write(t, filepath.Join(user, ".pi", "agent", "skills", "p", "SKILL.md"), skillMD("p", "P."))
-	h := Handler(home, noChoose(t), owners(), SkillHomes{Home: user})
+	h := Handler(home, noChoose(t), owners(), SkillHomes{Home: user}, binarySettings)
 
 	var got SkillsReply
 	if code := get(t, h, "127.0.0.1", "/api/skills?path="+q(repo), &got); code != 200 {
@@ -508,7 +508,7 @@ func TestARepoRuntimeSettingsLeavesOutReplacesNothing(t *testing.T) {
 	write(t, filepath.Join(home, "runtimes", "other.yaml"), "adapter: claude-code\n")
 	write(t, filepath.Join(repo, ".agister", "runtimes", "other.yaml"), "primitives: {}\n")
 	write(t, filepath.Join(user, ".pi", "agent", "skills", "p", "SKILL.md"), skillMD("p", "P."))
-	h := Handler(home, noChoose(t), owners(), SkillHomes{Home: user})
+	h := Handler(home, noChoose(t), owners(), SkillHomes{Home: user}, binarySettings)
 
 	var settings struct {
 		Files, HomeFiles map[string]string
@@ -536,7 +536,7 @@ func TestARepoRuntimeSettingsLeavesOutReplacesNothing(t *testing.T) {
 func TestSkillsEndpointRefusesWhatSettingsRefuses(t *testing.T) {
 	t.Parallel()
 	home := t.TempDir()
-	h := Handler(home, noChoose(t), owners(), SkillHomes{Home: home})
+	h := Handler(home, noChoose(t), owners(), SkillHomes{Home: home}, binarySettings)
 	for target, want := range map[string]int{
 		"/api/skills?path=relative":             400,
 		"/api/skills?path=":                     400,
@@ -581,7 +581,7 @@ func TestSkillsEndpointRefusesARuntimeFileOfTwoDocuments(t *testing.T) {
 				}
 				file := filepath.Join(dir, "runtimes", "main.yaml")
 				write(t, file, "adapter: codex\n---\n"+second)
-				h := Handler(home, noChoose(t), owners(), SkillHomes{Home: user})
+				h := Handler(home, noChoose(t), owners(), SkillHomes{Home: user}, binarySettings)
 
 				paths := []string{repo}
 				if scope == "home" {
@@ -614,7 +614,7 @@ func TestARepoRuntimeRefusesAHomeRuntimeFileOfTwoDocuments(t *testing.T) {
 			bad := filepath.Join(home, "runtimes", "main.yaml")
 			write(t, bad, "adapter: pi\n---\nadapter: pi\n")
 			write(t, filepath.Join(repo, ".agister", "runtimes", name), "adapter: codex\n")
-			h := Handler(home, noChoose(t), owners(), SkillHomes{})
+			h := Handler(home, noChoose(t), owners(), SkillHomes{}, binarySettings)
 			var got struct{ Error string }
 			code := get(t, h, "127.0.0.1", "/api/skills?path="+q(repo), &got)
 			if code != http.StatusUnprocessableEntity || !strings.Contains(got.Error, bad) || !strings.Contains(got.Error, "must hold exactly one YAML document") {
@@ -726,7 +726,7 @@ func TestSkillsEndpointCarriesTheSettingsSkillsOfEachLayer(t *testing.T) {
 	write(t, filepath.Join(repo, ".git"), "gitdir: settings-test-marker\n")
 	write(t, filepath.Join(repo, ".agister", "skills", "plan", "SKILL.md"), skillMD("plan", "Repo plan."))
 	write(t, filepath.Join(repo, ".agister", "skills", "torn", "notes.txt"), "no SKILL.md")
-	h := Handler(home, noChoose(t), owners(), SkillHomes{Home: user})
+	h := Handler(home, noChoose(t), owners(), SkillHomes{Home: user}, binarySettings)
 
 	type layer struct {
 		Scope, Name, Description, State string
@@ -783,7 +783,7 @@ func TestSettingsSkillInventoryPreservesBrokenRepoOverride(t *testing.T) {
 	write(t, filepath.Join(root, "shared", "linked", "SKILL.md"), skillMD("linked", "Shared."))
 	symlink(t, filepath.Join(root, "shared", "linked"), filepath.Join(skills, "linked"))
 	symlink(t, filepath.Join(root, "shared", "linked", "SKILL.md"), filepath.Join(skills, "linked-md", "SKILL.md"))
-	h := Handler(home, noChoose(t), owners(), SkillHomes{Home: user})
+	h := Handler(home, noChoose(t), owners(), SkillHomes{Home: user}, binarySettings)
 
 	var reply SkillsReply
 	if code := get(t, h, "127.0.0.1", "/api/skills?path="+q(repo), &reply); code != 200 {
@@ -896,7 +896,7 @@ func TestSkillsEndpointNamesTheSettingsSkillsKeysAsThePageReadsThem(t *testing.T
 	write(t, filepath.Join(repo, ".git"), "gitdir: settings-test-marker\n")
 	write(t, filepath.Join(repo, ".agister", "skills", "plan", "SKILL.md"), skillMD("plan", "Repo plan."))
 	write(t, filepath.Join(repo, ".agister", "skills", "torn", "notes.txt"), "no SKILL.md")
-	h := Handler(home, noChoose(t), owners(), SkillHomes{Home: user})
+	h := Handler(home, noChoose(t), owners(), SkillHomes{Home: user}, binarySettings)
 
 	var raw map[string]any
 	if code := get(t, h, "127.0.0.1", "/api/skills?path="+q(repo), &raw); code != 200 {
@@ -943,7 +943,7 @@ func TestAnUnreadableRepoSkillsFolderFailsTheInventory(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = os.Chmod(skills, 0o755) })
-	h := Handler(home, noChoose(t), owners(), SkillHomes{Home: user})
+	h := Handler(home, noChoose(t), owners(), SkillHomes{Home: user}, binarySettings)
 
 	var got map[string]any
 	if code := get(t, h, "127.0.0.1", "/api/skills?path="+q(repo), &got); code != 403 {

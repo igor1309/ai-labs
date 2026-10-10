@@ -643,7 +643,7 @@ test('empty guidance is shown as none and a missing primary prompt is marked', a
 test('workflow nodes show their process prompt, guidance and field layers', async () => {
   const composedFiles = {
     ...agent,
-    'workflows/review.yaml': 'name: review\nsteps:\n  fan_out:\n    - process: process:check\n  join:\n    process: process:check\n',
+    'workflows/review.yaml': 'name: review\nfan_out:\n  - {node: one, uses: process:check}\njoin: {node: j, uses: process:check}\n',
     'processes/check.yaml': 'name: check\nuses: agent:opus\nprompt: rules\nguidance: [style]\nverify: verify:repo\n',
     'verifies/repo.yaml': 'max_attempts: 3\ncommand: make test\n',
     'prompts/rules.md': 'Rules.', 'prompts/style.md': 'Style.',

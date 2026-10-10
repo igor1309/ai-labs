@@ -4,10 +4,13 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"reflect"
 	"syscall"
 	"testing"
 
+	"github.com/igor1309/ai-labs/agister/internal/adapters/fsdefs"
 	"github.com/igor1309/ai-labs/agister/internal/adapters/fsruns"
+	"github.com/igor1309/ai-labs/agister/internal/domain/definition"
 	"github.com/igor1309/ai-labs/agister/pages"
 )
 
@@ -78,5 +81,60 @@ func TestPagesReadTheRunsOwnersFromTheRunStore(t *testing.T) {
 	}
 	if got := status("owned"); got != "lost" {
 		t.Fatalf("released: %s", got)
+	}
+}
+
+// The pages select and read the settings layers with the binary's own
+// selection and store: a launch below a project's .agister reads home's,
+// the repository's and the project's, each through the page's reader.
+//
+// Contract test: the settings layers on the real filesystem, as the
+// binary's store selects and reads them.
+func TestPagesReadTheSettingsWithTheBinarysStore(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	base := tempDir(t)
+	home, root := filepath.Join(base, "home"), filepath.Join(base, "w")
+	launch := filepath.Join(root, "docs", "guide")
+	put := func(path, text string) {
+		t.Helper()
+		if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(path, []byte(text), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	put(filepath.Join(home, "policies", "p.yaml"), "name: p\n")
+	put(filepath.Join(root, ".agister", "policies", "p.yaml"), "timeout: 1m\n")
+	put(filepath.Join(root, "docs", ".agister", "policies", "p.yaml"), "max_cost_usd: 1\n")
+	if err := os.MkdirAll(launch, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	var read []string
+	store, err := pagesEnv(fsruns.NewAppends()).Settings(home, root, launch, func(path string) ([]byte, error) {
+		read = append(read, path)
+		return os.ReadFile(path)
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	binary, err := fsdefs.Select(fsdefs.Store{Dir: home}, root, launch)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got, want := store.Layers(ctx), binary.Layers(ctx); !reflect.DeepEqual(got, want) {
+		t.Fatalf("layers %+v, want %+v", got, want)
+	}
+	got, err := store.Read(ctx, definition.KindPolicy, "p")
+	if err != nil {
+		t.Fatal(err)
+	}
+	want, err := binary.Read(ctx, definition.KindPolicy, "p")
+	if err != nil || string(got.Bytes) != string(want.Bytes) || !reflect.DeepEqual(got.Source, want.Source) {
+		t.Fatalf("p = %+v %q, want %+v %q (%v)", got.Source, got.Bytes, want.Source, want.Bytes, err)
+	}
+	if len(read) != 3 {
+		t.Fatalf("read with the page's reader: %v", read)
 	}
 }

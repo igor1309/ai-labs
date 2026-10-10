@@ -456,6 +456,58 @@ func TestAStoreAloneIsReadAsHome(t *testing.T) {
 	}
 }
 
+// A viewer inspects the layers Select selects, home's alone outside a
+// worktree, and every document and layer.yaml is read with its reader: a
+// file it leaves out as not found is passed over, as an absent one is.
+//
+// Contract test: the settings store against the real filesystem.
+func TestInspectSelectsAsSelectAndReadsWithTheViewersReader(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	home, root := worktree(t)
+	repository, project := filepath.Join(root, ".agister"), filepath.Join(root, "docs", ".agister")
+	put(t, filepath.Join(home.Dir, "policies", "p.yaml"), "name: p\n")
+	put(t, filepath.Join(repository, "layer.yaml"), layerFile("a", "b"))
+	left, taken := filepath.Join(root, "a", "x.md"), filepath.Join(root, "b", "x.md")
+	put(t, left, "left out\n")
+	put(t, taken, "taken\n")
+	put(t, filepath.Join(project, "policies", "p.yaml"), "timeout: 1m\n")
+	var opened []string
+	read := func(path string) ([]byte, error) {
+		opened = append(opened, path)
+		if path == left {
+			return nil, definition.ErrNotFound
+		}
+		return os.ReadFile(path)
+	}
+
+	alone, err := fsdefs.Inspect(home.Dir, "", filepath.Join(root, "docs"), read)
+	if err != nil || !reflect.DeepEqual(dirs(alone), []string{"home " + home.Dir}) {
+		t.Fatalf("outside a worktree: %v, %v", dirs(alone), err)
+	}
+	inspected, err := fsdefs.Inspect(home.Dir, root, filepath.Join(root, "docs"), read)
+	selected, serr := fsdefs.Select(home, root, filepath.Join(root, "docs"))
+	if err != nil || serr != nil || !reflect.DeepEqual(dirs(inspected), dirs(selected)) {
+		t.Fatalf("inside: %v, %v; Select %v, %v", dirs(inspected), err, dirs(selected), serr)
+	}
+	doc, err := inspected.Read(ctx, definition.KindPrompt, "x")
+	if err != nil || doc.Source.Path != taken || string(doc.Bytes) != "taken\n" {
+		t.Fatalf("x = %+v %q, %v", doc.Source, doc.Bytes, err)
+	}
+	policy, err := inspected.Read(ctx, definition.KindPolicy, "p")
+	if err != nil || !strings.Contains(string(policy.Bytes), "timeout: 1m") {
+		t.Fatalf("p = %q, %v", policy.Bytes, err)
+	}
+	for _, path := range []string{filepath.Join(repository, "layer.yaml"), left, taken, filepath.Join(project, "policies", "p.yaml"), filepath.Join(home.Dir, "policies", "p.yaml")} {
+		if !slices.Contains(opened, path) {
+			t.Errorf("%s not read with the viewer's reader: %v", path, opened)
+		}
+	}
+	if _, err := fsdefs.Inspect(home.Dir, root, root, nil); err == nil {
+		t.Fatal("inspected with no reader")
+	}
+}
+
 // layerFile is a layer.yaml listing folders.
 func layerFile(folders ...string) string {
 	return "schema: agister.layer/v1alpha1\nprompts: [" + strings.Join(folders, ", ") + "]\n"
