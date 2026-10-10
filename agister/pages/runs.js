@@ -116,14 +116,15 @@
     return null;
   }
 
-  // "4:07 PM – 4:10 PM, 10/10/2026" in local time, the date once when both
-  // ends fall on it; "4:07 PM –, 10/10/2026" without an end.
+  // "4:07 PM – 4:10 PM, 10.10.26" in local time, the date as DD.MM.YY and
+  // once when both ends fall on it; "4:07 PM –, 10.10.26" without an end.
   function timeSpan(startISO, endISO) {
     const start = new Date(startISO);
     if (!startISO || Number.isNaN(start.getTime())) return '';
     const end = endISO ? new Date(endISO) : null;
     const time = (d) => d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
-    const date = (d) => d.toLocaleDateString([], { day: '2-digit', month: '2-digit', year: 'numeric' });
+    const two = (n) => String(n).padStart(2, '0').slice(-2);
+    const date = (d) => `${two(d.getDate())}.${two(d.getMonth() + 1)}.${two(d.getFullYear())}`;
     if (!end || Number.isNaN(end.getTime())) return `${time(start)} –, ${date(start)}`;
     if (date(start) === date(end)) return `${time(start)} – ${time(end)}, ${date(start)}`;
     return `${time(start)}, ${date(start)} – ${time(end)}, ${date(end)}`;

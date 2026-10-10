@@ -85,7 +85,7 @@ again.
   filter the list. Runs whose record does not parse are counted under it.
 - Clicking a run opens it over the page; Close, Escape or a click beside
   it closes it. Its head is the process, its status, cost and wall time,
-  then when it ran (`4:07 PM – 4:10 PM, 10/10/2026`), its agent and, small,
+  then when it ran (`4:07 PM – 4:10 PM, 10.10.26`), its agent and, small,
   its ID. Then implementor, policy, verify (`2/3 ✓`, out of the process's
   most), turn and runtime timing, tool calls and skills, the workflow it
   belongs to, and for a workflow its judge's items by ruling and by

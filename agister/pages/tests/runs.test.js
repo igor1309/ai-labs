@@ -196,11 +196,11 @@ test('completed, failed and interrupted show as marks; the other statuses as wor
 test('a time span gives the date once when both ends fall on it', () => {
   const local = (h, m, day = 9) => new Date(2026, 9, day, h, m).toISOString();
   const time = (iso) => new Date(iso).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
-  const date = (iso) => new Date(iso).toLocaleDateString([], { day: '2-digit', month: '2-digit', year: 'numeric' });
   const [a, b, c] = [local(22, 1), local(22, 13), local(0, 10, 10)];
-  assert.equal(U.timeSpan(a, b), `${time(a)} – ${time(b)}, ${date(a)}`);
-  assert.equal(U.timeSpan(a, c), `${time(a)}, ${date(a)} – ${time(c)}, ${date(c)}`);
-  assert.equal(U.timeSpan(a, undefined), `${time(a)} –, ${date(a)}`);
+  assert.equal(U.timeSpan(a, b), `${time(a)} – ${time(b)}, 09.10.26`);
+  assert.equal(U.timeSpan(a, c), `${time(a)}, 09.10.26 – ${time(c)}, 10.10.26`);
+  assert.equal(U.timeSpan(a, undefined), `${time(a)} –, 09.10.26`);
+  assert.match(U.timeSpan(new Date(2031, 0, 5, 9, 0).toISOString()), /, 05\.01\.31$/);
   assert.equal(U.timeSpan('', b), '');
   assert.equal(U.timeSpan('not a time', b), '');
 });
