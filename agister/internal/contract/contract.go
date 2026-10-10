@@ -250,7 +250,7 @@ type Binding struct {
 	Version string `json:"version"`
 	// Allowed and not required, and not given: not a problem.
 	Withheld []string `json:"withheld,omitempty"`
-	// In tools.require, and withheld: a warning.
+	// In tools.require, and withheld: the call cannot run, a problem.
 	Required []string `json:"required,omitempty"`
 }
 

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"path/filepath"
 	"reflect"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -17,9 +18,9 @@ import (
 // every permission a review allows is withheld.
 
 // check lists what each node of each workflow allows and does not require
-// that its plan withholds, and workflow show shows it on each node; a
-// permission in tools.require a binding would withhold is a warning that
-// names the workflow and the node.
+// that its plan withholds, and workflow show shows it on each node; check
+// --json lists a permission in tools.require a binding would withhold,
+// which refuses the call and is no warning.
 func TestCheckAndWorkflowShowListWhatEachBindingWithholds(t *testing.T) {
 	t.Parallel()
 	home, repo := setup(t, "approve")
@@ -62,9 +63,9 @@ func TestCheckAndWorkflowShowListWhatEachBindingWithholds(t *testing.T) {
 	process := filepath.Join(home, "processes", "ask.yaml")
 	write(t, process, strings.Replace(read(t, process), "tools:\n  allow:\n", "tools:\n  require: [repository.read]\n  allow:\n", 1))
 	r = agister(t, home, repo, "check")
-	const warning = "warning workflow asking: call node question: process ask: tools.require would withhold repository.read on agent reviewer's runtime claude-code\n"
-	if !strings.Contains(r.stderr, warning) {
-		t.Fatalf("check lacks %q: %d\n%s%s", warning, r.code, r.stdout, r.stderr)
+	const refused = "process ask: cannot run on agent assistant's runtime claude-code: cannot enforce the effective permissions: required permissions would be withheld: repository.read"
+	if r.code != cli.ExitUsage || !strings.Contains(r.stderr, refused) || strings.Contains(r.stderr, "warning workflow") {
+		t.Fatalf("check lacks %q, or warns of a workflow: %d\n%s%s", refused, r.code, r.stdout, r.stderr)
 	}
 	bindingsAre(t, agister(t, home, repo, "check", "--json"), `[
   {"workflow": "asking", "node": "question", "process": "ask", "agent": "reviewer", "runtime": "claude-code", "version": "2.1",
@@ -73,7 +74,7 @@ func TestCheckAndWorkflowShowListWhatEachBindingWithholds(t *testing.T) {
 }
 
 // A binding refused for a permission in tools.require still shows what
-// else its plan withholds: check lists the others beside the warning, and
+// else its plan withholds: check lists the others beside the problem, and
 // workflow show beside the refusal.
 func TestABindingRefusedForARequiredPermissionShowsWhatElseItWithholds(t *testing.T) {
 	t.Parallel()
@@ -84,10 +85,10 @@ func TestABindingRefusedForARequiredPermissionShowsWhatElseItWithholds(t *testin
 	const others = "repository.diff, repository.search, repository.history.read, process.execute, host.read"
 
 	r := agister(t, home, repo, "check")
-	const warning = "warning workflow asking: call node question: process ask: tools.require would withhold repository.read on agent reviewer's runtime claude-code\n"
+	const refused = "process ask: cannot run on agent assistant's runtime claude-code: cannot enforce the effective permissions: required permissions would be withheld: repository.read"
 	const withheld = "withheld workflow asking node question: process ask, agent reviewer (runtime claude-code version 2.1): " + others + "\n"
-	if !strings.Contains(r.stderr, warning) || !strings.Contains(r.stdout, withheld) {
-		t.Fatalf("check lacks %q or %q: %d\n%s%s", warning, withheld, r.code, r.stdout, r.stderr)
+	if !strings.Contains(r.stderr, refused) || !strings.Contains(r.stdout, withheld) {
+		t.Fatalf("check lacks %q or %q: %d\n%s%s", refused, withheld, r.code, r.stdout, r.stderr)
 	}
 
 	r = agister(t, home, repo, "workflow", "show", "asking")
@@ -142,6 +143,53 @@ func TestCheckRefusesABindingWhoseRuntimeCannotEnforceItsCostLimit(t *testing.T)
 	const problem = "workflow asking: call node question: process ask: runtime opencode cannot enforce the cost limit 1\n  refuses workflow asking\n"
 	if r.code != cli.ExitUsage || !strings.Contains(r.stderr, problem) || !strings.Contains(r.stderr, "1 problem(s)") {
 		t.Fatalf("check --probe lacks %q: %d\n%s%s", problem, r.code, r.stdout, r.stderr)
+	}
+}
+
+// A node that binds a process to an agent whose runtime would withhold a
+// permission in the process's tools.require refuses its workflow, and no
+// other (ADR-030 rule 8): check reports it as a problem of that workflow,
+// not a warning, workflow list shows that workflow alone refused, and its
+// run is refused. Workflow asking_reader binds the same process to agent
+// reader, whose runtime gives the permission, and process ask names that
+// agent: neither is refused.
+func TestABindingWithholdingARequiredPermissionRefusesItsWorkflowAlone(t *testing.T) {
+	t.Parallel()
+	home, repo := setup(t, "approve")
+	// Runtime reads gives Read, which grants repository.read alone.
+	write(t, filepath.Join(home, "runtimes", "reads.yaml"), `schema: agister.runtime/v1alpha1
+name: reads
+adapter: claude-code
+contract: claude-code/3
+efforts: [high]
+primitives:
+  select: any
+  items:
+    Read: {grants: [repository.read], verified: ["2.1."]}
+`)
+	write(t, filepath.Join(home, "agents", "reader.toml"),
+		strings.NewReplacer(`name = "reviewer"`, `name = "reader"`, `runtime = "claude-code"`, `runtime = "reads"`).Replace(read(t, filepath.Join(home, "agents", "reviewer.toml"))))
+	write(t, filepath.Join(home, "workflows", "asking.yaml"), askingDoc)
+	write(t, filepath.Join(home, "workflows", "asking_reader.yaml"),
+		strings.NewReplacer("name: asking", "name: asking_reader", "agent: reviewer", "agent: reader").Replace(askingDoc))
+	process := filepath.Join(home, "processes", "ask.yaml")
+	write(t, process, strings.NewReplacer("uses: agent:assistant", "uses: agent:reader", "tools:\n  allow:\n", "tools:\n  require: [repository.read]\n  allow:\n").Replace(read(t, process)))
+
+	r := agister(t, home, repo, "check")
+	const problem = "workflow asking: call node question: process ask: cannot run on agent reviewer's runtime claude-code: cannot enforce the effective permissions: required permissions would be withheld: repository.read (not verified for version 2.1: NotebookEdit, WebFetch, WebSearch)\n  refuses workflow asking\n"
+	if r.code != cli.ExitUsage || !strings.Contains(r.stderr, problem) || !strings.Contains(r.stderr, "1 problem(s)") || strings.Contains(r.stderr, "warning workflow") {
+		t.Fatalf("check lacks %q alone: %d\n%s%s", problem, r.code, r.stdout, r.stderr)
+	}
+
+	r = agister(t, home, repo, "workflow", "list")
+	if r.code != 0 || !regexp.MustCompile(`(?m)^asking\b.*\tREFUSED: .*required permissions would be withheld: repository\.read`).MatchString(r.stdout) ||
+		regexp.MustCompile(`(?m)^(asking_reader|review_panel)\b.*REFUSED`).MatchString(r.stdout) {
+		t.Fatalf("workflow list: want asking alone refused: %d\n%s%s", r.code, r.stdout, r.stderr)
+	}
+	r = agister(t, home, repo, "run", "asking", "--param", "question=What does this repository do?")
+	const refused = "call node question: process ask: cannot run on agent reviewer's runtime claude-code: cannot enforce the effective permissions: required permissions would be withheld: repository.read"
+	if r.code != cli.ExitRefused || !strings.Contains(r.stderr, refused) {
+		t.Fatalf("run asking: exit %d, want %q\n%s%s", r.code, refused, r.stdout, r.stderr)
 	}
 }
 

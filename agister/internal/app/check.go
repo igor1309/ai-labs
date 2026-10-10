@@ -570,21 +570,14 @@ func (c *Checker) check(ctx context.Context, probe bool) (CheckResult, error) {
 	}
 
 	// Each binding as its call would be planned (ADR-030 rules 7 and 8):
-	// what it withholds is listed, and a permission in tools.require it
-	// would withhold is a warning.
+	// what it withholds is listed. A permission in tools.require it would
+	// withhold is no warning: the plan cannot be made, a problem found above
+	// that refuses the workflow.
 	for _, plan := range settings.BindingPlans(bundle, installed) {
 		report.Bindings = append(report.Bindings, contract.Binding{
 			Workflow: plan.Workflow, Node: plan.Node, Process: plan.Process, Agent: plan.Agent,
 			Runtime: plan.Runtime, Version: plan.Version, Withheld: plan.Withheld, Required: plan.Required,
 		})
-		if len(plan.Required) > 0 {
-			runtime := plan.Runtime
-			if version, ok := installed[plan.Agent]; ok {
-				runtime += " version " + version
-			}
-			report.Warnings = append(report.Warnings, fmt.Sprintf("workflow %s: %s: process %s: tools.require would withhold %s on agent %s's runtime %s",
-				plan.Workflow, plan.Label, plan.Process, strings.Join(plan.Required, ", "), plan.Agent, runtime))
-		}
 	}
 	return finish(), nil
 }

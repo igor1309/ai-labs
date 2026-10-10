@@ -56,13 +56,32 @@ func repairingSecond(h *harness) {
 	}
 }
 
+// workflowWarnings are the warnings of the report about a workflow.
+func workflowWarnings(report contract.CheckReport) []string {
+	var warnings []string
+	for _, warning := range report.Warnings {
+		if strings.HasPrefix(warning, "workflow ") {
+			warnings = append(warnings, warning)
+		}
+	}
+	return warnings
+}
+
+// requiring has process second require permission, which it allows.
+func requiring(h *harness, permission string) {
+	second := strings.Replace(h.defs.docs[definition.KindProcess]["second"],
+		"tools: {allow: [repository.read, repository.search, repository.diff]}\n", "tools:\n  allow: [repository.read, repository.search, repository.diff]\n", 1)
+	h.defs.docs[definition.KindProcess]["second"] = second + "  require: [" + permission + "]\n"
+}
+
 // ADR-030 rule 8: check resolves every node of every workflow as its call
 // would, on the agent the node binds: the plan, and whether the session
 // may be resumed, first as the settings say and, where it asks the
-// runtimes, on the version installed. A binding that cannot run is a
-// problem of the workflow, which names the node: it refuses that workflow,
-// and neither the process nor workflow v, which binds the same process to
-// the agent that runs it.
+// runtimes, on the version installed. A binding that cannot run, a
+// permission in tools.require withheld among the reasons, is a problem of
+// the workflow, which names the node, and no warning: it refuses that
+// workflow, and neither the process nor workflow v, which binds the same
+// process to the agent that runs it.
 func TestCheckJudgesEachBindingOfAWorkflow(t *testing.T) {
 	t.Parallel()
 	const (
@@ -86,6 +105,23 @@ func TestCheckJudgesEachBindingOfAWorkflow(t *testing.T) {
 				return h
 			},
 			want: node + "cannot run on agent c's runtime narrow: cannot enforce the effective permissions: Bash also grants process.execute"},
+		{name: "no version of the agent's runtime gives a permission the process requires",
+			arrange: func() *harness {
+				h := onAgentC("reads")
+				h.defs.docs[definition.KindRuntime]["reads"] = strings.Replace(reads, `    Grep: {grants: [repository.search], verified: ["2."]}`+"\n", "", 1)
+				requiring(h, "repository.search")
+				return h
+			},
+			want: node + "cannot run on agent c's runtime reads: cannot enforce the effective permissions: required permissions would be withheld: repository.search"},
+		{name: "the installed version withholds a permission the process requires",
+			arrange: func() *harness {
+				h := onAgentC("reads")
+				h.defs.docs[definition.KindRuntime]["reads"] = reads
+				requiring(h, "repository.search")
+				return h
+			},
+			probe: true,
+			want:  node + "cannot run on agent c's runtime reads version 1.2.3: cannot enforce the effective permissions: required permissions would be withheld: repository.search (not verified for version 1.2.3: Grep)"},
 		{name: "the agent is fresh-only, and the process repairs",
 			arrange: func() *harness {
 				h := onAgentC("rt")
@@ -144,8 +180,8 @@ func TestCheckJudgesEachBindingOfAWorkflow(t *testing.T) {
 			if c.beside != "" {
 				want = []string{c.beside, c.want}
 			}
-			if !reflect.DeepEqual(messages(report.Problems), want) {
-				t.Fatalf("problems = %q, want %q", messages(report.Problems), want)
+			if !reflect.DeepEqual(messages(report.Problems), want) || len(workflowWarnings(report)) != 0 {
+				t.Fatalf("problems = %q, warnings %q; want %q and no warning of a workflow", messages(report.Problems), report.Warnings, want)
 			}
 			reach := reachOf(t, report, c.want)
 			if reach.Subject == nil || *reach.Subject != (contract.DefinitionRef{Kind: "workflows", Name: "w"}) || reach.Agent != "" || reach.Stops {
@@ -168,31 +204,57 @@ func TestCheckJudgesEachBindingOfAWorkflow(t *testing.T) {
 // A workflow whose binding check finds unable to run is listed and shown
 // as refused, and its run is refused before any node's, with the problem
 // as check reports it; workflow v, which binds the same process to the
-// agent that runs it, is not.
+// agent that runs it, is not. So is one whose binding would withhold a
+// permission in tools.require (ADR-030 rule 8).
 func TestAWorkflowWithABindingThatCannotRunIsRefused(t *testing.T) {
 	t.Parallel()
-	ctx := context.Background()
-	h := onAgentC("narrow")
-	h.defs.docs[definition.KindRuntime]["narrow"] = oneOf("narrow", bash)
-	client := h.clientOn(h.defs)
-	const want = "workflow w (mem/workflows/w): fan-out node two: process second: cannot run on agent c's runtime narrow: cannot enforce the effective permissions: Bash also grants process.execute"
-	workflows, err := client.ListWorkflows(ctx)
-	if err != nil || len(workflows) != 2 {
-		t.Fatalf("workflows = %+v, %v", workflows, err)
+	const refused = "workflow w (mem/workflows/w): fan-out node two: process second: "
+	cases := []struct {
+		name    string
+		arrange func() *harness
+		want    string
+	}{
+		{name: "no primitive of the agent's runtime is within what the process allows",
+			arrange: func() *harness {
+				h := onAgentC("narrow")
+				h.defs.docs[definition.KindRuntime]["narrow"] = oneOf("narrow", bash)
+				return h
+			},
+			want: refused + "cannot run on agent c's runtime narrow: cannot enforce the effective permissions: Bash also grants process.execute"},
+		{name: "the agent's runtime withholds a permission the process requires",
+			arrange: func() *harness {
+				h := onAgentC("narrow")
+				h.defs.docs[definition.KindRuntime]["narrow"] = oneOf("narrow", `Read: {grants: [repository.read], verified: ["1."]}`)
+				requiring(h, "repository.search")
+				return h
+			},
+			want: refused + "cannot run on agent c's runtime narrow: cannot enforce the effective permissions: required permissions would be withheld: repository.search"},
 	}
-	refusals := map[string]string{}
-	for _, workflow := range workflows {
-		refusals[workflow.Name] = workflow.Refusal
-	}
-	if !reflect.DeepEqual(refusals, map[string]string{"v": "", "w": want}) {
-		t.Fatalf("refusals = %q, want workflow w's alone: %s", refusals, want)
-	}
-	if view, err := client.ShowWorkflow(ctx, "w"); err != nil || view.Refusal != want {
-		t.Fatalf("show says %q, %v; want %q", view.Refusal, err, want)
-	}
-	record := h.submit(t, client, contract.CallRequest{Process: "w", Params: map[string]string{"candidate": "c"}})
-	if class(record) != run.ClassRefused || message(record) != want || len(h.recorder.created) != 1 || len(h.runner.calls()) != 0 {
-		t.Fatalf("workflow: %s %q, %d runs, %d turns; want refused before any node: %q", class(record), message(record), len(h.recorder.created), len(h.runner.calls()), want)
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
+			ctx := context.Background()
+			h := c.arrange()
+			client := h.clientOn(h.defs)
+			workflows, err := client.ListWorkflows(ctx)
+			if err != nil || len(workflows) != 2 {
+				t.Fatalf("workflows = %+v, %v", workflows, err)
+			}
+			refusals := map[string]string{}
+			for _, workflow := range workflows {
+				refusals[workflow.Name] = workflow.Refusal
+			}
+			if !reflect.DeepEqual(refusals, map[string]string{"v": "", "w": c.want}) {
+				t.Fatalf("refusals = %q, want workflow w's alone: %s", refusals, c.want)
+			}
+			if view, err := client.ShowWorkflow(ctx, "w"); err != nil || view.Refusal != c.want {
+				t.Fatalf("show says %q, %v; want %q", view.Refusal, err, c.want)
+			}
+			record := h.submit(t, client, contract.CallRequest{Process: "w", Params: map[string]string{"candidate": "c"}})
+			if class(record) != run.ClassRefused || message(record) != c.want || len(h.recorder.created) != 1 || len(h.runner.calls()) != 0 {
+				t.Fatalf("workflow: %s %q, %d runs, %d turns; want refused before any node: %q", class(record), message(record), len(h.recorder.created), len(h.runner.calls()), c.want)
+			}
+		})
 	}
 }
 
@@ -214,17 +276,16 @@ primitives:
 // agent it binds, its process's own where it names none, first on the
 // version of its runtime that gives the most and, where it asks the
 // runtimes, on the version installed: it lists what each binding allows
-// and does not require that the plan withholds, and warns of each
-// permission in tools.require it would withhold.
+// and does not require that the plan withholds, and each permission in
+// tools.require it would withhold, which refuses the binding's workflow
+// (TestCheckJudgesEachBindingOfAWorkflow) and is no warning.
 func TestCheckListsWhatEachBindingWithholds(t *testing.T) {
 	t.Parallel()
 	onReads := func(require bool) *harness {
 		h := onAgentC("reads")
 		h.defs.docs[definition.KindRuntime]["reads"] = reads
 		if require {
-			h.defs.docs[definition.KindProcess]["second"] += "  require: [repository.search]\n"
-			h.defs.docs[definition.KindProcess]["second"] = strings.Replace(h.defs.docs[definition.KindProcess]["second"],
-				"tools: {allow: [repository.read, repository.search, repository.diff]}\n", "tools:\n  allow: [repository.read, repository.search, repository.diff]\n", 1)
+			requiring(h, "repository.search")
 		}
 		return h
 	}
@@ -246,7 +307,7 @@ func TestCheckListsWhatEachBindingWithholds(t *testing.T) {
 			onA("w", "one", "first", version, "repository.diff"), two, onA("w", "merge", "joiner", version),
 		}
 	}
-	const warning = "workflow w: fan-out node two: process second: tools.require would withhold repository.search on agent c's runtime reads"
+	const refusal = "workflow w: fan-out node two: process second: cannot run on agent c's runtime reads version 1.2.3: cannot enforce the effective permissions: required permissions would be withheld: repository.search (not verified for version 1.2.3: Grep)"
 
 	t.Run("allowed and not required", func(t *testing.T) {
 		t.Parallel()
@@ -278,8 +339,9 @@ func TestCheckListsWhatEachBindingWithholds(t *testing.T) {
 		if !reflect.DeepEqual(report.Bindings, want) {
 			t.Fatalf("bindings = %+v\nwant %+v", report.Bindings, want)
 		}
-		if want := []string{warning + " version 1.2.3"}; !reflect.DeepEqual(report.Warnings, want) {
-			t.Fatalf("warnings = %q, want %q", report.Warnings, want)
+		// A refusal of workflow w, not a warning (ADR-030 rule 8).
+		if want := []string{refusal}; !reflect.DeepEqual(messages(report.Problems), want) || len(workflowWarnings(report)) != 0 {
+			t.Fatalf("problems %q, warnings %q; want %q and no warning", messages(report.Problems), report.Warnings, want)
 		}
 	})
 }
