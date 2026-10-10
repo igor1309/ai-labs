@@ -2,6 +2,7 @@ package definition_test
 
 import (
 	"errors"
+	"fmt"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -127,6 +128,8 @@ func TestYAMLSettingsRejectMoreThanOneDocument(t *testing.T) {
 // values declared before it: base from the one resolving ${param.base}, head
 // from the one resolving ${param.candidate}. Bound to ${param.*} instead, each
 // would resolve its revision again, and the two could name different commits.
+// A process that extends a base is read laid over it, and a base is read
+// through each process that extends it (ADR-030 rule 9).
 func TestShippedRevisionInputsUseTheValuesResolvedBeforeThem(t *testing.T) {
 	t.Parallel()
 	settings := examples.Settings()
@@ -144,13 +147,38 @@ func TestShippedRevisionInputsUseTheValuesResolvedBeforeThem(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
+		docs := map[string]definition.Document{}
 		for _, entry := range entries {
 			data, err := fs.ReadFile(files, string(definition.KindProcess)+"/"+entry.Name())
 			if err != nil {
 				t.Fatal(err)
 			}
 			name := strings.TrimSuffix(entry.Name(), filepath.Ext(entry.Name()))
-			process, err := definition.ParseProcess(doc(definition.KindProcess, name, string(data)))
+			docs[name] = doc(definition.KindProcess, name, string(data))
+		}
+		own := func(name string) (definition.Document, error) {
+			if doc, ok := docs[name]; ok {
+				return doc, nil
+			}
+			return definition.Document{}, fmt.Errorf("no process %s", name)
+		}
+		bases := map[string]bool{}
+		for _, doc := range docs {
+			if base := definition.Extends(doc, own); base != "" {
+				bases[base] = true
+			}
+		}
+		for _, entry := range entries {
+			name := strings.TrimSuffix(entry.Name(), filepath.Ext(entry.Name()))
+			if bases[name] {
+				continue
+			}
+			extended, err := definition.Extended(docs[name], own)
+			if err != nil {
+				t.Errorf("%s/processes/%s: %v", root, entry.Name(), err)
+				continue
+			}
+			process, err := definition.ParseProcess(extended)
 			if err != nil {
 				t.Errorf("%s/processes/%s: %v", root, entry.Name(), err)
 				continue

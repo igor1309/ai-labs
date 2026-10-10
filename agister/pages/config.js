@@ -464,7 +464,9 @@
   // The dashboard model of the .agister folder agister, whose skills are
   // skills, the server's inventory of that one layer.
   async function loadAgister(agister, skills = []) {
-    return link(await readAgister(agister, skills));
+    const model = await readAgister(agister, skills);
+    model.processes = extended(model.processes);
+    return link(model);
   }
 
   const KINDS = ['workflows', 'processes', 'agents', 'policies', 'runtimes', 'schemas', 'verifies', 'prompts', 'briefs', 'skills'];
@@ -474,6 +476,25 @@
   async function loadComposed(home, repo, skills = []) {
     const scope = (s) => (skills ?? []).filter((x) => x.scope === s);
     return link(compose(await readAgister(home, scope('home')), await readAgister(repo, scope('repo'))));
+  }
+
+  // Each process that extends a base (extends: process:<name>) laid over
+  // it: the base's fields but its name and extends, under the process's
+  // own (ADR-030 rule 9). A base is marked as one: it is not work, and is
+  // read through each process that extends it.
+  function extended(processes) {
+    const docs = new Map(processes.filter((p) => !p.error && p.doc).map((p) => [p.name, p.doc]));
+    const bases = new Set();
+    const items = processes.map((p) => {
+      const name = !p.error && typeof p.doc?.extends === 'string' ? refName(p.doc.extends) : null;
+      if (!docs.has(name)) return p;
+      bases.add(name);
+      const { name: _name, extends: _extends, ...given } = docs.get(name);
+      const { doc: _doc, ...own } = p;
+      return { ...own, ...processItem(p.file, p.src, merge(given, p.doc)), extends: name };
+    });
+    for (const p of items) if (bases.has(p.name)) p.base = true;
+    return items;
   }
 
   const mapValue = (x) => x !== null && typeof x === 'object' && !Array.isArray(x);
@@ -501,7 +522,8 @@
         const item = doc && builders[kind] ? builders[kind](x.file, x.src, doc) : x;
         byFile.set(stem(x.file), { ...item, source: 'repo', overrides: !!base, doc });
       }
-      model[kind] = [...byFile.values()].map(({ doc, ...x }) => x)
+      const items = kind === 'processes' ? extended([...byFile.values()]) : [...byFile.values()];
+      model[kind] = items.map(({ doc, ...x }) => x)
         .sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
     }
     model.service = repo.service
