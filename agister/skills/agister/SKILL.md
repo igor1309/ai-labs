@@ -356,8 +356,10 @@ again; do not drop the form from the settings to get past the refusal.
   path touched and each call denied. Stopping a watch leaves the run
   going.
 - The run's directory holds `record.json` and, once the run has written
-  them, `events.jsonl` (its events, in order), `provider.jsonl` (the
-  runtime's raw output) and `artifacts/`.
+  them, `events.jsonl` (its events, in order) and `artifacts/`. The
+  runtime's session is the runtime's own: the record names it by ID
+  (`provider_session_id`), and Agister keeps no copy of it. A run recorded
+  before that also holds `provider.jsonl`, the runtime's raw output.
 
 ## What a run leaves
 
@@ -429,8 +431,9 @@ agister runs export <run-id>... --to <dir>
 The run store is one host's, and a run's brief and goal live only there.
 To keep runs as audit material, export them to a durable directory you
 name. Each run's directory is copied byte for byte to `<dir>/<run-id>/`:
-`record.json`, `events.jsonl`, `provider.jsonl` and `artifacts/`, not its
-`owner.lock`. A workflow run brings each node's run its
+`record.json`, `events.jsonl` and `artifacts/`, with an older run's
+`provider.jsonl`, not its `owner.lock`. The runtime's session is not
+exported: it is not in the run. A workflow run brings each node's run its
 `workflow.nodes` name, to `<dir>/<node-run-id>/`. Nothing is selected,
 rewritten or summarized. A run a `links.goal` or `links.judgement` names
 is not brought: export it by its ID.

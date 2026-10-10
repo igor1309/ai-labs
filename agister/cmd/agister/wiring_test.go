@@ -862,7 +862,8 @@ func TestTheCompositionRecoversAStaleTurn(t *testing.T) {
 		t.Fatalf("recovery from %v to %v", got.StartedAt, got.FinishedAt)
 	}
 	// The runtime was started again, to resume the session.
-	if provider := read(t, filepath.Join(home, "runs", id, "provider.jsonl")); !strings.Contains(provider, `"--resume","`+session+`"`) {
-		t.Fatalf("provider evidence:\n%s", provider)
+	started, _ := json.Marshal(processesStarted(filepath.Join(home, "runs", id)))
+	if !strings.Contains(string(started), `"--resume","`+session+`"`) {
+		t.Fatalf("the processes started:\n%s", started)
 	}
 }

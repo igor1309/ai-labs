@@ -453,8 +453,8 @@ func TestIntentReviewIsRefusedOffItsCandidate(t *testing.T) {
 	if want := "is at " + head + ", not revision " + candidate; candidate == head || !strings.Contains(r.stderr, want) {
 		t.Fatalf("stderr %q, want %q", r.stderr, want)
 	}
-	if _, err := os.Stat(filepath.Join(home, "runs", id, "provider.jsonl")); !errors.Is(err, fs.ErrNotExist) {
-		t.Fatalf("run %s: the runtime started (provider.jsonl: %v)", id, err)
+	if started := processesStarted(filepath.Join(home, "runs", id)); len(started) != 0 {
+		t.Fatalf("run %s: the runtime started: %v", id, started)
 	}
 }
 
@@ -611,41 +611,38 @@ func TestAdvisorAnswersAQuestionFile(t *testing.T) {
 }
 
 // runtimeArgv is the command line a call's fake runtime was started with,
-// as the first line of the call's provider.jsonl captures it.
+// as the first line of its stdout tells it.
 func runtimeArgv(t *testing.T, home, id string) []string {
 	t.Helper()
 	first := runtimeStart(t, home, id)
 	if len(first.Argv) == 0 {
-		t.Fatalf("run %s: no argv in provider.jsonl", id)
+		t.Fatalf("run %s: no argv in the runtime's first line", id)
 	}
 	return first.Argv
 }
 
 // runtimeCwd is the directory a call's fake runtime was started in, as the
-// first line of the call's provider.jsonl captures it.
+// first line of its stdout tells it.
 func runtimeCwd(t *testing.T, home, id string) string {
 	t.Helper()
 	first := runtimeStart(t, home, id)
 	if first.Cwd == "" {
-		t.Fatalf("run %s: no cwd in provider.jsonl", id)
+		t.Fatalf("run %s: no cwd in the runtime's first line", id)
 	}
 	return first.Cwd
 }
 
-// runtimeStart is the first line of a call's provider.jsonl, which a fake
-// runtime writes with its argv, cwd and prompt.
+// runtimeStart is the first line of the stdout of a call's runtime, which
+// a fake runtime writes with its argv, cwd and prompt (runtimeEcho).
 func runtimeStart(t *testing.T, home, id string) (first struct {
 	Argv   []string
 	Cwd    string
 	Prompt string
 }) {
 	t.Helper()
-	provider, err := os.ReadFile(filepath.Join(home, "runs", id, "provider.jsonl"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := json.Unmarshal([]byte(strings.SplitN(string(provider), "\n", 2)[0]), &first); err != nil {
-		t.Fatalf("run %s: provider.jsonl %q: %v", id, provider, err)
+	echo := runtimeEcho(filepath.Join(home, "runs", id))
+	if err := json.Unmarshal([]byte(echo), &first); err != nil {
+		t.Fatalf("run %s: the runtime's first line %q: %v", id, echo, err)
 	}
 	return first
 }
@@ -2053,9 +2050,9 @@ func completedRun(t *testing.T, home, id string) map[string]any {
 	dir := filepath.Join(home, "runs", id)
 	var record, first map[string]any
 	readJSON(t, filepath.Join(dir, "record.json"), &record)
-	provider, readErr := os.ReadFile(filepath.Join(dir, "provider.jsonl"))
-	if err := json.Unmarshal([]byte(strings.SplitN(string(provider), "\n", 2)[0]), &first); err != nil || first["argv"] == nil {
-		t.Fatalf("run %s: the runtime was not a fake: provider.jsonl %q (read error: %v); result %v", id, provider, readErr, record["result"])
+	echo := runtimeEcho(dir)
+	if err := json.Unmarshal([]byte(echo), &first); err != nil || first["argv"] == nil {
+		t.Fatalf("run %s: the runtime was not a fake: its first line %q; result %v", id, echo, record["result"])
 	}
 	if result := record["result"].(map[string]any); result["status"] != "completed" {
 		t.Fatalf("run %s: result = %v", id, result)
