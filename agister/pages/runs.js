@@ -106,6 +106,39 @@
     return status === 'failed' || status === 'interrupted';
   }
 
+  // The mark a status shows as: a green check for completed, a red warning
+  // for failed, an amber one for interrupted; null for the others, which
+  // show as words.
+  function statusMark(status) {
+    if (status === 'completed') return { glyph: '✓', tone: 'ok' };
+    if (status === 'failed') return { glyph: '⚠\uFE0E', tone: 'failed' };
+    if (status === 'interrupted') return { glyph: '⚠\uFE0E', tone: 'warn' };
+    return null;
+  }
+
+  // "4:07 PM – 4:10 PM, 10/10/2026" in local time, the date once when both
+  // ends fall on it; "4:07 PM –, 10/10/2026" without an end.
+  function timeSpan(startISO, endISO) {
+    const start = new Date(startISO);
+    if (!startISO || Number.isNaN(start.getTime())) return '';
+    const end = endISO ? new Date(endISO) : null;
+    const time = (d) => d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+    const date = (d) => d.toLocaleDateString([], { day: '2-digit', month: '2-digit', year: 'numeric' });
+    if (!end || Number.isNaN(end.getTime())) return `${time(start)} –, ${date(start)}`;
+    if (date(start) === date(end)) return `${time(start)} – ${time(end)}, ${date(start)}`;
+    return `${time(start)}, ${date(start)} – ${time(end)}, ${date(end)}`;
+  }
+
+  // A workflow's nodes as its table shows them: each with the judge's
+  // rulings of the items it was a source of, by its name.
+  function nodeRows(workflow) {
+    const rulings = new Map((workflow?.items?.by_source ?? []).filter((s) => s.node).map((s) => [s.node, counts(s.by_ruling)]));
+    return (workflow?.nodes ?? []).map((n) => ({
+      name: n.name, process: n.process, join: !!n.join, run: n.run ?? '', status: n.status ?? '',
+      wall: duration(n.wall_ms), cost: cost(n.cost_usd), rulings: rulings.get(n.name) ?? '',
+    }));
+  }
+
   // --- the run list ---
 
   const sorted = (values) => [...new Set(values.filter(Boolean))].sort();
@@ -159,6 +192,7 @@
   globalThis.AgisterRuns = {
     VIEW_KEY, VIEWS, readView, writeView, readsRuns,
     duration, cost, verify, implementor, reportedModel, skills, counts, nodes, percent, mean, failed,
+    statusMark, timeSpan, nodeRows,
     processes, statuses, filterRuns, compareTables,
   };
 })();

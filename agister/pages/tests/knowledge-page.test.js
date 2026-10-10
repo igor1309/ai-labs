@@ -262,7 +262,8 @@ test('an observed run’s link shows Runs with that run opened', async () => {
   assert.ok(link.click().defaultPrevented);
   await settle();
   assert.deepEqual(p.shown(), ['runs']);
-  assert.equal(p.$('run-detail').querySelector('h3').textContent, 'run-1');
+  assert.equal(p.$('run-overlay').hidden, false);
+  assert.equal(p.$('run-detail').querySelector('article').dataset.run, 'run-1');
 });
 
 test('a skill opens with the agents that load it, each folder’s entry and its checks', async () => {

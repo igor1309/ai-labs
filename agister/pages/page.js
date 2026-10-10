@@ -491,8 +491,8 @@
 
     // --- runs ---
 
-    // filter: the process and status shown; chosen: the run opened below the
-    // table; list: what the server sent last.
+    // filter: the process and status shown; chosen: the run opened over the
+    // list; list: what the server sent last.
     const runs = { list: null, filter: { process: '', status: '' }, chosen: null };
     let runsToken = 0;
     let detailToken = 0;
@@ -515,17 +515,29 @@
       runs.list = list;
       stamp('Runs');
       renderRuns();
-      if (runs.chosen) openRun(runs.chosen, false);
+      if (runs.chosen) openRun(runs.chosen);
     }
 
     function renderRuns() {
       $('runs').replaceChildren(
         el('p', { className: 'intro', textContent: 'Runs in Agister home, ~/.agister/runs, whatever the picker shows.' }),
-        el('p', { className: 'group-note', textContent: 'newest first; click a run to open it below' }),
+        el('p', { className: 'group-note', textContent: 'newest first; click a run to open it' }),
         filters(runs.list.runs),
         el('div', { id: 'run-list' }),
-        el('div', { id: 'run-detail' }));
+        runOverlay());
       renderRunList();
+    }
+
+    // The opened run shows over the page; Close, Escape or a click beside it
+    // closes it.
+    function runOverlay() {
+      const panel = el('div', { id: 'run-detail', className: 'card panel', tabIndex: -1 });
+      panel.setAttribute('role', 'dialog');
+      panel.setAttribute('aria-modal', 'true');
+      panel.setAttribute('aria-label', 'Run');
+      const overlay = el('div', { id: 'run-overlay', className: 'overlay', hidden: true }, panel);
+      overlay.addEventListener('click', (e) => { if (e.target === overlay) closeRun(); });
+      return overlay;
     }
 
     // --- compare ---
@@ -610,7 +622,14 @@
       return node;
     }
 
-    const status = (value) => text(value, U.failed(value) ? 'failed' : '');
+    // A status as its mark, named on hover; one without a mark as its word.
+    function status(value) {
+      const mark = U.statusMark(value);
+      if (!mark) return text(value, U.failed(value) ? 'failed' : '');
+      const node = el('span', { className: `mark ${mark.tone}`, textContent: mark.glyph, title: value });
+      node.setAttribute('aria-label', value);
+      return node;
+    }
 
     function implementorCell(r) {
       if (r.workflow) return text(U.nodes(r.workflow));
@@ -629,9 +648,9 @@
       if (list.skipped) notes.push(`${list.skipped} ${list.skipped === 1 ? 'run is' : 'runs are'} left out: the record does not parse.`);
       $('run-list').replaceChildren(
         shown.length
-          ? el('section', { className: 'card' }, el('table', {},
+          ? el('section', { className: 'card' }, el('div', { className: 'run-scroll' }, el('table', {},
             el('thead', {}, el('tr', {}, ...head.map((c) => el('th', { textContent: c })))),
-            el('tbody', {}, ...shown.map(runRow))))
+            el('tbody', {}, ...shown.map(runRow)))))
           : el('p', { className: 'intro', textContent: list.runs.length ? 'No runs match the filters.' : 'No runs yet.' }),
         ...(notes.length ? [el('p', { className: 'group-note', textContent: notes.join(' ') })] : []));
     }
@@ -649,7 +668,7 @@
       ];
       const row = el('tr', { className: `pick${r.id === runs.chosen ? ' chosen' : ''}`, tabIndex: 0, title: r.id },
         el('td', { className: 'name' }, at(r.created_at)),
-        ...cells.map((c, i) => el('td', { className: i >= 2 && i <= 5 ? 'short' : '', dataset: { label: ['Process', 'Implementor', 'Status', 'Verify', 'Wall', 'Cost', r.workflow ? 'Rulings' : 'Skills', 'Tool calls'][i] } }, c)));
+        ...cells.map((c, i) => el('td', { className: i >= 2 && i <= 5 ? 'short' : i === 6 ? 'clip' : '', title: i === 6 ? c : '', dataset: { label: ['Process', 'Implementor', 'Status', 'Verify', 'Wall', 'Cost', r.workflow ? 'Rulings' : 'Skills', 'Tool calls'][i] } }, c)));
       const open = () => (runs.chosen === r.id ? closeRun() : openRun(r.id));
       row.addEventListener('click', open);
       row.addEventListener('keydown', (e) => { if (e.key === 'Enter') open(); });
@@ -660,34 +679,50 @@
       for (const row of document.querySelectorAll('#run-list tr.pick')) row.classList.toggle('chosen', row.title === runs.chosen);
     }
 
+    // Closes the opened run; the focus goes back to its row.
     function closeRun() {
       detailToken++;
+      const id = runs.chosen;
       runs.chosen = null;
       markChosen();
+      $('run-overlay').hidden = true;
       $('run-detail').replaceChildren();
+      [...document.querySelectorAll('#run-list tr.pick')].find((r) => r.title === id)?.focus();
     }
 
-    // Opens the run id below the table, from the server; scroll brings it
-    // into sight.
-    async function openRun(id, scroll = true) {
+    const runOpen = () => !!$('run-overlay') && !$('run-overlay').hidden;
+
+    // Opens the run id over the list, from the server, in place of the one
+    // open, if any.
+    async function openRun(id) {
       const token = ++detailToken;
       runs.chosen = id;
       markChosen();
-      let detail;
+      let content;
       try {
-        detail = await R.fetchRun(fetch, id);
+        const detail = await R.fetchRun(fetch, id);
+        content = runCard(detail.summary, detail.record);
       } catch (err) {
-        if (token === detailToken) $('run-detail').replaceChildren(el('p', { className: 'error', textContent: `${id}: ${err.message}` }));
-        return;
+        content = el('article', {},
+          el('header', { className: 'run-head' }, el('p', { className: 'error', textContent: `${id}: ${err.message}` }), closeButton()));
       }
       if (token !== detailToken) return;
-      $('run-detail').replaceChildren(runCard(detail.summary, detail.record));
-      if (scroll) $('run-detail').scrollIntoView({ block: 'nearest' });
+      $('run-detail').replaceChildren(content);
+      $('run-overlay').hidden = false;
+      $('run-detail').scrollTop = 0;
+      $('run-close').focus();
+    }
+
+    function closeButton() {
+      const close = el('button', { type: 'button', id: 'run-close', className: 'close', textContent: '×', title: 'Close (Esc)' });
+      close.setAttribute('aria-label', 'Close');
+      close.addEventListener('click', closeRun);
+      return close;
     }
 
     // A link that opens the run id.
     function runLink(id, label = id) {
-      const link = el('a', { href: `#${id}`, textContent: label });
+      const link = el('a', { href: `#${id}`, textContent: label, title: id });
       link.addEventListener('click', (e) => { e.preventDefault(); openRun(id); });
       return link;
     }
@@ -695,47 +730,55 @@
     const line = (...parts) => el('div', {}, ...parts);
     const joined = (parts) => parts.filter(Boolean).join(' · ');
 
+    // The run: what it is, how it ended, what it cost and took, and when, in
+    // its head; its ID small; the rest as facts; a workflow's nodes as a
+    // table; the record as stored folded at the bottom.
     function runCard(s, record) {
       const impl = s.implementor;
       const policy = s.policy;
       const outcome = s.outcome ?? {};
       const items = s.workflow?.items;
-      const close = el('button', { type: 'button', className: 'copy', textContent: 'Close' });
-      close.addEventListener('click', closeRun);
-      return el('article', { className: 'card run' },
-        el('header', { className: 'run-head' }, el('h3', { textContent: s.id }), close),
+      const figure = (value, title) => (value ? el('span', { className: 'figure', textContent: value, title }) : null);
+      return el('article', { className: 'run-card', dataset: { run: s.id } },
+        el('header', { className: 'run-head' },
+          el('div', { className: 'run-title' },
+            el('h3', { textContent: s.process }),
+            status(s.status),
+            figure(U.cost(outcome.cost_usd), outcome.cost_source ? `cost, from the ${outcome.cost_source}` : 'cost'),
+            figure(U.duration(outcome.wall_ms), 'wall time')),
+          closeButton()),
+        el('p', { className: 'run-when' },
+          joined([U.timeSpan(s.created_at, s.finished_at), s.agent && `agent ${s.agent}`]),
+          ' · ', el('span', { className: 'run-id', textContent: s.id })),
         facts([
-          ['process', line(text(s.process, 'name'), s.agent ? ` — agent ${s.agent}` : '')],
-          ['started', at(s.created_at)],
-          ['finished', s.finished_at ? at(s.finished_at) : null],
-          ['implementor', impl ? el('div', {},
-            line(joined([impl.adapter && [impl.adapter, impl.version].filter(Boolean).join(' '), impl.model, impl.effort && `${impl.effort} effort`])),
-            U.reportedModel(impl) ? el('div', { className: 'sub' }, `the runtime reported ${impl.reported_model}`) : null) : null],
+          ['implementor', impl ? line(
+            joined([impl.adapter && [impl.adapter, impl.version].filter(Boolean).join(' '), impl.model, impl.effort && `${impl.effort} effort`]),
+            U.reportedModel(impl) ? text(` · the runtime reported ${impl.reported_model}`, 'sub') : '') : null],
           ['policy', policy ? line(
             policy.access ? text(`${policy.access} workspace`, `access-${policy.access}`) : '',
             policy.access ? ' · ' : '',
             joined([policy.timeout_ms ? U.duration(policy.timeout_ms) : '', policy.max_cost_usd != null ? `${U.cost(policy.max_cost_usd)} cap` : '', policy.scope && `scope ${policy.scope}`])) : null],
-          ['outcome', el('div', {},
-            line(status(s.status), outcome.verify ? ` · verify ${U.verify(outcome.verify, record?.verify?.max_attempts)}` : ''),
-            line(joined([outcome.wall_ms != null && `wall ${U.duration(outcome.wall_ms)}`, outcome.turn_ms != null && `turn ${U.duration(outcome.turn_ms)}`,
-              outcome.runtime_ms != null && `runtime ${U.duration(outcome.runtime_ms)}`])),
-            outcome.cost_usd != null ? line(`${U.cost(outcome.cost_usd)}${outcome.cost_source ? ` (${outcome.cost_source})` : ''}`) : null)],
-          ['skills', U.skills(s.skills) || null],
-          ['tool calls', s.tool_calls != null ? String(s.tool_calls) : null],
-          ['workflow', s.parent ? runLink(s.parent) : null],
-          ['nodes', s.workflow?.nodes.length ? el('div', {}, ...s.workflow.nodes.map((n) => line(
-            n.run ? runLink(n.run, n.name) : text(n.name, 'name'),
-            ` — ${n.process}${n.join ? ', join' : ''}`,
-            n.status ? ' · ' : '', n.status ? status(n.status) : null))) : null],
+          ['verify', outcome.verify ? U.verify(outcome.verify, record?.verify?.max_attempts) : null],
+          ['timing', joined([outcome.turn_ms != null && `turn ${U.duration(outcome.turn_ms)}`, outcome.runtime_ms != null && `runtime ${U.duration(outcome.runtime_ms)}`]) || null],
+          ['activity', joined([s.tool_calls != null && `${s.tool_calls} tool ${s.tool_calls === 1 ? 'call' : 'calls'}`, U.skills(s.skills) && `skills ${U.skills(s.skills)}`]) || null],
+          ['workflow', s.parent ? runLink(s.parent, 'the workflow run') : null],
           ['rulings', items ? `${U.counts(items.by_ruling) || 'none'} (${items.total} ${items.total === 1 ? 'item' : 'items'})` : null],
           ['severities', items ? U.counts(items.by_severity) || null : null],
-          ['by source', items?.by_source.length ? el('div', {}, ...items.by_source.map((src) => line(
-            `${src.source} `, src.node ? (src.run ? runLink(src.run, src.node) : text(src.node, 'name')) : '',
-            `: ${U.counts(src.by_ruling)}`))) : null],
         ]),
+        s.workflow?.nodes.length ? nodesTable(s.workflow) : null,
         el('details', { className: 'record' },
           el('summary', { textContent: 'Record as stored' }),
           el('pre', { className: 'mono', textContent: JSON.stringify(record, null, 2) })));
+    }
+
+    // A workflow's nodes: each opens its run; the join is marked; the
+    // rulings are of the judge's items the node was a source of.
+    function nodesTable(workflow) {
+      return el('div', { className: 'nodes' }, simpleTable(['Node', 'Process', 'Status', 'Wall', 'Cost', 'Rulings'],
+        U.nodeRows(workflow).map((n) => [
+          el('span', {}, n.run ? runLink(n.run, n.name) : n.name, n.join ? text(' join', 'sub') : null),
+          n.process, n.status ? status(n.status) : '', n.wall, n.cost, n.rulings,
+        ])));
     }
 
     // --- knowledge ---
@@ -1057,6 +1100,8 @@
       if (e.key === 'Escape' && !$('picker-menu').hidden) {
         setMenu(false);
         $('picker-button').focus();
+      } else if (e.key === 'Escape' && state.view === 'runs' && runOpen()) {
+        closeRun();
       }
     });
 

@@ -74,18 +74,24 @@ nearer layer holds a partial, so the page does not open those settings. ↻ read
 The runs are Agister home's, whatever the picker shows. ↻ reads them
 again.
 
-- Newest first: when it started, the process, the implementor
+- Newest first, ten rows tall under a head that stays put while the list
+  scrolls: when it started, the process, the implementor
   (`adapter model effort`; the model the runtime reported shows on hover
-  when it differs), status, verify (`2 ✓`: the attempts used and whether
+  when it differs), status (a green ✓ completed, a red ⚠ failed, an amber
+  ⚠ interrupted, the word for the others; the status on hover), verify (`2 ✓`: the attempts used and whether
   the last passed; empty without verify), wall time, cost, the skills used
   (`name×n`) and the tool calls. A workflow's row shows its node count and
   its judge's rulings instead of implementor and skills. Process and status
   filter the list. Runs whose record does not parse are counted under it.
-- Clicking a run opens it below the list: implementor, policy, outcome
-  (verify as `2/3 ✓`, out of the process's most), skills, the workflow it
-  belongs to, and for a workflow its nodes and its judge's items by
-  ruling, by severity and per source review. A link opens that run. The
-  record as stored is folded at the bottom.
+- Clicking a run opens it over the page; Close, Escape or a click beside
+  it closes it. Its head is the process, its status, cost and wall time,
+  then when it ran (`4:07 PM – 4:10 PM, 10/10/2026`), its agent and, small,
+  its ID. Then implementor, policy, verify (`2/3 ✓`, out of the process's
+  most), turn and runtime timing, tool calls and skills, the workflow it
+  belongs to, and for a workflow its judge's items by ruling and by
+  severity and its nodes as a table: process, status, wall, cost and the
+  rulings of the items each node was a source of. A link opens that run in
+  its place. The record as stored is folded at the bottom.
 
 Durations read `1m 47s` or `412ms`, costs `$0.50`, times in local time. A
 failed or interrupted run shows in red.
@@ -240,7 +246,8 @@ The server writes nothing and answers these endpoints:
   A run whose `record.json` does not parse is left out and counted in
   `skipped`; `total` counts the ones that parse.
 - `GET /api/runs/<run-id>`: one run's `summary` and its `record` as
-  stored. An ID that is not a plain run directory name is refused (400);
+  stored; a workflow's nodes carry their runs' `wall_ms` and `cost_usd`
+  once those have finished, which the list leaves out. An ID that is not a plain run directory name is refused (400);
   a run that is not there is a 404.
 - `GET /api/runs/compare`: the completed and failed calls (not
   workflows), grouped by process, then by runtime adapter, model and

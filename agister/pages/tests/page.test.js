@@ -46,7 +46,7 @@ const workflow = {
   id: 'wf-1', process: 'panel', created_at: '2026-10-01T09:59:00Z', status: 'completed', outcome: { wall_ms: 120000 },
   workflow: {
     nodes: [
-      { name: 'first', process: 'implement', run: 'call-1', status: 'completed' },
+      { name: 'first', process: 'implement', run: 'call-1', status: 'completed', wall_ms: 107000, cost_usd: 0.5 },
       { name: 'judge', process: 'judge', join: true, run: 'judge-1', status: 'failed' },
     ],
     items: {
@@ -101,7 +101,8 @@ function page({ storage = fakeStorage(), answers = {} } = {}) {
     row: (id) => document.querySelectorAll('#run-list tr.pick').find((r) => r.title === id),
     shown: () => ({ settings: !$('dashboard').hidden, runs: !$('runs').hidden, compare: !$('compare').hidden }),
     pressed: (view) => $(`view-${view}`).getAttribute('aria-pressed'),
-    detail: () => $('run-detail').querySelector('h3')?.textContent ?? null,
+    // The run opened over the list, by its ID, or null when none shows.
+    detail: () => ($('run-overlay')?.hidden === false ? $('run-detail').querySelector('article')?.dataset.run ?? null : null),
     // The cells of a table row, as text.
     cells: (row) => row.children.map((td) => td.textContent),
     // The compare tables: per process, its rows' cells.
@@ -192,36 +193,76 @@ test('refresh reads the shown view again and only that one', async () => {
   assert.match(p.$('read-at').title, /^Settings read/);
 });
 
-test('a row opens its run below the table; its workflow link opens the parent run', async () => {
+test('a row opens its run over the list; its links open other runs in its place', async () => {
   const p = page({ storage: fakeStorage({ [VIEW_KEY]: 'runs' }) });
   await p.started;
   assert.equal(p.detail(), null);
+  assert.equal(p.$('run-overlay').hidden, true);
 
   p.row('call-1').click();
   await settle();
   assert.equal(p.calls.at(-1), 'api/runs/call-1');
   assert.equal(p.detail(), 'call-1');
   assert.ok(p.row('call-1').classList.contains('chosen'));
-  assert.equal(p.document.scrolledTo, p.$('run-detail'));
+  assert.equal(p.document.activeElement, p.$('run-close'));
+  assert.equal(p.$('run-detail').getAttribute('role'), 'dialog');
 
-  // The workflow fact links to the parent; following it stays on the page
-  // and opens the parent below the table.
-  const link = p.$('run-detail').querySelectorAll('a').find((a) => a.textContent === 'wf-1');
+  // The workflow fact links to the parent; following it opens the parent
+  // in its place.
+  const link = p.$('run-detail').querySelectorAll('a').find((a) => a.textContent === 'the workflow run');
   assert.equal(link.href, '#wf-1');
-  const click = link.click();
-  assert.ok(click.defaultPrevented);
+  assert.equal(link.title, 'wf-1');
+  assert.ok(link.click().defaultPrevented);
   await settle();
   assert.equal(p.calls.at(-1), 'api/runs/wf-1');
   assert.equal(p.detail(), 'wf-1');
   assert.equal(p.location.hash, '');
   assert.deepEqual(p.rows().filter((r) => r.classList.contains('chosen')).map((r) => r.title), ['wf-1']);
-  assert.match(p.$('run-detail').textContent, /first — implement/);
 
-  // The chosen row again closes it.
+  // A node opens its run.
+  p.$('run-detail').querySelectorAll('a').find((a) => a.textContent === 'first').click();
+  await settle();
+  assert.equal(p.detail(), 'call-1');
+});
+
+test('Close, Escape and a click beside the run close it and give its row the focus', async () => {
+  const p = page({ storage: fakeStorage({ [VIEW_KEY]: 'runs' }) });
+  await p.started;
+  const closed = () => {
+    assert.equal(p.detail(), null);
+    assert.equal(p.$('run-overlay').hidden, true);
+    assert.deepEqual(p.rows().filter((r) => r.classList.contains('chosen')), []);
+  };
+
+  p.row('call-1').click();
+  await settle();
+  p.$('run-close').click();
+  closed();
+  assert.equal(p.document.activeElement, p.row('call-1'));
+
   p.row('wf-1').click();
   await settle();
-  assert.equal(p.detail(), null);
-  assert.deepEqual(p.rows().filter((r) => r.classList.contains('chosen')), []);
+  // A click inside the run leaves it open; one beside it closes it.
+  p.$('run-detail').querySelector('h3').click();
+  assert.equal(p.detail(), 'wf-1');
+  p.$('run-overlay').click();
+  closed();
+  assert.equal(p.document.activeElement, p.row('wf-1'));
+
+  p.row('call-1').click();
+  await settle();
+  p.document.dispatchEvent(new Event('keydown', { key: 'Escape' }));
+  closed();
+
+  // A run that cannot be read says why over the list, and closes the same.
+  const failing = page({ storage: fakeStorage({ [VIEW_KEY]: 'runs' }), answers: { 'api/runs/call-1': () => respond({ error: 'gone' }, 404) } });
+  await failing.started;
+  failing.row('call-1').click();
+  await settle();
+  assert.equal(failing.$('run-overlay').hidden, false);
+  assert.equal(failing.$('run-detail').querySelector('p.error').textContent, 'call-1: gone');
+  failing.$('run-close').click();
+  assert.equal(failing.$('run-overlay').hidden, true);
 });
 
 test('a Runs read that succeeds after the user went to Settings leaves the read time and the status alone', async () => {
@@ -359,32 +400,45 @@ test('the run list shows what the summaries carry', async () => {
   // The started cell is in local time; the rest as the page writes it.
   assert.ok(p.cells(p.row('call-1'))[0]);
   assert.deepEqual(p.cells(p.row('call-1')).slice(1),
-    ['implement', 'claude-code opus high', 'completed', '2 ✓', '1m 47s', '$0.50', 'review×3, go×1', '12']);
+    ['implement', 'claude-code opus high', '✓', '2 ✓', '1m 47s', '$0.50', 'review×3, go×1', '12']);
+  assert.equal(p.row('call-1').children[3].querySelector('span').title, 'completed');
+  assert.equal(p.row('call-1').children[7].title, 'review×3, go×1');
   assert.equal(p.row('call-1').children[2].querySelector('span').title, 'the runtime reported claude-opus-5-5');
   // A workflow's row: its nodes and its judge's rulings.
   assert.deepEqual(p.cells(p.row('wf-1')).slice(1),
-    ['panel', '2 nodes', 'completed', '', '2m 0s', '', 'fix 2, defer 1', '']);
+    ['panel', '2 nodes', '✓', '', '2m 0s', '', 'fix 2, defer 1', '']);
 });
 
-test('an opened run shows its facts, its judge counts and its record folded', async () => {
+test('an opened run heads with its process, status, cost and wall, and keeps its ID small', async () => {
+  const p = page({ storage: fakeStorage({ [VIEW_KEY]: 'runs' }) });
+  await p.started;
+  p.row('call-1').click();
+  await settle();
+  const title = p.$('run-detail').querySelector('div.run-title');
+  assert.deepEqual(title.children.map((c) => c.textContent), ['implement', '✓', '$0.50', '1m 47s']);
+  assert.equal(title.querySelector('span.mark').title, 'completed');
+  assert.equal(title.children[2].title, 'cost, from the runtime');
+  const when = p.$('run-detail').querySelector('p.run-when');
+  assert.match(when.textContent, /^\S.* – .*, .* · agent opus · call-1$/);
+  assert.equal(when.querySelector('span.run-id').textContent, 'call-1');
+  assert.deepEqual(p.$('run-detail').querySelectorAll('h3').map((h) => h.textContent), ['implement']);
+});
+
+test('an opened run shows its facts, a workflow its nodes as a table, and the record folded', async () => {
   const p = page({ storage: fakeStorage({ [VIEW_KEY]: 'runs' }) });
   await p.started;
 
   p.row('call-1').click();
   await settle();
-  const opened = p.facts();
-  assert.ok(opened.started[0] && opened.finished[0]);
-  delete opened.started;
-  delete opened.finished;
-  assert.deepEqual(opened, {
-    process: ['implement — agent opus'],
-    implementor: ['claude-code 2.1 · opus · high effort', 'the runtime reported claude-opus-5-5'],
+  assert.deepEqual(p.facts(), {
+    implementor: ['claude-code 2.1 · opus · high effort · the runtime reported claude-opus-5-5'],
     policy: ['read-write workspace · 20m 0s · $5.00 cap · scope candidate'],
-    outcome: ['completed · verify 2/3 ✓', 'wall 1m 47s · turn 1m 40s · runtime 412ms', '$0.50 (runtime)'],
-    skills: ['review×3, go×1'],
-    'tool calls': ['12'],
-    workflow: ['wf-1'],
+    verify: ['2/3 ✓'],
+    timing: ['turn 1m 40s · runtime 412ms'],
+    activity: ['12 tool calls · skills review×3, go×1'],
+    workflow: ['the workflow run'],
   });
+  assert.equal(p.$('run-detail').querySelector('div.nodes'), null);
   const record = p.$('run-detail').querySelector('details.record');
   assert.ok(!record.open);
   assert.equal(record.querySelector('summary').textContent, 'Record as stored');
@@ -392,18 +446,17 @@ test('an opened run shows its facts, its judge counts and its record folded', as
 
   p.row('wf-1').click();
   await settle();
-  const workflow = p.facts();
-  assert.ok(workflow.started[0]);
-  delete workflow.started;
-  assert.deepEqual(workflow, {
-    process: ['panel'],
-    outcome: ['completed', 'wall 2m 0s'],
-    nodes: ['first — implement · completed', 'judge — judge, join · failed'],
+  assert.deepEqual(p.facts(), {
     rulings: ['fix 2, defer 1 (3 items)'],
     severities: ['minor 2, major 1'],
-    'by source': ['1 first: fix 2, defer 1'],
   });
-  assert.deepEqual(p.$('run-detail').querySelectorAll('span.failed').map((s) => s.textContent), ['failed']);
+  const nodes = p.$('run-detail').querySelector('div.nodes table');
+  assert.deepEqual(nodes.querySelectorAll('th').map((th) => th.textContent), ['Node', 'Process', 'Status', 'Wall', 'Cost', 'Rulings']);
+  assert.deepEqual(nodes.querySelectorAll('tbody tr').map(p.cells), [
+    ['first', 'implement', '✓', '1m 47s', '$0.50', 'fix 2, defer 1'],
+    ['judge join', 'judge', '⚠\uFE0E', '', '', ''],
+  ]);
+  assert.deepEqual(nodes.querySelectorAll('span.mark').map((m) => [m.title, m.className]), [['completed', 'mark ok'], ['failed', 'mark failed']]);
   assert.deepEqual(JSON.parse(p.$('run-detail').querySelector('details.record pre').textContent), workflowRecord);
 });
 

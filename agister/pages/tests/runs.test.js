@@ -184,3 +184,31 @@ test('a call recorded before runtimes compares with its configuration as -', () 
     total_cost_usd: 0, cost_unknown: 0, cost_per_completed_usd: 0 }]);
   assert.deepEqual([table.rows[0].adapter, table.rows[0].model, table.rows[0].effort, table.rows[0].costPerCompleted], ['-', '-', '-', '$0.00']);
 });
+
+test('completed, failed and interrupted show as marks; the other statuses as words', () => {
+  assert.deepEqual(U.statusMark('completed'), { glyph: '✓', tone: 'ok' });
+  assert.deepEqual(U.statusMark('failed'), { glyph: '⚠︎', tone: 'failed' });
+  assert.deepEqual(U.statusMark('interrupted'), { glyph: '⚠︎', tone: 'warn' });
+  assert.equal(U.statusMark('running'), null);
+  assert.equal(U.statusMark('lost'), null);
+});
+
+test('a time span gives the date once when both ends fall on it', () => {
+  const local = (h, m, day = 9) => new Date(2026, 9, day, h, m).toISOString();
+  const time = (iso) => new Date(iso).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+  const date = (iso) => new Date(iso).toLocaleDateString([], { day: '2-digit', month: '2-digit', year: 'numeric' });
+  const [a, b, c] = [local(22, 1), local(22, 13), local(0, 10, 10)];
+  assert.equal(U.timeSpan(a, b), `${time(a)} – ${time(b)}, ${date(a)}`);
+  assert.equal(U.timeSpan(a, c), `${time(a)}, ${date(a)} – ${time(c)}, ${date(c)}`);
+  assert.equal(U.timeSpan(a, undefined), `${time(a)} –, ${date(a)}`);
+  assert.equal(U.timeSpan('', b), '');
+  assert.equal(U.timeSpan('not a time', b), '');
+});
+
+test('a workflow\'s node rows carry their wall, cost and the rulings of the items they were a source of', () => {
+  assert.deepEqual(U.nodeRows(review.workflow).map((n) => [n.name, n.join, n.run, n.rulings]),
+    [['first', false, 'r1', 'fix 2'], ['second', false, 'r2', ''], ['judge', true, 'r3', '']]);
+  assert.deepEqual(U.nodeRows({ nodes: [{ name: 'a', process: 'p', wall_ms: 1500, cost_usd: 0.25 }] }),
+    [{ name: 'a', process: 'p', join: false, run: '', status: '', wall: '2s', cost: '$0.25', rulings: '' }]);
+  assert.deepEqual(U.nodeRows(undefined), []);
+});
