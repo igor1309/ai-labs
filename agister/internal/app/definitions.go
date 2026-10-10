@@ -49,14 +49,20 @@ type SettingsDocument struct {
 	Ref  DocumentRef
 	Path string
 	Uses []DocumentRef // whether or not they exist
+	// Binds are a workflow's nodes, in declaration order, the join last.
+	Binds []NodeBinding
 }
 
 // SettingsProblem is one problem of a document. A listing shows what a
 // call without --agent would be refused, so every problem of a process
-// counts, whichever agent it depends on.
+// counts for the process, whichever agent it depends on.
 type SettingsProblem struct {
 	About   DocumentRef
 	Message string // without the document's name
+	// Set on a process's problem that depends on the agent it names: a
+	// workflow whose nodes bind the process to other agents does not have
+	// it (ADR-030 rule 5).
+	Agent string
 }
 
 // SettingsBlock is one document the repository blocks (ADR-018): a listing
@@ -70,10 +76,10 @@ type SettingsBlock struct {
 func (f SettingsChecked) reach() *reach {
 	r := newReach()
 	for _, d := range f.Documents {
-		r.documents[d.Ref] = reachDocument{path: d.Path, uses: d.Uses}
+		r.documents[d.Ref] = reachDocument{path: d.Path, uses: d.Uses, binds: d.Binds}
 	}
 	for _, p := range f.Problems {
-		r.about[p.About] = append(r.about[p.About], reachProblem{message: p.Message})
+		r.about[p.About] = append(r.about[p.About], reachProblem{message: p.Message, agent: p.Agent})
 	}
 	for _, b := range f.Blocks {
 		r.blocked[b.Ref] = reachBlock{path: b.Path, reason: b.Reason}
@@ -485,6 +491,9 @@ type InspectionResolver interface {
 	// in place of its own, and no limits of a caller. A refused one's view
 	// has what was resolved before the refusal, never nil.
 	InspectProcess(ctx context.Context, name, agent string) (*InspectedProcess, error)
+	// InspectNode resolves a workflow node's call as InspectProcess does a
+	// process: its process, on the agent the node binds it to.
+	InspectNode(ctx context.Context, node InspectedNode) (*InspectedProcess, error)
 	// InspectWorkflow resolves the workflow of that name; found is false
 	// when the settings have none.
 	InspectWorkflow(ctx context.Context, name string) (res *InspectedWorkflow, found bool, err error)
@@ -615,10 +624,12 @@ type InspectedWorkflowDefinition struct {
 	Join   InspectedNode
 }
 
-// InspectedNode is one node of a workflow and the process it calls.
+// InspectedNode is one node of a workflow, the process it calls and the
+// agent it binds the process to; no agent: its process's own.
 type InspectedNode struct {
 	Name    string
 	Process string
+	Agent   string
 }
 
 // InspectedNodeProcess is what the view reads of a node's process: the
@@ -630,7 +641,17 @@ type InspectedNodeProcess struct {
 
 // InspectProcess translates the Resolver's resolution into the view's.
 func (r *Resolver) InspectProcess(ctx context.Context, name, agent string) (*InspectedProcess, error) {
-	res, err := r.resolve(ctx, name, agent, overrides{})
+	return r.inspect(ctx, name, agent, overrides{})
+}
+
+// InspectNode is InspectProcess of a workflow node's call: its process, on
+// the agent the node binds it to (ADR-030 rule 5).
+func (r *Resolver) InspectNode(ctx context.Context, node InspectedNode) (*InspectedProcess, error) {
+	return r.inspect(ctx, node.Process, node.Agent, overrides{node: true})
+}
+
+func (r *Resolver) inspect(ctx context.Context, name, agent string, caller overrides) (*InspectedProcess, error) {
+	res, err := r.resolve(ctx, name, agent, caller)
 	process := res.process
 	inspected := &InspectedProcess{
 		Process: InspectedDefinition{
@@ -665,7 +686,9 @@ func (r *Resolver) InspectWorkflow(ctx context.Context, name string) (*Inspected
 		return nil, found, err
 	}
 	workflow := res.workflow
-	node := func(node definition.Node) InspectedNode { return InspectedNode{Name: node.Name, Process: node.Process} }
+	node := func(node definition.Node) InspectedNode {
+		return InspectedNode{Name: node.Name, Process: node.Process, Agent: node.Agent}
+	}
 	inspected := &InspectedWorkflow{
 		Workflow: InspectedWorkflowDefinition{
 			Name: workflow.Name, Params: inspectedParams(workflow.Params), Values: inspectedValues(workflow.Values),
@@ -752,7 +775,7 @@ func (i *Inspection) ShowWorkflow(ctx context.Context, name string) (contract.Wo
 		passed[value.Name] = true
 	}
 	node := func(node InspectedNode, join bool) (contract.WorkflowNode, error) {
-		process, err := i.showProcess(ctx, node.Process, "")
+		process, err := i.shown(i.resolver.InspectNode(ctx, node))
 		var input *contract.InputError
 		if errors.As(err, &input) {
 			process, err = contract.ProcessView{Name: node.Process, Refusal: input.Message}, nil
@@ -787,7 +810,12 @@ func (i *Inspection) ShowWorkflow(ctx context.Context, name string) (contract.Wo
 }
 
 func (i *Inspection) showProcess(ctx context.Context, name, agent string) (contract.ProcessView, error) {
-	res, err := i.resolver.InspectProcess(ctx, name, agent)
+	return i.shown(i.resolver.InspectProcess(ctx, name, agent))
+}
+
+// shown is the view of a process as the resolver resolved it, refused or
+// not.
+func (i *Inspection) shown(res *InspectedProcess, err error) (contract.ProcessView, error) {
 	var refusal *Refusal
 	if err != nil && !errors.As(err, &refusal) {
 		return contract.ProcessView{}, err

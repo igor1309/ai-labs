@@ -15,10 +15,14 @@ const WorkflowSchema = "agister.workflow/v1alpha1"
 // process called on its own, or as a fan-out node, has none to receive.
 const CollectionSource = "workflow.collection"
 
-// Node is one node of a workflow: a unique name and the process it calls.
+// Node is one node of a workflow: a unique name, the process it calls and
+// the agent it binds the process to (ADR-030 rule 5).
 type Node struct {
 	Name    string
 	Process string
+	// Agent runs the node's call, in place of the agent its process names;
+	// unset: its process's.
+	Agent string
 }
 
 // Workflow is a settings definition of one fixed shape (ADR-003): fan-out
@@ -78,7 +82,7 @@ func ParseWorkflow(doc Document) (Workflow, error) {
 
 	seen := map[string]string{} // node name: the field that declared it first
 	node := func(item *yaml.Node, field string) Node {
-		spec := fields(item, field, []string{"node", "uses"}, p)
+		spec := fields(item, field, []string{"node", "uses", "agent"}, p)
 		n := Node{Name: required(spec, "node", field, p)}
 		if n.Name != "" {
 			if !ValidName(n.Name) {
@@ -94,6 +98,15 @@ func ParseWorkflow(doc Document) (Workflow, error) {
 			n.Process = process
 		} else if uses != "" {
 			p.add(field+".uses", `must be "process:<name>"`)
+		}
+		// The agent's name alone, as ADR-030 rule 5 writes a binding; a node
+		// that names none runs on its process's.
+		if value, ok := spec["agent"]; ok {
+			if agent := nonEmpty(value, field+".agent", p); ValidName(agent) {
+				n.Agent = agent
+			} else if agent != "" {
+				p.add(field+".agent", "must be an agent's name, not %q", agent)
+			}
 		}
 		return n
 	}

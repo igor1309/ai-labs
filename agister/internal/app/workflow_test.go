@@ -1542,3 +1542,127 @@ func TestWorkflowRefusesACancelCapturedBeforeItEnded(t *testing.T) {
 		t.Fatalf("the refused cancel changed the workflow: %+v", after.Result)
 	}
 }
+
+// withAgentB adds agent b to the harness: agent a but for its name and its
+// model, m2.
+func withAgentB(h *flowHarness) {
+	h.defs.set(definition.KindAgent, "b", strings.NewReplacer(`name = "a"`, `name = "b"`, `model = "m1"`, `model = "m2"`).Replace(settingsDocs()[definition.KindAgent]["a"]))
+}
+
+// boundTo is the workflow document with node, which names process, bound to
+// agent.
+func boundTo(document, node, process, agent string) string {
+	spec := "{node: " + node + ", uses: process:" + process
+	return strings.Replace(document, spec+"}", spec+", agent: "+agent+"}", 1)
+}
+
+// ADR-030 rule 5: a node's agent runs its call, in place of the agent its
+// process names, a fan-out node's and the join's alike; a node that names
+// none runs on its process's. Each node's run records the agent it ran on,
+// and its turn carries that agent's model.
+func TestANodesAgentRunsItsCall(t *testing.T) {
+	t.Parallel()
+	h := newFlowHarness()
+	withAgentB(h)
+	h.defs.set(definition.KindWorkflow, "w", boundTo(boundTo(workflowDoc, "two", "second", "b"), "merge", "joiner", "b"))
+	id := h.submit(t, contract.CallRequest{})
+	record := h.store.wait(t, id)
+	if record.Result.Status != run.Completed || record.Result.Error != nil {
+		t.Fatalf("result = %+v", record.Result)
+	}
+	for _, node := range []struct{ name, run, instruction, agent, model string }{
+		{"one", "run-2", "Work as first.", "a", "m1"},
+		{"two", "run-3", "Work as second.", "b", "m2"},
+		{"merge", "run-4", "Join them.", "b", "m2"},
+	} {
+		child := h.store.wait(t, node.run)
+		if child.Parent == nil || child.Parent.Node != node.name || child.Agent != node.agent || child.Profile == nil || child.Profile.Model != node.model {
+			t.Errorf("node %s: run %s of %+v ran on agent %q, profile %+v; want agent %s, model %s", node.name, node.run, child.Parent, child.Agent, child.Profile, node.agent, node.model)
+		}
+		turns := h.runner.turns(node.instruction)
+		if len(turns) != 1 || turns[0].Model != node.model {
+			t.Errorf("node %s: turns %+v, want one on model %s", node.name, turns, node.model)
+		}
+	}
+}
+
+// ADR-030 rules 2 and 5: a process that names no agent runs when a node
+// binds it to one, on that agent. On its own it is refused, with or
+// without an agent its caller selects: only a node binds it. A node that
+// names no agent for it refuses its workflow before any node starts.
+func TestAProcessWithoutUsesRunsOnlyAsANode(t *testing.T) {
+	t.Parallel()
+	agentless := strings.Replace(nodeProcess("second", "Work as second."), "uses: agent:a\n", "", 1)
+	const alone = "process second: names no agent: only a workflow's node binds it to one (ADR-030 rule 5); run a workflow that binds it"
+
+	t.Run("bound by a node", func(t *testing.T) {
+		t.Parallel()
+		h := newFlowHarness()
+		withAgentB(h)
+		h.defs.set(definition.KindProcess, "second", agentless)
+		h.defs.set(definition.KindWorkflow, "w", boundTo(workflowDoc, "two", "second", "b"))
+		record := h.store.wait(t, h.submit(t, contract.CallRequest{}))
+		if record.Result.Status != run.Completed || record.Result.Error != nil {
+			t.Fatalf("result = %+v", record.Result)
+		}
+		if child, turns := h.store.wait(t, "run-3"), h.runner.turns("Work as second."); child.Process != "second" || child.Agent != "b" || len(turns) != 1 || turns[0].Model != "m2" {
+			t.Fatalf("node two: process %s on agent %q, turns %+v", child.Process, child.Agent, turns)
+		}
+	})
+	for name, request := range map[string]contract.CallRequest{
+		"on its own":                       {Process: "second"},
+		"on its own, its caller's agent b": {Process: "second", Agent: "b"},
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			h := newFlowHarness()
+			withAgentB(h)
+			h.defs.set(definition.KindProcess, "second", agentless)
+			h.defs.set(definition.KindWorkflow, "w", boundTo(workflowDoc, "two", "second", "b"))
+			record := h.store.wait(t, h.submit(t, request))
+			if class(record) != run.ClassRefused || message(record) != alone || len(h.runner.turns("Work as second.")) != 0 {
+				t.Fatalf("result %+v, want refused: %s", record.Result, alone)
+			}
+		})
+	}
+	t.Run("bound by a node that names no agent", func(t *testing.T) {
+		t.Parallel()
+		h := newFlowHarness()
+		h.defs.set(definition.KindProcess, "second", agentless)
+		record := h.store.wait(t, h.submit(t, contract.CallRequest{}))
+		const want = "workflow w: fan-out node two: process second names no agent, and the node names none: name the node's agent (ADR-030 rule 5)"
+		if class(record) != run.ClassRefused || message(record) != want || len(h.store.ids()) != 1 {
+			t.Fatalf("result %+v, runs %v, want refused: %s", record.Result, h.store.ids(), want)
+		}
+	})
+}
+
+// workflow show shows each node as its binding runs (ADR-030 rule 7): on
+// the agent the node names, and on its process's where it names none.
+func TestShowWorkflowShowsEachNodeOnTheAgentItBinds(t *testing.T) {
+	t.Parallel()
+	h := newFlowHarness()
+	withAgentB(h)
+	h.defs.set(definition.KindProcess, "second", strings.Replace(nodeProcess("second", "Work as second."), "uses: agent:a\n", "", 1))
+	h.defs.set(definition.KindWorkflow, "w", boundTo(boundTo(workflowDoc, "two", "second", "b"), "merge", "joiner", "b"))
+	inspection := app.NewInspection(app.NewResolver(h.defs, nodeRuntimes{runner: h.runner}, okValidator{}, resolverCheckStub{}))
+	view, err := inspection.ShowWorkflow(context.Background(), "w")
+	if err != nil || view.Refusal != "" {
+		t.Fatalf("view %+v, %v", view, err)
+	}
+	shown := map[string]string{}
+	for _, node := range append(append([]contract.WorkflowNode(nil), view.FanOut...), view.Join) {
+		if node.Process.Refusal != "" || len(node.Process.Primitives) == 0 {
+			t.Errorf("node %s: refusal %q, plan %v", node.Name, node.Process.Refusal, node.Process.Primitives)
+		}
+		shown[node.Name] = node.Process.Name + " on " + node.Process.Agent
+	}
+	if want := map[string]string{"one": "first on a", "two": "second on b", "merge": "joiner on b"}; !reflect.DeepEqual(shown, want) {
+		t.Fatalf("nodes = %v, want %v", shown, want)
+	}
+	// On its own the process shows its work, and that it is not run so.
+	process, err := inspection.ShowProcess(context.Background(), "second", "")
+	if err != nil || process.Name != "second" || process.Agent != "" || !strings.Contains(process.Refusal, "names no agent") {
+		t.Fatalf("process show: %+v, %v", process, err)
+	}
+}

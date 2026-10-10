@@ -395,8 +395,10 @@ output:
 			`type: must be "process" (set in /h/processes/p.yaml)`},
 		"a field under a map two layers fill": {"input:\n  values:\n    candidate_revision: {rev: [HEAD]}\n", home,
 			"input.values.candidate_revision.rev: must be a scalar (set in /w/.agister/processes/p.yaml)"},
-		"a required field no layer sets": {"timeout: 5m\n", strings.Replace(home, "uses: agent:a\n", "", 1),
-			"uses: is required (no layer sets it: /w/.agister/processes/p.yaml, /h/processes/p.yaml)"},
+		// The prompt: uses, which this case left out before, is no longer
+		// required (ADR-030 rule 2).
+		"a required field no layer sets": {"timeout: 5m\n", strings.Replace(home, "prompt: review\n", "", 1),
+			"prompt: is required (no layer sets it: /w/.agister/processes/p.yaml, /h/processes/p.yaml)"},
 		// The empty map the nearer layer gave is a leaf above the field: it
 		// sets no field below it.
 		"a required field under an empty map a layer gives": {"output: {}\n", strings.Replace(home, "output:\n  format: text\n", "", 1),

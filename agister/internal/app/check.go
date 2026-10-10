@@ -104,6 +104,8 @@ type CheckedDocument struct {
 	Ref  DocumentRef
 	Path string
 	Uses []DocumentRef // whether or not they exist
+	// Binds are a workflow's nodes, in declaration order, the join last.
+	Binds []NodeBinding
 }
 
 // CheckedProblem is one problem, as reported and as found.
@@ -376,7 +378,7 @@ func (c *Checker) check(ctx context.Context, probe bool) (CheckResult, error) {
 		sort.SliceStable(found, func(i, j int) bool { return found[i].Text < found[j].Text })
 		reached := newReach()
 		for _, document := range documents {
-			reached.documents[document.Ref] = reachDocument{path: document.Path, uses: document.Uses}
+			reached.documents[document.Ref] = reachDocument{path: document.Path, uses: document.Uses, binds: document.Binds}
 		}
 		var processes, workflows []DocumentRef
 		for ref := range listed {
@@ -398,8 +400,8 @@ func (c *Checker) check(ctx context.Context, probe bool) (CheckResult, error) {
 			if subject := problem.About; subject != nil {
 				item.Subject = &contract.DefinitionRef{Kind: string(subject.Kind), Name: subject.Name}
 				item.Agent = problem.Agent
-				item.Processes = reached.refuses(*subject, processes)
-				item.Workflows = reached.refuses(*subject, workflows)
+				item.Processes = reached.refuses(*subject, problem.Agent, processes)
+				item.Workflows = reached.refuses(*subject, problem.Agent, workflows)
 			}
 			report.Reach = append(report.Reach, item)
 		}
@@ -407,8 +409,8 @@ func (c *Checker) check(ctx context.Context, probe bool) (CheckResult, error) {
 			report.Blocks = append(report.Blocks, contract.Block{
 				Ref:  contract.DefinitionRef{Kind: string(block.Ref.Kind), Name: block.Ref.Name},
 				Path: block.Path, Reason: block.Reason,
-				Processes: reached.refuses(block.Ref, processes),
-				Workflows: reached.refuses(block.Ref, workflows),
+				Processes: reached.refuses(block.Ref, "", processes),
+				Workflows: reached.refuses(block.Ref, "", workflows),
 			})
 		}
 		return CheckResult{Report: report, Documents: documents, Problems: found, Blocks: blocks}
@@ -459,8 +461,18 @@ func (c *Checker) check(ctx context.Context, probe bool) (CheckResult, error) {
 	}
 	for _, name := range sortedNames(bundle.Workflows) {
 		from := DocumentRef{Kind: definition.KindWorkflow, Name: name}
+		// A workflow uses the agent a node binds its process to, each once:
+		// its problems and blocks refuse the workflow (ADR-030 rule 10).
+		agents := map[string]bool{}
 		for _, node := range bundle.Workflows[name].Nodes() {
 			link(from, definition.KindProcess, node.Process, false)
+			if !agents[node.Agent] {
+				agents[node.Agent] = true
+				link(from, definition.KindAgent, node.Agent, false)
+			}
+			if source, ok := index[from]; ok {
+				documents[source].Binds = append(documents[source].Binds, NodeBinding{Process: node.Process, Agent: node.Agent})
+			}
 		}
 		for _, form := range bundle.Workflows[name].Forms() {
 			link(from, definition.KindBrief, form, false)

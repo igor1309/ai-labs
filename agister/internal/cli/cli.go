@@ -536,7 +536,9 @@ func dispatch(ctx context.Context, client contract.Client, log *slog.Logger, opt
 				return 0, err
 			}
 			for _, process := range processes {
-				line := fmt.Sprintf("%s\tagent:%s\t%s", process.Name, process.Agent, process.Output)
+				// One that names no agent has the one a node binds it to
+				// (ADR-030 rule 5).
+				line := fmt.Sprintf("%s\tagent:%s\t%s", process.Name, or(process.Agent, "-"), process.Output)
 				if process.Problem != "" {
 					line = process.Name + "\t" + process.Problem
 				}
@@ -985,9 +987,13 @@ func showProcess(w io.Writer, view contract.ProcessView) {
 			params = append(params, param.Name+"="+param.Default)
 		}
 	}
+	agent := "(none: a workflow's node binds it to one)"
+	if view.Agent != "" {
+		agent = view.Agent + " (runtime " + view.Runtime + ")"
+	}
 	lines := [][2]string{
 		{"process", view.Name},
-		{"agent", view.Agent + " (runtime " + view.Runtime + ")"},
+		{"agent", agent},
 		{"params", or(strings.Join(params, ", "), "(none)")},
 		{"inputs", or(strings.Join(view.Inputs, ", "), "(none)")},
 		{"output", view.Output},

@@ -94,7 +94,9 @@ func TestCheckMarksWhatThisBinaryDoesNotKnow(t *testing.T) {
 	process("source", "source: param", "source: git.future")
 	process("newer", "agister.process/v1alpha1", "agister.process/v2")
 	process("banana", "agister.process/v1alpha1", "banana")
-	process("agentless", "uses: agent:assistant\n", "")
+	// A plain mistake: no prompt. A process without uses, which this took
+	// before, is no mistake (ADR-030 rule 2).
+	process("promptless", "prompt: ask\n", "")
 
 	const version = "v1.2.3 143e31f8 2026-10-02T11:31:17Z"
 	check := func(args ...string) result {
@@ -119,7 +121,7 @@ func TestCheckMarksWhatThisBinaryDoesNotKnow(t *testing.T) {
 		`process source: input question: unknown source "git.future" (available: file, git.changed_files, git.diff, git.merge_base, git.revision, param, workflow.collection)`: true,
 		`process newer: schema: must be "agister.process/v1alpha1"`:  true,
 		`process banana: schema: must be "agister.process/v1alpha1"`: false,
-		`process agentless: uses: is required`:                       false,
+		`process promptless: prompt: is required`:                    false,
 	}
 	if !reflect.DeepEqual(unknown, want) {
 		t.Fatalf("problems, marked or not = %v\nwant %v", unknown, want)

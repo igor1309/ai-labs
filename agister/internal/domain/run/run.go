@@ -405,7 +405,7 @@ const RecordSchema = "agister.run/v1alpha3"
 type Request struct {
 	Process string            `json:"process"`
 	Params  map[string]string `json:"params,omitempty"`
-	Agent   string            `json:"agent,omitempty"`   // override of the process's agent
+	Agent   string            `json:"agent,omitempty"`   // override of the process's agent; on a node's run, the agent its node binds
 	Timeout string            `json:"timeout,omitempty"` // narrowing override
 	// Narrowing cost override.
 	MaxCostUSD *float64 `json:"max_cost_usd,omitempty"`

@@ -687,6 +687,27 @@ func TestShowProcessPrintsVerifyAndWarnings(t *testing.T) {
 	}
 }
 
+// A process that names no agent is listed and shown without one (ADR-030
+// rule 2): no empty name, and no runtime.
+func TestAProcessThatNamesNoAgentIsListedAndShownWithoutOne(t *testing.T) {
+	t.Parallel()
+	listing := &listingSpy{processList: []contract.ProcessSummary{{Name: "p", Agent: "a", Output: "text"}, {Name: "q", Output: "json:s"}}}
+	var stdout, stderr bytes.Buffer
+	build := func(cli.Config) (contract.Client, error) { return listing, nil }
+	io := cli.IO{Stdout: &stdout, Stderr: &stderr, Cwd: "/work", Getenv: func(string) string { return "" }}
+	if code := cli.Run(context.Background(), []string{"process", "list"}, io, build, unlogged); code != 0 || stdout.String() != "p\tagent:a\ttext\nq\tagent:-\tjson:s\n" {
+		t.Fatalf("process list: %d %q %q", code, stdout.String(), stderr.String())
+	}
+	spy := &clientSpy{view: contract.ProcessView{Name: "q", Output: "json:s", Timeout: time.Hour, MaxAttempts: 1, Refusal: "process q: names no agent"}}
+	r := run(context.Background(), spy, "process", "show", "q")
+	if want := "process      q\nagent        (none: a workflow's node binds it to one)\nparams "; r.code != 0 || !strings.HasPrefix(r.stdout, want) {
+		t.Fatalf("process show: %d\n%s", r.code, r.stdout)
+	}
+	if want := "REFUSED: process q: names no agent"; !strings.Contains(r.stdout, want) {
+		t.Fatalf("missing %q in:\n%s", want, r.stdout)
+	}
+}
+
 // process show says which verification the verify fields come from, and of
 // one that was not resolved, that it was not, beside the refusal.
 func TestShowProcessPrintsTheNamedVerification(t *testing.T) {

@@ -670,6 +670,32 @@ func TestAProcessNamesNoPolicy(t *testing.T) {
 	}
 }
 
+// A process may leave out uses (ADR-030 rule 2): it names no agent, and a
+// workflow's node binds it to one. A uses that is given still names an
+// agent.
+func TestAProcessMayLeaveOutUses(t *testing.T) {
+	t.Parallel()
+	without := strings.Replace(staleTimed, "uses: agent:a\n", "", 1)
+	if process, err := definition.ParseProcess(doc(definition.KindProcess, "p", without)); err != nil || process.Agent != "" {
+		t.Fatalf("without uses: agent %q, %v", process.Agent, err)
+	}
+	if process, err := definition.ParseProcess(doc(definition.KindProcess, "p", staleTimed)); err != nil || process.Agent != "a" {
+		t.Fatalf("with uses: agent %q, %v", process.Agent, err)
+	}
+	for uses, want := range map[string]string{
+		"a":        `uses: must be "agent:<name>"`,
+		"'agent:'": `uses: must be "agent:<name>"`,
+		"''":       "uses: must not be empty",
+		"[agent]":  "uses: must be a scalar",
+	} {
+		_, err := definition.ParseProcess(doc(definition.KindProcess, "p", strings.Replace(staleTimed, "uses: agent:a", "uses: "+uses, 1)))
+		var invalid *definition.InvalidError
+		if !errors.As(err, &invalid) || !reflect.DeepEqual(invalid.Messages(), []string{want}) {
+			t.Errorf("uses: %s: err = %v, want only %q", uses, err, want)
+		}
+	}
+}
+
 // A process may say whether its calls' session may be resumed (ADR-030
 // rule 2): session, resumable or fresh-only, and unset when it says
 // nothing, which leaves it to its agent.

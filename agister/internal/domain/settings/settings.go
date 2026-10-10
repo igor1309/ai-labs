@@ -195,6 +195,11 @@ func Check(b Bundle, m Mechanisms) []Problem {
 				report("stale.recover.max_resumes %d recovers in the call's session, but %s is %s", resumes, by, mode)
 			}
 		}
+		// A process that names no agent is judged on the agent a node binds
+		// it to (ADR-030 rule 5).
+		if process.Agent == "" {
+			continue
+		}
 		if !ok {
 			withAgent("agent %q does not exist", process.Agent)
 			continue
@@ -225,6 +230,13 @@ func Check(b Bundle, m Mechanisms) []Problem {
 		}
 		for _, problem := range WorkflowProblems(workflow, b.Processes, b.Bases) {
 			add(subject, "%s", problem)
+		}
+		// The agent a node binds its process to is the workflow's to name
+		// (ADR-030 rule 5).
+		for i, node := range workflow.Nodes() {
+			if _, ok := b.Agents[node.Agent]; node.Agent != "" && !ok {
+				add(subject, "%s: agent %q does not exist", nodeLabel(node, i == len(workflow.FanOut)), node.Agent)
+			}
 		}
 	}
 

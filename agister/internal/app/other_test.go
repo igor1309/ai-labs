@@ -725,7 +725,7 @@ func TestShowProcessLimitsThroughTheResolver(t *testing.T) {
 
 // Inspection shows what the InspectionResolver it declares resolves: a
 // process with the agent asked for, and a workflow with each node's
-// process.
+// process on the agent the node binds.
 func TestInspectionShowsThroughTheResolverItDeclares(t *testing.T) {
 	t.Parallel()
 	cost := 0.5
@@ -769,7 +769,7 @@ func TestInspectionShowsThroughTheResolverItDeclares(t *testing.T) {
 				Name:   "w",
 				Params: []app.InspectedParam{{Name: "base", Default: "main", HasDefault: true}},
 				Values: []app.InspectedValue{{Name: "diff", Source: "git.diff"}},
-				FanOut: []app.InspectedNode{{Name: "n1", Process: "review"}},
+				FanOut: []app.InspectedNode{{Name: "n1", Process: "review", Agent: "b"}},
 				Join:   app.InspectedNode{Name: "j", Process: "summarize"},
 			},
 			NodeProcesses: map[string]app.InspectedNodeProcess{
@@ -823,8 +823,10 @@ func TestInspectionShowsThroughTheResolverItDeclares(t *testing.T) {
 	if !reflect.DeepEqual(workflowView, want) {
 		t.Fatalf("workflow view\n got %+v\nwant %+v", workflowView, want)
 	}
-	// Each node's process is resolved with its own agent.
-	if want := []string{"workflow w", "process review|", "process summarize|"}; !reflect.DeepEqual(resolver.asked, want) {
+	// Each node's process is resolved as its node's call, on the agent the
+	// node binds (ADR-030 rule 5), no longer as the process on its own: n1
+	// names b, the join none.
+	if want := []string{"workflow w", "node n1 review|b", "node j summarize|"}; !reflect.DeepEqual(resolver.asked, want) {
 		t.Fatalf("asked %v, want %v", resolver.asked, want)
 	}
 }
@@ -834,11 +836,22 @@ func TestInspectionShowsThroughTheResolverItDeclares(t *testing.T) {
 type inspectionDouble struct {
 	processes map[string]*app.InspectedProcess
 	workflow  *app.InspectedWorkflow
-	asked     []string // "process <name>|<agent>" or "workflow <name>"
+	// "process <name>|<agent>", "node <node> <process>|<agent>" or
+	// "workflow <name>"
+	asked []string
 }
 
 func (d *inspectionDouble) InspectProcess(_ context.Context, name, agent string) (*app.InspectedProcess, error) {
 	d.asked = append(d.asked, "process "+name+"|"+agent)
+	return d.process(name)
+}
+
+func (d *inspectionDouble) InspectNode(_ context.Context, node app.InspectedNode) (*app.InspectedProcess, error) {
+	d.asked = append(d.asked, "node "+node.Name+" "+node.Process+"|"+node.Agent)
+	return d.process(node.Process)
+}
+
+func (d *inspectionDouble) process(name string) (*app.InspectedProcess, error) {
 	if res, ok := d.processes[name]; ok {
 		return res, nil
 	}

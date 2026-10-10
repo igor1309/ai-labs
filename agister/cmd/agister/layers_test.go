@@ -200,13 +200,15 @@ func TestCheckChecksTheComposedDocument(t *testing.T) {
 		t.Fatalf("check at the root: %d\n%s%s", r.code, r.stdout, r.stderr)
 	}
 
-	// A process no layer gives an agent: the two files read are named.
+	// A process no layer gives a prompt: the two files read are named. Its
+	// agent, which this named before, a process may leave out (ADR-030 rule
+	// 2).
 	partial := filepath.Join(l.docs, ".agister", "processes", "partial.yaml")
 	rest := filepath.Join(l.repo, ".agister", "processes", "partial.yaml")
 	write(t, l.project, projectAsk)
 	write(t, partial, "timeout: 10m\n")
 	write(t, rest, "schema: agister.process/v1alpha1\nname: partial\ntype: process\ninput: {instruction: Answer.}\noutput: {format: text}\n")
-	problem = "process partial: uses: is required (no layer sets it: " + partial + ", " + rest + ")"
+	problem = "process partial: prompt: is required (no layer sets it: " + partial + ", " + rest + ")"
 	if r := agister(t, l.home, l.docs, "check"); r.code != cli.ExitUsage || !strings.Contains(r.stderr, problem) {
 		t.Fatalf("check of a field no layer sets: %d, want %q\n%s%s", r.code, problem, r.stdout, r.stderr)
 	}

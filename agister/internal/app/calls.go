@@ -66,6 +66,9 @@ type CallResolveRequest struct {
 	Agent      string
 	Timeout    string
 	MaxCostUSD *float64
+	// Node says the call is a workflow node's, and Agent the agent the node
+	// binds its process to (ADR-030 rule 5).
+	Node bool
 }
 
 // ResolvedCall is everything a call needs before inputs and effects.
@@ -262,10 +265,12 @@ type CallWorkflow struct {
 	Join   CallNode
 }
 
-// CallNode is one node of a workflow and the process it calls.
+// CallNode is one node of a workflow, the process it calls and the agent
+// it binds the process to; no agent: its process's own.
 type CallNode struct {
 	Name    string
 	Process string
+	Agent   string
 }
 
 // CallNodeProcess is what a run of a workflow reads of a node's process:
@@ -285,7 +290,7 @@ func (r *Resolver) Snapshot(ctx context.Context) CallResolution {
 type callResolution struct{ resolver *Resolver }
 
 func (c callResolution) Resolve(ctx context.Context, request CallResolveRequest) (*ResolvedCall, error) {
-	res, err := c.resolver.resolve(ctx, request.Process, request.Agent, overrides{timeout: request.Timeout, maxCostUSD: request.MaxCostUSD})
+	res, err := c.resolver.resolve(ctx, request.Process, request.Agent, overrides{timeout: request.Timeout, maxCostUSD: request.MaxCostUSD, node: request.Node})
 	process, agent, effective := res.process, res.agent, res.effective
 	resolved := &ResolvedCall{
 		Process: CallProcess{
@@ -331,7 +336,9 @@ func (c callResolution) Workflow(ctx context.Context, name string) (*ResolvedWor
 		return nil, found, err
 	}
 	workflow := res.workflow
-	node := func(node definition.Node) CallNode { return CallNode{Name: node.Name, Process: node.Process} }
+	node := func(node definition.Node) CallNode {
+		return CallNode{Name: node.Name, Process: node.Process, Agent: node.Agent}
+	}
 	resolved := &ResolvedWorkflow{
 		Workflow: CallWorkflow{
 			Name: workflow.Name, Params: callParams(workflow.Params), Values: callValues(workflow.Values),
@@ -888,6 +895,7 @@ func (c *Calls) execute(ctx context.Context, handle RunHandle, record run.Record
 	res, err := resolver.Resolve(ctx, CallResolveRequest{
 		Process: record.Request.Process, Agent: record.Request.Agent,
 		Timeout: record.Request.Timeout, MaxCostUSD: record.Request.MaxCostUSD,
+		Node: record.Parent != nil,
 	})
 	record.Definitions = recordSources(res.Sources)
 	record.Layers = recordLayers(res.Layers)
@@ -1367,7 +1375,7 @@ func (c *Calls) startNode(ctx context.Context, parent string, node CallNode, par
 		Process:   node.Process,
 		CreatedAt: now,
 		Parent:    &run.Parent{Run: parent, Node: node.Name},
-		Request:   run.Request{Process: node.Process, Params: params, Cwd: cwd},
+		Request:   run.Request{Process: node.Process, Agent: node.Agent, Params: params, Cwd: cwd},
 	}
 	handle, err := c.recorder.Create(ctx, record)
 	if err != nil {

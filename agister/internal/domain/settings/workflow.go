@@ -14,18 +14,23 @@ import (
 // workflow value no fan-out process takes; and a join process that cannot
 // receive the collection, or whose inputs take a caller-supplied param.
 // Nothing whoever starts the workflow supplies reaches the join. A node
-// that binds a base, one of bases, binds no work (ADR-030 rule 9).
+// that binds a base, one of bases, binds no work (ADR-030 rule 9), and one
+// that names no agent for a process that names none binds it to no agent
+// (rule 5).
 func WorkflowProblems(workflow definition.Workflow, processes map[string]definition.Process, bases map[string][]string) []string {
 	var problems []string
 	add := func(format string, args ...any) { problems = append(problems, fmt.Sprintf(format, args...)) }
-	bound := func(node, name string) (definition.Process, bool) {
+	bound := func(node definition.Node, join bool) (definition.Process, bool) {
+		label, name := nodeLabel(node, join), node.Process
 		if extenders := bases[name]; len(extenders) > 0 {
-			add("%s: process %s is a base of %s, not work (ADR-030 rule 9): bind a process that extends it", node, name, strings.Join(extenders, ", "))
+			add("%s: process %s is a base of %s, not work (ADR-030 rule 9): bind a process that extends it", label, name, strings.Join(extenders, ", "))
 			return definition.Process{}, false
 		}
 		process, ok := processes[name]
 		if !ok {
-			add("%s: process %q does not exist", node, name)
+			add("%s: process %q does not exist", label, name)
+		} else if process.Agent == "" && node.Agent == "" {
+			add("%s: process %s names no agent, and the node names none: name the node's agent (ADR-030 rule 5)", label, name)
 		}
 		return process, ok
 	}
@@ -35,7 +40,7 @@ func WorkflowProblems(workflow definition.Workflow, processes map[string]definit
 	}
 	taken := map[string]bool{}
 	for _, node := range workflow.FanOut {
-		process, ok := bound("fan-out node "+node.Name, node.Process)
+		process, ok := bound(node, false)
 		if !ok {
 			continue
 		}
@@ -57,7 +62,7 @@ func WorkflowProblems(workflow definition.Workflow, processes map[string]definit
 	if workflow.Join.Process == "" {
 		return problems
 	}
-	join, ok := bound("join node "+workflow.Join.Name, workflow.Join.Process)
+	join, ok := bound(workflow.Join, true)
 	if !ok {
 		return problems
 	}
@@ -81,4 +86,12 @@ func WorkflowProblems(workflow definition.Workflow, processes map[string]definit
 		add("join node %s: process %s takes caller-supplied params (%s); a join receives only the collection and fixed values", workflow.Join.Name, join.Name, strings.Join(callers, ", "))
 	}
 	return problems
+}
+
+// nodeLabel names a node as a workflow's problems do.
+func nodeLabel(node definition.Node, join bool) string {
+	if join {
+		return "join node " + node.Name
+	}
+	return "fan-out node " + node.Name
 }

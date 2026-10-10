@@ -1,6 +1,7 @@
 package definition_test
 
 import (
+	"errors"
 	"reflect"
 	"strings"
 	"testing"
@@ -35,6 +36,34 @@ func TestParseWorkflowKeepsDeclarationOrder(t *testing.T) {
 	}
 	if len(workflow.Params) != 1 || len(workflow.Values) != 1 || workflow.Values[0].Source != "git.revision" {
 		t.Fatalf("inputs = %+v %+v", workflow.Params, workflow.Values)
+	}
+}
+
+// A node may name the agent its call runs on (ADR-030 rule 5), a fan-out
+// node and the join alike; one that names none leaves it to its process.
+func TestANodeMayNameItsAgent(t *testing.T) {
+	t.Parallel()
+	text := strings.Replace(workflowText, "{node: alpha, uses: process:a}", "{node: alpha, uses: process:a, agent: codex-sol-61}", 1)
+	text = strings.Replace(text, "{node: merge, uses: process:j}", "{node: merge, uses: process:j, agent: claude-opus}", 1)
+	workflow, err := definition.ParseWorkflow(doc(definition.KindWorkflow, "w", text))
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := []definition.Node{{Name: "zeta", Process: "z"}, {Name: "alpha", Process: "a", Agent: "codex-sol-61"}, {Name: "merge", Process: "j", Agent: "claude-opus"}}
+	if !reflect.DeepEqual(workflow.Nodes(), want) {
+		t.Fatalf("nodes = %+v, want %+v", workflow.Nodes(), want)
+	}
+	for agent, problem := range map[string]string{
+		"agent:claude-opus": `fan_out[1].agent: must be an agent's name, not "agent:claude-opus"`,
+		"Claude":            `fan_out[1].agent: must be an agent's name, not "Claude"`,
+		"''":                "fan_out[1].agent: must not be empty",
+		"[claude-opus]":     "fan_out[1].agent: must be a scalar",
+	} {
+		_, err := definition.ParseWorkflow(doc(definition.KindWorkflow, "w", strings.Replace(text, "agent: codex-sol-61", "agent: "+agent, 1)))
+		var invalid *definition.InvalidError
+		if !errors.As(err, &invalid) || !reflect.DeepEqual(invalid.Messages(), []string{problem}) {
+			t.Errorf("agent: %s: err = %v, want only %q", agent, err, problem)
+		}
 	}
 }
 

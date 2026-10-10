@@ -74,7 +74,9 @@ type Verification struct {
 
 // Process is a named agent call.
 type Process struct {
-	Name        string
+	Name string
+	// Agent is the agent it names; unset: only a workflow's node binds it
+	// to one (ADR-030 rule 5).
 	Agent       string
 	Instruction string
 	// Prompt names the prompt its calls are given as the input prompt, and
@@ -191,11 +193,15 @@ func parseProcess(doc Document, p *problems) Process {
 	if node, ok := values["extends"]; ok && baseName(node) == "" {
 		p.add("extends", `must be "process:<name>"`)
 	}
-	uses := required(values, "uses", "", p)
-	if agent, ok := strings.CutPrefix(uses, "agent:"); ok && agent != "" {
-		process.Agent = agent
-	} else if uses != "" {
-		p.add("uses", `must be "agent:<name>"`)
+	// A process may name no agent: a workflow's node binds it to one
+	// (ADR-030 rules 2 and 5).
+	if node, ok := values["uses"]; ok {
+		uses := nonEmpty(node, "uses", p)
+		if agent, ok := strings.CutPrefix(uses, "agent:"); ok && agent != "" {
+			process.Agent = agent
+		} else if uses != "" {
+			p.add("uses", `must be "agent:<name>"`)
+		}
 	}
 	// Policies are gone: a process holds its own limits (ADR-030 rule 4).
 	if _, ok := values["policy"]; ok {

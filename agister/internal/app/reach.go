@@ -14,10 +14,17 @@ type DocumentRef struct {
 	Name string
 }
 
+// NodeBinding is one node of a workflow: the process it calls and the agent
+// it binds the process to (ADR-030 rule 5); no agent: its process's own.
+type NodeBinding struct {
+	Process string
+	Agent   string
+}
+
 // reach is what the problems of the settings refuse (ADR-015): a problem of
 // one document refuses the calls that depend on it, through any chain of
 // uses, and a problem that depends on the agent refuses only the calls that
-// select that agent.
+// run on that agent.
 type reach struct {
 	documents map[DocumentRef]reachDocument
 	// The problems of each document, in the order found.
@@ -31,6 +38,8 @@ type reach struct {
 type reachDocument struct {
 	path string
 	uses []DocumentRef // whether or not they exist
+	// binds are a workflow's nodes: each call's process and agent.
+	binds []NodeBinding
 }
 
 type reachProblem struct {
@@ -66,6 +75,34 @@ func label(ref DocumentRef) string {
 type step struct {
 	ref  DocumentRef
 	from *step
+	// agents, on a process whose calls run on other agents than the one it
+	// names, are those agents; "" among them is the one it names.
+	agents []string
+}
+
+// judged says the problem holds for the calls of the step's process: one
+// that depends on the agent the process names holds only for a call that
+// runs on that agent (ADR-015 rule 2).
+func (s *step) judged(problem reachProblem) bool {
+	return problem.agent == "" || s.agents == nil || slices.Contains(s.agents, "") || slices.Contains(s.agents, problem.agent)
+}
+
+// calledOn is what a process that uses uses depends on when its calls run
+// on agents in place of the agent it names; "" among agents is that one.
+func calledOn(uses []DocumentRef, agents []string) []DocumentRef {
+	own := slices.Contains(agents, "")
+	var selected []DocumentRef
+	for _, used := range uses {
+		if used.Kind != definition.KindAgent || own {
+			selected = append(selected, used)
+		}
+	}
+	for _, agent := range agents {
+		if agent != "" {
+			selected = append(selected, DocumentRef{Kind: definition.KindAgent, Name: agent})
+		}
+	}
+	return selected
 }
 
 // chain is how the call reaches the step's document: "process p uses agent
@@ -103,9 +140,21 @@ func (s *step) blockedBy(block reachBlock) string {
 // walk is every document a call of root depends on, each once, by the
 // shortest chain of uses: root itself, the service settings, then what
 // they use. agent, when set, is the agent a call of the process root
-// selects in place of its own.
+// selects in place of its own. The nodes of a workflow root each bind
+// their process to an agent, in place of the process's own where they name
+// one (ADR-030 rule 5).
 func (r *reach) walk(root DocumentRef, agent string) []*step {
-	steps := []*step{{ref: root}}
+	bound := map[DocumentRef][]string{}
+	switch {
+	case root.Kind == definition.KindProcess && agent != "":
+		bound[root] = []string{agent}
+	case root.Kind == definition.KindWorkflow:
+		for _, node := range r.documents[root].binds {
+			process := DocumentRef{Kind: definition.KindProcess, Name: node.Process}
+			bound[process] = append(bound[process], node.Agent)
+		}
+	}
+	steps := []*step{{ref: root, agents: bound[root]}}
 	seen := map[DocumentRef]bool{root: true}
 	if root != serviceRef {
 		steps = append(steps, &step{ref: serviceRef})
@@ -114,19 +163,13 @@ func (r *reach) walk(root DocumentRef, agent string) []*step {
 	for i := 0; i < len(steps); i++ {
 		current := steps[i]
 		uses := r.documents[current.ref].uses
-		if i == 0 && agent != "" && root.Kind == definition.KindProcess {
-			var selected []DocumentRef
-			for _, used := range uses {
-				if used.Kind != definition.KindAgent {
-					selected = append(selected, used)
-				}
-			}
-			uses = append(selected, DocumentRef{Kind: definition.KindAgent, Name: agent})
+		if current.agents != nil {
+			uses = calledOn(uses, current.agents)
 		}
 		for _, used := range uses {
 			if !seen[used] {
 				seen[used] = true
-				steps = append(steps, &step{ref: used, from: current})
+				steps = append(steps, &step{ref: used, from: current, agents: bound[used]})
 			}
 		}
 	}
@@ -146,8 +189,8 @@ func (r *reach) call(process, agent string) error {
 }
 
 // workflow is the refusal of a run of the workflow name, for a problem in
-// it or in what any node's call depends on, or a block on one of them; nil
-// when there is none.
+// it or in what any node's call depends on, on the agent its node binds,
+// or a block on one of them; nil when there is none.
 func (r *reach) workflow(name string) error {
 	return r.refusal(DocumentRef{Kind: definition.KindWorkflow, Name: name}, "")
 }
@@ -189,8 +232,8 @@ func (r *reach) refusal(root DocumentRef, agent string) error {
 		}
 		var messages []string
 		for _, problem := range r.about[s.ref] {
-			// A call that selects another agent is judged on that one.
-			if problem.agent != "" && s.ref == root && agent != "" && agent != problem.agent {
+			// A call that runs on another agent is judged on that one.
+			if !s.judged(problem) {
 				continue
 			}
 			messages = append(messages, problem.message)
@@ -223,12 +266,14 @@ func (r *reach) extenders(ref DocumentRef) []string {
 }
 
 // refuses is the roots among roots whose calls, without --agent, depend on
-// subject: what a problem of subject, or a block on it, refuses.
-func (r *reach) refuses(subject DocumentRef, roots []DocumentRef) []string {
+// subject: what a problem of subject, or a block on it, refuses. agent is
+// the agent a problem of the process subject depends on, if it does: a
+// workflow whose nodes bind the process to other agents does not have it.
+func (r *reach) refuses(subject DocumentRef, agent string, roots []DocumentRef) []string {
 	var names []string
 	for _, root := range roots {
 		for _, s := range r.walk(root, "") {
-			if s.ref == subject {
+			if s.ref == subject && s.judged(reachProblem{agent: agent}) {
 				names = append(names, root.Name)
 				break
 			}
