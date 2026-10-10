@@ -82,18 +82,41 @@ func launchDir(name string) string {
 	return "."
 }
 
-// codexAgents is the agent recorded for each process that runs on Codex, by
-// process: each agent is named after its model version.
-var codexAgents = map[string]string{
-	"adr_review_codex":          "codex-sol-61",
-	"adversarial_review_codex":  "codex-sol-61",
-	"advisor":                   "codex-sol-61",
-	"architecture_review_codex": "codex-sol-61",
-	"clarity_review_codex":      "codex-sol-61",
-	"intent_review_codex":       "codex-sol-61",
-	"tests_review_codex":        "codex-sol-61",
-	"implement_codex":           "codex-implementer-sol-61",
-}
+// agentProfile is what a call's record says of the agent it ran on: the
+// agent, its runtime mapping, the model and effort the call asked of it and
+// the session mode the call ran under.
+type agentProfile struct{ agent, runtime, model, effort, session string }
+
+// processAgents is what each of home's processes runs on, by process, a
+// base left out: one of home's five agents (ADR-030 Migration step 3),
+// with the runtime, model and effort the process ran on when home had
+// seven, and the session mode its call ran under then, an implementer's
+// resumable and any other's fresh-only.
+var processAgents = func() map[string]agentProfile {
+	const fresh, resumable = definition.SessionFresh, definition.SessionResumable
+	opus := agentProfile{agent: "claude-opus", runtime: "claude-code", model: "opus", effort: "high"}
+	codex := agentProfile{agent: "codex-sol-61", runtime: "codex", model: "gpt-6.1-sol", effort: "high"}
+	glm := agentProfile{agent: "pi-glm-53", runtime: "pi", model: "opencode-go/glm-5.3", effort: "high"}
+	m3 := agentProfile{agent: "pi-m3", runtime: "pi", model: "opencode-go/minimax-m3", effort: "high"}
+	in := func(session string, profile agentProfile) agentProfile {
+		profile.session = session
+		return profile
+	}
+	return map[string]agentProfile{
+		"implement":                 in(resumable, opus),
+		"implement_codex":           in(resumable, codex),
+		"implement_pi":              in(resumable, m3),
+		"implement_pi_glm":          in(resumable, glm),
+		"adr_review_codex":          in(fresh, codex),
+		"adversarial_review_codex":  in(fresh, codex),
+		"advisor":                   in(fresh, codex),
+		"architecture_review_codex": in(fresh, codex),
+		"clarity_review_codex":      in(fresh, codex),
+		"intent_review_codex":       in(fresh, codex),
+		"tests_review_codex":        in(fresh, codex),
+		"review_judge":              in(fresh, opus),
+	}
+}()
 
 // staleLimits are the effective staleness limits recorded for each process's
 // run, by process, as its process or its policy sets them; a process not
@@ -139,9 +162,10 @@ const verifyFixtureTimeout = "30s"
 // missing agent, policy or schema, a schema that does not compile, an
 // unknown input source or a prompt path that does not resolve from the
 // repository root fails it. Processes are read from the directory, so a new
-// one is tested without listing it here. Each process of codexAgents
-// exists, and its run records that agent. Each process's run, a join's
-// included, records its staleLimits.
+// one is tested without listing it here, but for its agent: each process
+// that is not a base is one of processAgents, and each of those exists.
+// Each process's run, a join's included, records its agent as processAgents
+// has it (recordsAgent) and its staleLimits.
 //
 // The test works in a repository of its own whose top-level entries link to
 // this repository's working tree (settings and prompts as they are, edits
@@ -169,9 +193,9 @@ func TestRepositoryProcessesRunOnFakeRuntimes(t *testing.T) {
 	if len(names) == 0 {
 		t.Fatal("the home folder has no processes")
 	}
-	for name := range codexAgents {
+	for name := range processAgents {
 		if !slices.Contains(names, name) {
-			t.Errorf("process %s, which runs on Codex, is not among the home folder's processes", name)
+			t.Errorf("process %s, which has an agent listed, is not among the home folder's processes", name)
 		}
 	}
 	for _, name := range implementers {
@@ -189,6 +213,9 @@ func TestRepositoryProcessesRunOnFakeRuntimes(t *testing.T) {
 	for _, name := range names {
 		if bases[name] {
 			continue
+		}
+		if _, listed := processAgents[name]; !listed {
+			t.Errorf("process %s of the home folder has no agent listed in processAgents", name)
 		}
 		process := parseProcess(t, root, name)
 		if len(process.Collects()) > 0 {
@@ -217,9 +244,7 @@ func TestRepositoryProcessesRunOnFakeRuntimes(t *testing.T) {
 					t.Fatalf("%s's prompt definition = %v, want %v", name, source, want)
 				}
 			}
-			if want, ok := codexAgents[name]; ok && record["agent"] != want {
-				t.Fatalf("agent = %v, want %s", record["agent"], want)
-			}
+			recordsAgent(t, record)
 			recordsStaleLimits(t, record)
 			if process.Verify != nil {
 				attempts, _ := record["attempts"].([]any)
@@ -281,6 +306,7 @@ func TestRepositoryProcessesRunOnFakeRuntimes(t *testing.T) {
 			for i, node := range nodes {
 				node := node.(map[string]any)
 				child := completedRun(t, home, node["run"].(string))
+				recordsAgent(t, child)
 				recordsStaleLimits(t, child)
 				if parent := child["parent"].(map[string]any); parent["run"] != record["id"] || parent["node"] != node["name"] {
 					t.Fatalf("node %v: parent %v", node["name"], parent)
@@ -305,6 +331,28 @@ func TestRepositoryProcessesRunOnFakeRuntimes(t *testing.T) {
 		if !slices.Contains(names, name) {
 			t.Errorf("process %s, which has stale limits, is not among the home folder's processes", name)
 		}
+	}
+}
+
+// recordsAgent checks that a process's run recorded what processAgents
+// lists for its process: the agent, its runtime mapping, the model and
+// effort asked of it and the session mode.
+func recordsAgent(t *testing.T, record map[string]any) {
+	t.Helper()
+	process, _ := record["process"].(string)
+	want, listed := processAgents[process]
+	if !listed {
+		t.Fatalf("%s: no agent listed in processAgents", process)
+	}
+	agent, _ := record["agent"].(string)
+	runtime, _ := record["runtime"].(map[string]any)
+	mapping, _ := runtime["mapping"].(string)
+	profile, _ := record["profile"].(map[string]any)
+	model, _ := profile["model"].(string)
+	effort, _ := profile["effort"].(string)
+	session, _ := profile["session"].(string)
+	if got := (agentProfile{agent: agent, runtime: mapping, model: model, effort: effort, session: session}); got != want {
+		t.Fatalf("%s ran on %+v, want %+v", process, got, want)
 	}
 }
 
@@ -595,7 +643,7 @@ func TestAdvisorAnswersAQuestionFile(t *testing.T) {
 	if record["agent"] != "codex-sol-61" {
 		t.Fatalf("the advisor's agent = %v, want codex-sol-61", record["agent"])
 	}
-	if advisor, judge := modelFamily(t, root, "codex-sol-61"), modelFamily(t, root, "claude-judge"); advisor == "" || advisor == judge {
+	if advisor, judge := modelFamily(t, root, "codex-sol-61"), modelFamily(t, root, "claude-opus"); advisor == "" || advisor == judge {
 		t.Fatalf("the advisor's model family %q, the judge's %q: want another", advisor, judge)
 	}
 	for _, input := range []struct{ name, source, path string }{
@@ -1782,7 +1830,9 @@ func TestTheImplementersRunUnderTheirLimits(t *testing.T) {
 // Each implementer says itself that its call's session may be resumed
 // (ADR-030 rule 3): its home file gives session, and on its agent made
 // fresh-only it is not refused for verify:repo, which repairs in that
-// session, and its run records a resumable session.
+// session, and its run records a resumable session. An agent home has
+// fresh-only is left as it is: a process that says nothing of its session
+// runs on claude-opus and on codex-sol-61 too, and is fresh-only by them.
 func TestTheImplementersAreResumableOfThemselves(t *testing.T) {
 	t.Parallel()
 	root, repo, home := onFakeRuntimes(t)
@@ -1792,10 +1842,12 @@ func TestTheImplementersAreResumableOfThemselves(t *testing.T) {
 		path := filepath.Join(home, "agents", agent+".toml")
 		const resumable, fresh = "session = \"resumable\"\n", "session = \"fresh-only\"\n"
 		text := read(t, path)
-		if !strings.Contains(text, resumable) {
-			t.Fatalf("%s's agent %s does not say %q:\n%s", name, agent, resumable, text)
+		if !strings.Contains(text, fresh) {
+			if !strings.Contains(text, resumable) {
+				t.Fatalf("%s's agent %s says neither %q nor %q:\n%s", name, agent, fresh, resumable, text)
+			}
+			write(t, path, strings.Replace(text, resumable, fresh, 1))
 		}
-		write(t, path, strings.Replace(text, resumable, fresh, 1))
 
 		view := showProcess(t, home, repo, name)
 		if view.Refusal != "" {
@@ -1849,6 +1901,25 @@ func TestTheHomeFolderHoldsNoPolicies(t *testing.T) {
 	path := filepath.Join("..", "..", "..", homeFolder, "policies")
 	if _, err := os.Stat(path); !errors.Is(err, fs.ErrNotExist) {
 		t.Errorf("the home folder holds %s (%v), want none", path, err)
+	}
+}
+
+// Home has five agents, one for each runtime and model in use (ADR-030
+// Migration step 3): agent list prints each with its runtime, model, effort
+// and model family, and none refused.
+func TestTheHomeFolderHoldsFiveAgents(t *testing.T) {
+	t.Parallel()
+	_, repo, home := onFakeRuntimes(t)
+	r := agister(t, home, repo, "agent", "list")
+	want := strings.Join([]string{
+		"claude-opus\tclaude-code\topus\thigh\tanthropic",
+		"claude-sonnet\tclaude-code\tsonnet\thigh\tanthropic",
+		"codex-sol-61\tcodex\tgpt-6.1-sol\thigh\topenai",
+		"pi-glm-53\tpi\topencode-go/glm-5.3\thigh\tglm",
+		"pi-m3\tpi\topencode-go/minimax-m3\thigh\tminimax",
+	}, "\n") + "\n"
+	if r.code != 0 || r.stdout != want {
+		t.Fatalf("agent list: %d\n%s%s\nwant\n%s", r.code, r.stdout, r.stderr, want)
 	}
 }
 

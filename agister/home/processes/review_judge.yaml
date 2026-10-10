@@ -2,7 +2,7 @@ schema: agister.process/v1alpha1
 name: review_judge
 
 type: process
-uses: agent:claude-judge
+uses: agent:claude-opus
 prompt: code-review-judge
 
 workspace:

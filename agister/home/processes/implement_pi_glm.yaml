@@ -1,7 +1,7 @@
 schema: agister.process/v1alpha1
 name: implement_pi_glm
 type: process
-uses: agent:pi-implementer-glm-53
+uses: agent:pi-glm-53
 session: resumable
 prompt: implement
 
