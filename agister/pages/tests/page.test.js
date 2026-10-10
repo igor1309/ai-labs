@@ -701,6 +701,45 @@ test('a process card shows what its call needs of the caller\'s worktree', async
   assert.doesNotMatch(p.$('dashboard').textContent, /Workspace settings|workspace\.yaml/);
 });
 
+// README, Settings: a process that names no policy holds its own workspace
+// access, read-only when it sets none, as Agister composes it: its card
+// and its workflow step show that, and mark no policy missing. A policy it
+// names and these settings lack is still marked.
+test('a process that names no policy shows its own workspace access', async () => {
+  const files = {
+    ...agent,
+    'policies/review.yaml': 'name: review\nworkspace: {access: read-only}\ntimeout: 20m\n',
+    'processes/edit.yaml': 'name: edit\nuses: agent:opus\nworkspace: {access: read-write}\n',
+    'processes/ask.yaml': 'name: ask\nuses: agent:opus\n',
+    'processes/review.yaml': 'name: review\nuses: agent:opus\npolicy: process-policy:review\nworkspace: {access: read-write}\n',
+    'processes/lost.yaml': 'name: lost\nuses: agent:opus\npolicy: process-policy:gone\n',
+    'processes/write.yaml': 'name: write\nuses: agent:opus\nworkspace: {access: read-write}\n',
+    'processes/read.yaml': 'name: read\nuses: agent:opus\n',
+    'workflows/both.yaml': 'name: both\nfan_out:\n  - {node: w, uses: process:write}\njoin: {node: r, uses: process:read}\n',
+  };
+  const p = page({ answers: { 'api/settings': () => respond({ path: '~', dir: '/u/.agister', home: true, files }) } });
+  await p.started;
+  const policy = (name) => {
+    const nodes = p.$('dashboard').querySelector(`article#process-${name} div.facts`).children;
+    return nodes[nodes.findIndex((n) => n.textContent === 'policy') + 1];
+  };
+  assert.equal(policy('edit').textContent, 'none — read-write workspace');
+  assert.equal(policy('edit').querySelector('span.access-read-write').textContent, 'read-write workspace');
+  assert.equal(policy('ask').textContent, 'none — read-only workspace');
+  assert.equal(policy('ask').querySelector('span.access-read-only').textContent, 'read-only workspace');
+  for (const name of ['edit', 'ask']) assert.equal(policy(name).querySelector('span.missing'), null, name);
+  // Its policy's access, not its own: the process may only narrow it.
+  assert.equal(policy('review').textContent, 'review — read-only workspace, 20mallows: nothing');
+  assert.equal(policy('lost').querySelector('span.missing').textContent, 'gone (missing policy)');
+
+  const [write, read] = p.$('dashboard').querySelector('article#workflow-both').querySelectorAll('div.step');
+  const meta = (step) => step.querySelector('div.step-meta').children[1];
+  assert.equal(meta(write).textContent, 'policy none · read-write workspace');
+  assert.equal(meta(write).querySelector('span.access-read-write').textContent, 'read-write workspace');
+  assert.equal(meta(read).textContent, 'policy none · read-only workspace');
+  for (const step of [write, read]) assert.equal(step.querySelector('span.missing'), null);
+});
+
 // README, Settings: a process card shows the attempts of the verification
 // the process names, or marks it missing when these settings have none.
 test('a process card shows the verification its process names, or marks it missing', async () => {

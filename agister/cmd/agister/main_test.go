@@ -649,6 +649,29 @@ output:
 	}
 }
 
+// A process that names no policy holds its own workspace access: check
+// finds no problem in one that sets read-write, and process show prints
+// it. The process lives only in a temp home.
+func TestAProcessWithoutAPolicyMayBeReadWrite(t *testing.T) {
+	t.Parallel()
+	home, repo := setup(t, "approve")
+	ask := strings.Replace(read(t, filepath.Join(home, "processes", "ask.yaml")), "name: ask\n", "name: edit\n", 1)
+	write(t, filepath.Join(home, "processes", "edit.yaml"), strings.Replace(ask, "policy: process-policy:read-only\n", "", 1)+
+		"\ntimeout: 1m\ntools: {allow: [repository.read, repository.write]}\nworkspace: {access: read-write}\n")
+
+	r := agister(t, home, repo, "check")
+	if r.code != 0 || !strings.HasPrefix(r.stdout, "settings OK:") || strings.Contains(r.stdout+r.stderr, "process edit") {
+		t.Fatalf("check: %d\n%s%s", r.code, r.stdout, r.stderr)
+	}
+	r = agister(t, home, repo, "process", "show", "edit")
+	if r.code != 0 || strings.Contains(r.stdout, "REFUSED") ||
+		!regexp.MustCompile(`(?m)^policy +\(none\)$`).MatchString(r.stdout) ||
+		!regexp.MustCompile(`(?m)^workspace +read-write, scope repository$`).MatchString(r.stdout) ||
+		!regexp.MustCompile(`(?m)^  allowed +repository\.read, repository\.write$`).MatchString(r.stdout) {
+		t.Fatalf("process show: %d\n%s%s", r.code, r.stdout, r.stderr)
+	}
+}
+
 // A repository's own .agister adds settings wherever in the repository
 // Agister runs; outside it, only global ones apply.
 func TestProjectSettingsAddToGlobal(t *testing.T) {

@@ -274,7 +274,9 @@ a workflow is. Examples: <code>code_review</code>, <code>adr_review</code>.</p>
 <p>A process is a named agent call. It holds the instruction, caller
 params, input values, the revision input HEAD must be at, whether a
 fresh call needs a clean worktree, required permissions and limit
-overrides. It works in the caller's worktree; Agister makes no checkout
+overrides. One that names no policy holds its own workspace access:
+read-write where it says so, read-only otherwise. It works in the
+caller's worktree; Agister makes no checkout
 and runs no setup. A process with a verification, such as
 <code>implement</code>, is still a process.</p>
 

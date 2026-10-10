@@ -119,13 +119,19 @@ Fields: `internal/domain/definition/documents.go:24-130`, `toml.go:25-60`,
 
 - Limits only narrow: service ⊇ policy ⊇ process ⊇ caller. Widening is
   rejected, never clamped. Denied always wins over allowed. (ADR-001 rule 3)
+- A process that names no policy holds its own `workspace.access`:
+  `read-write` where it sets it, read-only where it sets none. One that
+  names a policy may only narrow its policy's: `read-write` over a policy
+  that is read-only, or sets no access, is invalid.
+  (`internal/domain/policy/policy.go`, `Compose`;
+  `internal/domain/policy/policy_test.go`)
 - `stale.recover` only narrows: a process may lower its policy's
   `max_resumes`, down to 0, and one above the policy's, or above 0 where
   the policy sets none, is invalid; the caller has no override. The
   process's `instruction`, where it gives one, replaces the policy's: it
   is text, not a limit. A budget above 0 refuses the call unless its
   agent is resumable and its runtime resumes sessions.
-  (`internal/domain/policy/policy.go:250`,
+  (`internal/domain/policy/policy.go:253`,
   `internal/app/resolve.go:421-443`; ADR-024 rules 5 and 6)
 - The enforcement plan comes from the effective permissions and the
   agent's runtime mapping: a primitive is granted only if everything it

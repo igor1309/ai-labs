@@ -272,7 +272,16 @@
       return [p.access && `${p.access} workspace`, p.timeout, p.maxCostUsd != null && `$${p.maxCostUsd} cap`].filter(Boolean).join(', ');
     }
 
-    function policyLines(name, ix) {
+    // A process that names no policy holds its own workspace access,
+    // read-only when it sets none, as Agister composes it.
+    function ownAccess(process) {
+      const access = process.access ?? 'read-only';
+      return text(`${access} workspace`, `access-${access}`);
+    }
+
+    function policyLines(process, ix) {
+      const name = process.policy;
+      if (!name) return el('div', {}, 'none — ', ownAccess(process));
       const p = ix.policy.get(name);
       if (!p) return missing('policy', name);
       return el('div', {},
@@ -340,7 +349,7 @@
       return card('process', p, chip, command(p.name, p.params), facts([
         ['defaults', defaults(p.params)],
         ['agent', agentLine(p.agent, ix)],
-        ['policy', policyLines(p.policy, ix)],
+        ['policy', policyLines(p, ix)],
         ['prompt', namedLine('prompt', p.prompt ? [p.prompt] : [], chip)],
         ['guidance', p.guidance.length ? namedLine('prompt', p.guidance, chip) : text('none')],
         ['briefs', namedLine('brief', p.forms, chip)],
@@ -370,7 +379,8 @@
           el('div', {}, text('agent  ', 'label'),
             a ? [p.agent, a.model, a.effort && `${a.effort} effort`].filter(Boolean).join(' · ') : missing('agent', p.agent)),
           el('div', {}, text('policy ', 'label'),
-            pol ? el('span', {}, `${p.policy} · `, text(policySummary(pol), `access-${pol.access}`)) : missing('policy', p.policy))),
+            pol ? el('span', {}, `${p.policy} · `, text(policySummary(pol), `access-${pol.access}`))
+              : p.policy ? missing('policy', p.policy) : el('span', {}, 'none · ', ownAccess(p)))),
         facts([
           ['prompt', namedLine('prompt', p.prompt ? [p.prompt] : [], chip)],
           ['guidance', p.guidance.length ? namedLine('prompt', p.guidance, chip) : text('none')],

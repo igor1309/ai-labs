@@ -1,6 +1,7 @@
 // Package policy composes a call's effective limits. Limits only narrow:
 // service ⊇ policy ⊇ process ⊇ caller. Widening is rejected, never clamped,
-// and every violation is reported at once.
+// and every violation is reported at once. The workspace access of a
+// process that names no policy is the process's own.
 package policy
 
 import (
@@ -167,12 +168,14 @@ func Compose(service definition.Service, pol *definition.Policy, process definit
 		}
 	}
 
+	// A process that names no policy holds its own access, read-only when
+	// it sets none; one that names a policy may only narrow its policy's.
 	access := base.Access
 	if access == "" {
 		access = "read-only"
 	}
 	if over.Access != "" {
-		if access == "read-only" && over.Access == "read-write" {
+		if pol != nil && access == "read-only" && over.Access == "read-write" {
 			add("workspace.access: read-write widens %s's read-only", origin)
 		} else {
 			access = over.Access

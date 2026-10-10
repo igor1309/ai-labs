@@ -288,6 +288,9 @@
       purpose: firstSentence(instruction),
       agent: refName(doc.uses),
       policy: refName(doc.policy),
+      // Its own workspace access, which is its call's when it names no
+      // policy; null when it sets none.
+      access: doc.workspace?.access ?? null,
       params: params(doc.input),
       // Inline fields, or the name of a verification (verify:<name>).
       verify: typeof doc.verify === 'string'

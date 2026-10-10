@@ -30,7 +30,9 @@ it neither waits on nor replaces with the parent's.
   comment), the `agister run` command with its required params (Copy puts
   it on the clipboard), the defaults, and then:
   - for a process, its agent (runtime, model, effort, session), its policy
-    (workspace, timeout, cost cap, what it allows and denies), its output
+    (workspace, timeout, cost cap, what it allows and denies), or, when
+    it names none, `none` and its own workspace access, read-only when it
+    sets none, as Agister composes it; its output
     schema with its layer files and verify attempts (of the verification it names, when it
     names one; marked missing when these settings have none of that name),
     that verification's layer files with the fields each gave,
@@ -48,7 +50,8 @@ it neither waits on nor replaces with the parent's.
     opus`), the brief forms its inputs name, listed as a process's, then
     the steps: the ones run at once (`First` when there is
     one) and the one run after them. Each step shows its name, what it
-    does, its agent and its policy, and, as a process card does, its
+    does, its agent and its policy, or `none` and its own workspace
+    access as its card would, and, as a process card does, its
     `prompt`, its `guidance`, its output schema, its layer files and its
     verification's.
     Steps are not repeated under Processes; they still run alone.

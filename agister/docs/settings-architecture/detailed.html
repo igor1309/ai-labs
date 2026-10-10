@@ -350,6 +350,7 @@ state_reaching = []</pre></figure>
 <ul>
 <li>The service bounds the policy, the policy bounds the process, the process bounds the caller.</li>
 <li>Asking for more than the level above allows is rejected, never quietly reduced.</li>
+<li>A process that names no policy holds its own <code>workspace.access</code>: <code>read-write</code> where it sets it, read-only where it sets none. One that names a policy may only narrow its policy's.</li>
 <li>A process narrows its policy's <code>stale</code> block too: a shorter limit, fewer <code>stale.recover.max_resumes</code>. The caller has no override for either.</li>
 <li>A denied permission always wins over an allowed one.</li>
 </ul>

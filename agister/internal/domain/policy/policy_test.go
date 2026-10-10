@@ -394,3 +394,72 @@ func TestStaleRecoveryNeedsAPolicysBudget(t *testing.T) {
 		t.Fatalf("lowered to 0: %+v, %v", effective.Stale.Recover, err)
 	}
 }
+
+// editor is a process that allows a writing permission, with workspace as
+// its workspace block. It names the policy named, or none.
+func editor(t *testing.T, named, workspace string) definition.Process {
+	t.Helper()
+	if named != "" {
+		named = "policy: process-policy:" + named + "\n"
+	}
+	p, err := definition.ParseProcess(definition.Document{Source: definition.Source{Name: "edit"}, Bytes: []byte(`
+schema: agister.process/v1alpha1
+name: edit
+type: process
+prompt: edit
+uses: agent:writer
+timeout: 1m
+tools: {allow: [repository.read, repository.write]}
+input: {instruction: Edit.}
+output: {format: text}
+` + named + workspace)})
+	if err != nil {
+		t.Fatal(err)
+	}
+	return p
+}
+
+// A process that names no policy holds its own workspace access: one that
+// sets read-write composes read-write, and keeps the writing permissions it
+// allows.
+func TestAProcessWithoutAPolicyMayBeReadWrite(t *testing.T) {
+	t.Parallel()
+	effective, err := policy.Compose(service, nil, editor(t, "", "workspace: {access: read-write}"), policy.Caller{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := strings.Join(effective.Permissions, ","); effective.Access != "read-write" || got != "repository.read,repository.write" {
+		t.Fatalf("access %q with permissions %s, want read-write with repository.read,repository.write", effective.Access, got)
+	}
+}
+
+// A process that names no policy and sets no access, or read-only, is
+// read-only: the writing permissions it allows are withheld.
+func TestAProcessWithoutAPolicyIsReadOnlyUnlessItSaysSo(t *testing.T) {
+	t.Parallel()
+	for name, workspace := range map[string]string{"no access": "", "read-only": "workspace: {access: read-only}"} {
+		effective, err := policy.Compose(service, nil, editor(t, "", workspace), policy.Caller{})
+		if err != nil {
+			t.Errorf("%s: %v", name, err)
+			continue
+		}
+		if got := strings.Join(effective.Permissions, ","); effective.Access != "read-only" || got != "repository.read" {
+			t.Errorf("%s: access %q with permissions %s, want read-only with repository.read", name, effective.Access, got)
+		}
+	}
+}
+
+// A process that names a policy may not widen its policy's read-only,
+// whether the policy says read-only or sets no access.
+func TestAProcessMayNotWidenItsPolicysReadOnly(t *testing.T) {
+	t.Parallel()
+	want := "workspace.access: read-write widens policy reader's read-only"
+	for name, pol := range map[string]definition.Policy{
+		"a read-only policy":           {Name: "reader", Limits: definition.Limits{Access: "read-only"}},
+		"a policy that sets no access": {Name: "reader"},
+	} {
+		if _, err := policy.Compose(service, &pol, editor(t, pol.Name, "workspace: {access: read-write}"), policy.Caller{}); err == nil || !strings.Contains(err.Error(), want) {
+			t.Errorf("%s: err = %v, want %q", name, err, want)
+		}
+	}
+}
