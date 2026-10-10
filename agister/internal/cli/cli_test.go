@@ -673,32 +673,78 @@ func TestShowProcessPrintsTheNamedVerification(t *testing.T) {
 	}
 }
 
-// process show lists the prompts the process names, each with the layer
-// and path it comes from, or as not resolved beside the refusal.
-func TestShowProcessPrintsThePrompts(t *testing.T) {
+// process show names the process's prompt and its guidance, each with the
+// layer and path it comes from, or as not resolved beside the refusal; a
+// process with no guidance says so (ADR-028 rule 8).
+func TestShowProcessPrintsThePromptAndGuidance(t *testing.T) {
 	t.Parallel()
 	spy := &clientSpy{view: contract.ProcessView{Name: "p", Agent: "a", Runtime: "rt", Output: "text", Timeout: time.Hour, MaxAttempts: 1,
-		Inputs: []string{"rules <- prompt", "style <- prompt"}, Prompts: []string{"rules", "style"},
+		Inputs: []string{"diff <- git.diff"}, Prompt: "review", Guidance: []string{"rules", "style"},
 		Sources: []contract.DefinitionOrigin{
-			{Kind: "processes", Name: "p", Layer: "global", Path: "/h/processes/p.yaml"},
-			{Kind: "prompts", Name: "rules", Layer: "project", Path: "/r/.agister/prompts/rules.md", Overrides: "/h/prompts/rules.md"},
-			{Kind: "prompts", Name: "style", Layer: "global", Path: "/h/prompts/style.md"},
+			{Kind: "processes", Name: "p", Layer: "home", Path: "/h/processes/p.yaml"},
+			{Kind: "prompts", Name: "review", Layer: "home", Path: "/h/prompts/review.md"},
+			{Kind: "prompts", Name: "rules", Layer: "repository", Path: "/r/.agister/prompts/rules.md", Layers: []contract.DefinitionLayer{
+				{Layer: "repository", Path: "/r/.agister/prompts/rules.md"}, {Layer: "home", Path: "/h/prompts/rules.md", Replaced: true},
+			}},
+			{Kind: "prompts", Name: "style", Layer: "project", Path: "/r/docs/prompts/style.md"},
 		}}}
 	r := run(context.Background(), spy, "process", "show", "p")
 	for _, want := range []string{
-		"prompts      rules: project /r/.agister/prompts/rules.md\n             style: global /h/prompts/style.md\nplan ",
-		"             prompt rules: project /r/.agister/prompts/rules.md (overrides /h/prompts/rules.md)\n",
+		"prompt       review: home /h/prompts/review.md\n" +
+			"guidance     rules: repository /r/.agister/prompts/rules.md\n" +
+			"             style: project /r/docs/prompts/style.md\nplan ",
+		"sources      process p: home /h/processes/p.yaml\n" +
+			"             prompt review: home /h/prompts/review.md\n" +
+			"             prompt rules: repository /r/.agister/prompts/rules.md\n" +
+			"                           home /h/prompts/rules.md (replaced)\n" +
+			"             prompt style: project /r/docs/prompts/style.md\n",
 	} {
 		if r.code != 0 || !strings.Contains(r.stdout, want) {
 			t.Fatalf("missing %q in %d:\n%s", want, r.code, r.stdout)
 		}
 	}
-	spy.view.Sources = spy.view.Sources[:2]
-	spy.view.Refusal = `input style: prompt "style": not found (expected /r/.agister/prompts/style.md or /h/prompts/style.md)`
+	spy.view.Sources = spy.view.Sources[:3]
+	spy.view.Refusal = `process p names in its guidance prompt "style": not found (expected /r/.agister/prompts/style.md or /h/prompts/style.md)`
 	r = run(context.Background(), spy, "process", "show", "p")
 	want := "             style (not resolved)\nplan         REFUSED: " + spy.view.Refusal + "\n"
 	if r.code != 0 || !strings.Contains(r.stdout, want) {
 		t.Fatalf("missing %q in %d:\n%s", want, r.code, r.stdout)
+	}
+
+	spy.view.Guidance, spy.view.Refusal = nil, ""
+	r = run(context.Background(), spy, "process", "show", "p")
+	if want := "prompt       review: home /h/prompts/review.md\nguidance     (none)\nplan "; r.code != 0 || !strings.Contains(r.stdout, want) {
+		t.Fatalf("missing %q in %d:\n%s", want, r.code, r.stdout)
+	}
+}
+
+// check --tree shows a process's prompt and its guidance under it, each
+// guidance prompt marked so, and a missing one as missing (ADR-028 rule
+// 12).
+func TestCheckTreeShowsThePromptAndGuidance(t *testing.T) {
+	t.Parallel()
+	ref := func(kind, name string) contract.DefinitionRef { return contract.DefinitionRef{Kind: kind, Name: name} }
+	guidance := func(name string) contract.DefinitionRef {
+		return contract.DefinitionRef{Kind: "prompts", Name: name, Guidance: true}
+	}
+	report := contract.CheckReport{
+		Checked: map[string]int{"processes": 1, "prompts": 2},
+		Definitions: []contract.Definition{
+			{Kind: "prompts", Name: "implement", Layer: "home", Path: "/h/prompts/implement.md", UsedBy: []contract.DefinitionRef{ref("processes", "implement")}},
+			{Kind: "prompts", Name: "testing", Layer: "repository", Path: "/r/prompts/testing.md", UsedBy: []contract.DefinitionRef{ref("processes", "implement")}},
+			{Kind: "processes", Name: "implement", Layer: "home", Path: "/h/processes/implement.yaml",
+				Uses: []contract.DefinitionRef{ref("prompts", "implement"), guidance("testing"), guidance("architecture")}},
+		},
+	}
+	r := run(context.Background(), &clientSpy{report: report}, "check", "--tree")
+	want := `process implement       home       /h/processes/implement.yaml
+├─ prompt implement     home       /h/prompts/implement.md
+├─ prompt testing       repository /r/prompts/testing.md (guidance)
+└─ prompt architecture  MISSING (guidance)
+settings OK: 1 processes, 2 prompts
+`
+	if r.code != 0 || r.stdout != want {
+		t.Fatalf("tree: %d\n%s", r.code, r.stdout)
 	}
 }
 
@@ -710,17 +756,20 @@ func TestShowProcessPrintsTheSkills(t *testing.T) {
 	spy := &clientSpy{view: contract.ProcessView{Name: "p", Agent: "a", Runtime: "rt", Output: "text", Timeout: time.Hour, MaxAttempts: 1,
 		Skills: []string{"review", "tests"}, AgentSkills: []string{"style"},
 		Sources: []contract.DefinitionOrigin{
-			{Kind: "processes", Name: "p", Layer: "global", Path: "/h/processes/p.yaml"},
-			{Kind: "skills", Name: "review", Layer: "project", Path: "/r/.agister/skills/review/SKILL.md", Overrides: "/h/skills/review/SKILL.md"},
-			{Kind: "skills", Name: "tests", Layer: "global", Path: "/h/skills/tests/SKILL.md"},
-			{Kind: "skills", Name: "style", Layer: "global", Path: "/h/skills/style/SKILL.md"},
+			{Kind: "processes", Name: "p", Layer: "home", Path: "/h/processes/p.yaml"},
+			{Kind: "skills", Name: "review", Layer: "repository", Path: "/r/.agister/skills/review/SKILL.md", Layers: []contract.DefinitionLayer{
+				{Layer: "repository", Path: "/r/.agister/skills/review/SKILL.md"}, {Layer: "home", Path: "/h/skills/review/SKILL.md", Replaced: true},
+			}},
+			{Kind: "skills", Name: "tests", Layer: "home", Path: "/h/skills/tests/SKILL.md"},
+			{Kind: "skills", Name: "style", Layer: "home", Path: "/h/skills/style/SKILL.md"},
 		}}}
 	r := run(context.Background(), spy, "process", "show", "p")
 	for _, want := range []string{
-		"skills       review (process): project /r/.agister/skills/review/SKILL.md\n" +
-			"             tests (process): global /h/skills/tests/SKILL.md\n" +
-			"             style (agent): global /h/skills/style/SKILL.md\nplan ",
-		"             skill review: project /r/.agister/skills/review/SKILL.md (overrides /h/skills/review/SKILL.md)\n",
+		"skills       review (process): repository /r/.agister/skills/review/SKILL.md\n" +
+			"             tests (process): home /h/skills/tests/SKILL.md\n" +
+			"             style (agent): home /h/skills/style/SKILL.md\nplan ",
+		"             skill review: repository /r/.agister/skills/review/SKILL.md\n" +
+			"                           home /h/skills/review/SKILL.md (replaced)\n",
 	} {
 		if r.code != 0 || !strings.Contains(r.stdout, want) {
 			t.Fatalf("missing %q in %d:\n%s", want, r.code, r.stdout)
@@ -749,25 +798,28 @@ func TestCheckTreeShowsSkills(t *testing.T) {
 	report := contract.CheckReport{
 		Checked: map[string]int{"processes": 1, "skills": 3},
 		Definitions: []contract.Definition{
-			{Kind: "service", Name: "service", Layer: "global", Path: "/g/service.toml"},
-			{Kind: "runtimes", Name: "rt", Layer: "global", Path: "/g/runtimes/rt.yaml", UsedBy: []contract.DefinitionRef{ref("agents", "a")}},
-			{Kind: "agents", Name: "a", Layer: "global", Path: "/g/agents/a.toml", Uses: []contract.DefinitionRef{ref("runtimes", "rt"), ref("skills", "style")}, UsedBy: []contract.DefinitionRef{ref("processes", "p")}},
-			{Kind: "skills", Name: "review", Layer: "project", Path: "/p/skills/review/SKILL.md", Overrides: "/g/skills/review/SKILL.md", UsedBy: []contract.DefinitionRef{ref("processes", "p")}},
-			{Kind: "skills", Name: "style", Layer: "global", Path: "/g/skills/style/SKILL.md", UsedBy: []contract.DefinitionRef{ref("agents", "a")}},
-			{Kind: "skills", Name: "spare", Layer: "global", Path: "/g/skills/spare/SKILL.md", Invalid: true},
-			{Kind: "processes", Name: "p", Layer: "global", Path: "/g/processes/p.yaml", Uses: []contract.DefinitionRef{ref("agents", "a"), ref("skills", "review"), ref("skills", "lost")}},
+			{Kind: "service", Name: "service", Layer: "home", Path: "/g/service.toml"},
+			{Kind: "runtimes", Name: "rt", Layer: "home", Path: "/g/runtimes/rt.yaml", UsedBy: []contract.DefinitionRef{ref("agents", "a")}},
+			{Kind: "agents", Name: "a", Layer: "home", Path: "/g/agents/a.toml", Uses: []contract.DefinitionRef{ref("runtimes", "rt"), ref("skills", "style")}, UsedBy: []contract.DefinitionRef{ref("processes", "p")}},
+			{Kind: "skills", Name: "review", Layer: "repository", Path: "/p/skills/review/SKILL.md", Layers: []contract.DefinitionLayer{
+				{Layer: "repository", Path: "/p/skills/review/SKILL.md"}, {Layer: "home", Path: "/g/skills/review/SKILL.md", Replaced: true},
+			}, UsedBy: []contract.DefinitionRef{ref("processes", "p")}},
+			{Kind: "skills", Name: "style", Layer: "home", Path: "/g/skills/style/SKILL.md", UsedBy: []contract.DefinitionRef{ref("agents", "a")}},
+			{Kind: "skills", Name: "spare", Layer: "home", Path: "/g/skills/spare/SKILL.md", Invalid: true},
+			{Kind: "processes", Name: "p", Layer: "home", Path: "/g/processes/p.yaml", Uses: []contract.DefinitionRef{ref("agents", "a"), ref("skills", "review"), ref("skills", "lost")}},
 		},
 	}
 	r := run(context.Background(), &clientSpy{report: report}, "check", "--tree")
-	want := `service service    global  /g/service.toml
-process p          global  /g/processes/p.yaml
-├─ agent a         global  /g/agents/a.toml
-│  ├─ runtime rt   global  /g/runtimes/rt.yaml
-│  └─ skill style  global  /g/skills/style/SKILL.md
-├─ skill review    project /p/skills/review/SKILL.md (overrides /g/skills/review/SKILL.md)
+	want := `service service    home       /g/service.toml
+process p          home       /g/processes/p.yaml
+├─ agent a         home       /g/agents/a.toml
+│  ├─ runtime rt   home       /g/runtimes/rt.yaml
+│  └─ skill style  home       /g/skills/style/SKILL.md
+├─ skill review    repository /p/skills/review/SKILL.md
+│                  home       /g/skills/review/SKILL.md (replaced)
 └─ skill lost      MISSING
 unused (no process uses these)
-   skill spare     global  /g/skills/spare/SKILL.md INVALID
+   skill spare     home       /g/skills/spare/SKILL.md INVALID
 settings OK: 1 processes, 3 skills
 `
 	if r.code != 0 || r.stdout != want {
@@ -784,24 +836,31 @@ func TestCheckTreeShowsBriefs(t *testing.T) {
 	report := contract.CheckReport{
 		Checked: map[string]int{"processes": 1, "workflows": 1, "briefs": 3},
 		Definitions: []contract.Definition{
-			{Kind: "service", Name: "service", Layer: "global", Path: "/g/service.toml"},
-			{Kind: "briefs", Name: "goal", Layer: "project", Path: "/p/briefs/goal.yaml", Overrides: "/g/briefs/goal.yaml", UsedBy: []contract.DefinitionRef{ref("processes", "implement"), ref("workflows", "review")}},
-			{Kind: "briefs", Name: "step", Layer: "global", Path: "/g/briefs/step.yaml", UsedBy: []contract.DefinitionRef{ref("processes", "implement")}},
-			{Kind: "briefs", Name: "plan", Layer: "global", Path: "/g/briefs/plan.yaml", Invalid: true},
-			{Kind: "processes", Name: "implement", Layer: "global", Path: "/g/processes/implement.yaml", Uses: []contract.DefinitionRef{ref("briefs", "goal"), ref("briefs", "step")}},
-			{Kind: "workflows", Name: "review", Layer: "global", Path: "/g/workflows/review.yaml", Uses: []contract.DefinitionRef{ref("briefs", "goal"), ref("briefs", "lost")}},
+			{Kind: "service", Name: "service", Layer: "home", Path: "/g/service.toml"},
+			{Kind: "briefs", Name: "goal", Layer: "repository", Path: "/p/briefs/goal.yaml", Layers: []contract.DefinitionLayer{
+				{Layer: "repository", Path: "/p/briefs/goal.yaml", Fields: []string{"sections.goal.heading", "max_bytes"}},
+				{Layer: "home", Path: "/g/briefs/goal.yaml", Fields: []string{"schema", "name"}},
+			}, UsedBy: []contract.DefinitionRef{ref("processes", "implement"), ref("workflows", "review")}},
+			{Kind: "briefs", Name: "step", Layer: "home", Path: "/g/briefs/step.yaml", UsedBy: []contract.DefinitionRef{ref("processes", "implement")}},
+			{Kind: "briefs", Name: "plan", Layer: "home", Path: "/g/briefs/plan.yaml", Invalid: true},
+			{Kind: "processes", Name: "implement", Layer: "home", Path: "/g/processes/implement.yaml", Uses: []contract.DefinitionRef{ref("briefs", "goal"), ref("briefs", "step")}},
+			{Kind: "workflows", Name: "review", Layer: "home", Path: "/g/workflows/review.yaml", Uses: []contract.DefinitionRef{ref("briefs", "goal"), ref("briefs", "lost")}},
 		},
 	}
 	r := run(context.Background(), &clientSpy{report: report}, "check", "--tree")
-	want := `service service    global  /g/service.toml
-process implement  global  /g/processes/implement.yaml
-├─ brief goal      project /p/briefs/goal.yaml (overrides /g/briefs/goal.yaml)
-└─ brief step      global  /g/briefs/step.yaml
-workflow review    global  /g/workflows/review.yaml
-├─ brief goal      project /p/briefs/goal.yaml (overrides /g/briefs/goal.yaml)
+	want := `service service    home       /g/service.toml
+process implement  home       /g/processes/implement.yaml
+├─ brief goal      repository /p/briefs/goal.yaml
+│                               sections.goal.heading, max_bytes
+│                  home       /g/briefs/goal.yaml
+└─ brief step      home       /g/briefs/step.yaml
+workflow review    home       /g/workflows/review.yaml
+├─ brief goal      repository /p/briefs/goal.yaml
+│                               sections.goal.heading, max_bytes
+│                  home       /g/briefs/goal.yaml
 └─ brief lost      MISSING
 unused (no process uses these)
-   brief plan      global  /g/briefs/plan.yaml INVALID
+   brief plan      home       /g/briefs/plan.yaml INVALID
 settings OK: 1 processes, 1 workflows, 3 briefs
 `
 	if r.code != 0 || r.stdout != want {
@@ -912,39 +971,47 @@ func TestCheckTreeAndJSON(t *testing.T) {
 		Checked:   map[string]int{"processes": 1},
 		Overrides: []string{"agent a: /p/agents/a.toml overrides /g/agents/a.toml"},
 		Definitions: []contract.Definition{
-			{Kind: "service", Name: "service", Layer: "global", Path: "/g/service.toml"},
-			{Kind: "workspace", Name: "workspace", Layer: "project", Path: "/p/workspace.yaml", UsedBy: []contract.DefinitionRef{ref("processes", "p")}},
-			{Kind: "runtimes", Name: "rt", Layer: "global", Path: "/g/runtimes/rt.yaml", UsedBy: []contract.DefinitionRef{ref("agents", "a")}},
-			{Kind: "agents", Name: "a", Layer: "project", Path: "/p/agents/a.toml", Overrides: "/g/agents/a.toml", Uses: []contract.DefinitionRef{ref("runtimes", "rt")}, UsedBy: []contract.DefinitionRef{ref("processes", "p")}},
+			{Kind: "service", Name: "service", Layer: "home", Path: "/g/service.toml"},
+			{Kind: "workspace", Name: "workspace", Layer: "repository", Path: "/p/workspace.yaml", UsedBy: []contract.DefinitionRef{ref("processes", "p")}},
+			{Kind: "runtimes", Name: "rt", Layer: "home", Path: "/g/runtimes/rt.yaml", UsedBy: []contract.DefinitionRef{ref("agents", "a")}},
+			{Kind: "agents", Name: "a", Layer: "repository", Path: "/p/agents/a.toml", Layers: []contract.DefinitionLayer{
+				{Layer: "project", Path: "/p/sub/.agister/agents/a.toml", Fields: []string{"effort"}},
+				{Layer: "repository", Path: "/p/agents/a.toml", Fields: []string{}},
+				{Layer: "home", Path: "/g/agents/a.toml", Fields: []string{"schema", "name", "runtime"}},
+			}, Uses: []contract.DefinitionRef{ref("runtimes", "rt")}, UsedBy: []contract.DefinitionRef{ref("processes", "p")}},
 			// b is used by no process, so neither is rt2, which only b uses.
-			{Kind: "runtimes", Name: "rt2", Layer: "global", Path: "/g/runtimes/rt2.yaml", UsedBy: []contract.DefinitionRef{ref("agents", "b")}},
-			{Kind: "agents", Name: "b", Layer: "global", Path: "/g/agents/b.toml", Uses: []contract.DefinitionRef{ref("runtimes", "rt2")}},
-			{Kind: "policies", Name: "spare", Layer: "project", Path: "/p/policies/spare.yaml", Invalid: true},
-			{Kind: "verifies", Name: "repo", Layer: "project", Path: "/p/verifies/repo.yaml", UsedBy: []contract.DefinitionRef{ref("processes", "p")}},
-			{Kind: "verifies", Name: "spare", Layer: "global", Path: "/g/verifies/spare.yaml"},
-			{Kind: "processes", Name: "p", Layer: "global", Path: "/g/processes/p.yaml", Uses: []contract.DefinitionRef{ref("agents", "a"), ref("policies", "gone"), ref("verifies", "repo"), ref("workspace", "workspace")}},
-			{Kind: "prompts", Name: "rules", Layer: "project", Path: "/p/prompts/rules.md", UsedBy: []contract.DefinitionRef{ref("processes", "q")}},
-			{Kind: "processes", Name: "q", Layer: "global", Path: "/g/processes/q.yaml", Uses: []contract.DefinitionRef{ref("verifies", "gone"), ref("prompts", "rules"), ref("prompts", "lost")}},
+			{Kind: "runtimes", Name: "rt2", Layer: "home", Path: "/g/runtimes/rt2.yaml", UsedBy: []contract.DefinitionRef{ref("agents", "b")}},
+			{Kind: "agents", Name: "b", Layer: "home", Path: "/g/agents/b.toml", Uses: []contract.DefinitionRef{ref("runtimes", "rt2")}},
+			{Kind: "policies", Name: "spare", Layer: "repository", Path: "/p/policies/spare.yaml", Invalid: true},
+			{Kind: "verifies", Name: "repo", Layer: "repository", Path: "/p/verifies/repo.yaml", UsedBy: []contract.DefinitionRef{ref("processes", "p")}},
+			{Kind: "verifies", Name: "spare", Layer: "home", Path: "/g/verifies/spare.yaml"},
+			{Kind: "processes", Name: "p", Layer: "home", Path: "/g/processes/p.yaml", Uses: []contract.DefinitionRef{ref("agents", "a"), ref("policies", "gone"), ref("verifies", "repo"), ref("workspace", "workspace")}},
+			{Kind: "prompts", Name: "rules", Layer: "repository", Path: "/p/prompts/rules.md", UsedBy: []contract.DefinitionRef{ref("processes", "q")}},
+			{Kind: "processes", Name: "q", Layer: "home", Path: "/g/processes/q.yaml", Uses: []contract.DefinitionRef{ref("verifies", "gone"), ref("prompts", "rules"), ref("prompts", "lost")}},
 		},
 	}
 	spy := &clientSpy{report: report}
 	r := run(context.Background(), spy, "check", "--tree")
-	want := `service service         global  /g/service.toml
-process p               global  /g/processes/p.yaml
-├─ agent a              project /p/agents/a.toml (overrides /g/agents/a.toml)
-│  └─ runtime rt        global  /g/runtimes/rt.yaml
+	want := `service service         home       /g/service.toml
+process p               home       /g/processes/p.yaml
+├─ agent a              project    /p/sub/.agister/agents/a.toml
+│                                    effort
+│                       repository /p/agents/a.toml
+│                                    (none)
+│                       home       /g/agents/a.toml
+│  └─ runtime rt        home       /g/runtimes/rt.yaml
 ├─ policy gone          MISSING
-├─ verification repo    project /p/verifies/repo.yaml
-└─ workspace workspace  project /p/workspace.yaml
-process q               global  /g/processes/q.yaml
+├─ verification repo    repository /p/verifies/repo.yaml
+└─ workspace workspace  repository /p/workspace.yaml
+process q               home       /g/processes/q.yaml
 ├─ verification gone    MISSING
-├─ prompt rules         project /p/prompts/rules.md
+├─ prompt rules         repository /p/prompts/rules.md
 └─ prompt lost          MISSING
 unused (no process uses these)
-   runtime rt2          global  /g/runtimes/rt2.yaml
-   agent b              global  /g/agents/b.toml
-   policy spare         project /p/policies/spare.yaml INVALID
-   verification spare   global  /g/verifies/spare.yaml
+   runtime rt2          home       /g/runtimes/rt2.yaml
+   agent b              home       /g/agents/b.toml
+   policy spare         repository /p/policies/spare.yaml INVALID
+   verification spare   home       /g/verifies/spare.yaml
 settings OK: 1 processes
 `
 	if r.code != 0 || r.stdout != want {

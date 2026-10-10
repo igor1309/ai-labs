@@ -8,6 +8,7 @@ name: implement
 type: process
 uses: agent:assistant
 policy: process-policy:implement
+prompt: implement
 
 input:
   instruction: >-

@@ -22,6 +22,7 @@ name: briefed
 type: process
 uses: agent:assistant
 policy: process-policy:read-only
+prompt: ask
 input:
   instruction: Follow the brief.
   params:
@@ -42,11 +43,12 @@ func briefed(t *testing.T, home, repo string, runs *newRuns, path string, args .
 	return runs.one(t).record
 }
 
-// onlyInput is the record's one input.
+// onlyInput is the record's one value, the input given before its prompt.
 func onlyInput(t *testing.T, record map[string]any) map[string]any {
 	t.Helper()
+	// The process's prompt is given after its values (ADR-028 rule 8).
 	inputs, _ := record["inputs"].([]any)
-	if len(inputs) != 1 {
+	if len(inputs) != 2 || inputs[1].(map[string]any)["name"] != "prompt" {
 		t.Fatalf("inputs = %v", record["inputs"])
 	}
 	return inputs[0].(map[string]any)

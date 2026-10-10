@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
-	"reflect"
 	"regexp"
 	"strings"
 	"testing"
@@ -73,21 +72,21 @@ func TestAGlobalProcessVerifiesWithTheRepositorysVerification(t *testing.T) {
 			process = source
 		}
 	}
-	if want := (contract.DefinitionOrigin{Kind: "verifies", Name: "repo", Layer: "project", Path: project}); verification != want {
-		t.Fatalf("verification source = %+v, want %+v", verification, want)
+	if verification.Layer != "repository" || verification.Path != project || len(verification.Layers) != 1 {
+		t.Fatalf("verification source = %+v", verification)
 	}
-	if process.Layer != "global" || process.Path != filepath.Join(home, "processes", "implement.yaml") {
+	if process.Layer != "home" || process.Path != filepath.Join(home, "processes", "implement.yaml") {
 		t.Fatalf("process source = %+v", process)
 	}
 
 	r := agister(t, home, repo, "check", "--tree")
-	if r.code != 0 || !regexp.MustCompile(`└─ verification repo +project `+regexp.QuoteMeta(project)+"\n").MatchString(r.stdout) ||
+	if r.code != 0 || !regexp.MustCompile(`[├└]─ verification repo +repository `+regexp.QuoteMeta(project)+"\n").MatchString(r.stdout) ||
 		!strings.Contains(r.stderr, "warning process implement: verify runs its command with the operator's authority") {
 		t.Fatalf("check --tree: %d\n%s%s", r.code, r.stdout, r.stderr)
 	}
 	r = agister(t, home, repo, "process", "show", "implement")
 	if r.code != 0 || !strings.Contains(r.stdout, "verify       go vet ./... && go test ./...\n") || !strings.Contains(r.stdout, "  from       verify:repo\n") ||
-		!strings.Contains(r.stdout, "verification repo: project "+project+"\n") {
+		!strings.Contains(r.stdout, "verification repo: repository "+project+"\n") {
 		t.Fatalf("process show: %d\n%s%s", r.code, r.stdout, r.stderr)
 	}
 }
@@ -116,7 +115,7 @@ func TestAVerificationInNeitherLayerRefusesOnlyTheProcessNamingIt(t *testing.T) 
 		t.Fatalf("check: %d\n%s%s", r.code, r.stdout, r.stderr)
 	}
 	r = agister(t, home, repo, "check", "--tree")
-	if r.code != 0 || !regexp.MustCompile(`└─ verification repo +MISSING\n`).MatchString(r.stdout) {
+	if r.code != 0 || !regexp.MustCompile(`[├└]─ verification repo +MISSING\n`).MatchString(r.stdout) {
 		t.Fatalf("check --tree: %d\n%s%s", r.code, r.stdout, r.stderr)
 	}
 
@@ -125,7 +124,7 @@ func TestAVerificationInNeitherLayerRefusesOnlyTheProcessNamingIt(t *testing.T) 
 		t.Fatalf("verify %+v from %q, warnings %q, refusal %q\nwant %q", view.Verify, view.VerifyName, view.Warnings, view.Refusal, reason)
 	}
 	r = agister(t, home, repo, "process", "show", "implement")
-	if r.code != 0 || !strings.Contains(r.stdout, "verify       verify:repo (not resolved)\nplan         REFUSED: "+reason+"\n") {
+	if r.code != 0 || !strings.Contains(r.stdout, "verify       verify:repo (not resolved)\nprompt       implement (not resolved)\nguidance     (none)\nplan         REFUSED: "+reason+"\n") {
 		t.Fatalf("process show: %d\n%s%s", r.code, r.stdout, r.stderr)
 	}
 
@@ -149,8 +148,8 @@ func TestAVerificationInNeitherLayerRefusesOnlyTheProcessNamingIt(t *testing.T) 
 	}
 }
 
-// A repository's verification replaces the global one of the same name,
-// whole, as any document does.
+// A repository's verification comes before the global one of the same
+// name: every field it sets is its own (ADR-028 rule 4).
 func TestARepositoryVerificationReplacesAGlobalOne(t *testing.T) {
 	t.Parallel()
 	home, repo := setup(t, "approve")
@@ -167,14 +166,14 @@ func TestARepositoryVerificationReplacesAGlobalOne(t *testing.T) {
 	if view.Verify == nil || *view.Verify != want {
 		t.Fatalf("verify = %+v", view.Verify)
 	}
-	origin := contract.DefinitionOrigin{Kind: "verifies", Name: "repo", Layer: "project", Path: project, Overrides: global}
 	var sources []contract.DefinitionOrigin
 	for _, source := range view.Sources {
 		if source.Kind == "verifies" {
 			sources = append(sources, source)
 		}
 	}
-	if !reflect.DeepEqual(sources, []contract.DefinitionOrigin{origin}) {
+	if len(sources) != 1 || sources[0].Name != "repo" || sources[0].Layer != "repository" || sources[0].Path != project || len(sources[0].Layers) != 2 ||
+		sources[0].Layers[0].Layer != "repository" || sources[0].Layers[0].Path != project || sources[0].Layers[1].Layer != "home" || sources[0].Layers[1].Path != global {
 		t.Fatalf("sources = %+v", sources)
 	}
 	r := agister(t, home, repo, "check")

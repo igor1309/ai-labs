@@ -44,10 +44,12 @@ type Gated struct {
 }
 
 // GateDefinitions supplies the settings the gate checks and hands to the
-// client it builds.
+// client it builds, and the layers they are read from.
 type GateDefinitions interface {
 	Read(ctx context.Context, kind definition.Kind, name string) (definition.Document, error)
+	ReadListed(ctx context.Context, kind definition.Kind, name string) (definition.Document, error)
 	List(ctx context.Context, kind definition.Kind) ([]string, error)
+	Layers(ctx context.Context) []definition.LayerDir
 }
 
 var _ contract.Client = (*Gated)(nil)
@@ -60,8 +62,9 @@ type Infrastructure struct {
 	// layer alone (see Gated).
 	Definitions GateDefinitions
 	Global      GateDefinitions
-	// Project names the repository whose settings are layered over the
-	// global ones, for messages; empty when there are none.
+	// Project names the directory whose settings are layered over the
+	// global ones, the repository's root or the project's directory, for
+	// messages; empty when there are none.
 	Project  string
 	Settings SettingsAdapters
 	Checker  CheckAdapters

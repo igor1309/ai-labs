@@ -22,6 +22,7 @@ name: skilled
 type: process
 uses: agent:stylist
 policy: process-policy:read-only
+prompt: ask
 skills: [review]
 input:
   instruction: Follow the rules.
@@ -106,16 +107,17 @@ func TestACallsSkillsAreFoundInTheSettingsAndGivenToClaudeCode(t *testing.T) {
 
 	r := agister(t, home, repo, "check", "--tree")
 	if r.code != 0 || strings.Contains(r.stderr, "problem") || !strings.Contains(r.stdout, "\nsettings OK: ") ||
-		!regexp.MustCompile(`process skilled +global .*\n├─ agent stylist +global .*\n(│.*\n)*│  └─ skill style +global +`+regexp.QuoteMeta(style)+`\n(.*\n)*└─ skill review +project `+regexp.QuoteMeta(projectReview)+` \(overrides `+regexp.QuoteMeta(homeReview)+`\)\n`).MatchString(r.stdout) {
+		!regexp.MustCompile(`process skilled +home .*\n├─ agent stylist +home .*\n(│.*\n)*│  └─ skill style +home +`+regexp.QuoteMeta(style)+`\n(.*\n)*└─ skill review +repository `+regexp.QuoteMeta(projectReview)+`\n +home +`+regexp.QuoteMeta(homeReview)+` \(replaced\)\n`).MatchString(r.stdout) {
 		t.Fatalf("check --tree: %d\n%s%s", r.code, r.stdout, r.stderr)
 	}
 
 	r = agister(t, home, repo, "process", "show", "skilled")
 	for _, want := range []string{
-		"skills       review (process): project " + projectReview + "\n" +
-			"             style (agent): global " + style + "\n",
-		"skill review: project " + projectReview + " (overrides " + homeReview + ")\n",
-		"skill style: global " + style + "\n",
+		"skills       review (process): repository " + projectReview + "\n" +
+			"             style (agent): home " + style + "\n",
+		"skill review: repository " + projectReview + "\n",
+		" home " + homeReview + " (replaced)\n",
+		"skill style: home " + style + "\n",
 	} {
 		if r.code != 0 || strings.Contains(r.stdout, "REFUSED") || !strings.Contains(r.stdout, want) {
 			t.Fatalf("process show: %d, want %q\n%s%s", r.code, want, r.stdout, r.stderr)
@@ -123,7 +125,7 @@ func TestACallsSkillsAreFoundInTheSettingsAndGivenToClaudeCode(t *testing.T) {
 	}
 	// With another agent the process's stay and the agent's are that agent's.
 	r = agister(t, home, repo, "process", "show", "skilled", "--agent", "assistant")
-	if r.code != 0 || !strings.Contains(r.stdout, "skills       review (process): project "+projectReview+"\n") {
+	if r.code != 0 || !strings.Contains(r.stdout, "skills       review (process): repository "+projectReview+"\n") {
 		t.Fatalf("process show --agent assistant: %d\n%s%s", r.code, r.stdout, r.stderr)
 	}
 
@@ -133,8 +135,8 @@ func TestACallsSkillsAreFoundInTheSettingsAndGivenToClaudeCode(t *testing.T) {
 	// The run records the skills the call was resolved with: the
 	// repository's review, whole, and home's style.
 	want := []map[string]any{
-		{"kind": "skills", "name": "review", "path": projectReview, "sha256": digestOf(projectText), "project": true, "overrides": homeReview},
-		{"kind": "skills", "name": "style", "path": style, "sha256": digestOf(styleText)},
+		repositoryFile("skills", "review", projectReview, projectText),
+		homeFile("skills", "style", style, styleText),
 	}
 	if got := skillsOf(ran); !reflect.DeepEqual(got, want) {
 		t.Fatalf("recorded skills = %v, want %v", got, want)
@@ -208,7 +210,7 @@ func TestASkillFolderWithASecondFileIsAProblemOfItsOwn(t *testing.T) {
 		strings.Contains(r.stderr, "does not exist") || strings.Contains(r.stderr, "process skilled:") {
 		t.Fatalf("check --tree: %d\n%s%s", r.code, r.stdout, r.stderr)
 	}
-	if !regexp.MustCompile(`└─ skill review +project ` + regexp.QuoteMeta(filepath.Join(folder, "SKILL.md")) + ` .*INVALID\n`).MatchString(r.stdout) {
+	if !regexp.MustCompile(`└─ skill review +repository ` + regexp.QuoteMeta(filepath.Join(folder, "SKILL.md")) + ` .*INVALID\n`).MatchString(r.stdout) {
 		t.Fatalf("check --tree:\n%s%s", r.stdout, r.stderr)
 	}
 

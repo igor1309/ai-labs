@@ -1,6 +1,9 @@
 # ADR-014: Prompts are settings
 
 - **Status:** Accepted
+- **Amended by:** [ADR-028](028-settings-are-layered-by-field.md) (the
+  decision's input source, the driver "a document is still replaced
+  whole", the layers of rule 4)
 - **Date:** 2026-10-02
 - **Scope:** where a process's fixed text inputs, such as a review prompt,
   are kept and how they are found

@@ -45,9 +45,10 @@ type resolution struct {
 	agent   definition.Agent
 	mapping definition.Mapping
 	schema  []byte
-	prompts map[string]definition.Prompt // by name
-	absent  []absentInput                // the optional prompt inputs whose prompt neither layer has (ADR-019)
-	forms   map[string]definition.Brief  // by name: the brief forms its inputs name (ADR-026 rule 8)
+	// prompts are the process's prompt, then its guidance, in order
+	// (ADR-028 rule 8).
+	prompts []definition.Prompt
+	forms   map[string]definition.Brief // by name: the brief forms its inputs name (ADR-026 rule 8)
 	// skills are the call's skills, in order: the process's, then its
 	// agent's, each once (ADR-021 rule 2).
 	skills    []definition.Skill
@@ -59,14 +60,6 @@ type resolution struct {
 	// plan grants a permission the service lists as writing, or its process
 	// declares verify, whose command runs with the operator's authority.
 	writer bool
-}
-
-// absentInput is an optional prompt input whose prompt neither layer has
-// (ADR-019): the call goes ahead without it, and only it.
-type absentInput struct {
-	index  int // among the process's values
-	input  string
-	prompt string
 }
 
 // Resolver loads and checks definitions, composes limits, checks the
@@ -146,10 +139,13 @@ type checkedReach struct {
 }
 
 // ResolverDefinitions supplies the documents a call or a view is resolved
-// from.
+// from, and the layers they are read from. ReadListed is read by the
+// snapshot a resolver freezes them in, which its check checks.
 type ResolverDefinitions interface {
 	Read(ctx context.Context, kind definition.Kind, name string) (definition.Document, error)
+	ReadListed(ctx context.Context, kind definition.Kind, name string) (definition.Document, error)
 	List(ctx context.Context, kind definition.Kind) ([]string, error)
+	Layers(ctx context.Context) []definition.LayerDir
 }
 
 // ResolverIdentities asks a runtime adapter what it reports about itself,
@@ -348,39 +344,23 @@ func (r *Resolver) resolveCall(ctx context.Context, processName, agentOverride s
 			res.process.Verify = &verification.Verify
 		}
 	}
-	// Each prompt a process names is read with the call, from the same
-	// settings, and recorded among its sources (ADR-014 rule 3). An
-	// optional input whose read finds its prompt in neither layer is left
-	// out, and only that input; any other failure to read it refuses the
-	// call, as for any other document (ADR-019 rule 1). Settings whose
-	// prompts cannot be listed are broken, so a read that finds nothing in
-	// them proves no absence either.
-	for i, value := range res.process.Values {
-		name := value.Args["name"]
-		if _, ok := res.prompts[name]; ok || value.Source != definition.PromptSource {
-			continue
+	// The prompt and each guidance prompt a process names are read with
+	// the call, from the same settings, and recorded among its sources
+	// (ADR-014 rule 3). One no layer has refuses the call, as any other
+	// document does (ADR-028 rule 8).
+	for _, name := range res.process.Prompts() {
+		namer := "process " + res.process.Name + " names"
+		if name != res.process.Prompt {
+			namer += " in its guidance"
 		}
-		subject = DocumentRef{Kind: definition.KindPrompt, Name: name}
-		doc, err = r.definitions.Read(ctx, definition.KindPrompt, name)
-		if value.Optional() && errors.Is(err, definition.ErrNotFound) {
-			if _, err := r.definitions.List(ctx, definition.KindPrompt); err != nil {
-				return res, refuse("input %s: prompt %q: the prompts cannot be listed: %v", value.Name, name, err)
-			}
-			res.absent = append(res.absent, absentInput{index: i, input: value.Name, prompt: name})
-			continue
+		if doc, err = load(definition.KindPrompt, name); err != nil {
+			return res, refuse("%s %v", namer, err)
 		}
-		if err != nil {
-			return res, refuse("input %s: prompt %q: %v", value.Name, name, err)
-		}
-		res.sources = append(res.sources, doc.Source)
 		prompt, err := definition.ParsePrompt(doc)
 		if err != nil {
 			return res, parsed(err)
 		}
-		if res.prompts == nil {
-			res.prompts = map[string]definition.Prompt{}
-		}
-		res.prompts[name] = prompt
+		res.prompts = append(res.prompts, prompt)
 	}
 	// Each brief form its inputs name is read with the call, from the same
 	// settings, and recorded among its sources (ADR-026 rule 8).

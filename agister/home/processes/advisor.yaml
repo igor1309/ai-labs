@@ -8,11 +8,15 @@ name: advisor
 type: process
 uses: agent:codex-sol-61
 policy: process-policy:codex-review
+# Prompt advisor names AGENTS.md as part of the material the advisor
+# rules from, not as guidance it follows (LAB-161): the recorded
+# decisions it reads are the revision's, whatever they are.
+prompt: advisor
 
 input:
   instruction: >-
     Answer the question given as input question, following the prompt given
-    as input advisor_prompt. The question file holds who asked, the question
+    as input prompt. The question file holds who asked, the question
     and its options. Your working directory is a read-only checkout of the
     revision: read the recorded decisions there yourself.
   params:
@@ -21,7 +25,6 @@ input:
   values:
     revision: {source: git.revision, rev: "${param.revision}"}
     question: {source: file, path: "${param.question}"}
-    advisor_prompt: {source: prompt, name: advisor}
 
 workspace:
   revision: revision

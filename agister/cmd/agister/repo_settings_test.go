@@ -55,6 +55,28 @@ var testTimeouts = map[string]string{
 	"implement_pi_glm": "1m",
 }
 
+// implementers are home's implement processes. Each names verify:repo, a
+// slot this repository fills only in its projects' layers, so each is
+// launched in a project; at the root it is refused (ADR-028 Migration step
+// 4).
+var implementers = []string{"implement", "implement_codex", "implement_pi", "implement_pi_glm"}
+
+// projects are this repository's project directories, relative to its
+// root, each with a layer that fills verify:repo with its own check
+// (ADR-028 rule 1).
+var projects = []string{"agister", "warder"}
+
+// launchDir is the directory, relative to the repository's root, a test
+// launches process name in when the process is not its claim: an
+// implementer in agister/, as a change to Agister is launched, and any
+// other process at the root.
+func launchDir(name string) string {
+	if slices.Contains(implementers, name) {
+		return "agister"
+	}
+	return "."
+}
+
 // codexAgents is the agent recorded for each process that runs on Codex, by
 // process: each agent is named after its model version.
 var codexAgents = map[string]string{
@@ -103,7 +125,9 @@ const verifyFixtureTimeout = "30s"
 // Every process and workflow of home's settings folder (homeFolder) runs,
 // installed as home and composed under this repository's own settings
 // (<repository root>/.agister) as the CLI composes them, on the fake
-// runtimes, and completes with output its schema accepts. A process that takes a workflow's collection runs only as a
+// runtimes, and completes with output its schema accepts; an implementer
+// is launched in agister/ and composed under that project's layer as well
+// (launchDir). A process that takes a workflow's collection runs only as a
 // join: it is run through the workflows, and each must be one's join. A process that names a
 // missing agent, policy or schema, a schema that does not compile, an
 // unknown input source or a prompt path that does not resolve from the
@@ -143,6 +167,15 @@ func TestRepositoryProcessesRunOnFakeRuntimes(t *testing.T) {
 			t.Errorf("process %s, which runs on Codex, is not among the home folder's processes", name)
 		}
 	}
+	for _, name := range implementers {
+		if !slices.Contains(names, name) {
+			t.Fatalf("home has no implementer %s", name)
+		}
+	}
+	implementPrompt, err := os.ReadFile(filepath.Join(root, homeFolder, "prompts", "implement.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
 	// Processes that take a workflow's collection, to be run as a join.
 	joins := map[string]bool{}
 	for _, name := range names {
@@ -152,15 +185,27 @@ func TestRepositoryProcessesRunOnFakeRuntimes(t *testing.T) {
 			continue
 		}
 		t.Run(name, func(t *testing.T) {
-			args := append([]string{"run", name}, paramArgs(process.Params)...)
+			launch := launchDir(name)
+			args := append([]string{"run", name}, paramArgs(t, launch, process.Params)...)
 			if timeout := testTimeouts[name]; timeout != "" {
 				args = append(args, "--timeout", timeout)
 			}
-			created, r := runRecorded(t, home, repo, args)
+			created, r := runRecorded(t, home, filepath.Join(repo, launch), args)
 			if len(created) != 1 {
 				t.Fatalf("runs recorded: %v, want one", created)
 			}
 			record := completedRun(t, home, created[0])
+			if slices.Contains(implementers, name) {
+				text := string(implementPrompt)
+				if given := inputOf(t, record, "prompt"); given["source"] != "prompt" || given["identity"] != "sha256:"+digestOf(text) || given["value"] != text {
+					t.Fatalf("%s's prompt = %v, want home's implement prompt", name, given)
+				}
+				source := definitionOf(t, run{record: record}, "prompts", "implement")
+				want := homeFile("prompts", "implement", filepath.Join(home, "prompts", "implement.md"), text)
+				if !reflect.DeepEqual(source, want) {
+					t.Fatalf("%s's prompt definition = %v, want %v", name, source, want)
+				}
+			}
 			if want, ok := codexAgents[name]; ok && record["agent"] != want {
 				t.Fatalf("agent = %v, want %s", record["agent"], want)
 			}
@@ -200,7 +245,7 @@ func TestRepositoryProcessesRunOnFakeRuntimes(t *testing.T) {
 		}
 		joined[workflow.Join.Process] = true
 		t.Run("workflow "+name, func(t *testing.T) {
-			args := append([]string{"run", name}, paramArgs(workflow.Params)...)
+			args := append([]string{"run", name}, paramArgs(t, ".", workflow.Params)...)
 			created, r := runRecorded(t, home, repo, args)
 			if len(created) != len(workflow.FanOut)+2 {
 				t.Fatalf("runs recorded: %v, want the workflow's and one per node", created)
@@ -331,13 +376,13 @@ func TestCodeReviewCollectsItsFiveReviews(t *testing.T) {
 		t.Fatalf("code_review's judge collected %v, want %v", reviews, want)
 	}
 
-	for _, c := range []struct{ process, input, prompt string }{
-		{"architecture_review_codex", "review_prompt", "code-review-architecture"},
-		{"tests_review_codex", "review_prompt", "code-review-tests"},
-		{"adversarial_review_codex", "review_prompt", "code-review-adversarial"},
-		{"clarity_review_codex", "review_prompt", "code-review-clarity"},
-		{"intent_review_codex", "review_prompt", "code-review-intent"},
-		{"review_judge", "judge_prompt", "code-review-judge"},
+	for _, c := range []struct{ process, prompt string }{
+		{"architecture_review_codex", "code-review-architecture"},
+		{"tests_review_codex", "code-review-tests"},
+		{"adversarial_review_codex", "code-review-adversarial"},
+		{"clarity_review_codex", "code-review-clarity"},
+		{"intent_review_codex", "code-review-intent"},
+		{"review_judge", "code-review-judge"},
 	} {
 		prompt, err := os.ReadFile(filepath.Join(root, homeFolder, "prompts", c.prompt+".md"))
 		if err != nil {
@@ -349,8 +394,8 @@ func TestCodeReviewCollectsItsFiveReviews(t *testing.T) {
 		if record == nil {
 			t.Fatalf("code_review: no run of %s", c.process)
 		}
-		if given := inputOf(t, record, c.input); given["source"] != "prompt" || given["identity"] != digest {
-			t.Errorf("%s's %s = %v, want the prompt %s (%s)", c.process, c.input, given, c.prompt, digest)
+		if given := inputOf(t, record, "prompt"); given["source"] != "prompt" || given["identity"] != digest {
+			t.Errorf("%s's prompt = %v, want the prompt %s (%s)", c.process, given, c.prompt, digest)
 		}
 	}
 
@@ -431,8 +476,8 @@ func TestADRReviewCollectsTheADRReview(t *testing.T) {
 	}
 	sum := sha256.Sum256(prompt)
 	digest := "sha256:" + hex.EncodeToString(sum[:])
-	if given := inputOf(t, records["adr_review_codex"], "review_prompt"); given["source"] != "prompt" || given["identity"] != digest {
-		t.Fatalf("adr_review_codex's review_prompt = %v, want the prompt code-review-adr (%s)", given, digest)
+	if given := inputOf(t, records["adr_review_codex"], "prompt"); given["source"] != "prompt" || given["identity"] != digest {
+		t.Fatalf("adr_review_codex's prompt = %v, want the prompt code-review-adr (%s)", given, digest)
 	}
 }
 
@@ -496,8 +541,8 @@ func TestReviewNodesReceiveTheGoalAndTheJudgeDoesNot(t *testing.T) {
 			t.Fatalf("%s: the judge's call took params %v", workflow, params)
 		}
 		for _, input := range judge["inputs"].([]any) {
-			if name := input.(map[string]any)["name"]; name != "reviews" && name != "judge_prompt" {
-				t.Fatalf("%s: the judge was given input %v, want only reviews and judge_prompt", workflow, name)
+			if name := input.(map[string]any)["name"]; name != "reviews" && name != "prompt" {
+				t.Fatalf("%s: the judge was given input %v, want only reviews and its prompt", workflow, name)
 			}
 		}
 		prompt := runtimeStart(t, home, judge["id"].(string)).Prompt
@@ -547,7 +592,7 @@ func TestAdvisorAnswersAQuestionFile(t *testing.T) {
 	}
 	for _, input := range []struct{ name, source, path string }{
 		{"question", "file", question},
-		{"advisor_prompt", "prompt", filepath.Join(root, homeFolder, "prompts", "advisor.md")},
+		{"prompt", "prompt", filepath.Join(root, homeFolder, "prompts", "advisor.md")},
 	} {
 		data, err := os.ReadFile(input.path)
 		if err != nil {
@@ -1549,8 +1594,9 @@ func TestTheJudgeHasNoCostLimit(t *testing.T) {
 func TestImplementHasNoCostLimit(t *testing.T) {
 	t.Parallel()
 	root, repo, home := onFakeRuntimes(t)
-	args := append([]string{"run", "implement"}, paramArgs(parseProcess(t, root, "implement").Params)...)
-	created, _ := runRecorded(t, home, repo, args)
+	launch := launchDir("implement")
+	args := append([]string{"run", "implement"}, paramArgs(t, launch, parseProcess(t, root, "implement").Params)...)
+	created, _ := runRecorded(t, home, filepath.Join(repo, launch), args)
 	if len(created) != 1 {
 		t.Fatalf("runs recorded: %v, want one", created)
 	}
@@ -1564,129 +1610,234 @@ func TestImplementHasNoCostLimit(t *testing.T) {
 	}
 }
 
-// goPrompts are the optional prompts every implement process of the
-// repository names (ADR-019), by input: each is a copy in .agister/prompts
-// of the prompt of the same name in prompts/.
-var goPrompts = map[string]string{
-	"go_testing":      "go-testing-seams",
-	"go_architecture": "go-architecture",
+// projectChecks are the commands of each project's verify:repo, by
+// project: each is written from the worktree's root, where it runs
+// (ADR-028 rule 2).
+var projectChecks = map[string]*regexp.Regexp{
+	"agister": regexp.MustCompile(`^cd agister && .* && cd \.\./gokit && `),
+	"warder":  regexp.MustCompile(`^warder/scripts/test\.sh$`),
 }
 
-// Each implement process of the home folder gives its agent the two Go
-// prompts, and what it gives is the text of prompts/<name>.md: the
-// repository's settings hold a copy, which this test keeps identical.
+// Each implementer launched at the repository's root is refused before its
+// first turn: no layer there fills verify:repo (ADR-028 Migration step 4).
+func TestImplementersAreRefusedAtTheRoot(t *testing.T) {
+	t.Parallel()
+	root, repo, home := onFakeRuntimes(t)
+	runs := &newRuns{home: home}
+	runs.take(t)
+	for _, name := range implementers {
+		t.Run(name, func(t *testing.T) {
+			args := append([]string{"run", name, "--quiet"}, paramArgs(t, ".", parseProcess(t, root, name).Params)...)
+			r := agister(t, home, repo, args...)
+			reason := "process " + name + ` names verify:repo: verification "repo": not found (expected ` +
+				filepath.Join(repo, ".agister", "verifies", "repo.yaml") + " or " + filepath.Join(home, "verifies", "repo.yaml") + ")"
+			last := runs.one(t)
+			result, _ := last.record["result"].(map[string]any)
+			fault, _ := result["error"].(map[string]any)
+			if r.code != cli.ExitRefused || last.record["process"] != name || fault["class"] != "refused" || fault["message"] != reason {
+				t.Fatalf("run: %d, error %v, want %q\n%s", r.code, fault, reason, r.stderr)
+			}
+			if kinds := strings.Join(last.kinds(), " "); strings.Contains(kinds, "PROCESS_STARTED") {
+				t.Fatalf("the refused call started: %s", kinds)
+			}
+		})
+	}
+}
+
+// goPrompts are the Go prompts of the repository's library, prompts/,
+// which its layer.yaml lists (ADR-028 rule 9).
+var goPrompts = []string{"go-testing-seams", "go-architecture"}
+
+// repositoryGuidance is the guidance the repository's layer sets, by
+// process (LAB-161): the implementers, the architecture review and the
+// adversarial review get both Go prompts, the tests review the testing
+// one. A process it does not name, the clarity and intent reviews and the
+// judge among them, gets none.
+var repositoryGuidance = map[string][]string{
+	"implement":                 goPrompts,
+	"implement_codex":           goPrompts,
+	"implement_pi":              goPrompts,
+	"implement_pi_glm":          goPrompts,
+	"architecture_review_codex": goPrompts,
+	"adversarial_review_codex":  goPrompts,
+	"tests_review_codex":        {"go-testing-seams"},
+}
+
+// The repository's layer sets, for each process of repositoryGuidance and
+// no other, its guidance and no other field. It holds no prompts/, whose
+// prompts are read from the library its layer.yaml lists, and no
+// verifies/: verify:repo is filled by each project's layer.
+func TestTheRepositoryLayerSetsOnlyTheGoGuidance(t *testing.T) {
+	t.Parallel()
+	root, err := filepath.Abs(filepath.Join("..", "..", ".."))
+	if err != nil {
+		t.Fatal(err)
+	}
+	settings := filepath.Join(root, ".agister")
+	paths, err := filepath.Glob(filepath.Join(settings, "processes", "*"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	set := map[string][]string{}
+	for _, path := range paths {
+		var document map[string]any
+		if err := yaml.Unmarshal([]byte(read(t, path)), &document); err != nil {
+			t.Fatalf("%s: %v", path, err)
+		}
+		guidance, ok := document["guidance"].([]any)
+		if len(document) != 1 || !ok {
+			t.Fatalf("%s sets %v, want guidance alone", path, document)
+		}
+		names := []string{}
+		for _, name := range guidance {
+			names = append(names, name.(string))
+		}
+		set[strings.TrimSuffix(filepath.Base(path), ".yaml")] = names
+	}
+	if !reflect.DeepEqual(set, repositoryGuidance) {
+		t.Fatalf("the repository's layer sets guidance %v, want %v", set, repositoryGuidance)
+	}
+	for _, kind := range []string{"prompts", "verifies"} {
+		if _, err := os.Lstat(filepath.Join(settings, kind)); !errors.Is(err, fs.ErrNotExist) {
+			t.Errorf("%s holds %s/ (%v), want none", settings, kind, err)
+		}
+	}
+}
+
+// givesGuidance checks that the call's guidance is names, in order and no
+// other: each the input guidance.<name>, the text of prompts/<name>.md,
+// recorded from the repository's layer, which finds it there.
+func givesGuidance(t *testing.T, root, repo string, record map[string]any, names ...string) {
+	t.Helper()
+	var given []string
+	inputs, _ := record["inputs"].([]any)
+	for _, input := range inputs {
+		if name, _ := input.(map[string]any)["name"].(string); strings.HasPrefix(name, "guidance.") {
+			given = append(given, strings.TrimPrefix(name, "guidance."))
+		}
+	}
+	if !slices.Equal(given, names) {
+		t.Fatalf("%s's guidance = %v, want %v", record["process"], given, names)
+	}
+	for _, name := range names {
+		text, err := os.ReadFile(filepath.Join(root, "prompts", name+".md"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		digest := digestOf(string(text))
+		if input := inputOf(t, record, "guidance."+name); input["source"] != "prompt" || input["identity"] != "sha256:"+digest {
+			t.Fatalf("%s's guidance.%s = %v, want prompts/%s.md (%s)", record["process"], name, input, name, digest)
+		}
+		file := nearest(definitionOf(t, run{record: record}, "prompts", name))
+		if file["layer"] != "repository" || file["path"] != filepath.Join(repo, "prompts", name+".md") || file["sha256"] != digest {
+			t.Fatalf("%s's prompt %s recorded from %v, want the repository's prompts/%s.md", record["process"], name, file, name)
+		}
+	}
+}
+
+// Each implement process of the home folder, launched in each project of
+// the repository, gives its agent the two Go prompts as its guidance, in
+// the order the repository's layer sets, each the text of
+// prompts/<name>.md, and verifies with that project's verify:repo
+// (ADR-028 Migration step 4). That verification is a complete document of
+// the project's layer alone, whose command is written from the worktree's
+// root: the run's record names that file as the verification's only
+// layer, and the run passes the one attempt the fixture's command makes
+// (fixVerify).
 func TestImplementersAreGivenTheGoPrompts(t *testing.T) {
 	t.Parallel()
 	root, repo, home := onFakeRuntimes(t)
-	for _, name := range []string{"implement", "implement_codex", "implement_pi", "implement_pi_glm"} {
-		t.Run(name, func(t *testing.T) {
-			args := append([]string{"run", name}, paramArgs(parseProcess(t, root, name).Params)...)
-			if timeout := testTimeouts[name]; timeout != "" {
-				args = append(args, "--timeout", timeout)
-			}
-			created, _ := runRecorded(t, home, repo, args)
-			if len(created) != 1 {
-				t.Fatalf("runs recorded: %v, want one", created)
-			}
-			record := completedRun(t, home, created[0])
-			for input, prompt := range goPrompts {
-				text, err := os.ReadFile(filepath.Join(root, "prompts", prompt+".md"))
-				if err != nil {
-					t.Fatal(err)
-				}
-				digest := "sha256:" + digestOf(string(text))
-				if given := inputOf(t, record, input); given["source"] != "prompt" || given["identity"] != digest {
-					t.Fatalf("%s's %s = %v, want prompts/%s.md (%s)", name, input, given, prompt, digest)
-				}
-			}
+	for _, project := range projects {
+		path := filepath.Join(project, ".agister", "verifies", "repo.yaml")
+		data, err := os.ReadFile(filepath.Join(root, path))
+		if err != nil {
+			t.Fatal(err)
+		}
+		verification, err := definition.ParseVerify(definition.Document{
+			Source: definition.Source{Kind: definition.KindVerify, Name: "repo", Path: path}, Bytes: data,
 		})
+		if err != nil {
+			t.Fatalf("%s is not a complete verification: %v", path, err)
+		}
+		if !projectChecks[project].MatchString(verification.Verify.Command) {
+			t.Fatalf("%s runs %q, want %v", path, verification.Verify.Command, projectChecks[project])
+		}
+		for _, name := range implementers {
+			t.Run(project+" "+name, func(t *testing.T) {
+				args := append([]string{"run", name}, paramArgs(t, project, parseProcess(t, root, name).Params)...)
+				if timeout := testTimeouts[name]; timeout != "" {
+					args = append(args, "--timeout", timeout)
+				}
+				created, _ := runRecorded(t, home, filepath.Join(repo, project), args)
+				if len(created) != 1 {
+					t.Fatalf("runs recorded: %v, want one", created)
+				}
+				record := completedRun(t, home, created[0])
+				givesGuidance(t, root, repo, record, repositoryGuidance[name]...)
+				source := definitionOf(t, run{record: record}, "verifies", "repo")
+				if layers, _ := source["layers"].([]any); len(layers) != 1 || nearest(source)["layer"] != "project" || nearest(source)["path"] != filepath.Join(repo, path) {
+					t.Fatalf("verify:repo recorded from %v, want %s alone", source, path)
+				}
+				attempts, _ := record["attempts"].([]any)
+				if len(attempts) != 1 {
+					t.Fatalf("attempts = %v, want one", record["attempts"])
+				}
+				if run, _ := attempts[0].(map[string]any)["run"].(map[string]any); run["command"] != verifyFixture || run["passed"] != true {
+					t.Fatalf("verification run = %v, want %q passed", run, verifyFixture)
+				}
+			})
+		}
 	}
 }
 
-// The architecture review and the tests review of the home folder give
-// their agent the Go prompt that says what they check, the same text the
-// implementers are given.
-func TestReviewersAreGivenTheirGoPrompt(t *testing.T) {
+// reviewers are the fan-out processes of code_review.
+var reviewers = []string{"architecture_review_codex", "tests_review_codex", "adversarial_review_codex", "clarity_review_codex", "intent_review_codex"}
+
+// Each review of the home folder, launched at the root and in each
+// project, gives its agent the guidance repositoryGuidance names for it,
+// and none where it names none, each the text the implementers are given.
+func TestReviewersAreGivenTheirGoGuidance(t *testing.T) {
 	t.Parallel()
 	root, repo, home := onFakeRuntimes(t)
-	for name, input := range map[string]string{
-		"architecture_review_codex": "go_architecture",
-		"tests_review_codex":        "go_testing",
-	} {
-		t.Run(name, func(t *testing.T) {
-			args := append([]string{"run", name}, paramArgs(parseProcess(t, root, name).Params)...)
-			if timeout := testTimeouts[name]; timeout != "" {
-				args = append(args, "--timeout", timeout)
-			}
-			created, _ := runRecorded(t, home, repo, args)
-			if len(created) != 1 {
-				t.Fatalf("runs recorded: %v, want one", created)
-			}
-			record := completedRun(t, home, created[0])
-			prompt := goPrompts[input]
-			text, err := os.ReadFile(filepath.Join(root, "prompts", prompt+".md"))
-			if err != nil {
-				t.Fatal(err)
-			}
-			digest := "sha256:" + digestOf(string(text))
-			if given := inputOf(t, record, input); given["source"] != "prompt" || given["identity"] != digest {
-				t.Fatalf("%s's %s = %v, want prompts/%s.md (%s)", name, input, given, prompt, digest)
-			}
-		})
+	for _, launch := range append([]string{"."}, projects...) {
+		for _, name := range reviewers {
+			t.Run(launch+" "+name, func(t *testing.T) {
+				args := append([]string{"run", name}, paramArgs(t, launch, parseProcess(t, root, name).Params)...)
+				if timeout := testTimeouts[name]; timeout != "" {
+					args = append(args, "--timeout", timeout)
+				}
+				created, _ := runRecorded(t, home, filepath.Join(repo, launch), args)
+				if len(created) != 1 {
+					t.Fatalf("runs recorded: %v, want one", created)
+				}
+				givesGuidance(t, root, repo, completedRun(t, home, created[0]), repositoryGuidance[name]...)
+			})
+		}
 	}
 }
 
-// Each real implement process completes when neither settings layer has
-// the Go prompts, records both as absent, and gives its agent neither input.
-func TestImplementersCanRunWithoutTheGoPrompts(t *testing.T) {
+// A code_review launched in warder/ gives each review and the judge the
+// guidance repositoryGuidance names for it, and each Go prompt a review
+// gets has the digest the implement run launched there recorded: the code
+// is reviewed under the rules it was written under.
+func TestCodeReviewInWarderIsGivenTheImplementersGuidance(t *testing.T) {
 	t.Parallel()
-	for _, name := range []string{"implement", "implement_codex", "implement_pi", "implement_pi_glm"} {
-		t.Run(name, func(t *testing.T) {
-			t.Parallel()
-			root, repo, home := onFakeRuntimes(t)
-			// These settings belong to the test. The repository's prompts
-			// directory is a symlink: remove the link, not its target.
-			for _, dir := range []string{filepath.Join(repo, ".agister", "prompts"), filepath.Join(home, "prompts")} {
-				if err := os.RemoveAll(dir); err != nil {
-					t.Fatal(err)
-				}
-				if err := os.MkdirAll(dir, 0o755); err != nil {
-					t.Fatal(err)
-				}
+	root, repo, home := onFakeRuntimes(t)
+	args := append([]string{"run", "implement"}, paramArgs(t, "warder", parseProcess(t, root, "implement").Params)...)
+	created, _ := runRecorded(t, home, filepath.Join(repo, "warder"), args)
+	if len(created) != 1 {
+		t.Fatalf("runs recorded: %v, want one", created)
+	}
+	implemented := completedRun(t, home, created[0])
+	_, records := judgedReviews(t, home, filepath.Join(repo, "warder"), "code_review")
+	for _, name := range append(reviewers, "review_judge") {
+		givesGuidance(t, root, repo, records[name], repositoryGuidance[name]...)
+		for _, prompt := range repositoryGuidance[name] {
+			got, want := inputOf(t, records[name], "guidance."+prompt)["identity"], inputOf(t, implemented, "guidance."+prompt)["identity"]
+			if got != want {
+				t.Fatalf("%s's guidance.%s = %v, the implement run's %v", name, prompt, got, want)
 			}
-			args := append([]string{"run", name}, paramArgs(parseProcess(t, root, name).Params)...)
-			if timeout := testTimeouts[name]; timeout != "" {
-				args = append(args, "--timeout", timeout)
-			}
-			created, _ := runRecorded(t, home, repo, args)
-			if len(created) != 1 {
-				t.Fatalf("runs recorded: %v, want one", created)
-			}
-			record := completedRun(t, home, created[0])
-			absent, _ := record["absent_prompts"].([]any)
-			if len(absent) != len(goPrompts) {
-				t.Fatalf("absent prompts = %v, want both Go prompts", absent)
-			}
-			given := runtimeStart(t, home, created[0]).Prompt
-			if given == "" {
-				t.Fatal("the fake runtime recorded no agent prompt")
-			}
-			for input, prompt := range goPrompts {
-				want := map[string]any{"input": input, "prompt": prompt}
-				if !slices.ContainsFunc(absent, func(entry any) bool { return reflect.DeepEqual(entry, want) }) {
-					t.Fatalf("absent prompts = %v, want %v", absent, want)
-				}
-				inputs, _ := record["inputs"].([]any)
-				for _, entry := range inputs {
-					if entry.(map[string]any)["name"] == input {
-						t.Fatalf("absent input %s was recorded: %v", input, entry)
-					}
-				}
-				if strings.Contains(given, "## "+input) {
-					t.Fatalf("the agent was given absent input %s:\n%s", input, given)
-				}
-			}
-		})
+		}
 	}
 }
 
@@ -1774,9 +1925,12 @@ func parseProcess(t *testing.T, root, name string) definition.Process {
 }
 
 // paramArgs gives base, candidate and revision the test repository's
-// revisions, and
-// every other param without a default a file of the repository.
-func paramArgs(params []definition.Param) []string {
+// revisions, and every other param without a default a file of the
+// repository, relative to launch, the directory the call is launched in,
+// itself relative to the repository's root: a relative file path is read
+// from there (ADR-028 rule 2).
+func paramArgs(t *testing.T, launch string, params []definition.Param) []string {
+	t.Helper()
 	var args []string
 	for _, param := range params {
 		value, set := "", true
@@ -1786,9 +1940,9 @@ func paramArgs(params []definition.Param) []string {
 		case param.Name == "candidate", param.Name == "revision":
 			value = "feature"
 		case !param.HasDefault && repoParams[param.Name] != "":
-			value = repoParams[param.Name]
+			value = fromLaunch(t, launch, repoParams[param.Name])
 		case !param.HasDefault:
-			value = fallbackParam
+			value = fromLaunch(t, launch, fallbackParam)
 		default:
 			set = false
 		}
@@ -1797,6 +1951,17 @@ func paramArgs(params []definition.Param) []string {
 		}
 	}
 	return args
+}
+
+// fromLaunch is path, relative to the repository's root, relative to
+// launch, which is relative to the root as well.
+func fromLaunch(t *testing.T, launch, path string) string {
+	t.Helper()
+	rel, err := filepath.Rel(launch, path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return rel
 }
 
 // runRecorded runs agister, requires it to complete, and returns the runs
@@ -1845,7 +2010,7 @@ func schemaAccepts(t *testing.T, record map[string]any, output any, stdout strin
 	for _, source := range record["definitions"].([]any) {
 		source := source.(map[string]any)
 		if source["kind"] == string(definition.KindSchema) {
-			schemaPath = source["path"].(string)
+			schemaPath, _ = nearest(source)["path"].(string)
 		}
 	}
 	document, err := os.ReadFile(schemaPath)
@@ -1895,34 +2060,47 @@ func mirror(t *testing.T, root, home string) (string, *gittest.Repository) {
 	return dir, r
 }
 
-// fixVerify makes repo's .agister a directory whose entries link to those of
-// root's, processes and verifies aside. Each of those two is a directory
-// whose entries link to root's, and every file with a verification command
-// is written with verifyFixture as its command and verifyFixtureTimeout as
-// its timeout: a process that declares verify inline, and every verify a
-// process names (ADR-010), whose command and timeout are top-level keys. A
-// root without processes or verifies has none in repo either.
+// fixVerify makes the settings of each of repo's layers, its .agister and
+// the .agister of each top-level directory of root that holds one (ADR-028
+// rule 1), a directory whose entries link to those of root's, and so are
+// that directory and each of the layer's processes and verifies. Every
+// file there with a verification command is written with verifyFixture as
+// its command and verifyFixtureTimeout as its timeout: a process that
+// declares verify inline, and every verify a process names (ADR-010), whose
+// command and timeout are top-level keys. Each folder a layer's layer.yaml
+// lists is a directory of links too: a link to root's folder would lead out
+// of repo, which makes the layer invalid (ADR-028 rule 9). A layer without
+// processes, verifies or layer.yaml has none in repo either.
 func fixVerify(t *testing.T, root, repo string) {
 	t.Helper()
-	settings := filepath.Join(repo, ".agister")
-	if err := os.Remove(settings); err != nil {
-		t.Fatal(err)
-	}
-	// link makes to a directory whose entries link to those of from, except
-	// those of aside.
-	link := func(from, to string, aside ...string) {
+	// expand makes repo's rel, and each directory above it, a directory
+	// whose entries link to those of root's rel, where it is still a link.
+	var expand func(rel string)
+	expand = func(rel string) {
 		t.Helper()
+		if dir := filepath.Dir(rel); dir != "." {
+			expand(dir)
+		}
+		to := filepath.Join(repo, rel)
+		info, err := os.Lstat(to)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if info.Mode()&fs.ModeSymlink == 0 {
+			return
+		}
+		from := filepath.Join(root, rel)
 		entries, err := os.ReadDir(from)
 		if err != nil {
+			t.Fatal(err)
+		}
+		if err := os.Remove(to); err != nil {
 			t.Fatal(err)
 		}
 		if err := os.Mkdir(to, 0o755); err != nil {
 			t.Fatal(err)
 		}
 		for _, entry := range entries {
-			if slices.Contains(aside, entry.Name()) {
-				continue
-			}
 			if err := os.Symlink(filepath.Join(from, entry.Name()), filepath.Join(to, entry.Name())); err != nil {
 				t.Fatal(err)
 			}
@@ -1980,19 +2158,44 @@ func fixVerify(t *testing.T, root, repo string) {
 		}
 	}
 
-	link(filepath.Join(root, ".agister"), settings, "processes", "verifies")
-	for kind, verification := range map[string]func(document *yaml.Node) *yaml.Node{
-		"processes": func(process *yaml.Node) *yaml.Node { return valueOf(process, "verify") },
-		"verifies":  func(verify *yaml.Node) *yaml.Node { return verify },
-	} {
-		dir := filepath.Join(root, ".agister", kind)
-		if _, err := os.Stat(dir); errors.Is(err, fs.ErrNotExist) {
+	layers := []string{"."}
+	entries, err := os.ReadDir(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, entry := range entries {
+		if info, err := os.Stat(filepath.Join(root, entry.Name(), ".agister")); entry.IsDir() && err == nil && info.IsDir() {
+			layers = append(layers, entry.Name())
+		}
+	}
+	for _, layer := range layers {
+		settings := filepath.Join(layer, ".agister")
+		expand(settings)
+		for kind, verification := range map[string]func(document *yaml.Node) *yaml.Node{
+			"processes": func(process *yaml.Node) *yaml.Node { return valueOf(process, "verify") },
+			"verifies":  func(verify *yaml.Node) *yaml.Node { return verify },
+		} {
+			if _, err := os.Stat(filepath.Join(root, settings, kind)); errors.Is(err, fs.ErrNotExist) {
+				continue
+			} else if err != nil {
+				t.Fatal(err)
+			}
+			expand(filepath.Join(settings, kind))
+			fix(filepath.Join(repo, settings, kind), verification)
+		}
+		data, err := os.ReadFile(filepath.Join(root, settings, "layer.yaml"))
+		if errors.Is(err, fs.ErrNotExist) {
 			continue
 		} else if err != nil {
 			t.Fatal(err)
 		}
-		link(dir, filepath.Join(settings, kind))
-		fix(filepath.Join(settings, kind), verification)
+		parsed, err := definition.ParseLayer(data)
+		if err != nil {
+			t.Fatalf("%s: %v", filepath.Join(root, settings, "layer.yaml"), err)
+		}
+		for _, folder := range parsed.Prompts {
+			expand(filepath.Join(layer, folder))
+		}
 	}
 }
 

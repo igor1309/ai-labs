@@ -16,6 +16,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"regexp"
+	"slices"
 	"strings"
 	"sync"
 	"testing"
@@ -441,12 +442,12 @@ func TestAgentCallEndToEnd(t *testing.T) {
 	var kinds []string
 	for _, source := range record["definitions"].([]any) {
 		source := source.(map[string]any)
-		if len(source["sha256"].(string)) != 64 {
+		if digest, _ := nearest(source)["sha256"].(string); len(digest) != 64 {
 			t.Fatalf("source without digest: %v", source)
 		}
 		kinds = append(kinds, source["kind"].(string))
 	}
-	if strings.Join(kinds, ",") != "service,processes,policies,agents,runtimes,schemas" {
+	if strings.Join(kinds, ",") != "service,processes,policies,agents,runtimes,schemas,prompts" {
 		t.Fatalf("definitions = %v", kinds)
 	}
 	// Inputs are immutable.
@@ -625,9 +626,11 @@ runtime = "docs-runtime"
 command = "claude"
 `)
 	write(t, filepath.Join(home, "schemas", "verdict.json"), `{"type":"object","required":["verdict"],"properties":{"verdict":{"enum":["approve","request_changes"]}}}`)
+	write(t, filepath.Join(home, "prompts", "check-docs.md"), "Check the docs read as the code does.\n")
 	write(t, filepath.Join(home, "processes", "check_docs.yaml"), `schema: agister.process/v1alpha1
 name: check_docs
 type: process
+prompt: check-docs
 uses: agent:writer
 tools: {allow: [docs.read]}
 timeout: 1m
@@ -666,7 +669,7 @@ func TestProjectSettingsAddToGlobal(t *testing.T) {
 	}
 	project := filepath.Join(repo, ".agister", "processes", "ask_here.yaml")
 	r := agister(t, home, sub, "process", "show", "ask_here")
-	if r.code != 0 || !strings.Contains(r.stdout, "process ask_here: project "+project) || !strings.Contains(r.stdout, "policy read-only: global "+filepath.Join(home, "policies", "read-only.yaml")) {
+	if r.code != 0 || !strings.Contains(r.stdout, "process ask_here: repository "+project) || !strings.Contains(r.stdout, "policy read-only: home "+filepath.Join(home, "policies", "read-only.yaml")) {
 		t.Fatalf("show in project: %d\n%s%s", r.code, r.stdout, r.stderr)
 	}
 	if r := agister(t, home, sub, "run", "ask_here", "--quiet", "--param", "question=q", "--timeout", "1m"); r.code != cli.ExitCompleted {
@@ -679,7 +682,7 @@ func TestProjectSettingsAddToGlobal(t *testing.T) {
 			process = source
 		}
 	}
-	if !strings.Contains(strings.Join(last.argv(), " "), "PROJECT: answer") || process["path"] != project || process["project"] != true {
+	if !strings.Contains(strings.Join(last.argv(), " "), "PROJECT: answer") || nearest(process)["path"] != project || nearest(process)["layer"] != "repository" {
 		t.Fatalf("project process not used or not attributed: %v, argv %v", process, last.argv())
 	}
 
@@ -693,21 +696,24 @@ func TestProjectSettingsAddToGlobal(t *testing.T) {
 	}
 }
 
-// A branch can swap the reviewer's family: the project agent takes priority
-// over the global one, and check, process show and the run record say so.
+// A branch can swap the reviewer's family: the repository's agent file,
+// which sets only the family, takes priority over the global one field by
+// field, and check, process show and the run record say so, the record
+// naming the fields each layer's file gave.
 func TestProjectOverridesAreNoted(t *testing.T) {
 	t.Parallel()
 	home, repo := setup(t, "approve")
 	global := filepath.Join(home, "agents", "reviewer.toml")
 	project := filepath.Join(repo, ".agister", "agents", "reviewer.toml")
-	write(t, project, strings.Replace(read(t, global), `model_family = "anthropic"`, `model_family = "experiment"`, 1))
+	const family = "model_family = \"experiment\"\n"
+	write(t, project, family)
 
 	r := agister(t, home, repo, "check")
 	if r.code != 0 || !strings.Contains(r.stdout, "override agent reviewer: "+project+" overrides "+global) || !strings.Contains(r.stdout, "settings OK") {
 		t.Fatalf("check: %d\n%s%s", r.code, r.stdout, r.stderr)
 	}
 	r = agister(t, home, repo, "check", "--tree")
-	if r.code != 0 || !regexp.MustCompile(`├─ agent reviewer +project `+regexp.QuoteMeta(project+" (overrides "+global+")")).MatchString(r.stdout) {
+	if r.code != 0 || !regexp.MustCompile(`├─ agent reviewer +repository `+regexp.QuoteMeta(project)+`\n│ +.*model_family.*\n│ +home +`+regexp.QuoteMeta(global)+`\n`).MatchString(r.stdout) {
 		t.Fatalf("check --tree: %d\n%s%s", r.code, r.stdout, r.stderr)
 	}
 	var report contract.CheckReport
@@ -716,20 +722,41 @@ func TestProjectOverridesAreNoted(t *testing.T) {
 		t.Fatalf("check --json: %d %v\n%s", r.code, err, r.stdout)
 	}
 	for _, d := range report.Definitions {
-		if d.Kind == "agents" && d.Name == "reviewer" && (d.Layer != "project" || d.Path != project || d.Overrides != global || len(d.UsedBy) == 0) {
+		if d.Kind == "agents" && d.Name == "reviewer" && (d.Layer != "repository" || d.Path != project || len(d.Layers) != 2 || d.Layers[1].Layer != "home" || d.Layers[1].Path != global || len(d.UsedBy) == 0) {
 			t.Fatalf("reviewer = %+v", d)
 		}
 	}
 	r = agister(t, home, repo, "process", "show", "adversarial_review")
-	if r.code != 0 || !strings.Contains(r.stdout, "agent reviewer: project "+project+" (overrides "+global+")") {
+	if r.code != 0 || !regexp.MustCompile(`agent reviewer: repository `+regexp.QuoteMeta(project)+`\n +home `+regexp.QuoteMeta(global)+`\n`).MatchString(r.stdout) {
 		t.Fatalf("show: %d\n%s%s", r.code, r.stdout, r.stderr)
 	}
 	if r := agister(t, home, repo, "run", "adversarial_review", "--quiet", "--param", "base=main", "--timeout", "1m"); r.code != cli.ExitCompleted {
 		t.Fatalf("run: %d\n%s", r.code, r.stderr)
 	}
-	for _, source := range lastRun(t, home).record["definitions"].([]any) {
-		if source := source.(map[string]any); source["kind"] == "agents" && (source["path"] != project || source["project"] != true || source["overrides"] != global) {
-			t.Fatalf("agent source = %v", source)
+	last := lastRun(t, home)
+	if profile, _ := last.record["profile"].(map[string]any); !strings.Contains(strings.Join(last.argv(), " "), "sonnet") || profile["effort"] != "high" {
+		t.Fatalf("the agent ran as %v, by %v", last.record["profile"], last.argv())
+	}
+	agent := map[string]any{"kind": "agents", "name": "reviewer", "layers": []any{
+		map[string]any{"layer": "repository", "path": project, "sha256": digestOf(family), "fields": []any{"model_family"}},
+		map[string]any{"layer": "home", "path": global, "sha256": digestOf(read(t, global)), "fields": []any{"schema", "name", "runtime", "model", "effort", "session", "command"}},
+	}}
+	if got := definitionOf(t, last, "agents", "reviewer"); !reflect.DeepEqual(got, agent) {
+		t.Fatalf("agent recorded as\n%v\nwant\n%v", got, agent)
+	}
+	// Each other document is home's alone: a composed kind's one file gave
+	// every field, and a schema or a prompt, taken whole, has none (ADR-028
+	// rule 11).
+	for _, source := range last.record["definitions"].([]any) {
+		source := source.(map[string]any)
+		if source["kind"] == "agents" {
+			continue
+		}
+		layers, _ := source["layers"].([]any)
+		fields, given := nearest(source)["fields"].([]any)
+		whole := source["kind"] == "schemas" || source["kind"] == "prompts"
+		if len(layers) != 1 || nearest(source)["layer"] != "home" || given == whole || !whole && !slices.Contains(fields, any("schema")) {
+			t.Fatalf("%v %v recorded as %v", source["kind"], source["name"], source)
 		}
 	}
 }
@@ -1202,8 +1229,8 @@ verify:
 	}
 	for _, source := range record["definitions"].([]any) {
 		source := source.(map[string]any)
-		if sum := sha256.Sum256([]byte(process)); source["kind"] == "processes" && source["sha256"] != hex.EncodeToString(sum[:]) {
-			t.Fatalf("process digest %v is not of the file as resolved", source["sha256"])
+		if sum := sha256.Sum256([]byte(process)); source["kind"] == "processes" && nearest(source)["sha256"] != hex.EncodeToString(sum[:]) {
+			t.Fatalf("process digest %v is not of the file as resolved", nearest(source)["sha256"])
 		}
 	}
 

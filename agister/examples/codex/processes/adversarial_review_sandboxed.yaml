@@ -7,6 +7,7 @@ name: adversarial_review_sandboxed
 type: process
 uses: agent:codex-reviewer
 policy: process-policy:sandboxed-review
+prompt: adversarial-review
 
 input:
   instruction: >-

@@ -6,6 +6,7 @@ name: ask_opencode
 type: process
 uses: agent:opencode-minimax
 policy: process-policy:read-only
+prompt: ask
 
 input:
   instruction: >-

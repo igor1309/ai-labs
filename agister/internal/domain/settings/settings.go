@@ -156,14 +156,20 @@ func Check(b Bundle, m Mechanisms) []Problem {
 			if !contains(m.Sources, value.Source) {
 				unknown(subject, "input %s: unknown source %q (available: %s)", value.Name, value.Source, strings.Join(m.Sources, ", "))
 			}
-			// A prompt is part of the process (ADR-014 rule 4), unless its
-			// input is optional (ADR-019 rule 4).
-			if name := value.Args["name"]; value.Source == definition.PromptSource && name != "" && !b.Prompts[name] && !value.Optional() {
-				add(subject, "input %s: prompt %q does not exist", value.Name, name)
-			}
-			// So is a form its text must have (ADR-026 rule 8).
+			// A form its text must have is part of the process (ADR-026 rule
+			// 8).
 			for _, form := range b.missingForms(value) {
 				add(subject, "input %s: brief %q does not exist", value.Name, form)
+			}
+		}
+		// So are its prompt and its guidance: a name no layer has refuses
+		// its calls (ADR-028 rule 8).
+		if process.Prompt != "" && !b.Prompts[process.Prompt] {
+			add(subject, "prompt %q does not exist", process.Prompt)
+		}
+		for _, name := range process.Guidance {
+			if !b.Prompts[name] {
+				add(subject, "guidance: prompt %q does not exist", name)
 			}
 		}
 		// So is a skill (ADR-021 rule 4).

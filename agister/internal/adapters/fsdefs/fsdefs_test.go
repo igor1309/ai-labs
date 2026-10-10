@@ -103,8 +103,18 @@ func TestRejectsUnsafeNamesAndReportsMissing(t *testing.T) {
 	}
 }
 
-// A project document takes priority over the global one of the same kind
-// and name, whatever the kind, and says which one it overrides.
+// replaced is the farther layer's file a document taken whole replaces, or
+// a composed one is composed onto: none for a document one layer holds.
+func replaced(source definition.Source) string {
+	if len(source.Layers) < 2 {
+		return ""
+	}
+	return source.Layers[1].Path
+}
+
+// A repository's document comes before home's of the same kind and name:
+// one taken whole replaces it, and one that is composed is composed onto it
+// (ADR-028 rules 4 and 6). Either says which of home's it stands over.
 //
 // Contract test: the settings store against the real filesystem.
 func TestLayeredProjectTakesPriority(t *testing.T) {
@@ -116,22 +126,30 @@ func TestLayeredProjectTakesPriority(t *testing.T) {
 		if kind == definition.KindService {
 			name = "service"
 		}
-		globalPath, _, _ := global.Write(ctx, kind, name, []byte("global"), "")
-		projectPath, _, _ := project.Write(ctx, kind, name, []byte("project"), "")
-		layered := fsdefs.Layered{Global: global, Project: &project}
+		// A layer's file of a composed kind is a map: YAML's, or TOML's.
+		home, repository, want := "global", "project", "project"
+		switch {
+		case kind == definition.KindService || kind == definition.KindAgent:
+			home, repository, want = "from = \"home\"\n", "from = \"repository\"\n", "from = \"repository\"\n"
+		case definition.Composed(kind):
+			home, repository, want = "from: home\n", "from: repository\n", "from: repository\n"
+		}
+		globalPath, _, _ := global.Write(ctx, kind, name, []byte(home), "")
+		projectPath, _, _ := project.Write(ctx, kind, name, []byte(repository), "")
+		layered := fsdefs.Layered{Home: global, Repository: &project}
 		doc, err := layered.Read(ctx, kind, name)
-		if err != nil || string(doc.Bytes) != "project" || doc.Source.Path != projectPath || !doc.Source.Project || doc.Source.Overrides != globalPath {
-			t.Fatalf("%s = %+v, %v", kind, doc.Source, err)
+		if err != nil || string(doc.Bytes) != want || doc.Source.Path != projectPath || doc.Source.Layer != definition.LayerRepository || replaced(doc.Source) != globalPath {
+			t.Fatalf("%s = %+v %q, %v", kind, doc.Source, doc.Bytes, err)
 		}
 	}
 	global.Write(ctx, definition.KindPolicy, "global_only", []byte("global"), "")
 	project.Write(ctx, definition.KindPolicy, "project_only", []byte("project"), "")
-	layered := fsdefs.Layered{Global: global, Project: &project}
+	layered := fsdefs.Layered{Home: global, Repository: &project}
 
-	if doc, err := layered.Read(ctx, definition.KindPolicy, "global_only"); err != nil || string(doc.Bytes) != "global" || doc.Source.Project || doc.Source.Overrides != "" {
+	if doc, err := layered.Read(ctx, definition.KindPolicy, "global_only"); err != nil || string(doc.Bytes) != "global" || doc.Source.Layer == definition.LayerRepository || replaced(doc.Source) != "" {
 		t.Fatalf("global_only = %+v, %v", doc.Source, err)
 	}
-	if doc, err := layered.Read(ctx, definition.KindPolicy, "project_only"); err != nil || string(doc.Bytes) != "project" || !doc.Source.Project || doc.Source.Overrides != "" {
+	if doc, err := layered.Read(ctx, definition.KindPolicy, "project_only"); err != nil || string(doc.Bytes) != "project" || doc.Source.Layer != definition.LayerRepository || replaced(doc.Source) != "" {
 		t.Fatalf("project_only = %+v, %v", doc.Source, err)
 	}
 	if names, err := layered.List(ctx, definition.KindPolicy); err != nil || !reflect.DeepEqual(names, []string{"global_only", "project_only", "shared"}) {
@@ -144,8 +162,8 @@ func TestLayeredProjectTakesPriority(t *testing.T) {
 	if _, err := layered.Read(ctx, definition.KindAgent, "../escape"); err == nil {
 		t.Fatal("path traversal accepted")
 	}
-	outside := fsdefs.Layered{Global: global}
-	if doc, err := outside.Read(ctx, definition.KindPolicy, "shared"); err != nil || string(doc.Bytes) != "global" {
+	outside := fsdefs.Layered{Home: global}
+	if doc, err := outside.Read(ctx, definition.KindPolicy, "shared"); err != nil || string(doc.Bytes) != "from: home\n" {
 		t.Fatalf("without project = %+v, %v", doc, err)
 	}
 	if _, err := outside.Read(ctx, definition.KindPolicy, "missing"); err == nil || strings.Contains(err.Error(), " or ") {
@@ -155,8 +173,8 @@ func TestLayeredProjectTakesPriority(t *testing.T) {
 	// A repository without settings of its own: a document found nowhere
 	// names where the repository would hold it too.
 	absent := filepath.Join(t.TempDir(), ".agister")
-	unset := fsdefs.Layered{Global: global, Absent: absent}
-	if doc, err := unset.Read(ctx, definition.KindPolicy, "shared"); err != nil || string(doc.Bytes) != "global" || doc.Source.Project {
+	unset := fsdefs.Layered{Home: global, Absent: absent}
+	if doc, err := unset.Read(ctx, definition.KindPolicy, "shared"); err != nil || string(doc.Bytes) != "from: home\n" || doc.Source.Layer == definition.LayerRepository {
 		t.Fatalf("with an absent project = %+v, %v", doc, err)
 	}
 	want := "not found (expected " + filepath.Join(absent, "policies", "missing.yaml") + " or " + filepath.Join(global.Dir, "policies", "missing.yaml") + ")"
@@ -185,11 +203,11 @@ func TestPromptsAreMarkdownFiles(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	layered := fsdefs.Layered{Global: global, Project: &project}
+	layered := fsdefs.Layered{Home: global, Repository: &project}
 	if names, err := layered.List(ctx, definition.KindPrompt); err != nil || !reflect.DeepEqual(names, []string{"review"}) {
 		t.Fatalf("list = %v, %v", names, err)
 	}
-	if doc, err := layered.Read(ctx, definition.KindPrompt, "review"); err != nil || string(doc.Bytes) != text || doc.Source.Path != path || doc.Source.Project {
+	if doc, err := layered.Read(ctx, definition.KindPrompt, "review"); err != nil || string(doc.Bytes) != text || doc.Source.Path != path || doc.Source.Layer == definition.LayerRepository {
 		t.Fatalf("read = %+v, %v", doc.Source, err)
 	}
 	want := "not found (expected " + filepath.Join(project.Dir, "prompts", "style.md") + " or " + filepath.Join(global.Dir, "prompts", "style.md") + ")"
@@ -199,28 +217,28 @@ func TestPromptsAreMarkdownFiles(t *testing.T) {
 }
 
 // A brief's form is briefs/<name>.yaml (ADR-026 rule 5), and a project's
-// replaces home's of the same name, as for every other kind.
+// comes before home's of the same name, as for every other kind.
 //
 // Contract test: the settings store against the real filesystem.
 func TestBriefsAreYAMLFilesAndTheProjectsComeFirst(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
 	global, project := fsdefs.Store{Dir: t.TempDir()}, fsdefs.Store{Dir: t.TempDir()}
-	globalPath, _, err := global.Write(ctx, definition.KindBrief, "goal", []byte("home"), "")
+	globalPath, _, err := global.Write(ctx, definition.KindBrief, "goal", []byte("from: home\n"), "")
 	if err != nil || globalPath != filepath.Join(global.Dir, "briefs", "goal.yaml") {
 		t.Fatalf("write = %q, %v", globalPath, err)
 	}
 	global.Write(ctx, definition.KindBrief, "step", []byte("home step"), "")
-	projectPath, _, _ := project.Write(ctx, definition.KindBrief, "goal", []byte("project"), "")
-	layered := fsdefs.Layered{Global: global, Project: &project}
+	projectPath, _, _ := project.Write(ctx, definition.KindBrief, "goal", []byte("from: project\n"), "")
+	layered := fsdefs.Layered{Home: global, Repository: &project}
 	if names, err := layered.List(ctx, definition.KindBrief); err != nil || !reflect.DeepEqual(names, []string{"goal", "step"}) {
 		t.Fatalf("list = %v, %v", names, err)
 	}
 	doc, err := layered.Read(ctx, definition.KindBrief, "goal")
-	if err != nil || string(doc.Bytes) != "project" || doc.Source.Path != projectPath || !doc.Source.Project || doc.Source.Overrides != globalPath {
+	if err != nil || string(doc.Bytes) != "from: project\n" || doc.Source.Path != projectPath || doc.Source.Layer != definition.LayerRepository || replaced(doc.Source) != globalPath {
 		t.Fatalf("goal = %+v, %v", doc.Source, err)
 	}
-	if doc, err := layered.Read(ctx, definition.KindBrief, "step"); err != nil || string(doc.Bytes) != "home step" || doc.Source.Project {
+	if doc, err := layered.Read(ctx, definition.KindBrief, "step"); err != nil || string(doc.Bytes) != "home step" || doc.Source.Layer == definition.LayerRepository {
 		t.Fatalf("step = %+v, %v", doc.Source, err)
 	}
 }
@@ -257,13 +275,13 @@ func TestADanglingPromptLinkIsNotAbsent(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			layered := fsdefs.Layered{Global: global, Project: &project}
+			layered := fsdefs.Layered{Home: global, Repository: &project}
 			names, err := layered.List(ctx, definition.KindPrompt)
 			if c.listed && (err != nil || !reflect.DeepEqual(names, []string{"review"})) || !c.listed && (err == nil || !strings.Contains(err.Error(), link)) {
 				t.Fatalf("listed = %v, %v", names, err)
 			}
 			doc, err := layered.Read(ctx, definition.KindPrompt, "review")
-			if err == nil || errors.Is(err, definition.ErrNotFound) || !strings.Contains(err.Error(), "cannot be resolved") || !doc.Source.Project {
+			if err == nil || errors.Is(err, definition.ErrNotFound) || !strings.Contains(err.Error(), "cannot be resolved") || doc.Source.Layer != definition.LayerRepository {
 				t.Fatalf("read = %+v, %v", doc.Source, err)
 			}
 		})
@@ -272,7 +290,7 @@ func TestADanglingPromptLinkIsNotAbsent(t *testing.T) {
 		t.Parallel()
 		ctx := context.Background()
 		global, project := fsdefs.Store{Dir: t.TempDir()}, fsdefs.Store{Dir: t.TempDir()}
-		layered := fsdefs.Layered{Global: global, Project: &project}
+		layered := fsdefs.Layered{Home: global, Repository: &project}
 		for _, state := range []string{"no folder", "an empty folder"} {
 			if names, err := layered.List(ctx, definition.KindPrompt); err != nil || len(names) != 0 {
 				t.Fatalf("%s: listed = %v, %v", state, names, err)
@@ -321,13 +339,13 @@ func TestADanglingBriefLinkIsNotAbsent(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			layered := fsdefs.Layered{Global: global, Project: &project}
+			layered := fsdefs.Layered{Home: global, Repository: &project}
 			names, err := layered.List(ctx, definition.KindBrief)
 			if c.listed && (err != nil || !reflect.DeepEqual(names, []string{"goal"})) || !c.listed && (err == nil || !strings.Contains(err.Error(), link)) {
 				t.Fatalf("listed = %v, %v", names, err)
 			}
 			doc, err := layered.Read(ctx, definition.KindBrief, "goal")
-			if err == nil || errors.Is(err, definition.ErrNotFound) || !strings.Contains(err.Error(), "cannot be resolved") || !doc.Source.Project || doc.Bytes != nil {
+			if err == nil || errors.Is(err, definition.ErrNotFound) || !strings.Contains(err.Error(), "cannot be resolved") || doc.Source.Layer != definition.LayerRepository || doc.Bytes != nil {
 				t.Fatalf("read = %+v %q, %v", doc.Source, doc.Bytes, err)
 			}
 		})
@@ -444,7 +462,7 @@ func TestWorkspaceSettingsAreAnOptionalSingleton(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
 	global, project := fsdefs.Store{Dir: t.TempDir()}, fsdefs.Store{Dir: t.TempDir()}
-	layered := fsdefs.Layered{Global: global, Project: &project}
+	layered := fsdefs.Layered{Home: global, Repository: &project}
 	if names, err := layered.List(ctx, definition.KindWorkspace); err != nil || len(names) != 0 {
 		t.Fatalf("none = %v, %v", names, err)
 	}
@@ -456,7 +474,7 @@ func TestWorkspaceSettingsAreAnOptionalSingleton(t *testing.T) {
 	if names, err := layered.List(ctx, definition.KindWorkspace); err != nil || !reflect.DeepEqual(names, []string{"workspace"}) {
 		t.Fatalf("global = %v, %v", names, err)
 	}
-	if doc, err := layered.Read(ctx, definition.KindWorkspace, "workspace"); err != nil || string(doc.Bytes) != "global" || doc.Source.Project {
+	if doc, err := layered.Read(ctx, definition.KindWorkspace, "workspace"); err != nil || string(doc.Bytes) != "global" || doc.Source.Layer == definition.LayerRepository {
 		t.Fatalf("global = %+v, %v", doc.Source, err)
 	}
 
@@ -465,7 +483,7 @@ func TestWorkspaceSettingsAreAnOptionalSingleton(t *testing.T) {
 		t.Fatalf("both = %v, %v", names, err)
 	}
 	doc, err := layered.Read(ctx, definition.KindWorkspace, "workspace")
-	if err != nil || string(doc.Bytes) != "project" || doc.Source.Path != projectPath || !doc.Source.Project || doc.Source.Overrides != globalPath {
+	if err != nil || string(doc.Bytes) != "project" || doc.Source.Path != projectPath || doc.Source.Layer != definition.LayerRepository || replaced(doc.Source) != globalPath {
 		t.Fatalf("project = %+v, %v", doc.Source, err)
 	}
 }
@@ -480,7 +498,7 @@ func TestBlocksAreTheProjectsOwn(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
 	global, project := fsdefs.Store{Dir: t.TempDir()}, fsdefs.Store{Dir: t.TempDir()}
-	layered := fsdefs.Layered{Global: global, Project: &project}
+	layered := fsdefs.Layered{Home: global, Repository: &project}
 	if names, err := layered.List(ctx, definition.KindBlocks); err != nil || len(names) != 0 {
 		t.Fatalf("none = %v, %v", names, err)
 	}
@@ -492,8 +510,8 @@ func TestBlocksAreTheProjectsOwn(t *testing.T) {
 	if names, err := layered.List(ctx, definition.KindBlocks); err != nil || !reflect.DeepEqual(names, []string{"blocks"}) {
 		t.Fatalf("home's = %v, %v", names, err)
 	}
-	for name, source := range map[string]fsdefs.Layered{"in a project": layered, "home alone": {Global: global}} {
-		if doc, err := source.Read(ctx, definition.KindBlocks, "blocks"); err != nil || string(doc.Bytes) != "home" || doc.Source.Project || doc.Source.Path != globalPath {
+	for name, source := range map[string]fsdefs.Layered{"in a project": layered, "home alone": {Home: global}} {
+		if doc, err := source.Read(ctx, definition.KindBlocks, "blocks"); err != nil || string(doc.Bytes) != "home" || doc.Source.Layer == definition.LayerRepository || doc.Source.Path != globalPath {
 			t.Fatalf("%s: home's = %+v, %v", name, doc.Source, err)
 		}
 	}
@@ -504,7 +522,7 @@ func TestBlocksAreTheProjectsOwn(t *testing.T) {
 	}
 	doc, err := layered.Read(ctx, definition.KindBlocks, "blocks")
 	if err != nil || string(doc.Bytes) != "project" || doc.Source.Path != projectPath || projectPath != filepath.Join(project.Dir, "blocks.yaml") ||
-		!doc.Source.Project || doc.Source.Overrides != globalPath {
+		doc.Source.Layer != definition.LayerRepository || replaced(doc.Source) != globalPath {
 		t.Fatalf("project's = %+v, %v", doc.Source, err)
 	}
 }
@@ -535,13 +553,13 @@ func TestBlocksThatCannotBeReadAreNotAbsent(t *testing.T) {
 			if names, err := project.List(ctx, definition.KindBlocks); err != nil || !reflect.DeepEqual(names, []string{"blocks"}) {
 				t.Fatalf("listed = %v, %v", names, err)
 			}
-			layered := fsdefs.Layered{Global: global, Project: &project}
+			layered := fsdefs.Layered{Home: global, Repository: &project}
 			if names, err := layered.List(ctx, definition.KindBlocks); err != nil || !reflect.DeepEqual(names, []string{"blocks"}) {
 				t.Fatalf("layered listed = %v, %v", names, err)
 			}
 			doc, err := layered.Read(ctx, definition.KindBlocks, "blocks")
 			if err == nil || !strings.Contains(err.Error(), path) || strings.Contains(err.Error(), "not found") ||
-				!doc.Source.Project || doc.Source.Path != path || len(doc.Bytes) != 0 {
+				doc.Source.Layer != definition.LayerRepository || doc.Source.Path != path || len(doc.Bytes) != 0 {
 				t.Fatalf("read = %+v %q, %v", doc.Source, doc.Bytes, err)
 			}
 		})

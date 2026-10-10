@@ -1,0 +1,6 @@
+# The Go guidance this repository gives tests_review_codex (LAB-161):
+# the testing rules the implementer wrote the tests under. Its other
+# fields come from home. clarity_review_codex, intent_review_codex and
+# review_judge get no Go guidance: they read wording, the goal's
+# readings and the findings, not the code's rules.
+guidance: [go-testing-seams]

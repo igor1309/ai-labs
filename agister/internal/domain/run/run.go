@@ -196,7 +196,8 @@ type Turn struct {
 }
 
 // AbsentPrompt is an optional prompt input the call went ahead without:
-// the input, and the prompt it names that neither settings layer had.
+// the input, and the prompt it names that neither settings layer had. Only
+// records written before ADR-028 hold one.
 type AbsentPrompt struct {
 	Input  string `json:"input"`
 	Prompt string `json:"prompt"`
@@ -251,8 +252,13 @@ type Record struct {
 	CreatedAt   time.Time          `json:"created_at"`
 	FinishedAt  *time.Time         `json:"finished_at,omitempty"`
 	Definitions []DefinitionSource `json:"definitions,omitempty"`
+	// Layers are the settings layers the call selected, nearest first;
+	// unset on records written before ADR-028.
+	Layers []Layer `json:"layers,omitempty"`
 	// AbsentPrompts are the optional prompt inputs whose prompt neither
 	// settings layer had, so the agent was not given them (ADR-019 rule 3).
+	// No longer written (ADR-028 rule 11): a record written before reads
+	// as it was.
 	AbsentPrompts []AbsentPrompt   `json:"absent_prompts,omitempty"`
 	Effective     *EffectivePolicy `json:"effective,omitempty"`
 	Verify        *Verify          `json:"verify,omitempty"`

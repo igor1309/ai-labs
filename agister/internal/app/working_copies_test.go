@@ -163,14 +163,13 @@ func TestAWorkflowRunsFileInputsHaveWorkingCopies(t *testing.T) {
 	}
 }
 
-// A file input after a resolved prompt has its own working copy, and the
-// prompt input has none.
-func TestAFileInputAfterAPromptHasItsWorkingCopy(t *testing.T) {
+// A file input has its own working copy, and the prompt and guidance
+// inputs given after it have none (ADR-028 rule 8).
+func TestAFileInputHasItsWorkingCopyAndThePromptsNone(t *testing.T) {
 	t.Parallel()
 	h := keptInputs("the brief")
-	diff := `    diff: {source: git.diff, base: "${param.base}", head: "${param.candidate}"}` + "\n"
-	h.defs.docs[definition.KindProcess]["p"] = strings.Replace(h.defs.docs[definition.KindProcess]["p"], diff, diff+"    rules: {source: prompt, name: review}\n", 1)
-	h.defs.docs[definition.KindPrompt] = map[string]string{"review": reviewPrompt}
+	h.defs.docs[definition.KindProcess]["p"] = strings.Replace(h.defs.docs[definition.KindProcess]["p"], "prompt: inspect\n", "prompt: inspect\nguidance: [review]\n", 1)
+	h.defs.docs[definition.KindPrompt]["review"] = reviewPrompt
 	readFrom(h.inputs)
 	record := h.call(t, contract.CallRequest{})
 	if record.Result.Status != run.Completed {
@@ -183,8 +182,10 @@ func TestAFileInputAfterAPromptHasItsWorkingCopy(t *testing.T) {
 	if want := map[string][]byte{brief.CachePath: []byte("the brief")}; !reflect.DeepEqual(h.copies.kept, want) {
 		t.Fatalf("kept %v, want %v", h.copies.kept, want)
 	}
-	if rules := inputOf(t, record, "rules"); rules.CachePath != "" {
-		t.Fatalf("rules = %+v", rules)
+	for _, name := range []string{"prompt", "guidance.review"} {
+		if input := inputOf(t, record, name); input.CachePath != "" {
+			t.Fatalf("%s = %+v", name, input)
+		}
 	}
 }
 

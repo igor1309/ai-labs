@@ -32,8 +32,15 @@ a repository's settings can run and what they are made of:
 ## Settings
 
 Global settings live in `~/.agister/` (`$AGISTER_HOME` or `--home`); a
-repository's own `.agister/` takes priority, document by document. Commands
-check the composed settings before use. A YAML settings file (a process,
+repository's `.agister/` and the nearest project `.agister/` below the
+worktree root compose over home by field ([ADR-028](docs/adr/028-settings-are-layered-by-field.md),
+decided and implemented). The launch directory, or `--dir`, selects the
+project; each layer inherits only from its parent. Maps merge by key at
+every depth; lists and scalars replace whole, `[]` means none, and an
+empty map over a map changes nothing. A partial sets only what it changes;
+the composition is checked. Prompts, skills and schemas are taken whole
+from the nearest layer. Commands check the composed settings before use.
+A YAML settings file (a process,
 workflow, policy, runtime mapping, verification, brief form or
 `blocks.yaml`) holds exactly one YAML document: a second, after a `---`,
 even an empty one, is a problem of that file (`must hold exactly one YAML
@@ -46,6 +53,10 @@ service settings, a file or a skill's folder whose name is not a name, a
 settings directory that cannot be listed, or a workflow named like a
 process stop every command except `init`, `install`, `check`, cancelling a
 run and following an admitted run.
+An invalid layer also stops commands launched under it: a second project
+`.agister/` between the nearest one and the root, a project `blocks.yaml`,
+or a `layer.yaml` that cannot be used (home holds none). `check` names the
+layer, the path and the reason; elsewhere in the worktree it does not apply.
 `check` reports every problem and says what each refuses. When a problem
 names a field, a field's shape, an adapter, an input source or a schema
 version this binary does not know, the check adds a line saying the
@@ -59,7 +70,14 @@ field with a wrong value adds no such line. Runs are
 recorded under `~/.agister/runs/<id>/`.
 
 Listings and shows display refused items. An agent selected with `--agent`
-is checked in place of the process's default agent. A write is refused if
+is checked in place of the process's default agent. `check`, `process
+list`, `process show`, `workflow list` and `workflow show` take `--dir` to
+read a launch directory's layers; outside a git worktree only home is read.
+`process show` lists each document's layer files nearest first, and each
+leaf field's layer for each composed document; `--json` carries
+the same. `check --tree` lists those files and, under each but the
+farthest, the fields it gave (`(none)` when it gave none); prompts taken
+whole mark farther files `(replaced)`. A write is refused if
 it adds a problem; existing document problems do not stop it.
 
 `agister init` installs the example settings. `agister install <dir>`
@@ -82,11 +100,14 @@ regular file, refuses the install, naming the skill and those files. Like
 
 A process declares its verification command inline, or names a document
 that holds it: `verify: verify:repo` is `verifies/repo.yaml`, found like any
-other document, the repository's before the global one. So a process shared
+other composed document, project over repository over home. So a process shared
 by every repository carries no command, and each repository states its own
-once. A process whose named verification exists in neither place is not a
+once. A process whose named verification exists in no layer is not a
 problem of the settings: `check` warns, and only calls of that process are
-refused ([ADR-010](docs/adr/010-a-process-names-its-verification.md)).
+refused ([ADR-010](docs/adr/010-a-process-names-its-verification.md)). A
+project fills `verifies/repo.yaml` in its own layer for `implement`, with
+a command written from the worktree root (`cd agister && …`); launched
+where no layer fills it, `implement` is refused.
 
 A policy may set staleness limits under `stale`, and a process may only
 narrow them: `no_event`, `tool_command` and `repeated_tool_calls` for an
@@ -167,25 +188,25 @@ event `CACHE_FAILED`; the input has no `cache_path`, and the run goes on.
 
 A prompt the settings fix, such as a reviewer's instructions, is a document
 too: `prompts/review.md`, the whole file its text, no header. A process
-gives it to its agent as an input, `{source: prompt, name: review}`; the
-name is literal, never interpolated. It is found like any other document,
-so a repository replaces one prompt with `.agister/prompts/review.md`
-without copying the processes that use it. A process naming a prompt that
-exists in neither place is a problem of the settings
-([ADR-014](docs/adr/014-prompts-are-settings.md)). With `optional: true`
-the input is optional: when neither place has the prompt, the call goes
-ahead without that input, and its record lists the input and the prompt
-as absent; anything at the prompt's path that cannot be read, such as a
-directory, is a broken prompt that refuses the call
-([ADR-019](docs/adr/019-a-prompt-may-be-optional.md)). The `implement`
-processes of [home/](home/) name `go-testing-seams` and `go-architecture`
-this way, and this repository's `.agister/prompts/` supplies both as
-copies of the ones in `prompts/`, which a test keeps identical. The
-reviews that check what those prompts ask for are given them the same
-way: `architecture_review_codex` names `go-architecture` and
-`tests_review_codex` names `go-testing-seams`. A text
-the caller names stays a `source: file` input, read relative to the
-caller's directory.
+names one required `prompt` and a `guidance` list of further prompts,
+empty when absent or `[]`. Names are literal, never interpolated, each
+resolved from the nearest layer that has it; a missing name or an
+unreadable prompt refuses the call. The agent receives its values, then
+input `prompt`, then `guidance.<name>` in list order, each recorded with
+its digest. `{source: prompt}` and `optional` are refused: ADR-028
+supersedes [ADR-019](docs/adr/019-a-prompt-may-be-optional.md) and amends
+[ADR-014](docs/adr/014-prompts-are-settings.md). Home's `implement*`
+processes share prompt `implement` and name no Go guidance.
+
+A repository or project can hold `layer.yaml`, with
+`schema: agister.layer/v1alpha1` and `prompts: [prompts]`: additional
+folders relative to the directory holding `.agister/`, inside it, that
+must exist. `.agister/prompts/<name>.md` comes first, then listed folders
+in order. Only names a process gives are read there; unrelated files are
+neither checked nor shown as unused. Guidance a node must follow is in
+its `prompt` or `guidance`, resolved and recorded by Agister, never a
+pointer in `AGENTS.md` or a skill (ADR-028 rule 13). A text the caller
+names stays a `source: file` input, relative to the launch directory.
 
 The review workflows of [home/](home/), `code_review` and `adr_review`,
 take a required `goal`: the file that says what the change is for, its
@@ -210,7 +231,7 @@ or a reference that names no file or one that does not exist. An input
 without `form` is not checked. Agister checks the structure, never the
 meaning. The forms are read with the call and recorded among its
 definitions, and `process show` and `workflow show` give each input's
-forms. `check` reports a form that exists in neither layer as a problem
+forms. `check` reports a form that exists in no layer as a problem
 of the process or workflow that names it, and a broken form as a problem
 of its own; `check --tree` shows each form under what names it
 ([ADR-026](docs/adr/026-the-brief-is-a-runs-input-contract.md) rules 3 to
@@ -233,7 +254,7 @@ call and recorded among its definitions with its digest, and `process show`
 lists them, the process's and the agent's, with the layer each comes from.
 A skill is found like any other document, so a repository replaces one,
 whole, with `.agister/skills/review/SKILL.md`. `check` reports a name that
-exists in neither place as a problem of the agent or the process that
+exists in no layer as a problem of the agent or the process that
 names it, and a broken skill as a problem of its own: a folder holding
 anything beside its `SKILL.md`, a `SKILL.md` that is not a regular file, or
 front matter that does not name and describe it. Either refuses only the
@@ -288,8 +309,8 @@ that exists nowhere stops every command, as broken service settings do;
 and is a problem, and `install` does not install one.
 
 Agister is a runner, not a guard: running it in a repository applies that
-repository's `.agister/`, including the commands its agents run. Review
-settings you did not write.
+repository's and project's `.agister/`, including the commands its agents
+run. Review settings you did not write.
 
 Every call works in the caller's worktree
 ([ADR-025](docs/adr/025-a-call-works-where-it-is-called.md)): the root of
@@ -411,11 +432,12 @@ document names a path of a machine or a repository. Home is brought to it
 with `agister install home` from `agister/` in the main checkout, after a
 change to the folder merges and the binary that checks it is installed:
 any difference shows as a replace, with its diff, in that install's plan.
-Live state, `blocks.yaml` and verifications stay out of it. The
-repository's own `.agister/` keeps only what is this repository's
-(`verifies/repo.yaml` and the two Go prompts), and its runs take every
-other document from home. A test installs the folder into an empty home
-and checks it as global settings.
+Live state, `blocks.yaml`, `layer.yaml` and verifications stay out of it. The
+repository's own `.agister/` keeps only what is this repository's: its
+`layer.yaml` and the Go guidance of the processes that write and review its
+code (LAB-161); project layers can set their own
+verification and guidance without copying home's processes. A test installs
+the folder into an empty home and checks it as global settings.
 
 The caller skill, `skills/agister/SKILL.md` in this folder, is for the
 agent that runs Agister, not a settings skill. Install it by linking the

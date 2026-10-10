@@ -369,11 +369,13 @@ tools: {allow: [repository.read, repository.write]}
 workspace: {access: read-write, scope: candidate}
 ` + settings.policy,
 		"schemas/done.json": `{"type":"object","required":["done"],"properties":{"done":{"type":"boolean"}}}`,
+		"prompts/impl.md":   "Make the change the check asks for.\n",
 		"processes/impl.yaml": fmt.Sprintf(`schema: agister.process/v1alpha1
 name: impl
 type: process
 uses: agent:impl
 policy: process-policy:impl
+prompt: impl
 input:
   instruction: Make the check pass.
   params:

@@ -8,6 +8,7 @@ name: review_summary
 type: process
 uses: agent:reviewer
 policy: process-policy:read-only
+prompt: review-summary
 
 input:
   instruction: >-

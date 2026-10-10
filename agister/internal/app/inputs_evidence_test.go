@@ -308,7 +308,7 @@ func TestInputArtifactsAreEachInputsOwn(t *testing.T) {
 		{"notes/today", texts["notes.md"], "input.4.txt"},
 		{longName, texts["long.md"], "input.5.txt"},
 	}
-	if len(record.Inputs) != 6 {
+	if len(record.Inputs) != 7 {
 		t.Fatalf("inputs = %+v", record.Inputs)
 	}
 	for i, want := range want {
@@ -354,7 +354,7 @@ func TestInputArtifactsOfNamesThatDifferInCaseAreEachInputsOwn(t *testing.T) {
 		{"Goal", texts["upper.md"], "input.3.txt"},
 		{"notes", texts["notes.md"], "input-notes.txt"},
 	}
-	if len(record.Inputs) != 5 {
+	if len(record.Inputs) != 6 {
 		t.Fatalf("inputs = %+v", record.Inputs)
 	}
 	folded := map[string]bool{}
@@ -376,26 +376,36 @@ func TestInputArtifactsOfNamesThatDifferInCaseAreEachInputsOwn(t *testing.T) {
 }
 
 // A long prompt is kept as an artifact of the run that receives it, with
-// its digest, its identity; the agent receives it unchanged.
+// its digest, its identity; the agent receives it unchanged. So is a long
+// guidance prompt.
 func TestALongPromptIsKeptAsAnArtifactOfItsRun(t *testing.T) {
 	t.Parallel()
 	h := newHarness()
-	text := longText + "Review the change against the rules.\n"
-	prompted(h, text)
+	text := longText + "Inspect the change for defects.\n"
+	h.defs.docs[definition.KindPrompt]["inspect"] = text
+	guidance := longText + "Prove each rule with a test.\n"
+	guided(h, []string{"testing"}, map[string]string{"testing": guidance})
 	record := h.call(t, contract.CallRequest{})
 	if record.Result.Status != run.Completed {
 		t.Fatalf("result %+v: %s", record.Result, message(record))
 	}
-	digest := "sha256:" + sha(text)
-	want := run.Artifact{Name: "input-rules.txt", Path: "artifacts/input-rules.txt", Digest: digest, Bytes: int64(len(text))}
-	if rules := inputOf(t, record, "rules"); rules.Source != "prompt" || rules.Value != nil || rules.Identity != digest || rules.Artifact == nil || *rules.Artifact != want {
-		t.Fatalf("rules = %+v, artifact %+v", rules, rules.Artifact)
-	}
-	if stored := string(h.recorder.artifacts["input-rules.txt"]); stored != text {
-		t.Fatalf("rules stored as %q", stored)
-	}
-	if calls := h.runner.calls(); len(calls) != 1 || !strings.Contains(calls[0].Prompt, text) {
-		t.Fatalf("the agent was not given the prompt: %+v", calls)
+	// guidance.testing is no plain name: its artifact is named by its place.
+	for input, c := range map[string]struct{ text, name string }{
+		"prompt":           {text, "input-prompt.txt"},
+		"guidance.testing": {guidance, "input.3.txt"},
+	} {
+		text, name := c.text, c.name
+		digest := "sha256:" + sha(text)
+		want := run.Artifact{Name: name, Path: "artifacts/" + name, Digest: digest, Bytes: int64(len(text))}
+		if got := inputOf(t, record, input); got.Source != "prompt" || got.Value != nil || got.Identity != digest || got.Artifact == nil || *got.Artifact != want {
+			t.Fatalf("%s = %+v, artifact %+v, want %+v", input, got, got.Artifact, want)
+		}
+		if stored := string(h.recorder.artifacts[name]); stored != text {
+			t.Fatalf("%s stored as %q", input, stored)
+		}
+		if calls := h.runner.calls(); len(calls) != 1 || !strings.Contains(calls[0].Prompt, text) {
+			t.Fatalf("the agent was not given %s: %+v", input, calls)
+		}
 	}
 }
 

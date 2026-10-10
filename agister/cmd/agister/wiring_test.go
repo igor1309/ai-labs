@@ -63,9 +63,19 @@ func (m *marker) Read(_ context.Context, kind definition.Kind, name string) (def
 	data, err := fs.ReadFile(examples.Settings(), matches[0])
 	sum := sha256.Sum256(data)
 	return definition.Document{
-		Source: definition.Source{Kind: kind, Name: name, Path: m.name + "/" + matches[0], SHA256: hex.EncodeToString(sum[:])},
+		Source: definition.Source{Kind: kind, Name: name, Path: m.name + "/" + matches[0], Layer: definition.LayerHome, SHA256: hex.EncodeToString(sum[:])},
 		Bytes:  data,
 	}, err
+}
+
+// ReadListed reads as Read does: home lists no folders.
+func (m *marker) ReadListed(ctx context.Context, kind definition.Kind, name string) (definition.Document, error) {
+	return m.Read(ctx, kind, name)
+}
+
+// Layers are home alone, which the marker stands for.
+func (m *marker) Layers(context.Context) []definition.LayerDir {
+	return []definition.LayerDir{{Layer: definition.LayerHome, Dir: m.name}}
 }
 
 func (m *marker) List(_ context.Context, kind definition.Kind) ([]string, error) {

@@ -60,6 +60,7 @@ name: p
 type: process
 uses: agent:a
 policy: process-policy:pol
+prompt: inspect
 input:
   instruction: Inspect the change.
   params:
@@ -76,8 +77,12 @@ output:
   require_valid: true
 `},
 		definition.KindSchema: {"s": schema},
+		definition.KindPrompt: {"inspect": inspectPrompt},
 	}
 }
+
+// inspectPrompt is the harness's process p's prompt (ADR-028 rule 8).
+const inspectPrompt = "Inspect the change for defects.\n"
 
 type harness struct {
 	calls      *app.Calls
@@ -246,7 +251,7 @@ func TestCompletedCallSendsTheComposedPayloads(t *testing.T) {
 	if got.Instruction != "Inspect the change.\n\nGranted permissions: repository.read, repository.search\nWithheld permissions: repository.diff" {
 		t.Fatalf("instruction = %q", got.Instruction)
 	}
-	if got.Prompt != "## candidate_revision\n\nsha-HEAD\n\n## diff\n\n```\nline one\nline two\n```" {
+	if got.Prompt != "## candidate_revision\n\nsha-HEAD\n\n## diff\n\n```\nline one\nline two\n```\n\n## prompt\n\n```\n"+inspectPrompt+"```" {
 		t.Fatalf("prompt = %q", got.Prompt)
 	}
 	// The schema was compiled before the call and the output validated after.
@@ -257,11 +262,11 @@ func TestCompletedCallSendsTheComposedPayloads(t *testing.T) {
 	var kinds []string
 	for _, source := range record.Definitions {
 		kinds = append(kinds, string(source.Kind)+"/"+source.Name)
-		if len(source.SHA256) != 64 {
+		if len(digestRecorded(source)) != 64 {
 			t.Fatalf("source without digest: %+v", source)
 		}
 	}
-	if strings.Join(kinds, ",") != "service/service,processes/p,policies/pol,agents/a,runtimes/rt,schemas/s" {
+	if strings.Join(kinds, ",") != "service/service,processes/p,policies/pol,agents/a,runtimes/rt,schemas/s,prompts/inspect" {
 		t.Fatalf("definitions = %v", kinds)
 	}
 	if record.Plan == nil || !reflect.DeepEqual(record.Plan.Withheld, []string{"repository.diff"}) ||
@@ -369,6 +374,23 @@ func TestCostLimitReachesTheRuntimeOrRefuses(t *testing.T) {
 	}
 }
 
+// shippedPrompts gives the harness's settings every prompt the examples
+// ship, which their processes name (ADR-028 rule 8).
+func shippedPrompts(t *testing.T, h *harness) {
+	t.Helper()
+	files, err := fs.Glob(examples.Settings(), "prompts/*.md")
+	if err != nil || len(files) == 0 {
+		t.Fatalf("shipped prompts %q, %v", files, err)
+	}
+	for _, file := range files {
+		data, err := fs.ReadFile(examples.Settings(), file)
+		if err != nil {
+			t.Fatal(err)
+		}
+		h.defs.docs[definition.KindPrompt][strings.TrimSuffix(strings.TrimPrefix(file, "prompts/"), ".md")] = string(data)
+	}
+}
+
 // The shipped ask, review and implement processes and their read-only,
 // static-review and implement policies set no cost limit, so a runtime that
 // cannot enforce one runs them.
@@ -399,6 +421,7 @@ func TestShippedProcessesRunOnARuntimeWithoutACostLimit(t *testing.T) {
 				t.Fatal(err)
 			}
 			h.defs.docs[definition.KindService]["service"] = string(service)
+			shippedPrompts(t, h)
 			h.defs.docs[definition.KindAgent][c.agent] = strings.Replace(h.defs.docs[definition.KindAgent]["a"], `name = "a"`, `name = "`+c.agent+`"`, 1)
 			if c.agent == "assistant" {
 				// Resumable, as the shipped assistant is: implement's
@@ -489,6 +512,7 @@ func askOnCodex(t *testing.T, configure func(service string) string) (*harness, 
 		t.Fatal(err)
 	}
 	h.defs.docs[definition.KindService]["service"] = configure(string(service))
+	shippedPrompts(t, h)
 	h.defs.docs[definition.KindRuntime]["codex"] = `schema: agister.runtime/v1alpha1
 name: codex
 adapter: spy
@@ -585,6 +609,8 @@ func reviewOnCodex(t *testing.T, configure func(service string) string) (*harnes
 	h.defs.docs[definition.KindAgent]["codex-reviewer"] = read(codex, "agents/codex-reviewer.toml")
 	h.defs.docs[definition.KindSchema]["review-result"] = schema
 	h.defs.docs[definition.KindService]["service"] = configure(read(examples.Settings(), "service.toml"))
+	// The example names the shipped prompt it reviews to.
+	shippedPrompts(t, h)
 
 	runtime := read(codex, "runtimes/codex.yaml")
 	for _, edit := range [][2]string{
@@ -1402,8 +1428,8 @@ func TestCallResolvesFromTheSettingsReadBeforeItsRunWasRecorded(t *testing.T) {
 	}
 	want := sha(settingsDocs()[definition.KindAgent]["a"])
 	for _, source := range record.Definitions {
-		if source.Kind == string(definition.KindAgent) && source.SHA256 != want {
-			t.Errorf("agent recorded %s, want %s", source.SHA256, want)
+		if source.Kind == string(definition.KindAgent) && digestRecorded(source) != want {
+			t.Errorf("agent recorded %s, want %s", digestRecorded(source), want)
 		}
 	}
 }
@@ -1450,9 +1476,12 @@ func TestCallRecordsWhatItResolvedUnderTheRecordsOwnTypes(t *testing.T) {
 		}
 		return string(data)
 	}
-	wantService := `{"kind":"service","name":"service","path":"mem/service/service","sha256":"` + sha(settingsDocs()[definition.KindService]["service"]) + `"}`
-	if len(record.Definitions) != 6 || encode(record.Definitions[0]) != wantService {
+	wantService := `{"kind":"service","name":"service","layers":[{"layer":"home","path":"mem/service/service","sha256":"` + sha(settingsDocs()[definition.KindService]["service"]) + `"}]}`
+	if len(record.Definitions) != 7 || encode(record.Definitions[0]) != wantService {
 		t.Errorf("definitions = %s", encode(record.Definitions))
+	}
+	if got := encode(record.Layers); got != `[{"layer":"home","dir":"mem"}]` {
+		t.Errorf("layers = %s", got)
 	}
 	wantEffective := `{"timeout":1200000000000,"max_attempts":1,` +
 		`"allow":["repository.read","repository.search","repository.diff"],"deny":[],` +

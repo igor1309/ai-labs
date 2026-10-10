@@ -34,6 +34,12 @@ func (s failingSource) Read(ctx context.Context, kind definition.Kind, name stri
 	return s.definitionsSpy.Read(ctx, kind, name)
 }
 
+// ReadListed fails where Read does: the spy's layer, home, lists no
+// folders.
+func (s failingSource) ReadListed(ctx context.Context, kind definition.Kind, name string) (definition.Document, error) {
+	return s.Read(ctx, kind, name)
+}
+
 // A snapshot returns again what the source answered, errors included, so a
 // check against it reports what a check against the source reports; and it
 // never reads the source again.

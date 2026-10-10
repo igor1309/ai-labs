@@ -2,8 +2,7 @@
 
 The facts behind `index.html` (top level) and `detailed.html`, each with
 its source. Paths are relative to `agister/`. Checked against trunk at
-8c148634 (2026-10-06); where a call works, against ADR-025 at 57a17137
-(2026-10-07).
+27e7d8b1 (2026-10-10), including the ADR-028 implementation.
 
 ## What settings are
 
@@ -56,15 +55,16 @@ Fields: `internal/domain/definition/documents.go:24-130`, `toml.go:25-60`,
   - its **policy** (`policy: process-policy:<name>`);
   - its **output schema** (`output.schema`, JSON only);
   - its **verification**: inline, or `verify: verify:<name>` (ADR-010);
-  - **prompts**, as inputs `{source: prompt, name: ...}`, maybe optional
-    (ADR-014, ADR-019);
+  - **prompts**, one required `prompt` and a `guidance` list, empty when
+    absent or `[]`; a missing name refuses the call. `{source: prompt}`
+    and `optional` are refused (ADR-028, superseding ADR-019);
   - **skills** (`skills: [...]`, ADR-021);
   - **brief forms**, as `form: [...]` on a `file` input: its text must
     have one of them, or the call is refused before it starts (ADR-026
     rule 8). A workflow's file inputs may name them too.
   It also holds the instruction, caller params, input values (sources:
   `param`, `file`, `git.revision`, `git.merge_base`, `git.diff`,
-  `git.changed_files`, `prompt`; `cmd/agister/main.go` inputs map),
+  `git.changed_files`; `cmd/agister/main.go` inputs map),
   `workspace.revision`, the input HEAD must be at, `workspace.clean`, a
   fresh call needs HEAD's content (unset: `false`), required permissions,
   and limit overrides that may only narrow its policy. A process with a
@@ -131,23 +131,31 @@ Fields: `internal/domain/definition/documents.go:24-130`, `toml.go:25-60`,
   and recorded, and the call is refused if the process requires them.
   (ADR-001 rule 4; `internal/domain/enforce/enforce.go:31`)
 
-## Where they live: two layers
+## Where they live: three layers
 
 - **Home** (global): `$AGISTER_HOME`, else `~/.agister`, or `--home`.
   (`internal/cli/cli.go:88`, `:1283`) Home also holds live state that is
   not settings: `runs/`, `logs/`, `locks/`, `backups/`, and the runtimes'
   sessions (`codex/homes`, `pi/sessions`). (ADR-016 context;
   `cmd/agister/main.go` runtime wiring)
-- **Repo** (project): `<git root>/.agister`. None outside a git repo,
+- **Repository**: `<git root>/.agister`. None outside a git repo,
   without that folder, or when it is home itself. A `.agister` that exists
   but cannot be used is an error, so project settings never silently stop
   applying. (`cmd/agister/main.go:336`)
 - Agents cannot reach home; they can change a repo's `.agister` when they
   may write the repo. (ADR-001 rule 9)
 
+- **Project**: the nearest `.agister/` from the launch directory upward,
+  below the worktree root. The launch directory or `--dir` selects it;
+  `check`, process and workflow list/show take `--dir` too. Nothing reads
+  a sibling layer. A second `.agister/` between it and the root makes the
+  project invalid, as does a project `blocks.yaml` or an unusable
+  `layer.yaml`: commands launched under it are refused. (`fsdefs.Select`,
+  `Layered.Layers`; `cmd/agister/layers_test.go`)
+
 ## Document kinds and layout
 
-Same layout in both layers (`internal/adapters/fsdefs/fsdefs.go:1`,
+Same layout in all three layers (`internal/adapters/fsdefs/fsdefs.go:1`,
 `:81`; `internal/domain/definition/definition.go:20`):
 
 | Kind | File |
@@ -164,6 +172,7 @@ Same layout in both layers (`internal/adapters/fsdefs/fsdefs.go:1`,
 | skills | `skills/<name>/SKILL.md`, the folder's only file (ADR-021) |
 | briefs | `briefs/<name>.yaml` (ADR-026) |
 | blocks (singleton, repo only) | `blocks.yaml` (ADR-018) |
+| layer (repository or project only) | `layer.yaml` (ADR-028) |
 
 - A YAML settings file holds exactly one YAML document: a second, after
   a `---`, even an empty one, is the problem "must hold exactly one YAML
@@ -189,18 +198,32 @@ Same layout in both layers (`internal/adapters/fsdefs/fsdefs.go:1`,
 
 ## How the layers combine
 
-- A repo document replaces home's of the same kind and name, whole; no
-  field merging. It records which home file it overrides. Listing is the
-  union of both layers. (`internal/adapters/fsdefs/fsdefs.go:414-490`)
-- A document missing from both names both expected paths.
-  (`fsdefs.go:461`)
+- Documents of the same kind and filename compose by field, home downward:
+  maps merge by key at every depth; lists, scalars and unlike values
+  replace whole; `[]` means none. An empty map over a map changes nothing.
+  Partials need not repeat `schema` or `name`; the composition is checked.
+  Prompts, skills and schemas are taken whole from the nearest layer.
+  (`definition.Compose`; `fsdefs.Layered.Read`)
+- A document missing from every layer names all expected paths. Broken
+  files are never skipped in favour of a parent's. (`fsdefs.Layered.Read`)
 - Writes from the CLI (`init`, agent create) go to home.
-  (`cmd/agister/main.go:281`)
-- Reuse by name instead of copying: a global process names
-  `verify:repo` and prompts by name, and each repo supplies its own
-  `verifies/repo.yaml` or `prompts/<name>.md`. (ADR-010 rule 5, ADR-014)
-  A prompt input may be optional; missing, it is left out and the record
-  says so. (ADR-019)
+- A project fills `verifies/repo.yaml` in its own layer for `implement`,
+  the command written from the worktree root; without it in any layer,
+  that call is refused. (`cmd/agister/named_verify_test.go`)
+- `layer.yaml` lists extra prompt folders relative to the directory
+  holding `.agister/`, inside it and existing. Its own `prompts/` comes
+  first, then listed folders in order. Only names a process gives are
+  read there; unrelated files are neither checked nor shown as unused.
+  Home holds no `layer.yaml`. (`fsdefs.Store.promptFolders`; ADR-028)
+- A node's required guidance belongs in its `prompt` or `guidance`, never
+  a pointer in `AGENTS.md` or a skill. Values precede input `prompt`, then
+  `guidance.<name>` in list order, each recorded with its digest.
+  (ADR-028 rule 13; `cmd/agister/prompts_test.go`)
+- `process show` lists each document's layer files nearest first, and a
+  fields block naming each composed document's leaf fields with their layers;
+  `--json` carries the same. `check --tree` lists those files and, under
+  each but the farthest, the fields it gave (`(none)` for none). Text
+  documents mark farther files `(replaced)`. (`cmd/agister/layers_test.go`)
 - Limits only narrow: service ⊇ policy ⊇ process ⊇ caller; widening is
   rejected. (ADR-001 rule 3)
 - A repo can block an agent, process, workflow or runtime mapping that
@@ -322,13 +345,13 @@ and ignored, and `check` warns (`internal/app/check.go:289`; ADR-025).
   are kept. Install never deletes; restore deletes only what its install
   created. (ADR-016 rules 6-8)
 - Install and restore run even when settings are broken. (ADR-016 rule 9)
-- Not installed: live state, `blocks.yaml`. A skill
+- Not installed: live state, `blocks.yaml`, `layer.yaml`. A skill
   (`skills/<name>/SKILL.md`) is installed as any document; a skill folder
   holding anything beside its `SKILL.md` refuses the install.
   (`internal/adapters/fsdefs/install.go`; ADR-018 rule 6, ADR-027 rules 8-9)
 - Home's settings have one source in git, `home/`, installed with
   `agister install home`; the repository's `.agister/` keeps only its own
-  (`verifies/repo.yaml`, the Go prompts). A test installs the folder into
+  (`layer.yaml`, the Go guidance partials). A test installs the folder into
   an empty home and checks it. (`cmd/agister/home_folder_test.go`;
   ADR-027)
 - LAB-84's done gates. The caller skill, the README, these notes and
@@ -346,14 +369,31 @@ and ignored, and `check` warns (`internal/app/check.go:289`; ADR-025).
 ## Who reads settings
 
 - The CLI and the core read them through the store, layered as above.
-- `agister pages` reads settings files directly, not through the client
-  contract, read-only, loopback only. (ADR-009) `GET /api/settings`
-  returns the repo's files and home's files; the page composes the layers
-  itself, the same rule as the core: repo over home by kind and name,
-  marked `repo`, `home` or `repo, replaces home`. (`pages/serve.go:94`,
-  `pages/page.js:85`, `pages/README.md`)
+- `agister pages` reads settings files directly, read-only, loopback only
+  (ADR-009). `GET /api/settings` returns composed text and each document's
+  layer files and surviving fields, using `definition.Compose`, as the
+  binary does. The page renders these rather than replacing whole files.
+  It selects home, repository and project from the chosen launch folder;
+  a `layer.yaml` supplies only prompts the composed processes name.
+  (`pages/settings.go`, `pages/config.js`, `pages/tests/config.test.js`)
 - `GET /api/skills` is pages' one source of skills: the skills the
   settings name (each with its layer and structure checks) and, apart, the
   skills each runtime would load from repo and home folders.
   (`pages/serve.go:116`, `pages/skills.go:573`; ADR-011 as amended by
   ADR-021; LAB-62, D-16)
+
+## ADR-028 and the binary
+
+- Rule 11 says a document taken whole has one layer. The binary's store
+  and show/tree metadata also name farther files, unopened, with
+  `(replaced)` in the tree. Run records keep only the chosen file.
+  (`fsdefs.Layered.read`; `cmd/agister/prompts_test.go`,
+  `internal/app/calls.go`)
+- Rule 9 describes paths with `..` as invalid. `ParseLayer` uses
+  `filepath.IsLocal` and cleans a path: an internal `a/../b` that stays
+  inside is accepted, while a path that escapes is refused. Folder links
+  that leave are refused too. (`definition.ParseLayer`, `Store.promptFolders`)
+- The ADR's status header still says Proposed at this candidate; the
+  README describes its implemented decision. Guidance rule 13 states what
+  settings must give a node; the binary resolves and records those fields,
+  and does not audit pointers in `AGENTS.md` or skills.

@@ -289,10 +289,10 @@ func TestInstallPlansEachDocument(t *testing.T) {
 		t.Fatalf("ignored: %v", plan.Ignored)
 	}
 	// What only home has is kept, and only settings are planned.
-	if len(plan.Kept) != 15 || plan.Kept[0] != filepath.Join(home, "agents", "assistant.toml") {
+	if len(plan.Kept) != 20 || plan.Kept[0] != filepath.Join(home, "agents", "assistant.toml") {
 		t.Fatalf("kept: %v", plan.Kept)
 	}
-	if len(plan.Inventory) != 17 || plan.Inventory[filepath.Join(home, "service.toml")] != digestText(before["service.toml"]) {
+	if len(plan.Inventory) != 22 || plan.Inventory[filepath.Join(home, "service.toml")] != digestText(before["service.toml"]) {
 		t.Fatalf("inventory: %v", plan.Inventory)
 	}
 	if in.staged != 1 || !reflect.DeepEqual(files(t, home), before) || backups(t, home) != nil {

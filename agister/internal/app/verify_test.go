@@ -345,7 +345,7 @@ func TestRecordedVerifyIsTheResolvedOneUnderTheProcessDigest(t *testing.T) {
 	var digest string
 	for _, source := range record.Definitions {
 		if source.Kind == string(definition.KindProcess) {
-			digest = source.SHA256
+			digest = digestRecorded(source)
 		}
 	}
 	// The digest is of the document with the verify block as resolved; a
