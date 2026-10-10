@@ -78,8 +78,10 @@ Fields: `internal/domain/definition/documents.go:24-130`, `toml.go:25-60`,
 - **runtime mapping** (`runtimes/`): for one adapter (`claude-code`,
   `codex`, `pi`, `opencode`) and adapter contract, the efforts it accepts
   and each restriction primitive (a tool or sandbox mode) with the
-  permissions it grants, verified against runtime versions.
-  (`documents.go:113-130`; ADR-001 terms)
+  permissions it grants, verified against runtime versions. A version it
+  lists for no primitive is probed by the adapter, where it has a probe,
+  and the probe kept in `~/.agister/probes/`, outside the settings.
+  (`documents.go:113-130`; ADR-001 terms; ADR-029)
 - **policy** holds execution defaults: timeout, attempts, cost cap,
   allowed and denied permissions, workspace access (read-only or
   read-write) and scope (candidate or repository), staleness limits.

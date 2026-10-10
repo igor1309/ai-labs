@@ -19,6 +19,7 @@ import (
 	"github.com/igor1309/ai-labs/agister/internal/adapters/fscache"
 	"github.com/igor1309/ai-labs/agister/internal/adapters/fsdefs"
 	"github.com/igor1309/ai-labs/agister/internal/adapters/fsexport"
+	"github.com/igor1309/ai-labs/agister/internal/adapters/fsprobes"
 	"github.com/igor1309/ai-labs/agister/internal/adapters/fsruns"
 	"github.com/igor1309/ai-labs/agister/internal/adapters/git"
 	"github.com/igor1309/ai-labs/agister/internal/adapters/inputs"
@@ -279,6 +280,11 @@ func (c composition) wire(config cli.Config) (contract.Client, *app.BackgroundRe
 			return logging.Runner{Inner: runtimecomposition.NewPi(command, filepath.Join(config.Home, "pi", "sessions"), processes), Adapter: "pi", Log: log, Clock: system.Clock{}}
 		},
 	}
+	// A runtime version the settings verify no primitive for is probed,
+	// once; a probe that passed is kept in the home (ADR-029).
+	probes := app.NewProbes(map[string]func(string) app.RuntimeProber{
+		"codex": func(command string) app.RuntimeProber { return runtimecomposition.NewCodexProber(command, processes) },
+	}, fsprobes.Store{Dir: filepath.Join(config.Home, "probes")}, system.Clock{})
 	workspaces, content := c.git, c.git.content
 	// Abandoned runs are reaped beside the calls, never inside one, but for
 	// the run a dead owner left unfinished in a writer call's worktree,
@@ -301,8 +307,8 @@ func (c composition) wire(config cli.Config) (contract.Client, *app.BackgroundRe
 		Global:      fsdefs.Layered{Home: global},
 		Project:     projectRoot,
 		Settings:    app.SettingsAdapters{Writer: global, Examples: examples.Settings()},
-		Checker:     app.CheckAdapters{Validator: schema.Validator{}, Runtimes: runtimes},
-		Resolver:    app.ResolverAdapters{Identities: runtimes, Validator: schema.Validator{}},
+		Checker:     app.CheckAdapters{Validator: schema.Validator{}, Runtimes: runtimes, Probes: probes},
+		Resolver:    app.ResolverAdapters{Identities: runtimes, Validator: schema.Validator{}, Probes: probes},
 		Calls: app.CallAdapters{
 			Runners: runtimes,
 			Inputs: map[string]app.InputProvider{

@@ -29,8 +29,8 @@ func (h *harness) clientWith(defs app.GateDefinitions, checks func(app.GateDefin
 		Definitions: defs,
 		Global:      defs,
 		Settings:    app.SettingsAdapters{Writer: &writerSpy{}},
-		Checker:     app.CheckAdapters{Validator: h.validator, Runtimes: h.runtimes},
-		Resolver:    app.ResolverAdapters{Identities: h.runtimes, Validator: h.validator},
+		Checker:     app.CheckAdapters{Validator: h.validator, Runtimes: h.runtimes, Probes: h.probes},
+		Resolver:    app.ResolverAdapters{Identities: h.runtimes, Validator: h.validator, Probes: h.probes},
 		Calls: app.CallAdapters{
 			Runners:    h.runtimes,
 			Inputs:     map[string]app.InputProvider{"git.revision": h.inputs, "git.diff": h.inputs, "file": h.inputs, "param": h.inputs},

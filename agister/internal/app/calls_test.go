@@ -114,6 +114,9 @@ type harness struct {
 	// reaper finishes the unfinished runs the holder meets: reaps, unless
 	// a test gives the holder a reaper over its run store.
 	reaper app.HoldReaper
+	// probes verify the versions the settings do not, for the client
+	// clientOn builds; nil: none is probed.
+	probes app.ResolverProbes
 }
 
 func newHarness() *harness {

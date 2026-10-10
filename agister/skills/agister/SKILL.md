@@ -225,6 +225,11 @@ A call is refused before any turn, with exit 3 and the reason, when:
   names each, its path, its problems and how the call reaches it. A
   problem this binary does not know adds the line above after the run's
   summary, and the record's `result.error.unknown` counts such problems.
+- its runtime's version is verified for no primitive and the adapter's
+  probe of it failed (`probing it failed`), with what the probe found. A
+  first call on a new Codex version spends about 20 seconds probing it
+  (ADR-029). Do not edit `verified` to get past this: the sandbox did
+  not hold, or the probe proved nothing; report the outcomes.
 - it cannot take its hold (`is in use`): a writer holds the worktree, or,
   for a writer, any other call holds it. A call is refused, not queued.
 - the worktree overlaps a directory another writer's run worked in and
