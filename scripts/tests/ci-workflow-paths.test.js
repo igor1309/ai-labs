@@ -18,7 +18,7 @@ test("ciPathFilters_shouldNotTreatDashboardScriptAsSharedInfrastructure", () => 
 });
 
 test("ciPathFilters_shouldRunAgisterCore_onAgisterProcessChangeOnly", () => {
-  const changedFiles = [".agister/processes/tests_review_codex.yaml"];
+  const changedFiles = [".agister/processes/tests_review.yaml"];
 
   assert.equal(matchingFilters(changedFiles).has("agister"), true);
   assert.equal(jobRuns("agister-core", changedFiles), true);
