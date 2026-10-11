@@ -14,7 +14,7 @@ input:
     architecture: {source: param, name: architecture}
 
 fan_out:
-  - {node: adversarial, uses: process:adversarial_review}
-  - {node: architecture, uses: process:architecture_review}
+  - {node: adversarial, uses: process:adversarial_review, agent: reviewer}
+  - {node: architecture, uses: process:architecture_review, agent: reviewer}
 
-join: {node: summary, uses: process:review_summary}
+join: {node: summary, uses: process:review_summary, agent: reviewer}

@@ -19,7 +19,6 @@ func promptProcess(fields, values string) string {
 	return `schema: agister.process/v1alpha1
 name: p
 type: process
-uses: agent:a
 ` + fields + `input:
   instruction: Review it.
   params:

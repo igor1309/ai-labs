@@ -70,7 +70,6 @@ func skilledProcess(lines string) string {
 name: p
 type: process
 prompt: review
-uses: agent:a
 ` + lines + `input:
   instruction: Review it.
   params:

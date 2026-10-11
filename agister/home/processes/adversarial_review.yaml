@@ -1,0 +1,6 @@
+schema: agister.process/v1alpha1
+name: adversarial_review
+
+type: process
+extends: process:review
+prompt: code-review-adversarial

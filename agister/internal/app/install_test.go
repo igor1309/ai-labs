@@ -34,13 +34,13 @@ func (h *installHomeSpy) Documents(context.Context) ([]definition.Document, []de
 	return h.docs, nil, nil
 }
 
-func (h *installHomeSpy) Read(_ context.Context, kind definition.Kind, name string) (definition.Document, error) {
+func (h *installHomeSpy) File(_ context.Context, kind definition.Kind, name string) ([]byte, error) {
 	for _, doc := range h.docs {
 		if doc.Source.Kind == kind && doc.Source.Name == name {
-			return doc, nil
+			return doc.Bytes, nil
 		}
 	}
-	return definition.Document{}, errors.New("not found")
+	return nil, errors.New("not found")
 }
 
 func (h *installHomeSpy) Current(_ context.Context, kind definition.Kind, name string) (string, string, error) {

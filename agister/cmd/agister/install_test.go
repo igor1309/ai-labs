@@ -277,7 +277,7 @@ func TestInstallPlansEachDocument(t *testing.T) {
 		{Kind: "agents", Name: "reviewer", Path: filepath.Join(home, "agents", "reviewer.toml"), Action: contract.InstallReplace,
 			Before: digestText(reviewer), After: digestText(reviewer + "# tuned\n"),
 			Diff: "--- " + filepath.Join(home, "agents", "reviewer.toml") + "\n+++ " + filepath.Join(src, "agents", "reviewer.toml") + "\n" +
-				"@@ -5,3 +5,4 @@\n model_family = \"anthropic\"\n effort = \"high\"\n session = \"fresh-only\"\n+# tuned\n"},
+				"@@ -4,3 +4,4 @@\n model = \"sonnet\"\n model_family = \"anthropic\"\n effort = \"high\"\n+# tuned\n"},
 		{Kind: "prompts", Name: "house", Path: filepath.Join(home, "prompts", "house.md"), Action: contract.InstallCreate, After: digestText("Follow the house style.\n")},
 		{Kind: "service", Name: "service", Path: filepath.Join(home, "service.toml"), Action: contract.InstallUnchanged,
 			Before: digestText(before["service.toml"]), After: digestText(before["service.toml"])},
@@ -468,6 +468,45 @@ func TestRestoreUndoesAnInstall(t *testing.T) {
 	}
 	if after := files(t, home); !reflect.DeepEqual(after, before) {
 		t.Fatalf("after restore:\n%v\nwant\n%v", after, before)
+	}
+}
+
+// A restore puts back the bytes the install replaced, and reads home's
+// file as written: a process the install made extend a base is put back
+// though its base was removed since (ADR-016, ADR-030 rule 9).
+func TestRestorePutsBackAProcessWhoseBaseIsGone(t *testing.T) {
+	t.Parallel()
+	home := initedHome(t)
+	child := filepath.Join(home, "processes", "child_ask.yaml")
+	standalone := strings.NewReplacer("name: base_ask", "name: child_ask").Replace(baseAsk) + "prompt: ask\n"
+	write(t, child, standalone)
+	src := filepath.Join(tempDir(t), ".agister")
+	write(t, filepath.Join(src, "processes", "base_ask.yaml"), baseAsk)
+	write(t, filepath.Join(src, "processes", "child_ask.yaml"), childAsk)
+	in := installClient(t, home, nil)
+	result, err := in.installNow(t, src)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Remove(filepath.Join(home, "processes", "base_ask.yaml")); err != nil {
+		t.Fatal(err)
+	}
+
+	plan, err := in.restoreNow(t, result.Stamp)
+	if err != nil {
+		t.Fatalf("restore: %v", err)
+	}
+	var diff string
+	for _, doc := range plan.Documents {
+		if doc.Path == child {
+			diff = doc.Diff
+		}
+	}
+	if !strings.Contains(diff, "-extends: process:base_ask\n") || !strings.Contains(diff, "+timeout: 10m\n") {
+		t.Fatalf("restore plan %+v", plan)
+	}
+	if got := read(t, child); got != standalone {
+		t.Fatalf("after restore %s holds:\n%s", child, got)
 	}
 }
 

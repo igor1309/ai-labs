@@ -2,6 +2,7 @@ package definition_test
 
 import (
 	"errors"
+	"fmt"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -38,8 +39,6 @@ func TestExamplesParse(t *testing.T) {
 			_, parseErr = definition.ParseAgent(doc(kind, name, string(data)))
 		case definition.KindProcess:
 			_, parseErr = definition.ParseProcess(doc(kind, name, string(data)))
-		case definition.KindPolicy:
-			_, parseErr = definition.ParsePolicy(doc(kind, name, string(data)))
 		case definition.KindRuntime:
 			_, parseErr = definition.ParseMapping(doc(kind, name, string(data)))
 		case definition.KindWorkflow:
@@ -71,10 +70,6 @@ func TestYAMLSettingsRejectMoreThanOneDocument(t *testing.T) {
 	}{
 		definition.KindBrief: {"briefs/step.yaml", func(text string) error {
 			_, err := definition.ParseBrief(doc(definition.KindBrief, "step", text))
-			return err
-		}},
-		definition.KindPolicy: {"policies/read-only.yaml", func(text string) error {
-			_, err := definition.ParsePolicy(doc(definition.KindPolicy, "read-only", text))
 			return err
 		}},
 		definition.KindProcess: {"processes/ask.yaml", func(text string) error {
@@ -127,6 +122,8 @@ func TestYAMLSettingsRejectMoreThanOneDocument(t *testing.T) {
 // values declared before it: base from the one resolving ${param.base}, head
 // from the one resolving ${param.candidate}. Bound to ${param.*} instead, each
 // would resolve its revision again, and the two could name different commits.
+// A process that extends a base is read laid over it, and a base is read
+// through each process that extends it (ADR-030 rule 9).
 func TestShippedRevisionInputsUseTheValuesResolvedBeforeThem(t *testing.T) {
 	t.Parallel()
 	settings := examples.Settings()
@@ -144,13 +141,38 @@ func TestShippedRevisionInputsUseTheValuesResolvedBeforeThem(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
+		docs := map[string]definition.Document{}
 		for _, entry := range entries {
 			data, err := fs.ReadFile(files, string(definition.KindProcess)+"/"+entry.Name())
 			if err != nil {
 				t.Fatal(err)
 			}
 			name := strings.TrimSuffix(entry.Name(), filepath.Ext(entry.Name()))
-			process, err := definition.ParseProcess(doc(definition.KindProcess, name, string(data)))
+			docs[name] = doc(definition.KindProcess, name, string(data))
+		}
+		own := func(name string) (definition.Document, error) {
+			if doc, ok := docs[name]; ok {
+				return doc, nil
+			}
+			return definition.Document{}, fmt.Errorf("no process %s", name)
+		}
+		bases := map[string]bool{}
+		for _, doc := range docs {
+			if base := definition.Extends(doc, own); base != "" {
+				bases[base] = true
+			}
+		}
+		for _, entry := range entries {
+			name := strings.TrimSuffix(entry.Name(), filepath.Ext(entry.Name()))
+			if bases[name] {
+				continue
+			}
+			extended, err := definition.Extended(docs[name], own)
+			if err != nil {
+				t.Errorf("%s/processes/%s: %v", root, entry.Name(), err)
+				continue
+			}
+			process, err := definition.ParseProcess(extended)
 			if err != nil {
 				t.Errorf("%s/processes/%s: %v", root, entry.Name(), err)
 				continue
@@ -179,32 +201,6 @@ func TestShippedRevisionInputsUseTheValuesResolvedBeforeThem(t *testing.T) {
 	}
 }
 
-// The research policy parses as written, except for the fields Agister
-// refuses because it would not enforce them, and its constraints, which
-// Agister does not know.
-func TestResearchPolicyParsesInPlace(t *testing.T) {
-	t.Parallel()
-	data, err := os.ReadFile("../../../../research/agister/research/verger/policies/static-review.yaml")
-	if err != nil {
-		t.Fatal(err)
-	}
-	_, err = definition.ParsePolicy(doc(definition.KindPolicy, "static-review", string(data)))
-	var invalid *definition.InvalidError
-	if !errors.As(err, &invalid) || strings.Join(invalid.Messages(), "; ") != "constraints: unknown field; resources: not supported yet: Agister would not enforce it; artifacts: not supported yet: Agister would not enforce it" {
-		t.Fatalf("err = %v", err)
-	}
-	policy, err := definition.ParsePolicy(doc(definition.KindPolicy, "static-review", string(withoutTopLevel(data, "constraints", "resources", "artifacts"))))
-	if err != nil {
-		t.Fatal(err)
-	}
-	limits := policy.Limits
-	if limits.Timeout.String() != "20m0s" || strings.Join(limits.Allow, ",") != "repository.read,repository.diff,repository.search" ||
-		strings.Join(limits.Deny, ",") != "repository.write,repository.history.write,process.execute,network" ||
-		limits.Access != "read-only" || limits.Scope != "candidate" {
-		t.Fatalf("limits = %+v", limits)
-	}
-}
-
 func TestProcessParsing(t *testing.T) {
 	t.Parallel()
 	process, err := definition.ParseProcess(doc(definition.KindProcess, "p", `
@@ -212,7 +208,6 @@ schema: agister.process/v1alpha1
 name: p
 type: process
 prompt: review
-uses: agent:a
 input:
   instruction: Do it.
   params:
@@ -275,7 +270,7 @@ constraints:
 	for _, want := range []string{
 		`surprise: unknown field`,
 		`name: "other" does not match`,
-		`uses: must be "agent:<name>"`,
+		`uses: a process names no agent (ADR-030 rule 2)`,
 		`timeout: invalid duration "soon"`,
 		`refers to ${param.missing}`,
 		`workspace.revision: "nothing" is not an input value`,
@@ -323,10 +318,6 @@ func TestUnreadableDocumentsReportOneProblem(t *testing.T) {
 		},
 		"agent": func(text string) error {
 			_, err := definition.ParseAgent(doc(definition.KindAgent, "a", text))
-			return err
-		},
-		"policy": func(text string) error {
-			_, err := definition.ParsePolicy(doc(definition.KindPolicy, "p", text))
 			return err
 		},
 		"process": func(text string) error {
@@ -456,12 +447,12 @@ primitives:
 
 func TestAgentRoundTrip(t *testing.T) {
 	t.Parallel()
-	agent := definition.Agent{Name: "r", Runtime: "claude-code", Model: "opus", ModelFamily: "anthropic", Effort: "high", Session: definition.SessionResumable}
+	agent := definition.Agent{Name: "r", Runtime: "claude-code", Model: "opus", ModelFamily: "anthropic", Effort: "high"}
 	parsed, err := definition.ParseAgent(doc(definition.KindAgent, "r", string(definition.FormatAgent(agent))))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if parsed.Name != "r" || parsed.Model != "opus" || parsed.ModelFamily != "anthropic" || parsed.Session != definition.SessionResumable {
+	if parsed.Name != "r" || parsed.Model != "opus" || parsed.ModelFamily != "anthropic" || parsed.Effort != "high" {
 		t.Fatalf("parsed = %+v", parsed)
 	}
 	if _, err := definition.ParseAgent(doc(definition.KindAgent, "r", "schema = \"agister.agent/v1alpha1\"\nname = \"r\"\nruntime = \"x\"\ncolour = \"red\"\n")); err == nil || !strings.Contains(err.Error(), "colour: unknown field") {
@@ -498,7 +489,6 @@ schema: agister.process/v1alpha1
 name: p
 type: process
 prompt: review
-uses: agent:a
 input:
   instruction: Do it.
   params:
@@ -527,7 +517,6 @@ schema: agister.process/v1alpha1
 name: p
 type: process
 prompt: review
-uses: agent:a
 input:
   instruction: Do it.
   values:
@@ -548,20 +537,29 @@ output:
 	}
 }
 
-const stalePolicy = `schema: agister.process-policy/v1alpha1
-name: pol
-timeout: 20m
+const staleProcess = `schema: agister.process/v1alpha1
+name: p
+type: process
+prompt: review
+input:
+  instruction: Do it.
+output:
+  format: text
 `
 
-// A policy declares its staleness limits in a stale block; each is
+// staleTimed is a process with a timeout, which its staleness limits may
+// not exceed.
+const staleTimed = staleProcess + "timeout: 20m\n"
+
+// A process declares its staleness limits in a stale block; each is
 // optional, and unset when the block is.
-func TestPolicyDeclaresStalenessLimits(t *testing.T) {
+func TestProcessDeclaresStalenessLimits(t *testing.T) {
 	t.Parallel()
-	policy, err := definition.ParsePolicy(doc(definition.KindPolicy, "pol", stalePolicy))
-	if err != nil || policy.Limits.Stale != (definition.Stale{}) {
-		t.Fatalf("without the block: %+v, %v", policy.Limits.Stale, err)
+	process, err := definition.ParseProcess(doc(definition.KindProcess, "p", staleTimed))
+	if err != nil || process.Limits.Stale != (definition.Stale{}) {
+		t.Fatalf("without the block: %+v, %v", process.Limits.Stale, err)
 	}
-	policy, err = definition.ParsePolicy(doc(definition.KindPolicy, "pol", stalePolicy+`stale:
+	process, err = definition.ParseProcess(doc(definition.KindProcess, "p", staleTimed+`stale:
   no_event: 5m
   no_output: 2m
   tool_command: 20m
@@ -570,13 +568,13 @@ func TestPolicyDeclaresStalenessLimits(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	stale := policy.Limits.Stale
+	stale := process.Limits.Stale
 	if *stale.NoEvent != 5*time.Minute || *stale.NoOutput != 2*time.Minute || *stale.ToolCommand != 20*time.Minute || *stale.RepeatedToolCalls != 5 {
 		t.Fatalf("stale = %+v", stale)
 	}
-	policy, err = definition.ParsePolicy(doc(definition.KindPolicy, "pol", stalePolicy+"stale: {no_event: 5m}\n"))
-	if err != nil || *policy.Limits.Stale.NoEvent != 5*time.Minute || policy.Limits.Stale.NoOutput != nil || policy.Limits.Stale.RepeatedToolCalls != nil {
-		t.Fatalf("one limit: %+v, %v", policy.Limits.Stale, err)
+	process, err = definition.ParseProcess(doc(definition.KindProcess, "p", staleTimed+"stale: {no_event: 5m}\n"))
+	if err != nil || *process.Limits.Stale.NoEvent != 5*time.Minute || process.Limits.Stale.NoOutput != nil || process.Limits.Stale.RepeatedToolCalls != nil {
+		t.Fatalf("one limit: %+v, %v", process.Limits.Stale, err)
 	}
 }
 
@@ -591,28 +589,17 @@ func TestStalenessLimitProblems(t *testing.T) {
 		"stale: {repeated_tool_calls: two}": "stale.repeated_tool_calls: ",
 		"stale: {idle: 5m}":                 "stale.idle: unknown field",
 	} {
-		_, err := definition.ParsePolicy(doc(definition.KindPolicy, "pol", stalePolicy+block+"\n"))
+		_, err := definition.ParseProcess(doc(definition.KindProcess, "p", staleTimed+block+"\n"))
 		if err == nil || !strings.Contains(err.Error(), want) {
 			t.Errorf("%s: err = %v, want %q", block, err, want)
 		}
 	}
 }
 
-const staleProcess = `schema: agister.process/v1alpha1
-name: p
-type: process
-prompt: review
-uses: agent:a
-input:
-  instruction: Do it.
-output:
-  format: text
-`
-
-// A policy and a process declare the recovery of a stale call in the stale
-// block's recover block (ADR-024 rule 5): a budget, which may be 0, and the
+// A process declares the recovery of a stale call in the stale block's
+// recover block (ADR-024 rule 5): a budget, which may be 0, and the
 // instruction. Each is optional, and unset when the block is.
-func TestPolicyAndProcessDeclareStaleRecovery(t *testing.T) {
+func TestProcessDeclaresStaleRecovery(t *testing.T) {
 	t.Parallel()
 	const block = `stale:
   repeated_tool_calls: 5
@@ -623,51 +610,33 @@ func TestPolicyAndProcessDeclareStaleRecovery(t *testing.T) {
       follows.
 `
 	const instruction = "Agister ended your previous turn; the evidence follows."
-	policy, err := definition.ParsePolicy(doc(definition.KindPolicy, "pol", stalePolicy+block))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if got := policy.Limits.Stale.Recover; got.MaxResumes == nil || *got.MaxResumes != 1 || got.Instruction != instruction || *policy.Limits.Stale.RepeatedToolCalls != 5 {
-		t.Fatalf("policy: stale = %+v", policy.Limits.Stale)
-	}
 	process, err := definition.ParseProcess(doc(definition.KindProcess, "p", staleProcess+block))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got := process.Limits.Stale.Recover; got.MaxResumes == nil || *got.MaxResumes != 1 || got.Instruction != instruction {
-		t.Fatalf("process: recover = %+v", got)
+	if got := process.Limits.Stale.Recover; got.MaxResumes == nil || *got.MaxResumes != 1 || got.Instruction != instruction || *process.Limits.Stale.RepeatedToolCalls != 5 {
+		t.Fatalf("recover = %+v", process.Limits.Stale)
 	}
 
-	// 0 is a budget a process sets to take none of its policy's.
 	process, err = definition.ParseProcess(doc(definition.KindProcess, "p", staleProcess+"stale: {recover: {max_resumes: 0}}\n"))
 	if err != nil {
 		t.Fatal(err)
 	}
 	if got := process.Limits.Stale.Recover; got.MaxResumes == nil || *got.MaxResumes != 0 || got.Instruction != "" {
-		t.Fatalf("lowered to 0: recover = %+v", got)
+		t.Fatalf("0: recover = %+v", got)
 	}
 	process, err = definition.ParseProcess(doc(definition.KindProcess, "p", staleProcess+"stale: {recover: {instruction: Go on.}}\n"))
 	if err != nil || process.Limits.Stale.Recover != (definition.Recover{Instruction: "Go on."}) {
 		t.Fatalf("an instruction alone: %+v, %v", process.Limits.Stale.Recover, err)
 	}
-	policy, err = definition.ParsePolicy(doc(definition.KindPolicy, "pol", stalePolicy+"stale: {no_event: 5m}\n"))
-	if err != nil || policy.Limits.Stale.Recover != (definition.Recover{}) {
-		t.Fatalf("without the block: %+v, %v", policy.Limits.Stale.Recover, err)
+	process, err = definition.ParseProcess(doc(definition.KindProcess, "p", staleProcess+"stale: {no_event: 5m}\n"))
+	if err != nil || process.Limits.Stale.Recover != (definition.Recover{}) {
+		t.Fatalf("without the block: %+v, %v", process.Limits.Stale.Recover, err)
 	}
 }
 
 func TestStaleRecoveryProblems(t *testing.T) {
 	t.Parallel()
-	parsers := map[string]func(block string) error{
-		"policy": func(block string) error {
-			_, err := definition.ParsePolicy(doc(definition.KindPolicy, "pol", stalePolicy+block+"\n"))
-			return err
-		},
-		"process": func(block string) error {
-			_, err := definition.ParseProcess(doc(definition.KindProcess, "p", staleProcess+block+"\n"))
-			return err
-		},
-	}
 	for block, want := range map[string]string{
 		"stale: {recover: {max_resumes: -1}}":           "stale.recover.max_resumes: must be at least 0",
 		"stale: {recover: {max_resumes: one}}":          "stale.recover.max_resumes: must be an integer",
@@ -677,10 +646,101 @@ func TestStaleRecoveryProblems(t *testing.T) {
 		"stale: {recover: {max_resumes: 1, nudge: go}}": "stale.recover.nudge: unknown field",
 		"stale: {recover: 1}":                           "stale.recover: ",
 	} {
-		for kind, parse := range parsers {
-			if err := parse(block); err == nil || !strings.Contains(err.Error(), want) {
-				t.Errorf("%s, %s: err = %v, want %q", kind, block, err, want)
-			}
+		if _, err := definition.ParseProcess(doc(definition.KindProcess, "p", staleProcess+block+"\n")); err == nil || !strings.Contains(err.Error(), want) {
+			t.Errorf("%s: err = %v, want %q", block, err, want)
+		}
+	}
+}
+
+// There are no policies (ADR-030 rule 4): a process that names one has a
+// problem, whatever it names.
+func TestAProcessNamesNoPolicy(t *testing.T) {
+	t.Parallel()
+	const want = "policy: there are no policies (ADR-030): set the policy's fields on the process and remove policy"
+	for _, reference := range []string{"process-policy:read-only", "read-only", "''"} {
+		_, err := definition.ParseProcess(doc(definition.KindProcess, "p", staleTimed+"policy: "+reference+"\n"))
+		var invalid *definition.InvalidError
+		if !errors.As(err, &invalid) || !reflect.DeepEqual(invalid.Messages(), []string{want}) {
+			t.Errorf("policy: %s: err = %v, want only %q", reference, err, want)
+		}
+	}
+}
+
+// A process names no agent (ADR-030 rule 2): a workflow's node binds it to
+// one. uses on a process is a problem, whatever it names.
+func TestAProcessNamesNoAgent(t *testing.T) {
+	t.Parallel()
+	if _, err := definition.ParseProcess(doc(definition.KindProcess, "p", staleTimed)); err != nil {
+		t.Fatalf("without uses: %v", err)
+	}
+	const want = "uses: a process names no agent (ADR-030 rule 2): name the agent on each workflow node that binds the process, and remove uses"
+	for _, uses := range []string{"agent:a", "a", "''", "[agent]"} {
+		_, err := definition.ParseProcess(doc(definition.KindProcess, "p", staleTimed+"uses: "+uses+"\n"))
+		var invalid *definition.InvalidError
+		if !errors.As(err, &invalid) || !reflect.DeepEqual(invalid.Messages(), []string{want}) {
+			t.Errorf("uses: %s: err = %v, want only %q", uses, err, want)
+		}
+	}
+}
+
+// An agent holds no session (ADR-030 rule 1): whether a call's session
+// may be resumed is its process's to say. session on an agent is a
+// problem, whatever it says.
+func TestAnAgentHoldsNoSession(t *testing.T) {
+	t.Parallel()
+	const agent = "schema = \"agister.agent/v1alpha1\"\nname = \"a\"\nruntime = \"rt\"\n"
+	if _, err := definition.ParseAgent(doc(definition.KindAgent, "a", agent)); err != nil {
+		t.Fatalf("without session: %v", err)
+	}
+	const want = "session: an agent holds no session (ADR-030 rule 1): set session on each process whose calls resume theirs, and remove it here"
+	for _, session := range []string{`"resumable"`, `"fresh-only"`, `"sometimes"`, `""`, "1"} {
+		_, err := definition.ParseAgent(doc(definition.KindAgent, "a", agent+"session = "+session+"\n"))
+		var invalid *definition.InvalidError
+		if !errors.As(err, &invalid) || !reflect.DeepEqual(invalid.Messages(), []string{want}) {
+			t.Errorf("session = %s: err = %v, want only %q", session, err, want)
+		}
+	}
+}
+
+// A process may say whether its calls' session may be resumed (ADR-030
+// rule 2): session, resumable or fresh-only, and unset when it says
+// nothing.
+func TestAProcessMaySayItsSession(t *testing.T) {
+	t.Parallel()
+	for text, want := range map[string]string{
+		"":                      "",
+		"session: resumable\n":  definition.SessionResumable,
+		"session: fresh-only\n": definition.SessionFresh,
+	} {
+		process, err := definition.ParseProcess(doc(definition.KindProcess, "p", staleTimed+text))
+		if err != nil || process.Session != want {
+			t.Errorf("%q: session = %q, %v, want %q", text, process.Session, err, want)
+		}
+	}
+	for text, want := range map[string]string{
+		"session: sometimes":   `session: unsupported session mode "sometimes" (supported: fresh-only, resumable)`,
+		"session: ''":          `session: unsupported session mode "" (supported: fresh-only, resumable)`,
+		"session: [resumable]": "session: must be a scalar",
+	} {
+		_, err := definition.ParseProcess(doc(definition.KindProcess, "p", staleTimed+text+"\n"))
+		var invalid *definition.InvalidError
+		if !errors.As(err, &invalid) || !reflect.DeepEqual(invalid.Messages(), []string{want}) {
+			t.Errorf("%s: err = %v, want only %q", text, err, want)
+		}
+	}
+}
+
+// The session mode of a call is the one its process sets, and fresh-only
+// where it sets none (ADR-030 rules 2 and 3).
+func TestACallsSessionIsItsProcesss(t *testing.T) {
+	t.Parallel()
+	for set, want := range map[string]string{
+		definition.SessionResumable: definition.SessionResumable,
+		definition.SessionFresh:     definition.SessionFresh,
+		"":                          definition.SessionFresh,
+	} {
+		if mode := definition.CallSession(definition.Process{Name: "p", Session: set}); mode != want {
+			t.Errorf("process with session %q: %s, want %s", set, mode, want)
 		}
 	}
 }
@@ -689,17 +749,17 @@ func TestStaleRecoveryProblems(t *testing.T) {
 // written for a newer Agister would, is marked: an unknown field, a list or
 // a mapping where an input value's field is read as a scalar (LAB-122), and
 // a schema of Agister's shape this code does not read. Any other mistake, a
-// schema of another shape, a list of sources or a retired input argument
-// included, is not.
+// schema of another shape, a list of sources, a retired input argument or
+// a field ADR-030 took from its document included, is not.
 func TestProblemsNamingTheUnknownAreMarked(t *testing.T) {
 	t.Parallel()
 	process := func(schema, extra string) string {
-		return "schema: " + schema + "\nname: p\ntype: process\nprompt: review\nuses: agent:a\n" + extra +
+		return "schema: " + schema + "\nname: p\ntype: process\nprompt: review\n" + extra +
 			"input:\n  instruction: x\noutput:\n  format: text\n"
 	}
 	// A valid process but for its input values.
 	inputs := func(values string) string {
-		return "schema: agister.process/v1alpha1\nname: p\ntype: process\nprompt: review\nuses: agent:a\n" +
+		return "schema: agister.process/v1alpha1\nname: p\ntype: process\nprompt: review\n" +
 			"input:\n  instruction: x\n  values:\n" + values + "output:\n  format: text\n"
 	}
 	agent := func(schema, extra string) string {
@@ -731,6 +791,8 @@ func TestProblemsNamingTheUnknownAreMarked(t *testing.T) {
 		{"newer TOML schema", "agent", agent("agister.agent/v2", "runtime = \"rt\"\n"), definition.Problem{Message: `schema: must be "agister.agent/v1alpha1"`, Unknown: true}},
 		{"another TOML schema", "agent", agent("banana", "runtime = \"rt\"\n"), definition.Problem{Message: `schema: must be "agister.agent/v1alpha1"`}},
 		{"missing field", "agent", agent("agister.agent/v1alpha1", ""), definition.Problem{Message: "runtime: is required"}},
+		{"a process's agent", "process", process("agister.process/v1alpha1", "uses: agent:a\n"), definition.Problem{Message: "uses: a process names no agent (ADR-030 rule 2): name the agent on each workflow node that binds the process, and remove uses"}},
+		{"an agent's session", "agent", agent("agister.agent/v1alpha1", "runtime = \"rt\"\nsession = \"resumable\"\n"), definition.Problem{Message: "session: an agent holds no session (ADR-030 rule 1): set session on each process whose calls resume theirs, and remove it here"}},
 	} {
 		var invalid *definition.InvalidError
 		if err := parsers[c.kind](c.text); !errors.As(err, &invalid) || !reflect.DeepEqual(invalid.Problems, []definition.Problem{c.want}) {

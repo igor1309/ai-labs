@@ -43,7 +43,7 @@ func (c *clientFake) ListProcesses(context.Context) ([]contract.ProcessSummary, 
 	c.hit("ListProcesses")
 	return nil, nil
 }
-func (c *clientFake) ShowProcess(context.Context, string, string) (contract.ProcessView, error) {
+func (c *clientFake) ShowProcess(context.Context, string) (contract.ProcessView, error) {
 	c.hit("ShowProcess")
 	return contract.ProcessView{}, nil
 }
@@ -109,7 +109,7 @@ func TestGatedRefusesUseOfBrokenSettings(t *testing.T) {
 	_, refused["CreateAgent"] = gated.CreateAgent(ctx, contract.Agent{}, false, nil)
 	_, refused["ListAgents"] = gated.ListAgents(ctx)
 	_, refused["ListProcesses"] = gated.ListProcesses(ctx)
-	_, refused["ShowProcess"] = gated.ShowProcess(ctx, "p", "")
+	_, refused["ShowProcess"] = gated.ShowProcess(ctx, "p")
 	_, refused["ListWorkflows"] = gated.ListWorkflows(ctx)
 	_, refused["ShowWorkflow"] = gated.ShowWorkflow(ctx, "w")
 	_, refused["Submit"] = gated.Submit(ctx, contract.CallRequest{})
@@ -201,7 +201,6 @@ func (c *afterCheck) Check(ctx context.Context, probe bool) (contract.CheckRepor
 // source once they were read.
 func TestGatedOperationUsesTheCheckedSettings(t *testing.T) {
 	t.Parallel()
-	ctx := context.Background()
 	h := newHarness()
 	sources := []string{"git.revision", "git.diff", "param"}
 	readsAfterCheck := -1
@@ -224,7 +223,7 @@ func TestGatedOperationUsesTheCheckedSettings(t *testing.T) {
 			}
 		},
 	}
-	view, err := gated.ShowProcess(ctx, "p", "")
+	view, err := callShown(gated, "p_a")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -262,7 +261,7 @@ func TestGatedSubmitRecordsTheCheckedSettings(t *testing.T) {
 			}
 		},
 	}
-	if _, err := gated.Submit(ctx, contract.CallRequest{Process: "p", Cwd: "/repo"}); err != nil {
+	if _, err := gated.Submit(ctx, contract.CallRequest{Process: "p_a", Cwd: "/repo"}); err != nil {
 		t.Fatal(err)
 	}
 	h.defs.set(definition.KindAgent, "a", strings.Replace(settingsDocs()[definition.KindAgent]["a"], "m1", "m2", 1))
@@ -310,7 +309,7 @@ func TestGatedSubmitRecordsWhatTheCheckRead(t *testing.T) {
 			}
 		},
 	}
-	if _, err := gated.Submit(ctx, contract.CallRequest{Process: "p", Cwd: "/repo"}); err != nil {
+	if _, err := gated.Submit(ctx, contract.CallRequest{Process: "p_a", Cwd: "/repo"}); err != nil {
 		t.Fatal(err)
 	}
 	if !edited {

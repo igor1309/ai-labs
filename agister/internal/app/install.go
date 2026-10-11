@@ -42,7 +42,10 @@ type InstallHome interface {
 	// Documents reads every settings document in home. One it lists but
 	// cannot read is in unreadable, by its source, with no digest.
 	Documents(ctx context.Context) (docs []definition.Document, unreadable []definition.Source, err error)
-	Read(ctx context.Context, kind definition.Kind, name string) (definition.Document, error)
+	// File reads the bytes home's own file of the document holds, as
+	// written: a process's without the base it extends (ADR-030 rule 9),
+	// so a restore reads them whatever became of the base.
+	File(ctx context.Context, kind definition.Kind, name string) ([]byte, error)
 	// Current reports where a document would be stored and a digest of the
 	// one there, empty when there is none.
 	Current(ctx context.Context, kind definition.Kind, name string) (path, digest string, err error)
@@ -434,23 +437,18 @@ func (i *Installer) restorePlan(ctx context.Context, stamp string) (contract.Res
 		}
 		switch action {
 		case contract.InstallReplace:
-			data, err := i.backups.Saved(ctx, stamp, kind, entry.Name)
+			data, err := savedBefore(ctx, i.backups, stamp, entry, path)
 			if err != nil {
-				return contract.RestorePlan{}, nil, fmt.Errorf("install backup %s: reading %s as it was before the install: %w", stamp, path, err)
-			}
-			if digestOf(data) != entry.Before {
-				return contract.RestorePlan{}, nil, fmt.Errorf("install backup %s does not hold %s as it was before the install: its digest differs", stamp, path)
+				return contract.RestorePlan{}, nil, err
 			}
 			if current == entry.Before {
 				break
 			}
 			var now []byte
 			if current != "" {
-				home, err := i.home.Read(ctx, kind, entry.Name)
-				if err != nil {
+				if now, err = i.home.File(ctx, kind, entry.Name); err != nil {
 					return contract.RestorePlan{}, nil, err
 				}
-				now = home.Bytes
 			}
 			doc.Action, doc.Diff = contract.RestorePutBack, unifiedDiff(path, path+" (before install "+stamp+")", now, data)
 			steps = append(steps, restoreStep{kind: kind, name: entry.Name, action: doc.Action, data: data})
@@ -494,6 +492,25 @@ func restoreApproved(approved, plan contract.RestorePlan) error {
 		return &contract.InputError{Message: fmt.Sprintf("changed since you confirmed, so nothing was restored: %s", strings.Join(changed, ", "))}
 	}
 	return nil
+}
+
+// savedBackups reads what a backup keeps of a document.
+type savedBackups interface {
+	Saved(ctx context.Context, stamp string, kind definition.Kind, name string) ([]byte, error)
+}
+
+// savedBefore reads what backup stamp keeps of the document entry records
+// as replaced, home's at path, and refuses it unless it has the digest the
+// entry records it had before.
+func savedBefore(ctx context.Context, backups savedBackups, stamp string, entry InstallManifestEntry, path string) ([]byte, error) {
+	data, err := backups.Saved(ctx, stamp, definition.Kind(entry.Kind), entry.Name)
+	if err != nil {
+		return nil, fmt.Errorf("install backup %s: reading %s as it was before the install: %w", stamp, path, err)
+	}
+	if digestOf(data) != entry.Before {
+		return nil, fmt.Errorf("install backup %s does not hold %s as it was before the install: its digest differs", stamp, path)
+	}
+	return data, nil
 }
 
 func digestOf(data []byte) string {

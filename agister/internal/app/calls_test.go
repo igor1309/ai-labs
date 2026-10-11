@@ -49,17 +49,9 @@ model_family = "fam"
 effort = "high"
 command = "/bin/spy"
 `},
-		definition.KindPolicy: {"pol": `schema: agister.process-policy/v1alpha1
-name: pol
-timeout: 20m
-tools: {allow: [repository.read, repository.search, repository.diff]}
-workspace: {access: read-only, scope: candidate}
-`},
 		definition.KindProcess: {"p": `schema: agister.process/v1alpha1
 name: p
 type: process
-uses: agent:a
-policy: process-policy:pol
 prompt: inspect
 input:
   instruction: Inspect the change.
@@ -75,10 +67,50 @@ output:
   format: json
   schema: s
   require_valid: true
+timeout: 20m
+tools: {allow: [repository.read, repository.search, repository.diff]}
 `},
-		definition.KindSchema: {"s": schema},
-		definition.KindPrompt: {"inspect": inspectPrompt},
+		definition.KindWorkflow: {"p_a": pOnA},
+		definition.KindSchema:   {"s": schema},
+		definition.KindPrompt:   {"inspect": inspectPrompt},
 	}
+}
+
+// pOnA is the harness's workflow p_a, one call (ADR-030 rule 6): node p
+// binds process p to agent a. A call the harness makes runs it unless its
+// request names another.
+const pOnA = `schema: agister.workflow/v1alpha1
+name: p_a
+type: workflow
+call: {node: p, uses: process:p, agent: a}
+`
+
+// onA is workflow p_a's call, as a run of it records it.
+func onA() *run.Call { return &run.Call{Node: "p", Process: "p", Agent: "a"} }
+
+// workflowShower shows a workflow, as an Inspection and a client do.
+type workflowShower interface {
+	ShowWorkflow(context.Context, string) (contract.WorkflowView, error)
+}
+
+// callShown is the process of the workflow of one call named workflow, as
+// that call would see it: a process is planned only on the agent a node
+// binds it to (ADR-030 rule 5), so its view is its node's.
+func callShown(shower workflowShower, workflow string) (contract.ProcessView, error) {
+	view, err := shower.ShowWorkflow(context.Background(), workflow)
+	if err != nil || view.Call == nil {
+		return contract.ProcessView{}, err
+	}
+	return view.Call.Process, nil
+}
+
+// bind gives the harness workflow name, one call: node work binds process
+// to agent, as nothing else runs a process (ADR-030 rules 5 and 6).
+func (h *harness) bind(name, process, agent string) {
+	if h.defs.docs[definition.KindWorkflow] == nil {
+		h.defs.docs[definition.KindWorkflow] = map[string]string{}
+	}
+	h.defs.docs[definition.KindWorkflow][name] = "schema: agister.workflow/v1alpha1\nname: " + name + "\ntype: workflow\ncall: {node: work, uses: process:" + process + ", agent: " + agent + "}\n"
 }
 
 // inspectPrompt is the harness's process p's prompt (ADR-028 rule 8).
@@ -188,7 +220,7 @@ func (h *harness) holderOver(changes app.CallChanges, runs app.CallRuns) *app.Ho
 func (h *harness) call(t *testing.T, request contract.CallRequest) run.Record {
 	t.Helper()
 	if request.Process == "" {
-		request.Process = "p"
+		request.Process = "p_a"
 	}
 	if request.Cwd == "" {
 		request.Cwd = "/repo"
@@ -257,8 +289,10 @@ func TestCompletedCallSendsTheComposedPayloads(t *testing.T) {
 	if got.Prompt != "## candidate_revision\n\nsha-HEAD\n\n## diff\n\n```\nline one\nline two\n```\n\n## prompt\n\n```\n"+inspectPrompt+"```" {
 		t.Fatalf("prompt = %q", got.Prompt)
 	}
-	// The schema was compiled before the call and the output validated after.
-	if len(h.validator.compiled) != 1 || string(h.validator.validated[0]) != `{"outcome":"no"}` {
+	// The schema was compiled before the call, as the workflow was checked
+	// and as its call was resolved, where a process run on its own
+	// compiled it once, and the output validated after.
+	if len(h.validator.compiled) != 2 || string(h.validator.validated[0]) != `{"outcome":"no"}` {
 		t.Fatalf("validator: compiled %d, validated %v", len(h.validator.compiled), h.validator.validated)
 	}
 	// Evidence: definitions with digests, plan, inputs, identities.
@@ -269,7 +303,8 @@ func TestCompletedCallSendsTheComposedPayloads(t *testing.T) {
 			t.Fatalf("source without digest: %+v", source)
 		}
 	}
-	if strings.Join(kinds, ",") != "service/service,processes/p,policies/pol,agents/a,runtimes/rt,schemas/s,prompts/inspect" {
+	// The workflow that binds the call, then the call's own.
+	if strings.Join(kinds, ",") != "workflows/p_a,service/service,processes/p,agents/a,runtimes/rt,schemas/s,prompts/inspect" {
 		t.Fatalf("definitions = %v", kinds)
 	}
 	if record.Plan == nil || !reflect.DeepEqual(record.Plan.Withheld, []string{"repository.diff"}) ||
@@ -359,7 +394,7 @@ func TestResultCarriesUsageCostTimingAndSession(t *testing.T) {
 func TestCostLimitReachesTheRuntimeOrRefuses(t *testing.T) {
 	t.Parallel()
 	h := newHarness()
-	h.defs.docs[definition.KindPolicy]["pol"] += "max_cost_usd: 2\n"
+	h.defs.docs[definition.KindProcess]["p"] += "max_cost_usd: 2\n"
 	limit := 0.5
 	record := h.call(t, contract.CallRequest{MaxCostUSD: &limit})
 	if got := h.runner.calls()[0].MaxCostUSD; got == nil || *got != 0.5 || *record.Effective.MaxCostUSD != 0.5 {
@@ -367,7 +402,7 @@ func TestCostLimitReachesTheRuntimeOrRefuses(t *testing.T) {
 	}
 
 	h = newHarness()
-	h.defs.docs[definition.KindPolicy]["pol"] += "max_cost_usd: 2\n"
+	h.defs.docs[definition.KindProcess]["p"] += "max_cost_usd: 2\n"
 	h.runner.identity.CostLimit = false
 	if record := h.call(t, contract.CallRequest{}); class(record) != run.ClassRefused || !strings.Contains(message(record), "cannot enforce the cost limit 2") {
 		t.Fatalf("result = %+v", record.Result)
@@ -391,31 +426,28 @@ func shippedPrompts(t *testing.T, h *harness) {
 	}
 }
 
-// The shipped ask, review and implement processes and their read-only,
-// static-review and implement policies set no cost limit, so a runtime that
-// cannot enforce one runs them.
+// The shipped ask, review and implement processes set no cost limit, so a
+// runtime that cannot enforce one runs them.
 func TestShippedProcessesRunOnARuntimeWithoutACostLimit(t *testing.T) {
 	t.Parallel()
 	for _, c := range []struct {
-		process, policy, agent string
-		params                 map[string]string
-		output                 string
+		process, agent string
+		params         map[string]string
+		output         string
 	}{
-		{"ask", "read-only", "assistant", map[string]string{"question": "What is a.txt?"}, `"an answer"`},
-		{"adversarial_review", "static-review", "reviewer", nil, `{"outcome":"no"}`},
-		{"architecture_review", "static-review", "reviewer", map[string]string{"architecture": "docs/architecture.md"}, `{"outcome":"no"}`},
-		{"implement", "implement", "assistant", map[string]string{"brief": "brief.md"}, `"done"`},
+		{"ask", "assistant", map[string]string{"question": "What is a.txt?"}, `"an answer"`},
+		{"adversarial_review", "reviewer", nil, `{"outcome":"no"}`},
+		{"architecture_review", "reviewer", map[string]string{"architecture": "docs/architecture.md"}, `{"outcome":"no"}`},
+		{"implement", "assistant", map[string]string{"brief": "brief.md"}, `"done"`},
 	} {
 		t.Run(c.process, func(t *testing.T) {
 			t.Parallel()
 			h := newHarness()
-			for kind, name := range map[definition.Kind]string{definition.KindProcess: c.process, definition.KindPolicy: c.policy} {
-				data, err := fs.ReadFile(examples.Settings(), string(kind)+"/"+name+".yaml")
-				if err != nil {
-					t.Fatal(err)
-				}
-				h.defs.docs[kind][name] = string(data)
+			data, err := fs.ReadFile(examples.Settings(), "processes/"+c.process+".yaml")
+			if err != nil {
+				t.Fatal(err)
 			}
+			h.defs.docs[definition.KindProcess][c.process] = string(data)
 			service, err := fs.ReadFile(examples.Settings(), "service.toml")
 			if err != nil {
 				t.Fatal(err)
@@ -423,11 +455,7 @@ func TestShippedProcessesRunOnARuntimeWithoutACostLimit(t *testing.T) {
 			h.defs.docs[definition.KindService]["service"] = string(service)
 			shippedPrompts(t, h)
 			h.defs.docs[definition.KindAgent][c.agent] = strings.Replace(h.defs.docs[definition.KindAgent]["a"], `name = "a"`, `name = "`+c.agent+`"`, 1)
-			if c.agent == "assistant" {
-				// Resumable, as the shipped assistant is: implement's
-				// verification repairs in the call's session.
-				h.defs.docs[definition.KindAgent][c.agent] += "session = \"resumable\"\n"
-			}
+			h.bind("shipped", c.process, c.agent)
 			h.defs.docs[definition.KindSchema]["review-result"] = schema
 			// The verification the shipped implement names.
 			repo, err := fs.ReadFile(examples.Settings(), "verifies/repo.yaml")
@@ -437,7 +465,7 @@ func TestShippedProcessesRunOnARuntimeWithoutACostLimit(t *testing.T) {
 			h.defs.docs[definition.KindVerify] = map[string]string{"repo": string(repo)}
 			h.runner.identity.CostLimit = false
 			h.runner.turn.Output = json.RawMessage(c.output)
-			record := h.call(t, contract.CallRequest{Process: c.process, Params: c.params})
+			record := h.call(t, contract.CallRequest{Process: "shipped", Params: c.params})
 			if record.Result.Status != run.Completed || record.Effective.MaxCostUSD != nil || h.runner.calls()[0].MaxCostUSD != nil {
 				t.Fatalf("result %+v, effective cost limit %v", record.Result, record.Effective.MaxCostUSD)
 			}
@@ -445,7 +473,7 @@ func TestShippedProcessesRunOnARuntimeWithoutACostLimit(t *testing.T) {
 	}
 }
 
-// The shipped read-only policy allows everything Codex's read-only sandbox
+// The shipped ask allows everything Codex's read-only sandbox
 // grants under contract codex/2, but the shipped service treats reading the
 // host as state-reaching, so the shipped ask is refused on a Codex agent,
 // naming host.read. A service configured to accept host reads, as a
@@ -494,19 +522,16 @@ func TestShippedAskRunsOnACodexRuntime(t *testing.T) {
 	})
 }
 
-// askOnCodex runs the shipped ask under the shipped read-only policy on a
-// Codex agent, with the shipped service as configure returns it, and
+// askOnCodex runs the shipped ask on a Codex agent, with the shipped service as configure returns it, and
 // returns the harness and the call's record.
 func askOnCodex(t *testing.T, configure func(service string) string) (*harness, run.Record) {
 	t.Helper()
 	h := newHarness()
-	for kind, name := range map[definition.Kind]string{definition.KindProcess: "ask", definition.KindPolicy: "read-only"} {
-		data, err := fs.ReadFile(examples.Settings(), string(kind)+"/"+name+".yaml")
-		if err != nil {
-			t.Fatal(err)
-		}
-		h.defs.docs[kind][name] = string(data)
+	ask, err := fs.ReadFile(examples.Settings(), "processes/ask.yaml")
+	if err != nil {
+		t.Fatal(err)
 	}
+	h.defs.docs[definition.KindProcess]["ask"] = string(ask)
 	service, err := fs.ReadFile(examples.Settings(), "service.toml")
 	if err != nil {
 		t.Fatal(err)
@@ -540,10 +565,11 @@ command = "/bin/codex"
 	h.runner.identity = app.RuntimeIdentity{Contract: "codex/2", Version: "0.159.2", Resume: true}
 	h.runner.turn.Output = json.RawMessage(`"an answer"`)
 
-	return h, h.call(t, contract.CallRequest{Process: "ask", Agent: "codex-agent", Params: map[string]string{"question": "What is a.txt?"}})
+	h.bind("ask_codex", "ask", "codex-agent")
+	return h, h.call(t, contract.CallRequest{Process: "ask_codex", Params: map[string]string{"question": "What is a.txt?"}})
 }
 
-// The example Codex review's sandboxed-review policy allows everything
+// The example Codex review allows everything
 // Codex's read-only sandbox grants under contract codex/2, so, as with the
 // shipped ask, the shipped service refuses it on the example agent, naming
 // host.read, and a service that opts in to host reads, as its README
@@ -590,7 +616,7 @@ func TestExampleCodexReviewRunsOnACodexRuntime(t *testing.T) {
 }
 
 // reviewOnCodex runs the example adversarial_review_sandboxed with its
-// policy, agent and runtime from examples/codex, the runtime on the spy
+// agent and runtime from examples/codex, the runtime on the spy
 // adapter and verified for the spy's version, under the shipped service as
 // configure returns it, and returns the harness and the call's record.
 func reviewOnCodex(t *testing.T, configure func(service string) string) (*harness, run.Record) {
@@ -605,7 +631,6 @@ func reviewOnCodex(t *testing.T, configure func(service string) string) (*harnes
 		return string(data)
 	}
 	h.defs.docs[definition.KindProcess]["adversarial_review_sandboxed"] = read(codex, "processes/adversarial_review_sandboxed.yaml")
-	h.defs.docs[definition.KindPolicy]["sandboxed-review"] = read(codex, "policies/sandboxed-review.yaml")
 	h.defs.docs[definition.KindAgent]["codex-reviewer"] = read(codex, "agents/codex-reviewer.toml")
 	h.defs.docs[definition.KindSchema]["review-result"] = schema
 	h.defs.docs[definition.KindService]["service"] = configure(read(examples.Settings(), "service.toml"))
@@ -625,7 +650,8 @@ func reviewOnCodex(t *testing.T, configure func(service string) string) (*harnes
 	h.defs.docs[definition.KindRuntime]["codex"] = runtime + "      verified: [\"0.159.\"]\n"
 
 	h.runner.identity = app.RuntimeIdentity{Contract: "codex/2", Version: "0.159.2", Resume: true}
-	return h, h.call(t, contract.CallRequest{Process: "adversarial_review_sandboxed"})
+	h.defs.docs[definition.KindWorkflow]["adversarial_review_sandboxed_codex"] = read(codex, "workflows/adversarial_review_sandboxed_codex.yaml")
+	return h, h.call(t, contract.CallRequest{Process: "adversarial_review_sandboxed_codex"})
 }
 
 // leftInTheWorktree is record as a run that worked in the worktree /repo
@@ -640,10 +666,10 @@ func leftInTheWorktree(record run.Record) run.Record {
 func TestContinuationResumesAFinishedRunsSession(t *testing.T) {
 	t.Parallel()
 	resumable := func(h *harness) {
-		h.defs.docs[definition.KindAgent]["a"] += "session = \"resumable\"\n"
+		h.defs.docs[definition.KindProcess]["p"] += "session: resumable\n"
 	}
 	finished := time.Date(2026, 9, 28, 11, 0, 0, 0, time.UTC)
-	earlier := leftInTheWorktree(run.Record{ID: "run-0", Agent: "a", Runtime: &run.Runtime{Adapter: "spy"}, FinishedAt: &finished,
+	earlier := leftInTheWorktree(run.Record{ID: "run-0", Agent: "a", Call: onA(), Runtime: &run.Runtime{Adapter: "spy"}, FinishedAt: &finished,
 		Result: &run.Result{Status: run.Interrupted, Session: &run.Session{ProviderSessionID: "prov-0"}}})
 
 	h := newHarness()
@@ -664,7 +690,8 @@ func TestContinuationResumesAFinishedRunsSession(t *testing.T) {
 		arrange func(*harness)
 		reason  string
 	}{
-		{"fresh-only agent", func(h *harness) {}, "agent a is fresh-only; it cannot continue run run-0"},
+		// The process says it, where its agent did (ADR-030 rule 3).
+		{"fresh-only process", func(h *harness) {}, "process p is fresh-only; it cannot continue run run-0"},
 		{"runtime cannot resume", func(h *harness) { resumable(h); h.runner.identity.Resume = false }, "runtime rt cannot continue sessions"},
 		{"unknown run", func(h *harness) { resumable(h); delete(h.runs.records, "run-0") }, "run run-0: not found"},
 		{"run still running", func(h *harness) { resumable(h); h.runs.states["run-0"] = run.StateRunning }, "run run-0 is running, not finished"},
@@ -706,16 +733,15 @@ func TestContinuationWhereTheSessionDidNotRunIsRefused(t *testing.T) {
 	t.Parallel()
 	// run-0 left its session's evidence: it worked in checkout A.
 	ended := fixedClock{}.Now()
-	earlier := run.Record{ID: "run-0", Agent: "a", Runtime: &run.Runtime{Adapter: "spy"}, Workspace: "/work/checkout-a",
+	earlier := run.Record{ID: "run-0", Agent: "a", Call: onA(), Runtime: &run.Runtime{Adapter: "spy"}, Workspace: "/work/checkout-a",
 		FinishedAt: &ended, Turn: &run.Turn{ProviderSessionID: "prov-0"},
 		Result: &run.Result{Status: run.Completed, Session: &run.Session{ProviderSessionID: "prov-0"}}}
 	arrange := func(workspace string, checkout bool) *harness {
 		h := newHarness()
-		h.defs.docs[definition.KindAgent]["a"] += "session = \"resumable\"\n"
+		h.defs.docs[definition.KindProcess]["p"] += "session: resumable\n"
 		h.runner.identity.ResumeWhereItRan = true
 		if !checkout {
 			h.defs.docs[definition.KindProcess]["p"] = strings.Replace(h.defs.docs[definition.KindProcess]["p"], "workspace:\n  revision: candidate_revision\n", "", 1)
-			h.defs.docs[definition.KindPolicy]["pol"] = strings.Replace(h.defs.docs[definition.KindPolicy]["pol"], "scope: candidate", "scope: repository", 1)
 		}
 		prior := earlier
 		prior.Workspace = workspace
@@ -774,14 +800,14 @@ func TestAContinuationCostsWhatItAddedToItsSession(t *testing.T) {
 	}
 	// run-0 started prov-0; run-0b continued it, after it.
 	recorded := func(id, continues string, created, finished int, totals *run.SessionTotals) run.Record {
-		return leftInTheWorktree(run.Record{ID: id, Agent: "a", Runtime: &run.Runtime{Adapter: "spy"}, Request: run.Request{Continue: continues},
+		return leftInTheWorktree(run.Record{ID: id, Agent: "a", Call: onA(), Runtime: &run.Runtime{Adapter: "spy"}, Request: run.Request{Continue: continues},
 			CreatedAt: *at(created), FinishedAt: at(finished), Turn: &run.Turn{ProviderSessionID: "prov-0", Session: totals},
 			Result: &run.Result{Status: run.Completed, Session: &run.Session{ProviderSessionID: "prov-0", Continues: continues}}})
 	}
 	// run-0b continued run-0; it ran no turn, and either started its
 	// runtime process and was reaped, or was refused before it.
 	unturned := func(process bool) run.Record {
-		record := leftInTheWorktree(run.Record{ID: "run-0b", Agent: "a", Runtime: &run.Runtime{Adapter: "spy"}, Request: run.Request{Continue: "run-0"},
+		record := leftInTheWorktree(run.Record{ID: "run-0b", Agent: "a", Call: onA(), Runtime: &run.Runtime{Adapter: "spy"}, Request: run.Request{Continue: "run-0"},
 			CreatedAt: *at(2), FinishedAt: at(3), Result: &run.Result{Status: run.Failed}})
 		// A reader: what it left behind does not refuse the call (ADR-025
 		// rule 4).
@@ -823,7 +849,7 @@ func TestAContinuationCostsWhatItAddedToItsSession(t *testing.T) {
 		t.Run(c.name, func(t *testing.T) {
 			t.Parallel()
 			h := newHarness()
-			h.defs.docs[definition.KindAgent]["a"] += "session = \"resumable\"\n"
+			h.defs.docs[definition.KindProcess]["p"] += "session: resumable\n"
 			for _, record := range c.records {
 				h.runs.records[record.ID], h.runs.states[record.ID] = record, run.StateFinished
 			}
@@ -852,7 +878,7 @@ func TestAContinuationCostsWhatItAddedToItsSession(t *testing.T) {
 // carries no patch into it (ADR-025 rule 7).
 func resuming() (*harness, *[]string) {
 	h := newHarness()
-	h.defs.docs[definition.KindAgent]["a"] += "session = \"resumable\"\n"
+	h.defs.docs[definition.KindProcess]["p"] += "session: resumable\n"
 	order := new([]string)
 	h.runner.during = func(app.TurnRequest) { *order = append(*order, "turn") }
 	return h, order
@@ -865,8 +891,8 @@ func resuming() (*harness, *[]string) {
 func patchedRun(h *harness, id, continues string, created, finished int, patch string) run.Record {
 	at := func(minute int) time.Time { return time.Date(2026, 9, 28, 11, minute, 0, 0, time.UTC) }
 	end := at(finished)
-	record := run.Record{ID: id, Process: "p", Agent: "a", Runtime: &run.Runtime{Adapter: "spy"},
-		Request:   run.Request{Process: "p", Continue: continues, Cwd: "/repo"},
+	record := run.Record{ID: id, Process: "p_a", Agent: "a", Call: onA(), Runtime: &run.Runtime{Adapter: "spy"},
+		Request:   run.Request{Process: "p_a", Continue: continues, Cwd: "/repo"},
 		CreatedAt: at(created), FinishedAt: &end, Workspace: "/repo",
 		Inputs:  []run.Input{{Name: "candidate_revision", Source: "git.revision", Identity: "sha-HEAD", Revision: true}},
 		InPlace: &run.InPlace{Dir: "/repo", Worktree: "/repo", RepositoryIdentity: "/repo", Revision: "sha-HEAD", Content: "tree"},
@@ -934,7 +960,6 @@ func TestWorkspaceChangesBecomeArtifacts(t *testing.T) {
 	// A workspace the call does not own is the caller's; its changes are not taken.
 	h = newHarness()
 	h.defs.docs[definition.KindProcess]["p"] = strings.Replace(h.defs.docs[definition.KindProcess]["p"], "workspace:\n  revision: candidate_revision\n", "", 1)
-	h.defs.docs[definition.KindPolicy]["pol"] = strings.Replace(h.defs.docs[definition.KindPolicy]["pol"], "scope: candidate", "scope: repository", 1)
 	h.changes.changes = []byte("x")
 	if record := h.call(t, contract.CallRequest{}); record.Result.Status != run.Completed || len(h.changes.changed) != 0 {
 		t.Fatalf("result %+v, changes asked %v", record.Result, h.changes.changed)
@@ -972,7 +997,7 @@ func TestCallsResolveThroughTheResolutionTheyDeclare(t *testing.T) {
 	if class(record) != run.ClassRefused || message(record) != "the double refuses" {
 		t.Fatalf("result %+v", record.Result)
 	}
-	if snapshots, resolved := double.count(); snapshots != 1 || !reflect.DeepEqual(resolved, []string{"p"}) {
+	if snapshots, resolved := double.count(); snapshots != 1 || !reflect.DeepEqual(resolved, []string{"p_a"}) {
 		t.Fatalf("snapshots %d, resolved %v", snapshots, resolved)
 	}
 	if len(h.runtimes.asked) != 0 || len(h.defs.reads) != 0 {
@@ -1013,20 +1038,30 @@ func (r counted) Resolve(_ context.Context, request app.CallResolveRequest) (*ap
 	return &app.ResolvedCall{}, &app.Refusal{Reason: r.counter.reason}
 }
 
-// Workflow finds none: every name is a process's.
-func (r counted) Workflow(context.Context, string) (*app.ResolvedWorkflow, bool, error) {
+// Workflow finds one for every name: a workflow of one call of the
+// process of that name, which its node binds to agent a.
+func (r counted) Workflow(_ context.Context, name string) (*app.ResolvedWorkflow, bool, error) {
+	call := &app.CallNode{Name: "n", Process: name, Agent: "a"}
+	return &app.ResolvedWorkflow{Workflow: app.CallWorkflow{Name: name, Call: call}}, true, nil
+}
+
+// Binders finds no process: every name is a workflow's.
+func (r counted) Binders(context.Context, string) ([]string, bool, error) {
 	return nil, false, nil
 }
 
 // The runtime a call is resolved on is checked through the identity of its
-// adapter and command, and the runner for the same adapter and command is
-// asked for only when the call executes.
+// adapter and command, as its workflow is checked and as the call is
+// resolved, where a process run on its own was checked once; the runner
+// for the same adapter and command is asked for only when the call
+// executes.
 func TestCallChecksAndRunsTheRuntimeOfItsAgent(t *testing.T) {
 	t.Parallel()
 	h := newHarness()
 	h.call(t, contract.CallRequest{})
-	if want := []string{"spy|/bin/spy"}; !reflect.DeepEqual(h.runtimes.identified, want) || !reflect.DeepEqual(h.runtimes.asked, want) {
-		t.Fatalf("identified %v, runner built for %v, want %v", h.runtimes.identified, h.runtimes.asked, want)
+	const want = "spy|/bin/spy"
+	if !reflect.DeepEqual(h.runtimes.identified, []string{want, want}) || !reflect.DeepEqual(h.runtimes.asked, []string{want}) {
+		t.Fatalf("identified %v, runner built for %v, want %s twice and once", h.runtimes.identified, h.runtimes.asked, want)
 	}
 }
 
@@ -1039,7 +1074,7 @@ func TestRefusalsComeBeforeEffects(t *testing.T) {
 		request contract.CallRequest
 		reason  string
 	}{
-		{"missing definition", func(h *harness) { delete(h.defs.docs[definition.KindPolicy], "pol") }, contract.CallRequest{}, `policy "pol": not found`},
+		{"missing definition", func(h *harness) { delete(h.defs.docs[definition.KindSchema], "s") }, contract.CallRequest{}, `schema "s": not found`},
 		{"invalid definition", func(h *harness) { h.defs.docs[definition.KindProcess]["p"] += "surprise: 1\n" }, contract.CallRequest{}, "surprise: unknown field"},
 		{"schema does not compile", func(h *harness) { h.validator.compileErr = errors.New("bad schema") }, contract.CallRequest{}, `schema "s": bad schema`},
 		{"runtime unavailable", func(h *harness) { h.runner.identityErr = errors.New("no binary") }, contract.CallRequest{}, "runtime rt is unavailable: no binary"},
@@ -1083,8 +1118,7 @@ func TestRefusalsComeBeforeEffects(t *testing.T) {
 func TestStateReachingPrimitivesAreNeverGranted(t *testing.T) {
 	t.Parallel()
 	h := newHarness()
-	policy := h.defs.docs[definition.KindPolicy]["pol"]
-	h.defs.docs[definition.KindPolicy]["pol"] = strings.Replace(policy, "repository.diff]", "repository.diff, process.execute, host.read]", 1)
+	h.defs.docs[definition.KindProcess]["p"] = strings.Replace(h.defs.docs[definition.KindProcess]["p"], "repository.diff]", "repository.diff, process.execute, host.read]", 1)
 	h.call(t, contract.CallRequest{})
 	if primitives := h.runner.calls()[0].Primitives; contains(primitives, "Bash") {
 		t.Fatalf("Bash reaches host.read but was granted: %v", primitives)
@@ -1109,7 +1143,7 @@ func TestUnverifiedPrimitivesAreNeverGranted(t *testing.T) {
 	// Requiring what only an unverified primitive provides refuses, and says why.
 	h = newHarness()
 	h.defs.docs[definition.KindRuntime]["rt"] = strings.Replace(mapping, "  items:\n", "  items:\n    Diff: {grants: [repository.diff], verified: [\"2.\"]}\n", 1)
-	h.defs.docs[definition.KindProcess]["p"] = strings.Replace(h.defs.docs[definition.KindProcess]["p"], "uses: agent:a\n", "uses: agent:a\ntools: {require: [repository.diff]}\n", 1)
+	h.defs.docs[definition.KindProcess]["p"] = strings.Replace(h.defs.docs[definition.KindProcess]["p"], "repository.diff]}", "repository.diff], require: [repository.diff]}", 1)
 	record := h.call(t, contract.CallRequest{})
 	if class(record) != run.ClassRefused || !strings.Contains(message(record), "required permissions would be withheld: repository.diff (not verified for version 1.2.3: Diff)") {
 		t.Fatalf("result %+v", record.Result.Error)
@@ -1125,8 +1159,7 @@ func TestUnverifiedPrimitivesAreNeverGranted(t *testing.T) {
 func TestACallThatCannotReadASkillIsRefused(t *testing.T) {
 	t.Parallel()
 	widen := func(h *harness) {
-		policy := h.defs.docs[definition.KindPolicy]["pol"]
-		h.defs.docs[definition.KindPolicy]["pol"] = strings.Replace(policy, "repository.diff]", "repository.diff, process.execute, host.read]", 1)
+		h.defs.docs[definition.KindProcess]["p"] = strings.Replace(h.defs.docs[definition.KindProcess]["p"], "repository.diff]", "repository.diff, process.execute, host.read]", 1)
 	}
 	unverified := func(h *harness) {
 		mapping := h.defs.docs[definition.KindRuntime]["rt"]
@@ -1139,11 +1172,11 @@ func TestACallThatCannotReadASkillIsRefused(t *testing.T) {
 		reason  string
 	}{
 		{"not allowed", nil, []string{"Bash"},
-			"process p: runtime rt needs Bash to use the repository's skills (ADR-006), and the plan grants no such tool: Bash needs process.execute, host.read, which the effective permissions do not allow"},
+			"workflow p_a uses process p: runtime rt needs Bash to use the repository's skills (ADR-006), and the plan grants no such tool: Bash needs process.execute, host.read, which the effective permissions do not allow"},
 		{"withheld", widen, []string{"Bash"},
-			"process p: runtime rt needs Bash to use the repository's skills (ADR-006), and the plan grants no such tool: Bash needs host.read, which the plan withholds"},
+			"workflow p_a uses process p: runtime rt needs Bash to use the repository's skills (ADR-006), and the plan grants no such tool: Bash needs host.read, which the plan withholds"},
 		{"unverified or unknown", unverified, []string{"Cat", "Bash", "Head"},
-			"process p: runtime rt needs Cat or Bash or Head to use the repository's skills (ADR-006), and the plan grants no such tool: " +
+			"workflow p_a uses process p: runtime rt needs Cat or Bash or Head to use the repository's skills (ADR-006), and the plan grants no such tool: " +
 				"Cat is not verified for version 1.2.3; Bash needs process.execute, host.read, which the effective permissions do not allow; runtime mapping rt has no Head"},
 	}
 	for _, c := range cases {
@@ -1181,7 +1214,7 @@ func TestCancelInterruptsAndReleases(t *testing.T) {
 	h.runner.block = true
 	h.runner.started = make(chan struct{})
 	runs := app.NewRuns(nil, nil, h.hosted, nil, 0)
-	if _, err := h.calls.Submit(context.Background(), contract.CallRequest{Process: "p", Cwd: "/repo"}); err != nil {
+	if _, err := h.calls.Submit(context.Background(), contract.CallRequest{Process: "p_a", Cwd: "/repo"}); err != nil {
 		t.Fatal(err)
 	}
 	// However the test ends, the blocked turn does not outlive it.
@@ -1254,7 +1287,7 @@ func TestCallsCancelThroughTheCancelsTheyDeclare(t *testing.T) {
 			h.recorder.wait(t)
 		}
 	})
-	if _, err := h.calls.Submit(context.Background(), contract.CallRequest{Process: "p", Cwd: "/repo"}); err != nil {
+	if _, err := h.calls.Submit(context.Background(), contract.CallRequest{Process: "p_a", Cwd: "/repo"}); err != nil {
 		joined = true // nothing was started
 		t.Fatal(err)
 	}
@@ -1300,7 +1333,7 @@ func TestHostedDoneClosesOnceTheCallHasFinished(t *testing.T) {
 		doneAtFinish = isClosed(h.hosted.Done("run-1"))
 		return h.locks.releases("/repo")
 	}
-	id, err := h.calls.Submit(context.Background(), contract.CallRequest{Process: "p", Cwd: "/repo"})
+	id, err := h.calls.Submit(context.Background(), contract.CallRequest{Process: "p_a", Cwd: "/repo"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1409,7 +1442,7 @@ func TestCallResolvesFromTheSettingsReadBeforeItsRunWasRecorded(t *testing.T) {
 	readsAtCreate := -1
 	h.recorder.onCreate = func() { readsAtCreate = h.defs.readCount() }
 	h.recorder.hold = make(chan struct{})
-	if _, err := h.calls.Submit(context.Background(), contract.CallRequest{Process: "p", Cwd: "/repo"}); err != nil {
+	if _, err := h.calls.Submit(context.Background(), contract.CallRequest{Process: "p_a", Cwd: "/repo"}); err != nil {
 		t.Fatal(err)
 	}
 	if readsAtCreate <= 0 {
@@ -1467,7 +1500,7 @@ func TestInputsUseTheValuesResolvedBeforeThem(t *testing.T) {
 func TestCallRecordsWhatItResolvedUnderTheRecordsOwnTypes(t *testing.T) {
 	t.Parallel()
 	h := newHarness()
-	h.defs.docs[definition.KindProcess]["p"] = strings.Replace(h.defs.docs[definition.KindProcess]["p"], "uses: agent:a\n", "uses: agent:a\ntools: {require: [repository.read]}\n", 1)
+	h.defs.docs[definition.KindProcess]["p"] = strings.Replace(h.defs.docs[definition.KindProcess]["p"], "repository.diff]}", "repository.diff], require: [repository.read]}", 1)
 	record := h.call(t, contract.CallRequest{})
 	encode := func(v any) string {
 		data, err := json.Marshal(v)
@@ -1477,7 +1510,8 @@ func TestCallRecordsWhatItResolvedUnderTheRecordsOwnTypes(t *testing.T) {
 		return string(data)
 	}
 	wantService := `{"kind":"service","name":"service","layers":[{"layer":"home","path":"mem/service/service","sha256":"` + sha(settingsDocs()[definition.KindService]["service"]) + `"}]}`
-	if len(record.Definitions) != 7 || encode(record.Definitions[0]) != wantService {
+	// The workflow that binds the call comes first, then the call's own.
+	if len(record.Definitions) != 7 || record.Definitions[0].Kind != "workflows" || record.Definitions[0].Name != "p_a" || encode(record.Definitions[1]) != wantService {
 		t.Errorf("definitions = %s", encode(record.Definitions))
 	}
 	if got := encode(record.Layers); got != `[{"layer":"home","dir":"mem"}]` {

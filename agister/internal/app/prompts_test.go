@@ -136,9 +136,10 @@ func TestAPromptNoLayerHasIsAProblemOfTheProcessAndRefusesTheCall(t *testing.T) 
 		problem string
 		refusal string
 	}{
-		"the prompt":  {"inspect", `process p: prompt "inspect" does not exist`, `process p names prompt "inspect": ` + missing.Error()},
-		"a guidance":  {"testing", `process p: guidance: prompt "testing" does not exist`, `process p names in its guidance prompt "testing": ` + missing.Error()},
-		"the last of": {"style", `process p: guidance: prompt "style" does not exist`, `process p names in its guidance prompt "style": ` + missing.Error()},
+		// The refusal starts at the workflow whose call it refuses.
+		"the prompt":  {"inspect", `process p: prompt "inspect" does not exist`, `workflow p_a uses process p names prompt "inspect": ` + missing.Error()},
+		"a guidance":  {"testing", `process p: guidance: prompt "testing" does not exist`, `workflow p_a uses process p names in its guidance prompt "testing": ` + missing.Error()},
+		"the last of": {"style", `process p: guidance: prompt "style" does not exist`, `workflow p_a uses process p names in its guidance prompt "style": ` + missing.Error()},
 	} {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
@@ -211,7 +212,8 @@ func TestCheckLinksAProcessToItsPromptAndGuidance(t *testing.T) {
 		return got
 	}
 	guidance := contract.DefinitionRef{Kind: "prompts", Name: "review", Guidance: true}
-	uses := []contract.DefinitionRef{ref("agents", "a"), ref("policies", "pol"), ref("prompts", "inspect"), guidance, ref("schemas", "s")}
+	// A process uses no agent: a workflow's node binds it to one.
+	uses := []contract.DefinitionRef{ref("prompts", "inspect"), guidance, ref("schemas", "s")}
 
 	h := newHarness()
 	guided(h, []string{"review"}, map[string]string{"review": reviewPrompt})
@@ -244,7 +246,7 @@ func TestShowProcessShowsItsPromptAndGuidance(t *testing.T) {
 	h := newHarness()
 	guided(h, []string{"review"}, map[string]string{"review": reviewPrompt})
 	inspection := app.NewInspection(app.NewResolver(h.defs, struct{ app.ResolverIdentities }{h.runtimes}, h.validator, resolverCheckStub{}))
-	view, err := inspection.ShowProcess(context.Background(), "p", "")
+	view, err := callShown(inspection, "p_a")
 	if err != nil || view.Prompt != "inspect" || !reflect.DeepEqual(view.Guidance, []string{"review"}) || view.Refusal != "" {
 		t.Fatalf("prompt %q, guidance %q, refusal %q, %v", view.Prompt, view.Guidance, view.Refusal, err)
 	}
@@ -258,7 +260,7 @@ func TestShowProcessShowsItsPromptAndGuidance(t *testing.T) {
 	}
 
 	delete(h.defs.docs[definition.KindPrompt], "review")
-	view, err = inspection.ShowProcess(context.Background(), "p", "")
+	view, err = callShown(inspection, "p_a")
 	if want := `process p names in its guidance prompt "review": not found`; err != nil || view.Prompt != "inspect" || !reflect.DeepEqual(view.Guidance, []string{"review"}) || view.Refusal != want {
 		t.Fatalf("missing: prompt %q, guidance %q, refusal %q, %v, want %q", view.Prompt, view.Guidance, view.Refusal, err, want)
 	}
@@ -283,7 +285,7 @@ func TestGatedCallIsGivenThePromptCheckSaw(t *testing.T) {
 			}
 		},
 	}
-	if _, err := gated.Submit(ctx, contract.CallRequest{Process: "p", Cwd: "/repo"}); err != nil {
+	if _, err := gated.Submit(ctx, contract.CallRequest{Process: "p_a", Cwd: "/repo"}); err != nil {
 		t.Fatal(err)
 	}
 	record := h.recorder.wait(t)
@@ -313,7 +315,7 @@ func TestSnapshotKeepsTheReadOfAMissingPrompt(t *testing.T) {
 	if _, err := snap.Read(ctx, definition.KindPrompt, "review"); err != missing {
 		t.Fatalf("read error = %v", err)
 	}
-	view, err := app.NewInspection(app.NewResolver(snap, struct{ app.ResolverIdentities }{h.runtimes}, h.validator, resolverCheckStub{})).ShowProcess(ctx, "p", "")
+	view, err := callShown(app.NewInspection(app.NewResolver(snap, struct{ app.ResolverIdentities }{h.runtimes}, h.validator, resolverCheckStub{})), "p_a")
 	if want := `process p names in its guidance prompt "review": ` + missing.Error(); err != nil || view.Refusal != want {
 		t.Fatalf("refusal = %q, %v, want %q", view.Refusal, err, want)
 	}
@@ -403,7 +405,8 @@ func TestAnInvalidProcessDoesNotSelectLibraryPrompts(t *testing.T) {
 				src = app.Snapshot(ctx, folded)
 			}
 			report, err := app.NewChecker(src, h.validator, h.runtimes, []string{"git.revision", "git.diff"}).Check(ctx, false)
-			if want := []string{"process p: unexpected: unknown field"}; err != nil || !reflect.DeepEqual(messages(report.Problems), want) {
+			// Workflow p_a binds the process, which it does not find.
+			if want := []string{"process p: unexpected: unknown field", `workflow p_a: call node p: process "p" does not exist`}; err != nil || !reflect.DeepEqual(messages(report.Problems), want) {
 				t.Fatalf("problems = %q, %v; want %q", messages(report.Problems), err, want)
 			}
 			for _, d := range report.Definitions {

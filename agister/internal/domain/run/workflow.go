@@ -50,3 +50,12 @@ type Parent struct {
 	Run  string `json:"run"`
 	Node string `json:"node"`
 }
+
+// Call is set on the run of a workflow of one call (ADR-030 rule 6), which
+// is that call's run: its node, the process the node calls and the agent
+// it binds the process to. No node record is made.
+type Call struct {
+	Node    string `json:"node"`
+	Process string `json:"process"`
+	Agent   string `json:"agent"`
+}

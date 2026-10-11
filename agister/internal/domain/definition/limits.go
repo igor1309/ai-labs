@@ -6,8 +6,8 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// Limits are the execution fields shared by policies and processes. In a
-// policy they are defaults; in a process, overrides that may only narrow.
+// Limits are a process's execution fields, its own: the service's ceilings
+// bound them, and a caller may only narrow them (ADR-030 rule 4).
 type Limits struct {
 	Timeout     *time.Duration `json:"timeout,omitempty"`
 	MaxAttempts *int           `json:"max_attempts,omitempty"`
@@ -147,8 +147,7 @@ func parseStale(node *yaml.Node, timeout *time.Duration, p *problems) Stale {
 }
 
 // parseRecover reads a stale block's recover block. Whether a budget has
-// the instruction it needs is the composed limits' to say: a process may
-// give the instruction for its policy's budget.
+// the instruction it needs is the composed limits' to say.
 func parseRecover(node *yaml.Node, p *problems) Recover {
 	var recover Recover
 	values := fields(node, "stale.recover", []string{"max_resumes", "instruction"}, p)

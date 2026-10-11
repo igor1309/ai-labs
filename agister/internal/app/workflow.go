@@ -90,13 +90,10 @@ type nodeEnd struct {
 }
 
 // workflowRequest refuses what a workflow cannot take from its caller:
-// each node runs with its own process's agent and limits, and continuing a
-// workflow is not supported.
+// each node runs on the agent it binds, with its process's limits, and
+// continuing a workflow is not supported.
 func workflowRequest(request run.Request) error {
 	var given []string
-	if request.Agent != "" {
-		given = append(given, "an agent")
-	}
 	if request.Timeout != "" {
 		given = append(given, "a timeout")
 	}
@@ -107,7 +104,7 @@ func workflowRequest(request run.Request) error {
 		given = append(given, "a run to continue")
 	}
 	if len(given) > 0 {
-		return refuse("workflow %s takes params only, not %s: each node runs with its own process's agent and limits", request.Process, strings.Join(given, ", "))
+		return refuse("workflow %s takes params only, not %s: each node runs on the agent it binds, with its process's limits", request.Process, strings.Join(given, ", "))
 	}
 	return nil
 }

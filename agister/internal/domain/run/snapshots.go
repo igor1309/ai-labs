@@ -36,6 +36,10 @@ type DefinitionLayer struct {
 	// of a leaf, its keys joined by ".": none when it gave nothing. Unset
 	// on a document taken whole, which has no fields.
 	Fields []string `json:"fields,omitzero"`
+	// Process is set on the files of a process that extends a base: the
+	// process whose file it is, the base or the process itself (ADR-030
+	// rule 9).
+	Process string `json:"process,omitempty"`
 }
 
 // Layer is one settings layer the call selected, and its directory
@@ -46,7 +50,7 @@ type Layer struct {
 }
 
 // EffectivePolicy is the limits a call ran under, composed from the
-// service, policy, process and caller.
+// service, process and caller.
 type EffectivePolicy struct {
 	Timeout     time.Duration `json:"timeout"`
 	MaxAttempts int           `json:"max_attempts"`

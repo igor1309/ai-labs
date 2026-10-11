@@ -50,7 +50,7 @@ func TestWriteReadList(t *testing.T) {
 	if names, _ := store.List(ctx, definition.KindProcess); !reflect.DeepEqual(names, []string{"a", "p"}) {
 		t.Fatalf("list = %v", names)
 	}
-	if names, err := store.List(ctx, definition.KindPolicy); err != nil || names != nil {
+	if names, err := store.List(ctx, definition.KindVerify); err != nil || names != nil {
 		t.Fatalf("empty kind = %v, %v", names, err)
 	}
 }
@@ -121,7 +121,7 @@ func TestLayeredProjectTakesPriority(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
 	global, project := fsdefs.Store{Dir: t.TempDir()}, fsdefs.Store{Dir: t.TempDir()}
-	for _, kind := range []definition.Kind{definition.KindService, definition.KindAgent, definition.KindProcess, definition.KindPolicy, definition.KindRuntime, definition.KindSchema} {
+	for _, kind := range []definition.Kind{definition.KindService, definition.KindAgent, definition.KindProcess, definition.KindVerify, definition.KindRuntime, definition.KindSchema} {
 		name := "shared"
 		if kind == definition.KindService {
 			name = "service"
@@ -142,20 +142,20 @@ func TestLayeredProjectTakesPriority(t *testing.T) {
 			t.Fatalf("%s = %+v %q, %v", kind, doc.Source, doc.Bytes, err)
 		}
 	}
-	global.Write(ctx, definition.KindPolicy, "global_only", []byte("global"), "")
-	project.Write(ctx, definition.KindPolicy, "project_only", []byte("project"), "")
+	global.Write(ctx, definition.KindVerify, "global_only", []byte("global"), "")
+	project.Write(ctx, definition.KindVerify, "project_only", []byte("project"), "")
 	layered := fsdefs.Layered{Home: global, Repository: &project}
 
-	if doc, err := layered.Read(ctx, definition.KindPolicy, "global_only"); err != nil || string(doc.Bytes) != "global" || doc.Source.Layer == definition.LayerRepository || replaced(doc.Source) != "" {
+	if doc, err := layered.Read(ctx, definition.KindVerify, "global_only"); err != nil || string(doc.Bytes) != "global" || doc.Source.Layer == definition.LayerRepository || replaced(doc.Source) != "" {
 		t.Fatalf("global_only = %+v, %v", doc.Source, err)
 	}
-	if doc, err := layered.Read(ctx, definition.KindPolicy, "project_only"); err != nil || string(doc.Bytes) != "project" || doc.Source.Layer != definition.LayerRepository || replaced(doc.Source) != "" {
+	if doc, err := layered.Read(ctx, definition.KindVerify, "project_only"); err != nil || string(doc.Bytes) != "project" || doc.Source.Layer != definition.LayerRepository || replaced(doc.Source) != "" {
 		t.Fatalf("project_only = %+v, %v", doc.Source, err)
 	}
-	if names, err := layered.List(ctx, definition.KindPolicy); err != nil || !reflect.DeepEqual(names, []string{"global_only", "project_only", "shared"}) {
+	if names, err := layered.List(ctx, definition.KindVerify); err != nil || !reflect.DeepEqual(names, []string{"global_only", "project_only", "shared"}) {
 		t.Fatalf("list = %v, %v", names, err)
 	}
-	_, err := layered.Read(ctx, definition.KindPolicy, "missing")
+	_, err := layered.Read(ctx, definition.KindVerify, "missing")
 	if err == nil || !strings.Contains(err.Error(), "not found") || !strings.Contains(err.Error(), project.Dir) || !strings.Contains(err.Error(), global.Dir) {
 		t.Fatalf("missing = %v", err)
 	}
@@ -163,10 +163,10 @@ func TestLayeredProjectTakesPriority(t *testing.T) {
 		t.Fatal("path traversal accepted")
 	}
 	outside := fsdefs.Layered{Home: global}
-	if doc, err := outside.Read(ctx, definition.KindPolicy, "shared"); err != nil || string(doc.Bytes) != "from: home\n" {
+	if doc, err := outside.Read(ctx, definition.KindVerify, "shared"); err != nil || string(doc.Bytes) != "from: home\n" {
 		t.Fatalf("without project = %+v, %v", doc, err)
 	}
-	if _, err := outside.Read(ctx, definition.KindPolicy, "missing"); err == nil || strings.Contains(err.Error(), " or ") {
+	if _, err := outside.Read(ctx, definition.KindVerify, "missing"); err == nil || strings.Contains(err.Error(), " or ") {
 		t.Fatalf("missing without project = %v", err)
 	}
 
@@ -174,11 +174,11 @@ func TestLayeredProjectTakesPriority(t *testing.T) {
 	// names where the repository would hold it too.
 	absent := filepath.Join(t.TempDir(), ".agister")
 	unset := fsdefs.Layered{Home: global, Absent: absent}
-	if doc, err := unset.Read(ctx, definition.KindPolicy, "shared"); err != nil || string(doc.Bytes) != "from: home\n" || doc.Source.Layer == definition.LayerRepository {
+	if doc, err := unset.Read(ctx, definition.KindVerify, "shared"); err != nil || string(doc.Bytes) != "from: home\n" || doc.Source.Layer == definition.LayerRepository {
 		t.Fatalf("with an absent project = %+v, %v", doc, err)
 	}
-	want := "not found (expected " + filepath.Join(absent, "policies", "missing.yaml") + " or " + filepath.Join(global.Dir, "policies", "missing.yaml") + ")"
-	if _, err := unset.Read(ctx, definition.KindPolicy, "missing"); err == nil || err.Error() != want {
+	want := "not found (expected " + filepath.Join(absent, "verifies", "missing.yaml") + " or " + filepath.Join(global.Dir, "verifies", "missing.yaml") + ")"
+	if _, err := unset.Read(ctx, definition.KindVerify, "missing"); err == nil || err.Error() != want {
 		t.Fatalf("missing with an absent project = %v, want %q", err, want)
 	}
 }
@@ -404,7 +404,7 @@ func TestLockFileIsNeverListed(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
 	store := fsdefs.Store{Dir: t.TempDir()}
-	for _, kind := range []definition.Kind{definition.KindProcess, definition.KindAgent, definition.KindPolicy, definition.KindRuntime, definition.KindSchema} {
+	for _, kind := range []definition.Kind{definition.KindProcess, definition.KindAgent, definition.KindVerify, definition.KindRuntime, definition.KindSchema} {
 		if _, _, err := store.Write(ctx, kind, "x", []byte("x"), ""); err != nil {
 			t.Fatal(err)
 		}
@@ -412,7 +412,7 @@ func TestLockFileIsNeverListed(t *testing.T) {
 	if _, err := os.Stat(filepath.Join(store.Dir, fsdefs.LockName)); err != nil {
 		t.Fatalf("lock file: %v", err)
 	}
-	for _, kind := range []definition.Kind{definition.KindAgent, definition.KindProcess, definition.KindPolicy, definition.KindRuntime, definition.KindSchema, definition.KindService} {
+	for _, kind := range []definition.Kind{definition.KindAgent, definition.KindProcess, definition.KindVerify, definition.KindRuntime, definition.KindSchema, definition.KindService} {
 		names, err := store.List(ctx, kind)
 		if err != nil || (kind != definition.KindService && !reflect.DeepEqual(names, []string{"x"})) || (kind == definition.KindService && len(names) != 0) {
 			t.Errorf("%s: %v %v", kind, names, err)

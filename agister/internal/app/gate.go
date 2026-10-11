@@ -242,7 +242,7 @@ func (c resolverCheck) Check(ctx context.Context) (ResolverChecked, error) {
 	}
 	var result ResolverChecked
 	for _, d := range found.Documents {
-		result.Documents = append(result.Documents, ResolverDocument{Ref: d.Ref, Path: d.Path, Uses: d.Uses})
+		result.Documents = append(result.Documents, ResolverDocument(d))
 	}
 	for _, p := range found.Problems {
 		if p.About != nil {
@@ -270,11 +270,11 @@ func (c settingsCheck) Check(ctx context.Context) (SettingsChecked, error) {
 	}
 	var result SettingsChecked
 	for _, d := range found.Documents {
-		result.Documents = append(result.Documents, SettingsDocument{Ref: d.Ref, Path: d.Path, Uses: d.Uses})
+		result.Documents = append(result.Documents, SettingsDocument(d))
 	}
 	for _, p := range found.Problems {
 		if p.About != nil {
-			result.Problems = append(result.Problems, SettingsProblem{About: *p.About, Message: p.Message})
+			result.Problems = append(result.Problems, SettingsProblem{About: *p.About, Message: p.Message, Agent: p.Agent})
 		}
 	}
 	for _, b := range found.Blocks {
@@ -335,12 +335,12 @@ func (g *Gated) ListProcesses(ctx context.Context) ([]contract.ProcessSummary, e
 	return client.ListProcesses(ctx)
 }
 
-func (g *Gated) ShowProcess(ctx context.Context, name, agent string) (contract.ProcessView, error) {
+func (g *Gated) ShowProcess(ctx context.Context, name string) (contract.ProcessView, error) {
 	client, err := g.gate(ctx)
 	if err != nil {
 		return contract.ProcessView{}, err
 	}
-	return client.ShowProcess(ctx, name, agent)
+	return client.ShowProcess(ctx, name)
 }
 
 func (g *Gated) ListWorkflows(ctx context.Context) ([]contract.WorkflowSummary, error) {

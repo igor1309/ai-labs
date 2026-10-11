@@ -88,12 +88,12 @@ func TestExampleWorkflowEndToEnd(t *testing.T) {
 		t.Fatalf("runs: %d\n%s", r.code, r.stdout)
 	}
 
-	// What a caller may not give a workflow, and a join called on its own,
-	// are refused.
+	// What a caller may not give a workflow, and a join's process called
+	// on its own, by a workflow of one call, are refused.
 	if r := agister(t, home, repo, "run", "review_panel", "--param", "architecture=a.txt", "--timeout", "1m"); r.code != cli.ExitRefused {
 		t.Fatalf("with a timeout: exit %d\n%s", r.code, r.stderr)
 	}
-	if r := agister(t, home, repo, "run", "review_summary"); r.code != cli.ExitRefused || !strings.Contains(r.stderr, "given only to a workflow's join") {
+	if r := agister(t, home, repo, "run", bound(t, home, "review_summary", "reviewer")); r.code != cli.ExitRefused || !strings.Contains(r.stderr, "call node review_summary: process review_summary takes the collection (input reviews), which only a join receives") {
 		t.Fatalf("the join on its own: exit %d\n%s", r.code, r.stderr)
 	}
 }
@@ -111,7 +111,7 @@ func TestExampleWorkflowJoinsWithoutATimedOutNode(t *testing.T) {
 	// test passes once the turn waits on it.
 	path := filepath.Join(home, "processes", "adversarial_review.yaml")
 	process := strings.Replace(read(t, path), "  values:\n", "  values:\n    stall: {source: file, path: stall.txt}\n", 1)
-	write(t, path, strings.Replace(process, "workspace:\n", "timeout: 7m\n\nworkspace:\n", 1))
+	write(t, path, strings.Replace(process, "timeout: 20m\n", "timeout: 7m\n", 1))
 	write(t, filepath.Join(repo, "stall.txt"), "SCENARIO:hang\n")
 	const timeout = 7 * time.Minute
 	clock := clocktest.NewClock(time.Date(2026, 10, 3, 12, 0, 0, 0, time.UTC))
@@ -231,7 +231,7 @@ func TestNextCallReapsAKilledWorkflowsNodes(t *testing.T) {
 		t.Fatal(err)
 	}
 	next, err := client.Submit(ctx, contract.CallRequest{
-		Process: "adversarial_review", Params: map[string]string{"base": "main"}, Timeout: "7m", Cwd: repo,
+		Process: "adversarial_review_reviewer", Params: map[string]string{"base": "main"}, Timeout: "7m", Cwd: repo,
 	})
 	if err != nil {
 		t.Fatal(err)

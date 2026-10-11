@@ -1,0 +1,6 @@
+schema: agister.workflow/v1alpha1
+name: ask_opencode_minimax
+
+type: workflow
+
+call: {node: ask, uses: process:ask_opencode, agent: opencode-minimax}

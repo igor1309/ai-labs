@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"io/fs"
+	"maps"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -17,12 +18,17 @@ import (
 	"testing"
 	"time"
 
+	"github.com/BurntSushi/toml"
 	"github.com/igor1309/ai-labs/agister/internal/adapters/git/gittest"
 	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/runtimetest"
+	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/runtimetest/fakecodex"
 	"github.com/igor1309/ai-labs/agister/internal/adapters/schema"
 	"github.com/igor1309/ai-labs/agister/internal/cli"
+	"github.com/igor1309/ai-labs/agister/internal/contract"
 	"github.com/igor1309/ai-labs/agister/internal/domain/definition"
 	domain "github.com/igor1309/ai-labs/agister/internal/domain/run"
+	"github.com/igor1309/ai-labs/gokit/fakeproc"
+	"github.com/igor1309/ai-labs/gokit/supervisor/supervisortest"
 	"gopkg.in/yaml.v3"
 )
 
@@ -46,11 +52,12 @@ const repoGoal = "agister/testdata/briefs/lab-119-goal.md"
 
 const fallbackParam = "AGENTS.md"
 
-// testTimeouts are the test's own timeouts for a process run, by process
-// name, in place of its policy's: the advisor's policy allows 20 minutes,
-// implement_pi's 45.
+// testTimeouts are the test's own timeouts for a run, by the workflow it
+// names, in place of its process's own: the advisor's process allows 20
+// minutes, which advisor_codex calls, and implement's 45, which
+// implement_pi and implement_pi_glm call on Pi.
 var testTimeouts = map[string]string{
-	"advisor":          "1m",
+	"advisor_codex":    "1m",
 	"implement_pi":     "1m",
 	"implement_pi_glm": "1m",
 }
@@ -59,7 +66,38 @@ var testTimeouts = map[string]string{
 // slot this repository fills only in its projects' layers, so each is
 // launched in a project; at the root it is refused (ADR-028 Migration step
 // 4).
-var implementers = []string{"implement", "implement_codex", "implement_pi", "implement_pi_glm"}
+var implementers = []string{"implement"}
+
+// callAgents are what each of home's workflows of one call (ADR-030 rule
+// 6) runs its call on, by workflow: implement, on each agent in use, in
+// the resumable session implement says it has (ADR-030 Migration step 3).
+// implement_codex, implement_pi and implement_pi_glm bind the agents the
+// processes of their names ran on, which checked no brief's form.
+var callAgents = func() map[string]agentProfile {
+	on := func(agent string) agentProfile {
+		profile := homeAgents[agent]
+		profile.session = definition.SessionResumable
+		return profile
+	}
+	return map[string]agentProfile{
+		"implement_opus":   on("claude-opus"),
+		"implement_sonnet": on("claude-sonnet"),
+		"implement_codex":  on("codex-sol-61"),
+		"implement_pi":     on("pi-m3"),
+		"implement_pi_glm": on("pi-glm-53"),
+	}
+}()
+
+// calledProcess is the process a run called: a workflow of one call's, or
+// the run's own.
+func calledProcess(record map[string]any) string {
+	if call, ok := record["call"].(map[string]any); ok {
+		process, _ := call["process"].(string)
+		return process
+	}
+	process, _ := record["process"].(string)
+	return process
+}
 
 // projects are this repository's project directories, relative to its
 // root, each with a layer that fills verify:repo with its own check
@@ -77,38 +115,85 @@ func launchDir(name string) string {
 	return "."
 }
 
-// codexAgents is the agent recorded for each process that runs on Codex, by
-// process: each agent is named after its model version.
-var codexAgents = map[string]string{
-	"adr_review_codex":          "codex-sol-61",
-	"adversarial_review_codex":  "codex-sol-61",
-	"advisor":                   "codex-sol-61",
-	"architecture_review_codex": "codex-sol-61",
-	"clarity_review_codex":      "codex-sol-61",
-	"intent_review_codex":       "codex-sol-61",
-	"tests_review_codex":        "codex-sol-61",
-	"implement_codex":           "codex-implementer-sol-61",
+// agentProfile is what a call's record says of the agent it ran on: the
+// agent, its runtime mapping, the model and effort the call asked of it and
+// the session mode the call ran under.
+type agentProfile struct{ agent, runtime, model, effort, session string }
+
+// homeAgents are home's five agents, by name, each with its runtime
+// mapping, model and effort: a call's profile, but for its session mode.
+var homeAgents = map[string]agentProfile{
+	"claude-opus":   {agent: "claude-opus", runtime: "claude-code", model: "opus", effort: "high"},
+	"claude-sonnet": {agent: "claude-sonnet", runtime: "claude-code", model: "sonnet", effort: "high"},
+	"codex-sol-61":  {agent: "codex-sol-61", runtime: "codex", model: "gpt-6.1-sol", effort: "high"},
+	"pi-glm-53":     {agent: "pi-glm-53", runtime: "pi", model: "opencode-go/glm-5.3", effort: "high"},
+	"pi-m3":         {agent: "pi-m3", runtime: "pi", model: "opencode-go/minimax-m3", effort: "high"},
 }
 
+// processAgents is what each of home's processes runs on, by process, a
+// base left out, where a node of home's workflows binds it and where a test
+// runs it alone (runsAlone): one of home's five agents (ADR-030 Migration
+// step 3), with the runtime, model and effort the process ran on when home
+// had seven and its process named it, and the session mode its call ran
+// under then, an implementer's resumable and any other's fresh-only.
+var processAgents = func() map[string]agentProfile {
+	const fresh, resumable = definition.SessionFresh, definition.SessionResumable
+	opus, codex := homeAgents["claude-opus"], homeAgents["codex-sol-61"]
+	in := func(session string, profile agentProfile) agentProfile {
+		profile.session = session
+		return profile
+	}
+	return map[string]agentProfile{
+		"implement":           in(resumable, opus),
+		"adr_review_codex":    in(fresh, codex),
+		"adversarial_review":  in(fresh, codex),
+		"advisor":             in(fresh, codex),
+		"architecture_review": in(fresh, codex),
+		"clarity_review":      in(fresh, codex),
+		"intent_review":       in(fresh, codex),
+		"tests_review":        in(fresh, codex),
+		"review_judge":        in(fresh, opus),
+	}
+}()
+
 // staleLimits are the effective staleness limits recorded for each process's
-// run, by process, as its policy sets them; a process not listed records
-// none.
+// run, by process, as its process or its policy sets them; a process not
+// listed records none.
 var staleLimits = func() map[string]domain.StaleLimits {
 	implement := domain.StaleLimits{NoEvent: 21 * time.Minute, ToolCommand: 15 * time.Minute, RepeatedToolCalls: 5}
 	review := domain.StaleLimits{NoEvent: 10 * time.Minute, ToolCommand: 8 * time.Minute, RepeatedToolCalls: 5}
 	return map[string]domain.StaleLimits{
-		"implement":                 implement,
-		"implement_codex":           implement,
-		"implement_pi":              implement,
-		"implement_pi_glm":          implement,
-		"adr_review_codex":          review,
-		"adversarial_review_codex":  review,
-		"advisor":                   review,
-		"architecture_review_codex": review,
-		"clarity_review_codex":      review,
-		"intent_review_codex":       review,
-		"tests_review_codex":        review,
-		"review_judge":              {NoEvent: 3 * time.Minute},
+		"implement":           implement,
+		"adr_review_codex":    review,
+		"adversarial_review":  review,
+		"advisor":             review,
+		"architecture_review": review,
+		"clarity_review":      review,
+		"intent_review":       review,
+		"tests_review":        review,
+		"review_judge":        {NoEvent: 3 * time.Minute},
+	}
+}()
+
+// requiredPermissions are the permissions each of home's processes says it
+// cannot work without (tools.require, ADR-030 rule 8), by process, a base
+// left out, as its run records them: implement reads the repository, writes
+// its change and runs its tests, a review reads the repository and the
+// change's diff,
+// the advisor reads the repository, and the judge, which rules on the
+// reviews it is given, needs none.
+var requiredPermissions = func() map[string][]string {
+	review := []string{"repository.read", "repository.diff"}
+	return map[string][]string{
+		"implement":           {"repository.read", "repository.write", "process.execute"},
+		"adr_review_codex":    review,
+		"adversarial_review":  review,
+		"advisor":             {"repository.read"},
+		"architecture_review": review,
+		"clarity_review":      review,
+		"intent_review":       review,
+		"tests_review":        review,
+		"review_judge":        nil,
 	}
 }()
 
@@ -127,14 +212,27 @@ const verifyFixtureTimeout = "30s"
 // (<repository root>/.agister) as the CLI composes them, on the fake
 // runtimes, and completes with output its schema accepts; an implementer
 // is launched in agister/ and composed under that project's layer as well
-// (launchDir). A process that takes a workflow's collection runs only as a
-// join: it is run through the workflows, and each must be one's join. A process that names a
-// missing agent, policy or schema, a schema that does not compile, an
-// unknown input source or a prompt path that does not resolve from the
-// repository root fails it. Processes are read from the directory, so a new
-// one is tested without listing it here. Each process of codexAgents
-// exists, and its run records that agent. Each process's run, a join's
-// included, records its staleLimits.
+// (launchDir). A process runs only as a node of a workflow, which binds it
+// to its agent (ADR-030 rules 5 and 7): it is run through home's
+// workflows, and each process that is not a base must be bound by a node
+// of one, and one that takes a workflow's collection must be one's join. A
+// base is not work: it runs through each process that extends it, laid
+// over it (homeBases). A process that names a missing schema, a schema that
+// does not compile, an unknown input source or a prompt path that does not
+// resolve from the repository root fails it, as does a node that binds a
+// missing agent. Processes are read from the directory, so a new one is
+// tested without listing it here, but for its agent: each process that is
+// not a base is one of processAgents, and each of those exists. Each node's
+// run, a join's included, records its agent as processAgents has it
+// (recordsAgent), its staleLimits and its requiredPermissions, which list
+// every process that is not a base, and output its schema accepts. A
+// workflow of one call is one run, launched where its process is, which
+// names the workflow and its call, and records the agent callAgents lists
+// for it, or, for one it does not list, which binds its process to the
+// agent processAgents lists, that agent; the limits its process has, the
+// guidance repositoryGuidance names for that process, home's implement
+// prompt where it calls an implementer and, where that process declares
+// verify, the verification its run passed (verifiedOnce), on writableCodex.
 //
 // The test works in a repository of its own whose top-level entries link to
 // this repository's working tree (settings and prompts as they are, edits
@@ -147,6 +245,7 @@ const verifyFixtureTimeout = "30s"
 func TestRepositoryProcessesRunOnFakeRuntimes(t *testing.T) {
 	t.Parallel()
 	root, repo, home := onFakeRuntimes(t)
+	writableCodex(t, home)
 	entries, err := os.ReadDir(filepath.Join(root, homeFolder, "processes"))
 	if err != nil {
 		t.Fatal(err)
@@ -162,9 +261,9 @@ func TestRepositoryProcessesRunOnFakeRuntimes(t *testing.T) {
 	if len(names) == 0 {
 		t.Fatal("the home folder has no processes")
 	}
-	for name := range codexAgents {
+	for name := range processAgents {
 		if !slices.Contains(names, name) {
-			t.Errorf("process %s, which runs on Codex, is not among the home folder's processes", name)
+			t.Errorf("process %s, which has an agent listed, is not among the home folder's processes", name)
 		}
 	}
 	for _, name := range implementers {
@@ -178,70 +277,74 @@ func TestRepositoryProcessesRunOnFakeRuntimes(t *testing.T) {
 	}
 	// Processes that take a workflow's collection, to be run as a join.
 	joins := map[string]bool{}
+	bases := homeBases(t, root)
 	for _, name := range names {
-		process := parseProcess(t, root, name)
-		if len(process.Collects()) > 0 {
-			joins[name] = true
+		if bases[name] {
 			continue
 		}
-		t.Run(name, func(t *testing.T) {
-			launch := launchDir(name)
-			args := append([]string{"run", name}, paramArgs(t, launch, process.Params)...)
-			if timeout := testTimeouts[name]; timeout != "" {
-				args = append(args, "--timeout", timeout)
-			}
-			created, r := runRecorded(t, home, filepath.Join(repo, launch), args)
-			if len(created) != 1 {
-				t.Fatalf("runs recorded: %v, want one", created)
-			}
-			record := completedRun(t, home, created[0])
-			if slices.Contains(implementers, name) {
-				text := string(implementPrompt)
-				if given := inputOf(t, record, "prompt"); given["source"] != "prompt" || given["identity"] != "sha256:"+digestOf(text) || given["value"] != text {
-					t.Fatalf("%s's prompt = %v, want home's implement prompt", name, given)
-				}
-				source := definitionOf(t, run{record: record}, "prompts", "implement")
-				want := homeFile("prompts", "implement", filepath.Join(home, "prompts", "implement.md"), text)
-				if !reflect.DeepEqual(source, want) {
-					t.Fatalf("%s's prompt definition = %v, want %v", name, source, want)
-				}
-			}
-			if want, ok := codexAgents[name]; ok && record["agent"] != want {
-				t.Fatalf("agent = %v, want %s", record["agent"], want)
-			}
-			recordsStaleLimits(t, record)
-			if process.Verify != nil {
-				attempts, _ := record["attempts"].([]any)
-				if len(attempts) != 1 {
-					t.Fatalf("attempts = %v, want one", record["attempts"])
-				}
-				if run, _ := attempts[0].(map[string]any)["run"].(map[string]any); run["command"] != verifyFixture || run["passed"] != true {
-					t.Fatalf("verification run = %v, want %q passed", run, verifyFixture)
-				}
-			}
-			if process.Output.Format == "json" {
-				schemaAccepts(t, record, record["result"].(map[string]any)["output"], r.stdout)
-			}
-		})
+		if _, listed := processAgents[name]; !listed {
+			t.Errorf("process %s of the home folder has no agent listed in processAgents", name)
+		}
+		if len(parseProcess(t, root, name).Collects()) > 0 {
+			joins[name] = true
+		}
 	}
 
-	// Every workflow runs its nodes and completes with its join's output.
+	// Every workflow runs its nodes and completes with its join's output, or
+	// its call's.
 	workflows, err := filepath.Glob(filepath.Join(root, homeFolder, "workflows", "*.yaml"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	joined := map[string]bool{}
+	bound, joined := map[string]bool{}, map[string]bool{}
 	for _, path := range workflows {
 		name := strings.TrimSuffix(filepath.Base(path), ".yaml")
-		data, err := os.ReadFile(path)
-		if err != nil {
-			t.Fatal(err)
+		workflow := parseWorkflow(t, root, name)
+		for _, node := range workflow.Nodes() {
+			bound[node.Process] = true
 		}
-		workflow, err := definition.ParseWorkflow(definition.Document{
-			Source: definition.Source{Kind: definition.KindWorkflow, Name: name, Path: path}, Bytes: data,
-		})
-		if err != nil {
-			t.Fatal(err)
+		if call := workflow.Call; call != nil {
+			if _, listed := callAgents[name]; !listed && processAgents[call.Process].agent != call.Agent {
+				t.Errorf("workflow %s of the home folder, of one call, has no agent listed in callAgents, and binds %s to %s, not to the agent processAgents lists for it",
+					name, call.Process, call.Agent)
+			}
+			t.Run("workflow "+name, func(t *testing.T) {
+				launch := launchDir(call.Process)
+				process := parseProcess(t, root, call.Process)
+				args := append([]string{"run", name}, paramArgs(t, launch, process.Params)...)
+				if timeout := testTimeouts[name]; timeout != "" {
+					args = append(args, "--timeout", timeout)
+				}
+				created, r := runRecorded(t, home, filepath.Join(repo, launch), args)
+				if len(created) != 1 {
+					t.Fatalf("runs recorded: %v, want the call's alone", created)
+				}
+				record := completedRun(t, home, created[0])
+				want := map[string]any{"node": call.Name, "process": call.Process, "agent": call.Agent}
+				if record["process"] != name || !reflect.DeepEqual(record["call"], want) {
+					t.Fatalf("the run of %v calls %v, want workflow %s's call %v", record["process"], record["call"], name, want)
+				}
+				if slices.Contains(implementers, call.Process) {
+					text := string(implementPrompt)
+					if given := inputOf(t, record, "prompt"); given["source"] != "prompt" || given["identity"] != "sha256:"+digestOf(text) || given["value"] != text {
+						t.Fatalf("%s's prompt = %v, want home's implement prompt", name, given)
+					}
+					source := definitionOf(t, run{record: record}, "prompts", "implement")
+					want := homeFile("prompts", "implement", filepath.Join(home, "prompts", "implement.md"), text)
+					if !reflect.DeepEqual(source, want) {
+						t.Fatalf("%s's prompt definition = %v, want %v", name, source, want)
+					}
+				}
+				recordsAgent(t, record)
+				recordsStaleLimits(t, record)
+				recordsRequired(t, record)
+				givesGuidance(t, root, repo, record, repositoryGuidance[call.Process]...)
+				if verifies(process) {
+					verifiedOnce(t, record)
+				}
+				schemaAccepts(t, record, record["result"].(map[string]any)["output"], r.stdout)
+			})
+			continue
 		}
 		joined[workflow.Join.Process] = true
 		t.Run("workflow "+name, func(t *testing.T) {
@@ -270,12 +373,18 @@ func TestRepositoryProcessesRunOnFakeRuntimes(t *testing.T) {
 			for i, node := range nodes {
 				node := node.(map[string]any)
 				child := completedRun(t, home, node["run"].(string))
+				recordsAgent(t, child)
 				recordsStaleLimits(t, child)
+				recordsRequired(t, child)
 				if parent := child["parent"].(map[string]any); parent["run"] != record["id"] || parent["node"] != node["name"] {
 					t.Fatalf("node %v: parent %v", node["name"], parent)
 				}
 				if i == len(nodes)-1 {
 					join = child
+					continue
+				}
+				if parseProcess(t, root, calledProcess(child)).Output.Format == "json" {
+					schemaValidates(t, child, child["result"].(map[string]any)["output"])
 				}
 			}
 			// The workflow's output is its join's, which its schema accepts.
@@ -284,6 +393,11 @@ func TestRepositoryProcessesRunOnFakeRuntimes(t *testing.T) {
 			}
 			schemaAccepts(t, join, result["output"], r.stdout)
 		})
+	}
+	for _, name := range names {
+		if !bases[name] && !bound[name] {
+			t.Errorf("process %s of the home folder is bound by no node of its workflows: it runs nowhere", name)
+		}
 	}
 	for name := range joins {
 		if !joined[name] {
@@ -295,13 +409,73 @@ func TestRepositoryProcessesRunOnFakeRuntimes(t *testing.T) {
 			t.Errorf("process %s, which has stale limits, is not among the home folder's processes", name)
 		}
 	}
+	for name := range requiredPermissions {
+		if !slices.Contains(names, name) {
+			t.Errorf("process %s, which has required permissions listed, is not among the home folder's processes", name)
+		}
+	}
+	for name := range callAgents {
+		if !slices.Contains(workflows, filepath.Join(root, homeFolder, "workflows", name+".yaml")) {
+			t.Errorf("workflow %s, which has an agent listed, is not among the home folder's workflows", name)
+		}
+	}
+}
+
+// verifies reports whether process declares verify, inline or by name.
+func verifies(process definition.Process) bool {
+	return process.Verify != nil || process.VerifyName != ""
+}
+
+// verifiedOnce checks that a run recorded one verification attempt, which
+// ran verifyFixture and passed.
+func verifiedOnce(t *testing.T, record map[string]any) {
+	t.Helper()
+	attempts, _ := record["attempts"].([]any)
+	if len(attempts) != 1 {
+		t.Fatalf("attempts = %v, want one", record["attempts"])
+	}
+	if run, _ := attempts[0].(map[string]any)["run"].(map[string]any); run["command"] != verifyFixture || run["passed"] != true {
+		t.Fatalf("verification run = %v, want %q passed", run, verifyFixture)
+	}
+}
+
+// recordsAgent checks that a process's run recorded what processAgents
+// lists for its process, and a run of a workflow of one call what
+// callAgents lists for its workflow, or, for a workflow it does not list,
+// what processAgents lists for the process it calls: the agent, its runtime
+// mapping, the model and effort asked of it and the session mode.
+func recordsAgent(t *testing.T, record map[string]any) {
+	t.Helper()
+	process, _ := record["process"].(string)
+	agents, list := processAgents, "processAgents"
+	if _, ok := record["call"]; ok {
+		if _, listed := callAgents[process]; listed {
+			agents, list = callAgents, "callAgents"
+		} else {
+			process = calledProcess(record)
+		}
+	}
+	want, listed := agents[process]
+	if !listed {
+		t.Fatalf("%s: no agent listed in %s", process, list)
+	}
+	agent, _ := record["agent"].(string)
+	runtime, _ := record["runtime"].(map[string]any)
+	mapping, _ := runtime["mapping"].(string)
+	profile, _ := record["profile"].(map[string]any)
+	model, _ := profile["model"].(string)
+	effort, _ := profile["effort"].(string)
+	session, _ := profile["session"].(string)
+	if got := (agentProfile{agent: agent, runtime: mapping, model: model, effort: effort, session: session}); got != want {
+		t.Fatalf("%s ran on %+v, want %+v", process, got, want)
+	}
 }
 
 // recordsStaleLimits checks that a process's run recorded the effective
-// staleness limits staleLimits lists for its process, or none.
+// staleness limits staleLimits lists for the process it called, or none.
 func recordsStaleLimits(t *testing.T, record map[string]any) {
 	t.Helper()
-	process, _ := record["process"].(string)
+	process := calledProcess(record)
 	effective, ok := record["effective"].(map[string]any)
 	if !ok {
 		t.Fatalf("%s: no effective limits recorded: %v", process, record)
@@ -318,6 +492,35 @@ func recordsStaleLimits(t *testing.T, record map[string]any) {
 	}
 	if want := staleLimits[process]; got != want {
 		t.Fatalf("%s: effective stale limits %+v, want %+v", process, got, want)
+	}
+}
+
+// recordsRequired checks that a process's run recorded, among its effective
+// limits, the permissions requiredPermissions lists for the process it
+// called, in their order, or none.
+func recordsRequired(t *testing.T, record map[string]any) {
+	t.Helper()
+	process := calledProcess(record)
+	want, listed := requiredPermissions[process]
+	if !listed {
+		t.Fatalf("%s: no required permissions listed in requiredPermissions", process)
+	}
+	effective, ok := record["effective"].(map[string]any)
+	if !ok {
+		t.Fatalf("%s: no effective limits recorded: %v", process, record)
+	}
+	var got []string
+	if recorded, set := effective["require"]; set {
+		data, err := json.Marshal(recorded)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := json.Unmarshal(data, &got); err != nil {
+			t.Fatalf("%s: require %s: %v", process, data, err)
+		}
+	}
+	if !slices.Equal(got, want) {
+		t.Fatalf("%s: effective tools.require %v, want %v", process, got, want)
 	}
 }
 
@@ -366,22 +569,22 @@ func TestCodeReviewCollectsItsFiveReviews(t *testing.T) {
 	root, repo, home := onFakeRuntimes(t)
 	reviews, records := judgedReviews(t, home, repo, "code_review")
 	want := map[string]string{
-		"architecture": "architecture_review_codex completed",
-		"tests":        "tests_review_codex completed",
-		"adversarial":  "adversarial_review_codex completed",
-		"clarity":      "clarity_review_codex completed",
-		"intent":       "intent_review_codex completed",
+		"architecture": "architecture_review completed",
+		"tests":        "tests_review completed",
+		"adversarial":  "adversarial_review completed",
+		"clarity":      "clarity_review completed",
+		"intent":       "intent_review completed",
 	}
 	if !reflect.DeepEqual(reviews, want) {
 		t.Fatalf("code_review's judge collected %v, want %v", reviews, want)
 	}
 
 	for _, c := range []struct{ process, prompt string }{
-		{"architecture_review_codex", "code-review-architecture"},
-		{"tests_review_codex", "code-review-tests"},
-		{"adversarial_review_codex", "code-review-adversarial"},
-		{"clarity_review_codex", "code-review-clarity"},
-		{"intent_review_codex", "code-review-intent"},
+		{"architecture_review", "code-review-architecture"},
+		{"tests_review", "code-review-tests"},
+		{"adversarial_review", "code-review-adversarial"},
+		{"clarity_review", "code-review-clarity"},
+		{"intent_review", "code-review-intent"},
 		{"review_judge", "code-review-judge"},
 	} {
 		prompt, err := os.ReadFile(filepath.Join(root, homeFolder, "prompts", c.prompt+".md"))
@@ -399,43 +602,41 @@ func TestCodeReviewCollectsItsFiveReviews(t *testing.T) {
 		}
 	}
 
-	if output := parseProcess(t, root, "intent_review_codex").Output; output.Format != "json" || output.Schema != "review-result" {
-		t.Fatalf("intent_review_codex's output = %+v, want json of schema review-result", output)
+	if output := parseProcess(t, root, "intent_review").Output; output.Format != "json" || output.Schema != "review-result" {
+		t.Fatalf("intent_review's output = %+v, want json of schema review-result", output)
 	}
-	// The parsed process keeps no require_valid: it is read from the document.
-	data, err := os.ReadFile(filepath.Join(root, homeFolder, "processes", "intent_review_codex.yaml"))
-	if err != nil {
-		t.Fatal(err)
-	}
+	// The parsed process keeps no require_valid: it is read from the
+	// document, laid over the review base, which gives the output.
 	var document struct {
 		Output struct {
 			RequireValid bool `yaml:"require_valid"`
 		} `yaml:"output"`
 	}
-	if err := yaml.Unmarshal(data, &document); err != nil {
+	if err := yaml.Unmarshal(extendedProcess(t, root, "intent_review").Bytes, &document); err != nil {
 		t.Fatal(err)
 	}
 	if !document.Output.RequireValid {
-		t.Fatal("intent_review_codex's output.require_valid is not true, want its output required valid")
+		t.Fatal("intent_review's output.require_valid is not true, want its output required valid")
 	}
 }
 
 // The intent reviewer reviews the candidate it is given, in the worktree at
-// that candidate (ADR-025 rule 2): with HEAD at another commit, the call is
-// refused, naming the candidate, and its runtime never starts.
+// that candidate (ADR-025 rule 2): with HEAD at another commit, the call,
+// run alone (runsAlone), is refused, naming the candidate, and its runtime
+// never starts.
 func TestIntentReviewIsRefusedOffItsCandidate(t *testing.T) {
 	t.Parallel()
-	_, repo, home, recorded := onFakeRuntimesRecorded(t)
+	root, repo, home, recorded := onFakeRuntimesRecorded(t)
 	// HEAD moves past feature, the candidate, to a commit of its own.
 	head := recorded.Commit("later", map[string]string{"change.txt": "one\ntwo\nthree\n"})
 	before := map[string]bool{}
 	for _, entry := range readRuns(t, home) {
 		before[entry.Name()] = true
 	}
-	r := agister(t, home, repo, "run", "intent_review_codex", "--param", "base=main", "--param", "candidate=feature", "--param", "goal="+repoGoal)
+	r := agister(t, home, repo, "run", runsAlone(t, root, home, "intent_review"), "--param", "base=main", "--param", "candidate=feature", "--param", "goal="+repoGoal)
 	const pinned = "a call works on the revision its process pins, and Agister does not move HEAD (ADR-025 rule 2)"
 	if r.code != cli.ExitRefused || !strings.Contains(r.stderr, pinned) {
-		t.Fatalf("intent_review_codex off its candidate: exit %d, stderr %q, want refused with %q", r.code, r.stderr, pinned)
+		t.Fatalf("intent_review off its candidate: exit %d, stderr %q, want refused with %q", r.code, r.stderr, pinned)
 	}
 	var created []string
 	for _, entry := range readRuns(t, home) {
@@ -478,6 +679,77 @@ func TestADRReviewCollectsTheADRReview(t *testing.T) {
 	digest := "sha256:" + hex.EncodeToString(sum[:])
 	if given := inputOf(t, records["adr_review_codex"], "prompt"); given["source"] != "prompt" || given["identity"] != digest {
 		t.Fatalf("adr_review_codex's prompt = %v, want the prompt code-review-adr (%s)", given, digest)
+	}
+}
+
+// workflowAgents is the agent each node of home's review workflows binds
+// its process to, by workflow and node (ADR-030 Migration step 3): the one
+// the node's process named when the process chose it.
+var workflowAgents = map[string]map[string]string{
+	"code_review": {
+		"architecture": "codex-sol-61",
+		"tests":        "codex-sol-61",
+		"adversarial":  "codex-sol-61",
+		"clarity":      "codex-sol-61",
+		"intent":       "codex-sol-61",
+		"judge":        "claude-opus",
+	},
+	"adr_review": {
+		"adr":   "codex-sol-61",
+		"judge": "claude-opus",
+	},
+}
+
+// Each node of code_review and adr_review names its agent (ADR-030 rule
+// 5), the one of workflowAgents: its workflow's file in the home folder
+// says it on the node. The node binds it, not its process: in the
+// installed home, the process names no agent, nor does the base it
+// extends, the workflow completes, and each node's run records what
+// processAgents lists for its process, the agent, runtime, model, effort
+// and session mode it ran on when its process named the agent.
+func TestTheReviewWorkflowsNameTheirAgents(t *testing.T) {
+	t.Parallel()
+	root, repo, home := onFakeRuntimes(t)
+	names := slices.Sorted(maps.Keys(workflowAgents))
+	nodes := map[string][]definition.Node{}
+	for _, name := range names {
+		nodes[name] = parseWorkflow(t, root, name).Nodes()
+		named := map[string]string{}
+		for _, node := range nodes[name] {
+			named[node.Name] = node.Agent
+		}
+		if !reflect.DeepEqual(named, workflowAgents[name]) {
+			t.Errorf("%s's nodes name the agents %v, want %v", name, named, workflowAgents[name])
+		}
+	}
+
+	// process list has no agent to name of a process (ADR-030 rule 2): each
+	// is listed by its name and output alone.
+	listed := agister(t, home, repo, "process", "list")
+	for _, name := range names {
+		for _, node := range nodes[name] {
+			line := regexp.MustCompile(`(?m)^` + regexp.QuoteMeta(node.Process) + `\t[^\t\n]+$`)
+			if listed.code != 0 || !line.MatchString(listed.stdout) || strings.Contains(listed.stdout, "agent:") {
+				t.Fatalf("process list lacks %s, a process that names no agent: %d\n%s%s", line, listed.code, listed.stdout, listed.stderr)
+			}
+		}
+	}
+
+	for _, name := range names {
+		_, records := judgedReviews(t, home, repo, name)
+		for _, node := range nodes[name] {
+			record := records[node.Process]
+			if record == nil {
+				t.Fatalf("%s: no run of node %s's %s", name, node.Name, node.Process)
+			}
+			if parent, _ := record["parent"].(map[string]any); parent["node"] != node.Name {
+				t.Fatalf("%s: the run of %s is node %v's, want %s's", name, node.Process, parent["node"], node.Name)
+			}
+			if record["agent"] != workflowAgents[name][node.Name] {
+				t.Errorf("%s: node %s ran on %v, want %s", name, node.Name, record["agent"], workflowAgents[name][node.Name])
+			}
+			recordsAgent(t, record)
+		}
 	}
 }
 
@@ -555,16 +827,17 @@ func TestReviewNodesReceiveTheGoalAndTheJudgeDoesNot(t *testing.T) {
 }
 
 // The advisor answers a question file on the Codex agent, a model family
-// other than the judge's, in the caller's worktree (ADR-025), and is given the
-// question and its standing prompt, the settings prompt advisor (ADR-027
-// rule 4). Its output is of the advice schema.
+// other than the judge's, which home's advisor_codex binds it to (ADR-030
+// rule 6), in the caller's worktree (ADR-025), and is given the question and
+// its standing prompt, the settings prompt advisor (ADR-027 rule 4). Its
+// output is of the advice schema.
 func TestAdvisorAnswersAQuestionFile(t *testing.T) {
 	t.Parallel()
 	root, repo, home := onFakeRuntimes(t)
 	question := filepath.Join(tempDir(t), "question.md")
 	write(t, question, "Asked by: workflow run 1, item 2.\nQuestion: which?\nOptions: (a) one; (b) two.\n")
-	// The timeout is the test's own: the process's policy allows 20 minutes.
-	created, r := runRecorded(t, home, repo, []string{"run", "advisor", "--param", "question=" + question, "--param", "revision=feature", "--timeout", "1m"})
+	// The timeout is the test's own: the process allows 20 minutes.
+	created, r := runRecorded(t, home, repo, []string{"run", "advisor_codex", "--param", "question=" + question, "--param", "revision=feature", "--timeout", "1m"})
 	if len(created) != 1 {
 		t.Fatalf("runs recorded: %v, want one", created)
 	}
@@ -584,10 +857,10 @@ func TestAdvisorAnswersAQuestionFile(t *testing.T) {
 	if argv := runtimeArgv(t, home, created[0]); !follows(argv, "--sandbox", "read-only") {
 		t.Fatalf("the advisor's runtime argv = %v, want --sandbox read-only", argv)
 	}
-	if record["agent"] != "codex-sol-61" {
-		t.Fatalf("the advisor's agent = %v, want codex-sol-61", record["agent"])
+	if call, _ := record["call"].(map[string]any); record["agent"] != "codex-sol-61" || call["process"] != "advisor" {
+		t.Fatalf("the advisor's agent = %v, of its call %v, want codex-sol-61 calling advisor", record["agent"], record["call"])
 	}
-	if advisor, judge := modelFamily(t, root, "codex-sol-61"), modelFamily(t, root, "claude-judge"); advisor == "" || advisor == judge {
+	if advisor, judge := modelFamily(t, root, "codex-sol-61"), modelFamily(t, root, "claude-opus"); advisor == "" || advisor == judge {
 		t.Fatalf("the advisor's model family %q, the judge's %q: want another", advisor, judge)
 	}
 	for _, input := range []struct{ name, source, path string }{
@@ -1219,7 +1492,7 @@ func TestReviewPromptsCarryTheGoal(t *testing.T) {
 	}
 	says := []string{"The input goal says what the change is for", "are claims you check",
 		"Its scope exclusions are the owner's", "you cannot override it", "its scope"}
-	for _, name := range []string{"adr_review_codex", "adversarial_review_codex", "architecture_review_codex", "clarity_review_codex", "intent_review_codex", "tests_review_codex"} {
+	for _, name := range []string{"adr_review_codex", "adversarial_review", "architecture_review", "clarity_review", "intent_review", "tests_review"} {
 		if instruction := parseProcess(t, root, name).Instruction; !carries(instruction, says) {
 			t.Errorf("process %s's instruction does not say what its input goal is: it lacks one of %q:\n%s", name, says, instruction)
 		}
@@ -1503,24 +1776,29 @@ func isHeading(paragraph string) bool {
 
 // No schema this repository gives to Codex uses a combinator Codex's
 // strict structured outputs refuse before the turn starts: oneOf and allOf
-// anywhere, anyOf at the root. The schemas are those of the processes whose
-// agent runs on the codex runtime, read from the directory, so a new one is
-// checked without listing it here.
+// anywhere, anyOf at the root. The schemas are those of the processes a
+// node of home's workflows binds to an agent that runs on the codex
+// runtime, each laid over the base it extends; the workflows are read from
+// the directory, so a new one is checked without listing it here.
 func TestSchemasGivenToCodexUseNoRefusedCombinator(t *testing.T) {
 	t.Parallel()
 	root, err := filepath.Abs(filepath.Join("..", "..", ".."))
 	if err != nil {
 		t.Fatal(err)
 	}
-	processes, err := filepath.Glob(filepath.Join(root, homeFolder, "processes", "*.yaml"))
+	workflows, err := filepath.Glob(filepath.Join(root, homeFolder, "workflows", "*.yaml"))
 	if err != nil {
 		t.Fatal(err)
 	}
+	var nodes []definition.Node
+	for _, path := range workflows {
+		nodes = append(nodes, parseWorkflow(t, root, strings.TrimSuffix(filepath.Base(path), ".yaml")).Nodes()...)
+	}
 	checked := map[string]bool{}
-	for _, path := range processes {
-		process := parseProcess(t, root, strings.TrimSuffix(filepath.Base(path), ".yaml"))
+	for _, node := range nodes {
+		process := parseProcess(t, root, node.Process)
 		name := process.Output.Schema
-		if name == "" || checked[name] || agentRuntime(t, root, strings.TrimPrefix(process.Agent, "agent:")) != "codex" {
+		if name == "" || checked[name] || agentRuntime(t, root, node.Agent) != "codex" {
 			continue
 		}
 		checked[name] = true
@@ -1632,7 +1910,7 @@ func parseAgent(t *testing.T, root, agent string) definition.Agent {
 	return parsed
 }
 
-// The judge runs under no cost limit: its policy sets none, so its call's
+// The judge runs under no cost limit: its process sets none, so its call's
 // effective limits carry none.
 func TestTheJudgeHasNoCostLimit(t *testing.T) {
 	t.Parallel()
@@ -1647,13 +1925,49 @@ func TestTheJudgeHasNoCostLimit(t *testing.T) {
 	}
 }
 
-// The repository's implement runs under no cost limit: its policy sets
+// The judge runs read-only and with no permission, for 10 minutes at most,
+// in one attempt, and is ended after 3 minutes without a runtime event: its
+// call's effective limits record each.
+func TestTheJudgeRunsUnderItsLimits(t *testing.T) {
+	t.Parallel()
+	_, repo, home := onFakeRuntimes(t)
+	_, records := judgedReviews(t, home, repo, "code_review")
+	recorded, ok := records["review_judge"]["effective"]
+	if !ok {
+		t.Fatalf("the judge's run records no effective limits: %v", records["review_judge"])
+	}
+	data, err := json.Marshal(recorded)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var got domain.EffectivePolicy
+	if err := json.Unmarshal(data, &got); err != nil {
+		t.Fatalf("the judge's effective limits %s: %v", data, err)
+	}
+	if got.Access != "read-only" {
+		t.Errorf("the judge's workspace access is %q, want read-only", got.Access)
+	}
+	if len(got.Allow) != 0 || len(got.Permissions) != 0 {
+		t.Errorf("the judge is allowed %v and has permissions %v, want none", got.Allow, got.Permissions)
+	}
+	if got.Timeout != 10*time.Minute {
+		t.Errorf("the judge's timeout is %s, want 10m", got.Timeout)
+	}
+	if got.MaxAttempts != 1 {
+		t.Errorf("the judge's attempts are %d, want 1", got.MaxAttempts)
+	}
+	if want := (domain.StaleLimits{NoEvent: 3 * time.Minute}); got.Stale == nil || *got.Stale != want {
+		t.Errorf("the judge's stale limits are %+v, want %+v", got.Stale, want)
+	}
+}
+
+// The repository's implement runs under no cost limit: its process sets
 // none, so its call's effective limits carry none.
 func TestImplementHasNoCostLimit(t *testing.T) {
 	t.Parallel()
 	root, repo, home := onFakeRuntimes(t)
 	launch := launchDir("implement")
-	args := append([]string{"run", "implement"}, paramArgs(t, launch, parseProcess(t, root, "implement").Params)...)
+	args := append([]string{"run", runsAlone(t, root, home, "implement")}, paramArgs(t, launch, parseProcess(t, root, "implement").Params)...)
 	created, _ := runRecorded(t, home, filepath.Join(repo, launch), args)
 	if len(created) != 1 {
 		t.Fatalf("runs recorded: %v, want one", created)
@@ -1668,6 +1982,572 @@ func TestImplementHasNoCostLimit(t *testing.T) {
 	}
 }
 
+// implementerPermissions are the permissions every implementer is allowed
+// and has.
+var implementerPermissions = []string{
+	"repository.read", "repository.search", "repository.diff", "repository.history.read", "repository.write",
+	"repository.history.write", "process.execute", "network", "host.read", "host.write",
+}
+
+// showProcess is process name as a call of it sees it: what workflow show
+// --json prints for the call of the workflow it runs alone through
+// (runsAlone), shown from its launchDir in repo.
+func showProcess(t *testing.T, home, repo, name string) contract.ProcessView {
+	t.Helper()
+	workflow := runsAlone(t, repositoryRoot(t), home, name)
+	r := agister(t, home, filepath.Join(repo, launchDir(name)), "workflow", "show", workflow, "--json")
+	var view contract.WorkflowView
+	if err := json.Unmarshal([]byte(r.stdout), &view); err != nil || r.code != 0 || view.Call == nil {
+		t.Fatalf("workflow show %s: %d %v\n%s%s", workflow, r.code, err, r.stdout, r.stderr)
+	}
+	return view.Call.Process
+}
+
+// runsAlone is the workflow of one call a test runs process name of the
+// home folder alone through: a process runs only as a workflow's node,
+// which binds it to its agent (ADR-030 rules 5 and 7). It is home's own
+// that calls the process on the agent processAgents lists for it, where one
+// does: implement_opus for implement, advisor_codex for the advisor.
+// Otherwise it is <name>_alone, which runsAlone writes into the test's
+// home, binding the process to the one agent the nodes of home's workflows
+// bind it to.
+func runsAlone(t *testing.T, root, home, name string) string {
+	t.Helper()
+	paths, err := filepath.Glob(filepath.Join(root, homeFolder, "workflows", "*.yaml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	agents := map[string]bool{}
+	for _, path := range paths {
+		workflow := strings.TrimSuffix(filepath.Base(path), ".yaml")
+		parsed := parseWorkflow(t, root, workflow)
+		if call := parsed.Call; call != nil {
+			if call.Process == name && call.Agent == processAgents[name].agent {
+				return workflow
+			}
+			continue
+		}
+		for _, node := range parsed.Nodes() {
+			if node.Process == name {
+				agents[node.Agent] = true
+			}
+		}
+	}
+	if len(agents) != 1 {
+		t.Fatalf("process %s is bound by home's workflows to %v, want one agent", name, slices.Sorted(maps.Keys(agents)))
+	}
+	workflow := name + "_alone"
+	write(t, filepath.Join(home, "workflows", workflow+".yaml"), "schema: agister.workflow/v1alpha1\nname: "+workflow+
+		"\ntype: workflow\ncall: {node: "+name+", uses: process:"+name+", agent: "+slices.Collect(maps.Keys(agents))[0]+"}\n")
+	return workflow
+}
+
+// Each implementer runs read-write on its candidate with every permission
+// of implementerPermissions and no denial, for 45 minutes at most, in one
+// attempt, and is ended after 21 minutes without a runtime event, 15
+// minutes on one tool command or 5 identical tool calls in a row: process
+// show prints each.
+func TestTheImplementersRunUnderTheirLimits(t *testing.T) {
+	t.Parallel()
+	_, repo, home := onFakeRuntimes(t)
+	for _, name := range implementers {
+		view := showProcess(t, home, repo, name)
+		if view.Refusal != "" {
+			t.Errorf("%s is refused: %s", name, view.Refusal)
+		}
+		if view.Access != "read-write" || view.Scope != "candidate" {
+			t.Errorf("%s's workspace is %s on %s, want read-write on candidate", name, view.Access, view.Scope)
+		}
+		if !reflect.DeepEqual(view.Allowed, implementerPermissions) || !reflect.DeepEqual(view.Permissions, implementerPermissions) || len(view.Denied) != 0 {
+			t.Errorf("%s is allowed %v, denied %v and has %v, want allowed and having %v, denied none",
+				name, view.Allowed, view.Denied, view.Permissions, implementerPermissions)
+		}
+		if view.Timeout != 45*time.Minute {
+			t.Errorf("%s's timeout is %s, want 45m", name, view.Timeout)
+		}
+		if view.MaxAttempts != 1 {
+			t.Errorf("%s's attempts are %d, want 1", name, view.MaxAttempts)
+		}
+		if want := (contract.Stale{NoEvent: 21 * time.Minute, ToolCommand: 15 * time.Minute, RepeatedToolCalls: 5}); view.Stale != want {
+			t.Errorf("%s's stale limits are %+v, want %+v", name, view.Stale, want)
+		}
+	}
+}
+
+// callWithheld are what the plan of each workflow of one call withholds of
+// what its process allows, by workflow, where it withholds any:
+// implement_codex runs on Codex, at a version whose workspace-write home's
+// runtime verifies, and its plan withholds network and
+// repository.history.write, as it did when implement_codex was a process.
+var callWithheld = map[string][]string{
+	"implement_codex": {"repository.history.write", "network"},
+}
+
+// Each of home's workflows of one call is that call alone (ADR-030 rule
+// 6): its file in the home folder holds its schema, name, type and call,
+// node implement, which binds process implement to the agent callAgents
+// lists for it, and nothing else. workflow show, launched where implement
+// runs, shows the call on that agent and its runtime, refused for nothing,
+// with implement's params and inputs, among them the brief and its form,
+// goal or step, and the plan withholding what callWithheld lists. A run
+// given a brief of neither form is refused for it before its runtime
+// starts, and its record names the workflow: the brief's form is checked on every agent,
+// where implement_codex, implement_pi and implement_pi_glm checked none.
+func TestTheImplementWorkflowsCallImplementWithTheBriefsForm(t *testing.T) {
+	t.Parallel()
+	root, repo, home := onFakeRuntimes(t)
+	writableCodex(t, home)
+	launch := filepath.Join(repo, launchDir("implement"))
+	implement := showProcess(t, home, repo, "implement")
+	const brief = "brief <- file (form goal, step)"
+	if !slices.Contains(implement.Inputs, brief) {
+		t.Fatalf("implement's inputs are %v, want among them %q", implement.Inputs, brief)
+	}
+	runs := &newRuns{home: home}
+	runs.take(t)
+	for _, name := range slices.Sorted(maps.Keys(callAgents)) {
+		agent := callAgents[name]
+		var document map[string]any
+		if err := yaml.Unmarshal([]byte(read(t, filepath.Join(root, homeFolder, "workflows", name+".yaml"))), &document); err != nil {
+			t.Fatal(err)
+		}
+		want := map[string]any{
+			"schema": "agister.workflow/v1alpha1", "name": name, "type": "workflow",
+			"call": map[string]any{"node": "implement", "uses": "process:implement", "agent": agent.agent},
+		}
+		if !reflect.DeepEqual(document, want) {
+			t.Errorf("%s's file holds %v, want %v", name, document, want)
+		}
+
+		r := agister(t, home, launch, "workflow", "show", name, "--json")
+		var view contract.WorkflowView
+		if err := json.Unmarshal([]byte(r.stdout), &view); err != nil || r.code != 0 {
+			t.Fatalf("workflow show %s: %d %v\n%s%s", name, r.code, err, r.stdout, r.stderr)
+		}
+		if view.Refusal != "" || view.Call == nil || len(view.FanOut) != 0 {
+			t.Fatalf("%s is refused %q, calls %+v and fans out to %v, want one call refused for nothing", name, view.Refusal, view.Call, view.FanOut)
+		}
+		call := view.Call.Process
+		if view.Call.Name != "implement" || call.Name != "implement" || call.Agent != agent.agent || call.Runtime != agent.runtime || call.Refusal != "" {
+			t.Errorf("%s calls node %s, process %s on %s (runtime %s), refused %q, want node implement, process implement on %s (runtime %s), refused for nothing",
+				name, view.Call.Name, call.Name, call.Agent, call.Runtime, call.Refusal, agent.agent, agent.runtime)
+		}
+		if !reflect.DeepEqual(view.Params, implement.Params) || !reflect.DeepEqual(view.Inputs, implement.Inputs) {
+			t.Errorf("%s's params are %+v and its inputs %v, want implement's %+v and %v", name, view.Params, view.Inputs, implement.Params, implement.Inputs)
+		}
+		if !slices.Equal(call.Withheld, callWithheld[name]) {
+			t.Errorf("%s's plan withholds %v, want %v", name, call.Withheld, callWithheld[name])
+		}
+
+		r = agister(t, home, launch, "run", name, "--quiet", "--param", "candidate=feature", "--param", "brief=AGENTS.md")
+		refused := runs.one(t)
+		const formless = "input brief: has none of its forms: form goal: "
+		if r.code != cli.ExitRefused || refused.record["process"] != name || !strings.Contains(r.stderr, formless) {
+			t.Errorf("%s given a brief of neither form: exit %d, run of %v, want refused for %q\n%s", name, r.code, refused.record["process"], formless, r.stderr)
+		}
+		if kinds := strings.Join(refused.kinds(), " "); strings.Contains(kinds, "PROCESS_STARTED") {
+			t.Errorf("%s given a brief of neither form started its runtime: %s", name, kinds)
+		}
+	}
+}
+
+// Each implementer says itself that its call's session may be resumed
+// (ADR-030 rule 3): its home file gives session, and none of the layers of
+// the agent it runs alone on (runsAlone) does, so that agent is
+// fresh-only; the call is not refused for verify:repo, which repairs in
+// that session, and its run records a resumable session.
+func TestTheImplementersAreResumableOfThemselves(t *testing.T) {
+	t.Parallel()
+	root, repo, home := onFakeRuntimes(t)
+	runs := &newRuns{home: home}
+	for _, name := range implementers {
+		view := showProcess(t, home, repo, name)
+		agent := view.Agent
+		if view.Refusal != "" {
+			t.Errorf("%s on %s is refused: %s", name, agent, view.Refusal)
+		}
+		var layers int
+		for _, source := range view.Sources {
+			if source.Kind != "agents" || source.Name != agent {
+				continue
+			}
+			for _, layer := range source.Layers {
+				layers++
+				if slices.Contains(layer.Fields, "session") {
+					t.Errorf("%s's agent %s is given session by %s, want by no layer", name, agent, layer.Path)
+				}
+			}
+		}
+		if layers == 0 {
+			t.Errorf("%s's agent %s is composed from no layer: %+v", name, agent, view.Sources)
+		}
+		var given []string
+		for _, source := range view.Sources {
+			if source.Kind != "processes" || source.Name != name {
+				continue
+			}
+			for _, layer := range source.Layers {
+				if slices.Contains(layer.Fields, "session") {
+					given = append(given, layer.Path)
+				}
+			}
+		}
+		if want := []string{filepath.Join(home, "processes", name+".yaml")}; !reflect.DeepEqual(given, want) {
+			t.Errorf("%s's session is given by %v, want its home file %v", name, given, want)
+		}
+
+		launch := launchDir(name)
+		args := append([]string{"run", runsAlone(t, root, home, name), "--quiet", "--timeout", "1m"}, paramArgs(t, launch, parseProcess(t, root, name).Params)...)
+		r := agister(t, home, filepath.Join(repo, launch), args...)
+		last := runs.one(t)
+		profile, _ := last.record["profile"].(map[string]any)
+		if r.code != cli.ExitCompleted || last.record["agent"] != agent || profile["session"] != definition.SessionResumable {
+			t.Errorf("%s's run on the fresh-only %s: exit %d, by %v, as %v, want it completed in a resumable session\n%s",
+				name, agent, r.code, last.record["agent"], last.record["profile"], r.stderr)
+		}
+	}
+}
+
+// writableCodex makes home's fake Codex report 0.159.0, the first version
+// whose workspace-write home's runtime verifies: implement, on
+// codex-sol-61, requires repository.write.
+func writableCodex(t *testing.T, home string) {
+	t.Helper()
+	startThrough(t, home, runtimetest.InProcess{
+		Env:   []string{"FAKE_OUTPUT=schema"},
+		Fakes: map[string]supervisortest.Fake{"codex": codexAt("0.159.0")},
+	})
+}
+
+// codexAt is the fake Codex, reporting version as its own.
+func codexAt(version string) supervisortest.Fake {
+	return func(p fakeproc.Process) int {
+		getenv := p.Getenv
+		p.Getenv = func(key string) string {
+			if key == "FAKE_VERSION" {
+				return version
+			}
+			return getenv(key)
+		}
+		return fakecodex.Main(p)
+	}
+}
+
+// The home folder holds no policies/: a layer holds no policies (ADR-030
+// rule 4).
+func TestTheHomeFolderHoldsNoPolicies(t *testing.T) {
+	t.Parallel()
+	path := filepath.Join("..", "..", "..", homeFolder, "policies")
+	if _, err := os.Stat(path); !errors.Is(err, fs.ErrNotExist) {
+		t.Errorf("the home folder holds %s (%v), want none", path, err)
+	}
+}
+
+// Home has five agents, one for each runtime and model in use (ADR-030
+// Migration step 3): agent list prints each with its runtime, model, effort
+// and model family, and none refused.
+func TestTheHomeFolderHoldsFiveAgents(t *testing.T) {
+	t.Parallel()
+	_, repo, home := onFakeRuntimes(t)
+	r := agister(t, home, repo, "agent", "list")
+	want := strings.Join([]string{
+		"claude-opus\tclaude-code\topus\thigh\tanthropic",
+		"claude-sonnet\tclaude-code\tsonnet\thigh\tanthropic",
+		"codex-sol-61\tcodex\tgpt-6.1-sol\thigh\topenai",
+		"pi-glm-53\tpi\topencode-go/glm-5.3\thigh\tglm",
+		"pi-m3\tpi\topencode-go/minimax-m3\thigh\tminimax",
+	}, "\n") + "\n"
+	if r.code != 0 || r.stdout != want {
+		t.Fatalf("agent list: %d\n%s%s\nwant\n%s", r.code, r.stdout, r.stderr, want)
+	}
+}
+
+// No process of the home folder names an agent and no agent names a session
+// (ADR-030 rules 1 and 2): of the fields of each process file, none is uses,
+// and of each agent file, none is session. A workflow's node binds a process
+// to its agent, and a process says itself whether its call resumes.
+func TestTheHomeFolderNamesNoAgentOnAProcessAndNoSessionOnAnAgent(t *testing.T) {
+	t.Parallel()
+	root := repositoryRoot(t)
+	for _, kind := range []struct{ dir, ext, field string }{
+		{"processes", ".yaml", "uses"},
+		{"agents", ".toml", "session"},
+	} {
+		paths, err := filepath.Glob(filepath.Join(root, homeFolder, kind.dir, "*"+kind.ext))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(paths) == 0 {
+			t.Fatalf("the home folder has no %s", kind.dir)
+		}
+		for _, path := range paths {
+			var document map[string]any
+			if kind.ext == ".toml" {
+				_, err = toml.Decode(read(t, path), &document)
+			} else {
+				err = yaml.Unmarshal([]byte(read(t, path)), &document)
+			}
+			if err != nil {
+				t.Fatalf("%s: %v", path, err)
+			}
+			if value, ok := document[kind.field]; ok {
+				t.Errorf("%s gives %s %v, want none", path, kind.field, value)
+			}
+		}
+	}
+}
+
+// advisorPermissions are the permissions the advisor is allowed and has.
+var advisorPermissions = []string{
+	"repository.read", "repository.diff", "repository.search", "repository.history.read", "process.execute", "host.read",
+}
+
+// The advisor runs read-only on its candidate with every permission of
+// advisorPermissions, repository.write, repository.history.write and
+// network denied, for 20 minutes at most, in one attempt, and is ended
+// after 10 minutes without a runtime event, 8 minutes on one tool command
+// or 5 identical tool calls in a row: process show prints each.
+func TestTheAdvisorRunsUnderItsLimits(t *testing.T) {
+	t.Parallel()
+	_, repo, home := onFakeRuntimes(t)
+	view := showProcess(t, home, repo, "advisor")
+	if view.Refusal != "" {
+		t.Errorf("the advisor is refused: %s", view.Refusal)
+	}
+	if view.Access != "read-only" || view.Scope != "candidate" {
+		t.Errorf("the advisor's workspace is %s on %s, want read-only on candidate", view.Access, view.Scope)
+	}
+	denied := []string{"repository.write", "repository.history.write", "network"}
+	if !reflect.DeepEqual(view.Allowed, advisorPermissions) || !reflect.DeepEqual(view.Permissions, advisorPermissions) || !reflect.DeepEqual(view.Denied, denied) {
+		t.Errorf("the advisor is allowed %v, denied %v and has %v, want allowed and having %v, denied %v",
+			view.Allowed, view.Denied, view.Permissions, advisorPermissions, denied)
+	}
+	if view.Timeout != 20*time.Minute {
+		t.Errorf("the advisor's timeout is %s, want 20m", view.Timeout)
+	}
+	if view.MaxAttempts != 1 {
+		t.Errorf("the advisor's attempts are %d, want 1", view.MaxAttempts)
+	}
+	if want := (contract.Stale{NoEvent: 10 * time.Minute, ToolCommand: 8 * time.Minute, RepeatedToolCalls: 5}); view.Stale != want {
+		t.Errorf("the advisor's stale limits are %+v, want %+v", view.Stale, want)
+	}
+}
+
+// reviewPermissions are the permissions a review is allowed and has.
+var reviewPermissions = []string{
+	"repository.read", "repository.diff", "repository.search", "repository.history.read", "process.execute", "host.read",
+}
+
+// reviewPrompts are the processes on the review base, each with its
+// prompt: code_review's reviewers and adr_review's.
+var reviewPrompts = map[string]string{
+	"adr_review_codex":    "code-review-adr",
+	"adversarial_review":  "code-review-adversarial",
+	"architecture_review": "code-review-architecture",
+	"clarity_review":      "code-review-clarity",
+	"intent_review":       "code-review-intent",
+	"tests_review":        "code-review-tests",
+}
+
+// gainGuidance are the reviews whose instruction lacked the review base's
+// sentence on guidance, and has it on the base: the one intended change of
+// their resolution. The intent review lacked it as the ADR and clarity
+// reviews did.
+var gainGuidance = map[string]bool{"adr_review_codex": true, "clarity_review": true, "intent_review": true}
+
+// guidanceSentence is the review base's sentence on guidance, by its short
+// phrases.
+var guidanceSentence = []string{"Any guidance given as further inputs", "holds the rules the repository",
+	"gives for the code it names", "code in the change that departs from one", "is a finding, which quotes the rule"}
+
+// Each review on the review base, launched where it runs, resolves as it did
+// before it extended the base: on codex-sol-61, with base, candidate and
+// goal for its params and the review's inputs, a review result for its
+// output, read-only on its candidate with every permission of
+// reviewPermissions, repository.write, repository.history.write and network
+// denied, for 20 minutes at most, in one attempt, ended after 10 minutes
+// without a runtime event, 8 minutes on one tool command or 5 identical
+// tool calls in a row, with no cost limit, its prompt of reviewPrompts and
+// the guidance repositoryGuidance names for it: process show prints each.
+// Its instruction is the base's, which says how guidance is used: those of
+// gainGuidance gain that sentence, and each asserts it.
+func TestTheReviewsResolveAsBefore(t *testing.T) {
+	t.Parallel()
+	root, repo, home := onFakeRuntimes(t)
+	var base struct {
+		Input struct {
+			Instruction string `yaml:"instruction"`
+		} `yaml:"input"`
+	}
+	if err := yaml.Unmarshal([]byte(read(t, filepath.Join(root, homeFolder, "processes", "review.yaml"))), &base); err != nil {
+		t.Fatal(err)
+	}
+	for _, name := range slices.Sorted(maps.Keys(reviewPrompts)) {
+		view := showProcess(t, home, repo, name)
+		if view.Refusal != "" {
+			t.Errorf("%s is refused: %s", name, view.Refusal)
+		}
+		if view.Agent != "codex-sol-61" || view.Runtime != "codex" {
+			t.Errorf("%s runs on %s (runtime %s), want codex-sol-61 (runtime codex)", name, view.Agent, view.Runtime)
+		}
+		params := []contract.Param{{Name: "base", Default: "origin/trunk"}, {Name: "candidate", Default: "HEAD"}, {Name: "goal", Required: true}}
+		if !reflect.DeepEqual(view.Params, params) {
+			t.Errorf("%s's params are %+v, want %+v", name, view.Params, params)
+		}
+		inputs := []string{"base_revision <- git.revision", "candidate_revision <- git.revision", "changed_files <- git.changed_files", "goal <- param"}
+		if !reflect.DeepEqual(view.Inputs, inputs) {
+			t.Errorf("%s's inputs are %v, want %v", name, view.Inputs, inputs)
+		}
+		if view.Output != "json:review-result" {
+			t.Errorf("%s's output is %s, want json:review-result", name, view.Output)
+		}
+		if view.Access != "read-only" || view.Scope != "candidate" {
+			t.Errorf("%s's workspace is %s on %s, want read-only on candidate", name, view.Access, view.Scope)
+		}
+		denied := []string{"repository.write", "repository.history.write", "network"}
+		if !reflect.DeepEqual(view.Allowed, reviewPermissions) || !reflect.DeepEqual(view.Permissions, reviewPermissions) || !reflect.DeepEqual(view.Denied, denied) {
+			t.Errorf("%s is allowed %v, denied %v and has %v, want allowed and having %v, denied %v",
+				name, view.Allowed, view.Denied, view.Permissions, reviewPermissions, denied)
+		}
+		if view.Timeout != 20*time.Minute || view.MaxAttempts != 1 || view.MaxCostUSD != nil {
+			t.Errorf("%s's limits are timeout %s, %d attempts, cost %v, want 20m, 1 and none", name, view.Timeout, view.MaxAttempts, view.MaxCostUSD)
+		}
+		if want := (contract.Stale{NoEvent: 10 * time.Minute, ToolCommand: 8 * time.Minute, RepeatedToolCalls: 5}); view.Stale != want {
+			t.Errorf("%s's stale limits are %+v, want %+v", name, view.Stale, want)
+		}
+		if guidance := repositoryGuidance[name]; view.Prompt != reviewPrompts[name] || !reflect.DeepEqual(view.Guidance, guidance) {
+			t.Errorf("%s's prompt is %s and its guidance %v, want %s and %v", name, view.Prompt, view.Guidance, reviewPrompts[name], guidance)
+		}
+		instruction := parseProcess(t, root, name).Instruction
+		if instruction != base.Input.Instruction {
+			t.Errorf("%s's instruction is\n%s\nwant the review base's\n%s", name, instruction, base.Input.Instruction)
+		}
+		if gainGuidance[name] && !carries(instruction, guidanceSentence) {
+			t.Errorf("%s's instruction does not say how guidance is used: it lacks one of %q:\n%s", name, guidanceSentence, instruction)
+		}
+	}
+}
+
+// Each review's file in the home folder holds its schema, name, type, the
+// review base it extends and its prompt, and nothing else (ADR-030 rule 9):
+// process show names the base's home file among the files the process is
+// composed from.
+func TestTheReviewsExtendTheReviewBase(t *testing.T) {
+	t.Parallel()
+	root, repo, home := onFakeRuntimes(t)
+	for _, name := range slices.Sorted(maps.Keys(reviewPrompts)) {
+		var document map[string]any
+		if err := yaml.Unmarshal([]byte(read(t, filepath.Join(root, homeFolder, "processes", name+".yaml"))), &document); err != nil {
+			t.Fatal(err)
+		}
+		want := map[string]any{
+			"schema": "agister.process/v1alpha1", "name": name, "type": "process",
+			"extends": "process:review", "prompt": reviewPrompts[name],
+		}
+		if !reflect.DeepEqual(document, want) {
+			t.Errorf("%s's file holds %v, want %v", name, document, want)
+		}
+		view := showProcess(t, home, repo, name)
+		var base *contract.DefinitionLayer
+		for _, source := range view.Sources {
+			if source.Kind != "processes" || source.Name != name {
+				continue
+			}
+			for _, layer := range source.Layers {
+				if layer.Process == "review" {
+					base = &layer
+				}
+			}
+		}
+		if base == nil || base.Layer != "home" || base.Path != filepath.Join(home, "processes", "review.yaml") {
+			t.Errorf("%s's base file is %+v, want home's processes/review.yaml", name, base)
+		}
+	}
+}
+
+// check on home, as global settings on the fake runtimes, which report
+// versions the mappings verify, finds no problem and plans every node of
+// every workflow of the home folder on the agent it binds, none of them
+// withholding a permission its process requires (ADR-030 rule 8). It warns
+// of nothing but the implement processes' verify:repo, a slot a repository
+// fills (ADR-027 rule 3).
+func TestCheckOnHomeWarnsOfNoBinding(t *testing.T) {
+	t.Parallel()
+	root, _, home := onFakeRuntimes(t)
+	r := agister(t, home, tempDir(t), "check", "--json")
+	var report contract.CheckReport
+	if err := json.Unmarshal([]byte(r.stdout), &report); err != nil || r.code != 0 || len(report.Problems) != 0 {
+		t.Fatalf("check: %d %v\n%s%s", r.code, err, r.stdout, r.stderr)
+	}
+	for _, warning := range report.Warnings {
+		if !strings.Contains(warning, "names verify:repo, which does not exist") {
+			t.Errorf("check warns %q, want only the verify:repo a repository fills", warning)
+		}
+	}
+
+	paths, err := filepath.Glob(filepath.Join(root, homeFolder, "workflows", "*.yaml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var want []string
+	for _, path := range paths {
+		name := strings.TrimSuffix(filepath.Base(path), ".yaml")
+		for _, node := range parseWorkflow(t, root, name).Nodes() {
+			want = append(want, name+" "+node.Name+": process "+node.Process+", agent "+node.Agent)
+		}
+	}
+	var planned []string
+	for _, binding := range report.Bindings {
+		planned = append(planned, binding.Workflow+" "+binding.Node+": process "+binding.Process+", agent "+binding.Agent)
+		if len(binding.Required) != 0 {
+			t.Errorf("workflow %s node %s withholds %v, which process %s requires", binding.Workflow, binding.Node, binding.Required, binding.Process)
+		}
+	}
+	if len(want) == 0 || !reflect.DeepEqual(planned, want) {
+		t.Errorf("check plans the bindings %q, want each node of home's workflows %q", planned, want)
+	}
+}
+
+// implement runs its tests, so it requires process.execute (ADR-030 rule
+// 8). On Claude Code only Bash grants it, and Bash grants network as well:
+// with network denied, in home's implement as these temp settings deny it,
+// Bash is withheld, and the run is refused, naming process.execute, before
+// its runtime starts.
+func TestImplementWithoutNetworkIsRefusedForProcessExecute(t *testing.T) {
+	t.Parallel()
+	root, repo, home := onFakeRuntimes(t)
+	path := filepath.Join(home, "processes", "implement.yaml")
+	text := read(t, path)
+	if !strings.Contains(text, "\ntimeout: 45m\n") {
+		t.Fatalf("%s: the shipped timeout was not found", path)
+	}
+	write(t, path, strings.Replace(text, "\ntimeout: 45m\n", "\nisolation:\n  deny: [network]\n\ntimeout: 45m\n", 1))
+
+	before := map[string]bool{}
+	for _, entry := range readRuns(t, home) {
+		before[entry.Name()] = true
+	}
+	launch := launchDir("implement")
+	args := append([]string{"run", runsAlone(t, root, home, "implement")}, paramArgs(t, launch, parseProcess(t, root, "implement").Params)...)
+	r := agister(t, home, filepath.Join(repo, launch), args...)
+	const withheld = "required permissions would be withheld: process.execute"
+	if r.code != cli.ExitRefused || !strings.Contains(r.stderr, withheld) {
+		t.Fatalf("implement without network: exit %d, stderr %q, want refused with %q", r.code, r.stderr, withheld)
+	}
+	var created []string
+	for _, entry := range readRuns(t, home) {
+		if !before[entry.Name()] {
+			created = append(created, entry.Name())
+		}
+	}
+	if len(created) != 1 {
+		t.Fatalf("runs recorded: %v, want one", created)
+	}
+	if started := processesStarted(filepath.Join(home, "runs", created[0])); len(started) != 0 {
+		t.Fatalf("run %s: the runtime started: %v", created[0], started)
+	}
+}
+
 // projectChecks are the commands of each project's verify:repo, by
 // project: each is written from the worktree's root, where it runs
 // (ADR-028 rule 2).
@@ -1678,16 +2558,24 @@ var projectChecks = map[string]*regexp.Regexp{
 
 // Each implementer launched at the repository's root is refused before its
 // first turn: no layer there fills verify:repo (ADR-028 Migration step 4).
+// It runs only as a workflow's node (ADR-030 rule 7): each workflow of one
+// call, which calls implement, is refused so, on writableCodex.
 func TestImplementersAreRefusedAtTheRoot(t *testing.T) {
 	t.Parallel()
 	root, repo, home := onFakeRuntimes(t)
+	writableCodex(t, home)
 	runs := &newRuns{home: home}
 	runs.take(t)
-	for _, name := range implementers {
+	processes := map[string]string{}
+	for name := range callAgents {
+		processes[name] = parseWorkflow(t, root, name).Call.Process
+	}
+	for _, name := range slices.Sorted(maps.Keys(processes)) {
 		t.Run(name, func(t *testing.T) {
-			args := append([]string{"run", name, "--quiet"}, paramArgs(t, ".", parseProcess(t, root, name).Params)...)
+			process := processes[name]
+			args := append([]string{"run", name, "--quiet"}, paramArgs(t, ".", parseProcess(t, root, process).Params)...)
 			r := agister(t, home, repo, args...)
-			reason := "process " + name + ` names verify:repo: verification "repo": not found (expected ` +
+			reason := "process " + process + ` names verify:repo: verification "repo": not found (expected ` +
 				filepath.Join(repo, ".agister", "verifies", "repo.yaml") + " or " + filepath.Join(home, "verifies", "repo.yaml") + ")"
 			last := runs.one(t)
 			result, _ := last.record["result"].(map[string]any)
@@ -1712,13 +2600,10 @@ var goPrompts = []string{"go-testing-seams", "go-architecture"}
 // one. A process it does not name, the clarity and intent reviews and the
 // judge among them, gets none.
 var repositoryGuidance = map[string][]string{
-	"implement":                 goPrompts,
-	"implement_codex":           goPrompts,
-	"implement_pi":              goPrompts,
-	"implement_pi_glm":          goPrompts,
-	"architecture_review_codex": goPrompts,
-	"adversarial_review_codex":  goPrompts,
-	"tests_review_codex":        {"go-testing-seams"},
+	"implement":           goPrompts,
+	"architecture_review": goPrompts,
+	"adversarial_review":  goPrompts,
+	"tests_review":        {"go-testing-seams"},
 }
 
 // The repository's layer sets, for each process of repositoryGuidance and
@@ -1762,6 +2647,86 @@ func TestTheRepositoryLayerSetsOnlyTheGoGuidance(t *testing.T) {
 	}
 }
 
+// implementWorkflows are home's workflows that call implement on Codex and
+// on Pi, each named after the process that ran implement's work there
+// before ADR-030 (Migration step 3).
+var implementWorkflows = []string{"implement_codex", "implement_pi", "implement_pi_glm"}
+
+// Home has one implement process, implement, which implementers lists
+// alone: of the home folder's processes, a base left out, it alone is given
+// home's implement prompt or completes with the implementation schema.
+// implementWorkflows are no processes of the home folder.
+func TestHomeHasOneImplementProcess(t *testing.T) {
+	t.Parallel()
+	root := repositoryRoot(t)
+	paths, err := filepath.Glob(filepath.Join(root, homeFolder, "processes", "*.yaml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	bases := homeBases(t, root)
+	var found []string
+	for _, path := range paths {
+		name := strings.TrimSuffix(filepath.Base(path), ".yaml")
+		if bases[name] {
+			continue
+		}
+		if process := parseProcess(t, root, name); process.Prompt == "implement" || process.Output.Schema == "implementation" {
+			found = append(found, name)
+		}
+	}
+	if want := []string{"implement"}; !slices.Equal(found, want) || !slices.Equal(implementers, want) {
+		t.Fatalf("home's implement processes are %v and implementers %v, want %v", found, implementers, want)
+	}
+	for _, name := range implementWorkflows {
+		path := filepath.Join(root, homeFolder, "processes", name+".yaml")
+		if _, err := os.Lstat(path); !errors.Is(err, fs.ErrNotExist) {
+			t.Errorf("the home folder holds %s (%v), want none", path, err)
+		}
+	}
+}
+
+// The repository's layer sets implement's guidance once: of the documents
+// of its layer and its projects', one sets guidance on implement or on one
+// of implementWorkflows, the repository's processes/implement.yaml, to the
+// Go prompts. A workflow takes the guidance of the process it calls.
+func TestTheRepositoryLayerSetsImplementsGuidanceOnce(t *testing.T) {
+	t.Parallel()
+	root := repositoryRoot(t)
+	targets := append([]string{"implement"}, implementWorkflows...)
+	set := map[string][]string{}
+	for _, layer := range append([]string{"."}, projects...) {
+		settings := filepath.Join(root, layer, ".agister")
+		err := filepath.WalkDir(settings, func(path string, entry fs.DirEntry, err error) error {
+			if err != nil || entry.IsDir() || filepath.Ext(path) != ".yaml" {
+				return err
+			}
+			if !slices.Contains(targets, strings.TrimSuffix(entry.Name(), ".yaml")) {
+				return nil
+			}
+			var document struct {
+				Guidance []string `yaml:"guidance"`
+			}
+			if err := yaml.Unmarshal([]byte(read(t, path)), &document); err != nil {
+				return err
+			}
+			if document.Guidance != nil {
+				rel, err := filepath.Rel(root, path)
+				if err != nil {
+					return err
+				}
+				set[rel] = document.Guidance
+			}
+			return nil
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+	if want := map[string][]string{filepath.Join(".agister", "processes", "implement.yaml"): goPrompts}; !reflect.DeepEqual(set, want) {
+		t.Fatalf("the repository's layers set implement's guidance in %v, want %v", set, want)
+	}
+}
+
 // givesGuidance checks that the call's guidance is names, in order and no
 // other: each the input guidance.<name>, the text of prompts/<name>.md,
 // recorded from the repository's layer, which finds it there.
@@ -1793,8 +2758,8 @@ func givesGuidance(t *testing.T, root, repo string, record map[string]any, names
 	}
 }
 
-// Each implement process of the home folder, launched in each project of
-// the repository, gives its agent the two Go prompts as its guidance, in
+// Each implement process of the home folder, run alone (runsAlone) in each
+// project of the repository, gives its agent the two Go prompts as its guidance, in
 // the order the repository's layer sets, each the text of
 // prompts/<name>.md, and verifies with that project's verify:repo
 // (ADR-028 Migration step 4). That verification is a complete document of
@@ -1822,8 +2787,9 @@ func TestImplementersAreGivenTheGoPrompts(t *testing.T) {
 		}
 		for _, name := range implementers {
 			t.Run(project+" "+name, func(t *testing.T) {
-				args := append([]string{"run", name}, paramArgs(t, project, parseProcess(t, root, name).Params)...)
-				if timeout := testTimeouts[name]; timeout != "" {
+				workflow := runsAlone(t, root, home, name)
+				args := append([]string{"run", workflow}, paramArgs(t, project, parseProcess(t, root, name).Params)...)
+				if timeout := testTimeouts[workflow]; timeout != "" {
 					args = append(args, "--timeout", timeout)
 				}
 				created, _ := runRecorded(t, home, filepath.Join(repo, project), args)
@@ -1849,10 +2815,10 @@ func TestImplementersAreGivenTheGoPrompts(t *testing.T) {
 }
 
 // reviewers are the fan-out processes of code_review.
-var reviewers = []string{"architecture_review_codex", "tests_review_codex", "adversarial_review_codex", "clarity_review_codex", "intent_review_codex"}
+var reviewers = []string{"architecture_review", "tests_review", "adversarial_review", "clarity_review", "intent_review"}
 
-// Each review of the home folder, launched at the root and in each
-// project, gives its agent the guidance repositoryGuidance names for it,
+// Each review of the home folder, run alone (runsAlone) at the root and in
+// each project, gives its agent the guidance repositoryGuidance names for it,
 // and none where it names none, each the text the implementers are given.
 func TestReviewersAreGivenTheirGoGuidance(t *testing.T) {
 	t.Parallel()
@@ -1860,8 +2826,9 @@ func TestReviewersAreGivenTheirGoGuidance(t *testing.T) {
 	for _, launch := range append([]string{"."}, projects...) {
 		for _, name := range reviewers {
 			t.Run(launch+" "+name, func(t *testing.T) {
-				args := append([]string{"run", name}, paramArgs(t, launch, parseProcess(t, root, name).Params)...)
-				if timeout := testTimeouts[name]; timeout != "" {
+				workflow := runsAlone(t, root, home, name)
+				args := append([]string{"run", workflow}, paramArgs(t, launch, parseProcess(t, root, name).Params)...)
+				if timeout := testTimeouts[workflow]; timeout != "" {
 					args = append(args, "--timeout", timeout)
 				}
 				created, _ := runRecorded(t, home, filepath.Join(repo, launch), args)
@@ -1881,7 +2848,7 @@ func TestReviewersAreGivenTheirGoGuidance(t *testing.T) {
 func TestCodeReviewInWarderIsGivenTheImplementersGuidance(t *testing.T) {
 	t.Parallel()
 	root, repo, home := onFakeRuntimes(t)
-	args := append([]string{"run", "implement"}, paramArgs(t, "warder", parseProcess(t, root, "implement").Params)...)
+	args := append([]string{"run", runsAlone(t, root, home, "implement")}, paramArgs(t, "warder", parseProcess(t, root, "implement").Params)...)
 	created, _ := runRecorded(t, home, filepath.Join(repo, "warder"), args)
 	if len(created) != 1 {
 		t.Fatalf("runs recorded: %v, want one", created)
@@ -1967,19 +2934,75 @@ func inputOf(t *testing.T, record map[string]any, name string) map[string]any {
 	return nil
 }
 
+// parseProcess is process name of the home folder, laid over the base it
+// extends, if any, as the settings compose it (ADR-030 rule 9).
 func parseProcess(t *testing.T, root, name string) definition.Process {
+	t.Helper()
+	process, err := definition.ParseProcess(extendedProcess(t, root, name))
+	if err != nil {
+		t.Fatal(err)
+	}
+	return process
+}
+
+// extendedProcess is the document of process name in the home folder, laid
+// over the base it extends, if any (ADR-030 rule 9).
+func extendedProcess(t *testing.T, root, name string) definition.Document {
+	t.Helper()
+	doc, err := definition.Extended(homeProcess(t, root, name), func(base string) (definition.Document, error) {
+		return homeProcess(t, root, base), nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	return doc
+}
+
+// homeProcess is the document of process name in the home folder, as it is.
+func homeProcess(t *testing.T, root, name string) definition.Document {
 	t.Helper()
 	data, err := os.ReadFile(filepath.Join(root, homeFolder, "processes", name+".yaml"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	process, err := definition.ParseProcess(definition.Document{
-		Source: definition.Source{Kind: definition.KindProcess, Name: name, Path: name + ".yaml"}, Bytes: data,
+	return definition.Document{Source: definition.Source{Kind: definition.KindProcess, Name: name, Path: name + ".yaml"}, Bytes: data}
+}
+
+// parseWorkflow is workflow name of the home folder.
+func parseWorkflow(t *testing.T, root, name string) definition.Workflow {
+	t.Helper()
+	path := filepath.Join(root, homeFolder, "workflows", name+".yaml")
+	workflow, err := definition.ParseWorkflow(definition.Document{
+		Source: definition.Source{Kind: definition.KindWorkflow, Name: name, Path: path}, Bytes: []byte(read(t, path)),
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	return process
+	return workflow
+}
+
+// homeBases are the bases the home folder's processes extend: each is not
+// work, and is run only through the processes that extend it (ADR-030 rule
+// 9).
+func homeBases(t *testing.T, root string) map[string]bool {
+	t.Helper()
+	paths, err := filepath.Glob(filepath.Join(root, homeFolder, "processes", "*.yaml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	bases := map[string]bool{}
+	for _, path := range paths {
+		var document struct {
+			Extends string `yaml:"extends"`
+		}
+		if err := yaml.Unmarshal([]byte(read(t, path)), &document); err != nil {
+			t.Fatalf("%s: %v", path, err)
+		}
+		if base, ok := strings.CutPrefix(document.Extends, "process:"); ok {
+			bases[base] = true
+		}
+	}
+	return bases
 }
 
 // paramArgs gives base, candidate and revision the test repository's
@@ -2064,6 +3087,18 @@ func completedRun(t *testing.T, home, id string) map[string]any {
 // output, and that the CLI printed it.
 func schemaAccepts(t *testing.T, record map[string]any, output any, stdout string) {
 	t.Helper()
+	schemaValidates(t, record, output)
+	data, _ := json.Marshal(output)
+	var printed any
+	if err := json.Unmarshal([]byte(stdout), &printed); err != nil || !reflect.DeepEqual(printed, output) {
+		t.Fatalf("stdout %s, recorded output %s: %v", stdout, data, err)
+	}
+}
+
+// schemaValidates checks that the schema the call's record names accepts
+// output.
+func schemaValidates(t *testing.T, record map[string]any, output any) {
+	t.Helper()
 	var schemaPath string
 	for _, source := range record["definitions"].([]any) {
 		source := source.(map[string]any)
@@ -2078,10 +3113,6 @@ func schemaAccepts(t *testing.T, record map[string]any, output any, stdout strin
 	data, _ := json.Marshal(output)
 	if err := (schema.Validator{}).Validate(document, data); err != nil {
 		t.Fatalf("output %s: %v", data, err)
-	}
-	var printed any
-	if err := json.Unmarshal([]byte(stdout), &printed); err != nil || !reflect.DeepEqual(printed, output) {
-		t.Fatalf("stdout %s, recorded output %s: %v", stdout, data, err)
 	}
 }
 

@@ -16,12 +16,14 @@ import (
 // Skills are settings (ADR-021), on real settings directories: Agister's
 // home and a repository's .agister, composed by the layered store.
 
-// skilledProcess names the skill review; its agent, stylist, names style.
+// skilledProcess names the skill review; the agent its workflow binds it
+// to, stylist, names style.
 const skilledProcess = `schema: agister.process/v1alpha1
 name: skilled
 type: process
-uses: agent:stylist
-policy: process-policy:read-only
+session: resumable
+timeout: 10m
+tools: {allow: [repository.read, repository.diff, repository.search, repository.history.read, process.execute, host.read]}
 prompt: ask
 skills: [review]
 input:
@@ -35,8 +37,9 @@ func skillFile(name, description string) string {
 }
 
 // skilledSettings adds to setup's home the process skilled, which names the
-// skill review, on the agent stylist, which names style, and the process
-// plain, skilled without either: on the assistant, which names none. It
+// skill review, the agent stylist, which names style, and the process
+// plain, skilled without its skill; a workflow binds each process to the
+// stylist and to the assistant, which names none (ADR-030 rule 5). It
 // returns the path of skilled. The skills themselves are the test's.
 func skilledSettings(t *testing.T, home string) string {
 	t.Helper()
@@ -44,8 +47,13 @@ func skilledSettings(t *testing.T, home string) string {
 	write(t, filepath.Join(home, "agents", "stylist.toml"), agent+`skills = ["style"]`+"\n")
 	process := filepath.Join(home, "processes", "skilled.yaml")
 	write(t, process, skilledProcess)
-	plain := strings.NewReplacer("name: skilled", "name: plain", "agent:stylist", "agent:assistant", "skills: [review]\n", "").Replace(skilledProcess)
+	plain := strings.NewReplacer("name: skilled", "name: plain", "skills: [review]\n", "").Replace(skilledProcess)
 	write(t, filepath.Join(home, "processes", "plain.yaml"), plain)
+	for _, process := range []string{"skilled", "plain"} {
+		for _, agent := range []string{"stylist", "assistant"} {
+			bound(t, home, process, agent)
+		}
+	}
 	return process
 }
 
@@ -90,8 +98,9 @@ func ranWithoutSkills(t *testing.T, runs *newRuns, home, repo string, args ...st
 }
 
 // A skill is found in the settings, the repository's over home's of the
-// same name: check passes and links what names each, process show lists
-// the call's with the layer of each, and the call records them by digest.
+// same name: check passes and links what names each, process show and
+// workflow show list the call's with the layer of each, and the call
+// records them by digest.
 // Claude Code gives the recorded skills to its runtime (rules 5-6);
 // a call that names none runs without a skills folder.
 func TestACallsSkillsAreFoundInTheSettingsAndGivenToClaudeCode(t *testing.T) {
@@ -107,31 +116,38 @@ func TestACallsSkillsAreFoundInTheSettingsAndGivenToClaudeCode(t *testing.T) {
 
 	r := agister(t, home, repo, "check", "--tree")
 	if r.code != 0 || strings.Contains(r.stderr, "problem") || !strings.Contains(r.stdout, "\nsettings OK: ") ||
-		!regexp.MustCompile(`process skilled +home .*\n├─ agent stylist +home .*\n(│.*\n)*│  └─ skill style +home +`+regexp.QuoteMeta(style)+`\n(.*\n)*└─ skill review +repository `+regexp.QuoteMeta(projectReview)+`\n +home +`+regexp.QuoteMeta(homeReview)+` \(replaced\)\n`).MatchString(r.stdout) {
+		!regexp.MustCompile(`workflow skilled_stylist +home .*\n├─ process skilled +home .*\n(│.*\n)*│  └─ skill review +repository `+regexp.QuoteMeta(projectReview)+`\n│ +home +`+regexp.QuoteMeta(homeReview)+` \(replaced\)\n└─ agent stylist +home .*\n(   .*\n)*   └─ skill style +home +`+regexp.QuoteMeta(style)+`\n`).MatchString(r.stdout) {
 		t.Fatalf("check --tree: %d\n%s%s", r.code, r.stdout, r.stderr)
 	}
 
+	// process show lists what the process itself names: it names no agent,
+	// so its plan is refused and no agent's skill is among its own (ADR-030
+	// rule 2). The agent's are shown on the workflow whose node binds it.
 	r = agister(t, home, repo, "process", "show", "skilled")
 	for _, want := range []string{
-		"skills       review (process): repository " + projectReview + "\n" +
-			"             style (agent): home " + style + "\n",
+		"skills       review (process): repository " + projectReview + "\n",
 		"skill review: repository " + projectReview + "\n",
 		" home " + homeReview + " (replaced)\n",
-		"skill style: home " + style + "\n",
 	} {
-		if r.code != 0 || strings.Contains(r.stdout, "REFUSED") || !strings.Contains(r.stdout, want) {
+		if r.code != 0 || strings.Contains(r.stdout, "style") || !strings.Contains(r.stdout, want) {
 			t.Fatalf("process show: %d, want %q\n%s%s", r.code, want, r.stdout, r.stderr)
 		}
 	}
-	// With another agent the process's stay and the agent's are that agent's.
-	r = agister(t, home, repo, "process", "show", "skilled", "--agent", "assistant")
-	if r.code != 0 || !strings.Contains(r.stdout, "skills       review (process): repository "+projectReview+"\n") {
-		t.Fatalf("process show --agent assistant: %d\n%s%s", r.code, r.stdout, r.stderr)
+	shown := shownCall(t, home, repo, "skilled_stylist")
+	if shown.Refusal != "" || !reflect.DeepEqual(shown.Skills, []string{"review"}) || !reflect.DeepEqual(shown.AgentSkills, []string{"style"}) ||
+		!sourced(shown, "skills", "review", "repository", projectReview) || !sourced(shown, "skills", "style", "home", style) {
+		t.Fatalf("workflow show skilled_stylist: %+v", shown)
+	}
+	// On another agent the process's stay and the agent's are that agent's.
+	shown = shownCall(t, home, repo, "skilled_assistant")
+	if shown.Refusal != "" || !reflect.DeepEqual(shown.Skills, []string{"review"}) || len(shown.AgentSkills) != 0 ||
+		!sourced(shown, "skills", "review", "repository", projectReview) || sourced(shown, "skills", "style", "home", style) {
+		t.Fatalf("workflow show skilled_assistant: %+v", shown)
 	}
 
 	runs := &newRuns{home: home}
 	runs.take(t)
-	ran := ranWithSkills(t, runs, home, repo, "claude-code", map[string]string{"review": projectText, "style": styleText}, "skilled")
+	ran := ranWithSkills(t, runs, home, repo, "claude-code", map[string]string{"review": projectText, "style": styleText}, "skilled_stylist")
 	// The run records the skills the call was resolved with: the
 	// repository's review, whole, and home's style.
 	want := []map[string]any{
@@ -142,10 +158,10 @@ func TestACallsSkillsAreFoundInTheSettingsAndGivenToClaudeCode(t *testing.T) {
 		t.Fatalf("recorded skills = %v, want %v", got, want)
 	}
 	// Either the process's or the agent's skills reach the runtime alone.
-	ranWithSkills(t, runs, home, repo, "claude-code", map[string]string{"review": projectText}, "skilled", "--agent", "assistant")
-	ranWithSkills(t, runs, home, repo, "claude-code", map[string]string{"style": styleText}, "plain", "--agent", "stylist")
+	ranWithSkills(t, runs, home, repo, "claude-code", map[string]string{"review": projectText}, "skilled_assistant")
+	ranWithSkills(t, runs, home, repo, "claude-code", map[string]string{"style": styleText}, "plain_stylist")
 
-	ranWithoutSkills(t, runs, home, repo, "plain")
+	ranWithoutSkills(t, runs, home, repo, "plain_assistant")
 }
 
 // A skill in neither layer is a problem of the settings, on the agent and
@@ -158,37 +174,37 @@ func TestASkillInNeitherLayerIsAProblemOfWhatNamesIt(t *testing.T) {
 	// Neither layer has either skill.
 	r := agister(t, home, repo, "check", "--tree")
 	for _, want := range []string{
-		"agent stylist: skill \"style\" does not exist\n  refuses process skilled\n",
-		"process skilled: skill \"review\" does not exist\n  refuses process skilled\n",
+		"agent stylist: skill \"style\" does not exist\n  refuses workflow plain_stylist, workflow skilled_stylist\n",
+		"process skilled: skill \"review\" does not exist\n  refuses process skilled, workflow skilled_assistant, workflow skilled_stylist\n",
 		"2 problem(s) in ",
 	} {
 		if r.code != cli.ExitUsage || !strings.Contains(r.stderr, want) {
 			t.Fatalf("check --tree: %d, want %q\n%s%s", r.code, want, r.stdout, r.stderr)
 		}
 	}
-	if !regexp.MustCompile(`│  └─ skill style +MISSING\n(.*\n)*└─ skill review +MISSING\n`).MatchString(r.stdout) {
+	if !regexp.MustCompile(`└─ skill review +MISSING\n(.*\n)*   └─ skill style +MISSING\n`).MatchString(r.stdout) {
 		t.Fatalf("check --tree:\n%s%s", r.stdout, r.stderr)
 	}
 
 	runs := &newRuns{home: home}
 	runs.take(t)
 	stylist := filepath.Join(home, "agents", "stylist.toml")
-	refusedBeforeItsFirstTurn(t, runs, home, repo, "process skilled uses agent stylist ("+stylist+"): skill \"style\" does not exist", "skilled")
+	refusedBeforeItsFirstTurn(t, runs, home, repo, "workflow skilled_stylist uses agent stylist ("+stylist+"): skill \"style\" does not exist", "skilled_stylist")
 	// With the agent's skill in the repository, the process's is what is
 	// left.
 	write(t, filepath.Join(repo, ".agister", "skills", "style", "SKILL.md"), skillFile("style", "The house style."))
 	r = agister(t, home, repo, "check")
-	if r.code != cli.ExitUsage || !strings.Contains(r.stderr, "process skilled: skill \"review\" does not exist\n  refuses process skilled\n1 problem(s) in ") {
+	if r.code != cli.ExitUsage || !strings.Contains(r.stderr, "process skilled: skill \"review\" does not exist\n  refuses process skilled, workflow skilled_assistant, workflow skilled_stylist\n1 problem(s) in ") {
 		t.Fatalf("check: %d\n%s%s", r.code, r.stdout, r.stderr)
 	}
 	missing := "process skilled (" + process + "): skill \"review\" does not exist"
-	refusedBeforeItsFirstTurn(t, runs, home, repo, missing, "skilled")
+	refusedBeforeItsFirstTurn(t, runs, home, repo, "workflow skilled_stylist uses "+missing, "skilled_stylist")
 	r = agister(t, home, repo, "process", "show", "skilled")
 	if r.code != 0 || !strings.Contains(r.stdout, "skills       review (process, not resolved)\n") || !strings.Contains(r.stdout, "REFUSED: "+missing) {
 		t.Fatalf("process show: %d\n%s%s", r.code, r.stdout, r.stderr)
 	}
 
-	ranWithoutSkills(t, runs, home, repo, "plain")
+	ranWithoutSkills(t, runs, home, repo, "plain_assistant")
 }
 
 // A skill's folder that holds a second file is a problem of that skill
@@ -206,7 +222,7 @@ func TestASkillFolderWithASecondFileIsAProblemOfItsOwn(t *testing.T) {
 
 	problem := folder + " holds checklist.md beside SKILL.md: a skill is its SKILL.md alone, and its other files are not given to a call"
 	r := agister(t, home, repo, "check", "--tree")
-	if r.code != cli.ExitUsage || !strings.Contains(r.stderr, "skill review: "+problem+"\n  refuses process skilled\n1 problem(s) in ") ||
+	if r.code != cli.ExitUsage || !strings.Contains(r.stderr, "skill review: "+problem+"\n  refuses process skilled, workflow skilled_assistant, workflow skilled_stylist\n1 problem(s) in ") ||
 		strings.Contains(r.stderr, "does not exist") || strings.Contains(r.stderr, "process skilled:") {
 		t.Fatalf("check --tree: %d\n%s%s", r.code, r.stdout, r.stderr)
 	}
@@ -216,9 +232,9 @@ func TestASkillFolderWithASecondFileIsAProblemOfItsOwn(t *testing.T) {
 
 	runs := &newRuns{home: home}
 	runs.take(t)
-	refusedBeforeItsFirstTurn(t, runs, home, repo, "process skilled uses skill review ("+filepath.Join(folder, "SKILL.md")+"): "+problem, "skilled")
+	refusedBeforeItsFirstTurn(t, runs, home, repo, "workflow skilled_stylist uses process skilled, which uses skill review ("+filepath.Join(folder, "SKILL.md")+"): "+problem, "skilled_stylist")
 
-	ranWithoutSkills(t, runs, home, repo, "plain")
+	ranWithoutSkills(t, runs, home, repo, "plain_assistant")
 }
 
 // install takes a skill as any settings document (ADR-027 rule 8): a new
@@ -401,7 +417,7 @@ func TestACallNamingASkillRunsOnPiOpenCodeAndCodex(t *testing.T) {
 			if adapter == "codex" {
 				ranWithCodexSkills(t, runs, home, repo, map[string]string{"review": review, "style": style})
 			} else {
-				ranWithSkills(t, runs, home, repo, adapter, map[string]string{"review": review, "style": style}, "skilled")
+				ranWithSkills(t, runs, home, repo, adapter, map[string]string{"review": review, "style": style}, "skilled_stylist")
 			}
 		})
 	}
@@ -429,7 +445,7 @@ func skilledOn(t *testing.T, adapter string) (home, repo, review, style string) 
 		primitive, contract, version = "read-only", "codex/2", "0.158."
 	}
 	write(t, filepath.Join(home, "runtimes", adapter+".yaml"), "schema: agister.runtime/v1alpha1\nname: "+adapter+"\nadapter: "+adapter+"\ncontract: "+contract+"\nprimitives:\n  select: any\n  items:\n    "+primitive+": {grants: [repository.read], verified: [\""+version+"\"]}\n")
-	if r := agisterInput(t, "yes\n", home, repo, "agent", "create", "stylist", "--force", "--runtime", adapter, "--command", adapter, "--session", "resumable"); r.code != 0 {
+	if r := agisterInput(t, "yes\n", home, repo, "agent", "create", "stylist", "--force", "--runtime", adapter, "--command", adapter); r.code != 0 {
 		t.Fatalf("agent create: %d\n%s%s", r.code, r.stdout, r.stderr)
 	}
 	return home, repo, review, style
@@ -466,7 +482,7 @@ func ranWithCodexSkills(t *testing.T, runs *newRuns, home, repo string, skills m
 	write(t, filepath.Join(user, "skills", "mine", "SKILL.md"), skillFile("mine", "The user's own."))
 	root := filepath.Join(home, "codex", "homes")
 
-	r := agister(t, home, repo, "run", "skilled", "--quiet", "--timeout", "1m")
+	r := agister(t, home, repo, "run", "skilled_stylist", "--quiet", "--timeout", "1m")
 	if r.code != cli.ExitCompleted {
 		t.Fatalf("run skilled: %d\n%s%s", r.code, r.stdout, r.stderr)
 	}
@@ -489,7 +505,7 @@ func ranWithCodexSkills(t *testing.T, runs *newRuns, home, repo string, skills m
 		t.Fatalf("auth.json links to %q, %v", target, err)
 	}
 
-	r = agister(t, home, repo, "run", "skilled", "--continue", filepath.Base(ran.dir), "--quiet", "--timeout", "1m")
+	r = agister(t, home, repo, "run", "skilled_stylist", "--continue", filepath.Base(ran.dir), "--quiet", "--timeout", "1m")
 	if r.code != cli.ExitCompleted {
 		t.Fatalf("continue: %d\n%s%s", r.code, r.stdout, r.stderr)
 	}
@@ -504,19 +520,25 @@ func ranWithCodexSkills(t *testing.T, runs *newRuns, home, repo string, skills m
 func TestACodexRunWithoutSkillsIsNotContinuedByACallThatNamesSome(t *testing.T) {
 	t.Parallel()
 	home, repo, _, _ := skilledOn(t, "codex")
+	// A workflow's call continues only a run of the same process (ADR-030
+	// rule 11), so the session begins before the process names its skill.
+	process := filepath.Join(home, "processes", "skilled.yaml")
+	skilled := read(t, process)
+	write(t, process, strings.Replace(skilled, "skills: [review]\n", "", 1))
 	runs := &newRuns{home: home}
 	runs.take(t)
-	r := agister(t, home, repo, "run", "plain", "--agent", "stylist", "--quiet", "--timeout", "1m")
+	r := agister(t, home, repo, "run", "skilled_stylist", "--quiet", "--timeout", "1m")
 	if r.code != cli.ExitCompleted {
-		t.Fatalf("run plain: %d\n%s%s", r.code, r.stdout, r.stderr)
+		t.Fatalf("run without skills: %d\n%s%s", r.code, r.stdout, r.stderr)
 	}
 	plain := runs.one(t)
+	write(t, process, skilled)
 	if echo := codexEchoOf(t, plain); echo.CodexHome != "" || len(skillsOf(plain)) != 0 {
 		t.Fatalf("the call without skills ran with %+v", echo)
 	}
 	thread, _ := plain.first["thread_id"].(string)
 	refusedBeforeItsFirstTurn(t, runs, home, repo, "thread "+thread+" ran in the user's CODEX_HOME, where a call's skills cannot be given (ADR-021): review; a fresh run gets them",
-		"skilled", "--continue", filepath.Base(plain.dir))
+		"skilled_stylist", "--continue", filepath.Base(plain.dir))
 }
 
 // Assert the actual folder and bytes the fake saw while the call ran,

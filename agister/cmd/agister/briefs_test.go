@@ -94,7 +94,7 @@ func TestAStepBriefsGoalIsLookedUpThroughTheComposition(t *testing.T) {
 
 	briefed(t, home, repo, runs, "briefs/found.md")
 
-	r := agister(t, home, repo, "run", "briefed", "--quiet", "--timeout", "1m", "--param", "brief=briefs/lost.md")
+	r := agister(t, home, repo, "run", "briefed_assistant", "--quiet", "--timeout", "1m", "--param", "brief=briefs/lost.md")
 	want := `input brief: does not have its form step: part "## Goal": file goals/lost.md does not exist`
 	if r.code != cli.ExitRefused || !strings.Contains(r.stderr, want) {
 		t.Fatalf("run: %d, want %q\n%s%s", r.code, want, r.stdout, r.stderr)

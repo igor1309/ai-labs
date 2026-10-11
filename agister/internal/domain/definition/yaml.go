@@ -126,7 +126,7 @@ func nonEmpty(node *yaml.Node, field string, p *problems) string {
 func required(values map[string]*yaml.Node, key, field string, p *problems) string {
 	node, ok := values[key]
 	if !ok {
-		p.add(join(field, key), "is required")
+		p.missing(join(field, key))
 		return ""
 	}
 	return nonEmpty(node, join(field, key), p)

@@ -31,11 +31,12 @@ import (
 var assets embed.FS
 
 // The .agister entries that hold settings files; runs and logs are not
-// settings, nor is workspace.yaml, obsolete (ADR-025). Skills are settings
-// too, but not read here: /api/skills inventories them and reads each
-// one's SKILL.md alone (ADR-011 rule 9, D-16).
+// settings, nor is workspace.yaml, obsolete (ADR-025); there are no
+// policies (ADR-030), and the store refuses a layer that holds one. Skills
+// are settings too, but not read here: /api/skills inventories them and
+// reads each one's SKILL.md alone (ADR-011 rule 9, D-16).
 var settingsEntries = map[string]bool{
-	"agents": true, "policies": true, "processes": true, "runtimes": true,
+	"agents": true, "processes": true, "runtimes": true,
 	"schemas": true, "verifies": true, "prompts": true, "briefs": true,
 	"workflows": true, "service.toml": true,
 }

@@ -61,35 +61,40 @@ Usage:
                                      commands except init, install, check, cancelling a run and
                                      following an admitted run
   agister agent create <name> --runtime <runtime> [--model <m>] [--model-family <f>] [--effort <e>]
-                         [--session fresh-only|resumable] [--command <path>] [--force]
+                         [--command <path>] [--force]
                                      write an agent to <home>; refused if it adds a problem;
                                      --force replaces an existing one after you type yes
   agister agent list
   agister process list [--dir <path>]
-  agister process show <process> [--agent <name>] [--dir <path>]
-                                     the process as a call would see it, each document's layer files
-                                     and each field's layer
+  agister process show <process> [--dir <path>]
+                                     the process as a call would see it, on no agent: a workflow's
+                                     node binds it to one; each document's layer files and each
+                                     field's layer
   agister workflow list [--dir <path>]
   agister workflow show <workflow> [--dir <path>]
                                      its params, nodes, and each node's process as a call would see it
                                      check, list and show read the settings a call launched in --dir
                                      (default: this directory) would get
-  agister run <process> [--param <name>=<value>]... [--agent <name>] [--timeout <d>] [--max-cost <usd>]
+  agister run <workflow> [--param <name>=<value>]... [--timeout <d>] [--max-cost <usd>]
                          [--continue <run-id>] [--goal <run-id>[:<input>]] [--answers <run-id>]
                          [--dir <path>] [--json]
+                                     runs a workflow, never a process: a process's name is refused,
+                                     with the workflows that bind it; each node runs its process on
+                                     the agent it binds
                                      (--json: print the node result, with its run_id and each
                                      artifact's path absolute)
                                      the call works in the git worktree that holds --dir (default:
                                      this directory), with its settings, and leaves its changes there
+                                     fan-out nodes run concurrently, the join once all of them ended,
+                                     if at least one completed; each node is a run of its own; a
+                                     workflow of one call takes its process's params and is that
+                                     call's one run, which also takes --timeout, --max-cost and,
+                                     where its process is resumable, --continue
                                      --continue resumes that run's session in the same worktree,
                                      which holds the session's latest run's changes
                                      --goal records the goal the run serves: that run's input (default
                                      goal), by its digest; --answers records the completed run whose
                                      judgement it answers; each is refused unless that run has it
-  agister run <workflow> [--param <name>=<value>]... [--goal <run-id>[:<input>]] [--answers <run-id>]
-                         [--dir <path>] [--json]
-                                     fan-out nodes run concurrently, the join once all of them ended,
-                                     if at least one completed; each node is a run of its own
   agister runs [list]
   agister runs show <run-id>
   agister runs watch <run-id> [--after <seq>]
@@ -250,12 +255,12 @@ func failed(ctx context.Context, env IO, log *slog.Logger, err error) int {
 }
 
 type options struct {
-	home, runtime, model, modelFamily, effort, session, command string
-	agent, timeout, maxCost, continueRun, restore, dir          string
-	goal, answers, to                                           string
-	force, quiet, json, help, probe, tree, version              bool
-	after                                                       int
-	params                                                      paramFlag
+	home, runtime, model, modelFamily, effort, command string
+	timeout, maxCost, continueRun, restore, dir        string
+	goal, answers, to                                  string
+	force, quiet, json, help, probe, tree, version     bool
+	after                                              int
+	params                                             paramFlag
 }
 
 type paramFlag map[string]string
@@ -286,13 +291,13 @@ var commands = []Command{
 	{"init", []string{"force"}},
 	{"install", []string{"restore", "json"}},
 	{"check", []string{"probe", "tree", "dir", "json"}},
-	{"agent create", []string{"runtime", "model", "model-family", "effort", "session", "command", "force"}},
+	{"agent create", []string{"runtime", "model", "model-family", "effort", "command", "force"}},
 	{"agent list", nil},
 	{"process list", []string{"dir"}},
-	{"process show", []string{"agent", "dir", "json"}},
+	{"process show", []string{"dir", "json"}},
 	{"workflow list", []string{"dir"}},
 	{"workflow show", []string{"dir", "json"}},
-	{"run", []string{"param", "agent", "timeout", "max-cost", "continue", "goal", "answers", "dir", "json"}},
+	{"run", []string{"param", "timeout", "max-cost", "continue", "goal", "answers", "dir", "json"}},
 	{"runs list", nil},
 	{"runs show", nil},
 	{"runs watch", []string{"after", "json"}},
@@ -386,9 +391,7 @@ func flags(into func(name string) *options) *flag.FlagSet {
 	set.StringVar(&into("model-family").modelFamily, "model-family", "", "")
 	set.StringVar(&into("effort").effort, "effort", "", "")
 	set.StringVar(&into("command").command, "command", "", "")
-	set.StringVar(&into("agent").agent, "agent", "", "")
 	set.StringVar(&into("timeout").timeout, "timeout", "", "")
-	set.StringVar(&into("session").session, "session", "", "")
 	set.StringVar(&into("max-cost").maxCost, "max-cost", "", "")
 	set.StringVar(&into("continue").continueRun, "continue", "", "")
 	set.StringVar(&into("goal").goal, "goal", "", "")
@@ -491,7 +494,7 @@ func dispatch(ctx context.Context, client contract.Client, log *slog.Logger, opt
 			if opts.runtime == "" {
 				return 0, usageError{"agent create needs --runtime"}
 			}
-			agent := contract.Agent{Name: name, Runtime: opts.runtime, Model: opts.model, ModelFamily: opts.modelFamily, Effort: opts.effort, Session: opts.session, Command: opts.command}
+			agent := contract.Agent{Name: name, Runtime: opts.runtime, Model: opts.model, ModelFamily: opts.modelFamily, Effort: opts.effort, Command: opts.command}
 			plan, err := client.CreateAgent(ctx, agent, opts.force, nil)
 			if err != nil {
 				return 0, err
@@ -536,7 +539,7 @@ func dispatch(ctx context.Context, client contract.Client, log *slog.Logger, opt
 				return 0, err
 			}
 			for _, process := range processes {
-				line := fmt.Sprintf("%s\tagent:%s\t%s\t%s", process.Name, process.Agent, or(process.Policy, "-"), process.Output)
+				line := process.Name + "\t" + process.Output
 				if process.Problem != "" {
 					line = process.Name + "\t" + process.Problem
 				}
@@ -548,7 +551,7 @@ func dispatch(ctx context.Context, client contract.Client, log *slog.Logger, opt
 			if err != nil {
 				return 0, err
 			}
-			view, err := client.ShowProcess(ctx, name, opts.agent)
+			view, err := client.ShowProcess(ctx, name)
 			if err != nil {
 				return 0, err
 			}
@@ -569,6 +572,9 @@ func dispatch(ctx context.Context, client contract.Client, log *slog.Logger, opt
 			}
 			for _, workflow := range workflows {
 				line := fmt.Sprintf("%s\t%s\tjoin %s", workflow.Name, strings.Join(workflow.FanOut, ","), workflow.Join)
+				if workflow.Call != "" {
+					line = fmt.Sprintf("%s\tcall %s", workflow.Name, workflow.Call)
+				}
 				if workflow.Problem != "" {
 					line = workflow.Name + "\t" + workflow.Problem
 				}
@@ -592,11 +598,11 @@ func dispatch(ctx context.Context, client contract.Client, log *slog.Logger, opt
 		}
 
 	case "run":
-		name, err := arg(0, "a process or workflow name")
+		name, err := arg(0, "a workflow name")
 		if err != nil {
 			return 0, err
 		}
-		request := contract.CallRequest{Process: name, Params: opts.params, Agent: opts.agent, Timeout: opts.timeout, Continue: opts.continueRun, Goal: opts.goal, Answers: opts.answers, Cwd: config.Cwd}
+		request := contract.CallRequest{Process: name, Params: opts.params, Timeout: opts.timeout, Continue: opts.continueRun, Goal: opts.goal, Answers: opts.answers, Cwd: config.Cwd}
 		if opts.maxCost != "" {
 			limit, err := strconv.ParseFloat(opts.maxCost, 64)
 			if err != nil || limit <= 0 {
@@ -985,10 +991,13 @@ func showProcess(w io.Writer, view contract.ProcessView) {
 			params = append(params, param.Name+"="+param.Default)
 		}
 	}
+	agent := "(none: a workflow's node binds it to one)"
+	if view.Agent != "" {
+		agent = view.Agent + " (runtime " + view.Runtime + ")"
+	}
 	lines := [][2]string{
 		{"process", view.Name},
-		{"agent", view.Agent + " (runtime " + view.Runtime + ")"},
-		{"policy", or(view.Policy, "(none)")},
+		{"agent", agent},
 		{"params", or(strings.Join(params, ", "), "(none)")},
 		{"inputs", or(strings.Join(view.Inputs, ", "), "(none)")},
 		{"output", view.Output},
@@ -1095,18 +1104,26 @@ func showWorkflow(w io.Writer, view contract.WorkflowView) {
 		lines = append(lines, [2]string{label, text}, [2]string{"  receives", gets})
 		if process.Refusal != "" {
 			lines = append(lines, [2]string{"  plan", "REFUSED: " + process.Refusal})
+			// What else a refused call's plan withholds.
+			if len(process.Withheld) > 0 {
+				lines = append(lines, [2]string{"  withheld", strings.Join(process.Withheld, ", ")})
+			}
 		} else {
-			lines = append(lines, [2]string{"  plan", or(strings.Join(process.Primitives, ", "), "(none)")})
+			lines = append(lines, [2]string{"  plan", or(strings.Join(process.Primitives, ", "), "(none)")}, [2]string{"  withheld", or(strings.Join(process.Withheld, ", "), "(none)")})
 		}
 	}
-	for i, fanOut := range view.FanOut {
-		label := ""
-		if i == 0 {
-			label = "fan-out"
+	if call := view.Call; call != nil {
+		node("call", *call, "params "+or(strings.Join(call.Params, ", "), "(none)")+": the workflow's, its process's own")
+	} else {
+		for i, fanOut := range view.FanOut {
+			label := ""
+			if i == 0 {
+				label = "fan-out"
+			}
+			node(label, fanOut, "params "+or(strings.Join(fanOut.Params, ", "), "(none)"))
 		}
-		node(label, fanOut, "params "+or(strings.Join(fanOut.Params, ", "), "(none)"))
+		node("join", view.Join, "the collection as input "+or(view.Collection, "(none)")+", and nothing else")
 	}
-	node("join", view.Join, "the collection as input "+or(view.Collection, "(none)")+", and nothing else")
 	if view.Refusal != "" {
 		lines = append(lines, [2]string{"run", "REFUSED: " + view.Refusal})
 	}
@@ -1122,7 +1139,8 @@ func showWorkflow(w io.Writer, view contract.WorkflowView) {
 // sourceLines are the lines of a view that say where its definitions come
 // from (ADR-028 rule 12): each document with its layer files, nearest
 // first, then every field of each composed document, with the layer it
-// came from. A document taken whole has no fields.
+// came from. A document taken whole has no fields. A process's base's files
+// and the fields they gave name the base (ADR-030 rule 9).
 func sourceLines(sources []contract.DefinitionOrigin) [][2]string {
 	var lines [][2]string
 	for i, source := range sources {
@@ -1135,7 +1153,7 @@ func sourceLines(sources []contract.DefinitionOrigin) [][2]string {
 			lines = append(lines, [2]string{label, subject + source.Layer + " " + source.Path})
 		}
 		for j, layer := range source.Layers {
-			text := layer.Layer + " " + layer.Path
+			text := layer.Layer + " " + layer.Path + ofBase(source.Name, layer)
 			if layer.Replaced {
 				text += " (replaced)"
 			}
@@ -1156,7 +1174,7 @@ func sourceLines(sources []contract.DefinitionOrigin) [][2]string {
 		width := 0
 		for _, layer := range source.Layers {
 			for _, name := range layer.Fields {
-				fields = append(fields, field{name, layer.Layer})
+				fields = append(fields, field{name, layer.Layer + ofBase(source.Name, layer)})
 				width = max(width, utf8.RuneCountInString(name))
 			}
 		}
@@ -1168,6 +1186,15 @@ func sourceLines(sources []contract.DefinitionOrigin) [][2]string {
 		}
 	}
 	return lines
+}
+
+// ofBase names the base a layer's file is of, where it is not the file of
+// the document named name itself (ADR-030 rule 9); "" otherwise.
+func ofBase(name string, layer contract.DefinitionLayer) string {
+	if layer.Process == "" || layer.Process == name {
+		return ""
+	}
+	return " (base " + layer.Process + ")"
 }
 
 // confirm asks the user to type "yes" before a destructive write; any other
@@ -1368,6 +1395,9 @@ func printCheckAs(env IO, report contract.CheckReport, opts options) (int, error
 		if report.Blocks == nil {
 			report.Blocks = []contract.Block{}
 		}
+		if report.Bindings == nil {
+			report.Bindings = []contract.Binding{}
+		}
 		return code, printJSON(env.Stdout, report)
 	}
 	if opts.tree {
@@ -1379,7 +1409,7 @@ func printCheckAs(env IO, report contract.CheckReport, opts options) (int, error
 
 var kindNames = map[string]string{
 	"service": "service", "agents": "agent", "processes": "process",
-	"policies": "policy", "runtimes": "runtime", "schemas": "schema",
+	"runtimes": "runtime", "schemas": "schema",
 	"workflows": "workflow", "verifies": "verification", "prompts": "prompt",
 	"skills": "skill", "briefs": "brief", "workspace": "workspace",
 }
@@ -1410,7 +1440,7 @@ func printTree(w io.Writer, definitions []contract.Definition) {
 		}
 		var details []string
 		for i, layer := range layers {
-			text := fmt.Sprintf("%-10s %s", layer.Layer, layer.Path)
+			text := fmt.Sprintf("%-10s %s", layer.Layer, layer.Path) + ofBase(ref.Name, layer)
 			if layer.Replaced {
 				text += " (replaced)"
 			}
@@ -1529,10 +1559,23 @@ func printCheck(env IO, report contract.CheckReport) int {
 		}
 		fmt.Fprintf(env.Stderr, "%d problem(s) in %s\n", len(report.Problems), strings.Join(kinds, ", "))
 		newerHint(env, unknown)
+		printWithheld(env.Stdout, report.Bindings)
 		return ExitUsage
 	}
 	fmt.Fprintf(env.Stdout, "settings OK: %s\n", strings.Join(kinds, ", "))
+	printWithheld(env.Stdout, report.Bindings)
 	return 0
+}
+
+// printWithheld lists what each binding allows and does not require, and
+// its plan withholds: not a problem, but shown (ADR-030 rule 8).
+func printWithheld(w io.Writer, bindings []contract.Binding) {
+	for _, binding := range bindings {
+		if len(binding.Withheld) > 0 {
+			fmt.Fprintf(w, "withheld workflow %s node %s: process %s, agent %s (runtime %s version %s): %s\n",
+				binding.Workflow, binding.Node, binding.Process, binding.Agent, binding.Runtime, binding.Version, strings.Join(binding.Withheld, ", "))
+		}
+	}
 }
 
 // newerHint says, when unknown problems name something this binary does not

@@ -21,19 +21,26 @@ import (
 // below its root, composed by the layered store as the CLI selects them.
 
 // The process ask as the repository's layer and a project's change it: each
-// a partial document, holding only the fields it sets.
+// a partial document, holding only the fields it sets. The project binds
+// the process to another agent in the workflow that runs it, the one place
+// that names an agent (ADR-030 rule 5).
 const (
 	repositoryAsk = "input:\n  instruction: 'REPOSITORY: answer the question.'\n"
-	projectAsk    = "uses: agent:reviewer\ninput:\n  params:\n    question: {default: the project's question}\n"
+	projectAsk    = "input:\n  params:\n    question: {default: the project's question}\n"
+	projectCall   = "call: {agent: reviewer}\n"
 )
 
 // threeLayers is setup with the process ask held by three layers: home's
-// whole, the repository's and the project's of <repo>/docs partial. guide
-// is a directory below the project's, with no settings of its own.
+// whole, the repository's and the project's of <repo>/docs partial, and
+// the workflow ask_assistant, which runs it, held by home's and the
+// project's. guide is a directory below the project's, with no settings of
+// its own.
 type threeLayers struct {
 	home, repo, docs, guide string
 	// The process's file in each layer.
 	project, repository, global string
+	// The project's file of the workflow.
+	call string
 }
 
 func layered(t *testing.T) threeLayers {
@@ -84,6 +91,8 @@ func layeredIn(t *testing.T, home, repo string) threeLayers {
 	l.project = filepath.Join(l.docs, ".agister", "processes", "ask.yaml")
 	write(t, l.repository, repositoryAsk)
 	write(t, l.project, projectAsk)
+	l.call = filepath.Join(l.docs, ".agister", "workflows", "ask_assistant.yaml")
+	write(t, l.call, projectCall)
 	write(t, filepath.Join(l.guide, "keep"), "")
 	return l
 }
@@ -115,7 +124,7 @@ func TestACallRunsTheSettingsComposedForItsLaunchDirectory(t *testing.T) {
 
 	// The project's default answers the param, the repository's
 	// instruction is the one given, and the project's agent runs it.
-	if r := agister(t, l.home, l.guide, "run", "ask", "--quiet", "--timeout", "1m"); r.code != cli.ExitCompleted {
+	if r := agister(t, l.home, l.guide, "run", "ask_assistant", "--quiet", "--timeout", "1m"); r.code != cli.ExitCompleted {
 		t.Fatalf("run below the project: %d\n%s%s", r.code, r.stdout, r.stderr)
 	}
 	below := runs.one(t)
@@ -124,9 +133,9 @@ func TestACallRunsTheSettingsComposedForItsLaunchDirectory(t *testing.T) {
 		t.Fatalf("agent %v was run by %v and given:\n%s", below.record["agent"], below.argv(), given)
 	}
 	want := map[string]any{"kind": "processes", "name": "ask", "layers": []any{
-		map[string]any{"layer": "project", "path": l.project, "sha256": digestOf(projectAsk), "fields": []any{"uses", "input.params.question.default"}},
+		map[string]any{"layer": "project", "path": l.project, "sha256": digestOf(projectAsk), "fields": []any{"input.params.question.default"}},
 		map[string]any{"layer": "repository", "path": l.repository, "sha256": digestOf(repositoryAsk), "fields": []any{"input.instruction"}},
-		map[string]any{"layer": "home", "path": l.global, "sha256": digestOf(read(t, l.global)), "fields": []any{"schema", "name", "type", "policy", "prompt", "input.values.question.source", "input.values.question.name", "output.format"}},
+		map[string]any{"layer": "home", "path": l.global, "sha256": digestOf(read(t, l.global)), "fields": []any{"schema", "name", "type", "session", "prompt", "input.values.question.source", "input.values.question.name", "workspace.access", "workspace.scope", "tools.allow", "timeout", "output.format"}},
 	}}
 	if got := definitionOf(t, below, "processes", "ask"); !reflect.DeepEqual(got, want) {
 		t.Fatalf("process recorded as\n%v\nwant\n%v", got, want)
@@ -140,11 +149,11 @@ func TestACallRunsTheSettingsComposedForItsLaunchDirectory(t *testing.T) {
 		t.Fatalf("layers recorded as %v, want %v", below.record["layers"], layers)
 	}
 	// A document one layer holds is that layer's: one file, every field.
-	policy := filepath.Join(l.home, "policies", "read-only.yaml")
-	held := homeFile("policies", "read-only", policy, read(t, policy))
-	held["layers"].([]any)[0].(map[string]any)["fields"] = []any{"schema", "name", "workspace.access", "workspace.scope", "tools.allow", "timeout"}
-	if got := definitionOf(t, below, "policies", "read-only"); !reflect.DeepEqual(got, held) {
-		t.Fatalf("policy recorded as %v, want %v", got, held)
+	agent := filepath.Join(l.home, "agents", "reviewer.toml")
+	held := homeFile("agents", "reviewer", agent, read(t, agent))
+	held["layers"].([]any)[0].(map[string]any)["fields"] = []any{"schema", "name", "runtime", "model", "model_family", "effort", "command"}
+	if got := definitionOf(t, below, "agents", "reviewer"); !reflect.DeepEqual(got, held) {
+		t.Fatalf("agent recorded as %v, want %v", got, held)
 	}
 	for _, d := range below.record["definitions"].([]any) {
 		for _, old := range []string{"path", "sha256", "project", "overrides"} {
@@ -155,11 +164,11 @@ func TestACallRunsTheSettingsComposedForItsLaunchDirectory(t *testing.T) {
 	}
 
 	// At the root there is no project layer: the param has no default.
-	if r := agister(t, l.home, l.repo, "run", "ask", "--quiet", "--timeout", "1m"); r.code == cli.ExitCompleted {
+	if r := agister(t, l.home, l.repo, "run", "ask_assistant", "--quiet", "--timeout", "1m"); r.code == cli.ExitCompleted {
 		t.Fatalf("run at the root without the param: %d\n%s%s", r.code, r.stdout, r.stderr)
 	}
 	runs.take(t)
-	if r := agister(t, l.home, l.repo, "run", "ask", "--quiet", "--param", "question=q", "--timeout", "1m"); r.code != cli.ExitCompleted {
+	if r := agister(t, l.home, l.repo, "run", "ask_assistant", "--quiet", "--param", "question=q", "--timeout", "1m"); r.code != cli.ExitCompleted {
 		t.Fatalf("run at the root: %d\n%s%s", r.code, r.stdout, r.stderr)
 	}
 	root := runs.one(t)
@@ -190,8 +199,9 @@ func TestCheckChecksTheComposedDocument(t *testing.T) {
 		t.Fatalf("check in the project names no layers of ask:\n%s%s", r.stdout, r.stderr)
 	}
 
-	write(t, l.project, "uses: reviewer\n")
-	problem := "process ask: uses: must be \"agent:<name>\" (set in " + l.project + ")"
+	// The field is one a process no longer has (ADR-030 rule 2).
+	write(t, l.project, "uses: agent:reviewer\n")
+	problem := "process ask: uses: a process names no agent (ADR-030 rule 2): name the agent on each workflow node that binds the process, and remove uses (set in " + l.project + ")"
 	if r := agister(t, l.home, l.docs, "check"); r.code != cli.ExitUsage || !strings.Contains(r.stderr, problem) {
 		t.Fatalf("check of the project's bad field: %d, want %q\n%s%s", r.code, problem, r.stdout, r.stderr)
 	}
@@ -200,13 +210,13 @@ func TestCheckChecksTheComposedDocument(t *testing.T) {
 		t.Fatalf("check at the root: %d\n%s%s", r.code, r.stdout, r.stderr)
 	}
 
-	// A process no layer gives an agent: the two files read are named.
+	// A process no layer gives a prompt: the two files read are named.
 	partial := filepath.Join(l.docs, ".agister", "processes", "partial.yaml")
 	rest := filepath.Join(l.repo, ".agister", "processes", "partial.yaml")
 	write(t, l.project, projectAsk)
-	write(t, partial, "policy: process-policy:read-only\n")
+	write(t, partial, "timeout: 10m\n")
 	write(t, rest, "schema: agister.process/v1alpha1\nname: partial\ntype: process\ninput: {instruction: Answer.}\noutput: {format: text}\n")
-	problem = "process partial: uses: is required (no layer sets it: " + partial + ", " + rest + ")"
+	problem = "process partial: prompt: is required (no layer sets it: " + partial + ", " + rest + ")"
 	if r := agister(t, l.home, l.docs, "check"); r.code != cli.ExitUsage || !strings.Contains(r.stderr, problem) {
 		t.Fatalf("check of a field no layer sets: %d, want %q\n%s%s", r.code, problem, r.stdout, r.stderr)
 	}
@@ -223,7 +233,7 @@ func TestCheckChecksTheComposedDocument(t *testing.T) {
 	if r := agister(t, l.home, l.docs, "check"); r.code != cli.ExitUsage || !strings.Contains(r.stderr, "process ask") || !strings.Contains(r.stderr, l.project) {
 		t.Fatalf("check of a layer file that is a list: %d\n%s%s", r.code, r.stdout, r.stderr)
 	}
-	if r := agister(t, l.home, l.docs, "run", "ask", "--quiet", "--param", "question=q", "--timeout", "1m"); r.code != cli.ExitRefused || !strings.Contains(r.stderr, l.project) {
+	if r := agister(t, l.home, l.docs, "run", "ask_assistant", "--quiet", "--param", "question=q", "--timeout", "1m"); r.code != cli.ExitRefused || !strings.Contains(r.stderr, l.project) {
 		t.Fatalf("run of a broken document: %d\n%s%s", r.code, r.stdout, r.stderr)
 	}
 }
@@ -231,9 +241,14 @@ func TestCheckChecksTheComposedDocument(t *testing.T) {
 // ADR-028 rule 12: process show prints each document's layer files,
 // nearest first, by the names home, repository and project, and a fields
 // block that says which layer gave each field of a document more than one
-// layer holds; --json carries the same. check --tree prints each
-// document's layer files, and under each but the farthest the fields it
-// gave.
+// layer holds; workflow show --json carries the same for its call, with
+// the agent the call's node binds. check --tree prints each document's
+// layer files, and under each but the farthest the fields it gave.
+//
+// process show listed the agent too while the process named it. A process
+// names none (ADR-030 rule 2), so the agent's layers are asserted where a
+// node binds it: in workflow show --json and under the workflow in the
+// tree.
 func TestShowAndTheTreeNameEachFieldsLayer(t *testing.T) {
 	t.Parallel()
 	l := layered(t)
@@ -244,10 +259,7 @@ func TestShowAndTheTreeNameEachFieldsLayer(t *testing.T) {
 	r := agister(t, l.home, l.guide, "process", "show", "ask")
 	sources := "             process ask: project " + l.project + "\n" +
 		"                          repository " + l.repository + "\n" +
-		"                          home " + l.global + "\n" +
-		"             policy read-only: home " + filepath.Join(l.home, "policies", "read-only.yaml") + "\n" +
-		"             agent reviewer: project " + agent + "\n" +
-		"                             home " + filepath.Join(l.home, "agents", "reviewer.toml") + "\n"
+		"                          home " + l.global + "\n"
 	fields := "fields       service service\n" +
 		"               max_attempts         home\n"
 	composed := "             process ask\n" +
@@ -257,36 +269,39 @@ func TestShowAndTheTreeNameEachFieldsLayer(t *testing.T) {
 		"               input.values.question.source   home\n" +
 		"               name                           home\n" +
 		"               output.format                  home\n" +
-		"               policy                         home\n" +
 		"               prompt                         home\n" +
 		"               schema                         home\n" +
+		"               session                        home\n" +
+		"               timeout                        home\n" +
+		"               tools.allow                    home\n" +
 		"               type                           home\n" +
-		"               uses                           project\n" +
-		"             policy read-only\n"
-	// The project's file gave the agent nothing: every field is home's.
-	nothing := "             agent reviewer\n" +
-		"               command       home\n"
-	if r.code != 0 || !strings.Contains(r.stdout, sources) || !strings.Contains(r.stdout, fields) || !strings.Contains(r.stdout, composed) || !strings.Contains(r.stdout, nothing) {
-		t.Fatalf("process show: %d, want\n%s%s%s%s\ngot\n%s%s", r.code, sources, fields, composed, nothing, r.stdout, r.stderr)
+		"               workspace.access               home\n" +
+		"               workspace.scope                home\n"
+	if r.code != 0 || !strings.Contains(r.stdout, sources) || !strings.Contains(r.stdout, fields) || !strings.Contains(r.stdout, composed) {
+		t.Fatalf("process show: %d, want\n%s%s%s\ngot\n%s%s", r.code, sources, fields, composed, r.stdout, r.stderr)
 	}
 
 	var shown struct {
-		Sources []struct {
-			Kind, Name, Layer, Path string
-			Layers                  []contract.DefinitionLayer
+		Call struct {
+			Process struct {
+				Sources []struct {
+					Kind, Name, Layer, Path string
+					Layers                  []contract.DefinitionLayer
+				}
+			}
 		}
 	}
-	r = agister(t, l.home, l.guide, "process", "show", "ask", "--json")
+	r = agister(t, l.home, l.guide, "workflow", "show", "ask_assistant", "--json")
 	if err := json.Unmarshal([]byte(r.stdout), &shown); err != nil || r.code != 0 {
-		t.Fatalf("process show --json: %d %v\n%s%s", r.code, err, r.stdout, r.stderr)
+		t.Fatalf("workflow show --json: %d %v\n%s%s", r.code, err, r.stdout, r.stderr)
 	}
 	want := []contract.DefinitionLayer{
-		{Layer: "project", Path: l.project, Fields: []string{"uses", "input.params.question.default"}},
+		{Layer: "project", Path: l.project, Fields: []string{"input.params.question.default"}},
 		{Layer: "repository", Path: l.repository, Fields: []string{"input.instruction"}},
-		{Layer: "home", Path: l.global, Fields: []string{"schema", "name", "type", "policy", "prompt", "input.values.question.source", "input.values.question.name", "output.format"}},
+		{Layer: "home", Path: l.global, Fields: []string{"schema", "name", "type", "session", "prompt", "input.values.question.source", "input.values.question.name", "workspace.access", "workspace.scope", "tools.allow", "timeout", "output.format"}},
 	}
-	found := false
-	for _, source := range shown.Sources {
+	found, bound := false, false
+	for _, source := range shown.Call.Process.Sources {
 		switch {
 		case source.Kind == "processes" && source.Name == "ask":
 			found = true
@@ -294,29 +309,38 @@ func TestShowAndTheTreeNameEachFieldsLayer(t *testing.T) {
 				t.Fatalf("process in --json = %+v", source)
 			}
 		case source.Kind == "agents" && source.Name == "reviewer":
+			bound = true
+			// The project's file gave the agent nothing: every field is
+			// home's.
 			if len(source.Layers) != 2 || source.Layers[0].Layer != "project" || source.Layers[0].Fields == nil || len(source.Layers[0].Fields) != 0 {
 				t.Fatalf("agent in --json = %+v", source)
 			}
 		}
 	}
-	if !found {
-		t.Fatalf("no process among the sources:\n%s", r.stdout)
+	if !found || !bound {
+		t.Fatalf("the call's sources lack its process or its agent:\n%s", r.stdout)
 	}
 
 	r = agister(t, l.home, l.guide, "check", "--tree")
 	tree := regexp.MustCompile(`(?m)^process ask +project +` + regexp.QuoteMeta(l.project) + `\n` +
-		` +uses, input\.params\.question\.default\n` +
+		` +input\.params\.question\.default\n` +
 		` +repository ` + regexp.QuoteMeta(l.repository) + `\n` +
 		` +input\.instruction\n` +
 		` +home +` + regexp.QuoteMeta(l.global) + `\n` +
-		`├─ agent reviewer +project +` + regexp.QuoteMeta(agent) + `\n` +
-		`│ +\(none\)\n` +
-		`│ +home +` + regexp.QuoteMeta(filepath.Join(l.home, "agents", "reviewer.toml")) + `\n` +
-		`│  └─ runtime claude-code +home +` + regexp.QuoteMeta(filepath.Join(l.home, "runtimes", "claude-code.yaml")) + `\n` +
-		`├─ policy read-only +home +` + regexp.QuoteMeta(filepath.Join(l.home, "policies", "read-only.yaml")) + `\n` +
 		`└─ prompt ask +home +` + regexp.QuoteMeta(filepath.Join(l.home, "prompts", "ask.md")) + `\n`)
-	if r.code != 0 || !tree.MatchString(r.stdout) {
-		t.Fatalf("check --tree: %d, want %s\ngot\n%s%s", r.code, tree, r.stdout, r.stderr)
+	// The agent hangs under the workflow whose node binds it, the project's
+	// file having set the call's agent.
+	binding := regexp.MustCompile(`(?m)^workflow ask_assistant +project +` + regexp.QuoteMeta(l.call) + `\n` +
+		` +call\.agent\n` +
+		` +home +` + regexp.QuoteMeta(filepath.Join(l.home, "workflows", "ask_assistant.yaml")) + `\n` +
+		`├─ process ask +project +` + regexp.QuoteMeta(l.project) + `\n` +
+		`(│.*\n)+` +
+		`└─ agent reviewer +project +` + regexp.QuoteMeta(agent) + `\n` +
+		` +\(none\)\n` +
+		` +home +` + regexp.QuoteMeta(filepath.Join(l.home, "agents", "reviewer.toml")) + `\n` +
+		`   └─ runtime claude-code +home +` + regexp.QuoteMeta(filepath.Join(l.home, "runtimes", "claude-code.yaml")) + `\n`)
+	if r.code != 0 || !tree.MatchString(r.stdout) || !binding.MatchString(r.stdout) {
+		t.Fatalf("check --tree: %d, want %s\nand %s\ngot\n%s%s", r.code, tree, binding, r.stdout, r.stderr)
 	}
 }
 
@@ -376,7 +400,7 @@ func TestASecondSettingsDirectoryBelowTheProjectsStopsWhatIsLaunchedThere(t *tes
 	runs := &newRuns{home: l.home}
 	runs.take(t)
 	for _, args := range [][]string{
-		{"run", "ask", "--quiet", "--timeout", "1m"},
+		{"run", "ask_assistant", "--quiet", "--timeout", "1m"},
 		{"run", "review_panel", "--quiet", "--param", "base=main", "--param", "architecture=a.txt"},
 		{"process", "list"}, {"process", "show", "ask"}, {"workflow", "list"}, {"workflow", "show", "review_panel"},
 	} {
@@ -398,7 +422,7 @@ func TestASecondSettingsDirectoryBelowTheProjectsStopsWhatIsLaunchedThere(t *tes
 		if r := agister(t, l.home, cwd, "check"); r.code != 0 {
 			t.Fatalf("check in %s: %d\n%s%s", cwd, r.code, r.stdout, r.stderr)
 		}
-		if r := agister(t, l.home, cwd, "run", "ask", "--quiet", "--param", "question=q", "--timeout", "1m"); r.code != cli.ExitCompleted {
+		if r := agister(t, l.home, cwd, "run", "ask_assistant", "--quiet", "--param", "question=q", "--timeout", "1m"); r.code != cli.ExitCompleted {
 			t.Fatalf("run in %s: %d\n%s%s", cwd, r.code, r.stdout, r.stderr)
 		}
 	}
@@ -418,13 +442,13 @@ func TestBlocksInAProjectLayerStopWhatIsLaunchedThere(t *testing.T) {
 	if r.code != cli.ExitUsage || !strings.Contains(r.stderr, problem) || strings.Contains(r.stdout+r.stderr, "The project's block") {
 		t.Fatalf("check: %d, want %q\n%s%s", r.code, problem, r.stdout, r.stderr)
 	}
-	if r := agister(t, l.home, l.guide, "run", "ask", "--quiet", "--timeout", "1m"); r.code == 0 || r.code == cli.ExitCompleted || !strings.Contains(r.stderr, "stop every command") {
+	if r := agister(t, l.home, l.guide, "run", "ask_assistant", "--quiet", "--timeout", "1m"); r.code == 0 || r.code == cli.ExitCompleted || !strings.Contains(r.stderr, "stop every command") {
 		t.Fatalf("run: %d\n%s%s", r.code, r.stdout, r.stderr)
 	}
 	if r := agister(t, l.home, l.repo, "check"); r.code != 0 || strings.Contains(r.stdout, "block ") {
 		t.Fatalf("check at the root: %d\n%s%s", r.code, r.stdout, r.stderr)
 	}
-	if r := agister(t, l.home, l.repo, "run", "ask", "--quiet", "--param", "question=q", "--timeout", "1m"); r.code != cli.ExitCompleted {
+	if r := agister(t, l.home, l.repo, "run", "ask_assistant", "--quiet", "--param", "question=q", "--timeout", "1m"); r.code != cli.ExitCompleted {
 		t.Fatalf("run at the root: %d\n%s%s", r.code, r.stdout, r.stderr)
 	}
 }
@@ -432,33 +456,30 @@ func TestBlocksInAProjectLayerStopWhatIsLaunchedThere(t *testing.T) {
 // ADR-028 rule 10: a workflow's nodes resolve against the run's layers,
 // the launch directory's, wherever each node's own checkout is: each
 // node's call runs the documents composed with the project's fields, its
-// process's and those of the agent, the policy and the verification it
-// uses, and records them, each layer's file with the fields it gave, and
+// process's and those of the agent and the verification it uses, and
+// records them, each layer's file with the fields it gave, and
 // the run's layers.
 func TestAWorkflowsNodesResolveAgainstTheRunsLayers(t *testing.T) {
 	t.Parallel()
 	l, commit := layeredCommitted(t)
-	// The process narrows its policy's limit; the project's timeout is the
-	// one the project's policy allows, and widens home's.
+	// The project's timeout widens home's, within the service's limit.
 	const partial = "timeout: 30m\ninput:\n  instruction: 'PROJECT: review the candidate.'\nworkspace:\n  clean: true\nverify: verify:repo\n"
 	project := filepath.Join(l.docs, ".agister", "processes", "architecture_review.yaml")
 	write(t, project, partial)
 	// The project's fields of what the node's process uses.
-	const agent, policy, verification = "effort = \"low\"\n", "timeout: 30m\n", "command: \"true\"\nmax_attempts: 1\n"
+	const agent, verification = "effort = \"low\"\n", "command: \"true\"\nmax_attempts: 1\n"
 	files := map[string]string{
 		"agents":   filepath.Join("agents", "reviewer.toml"),
-		"policies": filepath.Join("policies", "static-review.yaml"),
 		"verifies": filepath.Join("verifies", "repo.yaml"),
 	}
 	write(t, filepath.Join(l.docs, ".agister", files["agents"]), agent)
-	write(t, filepath.Join(l.docs, ".agister", files["policies"]), policy)
 	write(t, filepath.Join(l.docs, ".agister", files["verifies"]), verification)
 	// The verification makes the node a writer, which holds the worktree
 	// alone (ADR-025 rule 4): beside a reader node it is refused whenever
 	// that one starts first. The project's fan-out, a list and so taken
 	// whole, leaves it the only node: the one whose process takes every value
 	// the workflow resolves.
-	write(t, filepath.Join(l.docs, ".agister", "workflows", "review_panel.yaml"), "fan_out:\n  - {node: architecture, uses: process:architecture_review}\n")
+	write(t, filepath.Join(l.docs, ".agister", "workflows", "review_panel.yaml"), "fan_out:\n  - {node: architecture, uses: process:architecture_review, agent: reviewer}\n")
 	commit()
 	runs := &newRuns{home: l.home}
 	runs.take(t)
@@ -496,13 +517,13 @@ func TestAWorkflowsNodesResolveAgainstTheRunsLayers(t *testing.T) {
 	if !reflect.DeepEqual(nearest, want) {
 		t.Fatalf("the node's process is recorded from %v, want %v", nearest, want)
 	}
-	// The agent's, the policy's and the verification's fields are the
-	// project's where it sets them, home's elsewhere.
+	// The agent's and the verification's fields are the project's where it
+	// sets them, home's elsewhere; the limits are the process's.
 	if profile, _ := node.record["profile"].(map[string]any); profile["effort"] != "low" || profile["model"] != "sonnet" {
 		t.Fatalf("the node's agent is resolved as %v", node.record["profile"])
 	}
 	if effective, _ := node.record["effective"].(map[string]any); effective["timeout"] != float64(30*time.Minute) || effective["access"] != "read-only" || effective["scope"] != "candidate" {
-		t.Fatalf("the node's policy is resolved as %v", node.record["effective"])
+		t.Fatalf("the node's limits are resolved as %v", node.record["effective"])
 	}
 	verified := map[string]any{"command": "true", "timeout": float64(10 * time.Minute), "max_attempts": float64(1), "instruction": "The verification command failed on your changes. Fix the cause in the code; do not weaken, skip or delete the check.", "where": "workspace"}
 	if !reflect.DeepEqual(node.record["verify"], verified) {
@@ -516,8 +537,7 @@ func TestAWorkflowsNodesResolveAgainstTheRunsLayers(t *testing.T) {
 		project    []any
 		home       []any
 	}{
-		"agents":   {"reviewer", agent, []any{"effort"}, []any{"schema", "name", "runtime", "model", "model_family", "session", "command"}},
-		"policies": {"static-review", policy, []any{"timeout"}, []any{"schema", "name", "workspace.access", "workspace.scope", "tools.allow", "retry.max_attempts", "isolation.deny"}},
+		"agents":   {"reviewer", agent, []any{"effort"}, []any{"schema", "name", "runtime", "model", "model_family", "command"}},
 		"verifies": {"repo", verification, []any{"command", "max_attempts"}, []any{"schema", "name", "timeout", "instruction"}},
 	} {
 		global := filepath.Join(l.home, files[kind])

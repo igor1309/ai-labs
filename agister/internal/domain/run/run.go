@@ -232,7 +232,8 @@ type Runtime struct {
 
 // Profile is the agent profile a call ran as: the model and effort it asked
 // for, each empty when the agent left it to the runtime, and the session
-// mode. The model the runtime reports is the turn's.
+// mode the call ran under, its process's, fresh-only where the process
+// sets none (ADR-030 rule 3). The model the runtime reports is the turn's.
 type Profile struct {
 	Model   string `json:"model,omitempty"`
 	Effort  string `json:"effort,omitempty"`
@@ -298,8 +299,11 @@ type Record struct {
 	Trail *Trail `json:"trail,omitempty"`
 	// Workflow is set on a workflow's own run (ADR-003): its nodes and
 	// barrier. Parent is set on a node's run: the workflow run it belongs to.
+	// Call is set on the run of a workflow of one call instead (ADR-030
+	// rule 6): the call it binds.
 	Workflow *Workflow `json:"workflow,omitempty"`
 	Parent   *Parent   `json:"parent,omitempty"`
+	Call     *Call     `json:"call,omitempty"`
 	// Links are the earlier runs the caller named this one's goal and
 	// judgement in (ADR-026 rules 2 and 6); unset when it named neither,
 	// and on records made before.
@@ -403,7 +407,7 @@ const RecordSchema = "agister.run/v1alpha3"
 type Request struct {
 	Process string            `json:"process"`
 	Params  map[string]string `json:"params,omitempty"`
-	Agent   string            `json:"agent,omitempty"`   // override of the process's agent
+	Agent   string            `json:"agent,omitempty"`   // on a node's run, the agent its node binds; on a run made before ADR-030, its caller's --agent
 	Timeout string            `json:"timeout,omitempty"` // narrowing override
 	// Narrowing cost override.
 	MaxCostUSD *float64 `json:"max_cost_usd,omitempty"`

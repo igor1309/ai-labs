@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"io/fs"
 	"path/filepath"
 	"reflect"
 	"regexp"
@@ -143,12 +144,115 @@ func applyInstructions(markdown string) []string {
 	return found
 }
 
+// A caller runs a workflow that binds implement to its agent, one of the
+// implement_* workflows, and chooses no agent itself (ADR-030 rules 5 to 7
+// and Migration 4): no caller document's code runs the process implement
+// or passes --agent. The caller documents are the caller skill and each
+// AGENTS.md of the repository.
+func TestNoCallerDocumentRunsImplementOrChoosesAnAgent(t *testing.T) {
+	t.Parallel()
+	root, err := filepath.Abs(filepath.Join("..", "..", ".."))
+	if err != nil {
+		t.Fatal(err)
+	}
+	docs := []string{filepath.Join(root, "agister", "skills", "agister", "SKILL.md")}
+	err = filepath.WalkDir(root, func(path string, entry fs.DirEntry, err error) error {
+		switch {
+		case err != nil:
+			return err
+		case entry.IsDir() && path != root && (entry.Name() == "node_modules" || strings.HasPrefix(entry.Name(), ".") && entry.Name() != ".github"):
+			return filepath.SkipDir
+		case !entry.IsDir() && entry.Name() == "AGENTS.md":
+			docs = append(docs, path)
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{"AGENTS.md", filepath.Join("agister", "AGENTS.md")} {
+		if !slices.Contains(docs, filepath.Join(root, want)) {
+			t.Fatalf("the caller documents %q leave out %s", docs, want)
+		}
+	}
+	for _, doc := range docs {
+		for _, problem := range callerProblems(read(t, doc)) {
+			rel, _ := filepath.Rel(root, doc)
+			t.Errorf("%s: %s", rel, problem)
+		}
+	}
+}
+
+// The check finds a run of the process implement and --agent, in a code
+// span or a code block, and passes a run of an implement_* workflow and
+// what names implement without running it.
+func TestTheCallerCheckFindsImplementRunAndAgentChosen(t *testing.T) {
+	t.Parallel()
+	found := map[string][]string{
+		"One `agister run implement` call.": {
+			"agister run implement: runs the process implement",
+		},
+		"```sh\nagister --home /tmp run implement \\\n  --param brief=<file> --json\n```": {
+			"agister --home /tmp run implement --param brief=<file> --json: runs the process implement",
+		},
+		"Run `agister run implement --agent codex-sol-61 --param brief=<file>`.": {
+			"agister run implement --agent codex-sol-61 --param brief=<file>: runs the process implement",
+			"agister run implement --agent codex-sol-61 --param brief=<file>: chooses an agent with --agent",
+		},
+		"With `--agent <agent>` it shows the process as that agent would run it.": {
+			"--agent <agent>: chooses an agent with --agent",
+		},
+		"    agister process show implement [--agent=claude-opus]\n": {
+			"agister process show implement [--agent=claude-opus]: chooses an agent with --agent",
+		},
+	}
+	for text, want := range found {
+		if got := callerProblems(text); !reflect.DeepEqual(got, want) {
+			t.Errorf("callerProblems(%q) = %q, want %q", text, got, want)
+		}
+	}
+	passed := []string{
+		"```sh\nagister run implement_opus --param brief=<file> --json\n```",
+		"`agister run implement_codex --continue <run-id> --param brief=<file>`",
+		"`agister process show implement` shows the work; the `implement` process runs in `implement_opus`.",
+		"`agister run <workflow> --param <param>=<value>`, with an agent the workflow binds.",
+		"`agister run code_review --param base=<rev>` and `--agents` of another tool.",
+	}
+	for _, text := range passed {
+		if got := callerProblems(text); len(got) != 0 {
+			t.Errorf("callerProblems(%q) = %q, want none", text, got)
+		}
+	}
+}
+
+// callerProblems are what the markdown's code does that a caller no longer
+// does: run the process implement, rather than a workflow that binds it to
+// an agent, or choose an agent with --agent.
+func callerProblems(markdown string) []string {
+	var problems []string
+	for _, code := range codeOf(markdown) {
+		line := strings.Join(strings.Fields(code), " ")
+		for _, args := range invocations(code) {
+			if slices.Equal(commandWords(args, cli.GlobalFlags()), []string{"run", "implement"}) {
+				problems = append(problems, line+": runs the process implement")
+			}
+		}
+		for _, field := range strings.Fields(code) {
+			if match := flagArgument.FindStringSubmatch(field); match != nil && match[1] == "agent" {
+				problems = append(problems, line+": chooses an agent with --agent")
+				break
+			}
+		}
+	}
+	return problems
+}
+
 // The check fails a skill that names a command, a subcommand or a flag the
 // CLI lacks, in a code span or a code block, and passes what it has. Global
 // flags before the command, with their values, do not hide it.
 func TestTheSkillCheckFindsWhatTheCLILacks(t *testing.T) {
 	t.Parallel()
-	text := "Use `agister runs list`, `agister launch x`, `agister runs\nprune` and `agister process show <name> --agent a`.\n" +
+	text := "Use `agister runs list`, `agister launch x`, `agister runs\nprune` and `agister process show <name> --dir a`.\n" +
 		"Also `agister --home /tmp launch`, `agister --quiet --home=/tmp runs prune` and `agister --home /tmp run x --param a=b`.\n\n" +
 		"~~~sh\nagister run implement --param a=b \\\n  --bogus x && agister check --tree\n~~~\n\n" +
 		"    echo yes | agister install --restore 1 --json --probe\n"
@@ -274,14 +378,18 @@ func codeOf(markdown string) []string {
 
 var separators = regexp.MustCompile(`&&|\|\||[|;()]`)
 
-// invocations are the arguments after each agister in a line of code, one
-// list per shell command it runs.
+// executables are how code spells the binary it runs: its name, and the
+// path the README builds it at.
+var executables = []string{"agister", "bin/agister"}
+
+// invocations are the arguments after each agister, as executables spell
+// it, in a line of code, one list per shell command it runs.
 func invocations(code string) [][]string {
 	var found [][]string
 	for _, command := range separators.Split(code, -1) {
 		fields := strings.Fields(command)
 		for i, field := range fields {
-			if field == "agister" {
+			if slices.Contains(executables, field) {
 				found = append(found, fields[i+1:])
 				break
 			}

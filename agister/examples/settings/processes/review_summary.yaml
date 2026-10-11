@@ -2,8 +2,6 @@ schema: agister.process/v1alpha1
 name: review_summary
 
 type: process
-uses: agent:reviewer
-policy: process-policy:read-only
 prompt: review-summary
 
 input:
@@ -15,6 +13,21 @@ input:
     finding of your own.
   values:
     reviews: {source: workflow.collection}
+
+workspace:
+  access: read-only
+  scope: repository
+
+tools:
+  allow:
+    - repository.read
+    - repository.diff
+    - repository.search
+    - repository.history.read
+    - process.execute
+    - host.read
+
+timeout: 10m
 
 output:
   format: text

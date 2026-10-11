@@ -14,7 +14,6 @@ func settingUpProcess(workspace string) string {
 name: p
 type: process
 prompt: review
-uses: agent:a
 input:
   instruction: Implement it.
   values:
@@ -46,18 +45,6 @@ func TestSetupIsObsolete(t *testing.T) {
 	without, err := definition.ParseProcess(doc(definition.KindProcess, "p", settingUpProcess("  revision: candidate_revision\n")))
 	if err != nil || len(without.Obsolete) != 0 {
 		t.Fatalf("without: %q, %v", without.Obsolete, err)
-	}
-}
-
-// A policy's workspace block has no setup: it belongs to the process.
-func TestPolicyDeclaresNoSetup(t *testing.T) {
-	t.Parallel()
-	_, err := definition.ParsePolicy(doc(definition.KindPolicy, "pol", `schema: agister.process-policy/v1alpha1
-name: pol
-workspace: {access: read-only, setup: {command: ./s.sh, timeout: 2m}}
-`))
-	if err == nil || !strings.Contains(err.Error(), "workspace.setup: unknown field") {
-		t.Fatalf("err = %v", err)
 	}
 }
 

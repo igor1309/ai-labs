@@ -13,19 +13,41 @@ import (
 // only a join receives, or needs a param the workflow does not pass; a
 // workflow value no fan-out process takes; and a join process that cannot
 // receive the collection, or whose inputs take a caller-supplied param.
-// Nothing whoever starts the workflow supplies reaches the join.
-func WorkflowProblems(workflow definition.Workflow, processes map[string]definition.Process) []string {
+// Nothing whoever starts the workflow supplies reaches the join. A node
+// that binds a base, one of bases, binds no work (ADR-030 rule 9). A
+// workflow of one call (rule 6) passes nothing and joins nothing: its
+// process must exist, be work, and not take the collection.
+func WorkflowProblems(workflow definition.Workflow, processes map[string]definition.Process, bases map[string][]string) []string {
 	var problems []string
 	add := func(format string, args ...any) { problems = append(problems, fmt.Sprintf(format, args...)) }
+	bound := func(node definition.Node, i int) (definition.Process, bool) {
+		label, name := nodeLabel(workflow, i, node), node.Process
+		if extenders := bases[name]; len(extenders) > 0 {
+			add("%s: process %s is a base of %s, not work (ADR-030 rule 9): bind a process that extends it", label, name, strings.Join(extenders, ", "))
+			return definition.Process{}, false
+		}
+		process, ok := processes[name]
+		if !ok {
+			add("%s: process %q does not exist", label, name)
+		}
+		return process, ok
+	}
+	if call := workflow.Call; call != nil {
+		if process, ok := bound(*call, 0); ok {
+			if collects := process.Collects(); len(collects) > 0 {
+				add("call node %s: process %s takes the collection (input %s), which only a join receives", call.Name, process.Name, strings.Join(collects, ", "))
+			}
+		}
+		return problems
+	}
 	passed := map[string]bool{}
 	for _, value := range workflow.Values {
 		passed[value.Name] = true
 	}
 	taken := map[string]bool{}
-	for _, node := range workflow.FanOut {
-		process, ok := processes[node.Process]
+	for i, node := range workflow.FanOut {
+		process, ok := bound(node, i)
 		if !ok {
-			add("fan-out node %s: process %q does not exist", node.Name, node.Process)
 			continue
 		}
 		if collects := process.Collects(); len(collects) > 0 {
@@ -46,9 +68,8 @@ func WorkflowProblems(workflow definition.Workflow, processes map[string]definit
 	if workflow.Join.Process == "" {
 		return problems
 	}
-	join, ok := processes[workflow.Join.Process]
+	join, ok := bound(workflow.Join, len(workflow.FanOut))
 	if !ok {
-		add("join node %s: process %q does not exist", workflow.Join.Name, workflow.Join.Process)
 		return problems
 	}
 	switch collects := join.Collects(); len(collects) {
@@ -71,4 +92,15 @@ func WorkflowProblems(workflow definition.Workflow, processes map[string]definit
 		add("join node %s: process %s takes caller-supplied params (%s); a join receives only the collection and fixed values", workflow.Join.Name, join.Name, strings.Join(callers, ", "))
 	}
 	return problems
+}
+
+// nodeLabel names the i-th of a workflow's nodes as its problems do.
+func nodeLabel(workflow definition.Workflow, i int, node definition.Node) string {
+	switch {
+	case workflow.Call != nil:
+		return "call node " + node.Name
+	case i == len(workflow.FanOut):
+		return "join node " + node.Name
+	}
+	return "fan-out node " + node.Name
 }

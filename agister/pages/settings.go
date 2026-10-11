@@ -115,7 +115,7 @@ func pageSettingsReader(read func(string) ([]byte, error), texts map[string]stri
 // The store owns filename recognition and discovery. These kinds are the
 // documents the view displays; skills have their own endpoint.
 func settingsKinds() []definition.Kind {
-	return []definition.Kind{definition.KindAgent, definition.KindPolicy,
+	return []definition.Kind{definition.KindAgent,
 		definition.KindProcess, definition.KindRuntime, definition.KindSchema,
 		definition.KindVerify, definition.KindPrompt, definition.KindBrief,
 		definition.KindWorkflow, definition.KindService}

@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io/fs"
 	"path"
+	"slices"
 	"sort"
 	"strings"
 	"time"
@@ -49,14 +50,20 @@ type SettingsDocument struct {
 	Ref  DocumentRef
 	Path string
 	Uses []DocumentRef // whether or not they exist
+	// Binds are a workflow's nodes, in declaration order, the join last.
+	Binds []NodeBinding
 }
 
 // SettingsProblem is one problem of a document. A listing shows what a
 // call without --agent would be refused, so every problem of a process
-// counts, whichever agent it depends on.
+// counts for the process, whichever agent it depends on.
 type SettingsProblem struct {
 	About   DocumentRef
 	Message string // without the document's name
+	// Set on a process's problem that depends on the agent it names: a
+	// workflow whose nodes bind the process to other agents does not have
+	// it (ADR-030 rule 5).
+	Agent string
 }
 
 // SettingsBlock is one document the repository blocks (ADR-018): a listing
@@ -70,10 +77,10 @@ type SettingsBlock struct {
 func (f SettingsChecked) reach() *reach {
 	r := newReach()
 	for _, d := range f.Documents {
-		r.documents[d.Ref] = reachDocument{path: d.Path, uses: d.Uses}
+		r.documents[d.Ref] = reachDocument{path: d.Path, uses: d.Uses, binds: d.Binds}
 	}
 	for _, p := range f.Problems {
-		r.about[p.About] = append(r.about[p.About], reachProblem{message: p.Message})
+		r.about[p.About] = append(r.about[p.About], reachProblem{message: p.Message, agent: p.Agent})
 	}
 	for _, b := range f.Blocks {
 		r.blocked[b.Ref] = reachBlock{path: b.Path, reason: b.Reason}
@@ -256,13 +263,7 @@ func initApproved(approved, plan contract.InitResult) error {
 func (s *Settings) CreateAgent(ctx context.Context, spec contract.Agent, overwrite bool, approved *contract.AgentWrite) (contract.AgentWrite, error) {
 	agent := definition.Agent{
 		Name: spec.Name, Runtime: spec.Runtime, Model: spec.Model, ModelFamily: spec.ModelFamily,
-		Effort: spec.Effort, Command: spec.Command, Session: spec.Session,
-	}
-	if agent.Session == "" {
-		agent.Session = definition.SessionFresh
-	}
-	if agent.Session != definition.SessionFresh && agent.Session != definition.SessionResumable {
-		return contract.AgentWrite{}, &contract.InputError{Message: fmt.Sprintf("invalid session mode %q (supported: %s, %s)", agent.Session, definition.SessionFresh, definition.SessionResumable)}
+		Effort: spec.Effort, Command: spec.Command,
 	}
 	if !definition.ValidName(agent.Name) {
 		return contract.AgentWrite{}, &contract.InputError{Message: fmt.Sprintf("invalid agent name %q", agent.Name)}
@@ -379,7 +380,7 @@ func (s *Settings) ListAgents(ctx context.Context) ([]contract.Agent, error) {
 			agents = append(agents, contract.Agent{Name: name, Problem: "invalid (run `agister check`)", Refusal: refusal})
 			continue
 		}
-		agents = append(agents, contract.Agent{Name: agent.Name, Runtime: agent.Runtime, Model: agent.Model, ModelFamily: agent.ModelFamily, Effort: agent.Effort, Session: agent.Session, Command: agent.Command, Refusal: refusal})
+		agents = append(agents, contract.Agent{Name: agent.Name, Runtime: agent.Runtime, Model: agent.Model, ModelFamily: agent.ModelFamily, Effort: agent.Effort, Command: agent.Command, Refusal: refusal})
 	}
 	return agents, nil
 }
@@ -403,14 +404,18 @@ func (s *Settings) ListProcesses(ctx context.Context) ([]contract.ProcessSummary
 		}
 		process, err := definition.ParseProcess(doc)
 		if err != nil {
-			processes = append(processes, contract.ProcessSummary{Name: name, Problem: "invalid (run `agister check`)", Refusal: refusal})
+			problem := "invalid (run `agister check`)"
+			if len(reached.extenders(DocumentRef{Kind: definition.KindProcess, Name: name})) > 0 {
+				problem = "" // a base is checked through its processes (ADR-030 rule 9)
+			}
+			processes = append(processes, contract.ProcessSummary{Name: name, Problem: problem, Refusal: refusal})
 			continue
 		}
 		output := process.Output.Format
 		if process.Output.Schema != "" {
 			output += ":" + process.Output.Schema
 		}
-		processes = append(processes, contract.ProcessSummary{Name: process.Name, Agent: process.Agent, Policy: process.Policy, Output: output, Refusal: refusal})
+		processes = append(processes, contract.ProcessSummary{Name: process.Name, Output: output, Refusal: refusal})
 	}
 	return processes, nil
 }
@@ -455,6 +460,9 @@ func (s *Settings) ListWorkflows(ctx context.Context) ([]contract.WorkflowSummar
 			continue
 		}
 		summary := contract.WorkflowSummary{Name: workflow.Name, Join: workflow.Join.Name + ":" + workflow.Join.Process, Refusal: refusal}
+		if call := workflow.Call; call != nil {
+			summary.Join, summary.Call = "", call.Name+":"+call.Process
+		}
 		for _, node := range workflow.FanOut {
 			summary.FanOut = append(summary.FanOut, node.Name+":"+node.Process)
 		}
@@ -477,10 +485,13 @@ type Inspection struct {
 // InspectionResolver resolves a process the way a call would, and a
 // workflow the way a run of it would (Resolver is one).
 type InspectionResolver interface {
-	// InspectProcess resolves the process named name, with agent, when set,
-	// in place of its own, and no limits of a caller. A refused one's view
+	// InspectProcess resolves the process named name on no agent, as no
+	// node binds it, and with no limits of a caller. A refused one's view
 	// has what was resolved before the refusal, never nil.
-	InspectProcess(ctx context.Context, name, agent string) (*InspectedProcess, error)
+	InspectProcess(ctx context.Context, name string) (*InspectedProcess, error)
+	// InspectNode resolves a workflow node's call as InspectProcess does a
+	// process: its process, on the agent the node binds it to.
+	InspectNode(ctx context.Context, node InspectedNode) (*InspectedProcess, error)
 	// InspectWorkflow resolves the workflow of that name; found is false
 	// when the settings have none.
 	InspectWorkflow(ctx context.Context, name string) (res *InspectedWorkflow, found bool, err error)
@@ -497,14 +508,16 @@ type InspectedProcess struct {
 	Runtime     string // the runtime mapping's name
 	Effective   InspectedLimits
 	Primitives  []string // the plan's
-	Withheld    []string // allowed but not provided
-	Sources     []InspectedSource
+	// Withheld is what is allowed but not provided; on a refusal for a
+	// required permission, or one the settings make, what else the plan
+	// refused or the settings' plan withholds.
+	Withheld []string
+	Sources  []InspectedSource
 }
 
 // InspectedDefinition is what the view shows of a process's definition.
 type InspectedDefinition struct {
 	Name         string
-	Policy       string
 	OutputFormat string // "json" or "text"
 	OutputSchema string // name of a schema definition (json only)
 	Params       []InspectedParam
@@ -589,6 +602,9 @@ type InspectedLayer struct {
 	Fields []string
 	// Replaced: a farther layer's file of a document taken whole.
 	Replaced bool
+	// Process: on the files of a process that extends a base, the process
+	// whose file it is, the base or the process itself.
+	Process string
 }
 
 // InspectedWorkflow is a workflow and its nodes' processes, as a run of it
@@ -607,12 +623,16 @@ type InspectedWorkflowDefinition struct {
 	Values []InspectedValue
 	FanOut []InspectedNode
 	Join   InspectedNode
+	// Call is the one node of a workflow of one call (ADR-030 rule 6).
+	Call *InspectedNode
 }
 
-// InspectedNode is one node of a workflow and the process it calls.
+// InspectedNode is one node of a workflow, the process it calls and the
+// agent it binds the process to.
 type InspectedNode struct {
 	Name    string
 	Process string
+	Agent   string
 }
 
 // InspectedNodeProcess is what the view reads of a node's process: the
@@ -623,12 +643,22 @@ type InspectedNodeProcess struct {
 }
 
 // InspectProcess translates the Resolver's resolution into the view's.
-func (r *Resolver) InspectProcess(ctx context.Context, name, agent string) (*InspectedProcess, error) {
-	res, err := r.resolve(ctx, name, agent, overrides{})
+func (r *Resolver) InspectProcess(ctx context.Context, name string) (*InspectedProcess, error) {
+	return r.inspect(ctx, name, "", overrides{})
+}
+
+// InspectNode is InspectProcess of a workflow node's call: its process, on
+// the agent the node binds it to (ADR-030 rule 5).
+func (r *Resolver) InspectNode(ctx context.Context, node InspectedNode) (*InspectedProcess, error) {
+	return r.inspect(ctx, node.Process, node.Agent, overrides{node: true})
+}
+
+func (r *Resolver) inspect(ctx context.Context, name, agent string, caller overrides) (*InspectedProcess, error) {
+	res, err := r.resolve(ctx, name, agent, caller)
 	process := res.process
 	inspected := &InspectedProcess{
 		Process: InspectedDefinition{
-			Name: process.Name, Policy: process.Policy,
+			Name:         process.Name,
 			OutputFormat: process.Output.Format, OutputSchema: process.Output.Schema,
 			Params: inspectedParams(process.Params), Values: inspectedValues(process.Values),
 			VerifyName: process.VerifyName, Prompt: process.Prompt, Guidance: process.Guidance, Skills: process.Skills,
@@ -645,6 +675,11 @@ func (r *Resolver) InspectProcess(ctx context.Context, name, agent string) (*Ins
 		Withheld:   res.plan.Withheld,
 		Sources:    inspectedSources(res.sources),
 	}
+	// A call refused for withholding a required permission, or by the
+	// settings, still shows what else its plan withholds.
+	if res.refusedPlan.Withheld != nil {
+		inspected.Withheld = slices.DeleteFunc(slices.Clone(res.refusedPlan.Withheld), func(permission string) bool { return contains(res.effective.Require, permission) })
+	}
 	if verify := process.Verify; verify != nil {
 		inspected.Process.Verify = &InspectedVerify{Command: verify.Command, Timeout: verify.Timeout, MaxAttempts: verify.MaxAttempts, Instruction: verify.Instruction}
 	}
@@ -659,7 +694,9 @@ func (r *Resolver) InspectWorkflow(ctx context.Context, name string) (*Inspected
 		return nil, found, err
 	}
 	workflow := res.workflow
-	node := func(node definition.Node) InspectedNode { return InspectedNode{Name: node.Name, Process: node.Process} }
+	node := func(node definition.Node) InspectedNode {
+		return InspectedNode{Name: node.Name, Process: node.Process, Agent: node.Agent}
+	}
 	inspected := &InspectedWorkflow{
 		Workflow: InspectedWorkflowDefinition{
 			Name: workflow.Name, Params: inspectedParams(workflow.Params), Values: inspectedValues(workflow.Values),
@@ -667,6 +704,10 @@ func (r *Resolver) InspectWorkflow(ctx context.Context, name string) (*Inspected
 		},
 		NodeProcesses: make(map[string]InspectedNodeProcess, len(res.processes)),
 		Sources:       inspectedSources(res.sources),
+	}
+	if call := workflow.Call; call != nil {
+		called := node(*call)
+		inspected.Workflow.Call = &called
 	}
 	for name, process := range res.processes {
 		inspected.NodeProcesses[name] = InspectedNodeProcess{
@@ -703,7 +744,7 @@ func inspectedSources(sources []definition.Source) []InspectedSource {
 		return InspectedSource{
 			Kind: string(source.Kind), Name: source.Name, Layer: string(source.Layer), Path: source.Path,
 			Layers: translated(definitionLayers(source), func(layer contract.DefinitionLayer) InspectedLayer {
-				return InspectedLayer{Layer: layer.Layer, Path: layer.Path, Fields: layer.Fields, Replaced: layer.Replaced}
+				return InspectedLayer{Layer: layer.Layer, Path: layer.Path, Fields: layer.Fields, Replaced: layer.Replaced, Process: layer.Process}
 			}),
 		}
 	})
@@ -715,8 +756,8 @@ func NewInspection(resolver InspectionResolver) *Inspection {
 	return &Inspection{resolver: resolver}
 }
 
-func (i *Inspection) ShowProcess(ctx context.Context, name, agent string) (contract.ProcessView, error) {
-	return i.showProcess(ctx, name, agent)
+func (i *Inspection) ShowProcess(ctx context.Context, name string) (contract.ProcessView, error) {
+	return i.showProcess(ctx, name)
 }
 
 // ShowWorkflow shows a workflow and each node's process as a run of it
@@ -746,7 +787,7 @@ func (i *Inspection) ShowWorkflow(ctx context.Context, name string) (contract.Wo
 		passed[value.Name] = true
 	}
 	node := func(node InspectedNode, join bool) (contract.WorkflowNode, error) {
-		process, err := i.showProcess(ctx, node.Process, "")
+		process, err := i.shown(i.resolver.InspectNode(ctx, node))
 		var input *contract.InputError
 		if errors.As(err, &input) {
 			process, err = contract.ProcessView{Name: node.Process, Refusal: input.Message}, nil
@@ -758,6 +799,26 @@ func (i *Inspection) ShowWorkflow(ctx context.Context, name string) (contract.Wo
 			}
 		}
 		return shown, err
+	}
+	warn := func(shown contract.WorkflowNode) {
+		for _, warning := range shown.Process.Warnings {
+			view.Warnings = append(view.Warnings, "node "+shown.Name+": "+warning)
+		}
+	}
+	// A workflow of one call takes its process's params and resolves its
+	// process's inputs, as a call of it (ADR-030 rule 6).
+	if call := workflow.Call; call != nil {
+		shown, err := node(*call, false)
+		if err != nil {
+			return contract.WorkflowView{}, err
+		}
+		view.Params, view.Inputs = shown.Process.Params, shown.Process.Inputs
+		for _, param := range view.Params {
+			shown.Params = append(shown.Params, param.Name)
+		}
+		view.Call = &shown
+		warn(shown)
+		return view, nil
 	}
 	for _, fanOut := range workflow.FanOut {
 		shown, err := node(fanOut, false)
@@ -773,15 +834,18 @@ func (i *Inspection) ShowWorkflow(ctx context.Context, name string) (contract.Wo
 		view.Collection = collects[0]
 	}
 	for _, shown := range append(append([]contract.WorkflowNode(nil), view.FanOut...), view.Join) {
-		for _, warning := range shown.Process.Warnings {
-			view.Warnings = append(view.Warnings, "node "+shown.Name+": "+warning)
-		}
+		warn(shown)
 	}
 	return view, nil
 }
 
-func (i *Inspection) showProcess(ctx context.Context, name, agent string) (contract.ProcessView, error) {
-	res, err := i.resolver.InspectProcess(ctx, name, agent)
+func (i *Inspection) showProcess(ctx context.Context, name string) (contract.ProcessView, error) {
+	return i.shown(i.resolver.InspectProcess(ctx, name))
+}
+
+// shown is the view of a process as the resolver resolved it, refused or
+// not.
+func (i *Inspection) shown(res *InspectedProcess, err error) (contract.ProcessView, error) {
 	var refusal *Refusal
 	if err != nil && !errors.As(err, &refusal) {
 		return contract.ProcessView{}, err
@@ -793,7 +857,6 @@ func (i *Inspection) showProcess(ctx context.Context, name, agent string) (contr
 		Name:        res.Process.Name,
 		Agent:       res.Agent,
 		Runtime:     res.Runtime,
-		Policy:      res.Process.Policy,
 		Output:      res.Process.OutputFormat,
 		Timeout:     res.Effective.Timeout,
 		MaxAttempts: res.Effective.MaxAttempts,
@@ -842,7 +905,7 @@ func origins(sources []InspectedSource) []contract.DefinitionOrigin {
 		shown = append(shown, contract.DefinitionOrigin{
 			Kind: source.Kind, Name: source.Name, Layer: source.Layer, Path: source.Path,
 			Layers: translated(source.Layers, func(layer InspectedLayer) contract.DefinitionLayer {
-				return contract.DefinitionLayer{Layer: layer.Layer, Path: layer.Path, Fields: layer.Fields, Replaced: layer.Replaced}
+				return contract.DefinitionLayer{Layer: layer.Layer, Path: layer.Path, Fields: layer.Fields, Replaced: layer.Replaced, Process: layer.Process}
 			}),
 		})
 	}

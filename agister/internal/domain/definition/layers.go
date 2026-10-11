@@ -40,6 +40,11 @@ type LayerFile struct {
 	// composed document, empty when the file gave nothing; nil on a
 	// document taken whole, which has no fields.
 	Fields []string
+	// Process is set on the files of a process that extends a base: the
+	// process whose file it is, the base or the process itself, so that
+	// each field names the base or the process that gave it (ADR-030 rule
+	// 9). Unset on any other document's.
+	Process string
 }
 
 // LayerText is one layer's file of a document, and what it holds.
@@ -71,7 +76,7 @@ type LayerProblem struct {
 // and the obsolete workspace settings.
 func Composed(kind Kind) bool {
 	switch kind {
-	case KindService, KindAgent, KindProcess, KindPolicy, KindRuntime, KindWorkflow, KindVerify, KindBrief:
+	case KindService, KindAgent, KindProcess, KindRuntime, KindWorkflow, KindVerify, KindBrief:
 		return true
 	}
 	return false

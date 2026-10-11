@@ -1,6 +1,7 @@
 package enforce_test
 
 import (
+	"errors"
 	"math/rand"
 	"strings"
 	"testing"
@@ -34,9 +35,17 @@ func TestAnySelectsEveryFittingPrimitiveAndWithholdsTheRest(t *testing.T) {
 
 func TestRequiredPermissionsCannotBeWithheld(t *testing.T) {
 	t.Parallel()
-	_, err := enforce.Make([]string{"repository.read", "repository.diff"}, claude, []string{"repository.diff"}, nil)
+	plan, err := enforce.Make([]string{"repository.read", "repository.diff", "network"}, claude, []string{"repository.diff"}, nil)
 	if err == nil || !strings.Contains(err.Error(), "required permissions would be withheld: repository.diff") {
 		t.Fatalf("err = %v", err)
+	}
+	if plan.Primitives != nil {
+		t.Fatalf("a refused call is given a plan: %+v", plan)
+	}
+	// The refusal keeps the plan it refused, for a view to show.
+	var refused *enforce.RefusedError
+	if !errors.As(err, &refused) || refused.Plan == nil || strings.Join(refused.Plan.Primitives, ",") != "Read,Glob" || strings.Join(refused.Plan.Withheld, ",") != "repository.diff,network" {
+		t.Fatalf("refused plan of %v", err)
 	}
 }
 

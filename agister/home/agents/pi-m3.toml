@@ -1,0 +1,6 @@
+schema = "agister.agent/v1alpha1"
+name = "pi-m3"
+runtime = "pi"
+model = "opencode-go/minimax-m3"
+model_family = "minimax"
+effort = "high"

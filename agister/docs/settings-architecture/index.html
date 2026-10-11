@@ -64,6 +64,7 @@
   svg .cmd { fill: var(--run); font-family: var(--mono); font-size: 13px; }
   svg .run-label { fill: var(--run); font-size: 11.5px; }
   svg .rule-label { fill: var(--rule); font-size: 11.5px; }
+  svg .names-label { fill: var(--text-dim); font-size: 11.5px; }
   .card { fill: var(--surface-2); stroke: var(--line); }
   .edge { fill: var(--k); }
   .doc { fill: var(--surface); stroke: var(--line); }
@@ -124,12 +125,12 @@
 <figure>
 <svg viewBox="0 0 680 596" role="img" aria-labelledby="diagram-title diagram-desc">
   <title id="diagram-title">The settings documents and what they name</title>
-  <desc id="diagram-desc">The name given to agister run picks one workflow or one
-  process, and the service applies to every run. A workflow names processes. A process
-  names its agent, output schema, verification, prompt, guidance, skills and policy.
-  An agent names its own skills and a runtime mapping. A policy uses only the
-  service's permissions, within its limits; a runtime mapping grants only the
-  service's permissions.</desc>
+  <desc id="diagram-desc">The name given to agister run picks one workflow, and the
+  service applies to every run. Each node of a workflow uses a process and binds an
+  agent to it. A process names its output schema, verification, prompt, guidance and
+  skills, and may extend a base process. An agent names its own skills and a runtime
+  mapping. A process uses only the service's permissions, within its limits; a
+  runtime mapping grants only the service's permissions.</desc>
   <defs>
     <marker id="head-names" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
       <path class="head-names" d="M0 0 10 5 0 10z"/>
@@ -143,12 +144,9 @@
   </defs>
 
   <!-- The run: a command, not a settings document. -->
-  <rect class="pill" x="4" y="22" width="180" height="44" rx="22"/>
-  <text class="cmd" x="94" y="48.5" text-anchor="middle">agister run &lt;name&gt;</text>
-  <path class="starts" d="M184 44H218" marker-end="url(#head-starts)"/>
-  <path class="starts" d="M110 66V172H218" marker-end="url(#head-starts)"/>
-  <text class="run-label" x="118" y="106">&lt;name&gt; picks</text>
-  <text class="run-label" x="118" y="121">one</text>
+  <rect class="pill" x="2" y="22" width="196" height="44" rx="22"/>
+  <text class="cmd" x="100" y="48.5" text-anchor="middle">agister run &lt;workflow&gt;</text>
+  <path class="starts" d="M198 44H218" marker-end="url(#head-starts)"/>
   <path class="starts" d="M50 66V536H218" marker-end="url(#head-starts)"/>
   <text class="run-label" x="60" y="526">always applies</text>
 
@@ -160,25 +158,34 @@
   </g>
 
   <path class="names" d="M310 76V110" marker-end="url(#head-names)"/>
+  <text class="names-label" x="318" y="97">uses</text>
+
+  <!-- Each node binds the agent that runs its process. -->
+  <path class="names" d="M220 60H206V316H218" marker-end="url(#head-names)"/>
+  <text class="names-label" x="198" y="236" text-anchor="end">each node</text>
+  <text class="names-label" x="198" y="251" text-anchor="end">binds an agent</text>
 
   <g class="kind process">
     <rect class="card" x="220" y="112" width="180" height="120" rx="2"/>
     <rect class="edge" x="220" y="112" width="3" height="120" rx="1"/>
     <text class="t" x="234" y="138">Process</text>
-    <text class="sub" x="234" y="162">instruction · params</text>
-    <text class="sub" x="234" y="181">inputs · revision · clean</text>
-    <text class="sub" x="234" y="200">required permissions</text>
-    <text class="sub" x="234" y="219">limit overrides</text>
+    <text class="sub" x="234" y="162">instruction · inputs</text>
+    <text class="sub" x="234" y="181">revision · clean · session</text>
+    <text class="sub" x="234" y="200">access · tools · limits</text>
+    <text class="sub" x="234" y="219">required permissions</text>
   </g>
 
-  <!-- What a process names, besides its agent. -->
+  <!-- A process may extend one base process. -->
+  <path class="names" d="M390 232V250H372V234" marker-end="url(#head-names)"/>
+  <text class="names-label" x="364" y="249" text-anchor="end">extends</text>
+
+  <!-- What a process names. -->
   <path class="names" d="M400 172H435"/>
-  <path class="names" d="M435 35V251"/>
+  <path class="names" d="M435 35V197"/>
   <path class="names" d="M435 35H468" marker-end="url(#head-names)"/>
   <path class="names" d="M435 89H468" marker-end="url(#head-names)"/>
   <path class="names" d="M435 143H468" marker-end="url(#head-names)"/>
   <path class="names" d="M435 197H468" marker-end="url(#head-names)"/>
-  <path class="names" d="M435 251H468" marker-end="url(#head-names)"/>
 
   <rect class="doc" x="470" y="12" width="190" height="46" rx="2"/>
   <text class="t" x="484" y="32">Output schema</text>
@@ -192,17 +199,12 @@
   <rect class="doc" x="470" y="174" width="190" height="46" rx="2"/>
   <text class="t" x="484" y="194">Skills</text>
   <text class="sub" x="484" y="212">SKILL.md · the process's</text>
-  <rect class="doc" x="470" y="228" width="190" height="46" rx="2"/>
-  <text class="t" x="484" y="248">Policy</text>
-  <text class="sub" x="484" y="266">limits · permissions</text>
-
-  <path class="names" d="M310 232V282" marker-end="url(#head-names)"/>
 
   <g class="kind agent">
     <rect class="card" x="220" y="284" width="180" height="64" rx="2"/>
     <rect class="edge" x="220" y="284" width="3" height="64" rx="1"/>
     <text class="t" x="234" y="310">Agent</text>
-    <text class="sub" x="234" y="332">model · effort · session</text>
+    <text class="sub" x="234" y="332">model · effort</text>
   </g>
 
   <path class="names" d="M400 316H468" marker-end="url(#head-names)"/>
@@ -222,7 +224,7 @@
   <!-- The service's rules. -->
   <path class="rule" d="M310 448V494" marker-end="url(#head-rule)"/>
   <text class="rule-label" x="320" y="475">grants only its permissions</text>
-  <path class="rule" d="M645 274V494" marker-end="url(#head-rule)"/>
+  <path class="rule" d="M400 226H645V494" marker-end="url(#head-rule)"/>
   <text class="rule-label" x="635" y="430" text-anchor="end">uses only its permissions,</text>
   <text class="rule-label" x="635" y="446" text-anchor="end">within its limits</text>
 
@@ -240,14 +242,14 @@
 
 <div class="text">
 <p class="intro">Agister's settings are documents that name each other by
-name. In <code>agister run &lt;name&gt;</code> the name picks one
-<span class="k-workflow">workflow</span> or one <span class="k-process">process</span>;
-nothing else is run. A workflow names processes. A process names its
-<span class="k-agent">agent</span>, output schema, verification, prompts,
-skills and policy, and a file input may name the brief forms its text must
-have. An agent names its <span class="k-runtime">runtime mapping</span>
-and its own skills. The service is never picked: it has no name, and it
-applies to every run.</p>
+name. In <code>agister run &lt;workflow&gt;</code> the name picks one
+<span class="k-workflow">workflow</span>; nothing else is run. Each of its
+nodes uses a <span class="k-process">process</span> and binds an
+<span class="k-agent">agent</span> to it. A process names its output
+schema, verification, prompts and skills, and may extend a base process;
+a file input may name the brief forms its text must have. An agent names
+its <span class="k-runtime">runtime mapping</span> and its own skills. The
+service is never picked: it has no name, and it applies to every run.</p>
 
 <p>A box holds the document's own fields; an arrow is a document it names.
 Documents compose by field across home, the repository's <code>.agister</code>
@@ -262,26 +264,63 @@ exactly one YAML document; one with a second is invalid.</p>
 
 <p>A workflow composes process calls into one run, and its settings fix
 what each call receives, never whoever starts it. It has its own params and
-values, and nodes, each naming a process. A file value may name brief
-forms, as a process's may.</p>
+values, and nodes; each node uses a process and binds the agent that runs
+it, and <code>agent</code> is required on every node. A process names no
+agent, so only a workflow runs it. A file value may name brief forms, as a
+process's may.</p>
 
-<p>Its only shape today: one or more processes over the same inputs, run at
-once, then one process given their results. That is today's limit, not what
-a workflow is. Examples: <code>code_review</code>, <code>adr_review</code>.</p>
+<p>It has one of two shapes. One or more processes over the same inputs,
+run at once, then one process given their results:
+<code>code_review</code>, <code>adr_review</code>. Or one
+<code>call</code>, with no input of its own: it takes its process's params
+and is that call's one run, as <code>implement_codex</code> binds
+<code>implement</code> to <code>codex-sol-61</code> and
+<code>implement_opus</code> binds it to <code>claude-opus</code>. Those are
+today's limits, not what a workflow is.</p>
+
+<p>A layer rebinds a node: it gives the whole <code>fan_out</code> list, or
+sets <code>join.agent</code> or <code>call.agent</code> alone. A workflow
+whose node binds a blocked or broken agent is refused until a layer
+rebinds it.</p>
 
 <h2><span class="k-process">Process</span></h2>
 
-<p>A process is a named agent call. It holds the instruction, caller
-params, input values, the revision input HEAD must be at, whether a
-fresh call needs a clean worktree, required permissions and limit
-overrides. It works in the caller's worktree; Agister makes no checkout
-and runs no setup. A process with a verification, such as
-<code>implement</code>, is still a process.</p>
+<p>A process is the work, and names no agent. It holds the instruction,
+caller params, input values, the revision input HEAD must be at, whether a
+fresh call needs a clean worktree, and its own limits: workspace access
+(read-only unless it says read-write) and scope (candidate or repository),
+allowed, required and denied permissions, timeout, attempts, cost cap and
+staleness limits, with under <code>stale.recover</code> how many times a
+call may resume a stale turn and with what instruction. It speaks in
+permissions, never in runtime primitives. Limits narrow from the service
+to the process to the caller's <code>--timeout</code> and
+<code>--max-cost</code>.</p>
+
+<p>Its session is <code>fresh-only</code> unless it says
+<code>resumable</code>; a process whose verification repairs, or that may
+resume a stale turn, must be resumable. It works in the caller's worktree;
+Agister makes no checkout and runs no setup. A process with a
+verification, such as <code>implement</code>, is still a process.</p>
+
+<p>A process may extend one base, <code>extends: process:&lt;base&gt;</code>.
+The base extends nothing and is not work: no node may bind it. Its layers
+come first, then the extending process's over it; maps merge by key, lists
+and scalars replace whole, and <code>name</code> and <code>extends</code>
+are never taken from the base. A partial may not set <code>extends</code>.
+Home's five reviews extend its <code>review</code> base.</p>
+
+<p>The base is of the process's own layer. The layer whose file holds the
+whole process and names the base defines the base too: its file of the
+base and the extending file together set every field a process requires.
+A base only home has, or a repository's partial of it that leaves a
+required field to home's file, is no base for a process the repository
+defines: <code>check</code> reports the process and its run is refused.
+Partials that do not set <code>extends</code>, over a process home defines
+or over its base, still compose.</p>
 
 <h3>What a process names</h3>
-
-<p>Its agent, and:</p>
 <ul>
+<li><b>base</b>: the one process it extends, if any.</li>
 <li><b>output schema</b>: the JSON Schema its output must match.</li>
 <li><b>verification</b>: command, timeout, max attempts, failure
 instruction; or held inline in the process. It runs in the call's
@@ -295,19 +334,14 @@ must read (Open: <code>None.</code>) or a file it refers to, and the
 template a caller copies. A call whose text has none of its forms is
 refused before it starts, naming each wrong part. Agister checks the
 structure, never the meaning. Not drawn above.</li>
-<li><b>policy</b>: execution defaults: timeout, attempts, cost cap,
-allowed and denied permissions, workspace access (read-only or read-write)
-and scope (candidate or repository), staleness limits, and under
-<code>stale.recover</code> how many times a call may resume a stale turn
-and with what instruction. A process may only lower that number. It
-speaks in permissions, never in runtime primitives.</li>
 </ul>
 
 <h2><span class="k-agent">Agent</span></h2>
 
-<p>An agent is a runtime profile: model, model family, effort, session
-mode (fresh-only or resumable). It carries no task and no permissions. It
-names a runtime mapping and its own skills, separate from the process's.</p>
+<p>An agent is a runtime profile: runtime, model, model family, effort and
+command. It carries no task, no permissions, no limits and no session. It
+names a runtime mapping and its own skills; a node's call gets its
+process's skills, then its agent's, each once.</p>
 
 <h2><span class="k-runtime">Runtime mapping</span></h2>
 
@@ -321,21 +355,26 @@ permissions it grants.</p>
 <p>The hard limits (max timeout, attempts, cost, verify attempts) and the
 permission vocabulary, including which permissions write and which reach
 Agister's state; those are never granted. No document names the service;
-it applies to every run. A policy uses only its permissions, within its
+it applies to every run. A process uses only its permissions, within its
 limits; a runtime mapping grants only its permissions.</p>
 
 <h2>Where permissions meet primitives</h2>
 
-<p>The effective permissions meet the agent's runtime mapping to make the
-enforcement plan. A primitive is granted only if everything it grants is
-allowed. An allowed permission that no primitive provides is withheld, and
-the call is refused if the process requires it.</p>
+<p>The process's effective permissions meet the bound agent's runtime
+mapping to make the enforcement plan. A primitive is granted only if
+everything it grants is allowed. An allowed permission that no primitive
+provides is withheld, and the call is refused if the process requires
+it. <code>check</code> makes the plan for every node of every workflow: a
+binding that would be refused is a problem of that workflow, naming the
+node, and one that withholds an allowed permission is listed as
+<code>withheld</code>.</p>
 
 <h2>Blocks</h2>
 
 <p>Two more documents, not in the diagram: <code>layer.yaml</code> names additional prompt folders in a repository or project; blocks, repo only: the agents,
-processes, workflows or runtime mappings this repo refuses, with reasons.
-A project holds no blocks. Guidance a node must follow belongs in its <code>prompt</code> or <code>guidance</code>, never a pointer in <code>AGENTS.md</code> or a skill. There is no workspace document: <code>workspace.yaml</code> is obsolete,
+processes, workflows or runtime mappings this repo refuses, with reasons;
+a workflow that binds a blocked agent is refused until a layer rebinds
+it. A project holds no blocks. Guidance a node must follow belongs in its <code>prompt</code> or <code>guidance</code>, never a pointer in <code>AGENTS.md</code> or a skill. There is no workspace document: <code>workspace.yaml</code> is obsolete,
 and <code>check</code> warns about it.</p>
 </div>
 

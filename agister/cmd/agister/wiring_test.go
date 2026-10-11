@@ -141,7 +141,7 @@ func TestBuiltClientReadsOnlyTheSourcesGiven(t *testing.T) {
 				"settings": func(c contract.Client) error { _, err := c.ListAgents(ctx); return err },
 				"check":    func(c contract.Client) error { _, err := c.Check(ctx, false); return err },
 				"inspection": func(c contract.Client) error {
-					_, err := c.ShowProcess(ctx, "ask", "")
+					_, err := c.ShowProcess(ctx, "ask")
 					return err
 				},
 				"settings workflows": func(c contract.Client) error { _, err := c.ListWorkflows(ctx); return err },
@@ -638,7 +638,7 @@ func TestTheCompositionStartsItsRuntimesThroughItsStarter(t *testing.T) {
 		t.Fatal(err)
 	}
 	id, err := client.Submit(context.Background(), contract.CallRequest{
-		Process: "adversarial_review", Params: map[string]string{"base": "main"}, Timeout: "1m", Cwd: repo,
+		Process: "adversarial_review_reviewer", Params: map[string]string{"base": "main"}, Timeout: "1m", Cwd: repo,
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -705,7 +705,7 @@ verify:
 		t.Fatal(err)
 	}
 	id, err := client.Submit(context.Background(), contract.CallRequest{
-		Process: "verified", Params: map[string]string{"base": "main"}, Timeout: "1m", Cwd: repo,
+		Process: bound(t, home, "verified", "reviewer"), Params: map[string]string{"base": "main"}, Timeout: "1m", Cwd: repo,
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -729,7 +729,7 @@ verify:
 func TestTheCompositionLendsAnInPlaceCallTheCallersWorktree(t *testing.T) {
 	t.Parallel()
 	home, repo := setup(t, "approve")
-	r := agister(t, home, repo, "run", "adversarial_review", "--param", "base=main", "--timeout", "1m")
+	r := agister(t, home, repo, "run", "adversarial_review_reviewer", "--param", "base=main", "--timeout", "1m")
 	if r.code != cli.ExitCompleted {
 		t.Fatalf("exit %d\n%s", r.code, r.stderr)
 	}
@@ -797,7 +797,7 @@ func TestAnOlderBinarysHoldExcludesTheCompositionsWriter(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	r := agister(t, home, repo, "run", "implement", "--quiet", "--param", "candidate=HEAD", "--param", "brief=b.md")
+	r := agister(t, home, repo, "run", "implement_assistant", "--quiet", "--param", "candidate=HEAD", "--param", "brief=b.md")
 	if want := "worktree " + repo + " is in use: another call holds it, and a writer holds it alone"; r.code != cli.ExitRefused || !strings.Contains(r.stderr, want) {
 		t.Fatalf("run: %d, want %q\n%s%s", r.code, want, r.stdout, r.stderr)
 	}
@@ -808,15 +808,15 @@ func TestAnOlderBinarysHoldExcludesTheCompositionsWriter(t *testing.T) {
 
 // The composition gives the recoverer what it recovers on (ADR-024): a
 // call through the composed client whose turn goes without an event for
-// the policy's stale.no_event is resumed in the session that turn
-// reported, with the policy's instruction and the evidence, and completes
+// the process's stale.no_event is resumed in the session that turn
+// reported, with the process's instruction and the evidence, and completes
 // with the recovery on its record.
 func TestTheCompositionRecoversAStaleTurn(t *testing.T) {
 	t.Parallel()
 	const noEvent = 7 * time.Second
 	home, repo := setup(t, "approve")
-	policy := filepath.Join(home, "policies", "read-only.yaml")
-	write(t, policy, read(t, policy)+"\nstale: {no_event: 7s, recover: {max_resumes: 1, instruction: Go on.}}\n")
+	process := filepath.Join(home, "processes", "ask.yaml")
+	write(t, process, read(t, process)+"\nstale: {no_event: 7s, recover: {max_resumes: 1, instruction: Go on.}}\n")
 	config := cli.Config{Home: home, Cwd: repo}
 	clock := clocktest.NewClock(stillAt)
 	composed := on(config, clock.Timer)
@@ -827,7 +827,7 @@ func TestTheCompositionRecoversAStaleTurn(t *testing.T) {
 	ctx := context.Background()
 	// The question makes the fake's first turn hang; the recovery's message
 	// does not carry it, so that turn ends.
-	id, err := client.Submit(ctx, contract.CallRequest{Process: "ask", Params: map[string]string{"question": "SCENARIO:hang"}, Timeout: "1m", Cwd: repo})
+	id, err := client.Submit(ctx, contract.CallRequest{Process: "ask_assistant", Params: map[string]string{"question": "SCENARIO:hang"}, Timeout: "1m", Cwd: repo})
 	if err != nil {
 		t.Fatal(err)
 	}

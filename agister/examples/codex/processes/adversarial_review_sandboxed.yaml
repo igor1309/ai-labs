@@ -2,8 +2,6 @@ schema: agister.process/v1alpha1
 name: adversarial_review_sandboxed
 
 type: process
-uses: agent:codex-reviewer
-policy: process-policy:sandboxed-review
 prompt: adversarial-review
 
 input:
@@ -21,7 +19,28 @@ input:
     changed_files: {source: git.changed_files, base: "${value.base_revision}", head: "${value.candidate_revision}"}
 
 workspace:
+  access: read-only
+  scope: candidate
   revision: candidate_revision
+
+tools:
+  allow:
+    - repository.read
+    - repository.diff
+    - repository.search
+    - repository.history.read
+    - process.execute
+    - host.read
+
+timeout: 20m
+retry:
+  max_attempts: 1
+
+isolation:
+  deny:
+    - repository.write
+    - repository.history.write
+    - network
 
 output:
   format: json

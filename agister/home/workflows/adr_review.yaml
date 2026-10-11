@@ -14,6 +14,6 @@ input:
     goal: {source: file, path: "${param.goal}"}
 
 fan_out:
-  - {node: adr, uses: process:adr_review_codex}
+  - {node: adr, uses: process:adr_review_codex, agent: codex-sol-61}
 
-join: {node: judge, uses: process:review_judge}
+join: {node: judge, uses: process:review_judge, agent: claude-opus}

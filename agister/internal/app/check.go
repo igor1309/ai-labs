@@ -104,6 +104,8 @@ type CheckedDocument struct {
 	Ref  DocumentRef
 	Path string
 	Uses []DocumentRef // whether or not they exist
+	// Binds are a workflow's nodes, in declaration order, the join last.
+	Binds []NodeBinding
 }
 
 // CheckedProblem is one problem, as reported and as found.
@@ -154,7 +156,6 @@ func (c *Checker) check(ctx context.Context, probe bool) (CheckResult, error) {
 	bundle := settings.Bundle{
 		Agents:    map[string]definition.Agent{},
 		Processes: map[string]definition.Process{},
-		Policies:  map[string]definition.Policy{},
 		Mappings:  map[string]definition.Mapping{},
 		Schemas:   map[string]bool{},
 		Workflows: map[string]definition.Workflow{},
@@ -177,6 +178,9 @@ func (c *Checker) check(ctx context.Context, probe bool) (CheckResult, error) {
 	// only for a name a process gives, and its other files are not
 	// settings (ADR-028 rule 9).
 	named := c.namedPrompts(ctx)
+	// A base is checked through each process that extends it, so it may
+	// leave out what each of them sets (ADR-030 rule 9).
+	bundle.Bases = c.bases(ctx)
 
 	// Each document on its own: one checks a document read, or not, err
 	// saying why not; each checks every document of a kind the settings
@@ -284,13 +288,6 @@ func (c *Checker) check(ctx context.Context, probe bool) (CheckResult, error) {
 			}
 			return err
 		}},
-		{definition.KindPolicy, func(d definition.Document) error {
-			p, err := definition.ParsePolicy(d)
-			if err == nil {
-				bundle.Policies[p.Name] = p
-			}
-			return err
-		}},
 		{definition.KindVerify, func(d definition.Document) error {
 			v, err := definition.ParseVerify(d)
 			if err == nil {
@@ -308,6 +305,9 @@ func (c *Checker) check(ctx context.Context, probe bool) (CheckResult, error) {
 			return err
 		}},
 		{definition.KindProcess, func(d definition.Document) error {
+			if len(bundle.Bases[d.Source.Name]) > 0 {
+				return nil
+			}
 			p, err := definition.ParseProcess(d)
 			if err == nil {
 				bundle.Processes[p.Name] = p
@@ -378,7 +378,7 @@ func (c *Checker) check(ctx context.Context, probe bool) (CheckResult, error) {
 		sort.SliceStable(found, func(i, j int) bool { return found[i].Text < found[j].Text })
 		reached := newReach()
 		for _, document := range documents {
-			reached.documents[document.Ref] = reachDocument{path: document.Path, uses: document.Uses}
+			reached.documents[document.Ref] = reachDocument{path: document.Path, uses: document.Uses, binds: document.Binds}
 		}
 		var processes, workflows []DocumentRef
 		for ref := range listed {
@@ -400,8 +400,8 @@ func (c *Checker) check(ctx context.Context, probe bool) (CheckResult, error) {
 			if subject := problem.About; subject != nil {
 				item.Subject = &contract.DefinitionRef{Kind: string(subject.Kind), Name: subject.Name}
 				item.Agent = problem.Agent
-				item.Processes = reached.refuses(*subject, processes)
-				item.Workflows = reached.refuses(*subject, workflows)
+				item.Processes = reached.refuses(*subject, problem.Agent, processes)
+				item.Workflows = reached.refuses(*subject, problem.Agent, workflows)
 			}
 			report.Reach = append(report.Reach, item)
 		}
@@ -409,8 +409,8 @@ func (c *Checker) check(ctx context.Context, probe bool) (CheckResult, error) {
 			report.Blocks = append(report.Blocks, contract.Block{
 				Ref:  contract.DefinitionRef{Kind: string(block.Ref.Kind), Name: block.Ref.Name},
 				Path: block.Path, Reason: block.Reason,
-				Processes: reached.refuses(block.Ref, processes),
-				Workflows: reached.refuses(block.Ref, workflows),
+				Processes: reached.refuses(block.Ref, "", processes),
+				Workflows: reached.refuses(block.Ref, "", workflows),
 			})
 		}
 		return CheckResult{Report: report, Documents: documents, Problems: found, Blocks: blocks}
@@ -437,8 +437,6 @@ func (c *Checker) check(ctx context.Context, probe bool) (CheckResult, error) {
 	}
 	for _, name := range sortedNames(bundle.Processes) {
 		process, from := bundle.Processes[name], DocumentRef{Kind: definition.KindProcess, Name: name}
-		link(from, definition.KindAgent, process.Agent, false)
-		link(from, definition.KindPolicy, process.Policy, false)
 		link(from, definition.KindVerify, process.VerifyName, false)
 		link(from, definition.KindPrompt, process.Prompt, false)
 		for _, prompt := range process.Guidance {
@@ -454,10 +452,26 @@ func (c *Checker) check(ctx context.Context, probe bool) (CheckResult, error) {
 			link(from, definition.KindBrief, form, false)
 		}
 	}
+	// A process uses its base, whose problems and blocks refuse it.
+	for _, base := range sortedNames(bundle.Bases) {
+		for _, name := range bundle.Bases[base] {
+			link(DocumentRef{Kind: definition.KindProcess, Name: name}, definition.KindProcess, base, false)
+		}
+	}
 	for _, name := range sortedNames(bundle.Workflows) {
 		from := DocumentRef{Kind: definition.KindWorkflow, Name: name}
+		// A workflow uses the agent a node binds its process to, each once:
+		// its problems and blocks refuse the workflow (ADR-030 rule 10).
+		agents := map[string]bool{}
 		for _, node := range bundle.Workflows[name].Nodes() {
 			link(from, definition.KindProcess, node.Process, false)
+			if !agents[node.Agent] {
+				agents[node.Agent] = true
+				link(from, definition.KindAgent, node.Agent, false)
+			}
+			if source, ok := index[from]; ok {
+				documents[source].Binds = append(documents[source].Binds, NodeBinding{Process: node.Process, Agent: node.Agent})
+			}
 		}
 		for _, form := range bundle.Workflows[name].Forms() {
 			link(from, definition.KindBrief, form, false)
@@ -499,7 +513,9 @@ func (c *Checker) check(ctx context.Context, probe bool) (CheckResult, error) {
 		settingsProblem(p)
 	}
 
-	// Against the runtimes themselves.
+	// Against the runtimes themselves: the version each agent's runtime was
+	// found to have, by agent, where its mapping verifies it.
+	installed := map[string]string{}
 	if probe {
 		for _, name := range sortedNames(bundle.Agents) {
 			agent := bundle.Agents[name]
@@ -529,31 +545,38 @@ func (c *Checker) check(ctx context.Context, probe bool) (CheckResult, error) {
 			case !mapping.Verified(identity.Version):
 				problem("agent "+name, "mapping %s verifies no primitive for runtime version %s", mapping.Name, identity.Version)
 			default:
+				installed[name] = identity.Version
 				for _, p := range settings.PlanProblems(bundle, agent, identity.Version) {
 					settingsProblem(p)
 				}
 				// Repairs resume the call's session, which only the
 				// runtime can say it supports. So do recoveries (ADR-024
 				// rule 6).
-				for _, process := range sortedNames(bundle.Processes) {
-					if bundle.Processes[process].Agent != name || identity.Resume {
-						continue
+				if !identity.Resume {
+					for _, p := range settings.ResumeProblems(bundle, agent) {
+						settingsProblem(p)
 					}
-					if verify := bundle.Resolved(process).Verify; verify.Repairs() {
-						settingsProblem(settings.Problem{
-							Subject: "process " + process, Agent: name,
-							Message: fmt.Sprintf("verify.max_attempts %d repairs in the call's session, but runtime %s cannot resume sessions", verify.MaxAttempts, mapping.Name),
-						})
-					}
-					if resumes := bundle.Resumes(process); resumes > 0 {
-						settingsProblem(settings.Problem{
-							Subject: "process " + process, Agent: name,
-							Message: fmt.Sprintf("stale.recover.max_resumes %d recovers in the call's session, but runtime %s cannot resume sessions", resumes, mapping.Name),
-						})
+				}
+				// So is whether it enforces a cost limit, which a call
+				// under one is refused without.
+				if !identity.CostLimit {
+					for _, p := range settings.CostProblems(bundle, agent) {
+						settingsProblem(p)
 					}
 				}
 			}
 		}
+	}
+
+	// Each binding as its call would be planned (ADR-030 rules 7 and 8):
+	// what it withholds is listed. A permission in tools.require it would
+	// withhold is no warning: the plan cannot be made, a problem found above
+	// that refuses the workflow.
+	for _, plan := range settings.BindingPlans(bundle, installed) {
+		report.Bindings = append(report.Bindings, contract.Binding{
+			Workflow: plan.Workflow, Node: plan.Node, Process: plan.Process, Agent: plan.Agent,
+			Runtime: plan.Runtime, Version: plan.Version, Withheld: plan.Withheld, Required: plan.Required,
+		})
 	}
 	return finish(), nil
 }
@@ -576,6 +599,25 @@ func (c *Checker) namedPrompts(ctx context.Context) map[string]bool {
 		}
 	}
 	return named
+}
+
+// bases are the processes some process extends, each with those that
+// extend it (ADR-030 rule 9). A process that cannot be read or does not
+// parse still names its base, in the nearest file that holds its whole
+// document.
+func (c *Checker) bases(ctx context.Context) map[string][]string {
+	bases := map[string][]string{}
+	names, _ := c.definitions.List(ctx, definition.KindProcess)
+	read := func(name string) (definition.Document, error) {
+		return c.definitions.Read(ctx, definition.KindProcess, name)
+	}
+	for _, name := range names {
+		doc, _ := read(name)
+		if base := definition.Extends(doc, read); base != "" && contains(names, base) {
+			bases[base] = append(bases[base], name)
+		}
+	}
+	return bases
 }
 
 // blocks reads the repository's blocks.yaml (ADR-018) and returns what it
@@ -749,7 +791,7 @@ func definitionLayers(source definition.Source) []contract.DefinitionLayer {
 	for i, layer := range source.Layers {
 		layers = append(layers, contract.DefinitionLayer{
 			Layer: string(layer.Layer), Path: layer.Path, Fields: layer.Fields,
-			Replaced: i > 0 && !definition.Composed(source.Kind),
+			Replaced: i > 0 && !definition.Composed(source.Kind), Process: layer.Process,
 		})
 	}
 	return layers

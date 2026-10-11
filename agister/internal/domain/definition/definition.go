@@ -1,5 +1,5 @@
 // Package definition parses and validates Agister's settings documents:
-// agents, processes, workflows, policies, verifications, prompts, skills,
+// agents, processes, workflows, verifications, prompts, skills,
 // brief forms, runtime permission mappings, the service, the workspace and
 // a repository's blocks. It owns the definition language; callers supply
 // bytes and their origin.
@@ -20,7 +20,6 @@ const (
 	KindService  Kind = "service"
 	KindAgent    Kind = "agents"
 	KindProcess  Kind = "processes"
-	KindPolicy   Kind = "policies"
 	KindRuntime  Kind = "runtimes"
 	KindSchema   Kind = "schemas"
 	KindWorkflow Kind = "workflows"
@@ -43,8 +42,6 @@ func (k Kind) Singular() string {
 	switch k {
 	case KindProcess:
 		return "process"
-	case KindPolicy:
-		return "policy"
 	case KindAgent:
 		return "agent"
 	case KindRuntime:
@@ -94,7 +91,8 @@ type Document struct {
 	// Texts are the layer files a composed kind's document is composed
 	// from, nearest first, each with what it holds: what a composition
 	// with one of them changed is composed from (ADR-028 rule 4). Nil on
-	// a document taken whole.
+	// a document taken whole. A process's are its own, without its base's
+	// (ADR-030 rule 9).
 	Texts []LayerText
 }
 
@@ -142,6 +140,9 @@ type problems struct {
 	// source, when it has several layer files, names in each problem the
 	// file that set the field at fault (ADR-028 rule 5).
 	source Source
+	// absent are the required fields the document does not set, each also
+	// a problem.
+	absent []string
 }
 
 // problemsOf collects the problems of the document read from source.
@@ -149,6 +150,13 @@ func problemsOf(source Source) *problems { return &problems{source: source} }
 
 func (p *problems) add(field, format string, args ...any) {
 	p.list = append(p.list, Problem{Message: p.source.Attribute(field, fieldMessage(field, format, args...))})
+}
+
+// missing adds the problem of a required field the document does not
+// set.
+func (p *problems) missing(field string) {
+	p.absent = append(p.absent, field)
+	p.add(field, "is required")
 }
 
 // unknown adds a problem that names something this code does not know.

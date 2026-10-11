@@ -41,7 +41,6 @@ func refuse(format string, args ...any) error { return &Refusal{Reason: fmt.Spri
 type resolution struct {
 	service definition.Service
 	process definition.Process
-	policy  *definition.Policy
 	agent   definition.Agent
 	mapping definition.Mapping
 	schema  []byte
@@ -56,10 +55,18 @@ type resolution struct {
 	effective policy.Effective
 	identity  RuntimeIdentity
 	plan      enforce.Plan
+	// refusedPlan is the plan refused for withholding a required
+	// permission, or, for a call the settings refuse, the plan the
+	// settings would give it (settings.SettingsPlan): inspection shows what
+	// else it withholds, and no call is given it.
+	refusedPlan enforce.Plan
 	// writer says the call holds the worktree alone (ADR-025 rule 4): its
 	// plan grants a permission the service lists as writing, or its process
 	// declares verify, whose command runs with the operator's authority.
 	writer bool
+	// session is the session mode the call runs under, which its process
+	// says (ADR-030 rule 3).
+	session string
 }
 
 // Resolver loads and checks definitions, composes limits, checks the
@@ -101,6 +108,8 @@ type ResolverDocument struct {
 	Ref  DocumentRef
 	Path string
 	Uses []DocumentRef // whether or not they exist
+	// Binds are a workflow's nodes, in declaration order, the join last.
+	Binds []NodeBinding
 }
 
 // ResolverProblem is one problem of a document.
@@ -125,7 +134,7 @@ type ResolverBlock struct {
 func (f ResolverChecked) reach() *reach {
 	r := newReach()
 	for _, d := range f.Documents {
-		r.documents[d.Ref] = reachDocument{path: d.Path, uses: d.Uses}
+		r.documents[d.Ref] = reachDocument{path: d.Path, uses: d.Uses, binds: d.Binds}
 	}
 	for _, p := range f.Problems {
 		r.about[p.About] = append(r.about[p.About], reachProblem{message: p.Message, agent: p.Agent, unknown: p.Unknown})
@@ -215,6 +224,9 @@ type overrides struct {
 	maxCostUSD *float64
 	// A workflow defers only a missing named verification to its node.
 	deferMissingVerify bool
+	// The call is a workflow node's: its agent is the one the node binds
+	// its process to (ADR-030 rule 5).
+	node bool
 }
 
 // resolve resolves the process named processName. A refused one's
@@ -297,37 +309,28 @@ func (r *Resolver) resolveCall(ctx context.Context, processName, agentOverride s
 	if res.process, err = definition.ParseProcess(doc); err != nil {
 		return res, parsed(err)
 	}
-	if res.process.Policy != "" {
-		if doc, err = load(definition.KindPolicy, res.process.Policy); err != nil {
+	// A process names no agent, and has one only as a node that binds it
+	// to one: nothing else chooses an agent (ADR-030 rules 2 and 5).
+	bound := caller.node && agentOverride != ""
+	if bound {
+		if doc, err = load(definition.KindAgent, agentOverride); err != nil {
 			return res, err
 		}
-		pol, err := definition.ParsePolicy(doc)
-		if err != nil {
+		if res.agent, err = definition.ParseAgent(doc); err != nil {
 			return res, parsed(err)
 		}
-		res.policy = &pol
-	}
-	agentName := res.process.Agent
-	if agentOverride != "" {
-		agentName = agentOverride
-	}
-	if doc, err = load(definition.KindAgent, agentName); err != nil {
-		return res, err
-	}
-	if res.agent, err = definition.ParseAgent(doc); err != nil {
-		return res, parsed(err)
-	}
-	if doc, err = load(definition.KindRuntime, res.agent.Runtime); err != nil {
-		return res, err
-	}
-	if res.mapping, err = definition.ParseMapping(doc); err != nil {
-		return res, parsed(err)
-	}
-	if unknown := res.mapping.UnknownPermissions(res.service.Permissions); len(unknown) > 0 {
-		return res, refuse("runtime mapping %s grants permissions not in the vocabulary: %s", res.mapping.Name, strings.Join(unknown, ", "))
-	}
-	if res.agent.Effort != "" && !contains(res.mapping.Efforts, res.agent.Effort) {
-		return res, refuse("agent %s: effort %q is not supported by runtime %s (supported: %s)", res.agent.Name, res.agent.Effort, res.mapping.Name, strings.Join(res.mapping.Efforts, ", "))
+		if doc, err = load(definition.KindRuntime, res.agent.Runtime); err != nil {
+			return res, err
+		}
+		if res.mapping, err = definition.ParseMapping(doc); err != nil {
+			return res, parsed(err)
+		}
+		if unknown := res.mapping.UnknownPermissions(res.service.Permissions); len(unknown) > 0 {
+			return res, refuse("runtime mapping %s grants permissions not in the vocabulary: %s", res.mapping.Name, strings.Join(unknown, ", "))
+		}
+		if res.agent.Effort != "" && !contains(res.mapping.Efforts, res.agent.Effort) {
+			return res, refuse("agent %s: effort %q is not supported by runtime %s (supported: %s)", res.agent.Name, res.agent.Effort, res.mapping.Name, strings.Join(res.mapping.Efforts, ", "))
+		}
 	}
 	if res.process.Output.Format == "json" {
 		if doc, err = load(definition.KindSchema, res.process.Output.Schema); err != nil {
@@ -419,17 +422,30 @@ func (r *Resolver) resolveCall(ctx context.Context, processName, agentOverride s
 	if caller.maxCostUSD != nil && *caller.maxCostUSD <= 0 {
 		return res, refuse("invalid cost limit %g", *caller.maxCostUSD)
 	}
-	if res.effective, err = policy.Compose(res.service, res.policy, res.process, limits); err != nil {
+	if res.effective, err = policy.Compose(res.service, res.process, limits); err != nil {
 		return res, refuse("%v", err)
 	}
+	// Refused once everything that needs no agent is resolved, so its view
+	// has it.
+	if !bound {
+		return res, refuse("names no agent: only a workflow's node binds it to one (ADR-030 rule 5); run a workflow that binds it")
+	}
+	// A call the settings refuse never asks its runtime: its view shows
+	// what the settings' plan withholds, which no call is given.
+	if settingsOnly {
+		res.refusedPlan, _ = settings.SettingsPlan(res.service, res.effective, res.mapping)
+	}
 
+	// Whether the call's session may be resumed is its process's to say
+	// (ADR-030 rule 3).
+	res.session = definition.CallSession(res.process)
 	// A repair turn resumes the call's own session (ADR-002 rule 4).
-	if verify := res.process.Verify; verify.Repairs() && res.agent.Session != definition.SessionResumable {
-		return res, refuse("verify.max_attempts %d repairs in the call's session, but agent %s is %s", verify.MaxAttempts, res.agent.Name, res.agent.Session)
+	if verify := res.process.Verify; verify.Repairs() && res.session != definition.SessionResumable {
+		return res, refuse("verify.max_attempts %d repairs in the call's session, but process %s is %s", verify.MaxAttempts, res.process.Name, res.session)
 	}
 	// So does a recovery turn (ADR-024 rule 6).
-	if resumes := res.effective.Stale.Recover.MaxResumes; resumes > 0 && res.agent.Session != definition.SessionResumable {
-		return res, refuse("stale.recover.max_resumes %d recovers in the call's session, but agent %s is %s", resumes, res.agent.Name, res.agent.Session)
+	if resumes := res.effective.Stale.Recover.MaxResumes; resumes > 0 && res.session != definition.SessionResumable {
+		return res, refuse("stale.recover.max_resumes %d recovers in the call's session, but process %s is %s", resumes, res.process.Name, res.session)
 	}
 
 	if settingsOnly {
@@ -464,9 +480,9 @@ func (r *Resolver) resolveCall(ctx context.Context, processName, agentOverride s
 	if len(verified.Primitives) == 0 {
 		return res, refuse("runtime mapping %s verifies no primitive for %s version %s", res.mapping.Name, res.mapping.Adapter, res.identity.Version)
 	}
-	if res.effective.MaxCostUSD != nil && !res.identity.CostLimit {
+	if message := settings.CostRefusal(res.effective, res.mapping.Name, res.identity.CostLimit); message != "" {
 		subject = root
-		return res, refuse("runtime %s cannot enforce the cost limit %g", res.mapping.Name, *res.effective.MaxCostUSD)
+		return res, refuse("%s", message)
 	}
 	// An adapter that cannot give skills refuses a call that names one: it
 	// must not run without them (ADR-021 rule 6).
@@ -487,6 +503,9 @@ func (r *Resolver) resolveCall(ctx context.Context, processName, agentOverride s
 	}
 	subject = root
 	if res.plan, err = enforce.Make(res.effective.Permissions, verified, res.effective.Require, res.service.StateReaching); err != nil {
+		if refused := (*enforce.RefusedError)(nil); errors.As(err, &refused) && refused.Plan != nil {
+			res.refusedPlan = *refused.Plan
+		}
 		return res, refuse("runtime %s: %v%s", res.mapping.Name, err, unverifiedNote(unverified, "for version "+res.identity.Version))
 	}
 	if tools := res.identity.SkillTools; len(tools) > 0 && !slices.ContainsFunc(tools, func(tool string) bool { return contains(res.plan.Primitives, tool) }) {
@@ -576,15 +595,16 @@ func (r *Resolver) workflow(ctx context.Context, name string) (*workflowResoluti
 		// Resolve every node, including the join, before any turn. Only a
 		// missing named verification remains a refusal at its node.
 		var problems []string
-		seen := map[string]bool{}
+		seen := map[NodeBinding]bool{}
 		for _, node := range res.workflow.Nodes() {
-			if seen[node.Process] {
+			binding := NodeBinding{Process: node.Process, Agent: node.Agent}
+			if seen[binding] {
 				continue
 			}
-			seen[node.Process] = true
+			seen[binding] = true
 			// Its nodes work in the caller's worktree, as any call does
-			// (ADR-025 rule 4).
-			if _, problem := r.resolve(ctx, node.Process, "", overrides{deferMissingVerify: true}); problem != nil {
+			// (ADR-025 rule 4), each on the agent it binds (ADR-030 rule 5).
+			if _, problem := r.resolve(ctx, node.Process, node.Agent, overrides{deferMissingVerify: true, node: true}); problem != nil {
 				problems = append(problems, "workflow "+name+" uses "+strings.Replace(problem.Error(), " uses ", ", which uses ", 1))
 			}
 		}
@@ -637,7 +657,7 @@ func (r *Resolver) resolveWorkflow(ctx context.Context, name string) (*workflowR
 		}
 		res.processes[node.Process] = process
 	}
-	if problems := settings.WorkflowProblems(res.workflow, res.processes); len(problems) > 0 {
+	if problems := settings.WorkflowProblems(res.workflow, res.processes, nil); len(problems) > 0 {
 		return res, refuse("workflow %s: %s", name, strings.Join(problems, "; "))
 	}
 	return res, nil

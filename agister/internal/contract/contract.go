@@ -47,7 +47,7 @@ type Client interface {
 	CreateAgent(ctx context.Context, agent Agent, overwrite bool, approved *AgentWrite) (AgentWrite, error)
 	ListAgents(ctx context.Context) ([]Agent, error)
 	ListProcesses(ctx context.Context) ([]ProcessSummary, error)
-	ShowProcess(ctx context.Context, name, agent string) (ProcessView, error)
+	ShowProcess(ctx context.Context, name string) (ProcessView, error)
 	ListWorkflows(ctx context.Context) ([]WorkflowSummary, error)
 	// ShowWorkflow shows a workflow as a run of it would see it: its
 	// params, inputs and nodes, and each node's process as a call of it
@@ -57,9 +57,10 @@ type Client interface {
 	// it also asks each agent's runtime for its identity.
 	Check(ctx context.Context, probe bool) (CheckReport, error)
 
-	// Submit records a call, or a workflow when the request names one, and
-	// starts it. Every call and workflow gets a run, including one that is
-	// refused; each node of a workflow gets its own.
+	// Submit records a run of the workflow the request names, and starts
+	// it. Every request gets a run, including one that is refused, as a
+	// process's name is (ADR-030 rule 7); each node of a workflow gets its
+	// own.
 	Submit(ctx context.Context, request CallRequest) (string, error)
 	// Observe delivers the run's events after afterSeq, in order, until the
 	// run is no longer running. It can be resumed from any sequence.
@@ -198,7 +199,6 @@ type Agent struct {
 	Model       string
 	ModelFamily string
 	Effort      string
-	Session     string // fresh-only (default) | resumable
 	Command     string
 	Problem     string // set when the definition is invalid
 	Refusal     string // problems in this agent or its runtime mapping
@@ -206,8 +206,6 @@ type Agent struct {
 
 type ProcessSummary struct {
 	Name    string
-	Agent   string
-	Policy  string
 	Output  string
 	Problem string // set when the definition is invalid
 	// Why a call of it would be refused now, for a problem in a document it
@@ -232,6 +230,27 @@ type CheckReport struct {
 	// What the repository's settings block (ADR-018). Blocks are not
 	// problems: settings with blocks pass.
 	Blocks []Block `json:"blocks"`
+	// Every node of every workflow as its call would be planned, on the
+	// agent it binds its process to (ADR-030 rules 7 and 8); one that
+	// cannot be planned is a problem instead.
+	Bindings []Binding `json:"bindings"`
+}
+
+// Binding is one node of a workflow, planned on the runtime of the agent
+// it binds its process to: what the plan withholds.
+type Binding struct {
+	Workflow string `json:"workflow"`
+	Node     string `json:"node"`
+	Process  string `json:"process"`
+	Agent    string `json:"agent"`
+	Runtime  string `json:"runtime"` // the runtime mapping's name
+	// The runtime version it is planned on: the one installed where check
+	// asked the runtimes, otherwise one the mapping verifies.
+	Version string `json:"version"`
+	// Allowed and not required, and not given: not a problem.
+	Withheld []string `json:"withheld,omitempty"`
+	// In tools.require, and withheld: the call cannot run, a problem.
+	Required []string `json:"required,omitempty"`
 }
 
 // Block is one document a repository's blocks.yaml blocks, and what it
@@ -276,7 +295,7 @@ type Problem struct {
 
 // Definition is one settings document in the composed settings.
 type Definition struct {
-	Kind string `json:"kind"` // service, agents, processes, policies, runtimes, schemas, workflows, verifies, prompts, skills
+	Kind string `json:"kind"` // service, agents, processes, runtimes, schemas, workflows, verifies, prompts, skills
 	Name string `json:"name"`
 	// Layer is the nearest layer that holds it, home, repository or
 	// project, and Path that layer's file.
@@ -302,11 +321,15 @@ type DefinitionLayer struct {
 	// Replaced is set on a farther layer's file of a document taken whole:
 	// the nearest layer's replaces it.
 	Replaced bool `json:"replaced,omitempty"`
+	// Process is set on the files of a process that extends a base: the
+	// process whose file it is, the base or the process itself (ADR-030
+	// rule 9).
+	Process string `json:"process,omitempty"`
 }
 
 // DefinitionOrigin is where one definition a call uses comes from.
 type DefinitionOrigin struct {
-	Kind string // agents, processes, policies, runtimes, schemas, verifies, prompts, skills or service
+	Kind string // agents, processes, runtimes, schemas, verifies, prompts, skills or service
 	Name string
 	// Layer is the nearest layer that holds it, home, repository or
 	// project, and Path that layer's file.
@@ -334,7 +357,6 @@ type ProcessView struct {
 	Name        string
 	Agent       string
 	Runtime     string
-	Policy      string
 	Params      []Param
 	Inputs      []string
 	Output      string
@@ -348,7 +370,10 @@ type ProcessView struct {
 	Scope       string
 	// The staleness limits a call of it would run under.
 	Stale Stale
-	// Plan on the agent's runtime, or why none exists.
+	// Plan on the agent's runtime, or why none exists. Withheld is what
+	// the plan withholds that is allowed; on a refusal for a required
+	// permission, or one the settings make, what else the plan refused or
+	// the settings' plan withholds.
 	Primitives []string
 	Withheld   []string
 	Refusal    string
@@ -375,10 +400,13 @@ type ProcessView struct {
 }
 
 type WorkflowSummary struct {
-	Name    string
-	FanOut  []string // node:process, in declaration order
-	Join    string   // node:process
-	Problem string   // set when the definition is invalid
+	Name   string
+	FanOut []string // node:process, in declaration order
+	Join   string   // node:process
+	// Call is the one node of a workflow of one call (ADR-030 rule 6), as
+	// node:process; FanOut and Join are then empty.
+	Call    string
+	Problem string // set when the definition is invalid
 	// Why a run of it would be refused now, for a problem in a document it
 	// or a node's call depends on; empty when none has one.
 	Refusal string
@@ -391,6 +419,10 @@ type WorkflowView struct {
 	Inputs []string // resolved once, before any node starts
 	FanOut []WorkflowNode
 	Join   WorkflowNode
+	// Call is the one node of a workflow of one call (ADR-030 rule 6),
+	// whose params and inputs are the workflow's; FanOut and Join are then
+	// empty.
+	Call *WorkflowNode
 	// Collection is the join's input that receives the collection.
 	Collection string
 	// Why a run of it would be refused now; empty when it would run.
@@ -404,7 +436,8 @@ type WorkflowView struct {
 type WorkflowNode struct {
 	Name    string
 	Process ProcessView
-	// The workflow's inputs it receives as params; none for a join.
+	// The workflow's inputs it receives as params; none for a join, and
+	// every one of its process's for a call.
 	Params []string
 }
 
@@ -426,14 +459,14 @@ type Verify struct {
 	Instruction string
 }
 
-// CallRequest asks for a call of a process, or a run of a workflow: Process
-// names either. A workflow takes Params and Cwd only. Cwd is the caller's
+// CallRequest asks for a run of a workflow, which Process names: a
+// process's name is refused, with the workflows that bind it (ADR-030 rule
+// 7). A fan-out workflow takes Params and Cwd only. Cwd is the caller's
 // directory: the call works in the root of the git worktree that holds it
 // (ADR-025 rule 1).
 type CallRequest struct {
 	Process    string
 	Params     map[string]string
-	Agent      string   // optional override
 	Timeout    string   // optional, may only shorten
 	MaxCostUSD *float64 // optional, may only lower
 	Continue   string   // optional: a finished run whose session to continue

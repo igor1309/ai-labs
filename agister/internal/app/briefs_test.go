@@ -429,7 +429,6 @@ func TestCheckReadsBriefsAndLinksWhatNamesThem(t *testing.T) {
 	for name, doc := range flow[definition.KindProcess] {
 		h.defs.docs[definition.KindProcess][name] = doc
 	}
-	h.defs.docs[definition.KindPolicy]["joining"] = flow[definition.KindPolicy]["joining"]
 	h.defs.docs[definition.KindWorkflow] = map[string]string{"w": flow[definition.KindWorkflow]["w"]}
 	report := briefCheck(t, h)
 	if len(report.Problems) != 0 || report.Checked["briefs"] != 2 || report.Checked["workflows"] != 1 {
@@ -439,11 +438,13 @@ func TestCheckReadsBriefsAndLinksWhatNamesThem(t *testing.T) {
 	for _, d := range report.Definitions {
 		got[ref(d.Kind, d.Name)] = d
 	}
-	processUses := []contract.DefinitionRef{ref("agents", "a"), ref("policies", "pol"), ref("prompts", "inspect"), ref("schemas", "s"), ref("briefs", "goal"), ref("briefs", "step")}
+	// A process uses no agent: a workflow's node binds it to one.
+	processUses := []contract.DefinitionRef{ref("prompts", "inspect"), ref("schemas", "s"), ref("briefs", "goal"), ref("briefs", "step")}
 	if p := got[ref("processes", "p")]; !reflect.DeepEqual(p.Uses, processUses) {
 		t.Fatalf("p = %+v", p)
 	}
-	workflowUses := []contract.DefinitionRef{ref("processes", "first"), ref("processes", "second"), ref("processes", "joiner"), ref("briefs", "goal")}
+	// The agent its nodes bind their processes to is the workflow's to name.
+	workflowUses := []contract.DefinitionRef{ref("processes", "first"), ref("agents", "a"), ref("processes", "second"), ref("processes", "joiner"), ref("briefs", "goal")}
 	if w := got[ref("workflows", "w")]; !reflect.DeepEqual(w.Uses, workflowUses) {
 		t.Fatalf("w = %+v", w)
 	}
@@ -468,7 +469,7 @@ func TestShowProcessShowsItsForms(t *testing.T) {
 	t.Parallel()
 	h := briefed(goalText, ", form: [goal, step]")
 	inspection := app.NewInspection(app.NewResolver(h.defs, struct{ app.ResolverIdentities }{h.runtimes}, h.validator, resolverCheckStub{}))
-	view, err := inspection.ShowProcess(context.Background(), "p", "")
+	view, err := callShown(inspection, "p_a")
 	if err != nil || view.Refusal != "" || !contains(view.Inputs, "brief <- file (form goal, step)") || !contains(view.Inputs, "diff <- git.diff") {
 		t.Fatalf("inputs %q, refusal %q, %v", view.Inputs, view.Refusal, err)
 	}

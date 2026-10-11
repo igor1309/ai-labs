@@ -19,14 +19,14 @@ import (
 	"github.com/igor1309/ai-labs/agister/internal/domain/run"
 )
 
-// staleHarness is a harness whose policy declares the staleness limits
+// staleHarness is a harness whose process declares the staleness limits
 // given, over a clock and timers the test moves; its runtime reports tool
 // calls. However the test ends, a turn still blocked is released and the
 // call joined: its end does not depend on the limit under test.
 func staleHarness(t *testing.T, limits string) (*harness, *timersSpy) {
 	t.Helper()
 	h := newHarness()
-	h.defs.docs[definition.KindPolicy]["pol"] += "stale: {" + limits + "}\n"
+	h.defs.docs[definition.KindProcess]["p"] += "stale: {" + limits + "}\n"
 	h.runner.identity.ToolCalls = true
 	clock := &settableClock{now: fixedClock{}.Now()}
 	timers := &timersSpy{clock: clock}
@@ -396,7 +396,7 @@ func TestAStaleTurnsOwnFailureIsNotReplaced(t *testing.T) {
 	}
 }
 
-// A policy without staleness limits starts no wait and records none.
+// A process without staleness limits starts no wait and records none.
 func TestWithoutStalenessLimitsNothingIsWatched(t *testing.T) {
 	t.Parallel()
 	h := newHarness()
@@ -585,8 +585,8 @@ func TestToolCallLimitsNeedARuntimeThatReportsThem(t *testing.T) {
 	}
 }
 
-// check rejects a staleness limit above the timeout, in the policy that
-// declares both and in a process that narrows its policy's timeout.
+// check rejects a staleness limit above the timeout of the process that
+// declares both.
 func TestCheckRejectsAStalenessLimitAboveTheTimeout(t *testing.T) {
 	t.Parallel()
 	check := func(h *harness) []string {
@@ -605,37 +605,23 @@ func TestCheckRejectsAStalenessLimitAboveTheTimeout(t *testing.T) {
 
 	h, _ = staleHarness(t, "no_event: 30m")
 	if problems := strings.Join(check(h), "\n"); !strings.Contains(problems, "stale.no_event: 30m0s exceeds timeout 20m0s") {
-		t.Fatalf("policy above its timeout: %q", problems)
-	}
-
-	h, _ = staleHarness(t, "no_event: 15m")
-	h.defs.docs[definition.KindProcess]["p"] += "timeout: 10m\n"
-	if problems := strings.Join(check(h), "\n"); !strings.Contains(problems, "stale.no_event 15m0s exceeds the timeout 10m0s") {
-		t.Fatalf("process timeout below the policy's limit: %q", problems)
-	}
-
-	h, _ = staleHarness(t, "no_event: 5m")
-	h.defs.docs[definition.KindProcess]["p"] += "stale: {no_event: 6m}\n"
-	if problems := strings.Join(check(h), "\n"); !strings.Contains(problems, "stale.no_event: 6m0s widens the policy's 5m0s") {
-		t.Fatalf("process widening its policy's limit: %q", problems)
+		t.Fatalf("process above its timeout: %q", problems)
 	}
 }
 
-// process show shows the effective limits: the policy's, narrowed by the
-// process.
+// process show shows the effective limits: the process's own.
 func TestShowProcessShowsTheEffectiveStalenessLimits(t *testing.T) {
 	t.Parallel()
 	h := newHarness()
 	inspection := app.NewInspection(app.NewResolver(h.defs, struct{ app.ResolverIdentities }{h.runtimes}, h.validator, resolverCheckStub{}))
-	view, err := inspection.ShowProcess(context.Background(), "p", "")
+	view, err := callShown(inspection, "p_a")
 	if err != nil || view.Stale != (contract.Stale{}) {
 		t.Fatalf("without limits: %+v, %v", view.Stale, err)
 	}
 
-	h, _ = staleHarness(t, "no_event: 5m, no_output: 2m, tool_command: 10m, repeated_tool_calls: 5")
-	h.defs.docs[definition.KindProcess]["p"] += "stale: {no_event: 3m, repeated_tool_calls: 4}\n"
+	h, _ = staleHarness(t, "no_event: 3m, no_output: 2m, tool_command: 10m, repeated_tool_calls: 4")
 	inspection = app.NewInspection(app.NewResolver(h.defs, struct{ app.ResolverIdentities }{h.runtimes}, h.validator, resolverCheckStub{}))
-	view, err = inspection.ShowProcess(context.Background(), "p", "")
+	view, err = callShown(inspection, "p_a")
 	want := contract.Stale{NoEvent: 3 * time.Minute, NoOutput: 2 * time.Minute, ToolCommand: 10 * time.Minute, RepeatedToolCalls: 4}
 	if err != nil || view.Stale != want || view.Refusal != "" {
 		t.Fatalf("stale = %+v, refusal %q, %v", view.Stale, view.Refusal, err)

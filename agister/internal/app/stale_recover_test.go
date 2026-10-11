@@ -1,7 +1,6 @@
 package app_test
 
 import (
-	"context"
 	"encoding/json"
 	"reflect"
 	"strings"
@@ -14,30 +13,32 @@ import (
 	"github.com/igor1309/ai-labs/agister/internal/domain/run"
 )
 
-// recovering gives the harness's policy the recovery budget given and makes
-// its agent resumable.
+// recovering gives the harness's process the recovery budget given and a
+// session that may be resumed.
 func recovering(h *harness, recover string) {
-	h.defs.docs[definition.KindPolicy]["pol"] += "stale: {recover: {" + recover + "}}\n"
-	h.defs.docs[definition.KindAgent]["a"] += "session = \"resumable\"\n"
+	h.defs.docs[definition.KindProcess]["p"] += "stale: {recover: {" + recover + "}}\n"
+	h.defs.docs[definition.KindProcess]["p"] += "session: resumable\n"
 }
 
 // ADR-024 rule 6: a recovery turn resumes the call's session, so a budget
-// above 0 with an agent or a runtime that cannot continue sessions refuses
-// the call before its first turn, and check reports it: the runtime's part
-// when it probes.
+// above 0 of a process or on a runtime that cannot continue sessions
+// refuses the call before its first turn, and check reports it: of the
+// process, which says whether its session resumes (ADR-030 rule 3), and,
+// when it probes, of the workflow whose node binds the process to an agent
+// on that runtime (rule 8). The refusal names the workflow that was run.
 func TestAStaleRecoveryBudgetWithoutResumableSessionsRefusesTheCall(t *testing.T) {
 	t.Parallel()
 	cases := []struct {
 		name    string
 		arrange func(*harness)
 		probe   bool
+		subject string // of check's problem
 		reason  string
 	}{
-		{"fresh-only agent", func(h *harness) {
-			h.defs.docs[definition.KindAgent]["a"] = settingsDocs()[definition.KindAgent]["a"]
-		}, false, "process p: stale.recover.max_resumes 1 recovers in the call's session, but agent a is fresh-only"},
+		{"fresh-only process", freshOnly,
+			false, "process p", "stale.recover.max_resumes 1 recovers in the call's session, but process p is fresh-only"},
 		{"runtime without resume", func(h *harness) { h.runner.identity.Resume = false },
-			true, "process p: stale.recover.max_resumes 1 recovers in the call's session, but runtime rt cannot resume sessions"},
+			true, "workflow p_a: call node p: process p", "stale.recover.max_resumes 1 recovers in the call's session, but runtime rt cannot resume sessions"},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
@@ -45,11 +46,11 @@ func TestAStaleRecoveryBudgetWithoutResumableSessionsRefusesTheCall(t *testing.T
 			h := newHarness()
 			recovering(h, "max_resumes: 1, instruction: Go on.")
 			c.arrange(h)
-			if report := checkOf(t, h, c.probe); !reflect.DeepEqual(messages(report.Problems), []string{c.reason}) {
-				t.Fatalf("check: problems = %q, want %q", messages(report.Problems), c.reason)
+			if report := checkOf(t, h, c.probe); !reflect.DeepEqual(messages(report.Problems), []string{c.subject + ": " + c.reason}) {
+				t.Fatalf("check: problems = %q, want %q of %s", messages(report.Problems), c.reason, c.subject)
 			}
 			record := h.call(t, contract.CallRequest{})
-			if record.Result.Status != run.Failed || class(record) != run.ClassRefused || message(record) != c.reason {
+			if record.Result.Status != run.Failed || class(record) != run.ClassRefused || message(record) != "workflow p_a uses process p: "+c.reason {
 				t.Fatalf("result %+v, want refused (%s)", record.Result.Error, c.reason)
 			}
 			if len(h.runner.calls()) != 0 {
@@ -63,8 +64,8 @@ func TestAStaleRecoveryBudgetWithoutResumableSessionsRefusesTheCall(t *testing.T
 }
 
 // Without a budget nothing resumes: a fresh-only agent and a runtime that
-// cannot resume run the call, whether no policy sets max_resumes, the
-// policy sets 0 or the process lowers its policy's to 0.
+// cannot resume run the call, whether the process sets no max_resumes or
+// sets 0.
 func TestWithoutAStaleRecoveryBudgetNoSessionIsNeeded(t *testing.T) {
 	t.Parallel()
 	cases := []struct {
@@ -72,14 +73,10 @@ func TestWithoutAStaleRecoveryBudgetNoSessionIsNeeded(t *testing.T) {
 		arrange func(*harness)
 	}{
 		{"unset", func(h *harness) {
-			h.defs.docs[definition.KindPolicy]["pol"] += "stale: {no_event: 5m}\n"
+			h.defs.docs[definition.KindProcess]["p"] += "stale: {no_event: 5m}\n"
 		}},
-		{"the policy sets 0", func(h *harness) {
-			h.defs.docs[definition.KindPolicy]["pol"] += "stale: {recover: {max_resumes: 0, instruction: Go on.}}\n"
-		}},
-		{"the process lowers it to 0", func(h *harness) {
-			h.defs.docs[definition.KindPolicy]["pol"] += "stale: {recover: {max_resumes: 1, instruction: Go on.}}\n"
-			h.defs.docs[definition.KindProcess]["p"] += "stale: {recover: {max_resumes: 0}}\n"
+		{"0", func(h *harness) {
+			h.defs.docs[definition.KindProcess]["p"] += "stale: {recover: {max_resumes: 0, instruction: Go on.}}\n"
 		}},
 	}
 	for _, c := range cases {
@@ -102,44 +99,26 @@ func TestWithoutAStaleRecoveryBudgetNoSessionIsNeeded(t *testing.T) {
 	}
 }
 
-// check reports a budget the settings cannot give: one a process widens,
-// and one without an instruction.
-func TestCheckRejectsAStaleRecoveryBudgetThatDoesNotCompose(t *testing.T) {
+// check reports a budget the process gives without an instruction.
+func TestCheckRejectsAStaleRecoveryBudgetWithoutAnInstruction(t *testing.T) {
 	t.Parallel()
-	cases := []struct {
-		name    string
-		policy  string
-		process string
-		problem string
-	}{
-		{"a process widens its policy's", "max_resumes: 1, instruction: Go on.", "stale: {recover: {max_resumes: 2}}\n",
-			"process p: stale.recover.max_resumes: 2 widens the policy's 1"},
-		{"no instruction", "max_resumes: 1", "",
-			"process p: stale.recover.max_resumes 1 needs stale.recover.instruction: neither the process nor its policy gives one"},
-	}
-	for _, c := range cases {
-		t.Run(c.name, func(t *testing.T) {
-			t.Parallel()
-			h := newHarness()
-			recovering(h, c.policy)
-			h.defs.docs[definition.KindProcess]["p"] += c.process
-			if report := checkOf(t, h, false); !reflect.DeepEqual(messages(report.Problems), []string{c.problem}) {
-				t.Fatalf("problems = %q, want %q", messages(report.Problems), c.problem)
-			}
-		})
+	h := newHarness()
+	recovering(h, "max_resumes: 1")
+	want := "process p: stale.recover.max_resumes 1 needs stale.recover.instruction: the process gives none"
+	if report := checkOf(t, h, false); !reflect.DeepEqual(messages(report.Problems), []string{want}) {
+		t.Fatalf("problems = %q, want %q", messages(report.Problems), want)
 	}
 }
 
 // The effective budget and instruction are the call's and are recorded
-// with its other limits (ADR-024 rule 5): the policy's budget as the
-// process lowers it, with the process's instruction. The call acts on
-// them: its stale turn is recovered with the process's instruction, and
-// the second stale turn ends it, the process's one resume spent.
+// with its other limits (ADR-024 rule 5): the process's own budget and
+// instruction. The call acts on them: its stale turn is recovered with the
+// process's instruction, and the second stale turn ends it, the process's
+// one resume spent.
 func TestACallCarriesAndRecordsItsStaleRecovery(t *testing.T) {
 	t.Parallel()
-	h, timers := staleHarness(t, "no_event: 5m, tool_command: 4m, recover: {max_resumes: 2, instruction: Policy.}")
-	h.defs.docs[definition.KindAgent]["a"] += "session = \"resumable\"\n"
-	h.defs.docs[definition.KindProcess]["p"] += "stale: {recover: {max_resumes: 1, instruction: Process.}}\n"
+	h, timers := staleHarness(t, "no_event: 5m, tool_command: 4m, recover: {max_resumes: 1, instruction: Process.}")
+	h.defs.docs[definition.KindProcess]["p"] += "session: resumable\n"
 	play(h, commanding(timers, "prov-1", tailLog), silent(timers, "prov-1"), completes(h))
 	record := h.call(t, contract.CallRequest{})
 
@@ -153,8 +132,8 @@ func TestACallCarriesAndRecordsItsStaleRecovery(t *testing.T) {
 	}
 	// Until ADR-024's recovery turn was built nothing acted on the budget,
 	// and this asserted the stale turn ended the call after one turn. Now
-	// the budget is spent: the process's 1, not the policy's 2, so the
-	// second stale turn ends the call, after two turns.
+	// the budget is spent: the process's 1, so the second stale turn ends
+	// the call, after two turns.
 	turns := h.runner.calls()
 	if record.Result.Status != run.Interrupted || class(record) != run.ClassTimeout ||
 		message(record) != "stale: the runtime reported no event for 5m0s (stale.no_event)" || len(turns) != 2 {
@@ -178,13 +157,13 @@ func TestAStaleRecoveryBudgetAloneIsRecorded(t *testing.T) {
 }
 
 // process show shows the effective budget with the other staleness limits:
-// the policy's, lowered by the process.
+// the process's own.
 func TestShowProcessShowsTheEffectiveStaleRecoveryBudget(t *testing.T) {
 	t.Parallel()
 	show := func(h *harness) contract.ProcessView {
 		t.Helper()
 		inspection := app.NewInspection(app.NewResolver(h.defs, struct{ app.ResolverIdentities }{h.runtimes}, h.validator, resolverCheckStub{}))
-		view, err := inspection.ShowProcess(context.Background(), "p", "")
+		view, err := callShown(inspection, "p_a")
 		if err != nil || view.Refusal != "" {
 			t.Fatalf("refusal %q, %v", view.Refusal, err)
 		}
@@ -193,14 +172,10 @@ func TestShowProcessShowsTheEffectiveStaleRecoveryBudget(t *testing.T) {
 	h := newHarness()
 	recovering(h, "max_resumes: 2, instruction: Go on.")
 	if view := show(h); view.Stale != (contract.Stale{MaxResumes: 2}) {
-		t.Fatalf("the policy's: stale = %+v", view.Stale)
-	}
-	h.defs.docs[definition.KindProcess]["p"] += "stale: {recover: {max_resumes: 1}}\n"
-	if view := show(h); view.Stale != (contract.Stale{MaxResumes: 1}) {
-		t.Fatalf("lowered: stale = %+v", view.Stale)
+		t.Fatalf("the process's: stale = %+v", view.Stale)
 	}
 	h.defs.docs[definition.KindProcess]["p"] = settingsDocs()[definition.KindProcess]["p"] + "stale: {recover: {max_resumes: 0}}\n"
 	if view := show(h); view.Stale != (contract.Stale{}) {
-		t.Fatalf("lowered to 0: stale = %+v", view.Stale)
+		t.Fatalf("0: stale = %+v", view.Stale)
 	}
 }

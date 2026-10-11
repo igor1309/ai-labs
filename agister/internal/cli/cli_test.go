@@ -62,7 +62,7 @@ func (s *clientSpy) logs(t *testing.T) []map[string]any {
 // unlogged opens a log nobody reads.
 func unlogged(cli.Config) (*slog.Logger, error) { return slog.New(slog.DiscardHandler), nil }
 
-func (s *clientSpy) ShowProcess(context.Context, string, string) (contract.ProcessView, error) {
+func (s *clientSpy) ShowProcess(context.Context, string) (contract.ProcessView, error) {
 	return s.view, nil
 }
 
@@ -160,9 +160,9 @@ func TestRunSubmitsTheRequestBuiltFromArguments(t *testing.T) {
 	t.Parallel()
 	spy := &clientSpy{run: finished("completed", "")}
 	spy.run.Result.Text = "hi"
-	r := run(context.Background(), spy, "run", "p", "--param", "a=1", "--agent", "x", "--param", "b=two=2", "--timeout", "5m", "--max-cost", "0.5", "--continue", "run-0", "--goal", "run-g:brief", "--answers", "run-j", "--quiet")
+	r := run(context.Background(), spy, "run", "p", "--param", "a=1", "--param", "b=two=2", "--timeout", "5m", "--max-cost", "0.5", "--continue", "run-0", "--goal", "run-g:brief", "--answers", "run-j", "--quiet")
 	limit := 0.5
-	want := contract.CallRequest{Process: "p", Params: map[string]string{"a": "1", "b": "two=2"}, Agent: "x", Timeout: "5m", MaxCostUSD: &limit, Continue: "run-0", Goal: "run-g:brief", Answers: "run-j", Cwd: "/work"}
+	want := contract.CallRequest{Process: "p", Params: map[string]string{"a": "1", "b": "two=2"}, Timeout: "5m", MaxCostUSD: &limit, Continue: "run-0", Goal: "run-g:brief", Answers: "run-j", Cwd: "/work"}
 	if !reflect.DeepEqual(spy.submitted, []contract.CallRequest{want}) {
 		t.Fatalf("submitted %+v", spy.submitted)
 	}
@@ -171,6 +171,24 @@ func TestRunSubmitsTheRequestBuiltFromArguments(t *testing.T) {
 	}
 	if r.code != cli.ExitCompleted || r.stdout != "hi\n" {
 		t.Fatalf("result = %+v", r)
+	}
+}
+
+// No caller chooses an agent (ADR-030 rule 5): run and process show take
+// no --agent, which is a usage error before any client is built, so
+// nothing is submitted or shown.
+func TestNoCommandTakesAnAgent(t *testing.T) {
+	t.Parallel()
+	for _, args := range [][]string{
+		{"run", "w", "--agent", "x"},
+		{"process", "show", "p", "--agent", "x"},
+	} {
+		spy := &clientSpy{run: finished("completed", ""), view: contract.ProcessView{Name: "p"}}
+		r := run(context.Background(), spy, args...)
+		if r.code != cli.ExitUsage || !strings.Contains(r.stderr, "agister: flag provided but not defined: -agent") || r.stdout != "" ||
+			len(spy.submitted) != 0 || spy.config != (cli.Config{}) {
+			t.Errorf("%v: result %+v, submitted %+v, built %+v", args, r, spy.submitted, spy.config)
+		}
 	}
 }
 
@@ -687,6 +705,29 @@ func TestShowProcessPrintsVerifyAndWarnings(t *testing.T) {
 	}
 }
 
+// A process names no agent, so it is listed and shown without one (ADR-030
+// rule 2): no empty name, and no runtime. The listing had an agent:<name>
+// column while a process could name its agent; no process can now, and the
+// column is gone.
+func TestAProcessIsListedAndShownWithoutAnAgent(t *testing.T) {
+	t.Parallel()
+	listing := &listingSpy{processList: []contract.ProcessSummary{{Name: "p", Output: "text"}, {Name: "q", Output: "json:s"}}}
+	var stdout, stderr bytes.Buffer
+	build := func(cli.Config) (contract.Client, error) { return listing, nil }
+	io := cli.IO{Stdout: &stdout, Stderr: &stderr, Cwd: "/work", Getenv: func(string) string { return "" }}
+	if code := cli.Run(context.Background(), []string{"process", "list"}, io, build, unlogged); code != 0 || stdout.String() != "p\ttext\nq\tjson:s\n" {
+		t.Fatalf("process list: %d %q %q", code, stdout.String(), stderr.String())
+	}
+	spy := &clientSpy{view: contract.ProcessView{Name: "q", Output: "json:s", Timeout: time.Hour, MaxAttempts: 1, Refusal: "process q: names no agent"}}
+	r := run(context.Background(), spy, "process", "show", "q")
+	if want := "process      q\nagent        (none: a workflow's node binds it to one)\nparams "; r.code != 0 || !strings.HasPrefix(r.stdout, want) {
+		t.Fatalf("process show: %d\n%s", r.code, r.stdout)
+	}
+	if want := "REFUSED: process q: names no agent"; !strings.Contains(r.stdout, want) {
+		t.Fatalf("missing %q in:\n%s", want, r.stdout)
+	}
+}
+
 // process show says which verification the verify fields come from, and of
 // one that was not resolved, that it was not, beside the refusal.
 func TestShowProcessPrintsTheNamedVerification(t *testing.T) {
@@ -968,8 +1009,8 @@ func TestCheckAndListingsSayWhatIsRefused(t *testing.T) {
 			{Name: "z", Problem: "invalid (run `agister check`)"},
 		},
 		processList: []contract.ProcessSummary{
-			{Name: "p", Agent: "a", Output: "text", Refusal: "process p uses agent a, which uses runtime mapping rt (/rt.yaml): bad"},
-			{Name: "s", Agent: "a", Output: "text"},
+			{Name: "p", Output: "text", Refusal: "process p uses schema s (/s.json): bad"},
+			{Name: "s", Output: "text"},
 		},
 	}
 	r := run(context.Background(), &spy.clientSpy, "check")
@@ -992,7 +1033,7 @@ func TestCheckAndListingsSayWhatIsRefused(t *testing.T) {
 	}
 	stdout.Reset()
 	if code := cli.Run(context.Background(), []string{"process", "list"}, io, build, unlogged); code != 0 ||
-		stdout.String() != "p\tagent:a\t-\ttext\tREFUSED: process p uses agent a, which uses runtime mapping rt (/rt.yaml): bad\ns\tagent:a\t-\ttext\n" {
+		stdout.String() != "p\ttext\tREFUSED: process p uses schema s (/s.json): bad\ns\ttext\n" {
 		t.Fatalf("process list: %d %q %q", code, stdout.String(), stderr.String())
 	}
 }
@@ -1015,10 +1056,10 @@ func TestCheckTreeAndJSON(t *testing.T) {
 			// b is used by no process, so neither is rt2, which only b uses.
 			{Kind: "runtimes", Name: "rt2", Layer: "home", Path: "/g/runtimes/rt2.yaml", UsedBy: []contract.DefinitionRef{ref("agents", "b")}},
 			{Kind: "agents", Name: "b", Layer: "home", Path: "/g/agents/b.toml", Uses: []contract.DefinitionRef{ref("runtimes", "rt2")}},
-			{Kind: "policies", Name: "spare", Layer: "repository", Path: "/p/policies/spare.yaml", Invalid: true},
+			{Kind: "schemas", Name: "spare", Layer: "repository", Path: "/p/schemas/spare.json", Invalid: true},
 			{Kind: "verifies", Name: "repo", Layer: "repository", Path: "/p/verifies/repo.yaml", UsedBy: []contract.DefinitionRef{ref("processes", "p")}},
 			{Kind: "verifies", Name: "spare", Layer: "home", Path: "/g/verifies/spare.yaml"},
-			{Kind: "processes", Name: "p", Layer: "home", Path: "/g/processes/p.yaml", Uses: []contract.DefinitionRef{ref("agents", "a"), ref("policies", "gone"), ref("verifies", "repo"), ref("workspace", "workspace")}},
+			{Kind: "processes", Name: "p", Layer: "home", Path: "/g/processes/p.yaml", Uses: []contract.DefinitionRef{ref("agents", "a"), ref("schemas", "gone"), ref("verifies", "repo"), ref("workspace", "workspace")}},
 			{Kind: "prompts", Name: "rules", Layer: "repository", Path: "/p/prompts/rules.md", UsedBy: []contract.DefinitionRef{ref("processes", "q")}},
 			{Kind: "processes", Name: "q", Layer: "home", Path: "/g/processes/q.yaml", Uses: []contract.DefinitionRef{ref("verifies", "gone"), ref("prompts", "rules"), ref("prompts", "lost")}},
 		},
@@ -1033,7 +1074,7 @@ process p               home       /g/processes/p.yaml
 │                                    (none)
 │                       home       /g/agents/a.toml
 │  └─ runtime rt        home       /g/runtimes/rt.yaml
-├─ policy gone          MISSING
+├─ schema gone          MISSING
 ├─ verification repo    repository /p/verifies/repo.yaml
 └─ workspace workspace  repository /p/workspace.yaml
 process q               home       /g/processes/q.yaml
@@ -1043,7 +1084,7 @@ process q               home       /g/processes/q.yaml
 unused (no process uses these)
    runtime rt2          home       /g/runtimes/rt2.yaml
    agent b              home       /g/agents/b.toml
-   policy spare         repository /p/policies/spare.yaml INVALID
+   schema spare         repository /p/schemas/spare.json INVALID
    verification spare   home       /g/verifies/spare.yaml
 settings OK: 1 processes
 `
@@ -1080,10 +1121,21 @@ func TestAgentCreateAsksOnlyToReplace(t *testing.T) {
 func TestAgentCreatePayload(t *testing.T) {
 	t.Parallel()
 	spy := &clientSpy{}
-	r := run(context.Background(), spy, "--home", "rel", "agent", "create", "x", "--runtime", "rt", "--model", "m", "--model-family", "f", "--effort", "high", "--session", "resumable", "--command", "/bin/c")
-	want := contract.Agent{Name: "x", Runtime: "rt", Model: "m", ModelFamily: "f", Effort: "high", Session: "resumable", Command: "/bin/c"}
+	r := run(context.Background(), spy, "--home", "rel", "agent", "create", "x", "--runtime", "rt", "--model", "m", "--model-family", "f", "--effort", "high", "--command", "/bin/c")
+	want := contract.Agent{Name: "x", Runtime: "rt", Model: "m", ModelFamily: "f", Effort: "high", Command: "/bin/c"}
 	if r.code != 0 || !reflect.DeepEqual(spy.agents, []contract.Agent{want}) || spy.config.Home != "/work/rel" {
 		t.Fatalf("result %+v, agents %+v, home %s", r, spy.agents, spy.config.Home)
+	}
+}
+
+// An agent holds no session (ADR-030 rule 1), so agent create takes none:
+// --session, which wrote one, is a usage error and nothing is written.
+func TestAgentCreateTakesNoSession(t *testing.T) {
+	t.Parallel()
+	spy := &clientSpy{}
+	r := run(context.Background(), spy, "agent", "create", "x", "--runtime", "rt", "--session", "resumable")
+	if r.code != cli.ExitUsage || len(spy.agents) != 0 {
+		t.Fatalf("result %+v, agents %+v", r, spy.agents)
 	}
 }
 
@@ -1176,8 +1228,9 @@ func TestWorkflowListAndShow(t *testing.T) {
 			Params: []contract.Param{{Name: "candidate", Default: "HEAD"}},
 			Inputs: []string{"candidate <- git.revision"},
 			FanOut: []contract.WorkflowNode{
-				{Name: "one", Process: contract.ProcessView{Name: "p", Agent: "a", Runtime: "rt", Primitives: []string{"Read"}}, Params: []string{"candidate"}},
+				{Name: "one", Process: contract.ProcessView{Name: "p", Agent: "a", Runtime: "rt", Primitives: []string{"Read"}, Withheld: []string{"repository.diff", "network"}}, Params: []string{"candidate"}},
 				{Name: "two", Process: contract.ProcessView{Name: "q", Refusal: "no agent"}},
+				{Name: "three", Process: contract.ProcessView{Name: "r", Agent: "a", Runtime: "rt", Withheld: []string{"network"}, Refusal: "required permissions would be withheld: repository.diff"}},
 			},
 			Join:       contract.WorkflowNode{Name: "merge", Process: contract.ProcessView{Name: "j", Agent: "a", Runtime: "rt"}},
 			Collection: "gathered",
@@ -1198,12 +1251,18 @@ inputs       candidate <- git.revision
 fan-out      one: process p, agent a (runtime rt)
   receives   params candidate
   plan       Read
+  withheld   repository.diff, network
              two: process q
   receives   params (none)
   plan       REFUSED: no agent
+             three: process r, agent a (runtime rt)
+  receives   params (none)
+  plan       REFUSED: required permissions would be withheld: repository.diff
+  withheld   network
 join         merge: process j, agent a (runtime rt)
   receives   the collection as input gathered, and nothing else
   plan       (none)
+  withheld   (none)
 `
 	if code != 0 || stdout.String() != want || !reflect.DeepEqual(spy.shown, []string{"w"}) {
 		t.Fatalf("show: %d\n%s\nwant\n%s", code, stdout.String(), want)

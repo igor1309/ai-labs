@@ -10,22 +10,14 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// Hierarchical documents (process, policy, verification, runtime mapping)
-// are YAML.
+// Hierarchical documents (process, verification, runtime mapping) are
+// YAML.
 
 const (
 	ProcessSchema = "agister.process/v1alpha1"
-	PolicySchema  = "agister.process-policy/v1alpha1"
 	RuntimeSchema = "agister.runtime/v1alpha1"
 	VerifySchema  = "agister.verify/v1alpha1"
 )
-
-// Policy is a reusable set of execution defaults.
-type Policy struct {
-	Name   string
-	Limits Limits
-	Source Source
-}
 
 // Param is a value supplied by the caller of a process.
 type Param struct {
@@ -67,8 +59,9 @@ type Verify struct {
 }
 
 // Repairs reports whether a failed run may be followed by a repair turn,
-// which resumes the call's session: an agent and runtime that cannot
-// continue sessions cannot run it.
+// which resumes the call's session: a call whose session may not be
+// resumed (CallSession), or whose runtime cannot resume one, cannot run
+// it.
 func (v *Verify) Repairs() bool { return v != nil && v.MaxAttempts > 1 }
 
 // Verification is a verification command as a document of its own, which
@@ -79,11 +72,10 @@ type Verification struct {
 	Source Source
 }
 
-// Process is a named agent call.
+// Process is named work. It names no agent: a workflow's node binds it to
+// one (ADR-030 rules 2 and 5).
 type Process struct {
 	Name        string
-	Agent       string
-	Policy      string
 	Instruction string
 	// Prompt names the prompt its calls are given as the input prompt, and
 	// Guidance the further prompts, each as the input guidance.<name>, in
@@ -103,7 +95,10 @@ type Process struct {
 	// resolved; unset: no verification, or a named one not resolved.
 	Verify     *Verify
 	VerifyName string // name of a verification definition, in place of the inline block
-	Limits     Limits // narrowing overrides
+	Limits     Limits // its own, within the service's ceilings (ADR-030 rule 4)
+	// Session says whether a call's session may be resumed, SessionFresh or
+	// SessionResumable (ADR-030 rule 3); unset: it may not (CallSession).
+	Session string
 	// Obsolete are the warnings for the fields it holds that ADR-025
 	// removed, which are read and ignored: workspace.setup, and verify.where
 	// in its inline block.
@@ -152,25 +147,18 @@ func checkSchema(value, schema string, p *problems) {
 	}
 }
 
-// ParsePolicy parses a process policy.
-func ParsePolicy(doc Document) (Policy, error) {
-	p := problemsOf(doc.Source)
-	root := parseOneYAML(doc.Bytes, p)
-	if root == nil {
-		return Policy{Name: doc.Source.Name, Source: doc.Source}, p.err("policy " + subjectName(doc.Source))
-	}
-	values := fields(root, "", append([]string{"schema", "name", "status"}, limitKeys...), p)
-	header(values, PolicySchema, doc.Source.Name, p)
-	limits, _, _ := parseLimits(values, []string{"allow"}, []string{"access", "scope"}, p)
-	return Policy{Name: doc.Source.Name, Limits: limits, Source: doc.Source}, p.err("policy " + subjectName(doc.Source))
-}
-
 // ParseProcess parses a process definition.
 func ParseProcess(doc Document) (Process, error) {
 	p := problemsOf(doc.Source)
+	process := parseProcess(doc, p)
+	return process, p.err("process " + subjectName(doc.Source))
+}
+
+// parseProcess parses a process definition, adding its problems to p.
+func parseProcess(doc Document, p *problems) Process {
 	root := parseOneYAML(doc.Bytes, p)
 	if root == nil {
-		return Process{Name: doc.Source.Name, Source: doc.Source}, p.err("process " + subjectName(doc.Source))
+		return Process{Name: doc.Source.Name, Source: doc.Source}
 	}
 	// Read by key, a second verify would replace the first, so a process
 	// could declare both forms (ADR-010 rule 2) and run the one it names
@@ -191,25 +179,31 @@ func ParseProcess(doc Document) (Process, error) {
 	if declared(root, "guidance") > 1 {
 		p.add("guidance", "is declared more than once: one list names the process's guidance")
 	}
-	values := fields(root, "", append([]string{"schema", "name", "status", "type", "uses", "policy", "prompt", "guidance", "input", "output", "verify", "skills"}, limitKeys...), p)
+	values := fields(root, "", append([]string{"schema", "name", "status", "type", "extends", "uses", "policy", "session", "prompt", "guidance", "input", "output", "verify", "skills"}, limitKeys...), p)
 	header(values, ProcessSchema, doc.Source.Name, p)
 	if value, _ := scalar(values["type"], "type", p); value != "process" {
 		p.add("type", `must be "process"`)
 	}
 
 	process := Process{Name: doc.Source.Name, Source: doc.Source}
-	uses := required(values, "uses", "", p)
-	if agent, ok := strings.CutPrefix(uses, "agent:"); ok && agent != "" {
-		process.Agent = agent
-	} else if uses != "" {
-		p.add("uses", `must be "agent:<name>"`)
+	// The base is composed under the process as it is read (ADR-030 rule
+	// 9): here it is only named.
+	if node, ok := values["extends"]; ok && baseName(node) == "" {
+		p.add("extends", `must be "process:<name>"`)
 	}
-	if node, ok := values["policy"]; ok {
-		reference, _ := scalar(node, "policy", p)
-		if policy, ok := strings.CutPrefix(reference, "process-policy:"); ok && policy != "" {
-			process.Policy = policy
-		} else {
-			p.add("policy", `must be "process-policy:<name>"`)
+	// A process names no agent (ADR-030 rule 2).
+	if _, ok := values["uses"]; ok {
+		p.add("uses", "a process names no agent (ADR-030 rule 2): name the agent on each workflow node that binds the process, and remove uses")
+	}
+	// Policies are gone: a process holds its own limits (ADR-030 rule 4).
+	if _, ok := values["policy"]; ok {
+		p.add("policy", "there are no policies (ADR-030): set the policy's fields on the process and remove policy")
+	}
+	// Whether its calls' session may be resumed is the process's to say
+	// (ADR-030 rule 3).
+	if node, ok := values["session"]; ok {
+		if mode, ok := scalar(node, "session", p); ok {
+			process.Session = sessionMode(mode, p)
 		}
 	}
 
@@ -301,7 +295,7 @@ func ParseProcess(doc Document) (Process, error) {
 		}
 	}
 
-	return process, p.err("process " + subjectName(doc.Source))
+	return process
 }
 
 // ParseVerify parses a verification: the fields of a process's inline
@@ -338,7 +332,7 @@ func verifyFields() []string {
 func parseVerify(values map[string]*yaml.Node, field string, p *problems) *Verify {
 	for _, key := range verifyKeys() {
 		if _, ok := values[key]; !ok {
-			p.add(join(field, key), "is required")
+			p.missing(join(field, key))
 		}
 	}
 	verify := &Verify{
@@ -422,7 +416,7 @@ func parseInputs(input map[string]*yaml.Node, p *problems) ([]Param, []Value) {
 			}
 		}
 		if value.Source == "" {
-			p.add(field+".source", "is required")
+			p.missing(field + ".source")
 		}
 		if formed && value.Source != FileSource && value.Source != "" {
 			p.add(field+".form", "applies to source %s only: a brief is read from a file", FileSource)

@@ -104,9 +104,9 @@ func Repair(instruction, command, ended string, output run.Output) string {
 }
 
 // Recovery is what a recovery turn receives (ADR-024 rules 2 and 4): the
-// policy's or the process's stale.recover instruction, then the evidence of
-// what went stale, which names the limit. It is the evidence only: what to
-// do about it is the instruction's to say.
+// process's stale.recover instruction, then the evidence of what went
+// stale, which names the limit. It is the evidence only: what to do about
+// it is the instruction's to say.
 func Recovery(instruction string, stale run.Stale) string {
 	sections := []string{strings.TrimSpace(instruction)}
 	call := func(title string) {

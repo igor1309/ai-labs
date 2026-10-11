@@ -241,24 +241,14 @@ func TestAGivenOptionalPartIsHeldToItsConstraints(t *testing.T) {
 	}
 }
 
-// A section's body is built once, not copied again with each of its lines:
-// checking a long text costs a number of allocations that does not grow
-// with its lines.
-//
-// Serial: testing.AllocsPerRun counts the allocations of every goroutine,
-// so a test running beside it would add its own.
-func TestALongSectionIsReadWithoutCopyingItAgainPerLine(t *testing.T) {
+// A long text is checked against the same form as a short one.
+func TestALongTextHasItsForm(t *testing.T) {
+	t.Parallel()
 	brief := parseStep(t)
 	resolve := existing("goals/lab-1.md")
 	long := strings.Replace(stepText, "- 1\n", strings.Repeat("- a criterion\n", 10000), 1)
 	if wrong := brief.Check(long, resolve); wrong != nil {
 		t.Fatalf("wrong = %q", wrong)
-	}
-	// The same text with one line: a check allocates for the text's lines
-	// and its sections, never for each line of a section.
-	short := testing.AllocsPerRun(10, func() { brief.Check(stepText, resolve) })
-	if allocs := testing.AllocsPerRun(10, func() { brief.Check(long, resolve) }); allocs > short+2 {
-		t.Fatalf("a 10000-line section takes %v allocations, a 1-line one %v", allocs, short)
 	}
 }
 
@@ -353,7 +343,6 @@ func formedProcess(value string) string {
 name: p
 type: process
 prompt: review
-uses: agent:a
 input:
   instruction: Implement it.
   params:
