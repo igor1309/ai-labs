@@ -83,7 +83,9 @@ again.
   the last passed; empty without verify), wall time, cost, the skills used
   (`name×n`, the times the run loaded it, when more than once) and the tool calls. A workflow's row shows its node count and
   its judge's rulings instead of implementor and skills. Process and status
-  filter the list. Runs whose record does not parse are counted under it.
+  filter the list. A run still running is accented: a tint across its row,
+  its start and status in the active colour. Runs whose record does not
+  parse are counted under it.
 - Clicking a run opens it over the page; Close, Escape or a click beside
   it closes it. Its head is the process, its status, cost and wall time,
   then when it ran (`4:07 PM – 4:10 PM, 10.10.26`), its agent and, small,
