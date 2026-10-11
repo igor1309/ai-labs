@@ -38,11 +38,11 @@ repository you will run in.
   verification, if it has one; the layer files each document it uses comes from,
   nearest first, its schema's among them; each composed document's leaf
   fields with their layers; its `prompt` and `guidance`; warnings;
-  and, when a call would be refused now, the reason. With `--agent <agent>` it shows
-  the process as that agent would run it.
+  and, when a call would be refused now, the reason. To see it on another
+  agent, show a workflow that binds it to that agent.
 - `agister workflow show <workflow>` shows the workflow's params and their
-  defaults, its fan-out nodes and its join, and for each node its process
-  and what the node receives.
+  defaults, its fan-out nodes and its join, or its one call, and for each
+  node its process, the agent it binds and what the node receives.
 - `agister check` verifies the composed settings. It exits 0 when they
   have no problem and 64 when they have one, prints each problem with what
   it refuses, and prints warnings. `agister check --tree` shows what
@@ -187,10 +187,22 @@ document only home has.
 ## Run
 
 ```sh
-agister run <process> --param <param>=<value> --json
 agister run <workflow> --param <param>=<value> --json
-agister run <process> --dir <worktree> --param <param>=<value> --json
+agister run <process> --param <param>=<value> --json
+agister run <workflow> --dir <worktree> --param <param>=<value> --json
 ```
+
+- A workflow binds each node's process to an agent; choose the agent by
+  the workflow you run. To implement, run a workflow of one call that
+  binds `implement` to the agent you mean, never the process `implement`
+  itself. Home names them `implement_<agent>`, such as `implement_opus`
+  or `implement_codex`; `agister workflow list` shows those your settings
+  have, and `agister workflow show <workflow>` the params and form of its
+  brief:
+
+  ```sh
+  agister run implement_opus --param brief=<file> --param candidate=HEAD --json
+  ```
 
 - Every call works in your worktree: the root of the git worktree that
   holds the launch directory, or the one `--dir` names, with that
@@ -211,10 +223,13 @@ agister run <process> --dir <worktree> --param <param>=<value> --json
   output, cost and the absolute path of each artifact. Without it, only
   the output is printed: JSON whenever the run has one, text only when the
   run completed. Progress goes to stderr either way.
-- For a process, `--agent <agent>` runs it with another agent of the
-  settings, and `--timeout <d>` and `--max-cost <usd>` set the call's
-  limits. A workflow takes params, `--goal`, `--answers` and `--dir` only:
-  each node is a run of its own, with its own process's agent and limits.
+- For a process, or a workflow of one call, `--timeout <d>` and
+  `--max-cost <usd>` set the call's limits; a workflow of one call is that
+  call's one run, and takes its process's params. A fan-out workflow
+  takes params, `--goal`, `--answers` and `--dir` only: each node is a run
+  of its own, with the agent the workflow binds and its process's limits.
+  To run a process on another agent, run a workflow that binds it to that
+  agent.
 - A process with a `workflow.collection` input, such as a review judge,
   runs only as a workflow's join, on the nodes' outputs: a call of it
   alone is refused. Run the workflow.
@@ -384,11 +399,15 @@ without it.
 ## Continue a run
 
 ```sh
+agister run <workflow> --continue <run-id> --param <param>=<value>
 agister run <process> --continue <run-id> --param <param>=<value>
 ```
 
 `--continue` resumes the session of a finished run, by the same agent,
-when the agent and its runtime allow it, in the same worktree. Pass the
+when the process, or else its agent, and the runtime allow it, in the
+same worktree. Continue a run of a workflow of one call, such as an
+`implement_*` run, with the same workflow: it continues only a run of a
+workflow's call of the same process, on the same agent. Pass the
 params again and launch from that worktree, or name it with `--dir`.
 Whichever run of the session you name, it resumes after the session's
 latest run, and applies nothing: that run's changes are already in the
@@ -397,7 +416,8 @@ worktree, repository and revision, HEAD is still at the revision, the
 worktree holds exactly what that run left there, and its `changes.patch`
 is as recorded. So is a latest run whose capture failed, and one that
 worked in a checkout before ADR-025. A latest run that pinned no revision
-is continued without the content check. A workflow cannot be continued.
+is continued without the content check. A fan-out workflow cannot be
+continued.
 
 ## Link a run to its goal and judgement
 
