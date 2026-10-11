@@ -189,7 +189,7 @@ test('a call recorded before runtimes compares with its configuration as -', () 
 test('completed, failed and interrupted show as marks; the other statuses as words', () => {
   assert.deepEqual(U.statusMark('completed'), { glyph: '✓', tone: 'ok' });
   assert.deepEqual(U.statusMark('failed'), { glyph: '⚠︎', tone: 'failed' });
-  assert.deepEqual(U.statusMark('interrupted'), { glyph: '⚠︎', tone: 'warn' });
+  assert.deepEqual(U.statusMark('interrupted'), { glyph: '⚠︎', tone: 'failed' });
   assert.equal(U.statusMark('running'), null);
   assert.equal(U.statusMark('lost'), null);
 });

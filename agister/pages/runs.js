@@ -108,12 +108,10 @@
   }
 
   // The mark a status shows as: a green check for completed, a red warning
-  // for failed, an amber one for interrupted; null for the others, which
-  // show as words.
+  // for failed or interrupted; null for the others, which show as words.
   function statusMark(status) {
     if (status === 'completed') return { glyph: '✓', tone: 'ok' };
-    if (status === 'failed') return { glyph: '⚠\uFE0E', tone: 'failed' };
-    if (status === 'interrupted') return { glyph: '⚠\uFE0E', tone: 'warn' };
+    if (failed(status)) return { glyph: '⚠\uFE0E', tone: 'failed' };
     return null;
   }
 
