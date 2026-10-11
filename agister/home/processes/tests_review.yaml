@@ -1,5 +1,5 @@
 schema: agister.process/v1alpha1
-name: tests_review_codex
+name: tests_review
 
 type: process
 extends: process:review

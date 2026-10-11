@@ -1,6 +1,6 @@
 schema: agister.process/v1alpha1
-name: clarity_review_codex
+name: adversarial_review
 
 type: process
 extends: process:review
-prompt: code-review-clarity
+prompt: code-review-adversarial

@@ -580,11 +580,11 @@ for (const project of ['agister', 'warder']) {
     assert.deepEqual(implement.guidance.map((g) => g.name), ['go-testing-seams', 'go-architecture']);
     const reviews = {
       adr_review_codex: ['code-review-adr', []],
-      adversarial_review_codex: ['code-review-adversarial', ['go-testing-seams', 'go-architecture']],
-      architecture_review_codex: ['code-review-architecture', ['go-testing-seams', 'go-architecture']],
-      clarity_review_codex: ['code-review-clarity', []],
-      intent_review_codex: ['code-review-intent', []],
-      tests_review_codex: ['code-review-tests', ['go-testing-seams']],
+      adversarial_review: ['code-review-adversarial', ['go-testing-seams', 'go-architecture']],
+      architecture_review: ['code-review-architecture', ['go-testing-seams', 'go-architecture']],
+      clarity_review: ['code-review-clarity', []],
+      intent_review: ['code-review-intent', []],
+      tests_review: ['code-review-tests', ['go-testing-seams']],
     };
     for (const [name, [prompt, guidance]] of Object.entries(reviews)) {
       const p = m.processes.find((x) => x.name === name);

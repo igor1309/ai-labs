@@ -23,10 +23,10 @@ import (
 // reason the repository's must differ from home's (ADR-027 rule 6). Every
 // other document of .agister is the repository's own.
 var projectReplacements = map[string]string{
-	"processes/implement":                 goGuidance,
-	"processes/architecture_review_codex": goGuidance,
-	"processes/adversarial_review_codex":  goGuidance,
-	"processes/tests_review_codex":        goGuidance,
+	"processes/implement":           goGuidance,
+	"processes/architecture_review": goGuidance,
+	"processes/adversarial_review":  goGuidance,
+	"processes/tests_review":        goGuidance,
 }
 
 // goGuidance is why the repository sets the guidance of a process of home.

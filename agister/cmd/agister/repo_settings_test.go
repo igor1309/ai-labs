@@ -142,15 +142,15 @@ var processAgents = func() map[string]agentProfile {
 		return profile
 	}
 	return map[string]agentProfile{
-		"implement":                 in(resumable, opus),
-		"adr_review_codex":          in(fresh, codex),
-		"adversarial_review_codex":  in(fresh, codex),
-		"advisor":                   in(fresh, codex),
-		"architecture_review_codex": in(fresh, codex),
-		"clarity_review_codex":      in(fresh, codex),
-		"intent_review_codex":       in(fresh, codex),
-		"tests_review_codex":        in(fresh, codex),
-		"review_judge":              in(fresh, opus),
+		"implement":           in(resumable, opus),
+		"adr_review_codex":    in(fresh, codex),
+		"adversarial_review":  in(fresh, codex),
+		"advisor":             in(fresh, codex),
+		"architecture_review": in(fresh, codex),
+		"clarity_review":      in(fresh, codex),
+		"intent_review":       in(fresh, codex),
+		"tests_review":        in(fresh, codex),
+		"review_judge":        in(fresh, opus),
 	}
 }()
 
@@ -161,15 +161,15 @@ var staleLimits = func() map[string]domain.StaleLimits {
 	implement := domain.StaleLimits{NoEvent: 21 * time.Minute, ToolCommand: 15 * time.Minute, RepeatedToolCalls: 5}
 	review := domain.StaleLimits{NoEvent: 10 * time.Minute, ToolCommand: 8 * time.Minute, RepeatedToolCalls: 5}
 	return map[string]domain.StaleLimits{
-		"implement":                 implement,
-		"adr_review_codex":          review,
-		"adversarial_review_codex":  review,
-		"advisor":                   review,
-		"architecture_review_codex": review,
-		"clarity_review_codex":      review,
-		"intent_review_codex":       review,
-		"tests_review_codex":        review,
-		"review_judge":              {NoEvent: 3 * time.Minute},
+		"implement":           implement,
+		"adr_review_codex":    review,
+		"adversarial_review":  review,
+		"advisor":             review,
+		"architecture_review": review,
+		"clarity_review":      review,
+		"intent_review":       review,
+		"tests_review":        review,
+		"review_judge":        {NoEvent: 3 * time.Minute},
 	}
 }()
 
@@ -183,15 +183,15 @@ var staleLimits = func() map[string]domain.StaleLimits {
 var requiredPermissions = func() map[string][]string {
 	review := []string{"repository.read", "repository.diff"}
 	return map[string][]string{
-		"implement":                 {"repository.read", "repository.write", "process.execute"},
-		"adr_review_codex":          review,
-		"adversarial_review_codex":  review,
-		"advisor":                   {"repository.read"},
-		"architecture_review_codex": review,
-		"clarity_review_codex":      review,
-		"intent_review_codex":       review,
-		"tests_review_codex":        review,
-		"review_judge":              nil,
+		"implement":           {"repository.read", "repository.write", "process.execute"},
+		"adr_review_codex":    review,
+		"adversarial_review":  review,
+		"advisor":             {"repository.read"},
+		"architecture_review": review,
+		"clarity_review":      review,
+		"intent_review":       review,
+		"tests_review":        review,
+		"review_judge":        nil,
 	}
 }()
 
@@ -567,22 +567,22 @@ func TestCodeReviewCollectsItsFiveReviews(t *testing.T) {
 	root, repo, home := onFakeRuntimes(t)
 	reviews, records := judgedReviews(t, home, repo, "code_review")
 	want := map[string]string{
-		"architecture": "architecture_review_codex completed",
-		"tests":        "tests_review_codex completed",
-		"adversarial":  "adversarial_review_codex completed",
-		"clarity":      "clarity_review_codex completed",
-		"intent":       "intent_review_codex completed",
+		"architecture": "architecture_review completed",
+		"tests":        "tests_review completed",
+		"adversarial":  "adversarial_review completed",
+		"clarity":      "clarity_review completed",
+		"intent":       "intent_review completed",
 	}
 	if !reflect.DeepEqual(reviews, want) {
 		t.Fatalf("code_review's judge collected %v, want %v", reviews, want)
 	}
 
 	for _, c := range []struct{ process, prompt string }{
-		{"architecture_review_codex", "code-review-architecture"},
-		{"tests_review_codex", "code-review-tests"},
-		{"adversarial_review_codex", "code-review-adversarial"},
-		{"clarity_review_codex", "code-review-clarity"},
-		{"intent_review_codex", "code-review-intent"},
+		{"architecture_review", "code-review-architecture"},
+		{"tests_review", "code-review-tests"},
+		{"adversarial_review", "code-review-adversarial"},
+		{"clarity_review", "code-review-clarity"},
+		{"intent_review", "code-review-intent"},
 		{"review_judge", "code-review-judge"},
 	} {
 		prompt, err := os.ReadFile(filepath.Join(root, homeFolder, "prompts", c.prompt+".md"))
@@ -600,8 +600,8 @@ func TestCodeReviewCollectsItsFiveReviews(t *testing.T) {
 		}
 	}
 
-	if output := parseProcess(t, root, "intent_review_codex").Output; output.Format != "json" || output.Schema != "review-result" {
-		t.Fatalf("intent_review_codex's output = %+v, want json of schema review-result", output)
+	if output := parseProcess(t, root, "intent_review").Output; output.Format != "json" || output.Schema != "review-result" {
+		t.Fatalf("intent_review's output = %+v, want json of schema review-result", output)
 	}
 	// The parsed process keeps no require_valid: it is read from the
 	// document, laid over the review base, which gives the output.
@@ -610,11 +610,11 @@ func TestCodeReviewCollectsItsFiveReviews(t *testing.T) {
 			RequireValid bool `yaml:"require_valid"`
 		} `yaml:"output"`
 	}
-	if err := yaml.Unmarshal(extendedProcess(t, root, "intent_review_codex").Bytes, &document); err != nil {
+	if err := yaml.Unmarshal(extendedProcess(t, root, "intent_review").Bytes, &document); err != nil {
 		t.Fatal(err)
 	}
 	if !document.Output.RequireValid {
-		t.Fatal("intent_review_codex's output.require_valid is not true, want its output required valid")
+		t.Fatal("intent_review's output.require_valid is not true, want its output required valid")
 	}
 }
 
@@ -630,10 +630,10 @@ func TestIntentReviewIsRefusedOffItsCandidate(t *testing.T) {
 	for _, entry := range readRuns(t, home) {
 		before[entry.Name()] = true
 	}
-	r := agister(t, home, repo, "run", "intent_review_codex", "--param", "base=main", "--param", "candidate=feature", "--param", "goal="+repoGoal)
+	r := agister(t, home, repo, "run", "intent_review", "--param", "base=main", "--param", "candidate=feature", "--param", "goal="+repoGoal)
 	const pinned = "a call works on the revision its process pins, and Agister does not move HEAD (ADR-025 rule 2)"
 	if r.code != cli.ExitRefused || !strings.Contains(r.stderr, pinned) {
-		t.Fatalf("intent_review_codex off its candidate: exit %d, stderr %q, want refused with %q", r.code, r.stderr, pinned)
+		t.Fatalf("intent_review off its candidate: exit %d, stderr %q, want refused with %q", r.code, r.stderr, pinned)
 	}
 	var created []string
 	for _, entry := range readRuns(t, home) {
@@ -1493,7 +1493,7 @@ func TestReviewPromptsCarryTheGoal(t *testing.T) {
 	}
 	says := []string{"The input goal says what the change is for", "are claims you check",
 		"Its scope exclusions are the owner's", "you cannot override it", "its scope"}
-	for _, name := range []string{"adr_review_codex", "adversarial_review_codex", "architecture_review_codex", "clarity_review_codex", "intent_review_codex", "tests_review_codex"} {
+	for _, name := range []string{"adr_review_codex", "adversarial_review", "architecture_review", "clarity_review", "intent_review", "tests_review"} {
 		if instruction := parseProcess(t, root, name).Instruction; !carries(instruction, says) {
 			t.Errorf("process %s's instruction does not say what its input goal is: it lacks one of %q:\n%s", name, says, instruction)
 		}
@@ -2261,19 +2261,19 @@ var reviewPermissions = []string{
 // reviewPrompts are the processes on the review base, each with its
 // prompt: code_review's reviewers and adr_review's.
 var reviewPrompts = map[string]string{
-	"adr_review_codex":          "code-review-adr",
-	"adversarial_review_codex":  "code-review-adversarial",
-	"architecture_review_codex": "code-review-architecture",
-	"clarity_review_codex":      "code-review-clarity",
-	"intent_review_codex":       "code-review-intent",
-	"tests_review_codex":        "code-review-tests",
+	"adr_review_codex":    "code-review-adr",
+	"adversarial_review":  "code-review-adversarial",
+	"architecture_review": "code-review-architecture",
+	"clarity_review":      "code-review-clarity",
+	"intent_review":       "code-review-intent",
+	"tests_review":        "code-review-tests",
 }
 
 // gainGuidance are the reviews whose instruction lacked the review base's
 // sentence on guidance, and has it on the base: the one intended change of
 // their resolution. The intent review lacked it as the ADR and clarity
 // reviews did.
-var gainGuidance = map[string]bool{"adr_review_codex": true, "clarity_review_codex": true, "intent_review_codex": true}
+var gainGuidance = map[string]bool{"adr_review_codex": true, "clarity_review": true, "intent_review": true}
 
 // guidanceSentence is the review base's sentence on guidance, by its short
 // phrases.
@@ -2523,10 +2523,10 @@ var goPrompts = []string{"go-testing-seams", "go-architecture"}
 // one. A process it does not name, the clarity and intent reviews and the
 // judge among them, gets none.
 var repositoryGuidance = map[string][]string{
-	"implement":                 goPrompts,
-	"architecture_review_codex": goPrompts,
-	"adversarial_review_codex":  goPrompts,
-	"tests_review_codex":        {"go-testing-seams"},
+	"implement":           goPrompts,
+	"architecture_review": goPrompts,
+	"adversarial_review":  goPrompts,
+	"tests_review":        {"go-testing-seams"},
 }
 
 // The repository's layer sets, for each process of repositoryGuidance and
@@ -2737,7 +2737,7 @@ func TestImplementersAreGivenTheGoPrompts(t *testing.T) {
 }
 
 // reviewers are the fan-out processes of code_review.
-var reviewers = []string{"architecture_review_codex", "tests_review_codex", "adversarial_review_codex", "clarity_review_codex", "intent_review_codex"}
+var reviewers = []string{"architecture_review", "tests_review", "adversarial_review", "clarity_review", "intent_review"}
 
 // Each review of the home folder, launched at the root and in each
 // project, gives its agent the guidance repositoryGuidance names for it,

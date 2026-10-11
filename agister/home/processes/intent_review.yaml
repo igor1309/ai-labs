@@ -1,6 +1,6 @@
 schema: agister.process/v1alpha1
-name: adversarial_review_codex
+name: intent_review
 
 type: process
 extends: process:review
-prompt: code-review-adversarial
+prompt: code-review-intent
