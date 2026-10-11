@@ -209,28 +209,26 @@ test('a purpose is the first sentence of its text', () => {
 const settings = {
   'service.toml': 'max_timeout = "1h"\nmax_attempts = 1\nmax_verify_attempts = 3\npermissions = ["a", "b"]\n',
   agents: {
-    'opus.toml': 'name = "opus"\nruntime = "claude-code"\nmodel = "opus"\neffort = "high"\nsession = "resumable"\n',
-    'sol.toml': 'name = "sol"\nruntime = "codex"\nmodel = "gpt"\neffort = "high"\nsession = "fresh-only"\n',
+    'opus.toml': 'name = "opus"\nruntime = "claude-code"\nmodel = "opus"\neffort = "high"\n',
+    'sol.toml': 'name = "sol"\nruntime = "codex"\nmodel = "gpt"\neffort = "high"\n',
     'notes.md': 'ignored',
   },
   runtimes: {
     'codex.yaml': 'name: codex\nadapter: codex\ncontract: codex/2\nprimitives:\n  items:\n' +
       '    ro: {verified: ["0.158."]}\n    rw: {verified: ["0.158.", "0.159."]}\n',
   },
-  policies: {
-    'review.yaml': '# Read-only review. More.\nname: review\nworkspace: {access: read-only}\ntimeout: 20m\n' +
-      'tools:\n  allow: [repository.read]\nisolation:\n  deny: [network]\n',
-    'bad.yaml': 'name: bad\n  oops: 1\n',
-  },
   processes: {
-    'implement.yaml': 'name: implement\nuses: agent:opus\npolicy: process-policy:missing\ninput:\n' +
+    'implement.yaml': 'name: implement\nsession: resumable\ninput:\n' +
       '  instruction: >-\n    Implement the brief. Then report.\n  params:\n    brief: {}\n' +
       '    candidate: {default: HEAD}\nverify:\n  max_attempts: 3\noutput: {schema: implementation}\n',
-    'review.yaml': '# Reviews a change.\nname: review\nuses: agent:sol\npolicy: process-policy:review\n',
+    'review.yaml': '# Reviews a change.\nname: review\nworkspace: {access: read-only, scope: candidate}\ntimeout: 20m\n' +
+      'max_cost_usd: 2\nretry: {max_attempts: 2}\ntools:\n  allow: [repository.read, repository.diff]\n  require: [repository.read]\n' +
+      'isolation:\n  deny: [network]\n',
+    'bad.yaml': 'name: bad\n  oops: 1\n',
   },
   workflows: {
-    'panel.yaml': '# A panel. Details.\nname: panel\nfan_out:\n  - {node: r, uses: process:review}\n' +
-      'join: {node: j, uses: process:judge}\n',
+    'panel.yaml': '# A panel. Details.\nname: panel\nfan_out:\n  - {node: r, uses: process:review, agent: sol}\n' +
+      'join: {node: j, uses: process:judge, agent: opus}\n',
   },
   schemas: { 'implementation.json': '{}' },
 };
@@ -238,20 +236,23 @@ const settings = {
 test('loadAgister reads each kind into its dashboard fields', async () => {
   const m = await C.loadAgister(memDir('.agister', settings));
   assert.deepEqual(m.service, { maxTimeout: '1h', maxAttempts: 1, maxVerifyAttempts: 3, permissions: 2 });
-  assert.deepEqual(m.agents.map((a) => [a.name, a.runtime, a.model, a.effort, a.session]), [
-    ['opus', 'claude-code', 'opus', 'high', 'resumable'],
-    ['sol', 'codex', 'gpt', 'high', 'fresh-only'],
+  assert.deepEqual(m.agents.map((a) => [a.name, a.runtime, a.model, a.effort]), [
+    ['opus', 'claude-code', 'opus', 'high'],
+    ['sol', 'codex', 'gpt', 'high'],
   ]);
+  for (const a of m.agents) assert.ok(!('session' in a), a.name);
   const impl = m.processes.find((p) => p.name === 'implement');
   assert.equal(impl.purpose, 'Implement the brief.');
-  assert.equal(impl.agent, 'opus');
-  assert.equal(impl.policy, 'missing');
+  assert.equal(impl.session, 'resumable');
+  for (const gone of ['agent', 'policy']) assert.ok(!(gone in impl), gone);
   assert.deepEqual(impl.params, [{ name: 'brief', default: undefined }, { name: 'candidate', default: 'HEAD' }]);
   assert.deepEqual(impl.verify, { maxAttempts: 3 });
   assert.equal(impl.output, 'implementation');
-  const review = m.policies.find((p) => p.name === 'review');
-  assert.deepEqual([review.purpose, review.access, review.timeout, review.allow, review.deny],
-    [undefined, 'read-only', '20m', ['repository.read'], ['network']]);
+  // ADR-030 rules 3 and 4: a process holds its own limits and session.
+  const review = m.processes.find((p) => p.name === 'review');
+  assert.deepEqual([review.access, review.scope, review.timeout, review.maxCostUsd, review.attempts, review.allow, review.require, review.deny, review.session],
+    ['read-only', 'candidate', '20m', 2, 2, ['repository.read', 'repository.diff'], ['repository.read'], ['network'], null]);
+  assert.equal(m.policies, undefined);
   assert.deepEqual(m.runtimes[0].verified, ['0.158.', '0.159.']);
   assert.equal(m.workflows[0].purpose, undefined, 'a comment is no purpose');
   assert.deepEqual(m.schemas.map((x) => x.name), ['implementation']);
@@ -261,24 +262,26 @@ test('loadAgister links users and marks names defined outside the folder', async
   const m = await C.loadAgister(memDir('.agister', settings));
   const agent = (n) => m.agents.find((a) => a.name === n);
   assert.deepEqual([agent('opus').runtimeOutside, agent('sol').runtimeOutside], [true, false]);
-  assert.deepEqual(agent('sol').usedBy, ['review']);
+  // An agent is used by the workflows whose nodes bind it (ADR-030 rule 5).
+  assert.deepEqual([agent('sol').usedBy, agent('opus').usedBy], [['panel'], ['panel']]);
   const impl = m.processes.find((p) => p.name === 'implement');
-  assert.deepEqual([impl.agentOutside, impl.policyOutside, impl.outputOutside], [false, true, false]);
+  assert.equal(impl.outputOutside, false);
   assert.deepEqual(m.schemas[0].usedBy, ['implement']);
   assert.deepEqual(m.runtimes[0].usedBy, ['sol']);
   assert.deepEqual(m.processes.find((p) => p.name === 'review').usedBy, ['panel']);
-  assert.deepEqual(m.policies.find((p) => p.name === 'review').usedBy, ['review']);
-  assert.deepEqual(m.workflows[0].fanOut, [{ node: 'r', process: 'review', agent: null, outside: false }]);
-  assert.deepEqual(m.workflows[0].join, { node: 'j', process: 'judge', agent: null, outside: true });
+  assert.deepEqual(m.processes.find((p) => p.name === 'review').agents, ['sol']);
+  assert.deepEqual(m.workflows[0].fanOut, [{ node: 'r', process: 'review', agent: 'sol', outside: false }]);
+  assert.deepEqual(m.workflows[0].join, { node: 'j', process: 'judge', agent: 'opus', outside: true });
 });
 
 // ADR-030 rule 5: a node names the agent its call runs on, by its name
-// alone, in a flow map or a block map; a node that names none has none of
-// its own. A process may name no agent, which marks none outside.
-test('a workflow node keeps the agent it names, and a process may name none', async () => {
+// alone, in a flow map or a block map; a node that names none has none,
+// which Agister refuses. A process names no agent: it is bound to the
+// agents its nodes name.
+test('a workflow node keeps the agent it names, and a process is bound to its nodes\' agents', async () => {
   const m = await C.loadAgister(memDir('.agister', {
     agents: { 'sol.toml': 'name = "sol"\n' },
-    processes: { 'check.yaml': 'name: check\nuses: agent:sol\n', 'bare.yaml': 'name: bare\n' },
+    processes: { 'check.yaml': 'name: check\n', 'bare.yaml': 'name: bare\n' },
     workflows: {
       'panel.yaml': 'name: panel\nfan_out:\n  - {node: one, uses: process:check, agent: opus}\n' +
         '  - node: two\n    uses: process:bare\n    agent: sol\n  - {node: three, uses: process:check}\n' +
@@ -292,7 +295,9 @@ test('a workflow node keeps the agent it names, and a process may name none', as
   ]);
   assert.deepEqual(m.workflows[0].join, { node: 'j', process: 'bare', agent: 'opus', outside: false });
   const bare = m.processes.find((p) => p.name === 'bare');
-  assert.deepEqual([bare.agent, bare.agentOutside, bare.usedBy], [null, false, ['panel']]);
+  assert.deepEqual([bare.agents, bare.usedBy], [['sol', 'opus'], ['panel']]);
+  assert.deepEqual(m.processes.find((p) => p.name === 'check').agents, ['opus']);
+  assert.deepEqual(m.agents[0].usedBy, ['panel']);
 });
 
 // ADR-030 rule 6: a workflow of one call has that call as its one node,
@@ -312,10 +317,10 @@ test('a workflow of one call keeps its node and takes its process params', async
 
 test('a file that does not parse becomes an error item; the rest still load', async () => {
   const m = await C.loadAgister(memDir('.agister', settings));
-  const bad = m.policies.find((p) => p.name === 'bad');
+  const bad = m.processes.find((p) => p.name === 'bad');
   assert.equal(bad.file, 'bad.yaml');
   assert.match(bad.error, /line 2/);
-  assert.equal(m.policies.length, 2);
+  assert.equal(m.processes.length, 3);
 });
 
 test('a repo goes over Agister home: same kind and file name replaces, the rest adds up', async () => {
@@ -323,20 +328,18 @@ test('a repo goes over Agister home: same kind and file name replaces, the rest 
     'service.toml': 'max_attempts = 2\n',
     agents: { 'opus.toml': 'name = "opus"\nmodel = "opus-old"\n', 'haiku.toml': 'name = "haiku"\nruntime = "claude-code"\n' },
     runtimes: { 'claude-code.yaml': 'name: claude-code\nadapter: claude-code\n' },
-    policies: { 'review.yaml': 'name: review\n' },
   });
   const repo = memDir('.agister', {
     agents: { 'opus.toml': 'name = "opus"\nmodel = "opus"\nruntime = "claude-code"\n' },
-    processes: { 'p.yaml': 'name: p\nuses: agent:opus\npolicy: process-policy:review\noutput: {schema: missing}\n' },
+    processes: { 'p.yaml': 'name: p\noutput: {schema: missing}\n' },
   });
   const m = await C.loadComposed(home, repo);
   assert.deepEqual(m.agents.map((a) => [a.name, a.model, a.source, !!a.overrides]),
     [['haiku', null, 'home', false], ['opus', 'opus', 'repo', true]]);
   assert.deepEqual(m.service, { maxTimeout: null, maxAttempts: 2, maxVerifyAttempts: null, permissions: 0, source: 'home' });
   const p = m.processes[0];
-  assert.deepEqual([p.source, p.agentOutside, p.policyOutside, p.outputOutside], ['repo', false, false, true]);
+  assert.deepEqual([p.source, p.outputOutside], ['repo', true]);
   assert.deepEqual(m.agents.find((a) => a.name === 'opus').runtimeOutside, false);
-  assert.deepEqual(m.policies[0].usedBy, ['p']);
 
   const own = await C.loadComposed(memDir('.agister', { 'service.toml': 'max_attempts = 2\n' }),
     memDir('.agister', { 'service.toml': 'max_attempts = 1\n' }));
@@ -348,7 +351,7 @@ test('a repo goes over Agister home: same kind and file name replaces, the rest 
 // by default. The obsolete workspace.yaml is not read, and neither the
 // process's setup nor a verification's where is shown.
 test('each process shows what its call needs of the caller\'s worktree', async () => {
-  const process = (name, workspace) => `name: ${name}\nuses: agent:a\nworkspace:\n${workspace}`;
+  const process = (name, workspace) => `name: ${name}\nworkspace:\n${workspace}`;
   const processes = {
     'fix.yaml': process('fix', '  revision: rev\n  clean: true\n  setup: {command: ./own.sh, timeout: 30s}\n'),
     'review.yaml': process('review', '  revision: rev\n'),
@@ -356,7 +359,7 @@ test('each process shows what its call needs of the caller\'s worktree', async (
     'title.yaml': process('title', '  revision: rev\n  clean: True\n'),
     'quoted.yaml': process('quoted', '  clean: "true"\n'),
     'none.yaml': process('none', '  access: read-only\n'),
-    'checks.yaml': 'name: checks\nuses: agent:a\nverify:\n  command: make test\n  max_attempts: 2\n  where: workspace\n',
+    'checks.yaml': 'name: checks\nverify:\n  command: make test\n  max_attempts: 2\n  where: workspace\n',
   };
   const workspace = 'schema: agister.workspace/v1alpha1\nmode: in-place\nprecheck: {command: ./check.sh, timeout: 1m}\n';
   const m = await C.loadComposed(memDir('.agister', { 'workspace.yaml': workspace }), memDir('.agister', { 'workspace.yaml': workspace, processes }));
@@ -379,7 +382,7 @@ test('each process shows what its call needs of the caller\'s worktree', async (
 // ADR-010: a process names its verification, found in the repo before home.
 test('a named verification is resolved from the composed settings, or marked outside', async () => {
   const home = {
-    processes: { 'implement.yaml': 'name: implement\nuses: agent:opus\nverify: verify:repo\n' },
+    processes: { 'implement.yaml': 'name: implement\nverify: verify:repo\n' },
   };
   const repo = { verifies: { 'repo.yaml': 'name: repo\ncommand: make test\nmax_attempts: 2\n' } };
   const m = await C.loadComposed(memDir('.agister', home), memDir('.agister', repo));
@@ -394,7 +397,7 @@ test('a named verification is resolved from the composed settings, or marked out
 // sources do not name prompts in the view.
 test('prompt and guidance are found in the composed settings, or marked outside', async () => {
   const home = {
-    processes: { 'review.yaml': 'name: review\nuses: agent:opus\nprompt: review\nguidance: [style]\ninput:\n  values:\n    obsolete: {source: prompt, name: obsolete, optional: true}\n' },
+    processes: { 'review.yaml': 'name: review\nprompt: review\nguidance: [style]\ninput:\n  values:\n    obsolete: {source: prompt, name: obsolete, optional: true}\n' },
     prompts: { 'review.md': 'Home review.\n', 'style.md': 'Home style.\n' },
   };
   const repo = { prompts: { 'review.md': 'Repo review.\n' } };
@@ -415,7 +418,7 @@ test('prompt and guidance are found in the composed settings, or marked outside'
 // says which processes and workflows name it.
 test('the brief forms a process and a workflow name are found in the composed settings, or marked outside', async () => {
   const home = {
-    processes: { 'implement.yaml': 'name: implement\nuses: agent:opus\ninput:\n  instruction: Implement.\n  values:\n    brief: {source: file, path: "${param.brief}", form: [goal, step]}\n    notes: {source: file, path: notes.md, form: [goal]}\n    plain: {source: file, path: plain.md}\n' },
+    processes: { 'implement.yaml': 'name: implement\ninput:\n  instruction: Implement.\n  values:\n    brief: {source: file, path: "${param.brief}", form: [goal, step]}\n    notes: {source: file, path: notes.md, form: [goal]}\n    plain: {source: file, path: plain.md}\n' },
     workflows: { 'review.yaml': 'name: review\ninput:\n  values:\n    goal: {source: file, path: "${param.goal}", form: [goal]}\nfan_out:\n  - {node: one, uses: process:implement}\njoin: {node: j, uses: process:implement}\n' },
     briefs: {
       'goal.yaml': '# The goal: what a piece of work is for.\nname: goal\nparts:\n  - {heading: "## Intent", required: true}\n  - {heading: "## Sources", required: false}\ntemplate: |\n  ## Intent\n',
@@ -439,8 +442,9 @@ test('the brief forms a process and a workflow name are found in the composed se
 });
 
 // ADR-021: an agent and a process name skills, each a folder of
-// skills/, found in the repo before home; a process's call gets its own,
-// then its agent's, each once. The skills are the server's inventory of
+// skills/, found in the repo before home; a node's call gets its process's,
+// then those of the agent the node binds, so a skill is used by each process
+// that names it or is bound to an agent that does. The skills are the server's inventory of
 // both layers (api/skills' settings), not the folder's files (D-16): one
 // that fails its checks is there all the same.
 test('an agent\'s and a process\'s skills are found in the composed settings, or marked outside', async () => {
@@ -454,7 +458,8 @@ test('an agent\'s and a process\'s skills are found in the composed settings, or
   ];
   const home = {
     agents: { 'opus.toml': 'name = "opus"\nruntime = "claude-code"\nskills = ["go", "plan", "gone", "go"]\n' },
-    processes: { 'review.yaml': 'name: review\nuses: agent:opus\nskills: [plan, style, ghost]\ninput:\n  instruction: Review.\n' },
+    processes: { 'review.yaml': 'name: review\nskills: [plan, style, ghost]\ninput:\n  instruction: Review.\n' },
+    workflows: { 'review_opus.yaml': 'name: review_opus\ncall: {node: review, uses: process:review, agent: opus}\n' },
     // Files under skills/ are not what the skills are.
     skills: { ghost: { 'SKILL.md': '---\nname: ghost\ndescription: D.\n---\n' } },
   };
@@ -478,7 +483,7 @@ test('an agent\'s and a process\'s skills are found in the composed settings, or
     found('style', 'home', false, failed, 'missing', null),
     { name: 'ghost', outside: true },
   ]);
-  assert.deepEqual(review.callSkills.map((x) => x.name), ['plan', 'style', 'ghost', 'go', 'gone']);
+  assert.deepEqual(review.agents, ['opus']);
 
   // One layer alone takes its inventory as it is.
   const tilde = await C.loadAgister(memDir('.agister', home), inventory.filter((s) => s.scope === 'home'));
@@ -487,19 +492,19 @@ test('an agent\'s and a process\'s skills are found in the composed settings, or
 
   const alone = await C.loadAgister(memDir('.agister', { agents: home.agents, processes: home.processes }));
   assert.deepEqual(alone.agents[0].skills.map((x) => [x.name, x.outside]), [['go', true], ['plan', true], ['gone', true]]);
-  assert.deepEqual(alone.processes[0].callSkills.map((x) => [x.name, x.outside]),
-    [['plan', true], ['style', true], ['ghost', true], ['go', true], ['gone', true]]);
+  assert.deepEqual(alone.processes[0].skills.map((x) => [x.name, x.outside]),
+    [['plan', true], ['style', true], ['ghost', true]]);
 });
 
 test('missing folders and service.toml read as empty', async () => {
   const m = await C.loadAgister(memDir('.agister', {}));
-  assert.deepEqual(m, { service: null, workflows: [], processes: [], agents: [], policies: [], runtimes: [], schemas: [], verifies: [], prompts: [], briefs: [], skills: [] });
+  assert.deepEqual(m, { service: null, workflows: [], processes: [], agents: [], runtimes: [], schemas: [], verifies: [], prompts: [], briefs: [], skills: [] });
 });
 
 for (const path of ['.agister', 'agister/home', 'agister/examples/settings']) {
   test(`the settings in ${path} load without errors`, async () => {
     const m = await C.loadAgister(diskDir(join(repoRoot, path)));
-    const items = [...m.workflows, ...m.processes, ...m.agents, ...m.policies, ...m.runtimes, ...m.verifies, ...m.briefs];
+    const items = [...m.workflows, ...m.processes, ...m.agents, ...m.runtimes, ...m.verifies, ...m.briefs];
     assert.ok(items.length > 0);
     assert.deepEqual(items.filter((x) => x.error).map((x) => `${x.file}: ${x.error}`), []);
     assert.ok(!m.service?.error, m.service?.error);
@@ -561,8 +566,8 @@ for (const project of ['agister', 'warder']) {
     assert.ok(m.workflows.length > 0);
     for (const p of m.processes) {
       assert.ok(!p.error, `${p.file}: ${p.error}`);
-      assert.deepEqual([p.agentOutside, p.policyOutside, p.outputOutside], [false, false, false], p.name);
-      assert.equal(p.agent, null, p.name);
+      assert.equal(p.outputOutside, false, p.name);
+      for (const gone of ['agent', 'policy']) assert.ok(!(gone in p), `${p.name}: ${gone}`);
       assert.ok(p.base || (p.prompt && !p.prompt.outside), p.name);
       for (const prompt of p.guidance) assert.equal(prompt.outside, false, `${p.name}: ${prompt.name}`);
       for (const form of p.forms) assert.equal(form.outside, false, `${p.name}: ${form.name}`);
@@ -590,11 +595,13 @@ for (const project of ['agister', 'warder']) {
     };
     for (const [name, [prompt, guidance]] of Object.entries(reviews)) {
       const p = m.processes.find((x) => x.name === name);
-      assert.deepEqual([p.extends, p.agent, p.policy, p.output, p.prompt.name, p.guidance.map((g) => g.name)],
-        ['review', null, null, 'review-result', prompt, guidance], name);
+      assert.deepEqual([p.extends, p.access, p.output, p.prompt.name, p.guidance.map((g) => g.name)],
+        ['review', 'read-only', 'review-result', prompt, guidance], name);
     }
-    assert.deepEqual(m.policies, []);
-    assert.equal(m.processes.find((p) => p.name === 'review').base, true);
+    const base = m.processes.find((p) => p.name === 'review');
+    assert.equal(base.base, true);
+    assert.deepEqual(base.extendedBy.sort(), Object.keys(reviews).sort());
+    assert.equal(implement.session, 'resumable');
   });
 }
 
@@ -613,7 +620,7 @@ test('the reported model keeps three layers, prompt and guidance, and document e
   const processLayers = [
     { layer: 'project', path: '/r/docs/.agister/processes/p.yaml', fields: ['guidance'] },
     { layer: 'repository', path: '/r/.agister/processes/p.yaml', fields: [] },
-    { layer: 'home', path: '/h/processes/p.yaml', fields: ['name', 'prompt', 'uses', 'verify'] },
+    { layer: 'home', path: '/h/processes/p.yaml', fields: ['name', 'prompt', 'verify'] },
   ];
   const sources = {
     'processes/p.yaml': { layers: processLayers },
@@ -622,7 +629,7 @@ test('the reported model keeps three layers, prompt and guidance, and document e
     'verifies/repo.yaml': { layers: [{ layer: 'project', path: '/r/docs/.agister/verifies/repo.yaml', fields: ['command'] }] },
   };
   const m = await C.loadReported(memDir('.agister', {
-    processes: { 'p.yaml': 'name: p\nprompt: main\nguidance: [missing]\nuses: agent:a\nverify: verify:repo\n' },
+    processes: { 'p.yaml': 'name: p\nprompt: main\nguidance: [missing]\nverify: verify:repo\n' },
     prompts: { 'main.md': 'Main.' },
     verifies: { 'repo.yaml': 'command: cd docs && make test\nmax_attempts: 2\n' },
   }), sources, [

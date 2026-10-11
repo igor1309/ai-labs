@@ -435,7 +435,7 @@ test('an opened run shows its facts, a workflow its nodes as a table, and the re
   await settle();
   assert.deepEqual(p.facts(), {
     implementor: ['claude-code 2.1 · opus · high effort · the runtime reported claude-opus-5-5'],
-    policy: ['read-write workspace · 20m 0s · $5.00 cap · scope candidate'],
+    limits: ['read-write workspace · 20m 0s · $5.00 cap · scope candidate'],
     verify: ['2/3 ✓'],
     timing: ['turn 1m 40s · runtime 412ms'],
     activity: ['12 tool calls'],
@@ -744,10 +744,10 @@ test('a process card shows what its call needs of the caller\'s worktree', async
   const files = {
     ...agent,
     'workspace.yaml': 'schema: agister.workspace/v1alpha1\nsetup: {command: [}\n',
-    'processes/fix.yaml': 'name: fix\nuses: agent:opus\nworkspace:\n  revision: rev\n  clean: true\n  setup: {command: ./own.sh, timeout: 30s}\n',
-    'processes/review.yaml': 'name: review\nuses: agent:opus\nworkspace:\n  revision: rev\n',
-    'processes/tidy.yaml': 'name: tidy\nuses: agent:opus\nworkspace:\n  clean: true\n',
-    'processes/ask.yaml': 'name: ask\nuses: agent:opus\n',
+    'processes/fix.yaml': 'name: fix\nworkspace:\n  revision: rev\n  clean: true\n  setup: {command: ./own.sh, timeout: 30s}\n',
+    'processes/review.yaml': 'name: review\nworkspace:\n  revision: rev\n',
+    'processes/tidy.yaml': 'name: tidy\nworkspace:\n  clean: true\n',
+    'processes/ask.yaml': 'name: ask\n',
   };
   const p = page({ answers: { 'api/settings': () => respond({ path: '~', dir: '/u/.agister', home: true, files }) } });
   await p.started;
@@ -768,43 +768,72 @@ test('a process card shows what its call needs of the caller\'s worktree', async
   assert.doesNotMatch(p.$('dashboard').textContent, /Workspace settings|workspace\.yaml/);
 });
 
-// README, Settings: a process that names no policy holds its own workspace
-// access, read-only when it sets none, as Agister composes it: its card
-// and its workflow step show that, and mark no policy missing. A policy it
-// names and these settings lack is still marked.
-test('a process that names no policy shows its own workspace access', async () => {
+// ADR-030 rules 3 and 4: a process holds its own limits, read-only when
+// it sets no access, and its session, fresh-only when it sets none: its
+// card and its workflow step show them.
+test('a process shows its own limits and session', async () => {
   const files = {
     ...agent,
-    'policies/review.yaml': 'name: review\nworkspace: {access: read-only}\ntimeout: 20m\n',
-    'processes/edit.yaml': 'name: edit\nuses: agent:opus\nworkspace: {access: read-write}\n',
-    'processes/ask.yaml': 'name: ask\nuses: agent:opus\n',
-    'processes/review.yaml': 'name: review\nuses: agent:opus\npolicy: process-policy:review\nworkspace: {access: read-write}\n',
-    'processes/lost.yaml': 'name: lost\nuses: agent:opus\npolicy: process-policy:gone\n',
-    'processes/write.yaml': 'name: write\nuses: agent:opus\nworkspace: {access: read-write}\n',
-    'processes/read.yaml': 'name: read\nuses: agent:opus\n',
-    'workflows/both.yaml': 'name: both\nfan_out:\n  - {node: w, uses: process:write}\njoin: {node: r, uses: process:read}\n',
+    'processes/edit.yaml': 'name: edit\nsession: resumable\nworkspace: {access: read-write, scope: candidate}\ntimeout: 45m\n' +
+      'max_cost_usd: 2\nretry: {max_attempts: 1}\ntools:\n  allow: [repository.read, repository.write]\n  require: [repository.write]\n' +
+      'isolation:\n  deny: [network]\n',
+    'processes/ask.yaml': 'name: ask\n',
+    'processes/write.yaml': 'name: write\nworkspace: {access: read-write}\ntimeout: 20m\n',
+    'processes/read.yaml': 'name: read\nsession: resumable\n',
+    'workflows/both.yaml': 'name: both\nfan_out:\n  - {node: w, uses: process:write, agent: opus}\njoin: {node: r, uses: process:read, agent: opus}\n',
   };
   const p = page({ answers: { 'api/settings': () => respond({ path: '~', dir: '/u/.agister', home: true, files }) } });
   await p.started;
-  const policy = (name) => {
+  const fact = (name, label) => {
     const nodes = p.$('dashboard').querySelector(`article#process-${name} div.facts`).children;
-    return nodes[nodes.findIndex((n) => n.textContent === 'policy') + 1];
+    return nodes[nodes.findIndex((n) => n.textContent === label) + 1];
   };
-  assert.equal(policy('edit').textContent, 'none — read-write workspace');
-  assert.equal(policy('edit').querySelector('span.access-read-write').textContent, 'read-write workspace');
-  assert.equal(policy('ask').textContent, 'none — read-only workspace');
-  assert.equal(policy('ask').querySelector('span.access-read-only').textContent, 'read-only workspace');
-  for (const name of ['edit', 'ask']) assert.equal(policy(name).querySelector('span.missing'), null, name);
-  // Its policy's access, not its own: the process may only narrow it.
-  assert.equal(policy('review').textContent, 'review — read-only workspace, 20mallows: nothing');
-  assert.equal(policy('lost').querySelector('span.missing').textContent, 'gone (missing policy)');
+  assert.equal(fact('edit', 'limits').textContent,
+    'read-write workspace, 45m, $2 cap, 1 attempt, scope candidaterequires: repository.writeallows: repository.read, repository.writedenies: network');
+  assert.equal(fact('edit', 'limits').querySelector('span.access-read-write').textContent, 'read-write workspace');
+  assert.equal(fact('edit', 'session').textContent, 'resumable: a run can be continued (--continue)');
+  assert.equal(fact('ask', 'limits').textContent, 'read-only workspaceallows: nothing');
+  assert.equal(fact('ask', 'session').textContent, 'fresh-only: every call starts fresh');
+  for (const name of ['edit', 'ask']) {
+    assert.equal(fact(name, 'limits').querySelector('span.missing'), null, name);
+    const labels = p.$('dashboard').querySelector(`article#process-${name} div.facts`).children.map((n) => n.textContent);
+    assert.ok(!labels.includes('policy'), name);
+  }
 
   const [write, read] = p.$('dashboard').querySelector('article#workflow-both').querySelectorAll('div.step');
   const meta = (step) => step.querySelector('div.step-meta').children[1];
-  assert.equal(meta(write).textContent, 'policy none · read-write workspace');
+  assert.equal(meta(write).textContent, 'limits read-write workspace · 20m');
   assert.equal(meta(write).querySelector('span.access-read-write').textContent, 'read-write workspace');
-  assert.equal(meta(read).textContent, 'policy none · read-only workspace');
-  for (const step of [write, read]) assert.equal(step.querySelector('span.missing'), null);
+  assert.equal(meta(read).textContent, 'limits read-only workspace');
+  const session = (step) => {
+    const nodes = step.querySelector('div.facts').children;
+    return nodes[nodes.findIndex((n) => n.textContent === 'session') + 1].textContent;
+  };
+  assert.deepEqual([session(write), session(read)],
+    ['fresh-only: every call starts fresh', 'resumable: a run can be continued (--continue)']);
+  assert.doesNotMatch(p.$('dashboard').textContent, /polic/i);
+});
+
+// ADR-030 rule 9: a process that extends a base says so on its step, and a
+// base, which is not work, names the processes that extend it.
+test('a process names the base it extends, and a base the processes that extend it', async () => {
+  const files = {
+    ...agent,
+    'processes/review.yaml': 'name: review\ntimeout: 20m\ntools:\n  require: [repository.read]\n',
+    'processes/tests_review.yaml': 'name: tests_review\nextends: process:review\nprompt: tests\n',
+    'workflows/tests.yaml': 'name: tests\ncall: {node: tests, uses: process:tests_review, agent: opus}\n',
+  };
+  const p = page({ answers: { 'api/settings': () => respond({ path: '~', dir: '/u/.agister', home: true, files }) } });
+  await p.started;
+  const facts = (root) => {
+    const nodes = root.querySelector('div.facts').children;
+    return (label) => nodes[nodes.findIndex((n) => n.textContent === label) + 1].textContent;
+  };
+  const base = facts(p.$('dashboard').querySelector('article#process-review'));
+  assert.equal(base('extends'), 'a base, not work: extended by tests_review');
+  const step = p.$('dashboard').querySelector('article#workflow-tests div.step');
+  assert.equal(facts(step)('extends'), 'review — its fields under this process’s own');
+  assert.equal(step.querySelector('div.step-meta').children[1].textContent, 'limits read-only workspace · 20m');
 });
 
 // ADR-030 rule 6: a workflow of one call shows its one call, on the
@@ -830,17 +859,16 @@ test('a workflow of one call shows its call and its process params', async () =>
   assert.equal(card('process-implement'), null);
 });
 
-// ADR-030 rule 5: a step shows the agent its node names, in place of its
-// process's, and its process's where the node names none; the workflow's
-// calls line counts the same models. A process that names no agent is
-// marked nowhere a node binds it. An agent a node names and these settings
-// lack is marked missing; a node and a process that both name none, and
-// such a process on its own card, show none, as Agister refuses them.
-test('a workflow step and the calls line show the agent the node binds, and a process may name none', async () => {
+// ADR-030 rules 2 and 5: a step shows the agent its node binds, and the
+// workflow's calls line counts the same models. A process names no agent,
+// so a node that binds none shows none, as Agister refuses the workflow;
+// an agent a node names and these settings lack is marked missing; a
+// process no node binds shows none on its own card, as nothing runs it.
+test('a workflow step and the calls line show the agent the node binds, and a process names none', async () => {
   const files = {
     ...agent,
     'agents/sol.toml': 'name = "sol"\nruntime = "codex"\nmodel = "gpt"\neffort = "low"\n',
-    'processes/check.yaml': 'name: check\nuses: agent:opus\n',
+    'processes/check.yaml': 'name: check\n',
     'processes/bare.yaml': 'name: bare\n',
     'processes/lone.yaml': 'name: lone\n',
     'workflows/panel.yaml': 'name: panel\nfan_out:\n  - {node: one, uses: process:check, agent: sol}\n' +
@@ -858,35 +886,38 @@ test('a workflow step and the calls line show the agent the node binds, and a pr
   };
   const agents = (name) => card(name).querySelectorAll('div.step').map((step) => step.querySelector('div.step-meta').children[0]);
 
-  assert.equal(fact('workflow-panel', 'calls').textContent, '2 × gpt + opus at once, then opus');
+  assert.equal(fact('workflow-panel', 'calls').textContent, '2 × gpt + unknown model at once, then opus');
   const panel = agents('workflow-panel');
   assert.deepEqual(panel.map((line) => line.textContent), [
     'agent  sol · gpt · low effort',
-    'agent  opus · opus · high effort',
+    'agent  none',
     'agent  sol · gpt · low effort',
     'agent  opus · opus · high effort',
   ]);
-  for (const line of panel) assert.equal(line.querySelector('span.missing'), null, line.textContent);
+  assert.equal(panel[1].querySelector('span.missing').title, 'The node binds no agent: Agister refuses the workflow');
+  for (const line of [panel[0], ...panel.slice(2)]) assert.equal(line.querySelector('span.missing'), null, line.textContent);
 
   assert.equal(fact('workflow-refused', 'calls').textContent, 'unknown model, then unknown model');
   const [ghost, unbound] = agents('workflow-refused');
   assert.equal(ghost.textContent, 'agent  gone (missing agent)');
   assert.equal(ghost.querySelector('span.missing').title, 'No agent named gone in these settings: Agister refuses the call');
   assert.equal(unbound.textContent, 'agent  none');
-  assert.equal(unbound.querySelector('span.missing').title, 'Neither the node nor its process names an agent: Agister refuses the workflow');
+  assert.equal(unbound.querySelector('span.missing').title, 'The node binds no agent: Agister refuses the workflow');
 
   // Bound by a node, a process has no card of its own; unbound, its card
-  // names no agent.
+  // names no agent and gives no command, as agister run runs a workflow
+  // only (ADR-030 rule 7).
   for (const name of ['check', 'bare']) assert.equal(card(`process-${name}`), null, name);
   assert.equal(fact('process-lone', 'agent').textContent, 'none');
   assert.equal(fact('process-lone', 'agent').querySelector('span.missing').title,
-    'The process names no agent: Agister runs it only as a workflow’s node that names one');
+    'The process names no agent: only a workflow’s node binds it to one, and Agister runs it only so');
+  assert.equal(card('process-lone').querySelector('div.cmd'), null);
 });
 
 // README, Settings: a process card shows the attempts of the verification
 // the process names, or marks it missing when these settings have none.
 test('a process card shows the verification its process names, or marks it missing', async () => {
-  const naming = { ...agent, 'processes/implement.yaml': 'name: implement\nuses: agent:opus\nverify: verify:repo\n' };
+  const naming = { ...agent, 'processes/implement.yaml': 'name: implement\nverify: verify:repo\n' };
   const output = async (files) => {
     const p = page({ answers: { 'api/settings': () => respond({ path: '~', dir: '/u/.agister', home: true, files }) } });
     await p.started;
@@ -913,7 +944,7 @@ test('a process card shows the verification its process names, or marks it missi
 // README, Settings: a process card shows the prompts its process names,
 // each marked missing when these settings have none of that name.
 test('a process card shows the prompts its process names, and marks a missing one', async () => {
-  const naming = { ...agent, 'processes/review.yaml': 'name: review\nuses: agent:opus\nprompt: rules\nguidance: [style]\ninput:\n  instruction: Review.\n' };
+  const naming = { ...agent, 'processes/review.yaml': 'name: review\nprompt: rules\nguidance: [style]\ninput:\n  instruction: Review.\n' };
   const prompts = async (files) => {
     const p = page({ answers: { 'api/settings': () => respond({ path: '~', dir: '/u/.agister', home: true, files }) } });
     await p.started;
@@ -938,7 +969,7 @@ test('a process card shows the prompts its process names, and marks a missing on
 test('a process card and a workflow card show the brief forms their inputs name, and mark a missing one', async () => {
   const naming = {
     ...agent,
-    'processes/implement.yaml': 'name: implement\nuses: agent:opus\ninput:\n  instruction: Implement.\n  values:\n    brief: {source: file, path: brief.md, form: [goal, step]}\n',
+    'processes/implement.yaml': 'name: implement\ninput:\n  instruction: Implement.\n  values:\n    brief: {source: file, path: brief.md, form: [goal, step]}\n',
     'workflows/review.yaml': 'name: review\ninput:\n  values:\n    goal: {source: file, path: goal.md, form: [goal]}\nfan_out:\n  - {node: one, uses: process:review_one}\njoin: {node: j, uses: process:review_one}\n',
   };
   const briefs = async (files, card) => {
@@ -967,7 +998,7 @@ test('a process card and a workflow card show the brief forms their inputs name,
 test('a process card in a repo shows the layer each prompt comes from, each prompt once', async () => {
   const homeFiles = {
     ...agent,
-    'processes/review.yaml': 'name: review\nuses: agent:opus\nprompt: rules\nguidance: [style]\ninput:\n  instruction: Review.\n',
+    'processes/review.yaml': 'name: review\nprompt: rules\nguidance: [style]\ninput:\n  instruction: Review.\n',
     'prompts/rules.md': 'Home rules.\n',
     'prompts/style.md': 'Home style.\n',
   };
@@ -985,17 +1016,20 @@ test('a process card in a repo shows the layer each prompt comes from, each prom
   assert.deepEqual(line.querySelectorAll('span.chip').map((c) => c.textContent), ['home']);
 });
 
-// ADR-021, README Settings: a process card lists the skills its call gets,
-// its own then its agent's, each once, with the layer each comes from in a
-// repo, and one these settings do not have marked missing. The agents'
-// table shows each agent's skills. The skills are the server's inventory
+// ADR-021, README Settings: a process card lists the skills its process
+// names, and a workflow step the skills its call gets, its process's then
+// those of the agent the node binds, each once, with the layer each comes
+// from in a repo, and one these settings do not have marked missing. The
+// agents' table shows each agent's skills and the workflows that bind it. The skills are the server's inventory
 // (api/skills' settings), never the settings files (D-16).
 test('a process card and the agents table list skills, each once, with their layer or marked missing', async () => {
   const skill = (scope, name) => ({ scope, name, path: `/${scope}/skills/${name}`, description: 'D.', checks: { passed: true } });
   const homeFiles = {
     'agents/opus.toml': `${agent['agents/opus.toml']}skills = ["go", "plan", "gone"]\n`,
     'agents/sol.toml': 'name = "sol"\nruntime = "codex"\n',
-    'processes/review.yaml': 'name: review\nuses: agent:opus\nskills: [plan, style, ghost]\ninput:\n  instruction: Review.\n',
+    'processes/review.yaml': 'name: review\nskills: [plan, style, ghost]\ninput:\n  instruction: Review.\n',
+    'processes/check.yaml': 'name: check\nskills: [plan, style, ghost]\ninput:\n  instruction: Check.\n',
+    'workflows/check_opus.yaml': 'name: check_opus\ncall: {node: check, uses: process:check, agent: opus}\n',
   };
   const settings = [skill('repo', 'plan'), skill('home', 'go'), skill('home', 'plan'), skill('home', 'style')];
   const p = page({
@@ -1008,18 +1042,22 @@ test('a process card and the agents table list skills, each once, with their lay
   await p.started;
   const facts = p.$('dashboard').querySelector('article#process-review div.facts').children;
   const line = facts[facts.findIndex((n) => n.textContent === 'skills') + 1];
-  assert.equal(line.textContent, 'plan repo, replaces home, style home, ghost (missing skill), go home, gone (missing skill)');
-  assert.deepEqual(line.querySelectorAll('span.missing').map((m) => m.title), [
+  assert.equal(line.textContent, 'plan repo, replaces home, style home, ghost (missing skill)');
+  const stepFacts = p.$('dashboard').querySelector('article#workflow-check_opus div.step div.facts').children;
+  const call = stepFacts[stepFacts.findIndex((n) => n.textContent === 'skills') + 1];
+  assert.equal(call.textContent, 'plan repo, replaces home, style home, ghost (missing skill), go home, gone (missing skill)');
+  assert.deepEqual(call.querySelectorAll('span.missing').map((m) => m.title), [
     'No skill named ghost in these settings: Agister refuses the call',
     'No skill named gone in these settings: Agister refuses the call',
   ]);
 
   const head = p.$('dashboard').querySelectorAll('section.card').find((c) => c.querySelector('h3')?.textContent === 'Agents').querySelectorAll('th').map((th) => th.textContent);
-  assert.deepEqual(head, ['Agent', 'Runtime', 'Model', 'Effort', 'Session', 'Skills', 'From']);
-  const cell = (name) => p.$(`Agents-${name}`).querySelectorAll('td').find((td) => td.dataset.label === 'Skills');
+  assert.deepEqual(head, ['Agent', 'Runtime', 'Model', 'Effort', 'Skills', 'Bound by', 'From']);
+  const cell = (name, label = 'Skills') => p.$(`Agents-${name}`).querySelectorAll('td').find((td) => td.dataset.label === label);
   assert.equal(cell('opus').textContent, 'go home, plan repo, replaces home, gone (missing skill)');
   assert.equal(cell('opus').querySelector('span.missing').textContent, 'gone (missing skill)');
   assert.equal(cell('sol').textContent, '—');
+  assert.deepEqual([cell('opus', 'Bound by').textContent, cell('sol', 'Bound by').textContent], ['check_opus', '—']);
 
   // Agister home alone: no layers, the same missing marks.
   const tilde = page({ answers: {
@@ -1028,13 +1066,13 @@ test('a process card and the agents table list skills, each once, with their lay
   } });
   await tilde.started;
   const own = tilde.$('dashboard').querySelector('article#process-review div.facts').children;
-  assert.equal(own[own.findIndex((n) => n.textContent === 'skills') + 1].textContent, 'plan, style, ghost (missing skill), go, gone (missing skill)');
+  assert.equal(own[own.findIndex((n) => n.textContent === 'skills') + 1].textContent, 'plan, style, ghost (missing skill)');
 });
 
 test('the served process card shows prompt, guidance and all reported field layers', async () => {
   const composedFiles = {
     ...agent,
-    'processes/review.yaml': 'name: review\nuses: agent:opus\nprompt: rules\nguidance: [style, missing]\nskills: [rules]\nverify: verify:repo\noutput: {schema: result}\n',
+    'processes/review.yaml': 'name: review\nprompt: rules\nguidance: [style, missing]\nskills: [rules]\nverify: verify:repo\noutput: {schema: result}\n',
     'verifies/repo.yaml': 'timeout: 1m\nmax_attempts: 2\ncommand: cd docs && make test\n',
     'prompts/rules.md': 'Rules.', 'prompts/style.md': 'Style.',
     'schemas/result.json': '{}',
@@ -1042,7 +1080,7 @@ test('the served process card shows prompt, guidance and all reported field laye
   const layers = [
     { layer: 'project', path: '/r/docs/.agister/processes/review.yaml', fields: ['guidance'] },
     { layer: 'repository', path: '/r/.agister/processes/review.yaml', fields: [] },
-    { layer: 'home', path: '/h/processes/review.yaml', fields: ['name', 'uses', 'prompt', 'skills', 'verify'] },
+    { layer: 'home', path: '/h/processes/review.yaml', fields: ['name', 'prompt', 'skills', 'verify'] },
   ];
   const verificationLayers = [
     { layer: 'project', path: '/r/docs/.agister/verifies/repo.yaml', fields: ['command'] },
@@ -1081,12 +1119,12 @@ test('the served process card shows prompt, guidance and all reported field laye
   const provenance = card.querySelectorAll('div.facts')[1].textContent;
   assert.match(provenance, /project \/r\/docs\/\.agister\/processes\/review.yaml: guidance/);
   assert.match(provenance, /repository \/r\/\.agister\/processes\/review.yaml: \(none\)/);
-  assert.match(provenance, /home \/h\/processes\/review.yaml: name, uses, prompt/);
+  assert.match(provenance, /home \/h\/processes\/review.yaml: name, prompt/);
 });
 
 test('empty guidance is shown as none and a missing primary prompt is marked', async () => {
   const p = page({ answers: { 'api/settings': () => respond({ path: '~', home: true,
-    files: { ...agent, 'processes/review.yaml': 'name: review\nuses: agent:opus\nprompt: missing\nguidance: []\n' } }) } });
+    files: { ...agent, 'processes/review.yaml': 'name: review\nprompt: missing\nguidance: []\n' } }) } });
   await p.started;
   const facts = p.$('dashboard').querySelector('article#process-review div.facts').children;
   const fact = (name) => facts[facts.findIndex((n) => n.textContent === name) + 1];
@@ -1099,7 +1137,7 @@ test('workflow nodes show their process prompt, guidance and field layers', asyn
   const composedFiles = {
     ...agent,
     'workflows/review.yaml': 'name: review\nfan_out:\n  - {node: one, uses: process:check}\njoin: {node: j, uses: process:check}\n',
-    'processes/check.yaml': 'name: check\nuses: agent:opus\nprompt: rules\nguidance: [style]\nverify: verify:repo\noutput: {schema: result}\n',
+    'processes/check.yaml': 'name: check\nprompt: rules\nguidance: [style]\nverify: verify:repo\noutput: {schema: result}\n',
     'verifies/repo.yaml': 'max_attempts: 3\ncommand: make test\n',
     'prompts/rules.md': 'Rules.', 'prompts/style.md': 'Style.',
     'schemas/result.json': '{}',
@@ -1107,7 +1145,7 @@ test('workflow nodes show their process prompt, guidance and field layers', asyn
   const sources = {
     'processes/check.yaml': { layers: [
       { layer: 'project', path: '/r/docs/.agister/processes/check.yaml', fields: ['guidance'] },
-      { layer: 'home', path: '/h/processes/check.yaml', fields: ['name', 'uses', 'prompt', 'verify'] },
+      { layer: 'home', path: '/h/processes/check.yaml', fields: ['name', 'prompt', 'verify'] },
     ] },
     'prompts/rules.md': { layers: [{ layer: 'home', path: '/h/prompts/rules.md' }] },
     'prompts/style.md': { layers: [{ layer: 'project', path: '/r/docs/library/style.md' }] },
@@ -1136,7 +1174,7 @@ test('workflow nodes show their process prompt, guidance and field layers', asyn
     assert.equal(fact('guidance').querySelector('span.chip').title, 'project /r/docs/library/style.md');
     assert.equal(fact('output').textContent, 'result schema project + home; a failed verify (repo) is fixed up to 3×');
     assert.equal(fact('output').querySelector('span.chip').title, 'project /r/docs/.agister/schemas/result.json\nhome /h/schemas/result.json (replaced)');
-    assert.equal(fact('layers').textContent, 'project /r/docs/.agister/processes/check.yaml: guidancehome /h/processes/check.yaml: name, uses, prompt, verify');
+    assert.equal(fact('layers').textContent, 'project /r/docs/.agister/processes/check.yaml: guidancehome /h/processes/check.yaml: name, prompt, verify');
     assert.equal(fact('verification layers').textContent, 'repoproject /r/docs/.agister/verifies/repo.yaml: commandhome /h/verifies/repo.yaml: max_attempts');
   }
 });
@@ -1150,8 +1188,8 @@ test('a prompt reference the binary cannot read shows its error on process cards
   const composedFiles = {
     ...agent,
     'workflows/panel.yaml': 'name: panel\nfan_out:\n  - {node: one, uses: process:check}\n',
-    'processes/check.yaml': 'name: check\nuses: agent:opus\nprompt: rules\nguidance: [style]\n',
-    'processes/alone.yaml': 'name: alone\nuses: agent:opus\nprompt: style\nguidance: [rules]\n',
+    'processes/check.yaml': 'name: check\nprompt: rules\nguidance: [style]\n',
+    'processes/alone.yaml': 'name: alone\nprompt: style\nguidance: [rules]\n',
     'prompts/rules.md': 'Rules.',
   };
   const sources = {

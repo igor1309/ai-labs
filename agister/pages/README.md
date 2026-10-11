@@ -26,38 +26,43 @@ not `.yml`). On top of that the page shows no file over 256 KB, left out
 as if absent, and refuses a layer's file that is not a regular file, which
 it neither waits on nor replaces with the parent's.
 
-- **Workflows** and **Processes**, as cards: what each does (its leading
-  comment), the `agister run` command with its required params (Copy puts
-  it on the clipboard), the defaults, and then:
-  - for a process, its agent (runtime, model, effort, session), its policy
-    (workspace, timeout, cost cap, what it allows and denies), or, when
-    it names none, `none` and its own workspace access, read-only when it
-    sets none, as Agister composes it; its output
-    schema with its layer files and verify attempts (of the verification it names, when it
-    names one; marked missing when these settings have none of that name),
-    that verification's layer files with the fields each gave,
-    its required `prompt` and its `guidance` list separately (`none` for
-    an empty list), names marked missing when no layer has them, with
-    their layer files, and one Agister cannot read with its error, as
-    Agister refuses the call; the skills its call gets, its own and then its agent's
-    (ADR-021), listed the same way, each that fails its checks marked
-    `checks failed` (D-16); the brief forms its file inputs name (`form`,
-    ADR-026), listed as prompts are; and what its call needs of the
-    caller's worktree (ADR-025): `HEAD at` the input its
-    `workspace.revision` names, and `clean` when it declares
-    `workspace.clean: true`;
-  - for a workflow, its calls in one line (`4 × gpt-6.1-sol at once, then
-    opus`), the brief forms its inputs name, listed as a process's, then
-    the steps: the ones run at once (`First` when there is
-    one) and the one run after them. Each step shows its name, what it
-    does, its agent and its policy, or `none` and its own workspace
-    access as its card would, and, as a process card does, its
-    `prompt`, its `guidance`, its output schema, its layer files and its
-    verification's.
-    Steps are not repeated under Processes; they still run alone.
-- **Building blocks**, as tables: agents (with the skills each names,
-  listed as on a process card), policies, runtimes and the service limits,
-  each with what it means.
+- **Workflows**, as cards: what each does (its leading comment), the
+  `agister run` command with its required params (Copy puts it on the
+  clipboard; a workflow of one `call` takes its process's params), the
+  defaults, its calls in one line (`4 × gpt-6.1-sol at once, then opus`),
+  the brief forms its inputs name, listed as a process's, then its steps:
+  the ones run at once (`First` when there is one) and the one run after
+  them, or its one call. Each step is a node, which binds a process to an
+  agent (ADR-030): it shows the process's name and what it does, the agent
+  the node binds (name, model, effort), or `none` in red when the node
+  binds none or the agent is missing, as Agister refuses the workflow; and
+  the process's own limits: its workspace access, read-only when it sets
+  none, timeout, cost cap, attempts and scope. Then, per step, the base its
+  process `extends`, its session (`resumable`, which `--continue` can
+  continue, or `fresh-only`, its default), its required `prompt` and its
+  `guidance` list separately (`none` for an empty list), names marked
+  missing when no layer has them, with their layer files, and one Agister
+  cannot read with its error, as Agister refuses the call; the skills its
+  call gets, its process's and then those of the agent the node binds
+  (ADR-021), listed the same way, each that fails its checks marked
+  `checks failed` (D-16); its output schema with its layer files and
+  verify attempts (of the verification it names, when it names one; marked
+  missing when these settings have none of that name), its layer files and
+  that verification's layer files with the fields each gave.
+- **Processes**, as cards: only those no workflow's node binds. A process
+  names no agent and has no command: `agister run` runs a workflow, never
+  a process (ADR-030), and the card says its agent is `none`. A base that
+  other processes `extend` is one of these: it is not work, and its card
+  names the processes that extend it. Besides what a step shows, a card
+  shows the process's limits in full (what it requires, allows and
+  denies), the skills it names, the brief forms its file inputs name
+  (`form`, ADR-026), listed as prompts are, and what its call needs of the
+  caller's worktree (ADR-025): `HEAD at` the input its
+  `workspace.revision` names, and `clean` when it declares
+  `workspace.clean: true`.
+- **Building blocks**, as tables: agents (runtime, model, effort, the
+  skills each names, listed as on a step, and the workflows whose nodes
+  bind it), runtimes and the service limits, each with what it means.
 
 A workspace that can be written shows in amber; read-only is not marked. On
 a narrow screen the cards go to one column and each table row becomes label
@@ -90,7 +95,7 @@ again.
 - Clicking a run opens it over the page; Close, Escape or a click beside
   it closes it. Its head is the process, its status, cost and wall time,
   then when it ran (`4:07 PM – 4:10 PM, 10.10.26`), its agent and, small,
-  its ID. Then implementor, policy, verify (`2/3 ✓`, out of the process's
+  its ID. Then implementor, limits, verify (`2/3 ✓`, out of the process's
   most), turn and runtime timing, tool calls, the skills it used, each a
   link, the workflow it belongs to, and for a workflow its judge's items by ruling and by
   severity and its nodes as a table: process, status, wall, cost and the
@@ -153,8 +158,8 @@ the nearer layer does not have comes from a farther one.
   a skill opens it below; clicking it again closes it.
 - **An agent**: its runtime, adapter, model and effort; under *Its
   settings name*, the skills of the settings' `skills/` folders that it
-  names and that each process on it names, each with what names it (the
-  agent, or `process <name>`), its layer files (`project`, `repository`,
+  names and that each process a workflow's node binds to it names, each
+  with what names it (the agent, or `process <name>`), its layer files (`project`, `repository`,
   `home`) and its checks, or marked missing when no layer has it;
   under *Its runtime would load from the repo and the home*, the skills
   its runtime would load, each with `repo` or `home`, its folder and its
@@ -211,7 +216,7 @@ The server writes nothing and answers these endpoints:
   folder`) and returns the chosen path, empty when cancelled. It needs the
   `X-Agister-Pages` header, which a page on another site cannot send.
 - `GET /api/settings?path=<absolute repo path | ~>`: the settings files of
-  `<path>/.agister`, or of Agister home for `~`: `agents`, `policies`,
+  `<path>/.agister`, or of Agister home for `~`: `agents`,
   `processes`, `runtimes`, `schemas`, `verifies`, `prompts`, `briefs`,
   `workflows` and `service.toml`, each regular file at most 256 KB.
   `runs/`, `logs/` and the obsolete `workspace.yaml` (ADR-025) are
@@ -285,7 +290,8 @@ A run summary holds, from the record:
   call asked for, else the one the runtime reported), the reported model,
   and the effort the call asked for. Runs recorded before the agent profile
   was have no effort; the agent file is never read again for it;
-- `policy`: the effective timeout, cost cap, access and scope;
+- `policy`: the limits the call ran under, the record's `effective`
+  ones: timeout, cost cap, access and scope;
 - `outcome`: the verify attempts used and whether the last one passed
   (none when the process has no verify), wall, turn and runtime ms, and the
   cost in USD with its source;

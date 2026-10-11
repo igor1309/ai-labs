@@ -1,13 +1,15 @@
 ---
 name: agister
-description: Drive Agister from outside - find out which processes and workflows the settings in use define and what each takes, run one in your worktree, continue a run, read a run's record and what it left in the worktree, and prepare a repository's `.agister/`. Use when asked to "use agister", to run work through Agister, to read what a run produced, or to set up `.agister/` in a repository.
+description: Drive Agister from outside - find out which workflows and processes the settings in use define and what each takes, run a workflow in your worktree, continue a run, read a run's record and what it left in the worktree, and prepare a repository's `.agister/`. Use when asked to "use agister", to run work through Agister, to read what a run produced, or to set up `.agister/` in a repository.
 ---
 
 # Agister: the caller's guide
 
-Agister (`agister`, on PATH) runs agent calls and workflows of them. The
-binary defines none of them: processes, workflows, their params, agents
-and permissions are settings. Home's settings are in `<home>`: the
+Agister (`agister`, on PATH) runs workflows of agent calls. The binary
+defines none of them: workflows, processes, their params, agents and
+permissions are settings. An agent is a runtime profile, a process is the
+work and names no agent, and a workflow binds each of its nodes' process
+to an agent; `agister run` runs only workflows. Home's settings are in `<home>`: the
 directory `--home` selects, else `$AGISTER_HOME`, else `~/.agister/` by
 default. Settings compose by field across home, the
 worktree root's `.agister/` and the nearest project `.agister/` below
@@ -33,19 +35,27 @@ repository you will run in.
 - `agister process show <process>` shows one process as a call would see
   it: its params, each required or with its default; the inputs made from
   them, each with its source, such as a file or a git revision; its
-  output, text or JSON under a schema it names; the permissions it asks
-  for and the tools its agent gets on its runtime; its limits; its
-  verification, if it has one; the layer files each document it uses comes from,
-  nearest first, its schema's among them; each composed document's leaf
-  fields with their layers; its `prompt` and `guidance`; warnings;
-  and, when a call would be refused now, the reason. To see it on another
-  agent, show a workflow that binds it to that agent.
+  output, text or JSON under a schema it names; the permissions it
+  requires and allows; its limits and its session; its verification, if
+  it has one; the layer files each document it uses comes from, nearest
+  first, its schema's and its base's among them; each composed document's
+  leaf fields with their layers, a field its base gave naming the base;
+  its `prompt` and `guidance`; and warnings. It shows the process on no
+  agent: its plan is refused, as only a workflow's node binds it to one.
+  To see it on an agent, show a workflow that binds it to that agent.
 - `agister workflow show <workflow>` shows the workflow's params and their
   defaults, its fan-out nodes and its join, or its one call, and for each
-  node its process, the agent it binds and what the node receives.
+  node its process, the agent it binds and that agent's runtime, what the
+  node receives, its plan on that agent and the permissions the runtime
+  withholds from it.
 - `agister check` verifies the composed settings. It exits 0 when they
   have no problem and 64 when they have one, prints each problem with what
-  it refuses, and prints warnings. `agister check --tree` shows what
+  it refuses, and prints warnings. It resolves every node of every
+  workflow as a call would: a binding that would withhold a permission
+  the process requires (`tools.require`), or that fails as a call on that
+  agent would, is a problem of that workflow only, naming the node. A
+  permission allowed and not required that the runtime does not give is
+  listed as `withheld` on that binding. `agister check --tree` shows what
   defines what, with each document's layer files, nearest first, and under
   each but the farthest the fields it gave (`(none)` when it gave none).
   A prompt taken whole marks the farther files `(replaced)`.
@@ -116,9 +126,27 @@ Supply the document; do not route around the refusal.
   - `clean: true`: a fresh call is refused unless the worktree's content
     is HEAD's. A process that writes, such as an implementer, declares it.
     A reviewer does not need it.
+- A process holds its own limits: `workspace.access` (read-only when
+  unset), `workspace.scope`, `tools.allow`, `tools.require`,
+  `isolation.deny`, `timeout`, `retry.max_attempts`, `max_cost_usd` and
+  `stale`; and `session: resumable` when its session may be resumed,
+  `fresh-only` when unset. A process whose verification repairs, or whose
+  `stale.recover.max_resumes` is above 0, must be `resumable`. An agent
+  holds its runtime, model, effort, command and skills, and no limit or
+  session.
+- A process may extend one base, `extends: process:<base>`: it takes
+  the base's fields under its own (maps merge by key, lists and scalars
+  are replaced whole), never its `name` or `extends`. The base extends
+  nothing and is not work: no node may bind it. A layer's partial may not
+  set `extends`.
+- A workflow node binds its process to an agent, `{node: <n>, uses:
+  process:<p>, agent: <a>}`, `agent` required on every node. To change one
+  node's agent, a layer gives the whole `fan_out` list, or sets
+  `join.agent` or `call.agent` alone.
 - `.agister/blocks.yaml`, optional: the processes, workflows, agents and
-  runtimes of home that this repository blocks. A project layer holds no
-  `blocks.yaml`; blocks are the repository's alone.
+  runtimes of home that this repository blocks. A workflow whose node
+  binds a blocked agent is refused until a layer rebinds that node. A
+  project layer holds no `blocks.yaml`; blocks are the repository's alone.
 - A process has one required `prompt` name and a `guidance` list, empty
   when absent or `[]`. Each name resolves in the nearest layer that has
   it; a missing name refuses the call. The agent receives its values,
@@ -188,12 +216,12 @@ document only home has.
 
 ```sh
 agister run <workflow> --param <param>=<value> --json
-agister run <process> --param <param>=<value> --json
 agister run <workflow> --dir <worktree> --param <param>=<value> --json
 ```
 
-- A workflow binds each node's process to an agent; choose the agent by
-  the workflow you run. To implement, run a workflow of one call that
+- `agister run` names a workflow; a process's name is refused, with the
+  workflows that bind it. A workflow binds each node's process to an
+  agent; choose the agent by the workflow you run. To implement, run a workflow of one call that
   binds `implement` to the agent you mean, never the process `implement`
   itself. Home names them `implement_<agent>`, such as `implement_opus`
   or `implement_codex`; `agister workflow list` shows those your settings
@@ -223,16 +251,16 @@ agister run <workflow> --dir <worktree> --param <param>=<value> --json
   output, cost and the absolute path of each artifact. Without it, only
   the output is printed: JSON whenever the run has one, text only when the
   run completed. Progress goes to stderr either way.
-- For a process, or a workflow of one call, `--timeout <d>` and
-  `--max-cost <usd>` set the call's limits; a workflow of one call is that
-  call's one run, and takes its process's params. A fan-out workflow
+- For a workflow of one call, `--timeout <d>` and `--max-cost <usd>`
+  narrow the call's limits; it is that call's one run, and takes its
+  process's params. A fan-out workflow
   takes params, `--goal`, `--answers` and `--dir` only: each node is a run
   of its own, with the agent the workflow binds and its process's limits.
   To run a process on another agent, run a workflow that binds it to that
   agent.
 - A process with a `workflow.collection` input, such as a review judge,
-  runs only as a workflow's join, on the nodes' outputs: a call of it
-  alone is refused. Run the workflow.
+  runs only as a workflow's join, on the nodes' outputs. Run the
+  workflow.
 - Interrupting `agister run` cancels the run.
 - Runs cost money. Do not loop runs unattended.
 
@@ -343,13 +371,13 @@ again; do not drop the form from the settings to get past the refusal.
   be removed at any time: the run's own copy, its `value` or `artifact`,
   is the source. A copy that could not be written is the event
   `CACHE_FAILED`, and the input has no `cache_path`; the run goes on.
-- A policy's `stale` limits end an agent turn that stopped moving, before
+- A process's `stale` limits end an agent turn that stopped moving, before
   its timeout. With `stale.recover`, a budget of `max_resumes` and an
   `instruction`, Agister then resumes the turn's session with what went
   stale instead of ending the call, and each such turn is one of the
   record's `recoveries`, with what went `stale` and its own `outcome`.
-  That needs an agent and a runtime that resume: any other call with a
-  budget is refused before its first turn.
+  That needs a `resumable` process and a runtime that resumes: any other
+  call with a budget is refused before its first turn.
 - The record's `trail` is what the runtime reported the agent did on the
   way, over every turn of the call: `touched`, the paths its tool calls
   wrote, in order, each once with the `tool` of its first write, and
@@ -400,12 +428,11 @@ without it.
 
 ```sh
 agister run <workflow> --continue <run-id> --param <param>=<value>
-agister run <process> --continue <run-id> --param <param>=<value>
 ```
 
 `--continue` resumes the session of a finished run, by the same agent,
-when the process, or else its agent, and the runtime allow it, in the
-same worktree. Continue a run of a workflow of one call, such as an
+when its process is `resumable` and its runtime resumes, in the same
+worktree. Continue a run of a workflow of one call, such as an
 `implement_*` run, with the same workflow: it continues only a run of a
 workflow's call of the same process, on the same agent. Pass the
 params again and launch from that worktree, or name it with `--dir`.
@@ -417,17 +444,18 @@ worktree holds exactly what that run left there, and its `changes.patch`
 is as recorded. So is a latest run whose capture failed, and one that
 worked in a checkout before ADR-025. A latest run that pinned no revision
 is continued without the content check. A fan-out workflow cannot be
-continued.
+continued, and neither can a run made before ADR-030; its record stays
+readable.
 
 ## Link a run to its goal and judgement
 
 ```sh
-agister run <process> --goal <run-id>[:<input>] --param <param>=<value>
-agister run <process> --answers <run-id> --param <param>=<value>
+agister run <workflow> --goal <run-id>[:<input>] --param <param>=<value>
+agister run <workflow> --answers <run-id> --param <param>=<value>
 ```
 
 Name what a run is for; Agister finds nothing by searching runs. Either
-option, or both, works for a process or a workflow, and is recorded under
+option, or both, works for any workflow, and is recorded under
 the record's `links`; a run given neither has no `links`.
 
 - `--goal <run-id>[:<input>]` names the goal the run serves: that run's

@@ -14,7 +14,7 @@ bin/agister --help          # every command and option
 bin/agister init            # example settings into ~/.agister
 bin/agister install home    # this owner's global settings into ~/.agister
 bin/agister check           # validate the settings
-bin/agister run ask --param question="What does cmd/agister do?"
+bin/agister run ask_assistant --param question="What does cmd/agister do?"
 bin/agister runs show <run-id>
 bin/agister runs export <run-id> --to <dir> # a run's evidence, for audit
 bin/agister pages           # a page of what the settings can run
@@ -25,8 +25,8 @@ in-process fakes and the test-discipline check) is the `gokit` module next
 to it, [../gokit](../gokit/README.md), which `go.mod` points at with a
 `replace`: build from a checkout of the repository.
 
-`agister pages` serves a local page that shows the workflows and processes
-a repository's settings can run and what they are made of:
+`agister pages` serves a local page that shows the workflows a
+repository's settings can run and what they are made of:
 [pages/README.md](pages/README.md).
 
 ## Settings
@@ -41,12 +41,12 @@ empty map over a map changes nothing. A partial sets only what it changes;
 the composition is checked. Prompts, skills and schemas are taken whole
 from the nearest layer. Commands check the composed settings before use.
 A YAML settings file (a process,
-workflow, policy, runtime mapping, verification, brief form or
+workflow, runtime mapping, verification, brief form or
 `blocks.yaml`) holds exactly one YAML document: a second, after a `---`,
 even an empty one, is a problem of that file (`must hold exactly one YAML
 document`), never left unread. A problem refuses only what uses
-the document it is in: a call whose process, agent, runtime mapping,
-policy, schema, prompt, skill or named verification is broken is refused
+the document it is in: a call whose process, its base, agent, runtime
+mapping, schema, prompt, skill or named verification is broken is refused
 before its first turn and recorded, and a workflow with such a node is
 refused before any node runs; everything else keeps running. Only broken
 service settings, a file or a skill's folder whose name is not a name, a
@@ -69,16 +69,98 @@ install refused for such a problem prints it after the problems. A known
 field with a wrong value adds no such line. Runs are
 recorded under `~/.agister/runs/<id>/`.
 
-Listings and shows display refused items. An agent selected with `--agent`
-is checked in place of the process's default agent. `check`, `process
+Listings and shows display refused items. `check`, `process
 list`, `process show`, `workflow list` and `workflow show` take `--dir` to
 read a launch directory's layers; outside a git worktree only home is read.
 `process show` lists each document's layer files nearest first, and each
-leaf field's layer for each composed document; `--json` carries
-the same. `check --tree` lists those files and, under each but the
+leaf field's layer for each composed document, naming the base a field
+came from; `--json` carries the same. `check --tree` lists those files and, under each but the
 farthest, the fields it gave (`(none)` when it gave none); prompts taken
 whole mark farther files `(replaced)`. A write is refused if
 it adds a problem; existing document problems do not stop it.
+
+### Agents, processes and workflows
+
+An agent, a process and a workflow each hold their own facts
+([ADR-030](docs/adr/030-a-workflow-binds-a-process-to-an-agent.md)):
+
+- An agent, `agents/<name>.toml`, is a runtime profile: `runtime`,
+  `model`, `model_family`, `effort`, `command` and `skills`. It holds no
+  limit and no session.
+- A process, `processes/<name>.yaml`, is the work: its input, prompt,
+  guidance, skills, output schema, verification and what it needs of the
+  worktree. It names no agent. It holds its own limits:
+  `workspace.access` (`read-only` when unset), `workspace.scope`,
+  `tools.allow`, `tools.require` (the permissions the work cannot be done
+  without), `isolation.deny`, `timeout` (required), `retry.max_attempts`,
+  `max_cost_usd` and `stale`. `session: resumable` says its session may be
+  resumed, by a repair turn, a recovery turn or `--continue`; unset, it is
+  `fresh-only`. A process whose verification repairs, or whose
+  `stale.recover.max_resumes` is above 0, must be `resumable`. Limits
+  narrow from the service's ceilings to the process to the caller's
+  `--timeout` and `--max-cost`; a nearer layer's field replaces a farther
+  one's.
+- A workflow, `workflows/<name>.yaml`, binds each node's process to an
+  agent, and is the only thing `agister run` runs. `agent` is required on
+  every node, and nothing else chooses one. A workflow has one of two
+  shapes: a `fan_out` list of nodes run at once and a `join` run after
+  them, with the workflow's own `input`; or one `call`, with no `input`,
+  `fan_out` or `join`, which takes its process's params and is that
+  call's one run, with one record naming the workflow, the process and
+  the agent:
+
+```yaml
+fan_out:
+  - {node: tests, uses: process:tests_review, agent: codex-sol-61}
+join: {node: judge, uses: process:review_judge, agent: claude-opus}
+```
+
+```yaml
+schema: agister.workflow/v1alpha1
+name: implement_codex
+type: workflow
+call: {node: implement, uses: process:implement, agent: codex-sol-61}
+```
+
+`agister run <name>` names a workflow; a process's name is refused, with
+the workflows that bind it. A node's call gets its process's skills, then
+its agent's, each once. A layer rebinds a node: `fan_out` is a list, so a
+layer that changes one node's agent gives the whole list; `join` and
+`call` are maps, so a layer sets `join.agent` or `call.agent` alone.
+
+`check` resolves every node of every workflow as a call would, up to the
+runtime's installed version: the process, the agent, its runtime mapping
+and the plan. A binding whose mapping gives no primitive the process
+allows, that would withhold a permission in `tools.require`, or that
+fails as a call on that agent would, is a problem of that workflow,
+naming the node; another workflow that binds the same process to an agent
+that can run it still runs. A permission allowed and not required that
+the runtime does not give is no problem: `check` and `workflow show` list
+it as `withheld` on that binding. `process show` shows the process on no
+agent; `workflow show` shows each node as its binding runs: its process,
+agent and runtime, the params it receives, its plan and what it
+withholds.
+
+A process may extend one base, `extends: process:<base>`:
+
+```yaml
+schema: agister.process/v1alpha1
+name: tests_review
+type: process
+extends: process:review
+prompt: code-review-tests
+```
+
+The base extends nothing, and is not work: a node that binds it is a
+problem of the workflow. It is checked through each process that extends
+it, so it may leave out what each of them sets, `prompt` here. The base
+is composed from its own layers first, then the extending process's
+layers over it; maps merge by key, lists and scalars are replaced whole,
+and `name` and `extends` are never taken from the base. A layer's partial
+of the base reaches every process that extends it; a partial may not set
+`extends`. `process show` and the record name the base for each field it
+gave. Home's five reviews extend its `review` base, which holds their
+permissions and limits.
 
 `agister init` installs the example settings. `agister install <dir>`
 installs a folder laid out like the settings, such as a repository's
@@ -121,24 +203,23 @@ the probe is kept as `~/.agister/probes/<adapter>/<version>.json`, which
 later calls read. A probe that fails, or proves nothing, refuses the call
 with its outcomes, and is not run again by that process.
 
-A policy may set staleness limits under `stale`, and a process may only
-narrow them: `no_event`, `tool_command` and `repeated_tool_calls` for an
+A process may set staleness limits under `stale`, none above its
+`timeout`: `no_event`, `tool_command` and `repeated_tool_calls` for an
 agent turn, `no_output` for a verification run. A call that reaches one
 ends before its timeout, and its record names the limit and what went
 stale, unless the settings give it resumes to recover with
 ([ADR-024](docs/adr/024-a-stale-call-is-resumed-once.md)):
-`stale.recover.max_resumes`, which a policy sets and a process may only
-lower, down to 0, and `stale.recover.instruction`, which a budget above 0
-needs. Unset, the budget is 0, and every limit ends the call. With a
+`stale.recover.max_resumes`, which the process sets, and
+`stale.recover.instruction`, which a budget above 0 needs. Unset, the budget is 0, and every limit ends the call. With a
 budget, an agent turn that Agister ended at a limit is followed by a
 recovery turn: the call's session is resumed, in the same worktree, with
 the instruction and the evidence of what went stale. Each recovery turn
 spends one resume. The same limit reached again on the same thing ends
 the call with that limit's status and class, even with resumes left, and
-so does any limit once none is left. A call with a budget is refused
-before its first turn unless its agent's sessions may be continued and
-its runtime can resume one, and `process show` prints the budget
-(`recovery resumes N`).
+so does any limit once none is left. A process with a budget
+must be `resumable`, a call with one is refused before its first turn
+unless its agent's runtime can resume a session, and `process show`
+prints the budget (`recovery resumes N`).
 
 A verification run ended at `no_output` is a failed attempt, whatever
 `stale.recover` says: a repair turn follows it as it follows a failing
@@ -207,8 +288,10 @@ unreadable prompt refuses the call. The agent receives its values, then
 input `prompt`, then `guidance.<name>` in list order, each recorded with
 its digest. `{source: prompt}` and `optional` are refused: ADR-028
 supersedes [ADR-019](docs/adr/019-a-prompt-may-be-optional.md) and amends
-[ADR-014](docs/adr/014-prompts-are-settings.md). Home's `implement*`
-processes share prompt `implement` and name no Go guidance.
+[ADR-014](docs/adr/014-prompts-are-settings.md). Home's one `implement`
+process takes prompt `implement` and names no Go guidance; the workflows
+`implement_codex`, `implement_opus`, `implement_sonnet`, `implement_pi`
+and `implement_pi_glm` each bind it to one agent.
 
 A repository or project can hold `layer.yaml`, with
 `schema: agister.layer/v1alpha1` and `prompts: [prompts]`: additional
@@ -259,11 +342,12 @@ A skill the settings give an agent is a document too:
 names it, `name` equal to the folder's, and describes it, `description` not
 empty; the rest of the file is the runtime's to read. An agent names its
 skills with `skills = ["review"]`, a process with `skills: [review]`; a
-name is literal, never interpolated, and named once in a list. A call gets
-its process's skills, then its agent's, each once; with `--agent` the
-process's stay and the agent's are the named agent's. Each is read with the
+name is literal, never interpolated, and named once in a list. A node's
+call gets its process's skills, then those of the agent the node binds,
+each once. Each is read with the
 call and recorded among its definitions with its digest, and `process show`
-lists them, the process's and the agent's, with the layer each comes from.
+lists the process's, with the layer each comes from, and `workflow show`
+each node's call's.
 A skill is found like any other document, so a repository replaces one,
 whole, with `.agister/skills/review/SKILL.md`. `check` reports a name that
 exists in no layer as a problem of the agent or the process that
@@ -307,15 +391,16 @@ workflows, agents and runtime mappings it blocks
 ```yaml
 schema: agister.blocks/v1alpha1
 blocks:
-  - ref: agent:codex-implementer-sol-61
-    reason: Codex does not implement in this repository
-  - ref: process:implement_codex
+  - ref: agent:codex-sol-61
+    reason: Codex does not run in this repository
+  - ref: workflow:implement_pi
 ```
 
-In that repository, every call that depends on a blocked document, through
-any chain of uses and with `--agent` too, is refused before its first turn,
-naming the block's path and reason; `check` lists each block and what it
-refuses, and passes. A `blocks.yaml` that is broken or names a document
+In that repository, every workflow that depends on a blocked document,
+through any chain of uses, is refused before its first turn, naming the
+block's path and reason: here every workflow whose node binds
+`codex-sol-61`, until a layer rebinds that node, and `implement_pi`.
+`check` lists each block and what it refuses, and passes. A `blocks.yaml` that is broken or names a document
 that exists nowhere stops every command, as broken service settings do;
 `install` and `install --restore` still run. One in home blocks nothing
 and is a problem, and `install` does not install one.
@@ -396,7 +481,11 @@ worktree before and after the call but does not confine the agent to it;
 do not change the worktree while a writer works in it.
 
 `--continue <run-id>` resumes the session in the same worktree, after the
-session's latest run, whichever run of the session you name. It applies
+session's latest run, whichever run of the session you name. Only a
+workflow of one `call` whose process is `resumable` takes it, on a runtime
+that resumes, and only for a run of a workflow call of the same process
+on the same agent: a fan-out workflow cannot be continued, and neither can
+a run made before ADR-030, though its record stays readable. It applies
 nothing: that run's changes are in the worktree. Launch from it and pin
 the same revision: a default like `HEAD` resolves in the directory you
 launch from. The call is refused unless the latest run worked in the same
@@ -416,8 +505,7 @@ that keeps its bytes when there is one, all read from that run's record.
 is refused before it starts when the goal's run does not exist, has no
 such input or keeps its bytes nowhere, neither inline nor as an artifact,
 and when the judgement's run does not exist or did not complete. Both
-are optional, for a process or a workflow; a run given neither has no
-`links`.
+are optional, for any workflow; a run given neither has no `links`.
 
 The run store is one host's, so runs, the briefs and goals they keep
 among them, are exported for audit
@@ -464,8 +552,7 @@ published for others is LAB-85.
 `examples/pi/` and `examples/opencode/` are opt-in. The shipped service
 lists `host.read` and `host.write` as `state_reaching`, so on it
 `implement` gets no file tool (Claude Code's reach the host) and a
-process under the `read-only` policy is refused on Codex, whose
-sandbox reads the host. A service that lists neither accepts that
+read-only process is refused on Codex, whose sandbox reads the host. A service that lists neither accepts that
 reach, as `home/service.toml` does.
 
 ## Test

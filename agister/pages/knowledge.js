@@ -32,8 +32,8 @@
   // reply for them, of which the folders are read here; runs the run
   // summaries.
   //   agents: each agent with its runtime's adapter; the skills its
-  //     settings name (named: its own, and per process on it the
-  //     process's); the folders that adapter loads and the skills in them
+  //     settings name (named: its own, and per process a workflow's node
+  //     binds to it the process's); the folders that adapter loads and the skills in them
   //     (loads); and, apart from both, what its runs used (observed);
   //   skills: each skill name with its entries in every folder, shared when
   //     there is more than one, and the agents whose runtime loads it.
@@ -49,7 +49,7 @@
         name: a.name, runtime: a.runtime, runtimeMissing: !runtime, adapter, model: a.model, effort: a.effort,
         named: {
           own: (a.skills ?? []).map(fromSettings),
-          processes: settings.processes.filter((p) => !p.error && p.agent === a.name && p.skills?.length)
+          processes: settings.processes.filter((p) => !p.error && p.agents?.includes(a.name) && p.skills?.length)
             .map((p) => ({ name: p.name, skills: p.skills.map(fromSettings) })),
         },
         folders: folders.filter(loaded),

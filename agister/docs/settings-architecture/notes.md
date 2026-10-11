@@ -1,13 +1,14 @@
 # Settings architecture: preparation notes
 
 The facts behind `index.html` (top level) and `detailed.html`, each with
-its source. Paths are relative to `agister/`. Checked against trunk at
-27e7d8b1 (2026-10-10), including the ADR-028 implementation.
+its source. Paths are relative to `agister/`. Checked against the LAB-171
+candidate at 61205ca4 (2026-10-11), with ADR-028 and ADR-030
+implemented.
 
 ## What settings are
 
-- Agents, processes, policies, output contracts, permission mappings, the
-  permission vocabulary and service limits are settings, changeable
+- Agents, processes, workflows, output contracts, permission mappings,
+  the permission vocabulary and service limits are settings, changeable
   without rebuilding. Code adds only mechanisms settings cannot express:
   runtimes, input source kinds. (ADR-001 rule 2)
 - The core owns what definitions mean; the store only supplies documents
@@ -19,26 +20,40 @@ its source. Paths are relative to `agister/`. Checked against trunk at
 ## The documents and what they name
 
 The settings are a graph of documents that name each other by name.
-Fields: `internal/domain/definition/documents.go:24-130`, `toml.go:25-60`,
-`workflow.go:19-35`, `limits.go:11-48`. Shapes as in
+Fields: `internal/domain/definition/documents.go:23-130`, `toml.go:27-60`,
+`workflow.go:21-45`, `limits.go:11-48`, `extends.go`. Shapes as in
 `home/processes/implement.yaml`, `home/workflows/code_review.yaml`,
 `home/runtimes/claude-code.yaml`, `home/service.toml`.
 
-- **workflow** composes process calls into one run; its settings and the
-  calls' records fix what each call receives, never whoever starts it
-  (ADR-003 decision drivers). Has its own params and values. Its one
-  shape today, "the smallest shape the one use needs: no conditions,
-  loops or graphs": fan-out nodes, each a call of a process over the same
-  resolved inputs, then one join node, a call of a process given the
-  fan-out results. (`workflow.go:19`; ADR-003)
+- **workflow** binds processes to agents and is the only thing `agister
+  run` runs; its settings and the calls' records fix what each call
+  receives, never whoever starts it (ADR-003 decision drivers; ADR-030
+  rules 5 and 7). Each node names its process and its **agent**
+  (`{node, uses: process:<p>, agent: <a>}`), `agent` required on every
+  node; nothing else chooses a call's agent. It has one of two shapes
+  (`workflow.go:21`; ADR-003, ADR-030 rule 6):
+  - fan-out and join, with its own params and values: fan-out nodes, each
+    a call of a process over the same resolved inputs, then one join node,
+    a call of a process given the fan-out results. It cannot be
+    continued;
+  - one `call`, with no `input`, `fan_out` or `join`: it takes its
+    process's params and is that call's one run, with one record naming
+    the workflow, the process and the agent. It takes `--timeout`,
+    `--max-cost` and, where its process is resumable, `--continue`.
+  - A layer rebinds a node: `fan_out` is a list, so it gives the whole
+    list; `join` and `call` are maps, so it sets `join.agent` or
+    `call.agent` alone. A workflow whose node binds a blocked or broken
+    agent is refused until a layer rebinds that node. (ADR-030 rule 10)
   - Existing workflows (`home/workflows/`, home's source, ADR-027):
     `code_review` (architecture, tests, adversarial, clarity and intent
-    reviews concurrently, then the judge) and `adr_review` (the ADR review, then
-    the judge); both take a required `goal` file whose text every review
-    node receives and the judge does not (ADR-023); `code_review`'s goal
-    must have the `goal` brief form (ADR-026).
-    (`home/workflows/code_review.yaml`,
-    `home/workflows/adr_review.yaml`)
+    reviews concurrently on `codex-sol-61`, then the judge on
+    `claude-opus`) and `adr_review` (the ADR review, then the judge); both
+    take a required `goal` file whose text every review node receives and
+    the judge does not (ADR-023); `code_review`'s goal must have the
+    `goal` brief form (ADR-026). Workflows of one call: `implement_codex`,
+    `implement_opus`, `implement_sonnet`, `implement_pi` and
+    `implement_pi_glm` bind `implement` to one agent each, and
+    `advisor_codex` binds `advisor`. (`home/workflows/`)
   - The intent review (LAB-120) needed no change to the caller skill,
     the README or Pages. The skill (`skills/agister/SKILL.md`) names no
     workflow's reviews: it has the caller discover workflows from the
@@ -46,13 +61,13 @@ Fields: `internal/domain/definition/documents.go:24-130`, `toml.go:25-60`,
     the review workflows and their `goal`, not their reviews. Pages needs
     no change because it renders the configured nodes dynamically: it
     reads a workflow's `fan_out` nodes from the settings and renders each
-    (`pages/config.js:286`, `pages/page.js:366`). Its existing test 'the
+    (`pages/config.js:273`, `pages/page.js`). Its existing test 'the
     settings in .agister load without errors' loads this repository's
     actual settings, so it picks up the added process and node
-    automatically (`pages/tests/config.test.js:446`).
-- **process** is a named agent call. It names:
-  - its **agent** (`uses: agent:<name>`);
-  - its **policy** (`policy: process-policy:<name>`);
+    automatically (`pages/tests/config.test.js`).
+- **process** is the work, and names no agent: a workflow's node binds it
+  to one (ADR-030 rule 2). It names:
+  - its **base**, optionally (`extends: process:<base>`, below);
   - its **output schema** (`output.schema`, JSON only);
   - its **verification**: inline, or `verify: verify:<name>` (ADR-010);
   - **prompts**, one required `prompt` and a `guidance` list, empty when
@@ -66,15 +81,39 @@ Fields: `internal/domain/definition/documents.go:24-130`, `toml.go:25-60`,
   `param`, `file`, `git.revision`, `git.merge_base`, `git.diff`,
   `git.changed_files`; `cmd/agister/main.go` inputs map),
   `workspace.revision`, the input HEAD must be at, `workspace.clean`, a
-  fresh call needs HEAD's content (unset: `false`), required permissions,
-  and limit overrides that may only narrow its policy. A process with a
-  verification declares both. `workspace.checkout` is a problem, now
-  `workspace.revision`; `workspace.setup` is obsolete and ignored, and
-  `check` warns. (`documents.go:80-105`, `:161-270`; ADR-025 rules 2 and 3)
+  fresh call needs HEAD's content (unset: `false`), and its own limits:
+  `workspace.access` (read-only when unset) and `workspace.scope`
+  (candidate or repository), `tools.allow`, `tools.require` (the
+  permissions the work cannot be done without), `isolation.deny`,
+  `timeout` (required), `retry.max_attempts`, `max_cost_usd` and `stale`.
+  Limits speak in permissions, never in runtime primitives. A process
+  with a verification declares both `revision` and `clean`.
+  `workspace.checkout` is a problem, now `workspace.revision`;
+  `workspace.setup` is obsolete and ignored, and `check` warns.
+  (`documents.go:77-105`, `:151-300`, `limits.go:11`; ADR-025 rules 2 and
+  3; ADR-030 rule 2)
+  - Its `session` is `resumable` when its session may be resumed, by a
+    repair turn, a recovery turn or `--continue`; unset, `fresh-only`. A
+    process whose verification repairs, or whose
+    `stale.recover.max_resumes` is above 0, and that is not `resumable`,
+    has a problem of its own. (`session.go`; ADR-030 rule 3)
+  - Its `stale` block holds the limits `no_event`, `tool_command`,
+    `repeated_tool_calls` and `no_output`, none above its `timeout`, and
+    `recover`: `max_resumes`, how many recovery turns a call may take
+    after a turn ended at a staleness limit, each resuming its session
+    with what went stale (unset: 0, none), and `instruction`, what the
+    agent is told with the evidence, which a budget above 0 needs.
+    (`limits.go:26-48`; ADR-024 rules 4 and 5, as ADR-030 amends them)
+- **base**: a process some process extends (`extends: process:<base>`).
+  It extends nothing: one level. It is not work: a node that binds it is
+  a problem of the workflow; it is checked through each process that
+  extends it, so it may leave out what each of them sets, such as
+  `prompt`. Home's `review` is the base of its five reviews.
+  (`extends.go`; ADR-030 rule 9)
 - **agent** is a runtime profile: it names a **runtime mapping**
-  (`runtime`), and holds model, model family, effort, session mode
-  (fresh-only or resumable), and **skills** it names. It carries no task
-  and no permissions. (`toml.go:25`)
+  (`runtime`), and holds model, model family, effort, command and the
+  **skills** it names. It carries no task, no limit, no session and no
+  permissions. (`toml.go:27`; ADR-030 rule 1)
 - **runtime mapping** (`runtimes/`): for one adapter (`claude-code`,
   `codex`, `pi`, `opencode`) and adapter contract, the efforts it accepts
   and each restriction primitive (a tool or sandbox mode) with the
@@ -82,20 +121,8 @@ Fields: `internal/domain/definition/documents.go:24-130`, `toml.go:25-60`,
   lists for no primitive is probed by the adapter, where it has a probe,
   and the probe kept in `~/.agister/probes/`, outside the settings.
   (`documents.go:113-130`; ADR-001 terms; ADR-029)
-- **policy** holds execution defaults: timeout, attempts, cost cap,
-  allowed and denied permissions, workspace access (read-only or
-  read-write) and scope (candidate or repository), staleness limits.
-  Policies speak in permissions, never in runtime primitives.
-  (`limits.go:11`; ADR-001 rule 4)
-  - Its `stale` block holds the limits `no_event`, `tool_command`,
-    `repeated_tool_calls` and `no_output`, and `recover`:
-    `max_resumes`, how many recovery turns a call may take after a turn
-    ended at a staleness limit, each resuming its session with what went
-    stale (unset: 0, none), and `instruction`, what the agent is told
-    with the evidence, which a budget above 0 needs.
-    (`limits.go:26-48`; ADR-024 rules 4 and 5)
 - **service** (one): hard limits (max timeout, attempts, cost, verify
-  attempts) and the permission vocabulary every policy and mapping must use;
+  attempts) and the permission vocabulary every process and mapping must use;
   which permissions write, which reach Agister's state (never granted).
   (`toml.go:46`)
 - **schema**: a JSON Schema a process's output must match.
@@ -113,31 +140,45 @@ Fields: `internal/domain/definition/documents.go:24-130`, `toml.go:25-60`,
   `goal` and `step`. (`internal/domain/definition/briefs.go`; ADR-026
   rules 3 to 5 and 8)
 - **blocks** (one, repo only): agents, processes, workflows or runtime
-  mappings this repo refuses, with reasons. (ADR-018)
+  mappings this repo refuses, with reasons; what it refuses is the
+  workflows that depend on them. (ADR-018)
 
 ### How permissions and limits compose
 
-- Limits only narrow: service ⊇ policy ⊇ process ⊇ caller. Widening is
-  rejected, never clamped. Denied always wins over allowed. (ADR-001 rule 3)
-- A process that names no policy holds its own `workspace.access`:
-  `read-write` where it sets it, read-only where it sets none. One that
-  names a policy may only narrow its policy's: `read-write` over a policy
-  that is read-only, or sets no access, is invalid.
-  (`internal/domain/policy/policy.go`, `Compose`;
+- Limits narrow from the service to the process to the caller's
+  `--timeout` and `--max-cost`: the service's ceilings bound the process's
+  own limits, and a caller may only narrow them. Widening is rejected,
+  never clamped. Denied always wins over allowed. A nearer layer's field
+  of a process replaces a farther one's (ADR-028 rule 4). (ADR-030 rule
+  4; `internal/domain/policy/policy.go:74`, `Compose`)
+- A process holds its own `workspace.access`: `read-write` where it sets
+  it, read-only where it sets none; a read-only one denies every
+  permission the service lists as `writing`.
+  (`internal/domain/policy/policy.go:141-165`;
   `internal/domain/policy/policy_test.go`)
-- `stale.recover` only narrows: a process may lower its policy's
-  `max_resumes`, down to 0, and one above the policy's, or above 0 where
-  the policy sets none, is invalid; the caller has no override. The
-  process's `instruction`, where it gives one, replaces the policy's: it
-  is text, not a limit. A budget above 0 refuses the call unless its
-  agent is resumable and its runtime resumes sessions.
-  (`internal/domain/policy/policy.go:253`,
-  `internal/app/resolve.go:421-443`; ADR-024 rules 5 and 6)
+- `stale.recover` is the process's own: no `max_resumes` is 0, and a
+  budget above 0 needs an `instruction`; the caller has no override. A
+  budget above 0 needs a `resumable` process, and refuses the call unless
+  its agent's runtime resumes sessions.
+  (`internal/domain/policy/policy.go:205`; ADR-024 rules 5 and 6, ADR-030
+  rule 3)
 - The enforcement plan comes from the effective permissions and the
   agent's runtime mapping: a primitive is granted only if everything it
   grants is allowed; allowed permissions no primitive provides are withheld
   and recorded, and the call is refused if the process requires them.
   (ADR-001 rule 4; `internal/domain/enforce/enforce.go:31`)
+- The binding check: `check` resolves every node of every workflow as a
+  call would, up to the runtime's installed version: the process, the
+  agent, its runtime mapping and the plan. A binding whose mapping gives
+  no primitive within `tools.allow`, that would withhold a permission in
+  `tools.require`, or that fails as a call on that agent would, is a
+  problem of the workflow, naming the node; it refuses that workflow,
+  not the process or the agent. A permission allowed and not required
+  that the runtime does not give is listed, not refused: `withheld
+  workflow <w> node <n>: process <p>, agent <a> (runtime <r> version
+  <v>): <permissions>`, and `workflow show` lists it per node.
+  (`internal/domain/settings/bindings.go`, `settings.go:250`;
+  `internal/cli/cli.go:1572`; ADR-030 rule 8)
 
 ## Where they live: three layers
 
@@ -171,7 +212,6 @@ Same layout in all three layers (`internal/adapters/fsdefs/fsdefs.go:1`,
 | service (singleton) | `service.toml` |
 | agents | `agents/<name>.toml` |
 | processes | `processes/<name>.yaml` |
-| policies | `policies/<name>.yaml` |
 | runtimes (adapter mappings) | `runtimes/<name>.yaml` |
 | schemas (output contracts) | `schemas/<name>.json` |
 | workflows | `workflows/<name>.yaml` |
@@ -185,7 +225,7 @@ Same layout in all three layers (`internal/adapters/fsdefs/fsdefs.go:1`,
 - A YAML settings file holds exactly one YAML document: a second, after
   a `---`, even an empty one, is the problem "must hold exactly one YAML
   document", never left unread; an empty file is "empty document". This
-  holds for every YAML kind above: processes, policies, runtime mappings,
+  holds for every YAML kind above: processes, runtime mappings,
   workflows, verifies, briefs and `blocks.yaml`. (`parseOneYAML`,
   `internal/domain/definition/yaml.go:21`; LAB-59 for blocks, LAB-77 for
   the rest)
@@ -232,8 +272,16 @@ Same layout in all three layers (`internal/adapters/fsdefs/fsdefs.go:1`,
   `--json` carries the same. `check --tree` lists those files and, under
   each but the farthest, the fields it gave (`(none)` for none). Text
   documents mark farther files `(replaced)`. (`cmd/agister/layers_test.go`)
-- Limits only narrow: service ⊇ policy ⊇ process ⊇ caller; widening is
-  rejected. (ADR-001 rule 3)
+- A process that extends a base is composed from the base's layers,
+  farthest first, then its own layers over them, farthest first: maps
+  merge by key, lists and scalars are replaced whole, and `name` and
+  `extends` are never taken from the base. A layer's partial of the base
+  reaches every process that extends it; a layer's partial may not set
+  or change `extends`. `process show` and the record name the base for
+  each field it gave. (`definition.Extended`, `extends.go:190`; ADR-030
+  rule 9)
+- Limits narrow from the service to the process to the caller; widening
+  is rejected. (ADR-030 rule 4)
 - A repo can block an agent, process, workflow or runtime mapping that
   home allows, with a reason; only the repo's `blocks.yaml` counts.
   (ADR-018)
@@ -249,9 +297,10 @@ and ignored, and `check` warns (`internal/app/check.go:289`; ADR-025).
 - The call's definitions, prompts, verification, skills and brief forms
   are recorded with their digests. (ADR-010 rule 3, ADR-014 rule 3,
   ADR-021 rule 3, ADR-026 rule 8)
-- A call depends on the service, its process, and what that uses: agent,
-  runtime mapping, policy, schema, verification, prompts, skills, brief
-  forms. A broken
+- A call is a workflow's node: it depends on the service, the workflow,
+  the node's process and agent, and what they use: the process's base,
+  the agent's runtime mapping, schema, verification, prompts, skills,
+  brief forms. A broken
   document refuses only the calls that depend on it, naming the chain.
   Only unattributable problems (service settings broken, an unreadable
   name, a name defined twice, a broken `blocks.yaml`) stop every command.
@@ -334,7 +383,12 @@ and ignored, and `check` warns (`internal/app/check.go:289`; ADR-025).
     none is, and a run the call reaped carries the same `lost` result a
     reap beside the calls records; of the events it reads only the
     skills and tool calls. (`pages/README.md`, `pages/runs.go`)
-- Skills: the call's skills (its process's and its agent's) are written
+- `agister run <name>` names a workflow; a process's name is refused,
+  with the workflows that bind it (`internal/app/calls.go:838`; ADR-030
+  rule 7). A run made before ADR-030 stays readable and is not continued
+  (ADR-030 rule 11).
+- Skills: the call's skills (its process's, then those of the agent its
+  node binds, each once) are written
   before each turn into a folder outside the worktree, from the recorded
   bytes, and handed to the runtime the adapter's way (Claude Code plugin
   dir, Pi `--skill`, OpenCode `skills.paths`, Codex a per-thread

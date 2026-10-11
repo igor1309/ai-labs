@@ -164,26 +164,22 @@
 
     // What can run first, as cards; what they are made of after, as tables.
     function dashboard(model, composed) {
-      const ix = { agent: byName(model.agents), policy: byName(model.policies), process: byName(model.processes) };
+      const ix = { agent: byName(model.agents), process: byName(model.processes) };
       const steps = new Set(model.workflows.flatMap((w) => (w.error ? [] : nodes(w).map((n) => n.process))));
       const alone = model.processes.filter((p) => p.error || !steps.has(p.name));
       const chip = composed ? sourceChip : () => null;
-      const runnable = model.workflows.length + alone.length;
       return [
         el('p', { className: 'intro' }, composed
           ? 'What Agister uses here: home, repository and the selected project compose by field. Maps merge by key; lists and scalars replace whole.'
           : 'Agister home, ~/.agister: the settings every repo starts from. A repo’s .agister goes over them.'),
-        runnable ? null : el('p', { className: 'intro' }, 'Nothing to run here: no workflows or processes.'),
-        group('Workflows', 'several agent calls at once, then one that brings their results together',
+        model.workflows.length ? null : el('p', { className: 'intro' }, 'Nothing to run here: no workflows.'),
+        group('Workflows', 'what agister run runs: each node binds a process to an agent; several calls at once then a join, or one call',
           model.workflows.map((w) => workflowCard(w, ix, chip))),
-        group('Processes', steps.size
-          ? 'one agent call each; the workflow steps above also run alone'
-          : 'one agent call each',
-        alone.map((p) => processCard(p, ix, chip))),
-        model.agents.length || model.policies.length || model.runtimes.length || model.service
+        group('Processes', 'bound by no workflow’s node: Agister runs a process only as a node that binds it to an agent; a base is not work, the processes that extend it are',
+          alone.map((p) => processCard(p, ix, chip))),
+        model.agents.length || model.runtimes.length || model.service
           ? el('h2', { className: 'group', textContent: 'Building blocks' }) : null,
         agentsTable(model.agents, composed),
-        policiesTable(model.policies, composed),
         runtimesTable(model.runtimes, composed),
         limitsTable(model.service, composed),
       ].filter(Boolean);
@@ -220,8 +216,8 @@
       el('span', { className: 'missing', title: `No ${kind} named ${name} in these settings: Agister refuses the call` },
         `${name} (missing ${kind})`);
 
-    // A process no agent is named for: nothing binds it to one, so Agister
-    // refuses its call, for the reason title gives.
+    // A process or a node no agent is bound for: Agister refuses its call,
+    // for the reason title gives.
     const noAgent = (title) => el('span', { className: 'missing', title }, 'none');
 
     function copyButton(command) {
@@ -257,42 +253,41 @@
       return el('div', {}, set.map((p) => `${p.name} = ${p.default}`).join(', '));
     }
 
-    const SESSION = { resumable: 'can be continued (--continue)', 'fresh-only': 'starts fresh every call' };
+    // A process's session (ADR-030 rule 4): fresh-only when it sets none.
+    const SESSION = { resumable: 'resumable: a run can be continued (--continue)', 'fresh-only': 'fresh-only: every call starts fresh' };
+    const session = (p) => SESSION[p.session ?? 'fresh-only'] ?? p.session;
 
-    function agentLine(name, ix) {
-      if (!name) return el('div', {}, noAgent('The process names no agent: Agister runs it only as a workflow’s node that names one'));
-      const a = ix.agent.get(name);
-      if (!a) return missing('agent', name);
-      const parts = [a.model, a.effort && `${a.effort} effort`].filter(Boolean);
-      const session = SESSION[a.session] ?? a.session;
-      return el('div', {},
-        el('div', {}, text(name, 'name'), ' — ',
-          a.runtimeOutside ? missing('runtime', a.runtime) : text(a.runtime ?? 'no runtime'),
-          parts.length ? `, ${parts.join(', ')}` : ''),
-        session ? el('div', { className: 'sub' }, session) : null);
-    }
-
-    // "read-only workspace, 20m, $2 cap"
-    function policySummary(p) {
-      return [p.access && `${p.access} workspace`, p.timeout, p.maxCostUsd != null && `$${p.maxCostUsd} cap`].filter(Boolean).join(', ');
-    }
-
-    // A process that names no policy holds its own workspace access,
-    // read-only when it sets none, as Agister composes it.
+    // A process's own workspace access, read-only when it sets none, as
+    // Agister composes it.
     function ownAccess(process) {
       const access = process.access ?? 'read-only';
       return text(`${access} workspace`, `access-${access}`);
     }
 
-    function policyLines(process, ix) {
-      const name = process.policy;
-      if (!name) return el('div', {}, 'none — ', ownAccess(process));
-      const p = ix.policy.get(name);
-      if (!p) return missing('policy', name);
+    // "20m, $2 cap, 2 attempts, scope candidate": the limits a process sets
+    // besides its access, within the service's.
+    function limitSummary(p) {
+      return [p.timeout, p.maxCostUsd != null && `$${p.maxCostUsd} cap`,
+        p.attempts != null && `${p.attempts} ${p.attempts === 1 ? 'attempt' : 'attempts'}`, p.scope && `scope ${p.scope}`].filter(Boolean).join(', ');
+    }
+
+    // A process's own limits (ADR-030 rule 3): its access and the rest,
+    // the permissions it requires, allows and denies.
+    function limitLines(p) {
+      const rest = limitSummary(p);
       return el('div', {},
-        el('div', {}, text(name, 'name'), ' — ', text(policySummary(p), `access-${p.access}`)),
+        el('div', {}, ownAccess(p), rest ? `, ${rest}` : ''),
+        p.require.length ? el('div', { className: 'sub' }, `requires: ${p.require.join(', ')}`) : null,
         el('div', { className: 'sub' }, `allows: ${p.allow.length ? p.allow.join(', ') : 'nothing'}`),
         p.deny.length ? el('div', { className: 'sub' }, `denies: ${p.deny.join(', ')}`) : null);
+    }
+
+    // The base a process extends, or the processes that extend a base,
+    // which is not work (ADR-030 rule 9).
+    function baseLine(p) {
+      if (p.extends) return el('div', {}, text(p.extends, 'name'), ' — its fields under this process’s own');
+      if (p.base) return el('div', {}, `a base, not work: extended by ${p.extendedBy.join(', ')}`);
+      return null;
     }
 
     // The output schema, with the layers it comes from, then the verify.
@@ -349,16 +344,20 @@
         ...body, item.layers ? facts([['layers', layerLine(item)]]) : null);
     }
 
+    // A process no workflow's node binds: it has no command, as agister run
+    // runs a workflow only (ADR-030 rule 7).
     function processCard(p, ix, chip) {
       if (p.error) return errorCard(p);
-      return card('process', p, chip, command(p.name, p.params), facts([
+      return card('process', p, chip, facts([
         ['defaults', defaults(p.params)],
-        ['agent', agentLine(p.agent, ix)],
-        ['policy', policyLines(p, ix)],
+        ['agent', el('div', {}, noAgent('The process names no agent: only a workflow’s node binds it to one, and Agister runs it only so'))],
+        ['extends', baseLine(p)],
+        ['limits', limitLines(p)],
+        ['session', session(p)],
         ['prompt', namedLine('prompt', p.prompt ? [p.prompt] : [], chip)],
         ['guidance', p.guidance.length ? namedLine('prompt', p.guidance, chip) : text('none')],
         ['briefs', namedLine('brief', p.forms, chip)],
-        ['skills', namedLine('skill', p.callSkills, chip)],
+        ['skills', namedLine('skill', p.skills, chip)],
         ['output', outputLine(p, chip)],
         ['verification layers', verificationLayers(p)],
         ['worktree', worktreeLine(p)],
@@ -369,34 +368,37 @@
       return p.verify?.layers ? el('div', {}, p.verify.ref, layerLine(p.verify)) : null;
     }
 
-    // The agent a node's call runs on: the one the node names, or its
-    // process's where it names none (ADR-030 rule 5); null when neither
-    // names one.
-    const nodeAgent = (n, ix) => n.agent ?? ix.process.get(n.process)?.agent ?? null;
+    // The skills a node's call gets: its process's, then those of the agent
+    // the node binds, each once (ADR-021 rule 2).
+    function callSkills(p, a) {
+      const own = p.skills;
+      return [...own, ...(a?.skills ?? []).filter((x) => !own.some((y) => y.name === x.name))];
+    }
 
     // A workflow step exposes the process's prompt, guidance, output schema
     // and field layers too, since processes used by workflows have no
-    // standalone card.
+    // standalone card. Its call runs on the agent the node binds, never on
+    // one its process names (ADR-030 rule 5).
     function step(n, ix, chip) {
       const p = ix.process.get(n.process);
       if (!p) return el('div', { className: 'step' }, missing('process', n.process));
-      const agent = nodeAgent(n, ix);
-      const a = ix.agent.get(agent);
-      const pol = ix.policy.get(p.policy);
+      const a = ix.agent.get(n.agent);
+      const rest = limitSummary(p);
       return el('div', { className: 'step' },
         el('div', { className: 'step-name', textContent: p.name }),
         p.purpose ? el('p', { className: 'step-purpose', textContent: p.purpose }) : null,
         el('div', { className: 'step-meta' },
           el('div', {}, text('agent  ', 'label'),
-            a ? [agent, a.model, a.effort && `${a.effort} effort`].filter(Boolean).join(' · ')
-              : agent ? missing('agent', agent)
-                : noAgent('Neither the node nor its process names an agent: Agister refuses the workflow')),
-          el('div', {}, text('policy ', 'label'),
-            pol ? el('span', {}, `${p.policy} · `, text(policySummary(pol), `access-${pol.access}`))
-              : p.policy ? missing('policy', p.policy) : el('span', {}, 'none · ', ownAccess(p)))),
+            a ? [n.agent, a.model, a.effort && `${a.effort} effort`].filter(Boolean).join(' · ')
+              : n.agent ? missing('agent', n.agent)
+                : noAgent('The node binds no agent: Agister refuses the workflow')),
+          el('div', {}, text('limits ', 'label'), ownAccess(p), rest ? ` · ${rest}` : '')),
         facts([
+          ['extends', baseLine(p)],
+          ['session', session(p)],
           ['prompt', namedLine('prompt', p.prompt ? [p.prompt] : [], chip)],
           ['guidance', p.guidance.length ? namedLine('prompt', p.guidance, chip) : text('none')],
+          ['skills', namedLine('skill', callSkills(p, a), chip)],
           ['output', outputLine(p, chip)],
           ['layers', layerLine(p)],
           ['verification layers', verificationLayers(p)],
@@ -411,7 +413,7 @@
     function models(steps, ix) {
       const count = new Map();
       for (const n of steps) {
-        const model = ix.agent.get(nodeAgent(n, ix))?.model ?? 'unknown model';
+        const model = ix.agent.get(n.agent)?.model ?? 'unknown model';
         count.set(model, (count.get(model) ?? 0) + 1);
       }
       return [...count].map(([model, k]) => (k > 1 ? `${k} × ${model}` : model)).join(' + ');
@@ -460,22 +462,12 @@
     }
 
     function agentsTable(items, composed) {
-      return table('Agents', 'resumable: a run can be continued with --continue; fresh-only: every call starts fresh',
-        ['Agent', 'Runtime', 'Model', 'Effort', 'Session', 'Skills'], items, (a) => [
+      return table('Agents', 'runtime profiles a workflow’s node binds a process to; the process sets the limits and the session',
+        ['Agent', 'Runtime', 'Model', 'Effort', 'Skills', 'Bound by'], items, (a) => [
           a.runtimeOutside ? missing('runtime', a.runtime) : a.runtime,
-          a.model, a.effort, a.session,
+          a.model, a.effort,
           namedLine('skill', a.skills, composed ? sourceChip : () => null),
-        ], composed);
-    }
-
-    function policiesTable(items, composed) {
-      return table('Policies', 'what a call may touch, for how long and at what cost',
-        ['Policy', 'Workspace', 'Timeout', 'Cost cap', 'Allows', 'Denies'], items, (p) => [
-          p.access ? text(p.access, `access-${p.access}`) : null,
-          p.timeout,
-          p.maxCostUsd != null ? `$${p.maxCostUsd}` : null,
-          p.allow.length ? p.allow.join(', ') : 'nothing',
-          p.deny.length ? p.deny.join(', ') : null,
+          a.usedBy.length ? a.usedBy.join(', ') : null,
         ], composed);
     }
 
@@ -487,23 +479,23 @@
         ], composed);
     }
 
-    // service.toml: the caps no policy or process may go past.
+    // service.toml: the caps no process or caller may go past.
     function limitsTable(service, composed) {
       if (!service) return null;
       const from = service.layers ? service.layers.map((x) => `${x.layer} ${x.path}`).join(' + ')
         : composed ? (service.source === 'repo' ? 'this repo’s service.toml' : 'Agister home’s service.toml') : 'service.toml';
       const head = el('header', { className: 'section-head' },
         el('h3', { textContent: 'Service limits' }),
-        el('span', { className: 'note', textContent: `${from}: caps no policy or process may go past` }),
+        el('span', { className: 'note', textContent: `${from}: caps no process or caller may go past` }),
         service.layers ? sourceChip(service) : null);
       if (service.error) {
         return el('section', { className: 'card' }, head, el('p', { className: 'error', textContent: service.error }));
       }
       const rows = [
-        ['Longest timeout', service.maxTimeout, 'no policy may set a longer timeout'],
+        ['Longest timeout', service.maxTimeout, 'no process may set a longer timeout'],
         ['Attempts per call', service.maxAttempts, 'how many times an agent call may be tried; 1 means no retries'],
         ['Verify attempts', service.maxVerifyAttempts, 'how many times a process may fix its work after the verify command fails'],
-        ['Permissions', service.permissions, 'how many words policies may use to allow or deny access'],
+        ['Permissions', service.permissions, 'how many words processes may use to require, allow or deny access'],
       ].filter(([, v]) => v != null);
       return el('section', { className: 'card' }, head,
         el('table', {},
@@ -833,7 +825,8 @@
     // at the bottom.
     function runCard(s, record) {
       const impl = s.implementor;
-      const policy = s.policy;
+      // The summary's policy is the call's effective limits.
+      const limits = s.policy;
       const outcome = s.outcome ?? {};
       const items = s.workflow?.items;
       const said = U.runOutput(record?.result);
@@ -854,10 +847,10 @@
           ['implementor', impl ? line(
             joined([impl.adapter && [impl.adapter, impl.version].filter(Boolean).join(' '), impl.model, impl.effort && `${impl.effort} effort`]),
             U.reportedModel(impl) ? text(` · the runtime reported ${impl.reported_model}`, 'sub') : '') : null],
-          ['policy', policy ? line(
-            policy.access ? text(`${policy.access} workspace`, `access-${policy.access}`) : '',
-            policy.access ? ' · ' : '',
-            joined([policy.timeout_ms ? U.duration(policy.timeout_ms) : '', policy.max_cost_usd != null ? `${U.cost(policy.max_cost_usd)} cap` : '', policy.scope && `scope ${policy.scope}`])) : null],
+          ['limits', limits ? line(
+            limits.access ? text(`${limits.access} workspace`, `access-${limits.access}`) : '',
+            limits.access ? ' · ' : '',
+            joined([limits.timeout_ms ? U.duration(limits.timeout_ms) : '', limits.max_cost_usd != null ? `${U.cost(limits.max_cost_usd)} cap` : '', limits.scope && `scope ${limits.scope}`])) : null],
           ['verify', outcome.verify ? U.verify(outcome.verify, record?.verify?.max_attempts) : null],
           ['timing', joined([outcome.turn_ms != null && `turn ${U.duration(outcome.turn_ms)}`, outcome.runtime_ms != null && `runtime ${U.duration(outcome.runtime_ms)}`]) || null],
           ['activity', s.tool_calls != null ? `${s.tool_calls} tool ${s.tool_calls === 1 ? 'call' : 'calls'}` : null],

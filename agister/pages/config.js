@@ -293,11 +293,19 @@
     return {
       file, name: doc.name ?? stem(file),
       purpose: firstSentence(instruction),
-      agent: refName(doc.uses),
-      policy: refName(doc.policy),
-      // Its own workspace access, which is its call's when it names no
-      // policy; null when it sets none.
+      // Its own limits, which a node's call takes within the service's
+      // (ADR-030 rule 3); access is null when it sets none.
       access: doc.workspace?.access ?? null,
+      scope: doc.workspace?.scope ?? null,
+      timeout: doc.timeout ?? null,
+      maxCostUsd: doc.max_cost_usd ?? null,
+      attempts: doc.retry?.max_attempts ?? null,
+      allow: Array.isArray(doc.tools?.allow) ? doc.tools.allow : [],
+      require: Array.isArray(doc.tools?.require) ? doc.tools.require : [],
+      deny: Array.isArray(doc.isolation?.deny) ? doc.isolation.deny : [],
+      // resumable or fresh-only; null when it sets none, fresh-only
+      // (ADR-030 rule 4).
+      session: doc.session ?? null,
       params: params(doc.input),
       // Inline fields, or the name of a verification (verify:<name>).
       verify: typeof doc.verify === 'string'
@@ -355,19 +363,8 @@
     return {
       file, name: doc.name ?? stem(file),
       runtime: doc.runtime ?? null, model: doc.model ?? null,
-      effort: doc.effort ?? null, session: doc.session ?? null,
+      effort: doc.effort ?? null,
       skills: skillNames(doc.skills),
-    };
-  }
-
-  function policyItem(file, _src, doc) {
-    return {
-      file, name: doc.name ?? stem(file),
-      access: doc.workspace?.access ?? null,
-      timeout: doc.timeout ?? null,
-      maxCostUsd: doc.max_cost_usd ?? null,
-      allow: Array.isArray(doc.tools?.allow) ? doc.tools.allow : [],
-      deny: Array.isArray(doc.isolation?.deny) ? doc.isolation.deny : [],
     };
   }
 
@@ -476,7 +473,7 @@
     return link(model);
   }
 
-  const KINDS = ['workflows', 'processes', 'agents', 'policies', 'runtimes', 'schemas', 'verifies', 'prompts', 'briefs', 'skills'];
+  const KINDS = ['workflows', 'processes', 'agents', 'runtimes', 'schemas', 'verifies', 'prompts', 'briefs', 'skills'];
 
   // Raw folder readers used by local fixtures. The served view receives
   // the Go definition language's composed text and provenance instead.
@@ -488,19 +485,21 @@
   // Each process that extends a base (extends: process:<name>) laid over
   // it: the base's fields but its name and extends, under the process's
   // own (ADR-030 rule 9). A base is marked as one: it is not work, and is
-  // read through each process that extends it.
+  // read through each process that extends it, which extendedBy lists.
   function extended(processes) {
     const docs = new Map(processes.filter((p) => !p.error && p.doc).map((p) => [p.name, p.doc]));
-    const bases = new Set();
+    const bases = new Map();
     const items = processes.map((p) => {
       const name = !p.error && typeof p.doc?.extends === 'string' ? refName(p.doc.extends) : null;
       if (!docs.has(name)) return p;
-      bases.add(name);
+      bases.set(name, [...(bases.get(name) ?? []), p.name]);
       const { name: _name, extends: _extends, ...given } = docs.get(name);
       const { doc: _doc, ...own } = p;
       return { ...own, ...processItem(p.file, p.src, merge(given, p.doc)), extends: name };
     });
-    for (const p of items) if (bases.has(p.name)) p.base = true;
+    for (const p of items) {
+      if (bases.has(p.name)) Object.assign(p, { base: true, extendedBy: bases.get(p.name) });
+    }
     return items;
   }
 
@@ -515,7 +514,7 @@
   const builders = {
     workflows: workflowItem, processes: processItem,
     agents: (file, _src, doc) => agentItem(file, doc),
-    policies: policyItem, runtimes: (file, _src, doc) => runtimeItem(file, doc),
+    runtimes: (file, _src, doc) => runtimeItem(file, doc),
     verifies: (file, _src, doc) => verifyItem(file, doc), briefs: briefItem,
   };
 
@@ -576,11 +575,10 @@
   }
 
   async function readAgister(agister, skills) {
-    const [workflows, processes, agents, policies, runtimes, schemas, verifies, prompts, briefs, service] = await Promise.all([
+    const [workflows, processes, agents, runtimes, schemas, verifies, prompts, briefs, service] = await Promise.all([
       readFolder(agister, 'workflows', ['.yaml', '.yml']),
       readFolder(agister, 'processes', ['.yaml', '.yml']),
       readFolder(agister, 'agents', ['.toml']),
-      readFolder(agister, 'policies', ['.yaml', '.yml']),
       readFolder(agister, 'runtimes', ['.yaml', '.yml']),
       readFolder(agister, 'schemas', ['.json']),
       readFolder(agister, 'verifies', ['.yaml', '.yml']),
@@ -593,7 +591,6 @@
       workflows: each(workflows, parseYaml, workflowItem),
       processes: each(processes, parseYaml, processItem),
       agents: each(agents, parseToml, (file, _src, doc) => agentItem(file, doc)),
-      policies: each(policies, parseYaml, policyItem),
       runtimes: each(runtimes, parseYaml, (file, _src, doc) => runtimeItem(file, doc)),
       schemas: schemas.map(({ file }) => ({ file, name: stem(file) })),
       verifies: each(verifies, parseYaml, (file, _src, doc) => verifyItem(file, doc)),
@@ -609,9 +606,7 @@
     const names = (items) => new Set(items.filter((x) => !x.error).map((x) => x.name));
     const processes = names(model.processes);
     const byProcess = new Map(model.processes.filter((p) => !p.error).map((p) => [p.name, p]));
-    const agents = names(model.agents);
     const byAgent = new Map(model.agents.filter((a) => !a.error).map((a) => [a.name, a]));
-    const policies = names(model.policies);
     const runtimes = names(model.runtimes);
     const schemas = new Set(model.schemas.map((s) => s.name));
     // A named prompt, schema or skill, found: with the layer it comes from
@@ -647,8 +642,6 @@
     }
     for (const p of model.processes) {
       if (p.error) continue;
-      p.agentOutside = !!p.agent && !agents.has(p.agent);
-      p.policyOutside = !!p.policy && !policies.has(p.policy);
       p.outputOutside = !!p.output && !schemas.has(p.output);
       // Its output schema found, with the layers the binary reports for it.
       p.schema = p.output ? schema({ name: p.output }) : null;
@@ -657,11 +650,9 @@
       p.prompt = p.prompt ? prompt(p.prompt) : null;
       p.guidance = p.guidance.map(prompt);
       p.forms = p.forms.map(brief);
-      // The skills it names, found as prompts are; and the ones its call
-      // gets: its own, then its agent's, each once (ADR-021 rule 2).
+      // The skills it names, found as prompts are. A node's call gets
+      // these, then the skills of the agent the node binds (ADR-021 rule 2).
       p.skills = p.skills.map(skill);
-      const agentSkills = byAgent.get(p.agent)?.skills.map(skill) ?? [];
-      p.callSkills = [...p.skills, ...agentSkills.filter((x) => !p.skills.some((y) => y.name === x.name))];
       // A named verification, resolved: its attempts, or outside these
       // settings.
       if (p.verify?.ref) {
@@ -669,18 +660,22 @@
         p.verify = { ...p.verify, maxAttempts: named?.maxAttempts ?? null, outside: !named,
           ...(named?.layers && { layers: named.layers }) };
       }
+      const bound = model.workflows.filter((w) => !w.error).flatMap(workflowNodes).filter((n) => n.process === p.name);
       p.usedBy = model.workflows
         .filter((w) => !w.error && workflowNodes(w).some((n) => n.process === p.name))
         .map((w) => w.name);
+      // The agents workflows' nodes bind it to, each once: a process names
+      // none of its own (ADR-030 rule 2).
+      p.agents = [...new Set(bound.map((n) => n.agent).filter(Boolean))];
     }
     for (const a of model.agents) {
       if (a.error) continue;
       a.skills = a.skills.map(skill);
       a.runtimeOutside = !!a.runtime && !runtimes.has(a.runtime);
-      a.usedBy = usedBy(model.processes, 'agent', a.name);
-    }
-    for (const p of model.policies) {
-      if (!p.error) p.usedBy = usedBy(model.processes, 'policy', p.name);
+      // The workflows whose nodes bind it.
+      a.usedBy = model.workflows
+        .filter((w) => !w.error && workflowNodes(w).some((n) => n.agent === a.name))
+        .map((w) => w.name);
     }
     for (const r of model.runtimes) {
       if (!r.error) r.usedBy = usedBy(model.agents, 'runtime', r.name);
@@ -694,8 +689,12 @@
       const names = (items) => items.filter((x) => !x.error && x.forms.some((f) => f.name === b.name)).map((x) => x.name);
       b.usedBy = [...names(model.processes), ...names(model.workflows)];
     }
+    // A skill is used by each process whose calls get it: one the process
+    // names, or one an agent a node binds it to names.
+    const naming = (list, name) => (list ?? []).some((x) => x.name === name);
     for (const s of model.skills) {
-      s.usedBy = model.processes.filter((p) => !p.error && p.callSkills.some((x) => x.name === s.name)).map((p) => p.name);
+      s.usedBy = model.processes.filter((p) => !p.error &&
+        (naming(p.skills, s.name) || p.agents.some((a) => naming(byAgent.get(a)?.skills, s.name)))).map((p) => p.name);
     }
     for (const v of model.verifies) {
       if (!v.error) v.usedBy = model.processes.filter((p) => !p.error && p.verify?.ref === v.name).map((p) => p.name);

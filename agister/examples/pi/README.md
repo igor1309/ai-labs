@@ -36,11 +36,11 @@ provider's environment variable (`OPENCODE_API_KEY` for `opencode-go`;
   prompt; Pi loads the repository's `AGENTS.md` and, as each turn trusts
   the project (`--approve`), its `.agents/skills` (ADR-006). A skill is
   used by reading it, and Pi reads with `read` or `bash` only, so a call
-  granted neither is refused before Pi starts. The process's policy and
+  granted neither is refused before Pi starts. The process and
   the service must therefore allow `read`'s permissions,
   `repository.read` and `host.read`; a home from `agister init` does not
   allow `host.read` (its service lists it as state-reaching), so there
-  `ask_pi` is refused until host reads are opted in to (below).
+  `ask_pi_minimax` is refused until host reads are opted in to (below).
 - Tool-call events: each tool execution is reported as it starts and
   finishes, so the staleness limits on tool calls apply.
 - Cost reporting: the turn's tokens and Pi's own `cost.total`, summed over
@@ -71,7 +71,7 @@ ask a question:
 
 ```sh
 cp -R agister/examples/pi/. "${AGISTER_HOME:-$HOME/.agister}/"
-agister run ask_pi --param question="What does this repository do?"
+agister run ask_pi_minimax --param question="What does this repository do?"
 ```
 
 You can instead copy the settings into one repository's `.agister/` to

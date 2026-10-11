@@ -530,7 +530,8 @@ test('worst-case 256 KB skills of brackets, emphasis marks and backticks render'
 });
 
 // ADR-021, the amendment of ADR-011 rule 5: an agent's card shows the
-// skills its settings name, its own and its processes', each with its
+// skills its settings name, its own and those of the processes a
+// workflow's node binds to it, each with its
 // layer and checks or marked missing, apart from what its runtime would
 // load and from what its runs used, each labelled.
 test('an agent’s card lists the skills its settings name apart from what its runtime would load', async () => {
@@ -540,7 +541,8 @@ test('an agent’s card lists the skills its settings name apart from what its r
   const named = {
     ...files,
     'agents/opus.toml': `${files['agents/opus.toml']}skills = ["plan", "style", "gone"]\n`,
-    'processes/review.yaml': 'name: review\nuses: agent:opus\nskills: [ship]\ninput:\n  instruction: Review.\n',
+    'processes/review.yaml': 'name: review\nskills: [ship]\ninput:\n  instruction: Review.\n',
+    'workflows/review_opus.yaml': 'name: review_opus\ncall: {node: review, uses: process:review, agent: opus}\n',
   };
   const beside = 'holds notes.txt beside SKILL.md: a skill is its SKILL.md alone, and its other files are not given to a call';
   const read = {
