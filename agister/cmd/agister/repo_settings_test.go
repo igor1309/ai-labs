@@ -1234,8 +1234,9 @@ func TestJudgementSchemaRequiresCoverageGaps(t *testing.T) {
 // The home folder's judgement schema accepts an item of every ruling, waive
 // included (ADR-020 rule 2), each with its benefit, cost and switching
 // condition (rule 5), empty where the ruling leaves them so. It refuses an
-// item missing its benefit, cost or switching condition, and an item with
-// an unknown ruling. The payloads are fixed, not built from the schema.
+// item missing its benefit, cost or switching condition, an item with an
+// unknown ruling, and an owner item, a ruling the judge no longer has
+// (ADR-031 rule 1). The payloads are fixed, not built from the schema.
 func TestJudgementSchemaRecordsWhatDecidedARuling(t *testing.T) {
 	t.Parallel()
 	root, err := filepath.Abs(filepath.Join("..", "..", ".."))
@@ -1261,13 +1262,13 @@ func TestJudgementSchemaRecordsWhatDecidedARuling(t *testing.T) {
 	}{
 		{"a waive", item("waive", "", "", benefit, cost, switching), true},
 		{"a fix", item("fix", "Rename it.", "", benefit, cost, switching), true},
-		{"an owner item", item("owner", "Rename it, or leave it?", "", benefit, cost, switching), true},
 		{"a reject with only its switching condition", item("reject", "", "A case.", `"benefit":""`, `"cost":""`, switching), true},
 		{"a defer with only its switching condition", item("defer", "Gap, trigger, done when.", "", `"benefit":""`, `"cost":""`, switching), true},
 		{"no benefit", item("waive", "", "", cost, switching), false},
 		{"no cost", item("waive", "", "", benefit, switching), false},
 		{"no switching condition", item("waive", "", "", benefit, cost), false},
 		{"an unknown ruling", item("ignore", "", "", benefit, cost, switching), false},
+		{"an owner item", item("owner", "Rename it, or leave it?", "", benefit, cost, switching), false},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
@@ -1313,7 +1314,7 @@ func TestReviewPromptsCarryTheirCoverageContract(t *testing.T) {
 		{"code-review-clarity.md", 9, []promptInstruction{report}},
 		{"code-review-intent.md", 5, []promptInstruction{report}},
 		{"code-review-adr.md", 6, []promptInstruction{report}},
-		{"code-review-judge.md", 4, []promptInstruction{
+		{"code-review-judge.md", 5, []promptInstruction{
 			{"coverage entries are not findings", []string{"`coverage`", "not findings"}},
 			{"copy not_checked and rule_only entries to coverage_gaps", []string{"`not_checked`", "`rule_only`", "`coverage_gaps`"}},
 			{`a review with no output is an incomplete "whole review" gap`, []string{`"whole review"`, "`incomplete`"}},
@@ -1386,13 +1387,18 @@ func TestReviewPromptsCarryTheCaseForValue(t *testing.T) {
 				"for an item whose evidence holds and that lies in the change", "the burden for fixing at its severity",
 				"**waive**", "not a reject", "sunk and never counts"}},
 			{"the burden for fixing by severity", []string{
-				"**blocker**: always fixed", "**major**: fix, or `owner`", "grossly disproportionate",
+				"**blocker**: always fixed", "**major**: fix, or `waive`", "grossly disproportionate",
 				"**minor**: fix, or `waive` when the presented cost exceeds the presented benefit",
 				"**nit**: `waive`, or fix when the presented benefit exceeds the presented cost"}},
 			{"equal or unresolved economics leave the presumption standing", []string{"equal or unresolved", "presumption"}},
-			{"the owner keeps its trade-offs and stances; fix or waive of one proven finding is the judge's", []string{
-				"**owner**", "a trade-off or a stance only the owner can take",
-				"Whether one proven finding is fixed or waived is yours", "when the presented case settles it"}},
+			{"a finding that offers more than one fix is ruled like any other; a fix that touches policy needs its rule quoted", []string{
+				"more than one fix", "ruled like any other", "each option as the", "an accepted ADR",
+				"quotes the rule that allows it", "`reject`", "`missing_evidence`"}},
+			{"a requirement means what its quoted words say; an unsettled reading is rejected, never waived", []string{
+				"A requirement means what its quoted words say", "only where a review quotes the source",
+				"no quote settles them", "`reject`", "`missing_evidence` names the quote", "never a reason to `waive`"}},
+			{"every item is ruled; no question is handed on", []string{
+				"You rule on every item", "hands a question to", "a gap in their evidence"}},
 			{"severity is checked before merging", []string{
 				"before merging", "`severity_rationale`", "the highest severity the evidence supports",
 				"the highest supported severity among its sources"}},
@@ -1429,8 +1435,8 @@ func TestReviewPromptsCarryTheCaseForValue(t *testing.T) {
 // paths. The ADR prompt's opening keeps a change that touches no ADR from
 // findings of scope change only: its goal can still raise a goal finding.
 // The judge's has the scope rule: goal ruled as change, outside deferred,
-// an unsupported scope rejected, a goal finding a scope exclusion bars left
-// to the owner, and an older collection's introduced_by_change read as a
+// an unsupported scope rejected, a goal finding a scope exclusion bars
+// deferred, and an older collection's introduced_by_change read as a
 // scope; and that a missing test is a goal finding too, with the goal
 // behaviour the existing assertions let break. Each review process's
 // instruction says what its input goal is. An instruction is held by its
@@ -1469,9 +1475,9 @@ func TestReviewPromptsCarryTheGoal(t *testing.T) {
 				"existing assertions let break", "every assertion still passes"}},
 			{"a finding's scope decides its ruling", []string{
 				"`evidence.scope`", "Rule a `goal` finding as you rule a `change` one", "An `outside` finding is `defer`",
-				"You read no goal", "is rejected like any other", "a scope exclusion of the goal bars", "is `owner`",
+				"You read no goal", "is rejected like any other", "a scope exclusion of the goal bars", "is `defer`",
 				"`introduced_by_change`", "read true as `change` and false as `outside`"}},
-			{"fix, waive and owner are for scope change or goal", []string{
+			{"fix and waive are for scope change or goal", []string{
 				"for an item whose evidence holds and that lies in the change or stops its goal", "scope `change` or `goal`"}},
 		}},
 	}
@@ -1501,12 +1507,15 @@ func TestReviewPromptsCarryTheGoal(t *testing.T) {
 
 // The intent prompt of the repository carries its duties (LAB-120): it is
 // descriptive, not prescriptive, and its finding's requirement quotes the
-// goal; its definition of done lists the goal's defensible readings, each
-// quoted from its words, names the one the change implements with its
-// trace, makes each requirement of the goal met or a finding, holds the
-// change to the surface the goal speaks of, and reports what goes beyond
-// every reading; and a divergence between two defensible readings is
-// reported as such, for the owner to settle. An instruction is held by its
+// goal; its definition of done lists the goal's readings, each quoted from
+// its words with the quoted source that settles it or rules it out, names
+// the one the change implements with its trace, makes each requirement of
+// the goal met or a finding, holds the change to the surface the goal
+// speaks of, and reports what goes beyond every reading. It settles a
+// reading from the record, the goal, then the ADRs, then the code at the
+// base, quotes the settling source in the finding, reports a gap the record
+// leaves as a finding, and asks no one to decide (ADR-031 rule 3). An
+// instruction is held by its
 // short phrases standing in one paragraph, as in
 // TestReviewPromptsCarryTheirCoverageContract. The prompt is the
 // repository's own, read as it is.
@@ -1520,8 +1529,9 @@ func TestIntentPromptCarriesItsDuties(t *testing.T) {
 	instructions := []promptInstruction{
 		{"descriptive, not prescriptive; a finding's requirement quotes the goal", []string{
 			"descriptive, not prescriptive", "You do not prescribe more work", "`requirement` quotes the goal"}},
-		{"the defensible readings are listed, each quoted from its words", []string{
-			"The defensible readings of the goal are listed, each quoted from its words"}},
+		{"every reading is listed, each quoted from its words with its settling source quoted", []string{
+			"Every reading of the goal is listed, each quoted from its words",
+			"the source that settles it or rules it out, quoted", "A reading you ruled out is listed too"}},
 		{"the implemented reading is named with its trace", []string{
 			"The reading the change implements is named, with the trace that shows it"}},
 		{"each requirement of the goal is met or its absence is a finding", []string{
@@ -1531,8 +1541,15 @@ func TestIntentPromptCarriesItsDuties(t *testing.T) {
 			"a change proven one layer below is a finding"}},
 		{"nothing goes beyond every reading without a stated reason", []string{
 			"Nothing in the change goes beyond every reading of the goal without a stated reason"}},
-		{"a divergence between two defensible readings is reported as such, for the owner", []string{
-			"A divergence between two defensible readings is reported as such", "a stance only the owner can take"}},
+		{"a reading is settled from the record, in order", []string{
+			"settle which one holds from the record, in this order", "quote what settles it"}},
+		{"an ADR settles a reading; a departure from one is not defensible", []string{
+			"the decisions the repository records", "a reading that departs from one is not defensible"}},
+		{"the code at the base settles what the record leaves", []string{
+			"where those are silent, the code and its tests as they stood at the base"}},
+		{"the settling source is quoted in the finding; a gap the record leaves is the finding; no one is asked", []string{
+			"a reading the record does not support is a finding", "the source that settles the reading",
+			"Only the finding is evidence", "report the gap itself as the finding", "you never ask anyone to"}},
 	}
 	for _, instruction := range instructions {
 		if !carries(string(data), instruction.phrases) {

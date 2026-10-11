@@ -317,7 +317,11 @@ take a required `goal`: the file that says what the change is for, its
 issue or brief. Every review node receives its text and the judge does
 not; a finding's scope is `change`, `goal` or `outside`, and the judge
 rules a `goal` finding as it rules a `change` one
-([ADR-023](docs/adr/023-reviewers-know-the-goal.md)).
+([ADR-023](docs/adr/023-reviewers-know-the-goal.md)). The judge rules `fix`, `defer`, `reject` or `waive`, and
+hands no question on: a reading the reviews do not settle with a quote
+from the goal, an ADR or the code is rejected, and the intent reviewer
+settles a reading from that record and quotes it in its finding
+([ADR-031](docs/adr/031-the-judge-rules-on-the-quoted-record.md)).
 
 A brief's form is a document too: `briefs/<name>.yaml`, schema
 `agister.brief/v1alpha1`. Its `parts` are in order, each a Markdown
