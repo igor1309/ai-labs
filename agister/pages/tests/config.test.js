@@ -552,7 +552,8 @@ function launchedIn(project) {
 // only that. Home's processes name prompt and guidance (ADR-028 rule 8);
 // each is resolved and linked in the view, the Go guidance from the
 // repository's library. A base leaves out the prompt, which each process
-// that extends it sets, laid over it (ADR-030 rule 9).
+// that extends it sets, laid over it (ADR-030 rule 9). No process names an
+// agent, a base included: a workflow's node binds it (ADR-030 rule 2).
 for (const project of ['agister', 'warder']) {
   test(`the settings in agister/home, with the layers of ${project}/ over them, name nothing missing`, async () => {
     const m = await C.loadComposed(diskDir(join(repoRoot, 'agister/home')), launchedIn(project));
@@ -561,6 +562,7 @@ for (const project of ['agister', 'warder']) {
     for (const p of m.processes) {
       assert.ok(!p.error, `${p.file}: ${p.error}`);
       assert.deepEqual([p.agentOutside, p.policyOutside, p.outputOutside], [false, false, false], p.name);
+      assert.equal(p.agent, null, p.name);
       assert.ok(p.base || (p.prompt && !p.prompt.outside), p.name);
       for (const prompt of p.guidance) assert.equal(prompt.outside, false, `${p.name}: ${prompt.name}`);
       for (const form of p.forms) assert.equal(form.outside, false, `${p.name}: ${form.name}`);
@@ -589,7 +591,7 @@ for (const project of ['agister', 'warder']) {
     for (const [name, [prompt, guidance]] of Object.entries(reviews)) {
       const p = m.processes.find((x) => x.name === name);
       assert.deepEqual([p.extends, p.agent, p.policy, p.output, p.prompt.name, p.guidance.map((g) => g.name)],
-        ['review', 'codex-sol-61', null, 'review-result', prompt, guidance], name);
+        ['review', null, null, 'review-result', prompt, guidance], name);
     }
     assert.deepEqual(m.policies, []);
     assert.equal(m.processes.find((p) => p.name === 'review').base, true);

@@ -2,7 +2,6 @@ schema: agister.process/v1alpha1
 name: advisor
 
 type: process
-uses: agent:codex-sol-61
 prompt: advisor
 
 input:

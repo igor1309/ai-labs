@@ -2,7 +2,6 @@ schema: agister.process/v1alpha1
 name: review
 
 type: process
-uses: agent:codex-sol-61
 
 input:
   instruction: >-
