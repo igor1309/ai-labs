@@ -224,8 +224,9 @@ const verifyFixtureTimeout = "30s"
 // list every process that is not a base. A workflow of one call is one run,
 // launched where its process is, which names the workflow and its call, and
 // records the agent callAgents lists for it, which lists every such
-// workflow, the limits its process has, and the guidance
-// repositoryGuidance names for that process, on writableCodex.
+// workflow, the limits its process has, the guidance repositoryGuidance
+// names for that process and, where that process declares verify, the
+// verification its run passed (verifiedOnce), on writableCodex.
 //
 // The test works in a repository of its own whose top-level entries link to
 // this repository's working tree (settings and prompts as they are, edits
@@ -308,14 +309,8 @@ func TestRepositoryProcessesRunOnFakeRuntimes(t *testing.T) {
 			recordsAgent(t, record)
 			recordsStaleLimits(t, record)
 			recordsRequired(t, record)
-			if process.Verify != nil {
-				attempts, _ := record["attempts"].([]any)
-				if len(attempts) != 1 {
-					t.Fatalf("attempts = %v, want one", record["attempts"])
-				}
-				if run, _ := attempts[0].(map[string]any)["run"].(map[string]any); run["command"] != verifyFixture || run["passed"] != true {
-					t.Fatalf("verification run = %v, want %q passed", run, verifyFixture)
-				}
+			if verifies(process) {
+				verifiedOnce(t, record)
 			}
 			if process.Output.Format == "json" {
 				schemaAccepts(t, record, record["result"].(map[string]any)["output"], r.stdout)
@@ -338,7 +333,8 @@ func TestRepositoryProcessesRunOnFakeRuntimes(t *testing.T) {
 			}
 			t.Run("workflow "+name, func(t *testing.T) {
 				launch := launchDir(call.Process)
-				args := append([]string{"run", name}, paramArgs(t, launch, parseProcess(t, root, call.Process).Params)...)
+				process := parseProcess(t, root, call.Process)
+				args := append([]string{"run", name}, paramArgs(t, launch, process.Params)...)
 				if timeout := testTimeouts[name]; timeout != "" {
 					args = append(args, "--timeout", timeout)
 				}
@@ -355,6 +351,9 @@ func TestRepositoryProcessesRunOnFakeRuntimes(t *testing.T) {
 				recordsStaleLimits(t, record)
 				recordsRequired(t, record)
 				givesGuidance(t, root, repo, record, repositoryGuidance[call.Process]...)
+				if verifies(process) {
+					verifiedOnce(t, record)
+				}
 				schemaAccepts(t, record, record["result"].(map[string]any)["output"], r.stdout)
 			})
 			continue
@@ -422,6 +421,24 @@ func TestRepositoryProcessesRunOnFakeRuntimes(t *testing.T) {
 		if !slices.Contains(workflows, filepath.Join(root, homeFolder, "workflows", name+".yaml")) {
 			t.Errorf("workflow %s, which has an agent listed, is not among the home folder's workflows", name)
 		}
+	}
+}
+
+// verifies reports whether process declares verify, inline or by name.
+func verifies(process definition.Process) bool {
+	return process.Verify != nil || process.VerifyName != ""
+}
+
+// verifiedOnce checks that a run recorded one verification attempt, which
+// ran verifyFixture and passed.
+func verifiedOnce(t *testing.T, record map[string]any) {
+	t.Helper()
+	attempts, _ := record["attempts"].([]any)
+	if len(attempts) != 1 {
+		t.Fatalf("attempts = %v, want one", record["attempts"])
+	}
+	if run, _ := attempts[0].(map[string]any)["run"].(map[string]any); run["command"] != verifyFixture || run["passed"] != true {
+		t.Fatalf("verification run = %v, want %q passed", run, verifyFixture)
 	}
 }
 
