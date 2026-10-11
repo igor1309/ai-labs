@@ -612,6 +612,8 @@ test('the process and status filters show only the runs that match, and clearing
   assert.deepEqual(options('process'), ['', 'implement', 'plan', 'review']);
   assert.deepEqual(options('status'), ['', 'completed', 'failed', 'running']);
   assert.deepEqual(ids(), ['r-5', 'r-4', 'r-3', 'r-2', 'r-1']);
+  // Only the run still running is accented.
+  assert.deepEqual(p.rows().filter((r) => r.classList.contains('running')).map((r) => r.title), ['r-5']);
 
   p.filter('process', 'implement');
   assert.deepEqual(ids(), ['r-3', 'r-1']);

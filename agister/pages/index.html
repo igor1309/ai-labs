@@ -155,6 +155,10 @@
     font: inherit; color: var(--fg); background: var(--card); border: 1px solid var(--line); border-radius: 6px; padding: 3px 6px;
   }
   tr.pick { cursor: pointer; }
+  /* A run still running stands out: a tint across its row, its start and
+     status in the active colour. */
+  tr.pick.running td { background: color-mix(in srgb, var(--active) 8%, transparent); }
+  tr.pick.running td.name, tr.pick.running td[data-label="Status"] { color: var(--active); }
   tr.pick:hover td, tr.pick.chosen td { background: var(--line); }
   tr.pick:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
   /* Runs fits the window: the list takes the height the rest leaves and
