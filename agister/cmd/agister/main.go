@@ -29,6 +29,7 @@ import (
 	"github.com/igor1309/ai-labs/agister/internal/adapters/system"
 	"github.com/igor1309/ai-labs/agister/internal/app"
 	"github.com/igor1309/ai-labs/agister/internal/cli"
+	"github.com/igor1309/ai-labs/agister/internal/composition/install"
 	runtimecomposition "github.com/igor1309/ai-labs/agister/internal/composition/runtime"
 	"github.com/igor1309/ai-labs/agister/internal/contract"
 	"github.com/igor1309/ai-labs/agister/pages"
@@ -362,9 +363,9 @@ func (c composition) wire(config cli.Config) (contract.Client, *app.BackgroundRe
 		Installer: app.InstallAdapters{
 			Source:  global,
 			Home:    global,
-			Backups: installBackups{fsdefs.Backups{Dir: filepath.Join(config.Home, "backups")}},
+			Backups: install.BackupsOf(config.Home),
 			Clock:   system.Clock{},
-			Stamps:  system.IDs{},
+			Stamps:  install.Stamps{},
 		},
 		Staging: installStager{global.StagingIn(c.stages)},
 		Decorate: func(client contract.Client) contract.Client {
