@@ -1038,8 +1038,15 @@ func (r counted) Resolve(_ context.Context, request app.CallResolveRequest) (*ap
 	return &app.ResolvedCall{}, &app.Refusal{Reason: r.counter.reason}
 }
 
-// Workflow finds none: every name is a process's.
-func (r counted) Workflow(context.Context, string) (*app.ResolvedWorkflow, bool, error) {
+// Workflow finds one for every name: a workflow of one call of the
+// process of that name, which its node binds to agent a.
+func (r counted) Workflow(_ context.Context, name string) (*app.ResolvedWorkflow, bool, error) {
+	call := &app.CallNode{Name: "n", Process: name, Agent: "a"}
+	return &app.ResolvedWorkflow{Workflow: app.CallWorkflow{Name: name, Call: call}}, true, nil
+}
+
+// Binders finds no process: every name is a workflow's.
+func (r counted) Binders(context.Context, string) ([]string, bool, error) {
 	return nil, false, nil
 }
 

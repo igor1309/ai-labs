@@ -80,6 +80,8 @@ func TestSettingsNewerThanTheBinaryAreNamedOnEveryRefusal(t *testing.T) {
 	runs := &newRuns{home: home}
 	runs.take(t)
 	write(t, filepath.Join(repo, "brief.md"), "# Brief\n")
+	// A process runs only as a workflow's node (ADR-030 rule 7).
+	reviewedOn := bound(t, filepath.Join(repo, ".agister"), "reviewed", "assistant")
 	for _, c := range []struct {
 		name    string
 		args    []string
@@ -93,7 +95,7 @@ func TestSettingsNewerThanTheBinaryAreNamedOnEveryRefusal(t *testing.T) {
 			"process implement (" + implement + "): input.values.brief.context: must be a scalar" + set(implement) + "; input.values.brief.forms: must be a scalar" + set(implement), hint("2"), 2},
 		{"workflow", []string{"run", "review_panel", "--quiet", "--param", "base=main", "--param", "architecture=a.txt"},
 			"workflow review_panel uses process adversarial_review (" + review + "): input.values.diff.context: must be a scalar" + set(review), hint("1"), 1},
-		{"field beside the prompt", []string{"run", "reviewed", "--quiet"},
+		{"field beside the prompt", []string{"run", reviewedOn, "--quiet"},
 			"process reviewed (" + reviewed + "): prompt_layers: unknown field", hint("1"), 1},
 		{"known field", []string{"run", "ask_assistant", "--quiet", "--param", "question=why"},
 			"process ask (" + ask + "): input.values.question.form: applies to source file only", "", 0},

@@ -43,7 +43,7 @@ func (c *clientFake) ListProcesses(context.Context) ([]contract.ProcessSummary, 
 	c.hit("ListProcesses")
 	return nil, nil
 }
-func (c *clientFake) ShowProcess(context.Context, string, string) (contract.ProcessView, error) {
+func (c *clientFake) ShowProcess(context.Context, string) (contract.ProcessView, error) {
 	c.hit("ShowProcess")
 	return contract.ProcessView{}, nil
 }
@@ -109,7 +109,7 @@ func TestGatedRefusesUseOfBrokenSettings(t *testing.T) {
 	_, refused["CreateAgent"] = gated.CreateAgent(ctx, contract.Agent{}, false, nil)
 	_, refused["ListAgents"] = gated.ListAgents(ctx)
 	_, refused["ListProcesses"] = gated.ListProcesses(ctx)
-	_, refused["ShowProcess"] = gated.ShowProcess(ctx, "p", "")
+	_, refused["ShowProcess"] = gated.ShowProcess(ctx, "p")
 	_, refused["ListWorkflows"] = gated.ListWorkflows(ctx)
 	_, refused["ShowWorkflow"] = gated.ShowWorkflow(ctx, "w")
 	_, refused["Submit"] = gated.Submit(ctx, contract.CallRequest{})

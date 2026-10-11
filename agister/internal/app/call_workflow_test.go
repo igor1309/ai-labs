@@ -98,7 +98,7 @@ func diffArgs(h *harness) map[string]string {
 // A workflow of one call takes its process's params and no other, and is
 // refused, naming the workflow, for what its process cannot take; it takes
 // a timeout and a cost limit as its process's run did, and no agent: its
-// node binds one (ADR-030 rules 5 and 6).
+// node binds one, and a request has none to give (ADR-030 rules 5 and 6).
 func TestAWorkflowOfOneCallTakesItsProcesssParamsAndLimits(t *testing.T) {
 	t.Parallel()
 	limit := 0.5
@@ -117,8 +117,6 @@ func TestAWorkflowOfOneCallTakesItsProcesssParamsAndLimits(t *testing.T) {
 		want    string
 	}{
 		"a param its process does not take": {contract.CallRequest{Params: map[string]string{"brief": "b.md"}}, "workflow c takes no params: brief"},
-		"an agent": {contract.CallRequest{Agent: "a"},
-			"workflow c binds its call to agent b; it takes no agent of its caller's, not a (ADR-030 rule 5)"},
 	} {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()

@@ -287,24 +287,26 @@ func TestWhatAnExtendingProcessCannotDo(t *testing.T) {
 	}
 }
 
-// A base is not work: its run is refused before its runtime starts, and a
-// workflow whose node binds it is a problem of the workflow, which refuses
-// it.
+// A base is not work: a run of its name is refused before its runtime
+// starts, as any process's is (ADR-030 rule 7), no workflow binding it; it
+// is listed as refused for being a base, and a workflow whose node binds
+// it is a problem of the workflow, which refuses it.
 func TestABaseIsNotRun(t *testing.T) {
 	t.Parallel()
 	e := extendingSettings(t)
 	runs := &newRuns{home: e.home}
 	runs.take(t)
 
-	want := "process base_ask is a base of child_ask, not work, and is not run"
-	if r := agister(t, e.home, e.repo, "run", "base_ask", "--quiet", "--timeout", "1m"); r.code != cli.ExitRefused || !strings.Contains(r.stderr, want) {
-		t.Fatalf("run base_ask: %d, want %q\n%s%s", r.code, want, r.stdout, r.stderr)
+	unbound := "process base_ask is not run on its own: agister run runs a workflow (ADR-030 rule 7), and no workflow binds it"
+	if r := agister(t, e.home, e.repo, "run", "base_ask", "--quiet", "--timeout", "1m"); r.code != cli.ExitRefused || !strings.Contains(r.stderr, unbound) {
+		t.Fatalf("run base_ask: %d, want %q\n%s%s", r.code, unbound, r.stdout, r.stderr)
 	}
 	if refused := runs.one(t); refused.first != nil {
 		t.Fatalf("the runtime ran: %v", refused.first)
 	}
 	// Listed as refused, and not as invalid: it is checked through its
 	// process.
+	want := "process base_ask is a base of child_ask, not work, and is not run"
 	r := agister(t, e.home, e.repo, "process", "list")
 	if line := regexp.MustCompile(`(?m)^base_ask\b.*$`).FindString(r.stdout); r.code != 0 || !strings.Contains(line, "REFUSED: "+want) || strings.Contains(line, "invalid") {
 		t.Fatalf("process list: %d\n%s%s", r.code, r.stdout, r.stderr)
@@ -405,9 +407,12 @@ func TestABrokenProcessKeepsItsBaseABase(t *testing.T) {
 			if r := agister(t, e.home, e.repo, "check"); r.code != cli.ExitUsage || !strings.Contains(r.stderr, problem) {
 				t.Fatalf("check: %d, want %q\n%s%s", r.code, problem, r.stdout, r.stderr)
 			}
+			// A run of its name is refused as a process's (ADR-030 rule 7),
+			// whatever it is: the listing says it is a base.
 			want := "process base_ask is a base of child_ask"
-			if r := agister(t, e.home, e.repo, "run", "base_ask", "--quiet", "--timeout", "1m"); r.code != cli.ExitRefused || !strings.Contains(r.stderr, want) {
-				t.Fatalf("run base_ask: %d, want %q\n%s%s", r.code, want, r.stdout, r.stderr)
+			r := agister(t, e.home, e.repo, "process", "list")
+			if line := regexp.MustCompile(`(?m)^base_ask\b.*$`).FindString(r.stdout); r.code != 0 || !strings.Contains(line, "REFUSED: "+want) {
+				t.Fatalf("process list: %d, want %q\n%s%s", r.code, want, r.stdout, r.stderr)
 			}
 		})
 	}

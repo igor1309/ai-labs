@@ -136,8 +136,11 @@ func TestBlocksOnAProcessAndARuntimeMapping(t *testing.T) {
 	if r.code != 0 || !strings.Contains(r.stdout, "block process review_summary: "+path+"\n  refuses process review_summary, workflow review_panel\n") {
 		t.Fatalf("check: %d\n%s%s", r.code, r.stdout, r.stderr)
 	}
+	// The process is not run on its own (ADR-030 rule 7), so its block
+	// refuses the workflow that binds it, below, and the run of its name is
+	// refused as a process's, naming that workflow.
 	r = agister(t, home, repo, "run", "review_summary", "--quiet", "--param", "base=main", "--timeout", "1m")
-	if r.code != cli.ExitRefused || !strings.Contains(r.stderr, "process review_summary is blocked by "+path+")") {
+	if r.code != cli.ExitRefused || !strings.Contains(r.stderr, "process review_summary is not run on its own: agister run runs a workflow (ADR-030 rule 7); run one that binds it: review_panel") {
 		t.Fatalf("run: %d\n%s%s", r.code, r.stdout, r.stderr)
 	}
 	r = agister(t, home, repo, "run", "review_panel", "--quiet", "--param", "base=main", "--param", "architecture=a.txt")

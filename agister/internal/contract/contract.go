@@ -47,7 +47,7 @@ type Client interface {
 	CreateAgent(ctx context.Context, agent Agent, overwrite bool, approved *AgentWrite) (AgentWrite, error)
 	ListAgents(ctx context.Context) ([]Agent, error)
 	ListProcesses(ctx context.Context) ([]ProcessSummary, error)
-	ShowProcess(ctx context.Context, name, agent string) (ProcessView, error)
+	ShowProcess(ctx context.Context, name string) (ProcessView, error)
 	ListWorkflows(ctx context.Context) ([]WorkflowSummary, error)
 	// ShowWorkflow shows a workflow as a run of it would see it: its
 	// params, inputs and nodes, and each node's process as a call of it
@@ -57,9 +57,10 @@ type Client interface {
 	// it also asks each agent's runtime for its identity.
 	Check(ctx context.Context, probe bool) (CheckReport, error)
 
-	// Submit records a call, or a workflow when the request names one, and
-	// starts it. Every call and workflow gets a run, including one that is
-	// refused; each node of a workflow gets its own.
+	// Submit records a run of the workflow the request names, and starts
+	// it. Every request gets a run, including one that is refused, as a
+	// process's name is (ADR-030 rule 7); each node of a workflow gets its
+	// own.
 	Submit(ctx context.Context, request CallRequest) (string, error)
 	// Observe delivers the run's events after afterSeq, in order, until the
 	// run is no longer running. It can be resumed from any sequence.
@@ -458,14 +459,14 @@ type Verify struct {
 	Instruction string
 }
 
-// CallRequest asks for a call of a process, or a run of a workflow: Process
-// names either. A workflow takes Params and Cwd only. Cwd is the caller's
+// CallRequest asks for a run of a workflow, which Process names: a
+// process's name is refused, with the workflows that bind it (ADR-030 rule
+// 7). A fan-out workflow takes Params and Cwd only. Cwd is the caller's
 // directory: the call works in the root of the git worktree that holds it
 // (ADR-025 rule 1).
 type CallRequest struct {
 	Process    string
 	Params     map[string]string
-	Agent      string   // optional override
 	Timeout    string   // optional, may only shorten
 	MaxCostUSD *float64 // optional, may only lower
 	Continue   string   // optional: a finished run whose session to continue

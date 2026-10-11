@@ -728,7 +728,7 @@ func TestShowProcessLimitsThroughTheResolver(t *testing.T) {
 }
 
 // Inspection shows what the InspectionResolver it declares resolves: a
-// process with the agent asked for, and a workflow with each node's
+// process, which no caller gives an agent, and a workflow with each node's
 // process on the agent the node binds.
 func TestInspectionShowsThroughTheResolverItDeclares(t *testing.T) {
 	t.Parallel()
@@ -796,14 +796,14 @@ func TestInspectionShowsThroughTheResolverItDeclares(t *testing.T) {
 		Warnings: []string{app.VerifyWarning},
 		Sources:  []contract.DefinitionOrigin{origin(definition.KindAgent, "b"), origin(definition.KindProcess, "review")},
 	}
-	view, err := inspection.ShowProcess(context.Background(), "review", "b")
+	view, err := inspection.ShowProcess(context.Background(), "review")
 	if err != nil {
 		t.Fatal(err)
 	}
 	if !reflect.DeepEqual(view, reviewView) {
 		t.Fatalf("process view\n got %+v\nwant %+v", view, reviewView)
 	}
-	if want := []string{"process review|b"}; !reflect.DeepEqual(resolver.asked, want) {
+	if want := []string{"process review"}; !reflect.DeepEqual(resolver.asked, want) {
 		t.Fatalf("asked %v, want %v", resolver.asked, want)
 	}
 
@@ -840,13 +840,13 @@ func TestInspectionShowsThroughTheResolverItDeclares(t *testing.T) {
 type inspectionDouble struct {
 	processes map[string]*app.InspectedProcess
 	workflow  *app.InspectedWorkflow
-	// "process <name>|<agent>", "node <node> <process>|<agent>" or
+	// "process <name>", "node <node> <process>|<agent>" or
 	// "workflow <name>"
 	asked []string
 }
 
-func (d *inspectionDouble) InspectProcess(_ context.Context, name, agent string) (*app.InspectedProcess, error) {
-	d.asked = append(d.asked, "process "+name+"|"+agent)
+func (d *inspectionDouble) InspectProcess(_ context.Context, name string) (*app.InspectedProcess, error) {
+	d.asked = append(d.asked, "process "+name)
 	return d.process(name)
 }
 

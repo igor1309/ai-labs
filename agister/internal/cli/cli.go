@@ -66,33 +66,35 @@ Usage:
                                      --force replaces an existing one after you type yes
   agister agent list
   agister process list [--dir <path>]
-  agister process show <process> [--agent <name>] [--dir <path>]
-                                     the process as a call would see it, each document's layer files
-                                     and each field's layer
+  agister process show <process> [--dir <path>]
+                                     the process as a call would see it, on no agent: a workflow's
+                                     node binds it to one; each document's layer files and each
+                                     field's layer
   agister workflow list [--dir <path>]
   agister workflow show <workflow> [--dir <path>]
                                      its params, nodes, and each node's process as a call would see it
                                      check, list and show read the settings a call launched in --dir
                                      (default: this directory) would get
-  agister run <process> [--param <name>=<value>]... [--agent <name>] [--timeout <d>] [--max-cost <usd>]
+  agister run <workflow> [--param <name>=<value>]... [--timeout <d>] [--max-cost <usd>]
                          [--continue <run-id>] [--goal <run-id>[:<input>]] [--answers <run-id>]
                          [--dir <path>] [--json]
+                                     runs a workflow, never a process: a process's name is refused,
+                                     with the workflows that bind it; each node runs its process on
+                                     the agent it binds
                                      (--json: print the node result, with its run_id and each
                                      artifact's path absolute)
                                      the call works in the git worktree that holds --dir (default:
                                      this directory), with its settings, and leaves its changes there
-                                     --continue resumes that run's session in the same worktree,
-                                     which holds the session's latest run's changes
-                                     --goal records the goal the run serves: that run's input (default
-                                     goal), by its digest; --answers records the completed run whose
-                                     judgement it answers; each is refused unless that run has it
-  agister run <workflow> [--param <name>=<value>]... [--goal <run-id>[:<input>]] [--answers <run-id>]
-                         [--dir <path>] [--json]
                                      fan-out nodes run concurrently, the join once all of them ended,
                                      if at least one completed; each node is a run of its own; a
                                      workflow of one call takes its process's params and is that
                                      call's one run, which also takes --timeout, --max-cost and,
                                      where its process is resumable, --continue
+                                     --continue resumes that run's session in the same worktree,
+                                     which holds the session's latest run's changes
+                                     --goal records the goal the run serves: that run's input (default
+                                     goal), by its digest; --answers records the completed run whose
+                                     judgement it answers; each is refused unless that run has it
   agister runs [list]
   agister runs show <run-id>
   agister runs watch <run-id> [--after <seq>]
@@ -254,7 +256,7 @@ func failed(ctx context.Context, env IO, log *slog.Logger, err error) int {
 
 type options struct {
 	home, runtime, model, modelFamily, effort, command string
-	agent, timeout, maxCost, continueRun, restore, dir string
+	timeout, maxCost, continueRun, restore, dir        string
 	goal, answers, to                                  string
 	force, quiet, json, help, probe, tree, version     bool
 	after                                              int
@@ -292,10 +294,10 @@ var commands = []Command{
 	{"agent create", []string{"runtime", "model", "model-family", "effort", "command", "force"}},
 	{"agent list", nil},
 	{"process list", []string{"dir"}},
-	{"process show", []string{"agent", "dir", "json"}},
+	{"process show", []string{"dir", "json"}},
 	{"workflow list", []string{"dir"}},
 	{"workflow show", []string{"dir", "json"}},
-	{"run", []string{"param", "agent", "timeout", "max-cost", "continue", "goal", "answers", "dir", "json"}},
+	{"run", []string{"param", "timeout", "max-cost", "continue", "goal", "answers", "dir", "json"}},
 	{"runs list", nil},
 	{"runs show", nil},
 	{"runs watch", []string{"after", "json"}},
@@ -389,7 +391,6 @@ func flags(into func(name string) *options) *flag.FlagSet {
 	set.StringVar(&into("model-family").modelFamily, "model-family", "", "")
 	set.StringVar(&into("effort").effort, "effort", "", "")
 	set.StringVar(&into("command").command, "command", "", "")
-	set.StringVar(&into("agent").agent, "agent", "", "")
 	set.StringVar(&into("timeout").timeout, "timeout", "", "")
 	set.StringVar(&into("max-cost").maxCost, "max-cost", "", "")
 	set.StringVar(&into("continue").continueRun, "continue", "", "")
@@ -550,7 +551,7 @@ func dispatch(ctx context.Context, client contract.Client, log *slog.Logger, opt
 			if err != nil {
 				return 0, err
 			}
-			view, err := client.ShowProcess(ctx, name, opts.agent)
+			view, err := client.ShowProcess(ctx, name)
 			if err != nil {
 				return 0, err
 			}
@@ -597,11 +598,11 @@ func dispatch(ctx context.Context, client contract.Client, log *slog.Logger, opt
 		}
 
 	case "run":
-		name, err := arg(0, "a process or workflow name")
+		name, err := arg(0, "a workflow name")
 		if err != nil {
 			return 0, err
 		}
-		request := contract.CallRequest{Process: name, Params: opts.params, Agent: opts.agent, Timeout: opts.timeout, Continue: opts.continueRun, Goal: opts.goal, Answers: opts.answers, Cwd: config.Cwd}
+		request := contract.CallRequest{Process: name, Params: opts.params, Timeout: opts.timeout, Continue: opts.continueRun, Goal: opts.goal, Answers: opts.answers, Cwd: config.Cwd}
 		if opts.maxCost != "" {
 			limit, err := strconv.ParseFloat(opts.maxCost, 64)
 			if err != nil || limit <= 0 {

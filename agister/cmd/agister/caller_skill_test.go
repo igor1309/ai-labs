@@ -252,7 +252,7 @@ func callerProblems(markdown string) []string {
 // flags before the command, with their values, do not hide it.
 func TestTheSkillCheckFindsWhatTheCLILacks(t *testing.T) {
 	t.Parallel()
-	text := "Use `agister runs list`, `agister launch x`, `agister runs\nprune` and `agister process show <name> --agent a`.\n" +
+	text := "Use `agister runs list`, `agister launch x`, `agister runs\nprune` and `agister process show <name> --dir a`.\n" +
 		"Also `agister --home /tmp launch`, `agister --quiet --home=/tmp runs prune` and `agister --home /tmp run x --param a=b`.\n\n" +
 		"~~~sh\nagister run implement --param a=b \\\n  --bogus x && agister check --tree\n~~~\n\n" +
 		"    echo yes | agister install --restore 1 --json --probe\n"

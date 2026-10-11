@@ -32,7 +32,7 @@ func (c *reachedClient) ListAgents(context.Context) ([]contract.Agent, error) { 
 func (c *reachedClient) ListProcesses(context.Context) ([]contract.ProcessSummary, error) {
 	return nil, c.reach()
 }
-func (c *reachedClient) ShowProcess(context.Context, string, string) (contract.ProcessView, error) {
+func (c *reachedClient) ShowProcess(context.Context, string) (contract.ProcessView, error) {
 	return contract.ProcessView{}, c.reach()
 }
 func (c *reachedClient) ListWorkflows(context.Context) ([]contract.WorkflowSummary, error) {
@@ -115,8 +115,8 @@ func TestLookupResolvesAsDispatchDoes(t *testing.T) {
 	}{
 		{nil, cli.Command{}, true},
 		{[]string{"runs"}, cli.Command{Name: "runs list"}, true},
-		{[]string{"run", "implement"}, cli.Command{Name: "run", Flags: []string{"param", "agent", "timeout", "max-cost", "continue", "goal", "answers", "dir", "json"}}, true},
-		{[]string{"process", "show", "x"}, cli.Command{Name: "process show", Flags: []string{"agent", "dir", "json"}}, true},
+		{[]string{"run", "implement"}, cli.Command{Name: "run", Flags: []string{"param", "timeout", "max-cost", "continue", "goal", "answers", "dir", "json"}}, true},
+		{[]string{"process", "show", "x"}, cli.Command{Name: "process show", Flags: []string{"dir", "json"}}, true},
 		{[]string{"runs", "prune"}, cli.Command{Name: "runs prune"}, false},
 		{[]string{"launch", "x"}, cli.Command{Name: "launch"}, false},
 	} {

@@ -1060,13 +1060,13 @@ func TestWorkflowJoinReceivesNothingButTheCollection(t *testing.T) {
 	}
 }
 
-// A caller cannot give a workflow an agent, limits or a run to continue:
-// the workflow is refused and no node starts.
+// A caller cannot give a workflow limits or a run to continue: the
+// workflow is refused and no node starts. No caller gives an agent: the
+// request has none (ADR-030 rule 5).
 func TestWorkflowRefusesCallerOverrides(t *testing.T) {
 	t.Parallel()
 	limit := 1.0
 	for name, request := range map[string]contract.CallRequest{
-		"agent":    {Agent: "a"},
 		"timeout":  {Timeout: "1m"},
 		"cost":     {MaxCostUSD: &limit},
 		"continue": {Continue: "run-0"},
@@ -1588,14 +1588,11 @@ func TestANodesAgentRunsItsCall(t *testing.T) {
 }
 
 // ADR-030 rules 2 and 5: a process names no agent, and runs when a node
-// binds it to one, on that agent. On its own it is refused, with or
-// without an agent its caller selects: only a node binds it. A node that
-// names no agent for it refuses its workflow, which does not parse, before
-// any node starts.
+// binds it to one, on that agent. A node that names no agent for it
+// refuses its workflow, which does not parse, before any node starts. On
+// its own it is not run (TestARunOfAProcessIsRefusedWithTheWorkflowsThatBindIt).
 func TestAProcessRunsOnlyAsANode(t *testing.T) {
 	t.Parallel()
-	const alone = "process second: names no agent: only a workflow's node binds it to one (ADR-030 rule 5); run a workflow that binds it"
-
 	t.Run("bound by a node", func(t *testing.T) {
 		t.Parallel()
 		h := newFlowHarness()
@@ -1609,21 +1606,6 @@ func TestAProcessRunsOnlyAsANode(t *testing.T) {
 			t.Fatalf("node two: process %s on agent %q, turns %+v", child.Process, child.Agent, turns)
 		}
 	})
-	for name, request := range map[string]contract.CallRequest{
-		"on its own":                       {Process: "second"},
-		"on its own, its caller's agent b": {Process: "second", Agent: "b"},
-	} {
-		t.Run(name, func(t *testing.T) {
-			t.Parallel()
-			h := newFlowHarness()
-			withAgentB(h)
-			h.defs.set(definition.KindWorkflow, "w", boundTo(workflowDoc, "two", "second", "b"))
-			record := h.store.wait(t, h.submit(t, request))
-			if class(record) != run.ClassRefused || message(record) != alone || len(h.runner.turns("Work as second.")) != 0 {
-				t.Fatalf("result %+v, want refused: %s", record.Result, alone)
-			}
-		})
-	}
 	t.Run("bound by a node that names no agent", func(t *testing.T) {
 		t.Parallel()
 		h := newFlowHarness()
@@ -1634,6 +1616,53 @@ func TestAProcessRunsOnlyAsANode(t *testing.T) {
 			t.Fatalf("result %+v, runs %v, want refused: %s", record.Result, h.store.ids(), want)
 		}
 	})
+}
+
+// ADR-030 rule 7: agister run runs a workflow. A process's name is
+// refused, as a run of its own, before anything of the process is resolved
+// and with no turn, naming the workflows that bind it, a fan-out one and a
+// workflow of one call alike, and no other; a process no workflow binds,
+// and a name that is neither, are refused as such. Through the whole
+// client, whose check finds what each workflow binds.
+func TestARunOfAProcessIsRefusedWithTheWorkflowsThatBindIt(t *testing.T) {
+	t.Parallel()
+	for name, c := range map[string]struct {
+		process string
+		want    string
+	}{
+		"bound by two workflows": {"p", "process p is not run on its own: agister run runs a workflow (ADR-030 rule 7); run one that binds it: p_a, panel"},
+		"bound by none":          {"lone", "process lone is not run on its own: agister run runs a workflow (ADR-030 rule 7), and no workflow binds it"},
+		"neither":                {"nothing", `no workflow "nothing": agister run runs a workflow (ADR-030 rule 7)`},
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			h := newHarness()
+			lone := strings.Replace(settingsDocs()[definition.KindProcess]["p"], "name: p", "name: lone", 1)
+			h.defs.docs[definition.KindProcess]["lone"] = lone
+			h.defs.docs[definition.KindProcess]["q"] = strings.Replace(lone, "name: lone", "name: q", 1)
+			h.defs.docs[definition.KindProcess]["joiner"] = joinProcess
+			h.defs.docs[definition.KindWorkflow]["q_a"] = callOf("q_a", "q", "a")
+			h.defs.docs[definition.KindWorkflow]["panel"] = `schema: agister.workflow/v1alpha1
+name: panel
+type: workflow
+fan_out:
+  - {node: one, uses: process:q, agent: a}
+  - {node: two, uses: process:p, agent: a}
+join: {node: merge, uses: process:joiner, agent: a}
+`
+			client := h.clientOn(h.defs)
+			if report, err := client.Check(context.Background(), false); err != nil || len(report.Problems) != 0 {
+				t.Fatalf("check: %v, %v", messages(report.Problems), err)
+			}
+			record := h.submit(t, client, contract.CallRequest{Process: c.process})
+			if class(record) != run.ClassRefused || message(record) != c.want || record.Process != c.process || record.Agent != "" {
+				t.Fatalf("record of %s on %q: %+v, want refused: %s", record.Process, record.Agent, record.Result, c.want)
+			}
+			if len(h.runner.calls()) != 0 || len(h.recorder.records()) != 1 {
+				t.Fatalf("turns %d, records %d, want the refused one alone", len(h.runner.calls()), len(h.recorder.records()))
+			}
+		})
+	}
 }
 
 // ADR-030 rule 8, ADR-015 rule 3: each binding of a process is resolved
@@ -1695,7 +1724,7 @@ func TestShowWorkflowShowsEachNodeOnTheAgentItBinds(t *testing.T) {
 		t.Fatalf("nodes = %v, want %v", shown, want)
 	}
 	// On its own the process shows its work, and that it is not run so.
-	process, err := inspection.ShowProcess(context.Background(), "second", "")
+	process, err := inspection.ShowProcess(context.Background(), "second")
 	if err != nil || process.Name != "second" || process.Agent != "" || !strings.Contains(process.Refusal, "names no agent") {
 		t.Fatalf("process show: %+v, %v", process, err)
 	}

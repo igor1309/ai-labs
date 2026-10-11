@@ -94,9 +94,6 @@ type nodeEnd struct {
 // continuing a workflow is not supported.
 func workflowRequest(request run.Request) error {
 	var given []string
-	if request.Agent != "" {
-		given = append(given, "an agent")
-	}
 	if request.Timeout != "" {
 		given = append(given, "a timeout")
 	}

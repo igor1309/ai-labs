@@ -62,7 +62,7 @@ func (s *clientSpy) logs(t *testing.T) []map[string]any {
 // unlogged opens a log nobody reads.
 func unlogged(cli.Config) (*slog.Logger, error) { return slog.New(slog.DiscardHandler), nil }
 
-func (s *clientSpy) ShowProcess(context.Context, string, string) (contract.ProcessView, error) {
+func (s *clientSpy) ShowProcess(context.Context, string) (contract.ProcessView, error) {
 	return s.view, nil
 }
 
@@ -160,9 +160,9 @@ func TestRunSubmitsTheRequestBuiltFromArguments(t *testing.T) {
 	t.Parallel()
 	spy := &clientSpy{run: finished("completed", "")}
 	spy.run.Result.Text = "hi"
-	r := run(context.Background(), spy, "run", "p", "--param", "a=1", "--agent", "x", "--param", "b=two=2", "--timeout", "5m", "--max-cost", "0.5", "--continue", "run-0", "--goal", "run-g:brief", "--answers", "run-j", "--quiet")
+	r := run(context.Background(), spy, "run", "p", "--param", "a=1", "--param", "b=two=2", "--timeout", "5m", "--max-cost", "0.5", "--continue", "run-0", "--goal", "run-g:brief", "--answers", "run-j", "--quiet")
 	limit := 0.5
-	want := contract.CallRequest{Process: "p", Params: map[string]string{"a": "1", "b": "two=2"}, Agent: "x", Timeout: "5m", MaxCostUSD: &limit, Continue: "run-0", Goal: "run-g:brief", Answers: "run-j", Cwd: "/work"}
+	want := contract.CallRequest{Process: "p", Params: map[string]string{"a": "1", "b": "two=2"}, Timeout: "5m", MaxCostUSD: &limit, Continue: "run-0", Goal: "run-g:brief", Answers: "run-j", Cwd: "/work"}
 	if !reflect.DeepEqual(spy.submitted, []contract.CallRequest{want}) {
 		t.Fatalf("submitted %+v", spy.submitted)
 	}
@@ -171,6 +171,24 @@ func TestRunSubmitsTheRequestBuiltFromArguments(t *testing.T) {
 	}
 	if r.code != cli.ExitCompleted || r.stdout != "hi\n" {
 		t.Fatalf("result = %+v", r)
+	}
+}
+
+// No caller chooses an agent (ADR-030 rule 5): run and process show take
+// no --agent, which is a usage error before any client is built, so
+// nothing is submitted or shown.
+func TestNoCommandTakesAnAgent(t *testing.T) {
+	t.Parallel()
+	for _, args := range [][]string{
+		{"run", "w", "--agent", "x"},
+		{"process", "show", "p", "--agent", "x"},
+	} {
+		spy := &clientSpy{run: finished("completed", ""), view: contract.ProcessView{Name: "p"}}
+		r := run(context.Background(), spy, args...)
+		if r.code != cli.ExitUsage || !strings.Contains(r.stderr, "agister: flag provided but not defined: -agent") || r.stdout != "" ||
+			len(spy.submitted) != 0 || spy.config != (cli.Config{}) {
+			t.Errorf("%v: result %+v, submitted %+v, built %+v", args, r, spy.submitted, spy.config)
+		}
 	}
 }
 

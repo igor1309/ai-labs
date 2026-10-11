@@ -55,20 +55,23 @@ type CallResolution interface {
 	// what was resolved before the refusal, never nil.
 	Resolve(ctx context.Context, request CallResolveRequest) (*ResolvedCall, error)
 	// Workflow resolves the workflow of that name; found is false when the
-	// settings have none, and the name is a process's.
+	// settings have none.
 	Workflow(ctx context.Context, name string) (res *ResolvedWorkflow, found bool, err error)
+	// Binders are the workflows a node of which binds the process of that
+	// name (ADR-030 rule 5), sorted; listed is false when the settings
+	// list no such process.
+	Binders(ctx context.Context, process string) (workflows []string, listed bool, err error)
 }
 
 // CallResolveRequest is what a call is resolved from: its process, the
-// agent it runs on, and the caller's narrowing limits.
+// agent it runs on, and the caller's narrowing limits. Every call is a
+// workflow node's, and Agent the agent the node binds its process to
+// (ADR-030 rule 5).
 type CallResolveRequest struct {
 	Process    string
 	Agent      string
 	Timeout    string
 	MaxCostUSD *float64
-	// Node says the call is a workflow node's, and Agent the agent the node
-	// binds its process to (ADR-030 rule 5).
-	Node bool
 }
 
 // ResolvedCall is everything a call needs before inputs and effects.
@@ -288,7 +291,7 @@ func (r *Resolver) Snapshot(ctx context.Context) CallResolution {
 type callResolution struct{ resolver *Resolver }
 
 func (c callResolution) Resolve(ctx context.Context, request CallResolveRequest) (*ResolvedCall, error) {
-	res, err := c.resolver.resolve(ctx, request.Process, request.Agent, overrides{timeout: request.Timeout, maxCostUSD: request.MaxCostUSD, node: request.Node})
+	res, err := c.resolver.resolve(ctx, request.Process, request.Agent, overrides{timeout: request.Timeout, maxCostUSD: request.MaxCostUSD, node: true})
 	process, agent, effective := res.process, res.agent, res.effective
 	resolved := &ResolvedCall{
 		Process: CallProcess{
@@ -357,6 +360,14 @@ func (c callResolution) Workflow(ctx context.Context, name string) (*ResolvedWor
 		}
 	}
 	return resolved, found, err
+}
+
+func (c callResolution) Binders(ctx context.Context, process string) ([]string, bool, error) {
+	reached, err := c.resolver.reach(ctx)
+	if err != nil {
+		return nil, false, err
+	}
+	return reached.binders(process), reached.listed(DocumentRef{Kind: definition.KindProcess, Name: process}), nil
 }
 
 // callStale is the composed staleness limits as a call reads them: a zero
@@ -763,7 +774,6 @@ func (c *Calls) Submit(ctx context.Context, request contract.CallRequest) (strin
 		Request: run.Request{
 			Process:    request.Process,
 			Params:     request.Params,
-			Agent:      request.Agent,
 			Timeout:    request.Timeout,
 			MaxCostUSD: request.MaxCostUSD,
 			Continue:   request.Continue,
@@ -812,6 +822,22 @@ func (c *Calls) Submit(ctx context.Context, request contract.CallRequest) (strin
 		c.execute(runCtx, handle, record, resolver, nil, one)
 	}()
 	return record.ID, nil
+}
+
+// unbound is the refusal of a run of name, which names no workflow
+// (ADR-030 rule 7): a process's name is refused with the workflows that
+// bind it, which are what to run.
+func (c *Calls) unbound(ctx context.Context, resolver CallResolution, name string) error {
+	binders, listed, err := resolver.Binders(ctx, name)
+	switch {
+	case err != nil:
+		return err
+	case !listed:
+		return refuse("no workflow %q: agister run runs a workflow (ADR-030 rule 7)", name)
+	case len(binders) == 0:
+		return refuse("process %s is not run on its own: agister run runs a workflow (ADR-030 rule 7), and no workflow binds it", name)
+	}
+	return refuse("process %s is not run on its own: agister run runs a workflow (ADR-030 rule 7); run one that binds it: %s", name, strings.Join(binders, ", "))
 }
 
 // called is the workflow of one call a run is (ADR-030 rule 6), as the run
@@ -915,10 +941,15 @@ func (c *Calls) execute(ctx context.Context, handle RunHandle, record run.Record
 		finish(run.Fault(run.ClassInternal, "%v", err))
 	}
 
+	// agister run runs a workflow: a process runs only as a node that binds
+	// it to an agent (ADR-030 rules 5 and 7).
+	if one == nil && record.Parent == nil {
+		fail(c.unbound(ctx, resolver, record.Process))
+		return
+	}
 	resolving := CallResolveRequest{
 		Process: record.Request.Process, Agent: record.Request.Agent,
 		Timeout: record.Request.Timeout, MaxCostUSD: record.Request.MaxCostUSD,
-		Node: record.Parent != nil,
 	}
 	var sources []run.DefinitionSource
 	if one != nil {
@@ -928,15 +959,11 @@ func (c *Calls) execute(ctx context.Context, handle RunHandle, record run.Record
 			sources = recordSources(one.workflow.Sources)
 			record.Definitions, record.Layers = sources, recordLayers(one.workflow.Layers)
 		}
-		err := one.err
-		if err == nil && record.Request.Agent != "" {
-			err = refuse("workflow %s binds its call to agent %s; it takes no agent of its caller's, not %s (ADR-030 rule 5)", record.Process, record.Call.Agent, record.Request.Agent)
-		}
-		if err != nil {
-			fail(err)
+		if one.err != nil {
+			fail(one.err)
 			return
 		}
-		resolving.Process, resolving.Agent, resolving.Node = record.Call.Process, record.Call.Agent, true
+		resolving.Process, resolving.Agent = record.Call.Process, record.Call.Agent
 	}
 	res, err := resolver.Resolve(ctx, resolving)
 	record.Definitions = append(sources, recordSources(res.Sources)...)

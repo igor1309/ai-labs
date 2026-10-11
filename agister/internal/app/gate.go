@@ -335,12 +335,12 @@ func (g *Gated) ListProcesses(ctx context.Context) ([]contract.ProcessSummary, e
 	return client.ListProcesses(ctx)
 }
 
-func (g *Gated) ShowProcess(ctx context.Context, name, agent string) (contract.ProcessView, error) {
+func (g *Gated) ShowProcess(ctx context.Context, name string) (contract.ProcessView, error) {
 	client, err := g.gate(ctx)
 	if err != nil {
 		return contract.ProcessView{}, err
 	}
-	return client.ShowProcess(ctx, name, agent)
+	return client.ShowProcess(ctx, name)
 }
 
 func (g *Gated) ListWorkflows(ctx context.Context) ([]contract.WorkflowSummary, error) {

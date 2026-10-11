@@ -595,8 +595,8 @@ func TestUnreadableServiceSettingsFailCheck(t *testing.T) {
 func TestRefusedCallIsRecorded(t *testing.T) {
 	t.Parallel()
 	home, repo := setup(t, "approve")
-	r := agister(t, home, repo, "run", "no_such_process", "--quiet", "--timeout", "1m")
-	if r.code != cli.ExitRefused || !strings.Contains(r.stderr, `process "no_such_process": not found`) {
+	r := agister(t, home, repo, "run", "no_such_workflow", "--quiet", "--timeout", "1m")
+	if r.code != cli.ExitRefused || !strings.Contains(r.stderr, `no workflow "no_such_workflow": agister run runs a workflow (ADR-030 rule 7)`) {
 		t.Fatalf("exit %d\n%s", r.code, r.stderr)
 	}
 	if last := lastRun(t, home); last.record["result"].(map[string]any)["error"].(map[string]any)["class"] != "refused" {

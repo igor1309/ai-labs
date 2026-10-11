@@ -76,7 +76,7 @@ func callSkill(name string) app.CallSkill {
 // process names no agent of its own (ADR-030 rules 2 and 5).
 func (h *harness) resolved(t *testing.T, request app.CallResolveRequest) (*app.ResolvedCall, error) {
 	t.Helper()
-	request.Process, request.Node = "p", true
+	request.Process = "p"
 	if request.Agent == "" {
 		request.Agent = "a"
 	}

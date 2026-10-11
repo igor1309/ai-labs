@@ -485,10 +485,10 @@ type Inspection struct {
 // InspectionResolver resolves a process the way a call would, and a
 // workflow the way a run of it would (Resolver is one).
 type InspectionResolver interface {
-	// InspectProcess resolves the process named name, with agent, when set,
-	// in place of its own, and no limits of a caller. A refused one's view
+	// InspectProcess resolves the process named name on no agent, as no
+	// node binds it, and with no limits of a caller. A refused one's view
 	// has what was resolved before the refusal, never nil.
-	InspectProcess(ctx context.Context, name, agent string) (*InspectedProcess, error)
+	InspectProcess(ctx context.Context, name string) (*InspectedProcess, error)
 	// InspectNode resolves a workflow node's call as InspectProcess does a
 	// process: its process, on the agent the node binds it to.
 	InspectNode(ctx context.Context, node InspectedNode) (*InspectedProcess, error)
@@ -643,8 +643,8 @@ type InspectedNodeProcess struct {
 }
 
 // InspectProcess translates the Resolver's resolution into the view's.
-func (r *Resolver) InspectProcess(ctx context.Context, name, agent string) (*InspectedProcess, error) {
-	return r.inspect(ctx, name, agent, overrides{})
+func (r *Resolver) InspectProcess(ctx context.Context, name string) (*InspectedProcess, error) {
+	return r.inspect(ctx, name, "", overrides{})
 }
 
 // InspectNode is InspectProcess of a workflow node's call: its process, on
@@ -756,8 +756,8 @@ func NewInspection(resolver InspectionResolver) *Inspection {
 	return &Inspection{resolver: resolver}
 }
 
-func (i *Inspection) ShowProcess(ctx context.Context, name, agent string) (contract.ProcessView, error) {
-	return i.showProcess(ctx, name, agent)
+func (i *Inspection) ShowProcess(ctx context.Context, name string) (contract.ProcessView, error) {
+	return i.showProcess(ctx, name)
 }
 
 // ShowWorkflow shows a workflow and each node's process as a run of it
@@ -839,8 +839,8 @@ func (i *Inspection) ShowWorkflow(ctx context.Context, name string) (contract.Wo
 	return view, nil
 }
 
-func (i *Inspection) showProcess(ctx context.Context, name, agent string) (contract.ProcessView, error) {
-	return i.shown(i.resolver.InspectProcess(ctx, name, agent))
+func (i *Inspection) showProcess(ctx context.Context, name string) (contract.ProcessView, error) {
+	return i.shown(i.resolver.InspectProcess(ctx, name))
 }
 
 // shown is the view of a process as the resolver resolved it, refused or

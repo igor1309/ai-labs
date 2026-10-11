@@ -86,7 +86,7 @@ func TestADR012Rule4IncludesUnparsedAndUnreadableNames(t *testing.T) {
 			_, refused["agent create"] = client.CreateAgent(ctx, contract.Agent{Name: "c", Runtime: "rt"}, false, nil)
 			_, refused["agent list"] = client.ListAgents(ctx)
 			_, refused["process list"] = client.ListProcesses(ctx)
-			_, refused["process show"] = client.ShowProcess(ctx, "first", "")
+			_, refused["process show"] = client.ShowProcess(ctx, "first")
 			_, refused["workflow list"] = client.ListWorkflows(ctx)
 			_, refused["workflow show"] = client.ShowWorkflow(ctx, "w")
 			_, refused["run"] = client.Submit(ctx, contract.CallRequest{Process: "first", Cwd: "/repo"})
@@ -154,7 +154,7 @@ func TestADR012UnreadableDocumentsHavePathsAndViews(t *testing.T) {
 			}
 			var name, refusal string
 			if tc.kind == definition.KindProcess {
-				view, err := client.ShowProcess(ctx, tc.name, "")
+				view, err := client.ShowProcess(ctx, tc.name)
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -169,8 +169,15 @@ func TestADR012UnreadableDocumentsHavePathsAndViews(t *testing.T) {
 			if name != tc.name || !strings.Contains(refusal, "("+path+"): ") || !strings.Contains(refusal, "too many levels") {
 				t.Fatalf("view %s: %s", name, refusal)
 			}
+			// A run of the process's name is refused as such before its
+			// document is read (ADR-030 rule 7), naming the workflow that
+			// binds it, where it was refused for the unreadable document.
+			want := refusal
+			if tc.kind == definition.KindProcess {
+				want = "process first is not run on its own: agister run runs a workflow (ADR-030 rule 7); run one that binds it: w"
+			}
 			record := h.submit(t, client, contract.CallRequest{Process: tc.name})
-			if class(record) != run.ClassRefused || message(record) != refusal || len(h.runner.calls()) != 0 {
+			if class(record) != run.ClassRefused || message(record) != want || len(h.runner.calls()) != 0 {
 				t.Fatalf("record: %+v", record.Result)
 			}
 			if _, err := client.ListRuns(ctx); err != nil {

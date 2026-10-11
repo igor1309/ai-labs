@@ -265,10 +265,23 @@ func (r *reach) extenders(ref DocumentRef) []string {
 	return names
 }
 
-// refuses is the roots among roots whose calls, without --agent, depend on
-// subject: what a problem of subject, or a block on it, refuses. agent is
-// the agent a problem of the process subject depends on, if it does: a
-// workflow whose nodes bind the process to other agents does not have it.
+// binders are the workflows a node of which binds the process (ADR-030
+// rule 5), sorted.
+func (r *reach) binders(process string) []string {
+	var names []string
+	for ref, document := range r.documents {
+		if ref.Kind == definition.KindWorkflow && slices.ContainsFunc(document.binds, func(node NodeBinding) bool { return node.Process == process }) {
+			names = append(names, ref.Name)
+		}
+	}
+	sort.Strings(names)
+	return names
+}
+
+// refuses is the roots among roots whose calls depend on subject: what a
+// problem of subject, or a block on it, refuses. agent is the agent a
+// problem of the process subject depends on, if it does: a workflow whose
+// nodes bind the process to other agents does not have it.
 func (r *reach) refuses(subject DocumentRef, agent string, roots []DocumentRef) []string {
 	var names []string
 	for _, root := range roots {

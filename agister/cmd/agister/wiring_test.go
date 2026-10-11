@@ -141,7 +141,7 @@ func TestBuiltClientReadsOnlyTheSourcesGiven(t *testing.T) {
 				"settings": func(c contract.Client) error { _, err := c.ListAgents(ctx); return err },
 				"check":    func(c contract.Client) error { _, err := c.Check(ctx, false); return err },
 				"inspection": func(c contract.Client) error {
-					_, err := c.ShowProcess(ctx, "ask", "")
+					_, err := c.ShowProcess(ctx, "ask")
 					return err
 				},
 				"settings workflows": func(c contract.Client) error { _, err := c.ListWorkflows(ctx); return err },

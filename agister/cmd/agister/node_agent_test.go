@@ -37,16 +37,15 @@ func nodeAgents(t *testing.T, home, repo string) map[string]string {
 
 // A node runs its process's call on the agent it names: the same example
 // processes run on the agents their nodes bind them to. A process names no
-// agent and is refused on its own, whatever agent the caller names; a node
-// that names none is a problem of the workflow, which refuses it (ADR-030
-// rule 5).
+// agent and is refused on its own, naming the workflows that bind it, and
+// no caller names an agent (ADR-030 rules 5 and 7); a node that names none
+// is a problem of the workflow, which refuses it (ADR-030 rule 5).
 func TestANodeBindsItsProcessToAnAgent(t *testing.T) {
 	t.Parallel()
 	home, repo := setup(t, "approve")
 	workflow := filepath.Join(home, "workflows", "review_panel.yaml")
 	write(t, workflow, strings.Replace(read(t, workflow),
 		"{node: adversarial, uses: process:adversarial_review, agent: reviewer}", "{node: adversarial, uses: process:adversarial_review, agent: assistant}", 1))
-	process := filepath.Join(home, "processes", "adversarial_review.yaml")
 
 	if r := agister(t, home, repo, "check"); r.code != 0 {
 		t.Fatalf("check: %d\n%s%s", r.code, r.stdout, r.stderr)
@@ -66,13 +65,28 @@ func TestANodeBindsItsProcessToAnAgent(t *testing.T) {
 		t.Fatalf("the nodes ran on %v", agents)
 	}
 
-	// On its own it has no agent, and the caller gives it none.
-	refusal := "process adversarial_review (" + process + "): names no agent: only a workflow's node binds it to one (ADR-030 rule 5)"
-	for _, more := range [][]string{nil, {"--agent", "assistant"}} {
-		args := append([]string{"run", "adversarial_review", "--quiet", "--param", "base=main"}, more...)
-		if r := agister(t, home, repo, args...); r.code != cli.ExitRefused || !strings.Contains(r.stderr, refusal) {
+	// On its own it is not run, and the refusal names the workflows that
+	// bind it (ADR-030 rule 7); the caller gives it no agent: run takes no
+	// --agent, and no run is made.
+	runs := &newRuns{home: home}
+	runs.take(t)
+	refusal := "process adversarial_review is not run on its own: agister run runs a workflow (ADR-030 rule 7); run one that binds it: adversarial_review_reviewer, review_panel"
+	if r := agister(t, home, repo, "run", "adversarial_review", "--quiet", "--param", "base=main"); r.code != cli.ExitRefused || !strings.Contains(r.stderr, refusal) {
+		t.Fatalf("run adversarial_review: %d\n%s%s", r.code, r.stdout, r.stderr)
+	}
+	if refused := runs.one(t); refused.first != nil {
+		t.Fatalf("the runtime ran: %v", refused.first)
+	}
+	for _, args := range [][]string{
+		{"run", "review_panel", "--quiet", "--param", "base=main", "--param", "architecture=a.txt", "--agent", "assistant"},
+		{"process", "show", "adversarial_review", "--agent", "assistant"},
+	} {
+		if r := agister(t, home, repo, args...); r.code != cli.ExitUsage || !strings.Contains(r.stderr, "agister: flag provided but not defined: -agent\n") {
 			t.Fatalf("%v: %d\n%s%s", args, r.code, r.stdout, r.stderr)
 		}
+	}
+	if made := runs.take(t); len(made) != 0 {
+		t.Fatalf("--agent made runs: %v", made)
 	}
 	// process list names no agent of a process: it has none.
 	if r := agister(t, home, repo, "process", "list"); r.code != 0 || !strings.Contains(r.stdout, "adversarial_review\tjson:review-result\n") || strings.Contains(r.stdout, "agent:") {
