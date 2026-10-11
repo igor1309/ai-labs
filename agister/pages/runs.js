@@ -205,8 +205,10 @@
   }
 
   // What a run's result says: its verdict, and its error and output as
-  // parts, each under its key. The text shows only without an output: with
-  // one, it is that output as JSON.
+  // parts, each under its key. An error's class goes in its title, "error:
+  // timeout", over its message and whatever else it holds; one with a class
+  // alone is that title and no text. The text shows only without an output:
+  // with one, it is that output as JSON.
   function runOutput(result) {
     const parts = [];
     const add = (key, value) => {
@@ -214,8 +216,11 @@
       if (part) parts.push({ key, ...part });
     };
     if (isObject(result?.error)) {
-      const { message, ...rest } = result.error;
-      add('error', [message, ...Object.entries(rest).filter(([, v]) => isScalar(v)).map(([k, v]) => `${k}: ${v}`)].filter(filled).join('\n\n'));
+      const { class: cls, message, ...rest } = result.error;
+      const named = filled(cls) && isScalar(cls);
+      const text = [message, ...Object.entries(rest).filter(([, v]) => isScalar(v)).map(([k, v]) => `${k}: ${v}`)].filter(filled).join('\n\n');
+      if (named) parts.push({ key: 'error', kind: 'text', title: `error: ${cls}`, text });
+      else add('error', text);
     } else add('error', result?.error);
     const output = result?.output;
     let verdict = '';

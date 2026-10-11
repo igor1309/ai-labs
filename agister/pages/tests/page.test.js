@@ -514,9 +514,21 @@ test('a failed run shows its error first, then its text, and no verdict', async 
   p.row('call-1').click();
   await settle();
   const parts = p.$('run-detail').querySelector('section.output').children;
-  assert.deepEqual(parts.map((c) => [c.dataset.key, c.querySelector('div.markdown').textContent]),
-    [['error', 'Hit the limit.class: rate_limited'], ['text', 'Got as far as this.']]);
+  assert.deepEqual(parts.map((c) => [c.dataset.key, c.querySelector('h4').textContent, c.querySelector('div.markdown').textContent]),
+    [['error', 'error: rate limited', 'Hit the limit.'], ['text', 'text', 'Got as far as this.']]);
   assert.equal(p.$('run-detail').querySelector('span.verdict'), null);
+});
+
+test('an error with a class alone is one line, its head', async () => {
+  const p = page({
+    storage: fakeStorage({ [VIEW_KEY]: 'runs' }),
+    answers: { 'api/runs/call-1': () => respond({ summary: call, record: { result: { status: 'interrupted', error: { class: 'timeout' } } } }) },
+  });
+  await p.started;
+  p.row('call-1').click();
+  await settle();
+  const parts = p.$('run-detail').querySelector('section.output').children;
+  assert.deepEqual(parts.map((c) => [c.dataset.key, c.textContent]), [['error', 'error: timeout']]);
 });
 
 // An api/skills reply holding a skill named review in a folder for adapter.

@@ -95,7 +95,8 @@ again.
   severity and its nodes as a table: process, status, wall, cost and the
   rulings of the items each node was a source of. A link opens that run in
   its place. Then what its result says: a review's verdict in the head
-  (green approve, red request changes), then its error, if any, and its
+  (green approve, red request changes), then its error, if any, its class in its
+  head (a red `ERROR: TIMEOUT`, one line when the error holds no more), and its
   output, a part per key: summary first, then findings, a judge's items and
   decisions as cards (severity, ruling, title, file and line, sources; the
   detail, reason and action; the rest folded under *more*), coverage and

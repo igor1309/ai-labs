@@ -843,7 +843,7 @@
         ]),
         s.workflow?.nodes.length ? nodesTable(s.workflow) : null,
         said.parts.length ? el('section', { className: 'output' }, ...said.parts.map((part) => el('div', { className: `part part-${part.key}`, dataset: { key: part.key } },
-          el('h4', { textContent: part.key.replaceAll('_', ' ') }), partBody(part)))) : null,
+          el('h4', { textContent: (part.title ?? part.key).replaceAll('_', ' ') }), part.kind === 'text' && !part.text ? null : partBody(part)))) : null,
         el('details', { className: 'record' },
           el('summary', { textContent: 'Record as stored' }),
           el('pre', { className: 'mono', textContent: JSON.stringify(record, null, 2) })));
