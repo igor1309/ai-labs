@@ -488,19 +488,30 @@
   // read through each process that extends it, which extendedBy lists.
   function extended(processes) {
     const docs = new Map(processes.filter((p) => !p.error && p.doc).map((p) => [p.name, p.doc]));
-    const bases = new Map();
     const items = processes.map((p) => {
-      const name = !p.error && typeof p.doc?.extends === 'string' ? refName(p.doc.extends) : null;
+      const name = baseName(p);
       if (!docs.has(name)) return p;
-      bases.set(name, [...(bases.get(name) ?? []), p.name]);
       const { name: _name, extends: _extends, ...given } = docs.get(name);
       const { doc: _doc, ...own } = p;
       return { ...own, ...processItem(p.file, p.src, merge(given, p.doc)), extends: name };
     });
-    for (const p of items) {
+    return markBases(items);
+  }
+
+  // The base a process's document names (extends: process:<name>), or null.
+  const baseName = (p) => (!p.error && typeof p.doc?.extends === 'string' ? refName(p.doc.extends) : null);
+
+  // Marks each base a process extends as one, with the processes that
+  // extend it.
+  function markBases(processes) {
+    const bases = new Map();
+    for (const p of processes) {
+      if (p.extends) bases.set(p.extends, [...(bases.get(p.extends) ?? []), p.name]);
+    }
+    for (const p of processes) {
       if (bases.has(p.name)) Object.assign(p, { base: true, extendedBy: bases.get(p.name) });
     }
-    return items;
+    return processes;
   }
 
   const mapValue = (x) => x !== null && typeof x === 'object' && !Array.isArray(x);
@@ -571,6 +582,14 @@
       }
       if (item) Object.assign(item, source, { source: source.layers?.[0]?.layer, overrides: source.layers?.length > 1 });
     }
+    // The binary has laid each process over its base already, and its
+    // text keeps the extends it names: only the base and the processes
+    // that extend it are read from that (ADR-030 rule 9).
+    for (const p of model.processes) {
+      const name = baseName(p);
+      if (name) p.extends = name;
+    }
+    markBases(model.processes);
     return link(model);
   }
 

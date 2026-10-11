@@ -815,15 +815,31 @@ test('a process shows its own limits and session', async () => {
 });
 
 // ADR-030 rule 9: a process that extends a base says so on its step, and a
-// base, which is not work, names the processes that extend it.
+// base, which is not work, names the processes that extend it. The server
+// reports the process already laid over its base, as the binary composes
+// it, with the extends it names; the page does not lay it over again.
 test('a process names the base it extends, and a base the processes that extend it', async () => {
-  const files = {
+  const composedFiles = {
     ...agent,
     'processes/review.yaml': 'name: review\ntimeout: 20m\ntools:\n  require: [repository.read]\n',
-    'processes/tests_review.yaml': 'name: tests_review\nextends: process:review\nprompt: tests\n',
+    'processes/tests_review.yaml': 'name: tests_review\nextends: process:review\ntimeout: 20m\ntools:\n  require: [repository.read]\nprompt: tests\n',
     'workflows/tests.yaml': 'name: tests\ncall: {node: tests, uses: process:tests_review, agent: opus}\n',
   };
-  const p = page({ answers: { 'api/settings': () => respond({ path: '~', dir: '/u/.agister', home: true, files }) } });
+  const sources = {
+    'processes/review.yaml': { layers: [{ layer: 'home', path: '/h/processes/review.yaml', fields: ['name', 'timeout', 'tools'] }] },
+    'processes/tests_review.yaml': { layers: [
+      { layer: 'home', path: '/h/processes/tests_review.yaml', fields: ['name', 'extends', 'prompt'] },
+      { layer: 'home', path: '/h/processes/review.yaml', fields: ['timeout', 'tools'] },
+    ] },
+    'workflows/tests.yaml': { layers: [{ layer: 'home', path: '/h/workflows/tests.yaml', fields: ['name', 'call'] }] },
+  };
+  const p = page({
+    storage: fakeStorage({ 'agister-pages:current': '/r' }),
+    answers: {
+      'api/settings': () => respond({ path: '/r', files: {}, composedFiles, sources }),
+      'api/skills': () => respond({ path: '/r', home: false, adapters: [], folders: [], settings: [] }),
+    },
+  });
   await p.started;
   const facts = (root) => {
     const nodes = root.querySelector('div.facts').children;
