@@ -2570,6 +2570,86 @@ func TestTheRepositoryLayerSetsOnlyTheGoGuidance(t *testing.T) {
 	}
 }
 
+// implementWorkflows are home's workflows that call implement on Codex and
+// on Pi, each named after the process that ran implement's work there
+// before ADR-030 (Migration step 3).
+var implementWorkflows = []string{"implement_codex", "implement_pi", "implement_pi_glm"}
+
+// Home has one implement process, implement, which implementers lists
+// alone: of the home folder's processes, a base left out, it alone is given
+// home's implement prompt or completes with the implementation schema.
+// implementWorkflows are no processes of the home folder.
+func TestHomeHasOneImplementProcess(t *testing.T) {
+	t.Parallel()
+	root := repositoryRoot(t)
+	paths, err := filepath.Glob(filepath.Join(root, homeFolder, "processes", "*.yaml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	bases := homeBases(t, root)
+	var found []string
+	for _, path := range paths {
+		name := strings.TrimSuffix(filepath.Base(path), ".yaml")
+		if bases[name] {
+			continue
+		}
+		if process := parseProcess(t, root, name); process.Prompt == "implement" || process.Output.Schema == "implementation" {
+			found = append(found, name)
+		}
+	}
+	if want := []string{"implement"}; !slices.Equal(found, want) || !slices.Equal(implementers, want) {
+		t.Fatalf("home's implement processes are %v and implementers %v, want %v", found, implementers, want)
+	}
+	for _, name := range implementWorkflows {
+		path := filepath.Join(root, homeFolder, "processes", name+".yaml")
+		if _, err := os.Lstat(path); !errors.Is(err, fs.ErrNotExist) {
+			t.Errorf("the home folder holds %s (%v), want none", path, err)
+		}
+	}
+}
+
+// The repository's layer sets implement's guidance once: of the documents
+// of its layer and its projects', one sets guidance on implement or on one
+// of implementWorkflows, the repository's processes/implement.yaml, to the
+// Go prompts. A workflow takes the guidance of the process it calls.
+func TestTheRepositoryLayerSetsImplementsGuidanceOnce(t *testing.T) {
+	t.Parallel()
+	root := repositoryRoot(t)
+	targets := append([]string{"implement"}, implementWorkflows...)
+	set := map[string][]string{}
+	for _, layer := range append([]string{"."}, projects...) {
+		settings := filepath.Join(root, layer, ".agister")
+		err := filepath.WalkDir(settings, func(path string, entry fs.DirEntry, err error) error {
+			if err != nil || entry.IsDir() || filepath.Ext(path) != ".yaml" {
+				return err
+			}
+			if !slices.Contains(targets, strings.TrimSuffix(entry.Name(), ".yaml")) {
+				return nil
+			}
+			var document struct {
+				Guidance []string `yaml:"guidance"`
+			}
+			if err := yaml.Unmarshal([]byte(read(t, path)), &document); err != nil {
+				return err
+			}
+			if document.Guidance != nil {
+				rel, err := filepath.Rel(root, path)
+				if err != nil {
+					return err
+				}
+				set[rel] = document.Guidance
+			}
+			return nil
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+	if want := map[string][]string{filepath.Join(".agister", "processes", "implement.yaml"): goPrompts}; !reflect.DeepEqual(set, want) {
+		t.Fatalf("the repository's layers set implement's guidance in %v, want %v", set, want)
+	}
+}
+
 // givesGuidance checks that the call's guidance is names, in order and no
 // other: each the input guidance.<name>, the text of prompts/<name>.md,
 // recorded from the repository's layer, which finds it there.
