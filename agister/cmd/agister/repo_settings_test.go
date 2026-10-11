@@ -51,9 +51,10 @@ const repoGoal = "agister/testdata/briefs/lab-119-goal.md"
 
 const fallbackParam = "AGENTS.md"
 
-// testTimeouts are the test's own timeouts for a process run, by process
-// name, in place of its own: the advisor's process allows 20 minutes,
-// implement_pi's process 45.
+// testTimeouts are the test's own timeouts for a run, by the process or
+// workflow it names, in place of its process's own: the advisor's process
+// allows 20 minutes, implement's 45, which implement_pi and
+// implement_pi_glm call on Pi.
 var testTimeouts = map[string]string{
 	"advisor":          "1m",
 	"implement_pi":     "1m",
@@ -64,7 +65,38 @@ var testTimeouts = map[string]string{
 // slot this repository fills only in its projects' layers, so each is
 // launched in a project; at the root it is refused (ADR-028 Migration step
 // 4).
-var implementers = []string{"implement", "implement_codex", "implement_pi", "implement_pi_glm"}
+var implementers = []string{"implement"}
+
+// callAgents are what each of home's workflows of one call (ADR-030 rule
+// 6) runs its call on, by workflow: implement, on each agent in use, in
+// the resumable session implement says it has (ADR-030 Migration step 3).
+// implement_codex, implement_pi and implement_pi_glm bind the agents the
+// processes of their names ran on, which checked no brief's form.
+var callAgents = func() map[string]agentProfile {
+	on := func(agent string) agentProfile {
+		profile := homeAgents[agent]
+		profile.session = definition.SessionResumable
+		return profile
+	}
+	return map[string]agentProfile{
+		"implement_opus":   on("claude-opus"),
+		"implement_sonnet": on("claude-sonnet"),
+		"implement_codex":  on("codex-sol-61"),
+		"implement_pi":     on("pi-m3"),
+		"implement_pi_glm": on("pi-glm-53"),
+	}
+}()
+
+// calledProcess is the process a run called: a workflow of one call's, or
+// the run's own.
+func calledProcess(record map[string]any) string {
+	if call, ok := record["call"].(map[string]any); ok {
+		process, _ := call["process"].(string)
+		return process
+	}
+	process, _ := record["process"].(string)
+	return process
+}
 
 // projects are this repository's project directories, relative to its
 // root, each with a layer that fills verify:repo with its own check
@@ -87,6 +119,16 @@ func launchDir(name string) string {
 // the session mode the call ran under.
 type agentProfile struct{ agent, runtime, model, effort, session string }
 
+// homeAgents are home's five agents, by name, each with its runtime
+// mapping, model and effort: a call's profile, but for its session mode.
+var homeAgents = map[string]agentProfile{
+	"claude-opus":   {agent: "claude-opus", runtime: "claude-code", model: "opus", effort: "high"},
+	"claude-sonnet": {agent: "claude-sonnet", runtime: "claude-code", model: "sonnet", effort: "high"},
+	"codex-sol-61":  {agent: "codex-sol-61", runtime: "codex", model: "gpt-6.1-sol", effort: "high"},
+	"pi-glm-53":     {agent: "pi-glm-53", runtime: "pi", model: "opencode-go/glm-5.3", effort: "high"},
+	"pi-m3":         {agent: "pi-m3", runtime: "pi", model: "opencode-go/minimax-m3", effort: "high"},
+}
+
 // processAgents is what each of home's processes runs on, by process, a
 // base left out: one of home's five agents (ADR-030 Migration step 3),
 // with the runtime, model and effort the process ran on when home had
@@ -94,19 +136,13 @@ type agentProfile struct{ agent, runtime, model, effort, session string }
 // resumable and any other's fresh-only.
 var processAgents = func() map[string]agentProfile {
 	const fresh, resumable = definition.SessionFresh, definition.SessionResumable
-	opus := agentProfile{agent: "claude-opus", runtime: "claude-code", model: "opus", effort: "high"}
-	codex := agentProfile{agent: "codex-sol-61", runtime: "codex", model: "gpt-6.1-sol", effort: "high"}
-	glm := agentProfile{agent: "pi-glm-53", runtime: "pi", model: "opencode-go/glm-5.3", effort: "high"}
-	m3 := agentProfile{agent: "pi-m3", runtime: "pi", model: "opencode-go/minimax-m3", effort: "high"}
+	opus, codex := homeAgents["claude-opus"], homeAgents["codex-sol-61"]
 	in := func(session string, profile agentProfile) agentProfile {
 		profile.session = session
 		return profile
 	}
 	return map[string]agentProfile{
 		"implement":                 in(resumable, opus),
-		"implement_codex":           in(resumable, codex),
-		"implement_pi":              in(resumable, m3),
-		"implement_pi_glm":          in(resumable, glm),
 		"adr_review_codex":          in(fresh, codex),
 		"adversarial_review_codex":  in(fresh, codex),
 		"advisor":                   in(fresh, codex),
@@ -126,9 +162,6 @@ var staleLimits = func() map[string]domain.StaleLimits {
 	review := domain.StaleLimits{NoEvent: 10 * time.Minute, ToolCommand: 8 * time.Minute, RepeatedToolCalls: 5}
 	return map[string]domain.StaleLimits{
 		"implement":                 implement,
-		"implement_codex":           implement,
-		"implement_pi":              implement,
-		"implement_pi_glm":          implement,
 		"adr_review_codex":          review,
 		"adversarial_review_codex":  review,
 		"advisor":                   review,
@@ -146,16 +179,11 @@ var staleLimits = func() map[string]domain.StaleLimits {
 // its change and runs its tests, a review reads the repository and the
 // change's diff,
 // the advisor reads the repository, and the judge, which rules on the
-// reviews it is given, needs none. implement_codex, implement_pi and
-// implement_pi_glm, which go when implement is home's one implementer
-// (ADR-030 Migration step 3), say none.
+// reviews it is given, needs none.
 var requiredPermissions = func() map[string][]string {
 	review := []string{"repository.read", "repository.diff"}
 	return map[string][]string{
 		"implement":                 {"repository.read", "repository.write", "process.execute"},
-		"implement_codex":           nil,
-		"implement_pi":              nil,
-		"implement_pi_glm":          nil,
 		"adr_review_codex":          review,
 		"adversarial_review_codex":  review,
 		"advisor":                   {"repository.read"},
@@ -193,7 +221,11 @@ const verifyFixtureTimeout = "30s"
 // that is not a base is one of processAgents, and each of those exists.
 // Each process's run, a join's included, records its agent as processAgents
 // has it (recordsAgent), its staleLimits and its requiredPermissions, which
-// list every process that is not a base.
+// list every process that is not a base. A workflow of one call is one run,
+// launched where its process is, which names the workflow and its call, and
+// records the agent callAgents lists for it, which lists every such
+// workflow, the limits its process has, and the guidance
+// repositoryGuidance names for that process, on writableCodex.
 //
 // The test works in a repository of its own whose top-level entries link to
 // this repository's working tree (settings and prompts as they are, edits
@@ -206,6 +238,7 @@ const verifyFixtureTimeout = "30s"
 func TestRepositoryProcessesRunOnFakeRuntimes(t *testing.T) {
 	t.Parallel()
 	root, repo, home := onFakeRuntimes(t)
+	writableCodex(t, home)
 	entries, err := os.ReadDir(filepath.Join(root, homeFolder, "processes"))
 	if err != nil {
 		t.Fatal(err)
@@ -299,6 +332,33 @@ func TestRepositoryProcessesRunOnFakeRuntimes(t *testing.T) {
 	for _, path := range workflows {
 		name := strings.TrimSuffix(filepath.Base(path), ".yaml")
 		workflow := parseWorkflow(t, root, name)
+		if call := workflow.Call; call != nil {
+			if _, listed := callAgents[name]; !listed {
+				t.Errorf("workflow %s of the home folder, of one call, has no agent listed in callAgents", name)
+			}
+			t.Run("workflow "+name, func(t *testing.T) {
+				launch := launchDir(call.Process)
+				args := append([]string{"run", name}, paramArgs(t, launch, parseProcess(t, root, call.Process).Params)...)
+				if timeout := testTimeouts[name]; timeout != "" {
+					args = append(args, "--timeout", timeout)
+				}
+				created, r := runRecorded(t, home, filepath.Join(repo, launch), args)
+				if len(created) != 1 {
+					t.Fatalf("runs recorded: %v, want the call's alone", created)
+				}
+				record := completedRun(t, home, created[0])
+				want := map[string]any{"node": call.Name, "process": call.Process, "agent": call.Agent}
+				if record["process"] != name || !reflect.DeepEqual(record["call"], want) {
+					t.Fatalf("the run of %v calls %v, want workflow %s's call %v", record["process"], record["call"], name, want)
+				}
+				recordsAgent(t, record)
+				recordsStaleLimits(t, record)
+				recordsRequired(t, record)
+				givesGuidance(t, root, repo, record, repositoryGuidance[call.Process]...)
+				schemaAccepts(t, record, record["result"].(map[string]any)["output"], r.stdout)
+			})
+			continue
+		}
 		joined[workflow.Join.Process] = true
 		t.Run("workflow "+name, func(t *testing.T) {
 			args := append([]string{"run", name}, paramArgs(t, ".", workflow.Params)...)
@@ -358,17 +418,27 @@ func TestRepositoryProcessesRunOnFakeRuntimes(t *testing.T) {
 			t.Errorf("process %s, which has required permissions listed, is not among the home folder's processes", name)
 		}
 	}
+	for name := range callAgents {
+		if !slices.Contains(workflows, filepath.Join(root, homeFolder, "workflows", name+".yaml")) {
+			t.Errorf("workflow %s, which has an agent listed, is not among the home folder's workflows", name)
+		}
+	}
 }
 
 // recordsAgent checks that a process's run recorded what processAgents
-// lists for its process: the agent, its runtime mapping, the model and
-// effort asked of it and the session mode.
+// lists for its process, and a run of a workflow of one call what
+// callAgents lists for its workflow: the agent, its runtime mapping, the
+// model and effort asked of it and the session mode.
 func recordsAgent(t *testing.T, record map[string]any) {
 	t.Helper()
 	process, _ := record["process"].(string)
-	want, listed := processAgents[process]
+	agents, list := processAgents, "processAgents"
+	if _, ok := record["call"]; ok {
+		agents, list = callAgents, "callAgents"
+	}
+	want, listed := agents[process]
 	if !listed {
-		t.Fatalf("%s: no agent listed in processAgents", process)
+		t.Fatalf("%s: no agent listed in %s", process, list)
 	}
 	agent, _ := record["agent"].(string)
 	runtime, _ := record["runtime"].(map[string]any)
@@ -383,10 +453,10 @@ func recordsAgent(t *testing.T, record map[string]any) {
 }
 
 // recordsStaleLimits checks that a process's run recorded the effective
-// staleness limits staleLimits lists for its process, or none.
+// staleness limits staleLimits lists for the process it called, or none.
 func recordsStaleLimits(t *testing.T, record map[string]any) {
 	t.Helper()
-	process, _ := record["process"].(string)
+	process := calledProcess(record)
 	effective, ok := record["effective"].(map[string]any)
 	if !ok {
 		t.Fatalf("%s: no effective limits recorded: %v", process, record)
@@ -407,11 +477,11 @@ func recordsStaleLimits(t *testing.T, record map[string]any) {
 }
 
 // recordsRequired checks that a process's run recorded, among its effective
-// limits, the permissions requiredPermissions lists for its process, in
-// their order, or none.
+// limits, the permissions requiredPermissions lists for the process it
+// called, in their order, or none.
 func recordsRequired(t *testing.T, record map[string]any) {
 	t.Helper()
-	process, _ := record["process"].(string)
+	process := calledProcess(record)
 	want, listed := requiredPermissions[process]
 	if !listed {
 		t.Fatalf("%s: no required permissions listed in requiredPermissions", process)
@@ -1918,16 +1988,10 @@ func showProcess(t *testing.T, home, repo, name string) contract.ProcessView {
 // of implementerPermissions and no denial, for 45 minutes at most, in one
 // attempt, and is ended after 21 minutes without a runtime event, 15
 // minutes on one tool command or 5 identical tool calls in a row: process
-// show prints each. implement_codex runs on Codex, at a version whose
-// workspace-write home's runtime verifies, and its plan withholds network
-// and repository.history.write.
+// show prints each.
 func TestTheImplementersRunUnderTheirLimits(t *testing.T) {
 	t.Parallel()
 	_, repo, home := onFakeRuntimes(t)
-	startThrough(t, home, runtimetest.InProcess{
-		Env:   []string{"FAKE_OUTPUT=schema"},
-		Fakes: map[string]supervisortest.Fake{"codex": codexAt("0.159.0")},
-	})
 	for _, name := range implementers {
 		view := showProcess(t, home, repo, name)
 		if view.Refusal != "" {
@@ -1949,11 +2013,82 @@ func TestTheImplementersRunUnderTheirLimits(t *testing.T) {
 		if want := (contract.Stale{NoEvent: 21 * time.Minute, ToolCommand: 15 * time.Minute, RepeatedToolCalls: 5}); view.Stale != want {
 			t.Errorf("%s's stale limits are %+v, want %+v", name, view.Stale, want)
 		}
-		if name != "implement_codex" {
-			continue
+	}
+}
+
+// callWithheld are what the plan of each workflow of one call withholds of
+// what its process allows, by workflow, where it withholds any:
+// implement_codex runs on Codex, at a version whose workspace-write home's
+// runtime verifies, and its plan withholds network and
+// repository.history.write, as it did when implement_codex was a process.
+var callWithheld = map[string][]string{
+	"implement_codex": {"repository.history.write", "network"},
+}
+
+// Each of home's workflows of one call is that call alone (ADR-030 rule
+// 6): its file in the home folder holds its schema, name, type and call,
+// node implement, which binds process implement to the agent callAgents
+// lists for it, and nothing else. workflow show, launched where implement
+// runs, shows the call on that agent and its runtime, refused for nothing,
+// with implement's params and inputs, among them the brief and its form,
+// goal or step, and the plan withholding what callWithheld lists. A run
+// given a brief of neither form is refused for it before its runtime
+// starts, and its record names the workflow: the brief's form is checked on every agent,
+// where implement_codex, implement_pi and implement_pi_glm checked none.
+func TestTheImplementWorkflowsCallImplementWithTheBriefsForm(t *testing.T) {
+	t.Parallel()
+	root, repo, home := onFakeRuntimes(t)
+	writableCodex(t, home)
+	launch := filepath.Join(repo, launchDir("implement"))
+	implement := showProcess(t, home, repo, "implement")
+	const brief = "brief <- file (form goal, step)"
+	if !slices.Contains(implement.Inputs, brief) {
+		t.Fatalf("implement's inputs are %v, want among them %q", implement.Inputs, brief)
+	}
+	runs := &newRuns{home: home}
+	runs.take(t)
+	for _, name := range slices.Sorted(maps.Keys(callAgents)) {
+		agent := callAgents[name]
+		var document map[string]any
+		if err := yaml.Unmarshal([]byte(read(t, filepath.Join(root, homeFolder, "workflows", name+".yaml"))), &document); err != nil {
+			t.Fatal(err)
 		}
-		if want := []string{"repository.history.write", "network"}; !reflect.DeepEqual(view.Withheld, want) {
-			t.Errorf("%s's plan withholds %v, want %v", name, view.Withheld, want)
+		want := map[string]any{
+			"schema": "agister.workflow/v1alpha1", "name": name, "type": "workflow",
+			"call": map[string]any{"node": "implement", "uses": "process:implement", "agent": agent.agent},
+		}
+		if !reflect.DeepEqual(document, want) {
+			t.Errorf("%s's file holds %v, want %v", name, document, want)
+		}
+
+		r := agister(t, home, launch, "workflow", "show", name, "--json")
+		var view contract.WorkflowView
+		if err := json.Unmarshal([]byte(r.stdout), &view); err != nil || r.code != 0 {
+			t.Fatalf("workflow show %s: %d %v\n%s%s", name, r.code, err, r.stdout, r.stderr)
+		}
+		if view.Refusal != "" || view.Call == nil || len(view.FanOut) != 0 {
+			t.Fatalf("%s is refused %q, calls %+v and fans out to %v, want one call refused for nothing", name, view.Refusal, view.Call, view.FanOut)
+		}
+		call := view.Call.Process
+		if view.Call.Name != "implement" || call.Name != "implement" || call.Agent != agent.agent || call.Runtime != agent.runtime || call.Refusal != "" {
+			t.Errorf("%s calls node %s, process %s on %s (runtime %s), refused %q, want node implement, process implement on %s (runtime %s), refused for nothing",
+				name, view.Call.Name, call.Name, call.Agent, call.Runtime, call.Refusal, agent.agent, agent.runtime)
+		}
+		if !reflect.DeepEqual(view.Params, implement.Params) || !reflect.DeepEqual(view.Inputs, implement.Inputs) {
+			t.Errorf("%s's params are %+v and its inputs %v, want implement's %+v and %v", name, view.Params, view.Inputs, implement.Params, implement.Inputs)
+		}
+		if !slices.Equal(call.Withheld, callWithheld[name]) {
+			t.Errorf("%s's plan withholds %v, want %v", name, call.Withheld, callWithheld[name])
+		}
+
+		r = agister(t, home, launch, "run", name, "--quiet", "--param", "candidate=feature", "--param", "brief=AGENTS.md")
+		refused := runs.one(t)
+		const formless = "input brief: has none of its forms: form goal: "
+		if r.code != cli.ExitRefused || refused.record["process"] != name || !strings.Contains(r.stderr, formless) {
+			t.Errorf("%s given a brief of neither form: exit %d, run of %v, want refused for %q\n%s", name, r.code, refused.record["process"], formless, r.stderr)
+		}
+		if kinds := strings.Join(refused.kinds(), " "); strings.Contains(kinds, "PROCESS_STARTED") {
+			t.Errorf("%s given a brief of neither form started its runtime: %s", name, kinds)
 		}
 	}
 }
@@ -2009,6 +2144,17 @@ func TestTheImplementersAreResumableOfThemselves(t *testing.T) {
 				name, agent, r.code, last.record["agent"], last.record["profile"], r.stderr)
 		}
 	}
+}
+
+// writableCodex makes home's fake Codex report 0.159.0, the first version
+// whose workspace-write home's runtime verifies: implement, on
+// codex-sol-61, requires repository.write.
+func writableCodex(t *testing.T, home string) {
+	t.Helper()
+	startThrough(t, home, runtimetest.InProcess{
+		Env:   []string{"FAKE_OUTPUT=schema"},
+		Fakes: map[string]supervisortest.Fake{"codex": codexAt("0.159.0")},
+	})
 }
 
 // codexAt is the fake Codex, reporting version as its own.
@@ -2315,16 +2461,27 @@ var projectChecks = map[string]*regexp.Regexp{
 
 // Each implementer launched at the repository's root is refused before its
 // first turn: no layer there fills verify:repo (ADR-028 Migration step 4).
+// So is each workflow of one call, which calls implement, on
+// writableCodex.
 func TestImplementersAreRefusedAtTheRoot(t *testing.T) {
 	t.Parallel()
 	root, repo, home := onFakeRuntimes(t)
+	writableCodex(t, home)
 	runs := &newRuns{home: home}
 	runs.take(t)
+	processes := map[string]string{}
 	for _, name := range implementers {
+		processes[name] = name
+	}
+	for name := range callAgents {
+		processes[name] = parseWorkflow(t, root, name).Call.Process
+	}
+	for _, name := range slices.Sorted(maps.Keys(processes)) {
 		t.Run(name, func(t *testing.T) {
-			args := append([]string{"run", name, "--quiet"}, paramArgs(t, ".", parseProcess(t, root, name).Params)...)
+			process := processes[name]
+			args := append([]string{"run", name, "--quiet"}, paramArgs(t, ".", parseProcess(t, root, process).Params)...)
 			r := agister(t, home, repo, args...)
-			reason := "process " + name + ` names verify:repo: verification "repo": not found (expected ` +
+			reason := "process " + process + ` names verify:repo: verification "repo": not found (expected ` +
 				filepath.Join(repo, ".agister", "verifies", "repo.yaml") + " or " + filepath.Join(home, "verifies", "repo.yaml") + ")"
 			last := runs.one(t)
 			result, _ := last.record["result"].(map[string]any)
@@ -2350,9 +2507,6 @@ var goPrompts = []string{"go-testing-seams", "go-architecture"}
 // judge among them, gets none.
 var repositoryGuidance = map[string][]string{
 	"implement":                 goPrompts,
-	"implement_codex":           goPrompts,
-	"implement_pi":              goPrompts,
-	"implement_pi_glm":          goPrompts,
 	"architecture_review_codex": goPrompts,
 	"adversarial_review_codex":  goPrompts,
 	"tests_review_codex":        {"go-testing-seams"},

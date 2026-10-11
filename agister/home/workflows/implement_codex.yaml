@@ -1,0 +1,4 @@
+schema: agister.workflow/v1alpha1
+name: implement_codex
+type: workflow
+call: {node: implement, uses: process:implement, agent: codex-sol-61}

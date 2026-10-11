@@ -24,9 +24,6 @@ import (
 // other document of .agister is the repository's own.
 var projectReplacements = map[string]string{
 	"processes/implement":                 goGuidance,
-	"processes/implement_codex":           goGuidance,
-	"processes/implement_pi":              goGuidance,
-	"processes/implement_pi_glm":          goGuidance,
 	"processes/architecture_review_codex": goGuidance,
 	"processes/adversarial_review_codex":  goGuidance,
 	"processes/tests_review_codex":        goGuidance,

@@ -571,7 +571,7 @@ for (const project of ['agister', 'warder']) {
     }
     for (const w of m.workflows) {
       assert.ok(!w.error, `${w.file}: ${w.error}`);
-      for (const node of [...w.fanOut, w.join]) assert.equal(node.outside, false, `${w.name}: ${node.process}`);
+      for (const node of w.call ? [w.call] : [...w.fanOut, w.join]) assert.equal(node.outside, false, `${w.name}: ${node.process}`);
       for (const form of w.forms) assert.equal(form.outside, false, `${w.name}: ${form.name}`);
     }
     for (const a of m.agents) assert.equal(a.runtimeOutside, false, a.name);

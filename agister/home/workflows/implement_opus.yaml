@@ -1,0 +1,4 @@
+schema: agister.workflow/v1alpha1
+name: implement_opus
+type: workflow
+call: {node: implement, uses: process:implement, agent: claude-opus}
