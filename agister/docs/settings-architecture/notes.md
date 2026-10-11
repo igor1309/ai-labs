@@ -104,7 +104,8 @@ Fields: `internal/domain/definition/documents.go:23-130`, `toml.go:27-60`,
     with what went stale (unset: 0, none), and `instruction`, what the
     agent is told with the evidence, which a budget above 0 needs.
     (`limits.go:26-48`; ADR-024 rules 4 and 5, as ADR-030 amends them)
-- **base**: a process some process extends (`extends: process:<base>`).
+- **base**: a process some process extends (`extends: process:<base>`),
+  of that process's own layer (below).
   It extends nothing: one level. It is not work: a node that binds it is
   a problem of the workflow; it is checked through each process that
   extends it, so it may leave out what each of them sets, such as
@@ -279,6 +280,19 @@ Same layout in all three layers (`internal/adapters/fsdefs/fsdefs.go:1`,
   reaches every process that extends it; a layer's partial may not set
   or change `extends`. `process show` and the record name the base for
   each field it gave. (`definition.Extended`, `extends.go:190`; ADR-030
+  rule 9)
+- A process extends a base of its own layer. The nearest of its layer
+  files that holds the whole process names its base, and that layer
+  defines the base too: its file of the base, without `name` and
+  `extends`, under the extending file sets every field a process
+  requires. A base only home has is no base for a process a repository
+  defines, and neither is a repository's partial of the base that leaves
+  a required field to home's file: a problem of the process, which
+  `check` reports and which refuses its run. Partials that do not set
+  `extends`, over a process home defines or over its base, still compose.
+  (`holds`, `extends.go:289`; `cmd/agister/extends_test.go`, "a base is
+  of the process's layer" and
+  `TestAProcessRunsOverItsBaseAsItsLayersComposeIt`; ADR-030 Decision and
   rule 9)
 - Limits narrow from the service to the process to the caller; widening
   is rejected. (ADR-030 rule 4)

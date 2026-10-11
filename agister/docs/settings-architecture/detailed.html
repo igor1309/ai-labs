@@ -208,12 +208,14 @@ verify: verify:repo</pre></figure>
 </section>
 <section id="extends" class="kind process">
 <div class="desc"><header><h2>Extends</h2><p class="path"><code>extends: process:&lt;base&gt;</code> · one level</p></header>
-<p class="lead">A process may extend one base process and take its fields. The base extends nothing and is not work: a node that binds it is a problem of the workflow.</p>
+<p class="lead">A process may extend one base process of its layer and take its fields. The base extends nothing and is not work: a node that binds it is a problem of the workflow.</p>
 <ul>
 <li>The base is composed from its own layers first, then the extending process's layers over it.</li>
 <li>Maps merge by key; lists and scalars are replaced whole. <code>name</code> and <code>extends</code> are never taken from the base.</li>
 <li>The base is checked through each process that extends it, so it may leave out what each of them sets, <code>prompt</code> here.</li>
 <li>A layer's partial of the base reaches every process that extends it; a partial may not set <code>extends</code>.</li>
+<li>The base is of the process's own layer. The layer whose file holds the whole process and names the base defines the base too: its file of the base and the extending file together set every field a process requires.</li>
+<li>A base only home has, or a repository's partial of it that leaves a required field to home's file, is no base for a process the repository defines: <code>check</code> reports the process and its run is refused. Partials that do not set <code>extends</code>, over a process home defines or over its base, still compose.</li>
 <li><code>process show</code> and the record name the base for each field it gave.</li>
 </ul><p class="note">Home's five reviews extend its <code>review</code> base, which holds their input, permissions and limits.</p></div>
 <figure class="ex"><figcaption>agister/home/processes/tests_review.yaml</figcaption><pre>name: tests_review

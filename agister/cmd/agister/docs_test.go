@@ -98,8 +98,9 @@ func TestTheStaleMentionCheckFindsPolicyAgentFlagAndRetiredAgent(t *testing.T) {
 }
 
 // The check finds a run of a process, by its name or as <process>, in
-// markdown or HTML code, and passes a run of a workflow and what names a
-// process without running it.
+// markdown or HTML code, by the binary's name or the path the README
+// builds it at, and passes a run of a workflow and what names a process
+// without running it.
 func TestTheProcessRunCheckFindsARunOfAProcess(t *testing.T) {
 	t.Parallel()
 	processes := []string{"ask", "implement"}
@@ -107,6 +108,9 @@ func TestTheProcessRunCheckFindsARunOfAProcess(t *testing.T) {
 		"Run `agister run implement --param brief=<file>`.": {"agister run implement --param brief=<file>: runs the process implement"},
 		"```sh\nagister --home /tmp run ask \\\n  --param question=x\n```": {
 			"agister --home /tmp run ask --param question=x: runs the process ask",
+		},
+		"```sh\ngo build -o bin/agister ./cmd/agister\nbin/agister run ask --param question=\"What does cmd/agister do?\"\n```": {
+			"bin/agister run ask --param question=\"What does cmd/agister do?\": runs the process ask",
 		},
 		"Use `agister run <process>`.": {"agister run <process>: runs the process <process>"},
 		"<p>In <code>agister run &lt;process&gt;</code></p>": {
@@ -125,6 +129,7 @@ func TestTheProcessRunCheckFindsARunOfAProcess(t *testing.T) {
 	passed := []string{
 		"`agister run implement_codex --param brief=<file>` and `agister run <workflow>`.",
 		"`agister process show implement` shows the work.",
+		"```sh\ngo build -o bin/agister ./cmd/agister\nbin/agister run ask_assistant --param question=\"What does cmd/agister do?\"\n```",
 		"<text class=\"cmd\">agister run &lt;workflow&gt;</text> <code>agister run ask_assistant</code>",
 	}
 	for _, text := range passed {

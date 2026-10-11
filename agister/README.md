@@ -162,6 +162,15 @@ of the base reaches every process that extends it; a partial may not set
 gave. Home's five reviews extend its `review` base, which holds their
 permissions and limits.
 
+A process extends a base of its own layer. The nearest layer file that
+holds the whole process names its base, and that layer defines the base
+too: its file of the base and the extending file together set every field
+a process requires. A base only home has is no base for a process a
+repository defines, and neither is a repository's partial of the base
+that leaves a required field to home's file: `check` reports the process
+and its run is refused. A repository still changes a process home
+defines, or its base, with partials that do not set `extends`.
+
 `agister init` installs the example settings. `agister install <dir>`
 installs a folder laid out like the settings, such as a repository's
 `.agister/`, into home, document by document

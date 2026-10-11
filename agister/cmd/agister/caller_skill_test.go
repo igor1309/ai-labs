@@ -378,14 +378,18 @@ func codeOf(markdown string) []string {
 
 var separators = regexp.MustCompile(`&&|\|\||[|;()]`)
 
-// invocations are the arguments after each agister in a line of code, one
-// list per shell command it runs.
+// executables are how code spells the binary it runs: its name, and the
+// path the README builds it at.
+var executables = []string{"agister", "bin/agister"}
+
+// invocations are the arguments after each agister, as executables spell
+// it, in a line of code, one list per shell command it runs.
 func invocations(code string) [][]string {
 	var found [][]string
 	for _, command := range separators.Split(code, -1) {
 		fields := strings.Fields(command)
 		for i, field := range fields {
-			if field == "agister" {
+			if slices.Contains(executables, field) {
 				found = append(found, fields[i+1:])
 				break
 			}

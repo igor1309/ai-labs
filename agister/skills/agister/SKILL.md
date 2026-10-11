@@ -139,6 +139,16 @@ Supply the document; do not route around the refusal.
   are replaced whole), never its `name` or `extends`. The base extends
   nothing and is not work: no node may bind it. A layer's partial may not
   set `extends`.
+- A process extends a base of its own layer. The layer whose file holds
+  the whole process and names the base defines the base too: its file of
+  the base and the extending file together set every field a process
+  requires. A process your repository defines cannot extend a base only
+  home has, nor one your repository holds only a partial of that leaves a
+  required field to home's file: `check` reports the process and its run
+  is refused. Give the repository a file of the base that, with the
+  process's file, sets every required field, or write the process without
+  `extends`. Partials that do not set `extends`, over a process home
+  defines or over its base, still compose.
 - A workflow node binds its process to an agent, `{node: <n>, uses:
   process:<p>, agent: <a>}`, `agent` required on every node. To change one
   node's agent, a layer gives the whole `fan_out` list, or sets
