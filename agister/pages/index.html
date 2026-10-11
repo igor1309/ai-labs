@@ -177,7 +177,6 @@
   .mark { font-weight: 700; }
   .mark.ok { color: var(--low); }
   .mark.failed { color: var(--high); }
-  .mark.warn { color: var(--mid); }
   /* The opened run, over the page. */
   .overlay {
     position: fixed; inset: 0; z-index: 20; display: flex; align-items: flex-start; justify-content: center;
@@ -217,6 +216,7 @@
     letter-spacing: .06em; color: var(--dim);
   }
   .part-error h4, .part-error .markdown { color: var(--high); }
+  .part h4:last-child { margin-bottom: 0; }
   /* One size for all of it, prose and monospace alike; what stands out does
      so by colour. */
   .output .markdown { margin-top: 0; max-width: none; font-size: 13px; color: var(--fg2); }

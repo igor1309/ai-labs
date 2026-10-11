@@ -78,8 +78,8 @@ again.
   screen, under a head that stays put while the list scrolls: when it
   started, the process, the implementor
   (`adapter model effort`; the model the runtime reported shows on hover
-  when it differs), status (a green ✓ completed, a red ⚠ failed, an amber
-  ⚠ interrupted, the word for the others; the status on hover), verify (`2 ✓`: the attempts used and whether
+  when it differs), status (a green ✓ completed, a red ⚠ failed or
+  interrupted, the word for the others; the status on hover), verify (`2 ✓`: the attempts used and whether
   the last passed; empty without verify), wall time, cost, the skills used
   (`name×n`, the times the run loaded it, when more than once) and the tool calls. A workflow's row shows its node count and
   its judge's rulings instead of implementor and skills. Process and status
@@ -95,7 +95,8 @@ again.
   severity and its nodes as a table: process, status, wall, cost and the
   rulings of the items each node was a source of. A link opens that run in
   its place. Then what its result says: a review's verdict in the head
-  (green approve, red request changes), then its error, if any, and its
+  (green approve, red request changes), then its error, if any, its class in its
+  head (a red `ERROR: TIMEOUT`, one line when the error holds no more), and its
   output, a part per key: summary first, then findings, a judge's items and
   decisions as cards (severity, ruling, title, file and line, sources; the
   detail, reason and action; the rest folded under *more*), coverage and
