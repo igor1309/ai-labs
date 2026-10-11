@@ -183,13 +183,20 @@ type section struct {
 	body string
 }
 
+// sectionBody receives normalized lines directly into its reserved buffer.
+type sectionBody interface {
+	WriteString(string) (int, error)
+	WriteByte(byte) error
+	String() string
+}
+
 // sections finds each part's heading in text, outside fenced code, by its
 // index among b.Parts. A section ends at the next heading of its level or
 // above; a part's heading below its level opens a section of its own and
 // stays in its body. A section's body is its lines, each without trailing
 // blanks and ended by a newline, joined once when the section closes.
 // newBody reserves the complete body's buffer before any line is written.
-func (b Brief) sections(text string, newBody func(size int) *strings.Builder) map[int][]section {
+func (b Brief) sections(text string, newBody func(size int) sectionBody) map[int][]section {
 	byHeading := map[string]int{}
 	for i, part := range b.Parts {
 		byHeading[part.Heading] = i
@@ -230,14 +237,14 @@ func (b Brief) sections(text string, newBody func(size int) *strings.Builder) ma
 }
 
 // newSectionBody reserves a section's buffer in one allocation.
-func newSectionBody(size int) *strings.Builder {
+func newSectionBody(size int) sectionBody {
 	body := new(strings.Builder)
 	body.Grow(size)
 	return body
 }
 
 // joined is lines, each ended by a newline, written into one reserved buffer.
-func joined(lines []string, newBody func(size int) *strings.Builder) string {
+func joined(lines []string, newBody func(size int) sectionBody) string {
 	size := len(lines)
 	for _, line := range lines {
 		size += len(line)
