@@ -189,7 +189,7 @@ test('a call recorded before runtimes compares with its configuration as -', () 
 test('completed, failed and interrupted show as marks; the other statuses as words', () => {
   assert.deepEqual(U.statusMark('completed'), { glyph: '✓', tone: 'ok' });
   assert.deepEqual(U.statusMark('failed'), { glyph: '⚠︎', tone: 'failed' });
-  assert.deepEqual(U.statusMark('interrupted'), { glyph: '⚠︎', tone: 'warn' });
+  assert.deepEqual(U.statusMark('interrupted'), { glyph: '⚠︎', tone: 'failed' });
   assert.equal(U.statusMark('running'), null);
   assert.equal(U.statusMark('lost'), null);
 });
@@ -249,12 +249,16 @@ test('a judge\'s items are cards with their ruling, sources, reason and action; 
   assert.deepEqual(U.runOutput({ output: { summary: 's', findings: [], coverage: [] }, text: 'x' }).parts.map((p) => p.key), ['summary']);
 });
 
-test('without an output a result reads as its text; an error comes first, its message then its class', () => {
+test('without an output a result reads as its text; an error comes first, its class in its title over its message', () => {
   assert.deepEqual(U.runOutput({ status: 'completed', text: 'Plain *answer*.' }).parts, [{ key: 'text', kind: 'text', text: 'Plain *answer*.' }]);
   assert.deepEqual(U.runOutput({ status: 'failed', error: { class: 'rate_limited', message: 'Hit the limit.' }, text: 'partial' }).parts, [
-    { key: 'error', kind: 'text', text: 'Hit the limit.\n\nclass: rate_limited' },
+    { key: 'error', kind: 'text', title: 'error: rate_limited', text: 'Hit the limit.' },
     { key: 'text', kind: 'text', text: 'partial' },
   ]);
+  // A class alone is the title and no text; without one, the message under "error".
+  assert.deepEqual(U.runOutput({ error: { class: 'timeout' } }).parts, [{ key: 'error', kind: 'text', title: 'error: timeout', text: '' }]);
+  assert.deepEqual(U.runOutput({ error: { class: 'internal', message: 'Broke.', exit_code: 2 } }).parts[0].text, 'Broke.\n\nexit_code: 2');
+  assert.deepEqual(U.runOutput({ error: { message: 'Broke.' } }).parts, [{ key: 'error', kind: 'text', text: 'Broke.' }]);
   // An implement's checks are left out; its files and notes show.
   assert.deepEqual(U.runOutput({ output: { summary: 's', checks: [{ command: 'go test', exit_code: 0 }], files_changed: ['a.go'], notes: 'n' } }).parts.map((p) => p.key),
     ['summary', 'files_changed', 'notes']);

@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"maps"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -61,7 +62,7 @@ func TestTheHomeFolderInstallsAndPassesCheckAsGlobalSettings(t *testing.T) {
 	}
 	installed := files(t, home)
 	delete(installed, ".write.lock")
-	if want := files(t, folder); !reflect.DeepEqual(installed, want) {
+	if want := worktreeFiles(t, folder); !reflect.DeepEqual(installed, want) {
 		t.Fatalf("home after the install holds %v, want the folder's files %v", keys(installed), keys(want))
 	}
 
@@ -243,7 +244,22 @@ func notSettings(t *testing.T, folder string) []string {
 	if err != nil {
 		t.Fatal(err)
 	}
-	return ignored
+	return slices.DeleteFunc(ignored, hidden)
+}
+
+// hidden is whether the file at path is a hidden one, such as Finder's
+// .DS_Store: the machine's, not the folder's.
+func hidden(path string) bool {
+	return strings.HasPrefix(filepath.Base(path), ".")
+}
+
+// worktreeFiles is files of a folder of the worktree, its hidden files
+// aside.
+func worktreeFiles(t *testing.T, dir string) map[string]string {
+	t.Helper()
+	found := files(t, dir)
+	maps.DeleteFunc(found, func(rel, _ string) bool { return hidden(rel) })
+	return found
 }
 
 // fixedFilePaths are the file inputs of folder's processes and workflows
@@ -298,7 +314,7 @@ func sharedDocuments(t *testing.T, a, b string) []string {
 func documents(t *testing.T, dir string) map[string]bool {
 	t.Helper()
 	found := map[string]bool{}
-	for rel := range files(t, dir) {
+	for rel := range worktreeFiles(t, dir) {
 		parts := strings.Split(filepath.ToSlash(rel), "/")
 		switch {
 		case len(parts) == 1:

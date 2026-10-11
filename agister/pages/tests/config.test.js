@@ -542,7 +542,8 @@ function launchedIn(project) {
   assert.equal(layer.prompts.length, 1, 'this reader folds one library');
   const extra = { prompts: diskDir(join(repoRoot, layer.prompts[0])) };
   const own = join(repoRoot, project, '.agister');
-  for (const n of readdirSync(own)) {
+  // A hidden entry (Finder's .DS_Store) is no settings folder.
+  for (const n of readdirSync(own).filter((n) => !n.startsWith('.'))) {
     assert.equal(existsSync(join(settings, n)), false, `${project}/.agister/${n} and .agister/${n} would not fold`);
     extra[n] = diskDir(join(own, n));
   }

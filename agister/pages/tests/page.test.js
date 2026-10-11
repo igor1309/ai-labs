@@ -515,8 +515,8 @@ test('a failed run shows its error first, then its text, and no verdict', async 
   p.row('call-1').click();
   await settle();
   const parts = p.$('run-detail').querySelector('section.output').children;
-  assert.deepEqual(parts.map((c) => [c.dataset.key, c.querySelector('div.markdown').textContent]),
-    [['error', 'Hit the limit.class: rate_limited'], ['text', 'Got as far as this.']]);
+  assert.deepEqual(parts.map((c) => [c.dataset.key, c.querySelector('h4').textContent, c.querySelector('div.markdown').textContent]),
+    [['error', 'error: rate limited', 'Hit the limit.'], ['text', 'text', 'Got as far as this.']]);
   assert.equal(p.$('run-detail').querySelector('span.verdict'), null);
 });
 
@@ -571,7 +571,7 @@ test('the Runs view shows each record of today with its process, agent and statu
     // agent, shows its node and its join with the process of each.
     if (id === refused) {
       assert.deepEqual(card.querySelector('section.output').children.map((c) => [c.dataset.key, c.querySelector('div.markdown').textContent]),
-        [['error', 'agent claude-judge is fresh-only; it cannot continue run 20261006T135952Z-bfcb4eclass: refused']]);
+        [['error', 'agent claude-judge is fresh-only; it cannot continue run 20261006T135952Z-bfcb4e']]);
     }
     if (id === workflowOfOne) {
       assert.deepEqual(card.querySelectorAll('div.nodes tbody tr').map((tr) => [...p.cells(tr).slice(0, 2), tr.querySelector('span.mark').title]),
@@ -584,6 +584,18 @@ test('the Runs view shows each record of today with its process, agent and statu
     [repaired]: { process: 'implement_warder', agent: ['agent claude-implementer-opus'], status: 'completed' },
     [refused]: { process: 'review_judge', agent: ['agent claude-judge'], status: 'failed' },
   });
+});
+
+test('an error with a class alone is one line, its head', async () => {
+  const p = page({
+    storage: fakeStorage({ [VIEW_KEY]: 'runs' }),
+    answers: { 'api/runs/call-1': () => respond({ summary: call, record: { result: { status: 'interrupted', error: { class: 'timeout' } } } }) },
+  });
+  await p.started;
+  p.row('call-1').click();
+  await settle();
+  const parts = p.$('run-detail').querySelector('section.output').children;
+  assert.deepEqual(parts.map((c) => [c.dataset.key, c.textContent]), [['error', 'error: timeout']]);
 });
 
 // An api/skills reply holding a skill named review in a folder for adapter.
@@ -679,6 +691,8 @@ test('the process and status filters show only the runs that match, and clearing
   assert.deepEqual(options('process'), ['', 'implement', 'plan', 'review']);
   assert.deepEqual(options('status'), ['', 'completed', 'failed', 'running']);
   assert.deepEqual(ids(), ['r-5', 'r-4', 'r-3', 'r-2', 'r-1']);
+  // Only the run still running is accented.
+  assert.deepEqual(p.rows().filter((r) => r.classList.contains('running')).map((r) => r.title), ['r-5']);
 
   p.filter('process', 'implement');
   assert.deepEqual(ids(), ['r-3', 'r-1']);

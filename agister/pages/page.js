@@ -684,7 +684,7 @@
         r.workflow ? U.counts(r.workflow.items?.by_ruling) : U.skills(r.skills),
         r.tool_calls != null ? String(r.tool_calls) : '',
       ];
-      const row = el('tr', { className: `pick${r.id === runs.chosen ? ' chosen' : ''}`, tabIndex: 0, title: r.id },
+      const row = el('tr', { className: `pick${r.status === 'running' ? ' running' : ''}${r.id === runs.chosen ? ' chosen' : ''}`, tabIndex: 0, title: r.id },
         el('td', { className: 'name' }, at(r.created_at)),
         ...cells.map((c, i) => el('td', { className: i >= 2 && i <= 5 ? 'short' : i === 6 ? 'clip' : '', title: i === 6 ? c : '', dataset: { label: ['Process', 'Implementor', 'Status', 'Verify', 'Wall', 'Cost', r.workflow ? 'Rulings' : 'Skills', 'Tool calls'][i] } }, c)));
       const open = () => (runs.chosen === r.id ? closeRun() : openRun(r.id));
@@ -861,7 +861,7 @@
         ]),
         s.workflow?.nodes.length ? nodesTable(s.workflow) : null,
         said.parts.length ? el('section', { className: 'output' }, ...said.parts.map((part) => el('div', { className: `part part-${part.key}`, dataset: { key: part.key } },
-          el('h4', { textContent: part.key.replaceAll('_', ' ') }), partBody(part)))) : null,
+          el('h4', { textContent: (part.title ?? part.key).replaceAll('_', ' ') }), part.kind === 'text' && !part.text ? null : partBody(part)))) : null,
         el('details', { className: 'record' },
           el('summary', { textContent: 'Record as stored' }),
           el('pre', { className: 'mono', textContent: JSON.stringify(record, null, 2) })));

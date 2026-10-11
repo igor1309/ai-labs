@@ -108,12 +108,10 @@
   }
 
   // The mark a status shows as: a green check for completed, a red warning
-  // for failed, an amber one for interrupted; null for the others, which
-  // show as words.
+  // for failed or interrupted; null for the others, which show as words.
   function statusMark(status) {
     if (status === 'completed') return { glyph: '✓', tone: 'ok' };
-    if (status === 'failed') return { glyph: '⚠\uFE0E', tone: 'failed' };
-    if (status === 'interrupted') return { glyph: '⚠\uFE0E', tone: 'warn' };
+    if (failed(status)) return { glyph: '⚠\uFE0E', tone: 'failed' };
     return null;
   }
 
@@ -207,8 +205,10 @@
   }
 
   // What a run's result says: its verdict, and its error and output as
-  // parts, each under its key. The text shows only without an output: with
-  // one, it is that output as JSON.
+  // parts, each under its key. An error's class goes in its title, "error:
+  // timeout", over its message and whatever else it holds; one with a class
+  // alone is that title and no text. The text shows only without an output:
+  // with one, it is that output as JSON.
   function runOutput(result) {
     const parts = [];
     const add = (key, value) => {
@@ -216,8 +216,11 @@
       if (part) parts.push({ key, ...part });
     };
     if (isObject(result?.error)) {
-      const { message, ...rest } = result.error;
-      add('error', [message, ...Object.entries(rest).filter(([, v]) => isScalar(v)).map(([k, v]) => `${k}: ${v}`)].filter(filled).join('\n\n'));
+      const { class: cls, message, ...rest } = result.error;
+      const named = filled(cls) && isScalar(cls);
+      const text = [message, ...Object.entries(rest).filter(([, v]) => isScalar(v)).map(([k, v]) => `${k}: ${v}`)].filter(filled).join('\n\n');
+      if (named) parts.push({ key: 'error', kind: 'text', title: `error: ${cls}`, text });
+      else add('error', text);
     } else add('error', result?.error);
     const output = result?.output;
     let verdict = '';
