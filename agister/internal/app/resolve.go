@@ -64,10 +64,9 @@ type resolution struct {
 	// plan grants a permission the service lists as writing, or its process
 	// declares verify, whose command runs with the operator's authority.
 	writer bool
-	// session is the session mode the call runs under, and sessionBy the
-	// document that says it: its process, or its agent where the process
-	// says nothing (ADR-030 rule 3).
-	session, sessionBy string
+	// session is the session mode the call runs under, which its process
+	// says (ADR-030 rule 3).
+	session string
 }
 
 // Resolver loads and checks definitions, composes limits, checks the
@@ -310,15 +309,11 @@ func (r *Resolver) resolveCall(ctx context.Context, processName, agentOverride s
 	if res.process, err = definition.ParseProcess(doc); err != nil {
 		return res, parsed(err)
 	}
-	agentName := res.process.Agent
-	if agentOverride != "" {
-		agentName = agentOverride
-	}
-	// A process that names no agent has one only as a node that binds it
+	// A process names no agent, and has one only as a node that binds it
 	// to one: nothing else chooses an agent (ADR-030 rules 2 and 5).
-	bound := res.process.Agent != "" || caller.node && agentOverride != ""
+	bound := caller.node && agentOverride != ""
 	if bound {
-		if doc, err = load(definition.KindAgent, agentName); err != nil {
+		if doc, err = load(definition.KindAgent, agentOverride); err != nil {
 			return res, err
 		}
 		if res.agent, err = definition.ParseAgent(doc); err != nil {
@@ -441,16 +436,16 @@ func (r *Resolver) resolveCall(ctx context.Context, processName, agentOverride s
 		res.refusedPlan, _ = settings.SettingsPlan(res.service, res.effective, res.mapping)
 	}
 
-	// Whether the call's session may be resumed is its process's to say,
-	// and its agent's where the process says nothing (ADR-030 rule 3).
-	res.session, res.sessionBy = definition.CallSession(res.process, res.agent)
+	// Whether the call's session may be resumed is its process's to say
+	// (ADR-030 rule 3).
+	res.session = definition.CallSession(res.process)
 	// A repair turn resumes the call's own session (ADR-002 rule 4).
 	if verify := res.process.Verify; verify.Repairs() && res.session != definition.SessionResumable {
-		return res, refuse("verify.max_attempts %d repairs in the call's session, but %s is %s", verify.MaxAttempts, res.sessionBy, res.session)
+		return res, refuse("verify.max_attempts %d repairs in the call's session, but process %s is %s", verify.MaxAttempts, res.process.Name, res.session)
 	}
 	// So does a recovery turn (ADR-024 rule 6).
 	if resumes := res.effective.Stale.Recover.MaxResumes; resumes > 0 && res.session != definition.SessionResumable {
-		return res, refuse("stale.recover.max_resumes %d recovers in the call's session, but %s is %s", resumes, res.sessionBy, res.session)
+		return res, refuse("stale.recover.max_resumes %d recovers in the call's session, but process %s is %s", resumes, res.process.Name, res.session)
 	}
 
 	if settingsOnly {

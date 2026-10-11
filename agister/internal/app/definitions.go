@@ -263,13 +263,7 @@ func initApproved(approved, plan contract.InitResult) error {
 func (s *Settings) CreateAgent(ctx context.Context, spec contract.Agent, overwrite bool, approved *contract.AgentWrite) (contract.AgentWrite, error) {
 	agent := definition.Agent{
 		Name: spec.Name, Runtime: spec.Runtime, Model: spec.Model, ModelFamily: spec.ModelFamily,
-		Effort: spec.Effort, Command: spec.Command, Session: spec.Session,
-	}
-	if agent.Session == "" {
-		agent.Session = definition.SessionFresh
-	}
-	if agent.Session != definition.SessionFresh && agent.Session != definition.SessionResumable {
-		return contract.AgentWrite{}, &contract.InputError{Message: fmt.Sprintf("invalid session mode %q (supported: %s, %s)", agent.Session, definition.SessionFresh, definition.SessionResumable)}
+		Effort: spec.Effort, Command: spec.Command,
 	}
 	if !definition.ValidName(agent.Name) {
 		return contract.AgentWrite{}, &contract.InputError{Message: fmt.Sprintf("invalid agent name %q", agent.Name)}
@@ -386,7 +380,7 @@ func (s *Settings) ListAgents(ctx context.Context) ([]contract.Agent, error) {
 			agents = append(agents, contract.Agent{Name: name, Problem: "invalid (run `agister check`)", Refusal: refusal})
 			continue
 		}
-		agents = append(agents, contract.Agent{Name: agent.Name, Runtime: agent.Runtime, Model: agent.Model, ModelFamily: agent.ModelFamily, Effort: agent.Effort, Session: agent.Session, Command: agent.Command, Refusal: refusal})
+		agents = append(agents, contract.Agent{Name: agent.Name, Runtime: agent.Runtime, Model: agent.Model, ModelFamily: agent.ModelFamily, Effort: agent.Effort, Command: agent.Command, Refusal: refusal})
 	}
 	return agents, nil
 }
@@ -421,7 +415,7 @@ func (s *Settings) ListProcesses(ctx context.Context) ([]contract.ProcessSummary
 		if process.Output.Schema != "" {
 			output += ":" + process.Output.Schema
 		}
-		processes = append(processes, contract.ProcessSummary{Name: process.Name, Agent: process.Agent, Output: output, Refusal: refusal})
+		processes = append(processes, contract.ProcessSummary{Name: process.Name, Output: output, Refusal: refusal})
 	}
 	return processes, nil
 }
@@ -634,7 +628,7 @@ type InspectedWorkflowDefinition struct {
 }
 
 // InspectedNode is one node of a workflow, the process it calls and the
-// agent it binds the process to; no agent: its process's own.
+// agent it binds the process to.
 type InspectedNode struct {
 	Name    string
 	Process string

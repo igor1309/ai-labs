@@ -437,7 +437,6 @@ func (c *Checker) check(ctx context.Context, probe bool) (CheckResult, error) {
 	}
 	for _, name := range sortedNames(bundle.Processes) {
 		process, from := bundle.Processes[name], DocumentRef{Kind: definition.KindProcess, Name: name}
-		link(from, definition.KindAgent, process.Agent, false)
 		link(from, definition.KindVerify, process.VerifyName, false)
 		link(from, definition.KindPrompt, process.Prompt, false)
 		for _, prompt := range process.Guidance {

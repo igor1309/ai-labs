@@ -60,7 +60,7 @@ type CallResolution interface {
 }
 
 // CallResolveRequest is what a call is resolved from: its process, the
-// agent that overrides the process's, and the caller's narrowing limits.
+// agent it runs on, and the caller's narrowing limits.
 type CallResolveRequest struct {
 	Process    string
 	Agent      string
@@ -75,7 +75,10 @@ type CallResolveRequest struct {
 type ResolvedCall struct {
 	Process CallProcess
 	Agent   CallAgent
-	Session CallSession
+	// Session says whether the call's session may be resumed, as its process
+	// says it: definition.SessionFresh or definition.SessionResumable
+	// (ADR-030 rule 3).
+	Session string
 	Mapping CallMapping
 	Schema  []byte
 	// Prompts are the process's prompt, then each guidance prompt, in order,
@@ -170,14 +173,6 @@ type CallAgent struct {
 	Effort  string
 }
 
-// CallSession is whether a call's session may be resumed, and the document
-// that says so: its process, or its agent where the process says nothing
-// (ADR-030 rule 3).
-type CallSession struct {
-	Mode string // definition.SessionFresh or definition.SessionResumable
-	By   string // "process <name>" or "agent <name>"
-}
-
 // CallMapping is the runtime permission mapping a call runs on.
 type CallMapping struct {
 	Name    string
@@ -269,7 +264,7 @@ type CallWorkflow struct {
 }
 
 // CallNode is one node of a workflow, the process it calls and the agent
-// it binds the process to; no agent: its process's own.
+// it binds the process to.
 type CallNode struct {
 	Name    string
 	Process string
@@ -302,7 +297,7 @@ func (c callResolution) Resolve(ctx context.Context, request CallResolveRequest)
 			Revision: process.Revision, Output: process.Output.Format, Clean: process.Clean,
 		},
 		Agent:   CallAgent{Name: agent.Name, Command: agent.Command, Model: agent.Model, Effort: agent.Effort},
-		Session: CallSession{Mode: res.session, By: res.sessionBy},
+		Session: res.session,
 		Mapping: CallMapping{Name: res.mapping.Name, Adapter: res.mapping.Adapter},
 		Schema:  res.schema,
 		Forms:   callForms(res.forms),
@@ -956,7 +951,7 @@ func (c *Calls) execute(ctx context.Context, handle RunHandle, record run.Record
 		return
 	}
 	record.Agent = res.Agent.Name
-	record.Profile = &run.Profile{Model: res.Agent.Model, Effort: res.Agent.Effort, Session: res.Session.Mode}
+	record.Profile = &run.Profile{Model: res.Agent.Model, Effort: res.Agent.Effort, Session: res.Session}
 	record.Effective = recordEffective(res.Effective)
 	record.Verify = recordVerify(res.Process.Verify)
 	record.Runtime = &run.Runtime{Mapping: res.Mapping.Name, Adapter: res.Mapping.Adapter, Contract: res.Identity.Contract, Version: res.Identity.Version}
@@ -1456,18 +1451,17 @@ type resumption struct {
 }
 
 // continuation checks a request to continue an earlier run's session and
-// returns what the call resumes. Continuing is deliberate: the process, or
-// its agent where the process says nothing, must allow it (ADR-030 rule
-// 3), the runtime must support it, and the earlier run must be finished,
-// by the same agent, with a session. self is the asking run. call is the
+// returns what the call resumes. Continuing is deliberate: the process
+// must allow it (ADR-030 rule 3), the runtime must support it, and the
+// earlier run must be finished, by the same agent, with a session. self is the asking run. call is the
 // call of the workflow of one call that asks, nil for any other: it
 // continues only a run of a workflow's call of the same process (rule 11).
 func (c *Calls) continuation(ctx context.Context, res *ResolvedCall, self, runID, cwd string, call *run.Call) (resumption, error) {
 	if runID == "" {
 		return resumption{}, nil
 	}
-	if res.Session.Mode != definition.SessionResumable {
-		return resumption{}, refuse("%s is %s; it cannot continue run %s", res.Session.By, res.Session.Mode, runID)
+	if res.Session != definition.SessionResumable {
+		return resumption{}, refuse("process %s is %s; it cannot continue run %s", res.Process.Name, res.Session, runID)
 	}
 	if !res.Identity.Resume {
 		return resumption{}, refuse("runtime %s cannot continue sessions", res.Mapping.Name)

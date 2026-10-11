@@ -2,7 +2,6 @@ schema: agister.process/v1alpha1
 name: adversarial_review
 
 type: process
-uses: agent:reviewer
 prompt: adversarial-review
 
 input:

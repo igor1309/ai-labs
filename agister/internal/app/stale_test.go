@@ -614,14 +614,14 @@ func TestShowProcessShowsTheEffectiveStalenessLimits(t *testing.T) {
 	t.Parallel()
 	h := newHarness()
 	inspection := app.NewInspection(app.NewResolver(h.defs, struct{ app.ResolverIdentities }{h.runtimes}, h.validator, resolverCheckStub{}))
-	view, err := inspection.ShowProcess(context.Background(), "p", "")
+	view, err := callShown(inspection, "p_a")
 	if err != nil || view.Stale != (contract.Stale{}) {
 		t.Fatalf("without limits: %+v, %v", view.Stale, err)
 	}
 
 	h, _ = staleHarness(t, "no_event: 3m, no_output: 2m, tool_command: 10m, repeated_tool_calls: 4")
 	inspection = app.NewInspection(app.NewResolver(h.defs, struct{ app.ResolverIdentities }{h.runtimes}, h.validator, resolverCheckStub{}))
-	view, err = inspection.ShowProcess(context.Background(), "p", "")
+	view, err = callShown(inspection, "p_a")
 	want := contract.Stale{NoEvent: 3 * time.Minute, NoOutput: 2 * time.Minute, ToolCommand: 10 * time.Minute, RepeatedToolCalls: 4}
 	if err != nil || view.Stale != want || view.Refusal != "" {
 		t.Fatalf("stale = %+v, refusal %q, %v", view.Stale, view.Refusal, err)

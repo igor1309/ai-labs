@@ -2,7 +2,6 @@ schema: agister.process/v1alpha1
 name: architecture_review
 
 type: process
-uses: agent:reviewer
 prompt: architecture-review
 
 input:

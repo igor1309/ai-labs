@@ -189,7 +189,7 @@ func TestStageLaysAProcessOverItsStagedBase(t *testing.T) {
 	ctx := context.Background()
 	// The base leaves out the prompt, which its process sets.
 	base := func(instruction string) string {
-		return "schema: agister.process/v1alpha1\nname: base\ntype: process\nuses: agent:a\ninput:\n  instruction: " + instruction + "\noutput:\n  format: text\n"
+		return "schema: agister.process/v1alpha1\nname: base\ntype: process\ntimeout: 10m\ninput:\n  instruction: " + instruction + "\noutput:\n  format: text\n"
 	}
 	put(t, filepath.Join(home.Dir, "processes", "base.yaml"), base("home"))
 	put(t, filepath.Join(home.Dir, "processes", "child.yaml"), "name: child\nextends: process:base\nprompt: p\n")
@@ -199,7 +199,7 @@ func TestStageLaysAProcessOverItsStagedBase(t *testing.T) {
 	}
 	t.Cleanup(remove)
 	doc, err := staged.Read(ctx, definition.KindProcess, "child")
-	want := "schema: agister.process/v1alpha1\ntype: process\nuses: agent:a\ninput:\n  instruction: staged\noutput:\n  format: text\nname: child\nextends: process:base\nprompt: p\n"
+	want := "schema: agister.process/v1alpha1\ntype: process\ntimeout: 10m\ninput:\n  instruction: staged\noutput:\n  format: text\nname: child\nextends: process:base\nprompt: p\n"
 	if err != nil || string(doc.Bytes) != want {
 		t.Fatalf("read %q, %v\nwant %q", doc.Bytes, err, want)
 	}

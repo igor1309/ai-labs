@@ -20,7 +20,6 @@ import (
 const briefedProcess = `schema: agister.process/v1alpha1
 name: briefed
 type: process
-uses: agent:assistant
 timeout: 10m
 tools: {allow: [repository.read, repository.diff, repository.search, repository.history.read, process.execute, host.read]}
 prompt: ask
@@ -38,7 +37,7 @@ output:
 // returns its record as stored.
 func briefed(t *testing.T, home, repo string, runs *newRuns, path string, args ...string) map[string]any {
 	t.Helper()
-	if r := agister(t, home, repo, append([]string{"run", "briefed", "--quiet", "--timeout", "1m", "--param", "brief=" + path}, args...)...); r.code != cli.ExitCompleted {
+	if r := agister(t, home, repo, append([]string{"run", bound(t, home, "briefed", "assistant"), "--quiet", "--timeout", "1m", "--param", "brief=" + path}, args...)...); r.code != cli.ExitCompleted {
 		t.Fatalf("run on %s %v: %d\n%s%s", path, args, r.code, r.stdout, r.stderr)
 	}
 	return runs.one(t).record
@@ -116,7 +115,7 @@ func TestGoalAndAnswersAreRecordedAndShown(t *testing.T) {
 		t.Fatalf("runs show:\n%s", r.stdout)
 	}
 
-	r = agister(t, home, repo, "run", "briefed", "--quiet", "--timeout", "1m", "--param", "brief=brief.md", "--goal", served)
+	r = agister(t, home, repo, "run", "briefed_assistant", "--quiet", "--timeout", "1m", "--param", "brief=brief.md", "--goal", served)
 	if reason := "--goal: run " + served + " has no input goal"; r.code != cli.ExitRefused || !strings.Contains(r.stderr, reason) {
 		t.Fatalf("run with a goal its run lacks: %d, want %q\n%s%s", r.code, reason, r.stdout, r.stderr)
 	}

@@ -2,7 +2,7 @@ schema: agister.process/v1alpha1
 name: ask_opencode
 
 type: process
-uses: agent:opencode-minimax
+session: resumable
 prompt: ask
 
 input:

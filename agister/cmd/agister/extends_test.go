@@ -21,7 +21,6 @@ import (
 const baseAsk = `schema: agister.process/v1alpha1
 name: base_ask
 type: process
-uses: agent:assistant
 timeout: 10m
 tools: {allow: [repository.read, repository.diff, repository.search, repository.history.read, process.execute, host.read]}
 input:
@@ -46,7 +45,8 @@ input:
     question: {default: the child's question}
 `
 
-// extending is setup with baseAsk and childAsk in home.
+// extending is setup with baseAsk and childAsk in home, and the workflow
+// child_ask_assistant, whose node binds childAsk to the assistant.
 type extending struct {
 	home, repo string
 	// Each process's file in home, and the repository's.
@@ -65,6 +65,7 @@ func extendingSettings(t *testing.T) extending {
 	}
 	write(t, e.base, baseAsk)
 	write(t, e.child, childAsk)
+	bound(t, home, "child_ask", "assistant")
 	return e
 }
 
@@ -107,16 +108,17 @@ func TestAProcessRunsOverItsBaseAsItsLayersComposeIt(t *testing.T) {
 			if r := agister(t, e.home, e.repo, "check"); r.code != 0 || !strings.Contains(r.stdout, "settings OK") {
 				t.Fatalf("check: %d\n%s%s", r.code, r.stdout, r.stderr)
 			}
-			if r := agister(t, e.home, e.repo, "run", "child_ask", "--quiet", "--timeout", "1m"); r.code != cli.ExitCompleted {
+			if r := agister(t, e.home, e.repo, "run", "child_ask_assistant", "--quiet", "--timeout", "1m"); r.code != cli.ExitCompleted {
 				t.Fatalf("run child_ask: %d\n%s%s", r.code, r.stdout, r.stderr)
 			}
 			run := runs.one(t)
 			argv := strings.Join(run.argv(), " ")
 			given, _ := run.first["prompt"].(string)
-			if run.record["process"] != "child_ask" || run.record["agent"] != "assistant" ||
+			call, _ := run.record["call"].(map[string]any)
+			if run.record["process"] != "child_ask_assistant" || call["process"] != "child_ask" || run.record["agent"] != "assistant" ||
 				!strings.Contains(argv, c.instruction) || !strings.Contains(given, c.question) ||
 				!strings.Contains(given, read(t, filepath.Join(e.home, "prompts", "ask.md"))) {
-				t.Fatalf("process %v on agent %v was run by %v and given:\n%s", run.record["process"], run.record["agent"], run.argv(), given)
+				t.Fatalf("workflow %v, whose call is %v, on agent %v was run by %v and given:\n%s", run.record["process"], call, run.record["agent"], run.argv(), given)
 			}
 			for _, left := range c.left {
 				if strings.Contains(argv, left) || strings.Contains(given, left) {
@@ -145,7 +147,7 @@ func TestEachFieldNamesTheProcessWhoseFileGaveIt(t *testing.T) {
 	want := []contract.DefinitionLayer{
 		{Layer: "home", Path: e.child, Process: "child_ask", Fields: []string{"schema", "name", "type", "extends", "prompt", "input.params.question.default"}},
 		{Layer: "repository", Path: e.repoBase, Process: "base_ask", Fields: []string{"input.instruction"}},
-		{Layer: "home", Path: e.base, Process: "base_ask", Fields: []string{"uses", "timeout", "tools.allow", "input.values.question.source", "input.values.question.name", "output.format"}},
+		{Layer: "home", Path: e.base, Process: "base_ask", Fields: []string{"timeout", "tools.allow", "input.values.question.source", "input.values.question.name", "output.format"}},
 	}
 
 	var shown struct {
@@ -193,7 +195,7 @@ func TestEachFieldNamesTheProcessWhoseFileGaveIt(t *testing.T) {
 
 	runs := &newRuns{home: e.home}
 	runs.take(t)
-	if r := agister(t, e.home, e.repo, "run", "child_ask", "--quiet", "--timeout", "1m"); r.code != cli.ExitCompleted {
+	if r := agister(t, e.home, e.repo, "run", "child_ask_assistant", "--quiet", "--timeout", "1m"); r.code != cli.ExitCompleted {
 		t.Fatalf("run child_ask: %d\n%s%s", r.code, r.stdout, r.stderr)
 	}
 	var recorded []contract.DefinitionLayer
@@ -252,17 +254,17 @@ func TestWhatAnExtendingProcessCannotDo(t *testing.T) {
 			write(t, e.child, strings.Replace(childAsk, "process:base_ask", "process:gone", 1))
 		}, "process child_ask: extends process:gone: not found"},
 		// A file that names a base and does not compose is not read whole
-		// in its place: its last uses would run it without the base.
+		// in its place: its last timeout would run it without the base.
 		{"a duplicate key does not hide a missing base", func(e extending) {
-			write(t, e.child, strings.Replace(childAsk, "process:base_ask", "process:gone", 1)+"uses: agent:assistant\nuses: agent:assistant\n")
-		}, "process child_ask: HOME_CHILD: uses: is declared more than once"},
+			write(t, e.child, strings.Replace(childAsk, "process:base_ask", "process:gone", 1)+"timeout: 10m\ntimeout: 10m\n")
+		}, "process child_ask: HOME_CHILD: timeout: is declared more than once"},
 		{"extends is named once", func(e extending) {
-			write(t, e.child, childAsk+"uses: agent:assistant\nextends: process:base_ask\n")
+			write(t, e.child, childAsk+"timeout: 10m\nextends: process:base_ask\n")
 		}, "process child_ask: HOME_CHILD: extends: is declared more than once"},
 		{"a duplicate key does not hide a base's base", func(e extending) {
 			write(t, filepath.Join(e.home, "processes", "root_ask.yaml"), strings.Replace(baseAsk, "name: base_ask", "name: root_ask", 1))
 			write(t, e.base, baseAsk+"extends: process:root_ask\n")
-			write(t, e.child, childAsk+"uses: agent:assistant\nstatus: draft\nstatus: ready\n")
+			write(t, e.child, childAsk+"timeout: 10m\nstatus: draft\nstatus: ready\n")
 		}, "process child_ask: HOME_CHILD: status: is declared more than once"},
 	} {
 		t.Run(c.name, func(t *testing.T) {
@@ -275,7 +277,7 @@ func TestWhatAnExtendingProcessCannotDo(t *testing.T) {
 			}
 			runs := &newRuns{home: e.home}
 			runs.take(t)
-			if r := agister(t, e.home, e.repo, "run", "child_ask", "--quiet", "--timeout", "1m"); r.code != cli.ExitRefused {
+			if r := agister(t, e.home, e.repo, "run", "child_ask_assistant", "--quiet", "--timeout", "1m"); r.code != cli.ExitRefused {
 				t.Fatalf("run: %d\n%s%s", r.code, r.stdout, r.stderr)
 			}
 			if refused := runs.one(t); refused.first != nil {
@@ -351,7 +353,7 @@ func TestTheNearestWholeProcessNamesItsBase(t *testing.T) {
 			runs := &newRuns{home: e.home}
 			runs.take(t)
 
-			if r := agister(t, e.home, e.repo, "run", "child_ask", "--quiet", "--timeout", "1m"); r.code != cli.ExitCompleted {
+			if r := agister(t, e.home, e.repo, "run", "child_ask_assistant", "--quiet", "--timeout", "1m"); r.code != cli.ExitCompleted {
 				t.Fatalf("run child_ask: %d\n%s%s", r.code, r.stdout, r.stderr)
 			}
 			run := runs.one(t)
@@ -417,19 +419,20 @@ func TestABlockOnABaseRefusesItsProcesses(t *testing.T) {
 	t.Parallel()
 	e := extendingSettings(t)
 	write(t, filepath.Join(e.home, "processes", "other_ask.yaml"), strings.Replace(childAsk, "name: child_ask", "name: other_ask", 1))
+	bound(t, e.home, "other_ask", "assistant")
 	path := writeBlocks(t, filepath.Join(e.repo, ".agister"), "{ref: 'process:base_ask'}")
 	runs := &newRuns{home: e.home}
 	runs.take(t)
 
-	if r := agister(t, e.home, e.repo, "check"); r.code != 0 || !strings.Contains(r.stdout, "block process base_ask: "+path+"\n  refuses process base_ask, process child_ask, process other_ask\n") {
+	if r := agister(t, e.home, e.repo, "check"); r.code != 0 || !strings.Contains(r.stdout, "block process base_ask: "+path+"\n  refuses process base_ask, process child_ask, process other_ask, workflow child_ask_assistant, workflow other_ask_assistant\n") {
 		t.Fatalf("check: %d\n%s%s", r.code, r.stdout, r.stderr)
 	}
 	for _, name := range []string{"child_ask", "other_ask"} {
 		want := "process " + name + ": process base_ask is blocked by " + path
-		if r := agister(t, e.home, e.repo, "run", name, "--quiet", "--timeout", "1m"); r.code != cli.ExitRefused || !strings.Contains(r.stderr, want) {
+		if r := agister(t, e.home, e.repo, "run", name+"_assistant", "--quiet", "--timeout", "1m"); r.code != cli.ExitRefused || !strings.Contains(r.stderr, want) {
 			t.Fatalf("run %s: %d, want %q\n%s%s", name, r.code, want, r.stdout, r.stderr)
 		}
-		if refused := runs.one(t); refused.record["process"] != name || refused.first != nil {
+		if refused := runs.one(t); refused.record["process"] != name+"_assistant" || refused.first != nil {
 			t.Fatalf("run %s: the runtime ran, or another was recorded: %v %v", name, refused.record["process"], refused.first)
 		}
 	}

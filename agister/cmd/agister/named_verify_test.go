@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/json"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -39,14 +38,12 @@ func namingHome(t *testing.T) (home, repo string) {
 	return home, repo
 }
 
+// showImplement is implement as the workflow that binds it to the
+// assistant shows it: a process alone names no agent to be planned on
+// (ADR-030 rule 2).
 func showImplement(t *testing.T, home, repo string) contract.ProcessView {
 	t.Helper()
-	r := agister(t, home, repo, "process", "show", "implement", "--json")
-	var view contract.ProcessView
-	if err := json.Unmarshal([]byte(r.stdout), &view); err != nil || r.code != 0 {
-		t.Fatalf("process show: %d %v\n%s%s", r.code, err, r.stdout, r.stderr)
-	}
-	return view
+	return shownCall(t, home, repo, "implement_assistant")
 }
 
 // The issue's case (LAB-49): the process is global, the verification the
@@ -129,7 +126,7 @@ func TestAVerificationInNeitherLayerRefusesOnlyTheProcessNamingIt(t *testing.T) 
 	}
 
 	write(t, filepath.Join(repo, "brief.md"), "Do it.\n")
-	r = agister(t, home, repo, "run", "implement", "--quiet", "--param", "brief=brief.md")
+	r = agister(t, home, repo, "run", "implement_assistant", "--quiet", "--param", "brief=brief.md")
 	last := lastRun(t, home)
 	result, _ := last.record["result"].(map[string]any)
 	fault, _ := result["error"].(map[string]any)
@@ -140,10 +137,10 @@ func TestAVerificationInNeitherLayerRefusesOnlyTheProcessNamingIt(t *testing.T) 
 		t.Fatalf("events = %s", kinds)
 	}
 
-	if r := agister(t, home, repo, "process", "show", "ask"); r.code != 0 || strings.Contains(r.stdout, "REFUSED") {
+	if r := agister(t, home, repo, "workflow", "show", "ask_assistant"); r.code != 0 || strings.Contains(r.stdout, "REFUSED") {
 		t.Fatalf("show another process: %d\n%s%s", r.code, r.stdout, r.stderr)
 	}
-	if r := agister(t, home, repo, "run", "ask", "--quiet", "--param", "question=q", "--timeout", "1m"); r.code != cli.ExitCompleted {
+	if r := agister(t, home, repo, "run", "ask_assistant", "--quiet", "--param", "question=q", "--timeout", "1m"); r.code != cli.ExitCompleted {
 		t.Fatalf("run another process: %d\n%s", r.code, r.stderr)
 	}
 }
@@ -191,17 +188,17 @@ func TestAnInvalidRepositoryVerificationFailsCheck(t *testing.T) {
 	path := filepath.Join(repo, ".agister", "verifies", "repo.yaml")
 	write(t, path, strings.Replace(repoVerification, "timeout: 7m\n", "", 1))
 	r := agister(t, home, repo, "check")
-	if r.code != cli.ExitUsage || !strings.Contains(r.stderr, "verification repo: timeout: is required\n  refuses process implement\n1 problem(s) in ") || strings.Contains(r.stderr, "\nprocess implement") {
+	if r.code != cli.ExitUsage || !strings.Contains(r.stderr, "verification repo: timeout: is required\n  refuses process implement, workflow implement_assistant\n1 problem(s) in ") || strings.Contains(r.stderr, "\nprocess implement") {
 		t.Fatalf("check: %d\n%s%s", r.code, r.stdout, r.stderr)
 	}
-	r = agister(t, home, repo, "run", "implement", "--quiet", "--param", "candidate=HEAD", "--param", "brief=b.md")
-	if want := "process implement uses verification repo (" + path + "): timeout: is required"; r.code != cli.ExitRefused || !strings.Contains(r.stderr, want) {
+	r = agister(t, home, repo, "run", "implement_assistant", "--quiet", "--param", "candidate=HEAD", "--param", "brief=b.md")
+	if want := "workflow implement_assistant uses process implement, which uses verification repo (" + path + "): timeout: is required"; r.code != cli.ExitRefused || !strings.Contains(r.stderr, want) {
 		t.Fatalf("run: %d, want %q\n%s%s", r.code, want, r.stdout, r.stderr)
 	}
 	if last := lastRun(t, home); last.record["result"].(map[string]any)["error"].(map[string]any)["class"] != "refused" || len(last.events) == 0 {
 		t.Fatalf("record = %v", last.record)
 	}
-	if r := agister(t, home, repo, "run", "adversarial_review", "--quiet", "--param", "base=main", "--timeout", "1m"); r.code != cli.ExitCompleted {
+	if r := agister(t, home, repo, "run", "adversarial_review_reviewer", "--quiet", "--param", "base=main", "--timeout", "1m"); r.code != cli.ExitCompleted {
 		t.Fatalf("a process that does not name it: %d\n%s", r.code, r.stderr)
 	}
 }

@@ -72,12 +72,10 @@ type Verification struct {
 	Source Source
 }
 
-// Process is a named agent call.
+// Process is named work. It names no agent: a workflow's node binds it to
+// one (ADR-030 rules 2 and 5).
 type Process struct {
-	Name string
-	// Agent is the agent it names; unset: only a workflow's node binds it
-	// to one (ADR-030 rule 5).
-	Agent       string
+	Name        string
 	Instruction string
 	// Prompt names the prompt its calls are given as the input prompt, and
 	// Guidance the further prompts, each as the input guidance.<name>, in
@@ -99,7 +97,7 @@ type Process struct {
 	VerifyName string // name of a verification definition, in place of the inline block
 	Limits     Limits // its own, within the service's ceilings (ADR-030 rule 4)
 	// Session says whether a call's session may be resumed, SessionFresh or
-	// SessionResumable (ADR-030 rule 3); unset: its agent's session says it.
+	// SessionResumable (ADR-030 rule 3); unset: it may not (CallSession).
 	Session string
 	// Obsolete are the warnings for the fields it holds that ADR-025
 	// removed, which are read and ignored: workspace.setup, and verify.where
@@ -193,22 +191,16 @@ func parseProcess(doc Document, p *problems) Process {
 	if node, ok := values["extends"]; ok && baseName(node) == "" {
 		p.add("extends", `must be "process:<name>"`)
 	}
-	// A process may name no agent: a workflow's node binds it to one
-	// (ADR-030 rules 2 and 5).
-	if node, ok := values["uses"]; ok {
-		uses := nonEmpty(node, "uses", p)
-		if agent, ok := strings.CutPrefix(uses, "agent:"); ok && agent != "" {
-			process.Agent = agent
-		} else if uses != "" {
-			p.add("uses", `must be "agent:<name>"`)
-		}
+	// A process names no agent (ADR-030 rule 2).
+	if _, ok := values["uses"]; ok {
+		p.add("uses", "a process names no agent (ADR-030 rule 2): name the agent on each workflow node that binds the process, and remove uses")
 	}
 	// Policies are gone: a process holds its own limits (ADR-030 rule 4).
 	if _, ok := values["policy"]; ok {
 		p.add("policy", "there are no policies (ADR-030): set the policy's fields on the process and remove policy")
 	}
 	// Whether its calls' session may be resumed is the process's to say
-	// (ADR-030 rule 3): one that says nothing leaves it to its agent.
+	// (ADR-030 rule 3).
 	if node, ok := values["session"]; ok {
 		if mode, ok := scalar(node, "session", p); ok {
 			process.Session = sessionMode(mode, p)

@@ -13,33 +13,22 @@ import (
 
 // Whether a call's session may be resumed is its process's to say
 // (ADR-030 rule 3): a process that sets session decides repair, stale
-// resumes and --continue, where its agent did. The harness's agent a is
-// fresh-only unless a test says otherwise.
+// resumes and --continue, and one that sets none is fresh-only. An agent
+// holds no session (rule 1), so the tests here no longer set one on the
+// harness's agent a.
 
 // sessioned has the harness's process p set session.
 func sessioned(h *harness, mode string) {
 	h.defs.docs[definition.KindProcess]["p"] += "session: " + mode + "\n"
 }
 
-// freshAgent has the harness's agent a set no session: it is fresh-only.
-func freshAgent(h *harness) {
-	h.defs.docs[definition.KindAgent]["a"] = settingsDocs()[definition.KindAgent]["a"]
-}
-
-// resumableAgent has the harness's agent a allow its sessions to be
-// resumed.
-func resumableAgent(h *harness) {
-	h.defs.docs[definition.KindAgent]["a"] = settingsDocs()[definition.KindAgent]["a"] + "session = \"resumable\"\n"
-}
-
-// A resumable process repairs on a fresh-only agent: check reports
-// nothing, a failed run is repaired in the call's session, and the record
-// says the call's session was resumable.
-func TestAResumableProcessOnAFreshOnlyAgentRepairs(t *testing.T) {
+// A resumable process repairs: check reports nothing, a failed run is
+// repaired in the call's session, and the record says the call's session
+// was resumable.
+func TestAResumableProcessRepairs(t *testing.T) {
 	t.Parallel()
 	h := newHarness()
 	verifying(h)
-	freshAgent(h)
 	sessioned(h, definition.SessionResumable)
 	if report := checkOf(t, h, false); len(report.Problems) != 0 {
 		t.Fatalf("check: problems = %q", messages(report.Problems))
@@ -58,9 +47,9 @@ func TestAResumableProcessOnAFreshOnlyAgentRepairs(t *testing.T) {
 	}
 }
 
-// A resumable process recovers a stale turn on a fresh-only agent: check
-// reports nothing, and the recovery turn resumes the call's session.
-func TestAResumableProcessOnAFreshOnlyAgentRecoversAStaleTurn(t *testing.T) {
+// A resumable process recovers a stale turn: check reports nothing, and
+// the recovery turn resumes the call's session.
+func TestAResumableProcessRecoversAStaleTurn(t *testing.T) {
 	t.Parallel()
 	h, _ := staleHarness(t, "repeated_tool_calls: 3, recover: {max_resumes: 1, instruction: Recover.}")
 	sessioned(h, definition.SessionResumable)
@@ -75,14 +64,14 @@ func TestAResumableProcessOnAFreshOnlyAgentRecoversAStaleTurn(t *testing.T) {
 	}
 }
 
-// A resumable process continues a finished run on a fresh-only agent: the
-// earlier session is resumed in place.
-func TestAResumableProcessOnAFreshOnlyAgentContinues(t *testing.T) {
+// A resumable process continues a finished run: the earlier session is
+// resumed in place.
+func TestAResumableProcessContinues(t *testing.T) {
 	t.Parallel()
 	finished := time.Date(2026, 9, 28, 11, 0, 0, 0, time.UTC)
 	h := newHarness()
 	sessioned(h, definition.SessionResumable)
-	h.runs.records["run-0"] = leftInTheWorktree(run.Record{ID: "run-0", Agent: "a", Runtime: &run.Runtime{Adapter: "spy"}, FinishedAt: &finished,
+	h.runs.records["run-0"] = leftInTheWorktree(run.Record{ID: "run-0", Agent: "a", Call: onA(), Runtime: &run.Runtime{Adapter: "spy"}, FinishedAt: &finished,
 		Result: &run.Result{Status: run.Interrupted, Session: &run.Session{ProviderSessionID: "prov-0"}}})
 	h.runs.states["run-0"] = run.StateFinished
 	record := h.call(t, contract.CallRequest{Continue: "run-0"})
@@ -93,8 +82,8 @@ func TestAResumableProcessOnAFreshOnlyAgentContinues(t *testing.T) {
 }
 
 // A fresh-only process whose work resumes its session has a problem of its
-// own, on a resumable agent too: check reports it of the process, for every
-// agent, and its call is refused before any turn.
+// own: check reports it of the process, for every agent a node binds it
+// to, and its call is refused before any turn.
 func TestAFreshOnlyProcessThatResumesHasAProblemOfItsOwn(t *testing.T) {
 	t.Parallel()
 	cases := []struct {
@@ -112,7 +101,6 @@ func TestAFreshOnlyProcessThatResumesHasAProblemOfItsOwn(t *testing.T) {
 			t.Parallel()
 			h := newHarness()
 			c.arrange(h)
-			resumableAgent(h)
 			sessioned(h, definition.SessionFresh)
 			report := checkOf(t, h, false)
 			if !reflect.DeepEqual(messages(report.Problems), []string{c.reason}) {
@@ -123,8 +111,9 @@ func TestAFreshOnlyProcessThatResumesHasAProblemOfItsOwn(t *testing.T) {
 				t.Fatalf("reach = %+v", reach)
 			}
 			record := h.call(t, contract.CallRequest{})
-			if record.Result.Status != run.Failed || class(record) != run.ClassRefused || message(record) != c.reason {
-				t.Fatalf("result %+v, want refused (%s)", record.Result.Error, c.reason)
+			// The refusal names the workflow that binds the process.
+			if record.Result.Status != run.Failed || class(record) != run.ClassRefused || message(record) != "workflow p_a uses "+c.reason {
+				t.Fatalf("result %+v, want refused (workflow p_a uses %s)", record.Result.Error, c.reason)
 			}
 			if len(h.runner.calls()) != 0 {
 				t.Fatalf("turns %d after the refusal", len(h.runner.calls()))
@@ -147,15 +136,13 @@ func TestAFreshOnlyProcessThatRepairsIsReportedWithoutItsAgent(t *testing.T) {
 	}
 }
 
-// A fresh-only process is not continued on a resumable agent: the refusal
-// names the process.
-func TestAFreshOnlyProcessIsNotContinuedOnAResumableAgent(t *testing.T) {
+// A fresh-only process is not continued: the refusal names the process.
+func TestAFreshOnlyProcessIsNotContinued(t *testing.T) {
 	t.Parallel()
 	finished := time.Date(2026, 9, 28, 11, 0, 0, 0, time.UTC)
 	h := newHarness()
-	resumableAgent(h)
 	sessioned(h, definition.SessionFresh)
-	h.runs.records["run-0"] = leftInTheWorktree(run.Record{ID: "run-0", Agent: "a", Runtime: &run.Runtime{Adapter: "spy"}, FinishedAt: &finished,
+	h.runs.records["run-0"] = leftInTheWorktree(run.Record{ID: "run-0", Agent: "a", Call: onA(), Runtime: &run.Runtime{Adapter: "spy"}, FinishedAt: &finished,
 		Result: &run.Result{Status: run.Interrupted, Session: &run.Session{ProviderSessionID: "prov-0"}}})
 	h.runs.states["run-0"] = run.StateFinished
 	record := h.call(t, contract.CallRequest{Continue: "run-0"})

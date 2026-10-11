@@ -723,11 +723,14 @@ func TestTheReviewWorkflowsNameTheirAgents(t *testing.T) {
 		}
 	}
 
+	// process list has no agent to name of a process (ADR-030 rule 2): each
+	// is listed by its name and output alone.
 	listed := agister(t, home, repo, "process", "list")
 	for _, name := range names {
 		for _, node := range nodes[name] {
-			if line := node.Process + "\tagent:-\t"; listed.code != 0 || !strings.Contains(listed.stdout, line) {
-				t.Fatalf("process list lacks %q, a process that names no agent: %d\n%s%s", line, listed.code, listed.stdout, listed.stderr)
+			line := regexp.MustCompile(`(?m)^` + regexp.QuoteMeta(node.Process) + `\t[^\t\n]+$`)
+			if listed.code != 0 || !line.MatchString(listed.stdout) || strings.Contains(listed.stdout, "agent:") {
+				t.Fatalf("process list lacks %s, a process that names no agent: %d\n%s%s", line, listed.code, listed.stdout, listed.stderr)
 			}
 		}
 	}

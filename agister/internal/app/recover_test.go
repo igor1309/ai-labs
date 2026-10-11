@@ -98,7 +98,7 @@ func completes(h *harness) turnStep { return turnStep{turn: h.runner.turn} }
 func recoveryHarness(t *testing.T, limits string, resumes int) (*harness, *timersSpy) {
 	t.Helper()
 	h, timers := staleHarness(t, fmt.Sprintf("%s, recover: {max_resumes: %d, instruction: Recover.}", limits, resumes))
-	h.defs.docs[definition.KindAgent]["a"] += "session = \"resumable\"\n"
+	h.defs.docs[definition.KindProcess]["p"] += "session: resumable\n"
 	return h, timers
 }
 

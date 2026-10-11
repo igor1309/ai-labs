@@ -16,7 +16,6 @@ func verifyingProcess(verify string) string {
 name: p
 type: process
 prompt: review
-uses: agent:a
 input:
   instruction: Implement it.
   values:
@@ -188,7 +187,7 @@ func TestVerificationWithoutAFieldOrWithAnotherIsInvalid(t *testing.T) {
 		"zero timeout":      {strings.Replace(verification, "10m", "0s", 1), `timeout: invalid duration "0s"`},
 		"empty command":     {strings.Replace(verification, "go test ./...", `""`, 1), "command: must not be empty"},
 		"not a text file":   {"\x00", "not a UTF-8 text file"},
-		"a process's field": {verification + "uses: agent:a\n", "uses: unknown field"},
+		"a process's field": {verification + "prompt: review\n", "prompt: unknown field"},
 	}
 	for name, c := range cases {
 		t.Run(name, func(t *testing.T) {

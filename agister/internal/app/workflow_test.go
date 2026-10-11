@@ -27,7 +27,6 @@ func nodeProcess(name, instruction string) string {
 	return `schema: agister.process/v1alpha1
 name: ` + name + `
 type: process
-uses: agent:a
 prompt: inspect
 input:
   instruction: ` + instruction + `
@@ -51,7 +50,6 @@ tools: {allow: [repository.read, repository.search, repository.diff]}
 const joinProcess = `schema: agister.process/v1alpha1
 name: joiner
 type: process
-uses: agent:a
 prompt: inspect
 input:
   instruction: Join them.
@@ -77,9 +75,9 @@ input:
     base: {source: git.revision, rev: "${param.base}"}
     candidate: {source: git.revision, rev: "${param.candidate}"}
 fan_out:
-  - {node: one, uses: process:first}
-  - {node: two, uses: process:second}
-join: {node: merge, uses: process:joiner}
+  - {node: one, uses: process:first, agent: a}
+  - {node: two, uses: process:second, agent: a}
+join: {node: merge, uses: process:joiner, agent: a}
 `
 
 func workflowDocs() map[definition.Kind]map[string]string {
@@ -731,8 +729,8 @@ func TestWorkflowJoinsWithoutAnUnsuccessfulNode(t *testing.T) {
 func TestWorkflowJoinsOnTheNodesThatCompleted(t *testing.T) {
 	t.Parallel()
 	h := newFlowHarness()
-	h.defs.set(definition.KindWorkflow, "w", strings.Replace(workflowDoc, "  - {node: two, uses: process:second}\n",
-		"  - {node: two, uses: process:second}\n  - {node: three, uses: process:third}\n  - {node: four, uses: process:fourth}\n  - {node: five, uses: process:fifth}\n", 1))
+	h.defs.set(definition.KindWorkflow, "w", strings.Replace(workflowDoc, "  - {node: two, uses: process:second, agent: a}\n",
+		"  - {node: two, uses: process:second, agent: a}\n  - {node: three, uses: process:third, agent: a}\n  - {node: four, uses: process:fourth, agent: a}\n  - {node: five, uses: process:fifth, agent: a}\n", 1))
 	for _, name := range []string{"third", "fourth", "fifth"} {
 		h.defs.set(definition.KindProcess, name, nodeProcess(name, "Work as "+name+"."))
 	}
@@ -823,8 +821,8 @@ func TestWorkflowNoJoinWhenNoNodeCompleted(t *testing.T) {
 // threeNodes makes the workflow fan out to three nodes, the third a process
 // of its own.
 func threeNodes(h *flowHarness) {
-	h.defs.set(definition.KindWorkflow, "w", strings.Replace(workflowDoc, "  - {node: two, uses: process:second}\n",
-		"  - {node: two, uses: process:second}\n  - {node: three, uses: process:third}\n", 1))
+	h.defs.set(definition.KindWorkflow, "w", strings.Replace(workflowDoc, "  - {node: two, uses: process:second, agent: a}\n",
+		"  - {node: two, uses: process:second, agent: a}\n  - {node: three, uses: process:third, agent: a}\n", 1))
 	h.defs.set(definition.KindProcess, "third", nodeProcess("third", "Work as third."))
 	h.runner.scripts["Work as third."] = &script{turn: completed(`{"from":"third"}`, 0.3, 3)}
 }
@@ -1124,13 +1122,16 @@ func TestWorkflowWithAnInvalidJoinIsRefused(t *testing.T) {
 }
 
 // A process that takes the collection, called on its own, is refused: only
-// a join is given one.
+// a join is given one. On its own is as the call of a workflow of one
+// call, which alone runs a process (ADR-030 rules 5 and 6), so the refusal
+// is that workflow's.
 func TestCollectionInputOutsideAJoinIsRefused(t *testing.T) {
 	t.Parallel()
 	h := newFlowHarness()
-	id := h.submit(t, contract.CallRequest{Process: "joiner", Params: map[string]string{}})
+	h.defs.set(definition.KindWorkflow, "alone", "schema: agister.workflow/v1alpha1\nname: alone\ntype: workflow\ncall: {node: work, uses: process:joiner, agent: a}\n")
+	id := h.submit(t, contract.CallRequest{Process: "alone", Params: map[string]string{}})
 	record := h.store.wait(t, id)
-	if class(record) != run.ClassRefused || !strings.Contains(message(record), "workflow.collection is given only to a workflow's join") {
+	if class(record) != run.ClassRefused || !strings.Contains(message(record), "process joiner takes the collection (input gathered), which only a join receives") {
 		t.Fatalf("result = %+v", record.Result)
 	}
 	if len(h.runner.turns("Join them.")) != 0 {
@@ -1311,19 +1312,19 @@ func TestCheckRejectsWorkflowsThatCannotRun(t *testing.T) {
 	}{
 		"valid": {workflow: workflowDoc},
 		"no fan-out node": {
-			workflow: strings.Replace(strings.Replace(workflowDoc, "  - {node: one, uses: process:first}\n  - {node: two, uses: process:second}\n", "", 1), "fan_out:\n", "fan_out: []\n", 1),
+			workflow: strings.Replace(strings.Replace(workflowDoc, "  - {node: one, uses: process:first, agent: a}\n  - {node: two, uses: process:second, agent: a}\n", "", 1), "fan_out:\n", "fan_out: []\n", 1),
 			want:     "workflow w: fan_out: must list at least one node",
 		},
 		"fan-out missing": {
-			workflow: strings.Replace(strings.Replace(workflowDoc, "  - {node: one, uses: process:first}\n  - {node: two, uses: process:second}\n", "", 1), "fan_out:\n", "", 1),
+			workflow: strings.Replace(strings.Replace(workflowDoc, "  - {node: one, uses: process:first, agent: a}\n  - {node: two, uses: process:second, agent: a}\n", "", 1), "fan_out:\n", "", 1),
 			want:     "workflow w: fan_out: is required",
 		},
 		"missing node name": {
-			workflow: strings.Replace(workflowDoc, "{node: two, uses: process:second}", "{uses: process:second}", 1),
+			workflow: strings.Replace(workflowDoc, "{node: two, uses: process:second, agent: a}", "{uses: process:second, agent: a}", 1),
 			want:     "workflow w: fan_out[1].node: is required",
 		},
 		"missing join node name": {
-			workflow: strings.Replace(workflowDoc, "{node: merge, uses: process:joiner}", "{uses: process:joiner}", 1),
+			workflow: strings.Replace(workflowDoc, "{node: merge, uses: process:joiner, agent: a}", "{uses: process:joiner, agent: a}", 1),
 			want:     "workflow w: join.node: is required",
 		},
 		"duplicate node name": {
@@ -1550,10 +1551,10 @@ func withAgentB(h *flowHarness) {
 }
 
 // boundTo is the workflow document with node, which names process, bound to
-// agent.
+// agent in place of agent a.
 func boundTo(document, node, process, agent string) string {
 	spec := "{node: " + node + ", uses: process:" + process
-	return strings.Replace(document, spec+"}", spec+", agent: "+agent+"}", 1)
+	return strings.Replace(document, spec+", agent: a}", spec+", agent: "+agent+"}", 1)
 }
 
 // ADR-030 rule 5: a node's agent runs its call, in place of the agent its
@@ -1586,20 +1587,19 @@ func TestANodesAgentRunsItsCall(t *testing.T) {
 	}
 }
 
-// ADR-030 rules 2 and 5: a process that names no agent runs when a node
+// ADR-030 rules 2 and 5: a process names no agent, and runs when a node
 // binds it to one, on that agent. On its own it is refused, with or
 // without an agent its caller selects: only a node binds it. A node that
-// names no agent for it refuses its workflow before any node starts.
-func TestAProcessWithoutUsesRunsOnlyAsANode(t *testing.T) {
+// names no agent for it refuses its workflow, which does not parse, before
+// any node starts.
+func TestAProcessRunsOnlyAsANode(t *testing.T) {
 	t.Parallel()
-	agentless := strings.Replace(nodeProcess("second", "Work as second."), "uses: agent:a\n", "", 1)
 	const alone = "process second: names no agent: only a workflow's node binds it to one (ADR-030 rule 5); run a workflow that binds it"
 
 	t.Run("bound by a node", func(t *testing.T) {
 		t.Parallel()
 		h := newFlowHarness()
 		withAgentB(h)
-		h.defs.set(definition.KindProcess, "second", agentless)
 		h.defs.set(definition.KindWorkflow, "w", boundTo(workflowDoc, "two", "second", "b"))
 		record := h.store.wait(t, h.submit(t, contract.CallRequest{}))
 		if record.Result.Status != run.Completed || record.Result.Error != nil {
@@ -1617,7 +1617,6 @@ func TestAProcessWithoutUsesRunsOnlyAsANode(t *testing.T) {
 			t.Parallel()
 			h := newFlowHarness()
 			withAgentB(h)
-			h.defs.set(definition.KindProcess, "second", agentless)
 			h.defs.set(definition.KindWorkflow, "w", boundTo(workflowDoc, "two", "second", "b"))
 			record := h.store.wait(t, h.submit(t, request))
 			if class(record) != run.ClassRefused || message(record) != alone || len(h.runner.turns("Work as second.")) != 0 {
@@ -1628,9 +1627,9 @@ func TestAProcessWithoutUsesRunsOnlyAsANode(t *testing.T) {
 	t.Run("bound by a node that names no agent", func(t *testing.T) {
 		t.Parallel()
 		h := newFlowHarness()
-		h.defs.set(definition.KindProcess, "second", agentless)
+		h.defs.set(definition.KindWorkflow, "w", strings.Replace(workflowDoc, "{node: two, uses: process:second, agent: a}", "{node: two, uses: process:second}", 1))
 		record := h.store.wait(t, h.submit(t, contract.CallRequest{}))
-		const want = "workflow w: fan-out node two: process second names no agent, and the node names none: name the node's agent (ADR-030 rule 5)"
+		const want = "workflow w (mem/workflows/w) is invalid:\n  fan_out[1].agent: is required"
 		if class(record) != run.ClassRefused || message(record) != want || len(h.store.ids()) != 1 {
 			t.Fatalf("result %+v, runs %v, want refused: %s", record.Result, h.store.ids(), want)
 		}
@@ -1656,7 +1655,7 @@ primitives:
     Bash: {grants: [process.execute, repository.read], verified: ["1."]}
 `)
 	h.defs.set(definition.KindAgent, "c", strings.NewReplacer(`name = "a"`, `name = "c"`, `runtime = "rt"`, `runtime = "narrow"`).Replace(settingsDocs()[definition.KindAgent]["a"]))
-	twice := strings.Replace(workflowDoc, "{node: two, uses: process:second}", "{node: two, uses: process:first}", 1)
+	twice := strings.Replace(workflowDoc, "{node: two, uses: process:second, agent: a}", "{node: two, uses: process:first, agent: a}", 1)
 	h.defs.set(definition.KindWorkflow, "w", boundTo(boundTo(twice, "one", "first", "a"), "two", "first", "c"))
 	record := h.store.wait(t, h.submit(t, contract.CallRequest{}))
 	const want = "workflow w uses process first: runtime narrow: cannot enforce the effective permissions: Bash also grants process.execute"
@@ -1674,12 +1673,11 @@ primitives:
 }
 
 // workflow show shows each node as its binding runs (ADR-030 rule 7): on
-// the agent the node names, and on its process's where it names none.
+// the agent the node names.
 func TestShowWorkflowShowsEachNodeOnTheAgentItBinds(t *testing.T) {
 	t.Parallel()
 	h := newFlowHarness()
 	withAgentB(h)
-	h.defs.set(definition.KindProcess, "second", strings.Replace(nodeProcess("second", "Work as second."), "uses: agent:a\n", "", 1))
 	h.defs.set(definition.KindWorkflow, "w", boundTo(boundTo(workflowDoc, "two", "second", "b"), "merge", "joiner", "b"))
 	inspection := app.NewInspection(app.NewResolver(h.defs, nodeRuntimes{runner: h.runner}, okValidator{}, resolverCheckStub{}))
 	view, err := inspection.ShowWorkflow(context.Background(), "w")

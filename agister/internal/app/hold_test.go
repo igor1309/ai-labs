@@ -688,7 +688,7 @@ func TestACheckoutLessCallKilledOnceItsWorkspaceIsOnRecordIsReaped(t *testing.T)
 	inTheRepositoryItself(h)
 	store, hold := storedHolds(t, h)
 	h.calls = h.callsRecordedWith(h.defs, h.workspaces, h.changes, store, killedOnceItWorks{store}, fixedIDs{})
-	id, err := h.calls.Submit(ctx, contract.CallRequest{Process: "p", Cwd: "/repo"})
+	id, err := h.calls.Submit(ctx, contract.CallRequest{Process: "p_a", Cwd: "/repo"})
 	if err != nil {
 		t.Fatal(err)
 	}

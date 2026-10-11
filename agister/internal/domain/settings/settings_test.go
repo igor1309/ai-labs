@@ -27,7 +27,7 @@ func bundle() settings.Bundle {
 				Primitives: []definition.Primitive{{Name: "Read", Grants: []string{"read"}, Verified: []string{"1."}}}},
 		},
 		Processes: map[string]definition.Process{
-			"p": {Name: "p", Agent: "a", Output: definition.Output{Format: "json", Schema: "s"},
+			"p": {Name: "p", Output: definition.Output{Format: "json", Schema: "s"},
 				Values: []definition.Value{{Name: "v", Source: "param"}}, Limits: reading()},
 		},
 		Schemas: map[string]bool{"s": true},
@@ -49,13 +49,14 @@ func TestEveryInconsistencyIsReported(t *testing.T) {
 	b.Agents["b"] = definition.Agent{Name: "b", Runtime: "missing"}
 	b.Agents["a"] = definition.Agent{Name: "a", Runtime: "rt", Effort: "max"}
 	b.Mappings["rt2"] = definition.Mapping{Name: "rt2", Adapter: "gemini", Select: "any", Primitives: []definition.Primitive{{Name: "X", Grants: []string{"teleport"}}}}
-	b.Processes["p"] = definition.Process{Name: "p", Agent: "a",
+	b.Processes["p"] = definition.Process{Name: "p",
 		Output: definition.Output{Format: "json", Schema: "gone"},
 		Values: []definition.Value{{Name: "v", Source: "http.get"}}, Limits: reading()}
-	b.Processes["q"] = definition.Process{Name: "q", Agent: "a", Output: definition.Output{Format: "text"},
+	b.Processes["q"] = definition.Process{Name: "q", Output: definition.Output{Format: "text"},
 		Limits: definition.Limits{Timeout: timeout(time.Minute), Allow: []string{"fly"}, AllowSet: true}}
-	b.Processes["r"] = definition.Process{Name: "r", Agent: "a", Output: definition.Output{Format: "text"},
+	b.Processes["r"] = definition.Process{Name: "r", Output: definition.Output{Format: "text"},
 		Limits: definition.Limits{Timeout: timeout(time.Minute), Allow: []string{"write"}, AllowSet: true}, Require: []string{"write"}}
+	b = calling(b, "r", "a")
 
 	var got []string
 	for _, p := range settings.Check(b, mechanisms) {
@@ -68,7 +69,7 @@ func TestEveryInconsistencyIsReported(t *testing.T) {
 		`process p: input v: unknown source "http.get"`,
 		`process p: output schema "gone" does not exist`,
 		`process q: tools.allow: unknown permission "fly"`,
-		`process r: cannot run on agent a's runtime rt`,
+		`workflow w: call node work: process r: cannot run on agent a's runtime rt`,
 		`runtime mapping rt2: unknown adapter "gemini"`,
 		`runtime mapping rt2: grants permissions not in the vocabulary: teleport`,
 		`runtime mapping rt2: verifies no primitive`,
@@ -96,11 +97,12 @@ func TestUnverifiedPrimitivesCannotSatisfyARequirement(t *testing.T) {
 	rt := b.Mappings["rt"]
 	rt.Primitives = append(rt.Primitives, definition.Primitive{Name: "Edit", Grants: []string{"write"}})
 	b.Mappings["rt"] = rt
-	b.Processes["w"] = definition.Process{Name: "w", Agent: "a", Output: definition.Output{Format: "text"},
+	b.Processes["q"] = definition.Process{Name: "q", Output: definition.Output{Format: "text"},
 		Limits: definition.Limits{Timeout: timeout(time.Minute), Allow: []string{"write"}, AllowSet: true}, Require: []string{"write"}}
+	b = calling(b, "q", "a")
 
 	problems := settings.Check(b, mechanisms)
-	if len(problems) != 1 || !strings.Contains(problems[0].String(), "process w: cannot run on agent a's runtime rt: ") ||
+	if len(problems) != 1 || !strings.Contains(problems[0].String(), "workflow w: call node work: process q: cannot run on agent a's runtime rt: ") ||
 		!strings.Contains(problems[0].String(), "(not verified for version 1: Edit)") {
 		t.Fatalf("problems = %v", problems)
 	}
@@ -116,11 +118,12 @@ func TestRequirementsNeedOneVersionThatCoversThem(t *testing.T) {
 			{Name: "Read", Grants: []string{"read"}, Verified: []string{"1."}},
 			{Name: "Edit", Grants: []string{"write"}, Verified: []string{"2."}},
 		}}
-	b.Processes["w"] = definition.Process{Name: "w", Agent: "a", Output: definition.Output{Format: "text"},
+	b.Processes["q"] = definition.Process{Name: "q", Output: definition.Output{Format: "text"},
 		Limits: definition.Limits{Timeout: timeout(time.Minute), Allow: []string{"read", "write"}, AllowSet: true}, Require: []string{"read", "write"}}
+	b = calling(b, "q", "a")
 
 	problems := settings.Check(b, mechanisms)
-	if len(problems) != 1 || !strings.Contains(problems[0].String(), "process w: cannot run on agent a's runtime rt: ") ||
+	if len(problems) != 1 || !strings.Contains(problems[0].String(), "workflow w: call node work: process q: cannot run on agent a's runtime rt: ") ||
 		!strings.Contains(problems[0].String(), "required permissions would be withheld") ||
 		!strings.Contains(problems[0].String(), "not verified for version") {
 		t.Fatalf("problems = %v", problems)
@@ -141,11 +144,11 @@ func TestProblemsNamingUnknownMechanismsAreMarked(t *testing.T) {
 	t.Parallel()
 	b := bundle()
 	b.Mappings["rt2"] = definition.Mapping{Name: "rt2", Adapter: "opencode", Select: "any", Primitives: []definition.Primitive{{Name: "Read", Grants: []string{"read"}, Verified: []string{"1."}}}}
-	b.Processes["p"] = definition.Process{Name: "p", Agent: "a",
+	b.Processes["p"] = definition.Process{Name: "p",
 		Output: definition.Output{Format: "json", Schema: "gone"},
 		Values: []definition.Value{{Name: "v", Source: "git.future"}}, Limits: reading()}
 	b.Workflows = map[string]definition.Workflow{"w": {Name: "w", Values: []definition.Value{{Name: "v", Source: "git.future"}},
-		FanOut: []definition.Node{{Name: "n", Process: "p"}}, Join: definition.Node{Name: "j", Process: "p"}}}
+		FanOut: []definition.Node{{Name: "n", Process: "p", Agent: "a"}}, Join: definition.Node{Name: "j", Process: "p", Agent: "a"}}}
 
 	unknown := map[string]bool{}
 	for _, p := range settings.Check(b, mechanisms) {

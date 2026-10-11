@@ -52,7 +52,6 @@ command = "/bin/spy"
 		definition.KindProcess: {"p": `schema: agister.process/v1alpha1
 name: p
 type: process
-uses: agent:a
 prompt: inspect
 input:
   instruction: Inspect the change.
@@ -71,9 +70,47 @@ output:
 timeout: 20m
 tools: {allow: [repository.read, repository.search, repository.diff]}
 `},
-		definition.KindSchema: {"s": schema},
-		definition.KindPrompt: {"inspect": inspectPrompt},
+		definition.KindWorkflow: {"p_a": pOnA},
+		definition.KindSchema:   {"s": schema},
+		definition.KindPrompt:   {"inspect": inspectPrompt},
 	}
+}
+
+// pOnA is the harness's workflow p_a, one call (ADR-030 rule 6): node p
+// binds process p to agent a. A call the harness makes runs it unless its
+// request names another.
+const pOnA = `schema: agister.workflow/v1alpha1
+name: p_a
+type: workflow
+call: {node: p, uses: process:p, agent: a}
+`
+
+// onA is workflow p_a's call, as a run of it records it.
+func onA() *run.Call { return &run.Call{Node: "p", Process: "p", Agent: "a"} }
+
+// workflowShower shows a workflow, as an Inspection and a client do.
+type workflowShower interface {
+	ShowWorkflow(context.Context, string) (contract.WorkflowView, error)
+}
+
+// callShown is the process of the workflow of one call named workflow, as
+// that call would see it: a process is planned only on the agent a node
+// binds it to (ADR-030 rule 5), so its view is its node's.
+func callShown(shower workflowShower, workflow string) (contract.ProcessView, error) {
+	view, err := shower.ShowWorkflow(context.Background(), workflow)
+	if err != nil || view.Call == nil {
+		return contract.ProcessView{}, err
+	}
+	return view.Call.Process, nil
+}
+
+// bind gives the harness workflow name, one call: node work binds process
+// to agent, as nothing else runs a process (ADR-030 rules 5 and 6).
+func (h *harness) bind(name, process, agent string) {
+	if h.defs.docs[definition.KindWorkflow] == nil {
+		h.defs.docs[definition.KindWorkflow] = map[string]string{}
+	}
+	h.defs.docs[definition.KindWorkflow][name] = "schema: agister.workflow/v1alpha1\nname: " + name + "\ntype: workflow\ncall: {node: work, uses: process:" + process + ", agent: " + agent + "}\n"
 }
 
 // inspectPrompt is the harness's process p's prompt (ADR-028 rule 8).
@@ -183,7 +220,7 @@ func (h *harness) holderOver(changes app.CallChanges, runs app.CallRuns) *app.Ho
 func (h *harness) call(t *testing.T, request contract.CallRequest) run.Record {
 	t.Helper()
 	if request.Process == "" {
-		request.Process = "p"
+		request.Process = "p_a"
 	}
 	if request.Cwd == "" {
 		request.Cwd = "/repo"
@@ -252,8 +289,10 @@ func TestCompletedCallSendsTheComposedPayloads(t *testing.T) {
 	if got.Prompt != "## candidate_revision\n\nsha-HEAD\n\n## diff\n\n```\nline one\nline two\n```\n\n## prompt\n\n```\n"+inspectPrompt+"```" {
 		t.Fatalf("prompt = %q", got.Prompt)
 	}
-	// The schema was compiled before the call and the output validated after.
-	if len(h.validator.compiled) != 1 || string(h.validator.validated[0]) != `{"outcome":"no"}` {
+	// The schema was compiled before the call, as the workflow was checked
+	// and as its call was resolved, where a process run on its own
+	// compiled it once, and the output validated after.
+	if len(h.validator.compiled) != 2 || string(h.validator.validated[0]) != `{"outcome":"no"}` {
 		t.Fatalf("validator: compiled %d, validated %v", len(h.validator.compiled), h.validator.validated)
 	}
 	// Evidence: definitions with digests, plan, inputs, identities.
@@ -264,7 +303,8 @@ func TestCompletedCallSendsTheComposedPayloads(t *testing.T) {
 			t.Fatalf("source without digest: %+v", source)
 		}
 	}
-	if strings.Join(kinds, ",") != "service/service,processes/p,agents/a,runtimes/rt,schemas/s,prompts/inspect" {
+	// The workflow that binds the call, then the call's own.
+	if strings.Join(kinds, ",") != "workflows/p_a,service/service,processes/p,agents/a,runtimes/rt,schemas/s,prompts/inspect" {
 		t.Fatalf("definitions = %v", kinds)
 	}
 	if record.Plan == nil || !reflect.DeepEqual(record.Plan.Withheld, []string{"repository.diff"}) ||
@@ -415,11 +455,7 @@ func TestShippedProcessesRunOnARuntimeWithoutACostLimit(t *testing.T) {
 			h.defs.docs[definition.KindService]["service"] = string(service)
 			shippedPrompts(t, h)
 			h.defs.docs[definition.KindAgent][c.agent] = strings.Replace(h.defs.docs[definition.KindAgent]["a"], `name = "a"`, `name = "`+c.agent+`"`, 1)
-			if c.agent == "assistant" {
-				// Resumable, as the shipped assistant is: implement's
-				// verification repairs in the call's session.
-				h.defs.docs[definition.KindAgent][c.agent] += "session = \"resumable\"\n"
-			}
+			h.bind("shipped", c.process, c.agent)
 			h.defs.docs[definition.KindSchema]["review-result"] = schema
 			// The verification the shipped implement names.
 			repo, err := fs.ReadFile(examples.Settings(), "verifies/repo.yaml")
@@ -429,7 +465,7 @@ func TestShippedProcessesRunOnARuntimeWithoutACostLimit(t *testing.T) {
 			h.defs.docs[definition.KindVerify] = map[string]string{"repo": string(repo)}
 			h.runner.identity.CostLimit = false
 			h.runner.turn.Output = json.RawMessage(c.output)
-			record := h.call(t, contract.CallRequest{Process: c.process, Params: c.params})
+			record := h.call(t, contract.CallRequest{Process: "shipped", Params: c.params})
 			if record.Result.Status != run.Completed || record.Effective.MaxCostUSD != nil || h.runner.calls()[0].MaxCostUSD != nil {
 				t.Fatalf("result %+v, effective cost limit %v", record.Result, record.Effective.MaxCostUSD)
 			}
@@ -529,7 +565,8 @@ command = "/bin/codex"
 	h.runner.identity = app.RuntimeIdentity{Contract: "codex/2", Version: "0.159.2", Resume: true}
 	h.runner.turn.Output = json.RawMessage(`"an answer"`)
 
-	return h, h.call(t, contract.CallRequest{Process: "ask", Agent: "codex-agent", Params: map[string]string{"question": "What is a.txt?"}})
+	h.bind("ask_codex", "ask", "codex-agent")
+	return h, h.call(t, contract.CallRequest{Process: "ask_codex", Params: map[string]string{"question": "What is a.txt?"}})
 }
 
 // The example Codex review allows everything
@@ -613,7 +650,8 @@ func reviewOnCodex(t *testing.T, configure func(service string) string) (*harnes
 	h.defs.docs[definition.KindRuntime]["codex"] = runtime + "      verified: [\"0.159.\"]\n"
 
 	h.runner.identity = app.RuntimeIdentity{Contract: "codex/2", Version: "0.159.2", Resume: true}
-	return h, h.call(t, contract.CallRequest{Process: "adversarial_review_sandboxed"})
+	h.defs.docs[definition.KindWorkflow]["adversarial_review_sandboxed_codex"] = read(codex, "workflows/adversarial_review_sandboxed_codex.yaml")
+	return h, h.call(t, contract.CallRequest{Process: "adversarial_review_sandboxed_codex"})
 }
 
 // leftInTheWorktree is record as a run that worked in the worktree /repo
@@ -628,10 +666,10 @@ func leftInTheWorktree(record run.Record) run.Record {
 func TestContinuationResumesAFinishedRunsSession(t *testing.T) {
 	t.Parallel()
 	resumable := func(h *harness) {
-		h.defs.docs[definition.KindAgent]["a"] += "session = \"resumable\"\n"
+		h.defs.docs[definition.KindProcess]["p"] += "session: resumable\n"
 	}
 	finished := time.Date(2026, 9, 28, 11, 0, 0, 0, time.UTC)
-	earlier := leftInTheWorktree(run.Record{ID: "run-0", Agent: "a", Runtime: &run.Runtime{Adapter: "spy"}, FinishedAt: &finished,
+	earlier := leftInTheWorktree(run.Record{ID: "run-0", Agent: "a", Call: onA(), Runtime: &run.Runtime{Adapter: "spy"}, FinishedAt: &finished,
 		Result: &run.Result{Status: run.Interrupted, Session: &run.Session{ProviderSessionID: "prov-0"}}})
 
 	h := newHarness()
@@ -652,7 +690,8 @@ func TestContinuationResumesAFinishedRunsSession(t *testing.T) {
 		arrange func(*harness)
 		reason  string
 	}{
-		{"fresh-only agent", func(h *harness) {}, "agent a is fresh-only; it cannot continue run run-0"},
+		// The process says it, where its agent did (ADR-030 rule 3).
+		{"fresh-only process", func(h *harness) {}, "process p is fresh-only; it cannot continue run run-0"},
 		{"runtime cannot resume", func(h *harness) { resumable(h); h.runner.identity.Resume = false }, "runtime rt cannot continue sessions"},
 		{"unknown run", func(h *harness) { resumable(h); delete(h.runs.records, "run-0") }, "run run-0: not found"},
 		{"run still running", func(h *harness) { resumable(h); h.runs.states["run-0"] = run.StateRunning }, "run run-0 is running, not finished"},
@@ -694,12 +733,12 @@ func TestContinuationWhereTheSessionDidNotRunIsRefused(t *testing.T) {
 	t.Parallel()
 	// run-0 left its session's evidence: it worked in checkout A.
 	ended := fixedClock{}.Now()
-	earlier := run.Record{ID: "run-0", Agent: "a", Runtime: &run.Runtime{Adapter: "spy"}, Workspace: "/work/checkout-a",
+	earlier := run.Record{ID: "run-0", Agent: "a", Call: onA(), Runtime: &run.Runtime{Adapter: "spy"}, Workspace: "/work/checkout-a",
 		FinishedAt: &ended, Turn: &run.Turn{ProviderSessionID: "prov-0"},
 		Result: &run.Result{Status: run.Completed, Session: &run.Session{ProviderSessionID: "prov-0"}}}
 	arrange := func(workspace string, checkout bool) *harness {
 		h := newHarness()
-		h.defs.docs[definition.KindAgent]["a"] += "session = \"resumable\"\n"
+		h.defs.docs[definition.KindProcess]["p"] += "session: resumable\n"
 		h.runner.identity.ResumeWhereItRan = true
 		if !checkout {
 			h.defs.docs[definition.KindProcess]["p"] = strings.Replace(h.defs.docs[definition.KindProcess]["p"], "workspace:\n  revision: candidate_revision\n", "", 1)
@@ -761,14 +800,14 @@ func TestAContinuationCostsWhatItAddedToItsSession(t *testing.T) {
 	}
 	// run-0 started prov-0; run-0b continued it, after it.
 	recorded := func(id, continues string, created, finished int, totals *run.SessionTotals) run.Record {
-		return leftInTheWorktree(run.Record{ID: id, Agent: "a", Runtime: &run.Runtime{Adapter: "spy"}, Request: run.Request{Continue: continues},
+		return leftInTheWorktree(run.Record{ID: id, Agent: "a", Call: onA(), Runtime: &run.Runtime{Adapter: "spy"}, Request: run.Request{Continue: continues},
 			CreatedAt: *at(created), FinishedAt: at(finished), Turn: &run.Turn{ProviderSessionID: "prov-0", Session: totals},
 			Result: &run.Result{Status: run.Completed, Session: &run.Session{ProviderSessionID: "prov-0", Continues: continues}}})
 	}
 	// run-0b continued run-0; it ran no turn, and either started its
 	// runtime process and was reaped, or was refused before it.
 	unturned := func(process bool) run.Record {
-		record := leftInTheWorktree(run.Record{ID: "run-0b", Agent: "a", Runtime: &run.Runtime{Adapter: "spy"}, Request: run.Request{Continue: "run-0"},
+		record := leftInTheWorktree(run.Record{ID: "run-0b", Agent: "a", Call: onA(), Runtime: &run.Runtime{Adapter: "spy"}, Request: run.Request{Continue: "run-0"},
 			CreatedAt: *at(2), FinishedAt: at(3), Result: &run.Result{Status: run.Failed}})
 		// A reader: what it left behind does not refuse the call (ADR-025
 		// rule 4).
@@ -810,7 +849,7 @@ func TestAContinuationCostsWhatItAddedToItsSession(t *testing.T) {
 		t.Run(c.name, func(t *testing.T) {
 			t.Parallel()
 			h := newHarness()
-			h.defs.docs[definition.KindAgent]["a"] += "session = \"resumable\"\n"
+			h.defs.docs[definition.KindProcess]["p"] += "session: resumable\n"
 			for _, record := range c.records {
 				h.runs.records[record.ID], h.runs.states[record.ID] = record, run.StateFinished
 			}
@@ -839,7 +878,7 @@ func TestAContinuationCostsWhatItAddedToItsSession(t *testing.T) {
 // carries no patch into it (ADR-025 rule 7).
 func resuming() (*harness, *[]string) {
 	h := newHarness()
-	h.defs.docs[definition.KindAgent]["a"] += "session = \"resumable\"\n"
+	h.defs.docs[definition.KindProcess]["p"] += "session: resumable\n"
 	order := new([]string)
 	h.runner.during = func(app.TurnRequest) { *order = append(*order, "turn") }
 	return h, order
@@ -852,8 +891,8 @@ func resuming() (*harness, *[]string) {
 func patchedRun(h *harness, id, continues string, created, finished int, patch string) run.Record {
 	at := func(minute int) time.Time { return time.Date(2026, 9, 28, 11, minute, 0, 0, time.UTC) }
 	end := at(finished)
-	record := run.Record{ID: id, Process: "p", Agent: "a", Runtime: &run.Runtime{Adapter: "spy"},
-		Request:   run.Request{Process: "p", Continue: continues, Cwd: "/repo"},
+	record := run.Record{ID: id, Process: "p_a", Agent: "a", Call: onA(), Runtime: &run.Runtime{Adapter: "spy"},
+		Request:   run.Request{Process: "p_a", Continue: continues, Cwd: "/repo"},
 		CreatedAt: at(created), FinishedAt: &end, Workspace: "/repo",
 		Inputs:  []run.Input{{Name: "candidate_revision", Source: "git.revision", Identity: "sha-HEAD", Revision: true}},
 		InPlace: &run.InPlace{Dir: "/repo", Worktree: "/repo", RepositoryIdentity: "/repo", Revision: "sha-HEAD", Content: "tree"},
@@ -958,7 +997,7 @@ func TestCallsResolveThroughTheResolutionTheyDeclare(t *testing.T) {
 	if class(record) != run.ClassRefused || message(record) != "the double refuses" {
 		t.Fatalf("result %+v", record.Result)
 	}
-	if snapshots, resolved := double.count(); snapshots != 1 || !reflect.DeepEqual(resolved, []string{"p"}) {
+	if snapshots, resolved := double.count(); snapshots != 1 || !reflect.DeepEqual(resolved, []string{"p_a"}) {
 		t.Fatalf("snapshots %d, resolved %v", snapshots, resolved)
 	}
 	if len(h.runtimes.asked) != 0 || len(h.defs.reads) != 0 {
@@ -1005,14 +1044,17 @@ func (r counted) Workflow(context.Context, string) (*app.ResolvedWorkflow, bool,
 }
 
 // The runtime a call is resolved on is checked through the identity of its
-// adapter and command, and the runner for the same adapter and command is
-// asked for only when the call executes.
+// adapter and command, as its workflow is checked and as the call is
+// resolved, where a process run on its own was checked once; the runner
+// for the same adapter and command is asked for only when the call
+// executes.
 func TestCallChecksAndRunsTheRuntimeOfItsAgent(t *testing.T) {
 	t.Parallel()
 	h := newHarness()
 	h.call(t, contract.CallRequest{})
-	if want := []string{"spy|/bin/spy"}; !reflect.DeepEqual(h.runtimes.identified, want) || !reflect.DeepEqual(h.runtimes.asked, want) {
-		t.Fatalf("identified %v, runner built for %v, want %v", h.runtimes.identified, h.runtimes.asked, want)
+	const want = "spy|/bin/spy"
+	if !reflect.DeepEqual(h.runtimes.identified, []string{want, want}) || !reflect.DeepEqual(h.runtimes.asked, []string{want}) {
+		t.Fatalf("identified %v, runner built for %v, want %s twice and once", h.runtimes.identified, h.runtimes.asked, want)
 	}
 }
 
@@ -1123,11 +1165,11 @@ func TestACallThatCannotReadASkillIsRefused(t *testing.T) {
 		reason  string
 	}{
 		{"not allowed", nil, []string{"Bash"},
-			"process p: runtime rt needs Bash to use the repository's skills (ADR-006), and the plan grants no such tool: Bash needs process.execute, host.read, which the effective permissions do not allow"},
+			"workflow p_a uses process p: runtime rt needs Bash to use the repository's skills (ADR-006), and the plan grants no such tool: Bash needs process.execute, host.read, which the effective permissions do not allow"},
 		{"withheld", widen, []string{"Bash"},
-			"process p: runtime rt needs Bash to use the repository's skills (ADR-006), and the plan grants no such tool: Bash needs host.read, which the plan withholds"},
+			"workflow p_a uses process p: runtime rt needs Bash to use the repository's skills (ADR-006), and the plan grants no such tool: Bash needs host.read, which the plan withholds"},
 		{"unverified or unknown", unverified, []string{"Cat", "Bash", "Head"},
-			"process p: runtime rt needs Cat or Bash or Head to use the repository's skills (ADR-006), and the plan grants no such tool: " +
+			"workflow p_a uses process p: runtime rt needs Cat or Bash or Head to use the repository's skills (ADR-006), and the plan grants no such tool: " +
 				"Cat is not verified for version 1.2.3; Bash needs process.execute, host.read, which the effective permissions do not allow; runtime mapping rt has no Head"},
 	}
 	for _, c := range cases {
@@ -1165,7 +1207,7 @@ func TestCancelInterruptsAndReleases(t *testing.T) {
 	h.runner.block = true
 	h.runner.started = make(chan struct{})
 	runs := app.NewRuns(nil, nil, h.hosted, nil, 0)
-	if _, err := h.calls.Submit(context.Background(), contract.CallRequest{Process: "p", Cwd: "/repo"}); err != nil {
+	if _, err := h.calls.Submit(context.Background(), contract.CallRequest{Process: "p_a", Cwd: "/repo"}); err != nil {
 		t.Fatal(err)
 	}
 	// However the test ends, the blocked turn does not outlive it.
@@ -1238,7 +1280,7 @@ func TestCallsCancelThroughTheCancelsTheyDeclare(t *testing.T) {
 			h.recorder.wait(t)
 		}
 	})
-	if _, err := h.calls.Submit(context.Background(), contract.CallRequest{Process: "p", Cwd: "/repo"}); err != nil {
+	if _, err := h.calls.Submit(context.Background(), contract.CallRequest{Process: "p_a", Cwd: "/repo"}); err != nil {
 		joined = true // nothing was started
 		t.Fatal(err)
 	}
@@ -1284,7 +1326,7 @@ func TestHostedDoneClosesOnceTheCallHasFinished(t *testing.T) {
 		doneAtFinish = isClosed(h.hosted.Done("run-1"))
 		return h.locks.releases("/repo")
 	}
-	id, err := h.calls.Submit(context.Background(), contract.CallRequest{Process: "p", Cwd: "/repo"})
+	id, err := h.calls.Submit(context.Background(), contract.CallRequest{Process: "p_a", Cwd: "/repo"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1393,7 +1435,7 @@ func TestCallResolvesFromTheSettingsReadBeforeItsRunWasRecorded(t *testing.T) {
 	readsAtCreate := -1
 	h.recorder.onCreate = func() { readsAtCreate = h.defs.readCount() }
 	h.recorder.hold = make(chan struct{})
-	if _, err := h.calls.Submit(context.Background(), contract.CallRequest{Process: "p", Cwd: "/repo"}); err != nil {
+	if _, err := h.calls.Submit(context.Background(), contract.CallRequest{Process: "p_a", Cwd: "/repo"}); err != nil {
 		t.Fatal(err)
 	}
 	if readsAtCreate <= 0 {
@@ -1461,7 +1503,8 @@ func TestCallRecordsWhatItResolvedUnderTheRecordsOwnTypes(t *testing.T) {
 		return string(data)
 	}
 	wantService := `{"kind":"service","name":"service","layers":[{"layer":"home","path":"mem/service/service","sha256":"` + sha(settingsDocs()[definition.KindService]["service"]) + `"}]}`
-	if len(record.Definitions) != 6 || encode(record.Definitions[0]) != wantService {
+	// The workflow that binds the call comes first, then the call's own.
+	if len(record.Definitions) != 7 || record.Definitions[0].Kind != "workflows" || record.Definitions[0].Name != "p_a" || encode(record.Definitions[1]) != wantService {
 		t.Errorf("definitions = %s", encode(record.Definitions))
 	}
 	if got := encode(record.Layers); got != `[{"layer":"home","dir":"mem"}]` {

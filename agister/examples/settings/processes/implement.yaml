@@ -2,7 +2,7 @@ schema: agister.process/v1alpha1
 name: implement
 
 type: process
-uses: agent:assistant
+session: resumable
 prompt: implement
 
 input:

@@ -201,7 +201,6 @@ func (c *afterCheck) Check(ctx context.Context, probe bool) (contract.CheckRepor
 // source once they were read.
 func TestGatedOperationUsesTheCheckedSettings(t *testing.T) {
 	t.Parallel()
-	ctx := context.Background()
 	h := newHarness()
 	sources := []string{"git.revision", "git.diff", "param"}
 	readsAfterCheck := -1
@@ -224,7 +223,7 @@ func TestGatedOperationUsesTheCheckedSettings(t *testing.T) {
 			}
 		},
 	}
-	view, err := gated.ShowProcess(ctx, "p", "")
+	view, err := callShown(gated, "p_a")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -262,7 +261,7 @@ func TestGatedSubmitRecordsTheCheckedSettings(t *testing.T) {
 			}
 		},
 	}
-	if _, err := gated.Submit(ctx, contract.CallRequest{Process: "p", Cwd: "/repo"}); err != nil {
+	if _, err := gated.Submit(ctx, contract.CallRequest{Process: "p_a", Cwd: "/repo"}); err != nil {
 		t.Fatal(err)
 	}
 	h.defs.set(definition.KindAgent, "a", strings.Replace(settingsDocs()[definition.KindAgent]["a"], "m1", "m2", 1))
@@ -310,7 +309,7 @@ func TestGatedSubmitRecordsWhatTheCheckRead(t *testing.T) {
 			}
 		},
 	}
-	if _, err := gated.Submit(ctx, contract.CallRequest{Process: "p", Cwd: "/repo"}); err != nil {
+	if _, err := gated.Submit(ctx, contract.CallRequest{Process: "p_a", Cwd: "/repo"}); err != nil {
 		t.Fatal(err)
 	}
 	if !edited {

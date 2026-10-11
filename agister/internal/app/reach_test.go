@@ -62,12 +62,19 @@ func (h *harness) submit(t *testing.T, client contract.Client, request contract.
 	return h.recorder.wait(t)
 }
 
+// callOf is a workflow of one call: node work binds process to agent.
+func callOf(name, process, agent string) string {
+	return "schema: agister.workflow/v1alpha1\nname: " + name + "\ntype: workflow\ncall: {node: work, uses: process:" + process + ", agent: " + agent + "}\n"
+}
+
 // withBrokenMapping adds runtime mapping bad, rt but for an adapter the
-// code does not provide, agent b on it, and process q, p but for agent b.
+// code does not provide, agent b on it, process q, p by another name, and
+// workflow q_b, whose call binds q to b.
 func withBrokenMapping(docs map[definition.Kind]map[string]string) map[definition.Kind]map[string]string {
 	docs[definition.KindRuntime]["bad"] = strings.Replace(strings.Replace(docs[definition.KindRuntime]["rt"], "name: rt", "name: bad", 1), "adapter: spy", "adapter: nowhere", 1)
 	docs[definition.KindAgent]["b"] = strings.Replace(strings.Replace(docs[definition.KindAgent]["a"], `name = "a"`, `name = "b"`, 1), `runtime = "rt"`, `runtime = "bad"`, 1)
-	docs[definition.KindProcess]["q"] = strings.Replace(strings.Replace(settingsDocs()[definition.KindProcess]["p"], "name: p", "name: q", 1), "uses: agent:a", "uses: agent:b", 1)
+	docs[definition.KindProcess]["q"] = strings.Replace(settingsDocs()[definition.KindProcess]["p"], "name: p", "name: q", 1)
+	docs[definition.KindWorkflow]["q_b"] = callOf("q_b", "q", "b")
 	return docs
 }
 
@@ -107,7 +114,7 @@ func TestAnUnusedBrokenDocumentRefusesNothing(t *testing.T) {
 	if reach := reachOf(t, report, `runtime mapping unused: unknown adapter "nowhere" (available: spy)`); reach.Stops || len(reach.Processes)+len(reach.Workflows) != 0 {
 		t.Fatalf("reach = %+v, want nothing refused", reach)
 	}
-	if record := h.submit(t, client, contract.CallRequest{Process: "p"}); class(record) != "" || len(h.runner.calls()) != 1 {
+	if record := h.submit(t, client, contract.CallRequest{Process: "p_a"}); class(record) != "" || len(h.runner.calls()) != 1 {
 		t.Fatalf("call of p: %s %s, %d turns", class(record), message(record), len(h.runner.calls()))
 	}
 	if runs, err := client.ListRuns(ctx); err != nil || len(runs) != 1 {
@@ -117,27 +124,30 @@ func TestAnUnusedBrokenDocumentRefusesNothing(t *testing.T) {
 
 // A call whose agent runs on a broken mapping is refused before its
 // runtime is asked anything and recorded, naming the document, its path,
-// its problem and the chain; the same process with another agent runs.
+// its problem and the chain; the same process bound to another agent runs.
+// The mapping refuses the workflow that binds the agent and no process: a
+// process names no agent (ADR-030 rule 2).
 func TestACallOnABrokenDocumentIsRefusedBeforeItsFirstTurn(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
 	h := newHarness()
 	withBrokenMapping(h.defs.docs)
+	h.bind("q_a", "q", "a")
 	client := h.clientOn(h.defs)
 
 	report, err := client.Check(ctx, false)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if reach := reachOf(t, report, badMapping); reach.Stops || !reflect.DeepEqual(reach.Processes, []string{"q"}) || reach.Workflows != nil ||
+	if reach := reachOf(t, report, badMapping); reach.Stops || len(reach.Processes) != 0 || !reflect.DeepEqual(reach.Workflows, []string{"q_b"}) ||
 		*reach.Subject != (contract.DefinitionRef{Kind: "runtimes", Name: "bad"}) {
 		t.Fatalf("reach = %+v", reach)
 	}
 
-	record := h.submit(t, client, contract.CallRequest{Process: "q"})
-	want := `process q uses agent b, which uses runtime mapping bad (mem/runtimes/bad): unknown adapter "nowhere" (available: spy)`
+	record := h.submit(t, client, contract.CallRequest{Process: "q_b"})
+	want := `workflow q_b uses agent b, which uses runtime mapping bad (mem/runtimes/bad): unknown adapter "nowhere" (available: spy)`
 	if class(record) != run.ClassRefused || message(record) != want {
-		t.Fatalf("call of q: %s %q, want %q", class(record), message(record), want)
+		t.Fatalf("call of q on agent b: %s %q, want %q", class(record), message(record), want)
 	}
 	if kinds := strings.Join(h.recorder.kinds(), " "); !strings.Contains(kinds, "REFUSED") || strings.Contains(kinds, "PLANNED") {
 		t.Fatalf("events = %s", kinds)
@@ -146,10 +156,10 @@ func TestACallOnABrokenDocumentIsRefusedBeforeItsFirstTurn(t *testing.T) {
 		t.Fatalf("the runtime was reached: %d turns, asked %v, identified %v", len(h.runner.calls()), h.runtimes.asked, h.runtimes.identified)
 	}
 
-	if record := h.submit(t, client, contract.CallRequest{Process: "q", Agent: "a"}); class(record) != "" || record.Agent != "a" {
-		t.Fatalf("call of q as agent a: %s %s", class(record), message(record))
+	if record := h.submit(t, client, contract.CallRequest{Process: "q_a"}); class(record) != "" || record.Agent != "a" {
+		t.Fatalf("call of q on agent a: %s %s", class(record), message(record))
 	}
-	if record := h.submit(t, client, contract.CallRequest{Process: "p"}); class(record) != "" {
+	if record := h.submit(t, client, contract.CallRequest{Process: "p_a"}); class(record) != "" {
 		t.Fatalf("call of p: %s %s", class(record), message(record))
 	}
 	if turns := len(h.runner.calls()); turns != 2 {
@@ -157,100 +167,121 @@ func TestACallOnABrokenDocumentIsRefusedBeforeItsFirstTurn(t *testing.T) {
 	}
 }
 
-// A problem that depends on the agent is judged on the agent the call
-// selects: the agent a process names does not exist, and --agent selects
-// one that does. NewClient gives the resolver the agent the problem
-// depends on, and the listings the problem as a call without --agent has
-// it, each with the document's path and its problem without its name.
-func TestAProblemOfTheAgentIsJudgedOnTheCallsAgent(t *testing.T) {
+// A binding to an agent the settings lack is a problem of the workflow
+// that makes it, and of nothing else: the process is bound to an agent
+// that exists by another workflow, whose call runs.
+//
+// Until ADR-030 rule 2 a process named its agent, and this test was of a
+// process naming agent ghost: a problem of the process that --agent a
+// stepped over. A process names no agent now, so there is no such problem
+// and nothing for a call to select: the binding is the workflow's.
+func TestABindingToAMissingAgentIsItsWorkflowsProblem(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
 	h := newHarness()
-	h.defs.docs[definition.KindProcess]["p"] = strings.Replace(settingsDocs()[definition.KindProcess]["p"], "uses: agent:a", "uses: agent:ghost", 1)
+	h.bind("p_ghost", "p", "ghost")
 	client := h.clientOn(h.defs)
 
 	report, err := client.Check(ctx, false)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if reach := reachOf(t, report, `process p: agent "ghost" does not exist`); reach.Agent != "ghost" || !reflect.DeepEqual(reach.Processes, []string{"p"}) {
+	const problem = `workflow p_ghost: call node work: agent "ghost" does not exist`
+	if reach := reachOf(t, report, problem); reach.Agent != "" || len(reach.Processes) != 0 || !reflect.DeepEqual(reach.Workflows, []string{"p_ghost"}) {
 		t.Fatalf("reach = %+v", reach)
 	}
-	if view, err := client.ShowProcess(ctx, "p", ""); err != nil || view.Refusal != `process p (mem/processes/p): agent "ghost" does not exist` {
-		t.Fatalf("show p: %q, %v", view.Refusal, err)
+	const refusal = `workflow p_ghost (mem/workflows/p_ghost): call node work: agent "ghost" does not exist`
+	if view, err := client.ShowWorkflow(ctx, "p_ghost"); err != nil || view.Refusal != refusal {
+		t.Fatalf("show p_ghost: %q, %v", view.Refusal, err)
 	}
-	if view, err := client.ShowProcess(ctx, "p", "a"); err != nil || view.Refusal != "" || view.Agent != "a" {
-		t.Fatalf("show p as agent a: %+v, %v", view, err)
+	if view, err := callShown(client, "p_a"); err != nil || view.Refusal != "" || view.Agent != "a" {
+		t.Fatalf("show p on agent a: %+v, %v", view, err)
 	}
-	// A listing shows the call without --agent, on the agent p names.
-	if processes, err := client.ListProcesses(ctx); err != nil || len(processes) != 1 || processes[0].Refusal != `process p (mem/processes/p): agent "ghost" does not exist` {
+	// The process has no problem of its own.
+	if processes, err := client.ListProcesses(ctx); err != nil || len(processes) != 1 || processes[0].Refusal != "" {
 		t.Fatalf("processes = %+v, %v", processes, err)
 	}
-	if record := h.submit(t, client, contract.CallRequest{Process: "p"}); class(record) != run.ClassRefused {
-		t.Fatalf("call of p: %s %s", class(record), message(record))
+	if record := h.submit(t, client, contract.CallRequest{Process: "p_ghost"}); class(record) != run.ClassRefused || message(record) != refusal {
+		t.Fatalf("call of p on agent ghost: %s %s", class(record), message(record))
 	}
-	if record := h.submit(t, client, contract.CallRequest{Process: "p", Agent: "a"}); class(record) != "" {
-		t.Fatalf("call of p as agent a: %s %s", class(record), message(record))
+	if record := h.submit(t, client, contract.CallRequest{Process: "p_a"}); class(record) != "" {
+		t.Fatalf("call of p on agent a: %s %s", class(record), message(record))
 	}
 }
 
 // NewClient gives the resolver and the listings what the checker found,
-// each as it reads them: every document's path and uses, every problem's
-// message, and, to the resolver, the agent a problem depends on. A problem
-// that stops every command is the gate's, not theirs.
+// each as it reads them: every document's path and uses, every workflow's
+// bindings, every problem's message, and, to the resolver, the agent a
+// problem depends on. A problem that stops every command is the gate's,
+// not theirs.
 func TestNewClientTranslatesWhatTheCheckerFound(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
 	h := newHarness()
+	workflow := app.DocumentRef{Kind: definition.KindWorkflow, Name: "p_a"}
 	process := app.DocumentRef{Kind: definition.KindProcess, Name: "p"}
 	agent := app.DocumentRef{Kind: definition.KindAgent, Name: "a"}
-	stub := checkStub{found: app.CheckResult{
-		Documents: []app.CheckedDocument{
-			{Ref: process, Path: "stub/processes/p", Uses: []app.DocumentRef{agent}},
-			{Ref: agent, Path: "stub/agents/a"},
-		},
-		Problems: []app.CheckedProblem{
-			{Text: "process p: needs ghost", About: &process, Message: "needs ghost", Agent: "ghost"},
-			{Text: "agent a: is stubbed", About: &agent, Message: "is stubbed"},
-			{Text: "settings directory verifies: stops", Message: "stops"},
-		},
-	}}
-	client := h.clientWith(h.defs, func(app.GateDefinitions) app.GateCheck { return stub })
+	documents := []app.CheckedDocument{
+		// A process names no agent (ADR-030 rule 2): the workflow whose
+		// node binds it uses the agent, where the process did.
+		{Ref: workflow, Path: "stub/workflows/p_a", Uses: []app.DocumentRef{process, agent}, Binds: []app.NodeBinding{{Process: "p", Agent: "a"}}},
+		{Ref: process, Path: "stub/processes/p"},
+		{Ref: agent, Path: "stub/agents/a"},
+	}
+	stubbed := func(dependsOn string) contract.Client {
+		stub := checkStub{found: app.CheckResult{
+			Documents: documents,
+			Problems: []app.CheckedProblem{
+				{Text: "process p: needs ghost", About: &process, Message: "needs ghost", Agent: dependsOn},
+				{Text: "agent a: is stubbed", About: &agent, Message: "is stubbed"},
+				{Text: "settings directory verifies: stops", Message: "stops"},
+			},
+		}}
+		return h.clientWith(h.defs, func(app.GateDefinitions) app.GateCheck { return stub })
+	}
 
-	both := "process p (stub/processes/p): needs ghost; process p uses agent a (stub/agents/a): is stubbed"
-	if view, err := client.ShowProcess(ctx, "p", ""); err != nil || view.Refusal != both {
-		t.Fatalf("show p: %q, %v; want %q", view.Refusal, err, both)
+	client := stubbed("")
+	both := "workflow p_a uses process p (stub/processes/p): needs ghost; workflow p_a uses agent a (stub/agents/a): is stubbed"
+	if view, err := client.ShowWorkflow(ctx, "p_a"); err != nil || view.Refusal != both {
+		t.Fatalf("show p_a: %q, %v; want %q", view.Refusal, err, both)
 	}
-	// The process's problem depends on agent ghost; a call as agent a does
-	// not have it.
-	if view, err := client.ShowProcess(ctx, "p", "a"); err != nil || view.Refusal != "process p uses agent a (stub/agents/a): is stubbed" {
-		t.Fatalf("show p as agent a: %q, %v", view.Refusal, err)
+	if workflows, err := client.ListWorkflows(ctx); err != nil || len(workflows) != 1 || workflows[0].Refusal != both {
+		t.Fatalf("workflows = %+v, %v", workflows, err)
 	}
-	if processes, err := client.ListProcesses(ctx); err != nil || len(processes) != 1 || processes[0].Refusal != both {
+	// The process is listed with its own problem and not the agent's: only
+	// the workflow depends on the agent.
+	if processes, err := client.ListProcesses(ctx); err != nil || len(processes) != 1 || processes[0].Refusal != "process p (stub/processes/p): needs ghost" {
 		t.Fatalf("processes = %+v, %v", processes, err)
+	}
+	// The process's problem depends on agent ghost; the call the workflow
+	// binds to agent a does not have it.
+	client = stubbed("ghost")
+	if view, err := client.ShowWorkflow(ctx, "p_a"); err != nil || view.Refusal != "workflow p_a uses agent a (stub/agents/a): is stubbed" {
+		t.Fatalf("show p_a, the problem depending on agent ghost: %q, %v", view.Refusal, err)
 	}
 }
 
-// A workflow with a node on a process that depends on a broken document is
-// refused before any node runs; listings and views show it refused.
+// A workflow with a node on an agent that depends on a broken document is
+// refused before any node runs; listings and views show it refused, and no
+// process: none names an agent (ADR-030 rule 2).
 func TestAWorkflowOnABrokenDocumentIsRefusedBeforeAnyNode(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
 	h := newHarness()
 	h.defs.docs = withBrokenMapping(workflowDocs())
-	h.defs.docs[definition.KindProcess]["second"] = strings.Replace(nodeProcess("second", "Work as second."), "uses: agent:a", "uses: agent:b", 1)
+	h.defs.docs[definition.KindWorkflow]["w"] = boundTo(workflowDoc, "two", "second", "b")
 	client := h.clientOn(h.defs)
 
 	report, err := client.Check(ctx, false)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if reach := reachOf(t, report, badMapping); !reflect.DeepEqual(reach.Processes, []string{"q", "second"}) || !reflect.DeepEqual(reach.Workflows, []string{"w"}) {
+	if reach := reachOf(t, report, badMapping); len(reach.Processes) != 0 || !reflect.DeepEqual(reach.Workflows, []string{"q_b", "w"}) {
 		t.Fatalf("reach = %+v", reach)
 	}
 
 	record := h.submit(t, client, contract.CallRequest{Process: "w", Params: map[string]string{"candidate": "c"}})
-	want := `workflow w uses process second, which uses agent b, which uses runtime mapping bad (mem/runtimes/bad): unknown adapter "nowhere" (available: spy)`
+	want := `workflow w uses agent b, which uses runtime mapping bad (mem/runtimes/bad): unknown adapter "nowhere" (available: spy)`
 	if class(record) != run.ClassRefused || message(record) != want {
 		t.Fatalf("workflow: %s %q, want %q", class(record), message(record), want)
 	}
@@ -263,8 +294,15 @@ func TestAWorkflowOnABrokenDocumentIsRefusedBeforeAnyNode(t *testing.T) {
 		t.Fatalf("show: %+v, %v", view, err)
 	}
 	workflows, err := client.ListWorkflows(ctx)
-	if err != nil || len(workflows) != 1 || workflows[0].Refusal != want {
-		t.Fatalf("workflows = %+v, %v", workflows, err)
+	if err != nil {
+		t.Fatal(err)
+	}
+	refusals := map[string]string{}
+	for _, workflow := range workflows {
+		refusals[workflow.Name] = workflow.Refusal
+	}
+	if !reflect.DeepEqual(refusals, map[string]string{"w": want, "q_b": strings.Replace(want, "workflow w", "workflow q_b", 1)}) {
+		t.Fatalf("workflows = %+v", workflows)
 	}
 	processes, err := client.ListProcesses(ctx)
 	if err != nil {
@@ -274,7 +312,10 @@ func TestAWorkflowOnABrokenDocumentIsRefusedBeforeAnyNode(t *testing.T) {
 	for _, process := range processes {
 		refused[process.Name] = process.Refusal != ""
 	}
-	if !reflect.DeepEqual(refused, map[string]bool{"first": false, "second": true, "joiner": false, "q": true}) {
+	// Processes second and q were refused here while each named agent b.
+	// Neither names an agent now: the mapping is their workflows' to
+	// depend on, and no process is refused for it.
+	if !reflect.DeepEqual(refused, map[string]bool{"first": false, "second": false, "joiner": false, "q": false}) {
 		t.Fatalf("refused = %v", refused)
 	}
 }
@@ -363,10 +404,10 @@ func TestProblemsNoDocumentOwnsStopEveryCommand(t *testing.T) {
 			_, refused["CreateAgent"] = client.CreateAgent(ctx, contract.Agent{Name: "c", Runtime: "rt"}, false, nil)
 			_, refused["ListAgents"] = client.ListAgents(ctx)
 			_, refused["ListProcesses"] = client.ListProcesses(ctx)
-			_, refused["ShowProcess"] = client.ShowProcess(ctx, "p", "")
+			_, refused["ShowProcess"] = callShown(client, "p_a")
 			_, refused["ListWorkflows"] = client.ListWorkflows(ctx)
 			_, refused["ShowWorkflow"] = client.ShowWorkflow(ctx, "w")
-			_, refused["Submit"] = client.Submit(ctx, contract.CallRequest{Process: "p", Cwd: "/repo"})
+			_, refused["Submit"] = client.Submit(ctx, contract.CallRequest{Process: "p_a", Cwd: "/repo"})
 			refused["Observe"] = client.Observe(ctx, "earlier", 0, func(contract.Event) error { return nil })
 			_, refused["Inspect"] = client.Inspect(ctx, "earlier")
 			_, refused["ListRuns"] = client.ListRuns(ctx)
@@ -438,42 +479,49 @@ func usesOf(t *testing.T, report contract.CheckReport, kind, name string) []stri
 }
 
 // ADR-030 rules 5 and 10: a workflow is judged on the agents its nodes
-// bind. The agent a node's process names is not the node's call's: its
-// broken mapping refuses the process on its own and not the workflow, whose
-// node binds the process to another. The agent a node binds is the
-// workflow's to depend on: a broken one refuses the workflow, which names
-// it, and not the process.
+// bind. A broken mapping that another workflow's agent runs on refuses that
+// workflow and not this one, whose nodes bind the same processes to another
+// agent. The agent a node binds is the workflow's to depend on: a broken
+// one refuses the workflow, which names it, and not the process.
 func TestAWorkflowIsJudgedOnTheAgentsItsNodesBind(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
 	refusalOf := func(t *testing.T, client contract.Client) string {
 		t.Helper()
-		workflows, err := client.ListWorkflows(ctx)
-		if err != nil || len(workflows) != 1 {
-			t.Fatalf("workflows = %+v, %v", workflows, err)
-		}
 		view, err := client.ShowWorkflow(ctx, "w")
-		if err != nil || view.Refusal != workflows[0].Refusal {
-			t.Fatalf("show says %q, %v; the listing %q", view.Refusal, err, workflows[0].Refusal)
+		if err != nil {
+			t.Fatal(err)
 		}
-		return view.Refusal
+		workflows, err := client.ListWorkflows(ctx)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, workflow := range workflows {
+			if workflow.Name == "w" && workflow.Refusal == view.Refusal {
+				return view.Refusal
+			}
+		}
+		t.Fatalf("show says %q; the listing %+v", view.Refusal, workflows)
+		return ""
 	}
 
-	t.Run("its process's own agent is broken", func(t *testing.T) {
+	// Until ADR-030 rule 2 this was of a process that named the broken
+	// agent while the node bound it to another. No process names an agent
+	// now: the broken one is bound by another workflow, q_b.
+	t.Run("another workflow's agent is broken", func(t *testing.T) {
 		t.Parallel()
 		h := newHarness()
 		h.defs.docs = withBrokenMapping(workflowDocs())
-		h.defs.docs[definition.KindProcess]["second"] = strings.Replace(nodeProcess("second", "Work as second."), "uses: agent:a", "uses: agent:b", 1)
-		h.defs.docs[definition.KindWorkflow]["w"] = boundTo(workflowDoc, "two", "second", "a")
+		h.bind("second_b", "second", "b")
 		client := h.clientOn(h.defs)
 		report, err := client.Check(ctx, false)
 		if err != nil {
 			t.Fatal(err)
 		}
-		if reach := reachOf(t, report, badMapping); !reflect.DeepEqual(reach.Processes, []string{"q", "second"}) || len(reach.Workflows) != 0 {
-			t.Fatalf("reach = %+v, want processes q and second and no workflow", reach)
+		if reach := reachOf(t, report, badMapping); len(reach.Processes) != 0 || !reflect.DeepEqual(reach.Workflows, []string{"q_b", "second_b"}) {
+			t.Fatalf("reach = %+v, want workflows q_b and second_b and no process", reach)
 		}
-		if uses := usesOf(t, report, "workflows", "w"); !reflect.DeepEqual(uses, []string{"processes first", "processes second", "agents a", "processes joiner"}) {
+		if uses := usesOf(t, report, "workflows", "w"); !reflect.DeepEqual(uses, []string{"processes first", "agents a", "processes second", "processes joiner"}) {
 			t.Fatalf("workflow w uses %v", uses)
 		}
 		if refusal := refusalOf(t, client); refusal != "" {
@@ -494,8 +542,8 @@ func TestAWorkflowIsJudgedOnTheAgentsItsNodesBind(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if reach := reachOf(t, report, badMapping); !reflect.DeepEqual(reach.Processes, []string{"q"}) || !reflect.DeepEqual(reach.Workflows, []string{"w"}) {
-			t.Fatalf("reach = %+v, want process q and workflow w", reach)
+		if reach := reachOf(t, report, badMapping); len(reach.Processes) != 0 || !reflect.DeepEqual(reach.Workflows, []string{"q_b", "w"}) {
+			t.Fatalf("reach = %+v, want workflows q_b and w and no process", reach)
 		}
 		want := `workflow w uses agent b, which uses runtime mapping bad (mem/runtimes/bad): unknown adapter "nowhere" (available: spy)`
 		if refusal := refusalOf(t, client); refusal != want {
@@ -507,30 +555,12 @@ func TestAWorkflowIsJudgedOnTheAgentsItsNodesBind(t *testing.T) {
 		}
 	})
 
-	// A problem of a process that depends on the agent it names (ADR-015
-	// rule 2) is not a problem of a call a node binds to another.
-	t.Run("its process names an agent the settings lack", func(t *testing.T) {
-		t.Parallel()
-		h := newHarness()
-		h.defs.docs = workflowDocs()
-		h.defs.docs[definition.KindProcess]["second"] = strings.Replace(nodeProcess("second", "Work as second."), "uses: agent:a", "uses: agent:ghost", 1)
-		client := h.clientOn(h.defs)
-		const want = `workflow w uses process second (mem/processes/second): agent "ghost" does not exist`
-		if refusal := refusalOf(t, client); refusal != want {
-			t.Fatalf("refusal %q, want %q", refusal, want)
-		}
-		h.defs.docs[definition.KindWorkflow]["w"] = boundTo(workflowDoc, "two", "second", "a")
-		if refusal := refusalOf(t, client); refusal != "" {
-			t.Fatalf("bound to agent a, the workflow is refused: %s", refusal)
-		}
-		report, err := client.Check(ctx, false)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if reach := reachOf(t, report, `process second: agent "ghost" does not exist`); !reflect.DeepEqual(reach.Processes, []string{"second"}) || len(reach.Workflows) != 0 {
-			t.Fatalf("reach = %+v, want process second and no workflow", reach)
-		}
-	})
+	// The subtest "its process names an agent the settings lack" stood
+	// here: a process naming agent ghost, a problem that depended on that
+	// agent (ADR-015 rule 2) and that a node binding another stepped over.
+	// A process names no agent (ADR-030 rule 2), so there is no such
+	// problem; the old form itself is refused, as the definition package's
+	// tests and check's show.
 
 	// A node that names an agent the settings lack is a problem of its
 	// workflow, and of nothing else.

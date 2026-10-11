@@ -91,21 +91,19 @@ func TestRetiringTheImplementProcessesLetsHomeTakeTheFolder(t *testing.T) {
 	retired, docs := legacyProcesses(t)
 
 	// The base revision's folder: this one's, without the workflows of one
-	// call and with the processes of their names.
-	base := filepath.Join(tempDir(t), "home")
+	// call and with the processes of their names. Home holds it as the
+	// binary of that revision installed it: this one refuses to install a
+	// process that names an agent, as those three do (ADR-030 rule 2).
 	for rel, text := range files(t, folder) {
 		if name, ok := strings.CutPrefix(rel, "workflows"+string(filepath.Separator)); ok {
 			if _, call := callAgents[strings.TrimSuffix(name, ".yaml")]; call {
 				continue
 			}
 		}
-		write(t, filepath.Join(base, rel), text)
+		write(t, filepath.Join(home, rel), text)
 	}
 	for rel, text := range retired {
-		write(t, filepath.Join(base, rel), text)
-	}
-	if r := agisterInstalling(t, "yes\n", home, nowhere, "install", base); r.code != 0 {
-		t.Fatalf("install of the base revision's folder: %d\n%s%s", r.code, r.stdout, r.stderr)
+		write(t, filepath.Join(home, rel), text)
 	}
 	own := map[string]string{
 		filepath.Join("prompts", "house.md"): "Follow the house style.\n",
@@ -150,7 +148,10 @@ func TestRetiringTheImplementProcessesLetsHomeTakeTheFolder(t *testing.T) {
 	for rel := range retired {
 		delete(want, rel)
 	}
-	if after := files(t, home); !reflect.DeepEqual(after, want) {
+	// The retirement is the first to write this home, and leaves its lock.
+	after := files(t, home)
+	delete(after, ".write.lock")
+	if !reflect.DeepEqual(after, want) {
 		t.Fatalf("home after the retirement holds %v, want %v", keys(after), keys(want))
 	}
 	var manifest struct {
@@ -211,6 +212,7 @@ func TestRetiringTheImplementProcessesLetsHomeTakeTheFolder(t *testing.T) {
 		}
 	}
 	restored := files(t, home)
+	delete(restored, ".write.lock")
 	if !reflect.DeepEqual(restored, before) {
 		t.Fatalf("home after both restores holds %v, want %v as it was", keys(restored), keys(before))
 	}

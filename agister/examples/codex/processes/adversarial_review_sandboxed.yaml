@@ -2,7 +2,6 @@ schema: agister.process/v1alpha1
 name: adversarial_review_sandboxed
 
 type: process
-uses: agent:codex-reviewer
 prompt: adversarial-review
 
 input:

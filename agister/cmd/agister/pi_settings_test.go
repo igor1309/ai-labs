@@ -60,7 +60,7 @@ func TestExamplePiSettingsPassCheck(t *testing.T) {
 		t.Fatalf("exit %d\n%s%s", r.code, r.stdout, r.stderr)
 	}
 	allowHostReads(t, home, repo)
-	r = agister(t, home, repo, "run", "ask_pi", "--param", "question=What does this repository do?", "--timeout", "30s")
+	r = agister(t, home, repo, "run", "ask_pi_minimax", "--param", "question=What does this repository do?", "--timeout", "30s")
 	if r.code != cli.ExitCompleted {
 		t.Fatalf("exit %d\n%s%s", r.code, r.stdout, r.stderr)
 	}
@@ -84,13 +84,13 @@ func TestExamplePiCallWithoutASkillToolIsRefused(t *testing.T) {
 	const reason = "runtime pi needs read or bash to use the repository's skills (ADR-006), and the plan grants no such tool: " +
 		"read needs host.read, which the plan withholds; bash needs host.read, which the plan withholds, " +
 		"and repository.write, repository.history.write, network, host.write, which the effective permissions do not allow"
-	r := agister(t, home, repo, "run", "ask_pi", "--param", "question=What does this repository do?")
+	r := agister(t, home, repo, "run", "ask_pi_minimax", "--param", "question=What does this repository do?")
 	if r.code != cli.ExitRefused || !strings.Contains(r.stderr, reason) {
 		t.Fatalf("exit %d\n%s%s", r.code, r.stdout, r.stderr)
 	}
 	last := lastRun(t, home)
 	fault := last.record["result"].(map[string]any)["error"].(map[string]any)
-	want := "process ask_pi (" + filepath.Join(home, "processes", "ask_pi.yaml") + "): " + reason
+	want := "workflow ask_pi_minimax uses process ask_pi (" + filepath.Join(home, "processes", "ask_pi.yaml") + "): " + reason
 	if fault["class"] != "refused" || fault["message"] != want {
 		t.Fatalf("error = %v", fault)
 	}
@@ -138,7 +138,7 @@ func piSessionsAreKeptUnder(t *testing.T, home, repo string) {
 		return ""
 	}
 
-	r := agister(t, home, repo, "run", "ask_pi", "--param", "question=What does this repository do?", "--timeout", "30s")
+	r := agister(t, home, repo, "run", "ask_pi_minimax", "--param", "question=What does this repository do?", "--timeout", "30s")
 	if r.code != cli.ExitCompleted {
 		t.Fatalf("exit %d\n%s%s", r.code, r.stdout, r.stderr)
 	}
@@ -152,7 +152,7 @@ func piSessionsAreKeptUnder(t *testing.T, home, repo string) {
 		t.Fatalf("session %q: %s holds %v, session files %v", id, sessions, entries, kept)
 	}
 
-	r = agister(t, home, repo, "run", "ask_pi", "--param", "question=And its tests?", "--continue", filepath.Base(first.dir), "--timeout", "30s")
+	r = agister(t, home, repo, "run", "ask_pi_minimax", "--param", "question=And its tests?", "--continue", filepath.Base(first.dir), "--timeout", "30s")
 	if r.code != cli.ExitCompleted {
 		t.Fatalf("exit %d\n%s%s", r.code, r.stdout, r.stderr)
 	}
@@ -202,7 +202,7 @@ func TestPiInstallsNoPackageTheProjectLists(t *testing.T) {
 	}()
 	startThrough(t, home, runtimetest.InProcess{Reports: reports})
 
-	r := agister(t, home, repo, "run", "ask_pi", "--param", "question=What does this repository do?", "--timeout", "30s")
+	r := agister(t, home, repo, "run", "ask_pi_minimax", "--param", "question=What does this repository do?", "--timeout", "30s")
 	// Every fake the call started has returned: none reports any more.
 	close(reports)
 	<-read
@@ -244,7 +244,7 @@ func TestExamplePiSettingsGrantTheVerifiedWriteToolsAndBash(t *testing.T) {
 			service := filepath.Join(home, "service.toml")
 			write(t, service, strings.Replace(read(t, service), `state_reaching = ["host.read", "host.write"]`, `state_reaching = []`, 1))
 			piAllLimits(t, home, permission)
-			r := agister(t, home, repo, "run", "ask_pi", "--param", "question=What does this repository do?", "--timeout", "30s")
+			r := agister(t, home, repo, "run", "ask_pi_minimax", "--param", "question=What does this repository do?", "--timeout", "30s")
 			if r.code != cli.ExitCompleted {
 				t.Fatalf("exit %d\n%s%s", r.code, r.stdout, r.stderr)
 			}

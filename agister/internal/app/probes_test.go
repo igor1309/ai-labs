@@ -74,7 +74,7 @@ func TestACallOnAnUnverifiedVersionRunsOnceItsProbePasses(t *testing.T) {
 	prober := &proberSpy{probe: app.RuntimeProbe{Version: "2.0.0", Primitives: []string{"Read", "Grep"}, Report: "held"}}
 	records := &probeRecordsSpy{}
 	h.probes = probesOver(prober, records)
-	record := h.submit(t, h.clientOn(h.defs), contract.CallRequest{Process: "p"})
+	record := h.submit(t, h.clientOn(h.defs), contract.CallRequest{Process: "p_a"})
 	if record.Result.Status != run.Completed {
 		t.Fatalf("result = %+v", record.Result.Error)
 	}
@@ -108,7 +108,7 @@ func TestACallWhoseProbeFailsIsRefused(t *testing.T) {
 		h.runner.identity.Version = "2.0.0"
 		records := &probeRecordsSpy{}
 		h.probes = probesOver(&proberSpy{probe: c.probe, err: c.err}, records)
-		record := h.submit(t, h.clientOn(h.defs), contract.CallRequest{Process: "p"})
+		record := h.submit(t, h.clientOn(h.defs), contract.CallRequest{Process: "p_a"})
 		if class(record) != run.ClassRefused || !strings.Contains(message(record), "verifies no primitive for spy version 2.0.0, and "+c.want) {
 			t.Errorf("%s: result = %q", name, message(record))
 		}
@@ -151,7 +151,7 @@ func TestAnAdapterWithNoProberIsNotProbed(t *testing.T) {
 	h := newHarness()
 	h.runner.identity.Version = "2.0.0"
 	h.probes = app.NewProbes(nil, &probeRecordsSpy{}, fixedClock{})
-	record := h.submit(t, h.clientOn(h.defs), contract.CallRequest{Process: "p"})
+	record := h.submit(t, h.clientOn(h.defs), contract.CallRequest{Process: "p_a"})
 	if class(record) != run.ClassRefused || !strings.HasSuffix(message(record), "verifies no primitive for spy version 2.0.0") {
 		t.Fatalf("result = %q", message(record))
 	}

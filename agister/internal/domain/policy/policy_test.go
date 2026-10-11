@@ -47,7 +47,6 @@ schema: agister.process/v1alpha1
 name: review
 type: process
 prompt: review
-uses: agent:reviewer
 input:
   instruction: Review.
   values:
@@ -178,7 +177,6 @@ schema: agister.process/v1alpha1
 name: edit
 type: process
 prompt: review
-uses: agent:writer
 timeout: 1m
 tools: {allow: [docs.read, docs.write]}
 input: {instruction: Edit.}
@@ -308,7 +306,6 @@ schema: agister.process/v1alpha1
 name: edit
 type: process
 prompt: edit
-uses: agent:writer
 timeout: 1m
 tools: {allow: [repository.read, repository.write]}
 input: {instruction: Edit.}

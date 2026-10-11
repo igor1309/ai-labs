@@ -277,7 +277,7 @@ func TestInstallPlansEachDocument(t *testing.T) {
 		{Kind: "agents", Name: "reviewer", Path: filepath.Join(home, "agents", "reviewer.toml"), Action: contract.InstallReplace,
 			Before: digestText(reviewer), After: digestText(reviewer + "# tuned\n"),
 			Diff: "--- " + filepath.Join(home, "agents", "reviewer.toml") + "\n+++ " + filepath.Join(src, "agents", "reviewer.toml") + "\n" +
-				"@@ -5,3 +5,4 @@\n model_family = \"anthropic\"\n effort = \"high\"\n session = \"fresh-only\"\n+# tuned\n"},
+				"@@ -4,3 +4,4 @@\n model = \"sonnet\"\n model_family = \"anthropic\"\n effort = \"high\"\n+# tuned\n"},
 		{Kind: "prompts", Name: "house", Path: filepath.Join(home, "prompts", "house.md"), Action: contract.InstallCreate, After: digestText("Follow the house style.\n")},
 		{Kind: "service", Name: "service", Path: filepath.Join(home, "service.toml"), Action: contract.InstallUnchanged,
 			Before: digestText(before["service.toml"]), After: digestText(before["service.toml"])},
@@ -289,10 +289,10 @@ func TestInstallPlansEachDocument(t *testing.T) {
 		t.Fatalf("ignored: %v", plan.Ignored)
 	}
 	// What only home has is kept, and only settings are planned.
-	if len(plan.Kept) != 17 || plan.Kept[0] != filepath.Join(home, "agents", "assistant.toml") {
+	if len(plan.Kept) != 20 || plan.Kept[0] != filepath.Join(home, "agents", "assistant.toml") {
 		t.Fatalf("kept: %v", plan.Kept)
 	}
-	if len(plan.Inventory) != 19 || plan.Inventory[filepath.Join(home, "service.toml")] != digestText(before["service.toml"]) {
+	if len(plan.Inventory) != 22 || plan.Inventory[filepath.Join(home, "service.toml")] != digestText(before["service.toml"]) {
 		t.Fatalf("inventory: %v", plan.Inventory)
 	}
 	if in.staged != 1 || !reflect.DeepEqual(files(t, home), before) || backups(t, home) != nil {
@@ -502,7 +502,7 @@ func TestRestorePutsBackAProcessWhoseBaseIsGone(t *testing.T) {
 			diff = doc.Diff
 		}
 	}
-	if !strings.Contains(diff, "-extends: process:base_ask\n") || !strings.Contains(diff, "+uses: agent:assistant\n") {
+	if !strings.Contains(diff, "-extends: process:base_ask\n") || !strings.Contains(diff, "+timeout: 10m\n") {
 		t.Fatalf("restore plan %+v", plan)
 	}
 	if got := read(t, child); got != standalone {

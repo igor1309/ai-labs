@@ -56,7 +56,7 @@ const (
 	homeImplement = `schema: agister.process/v1alpha1
 name: implement
 type: process
-uses: agent:claude-implementer-opus
+session: resumable
 prompt: implement
 input:
   instruction: Implement the task.
@@ -98,7 +98,7 @@ func TestComposeMergesMapsByKeyAndNamesEachFieldsLayer(t *testing.T) {
 		"schema = agister.process/v1alpha1",
 		"name = implement",
 		"type = process",
-		"uses = agent:claude-implementer-opus",
+		"session = resumable",
 		"prompt = implement",
 		"input.instruction = Implement the task.",
 		"input.params.candidate.default = origin/trunk",
@@ -123,7 +123,7 @@ func TestComposeMergesMapsByKeyAndNamesEachFieldsLayer(t *testing.T) {
 		}},
 		{Layer: definition.LayerRepository, Path: "/w/.agister/processes/implement.yaml", SHA256: "digest of /w/.agister/processes/implement.yaml", Fields: []string{}},
 		{Layer: definition.LayerHome, Path: "/h/processes/implement.yaml", SHA256: "digest of /h/processes/implement.yaml", Fields: []string{
-			"schema", "name", "type", "uses", "prompt", "input.instruction", "input.params.brief",
+			"schema", "name", "type", "session", "prompt", "input.instruction", "input.params.brief",
 			"input.values.candidate_revision.source", "input.values.candidate_revision.rev", "input.values.brief.source", "input.values.brief.path", "verify",
 		}},
 	}
@@ -345,7 +345,7 @@ func TestProblemsOfAComposedDocumentNameTheLayerFileAtFault(t *testing.T) {
 name: p
 type: process
 prompt: review
-uses: agent:a
+session: fresh-only
 input:
   instruction: Do it.
   values:
@@ -382,15 +382,18 @@ output:
 	}
 
 	// The two layers compose to a document that parses: neither is whole.
-	if process, err := definition.ParseProcess(composed(t, "uses: agent:b\n", home)); err != nil || process.Agent != "b" {
+	if process, err := definition.ParseProcess(composed(t, "session: resumable\n", home)); err != nil || process.Session != definition.SessionResumable {
 		t.Fatalf("composed process = %+v, %v", process, err)
 	}
 	for name, c := range map[string]struct {
 		repository, home string
 		want             string
 	}{
-		"set in the nearer layer": {"uses: nobody\n", home,
-			`uses: must be "agent:<name>" (set in /w/.agister/processes/p.yaml)`},
+		"set in the nearer layer": {"session: sometimes\n", home,
+			`session: unsupported session mode "sometimes" (supported: fresh-only, resumable) (set in /w/.agister/processes/p.yaml)`},
+		// The old form names the layer file that still holds it.
+		"a field ADR-030 took from the process": {"uses: agent:b\n", home,
+			"uses: a process names no agent (ADR-030 rule 2): name the agent on each workflow node that binds the process, and remove uses (set in /w/.agister/processes/p.yaml)"},
 		"set in the farther layer": {"timeout: 5m\n", strings.Replace(home, "type: process", "type: workflow", 1),
 			`type: must be "process" (set in /h/processes/p.yaml)`},
 		"a field under a map two layers fill": {"input:\n  values:\n    candidate_revision: {rev: [HEAD]}\n", home,
@@ -414,12 +417,12 @@ output:
 		})
 	}
 
-	whole, files, err := definition.Compose(definition.KindProcess, []definition.LayerText{layer(definition.LayerHome, "/h/processes/p.yaml", strings.Replace(home, "uses: agent:a", "uses: nobody", 1))})
+	whole, files, err := definition.Compose(definition.KindProcess, []definition.LayerText{layer(definition.LayerHome, "/h/processes/p.yaml", strings.Replace(home, "session: fresh-only", "session: sometimes", 1))})
 	if err != nil {
 		t.Fatal(err)
 	}
 	alone := definition.Document{Source: definition.Source{Kind: definition.KindProcess, Name: "p", Path: "/h/processes/p.yaml", Layer: definition.LayerHome, Layers: files}, Bytes: whole}
-	if got := messages(t, alone); !contains(got, `uses: must be "agent:<name>"`) {
+	if got := messages(t, alone); !contains(got, `session: unsupported session mode "sometimes" (supported: fresh-only, resumable)`) {
 		t.Fatalf("a document of one layer: problems %q", got)
 	}
 }
@@ -430,10 +433,10 @@ output:
 // where the home layer holds none.
 func TestWithHomeComposesTheWrittenDocumentBeneathTheNearerLayers(t *testing.T) {
 	t.Parallel()
-	nearer := layer(definition.LayerRepository, "/w/.agister/processes/p.yaml", "uses: agent:b\n")
-	held := layer(definition.LayerHome, "/h/processes/p.yaml", "name: p\nuses: agent:a\ntype: process\n")
-	written := layer(definition.LayerHome, "/h/processes/p.yaml", "name: p\nuses: agent:a\ntype: workflow\ntimeout: 5m\n")
-	const want = "name: p\nuses: agent:b\ntype: workflow\ntimeout: 5m\n"
+	nearer := layer(definition.LayerRepository, "/w/.agister/processes/p.yaml", "prompt: b\n")
+	held := layer(definition.LayerHome, "/h/processes/p.yaml", "name: p\nprompt: a\ntype: process\n")
+	written := layer(definition.LayerHome, "/h/processes/p.yaml", "name: p\nprompt: a\ntype: workflow\ntimeout: 5m\n")
+	const want = "name: p\nprompt: b\ntype: workflow\ntimeout: 5m\n"
 	data, files, err := definition.Compose(definition.KindProcess, []definition.LayerText{nearer, held})
 	if err != nil {
 		t.Fatal(err)
@@ -454,7 +457,7 @@ func TestWithHomeComposesTheWrittenDocumentBeneathTheNearerLayers(t *testing.T) 
 			}
 			digest := sha256.Sum256([]byte(want))
 			layers := []definition.LayerFile{
-				{Layer: definition.LayerRepository, Path: nearer.File.Path, SHA256: nearer.File.SHA256, Fields: []string{"uses"}},
+				{Layer: definition.LayerRepository, Path: nearer.File.Path, SHA256: nearer.File.SHA256, Fields: []string{"prompt"}},
 				{Layer: definition.LayerHome, Path: written.File.Path, SHA256: written.File.SHA256, Fields: []string{"name", "type", "timeout"}},
 			}
 			wantSource := definition.Source{

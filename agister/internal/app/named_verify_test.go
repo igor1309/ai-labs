@@ -25,12 +25,12 @@ instruction: The verification command failed. Fix the cause, not the check.
 `
 
 // naming gives the harness's process p the reference verify:repo, a
-// service ceiling of 3 attempts and a resumable agent a, and no
+// service ceiling of 3 attempts and a session that may be resumed, and no
 // verification: named adds it.
 func naming(h *harness) {
 	h.defs.docs[definition.KindProcess]["p"] = namingVerification(h.defs.docs[definition.KindProcess]["p"])
 	h.defs.docs[definition.KindService]["service"] += "max_verify_attempts = 3\n"
-	h.defs.docs[definition.KindAgent]["a"] += "session = \"resumable\"\n"
+	h.defs.docs[definition.KindProcess]["p"] += "session: resumable\n"
 	h.defs.docs[definition.KindVerify] = map[string]string{}
 }
 
@@ -92,6 +92,7 @@ func TestAMissingVerificationRefusesTheCallNotTheSettings(t *testing.T) {
 	h := newHarness()
 	naming(h)
 	h.defs.docs[definition.KindProcess]["q"] = strings.Replace(settingsDocs()[definition.KindProcess]["p"], "name: p", "name: q", 1)
+	h.bind("q_a", "q", "a")
 
 	report := checkOf(t, h, true)
 	warning := "process p: names verify:repo, which does not exist; calls of it are refused until verifies/repo.yaml exists"
@@ -109,7 +110,7 @@ func TestAMissingVerificationRefusesTheCallNotTheSettings(t *testing.T) {
 
 	other := newHarness()
 	other.defs.docs = h.defs.docs
-	if record := other.call(t, contract.CallRequest{Process: "q"}); record.Result.Status != run.Completed {
+	if record := other.call(t, contract.CallRequest{Process: "q_a"}); record.Result.Status != run.Completed {
 		t.Fatalf("another process: %+v: %s", record.Result, message(record))
 	}
 }
@@ -130,12 +131,14 @@ func TestANamedVerificationIsHeldToTheLimits(t *testing.T) {
 		{"attempts above the service ceiling", func(h *harness) {
 			h.defs.docs[definition.KindVerify]["repo"] = strings.Replace(verification, "max_attempts: 3", "max_attempts: 4", 1)
 		}, false, "process p: verify.max_attempts 4 exceeds the service limit max_verify_attempts 3"},
-		{"repairs on a fresh-only agent", func(h *harness) {
-			h.defs.docs[definition.KindAgent]["a"] = settingsDocs()[definition.KindAgent]["a"]
-		}, false, "process p: verify.max_attempts 3 repairs in the call's session, but agent a is fresh-only"},
+		// The process says whether its session resumes (ADR-030 rule 3).
+		{"repairs in a fresh-only process", freshOnly,
+			false, "process p: verify.max_attempts 3 repairs in the call's session, but process p is fresh-only"},
+		// What only the runtime can say is the problem of the workflow
+		// whose node binds the process to an agent on it (rule 8).
 		{"repairs on a runtime that cannot resume", func(h *harness) {
 			h.runner.identity.Resume = false
-		}, true, "process p: verify.max_attempts 3 repairs in the call's session, but runtime rt cannot resume sessions"},
+		}, true, "workflow p_a: call node p: process p: verify.max_attempts 3 repairs in the call's session, but runtime rt cannot resume sessions"},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
@@ -147,7 +150,7 @@ func TestANamedVerificationIsHeldToTheLimits(t *testing.T) {
 				t.Fatalf("problems = %q, want %q", messages(report.Problems), c.problem)
 			}
 			record := h.call(t, contract.CallRequest{})
-			if class(record) != run.ClassRefused || !strings.Contains(message(record), strings.TrimPrefix(c.problem, "process p: ")) || len(h.runner.calls()) != 0 {
+			if class(record) != run.ClassRefused || !strings.Contains(message(record), c.problem[strings.LastIndex(c.problem, "process p: ")+len("process p: "):]) || len(h.runner.calls()) != 0 {
 				t.Fatalf("result %+v: %q, turns %d", record.Result, message(record), len(h.runner.calls()))
 			}
 		})
@@ -232,7 +235,8 @@ func TestCheckLinksAProcessToItsVerification(t *testing.T) {
 	h := newHarness()
 	named(h, verification)
 	got := definitions(h)
-	uses := []contract.DefinitionRef{ref("agents", "a"), ref("verifies", "repo"), ref("prompts", "inspect"), ref("schemas", "s")}
+	// A process uses no agent: a workflow's node binds it to one.
+	uses := []contract.DefinitionRef{ref("verifies", "repo"), ref("prompts", "inspect"), ref("schemas", "s")}
 	if p := got[ref("processes", "p")]; !reflect.DeepEqual(p.Uses, uses) {
 		t.Fatalf("p = %+v", p)
 	}
@@ -258,7 +262,7 @@ func TestShowProcessShowsTheNamedVerification(t *testing.T) {
 	h := newHarness()
 	named(h, verification)
 	inspection := app.NewInspection(app.NewResolver(h.defs, struct{ app.ResolverIdentities }{h.runtimes}, h.validator, resolverCheckStub{}))
-	view, err := inspection.ShowProcess(context.Background(), "p", "")
+	view, err := callShown(inspection, "p_a")
 	want := contract.Verify{Command: "go test ./...", Timeout: 10 * time.Minute, MaxAttempts: 3, Instruction: "The verification command failed. Fix the cause, not the check."}
 	if err != nil || view.Verify == nil || *view.Verify != want || view.VerifyName != "repo" || view.Refusal != "" {
 		t.Fatalf("verify %+v from %q, refusal %q, %v", view.Verify, view.VerifyName, view.Refusal, err)
@@ -272,7 +276,7 @@ func TestShowProcessShowsTheNamedVerification(t *testing.T) {
 	}
 
 	delete(h.defs.docs[definition.KindVerify], "repo")
-	view, err = inspection.ShowProcess(context.Background(), "p", "")
+	view, err = callShown(inspection, "p_a")
 	if err != nil || view.Verify != nil || view.VerifyName != "repo" || len(view.Warnings) != 0 ||
 		view.Refusal != `process p names verify:repo: verification "repo": not found` {
 		t.Fatalf("missing: verify %+v from %q, refusal %q, warnings %q, %v", view.Verify, view.VerifyName, view.Refusal, view.Warnings, err)
@@ -311,7 +315,7 @@ func TestSnapshotKeepsTheReadOfAMissingNamedVerification(t *testing.T) {
 	if names, err := snap.List(ctx, definition.KindVerify); err != nil || len(names) != 0 {
 		t.Fatalf("verifies = %v, %v", names, err)
 	}
-	view, err := app.NewInspection(app.NewResolver(snap, struct{ app.ResolverIdentities }{h.runtimes}, h.validator, resolverCheckStub{})).ShowProcess(ctx, "p", "")
+	view, err := callShown(app.NewInspection(app.NewResolver(snap, struct{ app.ResolverIdentities }{h.runtimes}, h.validator, resolverCheckStub{})), "p_a")
 	want := `process p names verify:repo: verification "repo": ` + missing.Error()
 	if err != nil || view.Refusal != want {
 		t.Fatalf("refusal = %q, %v, want %q", view.Refusal, err, want)
@@ -359,7 +363,7 @@ func TestSnapshotListsANamedVerificationWrittenAfterItsList(t *testing.T) {
 	if err != nil || !reflect.DeepEqual(messages(report.Problems), []string{problem}) {
 		t.Fatalf("problems = %q, %v, want %q", messages(report.Problems), err, problem)
 	}
-	view, err := app.NewInspection(app.NewResolver(snap, struct{ app.ResolverIdentities }{h.runtimes}, h.validator, resolverCheckStub{})).ShowProcess(ctx, "p", "")
+	view, err := callShown(app.NewInspection(app.NewResolver(snap, struct{ app.ResolverIdentities }{h.runtimes}, h.validator, resolverCheckStub{})), "p_a")
 	if err != nil || !strings.Contains(view.Refusal, strings.TrimPrefix(problem, "process p: ")) {
 		t.Fatalf("refusal = %q, %v", view.Refusal, err)
 	}

@@ -39,7 +39,7 @@ func TestCheckReportsAProcessThatNamesAPolicy(t *testing.T) {
 	if r.code != cli.ExitUsage || !strings.Contains(r.stderr, problem+"\n") || strings.Contains(r.stderr, "stops every command") {
 		t.Fatalf("check: %d, want %q\n%s%s", r.code, problem, r.stdout, r.stderr)
 	}
-	r = agister(t, home, repo, "run", "ask", "--quiet", "--param", "question=q", "--timeout", "1m")
+	r = agister(t, home, repo, "run", "ask_assistant", "--quiet", "--param", "question=q", "--timeout", "1m")
 	if r.code != cli.ExitRefused || !strings.Contains(r.stderr, "policy: there are no policies (ADR-030)") {
 		t.Fatalf("run: %d\n%s%s", r.code, r.stdout, r.stderr)
 	}
@@ -73,7 +73,7 @@ func TestCheckReportsAFileInALayersPolicies(t *testing.T) {
 			if r.code != cli.ExitUsage || !strings.Contains(r.stderr, problem) {
 				t.Fatalf("check: %d, want %q\n%s%s", r.code, problem, r.stdout, r.stderr)
 			}
-			r = agister(t, home, launch, "run", "ask", "--quiet", "--param", "question=q", "--timeout", "1m")
+			r = agister(t, home, launch, "run", "ask_assistant", "--quiet", "--param", "question=q", "--timeout", "1m")
 			if r.code == cli.ExitCompleted || !strings.Contains(r.stderr, "settings have problems that stop every command") {
 				t.Fatalf("run under the layer: %d\n%s%s", r.code, r.stdout, r.stderr)
 			}

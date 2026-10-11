@@ -355,7 +355,7 @@ func setupOn(t *testing.T, home, repo, claude string) (string, string) {
 	}
 	for _, args := range [][]string{
 		{"agent", "create", "reviewer", "--force", "--runtime", "claude-code", "--model", "sonnet", "--model-family", "anthropic", "--effort", "high", "--command", claude},
-		{"agent", "create", "assistant", "--force", "--runtime", "claude-code", "--model-family", "anthropic", "--session", "resumable", "--command", claude},
+		{"agent", "create", "assistant", "--force", "--runtime", "claude-code", "--model-family", "anthropic", "--command", claude},
 	} {
 		// Both replace a shipped agent, so each asks.
 		if r := agisterInput(t, "yes\n", home, repo, args...); r.code != 0 {
@@ -416,7 +416,7 @@ func (r run) argv() []string {
 func TestAgentCallEndToEnd(t *testing.T) {
 	t.Parallel()
 	home, repo := setup(t, "approve")
-	r := agister(t, home, repo, "run", "adversarial_review", "--param", "base=main", "--timeout", "1m")
+	r := agister(t, home, repo, "run", "adversarial_review_reviewer", "--param", "base=main", "--timeout", "1m")
 	if r.code != cli.ExitCompleted {
 		t.Fatalf("exit %d\n%s", r.code, r.stderr)
 	}
@@ -446,7 +446,8 @@ func TestAgentCallEndToEnd(t *testing.T) {
 		}
 		kinds = append(kinds, source["kind"].(string))
 	}
-	if strings.Join(kinds, ",") != "service,processes,agents,runtimes,schemas,prompts" {
+	// The workflow whose call the run is comes first (ADR-030 rule 6).
+	if strings.Join(kinds, ",") != "workflows,service,processes,agents,runtimes,schemas,prompts" {
 		t.Fatalf("definitions = %v", kinds)
 	}
 	// Inputs are immutable.
@@ -540,7 +541,7 @@ func TestExampleClaudeCodeSettingsGrantTheVerifiedWriteTools(t *testing.T) {
 	service := filepath.Join(home, "service.toml")
 	write(t, service, strings.Replace(read(t, service), `state_reaching = ["host.read", "host.write"]`, `state_reaching = []`, 1))
 	claudeWriteLimits(t, home)
-	r := agister(t, home, repo, "run", "ask", "--param", "question=What does this repository do?", "--quiet", "--timeout", "1m")
+	r := agister(t, home, repo, "run", "ask_assistant", "--param", "question=What does this repository do?", "--quiet", "--timeout", "1m")
 	if r.code != cli.ExitCompleted {
 		t.Fatalf("exit %d\n%s%s", r.code, r.stdout, r.stderr)
 	}
@@ -635,7 +636,6 @@ command = "claude"
 name: check_docs
 type: process
 prompt: check-docs
-uses: agent:writer
 tools: {allow: [docs.read]}
 timeout: 1m
 input:
@@ -649,7 +649,7 @@ output:
   schema: verdict
   require_valid: true
 `)
-	r := agister(t, home, repo, "run", "check_docs", "--quiet", "--timeout", "1m")
+	r := agister(t, home, repo, "run", bound(t, home, "check_docs", "writer"), "--quiet", "--timeout", "1m")
 	if r.code != cli.ExitCompleted {
 		t.Fatalf("exit %d\n%s", r.code, r.stderr)
 	}
@@ -667,13 +667,20 @@ func TestAProcessMayBeReadWrite(t *testing.T) {
 	edit := filepath.Join(home, "processes", "edit.yaml")
 	write(t, edit, strings.Replace(read(t, filepath.Join(home, "processes", "ask.yaml")), "name: ask\n", "name: edit\n", 1))
 	ownLimits(t, edit, "timeout: 1m\ntools: {allow: [repository.read, repository.write]}\nworkspace: {access: read-write}\n")
+	bound(t, home, "edit", "assistant")
 
 	r := agister(t, home, repo, "check")
-	if r.code != 0 || !strings.HasPrefix(r.stdout, "settings OK:") || strings.Contains(r.stdout+r.stderr, "process edit") {
+	if r.code != 0 || !strings.HasPrefix(r.stdout, "settings OK:") || strings.Contains(r.stdout+r.stderr, "process edit:") {
 		t.Fatalf("check: %d\n%s%s", r.code, r.stdout, r.stderr)
 	}
+	// A process shown on its own is refused for naming no agent, whatever
+	// its workspace (ADR-030 rule 5), so that nothing refuses it for the
+	// access is asserted on the workflow that binds it.
+	if r := agister(t, home, repo, "workflow", "show", "edit_assistant"); r.code != 0 || strings.Contains(r.stdout, "REFUSED") {
+		t.Fatalf("workflow show: %d\n%s%s", r.code, r.stdout, r.stderr)
+	}
 	r = agister(t, home, repo, "process", "show", "edit")
-	if r.code != 0 || strings.Contains(r.stdout, "REFUSED") ||
+	if r.code != 0 ||
 		!regexp.MustCompile(`(?m)^workspace +read-write, scope repository$`).MatchString(r.stdout) ||
 		!regexp.MustCompile(`(?m)^  allowed +repository\.read, repository\.write$`).MatchString(r.stdout) {
 		t.Fatalf("process show: %d\n%s%s", r.code, r.stdout, r.stderr)
@@ -698,7 +705,7 @@ func TestProjectSettingsAddToGlobal(t *testing.T) {
 	if r.code != 0 || !strings.Contains(r.stdout, "process ask_here: repository "+project) {
 		t.Fatalf("show in project: %d\n%s%s", r.code, r.stdout, r.stderr)
 	}
-	if r := agister(t, home, sub, "run", "ask_here", "--quiet", "--param", "question=q", "--timeout", "1m"); r.code != cli.ExitCompleted {
+	if r := agister(t, home, sub, "run", bound(t, filepath.Join(repo, ".agister"), "ask_here", "assistant"), "--quiet", "--param", "question=q", "--timeout", "1m"); r.code != cli.ExitCompleted {
 		t.Fatalf("run in project: %d\n%s", r.code, r.stderr)
 	}
 	last := lastRun(t, home)
@@ -720,8 +727,8 @@ func TestProjectSettingsAddToGlobal(t *testing.T) {
 
 // A branch can swap the reviewer's family: the repository's agent file,
 // which sets only the family, takes priority over the global one field by
-// field, and check, process show and the run record say so, the record
-// naming the fields each layer's file gave.
+// field, and check and the run record say so, the record naming the
+// fields each layer's file gave.
 func TestProjectOverridesAreNoted(t *testing.T) {
 	t.Parallel()
 	home, repo := setup(t, "approve")
@@ -748,11 +755,12 @@ func TestProjectOverridesAreNoted(t *testing.T) {
 			t.Fatalf("reviewer = %+v", d)
 		}
 	}
-	r = agister(t, home, repo, "process", "show", "adversarial_review")
-	if r.code != 0 || !regexp.MustCompile(`agent reviewer: repository `+regexp.QuoteMeta(project)+`\n +home `+regexp.QuoteMeta(global)+`\n`).MatchString(r.stdout) {
-		t.Fatalf("show: %d\n%s%s", r.code, r.stdout, r.stderr)
-	}
-	if r := agister(t, home, repo, "run", "adversarial_review", "--quiet", "--param", "base=main", "--timeout", "1m"); r.code != cli.ExitCompleted {
+	// process show adversarial_review listed the agent's two files among its
+	// sources while the process named the agent. It names none now (ADR-030
+	// rule 2), a process shown on its own resolves no agent, and workflow
+	// show lists its own document alone: check --tree above and the run's
+	// record below say which file gave what.
+	if r := agister(t, home, repo, "run", "adversarial_review_reviewer", "--quiet", "--param", "base=main", "--timeout", "1m"); r.code != cli.ExitCompleted {
 		t.Fatalf("run: %d\n%s", r.code, r.stderr)
 	}
 	last := lastRun(t, home)
@@ -761,7 +769,7 @@ func TestProjectOverridesAreNoted(t *testing.T) {
 	}
 	agent := map[string]any{"kind": "agents", "name": "reviewer", "layers": []any{
 		map[string]any{"layer": "repository", "path": project, "sha256": digestOf(family), "fields": []any{"model_family"}},
-		map[string]any{"layer": "home", "path": global, "sha256": digestOf(read(t, global)), "fields": []any{"schema", "name", "runtime", "model", "effort", "session", "command"}},
+		map[string]any{"layer": "home", "path": global, "sha256": digestOf(read(t, global)), "fields": []any{"schema", "name", "runtime", "model", "effort", "command"}},
 	}}
 	if got := definitionOf(t, last, "agents", "reviewer"); !reflect.DeepEqual(got, agent) {
 		t.Fatalf("agent recorded as\n%v\nwant\n%v", got, agent)
@@ -797,7 +805,7 @@ func TestComposedSettingsAreVerified(t *testing.T) {
 		!strings.Contains(r.stderr, "  refuses process adversarial_review") || strings.Contains(r.stderr, "stops every command") {
 		t.Fatalf("check: %d\n%s%s", r.code, r.stdout, r.stderr)
 	}
-	r = agister(t, home, repo, "run", "adversarial_review", "--quiet", "--param", "base=main", "--timeout", "1m")
+	r = agister(t, home, repo, "run", "adversarial_review_reviewer", "--quiet", "--param", "base=main", "--timeout", "1m")
 	if r.code != cli.ExitRefused || !strings.Contains(r.stderr, "process adversarial_review ("+filepath.Join(home, "processes", "adversarial_review.yaml")+"): ") {
 		t.Fatalf("run: %d\n%s%s", r.code, r.stdout, r.stderr)
 	}
@@ -1024,7 +1032,7 @@ func TestARunThatCannotBeRecordedIsLogged(t *testing.T) {
 		t.Fatal(err)
 	}
 	write(t, runs, "not a folder")
-	r := agister(t, home, repo, "--quiet", "run", "adversarial_review", "--param", "base=main", "--timeout", "1m")
+	r := agister(t, home, repo, "--quiet", "run", "adversarial_review_reviewer", "--param", "base=main", "--timeout", "1m")
 	if r.code == cli.ExitCompleted || !strings.Contains(r.stderr, "not a directory") {
 		t.Fatalf("exit %d\n%s", r.code, r.stderr)
 	}
@@ -1114,7 +1122,7 @@ func TestCancelThroughTheContract(t *testing.T) {
 		t.Fatal(err)
 	}
 	ctx := context.Background()
-	id, err := client.Submit(ctx, contract.CallRequest{Process: "adversarial_review", Params: map[string]string{"base": "main"}, Timeout: "30s", Cwd: repo})
+	id, err := client.Submit(ctx, contract.CallRequest{Process: "adversarial_review_reviewer", Params: map[string]string{"base": "main"}, Timeout: "30s", Cwd: repo})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1147,7 +1155,7 @@ func TestRunSurvivesSettingsBrokenMidRun(t *testing.T) {
 		t.Fatal(err)
 	}
 	ctx := context.Background()
-	id, err := client.Submit(ctx, contract.CallRequest{Process: "adversarial_review", Params: map[string]string{"base": "main"}, Timeout: "30s", Cwd: repo})
+	id, err := client.Submit(ctx, contract.CallRequest{Process: "adversarial_review_reviewer", Params: map[string]string{"base": "main"}, Timeout: "30s", Cwd: repo})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1177,7 +1185,7 @@ func TestRunSurvivesSettingsBrokenMidRun(t *testing.T) {
 func TestVerdictIsOutputNotStatus(t *testing.T) {
 	t.Parallel()
 	home, repo := setup(t, "request_changes")
-	r := agister(t, home, repo, "run", "adversarial_review", "--param", "base=main", "--json", "--quiet", "--timeout", "1m")
+	r := agister(t, home, repo, "run", "adversarial_review_reviewer", "--param", "base=main", "--json", "--quiet", "--timeout", "1m")
 	var result contract.Result
 	if err := json.Unmarshal([]byte(r.stdout), &result); err != nil || r.code != cli.ExitCompleted || result.Status != "completed" || !strings.Contains(string(result.Output), `"request_changes"`) {
 		t.Fatalf("exit %d, result %s, err %v", r.code, r.stdout, err)
@@ -1211,8 +1219,8 @@ func TestContinuationEndToEnd(t *testing.T) {
 		}
 		return inspected
 	}
-	first := finish(contract.CallRequest{Process: "ask", Params: map[string]string{"question": "What is a.txt?"}, Timeout: "1m", Cwd: repo})
-	second := finish(contract.CallRequest{Process: "ask", Params: map[string]string{"question": "And b.txt?"}, Continue: first.ID, Timeout: "1m", Cwd: repo})
+	first := finish(contract.CallRequest{Process: "ask_assistant", Params: map[string]string{"question": "What is a.txt?"}, Timeout: "1m", Cwd: repo})
+	second := finish(contract.CallRequest{Process: "ask_assistant", Params: map[string]string{"question": "And b.txt?"}, Continue: first.ID, Timeout: "1m", Cwd: repo})
 	if first.Result.Status != "completed" || second.Result.Status != "completed" {
 		t.Fatalf("first %+v, second %+v", first.Result, second.Result)
 	}
@@ -1226,7 +1234,7 @@ func TestContinuationEndToEnd(t *testing.T) {
 	}
 	// A run that was already continued can be continued again: the same
 	// session is resumed.
-	again := finish(contract.CallRequest{Process: "ask", Params: map[string]string{"question": "And c.txt?"}, Continue: first.ID, Timeout: "1m", Cwd: repo})
+	again := finish(contract.CallRequest{Process: "ask_assistant", Params: map[string]string{"question": "And c.txt?"}, Continue: first.ID, Timeout: "1m", Cwd: repo})
 	if again.Result.Status != "completed" || again.Result.Session.ProviderSessionID != earlier || again.Result.Session.Continues != first.ID {
 		t.Fatalf("result = %+v", again.Result)
 	}
@@ -1239,7 +1247,7 @@ func TestContinuationEndToEnd(t *testing.T) {
 		}
 	}
 	// The reviewer is fresh-only: continuing with it is refused.
-	refused := finish(contract.CallRequest{Process: "adversarial_review", Params: map[string]string{"base": "main"}, Continue: first.ID, Timeout: "1m", Cwd: repo})
+	refused := finish(contract.CallRequest{Process: "adversarial_review_reviewer", Params: map[string]string{"base": "main"}, Continue: first.ID, Timeout: "1m", Cwd: repo})
 	if refused.Result.Error == nil || refused.Result.Error.Class != "refused" || !strings.Contains(refused.Result.Error.Message, "fresh-only") {
 		t.Fatalf("result = %+v", refused.Result)
 	}
@@ -1253,7 +1261,7 @@ func TestContinuationEndToEnd(t *testing.T) {
 func TestWorkspaceChangesAreKept(t *testing.T) {
 	t.Parallel()
 	home, repo := setupGit(t, "edit")
-	if r := agister(t, home, repo, "run", "adversarial_review", "--param", "base=main", "--quiet", "--timeout", "1m"); r.code != cli.ExitCompleted {
+	if r := agister(t, home, repo, "run", "adversarial_review_reviewer", "--param", "base=main", "--quiet", "--timeout", "1m"); r.code != cli.ExitCompleted {
 		t.Fatalf("exit %d\n%s", r.code, r.stderr)
 	}
 	last := lastRun(t, home)
@@ -1286,17 +1294,22 @@ verify:
   instruction: The verification command failed. Fix the cause, not the check.
 `
 	write(t, filepath.Join(home, "processes", "verified.yaml"), process)
+	bound(t, home, "verified", "reviewer")
 
 	r := agister(t, home, repo, "check")
 	if r.code != 0 || strings.Count(r.stderr, "warning process verified: verify runs its command with the operator's authority") != 1 || strings.Contains(r.stderr, "adversarial_review") {
 		t.Fatalf("check: %d\n%s%s", r.code, r.stdout, r.stderr)
 	}
 	r = agister(t, home, repo, "process", "show", "verified")
-	if r.code != 0 || !strings.Contains(r.stdout, "verify       test -f a.txt\n") || !strings.Contains(r.stdout, "WARNING      verify runs its command with the operator's authority") {
+	if r.code != 0 || !strings.Contains(r.stdout, "verify       test -f a.txt\n") {
 		t.Fatalf("show: %d\n%s%s", r.code, r.stdout, r.stderr)
 	}
+	r = agister(t, home, repo, "workflow", "show", "verified_reviewer")
+	if r.code != 0 || !strings.Contains(r.stdout, "WARNING      node verified: verify runs its command with the operator's authority") {
+		t.Fatalf("workflow show: %d\n%s%s", r.code, r.stdout, r.stderr)
+	}
 
-	r = agister(t, home, repo, "run", "verified", "--param", "base=main", "--timeout", "30s")
+	r = agister(t, home, repo, "run", "verified_reviewer", "--param", "base=main", "--timeout", "30s")
 	if r.code != cli.ExitCompleted {
 		t.Fatalf("run: %d\n%s", r.code, r.stderr)
 	}
@@ -1316,7 +1329,7 @@ verify:
 		}
 	}
 
-	r = agister(t, home, repo, "run", "verified", "--param", "base=main", "--timeout", "10s")
+	r = agister(t, home, repo, "run", "verified_reviewer", "--param", "base=main", "--timeout", "10s")
 	// Two runs in one second need not list in the order they ran.
 	entries, _ := os.ReadDir(filepath.Join(home, "runs"))
 	var refused map[string]any
@@ -1349,7 +1362,7 @@ func TestARuntimesFailureReasonReachesTheRecord(t *testing.T) {
 		t.Run(c.scenario, func(t *testing.T) {
 			t.Parallel()
 			home, repo := setup(t, c.scenario)
-			if r := agister(t, home, repo, "run", "adversarial_review", "--param", "base=main", "--timeout", "1m"); r.code != cli.ExitFailed {
+			if r := agister(t, home, repo, "run", "adversarial_review_reviewer", "--param", "base=main", "--timeout", "1m"); r.code != cli.ExitFailed {
 				t.Fatalf("exit %d\n%s", r.code, r.stderr)
 			}
 			record := lastRun(t, home).record
@@ -1372,4 +1385,37 @@ func TestARuntimesFailureReasonReachesTheRecord(t *testing.T) {
 			}
 		})
 	}
+}
+
+// bound writes, among the settings in dir, a workflow of one call whose
+// node binds process to agent, and returns its name, <process>_<agent>:
+// nothing but a workflow's node runs a process (ADR-030 rules 5 and 6).
+func bound(t *testing.T, dir, process, agent string) string {
+	t.Helper()
+	name := strings.ReplaceAll(process+"_"+agent, "-", "_")
+	write(t, filepath.Join(dir, "workflows", name+".yaml"), "schema: agister.workflow/v1alpha1\nname: "+name+"\n\ntype: workflow\n\ncall: {node: "+process+", uses: process:"+process+", agent: "+agent+"}\n")
+	return name
+}
+
+// shownCall is the process a workflow of one call runs, on the agent its
+// node binds it to, as workflow show --json prints it: a process alone
+// names no agent to be planned on (ADR-030 rule 2).
+func shownCall(t *testing.T, home, repo, workflow string) contract.ProcessView {
+	t.Helper()
+	var shown struct {
+		Call struct{ Process contract.ProcessView }
+	}
+	r := agister(t, home, repo, "workflow", "show", workflow, "--json")
+	if err := json.Unmarshal([]byte(r.stdout), &shown); err != nil || r.code != 0 {
+		t.Fatalf("workflow show %s --json: %d %v\n%s%s", workflow, r.code, err, r.stdout, r.stderr)
+	}
+	return shown.Call.Process
+}
+
+// sourced reports whether the shown call takes the definition from layer's
+// file at path.
+func sourced(shown contract.ProcessView, kind, name, layer, path string) bool {
+	return slices.ContainsFunc(shown.Sources, func(o contract.DefinitionOrigin) bool {
+		return o.Kind == kind && o.Name == name && o.Layer == layer && o.Path == path
+	})
 }

@@ -61,7 +61,7 @@ Usage:
                                      commands except init, install, check, cancelling a run and
                                      following an admitted run
   agister agent create <name> --runtime <runtime> [--model <m>] [--model-family <f>] [--effort <e>]
-                         [--session fresh-only|resumable] [--command <path>] [--force]
+                         [--command <path>] [--force]
                                      write an agent to <home>; refused if it adds a problem;
                                      --force replaces an existing one after you type yes
   agister agent list
@@ -253,12 +253,12 @@ func failed(ctx context.Context, env IO, log *slog.Logger, err error) int {
 }
 
 type options struct {
-	home, runtime, model, modelFamily, effort, session, command string
-	agent, timeout, maxCost, continueRun, restore, dir          string
-	goal, answers, to                                           string
-	force, quiet, json, help, probe, tree, version              bool
-	after                                                       int
-	params                                                      paramFlag
+	home, runtime, model, modelFamily, effort, command string
+	agent, timeout, maxCost, continueRun, restore, dir string
+	goal, answers, to                                  string
+	force, quiet, json, help, probe, tree, version     bool
+	after                                              int
+	params                                             paramFlag
 }
 
 type paramFlag map[string]string
@@ -289,7 +289,7 @@ var commands = []Command{
 	{"init", []string{"force"}},
 	{"install", []string{"restore", "json"}},
 	{"check", []string{"probe", "tree", "dir", "json"}},
-	{"agent create", []string{"runtime", "model", "model-family", "effort", "session", "command", "force"}},
+	{"agent create", []string{"runtime", "model", "model-family", "effort", "command", "force"}},
 	{"agent list", nil},
 	{"process list", []string{"dir"}},
 	{"process show", []string{"agent", "dir", "json"}},
@@ -391,7 +391,6 @@ func flags(into func(name string) *options) *flag.FlagSet {
 	set.StringVar(&into("command").command, "command", "", "")
 	set.StringVar(&into("agent").agent, "agent", "", "")
 	set.StringVar(&into("timeout").timeout, "timeout", "", "")
-	set.StringVar(&into("session").session, "session", "", "")
 	set.StringVar(&into("max-cost").maxCost, "max-cost", "", "")
 	set.StringVar(&into("continue").continueRun, "continue", "", "")
 	set.StringVar(&into("goal").goal, "goal", "", "")
@@ -494,7 +493,7 @@ func dispatch(ctx context.Context, client contract.Client, log *slog.Logger, opt
 			if opts.runtime == "" {
 				return 0, usageError{"agent create needs --runtime"}
 			}
-			agent := contract.Agent{Name: name, Runtime: opts.runtime, Model: opts.model, ModelFamily: opts.modelFamily, Effort: opts.effort, Session: opts.session, Command: opts.command}
+			agent := contract.Agent{Name: name, Runtime: opts.runtime, Model: opts.model, ModelFamily: opts.modelFamily, Effort: opts.effort, Command: opts.command}
 			plan, err := client.CreateAgent(ctx, agent, opts.force, nil)
 			if err != nil {
 				return 0, err
@@ -539,9 +538,7 @@ func dispatch(ctx context.Context, client contract.Client, log *slog.Logger, opt
 				return 0, err
 			}
 			for _, process := range processes {
-				// One that names no agent has the one a node binds it to
-				// (ADR-030 rule 5).
-				line := fmt.Sprintf("%s\tagent:%s\t%s", process.Name, or(process.Agent, "-"), process.Output)
+				line := process.Name + "\t" + process.Output
 				if process.Problem != "" {
 					line = process.Name + "\t" + process.Problem
 				}

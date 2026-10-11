@@ -21,14 +21,15 @@ var namePattern = regexp.MustCompile(`^[a-z][a-z0-9_-]*$`)
 // ValidName reports whether name is usable as a definition name.
 func ValidName(name string) bool { return namePattern.MatchString(name) }
 
-// Agent is a reusable runtime profile. It carries no task and no permissions.
+// Agent is a reusable runtime profile. It carries no task, no permissions
+// and no session mode: whether a call's session may be resumed is its
+// process's to say (ADR-030 rules 1 and 3).
 type Agent struct {
 	Name        string `json:"name"`
 	Runtime     string `json:"runtime"` // name of a runtime permission mapping
 	Model       string `json:"model,omitempty"`
 	ModelFamily string `json:"model_family,omitempty"`
 	Effort      string `json:"effort,omitempty"`
-	Session     string `json:"session"` // SessionFresh or SessionResumable
 	Command     string `json:"command,omitempty"`
 	// Skills are the skill documents its calls are given (ADR-021).
 	Skills []string `json:"skills,omitempty"`
@@ -127,16 +128,13 @@ func ParseAgent(doc Document) (Agent, error) {
 		Model:       tomlString(table, "model", false, p),
 		ModelFamily: tomlString(table, "model_family", false, p),
 		Effort:      tomlString(table, "effort", false, p),
-		Session:     tomlString(table, "session", false, p),
 		Command:     tomlString(table, "command", false, p),
 		Skills:      skillNames(tomlStrings(table, "skills", p), "skills", p),
 		Source:      doc.Source,
 	}
-	if agent.Session == "" {
-		agent.Session = SessionFresh
-	}
-	if agent.Session != SessionFresh && agent.Session != SessionResumable {
-		p.add("session", "unsupported session mode %q (supported: %s, %s)", agent.Session, SessionFresh, SessionResumable)
+	// An agent holds what is its runtime's (ADR-030 rule 1).
+	if _, ok := table["session"]; ok {
+		p.add("session", "an agent holds no session (ADR-030 rule 1): set session on each process whose calls resume theirs, and remove it here")
 	}
 	checkName(agent.Name, doc.Source.Name, p)
 	return agent, p.err("agent " + subjectName(doc.Source))
@@ -152,7 +150,6 @@ func FormatAgent(agent Agent) []byte {
 		{"model", agent.Model},
 		{"model_family", agent.ModelFamily},
 		{"effort", agent.Effort},
-		{"session", agent.Session},
 		{"command", agent.Command},
 	}
 	for _, entry := range table {

@@ -2,7 +2,6 @@ schema: agister.process/v1alpha1
 name: review_summary
 
 type: process
-uses: agent:reviewer
 prompt: review-summary
 
 input:

@@ -33,8 +33,9 @@ func TestAWorkflowOfOneCallIsCheckedAsItsNode(t *testing.T) {
 		"its process is a base":          {based, []string{"workflow w: call node work: process p is a base of q, not work (ADR-030 rule 9): bind a process that extends it"}},
 		"its process takes the collection": {calling(bound("a"), "j", "a"),
 			[]string{"workflow w: call node work: process j takes the collection (input gathered), which only a join receives"}},
-		"its process cannot run on its agent": {calling(repairing(onC(definition.SessionFresh, plain()), ""), "p", "c"),
-			[]string{"workflow w: call node work: process p: verify.max_attempts 3 repairs in the call's session, but agent c is fresh-only"}},
+		// On its runtime: an agent holds no session to refuse it by.
+		"its process cannot run on its agent": {calling(onC(wide()), "p", "c"),
+			[]string{"workflow w: call node work: process p: cannot run on agent c's runtime wide: cannot enforce the effective permissions: Shell also grants exec"}},
 	} {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()

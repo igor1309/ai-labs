@@ -150,7 +150,7 @@ func TestAContinuationCannotAdvanceTheSessionWhileAnotherIsUnderWay(t *testing.T
 	}
 	first.calls = first.callsRecordedWith(first.defs, first.workspaces, first.changes, store,
 		observedStore{store, first.recorder}, continuationID("run-1"))
-	if _, err := first.calls.Submit(ctx, contract.CallRequest{Process: "p", Continue: "run-0", Cwd: "/repo"}); err != nil {
+	if _, err := first.calls.Submit(ctx, contract.CallRequest{Process: "p_a", Continue: "run-0", Cwd: "/repo"}); err != nil {
 		t.Fatal(err)
 	}
 	select {
@@ -162,7 +162,7 @@ func TestAContinuationCannotAdvanceTheSessionWhileAnotherIsUnderWay(t *testing.T
 	inTheRepositoryItself(second)
 	second.calls = second.callsRecordedWith(second.defs, second.workspaces, second.changes, store,
 		observedStore{store, second.recorder}, continuationID("run-2"))
-	_, err := second.calls.Submit(ctx, contract.CallRequest{Process: "p", Continue: "run-0", Cwd: "/repo"})
+	_, err := second.calls.Submit(ctx, contract.CallRequest{Process: "p_a", Continue: "run-0", Cwd: "/repo"})
 	if err != nil {
 		close(resume)
 		first.recorder.wait(t)

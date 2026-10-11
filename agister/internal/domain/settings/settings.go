@@ -1,7 +1,7 @@
 // Package settings checks a whole set of parsed definitions for consistency:
-// references resolve, limits compose, every process can be enforced on its
-// agent's runtime and on that of each agent a workflow's node binds it to,
-// every workflow's nodes can run as ADR-003 has them. It reports every problem at once.
+// references resolve, limits compose, every process can be enforced on the
+// runtime of each agent a workflow's node binds it to, every workflow's
+// nodes can run as ADR-003 has them. It reports every problem at once.
 package settings
 
 import (
@@ -157,42 +157,13 @@ func Check(b Bundle, m Mechanisms) []Problem {
 			add(subject, "%v", strings.TrimPrefix(err.Error(), "process "+name+" is invalid:\n  "))
 			continue
 		}
-		// What follows depends on the agent: a call that selects another
-		// one is judged on that one (ADR-015 rule 2).
-		withAgent := func(format string, args ...any) {
-			problems = append(problems, Problem{Subject: subject, Message: fmt.Sprintf(format, args...), Agent: process.Agent})
-		}
-		agent, ok := b.Agents[process.Agent]
 		// A repair turn resumes the call's session (ADR-002 rule 4), and so
 		// does a recovery turn (ADR-024 rule 6): each needs a session that
-		// may be resumed. A process that sets session says whether it may,
-		// whatever its agent, so the problem is its own; one that sets none
-		// leaves it to its agent (ADR-030 rule 3).
-		own := process.Session != ""
-		if mode, by := definition.CallSession(process, agent); (own || ok) && mode != definition.SessionResumable {
-			report := withAgent
-			if own {
-				report = func(format string, args ...any) { add(subject, format, args...) }
+		// may be resumed, which the process says (ADR-030 rule 3).
+		if mode := definition.CallSession(process); mode != definition.SessionResumable {
+			for _, message := range unresumed(process, effective, subject+" is "+mode) {
+				add(subject, "%s", message)
 			}
-			for _, message := range unresumed(process, effective, by+" is "+mode) {
-				report("%s", message)
-			}
-		}
-		// A process that names no agent is judged on the agent a node binds
-		// it to (ADR-030 rule 5).
-		if process.Agent == "" {
-			continue
-		}
-		if !ok {
-			withAgent("agent %q does not exist", process.Agent)
-			continue
-		}
-		mapping, ok := b.Mappings[agent.Runtime]
-		if !ok {
-			continue // reported on the agent
-		}
-		if err := planOnSomeVersion(effective, mapping, b.Service.StateReaching); err != nil {
-			withAgent("cannot run on agent %s's runtime %s: %v", agent.Name, mapping.Name, err)
 		}
 	}
 
@@ -217,7 +188,7 @@ func Check(b Bundle, m Mechanisms) []Problem {
 		// The agent a node binds its process to is the workflow's to name
 		// (ADR-030 rule 5).
 		for i, node := range workflow.Nodes() {
-			if _, ok := b.Agents[node.Agent]; node.Agent != "" && !ok {
+			if _, ok := b.Agents[node.Agent]; !ok {
 				add(subject, "%s: agent %q does not exist", nodeLabel(workflow, i, node), node.Agent)
 			}
 		}
@@ -225,12 +196,6 @@ func Check(b Bundle, m Mechanisms) []Problem {
 		// binds it to is a problem of the workflow, which names the node
 		// (ADR-030 rule 8).
 		for _, bound := range b.bindings(workflow) {
-			// A process that sets session answers for it itself (rule 3).
-			if mode, by := definition.CallSession(bound.process, bound.agent); bound.process.Session == "" && mode != definition.SessionResumable {
-				for _, message := range unresumed(bound.process, bound.effective, by+" is "+mode) {
-					problems = append(problems, bound.problem(name, "%s", message))
-				}
-			}
 			mapping, ok := b.Mappings[bound.agent.Runtime]
 			if !ok {
 				continue // reported on the agent
@@ -282,10 +247,9 @@ func planOnSomeVersion(effective policy.Effective, mapping definition.Mapping, s
 	return closest
 }
 
-// PlanProblems reports the processes of the agent that cannot be planned on
-// the runtime version it was found to have, and each node that binds a
-// process to the agent so (ADR-030 rule 8). Composition problems are left
-// to Check.
+// PlanProblems reports each node that binds a process to the agent which
+// cannot be planned on the runtime version the agent was found to have
+// (ADR-030 rule 8). Composition problems are left to Check.
 func PlanProblems(b Bundle, agent definition.Agent, version string) []Problem {
 	mapping, ok := b.Mappings[agent.Runtime]
 	if !ok || b.Service == nil {
@@ -300,19 +264,6 @@ func PlanProblems(b Bundle, agent definition.Agent, version string) []Problem {
 		return ""
 	}
 	var problems []Problem
-	for _, name := range sortedKeys(b.Processes) {
-		process := b.Resolved(name)
-		if process.Agent != agent.Name {
-			continue
-		}
-		effective, err := policy.Compose(*b.Service, process, policy.Caller{})
-		if err != nil {
-			continue
-		}
-		if message := refused(effective); message != "" {
-			problems = append(problems, Problem{Subject: "process " + name, Message: message, Agent: agent.Name})
-		}
-	}
 	for _, name := range sortedKeys(b.Workflows) {
 		for _, bound := range b.bindings(b.Workflows[name]) {
 			if bound.agent.Name != agent.Name {
@@ -326,10 +277,10 @@ func PlanProblems(b Bundle, agent definition.Agent, version string) []Problem {
 	return problems
 }
 
-// ResumeProblems reports the processes of the agent whose turns resume
-// their call's session, which the agent's runtime was found unable to
-// resume, and each node that binds such a process to the agent (ADR-030
-// rules 3 and 8). Only the runtime can say whether it resumes one.
+// ResumeProblems reports each node that binds to the agent a process whose
+// turns resume their call's session, which the agent's runtime was found
+// unable to resume (ADR-030 rules 3 and 8). Only the runtime can say
+// whether it resumes one.
 func ResumeProblems(b Bundle, agent definition.Agent) []Problem {
 	mapping, ok := b.Mappings[agent.Runtime]
 	if !ok || b.Service == nil {
@@ -337,18 +288,6 @@ func ResumeProblems(b Bundle, agent definition.Agent) []Problem {
 	}
 	why := "runtime " + mapping.Name + " cannot resume sessions"
 	var problems []Problem
-	for _, name := range sortedKeys(b.Processes) {
-		process := b.Resolved(name)
-		if process.Agent != agent.Name {
-			continue
-		}
-		// One whose limits do not compose recovers in no session; Check
-		// reports it.
-		effective, _ := policy.Compose(*b.Service, process, policy.Caller{})
-		for _, message := range unresumed(process, effective, why) {
-			problems = append(problems, Problem{Subject: "process " + name, Message: message, Agent: agent.Name})
-		}
-	}
 	for _, name := range sortedKeys(b.Workflows) {
 		for _, bound := range b.bindings(b.Workflows[name]) {
 			if bound.agent.Name != agent.Name {

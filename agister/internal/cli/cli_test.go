@@ -687,15 +687,17 @@ func TestShowProcessPrintsVerifyAndWarnings(t *testing.T) {
 	}
 }
 
-// A process that names no agent is listed and shown without one (ADR-030
-// rule 2): no empty name, and no runtime.
-func TestAProcessThatNamesNoAgentIsListedAndShownWithoutOne(t *testing.T) {
+// A process names no agent, so it is listed and shown without one (ADR-030
+// rule 2): no empty name, and no runtime. The listing had an agent:<name>
+// column while a process could name its agent; no process can now, and the
+// column is gone.
+func TestAProcessIsListedAndShownWithoutAnAgent(t *testing.T) {
 	t.Parallel()
-	listing := &listingSpy{processList: []contract.ProcessSummary{{Name: "p", Agent: "a", Output: "text"}, {Name: "q", Output: "json:s"}}}
+	listing := &listingSpy{processList: []contract.ProcessSummary{{Name: "p", Output: "text"}, {Name: "q", Output: "json:s"}}}
 	var stdout, stderr bytes.Buffer
 	build := func(cli.Config) (contract.Client, error) { return listing, nil }
 	io := cli.IO{Stdout: &stdout, Stderr: &stderr, Cwd: "/work", Getenv: func(string) string { return "" }}
-	if code := cli.Run(context.Background(), []string{"process", "list"}, io, build, unlogged); code != 0 || stdout.String() != "p\tagent:a\ttext\nq\tagent:-\tjson:s\n" {
+	if code := cli.Run(context.Background(), []string{"process", "list"}, io, build, unlogged); code != 0 || stdout.String() != "p\ttext\nq\tjson:s\n" {
 		t.Fatalf("process list: %d %q %q", code, stdout.String(), stderr.String())
 	}
 	spy := &clientSpy{view: contract.ProcessView{Name: "q", Output: "json:s", Timeout: time.Hour, MaxAttempts: 1, Refusal: "process q: names no agent"}}
@@ -989,8 +991,8 @@ func TestCheckAndListingsSayWhatIsRefused(t *testing.T) {
 			{Name: "z", Problem: "invalid (run `agister check`)"},
 		},
 		processList: []contract.ProcessSummary{
-			{Name: "p", Agent: "a", Output: "text", Refusal: "process p uses agent a, which uses runtime mapping rt (/rt.yaml): bad"},
-			{Name: "s", Agent: "a", Output: "text"},
+			{Name: "p", Output: "text", Refusal: "process p uses schema s (/s.json): bad"},
+			{Name: "s", Output: "text"},
 		},
 	}
 	r := run(context.Background(), &spy.clientSpy, "check")
@@ -1013,7 +1015,7 @@ func TestCheckAndListingsSayWhatIsRefused(t *testing.T) {
 	}
 	stdout.Reset()
 	if code := cli.Run(context.Background(), []string{"process", "list"}, io, build, unlogged); code != 0 ||
-		stdout.String() != "p\tagent:a\ttext\tREFUSED: process p uses agent a, which uses runtime mapping rt (/rt.yaml): bad\ns\tagent:a\ttext\n" {
+		stdout.String() != "p\ttext\tREFUSED: process p uses schema s (/s.json): bad\ns\ttext\n" {
 		t.Fatalf("process list: %d %q %q", code, stdout.String(), stderr.String())
 	}
 }
@@ -1101,10 +1103,21 @@ func TestAgentCreateAsksOnlyToReplace(t *testing.T) {
 func TestAgentCreatePayload(t *testing.T) {
 	t.Parallel()
 	spy := &clientSpy{}
-	r := run(context.Background(), spy, "--home", "rel", "agent", "create", "x", "--runtime", "rt", "--model", "m", "--model-family", "f", "--effort", "high", "--session", "resumable", "--command", "/bin/c")
-	want := contract.Agent{Name: "x", Runtime: "rt", Model: "m", ModelFamily: "f", Effort: "high", Session: "resumable", Command: "/bin/c"}
+	r := run(context.Background(), spy, "--home", "rel", "agent", "create", "x", "--runtime", "rt", "--model", "m", "--model-family", "f", "--effort", "high", "--command", "/bin/c")
+	want := contract.Agent{Name: "x", Runtime: "rt", Model: "m", ModelFamily: "f", Effort: "high", Command: "/bin/c"}
 	if r.code != 0 || !reflect.DeepEqual(spy.agents, []contract.Agent{want}) || spy.config.Home != "/work/rel" {
 		t.Fatalf("result %+v, agents %+v, home %s", r, spy.agents, spy.config.Home)
+	}
+}
+
+// An agent holds no session (ADR-030 rule 1), so agent create takes none:
+// --session, which wrote one, is a usage error and nothing is written.
+func TestAgentCreateTakesNoSession(t *testing.T) {
+	t.Parallel()
+	spy := &clientSpy{}
+	r := run(context.Background(), spy, "agent", "create", "x", "--runtime", "rt", "--session", "resumable")
+	if r.code != cli.ExitUsage || len(spy.agents) != 0 {
+		t.Fatalf("result %+v, agents %+v", r, spy.agents)
 	}
 }
 

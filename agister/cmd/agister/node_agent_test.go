@@ -35,18 +35,18 @@ func nodeAgents(t *testing.T, home, repo string) map[string]string {
 	return agents
 }
 
-// A node that names an agent runs its call on it, in place of its
-// process's; a node that names none runs on its process's. A process that
-// leaves out uses has no problem, runs as the node that binds it, and is
-// refused on its own, whatever agent the caller names.
+// A node runs its process's call on the agent it names: the same example
+// processes run on the agents their nodes bind them to. A process names no
+// agent and is refused on its own, whatever agent the caller names; a node
+// that names none is a problem of the workflow, which refuses it (ADR-030
+// rule 5).
 func TestANodeBindsItsProcessToAnAgent(t *testing.T) {
 	t.Parallel()
 	home, repo := setup(t, "approve")
 	workflow := filepath.Join(home, "workflows", "review_panel.yaml")
 	write(t, workflow, strings.Replace(read(t, workflow),
-		"{node: adversarial, uses: process:adversarial_review}", "{node: adversarial, uses: process:adversarial_review, agent: assistant}", 1))
+		"{node: adversarial, uses: process:adversarial_review, agent: reviewer}", "{node: adversarial, uses: process:adversarial_review, agent: assistant}", 1))
 	process := filepath.Join(home, "processes", "adversarial_review.yaml")
-	write(t, process, strings.Replace(read(t, process), "uses: agent:reviewer\n", "", 1))
 
 	if r := agister(t, home, repo, "check"); r.code != 0 {
 		t.Fatalf("check: %d\n%s%s", r.code, r.stdout, r.stderr)
@@ -74,14 +74,15 @@ func TestANodeBindsItsProcessToAnAgent(t *testing.T) {
 			t.Fatalf("%v: %d\n%s%s", args, r.code, r.stdout, r.stderr)
 		}
 	}
-	if r := agister(t, home, repo, "process", "list"); r.code != 0 || !strings.Contains(r.stdout, "adversarial_review\tagent:-\t") {
+	// process list names no agent of a process: it has none.
+	if r := agister(t, home, repo, "process", "list"); r.code != 0 || !strings.Contains(r.stdout, "adversarial_review\tjson:review-result\n") || strings.Contains(r.stdout, "agent:") {
 		t.Fatalf("process list: %d\n%s%s", r.code, r.stdout, r.stderr)
 	}
 
-	// The node that names none leaves the process without an agent: a
-	// problem of the workflow, which refuses it.
+	// The node that names none binds its process to no agent: a problem
+	// of the workflow, which refuses it.
 	write(t, workflow, strings.Replace(read(t, workflow), ", agent: assistant}", "}", 1))
-	const problem = "fan-out node adversarial: process adversarial_review names no agent, and the node names none: name the node's agent (ADR-030 rule 5)"
+	const problem = "fan_out[0].agent: is required"
 	if r := agister(t, home, repo, "check"); r.code != cli.ExitUsage || !strings.Contains(r.stderr, "workflow review_panel: "+problem) {
 		t.Fatalf("check: %d\n%s%s", r.code, r.stdout, r.stderr)
 	}

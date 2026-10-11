@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"os"
 	"path/filepath"
 	"reflect"
 	"regexp"
@@ -37,15 +38,19 @@ func TestCheckAndWorkflowShowListWhatEachBindingWithholds(t *testing.T) {
 	}
 	var report contract.CheckReport
 	r = agister(t, home, repo, "check", "--json")
-	if err := json.Unmarshal([]byte(r.stdout), &report); err != nil || len(report.Bindings) != 4 {
+	// The examples' workflows of one call are bindings as asking's is, in
+	// the order of the workflows' names: asking's is the third of seven.
+	if err := json.Unmarshal([]byte(r.stdout), &report); err != nil || len(report.Bindings) != 7 {
 		t.Fatalf("check --json: %v, bindings %+v\n%s%s", err, report.Bindings, r.stdout, r.stderr)
 	}
-	if call := report.Bindings[0]; call.Workflow != "asking" || call.Node != "question" || call.Process != "ask" || call.Agent != "reviewer" || call.Runtime != "claude-code" {
-		t.Fatalf("the first binding is %+v, want asking's call", call)
+	if call := report.Bindings[2]; call.Workflow != "asking" || call.Node != "question" || call.Process != "ask" || call.Agent != "reviewer" || call.Runtime != "claude-code" {
+		t.Fatalf("the third binding is %+v, want asking's call", call)
 	}
-	bindingsAre(t, r, `[
+	bindingsAre(t, r, `[`+reviewerCallBinding+`
+  {"workflow": "ask_assistant", "node": "ask", "process": "ask", "agent": "assistant", "runtime": "claude-code", "version": "2.1",
+   "withheld": ["repository.read", "repository.diff", "repository.search", "repository.history.read", "process.execute", "host.read"]},
   {"workflow": "asking", "node": "question", "process": "ask", "agent": "reviewer", "runtime": "claude-code", "version": "2.1",
-   "withheld": ["repository.read", "repository.diff", "repository.search", "repository.history.read", "process.execute", "host.read"]},`+reviewPanelBindings+`]`)
+   "withheld": ["repository.read", "repository.diff", "repository.search", "repository.history.read", "process.execute", "host.read"]},`+implementCallBinding+reviewPanelBindings+`]`)
 
 	r = agister(t, home, repo, "workflow", "show", "review_panel")
 	for _, line := range []string{
@@ -67,10 +72,13 @@ func TestCheckAndWorkflowShowListWhatEachBindingWithholds(t *testing.T) {
 	if r.code != cli.ExitUsage || !strings.Contains(r.stderr, refused) || strings.Contains(r.stderr, "warning workflow") {
 		t.Fatalf("check lacks %q, or warns of a workflow: %d\n%s%s", refused, r.code, r.stdout, r.stderr)
 	}
-	bindingsAre(t, agister(t, home, repo, "check", "--json"), `[
+	bindingsAre(t, agister(t, home, repo, "check", "--json"), `[`+reviewerCallBinding+`
+  {"workflow": "ask_assistant", "node": "ask", "process": "ask", "agent": "assistant", "runtime": "claude-code", "version": "2.1",
+   "withheld": ["repository.diff", "repository.search", "repository.history.read", "process.execute", "host.read"],
+   "required": ["repository.read"]},
   {"workflow": "asking", "node": "question", "process": "ask", "agent": "reviewer", "runtime": "claude-code", "version": "2.1",
    "withheld": ["repository.diff", "repository.search", "repository.history.read", "process.execute", "host.read"],
-   "required": ["repository.read"]},`+reviewPanelBindings+`]`)
+   "required": ["repository.read"]},`+implementCallBinding+reviewPanelBindings+`]`)
 }
 
 // A binding refused for a permission in tools.require still shows what
@@ -99,9 +107,11 @@ func TestABindingRefusedForARequiredPermissionShowsWhatElseItWithholds(t *testin
 	}
 }
 
-// A node on its process's own agent whose binding the settings already
-// refuse, for a permission in tools.require, still shows what else its
-// plan withholds, found before its runtime is asked.
+// A fan-out node whose binding the settings already refuse, for a
+// permission in tools.require, still shows what else its plan withholds.
+// No process has an agent of its own (ADR-030 rule 2), so the settings'
+// refusal is the workflow's, on its run line, found before the runtime is
+// asked, and the node's plan is refused as the runtime refuses it.
 func TestABindingTheSettingsRefuseShowsWhatElseItWithholds(t *testing.T) {
 	t.Parallel()
 	home, repo := setup(t, "approve")
@@ -112,13 +122,18 @@ func TestABindingTheSettingsRefuseShowsWhatElseItWithholds(t *testing.T) {
 	const node = "fan-out      adversarial: process adversarial_review, agent reviewer (runtime claude-code)\n" +
 		"  receives   params base, candidate\n" +
 		"  plan       REFUSED: process adversarial_review ("
-	const refused = "/processes/adversarial_review.yaml): cannot run on agent reviewer's runtime claude-code: cannot enforce the effective permissions: required permissions would be withheld: repository.read (not verified for version 2.1: NotebookEdit, WebFetch, WebSearch)\n" +
+	const refused = "/processes/adversarial_review.yaml): runtime claude-code: cannot enforce the effective permissions: required permissions would be withheld: repository.read (not verified for version 2.1.283: NotebookEdit, WebFetch, WebSearch)\n" +
 		"  withheld   repository.diff, repository.search\n" +
 		"             architecture: process architecture_review"
-	if !strings.Contains(r.stdout, node) || !strings.Contains(r.stdout, refused) {
-		t.Fatalf("workflow show lacks %q or %q: %d\n%s%s", node, refused, r.code, r.stdout, r.stderr)
+	const run = "/workflows/review_panel.yaml): fan-out node adversarial: process adversarial_review: cannot run on agent reviewer's runtime claude-code: cannot enforce the effective permissions: required permissions would be withheld: repository.read (not verified for version 2.1: NotebookEdit, WebFetch, WebSearch)\n"
+	if !strings.Contains(r.stdout, node) || !strings.Contains(r.stdout, refused) || !strings.Contains(r.stdout, "run          REFUSED: workflow review_panel (") || !strings.Contains(r.stdout, run) {
+		t.Fatalf("workflow show lacks %q, %q or %q: %d\n%s%s", node, refused, run, r.code, r.stdout, r.stderr)
 	}
 	bindingsAre(t, agister(t, home, repo, "check", "--json"), `[
+  {"workflow": "adversarial_review_reviewer", "node": "review", "process": "adversarial_review", "agent": "reviewer", "runtime": "claude-code", "version": "2.1",
+   "withheld": ["repository.diff", "repository.search"], "required": ["repository.read"]},
+  {"workflow": "ask_assistant", "node": "ask", "process": "ask", "agent": "assistant", "runtime": "claude-code", "version": "2.1",
+   "withheld": ["repository.read", "repository.diff", "repository.search", "repository.history.read", "process.execute", "host.read"]},`+implementCallBinding+`
   {"workflow": "review_panel", "node": "adversarial", "process": "adversarial_review", "agent": "reviewer", "runtime": "claude-code", "version": "2.1",
    "withheld": ["repository.diff", "repository.search"], "required": ["repository.read"]},`+reviewPanelOthers+`]`)
 }
@@ -151,9 +166,10 @@ func TestCheckRefusesABindingWhoseRuntimeCannotEnforceItsCostLimit(t *testing.T)
 // other (ADR-030 rule 8): check reports it as a problem of that workflow,
 // not a warning, workflow list shows that workflow alone refused, and its
 // run is refused. Workflow asking_reader binds the same process to agent
-// reader, whose runtime gives the permission, and process ask names that
-// agent: neither is refused, and asking_reader runs to its answer on the
-// same settings.
+// reader, whose runtime gives the permission: it is not refused, and runs
+// to its answer on the same settings. The examples' ask_assistant, which
+// binds the process to an agent on the withholding runtime as asking does,
+// is removed, so that asking is the one such binding.
 func TestABindingWithholdingARequiredPermissionRefusesItsWorkflowAlone(t *testing.T) {
 	t.Parallel()
 	home, repo := setup(t, "approve")
@@ -174,7 +190,10 @@ primitives:
 	write(t, filepath.Join(home, "workflows", "asking_reader.yaml"),
 		strings.NewReplacer("name: asking", "name: asking_reader", "agent: reviewer", "agent: reader").Replace(askingDoc))
 	process := filepath.Join(home, "processes", "ask.yaml")
-	write(t, process, strings.NewReplacer("uses: agent:assistant", "uses: agent:reader", "tools:\n  allow:\n", "tools:\n  require: [repository.read]\n  allow:\n").Replace(read(t, process)))
+	write(t, process, strings.Replace(read(t, process), "tools:\n  allow:\n", "tools:\n  require: [repository.read]\n  allow:\n", 1))
+	if err := os.Remove(filepath.Join(home, "workflows", "ask_assistant.yaml")); err != nil {
+		t.Fatal(err)
+	}
 
 	r := agister(t, home, repo, "check")
 	const problem = "workflow asking: call node question: process ask: cannot run on agent reviewer's runtime claude-code: cannot enforce the effective permissions: required permissions would be withheld: repository.read (not verified for version 2.1: NotebookEdit, WebFetch, WebSearch)\n  refuses workflow asking\n"
@@ -211,9 +230,18 @@ primitives:
 }
 
 // reviewPanelBindings are the bindings check reports of the example
-// review_panel, each of whose nodes runs on its process's own agent;
-// reviewPanelOthers, those of its nodes but adversarial.
+// review_panel, each of whose nodes binds its process to the reviewer;
+// reviewPanelOthers, those of its nodes but adversarial. reviewerCallBinding
+// and implementCallBinding are those of the examples' workflows of one call
+// adversarial_review_reviewer and implement_assistant, which check lists
+// before and after ask's.
 const (
+	reviewerCallBinding = `
+  {"workflow": "adversarial_review_reviewer", "node": "review", "process": "adversarial_review", "agent": "reviewer", "runtime": "claude-code", "version": "2.1",
+   "withheld": ["repository.read", "repository.diff", "repository.search"]},`
+	implementCallBinding = `
+  {"workflow": "implement_assistant", "node": "implement", "process": "implement", "agent": "assistant", "runtime": "claude-code", "version": "2.1",
+   "withheld": ["repository.read", "repository.search", "repository.diff", "repository.write", "process.execute"]},`
 	reviewPanelBindings = `
   {"workflow": "review_panel", "node": "adversarial", "process": "adversarial_review", "agent": "reviewer", "runtime": "claude-code", "version": "2.1",
    "withheld": ["repository.read", "repository.diff", "repository.search"]},` + reviewPanelOthers

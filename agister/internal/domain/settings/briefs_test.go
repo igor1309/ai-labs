@@ -21,7 +21,7 @@ func TestNamingABriefTheSettingsLackIsAProblemOfWhatNamesIt(t *testing.T) {
 	b.Processes["p"] = p
 	b.Workflows = map[string]definition.Workflow{"w": {Name: "w",
 		Values: []definition.Value{{Name: "goal", Source: definition.FileSource, Args: map[string]string{"path": "goal.md"}, Forms: []string{"goal"}}},
-		FanOut: []definition.Node{{Name: "n", Process: "p"}}, Join: definition.Node{Name: "j", Process: "p"}}}
+		FanOut: []definition.Node{{Name: "n", Process: "p", Agent: "a"}}, Join: definition.Node{Name: "j", Process: "p", Agent: "a"}}}
 	b.Briefs = map[string]bool{"step": true}
 	// Only a file value names forms: the settings offer the file source.
 	files := settings.Mechanisms{Sources: []string{"param", definition.FileSource}, Adapters: mechanisms.Adapters}

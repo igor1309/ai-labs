@@ -15,7 +15,7 @@ type DocumentRef struct {
 }
 
 // NodeBinding is one node of a workflow: the process it calls and the agent
-// it binds the process to (ADR-030 rule 5); no agent: its process's own.
+// it binds the process to (ADR-030 rule 5).
 type NodeBinding struct {
 	Process string
 	Agent   string

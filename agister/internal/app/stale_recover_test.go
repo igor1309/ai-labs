@@ -1,7 +1,6 @@
 package app_test
 
 import (
-	"context"
 	"encoding/json"
 	"reflect"
 	"strings"
@@ -14,30 +13,32 @@ import (
 	"github.com/igor1309/ai-labs/agister/internal/domain/run"
 )
 
-// recovering gives the harness's process the recovery budget given and makes
-// its agent resumable.
+// recovering gives the harness's process the recovery budget given and a
+// session that may be resumed.
 func recovering(h *harness, recover string) {
 	h.defs.docs[definition.KindProcess]["p"] += "stale: {recover: {" + recover + "}}\n"
-	h.defs.docs[definition.KindAgent]["a"] += "session = \"resumable\"\n"
+	h.defs.docs[definition.KindProcess]["p"] += "session: resumable\n"
 }
 
 // ADR-024 rule 6: a recovery turn resumes the call's session, so a budget
-// above 0 with an agent or a runtime that cannot continue sessions refuses
-// the call before its first turn, and check reports it: the runtime's part
-// when it probes.
+// above 0 of a process or on a runtime that cannot continue sessions
+// refuses the call before its first turn, and check reports it: of the
+// process, which says whether its session resumes (ADR-030 rule 3), and,
+// when it probes, of the workflow whose node binds the process to an agent
+// on that runtime (rule 8). The refusal names the workflow that was run.
 func TestAStaleRecoveryBudgetWithoutResumableSessionsRefusesTheCall(t *testing.T) {
 	t.Parallel()
 	cases := []struct {
 		name    string
 		arrange func(*harness)
 		probe   bool
+		subject string // of check's problem
 		reason  string
 	}{
-		{"fresh-only agent", func(h *harness) {
-			h.defs.docs[definition.KindAgent]["a"] = settingsDocs()[definition.KindAgent]["a"]
-		}, false, "process p: stale.recover.max_resumes 1 recovers in the call's session, but agent a is fresh-only"},
+		{"fresh-only process", freshOnly,
+			false, "process p", "stale.recover.max_resumes 1 recovers in the call's session, but process p is fresh-only"},
 		{"runtime without resume", func(h *harness) { h.runner.identity.Resume = false },
-			true, "process p: stale.recover.max_resumes 1 recovers in the call's session, but runtime rt cannot resume sessions"},
+			true, "workflow p_a: call node p: process p", "stale.recover.max_resumes 1 recovers in the call's session, but runtime rt cannot resume sessions"},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
@@ -45,11 +46,11 @@ func TestAStaleRecoveryBudgetWithoutResumableSessionsRefusesTheCall(t *testing.T
 			h := newHarness()
 			recovering(h, "max_resumes: 1, instruction: Go on.")
 			c.arrange(h)
-			if report := checkOf(t, h, c.probe); !reflect.DeepEqual(messages(report.Problems), []string{c.reason}) {
-				t.Fatalf("check: problems = %q, want %q", messages(report.Problems), c.reason)
+			if report := checkOf(t, h, c.probe); !reflect.DeepEqual(messages(report.Problems), []string{c.subject + ": " + c.reason}) {
+				t.Fatalf("check: problems = %q, want %q of %s", messages(report.Problems), c.reason, c.subject)
 			}
 			record := h.call(t, contract.CallRequest{})
-			if record.Result.Status != run.Failed || class(record) != run.ClassRefused || message(record) != c.reason {
+			if record.Result.Status != run.Failed || class(record) != run.ClassRefused || message(record) != "workflow p_a uses process p: "+c.reason {
 				t.Fatalf("result %+v, want refused (%s)", record.Result.Error, c.reason)
 			}
 			if len(h.runner.calls()) != 0 {
@@ -117,7 +118,7 @@ func TestCheckRejectsAStaleRecoveryBudgetWithoutAnInstruction(t *testing.T) {
 func TestACallCarriesAndRecordsItsStaleRecovery(t *testing.T) {
 	t.Parallel()
 	h, timers := staleHarness(t, "no_event: 5m, tool_command: 4m, recover: {max_resumes: 1, instruction: Process.}")
-	h.defs.docs[definition.KindAgent]["a"] += "session = \"resumable\"\n"
+	h.defs.docs[definition.KindProcess]["p"] += "session: resumable\n"
 	play(h, commanding(timers, "prov-1", tailLog), silent(timers, "prov-1"), completes(h))
 	record := h.call(t, contract.CallRequest{})
 
@@ -162,7 +163,7 @@ func TestShowProcessShowsTheEffectiveStaleRecoveryBudget(t *testing.T) {
 	show := func(h *harness) contract.ProcessView {
 		t.Helper()
 		inspection := app.NewInspection(app.NewResolver(h.defs, struct{ app.ResolverIdentities }{h.runtimes}, h.validator, resolverCheckStub{}))
-		view, err := inspection.ShowProcess(context.Background(), "p", "")
+		view, err := callShown(inspection, "p_a")
 		if err != nil || view.Refusal != "" {
 			t.Fatalf("refusal %q, %v", view.Refusal, err)
 		}

@@ -17,7 +17,7 @@ import (
 // holding content.
 func resumingInPlace(content string) *harness {
 	h := newHarness()
-	h.defs.docs[definition.KindAgent]["a"] += "session = \"resumable\"\n"
+	h.defs.docs[definition.KindProcess]["p"] += "session: resumable\n"
 	h.changes.identity = content
 	return h
 }
@@ -29,8 +29,8 @@ func resumingInPlace(content string) *harness {
 func workedInPlace(h *harness, id, continues string, created, finished int, content, patch string) run.Record {
 	at := func(minute int) time.Time { return time.Date(2026, 9, 28, 11, minute, 0, 0, time.UTC) }
 	end := at(finished)
-	record := run.Record{ID: id, Process: "p", Agent: "a", Runtime: &run.Runtime{Adapter: "spy"},
-		Request:   run.Request{Process: "p", Continue: continues, Cwd: "/repo"},
+	record := run.Record{ID: id, Process: "p_a", Agent: "a", Call: onA(), Runtime: &run.Runtime{Adapter: "spy"},
+		Request:   run.Request{Process: "p_a", Continue: continues, Cwd: "/repo"},
 		CreatedAt: at(created), FinishedAt: &end, Workspace: "/repo",
 		InPlace:        &run.InPlace{Dir: "/repo", Worktree: "/repo", RepositoryIdentity: "/repo", Revision: "sha-HEAD", Content: content},
 		ProcessesEnded: known(true),

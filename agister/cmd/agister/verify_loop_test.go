@@ -360,14 +360,13 @@ runtime = "fake"
 model = "m"
 model_family = "fam"
 command = "fake"
-session = "resumable"
 `,
 		"schemas/done.json": `{"type":"object","required":["done"],"properties":{"done":{"type":"boolean"}}}`,
 		"prompts/impl.md":   "Make the change the check asks for.\n",
 		"processes/impl.yaml": fmt.Sprintf(`schema: agister.process/v1alpha1
 name: impl
 type: process
-uses: agent:impl
+session: resumable
 timeout: 1m
 tools: {allow: [repository.read, repository.write]}
 prompt: impl
@@ -392,6 +391,13 @@ verify:
   max_attempts: %d
   instruction: The check failed. Fix the cause, not the check.
 `, setupLine(settings.setup), strconv.Quote(settings.command), settings.timeout, settings.maxAttempts) + settings.limits,
+		// Nothing but a workflow's node runs a process (ADR-030 rule 5):
+		// this one's call binds impl to agent impl.
+		"workflows/implement.yaml": `schema: agister.workflow/v1alpha1
+name: implement
+type: workflow
+call: {node: impl, uses: process:impl, agent: impl}
+`,
 		"workspace.yaml": settings.workspace,
 	} {
 		if text == "" {
@@ -451,7 +457,7 @@ func setupLine(setup string) string {
 
 func (h *loopHarness) submit(request contract.CallRequest) string {
 	h.t.Helper()
-	request.Process, request.Cwd = "impl", h.repo
+	request.Process, request.Cwd = "implement", h.repo
 	id, err := h.calls.Submit(context.Background(), request)
 	if err != nil {
 		h.t.Fatal(err)

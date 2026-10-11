@@ -2,8 +2,8 @@ package definition
 
 // Session modes. A fresh-only call always starts a new session; a
 // resumable one's session may be resumed: by a repair turn, a recovery
-// turn or a caller that continues the run. A process says which, and its
-// agent where the process says nothing (ADR-030 rule 3).
+// turn or a caller that continues the run. A process says which (ADR-030
+// rule 3).
 const (
 	SessionFresh     = "fresh-only"
 	SessionResumable = "resumable"
@@ -19,13 +19,11 @@ func sessionMode(mode string, p *problems) string {
 	return mode
 }
 
-// CallSession is the session mode a call of the process on the agent runs
-// under, and the document that says it, as "process <name>" or "agent
-// <name>": the process where it sets session, whatever its agent's, and
-// its agent where it sets none (ADR-030 rule 3).
-func CallSession(process Process, agent Agent) (mode, by string) {
-	if process.Session != "" {
-		return process.Session, "process " + process.Name
+// CallSession is the session mode a call of the process runs under: the
+// one it sets, and SessionFresh where it sets none (ADR-030 rules 2 and 3).
+func CallSession(process Process) string {
+	if process.Session == "" {
+		return SessionFresh
 	}
-	return agent.Session, "agent " + agent.Name
+	return process.Session
 }

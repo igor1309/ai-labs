@@ -11,8 +11,7 @@ import (
 
 // A workflow of one call (ADR-030 rule 6), on real settings directories:
 // workflow asking is one call, node question, which binds the example
-// process ask, on its own the resumable assistant's, to the fresh-only
-// reviewer.
+// process ask to the reviewer.
 const askingDoc = `schema: agister.workflow/v1alpha1
 name: asking
 type: workflow
@@ -22,12 +21,16 @@ call: {node: question, uses: process:ask, agent: reviewer}
 // The workflow takes its process's params, is one run, which names the
 // workflow, the process and the agent, and no node record, and takes a
 // timeout. It continues one of its own runs where its process is
-// resumable, and no run of the process on its own; a fan-out workflow
+// resumable, and no run of another process's call; a fan-out workflow
 // still continues none.
 func TestAWorkflowOfOneCallIsOneRunOfItsProcess(t *testing.T) {
 	t.Parallel()
 	home, repo := setup(t, "approve")
 	write(t, filepath.Join(home, "workflows", "asking.yaml"), askingDoc)
+	// The example ask is resumable; here the process says nothing at first.
+	process := filepath.Join(home, "processes", "ask.yaml")
+	resumable := read(t, process)
+	write(t, process, strings.Replace(resumable, "session: resumable\n", "", 1))
 	if r := agister(t, home, repo, "check"); r.code != 0 {
 		t.Fatalf("check: %d\n%s%s", r.code, r.stdout, r.stderr)
 	}
@@ -73,13 +76,12 @@ func TestAWorkflowOfOneCallIsOneRunOfItsProcess(t *testing.T) {
 	}
 	id := filepath.Base(first.dir)
 
-	// Neither its process nor its agent is resumable.
-	if r := asking("--param", "question=again", "--continue", id); r.code != cli.ExitRefused || !strings.Contains(r.stderr, "agent reviewer is fresh-only; it cannot continue run "+id) {
+	// Its process sets no session, and so is fresh-only (ADR-030 rule 3).
+	if r := asking("--param", "question=again", "--continue", id); r.code != cli.ExitRefused || !strings.Contains(r.stderr, "process ask is fresh-only; it cannot continue run "+id) {
 		t.Fatalf("continued a fresh-only call: %d\n%s%s", r.code, r.stdout, r.stderr)
 	}
 	runs.take(t)
-	process := filepath.Join(home, "processes", "ask.yaml")
-	write(t, process, read(t, process)+"session: resumable\n")
+	write(t, process, resumable)
 	if r := asking("--param", "question=again", "--continue", id); r.code != cli.ExitCompleted {
 		t.Fatalf("continue: %d\n%s%s", r.code, r.stdout, r.stderr)
 	}
@@ -93,14 +95,16 @@ func TestAWorkflowOfOneCallIsOneRunOfItsProcess(t *testing.T) {
 		t.Fatalf("the continuation ran in session %v of %v, as %v", session(continued), session(first), continued.argv())
 	}
 
-	// A run of the process on its own is not the workflow's to continue.
-	if r := agister(t, home, repo, "run", "ask", "--agent", "reviewer", "--quiet", "--param", "question=q", "--timeout", "1m"); r.code != cli.ExitCompleted {
-		t.Fatalf("run ask: %d\n%s%s", r.code, r.stdout, r.stderr)
+	// A run of another process's call, on the same agent, is not the
+	// workflow's to continue. A process no longer runs on its own (ADR-030
+	// rule 5), so the run it must not continue is another workflow's.
+	if r := agister(t, home, repo, "run", "adversarial_review_reviewer", "--quiet", "--param", "base=main", "--timeout", "1m"); r.code != cli.ExitCompleted {
+		t.Fatalf("run adversarial_review_reviewer: %d\n%s%s", r.code, r.stdout, r.stderr)
 	}
-	alone := filepath.Base(runs.one(t).dir)
-	if r := asking("--param", "question=again", "--continue", alone); r.code != cli.ExitRefused ||
-		!strings.Contains(r.stderr, "run "+alone+" is not a run of a workflow's call of process ask") {
-		t.Fatalf("continued a run of the process on its own: %d\n%s%s", r.code, r.stdout, r.stderr)
+	other := filepath.Base(runs.one(t).dir)
+	if r := asking("--param", "question=again", "--continue", other); r.code != cli.ExitRefused ||
+		!strings.Contains(r.stderr, "run "+other+" is not a run of a workflow's call of process ask") {
+		t.Fatalf("continued a run of another process's call: %d\n%s%s", r.code, r.stdout, r.stderr)
 	}
 	runs.take(t)
 	// A fan-out workflow still cannot be continued.

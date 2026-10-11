@@ -16,13 +16,12 @@ const WorkflowSchema = "agister.workflow/v1alpha1"
 const CollectionSource = "workflow.collection"
 
 // Node is one node of a workflow: a unique name, the process it calls and
-// the agent it binds the process to (ADR-030 rule 5).
+// the agent it binds the process to, which runs the node's call (ADR-030
+// rule 5).
 type Node struct {
 	Name    string
 	Process string
-	// Agent runs the node's call, in place of the agent its process names;
-	// unset: its process's.
-	Agent string
+	Agent   string
 }
 
 // Workflow is a settings definition of one of two shapes (ADR-030 rule 6).
@@ -102,19 +101,17 @@ func ParseWorkflow(doc Document) (Workflow, error) {
 		} else if uses != "" {
 			p.add(field+".uses", `must be "process:<name>"`)
 		}
-		// The agent's name alone, as ADR-030 rule 5 writes a binding; a
-		// fan-out or join node that names none runs on its process's.
-		if value, ok := spec["agent"]; ok {
-			if agent := nonEmpty(value, field+".agent", p); ValidName(agent) {
-				n.Agent = agent
-			} else if agent != "" {
-				p.add(field+".agent", "must be an agent's name, not %q", agent)
-			}
+		// The agent's name alone, as ADR-030 rule 5 writes a binding, on
+		// every node: nothing else chooses an agent.
+		if agent := required(spec, "agent", field, p); ValidName(agent) {
+			n.Agent = agent
+		} else if agent != "" {
+			p.add(field+".agent", "must be an agent's name, not %q", agent)
 		}
 		return n
 	}
 	// One call is the whole workflow (ADR-030 rule 6): nothing beside it
-	// declares inputs or nodes, and nothing but the node names its agent.
+	// declares inputs or nodes.
 	if item, ok := values["call"]; ok {
 		for _, field := range []string{"input", "fan_out", "join"} {
 			if _, ok := values[field]; ok {
@@ -122,9 +119,6 @@ func ParseWorkflow(doc Document) (Workflow, error) {
 			}
 		}
 		call := node(item, "call")
-		if declared(item, "agent") == 0 {
-			p.missing("call.agent")
-		}
 		workflow.Call = &call
 		return workflow, p.err(subject)
 	}

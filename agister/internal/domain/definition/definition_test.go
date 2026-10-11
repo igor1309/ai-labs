@@ -208,7 +208,6 @@ schema: agister.process/v1alpha1
 name: p
 type: process
 prompt: review
-uses: agent:a
 input:
   instruction: Do it.
   params:
@@ -271,7 +270,7 @@ constraints:
 	for _, want := range []string{
 		`surprise: unknown field`,
 		`name: "other" does not match`,
-		`uses: must be "agent:<name>"`,
+		`uses: a process names no agent (ADR-030 rule 2)`,
 		`timeout: invalid duration "soon"`,
 		`refers to ${param.missing}`,
 		`workspace.revision: "nothing" is not an input value`,
@@ -448,12 +447,12 @@ primitives:
 
 func TestAgentRoundTrip(t *testing.T) {
 	t.Parallel()
-	agent := definition.Agent{Name: "r", Runtime: "claude-code", Model: "opus", ModelFamily: "anthropic", Effort: "high", Session: definition.SessionResumable}
+	agent := definition.Agent{Name: "r", Runtime: "claude-code", Model: "opus", ModelFamily: "anthropic", Effort: "high"}
 	parsed, err := definition.ParseAgent(doc(definition.KindAgent, "r", string(definition.FormatAgent(agent))))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if parsed.Name != "r" || parsed.Model != "opus" || parsed.ModelFamily != "anthropic" || parsed.Session != definition.SessionResumable {
+	if parsed.Name != "r" || parsed.Model != "opus" || parsed.ModelFamily != "anthropic" || parsed.Effort != "high" {
 		t.Fatalf("parsed = %+v", parsed)
 	}
 	if _, err := definition.ParseAgent(doc(definition.KindAgent, "r", "schema = \"agister.agent/v1alpha1\"\nname = \"r\"\nruntime = \"x\"\ncolour = \"red\"\n")); err == nil || !strings.Contains(err.Error(), "colour: unknown field") {
@@ -490,7 +489,6 @@ schema: agister.process/v1alpha1
 name: p
 type: process
 prompt: review
-uses: agent:a
 input:
   instruction: Do it.
   params:
@@ -519,7 +517,6 @@ schema: agister.process/v1alpha1
 name: p
 type: process
 prompt: review
-uses: agent:a
 input:
   instruction: Do it.
   values:
@@ -544,7 +541,6 @@ const staleProcess = `schema: agister.process/v1alpha1
 name: p
 type: process
 prompt: review
-uses: agent:a
 input:
   instruction: Do it.
 output:
@@ -670,25 +666,16 @@ func TestAProcessNamesNoPolicy(t *testing.T) {
 	}
 }
 
-// A process may leave out uses (ADR-030 rule 2): it names no agent, and a
-// workflow's node binds it to one. A uses that is given still names an
-// agent.
-func TestAProcessMayLeaveOutUses(t *testing.T) {
+// A process names no agent (ADR-030 rule 2): a workflow's node binds it to
+// one. uses on a process is a problem, whatever it names.
+func TestAProcessNamesNoAgent(t *testing.T) {
 	t.Parallel()
-	without := strings.Replace(staleTimed, "uses: agent:a\n", "", 1)
-	if process, err := definition.ParseProcess(doc(definition.KindProcess, "p", without)); err != nil || process.Agent != "" {
-		t.Fatalf("without uses: agent %q, %v", process.Agent, err)
+	if _, err := definition.ParseProcess(doc(definition.KindProcess, "p", staleTimed)); err != nil {
+		t.Fatalf("without uses: %v", err)
 	}
-	if process, err := definition.ParseProcess(doc(definition.KindProcess, "p", staleTimed)); err != nil || process.Agent != "a" {
-		t.Fatalf("with uses: agent %q, %v", process.Agent, err)
-	}
-	for uses, want := range map[string]string{
-		"a":        `uses: must be "agent:<name>"`,
-		"'agent:'": `uses: must be "agent:<name>"`,
-		"''":       "uses: must not be empty",
-		"[agent]":  "uses: must be a scalar",
-	} {
-		_, err := definition.ParseProcess(doc(definition.KindProcess, "p", strings.Replace(staleTimed, "uses: agent:a", "uses: "+uses, 1)))
+	const want = "uses: a process names no agent (ADR-030 rule 2): name the agent on each workflow node that binds the process, and remove uses"
+	for _, uses := range []string{"agent:a", "a", "''", "[agent]"} {
+		_, err := definition.ParseProcess(doc(definition.KindProcess, "p", staleTimed+"uses: "+uses+"\n"))
 		var invalid *definition.InvalidError
 		if !errors.As(err, &invalid) || !reflect.DeepEqual(invalid.Messages(), []string{want}) {
 			t.Errorf("uses: %s: err = %v, want only %q", uses, err, want)
@@ -696,9 +683,28 @@ func TestAProcessMayLeaveOutUses(t *testing.T) {
 	}
 }
 
+// An agent holds no session (ADR-030 rule 1): whether a call's session
+// may be resumed is its process's to say. session on an agent is a
+// problem, whatever it says.
+func TestAnAgentHoldsNoSession(t *testing.T) {
+	t.Parallel()
+	const agent = "schema = \"agister.agent/v1alpha1\"\nname = \"a\"\nruntime = \"rt\"\n"
+	if _, err := definition.ParseAgent(doc(definition.KindAgent, "a", agent)); err != nil {
+		t.Fatalf("without session: %v", err)
+	}
+	const want = "session: an agent holds no session (ADR-030 rule 1): set session on each process whose calls resume theirs, and remove it here"
+	for _, session := range []string{`"resumable"`, `"fresh-only"`, `"sometimes"`, `""`, "1"} {
+		_, err := definition.ParseAgent(doc(definition.KindAgent, "a", agent+"session = "+session+"\n"))
+		var invalid *definition.InvalidError
+		if !errors.As(err, &invalid) || !reflect.DeepEqual(invalid.Messages(), []string{want}) {
+			t.Errorf("session = %s: err = %v, want only %q", session, err, want)
+		}
+	}
+}
+
 // A process may say whether its calls' session may be resumed (ADR-030
 // rule 2): session, resumable or fresh-only, and unset when it says
-// nothing, which leaves it to its agent.
+// nothing.
 func TestAProcessMaySayItsSession(t *testing.T) {
 	t.Parallel()
 	for text, want := range map[string]string{
@@ -724,26 +730,17 @@ func TestAProcessMaySayItsSession(t *testing.T) {
 	}
 }
 
-// The session mode of a call is its process's where the process sets one,
-// whatever its agent's, and its agent's where it sets none (ADR-030 rule
-// 3), with the document that says it.
-func TestACallsSessionIsItsProcessesWhereItSetsOne(t *testing.T) {
+// The session mode of a call is the one its process sets, and fresh-only
+// where it sets none (ADR-030 rules 2 and 3).
+func TestACallsSessionIsItsProcesss(t *testing.T) {
 	t.Parallel()
-	fresh := definition.Agent{Name: "a", Session: definition.SessionFresh}
-	resumable := definition.Agent{Name: "a", Session: definition.SessionResumable}
-	for _, c := range []struct {
-		process  string
-		agent    definition.Agent
-		mode, by string
-	}{
-		{definition.SessionResumable, fresh, definition.SessionResumable, "process p"},
-		{definition.SessionFresh, resumable, definition.SessionFresh, "process p"},
-		{"", resumable, definition.SessionResumable, "agent a"},
-		{"", fresh, definition.SessionFresh, "agent a"},
+	for set, want := range map[string]string{
+		definition.SessionResumable: definition.SessionResumable,
+		definition.SessionFresh:     definition.SessionFresh,
+		"":                          definition.SessionFresh,
 	} {
-		mode, by := definition.CallSession(definition.Process{Name: "p", Session: c.process}, c.agent)
-		if mode != c.mode || by != c.by {
-			t.Errorf("process %q on a %s agent: %s by %s, want %s by %s", c.process, c.agent.Session, mode, by, c.mode, c.by)
+		if mode := definition.CallSession(definition.Process{Name: "p", Session: set}); mode != want {
+			t.Errorf("process with session %q: %s, want %s", set, mode, want)
 		}
 	}
 }
@@ -752,17 +749,17 @@ func TestACallsSessionIsItsProcessesWhereItSetsOne(t *testing.T) {
 // written for a newer Agister would, is marked: an unknown field, a list or
 // a mapping where an input value's field is read as a scalar (LAB-122), and
 // a schema of Agister's shape this code does not read. Any other mistake, a
-// schema of another shape, a list of sources or a retired input argument
-// included, is not.
+// schema of another shape, a list of sources, a retired input argument or
+// a field ADR-030 took from its document included, is not.
 func TestProblemsNamingTheUnknownAreMarked(t *testing.T) {
 	t.Parallel()
 	process := func(schema, extra string) string {
-		return "schema: " + schema + "\nname: p\ntype: process\nprompt: review\nuses: agent:a\n" + extra +
+		return "schema: " + schema + "\nname: p\ntype: process\nprompt: review\n" + extra +
 			"input:\n  instruction: x\noutput:\n  format: text\n"
 	}
 	// A valid process but for its input values.
 	inputs := func(values string) string {
-		return "schema: agister.process/v1alpha1\nname: p\ntype: process\nprompt: review\nuses: agent:a\n" +
+		return "schema: agister.process/v1alpha1\nname: p\ntype: process\nprompt: review\n" +
 			"input:\n  instruction: x\n  values:\n" + values + "output:\n  format: text\n"
 	}
 	agent := func(schema, extra string) string {
@@ -794,6 +791,8 @@ func TestProblemsNamingTheUnknownAreMarked(t *testing.T) {
 		{"newer TOML schema", "agent", agent("agister.agent/v2", "runtime = \"rt\"\n"), definition.Problem{Message: `schema: must be "agister.agent/v1alpha1"`, Unknown: true}},
 		{"another TOML schema", "agent", agent("banana", "runtime = \"rt\"\n"), definition.Problem{Message: `schema: must be "agister.agent/v1alpha1"`}},
 		{"missing field", "agent", agent("agister.agent/v1alpha1", ""), definition.Problem{Message: "runtime: is required"}},
+		{"a process's agent", "process", process("agister.process/v1alpha1", "uses: agent:a\n"), definition.Problem{Message: "uses: a process names no agent (ADR-030 rule 2): name the agent on each workflow node that binds the process, and remove uses"}},
+		{"an agent's session", "agent", agent("agister.agent/v1alpha1", "runtime = \"rt\"\nsession = \"resumable\"\n"), definition.Problem{Message: "session: an agent holds no session (ADR-030 rule 1): set session on each process whose calls resume theirs, and remove it here"}},
 	} {
 		var invalid *definition.InvalidError
 		if err := parsers[c.kind](c.text); !errors.As(err, &invalid) || !reflect.DeepEqual(invalid.Problems, []definition.Problem{c.want}) {

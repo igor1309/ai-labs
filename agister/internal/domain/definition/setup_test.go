@@ -14,7 +14,6 @@ func settingUpProcess(workspace string) string {
 name: p
 type: process
 prompt: review
-uses: agent:a
 input:
   instruction: Implement it.
   values:

@@ -18,9 +18,9 @@ input:
   values:
     candidate: {source: git.revision, rev: "${param.candidate}"}
 fan_out:
-  - {node: zeta, uses: process:z}
-  - {node: alpha, uses: process:a}
-join: {node: merge, uses: process:j}
+  - {node: zeta, uses: process:z, agent: codex-sol-61}
+  - {node: alpha, uses: process:a, agent: pi-m3}
+join: {node: merge, uses: process:j, agent: claude-opus}
 `
 
 // Nodes keep their declaration order, which the collection follows.
@@ -30,7 +30,7 @@ func TestParseWorkflowKeepsDeclarationOrder(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := []definition.Node{{Name: "zeta", Process: "z"}, {Name: "alpha", Process: "a"}, {Name: "merge", Process: "j"}}
+	want := []definition.Node{{Name: "zeta", Process: "z", Agent: "codex-sol-61"}, {Name: "alpha", Process: "a", Agent: "pi-m3"}, {Name: "merge", Process: "j", Agent: "claude-opus"}}
 	if !reflect.DeepEqual(workflow.Nodes(), want) || workflow.Join != want[2] {
 		t.Fatalf("nodes = %+v, join %+v", workflow.Nodes(), workflow.Join)
 	}
@@ -39,19 +39,22 @@ func TestParseWorkflowKeepsDeclarationOrder(t *testing.T) {
 	}
 }
 
-// A node may name the agent its call runs on (ADR-030 rule 5), a fan-out
-// node and the join alike; one that names none leaves it to its process.
-func TestANodeMayNameItsAgent(t *testing.T) {
+// Every node names the agent its call runs on (ADR-030 rule 5), a fan-out
+// node and the join alike: one that names none is a problem of the
+// workflow, and so is an agent that is no name.
+func TestEveryNodeNamesItsAgent(t *testing.T) {
 	t.Parallel()
-	text := strings.Replace(workflowText, "{node: alpha, uses: process:a}", "{node: alpha, uses: process:a, agent: codex-sol-61}", 1)
-	text = strings.Replace(text, "{node: merge, uses: process:j}", "{node: merge, uses: process:j, agent: claude-opus}", 1)
-	workflow, err := definition.ParseWorkflow(doc(definition.KindWorkflow, "w", text))
-	if err != nil {
-		t.Fatal(err)
-	}
-	want := []definition.Node{{Name: "zeta", Process: "z"}, {Name: "alpha", Process: "a", Agent: "codex-sol-61"}, {Name: "merge", Process: "j", Agent: "claude-opus"}}
-	if !reflect.DeepEqual(workflow.Nodes(), want) {
-		t.Fatalf("nodes = %+v, want %+v", workflow.Nodes(), want)
+	for node, problem := range map[string]string{
+		"{node: zeta, uses: process:z, agent: codex-sol-61}": "fan_out[0].agent: is required",
+		"{node: alpha, uses: process:a, agent: pi-m3}":       "fan_out[1].agent: is required",
+		"{node: merge, uses: process:j, agent: claude-opus}": "join.agent: is required",
+	} {
+		without := node[:strings.Index(node, ", agent:")] + "}"
+		_, err := definition.ParseWorkflow(doc(definition.KindWorkflow, "w", strings.Replace(workflowText, node, without, 1)))
+		var invalid *definition.InvalidError
+		if !errors.As(err, &invalid) || !reflect.DeepEqual(invalid.Messages(), []string{problem}) {
+			t.Errorf("%s: err = %v, want only %q", without, err, problem)
+		}
 	}
 	for agent, problem := range map[string]string{
 		"agent:claude-opus": `fan_out[1].agent: must be an agent's name, not "agent:claude-opus"`,
@@ -59,7 +62,7 @@ func TestANodeMayNameItsAgent(t *testing.T) {
 		"''":                "fan_out[1].agent: must not be empty",
 		"[claude-opus]":     "fan_out[1].agent: must be a scalar",
 	} {
-		_, err := definition.ParseWorkflow(doc(definition.KindWorkflow, "w", strings.Replace(text, "agent: codex-sol-61", "agent: "+agent, 1)))
+		_, err := definition.ParseWorkflow(doc(definition.KindWorkflow, "w", strings.Replace(workflowText, "agent: pi-m3", "agent: "+agent, 1)))
 		var invalid *definition.InvalidError
 		if !errors.As(err, &invalid) || !reflect.DeepEqual(invalid.Messages(), []string{problem}) {
 			t.Errorf("agent: %s: err = %v, want only %q", agent, err, problem)
@@ -93,8 +96,8 @@ func TestAWorkflowMayBeOneCall(t *testing.T) {
 		"a bad agent":  {strings.Replace(callText, "agent: codex-sol-61", "agent: agent:codex-sol-61", 1), `call.agent: must be an agent's name, not "agent:codex-sol-61"`},
 		"no process":   {strings.Replace(callText, "uses: process:implement, ", "", 1), "call.uses: is required"},
 		"an input":     {callText + "input: {params: {brief: {}}}\n", "input: a workflow with call has no input (ADR-030 rule 6)"},
-		"a fan-out":    {callText + "fan_out:\n  - {node: zeta, uses: process:z}\n", "fan_out: a workflow with call has no fan_out (ADR-030 rule 6)"},
-		"a join":       {callText + "join: {node: merge, uses: process:j}\n", "join: a workflow with call has no join (ADR-030 rule 6)"},
+		"a fan-out":    {callText + "fan_out:\n  - {node: zeta, uses: process:z, agent: codex-sol-61}\n", "fan_out: a workflow with call has no fan_out (ADR-030 rule 6)"},
+		"a join":       {callText + "join: {node: merge, uses: process:j, agent: claude-opus}\n", "join: a workflow with call has no join (ADR-030 rule 6)"},
 		"not a node":   {strings.Replace(callText, "{node: implement, uses: process:implement, agent: codex-sol-61}", "process:implement", 1), "call: must be a mapping"},
 		"other fields": {strings.Replace(callText, "agent: codex-sol-61", "agent: codex-sol-61, timeout: 1h", 1), "call.timeout: unknown field"},
 	} {
@@ -111,8 +114,8 @@ func TestParseWorkflowProblems(t *testing.T) {
 		"wrong type":          {strings.Replace(workflowText, "type: workflow", "type: process", 1), `type: must be "workflow"`},
 		"not a process":       {strings.Replace(workflowText, "uses: process:z", "uses: agent:z", 1), `fan_out[0].uses: must be "process:<name>"`},
 		"invalid node name":   {strings.Replace(workflowText, "node: zeta", "node: Zeta", 1), `fan_out[0].node: invalid node name "Zeta"`},
-		"fan-out not a list":  {strings.Replace(workflowText, "fan_out:\n  - {node: zeta, uses: process:z}\n  - {node: alpha, uses: process:a}", "fan_out: {node: zeta, uses: process:z}", 1), "fan_out: must be a list of nodes"},
-		"no join":             {strings.Replace(workflowText, "join: {node: merge, uses: process:j}\n", "", 1), "join: is required"},
+		"fan-out not a list":  {strings.Replace(workflowText, "fan_out:\n  - {node: zeta, uses: process:z, agent: codex-sol-61}\n  - {node: alpha, uses: process:a, agent: pi-m3}", "fan_out: {node: zeta, uses: process:z, agent: codex-sol-61}", 1), "fan_out: must be a list of nodes"},
+		"no join":             {strings.Replace(workflowText, "join: {node: merge, uses: process:j, agent: claude-opus}\n", "", 1), "join: is required"},
 		"unknown field":       {workflowText + "limits: {}\n", "limits: unknown field"},
 		"collection as input": {strings.Replace(workflowText, "{source: git.revision, rev: \"${param.candidate}\"}", "{source: workflow.collection}", 1), "input.values.candidate.source: workflow.collection is given only to a join"},
 		"undeclared param":    {strings.Replace(workflowText, "${param.candidate}", "${param.other}", 1), "refers to ${param.other}, which is not declared in input.params"},

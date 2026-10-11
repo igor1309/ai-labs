@@ -14,10 +14,9 @@ import (
 // workflow value no fan-out process takes; and a join process that cannot
 // receive the collection, or whose inputs take a caller-supplied param.
 // Nothing whoever starts the workflow supplies reaches the join. A node
-// that binds a base, one of bases, binds no work (ADR-030 rule 9), and one
-// that names no agent for a process that names none binds it to no agent
-// (rule 5). A workflow of one call (rule 6) passes nothing and joins
-// nothing: its process must exist, be work, and not take the collection.
+// that binds a base, one of bases, binds no work (ADR-030 rule 9). A
+// workflow of one call (rule 6) passes nothing and joins nothing: its
+// process must exist, be work, and not take the collection.
 func WorkflowProblems(workflow definition.Workflow, processes map[string]definition.Process, bases map[string][]string) []string {
 	var problems []string
 	add := func(format string, args ...any) { problems = append(problems, fmt.Sprintf(format, args...)) }
@@ -30,8 +29,6 @@ func WorkflowProblems(workflow definition.Workflow, processes map[string]definit
 		process, ok := processes[name]
 		if !ok {
 			add("%s: process %q does not exist", label, name)
-		} else if process.Agent == "" && node.Agent == "" {
-			add("%s: process %s names no agent, and the node names none: name the node's agent (ADR-030 rule 5)", label, name)
 		}
 		return process, ok
 	}

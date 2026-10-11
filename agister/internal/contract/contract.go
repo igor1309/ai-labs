@@ -198,7 +198,6 @@ type Agent struct {
 	Model       string
 	ModelFamily string
 	Effort      string
-	Session     string // fresh-only (default) | resumable
 	Command     string
 	Problem     string // set when the definition is invalid
 	Refusal     string // problems in this agent or its runtime mapping
@@ -206,7 +205,6 @@ type Agent struct {
 
 type ProcessSummary struct {
 	Name    string
-	Agent   string
 	Output  string
 	Problem string // set when the definition is invalid
 	// Why a call of it would be refused now, for a problem in a document it

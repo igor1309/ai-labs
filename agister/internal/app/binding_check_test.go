@@ -45,15 +45,12 @@ primitives:
 // bash grants process.execute, which no node's process allows.
 const bash = `Bash: {grants: [process.execute, repository.read], verified: ["1."]}`
 
-// repairingSecond has process second, which sets no session, repair in its
-// call's session, and agents a and c resumable.
+// repairingSecond has process second repair in its call's session, which
+// it says may be resumed.
 func repairingSecond(h *harness) {
 	h.defs.docs[definition.KindService]["service"] += "max_verify_attempts = 3\n"
 	h.defs.docs[definition.KindProcess]["second"] = strings.Replace(nodeProcess("second", "Work as second."),
-		"  revision: candidate_revision\n", "  revision: candidate_revision\n  clean: true\n", 1) + verifyBlock
-	for _, agent := range []string{"a", "c"} {
-		h.defs.docs[definition.KindAgent][agent] += "session = \"resumable\"\n"
-	}
+		"  revision: candidate_revision\n", "  revision: candidate_revision\n  clean: true\n", 1) + "session: resumable\n" + verifyBlock
 }
 
 // workflowWarnings are the warnings of the report about a workflow.
@@ -81,11 +78,13 @@ func requiring(h *harness, permission string) {
 // permission in tools.require withheld among the reasons, is a problem of
 // the workflow, which names the node, and no warning: it refuses that
 // workflow, and neither the process nor workflow v, which binds the same
-// process to the agent that runs it.
+// process to agent a. The case of a fresh-only agent is gone with the
+// agent's session (rule 1): the process says whether its session resumes.
 func TestCheckJudgesEachBindingOfAWorkflow(t *testing.T) {
 	t.Parallel()
 	const (
 		node    = "workflow w: fan-out node two: process second: "
+		beside  = "workflow v: fan-out node two: process second: "
 		repairs = "verify.max_attempts 3 repairs in the call's session, but "
 	)
 	cases := []struct {
@@ -94,8 +93,9 @@ func TestCheckJudgesEachBindingOfAWorkflow(t *testing.T) {
 		// probe: the problem is found only where check asks the runtimes.
 		probe bool
 		want  string
-		// beside is the process's own problem on the agent it names, which
-		// the same runtime answer gives.
+		// beside is workflow v's problem, of its node that binds the process
+		// to agent a, which the same runtime answer gives: it was the
+		// process's own while the process named that agent (rule 2).
 		beside string
 	}{
 		{name: "no primitive of the agent's runtime is within what the process allows",
@@ -122,14 +122,6 @@ func TestCheckJudgesEachBindingOfAWorkflow(t *testing.T) {
 			},
 			probe: true,
 			want:  node + "cannot run on agent c's runtime reads version 1.2.3: cannot enforce the effective permissions: required permissions would be withheld: repository.search (not verified for version 1.2.3: Grep)"},
-		{name: "the agent is fresh-only, and the process repairs",
-			arrange: func() *harness {
-				h := onAgentC("rt")
-				repairingSecond(h)
-				h.defs.docs[definition.KindAgent]["c"] = strings.Replace(h.defs.docs[definition.KindAgent]["c"], "resumable", "fresh-only", 1)
-				return h
-			},
-			want: node + repairs + "agent c is fresh-only"},
 		{name: "the installed version verifies no primitive within what the process allows",
 			arrange: func() *harness {
 				h := onAgentC("split")
@@ -147,7 +139,7 @@ func TestCheckJudgesEachBindingOfAWorkflow(t *testing.T) {
 			},
 			probe:  true,
 			want:   node + repairs + "runtime rt cannot resume sessions",
-			beside: "process second: " + repairs + "runtime rt cannot resume sessions"},
+			beside: beside + repairs + "runtime rt cannot resume sessions"},
 		{name: "the runtime cannot enforce a cost limit, and the process sets one",
 			arrange: func() *harness {
 				h := onAgentC("rt")
@@ -157,7 +149,7 @@ func TestCheckJudgesEachBindingOfAWorkflow(t *testing.T) {
 			},
 			probe:  true,
 			want:   node + "runtime rt cannot enforce the cost limit 2",
-			beside: "process second: runtime rt cannot enforce the cost limit 2"},
+			beside: beside + "runtime rt cannot enforce the cost limit 2"},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
@@ -190,11 +182,10 @@ func TestCheckJudgesEachBindingOfAWorkflow(t *testing.T) {
 			if len(reach.Processes) != 0 || !reflect.DeepEqual(reach.Workflows, []string{"w"}) {
 				t.Fatalf("reach = %+v, want workflow w and no process", reach)
 			}
-			// The process's own problem is of the agent it names: it refuses
-			// its own calls, and workflow v's, not those of w's node.
+			// Workflow v's problem refuses v, not w, and no process.
 			if c.beside != "" {
-				if reach := reachOf(t, report, c.beside); reach.Agent != "a" || !reflect.DeepEqual(reach.Processes, []string{"second"}) || !reflect.DeepEqual(reach.Workflows, []string{"v"}) {
-					t.Fatalf("the process's problem reaches %+v, want agent a, process second and workflow v", reach)
+				if reach := reachOf(t, report, c.beside); reach.Agent != "" || len(reach.Processes) != 0 || !reflect.DeepEqual(reach.Workflows, []string{"v"}) {
+					t.Fatalf("workflow v's problem reaches %+v, want workflow v alone", reach)
 				}
 			}
 		})

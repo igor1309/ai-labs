@@ -8,9 +8,8 @@ import (
 	"github.com/igor1309/ai-labs/agister/internal/domain/policy"
 )
 
-// binding is one node of a workflow that binds its process to an agent
-// other than the process's own, as a call of the node resolves it (ADR-030
-// rules 5 and 8).
+// binding is one node of a workflow, which binds its process to an agent,
+// as a call of the node resolves it (ADR-030 rules 5 and 8).
 type binding struct {
 	node      string // as the workflow's problems name it
 	process   definition.Process
@@ -18,12 +17,10 @@ type binding struct {
 	effective policy.Effective
 }
 
-// bindings are the nodes of the workflow that name an agent, each with the
-// process it binds to it, in declaration order, the join last. A node that
-// names its process's own agent is judged with the process, whose problems
-// on that agent refuse the workflow (ADR-015 rule 2). So is one whose
-// process is missing or does not compose, and one whose agent is missing,
-// each reported where it is found.
+// bindings are the nodes of the workflow, each with the process it binds
+// to its agent, in declaration order, the join last. A node whose process
+// is missing or does not compose, or whose agent is missing, is left out:
+// each is reported where it is found.
 func (b Bundle) bindings(workflow definition.Workflow) []binding {
 	if b.Service == nil {
 		return nil
@@ -31,8 +28,7 @@ func (b Bundle) bindings(workflow definition.Workflow) []binding {
 	var bound []binding
 	for i, node := range workflow.Nodes() {
 		agent, ok := b.Agents[node.Agent]
-		own, exists := b.Processes[node.Process]
-		if !ok || !exists || node.Agent == own.Agent {
+		if _, exists := b.Processes[node.Process]; !ok || !exists {
 			continue
 		}
 		process := b.Resolved(node.Process)
@@ -71,9 +67,8 @@ type BindingPlan struct {
 }
 
 // BindingPlans plans every node of every workflow as its call would, on
-// the agent the node binds its process to, its process's own where it
-// names none, workflows by name, each workflow's nodes in declaration
-// order, the join last. installed is the runtime version found for an
+// the agent the node binds its process to, workflows by name, each
+// workflow's nodes in declaration order, the join last. installed is the runtime version found for an
 // agent, by name: an agent's runtime is planned on it where it is known,
 // and otherwise on the version its mapping verifies that withholds the
 // fewest required permissions, then the fewest others, the first when
@@ -91,11 +86,7 @@ func BindingPlans(b Bundle, installed map[string]string) []BindingPlan {
 				continue
 			}
 			process := b.Resolved(node.Process)
-			agentName := node.Agent
-			if agentName == "" {
-				agentName = process.Agent
-			}
-			agent, ok := b.Agents[agentName]
+			agent, ok := b.Agents[node.Agent]
 			if !ok {
 				continue
 			}
@@ -182,31 +173,15 @@ func CostRefusal(effective policy.Effective, runtime string, enforces bool) stri
 	return fmt.Sprintf("runtime %s cannot enforce the cost limit %g", runtime, *effective.MaxCostUSD)
 }
 
-// CostProblems reports the processes of the agent that set a cost limit,
-// which the agent's runtime was found unable to enforce, and each node that
-// binds such a process to the agent (ADR-030 rule 8). Only the runtime can
-// say whether it enforces one.
+// CostProblems reports each node that binds to the agent a process that
+// sets a cost limit, which the agent's runtime was found unable to enforce
+// (ADR-030 rule 8). Only the runtime can say whether it enforces one.
 func CostProblems(b Bundle, agent definition.Agent) []Problem {
 	mapping, ok := b.Mappings[agent.Runtime]
 	if !ok || b.Service == nil {
 		return nil
 	}
 	var problems []Problem
-	for _, name := range sortedKeys(b.Processes) {
-		process := b.Resolved(name)
-		if process.Agent != agent.Name {
-			continue
-		}
-		// One whose limits do not compose has no cost limit; Check reports
-		// it.
-		effective, err := policy.Compose(*b.Service, process, policy.Caller{})
-		if err != nil {
-			continue
-		}
-		if message := CostRefusal(effective, mapping.Name, false); message != "" {
-			problems = append(problems, Problem{Subject: "process " + name, Message: message, Agent: agent.Name})
-		}
-	}
 	for _, name := range sortedKeys(b.Workflows) {
 		for _, bound := range b.bindings(b.Workflows[name]) {
 			if bound.agent.Name != agent.Name {

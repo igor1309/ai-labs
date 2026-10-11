@@ -57,7 +57,7 @@ func TestCheckReportsWhatDefinesWhat(t *testing.T) {
 	t.Parallel()
 	h := newHarness()
 	h.defs.docs[definition.KindPrompt]["spare"] = "Nothing names this prompt.\n"
-	h.defs.docs[definition.KindProcess]["q"] = strings.Replace(strings.Replace(h.defs.docs[definition.KindProcess]["p"], "name: p", "name: q", 1), "agent:a", "agent:ghost", 1)
+	h.defs.docs[definition.KindProcess]["q"] = strings.Replace(strings.Replace(h.defs.docs[definition.KindProcess]["p"], "name: p", "name: q", 1), "prompt: inspect", "prompt: ghost", 1)
 	h.defs.docs[definition.KindAgent]["broken"] = "schema = \"agister.agent/v1alpha1\"\nname = \"broken\"\ncolour = \"red\"\n"
 	checker := app.NewChecker(h.defs, h.validator, h.runtimes, []string{"git.revision", "git.diff"})
 	report, err := checker.Check(context.Background(), false)
@@ -71,17 +71,20 @@ func TestCheckReportsWhatDefinesWhat(t *testing.T) {
 		got[ref(d.Kind, d.Name)] = d
 		order = append(order, d.Kind+"/"+d.Name)
 	}
-	if strings.Join(order, " ") != "service/service runtimes/rt agents/a agents/broken prompts/inspect prompts/spare processes/p processes/q schemas/s" {
+	if strings.Join(order, " ") != "service/service runtimes/rt agents/a agents/broken prompts/inspect prompts/spare processes/p processes/q schemas/s workflows/p_a" {
 		t.Fatalf("order = %v", order)
 	}
 	p, a := got[ref("processes", "p")], got[ref("agents", "a")]
-	if !reflect.DeepEqual(p.Uses, []contract.DefinitionRef{ref("agents", "a"), ref("prompts", "inspect"), ref("schemas", "s")}) || p.Layer != "home" || p.Path != "mem/processes/p" {
+	// A process uses no agent: workflow p_a's node binds p to agent a.
+	if !reflect.DeepEqual(p.Uses, []contract.DefinitionRef{ref("prompts", "inspect"), ref("schemas", "s")}) || p.Layer != "home" || p.Path != "mem/processes/p" {
 		t.Fatalf("p = %+v", p)
 	}
-	if !reflect.DeepEqual(a.Uses, []contract.DefinitionRef{ref("runtimes", "rt")}) || !reflect.DeepEqual(a.UsedBy, []contract.DefinitionRef{ref("processes", "p")}) {
+	if !reflect.DeepEqual(a.Uses, []contract.DefinitionRef{ref("runtimes", "rt")}) || !reflect.DeepEqual(a.UsedBy, []contract.DefinitionRef{ref("workflows", "p_a")}) {
 		t.Fatalf("a = %+v", a)
 	}
-	if q := got[ref("processes", "q")]; q.Uses[0] != ref("agents", "ghost") {
+	// The reference to what does not exist is to a prompt: a process
+	// names no agent.
+	if q := got[ref("processes", "q")]; q.Uses[0] != ref("prompts", "ghost") {
 		t.Fatalf("q = %+v", q)
 	}
 	if spare := got[ref("prompts", "spare")]; len(spare.UsedBy) != 0 {
@@ -128,7 +131,8 @@ func TestCheckProbeAsksNoIdentityOfAnAdapterTheCodeDoesNotProvide(t *testing.T) 
 }
 
 // The installed version may verify some primitive, yet not the ones a process
-// needs.
+// needs: the problem of the workflow whose node binds the process to the
+// agent on that runtime (ADR-030 rule 8).
 func TestCheckProbePlansEachProcessOnTheInstalledVersion(t *testing.T) {
 	t.Parallel()
 	h := newHarness()
@@ -139,7 +143,7 @@ func TestCheckProbePlansEachProcessOnTheInstalledVersion(t *testing.T) {
 		t.Fatalf("problems = %v", messages(report.Problems))
 	}
 	report, _ := checker.Check(context.Background(), true)
-	if len(messages(report.Problems)) != 1 || !strings.HasPrefix(messages(report.Problems)[0], "process p: cannot run on agent a's runtime rt version 1.2.3: ") ||
+	if len(messages(report.Problems)) != 1 || !strings.HasPrefix(messages(report.Problems)[0], "workflow p_a: call node p: process p: cannot run on agent a's runtime rt version 1.2.3: ") ||
 		!strings.Contains(messages(report.Problems)[0], "not verified for version 1.2.3: Read") {
 		t.Fatalf("problems = %v", messages(report.Problems))
 	}
@@ -681,7 +685,7 @@ func TestShowProcessSourcesAreStructured(t *testing.T) {
 	h := newHarness()
 	// The resolver behind it is given nothing that can start a turn.
 	identities := struct{ app.ResolverIdentities }{h.runtimes}
-	view, err := (app.NewInspection(app.NewResolver(h.defs, identities, h.validator, resolverCheckStub{}))).ShowProcess(context.Background(), "p", "")
+	view, err := callShown((app.NewInspection(app.NewResolver(h.defs, identities, h.validator, resolverCheckStub{}))), "p_a")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -703,7 +707,7 @@ func TestShowProcessLimitsThroughTheResolver(t *testing.T) {
 	t.Parallel()
 	h := newHarness()
 	identities := struct{ app.ResolverIdentities }{h.runtimes}
-	view, err := app.NewInspection(app.NewResolver(h.defs, identities, h.validator, resolverCheckStub{})).ShowProcess(context.Background(), "p", "")
+	view, err := callShown(app.NewInspection(app.NewResolver(h.defs, identities, h.validator, resolverCheckStub{})), "p_a")
 	if err != nil {
 		t.Fatal(err)
 	}
