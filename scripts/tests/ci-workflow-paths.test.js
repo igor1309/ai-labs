@@ -88,6 +88,29 @@ test("ciPathFilters_shouldRunAgisterCore_onEachKindOfFileItsTestsRead", () => {
   }
 });
 
+// The files beyond their code that agonara's and noreta's tests read: a
+// change to any of them must run the project's job (LAB-220).
+test("ciPathFilters_shouldRunEachProjectsJob_onTheDocumentsItsTestsRead", () => {
+  const read = {
+    "agonara-core": [
+      "agonara/docs/api/openapi.yml",
+      "agonara/docs/api/redocly.yaml",
+      "agonara/docs/intent/intent_learning_program_app.md",
+      "agonara/skills/README.md",
+      "agonara/skills-publish-manifest.json",
+      "agonara/publish-assets/README.md",
+      "docs/loc-dashboard.html",
+    ],
+    "noreta-core": ["noreta/docs/qa.md"],
+  };
+
+  for (const [job, files] of Object.entries(read)) {
+    for (const file of files) {
+      assert.equal(jobRuns(job, [file]), true, `${file} does not run ${job}`);
+    }
+  }
+});
+
 test("ciRepoScripts_shouldRunEveryScriptsTest_onEveryChange", () => {
   const job = workflow.match(/\n  repo-scripts:\n((?:    .*\n|\n)+?)(?=\n  [\w-]+:\n)/);
   assert.ok(job, "missing repo-scripts job");

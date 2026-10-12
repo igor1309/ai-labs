@@ -147,6 +147,7 @@ jobs:
               - "noreta/tests/**"
               - "noreta/package.json"
               - "noreta/tsconfig.json"
+              - "noreta/docs/qa.md"
             noreta-ci:
               - ".github/workflows/noreta-core.yml"
             agister:
@@ -190,6 +191,12 @@ jobs:
               - "agonara/compose.yaml"
               - "agonara/compose*.yml"
               - "agonara/scripts/**"
+              - "agonara/docs/api/**"
+              - "agonara/docs/intent/**"
+              - "agonara/skills/**"
+              - "agonara/skills-publish-manifest.json"
+              - "agonara/publish-assets/**"
+              - "docs/loc-dashboard.html"
             agonara-ci:
               - ".github/workflows/agonara-core.yml"
             foliotell:
