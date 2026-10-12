@@ -3,7 +3,7 @@ date: 2026-10-06
 author: Igor Malyarov
 model: claude-opus-5-5
 name: Code review — adversarial
-version: 0.1.5
+version: 0.1.6
 type: prompt
 ---
 
@@ -54,8 +54,7 @@ Definition of done:
 
 Stop once you have tried to break every changed path. The goal widens
 that: try also to break each scenario the goal requires, through the code
-it runs, changed or not. Say which ones you checked in `coverage`; a review
-with no findings and no coverage reads as one that read nothing.
+it runs, changed or not. Say which ones you checked in `coverage`.
 
 Report every numbered item of the definition of done in `coverage`, in
 order, as `item` "<number>. <short name>", with its status: `checked` (what
