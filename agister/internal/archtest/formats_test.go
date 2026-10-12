@@ -215,7 +215,7 @@ func TestAFileThatImportsTheParserIsFound(t *testing.T) {
 // document from the package's typed reader (LAB-188). They name the
 // parser's types, and neither parse a document nor ask a definitions port
 // for one.
-var throughReader = []string{"resolve.go", "check.go"}
+var throughReader = []string{"resolve.go", "check.go", "definitions.go"}
 
 // portReads are the methods of a definitions port that give a document.
 var portReads = []string{"Read", "ReadListed"}
@@ -268,7 +268,7 @@ func bypasses(t *testing.T, dir string, names []string) []string {
 	return found
 }
 
-func TestTheResolverAndTheCheckerTakeEveryDocumentFromTheReader(t *testing.T) {
+func TestTheResolverTheCheckerTheListsAndInspectTakeEveryDocumentFromTheReader(t *testing.T) {
 	t.Parallel()
 	for _, bypass := range bypasses(t, "../app", throughReader) {
 		t.Errorf("internal/app/%s: the file takes its documents from the package's reader, and neither parses one nor asks a definitions port for one", bypass)
@@ -284,8 +284,9 @@ func TestAFileThatGoesAroundTheReaderIsFound(t *testing.T) {
 	files := map[string]string{
 		// None of these goes around the reader: the parser's types and its
 		// functions that parse nothing, the port's list, the port handed
-		// on, the port's own declaration, a document from the reader, and
-		// another package's Parse function.
+		// on, the port's own declaration, a document from the reader, the
+		// reader's file's parse of what no port gave, and another package's
+		// Parse function and its read of a file.
 		"through.go": imported("") + `
 type definitions interface {
 	Read(ctx context.Context, kind document.Kind, name string) (document.Document, error)
@@ -302,6 +303,12 @@ func (r *Resolver) resolve(ctx context.Context, name string) (definition.Process
 	frozen := Snapshot(ctx, r.definitions)
 	process, _, err := newDocumentReader(frozen).Process(ctx, name)
 	_ = definition.CallSession(process)
+	if _, err := parsedAgent(name, definition.FormatAgent(definition.Agent{Name: name})); err != nil {
+		return definition.Process{}, err
+	}
+	if _, err := fs.ReadFile(r.examples, name); err != nil {
+		return definition.Process{}, err
+	}
 	return process, err
 }
 `,
