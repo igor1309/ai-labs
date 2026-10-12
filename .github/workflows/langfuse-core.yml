@@ -13,7 +13,7 @@ permissions:
 
 jobs:
   core:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, local-mac]
     timeout-minutes: 5
     steps:
       - name: Checkout
@@ -21,13 +21,5 @@ jobs:
         with:
           ref: ${{ inputs.ref || github.sha }}
 
-      - name: Setup Python
-        uses: actions/setup-python@v6
-        with:
-          python-version: "3.12"
-
-      - name: Install test dependencies
-        run: python -m pip install --quiet pytest pyyaml
-
       - name: Run tests
-        run: python -m pytest -q tests/test_langfuse_shared_stack.py
+        run: uv run --no-project --python 3.12 --with pytest --with pyyaml pytest -q tests/test_langfuse_shared_stack.py
