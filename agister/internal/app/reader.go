@@ -15,16 +15,20 @@ import (
 // failure stops and how it is worded are the caller's.
 //
 // A document the definitions do not give fails with an *unreadError, and
-// has neither value nor source. One that was read and has problems fails
-// with the parser's *document.InvalidError, beside its source and what of
-// it parsed.
+// has no value: its source is what the definitions give beside the
+// failure, such as where the document was looked for. One that was read
+// and has problems fails with the parser's *document.InvalidError, beside
+// its source and what of it parsed.
 type documentReader struct {
 	definitions readerDefinitions
 }
 
-// readerDefinitions supplies a document as a call reads it.
+// readerDefinitions supplies a document as a call reads it, with Read, and
+// as the settings list it, with ReadListed: a prompt never from a folder a
+// layer.yaml lists (ADR-028 rule 9).
 type readerDefinitions interface {
 	Read(ctx context.Context, kind document.Kind, name string) (document.Document, error)
+	ReadListed(ctx context.Context, kind document.Kind, name string) (document.Document, error)
 }
 
 // unreadError is the failure of a read: the definitions gave no document,
@@ -74,6 +78,13 @@ func (r documentReader) Prompt(ctx context.Context, name string) (definition.Pro
 	return readParsed(ctx, r, document.KindPrompt, name, definition.ParsePrompt)
 }
 
+// ListedPrompt reads a prompt as the settings list it, not as a call reads
+// it: the one of the inventory, which no process need name.
+func (r documentReader) ListedPrompt(ctx context.Context, name string) (definition.Prompt, document.Source, error) {
+	doc, err := r.definitions.ReadListed(ctx, document.KindPrompt, name)
+	return parsedOf(doc, err, definition.ParsePrompt)
+}
+
 func (r documentReader) Brief(ctx context.Context, name string) (definition.Brief, document.Source, error) {
 	return readParsed(ctx, r, document.KindBrief, name, definition.ParseBrief)
 }
@@ -92,12 +103,48 @@ func (r documentReader) Schema(ctx context.Context, name string) ([]byte, docume
 	return readParsed(ctx, r, document.KindSchema, name, func(doc document.Document) ([]byte, error) { return doc.Bytes, nil })
 }
 
+func (r documentReader) Blocks(ctx context.Context, name string) (definition.Blocks, document.Source, error) {
+	return readParsed(ctx, r, document.KindBlocks, name, definition.ParseBlocks)
+}
+
+// Workspace reads the workspace settings, which no call reads and nothing
+// parses (ADR-025): only where they are.
+func (r documentReader) Workspace(ctx context.Context, name string) (document.Source, error) {
+	doc, err := r.definitions.Read(ctx, document.KindWorkspace, name)
+	if err != nil {
+		return doc.Source, &unreadError{err: err}
+	}
+	return doc.Source, nil
+}
+
+// Extending returns what says the base a process extends (ADR-030 rule 9),
+// "" where it names none. A process that cannot be read or does not parse
+// still names its base, in the nearest file that holds its whole document.
+// What it returns reads and composes each base once for all the processes
+// it is asked of, and holds them: its caller keeps it for one pass over
+// the processes. The reader keeps nothing.
+func (r documentReader) Extending(ctx context.Context) func(process string) string {
+	read := func(name string) (document.Document, error) {
+		return r.definitions.Read(ctx, document.KindProcess, name)
+	}
+	extender := definition.NewExtender(read)
+	return func(process string) string {
+		doc, _ := read(process)
+		return extender.Extends(doc)
+	}
+}
+
 // readParsed reads the document of kind named name and parses it.
 func readParsed[T any](ctx context.Context, r documentReader, kind document.Kind, name string, parse func(document.Document) (T, error)) (T, document.Source, error) {
 	doc, err := r.definitions.Read(ctx, kind, name)
+	return parsedOf(doc, err, parse)
+}
+
+// parsedOf parses doc, which a read gave, or fails as the read did.
+func parsedOf[T any](doc document.Document, err error, parse func(document.Document) (T, error)) (T, document.Source, error) {
 	if err != nil {
 		var none T
-		return none, document.Source{}, &unreadError{err: err}
+		return none, doc.Source, &unreadError{err: err}
 	}
 	value, err := parse(doc)
 	return value, doc.Source, err

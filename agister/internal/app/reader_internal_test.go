@@ -12,21 +12,39 @@ import (
 
 // definitionsFake is the definitions a reader reads in a test: it gives
 // the document or the error the test set for a kind and name, and fails
-// the test on a read of any other.
+// the test on a read of any other. A document set beside an error is given
+// with it, as definitions give what they know of a document they cannot
+// read. What ReadListed gives is set apart from what Read gives, and each
+// Read is counted in reads where the test set it.
 type definitionsFake struct {
-	t    *testing.T
-	docs map[DocumentRef]document.Document
-	errs map[DocumentRef]error
+	t          *testing.T
+	docs       map[DocumentRef]document.Document
+	errs       map[DocumentRef]error
+	listed     map[DocumentRef]document.Document
+	listedErrs map[DocumentRef]error
+	reads      map[DocumentRef]int
 }
 
 func (f definitionsFake) Read(_ context.Context, kind document.Kind, name string) (document.Document, error) {
 	ref := DocumentRef{Kind: kind, Name: name}
-	if err, ok := f.errs[ref]; ok {
-		return document.Document{}, err
+	if f.reads != nil {
+		f.reads[ref]++
 	}
-	doc, ok := f.docs[ref]
+	return f.give(f.docs, f.errs, ref)
+}
+
+func (f definitionsFake) ReadListed(_ context.Context, kind document.Kind, name string) (document.Document, error) {
+	return f.give(f.listed, f.listedErrs, DocumentRef{Kind: kind, Name: name})
+}
+
+// give is what the test set for ref in docs and errs.
+func (f definitionsFake) give(docs map[DocumentRef]document.Document, errs map[DocumentRef]error, ref DocumentRef) (document.Document, error) {
+	doc, ok := docs[ref]
+	if err, failed := errs[ref]; failed {
+		return doc, err
+	}
 	if !ok {
-		f.t.Errorf("read of %s %q, which the test did not set", kind, name)
+		f.t.Errorf("read of %s %q, which the test did not set", ref.Kind, ref.Name)
 	}
 	return doc, nil
 }
@@ -87,6 +105,8 @@ func readerCases() map[string]readerCase {
 			documentReader.Workflow, definition.ParseWorkflow),
 		"a schema": reads(document.KindSchema, "s", `{"type":"object"}`,
 			documentReader.Schema, func(doc document.Document) ([]byte, error) { return doc.Bytes, nil }),
+		"the blocks": reads(document.KindBlocks, "blocks", "schema: agister.blocks/v1alpha1\nblocks:\n  - {ref: \"process:p\", reason: Not here.}\n",
+			documentReader.Blocks, definition.ParseBlocks),
 	}
 }
 
@@ -136,6 +156,24 @@ func TestAFailureToReadIsToldFromAFailureToParse(t *testing.T) {
 	}
 }
 
+// What the definitions give of a document beside the failure to read it,
+// such as where it was looked for, is its source: the failure keeps it.
+func TestAFailureToReadKeepsTheSourceGivenBesideIt(t *testing.T) {
+	t.Parallel()
+	for name, c := range readerCases() {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			looked := document.Document{Source: c.doc("").Source}
+			cause := errors.New("cannot be resolved")
+			reader := newDocumentReader(definitionsFake{t: t, docs: map[DocumentRef]document.Document{c.ref: looked}, errs: map[DocumentRef]error{c.ref: cause}})
+			_, source, err := c.read(reader)
+			if !unread(err) || !errors.Is(err, cause) || !reflect.DeepEqual(source, looked.Source) {
+				t.Fatalf("read = source %+v, %#v; want source %+v and a failure to read that is %v", source, err, looked.Source, cause)
+			}
+		})
+	}
+}
+
 // A document that was read and has problems is a failure to parse: the
 // parser's own *document.InvalidError, beside the document's source and
 // what of the document parsed.
@@ -162,6 +200,160 @@ func TestAFailureToParseKeepsItsProblemsAndTheSource(t *testing.T) {
 				t.Fatalf("read = %+v, source %+v; want %+v, source %+v", got, source, want, doc.Source)
 			}
 		})
+	}
+}
+
+// A prompt of the inventory is read as the settings list it, apart from the
+// prompt of the same name a call reads: parsed with its source, a failure
+// to read it told from a failure to parse it.
+func TestAListedPromptIsReadAsTheSettingsListIt(t *testing.T) {
+	t.Parallel()
+	ref := DocumentRef{Kind: document.KindPrompt, Name: "inspect"}
+	prompt := func(path, text string) document.Document {
+		return document.Document{
+			Source: document.Source{Kind: ref.Kind, Name: ref.Name, Path: path, Layer: document.LayerHome, SHA256: "digest of " + path},
+			Bytes:  []byte(text),
+		}
+	}
+	// What a call reads, from a folder a layer lists: no listed read gives it.
+	named := prompt("folder/inspect.md", "Inspect as the folder says.\n")
+	listed := prompt("prompts/inspect.md", "Inspect as the inventory says.\n")
+	fake := func(t *testing.T) definitionsFake {
+		return definitionsFake{t: t, docs: map[DocumentRef]document.Document{ref: named}}
+	}
+
+	t.Run("read", func(t *testing.T) {
+		t.Parallel()
+		definitions := fake(t)
+		definitions.listed = map[DocumentRef]document.Document{ref: listed}
+		want, err := definition.ParsePrompt(listed)
+		if err != nil {
+			t.Fatalf("the listed prompt is invalid: %v", err)
+		}
+		got, source, err := newDocumentReader(definitions).ListedPrompt(context.Background(), ref.Name)
+		if err != nil || !reflect.DeepEqual(got, want) || !reflect.DeepEqual(source, listed.Source) {
+			t.Fatalf("listed prompt = %+v, source %+v, %v; want %+v, source %+v", got, source, err, want, listed.Source)
+		}
+	})
+	t.Run("not read", func(t *testing.T) {
+		t.Parallel()
+		definitions := fake(t)
+		looked := document.Document{Source: listed.Source}
+		definitions.listed = map[DocumentRef]document.Document{ref: looked}
+		definitions.listedErrs = map[DocumentRef]error{ref: document.ErrNotFound}
+		got, source, err := newDocumentReader(definitions).ListedPrompt(context.Background(), ref.Name)
+		if !unread(err) || !errors.Is(err, document.ErrNotFound) || err.Error() != document.ErrNotFound.Error() {
+			t.Fatalf("listed prompt error = %#v, want a failure to read that is %v", err, document.ErrNotFound)
+		}
+		if !reflect.DeepEqual(got, definition.Prompt{}) || !reflect.DeepEqual(source, looked.Source) {
+			t.Fatalf("listed prompt = %+v, source %+v; want none, source %+v", got, source, looked.Source)
+		}
+	})
+	t.Run("invalid", func(t *testing.T) {
+		t.Parallel()
+		broken := prompt("prompts/inspect.md", "\xff")
+		definitions := fake(t)
+		definitions.listed = map[DocumentRef]document.Document{ref: broken}
+		want, parseErr := definition.ParsePrompt(broken)
+		if parseErr == nil {
+			t.Fatal("the broken prompt is valid")
+		}
+		got, source, err := newDocumentReader(definitions).ListedPrompt(context.Background(), ref.Name)
+		invalid, ok := err.(*document.InvalidError)
+		if unread(err) || !ok || !reflect.DeepEqual(invalid, parseErr) {
+			t.Fatalf("listed prompt error = %#v, want the parser's %#v", err, parseErr)
+		}
+		if !reflect.DeepEqual(got, want) || !reflect.DeepEqual(source, broken.Source) {
+			t.Fatalf("listed prompt = %+v, source %+v; want %+v, source %+v", got, source, want, broken.Source)
+		}
+	})
+}
+
+// The workspace settings are read only for where they are: whatever they
+// hold, nothing of them is parsed.
+func TestTheWorkspaceSettingsAreReadForWhereTheyAre(t *testing.T) {
+	t.Parallel()
+	ref := DocumentRef{Kind: document.KindWorkspace, Name: "workspace"}
+	source := document.Source{Kind: ref.Kind, Name: ref.Name, Path: "mem/workspace.yaml", Layer: document.LayerHome, SHA256: "digest of mem/workspace.yaml"}
+	for name, text := range map[string]string{
+		"settings":      "schema: agister.workspace/v1alpha1\nmode: in-place\n",
+		"anything else": "\xff",
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			reader := newDocumentReader(definitionsFake{t: t, docs: map[DocumentRef]document.Document{ref: {Source: source, Bytes: []byte(text)}}})
+			got, err := reader.Workspace(context.Background(), ref.Name)
+			if err != nil || !reflect.DeepEqual(got, source) {
+				t.Fatalf("workspace = source %+v, %v; want %+v", got, err, source)
+			}
+		})
+	}
+	t.Run("not read", func(t *testing.T) {
+		t.Parallel()
+		cause := errors.New("cannot be resolved")
+		reader := newDocumentReader(definitionsFake{t: t, docs: map[DocumentRef]document.Document{ref: {Source: source}}, errs: map[DocumentRef]error{ref: cause}})
+		got, err := reader.Workspace(context.Background(), ref.Name)
+		if !unread(err) || !errors.Is(err, cause) || !reflect.DeepEqual(got, source) {
+			t.Fatalf("workspace = source %+v, %#v; want source %+v and a failure to read that is %v", got, err, source, cause)
+		}
+	})
+}
+
+// extendingCase is a process document as the definitions give it, for what
+// it extends: its text, and err where it cannot be read.
+type extendingCase struct {
+	text string
+	err  error
+	base string // the base it names, "" for none
+}
+
+// extendingCases are processes by name: review holds a whole process, and
+// the others say what they extend.
+func extendingCases() map[string]extendingCase {
+	const whole = "schema: agister.process/v1alpha1\nname: review\ntype: process\nprompt: inspect\ninput:\n  instruction: Inspect the change.\noutput:\n  format: text\ntimeout: 20m\ntools: {allow: [repository.read]}\n"
+	return map[string]extendingCase{
+		"review":     {text: whole},
+		"quick":      {text: "schema: agister.process/v1alpha1\nname: quick\ntype: process\nextends: process:review\ntimeout: 5m\n", base: "review"},
+		"deep":       {text: "schema: agister.process/v1alpha1\nname: deep\ntype: process\nextends: process:review\ntimeout: 40m\n", base: "review"},
+		"unreadable": {text: "schema: agister.process/v1alpha1\nname: unreadable\ntype: process\nextends: process:review\n", err: errors.New("layers do not compose"), base: "review"},
+		"invalid":    {text: "name: invalid\nextends: process:review\ntimeout: never\n", base: "review"},
+		"misnamed":   {text: "schema: agister.process/v1alpha1\nname: misnamed\ntype: process\nextends: review\ntimeout: 5m\n"},
+	}
+}
+
+// What Extending returns names the base of each process asked of it, of
+// one that cannot be read or does not parse too, and reads each base once
+// for all of them.
+func TestExtendingNamesEachProcessBaseAndReadsABaseOnce(t *testing.T) {
+	t.Parallel()
+	cases := extendingCases()
+	definitions := definitionsFake{t: t, docs: map[DocumentRef]document.Document{}, errs: map[DocumentRef]error{}, reads: map[DocumentRef]int{}}
+	for name, c := range cases {
+		ref := DocumentRef{Kind: document.KindProcess, Name: name}
+		definitions.docs[ref] = document.Document{
+			Source: document.Source{Kind: ref.Kind, Name: name, Path: "mem/processes/" + name, Layer: document.LayerHome},
+			Bytes:  []byte(c.text),
+		}
+		if c.err != nil {
+			definitions.errs[ref] = c.err
+		}
+	}
+	extends := newDocumentReader(definitions).Extending(context.Background())
+	for name, c := range cases {
+		if got := extends(name); got != c.base {
+			t.Errorf("%s extends %q, want %q", name, got, c.base)
+		}
+	}
+	// review is read once as a process asked of, and once as the base of
+	// all that extend it.
+	for name := range cases {
+		want := 1
+		if name == "review" {
+			want = 2
+		}
+		if got := definitions.reads[DocumentRef{Kind: document.KindProcess, Name: name}]; got != want {
+			t.Errorf("%s was read %d times, want %d", name, got, want)
+		}
 	}
 }
 
