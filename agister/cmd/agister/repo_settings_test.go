@@ -234,7 +234,8 @@ const verifyFixtureTimeout = "30s"
 // prompt where it calls an implementer and, where that process declares
 // verify, the verification its run passed (verifiedOnce), on writableCodex.
 //
-// The test works in a repository of its own whose top-level entries link to
+// Each workflow runs in a home and a repository of its own, beside the
+// others, whose top-level entries link to
 // this repository's working tree (settings and prompts as they are, edits
 // included), with a base and a candidate commit of its own: revisions, diffs
 // and checkouts are deterministic, and this repository's git state is never
@@ -244,8 +245,14 @@ const verifyFixtureTimeout = "30s"
 // attempt.
 func TestRepositoryProcessesRunOnFakeRuntimes(t *testing.T) {
 	t.Parallel()
-	root, repo, home := onFakeRuntimes(t)
-	writableCodex(t, home)
+	root := repositoryRoot(t)
+	// Each workflow runs in a home of its own, beside the others.
+	onWritableCodex := func(t *testing.T) (repo, home string) {
+		t.Parallel()
+		_, repo, home = onFakeRuntimes(t)
+		writableCodex(t, home)
+		return repo, home
+	}
 	entries, err := os.ReadDir(filepath.Join(root, homeFolder, "processes"))
 	if err != nil {
 		t.Fatal(err)
@@ -309,6 +316,7 @@ func TestRepositoryProcessesRunOnFakeRuntimes(t *testing.T) {
 					name, call.Process, call.Agent)
 			}
 			t.Run("workflow "+name, func(t *testing.T) {
+				repo, home := onWritableCodex(t)
 				launch := launchDir(call.Process)
 				process := parseProcess(t, root, call.Process)
 				args := append([]string{"run", name}, paramArgs(t, launch, process.Params)...)
@@ -348,6 +356,7 @@ func TestRepositoryProcessesRunOnFakeRuntimes(t *testing.T) {
 		}
 		joined[workflow.Join.Process] = true
 		t.Run("workflow "+name, func(t *testing.T) {
+			repo, home := onWritableCodex(t)
 			args := append([]string{"run", name}, paramArgs(t, ".", workflow.Params)...)
 			created, r := runRecorded(t, home, repo, args)
 			if len(created) != len(workflow.FanOut)+2 {
@@ -3096,24 +3105,28 @@ var reviewers = []string{"architecture_review", "tests_review", "adversarial_rev
 // Each review of the home folder, run alone (runsAlone) at the root and in
 // each project, gives its agent the guidance homeGuidance names for it,
 // and none where it names none, each the text the implementers are given.
+// Each review runs in a home of its own, beside the others.
 func TestReviewersAreGivenTheirGoGuidance(t *testing.T) {
 	t.Parallel()
-	root, repo, home := onFakeRuntimes(t)
-	for _, launch := range append([]string{"."}, projects...) {
-		for _, name := range reviewers {
-			t.Run(launch+" "+name, func(t *testing.T) {
-				workflow := runsAlone(t, root, home, name)
-				args := append([]string{"run", workflow}, paramArgs(t, launch, parseProcess(t, root, name).Params)...)
-				if timeout := testTimeouts[workflow]; timeout != "" {
-					args = append(args, "--timeout", timeout)
-				}
-				created, _ := runRecorded(t, home, filepath.Join(repo, launch), args)
-				if len(created) != 1 {
-					t.Fatalf("runs recorded: %v, want one", created)
-				}
-				givesGuidance(t, root, home, completedRun(t, home, created[0]), homeGuidance[name]...)
-			})
-		}
+	for _, name := range reviewers {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			root, repo, home := onFakeRuntimes(t)
+			workflow := runsAlone(t, root, home, name)
+			for _, launch := range append([]string{"."}, projects...) {
+				t.Run(launch, func(t *testing.T) {
+					args := append([]string{"run", workflow}, paramArgs(t, launch, parseProcess(t, root, name).Params)...)
+					if timeout := testTimeouts[workflow]; timeout != "" {
+						args = append(args, "--timeout", timeout)
+					}
+					created, _ := runRecorded(t, home, filepath.Join(repo, launch), args)
+					if len(created) != 1 {
+						t.Fatalf("runs recorded: %v, want one", created)
+					}
+					givesGuidance(t, root, home, completedRun(t, home, created[0]), homeGuidance[name]...)
+				})
+			}
+		})
 	}
 }
 
