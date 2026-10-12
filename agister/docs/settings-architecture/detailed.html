@@ -10,6 +10,7 @@
     --ground:#08080A; --surface:#17171A; --surface-2:#1E1E22;
     --line:#2A2A2F; --line-soft:#232327;
     --text:#F5F5F7; --text-dim:#8A8A96; --text-faint:#68686F;
+    --text-body:#D9D9DF; --text-sub:#B4B4C0;
     --workflow:#F28DB0; --process:#8DB8FF; --agent:#5FE0BC; --runtime:#FFC24D;
     --rule:#FF8F6B; --run:#F5E6B0;
     --display:"Iowan Old Style","Palatino Linotype",Palatino,"Hoefler Text",Georgia,serif;
@@ -19,7 +20,7 @@
   * { box-sizing: border-box; }
   html { scroll-behavior: smooth; scroll-padding-top: 20px; }
   body {
-    margin: 0; background: var(--ground); color: var(--text); overflow-wrap: break-word;
+    margin: 0; background: var(--ground); color: var(--text-body); overflow-wrap: break-word;
     font: 16px/1.6 var(--sans); -webkit-text-size-adjust: 100%;
   }
   main { max-width: 96rem; margin: 0 auto; padding: 0 16px 48px; }
@@ -82,6 +83,9 @@
     font-size: 12.5px; line-height: 1.55; color: #C9C6C2;
   }
   ul { margin: 0; padding-left: 1.2em; max-width: 46rem; }
+  /* A section's list is detail under its lead: a step quieter. */
+  .desc ul, .more ul { font-size: 15px; line-height: 1.55; color: var(--text-sub); }
+  .desc ul code, .more ul code { color: var(--text-body); }
   li { margin-bottom: 6px; }
   footer {
     margin-top: 32px; padding-top: 16px; border-top: 1px solid var(--line);
@@ -101,6 +105,14 @@
     /* Every row: the description, then its example, in the same two columns. */
     section { grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr); gap: 36px; }
     .ex { padding-top: 6px; }
+    /* A section with no example spreads its list over both columns. */
+    section > .desc:only-child { grid-column: 1 / -1; }
+    section > .desc:only-child ul { max-width: none; columns: 2; column-gap: 36px; }
+    section > .desc:only-child li { break-inside: avoid; }
+    /* A long list under a short example runs below both. */
+    .more { grid-column: 1 / -1; }
+    .more ul { max-width: none; columns: 2; column-gap: 36px; }
+    .more li { break-inside: avoid; }
   }
 </style>
 </head>
@@ -239,8 +251,12 @@ verify: verify:repo</pre></figure>
 
 <section id="extends" class="kind process l2">
 <div class="desc"><header><h2>Extends</h2><p class="path"><code>extends: process:&lt;base&gt;</code> · one level</p><p class="under">under <a href="#process">Process</a></p></header>
-<p class="lead">A process may extend one base process of its layer and take its fields. The base extends nothing and is not work: a node that binds it is a problem of the workflow.</p>
-<ul>
+<p class="lead">A process may extend one base process of its layer and take its fields. The base extends nothing and is not work: a node that binds it is a problem of the workflow.</p></div>
+<figure class="ex"><figcaption>agister/home/processes/tests_review.yaml</figcaption><pre>name: tests_review
+type: process
+extends: process:review
+prompt: code-review-tests</pre></figure>
+<div class="more"><ul>
 <li>The base is composed from its own layers first, then the extending process's layers over it.</li>
 <li>Maps merge by key; lists and scalars are replaced whole. <code>name</code> and <code>extends</code> are never taken from the base.</li>
 <li>The base is checked through each process that extends it, so it may leave out what each of them sets, <code>prompt</code> here.</li>
@@ -249,10 +265,6 @@ verify: verify:repo</pre></figure>
 <li>A base only home has, or a repository's partial of it that leaves a required field to home's file, is no base for a process the repository defines: <code>check</code> reports the process and its run is refused. Partials that do not set <code>extends</code>, over a process home defines or over its base, still compose.</li>
 <li><code>process show</code> and the record name the base for each field it gave.</li>
 </ul><p class="note">Home's six reviews, the five code reviews and the ADR review, extend its <code>review</code> base, which holds their input, permissions and limits.</p></div>
-<figure class="ex"><figcaption>agister/home/processes/tests_review.yaml</figcaption><pre>name: tests_review
-type: process
-extends: process:review
-prompt: code-review-tests</pre></figure>
 </section>
 
 <section id="schema" class="kind l2">
