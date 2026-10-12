@@ -3,7 +3,7 @@ date: 2026-10-12
 author: Igor Malyarov
 model: claude-opus-5-5
 name: Go — testing seams
-version: 0.0.3
+version: 0.0.4
 type: prompt
 ---
 
@@ -97,9 +97,12 @@ Deadlines
 * A deadline only guards a hang. It is never a fact about the product: a
   test that reports "no response arrived" at its deadline fails the slow
   but correct run.
-* No timeout, bound or poll deadline in a test exceeds one minute, and the
-  test binary runs with `-timeout 1m`. A longer wait makes a hang read as
-  slowness, and nobody waits for it.
+* No timeout, bound or poll deadline in a test exceeds 1 minute. The test
+  binary runs with the `-timeout` the project's check script sets, 2
+  minutes at most: it covers every test of the package on a machine that
+  may be under heavy load. A longer wait makes a hang read as slowness,
+  and nobody waits for it. A package near its timeout is made cheaper,
+  not given more time.
 * A test that is not a contract test carries no guard of its own: the
   binary's `-timeout` names the test that hangs. A contract test may poll,
   bounded, only where the OS gives no event, as when a process group that
@@ -120,6 +123,10 @@ Parallel by default
   directory, a shared home or cache. Shared helpers keep their state per
   test or behind a lock. State in a package variable of the product is the
   product's missing seam: pass it in, do not clean it up.
+* A helper returns what its call made (the run's id, the file's path). One
+  that finds it by comparing shared state before and after, such as a
+  directory's listing, makes every test that uses it on that state run
+  one after another.
 * A test ends what it starts (processes, goroutines, directories) on every
   path, failures included: `t.Cleanup` and `t.TempDir()`.
 
@@ -170,11 +177,12 @@ What a test costs
 Running tests
 
 * Quiet, never `-v`: one line per package, details only for failures.
-  `go test -count=1 -timeout 1m ./<pkg>/...` for what you touched, `-run
-  <Test>` to narrow.
+  `go test -count=1 -timeout <the check script's> ./<pkg>/...` for what
+  you touched, `-run <Test>` to narrow.
 * Add `-race` for every package with goroutines or shared state: a spy
   test under the race detector finds the ordering bug a plain run passes.
-* Before you finish: `test -z "$(gofmt -l .)" && go vet ./... && go test
-  -count=1 -timeout 1m ./...`.
+* Before you finish, run the project's check script (`scripts/test.sh`);
+  where it has none: `test -z "$(gofmt -l .)" && go vet ./... && go test
+  -race -count=1 -timeout 1m ./...`.
 * The checks pass on what you deliver. A pass that rests on an ignored
   file or a build output left in your working tree is not a pass.

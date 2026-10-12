@@ -16,6 +16,14 @@
   other unsafe condition. Never force past the check.
 - Do not force-merge, force-delete branches, or discard untracked work.
 
+## Fixing a problem
+
+- Fix the root cause in the issue's own PR. No stopgap with a follow-up
+  issue where the cause can be fixed now.
+- A PR closes the issue it names, whole.
+- A check that fails or is slow (`-race`, a timeout, a required test) is
+  kept: cut the work it checks, do not loosen the check.
+
 ## Verifying fixes
 
 - Prove a fix with a regular, committed test: set up a temp directory
