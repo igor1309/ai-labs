@@ -144,6 +144,11 @@ const auditedTests = {
     command: "pytest -q tests/test_langfuse_shared_stack.py",
     job: "langfuse-core",
   },
+  "tools/mac-health/tests/test-disk.sh": {
+    runner: ".github/workflows/mac-health-core.yml",
+    command: "sh tools/mac-health/tests/run-all.sh",
+    job: "mac-health-core",
+  },
 };
 
 test("ciAuditedProjects_shouldEachBeTestedByTheJobItsChangesRun", () => {
