@@ -29,7 +29,7 @@ A document a project's tests read is a test input, not documentation, and its fi
 
 ## What CI runs
 
-Each test, what runs it, and the change that triggers it (LAB-167). `scripts/tests/ci-workflow-paths.test.js` keeps this true: every `scripts/tests/*.test.js` is run, every Go module is tested by the job its changes run, and each kind of file Agister's tests read runs `agister-core`.
+Each test, what runs it, and the change that triggers it (LAB-167, LAB-220). `scripts/tests/ci-workflow-paths.test.js` keeps this true: every `scripts/tests/*.test.js` is run, every Go module is tested by the job its changes run, each kind of file Agister's tests read runs `agister-core`, the documents agonara's and noreta's tests read run their jobs, and the projects LAB-220 found unrun are each tested by the job their changes run.
 
 | Tests | Run by | Triggered by | Status |
 | --- | --- | --- | --- |
@@ -40,9 +40,27 @@ Each test, what runs it, and the change that triggers it (LAB-167). `scripts/tes
 | The example settings pass `agister check` | `agister-core` | the `agister` filter | runs |
 | warder's Go tests (`warder/`), gofmt, vet, race | `warder-core`: `warder/scripts/test.sh` | the `warder` filter | runs |
 | The repository scripts' tests (`scripts/tests/*.test.js`) | `repo-scripts` | every push and pull request | runs |
-| The release scripts' tests (`scripts/release/tests/*.test.js`) | `release-validation` | the `release` filter | not audited |
+| The release scripts' tests (`scripts/release/tests/*.test.js`) | `release-validation` | the `release` filter | runs |
 | The research scripts' Python tests (`research/agister/adversarial-cycle/scripts/tests/`) | nothing | — | excluded: research, not a product |
-| Every other project's tests | its `<project>-core.yml` | its filter | not audited (LAB-220) |
+| nomos (`nomos/tests/*.test.js`), typecheck | `nomos-core` | the `nomos` filter | runs; the two E2E tests need `RUN_NOMOS_E2E`, which no workflow sets |
+| oracle (`oracle/{packages,apps}/*/tests/*.test.js`), typecheck | `oracle-core` | the `oracle` filter | runs; the web E2E runs in `release.yml` and `web-e2e.yml` (manual) only |
+| web-scout (`web-scout/tests/*.test.js`), typecheck | `web-scout-core` | the `web-scout` filter | runs |
+| corpus-scout (`corpus-scout/tests/*.test.js`), typecheck | `corpus-scout-core` | the `corpus-scout` filter | runs |
+| reinix (`reinix/tests/*.test.js`), typecheck | `reinix-core` | the `reinix` filter | runs |
+| clipdeck (`clipdeck/test/*.test.ts`), typecheck | `clipdeck-core` | the `clipdeck` filter | runs |
+| ntfy-sender (`ntfy-sender/tests/*.test.js`), in Chromium | `ntfy-sender-core` | the `ntfy-sender` filter | runs |
+| noreta (`noreta/tests/*.test.ts`), typecheck | `noreta-core` | the `noreta` filter, with `noreta/docs/qa.md` | runs |
+| agonara (`agonara/tests/*.test.js`), OpenAPI check and lint, Docker build | `agonara-core` | the `agonara` filter, with the documents, skills and root `docs/loc-dashboard.html` its tests read | runs |
+| foliotell iOS (`foliotell/ios/Tests/`), build, archive | `foliotell-core` | the `foliotell` filter | runs |
+| foliotell Android (`:core:test`), debug build | `foliotell-android-core` | the `foliotell-android` filter | runs |
+| notio backend (`notio/backend/Tests/`) | `notio-core` | the `notio` filter | runs |
+| notio frontend (`notio/frontend/tests/`), typecheck, build | `notio-frontend-core` | the `notio-frontend` filter | runs |
+| dev-skills: the marketplace manifest and its skills (no tests) | `dev-skills-validation` | the `dev-skills` filter | runs |
+| session-digest (`session-digest/tests/*.test.ts`), typecheck | `session-digest-core` | the `session-digest` filter | runs |
+| loki (`loki/tests/*.test.js`) | `loki-core` | the `loki` filter, with every compose file: its label check reads those of the projects its allowlist names | runs |
+| neris (`neris/packages/swift-neris/Tests/`) | `neris-core` | the `neris` filter | runs |
+| claude-insights: the script's pytest and the functions' Deno tests | `claude-insights-core` | the `claude-insights` filter | runs |
+| The langfuse stack (`tests/test_langfuse_shared_stack.py`) | `langfuse-core` | the `langfuse` filter | runs |
 
 Notes:
 
