@@ -87,14 +87,14 @@ func TestRecoveryStatesTheEvidenceOfEachLimit(t *testing.T) {
 	}
 }
 
-// A continued call in the caller's worktree is told which run it continues,
-// where it works, and that the session's changes are already there: no
-// directory is gone (ADR-025 rule 7).
+// A continued call in the caller's worktree is told where it works and
+// that the session's changes are already there: no directory is gone
+// (ADR-025 rule 7), and no run is named (ADR-035).
 func TestContinuesSaysTheChangesAreAlreadyInTheWorktree(t *testing.T) {
 	t.Parallel()
-	got := prompt.Continues("run-a", "run-b", "/work/tree", "abc123")
-	want := "## continuation\n\nThis call continues run run-a. It works in the worktree at /work/tree, at revision abc123, where the session worked before." +
-		" The session's changes, as run run-b, its latest run, left them, are already in this worktree, uncommitted."
+	got := prompt.Continues("/work/tree", "abc123")
+	want := "## continuation\n\nThis call continues the session's earlier work. It works in the worktree at /work/tree, at revision abc123, where the session worked before." +
+		" The session's changes are already in this worktree, uncommitted."
 	if got != want {
 		t.Fatalf("got\n%s\nwant\n%s", got, want)
 	}

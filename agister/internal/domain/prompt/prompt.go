@@ -44,12 +44,12 @@ func Inputs(inputs []run.Input) string {
 }
 
 // Continues is Agister's notice to a continued call, which works in the
-// caller's worktree (ADR-025 rule 7): the run it continues, the
-// worktree at dir, at revision, and that the session's changes, as its
-// latest run left them, are already there.
-func Continues(continued, latest, dir, revision string) string {
-	return "## continuation\n\n" + fmt.Sprintf("This call continues run %s. It works in the worktree at %s, at revision %s, where the session worked before."+
-		" The session's changes, as run %s, its latest run, left them, are already in this worktree, uncommitted.", continued, dir, revision, latest)
+// caller's worktree (ADR-025 rule 7): the worktree at dir, at revision,
+// and that the session's changes are already there. It names no run
+// (ADR-035).
+func Continues(dir, revision string) string {
+	return "## continuation\n\n" + fmt.Sprintf("This call continues the session's earlier work. It works in the worktree at %s, at revision %s, where the session worked before."+
+		" The session's changes are already in this worktree, uncommitted.", dir, revision)
 }
 
 func render(value any) string {
