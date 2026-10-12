@@ -426,10 +426,10 @@ and ignored, and `check` warns (`internal/app/check.go:289`; ADR-025).
   holding anything beside its `SKILL.md` refuses the install.
   (`internal/adapters/fsdefs/install.go`; ADR-018 rule 6, ADR-027 rules 8-9)
 - Home's settings have one source in git, `home/`, installed with
-  `agister install home`; the repository's `.agister/` keeps only its own
-  (`layer.yaml`, the Go guidance partials). A test installs the folder into
+  `agister install home`; the repository holds no `.agister/` of its
+  own, and the Go guidance is home's. A test installs the folder into
   an empty home and checks it. (`cmd/agister/home_folder_test.go`;
-  ADR-027)
+  ADR-027, ADR-033)
 - LAB-84's done gates. The caller skill, the README, these notes and
   the example captions of `detailed.html` changed. `index.html` needed
   no change: it shows the kinds and what each names, and names no

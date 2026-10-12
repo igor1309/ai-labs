@@ -257,7 +257,7 @@ instruction: &gt;-
 <div class="desc"><header><h2>Prompts</h2><p class="path"><code>prompts/&lt;name&gt;.md</code></p></header>
 <p class="lead">Plain text: the file is the value. The nearest layer that has a named prompt gives it whole; a missing name refuses the call. <code>{source: prompt}</code> and <code>optional</code> are refused.</p>
 <p class="note">A repository or project <code>layer.yaml</code> (<code>schema: agister.layer/v1alpha1</code>, <code>prompts: [prompts]</code>) names extra folders relative to the directory holding <code>.agister</code>. They must exist inside it; its own <code>prompts/</code> comes first. Only names a process gives are read in the listed folders. Guidance a node must follow is in its <code>prompt</code> or <code>guidance</code>, never a pointer in <code>AGENTS.md</code> or a skill.</p></div>
-<figure class="ex"><figcaption>A process composition: prompt from home, guidance from a Go layer</figcaption><pre>prompt: implement
+<figure class="ex"><figcaption>Home's implement: prompt and Go guidance; a layer without Go code sets <code>guidance: []</code></figcaption><pre>prompt: implement
 guidance: [go-testing-seams, go-architecture]</pre></figure>
 </section>
 <section id="skills" class="kind ">

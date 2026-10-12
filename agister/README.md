@@ -298,7 +298,7 @@ input `prompt`, then `guidance.<name>` in list order, each recorded with
 its digest. `{source: prompt}` and `optional` are refused: ADR-028
 supersedes [ADR-019](docs/adr/019-a-prompt-may-be-optional.md) and amends
 [ADR-014](docs/adr/014-prompts-are-settings.md). Home's one `implement`
-process takes prompt `implement` and names no Go guidance; the workflows
+process takes prompt `implement` and the Go guidance; the workflows
 `implement_codex`, `implement_opus`, `implement_sonnet`, `implement_pi`
 and `implement_pi_glm` each bind it to one agent.
 
@@ -545,11 +545,13 @@ document names a path of a machine or a repository. Home is brought to it
 with `agister install home` from `agister/` in the main checkout, after a
 change to the folder merges and the binary that checks it is installed:
 any difference shows as a replace, with its diff, in that install's plan.
-Live state, `blocks.yaml`, `layer.yaml` and verifications stay out of it. The
-repository's own `.agister/` keeps only what is this repository's: its
-`layer.yaml` and the Go guidance of the processes that write and review its
-code (LAB-161); project layers can set their own
-verification and guidance without copying home's processes. A test installs
+Live state, `blocks.yaml`, `layer.yaml` and verifications stay out of it.
+The Go guidance prompts are home's, and home's `implement`,
+`architecture_review`, `adversarial_review` and `tests_review` are given
+them ([ADR-033](docs/adr/033-go-guidance-is-homes.md)); a repository
+without Go code sets `guidance: []` on those processes in its layer. This
+repository holds no `.agister/` of its own; project layers set their own
+verification without copying home's processes. A test installs
 the folder into an empty home and checks it as global settings.
 
 The caller skill, `skills/agister/SKILL.md` in this folder, is for the
