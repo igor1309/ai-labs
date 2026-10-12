@@ -82,7 +82,9 @@ func (g *gate) advise(ctx context.Context, runID string, open []point, message s
 	g.sum.Records = append(g.sum.Records, id)
 	fmt.Fprintf(g.progress, "agister-gate: advisor %s decided; %s appended\n", r.RunID, id)
 
-	acts := fmt.Sprintf("The decision `%s` of `advisor` run `%s`, appended to `%s`, as written:\n\n%s", id, r.RunID, g.decisions, fenced(record))
+	// The brief names the record where it stands in the repository, not
+	// the run that made it (LAB-200).
+	acts := fmt.Sprintf("The decision `%s`, recorded in `%s`, as written:\n\n%s", id, g.decisions, fenced(record))
 	brief, err := g.stepBrief(fmt.Sprintf("%s, decision %s", g.title, id), acts)
 	if err != nil {
 		return err
