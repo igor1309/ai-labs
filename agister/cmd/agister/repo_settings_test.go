@@ -846,7 +846,7 @@ func TestAdvisorAnswersAQuestionFile(t *testing.T) {
 	// accepts: the fake answers with the first variant, owner.
 	output := record["result"].(map[string]any)["output"]
 	schemaAccepts(t, record, output, r.stdout)
-	if want := map[string]any{"advice": map[string]any{"kind": "owner", "reason": "fake"}}; !reflect.DeepEqual(output, want) {
+	if want := map[string]any{"advice": map[string]any{"kind": "conflict", "reason": "fake"}}; !reflect.DeepEqual(output, want) {
 		t.Fatalf("the advisor's output = %v, want %v", output, want)
 	}
 	// The runtime worked in the caller's worktree, at the revision.
@@ -930,9 +930,10 @@ func follows(argv []string, flag, value string) bool {
 	return false
 }
 
-// The home folder's advice schema accepts an owner answer with its reason,
-// and a decision with its record; it refuses an answer whose payload is the
-// other's, a missing field and an unexpected one. The payloads are fixed,
+// The home folder's advice schema accepts a conflict with its reason, and
+// a decision with its record; it refuses an answer whose payload is the
+// other's, a missing field, an unexpected one and an owner answer, which
+// the advisor no longer has (ADR-032). The payloads are fixed,
 // not built from the schema.
 func TestAdviceSchemaTiesTheAnswerToItsPayload(t *testing.T) {
 	t.Parallel()
@@ -948,31 +949,32 @@ func TestAdviceSchemaTiesTheAnswerToItsPayload(t *testing.T) {
 		`"excluded":[{"option":"two","why":"D-3 excludes it"}],"rests_on":["D-3"],"follow_ups":[]`
 	const recordWithoutChosen = `"asked_by":"workflow run 1, item 2","question":"which?","options":["one","two"],` +
 		`"excluded":[{"option":"two","why":"D-3 excludes it"}],"rests_on":["D-3"],"follow_ups":[]`
-	const reason = `"reason":"option (b) changes ADR-001 rule 9"`
+	const reason = `"reason":"ADR-001 rule 9 and D-3 contradict each other"`
 	cases := []struct {
 		name, output string
 		valid        bool
 	}{
 		{"a decision", `{"advice":{"kind":"decision",` + record + `}}`, true},
-		{"owner", `{"advice":{"kind":"owner",` + reason + `}}`, true},
+		{"a conflict", `{"advice":{"kind":"conflict",` + reason + `}}`, true},
+		{"owner", `{"advice":{"kind":"owner",` + reason + `}}`, false},
 		{"a decision without its record", `{"advice":{"kind":"decision"}}`, false},
 		{"a decision with a reason", `{"advice":{"kind":"decision",` + reason + `,` + record + `}}`, false},
 		{"a decision with a reason for a record", `{"advice":{"kind":"decision",` + reason + `}}`, false},
-		{"owner with a record", `{"advice":{"kind":"owner",` + reason + `,` + record + `}}`, false},
-		{"owner with a record for a reason", `{"advice":{"kind":"owner",` + record + `}}`, false},
-		{"owner with an empty reason", `{"advice":{"kind":"owner","reason":""}}`, false},
-		{"owner with a blank reason", `{"advice":{"kind":"owner","reason":" "}}`, false},
-		{"owner without a reason", `{"advice":{"kind":"owner"}}`, false},
+		{"a conflict with a record", `{"advice":{"kind":"conflict",` + reason + `,` + record + `}}`, false},
+		{"a conflict with a record for a reason", `{"advice":{"kind":"conflict",` + record + `}}`, false},
+		{"a conflict with an empty reason", `{"advice":{"kind":"conflict","reason":""}}`, false},
+		{"a conflict with a blank reason", `{"advice":{"kind":"conflict","reason":" "}}`, false},
+		{"a conflict without a reason", `{"advice":{"kind":"conflict"}}`, false},
 		{"an unknown kind", `{"advice":{"kind":"maybe",` + reason + `}}`, false},
 		{"no kind, a reason", `{"advice":{` + reason + `}}`, false},
 		{"no kind, a record", `{"advice":{` + record + `}}`, false},
 		{"no advice", `{}`, false},
 		{"null advice", `{"advice":null}`, false},
-		{"an answer at the root", `{"kind":"owner",` + reason + `}`, false},
+		{"an answer at the root", `{"kind":"conflict",` + reason + `}`, false},
 		{"a record without its chosen option", `{"advice":{"kind":"decision",` + recordWithoutChosen + `}}`, false},
 		{"an excluded option without its why", `{"advice":{"kind":"decision",` + strings.Replace(record, `,"why":"D-3 excludes it"`, "", 1) + `}}`, false},
-		{"an unexpected field", `{"advice":{"kind":"owner",` + reason + `},"note":"x"}`, false},
-		{"an unexpected field in an owner answer", `{"advice":{"kind":"owner",` + reason + `,"note":"x"}}`, false},
+		{"an unexpected field", `{"advice":{"kind":"conflict",` + reason + `},"note":"x"}`, false},
+		{"an unexpected field in a conflict", `{"advice":{"kind":"conflict",` + reason + `,"note":"x"}}`, false},
 		{"an unexpected field in the record", `{"advice":{"kind":"decision",` + record + `,"status":"final"}}`, false},
 	}
 	for _, c := range cases {
@@ -1627,6 +1629,44 @@ func TestTestsPromptAsksForTheClassAndTheProductsOwnMeasure(t *testing.T) {
 		{"a process-wide measure is a finding as it stands, serial or not", []string{
 			"a measure of the whole process", "`testing.AllocsPerRun`", "Running it serially does not isolate it",
 			"a finding as it stands", "the seam that observes the product's own work"}},
+	}
+	for _, instruction := range instructions {
+		if !carries(string(data), instruction.phrases) {
+			t.Errorf("agister/home/prompts/%s lost the instruction %q: no paragraph has all of %q",
+				prompt, instruction.name, instruction.phrases)
+		}
+	}
+}
+
+// The advisor always decides (ADR-032, LAB-206): an option that would
+// change the record is excluded, never a reason to ask; the record is
+// asked in order, what the decisions say, what they mean, then the code
+// that carries them out; and only a defect in the record is a conflict,
+// with nothing decided. An instruction is held by its short phrases
+// standing in one paragraph, as in
+// TestReviewPromptsCarryTheirCoverageContract. The prompt is the
+// repository's own, read as it is.
+func TestTheAdvisorAlwaysDecides(t *testing.T) {
+	t.Parallel()
+	const prompt = "advisor.md"
+	data, err := os.ReadFile(filepath.Join("..", "..", "..", homeFolder, "prompts", prompt))
+	if err != nil {
+		t.Fatal(err)
+	}
+	instructions := []promptInstruction{
+		{"the advisor decides", []string{
+			"You decide it", "you choose one of the options"}},
+		{"an option that would change the record is excluded, never referred", []string{
+			"is excluded, with the rule it would change", "never to ask anyone"}},
+		{"the record is asked in order", []string{
+			"Ask the record, in this order,", "What do the recorded decisions say about the question?",
+			"If they are silent or leave a gap: what do they mean?", "what do the code and tests that carry the decisions out show"}},
+		{"code is evidence of a decision, and an open reading is settled", []string{
+			"Code that carries out a decision is evidence of it", "evidence only of itself",
+			"A reading the record leaves open is settled here, not a reason to stop"}},
+		{"only a defect in the record is a conflict", []string{
+			"Only when every option is excluded", "two recorded decisions contradict each other",
+			"answer `conflict`", "Decide nothing: the record is at fault"}},
 	}
 	for _, instruction := range instructions {
 		if !carries(string(data), instruction.phrases) {
