@@ -19,7 +19,25 @@ const module = "github.com/igor1309/ai-labs/agister"
 // gokit (ADR-019).
 const supervisor = "github.com/igor1309/ai-labs/gokit/supervisor"
 
+// packages is the module's import graph without the standard library.
 func packages(t *testing.T) map[string][]string {
+	t.Helper()
+	all := graph(t)
+	imports := map[string][]string{}
+	for pkg, imported := range all {
+		imports[pkg] = nil
+		for _, dep := range imported {
+			if _, own := all[dep]; own || strings.Contains(strings.Split(dep, "/")[0], ".") {
+				imports[pkg] = append(imports[pkg], dep)
+			}
+		}
+	}
+	return imports
+}
+
+// graph is the module's import graph, the standard library included, with
+// the module's own packages named from its root.
+func graph(t *testing.T) map[string][]string {
 	t.Helper()
 	command := exec.Command("go", "list", "-f", `{{.ImportPath}} {{join .Imports " "}}`, "./...")
 	command.Dir = "../.."
@@ -31,17 +49,9 @@ func packages(t *testing.T) map[string][]string {
 	for _, line := range strings.Split(strings.TrimSpace(string(out)), "\n") {
 		fields := strings.Fields(line)
 		pkg := strings.TrimPrefix(fields[0], module+"/")
+		imports[pkg] = nil
 		for _, imported := range fields[1:] {
-			if strings.HasPrefix(imported, module+"/") {
-				imports[pkg] = append(imports[pkg], strings.TrimPrefix(imported, module+"/"))
-			} else if !strings.Contains(strings.Split(imported, "/")[0], ".") {
-				continue // standard library
-			} else {
-				imports[pkg] = append(imports[pkg], imported)
-			}
-		}
-		if _, ok := imports[pkg]; !ok {
-			imports[pkg] = nil
+			imports[pkg] = append(imports[pkg], strings.TrimPrefix(imported, module+"/"))
 		}
 	}
 	return imports
