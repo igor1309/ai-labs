@@ -807,3 +807,37 @@ func TestProblemsNamingTheUnknownAreMarked(t *testing.T) {
 		t.Errorf("list of sources: %#v, want %#v", err, want)
 	}
 }
+
+// An Extender reads and composes a base once, however many processes
+// extend it: home's reviews each extend review.
+func TestAnExtenderReadsEachBaseOnce(t *testing.T) {
+	t.Parallel()
+	files := os.DirFS("../../../home")
+	entries, err := fs.ReadDir(files, string(definition.KindProcess))
+	if err != nil {
+		t.Fatal(err)
+	}
+	docs := map[string]definition.Document{}
+	for _, entry := range entries {
+		data, err := fs.ReadFile(files, string(definition.KindProcess)+"/"+entry.Name())
+		if err != nil {
+			t.Fatal(err)
+		}
+		name := strings.TrimSuffix(entry.Name(), filepath.Ext(entry.Name()))
+		docs[name] = doc(definition.KindProcess, name, string(data))
+	}
+	reads := map[string]int{}
+	extender := definition.NewExtender(func(name string) (definition.Document, error) {
+		reads[name]++
+		return docs[name], nil
+	})
+	extending := 0
+	for _, doc := range docs {
+		if extender.Extends(doc) == "review" {
+			extending++
+		}
+	}
+	if extending < 2 || reads["review"] != 1 {
+		t.Fatalf("%d processes extend review, read %d times; want it read once", extending, reads["review"])
+	}
+}

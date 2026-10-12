@@ -24,8 +24,27 @@ const processReference = "process:"
 // is broken, which Extended reports; the base its farthest file names is
 // still named, so that a broken process does not make its base work.
 func Extends(doc Document, own func(name string) (Document, error)) string {
+	return NewExtender(own).Extends(doc)
+}
+
+// Extender says what processes extend, as Extends does, reading and
+// composing each base once for all of them.
+type Extender struct {
+	own   func(name string) (Document, error)
+	bases map[string]composedBase
+}
+
+// NewExtender returns an Extender whose bases own reads.
+func NewExtender(own func(name string) (Document, error)) *Extender {
+	return &Extender{own: own, bases: map[string]composedBase{}}
+}
+
+// Extends is the base doc names, as Extends says.
+func (e *Extender) Extends(doc Document) string {
 	texts := ownTexts(doc)
-	at := newProcessFiles(doc.Source.Name, texts, own).defining()
+	files := newProcessFiles(doc.Source.Name, texts, e.own)
+	files.bases = e.bases
+	at := files.defining()
 	if at < 0 {
 		at = len(texts) - 1
 	}
