@@ -2746,6 +2746,59 @@ func TestTheRepositoryLayerSetsOnlyTheGoGuidance(t *testing.T) {
 	}
 }
 
+// The repository's Go prompts say what home's review prompts say (LAB-217):
+// go-architecture that a component's types are in its own words, that a
+// one-to-one copy translates nothing, that each component a change touches
+// has its own reason to change, and that file formats are the language of
+// the outer edges; go-testing-seams that serial running does not isolate a
+// process-wide measure, and that a test covers the class of cases. An
+// instruction is held by its short phrases standing in one paragraph, as
+// in TestReviewPromptsCarryTheirCoverageContract. The prompts are the
+// repository's own, read as they are.
+func TestTheGoPromptsAgreeWithTheReviews(t *testing.T) {
+	t.Parallel()
+	root, err := filepath.Abs(filepath.Join("..", "..", ".."))
+	if err != nil {
+		t.Fatal(err)
+	}
+	cases := []struct {
+		prompt       string
+		instructions []promptInstruction
+	}{
+		{"go-architecture", []promptInstruction{
+			{"a component's types are in its own words; a copy couples as a shared type does", []string{
+				"in its own words", "a copy of another's type", "couples them just the same",
+				"Two internal types", "of the same shape are a reason to ask what each component needs"}},
+			{"a one-to-one copy translates nothing", []string{
+				"copies fields one to one translates nothing", "at the", "persistence edge such a copy is fine"}},
+			{"each component a change touches has its own reason to change", []string{
+				"its own reason to change", "The goal is no component's reason", "carries that reason in"}},
+			{"file formats are the language of the outer edges", []string{
+				"the language of the", "outer edges", "one reader and written by one", "A package that",
+				"parses a format is an edge, whatever its path"}},
+		}},
+		{"go-testing-seams", []promptInstruction{
+			{"serial does not isolate a process-wide measure", []string{
+				"Serial does not isolate a measure of the whole process", "`testing.AllocsPerRun`",
+				"the product's own work through a seam it is given"}},
+			{"a test covers the class of cases", []string{
+				"A test covers the class of cases a behaviour has", "not one example of it"}},
+		}},
+	}
+	for _, c := range cases {
+		data, err := os.ReadFile(filepath.Join(root, "prompts", c.prompt+".md"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, instruction := range c.instructions {
+			if !carries(string(data), instruction.phrases) {
+				t.Errorf("prompts/%s.md lost the instruction %q: no paragraph has all of %q",
+					c.prompt, instruction.name, instruction.phrases)
+			}
+		}
+	}
+}
+
 // implementWorkflows are home's workflows that call implement on Codex and
 // on Pi, each named after the process that ran implement's work there
 // before ADR-030 (Migration step 3).
