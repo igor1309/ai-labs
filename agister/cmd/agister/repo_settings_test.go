@@ -1779,7 +1779,7 @@ func TestTheImplementerSearchesTheRecordBeforeLeavingAPointOpen(t *testing.T) {
 // The clarity prompt of the repository carries the exception to its rule
 // that a change does not edit a recorded decision. An edit a recorded rule
 // of the project requires, which brings a document the rule names in line
-// with behaviour the change itself built (a done gate), is not such a
+// with behaviour the change itself built, is not such a
 // finding; the reviewer quotes the rule and where it stands in the item's
 // coverage entry; an edit that says more than the change built, that
 // changes a rule, or that no such rule requires is still a finding; and an
@@ -1788,7 +1788,7 @@ func TestTheImplementerSearchesTheRecordBeforeLeavingAPointOpen(t *testing.T) {
 // An instruction is held by its short phrases standing in one paragraph, as
 // in TestReviewPromptsCarryTheirCoverageContract. The prompt is the
 // repository's own, read as it is.
-func TestClarityPromptCarriesTheDoneGateException(t *testing.T) {
+func TestClarityPromptCarriesTheRecordedRuleException(t *testing.T) {
 	t.Parallel()
 	const prompt = "code-review-clarity.md"
 	data, err := os.ReadFile(filepath.Join("..", "..", "..", homeFolder, "prompts", prompt))
@@ -1799,7 +1799,7 @@ func TestClarityPromptCarriesTheDoneGateException(t *testing.T) {
 		{"an edit a recorded rule of the project requires is not a finding", []string{
 			"does not edit a recorded decision", "not such a finding",
 			"a recorded rule of the project requires the change to make it", "a document the rule names",
-			"behaviour the change itself built", "a done gate", "The owner's rule is the decision"}},
+			"behaviour the change itself built", "The owner's rule is the decision"}},
 		{"the coverage entry quotes the rule and where it stands", []string{
 			"you check it", "the `coverage` entry for this item", "quotes the rule", "where it stands"}},
 		{"an edit beyond what the change built, or one no rule requires, is still a finding", []string{
