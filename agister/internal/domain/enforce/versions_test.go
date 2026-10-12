@@ -1,6 +1,7 @@
 package enforce_test
 
 import (
+	"slices"
 	"strings"
 	"testing"
 
@@ -53,5 +54,40 @@ func TestAnOfferKeepsThePrimitivesVerifiedForAVersion(t *testing.T) {
 	}
 	if unknown := offer.UnknownPermissions([]string{"p.one"}); strings.Join(unknown, ",") != "p.two" {
 		t.Fatalf("unknown = %v", unknown)
+	}
+}
+
+// A plan that ties on several versions takes the first the offer lists, so
+// the versions are sorted and distinct, however the primitives declare
+// their prefixes.
+func TestAnOfferListsItsVersionsSorted(t *testing.T) {
+	t.Parallel()
+	primitives := func(verified ...[]string) enforce.Offer {
+		var offer enforce.Offer
+		for _, prefixes := range verified {
+			offer.Primitives = append(offer.Primitives, enforce.Primitive{Verified: prefixes})
+		}
+		return offer
+	}
+	for name, c := range map[string]struct {
+		offer enforce.Offer
+		want  []string
+	}{
+		"declared in sorted order":            {primitives([]string{"1.", "2."}), []string{"1", "2"}},
+		"declared against sorted order":       {primitives([]string{"2.", "1."}), []string{"1", "2"}},
+		"the later primitive sorts first":     {primitives([]string{"2."}, []string{"1."}), []string{"1", "2"}},
+		"primitives that interleave":          {primitives([]string{"3.", "1."}, []string{"2.2", "2.1."}), []string{"1", "2.1", "2.2", "3"}},
+		"a prefix several primitives share":   {primitives([]string{"2.", "1."}, []string{"1.", "2"}), []string{"1", "2"}},
+		"a prefix with and without its dot":   {primitives([]string{"2.1.", "2.1", "2."}), []string{"2", "2.1"}},
+		"an empty prefix beside others":       {primitives([]string{"2.", "", "."}, []string{"1."}), []string{"1", "2"}},
+		"a primitive verified for no version": {primitives(nil, []string{"2.", "1."}), []string{"1", "2"}},
+		"no primitive is verified":            {primitives(nil, nil), nil},
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			if got := c.offer.Versions(); !slices.Equal(got, c.want) {
+				t.Fatalf("versions = %q, want %q", got, c.want)
+			}
+		})
 	}
 }

@@ -44,8 +44,7 @@ func problemsOf(b settings.Bundle) []string {
 // none, and has no problem for it, whether a node binds it or none does; a
 // node that names an agent the settings lack is a problem of its workflow,
 // which names the node. A node that names no agent does not reach here: its
-// workflow does not parse, so the case that had
-// one bind a process without an agent is gone with the process's agent.
+// workflow does not parse.
 func TestANodeBindsItsProcessToAnAgent(t *testing.T) {
 	t.Parallel()
 	onJoin := bound("a")
@@ -136,8 +135,7 @@ func repairing(b settings.Bundle, resumable bool) settings.Bundle {
 
 // ADR-030 rule 8: a process that cannot be planned on the runtime of the
 // agent a node binds it to is a problem of the workflow, which names the
-// node, and not of the process, which names no agent. The case of a
-// process on its own agent is gone with that agent (rule 2).
+// node, and not of the process, which names no agent (rule 2).
 func TestABindingThatCannotBePlannedIsAProblemOfItsWorkflow(t *testing.T) {
 	t.Parallel()
 	const refused = "cannot run on agent c's runtime wide: cannot enforce the effective permissions: Shell also grants exec"
@@ -169,8 +167,7 @@ func TestABindingThatCannotBePlannedIsAProblemOfItsWorkflow(t *testing.T) {
 // ADR-030 rules 1 and 3: an agent holds no session, so a binding adds
 // nothing to what the process says of its own: a process that repairs or
 // recovers in a session it may not resume has its problem once, as the
-// process's, and no workflow that binds it has one. The cases of a
-// fresh-only agent are gone with the agent's session.
+// process's, and no workflow that binds it has one.
 func TestABindingAddsNothingToItsProcesssSession(t *testing.T) {
 	t.Parallel()
 	recovering := func(resumable bool) settings.Bundle {
@@ -207,8 +204,8 @@ func TestABindingAddsNothingToItsProcesssSession(t *testing.T) {
 
 // The runtime's installed version may plan less than some version does:
 // every binding to the agent is planned on it, and is the workflow's
-// problem. Process q, once the process's own problem on its own agent, is
-// its node's (ADR-030 rule 2).
+// problem. Process q names no agent, so its problem is its node's (ADR-030
+// rule 2).
 func TestABindingIsPlannedOnTheInstalledVersion(t *testing.T) {
 	t.Parallel()
 	b := onC(split())
@@ -238,8 +235,8 @@ func TestABindingIsPlannedOnTheInstalledVersion(t *testing.T) {
 // ADR-030 rules 3 and 8: only the runtime can say whether it resumes a
 // session. One that cannot refuses each node that binds a process that
 // repairs to an agent on it: a problem of the workflow, which names the
-// node. Workflow v binds the process to agent a, which was its own: the
-// problem that was the process's is that workflow's (ADR-030 rule 2).
+// node. Workflow v binds the process to agent a: the problem is that
+// workflow's, as the process names no agent (ADR-030 rule 2).
 func TestABindingToARuntimeThatCannotResumeIsAProblemOfItsWorkflow(t *testing.T) {
 	t.Parallel()
 	b := repairing(onC(plain()), true)
@@ -259,9 +256,9 @@ func TestABindingToARuntimeThatCannotResumeIsAProblemOfItsWorkflow(t *testing.T)
 // ADR-030 rule 8: only the runtime can say whether it enforces a cost
 // limit. One that cannot refuses each node that binds a process that sets
 // one to an agent on it: a problem of the workflow, which names the node,
-// as a call of it is refused. Workflow v binds the process to agent a,
-// which was its own: the problem that was the process's is that workflow's
-// (ADR-030 rule 2).
+// as a call of it is refused. Workflow v binds the process to agent a:
+// the problem is that workflow's, as the process names no agent (ADR-030
+// rule 2).
 func TestABindingToARuntimeThatCannotEnforceACostLimitIsAProblemOfItsWorkflow(t *testing.T) {
 	t.Parallel()
 	b := onC(plain())
