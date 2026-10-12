@@ -21,7 +21,7 @@
     "notes": {"type": "string"},
     "open": {
       "type": "array",
-      "description": "The point left open, if any: at most one. Empty when the work went through.",
+      "description": "Each point left open, reported even beyond the one allowed. Empty when the work went through.",
       "items": {
         "type": "object",
         "additionalProperties": false,

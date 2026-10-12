@@ -843,7 +843,7 @@ func TestAdvisorAnswersAQuestionFile(t *testing.T) {
 	}
 	record := completedRun(t, home, created[0])
 	// Its output is the one property advice, which the advice schema
-	// accepts: the fake answers with the first variant, owner.
+	// accepts: the fake answers with the first variant, conflict.
 	output := record["result"].(map[string]any)["output"]
 	schemaAccepts(t, record, output, r.stdout)
 	if want := map[string]any{"advice": map[string]any{"kind": "conflict", "reason": "fake"}}; !reflect.DeepEqual(output, want) {
