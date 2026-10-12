@@ -1170,7 +1170,7 @@ func (c *Calls) execute(ctx context.Context, handle RunHandle, record run.Record
 		if turn.Status == run.Completed && res.Process.Output == "json" {
 			validation = c.validator.Validate(res.Schema, turn.Output)
 		}
-		_, fault := run.Conclude(turn, definition.Output{Format: res.Process.Output}, validation)
+		_, fault := run.Conclude(turn, validation)
 		// A contract-valid output is kept whatever then ends the call: a
 		// failed verification is still the call's status and class.
 		if fault == nil && res.Process.Output == "json" {

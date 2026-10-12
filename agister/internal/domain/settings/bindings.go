@@ -32,7 +32,7 @@ func (b Bundle) bindings(workflow definition.Workflow) []binding {
 			continue
 		}
 		process := b.Resolved(node.Process)
-		effective, err := policy.Compose(*b.Service, process, policy.Caller{})
+		effective, err := policy.Compose(ceilings(*b.Service), declared(process), policy.Caller{})
 		if err != nil {
 			continue
 		}
@@ -94,7 +94,7 @@ func BindingPlans(b Bundle, installed map[string]string) []BindingPlan {
 			if !ok {
 				continue
 			}
-			effective, err := policy.Compose(*b.Service, process, policy.Caller{})
+			effective, err := policy.Compose(ceilings(*b.Service), declared(process), policy.Caller{})
 			if err != nil {
 				continue
 			}
@@ -137,7 +137,7 @@ func planOn(effective policy.Effective, mapping definition.Mapping, versions, st
 	}
 	for _, candidate := range versions {
 		verified, _ := mapping.ForVersion(candidate)
-		plan, err := enforce.Make(effective.Permissions, verified, nil, stateReaching)
+		plan, err := enforce.Make(effective.Permissions, offer(verified), nil, stateReaching)
 		if err != nil {
 			continue
 		}
@@ -207,4 +207,55 @@ func unresumed(process definition.Process, effective policy.Effective, why strin
 		problems = append(problems, fmt.Sprintf("stale.recover.max_resumes %d recovers in the call's session, but %s", resumes, why))
 	}
 	return problems
+}
+
+// offer is what the runtime mapping offers enforce: its primitives, and
+// whether a plan takes exactly one of them.
+func offer(mapping definition.Mapping) enforce.Offer {
+	primitives := make([]enforce.Primitive, 0, len(mapping.Primitives))
+	for _, primitive := range mapping.Primitives {
+		primitives = append(primitives, enforce.Primitive{Name: primitive.Name, Grants: primitive.Grants})
+	}
+	return enforce.Offer{One: mapping.Select == "one", Primitives: primitives}
+}
+
+// ceilings are what of the service bounds a call's limits.
+func ceilings(service definition.Service) policy.Ceilings {
+	return policy.Ceilings{
+		MaxTimeout:        service.MaxTimeout,
+		MaxAttempts:       service.MaxAttempts,
+		MaxVerifyAttempts: service.MaxVerifyAttempts,
+		MaxCostUSD:        service.MaxCostUSD,
+		Permissions:       service.Permissions,
+		Writing:           service.Writing,
+	}
+}
+
+// declared is what a process declares of its limits, for policy.
+func declared(process definition.Process) policy.Declared {
+	own := process.Limits
+	out := policy.Declared{
+		Process:     process.Name,
+		Timeout:     own.Timeout,
+		MaxAttempts: own.MaxAttempts,
+		MaxCostUSD:  own.MaxCostUSD,
+		Allow:       own.Allow,
+		Deny:        own.Deny,
+		Require:     process.Require,
+		Access:      own.Access,
+		Scope:       own.Scope,
+		Pinned:      process.Revision != "",
+		Stale: policy.DeclaredStale{
+			NoEvent:           own.Stale.NoEvent,
+			NoOutput:          own.Stale.NoOutput,
+			ToolCommand:       own.Stale.ToolCommand,
+			RepeatedToolCalls: own.Stale.RepeatedToolCalls,
+			MaxResumes:        own.Stale.Recover.MaxResumes,
+			Instruction:       own.Stale.Recover.Instruction,
+		},
+	}
+	if process.Verify != nil {
+		out.Verify = &policy.Verify{Timeout: process.Verify.Timeout, MaxAttempts: process.Verify.MaxAttempts}
+	}
+	return out
 }

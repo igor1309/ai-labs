@@ -9,8 +9,9 @@ import (
 	"github.com/igor1309/ai-labs/agister/internal/domain/policy"
 )
 
-func verify(timeout string, attempts int) string {
-	return fmt.Sprintf("verify:\n  command: go test ./...\n  timeout: %s\n  max_attempts: %d\n  instruction: Fix the cause.\n", timeout, attempts)
+// verifying is the review with a verification of timeout and attempts.
+func verifying(timeout time.Duration, attempts int) policy.Declared {
+	return with(func(d *policy.Declared) { d.Verify = &policy.Verify{Timeout: timeout, MaxAttempts: attempts} })
 }
 
 // Rule 3: verify.max_attempts may not exceed the service's
@@ -31,7 +32,7 @@ func TestVerifyAttemptsAboveTheServiceCeilingAreInvalid(t *testing.T) {
 			t.Parallel()
 			ceilinged := service
 			ceilinged.MaxVerifyAttempts = c.ceiling
-			_, err := policy.Compose(ceilinged, process(t, verify("5m", c.attempts)), policy.Caller{})
+			_, err := policy.Compose(ceilinged, verifying(5*time.Minute, c.attempts), policy.Caller{})
 			if c.problem == "" && err != nil {
 				t.Fatal(err)
 			}
@@ -52,20 +53,23 @@ func TestVerifyTimeoutAboveTheEffectiveTimeoutIsInvalid(t *testing.T) {
 	minutes := func(n time.Duration) *time.Duration { d := n * time.Minute; return &d }
 	cases := []struct {
 		name    string
-		extra   string
+		process policy.Declared
 		caller  policy.Caller
 		problem string
 	}{
-		{"within the process's", verify("20m", 1), policy.Caller{}, ""},
-		{"above the process's", verify("21m", 1), policy.Caller{}, "verify.timeout 21m0s exceeds the effective timeout 20m0s"},
-		{"above the process's own 5m", "timeout: 5m\n" + verify("10m", 1), policy.Caller{}, "verify.timeout 10m0s exceeds the effective timeout 5m0s"},
-		{"above the caller's", verify("10m", 1), policy.Caller{Timeout: minutes(5)}, "verify.timeout 10m0s exceeds the effective timeout 5m0s"},
-		{"within the caller's", verify("5m", 1), policy.Caller{Timeout: minutes(5)}, ""},
+		{"within the process's", verifying(20*time.Minute, 1), policy.Caller{}, ""},
+		{"above the process's", verifying(21*time.Minute, 1), policy.Caller{}, "verify.timeout 21m0s exceeds the effective timeout 20m0s"},
+		{"above the process's own 5m", with(func(d *policy.Declared) {
+			d.Timeout = ptr(5 * time.Minute)
+			d.Verify = &policy.Verify{Timeout: 10 * time.Minute, MaxAttempts: 1}
+		}), policy.Caller{}, "verify.timeout 10m0s exceeds the effective timeout 5m0s"},
+		{"above the caller's", verifying(10*time.Minute, 1), policy.Caller{Timeout: minutes(5)}, "verify.timeout 10m0s exceeds the effective timeout 5m0s"},
+		{"within the caller's", verifying(5*time.Minute, 1), policy.Caller{Timeout: minutes(5)}, ""},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			t.Parallel()
-			_, err := policy.Compose(withCeiling, process(t, c.extra), c.caller)
+			_, err := policy.Compose(withCeiling, c.process, c.caller)
 			if c.problem == "" && err != nil {
 				t.Fatal(err)
 			}

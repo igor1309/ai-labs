@@ -6,18 +6,17 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/igor1309/ai-labs/agister/internal/domain/definition"
 	"github.com/igor1309/ai-labs/agister/internal/domain/enforce"
 )
 
-var claude = definition.Mapping{Select: "any", Primitives: []definition.Primitive{
+var claude = enforce.Offer{Primitives: []enforce.Primitive{
 	{Name: "Read", Grants: []string{"repository.read"}},
 	{Name: "Glob", Grants: []string{"repository.read"}},
 	{Name: "Grep", Grants: []string{"repository.search"}},
 	{Name: "Bash", Grants: []string{"process.execute", "repository.read", "repository.search", "repository.diff", "repository.history.read", "host.read"}},
 }}
 
-var codex = definition.Mapping{Select: "one", Primitives: []definition.Primitive{
+var codex = enforce.Offer{One: true, Primitives: []enforce.Primitive{
 	{Name: "read-only", Grants: []string{"repository.read", "repository.search", "repository.diff", "process.execute"}},
 	{Name: "workspace-write", Grants: []string{"repository.read", "repository.search", "repository.diff", "process.execute", "repository.write"}},
 }}
@@ -73,7 +72,7 @@ func TestOneRefusesWhenNoModeFits(t *testing.T) {
 	}
 }
 
-// Property: whatever the mapping and permissions, granted primitives never
+// Property: whatever the offer and permissions, granted primitives never
 // grant anything outside the permissions, nor anything state-reaching.
 func TestPlansNeverExceedThePermissions(t *testing.T) {
 	t.Parallel()
@@ -89,17 +88,17 @@ func TestPlansNeverExceedThePermissions(t *testing.T) {
 		return out
 	}
 	for i := 0; i < 5000; i++ {
-		mapping := definition.Mapping{Select: []string{"any", "one"}[random.Intn(2)]}
+		offer := enforce.Offer{One: random.Intn(2) == 0}
 		for j := 0; j < 1+random.Intn(5); j++ {
-			mapping.Primitives = append(mapping.Primitives, definition.Primitive{Name: string(rune('P' + j)), Grants: pick()})
+			offer.Primitives = append(offer.Primitives, enforce.Primitive{Name: string(rune('P' + j)), Grants: pick()})
 		}
 		permissions, reaching := pick(), pick()
-		plan, err := enforce.Make(permissions, mapping, nil, reaching)
+		plan, err := enforce.Make(permissions, offer, nil, reaching)
 		if err != nil {
 			continue
 		}
 		for _, name := range plan.Primitives {
-			for _, primitive := range mapping.Primitives {
+			for _, primitive := range offer.Primitives {
 				if primitive.Name != name {
 					continue
 				}
@@ -110,7 +109,7 @@ func TestPlansNeverExceedThePermissions(t *testing.T) {
 				}
 			}
 		}
-		if mapping.Select == "one" && len(plan.Primitives) != 1 {
+		if offer.One && len(plan.Primitives) != 1 {
 			t.Fatalf("select one granted %v", plan.Primitives)
 		}
 	}
