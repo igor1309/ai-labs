@@ -3,6 +3,8 @@
 - **Status:** Accepted
 - **Amended by:** [ADR-028](028-settings-are-layered-by-field.md) (rules 2,
   4, 5 and 6, and the non-decision on the Go prompts' source)
+  and [ADR-033](033-go-guidance-is-homes.md) (rules 5 and 6: the Go
+  prompts are home's)
 - **Date:** 2026-10-07
 - **Scope:** where the documents of Agister's home settings are kept in
   git, how they reach home, and how `agister install` takes a skill

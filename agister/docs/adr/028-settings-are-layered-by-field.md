@@ -1,6 +1,8 @@
 # ADR-028: Settings are layered by field
 
 - **Status:** Accepted
+- **Amended by:** [ADR-033](033-go-guidance-is-homes.md) (the Go prompts
+  are home's, and home's processes are given them)
 - **Date:** 2026-10-09
 - **Scope:** which settings layers a call reads, how a document is
   composed from the layers that hold it, and how a process names its
