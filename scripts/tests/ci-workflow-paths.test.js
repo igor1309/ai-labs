@@ -221,6 +221,22 @@ test("ciTestFiles_shouldBeNamed_whenNoJobRunsThem", () => {
   assert.deepEqual(testsRunningNoJob([...unrun, "loki/tests/verify-host.test.js"]), unrun);
 });
 
+test("ciJobs_shouldEachRun_onManualDispatch", () => {
+  const filtered = [...workflow.matchAll(/\n  ([\w-]+):\n(?:    .*\n)*?    if: (.*needs\.changes\.outputs\..*)\n/g)];
+  assert.ok(filtered.length > 0);
+  for (const [, job, condition] of filtered) {
+    assert.ok(condition.includes("github.event_name == 'workflow_dispatch'"), `${job} does not run on a manual dispatch`);
+  }
+});
+
+test("ciWeekly_shouldDispatchCiOnTrunk_onASchedule", () => {
+  const weekly = readFileSync(new URL(".github/workflows/ci-weekly.yml", repoRoot), "utf8");
+  assert.match(weekly, /^  schedule:\n    - cron: "\d+ \d+ \* \* [0-6]"/m);
+  assert.match(weekly, /^permissions:\n  actions: write$/m);
+  assert.match(weekly, /run: gh workflow run ci\.yml --repo "\$GITHUB_REPOSITORY" --ref trunk$/m);
+  assert.match(workflow, /^on:\n(?:  .*\n)*?  workflow_dispatch:$/m);
+});
+
 test("ciReport_shouldBeNamedReport_onlyForPullRequest", () => {
   assert.equal(reportCheckName("pull_request"), "report");
   assert.notEqual(reportCheckName("push"), "report");

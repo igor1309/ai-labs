@@ -71,9 +71,10 @@ Notes:
 
 ## Keeping it regular
 
-One thing keeps the table above from going stale (LAB-219):
+Two things keep the table above from going stale (LAB-219):
 
 - **Every test file runs some job.** `scripts/tests/ci-workflow-paths.test.js` lists every tracked test file (Go, Node, Python, Swift, Kotlin, shell) and fails when a change to one would select no job. A new project's tests fail there until a filter and a job cover them, or until `unfilteredTests` in that file names the reason they need none.
+- **Every job runs weekly.** A push runs only the jobs its changed paths select, so a project nothing touches is never re-tested. `ci-weekly.yml` dispatches `ci.yml` on trunk each Sunday at 03:37 Moscow time; a manual dispatch runs every job, `real-provider-smoke` included, and the same test keeps that true. A failure arrives through `ci.yml`'s own Telegram notification.
 
 ## Notio Split
 
@@ -91,4 +92,4 @@ There is no trunk-push Cloudflare Pages deploy path for Notio frontend.
 - **Path detection**: `dorny/paths-filter@v4` in the `changes` job
 - **Failure notifications**: all pipelines route failures through `notify-telegram-failure.yml`
 - **Concurrency**: scheduled workflows use `concurrency` groups to prevent overlap
-- **Timezone**: all cron schedules target Moscow morning (UTC+3), documented in each file
+- **Timezone**: cron schedules target Moscow morning (UTC+3), and `ci-weekly.yml` Sunday night, documented in each file
