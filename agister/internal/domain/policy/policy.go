@@ -7,9 +7,51 @@ import (
 	"fmt"
 	"strings"
 	"time"
-
-	"github.com/igor1309/ai-labs/agister/internal/domain/definition"
 )
+
+// Ceilings are the service's: the limits no call may exceed, and the
+// permissions there are.
+type Ceilings struct {
+	MaxTimeout        time.Duration
+	MaxAttempts       int
+	MaxVerifyAttempts int
+	MaxCostUSD        *float64 // unset: no cost limit
+	Permissions       []string // every permission there is
+	Writing           []string // the permissions that write
+}
+
+// Declared is what a process declares of its limits; each it does not set
+// is nil or empty.
+type Declared struct {
+	Process     string // its name, for problems
+	Timeout     *time.Duration
+	MaxAttempts *int
+	MaxCostUSD  *float64
+	Allow       []string
+	Deny        []string
+	Require     []string // permissions the call cannot work without
+	Access      string   // read-only or read-write
+	Scope       string   // candidate or repository
+	Pinned      bool     // the process pins a revision for HEAD to be at
+	Stale       DeclaredStale
+	Verify      *Verify // nil: no verification
+}
+
+// DeclaredStale are the staleness limits and recovery a process declares.
+type DeclaredStale struct {
+	NoEvent           *time.Duration
+	NoOutput          *time.Duration
+	ToolCommand       *time.Duration
+	RepeatedToolCalls *int
+	MaxResumes        *int
+	Instruction       string
+}
+
+// Verify is what of a process's verification bounds a call.
+type Verify struct {
+	Timeout     time.Duration // per run
+	MaxAttempts int
+}
 
 // Caller holds the overrides a caller may apply. They may only narrow.
 type Caller struct {
@@ -71,11 +113,9 @@ func (e *InvalidError) Error() string {
 
 // Compose composes the effective limits of a call of process: its own,
 // within the service's ceilings, narrowed by the caller (ADR-030 rule 4).
-func Compose(service definition.Service, process definition.Process, caller Caller) (Effective, error) {
+func Compose(service Ceilings, own Declared, caller Caller) (Effective, error) {
 	var problems []string
 	add := func(format string, args ...any) { problems = append(problems, fmt.Sprintf(format, args...)) }
-
-	own := process.Limits
 
 	vocabulary := func(field string, names []string) {
 		for _, name := range names {
@@ -86,7 +126,7 @@ func Compose(service definition.Service, process definition.Process, caller Call
 	}
 	vocabulary("tools.allow", own.Allow)
 	vocabulary("isolation.deny", own.Deny)
-	vocabulary("tools.require", process.Require)
+	vocabulary("tools.require", own.Require)
 
 	timeout := own.Timeout
 	if timeout == nil {
@@ -119,7 +159,7 @@ func Compose(service definition.Service, process definition.Process, caller Call
 	// A verification run is bounded by its own timeout inside the call's,
 	// so the call's may not be the shorter; its attempts, by the service's
 	// ceiling. Either is invalid, never clamped.
-	if verify := process.Verify; verify != nil {
+	if verify := own.Verify; verify != nil {
 		if verify.Timeout > *timeout {
 			add("verify.timeout %s exceeds the effective timeout %s", verify.Timeout, *timeout)
 		}
@@ -149,13 +189,13 @@ func Compose(service definition.Service, process definition.Process, caller Call
 	// it; a declared scope must agree.
 	scope := own.Scope
 	switch {
-	case scope == "" && process.Revision != "":
+	case scope == "" && own.Pinned:
 		scope = "candidate"
 	case scope == "":
 		scope = "repository"
-	case scope == "candidate" && process.Revision == "":
+	case scope == "candidate" && !own.Pinned:
 		add("workspace.scope candidate requires workspace.revision")
-	case scope == "repository" && process.Revision != "":
+	case scope == "repository" && own.Pinned:
 		add("workspace.scope repository conflicts with workspace.revision, which pins a revision")
 	}
 
@@ -164,14 +204,14 @@ func Compose(service definition.Service, process definition.Process, caller Call
 		deny = union(deny, service.Writing)
 	}
 	permissions := subtract(own.Allow, deny)
-	for _, name := range process.Require {
+	for _, name := range own.Require {
 		if !contains(permissions, name) {
 			add("tools.require: %s is not an effective permission", name)
 		}
 	}
 
 	if len(problems) > 0 {
-		return Effective{}, &InvalidError{Process: process.Name, Problems: problems}
+		return Effective{}, &InvalidError{Process: own.Process, Problems: problems}
 	}
 	return Effective{
 		Timeout:     *timeout,
@@ -180,7 +220,7 @@ func Compose(service definition.Service, process definition.Process, caller Call
 		Allow:       nonNil(own.Allow),
 		Deny:        nonNil(deny),
 		Permissions: nonNil(permissions),
-		Require:     process.Require,
+		Require:     own.Require,
 		Access:      access,
 		Scope:       scope,
 		Stale:       stale,
@@ -189,20 +229,20 @@ func Compose(service definition.Service, process definition.Process, caller Call
 
 // ownStale are the staleness limits the process declares, each unset
 // unless it sets it.
-func ownStale(add func(string, ...any), own definition.Stale) Stale {
+func ownStale(add func(string, ...any), own DeclaredStale) Stale {
 	return Stale{
 		NoEvent:           own.NoEvent,
 		NoOutput:          own.NoOutput,
 		ToolCommand:       own.ToolCommand,
 		RepeatedToolCalls: own.RepeatedToolCalls,
-		Recover:           ownRecover(add, own.Recover),
+		Recover:           ownRecover(add, own),
 	}
 }
 
 // ownRecover is the recovery of a stale call the process declares (ADR-024
 // rule 5, as ADR-030 rule 4 amends it): unset is 0, and a budget above 0
 // needs an instruction.
-func ownRecover(add func(string, ...any), own definition.Recover) Recover {
+func ownRecover(add func(string, ...any), own DeclaredStale) Recover {
 	if own.MaxResumes == nil || *own.MaxResumes == 0 {
 		return Recover{}
 	}
@@ -216,7 +256,7 @@ func ownRecover(add func(string, ...any), own definition.Recover) Recover {
 // narrowCost composes the cost limit. Unlike timeout it may stay unset,
 // but once the service or the process sets it, those after may only lower
 // it.
-func narrowCost(add func(string, ...any), service definition.Service, own, caller *float64) *float64 {
+func narrowCost(add func(string, ...any), service Ceilings, own, caller *float64) *float64 {
 	limit := service.MaxCostUSD
 	for _, layer := range []struct {
 		name  string
@@ -232,15 +272,6 @@ func narrowCost(add func(string, ...any), service definition.Service, own, calle
 		limit = layer.value
 	}
 	return limit
-}
-
-func hasValue(values []definition.Value, name string) bool {
-	for _, value := range values {
-		if value.Name == name {
-			return true
-		}
-	}
-	return false
 }
 
 func contains(list []string, value string) bool {

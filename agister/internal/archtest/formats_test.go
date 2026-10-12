@@ -52,7 +52,6 @@ var coupling = map[string]string{
 	"internal/app tags its fields":                                "LAB-189, LAB-192: the join's collection and the probe cache",
 	"internal/contract imports encoding/json":                     "LAB-189: carries the record and the output as stored",
 	"internal/contract tags its fields":                           "LAB-192: its types are the CLI's --json output",
-	"internal/domain/policy imports internal/domain/definition":   "LAB-188: takes the service's and the process's file shape",
 	"internal/domain/run imports encoding/json":                   "LAB-189: is the run record's file shape",
 	"internal/domain/run tags its fields":                         "LAB-189: is the run record's file shape",
 	"internal/domain/settings imports internal/domain/definition": "LAB-188: checks the settings documents across files",

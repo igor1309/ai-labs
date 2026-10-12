@@ -152,7 +152,7 @@ func Check(b Bundle, m Mechanisms) []Problem {
 		if process.Output.Format == "json" && !b.Schemas[process.Output.Schema] {
 			add(subject, "output schema %q does not exist", process.Output.Schema)
 		}
-		effective, err := policy.Compose(*b.Service, process, policy.Caller{})
+		effective, err := policy.Compose(ceilings(*b.Service), declared(process), policy.Caller{})
 		if err != nil {
 			add(subject, "%v", strings.TrimPrefix(err.Error(), "process "+name+" is invalid:\n  "))
 			continue
