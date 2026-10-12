@@ -22,6 +22,7 @@ const (
 	exitUsage   = 2
 	exitOwner   = 3
 	exitLimited = 4
+	exitOpen    = 5
 )
 
 // runner runs a program in dir and returns its standard output. A program
@@ -49,6 +50,15 @@ type result struct {
 // implemented is the output of an implement run that the gate reads.
 type implemented struct {
 	FilesChanged []string `json:"files_changed"`
+	Open         []point  `json:"open"`
+}
+
+// point is a point an implement run left open: its question, its options
+// and what the run searched for the answer.
+type point struct {
+	Question string   `json:"question"`
+	Options  []string `json:"options"`
+	Searched []string `json:"searched"`
 }
 
 // item is one item of a judgement.
@@ -74,6 +84,8 @@ type summary struct {
 	// Left is the last counted review's items the gate did not act on:
 	// majors still ruled fix, minors ruled fix and items ruled defer.
 	Left left `json:"left"`
+	// Open is the point an implement run left open, which stopped the step.
+	Open []point `json:"open,omitempty"`
 }
 
 type implement struct {
@@ -118,6 +130,8 @@ func run(ctx context.Context, args []string, call runner, stdout, stderr io.Writ
 		return exitOwner
 	case "limited":
 		return exitLimited
+	case "open":
+		return exitOpen
 	}
 	return exitStopped
 }
@@ -283,6 +297,10 @@ func (g *gate) implementAndCommit(ctx context.Context, brief, message string) er
 	}
 	g.sum.Implements = append(g.sum.Implements, implement{RunID: r.RunID, Brief: brief, Commit: strings.TrimSpace(string(head))})
 	fmt.Fprintf(g.progress, "agister-gate: implement %s committed %s\n", r.RunID, strings.TrimSpace(string(head)))
+	if len(out.Open) > 0 {
+		g.sum.Open = out.Open
+		return stop{"open", fmt.Sprintf("implement run %s left %d point(s) open; its work is committed, unreviewed", r.RunID, len(out.Open))}
+	}
 	return nil
 }
 

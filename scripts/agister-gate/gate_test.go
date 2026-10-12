@@ -309,3 +309,20 @@ func TestTheGateTakesNoBriefButTheIssuesText(t *testing.T) {
 		}
 	}
 }
+
+// An implement run that leaves a point open stops the step after its
+// commit, before any review, with the point in the summary.
+func TestAPointLeftOpenStopsTheStepAfterItsCommit(t *testing.T) {
+	t.Parallel()
+	open := point{Question: "Which exit code?", Options: []string{"0", "64"}, Searched: []string{"ADR-030 rule 8: silent on exit codes"}}
+	out, _ := json.Marshal(map[string]any{"run_id": "i1", "status": "completed",
+		"output": map[string]any{"files_changed": []string{"cmd/a.go"}, "open": []point{open}}})
+	f := &fake{t: t, implements: []string{string(out)}}
+	code, sum, _ := gated(t, f)
+	if code != exitOpen || sum.Status != "open" || !reflect.DeepEqual(sum.Open, []point{open}) {
+		t.Fatalf("exit %d, %+v", code, sum)
+	}
+	if len(f.commits) != 1 || len(sum.Reviews) != 0 {
+		t.Errorf("commits %q, reviews %+v", f.commits, sum.Reviews)
+	}
+}
