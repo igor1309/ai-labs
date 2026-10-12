@@ -2886,7 +2886,8 @@ func TestHomesProcessesSetTheGoGuidance(t *testing.T) {
 // one-to-one copy translates nothing, that each component a change touches
 // has its own reason to change, and that file formats are the language of
 // the outer edges; go-testing-seams that serial running does not isolate a
-// process-wide measure, and that a test covers the class of cases. An
+// process-wide measure, that a test covers the class of cases, and that a
+// test's deadline is 1 minute at most and a package's run 2. An
 // instruction is held by its short phrases standing in one paragraph, as
 // in TestReviewPromptsCarryTheirCoverageContract. The prompts are the home
 // folder's, read as they are.
@@ -2918,6 +2919,9 @@ func TestTheGoPromptsAgreeWithTheReviews(t *testing.T) {
 				"the product's own work through a seam it is given"}},
 			{"a test covers the class of cases", []string{
 				"A test covers the class of cases a behaviour has", "not one example of it"}},
+			{"a test's deadline is 1 minute at most, a package's run 2", []string{
+				"deadline in a test exceeds 1 minute", "2 minutes at most",
+				"a machine that may be under heavy load"}},
 		}},
 	}
 	for _, c := range cases {
