@@ -32,9 +32,13 @@ import (
 	"github.com/igor1309/ai-labs/gokit/clocktest"
 )
 
-// The CLI this package builds, and the fake the test that kills it builds,
-// are removed when its tests end.
-func TestMain(m *testing.M) { os.Exit(runtimetest.Run(m)) }
+// The CLI this package builds, the fake the test that kills it builds, and
+// the homes setup copies are removed when its tests end.
+func TestMain(m *testing.M) {
+	code := runtimetest.Run(m)
+	os.RemoveAll(setupHomes.dir)
+	os.Exit(code)
+}
 
 // agisterBinary builds this CLI once per test binary and returns its path.
 func agisterBinary(t testing.TB) string {
@@ -328,7 +332,44 @@ func onFakeGit(t *testing.T, home, scenario string) string {
 // starter runs the fake by, in a repository of the fake of git.
 func setup(t *testing.T, scenario string) (home, repo string) {
 	home = tempDir(t)
-	return setupOn(t, home, onFakeGit(t, home, scenario), "claude")
+	repo = onFakeGit(t, home, scenario)
+	if err := os.CopyFS(home, os.DirFS(setupHome(t, scenario))); err != nil {
+		t.Fatal(err)
+	}
+	return home, repo
+}
+
+// setupHomes holds, by scenario, a home setupOn prepared, built once per
+// test binary by the same calls and copied by setup into each test's home:
+// the calls cost the most of this package's time, and their result names
+// neither the home nor the repository.
+var setupHomes = struct {
+	sync.Mutex
+	dir        string
+	byScenario map[string]string
+}{byScenario: map[string]string{}}
+
+func setupHome(t *testing.T, scenario string) string {
+	t.Helper()
+	setupHomes.Lock()
+	defer setupHomes.Unlock()
+	if home, ok := setupHomes.byScenario[scenario]; ok {
+		return home
+	}
+	if setupHomes.dir == "" {
+		dir, err := os.MkdirTemp("", "agister-setup-")
+		if err != nil {
+			t.Fatal(err)
+		}
+		setupHomes.dir = dir
+	}
+	home, err := os.MkdirTemp(setupHomes.dir, scenario+"-")
+	if err != nil {
+		t.Fatal(err)
+	}
+	setupOn(t, home, onFakeGit(t, home, scenario), "claude")
+	setupHomes.byScenario[scenario] = home
+	return home
 }
 
 // setupGit is setup in a real git repository, for the tests whose claim is
