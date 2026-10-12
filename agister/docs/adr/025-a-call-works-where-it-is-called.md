@@ -16,6 +16,8 @@
   [ADR-010](010-a-process-names-its-verification.md) rule 2;
   [ADR-024](024-a-stale-call-is-resumed-once.md): where a resumed turn
   works
+- **Amended by:** [ADR-035](035-a-continuation-notice-names-no-run.md)
+  (rule 7's prompt names no run)
 
 ## Context
 
