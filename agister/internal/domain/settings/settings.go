@@ -235,7 +235,7 @@ func planOnSomeVersion(effective policy.Effective, mapping definition.Mapping, s
 	most := -1
 	for _, version := range versions {
 		verified, unverified := mapping.ForVersion(version)
-		_, err := enforce.Make(effective.Permissions, verified, effective.Require, stateReaching)
+		_, err := enforce.Make(effective.Permissions, offer(verified), effective.Require, stateReaching)
 		if err == nil {
 			return nil
 		}
@@ -258,7 +258,7 @@ func PlanProblems(b Bundle, agent definition.Agent, version string) []Problem {
 	verified, unverified := mapping.ForVersion(version)
 	// refused is why the plan cannot be made, "" when it can.
 	refused := func(effective policy.Effective) string {
-		if _, err := enforce.Make(effective.Permissions, verified, effective.Require, b.Service.StateReaching); err != nil {
+		if _, err := enforce.Make(effective.Permissions, offer(verified), effective.Require, b.Service.StateReaching); err != nil {
 			return fmt.Sprintf("cannot run on agent %s's runtime %s version %s: %v%s", agent.Name, mapping.Name, version, err, unverifiedNote(unverified, version))
 		}
 		return ""

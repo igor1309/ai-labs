@@ -137,7 +137,7 @@ func planOn(effective policy.Effective, mapping definition.Mapping, versions, st
 	}
 	for _, candidate := range versions {
 		verified, _ := mapping.ForVersion(candidate)
-		plan, err := enforce.Make(effective.Permissions, verified, nil, stateReaching)
+		plan, err := enforce.Make(effective.Permissions, offer(verified), nil, stateReaching)
 		if err != nil {
 			continue
 		}
@@ -207,4 +207,14 @@ func unresumed(process definition.Process, effective policy.Effective, why strin
 		problems = append(problems, fmt.Sprintf("stale.recover.max_resumes %d recovers in the call's session, but %s", resumes, why))
 	}
 	return problems
+}
+
+// offer is what the runtime mapping offers enforce: its primitives, and
+// whether a plan takes exactly one of them.
+func offer(mapping definition.Mapping) enforce.Offer {
+	primitives := make([]enforce.Primitive, 0, len(mapping.Primitives))
+	for _, primitive := range mapping.Primitives {
+		primitives = append(primitives, enforce.Primitive{Name: primitive.Name, Grants: primitive.Grants})
+	}
+	return enforce.Offer{One: mapping.Select == "one", Primitives: primitives}
 }

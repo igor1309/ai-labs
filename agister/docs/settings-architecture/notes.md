@@ -168,7 +168,7 @@ Fields: `internal/domain/definition/documents.go:23-130`, `toml.go:27-60`,
   agent's runtime mapping: a primitive is granted only if everything it
   grants is allowed; allowed permissions no primitive provides are withheld
   and recorded, and the call is refused if the process requires them.
-  (ADR-001 rule 4; `internal/domain/enforce/enforce.go:31`)
+  (ADR-001 rule 4; `internal/domain/enforce/enforce.go:47`)
 - The binding check: `check` resolves every node of every workflow as a
   call would, up to the runtime's installed version: the process, the
   agent, its runtime mapping and the plan. A binding whose mapping gives

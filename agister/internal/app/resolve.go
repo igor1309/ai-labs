@@ -502,7 +502,7 @@ func (r *Resolver) resolveCall(ctx context.Context, processName, agentOverride s
 		}
 	}
 	subject = root
-	if res.plan, err = enforce.Make(res.effective.Permissions, verified, res.effective.Require, res.service.StateReaching); err != nil {
+	if res.plan, err = enforce.Make(res.effective.Permissions, offer(verified), res.effective.Require, res.service.StateReaching); err != nil {
 		if refused := (*enforce.RefusedError)(nil); errors.As(err, &refused) && refused.Plan != nil {
 			res.refusedPlan = *refused.Plan
 		}
@@ -678,4 +678,14 @@ func contains(list []string, value string) bool {
 		}
 	}
 	return false
+}
+
+// offer is what the runtime mapping offers enforce: its primitives, and
+// whether a plan takes exactly one of them.
+func offer(mapping definition.Mapping) enforce.Offer {
+	primitives := make([]enforce.Primitive, 0, len(mapping.Primitives))
+	for _, primitive := range mapping.Primitives {
+		primitives = append(primitives, enforce.Primitive{Name: primitive.Name, Grants: primitive.Grants})
+	}
+	return enforce.Offer{One: mapping.Select == "one", Primitives: primitives}
 }
