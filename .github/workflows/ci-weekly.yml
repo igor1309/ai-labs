@@ -22,7 +22,7 @@ concurrency:
 
 jobs:
   dispatch:
-    runs-on: [self-hosted, local-mac]
+    runs-on: ubuntu-latest
     timeout-minutes: 2
     steps:
       - name: Run every CI job on trunk
