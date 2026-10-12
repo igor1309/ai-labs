@@ -8,8 +8,10 @@
   :root {
     color-scheme: dark;
     --ground:#0E0E10; --surface:#17171A; --surface-2:#1E1E22;
-    --line:#2A2A2F; --line-soft:#232327;
+    --line:#2A2A2F; --line-soft:#232327; --line-strong:#3C3C43;
     --text:#E8E6E4; --text-dim:#95928F; --text-faint:#68655F;
+    /* Body text and the diagram's labels share one brightness. */
+    --text-body:#CFCBC6; --text-sub:#AEAAA4;
     --workflow:#CE8098; --process:#7E9CB8; --agent:#7FC4AE; --runtime:#D9A441;
     --rule:#E0785F; --run:#E3D9B8;
     --display:"Iowan Old Style","Palatino Linotype",Palatino,"Hoefler Text",Georgia,serif;
@@ -18,7 +20,7 @@
   }
   * { box-sizing: border-box; }
   body {
-    margin: 0; background: var(--ground); color: var(--text); overflow-wrap: break-word;
+    margin: 0; background: var(--ground); color: var(--text-body); overflow-wrap: break-word;
     font: 16px/1.6 var(--sans); -webkit-text-size-adjust: 100%;
   }
   main { max-width: 40rem; margin: 0 auto; padding: 0 16px 48px; }
@@ -56,32 +58,34 @@
 
   figure { margin: 24px 0 28px; }
   figure svg { display: block; width: 100%; height: auto; margin: 0 auto; }
-  svg text { fill: var(--text); font-family: var(--sans); font-size: 12.5px; }
+  svg text { fill: var(--text-body); font-family: var(--sans); font-size: 14px; }
   /* Every box title: one face, one size. */
-  svg .t { font-family: var(--display); font-size: 17px; }
+  svg .t { font-family: var(--display); font-size: 20px; }
   svg .kind .t { fill: var(--k); }
-  svg .sub { fill: var(--text-dim); }
-  svg .cmd { fill: var(--run); font-family: var(--mono); font-size: 13px; }
+  svg .sub { fill: var(--text-sub); }
+  svg .sub.k-process { fill: var(--process); }
+  svg .cmd { fill: var(--run); font-family: var(--mono); font-size: 15px; }
   svg .run-label { fill: var(--run); font-size: 11.5px; }
   svg .rule-label { fill: var(--rule); font-size: 11.5px; }
   svg .names-label { fill: var(--text-dim); font-size: 11.5px; }
   /* A leaf document's title: one face, one size, smaller than a kind's. */
-  svg .dt { font-family: var(--display); font-size: 15px; }
+  svg .dt { font-family: var(--display); font-size: 17px; }
   svg .dt.k-process { fill: var(--process); }
-  svg .callt { fill: var(--run); font-family: var(--display); font-size: 15px; }
-  .card { fill: var(--surface-2); stroke: var(--line); }
+  svg .callt { fill: var(--run); font-family: var(--display); font-size: 17px; }
+  .card { fill: var(--surface-2); stroke: var(--line-strong); }
   .edge { fill: var(--k); }
-  .doc { fill: var(--surface); stroke: var(--line); }
+  .doc { fill: var(--surface); stroke: var(--line-strong); }
   /* Containers: a box inside another is part of it, or bound by it. */
-  .box { fill: none; stroke: var(--k); stroke-opacity: .55; }
-  .node { fill: var(--ground); stroke: var(--k); stroke-opacity: .4; }
-  .node.shadow { stroke-opacity: .2; }
+  .box { fill: none; stroke: var(--k); stroke-opacity: .7; }
+  .node { fill: var(--ground); stroke: var(--k); stroke-opacity: .6; }
+  .node.shadow { stroke-opacity: .3; }
+  .label-gap { fill: var(--ground); }
   .base-doc { stroke: var(--process); stroke-dasharray: 4 3; }
   .pill { fill: var(--surface); stroke: var(--run); stroke-width: 1.25; }
   .call { fill: var(--surface); stroke: var(--run); stroke-width: 1.25; }
   .frame, .tree, .starts, .extends, .box-icon { fill: none; }
   .frame { stroke: var(--rule); stroke-width: 1.25; stroke-dasharray: 6 4; }
-  .tree { stroke: var(--text-dim); stroke-width: 1.25; }
+  .tree { stroke: var(--text-sub); stroke-width: 1.5; }
   .starts { stroke: var(--run); stroke-width: 2; }
   .extends { stroke: var(--process); stroke-width: 1.5; }
   .box-icon { stroke: var(--text-dim); }
@@ -133,7 +137,7 @@
 </header>
 
 <figure>
-<svg viewBox="0 0 680 818" role="img" aria-labelledby="diagram-title diagram-desc">
+<svg viewBox="0 0 680 642" role="img" aria-labelledby="diagram-title diagram-desc">
   <title id="diagram-title">The settings documents, each inside or under what names it</title>
   <desc id="diagram-desc">The service frames everything: inside it, agister run
   picks one workflow. Inside the workflow is its nodes; each node uses a
@@ -141,109 +145,95 @@
   are the documents it names: its base, which it extends, its output schema,
   verification, prompts, skills and brief forms. Under the agent are its
   runtime mapping and its skills. At the bottom of the node is its call,
-  where the process's permissions meet the runtime mapping's primitives. A
-  process uses only the service's permissions, within its limits; a runtime
-  mapping grants only the service's permissions.</desc>
+  where the process's permissions meet the runtime mapping's primitives.</desc>
   <defs>
     <marker id="head-starts" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
       <path class="head-starts" d="M0 0 10 5 0 10z"/>
     </marker>
-    <marker id="head-extends" viewBox="0 0 12 12" refX="11" refY="6" markerWidth="9" markerHeight="9" orient="auto" markerUnits="userSpaceOnUse">
+    <marker id="head-extends" viewBox="0 0 12 12" refX="11" refY="6" markerWidth="10" markerHeight="10" orient="auto" markerUnits="userSpaceOnUse">
       <path class="head-extends" d="M1 1 11 6 1 11z"/>
     </marker>
   </defs>
 
   <!-- The service: a frame around every run, not a step in it. -->
-  <rect class="frame" x="1" y="1" width="678" height="816" rx="6"/>
-  <text class="t" x="20" y="32">Service</text>
-  <text class="sub" x="20" y="54">hard limits · the permission vocabulary · writing permissions</text>
-  <text class="sub" x="20" y="72">state-reaching permissions, never granted</text>
-  <text class="rule-label" x="20" y="96">Inside it, a process uses only its permissions, within its limits,</text>
-  <text class="rule-label" x="20" y="112">and a runtime mapping grants only its permissions.</text>
+  <rect class="frame" x="1" y="14" width="678" height="627" rx="6"/>
+  <rect class="label-gap" x="14" y="2" width="330" height="26"/>
+  <text class="t" x="22" y="21">Service</text>
+  <text class="sub" x="100" y="21">limits and permissions for every run</text>
 
   <!-- The run: a command, not a settings document. -->
-  <rect class="pill" x="20" y="130" width="206" height="40" rx="20"/>
-  <text class="cmd" x="123" y="154.5" text-anchor="middle">agister run &lt;workflow&gt;</text>
-  <path class="starts" d="M123 170V192" marker-end="url(#head-starts)"/>
+  <rect class="pill" x="24" y="42" width="230" height="40" rx="20"/>
+  <text class="cmd" x="139" y="67" text-anchor="middle">agister run &lt;workflow&gt;</text>
+  <path class="starts" d="M139 82V100" marker-end="url(#head-starts)"/>
 
   <!-- Level 1: the workflow the name picks. -->
   <g class="kind workflow">
-    <rect class="box" x="20" y="194" width="640" height="606" rx="3"/>
-    <text class="t" x="36" y="220">Workflow</text>
-    <text class="sub" x="122" y="220">params · values</text>
+    <rect class="box" x="20" y="102" width="640" height="522" rx="3"/>
+    <text class="t" x="36" y="132">Workflow</text>
+    <text class="sub" x="134" y="132">params · values</text>
   </g>
 
   <!-- Level 2: its nodes, one drawn for each. -->
   <g class="kind workflow">
-    <rect class="node shadow" x="44" y="246" width="600" height="546" rx="3"/>
-    <rect class="node shadow" x="40" y="242" width="600" height="546" rx="3"/>
-    <rect class="node" x="36" y="238" width="600" height="546" rx="3"/>
-    <text class="t" x="52" y="264">Node</text>
-    <text class="sub" x="100" y="264">fan_out[] then join, or one call · uses a process, binds an agent</text>
+    <rect class="node shadow" x="44" y="154" width="600" height="454" rx="3"/>
+    <rect class="node shadow" x="40" y="150" width="600" height="454" rx="3"/>
+    <rect class="node" x="36" y="146" width="600" height="454" rx="3"/>
+    <text class="t" x="52" y="176">Node</text>
+    <text class="sub" x="110" y="176">fan_out and join, or one call</text>
   </g>
 
   <!-- Level 3: what a node uses and binds, side by side. -->
   <g class="kind process">
-    <rect class="card" x="52" y="282" width="324" height="100" rx="2"/>
-    <rect class="edge" x="52" y="282" width="3" height="100" rx="1"/>
-    <text class="t" x="66" y="308">Process</text>
-    <text class="sub" x="66" y="330">instruction · params · values</text>
-    <text class="sub" x="66" y="348">workspace · session · required permissions</text>
-    <text class="sub" x="66" y="366">allowed · denied · timeout · attempts · cost · stale</text>
+    <rect class="card" x="52" y="192" width="320" height="64" rx="2"/>
+    <rect class="edge" x="52" y="192" width="3" height="64" rx="1"/>
+    <text class="t" x="68" y="218">Process</text>
+    <text class="sub" x="68" y="242">instruction · inputs · limits</text>
   </g>
   <g class="kind agent">
-    <rect class="card" x="392" y="282" width="228" height="100" rx="2"/>
-    <rect class="edge" x="392" y="282" width="3" height="100" rx="1"/>
-    <text class="t" x="406" y="308">Agent</text>
-    <text class="sub" x="406" y="330">model · model family</text>
-    <text class="sub" x="406" y="348">effort · command</text>
+    <rect class="card" x="388" y="192" width="232" height="64" rx="2"/>
+    <rect class="edge" x="388" y="192" width="3" height="64" rx="1"/>
+    <text class="t" x="404" y="218">Agent</text>
+    <text class="sub" x="404" y="242">model · effort</text>
   </g>
 
   <!-- Level 4: what the process names, under it. -->
-  <path class="tree" d="M66 382V681M66 481H84M66 531H84M66 581H84M66 631H84M66 681H84"/>
-  <path class="extends" d="M66 431H83" marker-end="url(#head-extends)"/>
-  <rect class="doc base-doc" x="84" y="410" width="292" height="42" rx="2"/>
-  <text class="dt k-process" x="98" y="428">Base process</text>
-  <text class="sub" x="98" y="445">extends: process:&lt;base&gt; · one level, not work</text>
-  <rect class="doc" x="84" y="460" width="292" height="42" rx="2"/>
-  <text class="dt" x="98" y="478">Output schema</text>
-  <text class="sub" x="98" y="495">a JSON Schema</text>
-  <rect class="doc" x="84" y="510" width="292" height="42" rx="2"/>
-  <text class="dt" x="98" y="528">Verification</text>
-  <text class="sub" x="98" y="545">command · timeout · attempts · instruction</text>
-  <rect class="doc" x="84" y="560" width="292" height="42" rx="2"/>
-  <text class="dt" x="98" y="578">Prompts</text>
-  <text class="sub" x="98" y="595">one prompt · a guidance list</text>
-  <rect class="doc" x="84" y="610" width="292" height="42" rx="2"/>
-  <text class="dt" x="98" y="628">Skills</text>
-  <text class="sub" x="98" y="645">SKILL.md each</text>
-  <rect class="doc" x="84" y="660" width="292" height="42" rx="2"/>
-  <text class="dt" x="98" y="678">Brief forms</text>
-  <text class="sub" x="98" y="695">the forms a file value's text must have</text>
+  <path class="tree" d="M66 256V516M66 340H84M66 384H84M66 428H84M66 472H84M66 516H84"/>
+  <path class="extends" d="M66 296H83" marker-end="url(#head-extends)"/>
+  <rect class="doc base-doc" x="84" y="278" width="288" height="36" rx="2"/>
+  <text class="dt k-process" x="98" y="302">Base process</text>
+  <text class="sub k-process" x="360" y="301" text-anchor="end">extends</text>
+  <rect class="doc" x="84" y="322" width="288" height="36" rx="2"/>
+  <text class="dt" x="98" y="346">Output schema</text>
+  <rect class="doc" x="84" y="366" width="288" height="36" rx="2"/>
+  <text class="dt" x="98" y="390">Verification</text>
+  <rect class="doc" x="84" y="410" width="288" height="36" rx="2"/>
+  <text class="dt" x="98" y="434">Prompts</text>
+  <rect class="doc" x="84" y="454" width="288" height="36" rx="2"/>
+  <text class="dt" x="98" y="478">Skills</text>
+  <rect class="doc" x="84" y="498" width="288" height="36" rx="2"/>
+  <text class="dt" x="98" y="522">Brief forms</text>
 
   <!-- Level 4: what the agent names, under it, on the same rows. -->
-  <path class="tree" d="M406 382V481M406 431H420M406 481H420"/>
+  <path class="tree" d="M402 256V340M402 296H420M402 340H420"/>
   <g class="kind runtime">
-    <rect class="doc" x="420" y="410" width="200" height="42" rx="2"/>
-    <rect class="edge" x="420" y="410" width="3" height="42" rx="1"/>
-    <text class="dt" x="434" y="428">Runtime mapping</text>
-    <text class="sub" x="434" y="445">efforts · primitives</text>
+    <rect class="doc" x="420" y="278" width="200" height="36" rx="2"/>
+    <rect class="edge" x="420" y="278" width="3" height="36" rx="1"/>
+    <text class="dt" x="436" y="302">Runtime mapping</text>
   </g>
-  <rect class="doc" x="420" y="460" width="200" height="42" rx="2"/>
-  <text class="dt" x="434" y="478">Skills</text>
-  <text class="sub" x="434" y="495">SKILL.md each</text>
+  <rect class="doc" x="420" y="322" width="200" height="36" rx="2"/>
+  <text class="dt" x="436" y="346">Skills</text>
 
   <!-- The node's call: where the two sides meet. -->
-  <rect class="call" x="52" y="724" width="568" height="44" rx="22"/>
-  <text class="callt" x="72" y="751">Call</text>
-  <text class="sub" x="114" y="751">the process's permissions meet the runtime mapping's primitives: the plan</text>
+  <rect class="call" x="52" y="548" width="568" height="40" rx="20"/>
+  <text class="callt" x="74" y="573">Call</text>
+  <text class="sub" x="122" y="573">permissions meet primitives: the plan</text>
 </svg>
 <ul class="legend">
   <li><svg viewBox="0 0 34 14" aria-hidden="true"><path class="starts" d="M0 7H28"/><path class="head-starts" d="M26 3 34 7 26 11z"/></svg><span><b>starts</b> what a run runs</span></li>
   <li><svg viewBox="0 0 34 14" aria-hidden="true"><rect class="box-icon" x="1" y="1" width="32" height="12" rx="2"/><rect class="box-icon" x="9" y="4" width="16" height="6" rx="1"/></svg><span><b>inside</b> part of it, or bound by it</span></li>
   <li><svg viewBox="0 0 34 14" aria-hidden="true"><path class="tree" d="M4 0V10H30"/></svg><span><b>under</b> a document it names</span></li>
   <li><svg viewBox="0 0 34 14" aria-hidden="true"><path class="extends" d="M0 7H24"/><path class="head-extends" d="M23 2 33 7 23 12z"/></svg><span><b>extends</b> the base it is composed over</span></li>
-  <li><svg viewBox="0 0 34 14" aria-hidden="true"><rect class="frame" x="1" y="1" width="32" height="12" rx="2"/></svg><span><b>frame</b> the service's rules, around every run</span></li>
+  <li><svg viewBox="0 0 34 14" aria-hidden="true"><rect class="frame" x="1" y="1" width="32" height="12" rx="2"/></svg><span><b>frame</b> the service, around every run</span></li>
 </ul>
 </figure>
 
@@ -259,7 +249,8 @@ its <span class="k-runtime">runtime mapping</span> and its own skills. The
 service is never picked: it has no name, and it applies to every run.</p>
 
 <p>The diagram reads top down, in the order <code>agister run</code>
-resolves the settings. A box holds the document's own fields. A box inside
+resolves the settings. A box's second line names a few of the document's
+own fields; the sections below give them all. A box inside
 another is part of it or bound by it, and boxes side by side inside one
 box are on one level: a node's process and agent. A document named by
 another stands under it, joined by a line; a process's base is one of
