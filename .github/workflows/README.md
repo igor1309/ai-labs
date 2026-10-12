@@ -61,13 +61,13 @@ Each test, what runs it, and the change that triggers it (LAB-167, LAB-220, LAB-
 | neris (`neris/packages/swift-neris/Tests/`) | `neris-core` | the `neris` filter | runs |
 | claude-insights: the script's pytest and the functions' Deno tests | `claude-insights-core` | the `claude-insights` filter | runs |
 | The langfuse stack (`tests/test_langfuse_shared_stack.py`) | `langfuse-core` | the `langfuse` filter | runs |
-| mac-health (`tools/mac-health/tests/test-*.sh`) | `mac-health-core`: `tools/mac-health/tests/run-all.sh` | the `mac-health` filter | runs |
+| mac-health (`tools/mac-health/tests/test-*.sh`) | `mac-health-core`: `tools/mac-health/tests/run-all.sh`, on `macos-latest` | the `mac-health` filter | runs |
 
 Notes:
 
 - warder pins gokit at a tag (`v0.1.0`), so a gokit change cannot break warder until gokit is tagged and warder moves to it; a gokit change runs `agister-core` only.
 - `warder/cmd/warder/files_test.go`, `process_test.go` and `serve_test.go` are `//go:build unix`: they run on the `local-mac` runner and are skipped on any other OS.
-- Every job of `ci.yml`, of the workflows it calls and of `ci-weekly.yml` runs on the self-hosted `local-mac` runner, the owner's Mac: GitHub's hosted runners are billed, and a refused payment stopped every job on them (2026-10-12). `scripts/tests/ci-workflow-paths.test.js` fails on a hosted runner there. The runner takes one job at a time, so a change to a shared file queues every job. It needs, installed and on its PATH: Xcode, Docker (running, for `agonara-core`), the Android SDK in `~/Library/Android/sdk`, `uv`, `rg`. When it is offline, a job waits queued, the `report` check stays pending, and GitHub fails the job after 24 hours: never a silent pass. Release, deploy and scheduled workflows still name hosted runners.
+- Agister, gokit, the gate and warder run on the self-hosted `local-mac` runner. When it is offline, the job waits queued, the `report` check stays pending, and GitHub fails the job after 24 hours: never a silent pass.
 
 ## Keeping it regular
 

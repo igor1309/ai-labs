@@ -16,7 +16,7 @@ permissions:
 
 jobs:
   changes:
-    runs-on: [self-hosted, local-mac]
+    runs-on: ubuntu-latest
     outputs:
       nomos: ${{ steps.filter.outputs.nomos }}
       oracle: ${{ steps.filter.outputs.oracle }}
@@ -69,9 +69,6 @@ jobs:
         uses: dorny/paths-filter@v4
         id: filter
         with:
-          # No token: a pull request's changes come from git, not from the
-          # GitHub API, which the runner's proxy cancels.
-          token: ""
           filters: |
             shared:
               - ".github/workflows/*.yml"
@@ -381,7 +378,7 @@ jobs:
   release-validation:
     needs: [changes]
     if: ${{ github.event_name == 'workflow_dispatch' || needs.changes.outputs.release == 'true' || needs.changes.outputs.shared == 'true' }}
-    runs-on: [self-hosted, local-mac]
+    runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
       - name: Checkout
@@ -408,7 +405,7 @@ jobs:
 
   pr-scope:
     if: ${{ github.event_name == 'pull_request' }}
-    runs-on: [self-hosted, local-mac]
+    runs-on: ubuntu-latest
     timeout-minutes: 2
     steps:
       - name: Checkout
@@ -427,7 +424,7 @@ jobs:
   # The repository scripts' tests read files across the repository, so
   # they run on every push and pull request, behind no filter.
   repo-scripts:
-    runs-on: [self-hosted, local-mac]
+    runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
       - name: Checkout
@@ -446,7 +443,7 @@ jobs:
   dev-skills-validation:
     needs: [changes]
     if: ${{ github.event_name == 'workflow_dispatch' || needs.changes.outputs.dev-skills == 'true' }}
-    runs-on: [self-hosted, local-mac]
+    runs-on: ubuntu-latest
     timeout-minutes: 2
     steps:
       - name: Checkout
@@ -501,7 +498,7 @@ jobs:
     name: ${{ github.event_name == 'pull_request' && 'report' || format('report ({0})', github.event_name) }}
     if: ${{ always() }}
     needs: [changes, nomos-core, oracle-core, web-scout-core, corpus-scout-core, reinix-core, clipdeck-core, ntfy-sender-core, noreta-core, agister-core, warder-core, agonara-core, foliotell-core, foliotell-android-core, notio-core, notio-frontend-core, release-validation, real-provider-smoke, dev-skills-validation, pr-scope, repo-scripts, session-digest-core, loki-core, neris-core, claude-insights-core, langfuse-core, mac-health-core]
-    runs-on: [self-hosted, local-mac]
+    runs-on: ubuntu-latest
     steps:
       - name: Check all jobs passed
         run: |
