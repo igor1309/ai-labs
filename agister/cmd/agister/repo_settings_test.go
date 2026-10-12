@@ -991,6 +991,44 @@ func TestAdviceSchemaTiesTheAnswerToItsPayload(t *testing.T) {
 	}
 }
 
+// The home folder's implementation schema requires the point left open,
+// empty when the work went through (ADR-032 rule 4): an open point is its
+// question, at least two options and what was searched, and nothing else.
+// The payloads are fixed, not built from the schema.
+func TestImplementationSchemaCarriesThePointLeftOpen(t *testing.T) {
+	t.Parallel()
+	document, err := os.ReadFile(filepath.Join(repositoryRoot(t), homeFolder, "schemas", "implementation.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	const report = `"summary":"s","files_changed":["a.go"],"checks":[],"notes":""`
+	const point = `{"question":"which?","options":["one","two"],"searched":["ADR-030: silent"]}`
+	cases := []struct {
+		name, output string
+		valid        bool
+	}{
+		{"nothing open", `{` + report + `,"open":[]}`, true},
+		{"a point open", `{` + report + `,"open":[` + point + `]}`, true},
+		{"no open field", `{` + report + `}`, false},
+		{"a point without a search", `{` + report + `,"open":[{"question":"which?","options":["one","two"],"searched":[]}]}`, false},
+		{"a point with one option", `{` + report + `,"open":[{"question":"which?","options":["one"],"searched":["ADR-030: silent"]}]}`, false},
+		{"a point with a blank question", `{` + report + `,"open":[{"question":" ","options":["one","two"],"searched":["ADR-030: silent"]}]}`, false},
+		{"a point with an unexpected field", `{` + report + `,"open":[{"question":"which?","options":["one","two"],"searched":["ADR-030: silent"],"lean":"one"}]}`, false},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
+			err := (schema.Validator{}).Validate(document, []byte(c.output))
+			if c.valid && err != nil {
+				t.Fatalf("%s refused: %v", c.output, err)
+			}
+			if !c.valid && err == nil {
+				t.Fatalf("%s accepted", c.output)
+			}
+		})
+	}
+}
+
 // The home folder's review result schema accepts a review whose coverage
 // holds entries of every status; it refuses a review without coverage, a
 // null coverage, an empty one, a scalar coverage, an entry that is not an
@@ -1673,6 +1711,29 @@ func TestTheAdvisorAlwaysDecides(t *testing.T) {
 			t.Errorf("agister/home/prompts/%s lost the instruction %q: no paragraph has all of %q",
 				prompt, instruction.name, instruction.phrases)
 		}
+	}
+}
+
+// The implementer searches the record before it leaves a point open
+// (ADR-032 rule 4, LAB-206): it leaves one only when the point blocks the
+// work, the record searched does not settle it and its options differ in
+// what can be observed, says what it searched, and leaves at most one. The
+// instruction is held by its short phrases standing in one paragraph, as
+// in TestReviewPromptsCarryTheirCoverageContract. The prompt is the
+// repository's own, read as it is.
+func TestTheImplementerSearchesTheRecordBeforeLeavingAPointOpen(t *testing.T) {
+	t.Parallel()
+	const prompt = "implement.md"
+	data, err := os.ReadFile(filepath.Join("..", "..", "..", homeFolder, "prompts", prompt))
+	if err != nil {
+		t.Fatal(err)
+	}
+	phrases := []string{"Leave a point open only when all three hold", "searched for it, do not settle it",
+		"behaviour a user or a caller can observe, or in a contract", "what you searched",
+		"never a point left open", "Leave at most one"}
+	if !carries(string(data), phrases) {
+		t.Errorf("agister/home/prompts/%s lost the instruction to search before leaving a point open: no paragraph has all of %q",
+			prompt, phrases)
 	}
 }
 
