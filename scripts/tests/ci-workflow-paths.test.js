@@ -1,9 +1,10 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { matchesGlob } from "node:path";
 import test from "node:test";
 
-const workflow = readFileSync(new URL("../../.github/workflows/ci.yml", import.meta.url), "utf8");
+const repoRoot = new URL("../../", import.meta.url);
+const workflow = readFileSync(new URL(".github/workflows/ci.yml", repoRoot), "utf8");
 
 test("ciPathFilters_shouldRunAgonaraCore_onPackageLockChanges", () => {
   const agonaraFilter = filterSection("agonara", "agonara-ci");
@@ -62,6 +63,20 @@ test("ciPathFilters_shouldRunWarderCore_onWarderMainChangeOnly", () => {
 test("ciJobs_shouldSelectAgisterCore_fromAgisterFilterOutputAlone", () => {
   assert.equal(jobRunsForFilters("agister-core", new Set(["agister"])), true);
   assert.equal(jobRunsForFilters("agister-core", new Set()), false);
+});
+
+test("ciRepoScripts_shouldRunEveryScriptsTest_onEveryChange", () => {
+  const job = workflow.match(/\n  repo-scripts:\n((?:    .*\n|\n)+?)(?=\n  [\w-]+:\n)/);
+  assert.ok(job, "missing repo-scripts job");
+  assert.doesNotMatch(job[1], /^    (if|needs):/m);
+  const globs = job[1].match(/node --test (.+)$/m)[1].split(" ");
+
+  const tests = readdirSync(new URL("./", import.meta.url)).filter((name) => name.endsWith(".test.js"));
+  assert.ok(tests.length > 0);
+  for (const name of tests) {
+    const file = `scripts/tests/${name}`;
+    assert.ok(globs.some((glob) => matchesGlob(file, glob)), `${file} is run by no CI job`);
+  }
 });
 
 test("ciReport_shouldBeNamedReport_onlyForPullRequest", () => {
