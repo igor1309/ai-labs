@@ -511,7 +511,9 @@ worktree, repository and revision, HEAD is at the revision, the
 worktree's content is the one that run recorded, and its `changes.patch`
 is as recorded. A latest run whose capture failed, or that worked in a
 checkout before ADR-025, cannot be continued; one that pinned no revision
-is continued without the content check.
+is continued without the content check. The agent is told where it works
+and that the session's changes are already there, uncommitted; it is told
+no run ([ADR-035](docs/adr/035-a-continuation-notice-names-no-run.md)).
 
 A run names the goal it serves and the judgement it answers; nothing is
 found by searching runs
