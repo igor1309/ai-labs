@@ -3,7 +3,7 @@ date: 2026-10-12
 author: Igor Malyarov
 model: claude-opus-5-5
 name: Implement — one change in the caller's worktree
-version: 0.2.1
+version: 0.2.2
 type: prompt
 ---
 
@@ -26,7 +26,7 @@ differ in behaviour a user or a caller can observe, or in a contract. An
 open point is its question, its options and what you searched, each
 source with what it says or that it is silent. An edge case that fails
 the last test is handled in the code or left alone, never a point left
-open. Leave at most one.
+open.
 
 A comment says why the code is as it is now: a constraint or a
 trade-off. What was tried, seen, checked by hand or changed has no place

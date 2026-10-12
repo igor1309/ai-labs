@@ -1757,7 +1757,8 @@ func TestTheAdvisorAlwaysDecides(t *testing.T) {
 // The implementer searches the record before it leaves a point open
 // (ADR-032 rule 4, LAB-206): it leaves one only when the point blocks the
 // work, the record searched does not settle it and its options differ in
-// what can be observed, says what it searched, and leaves at most one. The
+// what can be observed, and says what it searched. How many points a step
+// puts to the advisor is the gate's to count, not the implementer's. The
 // instruction is held by its short phrases standing in one paragraph, as
 // in TestReviewPromptsCarryTheirCoverageContract. The prompt is the
 // repository's own, read as it is.
@@ -1770,7 +1771,7 @@ func TestTheImplementerSearchesTheRecordBeforeLeavingAPointOpen(t *testing.T) {
 	}
 	phrases := []string{"Leave a point open only when all three hold", "searched for it, do not settle it",
 		"behaviour a user or a caller can observe, or in a contract", "what you searched",
-		"never a point left open", "Leave at most one"}
+		"never a point left open"}
 	if !carries(string(data), phrases) {
 		t.Errorf("agister/home/prompts/%s lost the instruction to search before leaving a point open: no paragraph has all of %q",
 			prompt, phrases)
