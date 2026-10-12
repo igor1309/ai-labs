@@ -1651,7 +1651,7 @@ func TestArchitecturePromptReviewsTheShapeOfTheChange(t *testing.T) {
 	instructions := []promptInstruction{
 		{"the subject is the shape of the change", []string{
 			"Review the shape of the change", "A finding is about structure",
-			"behaviour, tests and documents are evidence for it, not findings of their own"}},
+			"with behaviour, tests and documents as its evidence"}},
 		{"each touched component is read whole and asked its own reason to change", []string{
 			"as it stands at the candidate, not only its lines in the diff",
 			"its responsibility, its dependencies", "its interfaces", "what is its own reason to change?"}},

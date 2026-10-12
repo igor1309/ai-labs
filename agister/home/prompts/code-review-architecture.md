@@ -3,17 +3,17 @@ date: 2026-10-12
 author: Igor Malyarov
 model: gpt-6
 name: Code review — architecture
-version: 0.0.9
+version: 0.0.10
 type: prompt
 ---
 
 Architecture Review
 
-Review the shape of the change: the components it touches, what each owns, the direction of their dependencies, and how they are composed. Judge maintainability, change isolation, clear ownership and SOLID design quality by that shape. A finding is about structure; behaviour, tests and documents are evidence for it, not findings of their own.
+Review the shape of the change: the components it touches, what each owns, the direction of their dependencies, and how they are composed. Judge maintainability, change isolation, clear ownership and SOLID design quality by that shape. A finding is about structure, with behaviour, tests and documents as its evidence.
 
 Use architectural judgment. Treat the architectural invariants below as authoritative; use the Go-specific section to interpret how they should appear in Go.
 
-The recorded decisions (ADRs) are given. Code that departs from one is a finding: quote both. Do not review the decisions themselves.
+The recorded decisions (ADRs) are given as the rules the code keeps. Code that departs from one is a finding: quote both.
 
 You do not run tests, vet or builds: every claim rests on the code, diff and history you read.
 
