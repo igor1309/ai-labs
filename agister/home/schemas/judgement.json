@@ -3,7 +3,7 @@
   "additionalProperties": false,
   "required": ["summary", "items", "coverage_gaps"],
   "properties": {
-    "summary": {"type": "string", "description": "Two or three sentences: what the rulings add up to, which reviewers' evidence fell short, and any coverage gap."},
+    "summary": {"type": "string", "description": "Two or three sentences: what the rulings add up to, which reviews' evidence fell short, and any coverage gap."},
     "items": {
       "type": "array",
       "description": "One item per distinct claim, duplicates merged, sorted by severity, highest first.",
@@ -17,8 +17,8 @@
           "title": {"type": "string"},
           "ruling": {"type": "string", "enum": ["fix", "defer", "reject", "waive"], "description": "fix, waive: the evidence holds and its scope is change or goal: the change introduced it, or its goal fails because of it; waive: its presented case does not meet the burden for fixing at its severity. defer: the evidence holds and its scope is outside: neither in the change nor stopping its goal; also a goal finding that a scope exclusion of the goal bars. reject: the evidence does not hold, its scope classification included. An older finding's introduced_by_change reads true as change, false as outside."},
           "reason": {"type": "string", "description": "Why the presented evidence does or does not support the claim, resting on the quotes the reviews present. It decides the item: it never leaves a reading open or names anyone else to decide."},
-          "action": {"type": "string", "description": "fix: the change the evidence calls for, as the reviewer stated it, or each option the reviewers stated. defer: gap, trigger, done when. reject: empty. waive: empty."},
-          "missing_evidence": {"type": "string", "description": "reject: what the reviewer should have shown. Otherwise empty."},
+          "action": {"type": "string", "description": "fix: the change the evidence calls for, as the finding states it, or each option the findings state. defer: gap, trigger, done when. reject: empty. waive: empty."},
+          "missing_evidence": {"type": "string", "description": "reject: what the review should have shown. Otherwise empty."},
           "benefit": {"type": "string", "description": "fix, waive: the presented benefit of fixing, the consequence avoided, that decided the ruling. reject, defer: empty."},
           "cost": {"type": "string", "description": "fix, waive: the presented cost of the fix, its verification and the risk it brings, that decided the ruling, or that none was presented. reject, defer: empty."},
           "switching_condition": {"type": "string", "description": "What would have to be presented for another ruling to win: a named claim, never 'if circumstances change'. Given for every ruling, reject and defer included."}
