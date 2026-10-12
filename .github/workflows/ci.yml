@@ -57,6 +57,8 @@ jobs:
       claude-insights-ci: ${{ steps.filter.outputs.claude-insights-ci }}
       langfuse: ${{ steps.filter.outputs.langfuse }}
       langfuse-ci: ${{ steps.filter.outputs.langfuse-ci }}
+      mac-health: ${{ steps.filter.outputs.mac-health }}
+      mac-health-ci: ${{ steps.filter.outputs.mac-health-ci }}
     steps:
       - name: Checkout
         uses: actions/checkout@v5
@@ -258,6 +260,15 @@ jobs:
               - "tests/test_langfuse_shared_stack.py"
             langfuse-ci:
               - ".github/workflows/langfuse-core.yml"
+            mac-health:
+              - "tools/mac-health/checks/**"
+              - "tools/mac-health/launchd/**"
+              - "tools/mac-health/lib/**"
+              - "tools/mac-health/newsyslog/**"
+              - "tools/mac-health/tests/**"
+              - "tools/mac-health/*.sh"
+            mac-health-ci:
+              - ".github/workflows/mac-health-core.yml"
 
   notio-core:
     needs: [changes]
@@ -358,6 +369,11 @@ jobs:
     needs: [changes]
     if: ${{ github.event_name == 'workflow_dispatch' || needs.changes.outputs.langfuse == 'true' || needs.changes.outputs.langfuse-ci == 'true' || needs.changes.outputs.shared == 'true' }}
     uses: ./.github/workflows/langfuse-core.yml
+
+  mac-health-core:
+    needs: [changes]
+    if: ${{ github.event_name == 'workflow_dispatch' || needs.changes.outputs.mac-health == 'true' || needs.changes.outputs.mac-health-ci == 'true' || needs.changes.outputs.shared == 'true' }}
+    uses: ./.github/workflows/mac-health-core.yml
 
   release-validation:
     needs: [changes]
@@ -481,7 +497,7 @@ jobs:
     # run of the same commit reports under another name.
     name: ${{ github.event_name == 'pull_request' && 'report' || format('report ({0})', github.event_name) }}
     if: ${{ always() }}
-    needs: [changes, nomos-core, oracle-core, web-scout-core, corpus-scout-core, reinix-core, clipdeck-core, ntfy-sender-core, noreta-core, agister-core, warder-core, agonara-core, foliotell-core, foliotell-android-core, notio-core, notio-frontend-core, release-validation, real-provider-smoke, dev-skills-validation, pr-scope, repo-scripts, session-digest-core, loki-core, neris-core, claude-insights-core, langfuse-core]
+    needs: [changes, nomos-core, oracle-core, web-scout-core, corpus-scout-core, reinix-core, clipdeck-core, ntfy-sender-core, noreta-core, agister-core, warder-core, agonara-core, foliotell-core, foliotell-android-core, notio-core, notio-frontend-core, release-validation, real-provider-smoke, dev-skills-validation, pr-scope, repo-scripts, session-digest-core, loki-core, neris-core, claude-insights-core, langfuse-core, mac-health-core]
     runs-on: ubuntu-latest
     steps:
       - name: Check all jobs passed
@@ -492,8 +508,8 @@ jobs:
           done
 
   notify:
-    if: ${{ always() && !cancelled() && (needs.changes.result == 'failure' || needs.nomos-core.result == 'failure' || needs.oracle-core.result == 'failure' || needs.web-scout-core.result == 'failure' || needs.corpus-scout-core.result == 'failure' || needs.reinix-core.result == 'failure' || needs.clipdeck-core.result == 'failure' || needs.ntfy-sender-core.result == 'failure' || needs.noreta-core.result == 'failure' || needs.agister-core.result == 'failure' || needs.warder-core.result == 'failure' || needs.agonara-core.result == 'failure' || needs.foliotell-core.result == 'failure' || needs.foliotell-android-core.result == 'failure' || needs.notio-core.result == 'failure' || needs.notio-frontend-core.result == 'failure' || needs.release-validation.result == 'failure' || needs.real-provider-smoke.result == 'failure' || needs.dev-skills-validation.result == 'failure' || needs.pr-scope.result == 'failure' || needs.repo-scripts.result == 'failure' || needs.session-digest-core.result == 'failure' || needs.loki-core.result == 'failure' || needs.neris-core.result == 'failure' || needs.claude-insights-core.result == 'failure' || needs.langfuse-core.result == 'failure') && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork == false) }}
-    needs: [changes, nomos-core, oracle-core, web-scout-core, corpus-scout-core, reinix-core, clipdeck-core, ntfy-sender-core, noreta-core, agister-core, warder-core, agonara-core, foliotell-core, foliotell-android-core, notio-core, notio-frontend-core, release-validation, real-provider-smoke, dev-skills-validation, pr-scope, repo-scripts, session-digest-core, loki-core, neris-core, claude-insights-core, langfuse-core]
+    if: ${{ always() && !cancelled() && (needs.changes.result == 'failure' || needs.nomos-core.result == 'failure' || needs.oracle-core.result == 'failure' || needs.web-scout-core.result == 'failure' || needs.corpus-scout-core.result == 'failure' || needs.reinix-core.result == 'failure' || needs.clipdeck-core.result == 'failure' || needs.ntfy-sender-core.result == 'failure' || needs.noreta-core.result == 'failure' || needs.agister-core.result == 'failure' || needs.warder-core.result == 'failure' || needs.agonara-core.result == 'failure' || needs.foliotell-core.result == 'failure' || needs.foliotell-android-core.result == 'failure' || needs.notio-core.result == 'failure' || needs.notio-frontend-core.result == 'failure' || needs.release-validation.result == 'failure' || needs.real-provider-smoke.result == 'failure' || needs.dev-skills-validation.result == 'failure' || needs.pr-scope.result == 'failure' || needs.repo-scripts.result == 'failure' || needs.session-digest-core.result == 'failure' || needs.loki-core.result == 'failure' || needs.neris-core.result == 'failure' || needs.claude-insights-core.result == 'failure' || needs.langfuse-core.result == 'failure' || needs.mac-health-core.result == 'failure') && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork == false) }}
+    needs: [changes, nomos-core, oracle-core, web-scout-core, corpus-scout-core, reinix-core, clipdeck-core, ntfy-sender-core, noreta-core, agister-core, warder-core, agonara-core, foliotell-core, foliotell-android-core, notio-core, notio-frontend-core, release-validation, real-provider-smoke, dev-skills-validation, pr-scope, repo-scripts, session-digest-core, loki-core, neris-core, claude-insights-core, langfuse-core, mac-health-core]
     uses: ./.github/workflows/notify-telegram-failure.yml
     with:
       title: "CI"
@@ -525,6 +541,7 @@ jobs:
         neris-core=${{ needs.neris-core.result }}
         claude-insights-core=${{ needs.claude-insights-core.result }}
         langfuse-core=${{ needs.langfuse-core.result }}
+        mac-health-core=${{ needs.mac-health-core.result }}
     secrets:
       CI_BOT_TOKEN: ${{ secrets.CI_BOT_TOKEN }}
       CI_CHAT_ID: ${{ secrets.CI_CHAT_ID }}

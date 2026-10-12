@@ -29,7 +29,7 @@ A document a project's tests read is a test input, not documentation, and its fi
 
 ## What CI runs
 
-Each test, what runs it, and the change that triggers it (LAB-167, LAB-220). `scripts/tests/ci-workflow-paths.test.js` keeps this true: every `scripts/tests/*.test.js` is run, every Go module is tested by the job its changes run, each kind of file Agister's tests read runs `agister-core`, the documents agonara's and noreta's tests read run their jobs, and the projects LAB-220 found unrun are each tested by the job their changes run.
+Each test, what runs it, and the change that triggers it (LAB-167, LAB-220, LAB-219). `scripts/tests/ci-workflow-paths.test.js` keeps this true: every `scripts/tests/*.test.js` is run, every Go module is tested by the job its changes run, each kind of file Agister's tests read runs `agister-core`, the documents agonara's and noreta's tests read run their jobs, and the projects LAB-220 found unrun are each tested by the job their changes run.
 
 | Tests | Run by | Triggered by | Status |
 | --- | --- | --- | --- |
@@ -61,12 +61,20 @@ Each test, what runs it, and the change that triggers it (LAB-167, LAB-220). `sc
 | neris (`neris/packages/swift-neris/Tests/`) | `neris-core` | the `neris` filter | runs |
 | claude-insights: the script's pytest and the functions' Deno tests | `claude-insights-core` | the `claude-insights` filter | runs |
 | The langfuse stack (`tests/test_langfuse_shared_stack.py`) | `langfuse-core` | the `langfuse` filter | runs |
+| mac-health (`tools/mac-health/tests/test-*.sh`) | `mac-health-core`: `tools/mac-health/tests/run-all.sh`, on `macos-latest` | the `mac-health` filter | runs |
 
 Notes:
 
 - warder pins gokit at a tag (`v0.1.0`), so a gokit change cannot break warder until gokit is tagged and warder moves to it; a gokit change runs `agister-core` only.
 - `warder/cmd/warder/files_test.go`, `process_test.go` and `serve_test.go` are `//go:build unix`: they run on the `local-mac` runner and are skipped on any other OS.
 - Agister, gokit, the gate and warder run on the self-hosted `local-mac` runner. When it is offline, the job waits queued, the `report` check stays pending, and GitHub fails the job after 24 hours: never a silent pass.
+
+## Keeping it regular
+
+Two things keep the table above from going stale (LAB-219):
+
+- **Every test file runs some job.** `scripts/tests/ci-workflow-paths.test.js` lists every tracked test file (Go, Node, Python, Swift, Kotlin, shell) and fails when a change to one would select no job. A new project's tests fail there until a filter and a job cover them, or until `unfilteredTests` in that file names the reason they need none.
+- **Every job runs weekly.** A push runs only the jobs its changed paths select, so a project nothing touches is never re-tested. `ci-weekly.yml` dispatches `ci.yml` on trunk each Sunday at 03:37 Moscow time; a manual dispatch runs every job, `real-provider-smoke` included, and the same test keeps that true. A failure arrives through `ci.yml`'s own Telegram notification.
 
 ## Notio Split
 
@@ -84,4 +92,4 @@ There is no trunk-push Cloudflare Pages deploy path for Notio frontend.
 - **Path detection**: `dorny/paths-filter@v4` in the `changes` job
 - **Failure notifications**: all pipelines route failures through `notify-telegram-failure.yml`
 - **Concurrency**: scheduled workflows use `concurrency` groups to prevent overlap
-- **Timezone**: all cron schedules target Moscow morning (UTC+3), documented in each file
+- **Timezone**: cron schedules target Moscow morning (UTC+3), and `ci-weekly.yml` Sunday night, documented in each file
