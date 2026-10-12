@@ -15,7 +15,7 @@ jobs:
   core:
     # mac-health is a macOS tool: its checks and installer call the system's
     # own df, stat and date.
-    runs-on: [self-hosted, local-mac]
+    runs-on: macos-latest
     timeout-minutes: 5
     steps:
       - name: Checkout

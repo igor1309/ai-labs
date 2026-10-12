@@ -13,7 +13,7 @@ permissions:
 
 jobs:
   core:
-    runs-on: [self-hosted, local-mac]
+    runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
       - name: Checkout
@@ -25,9 +25,14 @@ jobs:
         uses: actions/setup-node@v6
         with:
           node-version-file: .node-version
+          cache: npm
 
       - name: Install dependencies
         run: npm ci
+
+      - name: Install ripgrep
+        # Required by corpus-client search (subprocess) and e2e tests
+        run: sudo apt-get install -y ripgrep
 
       - name: Typecheck
         run: ./scripts/run_silent.sh "build" npx tsc --noEmit
