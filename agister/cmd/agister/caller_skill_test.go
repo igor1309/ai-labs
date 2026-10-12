@@ -53,6 +53,21 @@ func TestTheCallerSkillNamesOnlyCommandsAndFlagsTheCLIHas(t *testing.T) {
 	}
 }
 
+// What a run did is read from the run, not from its settings, and the
+// repository files it reads are among its instructions (LAB-210).
+func TestTheCallerSkillAnswersWhatARunDidFromTheRun(t *testing.T) {
+	t.Parallel()
+	text := strings.Join(strings.Fields(read(t, filepath.Join(callerSkill, "skills", "agister", "SKILL.md"))), " ")
+	for _, want := range []string{
+		"A question about what a run did is answered from the run itself: `agister runs show <run-id>` and its `events.jsonl`, not from the settings it was given.",
+		"The repository files a run reads, such as `AGENTS.md`, are part of its instructions, beside the process's prompt and guidance.",
+	} {
+		if !strings.Contains(text, want) {
+			t.Errorf("the skill does not say %q", want)
+		}
+	}
+}
+
 // A call's changes stay in the worktree it worked in, and every call works
 // there (ADR-025 rules 1 and 6): the skill's code applies no patch and
 // chooses no workspace.
