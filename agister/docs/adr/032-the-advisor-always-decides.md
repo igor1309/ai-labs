@@ -40,7 +40,7 @@ An option that would change an accepted ADR, the project's rules
 limit is excluded, with the rule it would change; it is not a reason to
 ask anyone. The issue's words are read with the recorded decisions: an
 option that amends them is excluded, and the reading the decisions allow
-is the answer.
+is the answer, even where no option states it.
 
 ### 2. The record holds the truth, in an order
 
