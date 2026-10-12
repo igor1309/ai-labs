@@ -325,7 +325,7 @@ func (r *Resolver) resolveCall(ctx context.Context, processName, agentOverride s
 		if res.mapping, err = definition.ParseMapping(doc); err != nil {
 			return res, parsed(err)
 		}
-		if unknown := res.mapping.UnknownPermissions(res.service.Permissions); len(unknown) > 0 {
+		if unknown := offer(res.mapping).UnknownPermissions(res.service.Permissions); len(unknown) > 0 {
 			return res, refuse("runtime mapping %s grants permissions not in the vocabulary: %s", res.mapping.Name, strings.Join(unknown, ", "))
 		}
 		if res.agent.Effort != "" && !contains(res.mapping.Efforts, res.agent.Effort) {
@@ -433,7 +433,7 @@ func (r *Resolver) resolveCall(ctx context.Context, processName, agentOverride s
 	// A call the settings refuse never asks its runtime: its view shows
 	// what the settings' plan withholds, which no call is given.
 	if settingsOnly {
-		res.refusedPlan, _ = settings.SettingsPlan(res.service, res.effective, res.mapping)
+		res.refusedPlan, _ = settings.SettingsPlan(res.effective, offer(res.mapping), res.service.StateReaching)
 	}
 
 	// Whether the call's session may be resumed is its process's to say
@@ -467,15 +467,15 @@ func (r *Resolver) resolveCall(ctx context.Context, processName, agentOverride s
 		subject = root
 		return res, refuse("stale.recover.max_resumes %d recovers in the call's session, but runtime %s cannot resume sessions", resumes, res.mapping.Name)
 	}
-	verified, unverified := res.mapping.ForVersion(res.identity.Version)
+	offered := offer(res.mapping)
+	verified, unverified := offered.ForVersion(res.identity.Version)
 	// A version the settings verify nothing for is probed, once (ADR-029).
 	if len(verified.Primitives) == 0 && r.probes != nil {
 		probed, err := r.probes.Verified(ctx, res.mapping.Adapter, res.agent.Command, res.identity.Version)
 		if err != nil {
 			return res, refuse("runtime mapping %s verifies no primitive for %s version %s%s", res.mapping.Name, res.mapping.Adapter, res.identity.Version, probeRefusal(err))
 		}
-		res.mapping = res.mapping.WithVerified(res.identity.Version, probed)
-		verified, unverified = res.mapping.ForVersion(res.identity.Version)
+		verified, unverified = offered.WithVerified(res.identity.Version, probed).ForVersion(res.identity.Version)
 	}
 	if len(verified.Primitives) == 0 {
 		return res, refuse("runtime mapping %s verifies no primitive for %s version %s", res.mapping.Name, res.mapping.Adapter, res.identity.Version)
@@ -502,7 +502,7 @@ func (r *Resolver) resolveCall(ctx context.Context, processName, agentOverride s
 		}
 	}
 	subject = root
-	if res.plan, err = enforce.Make(res.effective.Permissions, offer(verified), res.effective.Require, res.service.StateReaching); err != nil {
+	if res.plan, err = enforce.Make(res.effective.Permissions, verified, res.effective.Require, res.service.StateReaching); err != nil {
 		if refused := (*enforce.RefusedError)(nil); errors.As(err, &refused) && refused.Plan != nil {
 			res.refusedPlan = *refused.Plan
 		}
@@ -521,13 +521,13 @@ func (r *Resolver) resolveCall(ctx context.Context, processName, agentOverride s
 // unverified for the version, absent from the mapping, or needs
 // permissions the plan withholds or the effective permissions do not
 // allow.
-func withoutSkillTools(res *resolution, tools []string, verified definition.Mapping, unverified []string) string {
+func withoutSkillTools(res *resolution, tools []string, verified enforce.Offer, unverified []string) string {
 	// What a primitive may grant: the effective permissions, less the
 	// state-reaching ones, which the plan withholds (enforce.Make).
 	allowed := slices.DeleteFunc(slices.Clone(res.effective.Permissions), func(p string) bool { return contains(res.service.StateReaching, p) })
 	var reasons []string
 	for _, tool := range tools {
-		i := slices.IndexFunc(verified.Primitives, func(p definition.Primitive) bool { return p.Name == tool })
+		i := slices.IndexFunc(verified.Primitives, func(p enforce.Primitive) bool { return p.Name == tool })
 		switch {
 		case i >= 0:
 			var withheld, disallowed []string
@@ -657,7 +657,7 @@ func (r *Resolver) resolveWorkflow(ctx context.Context, name string) (*workflowR
 		}
 		res.processes[node.Process] = process
 	}
-	if problems := settings.WorkflowProblems(res.workflow, res.processes, nil); len(problems) > 0 {
+	if problems := settings.WorkflowProblems(settingsWorkflow(res.workflow), mapped(res.processes, settingsProcess), nil); len(problems) > 0 {
 		return res, refuse("workflow %s: %s", name, strings.Join(problems, "; "))
 	}
 	return res, nil
@@ -680,12 +680,13 @@ func contains(list []string, value string) bool {
 	return false
 }
 
-// offer is what the runtime mapping offers enforce: its primitives, and
-// whether a plan takes exactly one of them.
+// offer is what the runtime mapping offers enforce: its primitives, each
+// with the versions it was verified for, and whether a plan takes exactly
+// one of them.
 func offer(mapping definition.Mapping) enforce.Offer {
 	primitives := make([]enforce.Primitive, 0, len(mapping.Primitives))
 	for _, primitive := range mapping.Primitives {
-		primitives = append(primitives, enforce.Primitive{Name: primitive.Name, Grants: primitive.Grants})
+		primitives = append(primitives, enforce.Primitive{Name: primitive.Name, Grants: primitive.Grants, Verified: primitive.Verified})
 	}
 	return enforce.Offer{One: mapping.Select == "one", Primitives: primitives}
 }

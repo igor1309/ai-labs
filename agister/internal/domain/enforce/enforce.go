@@ -13,6 +13,8 @@ import (
 type Primitive struct {
 	Name   string
 	Grants []string
+	// Verified are the version prefixes its grants were checked against.
+	Verified []string
 }
 
 // Offer is what a runtime offers a plan: its primitives, of which a plan
