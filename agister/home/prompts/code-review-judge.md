@@ -3,7 +3,7 @@ date: 2026-10-12
 author: Igor Malyarov
 model: claude-opus-5-5
 name: Code review — judge
-version: 0.6.1
+version: 0.6.2
 type: prompt
 ---
 
@@ -80,9 +80,7 @@ passes. A finding whose evidence does not support its
 scope is rejected like any other, and the rejection says what would have
 shown the scope. A `goal` finding that a scope exclusion of the goal bars
 ("out of scope"), as the finding presents it, is `defer`: the exclusion
-stands, and you do not override it. A finding of an
-older collection has `introduced_by_change` in place of `scope`: read true
-as `change` and false as `outside`.
+stands, and you do not override it.
 
 The burden for fixing, by the item's severity:
 * **blocker**: always fixed.
