@@ -96,40 +96,27 @@ var (
 	waived   = item{Ruling: "waive", Severity: "major", Sources: []string{"1#1"}, Title: "Split the file", Action: "Split it."}
 )
 
-const step = `# LAB-1 step 2: the call is refused
+// issue is a step's text as an issue gives it, with headings and a fence
+// of its own.
+const issue = "## Done when\n\n- The call is refused.\n\n```go\nerr := call()\n```\n"
 
-## Goal
+// constraints are the owner's words.
+const constraints = "- Only cmd/ changes.\n"
 
-` + "`goal.md`" + `
-
-## Covers
-
-- Done when 2.
-
-## Acts on
-
-An earlier review's items.
-
-## Constraints
-
-- Only cmd/ changes.
-
-## Open
-
-None.
-`
-
-// gated runs the gate on f with a step brief and the args given after the
-// required ones, and returns its exit code, summary and output directory.
+// gated runs the gate on f with the issue's text, the owner's constraints
+// and the args given after the required ones, and returns its exit code,
+// summary and output directory.
 func gated(t *testing.T, f *fake, extra ...string) (int, summary, string) {
 	t.Helper()
 	dir := t.TempDir()
-	stepPath := filepath.Join(dir, "step.md")
-	if err := os.WriteFile(stepPath, []byte(step), 0o644); err != nil {
-		t.Fatal(err)
+	for name, text := range map[string]string{"issue.md": issue, "constraints.md": constraints} {
+		if err := os.WriteFile(filepath.Join(dir, name), []byte(text), 0o644); err != nil {
+			t.Fatal(err)
+		}
 	}
 	out := filepath.Join(dir, "out")
-	args := append([]string{"--goal", filepath.Join(dir, "goal.md"), "--step", stepPath, "--implement", "implement_codex",
+	args := append([]string{"--issue", filepath.Join(dir, "issue.md"), "--title", "LAB-1 step 2",
+		"--constraints", filepath.Join(dir, "constraints.md"), "--implement", "implement_codex",
 		"--base", "origin/trunk", "--message", "cmd: the call is refused", "--out", out, "--dir", dir}, extra...)
 	var stdout, stderr bytes.Buffer
 	code := run(context.Background(), args, f.run, &stdout, &stderr)
@@ -171,8 +158,8 @@ func TestAStepPassesWhenItsReviewHasNoMajorToFix(t *testing.T) {
 }
 
 // A major ruled fix goes to a fix run whose brief is the step's, titled for
-// the review, with the major as its "## Acts on" in place of the step's;
-// its commit is named for the review, and the next review decides.
+// the review, with the major as its "## Acts on" as the judge wrote it; its
+// commit is named for the review, and the next review decides.
 func TestAMajorRuledFixGoesToAFixRunAndIsReviewedAgain(t *testing.T) {
 	t.Parallel()
 	f := &fake{t: t, implements: []string{implementResult("i1", "cmd/a.go"), implementResult("i2", "cmd/a_test.go")},
@@ -188,10 +175,11 @@ func TestAMajorRuledFixGoesToAFixRunAndIsReviewedAgain(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := "# LAB-1 step 2: the call is refused, review 1\n\n## Goal\n\n`goal.md`\n\n## Covers\n\n- Done when 2.\n\n" +
+	want := "# LAB-1 step 2, review 1\n\n## Goal\n\n`" + filepath.Join(out, "goal.md") + "`\n\n## Covers\n\n" +
+		"````text\n" + issue + "````\n\n" +
 		"## Acts on\n\nThe judgement of `code_review` run `r1`, its items ruled `fix` with severity major, as written:\n\n" +
 		"- **Prove the refusal** (2#1): Add a test that the call is refused.\n\n" +
-		"## Constraints\n\n- Only cmd/ changes.\n\n## Open\n\nNone.\n"
+		"## Constraints\n\n```text\n" + constraints + "```\n\n## Open\n\nNone.\n"
 	if string(brief) != want {
 		t.Errorf("fix brief:\n%s\nwant:\n%s", brief, want)
 	}
@@ -273,5 +261,51 @@ func TestAFailedImplementRunStopsTheStep(t *testing.T) {
 	}
 	if kept, err := os.ReadFile(filepath.Join(out, "01-implement.json")); err != nil || string(kept) != string(failed) {
 		t.Errorf("kept result %q, %v", kept, err)
+	}
+}
+
+// The step's briefs say what the issue and the owner said, as written: the
+// goal's Done when and the step's Covers are the issue's text, its
+// Constraints the owner's, each fenced so the text's own headings stay its
+// own; the step brief names the goal the review is given.
+func TestTheBriefsAreTheIssuesTextAsWritten(t *testing.T) {
+	t.Parallel()
+	f := &fake{t: t, implements: []string{implementResult("i1", "a")}, reviews: []string{reviewed("r1")}}
+	_, _, out := gated(t, f)
+	goal, err := os.ReadFile(filepath.Join(out, "goal.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	wantGoal := "# LAB-1 step 2\n\n## Intent\n\nWhat the issue's text, under Done when, makes true.\n\n" +
+		"## Done when\n\n````text\n" + issue + "````\n\n" +
+		"## Out of scope\n\nWhat the issue's text, under Done when, leaves out.\n\n## Open\n\nNone.\n"
+	if string(goal) != wantGoal {
+		t.Errorf("goal:\n%s\nwant:\n%s", goal, wantGoal)
+	}
+	if want := filepath.Join(out, "step.md"); len(f.briefs) != 1 || f.briefs[0] != want {
+		t.Fatalf("briefs %q, want %s", f.briefs, want)
+	}
+	step, err := os.ReadFile(f.briefs[0])
+	if err != nil {
+		t.Fatal(err)
+	}
+	wantStep := "# LAB-1 step 2\n\n## Goal\n\n`" + filepath.Join(out, "goal.md") + "`\n\n" +
+		"## Covers\n\n````text\n" + issue + "````\n\n" +
+		"## Constraints\n\n```text\n" + constraints + "```\n\n## Open\n\nNone.\n"
+	if string(step) != wantStep {
+		t.Errorf("step:\n%s\nwant:\n%s", step, wantStep)
+	}
+}
+
+// No brief comes from the caller's own words: the gate takes no goal or
+// step brief, only the issue's text.
+func TestTheGateTakesNoBriefButTheIssuesText(t *testing.T) {
+	t.Parallel()
+	for _, flag := range []string{"--goal", "--step"} {
+		var stdout, stderr bytes.Buffer
+		code := run(context.Background(), []string{flag, "brief.md"}, (&fake{t: t}).run, &stdout, &stderr)
+		if code != exitUsage || !strings.Contains(stderr.String(), "flag provided but not defined: "+strings.TrimPrefix(flag, "-")) {
+			t.Errorf("%s: exit %d, %s", flag, code, stderr.String())
+		}
 	}
 }

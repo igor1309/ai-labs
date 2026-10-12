@@ -30,8 +30,8 @@ type runner func(ctx context.Context, dir, name string, args ...string) ([]byte,
 
 // options are the command's flags.
 type options struct {
-	goal, step, implement, base, message, out, dir, from string
-	reviews                                              int
+	issue, title, constraints, implement, base, message, out, dir, from string
+	reviews                                                             int
 }
 
 // result is what `agister run --json` prints: a run's id, status, output
@@ -126,8 +126,9 @@ func parse(args []string, stderr io.Writer) (options, error) {
 	var o options
 	fs := flag.NewFlagSet("agister-gate", flag.ContinueOnError)
 	fs.SetOutput(stderr)
-	fs.StringVar(&o.goal, "goal", "", "the goal brief")
-	fs.StringVar(&o.step, "step", "", "the step brief")
+	fs.StringVar(&o.issue, "issue", "", "the issue's text the step makes true, as written")
+	fs.StringVar(&o.title, "title", "", "the briefs' title, such as \"LAB-171 step 4\"")
+	fs.StringVar(&o.constraints, "constraints", "", "the owner's constraints on the step, as written")
 	fs.StringVar(&o.implement, "implement", "", "the implement workflow, such as implement_codex")
 	fs.StringVar(&o.base, "base", "", "the revision the review compares with")
 	fs.StringVar(&o.message, "message", "", "the commit subject")
@@ -138,7 +139,7 @@ func parse(args []string, stderr io.Writer) (options, error) {
 	if err := fs.Parse(args); err != nil {
 		return o, err
 	}
-	for name, v := range map[string]string{"goal": o.goal, "step": o.step, "implement": o.implement, "base": o.base, "message": o.message, "out": o.out} {
+	for name, v := range map[string]string{"issue": o.issue, "title": o.title, "implement": o.implement, "base": o.base, "message": o.message, "out": o.out} {
 		if v == "" {
 			return o, fmt.Errorf("--%s is required", name)
 		}
@@ -149,7 +150,10 @@ func parse(args []string, stderr io.Writer) (options, error) {
 	if o.reviews < 0 || o.reviews >= maxReviews {
 		return o, fmt.Errorf("--reviews is 0 to %d", maxReviews-1)
 	}
-	for _, p := range []*string{&o.goal, &o.step, &o.out, &o.dir} {
+	for _, p := range []*string{&o.issue, &o.constraints, &o.out, &o.dir} {
+		if *p == "" {
+			continue
+		}
 		abs, err := filepath.Abs(*p)
 		if err != nil {
 			return o, err
@@ -161,10 +165,12 @@ func parse(args []string, stderr io.Writer) (options, error) {
 
 type gate struct {
 	options
-	run      runner
-	progress io.Writer
-	sum      summary
-	seq      int
+	// goal and step are the briefs the gate writes from the issue's text.
+	goal, step string
+	run        runner
+	progress   io.Writer
+	sum        summary
+	seq        int
 }
 
 func (g *gate) drive(ctx context.Context) summary {
@@ -183,6 +189,9 @@ func (g *gate) steps(ctx context.Context) error {
 		return err
 	}
 	if err := g.clean(ctx); err != nil {
+		return err
+	}
+	if err := g.briefs(); err != nil {
 		return err
 	}
 	counted := g.reviews
@@ -349,53 +358,80 @@ func failure(r result) string {
 	return fmt.Sprintf(": %s: %s", r.Error.Class, r.Error.Message)
 }
 
-// fixBrief writes the brief of the fix run after review n: the step's
-// brief, titled for the review, with the majors as its "## Acts on".
-func (g *gate) fixBrief(n int, majors []item) (string, error) {
-	data, err := os.ReadFile(g.step)
+// briefs writes the step's goal and step briefs into out. Their Done
+// when and Covers are the issue's text, and their Constraints the owner's,
+// as written: no brief says what the issue and the owner did not.
+func (g *gate) briefs() error {
+	issue, err := os.ReadFile(g.issue)
+	if err != nil {
+		return err
+	}
+	g.goal, g.step = filepath.Join(g.out, "goal.md"), filepath.Join(g.out, "step.md")
+	goal := fmt.Sprintf("# %s\n\n## Intent\n\nWhat the issue's text, under Done when, makes true.\n\n"+
+		"## Done when\n\n%s\n## Out of scope\n\nWhat the issue's text, under Done when, leaves out.\n\n## Open\n\nNone.\n",
+		g.title, fenced(string(issue)))
+	if err := os.WriteFile(g.goal, []byte(goal), 0o644); err != nil {
+		return err
+	}
+	step, err := g.stepBrief(g.title, "")
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(g.step, []byte(step), 0o644)
+}
+
+// stepBrief is the step brief titled title, with actsOn as its "## Acts on"
+// when there is one.
+func (g *gate) stepBrief(title, actsOn string) (string, error) {
+	issue, err := os.ReadFile(g.issue)
 	if err != nil {
 		return "", err
 	}
-	title, parts := sections(string(data))
+	var b strings.Builder
+	fmt.Fprintf(&b, "# %s\n\n## Goal\n\n`%s`\n\n## Covers\n\n%s", title, g.goal, fenced(string(issue)))
+	if actsOn != "" {
+		fmt.Fprintf(&b, "\n## Acts on\n\n%s", actsOn)
+	}
+	if g.constraints != "" {
+		constraints, err := os.ReadFile(g.constraints)
+		if err != nil {
+			return "", err
+		}
+		fmt.Fprintf(&b, "\n## Constraints\n\n%s", fenced(string(constraints)))
+	}
+	b.WriteString("\n## Open\n\nNone.\n")
+	return b.String(), nil
+}
+
+// fenced is text as written, in a code fence longer than any run of back
+// quotes in it, so that its headings stay its own and not the brief's.
+func fenced(text string) string {
+	longest, run := 0, 0
+	for _, r := range text {
+		if r == '`' {
+			run++
+			longest = max(longest, run)
+		} else {
+			run = 0
+		}
+	}
+	fence := strings.Repeat("`", max(3, longest+1))
+	return fmt.Sprintf("%stext\n%s\n%s\n", fence, strings.TrimRight(text, "\n"), fence)
+}
+
+// fixBrief writes the brief of the fix run after review n: the step's
+// brief, titled for the review, with the majors as its "## Acts on", as
+// the judge wrote them.
+func (g *gate) fixBrief(n int, majors []item) (string, error) {
 	var acts strings.Builder
 	fmt.Fprintf(&acts, "The judgement of `code_review` run `%s`, its items ruled `fix` with severity major, as written:\n\n", g.sum.Reviews[len(g.sum.Reviews)-1].RunID)
 	for _, it := range majors {
 		fmt.Fprintf(&acts, "- **%s** (%s): %s\n", it.Title, strings.Join(it.Sources, ", "), it.Action)
 	}
-	var b strings.Builder
-	fmt.Fprintf(&b, "%s, review %d\n", strings.TrimRight(title, "\n"), n)
-	for _, p := range parts {
-		if p.heading == "## Acts on" {
-			continue
-		}
-		fmt.Fprintf(&b, "\n%s\n\n%s\n", p.heading, strings.TrimSpace(p.body))
-		if p.heading == "## Covers" {
-			fmt.Fprintf(&b, "\n## Acts on\n\n%s", acts.String())
-		}
+	brief, err := g.stepBrief(fmt.Sprintf("%s, review %d", g.title, n), acts.String())
+	if err != nil {
+		return "", err
 	}
 	path := filepath.Join(g.out, fmt.Sprintf("fix-%d.md", n))
-	return path, os.WriteFile(path, []byte(b.String()), 0o644)
-}
-
-type part struct {
-	heading, body string
-}
-
-// sections splits a brief into its title, the text before its first
-// "## " heading, and its parts, each a "## " heading and its text.
-func sections(text string) (string, []part) {
-	var title strings.Builder
-	var parts []part
-	for _, line := range strings.SplitAfter(text, "\n") {
-		if strings.HasPrefix(line, "## ") {
-			parts = append(parts, part{heading: strings.TrimSpace(line)})
-			continue
-		}
-		if len(parts) == 0 {
-			title.WriteString(line)
-			continue
-		}
-		parts[len(parts)-1].body += line
-	}
-	return strings.TrimSpace(title.String()), parts
+	return path, os.WriteFile(path, []byte(brief), 0o644)
 }

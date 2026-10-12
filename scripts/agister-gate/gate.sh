@@ -4,9 +4,9 @@
 # It is built from this directory and run from the caller's, so its paths
 # are the caller's.
 #
-# Usage: gate.sh --goal <file> --step <file> --implement <workflow>
-#   --base <rev> --message <subject> --out <dir> [--dir <worktree>]
-#   [--from implement|review] [--reviews <n>]
+# Usage: gate.sh --issue <file> --title <line> [--constraints <file>]
+#   --implement <workflow> --base <rev> --message <subject> --out <dir>
+#   [--dir <worktree>] [--from implement|review] [--reviews <n>]
 set -eu
 
 src=$(cd "$(dirname "$0")" && pwd)
