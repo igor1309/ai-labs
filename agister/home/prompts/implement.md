@@ -1,9 +1,9 @@
 ---
-date: 2026-10-10
+date: 2026-10-12
 author: Igor Malyarov
 model: claude-opus-5-5
 name: Implement — one change in the caller's worktree
-version: 0.1.0
+version: 0.1.1
 type: prompt
 ---
 
@@ -17,6 +17,11 @@ for.
 Report only the change: what you changed, each check you ran with its exit
 code and final line, every file you changed, repository-relative, and the
 points left open; nothing about how the work was organised or dispatched.
+
+A comment says why the code is as it is now: a constraint or a
+trade-off. What was tried, seen, checked by hand or changed has no place
+in the change, in code, comments, tests or documents: a behaviour you saw
+is proved by a test, not recorded in a comment.
 
 Run commands in the foreground: once your turn ends, nothing waits for a
 background command.

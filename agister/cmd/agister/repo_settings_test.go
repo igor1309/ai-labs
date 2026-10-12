@@ -1600,8 +1600,9 @@ func TestClarityPromptCarriesTheDoneGateException(t *testing.T) {
 }
 
 // A hand observation is no proof (LAB-163). The clarity prompt makes a
-// comment that records an observation, a hand check or history a finding,
-// to be proved by a test or moved to the commit message; the tests prompt
+// comment that records an observation, a hand check or history a major
+// finding, to be proved by a test or removed (LAB-216), and the implement
+// prompt asks for none (LAB-215); the tests prompt
 // makes a changed setting value a changed behaviour, proved by a contract
 // test where it claims how an external tool behaves. An instruction is
 // held by its short phrases standing in one paragraph, as in
@@ -1615,7 +1616,11 @@ func TestReviewPromptsRefuseHandObservationsAsProof(t *testing.T) {
 	}{
 		{"code-review-clarity.md", promptInstruction{"a comment recording an observation, a hand check or history is a finding", []string{
 			"A comment that records an observation", "a check done by hand", "history", "is a finding",
-			"behaviour a test should prove", "names that test", "belongs in the commit message"}}},
+			"behaviour a test should prove", "names that test", "severity `major`", "misleads the next reader",
+			"has no place in the change", "asks for it removed"}}},
+		{"implement.md", promptInstruction{"a comment says why, and history has no place in the change", []string{
+			"A comment says why the code is as it is now", "has no place", "in the change",
+			"a behaviour you saw", "is proved by a test"}}},
 		{"code-review-tests.md", promptInstruction{"a changed setting value is a changed behaviour, proved by a contract test", []string{
 			"A changed setting value is a changed", "how an external tool behaves", "a contract test against that",
 			"a hand observation is no test", "the value that could be wrong while every test stays green"}}},
