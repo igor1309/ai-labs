@@ -38,7 +38,9 @@ The advisor has no `owner` answer. It chooses one of the options given.
 An option that would change an accepted ADR, the project's rules
 (`AGENTS.md`), the scope of the issue, a security boundary or a cost
 limit is excluded, with the rule it would change; it is not a reason to
-ask anyone.
+ask anyone. The issue's words are read with the recorded decisions: an
+option that amends them is excluded, and the reading the decisions allow
+is the answer.
 
 ### 2. The record holds the truth, in an order
 
