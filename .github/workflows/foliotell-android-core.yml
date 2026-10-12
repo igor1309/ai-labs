@@ -13,7 +13,7 @@ permissions:
 
 jobs:
   core:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, local-mac]
     timeout-minutes: 15
     steps:
       - name: Checkout
@@ -29,6 +29,9 @@ jobs:
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
+
+      - name: Use the runner's Android SDK
+        run: echo "ANDROID_HOME=$HOME/Library/Android/sdk" >> "$GITHUB_ENV"
 
       - name: Run core tests
         run: ./gradlew :core:test
