@@ -67,7 +67,8 @@ func TestDependencyRule(t *testing.T) {
 			var allowed bool
 			switch {
 			case under(pkg, "internal/domain"):
-				allowed = under(dep, "internal/domain") || dep == "gopkg.in/yaml.v3" || dep == "github.com/BurntSushi/toml"
+				allowed = under(dep, "internal/domain") ||
+					pkg == "internal/domain/definition" && (dep == "gopkg.in/yaml.v3" || dep == "github.com/BurntSushi/toml")
 			case pkg == "internal/contract":
 				allowed = false
 			case pkg == "internal/app":
