@@ -1606,6 +1606,36 @@ func TestArchitecturePromptReviewsTheShapeOfTheChange(t *testing.T) {
 	}
 }
 
+// The tests prompt of the repository asks for the class a case stands
+// for and a test that covers it, not the one variant (LAB-213), and makes
+// a process-wide measure taken as a test's result a finding as it stands,
+// serial or not, with the seam that observes the product's own work. An
+// instruction is held by its short phrases standing in one paragraph, as
+// in TestReviewPromptsCarryTheirCoverageContract. The prompt is the
+// repository's own, read as it is.
+func TestTestsPromptAsksForTheClassAndTheProductsOwnMeasure(t *testing.T) {
+	t.Parallel()
+	const prompt = "code-review-tests.md"
+	data, err := os.ReadFile(filepath.Join("..", "..", "..", homeFolder, "prompts", prompt))
+	if err != nil {
+		t.Fatal(err)
+	}
+	instructions := []promptInstruction{
+		{"a finding names the class its case stands for, and a test that covers it", []string{
+			"A case stands for a class", "The finding names the class", "with its case as",
+			"a test that covers the class", "not the one case"}},
+		{"a process-wide measure is a finding as it stands, serial or not", []string{
+			"a measure of the whole process", "`testing.AllocsPerRun`", "Running it serially does not isolate it",
+			"a finding as it stands", "the seam that observes the product's own work"}},
+	}
+	for _, instruction := range instructions {
+		if !carries(string(data), instruction.phrases) {
+			t.Errorf("agister/home/prompts/%s lost the instruction %q: no paragraph has all of %q",
+				prompt, instruction.name, instruction.phrases)
+		}
+	}
+}
+
 // The clarity prompt of the repository carries the exception to its rule
 // that a change does not edit a recorded decision. An edit a recorded rule
 // of the project requires, which brings a document the rule names in line

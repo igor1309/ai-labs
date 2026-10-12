@@ -1,9 +1,9 @@
 ---
-date: 2026-10-06
+date: 2026-10-12
 author: Igor Malyarov
 model: claude-opus-5-5
 name: Code review — tests
-version: 0.1.4
+version: 0.1.5
 type: prompt
 ---
 
@@ -23,6 +23,12 @@ Every finding names its concrete case, one of:
 * for a test the goal needs and the tests lack: the specific goal
   behaviour, and the product change that breaks it while the existing
   assertions stay green.
+
+A case stands for a class: the inputs, states or variants the test
+misses for the same reason. The finding names the class, with its case as
+the witness, and asks for a test that covers the class (a table over it,
+or an assertion on what holds for all of it), not the one case. A finding
+for one variant leaves the next variant for the next review.
 
 The rules below say where to look; a rule broken is not a finding by
 itself. Ask for a new seam only together with the case that needs it. A
@@ -102,7 +108,15 @@ Definition of done:
    lets pass; with it, name the clock, hook or event to inject so the test
    drives time itself. If the product has no event, hook or result that
    says "done", the seam is missing from the product, not only the test;
-   say which. A wall-clock wait in an integration test whose subject needs
+   say which. The same holds for a measure of the whole process
+   taken as a test's result: allocations, memory or goroutines counted
+   process-wide (`testing.AllocsPerRun`, `runtime.MemStats`) count
+   whatever else runs in it. Running it serially does not isolate it:
+   goroutines an earlier test left and the runtime's own still run. Such
+   an assertion is a finding as it stands; its case is the work outside
+   the product that the count takes in, and the product's own work it then
+   cannot tell apart. Name the seam that observes the product's own work
+   instead (a buffer or allocator it is given). A wall-clock wait in an integration test whose subject needs
    it follows these rules:
    * **Its expiry decides the result.** A sleep that must outlast some
      logic, a timer that must fire before (or must not fire before)
