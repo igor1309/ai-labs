@@ -161,6 +161,14 @@ jobs:
               - "agister/.agister/**"
               - "agister/home/**"
               - "scripts/agister-gate/**"
+              - "agister/docs/**"
+              - "agister/skills/**"
+              - "agister/README.md"
+              - "agister/testdata/**"
+              - "agister/scripts/**"
+              - "prompts/go-architecture.md"
+              - "prompts/go-testing-seams.md"
+              - "**/AGENTS.md"
             agister-ci:
               - ".github/workflows/agister-core.yml"
             warder:

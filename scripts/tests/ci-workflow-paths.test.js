@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { execFileSync } from "node:child_process";
 import { readdirSync, readFileSync } from "node:fs";
 import { matchesGlob } from "node:path";
 import test from "node:test";
@@ -65,6 +66,29 @@ test("ciJobs_shouldSelectAgisterCore_fromAgisterFilterOutputAlone", () => {
   assert.equal(jobRunsForFilters("agister-core", new Set()), false);
 });
 
+// One file of each kind Agister's tests read, beside its code: a change to
+// any of them must run agister-core.
+test("ciPathFilters_shouldRunAgisterCore_onEachKindOfFileItsTestsRead", () => {
+  const read = [
+    "agister/docs/adr/032-the-advisor-always-decides.md",
+    "agister/docs/settings-architecture/notes.md",
+    "agister/skills/agister/SKILL.md",
+    "agister/README.md",
+    "agister/AGENTS.md",
+    "agister/testdata/briefs/lab-119-goal.md",
+    "agister/scripts/test.sh",
+    "prompts/go-architecture.md",
+    "prompts/go-testing-seams.md",
+    "AGENTS.md",
+    "warder/AGENTS.md",
+    "gokit/supervisor/supervisor.go",
+  ];
+
+  for (const file of read) {
+    assert.equal(jobRuns("agister-core", [file]), true, `${file} does not run agister-core`);
+  }
+});
+
 test("ciRepoScripts_shouldRunEveryScriptsTest_onEveryChange", () => {
   const job = workflow.match(/\n  repo-scripts:\n((?:    .*\n|\n)+?)(?=\n  [\w-]+:\n)/);
   assert.ok(job, "missing repo-scripts job");
@@ -76,6 +100,32 @@ test("ciRepoScripts_shouldRunEveryScriptsTest_onEveryChange", () => {
   for (const name of tests) {
     const file = `scripts/tests/${name}`;
     assert.ok(globs.some((glob) => matchesGlob(file, glob)), `${file} is run by no CI job`);
+  }
+});
+
+// Each Go module, the command that tests it, and the job a change to its
+// code runs. A new module fails here until a workflow runs it.
+const goModules = {
+  agister: { runner: ".github/workflows/agister-core.yml", command: "run: scripts/test.sh", job: "agister-core" },
+  gokit: { runner: "agister/scripts/test.sh", command: "../gokit/scripts/test.sh", job: "agister-core" },
+  "scripts/agister-gate": {
+    runner: ".github/workflows/agister-core.yml",
+    command: "working-directory: scripts/agister-gate",
+    job: "agister-core",
+  },
+  warder: { runner: ".github/workflows/warder-core.yml", command: "run: warder/scripts/test.sh", job: "warder-core" },
+};
+
+test("ciGoModules_shouldEachBeTestedByTheJobItsChangesRun", () => {
+  const modules = execFileSync("git", ["ls-files", "*go.mod"], { cwd: repoRoot, encoding: "utf8" })
+    .trim()
+    .split("\n")
+    .map((file) => file.replace(/\/?go\.mod$/, ""));
+  assert.deepEqual(modules.toSorted(), Object.keys(goModules).toSorted());
+
+  for (const [module, { runner, command, job }] of Object.entries(goModules)) {
+    assert.ok(readFileSync(new URL(runner, repoRoot), "utf8").includes(command), `${runner} does not test ${module}`);
+    assert.equal(jobRuns(job, [`${module}/x.go`]), true, `a change to ${module} does not run ${job}`);
   }
 });
 
