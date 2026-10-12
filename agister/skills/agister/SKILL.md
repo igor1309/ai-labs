@@ -325,7 +325,8 @@ and stops:
 
 ```sh
 <ai-labs>/scripts/agister-gate/gate.sh --issue <issue.md> --title "<issue> step <n>" \
-  [--constraints <constraints.md>] --implement implement_codex --base <rev> \
+  [--constraints <constraints.md>] --implement implement_codex \
+  --advisor advisor_codex --decisions <decisions.md> --base <rev> \
   --message "<commit subject>" --out <dir>
 ```
 
@@ -345,18 +346,27 @@ and stops:
   goal. Items ruled `fix` with severity major go to a fix run, whose brief
   is the step's with them as its `## Acts on`. Minors are not fixed by the
   gate.
+- A point the implement run leaves open goes to the advisor (ADR-032):
+  the gate writes the question file from the point as the run wrote it,
+  runs `--advisor` at the run's commit, appends the decision to
+  `--decisions` (the repository's decisions record, in the worktree) as
+  the next `D-<n>`, `Provisional (advisor)`, commits it, and runs the
+  decision as a fix brief with the record as its `## Acts on`. Write no
+  question file and no record yourself.
 - Its summary, on stdout, lists the runs, the commits and what is left:
   minors ruled `fix`, which you record on the issue, and items ruled
-  `defer`, which go to the deferred list with their trigger.
-- Exit 0: no major is left. 3: a major is left after the third review:
-  stop and ask the owner; a major is never deferred. 4: a review hit a
-  provider limit and does not count; resume with the
-  `--from review --reviews <n>` its reason gives. 5: the implement run
-  left a point open; its work is committed, and the summary's `open` holds
-  the question, its options and what was searched. Put it to the `advisor`
-  as ADR-032 says, append its decision to the decisions record, and run
-  the decision as the next step; a `conflict` answer is the owner's. 1:
-  anything else stopped the step; its reason says what.
+  `defer`, which go to the deferred list with their trigger. Its
+  `records` are the decisions it appended: list them in the pull
+  request's description, where the owner reviews them.
+- Exit 0: no major is left. 3: stop and ask the owner: a major is left
+  after the third review, and a major is never deferred; or the advisor
+  found a conflict in the record, which its reason quotes. 4: a review hit
+  a provider limit and does not count; resume with the
+  `--from review --reviews <n>` its reason gives. 5: a second point was
+  left open, in the summary's `open`: the step's one question is asked,
+  so the issue does not say enough; its work is committed, and the owner
+  says what the issue means. 1: anything else stopped the step; its
+  reason says what.
 - Run one step per call, and read its summary before the next.
 
 ## Give a brief in its form
