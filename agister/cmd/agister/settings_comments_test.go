@@ -24,15 +24,18 @@ func TestTheSettingsCarryNoComments(t *testing.T) {
 	dirs := []string{
 		filepath.Join(root, "agister", "home"),
 		filepath.Join(root, "agister", "examples"),
-		filepath.Join(root, ".agister"),
 	}
-	projects, err := os.ReadDir(root)
+	entries, err := os.ReadDir(root)
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, project := range projects {
-		layer := filepath.Join(root, project.Name(), ".agister")
-		if info, err := os.Stat(layer); project.IsDir() && err == nil && info.IsDir() {
+	layers := []string{"."}
+	for _, entry := range entries {
+		layers = append(layers, entry.Name())
+	}
+	for _, name := range layers {
+		layer := filepath.Join(root, name, ".agister")
+		if info, err := os.Stat(layer); err == nil && info.IsDir() {
 			dirs = append(dirs, layer)
 		}
 	}

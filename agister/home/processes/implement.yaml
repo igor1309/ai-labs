@@ -3,6 +3,7 @@ name: implement
 type: process
 session: resumable
 prompt: implement
+guidance: [go-testing-seams, go-architecture]
 
 input:
   instruction: Implement the task given as input brief, as input prompt says.
