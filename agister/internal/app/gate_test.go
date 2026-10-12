@@ -372,3 +372,17 @@ func TestGatedWriteScopeChecksTheGlobalSnapshot(t *testing.T) {
 		t.Fatal("the global settings were never read")
 	}
 }
+
+// A gated command checks the settings it froze once: the gate, the
+// listings and the resolver share the check, so the schema is compiled by
+// it once and by the resolver for the process's output once.
+func TestAGatedCommandChecksItsSettingsOnce(t *testing.T) {
+	t.Parallel()
+	h := newHarness()
+	if _, err := h.clientOn(h.defs).ShowProcess(context.Background(), "p"); err != nil {
+		t.Fatal(err)
+	}
+	if got := len(h.validator.compiled); got != 2 {
+		t.Fatalf("schema compiled %d times, want 2: once by the check, once by the resolver", got)
+	}
+}

@@ -128,14 +128,11 @@ func NewClient(infra Infrastructure) contract.Client {
 	}
 	// An install checks its result as checkerOn's checkers check home's.
 	installer := NewInstaller(infra.Installer, installCheck{stager: infra.Staging, on: checkerOn})
-	checksOn := infra.Checks
-	if checksOn == nil {
-		checksOn = func(definitions GateDefinitions) GateCheck { return checkerOn(definitions) }
-	}
 	// Each use case that resolves a process gets a resolver of its own,
-	// which refuses a call that depends on a document with a problem.
-	resolverOn := func(definitions GateDefinitions) *Resolver {
-		resolver := NewResolver(definitions, infra.Resolver.Identities, infra.Resolver.Validator, resolverCheck{checksOn(definitions)})
+	// which refuses a call that depends on a document with a problem checks
+	// finds.
+	resolverOn := func(definitions GateDefinitions, checks GateCheck) *Resolver {
+		resolver := NewResolver(definitions, infra.Resolver.Identities, infra.Resolver.Validator, resolverCheck{checks})
 		resolver.probes = infra.Resolver.Probes
 		return resolver
 	}
@@ -148,16 +145,26 @@ func NewClient(infra Infrastructure) contract.Client {
 		// Writes go to global settings, which must stay valid on their own
 		// and with the project in view.
 		scopes := []Scope{{Name: "global settings", Check: checkerOn(globalOnly)}}
+		// Settings a snapshot froze cannot change: the gate, the listings
+		// and the resolvers share one check of them.
+		checker := checkerOn(layered)
+		if _, frozen := layered.(*snapshot); frozen {
+			checker.once = &checkOnce{}
+		}
 		if infra.Project != "" {
-			scopes = append(scopes, Scope{Name: "settings in " + infra.Project, Check: checkerOn(layered)})
+			scopes = append(scopes, Scope{Name: "settings in " + infra.Project, Check: checker})
+		}
+		checks := GateCheck(checker)
+		if infra.Checks != nil {
+			checks = infra.Checks(layered)
 		}
 		calls := infra.Calls
 		host := &Host{
-			Settings:   NewSettings(layered, infra.Settings.Writer, infra.Settings.Examples, scopes, settingsCheck{checksOn(layered)}),
-			Checker:    checkerOn(layered),
-			Inspection: NewInspection(resolverOn(layered)),
+			Settings:   NewSettings(layered, infra.Settings.Writer, infra.Settings.Examples, scopes, settingsCheck{checks}),
+			Checker:    checker,
+			Inspection: NewInspection(resolverOn(layered, checks)),
 			Calls: NewCalls(
-				resolverOn(layered), calls.Runners, calls.Inputs, calls.Copies, calls.References, calls.Workspaces, calls.Changes, holder, verifier, recoverer, calls.Validator,
+				resolverOn(layered, checks), calls.Runners, calls.Inputs, calls.Copies, calls.References, calls.Workspaces, calls.Changes, holder, verifier, recoverer, calls.Validator,
 				calls.Recorder, calls.Runs, calls.Clock, calls.Timer, calls.IDs, calls.StateDir, hosted,
 			),
 			Runs:      NewRuns(infra.Runs.Reader, infra.Runs.Appends, hosted, infra.Runs.Timer, 0),
