@@ -46,7 +46,7 @@ jobs:
       # The gate drives agister's runs and knows their kinds of work, so it
       # is its own module, outside agister's code.
       - name: Gate
-        working-directory: tools/agister-gate
+        working-directory: scripts/agister-gate
         run: |
           test -z "$(gofmt -l .)"
           go vet ./...

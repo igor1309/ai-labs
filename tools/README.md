@@ -18,7 +18,6 @@ The AI-account tooling — `cl`, `cx`, `codex-mgr`, `ccswitch-limits` and the sh
 
 | Component | Type | Description |
 | --- | --- | --- |
-| `agister-gate` | Go command | Drives one step of a change through Agister's implement, review and fix gate (LAB-203) |
 | `mac-health` | Scheduled checks | launchd-driven macOS health checks (memory, disk, leftovers) with a JSONL log and threshold notifications |
 | `sessions-audit` | Python scripts | Audit local Claude Code and Codex transcripts for context-expanding behavior (full/repeated reads, unfiltered builds, polling, large tool results) |
 | `wt` | CLI | Git worktree manager — one command creates a branch and its worktree folder |
@@ -26,6 +25,5 @@ The AI-account tooling — `cl`, `cx`, `codex-mgr`, `ccswitch-limits` and the sh
 ## Stack
 
 - Bash
-- Go
 - Git
 - Python 3

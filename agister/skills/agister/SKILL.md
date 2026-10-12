@@ -320,11 +320,11 @@ or contains it.
 
 A step of a change goes through one gate: implement, review, fix if any
 major is ruled `fix`, review again, at most three reviews that count.
-`tools/agister-gate/gate.sh` in the ai-labs repository drives one step
+`scripts/agister-gate/gate.sh` in the ai-labs repository drives one step
 and stops:
 
 ```sh
-<ai-labs>/tools/agister-gate/gate.sh --goal <goal.md> --step <step.md> \
+<ai-labs>/scripts/agister-gate/gate.sh --goal <goal.md> --step <step.md> \
   --implement implement_codex --base <rev> --message "<commit subject>" --out <dir>
 ```
 
