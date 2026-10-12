@@ -237,6 +237,21 @@ test("ciWeekly_shouldDispatchCiOnTrunk_onASchedule", () => {
   assert.match(workflow, /^on:\n(?:  .*\n)*?  workflow_dispatch:$/m);
 });
 
+// GitHub's hosted runners are billed, and a refused payment stops every
+// job on them: CI and the workflows it calls run on the owner's runner.
+test("ciJobs_shouldAllRun_onTheLocalRunner", () => {
+  const called = [...workflow.matchAll(/uses: \.\/(\.github\/workflows\/[\w-]+\.yml)/g)].map((match) => match[1]);
+  const files = new Set([".github/workflows/ci.yml", ".github/workflows/ci-weekly.yml", ...called]);
+  assert.ok(files.size > 2);
+  for (const file of files) {
+    const runners = [...readFileSync(new URL(file, repoRoot), "utf8").matchAll(/^\s+runs-on: (.*)$/gm)].map((match) => match[1]);
+    assert.ok(runners.length > 0, `${file} names no runner`);
+    for (const runner of runners) {
+      assert.equal(runner, "[self-hosted, local-mac]", `${file} runs on ${runner}`);
+    }
+  }
+});
+
 test("ciReport_shouldBeNamedReport_onlyForPullRequest", () => {
   assert.equal(reportCheckName("pull_request"), "report");
   assert.notEqual(reportCheckName("push"), "report");

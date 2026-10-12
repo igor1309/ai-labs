@@ -13,10 +13,8 @@ permissions:
 
 jobs:
   core:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, local-mac]
     timeout-minutes: 15
-    container:
-      image: swift:6.1
     steps:
       - name: Checkout
         uses: actions/checkout@v5
