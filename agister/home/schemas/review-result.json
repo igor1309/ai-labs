@@ -47,7 +47,7 @@
               "minor",
               "nit"
             ],
-            "description": "blocker: must not merge. major: real defect or risk to fix. minor: worth fixing. nit: optional polish."
+            "description": "blocker: the change cannot stand with it. major: real defect or risk to fix. minor: worth fixing. nit: optional polish."
           },
           "file": {
             "type": "string",
