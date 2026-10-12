@@ -46,15 +46,14 @@ func core(pkg string) bool {
 // issue that removes it. The list only shrinks: an entry the code no longer
 // needs fails the test until it is removed, and no entry is added.
 var coupling = map[string]string{
-	"internal/app imports internal/domain/definition":             "LAB-188: takes the settings files' shape",
-	"internal/app imports io/fs":                                  "LAB-188: reads the examples' files at init",
-	"internal/app imports encoding/json":                          "LAB-188, LAB-189: the output schema's bytes, the record's view and the join's collection",
-	"internal/app tags its fields":                                "LAB-189, LAB-192: the join's collection and the probe cache",
-	"internal/contract imports encoding/json":                     "LAB-189: carries the record and the output as stored",
-	"internal/contract tags its fields":                           "LAB-192: its types are the CLI's --json output",
-	"internal/domain/run imports encoding/json":                   "LAB-189: is the run record's file shape",
-	"internal/domain/run tags its fields":                         "LAB-189: is the run record's file shape",
-	"internal/domain/settings imports internal/domain/definition": "LAB-188: checks the settings documents across files",
+	"internal/app imports internal/domain/definition": "LAB-188: takes the settings files' shape",
+	"internal/app imports io/fs":                      "LAB-188: reads the examples' files at init",
+	"internal/app imports encoding/json":              "LAB-188, LAB-189: the output schema's bytes, the record's view and the join's collection",
+	"internal/app tags its fields":                    "LAB-189, LAB-192: the join's collection and the probe cache",
+	"internal/contract imports encoding/json":         "LAB-189: carries the record and the output as stored",
+	"internal/contract tags its fields":               "LAB-192: its types are the CLI's --json output",
+	"internal/domain/run imports encoding/json":       "LAB-189: is the run record's file shape",
+	"internal/domain/run tags its fields":             "LAB-189: is the run record's file shape",
 }
 
 // couplings lists, sorted, each core package's import of an edge and each

@@ -4,14 +4,13 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/igor1309/ai-labs/agister/internal/domain/definition"
 	"github.com/igor1309/ai-labs/agister/internal/domain/settings"
 )
 
 // calling is the bundle with workflow w made one call (ADR-030 rule 6):
 // node work, which binds process to agent.
 func calling(b settings.Bundle, process, agent string) settings.Bundle {
-	b.Workflows = map[string]definition.Workflow{"w": {Name: "w", Call: &definition.Node{Name: "work", Process: process, Agent: agent}}}
+	b.Workflows = map[string]settings.Workflow{"w": {Name: "w", Call: &settings.Node{Name: "work", Process: process, Agent: agent}}}
 	return b
 }
 

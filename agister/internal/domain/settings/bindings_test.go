@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/igor1309/ai-labs/agister/internal/domain/definition"
+	"github.com/igor1309/ai-labs/agister/internal/domain/enforce"
 	"github.com/igor1309/ai-labs/agister/internal/domain/policy"
 	"github.com/igor1309/ai-labs/agister/internal/domain/settings"
 )
@@ -15,18 +15,22 @@ import (
 // merge on j.
 func bound(agent string) settings.Bundle {
 	b := bundle()
-	b.Processes["j"] = definition.Process{Name: "j", Output: definition.Output{Format: "text"},
-		Values: []definition.Value{{Name: "gathered", Source: definition.CollectionSource}}, Limits: reading()}
-	b.Workflows = map[string]definition.Workflow{"w": {
+	b.Processes["j"] = settings.Process{Name: "j",
+		Values: []settings.Value{{Name: "gathered", Source: collection}}, Limits: reading("j")}
+	b.Workflows = map[string]settings.Workflow{"w": {
 		Name:   "w",
-		FanOut: []definition.Node{{Name: "one", Process: "p", Agent: agent}},
-		Join:   definition.Node{Name: "merge", Process: "j", Agent: "a"},
+		FanOut: []settings.Node{{Name: "one", Process: "p", Agent: agent}},
+		Join:   settings.Node{Name: "merge", Process: "j", Agent: "a"},
 	}}
 	return b
 }
 
+// collection is the input source through which a join receives the
+// collection.
+const collection = "workflow.collection"
+
 // joining are the mechanisms with the collection a join receives.
-var joining = settings.Mechanisms{Sources: []string{"param", definition.CollectionSource}, Adapters: []string{"claude-code"}}
+var joining = settings.Mechanisms{Sources: []string{"param", collection}, Adapters: []string{"claude-code"}}
 
 func problemsOf(b settings.Bundle) []string {
 	var got []string
@@ -40,7 +44,7 @@ func problemsOf(b settings.Bundle) []string {
 // none, and has no problem for it, whether a node binds it or none does; a
 // node that names an agent the settings lack is a problem of its workflow,
 // which names the node. A node that names no agent does not reach here: its
-// workflow does not parse (definition.ParseWorkflow), so the case that had
+// workflow does not parse, so the case that had
 // one bind a process without an agent is gone with the process's agent.
 func TestANodeBindsItsProcessToAnAgent(t *testing.T) {
 	t.Parallel()
@@ -68,66 +72,64 @@ func TestANodeBindsItsProcessToAnAgent(t *testing.T) {
 
 // A process answers for its own session, whether or not a node binds it
 // (ADR-030 rule 3): a fresh-only one that repairs has its own problem. One
-// that sets no session is fresh-only (rule 2), where it once left the
-// session to its agent and had no problem.
+// that sets no session comes to settings fresh-only (rule 2).
 func TestAProcessAnswersForItsOwnSession(t *testing.T) {
 	t.Parallel()
 	const repairs = "process p: verify.max_attempts 3 repairs in the call's session, but process p is fresh-only"
-	for session, want := range map[string][]string{
-		definition.SessionFresh:     {repairs},
-		definition.SessionResumable: nil,
-		"":                          {repairs},
+	for resumable, want := range map[bool][]string{
+		false: {repairs},
+		true:  nil,
 	} {
 		b := bundle()
-		b.Service.MaxVerifyAttempts = 3
+		b.Service.Ceilings.MaxVerifyAttempts = 3
 		p := b.Processes["p"]
-		p.Session, p.Revision = session, "v"
-		p.Verify = &definition.Verify{Command: "go test ./...", Timeout: time.Minute, MaxAttempts: 3, Instruction: "Fix it."}
+		p.Resumable, p.Limits.Pinned = resumable, true
+		p.Limits.Verify = &policy.Verify{Timeout: time.Minute, MaxAttempts: 3}
 		b.Processes["p"] = p
 		if got := problemsOf(b); !reflect.DeepEqual(got, want) {
-			t.Errorf("session %q: problems = %q, want %q", session, got, want)
+			t.Errorf("resumable %t: problems = %q, want %q", resumable, got, want)
 		}
 	}
 }
 
 // onC is bound("c") with agent c, a's twin, on the runtime mapping given,
 // whose one primitive is the only one a call uses.
-func onC(mapping definition.Mapping) settings.Bundle {
+func onC(mapping settings.Mapping) settings.Bundle {
 	b := bound("c")
-	mapping.Adapter, mapping.Efforts, mapping.Select = "claude-code", []string{"high"}, "one"
+	mapping.Adapter, mapping.Efforts, mapping.Offer.One = "claude-code", []string{"high"}, true
 	b.Mappings[mapping.Name] = mapping
-	b.Agents["c"] = definition.Agent{Name: "c", Runtime: mapping.Name, Effort: "high", ModelFamily: "f"}
+	b.Agents["c"] = settings.Agent{Name: "c", Runtime: mapping.Name, Effort: "high"}
 	return b
 }
 
 // wide is a runtime mapping whose one primitive also grants exec, which
 // process p does not allow.
-func wide() definition.Mapping {
-	return definition.Mapping{Name: "wide", Primitives: []definition.Primitive{{Name: "Shell", Grants: []string{"read", "exec"}, Verified: []string{"1."}}}}
+func wide() settings.Mapping {
+	return settings.Mapping{Name: "wide", Offer: offering(enforce.Primitive{Name: "Shell", Grants: []string{"read", "exec"}, Verified: []string{"1."}})}
 }
 
 // plain is a runtime mapping whose one primitive grants what process p
 // allows.
-func plain() definition.Mapping {
-	return definition.Mapping{Name: "plain", Primitives: []definition.Primitive{{Name: "Read", Grants: []string{"read"}, Verified: []string{"1."}}}}
+func plain() settings.Mapping {
+	return settings.Mapping{Name: "plain", Offer: offering(enforce.Primitive{Name: "Read", Grants: []string{"read"}, Verified: []string{"1."}})}
 }
 
 // split is a runtime mapping that runs process p on version 2 and not on
 // version 1, where its one verified primitive also grants exec.
-func split() definition.Mapping {
-	return definition.Mapping{Name: "split", Primitives: []definition.Primitive{
-		{Name: "Read", Grants: []string{"read"}, Verified: []string{"2."}},
-		{Name: "Shell", Grants: []string{"read", "exec"}, Verified: []string{"1."}},
-	}}
+func split() settings.Mapping {
+	return settings.Mapping{Name: "split", Offer: offering(
+		enforce.Primitive{Name: "Read", Grants: []string{"read"}, Verified: []string{"2."}},
+		enforce.Primitive{Name: "Shell", Grants: []string{"read", "exec"}, Verified: []string{"1."}},
+	)}
 }
 
 // repairing gives the bundle's process p a verification that repairs, and
-// the session given.
-func repairing(b settings.Bundle, session string) settings.Bundle {
-	b.Service.MaxVerifyAttempts = 3
+// a session resumable or fresh-only.
+func repairing(b settings.Bundle, resumable bool) settings.Bundle {
+	b.Service.Ceilings.MaxVerifyAttempts = 3
 	p := b.Processes["p"]
-	p.Session, p.Revision = session, "v"
-	p.Verify = &definition.Verify{Command: "go test ./...", Timeout: time.Minute, MaxAttempts: 3, Instruction: "Fix it."}
+	p.Resumable, p.Limits.Pinned = resumable, true
+	p.Limits.Verify = &policy.Verify{Timeout: time.Minute, MaxAttempts: 3}
 	b.Processes["p"] = p
 	return b
 }
@@ -171,11 +173,12 @@ func TestABindingThatCannotBePlannedIsAProblemOfItsWorkflow(t *testing.T) {
 // fresh-only agent are gone with the agent's session.
 func TestABindingAddsNothingToItsProcesssSession(t *testing.T) {
 	t.Parallel()
-	recovering := func(session string) settings.Bundle {
-		b := repairing(onC(plain()), session)
+	recovering := func(resumable bool) settings.Bundle {
+		b := repairing(onC(plain()), resumable)
 		p := b.Processes["p"]
 		resumes := 1
-		p.Verify, p.Limits.Stale.Recover = nil, definition.Recover{MaxResumes: &resumes, Instruction: "Go on."}
+		p.Limits.Verify = nil
+		p.Limits.Stale.MaxResumes, p.Limits.Stale.Instruction = &resumes, "Go on."
 		b.Processes["p"] = p
 		return b
 	}
@@ -187,11 +190,10 @@ func TestABindingAddsNothingToItsProcesssSession(t *testing.T) {
 		bundle settings.Bundle
 		want   []string
 	}{
-		"it repairs, fresh-only":          {repairing(onC(plain()), definition.SessionFresh), []string{repairs}},
-		"it repairs, no session set":      {repairing(onC(plain()), ""), []string{repairs}},
-		"it recovers, fresh-only":         {recovering(definition.SessionFresh), []string{recovers}},
-		"it repairs, resumable":           {repairing(onC(plain()), definition.SessionResumable), nil},
-		"it recovers, resumable":          {recovering(definition.SessionResumable), nil},
+		"it repairs, fresh-only":          {repairing(onC(plain()), false), []string{repairs}},
+		"it recovers, fresh-only":         {recovering(false), []string{recovers}},
+		"it repairs, resumable":           {repairing(onC(plain()), true), nil},
+		"it recovers, resumable":          {recovering(true), nil},
 		"it neither repairs nor recovers": {onC(plain()), nil},
 	} {
 		t.Run(name, func(t *testing.T) {
@@ -210,9 +212,9 @@ func TestABindingAddsNothingToItsProcesssSession(t *testing.T) {
 func TestABindingIsPlannedOnTheInstalledVersion(t *testing.T) {
 	t.Parallel()
 	b := onC(split())
-	b.Processes["q"] = definition.Process{Name: "q", Output: definition.Output{Format: "text"}, Limits: reading()}
+	b.Processes["q"] = settings.Process{Name: "q", Limits: reading("q")}
 	workflow := b.Workflows["w"]
-	workflow.FanOut = append(workflow.FanOut, definition.Node{Name: "two", Process: "q", Agent: "c"})
+	workflow.FanOut = append(workflow.FanOut, settings.Node{Name: "two", Process: "q", Agent: "c"})
 	b.Workflows["w"] = workflow
 	if got := problemsOf(b); got != nil {
 		t.Fatalf("before the version is known: problems = %q", got)
@@ -240,7 +242,7 @@ func TestABindingIsPlannedOnTheInstalledVersion(t *testing.T) {
 // problem that was the process's is that workflow's (ADR-030 rule 2).
 func TestABindingToARuntimeThatCannotResumeIsAProblemOfItsWorkflow(t *testing.T) {
 	t.Parallel()
-	b := repairing(onC(plain()), definition.SessionResumable)
+	b := repairing(onC(plain()), true)
 	b.Workflows["v"] = bound("a").Workflows["w"]
 	if got := problemsOf(b); got != nil {
 		t.Fatalf("before the runtime is asked: problems = %q", got)
@@ -308,13 +310,13 @@ func TestACostLimitNeedsARuntimeThatEnforcesIt(t *testing.T) {
 func writable(agent string, require ...string) settings.Bundle {
 	b := bound(agent)
 	p := b.Processes["p"]
-	p.Limits.Allow, p.Require = []string{"read", "write"}, require
+	p.Limits.Allow, p.Limits.Require = []string{"read", "write"}, require
 	b.Processes["p"] = p
 	rt := b.Mappings["rt"]
-	rt.Primitives = []definition.Primitive{
-		{Name: "Read", Grants: []string{"read"}, Verified: []string{"1.", "2."}},
-		{Name: "Write", Grants: []string{"write"}, Verified: []string{"2."}},
-	}
+	rt.Offer = offering(
+		enforce.Primitive{Name: "Read", Grants: []string{"read"}, Verified: []string{"1.", "2."}},
+		enforce.Primitive{Name: "Write", Grants: []string{"write"}, Verified: []string{"2."}},
+	)
 	b.Mappings["rt"] = rt
 	return b
 }
@@ -336,7 +338,7 @@ func TestEveryBindingIsPlanned(t *testing.T) {
 	}
 	// Agent c is a's twin, which a node binds p to.
 	onC := writable("c", "write")
-	onC.Agents["c"] = definition.Agent{Name: "c", Runtime: "rt", Effort: "high", ModelFamily: "f"}
+	onC.Agents["c"] = settings.Agent{Name: "c", Runtime: "rt", Effort: "high"}
 	installed := func(version string) map[string]string { return map[string]string{"a": version} }
 	for name, c := range map[string]struct {
 		bundle    settings.Bundle

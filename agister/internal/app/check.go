@@ -172,16 +172,16 @@ func (c *Checker) checkNow(ctx context.Context, probe bool) (CheckResult, error)
 	problem := func(subject, format string, args ...any) {
 		settingsProblem(settings.Problem{Subject: subject, Message: fmt.Sprintf(format, args...)})
 	}
-	bundle := settings.Bundle{
-		Agents:    map[string]definition.Agent{},
-		Processes: map[string]definition.Process{},
-		Mappings:  map[string]definition.Mapping{},
-		Schemas:   map[string]bool{},
-		Workflows: map[string]definition.Workflow{},
-		Verifies:  map[string]definition.Verification{},
-		Prompts:   map[string]bool{},
-		Skills:    map[string]bool{},
-		Briefs:    map[string]bool{},
+	parsed := parsedSettings{
+		agents:    map[string]definition.Agent{},
+		processes: map[string]definition.Process{},
+		mappings:  map[string]definition.Mapping{},
+		schemas:   map[string]bool{},
+		workflows: map[string]definition.Workflow{},
+		verifies:  map[string]definition.Verification{},
+		prompts:   map[string]bool{},
+		skills:    map[string]bool{},
+		briefs:    map[string]bool{},
 	}
 
 	// A layer that is invalid is a problem of no document: it stops every
@@ -199,7 +199,7 @@ func (c *Checker) checkNow(ctx context.Context, probe bool) (CheckResult, error)
 	named := c.namedPrompts(ctx)
 	// A base is checked through each process that extends it, so it may
 	// leave out what each of them sets (ADR-030 rule 9).
-	bundle.Bases = c.bases(ctx)
+	parsed.bases = c.bases(ctx)
 
 	// Each document on its own: one checks a document read, or not, err
 	// saying why not; each checks every document of a kind the settings
@@ -249,16 +249,16 @@ func (c *Checker) checkNow(ctx context.Context, probe bool) (CheckResult, error)
 				// One that cannot be read or parsed is a problem of its
 				// own (ADR-014 rule 1); the processes that name it still
 				// find it.
-				bundle.Prompts[name] = true
+				parsed.prompts[name] = true
 			}
 			if kind == definition.KindSkill {
 				// So is a broken skill (ADR-021 rule 4): what names it still
 				// finds it.
-				bundle.Skills[name] = true
+				parsed.skills[name] = true
 			}
 			if kind == definition.KindBrief {
 				// And a broken brief form (ADR-026 rule 8).
-				bundle.Briefs[name] = true
+				parsed.briefs[name] = true
 			}
 			if kind != definition.KindService && !definition.ValidName(name) {
 				// Nothing can name such a document (ADR-015 rule 4).
@@ -289,28 +289,28 @@ func (c *Checker) checkNow(ctx context.Context, probe bool) (CheckResult, error)
 		{definition.KindService, func(d definition.Document) error {
 			service, err := definition.ParseService(d)
 			if err == nil {
-				bundle.Service = &service
+				parsed.service = &service
 			}
 			return err
 		}},
 		{definition.KindRuntime, func(d definition.Document) error {
 			m, err := definition.ParseMapping(d)
 			if err == nil {
-				bundle.Mappings[m.Name] = m
+				parsed.mappings[m.Name] = m
 			}
 			return err
 		}},
 		{definition.KindAgent, func(d definition.Document) error {
 			a, err := definition.ParseAgent(d)
 			if err == nil {
-				bundle.Agents[a.Name] = a
+				parsed.agents[a.Name] = a
 			}
 			return err
 		}},
 		{definition.KindVerify, func(d definition.Document) error {
 			v, err := definition.ParseVerify(d)
 			if err == nil {
-				bundle.Verifies[v.Name] = v
+				parsed.verifies[v.Name] = v
 			}
 			return err
 		}},
@@ -324,12 +324,12 @@ func (c *Checker) checkNow(ctx context.Context, probe bool) (CheckResult, error)
 			return err
 		}},
 		{definition.KindProcess, func(d definition.Document) error {
-			if len(bundle.Bases[d.Source.Name]) > 0 {
+			if len(parsed.bases[d.Source.Name]) > 0 {
 				return nil
 			}
 			p, err := definition.ParseProcess(d)
 			if err == nil {
-				bundle.Processes[p.Name] = p
+				parsed.processes[p.Name] = p
 			}
 			return err
 		}},
@@ -337,13 +337,13 @@ func (c *Checker) checkNow(ctx context.Context, probe bool) (CheckResult, error)
 			if err := c.validator.Compile(d.Bytes); err != nil {
 				return err
 			}
-			bundle.Schemas[d.Source.Name] = true
+			parsed.schemas[d.Source.Name] = true
 			return nil
 		}},
 		{definition.KindWorkflow, func(d definition.Document) error {
 			w, err := definition.ParseWorkflow(d)
 			if err == nil {
-				bundle.Workflows[w.Name] = w
+				parsed.workflows[w.Name] = w
 			}
 			return err
 		}},
@@ -365,8 +365,8 @@ func (c *Checker) checkNow(ctx context.Context, probe bool) (CheckResult, error)
 	// it (ADR-028 rule 9). Anything else at its path, such as a directory,
 	// is a document that cannot be read, a problem of its own that refuses
 	// the process.
-	for _, name := range sortedNames(bundle.Processes) {
-		for _, prompt := range bundle.Processes[name].Prompts() {
+	for _, name := range sortedNames(parsed.processes) {
+		for _, prompt := range parsed.processes[name].Prompts() {
 			ref := DocumentRef{Kind: definition.KindPrompt, Name: prompt}
 			if listed[ref] {
 				continue
@@ -375,7 +375,7 @@ func (c *Checker) checkNow(ctx context.Context, probe bool) (CheckResult, error)
 			if errors.Is(err, definition.ErrNotFound) {
 				continue
 			}
-			listed[ref], bundle.Prompts[prompt] = true, true
+			listed[ref], parsed.prompts[prompt] = true, true
 			one(definition.KindPrompt, prompt, doc, err, parsePrompt)
 		}
 	}
@@ -385,9 +385,9 @@ func (c *Checker) checkNow(ctx context.Context, probe bool) (CheckResult, error)
 		if ref.Kind != definition.KindWorkflow || !listed[DocumentRef{Kind: definition.KindProcess, Name: ref.Name}] {
 			continue
 		}
-		_, processOK := bundle.Processes[ref.Name]
-		_, workflowOK := bundle.Workflows[ref.Name]
-		if bundle.Service == nil || !processOK || !workflowOK {
+		_, processOK := parsed.processes[ref.Name]
+		_, workflowOK := parsed.workflows[ref.Name]
+		if parsed.service == nil || !processOK || !workflowOK {
 			stops("workflow "+ref.Name, "a process has the same name; name one of them otherwise")
 		}
 	}
@@ -447,15 +447,15 @@ func (c *Checker) checkNow(ctx context.Context, probe bool) (CheckResult, error)
 			report.Definitions[i].UsedBy = append(report.Definitions[i].UsedBy, contract.DefinitionRef{Kind: string(from.Kind), Name: from.Name})
 		}
 	}
-	for _, name := range sortedNames(bundle.Agents) {
-		agent, from := bundle.Agents[name], DocumentRef{Kind: definition.KindAgent, Name: name}
+	for _, name := range sortedNames(parsed.agents) {
+		agent, from := parsed.agents[name], DocumentRef{Kind: definition.KindAgent, Name: name}
 		link(from, definition.KindRuntime, agent.Runtime, false)
 		for _, skill := range agent.Skills {
 			link(from, definition.KindSkill, skill, false)
 		}
 	}
-	for _, name := range sortedNames(bundle.Processes) {
-		process, from := bundle.Processes[name], DocumentRef{Kind: definition.KindProcess, Name: name}
+	for _, name := range sortedNames(parsed.processes) {
+		process, from := parsed.processes[name], DocumentRef{Kind: definition.KindProcess, Name: name}
 		link(from, definition.KindVerify, process.VerifyName, false)
 		link(from, definition.KindPrompt, process.Prompt, false)
 		for _, prompt := range process.Guidance {
@@ -472,17 +472,17 @@ func (c *Checker) checkNow(ctx context.Context, probe bool) (CheckResult, error)
 		}
 	}
 	// A process uses its base, whose problems and blocks refuse it.
-	for _, base := range sortedNames(bundle.Bases) {
-		for _, name := range bundle.Bases[base] {
+	for _, base := range sortedNames(parsed.bases) {
+		for _, name := range parsed.bases[base] {
 			link(DocumentRef{Kind: definition.KindProcess, Name: name}, definition.KindProcess, base, false)
 		}
 	}
-	for _, name := range sortedNames(bundle.Workflows) {
+	for _, name := range sortedNames(parsed.workflows) {
 		from := DocumentRef{Kind: definition.KindWorkflow, Name: name}
 		// A workflow uses the agent a node binds its process to, each once:
 		// its problems and blocks refuse the workflow (ADR-030 rule 10).
 		agents := map[string]bool{}
-		for _, node := range bundle.Workflows[name].Nodes() {
+		for _, node := range parsed.workflows[name].Nodes() {
 			link(from, definition.KindProcess, node.Process, false)
 			if !agents[node.Agent] {
 				agents[node.Agent] = true
@@ -492,24 +492,24 @@ func (c *Checker) checkNow(ctx context.Context, probe bool) (CheckResult, error)
 				documents[source].Binds = append(documents[source].Binds, NodeBinding{Process: node.Process, Agent: node.Agent})
 			}
 		}
-		for _, form := range bundle.Workflows[name].Forms() {
+		for _, form := range parsed.workflows[name].Forms() {
 			link(from, definition.KindBrief, form, false)
 		}
 	}
 
 	// Settings a call no longer reads are ignored, and said so (ADR-025).
-	for _, name := range sortedNames(bundle.Processes) {
-		for _, obsolete := range bundle.Processes[name].Obsolete {
+	for _, name := range sortedNames(parsed.processes) {
+		for _, obsolete := range parsed.processes[name].Obsolete {
 			report.Warnings = append(report.Warnings, "process "+name+": "+obsolete)
 		}
 	}
-	for _, name := range sortedNames(bundle.Verifies) {
-		for _, obsolete := range bundle.Verifies[name].Verify.Obsolete {
+	for _, name := range sortedNames(parsed.verifies) {
+		for _, obsolete := range parsed.verifies[name].Verify.Obsolete {
 			report.Warnings = append(report.Warnings, "verification "+name+": "+obsolete)
 		}
 	}
-	for _, name := range sortedNames(bundle.Processes) {
-		process := bundle.Resolved(name)
+	for _, name := range sortedNames(parsed.processes) {
+		process := parsed.resolved(name)
 		switch {
 		case process.Verify != nil:
 			report.Warnings = append(report.Warnings, "process "+name+": "+VerifyWarning)
@@ -520,11 +520,12 @@ func (c *Checker) checkNow(ctx context.Context, probe bool) (CheckResult, error)
 		}
 	}
 
-	if bundle.Service == nil {
+	if parsed.service == nil {
 		return finish(), nil
 	}
 
 	// Across documents.
+	bundle := parsed.bundle()
 	known := c.runtimes.Adapters()
 	// The core itself supplies a join's collection (ADR-003 rule 4).
 	sources := append(append([]string(nil), c.sources...), definition.CollectionSource)
@@ -536,9 +537,9 @@ func (c *Checker) checkNow(ctx context.Context, probe bool) (CheckResult, error)
 	// found to have, by agent, where its mapping verifies it.
 	installed := map[string]string{}
 	if probe {
-		for _, name := range sortedNames(bundle.Agents) {
-			agent := bundle.Agents[name]
-			mapping, ok := bundle.Mappings[agent.Runtime]
+		for _, name := range sortedNames(parsed.agents) {
+			agent := parsed.agents[name]
+			mapping, ok := parsed.mappings[agent.Runtime]
 			if !ok {
 				continue
 			}
@@ -546,12 +547,15 @@ func (c *Checker) checkNow(ctx context.Context, probe bool) (CheckResult, error)
 				continue // reported as an unknown adapter
 			}
 			identity, err := c.runtimes.Identity(ctx, mapping.Adapter, agent.Command)
+			// What a probe verifies is seen by every check that follows,
+			// of this agent and of any other on the same runtime.
+			checked := bundle.Mappings[agent.Runtime]
 			var probeFailed error
-			if err == nil && identity.Contract == mapping.Contract && !mapping.Verified(identity.Version) && c.probes != nil {
+			if err == nil && identity.Contract == mapping.Contract && !checked.Offer.Verified(identity.Version) && c.probes != nil {
 				var probed []string
 				if probed, probeFailed = c.probes.Verified(ctx, mapping.Adapter, agent.Command, identity.Version); probeFailed == nil {
-					mapping = mapping.WithVerified(identity.Version, probed)
-					bundle.Mappings[agent.Runtime] = mapping
+					checked.Offer = checked.Offer.WithVerified(identity.Version, probed)
+					bundle.Mappings[agent.Runtime] = checked
 				}
 			}
 			switch {
@@ -561,25 +565,25 @@ func (c *Checker) checkNow(ctx context.Context, probe bool) (CheckResult, error)
 				problem("agent "+name, "adapter implements %s, mapping %s describes %s", identity.Contract, mapping.Name, mapping.Contract)
 			case probeFailed != nil:
 				problem("agent "+name, "mapping %s verifies no primitive for runtime version %s%s", mapping.Name, identity.Version, probeRefusal(probeFailed))
-			case !mapping.Verified(identity.Version):
+			case !checked.Offer.Verified(identity.Version):
 				problem("agent "+name, "mapping %s verifies no primitive for runtime version %s", mapping.Name, identity.Version)
 			default:
 				installed[name] = identity.Version
-				for _, p := range settings.PlanProblems(bundle, agent, identity.Version) {
+				for _, p := range settings.PlanProblems(bundle, bundle.Agents[name], identity.Version) {
 					settingsProblem(p)
 				}
 				// Repairs resume the call's session, which only the
 				// runtime can say it supports. So do recoveries (ADR-024
 				// rule 6).
 				if !identity.Resume {
-					for _, p := range settings.ResumeProblems(bundle, agent) {
+					for _, p := range settings.ResumeProblems(bundle, bundle.Agents[name]) {
 						settingsProblem(p)
 					}
 				}
 				// So is whether it enforces a cost limit, which a call
 				// under one is refused without.
 				if !identity.CostLimit {
-					for _, p := range settings.CostProblems(bundle, agent) {
+					for _, p := range settings.CostProblems(bundle, bundle.Agents[name]) {
 						settingsProblem(p)
 					}
 				}

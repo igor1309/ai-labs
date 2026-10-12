@@ -5,30 +5,40 @@ import (
 	"testing"
 	"time"
 
-	"github.com/igor1309/ai-labs/agister/internal/domain/definition"
+	"github.com/igor1309/ai-labs/agister/internal/domain/enforce"
+	"github.com/igor1309/ai-labs/agister/internal/domain/policy"
 	"github.com/igor1309/ai-labs/agister/internal/domain/settings"
 )
 
 func timeout(d time.Duration) *time.Duration { return &d }
 
-// reading are the limits of a process that reads, for a minute.
-func reading() definition.Limits {
-	return definition.Limits{Timeout: timeout(time.Minute), Allow: []string{"read"}, AllowSet: true}
+// reading are the limits of process, which reads, for a minute.
+func reading(process string) policy.Declared {
+	return policy.Declared{Process: process, Timeout: timeout(time.Minute), Allow: []string{"read"}}
+}
+
+// allowing are the limits of process, which may use allow, for a minute.
+func allowing(process string, allow ...string) policy.Declared {
+	return policy.Declared{Process: process, Timeout: timeout(time.Minute), Allow: allow}
+}
+
+// offering is the offer of any of primitives.
+func offering(primitives ...enforce.Primitive) enforce.Offer {
+	return enforce.Offer{Primitives: primitives}
 }
 
 func bundle() settings.Bundle {
 	return settings.Bundle{
-		Service: &definition.Service{MaxTimeout: time.Hour, MaxAttempts: 1, Permissions: []string{"read", "write", "exec"}},
-		Agents: map[string]definition.Agent{
-			"a": {Name: "a", Runtime: "rt", Effort: "high", ModelFamily: "f"},
+		Service: &settings.Service{Ceilings: policy.Ceilings{MaxTimeout: time.Hour, MaxAttempts: 1, Permissions: []string{"read", "write", "exec"}}},
+		Agents: map[string]settings.Agent{
+			"a": {Name: "a", Runtime: "rt", Effort: "high"},
 		},
-		Mappings: map[string]definition.Mapping{
-			"rt": {Name: "rt", Adapter: "claude-code", Efforts: []string{"high"}, Select: "any",
-				Primitives: []definition.Primitive{{Name: "Read", Grants: []string{"read"}, Verified: []string{"1."}}}},
+		Mappings: map[string]settings.Mapping{
+			"rt": {Name: "rt", Adapter: "claude-code", Efforts: []string{"high"},
+				Offer: offering(enforce.Primitive{Name: "Read", Grants: []string{"read"}, Verified: []string{"1."}})},
 		},
-		Processes: map[string]definition.Process{
-			"p": {Name: "p", Output: definition.Output{Format: "json", Schema: "s"},
-				Values: []definition.Value{{Name: "v", Source: "param"}}, Limits: reading()},
+		Processes: map[string]settings.Process{
+			"p": {Name: "p", Schema: "s", Values: []settings.Value{{Name: "v", Source: "param"}}, Limits: reading("p")},
 		},
 		Schemas: map[string]bool{"s": true},
 	}
@@ -46,16 +56,15 @@ func TestConsistentSettingsHaveNoProblems(t *testing.T) {
 func TestEveryInconsistencyIsReported(t *testing.T) {
 	t.Parallel()
 	b := bundle()
-	b.Agents["b"] = definition.Agent{Name: "b", Runtime: "missing"}
-	b.Agents["a"] = definition.Agent{Name: "a", Runtime: "rt", Effort: "max"}
-	b.Mappings["rt2"] = definition.Mapping{Name: "rt2", Adapter: "gemini", Select: "any", Primitives: []definition.Primitive{{Name: "X", Grants: []string{"teleport"}}}}
-	b.Processes["p"] = definition.Process{Name: "p",
-		Output: definition.Output{Format: "json", Schema: "gone"},
-		Values: []definition.Value{{Name: "v", Source: "http.get"}}, Limits: reading()}
-	b.Processes["q"] = definition.Process{Name: "q", Output: definition.Output{Format: "text"},
-		Limits: definition.Limits{Timeout: timeout(time.Minute), Allow: []string{"fly"}, AllowSet: true}}
-	b.Processes["r"] = definition.Process{Name: "r", Output: definition.Output{Format: "text"},
-		Limits: definition.Limits{Timeout: timeout(time.Minute), Allow: []string{"write"}, AllowSet: true}, Require: []string{"write"}}
+	b.Agents["b"] = settings.Agent{Name: "b", Runtime: "missing"}
+	b.Agents["a"] = settings.Agent{Name: "a", Runtime: "rt", Effort: "max"}
+	b.Mappings["rt2"] = settings.Mapping{Name: "rt2", Adapter: "gemini", Offer: offering(enforce.Primitive{Name: "X", Grants: []string{"teleport"}})}
+	b.Processes["p"] = settings.Process{Name: "p", Schema: "gone",
+		Values: []settings.Value{{Name: "v", Source: "http.get"}}, Limits: reading("p")}
+	b.Processes["q"] = settings.Process{Name: "q", Limits: allowing("q", "fly")}
+	r := allowing("r", "write")
+	r.Require = []string{"write"}
+	b.Processes["r"] = settings.Process{Name: "r", Limits: r}
 	b = calling(b, "r", "a")
 
 	var got []string
@@ -95,10 +104,11 @@ func TestUnverifiedPrimitivesCannotSatisfyARequirement(t *testing.T) {
 	t.Parallel()
 	b := bundle()
 	rt := b.Mappings["rt"]
-	rt.Primitives = append(rt.Primitives, definition.Primitive{Name: "Edit", Grants: []string{"write"}})
+	rt.Offer.Primitives = append(rt.Offer.Primitives, enforce.Primitive{Name: "Edit", Grants: []string{"write"}})
 	b.Mappings["rt"] = rt
-	b.Processes["q"] = definition.Process{Name: "q", Output: definition.Output{Format: "text"},
-		Limits: definition.Limits{Timeout: timeout(time.Minute), Allow: []string{"write"}, AllowSet: true}, Require: []string{"write"}}
+	q := allowing("q", "write")
+	q.Require = []string{"write"}
+	b.Processes["q"] = settings.Process{Name: "q", Limits: q}
 	b = calling(b, "q", "a")
 
 	problems := settings.Check(b, mechanisms)
@@ -113,13 +123,14 @@ func TestUnverifiedPrimitivesCannotSatisfyARequirement(t *testing.T) {
 func TestRequirementsNeedOneVersionThatCoversThem(t *testing.T) {
 	t.Parallel()
 	b := bundle()
-	b.Mappings["rt"] = definition.Mapping{Name: "rt", Adapter: "claude-code", Efforts: []string{"high"}, Select: "any",
-		Primitives: []definition.Primitive{
-			{Name: "Read", Grants: []string{"read"}, Verified: []string{"1."}},
-			{Name: "Edit", Grants: []string{"write"}, Verified: []string{"2."}},
-		}}
-	b.Processes["q"] = definition.Process{Name: "q", Output: definition.Output{Format: "text"},
-		Limits: definition.Limits{Timeout: timeout(time.Minute), Allow: []string{"read", "write"}, AllowSet: true}, Require: []string{"read", "write"}}
+	b.Mappings["rt"] = settings.Mapping{Name: "rt", Adapter: "claude-code", Efforts: []string{"high"},
+		Offer: offering(
+			enforce.Primitive{Name: "Read", Grants: []string{"read"}, Verified: []string{"1."}},
+			enforce.Primitive{Name: "Edit", Grants: []string{"write"}, Verified: []string{"2."}},
+		)}
+	q := allowing("q", "read", "write")
+	q.Require = []string{"read", "write"}
+	b.Processes["q"] = settings.Process{Name: "q", Limits: q}
 	b = calling(b, "q", "a")
 
 	problems := settings.Check(b, mechanisms)
@@ -131,7 +142,7 @@ func TestRequirementsNeedOneVersionThatCoversThem(t *testing.T) {
 
 	// One version that covers both is enough.
 	rt := b.Mappings["rt"]
-	rt.Primitives[1].Verified = []string{"1.", "2."}
+	rt.Offer.Primitives[1].Verified = []string{"1.", "2."}
 	if problems := settings.Check(b, mechanisms); len(problems) != 0 {
 		t.Fatalf("problems = %v", problems)
 	}
@@ -143,12 +154,11 @@ func TestRequirementsNeedOneVersionThatCoversThem(t *testing.T) {
 func TestProblemsNamingUnknownMechanismsAreMarked(t *testing.T) {
 	t.Parallel()
 	b := bundle()
-	b.Mappings["rt2"] = definition.Mapping{Name: "rt2", Adapter: "opencode", Select: "any", Primitives: []definition.Primitive{{Name: "Read", Grants: []string{"read"}, Verified: []string{"1."}}}}
-	b.Processes["p"] = definition.Process{Name: "p",
-		Output: definition.Output{Format: "json", Schema: "gone"},
-		Values: []definition.Value{{Name: "v", Source: "git.future"}}, Limits: reading()}
-	b.Workflows = map[string]definition.Workflow{"w": {Name: "w", Values: []definition.Value{{Name: "v", Source: "git.future"}},
-		FanOut: []definition.Node{{Name: "n", Process: "p", Agent: "a"}}, Join: definition.Node{Name: "j", Process: "p", Agent: "a"}}}
+	b.Mappings["rt2"] = settings.Mapping{Name: "rt2", Adapter: "opencode", Offer: offering(enforce.Primitive{Name: "Read", Grants: []string{"read"}, Verified: []string{"1."}})}
+	b.Processes["p"] = settings.Process{Name: "p", Schema: "gone",
+		Values: []settings.Value{{Name: "v", Source: "git.future"}}, Limits: reading("p")}
+	b.Workflows = map[string]settings.Workflow{"w": {Name: "w", Values: []settings.Value{{Name: "v", Source: "git.future"}},
+		FanOut: []settings.Node{{Name: "n", Process: "p", Agent: "a"}}, Join: settings.Node{Name: "j", Process: "p", Agent: "a"}}}
 
 	unknown := map[string]bool{}
 	for _, p := range settings.Check(b, mechanisms) {

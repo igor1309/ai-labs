@@ -3,7 +3,6 @@ package settings
 import (
 	"fmt"
 
-	"github.com/igor1309/ai-labs/agister/internal/domain/definition"
 	"github.com/igor1309/ai-labs/agister/internal/domain/enforce"
 	"github.com/igor1309/ai-labs/agister/internal/domain/policy"
 )
@@ -12,8 +11,8 @@ import (
 // as a call of the node resolves it (ADR-030 rules 5 and 8).
 type binding struct {
 	node      string // as the workflow's problems name it
-	process   definition.Process
-	agent     definition.Agent
+	process   Process
+	agent     Agent
 	effective policy.Effective
 }
 
@@ -21,18 +20,18 @@ type binding struct {
 // to its agent, in declaration order, the join last. A node whose process
 // is missing or does not compose, or whose agent is missing, is left out:
 // each is reported where it is found.
-func (b Bundle) bindings(workflow definition.Workflow) []binding {
+func (b Bundle) bindings(workflow Workflow) []binding {
 	if b.Service == nil {
 		return nil
 	}
 	var bound []binding
-	for i, node := range workflow.Nodes() {
+	for i, node := range workflow.nodes() {
 		agent, ok := b.Agents[node.Agent]
-		if _, exists := b.Processes[node.Process]; !ok || !exists {
+		process, exists := b.Processes[node.Process]
+		if !ok || !exists {
 			continue
 		}
-		process := b.Resolved(node.Process)
-		effective, err := policy.Compose(ceilings(*b.Service), declared(process), policy.Caller{})
+		effective, err := policy.Compose(b.Service.Ceilings, process.Limits, policy.Caller{})
 		if err != nil {
 			continue
 		}
@@ -81,11 +80,11 @@ func BindingPlans(b Bundle, installed map[string]string) []BindingPlan {
 	var plans []BindingPlan
 	for _, name := range sortedKeys(b.Workflows) {
 		workflow := b.Workflows[name]
-		for i, node := range workflow.Nodes() {
-			if _, ok := b.Processes[node.Process]; !ok {
+		for i, node := range workflow.nodes() {
+			process, ok := b.Processes[node.Process]
+			if !ok {
 				continue
 			}
-			process := b.Resolved(node.Process)
 			agent, ok := b.Agents[node.Agent]
 			if !ok {
 				continue
@@ -94,15 +93,15 @@ func BindingPlans(b Bundle, installed map[string]string) []BindingPlan {
 			if !ok {
 				continue
 			}
-			effective, err := policy.Compose(ceilings(*b.Service), declared(process), policy.Caller{})
+			effective, err := policy.Compose(b.Service.Ceilings, process.Limits, policy.Caller{})
 			if err != nil {
 				continue
 			}
-			versions := mapping.Versions()
+			versions := mapping.Offer.Versions()
 			if version, ok := installed[agent.Name]; ok {
 				versions = []string{version}
 			}
-			version, plan, found := planOn(effective, mapping, versions, b.Service.StateReaching)
+			version, plan, found := planOn(effective, mapping.Offer, versions, b.Service.StateReaching)
 			if !found {
 				continue
 			}
@@ -115,14 +114,15 @@ func BindingPlans(b Bundle, installed map[string]string) []BindingPlan {
 }
 
 // SettingsPlan is the plan a call composed to effective would be given on
-// mapping, judged on the settings alone, as BindingPlans plans a binding
-// whose runtime was not asked: on the version the mapping verifies that
-// withholds the fewest required permissions, then the fewest others. Its
-// Withheld has the required permissions it withholds too. It is for a view
-// of a call the settings refuse: never one a call is given. found is false
-// where no version can be planned.
-func SettingsPlan(service definition.Service, effective policy.Effective, mapping definition.Mapping) (plan enforce.Plan, found bool) {
-	_, plan, found = planOn(effective, mapping, mapping.Versions(), service.StateReaching)
+// what its runtime offers, stateReaching never granted, judged on the
+// settings alone, as BindingPlans plans a binding whose runtime was not
+// asked: on the version the offer verifies that withholds the fewest
+// required permissions, then the fewest others. Its Withheld has the
+// required permissions it withholds too. It is for a view of a call the
+// settings refuse: never one a call is given. found is false where no
+// version can be planned.
+func SettingsPlan(effective policy.Effective, offer enforce.Offer, stateReaching []string) (plan enforce.Plan, found bool) {
+	_, plan, found = planOn(effective, offer, offer.Versions(), stateReaching)
 	return plan, found
 }
 
@@ -130,14 +130,14 @@ func SettingsPlan(service definition.Service, effective policy.Effective, mappin
 // permissions in tools.require, then the fewest others, the first when
 // tied, required permissions withheld or not; found is false where none
 // can be planned.
-func planOn(effective policy.Effective, mapping definition.Mapping, versions, stateReaching []string) (version string, best enforce.Plan, found bool) {
+func planOn(effective policy.Effective, offer enforce.Offer, versions, stateReaching []string) (version string, best enforce.Plan, found bool) {
 	fewest := func(plan enforce.Plan) (required, others int) {
 		withheldRequired, withheld := split(plan.Withheld, effective.Require)
 		return len(withheldRequired), len(withheld)
 	}
 	for _, candidate := range versions {
-		verified, _ := mapping.ForVersion(candidate)
-		plan, err := enforce.Make(effective.Permissions, offer(verified), nil, stateReaching)
+		verified, _ := offer.ForVersion(candidate)
+		plan, err := enforce.Make(effective.Permissions, verified, nil, stateReaching)
 		if err != nil {
 			continue
 		}
@@ -176,7 +176,7 @@ func CostRefusal(effective policy.Effective, runtime string, enforces bool) stri
 // CostProblems reports each node that binds to the agent a process that
 // sets a cost limit, which the agent's runtime was found unable to enforce
 // (ADR-030 rule 8). Only the runtime can say whether it enforces one.
-func CostProblems(b Bundle, agent definition.Agent) []Problem {
+func CostProblems(b Bundle, agent Agent) []Problem {
 	mapping, ok := b.Mappings[agent.Runtime]
 	if !ok || b.Service == nil {
 		return nil
@@ -198,64 +198,13 @@ func CostProblems(b Bundle, agent definition.Agent) []Problem {
 // unresumed are the turns of the process that resume its call's session, a
 // repair turn (ADR-002 rule 4) and a recovery turn (ADR-024 rule 6), each
 // with why the session cannot be resumed.
-func unresumed(process definition.Process, effective policy.Effective, why string) []string {
+func unresumed(process Process, effective policy.Effective, why string) []string {
 	var problems []string
-	if process.Verify.Repairs() {
-		problems = append(problems, fmt.Sprintf("verify.max_attempts %d repairs in the call's session, but %s", process.Verify.MaxAttempts, why))
+	if verify := process.Limits.Verify; verify != nil && verify.MaxAttempts > 1 {
+		problems = append(problems, fmt.Sprintf("verify.max_attempts %d repairs in the call's session, but %s", verify.MaxAttempts, why))
 	}
 	if resumes := effective.Stale.Recover.MaxResumes; resumes > 0 {
 		problems = append(problems, fmt.Sprintf("stale.recover.max_resumes %d recovers in the call's session, but %s", resumes, why))
 	}
 	return problems
-}
-
-// offer is what the runtime mapping offers enforce: its primitives, and
-// whether a plan takes exactly one of them.
-func offer(mapping definition.Mapping) enforce.Offer {
-	primitives := make([]enforce.Primitive, 0, len(mapping.Primitives))
-	for _, primitive := range mapping.Primitives {
-		primitives = append(primitives, enforce.Primitive{Name: primitive.Name, Grants: primitive.Grants})
-	}
-	return enforce.Offer{One: mapping.Select == "one", Primitives: primitives}
-}
-
-// ceilings are what of the service bounds a call's limits.
-func ceilings(service definition.Service) policy.Ceilings {
-	return policy.Ceilings{
-		MaxTimeout:        service.MaxTimeout,
-		MaxAttempts:       service.MaxAttempts,
-		MaxVerifyAttempts: service.MaxVerifyAttempts,
-		MaxCostUSD:        service.MaxCostUSD,
-		Permissions:       service.Permissions,
-		Writing:           service.Writing,
-	}
-}
-
-// declared is what a process declares of its limits, for policy.
-func declared(process definition.Process) policy.Declared {
-	own := process.Limits
-	out := policy.Declared{
-		Process:     process.Name,
-		Timeout:     own.Timeout,
-		MaxAttempts: own.MaxAttempts,
-		MaxCostUSD:  own.MaxCostUSD,
-		Allow:       own.Allow,
-		Deny:        own.Deny,
-		Require:     process.Require,
-		Access:      own.Access,
-		Scope:       own.Scope,
-		Pinned:      process.Revision != "",
-		Stale: policy.DeclaredStale{
-			NoEvent:           own.Stale.NoEvent,
-			NoOutput:          own.Stale.NoOutput,
-			ToolCommand:       own.Stale.ToolCommand,
-			RepeatedToolCalls: own.Stale.RepeatedToolCalls,
-			MaxResumes:        own.Stale.Recover.MaxResumes,
-			Instruction:       own.Stale.Recover.Instruction,
-		},
-	}
-	if process.Verify != nil {
-		out.Verify = &policy.Verify{Timeout: process.Verify.Timeout, MaxAttempts: process.Verify.MaxAttempts}
-	}
-	return out
 }

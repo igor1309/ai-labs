@@ -178,5 +178,10 @@ func TestCheckProbesAnUnverifiedVersion(t *testing.T) {
 		if got := messages(report.Problems); strings.Join(got, "\n") != strings.Join(c.want, "\n") {
 			t.Errorf("%s: problems = %q", name, got)
 		}
+		// The primitives the probe verified are what the binding is planned
+		// on: without them, it would withhold every permission.
+		if c.prober.err == nil && !reflect.DeepEqual(report.Bindings, []contract.Binding{{Workflow: "p_a", Node: "p", Process: "p", Agent: "a", Runtime: "rt", Version: "9.0.0", Withheld: []string{"repository.diff"}}}) {
+			t.Errorf("%s: bindings = %+v", name, report.Bindings)
+		}
 	}
 }
