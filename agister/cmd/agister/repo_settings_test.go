@@ -1500,7 +1500,7 @@ func TestReviewPromptsCarryTheCaseForValue(t *testing.T) {
 // goal: such a finding has scope goal, a concrete scenario the goal
 // requires, and the goal's condition quoted in its requirement with its
 // qualifications and its place in the goal; the goal's claims are checked,
-// and its scope exclusions are the owner's. The tests prompt adds that a
+// and its scope exclusions stand. The tests prompt adds that a
 // missing test counts only with the goal behaviour the existing assertions
 // let break, and the adversarial one that the goal widens the changed
 // paths. The ADR prompt's opening keeps a change that touches no ADR from
@@ -1522,7 +1522,7 @@ func TestReviewPromptsCarryTheGoal(t *testing.T) {
 	look := promptInstruction{"look also for what stops the goal, within its bounds",
 		[]string{"the goal of the change", "Look also for what stops the goal", "scope `goal`",
 			"a concrete scenario the goal requires", "`requirement`", "every qualification it carries",
-			"where in the goal it stands", "are claims you check", "scope exclusions", "are the owner's", "you cannot override it"}}
+			"where in the goal it stands", "are claims you check", `scope exclusions ("out of scope") stand`, "you cannot override it"}}
 	cases := []struct {
 		prompt       string
 		instructions []promptInstruction
@@ -1566,7 +1566,7 @@ func TestReviewPromptsCarryTheGoal(t *testing.T) {
 		})
 	}
 	says := []string{"The input goal says what the change is for", "are claims you check",
-		"Its scope exclusions are the owner's", "you cannot override it", "its scope"}
+		"Its scope exclusions stand", "you cannot override it", "its scope"}
 	for _, name := range []string{"adr_review_codex", "adversarial_review", "architecture_review", "clarity_review", "intent_review", "tests_review"} {
 		if instruction := parseProcess(t, root, name).Instruction; !carries(instruction, says) {
 			t.Errorf("process %s's instruction does not say what its input goal is: it lacks one of %q:\n%s", name, says, instruction)

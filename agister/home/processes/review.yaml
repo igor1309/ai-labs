@@ -16,7 +16,7 @@ input:
     it is no finding.
     The input goal says what the change is for. Its claims about design or
     completeness are claims you check, as you check a commit message's. Its
-    scope exclusions are the owner's: you may show that one stops the goal,
+    scope exclusions stand: you may show that one stops the goal,
     but you cannot override it.
     Any guidance given as further inputs holds the rules the repository
     gives for the code it names: code in the change that departs from one
