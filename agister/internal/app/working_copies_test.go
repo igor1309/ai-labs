@@ -9,7 +9,7 @@ import (
 
 	"github.com/igor1309/ai-labs/agister/internal/app"
 	"github.com/igor1309/ai-labs/agister/internal/contract"
-	"github.com/igor1309/ai-labs/agister/internal/domain/definition"
+	"github.com/igor1309/ai-labs/agister/internal/domain/document"
 	"github.com/igor1309/ai-labs/agister/internal/domain/run"
 )
 
@@ -46,7 +46,7 @@ func cacheFailures(events []run.Event) []map[string]any {
 func TestAProcessRunsFileInputsHaveWorkingCopies(t *testing.T) {
 	t.Parallel()
 	h := keptInputs(longText)
-	h.defs.docs[definition.KindProcess]["p"] = strings.Replace(h.defs.docs[definition.KindProcess]["p"],
+	h.defs.docs[document.KindProcess]["p"] = strings.Replace(h.defs.docs[document.KindProcess]["p"],
 		"    brief: {source: file, path: brief.md}\n", "    brief: {source: file, path: docs/brief.md}\n    notes: {source: file, path: notes.md}\n", 1)
 	file := h.inputs.respond
 	h.inputs.respond = func(spec app.InputSpec) (app.Resolved, error) {
@@ -136,9 +136,9 @@ func TestAWorkflowRunsFileInputsHaveWorkingCopies(t *testing.T) {
 					"    candidate: {default: HEAD}\n", "    candidate: {default: HEAD}\n    goal: {}\n", 1),
 					"  values:\n", "  values:\n    goal: {source: param, name: goal}\n", 1)
 			}
-			h.defs.docs[definition.KindProcess]["first"] = takesGoal(nodeProcess("first", "Work as first."))
-			h.defs.docs[definition.KindProcess]["second"] = takesGoal(nodeProcess("second", "Work as second."))
-			h.defs.docs[definition.KindWorkflow]["w"] = strings.Replace(workflowDoc, "  values:\n", "  values:\n    goal: {source: file, path: goal.md}\n", 1)
+			h.defs.docs[document.KindProcess]["first"] = takesGoal(nodeProcess("first", "Work as first."))
+			h.defs.docs[document.KindProcess]["second"] = takesGoal(nodeProcess("second", "Work as second."))
+			h.defs.docs[document.KindWorkflow]["w"] = strings.Replace(workflowDoc, "  values:\n", "  values:\n    goal: {source: file, path: goal.md}\n", 1)
 			readFrom(h.inputs)
 			if fails {
 				h.copies.err = func(string) error { return errors.New("cache full") }
@@ -168,8 +168,8 @@ func TestAWorkflowRunsFileInputsHaveWorkingCopies(t *testing.T) {
 func TestAFileInputHasItsWorkingCopyAndThePromptsNone(t *testing.T) {
 	t.Parallel()
 	h := keptInputs("the brief")
-	h.defs.docs[definition.KindProcess]["p"] = strings.Replace(h.defs.docs[definition.KindProcess]["p"], "prompt: inspect\n", "prompt: inspect\nguidance: [review]\n", 1)
-	h.defs.docs[definition.KindPrompt]["review"] = reviewPrompt
+	h.defs.docs[document.KindProcess]["p"] = strings.Replace(h.defs.docs[document.KindProcess]["p"], "prompt: inspect\n", "prompt: inspect\nguidance: [review]\n", 1)
+	h.defs.docs[document.KindPrompt]["review"] = reviewPrompt
 	readFrom(h.inputs)
 	record := h.call(t, contract.CallRequest{})
 	if record.Result.Status != run.Completed {

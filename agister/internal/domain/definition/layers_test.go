@@ -12,11 +12,12 @@ import (
 	"gopkg.in/yaml.v3"
 
 	"github.com/igor1309/ai-labs/agister/internal/domain/definition"
+	"github.com/igor1309/ai-labs/agister/internal/domain/document"
 )
 
 // layer is one layer's file of a document, as Compose takes it.
-func layer(name definition.Layer, path, text string) definition.LayerText {
-	return definition.LayerText{File: definition.LayerFile{Layer: name, Path: path, SHA256: "digest of " + path}, Bytes: []byte(text)}
+func layer(name document.Layer, path, text string) document.LayerText {
+	return document.LayerText{File: document.LayerFile{Layer: name, Path: path, SHA256: "digest of " + path}, Bytes: []byte(text)}
 }
 
 // leaves are a YAML document's leaves in its order, each "path = value": a
@@ -86,10 +87,10 @@ input:
 // the fields it gave, in its order, and one that gave nothing names none.
 func TestComposeMergesMapsByKeyAndNamesEachFieldsLayer(t *testing.T) {
 	t.Parallel()
-	data, files, err := definition.Compose(definition.KindProcess, []definition.LayerText{
-		layer(definition.LayerProject, "/w/docs/.agister/processes/implement.yaml", projectImplement),
-		layer(definition.LayerRepository, "/w/.agister/processes/implement.yaml", repositoryImplement),
-		layer(definition.LayerHome, "/h/processes/implement.yaml", homeImplement),
+	data, files, err := definition.Compose(document.KindProcess, []document.LayerText{
+		layer(document.LayerProject, "/w/docs/.agister/processes/implement.yaml", projectImplement),
+		layer(document.LayerRepository, "/w/.agister/processes/implement.yaml", repositoryImplement),
+		layer(document.LayerHome, "/h/processes/implement.yaml", homeImplement),
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -117,12 +118,12 @@ func TestComposeMergesMapsByKeyAndNamesEachFieldsLayer(t *testing.T) {
 	if got := leaves(t, data); !reflect.DeepEqual(got, want) {
 		t.Fatalf("composed:\n%s\nwant:\n%s", strings.Join(got, "\n"), strings.Join(want, "\n"))
 	}
-	wantFiles := []definition.LayerFile{
-		{Layer: definition.LayerProject, Path: "/w/docs/.agister/processes/implement.yaml", SHA256: "digest of /w/docs/.agister/processes/implement.yaml", Fields: []string{
+	wantFiles := []document.LayerFile{
+		{Layer: document.LayerProject, Path: "/w/docs/.agister/processes/implement.yaml", SHA256: "digest of /w/docs/.agister/processes/implement.yaml", Fields: []string{
 			"guidance", "input.params.candidate.default", "input.params.ticket", "input.values.brief.form", "input.values.ticket.source", "input.values.ticket.name",
 		}},
-		{Layer: definition.LayerRepository, Path: "/w/.agister/processes/implement.yaml", SHA256: "digest of /w/.agister/processes/implement.yaml", Fields: []string{}},
-		{Layer: definition.LayerHome, Path: "/h/processes/implement.yaml", SHA256: "digest of /h/processes/implement.yaml", Fields: []string{
+		{Layer: document.LayerRepository, Path: "/w/.agister/processes/implement.yaml", SHA256: "digest of /w/.agister/processes/implement.yaml", Fields: []string{}},
+		{Layer: document.LayerHome, Path: "/h/processes/implement.yaml", SHA256: "digest of /h/processes/implement.yaml", Fields: []string{
 			"schema", "name", "type", "session", "prompt", "input.instruction", "input.params.brief",
 			"input.values.candidate_revision.source", "input.values.candidate_revision.rev", "input.values.brief.source", "input.values.brief.path", "verify",
 		}},
@@ -167,9 +168,9 @@ nulled: home
 	} {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
-			data, files, err := definition.Compose(definition.KindVerify, []definition.LayerText{
-				layer(definition.LayerRepository, "/w/.agister/verifies/p.yaml", c.nearer),
-				layer(definition.LayerHome, "/h/verifies/p.yaml", home),
+			data, files, err := definition.Compose(document.KindVerify, []document.LayerText{
+				layer(document.LayerRepository, "/w/.agister/verifies/p.yaml", c.nearer),
+				layer(document.LayerHome, "/h/verifies/p.yaml", home),
 			})
 			if err != nil {
 				t.Fatal(err)
@@ -229,9 +230,9 @@ attempts = 3
 [[steps]]
 name = "only"
 `
-	data, files, err := definition.Compose(definition.KindAgent, []definition.LayerText{
-		layer(definition.LayerRepository, "/w/.agister/agents/reviewer.toml", repository),
-		layer(definition.LayerHome, "/h/agents/reviewer.toml", home),
+	data, files, err := definition.Compose(document.KindAgent, []document.LayerText{
+		layer(document.LayerRepository, "/w/.agister/agents/reviewer.toml", repository),
+		layer(document.LayerHome, "/h/agents/reviewer.toml", home),
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -276,16 +277,16 @@ func TestComposeLeavesADocumentOfOneLayerUnchanged(t *testing.T) {
 	} {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
-			data, files, err := definition.Compose(definition.KindVerify, []definition.LayerText{layer(definition.LayerHome, "/h/verifies/p.yaml", c.text)})
+			data, files, err := definition.Compose(document.KindVerify, []document.LayerText{layer(document.LayerHome, "/h/verifies/p.yaml", c.text)})
 			if err != nil || string(data) != c.text {
 				t.Fatalf("composed %q, %v; want the file unchanged", data, err)
 			}
-			if len(files) != 1 || files[0].Layer != definition.LayerHome || files[0].Path != "/h/verifies/p.yaml" || !reflect.DeepEqual(files[0].Fields, c.fields) {
+			if len(files) != 1 || files[0].Layer != document.LayerHome || files[0].Path != "/h/verifies/p.yaml" || !reflect.DeepEqual(files[0].Fields, c.fields) {
 				t.Fatalf("files = %+v, want fields %v", files, c.fields)
 			}
 		})
 	}
-	if _, _, err := definition.Compose(definition.KindVerify, nil); !errors.Is(err, definition.ErrNotFound) {
+	if _, _, err := definition.Compose(document.KindVerify, nil); !errors.Is(err, document.ErrNotFound) {
 		t.Fatalf("no layer: %v", err)
 	}
 }
@@ -297,30 +298,30 @@ func TestComposeIsBrokenByALayerFileThatIsNotOneMap(t *testing.T) {
 	t.Parallel()
 	const whole = "schema: agister.verify/v1alpha1\nname: p\n"
 	for name, c := range map[string]struct {
-		kind    definition.Kind
+		kind    document.Kind
 		broken  string
 		message string
 	}{
-		"not YAML":        {definition.KindVerify, "name: [unclosed\n", ""},
-		"a list":          {definition.KindVerify, "- a\n", "a layer's file must be a mapping"},
-		"a scalar":        {definition.KindVerify, "just text\n", "a layer's file must be a mapping"},
-		"two documents":   {definition.KindVerify, "a: 1\n---\nb: 2\n", ""},
-		"a repeated key":  {definition.KindVerify, "limits: {a: 1, a: 2}\n", "limits.a: is declared more than once"},
-		"an alias":        {definition.KindVerify, "base: &base {a: 1}\nother: *base\n", "holds a YAML alias (*base)"},
-		"not TOML":        {definition.KindAgent, "name = \n", ""},
-		"an empty layer ": {definition.KindVerify, "", ""},
+		"not YAML":        {document.KindVerify, "name: [unclosed\n", ""},
+		"a list":          {document.KindVerify, "- a\n", "a layer's file must be a mapping"},
+		"a scalar":        {document.KindVerify, "just text\n", "a layer's file must be a mapping"},
+		"two documents":   {document.KindVerify, "a: 1\n---\nb: 2\n", ""},
+		"a repeated key":  {document.KindVerify, "limits: {a: 1, a: 2}\n", "limits.a: is declared more than once"},
+		"an alias":        {document.KindVerify, "base: &base {a: 1}\nother: *base\n", "holds a YAML alias (*base)"},
+		"not TOML":        {document.KindAgent, "name = \n", ""},
+		"an empty layer ": {document.KindVerify, "", ""},
 	} {
 		for _, at := range []string{"nearer", "farther"} {
 			t.Run(name+" in the "+at+" layer", func(t *testing.T) {
 				t.Parallel()
 				sound := whole
-				if c.kind == definition.KindAgent {
+				if c.kind == document.KindAgent {
 					sound = "name = \"a\"\n"
 				}
-				texts := []definition.LayerText{layer(definition.LayerRepository, "/w/.agister/x", c.broken), layer(definition.LayerHome, "/h/x", sound)}
+				texts := []document.LayerText{layer(document.LayerRepository, "/w/.agister/x", c.broken), layer(document.LayerHome, "/h/x", sound)}
 				path := "/w/.agister/x"
 				if at == "farther" {
-					texts = []definition.LayerText{layer(definition.LayerRepository, "/w/.agister/x", sound), layer(definition.LayerHome, "/h/x", c.broken)}
+					texts = []document.LayerText{layer(document.LayerRepository, "/w/.agister/x", sound), layer(document.LayerHome, "/h/x", c.broken)}
 					path = "/h/x"
 				}
 				data, files, err := definition.Compose(c.kind, texts)
@@ -353,24 +354,24 @@ input:
 output:
   format: text
 `
-	composed := func(t *testing.T, repository, home string) definition.Document {
+	composed := func(t *testing.T, repository, home string) document.Document {
 		t.Helper()
-		data, files, err := definition.Compose(definition.KindProcess, []definition.LayerText{
-			layer(definition.LayerRepository, "/w/.agister/processes/p.yaml", repository),
-			layer(definition.LayerHome, "/h/processes/p.yaml", home),
+		data, files, err := definition.Compose(document.KindProcess, []document.LayerText{
+			layer(document.LayerRepository, "/w/.agister/processes/p.yaml", repository),
+			layer(document.LayerHome, "/h/processes/p.yaml", home),
 		})
 		if err != nil {
 			t.Fatal(err)
 		}
-		return definition.Document{
-			Source: definition.Source{Kind: definition.KindProcess, Name: "p", Path: files[0].Path, Layer: files[0].Layer, Layers: files},
+		return document.Document{
+			Source: document.Source{Kind: document.KindProcess, Name: "p", Path: files[0].Path, Layer: files[0].Layer, Layers: files},
 			Bytes:  data,
 		}
 	}
-	messages := func(t *testing.T, doc definition.Document) []string {
+	messages := func(t *testing.T, doc document.Document) []string {
 		t.Helper()
 		_, err := definition.ParseProcess(doc)
-		var invalid *definition.InvalidError
+		var invalid *document.InvalidError
 		if !errors.As(err, &invalid) {
 			t.Fatalf("parsed: %v", err)
 		}
@@ -417,11 +418,11 @@ output:
 		})
 	}
 
-	whole, files, err := definition.Compose(definition.KindProcess, []definition.LayerText{layer(definition.LayerHome, "/h/processes/p.yaml", strings.Replace(home, "session: fresh-only", "session: sometimes", 1))})
+	whole, files, err := definition.Compose(document.KindProcess, []document.LayerText{layer(document.LayerHome, "/h/processes/p.yaml", strings.Replace(home, "session: fresh-only", "session: sometimes", 1))})
 	if err != nil {
 		t.Fatal(err)
 	}
-	alone := definition.Document{Source: definition.Source{Kind: definition.KindProcess, Name: "p", Path: "/h/processes/p.yaml", Layer: definition.LayerHome, Layers: files}, Bytes: whole}
+	alone := document.Document{Source: document.Source{Kind: document.KindProcess, Name: "p", Path: "/h/processes/p.yaml", Layer: document.LayerHome, Layers: files}, Bytes: whole}
 	if got := messages(t, alone); !contains(got, `session: unsupported session mode "sometimes" (supported: fresh-only, resumable)`) {
 		t.Fatalf("a document of one layer: problems %q", got)
 	}
@@ -433,20 +434,20 @@ output:
 // where the home layer holds none.
 func TestWithHomeComposesTheWrittenDocumentBeneathTheNearerLayers(t *testing.T) {
 	t.Parallel()
-	nearer := layer(definition.LayerRepository, "/w/.agister/processes/p.yaml", "prompt: b\n")
-	held := layer(definition.LayerHome, "/h/processes/p.yaml", "name: p\nprompt: a\ntype: process\n")
-	written := layer(definition.LayerHome, "/h/processes/p.yaml", "name: p\nprompt: a\ntype: workflow\ntimeout: 5m\n")
+	nearer := layer(document.LayerRepository, "/w/.agister/processes/p.yaml", "prompt: b\n")
+	held := layer(document.LayerHome, "/h/processes/p.yaml", "name: p\nprompt: a\ntype: process\n")
+	written := layer(document.LayerHome, "/h/processes/p.yaml", "name: p\nprompt: a\ntype: workflow\ntimeout: 5m\n")
 	const want = "name: p\nprompt: b\ntype: workflow\ntimeout: 5m\n"
-	data, files, err := definition.Compose(definition.KindProcess, []definition.LayerText{nearer, held})
+	data, files, err := definition.Compose(document.KindProcess, []document.LayerText{nearer, held})
 	if err != nil {
 		t.Fatal(err)
 	}
-	source := definition.Source{Kind: definition.KindProcess, Name: "p", Layer: definition.LayerRepository, Path: nearer.File.Path, Layers: files}
-	for name, doc := range map[string]definition.Document{
-		"over home's file": {Source: source, Bytes: data, Texts: []definition.LayerText{nearer, held}},
+	source := document.Source{Kind: document.KindProcess, Name: "p", Layer: document.LayerRepository, Path: nearer.File.Path, Layers: files}
+	for name, doc := range map[string]document.Document{
+		"over home's file": {Source: source, Bytes: data, Texts: []document.LayerText{nearer, held}},
 		"where home holds none": {
-			Source: definition.Source{Kind: definition.KindProcess, Name: "p", Layer: definition.LayerRepository, Path: nearer.File.Path, Layers: files[:1]},
-			Bytes:  nearer.Bytes, Texts: []definition.LayerText{nearer},
+			Source: document.Source{Kind: document.KindProcess, Name: "p", Layer: document.LayerRepository, Path: nearer.File.Path, Layers: files[:1]},
+			Bytes:  nearer.Bytes, Texts: []document.LayerText{nearer},
 		},
 	} {
 		t.Run(name, func(t *testing.T) {
@@ -456,18 +457,18 @@ func TestWithHomeComposesTheWrittenDocumentBeneathTheNearerLayers(t *testing.T) 
 				t.Fatalf("with home = %q, %v; want %q", got.Bytes, err, want)
 			}
 			digest := sha256.Sum256([]byte(want))
-			layers := []definition.LayerFile{
-				{Layer: definition.LayerRepository, Path: nearer.File.Path, SHA256: nearer.File.SHA256, Fields: []string{"prompt"}},
-				{Layer: definition.LayerHome, Path: written.File.Path, SHA256: written.File.SHA256, Fields: []string{"name", "type", "timeout"}},
+			layers := []document.LayerFile{
+				{Layer: document.LayerRepository, Path: nearer.File.Path, SHA256: nearer.File.SHA256, Fields: []string{"prompt"}},
+				{Layer: document.LayerHome, Path: written.File.Path, SHA256: written.File.SHA256, Fields: []string{"name", "type", "timeout"}},
 			}
-			wantSource := definition.Source{
-				Kind: definition.KindProcess, Name: "p", Layer: definition.LayerRepository, Path: nearer.File.Path,
+			wantSource := document.Source{
+				Kind: document.KindProcess, Name: "p", Layer: document.LayerRepository, Path: nearer.File.Path,
 				SHA256: hex.EncodeToString(digest[:]), Layers: layers,
 			}
 			if !reflect.DeepEqual(got.Source, wantSource) {
 				t.Fatalf("source = %+v\nwant     %+v", got.Source, wantSource)
 			}
-			texts := []definition.LayerText{{File: layers[0], Bytes: nearer.Bytes}, {File: layers[1], Bytes: written.Bytes}}
+			texts := []document.LayerText{{File: layers[0], Bytes: nearer.Bytes}, {File: layers[1], Bytes: written.Bytes}}
 			if !reflect.DeepEqual(got.Texts, texts) {
 				t.Fatalf("texts = %+v\nwant    %+v", got.Texts, texts)
 			}

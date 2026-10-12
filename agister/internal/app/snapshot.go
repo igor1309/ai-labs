@@ -6,16 +6,17 @@ import (
 	"sort"
 
 	"github.com/igor1309/ai-labs/agister/internal/domain/definition"
+	"github.com/igor1309/ai-labs/agister/internal/domain/document"
 )
 
 // allKinds is every kind of definition a snapshot covers, in a fixed order.
 // Each call returns a new slice.
-func allKinds() []definition.Kind {
-	return []definition.Kind{
-		definition.KindService, definition.KindRuntime, definition.KindAgent,
-		definition.KindVerify, definition.KindPrompt,
-		definition.KindSkill, definition.KindBrief, definition.KindProcess, definition.KindSchema, definition.KindWorkflow,
-		definition.KindWorkspace, definition.KindBlocks,
+func allKinds() []document.Kind {
+	return []document.Kind{
+		document.KindService, document.KindRuntime, document.KindAgent,
+		document.KindVerify, document.KindPrompt,
+		document.KindSkill, document.KindBrief, document.KindProcess, document.KindSchema, document.KindWorkflow,
+		document.KindWorkspace, document.KindBlocks,
 	}
 }
 
@@ -25,14 +26,14 @@ func allKinds() []definition.Kind {
 // settings list it, a prompt never from a folder a layer.yaml lists
 // (ADR-028 rule 9), and any other kind as Read.
 type SnapshotSource interface {
-	Read(ctx context.Context, kind definition.Kind, name string) (definition.Document, error)
-	ReadListed(ctx context.Context, kind definition.Kind, name string) (definition.Document, error)
-	List(ctx context.Context, kind definition.Kind) ([]string, error)
-	Layers(ctx context.Context) []definition.LayerDir
+	Read(ctx context.Context, kind document.Kind, name string) (document.Document, error)
+	ReadListed(ctx context.Context, kind document.Kind, name string) (document.Document, error)
+	List(ctx context.Context, kind document.Kind) ([]string, error)
+	Layers(ctx context.Context) []document.LayerDir
 }
 
 type snapshotRead struct {
-	doc definition.Document
+	doc document.Document
 	err error
 }
 
@@ -44,12 +45,12 @@ type snapshotList struct {
 // snapshot is a SnapshotSource frozen in memory: what was read, and each
 // error the read gave, replayed as it was.
 type snapshot struct {
-	reads map[definition.Kind]map[string]snapshotRead
+	reads map[document.Kind]map[string]snapshotRead
 	// listed are the prompts as the settings list them, apart from reads,
 	// which holds a prompt as a call reads it (ADR-028 rule 9).
 	listed map[string]snapshotRead
-	lists  map[definition.Kind]snapshotList
-	layers []definition.LayerDir
+	lists  map[document.Kind]snapshotList
+	layers []document.LayerDir
 }
 
 // Snapshot reads every kind's List and every listed document once (the
@@ -74,15 +75,15 @@ type snapshot struct {
 // check reads it all the same.
 func Snapshot(ctx context.Context, src SnapshotSource) SnapshotSource {
 	s := &snapshot{
-		reads:  map[definition.Kind]map[string]snapshotRead{},
+		reads:  map[document.Kind]map[string]snapshotRead{},
 		listed: map[string]snapshotRead{},
-		lists:  map[definition.Kind]snapshotList{},
+		lists:  map[document.Kind]snapshotList{},
 		layers: cloneLayers(src.Layers(ctx)),
 	}
 	for _, kind := range allKinds() {
 		s.reads[kind] = map[string]snapshotRead{}
 		names := []string{"service"}
-		if kind != definition.KindService {
+		if kind != document.KindService {
 			listed, err := src.List(ctx, kind)
 			s.lists[kind] = snapshotList{names: append([]string(nil), listed...), err: err}
 			if err != nil {
@@ -91,7 +92,7 @@ func Snapshot(ctx context.Context, src SnapshotSource) SnapshotSource {
 			names = listed
 		}
 		for _, name := range names {
-			if kind == definition.KindPrompt {
+			if kind == document.KindPrompt {
 				// Wait until process references are known before deciding
 				// which prompt read the check needs.
 				continue
@@ -100,56 +101,56 @@ func Snapshot(ctx context.Context, src SnapshotSource) SnapshotSource {
 			s.reads[kind][name] = snapshotRead{doc: cloneDocument(doc), err: err}
 		}
 	}
-	named := func(kind definition.Kind, name string) {
+	named := func(kind document.Kind, name string) {
 		if _, ok := s.reads[kind][name]; ok || name == "" {
 			return
 		}
 		doc, err := src.Read(ctx, kind, name)
 		s.reads[kind][name] = snapshotRead{doc: cloneDocument(doc), err: err}
-		if list := s.lists[kind]; err == nil && list.err == nil && kind != definition.KindPrompt {
+		if list := s.lists[kind]; err == nil && list.err == nil && kind != document.KindPrompt {
 			list.names = append(list.names, name)
 			sort.Strings(list.names)
 			s.lists[kind] = list
 		}
 	}
-	for _, read := range s.reads[definition.KindProcess] {
+	for _, read := range s.reads[document.KindProcess] {
 		if read.err != nil {
 			continue
 		}
 		process, err := definition.ParseProcess(read.doc)
-		named(definition.KindVerify, process.VerifyName)
+		named(document.KindVerify, process.VerifyName)
 		if err == nil {
 			for _, name := range process.Prompts() {
-				named(definition.KindPrompt, name)
+				named(document.KindPrompt, name)
 			}
 		}
 		for _, name := range process.Skills {
-			named(definition.KindSkill, name)
+			named(document.KindSkill, name)
 		}
 	}
-	for _, name := range s.lists[definition.KindPrompt].names {
-		if _, referenced := s.reads[definition.KindPrompt][name]; referenced {
+	for _, name := range s.lists[document.KindPrompt].names {
+		if _, referenced := s.reads[document.KindPrompt][name]; referenced {
 			continue
 		}
-		doc, err := src.ReadListed(ctx, definition.KindPrompt, name)
+		doc, err := src.ReadListed(ctx, document.KindPrompt, name)
 		s.listed[name] = snapshotRead{doc: cloneDocument(doc), err: err}
 	}
-	for _, read := range s.reads[definition.KindAgent] {
+	for _, read := range s.reads[document.KindAgent] {
 		if read.err != nil {
 			continue
 		}
 		agent, _ := definition.ParseAgent(read.doc)
 		for _, name := range agent.Skills {
-			named(definition.KindSkill, name)
+			named(document.KindSkill, name)
 		}
 	}
 	return s
 }
 
-func cloneDocument(doc definition.Document) definition.Document {
+func cloneDocument(doc document.Document) document.Document {
 	doc.Bytes = append([]byte(nil), doc.Bytes...)
 	if doc.Texts != nil {
-		doc.Texts = append([]definition.LayerText(nil), doc.Texts...)
+		doc.Texts = append([]document.LayerText(nil), doc.Texts...)
 		for i, text := range doc.Texts {
 			doc.Texts[i].Bytes = append([]byte(nil), text.Bytes...)
 			if text.File.Fields != nil {
@@ -158,7 +159,7 @@ func cloneDocument(doc definition.Document) definition.Document {
 		}
 	}
 	if doc.Source.Layers != nil {
-		doc.Source.Layers = append([]definition.LayerFile(nil), doc.Source.Layers...)
+		doc.Source.Layers = append([]document.LayerFile(nil), doc.Source.Layers...)
 		for i, layer := range doc.Source.Layers {
 			if layer.Fields != nil {
 				doc.Source.Layers[i].Fields = append([]string{}, layer.Fields...)
@@ -168,21 +169,21 @@ func cloneDocument(doc definition.Document) definition.Document {
 	return doc
 }
 
-func cloneLayers(layers []definition.LayerDir) []definition.LayerDir {
+func cloneLayers(layers []document.LayerDir) []document.LayerDir {
 	if layers == nil {
 		return nil
 	}
-	cloned := append([]definition.LayerDir(nil), layers...)
+	cloned := append([]document.LayerDir(nil), layers...)
 	for i, layer := range cloned {
-		cloned[i].Invalid = append([]definition.LayerProblem(nil), layer.Invalid...)
+		cloned[i].Invalid = append([]document.LayerProblem(nil), layer.Invalid...)
 	}
 	return cloned
 }
 
-func (s *snapshot) Read(_ context.Context, kind definition.Kind, name string) (definition.Document, error) {
+func (s *snapshot) Read(_ context.Context, kind document.Kind, name string) (document.Document, error) {
 	read, ok := s.reads[kind][name]
 	if !ok {
-		return definition.Document{}, fmt.Errorf("not found in the settings snapshot")
+		return document.Document{}, fmt.Errorf("not found in the settings snapshot")
 	}
 	return cloneDocument(read.doc), read.err
 }
@@ -190,20 +191,20 @@ func (s *snapshot) Read(_ context.Context, kind definition.Kind, name string) (d
 // ReadListed gives an unreferenced inventory prompt as the settings list
 // it, and any other kind as Read does. Referenced prompts are frozen only
 // as Read returns them, because that is what the check and call use.
-func (s *snapshot) ReadListed(ctx context.Context, kind definition.Kind, name string) (definition.Document, error) {
-	if kind != definition.KindPrompt {
+func (s *snapshot) ReadListed(ctx context.Context, kind document.Kind, name string) (document.Document, error) {
+	if kind != document.KindPrompt {
 		return s.Read(ctx, kind, name)
 	}
 	read, ok := s.listed[name]
 	if !ok {
-		return definition.Document{}, fmt.Errorf("not found in the settings snapshot")
+		return document.Document{}, fmt.Errorf("not found in the settings snapshot")
 	}
 	return cloneDocument(read.doc), read.err
 }
 
-func (s *snapshot) Layers(context.Context) []definition.LayerDir { return cloneLayers(s.layers) }
+func (s *snapshot) Layers(context.Context) []document.LayerDir { return cloneLayers(s.layers) }
 
-func (s *snapshot) List(_ context.Context, kind definition.Kind) ([]string, error) {
+func (s *snapshot) List(_ context.Context, kind document.Kind) ([]string, error) {
 	list, ok := s.lists[kind]
 	if !ok {
 		return nil, nil

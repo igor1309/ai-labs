@@ -10,7 +10,7 @@ import (
 
 	"github.com/igor1309/ai-labs/agister/internal/adapters/fsdefs"
 	"github.com/igor1309/ai-labs/agister/internal/adapters/fsruns"
-	"github.com/igor1309/ai-labs/agister/internal/domain/definition"
+	"github.com/igor1309/ai-labs/agister/internal/domain/document"
 	"github.com/igor1309/ai-labs/agister/pages"
 )
 
@@ -126,11 +126,11 @@ func TestPagesReadTheSettingsWithTheBinarysStore(t *testing.T) {
 	if got, want := store.Layers(ctx), binary.Layers(ctx); !reflect.DeepEqual(got, want) {
 		t.Fatalf("layers %+v, want %+v", got, want)
 	}
-	got, err := store.Read(ctx, definition.KindVerify, "p")
+	got, err := store.Read(ctx, document.KindVerify, "p")
 	if err != nil {
 		t.Fatal(err)
 	}
-	want, err := binary.Read(ctx, definition.KindVerify, "p")
+	want, err := binary.Read(ctx, document.KindVerify, "p")
 	if err != nil || string(got.Bytes) != string(want.Bytes) || !reflect.DeepEqual(got.Source, want.Source) {
 		t.Fatalf("p = %+v %q, want %+v %q (%v)", got.Source, got.Bytes, want.Source, want.Bytes, err)
 	}

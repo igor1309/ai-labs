@@ -8,6 +8,7 @@ import (
 
 	"github.com/igor1309/ai-labs/agister/internal/contract"
 	"github.com/igor1309/ai-labs/agister/internal/domain/definition"
+	"github.com/igor1309/ai-labs/agister/internal/domain/document"
 	"github.com/igor1309/ai-labs/agister/internal/domain/run"
 )
 
@@ -26,8 +27,8 @@ call: {node: work, uses: process:p, agent: b}
 // calling gives the harness workflow c and agent b, agent a but for its
 // name and its model, m2.
 func calling(h *harness) {
-	h.defs.docs[definition.KindAgent]["b"] = strings.NewReplacer(`name = "a"`, `name = "b"`, `model = "m1"`, `model = "m2"`).Replace(settingsDocs()[definition.KindAgent]["a"])
-	h.defs.docs[definition.KindWorkflow] = map[string]string{"c": callDoc}
+	h.defs.docs[document.KindAgent]["b"] = strings.NewReplacer(`name = "a"`, `name = "b"`, `model = "m1"`, `model = "m2"`).Replace(settingsDocs()[document.KindAgent]["a"])
+	h.defs.docs[document.KindWorkflow] = map[string]string{"c": callDoc}
 }
 
 // created are the records the harness's calls made.
@@ -133,7 +134,7 @@ func TestAWorkflowOfOneCallTakesItsProcesssParamsAndLimits(t *testing.T) {
 		t.Parallel()
 		h := newHarness()
 		calling(h)
-		h.defs.docs[definition.KindProcess]["p"] = strings.Replace(h.defs.docs[definition.KindProcess]["p"], "candidate: {default: HEAD}", "candidate: {}", 1)
+		h.defs.docs[document.KindProcess]["p"] = strings.Replace(h.defs.docs[document.KindProcess]["p"], "candidate: {default: HEAD}", "candidate: {}", 1)
 		record := h.call(t, contract.CallRequest{Process: "c"})
 		if want := "workflow c is missing params: candidate"; class(record) != run.ClassRefused || message(record) != want {
 			t.Fatalf("result %+v, want refused: %s", record.Result, want)
@@ -147,7 +148,7 @@ func TestARefusedWorkflowOfOneCallNamesItsCall(t *testing.T) {
 	t.Parallel()
 	h := newHarness()
 	calling(h)
-	h.defs.docs[definition.KindWorkflow]["c"] = strings.Replace(callDoc, "agent: b", "agent: ghost", 1)
+	h.defs.docs[document.KindWorkflow]["c"] = strings.Replace(callDoc, "agent: b", "agent: ghost", 1)
 	record := h.call(t, contract.CallRequest{Process: "c"})
 	if class(record) != run.ClassRefused || !strings.HasPrefix(message(record), "workflow c uses process p") || len(h.runner.calls()) != 0 {
 		t.Fatalf("result %+v, want refused for agent ghost", record.Result)

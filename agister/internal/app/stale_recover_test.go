@@ -9,15 +9,15 @@ import (
 
 	"github.com/igor1309/ai-labs/agister/internal/app"
 	"github.com/igor1309/ai-labs/agister/internal/contract"
-	"github.com/igor1309/ai-labs/agister/internal/domain/definition"
+	"github.com/igor1309/ai-labs/agister/internal/domain/document"
 	"github.com/igor1309/ai-labs/agister/internal/domain/run"
 )
 
 // recovering gives the harness's process the recovery budget given and a
 // session that may be resumed.
 func recovering(h *harness, recover string) {
-	h.defs.docs[definition.KindProcess]["p"] += "stale: {recover: {" + recover + "}}\n"
-	h.defs.docs[definition.KindProcess]["p"] += "session: resumable\n"
+	h.defs.docs[document.KindProcess]["p"] += "stale: {recover: {" + recover + "}}\n"
+	h.defs.docs[document.KindProcess]["p"] += "session: resumable\n"
 }
 
 // ADR-024 rule 6: a recovery turn resumes the call's session, so a budget
@@ -73,10 +73,10 @@ func TestWithoutAStaleRecoveryBudgetNoSessionIsNeeded(t *testing.T) {
 		arrange func(*harness)
 	}{
 		{"unset", func(h *harness) {
-			h.defs.docs[definition.KindProcess]["p"] += "stale: {no_event: 5m}\n"
+			h.defs.docs[document.KindProcess]["p"] += "stale: {no_event: 5m}\n"
 		}},
 		{"0", func(h *harness) {
-			h.defs.docs[definition.KindProcess]["p"] += "stale: {recover: {max_resumes: 0, instruction: Go on.}}\n"
+			h.defs.docs[document.KindProcess]["p"] += "stale: {recover: {max_resumes: 0, instruction: Go on.}}\n"
 		}},
 	}
 	for _, c := range cases {
@@ -118,7 +118,7 @@ func TestCheckRejectsAStaleRecoveryBudgetWithoutAnInstruction(t *testing.T) {
 func TestACallCarriesAndRecordsItsStaleRecovery(t *testing.T) {
 	t.Parallel()
 	h, timers := staleHarness(t, "no_event: 5m, tool_command: 4m, recover: {max_resumes: 1, instruction: Process.}")
-	h.defs.docs[definition.KindProcess]["p"] += "session: resumable\n"
+	h.defs.docs[document.KindProcess]["p"] += "session: resumable\n"
 	play(h, commanding(timers, "prov-1", tailLog), silent(timers, "prov-1"), completes(h))
 	record := h.call(t, contract.CallRequest{})
 
@@ -174,7 +174,7 @@ func TestShowProcessShowsTheEffectiveStaleRecoveryBudget(t *testing.T) {
 	if view := show(h); view.Stale != (contract.Stale{MaxResumes: 2}) {
 		t.Fatalf("the process's: stale = %+v", view.Stale)
 	}
-	h.defs.docs[definition.KindProcess]["p"] = settingsDocs()[definition.KindProcess]["p"] + "stale: {recover: {max_resumes: 0}}\n"
+	h.defs.docs[document.KindProcess]["p"] = settingsDocs()[document.KindProcess]["p"] + "stale: {recover: {max_resumes: 0}}\n"
 	if view := show(h); view.Stale != (contract.Stale{}) {
 		t.Fatalf("0: stale = %+v", view.Stale)
 	}

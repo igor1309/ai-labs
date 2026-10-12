@@ -11,6 +11,7 @@ import (
 	"github.com/igor1309/ai-labs/agister/internal/app"
 	"github.com/igor1309/ai-labs/agister/internal/contract"
 	"github.com/igor1309/ai-labs/agister/internal/domain/definition"
+	"github.com/igor1309/ai-labs/agister/internal/domain/document"
 	"github.com/igor1309/ai-labs/agister/internal/domain/run"
 )
 
@@ -26,10 +27,10 @@ const (
 // guided gives the harness's process p the guidance named, and the
 // settings each guidance prompt given; p's prompt, inspect, stays.
 func guided(h *harness, guidance []string, prompts map[string]string) {
-	process := h.defs.docs[definition.KindProcess]["p"]
-	h.defs.docs[definition.KindProcess]["p"] = strings.Replace(process, "prompt: inspect\n", "prompt: inspect\nguidance: ["+strings.Join(guidance, ", ")+"]\n", 1)
+	process := h.defs.docs[document.KindProcess]["p"]
+	h.defs.docs[document.KindProcess]["p"] = strings.Replace(process, "prompt: inspect\n", "prompt: inspect\nguidance: ["+strings.Join(guidance, ", ")+"]\n", 1)
 	for name, text := range prompts {
-		h.defs.docs[definition.KindPrompt][name] = text
+		h.defs.docs[document.KindPrompt][name] = text
 	}
 }
 
@@ -47,7 +48,7 @@ func promptInputs(record run.Record) []run.Input {
 func promptSources(record run.Record) []run.DefinitionSource {
 	var sources []run.DefinitionSource
 	for _, source := range record.Definitions {
-		if source.Kind == string(definition.KindPrompt) {
+		if source.Kind == string(document.KindPrompt) {
 			sources = append(sources, source)
 		}
 	}
@@ -145,7 +146,7 @@ func TestAPromptNoLayerHasIsAProblemOfTheProcessAndRefusesTheCall(t *testing.T) 
 			t.Parallel()
 			h := newHarness()
 			guided(h, []string{"testing", "style"}, map[string]string{"testing": testingPrompt, "style": stylePrompt})
-			delete(h.defs.docs[definition.KindPrompt], c.missing)
+			delete(h.defs.docs[document.KindPrompt], c.missing)
 			if report := checkOf(t, h, false); !reflect.DeepEqual(messages(report.Problems), []string{c.problem}) {
 				t.Fatalf("problems = %q, want %q", messages(report.Problems), c.problem)
 			}
@@ -259,7 +260,7 @@ func TestShowProcessShowsItsPromptAndGuidance(t *testing.T) {
 		t.Fatalf("inputs = %q", view.Inputs)
 	}
 
-	delete(h.defs.docs[definition.KindPrompt], "review")
+	delete(h.defs.docs[document.KindPrompt], "review")
 	view, err = callShown(inspection, "p_a")
 	if want := `process p names in its guidance prompt "review": not found`; err != nil || view.Prompt != "inspect" || !reflect.DeepEqual(view.Guidance, []string{"review"}) || view.Refusal != want {
 		t.Fatalf("missing: prompt %q, guidance %q, refusal %q, %v, want %q", view.Prompt, view.Guidance, view.Refusal, err, want)
@@ -281,7 +282,7 @@ func TestGatedCallIsGivenThePromptCheckSaw(t *testing.T) {
 					Checker: app.NewChecker(src, h.validator, h.runtimes, []string{"git.revision", "git.diff", "param"}),
 					Calls:   h.callsOn(src),
 				},
-				f: func() { h.defs.set(definition.KindPrompt, "inspect", "Edited after the check.\n") },
+				f: func() { h.defs.set(document.KindPrompt, "inspect", "Edited after the check.\n") },
 			}
 		},
 	}
@@ -312,7 +313,7 @@ func TestSnapshotKeepsTheReadOfAMissingPrompt(t *testing.T) {
 	live := failingSource{definitionsSpy: h.defs, readErr: map[string]error{"prompts/review": missing}}
 	snap := app.Snapshot(ctx, live)
 	reads := h.defs.readCount()
-	if _, err := snap.Read(ctx, definition.KindPrompt, "review"); err != missing {
+	if _, err := snap.Read(ctx, document.KindPrompt, "review"); err != missing {
 		t.Fatalf("read error = %v", err)
 	}
 	view, err := callShown(app.NewInspection(app.NewResolver(snap, struct{ app.ResolverIdentities }{h.runtimes}, h.validator, resolverCheckStub{})), "p_a")
@@ -333,23 +334,23 @@ type foldedSource struct {
 	folded map[string]string
 }
 
-func (s foldedSource) Read(ctx context.Context, kind definition.Kind, name string) (definition.Document, error) {
+func (s foldedSource) Read(ctx context.Context, kind document.Kind, name string) (document.Document, error) {
 	text, ok := s.folded[name]
-	if kind != definition.KindPrompt || !ok {
+	if kind != document.KindPrompt || !ok {
 		return s.definitionsSpy.Read(ctx, kind, name)
 	}
 	s.record(string(kind) + "/" + name)
 	path := "mem/lib/" + name + ".md"
-	return definition.Document{
-		Source: definition.Source{
-			Kind: kind, Name: name, Layer: definition.LayerRepository, Path: path, SHA256: sha(text),
-			Layers: []definition.LayerFile{{Layer: definition.LayerRepository, Path: path, SHA256: sha(text)}},
+	return document.Document{
+		Source: document.Source{
+			Kind: kind, Name: name, Layer: document.LayerRepository, Path: path, SHA256: sha(text),
+			Layers: []document.LayerFile{{Layer: document.LayerRepository, Path: path, SHA256: sha(text)}},
 		},
 		Bytes: []byte(text),
 	}, nil
 }
 
-func (s foldedSource) ReadListed(ctx context.Context, kind definition.Kind, name string) (definition.Document, error) {
+func (s foldedSource) ReadListed(ctx context.Context, kind document.Kind, name string) (document.Document, error) {
 	s.record("inventory/" + string(kind) + "/" + name)
 	return s.definitionsSpy.ReadListed(ctx, kind, name)
 }
@@ -364,8 +365,8 @@ func TestANamedPromptIsNotAlsoReadFromTheInventory(t *testing.T) {
 			t.Parallel()
 			ctx := context.Background()
 			h := newHarness()
-			h.defs.docs[definition.KindPrompt]["inspect"] = "\x00\xff"
-			h.defs.docs[definition.KindPrompt]["notes"] = "Home's notes.\n"
+			h.defs.docs[document.KindPrompt]["inspect"] = "\x00\xff"
+			h.defs.docs[document.KindPrompt]["notes"] = "Home's notes.\n"
 			folded := foldedSource{definitionsSpy: h.defs, folded: map[string]string{"inspect": inspectPrompt}}
 			var src app.CheckDefinitions = folded
 			if frozen {
@@ -375,7 +376,7 @@ func TestANamedPromptIsNotAlsoReadFromTheInventory(t *testing.T) {
 			if err != nil || len(report.Problems) != 0 {
 				t.Fatalf("check = %+v, %v", report, err)
 			}
-			doc, err := src.Read(ctx, definition.KindPrompt, "inspect")
+			doc, err := src.Read(ctx, document.KindPrompt, "inspect")
 			if err != nil || string(doc.Bytes) != inspectPrompt || doc.Source.Path != "mem/lib/inspect.md" || doc.Source.SHA256 != sha(inspectPrompt) {
 				t.Fatalf("inspect = %+v %q, %v", doc.Source, doc.Bytes, err)
 			}
@@ -398,7 +399,7 @@ func TestAnInvalidProcessDoesNotSelectLibraryPrompts(t *testing.T) {
 			t.Parallel()
 			ctx := context.Background()
 			h := newHarness()
-			h.defs.docs[definition.KindProcess]["p"] += "unexpected: true\n"
+			h.defs.docs[document.KindProcess]["p"] += "unexpected: true\n"
 			folded := foldedSource{definitionsSpy: h.defs, folded: map[string]string{"inspect": "\x00\xff"}}
 			var src app.CheckDefinitions = folded
 			if frozen {
@@ -448,7 +449,7 @@ func TestAListedFolderIsReadOnlyForTheNamesAProcessGives(t *testing.T) {
 					t.Fatal(err)
 				}
 				for _, d := range report.Definitions {
-					if d.Kind == string(definition.KindPrompt) && d.Name == "notes" {
+					if d.Kind == string(document.KindPrompt) && d.Name == "notes" {
 						return report, d
 					}
 				}
@@ -457,7 +458,7 @@ func TestAListedFolderIsReadOnlyForTheNamesAProcessGives(t *testing.T) {
 			}
 
 			h := newHarness()
-			h.defs.docs[definition.KindPrompt]["notes"] = notes
+			h.defs.docs[document.KindPrompt]["notes"] = notes
 			report, listed := check(h)
 			if len(report.Problems) != 0 || report.Checked["prompts"] != 2 {
 				t.Fatalf("unnamed: problems %q, checked %v", messages(report.Problems), report.Checked)

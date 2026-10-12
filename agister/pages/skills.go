@@ -13,7 +13,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/igor1309/ai-labs/agister/internal/domain/definition"
+	"github.com/igor1309/ai-labs/agister/internal/domain/document"
 	"gopkg.in/yaml.v3"
 )
 
@@ -534,8 +534,8 @@ func frontMatter(data []byte) (map[string]any, error) {
 // runtimeDocuments is what runtime discovery reads: the names of the
 // runtimes the settings define and each one's composed document.
 type runtimeDocuments interface {
-	List(ctx context.Context, kind definition.Kind) ([]string, error)
-	Read(ctx context.Context, kind definition.Kind, name string) (definition.Document, error)
+	List(ctx context.Context, kind document.Kind) ([]string, error)
+	Read(ctx context.Context, kind document.Kind, name string) (document.Document, error)
 }
 
 // runtimeAdapters reads adapters from runtime compositions, so a partial
@@ -543,14 +543,14 @@ type runtimeDocuments interface {
 // every file is read, as for the CLI's composed runtime documents.
 func runtimeAdapters(store runtimeDocuments) ([]string, error) {
 	ctx := context.Background()
-	names, err := store.List(ctx, definition.KindRuntime)
+	names, err := store.List(ctx, document.KindRuntime)
 	if err != nil {
 		return nil, err
 	}
 	adapters := []string{}
 	for _, name := range names {
-		doc, err := store.Read(ctx, definition.KindRuntime, name)
-		if errors.Is(err, definition.ErrNotFound) {
+		doc, err := store.Read(ctx, document.KindRuntime, name)
+		if errors.Is(err, document.ErrNotFound) {
 			continue // Pages' file limit may exclude every layer's file.
 		}
 		if err != nil {

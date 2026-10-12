@@ -5,12 +5,12 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/igor1309/ai-labs/agister/internal/domain/definition"
+	"github.com/igor1309/ai-labs/agister/internal/domain/document"
 )
 
 // DocumentRef names one settings document.
 type DocumentRef struct {
-	Kind definition.Kind
+	Kind document.Kind
 	Name string
 }
 
@@ -45,7 +45,7 @@ type reachDocument struct {
 type reachProblem struct {
 	message string // without its document's name
 	agent   string // the agent it depends on, if it does
-	// It names something this code does not know (definition.Problem).
+	// It names something this code does not know (document.Problem).
 	unknown bool
 }
 
@@ -57,8 +57,8 @@ type reachBlock struct {
 }
 
 var (
-	serviceRef = DocumentRef{Kind: definition.KindService, Name: "service"}
-	blocksRef  = DocumentRef{Kind: definition.KindBlocks, Name: string(definition.KindBlocks)}
+	serviceRef = DocumentRef{Kind: document.KindService, Name: "service"}
+	blocksRef  = DocumentRef{Kind: document.KindBlocks, Name: string(document.KindBlocks)}
 )
 
 func newReach() *reach {
@@ -93,13 +93,13 @@ func calledOn(uses []DocumentRef, agents []string) []DocumentRef {
 	own := slices.Contains(agents, "")
 	var selected []DocumentRef
 	for _, used := range uses {
-		if used.Kind != definition.KindAgent || own {
+		if used.Kind != document.KindAgent || own {
 			selected = append(selected, used)
 		}
 	}
 	for _, agent := range agents {
 		if agent != "" {
-			selected = append(selected, DocumentRef{Kind: definition.KindAgent, Name: agent})
+			selected = append(selected, DocumentRef{Kind: document.KindAgent, Name: agent})
 		}
 	}
 	return selected
@@ -146,11 +146,11 @@ func (s *step) blockedBy(block reachBlock) string {
 func (r *reach) walk(root DocumentRef, agent string) []*step {
 	bound := map[DocumentRef][]string{}
 	switch {
-	case root.Kind == definition.KindProcess && agent != "":
+	case root.Kind == document.KindProcess && agent != "":
 		bound[root] = []string{agent}
-	case root.Kind == definition.KindWorkflow:
+	case root.Kind == document.KindWorkflow:
 		for _, node := range r.documents[root].binds {
-			process := DocumentRef{Kind: definition.KindProcess, Name: node.Process}
+			process := DocumentRef{Kind: document.KindProcess, Name: node.Process}
 			bound[process] = append(bound[process], node.Agent)
 		}
 	}
@@ -185,14 +185,14 @@ func (r *reach) listed(ref DocumentRef) bool {
 // call is the refusal of a call of process, with agent in place of its own
 // when set; nil when nothing it depends on has a problem or is blocked.
 func (r *reach) call(process, agent string) error {
-	return r.refusal(DocumentRef{Kind: definition.KindProcess, Name: process}, agent)
+	return r.refusal(DocumentRef{Kind: document.KindProcess, Name: process}, agent)
 }
 
 // workflow is the refusal of a run of the workflow name, for a problem in
 // it or in what any node's call depends on, on the agent its node binds,
 // or a block on one of them; nil when there is none.
 func (r *reach) workflow(name string) error {
-	return r.refusal(DocumentRef{Kind: definition.KindWorkflow, Name: name}, "")
+	return r.refusal(DocumentRef{Kind: document.KindWorkflow, Name: name}, "")
 }
 
 // explain gives a problem discovered during resolution the same document,
@@ -256,8 +256,8 @@ func (r *reach) refusal(root DocumentRef, agent string) error {
 // it, when it is a base (ADR-030 rule 9).
 func (r *reach) extenders(ref DocumentRef) []string {
 	var names []string
-	for from, document := range r.documents {
-		if ref.Kind == definition.KindProcess && from.Kind == definition.KindProcess && slices.Contains(document.uses, ref) {
+	for from, listed := range r.documents {
+		if ref.Kind == document.KindProcess && from.Kind == document.KindProcess && slices.Contains(listed.uses, ref) {
 			names = append(names, from.Name)
 		}
 	}
@@ -269,8 +269,8 @@ func (r *reach) extenders(ref DocumentRef) []string {
 // rule 5), sorted.
 func (r *reach) binders(process string) []string {
 	var names []string
-	for ref, document := range r.documents {
-		if ref.Kind == definition.KindWorkflow && slices.ContainsFunc(document.binds, func(node NodeBinding) bool { return node.Process == process }) {
+	for ref, listed := range r.documents {
+		if ref.Kind == document.KindWorkflow && slices.ContainsFunc(listed.binds, func(node NodeBinding) bool { return node.Process == process }) {
 			names = append(names, ref.Name)
 		}
 	}

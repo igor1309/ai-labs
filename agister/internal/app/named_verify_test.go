@@ -10,7 +10,7 @@ import (
 
 	"github.com/igor1309/ai-labs/agister/internal/app"
 	"github.com/igor1309/ai-labs/agister/internal/contract"
-	"github.com/igor1309/ai-labs/agister/internal/domain/definition"
+	"github.com/igor1309/ai-labs/agister/internal/domain/document"
 	"github.com/igor1309/ai-labs/agister/internal/domain/run"
 )
 
@@ -28,10 +28,10 @@ instruction: The verification command failed. Fix the cause, not the check.
 // service ceiling of 3 attempts and a session that may be resumed, and no
 // verification: named adds it.
 func naming(h *harness) {
-	h.defs.docs[definition.KindProcess]["p"] = namingVerification(h.defs.docs[definition.KindProcess]["p"])
-	h.defs.docs[definition.KindService]["service"] += "max_verify_attempts = 3\n"
-	h.defs.docs[definition.KindProcess]["p"] += "session: resumable\n"
-	h.defs.docs[definition.KindVerify] = map[string]string{}
+	h.defs.docs[document.KindProcess]["p"] = namingVerification(h.defs.docs[document.KindProcess]["p"])
+	h.defs.docs[document.KindService]["service"] += "max_verify_attempts = 3\n"
+	h.defs.docs[document.KindProcess]["p"] += "session: resumable\n"
+	h.defs.docs[document.KindVerify] = map[string]string{}
 }
 
 // namingVerification is the process document text naming verify:repo, its
@@ -43,7 +43,7 @@ func namingVerification(text string) string {
 
 func named(h *harness, text string) {
 	naming(h)
-	h.defs.docs[definition.KindVerify]["repo"] = text
+	h.defs.docs[document.KindVerify]["repo"] = text
 }
 
 func checkOf(t *testing.T, h *harness, probe bool) contract.CheckReport {
@@ -75,7 +75,7 @@ func TestACallVerifiesWithTheVerificationItsProcessNames(t *testing.T) {
 	}
 	var digest string
 	for _, source := range record.Definitions {
-		if source.Kind == string(definition.KindVerify) && source.Name == "repo" {
+		if source.Kind == string(document.KindVerify) && source.Name == "repo" {
 			digest = digestRecorded(source)
 		}
 	}
@@ -91,7 +91,7 @@ func TestAMissingVerificationRefusesTheCallNotTheSettings(t *testing.T) {
 	t.Parallel()
 	h := newHarness()
 	naming(h)
-	h.defs.docs[definition.KindProcess]["q"] = strings.Replace(settingsDocs()[definition.KindProcess]["p"], "name: p", "name: q", 1)
+	h.defs.docs[document.KindProcess]["q"] = strings.Replace(settingsDocs()[document.KindProcess]["p"], "name: p", "name: q", 1)
 	h.bind("q_a", "q", "a")
 
 	report := checkOf(t, h, true)
@@ -126,10 +126,10 @@ func TestANamedVerificationIsHeldToTheLimits(t *testing.T) {
 		problem string
 	}{
 		{"timeout above the call's", func(h *harness) {
-			h.defs.docs[definition.KindVerify]["repo"] = strings.Replace(verification, "10m", "30m", 1)
+			h.defs.docs[document.KindVerify]["repo"] = strings.Replace(verification, "10m", "30m", 1)
 		}, false, "process p: verify.timeout 30m0s exceeds the effective timeout 20m0s"},
 		{"attempts above the service ceiling", func(h *harness) {
-			h.defs.docs[definition.KindVerify]["repo"] = strings.Replace(verification, "max_attempts: 3", "max_attempts: 4", 1)
+			h.defs.docs[document.KindVerify]["repo"] = strings.Replace(verification, "max_attempts: 3", "max_attempts: 4", 1)
 		}, false, "process p: verify.max_attempts 4 exceeds the service limit max_verify_attempts 3"},
 		// The process says whether its session resumes (ADR-030 rule 3).
 		{"repairs in a fresh-only process", freshOnly,
@@ -275,7 +275,7 @@ func TestShowProcessShowsTheNamedVerification(t *testing.T) {
 		t.Fatalf("sources = %+v", view.Sources)
 	}
 
-	delete(h.defs.docs[definition.KindVerify], "repo")
+	delete(h.defs.docs[document.KindVerify], "repo")
 	view, err = callShown(inspection, "p_a")
 	if err != nil || view.Verify != nil || view.VerifyName != "repo" || len(view.Warnings) != 0 ||
 		view.Refusal != `process p names verify:repo: verification "repo": not found` {
@@ -309,10 +309,10 @@ func TestSnapshotKeepsTheReadOfAMissingNamedVerification(t *testing.T) {
 	live := failingSource{definitionsSpy: h.defs, readErr: map[string]error{"verifies/repo": missing}}
 	snap := app.Snapshot(ctx, live)
 	reads := h.defs.readCount()
-	if _, err := snap.Read(ctx, definition.KindVerify, "repo"); err != missing {
+	if _, err := snap.Read(ctx, document.KindVerify, "repo"); err != missing {
 		t.Fatalf("read error = %v", err)
 	}
-	if names, err := snap.List(ctx, definition.KindVerify); err != nil || len(names) != 0 {
+	if names, err := snap.List(ctx, document.KindVerify); err != nil || len(names) != 0 {
 		t.Fatalf("verifies = %v, %v", names, err)
 	}
 	view, err := callShown(app.NewInspection(app.NewResolver(snap, struct{ app.ResolverIdentities }{h.runtimes}, h.validator, resolverCheckStub{})), "p_a")
@@ -330,11 +330,11 @@ func TestSnapshotKeepsTheReadOfAMissingNamedVerification(t *testing.T) {
 // it.
 type listedThen struct {
 	*definitionsSpy
-	kind definition.Kind
+	kind document.Kind
 	then func()
 }
 
-func (s listedThen) List(ctx context.Context, kind definition.Kind) ([]string, error) {
+func (s listedThen) List(ctx context.Context, kind document.Kind) ([]string, error) {
 	names, err := s.definitionsSpy.List(ctx, kind)
 	if kind == s.kind {
 		s.then()
@@ -351,11 +351,11 @@ func TestSnapshotListsANamedVerificationWrittenAfterItsList(t *testing.T) {
 	h := newHarness()
 	naming(h)
 	invalid := strings.Replace(verification, "10m", "30m", 1)
-	live := listedThen{definitionsSpy: h.defs, kind: definition.KindVerify, then: func() {
-		h.defs.set(definition.KindVerify, "repo", invalid)
+	live := listedThen{definitionsSpy: h.defs, kind: document.KindVerify, then: func() {
+		h.defs.set(document.KindVerify, "repo", invalid)
 	}}
 	snap := app.Snapshot(ctx, live)
-	if names, err := snap.List(ctx, definition.KindVerify); err != nil || !reflect.DeepEqual(names, []string{"repo"}) {
+	if names, err := snap.List(ctx, document.KindVerify); err != nil || !reflect.DeepEqual(names, []string{"repo"}) {
 		t.Fatalf("verifies = %v, %v", names, err)
 	}
 	problem := "process p: verify.timeout 30m0s exceeds the effective timeout 20m0s"

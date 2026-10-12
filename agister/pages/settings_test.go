@@ -13,7 +13,7 @@ import (
 	"testing"
 
 	"github.com/igor1309/ai-labs/agister/internal/adapters/fsdefs"
-	"github.com/igor1309/ai-labs/agister/internal/domain/definition"
+	"github.com/igor1309/ai-labs/agister/internal/domain/document"
 )
 
 // binarySettings is the selection and store the composition root gives the
@@ -63,10 +63,10 @@ func TestSettingsEndpointComposesThreeLayersWithTheBinarysProvenance(t *testing.
 	if err != nil {
 		t.Fatal(err)
 	}
-	for file, kind := range map[string]definition.Kind{
-		"processes/implement.yaml": definition.KindProcess,
-		"verifies/repo.yaml":       definition.KindVerify,
-		"prompts/implement.md":     definition.KindPrompt,
+	for file, kind := range map[string]document.Kind{
+		"processes/implement.yaml": document.KindProcess,
+		"verifies/repo.yaml":       document.KindVerify,
+		"prompts/implement.md":     document.KindPrompt,
 	} {
 		name := strings.TrimSuffix(filepath.Base(file), filepath.Ext(file))
 		doc, err := selected.Read(context.Background(), kind, name)
@@ -174,7 +174,7 @@ type reportedSettings struct {
 	}
 }
 
-func assertReportedDocument(t *testing.T, got reportedSettings, store fsdefs.Layered, file string, kind definition.Kind) {
+func assertReportedDocument(t *testing.T, got reportedSettings, store fsdefs.Layered, file string, kind document.Kind) {
 	t.Helper()
 	name := strings.TrimSuffix(filepath.Base(file), filepath.Ext(file))
 	doc, err := store.Read(context.Background(), kind, name)
@@ -222,7 +222,7 @@ func TestSettingsEndpointSelectsLayersThroughLaunchSymlink(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	assertReportedDocument(t, alias, store, "processes/p.yaml", definition.KindProcess)
+	assertReportedDocument(t, alias, store, "processes/p.yaml", document.KindProcess)
 }
 
 // Contract test: runtime skills are inventoried at the temporary worktree's
@@ -253,7 +253,7 @@ func TestEndpointsKeepRootWithoutRepositorySettings(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			assertReportedDocument(t, got, store, "runtimes/main.yaml", definition.KindRuntime)
+			assertReportedDocument(t, got, store, "runtimes/main.yaml", document.KindRuntime)
 			var skills SkillsReply
 			if code := get(t, h, "localhost", "/api/skills?path="+q(launch), &skills); code != 200 {
 				t.Fatalf("skills status %d", code)
@@ -301,8 +301,8 @@ func TestEndpointsDoNotOpenReplacedWholeDocuments(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	assertReportedDocument(t, got, store, "prompts/rules.md", definition.KindPrompt)
-	assertReportedDocument(t, got, store, "schemas/result.json", definition.KindSchema)
+	assertReportedDocument(t, got, store, "prompts/rules.md", document.KindPrompt)
+	assertReportedDocument(t, got, store, "schemas/result.json", document.KindSchema)
 	// Runtime discovery also must not open an unrelated prompt.
 	unrelated := filepath.Join(home, "prompts", "unrelated.md")
 	write(t, unrelated, "not read by runtime inventory\n")
@@ -349,7 +349,7 @@ func TestSettingsEndpointResolvesNamedPromptsBeforeTheInventory(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	assertReportedDocument(t, got, store, "prompts/rules.md", definition.KindPrompt)
+	assertReportedDocument(t, got, store, "prompts/rules.md", document.KindPrompt)
 }
 
 // Pages' size limit holds on what is read, not only on what Stat said: a
@@ -417,7 +417,7 @@ func TestSettingsEndpointIncludesSymlinkedPartial(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	assertReportedDocument(t, got, store, "processes/p.yaml", definition.KindProcess)
+	assertReportedDocument(t, got, store, "processes/p.yaml", document.KindProcess)
 	if !strings.Contains(got.ComposedFiles["processes/p.yaml"], "guidance: []") {
 		t.Fatalf("symlink partial did not clear guidance: %+v", got)
 	}
@@ -442,7 +442,7 @@ func TestEndpointsIgnoreYmlDocuments(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	assertReportedDocument(t, got, store, "runtimes/main.yaml", definition.KindRuntime)
+	assertReportedDocument(t, got, store, "runtimes/main.yaml", document.KindRuntime)
 	if _, found := got.Files["runtimes/main.yml"]; found || len(got.Sources) != 1 {
 		t.Fatalf("ignored file in inventory: %+v", got)
 	}
@@ -471,8 +471,8 @@ func TestSettingsEndpointReadsGuidanceFromLayerPromptFolder(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	assertReportedDocument(t, got, store, "processes/p.yaml", definition.KindProcess)
-	assertReportedDocument(t, got, store, "prompts/style.md", definition.KindPrompt)
+	assertReportedDocument(t, got, store, "processes/p.yaml", document.KindProcess)
+	assertReportedDocument(t, got, store, "prompts/style.md", document.KindPrompt)
 	if got.ComposedFiles["prompts/style.md"] != "Library style.\n" {
 		t.Fatalf("guidance text %+v", got.ComposedFiles)
 	}

@@ -15,6 +15,7 @@ import (
 
 	"github.com/igor1309/ai-labs/agister/internal/contract"
 	"github.com/igor1309/ai-labs/agister/internal/domain/definition"
+	"github.com/igor1309/ai-labs/agister/internal/domain/document"
 )
 
 // Settings manages definitions: examples, agents and process listings.
@@ -90,8 +91,8 @@ func (f SettingsChecked) reach() *reach {
 
 // SettingsDefinitions supplies the definitions a listing or a write reads.
 type SettingsDefinitions interface {
-	Read(ctx context.Context, kind definition.Kind, name string) (definition.Document, error)
-	List(ctx context.Context, kind definition.Kind) ([]string, error)
+	Read(ctx context.Context, kind document.Kind, name string) (document.Document, error)
+	List(ctx context.Context, kind document.Kind) ([]string, error)
 }
 
 // DefinitionWriter stores definition documents.
@@ -99,10 +100,10 @@ type DefinitionWriter interface {
 	// Write stores data only over the document with digest expected, or
 	// where there is none when expected is empty; otherwise it writes
 	// nothing and written is false.
-	Write(ctx context.Context, kind definition.Kind, name string, data []byte, expected string) (path string, written bool, err error)
+	Write(ctx context.Context, kind document.Kind, name string, data []byte, expected string) (path string, written bool, err error)
 	// Current reports where a document would be stored and a digest of the
 	// one there, empty when there is none.
-	Current(ctx context.Context, kind definition.Kind, name string) (path, digest string, err error)
+	Current(ctx context.Context, kind document.Kind, name string) (path, digest string, err error)
 }
 
 // SettingsAdapters are what Settings runs on besides the settings it reads.
@@ -129,7 +130,7 @@ type Scope struct {
 // view of the settings, were it written; problems already there are not
 // reported.
 type ProposedCheck interface {
-	ProblemsAdded(ctx context.Context, doc definition.Document) ([]string, error)
+	ProblemsAdded(ctx context.Context, doc document.Document) ([]string, error)
 }
 
 func (s *Settings) Init(ctx context.Context, overwrite bool, approved *contract.InitResult) (contract.InitResult, error) {
@@ -159,15 +160,15 @@ func (s *Settings) Init(ctx context.Context, overwrite bool, approved *contract.
 	}
 	sort.Strings(files)
 	type file struct {
-		kind               definition.Kind
+		kind               document.Kind
 		base, path, digest string
 		data               []byte
 	}
 	var plan []file
 	for _, name := range files {
-		kind, base := definition.KindService, "service"
+		kind, base := document.KindService, "service"
 		if dir := path.Dir(name); dir != "." {
-			kind = definition.Kind(dir)
+			kind = document.Kind(dir)
 			base = strings.TrimSuffix(path.Base(name), path.Ext(name))
 		} else if name != "service.toml" {
 			return result, fmt.Errorf("unexpected example file %q", name)
@@ -268,14 +269,14 @@ func (s *Settings) CreateAgent(ctx context.Context, spec contract.Agent, overwri
 	if !definition.ValidName(agent.Name) {
 		return contract.AgentWrite{}, &contract.InputError{Message: fmt.Sprintf("invalid agent name %q", agent.Name)}
 	}
-	doc, err := s.definitions.Read(ctx, definition.KindRuntime, agent.Runtime)
+	doc, err := s.definitions.Read(ctx, document.KindRuntime, agent.Runtime)
 	if err != nil {
-		names, _ := s.definitions.List(ctx, definition.KindRuntime)
+		names, _ := s.definitions.List(ctx, document.KindRuntime)
 		return contract.AgentWrite{}, &contract.InputError{Message: fmt.Sprintf("unknown runtime %q (available: %s)", agent.Runtime, strings.Join(names, ", "))}
 	}
 	mapping, err := definition.ParseMapping(doc)
 	if err != nil {
-		var invalid *definition.InvalidError
+		var invalid *document.InvalidError
 		if !errors.As(err, &invalid) {
 			return contract.AgentWrite{}, err
 		}
@@ -294,10 +295,10 @@ func (s *Settings) CreateAgent(ctx context.Context, spec contract.Agent, overwri
 		return contract.AgentWrite{}, &contract.InputError{Message: fmt.Sprintf("unsupported %s effort %q (supported: %s)", mapping.Name, agent.Effort, strings.Join(mapping.Efforts, ", "))}
 	}
 	data := definition.FormatAgent(agent)
-	if _, err := definition.ParseAgent(definition.Document{Source: definition.Source{Kind: definition.KindAgent, Name: agent.Name}, Bytes: data}); err != nil {
+	if _, err := definition.ParseAgent(document.Document{Source: document.Source{Kind: document.KindAgent, Name: agent.Name}, Bytes: data}); err != nil {
 		return contract.AgentWrite{}, err
 	}
-	path, digest, err := s.writer.Current(ctx, definition.KindAgent, agent.Name)
+	path, digest, err := s.writer.Current(ctx, document.KindAgent, agent.Name)
 	if err != nil {
 		return contract.AgentWrite{}, err
 	}
@@ -305,7 +306,7 @@ func (s *Settings) CreateAgent(ctx context.Context, spec contract.Agent, overwri
 	if exists && !overwrite {
 		return contract.AgentWrite{}, &contract.InputError{Message: fmt.Sprintf("agent %s already exists at %s (overwrite to replace it)", agent.Name, path)}
 	}
-	if err := s.keepsSettingsValid(ctx, definition.Document{Source: definition.Source{Kind: definition.KindAgent, Name: agent.Name, Path: path, Layer: definition.LayerHome}, Bytes: data}); err != nil {
+	if err := s.keepsSettingsValid(ctx, document.Document{Source: document.Source{Kind: document.KindAgent, Name: agent.Name, Path: path, Layer: document.LayerHome}, Bytes: data}); err != nil {
 		return contract.AgentWrite{}, err
 	}
 	sum := sha256.Sum256(data)
@@ -321,7 +322,7 @@ func (s *Settings) CreateAgent(ctx context.Context, spec contract.Agent, overwri
 	}
 	// Only the file as planned is written over: one created, edited or
 	// removed since is left as it is.
-	if _, written, err := s.writer.Write(ctx, definition.KindAgent, agent.Name, data, digest); err != nil {
+	if _, written, err := s.writer.Write(ctx, document.KindAgent, agent.Name, data, digest); err != nil {
 		return contract.AgentWrite{}, err
 	} else if !written {
 		return contract.AgentWrite{}, changedSinceApproved([]string{path})
@@ -344,7 +345,7 @@ func notApproved(paths []string) error {
 // scope: once written, they would refuse what depends on it, or stop every
 // command there, including the one that could repair them. Problems that
 // are there already do not stop it.
-func (s *Settings) keepsSettingsValid(ctx context.Context, doc definition.Document) error {
+func (s *Settings) keepsSettingsValid(ctx context.Context, doc document.Document) error {
 	for _, scope := range s.scopes {
 		added, err := scope.Check.ProblemsAdded(ctx, doc)
 		if err != nil {
@@ -358,7 +359,7 @@ func (s *Settings) keepsSettingsValid(ctx context.Context, doc definition.Docume
 }
 
 func (s *Settings) ListAgents(ctx context.Context) ([]contract.Agent, error) {
-	names, err := s.definitions.List(ctx, definition.KindAgent)
+	names, err := s.definitions.List(ctx, document.KindAgent)
 	if err != nil {
 		return nil, err
 	}
@@ -368,9 +369,9 @@ func (s *Settings) ListAgents(ctx context.Context) ([]contract.Agent, error) {
 	}
 	agents := make([]contract.Agent, 0, len(names))
 	for _, name := range names {
-		refusal := refusalOf(reached.refusal(DocumentRef{Kind: definition.KindAgent, Name: name}, ""))
+		refusal := refusalOf(reached.refusal(DocumentRef{Kind: document.KindAgent, Name: name}, ""))
 		// A broken agent is listed as such: it refuses only what uses it.
-		doc, err := s.definitions.Read(ctx, definition.KindAgent, name)
+		doc, err := s.definitions.Read(ctx, document.KindAgent, name)
 		if err != nil {
 			agents = append(agents, contract.Agent{Name: name, Problem: fmt.Sprintf("unreadable: %v (run `agister check`)", err), Refusal: refusal})
 			continue
@@ -386,7 +387,7 @@ func (s *Settings) ListAgents(ctx context.Context) ([]contract.Agent, error) {
 }
 
 func (s *Settings) ListProcesses(ctx context.Context) ([]contract.ProcessSummary, error) {
-	names, err := s.definitions.List(ctx, definition.KindProcess)
+	names, err := s.definitions.List(ctx, document.KindProcess)
 	if err != nil {
 		return nil, err
 	}
@@ -397,7 +398,7 @@ func (s *Settings) ListProcesses(ctx context.Context) ([]contract.ProcessSummary
 	processes := make([]contract.ProcessSummary, 0, len(names))
 	for _, name := range names {
 		refusal := refusalOf(reached.call(name, ""))
-		doc, err := s.definitions.Read(ctx, definition.KindProcess, name)
+		doc, err := s.definitions.Read(ctx, document.KindProcess, name)
 		if err != nil {
 			processes = append(processes, contract.ProcessSummary{Name: name, Problem: fmt.Sprintf("unreadable: %v (run `agister check`)", err), Refusal: refusal})
 			continue
@@ -405,7 +406,7 @@ func (s *Settings) ListProcesses(ctx context.Context) ([]contract.ProcessSummary
 		process, err := definition.ParseProcess(doc)
 		if err != nil {
 			problem := "invalid (run `agister check`)"
-			if len(reached.extenders(DocumentRef{Kind: definition.KindProcess, Name: name})) > 0 {
+			if len(reached.extenders(DocumentRef{Kind: document.KindProcess, Name: name})) > 0 {
 				problem = "" // a base is checked through its processes (ADR-030 rule 9)
 			}
 			processes = append(processes, contract.ProcessSummary{Name: name, Problem: problem, Refusal: refusal})
@@ -438,7 +439,7 @@ func refusalOf(err error) string {
 }
 
 func (s *Settings) ListWorkflows(ctx context.Context) ([]contract.WorkflowSummary, error) {
-	names, err := s.definitions.List(ctx, definition.KindWorkflow)
+	names, err := s.definitions.List(ctx, document.KindWorkflow)
 	if err != nil {
 		return nil, err
 	}
@@ -449,7 +450,7 @@ func (s *Settings) ListWorkflows(ctx context.Context) ([]contract.WorkflowSummar
 	workflows := make([]contract.WorkflowSummary, 0, len(names))
 	for _, name := range names {
 		refusal := refusalOf(reached.workflow(name))
-		doc, err := s.definitions.Read(ctx, definition.KindWorkflow, name)
+		doc, err := s.definitions.Read(ctx, document.KindWorkflow, name)
 		if err != nil {
 			workflows = append(workflows, contract.WorkflowSummary{Name: name, Problem: fmt.Sprintf("unreadable: %v (run `agister check`)", err), Refusal: refusal})
 			continue
@@ -739,8 +740,8 @@ func inspectedValues(values []definition.Value) []InspectedValue {
 	})
 }
 
-func inspectedSources(sources []definition.Source) []InspectedSource {
-	return translated(sources, func(source definition.Source) InspectedSource {
+func inspectedSources(sources []document.Source) []InspectedSource {
+	return translated(sources, func(source document.Source) InspectedSource {
 		return InspectedSource{
 			Kind: string(source.Kind), Name: source.Name, Layer: string(source.Layer), Path: source.Path,
 			Layers: translated(definitionLayers(source), func(layer contract.DefinitionLayer) InspectedLayer {

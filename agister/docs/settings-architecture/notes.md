@@ -207,7 +207,7 @@ Fields: `internal/domain/definition/documents.go:23-130`, `toml.go:27-60`,
 ## Document kinds and layout
 
 Same layout in all three layers (`internal/adapters/fsdefs/fsdefs.go:1`,
-`:81`; `internal/domain/definition/definition.go:20`):
+`:81`; `internal/domain/document/document.go:17`):
 
 | Kind | File |
 | --- | --- |

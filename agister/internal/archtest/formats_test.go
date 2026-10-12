@@ -5,6 +5,7 @@ import (
 	"go/ast"
 	"go/parser"
 	"go/token"
+	"os"
 	"path/filepath"
 	"reflect"
 	"slices"
@@ -154,6 +155,58 @@ func TestOnlyTheEdgesKnowHowDataIsKept(t *testing.T) {
 	}
 	for _, finding := range findings(couplings(imports, taggedPackages(t, pkgs)), coupling) {
 		t.Error(finding)
+	}
+}
+
+// movers are the files of internal/app whose use cases only move documents:
+// they name a document, its kind and its origin, and parse none. While the
+// package's other files still parse (LAB-188), these import no parser.
+var movers = []string{"install.go", "retire.go", "gate.go", "reach.go"}
+
+// parserImports lists, sorted, each of the files given that imports the
+// module's parser of the settings files.
+func parserImports(t *testing.T, dir string, names []string) []string {
+	t.Helper()
+	var found []string
+	for _, name := range names {
+		file, err := parser.ParseFile(token.NewFileSet(), filepath.Join(dir, name), nil, parser.ImportsOnly)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, spec := range file.Imports {
+			path, err := strconv.Unquote(spec.Path.Value)
+			if err != nil {
+				t.Fatalf("%s: %v", name, err)
+			}
+			if path == module+"/internal/domain/definition" {
+				found = append(found, name)
+			}
+		}
+	}
+	slices.Sort(found)
+	return found
+}
+
+func TestTheUseCasesThatOnlyMoveDocumentsImportNoParser(t *testing.T) {
+	t.Parallel()
+	for _, name := range parserImports(t, "../app", movers) {
+		t.Errorf("internal/app/%s imports internal/domain/definition: it only moves documents, which internal/domain/document names", name)
+	}
+}
+
+func TestAFileThatImportsTheParserIsFound(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	for name, imported := range map[string]string{
+		"moves.go":  module + "/internal/domain/document",
+		"parses.go": module + "/internal/domain/definition",
+	} {
+		if err := os.WriteFile(filepath.Join(dir, name), []byte("package app\n\nimport _ \""+imported+"\"\n"), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if got, want := parserImports(t, dir, []string{"moves.go", "parses.go"}), []string{"parses.go"}; !slices.Equal(got, want) {
+		t.Errorf("files that import the parser = %q, want %q", got, want)
 	}
 }
 

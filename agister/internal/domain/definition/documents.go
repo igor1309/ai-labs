@@ -8,6 +8,8 @@ import (
 	"time"
 
 	"gopkg.in/yaml.v3"
+
+	"github.com/igor1309/ai-labs/agister/internal/domain/document"
 )
 
 // Hierarchical documents (process, verification, runtime mapping) are
@@ -69,7 +71,7 @@ func (v *Verify) Repairs() bool { return v != nil && v.MaxAttempts > 1 }
 type Verification struct {
 	Name   string
 	Verify Verify
-	Source Source
+	Source document.Source
 }
 
 // Process is named work. It names no agent: a workflow's node binds it to
@@ -103,7 +105,7 @@ type Process struct {
 	// removed, which are read and ignored: workspace.setup, and verify.where
 	// in its inline block.
 	Obsolete []string
-	Source   Source
+	Source   document.Source
 }
 
 // Primitive is one restriction primitive a runtime offers.
@@ -121,7 +123,7 @@ type Mapping struct {
 	Efforts    []string
 	Select     string // "any" subset, or exactly "one"
 	Primitives []Primitive
-	Source     Source
+	Source     document.Source
 }
 
 func header(values map[string]*yaml.Node, schema, expected string, p *problems) {
@@ -148,14 +150,14 @@ func checkSchema(value, schema string, p *problems) {
 }
 
 // ParseProcess parses a process definition.
-func ParseProcess(doc Document) (Process, error) {
+func ParseProcess(doc document.Document) (Process, error) {
 	p := problemsOf(doc.Source)
 	process := parseProcess(doc, p)
 	return process, p.err("process " + subjectName(doc.Source))
 }
 
 // parseProcess parses a process definition, adding its problems to p.
-func parseProcess(doc Document, p *problems) Process {
+func parseProcess(doc document.Document, p *problems) Process {
 	root := parseOneYAML(doc.Bytes, p)
 	if root == nil {
 		return Process{Name: doc.Source.Name, Source: doc.Source}
@@ -300,7 +302,7 @@ func parseProcess(doc Document, p *problems) Process {
 
 // ParseVerify parses a verification: the fields of a process's inline
 // verify block, as a document a process names.
-func ParseVerify(doc Document) (Verification, error) {
+func ParseVerify(doc document.Document) (Verification, error) {
 	p := problemsOf(doc.Source)
 	verification := Verification{Name: doc.Source.Name, Source: doc.Source}
 	root := parseOneYAML(doc.Bytes, p)
@@ -443,7 +445,7 @@ func parseInputs(input map[string]*yaml.Node, p *problems) ([]Param, []Value) {
 }
 
 // ParseMapping parses a runtime permission mapping.
-func ParseMapping(doc Document) (Mapping, error) {
+func ParseMapping(doc document.Document) (Mapping, error) {
 	p := problemsOf(doc.Source)
 	root := parseOneYAML(doc.Bytes, p)
 	if root == nil {

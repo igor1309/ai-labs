@@ -10,7 +10,7 @@ import (
 
 	"github.com/igor1309/ai-labs/agister/internal/app"
 	"github.com/igor1309/ai-labs/agister/internal/contract"
-	"github.com/igor1309/ai-labs/agister/internal/domain/definition"
+	"github.com/igor1309/ai-labs/agister/internal/domain/document"
 	"github.com/igor1309/ai-labs/agister/internal/domain/run"
 )
 
@@ -48,7 +48,7 @@ func inputOf(t *testing.T, record run.Record, name string) run.Input {
 // own identity, as inputs.Param makes it.
 func keptInputs(brief string) *harness {
 	h := newHarness()
-	h.defs.docs[definition.KindProcess]["p"] = strings.Replace(strings.Replace(h.defs.docs[definition.KindProcess]["p"],
+	h.defs.docs[document.KindProcess]["p"] = strings.Replace(strings.Replace(h.defs.docs[document.KindProcess]["p"],
 		"    candidate: {default: HEAD}\n", "    candidate: {default: HEAD}\n    goal: {default: short goal}\n", 1),
 		`    diff: {source: git.diff, base: "${param.base}", head: "${param.candidate}"}`+"\n",
 		`    diff: {source: git.diff, base: "${param.base}", head: "${param.candidate}"}`+"\n"+
@@ -231,9 +231,9 @@ func TestAWorkflowNodesLongParamIsRecordedAsADigest(t *testing.T) {
 			"    candidate: {default: HEAD}\n", "    candidate: {default: HEAD}\n    goal: {}\n", 1),
 			"  values:\n", "  values:\n    goal: {source: param, name: goal}\n", 1)
 	}
-	h.defs.docs[definition.KindProcess]["first"] = takesGoal(nodeProcess("first", "Work as first."))
-	h.defs.docs[definition.KindProcess]["second"] = takesGoal(nodeProcess("second", "Work as second."))
-	h.defs.docs[definition.KindWorkflow]["w"] = strings.Replace(workflowDoc, "  values:\n", "  values:\n    goal: {source: file, path: goal.md}\n", 1)
+	h.defs.docs[document.KindProcess]["first"] = takesGoal(nodeProcess("first", "Work as first."))
+	h.defs.docs[document.KindProcess]["second"] = takesGoal(nodeProcess("second", "Work as second."))
+	h.defs.docs[document.KindWorkflow]["w"] = strings.Replace(workflowDoc, "  values:\n", "  values:\n    goal: {source: file, path: goal.md}\n", 1)
 	base := h.inputs.respond
 	h.inputs.respond = func(spec app.InputSpec) (app.Resolved, error) {
 		if spec.Source == "file" && spec.Args["path"] == "goal.md" {
@@ -285,7 +285,7 @@ func TestInputArtifactsAreEachInputsOwn(t *testing.T) {
 	t.Parallel()
 	longName := strings.Repeat("a", 65)
 	h := newHarness()
-	h.defs.docs[definition.KindProcess]["p"] = strings.Replace(h.defs.docs[definition.KindProcess]["p"],
+	h.defs.docs[document.KindProcess]["p"] = strings.Replace(h.defs.docs[document.KindProcess]["p"],
 		`    diff: {source: git.diff, base: "${param.base}", head: "${param.candidate}"}`+"\n",
 		`    diff: {source: git.diff, base: "${param.base}", head: "${param.candidate}"}`+"\n"+
 			"    brief: {source: file, path: one.md}\n    brief: {source: file, path: two.md}\n    notes/today: {source: file, path: notes.md}\n"+
@@ -333,7 +333,7 @@ func TestInputArtifactsAreEachInputsOwn(t *testing.T) {
 func TestInputArtifactsOfNamesThatDifferInCaseAreEachInputsOwn(t *testing.T) {
 	t.Parallel()
 	h := newHarness()
-	h.defs.docs[definition.KindProcess]["p"] = strings.Replace(h.defs.docs[definition.KindProcess]["p"],
+	h.defs.docs[document.KindProcess]["p"] = strings.Replace(h.defs.docs[document.KindProcess]["p"],
 		`    diff: {source: git.diff, base: "${param.base}", head: "${param.candidate}"}`+"\n",
 		`    diff: {source: git.diff, base: "${param.base}", head: "${param.candidate}"}`+"\n"+
 			"    goal: {source: file, path: lower.md}\n    Goal: {source: file, path: upper.md}\n    notes: {source: file, path: notes.md}\n", 1)
@@ -382,7 +382,7 @@ func TestALongPromptIsKeptAsAnArtifactOfItsRun(t *testing.T) {
 	t.Parallel()
 	h := newHarness()
 	text := longText + "Inspect the change for defects.\n"
-	h.defs.docs[definition.KindPrompt]["inspect"] = text
+	h.defs.docs[document.KindPrompt]["inspect"] = text
 	guidance := longText + "Prove each rule with a test.\n"
 	guided(h, []string{"testing"}, map[string]string{"testing": guidance})
 	record := h.call(t, contract.CallRequest{})
@@ -444,7 +444,7 @@ func TestALongCollectionIsKeptAsAnArtifactOfTheJoin(t *testing.T) {
 func TestARefusedRunKeepsALongParamsText(t *testing.T) {
 	t.Parallel()
 	h := keptInputs(longText)
-	h.defs.docs[definition.KindProcess]["p"] = strings.Replace(h.defs.docs[definition.KindProcess]["p"],
+	h.defs.docs[document.KindProcess]["p"] = strings.Replace(h.defs.docs[document.KindProcess]["p"],
 		"    brief: {source: file, path: brief.md}\n    goal: {source: param, name: goal}\n",
 		"    goal: {source: param, name: goal}\n    brief: {source: file, path: missing.md}\n", 1)
 	keep := h.inputs.respond
@@ -479,9 +479,9 @@ func TestAWorkflowsLongParamReachesItsNodesWhole(t *testing.T) {
 			"    candidate: {default: HEAD}\n", "    candidate: {default: HEAD}\n    goal: {}\n", 1),
 			"  values:\n", "  values:\n    goal: {source: param, name: goal}\n", 1)
 	}
-	h.defs.docs[definition.KindProcess]["first"] = takesGoal(nodeProcess("first", "Work as first."))
-	h.defs.docs[definition.KindProcess]["second"] = takesGoal(nodeProcess("second", "Work as second."))
-	h.defs.docs[definition.KindWorkflow]["w"] = strings.Replace(strings.Replace(workflowDoc,
+	h.defs.docs[document.KindProcess]["first"] = takesGoal(nodeProcess("first", "Work as first."))
+	h.defs.docs[document.KindProcess]["second"] = takesGoal(nodeProcess("second", "Work as second."))
+	h.defs.docs[document.KindWorkflow]["w"] = strings.Replace(strings.Replace(workflowDoc,
 		"    candidate: {}\n", "    candidate: {}\n    goal: {}\n", 1),
 		"  values:\n", "  values:\n    goal: {source: param, name: goal}\n", 1)
 	goal := longText + "goal"

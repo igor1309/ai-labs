@@ -16,7 +16,7 @@ import (
 	"time"
 
 	"github.com/igor1309/ai-labs/agister/internal/adapters/fsdefs"
-	"github.com/igor1309/ai-labs/agister/internal/domain/definition"
+	"github.com/igor1309/ai-labs/agister/internal/domain/document"
 )
 
 // worktree is a home and a worktree's root, each a directory of its own.
@@ -111,7 +111,7 @@ func TestSelectReadsNoLayerThatIsHomeOrAbsent(t *testing.T) {
 			t.Fatalf("selected %v, %v", dirs(selected), err)
 		}
 		want := "not found (expected " + filepath.Join(root, ".agister", "verifies", "p.yaml") + " or " + filepath.Join(home.Dir, "verifies", "p.yaml") + ")"
-		if _, err := selected.Read(context.Background(), definition.KindVerify, "p"); !errors.Is(err, definition.ErrNotFound) || err.Error() != want {
+		if _, err := selected.Read(context.Background(), document.KindVerify, "p"); !errors.Is(err, document.ErrNotFound) || err.Error() != want {
 			t.Fatalf("missing = %v, want %q", err, want)
 		}
 	})
@@ -194,7 +194,7 @@ func TestASecondSettingsDirectoryOnTheWayUpMakesTheProjectLayerInvalid(t *testin
 		t.Fatalf("selected %v, nested %v, %v", dirs(selected), selected.Nested, err)
 	}
 	layers := selected.Layers(context.Background())
-	if len(layers) != 3 || layers[0].Layer != definition.LayerProject || len(layers[0].Invalid) != 1 || len(layers[1].Invalid) != 0 || len(layers[2].Invalid) != 0 {
+	if len(layers) != 3 || layers[0].Layer != document.LayerProject || len(layers[0].Invalid) != 1 || len(layers[1].Invalid) != 0 || len(layers[2].Invalid) != 0 {
 		t.Fatalf("layers = %+v", layers)
 	}
 	if invalid := layers[0].Invalid[0]; invalid.Path != outer || !strings.Contains(invalid.Reason, "a second .agister between "+inner+" and the worktree's root") {
@@ -238,11 +238,11 @@ func TestBlocksInAProjectLayerMakeItInvalidAndAreNotRead(t *testing.T) {
 				!strings.Contains(layers[0].Invalid[0].Reason, "blocks are the repository layer's alone") {
 				t.Fatalf("layers = %+v", layers)
 			}
-			doc, err := selected.Read(ctx, definition.KindBlocks, "blocks")
-			if err != nil || string(doc.Bytes) != "repository's" || doc.Source.Layer != definition.LayerRepository || doc.Source.Path != filepath.Join(repository, "blocks.yaml") {
+			doc, err := selected.Read(ctx, document.KindBlocks, "blocks")
+			if err != nil || string(doc.Bytes) != "repository's" || doc.Source.Layer != document.LayerRepository || doc.Source.Path != filepath.Join(repository, "blocks.yaml") {
 				t.Fatalf("blocks = %+v %q, %v", doc.Source, doc.Bytes, err)
 			}
-			if names, err := selected.List(ctx, definition.KindBlocks); err != nil || !reflect.DeepEqual(names, []string{"blocks"}) {
+			if names, err := selected.List(ctx, document.KindBlocks); err != nil || !reflect.DeepEqual(names, []string{"blocks"}) {
 				t.Fatalf("listed %v, %v", names, err)
 			}
 		})
@@ -259,7 +259,7 @@ func TestBlocksInAProjectLayerMakeItInvalidAndAreNotRead(t *testing.T) {
 		if err != nil || len(selected.Layers(context.Background())[0].Invalid) != 0 {
 			t.Fatalf("a project layer without blocks: %+v, %v", selected.Layers(context.Background()), err)
 		}
-		if names, err := selected.List(context.Background(), definition.KindBlocks); err != nil || len(names) != 0 {
+		if names, err := selected.List(context.Background(), document.KindBlocks); err != nil || len(names) != 0 {
 			t.Fatalf("listed %v, %v", names, err)
 		}
 	})
@@ -302,19 +302,19 @@ func TestADocumentIsComposedFromEveryLayerThatHoldsIt(t *testing.T) {
 	put(t, filepath.Join(project, "verifies", "partial.yaml"), projectText)
 	put(t, filepath.Join(home, "verifies", "partial.yaml"), homeText)
 
-	doc, err := selected.Read(ctx, definition.KindVerify, "p")
+	doc, err := selected.Read(ctx, document.KindVerify, "p")
 	if err != nil {
 		t.Fatal(err)
 	}
 	if got := string(doc.Bytes); got != "schema: v1\nname: p\nlimits:\n  timeout: 10m\n  attempts: 3\nallow: []\n" {
 		t.Fatalf("composed:\n%s", got)
 	}
-	want := definition.Source{
-		Kind: definition.KindVerify, Name: "p", Layer: definition.LayerProject, Path: filepath.Join(project, "verifies", "p.yaml"), SHA256: sum(doc.Bytes),
-		Layers: []definition.LayerFile{
-			{Layer: definition.LayerProject, Path: filepath.Join(project, "verifies", "p.yaml"), SHA256: sum([]byte(projectText)), Fields: []string{"limits.attempts", "allow"}},
-			{Layer: definition.LayerRepository, Path: filepath.Join(repository, "verifies", "p.yaml"), SHA256: sum([]byte(repositoryText)), Fields: []string{}},
-			{Layer: definition.LayerHome, Path: filepath.Join(home, "verifies", "p.yaml"), SHA256: sum([]byte(homeText)), Fields: []string{"schema", "name", "limits.timeout"}},
+	want := document.Source{
+		Kind: document.KindVerify, Name: "p", Layer: document.LayerProject, Path: filepath.Join(project, "verifies", "p.yaml"), SHA256: sum(doc.Bytes),
+		Layers: []document.LayerFile{
+			{Layer: document.LayerProject, Path: filepath.Join(project, "verifies", "p.yaml"), SHA256: sum([]byte(projectText)), Fields: []string{"limits.attempts", "allow"}},
+			{Layer: document.LayerRepository, Path: filepath.Join(repository, "verifies", "p.yaml"), SHA256: sum([]byte(repositoryText)), Fields: []string{}},
+			{Layer: document.LayerHome, Path: filepath.Join(home, "verifies", "p.yaml"), SHA256: sum([]byte(homeText)), Fields: []string{"schema", "name", "limits.timeout"}},
 		},
 	}
 	if !reflect.DeepEqual(doc.Source, want) {
@@ -322,33 +322,33 @@ func TestADocumentIsComposedFromEveryLayerThatHoldsIt(t *testing.T) {
 	}
 	// What each layer's file holds, with the file as the source names it:
 	// what a composition with one of them changed is composed from.
-	texts := []definition.LayerText{{File: want.Layers[0], Bytes: []byte(projectText)}, {File: want.Layers[1], Bytes: []byte(repositoryText)}, {File: want.Layers[2], Bytes: []byte(homeText)}}
+	texts := []document.LayerText{{File: want.Layers[0], Bytes: []byte(projectText)}, {File: want.Layers[1], Bytes: []byte(repositoryText)}, {File: want.Layers[2], Bytes: []byte(homeText)}}
 	if !reflect.DeepEqual(doc.Texts, texts) {
 		t.Fatalf("texts = %+v\nwant    %+v", doc.Texts, texts)
 	}
 
 	// One layer alone: its file, byte for byte, and its digest.
-	alone, err := selected.Read(ctx, definition.KindVerify, "home_only")
-	if err != nil || string(alone.Bytes) != homeText || alone.Source.SHA256 != sum([]byte(homeText)) || alone.Source.Layer != definition.LayerHome ||
-		len(alone.Source.Layers) != 1 || alone.Source.Layers[0].Layer != definition.LayerHome {
+	alone, err := selected.Read(ctx, document.KindVerify, "home_only")
+	if err != nil || string(alone.Bytes) != homeText || alone.Source.SHA256 != sum([]byte(homeText)) || alone.Source.Layer != document.LayerHome ||
+		len(alone.Source.Layers) != 1 || alone.Source.Layers[0].Layer != document.LayerHome {
 		t.Fatalf("home's alone = %+v %q, %v", alone.Source, alone.Bytes, err)
 	}
 	// The repository holds none: the project's is composed onto home's.
-	partial, err := selected.Read(ctx, definition.KindVerify, "partial")
-	if err != nil || len(partial.Source.Layers) != 2 || partial.Source.Layers[0].Layer != definition.LayerProject || partial.Source.Layers[1].Layer != definition.LayerHome {
+	partial, err := selected.Read(ctx, document.KindVerify, "partial")
+	if err != nil || len(partial.Source.Layers) != 2 || partial.Source.Layers[0].Layer != document.LayerProject || partial.Source.Layers[1].Layer != document.LayerHome {
 		t.Fatalf("partial = %+v, %v", partial.Source, err)
 	}
-	if names, err := selected.List(ctx, definition.KindVerify); err != nil || !reflect.DeepEqual(names, []string{"home_only", "p", "partial"}) {
+	if names, err := selected.List(ctx, document.KindVerify); err != nil || !reflect.DeepEqual(names, []string{"home_only", "p", "partial"}) {
 		t.Fatalf("listed %v, %v", names, err)
 	}
 	missing := "not found (expected " + filepath.Join(project, "verifies", "gone.yaml") + " or " + filepath.Join(repository, "verifies", "gone.yaml") + " or " + filepath.Join(home, "verifies", "gone.yaml") + ")"
-	gone, err := selected.Read(ctx, definition.KindVerify, "gone")
-	if !errors.Is(err, definition.ErrNotFound) || err.Error() != missing {
+	gone, err := selected.Read(ctx, document.KindVerify, "gone")
+	if !errors.Is(err, document.ErrNotFound) || err.Error() != missing {
 		t.Fatalf("missing = %v, want %q", err, missing)
 	}
 	// A document no layer holds is expected in the nearest layer, which
 	// its source names with the path its file would have there.
-	expected := definition.Source{Kind: definition.KindVerify, Name: "gone", Layer: definition.LayerProject, Path: filepath.Join(project, "verifies", "gone.yaml")}
+	expected := document.Source{Kind: document.KindVerify, Name: "gone", Layer: document.LayerProject, Path: filepath.Join(project, "verifies", "gone.yaml")}
 	if !reflect.DeepEqual(gone.Source, expected) || gone.Bytes != nil || gone.Texts != nil {
 		t.Fatalf("missing source = %+v, want %+v", gone.Source, expected)
 	}
@@ -363,20 +363,20 @@ func TestAPromptASkillAndASchemaAreTakenWholeFromTheNearestLayer(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
 	selected, home, repository, project := threeLayers(t)
-	for kind, file := range map[definition.Kind]string{
-		definition.KindPrompt: filepath.Join("prompts", "x.md"),
-		definition.KindSkill:  filepath.Join("skills", "x", "SKILL.md"),
-		definition.KindSchema: filepath.Join("schemas", "x.json"),
+	for kind, file := range map[document.Kind]string{
+		document.KindPrompt: filepath.Join("prompts", "x.md"),
+		document.KindSkill:  filepath.Join("skills", "x", "SKILL.md"),
+		document.KindSchema: filepath.Join("schemas", "x.json"),
 	} {
 		// A schema whose keys a merge would join: it is not merged.
 		texts := map[string]string{home: `{"required": ["a"], "properties": {"a": {}}}`, repository: `{"required": ["b"]}`, project: `{"properties": {"c": {}}}`}
-		if kind == definition.KindSkill {
+		if kind == document.KindSkill {
 			texts = map[string]string{home: skillText("x") + "home\n", repository: skillText("x") + "repository\n", project: skillText("x") + "project\n"}
 		}
 		put(t, filepath.Join(home, file), texts[home])
 		put(t, filepath.Join(repository, file), texts[repository])
 		doc, err := selected.Read(ctx, kind, "x")
-		if err != nil || string(doc.Bytes) != texts[repository] || doc.Source.Layer != definition.LayerRepository || doc.Source.SHA256 != sum([]byte(texts[repository])) {
+		if err != nil || string(doc.Bytes) != texts[repository] || doc.Source.Layer != document.LayerRepository || doc.Source.SHA256 != sum([]byte(texts[repository])) {
 			t.Fatalf("%s from the repository = %+v %q, %v", kind, doc.Source, doc.Bytes, err)
 		}
 		put(t, filepath.Join(project, file), texts[project])
@@ -384,10 +384,10 @@ func TestAPromptASkillAndASchemaAreTakenWholeFromTheNearestLayer(t *testing.T) {
 		if err != nil || string(doc.Bytes) != texts[project] || doc.Source.Path != filepath.Join(project, file) || doc.Source.SHA256 != sum([]byte(texts[project])) {
 			t.Fatalf("%s from the project = %+v %q, %v", kind, doc.Source, doc.Bytes, err)
 		}
-		want := []definition.LayerFile{
-			{Layer: definition.LayerProject, Path: filepath.Join(project, file), SHA256: sum([]byte(texts[project]))},
-			{Layer: definition.LayerRepository, Path: filepath.Join(repository, file)},
-			{Layer: definition.LayerHome, Path: filepath.Join(home, file)},
+		want := []document.LayerFile{
+			{Layer: document.LayerProject, Path: filepath.Join(project, file), SHA256: sum([]byte(texts[project]))},
+			{Layer: document.LayerRepository, Path: filepath.Join(repository, file)},
+			{Layer: document.LayerHome, Path: filepath.Join(home, file)},
 		}
 		if !reflect.DeepEqual(doc.Source.Layers, want) {
 			t.Fatalf("%s layers = %+v", kind, doc.Source.Layers)
@@ -409,14 +409,14 @@ func TestALayerFileThatCannotBeReadBreaksTheDocument(t *testing.T) {
 		"a list":          func(t *testing.T, path string) { put(t, path, "- a\n") },
 		"not YAML":        func(t *testing.T, path string) { put(t, path, "name: [unclosed\n") },
 	} {
-		for _, at := range []definition.Layer{definition.LayerProject, definition.LayerRepository, definition.LayerHome} {
+		for _, at := range []document.Layer{document.LayerProject, document.LayerRepository, document.LayerHome} {
 			t.Run(name+" in the "+string(at)+" layer", func(t *testing.T) {
 				t.Parallel()
 				selected, home, repository, project := threeLayers(t)
-				paths := map[definition.Layer]string{
-					definition.LayerHome:       filepath.Join(home, "verifies", "p.yaml"),
-					definition.LayerRepository: filepath.Join(repository, "verifies", "p.yaml"),
-					definition.LayerProject:    filepath.Join(project, "verifies", "p.yaml"),
+				paths := map[document.Layer]string{
+					document.LayerHome:       filepath.Join(home, "verifies", "p.yaml"),
+					document.LayerRepository: filepath.Join(repository, "verifies", "p.yaml"),
+					document.LayerProject:    filepath.Join(project, "verifies", "p.yaml"),
 				}
 				for layer, path := range paths {
 					if layer == at {
@@ -425,11 +425,11 @@ func TestALayerFileThatCannotBeReadBreaksTheDocument(t *testing.T) {
 						put(t, path, whole)
 					}
 				}
-				doc, err := selected.Read(context.Background(), definition.KindVerify, "p")
-				if err == nil || errors.Is(err, definition.ErrNotFound) || !strings.Contains(err.Error(), paths[at]) || doc.Bytes != nil {
+				doc, err := selected.Read(context.Background(), document.KindVerify, "p")
+				if err == nil || errors.Is(err, document.ErrNotFound) || !strings.Contains(err.Error(), paths[at]) || doc.Bytes != nil {
 					t.Fatalf("read %q, %v; want an error naming %s", doc.Bytes, err, paths[at])
 				}
-				if doc.Source.Layer != definition.LayerProject || doc.Source.Path != paths[definition.LayerProject] {
+				if doc.Source.Layer != document.LayerProject || doc.Source.Path != paths[document.LayerProject] {
 					t.Fatalf("source = %+v", doc.Source)
 				}
 			})
@@ -446,12 +446,12 @@ func TestAStoreAloneIsReadAsHome(t *testing.T) {
 	store := fsdefs.Store{Dir: t.TempDir()}
 	path := filepath.Join(store.Dir, "verifies", "p.yaml")
 	put(t, path, "name: p\n")
-	doc, err := store.Read(ctx, definition.KindVerify, "p")
-	want := []definition.LayerFile{{Layer: definition.LayerHome, Path: path, SHA256: sum([]byte("name: p\n")), Fields: []string{"name"}}}
-	if err != nil || doc.Source.Layer != definition.LayerHome || !reflect.DeepEqual(doc.Source.Layers, want) {
+	doc, err := store.Read(ctx, document.KindVerify, "p")
+	want := []document.LayerFile{{Layer: document.LayerHome, Path: path, SHA256: sum([]byte("name: p\n")), Fields: []string{"name"}}}
+	if err != nil || doc.Source.Layer != document.LayerHome || !reflect.DeepEqual(doc.Source.Layers, want) {
 		t.Fatalf("source = %+v, %v", doc.Source, err)
 	}
-	if layers := store.Layers(ctx); !reflect.DeepEqual(layers, []definition.LayerDir{{Layer: definition.LayerHome, Dir: store.Dir}}) {
+	if layers := store.Layers(ctx); !reflect.DeepEqual(layers, []document.LayerDir{{Layer: document.LayerHome, Dir: store.Dir}}) {
 		t.Fatalf("layers = %+v", layers)
 	}
 }
@@ -476,7 +476,7 @@ func TestInspectSelectsAsSelectAndReadsWithTheViewersReader(t *testing.T) {
 	read := func(path string) ([]byte, error) {
 		opened = append(opened, path)
 		if path == left {
-			return nil, definition.ErrNotFound
+			return nil, document.ErrNotFound
 		}
 		return os.ReadFile(path)
 	}
@@ -490,11 +490,11 @@ func TestInspectSelectsAsSelectAndReadsWithTheViewersReader(t *testing.T) {
 	if err != nil || serr != nil || !reflect.DeepEqual(dirs(inspected), dirs(selected)) {
 		t.Fatalf("inside: %v, %v; Select %v, %v", dirs(inspected), err, dirs(selected), serr)
 	}
-	doc, err := inspected.Read(ctx, definition.KindPrompt, "x")
+	doc, err := inspected.Read(ctx, document.KindPrompt, "x")
 	if err != nil || doc.Source.Path != taken || string(doc.Bytes) != "taken\n" {
 		t.Fatalf("x = %+v %q, %v", doc.Source, doc.Bytes, err)
 	}
-	verification, err := inspected.Read(ctx, definition.KindVerify, "p")
+	verification, err := inspected.Read(ctx, document.KindVerify, "p")
 	if err != nil || !strings.Contains(string(verification.Bytes), "timeout: 1m") {
 		t.Fatalf("p = %q, %v", verification.Bytes, err)
 	}
@@ -532,9 +532,9 @@ func TestALayersPromptsAreAlsoFoundInTheFoldersItsLayerFileLists(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	read := func(want string) definition.Document {
+	read := func(want string) document.Document {
 		t.Helper()
-		doc, err := selected.Read(ctx, definition.KindPrompt, "x")
+		doc, err := selected.Read(ctx, document.KindPrompt, "x")
 		if err != nil || doc.Source.Path != want || string(doc.Bytes) != want || doc.Source.SHA256 != sum([]byte(want)) {
 			t.Fatalf("x = %+v %q, %v; want %s", doc.Source, doc.Bytes, err, want)
 		}
@@ -544,7 +544,7 @@ func TestALayersPromptsAreAlsoFoundInTheFoldersItsLayerFileLists(t *testing.T) {
 		put(t, path, path)
 	}
 	doc := read(filepath.Join(root, "b", "c", "x.md"))
-	if doc.Source.Layer != definition.LayerRepository || !reflect.DeepEqual(doc.Source.Layers[1:], []definition.LayerFile{{Layer: definition.LayerHome, Path: filepath.Join(home, "prompts", "x.md")}}) {
+	if doc.Source.Layer != document.LayerRepository || !reflect.DeepEqual(doc.Source.Layers[1:], []document.LayerFile{{Layer: document.LayerHome, Path: filepath.Join(home, "prompts", "x.md")}}) {
 		t.Fatalf("x from the second folder = %+v", doc.Source)
 	}
 	// The first folder listed comes first, and the layer's own prompts/
@@ -554,15 +554,15 @@ func TestALayersPromptsAreAlsoFoundInTheFoldersItsLayerFileLists(t *testing.T) {
 		read(path)
 	}
 	doc = read(filepath.Join(root, "docs", "p", "x.md"))
-	if doc.Source.Layer != definition.LayerProject || !reflect.DeepEqual(doc.Source.Layers[1:], []definition.LayerFile{
-		{Layer: definition.LayerRepository, Path: filepath.Join(repository, "prompts", "x.md")},
-		{Layer: definition.LayerHome, Path: filepath.Join(home, "prompts", "x.md")},
+	if doc.Source.Layer != document.LayerProject || !reflect.DeepEqual(doc.Source.Layers[1:], []document.LayerFile{
+		{Layer: document.LayerRepository, Path: filepath.Join(repository, "prompts", "x.md")},
+		{Layer: document.LayerHome, Path: filepath.Join(home, "prompts", "x.md")},
 	}) {
 		t.Fatalf("x from the project's folder = %+v", doc.Source)
 	}
 
-	_, err := selected.Read(ctx, definition.KindPrompt, "y")
-	if !errors.Is(err, definition.ErrNotFound) {
+	_, err := selected.Read(ctx, document.KindPrompt, "y")
+	if !errors.Is(err, document.ErrNotFound) {
 		t.Fatalf("y: %v", err)
 	}
 	for _, path := range []string{filepath.Join(project, "prompts", "y.md"), filepath.Join(root, "docs", "p", "y.md"), filepath.Join(repository, "prompts", "y.md"), filepath.Join(root, "a", "y.md"), filepath.Join(root, "b", "c", "y.md"), filepath.Join(home, "prompts", "y.md")} {
@@ -572,10 +572,10 @@ func TestALayersPromptsAreAlsoFoundInTheFoldersItsLayerFileLists(t *testing.T) {
 	}
 	// A listed folder is not settings: no other kind is read there.
 	put(t, filepath.Join(root, "a", "z.md"), "z")
-	if _, err := selected.Read(ctx, definition.KindVerify, "z"); !errors.Is(err, definition.ErrNotFound) {
+	if _, err := selected.Read(ctx, document.KindVerify, "z"); !errors.Is(err, document.ErrNotFound) {
 		t.Fatalf("verification z: %v", err)
 	}
-	if names, err := selected.List(ctx, definition.KindPrompt); err != nil || slices.Contains(names, "z") {
+	if names, err := selected.List(ctx, document.KindPrompt); err != nil || slices.Contains(names, "z") {
 		t.Fatalf("prompts listed %v, %v", names, err)
 	}
 }
@@ -613,13 +613,13 @@ func TestALayerFileThatCannotBeUsedMakesItsLayerInvalid(t *testing.T) {
 			put(t, filepath.Join(dir, ".agister", "layer.yaml"), layerFile("a"))
 		}, "lists prompts folder a, which a link leads out of "},
 	} {
-		for _, at := range []definition.Layer{definition.LayerProject, definition.LayerRepository} {
+		for _, at := range []document.Layer{document.LayerProject, document.LayerRepository} {
 			t.Run(name+" in the "+string(at)+" layer", func(t *testing.T) {
 				t.Parallel()
 				ctx := context.Background()
 				selected, home, repository, project := threeLayers(t)
 				dir, index := filepath.Dir(project), 0
-				if at == definition.LayerRepository {
+				if at == document.LayerRepository {
 					dir, index = filepath.Dir(repository), 1
 				}
 				c.plant(t, dir)
@@ -634,8 +634,8 @@ func TestALayerFileThatCannotBeUsedMakesItsLayerInvalid(t *testing.T) {
 				if invalid := layers[index].Invalid; len(invalid) != 1 || invalid[0].Path != file || !strings.Contains(invalid[0].Reason, c.reason) {
 					t.Fatalf("%s layer invalid = %+v, want %q", at, invalid, c.reason)
 				}
-				doc, err := selected.Read(ctx, definition.KindPrompt, "x")
-				if err == nil || errors.Is(err, definition.ErrNotFound) || !strings.Contains(err.Error(), file) || doc.Bytes != nil {
+				doc, err := selected.Read(ctx, document.KindPrompt, "x")
+				if err == nil || errors.Is(err, document.ErrNotFound) || !strings.Contains(err.Error(), file) || doc.Bytes != nil {
 					t.Fatalf("x = %q, %v; want an error naming %s", doc.Bytes, err, file)
 				}
 			})
@@ -646,7 +646,7 @@ func TestALayerFileThatCannotBeUsedMakesItsLayerInvalid(t *testing.T) {
 		selected, home, _, _ := threeLayers(t)
 		put(t, filepath.Join(home, "layer.yaml"), layerFile())
 		layers := selected.Layers(context.Background())
-		if invalid := layers[2].Invalid; layers[2].Layer != definition.LayerHome || len(invalid) != 1 || invalid[0].Path != filepath.Join(home, "layer.yaml") || !strings.Contains(invalid[0].Reason, "home holds no layer.yaml") {
+		if invalid := layers[2].Invalid; layers[2].Layer != document.LayerHome || len(invalid) != 1 || invalid[0].Path != filepath.Join(home, "layer.yaml") || !strings.Contains(invalid[0].Reason, "home holds no layer.yaml") {
 			t.Fatalf("layers = %+v", layers)
 		}
 	})
@@ -660,7 +660,7 @@ func TestALayerFileThatCannotBeUsedMakesItsLayerInvalid(t *testing.T) {
 func TestAFileInPoliciesMakesItsLayerInvalid(t *testing.T) {
 	t.Parallel()
 	const reason = "a layer holds no policies (ADR-030 rule 4): set the policy's fields on each process that names it, then remove it"
-	for i, at := range []definition.Layer{definition.LayerProject, definition.LayerRepository, definition.LayerHome} {
+	for i, at := range []document.Layer{document.LayerProject, document.LayerRepository, document.LayerHome} {
 		t.Run(string(at), func(t *testing.T) {
 			t.Parallel()
 			selected, home, repository, project := threeLayers(t)
@@ -674,7 +674,7 @@ func TestAFileInPoliciesMakesItsLayerInvalid(t *testing.T) {
 					t.Fatalf("layer %s is invalid too: %+v", layer.Layer, layer.Invalid)
 				}
 			}
-			want := []definition.LayerProblem{
+			want := []document.LayerProblem{
 				{Path: filepath.Join(policies, "notes.txt"), Reason: reason},
 				{Path: filepath.Join(policies, "read-only.yaml"), Reason: reason},
 			}
@@ -749,7 +749,7 @@ func TestAFartherLayersPromptIsNamedNotOpened(t *testing.T) {
 			put(t, path, text)
 
 			type read struct {
-				doc definition.Document
+				doc document.Document
 				err error
 			}
 			done := make(chan read, 1)
@@ -757,17 +757,17 @@ func TestAFartherLayersPromptIsNamedNotOpened(t *testing.T) {
 			workers.Add(1)
 			go func() {
 				defer workers.Done()
-				doc, err := selected.Read(ctx, definition.KindPrompt, "x")
+				doc, err := selected.Read(ctx, document.KindPrompt, "x")
 				done <- read{doc, err}
 			}()
 			select {
 			case got := <-done:
-				want := definition.Source{
-					Kind: definition.KindPrompt, Name: "x", Layer: definition.LayerProject, Path: path, SHA256: sum([]byte(text)),
-					Layers: []definition.LayerFile{
-						{Layer: definition.LayerProject, Path: path, SHA256: sum([]byte(text))},
-						{Layer: definition.LayerRepository, Path: fifo},
-						{Layer: definition.LayerHome, Path: homePath},
+				want := document.Source{
+					Kind: document.KindPrompt, Name: "x", Layer: document.LayerProject, Path: path, SHA256: sum([]byte(text)),
+					Layers: []document.LayerFile{
+						{Layer: document.LayerProject, Path: path, SHA256: sum([]byte(text))},
+						{Layer: document.LayerRepository, Path: fifo},
+						{Layer: document.LayerHome, Path: homePath},
 					},
 				}
 				if got.err != nil || string(got.doc.Bytes) != text || !reflect.DeepEqual(got.doc.Source, want) {
@@ -802,7 +802,7 @@ func TestABrokenProcessDoesNotWaitOnAFartherFIFO(t *testing.T) {
 	}
 
 	type read struct {
-		doc definition.Document
+		doc document.Document
 		err error
 	}
 	done := make(chan read, 1)
@@ -810,7 +810,7 @@ func TestABrokenProcessDoesNotWaitOnAFartherFIFO(t *testing.T) {
 	workers.Add(1)
 	go func() {
 		defer workers.Done()
-		doc, err := selected.Read(context.Background(), definition.KindProcess, "child")
+		doc, err := selected.Read(context.Background(), document.KindProcess, "child")
 		done <- read{doc, err}
 	}()
 	select {
@@ -836,11 +836,11 @@ func TestADanglingPromptInAListedFolderIsNotHomes(t *testing.T) {
 	link := filepath.Join(filepath.Dir(repository), "lib", "x.md")
 	dangle(t, link)
 	put(t, filepath.Join(home, "prompts", "x.md"), "Home's x.\n")
-	doc, err := selected.Read(context.Background(), definition.KindPrompt, "x")
-	if err == nil || errors.Is(err, definition.ErrNotFound) || !strings.Contains(err.Error(), "cannot be resolved") || !strings.Contains(err.Error(), link) {
+	doc, err := selected.Read(context.Background(), document.KindPrompt, "x")
+	if err == nil || errors.Is(err, document.ErrNotFound) || !strings.Contains(err.Error(), "cannot be resolved") || !strings.Contains(err.Error(), link) {
 		t.Fatalf("x = %q, %v; want it not resolved, naming %s", doc.Bytes, err, link)
 	}
-	if doc.Bytes != nil || doc.Source.Layer != definition.LayerRepository || doc.Source.Path != link {
+	if doc.Bytes != nil || doc.Source.Layer != document.LayerRepository || doc.Source.Path != link {
 		t.Fatalf("x = %+v %q; want the repository's %s, and no text", doc.Source, doc.Bytes, link)
 	}
 }
@@ -864,23 +864,23 @@ func TestAPromptAsTheSettingsListItIsNotTakenFromAListedFolder(t *testing.T) {
 	put(t, filepath.Join(lib, "notes.md"), "\x00\xff")
 	put(t, filepath.Join(lib, "x.md"), "The library's x.\n")
 
-	listed, err := selected.ReadListed(ctx, definition.KindPrompt, "notes")
-	want := definition.Source{
-		Kind: definition.KindPrompt, Name: "notes", Layer: definition.LayerHome, Path: homePath, SHA256: sum([]byte(homeText)),
-		Layers: []definition.LayerFile{{Layer: definition.LayerHome, Path: homePath, SHA256: sum([]byte(homeText))}},
+	listed, err := selected.ReadListed(ctx, document.KindPrompt, "notes")
+	want := document.Source{
+		Kind: document.KindPrompt, Name: "notes", Layer: document.LayerHome, Path: homePath, SHA256: sum([]byte(homeText)),
+		Layers: []document.LayerFile{{Layer: document.LayerHome, Path: homePath, SHA256: sum([]byte(homeText))}},
 	}
 	if err != nil || string(listed.Bytes) != homeText || !reflect.DeepEqual(listed.Source, want) {
 		t.Fatalf("notes listed = %+v %q, %v\nwant %+v", listed.Source, listed.Bytes, err, want)
 	}
-	if _, err := selected.ReadListed(ctx, definition.KindPrompt, "x"); !errors.Is(err, definition.ErrNotFound) || strings.Contains(err.Error(), lib) {
+	if _, err := selected.ReadListed(ctx, document.KindPrompt, "x"); !errors.Is(err, document.ErrNotFound) || strings.Contains(err.Error(), lib) {
 		t.Fatalf("x listed: %v; want not found, and not expected in %s", err, lib)
 	}
-	if names, err := selected.List(ctx, definition.KindPrompt); err != nil || !reflect.DeepEqual(names, []string{"notes"}) {
+	if names, err := selected.List(ctx, document.KindPrompt); err != nil || !reflect.DeepEqual(names, []string{"notes"}) {
 		t.Fatalf("listed %v, %v", names, err)
 	}
 
-	named, err := selected.Read(ctx, definition.KindPrompt, "notes")
-	if err != nil || named.Source.Path != filepath.Join(lib, "notes.md") || !reflect.DeepEqual(named.Source.Layers[1:], []definition.LayerFile{{Layer: definition.LayerHome, Path: homePath}}) {
+	named, err := selected.Read(ctx, document.KindPrompt, "notes")
+	if err != nil || named.Source.Path != filepath.Join(lib, "notes.md") || !reflect.DeepEqual(named.Source.Layers[1:], []document.LayerFile{{Layer: document.LayerHome, Path: homePath}}) {
 		t.Fatalf("notes named = %+v, %v", named.Source, err)
 	}
 }

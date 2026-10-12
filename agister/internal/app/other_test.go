@@ -15,6 +15,7 @@ import (
 	"github.com/igor1309/ai-labs/agister/internal/app"
 	"github.com/igor1309/ai-labs/agister/internal/contract"
 	"github.com/igor1309/ai-labs/agister/internal/domain/definition"
+	"github.com/igor1309/ai-labs/agister/internal/domain/document"
 	"github.com/igor1309/ai-labs/agister/internal/domain/run"
 	"github.com/igor1309/ai-labs/gokit/clocktest"
 )
@@ -22,8 +23,8 @@ import (
 func TestCheckReportsEveryProblemAcrossDocuments(t *testing.T) {
 	t.Parallel()
 	h := newHarness()
-	h.defs.docs[definition.KindAgent]["broken"] = "schema = \"agister.agent/v1alpha1\"\nname = \"broken\"\ncolour = \"red\"\n"
-	h.defs.docs[definition.KindProcess]["q"] = strings.Replace(strings.Replace(h.defs.docs[definition.KindProcess]["p"], "name: p", "name: q", 1), "timeout: 20m", "timeout: 2h", 1)
+	h.defs.docs[document.KindAgent]["broken"] = "schema = \"agister.agent/v1alpha1\"\nname = \"broken\"\ncolour = \"red\"\n"
+	h.defs.docs[document.KindProcess]["q"] = strings.Replace(strings.Replace(h.defs.docs[document.KindProcess]["p"], "name: p", "name: q", 1), "timeout: 20m", "timeout: 2h", 1)
 	h.validator.compileErr = errors.New("not a schema")
 	checker := app.NewChecker(h.defs, h.validator, h.runtimes, []string{"git.revision", "git.diff"})
 
@@ -56,9 +57,9 @@ func TestCheckReportsEveryProblemAcrossDocuments(t *testing.T) {
 func TestCheckReportsWhatDefinesWhat(t *testing.T) {
 	t.Parallel()
 	h := newHarness()
-	h.defs.docs[definition.KindPrompt]["spare"] = "Nothing names this prompt.\n"
-	h.defs.docs[definition.KindProcess]["q"] = strings.Replace(strings.Replace(h.defs.docs[definition.KindProcess]["p"], "name: p", "name: q", 1), "prompt: inspect", "prompt: ghost", 1)
-	h.defs.docs[definition.KindAgent]["broken"] = "schema = \"agister.agent/v1alpha1\"\nname = \"broken\"\ncolour = \"red\"\n"
+	h.defs.docs[document.KindPrompt]["spare"] = "Nothing names this prompt.\n"
+	h.defs.docs[document.KindProcess]["q"] = strings.Replace(strings.Replace(h.defs.docs[document.KindProcess]["p"], "name: p", "name: q", 1), "prompt: inspect", "prompt: ghost", 1)
+	h.defs.docs[document.KindAgent]["broken"] = "schema = \"agister.agent/v1alpha1\"\nname = \"broken\"\ncolour = \"red\"\n"
 	checker := app.NewChecker(h.defs, h.validator, h.runtimes, []string{"git.revision", "git.diff"})
 	report, err := checker.Check(context.Background(), false)
 	if err != nil {
@@ -117,7 +118,7 @@ func TestCheckProbesEachAgentsRuntime(t *testing.T) {
 func TestCheckProbeAsksNoIdentityOfAnAdapterTheCodeDoesNotProvide(t *testing.T) {
 	t.Parallel()
 	h := newHarness()
-	h.defs.docs[definition.KindRuntime]["rt"] = strings.Replace(h.defs.docs[definition.KindRuntime]["rt"], "adapter: spy", "adapter: ghost", 1)
+	h.defs.docs[document.KindRuntime]["rt"] = strings.Replace(h.defs.docs[document.KindRuntime]["rt"], "adapter: spy", "adapter: ghost", 1)
 	checker := app.NewChecker(h.defs, h.validator, h.runtimes, []string{"git.revision", "git.diff"})
 	without, _ := checker.Check(context.Background(), false)
 	report, _ := checker.Check(context.Background(), true)
@@ -136,8 +137,8 @@ func TestCheckProbeAsksNoIdentityOfAnAdapterTheCodeDoesNotProvide(t *testing.T) 
 func TestCheckProbePlansEachProcessOnTheInstalledVersion(t *testing.T) {
 	t.Parallel()
 	h := newHarness()
-	h.defs.docs[definition.KindRuntime]["rt"] = strings.Replace(h.defs.docs[definition.KindRuntime]["rt"], "Read: {grants: [repository.read], verified: [\"1.\"]}", "Read: {grants: [repository.read], verified: [\"2.\"]}", 1)
-	h.defs.docs[definition.KindProcess]["p"] = strings.Replace(h.defs.docs[definition.KindProcess]["p"], "repository.diff]}", "repository.diff], require: [repository.read]}", 1)
+	h.defs.docs[document.KindRuntime]["rt"] = strings.Replace(h.defs.docs[document.KindRuntime]["rt"], "Read: {grants: [repository.read], verified: [\"1.\"]}", "Read: {grants: [repository.read], verified: [\"2.\"]}", 1)
+	h.defs.docs[document.KindProcess]["p"] = strings.Replace(h.defs.docs[document.KindProcess]["p"], "repository.diff]}", "repository.diff], require: [repository.read]}", 1)
 	checker := app.NewChecker(h.defs, h.validator, h.runtimes, []string{"git.revision", "git.diff"})
 	if report, _ := checker.Check(context.Background(), false); len(messages(report.Problems)) != 0 {
 		t.Fatalf("problems = %v", messages(report.Problems))
@@ -420,7 +421,7 @@ type writerSpy struct {
 	existed map[string]bool
 }
 
-func (s *writerSpy) Current(_ context.Context, kind definition.Kind, name string) (string, string, error) {
+func (s *writerSpy) Current(_ context.Context, kind document.Kind, name string) (string, string, error) {
 	key := string(kind) + "/" + name
 	if s.existed[key] {
 		return key, "d-" + key, nil
@@ -445,7 +446,7 @@ func createNow(settings *app.Settings, spec contract.Agent, overwrite bool) (con
 	return settings.CreateAgent(context.Background(), spec, overwrite, &plan)
 }
 
-func (s *writerSpy) Write(ctx context.Context, kind definition.Kind, name string, data []byte, expected string) (string, bool, error) {
+func (s *writerSpy) Write(ctx context.Context, kind document.Kind, name string, data []byte, expected string) (string, bool, error) {
 	s.writes = append(s.writes, string(kind)+"/"+name)
 	key, current, _ := s.Current(ctx, kind, name)
 	return key, current == expected, nil
@@ -635,7 +636,7 @@ primitives:
 func TestCreateAgentKeepsSettingsValid(t *testing.T) {
 	t.Parallel()
 	h := newHarness()
-	h.defs.docs[definition.KindRuntime]["narrow"] = narrowRuntime
+	h.defs.docs[document.KindRuntime]["narrow"] = narrowRuntime
 	writer := &writerSpy{existed: map[string]bool{"agents/a": true}}
 	checker := app.NewChecker(h.defs, h.validator, h.runtimes, []string{"git.revision", "git.diff"})
 	settings := app.NewSettings(h.defs, writer, nil, []app.Scope{{Name: "global settings", Check: checker}}, settingsCheckStub{})
@@ -653,7 +654,7 @@ func TestCreateAgentKeepsSettingsValid(t *testing.T) {
 	if _, err := createNow(settings, contract.Agent{Name: "a", Runtime: "rt", ModelFamily: "other"}, true); err != nil {
 		t.Fatalf("valid replacement: %v", err)
 	}
-	h.defs.docs[definition.KindAgent]["broken"] = "schema = \"agister.agent/v1alpha1\"\nname = \"broken\"\n"
+	h.defs.docs[document.KindAgent]["broken"] = "schema = \"agister.agent/v1alpha1\"\nname = \"broken\"\n"
 	if _, err := createNow(settings, contract.Agent{Name: "c", Runtime: "rt"}, false); err != nil {
 		t.Fatalf("an existing problem blocked a valid new agent: %v", err)
 	}
@@ -733,10 +734,10 @@ func TestShowProcessLimitsThroughTheResolver(t *testing.T) {
 func TestInspectionShowsThroughTheResolverItDeclares(t *testing.T) {
 	t.Parallel()
 	cost := 0.5
-	source := func(kind definition.Kind, name string) app.InspectedSource {
+	source := func(kind document.Kind, name string) app.InspectedSource {
 		return app.InspectedSource{Kind: string(kind), Name: name, Layer: "project", Path: "/project/" + string(kind) + "/" + name}
 	}
-	origin := func(kind definition.Kind, name string) contract.DefinitionOrigin {
+	origin := func(kind document.Kind, name string) contract.DefinitionOrigin {
 		return contract.DefinitionOrigin{Kind: string(kind), Name: name, Layer: "project", Path: "/project/" + string(kind) + "/" + name}
 	}
 	review := &app.InspectedProcess{
@@ -755,7 +756,7 @@ func TestInspectionShowsThroughTheResolverItDeclares(t *testing.T) {
 			Access: "read", Scope: "repository",
 		},
 		Primitives: []string{"Read"}, Withheld: []string{"repository.search"},
-		Sources: []app.InspectedSource{source(definition.KindAgent, "b"), source(definition.KindProcess, "review")},
+		Sources: []app.InspectedSource{source(document.KindAgent, "b"), source(document.KindProcess, "review")},
 	}
 	summarize := &app.InspectedProcess{
 		Process: app.InspectedDefinition{
@@ -780,7 +781,7 @@ func TestInspectionShowsThroughTheResolverItDeclares(t *testing.T) {
 				"review":    {Params: []string{"diff"}},
 				"summarize": {Collects: []string{"findings"}},
 			},
-			Sources: []app.InspectedSource{source(definition.KindWorkflow, "w")},
+			Sources: []app.InspectedSource{source(document.KindWorkflow, "w")},
 		},
 	}
 	inspection := app.NewInspection(resolver)
@@ -794,7 +795,7 @@ func TestInspectionShowsThroughTheResolverItDeclares(t *testing.T) {
 		Primitives: []string{"Read"}, Withheld: []string{"repository.search"},
 		Verify:   &contract.Verify{Command: "go test ./...", Timeout: time.Minute, MaxAttempts: 2, Instruction: "fix it"},
 		Warnings: []string{app.VerifyWarning},
-		Sources:  []contract.DefinitionOrigin{origin(definition.KindAgent, "b"), origin(definition.KindProcess, "review")},
+		Sources:  []contract.DefinitionOrigin{origin(document.KindAgent, "b"), origin(document.KindProcess, "review")},
 	}
 	view, err := inspection.ShowProcess(context.Background(), "review")
 	if err != nil {
@@ -822,7 +823,7 @@ func TestInspectionShowsThroughTheResolverItDeclares(t *testing.T) {
 		}},
 		Collection: "findings",
 		Warnings:   []string{"node n1: " + app.VerifyWarning},
-		Sources:    []contract.DefinitionOrigin{origin(definition.KindWorkflow, "w")},
+		Sources:    []contract.DefinitionOrigin{origin(document.KindWorkflow, "w")},
 	}
 	if !reflect.DeepEqual(workflowView, want) {
 		t.Fatalf("workflow view\n got %+v\nwant %+v", workflowView, want)
@@ -873,10 +874,10 @@ func (d *inspectionDouble) InspectWorkflow(_ context.Context, name string) (*app
 // proposedCheckSpy reports scripted problems and records what it was asked.
 type proposedCheckSpy struct {
 	added []string
-	docs  []definition.Document
+	docs  []document.Document
 }
 
-func (s *proposedCheckSpy) ProblemsAdded(_ context.Context, doc definition.Document) ([]string, error) {
+func (s *proposedCheckSpy) ProblemsAdded(_ context.Context, doc document.Document) ([]string, error) {
 	s.docs = append(s.docs, doc)
 	return s.added, nil
 }
@@ -894,7 +895,7 @@ func TestCreateAgentAsksEveryScope(t *testing.T) {
 		t.Fatalf("err = %v", err)
 	}
 	for _, spy := range []*proposedCheckSpy{global, project} {
-		if len(spy.docs) != 1 || spy.docs[0].Source.Kind != definition.KindAgent || spy.docs[0].Source.Name != "b" || spy.docs[0].Source.Path != "agents/b" || !strings.Contains(string(spy.docs[0].Bytes), `name = "b"`) {
+		if len(spy.docs) != 1 || spy.docs[0].Source.Kind != document.KindAgent || spy.docs[0].Source.Name != "b" || spy.docs[0].Source.Path != "agents/b" || !strings.Contains(string(spy.docs[0].Bytes), `name = "b"`) {
 			t.Fatalf("asked about %+v", spy.docs)
 		}
 	}

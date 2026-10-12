@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"github.com/igor1309/ai-labs/agister/internal/contract"
-	"github.com/igor1309/ai-labs/agister/internal/domain/definition"
+	"github.com/igor1309/ai-labs/agister/internal/domain/document"
 )
 
 // keepBackups is how many install backups are kept (ADR-016 rule 7).
@@ -34,33 +34,33 @@ type InstallSource interface {
 	// Source reads the settings documents of the folder dir, laid out like
 	// home, and names its files that are not settings documents. A symbolic
 	// link in it, or a path that leaves it, is an error.
-	Source(ctx context.Context, dir string) (docs []definition.Document, ignored []string, err error)
+	Source(ctx context.Context, dir string) (docs []document.Document, ignored []string, err error)
 }
 
 // InstallHome is home's settings store.
 type InstallHome interface {
 	// Documents reads every settings document in home. One it lists but
 	// cannot read is in unreadable, by its source, with no digest.
-	Documents(ctx context.Context) (docs []definition.Document, unreadable []definition.Source, err error)
+	Documents(ctx context.Context) (docs []document.Document, unreadable []document.Source, err error)
 	// File reads the bytes home's own file of the document holds, as
 	// written: a process's without the base it extends (ADR-030 rule 9),
 	// so a restore reads them whatever became of the base.
-	File(ctx context.Context, kind definition.Kind, name string) ([]byte, error)
+	File(ctx context.Context, kind document.Kind, name string) ([]byte, error)
 	// Current reports where a document would be stored and a digest of the
 	// one there, empty when there is none.
-	Current(ctx context.Context, kind definition.Kind, name string) (path, digest string, err error)
+	Current(ctx context.Context, kind document.Kind, name string) (path, digest string, err error)
 	// Lock takes the write lock every writer of home's settings takes, and
 	// returns its release.
 	Lock(ctx context.Context) (unlock func(), err error)
 	// Put writes data as the document, atomically. Only under the lock.
-	Put(ctx context.Context, kind definition.Kind, name string, data []byte) error
+	Put(ctx context.Context, kind document.Kind, name string, data []byte) error
 	// Left reports, by its path, what a write of the document that failed
 	// left where there is no document, such as a skill's empty folder; it
 	// is empty when nothing is left. Remove removes it.
-	Left(ctx context.Context, kind definition.Kind, name string) (path string, err error)
+	Left(ctx context.Context, kind document.Kind, name string) (path string, err error)
 	// Remove removes the document, and what Left names; none there is no
 	// error. Only under the lock.
-	Remove(ctx context.Context, kind definition.Kind, name string) error
+	Remove(ctx context.Context, kind document.Kind, name string) error
 }
 
 // InstallCheck checks an install's result, home's settings with the
@@ -68,19 +68,19 @@ type InstallHome interface {
 // but result lacks, such as a document that cannot be read, is checked as
 // home's check finds it.
 type InstallCheck interface {
-	Check(ctx context.Context, result []definition.Document) (contract.CheckReport, error)
+	Check(ctx context.Context, result []document.Document) (contract.CheckReport, error)
 }
 
 // InstallBackups keeps one backup per install, by its stamp.
 type InstallBackups interface {
 	// Save records a backup: the bytes of each document saved, then the
 	// manifest. It never writes over another backup.
-	Save(ctx context.Context, stamp string, manifest InstallManifest, saved []definition.Document) error
+	Save(ctx context.Context, stamp string, manifest InstallManifest, saved []document.Document) error
 	// List names the backups kept.
 	List(ctx context.Context) ([]string, error)
 	Manifest(ctx context.Context, stamp string) (InstallManifest, error)
 	// Saved reads the bytes the backup keeps of a document.
-	Saved(ctx context.Context, stamp string, kind definition.Kind, name string) ([]byte, error)
+	Saved(ctx context.Context, stamp string, kind document.Kind, name string) ([]byte, error)
 	Remove(ctx context.Context, stamp string) error
 }
 
@@ -135,10 +135,10 @@ func NewInstaller(adapters InstallAdapters, check InstallCheck) *Installer {
 
 // installWrite is one document an install writes.
 type installWrite struct {
-	doc     definition.Document // the source's
-	path    string              // in home
+	doc     document.Document // the source's
+	path    string            // in home
 	action  string
-	current *definition.Document // home's, for a replace of one it could read
+	current *document.Document // home's, for a replace of one it could read
 }
 
 func (i *Installer) Install(ctx context.Context, source string, approved *contract.InstallPlan) (contract.InstallPlan, error) {
@@ -166,7 +166,7 @@ func (i *Installer) Install(ctx context.Context, source string, approved *contra
 	now := i.clock.Now()
 	stamp := i.stamps.Stamp(now)
 	manifest := InstallManifest{Stamp: stamp, Source: source, Installed: now}
-	var saved []definition.Document
+	var saved []document.Document
 	for _, w := range writes {
 		entry := InstallManifestEntry{Path: w.path, Kind: string(w.doc.Source.Kind), Name: w.doc.Source.Name, Action: w.action, After: w.doc.Source.SHA256}
 		if w.current != nil {
@@ -213,10 +213,10 @@ func (i *Installer) plan(ctx context.Context, source string) (contract.InstallPl
 		return contract.InstallPlan{}, nil, err
 	}
 	type key struct {
-		kind definition.Kind
+		kind document.Kind
 		name string
 	}
-	inHome := map[key]*definition.Document{}
+	inHome := map[key]*document.Document{}
 	for n := range present {
 		doc := &present[n]
 		inHome[key{doc.Source.Kind, doc.Source.Name}] = doc
@@ -275,7 +275,7 @@ func (i *Installer) plan(ctx context.Context, source string) (contract.InstallPl
 	}
 	// The result: home's settings with the source's written over them. One
 	// home cannot read is not in it: the check finds it as home's does.
-	result := make([]definition.Document, 0, len(present)+len(docs))
+	result := make([]document.Document, 0, len(present)+len(docs))
 	for _, doc := range present {
 		if !inSource[key{doc.Source.Kind, doc.Source.Name}] {
 			result = append(result, doc)
@@ -367,7 +367,7 @@ func (i *Installer) prune(ctx context.Context) error {
 
 // restoreStep is one document a restore puts back or removes.
 type restoreStep struct {
-	kind   definition.Kind
+	kind   document.Kind
 	name   string
 	action string
 	data   []byte // put back
@@ -425,7 +425,7 @@ func (i *Installer) restorePlan(ctx context.Context, stamp string) (contract.Res
 	plan := contract.RestorePlan{Stamp: stamp}
 	var steps []restoreStep
 	for _, entry := range manifest.Documents {
-		kind := definition.Kind(entry.Kind)
+		kind := document.Kind(entry.Kind)
 		path, current, err := i.home.Current(ctx, kind, entry.Name)
 		if err != nil {
 			return contract.RestorePlan{}, nil, err
@@ -496,14 +496,14 @@ func restoreApproved(approved, plan contract.RestorePlan) error {
 
 // savedBackups reads what a backup keeps of a document.
 type savedBackups interface {
-	Saved(ctx context.Context, stamp string, kind definition.Kind, name string) ([]byte, error)
+	Saved(ctx context.Context, stamp string, kind document.Kind, name string) ([]byte, error)
 }
 
 // savedBefore reads what backup stamp keeps of the document entry records
 // as replaced, home's at path, and refuses it unless it has the digest the
 // entry records it had before.
 func savedBefore(ctx context.Context, backups savedBackups, stamp string, entry InstallManifestEntry, path string) ([]byte, error) {
-	data, err := backups.Saved(ctx, stamp, definition.Kind(entry.Kind), entry.Name)
+	data, err := backups.Saved(ctx, stamp, document.Kind(entry.Kind), entry.Name)
 	if err != nil {
 		return nil, fmt.Errorf("install backup %s: reading %s as it was before the install: %w", stamp, path, err)
 	}

@@ -12,7 +12,7 @@ import (
 
 	"github.com/igor1309/ai-labs/agister/internal/app"
 	"github.com/igor1309/ai-labs/agister/internal/contract"
-	"github.com/igor1309/ai-labs/agister/internal/domain/definition"
+	"github.com/igor1309/ai-labs/agister/internal/domain/document"
 	"github.com/igor1309/ai-labs/agister/internal/domain/run"
 )
 
@@ -27,21 +27,21 @@ const verifyBlock = `verify:
 // that may be resumed, and the service a ceiling of 3 attempts.
 func verifying(h *harness) {
 	cleanly(h)
-	h.defs.docs[definition.KindProcess]["p"] += "session: resumable\n" + verifyBlock
-	h.defs.docs[definition.KindService]["service"] += "max_verify_attempts = 3\n"
+	h.defs.docs[document.KindProcess]["p"] += "session: resumable\n" + verifyBlock
+	h.defs.docs[document.KindService]["service"] += "max_verify_attempts = 3\n"
 }
 
 // freshOnly has the harness's process p, as verifying left it, say its
 // calls' session may not be resumed.
 func freshOnly(h *harness) {
-	h.defs.docs[definition.KindProcess]["p"] = strings.Replace(h.defs.docs[definition.KindProcess]["p"], "session: resumable\n", "session: fresh-only\n", 1)
+	h.defs.docs[document.KindProcess]["p"] = strings.Replace(h.defs.docs[document.KindProcess]["p"], "session: resumable\n", "session: fresh-only\n", 1)
 }
 
 // cleanly has the harness's process p need a clean worktree: a fresh call
 // starts from HEAD's content exactly (ADR-025 rule 3), as a process that
 // declares verify must.
 func cleanly(h *harness) {
-	h.defs.docs[definition.KindProcess]["p"] = strings.Replace(h.defs.docs[definition.KindProcess]["p"],
+	h.defs.docs[document.KindProcess]["p"] = strings.Replace(h.defs.docs[document.KindProcess]["p"],
 		"  revision: candidate_revision\n", "  revision: candidate_revision\n  clean: true\n", 1)
 }
 
@@ -97,7 +97,7 @@ func TestAFailedRunIsRepairedInTheCallsSession(t *testing.T) {
 	h.clock = &steppingClock{now: time.Date(2026, 9, 28, 12, 0, 0, 0, time.UTC)}
 	h.calls = h.callsOn(h.defs)
 	verifying(h)
-	h.defs.docs[definition.KindProcess]["p"] += "max_cost_usd: 2\n"
+	h.defs.docs[document.KindProcess]["p"] += "max_cost_usd: 2\n"
 	cost := 0.5
 	h.runner.turn.CostUSD = &cost
 	h.commands.exits = []int{1}
@@ -145,7 +145,7 @@ func TestARepairCostsWhatItAddedToTheCallsSession(t *testing.T) {
 			t.Parallel()
 			h := newHarness()
 			verifying(h)
-			h.defs.docs[definition.KindProcess]["p"] += c.limit
+			h.defs.docs[document.KindProcess]["p"] += c.limit
 			session, request := "prov-1", contract.CallRequest{}
 			if c.continues {
 				session, request.Continue = "prov-0", "run-0"
@@ -271,7 +271,7 @@ func TestAFailedVerificationKeepsTheLatestValidOutput(t *testing.T) {
 			t.Parallel()
 			h := newHarness()
 			verifying(h)
-			h.defs.docs[definition.KindProcess]["p"] = strings.Replace(h.defs.docs[definition.KindProcess]["p"], "max_attempts: 3", "max_attempts: 2", 1)
+			h.defs.docs[document.KindProcess]["p"] = strings.Replace(h.defs.docs[document.KindProcess]["p"], "max_attempts: 3", "max_attempts: 2", 1)
 			h.runner.turns = []run.Turn{h.runner.turn, c.repair}
 			h.commands.exits = []int{1, 1}
 			changingEachTurn(h)
@@ -332,12 +332,12 @@ func TestRecordedVerifyIsTheResolvedOneUnderTheProcessDigest(t *testing.T) {
 	t.Parallel()
 	h := newHarness()
 	verifying(h)
-	resolved := h.defs.docs[definition.KindProcess]["p"]
+	resolved := h.defs.docs[document.KindProcess]["p"]
 	h.recorder.hold = make(chan struct{})
 	if _, err := h.calls.Submit(context.Background(), contract.CallRequest{Process: "p_a", Cwd: "/repo"}); err != nil {
 		t.Fatal(err)
 	}
-	h.defs.set(definition.KindProcess, "p", strings.Replace(resolved, "go test ./...", "true", 1))
+	h.defs.set(document.KindProcess, "p", strings.Replace(resolved, "go test ./...", "true", 1))
 	close(h.recorder.hold)
 	record := h.recorder.wait(t)
 	if class(record) != "" {
@@ -349,7 +349,7 @@ func TestRecordedVerifyIsTheResolvedOneUnderTheProcessDigest(t *testing.T) {
 	}
 	var digest string
 	for _, source := range record.Definitions {
-		if source.Kind == string(definition.KindProcess) {
+		if source.Kind == string(document.KindProcess) {
 			digest = digestRecorded(source)
 		}
 	}
@@ -395,8 +395,8 @@ func TestCheckWarnsOncePerProcessWithVerify(t *testing.T) {
 	t.Parallel()
 	h := newHarness()
 	verifying(h)
-	h.defs.docs[definition.KindProcess]["q"] = strings.Replace(settingsDocs()[definition.KindProcess]["p"], "name: p", "name: q", 1)
-	h.defs.docs[definition.KindProcess]["r"] = strings.Replace(h.defs.docs[definition.KindProcess]["p"], "name: p", "name: r", 1)
+	h.defs.docs[document.KindProcess]["q"] = strings.Replace(settingsDocs()[document.KindProcess]["p"], "name: p", "name: q", 1)
+	h.defs.docs[document.KindProcess]["r"] = strings.Replace(h.defs.docs[document.KindProcess]["p"], "name: p", "name: r", 1)
 	h.bind("r_a", "r", "a")
 	checker := app.NewChecker(h.defs, h.validator, h.runtimes, []string{"git.revision", "git.diff"})
 	report, err := checker.Check(context.Background(), false)

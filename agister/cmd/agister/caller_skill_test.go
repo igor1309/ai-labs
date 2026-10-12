@@ -13,6 +13,7 @@ import (
 	"github.com/igor1309/ai-labs/agister/internal/adapters/fsdefs"
 	"github.com/igor1309/ai-labs/agister/internal/cli"
 	"github.com/igor1309/ai-labs/agister/internal/domain/definition"
+	"github.com/igor1309/ai-labs/agister/internal/domain/document"
 )
 
 // The caller skill, skills/agister/SKILL.md, is for the agent that runs
@@ -28,7 +29,7 @@ var callerSkill = filepath.Join("..", "..")
 // its SKILL.md alone; ParseSkill checks its front matter.
 func TestTheCallerSkillIsALoadableSkill(t *testing.T) {
 	t.Parallel()
-	doc, err := fsdefs.Store{Dir: callerSkill}.Read(context.Background(), definition.KindSkill, "agister")
+	doc, err := fsdefs.Store{Dir: callerSkill}.Read(context.Background(), document.KindSkill, "agister")
 	if err != nil {
 		t.Fatal(err)
 	}

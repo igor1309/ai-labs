@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/igor1309/ai-labs/agister/internal/domain/definition"
+	"github.com/igor1309/ai-labs/agister/internal/domain/document"
 	"github.com/igor1309/ai-labs/agister/internal/domain/enforce"
 	"github.com/igor1309/ai-labs/agister/internal/domain/policy"
 	"github.com/igor1309/ai-labs/agister/internal/domain/run"
@@ -51,7 +52,7 @@ type resolution struct {
 	// skills are the call's skills, in order: the process's, then its
 	// agent's, each once (ADR-021 rule 2).
 	skills    []definition.Skill
-	sources   []definition.Source
+	sources   []document.Source
 	effective policy.Effective
 	identity  RuntimeIdentity
 	plan      enforce.Plan
@@ -154,10 +155,10 @@ type checkedReach struct {
 // from, and the layers they are read from. ReadListed is read by the
 // snapshot a resolver freezes them in, which its check checks.
 type ResolverDefinitions interface {
-	Read(ctx context.Context, kind definition.Kind, name string) (definition.Document, error)
-	ReadListed(ctx context.Context, kind definition.Kind, name string) (definition.Document, error)
-	List(ctx context.Context, kind definition.Kind) ([]string, error)
-	Layers(ctx context.Context) []definition.LayerDir
+	Read(ctx context.Context, kind document.Kind, name string) (document.Document, error)
+	ReadListed(ctx context.Context, kind document.Kind, name string) (document.Document, error)
+	List(ctx context.Context, kind document.Kind) ([]string, error)
+	Layers(ctx context.Context) []document.LayerDir
 }
 
 // ResolverIdentities asks a runtime adapter what it reports about itself,
@@ -242,7 +243,7 @@ func (r *Resolver) resolve(ctx context.Context, processName, agentOverride strin
 	res, err := r.resolveCall(ctx, processName, agentOverride, caller, refused != nil)
 	if refused != nil {
 		// A listed but unreadable process still has an identity for its view.
-		if reached.listed(DocumentRef{Kind: definition.KindProcess, Name: processName}) && res.process.Name == "" {
+		if reached.listed(DocumentRef{Kind: document.KindProcess, Name: processName}) && res.process.Name == "" {
 			res.process.Name = processName
 		}
 		return res, refused
@@ -254,7 +255,7 @@ func (r *Resolver) resolve(ctx context.Context, processName, agentOverride strin
 // is asked anything.
 func (r *Resolver) resolveCall(ctx context.Context, processName, agentOverride string, caller overrides, settingsOnly bool) (res *resolution, err error) {
 	res = &resolution{}
-	root := DocumentRef{Kind: definition.KindProcess, Name: processName}
+	root := DocumentRef{Kind: document.KindProcess, Name: processName}
 	subject := root
 	defer func() {
 		// Static problems already carry their document and chain. Problems
@@ -269,7 +270,7 @@ func (r *Resolver) resolveCall(ctx context.Context, processName, agentOverride s
 		}
 		reached, checkErr := r.reach(ctx)
 		if checkErr == nil {
-			if subject.Kind == definition.KindVerify {
+			if subject.Kind == document.KindVerify {
 				if !reached.listed(subject) {
 					// ADR-010's missing-verification refusal already names
 					// the process, reference and both expected paths.
@@ -279,7 +280,7 @@ func (r *Resolver) resolveCall(ctx context.Context, processName, agentOverride s
 			err = reached.explain(root, agentOverride, subject, refusal.Reason)
 		}
 	}()
-	load := func(kind definition.Kind, name string) (definition.Document, error) {
+	load := func(kind document.Kind, name string) (document.Document, error) {
 		subject = DocumentRef{Kind: kind, Name: name}
 		doc, err := r.definitions.Read(ctx, kind, name)
 		if err != nil {
@@ -289,21 +290,21 @@ func (r *Resolver) resolveCall(ctx context.Context, processName, agentOverride s
 		return doc, nil
 	}
 	parsed := func(err error) error {
-		var invalid *definition.InvalidError
+		var invalid *document.InvalidError
 		if errors.As(err, &invalid) {
 			return refuse("%v", err)
 		}
 		return err
 	}
 
-	doc, err := load(definition.KindService, "service")
+	doc, err := load(document.KindService, "service")
 	if err != nil {
 		return res, err
 	}
 	if res.service, err = definition.ParseService(doc); err != nil {
 		return res, parsed(err)
 	}
-	if doc, err = load(definition.KindProcess, processName); err != nil {
+	if doc, err = load(document.KindProcess, processName); err != nil {
 		return res, err
 	}
 	if res.process, err = definition.ParseProcess(doc); err != nil {
@@ -313,13 +314,13 @@ func (r *Resolver) resolveCall(ctx context.Context, processName, agentOverride s
 	// to one: nothing else chooses an agent (ADR-030 rules 2 and 5).
 	bound := caller.node && agentOverride != ""
 	if bound {
-		if doc, err = load(definition.KindAgent, agentOverride); err != nil {
+		if doc, err = load(document.KindAgent, agentOverride); err != nil {
 			return res, err
 		}
 		if res.agent, err = definition.ParseAgent(doc); err != nil {
 			return res, parsed(err)
 		}
-		if doc, err = load(definition.KindRuntime, res.agent.Runtime); err != nil {
+		if doc, err = load(document.KindRuntime, res.agent.Runtime); err != nil {
 			return res, err
 		}
 		if res.mapping, err = definition.ParseMapping(doc); err != nil {
@@ -333,7 +334,7 @@ func (r *Resolver) resolveCall(ctx context.Context, processName, agentOverride s
 		}
 	}
 	if res.process.Output.Format == "json" {
-		if doc, err = load(definition.KindSchema, res.process.Output.Schema); err != nil {
+		if doc, err = load(document.KindSchema, res.process.Output.Schema); err != nil {
 			return res, err
 		}
 		res.schema = doc.Bytes
@@ -345,12 +346,12 @@ func (r *Resolver) resolveCall(ctx context.Context, processName, agentOverride s
 	// The verification a process names is the call's from here on
 	// (ADR-010 rule 3); without it the call is refused, never run unverified.
 	if name := res.process.VerifyName; name != "" {
-		names, listErr := r.definitions.List(ctx, definition.KindVerify)
+		names, listErr := r.definitions.List(ctx, document.KindVerify)
 		if listErr != nil {
 			return res, listErr
 		}
 		if !caller.deferMissingVerify || contains(names, name) {
-			if doc, err = load(definition.KindVerify, name); err != nil {
+			if doc, err = load(document.KindVerify, name); err != nil {
 				return res, refuse("process %s names verify:%s: %v", res.process.Name, name, err)
 			}
 			verification, err := definition.ParseVerify(doc)
@@ -369,7 +370,7 @@ func (r *Resolver) resolveCall(ctx context.Context, processName, agentOverride s
 		if name != res.process.Prompt {
 			namer += " in its guidance"
 		}
-		if doc, err = load(definition.KindPrompt, name); err != nil {
+		if doc, err = load(document.KindPrompt, name); err != nil {
 			return res, refuse("%s %v", namer, err)
 		}
 		prompt, err := definition.ParsePrompt(doc)
@@ -381,7 +382,7 @@ func (r *Resolver) resolveCall(ctx context.Context, processName, agentOverride s
 	// Each brief form its inputs name is read with the call, from the same
 	// settings, and recorded among its sources (ADR-026 rule 8).
 	for _, name := range res.process.Forms() {
-		if doc, err = load(definition.KindBrief, name); err != nil {
+		if doc, err = load(document.KindBrief, name); err != nil {
 			return res, refuse("process %s names %v", res.process.Name, err)
 		}
 		brief, err := definition.ParseBrief(doc)
@@ -400,7 +401,7 @@ func (r *Resolver) resolveCall(ctx context.Context, processName, agentOverride s
 		if !contains(res.process.Skills, name) {
 			namer = "agent " + res.agent.Name
 		}
-		if doc, err = load(definition.KindSkill, name); err != nil {
+		if doc, err = load(document.KindSkill, name); err != nil {
 			return res, refuse("%s names %v", namer, err)
 		}
 		skill, err := definition.ParseSkill(doc)
@@ -451,9 +452,9 @@ func (r *Resolver) resolveCall(ctx context.Context, processName, agentOverride s
 	if settingsOnly {
 		return res, nil
 	}
-	subject = DocumentRef{Kind: definition.KindRuntime, Name: res.mapping.Name}
+	subject = DocumentRef{Kind: document.KindRuntime, Name: res.mapping.Name}
 	if res.identity, err = r.identities.Identity(ctx, res.mapping.Adapter, res.agent.Command); err != nil {
-		subject = DocumentRef{Kind: definition.KindAgent, Name: res.agent.Name}
+		subject = DocumentRef{Kind: document.KindAgent, Name: res.agent.Name}
 		return res, refuse("runtime %s is unavailable: %v", res.mapping.Name, err)
 	}
 	if res.identity.Contract != res.mapping.Contract {
@@ -566,7 +567,7 @@ func withoutSkillTools(res *resolution, tools []string, verified enforce.Offer, 
 type workflowResolution struct {
 	workflow  definition.Workflow
 	processes map[string]definition.Process
-	sources   []definition.Source         // the workflow's document, then its brief forms'
+	sources   []document.Source           // the workflow's document, then its brief forms'
 	forms     map[string]definition.Brief // by name: the brief forms its inputs name (ADR-026 rule 8)
 }
 
@@ -576,7 +577,7 @@ type workflowResolution struct {
 // (ADR-018). found is false when the
 // settings list no workflow of that name.
 func (r *Resolver) workflow(ctx context.Context, name string) (*workflowResolution, bool, error) {
-	names, err := r.definitions.List(ctx, definition.KindWorkflow)
+	names, err := r.definitions.List(ctx, document.KindWorkflow)
 	if err != nil || !contains(names, name) {
 		return nil, false, nil
 	}
@@ -618,7 +619,7 @@ func (r *Resolver) workflow(ctx context.Context, name string) (*workflowResoluti
 // resolveWorkflow reads the workflow and its nodes' processes.
 func (r *Resolver) resolveWorkflow(ctx context.Context, name string) (*workflowResolution, error) {
 	res := &workflowResolution{workflow: definition.Workflow{Name: name}, processes: map[string]definition.Process{}}
-	doc, err := r.definitions.Read(ctx, definition.KindWorkflow, name)
+	doc, err := r.definitions.Read(ctx, document.KindWorkflow, name)
 	if err != nil {
 		return res, refuse("workflow %q: %v", name, err)
 	}
@@ -629,7 +630,7 @@ func (r *Resolver) resolveWorkflow(ctx context.Context, name string) (*workflowR
 	// Each brief form its inputs name is read with the run, from the same
 	// settings, and recorded among its sources (ADR-026 rule 8).
 	for _, form := range res.workflow.Forms() {
-		doc, err := r.definitions.Read(ctx, definition.KindBrief, form)
+		doc, err := r.definitions.Read(ctx, document.KindBrief, form)
 		if err != nil {
 			return res, refuse("workflow %s names brief %q: %v", name, form, err)
 		}
@@ -647,7 +648,7 @@ func (r *Resolver) resolveWorkflow(ctx context.Context, name string) (*workflowR
 		if _, ok := res.processes[node.Process]; ok {
 			continue
 		}
-		doc, err := r.definitions.Read(ctx, definition.KindProcess, node.Process)
+		doc, err := r.definitions.Read(ctx, document.KindProcess, node.Process)
 		if err != nil {
 			continue // a process that does not exist is a workflow problem
 		}

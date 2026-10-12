@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/igor1309/ai-labs/agister/internal/domain/definition"
+	"github.com/igor1309/ai-labs/agister/internal/domain/document"
 )
 
 const workflowText = `schema: agister.workflow/v1alpha1
@@ -26,7 +27,7 @@ join: {node: merge, uses: process:j, agent: claude-opus}
 // Nodes keep their declaration order, which the collection follows.
 func TestParseWorkflowKeepsDeclarationOrder(t *testing.T) {
 	t.Parallel()
-	workflow, err := definition.ParseWorkflow(doc(definition.KindWorkflow, "w", workflowText))
+	workflow, err := definition.ParseWorkflow(doc(document.KindWorkflow, "w", workflowText))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -50,8 +51,8 @@ func TestEveryNodeNamesItsAgent(t *testing.T) {
 		"{node: merge, uses: process:j, agent: claude-opus}": "join.agent: is required",
 	} {
 		without := node[:strings.Index(node, ", agent:")] + "}"
-		_, err := definition.ParseWorkflow(doc(definition.KindWorkflow, "w", strings.Replace(workflowText, node, without, 1)))
-		var invalid *definition.InvalidError
+		_, err := definition.ParseWorkflow(doc(document.KindWorkflow, "w", strings.Replace(workflowText, node, without, 1)))
+		var invalid *document.InvalidError
 		if !errors.As(err, &invalid) || !reflect.DeepEqual(invalid.Messages(), []string{problem}) {
 			t.Errorf("%s: err = %v, want only %q", without, err, problem)
 		}
@@ -62,8 +63,8 @@ func TestEveryNodeNamesItsAgent(t *testing.T) {
 		"''":                "fan_out[1].agent: must not be empty",
 		"[claude-opus]":     "fan_out[1].agent: must be a scalar",
 	} {
-		_, err := definition.ParseWorkflow(doc(definition.KindWorkflow, "w", strings.Replace(workflowText, "agent: pi-m3", "agent: "+agent, 1)))
-		var invalid *definition.InvalidError
+		_, err := definition.ParseWorkflow(doc(document.KindWorkflow, "w", strings.Replace(workflowText, "agent: pi-m3", "agent: "+agent, 1)))
+		var invalid *document.InvalidError
 		if !errors.As(err, &invalid) || !reflect.DeepEqual(invalid.Messages(), []string{problem}) {
 			t.Errorf("agent: %s: err = %v, want only %q", agent, err, problem)
 		}
@@ -80,7 +81,7 @@ call: {node: implement, uses: process:implement, agent: codex-sol-61}
 // its agent; it declares no inputs, fan-out or join of its own.
 func TestAWorkflowMayBeOneCall(t *testing.T) {
 	t.Parallel()
-	workflow, err := definition.ParseWorkflow(doc(definition.KindWorkflow, "c", callText))
+	workflow, err := definition.ParseWorkflow(doc(document.KindWorkflow, "c", callText))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -101,7 +102,7 @@ func TestAWorkflowMayBeOneCall(t *testing.T) {
 		"not a node":   {strings.Replace(callText, "{node: implement, uses: process:implement, agent: codex-sol-61}", "process:implement", 1), "call: must be a mapping"},
 		"other fields": {strings.Replace(callText, "agent: codex-sol-61", "agent: codex-sol-61, timeout: 1h", 1), "call.timeout: unknown field"},
 	} {
-		_, err := definition.ParseWorkflow(doc(definition.KindWorkflow, "c", c.text))
+		_, err := definition.ParseWorkflow(doc(document.KindWorkflow, "c", c.text))
 		if err == nil || !strings.Contains(err.Error(), c.want) {
 			t.Errorf("%s: err = %v, want %q", name, err, c.want)
 		}
@@ -122,7 +123,7 @@ func TestParseWorkflowProblems(t *testing.T) {
 	} {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
-			_, err := definition.ParseWorkflow(doc(definition.KindWorkflow, "w", tc.text))
+			_, err := definition.ParseWorkflow(doc(document.KindWorkflow, "w", tc.text))
 			if err == nil || !strings.Contains(err.Error(), tc.want) {
 				t.Fatalf("err = %v, want %q", err, tc.want)
 			}

@@ -15,7 +15,7 @@ import (
 
 	"github.com/igor1309/ai-labs/agister/internal/app"
 	"github.com/igor1309/ai-labs/agister/internal/contract"
-	"github.com/igor1309/ai-labs/agister/internal/domain/definition"
+	"github.com/igor1309/ai-labs/agister/internal/domain/document"
 	"github.com/igor1309/ai-labs/agister/internal/domain/run"
 )
 
@@ -26,7 +26,7 @@ import (
 func staleHarness(t *testing.T, limits string) (*harness, *timersSpy) {
 	t.Helper()
 	h := newHarness()
-	h.defs.docs[definition.KindProcess]["p"] += "stale: {" + limits + "}\n"
+	h.defs.docs[document.KindProcess]["p"] += "stale: {" + limits + "}\n"
 	h.runner.identity.ToolCalls = true
 	clock := &settableClock{now: fixedClock{}.Now()}
 	timers := &timersSpy{clock: clock}
@@ -429,7 +429,7 @@ func TestAVerificationRunWithoutOutputEndsTheCall(t *testing.T) {
 	// One attempt: since ADR-024 rule 8 such a run is a failed attempt,
 	// which a repair turn follows while attempts are left; with none left
 	// the call ends as it did before.
-	h.defs.docs[definition.KindProcess]["p"] = strings.Replace(h.defs.docs[definition.KindProcess]["p"], "max_attempts: 3", "max_attempts: 1", 1)
+	h.defs.docs[document.KindProcess]["p"] = strings.Replace(h.defs.docs[document.KindProcess]["p"], "max_attempts: 3", "max_attempts: 1", 1)
 	h.commands.stale = true
 	record := h.call(t, contract.CallRequest{})
 
@@ -460,7 +460,7 @@ func TestAStaleVerificationRunThatExitedZeroDoesNotPass(t *testing.T) {
 	t.Parallel()
 	h, _ := staleHarness(t, "no_output: 2m")
 	verifying(h)
-	h.defs.docs[definition.KindProcess]["p"] = strings.Replace(h.defs.docs[definition.KindProcess]["p"], "max_attempts: 3", "max_attempts: 1", 1)
+	h.defs.docs[document.KindProcess]["p"] = strings.Replace(h.defs.docs[document.KindProcess]["p"], "max_attempts: 3", "max_attempts: 1", 1)
 	zero := 0
 	h.commands.stale, h.commands.staleExit = true, &zero
 	record := h.call(t, contract.CallRequest{})

@@ -16,7 +16,7 @@ import (
 
 	"github.com/igor1309/ai-labs/agister/internal/app"
 	"github.com/igor1309/ai-labs/agister/internal/contract"
-	"github.com/igor1309/ai-labs/agister/internal/domain/definition"
+	"github.com/igor1309/ai-labs/agister/internal/domain/document"
 	"github.com/igor1309/ai-labs/agister/internal/domain/run"
 )
 
@@ -24,31 +24,31 @@ import (
 
 type definitionsSpy struct {
 	mu    sync.Mutex
-	docs  map[definition.Kind]map[string]string
+	docs  map[document.Kind]map[string]string
 	reads []string
 }
 
-func (s *definitionsSpy) Read(_ context.Context, kind definition.Kind, name string) (definition.Document, error) {
+func (s *definitionsSpy) Read(_ context.Context, kind document.Kind, name string) (document.Document, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.reads = append(s.reads, string(kind)+"/"+name)
 	text, ok := s.docs[kind][name]
 	if !ok {
-		return definition.Document{}, definition.ErrNotFound
+		return document.Document{}, document.ErrNotFound
 	}
 	sum := sha256.Sum256([]byte(text))
 	path, digest := "mem/"+string(kind)+"/"+name, hex.EncodeToString(sum[:])
-	return definition.Document{
-		Source: definition.Source{
-			Kind: kind, Name: name, Path: path, Layer: definition.LayerHome, SHA256: digest,
-			Layers: []definition.LayerFile{{Layer: definition.LayerHome, Path: path, SHA256: digest}},
+	return document.Document{
+		Source: document.Source{
+			Kind: kind, Name: name, Path: path, Layer: document.LayerHome, SHA256: digest,
+			Layers: []document.LayerFile{{Layer: document.LayerHome, Path: path, SHA256: digest}},
 		},
 		Bytes: []byte(text),
 	}, nil
 }
 
 // ReadListed reads as Read does: the spy's layer, home, lists no folders.
-func (s *definitionsSpy) ReadListed(ctx context.Context, kind definition.Kind, name string) (definition.Document, error) {
+func (s *definitionsSpy) ReadListed(ctx context.Context, kind document.Kind, name string) (document.Document, error) {
 	return s.Read(ctx, kind, name)
 }
 
@@ -68,12 +68,12 @@ func digestRecorded(source run.DefinitionSource) string {
 }
 
 // Layers are home alone, which holds every document of the spy.
-func (s *definitionsSpy) Layers(context.Context) []definition.LayerDir {
-	return []definition.LayerDir{{Layer: definition.LayerHome, Dir: "mem"}}
+func (s *definitionsSpy) Layers(context.Context) []document.LayerDir {
+	return []document.LayerDir{{Layer: document.LayerHome, Dir: "mem"}}
 }
 
 // set replaces one document of the live settings.
-func (s *definitionsSpy) set(kind definition.Kind, name, text string) {
+func (s *definitionsSpy) set(kind document.Kind, name, text string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.docs[kind][name] = text
@@ -92,7 +92,7 @@ func (s *definitionsSpy) readCount() int {
 	return len(s.reads)
 }
 
-func (s *definitionsSpy) List(_ context.Context, kind definition.Kind) ([]string, error) {
+func (s *definitionsSpy) List(_ context.Context, kind document.Kind) ([]string, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.reads = append(s.reads, "list "+string(kind))

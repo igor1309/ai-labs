@@ -8,7 +8,7 @@ import (
 
 	"github.com/igor1309/ai-labs/agister/internal/app"
 	"github.com/igor1309/ai-labs/agister/internal/contract"
-	"github.com/igor1309/ai-labs/agister/internal/domain/definition"
+	"github.com/igor1309/ai-labs/agister/internal/domain/document"
 	"github.com/igor1309/ai-labs/agister/internal/domain/prompt"
 	"github.com/igor1309/ai-labs/agister/internal/domain/run"
 )
@@ -17,7 +17,7 @@ import (
 // holding content.
 func resumingInPlace(content string) *harness {
 	h := newHarness()
-	h.defs.docs[definition.KindProcess]["p"] += "session: resumable\n"
+	h.defs.docs[document.KindProcess]["p"] += "session: resumable\n"
 	h.changes.identity = content
 	return h
 }

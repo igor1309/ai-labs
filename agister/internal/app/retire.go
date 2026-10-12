@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/igor1309/ai-labs/agister/internal/contract"
-	"github.com/igor1309/ai-labs/agister/internal/domain/definition"
+	"github.com/igor1309/ai-labs/agister/internal/domain/document"
 )
 
 // Retirer removes documents of home's settings: the explicit deletion an
@@ -31,21 +31,21 @@ type RetireHome interface {
 	Lock(ctx context.Context) (unlock func(), err error)
 	// Current reports where a document is stored and a digest of the one
 	// there, empty when there is none.
-	Current(ctx context.Context, kind definition.Kind, name string) (path, digest string, err error)
+	Current(ctx context.Context, kind document.Kind, name string) (path, digest string, err error)
 	// File reads the bytes home's own file of the document holds.
-	File(ctx context.Context, kind definition.Kind, name string) ([]byte, error)
+	File(ctx context.Context, kind document.Kind, name string) ([]byte, error)
 	// Remove removes the document. Only under the lock.
-	Remove(ctx context.Context, kind definition.Kind, name string) error
+	Remove(ctx context.Context, kind document.Kind, name string) error
 }
 
 // RetireBackups keeps the backups installs keep, in their format.
 type RetireBackups interface {
 	// Save records a backup: the bytes of each document saved, then the
 	// manifest. It never writes over another backup.
-	Save(ctx context.Context, stamp string, manifest InstallManifest, saved []definition.Document) error
+	Save(ctx context.Context, stamp string, manifest InstallManifest, saved []document.Document) error
 	Manifest(ctx context.Context, stamp string) (InstallManifest, error)
 	// Saved reads the bytes the backup keeps of a document.
-	Saved(ctx context.Context, stamp string, kind definition.Kind, name string) ([]byte, error)
+	Saved(ctx context.Context, stamp string, kind document.Kind, name string) ([]byte, error)
 	Remove(ctx context.Context, stamp string) error
 }
 
@@ -78,7 +78,7 @@ func NewRetirer(adapters RetireAdapters) *Retirer {
 
 // RetireDocument is a document of home's settings a retirement removes.
 type RetireDocument struct {
-	Kind definition.Kind
+	Kind document.Kind
 	Name string
 }
 
@@ -103,7 +103,7 @@ func (r *Retirer) Retire(ctx context.Context, source string, docs []RetireDocume
 	}
 	defer unlock()
 	var held []RetireDocument
-	var saved []definition.Document
+	var saved []document.Document
 	var entries []InstallManifestEntry
 	for _, doc := range docs {
 		path, current, err := r.home.Current(ctx, doc.Kind, doc.Name)
@@ -119,7 +119,7 @@ func (r *Retirer) Retire(ctx context.Context, source string, docs []RetireDocume
 		}
 		before := digestOf(data)
 		held = append(held, doc)
-		saved = append(saved, definition.Document{Source: definition.Source{Kind: doc.Kind, Name: doc.Name, Path: path, SHA256: before}, Bytes: data})
+		saved = append(saved, document.Document{Source: document.Source{Kind: doc.Kind, Name: doc.Name, Path: path, SHA256: before}, Bytes: data})
 		entries = append(entries, InstallManifestEntry{Path: path, Kind: string(doc.Kind), Name: doc.Name, Action: contract.InstallReplace, Before: before})
 	}
 	if len(held) == 0 {
