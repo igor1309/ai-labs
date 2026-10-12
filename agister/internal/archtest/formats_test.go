@@ -215,7 +215,7 @@ func TestAFileThatImportsTheParserIsFound(t *testing.T) {
 // document from the package's typed reader (LAB-188). They name the
 // parser's types, and neither parse a document nor ask a definitions port
 // for one.
-var throughReader = []string{"resolve.go"}
+var throughReader = []string{"resolve.go", "check.go"}
 
 // portReads are the methods of a definitions port that give a document.
 var portReads = []string{"Read", "ReadListed"}
@@ -268,7 +268,7 @@ func bypasses(t *testing.T, dir string, names []string) []string {
 	return found
 }
 
-func TestTheResolverTakesEveryDocumentFromTheReader(t *testing.T) {
+func TestTheResolverAndTheCheckerTakeEveryDocumentFromTheReader(t *testing.T) {
 	t.Parallel()
 	for _, bypass := range bypasses(t, "../app", throughReader) {
 		t.Errorf("internal/app/%s: the file takes its documents from the package's reader, and neither parses one nor asks a definitions port for one", bypass)

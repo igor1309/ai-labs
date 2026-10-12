@@ -17,9 +17,11 @@ import (
 // Checker validates all settings at once, before any call needs them.
 type Checker struct {
 	definitions CheckDefinitions
-	validator   CheckValidator
-	runtimes    CheckRuntimes
-	sources     []string // input source kinds the code provides
+	// documents reads each document the check checks, from definitions.
+	documents documentReader
+	validator CheckValidator
+	runtimes  CheckRuntimes
+	sources   []string // input source kinds the code provides
 	// probes verify a version the settings verify nothing for; nil: none
 	// is probed.
 	probes CheckProbes
@@ -77,7 +79,7 @@ type CheckAdapters struct {
 // NewChecker returns the use case that validates all settings. sources are
 // the input source kinds the code provides.
 func NewChecker(definitions CheckDefinitions, validator CheckValidator, runtimes CheckRuntimes, sources []string) *Checker {
-	return &Checker{definitions: definitions, validator: validator, runtimes: runtimes, sources: sources}
+	return &Checker{definitions: definitions, documents: newDocumentReader(definitions), validator: validator, runtimes: runtimes, sources: sources}
 }
 
 func (c *Checker) Check(ctx context.Context, probe bool) (contract.CheckReport, error) {
@@ -202,27 +204,27 @@ func (c *Checker) checkNow(ctx context.Context, probe bool) (CheckResult, error)
 	// leave out what each of them sets (ADR-030 rule 9).
 	parsed.bases = c.bases(ctx)
 
-	// Each document on its own: one checks a document read, or not, err
-	// saying why not; each checks every document of a kind the settings
-	// list.
-	one := func(kind document.Kind, name string, doc document.Document, err error, parse func(document.Document) error) {
-		if farther := doc.Source.Layers; len(farther) > 1 {
+	// Each document on its own: one checks a document the reader read, or
+	// not, err saying why not or what is wrong with it; each checks every
+	// document of a kind the settings list, which read reads.
+	one := func(kind document.Kind, name string, source document.Source, err error) {
+		if farther := source.Layers; len(farther) > 1 {
 			paths := make([]string, 0, len(farther)-1)
 			for _, layer := range farther[1:] {
 				paths = append(paths, layer.Path)
 			}
-			report.Overrides = append(report.Overrides, fmt.Sprintf("%s %s: %s overrides %s", kind.Singular(), name, doc.Source.Path, strings.Join(paths, ", ")))
+			report.Overrides = append(report.Overrides, fmt.Sprintf("%s %s: %s overrides %s", kind.Singular(), name, source.Path, strings.Join(paths, ", ")))
 		}
 		index[DocumentRef{Kind: kind, Name: name}] = len(report.Definitions)
-		report.Definitions = append(report.Definitions, contract.Definition{Kind: string(kind), Name: name, Layer: string(doc.Source.Layer), Path: doc.Source.Path, Layers: definitionLayers(doc.Source)})
-		documents = append(documents, CheckedDocument{Ref: DocumentRef{Kind: kind, Name: name}, Path: doc.Source.Path})
-		if err != nil {
+		report.Definitions = append(report.Definitions, contract.Definition{Kind: string(kind), Name: name, Layer: string(source.Layer), Path: source.Path, Layers: definitionLayers(source)})
+		documents = append(documents, CheckedDocument{Ref: DocumentRef{Kind: kind, Name: name}, Path: source.Path})
+		if unread(err) {
 			report.Definitions[len(report.Definitions)-1].Invalid = true
 			problem(kind.Singular()+" "+name, "%v", err)
 			return
 		}
 		report.Checked[string(kind)]++
-		if err := parse(doc); err != nil {
+		if err != nil {
 			report.Definitions[len(report.Definitions)-1].Invalid = true
 			var invalid *document.InvalidError
 			if errors.As(err, &invalid) {
@@ -234,7 +236,7 @@ func (c *Checker) checkNow(ctx context.Context, probe bool) (CheckResult, error)
 			}
 		}
 	}
-	each := func(kind document.Kind, parse func(document.Document) error) error {
+	each := func(kind document.Kind, read func(name string) (document.Source, error)) error {
 		names := []string{"service"}
 		if kind != document.KindService {
 			var err error
@@ -270,93 +272,103 @@ func (c *Checker) checkNow(ctx context.Context, probe bool) (CheckResult, error)
 				stops(kind.Singular()+" "+name, "%q is not a valid name; rename the %s", name, what)
 				continue
 			}
-			read := c.definitions.Read
-			if kind == document.KindPrompt && !named[name] {
-				read = c.definitions.ReadListed
-			}
-			doc, err := read(ctx, kind, name)
-			one(kind, name, doc, err, parse)
+			source, err := read(name)
+			one(kind, name, source, err)
 		}
 		return nil
 	}
-	parsePrompt := func(d document.Document) error {
-		_, err := definition.ParsePrompt(d)
-		return err
-	}
+	// Each kind's read reads a document through the reader and keeps what
+	// of it the checks across documents read.
 	steps := []struct {
-		kind  document.Kind
-		parse func(document.Document) error
+		kind document.Kind
+		read func(name string) (document.Source, error)
 	}{
-		{document.KindService, func(d document.Document) error {
-			service, err := definition.ParseService(d)
+		{document.KindService, func(string) (document.Source, error) {
+			service, source, err := c.documents.Service(ctx)
 			if err == nil {
 				parsed.service = &service
 			}
-			return err
+			return source, err
 		}},
-		{document.KindRuntime, func(d document.Document) error {
-			m, err := definition.ParseMapping(d)
+		{document.KindRuntime, func(name string) (document.Source, error) {
+			m, source, err := c.documents.Mapping(ctx, name)
 			if err == nil {
 				parsed.mappings[m.Name] = m
 			}
-			return err
+			return source, err
 		}},
-		{document.KindAgent, func(d document.Document) error {
-			a, err := definition.ParseAgent(d)
+		{document.KindAgent, func(name string) (document.Source, error) {
+			a, source, err := c.documents.Agent(ctx, name)
 			if err == nil {
 				parsed.agents[a.Name] = a
 			}
-			return err
+			return source, err
 		}},
-		{document.KindVerify, func(d document.Document) error {
-			v, err := definition.ParseVerify(d)
+		{document.KindVerify, func(name string) (document.Source, error) {
+			v, source, err := c.documents.Verification(ctx, name)
 			if err == nil {
 				parsed.verifies[v.Name] = v
 			}
-			return err
+			return source, err
 		}},
-		{document.KindPrompt, parsePrompt},
-		{document.KindSkill, func(d document.Document) error {
-			_, err := definition.ParseSkill(d)
-			return err
-		}},
-		{document.KindBrief, func(d document.Document) error {
-			_, err := definition.ParseBrief(d)
-			return err
-		}},
-		{document.KindProcess, func(d document.Document) error {
-			if len(parsed.bases[d.Source.Name]) > 0 {
-				return nil
+		{document.KindPrompt, func(name string) (document.Source, error) {
+			read := c.documents.Prompt
+			if !named[name] {
+				read = c.documents.ListedPrompt
 			}
-			p, err := definition.ParseProcess(d)
-			if err == nil {
+			_, source, err := read(ctx, name)
+			return source, err
+		}},
+		{document.KindSkill, func(name string) (document.Source, error) {
+			_, source, err := c.documents.Skill(ctx, name)
+			return source, err
+		}},
+		{document.KindBrief, func(name string) (document.Source, error) {
+			_, source, err := c.documents.Brief(ctx, name)
+			return source, err
+		}},
+		{document.KindProcess, func(name string) (document.Source, error) {
+			p, source, err := c.documents.Process(ctx, name)
+			switch {
+			case unread(err):
+			case len(parsed.bases[source.Name]) > 0:
+				// What a base leaves out is no problem of its own.
+				err = nil
+			case err == nil:
 				parsed.processes[p.Name] = p
 			}
-			return err
+			return source, err
 		}},
-		{document.KindSchema, func(d document.Document) error {
-			if err := c.validator.Compile(d.Bytes); err != nil {
-				return err
+		{document.KindSchema, func(name string) (document.Source, error) {
+			schema, source, err := c.documents.Schema(ctx, name)
+			if err != nil {
+				return source, err
 			}
-			parsed.schemas[d.Source.Name] = true
-			return nil
+			if err := c.validator.Compile(schema); err != nil {
+				return source, err
+			}
+			parsed.schemas[source.Name] = true
+			return source, nil
 		}},
-		{document.KindWorkflow, func(d document.Document) error {
-			w, err := definition.ParseWorkflow(d)
+		{document.KindWorkflow, func(name string) (document.Source, error) {
+			w, source, err := c.documents.Workflow(ctx, name)
 			if err == nil {
 				parsed.workflows[w.Name] = w
 			}
-			return err
+			return source, err
 		}},
 		// Optional: listed only when the document exists. A call reads
 		// none of it (ADR-025): it is reported, not parsed.
-		{document.KindWorkspace, func(d document.Document) error {
-			report.Warnings = append(report.Warnings, "workspace settings "+d.Source.Path+": "+definition.ObsoleteWorkspace)
-			return nil
+		{document.KindWorkspace, func(name string) (document.Source, error) {
+			source, err := c.documents.Workspace(ctx, name)
+			if err == nil {
+				report.Warnings = append(report.Warnings, "workspace settings "+source.Path+": "+definition.ObsoleteWorkspace)
+			}
+			return source, err
 		}},
 	}
 	for _, step := range steps {
-		if err := each(step.kind, step.parse); err != nil {
+		if err := each(step.kind, step.read); err != nil {
 			return CheckResult{Report: report}, err
 		}
 	}
@@ -372,12 +384,12 @@ func (c *Checker) checkNow(ctx context.Context, probe bool) (CheckResult, error)
 			if listed[ref] {
 				continue
 			}
-			doc, err := c.definitions.Read(ctx, document.KindPrompt, prompt)
+			_, source, err := c.documents.Prompt(ctx, prompt)
 			if errors.Is(err, document.ErrNotFound) {
 				continue
 			}
 			listed[ref], parsed.prompts[prompt] = true, true
-			one(document.KindPrompt, prompt, doc, err, parsePrompt)
+			one(document.KindPrompt, prompt, source, err)
 		}
 	}
 	// File names define the run namespace even when their documents cannot
@@ -612,11 +624,7 @@ func (c *Checker) namedPrompts(ctx context.Context) map[string]bool {
 	named := map[string]bool{}
 	names, _ := c.definitions.List(ctx, document.KindProcess)
 	for _, name := range names {
-		doc, err := c.definitions.Read(ctx, document.KindProcess, name)
-		if err != nil {
-			continue
-		}
-		if process, err := definition.ParseProcess(doc); err == nil {
+		if process, _, err := c.documents.Process(ctx, name); err == nil {
 			for _, prompt := range process.Prompts() {
 				named[prompt] = true
 			}
@@ -632,14 +640,10 @@ func (c *Checker) namedPrompts(ctx context.Context) map[string]bool {
 func (c *Checker) bases(ctx context.Context) map[string][]string {
 	bases := map[string][]string{}
 	names, _ := c.definitions.List(ctx, document.KindProcess)
-	read := func(name string) (document.Document, error) {
-		return c.definitions.Read(ctx, document.KindProcess, name)
-	}
 	// Each base is read and composed once, however many extend it.
-	extender := definition.NewExtender(read)
+	extends := c.documents.Extending(ctx)
 	for _, name := range names {
-		doc, _ := read(name)
-		if base := extender.Extends(doc); base != "" && contains(names, base) {
+		if base := extends(name); base != "" && contains(names, base) {
 			bases[base] = append(bases[base], name)
 		}
 	}
@@ -663,28 +667,27 @@ func (c *Checker) blocks(ctx context.Context, listed map[DocumentRef]bool, check
 	}
 	var blocks []CheckedBlock
 	for _, name := range names {
-		doc, err := c.definitions.Read(ctx, document.KindBlocks, name)
+		parsed, source, err := c.documents.Blocks(ctx, name)
 		home := func(path string) {
 			message := "home's settings block nothing: only a repository's settings have blocks; remove it"
 			about := blocksRef // each problem its own, so no caller's change reaches another
 			*found = append(*found, CheckedProblem{Text: "blocks (" + path + "): " + message, About: &about, Message: message})
 		}
-		if doc.Source.Layer != document.LayerRepository {
-			home(doc.Source.Path)
+		if source.Layer != document.LayerRepository {
+			home(source.Path)
 			continue
 		}
-		for i, farther := range doc.Source.Layers {
+		for i, farther := range source.Layers {
 			if i > 0 {
 				home(farther.Path)
 			}
 		}
-		subject := "blocks (" + doc.Source.Path + ")"
-		if err != nil {
+		subject := "blocks (" + source.Path + ")"
+		if unread(err) {
 			stops(subject, err.Error(), false)
 			continue
 		}
 		checked[string(document.KindBlocks)]++
-		parsed, err := definition.ParseBlocks(doc)
 		var invalid *document.InvalidError
 		switch {
 		case errors.As(err, &invalid):
@@ -705,7 +708,7 @@ func (c *Checker) blocks(ctx context.Context, listed map[DocumentRef]bool, check
 				missing = true
 				continue
 			}
-			named = append(named, CheckedBlock{Ref: ref, Path: doc.Source.Path, Reason: block.Reason})
+			named = append(named, CheckedBlock{Ref: ref, Path: source.Path, Reason: block.Reason})
 		}
 		if !missing {
 			blocks = append(blocks, named...)
@@ -747,7 +750,8 @@ func (c *Checker) ProblemsAdded(ctx context.Context, doc document.Document) ([]s
 		return nil, err
 	}
 	after := *c
-	after.definitions, after.once = withDocument{CheckDefinitions: c.definitions, doc: doc}, nil
+	after.definitions, after.once = withDocument{definitions: c.definitions, doc: doc}, nil
+	after.documents = newDocumentReader(after.definitions)
 	report, err := after.Check(ctx, false)
 	if err != nil {
 		return nil, err
@@ -763,50 +767,6 @@ func (c *Checker) ProblemsAdded(ctx context.Context, doc document.Document) ([]s
 		}
 	}
 	return added, nil
-}
-
-// withDocument is a definitions source with one home document added or
-// replaced. Where a nearer layer holds a document of the same name, a
-// composed kind's is composed from the nearer layers' files as they are and
-// the home document beneath them (ADR-028 rule 4); any other kind's is the
-// nearer layer's, which replaces home's whole (rule 6).
-type withDocument struct {
-	CheckDefinitions
-	doc document.Document
-}
-
-func (w withDocument) Read(ctx context.Context, kind document.Kind, name string) (document.Document, error) {
-	return w.with(ctx, kind, name, w.CheckDefinitions.Read)
-}
-
-func (w withDocument) ReadListed(ctx context.Context, kind document.Kind, name string) (document.Document, error) {
-	return w.with(ctx, kind, name, w.CheckDefinitions.ReadListed)
-}
-
-// with is the document as read reads it, with w's home document in place.
-func (w withDocument) with(ctx context.Context, kind document.Kind, name string, read func(context.Context, document.Kind, string) (document.Document, error)) (document.Document, error) {
-	if kind != w.doc.Source.Kind || name != w.doc.Source.Name {
-		return read(ctx, kind, name)
-	}
-	current, err := read(ctx, kind, name)
-	switch {
-	case err != nil || current.Source.Layer == document.LayerHome:
-		return w.doc, nil
-	case !document.Composed(kind):
-		return current, nil
-	}
-	home := document.LayerFile{Layer: document.LayerHome, Path: w.doc.Source.Path, SHA256: w.doc.Source.SHA256}
-	return definition.WithHome(current, document.LayerText{File: home, Bytes: w.doc.Bytes})
-}
-
-func (w withDocument) List(ctx context.Context, kind document.Kind) ([]string, error) {
-	names, err := w.CheckDefinitions.List(ctx, kind)
-	if err != nil || kind != w.doc.Source.Kind || contains(names, w.doc.Source.Name) {
-		return names, err
-	}
-	names = append(append([]string(nil), names...), w.doc.Source.Name)
-	sort.Strings(names)
-	return names, nil
 }
 
 // definitionLayers are a document's layer files as check and show report
