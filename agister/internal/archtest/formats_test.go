@@ -210,6 +210,150 @@ func TestAFileThatImportsTheParserIsFound(t *testing.T) {
 	}
 }
 
+// exported lists, sorted, the exported names the non-test files of dir
+// declare at package level: a type or an alias, a constant, a variable or a
+// function. A method is its type's, and no name of the package.
+func exported(t *testing.T, dir string) []string {
+	t.Helper()
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var names []string
+	add := func(idents ...*ast.Ident) {
+		for _, ident := range idents {
+			if ident.IsExported() {
+				names = append(names, ident.Name)
+			}
+		}
+	}
+	for _, entry := range entries {
+		name := entry.Name()
+		if !strings.HasSuffix(name, ".go") || strings.HasSuffix(name, "_test.go") {
+			continue
+		}
+		file, err := parser.ParseFile(token.NewFileSet(), filepath.Join(dir, name), nil, parser.SkipObjectResolution)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, decl := range file.Decls {
+			switch decl := decl.(type) {
+			case *ast.FuncDecl:
+				if decl.Recv == nil {
+					add(decl.Name)
+				}
+			case *ast.GenDecl:
+				for _, spec := range decl.Specs {
+					switch spec := spec.(type) {
+					case *ast.TypeSpec:
+						add(spec.Name)
+					case *ast.ValueSpec:
+						add(spec.Names...)
+					}
+				}
+			}
+		}
+	}
+	slices.Sort(names)
+	return names
+}
+
+// redeclared lists, sorted, the exported names of the package in of that
+// the package in dir declares too.
+func redeclared(t *testing.T, dir, of string) []string {
+	t.Helper()
+	theirs := exported(t, of)
+	var found []string
+	for _, name := range exported(t, dir) {
+		if slices.Contains(theirs, name) {
+			found = append(found, name)
+		}
+	}
+	return found
+}
+
+// The document vocabulary has one home, internal/domain/document. The
+// parser names it there: a name of it declared in the parser's package
+// again, as an alias, a constant, a variable or a forwarding function,
+// lets a user reach the vocabulary through the parser.
+func TestTheParserDeclaresNoneOfTheDocumentVocabulary(t *testing.T) {
+	t.Parallel()
+	for _, name := range redeclared(t, "../domain/definition", "../domain/document") {
+		t.Errorf("internal/domain/definition declares %s: the name is internal/domain/document's, and its users name it there", name)
+	}
+}
+
+func TestAVocabularyNameTheParserDeclaresIsFound(t *testing.T) {
+	t.Parallel()
+	root := t.TempDir()
+	for name, source := range map[string]string{
+		"document/document.go": `package document
+
+type Kind string
+
+const (
+	KindAgent   Kind = "agents"
+	KindProcess Kind = "processes"
+)
+
+type Source struct{}
+
+type Document struct{}
+
+var ErrNotFound error
+
+func Composed(kind Kind) bool { return false }
+`,
+		"definition/alias.go": `package definition
+
+type Kind = document.Kind
+`,
+		"definition/values.go": `package definition
+
+const (
+	KindAgent   = document.KindAgent
+	KindProcess = document.KindProcess
+)
+
+var ErrNotFound = document.ErrNotFound
+`,
+		"definition/forward.go": `package definition
+
+func Composed(kind document.Kind) bool { return document.Composed(kind) }
+`,
+		// None of these gives the package a name of the vocabulary: a
+		// method, a type local to a function, an unexported name, a name
+		// of the parser's own, and a test file's alias.
+		"definition/own.go": `package definition
+
+type Process struct{}
+
+func (p Process) Document() document.Document { return document.Document{} }
+
+func ParseProcess() { type Source struct{} }
+
+type source struct{}
+`,
+		"definition/alias_test.go": `package definition
+
+type Source = document.Source
+`,
+	} {
+		path := filepath.Join(root, name)
+		if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(path, []byte(source), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	got := redeclared(t, filepath.Join(root, "definition"), filepath.Join(root, "document"))
+	want := []string{"Composed", "ErrNotFound", "Kind", "KindAgent", "KindProcess"}
+	if !slices.Equal(got, want) {
+		t.Errorf("vocabulary names the parser declares = %q, want %q", got, want)
+	}
+}
+
 func TestACoreImportOfAFormatIsAFinding(t *testing.T) {
 	t.Parallel()
 	imports := map[string][]string{
