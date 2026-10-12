@@ -1,9 +1,9 @@
 # Settings architecture: preparation notes
 
 The facts behind `index.html` (top level) and `detailed.html`, each with
-its source. Paths are relative to `agister/`. Checked against the LAB-171
-candidate at 61205ca4 (2026-10-11), with ADR-028 and ADR-030
-implemented.
+its source. Paths are relative to `agister/`. Checked against trunk at
+037a95a8 (2026-10-12), with ADR-028, ADR-030, ADR-034 and ADR-035
+implemented (LAB-224).
 
 ## What settings are
 
@@ -109,7 +109,8 @@ Fields: `internal/domain/definition/documents.go:23-130`, `toml.go:27-60`,
   It extends nothing: one level. It is not work: a node that binds it is
   a problem of the workflow; it is checked through each process that
   extends it, so it may leave out what each of them sets, such as
-  `prompt`. Home's `review` is the base of its five reviews.
+  `prompt`. Home's `review` is the base of its six reviews: the five
+  code reviews and the ADR review.
   (`extends.go`; ADR-030 rule 9)
 - **agent** is a runtime profile: it names a **runtime mapping**
   (`runtime`), and holds model, model family, effort, command and the

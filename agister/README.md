@@ -164,8 +164,8 @@ layers over it; maps merge by key, lists and scalars are replaced whole,
 and `name` and `extends` are never taken from the base. A layer's partial
 of the base reaches every process that extends it; a partial may not set
 `extends`. `process show` and the record name the base for each field it
-gave. Home's five reviews extend its `review` base, which holds their
-permissions and limits.
+gave. Home's six reviews, the five code reviews and the ADR review,
+extend its `review` base, which holds their permissions and limits.
 
 A process extends a base of its own layer. The nearest layer file that
 holds the whole process names its base, and that layer defines the base

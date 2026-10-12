@@ -217,7 +217,7 @@ verify: verify:repo</pre></figure>
 <li>The base is of the process's own layer. The layer whose file holds the whole process and names the base defines the base too: its file of the base and the extending file together set every field a process requires.</li>
 <li>A base only home has, or a repository's partial of it that leaves a required field to home's file, is no base for a process the repository defines: <code>check</code> reports the process and its run is refused. Partials that do not set <code>extends</code>, over a process home defines or over its base, still compose.</li>
 <li><code>process show</code> and the record name the base for each field it gave.</li>
-</ul><p class="note">Home's five reviews extend its <code>review</code> base, which holds their input, permissions and limits.</p></div>
+</ul><p class="note">Home's six reviews, the five code reviews and the ADR review, extend its <code>review</code> base, which holds their input, permissions and limits.</p></div>
 <figure class="ex"><figcaption>agister/home/processes/tests_review.yaml</figcaption><pre>name: tests_review
 type: process
 extends: process:review
@@ -244,7 +244,7 @@ prompt: code-review-tests</pre></figure>
 <div class="desc"><header><h2>Verification</h2><p class="path"><code>verifies/&lt;name&gt;.yaml</code>, or inline in the process</p></header>
 <p class="lead">A command that must pass on the call's changes before the call completes.</p>
 <h3>Holds</h3><table><tr><th><code>command</code></th><td>what to run</td></tr><tr><th><code>timeout</code></th><td>how long it may take</td></tr><tr><th><code>max_attempts</code></th><td>how many turns the agent gets to make it pass</td></tr><tr><th><code>instruction</code></th><td>what the agent is told when it fails</td></tr></table><p class="note">A process in home can name <code>verify:repo</code>, and each project fills <code>verifies/repo.yaml</code> in its own layer. If no layer fills it, <code>implement</code> is refused. The command runs from the worktree root, even for a project.</p></div>
-<figure class="ex"><figcaption>.agister/verifies/repo.yaml</figcaption><pre>name: repo
+<figure class="ex"><figcaption>agister/.agister/verifies/repo.yaml, the agister project's layer</figcaption><pre>name: repo
 command: agister/scripts/test.sh
 timeout: 5m
 max_attempts: 3
@@ -313,13 +313,13 @@ primitives:
       grants: [repository.read, repository.search,
                repository.diff, repository.history.read,
                process.execute, host.read]
-      verified: [&quot;0.158.&quot;, &quot;0.159.&quot;, &quot;0.160.&quot;]
+      verified: [&quot;0.158.&quot;, &quot;0.159.&quot;, &quot;0.160.&quot;, &quot;0.161.&quot;]
     workspace-write:
       grants: [repository.read, repository.search,
                repository.diff, repository.history.read,
                process.execute, host.read,
                repository.write, host.write]
-      verified: [&quot;0.159.&quot;, &quot;0.160.&quot;]</pre></figure>
+      verified: [&quot;0.159.&quot;, &quot;0.160.&quot;, &quot;0.161.&quot;]</pre></figure>
 </section>
 <section id="service" class="kind service">
 <div class="desc"><header><h2>Service</h2><p class="path"><code>service.toml</code> · one, with no name</p></header>
