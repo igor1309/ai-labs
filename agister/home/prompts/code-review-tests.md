@@ -3,7 +3,7 @@ date: 2026-10-12
 author: Igor Malyarov
 model: claude-opus-5-5
 name: Code review — tests
-version: 0.1.6
+version: 0.1.7
 type: prompt
 ---
 
@@ -27,8 +27,7 @@ Every finding names its concrete case, one of:
 A case stands for a class: the inputs, states or variants the test
 misses for the same reason. The finding names the class, with its case as
 the witness, and asks for a test that covers the class (a table over it,
-or an assertion on what holds for all of it), not the one case. A finding
-for one variant leaves the next variant for the next review.
+or an assertion on what holds for all of it), not the one case.
 
 The rules below say where to look; a rule broken is not a finding by
 itself. Ask for a new seam only together with the case that needs it. A
