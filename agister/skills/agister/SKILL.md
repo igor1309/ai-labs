@@ -389,6 +389,12 @@ again; do not drop the form from the settings to get past the refusal.
 
 ## Read the result
 
+A question about what a run did is answered from the run itself:
+`agister runs show <run-id>` and its `events.jsonl`, not from the
+settings it was given. The repository files a run reads, such as
+`AGENTS.md`, are part of its instructions, beside the process's prompt
+and guidance.
+
 - `agister runs list` lists the runs: ID, process or workflow, agent and
   status.
 - `agister runs show <run-id>` prints the run's record as JSON. That
