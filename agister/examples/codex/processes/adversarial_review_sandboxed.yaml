@@ -6,9 +6,9 @@ prompt: adversarial-review
 
 input:
   instruction: >-
-    Review the exact candidate independently and adversarially. Report material
-    correctness, safety, contract, and maintainability findings. Do not assume a
-    suspected defect or focus supplied outside this process.
+    Review the exact candidate adversarially. Report material correctness,
+    safety, contract, and maintainability findings. Take no suspected defect
+    or focus as given: find each one in the code.
   params:
     base: {default: origin/HEAD}
     candidate: {default: HEAD}
