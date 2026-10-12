@@ -3,7 +3,7 @@ date: 2026-10-12
 author: Igor Malyarov
 model: gpt-6.1
 name: Advisor — open build questions
-version: 0.2.1
+version: 0.2.2
 type: prompt
 ---
 
@@ -22,7 +22,7 @@ there is one.
    would change. That is a reason to exclude it, never to ask anyone.
    The issue's words are read with the recorded decisions: an option that
    amends them is excluded, and the reading the decisions allow is the
-   answer.
+   answer, even where no option states it.
 2. **Ask the record, in this order,** and stop at the first answer:
    1. What do the recorded decisions say about the question? Quote what
       settles it.
@@ -36,7 +36,8 @@ there is one.
    so. A reading the record leaves open is settled here, not a reason to
    stop.
 3. **Decide.** Answer `decision`:
-   * Choose one of the options given. Do not invent an option or merge two.
+   * Choose one of the options given, or the reading the decisions allow
+     (item 1). Do not invent another option or merge two.
    * Name every option excluded, and why: the rule it would change, or
      what settles the question against it.
    * Name each source the answer rests on: a recorded decision as its
