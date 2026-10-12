@@ -161,7 +161,8 @@ func TestOnlyTheEdgesKnowHowDataIsKept(t *testing.T) {
 
 // movers are the files of internal/app whose use cases only move documents:
 // they name a document, its kind and its origin, and parse none. While the
-// package's other files still parse (LAB-188), these import no parser.
+// package's other files still name the parser's types (LAB-188), these
+// import no parser.
 var movers = []string{"install.go", "retire.go", "gate.go", "reach.go"}
 
 // parserImports lists, sorted, each of the files given that imports the
@@ -211,25 +212,28 @@ func TestAFileThatImportsTheParserIsFound(t *testing.T) {
 	}
 }
 
-// throughReader are the files of internal/app that take every settings
-// document from the package's typed reader (LAB-188). They name the
-// parser's types, and neither parse a document nor ask a definitions port
-// for one.
-var throughReader = []string{"resolve.go", "check.go", "definitions.go"}
+// readerFile is the file of internal/app that parses settings documents:
+// the package's typed reader and its parsing helpers (LAB-188). Every
+// other file of the package names the parser's types, and takes what a
+// document parses to from that file.
+const readerFile = "reader.go"
 
-// portReads are the methods of a definitions port that give a document.
-var portReads = []string{"Read", "ReadListed"}
-
-// bypasses lists, sorted, each use in the files given of what the reader
-// does for them: a Parse function of the module's parser, called or passed on,
-// and a reading method of a definitions port. Syntax tells no type, so a
-// reading method is found by its name, on whatever holds the port, and the
-// parser imported unqualified is a finding itself: its Parse functions
-// would then go unseen.
-func bypasses(t *testing.T, dir string, names []string) []string {
+// parses lists, sorted, each Parse function of the module's parser that a
+// non-test file of dir other than the one excepted names, called or passed
+// on. Syntax tells no type, so the parser imported unqualified is a finding
+// itself: its Parse functions would then go unseen.
+func parses(t *testing.T, dir, except string) []string {
 	t.Helper()
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
 	var found []string
-	for _, name := range names {
+	for _, entry := range entries {
+		name := entry.Name()
+		if !strings.HasSuffix(name, ".go") || strings.HasSuffix(name, "_test.go") || name == except {
+			continue
+		}
 		file, err := parser.ParseFile(token.NewFileSet(), filepath.Join(dir, name), nil, parser.SkipObjectResolution)
 		if err != nil {
 			t.Fatal(err)
@@ -257,8 +261,7 @@ func bypasses(t *testing.T, dir string, names []string) []string {
 				return true
 			}
 			pkg, qualified := selector.X.(*ast.Ident)
-			parses := qualified && pkg.Name == parserName && strings.HasPrefix(selector.Sel.Name, "Parse")
-			if parses || slices.Contains(portReads, selector.Sel.Name) {
+			if qualified && pkg.Name == parserName && strings.HasPrefix(selector.Sel.Name, "Parse") {
 				found = append(found, name+": "+types.ExprString(selector))
 			}
 			return true
@@ -268,48 +271,47 @@ func bypasses(t *testing.T, dir string, names []string) []string {
 	return found
 }
 
-func TestTheResolverTheCheckerTheListsAndInspectTakeEveryDocumentFromTheReader(t *testing.T) {
+func TestOnlyTheReadersFileOfTheAppParsesASettingsDocument(t *testing.T) {
 	t.Parallel()
-	for _, bypass := range bypasses(t, "../app", throughReader) {
-		t.Errorf("internal/app/%s: the file takes its documents from the package's reader, and neither parses one nor asks a definitions port for one", bypass)
+	for _, parse := range parses(t, "../app", readerFile) {
+		t.Errorf("internal/app/%s: only %s parses a settings document, and every other file of the package takes what it parses to from there", parse, readerFile)
 	}
 }
 
-func TestAFileThatGoesAroundTheReaderIsFound(t *testing.T) {
+func TestAFileOtherThanTheReadersThatParsesIsFound(t *testing.T) {
 	t.Parallel()
 	dir := t.TempDir()
 	imported := func(as string) string {
 		return "package app\n\nimport " + as + " \"" + module + "/internal/domain/definition\"\n"
 	}
 	files := map[string]string{
-		// None of these goes around the reader: the parser's types and its
-		// functions that parse nothing, the port's list, the port handed
-		// on, the port's own declaration, a document from the reader, the
-		// reader's file's parse of what no port gave, and another package's
-		// Parse function and its read of a file.
-		"through.go": imported("") + `
-type definitions interface {
-	Read(ctx context.Context, kind document.Kind, name string) (document.Document, error)
-	List(ctx context.Context, kind document.Kind) ([]string, error)
+		// None of these is a finding: the reader's file, which parses; a
+		// test file; a file of another language; and the parser's types
+		// and its functions that parse nothing, the reader's file's
+		// helpers, another package's Parse function and a method named as
+		// one.
+		readerFile: imported("") + `
+func (r documentReader) Process(ctx context.Context, name string) (definition.Process, document.Source, error) {
+	return readParsed(ctx, r, document.KindProcess, name, parseProcess)
 }
 
-func (r *Resolver) resolve(ctx context.Context, name string) (definition.Process, error) {
-	if _, err := r.definitions.List(ctx, document.KindVerify); err != nil {
+func parseProcess(doc document.Document) (definition.Process, error) { return definition.ParseProcess(doc) }
+`,
+		"parses_test.go": imported("") + `
+var parsePrompt = definition.ParsePrompt
+`,
+		"parses.md": "definition.ParseSkill parses a skill.\n",
+		"through.go": imported("") + `
+func (s *snapshot) named(doc document.Document, timeout string) (definition.Process, error) {
+	if _, err := time.ParseDuration(timeout); err != nil {
 		return definition.Process{}, err
 	}
-	if _, err := time.ParseDuration("1m"); err != nil {
-		return definition.Process{}, err
-	}
-	frozen := Snapshot(ctx, r.definitions)
-	process, _, err := newDocumentReader(frozen).Process(ctx, name)
+	process, err := parseProcess(doc)
 	_ = definition.CallSession(process)
-	if _, err := parsedAgent(name, definition.FormatAgent(definition.Agent{Name: name})); err != nil {
+	if _, err := parsedAgent(process.Name, definition.FormatAgent(definition.Agent{Name: process.Name})); err != nil {
 		return definition.Process{}, err
 	}
-	if _, err := fs.ReadFile(r.examples, name); err != nil {
-		return definition.Process{}, err
-	}
-	return process, err
+	return s.reader.ParseProcess(doc)
 }
 `,
 		"parses.go": imported("") + `
@@ -323,7 +325,94 @@ func parse(doc document.Document) (settings.Workflow, error) { return settings.P
 		"unqualified.go": imported(".") + `
 func parse(doc document.Document) (Skill, error) { return ParseSkill(doc) }
 `,
-		"reads.go": imported("") + `
+	}
+	for name, source := range files {
+		if err := os.WriteFile(filepath.Join(dir, name), []byte(source), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	want := []string{
+		"parses.go: definition.ParseAgent",
+		"parses.go: definition.ParseProcess",
+		"renamed.go: settings.ParseWorkflow",
+		"unqualified.go: the parser's names, imported unqualified",
+	}
+	if got := parses(t, dir, readerFile); !slices.Equal(got, want) {
+		t.Errorf("parses outside the reader's file = %q, want %q", got, want)
+	}
+}
+
+// throughReader are the files of internal/app that take every settings
+// document from the package's typed reader (LAB-188): they ask no
+// definitions port for one. That they parse none either is every file's
+// rule but the reader's, which parses keeps.
+var throughReader = []string{"resolve.go", "check.go", "definitions.go"}
+
+// portReads are the methods of a definitions port that give a document.
+var portReads = []string{"Read", "ReadListed"}
+
+// bypasses lists, sorted, each use in the files given of a reading method
+// of a definitions port, which the reader calls for them. Syntax tells no
+// type, so a reading method is found by its name, on whatever holds the
+// port.
+func bypasses(t *testing.T, dir string, names []string) []string {
+	t.Helper()
+	var found []string
+	for _, name := range names {
+		file, err := parser.ParseFile(token.NewFileSet(), filepath.Join(dir, name), nil, parser.SkipObjectResolution)
+		if err != nil {
+			t.Fatal(err)
+		}
+		ast.Inspect(file, func(node ast.Node) bool {
+			if selector, ok := node.(*ast.SelectorExpr); ok && slices.Contains(portReads, selector.Sel.Name) {
+				found = append(found, name+": "+types.ExprString(selector))
+			}
+			return true
+		})
+	}
+	slices.Sort(found)
+	return found
+}
+
+func TestTheResolverTheCheckerTheListsAndInspectTakeEveryDocumentFromTheReader(t *testing.T) {
+	t.Parallel()
+	for _, bypass := range bypasses(t, "../app", throughReader) {
+		t.Errorf("internal/app/%s: the file takes its documents from the package's reader, and asks no definitions port for one", bypass)
+	}
+}
+
+func TestAFileThatGoesAroundTheReaderIsFound(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	const header = "package app\n\nimport \"" + module + "/internal/domain/definition\"\n"
+	files := map[string]string{
+		// None of these goes around the reader: the port's list, the port
+		// handed on, the port's own declaration, a document from the
+		// reader, and another package's read of a file. A Parse function
+		// is no finding here: parses finds it, in every file of the
+		// package but the reader's.
+		"through.go": header + `
+type definitions interface {
+	Read(ctx context.Context, kind document.Kind, name string) (document.Document, error)
+	List(ctx context.Context, kind document.Kind) ([]string, error)
+}
+
+func (r *Resolver) resolve(ctx context.Context, name string) (definition.Process, error) {
+	if _, err := r.definitions.List(ctx, document.KindVerify); err != nil {
+		return definition.Process{}, err
+	}
+	frozen := Snapshot(ctx, r.definitions)
+	process, _, err := newDocumentReader(frozen).Process(ctx, name)
+	if _, err := fs.ReadFile(r.examples, name); err != nil {
+		return definition.Process{}, err
+	}
+	if _, err := definition.ParseProcess(document.Document{}); err != nil {
+		return definition.Process{}, err
+	}
+	return process, err
+}
+`,
+		"reads.go": header + `
 func (r *Resolver) read(ctx context.Context, name string) (definition.Process, error) {
 	if _, err := r.definitions.Read(ctx, document.KindProcess, name); err != nil {
 		return definition.Process{}, err
@@ -346,13 +435,9 @@ func (r *Resolver) read(ctx context.Context, name string) (definition.Process, e
 		names = append(names, name)
 	}
 	want := []string{
-		"parses.go: definition.ParseAgent",
-		"parses.go: definition.ParseProcess",
 		"reads.go: held.Read",
 		"reads.go: r.definitions.Read",
 		"reads.go: r.definitions.ReadListed",
-		"renamed.go: settings.ParseWorkflow",
-		"unqualified.go: the parser's names, imported unqualified",
 	}
 	if got := bypasses(t, dir, names); !slices.Equal(got, want) {
 		t.Errorf("ways around the reader = %q, want %q", got, want)

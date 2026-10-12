@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"sort"
 
-	"github.com/igor1309/ai-labs/agister/internal/domain/definition"
 	"github.com/igor1309/ai-labs/agister/internal/domain/document"
 )
 
@@ -117,7 +116,7 @@ func Snapshot(ctx context.Context, src SnapshotSource) SnapshotSource {
 		if read.err != nil {
 			continue
 		}
-		process, err := definition.ParseProcess(read.doc)
+		process, err := parseProcess(read.doc)
 		named(document.KindVerify, process.VerifyName)
 		if err == nil {
 			for _, name := range process.Prompts() {
@@ -139,7 +138,7 @@ func Snapshot(ctx context.Context, src SnapshotSource) SnapshotSource {
 		if read.err != nil {
 			continue
 		}
-		agent, _ := definition.ParseAgent(read.doc)
+		agent, _ := parseAgent(read.doc)
 		for _, name := range agent.Skills {
 			named(document.KindSkill, name)
 		}

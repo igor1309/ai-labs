@@ -59,11 +59,11 @@ func (r documentReader) Service(ctx context.Context) (definition.Service, docume
 }
 
 func (r documentReader) Process(ctx context.Context, name string) (definition.Process, document.Source, error) {
-	return readParsed(ctx, r, document.KindProcess, name, definition.ParseProcess)
+	return readParsed(ctx, r, document.KindProcess, name, parseProcess)
 }
 
 func (r documentReader) Agent(ctx context.Context, name string) (definition.Agent, document.Source, error) {
-	return readParsed(ctx, r, document.KindAgent, name, definition.ParseAgent)
+	return readParsed(ctx, r, document.KindAgent, name, parseAgent)
 }
 
 func (r documentReader) Mapping(ctx context.Context, name string) (definition.Mapping, document.Source, error) {
@@ -134,10 +134,24 @@ func (r documentReader) Extending(ctx context.Context) func(process string) stri
 	}
 }
 
+// parseProcess parses doc, a process document already read: by the reader,
+// or by whoever holds it and reads nothing more to parse it, as the
+// snapshot holds what it froze. What of an invalid document parsed is
+// returned beside the parser's *document.InvalidError.
+func parseProcess(doc document.Document) (definition.Process, error) {
+	return definition.ParseProcess(doc)
+}
+
+// parseAgent parses doc, an agent document already read, as parseProcess
+// parses a process.
+func parseAgent(doc document.Document) (definition.Agent, error) {
+	return definition.ParseAgent(doc)
+}
+
 // parsedAgent parses data as the agent named name: what a write is about
 // to store, which is read from nowhere and so has no source but its name.
 func parsedAgent(name string, data []byte) (definition.Agent, error) {
-	return definition.ParseAgent(document.Document{Source: document.Source{Kind: document.KindAgent, Name: name}, Bytes: data})
+	return parseAgent(document.Document{Source: document.Source{Kind: document.KindAgent, Name: name}, Bytes: data})
 }
 
 // readParsed reads the document of kind named name and parses it.
