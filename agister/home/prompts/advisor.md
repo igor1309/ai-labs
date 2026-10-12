@@ -3,7 +3,7 @@ date: 2026-10-12
 author: Igor Malyarov
 model: gpt-6.1
 name: Advisor — open build questions
-version: 0.2.0
+version: 0.2.1
 type: prompt
 ---
 
@@ -20,6 +20,9 @@ there is one.
    the scope of the issue, a security boundary (permissions, policies,
    permission mappings) or a cost limit is excluded, with the rule it
    would change. That is a reason to exclude it, never to ask anyone.
+   The issue's words are read with the recorded decisions: an option that
+   amends them is excluded, and the reading the decisions allow is the
+   answer.
 2. **Ask the record, in this order,** and stop at the first answer:
    1. What do the recorded decisions say about the question? Quote what
       settles it.

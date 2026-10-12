@@ -1677,7 +1677,8 @@ func TestTestsPromptAsksForTheClassAndTheProductsOwnMeasure(t *testing.T) {
 }
 
 // The advisor always decides (ADR-032, LAB-206): an option that would
-// change the record is excluded, never a reason to ask; the record is
+// change the record or amend the issue's words is excluded, never a reason
+// to ask, and those words are read with the record; the record is
 // asked in order, what the decisions say, what they mean, then the code
 // that carries them out; and only a defect in the record is a conflict,
 // with nothing decided. An instruction is held by its short phrases
@@ -1696,6 +1697,9 @@ func TestTheAdvisorAlwaysDecides(t *testing.T) {
 			"You decide it", "you choose one of the options"}},
 		{"an option that would change the record is excluded, never referred", []string{
 			"is excluded, with the rule it would change", "never to ask anyone"}},
+		{"the issue's words are read with the record, never amended", []string{
+			"The issue's words are read with the recorded decisions", "an option that amends them is excluded",
+			"the reading the decisions allow is the answer"}},
 		{"the record is asked in order", []string{
 			"Ask the record, in this order,", "What do the recorded decisions say about the question?",
 			"If they are silent or leave a gap: what do they mean?", "what do the code and tests that carry the decisions out show"}},
