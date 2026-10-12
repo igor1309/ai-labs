@@ -1,9 +1,9 @@
 ---
-date: 2026-10-05
+date: 2026-10-12
 author: Igor Malyarov
 model: claude-opus-5-5
 name: Go — architecture
-version: 0.0.1
+version: 0.0.2
 type: prompt
 ---
 
@@ -42,16 +42,31 @@ Interfaces belong to the consumer
 Types are owned on each side of a boundary
 
 * A component declares its own domain types and the types its interfaces
-  speak in, even when another component has the same fields. Shared types
-  couple two components through every later change to either.
+  speak in, in its own words: what it needs, not the shape another
+  component or a file gives it. Shared types couple two components through
+  every later change to either, and a copy of another's type, the same
+  fields under a new name, couples them just the same. Two internal types
+  of the same shape are a reason to ask what each component needs.
 * A component imports neither its consumers nor the implementations of
   its collaborators, nor their types.
 * A boundary adapter translates between the caller's types and the
-  callee's. An adapter that imports another component to implement or call
+  callee's. One that copies fields one to one translates nothing; at the
+  persistence edge such a copy is fine. An adapter that imports another component to implement or call
   it does not live in a component's own package: it belongs to a
   composition root.
 * Implementation details stay unexported or under `internal`. The exported
   names are a small, deliberate surface.
+
+Each component has its own reason to change
+
+* Ask of every component a change touches what its own reason to change
+  is. The goal is no component's reason. One that changes for another's
+  reason, such as how a file is kept, has a dependency or interface that
+  carries that reason in: cut it there.
+* The file system and the concrete file formats are the language of the
+  outer edges. Each format is read by one reader and written by one
+  writer, and no other component knows there is a file. A package that
+  parses a format is an edge, whatever its path.
 
 A thin composition root
 
@@ -107,4 +122,5 @@ Done when
   is tested alone by supplying implementations of its own interfaces.
 * Replacing a collaborator or an infrastructure choice changes its adapter
   and the composition root, and nothing in the consumer.
-* An internal change stays inside the module that owns it.
+* An internal change stays inside the module that owns it, and every
+  component a change touches has a reason of its own to change.

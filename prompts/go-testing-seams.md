@@ -1,9 +1,9 @@
 ---
-date: 2026-10-05
+date: 2026-10-12
 author: Igor Malyarov
 model: claude-opus-5-5
 name: Go — testing seams
-version: 0.0.1
+version: 0.0.2
 type: prompt
 ---
 
@@ -111,6 +111,11 @@ Parallel by default
   `t.Parallel()` first. One that must run alone says why in a doc comment
   line starting `Serial:` (process-wide signals, `t.Setenv`, the working
   directory). The same syntax test fails a test with neither.
+* Serial does not isolate a measure of the whole process
+  (`testing.AllocsPerRun`, `runtime.MemStats`, goroutine counts):
+  goroutines an earlier test left and the runtime's own still run. Observe
+  the product's own work through a seam it is given (a buffer, an
+  allocator).
 * No state outlives its test: package variables, environment, working
   directory, a shared home or cache. Shared helpers keep their state per
   test or behind a lock. State in a package variable of the product is the
@@ -123,6 +128,8 @@ What a test proves
 * Each changed behaviour has a test that fails when the behaviour is
   reverted. It asserts the outcome, not the incidental steps, and more
   than "no error" or a length.
+* A test covers the class of cases a behaviour has (a table over it, or
+  an assertion on what holds for all of it), not one example of it.
 * It asserts at the level the change claims: a change to what a record,
   report or log says is proven on that record, not one layer below it.
 * An existing assertion is not weakened, widened or removed without the
