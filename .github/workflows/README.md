@@ -25,6 +25,31 @@ Per-project workflows do not need their own path filters — the dispatcher's `c
 
 Each project's filter in the `changes` job is an **allowlist of build/test inputs** — source, tests, manifests, lockfiles, and build/deploy descriptors (e.g. `Dockerfile`, `compose`, `Caddyfile`, `wrangler.*`). It deliberately **excludes documentation** (`<project>/docs/**`, `README.md`, `TODO.md`, landing/`*.html`, research notes) so a docs-only change skips the expensive core job while the required `report` check still runs. Do **not** use a blanket `<project>/**` glob: it pulls `docs/**` into the trigger set and runs the full core pipeline (tests, and for some projects a Docker build + container smoke) on documentation edits. When adding a project, list its code paths explicitly, as `clipdeck` and `agonara` do.
 
+A document a project's tests read is a test input, not documentation, and its filter lists it. Agister's tests read its ADRs and diagrams (`agister/docs/**`), its skill, its `README.md`, `testdata/` and `scripts/`, the repository's Go prompts (`prompts/go-*.md`, the two its layer lists) and every `AGENTS.md` in the repository, so the `agister` filter lists each.
+
+## What CI runs
+
+Each test, what runs it, and the change that triggers it (LAB-167). `scripts/tests/ci-workflow-paths.test.js` keeps this true: every `scripts/tests/*.test.js` is run, every Go module is tested by the job its changes run, and each kind of file Agister's tests read runs `agister-core`.
+
+| Tests | Run by | Triggered by | Status |
+| --- | --- | --- | --- |
+| Agister's Go tests (`agister/`), gofmt, vet, race | `agister-core`: `agister/scripts/test.sh` | the `agister` filter | runs |
+| Agister Pages tests (`agister/pages/tests/*.test.js`) | `agister-core`: `agister/scripts/test.sh` | the `agister` filter | runs |
+| gokit's Go tests (`gokit/`) | `agister-core`: `agister/scripts/test.sh` calls `gokit/scripts/test.sh` | `gokit/**` | runs |
+| The gate's Go tests (`scripts/agister-gate/`) | `agister-core`, step Gate | `scripts/agister-gate/**` | runs |
+| The example settings pass `agister check` | `agister-core` | the `agister` filter | runs |
+| warder's Go tests (`warder/`), gofmt, vet, race | `warder-core`: `warder/scripts/test.sh` | the `warder` filter | runs |
+| The repository scripts' tests (`scripts/tests/*.test.js`) | `repo-scripts` | every push and pull request | runs |
+| The release scripts' tests (`scripts/release/tests/*.test.js`) | `release-validation` | the `release` filter | not audited |
+| The research scripts' Python tests (`research/agister/adversarial-cycle/scripts/tests/`) | nothing | — | excluded: research, not a product |
+| Every other project's tests | its `<project>-core.yml` | its filter | not audited (LAB-220) |
+
+Notes:
+
+- warder pins gokit at a tag (`v0.1.0`), so a gokit change cannot break warder until gokit is tagged and warder moves to it; a gokit change runs `agister-core` only.
+- `warder/cmd/warder/files_test.go`, `process_test.go` and `serve_test.go` are `//go:build unix`: they run on the `local-mac` runner and are skipped on any other OS.
+- Agister, gokit, the gate and warder run on the self-hosted `local-mac` runner. When it is offline, the job waits queued, the `report` check stays pending, and GitHub fails the job after 24 hours: never a silent pass.
+
 ## Notio Split
 
 Notio has separate backend and frontend release units:
