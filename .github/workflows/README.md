@@ -29,7 +29,7 @@ A document a project's tests read is a test input, not documentation, and its fi
 
 ## What CI runs
 
-Each test, what runs it, and the change that triggers it (LAB-167, LAB-220). `scripts/tests/ci-workflow-paths.test.js` keeps this true: every `scripts/tests/*.test.js` is run, every Go module is tested by the job its changes run, each kind of file Agister's tests read runs `agister-core`, the documents agonara's and noreta's tests read run their jobs, and the projects LAB-220 found unrun are each tested by the job their changes run.
+Each test, what runs it, and the change that triggers it (LAB-167, LAB-220, LAB-219). `scripts/tests/ci-workflow-paths.test.js` keeps this true: every `scripts/tests/*.test.js` is run, every Go module is tested by the job its changes run, each kind of file Agister's tests read runs `agister-core`, the documents agonara's and noreta's tests read run their jobs, and the projects LAB-220 found unrun are each tested by the job their changes run.
 
 | Tests | Run by | Triggered by | Status |
 | --- | --- | --- | --- |
@@ -68,6 +68,12 @@ Notes:
 - warder pins gokit at a tag (`v0.1.0`), so a gokit change cannot break warder until gokit is tagged and warder moves to it; a gokit change runs `agister-core` only.
 - `warder/cmd/warder/files_test.go`, `process_test.go` and `serve_test.go` are `//go:build unix`: they run on the `local-mac` runner and are skipped on any other OS.
 - Agister, gokit, the gate and warder run on the self-hosted `local-mac` runner. When it is offline, the job waits queued, the `report` check stays pending, and GitHub fails the job after 24 hours: never a silent pass.
+
+## Keeping it regular
+
+One thing keeps the table above from going stale (LAB-219):
+
+- **Every test file runs some job.** `scripts/tests/ci-workflow-paths.test.js` lists every tracked test file (Go, Node, Python, Swift, Kotlin, shell) and fails when a change to one would select no job. A new project's tests fail there until a filter and a job cover them, or until `unfilteredTests` in that file names the reason they need none.
 
 ## Notio Split
 

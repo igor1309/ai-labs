@@ -199,6 +199,28 @@ test("ciGoModules_shouldEachBeTestedByTheJobItsChangesRun", () => {
   }
 });
 
+// Test files no path filter covers, each with the reason it needs none.
+const unfilteredTests = {
+  "scripts/tests/": "repo-scripts runs them on every change",
+  "research/": "research, not a product",
+};
+
+test("ciTestFiles_shouldEachRunSomeJob_whenChanged", () => {
+  const tracked = execFileSync("git", ["ls-files"], { cwd: repoRoot, encoding: "utf8" }).trim().split("\n");
+  const tests = tracked.filter(isTestFile);
+  assert.ok(tests.length > 0);
+  assert.deepEqual(testsRunningNoJob(tests), []);
+  for (const prefix of Object.keys(unfilteredTests)) {
+    assert.ok(tests.some((file) => file.startsWith(prefix)), `no test file is under ${prefix}`);
+  }
+});
+
+test("ciTestFiles_shouldBeNamed_whenNoJobRunsThem", () => {
+  const unrun = ["newtool/tests/test-install.sh", "newtool/src/parse.test.ts", "newtool/parse_test.go"];
+  assert.deepEqual(unrun.filter(isTestFile), unrun);
+  assert.deepEqual(testsRunningNoJob([...unrun, "loki/tests/verify-host.test.js"]), unrun);
+});
+
 test("ciReport_shouldBeNamedReport_onlyForPullRequest", () => {
   assert.equal(reportCheckName("pull_request"), "report");
   assert.notEqual(reportCheckName("push"), "report");
@@ -216,6 +238,24 @@ function reportCheckName(eventName) {
   assert.ok(name, "unsupported report job name");
   const [, event, matched, otherwise] = name;
   return eventName === event ? matched : otherwise.replace("{0}", eventName);
+}
+
+function isTestFile(file) {
+  const named = /(_test\.go|\.(test|spec)\.[cm]?[jt]sx?|(^|\/)test_[^/]*\.py|_test\.py|Tests?\.swift|Test\.kt|\.test\.sh|\.bats)$/;
+  const inTestsDirectory = /(^|\/)(tests?|Tests|__tests__)\/.*\.(go|[cm]?[jt]sx?|py|swift|kt|sh)$/;
+  return named.test(file) || inTestsDirectory.test(file);
+}
+
+// The test files whose change selects no job: no filter that some job's
+// condition reads matches them, and no reason in unfilteredTests covers them.
+function testsRunningNoJob(files) {
+  const read = [...pathFilters()].filter(([name]) => workflow.includes(`needs.changes.outputs.${name} == 'true'`));
+  return files.filter((file) => {
+    if (Object.keys(unfilteredTests).some((prefix) => file.startsWith(prefix))) {
+      return false;
+    }
+    return !read.some(([, patterns]) => patterns.some((pattern) => matchesGlob(file, pattern)));
+  });
 }
 
 function filterSection(filterName, nextFilterName) {
