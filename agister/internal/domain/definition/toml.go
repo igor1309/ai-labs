@@ -7,6 +7,8 @@ import (
 	"time"
 
 	"github.com/BurntSushi/toml"
+
+	"github.com/igor1309/ai-labs/agister/internal/domain/document"
 )
 
 // Flat settings documents (agent, service) are TOML.
@@ -32,8 +34,8 @@ type Agent struct {
 	Effort      string `json:"effort,omitempty"`
 	Command     string `json:"command,omitempty"`
 	// Skills are the skill documents its calls are given (ADR-021).
-	Skills []string `json:"skills,omitempty"`
-	Source Source   `json:"-"`
+	Skills []string        `json:"skills,omitempty"`
+	Source document.Source `json:"-"`
 }
 
 // Service holds the hard limits and the permission vocabulary.
@@ -50,7 +52,7 @@ type Service struct {
 	// Permissions that would let an agent reach Agister's own state. They
 	// are never granted, whatever a process allows.
 	StateReaching []string
-	Source        Source
+	Source        document.Source
 }
 
 func decodeTOML(data []byte, subject string, allowed []string, p *problems) map[string]any {
@@ -114,7 +116,7 @@ func tomlStrings(table map[string]any, key string, p *problems) []string {
 }
 
 // ParseAgent parses an agent profile.
-func ParseAgent(doc Document) (Agent, error) {
+func ParseAgent(doc document.Document) (Agent, error) {
 	p := problemsOf(doc.Source)
 	table := decodeTOML(doc.Bytes, doc.Source.Path, []string{"schema", "name", "runtime", "model", "model_family", "effort", "session", "command", "skills"}, p)
 	if table == nil {
@@ -167,7 +169,7 @@ func FormatAgent(agent Agent) []byte {
 }
 
 // ParseService parses the service settings.
-func ParseService(doc Document) (Service, error) {
+func ParseService(doc document.Document) (Service, error) {
 	p := problemsOf(doc.Source)
 	table := decodeTOML(doc.Bytes, doc.Source.Path, []string{"schema", "max_timeout", "max_attempts", "max_verify_attempts", "max_cost_usd", "permissions", "writing", "state_reaching"}, p)
 	if table == nil {
@@ -237,7 +239,7 @@ func checkName(declared, expected string, p *problems) {
 	}
 }
 
-func subjectName(source Source) string {
+func subjectName(source document.Source) string {
 	if source.Path != "" {
 		return source.Name + " (" + source.Path + ")"
 	}

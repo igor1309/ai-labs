@@ -14,7 +14,7 @@ import (
 
 	"github.com/igor1309/ai-labs/agister/internal/app"
 	"github.com/igor1309/ai-labs/agister/internal/contract"
-	"github.com/igor1309/ai-labs/agister/internal/domain/definition"
+	"github.com/igor1309/ai-labs/agister/internal/domain/document"
 	"github.com/igor1309/ai-labs/agister/internal/domain/run"
 )
 
@@ -98,7 +98,7 @@ func completes(h *harness) turnStep { return turnStep{turn: h.runner.turn} }
 func recoveryHarness(t *testing.T, limits string, resumes int) (*harness, *timersSpy) {
 	t.Helper()
 	h, timers := staleHarness(t, fmt.Sprintf("%s, recover: {max_resumes: %d, instruction: Recover.}", limits, resumes))
-	h.defs.docs[definition.KindProcess]["p"] += "session: resumable\n"
+	h.defs.docs[document.KindProcess]["p"] += "session: resumable\n"
 	return h, timers
 }
 
@@ -472,7 +472,7 @@ func TestAStaleTurnIsNotRecoveredWhen(t *testing.T) {
 		t.Run(c.name, func(t *testing.T) {
 			t.Parallel()
 			h, timers := recoveryHarness(t, "no_event: 5m", 1)
-			h.defs.docs[definition.KindProcess]["p"] += c.limit
+			h.defs.docs[document.KindProcess]["p"] += c.limit
 			play(h, c.stale(timers), completes(h))
 			record := h.call(t, contract.CallRequest{})
 
@@ -502,7 +502,7 @@ func TestARecoveryTurnGetsWhatIsLeftOfTheCostLimit(t *testing.T) {
 	t.Run("each turn reports its own cost", func(t *testing.T) {
 		t.Parallel()
 		h, timers := recoveryHarness(t, "no_event: 5m", 1)
-		h.defs.docs[definition.KindProcess]["p"] += "max_cost_usd: 2\n"
+		h.defs.docs[document.KindProcess]["p"] += "max_cost_usd: 2\n"
 		spent, cost := 0.5, 0.25
 		stale, recovered := silent(timers, "prov-1"), completes(h)
 		stale.turn.CostUSD, recovered.turn.CostUSD = &spent, &cost
@@ -520,7 +520,7 @@ func TestARecoveryTurnGetsWhatIsLeftOfTheCostLimit(t *testing.T) {
 	t.Run("each turn reports its session's totals", func(t *testing.T) {
 		t.Parallel()
 		h, timers := recoveryHarness(t, "no_event: 5m, repeated_tool_calls: 3", 2)
-		h.defs.docs[definition.KindProcess]["p"] += "max_cost_usd: 2\n"
+		h.defs.docs[document.KindProcess]["p"] += "max_cost_usd: 2\n"
 		totals := func(usd float64, input int64) *run.SessionTotals {
 			return &run.SessionTotals{CostUSD: &usd, Usage: &run.Usage{InputTokens: &input}}
 		}
@@ -713,7 +713,7 @@ func TestAStaleRepairTurnIsRecoveredAndVerificationGoesOn(t *testing.T) {
 	h, timers := staleHarness(t, "no_event: 5m, recover: {max_resumes: 1, instruction: Recover.}")
 	verifying(h)
 	// Two attempts: the second run is the last the process allows.
-	h.defs.docs[definition.KindProcess]["p"] = strings.Replace(h.defs.docs[definition.KindProcess]["p"], "max_attempts: 3", "max_attempts: 2", 1)
+	h.defs.docs[document.KindProcess]["p"] = strings.Replace(h.defs.docs[document.KindProcess]["p"], "max_attempts: 3", "max_attempts: 2", 1)
 	h.commands.exits = []int{1}
 	fresh(h)
 	play(h, completes(h), silent(timers, "prov-1"), completes(h))

@@ -16,20 +16,21 @@ import (
 	"github.com/igor1309/ai-labs/agister/internal/app"
 	"github.com/igor1309/ai-labs/agister/internal/contract"
 	"github.com/igor1309/ai-labs/agister/internal/domain/definition"
+	"github.com/igor1309/ai-labs/agister/internal/domain/document"
 	"github.com/igor1309/ai-labs/agister/internal/domain/run"
 )
 
 const schema = `{"type":"object"}`
 
-func settingsDocs() map[definition.Kind]map[string]string {
-	return map[definition.Kind]map[string]string{
-		definition.KindService: {"service": `schema = "agister.service/v1alpha1"
+func settingsDocs() map[document.Kind]map[string]string {
+	return map[document.Kind]map[string]string{
+		document.KindService: {"service": `schema = "agister.service/v1alpha1"
 max_timeout = "1h"
 permissions = ["repository.read", "repository.search", "repository.diff", "process.execute", "host.read"]
 writing = []
 state_reaching = ["host.read"]
 `},
-		definition.KindRuntime: {"rt": `schema: agister.runtime/v1alpha1
+		document.KindRuntime: {"rt": `schema: agister.runtime/v1alpha1
 name: rt
 adapter: spy
 contract: spy/1
@@ -41,7 +42,7 @@ primitives:
     Grep: {grants: [repository.search], verified: ["1."]}
     Bash: {grants: [process.execute, repository.read, repository.search, repository.diff, host.read], verified: ["1."]}
 `},
-		definition.KindAgent: {"a": `schema = "agister.agent/v1alpha1"
+		document.KindAgent: {"a": `schema = "agister.agent/v1alpha1"
 name = "a"
 runtime = "rt"
 model = "m1"
@@ -49,7 +50,7 @@ model_family = "fam"
 effort = "high"
 command = "/bin/spy"
 `},
-		definition.KindProcess: {"p": `schema: agister.process/v1alpha1
+		document.KindProcess: {"p": `schema: agister.process/v1alpha1
 name: p
 type: process
 prompt: inspect
@@ -70,9 +71,9 @@ output:
 timeout: 20m
 tools: {allow: [repository.read, repository.search, repository.diff]}
 `},
-		definition.KindWorkflow: {"p_a": pOnA},
-		definition.KindSchema:   {"s": schema},
-		definition.KindPrompt:   {"inspect": inspectPrompt},
+		document.KindWorkflow: {"p_a": pOnA},
+		document.KindSchema:   {"s": schema},
+		document.KindPrompt:   {"inspect": inspectPrompt},
 	}
 }
 
@@ -107,10 +108,10 @@ func callShown(shower workflowShower, workflow string) (contract.ProcessView, er
 // bind gives the harness workflow name, one call: node work binds process
 // to agent, as nothing else runs a process (ADR-030 rules 5 and 6).
 func (h *harness) bind(name, process, agent string) {
-	if h.defs.docs[definition.KindWorkflow] == nil {
-		h.defs.docs[definition.KindWorkflow] = map[string]string{}
+	if h.defs.docs[document.KindWorkflow] == nil {
+		h.defs.docs[document.KindWorkflow] = map[string]string{}
 	}
-	h.defs.docs[definition.KindWorkflow][name] = "schema: agister.workflow/v1alpha1\nname: " + name + "\ntype: workflow\ncall: {node: work, uses: process:" + process + ", agent: " + agent + "}\n"
+	h.defs.docs[document.KindWorkflow][name] = "schema: agister.workflow/v1alpha1\nname: " + name + "\ntype: workflow\ncall: {node: work, uses: process:" + process + ", agent: " + agent + "}\n"
 }
 
 // inspectPrompt is the harness's process p's prompt (ADR-028 rule 8).
@@ -394,7 +395,7 @@ func TestResultCarriesUsageCostTimingAndSession(t *testing.T) {
 func TestCostLimitReachesTheRuntimeOrRefuses(t *testing.T) {
 	t.Parallel()
 	h := newHarness()
-	h.defs.docs[definition.KindProcess]["p"] += "max_cost_usd: 2\n"
+	h.defs.docs[document.KindProcess]["p"] += "max_cost_usd: 2\n"
 	limit := 0.5
 	record := h.call(t, contract.CallRequest{MaxCostUSD: &limit})
 	if got := h.runner.calls()[0].MaxCostUSD; got == nil || *got != 0.5 || *record.Effective.MaxCostUSD != 0.5 {
@@ -402,7 +403,7 @@ func TestCostLimitReachesTheRuntimeOrRefuses(t *testing.T) {
 	}
 
 	h = newHarness()
-	h.defs.docs[definition.KindProcess]["p"] += "max_cost_usd: 2\n"
+	h.defs.docs[document.KindProcess]["p"] += "max_cost_usd: 2\n"
 	h.runner.identity.CostLimit = false
 	if record := h.call(t, contract.CallRequest{}); class(record) != run.ClassRefused || !strings.Contains(message(record), "cannot enforce the cost limit 2") {
 		t.Fatalf("result = %+v", record.Result)
@@ -422,7 +423,7 @@ func shippedPrompts(t *testing.T, h *harness) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		h.defs.docs[definition.KindPrompt][strings.TrimSuffix(strings.TrimPrefix(file, "prompts/"), ".md")] = string(data)
+		h.defs.docs[document.KindPrompt][strings.TrimSuffix(strings.TrimPrefix(file, "prompts/"), ".md")] = string(data)
 	}
 }
 
@@ -447,22 +448,22 @@ func TestShippedProcessesRunOnARuntimeWithoutACostLimit(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			h.defs.docs[definition.KindProcess][c.process] = string(data)
+			h.defs.docs[document.KindProcess][c.process] = string(data)
 			service, err := fs.ReadFile(examples.Settings(), "service.toml")
 			if err != nil {
 				t.Fatal(err)
 			}
-			h.defs.docs[definition.KindService]["service"] = string(service)
+			h.defs.docs[document.KindService]["service"] = string(service)
 			shippedPrompts(t, h)
-			h.defs.docs[definition.KindAgent][c.agent] = strings.Replace(h.defs.docs[definition.KindAgent]["a"], `name = "a"`, `name = "`+c.agent+`"`, 1)
+			h.defs.docs[document.KindAgent][c.agent] = strings.Replace(h.defs.docs[document.KindAgent]["a"], `name = "a"`, `name = "`+c.agent+`"`, 1)
 			h.bind("shipped", c.process, c.agent)
-			h.defs.docs[definition.KindSchema]["review-result"] = schema
+			h.defs.docs[document.KindSchema]["review-result"] = schema
 			// The verification the shipped implement names.
 			repo, err := fs.ReadFile(examples.Settings(), "verifies/repo.yaml")
 			if err != nil {
 				t.Fatal(err)
 			}
-			h.defs.docs[definition.KindVerify] = map[string]string{"repo": string(repo)}
+			h.defs.docs[document.KindVerify] = map[string]string{"repo": string(repo)}
 			h.runner.identity.CostLimit = false
 			h.runner.turn.Output = json.RawMessage(c.output)
 			record := h.call(t, contract.CallRequest{Process: "shipped", Params: c.params})
@@ -531,14 +532,14 @@ func askOnCodex(t *testing.T, configure func(service string) string) (*harness, 
 	if err != nil {
 		t.Fatal(err)
 	}
-	h.defs.docs[definition.KindProcess]["ask"] = string(ask)
+	h.defs.docs[document.KindProcess]["ask"] = string(ask)
 	service, err := fs.ReadFile(examples.Settings(), "service.toml")
 	if err != nil {
 		t.Fatal(err)
 	}
-	h.defs.docs[definition.KindService]["service"] = configure(string(service))
+	h.defs.docs[document.KindService]["service"] = configure(string(service))
 	shippedPrompts(t, h)
-	h.defs.docs[definition.KindRuntime]["codex"] = `schema: agister.runtime/v1alpha1
+	h.defs.docs[document.KindRuntime]["codex"] = `schema: agister.runtime/v1alpha1
 name: codex
 adapter: spy
 contract: codex/2
@@ -554,7 +555,7 @@ primitives:
                repository.write, host.write]
       verified: ["0.159."]
 `
-	h.defs.docs[definition.KindAgent]["codex-agent"] = `schema = "agister.agent/v1alpha1"
+	h.defs.docs[document.KindAgent]["codex-agent"] = `schema = "agister.agent/v1alpha1"
 name = "codex-agent"
 runtime = "codex"
 model = "m1"
@@ -630,10 +631,10 @@ func reviewOnCodex(t *testing.T, configure func(service string) string) (*harnes
 		}
 		return string(data)
 	}
-	h.defs.docs[definition.KindProcess]["adversarial_review_sandboxed"] = read(codex, "processes/adversarial_review_sandboxed.yaml")
-	h.defs.docs[definition.KindAgent]["codex-reviewer"] = read(codex, "agents/codex-reviewer.toml")
-	h.defs.docs[definition.KindSchema]["review-result"] = schema
-	h.defs.docs[definition.KindService]["service"] = configure(read(examples.Settings(), "service.toml"))
+	h.defs.docs[document.KindProcess]["adversarial_review_sandboxed"] = read(codex, "processes/adversarial_review_sandboxed.yaml")
+	h.defs.docs[document.KindAgent]["codex-reviewer"] = read(codex, "agents/codex-reviewer.toml")
+	h.defs.docs[document.KindSchema]["review-result"] = schema
+	h.defs.docs[document.KindService]["service"] = configure(read(examples.Settings(), "service.toml"))
 	// The example names the shipped prompt it reviews to.
 	shippedPrompts(t, h)
 
@@ -647,10 +648,10 @@ func reviewOnCodex(t *testing.T, configure func(service string) string) (*harnes
 		}
 		runtime = strings.Replace(runtime, edit[0], edit[1], 1)
 	}
-	h.defs.docs[definition.KindRuntime]["codex"] = runtime + "      verified: [\"0.159.\"]\n"
+	h.defs.docs[document.KindRuntime]["codex"] = runtime + "      verified: [\"0.159.\"]\n"
 
 	h.runner.identity = app.RuntimeIdentity{Contract: "codex/2", Version: "0.159.2", Resume: true}
-	h.defs.docs[definition.KindWorkflow]["adversarial_review_sandboxed_codex"] = read(codex, "workflows/adversarial_review_sandboxed_codex.yaml")
+	h.defs.docs[document.KindWorkflow]["adversarial_review_sandboxed_codex"] = read(codex, "workflows/adversarial_review_sandboxed_codex.yaml")
 	return h, h.call(t, contract.CallRequest{Process: "adversarial_review_sandboxed_codex"})
 }
 
@@ -666,7 +667,7 @@ func leftInTheWorktree(record run.Record) run.Record {
 func TestContinuationResumesAFinishedRunsSession(t *testing.T) {
 	t.Parallel()
 	resumable := func(h *harness) {
-		h.defs.docs[definition.KindProcess]["p"] += "session: resumable\n"
+		h.defs.docs[document.KindProcess]["p"] += "session: resumable\n"
 	}
 	finished := time.Date(2026, 9, 28, 11, 0, 0, 0, time.UTC)
 	earlier := leftInTheWorktree(run.Record{ID: "run-0", Agent: "a", Call: onA(), Runtime: &run.Runtime{Adapter: "spy"}, FinishedAt: &finished,
@@ -738,10 +739,10 @@ func TestContinuationWhereTheSessionDidNotRunIsRefused(t *testing.T) {
 		Result: &run.Result{Status: run.Completed, Session: &run.Session{ProviderSessionID: "prov-0"}}}
 	arrange := func(workspace string, checkout bool) *harness {
 		h := newHarness()
-		h.defs.docs[definition.KindProcess]["p"] += "session: resumable\n"
+		h.defs.docs[document.KindProcess]["p"] += "session: resumable\n"
 		h.runner.identity.ResumeWhereItRan = true
 		if !checkout {
-			h.defs.docs[definition.KindProcess]["p"] = strings.Replace(h.defs.docs[definition.KindProcess]["p"], "workspace:\n  revision: candidate_revision\n", "", 1)
+			h.defs.docs[document.KindProcess]["p"] = strings.Replace(h.defs.docs[document.KindProcess]["p"], "workspace:\n  revision: candidate_revision\n", "", 1)
 		}
 		prior := earlier
 		prior.Workspace = workspace
@@ -849,7 +850,7 @@ func TestAContinuationCostsWhatItAddedToItsSession(t *testing.T) {
 		t.Run(c.name, func(t *testing.T) {
 			t.Parallel()
 			h := newHarness()
-			h.defs.docs[definition.KindProcess]["p"] += "session: resumable\n"
+			h.defs.docs[document.KindProcess]["p"] += "session: resumable\n"
 			for _, record := range c.records {
 				h.runs.records[record.ID], h.runs.states[record.ID] = record, run.StateFinished
 			}
@@ -878,7 +879,7 @@ func TestAContinuationCostsWhatItAddedToItsSession(t *testing.T) {
 // carries no patch into it (ADR-025 rule 7).
 func resuming() (*harness, *[]string) {
 	h := newHarness()
-	h.defs.docs[definition.KindProcess]["p"] += "session: resumable\n"
+	h.defs.docs[document.KindProcess]["p"] += "session: resumable\n"
 	order := new([]string)
 	h.runner.during = func(app.TurnRequest) { *order = append(*order, "turn") }
 	return h, order
@@ -900,7 +901,7 @@ func patchedRun(h *harness, id, continues string, created, finished int, patch s
 		Result: &run.Result{Status: run.Failed, Error: run.Fault(run.ClassRateLimited, "429"),
 			Session: &run.Session{ProviderSessionID: "prov-0", Continues: continues}},
 	}
-	record.Definitions = []run.DefinitionSource{{Kind: string(definition.KindProcess), Name: "p", SHA256: sha(h.defs.docs[definition.KindProcess]["p"])}}
+	record.Definitions = []run.DefinitionSource{{Kind: string(document.KindProcess), Name: "p", SHA256: sha(h.defs.docs[document.KindProcess]["p"])}}
 	if patch != "" {
 		record.Result.Artifacts = []run.Artifact{h.runs.store(id, "changes.patch", []byte(patch))}
 	}
@@ -959,7 +960,7 @@ func TestWorkspaceChangesBecomeArtifacts(t *testing.T) {
 
 	// A workspace the call does not own is the caller's; its changes are not taken.
 	h = newHarness()
-	h.defs.docs[definition.KindProcess]["p"] = strings.Replace(h.defs.docs[definition.KindProcess]["p"], "workspace:\n  revision: candidate_revision\n", "", 1)
+	h.defs.docs[document.KindProcess]["p"] = strings.Replace(h.defs.docs[document.KindProcess]["p"], "workspace:\n  revision: candidate_revision\n", "", 1)
 	h.changes.changes = []byte("x")
 	if record := h.call(t, contract.CallRequest{}); record.Result.Status != run.Completed || len(h.changes.changed) != 0 {
 		t.Fatalf("result %+v, changes asked %v", record.Result, h.changes.changed)
@@ -1074,8 +1075,8 @@ func TestRefusalsComeBeforeEffects(t *testing.T) {
 		request contract.CallRequest
 		reason  string
 	}{
-		{"missing definition", func(h *harness) { delete(h.defs.docs[definition.KindSchema], "s") }, contract.CallRequest{}, `schema "s": not found`},
-		{"invalid definition", func(h *harness) { h.defs.docs[definition.KindProcess]["p"] += "surprise: 1\n" }, contract.CallRequest{}, "surprise: unknown field"},
+		{"missing definition", func(h *harness) { delete(h.defs.docs[document.KindSchema], "s") }, contract.CallRequest{}, `schema "s": not found`},
+		{"invalid definition", func(h *harness) { h.defs.docs[document.KindProcess]["p"] += "surprise: 1\n" }, contract.CallRequest{}, "surprise: unknown field"},
 		{"schema does not compile", func(h *harness) { h.validator.compileErr = errors.New("bad schema") }, contract.CallRequest{}, `schema "s": bad schema`},
 		{"runtime unavailable", func(h *harness) { h.runner.identityErr = errors.New("no binary") }, contract.CallRequest{}, "runtime rt is unavailable: no binary"},
 		{"runner cannot be built", func(h *harness) { h.runtimes.runnerErr = errors.New("no such command") }, contract.CallRequest{}, "runtime mapping rt: no such command"},
@@ -1088,7 +1089,7 @@ func TestRefusalsComeBeforeEffects(t *testing.T) {
 		}, contract.CallRequest{}, "input candidate_revision: not a commit"},
 		{"workspace overlaps state", func(h *harness) { h.workspaces.root = "/state/repo" }, contract.CallRequest{}, "workspace /state/repo overlaps Agister's state /state"},
 		{"input uses a value with no text", func(h *harness) {
-			h.defs.docs[definition.KindProcess]["p"] = strings.Replace(h.defs.docs[definition.KindProcess]["p"], `head: "${param.candidate}"`, `head: "${value.candidate_revision}"`, 1)
+			h.defs.docs[document.KindProcess]["p"] = strings.Replace(h.defs.docs[document.KindProcess]["p"], `head: "${param.candidate}"`, `head: "${value.candidate_revision}"`, 1)
 			h.inputs.respond = func(app.InputSpec) (app.Resolved, error) {
 				return app.Resolved{Value: []string{"a.go"}, Identity: "sha-x", Revision: true}, nil
 			}
@@ -1118,7 +1119,7 @@ func TestRefusalsComeBeforeEffects(t *testing.T) {
 func TestStateReachingPrimitivesAreNeverGranted(t *testing.T) {
 	t.Parallel()
 	h := newHarness()
-	h.defs.docs[definition.KindProcess]["p"] = strings.Replace(h.defs.docs[definition.KindProcess]["p"], "repository.diff]", "repository.diff, process.execute, host.read]", 1)
+	h.defs.docs[document.KindProcess]["p"] = strings.Replace(h.defs.docs[document.KindProcess]["p"], "repository.diff]", "repository.diff, process.execute, host.read]", 1)
 	h.call(t, contract.CallRequest{})
 	if primitives := h.runner.calls()[0].Primitives; contains(primitives, "Bash") {
 		t.Fatalf("Bash reaches host.read but was granted: %v", primitives)
@@ -1130,8 +1131,8 @@ func TestStateReachingPrimitivesAreNeverGranted(t *testing.T) {
 func TestUnverifiedPrimitivesAreNeverGranted(t *testing.T) {
 	t.Parallel()
 	h := newHarness()
-	mapping := h.defs.docs[definition.KindRuntime]["rt"]
-	h.defs.docs[definition.KindRuntime]["rt"] = strings.Replace(mapping, "  items:\n", `  items:
+	mapping := h.defs.docs[document.KindRuntime]["rt"]
+	h.defs.docs[document.KindRuntime]["rt"] = strings.Replace(mapping, "  items:\n", `  items:
     Glob: {grants: [repository.read]}
     Diff: {grants: [repository.diff], verified: ["2."]}
 `, 1)
@@ -1142,8 +1143,8 @@ func TestUnverifiedPrimitivesAreNeverGranted(t *testing.T) {
 
 	// Requiring what only an unverified primitive provides refuses, and says why.
 	h = newHarness()
-	h.defs.docs[definition.KindRuntime]["rt"] = strings.Replace(mapping, "  items:\n", "  items:\n    Diff: {grants: [repository.diff], verified: [\"2.\"]}\n", 1)
-	h.defs.docs[definition.KindProcess]["p"] = strings.Replace(h.defs.docs[definition.KindProcess]["p"], "repository.diff]}", "repository.diff], require: [repository.diff]}", 1)
+	h.defs.docs[document.KindRuntime]["rt"] = strings.Replace(mapping, "  items:\n", "  items:\n    Diff: {grants: [repository.diff], verified: [\"2.\"]}\n", 1)
+	h.defs.docs[document.KindProcess]["p"] = strings.Replace(h.defs.docs[document.KindProcess]["p"], "repository.diff]}", "repository.diff], require: [repository.diff]}", 1)
 	record := h.call(t, contract.CallRequest{})
 	if class(record) != run.ClassRefused || !strings.Contains(message(record), "required permissions would be withheld: repository.diff (not verified for version 1.2.3: Diff)") {
 		t.Fatalf("result %+v", record.Result.Error)
@@ -1159,11 +1160,11 @@ func TestUnverifiedPrimitivesAreNeverGranted(t *testing.T) {
 func TestACallThatCannotReadASkillIsRefused(t *testing.T) {
 	t.Parallel()
 	widen := func(h *harness) {
-		h.defs.docs[definition.KindProcess]["p"] = strings.Replace(h.defs.docs[definition.KindProcess]["p"], "repository.diff]", "repository.diff, process.execute, host.read]", 1)
+		h.defs.docs[document.KindProcess]["p"] = strings.Replace(h.defs.docs[document.KindProcess]["p"], "repository.diff]", "repository.diff, process.execute, host.read]", 1)
 	}
 	unverified := func(h *harness) {
-		mapping := h.defs.docs[definition.KindRuntime]["rt"]
-		h.defs.docs[definition.KindRuntime]["rt"] = strings.Replace(mapping, "  items:\n", "  items:\n    Cat: {grants: [repository.read], verified: [\"2.\"]}\n", 1)
+		mapping := h.defs.docs[document.KindRuntime]["rt"]
+		h.defs.docs[document.KindRuntime]["rt"] = strings.Replace(mapping, "  items:\n", "  items:\n    Cat: {grants: [repository.read], verified: [\"2.\"]}\n", 1)
 	}
 	cases := []struct {
 		name    string
@@ -1449,8 +1450,8 @@ func TestCallResolvesFromTheSettingsReadBeforeItsRunWasRecorded(t *testing.T) {
 		t.Fatalf("settings were not read before the run was recorded (%d reads)", readsAtCreate)
 	}
 	readsAtSubmit := h.defs.readCount()
-	h.defs.set(definition.KindAgent, "a", strings.Replace(settingsDocs()[definition.KindAgent]["a"], "m1", "m2", 1))
-	h.defs.set(definition.KindProcess, "p", "not a process")
+	h.defs.set(document.KindAgent, "a", strings.Replace(settingsDocs()[document.KindAgent]["a"], "m1", "m2", 1))
+	h.defs.set(document.KindProcess, "p", "not a process")
 	close(h.recorder.hold)
 	record := h.recorder.wait(t)
 	if class(record) != "" {
@@ -1459,9 +1460,9 @@ func TestCallResolvesFromTheSettingsReadBeforeItsRunWasRecorded(t *testing.T) {
 	if got := h.defs.readCount(); got != readsAtSubmit {
 		t.Fatalf("the call read the live settings %d more times", got-readsAtSubmit)
 	}
-	want := sha(settingsDocs()[definition.KindAgent]["a"])
+	want := sha(settingsDocs()[document.KindAgent]["a"])
 	for _, source := range record.Definitions {
-		if source.Kind == string(definition.KindAgent) && digestRecorded(source) != want {
+		if source.Kind == string(document.KindAgent) && digestRecorded(source) != want {
 			t.Errorf("agent recorded %s, want %s", digestRecorded(source), want)
 		}
 	}
@@ -1473,7 +1474,7 @@ func TestCallResolvesFromTheSettingsReadBeforeItsRunWasRecorded(t *testing.T) {
 func TestInputsUseTheValuesResolvedBeforeThem(t *testing.T) {
 	t.Parallel()
 	h := newHarness()
-	h.defs.docs[definition.KindProcess]["p"] = strings.Replace(h.defs.docs[definition.KindProcess]["p"],
+	h.defs.docs[document.KindProcess]["p"] = strings.Replace(h.defs.docs[document.KindProcess]["p"],
 		`    diff: {source: git.diff, base: "${param.base}", head: "${param.candidate}"}`,
 		`    base_revision: {source: git.revision, rev: "${param.base}"}
     diff: {source: git.diff, base: "${value.base_revision}", head: "${value.candidate_revision}"}`, 1)
@@ -1500,7 +1501,7 @@ func TestInputsUseTheValuesResolvedBeforeThem(t *testing.T) {
 func TestCallRecordsWhatItResolvedUnderTheRecordsOwnTypes(t *testing.T) {
 	t.Parallel()
 	h := newHarness()
-	h.defs.docs[definition.KindProcess]["p"] = strings.Replace(h.defs.docs[definition.KindProcess]["p"], "repository.diff]}", "repository.diff], require: [repository.read]}", 1)
+	h.defs.docs[document.KindProcess]["p"] = strings.Replace(h.defs.docs[document.KindProcess]["p"], "repository.diff]}", "repository.diff], require: [repository.read]}", 1)
 	record := h.call(t, contract.CallRequest{})
 	encode := func(v any) string {
 		data, err := json.Marshal(v)
@@ -1509,7 +1510,7 @@ func TestCallRecordsWhatItResolvedUnderTheRecordsOwnTypes(t *testing.T) {
 		}
 		return string(data)
 	}
-	wantService := `{"kind":"service","name":"service","layers":[{"layer":"home","path":"mem/service/service","sha256":"` + sha(settingsDocs()[definition.KindService]["service"]) + `"}]}`
+	wantService := `{"kind":"service","name":"service","layers":[{"layer":"home","path":"mem/service/service","sha256":"` + sha(settingsDocs()[document.KindService]["service"]) + `"}]}`
 	// The workflow that binds the call comes first, then the call's own.
 	if len(record.Definitions) != 7 || record.Definitions[0].Kind != "workflows" || record.Definitions[0].Name != "p_a" || encode(record.Definitions[1]) != wantService {
 		t.Errorf("definitions = %s", encode(record.Definitions))

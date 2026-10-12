@@ -4,6 +4,8 @@ import (
 	"strings"
 
 	"gopkg.in/yaml.v3"
+
+	"github.com/igor1309/ai-labs/agister/internal/domain/document"
 )
 
 // Skill is a skill the settings give an agent, a document of its own that
@@ -14,13 +16,13 @@ type Skill struct {
 	// Bytes are the whole SKILL.md, unchanged, front matter included: what
 	// the call is given.
 	Bytes  []byte
-	Source Source
+	Source document.Source
 }
 
 // ParseSkill reads a skill: its SKILL.md, whose front matter's name is the
 // document's and whose description is not empty. What else the front
 // matter holds is the runtime's to read.
-func ParseSkill(doc Document) (Skill, error) {
+func ParseSkill(doc document.Document) (Skill, error) {
 	p := &problems{}
 	skill := Skill{Name: doc.Source.Name, Source: doc.Source}
 	subject := "skill " + subjectName(doc.Source)

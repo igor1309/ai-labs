@@ -22,9 +22,10 @@ import (
 	"syscall"
 
 	"github.com/igor1309/ai-labs/agister/internal/domain/definition"
+	"github.com/igor1309/ai-labs/agister/internal/domain/document"
 )
 
-var errNotFound = definition.ErrNotFound
+var errNotFound = document.ErrNotFound
 
 type Store struct {
 	Dir      string
@@ -81,22 +82,22 @@ func (s Store) lock() (func(), error) {
 
 // extensions is the file extension of each kind the store holds. Each call
 // returns a new map.
-func extensions() map[definition.Kind]string {
-	return map[definition.Kind]string{
-		definition.KindService:  ".toml",
-		definition.KindAgent:    ".toml",
-		definition.KindProcess:  ".yaml",
-		definition.KindRuntime:  ".yaml",
-		definition.KindSchema:   ".json",
-		definition.KindWorkflow: ".yaml",
-		definition.KindVerify:   ".yaml",
-		definition.KindPrompt:   ".md",
-		definition.KindBrief:    ".yaml",
+func extensions() map[document.Kind]string {
+	return map[document.Kind]string{
+		document.KindService:  ".toml",
+		document.KindAgent:    ".toml",
+		document.KindProcess:  ".yaml",
+		document.KindRuntime:  ".yaml",
+		document.KindSchema:   ".json",
+		document.KindWorkflow: ".yaml",
+		document.KindVerify:   ".yaml",
+		document.KindPrompt:   ".md",
+		document.KindBrief:    ".yaml",
 		// A folder each, holding the one file skillFile (ADR-021 rule 1).
-		definition.KindSkill: ".md",
+		document.KindSkill: ".md",
 		// Singletons, like the service.
-		definition.KindWorkspace: ".yaml",
-		definition.KindBlocks:    ".yaml",
+		document.KindWorkspace: ".yaml",
+		document.KindBlocks:    ".yaml",
 	}
 }
 
@@ -104,7 +105,7 @@ func extensions() map[definition.Kind]string {
 // (ADR-021 rule 1).
 const skillFile = "SKILL.md"
 
-func (s Store) path(kind definition.Kind, name string) (string, error) {
+func (s Store) path(kind document.Kind, name string) (string, error) {
 	extension, ok := extensions()[kind]
 	if !ok {
 		return "", fmt.Errorf("unknown definition kind %q", kind)
@@ -115,7 +116,7 @@ func (s Store) path(kind definition.Kind, name string) (string, error) {
 	if !definition.ValidName(name) {
 		return "", fmt.Errorf("invalid name %q", name)
 	}
-	if kind == definition.KindSkill {
+	if kind == document.KindSkill {
 		return filepath.Join(s.Dir, string(kind), name, skillFile), nil
 	}
 	return filepath.Join(s.Dir, string(kind), name+extension), nil
@@ -186,7 +187,7 @@ func skillFolderLinked(folder string) error {
 		case err != nil:
 			return err
 		case info.Mode()&fs.ModeSymlink != 0 && path == skills:
-			return fmt.Errorf("%s is a symbolic link: a skill is a folder in the settings' own %s/", skills, definition.KindSkill)
+			return fmt.Errorf("%s is a symbolic link: a skill is a folder in the settings' own %s/", skills, document.KindSkill)
 		case info.Mode()&fs.ModeSymlink != 0:
 			return skillLinked(folder)
 		}
@@ -239,43 +240,43 @@ func skillBeside(path string, others []string) error {
 
 // Read reads the document as home's settings alone: a store by itself is
 // one layer, home.
-func (s Store) Read(ctx context.Context, kind definition.Kind, name string) (definition.Document, error) {
+func (s Store) Read(ctx context.Context, kind document.Kind, name string) (document.Document, error) {
 	return Layered{Home: s}.Read(ctx, kind, name)
 }
 
 // ReadListed reads the document as Read does: home lists no folders.
-func (s Store) ReadListed(ctx context.Context, kind definition.Kind, name string) (definition.Document, error) {
+func (s Store) ReadListed(ctx context.Context, kind document.Kind, name string) (document.Document, error) {
 	return Layered{Home: s}.ReadListed(ctx, kind, name)
 }
 
 // Layers is the one layer a store by itself is, home.
-func (s Store) Layers(ctx context.Context) []definition.LayerDir {
+func (s Store) Layers(ctx context.Context) []document.LayerDir {
 	return Layered{Home: s}.Layers(ctx)
 }
 
 // File reads the store's own file of the document, as written: a process
 // without the base it extends (ADR-030 rule 9), and one of a retired kind
 // where the store kept it, which a restore reads.
-func (s Store) File(_ context.Context, kind definition.Kind, name string) ([]byte, error) {
+func (s Store) File(_ context.Context, kind document.Kind, name string) ([]byte, error) {
 	doc, err := s.readBackedUp(kind, name)
 	return doc.Bytes, err
 }
 
 // read reads the store's own file of the document.
-func (s Store) read(kind definition.Kind, name string) (definition.Document, error) {
+func (s Store) read(kind document.Kind, name string) (document.Document, error) {
 	path, err := s.path(kind, name)
 	if err != nil {
-		return definition.Document{}, err
+		return document.Document{}, err
 	}
 	return s.readAt(kind, name, path)
 }
 
 // readAt reads the document from path, the store's own file of it.
-func (s Store) readAt(kind definition.Kind, name, path string) (definition.Document, error) {
+func (s Store) readAt(kind document.Kind, name, path string) (document.Document, error) {
 	var err error
-	doc := definition.Document{Source: definition.Source{Kind: kind, Name: name, Path: path}}
+	doc := document.Document{Source: document.Source{Kind: kind, Name: name, Path: path}}
 	var data []byte
-	if kind == definition.KindSkill {
+	if kind == document.KindSkill {
 		// A skill that is there and broken is not absent: reading it fails
 		// with what is wrong.
 		if data, err = s.readSkill(path); err != nil {
@@ -296,7 +297,7 @@ func (s Store) readAt(kind definition.Kind, name, path string) (definition.Docum
 		// layer's would be given in place of the layer's (D-11 of
 		// ADR-019). Nor a brief's form: home's would check the text in
 		// place of the project's (ADR-015).
-		if kind == definition.KindPrompt || kind == definition.KindBrief {
+		if kind == document.KindPrompt || kind == document.KindBrief {
 			if err := resolvable(filepath.Dir(path)); err != nil {
 				return doc, err
 			}
@@ -306,8 +307,8 @@ func (s Store) readAt(kind definition.Kind, name, path string) (definition.Docum
 	if err != nil {
 		return doc, err
 	}
-	return definition.Document{
-		Source: definition.Source{Kind: kind, Name: name, Path: path, SHA256: digest(data)},
+	return document.Document{
+		Source: document.Source{Kind: kind, Name: name, Path: path, SHA256: digest(data)},
 		Bytes:  data,
 	}, nil
 }
@@ -324,8 +325,8 @@ func (s Store) readAt(kind definition.Kind, name, path string) (definition.Docum
 //
 // A skill is a folder of skills/, whatever it holds: a broken one is
 // listed, so reading it fails as that skill's problem (ADR-021 rule 1).
-func (s Store) List(_ context.Context, kind definition.Kind) ([]string, error) {
-	if kind == definition.KindBlocks {
+func (s Store) List(_ context.Context, kind document.Kind) ([]string, error) {
+	if kind == document.KindBlocks {
 		path, _ := s.path(kind, string(kind))
 		if _, err := os.Lstat(path); errors.Is(err, fs.ErrNotExist) {
 			return nil, nil
@@ -334,7 +335,7 @@ func (s Store) List(_ context.Context, kind definition.Kind) ([]string, error) {
 		}
 		return []string{string(kind)}, nil
 	}
-	if kind == definition.KindWorkspace {
+	if kind == document.KindWorkspace {
 		path, _ := s.path(kind, string(kind))
 		if _, err := os.Lstat(path); errors.Is(err, fs.ErrNotExist) {
 			return nil, nil
@@ -353,7 +354,7 @@ func (s Store) List(_ context.Context, kind definition.Kind) ([]string, error) {
 		// A prompts folder that is a dangling symlink cannot be listed:
 		// read as none, it would make every optional prompt absent. Nor a
 		// briefs folder: home's forms would stand in for the project's.
-		if kind == definition.KindPrompt || kind == definition.KindBrief {
+		if kind == document.KindPrompt || kind == document.KindBrief {
 			if err := resolvable(folder); err != nil {
 				return nil, err
 			}
@@ -365,7 +366,7 @@ func (s Store) List(_ context.Context, kind definition.Kind) ([]string, error) {
 	}
 	var names []string
 	for _, entry := range entries {
-		if kind == definition.KindSkill {
+		if kind == document.KindSkill {
 			// A symbolic link there may be meant as a skill's folder, which
 			// it is not; a file is no skill.
 			if entry.IsDir() || entry.Type()&fs.ModeSymlink != 0 {
@@ -380,7 +381,7 @@ func (s Store) List(_ context.Context, kind definition.Kind) ([]string, error) {
 		// A file in prompts/ whose name breaks the naming rule is not a
 		// prompt: settings may still read it through source: file (ADR-014
 		// rule 5).
-		if kind == definition.KindPrompt && !definition.ValidName(name) {
+		if kind == document.KindPrompt && !definition.ValidName(name) {
 			continue
 		}
 		names = append(names, name)
@@ -396,13 +397,13 @@ func (s Store) List(_ context.Context, kind definition.Kind) ([]string, error) {
 // error, so a restore neither hangs on one nor takes a file outside the
 // store for the skill (ADR-027 rule 8). A restore finds one of a retired
 // kind where the store kept it.
-func (s Store) Current(_ context.Context, kind definition.Kind, name string) (string, string, error) {
+func (s Store) Current(_ context.Context, kind document.Kind, name string) (string, string, error) {
 	path, err := s.backedUp(kind, name)
 	if err != nil {
 		return "", "", err
 	}
 	var data []byte
-	if kind == definition.KindSkill {
+	if kind == document.KindSkill {
 		if err := skillFolderLinked(filepath.Dir(path)); err != nil {
 			return "", "", err
 		}
@@ -430,7 +431,7 @@ func (s Store) Current(_ context.Context, kind definition.Kind, name string) (st
 // lock binds only them: a hand edit or another program's write landing
 // between the compare and the rename can still be lost. Guarding against
 // that is outside Agister's responsibility (README, Settings).
-func (s Store) Write(_ context.Context, kind definition.Kind, name string, data []byte, expected string) (string, bool, error) {
+func (s Store) Write(_ context.Context, kind document.Kind, name string, data []byte, expected string) (string, bool, error) {
 	path, err := s.path(kind, name)
 	if err != nil {
 		return "", false, err
@@ -536,7 +537,7 @@ type Layered struct {
 // home's alone where root is "" (no worktree), and reads every document and
 // layer.yaml with read. Listing, selection and composition are the
 // binary's; skills keep their checked reads. read may return
-// definition.ErrNotFound for a file the viewer leaves out, such as one over
+// document.ErrNotFound for a file the viewer leaves out, such as one over
 // its size limit.
 func Inspect(home, root, launch string, read func(string) ([]byte, error)) (Layered, error) {
 	if read == nil {
@@ -577,7 +578,7 @@ func (s Store) readBytes(path string) ([]byte, error) {
 }
 
 type layerStore struct {
-	layer definition.Layer
+	layer document.Layer
 	store Store
 }
 
@@ -586,7 +587,7 @@ type layerStore struct {
 // layer.yaml lists, in order, and the first found is the layer's (ADR-028
 // rule 9). A layer.yaml that cannot be used breaks the read: which prompt
 // the layer was meant to give cannot be known.
-func (l layerStore) read(kind definition.Kind, name string, folders bool) (definition.Document, error) {
+func (l layerStore) read(kind document.Kind, name string, folders bool) (document.Document, error) {
 	doc, err := l.store.read(kind, name)
 	if !folders || !l.listsFolders(kind) || !errors.Is(err, errNotFound) {
 		return doc, err
@@ -608,12 +609,12 @@ func (l layerStore) read(kind definition.Kind, name string, folders bool) (defin
 			}
 			ferr = fmt.Errorf("cannot be resolved: %v", ferr)
 		}
-		source := definition.Source{Kind: kind, Name: name, Path: path}
+		source := document.Source{Kind: kind, Name: name, Path: path}
 		if ferr != nil {
-			return definition.Document{Source: source}, ferr
+			return document.Document{Source: source}, ferr
 		}
 		source.SHA256 = digest(data)
-		return definition.Document{Source: source, Bytes: data}, nil
+		return document.Document{Source: source, Bytes: data}, nil
 	}
 	return doc, err
 }
@@ -622,10 +623,10 @@ func (l layerStore) read(kind definition.Kind, name string, folders bool) (defin
 // regular file: it is opened without waiting on a special file, and read
 // through the handle checked. A viewer's reader, where one is given, reads
 // it in its place, as it reads every file.
-func (l layerStore) readRegular(kind definition.Kind, name string) (definition.Document, error) {
+func (l layerStore) readRegular(kind document.Kind, name string) (document.Document, error) {
 	path, err := l.store.path(kind, name)
 	if err != nil {
-		return definition.Document{}, err
+		return document.Document{}, err
 	}
 	var data []byte
 	if l.store.readFile != nil {
@@ -633,12 +634,12 @@ func (l layerStore) readRegular(kind definition.Kind, name string) (definition.D
 	} else {
 		data, err = readRegularFile(path)
 	}
-	source := definition.Source{Kind: kind, Name: name, Path: path}
+	source := document.Source{Kind: kind, Name: name, Path: path}
 	if err != nil {
-		return definition.Document{Source: source}, err
+		return document.Document{Source: source}, err
 	}
 	source.SHA256 = digest(data)
-	return definition.Document{Source: source, Bytes: data}, nil
+	return document.Document{Source: source, Bytes: data}, nil
 }
 
 // readRegularFile reads path, links followed, only when what is opened is
@@ -666,7 +667,7 @@ func readRegularFile(path string) ([]byte, error) {
 // named, and one that a read would wait on, such as a FIFO, does not hang
 // the command (ADR-028 rule 6). A layer.yaml that cannot be used lists no
 // folder here: it makes the layer invalid, which Layers reports.
-func (l layerStore) locate(kind definition.Kind, name string, folders bool) string {
+func (l layerStore) locate(kind document.Kind, name string, folders bool) string {
 	path, err := l.store.path(kind, name)
 	if err != nil {
 		return ""
@@ -689,13 +690,13 @@ func (l layerStore) locate(kind definition.Kind, name string, folders bool) stri
 // listsFolders reports whether the layer's layer.yaml may list folders
 // that hold a document of kind: a prompt's, in a layer other than home
 // (ADR-028 rule 9).
-func (l layerStore) listsFolders(kind definition.Kind) bool {
-	return kind == definition.KindPrompt && l.layer != definition.LayerHome
+func (l layerStore) listsFolders(kind document.Kind) bool {
+	return kind == document.KindPrompt && l.layer != document.LayerHome
 }
 
 // expected are the paths where the layer would hold the document, the
 // folders its layer.yaml lists among them with folders.
-func (l layerStore) expected(kind definition.Kind, name string, folders bool) []string {
+func (l layerStore) expected(kind document.Kind, name string, folders bool) []string {
 	path, _ := l.store.path(kind, name)
 	paths := []string{path}
 	if folders && l.listsFolders(kind) {
@@ -718,7 +719,7 @@ const policiesDir = "policies"
 // policies are what makes the layer invalid in its policies/: each entry
 // it holds, or itself when it cannot be listed, such as a file of that
 // name. None when there is no policies/, or it is empty.
-func (s Store) policies() []definition.LayerProblem {
+func (s Store) policies() []document.LayerProblem {
 	dir := filepath.Join(s.Dir, policiesDir)
 	if !exists(dir) {
 		return nil
@@ -726,11 +727,11 @@ func (s Store) policies() []definition.LayerProblem {
 	const reason = "a layer holds no policies (ADR-030 rule 4): set the policy's fields on each process that names it, then remove it"
 	entries, err := os.ReadDir(dir)
 	if err != nil {
-		return []definition.LayerProblem{{Path: dir, Reason: fmt.Sprintf("%s (cannot be listed: %v)", reason, err)}}
+		return []document.LayerProblem{{Path: dir, Reason: fmt.Sprintf("%s (cannot be listed: %v)", reason, err)}}
 	}
-	var problems []definition.LayerProblem
+	var problems []document.LayerProblem
 	for _, entry := range entries {
-		problems = append(problems, definition.LayerProblem{Path: filepath.Join(dir, entry.Name()), Reason: reason})
+		problems = append(problems, document.LayerProblem{Path: filepath.Join(dir, entry.Name()), Reason: reason})
 	}
 	return problems
 }
@@ -740,26 +741,26 @@ func (s Store) policies() []definition.LayerProblem {
 // holds no layer.yaml. A layer.yaml that cannot be read or is invalid, or
 // that lists a folder that does not exist or that a link leads out of that
 // directory, makes the layer invalid, each such a problem (ADR-028 rule 9).
-func (s Store) promptFolders() ([]string, []definition.LayerProblem) {
+func (s Store) promptFolders() ([]string, []document.LayerProblem) {
 	path := filepath.Join(s.Dir, layerFile)
 	if _, err := os.Lstat(path); errors.Is(err, fs.ErrNotExist) {
 		return nil, nil
 	}
-	invalid := func(format string, args ...any) []definition.LayerProblem {
-		return []definition.LayerProblem{{Path: path, Reason: fmt.Sprintf(format, args...)}}
+	invalid := func(format string, args ...any) []document.LayerProblem {
+		return []document.LayerProblem{{Path: path, Reason: fmt.Sprintf(format, args...)}}
 	}
 	data, err := s.readBytes(path)
 	if err != nil {
 		return nil, invalid("cannot be read: %v; so which prompts the layer gives cannot be known", err)
 	}
 	settings, err := definition.ParseLayer(data)
-	var parsed *definition.InvalidError
+	var parsed *document.InvalidError
 	if errors.As(err, &parsed) {
 		return nil, invalid("is invalid: %s; so which prompts the layer gives cannot be known", strings.Join(parsed.Messages(), "; "))
 	}
 	base := filepath.Dir(s.Dir)
 	var folders []string
-	var problems []definition.LayerProblem
+	var problems []document.LayerProblem
 	for _, folder := range settings.Prompts {
 		full := filepath.Join(base, folder)
 		info, err := os.Stat(full)
@@ -775,7 +776,7 @@ func (s Store) promptFolders() ([]string, []definition.LayerProblem) {
 			reason = "lists prompts folder " + folder + ", which a link leads out of " + base
 		}
 		if reason != "" {
-			problems = append(problems, definition.LayerProblem{Path: path, Reason: reason + "; so which prompts the layer gives cannot be known"})
+			problems = append(problems, document.LayerProblem{Path: path, Reason: reason + "; so which prompts the layer gives cannot be known"})
 			continue
 		}
 		folders = append(folders, full)
@@ -798,21 +799,21 @@ func within(base, path string) bool {
 }
 
 // stores are the layers a document of kind is read from, nearest first.
-func (l Layered) stores(kind definition.Kind) []layerStore {
+func (l Layered) stores(kind document.Kind) []layerStore {
 	var stores []layerStore
-	if l.Project != nil && kind != definition.KindBlocks {
-		stores = append(stores, layerStore{definition.LayerProject, *l.Project})
+	if l.Project != nil && kind != document.KindBlocks {
+		stores = append(stores, layerStore{document.LayerProject, *l.Project})
 	}
 	if l.Repository != nil {
-		stores = append(stores, layerStore{definition.LayerRepository, *l.Repository})
+		stores = append(stores, layerStore{document.LayerRepository, *l.Repository})
 	}
-	return append(stores, layerStore{definition.LayerHome, l.Home})
+	return append(stores, layerStore{document.LayerHome, l.Home})
 }
 
 // Read reads the document a definition names, as a call reads it: a prompt
 // is also looked for in the folders each layer's layer.yaml lists (ADR-028
 // rule 9).
-func (l Layered) Read(_ context.Context, kind definition.Kind, name string) (definition.Document, error) {
+func (l Layered) Read(_ context.Context, kind document.Kind, name string) (document.Document, error) {
 	return l.read(kind, name, true)
 }
 
@@ -820,38 +821,38 @@ func (l Layered) Read(_ context.Context, kind definition.Kind, name string) (def
 // each layer's own prompts/ alone. A folder a layer.yaml lists is read only
 // for a name a process gives, and is not otherwise settings (ADR-028 rule
 // 9). Any other kind is read as Read reads it.
-func (l Layered) ReadListed(_ context.Context, kind definition.Kind, name string) (definition.Document, error) {
+func (l Layered) ReadListed(_ context.Context, kind document.Kind, name string) (document.Document, error) {
 	return l.read(kind, name, false)
 }
 
 // read reads the document from the layers, a prompt also from the folders
 // each layer lists with folders. A process is laid over the base it
 // extends, which is composed from its own layers first (ADR-030 rule 9).
-func (l Layered) read(kind definition.Kind, name string, folders bool) (definition.Document, error) {
+func (l Layered) read(kind document.Kind, name string, folders bool) (document.Document, error) {
 	doc, err := l.own(kind, name, folders)
-	if kind != definition.KindProcess || err != nil {
+	if kind != document.KindProcess || err != nil {
 		return doc, err
 	}
-	return definition.Extended(doc, func(base string) (definition.Document, error) {
+	return definition.Extended(doc, func(base string) (document.Document, error) {
 		return l.own(kind, base, folders)
 	})
 }
 
 // own reads the document from its own layers.
-func (l Layered) own(kind definition.Kind, name string, folders bool) (definition.Document, error) {
-	source := definition.Source{Kind: kind, Name: name}
+func (l Layered) own(kind document.Kind, name string, folders bool) (document.Document, error) {
+	source := document.Source{Kind: kind, Name: name}
 	stores := l.stores(kind)
-	var texts []definition.LayerText
-	var missing *definition.LayerFile
+	var texts []document.LayerText
+	var missing *document.LayerFile
 	for i, layer := range stores {
 		doc, err := layer.read(kind, name, folders)
 		if errors.Is(err, errNotFound) {
 			if missing == nil {
-				missing = &definition.LayerFile{Layer: layer.layer, Path: doc.Source.Path}
+				missing = &document.LayerFile{Layer: layer.layer, Path: doc.Source.Path}
 			}
 			continue
 		}
-		file := definition.LayerFile{Layer: layer.layer, Path: doc.Source.Path, SHA256: doc.Source.SHA256}
+		file := document.LayerFile{Layer: layer.layer, Path: doc.Source.Path, SHA256: doc.Source.SHA256}
 		if len(texts) == 0 {
 			source.Layer, source.Path = file.Layer, file.Path
 		}
@@ -866,50 +867,50 @@ func (l Layered) own(kind definition.Kind, name string, folders bool) (definitio
 			// passed over, and one that a read would wait on, such as a
 			// FIFO, does not hang the command.
 			for _, farther := range stores[i+1:] {
-				if kind != definition.KindProcess {
+				if kind != document.KindProcess {
 					break
 				}
 				if doc, err := farther.readRegular(kind, name); err == nil {
-					texts = append(texts, definition.LayerText{File: definition.LayerFile{Layer: farther.layer, Path: doc.Source.Path, SHA256: doc.Source.SHA256}, Bytes: doc.Bytes})
+					texts = append(texts, document.LayerText{File: document.LayerFile{Layer: farther.layer, Path: doc.Source.Path, SHA256: doc.Source.SHA256}, Bytes: doc.Bytes})
 				}
 			}
-			return definition.Document{Source: source, Texts: texts}, err
+			return document.Document{Source: source, Texts: texts}, err
 		}
-		if !definition.Composed(kind) {
+		if !document.Composed(kind) {
 			source.SHA256 = file.SHA256
 			for _, farther := range stores[i+1:] {
 				if path := farther.locate(kind, name, folders); path != "" {
-					source.Layers = append(source.Layers, definition.LayerFile{Layer: farther.layer, Path: path})
+					source.Layers = append(source.Layers, document.LayerFile{Layer: farther.layer, Path: path})
 				}
 			}
-			return definition.Document{Source: source, Bytes: doc.Bytes}, nil
+			return document.Document{Source: source, Bytes: doc.Bytes}, nil
 		}
-		texts = append(texts, definition.LayerText{File: file, Bytes: doc.Bytes})
+		texts = append(texts, document.LayerText{File: file, Bytes: doc.Bytes})
 	}
 	if len(texts) == 0 {
 		// A document no layer holds is expected in the nearest: its check
 		// names that layer and where its file would be.
 		source.Layer, source.Path = missing.Layer, missing.Path
-		return definition.Document{Source: source}, l.notFound(kind, name, folders)
+		return document.Document{Source: source}, l.notFound(kind, name, folders)
 	}
 	data, files, err := definition.Compose(kind, texts)
 	source.Layers = files
 	if err != nil {
-		return definition.Document{Source: source, Texts: texts}, err
+		return document.Document{Source: source, Texts: texts}, err
 	}
 	for i := range texts {
 		texts[i].File = files[i]
 	}
 	source.SHA256 = digest(data)
-	return definition.Document{Source: source, Bytes: data, Texts: texts}, nil
+	return document.Document{Source: source, Bytes: data, Texts: texts}, nil
 }
 
 // notFound says that a document is in no layer, and where each would hold
 // it, in the folders each lists too with folders.
-func (l Layered) notFound(kind definition.Kind, name string, folders bool) error {
+func (l Layered) notFound(kind document.Kind, name string, folders bool) error {
 	var expected []string
 	for _, layer := range l.stores(kind) {
-		if layer.layer == definition.LayerHome && l.Repository == nil && l.Absent != "" {
+		if layer.layer == document.LayerHome && l.Repository == nil && l.Absent != "" {
 			path, _ := Store{Dir: l.Absent}.path(kind, name)
 			expected = append(expected, path)
 		}
@@ -919,7 +920,7 @@ func (l Layered) notFound(kind definition.Kind, name string, folders bool) error
 }
 
 // List names every document of kind in any layer.
-func (l Layered) List(ctx context.Context, kind definition.Kind) ([]string, error) {
+func (l Layered) List(ctx context.Context, kind document.Kind) ([]string, error) {
 	seen := map[string]bool{}
 	var all []string
 	for _, layer := range l.stores(kind) {
@@ -943,19 +944,19 @@ func (l Layered) List(ctx context.Context, kind definition.Kind) ([]string, erro
 // that holds a blocks.yaml (rule 7); a layer.yaml that cannot be used
 // (rule 9), and one in home, which has none; a file in any layer's
 // policies/ (ADR-030 rule 4).
-func (l Layered) Layers(context.Context) []definition.LayerDir {
-	var layers []definition.LayerDir
+func (l Layered) Layers(context.Context) []document.LayerDir {
+	var layers []document.LayerDir
 	if l.Project != nil {
-		project := definition.LayerDir{Layer: definition.LayerProject, Dir: l.Project.Dir}
+		project := document.LayerDir{Layer: document.LayerProject, Dir: l.Project.Dir}
 		for _, nested := range l.Nested {
-			project.Invalid = append(project.Invalid, definition.LayerProblem{
+			project.Invalid = append(project.Invalid, document.LayerProblem{
 				Path:   nested,
 				Reason: fmt.Sprintf("a second .agister between %s and the worktree's root: there is no fourth layer, so no command would read it; keep one of the two", l.Project.Dir),
 			})
 		}
-		blocks, _ := l.Project.path(definition.KindBlocks, string(definition.KindBlocks))
+		blocks, _ := l.Project.path(document.KindBlocks, string(document.KindBlocks))
 		if _, err := os.Lstat(blocks); !errors.Is(err, fs.ErrNotExist) {
-			project.Invalid = append(project.Invalid, definition.LayerProblem{
+			project.Invalid = append(project.Invalid, document.LayerProblem{
 				Path:   blocks,
 				Reason: "a project layer holds no blocks.yaml: blocks are the repository layer's alone (ADR-018), and what this one lists would run; move it to the repository's .agister or remove it",
 			})
@@ -968,11 +969,11 @@ func (l Layered) Layers(context.Context) []definition.LayerDir {
 	if l.Repository != nil {
 		_, invalid := l.Repository.promptFolders()
 		invalid = append(invalid, l.Repository.policies()...)
-		layers = append(layers, definition.LayerDir{Layer: definition.LayerRepository, Dir: l.Repository.Dir, Invalid: invalid})
+		layers = append(layers, document.LayerDir{Layer: document.LayerRepository, Dir: l.Repository.Dir, Invalid: invalid})
 	}
-	home := definition.LayerDir{Layer: definition.LayerHome, Dir: l.Home.Dir}
+	home := document.LayerDir{Layer: document.LayerHome, Dir: l.Home.Dir}
 	if path := filepath.Join(l.Home.Dir, layerFile); exists(path) {
-		home.Invalid = append(home.Invalid, definition.LayerProblem{
+		home.Invalid = append(home.Invalid, document.LayerProblem{
 			Path:   path,
 			Reason: "home holds no layer.yaml: home is one folder and names no path (ADR-027 rule 4); remove it",
 		})

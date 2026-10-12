@@ -15,6 +15,7 @@ import (
 
 	"github.com/igor1309/ai-labs/agister/internal/contract"
 	"github.com/igor1309/ai-labs/agister/internal/domain/definition"
+	"github.com/igor1309/ai-labs/agister/internal/domain/document"
 	"github.com/igor1309/ai-labs/agister/internal/domain/policy"
 	"github.com/igor1309/ai-labs/agister/internal/domain/prompt"
 	"github.com/igor1309/ai-labs/agister/internal/domain/run"
@@ -367,7 +368,7 @@ func (c callResolution) Binders(ctx context.Context, process string) ([]string, 
 	if err != nil {
 		return nil, false, err
 	}
-	return reached.binders(process), reached.listed(DocumentRef{Kind: definition.KindProcess, Name: process}), nil
+	return reached.binders(process), reached.listed(DocumentRef{Kind: document.KindProcess, Name: process}), nil
 }
 
 // callStale is the composed staleness limits as a call reads them: a zero
@@ -413,23 +414,23 @@ func callForms(forms map[string]definition.Brief) map[string]CallForm {
 	return checks
 }
 
-func callSources(sources []definition.Source) []CallSource {
-	return translated(sources, func(source definition.Source) CallSource {
+func callSources(sources []document.Source) []CallSource {
+	return translated(sources, func(source document.Source) CallSource {
 		files := source.Layers
-		if !definition.Composed(source.Kind) && len(files) > 1 {
+		if !document.Composed(source.Kind) && len(files) > 1 {
 			files = files[:1] // the nearest replaces the rest, which the call did not read
 		}
 		return CallSource{
 			Kind: string(source.Kind), Name: source.Name,
-			Layers: translated(files, func(file definition.LayerFile) CallSourceLayer {
+			Layers: translated(files, func(file document.LayerFile) CallSourceLayer {
 				return CallSourceLayer{Layer: string(file.Layer), Path: file.Path, SHA256: file.SHA256, Fields: file.Fields, Process: file.Process}
 			}),
 		}
 	})
 }
 
-func callLayers(layers []definition.LayerDir) []CallLayer {
-	return translated(layers, func(layer definition.LayerDir) CallLayer {
+func callLayers(layers []document.LayerDir) []CallLayer {
+	return translated(layers, func(layer document.LayerDir) CallLayer {
 		return CallLayer{Layer: string(layer.Layer), Dir: layer.Dir}
 	})
 }

@@ -10,7 +10,7 @@ import (
 
 	"github.com/igor1309/ai-labs/agister/internal/app"
 	"github.com/igor1309/ai-labs/agister/internal/contract"
-	"github.com/igor1309/ai-labs/agister/internal/domain/definition"
+	"github.com/igor1309/ai-labs/agister/internal/domain/document"
 	"github.com/igor1309/ai-labs/agister/internal/domain/run"
 )
 
@@ -64,8 +64,8 @@ const (
 // which reads as text, with the value spec given after its path.
 func briefed(text, spec string) *harness {
 	h := newHarness()
-	h.defs.docs[definition.KindBrief] = map[string]string{"goal": goalForm, "step": stepForm}
-	h.defs.docs[definition.KindProcess]["p"] = strings.Replace(h.defs.docs[definition.KindProcess]["p"],
+	h.defs.docs[document.KindBrief] = map[string]string{"goal": goalForm, "step": stepForm}
+	h.defs.docs[document.KindProcess]["p"] = strings.Replace(h.defs.docs[document.KindProcess]["p"],
 		`    diff: {source: git.diff, base: "${param.base}", head: "${param.candidate}"}`+"\n",
 		`    diff: {source: git.diff, base: "${param.base}", head: "${param.candidate}"}`+"\n"+
 			"    brief: {source: file, path: brief.md"+spec+"}\n", 1)
@@ -95,7 +95,7 @@ func TestATextWithOneOfItsFormsRuns(t *testing.T) {
 			}
 			var forms []string
 			for _, source := range record.Definitions {
-				if source.Kind == string(definition.KindBrief) {
+				if source.Kind == string(document.KindBrief) {
 					forms = append(forms, source.Name)
 				}
 			}
@@ -338,7 +338,7 @@ func TestAValueWithoutFormIsUnchecked(t *testing.T) {
 		t.Fatalf("result = %+v, asked %q", record.Result.Error, h.references.asked)
 	}
 	for _, source := range record.Definitions {
-		if source.Kind == string(definition.KindBrief) {
+		if source.Kind == string(document.KindBrief) {
 			t.Fatalf("a form was read: %+v", record.Definitions)
 		}
 	}
@@ -353,10 +353,10 @@ func formedFlow(goal string) *flowHarness {
 			"    candidate: {default: HEAD}\n", "    candidate: {default: HEAD}\n    goal: {}\n", 1),
 			"  values:\n", "  values:\n    goal: {source: param, name: goal}\n", 1)
 	}
-	h.defs.docs[definition.KindProcess]["first"] = takesGoal(nodeProcess("first", "Work as first."))
-	h.defs.docs[definition.KindProcess]["second"] = takesGoal(nodeProcess("second", "Work as second."))
-	h.defs.docs[definition.KindBrief] = map[string]string{"goal": goalForm}
-	h.defs.docs[definition.KindWorkflow]["w"] = strings.Replace(workflowDoc, "  values:\n", "  values:\n    goal: {source: file, path: goal.md, form: [goal]}\n", 1)
+	h.defs.docs[document.KindProcess]["first"] = takesGoal(nodeProcess("first", "Work as first."))
+	h.defs.docs[document.KindProcess]["second"] = takesGoal(nodeProcess("second", "Work as second."))
+	h.defs.docs[document.KindBrief] = map[string]string{"goal": goalForm}
+	h.defs.docs[document.KindWorkflow]["w"] = strings.Replace(workflowDoc, "  values:\n", "  values:\n    goal: {source: file, path: goal.md, form: [goal]}\n", 1)
 	base := h.inputs.respond
 	h.inputs.respond = func(spec app.InputSpec) (app.Resolved, error) {
 		if spec.Source == "file" && spec.Args["path"] == "goal.md" {
@@ -426,10 +426,10 @@ func TestCheckReadsBriefsAndLinksWhatNamesThem(t *testing.T) {
 	h := briefed(goalText, ", form: [goal, step]")
 	// And the workflow w, whose goal takes the form goal.
 	flow := formedFlow(goalText).defs.docs
-	for name, doc := range flow[definition.KindProcess] {
-		h.defs.docs[definition.KindProcess][name] = doc
+	for name, doc := range flow[document.KindProcess] {
+		h.defs.docs[document.KindProcess][name] = doc
 	}
-	h.defs.docs[definition.KindWorkflow] = map[string]string{"w": flow[definition.KindWorkflow]["w"]}
+	h.defs.docs[document.KindWorkflow] = map[string]string{"w": flow[document.KindWorkflow]["w"]}
 	report := briefCheck(t, h)
 	if len(report.Problems) != 0 || report.Checked["briefs"] != 2 || report.Checked["workflows"] != 1 {
 		t.Fatalf("problems %q, checked %v", messages(report.Problems), report.Checked)
@@ -456,7 +456,7 @@ func TestCheckReadsBriefsAndLinksWhatNamesThem(t *testing.T) {
 	}
 
 	h = briefed(goalText, ", form: [goal, plan]")
-	h.defs.docs[definition.KindBrief]["step"] = stepForm + "extra: 1\n"
+	h.defs.docs[document.KindBrief]["step"] = stepForm + "extra: 1\n"
 	want := []string{"brief step: extra: unknown field", `process p: input brief: brief "plan" does not exist`}
 	if got := messages(briefCheck(t, h).Problems); !reflect.DeepEqual(got, want) {
 		t.Fatalf("problems %q, want %q", got, want)

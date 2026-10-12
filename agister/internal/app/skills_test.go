@@ -10,7 +10,7 @@ import (
 
 	"github.com/igor1309/ai-labs/agister/internal/app"
 	"github.com/igor1309/ai-labs/agister/internal/contract"
-	"github.com/igor1309/ai-labs/agister/internal/domain/definition"
+	"github.com/igor1309/ai-labs/agister/internal/domain/document"
 	"github.com/igor1309/ai-labs/agister/internal/domain/run"
 )
 
@@ -22,7 +22,7 @@ func skillDoc(name string) string {
 
 // skilledAgent is the harness's agent a, named name, with the skills given.
 func skilledAgent(name string, skills ...string) string {
-	text := strings.Replace(settingsDocs()[definition.KindAgent]["a"], `name = "a"`, `name = "`+name+`"`, 1)
+	text := strings.Replace(settingsDocs()[document.KindAgent]["a"], `name = "a"`, `name = "`+name+`"`, 1)
 	if len(skills) > 0 {
 		text += `skills = ["` + strings.Join(skills, `", "`) + `"]` + "\n"
 	}
@@ -38,9 +38,9 @@ func withSkills(process string, skills ...string) string {
 // skilling has process p name the skills review and tests, and its agent a
 // style and review; the settings have no skill: skilled adds each.
 func skilling(h *harness) {
-	h.defs.docs[definition.KindProcess]["p"] = withSkills(settingsDocs()[definition.KindProcess]["p"], "review", "tests")
-	h.defs.docs[definition.KindAgent]["a"] = skilledAgent("a", "style", "review")
-	h.defs.docs[definition.KindSkill] = map[string]string{}
+	h.defs.docs[document.KindProcess]["p"] = withSkills(settingsDocs()[document.KindProcess]["p"], "review", "tests")
+	h.defs.docs[document.KindAgent]["a"] = skilledAgent("a", "style", "review")
+	h.defs.docs[document.KindSkill] = map[string]string{}
 }
 
 // skilled is skilling with each skill in the settings, on a runtime whose
@@ -48,7 +48,7 @@ func skilling(h *harness) {
 func skilled(h *harness) {
 	skilling(h)
 	for _, name := range []string{"review", "tests", "style"} {
-		h.defs.docs[definition.KindSkill][name] = skillDoc(name)
+		h.defs.docs[document.KindSkill][name] = skillDoc(name)
 	}
 	h.runner.identity.Skills = true
 }
@@ -56,7 +56,7 @@ func skilled(h *harness) {
 func skillSources(record run.Record) []run.DefinitionSource {
 	var sources []run.DefinitionSource
 	for _, source := range record.Definitions {
-		if source.Kind == string(definition.KindSkill) {
+		if source.Kind == string(document.KindSkill) {
 			sources = append(sources, source)
 		}
 	}
@@ -113,7 +113,7 @@ func TestACallIsResolvedWithItsProcessesSkillsThenItsAgents(t *testing.T) {
 func skillsAmong(sources []app.CallSource, name string) []app.CallSource {
 	var found []app.CallSource
 	for _, source := range sources {
-		if source.Kind == string(definition.KindSkill) && source.Name == name {
+		if source.Kind == string(document.KindSkill) && source.Name == name {
 			found = append(found, source)
 		}
 	}
@@ -126,8 +126,8 @@ func TestAnotherAgentSwapsTheAgentsSkills(t *testing.T) {
 	t.Parallel()
 	h := newHarness()
 	skilled(h)
-	h.defs.docs[definition.KindAgent]["b"] = skilledAgent("b", "git", "tests")
-	h.defs.docs[definition.KindSkill]["git"] = skillDoc("git")
+	h.defs.docs[document.KindAgent]["b"] = skilledAgent("b", "git", "tests")
+	h.defs.docs[document.KindSkill]["git"] = skillDoc("git")
 	call, err := h.resolved(t, app.CallResolveRequest{Agent: "b"})
 	if want := []app.CallSkill{callSkill("review"), callSkill("tests"), callSkill("git")}; err != nil || !reflect.DeepEqual(call.Skills, want) {
 		t.Fatalf("skills = %+v, %v", call.Skills, err)
@@ -138,7 +138,7 @@ func TestAnotherAgentSwapsTheAgentsSkills(t *testing.T) {
 		t.Fatalf("result %+v: %s; skill sources %+v", record.Result, message(record), skillSources(record))
 	}
 	// An agent that names none leaves the process's.
-	h.defs.docs[definition.KindAgent]["c"] = skilledAgent("c")
+	h.defs.docs[document.KindAgent]["c"] = skilledAgent("c")
 	call, err = h.resolved(t, app.CallResolveRequest{Agent: "c"})
 	if want := []app.CallSkill{callSkill("review"), callSkill("tests")}; err != nil || !reflect.DeepEqual(call.Skills, want) {
 		t.Fatalf("skills on c = %+v, %v", call.Skills, err)
@@ -152,7 +152,7 @@ func TestASkillIsRecordedByItsDigest(t *testing.T) {
 	h := newHarness()
 	skilled(h)
 	edited := skillDoc("review") + "\nRead the tests first.\n"
-	h.defs.docs[definition.KindSkill]["review"] = edited
+	h.defs.docs[document.KindSkill]["review"] = edited
 	call, err := h.resolved(t, app.CallResolveRequest{})
 	if err != nil || string(call.Skills[0].Bytes) != edited || call.Skills[0].Identity != "sha256:"+sha(edited) {
 		t.Fatalf("review = %+v, %v", call.Skills[0], err)
@@ -169,7 +169,7 @@ func TestAMissingSkillIsAProblemOfWhatNamesIt(t *testing.T) {
 	t.Parallel()
 	h := newHarness()
 	skilling(h)
-	h.defs.docs[definition.KindSkill]["review"] = skillDoc("review")
+	h.defs.docs[document.KindSkill]["review"] = skillDoc("review")
 	report := checkOf(t, h, false)
 	want := []string{`agent a: skill "style" does not exist`, `process p: skill "tests" does not exist`}
 	if !reflect.DeepEqual(messages(report.Problems), want) || report.Checked["skills"] != 1 {
@@ -208,7 +208,7 @@ func TestABrokenSkillIsAProblemOfItsOwnNotAMissingOne(t *testing.T) {
 	t.Parallel()
 	h := newHarness()
 	skilled(h)
-	h.defs.docs[definition.KindSkill]["review"] = "# Review\n\nNo front matter.\n"
+	h.defs.docs[document.KindSkill]["review"] = "# Review\n\nNo front matter.\n"
 	report := checkOf(t, h, false)
 	want := []string{"skill review: has no front matter: it starts with a line ---, then name and description, then a line ---"}
 	if !reflect.DeepEqual(messages(report.Problems), want) || report.Checked["skills"] != 3 {
@@ -245,17 +245,17 @@ func TestABrokenSkillIsAProblemOfItsOwnNotAMissingOne(t *testing.T) {
 func TestASkillProblemRefusesOnlyTheCallsThatDependOnIt(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
-	process := settingsDocs()[definition.KindProcess]["p"]
+	process := settingsDocs()[document.KindProcess]["p"]
 	settings := func() *harness {
 		h := newHarness()
 		h.runner.identity.Skills = true
 		// p names review and q no skill; agent a names style and b none.
 		// A workflow binds each process to each agent: p_a, p_b, q_a, q_b.
-		h.defs.docs[definition.KindProcess]["p"] = withSkills(process, "review")
-		h.defs.docs[definition.KindProcess]["q"] = strings.Replace(process, "name: p", "name: q", 1)
-		h.defs.docs[definition.KindAgent]["a"] = skilledAgent("a", "style")
-		h.defs.docs[definition.KindAgent]["b"] = skilledAgent("b")
-		h.defs.docs[definition.KindSkill] = map[string]string{"review": skillDoc("review"), "style": skillDoc("style")}
+		h.defs.docs[document.KindProcess]["p"] = withSkills(process, "review")
+		h.defs.docs[document.KindProcess]["q"] = strings.Replace(process, "name: p", "name: q", 1)
+		h.defs.docs[document.KindAgent]["a"] = skilledAgent("a", "style")
+		h.defs.docs[document.KindAgent]["b"] = skilledAgent("b")
+		h.defs.docs[document.KindSkill] = map[string]string{"review": skillDoc("review"), "style": skillDoc("style")}
 		h.bind("p_b", "p", "b")
 		h.bind("q_a", "q", "a")
 		h.bind("q_b", "q", "b")
@@ -293,7 +293,7 @@ func TestASkillProblemRefusesOnlyTheCallsThatDependOnIt(t *testing.T) {
 	t.Run("a skill the agent names is missing", func(t *testing.T) {
 		t.Parallel()
 		h := settings()
-		delete(h.defs.docs[definition.KindSkill], "style")
+		delete(h.defs.docs[document.KindSkill], "style")
 		client := h.clientOn(h.defs)
 		reaches(t, client, `agent a: skill "style" does not exist`, contract.DefinitionRef{Kind: "agents", Name: "a"}, nil, []string{"p_a", "q_a"})
 		refused(t, h, client, "p_a", `workflow p_a uses agent a (mem/agents/a): skill "style" does not exist`)
@@ -304,7 +304,7 @@ func TestASkillProblemRefusesOnlyTheCallsThatDependOnIt(t *testing.T) {
 	t.Run("a skill the process names is missing", func(t *testing.T) {
 		t.Parallel()
 		h := settings()
-		delete(h.defs.docs[definition.KindSkill], "review")
+		delete(h.defs.docs[document.KindSkill], "review")
 		client := h.clientOn(h.defs)
 		reaches(t, client, `process p: skill "review" does not exist`, contract.DefinitionRef{Kind: "processes", Name: "p"}, []string{"p"}, []string{"p_a", "p_b"})
 		refused(t, h, client, "p_a", `workflow p_a uses process p (mem/processes/p): skill "review" does not exist`)
@@ -315,7 +315,7 @@ func TestASkillProblemRefusesOnlyTheCallsThatDependOnIt(t *testing.T) {
 	t.Run("a skill the process names is broken", func(t *testing.T) {
 		t.Parallel()
 		h := settings()
-		h.defs.docs[definition.KindSkill]["review"] = "---\nname: review\n---\n"
+		h.defs.docs[document.KindSkill]["review"] = "---\nname: review\n---\n"
 		client := h.clientOn(h.defs)
 		reaches(t, client, "skill review: description: is required", contract.DefinitionRef{Kind: "skills", Name: "review"}, []string{"p"}, []string{"p_a", "p_b"})
 		refused(t, h, client, "p_a", "workflow p_a uses process p, which uses skill review (mem/skills/review): description: is required")
@@ -325,7 +325,7 @@ func TestASkillProblemRefusesOnlyTheCallsThatDependOnIt(t *testing.T) {
 	t.Run("a skill the agent names is broken", func(t *testing.T) {
 		t.Parallel()
 		h := settings()
-		h.defs.docs[definition.KindSkill]["style"] = "---\nname: styles\ndescription: d\n---\n"
+		h.defs.docs[document.KindSkill]["style"] = "---\nname: styles\ndescription: d\n---\n"
 		client := h.clientOn(h.defs)
 		problem := `name: "styles" does not match its definition name "style"`
 		reaches(t, client, "skill style: "+problem, contract.DefinitionRef{Kind: "skills", Name: "style"}, nil, []string{"p_a", "q_a"})
@@ -336,7 +336,7 @@ func TestASkillProblemRefusesOnlyTheCallsThatDependOnIt(t *testing.T) {
 	t.Run("a skill nothing names is broken", func(t *testing.T) {
 		t.Parallel()
 		h := settings()
-		h.defs.docs[definition.KindSkill]["unused"] = "no front matter"
+		h.defs.docs[document.KindSkill]["unused"] = "no front matter"
 		client := h.clientOn(h.defs)
 		report, err := client.Check(ctx, false)
 		if err != nil {
@@ -357,7 +357,7 @@ func TestASkillFolderWithAnInvalidNameStopsEveryCommand(t *testing.T) {
 	t.Parallel()
 	h := newHarness()
 	skilled(h)
-	h.defs.docs[definition.KindSkill]["Code Review"] = skillDoc("Code Review")
+	h.defs.docs[document.KindSkill]["Code Review"] = skillDoc("Code Review")
 	report, err := h.clientOn(h.defs).Check(context.Background(), false)
 	if err != nil {
 		t.Fatal(err)
@@ -459,18 +459,18 @@ func TestACallNamingASkillIsRefusedOnAnAdapterThatGivesNone(t *testing.T) {
 func TestTheRefusalIsOfTheSkillsTheCallIsGiven(t *testing.T) {
 	t.Parallel()
 	h := newHarness()
-	h.defs.docs[definition.KindAgent]["a"] = skilledAgent("a", "style")
-	h.defs.docs[definition.KindAgent]["b"] = skilledAgent("b")
-	h.defs.docs[definition.KindSkill] = map[string]string{"style": skillDoc("style")}
+	h.defs.docs[document.KindAgent]["a"] = skilledAgent("a", "style")
+	h.defs.docs[document.KindAgent]["b"] = skilledAgent("b")
+	h.defs.docs[document.KindSkill] = map[string]string{"style": skillDoc("style")}
 	record := h.call(t, contract.CallRequest{})
 	want := "workflow p_a uses process p: adapter spy of runtime rt cannot give a call its skills (ADR-021): style"
 	if class(record) != run.ClassRefused || message(record) != want || len(h.runner.calls()) != 0 {
 		t.Fatalf("result %+v: %q, want %q", record.Result, message(record), want)
 	}
 	h = newHarness()
-	h.defs.docs[definition.KindAgent]["a"] = skilledAgent("a", "style")
-	h.defs.docs[definition.KindAgent]["b"] = skilledAgent("b")
-	h.defs.docs[definition.KindSkill] = map[string]string{"style": skillDoc("style")}
+	h.defs.docs[document.KindAgent]["a"] = skilledAgent("a", "style")
+	h.defs.docs[document.KindAgent]["b"] = skilledAgent("b")
+	h.defs.docs[document.KindSkill] = map[string]string{"style": skillDoc("style")}
 	h.bind("p_b", "p", "b")
 	if record := h.call(t, contract.CallRequest{Process: "p_b"}); record.Result.Status != run.Completed || len(h.runner.calls()) != 1 {
 		t.Fatalf("on b: result %+v: %s", record.Result, message(record))
@@ -483,17 +483,17 @@ func TestTheRefusalIsOfTheSkillsTheCallIsGiven(t *testing.T) {
 func TestACallOfSkillsDeclaredTwiceIsRefused(t *testing.T) {
 	t.Parallel()
 	cases := map[string]struct {
-		kind                definition.Kind
+		kind                document.Kind
 		name, text, problem string
 	}{
 		"a process": {
-			definition.KindProcess, "p",
-			withSkills(settingsDocs()[definition.KindProcess]["p"], "review") + "skills: []\n",
+			document.KindProcess, "p",
+			withSkills(settingsDocs()[document.KindProcess]["p"], "review") + "skills: []\n",
 			"process p: skills: is declared more than once: one list names the process's skills",
 		},
 		// The TOML parser refuses a key defined twice itself.
 		"an agent": {
-			definition.KindAgent, "a",
+			document.KindAgent, "a",
 			skilledAgent("a", "review") + "skills = []\n",
 			"agent a: toml: line 9 (last key \"skills\"): Key 'skills' has already been defined.",
 		},
@@ -503,7 +503,7 @@ func TestACallOfSkillsDeclaredTwiceIsRefused(t *testing.T) {
 			t.Parallel()
 			h := newHarness()
 			h.defs.docs[c.kind][c.name] = c.text
-			h.defs.docs[definition.KindSkill] = map[string]string{"review": skillDoc("review")}
+			h.defs.docs[document.KindSkill] = map[string]string{"review": skillDoc("review")}
 			if report := checkOf(t, h, false); !slices.Contains(messages(report.Problems), c.problem) {
 				t.Fatalf("problems = %q, want %q among them", messages(report.Problems), c.problem)
 			}
@@ -532,7 +532,7 @@ func TestACallNamingNoSkillRunsAsBefore(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 			h := newHarness()
-			h.defs.docs[definition.KindSkill] = map[string]string{"review": skillDoc("review")}
+			h.defs.docs[document.KindSkill] = map[string]string{"review": skillDoc("review")}
 			h.runner.identity.Skills = gives
 			call, err := h.resolved(t, app.CallResolveRequest{})
 			if err != nil || len(call.Skills) != 0 {
@@ -556,8 +556,8 @@ func TestShowProcessShowsItsSkills(t *testing.T) {
 	t.Parallel()
 	h := newHarness()
 	skilled(h)
-	h.defs.docs[definition.KindAgent]["b"] = skilledAgent("b", "git")
-	h.defs.docs[definition.KindSkill]["git"] = skillDoc("git")
+	h.defs.docs[document.KindAgent]["b"] = skilledAgent("b", "git")
+	h.defs.docs[document.KindSkill]["git"] = skillDoc("git")
 	h.bind("p_b", "p", "b")
 	inspection := app.NewInspection(app.NewResolver(h.defs, struct{ app.ResolverIdentities }{h.runtimes}, h.validator, resolverCheckStub{}))
 	view, err := callShown(inspection, "p_a")
@@ -581,7 +581,7 @@ func TestShowProcessShowsItsSkills(t *testing.T) {
 	}
 
 	h.runner.identity.Skills = true
-	delete(h.defs.docs[definition.KindSkill], "tests")
+	delete(h.defs.docs[document.KindSkill], "tests")
 	view, err = callShown(inspection, "p_a")
 	if err != nil || !reflect.DeepEqual(view.Skills, []string{"review", "tests"}) || !reflect.DeepEqual(view.AgentSkills, []string{"style"}) || view.Refusal != `process p names skill "tests": not found` {
 		t.Fatalf("missing: skills %q, agent's %q, refusal %q, %v", view.Skills, view.AgentSkills, view.Refusal, err)
@@ -604,7 +604,7 @@ func TestGatedCallIsGivenTheSkillCheckSaw(t *testing.T) {
 					Checker: app.NewChecker(src, h.validator, h.runtimes, []string{"git.revision", "git.diff", "param"}),
 					Calls:   h.callsOn(src),
 				},
-				f: func() { h.defs.set(definition.KindSkill, "review", "Edited after the check.\n") },
+				f: func() { h.defs.set(document.KindSkill, "review", "Edited after the check.\n") },
 			}
 		},
 	}
@@ -631,12 +631,12 @@ func TestSnapshotKeepsTheReadOfAMissingSkill(t *testing.T) {
 			t.Parallel()
 			h := newHarness()
 			skilled(h)
-			delete(h.defs.docs[definition.KindSkill], name)
+			delete(h.defs.docs[document.KindSkill], name)
 			missing := errors.New("not found (expected /repo/.agister/skills/" + name + "/SKILL.md or /home/skills/" + name + "/SKILL.md)")
 			live := failingSource{definitionsSpy: h.defs, readErr: map[string]error{"skills/" + name: missing}}
 			snap := app.Snapshot(ctx, live)
 			reads := h.defs.readCount()
-			if _, err := snap.Read(ctx, definition.KindSkill, name); err != missing {
+			if _, err := snap.Read(ctx, document.KindSkill, name); err != missing {
 				t.Fatalf("read error = %v", err)
 			}
 			view, err := callShown(app.NewInspection(app.NewResolver(snap, struct{ app.ResolverIdentities }{h.runtimes}, h.validator, resolverCheckStub{})), "p_a")
@@ -656,10 +656,10 @@ func TestAWorkflowNodeGetsTheSkillsOfItsOwnCall(t *testing.T) {
 	t.Parallel()
 	h := newFlowHarness()
 	h.runner.skills = true
-	h.defs.set(definition.KindProcess, "first", withSkills(nodeProcess("first", "Work as first."), "review"))
-	h.defs.set(definition.KindProcess, "joiner", withSkills(joinProcess, "tests", "style"))
-	h.defs.set(definition.KindAgent, "a", skilledAgent("a", "style"))
-	h.defs.docs[definition.KindSkill] = map[string]string{"review": skillDoc("review"), "tests": skillDoc("tests"), "style": skillDoc("style")}
+	h.defs.set(document.KindProcess, "first", withSkills(nodeProcess("first", "Work as first."), "review"))
+	h.defs.set(document.KindProcess, "joiner", withSkills(joinProcess, "tests", "style"))
+	h.defs.set(document.KindAgent, "a", skilledAgent("a", "style"))
+	h.defs.docs[document.KindSkill] = map[string]string{"review": skillDoc("review"), "tests": skillDoc("tests"), "style": skillDoc("style")}
 	id := h.submit(t, contract.CallRequest{})
 	if record := h.store.wait(t, id); record.Result.Status != run.Completed {
 		t.Fatalf("result %+v: %s", record.Result, message(record))
@@ -680,8 +680,8 @@ func TestAWorkflowNodeGetsTheSkillsOfItsOwnCall(t *testing.T) {
 func TestAWorkflowWithASkilledNodeIsRefusedOnAnAdapterThatGivesNone(t *testing.T) {
 	t.Parallel()
 	h := newFlowHarness()
-	h.defs.set(definition.KindProcess, "joiner", withSkills(joinProcess, "tests"))
-	h.defs.docs[definition.KindSkill] = map[string]string{"tests": skillDoc("tests")}
+	h.defs.set(document.KindProcess, "joiner", withSkills(joinProcess, "tests"))
+	h.defs.docs[document.KindSkill] = map[string]string{"tests": skillDoc("tests")}
 	id := h.submit(t, contract.CallRequest{})
 	record := h.store.wait(t, id)
 	want := "adapter spy of runtime rt cannot give a call its skills (ADR-021): tests"
@@ -723,7 +723,7 @@ func TestAContinuationCarriesTheCallsSkills(t *testing.T) {
 	t.Parallel()
 	h := newHarness()
 	skilled(h)
-	h.defs.docs[definition.KindProcess]["p"] += "session: resumable\n"
+	h.defs.docs[document.KindProcess]["p"] += "session: resumable\n"
 	patchedRun(h, "run-0", "", 0, 1, "")
 	record := h.call(t, contract.CallRequest{Continue: "run-0"})
 	if record.Result.Status != run.Completed {

@@ -18,7 +18,7 @@ import (
 	"github.com/igor1309/ai-labs/agister/internal/app"
 	"github.com/igor1309/ai-labs/agister/internal/composition/install"
 	"github.com/igor1309/ai-labs/agister/internal/contract"
-	"github.com/igor1309/ai-labs/agister/internal/domain/definition"
+	"github.com/igor1309/ai-labs/agister/internal/domain/document"
 	"github.com/igor1309/ai-labs/gokit/clocktest"
 )
 
@@ -49,7 +49,7 @@ func legacyProcesses(t *testing.T) (map[string]string, []app.RetireDocument) {
 	var docs []app.RetireDocument
 	for rel, text := range files(t, filepath.Join(repositoryRoot(t), homeProcesses)) {
 		held[filepath.Join("processes", rel)] = text
-		docs = append(docs, app.RetireDocument{Kind: definition.KindProcess, Name: strings.TrimSuffix(rel, ".yaml")})
+		docs = append(docs, app.RetireDocument{Kind: document.KindProcess, Name: strings.TrimSuffix(rel, ".yaml")})
 	}
 	slices.SortFunc(docs, func(a, b app.RetireDocument) int { return strings.Compare(a.Name, b.Name) })
 	if want := []string{"processes/implement_codex.yaml", "processes/implement_pi.yaml", "processes/implement_pi_glm.yaml"}; !slices.Equal(slices.Sorted(maps.Keys(held)), want) {

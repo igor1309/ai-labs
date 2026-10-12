@@ -22,7 +22,7 @@ import (
 	"github.com/igor1309/ai-labs/agister/internal/app"
 	"github.com/igor1309/ai-labs/agister/internal/cli"
 	"github.com/igor1309/ai-labs/agister/internal/contract"
-	"github.com/igor1309/ai-labs/agister/internal/domain/definition"
+	"github.com/igor1309/ai-labs/agister/internal/domain/document"
 	"github.com/igor1309/ai-labs/gokit/clocktest"
 )
 
@@ -49,7 +49,7 @@ type stagerSpy struct {
 	staged, removed *int
 }
 
-func (s stagerSpy) Stage(ctx context.Context, docs []definition.Document) (app.GateDefinitions, func(), error) {
+func (s stagerSpy) Stage(ctx context.Context, docs []document.Document) (app.GateDefinitions, func(), error) {
 	staged, remove, err := s.InstallStager.Stage(ctx, docs)
 	if err != nil {
 		return nil, nil, err
@@ -73,22 +73,22 @@ func (s homeSpy) Lock(ctx context.Context) (func(), error) {
 	}, nil
 }
 
-func (s homeSpy) Documents(ctx context.Context) ([]definition.Document, []definition.Source, error) {
+func (s homeSpy) Documents(ctx context.Context) ([]document.Document, []document.Source, error) {
 	*s.events = append(*s.events, "Documents")
 	return s.InstallHome.Documents(ctx)
 }
 
-func (s homeSpy) Current(ctx context.Context, kind definition.Kind, name string) (string, string, error) {
+func (s homeSpy) Current(ctx context.Context, kind document.Kind, name string) (string, string, error) {
 	*s.events = append(*s.events, "Current "+string(kind)+"/"+name)
 	return s.InstallHome.Current(ctx, kind, name)
 }
 
-func (s homeSpy) Put(ctx context.Context, kind definition.Kind, name string, data []byte) error {
+func (s homeSpy) Put(ctx context.Context, kind document.Kind, name string, data []byte) error {
 	*s.events = append(*s.events, "Put "+string(kind)+"/"+name)
 	return s.InstallHome.Put(ctx, kind, name, data)
 }
 
-func (s homeSpy) Remove(ctx context.Context, kind definition.Kind, name string) error {
+func (s homeSpy) Remove(ctx context.Context, kind document.Kind, name string) error {
 	*s.events = append(*s.events, "Remove "+string(kind)+"/"+name)
 	return s.InstallHome.Remove(ctx, kind, name)
 }
@@ -594,7 +594,7 @@ type failingBackups struct {
 	err error
 }
 
-func (b failingBackups) Save(context.Context, string, app.InstallManifest, []definition.Document) error {
+func (b failingBackups) Save(context.Context, string, app.InstallManifest, []document.Document) error {
 	return b.err
 }
 

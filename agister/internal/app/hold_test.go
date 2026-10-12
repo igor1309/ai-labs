@@ -14,7 +14,7 @@ import (
 	"github.com/igor1309/ai-labs/agister/internal/adapters/fsruns"
 	"github.com/igor1309/ai-labs/agister/internal/app"
 	"github.com/igor1309/ai-labs/agister/internal/contract"
-	"github.com/igor1309/ai-labs/agister/internal/domain/definition"
+	"github.com/igor1309/ai-labs/agister/internal/domain/document"
 	"github.com/igor1309/ai-labs/agister/internal/domain/run"
 )
 
@@ -84,8 +84,8 @@ func TestAnInPlaceCallWorksInTheCallersWorktree(t *testing.T) {
 // writing has the harness's plan grant a permission the service lists as
 // writing, in a process that lets the call write: the call is a writer.
 func writing(h *harness) {
-	h.defs.docs[definition.KindService]["service"] = strings.Replace(h.defs.docs[definition.KindService]["service"], "writing = []", "writing = [\"repository.read\"]", 1)
-	h.defs.docs[definition.KindProcess]["p"] = strings.Replace(h.defs.docs[definition.KindProcess]["p"], "workspace:\n", "workspace:\n  access: read-write\n", 1)
+	h.defs.docs[document.KindService]["service"] = strings.Replace(h.defs.docs[document.KindService]["service"], "writing = []", "writing = [\"repository.read\"]", 1)
+	h.defs.docs[document.KindProcess]["p"] = strings.Replace(h.defs.docs[document.KindProcess]["p"], "workspace:\n", "workspace:\n  access: read-write\n", 1)
 }
 
 // ADR-025 rule 4: a call is a writer when its plan grants a permission the
@@ -164,7 +164,7 @@ func TestReadersShareTheWorktreeAndAWriterHasItAlone(t *testing.T) {
 // inTheRepositoryItself has the harness's process p work in the
 // repository, without a checkout.
 func inTheRepositoryItself(h *harness) {
-	h.defs.docs[definition.KindProcess]["p"] = strings.Replace(h.defs.docs[definition.KindProcess]["p"], "workspace:\n  revision: candidate_revision\n", "", 1)
+	h.defs.docs[document.KindProcess]["p"] = strings.Replace(h.defs.docs[document.KindProcess]["p"], "workspace:\n  revision: candidate_revision\n", "", 1)
 }
 
 // ADR-025 rules 2 and 3: a worktree whose HEAD is not the revision the
@@ -266,7 +266,7 @@ func TestWithoutACleanWorktreeOnlyHEADIsChecked(t *testing.T) {
 
 	h = newHarness()
 	inTheRepositoryItself(h)
-	h.defs.docs[definition.KindProcess]["p"] += "workspace:\n  clean: true\n"
+	h.defs.docs[document.KindProcess]["p"] += "workspace:\n  clean: true\n"
 	var asked []string
 	h.worktrees.state = func(revision string, _ int) app.WorktreeState {
 		asked = append(asked, revision)

@@ -7,6 +7,8 @@ import (
 	"strings"
 
 	"gopkg.in/yaml.v3"
+
+	"github.com/igor1309/ai-labs/agister/internal/domain/document"
 )
 
 // A process may extend one base process of its layer (ADR-030 rule 9): a
@@ -23,24 +25,24 @@ const processReference = "process:"
 // what it extends. A process none of whose files holds the whole document
 // is broken, which Extended reports; the base its farthest file names is
 // still named, so that a broken process does not make its base work.
-func Extends(doc Document, own func(name string) (Document, error)) string {
+func Extends(doc document.Document, own func(name string) (document.Document, error)) string {
 	return NewExtender(own).Extends(doc)
 }
 
 // Extender says what processes extend, as Extends does, reading and
 // composing each base once for all of them.
 type Extender struct {
-	own   func(name string) (Document, error)
+	own   func(name string) (document.Document, error)
 	bases map[string]composedBase
 }
 
 // NewExtender returns an Extender whose bases own reads.
-func NewExtender(own func(name string) (Document, error)) *Extender {
+func NewExtender(own func(name string) (document.Document, error)) *Extender {
 	return &Extender{own: own, bases: map[string]composedBase{}}
 }
 
 // Extends is the base doc names, as Extends says.
-func (e *Extender) Extends(doc Document) string {
+func (e *Extender) Extends(doc document.Document) string {
 	texts := ownTexts(doc)
 	files := newProcessFiles(doc.Source.Name, texts, e.own)
 	files.bases = e.bases
@@ -53,7 +55,7 @@ func (e *Extender) Extends(doc Document) string {
 
 // extendsOf is the base a layer's file names, when it names one, once, as
 // process:<name>; "" otherwise.
-func extendsOf(text LayerText) string {
+func extendsOf(text document.LayerText) string {
 	named := topLevel(text.Bytes)["extends"]
 	if len(named) != 1 {
 		return ""
@@ -65,15 +67,15 @@ func extendsOf(text LayerText) string {
 // which of them holds its whole document.
 type processFiles struct {
 	name  string
-	texts []LayerText
-	own   func(name string) (Document, error)
+	texts []document.LayerText
+	own   func(name string) (document.Document, error)
 	// bases are the bases read, by name.
 	bases map[string]composedBase
 	// wholes are what whole has said of each file, by its index.
 	wholes map[int]bool
 }
 
-func newProcessFiles(name string, texts []LayerText, own func(name string) (Document, error)) *processFiles {
+func newProcessFiles(name string, texts []document.LayerText, own func(name string) (document.Document, error)) *processFiles {
 	return &processFiles{name: name, texts: texts, own: own, bases: map[string]composedBase{}, wholes: map[int]bool{}}
 }
 
@@ -206,7 +208,7 @@ func (f *processFiles) named(trees []*composedNode) (int, error) {
 // returned as its own files compose it, with the error. So is a file of a
 // process that declares extends and does not compose: read whole, it
 // would run without the base it names, or past the rules on it.
-func Extended(process Document, own func(name string) (Document, error)) (Document, error) {
+func Extended(process document.Document, own func(name string) (document.Document, error)) (document.Document, error) {
 	texts := ownTexts(process)
 	if !declares(texts) {
 		return process, nil
@@ -221,7 +223,7 @@ func Extended(process Document, own func(name string) (Document, error)) (Docume
 	}
 	name := extendsOf(texts[at])
 	var whole *composedNode
-	var baseTexts []LayerText
+	var baseTexts []document.LayerText
 	var baseTrees []*composedNode
 	if name != "" {
 		base, err := own(name)
@@ -254,14 +256,14 @@ func Extended(process Document, own func(name string) (Document, error)) (Docume
 	for i := len(trees) - 1; i >= 0; i-- {
 		whole = merged(whole, trees[i])
 	}
-	data, err := rendered(KindProcess, whole)
+	data, err := rendered(document.KindProcess, whole)
 	if err != nil {
 		return process, err
 	}
-	extended := Document{Source: process.Source, Bytes: data}
+	extended := document.Document{Source: process.Source, Bytes: data}
 	extended.Source.Layers = nil
 	all := append(append([]*composedNode(nil), trees...), baseTrees...)
-	for i, text := range append(append([]LayerText(nil), texts...), baseTexts...) {
+	for i, text := range append(append([]document.LayerText(nil), texts...), baseTexts...) {
 		file := text.File
 		file.Fields = given(all[i], whole, nil, []string{})
 		file.Process = process.Source.Name
@@ -270,7 +272,7 @@ func Extended(process Document, own func(name string) (Document, error)) (Docume
 		}
 		extended.Source.Layers = append(extended.Source.Layers, file)
 		if i < len(texts) {
-			extended.Texts = append(extended.Texts, LayerText{File: file, Bytes: text.Bytes})
+			extended.Texts = append(extended.Texts, document.LayerText{File: file, Bytes: text.Bytes})
 		}
 	}
 	sum := sha256.Sum256(data)
@@ -293,7 +295,7 @@ func namedOnce(trees []*composedNode, at int) []*composedNode {
 }
 
 // declares reports whether any of a process's files sets extends.
-func declares(texts []LayerText) bool {
+func declares(texts []document.LayerText) bool {
 	for _, text := range texts {
 		if len(topLevel(text.Bytes)["extends"]) > 0 {
 			return true
@@ -305,7 +307,7 @@ func declares(texts []LayerText) bool {
 // holds reports whether the base, its files texts read as trees, holds its
 // whole document in layer for the process name, whose file there is over:
 // the base's file in layer, under over, is complete (ADR-030 rule 9).
-func holds(name string, texts []LayerText, trees []*composedNode, layer Layer, over *composedNode) bool {
+func holds(name string, texts []document.LayerText, trees []*composedNode, layer document.Layer, over *composedNode) bool {
 	for i, text := range texts {
 		if text.File.Layer == layer && len(unsetFields(name, merged(without(without(trees[i], "name"), "extends"), over))) == 0 {
 			return true
@@ -317,13 +319,13 @@ func holds(name string, texts []LayerText, trees []*composedNode, layer Layer, o
 // unsetFields are the fields a process named name requires that tree, a
 // mapping, leaves out.
 func unsetFields(name string, tree *composedNode) []string {
-	data, err := rendered(KindProcess, tree)
+	data, err := rendered(document.KindProcess, tree)
 	if err != nil {
 		return []string{"(unreadable)"}
 	}
-	source := Source{Kind: KindProcess, Name: name}
+	source := document.Source{Kind: document.KindProcess, Name: name}
 	p := problemsOf(source)
-	parseProcess(Document{Source: source, Bytes: data}, p)
+	parseProcess(document.Document{Source: source, Bytes: data}, p)
 	return p.absent
 }
 
@@ -390,22 +392,22 @@ func baseName(node *yaml.Node) string {
 
 // ownTexts are a process document's own layer files, nearest first: its
 // one text where it has none, as a store of one file reads it.
-func ownTexts(doc Document) []LayerText {
+func ownTexts(doc document.Document) []document.LayerText {
 	if len(doc.Texts) > 0 {
 		return doc.Texts
 	}
-	file := LayerFile{Layer: doc.Source.Layer, Path: doc.Source.Path, SHA256: doc.Source.SHA256}
+	file := document.LayerFile{Layer: doc.Source.Layer, Path: doc.Source.Path, SHA256: doc.Source.SHA256}
 	if len(doc.Source.Layers) > 0 {
 		file = doc.Source.Layers[0]
 	}
-	return []LayerText{{File: file, Bytes: doc.Bytes}}
+	return []document.LayerText{{File: file, Bytes: doc.Bytes}}
 }
 
 // layerTrees reads each of a process's layer files.
-func layerTrees(texts []LayerText) ([]*composedNode, error) {
+func layerTrees(texts []document.LayerText) ([]*composedNode, error) {
 	trees := make([]*composedNode, len(texts))
 	for i, text := range texts {
-		tree, err := layerTree(KindProcess, text.Bytes)
+		tree, err := layerTree(document.KindProcess, text.Bytes)
 		if err != nil {
 			return nil, fmt.Errorf("%s: %v", text.File.Path, err)
 		}

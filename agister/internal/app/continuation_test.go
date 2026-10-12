@@ -13,7 +13,7 @@ import (
 	"github.com/igor1309/ai-labs/agister/internal/adapters/fsruns"
 	"github.com/igor1309/ai-labs/agister/internal/app"
 	"github.com/igor1309/ai-labs/agister/internal/contract"
-	"github.com/igor1309/ai-labs/agister/internal/domain/definition"
+	"github.com/igor1309/ai-labs/agister/internal/domain/document"
 	"github.com/igor1309/ai-labs/agister/internal/domain/run"
 )
 
@@ -214,8 +214,8 @@ func TestAContinuationRechecksItsSelectionUnderItsHold(t *testing.T) {
 // runtime whose adapter gives skills, and run-0 to continue.
 func skilledResuming() (*harness, *[]string) {
 	h, order := resuming()
-	h.defs.docs[definition.KindProcess]["p"] = withSkills(h.defs.docs[definition.KindProcess]["p"], "review")
-	h.defs.docs[definition.KindSkill] = map[string]string{"review": skillDoc("review")}
+	h.defs.docs[document.KindProcess]["p"] = withSkills(h.defs.docs[document.KindProcess]["p"], "review")
+	h.defs.docs[document.KindSkill] = map[string]string{"review": skillDoc("review")}
 	h.runner.identity.Skills = true
 	patchedRun(h, "run-0", "", 0, 1, "diff A\n")
 	return h, order

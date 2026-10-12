@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	"github.com/igor1309/ai-labs/agister/internal/app"
-	"github.com/igor1309/ai-labs/agister/internal/domain/definition"
+	"github.com/igor1309/ai-labs/agister/internal/domain/document"
 )
 
 // retireBackups keeps one backup in memory, as saved, and records the
@@ -18,7 +18,7 @@ type retireBackups struct {
 	removed  []string
 }
 
-func (b *retireBackups) Save(_ context.Context, _ string, manifest app.InstallManifest, saved []definition.Document) error {
+func (b *retireBackups) Save(_ context.Context, _ string, manifest app.InstallManifest, saved []document.Document) error {
 	b.manifest, b.saved = manifest, map[string][]byte{}
 	for _, doc := range saved {
 		b.saved[doc.Source.Name] = doc.Bytes
@@ -30,7 +30,7 @@ func (b *retireBackups) Manifest(context.Context, string) (app.InstallManifest, 
 	return b.manifest, nil
 }
 
-func (b *retireBackups) Saved(_ context.Context, _ string, _ definition.Kind, name string) ([]byte, error) {
+func (b *retireBackups) Saved(_ context.Context, _ string, _ document.Kind, name string) ([]byte, error) {
 	return b.saved[name], nil
 }
 
@@ -44,9 +44,9 @@ func (b *retireBackups) Remove(_ context.Context, stamp string) error {
 func TestRetirerStoppedSaysWhichBackupRestores(t *testing.T) {
 	t.Parallel()
 	home := &installHomeSpy{
-		docs: []definition.Document{
-			installDoc(definition.KindProcess, "implement_codex", "name: implement_codex\n"),
-			installDoc(definition.KindProcess, "implement_pi", "name: implement_pi\n"),
+		docs: []document.Document{
+			installDoc(document.KindProcess, "implement_codex", "name: implement_codex\n"),
+			installDoc(document.KindProcess, "implement_pi", "name: implement_pi\n"),
 		},
 		removeErr: errors.New("disk full"),
 	}
@@ -54,9 +54,9 @@ func TestRetirerStoppedSaysWhichBackupRestores(t *testing.T) {
 	retirer := app.NewRetirer(app.RetireAdapters{Home: home, Backups: backups, Clock: fixedClock{}, Stamps: installStamps{}})
 
 	done, err := retirer.Retire(context.Background(), "retirement", []app.RetireDocument{
-		{Kind: definition.KindProcess, Name: "implement_codex"},
-		{Kind: definition.KindProcess, Name: "implement_pi"},
-		{Kind: definition.KindProcess, Name: "implement_pi_glm"},
+		{Kind: document.KindProcess, Name: "implement_codex"},
+		{Kind: document.KindProcess, Name: "implement_pi"},
+		{Kind: document.KindProcess, Name: "implement_pi_glm"},
 	})
 	if err == nil || !strings.Contains(err.Error(), "after 0 of 2 document(s)") || !strings.Contains(err.Error(), "install --restore stamp-1") {
 		t.Fatalf("retirement: %v, want stopped, naming the backup that restores", err)

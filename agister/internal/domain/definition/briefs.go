@@ -6,6 +6,8 @@ import (
 	"strings"
 
 	"gopkg.in/yaml.v3"
+
+	"github.com/igor1309/ai-labs/agister/internal/domain/document"
 )
 
 // BriefSchema is the schema of a brief's form (ADR-026 rule 5).
@@ -26,7 +28,7 @@ type Brief struct {
 	Name     string
 	Parts    []BriefPart
 	Template string
-	Source   Source
+	Source   document.Source
 }
 
 // BriefPart is one part of a brief's form.
@@ -51,7 +53,7 @@ var headingLine = regexp.MustCompile(`^#{1,6} \S(.*\S)?$`)
 // ParseBrief parses a brief's form: its parts, each with its heading,
 // whether it is required, the text it must read and the reference it
 // holds; and its template, whose headings are the parts', in order.
-func ParseBrief(doc Document) (Brief, error) {
+func ParseBrief(doc document.Document) (Brief, error) {
 	p := problemsOf(doc.Source)
 	subject := "brief " + subjectName(doc.Source)
 	brief := Brief{Name: doc.Source.Name, Source: doc.Source}

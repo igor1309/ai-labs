@@ -13,7 +13,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/igor1309/ai-labs/agister/internal/domain/definition"
+	"github.com/igor1309/ai-labs/agister/internal/domain/document"
 )
 
 func symlink(t *testing.T, target, link string) {
@@ -1000,8 +1000,8 @@ type runtimeStandIn struct {
 	failed string
 }
 
-func (s runtimeStandIn) List(_ context.Context, kind definition.Kind) ([]string, error) {
-	if kind != definition.KindRuntime {
+func (s runtimeStandIn) List(_ context.Context, kind document.Kind) ([]string, error) {
+	if kind != document.KindRuntime {
 		return nil, fmt.Errorf("listed %s", kind)
 	}
 	names := []string{"gone"}
@@ -1015,18 +1015,18 @@ func (s runtimeStandIn) List(_ context.Context, kind definition.Kind) ([]string,
 	return names, nil
 }
 
-func (s runtimeStandIn) Read(_ context.Context, kind definition.Kind, name string) (definition.Document, error) {
-	if kind != definition.KindRuntime {
-		return definition.Document{}, fmt.Errorf("read %s %s", kind, name)
+func (s runtimeStandIn) Read(_ context.Context, kind document.Kind, name string) (document.Document, error) {
+	if kind != document.KindRuntime {
+		return document.Document{}, fmt.Errorf("read %s %s", kind, name)
 	}
 	if name == s.failed {
-		return definition.Document{}, errors.New("/s/runtimes/" + name + ".yaml: broken parent")
+		return document.Document{}, errors.New("/s/runtimes/" + name + ".yaml: broken parent")
 	}
 	text, ok := s.docs[name]
 	if !ok {
-		return definition.Document{}, definition.ErrNotFound
+		return document.Document{}, document.ErrNotFound
 	}
-	return definition.Document{Bytes: []byte(text), Source: definition.Source{Path: "/s/runtimes/" + name + ".yaml"}}, nil
+	return document.Document{Bytes: []byte(text), Source: document.Source{Path: "/s/runtimes/" + name + ".yaml"}}, nil
 }
 
 // Runtime discovery needs only the runtimes' names and composed documents:

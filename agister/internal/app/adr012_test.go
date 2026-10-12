@@ -12,12 +12,13 @@ import (
 	"github.com/igor1309/ai-labs/agister/internal/adapters/fsdefs"
 	"github.com/igor1309/ai-labs/agister/internal/contract"
 	"github.com/igor1309/ai-labs/agister/internal/domain/definition"
+	"github.com/igor1309/ai-labs/agister/internal/domain/document"
 	"github.com/igor1309/ai-labs/agister/internal/domain/run"
 )
 
 // Settings live in real temporary files; runtime turns and effects remain
 // the existing harness's spies. Broken input is never put in live settings.
-func settingsFiles(t *testing.T, docs map[definition.Kind]map[string]string) fsdefs.Store {
+func settingsFiles(t *testing.T, docs map[document.Kind]map[string]string) fsdefs.Store {
 	t.Helper()
 	store := fsdefs.Store{Dir: t.TempDir()}
 	for kind, names := range docs {
@@ -125,11 +126,11 @@ func mustRemove(t *testing.T, path string) {
 func TestADR012UnreadableDocumentsHavePathsAndViews(t *testing.T) {
 	t.Parallel()
 	for _, tc := range []struct {
-		kind definition.Kind
+		kind document.Kind
 		name string
 	}{
-		{definition.KindProcess, "first"},
-		{definition.KindWorkflow, "w"},
+		{document.KindProcess, "first"},
+		{document.KindWorkflow, "w"},
 	} {
 		t.Run(string(tc.kind), func(t *testing.T) {
 			t.Parallel()
@@ -153,7 +154,7 @@ func TestADR012UnreadableDocumentsHavePathsAndViews(t *testing.T) {
 				t.Fatalf("unreadable document not attributed: %+v", report.Definitions)
 			}
 			var name, refusal string
-			if tc.kind == definition.KindProcess {
+			if tc.kind == document.KindProcess {
 				view, err := client.ShowProcess(ctx, tc.name)
 				if err != nil {
 					t.Fatal(err)
@@ -173,7 +174,7 @@ func TestADR012UnreadableDocumentsHavePathsAndViews(t *testing.T) {
 			// document is read (ADR-030 rule 7), naming the workflow that
 			// binds it, where it was refused for the unreadable document.
 			want := refusal
-			if tc.kind == definition.KindProcess {
+			if tc.kind == document.KindProcess {
 				want = "process first is not run on its own: agister run runs a workflow (ADR-030 rule 7); run one that binds it: w"
 			}
 			record := h.submit(t, client, contract.CallRequest{Process: tc.name})
@@ -183,7 +184,7 @@ func TestADR012UnreadableDocumentsHavePathsAndViews(t *testing.T) {
 			if _, err := client.ListRuns(ctx); err != nil {
 				t.Fatal(err)
 			}
-			if tc.kind == definition.KindProcess {
+			if tc.kind == document.KindProcess {
 				view, err := client.ShowWorkflow(ctx, "w")
 				if err != nil || !strings.Contains(view.Refusal, "workflow w uses process first ("+path+")") {
 					t.Fatalf("dependent workflow view: %+v, %v", view, err)
@@ -198,35 +199,35 @@ func TestADR012WorkflowPreflightsRuntimeProblems(t *testing.T) {
 	for _, tc := range []struct {
 		name    string
 		node    string
-		change  func(*harness, map[definition.Kind]map[string]string)
+		change  func(*harness, map[document.Kind]map[string]string)
 		problem string
 		// The whole refusal of a problem of the runtime mapping, after its
 		// chain and path; empty where only problem is checked.
 		ofMapping string
 	}{
-		{"adapter contract", "second", func(h *harness, docs map[definition.Kind]map[string]string) {
-			docs[definition.KindRuntime]["bad"] = strings.Replace(docs[definition.KindRuntime]["bad"], "contract: spy/1", "contract: spy/2", 1)
+		{"adapter contract", "second", func(h *harness, docs map[document.Kind]map[string]string) {
+			docs[document.KindRuntime]["bad"] = strings.Replace(docs[document.KindRuntime]["bad"], "contract: spy/1", "contract: spy/2", 1)
 		}, "describes adapter contract spy/2", "runtime mapping bad describes adapter contract spy/2, but the adapter implements spy/1"},
-		{"actual runtime version", "joiner", func(h *harness, docs map[definition.Kind]map[string]string) {
-			docs[definition.KindRuntime]["bad"] = strings.ReplaceAll(docs[definition.KindRuntime]["bad"], `verified: ["1."]`, `verified: ["2."]`)
+		{"actual runtime version", "joiner", func(h *harness, docs map[document.Kind]map[string]string) {
+			docs[document.KindRuntime]["bad"] = strings.ReplaceAll(docs[document.KindRuntime]["bad"], `verified: ["1."]`, `verified: ["2."]`)
 		}, "verifies no primitive for spy version 1.2.3", "runtime mapping bad verifies no primitive for spy version 1.2.3"},
-		{"runtime cannot repair", "second", func(h *harness, docs map[definition.Kind]map[string]string) {
-			docs[definition.KindService]["service"] += "max_verify_attempts = 3\n"
-			docs[definition.KindProcess]["second"] = namingVerification(docs[definition.KindProcess]["second"] + "session: resumable\n")
-			docs[definition.KindVerify] = map[string]string{"repo": verification}
+		{"runtime cannot repair", "second", func(h *harness, docs map[document.Kind]map[string]string) {
+			docs[document.KindService]["service"] += "max_verify_attempts = 3\n"
+			docs[document.KindProcess]["second"] = namingVerification(docs[document.KindProcess]["second"] + "session: resumable\n")
+			docs[document.KindVerify] = map[string]string{"repo": verification}
 			h.runner.identity.Resume = false
 		}, "runtime bad cannot resume sessions", ""},
-		{"missing verification with broken runtime", "second", func(h *harness, docs map[definition.Kind]map[string]string) {
-			docs[definition.KindRuntime]["bad"] = strings.Replace(docs[definition.KindRuntime]["bad"], "contract: spy/1", "contract: spy/2", 1)
-			docs[definition.KindProcess]["second"] = namingVerification(docs[definition.KindProcess]["second"])
+		{"missing verification with broken runtime", "second", func(h *harness, docs map[document.Kind]map[string]string) {
+			docs[document.KindRuntime]["bad"] = strings.Replace(docs[document.KindRuntime]["bad"], "contract: spy/1", "contract: spy/2", 1)
+			docs[document.KindProcess]["second"] = namingVerification(docs[document.KindProcess]["second"])
 		}, "describes adapter contract spy/2", ""},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			h := newHarness()
 			docs := withBrokenMapping(workflowDocs())
-			docs[definition.KindRuntime]["bad"] = strings.Replace(docs[definition.KindRuntime]["bad"], "adapter: nowhere", "adapter: spy", 1)
-			docs[definition.KindWorkflow]["w"] = boundTo(workflowDoc, map[string]string{"second": "two", "joiner": "merge"}[tc.node], tc.node, "b")
+			docs[document.KindRuntime]["bad"] = strings.Replace(docs[document.KindRuntime]["bad"], "adapter: nowhere", "adapter: spy", 1)
+			docs[document.KindWorkflow]["w"] = boundTo(workflowDoc, map[string]string{"second": "two", "joiner": "merge"}[tc.node], tc.node, "b")
 			tc.change(h, docs)
 			s := settingsFiles(t, docs)
 			client := h.clientOn(s)
@@ -264,15 +265,15 @@ func TestADR012ABindingsProblemIsResolvedAndAttributed(t *testing.T) {
 	t.Parallel()
 	h := newHarness()
 	docs := withBrokenMapping(settingsDocs())
-	docs[definition.KindRuntime]["bad"] = strings.Replace(docs[definition.KindRuntime]["bad"], "adapter: nowhere", "adapter: spy", 1)
-	docs[definition.KindProcess]["q"] = strings.Replace(docs[definition.KindProcess]["q"], "repository.diff]}", "repository.diff], require: [repository.read]}", 1)
-	docs[definition.KindRuntime]["bad"] = strings.Replace(docs[definition.KindRuntime]["bad"], "grants: [repository.read]", "grants: [repository.search]", 1)
+	docs[document.KindRuntime]["bad"] = strings.Replace(docs[document.KindRuntime]["bad"], "adapter: nowhere", "adapter: spy", 1)
+	docs[document.KindProcess]["q"] = strings.Replace(docs[document.KindProcess]["q"], "repository.diff]}", "repository.diff], require: [repository.read]}", 1)
+	docs[document.KindRuntime]["bad"] = strings.Replace(docs[document.KindRuntime]["bad"], "grants: [repository.read]", "grants: [repository.search]", 1)
 	const problem = "required permissions would be withheld"
 	// p is the same process; p_a binds it to the sound agent and p_b to
 	// the bad one, as q_b binds q.
-	docs[definition.KindProcess]["p"] = strings.Replace(docs[definition.KindProcess]["q"], "name: q", "name: p", 1)
-	docs[definition.KindWorkflow]["p_b"] = callOf("p_b", "p", "b")
-	docs[definition.KindWorkflow]["q_a"] = callOf("q_a", "q", "a")
+	docs[document.KindProcess]["p"] = strings.Replace(docs[document.KindProcess]["q"], "name: q", "name: p", 1)
+	docs[document.KindWorkflow]["p_b"] = callOf("p_b", "p", "b")
+	docs[document.KindWorkflow]["q_a"] = callOf("q_a", "q", "a")
 	s := settingsFiles(t, docs)
 	client := h.clientOn(s)
 	for workflow, process := range map[string]string{"q_b": "q", "p_b": "p"} {
@@ -295,7 +296,7 @@ func TestADR012MissingVerificationStillRefusesAtItsNode(t *testing.T) {
 	t.Parallel()
 	h := newHarness()
 	docs := workflowDocs()
-	docs[definition.KindProcess]["second"] = namingVerification(docs[definition.KindProcess]["second"])
+	docs[document.KindProcess]["second"] = namingVerification(docs[document.KindProcess]["second"])
 	s := settingsFiles(t, docs)
 	project := fsdefs.Store{Dir: t.TempDir()}
 	client := h.clientOn(fsdefs.Layered{Home: s, Repository: &project})
@@ -330,37 +331,37 @@ func TestADR012MissingVerificationStillRefusesAtItsNode(t *testing.T) {
 func TestADR012EveryDocumentKindRefusesOnlyItsDependents(t *testing.T) {
 	t.Parallel()
 	for _, tc := range []struct {
-		kind definition.Kind
+		kind document.Kind
 		name string
 	}{
-		{definition.KindAgent, "b"},
-		{definition.KindRuntime, "bad"},
-		{definition.KindSchema, "broken"},
-		{definition.KindVerify, "repo"},
-		{definition.KindProcess, "second"},
-		{definition.KindWorkflow, "w"},
+		{document.KindAgent, "b"},
+		{document.KindRuntime, "bad"},
+		{document.KindSchema, "broken"},
+		{document.KindVerify, "repo"},
+		{document.KindProcess, "second"},
+		{document.KindWorkflow, "w"},
 	} {
 		t.Run(string(tc.kind), func(t *testing.T) {
 			t.Parallel()
 			h := newHarness()
 			docs := workflowDocs()
 			switch tc.kind {
-			case definition.KindAgent, definition.KindRuntime:
+			case document.KindAgent, document.KindRuntime:
 				docs = withBrokenMapping(docs)
-				docs[definition.KindRuntime]["bad"] = strings.Replace(docs[definition.KindRuntime]["bad"], "adapter: nowhere", "adapter: spy", 1)
-				docs[definition.KindWorkflow]["w"] = boundTo(workflowDoc, "two", "second", "b")
-			case definition.KindSchema:
-				docs[definition.KindProcess]["second"] = strings.Replace(docs[definition.KindProcess]["second"], "schema: s", "schema: broken", 1)
-			case definition.KindVerify:
-				docs[definition.KindProcess]["second"] = namingVerification(docs[definition.KindProcess]["second"])
+				docs[document.KindRuntime]["bad"] = strings.Replace(docs[document.KindRuntime]["bad"], "adapter: nowhere", "adapter: spy", 1)
+				docs[document.KindWorkflow]["w"] = boundTo(workflowDoc, "two", "second", "b")
+			case document.KindSchema:
+				docs[document.KindProcess]["second"] = strings.Replace(docs[document.KindProcess]["second"], "schema: s", "schema: broken", 1)
+			case document.KindVerify:
+				docs[document.KindProcess]["second"] = namingVerification(docs[document.KindProcess]["second"])
 			}
 			if docs[tc.kind] == nil {
 				docs[tc.kind] = map[string]string{}
 			}
 			docs[tc.kind][tc.name] = "["
 			// Nothing but a workflow's node runs a process (ADR-030 rule 5).
-			docs[definition.KindWorkflow]["first_a"] = callOf("first_a", "first", "a")
-			if tc.kind == definition.KindSchema {
+			docs[document.KindWorkflow]["first_a"] = callOf("first_a", "first", "a")
+			if tc.kind == document.KindSchema {
 				// The validator seam rejects this document, while accepting
 				// the unrelated process's schema.
 				h.validator.compileFor = func(data []byte) error {
@@ -381,9 +382,9 @@ func TestADR012EveryDocumentKindRefusesOnlyItsDependents(t *testing.T) {
 				if reach.Subject != nil && *reach.Subject == (contract.DefinitionRef{Kind: string(tc.kind), Name: tc.name}) {
 					found = true
 					want, workflows := []string{"second"}, []string{"w"}
-					if tc.kind == definition.KindWorkflow {
+					if tc.kind == document.KindWorkflow {
 						want = nil
-					} else if tc.kind == definition.KindAgent || tc.kind == definition.KindRuntime {
+					} else if tc.kind == document.KindAgent || tc.kind == document.KindRuntime {
 						// Processes q and second were refused here while
 						// each named agent b. No process names an agent
 						// (ADR-030 rule 2): the workflows that bind b are.
@@ -436,8 +437,8 @@ func TestInvalidWorkspaceSettingsRefuseNothing(t *testing.T) {
 	ctx := context.Background()
 	h := newHarness()
 	docs := workflowDocs()
-	docs[definition.KindWorkspace] = map[string]string{"workspace": "schema: agister.workspace/v1alpha1\nsetup: {command: ./link-config.sh}\n"}
-	docs[definition.KindWorkflow]["first_a"] = callOf("first_a", "first", "a")
+	docs[document.KindWorkspace] = map[string]string{"workspace": "schema: agister.workspace/v1alpha1\nsetup: {command: ./link-config.sh}\n"}
+	docs[document.KindWorkflow]["first_a"] = callOf("first_a", "first", "a")
 	s := settingsFiles(t, docs)
 	path := filepath.Join(s.Dir, "workspace.yaml")
 	client := h.clientOn(s)
@@ -471,9 +472,9 @@ func TestUnreadableWorkspaceSettingsRefuseNothing(t *testing.T) {
 	ctx := context.Background()
 	h := newHarness()
 	docs := workflowDocs()
-	docs[definition.KindProcess]["first"] = inTheRepository(docs[definition.KindProcess]["first"])
-	docs[definition.KindWorkflow]["first_a"] = callOf("first_a", "first", "a")
-	docs[definition.KindWorkflow]["second_a"] = callOf("second_a", "second", "a")
+	docs[document.KindProcess]["first"] = inTheRepository(docs[document.KindProcess]["first"])
+	docs[document.KindWorkflow]["first_a"] = callOf("first_a", "first", "a")
+	docs[document.KindWorkflow]["second_a"] = callOf("second_a", "second", "a")
 	s := settingsFiles(t, docs)
 	path := filepath.Join(s.Dir, "workspace.yaml")
 	// A symlink to itself: it exists, and reading it fails.

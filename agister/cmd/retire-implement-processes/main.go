@@ -32,7 +32,7 @@ import (
 	"github.com/igor1309/ai-labs/agister/internal/adapters/system"
 	"github.com/igor1309/ai-labs/agister/internal/app"
 	"github.com/igor1309/ai-labs/agister/internal/composition/install"
-	"github.com/igor1309/ai-labs/agister/internal/domain/definition"
+	"github.com/igor1309/ai-labs/agister/internal/domain/document"
 )
 
 func main() {
@@ -84,7 +84,7 @@ func run(ctx context.Context, args []string, env env, retirement func(home strin
 	}
 	docs := make([]app.RetireDocument, 0, len(retired))
 	for _, name := range retired {
-		docs = append(docs, app.RetireDocument{Kind: definition.KindProcess, Name: name})
+		docs = append(docs, app.RetireDocument{Kind: document.KindProcess, Name: name})
 	}
 	done, err := retirement(home).Retire(ctx, source, docs)
 	for _, path := range done.Removed {

@@ -9,7 +9,7 @@ import (
 
 	"github.com/igor1309/ai-labs/agister/internal/app"
 	"github.com/igor1309/ai-labs/agister/internal/contract"
-	"github.com/igor1309/ai-labs/agister/internal/domain/definition"
+	"github.com/igor1309/ai-labs/agister/internal/domain/document"
 	"github.com/igor1309/ai-labs/agister/internal/domain/run"
 )
 
@@ -21,12 +21,12 @@ setup:
 
 // withWorkspace gives the harness's settings the workspace document text.
 func withWorkspace(h *harness, text string) {
-	h.defs.docs[definition.KindWorkspace] = map[string]string{"workspace": text}
+	h.defs.docs[document.KindWorkspace] = map[string]string{"workspace": text}
 }
 
 // ownSetup gives the harness's process p a setup of its own.
 func ownSetup(h *harness) {
-	h.defs.docs[definition.KindProcess]["p"] = strings.Replace(h.defs.docs[definition.KindProcess]["p"],
+	h.defs.docs[document.KindProcess]["p"] = strings.Replace(h.defs.docs[document.KindProcess]["p"],
 		"  revision: candidate_revision\n", "  revision: candidate_revision\n  setup: {command: ./own.sh, timeout: 30s}\n", 1)
 }
 
@@ -145,12 +145,12 @@ func steps(contents ...string) func() string {
 func TestCheckWarnsOfObsoleteWorkspaceSettingsSetupAndWhere(t *testing.T) {
 	t.Parallel()
 	h := newHarness()
-	h.defs.docs[definition.KindProcess]["q"] = strings.Replace(strings.Replace(h.defs.docs[definition.KindProcess]["p"], "name: p", "name: q", 1),
+	h.defs.docs[document.KindProcess]["q"] = strings.Replace(strings.Replace(h.defs.docs[document.KindProcess]["p"], "name: p", "name: q", 1),
 		"  revision: candidate_revision\n", "  revision: candidate_revision\n  setup: {command: ./s.sh, timeout: 1m}\n", 1)
-	h.defs.docs[definition.KindProcess]["own"] = strings.Replace(h.defs.docs[definition.KindProcess]["p"], "name: p", "name: own", 1)
-	h.defs.docs[definition.KindProcess]["own"] = strings.Replace(h.defs.docs[definition.KindProcess]["own"],
+	h.defs.docs[document.KindProcess]["own"] = strings.Replace(h.defs.docs[document.KindProcess]["p"], "name: p", "name: own", 1)
+	h.defs.docs[document.KindProcess]["own"] = strings.Replace(h.defs.docs[document.KindProcess]["own"],
 		"  revision: candidate_revision\n", "  revision: candidate_revision\n  setup: {command: '', timeout: soon}\n", 1)
-	h.defs.docs[definition.KindVerify] = map[string]string{"repo": verification + "where: copy\n"}
+	h.defs.docs[document.KindVerify] = map[string]string{"repo": verification + "where: copy\n"}
 	withWorkspace(h, "schema: agister.workspace/v1alpha1\nmode: elsewhere\nsetup: {timeout: 1m}\n")
 	report := checkOf(t, h, false)
 
@@ -185,7 +185,7 @@ func TestCheckWarnsOfObsoleteWorkspaceSettingsSetupAndWhere(t *testing.T) {
 func TestCheckReportsAProcessDeclaringCheckoutAsInvalid(t *testing.T) {
 	t.Parallel()
 	h := newHarness()
-	h.defs.docs[definition.KindProcess]["old"] = strings.Replace(strings.Replace(h.defs.docs[definition.KindProcess]["p"], "name: p", "name: old", 1),
+	h.defs.docs[document.KindProcess]["old"] = strings.Replace(strings.Replace(h.defs.docs[document.KindProcess]["p"], "name: p", "name: old", 1),
 		"  revision: candidate_revision\n", "  checkout: candidate_revision\n", 1)
 	report := checkOf(t, h, false)
 

@@ -9,6 +9,7 @@ import (
 
 	"github.com/igor1309/ai-labs/agister/internal/cli"
 	"github.com/igor1309/ai-labs/agister/internal/domain/definition"
+	"github.com/igor1309/ai-labs/agister/internal/domain/document"
 )
 
 // briefForm parses the brief form name of the settings folder dir.
@@ -19,7 +20,7 @@ func briefForm(t *testing.T, dir, name string) (definition.Brief, []byte) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	brief, err := definition.ParseBrief(definition.Document{Source: definition.Source{Kind: definition.KindBrief, Name: name, Path: path}, Bytes: data})
+	brief, err := definition.ParseBrief(document.Document{Source: document.Source{Kind: document.KindBrief, Name: name, Path: path}, Bytes: data})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -113,13 +114,13 @@ func TestTheRepositorysCallsNameTheirForms(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	read := func(parts ...string) definition.Document {
+	read := func(parts ...string) document.Document {
 		path := filepath.Join(append([]string{root, "agister", "home"}, parts...)...)
 		data, err := os.ReadFile(path)
 		if err != nil {
 			t.Fatal(err)
 		}
-		return definition.Document{Source: definition.Source{Name: filepath.Base(path[:len(path)-len(filepath.Ext(path))]), Path: path}, Bytes: data}
+		return document.Document{Source: document.Source{Name: filepath.Base(path[:len(path)-len(filepath.Ext(path))]), Path: path}, Bytes: data}
 	}
 	implement, err := definition.ParseProcess(read("processes", "implement.yaml"))
 	if err != nil {

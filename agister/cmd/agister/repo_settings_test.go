@@ -26,6 +26,7 @@ import (
 	"github.com/igor1309/ai-labs/agister/internal/cli"
 	"github.com/igor1309/ai-labs/agister/internal/contract"
 	"github.com/igor1309/ai-labs/agister/internal/domain/definition"
+	"github.com/igor1309/ai-labs/agister/internal/domain/document"
 	domain "github.com/igor1309/ai-labs/agister/internal/domain/run"
 	"github.com/igor1309/ai-labs/gokit/fakeproc"
 	"github.com/igor1309/ai-labs/gokit/supervisor/supervisortest"
@@ -2143,8 +2144,8 @@ func parseAgent(t *testing.T, root, agent string) definition.Agent {
 	if err != nil {
 		t.Fatal(err)
 	}
-	parsed, err := definition.ParseAgent(definition.Document{
-		Source: definition.Source{Kind: definition.KindAgent, Name: agent, Path: agent + ".toml"}, Bytes: data,
+	parsed, err := definition.ParseAgent(document.Document{
+		Source: document.Source{Kind: document.KindAgent, Name: agent, Path: agent + ".toml"}, Bytes: data,
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -3068,8 +3069,8 @@ func TestImplementersAreGivenTheGoPrompts(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		verification, err := definition.ParseVerify(definition.Document{
-			Source: definition.Source{Kind: definition.KindVerify, Name: "repo", Path: path}, Bytes: data,
+		verification, err := definition.ParseVerify(document.Document{
+			Source: document.Source{Kind: document.KindVerify, Name: "repo", Path: path}, Bytes: data,
 		})
 		if err != nil {
 			t.Fatalf("%s is not a complete verification: %v", path, err)
@@ -3250,9 +3251,9 @@ func parseProcess(t *testing.T, root, name string) definition.Process {
 
 // extendedProcess is the document of process name in the home folder, laid
 // over the base it extends, if any (ADR-030 rule 9).
-func extendedProcess(t *testing.T, root, name string) definition.Document {
+func extendedProcess(t *testing.T, root, name string) document.Document {
 	t.Helper()
-	doc, err := definition.Extended(homeProcess(t, root, name), func(base string) (definition.Document, error) {
+	doc, err := definition.Extended(homeProcess(t, root, name), func(base string) (document.Document, error) {
 		return homeProcess(t, root, base), nil
 	})
 	if err != nil {
@@ -3262,21 +3263,21 @@ func extendedProcess(t *testing.T, root, name string) definition.Document {
 }
 
 // homeProcess is the document of process name in the home folder, as it is.
-func homeProcess(t *testing.T, root, name string) definition.Document {
+func homeProcess(t *testing.T, root, name string) document.Document {
 	t.Helper()
 	data, err := os.ReadFile(filepath.Join(root, homeFolder, "processes", name+".yaml"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	return definition.Document{Source: definition.Source{Kind: definition.KindProcess, Name: name, Path: name + ".yaml"}, Bytes: data}
+	return document.Document{Source: document.Source{Kind: document.KindProcess, Name: name, Path: name + ".yaml"}, Bytes: data}
 }
 
 // parseWorkflow is workflow name of the home folder.
 func parseWorkflow(t *testing.T, root, name string) definition.Workflow {
 	t.Helper()
 	path := filepath.Join(root, homeFolder, "workflows", name+".yaml")
-	workflow, err := definition.ParseWorkflow(definition.Document{
-		Source: definition.Source{Kind: definition.KindWorkflow, Name: name, Path: path}, Bytes: []byte(read(t, path)),
+	workflow, err := definition.ParseWorkflow(document.Document{
+		Source: document.Source{Kind: document.KindWorkflow, Name: name, Path: path}, Bytes: []byte(read(t, path)),
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -3405,7 +3406,7 @@ func schemaValidates(t *testing.T, record map[string]any, output any) {
 	var schemaPath string
 	for _, source := range record["definitions"].([]any) {
 		source := source.(map[string]any)
-		if source["kind"] == string(definition.KindSchema) {
+		if source["kind"] == string(document.KindSchema) {
 			schemaPath, _ = nearest(source)["path"].(string)
 		}
 	}

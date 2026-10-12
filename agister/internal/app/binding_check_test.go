@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	"github.com/igor1309/ai-labs/agister/internal/contract"
-	"github.com/igor1309/ai-labs/agister/internal/domain/definition"
+	"github.com/igor1309/ai-labs/agister/internal/domain/document"
 	"github.com/igor1309/ai-labs/agister/internal/domain/run"
 )
 
@@ -22,9 +22,9 @@ import (
 func onAgentC(runtime string) *harness {
 	h := newHarness()
 	h.defs.docs = workflowDocs()
-	h.defs.docs[definition.KindAgent]["c"] = strings.NewReplacer(`name = "a"`, `name = "c"`, `runtime = "rt"`, `runtime = "`+runtime+`"`).Replace(settingsDocs()[definition.KindAgent]["a"])
-	h.defs.docs[definition.KindWorkflow]["w"] = boundTo(workflowDoc, "two", "second", "c")
-	h.defs.docs[definition.KindWorkflow]["v"] = strings.Replace(workflowDoc, "name: w", "name: v", 1)
+	h.defs.docs[document.KindAgent]["c"] = strings.NewReplacer(`name = "a"`, `name = "c"`, `runtime = "rt"`, `runtime = "`+runtime+`"`).Replace(settingsDocs()[document.KindAgent]["a"])
+	h.defs.docs[document.KindWorkflow]["w"] = boundTo(workflowDoc, "two", "second", "c")
+	h.defs.docs[document.KindWorkflow]["v"] = strings.Replace(workflowDoc, "name: w", "name: v", 1)
 	return h
 }
 
@@ -48,8 +48,8 @@ const bash = `Bash: {grants: [process.execute, repository.read], verified: ["1."
 // repairingSecond has process second repair in its call's session, which
 // it says may be resumed.
 func repairingSecond(h *harness) {
-	h.defs.docs[definition.KindService]["service"] += "max_verify_attempts = 3\n"
-	h.defs.docs[definition.KindProcess]["second"] = strings.Replace(nodeProcess("second", "Work as second."),
+	h.defs.docs[document.KindService]["service"] += "max_verify_attempts = 3\n"
+	h.defs.docs[document.KindProcess]["second"] = strings.Replace(nodeProcess("second", "Work as second."),
 		"  revision: candidate_revision\n", "  revision: candidate_revision\n  clean: true\n", 1) + "session: resumable\n" + verifyBlock
 }
 
@@ -66,9 +66,9 @@ func workflowWarnings(report contract.CheckReport) []string {
 
 // requiring has process second require permission, which it allows.
 func requiring(h *harness, permission string) {
-	second := strings.Replace(h.defs.docs[definition.KindProcess]["second"],
+	second := strings.Replace(h.defs.docs[document.KindProcess]["second"],
 		"tools: {allow: [repository.read, repository.search, repository.diff]}\n", "tools:\n  allow: [repository.read, repository.search, repository.diff]\n", 1)
-	h.defs.docs[definition.KindProcess]["second"] = second + "  require: [" + permission + "]\n"
+	h.defs.docs[document.KindProcess]["second"] = second + "  require: [" + permission + "]\n"
 }
 
 // ADR-030 rule 8: check resolves every node of every workflow as its call
@@ -101,14 +101,14 @@ func TestCheckJudgesEachBindingOfAWorkflow(t *testing.T) {
 		{name: "no primitive of the agent's runtime is within what the process allows",
 			arrange: func() *harness {
 				h := onAgentC("narrow")
-				h.defs.docs[definition.KindRuntime]["narrow"] = oneOf("narrow", bash)
+				h.defs.docs[document.KindRuntime]["narrow"] = oneOf("narrow", bash)
 				return h
 			},
 			want: node + "cannot run on agent c's runtime narrow: cannot enforce the effective permissions: Bash also grants process.execute"},
 		{name: "no version of the agent's runtime gives a permission the process requires",
 			arrange: func() *harness {
 				h := onAgentC("reads")
-				h.defs.docs[definition.KindRuntime]["reads"] = strings.Replace(reads, `    Grep: {grants: [repository.search], verified: ["2."]}`+"\n", "", 1)
+				h.defs.docs[document.KindRuntime]["reads"] = strings.Replace(reads, `    Grep: {grants: [repository.search], verified: ["2."]}`+"\n", "", 1)
 				requiring(h, "repository.search")
 				return h
 			},
@@ -116,7 +116,7 @@ func TestCheckJudgesEachBindingOfAWorkflow(t *testing.T) {
 		{name: "the installed version withholds a permission the process requires",
 			arrange: func() *harness {
 				h := onAgentC("reads")
-				h.defs.docs[definition.KindRuntime]["reads"] = reads
+				h.defs.docs[document.KindRuntime]["reads"] = reads
 				requiring(h, "repository.search")
 				return h
 			},
@@ -125,7 +125,7 @@ func TestCheckJudgesEachBindingOfAWorkflow(t *testing.T) {
 		{name: "the installed version verifies no primitive within what the process allows",
 			arrange: func() *harness {
 				h := onAgentC("split")
-				h.defs.docs[definition.KindRuntime]["split"] = oneOf("split", `Read: {grants: [repository.read], verified: ["2."]}`, bash)
+				h.defs.docs[document.KindRuntime]["split"] = oneOf("split", `Read: {grants: [repository.read], verified: ["2."]}`, bash)
 				return h
 			},
 			probe: true,
@@ -143,7 +143,7 @@ func TestCheckJudgesEachBindingOfAWorkflow(t *testing.T) {
 		{name: "the runtime cannot enforce a cost limit, and the process sets one",
 			arrange: func() *harness {
 				h := onAgentC("rt")
-				h.defs.docs[definition.KindProcess]["second"] += "max_cost_usd: 2\n"
+				h.defs.docs[document.KindProcess]["second"] += "max_cost_usd: 2\n"
 				h.runner.identity.CostLimit = false
 				return h
 			},
@@ -208,14 +208,14 @@ func TestAWorkflowWithABindingThatCannotRunIsRefused(t *testing.T) {
 		{name: "no primitive of the agent's runtime is within what the process allows",
 			arrange: func() *harness {
 				h := onAgentC("narrow")
-				h.defs.docs[definition.KindRuntime]["narrow"] = oneOf("narrow", bash)
+				h.defs.docs[document.KindRuntime]["narrow"] = oneOf("narrow", bash)
 				return h
 			},
 			want: refused + "cannot run on agent c's runtime narrow: cannot enforce the effective permissions: Bash also grants process.execute"},
 		{name: "the agent's runtime withholds a permission the process requires",
 			arrange: func() *harness {
 				h := onAgentC("narrow")
-				h.defs.docs[definition.KindRuntime]["narrow"] = oneOf("narrow", `Read: {grants: [repository.read], verified: ["1."]}`)
+				h.defs.docs[document.KindRuntime]["narrow"] = oneOf("narrow", `Read: {grants: [repository.read], verified: ["1."]}`)
 				requiring(h, "repository.search")
 				return h
 			},
@@ -274,7 +274,7 @@ func TestCheckListsWhatEachBindingWithholds(t *testing.T) {
 	t.Parallel()
 	onReads := func(require bool) *harness {
 		h := onAgentC("reads")
-		h.defs.docs[definition.KindRuntime]["reads"] = reads
+		h.defs.docs[document.KindRuntime]["reads"] = reads
 		if require {
 			requiring(h, "repository.search")
 		}

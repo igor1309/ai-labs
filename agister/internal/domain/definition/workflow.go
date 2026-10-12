@@ -4,6 +4,8 @@ import (
 	"strings"
 
 	"gopkg.in/yaml.v3"
+
+	"github.com/igor1309/ai-labs/agister/internal/domain/document"
 )
 
 // WorkflowSchema is the schema of a workflow definition (ADR-003).
@@ -42,7 +44,7 @@ type Workflow struct {
 	// Call is the one node of a workflow of one call; nil: the workflow
 	// fans out and joins.
 	Call   *Node
-	Source Source
+	Source document.Source
 }
 
 // Nodes lists a workflow's nodes: the one call, or the fan-out nodes in
@@ -68,7 +70,7 @@ func (p Process) Collects() []string {
 
 // ParseWorkflow parses a workflow definition. What the nodes' processes
 // declare is checked across documents (settings.WorkflowProblems).
-func ParseWorkflow(doc Document) (Workflow, error) {
+func ParseWorkflow(doc document.Document) (Workflow, error) {
 	p := problemsOf(doc.Source)
 	subject := "workflow " + subjectName(doc.Source)
 	workflow := Workflow{Name: doc.Source.Name, Source: doc.Source}

@@ -9,7 +9,7 @@ import (
 
 	"github.com/igor1309/ai-labs/agister/internal/app"
 	"github.com/igor1309/ai-labs/agister/internal/contract"
-	"github.com/igor1309/ai-labs/agister/internal/domain/definition"
+	"github.com/igor1309/ai-labs/agister/internal/domain/document"
 	"github.com/igor1309/ai-labs/agister/internal/domain/run"
 )
 
@@ -70,11 +70,11 @@ func callOf(name, process, agent string) string {
 // withBrokenMapping adds runtime mapping bad, rt but for an adapter the
 // code does not provide, agent b on it, process q, p by another name, and
 // workflow q_b, whose call binds q to b.
-func withBrokenMapping(docs map[definition.Kind]map[string]string) map[definition.Kind]map[string]string {
-	docs[definition.KindRuntime]["bad"] = strings.Replace(strings.Replace(docs[definition.KindRuntime]["rt"], "name: rt", "name: bad", 1), "adapter: spy", "adapter: nowhere", 1)
-	docs[definition.KindAgent]["b"] = strings.Replace(strings.Replace(docs[definition.KindAgent]["a"], `name = "a"`, `name = "b"`, 1), `runtime = "rt"`, `runtime = "bad"`, 1)
-	docs[definition.KindProcess]["q"] = strings.Replace(settingsDocs()[definition.KindProcess]["p"], "name: p", "name: q", 1)
-	docs[definition.KindWorkflow]["q_b"] = callOf("q_b", "q", "b")
+func withBrokenMapping(docs map[document.Kind]map[string]string) map[document.Kind]map[string]string {
+	docs[document.KindRuntime]["bad"] = strings.Replace(strings.Replace(docs[document.KindRuntime]["rt"], "name: rt", "name: bad", 1), "adapter: spy", "adapter: nowhere", 1)
+	docs[document.KindAgent]["b"] = strings.Replace(strings.Replace(docs[document.KindAgent]["a"], `name = "a"`, `name = "b"`, 1), `runtime = "rt"`, `runtime = "bad"`, 1)
+	docs[document.KindProcess]["q"] = strings.Replace(settingsDocs()[document.KindProcess]["p"], "name: p", "name: q", 1)
+	docs[document.KindWorkflow]["q_b"] = callOf("q_b", "q", "b")
 	return docs
 }
 
@@ -104,7 +104,7 @@ func TestAnUnusedBrokenDocumentRefusesNothing(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
 	h := newHarness()
-	h.defs.docs[definition.KindRuntime]["unused"] = strings.Replace(strings.Replace(settingsDocs()[definition.KindRuntime]["rt"], "name: rt", "name: unused", 1), "adapter: spy", "adapter: nowhere", 1)
+	h.defs.docs[document.KindRuntime]["unused"] = strings.Replace(strings.Replace(settingsDocs()[document.KindRuntime]["rt"], "name: rt", "name: unused", 1), "adapter: spy", "adapter: nowhere", 1)
 	client := h.clientOn(h.defs)
 
 	report, err := client.Check(ctx, false)
@@ -218,9 +218,9 @@ func TestNewClientTranslatesWhatTheCheckerFound(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
 	h := newHarness()
-	workflow := app.DocumentRef{Kind: definition.KindWorkflow, Name: "p_a"}
-	process := app.DocumentRef{Kind: definition.KindProcess, Name: "p"}
-	agent := app.DocumentRef{Kind: definition.KindAgent, Name: "a"}
+	workflow := app.DocumentRef{Kind: document.KindWorkflow, Name: "p_a"}
+	process := app.DocumentRef{Kind: document.KindProcess, Name: "p"}
+	agent := app.DocumentRef{Kind: document.KindAgent, Name: "a"}
 	documents := []app.CheckedDocument{
 		// A process names no agent (ADR-030 rule 2): the workflow whose
 		// node binds it uses the agent, where the process did.
@@ -269,7 +269,7 @@ func TestAWorkflowOnABrokenDocumentIsRefusedBeforeAnyNode(t *testing.T) {
 	ctx := context.Background()
 	h := newHarness()
 	h.defs.docs = withBrokenMapping(workflowDocs())
-	h.defs.docs[definition.KindWorkflow]["w"] = boundTo(workflowDoc, "two", "second", "b")
+	h.defs.docs[document.KindWorkflow]["w"] = boundTo(workflowDoc, "two", "second", "b")
 	client := h.clientOn(h.defs)
 
 	report, err := client.Check(ctx, false)
@@ -328,7 +328,7 @@ func TestCommandsRunBesideABrokenDocument(t *testing.T) {
 	ctx := context.Background()
 	h := newHarness()
 	withBrokenMapping(h.defs.docs)
-	h.defs.docs[definition.KindAgent]["z"] = "not an agent"
+	h.defs.docs[document.KindAgent]["z"] = "not an agent"
 	client := h.clientOn(h.defs)
 
 	agents, err := client.ListAgents(ctx)
@@ -358,18 +358,18 @@ func TestCommandsRunBesideABrokenDocument(t *testing.T) {
 func TestProblemsNoDocumentOwnsStopEveryCommand(t *testing.T) {
 	t.Parallel()
 	sameName := workflowDocs()
-	sameName[definition.KindProcess]["p"] = settingsDocs()[definition.KindProcess]["p"]
-	sameName[definition.KindWorkflow]["p"] = strings.Replace(workflowDoc, "name: w", "name: p", 1)
+	sameName[document.KindProcess]["p"] = settingsDocs()[document.KindProcess]["p"]
+	sameName[document.KindWorkflow]["p"] = strings.Replace(workflowDoc, "name: w", "name: p", 1)
 	for _, tc := range []struct {
 		name    string
-		docs    map[definition.Kind]map[string]string
-		listErr map[definition.Kind]error
+		docs    map[document.Kind]map[string]string
+		listErr map[document.Kind]error
 		problem string
 	}{
-		{name: "broken service settings", docs: map[definition.Kind]map[string]string{definition.KindService: {"service": "not toml ="}}, problem: "service service: "},
-		{name: "a file name that is not a name", docs: map[definition.Kind]map[string]string{definition.KindAgent: {"Not A Name": "x"}}, problem: `agent Not A Name: "Not A Name" is not a valid name`},
-		{name: "a directory that cannot be listed", listErr: map[definition.Kind]error{definition.KindVerify: errors.New("permission denied")}, problem: "settings directory verifies: cannot be listed: permission denied"},
-		{name: "blocks that cannot be listed", listErr: map[definition.Kind]error{definition.KindBlocks: errors.New("permission denied")}, problem: "blocks: cannot be listed: permission denied"},
+		{name: "broken service settings", docs: map[document.Kind]map[string]string{document.KindService: {"service": "not toml ="}}, problem: "service service: "},
+		{name: "a file name that is not a name", docs: map[document.Kind]map[string]string{document.KindAgent: {"Not A Name": "x"}}, problem: `agent Not A Name: "Not A Name" is not a valid name`},
+		{name: "a directory that cannot be listed", listErr: map[document.Kind]error{document.KindVerify: errors.New("permission denied")}, problem: "settings directory verifies: cannot be listed: permission denied"},
+		{name: "blocks that cannot be listed", listErr: map[document.Kind]error{document.KindBlocks: errors.New("permission denied")}, problem: "blocks: cannot be listed: permission denied"},
 		{name: "a workflow named like a process", docs: sameName, problem: "workflow p: a process has the same name"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -433,13 +433,13 @@ func TestEachBlocksProblemHasItsOwnReference(t *testing.T) {
 	t.Parallel()
 	h := newHarness()
 	// Home's blocks, as the spy reads every document: a problem about them.
-	h.defs.docs[definition.KindBlocks] = map[string]string{"blocks": "schema: agister.blocks/v1alpha1\nblocks: []\n"}
+	h.defs.docs[document.KindBlocks] = map[string]string{"blocks": "schema: agister.blocks/v1alpha1\nblocks: []\n"}
 	sources := []string{"git.revision", "git.diff"}
-	want := app.DocumentRef{Kind: definition.KindBlocks, Name: "blocks"}
+	want := app.DocumentRef{Kind: document.KindBlocks, Name: "blocks"}
 	about := func(result app.CheckResult) *app.DocumentRef {
 		t.Helper()
 		for _, problem := range result.Problems {
-			if problem.About != nil && problem.About.Kind == definition.KindBlocks {
+			if problem.About != nil && problem.About.Kind == document.KindBlocks {
 				return problem.About
 			}
 		}
@@ -451,7 +451,7 @@ func TestEachBlocksProblemHasItsOwnReference(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	*about(first) = app.DocumentRef{Kind: definition.KindAgent, Name: "changed"}
+	*about(first) = app.DocumentRef{Kind: document.KindAgent, Name: "changed"}
 
 	second, err := app.NewChecker(h.defs, h.validator, h.runtimes, sources).Checked(context.Background())
 	if err != nil {
@@ -536,7 +536,7 @@ func TestAWorkflowIsJudgedOnTheAgentsItsNodesBind(t *testing.T) {
 		t.Parallel()
 		h := newHarness()
 		h.defs.docs = withBrokenMapping(workflowDocs())
-		h.defs.docs[definition.KindWorkflow]["w"] = boundTo(workflowDoc, "two", "second", "b")
+		h.defs.docs[document.KindWorkflow]["w"] = boundTo(workflowDoc, "two", "second", "b")
 		client := h.clientOn(h.defs)
 		report, err := client.Check(ctx, false)
 		if err != nil {
@@ -568,7 +568,7 @@ func TestAWorkflowIsJudgedOnTheAgentsItsNodesBind(t *testing.T) {
 		t.Parallel()
 		h := newHarness()
 		h.defs.docs = workflowDocs()
-		h.defs.docs[definition.KindWorkflow]["w"] = boundTo(workflowDoc, "two", "second", "ghost")
+		h.defs.docs[document.KindWorkflow]["w"] = boundTo(workflowDoc, "two", "second", "ghost")
 		client := h.clientOn(h.defs)
 		report, err := client.Check(ctx, false)
 		if err != nil {
@@ -593,18 +593,18 @@ func TestNewClientTranslatesTheBindingsTheCheckerFound(t *testing.T) {
 	ctx := context.Background()
 	h := newHarness()
 	h.defs.docs = workflowDocs()
-	ref := func(kind definition.Kind, name string) app.DocumentRef {
+	ref := func(kind document.Kind, name string) app.DocumentRef {
 		return app.DocumentRef{Kind: kind, Name: name}
 	}
-	workflow, second := ref(definition.KindWorkflow, "w"), ref(definition.KindProcess, "second")
+	workflow, second := ref(document.KindWorkflow, "w"), ref(document.KindProcess, "second")
 	documents := func(binds ...app.NodeBinding) []app.CheckedDocument {
 		return []app.CheckedDocument{
-			{Ref: workflow, Path: "stub/workflows/w", Uses: []app.DocumentRef{second, ref(definition.KindAgent, "b")}, Binds: binds},
-			{Ref: second, Path: "stub/processes/second", Uses: []app.DocumentRef{ref(definition.KindAgent, "a")}},
+			{Ref: workflow, Path: "stub/workflows/w", Uses: []app.DocumentRef{second, ref(document.KindAgent, "b")}, Binds: binds},
+			{Ref: second, Path: "stub/processes/second", Uses: []app.DocumentRef{ref(document.KindAgent, "a")}},
 		}
 	}
 	problems := []app.CheckedProblem{{Text: "process second: needs a", About: &second, Message: "needs a", Agent: "a"}}
-	blocks := []app.CheckedBlock{{Ref: ref(definition.KindAgent, "b"), Path: "stub/blocks.yaml", Reason: "not here"}}
+	blocks := []app.CheckedBlock{{Ref: ref(document.KindAgent, "b"), Path: "stub/blocks.yaml", Reason: "not here"}}
 	for name, c := range map[string]struct {
 		binds []app.NodeBinding
 		want  string

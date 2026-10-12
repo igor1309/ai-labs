@@ -2,6 +2,8 @@ package definition
 
 import (
 	"strings"
+
+	"github.com/igor1309/ai-labs/agister/internal/domain/document"
 )
 
 // PromptSource is the source a call records for the inputs that give its
@@ -24,12 +26,12 @@ const (
 type Prompt struct {
 	Name   string
 	Text   string
-	Source Source
+	Source document.Source
 }
 
 // ParsePrompt reads a prompt: the file's contents, unchanged. It has no
 // header, and must be readable text, as every document must.
-func ParsePrompt(doc Document) (Prompt, error) {
+func ParsePrompt(doc document.Document) (Prompt, error) {
 	p := &problems{}
 	prompt := Prompt{Name: doc.Source.Name, Source: doc.Source}
 	if readable(doc.Bytes, p) {

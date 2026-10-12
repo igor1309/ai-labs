@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/igor1309/ai-labs/agister/internal/domain/definition"
+	"github.com/igor1309/ai-labs/agister/internal/domain/document"
 	"gopkg.in/yaml.v3"
 )
 
@@ -23,10 +24,10 @@ type settingsLayer struct {
 // selected for one launch directory: the view reads, composes and names the
 // layers of every document through it, so it says what the binary does.
 type SettingsStore interface {
-	Layers(ctx context.Context) []definition.LayerDir
-	List(ctx context.Context, kind definition.Kind) ([]string, error)
-	Read(ctx context.Context, kind definition.Kind, name string) (definition.Document, error)
-	ReadListed(ctx context.Context, kind definition.Kind, name string) (definition.Document, error)
+	Layers(ctx context.Context) []document.LayerDir
+	List(ctx context.Context, kind document.Kind) ([]string, error)
+	Read(ctx context.Context, kind document.Kind, name string) (document.Document, error)
+	ReadListed(ctx context.Context, kind document.Kind, name string) (document.Document, error)
 }
 
 // SelectSettings selects the settings layers the binary reads for a command
@@ -99,11 +100,11 @@ func pageSettingsReader(read func(string) ([]byte, error), texts map[string]stri
 			return nil, fmt.Errorf("%s: not a regular file", path)
 		}
 		if info.Size() > fileCap {
-			return nil, definition.ErrNotFound
+			return nil, document.ErrNotFound
 		}
 		data, err := read(path)
 		if err == nil && len(data) > fileCap {
-			return nil, definition.ErrNotFound
+			return nil, document.ErrNotFound
 		}
 		if err == nil {
 			texts[path] = string(data)
@@ -114,11 +115,11 @@ func pageSettingsReader(read func(string) ([]byte, error), texts map[string]stri
 
 // The store owns filename recognition and discovery. These kinds are the
 // documents the view displays; skills have their own endpoint.
-func settingsKinds() []definition.Kind {
-	return []definition.Kind{definition.KindAgent,
-		definition.KindProcess, definition.KindRuntime, definition.KindSchema,
-		definition.KindVerify, definition.KindPrompt, definition.KindBrief,
-		definition.KindWorkflow, definition.KindService}
+func settingsKinds() []document.Kind {
+	return []document.Kind{document.KindAgent,
+		document.KindProcess, document.KindRuntime, document.KindSchema,
+		document.KindVerify, document.KindPrompt, document.KindBrief,
+		document.KindWorkflow, document.KindService}
 }
 
 // settingsComposition reads the binary's layered store, including unreferenced
@@ -130,22 +131,22 @@ func settingsComposition(store SettingsStore) (map[string]string, map[string]any
 	ctx := context.Background()
 	composed := map[string]string{}
 	sources := map[string]any{}
-	add := func(kind definition.Kind, name string, listed bool) error {
-		var doc definition.Document
+	add := func(kind document.Kind, name string, listed bool) error {
+		var doc document.Document
 		var err error
 		if listed {
 			doc, err = store.ReadListed(ctx, kind, name)
 		} else {
 			doc, err = store.Read(ctx, kind, name)
 		}
-		if errors.Is(err, definition.ErrNotFound) {
+		if errors.Is(err, document.ErrNotFound) {
 			return nil
 		}
 		if errors.Is(err, fs.ErrPermission) {
 			return err
 		}
 		file := string(kind) + "/" + filepath.Base(doc.Source.Path)
-		if kind == definition.KindService {
+		if kind == document.KindService {
 			file = "service.toml"
 		}
 		origin := make([]map[string]any, 0, len(doc.Source.Layers))
@@ -169,7 +170,7 @@ func settingsComposition(store SettingsStore) (map[string]string, map[string]any
 	for _, kind := range settingsKinds() {
 		var names []string
 		var err error
-		if kind == definition.KindService {
+		if kind == document.KindService {
 			names = []string{"service"} // a singleton, not a folder
 		} else {
 			names, err = store.List(ctx, kind)
@@ -177,7 +178,7 @@ func settingsComposition(store SettingsStore) (map[string]string, map[string]any
 		if err != nil {
 			return nil, nil, err
 		}
-		if kind == definition.KindPrompt {
+		if kind == document.KindPrompt {
 			prompts = names // read once the referenced ones are known
 			continue
 		}
@@ -204,7 +205,7 @@ func settingsComposition(store SettingsStore) (map[string]string, map[string]any
 				continue
 			}
 			referenced[name] = true
-			if err := add(definition.KindPrompt, name, false); err != nil {
+			if err := add(document.KindPrompt, name, false); err != nil {
 				return nil, nil, err
 			}
 		}
@@ -213,7 +214,7 @@ func settingsComposition(store SettingsStore) (map[string]string, map[string]any
 		if referenced[name] {
 			continue
 		}
-		if err := add(definition.KindPrompt, name, true); err != nil {
+		if err := add(document.KindPrompt, name, true); err != nil {
 			return nil, nil, err
 		}
 	}

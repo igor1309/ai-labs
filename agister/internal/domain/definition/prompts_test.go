@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/igor1309/ai-labs/agister/internal/domain/definition"
+	"github.com/igor1309/ai-labs/agister/internal/domain/document"
 )
 
 // Prompts are settings (ADR-014), which a process names as its prompt and
@@ -34,17 +35,17 @@ type: process
 func TestAPromptIsItsText(t *testing.T) {
 	t.Parallel()
 	text := "# Review\n\nschema: is not a header here.\n  Indented, ${param.x} and all.\n"
-	prompt, err := definition.ParsePrompt(doc(definition.KindPrompt, "review", text))
-	if err != nil || prompt.Name != "review" || prompt.Text != text || prompt.Source.Kind != definition.KindPrompt {
+	prompt, err := definition.ParsePrompt(doc(document.KindPrompt, "review", text))
+	if err != nil || prompt.Name != "review" || prompt.Text != text || prompt.Source.Kind != document.KindPrompt {
 		t.Fatalf("prompt = %+v, %v", prompt, err)
 	}
-	if empty, err := definition.ParsePrompt(doc(definition.KindPrompt, "empty", "")); err != nil || empty.Text != "" {
+	if empty, err := definition.ParsePrompt(doc(document.KindPrompt, "empty", "")); err != nil || empty.Text != "" {
 		t.Fatalf("empty = %+v, %v", empty, err)
 	}
 	for name, text := range map[string]string{"a NUL byte": "text\x00", "not UTF-8": "\xff\xfe"} {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
-			_, err := definition.ParsePrompt(doc(definition.KindPrompt, "review", text))
+			_, err := definition.ParsePrompt(doc(document.KindPrompt, "review", text))
 			if err == nil || err.Error() != "prompt review (review) is invalid:\n  not a UTF-8 text file" {
 				t.Fatalf("err = %v", err)
 			}
@@ -69,7 +70,7 @@ func TestAProcessNamesOnePromptAndAGuidanceList(t *testing.T) {
 	} {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
-			process, err := definition.ParseProcess(doc(definition.KindProcess, "p", promptProcess(c.fields, "")))
+			process, err := definition.ParseProcess(doc(document.KindProcess, "p", promptProcess(c.fields, "")))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -117,7 +118,7 @@ func TestThePromptAndTheGuidanceAreLiteralNames(t *testing.T) {
 			if want == "" {
 				want = values[name].want
 			}
-			_, err := definition.ParseProcess(doc(definition.KindProcess, "p", promptProcess(c.fields, value)))
+			_, err := definition.ParseProcess(doc(document.KindProcess, "p", promptProcess(c.fields, value)))
 			if err == nil || !strings.Contains(err.Error(), "\n  "+want) {
 				t.Fatalf("err = %v, want %q", err, want)
 			}
@@ -144,8 +145,8 @@ func TestThePromptSourceAndOptionalAreRefused(t *testing.T) {
 	} {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
-			_, err := definition.ParseProcess(doc(definition.KindProcess, "p", promptProcess("prompt: review\n", c.value)))
-			var invalid *definition.InvalidError
+			_, err := definition.ParseProcess(doc(document.KindProcess, "p", promptProcess("prompt: review\n", c.value)))
+			var invalid *document.InvalidError
 			if !errors.As(err, &invalid) {
 				t.Fatalf("err = %v", err)
 			}
@@ -175,7 +176,7 @@ fan_out:
   - {node: a, uses: "process:p"}
 join: {node: j, uses: "process:q"}
 `
-	_, err := definition.ParseWorkflow(doc(definition.KindWorkflow, "w", text))
+	_, err := definition.ParseWorkflow(doc(document.KindWorkflow, "w", text))
 	if err == nil || !strings.Contains(err.Error(), "\n  input.values.rules.source: source prompt is no longer an input source (ADR-028)") {
 		t.Fatalf("err = %v", err)
 	}

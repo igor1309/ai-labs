@@ -8,6 +8,7 @@ import (
 
 	"github.com/igor1309/ai-labs/agister/internal/contract"
 	"github.com/igor1309/ai-labs/agister/internal/domain/definition"
+	"github.com/igor1309/ai-labs/agister/internal/domain/document"
 	"github.com/igor1309/ai-labs/agister/internal/domain/run"
 )
 
@@ -19,7 +20,7 @@ import (
 
 // sessioned has the harness's process p set session.
 func sessioned(h *harness, mode string) {
-	h.defs.docs[definition.KindProcess]["p"] += "session: " + mode + "\n"
+	h.defs.docs[document.KindProcess]["p"] += "session: " + mode + "\n"
 }
 
 // A resumable process repairs: check reports nothing, a failed run is
@@ -129,7 +130,7 @@ func TestAFreshOnlyProcessThatRepairsIsReportedWithoutItsAgent(t *testing.T) {
 	h := newHarness()
 	verifying(h)
 	sessioned(h, definition.SessionFresh)
-	delete(h.defs.docs[definition.KindAgent], "a")
+	delete(h.defs.docs[document.KindAgent], "a")
 	const own = "process p: verify.max_attempts 3 repairs in the call's session, but process p is fresh-only"
 	if got := messages(checkOf(t, h, false).Problems); !contains(got, own) {
 		t.Fatalf("check: problems = %q, want %q among them", got, own)

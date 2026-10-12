@@ -6,7 +6,7 @@ import (
 	"sync"
 
 	"github.com/igor1309/ai-labs/agister/internal/contract"
-	"github.com/igor1309/ai-labs/agister/internal/domain/definition"
+	"github.com/igor1309/ai-labs/agister/internal/domain/document"
 )
 
 // Gated refuses every use of the client while the settings have a problem
@@ -46,10 +46,10 @@ type Gated struct {
 // GateDefinitions supplies the settings the gate checks and hands to the
 // client it builds, and the layers they are read from.
 type GateDefinitions interface {
-	Read(ctx context.Context, kind definition.Kind, name string) (definition.Document, error)
-	ReadListed(ctx context.Context, kind definition.Kind, name string) (definition.Document, error)
-	List(ctx context.Context, kind definition.Kind) ([]string, error)
-	Layers(ctx context.Context) []definition.LayerDir
+	Read(ctx context.Context, kind document.Kind, name string) (document.Document, error)
+	ReadListed(ctx context.Context, kind document.Kind, name string) (document.Document, error)
+	List(ctx context.Context, kind document.Kind) ([]string, error)
+	Layers(ctx context.Context) []document.LayerDir
 }
 
 var _ contract.Client = (*Gated)(nil)
@@ -181,7 +181,7 @@ type InstallStager interface {
 	// Stage writes docs into a new temporary folder laid out like home's
 	// settings, and returns its settings, read as home's would be, and the
 	// folder's removal. What home lists that docs lack is read from home.
-	Stage(ctx context.Context, docs []definition.Document) (staged GateDefinitions, remove func(), err error)
+	Stage(ctx context.Context, docs []document.Document) (staged GateDefinitions, remove func(), err error)
 }
 
 // installCheck checks an install's result as global settings alone: staged
@@ -192,7 +192,7 @@ type installCheck struct {
 	on     func(GateDefinitions) *Checker
 }
 
-func (c installCheck) Check(ctx context.Context, result []definition.Document) (contract.CheckReport, error) {
+func (c installCheck) Check(ctx context.Context, result []document.Document) (contract.CheckReport, error) {
 	staged, remove, err := c.stager.Stage(ctx, result)
 	if err != nil {
 		return contract.CheckReport{}, err

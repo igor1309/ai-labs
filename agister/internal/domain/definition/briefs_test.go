@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/igor1309/ai-labs/agister/internal/domain/definition"
+	"github.com/igor1309/ai-labs/agister/internal/domain/document"
 )
 
 // Settings define a brief's form (ADR-026 rules 3 to 5): its parts and the
@@ -44,7 +45,7 @@ template: |
 
 func parseStep(t *testing.T) definition.Brief {
 	t.Helper()
-	brief, err := definition.ParseBrief(doc(definition.KindBrief, "step", stepForm))
+	brief, err := definition.ParseBrief(doc(document.KindBrief, "step", stepForm))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -63,7 +64,7 @@ func TestABriefIsItsPartsAndItsTemplate(t *testing.T) {
 		{Heading: "## Constraints"},
 		{Heading: "## Open", Required: true, Reads: "None."},
 	}
-	if brief.Name != "step" || !reflect.DeepEqual(brief.Parts, want) || !strings.HasPrefix(brief.Template, "# <issue> step <n>\n\n## Goal\n") || brief.Source.Kind != definition.KindBrief {
+	if brief.Name != "step" || !reflect.DeepEqual(brief.Parts, want) || !strings.HasPrefix(brief.Template, "# <issue> step <n>\n\n## Goal\n") || brief.Source.Kind != document.KindBrief {
 		t.Fatalf("brief = %+v", brief)
 	}
 }
@@ -94,7 +95,7 @@ func TestABriefsFormIsChecked(t *testing.T) {
 	for name, c := range cases {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
-			_, err := definition.ParseBrief(doc(definition.KindBrief, "step", c.text))
+			_, err := definition.ParseBrief(doc(document.KindBrief, "step", c.text))
 			if err == nil || !strings.HasPrefix(err.Error(), "brief step (step) is invalid:") || !strings.Contains(err.Error(), c.want) {
 				t.Fatalf("err = %v, want %q", err, c.want)
 			}
@@ -102,7 +103,7 @@ func TestABriefsFormIsChecked(t *testing.T) {
 	}
 	// Parts in the template out of the parts' order.
 	swapped := strings.Replace(strings.Replace(strings.Replace(stepForm, "  ## Goal\n", "  ## X\n", 1), "  ## Covers\n", "  ## Goal\n", 1), "  ## X\n", "  ## Covers\n", 1)
-	_, err := definition.ParseBrief(doc(definition.KindBrief, "step", swapped))
+	_, err := definition.ParseBrief(doc(document.KindBrief, "step", swapped))
 	if err == nil || !strings.Contains(err.Error(), `template: has heading "## Covers" before the part declared ahead of it`) {
 		t.Fatalf("swapped: err = %v", err)
 	}
@@ -214,7 +215,7 @@ template: |
 // empty or not.
 func TestAGivenOptionalPartIsHeldToItsConstraints(t *testing.T) {
 	t.Parallel()
-	brief, err := definition.ParseBrief(doc(definition.KindBrief, "constrained", constrainedForm))
+	brief, err := definition.ParseBrief(doc(document.KindBrief, "constrained", constrainedForm))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -311,7 +312,7 @@ template: |
 // body and ends where its parent does.
 func TestADeclaredSubheadingStaysInItsParent(t *testing.T) {
 	t.Parallel()
-	brief, err := definition.ParseBrief(doc(definition.KindBrief, "nested", nestedForm))
+	brief, err := definition.ParseBrief(doc(document.KindBrief, "nested", nestedForm))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -360,18 +361,18 @@ output:
 // names none.
 func TestAFileValueNamesItsForms(t *testing.T) {
 	t.Parallel()
-	process, err := definition.ParseProcess(doc(definition.KindProcess, "p", formedProcess(`{source: file, path: "${param.brief}", form: [goal, step]}`)))
+	process, err := definition.ParseProcess(doc(document.KindProcess, "p", formedProcess(`{source: file, path: "${param.brief}", form: [goal, step]}`)))
 	if err != nil || !reflect.DeepEqual(process.Values[0].Forms, []string{"goal", "step"}) || !reflect.DeepEqual(process.Forms(), []string{"goal", "step"}) {
 		t.Fatalf("process = %+v, %v", process.Values, err)
 	}
 	if _, ok := process.Values[0].Args["form"]; ok {
 		t.Fatalf("form is an arg: %v", process.Values[0].Args)
 	}
-	plain, err := definition.ParseProcess(doc(definition.KindProcess, "p", formedProcess(`{source: file, path: "${param.brief}"}`)))
+	plain, err := definition.ParseProcess(doc(document.KindProcess, "p", formedProcess(`{source: file, path: "${param.brief}"}`)))
 	if err != nil || plain.Values[0].Forms != nil || !reflect.DeepEqual(plain.Forms(), []string{"step"}) {
 		t.Fatalf("plain = %+v, %v", plain.Values, err)
 	}
-	workflow, err := definition.ParseWorkflow(doc(definition.KindWorkflow, "w", strings.Replace(workflowText,
+	workflow, err := definition.ParseWorkflow(doc(document.KindWorkflow, "w", strings.Replace(workflowText,
 		"  values:\n", "  values:\n    goal: {source: file, path: goal.md, form: [goal]}\n", 1)))
 	if err != nil || !reflect.DeepEqual(workflow.Forms(), []string{"goal"}) {
 		t.Fatalf("workflow = %+v, %v", workflow.Values, err)
@@ -392,7 +393,7 @@ func TestAValuesFormsAreChecked(t *testing.T) {
 	for name, c := range cases {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
-			_, err := definition.ParseProcess(doc(definition.KindProcess, "p", formedProcess(c.value)))
+			_, err := definition.ParseProcess(doc(document.KindProcess, "p", formedProcess(c.value)))
 			if err == nil || !strings.Contains(err.Error(), c.want) {
 				t.Fatalf("err = %v, want %q", err, c.want)
 			}
@@ -404,7 +405,7 @@ func TestAValuesFormsAreChecked(t *testing.T) {
 // is: the later list would replace the earlier one unseen.
 func TestAWorkflowValuesFormIsDeclaredOnce(t *testing.T) {
 	t.Parallel()
-	_, err := definition.ParseWorkflow(doc(definition.KindWorkflow, "w", strings.Replace(workflowText,
+	_, err := definition.ParseWorkflow(doc(document.KindWorkflow, "w", strings.Replace(workflowText,
 		"  values:\n", "  values:\n    goal: {source: file, path: goal.md, form: [missing], form: [goal]}\n", 1)))
 	if want := "input.values.goal.form: is declared more than once"; err == nil || !strings.Contains(err.Error(), want) {
 		t.Fatalf("err = %v, want %q", err, want)

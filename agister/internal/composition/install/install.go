@@ -9,7 +9,7 @@ import (
 	"github.com/igor1309/ai-labs/agister/internal/adapters/fsdefs"
 	"github.com/igor1309/ai-labs/agister/internal/adapters/system"
 	"github.com/igor1309/ai-labs/agister/internal/app"
-	"github.com/igor1309/ai-labs/agister/internal/domain/definition"
+	"github.com/igor1309/ai-labs/agister/internal/domain/document"
 )
 
 var _ app.InstallBackups = Backups{}
@@ -24,7 +24,7 @@ func BackupsOf(home string) Backups {
 	return Backups{fsdefs.Backups{Dir: filepath.Join(home, "backups")}}
 }
 
-func (b Backups) Save(ctx context.Context, stamp string, manifest app.InstallManifest, saved []definition.Document) error {
+func (b Backups) Save(ctx context.Context, stamp string, manifest app.InstallManifest, saved []document.Document) error {
 	backup := fsdefs.Manifest{Stamp: manifest.Stamp, Source: manifest.Source, Installed: manifest.Installed}
 	for _, entry := range manifest.Documents {
 		backup.Documents = append(backup.Documents, fsdefs.ManifestEntry(entry))

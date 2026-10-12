@@ -26,7 +26,7 @@ import (
 	"github.com/igor1309/ai-labs/agister/internal/app"
 	"github.com/igor1309/ai-labs/agister/internal/cli"
 	"github.com/igor1309/ai-labs/agister/internal/contract"
-	"github.com/igor1309/ai-labs/agister/internal/domain/definition"
+	"github.com/igor1309/ai-labs/agister/internal/domain/document"
 	domain "github.com/igor1309/ai-labs/agister/internal/domain/run"
 	"github.com/igor1309/ai-labs/gokit/clocktest"
 	"github.com/igor1309/ai-labs/gokit/supervisor"
@@ -40,45 +40,45 @@ type marker struct {
 	name string
 
 	mu    sync.Mutex
-	reads map[definition.Kind]int
-	lists map[definition.Kind]int
+	reads map[document.Kind]int
+	lists map[document.Kind]int
 }
 
 func newMarker(name string) *marker {
-	return &marker{name: name, reads: map[definition.Kind]int{}, lists: map[definition.Kind]int{}}
+	return &marker{name: name, reads: map[document.Kind]int{}, lists: map[document.Kind]int{}}
 }
 
-func (m *marker) Read(_ context.Context, kind definition.Kind, name string) (definition.Document, error) {
+func (m *marker) Read(_ context.Context, kind document.Kind, name string) (document.Document, error) {
 	m.mu.Lock()
 	m.reads[kind]++
 	m.mu.Unlock()
 	pattern := string(kind) + "/" + name + ".*"
-	if kind == definition.KindService {
+	if kind == document.KindService {
 		pattern = "service.*"
 	}
 	matches, _ := fs.Glob(examples.Settings(), pattern)
 	if len(matches) != 1 {
-		return definition.Document{}, fmt.Errorf("%s has no %s %q", m.name, kind, name)
+		return document.Document{}, fmt.Errorf("%s has no %s %q", m.name, kind, name)
 	}
 	data, err := fs.ReadFile(examples.Settings(), matches[0])
 	sum := sha256.Sum256(data)
-	return definition.Document{
-		Source: definition.Source{Kind: kind, Name: name, Path: m.name + "/" + matches[0], Layer: definition.LayerHome, SHA256: hex.EncodeToString(sum[:])},
+	return document.Document{
+		Source: document.Source{Kind: kind, Name: name, Path: m.name + "/" + matches[0], Layer: document.LayerHome, SHA256: hex.EncodeToString(sum[:])},
 		Bytes:  data,
 	}, err
 }
 
 // ReadListed reads as Read does: home lists no folders.
-func (m *marker) ReadListed(ctx context.Context, kind definition.Kind, name string) (definition.Document, error) {
+func (m *marker) ReadListed(ctx context.Context, kind document.Kind, name string) (document.Document, error) {
 	return m.Read(ctx, kind, name)
 }
 
 // Layers are home alone, which the marker stands for.
-func (m *marker) Layers(context.Context) []definition.LayerDir {
-	return []definition.LayerDir{{Layer: definition.LayerHome, Dir: m.name}}
+func (m *marker) Layers(context.Context) []document.LayerDir {
+	return []document.LayerDir{{Layer: document.LayerHome, Dir: m.name}}
 }
 
-func (m *marker) List(_ context.Context, kind definition.Kind) ([]string, error) {
+func (m *marker) List(_ context.Context, kind document.Kind) ([]string, error) {
 	m.mu.Lock()
 	m.lists[kind]++
 	m.mu.Unlock()
@@ -186,10 +186,10 @@ func TestBuiltClientReadsOnlyTheSourcesGiven(t *testing.T) {
 			if _, err := decorated.Client.CreateAgent(ctx, agent, false, nil); err != nil {
 				t.Fatal(err)
 			}
-			if global.lists[definition.KindAgent] == 0 {
+			if global.lists[document.KindAgent] == 0 {
 				t.Error("the global write scope did not check the global-only source")
 			}
-			if got := layered.lists[definition.KindAgent] > 0; got != tc.project {
+			if got := layered.lists[document.KindAgent] > 0; got != tc.project {
 				t.Errorf("the project write scope checks the layered source = %v, want %v", got, tc.project)
 			}
 		})

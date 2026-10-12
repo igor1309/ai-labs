@@ -8,7 +8,7 @@ import (
 
 	"github.com/igor1309/ai-labs/agister/internal/app"
 	"github.com/igor1309/ai-labs/agister/internal/contract"
-	"github.com/igor1309/ai-labs/agister/internal/domain/definition"
+	"github.com/igor1309/ai-labs/agister/internal/domain/document"
 )
 
 // clientFake answers every method and records which were reached.
@@ -216,8 +216,8 @@ func TestGatedOperationUsesTheCheckedSettings(t *testing.T) {
 				},
 				f: func() {
 					readsAfterCheck = h.defs.readCount()
-					h.defs.set(definition.KindProcess, "p", "not a process")
-					h.defs.set(definition.KindAgent, "a", "not an agent")
+					h.defs.set(document.KindProcess, "p", "not a process")
+					h.defs.set(document.KindAgent, "a", "not an agent")
 					edited = true
 				},
 			}
@@ -264,7 +264,7 @@ func TestGatedSubmitRecordsTheCheckedSettings(t *testing.T) {
 	if _, err := gated.Submit(ctx, contract.CallRequest{Process: "p_a", Cwd: "/repo"}); err != nil {
 		t.Fatal(err)
 	}
-	h.defs.set(definition.KindAgent, "a", strings.Replace(settingsDocs()[definition.KindAgent]["a"], "m1", "m2", 1))
+	h.defs.set(document.KindAgent, "a", strings.Replace(settingsDocs()[document.KindAgent]["a"], "m1", "m2", 1))
 	close(h.recorder.hold)
 	record := h.recorder.wait(t)
 	if class(record) != "" {
@@ -303,7 +303,7 @@ func TestGatedSubmitRecordsWhatTheCheckRead(t *testing.T) {
 					Calls:   h.callsOn(src),
 				},
 				f: func() {
-					h.defs.set(definition.KindAgent, "a", strings.Replace(settingsDocs()[definition.KindAgent]["a"], "m1", "m2", 1))
+					h.defs.set(document.KindAgent, "a", strings.Replace(settingsDocs()[document.KindAgent]["a"], "m1", "m2", 1))
 					edited = true
 				},
 			}
@@ -321,7 +321,7 @@ func TestGatedSubmitRecordsWhatTheCheckRead(t *testing.T) {
 	}
 	seen := false
 	for _, source := range record.Definitions {
-		if source.Kind == string(definition.KindAgent) && source.Name == "a" {
+		if source.Kind == string(document.KindAgent) && source.Name == "a" {
 			seen = true
 		}
 		if want := original[string(source.Kind)+"/"+source.Name]; digestRecorded(source) != want {
@@ -340,9 +340,9 @@ func TestGatedWriteScopeChecksTheGlobalSnapshot(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
 	h := newHarness()
-	h.defs.docs[definition.KindRuntime]["narrow"] = narrowRuntime
+	h.defs.docs[document.KindRuntime]["narrow"] = narrowRuntime
 	global := &definitionsSpy{docs: settingsDocs()}
-	global.docs[definition.KindRuntime]["narrow"] = narrowRuntime
+	global.docs[document.KindRuntime]["narrow"] = narrowRuntime
 	gated := &app.Gated{
 		Definitions: h.defs,
 		Global:      global,
@@ -357,7 +357,7 @@ func TestGatedWriteScopeChecksTheGlobalSnapshot(t *testing.T) {
 				},
 				f: func() {
 					// Live, process p can run on runtime narrow.
-					global.set(definition.KindRuntime, "narrow", strings.Replace(settingsDocs()[definition.KindRuntime]["rt"], "name: rt", "name: narrow", 1))
+					global.set(document.KindRuntime, "narrow", strings.Replace(settingsDocs()[document.KindRuntime]["rt"], "name: rt", "name: narrow", 1))
 				},
 			}
 		},
