@@ -1667,6 +1667,9 @@ func TestArchitecturePromptReviewsTheShapeOfTheChange(t *testing.T) {
 			"The width of the change is evidence", "the responsibility it would have if no file existed"}},
 		{"item 8 asks each touched component's own reason", []string{
 			"every component the change touched had a reason of its own to change"}},
+		{"the decisions are the rules, not the subject", []string{
+			"given as the rules the code keeps", "not the decisions themselves",
+			"Code that departs from one is a finding"}},
 	}
 	for _, instruction := range instructions {
 		if !carries(string(data), instruction.phrases) {
