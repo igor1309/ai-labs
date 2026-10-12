@@ -18,6 +18,8 @@
 //     the owner. Nothing major is deferred by the gate.
 //   - A review that a provider limit failed does not count: the step stops,
 //     and `--from review --reviews <n>` resumes it at that review.
+//   - An implement run that leaves a point open stops the step, its work
+//     committed, with the point in the summary (ADR-032).
 //
 // The summary is printed as JSON on stdout; progress goes to stderr.
 //
@@ -28,8 +30,9 @@
 //	  [--dir <worktree>] [--from implement|review] [--reviews <n>]
 //
 // Exit 0: no major is left to fix. 3: a major is left after the third
-// review; the owner decides. 4: a review hit a provider limit. 1: anything
-// else stopped the step. 2: usage.
+// review; the owner decides. 4: a review hit a provider limit. 5: an
+// implement run left a point open. 1: anything else stopped the step. 2:
+// usage.
 package main
 
 import (

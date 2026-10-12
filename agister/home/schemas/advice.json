@@ -4,16 +4,16 @@
   "required": ["advice"],
   "properties": {
     "advice": {
-      "description": "Exactly one of the two: owner, for a policy question or in doubt, nothing decided; decision, for a build question, decided.",
+      "description": "Exactly one of the two: conflict, when every option is excluded or two recorded decisions contradict each other on the question, nothing decided; decision, otherwise, decided.",
       "anyOf": [
         {
           "type": "object",
-          "description": "owner: the question goes to the owner; no record.",
+          "description": "conflict: the record is at fault; no record, and the step stops.",
           "additionalProperties": false,
           "required": ["kind", "reason"],
           "properties": {
-            "kind": {"type": "string", "enum": ["owner"]},
-            "reason": {"type": "string", "pattern": "\\S", "description": "What makes the question policy, naming the ADR, rule, scope, security boundary or cost limit an option touches. Not empty."}
+            "kind": {"type": "string", "enum": ["conflict"]},
+            "reason": {"type": "string", "pattern": "\\S", "description": "The records that collide, each quoted, or for each option the rule it would change. Not empty."}
           }
         },
         {
@@ -26,7 +26,7 @@
             "asked_by": {"type": "string", "description": "Who asked, as the question file states it."},
             "question": {"type": "string", "description": "The question, as the question file states it."},
             "options": {"type": "array", "minItems": 1, "items": {"type": "string"}, "description": "The options, as the question file states them."},
-            "chosen": {"type": "string", "description": "The option chosen."},
+            "chosen": {"type": "string", "description": "The option chosen, or the reading the recorded decisions allow where no option states it."},
             "excluded": {
               "type": "array",
               "description": "Every option not chosen.",
@@ -36,11 +36,11 @@
                 "required": ["option", "why"],
                 "properties": {
                   "option": {"type": "string"},
-                  "why": {"type": "string", "description": "Why the recorded decisions, or failing them the reasoning stated, exclude it."}
+                  "why": {"type": "string", "description": "Why it is excluded: the rule it would change, or what settles the question against it."}
                 }
               }
             },
-            "rests_on": {"type": "array", "minItems": 1, "items": {"type": "string"}, "description": "Each recorded decision the answer rests on, as its document and rule or record (e.g. ADR-002 rule 3, D-3, AGENTS.md). The one entry \"none\" when no recorded decision bears on the question."},
+            "rests_on": {"type": "array", "minItems": 1, "items": {"type": "string"}, "description": "Each source the answer rests on: a recorded decision as its document and rule or record (e.g. ADR-002 rule 3, D-3, AGENTS.md), code as its file. The one entry \"none\" when no source bears on the question."},
             "follow_ups": {"type": "array", "items": {"type": "string"}, "description": "What the decision leaves to do, one per entry. A follow-up that changes code names the test that proves it."}
           }
         }

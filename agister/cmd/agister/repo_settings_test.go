@@ -843,10 +843,10 @@ func TestAdvisorAnswersAQuestionFile(t *testing.T) {
 	}
 	record := completedRun(t, home, created[0])
 	// Its output is the one property advice, which the advice schema
-	// accepts: the fake answers with the first variant, owner.
+	// accepts: the fake answers with the first variant, conflict.
 	output := record["result"].(map[string]any)["output"]
 	schemaAccepts(t, record, output, r.stdout)
-	if want := map[string]any{"advice": map[string]any{"kind": "owner", "reason": "fake"}}; !reflect.DeepEqual(output, want) {
+	if want := map[string]any{"advice": map[string]any{"kind": "conflict", "reason": "fake"}}; !reflect.DeepEqual(output, want) {
 		t.Fatalf("the advisor's output = %v, want %v", output, want)
 	}
 	// The runtime worked in the caller's worktree, at the revision.
@@ -930,9 +930,10 @@ func follows(argv []string, flag, value string) bool {
 	return false
 }
 
-// The home folder's advice schema accepts an owner answer with its reason,
-// and a decision with its record; it refuses an answer whose payload is the
-// other's, a missing field and an unexpected one. The payloads are fixed,
+// The home folder's advice schema accepts a conflict with its reason, and
+// a decision with its record; it refuses an answer whose payload is the
+// other's, a missing field, an unexpected one and an owner answer, which
+// the advisor no longer has (ADR-032). The payloads are fixed,
 // not built from the schema.
 func TestAdviceSchemaTiesTheAnswerToItsPayload(t *testing.T) {
 	t.Parallel()
@@ -948,32 +949,71 @@ func TestAdviceSchemaTiesTheAnswerToItsPayload(t *testing.T) {
 		`"excluded":[{"option":"two","why":"D-3 excludes it"}],"rests_on":["D-3"],"follow_ups":[]`
 	const recordWithoutChosen = `"asked_by":"workflow run 1, item 2","question":"which?","options":["one","two"],` +
 		`"excluded":[{"option":"two","why":"D-3 excludes it"}],"rests_on":["D-3"],"follow_ups":[]`
-	const reason = `"reason":"option (b) changes ADR-001 rule 9"`
+	const reason = `"reason":"ADR-001 rule 9 and D-3 contradict each other"`
 	cases := []struct {
 		name, output string
 		valid        bool
 	}{
 		{"a decision", `{"advice":{"kind":"decision",` + record + `}}`, true},
-		{"owner", `{"advice":{"kind":"owner",` + reason + `}}`, true},
+		{"a conflict", `{"advice":{"kind":"conflict",` + reason + `}}`, true},
+		{"owner", `{"advice":{"kind":"owner",` + reason + `}}`, false},
 		{"a decision without its record", `{"advice":{"kind":"decision"}}`, false},
 		{"a decision with a reason", `{"advice":{"kind":"decision",` + reason + `,` + record + `}}`, false},
 		{"a decision with a reason for a record", `{"advice":{"kind":"decision",` + reason + `}}`, false},
-		{"owner with a record", `{"advice":{"kind":"owner",` + reason + `,` + record + `}}`, false},
-		{"owner with a record for a reason", `{"advice":{"kind":"owner",` + record + `}}`, false},
-		{"owner with an empty reason", `{"advice":{"kind":"owner","reason":""}}`, false},
-		{"owner with a blank reason", `{"advice":{"kind":"owner","reason":" "}}`, false},
-		{"owner without a reason", `{"advice":{"kind":"owner"}}`, false},
+		{"a conflict with a record", `{"advice":{"kind":"conflict",` + reason + `,` + record + `}}`, false},
+		{"a conflict with a record for a reason", `{"advice":{"kind":"conflict",` + record + `}}`, false},
+		{"a conflict with an empty reason", `{"advice":{"kind":"conflict","reason":""}}`, false},
+		{"a conflict with a blank reason", `{"advice":{"kind":"conflict","reason":" "}}`, false},
+		{"a conflict without a reason", `{"advice":{"kind":"conflict"}}`, false},
 		{"an unknown kind", `{"advice":{"kind":"maybe",` + reason + `}}`, false},
 		{"no kind, a reason", `{"advice":{` + reason + `}}`, false},
 		{"no kind, a record", `{"advice":{` + record + `}}`, false},
 		{"no advice", `{}`, false},
 		{"null advice", `{"advice":null}`, false},
-		{"an answer at the root", `{"kind":"owner",` + reason + `}`, false},
+		{"an answer at the root", `{"kind":"conflict",` + reason + `}`, false},
 		{"a record without its chosen option", `{"advice":{"kind":"decision",` + recordWithoutChosen + `}}`, false},
 		{"an excluded option without its why", `{"advice":{"kind":"decision",` + strings.Replace(record, `,"why":"D-3 excludes it"`, "", 1) + `}}`, false},
-		{"an unexpected field", `{"advice":{"kind":"owner",` + reason + `},"note":"x"}`, false},
-		{"an unexpected field in an owner answer", `{"advice":{"kind":"owner",` + reason + `,"note":"x"}}`, false},
+		{"an unexpected field", `{"advice":{"kind":"conflict",` + reason + `},"note":"x"}`, false},
+		{"an unexpected field in a conflict", `{"advice":{"kind":"conflict",` + reason + `,"note":"x"}}`, false},
 		{"an unexpected field in the record", `{"advice":{"kind":"decision",` + record + `,"status":"final"}}`, false},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
+			err := (schema.Validator{}).Validate(document, []byte(c.output))
+			if c.valid && err != nil {
+				t.Fatalf("%s refused: %v", c.output, err)
+			}
+			if !c.valid && err == nil {
+				t.Fatalf("%s accepted", c.output)
+			}
+		})
+	}
+}
+
+// The home folder's implementation schema requires the point left open,
+// empty when the work went through (ADR-032 rule 4): an open point is its
+// question, at least two options and what was searched, and nothing else.
+// The payloads are fixed, not built from the schema.
+func TestImplementationSchemaCarriesThePointLeftOpen(t *testing.T) {
+	t.Parallel()
+	document, err := os.ReadFile(filepath.Join(repositoryRoot(t), homeFolder, "schemas", "implementation.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	const report = `"summary":"s","files_changed":["a.go"],"checks":[],"notes":""`
+	const point = `{"question":"which?","options":["one","two"],"searched":["ADR-030: silent"]}`
+	cases := []struct {
+		name, output string
+		valid        bool
+	}{
+		{"nothing open", `{` + report + `,"open":[]}`, true},
+		{"a point open", `{` + report + `,"open":[` + point + `]}`, true},
+		{"no open field", `{` + report + `}`, false},
+		{"a point without a search", `{` + report + `,"open":[{"question":"which?","options":["one","two"],"searched":[]}]}`, false},
+		{"a point with one option", `{` + report + `,"open":[{"question":"which?","options":["one"],"searched":["ADR-030: silent"]}]}`, false},
+		{"a point with a blank question", `{` + report + `,"open":[{"question":" ","options":["one","two"],"searched":["ADR-030: silent"]}]}`, false},
+		{"a point with an unexpected field", `{` + report + `,"open":[{"question":"which?","options":["one","two"],"searched":["ADR-030: silent"],"lean":"one"}]}`, false},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
@@ -1633,6 +1673,75 @@ func TestTestsPromptAsksForTheClassAndTheProductsOwnMeasure(t *testing.T) {
 			t.Errorf("agister/home/prompts/%s lost the instruction %q: no paragraph has all of %q",
 				prompt, instruction.name, instruction.phrases)
 		}
+	}
+}
+
+// The advisor always decides (ADR-032, LAB-206): an option that would
+// change the record or amend the issue's words is excluded, never a reason
+// to ask, and those words are read with the record, whose reading is the
+// answer even where no option states it; the record is
+// asked in order, what the decisions say, what they mean, then the code
+// that carries them out; and only a defect in the record is a conflict,
+// with nothing decided. An instruction is held by its short phrases
+// standing in one paragraph, as in
+// TestReviewPromptsCarryTheirCoverageContract. The prompt is the
+// repository's own, read as it is.
+func TestTheAdvisorAlwaysDecides(t *testing.T) {
+	t.Parallel()
+	const prompt = "advisor.md"
+	data, err := os.ReadFile(filepath.Join("..", "..", "..", homeFolder, "prompts", prompt))
+	if err != nil {
+		t.Fatal(err)
+	}
+	instructions := []promptInstruction{
+		{"the advisor decides", []string{
+			"You decide it", "you choose one of the options"}},
+		{"an option that would change the record is excluded, never referred", []string{
+			"is excluded, with the rule it would change", "never to ask anyone"}},
+		{"the issue's words are read with the record, never amended", []string{
+			"The issue's words are read with the recorded decisions", "an option that amends them is excluded",
+			"the reading the decisions allow is the answer, even where no option states it"}},
+		{"the reading is chosen when no option states it, nothing else invented", []string{
+			"Choose one of the options given, or the reading the decisions allow",
+			"Do not invent another option or merge two"}},
+		{"the record is asked in order", []string{
+			"Ask the record, in this order,", "What do the recorded decisions say about the question?",
+			"If they are silent or leave a gap: what do they mean?", "what do the code and tests that carry the decisions out show"}},
+		{"code is evidence of a decision, and an open reading is settled", []string{
+			"Code that carries out a decision is evidence of it", "evidence only of itself",
+			"A reading the record leaves open is settled here, not a reason to stop"}},
+		{"only a defect in the record is a conflict", []string{
+			"Only when every option is excluded", "two recorded decisions contradict each other",
+			"answer `conflict`", "Decide nothing: the record is at fault"}},
+	}
+	for _, instruction := range instructions {
+		if !carries(string(data), instruction.phrases) {
+			t.Errorf("agister/home/prompts/%s lost the instruction %q: no paragraph has all of %q",
+				prompt, instruction.name, instruction.phrases)
+		}
+	}
+}
+
+// The implementer searches the record before it leaves a point open
+// (ADR-032 rule 4, LAB-206): it leaves one only when the point blocks the
+// work, the record searched does not settle it and its options differ in
+// what can be observed, says what it searched, and leaves at most one. The
+// instruction is held by its short phrases standing in one paragraph, as
+// in TestReviewPromptsCarryTheirCoverageContract. The prompt is the
+// repository's own, read as it is.
+func TestTheImplementerSearchesTheRecordBeforeLeavingAPointOpen(t *testing.T) {
+	t.Parallel()
+	const prompt = "implement.md"
+	data, err := os.ReadFile(filepath.Join("..", "..", "..", homeFolder, "prompts", prompt))
+	if err != nil {
+		t.Fatal(err)
+	}
+	phrases := []string{"Leave a point open only when all three hold", "searched for it, do not settle it",
+		"behaviour a user or a caller can observe, or in a contract", "what you searched",
+		"never a point left open", "Leave at most one"}
+	if !carries(string(data), phrases) {
+		t.Errorf("agister/home/prompts/%s lost the instruction to search before leaving a point open: no paragraph has all of %q",
+			prompt, phrases)
 	}
 }
 

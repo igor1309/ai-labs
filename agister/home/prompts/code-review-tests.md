@@ -3,7 +3,7 @@ date: 2026-10-12
 author: Igor Malyarov
 model: claude-opus-5-5
 name: Code review — tests
-version: 0.1.5
+version: 0.1.6
 type: prompt
 ---
 
@@ -129,11 +129,13 @@ Definition of done:
    * **A deadline may only guard a hang.** Look for a test that reports a
      timeout as a fact about the product ("no response", "no report
      arrived"); the case is the slow but correct run it fails.
-   * **It is long.** No test timeout, bound, poll deadline or test-process
-     lifetime exceeds 1 minute. Longer waits bury real bugs: a hang reads
-     as slowness, nobody waits for it, and the feedback loop becomes too
-     long to use. Report each one with its value; the case is the hang,
-     path:line, that would read as slowness behind it.
+   * **It is long.** No test timeout, bound or poll deadline within a test
+     exceeds 1 minute, and no test-process lifetime (a package's whole
+     run, `go test -timeout`) exceeds 2 minutes: it covers every test of
+     the package on a machine that may be under heavy load. Longer waits
+     bury real bugs: a hang reads as slowness, nobody waits for it, and the
+     feedback loop becomes too long to use. Report each one with its value;
+     the case is the hang, path:line, that would read as slowness behind it.
 9. Look for cost: a test slow for what it claims, or one that rebuilds or
    restarts what another test already built. Report its rough cost, read
    from what the code builds, starts or waits for.

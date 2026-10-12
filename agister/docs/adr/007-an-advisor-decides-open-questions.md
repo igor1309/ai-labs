@@ -1,6 +1,11 @@
 # ADR-007: An advisor decides open build questions
 
 - **Status:** Accepted
+- **Amended by:** [ADR-031](031-the-judge-rules-on-the-quoted-record.md)
+  (judge items no longer reach the advisor);
+  [ADR-032](032-the-advisor-always-decides.md) (rules 1, 2 and 5: no
+  `owner` answer, the record asked in order, the driver appends the
+  record)
 - **Date:** 2026-10-01
 - **Scope:** who answers a question that stops the work, and where the
   answer is kept

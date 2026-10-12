@@ -8,7 +8,7 @@ verification rules. Issues are in the Multica project `Agister`, in the
   race tests, the Pages tests and `gokit`'s check, which Agister builds
   against (ADR-019). CI and `verify:repo` run the same. Narrow it while
   working, from `agister/`, quiet (never `-v`):
-  `go test -count=1 -timeout 1m ./<pkg>/...`, `-run <Test>` to narrow.
+  `go test -count=1 -timeout 2m ./<pkg>/...`, `-run <Test>` to narrow.
 - A change to what the CLI or the settings offer, such as a command, a
   flag, a settings field or a behaviour a caller relies on, is done only
   when these say the same as the binary:

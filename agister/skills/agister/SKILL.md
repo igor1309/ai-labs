@@ -351,8 +351,12 @@ and stops:
 - Exit 0: no major is left. 3: a major is left after the third review:
   stop and ask the owner; a major is never deferred. 4: a review hit a
   provider limit and does not count; resume with the
-  `--from review --reviews <n>` its reason gives. 1: anything else stopped
-  the step; its reason says what.
+  `--from review --reviews <n>` its reason gives. 5: the implement run
+  left a point open; its work is committed, and the summary's `open` holds
+  the question, its options and what was searched. Put it to the `advisor`
+  as ADR-032 says, append its decision to the decisions record, and run
+  the decision as the next step; a `conflict` answer is the owner's. 1:
+  anything else stopped the step; its reason says what.
 - Run one step per call, and read its summary before the next.
 
 ## Give a brief in its form
