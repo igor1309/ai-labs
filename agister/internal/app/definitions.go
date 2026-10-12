@@ -21,8 +21,11 @@ import (
 // Settings manages definitions: examples, agents and process listings.
 type Settings struct {
 	definitions SettingsDefinitions
-	writer      DefinitionWriter
-	examples    Examples
+	// documents reads each document a listing or a write reads, from
+	// definitions.
+	documents documentReader
+	writer    DefinitionWriter
+	examples  Examples
 	// Every settings view a write takes part in (global settings alone, and
 	// with the project in view); each must stay valid.
 	scopes []Scope
@@ -89,9 +92,12 @@ func (f SettingsChecked) reach() *reach {
 	return r
 }
 
-// SettingsDefinitions supplies the definitions a listing or a write reads.
+// SettingsDefinitions supplies the definitions a listing or a write reads:
+// the names of a kind, and each document, which Settings reads through its
+// reader.
 type SettingsDefinitions interface {
 	Read(ctx context.Context, kind document.Kind, name string) (document.Document, error)
+	ReadListed(ctx context.Context, kind document.Kind, name string) (document.Document, error)
 	List(ctx context.Context, kind document.Kind) ([]string, error)
 }
 
@@ -115,9 +121,14 @@ type SettingsAdapters struct {
 // NewSettings returns the use case that manages definitions. scopes are
 // every settings view a write takes part in (global settings alone, and
 // with the project in view); each must stay valid. check checks
-// definitions, for the listings.
+// definitions, for the listings. Init reads no definitions: Settings given
+// none has no reader, and only inits.
 func NewSettings(definitions SettingsDefinitions, writer DefinitionWriter, examples Examples, scopes []Scope, check SettingsCheck) *Settings {
-	return &Settings{definitions: definitions, writer: writer, examples: examples, scopes: scopes, check: check}
+	settings := &Settings{definitions: definitions, writer: writer, examples: examples, scopes: scopes, check: check}
+	if definitions != nil {
+		settings.documents = newDocumentReader(definitions)
+	}
+	return settings
 }
 
 // Scope is one view of the settings a write takes part in.
@@ -269,12 +280,11 @@ func (s *Settings) CreateAgent(ctx context.Context, spec contract.Agent, overwri
 	if !definition.ValidName(agent.Name) {
 		return contract.AgentWrite{}, &contract.InputError{Message: fmt.Sprintf("invalid agent name %q", agent.Name)}
 	}
-	doc, err := s.definitions.Read(ctx, document.KindRuntime, agent.Runtime)
-	if err != nil {
+	mapping, _, err := s.documents.Mapping(ctx, agent.Runtime)
+	if unread(err) {
 		names, _ := s.definitions.List(ctx, document.KindRuntime)
 		return contract.AgentWrite{}, &contract.InputError{Message: fmt.Sprintf("unknown runtime %q (available: %s)", agent.Runtime, strings.Join(names, ", "))}
 	}
-	mapping, err := definition.ParseMapping(doc)
 	if err != nil {
 		var invalid *document.InvalidError
 		if !errors.As(err, &invalid) {
@@ -295,7 +305,7 @@ func (s *Settings) CreateAgent(ctx context.Context, spec contract.Agent, overwri
 		return contract.AgentWrite{}, &contract.InputError{Message: fmt.Sprintf("unsupported %s effort %q (supported: %s)", mapping.Name, agent.Effort, strings.Join(mapping.Efforts, ", "))}
 	}
 	data := definition.FormatAgent(agent)
-	if _, err := definition.ParseAgent(document.Document{Source: document.Source{Kind: document.KindAgent, Name: agent.Name}, Bytes: data}); err != nil {
+	if _, err := parsedAgent(agent.Name, data); err != nil {
 		return contract.AgentWrite{}, err
 	}
 	path, digest, err := s.writer.Current(ctx, document.KindAgent, agent.Name)
@@ -371,12 +381,11 @@ func (s *Settings) ListAgents(ctx context.Context) ([]contract.Agent, error) {
 	for _, name := range names {
 		refusal := refusalOf(reached.refusal(DocumentRef{Kind: document.KindAgent, Name: name}, ""))
 		// A broken agent is listed as such: it refuses only what uses it.
-		doc, err := s.definitions.Read(ctx, document.KindAgent, name)
-		if err != nil {
+		agent, _, err := s.documents.Agent(ctx, name)
+		if unread(err) {
 			agents = append(agents, contract.Agent{Name: name, Problem: fmt.Sprintf("unreadable: %v (run `agister check`)", err), Refusal: refusal})
 			continue
 		}
-		agent, err := definition.ParseAgent(doc)
 		if err != nil {
 			agents = append(agents, contract.Agent{Name: name, Problem: "invalid (run `agister check`)", Refusal: refusal})
 			continue
@@ -398,12 +407,11 @@ func (s *Settings) ListProcesses(ctx context.Context) ([]contract.ProcessSummary
 	processes := make([]contract.ProcessSummary, 0, len(names))
 	for _, name := range names {
 		refusal := refusalOf(reached.call(name, ""))
-		doc, err := s.definitions.Read(ctx, document.KindProcess, name)
-		if err != nil {
+		process, _, err := s.documents.Process(ctx, name)
+		if unread(err) {
 			processes = append(processes, contract.ProcessSummary{Name: name, Problem: fmt.Sprintf("unreadable: %v (run `agister check`)", err), Refusal: refusal})
 			continue
 		}
-		process, err := definition.ParseProcess(doc)
 		if err != nil {
 			problem := "invalid (run `agister check`)"
 			if len(reached.extenders(DocumentRef{Kind: document.KindProcess, Name: name})) > 0 {
@@ -450,12 +458,11 @@ func (s *Settings) ListWorkflows(ctx context.Context) ([]contract.WorkflowSummar
 	workflows := make([]contract.WorkflowSummary, 0, len(names))
 	for _, name := range names {
 		refusal := refusalOf(reached.workflow(name))
-		doc, err := s.definitions.Read(ctx, document.KindWorkflow, name)
-		if err != nil {
+		workflow, _, err := s.documents.Workflow(ctx, name)
+		if unread(err) {
 			workflows = append(workflows, contract.WorkflowSummary{Name: name, Problem: fmt.Sprintf("unreadable: %v (run `agister check`)", err), Refusal: refusal})
 			continue
 		}
-		workflow, err := definition.ParseWorkflow(doc)
 		if err != nil {
 			workflows = append(workflows, contract.WorkflowSummary{Name: name, Problem: "invalid (run `agister check`)", Refusal: refusal})
 			continue

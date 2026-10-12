@@ -134,6 +134,12 @@ func (r documentReader) Extending(ctx context.Context) func(process string) stri
 	}
 }
 
+// parsedAgent parses data as the agent named name: what a write is about
+// to store, which is read from nowhere and so has no source but its name.
+func parsedAgent(name string, data []byte) (definition.Agent, error) {
+	return definition.ParseAgent(document.Document{Source: document.Source{Kind: document.KindAgent, Name: name}, Bytes: data})
+}
+
 // readParsed reads the document of kind named name and parses it.
 func readParsed[T any](ctx context.Context, r documentReader, kind document.Kind, name string, parse func(document.Document) (T, error)) (T, document.Source, error) {
 	doc, err := r.definitions.Read(ctx, kind, name)

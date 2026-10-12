@@ -357,6 +357,46 @@ func TestExtendingNamesEachProcessBaseAndReadsABaseOnce(t *testing.T) {
 	}
 }
 
+// What a write is about to store is parsed as the agent it names, by the
+// agents' parser, with no source but its kind and name: one with problems
+// fails with the parser's own *document.InvalidError, beside what of it
+// parsed, and never as a failure to read.
+func TestAnAgentToStoreIsParsedAsTheAgentItNames(t *testing.T) {
+	t.Parallel()
+	source := document.Source{Kind: document.KindAgent, Name: "a"}
+	for name, c := range map[string]struct {
+		text  string
+		valid bool
+	}{
+		"as formatted":    {text: string(definition.FormatAgent(definition.Agent{Name: "a", Runtime: "rt", Model: "m1", Effort: "high"})), valid: true},
+		"another agent's": {text: string(definition.FormatAgent(definition.Agent{Name: "b", Runtime: "rt"}))},
+		"no runtime":      {text: string(definition.FormatAgent(definition.Agent{Name: "a"}))},
+		"no agent":        {text: "\xff"},
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			want, parseErr := definition.ParseAgent(document.Document{Source: source, Bytes: []byte(c.text)})
+			if (parseErr == nil) != c.valid {
+				t.Fatalf("the case's agent parses with %v", parseErr)
+			}
+			got, err := parsedAgent(source.Name, []byte(c.text))
+			if !reflect.DeepEqual(got, want) || !reflect.DeepEqual(got.Source, source) {
+				t.Fatalf("agent = %+v, want %+v, of source %+v", got, want, source)
+			}
+			if c.valid {
+				if err != nil {
+					t.Fatalf("a valid agent was refused: %v", err)
+				}
+				return
+			}
+			invalid, ok := err.(*document.InvalidError)
+			if unread(err) || !ok || !reflect.DeepEqual(invalid, parseErr) {
+				t.Fatalf("error = %#v, want the parser's %#v", err, parseErr)
+			}
+		})
+	}
+}
+
 func TestAReaderWithoutDefinitionsFailsAtConstruction(t *testing.T) {
 	t.Parallel()
 	defer func() {
