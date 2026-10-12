@@ -84,7 +84,7 @@
   .stack-1 { fill: #34343D; stroke: var(--node); stroke-opacity: .5; }
   .stack-2 { fill: #2A2A32; stroke: var(--node); stroke-opacity: .3; }
   .panel { fill: #1B1B21; stroke: var(--k); }
-  .panel-top { fill: none; stroke: var(--k); stroke-width: 3; }
+  .panel-top { fill: var(--k); }
   .row { fill: #2F2F37; }
   .row.marked { stroke: var(--k); stroke-opacity: .5; }
   .marker { fill: var(--k); }
@@ -150,6 +150,8 @@
     <symbol id="i-forms" viewBox="0 0 24 24"><g class="ic"><rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="M12 11h4M12 16h4M8 11h.01M8 16h.01"/></g></symbol>
     <symbol id="i-mapping" viewBox="0 0 24 24"><g class="ic"><path d="m16 3 4 4-4 4"/><path d="M20 7H4"/><path d="m8 21-4-4 4-4"/><path d="M4 17h16"/></g></symbol>
     <symbol id="i-call" viewBox="0 0 24 24"><g class="ic"><path d="M6 3 20 12 6 21z"/></g></symbol>
+    <clipPath id="clip-process"><rect x="60" y="183" width="310" height="314" rx="8"/></clipPath>
+    <clipPath id="clip-agent"><rect x="382" y="183" width="310" height="138" rx="8"/></clipPath>
   </defs>
 
   <!-- The service: a frame around every run, not a step in it. -->
@@ -183,7 +185,7 @@
        documents it names. -->
   <g class="kind process">
     <rect class="panel" x="60" y="183" width="310" height="314" rx="8"/>
-    <path class="panel-top" d="M61.5 192a7.5 7.5 0 0 1 7.5-7.5H361a7.5 7.5 0 0 1 7.5 7.5"/>
+    <rect class="panel-top" x="60" y="183" width="310" height="3" clip-path="url(#clip-process)"/>
     <text x="74" y="210"><tspan class="t s">Process</tspan><tspan class="d tight" dx="8">INSTRUCTION · INPUTS · LIMITS</tspan></text>
     <rect class="row marked" x="74" y="227" width="282" height="36" rx="6"/>
     <use class="kind" href="#i-base" x="86" y="237.5" width="15" height="15"/>
@@ -207,7 +209,7 @@
   </g>
   <g class="kind agent">
     <rect class="panel" x="382" y="183" width="310" height="138" rx="8"/>
-    <path class="panel-top" d="M383.5 192a7.5 7.5 0 0 1 7.5-7.5H683a7.5 7.5 0 0 1 7.5 7.5"/>
+    <rect class="panel-top" x="382" y="183" width="310" height="3" clip-path="url(#clip-agent)"/>
     <text x="396" y="210"><tspan class="t s">Agent</tspan><tspan class="d tight" dx="8">MODEL · EFFORT</tspan></text>
   </g>
   <g class="kind runtime">
