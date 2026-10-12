@@ -1618,9 +1618,10 @@ func TestIntentPromptCarriesItsDuties(t *testing.T) {
 			"the decisions the repository records", "a reading that departs from one is not defensible"}},
 		{"the code at the base settles what the record leaves", []string{
 			"where those are silent, the code and its tests as they stood at the base"}},
-		{"the settling source is quoted in the finding; a gap the record leaves is the finding; no one is asked", []string{
+		{"the settling source is quoted in the finding; a gap the record leaves is the finding; the reviewer settles it", []string{
 			"a reading the record does not support is a finding", "the source that settles the reading",
-			"Only the finding is evidence", "report the gap itself as the finding", "you never ask anyone to"}},
+			"The source is quoted in the finding, not only named in coverage", "report the gap itself as the finding",
+			"You settle readings yourself"}},
 	}
 	for _, instruction := range instructions {
 		if !carries(string(data), instruction.phrases) {
