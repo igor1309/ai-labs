@@ -69,12 +69,15 @@ func TestExampleWorkflowEndToEnd(t *testing.T) {
 			join = lastRunIn(t, filepath.Join(home, "runs", node.Run))
 		}
 	}
-	// The join's runtime received each fan-out output once, and nothing of
-	// the caller's.
+	// The join's runtime received each fan-out outcome once, naming no
+	// node, process or run (ADR-034), and nothing of the caller's.
 	prompt, _ := join.first["prompt"].(string)
-	for _, node := range []string{`"node": "adversarial"`, `"node": "architecture"`} {
-		if strings.Count(prompt, node) != 1 {
-			t.Fatalf("the join's prompt has %s %d times:\n%s", node, strings.Count(prompt, node), prompt)
+	if n := strings.Count(prompt, `"status": "completed"`); n != 2 {
+		t.Fatalf("the join's prompt has %d completed entries:\n%s", n, prompt)
+	}
+	for _, name := range []string{`"node"`, `"process"`, `"run"`, "adversarial", "architecture"} {
+		if strings.Contains(prompt, name) {
+			t.Fatalf("the join's prompt names %s:\n%s", name, prompt)
 		}
 	}
 	if strings.Contains(prompt, candidate) {
@@ -137,11 +140,12 @@ func TestExampleWorkflowJoinsWithoutATimedOutNode(t *testing.T) {
 	if err != nil || json.Unmarshal(data, &collection) != nil || len(collection) != 2 {
 		t.Fatalf("collection: %v\n%s", err, data)
 	}
+	// The entries stand in declaration order, adversarial first (ADR-034).
 	adversarial, architecture := collection[0], collection[1]
-	if adversarial["node"] != "adversarial" || adversarial["status"] != "interrupted" || adversarial["class"] != "timeout" || adversarial["output"] != nil {
+	if adversarial["status"] != "interrupted" || adversarial["class"] != "timeout" || adversarial["output"] != nil {
 		t.Fatalf("adversarial entry = %v", adversarial)
 	}
-	if architecture["node"] != "architecture" || architecture["status"] != "completed" || architecture["output"] == nil {
+	if architecture["status"] != "completed" || architecture["output"] == nil {
 		t.Fatalf("architecture entry = %v", architecture)
 	}
 }

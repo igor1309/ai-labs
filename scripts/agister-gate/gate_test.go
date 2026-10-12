@@ -203,9 +203,10 @@ func TestAStepPassesWhenItsReviewHasNoMajorToFix(t *testing.T) {
 	}
 }
 
-// A major ruled fix goes to a fix run whose brief is the step's, titled for
-// the review, with the major as its "## Acts on" as the judge wrote it; its
-// commit is named for the review, and the next review decides.
+// A major ruled fix goes to a fix run whose brief is the step's, with the
+// major's title and action as its "## Acts on" as the judge wrote them, and
+// no review, run, ruling or source named; its commit is named for the
+// review, and the next review decides.
 func TestAMajorRuledFixGoesToAFixRunAndIsReviewedAgain(t *testing.T) {
 	t.Parallel()
 	f := &fake{t: t, implements: []string{implementResult("i1", "cmd/a.go"), implementResult("i2", "cmd/a_test.go")},
@@ -221,10 +222,10 @@ func TestAMajorRuledFixGoesToAFixRunAndIsReviewedAgain(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := "# LAB-1 step 2, review 1\n\n## Goal\n\n`" + filepath.Join(out, "goal.md") + "`\n\n## Covers\n\n" +
+	want := "# LAB-1 step 2\n\n## Goal\n\n`" + filepath.Join(out, "goal.md") + "`\n\n## Covers\n\n" +
 		"````text\n" + issue + "````\n\n" +
-		"## Acts on\n\nThe judgement of `code_review` run `r1`, its items ruled `fix` with severity major, as written:\n\n" +
-		"- **Prove the refusal** (2#1): Add a test that the call is refused.\n\n" +
+		"## Acts on\n\nThe changes to make, as written:\n\n" +
+		"- **Prove the refusal**: Add a test that the call is refused.\n\n" +
 		"## Constraints\n\n```text\n" + constraints + "```\n\n## Open\n\nNone.\n"
 	if string(brief) != want {
 		t.Errorf("fix brief:\n%s\nwant:\n%s", brief, want)
@@ -403,7 +404,7 @@ func TestAnOpenPointIsDecidedByTheAdvisorAndTheDecisionActedOn(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	acts := "\n## Acts on\n\nThe decision `D-5` of `advisor` run `a1`, appended to `" + decisions + "`, as written:\n\n```text\n" + record + "```\n"
+	acts := "\n## Acts on\n\nThe decision `D-5`, recorded in `" + decisions + "`, as written:\n\n```text\n" + record + "```\n"
 	if !strings.HasPrefix(string(brief), "# LAB-1 step 2, decision D-5\n") || !strings.Contains(string(brief), acts) {
 		t.Errorf("brief:\n%s\nwant its Acts on:\n%s", brief, acts)
 	}

@@ -128,6 +128,11 @@ its agent's, each once. A layer rebinds a node: `fan_out` is a list, so a
 layer that changes one node's agent gives the whole list; `join` and
 `call` are maps, so a layer sets `join.agent` or `call.agent` alone.
 
+A join receives the collection: for each fan-out node, in declaration
+order, its status and class and, if it completed, its output. An entry
+names no node, process or run; the workflow's record does, in the same
+order ([ADR-034](docs/adr/034-the-join-is-given-outcomes-not-the-workflow.md)).
+
 `check` resolves every node of every workflow as a call would, up to the
 runtime's installed version: the process, the agent, its runtime mapping
 and the plan. A binding whose mapping gives no primitive the process
@@ -506,7 +511,9 @@ worktree, repository and revision, HEAD is at the revision, the
 worktree's content is the one that run recorded, and its `changes.patch`
 is as recorded. A latest run whose capture failed, or that worked in a
 checkout before ADR-025, cannot be continued; one that pinned no revision
-is continued without the content check.
+is continued without the content check. The agent is told where it works
+and that the session's changes are already there, uncommitted; it is told
+no run ([ADR-035](docs/adr/035-a-continuation-notice-names-no-run.md)).
 
 A run names the goal it serves and the judgement it answers; nothing is
 found by searching runs

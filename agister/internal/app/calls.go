@@ -1093,7 +1093,7 @@ func (c *Calls) execute(ctx context.Context, handle RunHandle, record run.Record
 	// A continued call is told that the session's work is in this worktree
 	// already (ADR-025 rule 7).
 	if resumed.worktree != nil {
-		text = strings.TrimSuffix(prompt.Continues(record.Request.Continue, resumed.worktree.ID, workspace.Dir, revision)+"\n\n"+text, "\n\n")
+		text = strings.TrimSuffix(prompt.Continues(workspace.Dir, revision)+"\n\n"+text, "\n\n")
 	}
 	request := TurnRequest{
 		Prompt:          text,

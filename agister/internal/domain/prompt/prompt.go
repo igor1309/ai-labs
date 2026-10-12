@@ -44,12 +44,12 @@ func Inputs(inputs []run.Input) string {
 }
 
 // Continues is Agister's notice to a continued call, which works in the
-// caller's worktree (ADR-025 rule 7): the run it continues, the
-// worktree at dir, at revision, and that the session's changes, as its
-// latest run left them, are already there.
-func Continues(continued, latest, dir, revision string) string {
-	return "## continuation\n\n" + fmt.Sprintf("This call continues run %s. It works in the worktree at %s, at revision %s, where the session worked before."+
-		" The session's changes, as run %s, its latest run, left them, are already in this worktree, uncommitted.", continued, dir, revision, latest)
+// caller's worktree (ADR-025 rule 7): the worktree at dir, at revision,
+// and that the session's changes are already there. It names no run
+// (ADR-035).
+func Continues(dir, revision string) string {
+	return "## continuation\n\n" + fmt.Sprintf("This call continues the session's earlier work. It works in the worktree at %s, at revision %s, where the session worked before."+
+		" The session's changes are already in this worktree, uncommitted.", dir, revision)
 }
 
 func render(value any) string {
@@ -121,14 +121,14 @@ func Recovery(instruction string, stale run.Stale) string {
 	}
 	switch stale.Limit {
 	case run.StaleRepeatedToolCalls:
-		sections = append(sections, fmt.Sprintf("## stale limit\n\nstale.repeated_tool_calls: the same tool call was made %d times in a row, and Agister ended the turn.", stale.Count))
+		sections = append(sections, fmt.Sprintf("## stale limit\n\nstale.repeated_tool_calls: the same tool call was made %d times in a row, and the turn was ended.", stale.Count))
 		call("tool call")
 		// A runtime that reports no result leaves nothing to say of one.
 		if stale.Tool != nil && stale.Tool.Result != nil {
 			sections = append(sections, "## last result\n\n"+fenced(*stale.Tool.Result))
 		}
 	case run.StaleToolCommand:
-		sections = append(sections, fmt.Sprintf("## stale limit\n\nstale.tool_command: a tool's command ran for %s, and Agister ended the turn.", stale.After))
+		sections = append(sections, fmt.Sprintf("## stale limit\n\nstale.tool_command: a tool's command ran for %s, and the turn was ended.", stale.After))
 		call("command")
 	default:
 		sections = append(sections, fmt.Sprintf("## stale limit\n\nstale.%s: the turn was interrupted after %s without an event from the runtime.", stale.Limit, stale.After))

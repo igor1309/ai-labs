@@ -1185,7 +1185,7 @@ func TestAStaleTurnIsRecoveredAndRunsShowPrintsTheRecovery(t *testing.T) {
 
 	expect(t, record, domain.Completed, "", "")
 	turns := h.runner.turns()
-	want := "Change the approach.\n\n## stale limit\n\nstale.repeated_tool_calls: the same tool call was made 3 times in a row, and Agister ended the turn.\n\n" +
+	want := "Change the approach.\n\n## stale limit\n\nstale.repeated_tool_calls: the same tool call was made 3 times in a row, and the turn was ended.\n\n" +
 		"## tool call\n\nBash\n\n```\n{\"command\":\"make\"}\n```\n\n## last result\n\n```\nmake: *** No rule\n```"
 	if len(turns) != 2 || turns[1].ResumeSessionID != "sess-1" || turns[1].Prompt != want {
 		t.Fatalf("turns = %+v", turns)

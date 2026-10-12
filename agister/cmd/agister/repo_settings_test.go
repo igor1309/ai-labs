@@ -1500,15 +1500,14 @@ func TestReviewPromptsCarryTheCaseForValue(t *testing.T) {
 // goal: such a finding has scope goal, a concrete scenario the goal
 // requires, and the goal's condition quoted in its requirement with its
 // qualifications and its place in the goal; the goal's claims are checked,
-// and its scope exclusions are the owner's. The tests prompt adds that a
+// and its scope exclusions stand. The tests prompt adds that a
 // missing test counts only with the goal behaviour the existing assertions
 // let break, and the adversarial one that the goal widens the changed
 // paths. The ADR prompt's opening keeps a change that touches no ADR from
 // findings of scope change only: its goal can still raise a goal finding.
 // The judge's has the scope rule: goal ruled as change, outside deferred,
-// an unsupported scope rejected, a goal finding a scope exclusion bars
-// deferred, and an older collection's introduced_by_change read as a
-// scope; and that a missing test is a goal finding too, with the goal
+// an unsupported scope rejected, and a goal finding a scope exclusion bars
+// deferred; and that a missing test is a goal finding too, with the goal
 // behaviour the existing assertions let break. Each review process's
 // instruction says what its input goal is. An instruction is held by its
 // short phrases standing in one paragraph, as in
@@ -1523,7 +1522,7 @@ func TestReviewPromptsCarryTheGoal(t *testing.T) {
 	look := promptInstruction{"look also for what stops the goal, within its bounds",
 		[]string{"the goal of the change", "Look also for what stops the goal", "scope `goal`",
 			"a concrete scenario the goal requires", "`requirement`", "every qualification it carries",
-			"where in the goal it stands", "are claims you check", "scope exclusions", "are the owner's", "you cannot override it"}}
+			"where in the goal it stands", "are claims you check", `scope exclusions ("out of scope") stand`, "you cannot override it"}}
 	cases := []struct {
 		prompt       string
 		instructions []promptInstruction
@@ -1546,8 +1545,7 @@ func TestReviewPromptsCarryTheGoal(t *testing.T) {
 				"existing assertions let break", "every assertion still passes"}},
 			{"a finding's scope decides its ruling", []string{
 				"`evidence.scope`", "Rule a `goal` finding as you rule a `change` one", "An `outside` finding is `defer`",
-				"You read no goal", "is rejected like any other", "a scope exclusion of the goal bars", "is `defer`",
-				"`introduced_by_change`", "read true as `change` and false as `outside`"}},
+				"You read no goal", "is rejected like any other", "a scope exclusion of the goal bars", "is `defer`"}},
 			{"fix and waive are for scope change or goal", []string{
 				"for an item whose evidence holds and that lies in the change or stops its goal", "scope `change` or `goal`"}},
 		}},
@@ -1568,7 +1566,7 @@ func TestReviewPromptsCarryTheGoal(t *testing.T) {
 		})
 	}
 	says := []string{"The input goal says what the change is for", "are claims you check",
-		"Its scope exclusions are the owner's", "you cannot override it", "its scope"}
+		"Its scope exclusions stand", "you cannot override it", "its scope"}
 	for _, name := range []string{"adr_review_codex", "adversarial_review", "architecture_review", "clarity_review", "intent_review", "tests_review"} {
 		if instruction := parseProcess(t, root, name).Instruction; !carries(instruction, says) {
 			t.Errorf("process %s's instruction does not say what its input goal is: it lacks one of %q:\n%s", name, says, instruction)
@@ -1618,9 +1616,10 @@ func TestIntentPromptCarriesItsDuties(t *testing.T) {
 			"the decisions the repository records", "a reading that departs from one is not defensible"}},
 		{"the code at the base settles what the record leaves", []string{
 			"where those are silent, the code and its tests as they stood at the base"}},
-		{"the settling source is quoted in the finding; a gap the record leaves is the finding; no one is asked", []string{
+		{"the settling source is quoted in the finding; a gap the record leaves is the finding; the reviewer settles it", []string{
 			"a reading the record does not support is a finding", "the source that settles the reading",
-			"Only the finding is evidence", "report the gap itself as the finding", "you never ask anyone to"}},
+			"The source is quoted in the finding, not only named in coverage", "report the gap itself as the finding",
+			"You settle readings yourself"}},
 	}
 	for _, instruction := range instructions {
 		if !carries(string(data), instruction.phrases) {
@@ -1650,7 +1649,7 @@ func TestArchitecturePromptReviewsTheShapeOfTheChange(t *testing.T) {
 	instructions := []promptInstruction{
 		{"the subject is the shape of the change", []string{
 			"Review the shape of the change", "A finding is about structure",
-			"behaviour, tests and documents are evidence for it, not findings of their own"}},
+			"with behaviour, tests and documents as its evidence"}},
 		{"each touched component is read whole and asked its own reason to change", []string{
 			"as it stands at the candidate, not only its lines in the diff",
 			"its responsibility, its dependencies", "its interfaces", "what is its own reason to change?"}},
@@ -1668,6 +1667,9 @@ func TestArchitecturePromptReviewsTheShapeOfTheChange(t *testing.T) {
 			"The width of the change is evidence", "the responsibility it would have if no file existed"}},
 		{"item 8 asks each touched component's own reason", []string{
 			"every component the change touched had a reason of its own to change"}},
+		{"the decisions are the rules, not the subject", []string{
+			"given as the rules the code keeps", "not the decisions themselves",
+			"Code that departs from one is a finding"}},
 	}
 	for _, instruction := range instructions {
 		if !carries(string(data), instruction.phrases) {
@@ -1756,7 +1758,8 @@ func TestTheAdvisorAlwaysDecides(t *testing.T) {
 // The implementer searches the record before it leaves a point open
 // (ADR-032 rule 4, LAB-206): it leaves one only when the point blocks the
 // work, the record searched does not settle it and its options differ in
-// what can be observed, says what it searched, and leaves at most one. The
+// what can be observed, and says what it searched. How many points a step
+// puts to the advisor is the gate's to count, not the implementer's. The
 // instruction is held by its short phrases standing in one paragraph, as
 // in TestReviewPromptsCarryTheirCoverageContract. The prompt is the
 // repository's own, read as it is.
@@ -1769,7 +1772,7 @@ func TestTheImplementerSearchesTheRecordBeforeLeavingAPointOpen(t *testing.T) {
 	}
 	phrases := []string{"Leave a point open only when all three hold", "searched for it, do not settle it",
 		"behaviour a user or a caller can observe, or in a contract", "what you searched",
-		"never a point left open", "Leave at most one"}
+		"never a point left open"}
 	if !carries(string(data), phrases) {
 		t.Errorf("agister/home/prompts/%s lost the instruction to search before leaving a point open: no paragraph has all of %q",
 			prompt, phrases)
@@ -1779,16 +1782,16 @@ func TestTheImplementerSearchesTheRecordBeforeLeavingAPointOpen(t *testing.T) {
 // The clarity prompt of the repository carries the exception to its rule
 // that a change does not edit a recorded decision. An edit a recorded rule
 // of the project requires, which brings a document the rule names in line
-// with behaviour the change itself built (a done gate), is not such a
+// with behaviour the change itself built, is not such a
 // finding; the reviewer quotes the rule and where it stands in the item's
 // coverage entry; an edit that says more than the change built, that
 // changes a rule, or that no such rule requires is still a finding; and an
-// edit the goal expressly directs is the owner's own. The definition of
+// edit the goal expressly directs is not a finding either. The definition of
 // done stands in one paragraph, so each phrase is one only that item has.
 // An instruction is held by its short phrases standing in one paragraph, as
 // in TestReviewPromptsCarryTheirCoverageContract. The prompt is the
 // repository's own, read as it is.
-func TestClarityPromptCarriesTheDoneGateException(t *testing.T) {
+func TestClarityPromptCarriesTheRecordedRuleException(t *testing.T) {
 	t.Parallel()
 	const prompt = "code-review-clarity.md"
 	data, err := os.ReadFile(filepath.Join("..", "..", "..", homeFolder, "prompts", prompt))
@@ -1799,14 +1802,14 @@ func TestClarityPromptCarriesTheDoneGateException(t *testing.T) {
 		{"an edit a recorded rule of the project requires is not a finding", []string{
 			"does not edit a recorded decision", "not such a finding",
 			"a recorded rule of the project requires the change to make it", "a document the rule names",
-			"behaviour the change itself built", "a done gate", "The owner's rule is the decision"}},
+			"behaviour the change itself built", "That rule is the decision"}},
 		{"the coverage entry quotes the rule and where it stands", []string{
 			"you check it", "the `coverage` entry for this item", "quotes the rule", "where it stands"}},
 		{"an edit beyond what the change built, or one no rule requires, is still a finding", []string{
 			"still a finding", "says more than the change built", "changes a rule instead of describing behaviour",
 			"that no such rule requires stays a finding"}},
-		{"an edit the goal expressly directs is the owner's own", []string{
-			"An edit the goal expressly directs", "the owner's own", "not a finding either"}},
+		{"an edit the goal expressly directs is not a finding", []string{
+			"An edit the goal expressly directs is not a finding either"}},
 	}
 	for _, instruction := range instructions {
 		if !carries(string(data), instruction.phrases) {
@@ -3199,13 +3202,20 @@ func judgedReviews(t *testing.T, home, repo, workflow string) (reviews map[strin
 	if err != nil {
 		t.Fatal(err)
 	}
-	var collection []struct{ Node, Process, Status string }
+	var collection []struct{ Status string }
 	if err := json.Unmarshal(data, &collection); err != nil {
 		t.Fatal(err)
 	}
+	// An entry names no node (ADR-034): the workflow's record does, in the
+	// same declaration order, the join last.
+	nodes := flow["workflow"].(map[string]any)["nodes"].([]any)
+	if len(nodes) != len(collection)+1 {
+		t.Fatalf("%d nodes for %d entries", len(nodes), len(collection))
+	}
 	reviews = map[string]string{}
-	for _, entry := range collection {
-		reviews[entry.Node] = entry.Process + " " + entry.Status
+	for i, entry := range collection {
+		node := nodes[i].(map[string]any)
+		reviews[node["name"].(string)] = node["process"].(string) + " " + entry.Status
 	}
 	// What the judge received is that collection.
 	if got := inputOf(t, records["review_judge"], "reviews")["identity"]; got != artifact["digest"] {

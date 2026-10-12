@@ -441,15 +441,17 @@ func fenced(text string) string {
 }
 
 // fixBrief writes the brief of the fix run after review n: the step's
-// brief, titled for the review, with the majors as its "## Acts on", as
-// the judge wrote them.
+// brief with the majors as its "## Acts on", each its title and action as
+// the judge wrote them. The brief names no review, run, ruling or source:
+// the implementer is given the changes to make, not the process that
+// asked for them (LAB-200).
 func (g *gate) fixBrief(n int, majors []item) (string, error) {
 	var acts strings.Builder
-	fmt.Fprintf(&acts, "The judgement of `code_review` run `%s`, its items ruled `fix` with severity major, as written:\n\n", g.sum.Reviews[len(g.sum.Reviews)-1].RunID)
+	acts.WriteString("The changes to make, as written:\n\n")
 	for _, it := range majors {
-		fmt.Fprintf(&acts, "- **%s** (%s): %s\n", it.Title, strings.Join(it.Sources, ", "), it.Action)
+		fmt.Fprintf(&acts, "- **%s**: %s\n", it.Title, it.Action)
 	}
-	brief, err := g.stepBrief(fmt.Sprintf("%s, review %d", g.title, n), acts.String())
+	brief, err := g.stepBrief(g.title, acts.String())
 	if err != nil {
 		return "", err
 	}

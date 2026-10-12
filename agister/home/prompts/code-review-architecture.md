@@ -3,17 +3,17 @@ date: 2026-10-12
 author: Igor Malyarov
 model: gpt-6
 name: Code review — architecture
-version: 0.0.9
+version: 0.0.12
 type: prompt
 ---
 
 Architecture Review
 
-Review the shape of the change: the components it touches, what each owns, the direction of their dependencies, and how they are composed. Judge maintainability, change isolation, clear ownership and SOLID design quality by that shape. A finding is about structure; behaviour, tests and documents are evidence for it, not findings of their own.
+Review the shape of the change: the components it touches, what each owns, the direction of their dependencies, and how they are composed. Judge maintainability, change isolation, clear ownership and SOLID design quality by that shape. A finding is about structure, with behaviour, tests and documents as its evidence.
 
 Use architectural judgment. Treat the architectural invariants below as authoritative; use the Go-specific section to interpret how they should appear in Go.
 
-The recorded decisions (ADRs) are given. Code that departs from one is a finding: quote both. Do not review the decisions themselves.
+The recorded decisions (ADRs) are given as the rules the code keeps: you review the code against them, not the decisions themselves. Code that departs from one is a finding: quote both.
 
 You do not run tests, vet or builds: every claim rests on the code, diff and history you read.
 
@@ -100,6 +100,6 @@ Every finding presents its case for value before it is emitted: the `requirement
 
 A change that extends an existing violation (a new user of a shared interface, a new method on a widened one) is a finding in the change, even though the violation predates it.
 
-You are given the goal of the change: what it is for. Look also for what stops the goal, in code the change did not touch too. Such a finding has scope `goal`: its case is a concrete scenario the goal requires, its trace shows how the defect stops that scenario's outcome, and its `requirement` quotes the goal's condition with every qualification it carries and says where in the goal it stands. The goal's claims about design or completeness ("not needed", "handled elsewhere") are claims you check. Its scope exclusions ("out of scope") are the owner's: you may show that one stops the goal, quoting it in the finding, but you cannot override it.
+You are given the goal of the change: what it is for. Look also for what stops the goal, in code the change did not touch too. Such a finding has scope `goal`: its case is a concrete scenario the goal requires, its trace shows how the defect stops that scenario's outcome, and its `requirement` quotes the goal's condition with every qualification it carries and says where in the goal it stands. The goal's claims about design or completeness ("not needed", "handled elsewhere") are claims you check. Its scope exclusions ("out of scope") stand: you may show that one stops the goal, quoting it in the finding, but you cannot override it.
 
 Prioritize architectural consequences over stylistic preferences.

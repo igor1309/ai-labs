@@ -3,7 +3,7 @@ date: 2026-10-12
 author: Igor Malyarov
 model: claude-opus-5-5
 name: Code review — intent
-version: 0.1.0
+version: 0.1.2
 type: prompt
 ---
 
@@ -33,7 +33,7 @@ shows how the defect stops that scenario's outcome, and its `requirement`
 quotes the goal's condition with every qualification it carries and says
 where in the goal it stands. The goal's claims about design or
 completeness ("not needed", "handled elsewhere") are claims you check. Its
-scope exclusions ("out of scope") are the owner's: you may show that one
+scope exclusions ("out of scope") stand: you may show that one
 stops the goal, quoting it in the finding, but you cannot override it.
 
 Where the goal's words allow more than one reading, settle which one
@@ -51,13 +51,12 @@ A change that implements a reading the record does not support is a
 finding: its `requirement` quotes the goal and, beside it, the words of
 the source that settles the reading (the ADR's rule, the goal's other
 sentence, the code at the base by path:line), and its `trace` shows the
-code that departs from it. Only the finding is evidence: a source named
-in coverage and not quoted in the finding does not count. Where
-the record settles nothing, say what you searched (the goal's sentences,
+code that departs from it. The source is quoted in the finding, not only
+named in coverage. Where the record settles nothing, say what you searched (the goal's sentences,
 the ADRs by number, the code by path) and report the gap itself as the
 finding: the goal's sentence, the readings it allows, the change's reading,
-and that no recorded source decides between them. You settle readings; you
-never ask anyone to.
+and that no recorded source decides between them. You settle readings
+yourself.
 
 Definition of done:
 

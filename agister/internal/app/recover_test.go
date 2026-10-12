@@ -155,7 +155,7 @@ func staleCases() []staleCase {
 		{
 			name: "repeated_tool_calls", limits: "repeated_tool_calls: 3", limit: run.StaleRepeatedToolCalls,
 			stale: func(*timersSpy) turnStep { return repeating("prov-1", goTest, "FAIL\texample.com/a") },
-			evidence: "## stale limit\n\nstale.repeated_tool_calls: the same tool call was made 3 times in a row, and Agister ended the turn.\n\n" +
+			evidence: "## stale limit\n\nstale.repeated_tool_calls: the same tool call was made 3 times in a row, and the turn was ended.\n\n" +
 				"## tool call\n\nBash\n\n```\n{\"command\":\"go test ./...\"}\n```\n\n## last result\n\n```\nFAIL\texample.com/a\n```",
 			// A repeated call takes no time here.
 			left: 20 * time.Minute, status: run.Failed, class: run.ClassBudgetExhausted,
@@ -163,7 +163,7 @@ func staleCases() []staleCase {
 		{
 			name: "tool_command", limits: "tool_command: 4m", limit: run.StaleToolCommand,
 			stale: func(timers *timersSpy) turnStep { return commanding(timers, "prov-1", tailLog) },
-			evidence: "## stale limit\n\nstale.tool_command: a tool's command ran for 4m0s, and Agister ended the turn.\n\n" +
+			evidence: "## stale limit\n\nstale.tool_command: a tool's command ran for 4m0s, and the turn was ended.\n\n" +
 				"## command\n\nBash\n\n```\n{\"command\":\"tail -f log\"}\n```",
 			left: 16 * time.Minute, status: run.Interrupted, class: run.ClassTimeout,
 		},
@@ -237,7 +237,7 @@ func TestARepeatedCallWithoutAReportedResultIsRecoveredWithTheCallAlone(t *testi
 	play(h, repeating("prov-1", goTest, ""), completes(h))
 	record := h.call(t, contract.CallRequest{})
 
-	want := "Recover.\n\n## stale limit\n\nstale.repeated_tool_calls: the same tool call was made 3 times in a row, and Agister ended the turn.\n\n" +
+	want := "Recover.\n\n## stale limit\n\nstale.repeated_tool_calls: the same tool call was made 3 times in a row, and the turn was ended.\n\n" +
 		"## tool call\n\nBash\n\n```\n{\"command\":\"go test ./...\"}\n```"
 	if turns := h.runner.calls(); record.Result.Status != run.Completed || len(turns) != 2 || turns[1].Prompt != want {
 		t.Fatalf("result = %+v, turns %+v", record.Result, turns)

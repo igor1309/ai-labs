@@ -70,8 +70,8 @@ func TestAnInPlaceContinuationResumesInTheSameWorktree(t *testing.T) {
 		t.Fatalf("events %v", h.recorder.kinds())
 	}
 	got := h.runner.calls()[0]
-	notice := prompt.Continues("run-0", "run-0", "/repo", "sha-HEAD")
-	if got.ResumeSessionID != "prov-0" || got.Cwd != "/repo" || !strings.HasPrefix(got.Prompt, notice+"\n\n## candidate_revision") || strings.Contains(got.Prompt, "gone") {
+	notice := prompt.Continues("/repo", "sha-HEAD")
+	if got.ResumeSessionID != "prov-0" || got.Cwd != "/repo" || !strings.HasPrefix(got.Prompt, notice+"\n\n## candidate_revision") || strings.Contains(got.Prompt, "gone") || strings.Contains(got.Prompt, "run-0") {
 		t.Fatalf("request %+v", got)
 	}
 	// The latest run's patch was checked against its digest, under the lock.
@@ -137,7 +137,7 @@ func TestTheSessionsLatestRunDecidesTheExpectedContent(t *testing.T) {
 			if record.Result.Status != run.Completed {
 				t.Fatalf("result %+v", record.Result)
 			}
-			if notice := prompt.Continues("run-0", "run-0b", "/repo", "sha-HEAD"); !strings.HasPrefix(h.runner.calls()[0].Prompt, notice) {
+			if notice := prompt.Continues("/repo", "sha-HEAD"); !strings.HasPrefix(h.runner.calls()[0].Prompt, notice) {
 				t.Fatalf("prompt %q", h.runner.calls()[0].Prompt)
 			}
 		})

@@ -8,7 +8,7 @@
       "anyOf": [
         {
           "type": "object",
-          "description": "conflict: the record is at fault; no record, and the step stops.",
+          "description": "conflict: the record is at fault; nothing is decided.",
           "additionalProperties": false,
           "required": ["kind", "reason"],
           "properties": {
@@ -18,7 +18,7 @@
         },
         {
           "type": "object",
-          "description": "decision: the record, appended unedited to the project's decisions record.",
+          "description": "decision: the question decided, as one record.",
           "additionalProperties": false,
           "required": ["kind", "asked_by", "question", "options", "chosen", "excluded", "rests_on", "follow_ups"],
           "properties": {

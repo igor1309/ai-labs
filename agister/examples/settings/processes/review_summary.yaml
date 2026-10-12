@@ -6,11 +6,10 @@ prompt: review-summary
 
 input:
   instruction: >-
-    Summarize the reviews given as input reviews, each one reviewer's
-    output; a review with no output did not complete, so say so and
-    summarize nothing for it. Merge findings that make the same claim, keep each finding's
-    evidence and its source, and say where the reviewers disagree. Add no
-    finding of your own.
+    Summarize the reviews given as input reviews; a review with no output
+    did not complete, so say so and summarize nothing for it. Merge
+    findings that make the same claim, keep each finding's evidence and its
+    source, and say where the reviews disagree. Add no finding of your own.
   values:
     reviews: {source: workflow.collection}
 
