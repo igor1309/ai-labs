@@ -8,7 +8,7 @@ input:
   instruction: >-
     Review the exact candidate adversarially. Report material correctness,
     safety, contract, and maintainability findings. Take no suspected defect
-    or focus as given: find each one in the code.
+    or focus as given.
   params:
     base: {default: origin/HEAD}
     candidate: {default: HEAD}
