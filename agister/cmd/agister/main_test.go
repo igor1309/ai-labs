@@ -33,10 +33,10 @@ import (
 )
 
 // The CLI this package builds, the fake the test that kills it builds, and
-// the homes setup copies are removed when its tests end.
+// the homes tests copy (homeTemplate) are removed when its tests end.
 func TestMain(m *testing.M) {
 	code := runtimetest.Run(m)
-	os.RemoveAll(setupHomes.dir)
+	os.RemoveAll(homeTemplates.dir)
 	os.Exit(code)
 }
 
@@ -333,42 +333,47 @@ func onFakeGit(t *testing.T, home, scenario string) string {
 func setup(t *testing.T, scenario string) (home, repo string) {
 	home = tempDir(t)
 	repo = onFakeGit(t, home, scenario)
-	if err := os.CopyFS(home, os.DirFS(setupHome(t, scenario))); err != nil {
+	template := homeTemplate(t, "setup-"+scenario, func(template string) {
+		setupOn(t, template, onFakeGit(t, template, scenario), "claude")
+	})
+	if err := os.CopyFS(home, os.DirFS(template)); err != nil {
 		t.Fatal(err)
 	}
 	return home, repo
 }
 
-// setupHomes holds, by scenario, a home setupOn prepared, built once per
-// test binary by the same calls and copied by setup into each test's home:
-// the calls cost the most of this package's time, and their result names
-// neither the home nor the repository.
-var setupHomes = struct {
+// homeTemplates holds, by key, a home built once per test binary, which
+// tests copy into homes of their own in place of making the calls that
+// built it: those calls cost the most of this package's time.
+var homeTemplates = struct {
 	sync.Mutex
-	dir        string
-	byScenario map[string]string
-}{byScenario: map[string]string{}}
+	dir   string
+	byKey map[string]string
+}{byKey: map[string]string{}}
 
-func setupHome(t *testing.T, scenario string) string {
+// homeTemplate is the home build made for key, made by the first test
+// that asks for it. What build makes must name no test's home or
+// repository, or each copy must rewrite it.
+func homeTemplate(t *testing.T, key string, build func(home string)) string {
 	t.Helper()
-	setupHomes.Lock()
-	defer setupHomes.Unlock()
-	if home, ok := setupHomes.byScenario[scenario]; ok {
+	homeTemplates.Lock()
+	defer homeTemplates.Unlock()
+	if home, ok := homeTemplates.byKey[key]; ok {
 		return home
 	}
-	if setupHomes.dir == "" {
-		dir, err := os.MkdirTemp("", "agister-setup-")
+	if homeTemplates.dir == "" {
+		dir, err := os.MkdirTemp("", "agister-homes-")
 		if err != nil {
 			t.Fatal(err)
 		}
-		setupHomes.dir = dir
+		homeTemplates.dir = dir
 	}
-	home, err := os.MkdirTemp(setupHomes.dir, scenario+"-")
+	home, err := os.MkdirTemp(homeTemplates.dir, key+"-")
 	if err != nil {
 		t.Fatal(err)
 	}
-	setupOn(t, home, onFakeGit(t, home, scenario), "claude")
-	setupHomes.byScenario[scenario] = home
+	build(home)
+	homeTemplates.byKey[key] = home
 	return home
 }
 

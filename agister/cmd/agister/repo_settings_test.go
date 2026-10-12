@@ -526,8 +526,9 @@ func recordsRequired(t *testing.T, record map[string]any) {
 
 // onFakeRuntimes is this repository's root, and a mirror of it (see mirror
 // and fixVerify) with an Agister home that is homeFolder installed into an
-// empty one (ADR-027 rule 7), where git and the claude, codex and pi that
-// run are fakes, in process.
+// empty one (ADR-027 rule 7), installed once per test binary and copied
+// (copyInstalled), where git and the claude, codex and pi that run are
+// fakes, in process.
 func onFakeRuntimes(t *testing.T) (root, repo, home string) {
 	t.Helper()
 	root, repo, home, _ = onFakeRuntimesRecorded(t)
@@ -551,11 +552,32 @@ func onFakeRuntimesRecorded(t *testing.T) (root, repo, home string, recorded *gi
 	// mappings verify (claude-code 2.1.283, codex 0.158.0, pi 0.85.1). No
 	// real runtime ever runs, and no ccusage: the starter has none, so
 	// Codex turns cost unknown.
-	startThrough(t, home, runtimetest.InProcess{Env: []string{"FAKE_OUTPUT=schema"}})
-	if r := agisterInstalling(t, "yes\n", home, tempDir(t), "install", filepath.Join(root, homeFolder)); r.code != 0 {
-		t.Fatalf("install %s: %d %s", homeFolder, r.code, r.stderr)
-	}
+	starter := runtimetest.InProcess{Env: []string{"FAKE_OUTPUT=schema"}}
+	startThrough(t, home, starter)
+	installed := homeTemplate(t, "installed", func(template string) {
+		startThrough(t, template, starter)
+		if r := agisterInstalling(t, "yes\n", template, tempDir(t), "install", filepath.Join(root, homeFolder)); r.code != 0 {
+			t.Fatalf("install %s: %d %s", homeFolder, r.code, r.stderr)
+		}
+	})
+	copyInstalled(t, installed, home)
 	return root, repo, home, recorded
+}
+
+// copyInstalled copies the home installed into an empty one into home,
+// each backup's manifest naming home's paths in place of installed's.
+func copyInstalled(t *testing.T, installed, home string) {
+	t.Helper()
+	if err := os.CopyFS(home, os.DirFS(installed)); err != nil {
+		t.Fatal(err)
+	}
+	manifests, err := filepath.Glob(filepath.Join(home, "backups", "*", "manifest.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, manifest := range manifests {
+		write(t, manifest, strings.ReplaceAll(read(t, manifest), installed+string(filepath.Separator), home+string(filepath.Separator)))
+	}
 }
 
 // The judge of code_review rules on the collection of a fixed set of
