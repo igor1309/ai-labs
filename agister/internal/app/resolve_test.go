@@ -16,11 +16,21 @@ import (
 const unparsable = "\xff"
 
 // failings are the ways a document fails a resolution: the settings lack
-// it, or have it with problems.
-func failings() map[string]func(docs map[string]string, name string) {
-	return map[string]func(docs map[string]string, name string){
-		"missing": func(docs map[string]string, name string) { delete(docs, name) },
-		"invalid": func(docs map[string]string, name string) { docs[name] = unparsable },
+// it, have it with problems, or list it and fail its read. Each gives the
+// definitions the resolution reads, over the spy that counts its reads.
+func failings() map[string]func(defs *definitionsSpy, kind document.Kind, name string) failingSource {
+	return map[string]func(defs *definitionsSpy, kind document.Kind, name string) failingSource{
+		"missing": func(defs *definitionsSpy, kind document.Kind, name string) failingSource {
+			delete(defs.docs[kind], name)
+			return failingSource{definitionsSpy: defs}
+		},
+		"invalid": func(defs *definitionsSpy, kind document.Kind, name string) failingSource {
+			defs.docs[kind][name] = unparsable
+			return failingSource{definitionsSpy: defs}
+		},
+		"unreadable": func(defs *definitionsSpy, kind document.Kind, name string) failingSource {
+			return failingSource{definitionsSpy: defs, readErr: map[string]error{string(kind) + "/" + name: errors.New("cannot read it")}}
+		},
 	}
 }
 
@@ -46,8 +56,8 @@ func namingEveryKind() *harness {
 }
 
 // A call's documents are read in one order, and the first that fails,
-// missing or invalid, is the last read: the call is refused for it, and no
-// later document is asked of the definitions.
+// missing, invalid or unreadable, is the last read: the call is refused for
+// it, and no later document is asked of the definitions.
 func TestACallReadsNoDocumentAfterTheFirstThatFails(t *testing.T) {
 	t.Parallel()
 	order := []string{
@@ -55,14 +65,14 @@ func TestACallReadsNoDocumentAfterTheFirstThatFails(t *testing.T) {
 		"list verifies", "verifies/repo", "prompts/inspect", "prompts/testing",
 		"briefs/goal", "briefs/step", "skills/review", "skills/tests", "skills/style",
 	}
-	resolve := func(h *harness) error {
-		_, err := app.NewResolver(h.defs, h.runtimes, h.validator, resolverCheckStub{}).InspectNode(context.Background(), app.InspectedNode{Name: "p", Process: "p", Agent: "a"})
+	resolve := func(h *harness, defs app.ResolverDefinitions) error {
+		_, err := app.NewResolver(defs, h.runtimes, h.validator, resolverCheckStub{}).InspectNode(context.Background(), app.InspectedNode{Name: "p", Process: "p", Agent: "a"})
 		return err
 	}
 	t.Run("none fails", func(t *testing.T) {
 		t.Parallel()
 		h := namingEveryKind()
-		if err := resolve(h); err != nil || !reflect.DeepEqual(h.defs.reads, order) {
+		if err := resolve(h, h.defs); err != nil || !reflect.DeepEqual(h.defs.reads, order) {
 			t.Fatalf("reads = %q, %v; want %q", h.defs.reads, err, order)
 		}
 	})
@@ -75,8 +85,7 @@ func TestACallReadsNoDocumentAfterTheFirstThatFails(t *testing.T) {
 			t.Run(read+" "+failing, func(t *testing.T) {
 				t.Parallel()
 				h := namingEveryKind()
-				fail(h.defs.docs[document.Kind(kind)], name)
-				err := resolve(h)
+				err := resolve(h, fail(h.defs, document.Kind(kind), name))
 				if refusal := (*app.Refusal)(nil); !errors.As(err, &refusal) {
 					t.Fatalf("resolution = %v, want a refusal", err)
 				}
@@ -90,8 +99,8 @@ func TestACallReadsNoDocumentAfterTheFirstThatFails(t *testing.T) {
 
 // So are a workflow's: the first of its own document, its brief forms and
 // its nodes' processes that fails is the last read, and no node's call is
-// resolved. A node's process the settings lack does not fail the read: it
-// is a problem of the workflow, found once every process is read.
+// resolved. A node's process that is not read does not stop it: it is a
+// problem of the workflow, found once every process is read.
 func TestAWorkflowReadsNoDocumentAfterTheFirstThatFails(t *testing.T) {
 	t.Parallel()
 	order := []string{
@@ -104,14 +113,14 @@ func TestAWorkflowReadsNoDocumentAfterTheFirstThatFails(t *testing.T) {
 		h.defs.docs[document.KindWorkflow]["w"] = strings.Replace(h.defs.docs[document.KindWorkflow]["w"], "form: [goal]", "form: [goal, step]", 1)
 		return h
 	}
-	resolve := func(h *flowHarness) error {
-		_, _, err := app.NewResolver(h.defs, nodeRuntimes{runner: h.runner}, okValidator{}, resolverCheckStub{}).InspectWorkflow(context.Background(), "w")
+	resolve := func(h *flowHarness, defs app.ResolverDefinitions) error {
+		_, _, err := app.NewResolver(defs, nodeRuntimes{runner: h.runner}, okValidator{}, resolverCheckStub{}).InspectWorkflow(context.Background(), "w")
 		return err
 	}
 	t.Run("none fails", func(t *testing.T) {
 		t.Parallel()
 		h := formed()
-		if err := resolve(h); err != nil || len(h.defs.reads) <= len(order) || !reflect.DeepEqual(h.defs.reads[:len(order)], order) {
+		if err := resolve(h, h.defs); err != nil || len(h.defs.reads) <= len(order) || !reflect.DeepEqual(h.defs.reads[:len(order)], order) {
 			t.Fatalf("reads = %q, %v; want %q, then its nodes' calls'", h.defs.reads, err, order)
 		}
 	})
@@ -122,15 +131,15 @@ func TestAWorkflowReadsNoDocumentAfterTheFirstThatFails(t *testing.T) {
 		}
 		for failing, fail := range failings() {
 			// A workflow the settings do not list is not found, and none of
-			// its documents is read; a process they lack does not stop it.
-			if failing == "missing" && (kind == string(document.KindWorkflow) || kind == string(document.KindProcess)) {
+			// its documents is read; a process that is not read does not
+			// stop it.
+			if failing == "missing" && kind == string(document.KindWorkflow) || failing != "invalid" && kind == string(document.KindProcess) {
 				continue
 			}
 			t.Run(read+" "+failing, func(t *testing.T) {
 				t.Parallel()
 				h := formed()
-				fail(h.defs.docs[document.Kind(kind)], name)
-				err := resolve(h)
+				err := resolve(h, fail(h.defs, document.Kind(kind), name))
 				if refusal := (*app.Refusal)(nil); !errors.As(err, &refusal) {
 					t.Fatalf("resolution = %v, want a refusal", err)
 				}
