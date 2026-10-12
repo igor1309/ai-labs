@@ -20,13 +20,19 @@ import (
 // workflows too.
 
 // settingsDocs are the documents, relative to agister/, that describe the
-// settings.
+// settings. Of the diagrams' folder, the documents are its HTML and
+// markdown: the design source the diagram is drawn from and its assets
+// are read by no one as text.
 func settingsDocs(t *testing.T) []string {
 	t.Helper()
 	docs := []string{"README.md", filepath.Join("skills", "agister", "SKILL.md"), filepath.Join("pages", "README.md")}
-	diagrams, err := filepath.Glob(filepath.Join("..", "..", "docs", "settings-architecture", "*"))
-	if err != nil || len(diagrams) == 0 {
-		t.Fatalf("the settings diagrams: %v, %v", diagrams, err)
+	var diagrams []string
+	for _, pattern := range []string{"*.html", "*.md"} {
+		found, err := filepath.Glob(filepath.Join("..", "..", "docs", "settings-architecture", pattern))
+		if err != nil || len(found) == 0 {
+			t.Fatalf("the settings diagrams, %s: %v, %v", pattern, found, err)
+		}
+		diagrams = append(diagrams, found...)
 	}
 	for _, path := range diagrams {
 		rel, _ := filepath.Rel(filepath.Join("..", ".."), path)
