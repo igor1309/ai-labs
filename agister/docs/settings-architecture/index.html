@@ -7,13 +7,13 @@
 <style>
   :root {
     color-scheme: dark;
-    --ground:#0E0E10; --surface:#17171A; --surface-2:#1E1E22;
+    --ground:#08080A; --surface:#17171A; --surface-2:#1E1E22;
     --line:#2A2A2F; --line-soft:#232327; --line-strong:#3C3C43;
-    --text:#E8E6E4; --text-dim:#95928F; --text-faint:#68655F;
+    --text:#F5F5F7; --text-dim:#8A8A96; --text-faint:#68686F;
     /* Body text and the diagram's labels share one brightness. */
-    --text-body:#CFCBC6; --text-sub:#AEAAA4;
-    --workflow:#CE8098; --process:#7E9CB8; --agent:#7FC4AE; --runtime:#D9A441;
-    --rule:#E0785F; --run:#E3D9B8;
+    --text-body:#D9D9DF; --text-sub:#B4B4C0;
+    --workflow:#F28DB0; --process:#8DB8FF; --agent:#5FE0BC; --runtime:#FFC24D;
+    --node:#C8A2FF; --agent-node:#C8A2FF; --rule:#FF8F6B; --run:#F5E6B0;
     --display:"Iowan Old Style","Palatino Linotype",Palatino,"Hoefler Text",Georgia,serif;
     --sans:-apple-system,BlinkMacSystemFont,"Helvetica Neue",system-ui,sans-serif;
     --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
@@ -55,49 +55,43 @@
   .kind.process { --k: var(--process); }
   .kind.agent { --k: var(--agent); }
   .kind.runtime { --k: var(--runtime); }
+  .kind.node { --k: var(--node); }
+  .kind.service { --k: var(--rule); }
+  .kind.run { --k: var(--run); }
 
   figure { margin: 24px 0 28px; }
   figure svg { display: block; width: 100%; height: auto; margin: 0 auto; }
-  svg text { fill: var(--text-body); font-family: var(--sans); font-size: 14px; }
-  /* Every box title: one face, one size. */
-  svg .t { font-family: var(--display); font-size: 20px; }
+  figcaption { margin-top: 12px; font-family: var(--mono); font-size: 13px; color: var(--text-dim); }
+  svg text { fill: var(--text); font-family: var(--sans); }
+  /* A box's title, then a few of its fields, on one line. */
+  svg .t { font-weight: 700; font-size: 19px; letter-spacing: -.02em; }
+  svg .t.s { font-size: 17px; }
+  svg .d { fill: var(--text-sub); font-family: var(--mono); font-size: 11.5px; font-weight: 500; letter-spacing: .06em; }
+  svg .d.tight { font-size: 11px; letter-spacing: .02em; }
   svg .kind .t { fill: var(--k); }
-  svg .sub { fill: var(--text-sub); }
-  svg .sub.k-process { fill: var(--process); }
-  svg .cmd { fill: var(--run); font-family: var(--mono); font-size: 15px; }
-  svg .run-label { fill: var(--run); font-size: 11.5px; }
-  svg .rule-label { fill: var(--rule); font-size: 11.5px; }
-  svg .names-label { fill: var(--text-dim); font-size: 11.5px; }
-  /* A leaf document's title: one face, one size, smaller than a kind's. */
-  svg .dt { font-family: var(--display); font-size: 17px; }
-  svg .dt.k-process { fill: var(--process); }
-  svg .callt { fill: var(--run); font-family: var(--display); font-size: 17px; }
-  .card { fill: var(--surface-2); stroke: var(--line-strong); }
-  .edge { fill: var(--k); }
-  .doc { fill: var(--surface); stroke: var(--line-strong); }
-  /* Containers: a box inside another is part of it, or bound by it. */
-  .box { fill: none; stroke: var(--k); stroke-opacity: .7; }
-  .node { fill: var(--ground); stroke: var(--k); stroke-opacity: .6; }
-  .node.shadow { stroke-opacity: .3; }
-  .label-gap { fill: var(--ground); }
-  .base-doc { stroke: var(--process); stroke-dasharray: 4 3; }
-  .pill { fill: var(--surface); stroke: var(--run); stroke-width: 1.25; }
-  .call { fill: var(--surface); stroke: var(--run); stroke-width: 1.25; }
-  .frame, .tree, .starts, .extends, .box-icon { fill: none; }
-  .frame { stroke: var(--rule); stroke-width: 1.25; stroke-dasharray: 6 4; }
-  .tree { stroke: var(--text-sub); stroke-width: 1.5; }
-  .starts { stroke: var(--run); stroke-width: 2; }
-  .extends { stroke: var(--process); stroke-width: 1.5; }
-  .box-icon { stroke: var(--text-dim); }
-  .head-starts { fill: var(--run); }
-  .head-extends { fill: var(--ground); stroke: var(--process); stroke-width: 1.5; }
-
-  .legend {
-    display: flex; flex-wrap: wrap; gap: 8px 28px; margin: 14px 0 0; padding: 0;
-    list-style: none; color: var(--text-dim); font-size: 14px;
-  }
-  .legend li { display: flex; align-items: center; gap: 10px; }
-  .legend svg { width: 34px; height: 14px; flex: none; }
+  svg .row-t { font-size: 14.5px; font-weight: 500; }
+  svg .tag { fill: var(--process); font-family: var(--mono); font-size: 10.5px; letter-spacing: .08em; }
+  svg .cmd { fill: var(--run); font-family: var(--mono); font-size: 13px; font-weight: 500; }
+  svg .cmd .prompt { fill: var(--text-sub); font-weight: 400; }
+  svg .badge-t { fill: var(--agent-node); font-family: var(--mono); font-size: 12px; font-weight: 600; }
+  .ic { fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  .kind { color: var(--k); }
+  .mute { color: var(--text-sub); }
+  /* Each container a step lighter than the one around it. */
+  .service { fill: #131317; stroke: var(--rule); stroke-opacity: .6; }
+  .workflow-box { fill: #1B1B21; stroke: var(--workflow); stroke-opacity: .4; }
+  .node-box { fill: #24242B; stroke: var(--node); stroke-opacity: .4; }
+  .stack-1 { fill: #34343D; stroke: var(--node); stroke-opacity: .5; }
+  .stack-2 { fill: #2A2A32; stroke: var(--node); stroke-opacity: .3; }
+  .panel { fill: #1B1B21; stroke: var(--k); }
+  .panel-top { fill: none; stroke: var(--k); stroke-width: 3; }
+  .row { fill: #2F2F37; }
+  .row.marked { stroke: var(--k); stroke-opacity: .5; }
+  .marker { fill: var(--k); }
+  .chip { fill: var(--ground); stroke: #3A3A44; }
+  .badge { fill: var(--node); fill-opacity: .2; }
+  .call { fill: #3A3527; stroke: var(--run); stroke-opacity: .5; }
+  svg .call-d { fill: #E2D6AE; }
 
   footer {
     margin-top: 40px; padding-top: 16px; border-top: 1px solid var(--line);
@@ -122,10 +116,10 @@
     .text { grid-column: 2; grid-row: 2; }
   }
   /* The diagram stays in view while the text scrolls, scaled to fit the
-     viewport with its legend. */
+     viewport with its caption. */
   @media (min-width: 900px) and (min-height: 560px) {
     figure { position: sticky; top: 20px; }
-    figure svg { max-height: calc(100vh - 230px); }
+    figure svg { max-height: calc(100vh - 120px); }
   }
 </style>
 </head>
@@ -137,104 +131,102 @@
 </header>
 
 <figure>
-<svg viewBox="0 0 680 642" role="img" aria-labelledby="diagram-title diagram-desc">
-  <title id="diagram-title">The settings documents, each inside or under what names it</title>
-  <desc id="diagram-desc">The service frames everything: inside it, agister run
-  picks one workflow. Inside the workflow is its nodes; each node uses a
-  process and binds an agent, side by side on one level. Under the process
-  are the documents it names: its base, which it extends, its output schema,
-  verification, prompts, skills and brief forms. Under the agent are its
-  runtime mapping and its skills. At the bottom of the node is its call,
-  where the process's permissions meet the runtime mapping's primitives.</desc>
+<svg viewBox="0 0 752 630" role="img" aria-labelledby="diagram-title diagram-desc">
+  <title id="diagram-title">The settings documents, each inside what names it</title>
+  <desc id="diagram-desc">The service frames everything: inside it is the
+  workflow that agister run picks. Inside the workflow is its nodes, one
+  drawn for each; each node uses a process and binds an agent, side by side
+  on one level. In the process are the documents it names: its base, which
+  it extends, its output schema, verification, prompts, skills and brief
+  forms. In the agent are its runtime mapping and its skills. At the bottom
+  of the node is its call, where the process's permissions meet the runtime
+  mapping's primitives.</desc>
   <defs>
-    <marker id="head-starts" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
-      <path class="head-starts" d="M0 0 10 5 0 10z"/>
-    </marker>
-    <marker id="head-extends" viewBox="0 0 12 12" refX="11" refY="6" markerWidth="10" markerHeight="10" orient="auto" markerUnits="userSpaceOnUse">
-      <path class="head-extends" d="M1 1 11 6 1 11z"/>
-    </marker>
+    <symbol id="i-base" viewBox="0 0 24 24"><g class="ic"><path d="M14 9 9 4 4 9"/><path d="M20 20h-7a4 4 0 0 1-4-4V4"/></g></symbol>
+    <symbol id="i-schema" viewBox="0 0 24 24"><g class="ic"><path d="M8 3H7a2 2 0 0 0-2 2v5a2 2 0 0 1-2 2 2 2 0 0 1 2 2v5c0 1.1.9 2 2 2h1"/><path d="M16 21h1a2 2 0 0 0 2-2v-5c0-1.1.9-2 2-2a2 2 0 0 1-2-2V5a2 2 0 0 0-2-2h-1"/></g></symbol>
+    <symbol id="i-verify" viewBox="0 0 24 24"><g class="ic"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/></g></symbol>
+    <symbol id="i-prompts" viewBox="0 0 24 24"><g class="ic"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><path d="M13 8H7"/><path d="M17 12H7"/></g></symbol>
+    <symbol id="i-skills" viewBox="0 0 24 24"><g class="ic"><path d="M9.94 15.5a2 2 0 0 0-1.44-1.44l-6.13-1.58a.5.5 0 0 1 0-.96L8.5 9.94A2 2 0 0 0 9.94 8.5l1.58-6.14a.5.5 0 0 1 .96 0l1.58 6.14a2 2 0 0 0 1.44 1.44l6.13 1.58a.5.5 0 0 1 0 .96l-6.13 1.58a2 2 0 0 0-1.44 1.44l-1.58 6.13a.5.5 0 0 1-.96 0z"/><path d="M20 3v4M22 5h-4M4 17v2M5 18H3"/></g></symbol>
+    <symbol id="i-forms" viewBox="0 0 24 24"><g class="ic"><rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="M12 11h4M12 16h4M8 11h.01M8 16h.01"/></g></symbol>
+    <symbol id="i-mapping" viewBox="0 0 24 24"><g class="ic"><path d="m16 3 4 4-4 4"/><path d="M20 7H4"/><path d="m8 21-4-4 4-4"/><path d="M4 17h16"/></g></symbol>
+    <symbol id="i-call" viewBox="0 0 24 24"><g class="ic"><path d="M6 3 20 12 6 21z"/></g></symbol>
   </defs>
 
   <!-- The service: a frame around every run, not a step in it. -->
-  <rect class="frame" x="1" y="14" width="678" height="627" rx="6"/>
-  <rect class="label-gap" x="14" y="2" width="330" height="26"/>
-  <text class="t" x="22" y="21">Service</text>
-  <text class="sub" x="100" y="21">limits and permissions for every run</text>
-
-  <!-- The run: a command, not a settings document. -->
-  <rect class="pill" x="24" y="42" width="230" height="40" rx="20"/>
-  <text class="cmd" x="139" y="67" text-anchor="middle">agister run &lt;workflow&gt;</text>
-  <path class="starts" d="M139 82V100" marker-end="url(#head-starts)"/>
-
-  <!-- Level 1: the workflow the name picks. -->
-  <g class="kind workflow">
-    <rect class="box" x="20" y="102" width="640" height="522" rx="3"/>
-    <text class="t" x="36" y="132">Workflow</text>
-    <text class="sub" x="134" y="132">params · values</text>
+  <g class="kind service">
+    <rect class="service" x="0.5" y="0.5" width="751" height="629" rx="16"/>
+    <rect class="marker" x="20" y="22" width="10" height="10" rx="3"/>
+    <text x="40" y="34"><tspan class="t">Service</tspan><tspan class="d" dx="12">LIMITS AND PERMISSIONS FOR EVERY RUN</tspan></text>
   </g>
+
+  <!-- Level 1: the workflow the command picks. -->
+  <g class="kind workflow">
+    <rect class="workflow-box" x="20" y="60" width="712" height="549" rx="12"/>
+    <rect class="marker" x="40" y="83" width="10" height="10" rx="3"/>
+    <text x="60" y="95"><tspan class="t">Workflow</tspan><tspan class="d" dx="12">PARAMS · VALUES</tspan></text>
+  </g>
+  <rect class="chip" x="500" y="74" width="212" height="29" rx="6"/>
+  <text class="cmd" x="512" y="93"><tspan class="prompt">$</tspan> agister run &lt;workflow&gt;</text>
 
   <!-- Level 2: its nodes, one drawn for each. -->
-  <g class="kind workflow">
-    <rect class="node shadow" x="44" y="154" width="600" height="454" rx="3"/>
-    <rect class="node shadow" x="40" y="150" width="600" height="454" rx="3"/>
-    <rect class="node" x="36" y="146" width="600" height="454" rx="3"/>
-    <text class="t" x="52" y="176">Node</text>
-    <text class="sub" x="110" y="176">fan_out and join, or one call</text>
+  <g class="kind node">
+    <rect class="stack-2" x="60" y="571" width="632" height="18" rx="8"/>
+    <rect class="stack-1" x="50" y="565" width="652" height="18" rx="8"/>
+    <rect class="node-box" x="40" y="125" width="672" height="452" rx="10"/>
+    <rect class="marker" x="60" y="146" width="10" height="10" rx="3"/>
+    <text x="80" y="158"><tspan class="t s">Node</tspan><tspan class="d" dx="12">FAN_OUT AND JOIN, OR ONE CALL</tspan></text>
+    <rect class="badge" x="654" y="140" width="38" height="22" rx="5"/>
+    <text class="badge-t" x="673" y="155" text-anchor="middle">× n</text>
   </g>
 
-  <!-- Level 3: what a node uses and binds, side by side. -->
+  <!-- Level 3: what a node uses and binds, side by side; in each, the
+       documents it names. -->
   <g class="kind process">
-    <rect class="card" x="52" y="192" width="320" height="64" rx="2"/>
-    <rect class="edge" x="52" y="192" width="3" height="64" rx="1"/>
-    <text class="t" x="68" y="218">Process</text>
-    <text class="sub" x="68" y="242">instruction · inputs · limits</text>
+    <rect class="panel" x="60" y="183" width="310" height="314" rx="8"/>
+    <path class="panel-top" d="M61.5 192a7.5 7.5 0 0 1 7.5-7.5H361a7.5 7.5 0 0 1 7.5 7.5"/>
+    <text x="74" y="210"><tspan class="t s">Process</tspan><tspan class="d tight" dx="8">INSTRUCTION · INPUTS · LIMITS</tspan></text>
+    <rect class="row marked" x="74" y="227" width="282" height="36" rx="6"/>
+    <use class="kind" href="#i-base" x="86" y="237.5" width="15" height="15"/>
+    <text class="row-t" x="111" y="250" style="fill: var(--k)">Base process</text>
+    <text class="tag" x="342" y="249" text-anchor="end">EXTENDS</text>
+    <rect class="row" x="74" y="271" width="282" height="36" rx="6"/>
+    <use class="mute" href="#i-schema" x="86" y="281.5" width="15" height="15"/>
+    <text class="row-t" x="111" y="294">Output schema</text>
+    <rect class="row" x="74" y="315" width="282" height="36" rx="6"/>
+    <use class="mute" href="#i-verify" x="86" y="325.5" width="15" height="15"/>
+    <text class="row-t" x="111" y="338">Verification</text>
+    <rect class="row" x="74" y="359" width="282" height="36" rx="6"/>
+    <use class="mute" href="#i-prompts" x="86" y="369.5" width="15" height="15"/>
+    <text class="row-t" x="111" y="382">Prompts</text>
+    <rect class="row" x="74" y="403" width="282" height="36" rx="6"/>
+    <use class="mute" href="#i-skills" x="86" y="413.5" width="15" height="15"/>
+    <text class="row-t" x="111" y="426">Skills</text>
+    <rect class="row" x="74" y="447" width="282" height="36" rx="6"/>
+    <use class="mute" href="#i-forms" x="86" y="457.5" width="15" height="15"/>
+    <text class="row-t" x="111" y="470">Brief forms</text>
   </g>
   <g class="kind agent">
-    <rect class="card" x="388" y="192" width="232" height="64" rx="2"/>
-    <rect class="edge" x="388" y="192" width="3" height="64" rx="1"/>
-    <text class="t" x="404" y="218">Agent</text>
-    <text class="sub" x="404" y="242">model · effort</text>
+    <rect class="panel" x="382" y="183" width="310" height="138" rx="8"/>
+    <path class="panel-top" d="M383.5 192a7.5 7.5 0 0 1 7.5-7.5H683a7.5 7.5 0 0 1 7.5 7.5"/>
+    <text x="396" y="210"><tspan class="t s">Agent</tspan><tspan class="d tight" dx="8">MODEL · EFFORT</tspan></text>
   </g>
-
-  <!-- Level 4: what the process names, under it. -->
-  <path class="tree" d="M66 256V516M66 340H84M66 384H84M66 428H84M66 472H84M66 516H84"/>
-  <path class="extends" d="M66 296H83" marker-end="url(#head-extends)"/>
-  <rect class="doc base-doc" x="84" y="278" width="288" height="36" rx="2"/>
-  <text class="dt k-process" x="98" y="302">Base process</text>
-  <text class="sub k-process" x="360" y="301" text-anchor="end">extends</text>
-  <rect class="doc" x="84" y="322" width="288" height="36" rx="2"/>
-  <text class="dt" x="98" y="346">Output schema</text>
-  <rect class="doc" x="84" y="366" width="288" height="36" rx="2"/>
-  <text class="dt" x="98" y="390">Verification</text>
-  <rect class="doc" x="84" y="410" width="288" height="36" rx="2"/>
-  <text class="dt" x="98" y="434">Prompts</text>
-  <rect class="doc" x="84" y="454" width="288" height="36" rx="2"/>
-  <text class="dt" x="98" y="478">Skills</text>
-  <rect class="doc" x="84" y="498" width="288" height="36" rx="2"/>
-  <text class="dt" x="98" y="522">Brief forms</text>
-
-  <!-- Level 4: what the agent names, under it, on the same rows. -->
-  <path class="tree" d="M402 256V340M402 296H420M402 340H420"/>
   <g class="kind runtime">
-    <rect class="doc" x="420" y="278" width="200" height="36" rx="2"/>
-    <rect class="edge" x="420" y="278" width="3" height="36" rx="1"/>
-    <text class="dt" x="436" y="302">Runtime mapping</text>
+    <rect class="row marked" x="396" y="227" width="282" height="36" rx="6"/>
+    <use class="kind" href="#i-mapping" x="408" y="237.5" width="15" height="15"/>
+    <text class="row-t" x="433" y="250" style="fill: var(--k)">Runtime mapping</text>
   </g>
-  <rect class="doc" x="420" y="322" width="200" height="36" rx="2"/>
-  <text class="dt" x="436" y="346">Skills</text>
+    <rect class="row" x="396" y="271" width="282" height="36" rx="6"/>
+    <use class="mute" href="#i-skills" x="408" y="281.5" width="15" height="15"/>
+    <text class="row-t" x="433" y="294">Skills</text>
 
   <!-- The node's call: where the two sides meet. -->
-  <rect class="call" x="52" y="548" width="568" height="40" rx="20"/>
-  <text class="callt" x="74" y="573">Call</text>
-  <text class="sub" x="122" y="573">permissions meet primitives: the plan</text>
+  <g class="kind run">
+    <rect class="call" x="60" y="513" width="632" height="44" rx="8"/>
+    <use class="kind" href="#i-call" x="76" y="527" width="16" height="16"/>
+    <text x="102" y="541"><tspan class="t s">Call</tspan><tspan class="d call-d" dx="12">PERMISSIONS MEET PRIMITIVES: THE PLAN</tspan></text>
+  </g>
 </svg>
-<ul class="legend">
-  <li><svg viewBox="0 0 34 14" aria-hidden="true"><path class="starts" d="M0 7H28"/><path class="head-starts" d="M26 3 34 7 26 11z"/></svg><span><b>starts</b> what a run runs</span></li>
-  <li><svg viewBox="0 0 34 14" aria-hidden="true"><rect class="box-icon" x="1" y="1" width="32" height="12" rx="2"/><rect class="box-icon" x="9" y="4" width="16" height="6" rx="1"/></svg><span><b>inside</b> part of it, or bound by it</span></li>
-  <li><svg viewBox="0 0 34 14" aria-hidden="true"><path class="tree" d="M4 0V10H30"/></svg><span><b>under</b> a document it names</span></li>
-  <li><svg viewBox="0 0 34 14" aria-hidden="true"><path class="extends" d="M0 7H24"/><path class="head-extends" d="M23 2 33 7 23 12z"/></svg><span><b>extends</b> the base it is composed over</span></li>
-  <li><svg viewBox="0 0 34 14" aria-hidden="true"><rect class="frame" x="1" y="1" width="32" height="12" rx="2"/></svg><span><b>frame</b> the service, around every run</span></li>
-</ul>
+<figcaption>Each settings document sits inside whatever names it.</figcaption>
 </figure>
 
 <div class="text">
@@ -249,13 +241,14 @@ its <span class="k-runtime">runtime mapping</span> and its own skills. The
 service is never picked: it has no name, and it applies to every run.</p>
 
 <p>The diagram reads top down, in the order <code>agister run</code>
-resolves the settings. A box's second line names a few of the document's
-own fields; the sections below give them all. A box inside
-another is part of it or bound by it, and boxes side by side inside one
-box are on one level: a node's process and agent. A document named by
-another stands under it, joined by a line; a process's base is one of
-those, joined by the open arrow of <code>extends</code>. The service is no
-box in the flow but the frame around it. Documents compose by field across home, the repository's <code>.agister</code>
+resolves the settings: the command picks the workflow it sits on. Beside
+each box's name are a few of the document's own fields; the sections below
+give them all. A box inside another is part of it or bound by it, and boxes
+side by side inside one box are on one level: a node's process and agent.
+A node is drawn once, stacked for the many a workflow may have. The rows in
+a process or an agent are the documents it names; the process's base is
+one of them, marked <code>extends</code>. The service is no box in the flow
+but the frame around it. Documents compose by field across home, the repository's <code>.agister</code>
 and the nearest project's <code>.agister</code> below the worktree root.
 The launch directory or <code>--dir</code> selects the project. Nested maps
 merge by key; scalars and lists replace whole (<code>[]</code> means none).
