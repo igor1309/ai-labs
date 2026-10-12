@@ -501,8 +501,8 @@ func TestWorkflowJoinReceivesEveryFanOutOutputOnce(t *testing.T) {
 	join := h.store.wait(t, "run-4")
 	entries := collectionOf(t, join)
 	want := []map[string]any{
-		{"node": "one", "process": "first", "run": "run-2", "status": "completed", "output": map[string]any{"from": "first"}},
-		{"node": "two", "process": "second", "run": "run-3", "status": "completed", "output": map[string]any{"from": "second"}},
+		{"status": "completed", "output": map[string]any{"from": "first"}},
+		{"status": "completed", "output": map[string]any{"from": "second"}},
 	}
 	if !reflect.DeepEqual(entries, want) {
 		t.Fatalf("collection = %v", entries)
@@ -557,12 +557,13 @@ func TestWorkflowCollectionOrderIgnoresCompletionOrder(t *testing.T) {
 	if !reflect.DeepEqual(finished, []string{"two", "one"}) {
 		t.Fatalf("fan-out nodes finished in order %v, want two then one", finished)
 	}
-	var nodes []string
+	// An entry names no node: its output says which node's it is.
+	var from []any
 	for _, entry := range collectionOf(t, h.store.wait(t, "run-4")) {
-		nodes = append(nodes, entry["node"].(string))
+		from = append(from, entry["output"].(map[string]any)["from"])
 	}
-	if !reflect.DeepEqual(nodes, []string{"one", "two"}) {
-		t.Fatalf("collection order = %v", nodes)
+	if !reflect.DeepEqual(from, []any{"first", "second"}) {
+		t.Fatalf("collection order = %v", from)
 	}
 }
 
@@ -704,8 +705,8 @@ func TestWorkflowJoinsWithoutAnUnsuccessfulNode(t *testing.T) {
 				t.Fatalf("node two = %+v", two)
 			}
 			want := []map[string]any{
-				{"node": "one", "process": "first", "run": "run-2", "status": "completed", "output": map[string]any{"from": "first"}},
-				{"node": "two", "process": "second", "run": "run-3", "status": string(tc.status), "class": string(tc.class)},
+				{"status": "completed", "output": map[string]any{"from": "first"}},
+				{"status": string(tc.status), "class": string(tc.class)},
 			}
 			if entries := collectionOf(t, h.store.wait(t, "run-4")); !reflect.DeepEqual(entries, want) {
 				t.Fatalf("collection = %v", entries)
@@ -772,11 +773,11 @@ func TestWorkflowJoinsOnTheNodesThatCompleted(t *testing.T) {
 		t.Fatalf("join node = %+v", join)
 	}
 	want := []map[string]any{
-		{"node": "one", "process": "first", "run": "run-2", "status": "completed", "output": map[string]any{"from": "first"}},
-		{"node": "two", "process": "second", "run": "run-3", "status": "failed", "class": "runtime_error"},
-		{"node": "three", "process": "third", "run": "run-4", "status": "failed", "class": "rate_limited"},
-		{"node": "four", "process": "fourth", "run": "run-5", "status": "interrupted", "class": "timeout"},
-		{"node": "five", "process": "fifth", "run": "run-6", "status": "completed", "output": map[string]any{"from": "fifth"}},
+		{"status": "completed", "output": map[string]any{"from": "first"}},
+		{"status": "failed", "class": "runtime_error"},
+		{"status": "failed", "class": "rate_limited"},
+		{"status": "interrupted", "class": "timeout"},
+		{"status": "completed", "output": map[string]any{"from": "fifth"}},
 	}
 	if entries := collectionOf(t, h.store.wait(t, "run-7")); !reflect.DeepEqual(entries, want) {
 		t.Fatalf("collection = %v", entries)
@@ -880,9 +881,9 @@ func TestWorkflowJoinsWithoutNodesThatNeverStarted(t *testing.T) {
 		t.Fatalf("%d turns ran for nodes that never started", n)
 	}
 	want := []map[string]any{
-		{"node": "one", "process": "first", "run": "run-2", "status": "completed", "output": map[string]any{"from": "first"}},
-		{"node": "two", "process": "second", "status": "failed", "class": "internal"},
-		{"node": "three", "process": "third", "status": "failed", "class": "internal"},
+		{"status": "completed", "output": map[string]any{"from": "first"}},
+		{"status": "failed", "class": "internal"},
+		{"status": "failed", "class": "internal"},
 	}
 	if entries := collectionOf(t, h.store.wait(t, "run-4")); !reflect.DeepEqual(entries, want) {
 		t.Fatalf("collection = %v", entries)
@@ -933,8 +934,8 @@ func TestWorkflowJoinsWithoutANodeWhoseFinalRecordWasNotSaved(t *testing.T) {
 		t.Fatalf("node two's record = %+v, want its last unfinished one", kept)
 	}
 	want := []map[string]any{
-		{"node": "one", "process": "first", "run": "run-2", "status": "completed", "output": map[string]any{"from": "first"}},
-		{"node": "two", "process": "second", "run": "run-3", "status": "failed", "class": "internal"},
+		{"status": "completed", "output": map[string]any{"from": "first"}},
+		{"status": "failed", "class": "internal"},
 	}
 	if entries := collectionOf(t, h.store.wait(t, "run-4")); !reflect.DeepEqual(entries, want) {
 		t.Fatalf("collection = %v", entries)

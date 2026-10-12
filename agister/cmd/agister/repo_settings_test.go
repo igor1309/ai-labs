@@ -3199,13 +3199,20 @@ func judgedReviews(t *testing.T, home, repo, workflow string) (reviews map[strin
 	if err != nil {
 		t.Fatal(err)
 	}
-	var collection []struct{ Node, Process, Status string }
+	var collection []struct{ Status string }
 	if err := json.Unmarshal(data, &collection); err != nil {
 		t.Fatal(err)
 	}
+	// An entry names no node (ADR-034): the workflow's record does, in the
+	// same declaration order, the join last.
+	nodes := flow["workflow"].(map[string]any)["nodes"].([]any)
+	if len(nodes) != len(collection)+1 {
+		t.Fatalf("%d nodes for %d entries", len(nodes), len(collection))
+	}
 	reviews = map[string]string{}
-	for _, entry := range collection {
-		reviews[entry.Node] = entry.Process + " " + entry.Status
+	for i, entry := range collection {
+		node := nodes[i].(map[string]any)
+		reviews[node["name"].(string)] = node["process"].(string) + " " + entry.Status
 	}
 	// What the judge received is that collection.
 	if got := inputOf(t, records["review_judge"], "reviews")["identity"]; got != artifact["digest"] {
