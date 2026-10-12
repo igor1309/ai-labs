@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { readdirSync, readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { matchesGlob } from "node:path";
 import test from "node:test";
 
@@ -85,6 +85,72 @@ test("ciPathFilters_shouldRunAgisterCore_onEachKindOfFileItsTestsRead", () => {
 
   for (const file of read) {
     assert.equal(jobRuns("agister-core", [file]), true, `${file} does not run agister-core`);
+  }
+});
+
+// The files beyond their code that agonara's and noreta's tests read: a
+// change to any of them must run the project's job (LAB-220).
+test("ciPathFilters_shouldRunEachProjectsJob_onTheDocumentsItsTestsRead", () => {
+  const read = {
+    "agonara-core": [
+      "agonara/docs/api/openapi.yml",
+      "agonara/docs/api/redocly.yaml",
+      "agonara/docs/intent/intent_learning_program_app.md",
+      "agonara/skills/README.md",
+      "agonara/skills-publish-manifest.json",
+      "agonara/publish-assets/README.md",
+      "docs/loc-dashboard.html",
+    ],
+    "noreta-core": ["noreta/docs/qa.md"],
+  };
+
+  for (const [job, files] of Object.entries(read)) {
+    for (const file of files) {
+      assert.equal(jobRuns(job, [file]), true, `${file} does not run ${job}`);
+    }
+  }
+});
+
+// The projects whose tests ran in no workflow before LAB-220: each test,
+// the command its workflow runs, and the job a change to it runs.
+const auditedTests = {
+  "session-digest/tests/_bootstrap.test.ts": {
+    runner: ".github/workflows/session-digest-core.yml",
+    command: "npm run test:session-digest",
+    job: "session-digest-core",
+  },
+  "loki/tests/verify-host.test.js": {
+    runner: ".github/workflows/loki-core.yml",
+    command: "node --test loki/tests/*.test.js",
+    job: "loki-core",
+  },
+  "neris/packages/swift-neris/Tests/Core/AgentLoopTests.swift": {
+    runner: ".github/workflows/neris-core.yml",
+    command: "working-directory: neris/packages/swift-neris",
+    job: "neris-core",
+  },
+  "claude-insights/test_claude_insights.py": {
+    runner: ".github/workflows/claude-insights-core.yml",
+    command: "pytest -q claude-insights/test_claude_insights.py",
+    job: "claude-insights-core",
+  },
+  "claude-insights/supabase/functions/_shared/format.test.ts": {
+    runner: ".github/workflows/claude-insights-core.yml",
+    command: "deno test format.test.ts",
+    job: "claude-insights-core",
+  },
+  "tests/test_langfuse_shared_stack.py": {
+    runner: ".github/workflows/langfuse-core.yml",
+    command: "pytest -q tests/test_langfuse_shared_stack.py",
+    job: "langfuse-core",
+  },
+};
+
+test("ciAuditedProjects_shouldEachBeTestedByTheJobItsChangesRun", () => {
+  for (const [file, { runner, command, job }] of Object.entries(auditedTests)) {
+    assert.ok(existsSync(new URL(file, repoRoot)), `${file} does not exist`);
+    assert.ok(readFileSync(new URL(runner, repoRoot), "utf8").includes(command), `${runner} does not run ${file}`);
+    assert.equal(jobRuns(job, [file]), true, `a change to ${file} does not run ${job}`);
   }
 });
 

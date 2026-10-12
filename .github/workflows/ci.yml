@@ -47,6 +47,16 @@ jobs:
       foliotell-ci: ${{ steps.filter.outputs.foliotell-ci }}
       foliotell-android: ${{ steps.filter.outputs.foliotell-android }}
       foliotell-android-ci: ${{ steps.filter.outputs.foliotell-android-ci }}
+      session-digest: ${{ steps.filter.outputs.session-digest }}
+      session-digest-ci: ${{ steps.filter.outputs.session-digest-ci }}
+      loki: ${{ steps.filter.outputs.loki }}
+      loki-ci: ${{ steps.filter.outputs.loki-ci }}
+      neris: ${{ steps.filter.outputs.neris }}
+      neris-ci: ${{ steps.filter.outputs.neris-ci }}
+      claude-insights: ${{ steps.filter.outputs.claude-insights }}
+      claude-insights-ci: ${{ steps.filter.outputs.claude-insights-ci }}
+      langfuse: ${{ steps.filter.outputs.langfuse }}
+      langfuse-ci: ${{ steps.filter.outputs.langfuse-ci }}
     steps:
       - name: Checkout
         uses: actions/checkout@v5
@@ -147,6 +157,7 @@ jobs:
               - "noreta/tests/**"
               - "noreta/package.json"
               - "noreta/tsconfig.json"
+              - "noreta/docs/qa.md"
             noreta-ci:
               - ".github/workflows/noreta-core.yml"
             agister:
@@ -190,6 +201,12 @@ jobs:
               - "agonara/compose.yaml"
               - "agonara/compose*.yml"
               - "agonara/scripts/**"
+              - "agonara/docs/api/**"
+              - "agonara/docs/intent/**"
+              - "agonara/skills/**"
+              - "agonara/skills-publish-manifest.json"
+              - "agonara/publish-assets/**"
+              - "docs/loc-dashboard.html"
             agonara-ci:
               - ".github/workflows/agonara-core.yml"
             foliotell:
@@ -210,6 +227,37 @@ jobs:
             foliotell-android-ci:
               - ".github/workflows/ci.yml"
               - ".github/workflows/foliotell-android-core.yml"
+            session-digest:
+              - "session-digest/src/**"
+              - "session-digest/tests/**"
+              - "session-digest/digest-schema.yaml"
+              - "session-digest/package.json"
+              - "session-digest/tsconfig.json"
+            session-digest-ci:
+              - ".github/workflows/session-digest-core.yml"
+            loki:
+              - "loki/**"
+              - "**/docker-compose*.yml"
+              - "**/docker-compose*.yaml"
+              - "**/compose*.yml"
+              - "**/compose*.yaml"
+            loki-ci:
+              - ".github/workflows/loki-core.yml"
+            neris:
+              - "neris/packages/swift-neris/**"
+            neris-ci:
+              - ".github/workflows/neris-core.yml"
+            claude-insights:
+              - "claude-insights/claude-insights.py"
+              - "claude-insights/test_claude_insights.py"
+              - "claude-insights/supabase/functions/**"
+            claude-insights-ci:
+              - ".github/workflows/claude-insights-core.yml"
+            langfuse:
+              - "docker/langfuse/**"
+              - "tests/test_langfuse_shared_stack.py"
+            langfuse-ci:
+              - ".github/workflows/langfuse-core.yml"
 
   notio-core:
     needs: [changes]
@@ -285,6 +333,31 @@ jobs:
     needs: [changes]
     if: ${{ github.event_name == 'workflow_dispatch' || needs.changes.outputs.foliotell-android == 'true' || needs.changes.outputs.foliotell-android-ci == 'true' }}
     uses: ./.github/workflows/foliotell-android-core.yml
+
+  session-digest-core:
+    needs: [changes]
+    if: ${{ github.event_name == 'workflow_dispatch' || needs.changes.outputs.session-digest == 'true' || needs.changes.outputs.session-digest-ci == 'true' || needs.changes.outputs.shared == 'true' }}
+    uses: ./.github/workflows/session-digest-core.yml
+
+  loki-core:
+    needs: [changes]
+    if: ${{ github.event_name == 'workflow_dispatch' || needs.changes.outputs.loki == 'true' || needs.changes.outputs.loki-ci == 'true' || needs.changes.outputs.shared == 'true' }}
+    uses: ./.github/workflows/loki-core.yml
+
+  neris-core:
+    needs: [changes]
+    if: ${{ github.event_name == 'workflow_dispatch' || needs.changes.outputs.neris == 'true' || needs.changes.outputs.neris-ci == 'true' || needs.changes.outputs.shared == 'true' }}
+    uses: ./.github/workflows/neris-core.yml
+
+  claude-insights-core:
+    needs: [changes]
+    if: ${{ github.event_name == 'workflow_dispatch' || needs.changes.outputs.claude-insights == 'true' || needs.changes.outputs.claude-insights-ci == 'true' || needs.changes.outputs.shared == 'true' }}
+    uses: ./.github/workflows/claude-insights-core.yml
+
+  langfuse-core:
+    needs: [changes]
+    if: ${{ github.event_name == 'workflow_dispatch' || needs.changes.outputs.langfuse == 'true' || needs.changes.outputs.langfuse-ci == 'true' || needs.changes.outputs.shared == 'true' }}
+    uses: ./.github/workflows/langfuse-core.yml
 
   release-validation:
     needs: [changes]
@@ -408,7 +481,7 @@ jobs:
     # run of the same commit reports under another name.
     name: ${{ github.event_name == 'pull_request' && 'report' || format('report ({0})', github.event_name) }}
     if: ${{ always() }}
-    needs: [changes, nomos-core, oracle-core, web-scout-core, corpus-scout-core, reinix-core, clipdeck-core, ntfy-sender-core, noreta-core, agister-core, warder-core, agonara-core, foliotell-core, foliotell-android-core, notio-core, notio-frontend-core, release-validation, real-provider-smoke, dev-skills-validation, pr-scope, repo-scripts]
+    needs: [changes, nomos-core, oracle-core, web-scout-core, corpus-scout-core, reinix-core, clipdeck-core, ntfy-sender-core, noreta-core, agister-core, warder-core, agonara-core, foliotell-core, foliotell-android-core, notio-core, notio-frontend-core, release-validation, real-provider-smoke, dev-skills-validation, pr-scope, repo-scripts, session-digest-core, loki-core, neris-core, claude-insights-core, langfuse-core]
     runs-on: ubuntu-latest
     steps:
       - name: Check all jobs passed
@@ -419,8 +492,8 @@ jobs:
           done
 
   notify:
-    if: ${{ always() && !cancelled() && (needs.changes.result == 'failure' || needs.nomos-core.result == 'failure' || needs.oracle-core.result == 'failure' || needs.web-scout-core.result == 'failure' || needs.corpus-scout-core.result == 'failure' || needs.reinix-core.result == 'failure' || needs.clipdeck-core.result == 'failure' || needs.ntfy-sender-core.result == 'failure' || needs.noreta-core.result == 'failure' || needs.agister-core.result == 'failure' || needs.warder-core.result == 'failure' || needs.agonara-core.result == 'failure' || needs.foliotell-core.result == 'failure' || needs.foliotell-android-core.result == 'failure' || needs.notio-core.result == 'failure' || needs.notio-frontend-core.result == 'failure' || needs.release-validation.result == 'failure' || needs.real-provider-smoke.result == 'failure' || needs.dev-skills-validation.result == 'failure' || needs.pr-scope.result == 'failure' || needs.repo-scripts.result == 'failure') && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork == false) }}
-    needs: [changes, nomos-core, oracle-core, web-scout-core, corpus-scout-core, reinix-core, clipdeck-core, ntfy-sender-core, noreta-core, agister-core, warder-core, agonara-core, foliotell-core, foliotell-android-core, notio-core, notio-frontend-core, release-validation, real-provider-smoke, dev-skills-validation, pr-scope, repo-scripts]
+    if: ${{ always() && !cancelled() && (needs.changes.result == 'failure' || needs.nomos-core.result == 'failure' || needs.oracle-core.result == 'failure' || needs.web-scout-core.result == 'failure' || needs.corpus-scout-core.result == 'failure' || needs.reinix-core.result == 'failure' || needs.clipdeck-core.result == 'failure' || needs.ntfy-sender-core.result == 'failure' || needs.noreta-core.result == 'failure' || needs.agister-core.result == 'failure' || needs.warder-core.result == 'failure' || needs.agonara-core.result == 'failure' || needs.foliotell-core.result == 'failure' || needs.foliotell-android-core.result == 'failure' || needs.notio-core.result == 'failure' || needs.notio-frontend-core.result == 'failure' || needs.release-validation.result == 'failure' || needs.real-provider-smoke.result == 'failure' || needs.dev-skills-validation.result == 'failure' || needs.pr-scope.result == 'failure' || needs.repo-scripts.result == 'failure' || needs.session-digest-core.result == 'failure' || needs.loki-core.result == 'failure' || needs.neris-core.result == 'failure' || needs.claude-insights-core.result == 'failure' || needs.langfuse-core.result == 'failure') && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork == false) }}
+    needs: [changes, nomos-core, oracle-core, web-scout-core, corpus-scout-core, reinix-core, clipdeck-core, ntfy-sender-core, noreta-core, agister-core, warder-core, agonara-core, foliotell-core, foliotell-android-core, notio-core, notio-frontend-core, release-validation, real-provider-smoke, dev-skills-validation, pr-scope, repo-scripts, session-digest-core, loki-core, neris-core, claude-insights-core, langfuse-core]
     uses: ./.github/workflows/notify-telegram-failure.yml
     with:
       title: "CI"
@@ -447,6 +520,11 @@ jobs:
         real-provider-smoke=${{ needs.real-provider-smoke.result }}
         dev-skills-validation=${{ needs.dev-skills-validation.result }}
         repo-scripts=${{ needs.repo-scripts.result }}
+        session-digest-core=${{ needs.session-digest-core.result }}
+        loki-core=${{ needs.loki-core.result }}
+        neris-core=${{ needs.neris-core.result }}
+        claude-insights-core=${{ needs.claude-insights-core.result }}
+        langfuse-core=${{ needs.langfuse-core.result }}
     secrets:
       CI_BOT_TOKEN: ${{ secrets.CI_BOT_TOKEN }}
       CI_CHAT_ID: ${{ secrets.CI_CHAT_ID }}
