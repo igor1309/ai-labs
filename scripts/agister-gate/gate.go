@@ -31,8 +31,8 @@ type runner func(ctx context.Context, dir, name string, args ...string) ([]byte,
 
 // options are the command's flags.
 type options struct {
-	issue, title, constraints, implement, base, message, out, dir, from string
-	reviews                                                             int
+	issue, title, constraints, implement, advisor, decisions, base, message, out, dir, from string
+	reviews                                                                                 int
 }
 
 // result is what `agister run --json` prints: a run's id, status, output
@@ -84,8 +84,10 @@ type summary struct {
 	// Left is the last counted review's items the gate did not act on:
 	// majors still ruled fix, minors ruled fix and items ruled defer.
 	Left left `json:"left"`
-	// Open is the point an implement run left open, which stopped the step.
+	// Open is what an implement run left open that stopped the step.
 	Open []point `json:"open,omitempty"`
+	// Records are the decisions the gate appended to the decisions record.
+	Records []string `json:"records,omitempty"`
 }
 
 type implement struct {
@@ -144,6 +146,8 @@ func parse(args []string, stderr io.Writer) (options, error) {
 	fs.StringVar(&o.title, "title", "", "the briefs' title, such as \"LAB-171 step 4\"")
 	fs.StringVar(&o.constraints, "constraints", "", "the owner's constraints on the step, as written")
 	fs.StringVar(&o.implement, "implement", "", "the implement workflow, such as implement_codex")
+	fs.StringVar(&o.advisor, "advisor", "", "the advisor workflow, such as advisor_codex")
+	fs.StringVar(&o.decisions, "decisions", "", "the decisions record, in the worktree, a decision is appended to")
 	fs.StringVar(&o.base, "base", "", "the revision the review compares with")
 	fs.StringVar(&o.message, "message", "", "the commit subject")
 	fs.StringVar(&o.out, "out", "", "the directory for the fix briefs and the runs' results")
@@ -153,7 +157,7 @@ func parse(args []string, stderr io.Writer) (options, error) {
 	if err := fs.Parse(args); err != nil {
 		return o, err
 	}
-	for name, v := range map[string]string{"issue": o.issue, "title": o.title, "implement": o.implement, "base": o.base, "message": o.message, "out": o.out} {
+	for name, v := range map[string]string{"issue": o.issue, "title": o.title, "implement": o.implement, "advisor": o.advisor, "decisions": o.decisions, "base": o.base, "message": o.message, "out": o.out} {
 		if v == "" {
 			return o, fmt.Errorf("--%s is required", name)
 		}
@@ -164,7 +168,7 @@ func parse(args []string, stderr io.Writer) (options, error) {
 	if o.reviews < 0 || o.reviews >= maxReviews {
 		return o, fmt.Errorf("--reviews is 0 to %d", maxReviews-1)
 	}
-	for _, p := range []*string{&o.issue, &o.constraints, &o.out, &o.dir} {
+	for _, p := range []*string{&o.issue, &o.constraints, &o.decisions, &o.out, &o.dir} {
 		if *p == "" {
 			continue
 		}
@@ -298,8 +302,7 @@ func (g *gate) implementAndCommit(ctx context.Context, brief, message string) er
 	g.sum.Implements = append(g.sum.Implements, implement{RunID: r.RunID, Brief: brief, Commit: strings.TrimSpace(string(head))})
 	fmt.Fprintf(g.progress, "agister-gate: implement %s committed %s\n", r.RunID, strings.TrimSpace(string(head)))
 	if len(out.Open) > 0 {
-		g.sum.Open = out.Open
-		return stop{"open", fmt.Sprintf("implement run %s left %d point(s) open; its work is committed, unreviewed", r.RunID, len(out.Open))}
+		return g.advise(ctx, r.RunID, out.Open, message)
 	}
 	return nil
 }

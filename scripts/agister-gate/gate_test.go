@@ -13,15 +13,20 @@ import (
 	"testing"
 )
 
-// fake stands in for agister and git. Implement and review runs answer
-// from their queues, in order; git status answers clean, except after
-// `git add` when unreported is set.
+// fake stands in for agister and git. Implement, review and advisor runs
+// answer from their queues, in order; git status answers clean, except
+// after `git add` when unreported is set; git diff names the decisions
+// record once it is staged, or from the start when recorded is set.
 type fake struct {
 	t          *testing.T
 	implements []string
 	reviews    []string
+	advisors   []string
 	dirty      string
 	unreported string
+	recorded   bool
+
+	questions []string
 
 	briefs   []string
 	added    [][]string
@@ -40,7 +45,22 @@ func (f *fake) run(_ context.Context, _ string, name string, args ...string) ([]
 		return []byte(f.unreported), nil
 	case name == "git" && args[0] == "add":
 		f.added = append(f.added, args[2:])
+		f.recorded = f.recorded || filepath.Base(args[2]) == "decisions.md"
 		return nil, nil
+	case name == "git" && args[0] == "diff":
+		if f.recorded {
+			return []byte(args[len(args)-1] + "\n"), nil
+		}
+		return nil, nil
+	case name == "agister" && args[1] == "advisor_codex":
+		f.agisters++
+		f.questions = append(f.questions, strings.TrimPrefix(args[3], "question="))
+		if len(f.advisors) == 0 {
+			f.t.Fatal("an advisor run the test did not expect")
+		}
+		out := f.advisors[0]
+		f.advisors = f.advisors[1:]
+		return []byte(out), nil
 	case name == "git" && args[0] == "commit":
 		f.commits = append(f.commits, args[3])
 		return nil, nil
@@ -76,6 +96,19 @@ func implementResult(id string, files ...string) string {
 	return string(out)
 }
 
+// leftOpen is an implement run that changed files and left points open.
+func leftOpen(id string, points ...point) string {
+	out, _ := json.Marshal(map[string]any{"run_id": id, "status": "completed",
+		"output": map[string]any{"files_changed": []string{"cmd/a.go"}, "open": points}})
+	return string(out)
+}
+
+// advised is an advisor run with the advice given.
+func advised(id string, advice map[string]any) string {
+	out, _ := json.Marshal(map[string]any{"run_id": id, "status": "completed", "output": map[string]any{"advice": advice}})
+	return string(out)
+}
+
 func reviewed(id string, items ...item) string {
 	if items == nil {
 		items = []item{}
@@ -96,6 +129,18 @@ var (
 	waived   = item{Ruling: "waive", Severity: "major", Sources: []string{"1#1"}, Title: "Split the file", Action: "Split it."}
 )
 
+// open is a point an implement run left open, and decision the advisor's
+// answer to it.
+var (
+	open     = point{Question: "Which exit code?", Options: []string{"0", "64"}, Searched: []string{"ADR-030 rule 8: silent on exit codes"}}
+	decision = map[string]any{"kind": "decision", "asked_by": "implement run i1, LAB-1 step 2", "question": "Which exit code?",
+		"options": []string{"0", "64"}, "chosen": "64", "excluded": []map[string]string{{"option": "0", "why": "ADR-001 rule 6"}},
+		"rests_on": []string{"ADR-001 rule 6"}, "follow_ups": []string{"TestTheCallExits64 proves it."}}
+)
+
+// records is a decisions record with records of its own.
+const records = "# Decisions\n\n## D-4: An earlier question\n\n- **Status:** Owner\n"
+
 // issue is a step's text as an issue gives it, with headings and a fence
 // of its own.
 const issue = "## Done when\n\n- The call is refused.\n\n```go\nerr := call()\n```\n"
@@ -109,7 +154,7 @@ const constraints = "- Only cmd/ changes.\n"
 func gated(t *testing.T, f *fake, extra ...string) (int, summary, string) {
 	t.Helper()
 	dir := t.TempDir()
-	for name, text := range map[string]string{"issue.md": issue, "constraints.md": constraints} {
+	for name, text := range map[string]string{"issue.md": issue, "constraints.md": constraints, "decisions.md": records} {
 		if err := os.WriteFile(filepath.Join(dir, name), []byte(text), 0o644); err != nil {
 			t.Fatal(err)
 		}
@@ -117,6 +162,7 @@ func gated(t *testing.T, f *fake, extra ...string) (int, summary, string) {
 	out := filepath.Join(dir, "out")
 	args := append([]string{"--issue", filepath.Join(dir, "issue.md"), "--title", "LAB-1 step 2",
 		"--constraints", filepath.Join(dir, "constraints.md"), "--implement", "implement_codex",
+		"--advisor", "advisor_codex", "--decisions", filepath.Join(dir, "decisions.md"),
 		"--base", "origin/trunk", "--message", "cmd: the call is refused", "--out", out, "--dir", dir}, extra...)
 	var stdout, stderr bytes.Buffer
 	code := run(context.Background(), args, f.run, &stdout, &stderr)
@@ -310,19 +356,103 @@ func TestTheGateTakesNoBriefButTheIssuesText(t *testing.T) {
 	}
 }
 
-// An implement run that leaves a point open stops the step after its
-// commit, before any review, with the point in the summary.
-func TestAPointLeftOpenStopsTheStepAfterItsCommit(t *testing.T) {
+// A point an implement run leaves open goes to the advisor after the
+// run's commit, as the run wrote it. The decision is appended to the
+// decisions record as the next record, committed, and run as a fix brief
+// whose "## Acts on" is the record; the summary lists it.
+func TestAnOpenPointIsDecidedByTheAdvisorAndTheDecisionActedOn(t *testing.T) {
 	t.Parallel()
-	open := point{Question: "Which exit code?", Options: []string{"0", "64"}, Searched: []string{"ADR-030 rule 8: silent on exit codes"}}
-	out, _ := json.Marshal(map[string]any{"run_id": "i1", "status": "completed",
-		"output": map[string]any{"files_changed": []string{"cmd/a.go"}, "open": []point{open}}})
-	f := &fake{t: t, implements: []string{string(out)}}
-	code, sum, _ := gated(t, f)
-	if code != exitOpen || sum.Status != "open" || !reflect.DeepEqual(sum.Open, []point{open}) {
+	f := &fake{t: t, implements: []string{leftOpen("i1", open), implementResult("i2", "cmd/a.go")},
+		advisors: []string{advised("a1", decision)}, reviews: []string{reviewed("r1")}}
+	code, sum, out := gated(t, f)
+	if code != exitPassed || !reflect.DeepEqual(sum.Records, []string{"D-5"}) || sum.Open != nil {
 		t.Fatalf("exit %d, %+v", code, sum)
 	}
-	if len(f.commits) != 1 || len(sum.Reviews) != 0 {
-		t.Errorf("commits %q, reviews %+v", f.commits, sum.Reviews)
+	question, err := os.ReadFile(f.questions[0])
+	if err != nil {
+		t.Fatal(err)
+	}
+	wantQuestion := "# Question\n\n## Asked by\n\nimplement run i1, LAB-1 step 2\n\n## Question\n\nWhich exit code?\n\n" +
+		"## Options\n\n- 0\n- 64\n\n## Searched\n\n- ADR-030 rule 8: silent on exit codes\n"
+	if string(question) != wantQuestion {
+		t.Errorf("question:\n%s\nwant:\n%s", question, wantQuestion)
+	}
+	decisions := filepath.Join(filepath.Dir(out), "decisions.md")
+	got, err := os.ReadFile(decisions)
+	if err != nil {
+		t.Fatal(err)
+	}
+	record := "## D-5: Which exit code?\n\n- **Status:** Provisional (advisor)\n- **Asked by:** implement run i1, LAB-1 step 2\n" +
+		"- **Question:** Which exit code?\n- **Options:**\n  - 0\n  - 64\n- **Searched:**\n  - ADR-030 rule 8: silent on exit codes\n" +
+		"- **Excluded:**\n  - 0: ADR-001 rule 6\n- **Decision:** 64\n- **Rests on:**\n  - ADR-001 rule 6\n" +
+		"- **Follow-ups:**\n  - TestTheCallExits64 proves it.\n- **Advisor run:** a1\n"
+	if string(got) != records+"\n"+record {
+		t.Errorf("decisions:\n%s\nwant:\n%s", got, records+"\n"+record)
+	}
+	if want := [][]string{{"cmd/a.go"}, {decisions}, {"cmd/a.go"}}; !reflect.DeepEqual(f.added, want) {
+		t.Errorf("staged %q, want %q", f.added, want)
+	}
+	wantCommits := []string{"cmd: the call is refused", "cmd: the call is refused (D-5 recorded)", "cmd: the call is refused (D-5)"}
+	if !reflect.DeepEqual(f.commits, wantCommits) {
+		t.Errorf("commits %q, want %q", f.commits, wantCommits)
+	}
+	if len(f.briefs) != 2 {
+		t.Fatalf("briefs %q", f.briefs)
+	}
+	brief, err := os.ReadFile(f.briefs[1])
+	if err != nil {
+		t.Fatal(err)
+	}
+	acts := "\n## Acts on\n\nThe decision `D-5` of `advisor` run `a1`, appended to `" + decisions + "`, as written:\n\n```text\n" + record + "```\n"
+	if !strings.HasPrefix(string(brief), "# LAB-1 step 2, decision D-5\n") || !strings.Contains(string(brief), acts) {
+		t.Errorf("brief:\n%s\nwant its Acts on:\n%s", brief, acts)
+	}
+}
+
+// A conflict in the record stops the step for the owner with the
+// advisor's reason: nothing is appended, and no run acts on it.
+func TestAConflictInTheRecordStopsTheStepForTheOwner(t *testing.T) {
+	t.Parallel()
+	f := &fake{t: t, implements: []string{leftOpen("i1", open)},
+		advisors: []string{advised("a1", map[string]any{"kind": "conflict", "reason": "ADR-001 rule 6 and D-4 collide."})}}
+	code, sum, out := gated(t, f)
+	if code != exitOwner || sum.Status != "owner" || !strings.Contains(sum.Reason, "ADR-001 rule 6 and D-4 collide.") {
+		t.Fatalf("exit %d, %+v", code, sum)
+	}
+	if !reflect.DeepEqual(sum.Open, []point{open}) || sum.Records != nil || len(f.commits) != 1 {
+		t.Errorf("open %+v, records %q, commits %q", sum.Open, sum.Records, f.commits)
+	}
+	if got, _ := os.ReadFile(filepath.Join(filepath.Dir(out), "decisions.md")); string(got) != records {
+		t.Errorf("decisions:\n%s", got)
+	}
+}
+
+// A step puts one question to the advisor. A second open point stops the
+// step with the point in the summary: left by the run that acted on the
+// decision, by a run of a step resumed after its decision, or by one run
+// together with the first.
+func TestASecondOpenPointStopsTheStep(t *testing.T) {
+	t.Parallel()
+	second := point{Question: "Which stream?", Options: []string{"stdout", "stderr"}, Searched: []string{"ADR-030: silent"}}
+	for name, tc := range map[string]struct {
+		f        *fake
+		advisors int
+		open     []point
+	}{
+		"after the decision": {&fake{implements: []string{leftOpen("i1", open), leftOpen("i2", second)}, advisors: []string{advised("a1", decision)}}, 1, []point{second}},
+		"in a step resumed":  {&fake{implements: []string{leftOpen("i1", second)}, recorded: true}, 0, []point{second}},
+		"in one run":         {&fake{implements: []string{leftOpen("i1", open, second)}}, 0, []point{open, second}},
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			tc.f.t = t
+			code, sum, _ := gated(t, tc.f)
+			if code != exitOpen || sum.Status != "open" || !reflect.DeepEqual(sum.Open, tc.open) {
+				t.Fatalf("exit %d, %+v", code, sum)
+			}
+			if len(tc.f.questions) != tc.advisors || len(sum.Reviews) != 0 {
+				t.Errorf("advisor runs %d, want %d; reviews %+v", len(tc.f.questions), tc.advisors, sum.Reviews)
+			}
+		})
 	}
 }
