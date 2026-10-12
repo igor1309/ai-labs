@@ -5,7 +5,8 @@
 # are the caller's.
 #
 # Usage: gate.sh --issue <file> --title <line> [--constraints <file>]
-#   --implement <workflow> --base <rev> --message <subject> --out <dir>
+#   --implement <workflow> --advisor <workflow> --decisions <file>
+#   --base <rev> --message <subject> --out <dir>
 #   [--dir <worktree>] [--from implement|review] [--reviews <n>]
 set -eu
 

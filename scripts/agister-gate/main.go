@@ -18,21 +18,27 @@
 //     the owner. Nothing major is deferred by the gate.
 //   - A review that a provider limit failed does not count: the step stops,
 //     and `--from review --reviews <n>` resumes it at that review.
-//   - An implement run that leaves a point open stops the step, its work
-//     committed, with the point in the summary (ADR-032).
+//   - A point an implement run leaves open goes to the advisor, at the
+//     run's commit: the question file is the point as the run wrote it.
+//     The advisor's decision is appended to the decisions record as the
+//     next D-<n>, Provisional (advisor), committed, and run as a fix brief
+//     with the record as its "## Acts on"; the summary lists the record.
+//     A conflict stops the step for the owner. A step puts one question:
+//     a second open point stops it (ADR-032).
 //
 // The summary is printed as JSON on stdout; progress goes to stderr.
 //
 // Usage:
 //
 //	agister-gate --issue <file> --title <line> [--constraints <file>]
-//	  --implement <workflow> --base <rev> --message <subject> --out <dir>
+//	  --implement <workflow> --advisor <workflow> --decisions <file>
+//	  --base <rev> --message <subject> --out <dir>
 //	  [--dir <worktree>] [--from implement|review] [--reviews <n>]
 //
-// Exit 0: no major is left to fix. 3: a major is left after the third
-// review; the owner decides. 4: a review hit a provider limit. 5: an
-// implement run left a point open. 1: anything else stopped the step. 2:
-// usage.
+// Exit 0: no major is left to fix. 3: the owner decides: a major is left
+// after the third review, or the advisor found a conflict in the record.
+// 4: a review hit a provider limit. 5: a second point was left open; the
+// issue does not say enough. 1: anything else stopped the step. 2: usage.
 package main
 
 import (
