@@ -272,7 +272,9 @@ agister run <workflow> --dir <worktree> --param <param>=<value> --json
   runs only as a workflow's join, on the nodes' outputs. Run the
   workflow.
 - Interrupting `agister run` cancels the run.
-- Runs cost money. Do not loop runs unattended.
+- Runs cost money. Do not loop runs unattended: drive one step at a
+  time, as [Drive a step through the gate](#drive-a-step-through-the-gate)
+  says.
 
 A call is a writer when its plan grants a permission the service lists as
 writing, or its process declares a verification; otherwise it is a reader.
@@ -313,6 +315,34 @@ A call is refused before any turn, with exit 3 and the reason, when:
 
 A directory overlaps the worktree when it is the worktree, lies inside it
 or contains it.
+
+## Drive a step through the gate
+
+A step of a change goes through one gate: implement, review, fix if any
+major is ruled `fix`, review again, at most three reviews that count.
+`scripts/agister-gate/gate.sh` in the ai-labs repository drives one step
+and stops:
+
+```sh
+<ai-labs>/scripts/agister-gate/gate.sh --goal <goal.md> --step <step.md> \
+  --implement implement_codex --base <rev> --message "<commit subject>" --out <dir>
+```
+
+- It needs a clean worktree. It commits each implement run's
+  `files_changed` by name; a change the run did not report stops the step.
+- The review is `code_review` of the commits since base, against the
+  goal. Items ruled `fix` with severity major go to a fix run, whose brief
+  is the step's with them as its `## Acts on`. Minors are not fixed by the
+  gate.
+- Its summary, on stdout, lists the runs, the commits and what is left:
+  minors ruled `fix`, which you record on the issue, and items ruled
+  `defer`, which go to the deferred list with their trigger.
+- Exit 0: no major is left. 3: a major is left after the third review:
+  stop and ask the owner; a major is never deferred. 4: a review hit a
+  provider limit and does not count; resume with the
+  `--from review --reviews <n>` its reason gives. 1: anything else stopped
+  the step; its reason says what.
+- Run one step per call, and read its summary before the next.
 
 ## Give a brief in its form
 
