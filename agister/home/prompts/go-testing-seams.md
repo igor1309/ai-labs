@@ -3,7 +3,7 @@ date: 2026-10-12
 author: Igor Malyarov
 model: claude-opus-5-5
 name: Go — testing seams
-version: 0.0.2
+version: 0.0.3
 type: prompt
 ---
 
@@ -143,6 +143,29 @@ What a test proves
   Add the seam.
 * A test costs what its claim needs: it does not rebuild or restart what
   another test already built. Stop once the tests prove the change.
+
+What a test costs
+
+* Measure a slow package before changing it: `go test -json` gives each
+  test's elapsed time, and `-cpuprofile` with `go tool pprof -top -cum`
+  and `-peek <func>` shows where the CPU goes. On a loaded machine compare
+  user and system CPU (`/usr/bin/time -p` on the built test binary), not
+  wall time.
+* The race detector multiplies CPU three to five times, and on macOS
+  filesystem calls (open, write, remove) can be over half of a test's CPU.
+  Keep `-race`; cut the work instead.
+* Setup that many tests repeat through the product's whole path (init,
+  install, create) is made once per test binary, per variant, by a helper
+  behind a lock, outside any test's temporary directory, and copied into
+  each test's own (`os.CopyFS`); `TestMain` removes it. A file that names
+  the directory it was made in is rewritten on copy.
+* Subtests that share one home or repository run one after another, and
+  the slowest test bounds the package's wall time. Once setup is cheap,
+  give each subtest its own and run them in parallel.
+* Work the product repeats per command, such as reading, parsing or
+  composing the same document again, or checking the same frozen input
+  twice, is the product's cost: fix it in the product, proven by a spy
+  that counts the reads or the compiles.
 
 Running tests
 

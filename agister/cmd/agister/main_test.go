@@ -32,9 +32,13 @@ import (
 	"github.com/igor1309/ai-labs/gokit/clocktest"
 )
 
-// The CLI this package builds, and the fake the test that kills it builds,
-// are removed when its tests end.
-func TestMain(m *testing.M) { os.Exit(runtimetest.Run(m)) }
+// The CLI this package builds, the fake the test that kills it builds, and
+// the homes tests copy (homeTemplate) are removed when its tests end.
+func TestMain(m *testing.M) {
+	code := runtimetest.Run(m)
+	os.RemoveAll(homeTemplates.dir)
+	os.Exit(code)
+}
 
 // agisterBinary builds this CLI once per test binary and returns its path.
 func agisterBinary(t testing.TB) string {
@@ -328,7 +332,49 @@ func onFakeGit(t *testing.T, home, scenario string) string {
 // starter runs the fake by, in a repository of the fake of git.
 func setup(t *testing.T, scenario string) (home, repo string) {
 	home = tempDir(t)
-	return setupOn(t, home, onFakeGit(t, home, scenario), "claude")
+	repo = onFakeGit(t, home, scenario)
+	template := homeTemplate(t, "setup-"+scenario, func(template string) {
+		setupOn(t, template, onFakeGit(t, template, scenario), "claude")
+	})
+	if err := os.CopyFS(home, os.DirFS(template)); err != nil {
+		t.Fatal(err)
+	}
+	return home, repo
+}
+
+// homeTemplates holds, by key, a home built once per test binary, which
+// tests copy into homes of their own in place of making the calls that
+// built it: those calls cost the most of this package's time.
+var homeTemplates = struct {
+	sync.Mutex
+	dir   string
+	byKey map[string]string
+}{byKey: map[string]string{}}
+
+// homeTemplate is the home build made for key, made by the first test
+// that asks for it. What build makes must name no test's home or
+// repository, or each copy must rewrite it.
+func homeTemplate(t *testing.T, key string, build func(home string)) string {
+	t.Helper()
+	homeTemplates.Lock()
+	defer homeTemplates.Unlock()
+	if home, ok := homeTemplates.byKey[key]; ok {
+		return home
+	}
+	if homeTemplates.dir == "" {
+		dir, err := os.MkdirTemp("", "agister-homes-")
+		if err != nil {
+			t.Fatal(err)
+		}
+		homeTemplates.dir = dir
+	}
+	home, err := os.MkdirTemp(homeTemplates.dir, key+"-")
+	if err != nil {
+		t.Fatal(err)
+	}
+	build(home)
+	homeTemplates.byKey[key] = home
+	return home
 }
 
 // setupGit is setup in a real git repository, for the tests whose claim is

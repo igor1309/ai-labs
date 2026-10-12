@@ -234,7 +234,8 @@ const verifyFixtureTimeout = "30s"
 // prompt where it calls an implementer and, where that process declares
 // verify, the verification its run passed (verifiedOnce), on writableCodex.
 //
-// The test works in a repository of its own whose top-level entries link to
+// Each workflow runs in a home and a repository of its own, beside the
+// others, whose top-level entries link to
 // this repository's working tree (settings and prompts as they are, edits
 // included), with a base and a candidate commit of its own: revisions, diffs
 // and checkouts are deterministic, and this repository's git state is never
@@ -244,8 +245,14 @@ const verifyFixtureTimeout = "30s"
 // attempt.
 func TestRepositoryProcessesRunOnFakeRuntimes(t *testing.T) {
 	t.Parallel()
-	root, repo, home := onFakeRuntimes(t)
-	writableCodex(t, home)
+	root := repositoryRoot(t)
+	// Each workflow runs in a home of its own, beside the others.
+	onWritableCodex := func(t *testing.T) (repo, home string) {
+		t.Parallel()
+		_, repo, home = onFakeRuntimes(t)
+		writableCodex(t, home)
+		return repo, home
+	}
 	entries, err := os.ReadDir(filepath.Join(root, homeFolder, "processes"))
 	if err != nil {
 		t.Fatal(err)
@@ -309,6 +316,7 @@ func TestRepositoryProcessesRunOnFakeRuntimes(t *testing.T) {
 					name, call.Process, call.Agent)
 			}
 			t.Run("workflow "+name, func(t *testing.T) {
+				repo, home := onWritableCodex(t)
 				launch := launchDir(call.Process)
 				process := parseProcess(t, root, call.Process)
 				args := append([]string{"run", name}, paramArgs(t, launch, process.Params)...)
@@ -348,6 +356,7 @@ func TestRepositoryProcessesRunOnFakeRuntimes(t *testing.T) {
 		}
 		joined[workflow.Join.Process] = true
 		t.Run("workflow "+name, func(t *testing.T) {
+			repo, home := onWritableCodex(t)
 			args := append([]string{"run", name}, paramArgs(t, ".", workflow.Params)...)
 			created, r := runRecorded(t, home, repo, args)
 			if len(created) != len(workflow.FanOut)+2 {
@@ -526,8 +535,9 @@ func recordsRequired(t *testing.T, record map[string]any) {
 
 // onFakeRuntimes is this repository's root, and a mirror of it (see mirror
 // and fixVerify) with an Agister home that is homeFolder installed into an
-// empty one (ADR-027 rule 7), where git and the claude, codex and pi that
-// run are fakes, in process.
+// empty one (ADR-027 rule 7), installed once per test binary and copied
+// (copyInstalled), where git and the claude, codex and pi that run are
+// fakes, in process.
 func onFakeRuntimes(t *testing.T) (root, repo, home string) {
 	t.Helper()
 	root, repo, home, _ = onFakeRuntimesRecorded(t)
@@ -551,11 +561,32 @@ func onFakeRuntimesRecorded(t *testing.T) (root, repo, home string, recorded *gi
 	// mappings verify (claude-code 2.1.283, codex 0.158.0, pi 0.85.1). No
 	// real runtime ever runs, and no ccusage: the starter has none, so
 	// Codex turns cost unknown.
-	startThrough(t, home, runtimetest.InProcess{Env: []string{"FAKE_OUTPUT=schema"}})
-	if r := agisterInstalling(t, "yes\n", home, tempDir(t), "install", filepath.Join(root, homeFolder)); r.code != 0 {
-		t.Fatalf("install %s: %d %s", homeFolder, r.code, r.stderr)
-	}
+	starter := runtimetest.InProcess{Env: []string{"FAKE_OUTPUT=schema"}}
+	startThrough(t, home, starter)
+	installed := homeTemplate(t, "installed", func(template string) {
+		startThrough(t, template, starter)
+		if r := agisterInstalling(t, "yes\n", template, tempDir(t), "install", filepath.Join(root, homeFolder)); r.code != 0 {
+			t.Fatalf("install %s: %d %s", homeFolder, r.code, r.stderr)
+		}
+	})
+	copyInstalled(t, installed, home)
 	return root, repo, home, recorded
+}
+
+// copyInstalled copies the home installed into an empty one into home,
+// each backup's manifest naming home's paths in place of installed's.
+func copyInstalled(t *testing.T, installed, home string) {
+	t.Helper()
+	if err := os.CopyFS(home, os.DirFS(installed)); err != nil {
+		t.Fatal(err)
+	}
+	manifests, err := filepath.Glob(filepath.Join(home, "backups", "*", "manifest.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, manifest := range manifests {
+		write(t, manifest, strings.ReplaceAll(read(t, manifest), installed+string(filepath.Separator), home+string(filepath.Separator)))
+	}
 }
 
 // The judge of code_review rules on the collection of a fixed set of
@@ -3074,24 +3105,28 @@ var reviewers = []string{"architecture_review", "tests_review", "adversarial_rev
 // Each review of the home folder, run alone (runsAlone) at the root and in
 // each project, gives its agent the guidance homeGuidance names for it,
 // and none where it names none, each the text the implementers are given.
+// Each review runs in a home of its own, beside the others.
 func TestReviewersAreGivenTheirGoGuidance(t *testing.T) {
 	t.Parallel()
-	root, repo, home := onFakeRuntimes(t)
-	for _, launch := range append([]string{"."}, projects...) {
-		for _, name := range reviewers {
-			t.Run(launch+" "+name, func(t *testing.T) {
-				workflow := runsAlone(t, root, home, name)
-				args := append([]string{"run", workflow}, paramArgs(t, launch, parseProcess(t, root, name).Params)...)
-				if timeout := testTimeouts[workflow]; timeout != "" {
-					args = append(args, "--timeout", timeout)
-				}
-				created, _ := runRecorded(t, home, filepath.Join(repo, launch), args)
-				if len(created) != 1 {
-					t.Fatalf("runs recorded: %v, want one", created)
-				}
-				givesGuidance(t, root, home, completedRun(t, home, created[0]), homeGuidance[name]...)
-			})
-		}
+	for _, name := range reviewers {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			root, repo, home := onFakeRuntimes(t)
+			workflow := runsAlone(t, root, home, name)
+			for _, launch := range append([]string{"."}, projects...) {
+				t.Run(launch, func(t *testing.T) {
+					args := append([]string{"run", workflow}, paramArgs(t, launch, parseProcess(t, root, name).Params)...)
+					if timeout := testTimeouts[workflow]; timeout != "" {
+						args = append(args, "--timeout", timeout)
+					}
+					created, _ := runRecorded(t, home, filepath.Join(repo, launch), args)
+					if len(created) != 1 {
+						t.Fatalf("runs recorded: %v, want one", created)
+					}
+					givesGuidance(t, root, home, completedRun(t, home, created[0]), homeGuidance[name]...)
+				})
+			}
+		})
 	}
 }
 
