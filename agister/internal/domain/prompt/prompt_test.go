@@ -63,20 +63,20 @@ func TestRecoveryStatesTheEvidenceOfEachLimit(t *testing.T) {
 	t.Parallel()
 	result := "exit status 1\n```\n"
 	repeated := run.Stale{Limit: run.StaleRepeatedToolCalls, Count: 5, Tool: &run.ToolCall{ID: "t5", Name: "Bash", Input: `{"command":"go test"}`, SHA256: "abc", Result: &result}}
-	want := "Do otherwise.\n\n## stale limit\n\nstale.repeated_tool_calls: the same tool call was made 5 times in a row, and Agister ended the turn.\n\n" +
+	want := "Do otherwise.\n\n## stale limit\n\nstale.repeated_tool_calls: the same tool call was made 5 times in a row, and the turn was ended.\n\n" +
 		"## tool call\n\nBash\n\n```\n{\"command\":\"go test\"}\n```\n\n## last result\n\n````\nexit status 1\n```\n````"
 	if got := prompt.Recovery(" Do otherwise. ", repeated); got != want {
 		t.Fatalf("got\n%s\nwant\n%s", got, want)
 	}
 	// A runtime that reported no result: the message says nothing of one.
 	repeated.Tool.Result = nil
-	want = "Do otherwise.\n\n## stale limit\n\nstale.repeated_tool_calls: the same tool call was made 5 times in a row, and Agister ended the turn.\n\n" +
+	want = "Do otherwise.\n\n## stale limit\n\nstale.repeated_tool_calls: the same tool call was made 5 times in a row, and the turn was ended.\n\n" +
 		"## tool call\n\nBash\n\n```\n{\"command\":\"go test\"}\n```"
 	if got := prompt.Recovery("Do otherwise.", repeated); got != want {
 		t.Fatalf("got\n%s\nwant\n%s", got, want)
 	}
 	command := run.Stale{Limit: run.StaleToolCommand, After: 2 * time.Minute, Tool: &run.ToolCall{Name: "Bash", Input: `{"command":"npm start"}`}}
-	want = "Do otherwise.\n\n## stale limit\n\nstale.tool_command: a tool's command ran for 2m0s, and Agister ended the turn.\n\n" +
+	want = "Do otherwise.\n\n## stale limit\n\nstale.tool_command: a tool's command ran for 2m0s, and the turn was ended.\n\n" +
 		"## command\n\nBash\n\n```\n{\"command\":\"npm start\"}\n```"
 	if got := prompt.Recovery("Do otherwise.", command); got != want {
 		t.Fatalf("got\n%s\nwant\n%s", got, want)

@@ -121,14 +121,14 @@ func Recovery(instruction string, stale run.Stale) string {
 	}
 	switch stale.Limit {
 	case run.StaleRepeatedToolCalls:
-		sections = append(sections, fmt.Sprintf("## stale limit\n\nstale.repeated_tool_calls: the same tool call was made %d times in a row, and Agister ended the turn.", stale.Count))
+		sections = append(sections, fmt.Sprintf("## stale limit\n\nstale.repeated_tool_calls: the same tool call was made %d times in a row, and the turn was ended.", stale.Count))
 		call("tool call")
 		// A runtime that reports no result leaves nothing to say of one.
 		if stale.Tool != nil && stale.Tool.Result != nil {
 			sections = append(sections, "## last result\n\n"+fenced(*stale.Tool.Result))
 		}
 	case run.StaleToolCommand:
-		sections = append(sections, fmt.Sprintf("## stale limit\n\nstale.tool_command: a tool's command ran for %s, and Agister ended the turn.", stale.After))
+		sections = append(sections, fmt.Sprintf("## stale limit\n\nstale.tool_command: a tool's command ran for %s, and the turn was ended.", stale.After))
 		call("command")
 	default:
 		sections = append(sections, fmt.Sprintf("## stale limit\n\nstale.%s: the turn was interrupted after %s without an event from the runtime.", stale.Limit, stale.After))
