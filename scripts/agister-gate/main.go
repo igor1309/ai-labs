@@ -2,8 +2,11 @@
 // implement, commit, review, fix if a major is ruled fix, review again, at
 // most three reviews, then stop (LAB-203). It runs `agister` and `git` in
 // the caller's worktree and decides nothing else: the step's briefs are the
-// caller's, the rulings the judge's.
+// issue's and the owner's words, the rulings the judge's.
 //
+//   - The goal and step briefs are written from the issue's text and the
+//     owner's constraints, as written (LAB-204); no brief comes from the
+//     caller's own words.
 //   - The step's brief is implemented with the implement workflow named.
 //     Its run's files_changed are staged by name and committed; a change
 //     the run did not report stops the step.
@@ -20,9 +23,9 @@
 //
 // Usage:
 //
-//	agister-gate --goal <file> --step <file> --implement <workflow>
-//	  --base <rev> --message <subject> --out <dir> [--dir <worktree>]
-//	  [--from implement|review] [--reviews <n>]
+//	agister-gate --issue <file> --title <line> [--constraints <file>]
+//	  --implement <workflow> --base <rev> --message <subject> --out <dir>
+//	  [--dir <worktree>] [--from implement|review] [--reviews <n>]
 //
 // Exit 0: no major is left to fix. 3: a major is left after the third
 // review; the owner decides. 4: a review hit a provider limit. 1: anything

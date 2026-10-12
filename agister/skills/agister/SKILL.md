@@ -324,10 +324,21 @@ major is ruled `fix`, review again, at most three reviews that count.
 and stops:
 
 ```sh
-<ai-labs>/scripts/agister-gate/gate.sh --goal <goal.md> --step <step.md> \
-  --implement implement_codex --base <rev> --message "<commit subject>" --out <dir>
+<ai-labs>/scripts/agister-gate/gate.sh --issue <issue.md> --title "<issue> step <n>" \
+  [--constraints <constraints.md>] --implement implement_codex --base <rev> \
+  --message "<commit subject>" --out <dir>
 ```
 
+- A brief says what the issue and the owner said, in their words. Save
+  the issue's text the step makes true, as written, to `--issue`, and only
+  what the owner said of the step to `--constraints`. The gate writes the
+  goal and step briefs from them, fenced, into `--out`: their Done when
+  and Covers are the issue's text, and a fix brief carries the judge's
+  items as written. Do not summarize, reword or add a permission: an
+  implementer takes a brief's every word as leave.
+- After work is discarded, rerun where it cannot be read: a fresh
+  worktree from the base, or one whose discarded commits and notes are
+  gone. An implementer that finds them copies them.
 - It needs a clean worktree. It commits each implement run's
   `files_changed` by name; a change the run did not report stops the step.
 - The review is `code_review` of the commits since base, against the
