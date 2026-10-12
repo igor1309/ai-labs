@@ -6,8 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"time"
-
-	"github.com/igor1309/ai-labs/agister/internal/domain/definition"
 )
 
 // Status is how a node ended. Every kind of node (an agent call today;
@@ -439,16 +437,18 @@ const (
 
 // Conclude derives the node status from a turn and the output contract:
 // a runtime's failure is never upgraded, and a completed turn counts only
-// with contract-valid output. What the output means is not Agister's.
-func Conclude(turn Turn, output definition.Output, validation error) (Status, *Error) {
+// with contract-valid output. invalid is why the output breaks its
+// contract, nil when it keeps it or has none. What the output means is not
+// Agister's.
+func Conclude(turn Turn, invalid error) (Status, *Error) {
 	if turn.Status != Completed {
 		if turn.Error == nil {
 			return turn.Status, Fault(ClassRuntimeError, "no reason reported")
 		}
 		return turn.Status, turn.Error
 	}
-	if output.Format == "json" && validation != nil {
-		return Failed, Fault(ClassInvalidOutput, "%v", validation)
+	if invalid != nil {
+		return Failed, Fault(ClassInvalidOutput, "%v", invalid)
 	}
 	return Completed, nil
 }
