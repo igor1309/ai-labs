@@ -3,6 +3,8 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
+	"io/fs"
 	"maps"
 	"os"
 	"os/exec"
@@ -19,20 +21,12 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// projectReplacements are the documents this repository's .agister holds
-// that home's settings folder holds too, by kind and name, each with the
-// reason the repository's must differ from home's (ADR-027 rule 6). Every
-// other document of .agister is the repository's own.
-var projectReplacements = map[string]string{
-	"processes/implement":           goGuidance,
-	"processes/architecture_review": goGuidance,
-	"processes/adversarial_review":  goGuidance,
-	"processes/tests_review":        goGuidance,
-}
-
-// goGuidance is why the repository sets the guidance of a process of home.
-const goGuidance = "it gives the process the Go prompts this repository's code is written and reviewed under, " +
-	"as guidance alone (LAB-161)"
+// projectReplacements are the documents a layer of this repository holds
+// that home's settings folder holds too, by kind and name, as
+// "<layer>: <document>", each with the reason the layer's must differ from
+// home's (ADR-027 rule 6). Every other document of a layer is its own. None
+// does: the Go guidance is home's (ADR-033).
+var projectReplacements = map[string]string{}
 
 // Home's settings folder installs into an empty home with this binary, every
 // file of it a settings document installed as it is, and passes check there
@@ -83,15 +77,24 @@ func TestTheHomeFolderInstallsAndPassesCheckAsGlobalSettings(t *testing.T) {
 	if fixed := fixedFilePaths(t, folder); len(fixed) != 0 {
 		t.Errorf("%s reads files at fixed paths, not settings prompts: %v", homeFolder, fixed)
 	}
-	shared := sharedDocuments(t, filepath.Join(root, ".agister"), folder)
+	var shared []string
+	for _, layer := range append([]string{"."}, projects...) {
+		settings := filepath.Join(root, layer, ".agister")
+		if _, err := os.Stat(settings); errors.Is(err, fs.ErrNotExist) {
+			continue
+		}
+		for _, document := range sharedDocuments(t, settings, folder) {
+			shared = append(shared, filepath.Join(layer, ".agister")+": "+document)
+		}
+	}
 	for _, document := range shared {
 		if projectReplacements[document] == "" {
-			t.Errorf(".agister holds %s, which %s holds too, and projectReplacements gives no reason", document, homeFolder)
+			t.Errorf("%s, which %s holds too, and projectReplacements gives no reason", document, homeFolder)
 		}
 	}
 	for document := range projectReplacements {
 		if !slices.Contains(shared, document) {
-			t.Errorf("projectReplacements lists %s, which .agister and %s do not both hold", document, homeFolder)
+			t.Errorf("projectReplacements lists %s, which the layer and %s do not both hold", document, homeFolder)
 		}
 	}
 }

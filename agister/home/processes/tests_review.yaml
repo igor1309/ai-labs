@@ -4,3 +4,4 @@ name: tests_review
 type: process
 extends: process:review
 prompt: code-review-tests
+guidance: [go-testing-seams]

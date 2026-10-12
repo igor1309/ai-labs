@@ -501,7 +501,7 @@ test('missing folders and service.toml read as empty', async () => {
   assert.deepEqual(m, { service: null, workflows: [], processes: [], agents: [], runtimes: [], schemas: [], verifies: [], prompts: [], briefs: [], skills: [] });
 });
 
-for (const path of ['.agister', 'agister/home', 'agister/examples/settings']) {
+for (const path of ['agister/.agister', 'warder/.agister', 'agister/home', 'agister/examples/settings']) {
   test(`the settings in ${path} load without errors`, async () => {
     const m = await C.loadAgister(diskDir(join(repoRoot, path)));
     const items = [...m.workflows, ...m.processes, ...m.agents, ...m.runtimes, ...m.verifies, ...m.briefs];
@@ -511,43 +511,12 @@ for (const path of ['.agister', 'agister/home', 'agister/examples/settings']) {
   });
 }
 
-// A directory handle over dir whose entries named in extra are those
-// handles instead, or are added.
-function overlay(dir, extra) {
-  return {
-    kind: 'directory',
-    name: dir.name,
-    async *entries() {
-      for await (const [n, handle] of dir.entries()) if (!(n in extra)) yield [n, handle];
-      yield* Object.entries(extra);
-    },
-    async getDirectoryHandle(n) {
-      return n in extra ? extra[n] : dir.getDirectoryHandle(n);
-    },
-    async getFileHandle(n) {
-      return dir.getFileHandle(n);
-    },
-  };
-}
-
-// The repository's layer as a call launched in project reads it, folded
-// into one folder for this two-layer reader: .agister, its prompts read
-// from the library its layer.yaml lists, and the project's own folders,
-// none of which the repository's layer holds (ADR-028 rules 1 and 9). The
-// server composes the three layers with Go.
+// The layers a call launched in project reads over home: the project's
+// own, for the repository holds no layer of its own (ADR-033 rule 4). The
+// server composes the layers with Go.
 function launchedIn(project) {
-  const settings = join(repoRoot, '.agister');
-  const layer = C.parseYaml(readFileSync(join(settings, 'layer.yaml'), 'utf8'));
-  assert.equal(existsSync(join(settings, 'prompts')), false, '.agister/prompts would come before the library');
-  assert.equal(layer.prompts.length, 1, 'this reader folds one library');
-  const extra = { prompts: diskDir(join(repoRoot, layer.prompts[0])) };
-  const own = join(repoRoot, project, '.agister');
-  // A hidden entry (Finder's .DS_Store) is no settings folder.
-  for (const n of readdirSync(own).filter((n) => !n.startsWith('.'))) {
-    assert.equal(existsSync(join(settings, n)), false, `${project}/.agister/${n} and .agister/${n} would not fold`);
-    extra[n] = diskDir(join(own, n));
-  }
-  return overlay(diskDir(settings), extra);
+  assert.equal(existsSync(join(repoRoot, '.agister')), false, 'the repository holds a layer of its own');
+  return diskDir(join(repoRoot, project, '.agister'));
 }
 
 // Home's source folder holds every document its processes and workflows
@@ -556,8 +525,8 @@ function launchedIn(project) {
 // composed as the page composes home and a repo, for a call launched in
 // each project, nothing they name is missing, and the folder alone lacks
 // only that. Home's processes name prompt and guidance (ADR-028 rule 8);
-// each is resolved and linked in the view, the Go guidance from the
-// repository's library. A base leaves out the prompt, which each process
+// each is resolved and linked in the view, the Go guidance from home's
+// prompts (ADR-033). A base leaves out the prompt, which each process
 // that extends it sets, laid over it (ADR-030 rule 9). No process names an
 // agent, a base included: a workflow's node binds it (ADR-030 rule 2).
 for (const project of ['agister', 'warder']) {
@@ -612,7 +581,7 @@ test('the settings in agister/home alone lack only the verification', async () =
   assert.equal(implement.verify.outside, true);
   assert.equal(implement.prompt.name, 'implement');
   assert.equal(implement.prompt.outside, false);
-  assert.deepEqual(implement.guidance, []);
+  assert.deepEqual(implement.guidance.map((g) => [g.name, g.outside]), [['go-testing-seams', false], ['go-architecture', false]]);
 });
 
 // The server has already composed the documents with Go. This reader

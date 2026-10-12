@@ -230,7 +230,7 @@ const verifyFixtureTimeout = "30s"
 // names the workflow and its call, and records the agent callAgents lists
 // for it, or, for one it does not list, which binds its process to the
 // agent processAgents lists, that agent; the limits its process has, the
-// guidance repositoryGuidance names for that process, home's implement
+// guidance homeGuidance names for that process, home's implement
 // prompt where it calls an implementer and, where that process declares
 // verify, the verification its run passed (verifiedOnce), on writableCodex.
 //
@@ -338,7 +338,7 @@ func TestRepositoryProcessesRunOnFakeRuntimes(t *testing.T) {
 				recordsAgent(t, record)
 				recordsStaleLimits(t, record)
 				recordsRequired(t, record)
-				givesGuidance(t, root, repo, record, repositoryGuidance[call.Process]...)
+				givesGuidance(t, root, home, record, homeGuidance[call.Process]...)
 				if verifies(process) {
 					verifiedOnce(t, record)
 				}
@@ -2576,7 +2576,7 @@ var guidanceSentence = []string{"Any guidance given as further inputs", "holds t
 // denied, for 20 minutes at most, in one attempt, ended after 10 minutes
 // without a runtime event, 8 minutes on one tool command or 5 identical
 // tool calls in a row, with no cost limit, its prompt of reviewPrompts and
-// the guidance repositoryGuidance names for it: process show prints each.
+// the guidance homeGuidance names for it: process show prints each.
 // Its instruction is the base's, which says how guidance is used: those of
 // gainGuidance gain that sentence, and each asserts it.
 func TestTheReviewsResolveAsBefore(t *testing.T) {
@@ -2623,7 +2623,7 @@ func TestTheReviewsResolveAsBefore(t *testing.T) {
 		if want := (contract.Stale{NoEvent: 10 * time.Minute, ToolCommand: 8 * time.Minute, RepeatedToolCalls: 5}); view.Stale != want {
 			t.Errorf("%s's stale limits are %+v, want %+v", name, view.Stale, want)
 		}
-		if guidance := repositoryGuidance[name]; view.Prompt != reviewPrompts[name] || !reflect.DeepEqual(view.Guidance, guidance) {
+		if guidance := homeGuidance[name]; view.Prompt != reviewPrompts[name] || !reflect.DeepEqual(view.Guidance, guidance) {
 			t.Errorf("%s's prompt is %s and its guidance %v, want %s and %v", name, view.Prompt, view.Guidance, reviewPrompts[name], guidance)
 		}
 		instruction := parseProcess(t, root, name).Instruction
@@ -2637,7 +2637,8 @@ func TestTheReviewsResolveAsBefore(t *testing.T) {
 }
 
 // Each review's file in the home folder holds its schema, name, type, the
-// review base it extends and its prompt, and nothing else (ADR-030 rule 9):
+// review base it extends, its prompt and the guidance homeGuidance names
+// for it, and nothing else (ADR-030 rule 9, ADR-033 rule 2):
 // process show names the base's home file among the files the process is
 // composed from.
 func TestTheReviewsExtendTheReviewBase(t *testing.T) {
@@ -2651,6 +2652,13 @@ func TestTheReviewsExtendTheReviewBase(t *testing.T) {
 		want := map[string]any{
 			"schema": "agister.process/v1alpha1", "name": name, "type": "process",
 			"extends": "process:review", "prompt": reviewPrompts[name],
+		}
+		if guidance := homeGuidance[name]; guidance != nil {
+			names := []any{}
+			for _, name := range guidance {
+				names = append(names, name)
+			}
+			want["guidance"] = names
 		}
 		if !reflect.DeepEqual(document, want) {
 			t.Errorf("%s's file holds %v, want %v", name, document, want)
@@ -2798,72 +2806,59 @@ func TestImplementersAreRefusedAtTheRoot(t *testing.T) {
 	}
 }
 
-// goPrompts are the Go prompts of the repository's library, prompts/,
-// which its layer.yaml lists (ADR-028 rule 9).
+// goPrompts are the Go prompts of the home folder (ADR-033 rule 1).
 var goPrompts = []string{"go-testing-seams", "go-architecture"}
 
-// repositoryGuidance is the guidance the repository's layer sets, by
-// process (LAB-161): the implementers, the architecture review and the
-// adversarial review get both Go prompts, the tests review the testing
-// one. A process it does not name, the clarity and intent reviews and the
-// judge among them, gets none.
-var repositoryGuidance = map[string][]string{
+// homeGuidance is the guidance home's processes set (ADR-033 rule 2): the
+// implementers, the architecture review and the adversarial review get
+// both Go prompts, the tests review the testing one. A process it does not
+// name, the clarity and intent reviews and the judge among them, gets none.
+var homeGuidance = map[string][]string{
 	"implement":           goPrompts,
 	"architecture_review": goPrompts,
 	"adversarial_review":  goPrompts,
 	"tests_review":        {"go-testing-seams"},
 }
 
-// The repository's layer sets, for each process of repositoryGuidance and
-// no other, its guidance and no other field. It holds no prompts/, whose
-// prompts are read from the library its layer.yaml lists, and no
-// verifies/: verify:repo is filled by each project's layer.
-func TestTheRepositoryLayerSetsOnlyTheGoGuidance(t *testing.T) {
+// The home folder's processes set, each of homeGuidance, its guidance, and
+// no other process sets any; this repository holds no layer of its own, so
+// its code is given home's guidance (ADR-033 rules 2 and 4).
+func TestHomesProcessesSetTheGoGuidance(t *testing.T) {
 	t.Parallel()
-	root, err := filepath.Abs(filepath.Join("..", "..", ".."))
-	if err != nil {
-		t.Fatal(err)
-	}
-	settings := filepath.Join(root, ".agister")
-	paths, err := filepath.Glob(filepath.Join(settings, "processes", "*"))
+	root := repositoryRoot(t)
+	paths, err := filepath.Glob(filepath.Join(root, homeFolder, "processes", "*.yaml"))
 	if err != nil {
 		t.Fatal(err)
 	}
 	set := map[string][]string{}
 	for _, path := range paths {
-		var document map[string]any
+		var document struct {
+			Guidance []string `yaml:"guidance"`
+		}
 		if err := yaml.Unmarshal([]byte(read(t, path)), &document); err != nil {
 			t.Fatalf("%s: %v", path, err)
 		}
-		guidance, ok := document["guidance"].([]any)
-		if len(document) != 1 || !ok {
-			t.Fatalf("%s sets %v, want guidance alone", path, document)
+		if document.Guidance != nil {
+			set[strings.TrimSuffix(filepath.Base(path), ".yaml")] = document.Guidance
 		}
-		names := []string{}
-		for _, name := range guidance {
-			names = append(names, name.(string))
-		}
-		set[strings.TrimSuffix(filepath.Base(path), ".yaml")] = names
 	}
-	if !reflect.DeepEqual(set, repositoryGuidance) {
-		t.Fatalf("the repository's layer sets guidance %v, want %v", set, repositoryGuidance)
+	if !reflect.DeepEqual(set, homeGuidance) {
+		t.Fatalf("home's processes set guidance %v, want %v", set, homeGuidance)
 	}
-	for _, kind := range []string{"prompts", "verifies"} {
-		if _, err := os.Lstat(filepath.Join(settings, kind)); !errors.Is(err, fs.ErrNotExist) {
-			t.Errorf("%s holds %s/ (%v), want none", settings, kind, err)
-		}
+	if _, err := os.Lstat(filepath.Join(root, ".agister")); !errors.Is(err, fs.ErrNotExist) {
+		t.Errorf("the repository holds .agister (%v), want none", err)
 	}
 }
 
-// The repository's Go prompts say what home's review prompts say (LAB-217):
+// The Go prompts say what home's review prompts say (LAB-217):
 // go-architecture that a component's types are in its own words, that a
 // one-to-one copy translates nothing, that each component a change touches
 // has its own reason to change, and that file formats are the language of
 // the outer edges; go-testing-seams that serial running does not isolate a
 // process-wide measure, and that a test covers the class of cases. An
 // instruction is held by its short phrases standing in one paragraph, as
-// in TestReviewPromptsCarryTheirCoverageContract. The prompts are the
-// repository's own, read as they are.
+// in TestReviewPromptsCarryTheirCoverageContract. The prompts are the home
+// folder's, read as they are.
 func TestTheGoPromptsAgreeWithTheReviews(t *testing.T) {
 	t.Parallel()
 	root, err := filepath.Abs(filepath.Join("..", "..", ".."))
@@ -2895,13 +2890,13 @@ func TestTheGoPromptsAgreeWithTheReviews(t *testing.T) {
 		}},
 	}
 	for _, c := range cases {
-		data, err := os.ReadFile(filepath.Join(root, "prompts", c.prompt+".md"))
+		data, err := os.ReadFile(filepath.Join(root, homeFolder, "prompts", c.prompt+".md"))
 		if err != nil {
 			t.Fatal(err)
 		}
 		for _, instruction := range c.instructions {
 			if !carries(string(data), instruction.phrases) {
-				t.Errorf("prompts/%s.md lost the instruction %q: no paragraph has all of %q",
+				t.Errorf("agister/home/prompts/%s.md lost the instruction %q: no paragraph has all of %q",
 					c.prompt, instruction.name, instruction.phrases)
 			}
 		}
@@ -2946,23 +2941,21 @@ func TestHomeHasOneImplementProcess(t *testing.T) {
 	}
 }
 
-// The repository's layer sets implement's guidance once: of the documents
-// of its layer and its projects', one sets guidance on implement or on one
-// of implementWorkflows, the repository's processes/implement.yaml, to the
-// Go prompts. A workflow takes the guidance of the process it calls.
-func TestTheRepositoryLayerSetsImplementsGuidanceOnce(t *testing.T) {
+// No layer of the repository, its own or a project's, sets guidance on
+// any process: the guidance is home's (ADR-033 rule 4), and a layer that
+// set it would give this repository's code other rules than home gives.
+func TestNoLayerOfTheRepositorySetsGuidance(t *testing.T) {
 	t.Parallel()
 	root := repositoryRoot(t)
-	targets := append([]string{"implement"}, implementWorkflows...)
 	set := map[string][]string{}
 	for _, layer := range append([]string{"."}, projects...) {
 		settings := filepath.Join(root, layer, ".agister")
+		if _, err := os.Stat(settings); errors.Is(err, fs.ErrNotExist) {
+			continue
+		}
 		err := filepath.WalkDir(settings, func(path string, entry fs.DirEntry, err error) error {
 			if err != nil || entry.IsDir() || filepath.Ext(path) != ".yaml" {
 				return err
-			}
-			if !slices.Contains(targets, strings.TrimSuffix(entry.Name(), ".yaml")) {
-				return nil
 			}
 			var document struct {
 				Guidance []string `yaml:"guidance"`
@@ -2983,15 +2976,15 @@ func TestTheRepositoryLayerSetsImplementsGuidanceOnce(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	if want := map[string][]string{filepath.Join(".agister", "processes", "implement.yaml"): goPrompts}; !reflect.DeepEqual(set, want) {
-		t.Fatalf("the repository's layers set implement's guidance in %v, want %v", set, want)
+	if len(set) != 0 {
+		t.Fatalf("the repository's layers set guidance in %v, want none", set)
 	}
 }
 
 // givesGuidance checks that the call's guidance is names, in order and no
-// other: each the input guidance.<name>, the text of prompts/<name>.md,
-// recorded from the repository's layer, which finds it there.
-func givesGuidance(t *testing.T, root, repo string, record map[string]any, names ...string) {
+// other: each the input guidance.<name>, the text of the home folder's
+// prompts/<name>.md, recorded from home, where it is installed.
+func givesGuidance(t *testing.T, root, home string, record map[string]any, names ...string) {
 	t.Helper()
 	var given []string
 	inputs, _ := record["inputs"].([]any)
@@ -3004,24 +2997,24 @@ func givesGuidance(t *testing.T, root, repo string, record map[string]any, names
 		t.Fatalf("%s's guidance = %v, want %v", record["process"], given, names)
 	}
 	for _, name := range names {
-		text, err := os.ReadFile(filepath.Join(root, "prompts", name+".md"))
+		text, err := os.ReadFile(filepath.Join(root, homeFolder, "prompts", name+".md"))
 		if err != nil {
 			t.Fatal(err)
 		}
 		digest := digestOf(string(text))
 		if input := inputOf(t, record, "guidance."+name); input["source"] != "prompt" || input["identity"] != "sha256:"+digest {
-			t.Fatalf("%s's guidance.%s = %v, want prompts/%s.md (%s)", record["process"], name, input, name, digest)
+			t.Fatalf("%s's guidance.%s = %v, want %s/prompts/%s.md (%s)", record["process"], name, input, homeFolder, name, digest)
 		}
 		file := nearest(definitionOf(t, run{record: record}, "prompts", name))
-		if file["layer"] != "repository" || file["path"] != filepath.Join(repo, "prompts", name+".md") || file["sha256"] != digest {
-			t.Fatalf("%s's prompt %s recorded from %v, want the repository's prompts/%s.md", record["process"], name, file, name)
+		if file["layer"] != "home" || file["path"] != filepath.Join(home, "prompts", name+".md") || file["sha256"] != digest {
+			t.Fatalf("%s's prompt %s recorded from %v, want home's prompts/%s.md", record["process"], name, file, name)
 		}
 	}
 }
 
 // Each implement process of the home folder, run alone (runsAlone) in each
 // project of the repository, gives its agent the two Go prompts as its guidance, in
-// the order the repository's layer sets, each the text of
+// the order home's process sets, each the text of the home folder's
 // prompts/<name>.md, and verifies with that project's verify:repo
 // (ADR-028 Migration step 4). That verification is a complete document of
 // the project's layer alone, whose command is written from the worktree's
@@ -3058,7 +3051,7 @@ func TestImplementersAreGivenTheGoPrompts(t *testing.T) {
 					t.Fatalf("runs recorded: %v, want one", created)
 				}
 				record := completedRun(t, home, created[0])
-				givesGuidance(t, root, repo, record, repositoryGuidance[name]...)
+				givesGuidance(t, root, home, record, homeGuidance[name]...)
 				source := definitionOf(t, run{record: record}, "verifies", "repo")
 				if layers, _ := source["layers"].([]any); len(layers) != 1 || nearest(source)["layer"] != "project" || nearest(source)["path"] != filepath.Join(repo, path) {
 					t.Fatalf("verify:repo recorded from %v, want %s alone", source, path)
@@ -3079,7 +3072,7 @@ func TestImplementersAreGivenTheGoPrompts(t *testing.T) {
 var reviewers = []string{"architecture_review", "tests_review", "adversarial_review", "clarity_review", "intent_review"}
 
 // Each review of the home folder, run alone (runsAlone) at the root and in
-// each project, gives its agent the guidance repositoryGuidance names for it,
+// each project, gives its agent the guidance homeGuidance names for it,
 // and none where it names none, each the text the implementers are given.
 func TestReviewersAreGivenTheirGoGuidance(t *testing.T) {
 	t.Parallel()
@@ -3096,14 +3089,14 @@ func TestReviewersAreGivenTheirGoGuidance(t *testing.T) {
 				if len(created) != 1 {
 					t.Fatalf("runs recorded: %v, want one", created)
 				}
-				givesGuidance(t, root, repo, completedRun(t, home, created[0]), repositoryGuidance[name]...)
+				givesGuidance(t, root, home, completedRun(t, home, created[0]), homeGuidance[name]...)
 			})
 		}
 	}
 }
 
 // A code_review launched in warder/ gives each review and the judge the
-// guidance repositoryGuidance names for it, and each Go prompt a review
+// guidance homeGuidance names for it, and each Go prompt a review
 // gets has the digest the implement run launched there recorded: the code
 // is reviewed under the rules it was written under.
 func TestCodeReviewInWarderIsGivenTheImplementersGuidance(t *testing.T) {
@@ -3117,8 +3110,8 @@ func TestCodeReviewInWarderIsGivenTheImplementersGuidance(t *testing.T) {
 	implemented := completedRun(t, home, created[0])
 	_, records := judgedReviews(t, home, filepath.Join(repo, "warder"), "code_review")
 	for _, name := range append(reviewers, "review_judge") {
-		givesGuidance(t, root, repo, records[name], repositoryGuidance[name]...)
-		for _, prompt := range repositoryGuidance[name] {
+		givesGuidance(t, root, home, records[name], homeGuidance[name]...)
+		for _, prompt := range homeGuidance[name] {
 			got, want := inputOf(t, records[name], "guidance."+prompt)["identity"], inputOf(t, implemented, "guidance."+prompt)["identity"]
 			if got != want {
 				t.Fatalf("%s's guidance.%s = %v, the implement run's %v", name, prompt, got, want)
@@ -3508,14 +3501,18 @@ func fixVerify(t *testing.T, root, repo string) {
 		}
 	}
 
-	layers := []string{"."}
+	var layers []string
+	names := []string{"."}
 	entries, err := os.ReadDir(root)
 	if err != nil {
 		t.Fatal(err)
 	}
 	for _, entry := range entries {
-		if info, err := os.Stat(filepath.Join(root, entry.Name(), ".agister")); entry.IsDir() && err == nil && info.IsDir() {
-			layers = append(layers, entry.Name())
+		names = append(names, entry.Name())
+	}
+	for _, name := range names {
+		if info, err := os.Stat(filepath.Join(root, name, ".agister")); err == nil && info.IsDir() {
+			layers = append(layers, name)
 		}
 	}
 	for _, layer := range layers {
