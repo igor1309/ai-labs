@@ -43,6 +43,15 @@ jobs:
       - name: Coverage
         run: go tool cover -func=cover.out | tail -1 | tee -a "$GITHUB_STEP_SUMMARY"
 
+      # The gate drives agister's runs and knows their kinds of work, so it
+      # is its own module, outside agister's code.
+      - name: Gate
+        working-directory: tools/agister-gate
+        run: |
+          test -z "$(gofmt -l .)"
+          go vet ./...
+          go test -race ./...
+
       # Outside the repository: its .agister/ is laid over agister/home,
       # not over the examples (ADR-027 rule 6), and the repository tests
       # check that composition.
