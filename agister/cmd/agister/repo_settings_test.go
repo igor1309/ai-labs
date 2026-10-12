@@ -1559,6 +1559,53 @@ func TestIntentPromptCarriesItsDuties(t *testing.T) {
 	}
 }
 
+// The architecture prompt of the repository reviews the shape of the
+// change (LAB-212, LAB-187): every component the change touches is read as
+// it stands at the candidate and asked its own reason to change, which the
+// goal is not; a change to how a file is kept is its reader's and writer's
+// reason only; a type that carries another component's words is no
+// boundary, and a one-to-one copy translates nothing; file formats are the
+// language of the outer edges; and the width of a change is evidence. An
+// instruction is held by its short phrases standing in one paragraph, as
+// in TestReviewPromptsCarryTheirCoverageContract. The prompt is the
+// repository's own, read as it is.
+func TestArchitecturePromptReviewsTheShapeOfTheChange(t *testing.T) {
+	t.Parallel()
+	const prompt = "code-review-architecture.md"
+	data, err := os.ReadFile(filepath.Join("..", "..", "..", homeFolder, "prompts", prompt))
+	if err != nil {
+		t.Fatal(err)
+	}
+	instructions := []promptInstruction{
+		{"the subject is the shape of the change", []string{
+			"Review the shape of the change", "A finding is about structure",
+			"behaviour, tests and documents are evidence for it, not findings of their own"}},
+		{"each touched component is read whole and asked its own reason to change", []string{
+			"as it stands at the candidate, not only its lines in the diff",
+			"its responsibility, its dependencies", "its interfaces", "what is its own reason to change?"}},
+		{"the goal is no reason; a file's keeping is its reader's and writer's reason", []string{
+			"The goal, or a decision it carries out, is no component's reason to change",
+			"is the reason of that file's reader and writer only", "even when the change only removes code",
+			"is a finding: name that reason and the dependency or interface that carried it in"}},
+		{"separation is judged by its language; a one-to-one copy translates nothing", []string{
+			"Separation is judged by its language, not its form", "are no boundary, and a finding",
+			"An adapter that copies fields one to one translates nothing", "At the persistence edge such a copy is fine"}},
+		{"file formats are the language of the outer edges", []string{
+			"the language of the outer edges only", "one reader and written by one writer",
+			"A package that parses a format is an edge, whatever its path"}},
+		{"the width of the change is evidence", []string{
+			"The width of the change is evidence", "the responsibility it would have if no file existed"}},
+		{"item 8 asks each touched component's own reason", []string{
+			"every component the change touched had a reason of its own to change"}},
+	}
+	for _, instruction := range instructions {
+		if !carries(string(data), instruction.phrases) {
+			t.Errorf("agister/home/prompts/%s lost the instruction %q: no paragraph has all of %q",
+				prompt, instruction.name, instruction.phrases)
+		}
+	}
+}
+
 // The clarity prompt of the repository carries the exception to its rule
 // that a change does not edit a recorded decision. An edit a recorded rule
 // of the project requires, which brings a document the rule names in line

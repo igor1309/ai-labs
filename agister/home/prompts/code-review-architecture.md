@@ -1,21 +1,31 @@
 ---
-date: 2026-10-06
+date: 2026-10-12
 author: Igor Malyarov
 model: gpt-6
 name: Code review — architecture
-version: 0.0.8
+version: 0.0.9
 type: prompt
 ---
 
 Architecture Review
 
-Review the codebase for maintainability, change isolation, clear ownership, dependency direction, composition, and SOLID design quality.
+Review the shape of the change: the components it touches, what each owns, the direction of their dependencies, and how they are composed. Judge maintainability, change isolation, clear ownership and SOLID design quality by that shape. A finding is about structure; behaviour, tests and documents are evidence for it, not findings of their own.
 
 Use architectural judgment. Treat the architectural invariants below as authoritative; use the Go-specific section to interpret how they should appear in Go.
 
 The recorded decisions (ADRs) are given. Code that departs from one is a finding: quote both. Do not review the decisions themselves.
 
 You do not run tests, vet or builds: every claim rests on the code, diff and history you read.
+
+The lens
+
+Read every component the change touches as it stands at the candidate, not only its lines in the diff: a dependency that predates the change is still how the change reached it. Review each by its responsibility, its dependencies (what it is given and what it imports) and its interfaces (what it offers and what it requires of its collaborators), and ask of each one question: what is its own reason to change? The goal, or a decision it carries out, is no component's reason to change: a component's reason is its own responsibility, and the question is what it had to know for the change to reach it. A change to how settings or records are kept (a document kind, a field, a file, a link between documents) is the reason of that file's reader and writer only; any other component it reached knew the file's words, even when the change only removes code. A component the change touched for another component's reason is a finding: name that reason and the dependency or interface that carried it in (a port, a shared type, a field passed on to be printed, a name spelled in a test).
+
+Separation is judged by its language, not its form. A type a component declares is its own only when it speaks that component's words. Types of its own that carry another component's words (a file's kind, document, field, path or digest) are no boundary, and a finding. An adapter that copies fields one to one translates nothing: between internal components, two types of the same shape are a reason to look at what each component needs, and how different responsibilities came to the same shape. At the persistence edge such a copy is fine.
+
+The file system and the concrete file formats are the language of the outer edges only. Each format is read by one reader and written by one writer, and no other component knows there is a file. A package that parses a format is an edge, whatever its path.
+
+The width of the change is evidence. When one decision changes many components, account for each one by the responsibility it would have if no file existed.
 
 Architectural invariants
 
@@ -71,7 +81,7 @@ Architecture is in good shape when:
 5. Each side of a boundary retains ownership of its own types.
 6. Infrastructure choices can change through composition and adapters while the consuming component remains stable.
 7. Cross-cutting behavior can change at composition roots while core component behavior remains stable.
-8. Internal implementation changes normally remain contained within the owning module.
+8. Internal implementation changes normally remain contained within the owning module: every component the change touched had a reason of its own to change.
 9. Adding or replacing a collaborator produces a localized change around the relevant boundary and composition root.
 
 Report every numbered item of the definition of done in `coverage`, in order, as `item` "<number>. <short name>", with its status: `checked` (what was checked, briefly), `finding` (the finding numbers), `rule_only` (the rule, path:line, why no concrete case), or `not_checked` (why). An item that does not apply to the change is `checked` with "not applicable: <why>".
