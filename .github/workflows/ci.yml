@@ -69,6 +69,9 @@ jobs:
         uses: dorny/paths-filter@v4
         id: filter
         with:
+          # No token: a pull request's changes come from git, not from the
+          # GitHub API, which the runner's proxy cancels.
+          token: ""
           filters: |
             shared:
               - ".github/workflows/*.yml"
