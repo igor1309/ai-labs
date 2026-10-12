@@ -3,7 +3,7 @@ date: 2026-10-12
 author: Igor Malyarov
 model: claude-opus-5-5
 name: Go — architecture
-version: 0.0.2
+version: 0.0.3
 type: prompt
 ---
 
@@ -95,6 +95,15 @@ Dependencies are given at construction
   falls back to a real implementation.
 * A component that only inspects gets nothing that starts or writes:
   what it can do is visible from what it was given.
+
+Work over input that cannot change is done once
+
+* What is derived from input that cannot change, such as a snapshot, is
+  derived once and shared by every component that reads it. A new
+  instance per consumer, each deriving it again, repeats the work once
+  per consumer: the composition root builds one and gives it to each.
+* A cache made inside a function that a loop calls is made again on each
+  call and holds nothing. The caller that loops owns it and passes it in.
 
 No package-level mutable state
 
