@@ -1783,7 +1783,7 @@ func TestTheImplementerSearchesTheRecordBeforeLeavingAPointOpen(t *testing.T) {
 // finding; the reviewer quotes the rule and where it stands in the item's
 // coverage entry; an edit that says more than the change built, that
 // changes a rule, or that no such rule requires is still a finding; and an
-// edit the goal expressly directs is the owner's own. The definition of
+// edit the goal expressly directs is not a finding either. The definition of
 // done stands in one paragraph, so each phrase is one only that item has.
 // An instruction is held by its short phrases standing in one paragraph, as
 // in TestReviewPromptsCarryTheirCoverageContract. The prompt is the
@@ -1799,14 +1799,14 @@ func TestClarityPromptCarriesTheRecordedRuleException(t *testing.T) {
 		{"an edit a recorded rule of the project requires is not a finding", []string{
 			"does not edit a recorded decision", "not such a finding",
 			"a recorded rule of the project requires the change to make it", "a document the rule names",
-			"behaviour the change itself built", "The owner's rule is the decision"}},
+			"behaviour the change itself built", "That rule is the decision"}},
 		{"the coverage entry quotes the rule and where it stands", []string{
 			"you check it", "the `coverage` entry for this item", "quotes the rule", "where it stands"}},
 		{"an edit beyond what the change built, or one no rule requires, is still a finding", []string{
 			"still a finding", "says more than the change built", "changes a rule instead of describing behaviour",
 			"that no such rule requires stays a finding"}},
-		{"an edit the goal expressly directs is the owner's own", []string{
-			"An edit the goal expressly directs", "the owner's own", "not a finding either"}},
+		{"an edit the goal expressly directs is not a finding", []string{
+			"An edit the goal expressly directs is not a finding either"}},
 	}
 	for _, instruction := range instructions {
 		if !carries(string(data), instruction.phrases) {
