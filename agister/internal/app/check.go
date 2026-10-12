@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"sort"
 	"strings"
+	"sync"
 
 	"github.com/igor1309/ai-labs/agister/internal/contract"
 	"github.com/igor1309/ai-labs/agister/internal/domain/definition"
@@ -21,6 +22,16 @@ type Checker struct {
 	// probes verify a version the settings verify nothing for; nil: none
 	// is probed.
 	probes CheckProbes
+	// once keeps the first check without probes, for settings that cannot
+	// change; nil: each check reads them again.
+	once *checkOnce
+}
+
+// checkOnce is a check made once and what it found.
+type checkOnce struct {
+	sync.Once
+	found CheckResult
+	err   error
 }
 
 // CheckDefinitions supplies every definition document and its origin, and
@@ -123,6 +134,14 @@ type CheckedProblem struct {
 }
 
 func (c *Checker) check(ctx context.Context, probe bool) (CheckResult, error) {
+	if probe || c.once == nil {
+		return c.checkNow(ctx, probe)
+	}
+	c.once.Do(func() { c.once.found, c.once.err = c.checkNow(ctx, false) })
+	return c.once.found, c.once.err
+}
+
+func (c *Checker) checkNow(ctx context.Context, probe bool) (CheckResult, error) {
 	report := contract.CheckReport{Checked: map[string]int{}}
 	index := map[DocumentRef]int{}   // into report.Definitions and documents
 	var documents []CheckedDocument  // as report.Definitions
@@ -611,9 +630,11 @@ func (c *Checker) bases(ctx context.Context) map[string][]string {
 	read := func(name string) (definition.Document, error) {
 		return c.definitions.Read(ctx, definition.KindProcess, name)
 	}
+	// Each base is read and composed once, however many extend it.
+	extender := definition.NewExtender(read)
 	for _, name := range names {
 		doc, _ := read(name)
-		if base := definition.Extends(doc, read); base != "" && contains(names, base) {
+		if base := extender.Extends(doc); base != "" && contains(names, base) {
 			bases[base] = append(bases[base], name)
 		}
 	}
@@ -721,7 +742,7 @@ func (c *Checker) ProblemsAdded(ctx context.Context, doc definition.Document) ([
 		return nil, err
 	}
 	after := *c
-	after.definitions = withDocument{CheckDefinitions: c.definitions, doc: doc}
+	after.definitions, after.once = withDocument{CheckDefinitions: c.definitions, doc: doc}, nil
 	report, err := after.Check(ctx, false)
 	if err != nil {
 		return nil, err
