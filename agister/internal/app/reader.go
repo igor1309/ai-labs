@@ -140,9 +140,7 @@ func processOf(process definition.Process) declaredProcess {
 }
 
 // collects lists the inputs of process that receive a workflow's
-// collection, as the parser lists them, in declaration order. The parser
-// is given each value's name and source, which is all it reads of a
-// process for it.
+// collection, in declaration order.
 func collects(process declaredProcess) []string {
 	values := translated(process.values, func(value declaredValue) definition.Value {
 		return definition.Value{Name: value.name, Source: value.source}
@@ -191,10 +189,8 @@ func formatAgent(agent agentProfile) []byte {
 	return definition.FormatAgent(parserAgent(agent))
 }
 
-// callSkills lists the skills a call of process on agent is given, as the
-// parser lists them: the process's, then the agent's, each once (ADR-021
-// rule 2). The parser is given the process's skills, which is all it
-// reads of a process for it.
+// callSkills lists the skills a call of process on agent is given: the
+// process's, then the agent's, each once (ADR-021 rule 2).
 func callSkills(process declaredProcess, agent agentProfile) []string {
 	return definition.CallSkills(definition.Process{Skills: process.skills}, parserAgent(agent))
 }

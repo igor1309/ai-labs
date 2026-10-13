@@ -204,7 +204,7 @@ func (h *harness) callsRecordedWith(src app.ResolverDefinitions, workspaces app.
 		app.NewResolver(src, h.runtimes, h.validator, resolverCheckStub{}),
 		h.runtimes,
 		map[string]app.InputProvider{"git.revision": h.inputs, "git.diff": h.inputs, "git.changed_files": h.inputs, "file": h.inputs, "param": h.inputs}, h.copies, h.references,
-		workspaces, changes, h.holderOver(changes, runs), app.NewVerifier(changes, h.commands, h.clock), app.NewRecoverer(h.clock), h.validator, recorder, runs,
+		workspaces, changes, h.holderOver(changes, runs), app.CallsVerifier{Verifier: app.NewVerifier(changes, h.commands, h.clock)}, app.NewRecoverer(h.clock), h.validator, recorder, runs,
 		h.clock, h.timer, ids, "/state", h.hosted,
 	)
 }
@@ -991,7 +991,7 @@ func TestCallsResolveThroughTheResolutionTheyDeclare(t *testing.T) {
 	h := newHarness()
 	double := &snapshotCounter{reason: "the double refuses"}
 	h.calls = app.NewCalls(
-		double, h.runtimes, map[string]app.InputProvider{}, h.copies, h.references, h.workspaces, h.changes, h.holder(), app.NewVerifier(h.changes, h.commands, h.clock), app.NewRecoverer(h.clock),
+		double, h.runtimes, map[string]app.InputProvider{}, h.copies, h.references, h.workspaces, h.changes, h.holder(), app.CallsVerifier{Verifier: app.NewVerifier(h.changes, h.commands, h.clock)}, app.NewRecoverer(h.clock),
 		h.validator, h.recorder, h.runs, h.clock, h.timer, fixedIDs{}, "/state", h.hosted,
 	)
 	record := h.call(t, contract.CallRequest{})
@@ -1274,7 +1274,7 @@ func TestCallsCancelThroughTheCancelsTheyDeclare(t *testing.T) {
 	h.calls = app.NewCalls(
 		app.NewResolver(h.defs, h.runtimes, h.validator, resolverCheckStub{}), h.runtimes,
 		map[string]app.InputProvider{"git.revision": h.inputs, "git.diff": h.inputs}, h.copies, h.references,
-		h.workspaces, h.changes, h.holder(), app.NewVerifier(h.changes, h.commands, h.clock), app.NewRecoverer(h.clock), h.validator, h.recorder, h.runs,
+		h.workspaces, h.changes, h.holder(), app.CallsVerifier{Verifier: app.NewVerifier(h.changes, h.commands, h.clock)}, app.NewRecoverer(h.clock), h.validator, h.recorder, h.runs,
 		h.clock, h.timer, fixedIDs{}, "/state", cancels,
 	)
 	// However the test ends, the blocked turn is released and the call

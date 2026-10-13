@@ -168,6 +168,37 @@ type CallVerify struct {
 	Instruction string        // what the agent is told when a run fails
 }
 
+// VerifyCall is one call's verification loop, and what it records to.
+type VerifyCall struct {
+	Record *run.Record
+	Result *run.Result
+	Event  func(source, kind string, data map[string]any)
+	// Update and Artifact write the run's evidence.
+	Update   func(run.Record) error
+	Artifact func(name string, data []byte) (run.Artifact, error)
+
+	Verify   CallVerify
+	Limit    *float64  // the call's cost limit, one budget for every turn
+	Deadline time.Time // the call's timeout, for every turn and run
+	// NoOutput is the call's staleness limit for a run: how long the
+	// command may go without output; zero: no such limit.
+	NoOutput time.Duration
+	Dir      string // the call's worktree, where the command runs
+	Base     string // the revision the process pins
+	// Request is the call's first turn, which every repair repeats with
+	// the failure as its prompt.
+	Request TurnRequest
+	// Session is the provider session of the call's first turn, which
+	// every repair resumes.
+	Session string
+
+	// Take runs a turn and records it with the call, given the resumed
+	// session's totals before it; Conclude says whether a turn ended
+	// validly, and why not.
+	Take     func(TurnRequest, *run.SessionTotals) run.Turn
+	Conclude func(run.Turn) *run.Error
+}
+
 // CallAgent is the runtime profile a call runs as.
 type CallAgent struct {
 	Name    string
