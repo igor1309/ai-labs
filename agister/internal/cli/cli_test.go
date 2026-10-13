@@ -1460,3 +1460,18 @@ func TestHelpNamesTheSessionsLatestRunAsThePatchSource(t *testing.T) {
 		t.Fatalf("help: code %d, stdout %q, stderr %q", r.code, r.stdout, r.stderr)
 	}
 }
+
+// ADR-036 warnings remain visible on a completed run, including quiet output.
+func TestResultSummaryPrintsPermissionWarnings(t *testing.T) {
+	t.Parallel()
+	for _, args := range [][]string{{"run", "w"}, {"run", "w", "--quiet"}} {
+		spy := &clientSpy{run: finished("completed", "")}
+		spy.run.Result.Warnings = []string{"node judge: runtime rt grants beyond tools.allow: process.execute", "runtime rt version 9 is unverified"}
+		r := run(context.Background(), spy, args...)
+		for _, warning := range spy.run.Result.Warnings {
+			if r.code != 0 || !strings.Contains(r.stdout+r.stderr, "WARNING: "+warning) {
+				t.Fatalf("%v: %+v", args, r)
+			}
+		}
+	}
+}

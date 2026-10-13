@@ -262,7 +262,7 @@ func (c *Checker) checkNow(ctx context.Context, probe bool) (CheckResult, error)
 				// And a broken brief form (ADR-026 rule 8).
 				parsed.briefs[name] = true
 			}
-			if kind != document.KindService && !validName(name) {
+			if kind != document.KindService && !document.ValidName(name) {
 				// Nothing can name such a document (ADR-015 rule 4).
 				what := "file"
 				if kind == document.KindSkill {
@@ -538,6 +538,12 @@ func (c *Checker) checkNow(ctx context.Context, probe bool) (CheckResult, error)
 
 	// Across documents.
 	bundle := parsed.bundle()
+	for _, name := range sortedNames(parsed.mappings) {
+		mapping := bundle.Mappings[name]
+		if verified, _ := mapping.Offer.ForAnyVersion(); len(verified.Primitives) == 0 {
+			report.Warnings = append(report.Warnings, "runtime mapping "+mapping.Name+": verifies no primitive against any runtime version; permissions are best effort")
+		}
+	}
 	known := c.runtimes.Adapters()
 	// The core itself supplies a join's collection (ADR-003 rule 4).
 	sources := append(append([]string(nil), c.sources...), collectionSource)
@@ -575,12 +581,11 @@ func (c *Checker) checkNow(ctx context.Context, probe bool) (CheckResult, error)
 				problem("agent "+name, "runtime unavailable: %v", err)
 			case identity.Contract != mapping.contract:
 				problem("agent "+name, "adapter implements %s, mapping %s describes %s", identity.Contract, mapping.name, mapping.contract)
-			case probeFailed != nil:
-				problem("agent "+name, "mapping %s verifies no primitive for runtime version %s%s", mapping.name, identity.Version, probeRefusal(probeFailed))
-			case !checked.Offer.Verified(identity.Version):
-				problem("agent "+name, "mapping %s verifies no primitive for runtime version %s", mapping.name, identity.Version)
 			default:
 				installed[name] = identity.Version
+				if !checked.Offer.Verified(identity.Version) {
+					report.Warnings = append(report.Warnings, fmt.Sprintf("agent %s: runtime %s version %s is unverified%s", name, mapping.name, identity.Version, probeRefusal(probeFailed)))
+				}
 				for _, p := range settings.PlanProblems(bundle, bundle.Agents[name], identity.Version) {
 					settingsProblem(p)
 				}
@@ -608,9 +613,16 @@ func (c *Checker) checkNow(ctx context.Context, probe bool) (CheckResult, error)
 	// withhold is no warning: the plan cannot be made, a problem found above
 	// that refuses the workflow.
 	for _, plan := range settings.BindingPlans(bundle, installed) {
+		binding := fmt.Sprintf("workflow %s: %s: process %s on agent %s runtime %s", plan.Workflow, plan.Label, plan.Process, plan.Agent, plan.Runtime)
+		if len(plan.Extra) > 0 {
+			report.Warnings = append(report.Warnings, binding+" grants beyond tools.allow: "+strings.Join(plan.Extra, ", "))
+		}
+		if len(plan.Unverified) > 0 {
+			report.Warnings = append(report.Warnings, binding+" version "+plan.Version+" has unverified primitives: "+strings.Join(plan.Unverified, ", "))
+		}
 		report.Bindings = append(report.Bindings, contract.Binding{
 			Workflow: plan.Workflow, Node: plan.Node, Process: plan.Process, Agent: plan.Agent,
-			Runtime: plan.Runtime, Version: plan.Version, Withheld: plan.Withheld, Required: plan.Required,
+			Runtime: plan.Runtime, Version: plan.Version, Withheld: plan.Withheld, Required: plan.Required, Extra: plan.Extra,
 		})
 	}
 	return finish(), nil

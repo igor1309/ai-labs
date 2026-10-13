@@ -2,7 +2,6 @@ package definition
 
 import (
 	"bytes"
-	"regexp"
 	"sort"
 	"time"
 
@@ -17,11 +16,6 @@ const (
 	AgentSchema   = "agister.agent/v1alpha1"
 	ServiceSchema = "agister.service/v1alpha1"
 )
-
-var namePattern = regexp.MustCompile(`^[a-z][a-z0-9_-]*$`)
-
-// ValidName reports whether name is usable as a definition name.
-func ValidName(name string) bool { return namePattern.MatchString(name) }
 
 // Agent is a reusable runtime profile. It carries no task, no permissions
 // and no session mode: whether a call's session may be resumed is its
@@ -234,7 +228,7 @@ func checkName(declared, expected string, p *problems) {
 	if declared != "" && expected != "" && declared != expected {
 		p.add("name", "%q does not match its definition name %q", declared, expected)
 	}
-	if declared != "" && !ValidName(declared) {
+	if declared != "" && !document.ValidName(declared) {
 		p.add("name", "invalid name %q", declared)
 	}
 }

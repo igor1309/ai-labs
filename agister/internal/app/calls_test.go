@@ -1081,7 +1081,10 @@ func TestRefusalsComeBeforeEffects(t *testing.T) {
 		{"runtime unavailable", func(h *harness) { h.runner.identityErr = errors.New("no binary") }, contract.CallRequest{}, "runtime rt is unavailable: no binary"},
 		{"runner cannot be built", func(h *harness) { h.runtimes.runnerErr = errors.New("no such command") }, contract.CallRequest{}, "runtime mapping rt: no such command"},
 		{"adapter contract mismatch", func(h *harness) { h.runner.identity.Contract = "spy/2" }, contract.CallRequest{}, "describes adapter contract spy/1, but the adapter implements spy/2"},
-		{"unverified version", func(h *harness) { h.runner.identity.Version = "2.0.0" }, contract.CallRequest{}, "verifies no primitive for spy version 2.0.0"},
+		// ADR-036: missing version evidence warns; missing require still refuses.
+		{"required grant missing", func(h *harness) {
+			h.defs.docs[document.KindProcess]["p"] = strings.Replace(h.defs.docs[document.KindProcess]["p"], "repository.diff]}", "repository.diff], require: [repository.diff]}", 1)
+		}, contract.CallRequest{}, "required permissions would be withheld: repository.diff"},
 		{"caller widens timeout", nil, contract.CallRequest{Timeout: "2h"}, "caller timeout 2h0m0s widens the effective 20m0s"},
 		{"unknown param", nil, contract.CallRequest{Params: map[string]string{"focus": "x"}}, "takes no params: focus"},
 		{"input fails", func(h *harness) {
@@ -1126,31 +1129,20 @@ func TestStateReachingPrimitivesAreNeverGranted(t *testing.T) {
 	}
 }
 
-// A primitive whose grants were never checked against the runtime's version
-// is not granted, even when everything it declares is allowed.
-func TestUnverifiedPrimitivesAreNeverGranted(t *testing.T) {
+// ADR-036: an unverified primitive runs and warns, including when required.
+func TestUnverifiedPrimitivesRunWithWarnings(t *testing.T) {
 	t.Parallel()
-	h := newHarness()
-	mapping := h.defs.docs[document.KindRuntime]["rt"]
-	h.defs.docs[document.KindRuntime]["rt"] = strings.Replace(mapping, "  items:\n", `  items:
-    Glob: {grants: [repository.read]}
-    Diff: {grants: [repository.diff], verified: ["2."]}
-`, 1)
-	h.call(t, contract.CallRequest{})
-	if primitives := h.runner.calls()[0].Primitives; !reflect.DeepEqual(primitives, []string{"Read", "Grep"}) {
-		t.Fatalf("primitives = %v, want only the ones verified for 1.2.3", primitives)
-	}
-
-	// Requiring what only an unverified primitive provides refuses, and says why.
-	h = newHarness()
-	h.defs.docs[document.KindRuntime]["rt"] = strings.Replace(mapping, "  items:\n", "  items:\n    Diff: {grants: [repository.diff], verified: [\"2.\"]}\n", 1)
-	h.defs.docs[document.KindProcess]["p"] = strings.Replace(h.defs.docs[document.KindProcess]["p"], "repository.diff]}", "repository.diff], require: [repository.diff]}", 1)
-	record := h.call(t, contract.CallRequest{})
-	if class(record) != run.ClassRefused || !strings.Contains(message(record), "required permissions would be withheld: repository.diff (not verified for version 1.2.3: Diff)") {
-		t.Fatalf("result %+v", record.Result.Error)
-	}
-	if len(h.runner.calls()) != 0 {
-		t.Fatal("the runtime ran after a refusal")
+	for _, require := range []bool{false, true} {
+		h := newHarness()
+		mapping := h.defs.docs[document.KindRuntime]["rt"]
+		h.defs.docs[document.KindRuntime]["rt"] = strings.Replace(mapping, "  items:\n", "  items:\n    Diff: {grants: [repository.diff], verified: [\"2.\"]}\n", 1)
+		if require {
+			h.defs.docs[document.KindProcess]["p"] = strings.Replace(h.defs.docs[document.KindProcess]["p"], "repository.diff]}", "repository.diff], require: [repository.diff]}", 1)
+		}
+		record := h.call(t, contract.CallRequest{})
+		if record.Result.Status != run.Completed || !reflect.DeepEqual(h.runner.calls()[0].Primitives, []string{"Diff", "Read", "Grep"}) || !strings.Contains(strings.Join(record.Result.Warnings, "\n"), "unverified primitives: Diff") {
+			t.Fatalf("record = %+v", record)
+		}
 	}
 }
 
@@ -1162,9 +1154,9 @@ func TestACallThatCannotReadASkillIsRefused(t *testing.T) {
 	widen := func(h *harness) {
 		h.defs.docs[document.KindProcess]["p"] = strings.Replace(h.defs.docs[document.KindProcess]["p"], "repository.diff]", "repository.diff, process.execute, host.read]", 1)
 	}
-	unverified := func(h *harness) {
+	stateReaching := func(h *harness) {
 		mapping := h.defs.docs[document.KindRuntime]["rt"]
-		h.defs.docs[document.KindRuntime]["rt"] = strings.Replace(mapping, "  items:\n", "  items:\n    Cat: {grants: [repository.read], verified: [\"2.\"]}\n", 1)
+		h.defs.docs[document.KindRuntime]["rt"] = strings.Replace(mapping, "  items:\n", "  items:\n    Cat: {grants: [repository.read, host.read], verified: [\"2.\"]}\n", 1)
 	}
 	cases := []struct {
 		name    string
@@ -1176,9 +1168,9 @@ func TestACallThatCannotReadASkillIsRefused(t *testing.T) {
 			"workflow p_a uses process p: runtime rt needs Bash to use the repository's skills (ADR-006), and the plan grants no such tool: Bash needs process.execute, host.read, which the effective permissions do not allow"},
 		{"withheld", widen, []string{"Bash"},
 			"workflow p_a uses process p: runtime rt needs Bash to use the repository's skills (ADR-006), and the plan grants no such tool: Bash needs host.read, which the plan withholds"},
-		{"unverified or unknown", unverified, []string{"Cat", "Bash", "Head"},
+		{"state reaching or unknown", stateReaching, []string{"Cat", "Bash", "Head"},
 			"workflow p_a uses process p: runtime rt needs Cat or Bash or Head to use the repository's skills (ADR-006), and the plan grants no such tool: " +
-				"Cat is not verified for version 1.2.3; Bash needs process.execute, host.read, which the effective permissions do not allow; runtime mapping rt has no Head"},
+				"Cat needs host.read, which the effective permissions do not allow; Bash needs process.execute, host.read, which the effective permissions do not allow; runtime mapping rt has no Head"},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
@@ -1525,7 +1517,7 @@ func TestCallRecordsWhatItResolvedUnderTheRecordsOwnTypes(t *testing.T) {
 	if got := encode(record.Effective); got != wantEffective {
 		t.Errorf("effective\n got %s\nwant %s", got, wantEffective)
 	}
-	wantPlan := `{"primitives":["Read","Grep"],"granted":["repository.read","repository.search"],"withheld":["repository.diff"]}`
+	wantPlan := `{"primitives":["Read","Grep"],"granted":["repository.read","repository.search"],"withheld":["repository.diff"],"declared":["repository.read","repository.search","repository.diff"],"extra":[]}`
 	if got := encode(record.Plan); got != wantPlan {
 		t.Errorf("plan\n got %s\nwant %s", got, wantPlan)
 	}

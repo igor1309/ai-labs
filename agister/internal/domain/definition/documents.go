@@ -278,7 +278,7 @@ func parseProcess(doc document.Document, p *problems) Process {
 
 	if node, ok := values["verify"]; ok {
 		if node.Kind == yaml.ScalarNode && node.Tag != "!!null" {
-			if name, ok := strings.CutPrefix(node.Value, "verify:"); ok && ValidName(name) {
+			if name, ok := strings.CutPrefix(node.Value, "verify:"); ok && document.ValidName(name) {
 				process.VerifyName = name
 			} else {
 				p.add("verify", `must be "verify:<name>" or the inline fields`)

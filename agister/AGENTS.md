@@ -49,10 +49,22 @@ verification rules. Issues are in the Multica project `Agister`, in the
   which keeps only what is this repository's own. After a change to
   `home/`, or one that `home/` must follow, merges and
   `scripts/finish-merged-pr.sh` rebuilds Agister, install the folder
-  from `agister/` in the main checkout, `agister install home`, read its
+  from `agister/` in the main checkout. First run
+  `scripts/retire-review-judge-codex.sh` to back up and remove any
+  runtime-specific judge copies (ADR-036); then `agister install home`, read its
   plan, answer yes, and check home with the new binary (`agister check`).
   This step is the agent's, not the owner's. The exception is the
   folder's first install into home, after LAB-84 merges: it replaces
   home's hand copies, and the owner runs it (LAB-84, out of scope;
   ADR-027). Until the owner has, no agent installs the folder.
 - ADRs reference only earlier ADRs.
+
+- Runtime permissions are best effort (ADR-036): use runtimes as shipped,
+  with documented options only, and no runtime-specific workarounds.
+  `tools.require` and the service's `state_reaching` remain hard checks;
+  extra grants and unverified versions warn. Select by distinct grants and
+  persist call warnings before runtime startup and workflow node warnings as
+  nodes finish for abandoned and reaped outcomes.
+  Keep binding views, records and printed outcomes consistent about those
+  warnings. Prompts instruct
+  which evidence to use and make no claim about the environment's tools.

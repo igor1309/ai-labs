@@ -80,7 +80,7 @@ func TestRecordJSONForDefinitionsPolicyAndPlanIsFixed(t *testing.T) {
 			Access:      "read-only",
 			Scope:       "candidate",
 		},
-		Plan: &run.Plan{Primitives: []string{"Read"}, Granted: []string{"repository.read"}, Withheld: []string{"repository.diff"}},
+		Plan: &run.Plan{Primitives: []string{"Read"}, Granted: []string{"repository.read", "process.execute"}, Withheld: []string{"repository.diff"}, Declared: []string{"repository.read"}, Extra: []string{"process.execute"}},
 	}
 	data, err := json.Marshal(record)
 	if err != nil {
@@ -95,7 +95,7 @@ func TestRecordJSONForDefinitionsPolicyAndPlanIsFixed(t *testing.T) {
 			`{"kind":"agents","name":"a","path":"/repo/.agister/agents/a.toml","sha256":"def","project":true,"overrides":"/home/.agister/agents/a.toml"}]`,
 		"effective": `{"timeout":1200000000000,"max_attempts":1,"max_cost_usd":0.5,"allow":["repository.read"],"deny":[],` +
 			`"permissions":["repository.read"],"require":["repository.read"],"access":"read-only","scope":"candidate"}`,
-		"plan": `{"primitives":["Read"],"granted":["repository.read"],"withheld":["repository.diff"]}`,
+		"plan": `{"primitives":["Read"],"granted":["repository.read","process.execute"],"withheld":["repository.diff"],"declared":["repository.read"],"extra":["process.execute"]}`,
 	}
 	for field, text := range want {
 		if string(got[field]) != text {
@@ -357,5 +357,43 @@ func TestLatestTotalsAreTheSessionsLatestRecordedTurn(t *testing.T) {
 		if test.want == nil && got != nil || test.want != nil && (got == nil || *got.CostUSD != *test.want) {
 			t.Fatalf("%s: got %+v, want %v", test.name, got, test.want)
 		}
+	}
+}
+
+func TestRecordIncludesPersistedWarningsInOutcomes(t *testing.T) {
+	t.Parallel()
+	for _, c := range []struct {
+		name          string
+		plan          *run.Plan
+		workflow      *run.Workflow
+		outcome, want []string
+	}{
+		{name: "older record", outcome: []string{"outcome warning"}, want: []string{"outcome warning"}},
+		{name: "plan warning", plan: &run.Plan{Warnings: []string{"plan warning"}}, want: []string{"plan warning"}},
+		{name: "both sources", plan: &run.Plan{Warnings: []string{"plan warning"}}, outcome: []string{"outcome warning"}, want: []string{"outcome warning", "plan warning"}},
+		{name: "warning already included", plan: &run.Plan{Warnings: []string{"plan warning"}}, outcome: []string{"plan warning"}, want: []string{"plan warning"}},
+		{name: "workflow warning", workflow: &run.Workflow{Warnings: []string{"node one: plan warning"}}, want: []string{"node one: plan warning"}},
+		{name: "older workflow", workflow: &run.Workflow{}, outcome: []string{"outcome warning"}, want: []string{"outcome warning"}},
+		{name: "workflow warning already included", workflow: &run.Workflow{Warnings: []string{"node one: plan warning"}}, outcome: []string{"node one: plan warning"}, want: []string{"node one: plan warning"}},
+		{name: "all sources", plan: &run.Plan{Warnings: []string{"plan warning"}}, workflow: &run.Workflow{Warnings: []string{"node one: plan warning"}}, outcome: []string{"outcome warning"}, want: []string{"outcome warning", "plan warning", "node one: plan warning"}},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
+			record := run.Record{Plan: c.plan, Workflow: c.workflow}
+			result := record.WithWarnings(run.Result{Status: run.Completed, Warnings: c.outcome})
+			if result.Status != run.Completed || !reflect.DeepEqual(result.Warnings, c.want) {
+				t.Fatalf("outcome = %+v, want warnings %v", result, c.want)
+			}
+			result.Warnings[0] = "caller changed it"
+			if c.plan != nil && c.plan.Warnings[0] != "plan warning" {
+				t.Fatalf("outcome changed the snapshot: %v", c.plan.Warnings)
+			}
+			if c.workflow != nil && len(c.workflow.Warnings) > 0 && c.workflow.Warnings[0] != "node one: plan warning" {
+				t.Fatalf("outcome changed the workflow snapshot: %v", c.workflow.Warnings)
+			}
+			if len(c.outcome) > 0 && c.outcome[0] != c.want[0] {
+				t.Fatalf("outcome changed the original result: %v", c.outcome)
+			}
+		})
 	}
 }

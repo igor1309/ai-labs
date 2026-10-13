@@ -9,7 +9,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/igor1309/ai-labs/agister/internal/domain/definition"
 	"github.com/igor1309/ai-labs/agister/internal/domain/document"
 	"gopkg.in/yaml.v3"
 )
@@ -201,7 +200,7 @@ func settingsComposition(store SettingsStore) (map[string]string, map[string]any
 			continue
 		}
 		for _, name := range append(doc.Guidance, doc.Prompt) {
-			if !definition.ValidName(name) || referenced[name] {
+			if !document.ValidName(name) || referenced[name] {
 				continue
 			}
 			referenced[name] = true

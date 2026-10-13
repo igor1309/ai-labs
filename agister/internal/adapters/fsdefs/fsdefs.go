@@ -113,7 +113,7 @@ func (s Store) path(kind document.Kind, name string) (string, error) {
 	if singleton(kind) {
 		return filepath.Join(s.Dir, string(kind)+extension), nil
 	}
-	if !definition.ValidName(name) {
+	if !document.ValidName(name) {
 		return "", fmt.Errorf("invalid name %q", name)
 	}
 	if kind == document.KindSkill {
@@ -381,7 +381,7 @@ func (s Store) List(_ context.Context, kind document.Kind) ([]string, error) {
 		// A file in prompts/ whose name breaks the naming rule is not a
 		// prompt: settings may still read it through source: file (ADR-014
 		// rule 5).
-		if kind == document.KindPrompt && !definition.ValidName(name) {
+		if kind == document.KindPrompt && !document.ValidName(name) {
 			continue
 		}
 		names = append(names, name)

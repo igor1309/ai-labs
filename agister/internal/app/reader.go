@@ -73,10 +73,6 @@ const (
 	obsoleteWorkspace = definition.ObsoleteWorkspace
 )
 
-// validName reports whether name can name a document, as the parser
-// decides it (ADR-015 rule 4).
-func validName(name string) bool { return definition.ValidName(name) }
-
 // withHome is doc, a composed kind's document, as writing home to the home
 // layer would make it, as the parser composes it (ADR-028 rule 4).
 func withHome(doc document.Document, home document.LayerText) (document.Document, error) {

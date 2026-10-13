@@ -89,7 +89,7 @@ func ParseBlocks(doc document.Document) (Blocks, error) {
 		case !known:
 			p.add(field+".ref", "%q cannot be blocked: only a process, workflow, agent or runtime is", prefix)
 			continue
-		case !ValidName(name):
+		case !document.ValidName(name):
 			p.add(field+".ref", "invalid %s name %q", kind.Singular(), name)
 			continue
 		}

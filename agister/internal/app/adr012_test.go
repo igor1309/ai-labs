@@ -208,9 +208,9 @@ func TestADR012WorkflowPreflightsRuntimeProblems(t *testing.T) {
 		{"adapter contract", "second", func(h *harness, docs map[document.Kind]map[string]string) {
 			docs[document.KindRuntime]["bad"] = strings.Replace(docs[document.KindRuntime]["bad"], "contract: spy/1", "contract: spy/2", 1)
 		}, "describes adapter contract spy/2", "runtime mapping bad describes adapter contract spy/2, but the adapter implements spy/1"},
-		{"actual runtime version", "joiner", func(h *harness, docs map[document.Kind]map[string]string) {
-			docs[document.KindRuntime]["bad"] = strings.ReplaceAll(docs[document.KindRuntime]["bad"], `verified: ["1."]`, `verified: ["2."]`)
-		}, "verifies no primitive for spy version 1.2.3", "runtime mapping bad verifies no primitive for spy version 1.2.3"},
+		{"runtime unavailable", "joiner", func(h *harness, docs map[document.Kind]map[string]string) {
+			h.runner.identityErr = errors.New("missing CLI")
+		}, "runtime bad is unavailable: missing CLI", ""},
 		{"runtime cannot repair", "second", func(h *harness, docs map[document.Kind]map[string]string) {
 			docs[document.KindService]["service"] += "max_verify_attempts = 3\n"
 			docs[document.KindProcess]["second"] = namingVerification(docs[document.KindProcess]["second"] + "session: resumable\n")

@@ -732,6 +732,25 @@ var workflowAgents = map[string]map[string]string{
 	},
 }
 
+// Agister is reviewed on Codex only: its layer's join-only partial rebinds
+// code_review's judge to codex-sol-61, with the reviewers and the shared
+// judge process from home, and a call launched outside agister/ keeps
+// home's judge (ADR-036 rule 8, LAB-253).
+func TestAgistersLayerRebindsTheReviewJudgeToCodex(t *testing.T) {
+	t.Parallel()
+	_, repo, home := onFakeRuntimes(t)
+	for dir, want := range map[string]string{filepath.Join(repo, "agister"): "codex-sol-61", repo: "claude-opus"} {
+		r := agister(t, home, dir, "workflow", "show", "code_review")
+		judge := "judge: process review_judge, agent " + want + " "
+		if r.code != 0 || !strings.Contains(r.stdout, judge) || strings.Contains(r.stdout, "REFUSED") {
+			t.Errorf("workflow show code_review in %s: %d, want %q\n%s%s", dir, r.code, judge, r.stdout, r.stderr)
+		}
+		if strings.Count(r.stdout, "agent codex-sol-61 ") < 5 {
+			t.Errorf("workflow show code_review in %s: want the five reviewers on codex-sol-61\n%s", dir, r.stdout)
+		}
+	}
+}
+
 // Each node of code_review and adr_review names its agent (ADR-030 rule
 // 5), the one of workflowAgents: its workflow's file in the home folder
 // says it on the node. The node binds it, not its process: in the
@@ -2731,7 +2750,8 @@ func TestCheckOnHomeWarnsOfNoBinding(t *testing.T) {
 		t.Fatalf("check: %d %v\n%s%s", r.code, err, r.stdout, r.stderr)
 	}
 	for _, warning := range report.Warnings {
-		if !strings.Contains(warning, "names verify:repo, which does not exist") {
+		// ADR-036 also reports the selected primitives without version evidence.
+		if !strings.Contains(warning, "names verify:repo, which does not exist") && !strings.Contains(warning, "has unverified primitives:") {
 			t.Errorf("check warns %q, want only the verify:repo a repository fills", warning)
 		}
 	}

@@ -165,14 +165,15 @@ Fields: `internal/domain/definition/documents.go:23-130`, `toml.go:27-60`,
   (`internal/domain/policy/policy.go:205`; ADR-024 rules 5 and 6, ADR-030
   rule 3)
 - The enforcement plan comes from the effective permissions and the
-  agent's runtime mapping: a primitive is granted only if everything it
-  grants is allowed; allowed permissions no primitive provides are withheld
+  agent's runtime mapping: under `select: one`, the safe primitive with the fewest distinct grants covering require
+  is selected, and grants beyond the best-effort allow set warn; `select: any`
+  grants fitting safe tools; allowed permissions no primitive provides are withheld
   and recorded, and the call is refused if the process requires them.
-  (ADR-001 rule 4; `internal/domain/enforce/enforce.go:47`)
+  (ADR-036; `internal/domain/enforce/enforce.go`)
 - The binding check: `check` resolves every node of every workflow as a
   call would, up to the runtime's installed version: the process, the
   agent, its runtime mapping and the plan. A binding whose mapping gives
-  no primitive within `tools.allow`, that would withhold a permission in
+  no safe primitive, that would withhold a permission in
   `tools.require`, or that fails as a call on that agent would, is a
   problem of the workflow, naming the node; it refuses that workflow,
   not the process or the agent. A permission allowed and not required
@@ -481,3 +482,16 @@ and ignored, and `check` warns (`internal/app/check.go:289`; ADR-025).
   README describes its implemented decision. Guidance rule 13 states what
   settings must give a node; the binary resolves and records those fields,
   and does not audit pointers in `AGENTS.md` or skills.
+
+### Runtime evidence and review bindings
+
+- Unverified versions and selected primitives warn. The probe is
+  observability; a failed probe does not refuse the call (ADR-036).
+- Extra grants are shown per binding and kept as `plan.extra` beside
+  `declared` and `granted`; `plan.warnings` persists before runtime startup
+  and finished, abandoned and reaped outcomes carry those warnings. Workflows
+  persist node-labelled warnings in `workflow.warnings` as nodes finish,
+  retaining them through parent abandonment and reaping. Extra writing
+  grants make the call a writer.
+- A join-only partial, `join: {agent: codex-sol-61}`, rebinds the shared
+  judge without copying the reviewers or the judge process.

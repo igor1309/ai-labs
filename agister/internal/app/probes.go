@@ -93,8 +93,10 @@ func (p *Probes) Verified(ctx context.Context, adapter, command, version string)
 	return probe.Primitives, nil
 }
 
-// probeRefusal is why a runtime version is refused when the settings verify
-// no primitive for it and probing it failed.
+// probeRefusal adds the failed probe evidence to a warning or diagnostic.
 func probeRefusal(err error) string {
+	if err == nil {
+		return ""
+	}
 	return ", and probing it failed: " + strings.ReplaceAll(err.Error(), "\n", "\n  ")
 }

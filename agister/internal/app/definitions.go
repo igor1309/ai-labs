@@ -276,7 +276,7 @@ func (s *Settings) CreateAgent(ctx context.Context, spec contract.Agent, overwri
 		name: spec.Name, runtime: spec.Runtime, model: spec.Model, modelFamily: spec.ModelFamily,
 		effort: spec.Effort, command: spec.Command,
 	}
-	if !validName(agent.name) {
+	if !document.ValidName(agent.name) {
 		return contract.AgentWrite{}, &contract.InputError{Message: fmt.Sprintf("invalid agent name %q", agent.name)}
 	}
 	mapping, _, err := s.documents.Mapping(ctx, agent.runtime)
@@ -519,6 +519,7 @@ type InspectedProcess struct {
 	// required permission, or one the settings make, what else the plan
 	// refused or the settings' plan withholds.
 	Withheld []string
+	Warnings []string
 	Sources  []InspectedSource
 }
 
@@ -680,12 +681,16 @@ func (r *Resolver) inspect(ctx context.Context, name, agent string, caller overr
 		},
 		Primitives: res.plan.Primitives,
 		Withheld:   res.plan.Withheld,
+		Warnings:   res.warnings,
 		Sources:    inspectedSources(res.sources),
 	}
 	// A call refused for withholding a required permission, or by the
 	// settings, still shows what else its plan withholds.
 	if res.refusedPlan.Withheld != nil {
 		inspected.Withheld = slices.DeleteFunc(slices.Clone(res.refusedPlan.Withheld), func(permission string) bool { return contains(res.effective.Require, permission) })
+	}
+	if len(res.refusedPlan.Extra) > 0 {
+		inspected.Warnings = append(inspected.Warnings, "runtime "+res.mapping.name+" grants beyond tools.allow: "+strings.Join(res.refusedPlan.Extra, ", "))
 	}
 	if verify := process.verify; verify != nil {
 		inspected.Process.Verify = &InspectedVerify{Command: verify.command, Timeout: verify.timeout, MaxAttempts: verify.maxAttempts, Instruction: verify.instruction}
@@ -876,6 +881,7 @@ func (i *Inspection) shown(res *InspectedProcess, err error) (contract.ProcessVi
 		Stale:       contract.Stale(res.Effective.Stale),
 		Primitives:  res.Primitives,
 		Withheld:    res.Withheld,
+		Warnings:    res.Warnings,
 		VerifyName:  res.Process.VerifyName,
 		Prompt:      res.Process.Prompt,
 		Guidance:    res.Process.Guidance,
