@@ -690,6 +690,101 @@ func redeclared(t *testing.T, dir, of string) []string {
 	return slices.Compact(found)
 }
 
+// declaredIdentifiers enumerates source declarations without type checking:
+// fixtures may alias constants as types or import unavailable packages. It
+// covers const/var/type specs, function/method names, fields (receivers,
+// parameters, results, type parameters, struct/interface members, including
+// embedded struct fields and receiver type parameters), explicit import names,
+// := assignments (including clause initializers, select receives
+// and type-switch bindings), range := keys/values, and labels. Range = only
+// assigns existing names.
+func declaredIdentifiers(node ast.Node) []*ast.Ident {
+	switch node := node.(type) {
+	case *ast.ValueSpec:
+		return node.Names
+	case *ast.TypeSpec:
+		return []*ast.Ident{node.Name}
+	case *ast.FuncDecl:
+		names := []*ast.Ident{node.Name}
+		if node.Recv != nil {
+			for _, receiver := range node.Recv.List {
+				typ := receiver.Type
+				if pointer, ok := typ.(*ast.StarExpr); ok {
+					typ = pointer.X
+				}
+				var params []ast.Expr
+				switch instance := typ.(type) {
+				case *ast.IndexExpr:
+					params = []ast.Expr{instance.Index}
+				case *ast.IndexListExpr:
+					params = instance.Indices
+				}
+				for _, param := range params {
+					if ident, ok := param.(*ast.Ident); ok {
+						names = append(names, ident)
+					}
+				}
+			}
+		}
+		return names
+	case *ast.Field:
+		return node.Names
+	case *ast.StructType:
+		var names []*ast.Ident
+		for _, field := range node.Fields.List {
+			if len(field.Names) != 0 {
+				continue
+			}
+			// An embedded field declares the base type's name, even when
+			// the type is imported, a pointer or instantiated.
+			typ := field.Type
+			if pointer, ok := typ.(*ast.StarExpr); ok {
+				typ = pointer.X
+			}
+			switch instance := typ.(type) {
+			case *ast.IndexExpr:
+				typ = instance.X
+			case *ast.IndexListExpr:
+				typ = instance.X
+			}
+			switch typ := typ.(type) {
+			case *ast.Ident:
+				names = append(names, typ)
+			case *ast.SelectorExpr:
+				names = append(names, typ.Sel)
+			}
+		}
+		return names
+	case *ast.ImportSpec:
+		if node.Name != nil {
+			return []*ast.Ident{node.Name}
+		}
+	case *ast.AssignStmt:
+		if node.Tok == token.DEFINE {
+			var names []*ast.Ident
+			for _, lhs := range node.Lhs {
+				if ident, ok := lhs.(*ast.Ident); ok {
+					names = append(names, ident)
+				}
+			}
+			return names
+		}
+	case *ast.RangeStmt:
+		if node.Tok == token.DEFINE {
+			var names []*ast.Ident
+			for _, expr := range []ast.Expr{node.Key, node.Value} {
+				if ident, ok := expr.(*ast.Ident); ok {
+					names = append(names, ident)
+				}
+			}
+			return names
+		}
+	case *ast.LabeledStmt:
+		return []*ast.Ident{node.Label}
+	}
+	return nil
+}
+
 // inputVocabularyGuard checks non-test sources: definition declares none of
 // the five moved names, and definition and app declare no const, var or type
 // alias whose value is exactly an imported input constant. Short variable
@@ -742,6 +837,9 @@ func inputVocabularyGuard(t *testing.T, dir string, isParser bool) []string {
 		}
 		inherited := make(map[*ast.ValueSpec][]ast.Expr)
 		ast.Inspect(file, func(node ast.Node) bool {
+			for _, ident := range declaredIdentifiers(node) {
+				declaration(ident)
+			}
 			switch node := node.(type) {
 			case *ast.GenDecl:
 				if node.Tok == token.CONST {
@@ -756,12 +854,7 @@ func inputVocabularyGuard(t *testing.T, dir string, isParser bool) []string {
 						}
 					}
 				}
-			case *ast.FuncDecl:
-				if node.Recv == nil {
-					declaration(node.Name)
-				}
 			case *ast.TypeSpec:
-				declaration(node.Name)
 				if node.Assign.IsValid() {
 					forward(node.Name, node.Type)
 				}
@@ -771,7 +864,6 @@ func inputVocabularyGuard(t *testing.T, dir string, isParser bool) []string {
 					values = inherited[node]
 				}
 				for i, ident := range node.Names {
-					declaration(ident)
 					if i < len(values) {
 						forward(ident, values[i])
 					}
@@ -780,7 +872,6 @@ func inputVocabularyGuard(t *testing.T, dir string, isParser bool) []string {
 				if node.Tok == token.DEFINE {
 					for i, lhs := range node.Lhs {
 						if ident, ok := lhs.(*ast.Ident); ok {
-							declaration(ident)
 							if i < len(node.Rhs) {
 								forward(ident, node.Rhs[i])
 							}
@@ -1393,22 +1484,76 @@ func TestTheParserDeclaresNoneOfTheInputVocabulary(t *testing.T) {
 			}
 			var cases []fixture
 			for _, declared := range []struct{ name, source string }{
-				{"constant", "const %s = \"prompt\"\n"},
-				{"variable", "var %s = \"prompt\"\n"},
-				{"type", "type %s string\n"},
-				{"function", "func %s() {}\n"},
-				{"local", "func scope%s() { var %s = \"prompt\" }\n"},
+				{"constant", "const %[1]s = \"prompt\"\n"},
+				{"variable", "var %[1]s = \"prompt\"\n"},
+				{"type", "type %[1]s string\n"},
+				{"type alias", "type %[1]s = string\n"},
+				{"function", "func %[1]s() {}\n"},
+				{"local constant", "func scope%[1]s() { const %[1]s = \"prompt\" }\n"},
+				{"local variable", "func scope%[1]s() { var %[1]s = \"prompt\"; _ = %[1]s }\n"},
+				{"local type", "func scope%[1]s() { type %[1]s string }\n"},
+				{"local type alias", "func scope%[1]s() { type %[1]s = string }\n"},
+				{"method", "type receiver%[1]s struct{}; func (receiver%[1]s) %[1]s() {}\n"},
+				{"receiver", "type receiver%[1]s struct{}; func (%[1]s *receiver%[1]s) method() {}\n"},
+				{"receiver type parameter", "type receiver%[1]s[T any] struct{}; func (receiver%[1]s[%[1]s]) method() {}\n"},
+				{"pointer receiver type parameters", "type receiver%[1]s[T, U any] struct{}; func (*receiver%[1]s[other, %[1]s]) method() {}\n"},
+				{"parameter", "func scope%[1]s(%[1]s string) {}\n"},
+				{"result", "func scope%[1]s() (%[1]s string) { return }\n"},
+				{"method parameter", "type receiver%[1]s struct{}; func (receiver%[1]s) method(%[1]s string) {}\n"},
+				{"method result", "type receiver%[1]s struct{}; func (receiver%[1]s) method() (%[1]s string) { return }\n"},
+				{"literal parameter", "var scope%[1]s = func(%[1]s string) {}\n"},
+				{"literal result", "var scope%[1]s = func() (%[1]s string) { return }\n"},
+				{"function type parameter", "func scope%[1]s[%[1]s any]() {}\n"},
+				{"type parameter", "type scope%[1]s[%[1]s any] struct{}\n"},
+				{"struct field", "type scope%[1]s struct { %[1]s string }\n"},
+				{"interface method", "type scope%[1]s interface { %[1]s() }\n"},
+				{"short assignment", "func scope%[1]s() { %[1]s := 0; _ = %[1]s }\n"},
+				{"if initializer", "func scope%[1]s() { if %[1]s := 0; %[1]s == 0 {} }\n"},
+				{"switch initializer", "func scope%[1]s() { switch %[1]s := 0; %[1]s {} }\n"},
+				{"type switch initializer", "func scope%[1]s(v any) { switch %[1]s := 0; v.(type) { default: _ = %[1]s } }\n"},
+				{"for initializer", "func scope%[1]s() { for %[1]s := 0; %[1]s < 1; %[1]s++ {} }\n"},
+				{"select receive", "func scope%[1]s(ch chan int) { select { case %[1]s := <-ch: _ = %[1]s } }\n"},
+				{"select receive status", "func scope%[1]s(ch chan int) { select { case _, %[1]s := <-ch: _ = %[1]s } }\n"},
+				{"range key", "func scope%[1]s() { for %[1]s := range []int{1} { _ = %[1]s } }\n"},
+				{"range value", "func scope%[1]s() { for _, %[1]s := range []int{1} { _ = %[1]s } }\n"},
+				{"type switch binding", "func scope%[1]s(v any) { switch %[1]s := v.(type) { default: _ = %[1]s } }\n"},
+				{"label", "func scope%[1]s() { %[1]s: for { break %[1]s } }\n"},
+				{"import name", "import %[1]s \"example.com/other\"\n"},
 			} {
 				c := fixture{name: "declares moved names as " + declared.name}
 				for _, name := range names {
-					if declared.name == "local" {
-						c.source += fmt.Sprintf(declared.source, name, name)
-					} else {
-						c.source += fmt.Sprintf(declared.source, name)
-					}
+					c.source += fmt.Sprintf(declared.source, name)
 					if pkg.isParser {
 						c.want = append(c.want, "forward.go: declares "+name)
 					}
+				}
+				cases = append(cases, c)
+			}
+			for _, embedded := range []struct{ name, source string }{
+				{"embedded field", "%[1]s"},
+				{"embedded pointer field", "*%[1]s"},
+				{"embedded imported field", "other.%[1]s"},
+				{"embedded imported pointer field", "*other.%[1]s"},
+				{"embedded generic field", "other.%[1]s[int]"},
+				{"embedded generic pointer field", "*other.%[1]s[int, string]"},
+			} {
+				c := fixture{name: "declares moved names as " + embedded.name,
+					source: "import ( . \"example.com/types\"; other \"example.com/other\" )\n"}
+				for _, name := range names {
+					c.source += fmt.Sprintf("type scope%s struct { %s }\n", name, fmt.Sprintf(embedded.source, name))
+					if pkg.isParser {
+						c.want = append(c.want, "forward.go: declares "+name)
+					}
+				}
+				cases = append(cases, c)
+			}
+			for _, assigned := range []struct{ name, source string }{
+				{"range key assignment", "func scope%[1]s() { for %[1]s = range []int{1} {} }\n"},
+				{"range value assignment", "func scope%[1]s() { for _, %[1]s = range []int{1} {} }\n"},
+			} {
+				c := fixture{name: assigned.name, source: "import . \"example.com/other\"\n"}
+				for _, name := range names {
+					c.source += fmt.Sprintf(assigned.source, name)
 				}
 				cases = append(cases, c)
 			}
@@ -1480,7 +1625,7 @@ func TestTheParserDeclaresNoneOfTheInputVocabulary(t *testing.T) {
 					"const literal = \"prompt\"; var unrelated = other.PromptInput\n" +
 					"func use() string { return input.PromptInput }\n" +
 					"func changed() { prefix := input.GuidanceInput + \"name\"; var copy = prefix; _ = copy }\n" +
-					"func shadowed(input struct { PromptInput string }) { var own = input.PromptInput; _ = own }\n",
+					"func shadowed(input other.Value) { var own = input.PromptInput; _ = own }\n",
 			})
 			for _, c := range cases {
 				t.Run(c.name, func(t *testing.T) {
