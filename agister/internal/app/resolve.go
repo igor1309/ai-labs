@@ -40,7 +40,7 @@ func refuse(format string, args ...any) error { return &Refusal{Reason: fmt.Spri
 // consumer is given its own translation of it (see Resolver.Snapshot and
 // Resolver.InspectProcess).
 type resolution struct {
-	service definition.Service
+	service serviceSettings
 	process definition.Process
 	agent   definition.Agent
 	mapping definition.Mapping
@@ -321,7 +321,7 @@ func (r *Resolver) resolveCall(ctx context.Context, processName, agentOverride s
 		if err = took("", document.KindRuntime, res.agent.Runtime, source, err); err != nil {
 			return res, err
 		}
-		if unknown := offer(res.mapping).UnknownPermissions(res.service.Permissions); len(unknown) > 0 {
+		if unknown := offer(res.mapping).UnknownPermissions(res.service.ceilings.Permissions); len(unknown) > 0 {
 			return res, refuse("runtime mapping %s grants permissions not in the vocabulary: %s", res.mapping.Name, strings.Join(unknown, ", "))
 		}
 		if res.agent.Effort != "" && !contains(res.mapping.Efforts, res.agent.Effort) {
@@ -406,7 +406,7 @@ func (r *Resolver) resolveCall(ctx context.Context, processName, agentOverride s
 	if caller.maxCostUSD != nil && *caller.maxCostUSD <= 0 {
 		return res, refuse("invalid cost limit %g", *caller.maxCostUSD)
 	}
-	if res.effective, err = policy.Compose(ceilings(res.service), declared(res.process), limits); err != nil {
+	if res.effective, err = policy.Compose(res.service.ceilings, declared(res.process), limits); err != nil {
 		return res, refuse("%v", err)
 	}
 	// Refused once everything that needs no agent is resolved, so its view
@@ -417,7 +417,7 @@ func (r *Resolver) resolveCall(ctx context.Context, processName, agentOverride s
 	// A call the settings refuse never asks its runtime: its view shows
 	// what the settings' plan withholds, which no call is given.
 	if settingsOnly {
-		res.refusedPlan, _ = settings.SettingsPlan(res.effective, offer(res.mapping), res.service.StateReaching)
+		res.refusedPlan, _ = settings.SettingsPlan(res.effective, offer(res.mapping), res.service.stateReaching)
 	}
 
 	// Whether the call's session may be resumed is its process's to say
@@ -486,7 +486,7 @@ func (r *Resolver) resolveCall(ctx context.Context, processName, agentOverride s
 		}
 	}
 	subject = root
-	if res.plan, err = enforce.Make(res.effective.Permissions, verified, res.effective.Require, res.service.StateReaching); err != nil {
+	if res.plan, err = enforce.Make(res.effective.Permissions, verified, res.effective.Require, res.service.stateReaching); err != nil {
 		if refused := (*enforce.RefusedError)(nil); errors.As(err, &refused) && refused.Plan != nil {
 			res.refusedPlan = *refused.Plan
 		}
@@ -497,7 +497,7 @@ func (r *Resolver) resolveCall(ctx context.Context, processName, agentOverride s
 			res.mapping.Name, strings.Join(tools, " or "), withoutSkillTools(res, tools, verified, unverified))
 	}
 	res.writer = res.process.Verify != nil || res.process.VerifyName != "" ||
-		slices.ContainsFunc(res.plan.Granted, func(permission string) bool { return contains(res.service.Writing, permission) })
+		slices.ContainsFunc(res.plan.Granted, func(permission string) bool { return contains(res.service.ceilings.Writing, permission) })
 	return res, nil
 }
 
@@ -508,7 +508,7 @@ func (r *Resolver) resolveCall(ctx context.Context, processName, agentOverride s
 func withoutSkillTools(res *resolution, tools []string, verified enforce.Offer, unverified []string) string {
 	// What a primitive may grant: the effective permissions, less the
 	// state-reaching ones, which the plan withholds (enforce.Make).
-	allowed := slices.DeleteFunc(slices.Clone(res.effective.Permissions), func(p string) bool { return contains(res.service.StateReaching, p) })
+	allowed := slices.DeleteFunc(slices.Clone(res.effective.Permissions), func(p string) bool { return contains(res.service.stateReaching, p) })
 	var reasons []string
 	for _, tool := range tools {
 		i := slices.IndexFunc(verified.Primitives, func(p enforce.Primitive) bool { return p.Name == tool })
@@ -672,18 +672,6 @@ func offer(mapping definition.Mapping) enforce.Offer {
 		primitives = append(primitives, enforce.Primitive{Name: primitive.Name, Grants: primitive.Grants, Verified: primitive.Verified})
 	}
 	return enforce.Offer{One: mapping.Select == "one", Primitives: primitives}
-}
-
-// ceilings are what of the service bounds a call's limits.
-func ceilings(service definition.Service) policy.Ceilings {
-	return policy.Ceilings{
-		MaxTimeout:        service.MaxTimeout,
-		MaxAttempts:       service.MaxAttempts,
-		MaxVerifyAttempts: service.MaxVerifyAttempts,
-		MaxCostUSD:        service.MaxCostUSD,
-		Permissions:       service.Permissions,
-		Writing:           service.Writing,
-	}
 }
 
 // declared is what a process declares of its limits, for policy.

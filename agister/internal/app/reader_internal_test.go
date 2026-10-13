@@ -6,9 +6,11 @@ import (
 	"reflect"
 	"slices"
 	"testing"
+	"time"
 
 	"github.com/igor1309/ai-labs/agister/internal/domain/definition"
 	"github.com/igor1309/ai-labs/agister/internal/domain/document"
+	"github.com/igor1309/ai-labs/agister/internal/domain/policy"
 )
 
 // definitionsFake is the definitions a reader reads in a test: it gives
@@ -83,9 +85,15 @@ func reads[T any](kind document.Kind, name, text string, read func(documentReade
 // readerCases are the kinds the reader reads, each with a valid document.
 func readerCases() map[string]readerCase {
 	service := reads(document.KindService, "service", "schema = \"agister.service/v1alpha1\"\nmax_timeout = \"1h\"\npermissions = [\"repository.read\"]\nwriting = []\nstate_reaching = []\n",
-		func(r documentReader, ctx context.Context, _ string) (definition.Service, document.Source, error) {
+		func(r documentReader, ctx context.Context, _ string) (serviceSettings, document.Source, error) {
 			return r.Service(ctx)
-		}, definition.ParseService)
+		},
+		// The service is read in the package's own type: what its parser
+		// gives, mapped as the reader maps it.
+		func(doc document.Document) (serviceSettings, error) {
+			service, err := definition.ParseService(doc)
+			return serviceOf(service), err
+		})
 	return map[string]readerCase{
 		"the service": service,
 		"a process": reads(document.KindProcess, "p", "schema: agister.process/v1alpha1\nname: p\ntype: process\nprompt: inspect\ninput:\n  instruction: Inspect the change.\noutput:\n  format: text\ntimeout: 20m\ntools: {allow: [repository.read]}\n",
@@ -199,6 +207,145 @@ func TestAFailureToParseKeepsItsProblemsAndTheSource(t *testing.T) {
 			}
 			if !reflect.DeepEqual(got, want) || !reflect.DeepEqual(source, doc.Source) {
 				t.Fatalf("read = %+v, source %+v; want %+v, source %+v", got, source, want, doc.Source)
+			}
+		})
+	}
+}
+
+// serviceDocument is the service document holding text, composed from the
+// layer files given, nearest first.
+func serviceDocument(text string, layers ...document.LayerFile) document.Document {
+	return document.Document{
+		Source: document.Source{Kind: document.KindService, Name: "service", Path: layers[0].Path, Layer: layers[0].Layer, SHA256: "digest of the service", Layers: layers},
+		Bytes:  []byte(text),
+	}
+}
+
+// The service settings are read as the package uses them: every ceiling,
+// the permission lists and the permissions never granted, each as the
+// document says it or as its default, beside the document's source.
+func TestTheReaderGivesTheServiceSettingsAsThePackageUsesThem(t *testing.T) {
+	t.Parallel()
+	cost := 2.5
+	for name, c := range map[string]struct {
+		text string
+		want serviceSettings
+	}{
+		"every field": {
+			text: "schema = \"agister.service/v1alpha1\"\nmax_timeout = \"90m\"\nmax_attempts = 3\nmax_verify_attempts = 4\nmax_cost_usd = 2.5\n" +
+				"permissions = [\"repository.read\", \"repository.write\", \"history.write\", \"state.write\"]\n" +
+				"writing = [\"repository.write\", \"history.write\"]\nstate_reaching = [\"state.write\"]\n",
+			want: serviceSettings{
+				ceilings: policy.Ceilings{
+					MaxTimeout:        90 * time.Minute,
+					MaxAttempts:       3,
+					MaxVerifyAttempts: 4,
+					MaxCostUSD:        &cost,
+					Permissions:       []string{"repository.read", "repository.write", "history.write", "state.write"},
+					Writing:           []string{"repository.write", "history.write"},
+				},
+				stateReaching: []string{"state.write"},
+			},
+		},
+		// One attempt and one verify attempt where the document sets
+		// none, and no cost limit.
+		"only what is required": {
+			text: "schema = \"agister.service/v1alpha1\"\nmax_timeout = \"1h\"\npermissions = [\"repository.read\"]\nwriting = []\n",
+			want: serviceSettings{
+				ceilings: policy.Ceilings{
+					MaxTimeout:        time.Hour,
+					MaxAttempts:       1,
+					MaxVerifyAttempts: 1,
+					Permissions:       []string{"repository.read"},
+					Writing:           []string{},
+				},
+			},
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			doc := serviceDocument(c.text, document.LayerFile{Layer: document.LayerHome, Path: "/home/service.toml"})
+			ref := DocumentRef{Kind: document.KindService, Name: "service"}
+			reader := newDocumentReader(definitionsFake{t: t, docs: map[DocumentRef]document.Document{ref: doc}})
+			got, source, err := reader.Service(context.Background())
+			if err != nil || !reflect.DeepEqual(got, c.want) || !reflect.DeepEqual(source, doc.Source) {
+				t.Fatalf("service = %+v, source %+v, %v; want %+v, source %+v", got, source, err, c.want, doc.Source)
+			}
+		})
+	}
+}
+
+// A service document with problems fails with the parser's
+// *document.InvalidError: its problems in the parser's order, each
+// attributed to the layer file that set the field at fault or, for a field
+// none sets, to every file read, and the unknown ones flagged. What of the
+// document parsed is given beside it, with the document's source.
+func TestAServiceWithProblemsKeepsWhatParsedAndWhereEachProblemIs(t *testing.T) {
+	t.Parallel()
+	const repository, home = "/repo/.agister/service.toml", "/home/service.toml"
+	layers := []document.LayerFile{
+		{Layer: document.LayerRepository, Path: repository, Fields: []string{"max_attempts", "colour", "writing"}},
+		{Layer: document.LayerHome, Path: home, Fields: []string{"schema", "max_verify_attempts", "max_cost_usd", "permissions", "writing", "state_reaching"}},
+	}
+	cost := 2.5
+	for name, c := range map[string]struct {
+		text     string
+		want     serviceSettings
+		problems []document.Problem
+	}{
+		"problems in two layers": {
+			text: "schema = \"agister.service/v1alpha1\"\nmax_attempts = 0\nmax_verify_attempts = 4\nmax_cost_usd = 2.5\ncolour = \"red\"\n" +
+				"permissions = [\"repository.read\", \"repository.write\", \"state.write\"]\n" +
+				"writing = [\"repository.write\", \"history.write\"]\nstate_reaching = [\"state.write\"]\n",
+			want: serviceSettings{
+				ceilings: policy.Ceilings{
+					MaxAttempts:       1,
+					MaxVerifyAttempts: 4,
+					MaxCostUSD:        &cost,
+					Permissions:       []string{"repository.read", "repository.write", "state.write"},
+					Writing:           []string{"repository.write", "history.write"},
+				},
+				stateReaching: []string{"state.write"},
+			},
+			problems: []document.Problem{
+				{Message: "colour: unknown field (set in " + repository + ")", Unknown: true},
+				{Message: "max_timeout: is required (no layer sets it: " + repository + ", " + home + ")"},
+				{Message: "max_attempts: must be a positive integer (set in " + repository + ")"},
+				{Message: "writing: \"history.write\" is not in permissions (set in " + repository + ", " + home + ")"},
+			},
+		},
+		"a schema of a newer version": {
+			text: "schema = \"agister.service/v2\"\nmax_timeout = \"1h\"\nmax_verify_attempts = 4\npermissions = [\"repository.read\"]\nwriting = []\n",
+			want: serviceSettings{
+				ceilings: policy.Ceilings{
+					MaxTimeout:        time.Hour,
+					MaxAttempts:       1,
+					MaxVerifyAttempts: 4,
+					Permissions:       []string{"repository.read"},
+					Writing:           []string{},
+				},
+			},
+			problems: []document.Problem{
+				{Message: "schema: must be \"agister.service/v1alpha1\" (set in " + home + ")", Unknown: true},
+			},
+		},
+		"no text": {
+			text:     "\xff",
+			problems: []document.Problem{{Message: "not a UTF-8 text file"}},
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			doc := serviceDocument(c.text, layers...)
+			ref := DocumentRef{Kind: document.KindService, Name: "service"}
+			reader := newDocumentReader(definitionsFake{t: t, docs: map[DocumentRef]document.Document{ref: doc}})
+			got, source, err := reader.Service(context.Background())
+			invalid, ok := err.(*document.InvalidError)
+			if want := (&document.InvalidError{Subject: "service settings", Problems: c.problems}); unread(err) || !ok || !reflect.DeepEqual(invalid, want) {
+				t.Fatalf("service error = %#v, want %#v", err, want)
+			}
+			if !reflect.DeepEqual(got, c.want) || !reflect.DeepEqual(source, doc.Source) {
+				t.Fatalf("service = %+v, source %+v; want %+v, source %+v", got, source, c.want, doc.Source)
 			}
 		})
 	}

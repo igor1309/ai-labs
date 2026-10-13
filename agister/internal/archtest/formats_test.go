@@ -218,6 +218,29 @@ func TestAFileThatImportsTheParserIsFound(t *testing.T) {
 // document parses to from that file.
 const readerFile = "reader.go"
 
+// parserNames are the names a file, named name, imports the module's parser
+// of the settings files by: "definition" where it gives none, and "." for
+// the parser imported unqualified.
+func parserNames(t *testing.T, name string, file *ast.File) []string {
+	t.Helper()
+	var names []string
+	for _, spec := range file.Imports {
+		path, err := strconv.Unquote(spec.Path.Value)
+		if err != nil {
+			t.Fatalf("%s: %v", name, err)
+		}
+		if path != module+"/internal/domain/definition" {
+			continue
+		}
+		if spec.Name != nil {
+			names = append(names, spec.Name.Name)
+		} else {
+			names = append(names, "definition")
+		}
+	}
+	return names
+}
+
 // parses lists, sorted, each Parse function of the module's parser that a
 // non-test file of dir other than the one excepted names, called or passed
 // on, under every name the file imports the parser by. Syntax tells no
@@ -239,23 +262,9 @@ func parses(t *testing.T, dir, except string) []string {
 		if err != nil {
 			t.Fatal(err)
 		}
-		var parserNames []string
-		for _, spec := range file.Imports {
-			path, err := strconv.Unquote(spec.Path.Value)
-			if err != nil {
-				t.Fatalf("%s: %v", name, err)
-			}
-			if path != module+"/internal/domain/definition" {
-				continue
-			}
-			parserName := "definition"
-			if spec.Name != nil {
-				parserName = spec.Name.Name
-			}
-			if parserName == "." {
-				found = append(found, name+": the parser's names, imported unqualified")
-			}
-			parserNames = append(parserNames, parserName)
+		importedAs := parserNames(t, name, file)
+		if slices.Contains(importedAs, ".") {
+			found = append(found, name+": the parser's names, imported unqualified")
 		}
 		ast.Inspect(file, func(node ast.Node) bool {
 			selector, ok := node.(*ast.SelectorExpr)
@@ -263,7 +272,7 @@ func parses(t *testing.T, dir, except string) []string {
 				return true
 			}
 			pkg, qualified := selector.X.(*ast.Ident)
-			if qualified && slices.Contains(parserNames, pkg.Name) && strings.HasPrefix(selector.Sel.Name, "Parse") {
+			if qualified && slices.Contains(importedAs, pkg.Name) && strings.HasPrefix(selector.Sel.Name, "Parse") {
 				found = append(found, name+": "+types.ExprString(selector))
 			}
 			return true
@@ -355,6 +364,141 @@ func parse(doc document.Document) (Skill, error) { return ParseSkill(doc) }
 	}
 	if got := parses(t, dir, readerFile); !slices.Equal(got, want) {
 		t.Errorf("parses outside the reader's file = %q, want %q", got, want)
+	}
+}
+
+// ownTypes are the parser's types that internal/app has a type of its own
+// for (LAB-188): the reader's file maps the parser's to it, and no other
+// file of the package names the parser's.
+var ownTypes = []string{"Service"}
+
+// parserTypes lists, sorted, each of the parser's types given that a
+// non-test file of dir other than the one excepted names, once per file,
+// under every name the file imports the parser by. Syntax tells no type,
+// so the parser imported unqualified is a finding itself: its types would
+// then go unseen.
+func parserTypes(t *testing.T, dir, except string, typeNames []string) []string {
+	t.Helper()
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var found []string
+	for _, entry := range entries {
+		name := entry.Name()
+		if !strings.HasSuffix(name, ".go") || strings.HasSuffix(name, "_test.go") || name == except {
+			continue
+		}
+		file, err := parser.ParseFile(token.NewFileSet(), filepath.Join(dir, name), nil, parser.SkipObjectResolution)
+		if err != nil {
+			t.Fatal(err)
+		}
+		importedAs := parserNames(t, name, file)
+		if slices.Contains(importedAs, ".") {
+			found = append(found, name+": the parser's names, imported unqualified")
+		}
+		ast.Inspect(file, func(node ast.Node) bool {
+			selector, ok := node.(*ast.SelectorExpr)
+			if !ok {
+				return true
+			}
+			pkg, qualified := selector.X.(*ast.Ident)
+			if qualified && slices.Contains(importedAs, pkg.Name) && slices.Contains(typeNames, selector.Sel.Name) {
+				found = append(found, name+": "+types.ExprString(selector))
+			}
+			return true
+		})
+	}
+	slices.Sort(found)
+	return slices.Compact(found)
+}
+
+func TestOnlyTheReadersFileOfTheAppNamesAParserTypeTheAppHasItsOwnFor(t *testing.T) {
+	t.Parallel()
+	for _, use := range parserTypes(t, "../app", readerFile, ownTypes) {
+		t.Errorf("internal/app/%s: only %s names this type of the parser, and every other file of the package names the package's own type, which %s maps it to", use, readerFile, readerFile)
+	}
+}
+
+func TestAFileOtherThanTheReadersThatNamesAParserTypeIsFound(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	imported := func(as ...string) string {
+		source := "package app\n\nimport (\n\t\"" + module + "/internal/domain/settings\"\n"
+		for _, name := range as {
+			source += "\t" + name + " \"" + module + "/internal/domain/definition\"\n"
+		}
+		return source + ")\n"
+	}
+	files := map[string]string{
+		// None of these is a finding: the reader's file, which maps the
+		// parser's type; a test file; a file of another language; and the
+		// package's own type, the reader's method, another package's type
+		// and a field of the same name, and the parser's other names.
+		readerFile: imported("") + `
+func (r documentReader) Service(ctx context.Context) (serviceSettings, document.Source, error) {
+	service, source, err := readParsed(ctx, r, document.KindService, "service", definition.ParseService)
+	return serviceOf(service), source, err
+}
+
+func serviceOf(service definition.Service) serviceSettings { return serviceSettings{} }
+`,
+		"names_test.go": imported("") + `
+var parsed = definition.Service{}
+`,
+		"names.md": "definition.Service is the service as its file holds it.\n",
+		"own.go": imported("") + `
+type resolution struct {
+	service serviceSettings
+	process definition.Process
+}
+
+func (r *Resolver) resolve(ctx context.Context, b *settings.Bundle) (definition.Process, error) {
+	service, _, err := r.documents.Service(ctx)
+	b.Service = &settings.Service{Ceilings: service.ceilings}
+	return definition.Process{Name: definition.ServiceSchema}, err
+}
+`,
+		"field.go": imported("") + `
+type parsedSettings struct {
+	service *definition.Service
+}
+`,
+		"signature.go": imported("") + `
+func settingsService(service definition.Service) settings.Service {
+	other := definition.Service{}
+	return settings.Service{StateReaching: other.StateReaching}
+}
+`,
+		"renamed.go": imported("files") + `
+var none = files.Service{}
+`,
+		"alias.go": imported("") + `
+type service = definition.Service
+`,
+		"twice.go": imported("", "files") + `
+func same(a definition.Service, b files.Service) bool { return a.MaxAttempts == b.MaxAttempts }
+`,
+		"unqualified.go": imported(".") + `
+var none = Service{}
+`,
+	}
+	for name, source := range files {
+		if err := os.WriteFile(filepath.Join(dir, name), []byte(source), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	want := []string{
+		"alias.go: definition.Service",
+		"field.go: definition.Service",
+		"renamed.go: files.Service",
+		"signature.go: definition.Service",
+		"twice.go: definition.Service",
+		"twice.go: files.Service",
+		"unqualified.go: the parser's names, imported unqualified",
+	}
+	if got := parserTypes(t, dir, readerFile, []string{"Service"}); !slices.Equal(got, want) {
+		t.Errorf("uses of the parser's types outside the reader's file = %q, want %q", got, want)
 	}
 }
 
