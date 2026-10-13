@@ -47,11 +47,11 @@ type resolution struct {
 	schema  []byte
 	// prompts are the process's prompt, then its guidance, in order
 	// (ADR-028 rule 8).
-	prompts []definition.Prompt
-	forms   map[string]definition.Brief // by name: the brief forms its inputs name (ADR-026 rule 8)
+	prompts []promptText
+	forms   map[string]briefForm // by name: the brief forms its inputs name (ADR-026 rule 8)
 	// skills are the call's skills, in order: the process's, then its
 	// agent's, each once (ADR-021 rule 2).
-	skills    []definition.Skill
+	skills    []givenSkill
 	sources   []document.Source
 	effective policy.Effective
 	identity  RuntimeIdentity
@@ -376,7 +376,7 @@ func (r *Resolver) resolveCall(ctx context.Context, processName, agentOverride s
 			return res, err
 		}
 		if res.forms == nil {
-			res.forms = map[string]definition.Brief{}
+			res.forms = map[string]briefForm{}
 		}
 		res.forms[name] = brief
 	}
@@ -472,7 +472,7 @@ func (r *Resolver) resolveCall(ctx context.Context, processName, agentOverride s
 	// must not run without them (ADR-021 rule 6).
 	if len(res.skills) > 0 && !res.identity.Skills {
 		subject = root
-		names := translated(res.skills, func(skill definition.Skill) string { return skill.Name })
+		names := translated(res.skills, func(skill givenSkill) string { return skill.name })
 		return res, refuse("adapter %s of runtime %s cannot give a call its skills (ADR-021): %s", res.mapping.adapter, res.mapping.name, strings.Join(names, ", "))
 	}
 	// The staleness limits on tool calls need the adapter to report them.
@@ -550,8 +550,8 @@ func withoutSkillTools(res *resolution, tools []string, verified enforce.Offer, 
 type workflowResolution struct {
 	workflow  definition.Workflow
 	processes map[string]definition.Process
-	sources   []document.Source           // the workflow's document, then its brief forms'
-	forms     map[string]definition.Brief // by name: the brief forms its inputs name (ADR-026 rule 8)
+	sources   []document.Source    // the workflow's document, then its brief forms'
+	forms     map[string]briefForm // by name: the brief forms its inputs name (ADR-026 rule 8)
 }
 
 // workflow resolves the workflow named name, refusing one whose nodes
@@ -623,7 +623,7 @@ func (r *Resolver) resolveWorkflow(ctx context.Context, name string) (*workflowR
 			return res, refuse("%v", err)
 		}
 		if res.forms == nil {
-			res.forms = map[string]definition.Brief{}
+			res.forms = map[string]briefForm{}
 		}
 		res.forms[form] = brief
 	}

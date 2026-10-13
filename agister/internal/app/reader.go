@@ -12,9 +12,9 @@ import (
 
 // documentReader reads a settings document as what it is: one method per
 // kind reads the document, parses it and returns the parsed value with the
-// document's source. The service settings, a runtime mapping and an agent
-// are returned in the package's own types, which no other file of the
-// package maps a parsed document to.
+// document's source. The service settings, a runtime mapping, an agent, a
+// prompt, a brief form and a skill are returned in the package's own
+// types, which no other file of the package maps a parsed document to.
 // It reads only the document it is asked for (ADR-015 rule 1), and decides
 // nothing for its caller: what to read next, what a failure stops and how
 // it is worded are the caller's.
@@ -164,23 +164,74 @@ func (r documentReader) Verification(ctx context.Context, name string) (definiti
 	return readParsed(ctx, r, document.KindVerify, name, definition.ParseVerify)
 }
 
-func (r documentReader) Prompt(ctx context.Context, name string) (definition.Prompt, document.Source, error) {
-	return readParsed(ctx, r, document.KindPrompt, name, definition.ParsePrompt)
+// Prompt reads a prompt as the package uses it, not as its file holds it.
+func (r documentReader) Prompt(ctx context.Context, name string) (promptText, document.Source, error) {
+	prompt, source, err := readParsed(ctx, r, document.KindPrompt, name, definition.ParsePrompt)
+	return promptOf(prompt), source, err
 }
 
 // ListedPrompt reads a prompt as the settings list it, not as a call reads
 // it: the one of the inventory, which no process need name.
-func (r documentReader) ListedPrompt(ctx context.Context, name string) (definition.Prompt, document.Source, error) {
+func (r documentReader) ListedPrompt(ctx context.Context, name string) (promptText, document.Source, error) {
 	doc, err := r.definitions.ReadListed(ctx, document.KindPrompt, name)
-	return parsedOf(doc, err, definition.ParsePrompt)
+	prompt, source, err := parsedOf(doc, err, definition.ParsePrompt)
+	return promptOf(prompt), source, err
 }
 
-func (r documentReader) Brief(ctx context.Context, name string) (definition.Brief, document.Source, error) {
-	return readParsed(ctx, r, document.KindBrief, name, definition.ParseBrief)
+// promptOf is a parsed prompt document as the package uses it. What parsed
+// of an invalid one is mapped the same, and of one that was not read there
+// is nothing.
+func promptOf(prompt definition.Prompt) promptText {
+	return promptText{name: prompt.Name, text: prompt.Text, sha256: prompt.Source.SHA256}
 }
 
-func (r documentReader) Skill(ctx context.Context, name string) (definition.Skill, document.Source, error) {
-	return readParsed(ctx, r, document.KindSkill, name, definition.ParseSkill)
+// Brief reads a brief's form as the package uses it, not as its file holds
+// it.
+func (r documentReader) Brief(ctx context.Context, name string) (briefForm, document.Source, error) {
+	brief, source, err := readParsed(ctx, r, document.KindBrief, name, definition.ParseBrief)
+	return briefOf(brief), source, err
+}
+
+// briefOf is a parsed brief document as the package uses it. What parsed
+// of an invalid one is mapped the same, and of one that was not read there
+// is nothing.
+func briefOf(brief definition.Brief) briefForm {
+	var parts []briefPart
+	for _, part := range brief.Parts {
+		parts = append(parts, briefPart{heading: part.Heading, required: part.Required, reads: part.Reads, reference: part.Reference})
+	}
+	return briefForm{parts: parts}
+}
+
+// parserBrief is form as the parser holds one, for the parser's check of a
+// text against it. It has no name, template or source: the package's form
+// holds only its parts.
+func parserBrief(form briefForm) definition.Brief {
+	var parts []definition.BriefPart
+	for _, part := range form.parts {
+		parts = append(parts, definition.BriefPart{Heading: part.heading, Required: part.required, Reads: part.reads, Reference: part.reference})
+	}
+	return definition.Brief{Parts: parts}
+}
+
+// formCheck is the check of a text against form, as the parser checks it
+// (ADR-026 rule 8): what keeps the text from having the form, none when it
+// has it. The form is mapped once for every text checked against it.
+func formCheck(form briefForm) func(text string, resolve func(path string) error) []string {
+	return parserBrief(form).Check
+}
+
+// Skill reads a skill as the package uses it, not as its file holds it.
+func (r documentReader) Skill(ctx context.Context, name string) (givenSkill, document.Source, error) {
+	skill, source, err := readParsed(ctx, r, document.KindSkill, name, definition.ParseSkill)
+	return skillOf(skill), source, err
+}
+
+// skillOf is a parsed skill document as the package uses it. What parsed
+// of an invalid one is mapped the same, and of one that was not read there
+// is nothing.
+func skillOf(skill definition.Skill) givenSkill {
+	return givenSkill{name: skill.Name, bytes: skill.Bytes, sha256: skill.Source.SHA256}
 }
 
 func (r documentReader) Workflow(ctx context.Context, name string) (definition.Workflow, document.Source, error) {
