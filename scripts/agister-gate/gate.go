@@ -287,7 +287,13 @@ func (g *gate) implementAndCommit(ctx context.Context, brief, message string) er
 	if len(out.FilesChanged) == 0 {
 		return stop{"stopped", fmt.Sprintf("implement run %s changed no file", r.RunID)}
 	}
-	if _, err := g.run(ctx, g.dir, "git", append([]string{"add", "--"}, out.FilesChanged...)...); err != nil {
+	// A run reports its files from the worktree root, and --dir may be
+	// below it, so each path is staged from the top.
+	add := []string{"add", "--"}
+	for _, f := range out.FilesChanged {
+		add = append(add, ":(top)"+f)
+	}
+	if _, err := g.run(ctx, g.dir, "git", add...); err != nil {
 		return fmt.Errorf("git add: %w", err)
 	}
 	if err := g.unreported(ctx, r.RunID); err != nil {
