@@ -108,8 +108,8 @@ func agentOf(agent definition.Agent) agentProfile {
 }
 
 // parserAgent is agent as the parser holds one, for the parser's functions
-// that take an agent. None of them reads its source, which the package's
-// agent does not hold.
+// that take an agent. It has no source: a document's provenance is
+// returned beside the package's agent, not in it.
 func parserAgent(agent agentProfile) definition.Agent {
 	return definition.Agent{
 		Name:        agent.name,
