@@ -376,7 +376,7 @@ func (g *gate) review(ctx context.Context, n int) (judgement, error) {
 		limited := r.Error != nil && r.Error.Class == "rate_limited"
 		g.sum.Reviews = append(g.sum.Reviews, review{RunID: r.RunID})
 		if limited {
-			return judgement{}, stop{"limited", fmt.Sprintf("review run %s hit a provider limit and does not count; resume with --from review --reviews %d", r.RunID, n-1)}
+			return judgement{}, stop{"limited", fmt.Sprintf("review run %s hit a provider limit and does not count; resume with --from review --reviews %d --base %s", r.RunID, n-1, g.base)}
 		}
 		return judgement{}, stop{"stopped", fmt.Sprintf("review run %s %s%s", r.RunID, r.Status, failure(r))}
 	}

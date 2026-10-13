@@ -335,7 +335,7 @@ func TestALimitedReviewDoesNotCount(t *testing.T) {
 		return out, err
 	}
 	code, sum, _ := gated(t, call)
-	if code != exitLimited || sum.Status != "limited" || sum.Base != base || !strings.Contains(sum.Reason, "--from review --reviews 1") {
+	if code != exitLimited || sum.Status != "limited" || sum.Base != base || !strings.Contains(sum.Reason, "--from review --reviews 1 --base "+base) {
 		t.Fatalf("exit %d, %+v", code, sum)
 	}
 	if last := sum.Reviews[len(sum.Reviews)-1]; last.RunID != "r2" || last.Counted {
