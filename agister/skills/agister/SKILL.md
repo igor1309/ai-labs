@@ -327,7 +327,7 @@ and stops:
 <ai-labs>/scripts/agister-gate/gate.sh --issue <issue.md> --title "<issue> step <n>" \
   [--constraints <constraints.md>] --implement implement_codex \
   --advisor advisor_codex --decisions <decisions.md> --base <rev> \
-  --message "<commit subject>" --out <dir>
+  --message "<commit subject>" --out <dir> [--review <workflow>]
 ```
 
 - A brief says what the issue and the owner said, in their words. Save
@@ -342,8 +342,9 @@ and stops:
   gone. An implementer that finds them copies them.
 - It needs a clean worktree. It commits each implement run's
   `files_changed` by name; a change the run did not report stops the step.
-- The review is `code_review` of the commits since base, against the
-  goal. Items ruled `fix` with severity major go to a fix run, whose brief
+- The review is `code_review`, or the workflow `--review` names, of the
+  commits since base, against the goal. Items ruled `fix` with severity
+  major go to a fix run, whose brief
   is the step's with them as its `## Acts on`. Minors are not fixed by the
   gate.
 - A point the implement run leaves open goes to the advisor (ADR-032):

@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"cmp"
 	"context"
 	"encoding/json"
 	"errors"
@@ -16,7 +17,8 @@ import (
 // fake stands in for agister and git. Implement, review and advisor runs
 // answer from their queues, in order; git status answers clean, except
 // after `git add` when unreported is set; git diff names the decisions
-// record once it is staged, or from the start when recorded is set.
+// record once it is staged, or from the start when recorded is set. The
+// review is the workflow review names, code_review when it is empty.
 type fake struct {
 	t          *testing.T
 	implements []string
@@ -25,6 +27,7 @@ type fake struct {
 	dirty      string
 	unreported string
 	recorded   bool
+	review     string
 
 	questions []string
 
@@ -44,7 +47,11 @@ func (f *fake) run(_ context.Context, _ string, name string, args ...string) ([]
 		}
 		return []byte(f.unreported), nil
 	case name == "git" && args[0] == "add":
-		f.added = append(f.added, args[2:])
+		var added []string
+		for _, p := range args[2:] {
+			added = append(added, strings.TrimPrefix(p, ":(top)"))
+		}
+		f.added = append(f.added, added)
 		f.recorded = f.recorded || filepath.Base(args[2]) == "decisions.md"
 		return nil, nil
 	case name == "git" && args[0] == "diff":
@@ -66,7 +73,7 @@ func (f *fake) run(_ context.Context, _ string, name string, args ...string) ([]
 		return nil, nil
 	case name == "git" && args[0] == "rev-parse":
 		return []byte(fmt.Sprintf("c%d\n", len(f.commits))), nil
-	case name == "agister" && args[1] == "code_review":
+	case name == "agister" && args[1] == cmp.Or(f.review, "code_review"):
 		f.agisters++
 		if len(f.reviews) == 0 {
 			f.t.Fatal("a review the test did not expect")
@@ -203,6 +210,17 @@ func TestAStepPassesWhenItsReviewHasNoMajorToFix(t *testing.T) {
 	}
 }
 
+// --review names the review workflow the gate runs in place of code_review.
+func TestTheReviewIsTheWorkflowReviewNames(t *testing.T) {
+	t.Parallel()
+	f := &fake{t: t, implements: []string{implementResult("i1", "cmd/a.go")},
+		reviews: []string{reviewed("r1")}, review: "code_review_codex"}
+	code, sum, _ := gated(t, f, "--review", "code_review_codex")
+	if code != exitPassed || len(sum.Reviews) != 1 || sum.Reviews[0].RunID != "r1" {
+		t.Fatalf("exit %d, %+v", code, sum)
+	}
+}
+
 // A major ruled fix goes to a fix run whose brief is the step's, with the
 // major's title and action as its "## Acts on" as the judge wrote them, and
 // no review, run, ruling or source named; its commit is named for the
@@ -283,6 +301,64 @@ func TestAChangeTheRunDidNotReportStopsTheStep(t *testing.T) {
 	}
 	if len(f.commits) != 0 {
 		t.Errorf("committed %q", f.commits)
+	}
+}
+
+// A run reports its files from the worktree root; with --dir a
+// subdirectory, they are still the ones staged and committed, by real git.
+func TestTheRunsFilesAreCommittedFromTheRootWhenDirIsBelowIt(t *testing.T) {
+	t.Parallel()
+	repo, inputs := t.TempDir(), t.TempDir()
+	git := func(args ...string) string {
+		t.Helper()
+		out, err := commands(context.Background(), repo, "git", args...)
+		if err != nil {
+			t.Fatalf("git %q: %v", args, err)
+		}
+		return strings.TrimSpace(string(out))
+	}
+	git("init", "-q")
+	for _, kv := range [][2]string{{"user.name", "gate"}, {"user.email", "gate@test"}, {"commit.gpgsign", "false"}, {"core.hooksPath", "/dev/null"}} {
+		git("config", kv[0], kv[1])
+	}
+	project := filepath.Join(repo, "project")
+	if err := os.MkdirAll(project, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(project, "a.go"), []byte("package a\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	git("add", "project/a.go")
+	git("commit", "-q", "-m", "base")
+	for name, text := range map[string]string{"issue.md": issue, "decisions.md": records} {
+		if err := os.WriteFile(filepath.Join(inputs, name), []byte(text), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	f := &fake{t: t, implements: []string{implementResult("i1", "project/a.go")}, reviews: []string{reviewed("r1")}}
+	runner := func(ctx context.Context, dir, name string, args ...string) ([]byte, error) {
+		if name == "git" {
+			return commands(ctx, dir, name, args...)
+		}
+		if args[1] == "implement_codex" {
+			if err := os.WriteFile(filepath.Join(project, "a.go"), []byte("package a\n\nconst A = 1\n"), 0o644); err != nil {
+				t.Fatal(err)
+			}
+		}
+		return f.run(ctx, dir, name, args...)
+	}
+	args := []string{"--issue", filepath.Join(inputs, "issue.md"), "--title", "LAB-1 step 2",
+		"--implement", "implement_codex", "--advisor", "advisor_codex", "--decisions", filepath.Join(inputs, "decisions.md"),
+		"--base", "HEAD", "--message", "project: a constant", "--out", filepath.Join(inputs, "out"), "--dir", project}
+	var stdout, stderr bytes.Buffer
+	if code := run(context.Background(), args, runner, &stdout, &stderr); code != exitPassed {
+		t.Fatalf("exit %d\n%s\n%s", code, stdout.String(), stderr.String())
+	}
+	if got := git("log", "-1", "--format=%s", "--name-only"); got != "project: a constant\n\nproject/a.go" {
+		t.Errorf("last commit %q", got)
+	}
+	if got := git("status", "--porcelain"); got != "" {
+		t.Errorf("left %q", got)
 	}
 }
 
