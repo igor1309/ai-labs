@@ -6,13 +6,16 @@ import (
 
 	"github.com/igor1309/ai-labs/agister/internal/domain/definition"
 	"github.com/igor1309/ai-labs/agister/internal/domain/document"
+	"github.com/igor1309/ai-labs/agister/internal/domain/policy"
 )
 
 // documentReader reads a settings document as what it is: one method per
 // kind reads the document, parses it and returns the parsed value with the
-// document's source. It reads only the document it is asked for (ADR-015
-// rule 1), and decides nothing for its caller: what to read next, what a
-// failure stops and how it is worded are the caller's.
+// document's source. The service settings are returned in the package's
+// own type, which no other file of the package maps a parsed document to.
+// It reads only the document it is asked for (ADR-015 rule 1), and decides
+// nothing for its caller: what to read next, what a failure stops and how
+// it is worded are the caller's.
 //
 // A document the definitions do not give fails with an *unreadError, and
 // has no value: its source is what the definitions give beside the
@@ -54,8 +57,28 @@ func newDocumentReader(definitions readerDefinitions) documentReader {
 	return documentReader{definitions: definitions}
 }
 
-func (r documentReader) Service(ctx context.Context) (definition.Service, document.Source, error) {
-	return readParsed(ctx, r, document.KindService, "service", definition.ParseService)
+// Service reads the service settings as the package uses them, not as
+// their file holds them.
+func (r documentReader) Service(ctx context.Context) (serviceSettings, document.Source, error) {
+	service, source, err := readParsed(ctx, r, document.KindService, "service", definition.ParseService)
+	return serviceOf(service), source, err
+}
+
+// serviceOf is a parsed service document as the package uses it. What
+// parsed of an invalid one is mapped the same, and of one that was not
+// read there is nothing.
+func serviceOf(service definition.Service) serviceSettings {
+	return serviceSettings{
+		ceilings: policy.Ceilings{
+			MaxTimeout:        service.MaxTimeout,
+			MaxAttempts:       service.MaxAttempts,
+			MaxVerifyAttempts: service.MaxVerifyAttempts,
+			MaxCostUSD:        service.MaxCostUSD,
+			Permissions:       service.Permissions,
+			Writing:           service.Writing,
+		},
+		stateReaching: service.StateReaching,
+	}
 }
 
 func (r documentReader) Process(ctx context.Context, name string) (definition.Process, document.Source, error) {

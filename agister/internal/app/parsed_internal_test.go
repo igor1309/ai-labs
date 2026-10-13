@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/igor1309/ai-labs/agister/internal/domain/definition"
+	"github.com/igor1309/ai-labs/agister/internal/domain/policy"
 	"github.com/igor1309/ai-labs/agister/internal/domain/settings"
 )
 
@@ -15,7 +16,7 @@ import (
 func naming(verify definition.Verify) parsedSettings {
 	timeout := time.Minute
 	return parsedSettings{
-		service: &definition.Service{MaxTimeout: time.Hour, MaxAttempts: 1, MaxVerifyAttempts: 3, Permissions: []string{"read", "write", "exec"}},
+		service: &serviceSettings{ceilings: policy.Ceilings{MaxTimeout: time.Hour, MaxAttempts: 1, MaxVerifyAttempts: 3, Permissions: []string{"read", "write", "exec"}}},
 		agents:  map[string]definition.Agent{"a": {Name: "a", Runtime: "rt", Effort: "high"}},
 		mappings: map[string]definition.Mapping{"rt": {Name: "rt", Adapter: "claude-code", Efforts: []string{"high"}, Select: "any",
 			Primitives: []definition.Primitive{{Name: "Read", Grants: []string{"read"}, Verified: []string{"1."}}}}},

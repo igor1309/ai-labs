@@ -8,7 +8,7 @@ import (
 // parsedSettings are the settings documents that parsed, each by name, as
 // check reads them.
 type parsedSettings struct {
-	service   *definition.Service
+	service   *serviceSettings
 	agents    map[string]definition.Agent
 	processes map[string]definition.Process
 	mappings  map[string]definition.Mapping
@@ -73,8 +73,8 @@ func mapped[V, W any](m map[string]V, f func(V) W) map[string]W {
 	return out
 }
 
-func settingsService(service definition.Service) settings.Service {
-	return settings.Service{Ceilings: ceilings(service), StateReaching: service.StateReaching}
+func settingsService(service serviceSettings) settings.Service {
+	return settings.Service{Ceilings: service.ceilings, StateReaching: service.stateReaching}
 }
 
 func settingsAgent(agent definition.Agent) settings.Agent {
