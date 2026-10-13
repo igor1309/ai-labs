@@ -7,7 +7,7 @@
 # Usage: gate.sh --issue <file> --title <line> [--constraints <file>]
 #   --implement <workflow> --advisor <workflow> --decisions <file>
 #   --base <rev> --message <subject> --out <dir>
-#   [--dir <worktree>] [--from implement|review] [--reviews <n>]
+#   [--review <workflow>] [--dir <worktree>] [--from implement|review] [--reviews <n>]
 set -eu
 
 src=$(cd "$(dirname "$0")" && pwd)
