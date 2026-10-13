@@ -75,6 +75,34 @@ func TestPermissionWarningsAndHardRefusalsFromSettingsFiles(t *testing.T) {
 	}
 }
 
+// Integration test: temporary settings files, resolution and workflow inspection;
+// runtime identity and effects are the harness's spies.
+func TestShowWorkflowWarnsOfExtraGrantsOnARefusedBinding(t *testing.T) {
+	t.Parallel()
+	h := newHarness()
+	docs := settingsDocs()
+	docs[document.KindRuntime]["rt"] = oneOf("rt", `Read: {grants: [repository.read, process.execute], verified: ["1."]}`)
+	docs[document.KindProcess]["p"] = strings.Replace(docs[document.KindProcess]["p"],
+		"tools: {allow: [repository.read, repository.search, repository.diff]}",
+		"tools: {allow: [repository.read, repository.search, repository.diff], require: [repository.search]}", 1)
+	client := h.clientOn(settingsFiles(t, docs))
+	view, err := client.ShowWorkflow(context.Background(), "p_a")
+	if err != nil {
+		t.Fatal(err)
+	}
+	const refusal = "required permissions would be withheld: repository.search"
+	if !strings.Contains(view.Refusal, refusal) || view.Call == nil || !strings.Contains(view.Call.Process.Refusal, refusal) {
+		t.Fatalf("view = %+v, want a workflow and binding refused for %q", view, refusal)
+	}
+	const warning = "runtime rt grants beyond tools.allow: process.execute"
+	if !reflect.DeepEqual(view.Call.Process.Warnings, []string{warning}) || !reflect.DeepEqual(view.Warnings, []string{"node p: " + warning}) {
+		t.Fatalf("binding warnings = %q, workflow warnings = %q", view.Call.Process.Warnings, view.Warnings)
+	}
+	if !reflect.DeepEqual(view.Call.Process.Withheld, []string{"repository.diff"}) {
+		t.Fatalf("withheld = %q, want only the optional withheld permission", view.Call.Process.Withheld)
+	}
+}
+
 // Integration test: temporary workflow settings and the call result boundary;
 // the harness controls runtimes, worktree effects, inputs and time.
 func TestWorkflowOutcomeCarriesEachNodesPermissionWarning(t *testing.T) {

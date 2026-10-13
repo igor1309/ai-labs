@@ -689,6 +689,9 @@ func (r *Resolver) inspect(ctx context.Context, name, agent string, caller overr
 	if res.refusedPlan.Withheld != nil {
 		inspected.Withheld = slices.DeleteFunc(slices.Clone(res.refusedPlan.Withheld), func(permission string) bool { return contains(res.effective.Require, permission) })
 	}
+	if len(res.refusedPlan.Extra) > 0 {
+		inspected.Warnings = append(inspected.Warnings, "runtime "+res.mapping.name+" grants beyond tools.allow: "+strings.Join(res.refusedPlan.Extra, ", "))
+	}
 	if verify := process.verify; verify != nil {
 		inspected.Process.Verify = &InspectedVerify{Command: verify.command, Timeout: verify.timeout, MaxAttempts: verify.maxAttempts, Instruction: verify.instruction}
 	}
