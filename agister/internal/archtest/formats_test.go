@@ -680,7 +680,7 @@ func redeclared(t *testing.T, dir, of string) []string {
 // lets a user reach the vocabulary through the parser.
 func TestTheParserDeclaresNoneOfTheDocumentVocabulary(t *testing.T) {
 	t.Parallel()
-	guard := func(dir, documentDir string) []string {
+	guard := func(t *testing.T, dir, documentDir string) []string {
 		var findings []string
 		for _, name := range redeclared(t, dir, documentDir) {
 			findings = append(findings, fmt.Sprintf("internal/domain/definition declares %s: document vocabulary belongs to internal/domain/document, and its users name it there directly", name))
@@ -696,25 +696,63 @@ func TestTheParserDeclaresNoneOfTheDocumentVocabulary(t *testing.T) {
 		}
 		return findings
 	}
-	for _, finding := range guard("../domain/definition", "../domain/document") {
+	for _, finding := range guard(t, "../domain/definition", "../domain/document") {
 		t.Error(finding)
 	}
-	root := t.TempDir()
-	for name, source := range map[string]string{
-		"document/document.go":  "package document\nfunc ValidName(name string) bool { return false }\n",
-		"definition/forward.go": "package definition\nimport " + strconv.Quote(module+"/internal/domain/document") + "\nvar check = document.ValidName\n",
+	documentImport := "import " + strconv.Quote(module+"/internal/domain/document") + "\n"
+	for _, c := range []struct {
+		name, source string
+		want         []string
+	}{
+		{
+			name:   "vocabulary declaration",
+			source: "func ValidName(name string) bool { return false }\n",
+			want:   []string{"internal/domain/definition declares ValidName: document vocabulary belongs to internal/domain/document, and its users name it there directly"},
+		},
+		{
+			name:   "directly returned call",
+			source: documentImport + "func check(name string) bool { return document.ValidName(name) }\n",
+			want:   []string{"internal/domain/definition/forward.go: return document.ValidName(name): return results must not call document.ValidName"},
+		},
+		{
+			name:   "unchanged local result",
+			source: documentImport + "func check(name string) bool { valid := document.ValidName(name); return valid }\n",
+			want:   []string{"internal/domain/definition/forward.go: return valid: return results must not forward document.ValidName unchanged"},
+		},
+		{
+			name:   "unchanged named result",
+			source: documentImport + "func check(name string) (valid bool) { valid = document.ValidName(name); return }\n",
+			want:   []string{"internal/domain/definition/forward.go: return valid: return results must not forward document.ValidName unchanged"},
+		},
+		{
+			name:   "function value",
+			source: documentImport + "var check = document.ValidName\n",
+			want:   []string{"internal/domain/definition/forward.go: document.ValidName: callers call document.ValidName directly, never take it as a function value"},
+		},
+		{
+			name:   "clean",
+			source: documentImport + "func check(name string) bool { return name != \"\" && document.ValidName(name) }\n",
+		},
 	} {
-		path := filepath.Join(root, name)
-		if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
-			t.Fatal(err)
-		}
-		if err := os.WriteFile(path, []byte(source), 0o600); err != nil {
-			t.Fatal(err)
-		}
-	}
-	want := []string{"internal/domain/definition/forward.go: document.ValidName: callers call document.ValidName directly, never take it as a function value"}
-	if got := guard(filepath.Join(root, "definition"), filepath.Join(root, "document")); !slices.Equal(got, want) {
-		t.Errorf("parser vocabulary guard findings = %q, want %q", got, want)
+		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
+			root := t.TempDir()
+			for name, source := range map[string]string{
+				"document/document.go":  "package document\nfunc ValidName(name string) bool { return false }\n",
+				"definition/forward.go": "package definition\n" + c.source,
+			} {
+				path := filepath.Join(root, name)
+				if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
+					t.Fatal(err)
+				}
+				if err := os.WriteFile(path, []byte(source), 0o600); err != nil {
+					t.Fatal(err)
+				}
+			}
+			if got := guard(t, filepath.Join(root, "definition"), filepath.Join(root, "document")); !slices.Equal(got, c.want) {
+				t.Errorf("parser vocabulary guard findings = %q, want %q", got, c.want)
+			}
+		})
 	}
 }
 
