@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"flag"
@@ -150,7 +151,7 @@ func parse(args []string, stderr io.Writer) (options, error) {
 	fs.StringVar(&o.advisor, "advisor", "", "the advisor workflow, such as advisor_codex")
 	fs.StringVar(&o.review, "review", "code_review", "the review workflow, such as code_review_codex")
 	fs.StringVar(&o.decisions, "decisions", "", "the decisions record, in the worktree, a decision is appended to")
-	fs.StringVar(&o.base, "base", "", "the revision the review compares with")
+	fs.StringVar(&o.base, "base", "", "the revision the review compares with; --from review requires the full commit from the summary")
 	fs.StringVar(&o.message, "message", "", "the commit subject")
 	fs.StringVar(&o.out, "out", "", "the directory for the fix briefs and the runs' results")
 	fs.StringVar(&o.dir, "dir", ".", "the worktree")
@@ -166,6 +167,13 @@ func parse(args []string, stderr io.Writer) (options, error) {
 	}
 	if o.from != "implement" && o.from != "review" {
 		return o, fmt.Errorf("--from is implement or review, not %q", o.from)
+	}
+	if o.from == "review" {
+		// A ref or abbreviated hash can change identity between invocations.
+		_, err := hex.DecodeString(o.base)
+		if err != nil || (len(o.base) != 40 && len(o.base) != 64) {
+			return o, fmt.Errorf("--from review requires --base to be the full commit from the preceding summary")
+		}
 	}
 	if o.reviews < 0 || o.reviews >= maxReviews {
 		return o, fmt.Errorf("--reviews is 0 to %d", maxReviews-1)
@@ -205,20 +213,14 @@ func (g *gate) drive(ctx context.Context) summary {
 }
 
 func (g *gate) steps(ctx context.Context) error {
+	if err := g.resolveBase(ctx); err != nil {
+		return err
+	}
 	if err := os.MkdirAll(g.out, 0o755); err != nil {
 		return err
 	}
 	if err := g.clean(ctx); err != nil {
 		return err
-	}
-	if g.from == "implement" {
-		if err := g.resolveBase(ctx); err != nil {
-			return err
-		}
-	} else {
-		// A resumed review receives the commit printed by the preceding
-		// summary; resolving it again would let a ref move between reviews.
-		g.sum.Base = g.base
 	}
 	if err := g.briefs(); err != nil {
 		return err
@@ -252,10 +254,13 @@ func (g *gate) steps(ctx context.Context) error {
 	}
 }
 
-// resolveBase pins the caller's revision before any run can move a shared
-// remote ref. The commit is then reused for every review and brief in this
-// step.
+// resolveBase pins the caller's revision before setup can move a shared
+// remote ref. A resumed step keeps the full commit required by parse.
 func (g *gate) resolveBase(ctx context.Context) error {
+	if g.from == "review" {
+		g.sum.Base = g.base
+		return nil
+	}
 	out, err := g.run(ctx, g.dir, "git", "rev-parse", "--verify", g.base+"^{commit}")
 	if err != nil {
 		return fmt.Errorf("git rev-parse base %q: %w", g.base, err)

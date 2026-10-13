@@ -31,12 +31,13 @@ type fake struct {
 
 	questions []string
 
-	briefs    []string
-	added     [][]string
-	commits   []string
-	statuses  int
-	revParses int
-	agisters  int
+	briefs      []string
+	added       [][]string
+	commits     []string
+	statuses    int
+	revParses   int
+	agisters    int
+	reviewBases []string
 }
 
 func (f *fake) run(_ context.Context, _ string, name string, args ...string) ([]byte, error) {
@@ -77,6 +78,11 @@ func (f *fake) run(_ context.Context, _ string, name string, args ...string) ([]
 		return []byte(fmt.Sprintf("c%d\n", len(f.commits))), nil
 	case name == "agister" && args[1] == cmp.Or(f.review, "code_review"):
 		f.agisters++
+		for _, arg := range args {
+			if strings.HasPrefix(arg, "base=") {
+				f.reviewBases = append(f.reviewBases, strings.TrimPrefix(arg, "base="))
+			}
+		}
 		if len(f.reviews) == 0 {
 			f.t.Fatal("a review the test did not expect")
 		}
@@ -219,10 +225,39 @@ func TestAStepPassesWhenItsReviewHasNoMajorToFix(t *testing.T) {
 // does not resolve that value again.
 func TestAResumedReviewUsesItsGivenCommit(t *testing.T) {
 	t.Parallel()
-	f := &fake{t: t, reviews: []string{reviewed("r1")}}
-	code, sum, _ := gated(t, f, "--from", "review", "--base", "deadbeef")
-	if code != exitPassed || sum.Base != "deadbeef" || f.revParses != 0 {
-		t.Fatalf("exit %d, base %q, rev-parse calls %d", code, sum.Base, f.revParses)
+	for _, size := range []int{40, 64} {
+		for counted := 0; counted < maxReviews; counted++ {
+			t.Run(fmt.Sprintf("hash length %d counted %d", size, counted), func(t *testing.T) {
+				t.Parallel()
+				base := strings.Repeat("deadbeef", size/8)
+				f := &fake{t: t}
+				var wantBases []string
+				for n := counted + 1; n < maxReviews; n++ {
+					f.reviews = append(f.reviews, reviewed(fmt.Sprintf("r%d", n), major))
+					f.implements = append(f.implements, implementResult(fmt.Sprintf("i%d", n), "a"))
+					wantBases = append(wantBases, base)
+				}
+				f.reviews = append(f.reviews, reviewed("last"))
+				wantBases = append(wantBases, base)
+				code, sum, out := gated(t, f, "--from", "review", "--reviews", fmt.Sprint(counted), "--base", base)
+				if code != exitPassed || sum.Base != base || !reflect.DeepEqual(f.reviewBases, wantBases) {
+					t.Fatalf("exit %d, base %q, reviews %q, want %q", code, sum.Base, f.reviewBases, wantBases)
+				}
+				if f.revParses != len(f.commits) {
+					t.Fatalf("rev-parse calls %d, want only %d commit HEAD reads", f.revParses, len(f.commits))
+				}
+				paths := append([]string{filepath.Join(out, "goal.md"), filepath.Join(out, "step.md")}, f.briefs...)
+				for _, path := range paths {
+					brief, err := os.ReadFile(path)
+					if err != nil {
+						t.Fatal(err)
+					}
+					if !strings.Contains(string(brief), "\n## Base\n\n"+base+"\n") {
+						t.Errorf("%s does not name base %s", path, base)
+					}
+				}
+			})
+		}
 	}
 }
 
@@ -300,7 +335,7 @@ func TestALimitedReviewDoesNotCount(t *testing.T) {
 	}
 
 	resumed := &fake{t: t, reviews: []string{reviewed("r3", major)}}
-	code, sum, _ = gated(t, resumed, "--from", "review", "--reviews", "2")
+	code, sum, _ = gated(t, resumed, "--from", "review", "--reviews", "2", "--base", strings.Repeat("a", 40))
 	if code != exitOwner || len(sum.Implements) != 0 || len(sum.Reviews) != 1 {
 		t.Fatalf("resumed: exit %d, %+v", code, sum)
 	}
@@ -380,79 +415,159 @@ func TestTheRunsFilesAreCommittedFromTheRootWhenDirIsBelowIt(t *testing.T) {
 	}
 }
 
-// Contract test: the real git repository and ref resolution used by the gate.
-// The review moves the shared ref after the step starts; its base remains the
-// commit resolved before the implement run.
-func TestTheBaseIsPinnedBeforeAReviewCanMoveTheRef(t *testing.T) {
+// Contract test: real git ref movement during preflight, before review and
+// between invocations cannot change the step's review and brief base.
+func TestTheBaseIsPinnedBeforeSetupAndReview(t *testing.T) {
 	t.Parallel()
-	repo, inputs := t.TempDir(), t.TempDir()
-	git := func(args ...string) string {
-		t.Helper()
-		out, err := commands(context.Background(), repo, "git", args...)
-		if err != nil {
-			t.Fatalf("git %q: %v", args, err)
-		}
-		return strings.TrimSpace(string(out))
-	}
-	git("init", "-q")
-	for _, kv := range [][2]string{{"user.name", "gate"}, {"user.email", "gate@test"}, {"commit.gpgsign", "false"}, {"core.hooksPath", "/dev/null"}} {
-		git("config", kv[0], kv[1])
-	}
-	if err := os.WriteFile(filepath.Join(repo, "tracked.txt"), []byte("before\n"), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	git("add", "tracked.txt")
-	git("commit", "-q", "-m", "base")
-	git("branch", "origin/trunk")
-	base := git("rev-parse", "origin/trunk")
-	for name, text := range map[string]string{"issue.md": issue, "decisions.md": records} {
-		if err := os.WriteFile(filepath.Join(inputs, name), []byte(text), 0o644); err != nil {
-			t.Fatal(err)
-		}
-	}
-	var reviewBase string
-	runner := func(ctx context.Context, dir, name string, args ...string) ([]byte, error) {
-		if name == "git" {
-			return commands(ctx, dir, name, args...)
-		}
-		if name != "agister" {
-			t.Fatalf("unexpected command %s %q", name, args)
-		}
-		switch args[1] {
-		case "implement_codex":
-			if err := os.WriteFile(filepath.Join(repo, "tracked.txt"), []byte("after\n"), 0o644); err != nil {
+	for _, phase := range []string{"preflight", "before review", "resume commit", "resume ref"} {
+		t.Run(phase, func(t *testing.T) {
+			t.Parallel()
+			repo, inputs := t.TempDir(), t.TempDir()
+			git := func(args ...string) string {
+				t.Helper()
+				out, err := commands(context.Background(), repo, "git", args...)
+				if err != nil {
+					t.Fatalf("git %q: %v", args, err)
+				}
+				return strings.TrimSpace(string(out))
+			}
+			git("init", "-q")
+			for _, kv := range [][2]string{{"user.name", "gate"}, {"user.email", "gate@test"}, {"commit.gpgsign", "false"}, {"core.hooksPath", "/dev/null"}} {
+				git("config", kv[0], kv[1])
+			}
+			if err := os.WriteFile(filepath.Join(repo, "tracked.txt"), []byte("before\n"), 0o644); err != nil {
 				t.Fatal(err)
 			}
-			return []byte(implementResult("i1", "tracked.txt")), nil
-		case "code_review":
-			for _, arg := range args {
-				if strings.HasPrefix(arg, "base=") {
-					reviewBase = strings.TrimPrefix(arg, "base=")
+			git("add", "tracked.txt")
+			git("commit", "-q", "-m", "base")
+			base := git("rev-parse", "HEAD")
+			git("update-ref", "refs/remotes/origin/trunk", base)
+			git("commit", "-q", "--allow-empty", "-m", "next trunk")
+			for name, text := range map[string]string{"issue.md": issue, "decisions.md": records} {
+				if err := os.WriteFile(filepath.Join(inputs, name), []byte(text), 0o644); err != nil {
+					t.Fatal(err)
 				}
 			}
-			git("branch", "-f", "origin/trunk", "HEAD")
-			return []byte(reviewed("r1")), nil
-		default:
-			t.Fatalf("unexpected workflow %q", args[1])
-			return nil, nil
-		}
+			f := &fake{t: t, implements: []string{implementResult("i1", "tracked.txt"), implementResult("i2", "tracked.txt")},
+				reviews: []string{reviewed("r1", major), reviewed("r2")}}
+			moved := false
+			moveRef := func() {
+				git("update-ref", "refs/remotes/origin/trunk", "HEAD")
+				if got := git("rev-parse", "origin/trunk"); got == base {
+					t.Fatalf("ref did not move from %s", base)
+				}
+				moved = true
+			}
+			runner := func(ctx context.Context, dir, name string, args ...string) ([]byte, error) {
+				if name == "git" {
+					if phase == "preflight" && !moved && args[0] == "status" {
+						moveRef()
+					}
+					out, err := commands(ctx, dir, name, args...)
+					if phase == "before review" && !moved && reflect.DeepEqual(args, []string{"rev-parse", "HEAD"}) {
+						moveRef()
+					}
+					return out, err
+				}
+				if name == "agister" && args[1] == "implement_codex" {
+					text := fmt.Sprintf("implementation %d\n", len(f.briefs)+1)
+					if err := os.WriteFile(filepath.Join(repo, "tracked.txt"), []byte(text), 0o644); err != nil {
+						t.Fatal(err)
+					}
+				}
+				if name == "agister" && args[1] == "code_review" && !moved {
+					t.Fatal("review invoked before the ref moved")
+				}
+				return f.run(ctx, dir, name, args...)
+			}
+			out := filepath.Join(inputs, "out")
+			args := []string{"--issue", filepath.Join(inputs, "issue.md"), "--title", "LAB-251 step 1",
+				"--implement", "implement_codex", "--advisor", "advisor_codex", "--decisions", filepath.Join(inputs, "decisions.md"),
+				"--base", "origin/trunk", "--message", "gate: pin base", "--out", out, "--dir", repo}
+			if strings.HasPrefix(phase, "resume") {
+				moveRef()
+				args = append(args, "--from", "review")
+				if phase == "resume commit" {
+					args = append(args, "--base", base)
+				}
+			}
+			var stdout, stderr bytes.Buffer
+			code := run(context.Background(), args, runner, &stdout, &stderr)
+			if phase == "resume ref" {
+				if code != exitUsage || f.agisters != 0 || stdout.Len() != 0 || !strings.Contains(stderr.String(), "full commit") {
+					t.Fatalf("exit %d, runs %d\n%s\n%s", code, f.agisters, stdout.String(), stderr.String())
+				}
+				if _, err := os.Stat(out); !errors.Is(err, os.ErrNotExist) {
+					t.Fatalf("output directory created for invalid resume: %v", err)
+				}
+				return
+			}
+			if code != exitPassed {
+				t.Fatalf("exit %d\n%s\n%s", code, stdout.String(), stderr.String())
+			}
+			var sum summary
+			if err := json.Unmarshal(stdout.Bytes(), &sum); err != nil {
+				t.Fatal(err)
+			}
+			if sum.Base != base || !reflect.DeepEqual(f.reviewBases, []string{base, base}) {
+				t.Fatalf("base summary=%q reviews=%q want=%q", sum.Base, f.reviewBases, base)
+			}
+			paths := append([]string{filepath.Join(out, "goal.md"), filepath.Join(out, "step.md")}, f.briefs...)
+			for _, path := range paths {
+				brief, err := os.ReadFile(path)
+				if err != nil {
+					t.Fatal(err)
+				}
+				if !strings.Contains(string(brief), "\n## Base\n\n"+base+"\n") {
+					t.Errorf("%s does not name base %s", path, base)
+				}
+			}
+		})
 	}
-	args := []string{"--issue", filepath.Join(inputs, "issue.md"), "--title", "LAB-251 step 1",
-		"--implement", "implement_codex", "--advisor", "advisor_codex", "--decisions", filepath.Join(inputs, "decisions.md"),
-		"--base", "origin/trunk", "--message", "gate: pin base", "--out", filepath.Join(inputs, "out"), "--dir", repo}
-	var stdout, stderr bytes.Buffer
-	if code := run(context.Background(), args, runner, &stdout, &stderr); code != exitPassed {
-		t.Fatalf("exit %d\n%s\n%s", code, stdout.String(), stderr.String())
+}
+
+// A base that cannot resolve stops before setup creates output or checks
+// the worktree, so preflight cannot precede the snapshot.
+func TestAnUnresolvableBaseStopsBeforeSetup(t *testing.T) {
+	t.Parallel()
+	out := filepath.Join(t.TempDir(), "out")
+	failed := errors.New("unknown revision")
+	g := gate{options: options{base: "origin/missing", from: "implement", out: out, dir: t.TempDir()},
+		run: func(_ context.Context, _ string, name string, args ...string) ([]byte, error) {
+			if name != "git" || !reflect.DeepEqual(args, []string{"rev-parse", "--verify", "origin/missing^{commit}"}) {
+				t.Fatalf("setup preceded base resolution: %s %q", name, args)
+			}
+			return nil, failed
+		}}
+	sum := g.drive(context.Background())
+	if sum.Status != "stopped" || !strings.Contains(sum.Reason, `git rev-parse base "origin/missing": unknown revision`) {
+		t.Fatalf("summary %+v", sum)
 	}
-	var sum summary
-	if err := json.Unmarshal(stdout.Bytes(), &sum); err != nil {
-		t.Fatal(err)
+	if _, err := os.Stat(out); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("output directory created before base resolution: %v", err)
 	}
-	if sum.Base != base || reviewBase != base {
-		t.Fatalf("base summary=%q review=%q want=%q", sum.Base, reviewBase, base)
-	}
-	if moved := git("rev-parse", "origin/trunk"); moved == base {
-		t.Fatalf("review ref did not move from %s", base)
+}
+
+// A resumed step accepts only full commit hashes, never refs, expressions,
+// abbreviations or malformed object IDs.
+func TestAResumedReviewRejectsAnUnpinnedBase(t *testing.T) {
+	t.Parallel()
+	for _, base := range []string{"origin/trunk", "HEAD", "v1.0", "HEAD~1", "deadbeef", strings.Repeat("a", 39), strings.Repeat("a", 41), strings.Repeat("a", 63), strings.Repeat("a", 65), strings.Repeat("g", 40)} {
+		t.Run(base, func(t *testing.T) {
+			t.Parallel()
+			args := []string{"--issue", "issue.md", "--title", "step", "--implement", "implement_codex",
+				"--advisor", "advisor_codex", "--decisions", "decisions.md", "--message", "fix", "--out", "out",
+				"--from", "review", "--base", base}
+			var stdout, stderr bytes.Buffer
+			f := &fake{t: t}
+			code := run(context.Background(), args, f.run, &stdout, &stderr)
+			if code != exitUsage || !strings.Contains(stderr.String(), "full commit") || stdout.Len() != 0 {
+				t.Fatalf("exit %d\n%s\n%s", code, stdout.String(), stderr.String())
+			}
+			if f.agisters != 0 || f.revParses != 0 || f.statuses != 0 {
+				t.Fatalf("commands for invalid base: %+v", f)
+			}
+		})
 	}
 }
 
