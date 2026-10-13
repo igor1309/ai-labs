@@ -9,7 +9,6 @@ import (
 	"sync"
 
 	"github.com/igor1309/ai-labs/agister/internal/contract"
-	"github.com/igor1309/ai-labs/agister/internal/domain/definition"
 	"github.com/igor1309/ai-labs/agister/internal/domain/document"
 	"github.com/igor1309/ai-labs/agister/internal/domain/settings"
 )
@@ -263,7 +262,7 @@ func (c *Checker) checkNow(ctx context.Context, probe bool) (CheckResult, error)
 				// And a broken brief form (ADR-026 rule 8).
 				parsed.briefs[name] = true
 			}
-			if kind != document.KindService && !definition.ValidName(name) {
+			if kind != document.KindService && !validName(name) {
 				// Nothing can name such a document (ADR-015 rule 4).
 				what := "file"
 				if kind == document.KindSkill {
@@ -362,7 +361,7 @@ func (c *Checker) checkNow(ctx context.Context, probe bool) (CheckResult, error)
 		{document.KindWorkspace, func(name string) (document.Source, error) {
 			source, err := c.documents.Workspace(ctx, name)
 			if err == nil {
-				report.Warnings = append(report.Warnings, "workspace settings "+source.Path+": "+definition.ObsoleteWorkspace)
+				report.Warnings = append(report.Warnings, "workspace settings "+source.Path+": "+obsoleteWorkspace)
 			}
 			return source, err
 		}},
@@ -541,7 +540,7 @@ func (c *Checker) checkNow(ctx context.Context, probe bool) (CheckResult, error)
 	bundle := parsed.bundle()
 	known := c.runtimes.Adapters()
 	// The core itself supplies a join's collection (ADR-003 rule 4).
-	sources := append(append([]string(nil), c.sources...), definition.CollectionSource)
+	sources := append(append([]string(nil), c.sources...), collectionSource)
 	for _, p := range settings.Check(bundle, settings.Mechanisms{Sources: sources, Adapters: known}) {
 		settingsProblem(p)
 	}
@@ -701,14 +700,14 @@ func (c *Checker) blocks(ctx context.Context, listed map[DocumentRef]bool, check
 		}
 		var named []CheckedBlock
 		missing := false
-		for i, block := range parsed.Blocks {
-			ref := DocumentRef{Kind: block.Kind, Name: block.Name}
+		for i, block := range parsed {
+			ref := DocumentRef{Kind: block.kind, Name: block.name}
 			if !listed[ref] {
 				stops(subject, fmt.Sprintf("blocks[%d].ref: %s is in neither the repository's settings nor home's", i, label(ref)), false)
 				missing = true
 				continue
 			}
-			named = append(named, CheckedBlock{Ref: ref, Path: source.Path, Reason: block.Reason})
+			named = append(named, CheckedBlock{Ref: ref, Path: source.Path, Reason: block.reason})
 		}
 		if !missing {
 			blocks = append(blocks, named...)

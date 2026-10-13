@@ -14,7 +14,6 @@ import (
 	"time"
 
 	"github.com/igor1309/ai-labs/agister/internal/contract"
-	"github.com/igor1309/ai-labs/agister/internal/domain/definition"
 	"github.com/igor1309/ai-labs/agister/internal/domain/document"
 	"github.com/igor1309/ai-labs/agister/internal/domain/policy"
 	"github.com/igor1309/ai-labs/agister/internal/domain/prompt"
@@ -350,9 +349,9 @@ func (c callResolution) Resolve(ctx context.Context, request CallResolveRequest)
 		resolved.Process.Verify = &CallVerify{Command: verify.command, Timeout: verify.timeout, MaxAttempts: verify.maxAttempts, Instruction: verify.instruction}
 	}
 	resolved.Prompts = translated(res.prompts, func(prompt promptText) CallPrompt {
-		input := definition.PromptInput
+		input := promptInput
 		if prompt.name != process.prompt {
-			input = definition.GuidanceInput + prompt.name
+			input = guidanceInput + prompt.name
 		}
 		return CallPrompt{Input: input, Text: Resolved{Value: prompt.text, Identity: "sha256:" + prompt.sha256}}
 	})
@@ -1729,9 +1728,9 @@ func (c *Calls) resolveValues(ctx context.Context, subject string, declared []Ca
 	files = make([]string, 0, len(values)+len(prompts))
 	texts := map[string]string{}
 	for _, value := range values {
-		if value.Source == definition.CollectionSource {
+		if value.Source == collectionSource {
 			if collection == nil {
-				return nil, nil, refuse("input %s: %s is given only to a workflow's join", value.Name, definition.CollectionSource)
+				return nil, nil, refuse("input %s: %s is given only to a workflow's join", value.Name, collectionSource)
 			}
 			if text, ok := collection.Value.(string); ok {
 				texts[value.Name] = text
@@ -1760,7 +1759,7 @@ func (c *Calls) resolveValues(ctx context.Context, subject string, declared []Ca
 		}
 	}
 	for _, prompt := range prompts {
-		inputs, files = append(inputs, run.Input{Name: prompt.Input, Source: definition.PromptSource, Identity: prompt.Text.Identity, Value: prompt.Text.Value}), append(files, "")
+		inputs, files = append(inputs, run.Input{Name: prompt.Input, Source: promptSource, Identity: prompt.Text.Identity, Value: prompt.Text.Value}), append(files, "")
 	}
 	return inputs, files, nil
 }

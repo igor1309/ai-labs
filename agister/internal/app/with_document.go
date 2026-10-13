@@ -4,7 +4,6 @@ import (
 	"context"
 	"sort"
 
-	"github.com/igor1309/ai-labs/agister/internal/domain/definition"
 	"github.com/igor1309/ai-labs/agister/internal/domain/document"
 )
 
@@ -47,7 +46,7 @@ func (w withDocument) with(ctx context.Context, kind document.Kind, name string,
 		return current, nil
 	}
 	home := document.LayerFile{Layer: document.LayerHome, Path: w.doc.Source.Path, SHA256: w.doc.Source.SHA256}
-	return definition.WithHome(current, document.LayerText{File: home, Bytes: w.doc.Bytes})
+	return withHome(current, document.LayerText{File: home, Bytes: w.doc.Bytes})
 }
 
 func (w withDocument) List(ctx context.Context, kind document.Kind) ([]string, error) {
