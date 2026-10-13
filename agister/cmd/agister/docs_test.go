@@ -2,6 +2,7 @@ package main
 
 import (
 	"html"
+	"os"
 	"path/filepath"
 	"reflect"
 	"regexp"
@@ -15,9 +16,9 @@ import (
 // The documents that describe the settings say what the binary does
 // (ADR-030): agents, processes and the workflows that bind them, with no
 // policy document, no --agent, no agister run of a process and none of the
-// agent names it retired. They are the README, the caller skill, the
-// settings diagrams and the Pages README; the examples' READMEs run only
-// workflows too.
+// agent names it retired. They are the README, the behaviour reference,
+// the caller skill, the settings diagrams and the Pages README; the
+// examples' READMEs run only workflows too.
 
 // settingsDocs are the documents, relative to agister/, that describe the
 // settings. Of the diagrams' folder, the documents are its HTML and
@@ -26,19 +27,44 @@ import (
 func settingsDocs(t *testing.T) []string {
 	t.Helper()
 	docs := []string{"README.md", filepath.Join("skills", "agister", "SKILL.md"), filepath.Join("pages", "README.md")}
-	var diagrams []string
-	for _, pattern := range []string{"*.html", "*.md"} {
-		found, err := filepath.Glob(filepath.Join("..", "..", "docs", "settings-architecture", pattern))
+	var documents []string
+	for _, pattern := range []string{
+		filepath.Join("docs", "reference", "*.md"),
+		filepath.Join("docs", "settings-architecture", "*.html"),
+		filepath.Join("docs", "settings-architecture", "*.md"),
+	} {
+		found, err := filepath.Glob(filepath.Join("..", "..", pattern))
 		if err != nil || len(found) == 0 {
-			t.Fatalf("the settings diagrams, %s: %v, %v", pattern, found, err)
+			t.Fatalf("the settings documents, %s: %v, %v", pattern, found, err)
 		}
-		diagrams = append(diagrams, found...)
+		documents = append(documents, found...)
 	}
-	for _, path := range diagrams {
+	for _, path := range documents {
 		rel, _ := filepath.Rel(filepath.Join("..", ".."), path)
 		docs = append(docs, rel)
 	}
 	return docs
+}
+
+// Contract test: the documentation guards' coverage of the reference
+// pages on the repository's filesystem.
+func TestSettingsDocsIncludeEveryReferencePage(t *testing.T) {
+	t.Parallel()
+	docs := settingsDocs(t)
+	reference := filepath.Join("docs", "reference")
+	entries, err := os.ReadDir(filepath.Join("..", "..", reference))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, entry := range entries {
+		if entry.IsDir() || filepath.Ext(entry.Name()) != ".md" {
+			continue
+		}
+		page := filepath.Join(reference, entry.Name())
+		if !slices.Contains(docs, page) {
+			t.Errorf("the settings documentation guards leave out %s", page)
+		}
+	}
 }
 
 func TestTheSettingsDocsNameNoPolicyAgentFlagOrRetiredAgent(t *testing.T) {
