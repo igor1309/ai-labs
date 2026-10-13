@@ -80,3 +80,7 @@ The commands are in [AGENTS.md](AGENTS.md); they check `gokit` too. CI:
 Known gaps: backlog issues in the Multica project Agister
 ([docs/deferred.md](docs/deferred.md)). Ideas:
 [backlog/](backlog/README.md).
+
+Runtime permissions are [best effort](docs/reference/permissions-and-runtimes.md):
+required permissions and state reach are hard checks; extra grants and
+unverified versions warn in binding views and run results (ADR-036).

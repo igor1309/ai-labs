@@ -269,6 +269,9 @@ type CallPlan struct {
 	Primitives []string
 	Granted    []string // permissions the primitives provide
 	Withheld   []string // allowed but not provided
+	Declared   []string // effective permissions the caller offered
+	Extra      []string // granted beyond that offer
+	Warnings   []string
 }
 
 // ResolvedWorkflow is a workflow and its nodes' processes, as a run of it
@@ -342,7 +345,7 @@ func (c callResolution) Resolve(ctx context.Context, request CallResolveRequest)
 			Access: effective.Access, Scope: effective.Scope, Stale: callStale(effective.Stale),
 		},
 		Identity: CallRuntime{Contract: res.identity.Contract, Version: res.identity.Version, Resume: res.identity.Resume, ResumeWhereItRan: res.identity.ResumeWhereItRan},
-		Plan:     CallPlan{Primitives: res.plan.Primitives, Granted: res.plan.Granted, Withheld: res.plan.Withheld},
+		Plan:     CallPlan{Primitives: res.plan.Primitives, Granted: res.plan.Granted, Withheld: res.plan.Withheld, Declared: effective.Permissions, Extra: res.plan.Extra, Warnings: res.warnings},
 		Writer:   res.writer,
 	}
 	if verify := process.verify; verify != nil {
@@ -919,6 +922,7 @@ func (c *Calls) execute(ctx context.Context, handle RunHandle, record run.Record
 		}
 		result.Timing.FinishedAt = now
 		result.Timing.WallMS = now.Sub(result.Timing.StartedAt).Milliseconds()
+		result = record.WithWarnings(result)
 		record.Result = &result
 		final = record
 		data := map[string]any{"status": string(result.Status)}
@@ -1013,8 +1017,11 @@ func (c *Calls) execute(ctx context.Context, handle RunHandle, record run.Record
 	record.Verify = recordVerify(res.Process.Verify)
 	record.Runtime = &run.Runtime{Mapping: res.Mapping.Name, Adapter: res.Mapping.Adapter, Contract: res.Identity.Contract, Version: res.Identity.Version}
 	record.Plan = recordPlan(res.Plan)
+	for _, warning := range record.Plan.Warnings {
+		event(run.SourceAgister, "WARNING", map[string]any{"message": warning})
+	}
 	_ = handle.Update(record)
-	event(run.SourceAgister, "PLANNED", map[string]any{"primitives": res.Plan.Primitives, "granted": res.Plan.Granted, "withheld": res.Plan.Withheld})
+	event(run.SourceAgister, "PLANNED", map[string]any{"primitives": res.Plan.Primitives, "granted": res.Plan.Granted, "withheld": res.Plan.Withheld, "declared": res.Plan.Declared, "extra": res.Plan.Extra})
 	if len(res.Plan.Withheld) > 0 {
 		event(run.SourceAgister, "PERMISSIONS_WITHHELD", map[string]any{"permissions": res.Plan.Withheld})
 	}
@@ -1269,6 +1276,7 @@ func (c *Calls) runWorkflow(ctx context.Context, handle RunHandle, record run.Re
 		result.Usage, result.Cost = totals.Usage, totals.Cost
 		result.Timing.FinishedAt = now
 		result.Timing.WallMS = now.Sub(result.Timing.StartedAt).Milliseconds()
+		result = record.WithWarnings(result)
 		record.Result = &result
 		data := map[string]any{"status": string(status)}
 		if fault != nil {
@@ -1369,12 +1377,15 @@ func (c *Calls) runWorkflow(ctx context.Context, handle RunHandle, record run.Re
 		node.Status = end.record.Result.Status
 		node.Error = end.record.Result.Error
 		ran = append(ran, *end.record.Result)
+		for _, warning := range end.record.Result.Warnings {
+			state.Warnings = append(state.Warnings, "node "+node.Name+": "+warning)
+		}
+		_ = handle.Update(record)
 		data := map[string]any{"node": node.Name, "run": node.Run, "status": string(node.Status)}
 		if node.Error != nil {
 			data["class"] = string(node.Error.Class)
 		}
 		event("NODE_FINISHED", data)
-		_ = handle.Update(record)
 	}
 
 	// Fan out: a node that cannot start stops the rest from starting.

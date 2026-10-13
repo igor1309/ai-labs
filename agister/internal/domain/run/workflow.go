@@ -11,6 +11,10 @@ type Workflow struct {
 	// Collection is the join's collection input as the join received it;
 	// unset when no join started.
 	Collection *Artifact `json:"collection,omitempty"`
+	// Warnings accumulate node-labelled warnings as nodes finish, so an
+	// unfinished parent retains them even when its owner ends. Unset on
+	// records written before warnings were persisted.
+	Warnings []string `json:"warnings,omitempty"`
 }
 
 // Node is one node of a workflow run.

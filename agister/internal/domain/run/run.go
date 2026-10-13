@@ -5,6 +5,7 @@ package run
 import (
 	"encoding/json"
 	"fmt"
+	"slices"
 	"time"
 )
 
@@ -129,6 +130,7 @@ type Session struct {
 
 // Result is a node's output as a workflow sees it.
 type Result struct {
+	Warnings  []string        `json:"warnings,omitempty"`
 	Status    Status          `json:"status"`
 	Error     *Error          `json:"error,omitempty"`
 	Output    json.RawMessage `json:"output,omitempty"` // the latest turn's, when contract-valid, whatever then ended the node
@@ -462,4 +464,25 @@ func AbandonedResult(startedAt time.Time) Result {
 		Cost:   Cost{Source: CostUnknown},
 		Timing: Timing{StartedAt: startedAt},
 	}
+}
+
+// WithWarnings includes persisted call and workflow warnings in any outcome,
+// including one synthesized after the owner ends. Outcome-specific warnings
+// are retained.
+func (r Record) WithWarnings(result Result) Result {
+	result.Warnings = slices.Clone(result.Warnings)
+	include := func(warnings []string) {
+		for _, warning := range warnings {
+			if !slices.Contains(result.Warnings, warning) {
+				result.Warnings = append(result.Warnings, warning)
+			}
+		}
+	}
+	if r.Plan != nil {
+		include(r.Plan.Warnings)
+	}
+	if r.Workflow != nil {
+		include(r.Workflow.Warnings)
+	}
+	return result
 }

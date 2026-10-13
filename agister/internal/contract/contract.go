@@ -249,6 +249,7 @@ type Binding struct {
 	Version string `json:"version"`
 	// Allowed and not required, and not given: not a problem.
 	Withheld []string `json:"withheld,omitempty"`
+	Extra    []string `json:"extra,omitempty"`
 	// In tools.require, and withheld: the call cannot run, a problem.
 	Required []string `json:"required,omitempty"`
 }
@@ -507,6 +508,7 @@ type Run struct {
 // routes a completed node on Output and any other status on its failure
 // route, optionally by Error.Class.
 type Result struct {
+	Warnings  []string        `json:"warnings,omitempty"`
 	Status    string          `json:"status"` // completed | failed | interrupted | lost
 	Error     *Error          `json:"error,omitempty"`
 	Output    json.RawMessage `json:"output,omitempty"`

@@ -191,6 +191,8 @@ type storeSpy struct {
 	// kept; onArtifact as an artifact is stored.
 	onFinish   func(record run.Record)
 	onArtifact func(id, name string)
+	// onUpdate observes a record after it has been kept.
+	onUpdate func(record run.Record)
 	// onEvent, when set, runs after an event is appended to a run.
 	onEvent func(id string, event run.Event)
 	// failCreate, when set, is asked, by its node's name, whether creating a
@@ -291,8 +293,11 @@ func (r *runSpy) Raw(string) error { return nil }
 
 func (r *runSpy) Update(record run.Record) error {
 	r.mu.Lock()
-	defer r.mu.Unlock()
 	r.record = record
+	r.mu.Unlock()
+	if hook := r.store.onUpdate; hook != nil {
+		hook(record)
+	}
 	return nil
 }
 
@@ -405,18 +410,22 @@ func newFlowHarness() *flowHarness {
 		}
 		return app.Resolved{}, fmt.Errorf("no source %s", spec.Source)
 	}}
-	runtimes := nodeRuntimes{runner: h.runner}
-	changes := &changesSpy{}
 	runs := &runsSpy{records: map[string]run.Record{}, states: map[string]run.State{}}
 	h.runs, h.copies, h.references = runs, &copiesSpy{}, &referencesSpy{}
-	h.calls = app.NewCalls(
-		app.NewResolver(h.defs, runtimes, okValidator{}, resolverCheckStub{}), runtimes,
+	h.calls = h.callsOn(h.defs)
+	return h
+}
+
+func (h *flowHarness) callsOn(src app.ResolverDefinitions) *app.Calls {
+	runtimes := nodeRuntimes{runner: h.runner}
+	changes := &changesSpy{}
+	return app.NewCalls(
+		app.NewResolver(src, runtimes, okValidator{}, resolverCheckStub{}), runtimes,
 		map[string]app.InputProvider{"git.revision": h.inputs, "git.diff": h.inputs, "file": h.inputs, "param": h.inputs}, h.copies, h.references,
-		h.workspaces, changes, app.NewHolder(app.HoldAdapters{Locks: h.locks, Worktrees: &worktreesSpy{}, Content: changes, Runs: runs, Reaper: &reaperSpy{}, Writers: &writersSpy{}}),
-		app.CallsVerifier{Verifier: app.NewVerifier(changes, &commandsSpy{}, fixedClock{})}, app.NewRecoverer(fixedClock{}), okValidator{}, h.store, runs,
+		h.workspaces, changes, app.NewHolder(app.HoldAdapters{Locks: h.locks, Worktrees: &worktreesSpy{}, Content: changes, Runs: h.runs, Reaper: &reaperSpy{}, Writers: &writersSpy{}}),
+		app.CallsVerifier{Verifier: app.NewVerifier(changes, &commandsSpy{}, fixedClock{})}, app.NewRecoverer(fixedClock{}), okValidator{}, h.store, h.runs,
 		fixedClock{}, unfired, &seqIDs{}, "/state", h.hosted,
 	)
-	return h
 }
 
 func (h *flowHarness) script(instruction string) *script { return h.runner.scripts[instruction] }
@@ -1669,7 +1678,7 @@ join: {node: merge, uses: process:joiner, agent: a}
 // ADR-030 rule 8, ADR-015 rule 3: each binding of a process is resolved
 // before any node runs, so two nodes that bind one process to two agents
 // are two bindings. The second's agent is on a runtime whose one primitive
-// grants more than the process allows: the workflow is refused, with no
+// grants state-reaching host.read: the workflow is refused, with no
 // node's run and no turn, though the first's binding can run.
 func TestAProcessBoundTwiceIsCheckedOnEachAgent(t *testing.T) {
 	t.Parallel()
@@ -1682,13 +1691,13 @@ efforts: [high]
 primitives:
   select: one
   items:
-    Bash: {grants: [process.execute, repository.read], verified: ["1."]}
+    Bash: {grants: [process.execute, repository.read, host.read], verified: ["1."]}
 `)
 	h.defs.set(document.KindAgent, "c", strings.NewReplacer(`name = "a"`, `name = "c"`, `runtime = "rt"`, `runtime = "narrow"`).Replace(settingsDocs()[document.KindAgent]["a"]))
 	twice := strings.Replace(workflowDoc, "{node: two, uses: process:second, agent: a}", "{node: two, uses: process:first, agent: a}", 1)
 	h.defs.set(document.KindWorkflow, "w", boundTo(boundTo(twice, "one", "first", "a"), "two", "first", "c"))
 	record := h.store.wait(t, h.submit(t, contract.CallRequest{}))
-	const want = "workflow w uses process first: runtime narrow: cannot enforce the effective permissions: Bash also grants process.execute"
+	const want = "workflow w uses process first: runtime narrow: cannot enforce the effective permissions: Bash grants state_reaching permissions: host.read"
 	if class(record) != run.ClassRefused || message(record) != want {
 		t.Fatalf("result %+v, want refused: %s", record.Result, want)
 	}

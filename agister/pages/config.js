@@ -376,6 +376,8 @@
       file, name: doc.name ?? stem(file),
       adapter: doc.adapter ?? null, contract: doc.contract ?? null,
       verified: [...verified],
+      select: doc.primitives?.select ?? null,
+      primitives: Object.entries(items).map(([name, p]) => ({ name, grants: Array.isArray(p?.grants) ? p.grants : [] })),
     };
   }
 

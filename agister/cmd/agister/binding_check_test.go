@@ -28,11 +28,12 @@ func TestCheckAndWorkflowShowListWhatEachBindingWithholds(t *testing.T) {
 	write(t, filepath.Join(home, "workflows", "asking.yaml"), askingDoc)
 
 	r := agister(t, home, repo, "check")
+	// ADR-036 permits independent version warnings beside withheld permissions.
 	for _, line := range []string{
 		"withheld workflow review_panel node adversarial: process adversarial_review, agent reviewer (runtime claude-code version 2.1): repository.read, repository.diff, repository.search\n",
 		"withheld workflow review_panel node summary: process review_summary, agent reviewer (runtime claude-code version 2.1): repository.read, repository.diff, repository.search, repository.history.read, process.execute, host.read\n",
 	} {
-		if r.code != 0 || !strings.Contains(r.stdout, line) || strings.Contains(r.stderr, "warning workflow") {
+		if r.code != 0 || !strings.Contains(r.stdout, line) {
 			t.Fatalf("check lacks %q: %d\n%s%s", line, r.code, r.stdout, r.stderr)
 		}
 	}
@@ -69,8 +70,8 @@ func TestCheckAndWorkflowShowListWhatEachBindingWithholds(t *testing.T) {
 	write(t, process, strings.Replace(read(t, process), "tools:\n  allow:\n", "tools:\n  require: [repository.read]\n  allow:\n", 1))
 	r = agister(t, home, repo, "check")
 	const refused = "process ask: cannot run on agent assistant's runtime claude-code: cannot enforce the effective permissions: required permissions would be withheld: repository.read"
-	if r.code != cli.ExitUsage || !strings.Contains(r.stderr, refused) || strings.Contains(r.stderr, "warning workflow") {
-		t.Fatalf("check lacks %q, or warns of a workflow: %d\n%s%s", refused, r.code, r.stdout, r.stderr)
+	if r.code != cli.ExitUsage || !strings.Contains(r.stderr, refused) {
+		t.Fatalf("check lacks %q: %d\n%s%s", refused, r.code, r.stdout, r.stderr)
 	}
 	bindingsAre(t, agister(t, home, repo, "check", "--json"), `[`+reviewerCallBinding+`
   {"workflow": "ask_assistant", "node": "ask", "process": "ask", "agent": "assistant", "runtime": "claude-code", "version": "2.1",
@@ -125,7 +126,7 @@ func TestABindingTheSettingsRefuseShowsWhatElseItWithholds(t *testing.T) {
 	const refused = "/processes/adversarial_review.yaml): runtime claude-code: cannot enforce the effective permissions: required permissions would be withheld: repository.read (not verified for version 2.1.283: NotebookEdit, WebFetch, WebSearch)\n" +
 		"  withheld   repository.diff, repository.search\n" +
 		"             architecture: process architecture_review"
-	const run = "/workflows/review_panel.yaml): fan-out node adversarial: process adversarial_review: cannot run on agent reviewer's runtime claude-code: cannot enforce the effective permissions: required permissions would be withheld: repository.read (not verified for version 2.1: NotebookEdit, WebFetch, WebSearch)\n"
+	const run = "/workflows/review_panel.yaml): fan-out node adversarial: process adversarial_review: cannot run on agent reviewer's runtime claude-code: cannot enforce the effective permissions: required permissions would be withheld: repository.read\n"
 	if !strings.Contains(r.stdout, node) || !strings.Contains(r.stdout, refused) || !strings.Contains(r.stdout, "run          REFUSED: workflow review_panel (") || !strings.Contains(r.stdout, run) {
 		t.Fatalf("workflow show lacks %q, %q or %q: %d\n%s%s", node, refused, run, r.code, r.stdout, r.stderr)
 	}
@@ -196,8 +197,8 @@ primitives:
 	}
 
 	r := agister(t, home, repo, "check")
-	const problem = "workflow asking: call node question: process ask: cannot run on agent reviewer's runtime claude-code: cannot enforce the effective permissions: required permissions would be withheld: repository.read (not verified for version 2.1: NotebookEdit, WebFetch, WebSearch)\n  refuses workflow asking\n"
-	if r.code != cli.ExitUsage || !strings.Contains(r.stderr, problem) || !strings.Contains(r.stderr, "1 problem(s)") || strings.Contains(r.stderr, "warning workflow") {
+	const problem = "workflow asking: call node question: process ask: cannot run on agent reviewer's runtime claude-code: cannot enforce the effective permissions: required permissions would be withheld: repository.read\n  refuses workflow asking\n"
+	if r.code != cli.ExitUsage || !strings.Contains(r.stderr, problem) || !strings.Contains(r.stderr, "1 problem(s)") {
 		t.Fatalf("check lacks %q alone: %d\n%s%s", problem, r.code, r.stdout, r.stderr)
 	}
 
@@ -224,6 +225,8 @@ primitives:
 	if result["status"] != "completed" || result["text"] != "All good." ||
 		!reflect.DeepEqual(ran.record["call"], map[string]any{"node": "question", "process": "ask", "agent": "reader"}) ||
 		!reflect.DeepEqual(ran.record["plan"], map[string]any{"primitives": []any{"Read"}, "granted": []any{"repository.read"},
+			"declared": []any{"repository.read", "repository.diff", "repository.search", "repository.history.read", "process.execute", "host.read"},
+			"extra":    []any{},
 			"withheld": []any{"repository.diff", "repository.search", "repository.history.read", "process.execute", "host.read"}}) {
 		t.Fatalf("asking_reader ran call %v on plan %v, result %v", ran.record["call"], ran.record["plan"], result)
 	}
@@ -241,7 +244,7 @@ const (
    "withheld": ["repository.read", "repository.diff", "repository.search"]},`
 	implementCallBinding = `
   {"workflow": "implement_assistant", "node": "implement", "process": "implement", "agent": "assistant", "runtime": "claude-code", "version": "2.1",
-   "withheld": ["repository.read", "repository.search", "repository.diff", "repository.write", "process.execute"]},`
+   "withheld": ["repository.read", "repository.search", "repository.diff", "process.execute"]},`
 	reviewPanelBindings = `
   {"workflow": "review_panel", "node": "adversarial", "process": "adversarial_review", "agent": "reviewer", "runtime": "claude-code", "version": "2.1",
    "withheld": ["repository.read", "repository.diff", "repository.search"]},` + reviewPanelOthers

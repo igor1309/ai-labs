@@ -81,7 +81,7 @@ func TestDependencyRule(t *testing.T) {
 					!strings.HasPrefix(dep, "internal/") && !strings.HasPrefix(dep, "cmd/") && dep != "examples" && !under(dep, supervisor)
 			case pkg == "examples":
 				allowed = false
-			case pkg == "cmd/agister", pkg == "cmd/retire-implement-processes":
+			case pkg == "cmd/agister", pkg == "cmd/retire-implement-processes", pkg == "cmd/retire-settings":
 				allowed = true // a composition root
 			default:
 				allowed = true
@@ -100,7 +100,7 @@ func TestDependencyRule(t *testing.T) {
 func TestOnlyTheCompositionRootImportsAdapters(t *testing.T) {
 	t.Parallel()
 	for pkg, imported := range packages(t) {
-		if pkg == "cmd/agister" || pkg == "cmd/retire-implement-processes" || pkg == "internal/composition/runtime" || pkg == "internal/composition/install" || under(pkg, "internal/adapters") {
+		if pkg == "cmd/agister" || pkg == "cmd/retire-implement-processes" || pkg == "cmd/retire-settings" || pkg == "internal/composition/runtime" || pkg == "internal/composition/install" || under(pkg, "internal/adapters") {
 			continue
 		}
 		for _, dep := range imported {
