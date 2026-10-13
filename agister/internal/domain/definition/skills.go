@@ -95,7 +95,7 @@ func skillNames(names []string, field string, p *problems) []string {
 		switch first, again := seen[name]; {
 		case strings.Contains(name, "${"):
 			p.add(at, "is not interpolated: name the skill document literally")
-		case !ValidName(name):
+		case !document.ValidName(name):
 			p.add(at, "invalid skill name %q", name)
 		case again:
 			p.add(at, "skill %q is named twice (also %s)", name, first)

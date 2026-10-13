@@ -444,6 +444,8 @@ type Document struct{}
 var ErrNotFound error
 
 func Composed(kind Kind) bool { return false }
+
+func ValidName(name string) bool { return false }
 `,
 		"definition/alias.go": `package definition
 
@@ -461,6 +463,8 @@ var ErrNotFound = document.ErrNotFound
 		"definition/forward.go": `package definition
 
 func Composed(kind document.Kind) bool { return document.Composed(kind) }
+
+func ValidName(name string) bool { return document.ValidName(name) }
 `,
 		// None of these gives the package a name of the vocabulary: a
 		// method, a type local to a function, an unexported name, a name
@@ -489,7 +493,7 @@ type Source = document.Source
 		}
 	}
 	got := redeclared(t, filepath.Join(root, "definition"), filepath.Join(root, "document"))
-	want := []string{"Composed", "ErrNotFound", "Kind", "KindAgent", "KindProcess"}
+	want := []string{"Composed", "ErrNotFound", "Kind", "KindAgent", "KindProcess", "ValidName"}
 	if !slices.Equal(got, want) {
 		t.Errorf("vocabulary names the parser declares = %q, want %q", got, want)
 	}

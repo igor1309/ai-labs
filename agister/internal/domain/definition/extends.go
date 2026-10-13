@@ -384,7 +384,7 @@ func baseName(node *yaml.Node) string {
 	if node.Kind != yaml.ScalarNode {
 		return ""
 	}
-	if name, ok := strings.CutPrefix(node.Value, processReference); ok && ValidName(name) {
+	if name, ok := strings.CutPrefix(node.Value, processReference); ok && document.ValidName(name) {
 		return name
 	}
 	return ""

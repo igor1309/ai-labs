@@ -262,7 +262,7 @@ func (c *Checker) checkNow(ctx context.Context, probe bool) (CheckResult, error)
 				// And a broken brief form (ADR-026 rule 8).
 				parsed.briefs[name] = true
 			}
-			if kind != document.KindService && !validName(name) {
+			if kind != document.KindService && !document.ValidName(name) {
 				// Nothing can name such a document (ADR-015 rule 4).
 				what := "file"
 				if kind == document.KindSkill {

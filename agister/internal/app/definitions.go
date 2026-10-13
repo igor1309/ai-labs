@@ -276,7 +276,7 @@ func (s *Settings) CreateAgent(ctx context.Context, spec contract.Agent, overwri
 		name: spec.Name, runtime: spec.Runtime, model: spec.Model, modelFamily: spec.ModelFamily,
 		effort: spec.Effort, command: spec.Command,
 	}
-	if !validName(agent.name) {
+	if !document.ValidName(agent.name) {
 		return contract.AgentWrite{}, &contract.InputError{Message: fmt.Sprintf("invalid agent name %q", agent.name)}
 	}
 	mapping, _, err := s.documents.Mapping(ctx, agent.runtime)
