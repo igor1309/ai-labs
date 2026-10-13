@@ -47,7 +47,11 @@ func (f *fake) run(_ context.Context, _ string, name string, args ...string) ([]
 		}
 		return []byte(f.unreported), nil
 	case name == "git" && args[0] == "add":
-		f.added = append(f.added, args[2:])
+		var added []string
+		for _, p := range args[2:] {
+			added = append(added, strings.TrimPrefix(p, ":(top)"))
+		}
+		f.added = append(f.added, added)
 		f.recorded = f.recorded || filepath.Base(args[2]) == "decisions.md"
 		return nil, nil
 	case name == "git" && args[0] == "diff":
@@ -297,6 +301,64 @@ func TestAChangeTheRunDidNotReportStopsTheStep(t *testing.T) {
 	}
 	if len(f.commits) != 0 {
 		t.Errorf("committed %q", f.commits)
+	}
+}
+
+// A run reports its files from the worktree root; with --dir a
+// subdirectory, they are still the ones staged and committed, by real git.
+func TestTheRunsFilesAreCommittedFromTheRootWhenDirIsBelowIt(t *testing.T) {
+	t.Parallel()
+	repo, inputs := t.TempDir(), t.TempDir()
+	git := func(args ...string) string {
+		t.Helper()
+		out, err := commands(context.Background(), repo, "git", args...)
+		if err != nil {
+			t.Fatalf("git %q: %v", args, err)
+		}
+		return strings.TrimSpace(string(out))
+	}
+	git("init", "-q")
+	for _, kv := range [][2]string{{"user.name", "gate"}, {"user.email", "gate@test"}, {"commit.gpgsign", "false"}, {"core.hooksPath", "/dev/null"}} {
+		git("config", kv[0], kv[1])
+	}
+	project := filepath.Join(repo, "project")
+	if err := os.MkdirAll(project, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(project, "a.go"), []byte("package a\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	git("add", "project/a.go")
+	git("commit", "-q", "-m", "base")
+	for name, text := range map[string]string{"issue.md": issue, "decisions.md": records} {
+		if err := os.WriteFile(filepath.Join(inputs, name), []byte(text), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	f := &fake{t: t, implements: []string{implementResult("i1", "project/a.go")}, reviews: []string{reviewed("r1")}}
+	runner := func(ctx context.Context, dir, name string, args ...string) ([]byte, error) {
+		if name == "git" {
+			return commands(ctx, dir, name, args...)
+		}
+		if args[1] == "implement_codex" {
+			if err := os.WriteFile(filepath.Join(project, "a.go"), []byte("package a\n\nconst A = 1\n"), 0o644); err != nil {
+				t.Fatal(err)
+			}
+		}
+		return f.run(ctx, dir, name, args...)
+	}
+	args := []string{"--issue", filepath.Join(inputs, "issue.md"), "--title", "LAB-1 step 2",
+		"--implement", "implement_codex", "--advisor", "advisor_codex", "--decisions", filepath.Join(inputs, "decisions.md"),
+		"--base", "HEAD", "--message", "project: a constant", "--out", filepath.Join(inputs, "out"), "--dir", project}
+	var stdout, stderr bytes.Buffer
+	if code := run(context.Background(), args, runner, &stdout, &stderr); code != exitPassed {
+		t.Fatalf("exit %d\n%s\n%s", code, stdout.String(), stderr.String())
+	}
+	if got := git("log", "-1", "--format=%s", "--name-only"); got != "project: a constant\n\nproject/a.go" {
+		t.Errorf("last commit %q", got)
+	}
+	if got := git("status", "--porcelain"); got != "" {
+		t.Errorf("left %q", got)
 	}
 }
 
