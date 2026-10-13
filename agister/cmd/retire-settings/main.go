@@ -14,7 +14,6 @@ import (
 	"github.com/igor1309/ai-labs/agister/internal/adapters/system"
 	"github.com/igor1309/ai-labs/agister/internal/app"
 	"github.com/igor1309/ai-labs/agister/internal/composition/install"
-	"github.com/igor1309/ai-labs/agister/internal/domain/definition"
 	"github.com/igor1309/ai-labs/agister/internal/domain/document"
 )
 
@@ -33,14 +32,14 @@ type retirement interface {
 }
 
 func run(ctx context.Context, args []string, stdout, stderr io.Writer, makeRetirement func(string) retirement) int {
-	if len(args) < 3 || args[0] == "" || !definition.ValidName(args[1]) {
+	if len(args) < 3 || args[0] == "" || !document.ValidName(args[1]) {
 		fmt.Fprintln(stderr, "usage: retire-settings <home> <source> <process:name|workflow:name>...")
 		return 1
 	}
 	var docs []app.RetireDocument
 	for _, arg := range args[2:] {
 		kind, name, ok := strings.Cut(arg, ":")
-		if !ok || !definition.ValidName(name) || (kind != "process" && kind != "workflow") {
+		if !ok || !document.ValidName(name) || (kind != "process" && kind != "workflow") {
 			fmt.Fprintf(stderr, "retire: invalid document %q\n", arg)
 			return 1
 		}

@@ -59,7 +59,7 @@ func promptName(name, field string, p *problems) bool {
 	switch {
 	case strings.Contains(name, "${"):
 		p.add(field, "is not interpolated: name the prompt document literally")
-	case !ValidName(name):
+	case !document.ValidName(name):
 		p.add(field, "invalid prompt name %q", name)
 	default:
 		return true

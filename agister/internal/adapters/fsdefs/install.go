@@ -50,7 +50,7 @@ func (s Store) backedUp(kind document.Kind, name string) (string, error) {
 	if !ok {
 		return s.path(kind, name)
 	}
-	if !definition.ValidName(name) {
+	if !document.ValidName(name) {
 		return "", fmt.Errorf("invalid name %q", name)
 	}
 	return filepath.Join(s.Dir, string(kind), name+extension), nil
@@ -102,7 +102,7 @@ func (s Store) documents(ctx context.Context, kinds []document.Kind, unreadable 
 			}
 		}
 		for _, name := range names {
-			if !singleton(kind) && !definition.ValidName(name) {
+			if !singleton(kind) && !document.ValidName(name) {
 				continue
 			}
 			doc, err := s.read(kind, name)
