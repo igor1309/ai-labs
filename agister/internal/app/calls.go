@@ -80,8 +80,7 @@ type ResolvedCall struct {
 	Process CallProcess
 	Agent   CallAgent
 	// Session says whether the call's session may be resumed, as its process
-	// says it: definition.SessionFresh or definition.SessionResumable
-	// (ADR-030 rule 3).
+	// says it: fresh-only or resumable (ADR-030 rule 3).
 	Session string
 	Mapping CallMapping
 	Schema  []byte
@@ -167,6 +166,37 @@ type CallVerify struct {
 	Timeout     time.Duration // per run
 	MaxAttempts int           // runs, the first included
 	Instruction string        // what the agent is told when a run fails
+}
+
+// VerifyCall is one call's verification loop, and what it records to.
+type VerifyCall struct {
+	Record *run.Record
+	Result *run.Result
+	Event  func(source, kind string, data map[string]any)
+	// Update and Artifact write the run's evidence.
+	Update   func(run.Record) error
+	Artifact func(name string, data []byte) (run.Artifact, error)
+
+	Verify   CallVerify
+	Limit    *float64  // the call's cost limit, one budget for every turn
+	Deadline time.Time // the call's timeout, for every turn and run
+	// NoOutput is the call's staleness limit for a run: how long the
+	// command may go without output; zero: no such limit.
+	NoOutput time.Duration
+	Dir      string // the call's worktree, where the command runs
+	Base     string // the revision the process pins
+	// Request is the call's first turn, which every repair repeats with
+	// the failure as its prompt.
+	Request TurnRequest
+	// Session is the provider session of the call's first turn, which
+	// every repair resumes.
+	Session string
+
+	// Take runs a turn and records it with the call, given the resumed
+	// session's totals before it; Conclude says whether a turn ended
+	// validly, and why not.
+	Take     func(TurnRequest, *run.SessionTotals) run.Turn
+	Conclude func(run.Turn) *run.Error
 }
 
 // CallAgent is the runtime profile a call runs as.
@@ -296,9 +326,9 @@ func (c callResolution) Resolve(ctx context.Context, request CallResolveRequest)
 	process, agent, effective := res.process, res.agent, res.effective
 	resolved := &ResolvedCall{
 		Process: CallProcess{
-			Name: process.Name, Instruction: process.Instruction,
-			Params: callParams(processParams(process)), Values: callValues(processValues(process)),
-			Revision: process.Revision, Output: process.Output.Format, Clean: process.Clean,
+			Name: process.name, Instruction: process.instruction,
+			Params: callParams(process.params), Values: callValues(process.values),
+			Revision: process.revision, Output: process.output.format, Clean: process.clean,
 		},
 		Agent:   CallAgent{Name: agent.name, Command: agent.command, Model: agent.model, Effort: agent.effort},
 		Session: res.session,
@@ -316,12 +346,12 @@ func (c callResolution) Resolve(ctx context.Context, request CallResolveRequest)
 		Plan:     CallPlan{Primitives: res.plan.Primitives, Granted: res.plan.Granted, Withheld: res.plan.Withheld},
 		Writer:   res.writer,
 	}
-	if verify := process.Verify; verify != nil {
-		resolved.Process.Verify = &CallVerify{Command: verify.Command, Timeout: verify.Timeout, MaxAttempts: verify.MaxAttempts, Instruction: verify.Instruction}
+	if verify := process.verify; verify != nil {
+		resolved.Process.Verify = &CallVerify{Command: verify.command, Timeout: verify.timeout, MaxAttempts: verify.maxAttempts, Instruction: verify.instruction}
 	}
 	resolved.Prompts = translated(res.prompts, func(prompt promptText) CallPrompt {
 		input := definition.PromptInput
-		if prompt.name != process.Prompt {
+		if prompt.name != process.prompt {
 			input = definition.GuidanceInput + prompt.name
 		}
 		return CallPrompt{Input: input, Text: Resolved{Value: prompt.text, Identity: "sha256:" + prompt.sha256}}
@@ -357,7 +387,7 @@ func (c callResolution) Workflow(ctx context.Context, name string) (*ResolvedWor
 	}
 	for name, process := range res.processes {
 		resolved.NodeProcesses[name] = CallNodeProcess{
-			Params: translated(processParams(process), func(param declaredParam) string { return param.name }),
+			Params: translated(process.params, func(param declaredParam) string { return param.name }),
 		}
 	}
 	return resolved, found, err
@@ -1193,7 +1223,7 @@ func (c *Calls) execute(ctx context.Context, handle RunHandle, record run.Record
 	if verify := res.Process.Verify; fault == nil && verify != nil {
 		verified, fault = c.verifier.Verify(ctx, VerifyCall{
 			Record: &record, Result: &result, Event: event, Update: handle.Update, Artifact: handle.Artifact,
-			Verify: definition.Verify{Command: verify.Command, Timeout: verify.Timeout, MaxAttempts: verify.MaxAttempts, Instruction: verify.Instruction}, Limit: res.Effective.MaxCostUSD, Deadline: deadline, NoOutput: res.Effective.Stale.NoOutput,
+			Verify: *verify, Limit: res.Effective.MaxCostUSD, Deadline: deadline, NoOutput: res.Effective.Stale.NoOutput,
 			Dir: workspace.Dir, Base: revision, Request: request, Session: turn.ProviderSessionID,
 			Take: take, Conclude: conclude,
 		})
@@ -1488,7 +1518,7 @@ func (c *Calls) continuation(ctx context.Context, res *ResolvedCall, self, runID
 	if runID == "" {
 		return resumption{}, nil
 	}
-	if res.Session != definition.SessionResumable {
+	if res.Session != sessionResumable {
 		return resumption{}, refuse("process %s is %s; it cannot continue run %s", res.Process.Name, res.Session, runID)
 	}
 	if !res.Identity.Resume {

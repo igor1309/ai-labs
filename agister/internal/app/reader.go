@@ -13,9 +13,9 @@ import (
 // documentReader reads a settings document as what it is: one method per
 // kind reads the document, parses it and returns the parsed value with the
 // document's source. The service settings, a runtime mapping, an agent, a
-// prompt, a brief form, a skill and a workflow are returned in the
-// package's own types, which no other file of the package maps a parsed
-// document to.
+// process, a verification, a prompt, a brief form, a skill and a workflow
+// are returned in the package's own types, which no other file of the
+// package maps a parsed document to.
 // It reads only the document it is asked for (ADR-015 rule 1), and decides
 // nothing for its caller: what to read next, what a failure stops and how
 // it is worded are the caller's.
@@ -84,8 +84,68 @@ func serviceOf(service definition.Service) serviceSettings {
 	}
 }
 
-func (r documentReader) Process(ctx context.Context, name string) (definition.Process, document.Source, error) {
+// Process reads a process as the package uses it, not as its file holds
+// it.
+func (r documentReader) Process(ctx context.Context, name string) (declaredProcess, document.Source, error) {
 	return readParsed(ctx, r, document.KindProcess, name, parseProcess)
+}
+
+// processOf is a parsed process document as the package uses it: its
+// limits as what it declares to policy, and whether a call's session may
+// be resumed, which a process that sets no session leaves fresh-only
+// (ADR-030 rules 2 and 3). What parsed of an invalid one is mapped the
+// same, and of one that was not read there is nothing.
+func processOf(process definition.Process) declaredProcess {
+	own := process.Limits
+	out := declaredProcess{
+		name:        process.Name,
+		instruction: process.Instruction,
+		prompt:      process.Prompt,
+		guidance:    process.Guidance,
+		params:      paramsOf(process.Params),
+		values:      valuesOf(process.Values),
+		revision:    process.Revision,
+		clean:       process.Clean,
+		skills:      process.Skills,
+		output:      processOutput{format: process.Output.Format, schema: process.Output.Schema},
+		verifyName:  process.VerifyName,
+		limits: policy.Declared{
+			Process:     process.Name,
+			Timeout:     own.Timeout,
+			MaxAttempts: own.MaxAttempts,
+			MaxCostUSD:  own.MaxCostUSD,
+			Allow:       own.Allow,
+			Deny:        own.Deny,
+			Require:     process.Require,
+			Access:      own.Access,
+			Scope:       own.Scope,
+			Pinned:      process.Revision != "",
+			Stale: policy.DeclaredStale{
+				NoEvent:           own.Stale.NoEvent,
+				NoOutput:          own.Stale.NoOutput,
+				ToolCommand:       own.Stale.ToolCommand,
+				RepeatedToolCalls: own.Stale.RepeatedToolCalls,
+				MaxResumes:        own.Stale.Recover.MaxResumes,
+				Instruction:       own.Stale.Recover.Instruction,
+			},
+		},
+		resumable: definition.CallSession(process) == definition.SessionResumable,
+		obsolete:  process.Obsolete,
+	}
+	if process.Verify != nil {
+		verify := verifyOf(*process.Verify)
+		out.verify = &verify
+	}
+	return out
+}
+
+// collects lists the inputs of process that receive a workflow's
+// collection, in declaration order.
+func collects(process declaredProcess) []string {
+	values := translated(process.values, func(value declaredValue) definition.Value {
+		return definition.Value{Name: value.name, Source: value.source}
+	})
+	return definition.Process{Values: values}.Collects()
 }
 
 // Agent reads an agent as the package uses it, not as its file holds it.
@@ -129,11 +189,10 @@ func formatAgent(agent agentProfile) []byte {
 	return definition.FormatAgent(parserAgent(agent))
 }
 
-// callSkills lists the skills a call of process on agent is given, as the
-// parser lists them: the process's, then the agent's, each once (ADR-021
-// rule 2).
-func callSkills(process definition.Process, agent agentProfile) []string {
-	return definition.CallSkills(process, parserAgent(agent))
+// callSkills lists the skills a call of process on agent is given: the
+// process's, then the agent's, each once (ADR-021 rule 2).
+func callSkills(process declaredProcess, agent agentProfile) []string {
+	return definition.CallSkills(definition.Process{Skills: process.skills}, parserAgent(agent))
 }
 
 // Mapping reads a runtime mapping as the package uses it, not as its file
@@ -161,8 +220,24 @@ func mappingOf(mapping definition.Mapping) runtimeMapping {
 	}
 }
 
-func (r documentReader) Verification(ctx context.Context, name string) (definition.Verification, document.Source, error) {
-	return readParsed(ctx, r, document.KindVerify, name, definition.ParseVerify)
+// Verification reads a verification as the package uses it, not as its
+// file holds it.
+func (r documentReader) Verification(ctx context.Context, name string) (declaredVerification, document.Source, error) {
+	verification, source, err := readParsed(ctx, r, document.KindVerify, name, definition.ParseVerify)
+	return verificationOf(verification), source, err
+}
+
+// verificationOf is a parsed verification document as the package uses
+// it. What parsed of an invalid one is mapped the same, and of one that
+// was not read there is nothing.
+func verificationOf(verification definition.Verification) declaredVerification {
+	return declaredVerification{name: verification.Name, verify: verifyOf(verification.Verify), obsolete: verification.Verify.Obsolete}
+}
+
+// verifyOf are the values of a parsed verify block, or of a parsed
+// verification document, as the package uses them.
+func verifyOf(verify definition.Verify) verifyValues {
+	return verifyValues{command: verify.Command, timeout: verify.Timeout, maxAttempts: verify.MaxAttempts, instruction: verify.Instruction}
 }
 
 // Prompt reads a prompt as the package uses it, not as its file holds it.
@@ -280,20 +355,6 @@ func valuesOf(values []definition.Value) []declaredValue {
 	})
 }
 
-// processParams are the params process declares, as the package uses
-// them. A process is the parser's type, whose params only this file
-// names.
-func processParams(process definition.Process) []declaredParam {
-	return paramsOf(process.Params)
-}
-
-// processValues are the input values process declares, as the package
-// uses them. A process is the parser's type, whose values only this file
-// names.
-func processValues(process definition.Process) []declaredValue {
-	return valuesOf(process.Values)
-}
-
 // boundArgs is args, the arguments of a declared input value, with their
 // references substituted as the parser binds them, in one pass:
 // ${param.<name>} from params, ${value.<name>} from values, the text of
@@ -343,10 +404,12 @@ func (r documentReader) Extending(ctx context.Context) func(process string) stri
 
 // parseProcess parses doc, a process document already read: by the reader,
 // or by whoever holds it and reads nothing more to parse it, as the
-// snapshot holds what it froze. What of an invalid document parsed is
-// returned beside the parser's *document.InvalidError.
-func parseProcess(doc document.Document) (definition.Process, error) {
-	return definition.ParseProcess(doc)
+// snapshot holds what it froze, to the process as the package uses it.
+// What of an invalid document parsed is returned beside the parser's
+// *document.InvalidError.
+func parseProcess(doc document.Document) (declaredProcess, error) {
+	process, err := definition.ParseProcess(doc)
+	return processOf(process), err
 }
 
 // parseAgent parses doc, an agent document already read, as parseProcess

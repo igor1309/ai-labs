@@ -117,13 +117,13 @@ func Snapshot(ctx context.Context, src SnapshotSource) SnapshotSource {
 			continue
 		}
 		process, err := parseProcess(read.doc)
-		named(document.KindVerify, process.VerifyName)
+		named(document.KindVerify, process.verifyName)
 		if err == nil {
-			for _, name := range process.Prompts() {
+			for _, name := range process.prompts() {
 				named(document.KindPrompt, name)
 			}
 		}
-		for _, name := range process.Skills {
+		for _, name := range process.skills {
 			named(document.KindSkill, name)
 		}
 	}

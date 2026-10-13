@@ -39,14 +39,4 @@ func (w declaredWorkflow) nodes() []workflowNode {
 
 // forms lists the brief forms the workflow's inputs name, each once, in
 // declaration order.
-func (w declaredWorkflow) forms() []string {
-	var names []string
-	for _, value := range w.values {
-		for _, name := range value.forms {
-			if !contains(names, name) {
-				names = append(names, name)
-			}
-		}
-	}
-	return names
-}
+func (w declaredWorkflow) forms() []string { return formsOf(w.values) }

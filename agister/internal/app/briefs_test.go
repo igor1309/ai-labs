@@ -282,7 +282,7 @@ func TestACallChecksItsTextWithTheFormChecksItIsGiven(t *testing.T) {
 			h.calls = app.NewCalls(
 				resolver, h.runtimes,
 				map[string]app.InputProvider{"git.revision": h.inputs, "git.diff": h.inputs, "file": h.inputs}, h.copies, h.references,
-				h.workspaces, h.changes, h.holder(), app.NewVerifier(h.changes, h.commands, h.clock), app.NewRecoverer(h.clock), h.validator, h.recorder, h.runs,
+				h.workspaces, h.changes, h.holder(), app.CallsVerifier{Verifier: app.NewVerifier(h.changes, h.commands, h.clock)}, app.NewRecoverer(h.clock), h.validator, h.recorder, h.runs,
 				h.clock, h.timer, fixedIDs{}, "/state", h.hosted,
 			)
 			record := h.call(t, contract.CallRequest{})
@@ -316,7 +316,7 @@ func TestAFormTheResolutionLacksRefusesTheCall(t *testing.T) {
 	h.calls = app.NewCalls(
 		resolver, h.runtimes,
 		map[string]app.InputProvider{"git.revision": h.inputs, "git.diff": h.inputs, "file": h.inputs}, h.copies, h.references,
-		h.workspaces, h.changes, h.holder(), app.NewVerifier(h.changes, h.commands, h.clock), app.NewRecoverer(h.clock), h.validator, h.recorder, h.runs,
+		h.workspaces, h.changes, h.holder(), app.CallsVerifier{Verifier: app.NewVerifier(h.changes, h.commands, h.clock)}, app.NewRecoverer(h.clock), h.validator, h.recorder, h.runs,
 		h.clock, h.timer, fixedIDs{}, "/state", h.hosted,
 	)
 	record := h.call(t, contract.CallRequest{})

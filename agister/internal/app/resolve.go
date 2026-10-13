@@ -8,7 +8,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/igor1309/ai-labs/agister/internal/domain/definition"
 	"github.com/igor1309/ai-labs/agister/internal/domain/document"
 	"github.com/igor1309/ai-labs/agister/internal/domain/enforce"
 	"github.com/igor1309/ai-labs/agister/internal/domain/policy"
@@ -41,7 +40,7 @@ func refuse(format string, args ...any) error { return &Refusal{Reason: fmt.Spri
 // Resolver.InspectProcess).
 type resolution struct {
 	service serviceSettings
-	process definition.Process
+	process declaredProcess
 	agent   agentProfile
 	mapping runtimeMapping
 	schema  []byte
@@ -247,8 +246,8 @@ func (r *Resolver) resolve(ctx context.Context, processName, agentOverride strin
 	res, err := r.resolveCall(ctx, processName, agentOverride, caller, refused != nil)
 	if refused != nil {
 		// A listed but unreadable process still has an identity for its view.
-		if reached.listed(DocumentRef{Kind: document.KindProcess, Name: processName}) && res.process.Name == "" {
-			res.process.Name = processName
+		if reached.listed(DocumentRef{Kind: document.KindProcess, Name: processName}) && res.process.name == "" {
+			res.process.name = processName
 		}
 		return res, refused
 	}
@@ -328,38 +327,38 @@ func (r *Resolver) resolveCall(ctx context.Context, processName, agentOverride s
 			return res, refuse("agent %s: effort %q is not supported by runtime %s (supported: %s)", res.agent.name, res.agent.effort, res.mapping.name, strings.Join(res.mapping.efforts, ", "))
 		}
 	}
-	if res.process.Output.Format == "json" {
-		res.schema, source, err = r.documents.Schema(ctx, res.process.Output.Schema)
-		if err = took("", document.KindSchema, res.process.Output.Schema, source, err); err != nil {
+	if res.process.output.format == "json" {
+		res.schema, source, err = r.documents.Schema(ctx, res.process.output.schema)
+		if err = took("", document.KindSchema, res.process.output.schema, source, err); err != nil {
 			return res, err
 		}
 		// Fail before the agent runs, not when its output is validated.
 		if err := r.validator.Compile(res.schema); err != nil {
-			return res, refuse("schema %q: %v", res.process.Output.Schema, err)
+			return res, refuse("schema %q: %v", res.process.output.schema, err)
 		}
 	}
 	// The verification a process names is the call's from here on
 	// (ADR-010 rule 3); without it the call is refused, never run unverified.
-	if name := res.process.VerifyName; name != "" {
+	if name := res.process.verifyName; name != "" {
 		names, listErr := r.definitions.List(ctx, document.KindVerify)
 		if listErr != nil {
 			return res, listErr
 		}
 		if !caller.deferMissingVerify || contains(names, name) {
 			verification, source, err := r.documents.Verification(ctx, name)
-			if err = took(fmt.Sprintf("process %s names verify:%s: ", res.process.Name, name), document.KindVerify, name, source, err); err != nil {
+			if err = took(fmt.Sprintf("process %s names verify:%s: ", res.process.name, name), document.KindVerify, name, source, err); err != nil {
 				return res, err
 			}
-			res.process.Verify = &verification.Verify
+			res.process.verify = &verification.verify
 		}
 	}
 	// The prompt and each guidance prompt a process names are read with
 	// the call, from the same settings, and recorded among its sources
 	// (ADR-014 rule 3). One no layer has refuses the call, as any other
 	// document does (ADR-028 rule 8).
-	for _, name := range res.process.Prompts() {
-		namer := "process " + res.process.Name + " names "
-		if name != res.process.Prompt {
+	for _, name := range res.process.prompts() {
+		namer := "process " + res.process.name + " names "
+		if name != res.process.prompt {
 			namer += "in its guidance "
 		}
 		prompt, source, err := r.documents.Prompt(ctx, name)
@@ -370,9 +369,9 @@ func (r *Resolver) resolveCall(ctx context.Context, processName, agentOverride s
 	}
 	// Each brief form its inputs name is read with the call, from the same
 	// settings, and recorded among its sources (ADR-026 rule 8).
-	for _, name := range res.process.Forms() {
+	for _, name := range res.process.forms() {
 		brief, source, err := r.documents.Brief(ctx, name)
-		if err = took("process "+res.process.Name+" names ", document.KindBrief, name, source, err); err != nil {
+		if err = took("process "+res.process.name+" names ", document.KindBrief, name, source, err); err != nil {
 			return res, err
 		}
 		if res.forms == nil {
@@ -383,8 +382,8 @@ func (r *Resolver) resolveCall(ctx context.Context, processName, agentOverride s
 	// Each skill the process and its agent name is read with the call, from
 	// the same settings, and recorded among its sources (ADR-021 rule 3).
 	for _, name := range callSkills(res.process, res.agent) {
-		namer := "process " + res.process.Name
-		if !contains(res.process.Skills, name) {
+		namer := "process " + res.process.name
+		if !contains(res.process.skills, name) {
 			namer = "agent " + res.agent.name
 		}
 		skill, source, err := r.documents.Skill(ctx, name)
@@ -406,7 +405,7 @@ func (r *Resolver) resolveCall(ctx context.Context, processName, agentOverride s
 	if caller.maxCostUSD != nil && *caller.maxCostUSD <= 0 {
 		return res, refuse("invalid cost limit %g", *caller.maxCostUSD)
 	}
-	if res.effective, err = policy.Compose(res.service.ceilings, declared(res.process), limits); err != nil {
+	if res.effective, err = policy.Compose(res.service.ceilings, res.process.declared(), limits); err != nil {
 		return res, refuse("%v", err)
 	}
 	// Refused once everything that needs no agent is resolved, so its view
@@ -422,14 +421,14 @@ func (r *Resolver) resolveCall(ctx context.Context, processName, agentOverride s
 
 	// Whether the call's session may be resumed is its process's to say
 	// (ADR-030 rule 3).
-	res.session = definition.CallSession(res.process)
+	res.session = res.process.session()
 	// A repair turn resumes the call's own session (ADR-002 rule 4).
-	if verify := res.process.Verify; verify.Repairs() && res.session != definition.SessionResumable {
-		return res, refuse("verify.max_attempts %d repairs in the call's session, but process %s is %s", verify.MaxAttempts, res.process.Name, res.session)
+	if verify := res.process.verify; verify.repairs() && !res.process.resumable {
+		return res, refuse("verify.max_attempts %d repairs in the call's session, but process %s is %s", verify.maxAttempts, res.process.name, res.session)
 	}
 	// So does a recovery turn (ADR-024 rule 6).
-	if resumes := res.effective.Stale.Recover.MaxResumes; resumes > 0 && res.session != definition.SessionResumable {
-		return res, refuse("stale.recover.max_resumes %d recovers in the call's session, but process %s is %s", resumes, res.process.Name, res.session)
+	if resumes := res.effective.Stale.Recover.MaxResumes; resumes > 0 && !res.process.resumable {
+		return res, refuse("stale.recover.max_resumes %d recovers in the call's session, but process %s is %s", resumes, res.process.name, res.session)
 	}
 
 	if settingsOnly {
@@ -443,9 +442,9 @@ func (r *Resolver) resolveCall(ctx context.Context, processName, agentOverride s
 	if res.identity.Contract != res.mapping.contract {
 		return res, refuse("runtime mapping %s describes adapter contract %s, but the adapter implements %s", res.mapping.name, res.mapping.contract, res.identity.Contract)
 	}
-	if verify := res.process.Verify; verify.Repairs() && !res.identity.Resume {
+	if verify := res.process.verify; verify.repairs() && !res.identity.Resume {
 		subject = root
-		return res, refuse("verify.max_attempts %d repairs in the call's session, but runtime %s cannot resume sessions", verify.MaxAttempts, res.mapping.name)
+		return res, refuse("verify.max_attempts %d repairs in the call's session, but runtime %s cannot resume sessions", verify.maxAttempts, res.mapping.name)
 	}
 	if resumes := res.effective.Stale.Recover.MaxResumes; resumes > 0 && !res.identity.Resume {
 		subject = root
@@ -496,7 +495,7 @@ func (r *Resolver) resolveCall(ctx context.Context, processName, agentOverride s
 		return res, refuse("runtime %s needs %s to use the repository's skills (ADR-006), and the plan grants no such tool: %s",
 			res.mapping.name, strings.Join(tools, " or "), withoutSkillTools(res, tools, verified, unverified))
 	}
-	res.writer = res.process.Verify != nil || res.process.VerifyName != "" ||
+	res.writer = res.process.verify != nil || res.process.verifyName != "" ||
 		slices.ContainsFunc(res.plan.Granted, func(permission string) bool { return contains(res.service.ceilings.Writing, permission) })
 	return res, nil
 }
@@ -549,7 +548,7 @@ func withoutSkillTools(res *resolution, tools []string, verified enforce.Offer, 
 // uses them. Each node's call resolves its own process again, fully.
 type workflowResolution struct {
 	workflow  declaredWorkflow
-	processes map[string]definition.Process
+	processes map[string]declaredProcess
 	sources   []document.Source    // the workflow's document, then its brief forms'
 	forms     map[string]briefForm // by name: the brief forms its inputs name (ADR-026 rule 8)
 }
@@ -601,7 +600,7 @@ func (r *Resolver) workflow(ctx context.Context, name string) (*workflowResoluti
 
 // resolveWorkflow reads the workflow and its nodes' processes.
 func (r *Resolver) resolveWorkflow(ctx context.Context, name string) (*workflowResolution, error) {
-	res := &workflowResolution{workflow: declaredWorkflow{name: name}, processes: map[string]definition.Process{}}
+	res := &workflowResolution{workflow: declaredWorkflow{name: name}, processes: map[string]declaredProcess{}}
 	workflow, source, err := r.documents.Workflow(ctx, name)
 	if unread(err) {
 		return res, refuse("workflow %q: %v", name, err)
@@ -661,33 +660,4 @@ func contains(list []string, value string) bool {
 		}
 	}
 	return false
-}
-
-// declared is what a process declares of its limits, for policy.
-func declared(process definition.Process) policy.Declared {
-	own := process.Limits
-	out := policy.Declared{
-		Process:     process.Name,
-		Timeout:     own.Timeout,
-		MaxAttempts: own.MaxAttempts,
-		MaxCostUSD:  own.MaxCostUSD,
-		Allow:       own.Allow,
-		Deny:        own.Deny,
-		Require:     process.Require,
-		Access:      own.Access,
-		Scope:       own.Scope,
-		Pinned:      process.Revision != "",
-		Stale: policy.DeclaredStale{
-			NoEvent:           own.Stale.NoEvent,
-			NoOutput:          own.Stale.NoOutput,
-			ToolCommand:       own.Stale.ToolCommand,
-			RepeatedToolCalls: own.Stale.RepeatedToolCalls,
-			MaxResumes:        own.Stale.Recover.MaxResumes,
-			Instruction:       own.Stale.Recover.Instruction,
-		},
-	}
-	if process.Verify != nil {
-		out.Verify = &policy.Verify{Timeout: process.Verify.Timeout, MaxAttempts: process.Verify.MaxAttempts}
-	}
-	return out
 }

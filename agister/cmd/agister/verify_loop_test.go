@@ -422,7 +422,7 @@ call: {node: impl, uses: process:impl, agent: impl}
 	h.calls = app.NewCalls(
 		app.NewResolver(definitions, runtimes, schema.Validator{}, noProblems{}), runtimes,
 		map[string]app.InputProvider{"git.revision": over.revision}, fscache.Store{Dir: filepath.Join(h.home, "cache")}, inputs.File{},
-		over.workspaces, with.changes, holder, app.NewVerifier(with.changes, h.commands, with.clock), app.NewRecoverer(with.clock), schema.Validator{},
+		over.workspaces, with.changes, holder, app.CallsVerifier{Verifier: app.NewVerifier(with.changes, h.commands, with.clock)}, app.NewRecoverer(with.clock), schema.Validator{},
 		h.store, h.store, with.clock, still.Timer, system.IDs{}, h.home, h.hosted,
 	)
 	// Observing a call hosted here waits on its appends, never on a poll.
