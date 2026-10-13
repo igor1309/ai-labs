@@ -31,11 +31,13 @@ type fake struct {
 
 	questions []string
 
-	briefs   []string
-	added    [][]string
-	commits  []string
-	statuses int
-	agisters int
+	briefs      []string
+	added       [][]string
+	commits     []string
+	statuses    int
+	revParses   int
+	agisters    int
+	reviewBases []string
 }
 
 func (f *fake) run(_ context.Context, _ string, name string, args ...string) ([]byte, error) {
@@ -72,9 +74,15 @@ func (f *fake) run(_ context.Context, _ string, name string, args ...string) ([]
 		f.commits = append(f.commits, args[3])
 		return nil, nil
 	case name == "git" && args[0] == "rev-parse":
+		f.revParses++
 		return []byte(fmt.Sprintf("c%d\n", len(f.commits))), nil
 	case name == "agister" && args[1] == cmp.Or(f.review, "code_review"):
 		f.agisters++
+		for _, arg := range args {
+			if strings.HasPrefix(arg, "base=") {
+				f.reviewBases = append(f.reviewBases, strings.TrimPrefix(arg, "base="))
+			}
+		}
 		if len(f.reviews) == 0 {
 			f.t.Fatal("a review the test did not expect")
 		}
@@ -155,10 +163,10 @@ const issue = "## Done when\n\n- The call is refused.\n\n```go\nerr := call()\n`
 // constraints are the owner's words.
 const constraints = "- Only cmd/ changes.\n"
 
-// gated runs the gate on f with the issue's text, the owner's constraints
+// gated runs the gate on call with the issue's text, the owner's constraints
 // and the args given after the required ones, and returns its exit code,
 // summary and output directory.
-func gated(t *testing.T, f *fake, extra ...string) (int, summary, string) {
+func gated(t *testing.T, call runner, extra ...string) (int, summary, string) {
 	t.Helper()
 	dir := t.TempDir()
 	for name, text := range map[string]string{"issue.md": issue, "constraints.md": constraints, "decisions.md": records} {
@@ -172,7 +180,7 @@ func gated(t *testing.T, f *fake, extra ...string) (int, summary, string) {
 		"--advisor", "advisor_codex", "--decisions", filepath.Join(dir, "decisions.md"),
 		"--base", "origin/trunk", "--message", "cmd: the call is refused", "--out", out, "--dir", dir}, extra...)
 	var stdout, stderr bytes.Buffer
-	code := run(context.Background(), args, f.run, &stdout, &stderr)
+	code := run(context.Background(), args, call, &stdout, &stderr)
 	var sum summary
 	if err := json.Unmarshal(stdout.Bytes(), &sum); err != nil {
 		t.Fatalf("summary: %v\n%s\n%s", err, stdout.String(), stderr.String())
@@ -188,7 +196,7 @@ func TestAStepPassesWhenItsReviewHasNoMajorToFix(t *testing.T) {
 	t.Parallel()
 	f := &fake{t: t, implements: []string{implementResult("i1", "cmd/a.go", "cmd/gone.go")},
 		reviews: []string{reviewed("r1", minor, deferred, waived)}}
-	code, sum, _ := gated(t, f)
+	code, sum, _ := gated(t, f.run)
 	if code != exitPassed || sum.Status != "passed" {
 		t.Fatalf("exit %d, %+v", code, sum)
 	}
@@ -201,6 +209,9 @@ func TestAStepPassesWhenItsReviewHasNoMajorToFix(t *testing.T) {
 	if len(sum.Implements) != 1 || sum.Implements[0].RunID != "i1" || sum.Implements[0].Commit != "c1" {
 		t.Errorf("implements %+v", sum.Implements)
 	}
+	if sum.Base != "c0" {
+		t.Errorf("base %q, want c0", sum.Base)
+	}
 	if len(sum.Reviews) != 1 || !sum.Reviews[0].Counted || sum.Reviews[0].Majors != 0 {
 		t.Errorf("reviews %+v", sum.Reviews)
 	}
@@ -210,12 +221,52 @@ func TestAStepPassesWhenItsReviewHasNoMajorToFix(t *testing.T) {
 	}
 }
 
+// A resumed review uses the commit supplied from the previous summary and
+// does not resolve that value again.
+func TestAResumedReviewUsesItsGivenCommit(t *testing.T) {
+	t.Parallel()
+	for _, size := range []int{40, 64} {
+		for counted := 0; counted < maxReviews; counted++ {
+			t.Run(fmt.Sprintf("hash length %d counted %d", size, counted), func(t *testing.T) {
+				t.Parallel()
+				base := strings.Repeat("deadbeef", size/8)
+				f := &fake{t: t}
+				var wantBases []string
+				for n := counted + 1; n < maxReviews; n++ {
+					f.reviews = append(f.reviews, reviewed(fmt.Sprintf("r%d", n), major))
+					f.implements = append(f.implements, implementResult(fmt.Sprintf("i%d", n), "a"))
+					wantBases = append(wantBases, base)
+				}
+				f.reviews = append(f.reviews, reviewed("last"))
+				wantBases = append(wantBases, base)
+				code, sum, out := gated(t, f.run, "--from", "review", "--reviews", fmt.Sprint(counted), "--base", base)
+				if code != exitPassed || sum.Base != base || !reflect.DeepEqual(f.reviewBases, wantBases) {
+					t.Fatalf("exit %d, base %q, reviews %q, want %q", code, sum.Base, f.reviewBases, wantBases)
+				}
+				if f.revParses != len(f.commits) {
+					t.Fatalf("rev-parse calls %d, want only %d commit HEAD reads", f.revParses, len(f.commits))
+				}
+				paths := append([]string{filepath.Join(out, "goal.md"), filepath.Join(out, "step.md")}, f.briefs...)
+				for _, path := range paths {
+					brief, err := os.ReadFile(path)
+					if err != nil {
+						t.Fatal(err)
+					}
+					if !strings.Contains(string(brief), "\n## Base\n\n"+base+"\n") {
+						t.Errorf("%s does not name base %s", path, base)
+					}
+				}
+			})
+		}
+	}
+}
+
 // --review names the review workflow the gate runs in place of code_review.
 func TestTheReviewIsTheWorkflowReviewNames(t *testing.T) {
 	t.Parallel()
 	f := &fake{t: t, implements: []string{implementResult("i1", "cmd/a.go")},
 		reviews: []string{reviewed("r1")}, review: "code_review_codex"}
-	code, sum, _ := gated(t, f, "--review", "code_review_codex")
+	code, sum, _ := gated(t, f.run, "--review", "code_review_codex")
 	if code != exitPassed || len(sum.Reviews) != 1 || sum.Reviews[0].RunID != "r1" {
 		t.Fatalf("exit %d, %+v", code, sum)
 	}
@@ -229,7 +280,7 @@ func TestAMajorRuledFixGoesToAFixRunAndIsReviewedAgain(t *testing.T) {
 	t.Parallel()
 	f := &fake{t: t, implements: []string{implementResult("i1", "cmd/a.go"), implementResult("i2", "cmd/a_test.go")},
 		reviews: []string{reviewed("r1", major, minor), reviewed("r2")}}
-	code, sum, out := gated(t, f)
+	code, sum, out := gated(t, f.run)
 	if code != exitPassed || len(sum.Reviews) != 2 || sum.Reviews[0].Majors != 1 {
 		t.Fatalf("exit %d, %+v", code, sum)
 	}
@@ -240,7 +291,7 @@ func TestAMajorRuledFixGoesToAFixRunAndIsReviewedAgain(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := "# LAB-1 step 2\n\n## Goal\n\n`" + filepath.Join(out, "goal.md") + "`\n\n## Covers\n\n" +
+	want := "# LAB-1 step 2\n\n## Goal\n\n`" + filepath.Join(out, "goal.md") + "`\n\n## Base\n\nc0\n\n## Covers\n\n" +
 		"````text\n" + issue + "````\n\n" +
 		"## Acts on\n\nThe changes to make, as written:\n\n" +
 		"- **Prove the refusal**: Add a test that the call is refused.\n\n" +
@@ -259,8 +310,8 @@ func TestAMajorAfterTheThirdReviewStopsForTheOwner(t *testing.T) {
 	t.Parallel()
 	f := &fake{t: t, implements: []string{implementResult("i1", "a"), implementResult("i2", "a"), implementResult("i3", "a")},
 		reviews: []string{reviewed("r1", major), reviewed("r2", major), reviewed("r3", major)}}
-	code, sum, _ := gated(t, f)
-	if code != exitOwner || sum.Status != "owner" {
+	code, sum, _ := gated(t, f.run)
+	if code != exitOwner || sum.Status != "owner" || sum.Base != "c0" {
 		t.Fatalf("exit %d, %+v", code, sum)
 	}
 	if len(sum.Implements) != 3 || len(sum.Reviews) != 3 || !reflect.DeepEqual(sum.Left.Majors, []item{major}) {
@@ -269,24 +320,42 @@ func TestAMajorAfterTheThirdReviewStopsForTheOwner(t *testing.T) {
 }
 
 // A review a provider limit failed does not count: the step stops with
-// the count to resume from, and a resumed step runs no implement and
-// counts the reviews it is told of, so its next review is the last.
+// the count to resume from, and a resumed step starts at review, uses the
+// reported base and counts only completed reviews toward the limit.
 func TestALimitedReviewDoesNotCount(t *testing.T) {
 	t.Parallel()
 	f := &fake{t: t, implements: []string{implementResult("i1", "a"), implementResult("i2", "a")},
 		reviews: []string{reviewed("r1", major), limited("r2")}}
-	code, sum, _ := gated(t, f)
-	if code != exitLimited || sum.Status != "limited" || !strings.Contains(sum.Reason, "--from review --reviews 1") {
+	base := strings.Repeat("a", 40)
+	call := func(ctx context.Context, dir, name string, args ...string) ([]byte, error) {
+		out, err := f.run(ctx, dir, name, args...)
+		if name == "git" && reflect.DeepEqual(args, []string{"rev-parse", "--verify", "origin/trunk^{commit}"}) {
+			return []byte(base + "\n"), err
+		}
+		return out, err
+	}
+	code, sum, _ := gated(t, call)
+	if code != exitLimited || sum.Status != "limited" || sum.Base != base || !strings.Contains(sum.Reason, "--from review --reviews 1 --base "+base) {
 		t.Fatalf("exit %d, %+v", code, sum)
 	}
 	if last := sum.Reviews[len(sum.Reviews)-1]; last.RunID != "r2" || last.Counted {
 		t.Errorf("limited review %+v", last)
 	}
 
-	resumed := &fake{t: t, reviews: []string{reviewed("r3", major)}}
-	code, sum, _ = gated(t, resumed, "--from", "review", "--reviews", "2")
-	if code != exitOwner || len(sum.Implements) != 0 || len(sum.Reviews) != 1 {
+	counted := 0
+	for _, review := range sum.Reviews {
+		if review.Counted {
+			counted++
+		}
+	}
+	resumed := &fake{t: t, reviews: []string{reviewed("r3", major), reviewed("r4", major)},
+		implements: []string{implementResult("i3", "a")}}
+	code, sum, _ = gated(t, resumed.run, "--from", "review", "--reviews", fmt.Sprint(counted), "--base", sum.Base)
+	if code != exitOwner || sum.Base != base || len(sum.Implements) != 1 || len(sum.Reviews) != 2 {
 		t.Fatalf("resumed: exit %d, %+v", code, sum)
+	}
+	if !reflect.DeepEqual(resumed.reviewBases, []string{base, base}) || resumed.revParses != len(resumed.commits) {
+		t.Fatalf("resumed: bases %q, rev-parse calls %d, commits %d", resumed.reviewBases, resumed.revParses, len(resumed.commits))
 	}
 }
 
@@ -295,8 +364,8 @@ func TestALimitedReviewDoesNotCount(t *testing.T) {
 func TestAChangeTheRunDidNotReportStopsTheStep(t *testing.T) {
 	t.Parallel()
 	f := &fake{t: t, implements: []string{implementResult("i1", "cmd/a.go")}, unreported: "M  cmd/a.go\n M cmd/b.go\n?? cmd/c.go\n"}
-	code, sum, _ := gated(t, f)
-	if code != exitStopped || !strings.Contains(sum.Reason, "cmd/b.go, cmd/c.go") || strings.Contains(sum.Reason, "a.go") {
+	code, sum, _ := gated(t, f.run)
+	if code != exitStopped || sum.Base != "c0" || !strings.Contains(sum.Reason, "cmd/b.go, cmd/c.go") || strings.Contains(sum.Reason, "a.go") {
 		t.Fatalf("exit %d, %+v", code, sum)
 	}
 	if len(f.commits) != 0 {
@@ -304,6 +373,8 @@ func TestAChangeTheRunDidNotReportStopsTheStep(t *testing.T) {
 	}
 }
 
+// Contract test: the real git repository stages files reported from the
+// worktree root when --dir points below it.
 // A run reports its files from the worktree root; with --dir a
 // subdirectory, they are still the ones staged and committed, by real git.
 func TestTheRunsFilesAreCommittedFromTheRootWhenDirIsBelowIt(t *testing.T) {
@@ -362,12 +433,168 @@ func TestTheRunsFilesAreCommittedFromTheRootWhenDirIsBelowIt(t *testing.T) {
 	}
 }
 
+// Contract test: real git ref movement during preflight, before review and
+// between invocations cannot change the step's review and brief base.
+func TestTheBaseIsPinnedBeforeSetupAndReview(t *testing.T) {
+	t.Parallel()
+	for _, phase := range []string{"preflight", "before review", "resume commit", "resume ref"} {
+		t.Run(phase, func(t *testing.T) {
+			t.Parallel()
+			repo, inputs := t.TempDir(), t.TempDir()
+			git := func(args ...string) string {
+				t.Helper()
+				out, err := commands(context.Background(), repo, "git", args...)
+				if err != nil {
+					t.Fatalf("git %q: %v", args, err)
+				}
+				return strings.TrimSpace(string(out))
+			}
+			git("init", "-q")
+			for _, kv := range [][2]string{{"user.name", "gate"}, {"user.email", "gate@test"}, {"commit.gpgsign", "false"}, {"core.hooksPath", "/dev/null"}} {
+				git("config", kv[0], kv[1])
+			}
+			if err := os.WriteFile(filepath.Join(repo, "tracked.txt"), []byte("before\n"), 0o644); err != nil {
+				t.Fatal(err)
+			}
+			git("add", "tracked.txt")
+			git("commit", "-q", "-m", "base")
+			base := git("rev-parse", "HEAD")
+			git("update-ref", "refs/remotes/origin/trunk", base)
+			git("commit", "-q", "--allow-empty", "-m", "next trunk")
+			for name, text := range map[string]string{"issue.md": issue, "decisions.md": records} {
+				if err := os.WriteFile(filepath.Join(inputs, name), []byte(text), 0o644); err != nil {
+					t.Fatal(err)
+				}
+			}
+			f := &fake{t: t, implements: []string{implementResult("i1", "tracked.txt"), implementResult("i2", "tracked.txt")},
+				reviews: []string{reviewed("r1", major), reviewed("r2")}}
+			moved := false
+			moveRef := func() {
+				git("update-ref", "refs/remotes/origin/trunk", "HEAD")
+				if got := git("rev-parse", "origin/trunk"); got == base {
+					t.Fatalf("ref did not move from %s", base)
+				}
+				moved = true
+			}
+			runner := func(ctx context.Context, dir, name string, args ...string) ([]byte, error) {
+				if name == "git" {
+					if phase == "preflight" && !moved && args[0] == "status" {
+						moveRef()
+					}
+					out, err := commands(ctx, dir, name, args...)
+					if phase == "before review" && !moved && reflect.DeepEqual(args, []string{"rev-parse", "HEAD"}) {
+						moveRef()
+					}
+					return out, err
+				}
+				if name == "agister" && args[1] == "implement_codex" {
+					text := fmt.Sprintf("implementation %d\n", len(f.briefs)+1)
+					if err := os.WriteFile(filepath.Join(repo, "tracked.txt"), []byte(text), 0o644); err != nil {
+						t.Fatal(err)
+					}
+				}
+				if name == "agister" && args[1] == "code_review" && !moved {
+					t.Fatal("review invoked before the ref moved")
+				}
+				return f.run(ctx, dir, name, args...)
+			}
+			out := filepath.Join(inputs, "out")
+			args := []string{"--issue", filepath.Join(inputs, "issue.md"), "--title", "LAB-251 step 1",
+				"--implement", "implement_codex", "--advisor", "advisor_codex", "--decisions", filepath.Join(inputs, "decisions.md"),
+				"--base", "origin/trunk", "--message", "gate: pin base", "--out", out, "--dir", repo}
+			if strings.HasPrefix(phase, "resume") {
+				moveRef()
+				args = append(args, "--from", "review")
+				if phase == "resume commit" {
+					args = append(args, "--base", base)
+				}
+			}
+			var stdout, stderr bytes.Buffer
+			code := run(context.Background(), args, runner, &stdout, &stderr)
+			if phase == "resume ref" {
+				if code != exitUsage || f.agisters != 0 || stdout.Len() != 0 || !strings.Contains(stderr.String(), "full commit") {
+					t.Fatalf("exit %d, runs %d\n%s\n%s", code, f.agisters, stdout.String(), stderr.String())
+				}
+				if _, err := os.Stat(out); !errors.Is(err, os.ErrNotExist) {
+					t.Fatalf("output directory created for invalid resume: %v", err)
+				}
+				return
+			}
+			if code != exitPassed {
+				t.Fatalf("exit %d\n%s\n%s", code, stdout.String(), stderr.String())
+			}
+			var sum summary
+			if err := json.Unmarshal(stdout.Bytes(), &sum); err != nil {
+				t.Fatal(err)
+			}
+			if sum.Base != base || !reflect.DeepEqual(f.reviewBases, []string{base, base}) {
+				t.Fatalf("base summary=%q reviews=%q want=%q", sum.Base, f.reviewBases, base)
+			}
+			paths := append([]string{filepath.Join(out, "goal.md"), filepath.Join(out, "step.md")}, f.briefs...)
+			for _, path := range paths {
+				brief, err := os.ReadFile(path)
+				if err != nil {
+					t.Fatal(err)
+				}
+				if !strings.Contains(string(brief), "\n## Base\n\n"+base+"\n") {
+					t.Errorf("%s does not name base %s", path, base)
+				}
+			}
+		})
+	}
+}
+
+// A base that cannot resolve stops before setup creates output or checks
+// the worktree, so preflight cannot precede the snapshot.
+func TestAnUnresolvableBaseStopsBeforeSetup(t *testing.T) {
+	t.Parallel()
+	out := filepath.Join(t.TempDir(), "out")
+	failed := errors.New("unknown revision")
+	g := gate{options: options{base: "origin/missing", from: "implement", out: out, dir: t.TempDir()},
+		run: func(_ context.Context, _ string, name string, args ...string) ([]byte, error) {
+			if name != "git" || !reflect.DeepEqual(args, []string{"rev-parse", "--verify", "origin/missing^{commit}"}) {
+				t.Fatalf("setup preceded base resolution: %s %q", name, args)
+			}
+			return nil, failed
+		}}
+	sum := g.drive(context.Background())
+	if sum.Status != "stopped" || !strings.Contains(sum.Reason, `git rev-parse base "origin/missing": unknown revision`) {
+		t.Fatalf("summary %+v", sum)
+	}
+	if _, err := os.Stat(out); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("output directory created before base resolution: %v", err)
+	}
+}
+
+// A resumed step accepts only full commit hashes, never refs, expressions,
+// abbreviations or malformed object IDs.
+func TestAResumedReviewRejectsAnUnpinnedBase(t *testing.T) {
+	t.Parallel()
+	for _, base := range []string{"origin/trunk", "HEAD", "v1.0", "HEAD~1", "deadbeef", strings.Repeat("a", 39), strings.Repeat("a", 41), strings.Repeat("a", 63), strings.Repeat("a", 65), strings.Repeat("g", 40)} {
+		t.Run(base, func(t *testing.T) {
+			t.Parallel()
+			args := []string{"--issue", "issue.md", "--title", "step", "--implement", "implement_codex",
+				"--advisor", "advisor_codex", "--decisions", "decisions.md", "--message", "fix", "--out", "out",
+				"--from", "review", "--base", base}
+			var stdout, stderr bytes.Buffer
+			f := &fake{t: t}
+			code := run(context.Background(), args, f.run, &stdout, &stderr)
+			if code != exitUsage || !strings.Contains(stderr.String(), "full commit") || stdout.Len() != 0 {
+				t.Fatalf("exit %d\n%s\n%s", code, stdout.String(), stderr.String())
+			}
+			if f.agisters != 0 || f.revParses != 0 || f.statuses != 0 {
+				t.Fatalf("commands for invalid base: %+v", f)
+			}
+		})
+	}
+}
+
 // A worktree with a change before the step stops it before any run.
 func TestADirtyWorktreeStopsTheStepBeforeAnyRun(t *testing.T) {
 	t.Parallel()
 	f := &fake{t: t, dirty: "?? notes.md\n"}
-	code, sum, _ := gated(t, f)
-	if code != exitStopped || !strings.Contains(sum.Reason, "notes.md") || f.agisters != 0 {
+	code, sum, _ := gated(t, f.run)
+	if code != exitStopped || sum.Base != "c0" || !strings.Contains(sum.Reason, "notes.md") || f.agisters != 0 {
 		t.Fatalf("exit %d, %d runs, %+v", code, f.agisters, sum)
 	}
 }
@@ -378,8 +605,8 @@ func TestAFailedImplementRunStopsTheStep(t *testing.T) {
 	t.Parallel()
 	failed, _ := json.Marshal(map[string]any{"run_id": "i1", "status": "failed", "error": map[string]any{"class": "timeout", "message": "45m"}})
 	f := &fake{t: t, implements: []string{string(failed)}}
-	code, sum, out := gated(t, f)
-	if code != exitStopped || !strings.Contains(sum.Reason, "implement run i1 failed: timeout: 45m") || len(f.commits) != 0 {
+	code, sum, out := gated(t, f.run)
+	if code != exitStopped || sum.Base != "c0" || !strings.Contains(sum.Reason, "implement run i1 failed: timeout: 45m") || len(f.commits) != 0 {
 		t.Fatalf("exit %d, %+v", code, sum)
 	}
 	if kept, err := os.ReadFile(filepath.Join(out, "01-implement.json")); err != nil || string(kept) != string(failed) {
@@ -394,12 +621,12 @@ func TestAFailedImplementRunStopsTheStep(t *testing.T) {
 func TestTheBriefsAreTheIssuesTextAsWritten(t *testing.T) {
 	t.Parallel()
 	f := &fake{t: t, implements: []string{implementResult("i1", "a")}, reviews: []string{reviewed("r1")}}
-	_, _, out := gated(t, f)
+	_, _, out := gated(t, f.run)
 	goal, err := os.ReadFile(filepath.Join(out, "goal.md"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	wantGoal := "# LAB-1 step 2\n\n## Intent\n\nWhat the issue's text, under Done when, makes true.\n\n" +
+	wantGoal := "# LAB-1 step 2\n\n## Intent\n\nWhat the issue's text, under Done when, makes true.\n\n## Base\n\nc0\n\n" +
 		"## Done when\n\n````text\n" + issue + "````\n\n" +
 		"## Out of scope\n\nWhat the issue's text, under Done when, leaves out.\n\n## Open\n\nNone.\n"
 	if string(goal) != wantGoal {
@@ -412,7 +639,7 @@ func TestTheBriefsAreTheIssuesTextAsWritten(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	wantStep := "# LAB-1 step 2\n\n## Goal\n\n`" + filepath.Join(out, "goal.md") + "`\n\n" +
+	wantStep := "# LAB-1 step 2\n\n## Goal\n\n`" + filepath.Join(out, "goal.md") + "`\n\n## Base\n\nc0\n\n" +
 		"## Covers\n\n````text\n" + issue + "````\n\n" +
 		"## Constraints\n\n```text\n" + constraints + "```\n\n## Open\n\nNone.\n"
 	if string(step) != wantStep {
@@ -441,7 +668,7 @@ func TestAnOpenPointIsDecidedByTheAdvisorAndTheDecisionActedOn(t *testing.T) {
 	t.Parallel()
 	f := &fake{t: t, implements: []string{leftOpen("i1", open), implementResult("i2", "cmd/a.go")},
 		advisors: []string{advised("a1", decision)}, reviews: []string{reviewed("r1")}}
-	code, sum, out := gated(t, f)
+	code, sum, out := gated(t, f.run)
 	if code != exitPassed || !reflect.DeepEqual(sum.Records, []string{"D-5"}) || sum.Open != nil {
 		t.Fatalf("exit %d, %+v", code, sum)
 	}
@@ -492,8 +719,8 @@ func TestAConflictInTheRecordStopsTheStepForTheOwner(t *testing.T) {
 	t.Parallel()
 	f := &fake{t: t, implements: []string{leftOpen("i1", open)},
 		advisors: []string{advised("a1", map[string]any{"kind": "conflict", "reason": "ADR-001 rule 6 and D-4 collide."})}}
-	code, sum, out := gated(t, f)
-	if code != exitOwner || sum.Status != "owner" || !strings.Contains(sum.Reason, "ADR-001 rule 6 and D-4 collide.") {
+	code, sum, out := gated(t, f.run)
+	if code != exitOwner || sum.Status != "owner" || sum.Base != "c0" || !strings.Contains(sum.Reason, "ADR-001 rule 6 and D-4 collide.") {
 		t.Fatalf("exit %d, %+v", code, sum)
 	}
 	if !reflect.DeepEqual(sum.Open, []point{open}) || sum.Records != nil || len(f.commits) != 1 {
@@ -523,8 +750,8 @@ func TestASecondOpenPointStopsTheStep(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 			tc.f.t = t
-			code, sum, _ := gated(t, tc.f)
-			if code != exitOpen || sum.Status != "open" || !reflect.DeepEqual(sum.Open, tc.open) {
+			code, sum, _ := gated(t, tc.f.run)
+			if code != exitOpen || sum.Status != "open" || sum.Base != "c0" || !reflect.DeepEqual(sum.Open, tc.open) {
 				t.Fatalf("exit %d, %+v", code, sum)
 			}
 			if len(tc.f.questions) != tc.advisors || len(sum.Reviews) != 0 {

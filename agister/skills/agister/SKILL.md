@@ -400,8 +400,9 @@ and stops:
   after the third review, and a major is never deferred; or the advisor
   found a conflict in the record, which its reason quotes. 4: a review hit
   a provider limit and does not count; resume with the
-  `--from review --reviews <n>` its reason gives. 5: a second point was
-  left open, in the summary's `open`: the step's one question is asked,
+  `--from review --reviews <n> --base <commit>` its reason gives, the
+  commit being the full one the step pinned `--base` to when it started
+  (its summary's `base`). 5: a second point was left open, in the summary's `open`: the step's one question is asked,
   so the issue does not say enough; its work is committed, and the owner
   says what the issue means. 1: anything else stopped the step; its
   reason says what.
