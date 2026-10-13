@@ -319,15 +319,15 @@ func (c callResolution) Resolve(ctx context.Context, request CallResolveRequest)
 	if verify := process.Verify; verify != nil {
 		resolved.Process.Verify = &CallVerify{Command: verify.Command, Timeout: verify.Timeout, MaxAttempts: verify.MaxAttempts, Instruction: verify.Instruction}
 	}
-	resolved.Prompts = translated(res.prompts, func(prompt definition.Prompt) CallPrompt {
+	resolved.Prompts = translated(res.prompts, func(prompt promptText) CallPrompt {
 		input := definition.PromptInput
-		if prompt.Name != process.Prompt {
-			input = definition.GuidanceInput + prompt.Name
+		if prompt.name != process.Prompt {
+			input = definition.GuidanceInput + prompt.name
 		}
-		return CallPrompt{Input: input, Text: Resolved{Value: prompt.Text, Identity: "sha256:" + prompt.Source.SHA256}}
+		return CallPrompt{Input: input, Text: Resolved{Value: prompt.text, Identity: "sha256:" + prompt.sha256}}
 	})
-	resolved.Skills = translated(res.skills, func(skill definition.Skill) CallSkill {
-		return CallSkill{Name: skill.Name, Bytes: skill.Bytes, Identity: "sha256:" + skill.Source.SHA256}
+	resolved.Skills = translated(res.skills, func(skill givenSkill) CallSkill {
+		return CallSkill{Name: skill.name, Bytes: skill.bytes, Identity: "sha256:" + skill.sha256}
 	})
 	return resolved, err
 }
@@ -403,13 +403,13 @@ func callValues(values []definition.Value) []CallValue {
 }
 
 // callForms is each brief form as a call checks a text against it.
-func callForms(forms map[string]definition.Brief) map[string]CallForm {
+func callForms(forms map[string]briefForm) map[string]CallForm {
 	if forms == nil {
 		return nil
 	}
 	checks := make(map[string]CallForm, len(forms))
 	for name, form := range forms {
-		checks[name] = form.Check
+		checks[name] = formCheck(form)
 	}
 	return checks
 }
