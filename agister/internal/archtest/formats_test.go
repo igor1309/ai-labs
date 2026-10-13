@@ -458,10 +458,8 @@ func validNameSources(t *testing.T, dir string, inspect func(string, *ast.File))
 }
 
 // validNameReturnedCalls applies a source rule: a return result must not be
-// a call to the imported document.ValidName. Together with the function-value
-// rule, this is the guard's whole contract, not exhaustive semantic detection
-// of forwarding through local values. Conditions, local bool assignments and
-// call arguments remain allowed.
+// a call to the imported document.ValidName. Local forwarding is checked by
+// validNameUnchangedResults; conditions and call arguments remain allowed.
 func validNameReturnedCalls(t *testing.T, dir string) []string {
 	t.Helper()
 	var found []string
@@ -480,6 +478,148 @@ func validNameReturnedCalls(t *testing.T, dir string) []string {
 	})
 	slices.Sort(found)
 	return found
+}
+
+// validNameUnchangedResults follows the imported rule's unchanged result through
+// straight-line declarations, assignments, copies and named results in each
+// function declaration or literal. Import and lexical identity distinguish
+// unrelated and shadowed names. Unsupported statements and potentially mutating
+// calls stop the analysis: it performs no control-flow joins, loop, pointer or
+// field tracking, or interprocedural analysis, and proves no semantic equivalence.
+func validNameUnchangedResults(t *testing.T, dir string) []string {
+	t.Helper()
+	var found []string
+	validNameSources(t, dir, func(name string, file *ast.File) {
+		isValidName := importedValidName(t, file)
+		ast.Inspect(file, func(node ast.Node) bool {
+			var typ *ast.FuncType
+			var body *ast.BlockStmt
+			switch node := node.(type) {
+			case *ast.FuncDecl:
+				typ, body = node.Type, node.Body
+			case *ast.FuncLit:
+				typ, body = node.Type, node.Body
+			default:
+				return true
+			}
+			for _, result := range unchangedValidNameResults(typ, body, isValidName) {
+				found = append(found, name+": return "+result)
+			}
+			return true
+		})
+	})
+	slices.Sort(found)
+	return found
+}
+
+func unchangedValidNameResults(typ *ast.FuncType, body *ast.BlockStmt, isValidName func(ast.Expr) bool) []string {
+	if body == nil || typ.Results == nil {
+		return nil
+	}
+	values := make(map[*ast.Object]bool)
+	value := func(expr ast.Expr) bool {
+		switch expr := ast.Unparen(expr).(type) {
+		case *ast.Ident:
+			return expr.Obj != nil && values[expr.Obj]
+		case *ast.CallExpr:
+			return isValidName(expr.Fun)
+		}
+		return false
+	}
+	localExpression := func(expr ast.Expr) bool {
+		local := true
+		ast.Inspect(expr, func(node ast.Node) bool {
+			if _, ok := node.(*ast.FuncLit); ok {
+				return false
+			}
+			if call, ok := node.(*ast.CallExpr); ok && !isValidName(call.Fun) {
+				local = false
+			}
+			return local
+		})
+		return local
+	}
+	assign := func(names []*ast.Ident, exprs []ast.Expr) bool {
+		if len(exprs) != 0 && len(names) != len(exprs) {
+			return false
+		}
+		// Evaluate all right-hand sides before updating any object: a parallel
+		// assignment reads the old values, including when it swaps locals.
+		next := make([]bool, len(names))
+		for i, expr := range exprs {
+			if !localExpression(expr) {
+				return false
+			}
+			next[i] = value(expr)
+		}
+		for i, name := range names {
+			if name.Name == "_" {
+				continue
+			}
+			if name.Obj == nil {
+				return false
+			}
+			values[name.Obj] = next[i]
+		}
+		return true
+	}
+	for i, stmt := range body.List {
+		switch stmt := stmt.(type) {
+		case *ast.DeclStmt:
+			decl, ok := stmt.Decl.(*ast.GenDecl)
+			if !ok || decl.Tok != token.VAR {
+				return nil
+			}
+			for _, spec := range decl.Specs {
+				declared := spec.(*ast.ValueSpec)
+				if !assign(declared.Names, declared.Values) {
+					return nil
+				}
+			}
+		case *ast.AssignStmt:
+			if stmt.Tok != token.ASSIGN && stmt.Tok != token.DEFINE {
+				return nil
+			}
+			var names []*ast.Ident
+			for _, expr := range stmt.Lhs {
+				name, ok := ast.Unparen(expr).(*ast.Ident)
+				if !ok {
+					return nil
+				}
+				names = append(names, name)
+			}
+			if !assign(names, stmt.Rhs) {
+				return nil
+			}
+		case *ast.ReturnStmt:
+			if i != len(body.List)-1 {
+				return nil
+			}
+			results := stmt.Results
+			if len(results) == 0 {
+				for _, field := range typ.Results.List {
+					for _, name := range field.Names {
+						results = append(results, name)
+					}
+				}
+			}
+			var found []string
+			for _, result := range results {
+				if !localExpression(result) {
+					return nil
+				}
+				// Direct returned calls have their own rule, including inside
+				// branches. Here only a tracked local or named result forwards.
+				if _, ok := ast.Unparen(result).(*ast.Ident); ok && value(result) {
+					found = append(found, types.ExprString(result))
+				}
+			}
+			return found
+		default:
+			return nil
+		}
+	}
+	return nil
 }
 
 // validNameFunctionValues lists uses of the imported document.ValidName that
@@ -546,6 +686,9 @@ func TestTheParserDeclaresNoneOfTheDocumentVocabulary(t *testing.T) {
 	for _, use := range validNameReturnedCalls(t, "../domain/definition") {
 		t.Errorf("internal/domain/definition/%s: return results must not call document.ValidName", use)
 	}
+	for _, use := range validNameUnchangedResults(t, "../domain/definition") {
+		t.Errorf("internal/domain/definition/%s: return results must not forward document.ValidName unchanged", use)
+	}
 }
 
 func TestAppAndAdaptersDeclareNoReturnedValidNameCall(t *testing.T) {
@@ -553,6 +696,9 @@ func TestAppAndAdaptersDeclareNoReturnedValidNameCall(t *testing.T) {
 	for _, dir := range []string{"../app", "../adapters"} {
 		for _, use := range validNameReturnedCalls(t, dir) {
 			t.Errorf("%s/%s: return results must not call document.ValidName", dir, use)
+		}
+		for _, use := range validNameUnchangedResults(t, dir) {
+			t.Errorf("%s/%s: return results must not forward document.ValidName unchanged", dir, use)
 		}
 	}
 }
@@ -697,6 +843,115 @@ func TestReturnedValidNameCallsAreFound(t *testing.T) {
 							}
 							if got := validNameReturnedCalls(t, root); !slices.Equal(got, want) {
 								t.Errorf("returned document.ValidName calls = %q, want %q", got, want)
+							}
+						})
+					}
+				})
+			}
+		})
+	}
+}
+
+func TestUnchangedValidNameResultsAreRejected(t *testing.T) {
+	t.Parallel()
+	for _, pkg := range []string{"definition", "app", "fsdefs"} {
+		t.Run(pkg, func(t *testing.T) {
+			t.Parallel()
+			for _, imported := range []struct{ name, alias, rule string }{
+				{"default", "", "document.ValidName"},
+				{"renamed", "vocabulary ", "vocabulary.ValidName"},
+				{"dot", ". ", "ValidName"},
+			} {
+				t.Run(imported.name, func(t *testing.T) {
+					t.Parallel()
+					for _, c := range []struct {
+						name, params, result, body string
+						returned                   []string
+					}{
+						{"initialized", "name string", "bool", `valid := RULE(name); return valid`, []string{"valid"}},
+						{"declared", "name string", "bool", `var valid = RULE(name); return valid`, []string{"valid"}},
+						{"typed declaration", "name string", "bool", `var valid bool = RULE(name); return valid`, []string{"valid"}},
+						{"assigned", "name string", "bool", `var valid bool; valid = RULE(name); return valid`, []string{"valid"}},
+						{"reassigned to rule", "name string", "bool", `valid := false; valid = RULE(name); return valid`, []string{"valid"}},
+						{"named explicit", "name string", "(valid bool)", `valid = RULE(name); return valid`, []string{"valid"}},
+						{"named bare", "name string", "(valid bool)", `valid = RULE(name); return`, []string{"valid"}},
+						{"copies", "name string", "bool", `valid := (RULE)((name)); var copied = valid; var last bool; last = copied; return (last)`, []string{"(last)"}},
+						{"named copy", "name string", "(valid bool)", `local := RULE(name); valid = local; return`, []string{"valid"}},
+						{"grouped declaration", "name string", "bool", `var (valid = RULE(name); copied = valid); return copied`, []string{"copied"}},
+						{"multiple declarations", "name string", "bool", `var valid, other = RULE(name), false; _ = other; return valid`, []string{"valid"}},
+						{"parallel copy", "name string", "bool", `valid := RULE(name); copied := false; valid, copied = false, valid; return copied`, []string{"copied"}},
+						{"copy before change", "name string", "bool", `valid := RULE(name); copied := valid; valid = false; return copied`, []string{"copied"}},
+						{"multiple explicit results", "name string", "(bool, error)", `valid := RULE(name); return valid, nil`, []string{"valid"}},
+						{"multiple named results", "name string", "(valid bool, err error)", `valid = RULE(name); return`, []string{"valid"}},
+						{"grouped named results", "name string", "(valid, copied bool)", `valid = RULE(name); copied = valid; return`, []string{"valid", "copied"}},
+						{"fixed input", "name string", "bool", `valid := RULE("agent"); return valid`, []string{"valid"}},
+						{"negated", "name string", "bool", `valid := RULE(name); return !valid`, nil},
+						{"changed expression", "name string", "bool", `valid := RULE(name); return valid && name != ""`, nil},
+						{"changed local", "name string", "bool", `valid := RULE(name); valid = false; return valid`, nil},
+						{"changed named result", "name string", "(valid bool)", `valid = RULE(name); valid = !valid; return`, nil},
+						{"changed copy", "name string", "bool", `valid := RULE(name); copied := !valid; return copied`, nil},
+						{"parallel invalidation", "name string", "bool", `valid := RULE(name); other := false; valid, other = other, valid; return valid`, nil},
+						{"ordinary local use", "name string", "string", `valid := RULE(name); if !valid { return "" }; return name`, nil},
+						{"argument", "name string", "bool", `valid := RULE(name); return consume(valid)`, nil},
+						{"unrelated selector", "name string", "bool", `valid := other.ValidName(name); return valid`, nil},
+						{"unrelated import", "name string", "bool", `valid := RULE(name); return valid`, nil},
+						{"shadowed packages", "document, vocabulary Checker, ValidName func(string) bool, name string", "bool", `valid := RULE(name); return valid`, nil},
+						{"shadowed identifier", "ValidName func(string) bool, name string", "bool", `valid := ValidName(name); return valid`, nil},
+						{"shadowed local", "name string", "bool", `valid := RULE(name); { valid := false; return valid }; return valid`, nil},
+						{"captured result", "name string", "bool", `valid := RULE(name); helper := func() bool { return valid }; return helper()`, nil},
+						{"independent literal", "name string", "bool", `valid := false; helper := func() bool { valid := RULE(name); return valid }; _ = helper; return valid`, []string{"valid"}},
+						{"literal changes capture", "name string", "bool", `valid := RULE(name); ignored := func() bool { valid = false; return true }(); _ = ignored; return valid`, nil},
+						{"return changes capture", "name string", "(bool, bool)", `valid := RULE(name); return func() bool { valid = false; return true }(), valid`, nil},
+						{"deferred change", "name string", "(valid bool)", `valid = RULE(name); defer func() { valid = false }(); return`, nil},
+						{"branch", "name string", "bool", `valid := false; if name != "" { valid = RULE(name) }; return valid`, nil},
+						{"loop", "name string", "bool", `valid := false; for name != "" { valid = RULE(name); break }; return valid`, nil},
+						{"field", "name string", "bool", `var c struct { valid bool }; c.valid = RULE(name); return c.valid`, nil},
+						{"pointer", "name string", "bool", `valid := false; ptr := &valid; *ptr = RULE(name); return valid`, nil},
+						{"interprocedural", "name string", "bool", `valid := RULE(name); copied := consume(valid); return copied`, nil},
+						{"test file", "name string", "bool", `valid := RULE(name); return valid`, nil},
+					} {
+						t.Run(c.name, func(t *testing.T) {
+							t.Parallel()
+							root := t.TempDir()
+							dir := filepath.Join(root, pkg)
+							if pkg == "fsdefs" {
+								dir = filepath.Join(root, "internal", "adapters", pkg)
+							}
+							if err := os.MkdirAll(dir, 0o700); err != nil {
+								t.Fatal(err)
+							}
+							importPath := module + "/internal/domain/document"
+							if c.name == "unrelated import" {
+								importPath = "example.com/other/internal/domain/document"
+							}
+							source := "package " + pkg + "\nimport (\n" + imported.alias + strconv.Quote(importPath) +
+								"\nother \"example.com/other/internal/domain/document\"\n)\ntype Checker struct { ValidName func(string) bool }\n"
+							body := strings.ReplaceAll(c.body, "RULE", imported.rule)
+							// The same body exercises declarations, package literals and
+							// local literals, each with an independent value environment.
+							source += fmt.Sprintf("func helper(%s) %s { %s }\nvar literal = func(%s) %s { %s }\nfunc owner() { local := func(%s) %s { %s }; _ = local }\n",
+								c.params, c.result, body, c.params, c.result, body, c.params, c.result, body)
+							name := "helpers.go"
+							if c.name == "test file" {
+								name = "helpers_test.go"
+							}
+							path := filepath.Join(dir, name)
+							if err := os.WriteFile(path, []byte(source), 0o600); err != nil {
+								t.Fatal(err)
+							}
+							file, err := filepath.Rel(root, path)
+							if err != nil {
+								t.Fatal(err)
+							}
+							var want []string
+							for range 3 {
+								for _, result := range c.returned {
+									want = append(want, file+": return "+result)
+								}
+							}
+							slices.Sort(want)
+							if got := validNameUnchangedResults(t, root); !slices.Equal(got, want) {
+								t.Errorf("unchanged document.ValidName results = %q, want %q", got, want)
 							}
 						})
 					}
