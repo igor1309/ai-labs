@@ -508,19 +508,30 @@ func TestAnotherRunThatMayStillWriteInTheWorktreeRefusesTheCall(t *testing.T) {
 // turns prove admission, and no excluded writer is reaped.
 func TestWriterOverlapUsesTheGitBoundary(t *testing.T) {
 	t.Parallel()
+	checkout := temporaryRun("run-0", "/repo/nested")
+	checkout.Workspace = "/origin"
 	for name, c := range map[string]struct {
 		caller, writer, root string
+		other                run.Record
 		rootErr, moduleErr   error
 		submodule, removable bool
 		allowed              bool
 	}{
 		"nested worktree":              {caller: "/repo", writer: "/repo/nested", root: "/repo/nested", allowed: true},
 		"directory in nested worktree": {caller: "/repo", writer: "/repo/nested/src", root: "/repo/nested", allowed: true},
-		"outer writer":                 {caller: "/repo/nested", writer: "/repo", root: "/repo"},
-		"same worktree":                {caller: "/repo", writer: "/repo", root: "/repo"},
-		"plain subdirectory":           {caller: "/repo", writer: "/repo/src", root: "/repo"},
-		"submodule":                    {caller: "/repo", writer: "/repo/lib", root: "/repo/lib", submodule: true},
-		"directory in submodule":       {caller: "/repo", writer: "/repo/lib/src", root: "/repo/lib", submodule: true},
+		"checkout-less, unfinished in nested worktree": {caller: "/repo", writer: "/repo/nested", root: "/repo/nested", allowed: true,
+			other: checkoutLessRun("run-0", "/repo/nested", false, false)},
+		"checkout-less, process left in nested worktree": {caller: "/repo", writer: "/repo/nested", root: "/repo/nested", allowed: true,
+			other: checkoutLessRun("run-0", "/repo/nested", true, false)},
+		"released checkout and workspace in nested worktree": {caller: "/repo", writer: "/repo/nested", root: "/repo/nested", allowed: true,
+			other: temporaryRun("run-0", "/repo/nested")},
+		"released checkout distinct from workspace in nested worktree": {caller: "/repo", writer: "/repo/nested", root: "/repo/nested", allowed: true,
+			other: checkout},
+		"outer writer":           {caller: "/repo/nested", writer: "/repo", root: "/repo"},
+		"same worktree":          {caller: "/repo", writer: "/repo", root: "/repo"},
+		"plain subdirectory":     {caller: "/repo", writer: "/repo/src", root: "/repo"},
+		"submodule":              {caller: "/repo", writer: "/repo/lib", root: "/repo/lib", submodule: true},
+		"directory in submodule": {caller: "/repo", writer: "/repo/lib/src", root: "/repo/lib", submodule: true},
 		// The indexed root exception excludes independent descendant roots.
 		"worktree inside a submodule":           {caller: "/repo", writer: "/repo/lib/nested", root: "/repo/lib/nested", allowed: true},
 		"root fails":                            {caller: "/repo", writer: "/repo/nested", rootErr: errors.New("git root unavailable")},
@@ -534,24 +545,23 @@ func TestWriterOverlapUsesTheGitBoundary(t *testing.T) {
 			t.Parallel()
 			h := newHarness()
 			h.workspaces.root = c.caller
-			other := inPlaceRun("run-0", c.writer, false, false)
+			other := c.other
+			if other.ID == "" {
+				other = inPlaceRun("run-0", c.writer, false, false)
+			}
 			if c.removable {
 				other.Effects.Copy = &run.Checkout{Dir: c.writer}
 			}
 			h.runs.records[other.ID] = other
-			var roots, modules int
+			h.writers.outcome = app.HoldReapLeft
+			var rootDirs []string
+			var moduleBoundaries [][2]string
 			h.worktrees.root = func(dir string) (string, error) {
-				roots++
-				if dir != c.writer {
-					t.Fatalf("Root directory %q, want %q", dir, c.writer)
-				}
+				rootDirs = append(rootDirs, dir)
 				return c.root, c.rootErr
 			}
 			h.worktrees.isSubmodule = func(worktree, root string) (bool, error) {
-				modules++
-				if worktree != c.caller || root != c.root {
-					t.Fatalf("submodule boundary (%q, %q)", worktree, root)
-				}
+				moduleBoundaries = append(moduleBoundaries, [2]string{worktree, root})
 				return c.submodule, c.moduleErr
 			}
 			record := h.call(t, contract.CallRequest{Cwd: c.caller})
@@ -574,7 +584,7 @@ func TestWriterOverlapUsesTheGitBoundary(t *testing.T) {
 			if len(h.writers.refs()) != 0 || h.locks.holds(c.caller) {
 				t.Fatalf("reaped %v, hold retained %v", h.writers.refs(), h.locks.holds(c.caller))
 			}
-			// The same directory in Workspace and InPlace is resolved once;
+			// Repeated writer directories in a record are resolved once;
 			// removable, equal and containing paths need no git lookup.
 			wantRoots := 1
 			if c.removable || c.writer == c.caller || strings.HasPrefix(c.caller, c.writer+"/") {
@@ -584,8 +594,16 @@ func TestWriterOverlapUsesTheGitBoundary(t *testing.T) {
 			if wantRoots == 1 && c.rootErr == nil && strings.HasPrefix(c.root, c.caller+"/") {
 				wantModules = 1
 			}
-			if roots != wantRoots || modules != wantModules {
-				t.Fatalf("root reads %d, module reads %d; want %d, %d", roots, modules, wantRoots, wantModules)
+			var wantDirs []string
+			if wantRoots == 1 {
+				wantDirs = []string{c.writer}
+			}
+			var wantBoundaries [][2]string
+			if wantModules == 1 {
+				wantBoundaries = [][2]string{{c.caller, c.root}}
+			}
+			if !reflect.DeepEqual(rootDirs, wantDirs) || !reflect.DeepEqual(moduleBoundaries, wantBoundaries) {
+				t.Fatalf("root directories %v, want %v; module boundaries %v, want %v", rootDirs, wantDirs, moduleBoundaries, wantBoundaries)
 			}
 		})
 	}
@@ -629,20 +647,14 @@ func TestMixedWriterBoundariesReuseOnlyMatchingLookups(t *testing.T) {
 				"/repo/nested": "/repo/nested", "/repo/nested/src": "/repo/nested",
 				"/repo/lib": "/repo/lib", "/repo/lib/src": "/repo/lib",
 			}
-			rootReads, moduleReads := map[string]int{}, map[string]int{}
+			rootReads := map[string]int{}
+			moduleReads := map[[2]string]int{}
 			h.worktrees.root = func(dir string) (string, error) {
 				rootReads[dir]++
-				root, ok := roots[dir]
-				if !ok {
-					t.Fatalf("unexpected Root directory %q", dir)
-				}
-				return root, nil
+				return roots[dir], nil
 			}
 			h.worktrees.isSubmodule = func(worktree, root string) (bool, error) {
-				moduleReads[root]++
-				if worktree != "/repo" || (root != "/repo/lib" && root != "/repo/nested") {
-					t.Fatalf("unexpected submodule boundary (%q, %q)", worktree, root)
-				}
+				moduleReads[[2]string{worktree, root}]++
 				return root == "/repo/lib", nil
 			}
 			record := h.call(t, contract.CallRequest{})
@@ -658,7 +670,7 @@ func TestMixedWriterBoundariesReuseOnlyMatchingLookups(t *testing.T) {
 				t.Fatalf("reaped %v, want %v; hold retained %v", got, wantReaped, h.locks.holds("/repo"))
 			}
 			wantRoots := map[string]int{"/repo/nested": 1, "/repo/nested/src": 1, "/repo/lib": 1, "/repo/lib/src": 1}
-			wantModules := map[string]int{"/repo/nested": 1, "/repo/lib": 1}
+			wantModules := map[[2]string]int{{"/repo", "/repo/nested"}: 1, {"/repo", "/repo/lib"}: 1}
 			if !reflect.DeepEqual(rootReads, wantRoots) || !reflect.DeepEqual(moduleReads, wantModules) {
 				t.Fatalf("root reads %v, want %v; module reads %v, want %v", rootReads, wantRoots, moduleReads, wantModules)
 			}
