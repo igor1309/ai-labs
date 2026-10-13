@@ -19,7 +19,8 @@ A partial sets only what it changes. Prompts, skills and schemas are taken
 whole from the nearest layer that holds them. Each run is recorded in
 `<home>/runs/<run-id>/`.
 `agister --help` is authoritative, so check it before you rely on a
-command or a flag. The `README.md` of the Agister source has the details.
+command or a flag. The source's [README](../../README.md) introduces it;
+the [behaviour reference](../../docs/reference/README.md) has the details.
 
 ## Find out what the settings provide
 
