@@ -163,7 +163,13 @@ func readerCases() map[string]readerCase {
 		"a schema": reads(document.KindSchema, "s", `{"type":"object"}`,
 			documentReader.Schema, func(doc document.Document) ([]byte, error) { return doc.Bytes, nil }),
 		"the blocks": reads(document.KindBlocks, "blocks", "schema: agister.blocks/v1alpha1\nblocks:\n  - {ref: \"process:p\", reason: Not here.}\n",
-			documentReader.Blocks, definition.ParseBlocks),
+			documentReader.Blocks,
+			// The blocks are read in the package's own type, as the service
+			// is.
+			func(doc document.Document) ([]declaredBlock, error) {
+				blocks, err := definition.ParseBlocks(doc)
+				return blocksOf(blocks), err
+			}),
 	}
 }
 
@@ -2199,6 +2205,110 @@ func TestAListedPromptIsReadAsTheSettingsListIt(t *testing.T) {
 			t.Fatalf("listed prompt = %+v, source %+v; want %+v, source %+v", got, source, want, broken.Source)
 		}
 	})
+}
+
+// blocksDocument is the blocks document holding text, in the repository's
+// settings.
+func blocksDocument(text string) document.Document {
+	const path = "/repo/.agister/blocks.yaml"
+	return document.Document{
+		Source: document.Source{
+			Kind: document.KindBlocks, Name: "blocks", Path: path, Layer: document.LayerRepository, SHA256: "digest of the blocks",
+			Layers: []document.LayerFile{{Layer: document.LayerRepository, Path: path}},
+		},
+		Bytes: []byte(text),
+	}
+}
+
+// The blocks are read as the package uses them, beside the document's
+// source: each document blocked by its kind and its name, with its reason
+// where it gives one, in the order the document names them.
+func TestTheReaderGivesTheBlocksAsThePackageUsesThem(t *testing.T) {
+	t.Parallel()
+	for name, c := range map[string]struct {
+		text string
+		want []declaredBlock
+	}{
+		"every kind a block may name": {
+			text: "schema: agister.blocks/v1alpha1\nblocks:\n  - {ref: \"workflow:w\", reason: Not here.}\n  - {ref: \"process:p\"}\n" +
+				"  - {ref: \"runtime:rt\", reason: Not installed.}\n  - {ref: \"agent:a\"}\n",
+			want: []declaredBlock{
+				{kind: document.KindWorkflow, name: "w", reason: "Not here."},
+				{kind: document.KindProcess, name: "p"},
+				{kind: document.KindRuntime, name: "rt", reason: "Not installed."},
+				{kind: document.KindAgent, name: "a"},
+			},
+		},
+		"none": {text: "schema: agister.blocks/v1alpha1\nblocks: []\n"},
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			doc := blocksDocument(c.text)
+			ref := DocumentRef{Kind: document.KindBlocks, Name: "blocks"}
+			reader := newDocumentReader(definitionsFake{t: t, docs: map[DocumentRef]document.Document{ref: doc}})
+			got, source, err := reader.Blocks(context.Background(), "blocks")
+			if err != nil || !reflect.DeepEqual(got, c.want) || !reflect.DeepEqual(source, doc.Source) {
+				t.Fatalf("blocks = %+v, source %+v, %v; want %+v, source %+v", got, source, err, c.want, doc.Source)
+			}
+		})
+	}
+}
+
+// Blocks with problems fail with the parser's *document.InvalidError, its
+// problems in the parser's order. The blocks that parsed are given beside
+// it, with the document's source.
+func TestBlocksWithProblemsKeepWhatParsed(t *testing.T) {
+	t.Parallel()
+	for name, c := range map[string]struct {
+		text     string
+		problems []document.Problem
+		want     []declaredBlock
+	}{
+		"a block of a kind that cannot be blocked, one named twice and an unknown field": {
+			text: "schema: agister.blocks/v1alpha1\nblocks:\n  - {ref: \"process:p\", reason: Not here.}\n  - {ref: \"prompt:inspect\"}\n" +
+				"  - {ref: \"process:p\"}\n  - {ref: \"agent:a\", why: Slow.}\n",
+			problems: []document.Problem{
+				{Message: "blocks[1].ref: \"prompt\" cannot be blocked: only a process, workflow, agent or runtime is"},
+				{Message: "blocks[2].ref: process:p is blocked twice (also blocks[0])"},
+				{Message: "blocks[3].why: unknown field", Unknown: true},
+			},
+			want: []declaredBlock{
+				{kind: document.KindProcess, name: "p", reason: "Not here."},
+				{kind: document.KindAgent, name: "a"},
+			},
+		},
+		"no list of blocks": {
+			text:     "schema: agister.blocks/v1alpha1\n",
+			problems: []document.Problem{{Message: "blocks: is required"}},
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			doc := blocksDocument(c.text)
+			ref := DocumentRef{Kind: document.KindBlocks, Name: "blocks"}
+			reader := newDocumentReader(definitionsFake{t: t, docs: map[DocumentRef]document.Document{ref: doc}})
+			got, source, err := reader.Blocks(context.Background(), "blocks")
+			invalid, ok := err.(*document.InvalidError)
+			if want := (&document.InvalidError{Subject: "blocks", Problems: c.problems}); unread(err) || !ok || !reflect.DeepEqual(invalid, want) {
+				t.Fatalf("blocks error = %#v, want %#v", err, want)
+			}
+			if !reflect.DeepEqual(got, c.want) || !reflect.DeepEqual(source, doc.Source) {
+				t.Fatalf("blocks = %+v, source %+v; want %+v, source %+v", got, source, c.want, doc.Source)
+			}
+		})
+	}
+}
+
+// Blocks that were not read have no value: the reader maps nothing of
+// them.
+func TestBlocksThatWereNotReadHaveNoValue(t *testing.T) {
+	t.Parallel()
+	ref := DocumentRef{Kind: document.KindBlocks, Name: "blocks"}
+	reader := newDocumentReader(definitionsFake{t: t, errs: map[DocumentRef]error{ref: document.ErrNotFound}})
+	got, _, err := reader.Blocks(context.Background(), "blocks")
+	if !unread(err) || got != nil {
+		t.Fatalf("blocks = %+v, %#v; want none and a failure to read", got, err)
+	}
 }
 
 // The workspace settings are read only for where they are: whatever they

@@ -14,7 +14,6 @@ import (
 	"time"
 
 	"github.com/igor1309/ai-labs/agister/internal/contract"
-	"github.com/igor1309/ai-labs/agister/internal/domain/definition"
 	"github.com/igor1309/ai-labs/agister/internal/domain/document"
 )
 
@@ -277,7 +276,7 @@ func (s *Settings) CreateAgent(ctx context.Context, spec contract.Agent, overwri
 		name: spec.Name, runtime: spec.Runtime, model: spec.Model, modelFamily: spec.ModelFamily,
 		effort: spec.Effort, command: spec.Command,
 	}
-	if !definition.ValidName(agent.name) {
+	if !validName(agent.name) {
 		return contract.AgentWrite{}, &contract.InputError{Message: fmt.Sprintf("invalid agent name %q", agent.name)}
 	}
 	mapping, _, err := s.documents.Mapping(ctx, agent.runtime)

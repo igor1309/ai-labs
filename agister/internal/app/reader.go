@@ -13,9 +13,11 @@ import (
 // documentReader reads a settings document as what it is: one method per
 // kind reads the document, parses it and returns the parsed value with the
 // document's source. The service settings, a runtime mapping, an agent, a
-// process, a verification, a prompt, a brief form, a skill and a workflow
-// are returned in the package's own types, which no other file of the
-// package maps a parsed document to.
+// process, a verification, a prompt, a brief form, a skill, a workflow and
+// the blocks are returned in the package's own types, which no other file
+// of the package maps a parsed document to. This file is the one of the
+// package that imports the parser: what another file uses of it, a name
+// or a function, it takes from here under the package's own name.
 // It reads only the document it is asked for (ADR-015 rule 1), and decides
 // nothing for its caller: what to read next, what a failure stops and how
 // it is worded are the caller's.
@@ -49,6 +51,36 @@ func (e *unreadError) Unwrap() error { return e.err }
 func unread(err error) bool {
 	var failure *unreadError
 	return errors.As(err, &failure)
+}
+
+// The names the parser gives what a call is given, which the package
+// takes from it, so that each is written once.
+const (
+	// promptInput is the input that gives a call its process's prompt, and
+	// guidanceInput the prefix of the one that gives each guidance prompt,
+	// which the prompt's name follows.
+	promptInput   = definition.PromptInput
+	guidanceInput = definition.GuidanceInput
+	// promptSource is the source a call records for the inputs that give
+	// its prompts.
+	promptSource = definition.PromptSource
+	// collectionSource is the input source through which a workflow's join
+	// is given the collection of its fan-out nodes' results (ADR-003 rule
+	// 4).
+	collectionSource = definition.CollectionSource
+	// obsoleteWorkspace is the warning for the workspace settings, which
+	// ADR-025 removed: they are read and ignored.
+	obsoleteWorkspace = definition.ObsoleteWorkspace
+)
+
+// validName reports whether name can name a document, as the parser
+// decides it (ADR-015 rule 4).
+func validName(name string) bool { return definition.ValidName(name) }
+
+// withHome is doc, a composed kind's document, as writing home to the home
+// layer would make it, as the parser composes it (ADR-028 rule 4).
+func withHome(doc document.Document, home document.LayerText) (document.Document, error) {
+	return definition.WithHome(doc, home)
 }
 
 // newDocumentReader returns the reader over definitions, which are
@@ -375,8 +407,20 @@ func (r documentReader) Schema(ctx context.Context, name string) ([]byte, docume
 	return readParsed(ctx, r, document.KindSchema, name, func(doc document.Document) ([]byte, error) { return doc.Bytes, nil })
 }
 
-func (r documentReader) Blocks(ctx context.Context, name string) (definition.Blocks, document.Source, error) {
-	return readParsed(ctx, r, document.KindBlocks, name, definition.ParseBlocks)
+// Blocks reads a repository's blocks as the package uses them, not as
+// their file holds them.
+func (r documentReader) Blocks(ctx context.Context, name string) ([]declaredBlock, document.Source, error) {
+	blocks, source, err := readParsed(ctx, r, document.KindBlocks, name, definition.ParseBlocks)
+	return blocksOf(blocks), source, err
+}
+
+// blocksOf are the blocks of a parsed blocks document as the package uses
+// them, in the order it names them. What parsed of an invalid one is
+// mapped the same, and of one that was not read there is nothing.
+func blocksOf(blocks definition.Blocks) []declaredBlock {
+	return translated(blocks.Blocks, func(block definition.Block) declaredBlock {
+		return declaredBlock{kind: block.Kind, name: block.Name, reason: block.Reason}
+	})
 }
 
 // Workspace reads the workspace settings, which no call reads and nothing
