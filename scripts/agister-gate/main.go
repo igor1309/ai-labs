@@ -18,7 +18,10 @@
 //   - A major still ruled fix after the third review stops the step for
 //     the owner. Nothing major is deferred by the gate.
 //   - A review that a provider limit failed does not count: the step stops,
-//     and `--from review --reviews <n>` resumes it at that review.
+//     and `--from review --reviews <n> --base <summary.base>` resumes it at
+//     that review. A new step pins --base before setup; a resumed step
+//     requires the full commit printed in the preceding summary. Every
+//     review and brief uses that commit.
 //   - A point an implement run leaves open goes to the advisor, at the
 //     run's commit: the question file is the point as the run wrote it.
 //     The advisor's decision is appended to the decisions record as the
