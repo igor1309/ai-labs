@@ -399,8 +399,108 @@ func exported(t *testing.T, dir string) []string {
 	return names
 }
 
+// validNameForwarders lists the names that forward document.ValidName,
+// regardless of visibility or the document import's name. A direct call
+// does not introduce another name for the rule.
+func validNameForwarders(t *testing.T, dir string) []string {
+	t.Helper()
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var found []string
+	for _, entry := range entries {
+		name := entry.Name()
+		if !strings.HasSuffix(name, ".go") || strings.HasSuffix(name, "_test.go") {
+			continue
+		}
+		file, err := parser.ParseFile(token.NewFileSet(), filepath.Join(dir, name), nil, 0)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var imports []string
+		for _, spec := range file.Imports {
+			path, err := strconv.Unquote(spec.Path.Value)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if path == module+"/internal/domain/document" {
+				importName := "document"
+				if spec.Name != nil {
+					importName = spec.Name.Name
+				}
+				imports = append(imports, importName)
+			}
+		}
+		isValidName := func(expr ast.Expr) bool {
+			switch expr := ast.Unparen(expr).(type) {
+			case *ast.SelectorExpr:
+				pkg, ok := expr.X.(*ast.Ident)
+				return ok && pkg.Obj == nil && slices.Contains(imports, pkg.Name) && expr.Sel.Name == "ValidName"
+			case *ast.Ident:
+				return expr.Obj == nil && expr.Name == "ValidName" && slices.Contains(imports, ".")
+			}
+			return false
+		}
+		isWrapper := func(typ *ast.FuncType, body *ast.BlockStmt) bool {
+			if body == nil || len(body.List) != 1 {
+				return false
+			}
+			returned, ok := body.List[0].(*ast.ReturnStmt)
+			if !ok || len(returned.Results) != 1 {
+				return false
+			}
+			call, ok := ast.Unparen(returned.Results[0]).(*ast.CallExpr)
+			if !ok || !isValidName(call.Fun) || call.Ellipsis.IsValid() {
+				return false
+			}
+			var params []string
+			for _, field := range typ.Params.List {
+				for _, param := range field.Names {
+					params = append(params, param.Name)
+				}
+			}
+			if len(params) != len(call.Args) {
+				return false
+			}
+			for i, arg := range call.Args {
+				ident, ok := ast.Unparen(arg).(*ast.Ident)
+				if !ok || ident.Name != params[i] {
+					return false
+				}
+			}
+			return true
+		}
+		for _, decl := range file.Decls {
+			switch decl := decl.(type) {
+			case *ast.FuncDecl:
+				if isWrapper(decl.Type, decl.Body) {
+					found = append(found, decl.Name.Name)
+				}
+			case *ast.GenDecl:
+				for _, spec := range decl.Specs {
+					value, ok := spec.(*ast.ValueSpec)
+					if !ok {
+						continue
+					}
+					for i, expr := range value.Values {
+						forward := isValidName(expr)
+						if function, ok := ast.Unparen(expr).(*ast.FuncLit); ok {
+							forward = isWrapper(function.Type, function.Body)
+						}
+						if forward {
+							found = append(found, value.Names[i].Name)
+						}
+					}
+				}
+			}
+		}
+	}
+	return found
+}
+
 // redeclared lists, sorted, the exported names of the package in of that
-// the package in dir declares too.
+// the package in dir declares too, and any name forwarding ValidName.
 func redeclared(t *testing.T, dir, of string) []string {
 	t.Helper()
 	theirs := exported(t, of)
@@ -410,7 +510,9 @@ func redeclared(t *testing.T, dir, of string) []string {
 			found = append(found, name)
 		}
 	}
-	return found
+	found = append(found, validNameForwarders(t, dir)...)
+	slices.Sort(found)
+	return slices.Compact(found)
 }
 
 // The document vocabulary has one home, internal/domain/document. The
@@ -420,7 +522,7 @@ func redeclared(t *testing.T, dir, of string) []string {
 func TestTheParserDeclaresNoneOfTheDocumentVocabulary(t *testing.T) {
 	t.Parallel()
 	for _, name := range redeclared(t, "../domain/definition", "../domain/document") {
-		t.Errorf("internal/domain/definition declares %s: the name is internal/domain/document's, and its users name it there", name)
+		t.Errorf("internal/domain/definition declares %s: document vocabulary belongs to internal/domain/document, and its users name it there directly", name)
 	}
 }
 
@@ -462,14 +564,54 @@ var ErrNotFound = document.ErrNotFound
 `,
 		"definition/forward.go": `package definition
 
+import "` + module + `/internal/domain/document"
+
 func Composed(kind document.Kind) bool { return document.Composed(kind) }
 
 func ValidName(name string) bool { return document.ValidName(name) }
 `,
+		"definition/variables.go": `package definition
+
+import "` + module + `/internal/domain/document"
+
+var ValidateName = document.ValidName
+var validateName = document.ValidName
+var Parenthesized = (document.ValidName)
+var (
+	other, Grouped = false, document.ValidName
+)
+var ValidateLiteral = func(name string) bool { return document.ValidName(name) }
+var validateLiteral = func(name string) bool { return document.ValidName(name) }
+`,
+		"definition/wrappers.go": `package definition
+
+import "` + module + `/internal/domain/document"
+
+func CheckName(name string) bool { return document.ValidName(name) }
+func checkName(name string) bool { return document.ValidName(name) }
+func checkParenthesized(name string) bool { return (document.ValidName)((name)) }
+`,
+		"definition/renamed.go": `package definition
+
+import vocabulary "` + module + `/internal/domain/document"
+
+var RenamedVariable = vocabulary.ValidName
+func renamedWrapper(name string) bool { return vocabulary.ValidName(name) }
+`,
+		"definition/unqualified.go": `package definition
+
+import . "` + module + `/internal/domain/document"
+
+var UnqualifiedVariable = ValidName
+func unqualifiedWrapper(name string) bool { return ValidName(name) }
+`,
 		// None of these gives the package a name of the vocabulary: a
 		// method, a type local to a function, an unexported name, a name
-		// of the parser's own, and a test file's alias.
+		// of the parser's own, direct calls, another package's rule, a
+		// local value with the import's name, and a test file's alias.
 		"definition/own.go": `package definition
+
+import "` + module + `/internal/domain/document"
 
 type Process struct{}
 
@@ -478,10 +620,38 @@ func (p Process) Document() document.Document { return document.Document{} }
 func ParseProcess() { type Source struct{} }
 
 type source struct{}
+
+var Accepted = document.ValidName("agent")
+
+func ParseName(name string) string {
+	if !document.ValidName(name) { return "" }
+	return name
+}
+
+func CheckRequiredName(name string) bool { return name != "" && document.ValidName(name) }
+`,
+		"definition/other.go": `package definition
+
+import document "example.com/other/internal/domain/document"
+
+var OtherVariable = document.ValidName
+func OtherWrapper(name string) bool { return document.ValidName(name) }
+`,
+		"definition/shadowed.go": `package definition
+
+import "` + module + `/internal/domain/document"
+
+type Checker struct { ValidName func(string) bool }
+
+func (document Checker) Shadowed(name string) bool { return document.ValidName(name) }
 `,
 		"definition/alias_test.go": `package definition
 
+import "` + module + `/internal/domain/document"
+
 type Source = document.Source
+var TestVariable = document.ValidName
+func testWrapper(name string) bool { return document.ValidName(name) }
 `,
 	} {
 		path := filepath.Join(root, name)
@@ -493,7 +663,11 @@ type Source = document.Source
 		}
 	}
 	got := redeclared(t, filepath.Join(root, "definition"), filepath.Join(root, "document"))
-	want := []string{"Composed", "ErrNotFound", "Kind", "KindAgent", "KindProcess", "ValidName"}
+	want := []string{
+		"CheckName", "Composed", "ErrNotFound", "Grouped", "Kind", "KindAgent", "KindProcess",
+		"Parenthesized", "RenamedVariable", "UnqualifiedVariable", "ValidName", "ValidateLiteral", "ValidateName",
+		"checkName", "checkParenthesized", "renamedWrapper", "unqualifiedWrapper", "validateLiteral", "validateName",
+	}
 	if !slices.Equal(got, want) {
 		t.Errorf("vocabulary names the parser declares = %q, want %q", got, want)
 	}
