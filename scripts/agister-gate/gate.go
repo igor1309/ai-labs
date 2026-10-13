@@ -31,8 +31,8 @@ type runner func(ctx context.Context, dir, name string, args ...string) ([]byte,
 
 // options are the command's flags.
 type options struct {
-	issue, title, constraints, implement, advisor, decisions, base, message, out, dir, from string
-	reviews                                                                                 int
+	issue, title, constraints, implement, advisor, review, decisions, base, message, out, dir, from string
+	reviews                                                                                         int
 }
 
 // result is what `agister run --json` prints: a run's id, status, output
@@ -70,7 +70,7 @@ type item struct {
 	Action   string   `json:"action"`
 }
 
-// judgement is the output of a code_review run.
+// judgement is the output of a review run.
 type judgement struct {
 	Items []item `json:"items"`
 }
@@ -147,6 +147,7 @@ func parse(args []string, stderr io.Writer) (options, error) {
 	fs.StringVar(&o.constraints, "constraints", "", "the owner's constraints on the step, as written")
 	fs.StringVar(&o.implement, "implement", "", "the implement workflow, such as implement_codex")
 	fs.StringVar(&o.advisor, "advisor", "", "the advisor workflow, such as advisor_codex")
+	fs.StringVar(&o.review, "review", "code_review", "the review workflow, such as code_review_codex")
 	fs.StringVar(&o.decisions, "decisions", "", "the decisions record, in the worktree, a decision is appended to")
 	fs.StringVar(&o.base, "base", "", "the revision the review compares with")
 	fs.StringVar(&o.message, "message", "", "the commit subject")
@@ -329,7 +330,7 @@ func (g *gate) unreported(ctx context.Context, runID string) error {
 }
 
 func (g *gate) review(ctx context.Context, n int) (judgement, error) {
-	r, err := g.agister(ctx, "review", "code_review", "--param", "base="+g.base, "--param", "goal="+g.goal, "--json")
+	r, err := g.agister(ctx, "review", g.options.review, "--param", "base="+g.base, "--param", "goal="+g.goal, "--json")
 	if err != nil {
 		return judgement{}, err
 	}

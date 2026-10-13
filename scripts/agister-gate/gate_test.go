@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"cmp"
 	"context"
 	"encoding/json"
 	"errors"
@@ -16,7 +17,8 @@ import (
 // fake stands in for agister and git. Implement, review and advisor runs
 // answer from their queues, in order; git status answers clean, except
 // after `git add` when unreported is set; git diff names the decisions
-// record once it is staged, or from the start when recorded is set.
+// record once it is staged, or from the start when recorded is set. The
+// review is the workflow review names, code_review when it is empty.
 type fake struct {
 	t          *testing.T
 	implements []string
@@ -25,6 +27,7 @@ type fake struct {
 	dirty      string
 	unreported string
 	recorded   bool
+	review     string
 
 	questions []string
 
@@ -66,7 +69,7 @@ func (f *fake) run(_ context.Context, _ string, name string, args ...string) ([]
 		return nil, nil
 	case name == "git" && args[0] == "rev-parse":
 		return []byte(fmt.Sprintf("c%d\n", len(f.commits))), nil
-	case name == "agister" && args[1] == "code_review":
+	case name == "agister" && args[1] == cmp.Or(f.review, "code_review"):
 		f.agisters++
 		if len(f.reviews) == 0 {
 			f.t.Fatal("a review the test did not expect")
@@ -200,6 +203,17 @@ func TestAStepPassesWhenItsReviewHasNoMajorToFix(t *testing.T) {
 	want := left{Majors: []item{}, Minors: []item{minor}, Deferred: []item{deferred}}
 	if !reflect.DeepEqual(sum.Left, want) {
 		t.Errorf("left %+v, want %+v", sum.Left, want)
+	}
+}
+
+// --review names the review workflow the gate runs in place of code_review.
+func TestTheReviewIsTheWorkflowReviewNames(t *testing.T) {
+	t.Parallel()
+	f := &fake{t: t, implements: []string{implementResult("i1", "cmd/a.go")},
+		reviews: []string{reviewed("r1")}, review: "code_review_codex"}
+	code, sum, _ := gated(t, f, "--review", "code_review_codex")
+	if code != exitPassed || len(sum.Reviews) != 1 || sum.Reviews[0].RunID != "r1" {
+		t.Fatalf("exit %d, %+v", code, sum)
 	}
 }
 

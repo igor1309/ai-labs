@@ -10,7 +10,8 @@
 //   - The step's brief is implemented with the implement workflow named.
 //     Its run's files_changed are staged by name and committed; a change
 //     the run did not report stops the step.
-//   - code_review reviews the commits since base against the goal.
+//   - The review workflow named, code_review unless --review names
+//     another, reviews the commits since base against the goal.
 //   - Items the judge rules fix with severity major go to a fix run: the
 //     step's brief, with the items as its "## Acts on". Minors are not
 //     fixed by the gate.
@@ -33,7 +34,7 @@
 //	agister-gate --issue <file> --title <line> [--constraints <file>]
 //	  --implement <workflow> --advisor <workflow> --decisions <file>
 //	  --base <rev> --message <subject> --out <dir>
-//	  [--dir <worktree>] [--from implement|review] [--reviews <n>]
+//	  [--review <workflow>] [--dir <worktree>] [--from implement|review] [--reviews <n>]
 //
 // Exit 0: no major is left to fix. 3: the owner decides: a major is left
 // after the third review, or the advisor found a conflict in the record.
