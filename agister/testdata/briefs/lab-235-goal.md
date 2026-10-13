@@ -6,7 +6,7 @@
 
 ## Done when
 
-1. `internal/app` declares an unexported type for a runtime mapping as `app` uses it: its name, its adapter, the contract it is written for, the efforts it supports, and what it offers as `enforce.Offer`. It has no format tag, is no alias of a parser type, and carries nothing no consumer in `app` reads.
+1. `internal/app` declares an unexported type for a runtime mapping as `app` uses it: its name, its adapter, the efforts it supports, and what it offers as `enforce.Offer`. It has no format tag, is no alias of a parser type, and carries nothing no consumer in `app` reads.
 2. `documentReader.Mapping` returns that type, with the document's source returned beside it as before. The mapping from `definition.Mapping` is in `reader.go` and nowhere else, and it also maps what parsed of a mapping whose parse failed.
 3. No non-test file of `internal/app` other than `reader.go` names `definition.Mapping`: the Resolver's resolution, `parsedSettings`, the Checker, create-agent and the mapping to `settings.Mapping` use the new type, and the `offer(definition.Mapping)` mapper leaves `resolve.go` for `reader.go` or goes.
 4. A failure to read and a failure to parse stay distinct, with the `*document.InvalidError`, the order of its problems, their unknown flags and the source's layers as before.
@@ -25,7 +25,6 @@
 ## Decisions
 
 - The advisor's ruling in run `20261013T021809Z-2ac2f8`: `app`-owned types, one kind per PR; the types live in `app`, not in `settings`.
-- Recorded after implement run `20261013T023509Z-6478f1`: the type carries the contract too, since the Resolver and the Checker compare it with the contract the adapter implements. The reader builds the offer once, where each consumer rebuilt it; a mapping with no primitives has a nil list, as the zero value of an unread mapping has.
 
 ## Open
 
