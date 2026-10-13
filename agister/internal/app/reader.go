@@ -216,7 +216,7 @@ func parserBrief(form briefForm) definition.Brief {
 
 // formCheck is the check of a text against form, as the parser checks it
 // (ADR-026 rule 8): what keeps the text from having the form, none when it
-// has it. The form is mapped once for every text checked against it.
+// has it.
 func formCheck(form briefForm) func(text string, resolve func(path string) error) []string {
 	return parserBrief(form).Check
 }
