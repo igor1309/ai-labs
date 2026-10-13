@@ -399,6 +399,36 @@ func exported(t *testing.T, dir string) []string {
 	return names
 }
 
+// importedValidName identifies the core rule by import path and lexical
+// object identity, so both guards exclude unrelated and shadowed names.
+func importedValidName(t *testing.T, file *ast.File) func(ast.Expr) bool {
+	t.Helper()
+	var imports []string
+	for _, spec := range file.Imports {
+		path, err := strconv.Unquote(spec.Path.Value)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if path == module+"/internal/domain/document" {
+			importName := "document"
+			if spec.Name != nil {
+				importName = spec.Name.Name
+			}
+			imports = append(imports, importName)
+		}
+	}
+	return func(expr ast.Expr) bool {
+		switch expr := ast.Unparen(expr).(type) {
+		case *ast.SelectorExpr:
+			pkg, ok := expr.X.(*ast.Ident)
+			return ok && pkg.Obj == nil && slices.Contains(imports, pkg.Name) && expr.Sel.Name == "ValidName"
+		case *ast.Ident:
+			return expr.Obj == nil && expr.Name == "ValidName" && slices.Contains(imports, ".")
+		}
+		return false
+	}
+}
+
 // validNameForwarders lists the names that forward document.ValidName,
 // regardless of visibility or the document import's name. A direct call
 // does not introduce another name for the rule.
@@ -418,30 +448,7 @@ func validNameForwarders(t *testing.T, dir string) []string {
 		if err != nil {
 			t.Fatal(err)
 		}
-		var imports []string
-		for _, spec := range file.Imports {
-			path, err := strconv.Unquote(spec.Path.Value)
-			if err != nil {
-				t.Fatal(err)
-			}
-			if path == module+"/internal/domain/document" {
-				importName := "document"
-				if spec.Name != nil {
-					importName = spec.Name.Name
-				}
-				imports = append(imports, importName)
-			}
-		}
-		isValidName := func(expr ast.Expr) bool {
-			switch expr := ast.Unparen(expr).(type) {
-			case *ast.SelectorExpr:
-				pkg, ok := expr.X.(*ast.Ident)
-				return ok && pkg.Obj == nil && slices.Contains(imports, pkg.Name) && expr.Sel.Name == "ValidName"
-			case *ast.Ident:
-				return expr.Obj == nil && expr.Name == "ValidName" && slices.Contains(imports, ".")
-			}
-			return false
-		}
+		isValidName := importedValidName(t, file)
 		for _, decl := range file.Decls {
 			switch decl := decl.(type) {
 			case *ast.FuncDecl:
@@ -467,6 +474,55 @@ func validNameForwarders(t *testing.T, dir string) []string {
 			}
 		}
 	}
+	return found
+}
+
+// validNameFunctionValues lists uses of the imported document.ValidName that
+// are not the function of a direct call. Import and object identity keep
+// unrelated selectors and shadowed package names out of the rule.
+func validNameFunctionValues(t *testing.T, dir string) []string {
+	t.Helper()
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var found []string
+	for _, entry := range entries {
+		name := entry.Name()
+		if !strings.HasSuffix(name, ".go") || strings.HasSuffix(name, "_test.go") {
+			continue
+		}
+		file, err := parser.ParseFile(token.NewFileSet(), filepath.Join(dir, name), nil, 0)
+		if err != nil {
+			t.Fatal(err)
+		}
+		isValidName := importedValidName(t, file)
+		exempt := map[ast.Expr]bool{}
+		ast.Inspect(file, func(node ast.Node) bool {
+			switch node := node.(type) {
+			case *ast.CallExpr:
+				exempt[ast.Unparen(node.Fun)] = true
+			case *ast.SelectorExpr:
+				// A selector's member is not a dot-imported identifier.
+				exempt[node.Sel] = true
+			}
+			return true
+		})
+		ast.Inspect(file, func(node ast.Node) bool {
+			var expr ast.Expr
+			switch node := node.(type) {
+			case *ast.SelectorExpr:
+				expr = node
+			case *ast.Ident:
+				expr = node
+			}
+			if expr != nil && !exempt[expr] && isValidName(expr) {
+				found = append(found, name+": "+types.ExprString(expr))
+			}
+			return true
+		})
+	}
+	slices.Sort(found)
 	return found
 }
 
@@ -612,6 +668,69 @@ func TestAppDeclaresNoValidNameForwarder(t *testing.T) {
 	t.Parallel()
 	for _, name := range validNameForwarders(t, "../app") {
 		t.Errorf("internal/app declares %s: callers name document.ValidName directly", name)
+	}
+}
+
+func TestValidNameFunctionValuesAreRejected(t *testing.T) {
+	t.Parallel()
+	for _, dir := range []string{"../domain/definition", "../app"} {
+		for _, use := range validNameFunctionValues(t, dir) {
+			t.Errorf("%s/%s: callers call document.ValidName directly, never take it as a function value", dir, use)
+		}
+	}
+	for _, pkg := range []string{"definition", "app"} {
+		t.Run(pkg, func(t *testing.T) {
+			t.Parallel()
+			for _, imported := range []struct {
+				name, alias, rule string
+			}{
+				{"default", "", "document.ValidName"},
+				{"renamed", "vocabulary ", "vocabulary.ValidName"},
+				{"dot", ". ", "ValidName"},
+			} {
+				t.Run(imported.name, func(t *testing.T) {
+					t.Parallel()
+					for _, c := range []struct {
+						name, source string
+						reject       bool
+					}{
+						{"initialized alias", `func check(name string) bool { validate := RULE; return validate(name) }`, true},
+						{"separately assigned", `func check(name string) bool { var validate func(string) bool; validate = RULE; return validate(name) }`, true},
+						{"copy", `func check(name string) bool { validate := (RULE); copied := validate; return copied(name) }`, true},
+						{"reassignment", `func check(name string) bool { validate := RULE; validate = other.ValidName; return validate(name) }`, true},
+						{"assigned after initialization", `func check(name string) bool { validate := other.ValidName; validate = RULE; return validate(name) }`, true},
+						{"literal alias", `var check = func(name string) bool { validate := RULE; return validate(name) }`, true},
+						{"literal capture", `func check(name string) bool { validate := RULE; return func() bool { return validate(name) }() }`, true},
+						{"literal return", `var check = func() func(string) bool { return RULE }`, true},
+						{"field assignment", `func store(checker *Checker) { checker.ValidName = RULE }`, true},
+						{"function argument", `func accept(fn func(string) bool) {}; func pass() { accept(RULE) }`, true},
+						{"direct calls", `func check(name string) bool { return name != "" && RULE(name) && ((RULE))((name)) }`, false},
+						{"literal direct call", `var check = func(name string) bool { return RULE(name) }`, false},
+						{"unrelated selector", `var unrelated = other.ValidName`, false},
+						{"shadowed selectors", `func shadowed(document, vocabulary Checker) { _ = document.ValidName; _ = vocabulary.ValidName }`, false},
+						{"shadowed identifier", `func shadowed(ValidName func(string) bool) { _ = ValidName }`, false},
+					} {
+						t.Run(c.name, func(t *testing.T) {
+							t.Parallel()
+							dir := t.TempDir()
+							source := "package " + pkg + "\nimport (\n" + imported.alias + strconv.Quote(module+"/internal/domain/document") +
+								"\nother \"example.com/other/internal/domain/document\"\n)\ntype Checker struct { ValidName func(string) bool }\n" +
+								strings.ReplaceAll(c.source, "RULE", imported.rule)
+							if err := os.WriteFile(filepath.Join(dir, "helpers.go"), []byte(source), 0o600); err != nil {
+								t.Fatal(err)
+							}
+							var want []string
+							if c.reject {
+								want = []string{"helpers.go: " + imported.rule}
+							}
+							if got := validNameFunctionValues(t, dir); !slices.Equal(got, want) {
+								t.Errorf("document.ValidName function values = %q, want %q", got, want)
+							}
+						})
+					}
+				})
+			}
+		})
 	}
 }
 
