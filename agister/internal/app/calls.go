@@ -15,6 +15,7 @@ import (
 
 	"github.com/igor1309/ai-labs/agister/internal/contract"
 	"github.com/igor1309/ai-labs/agister/internal/domain/document"
+	"github.com/igor1309/ai-labs/agister/internal/domain/input"
 	"github.com/igor1309/ai-labs/agister/internal/domain/policy"
 	"github.com/igor1309/ai-labs/agister/internal/domain/prompt"
 	"github.com/igor1309/ai-labs/agister/internal/domain/run"
@@ -352,11 +353,11 @@ func (c callResolution) Resolve(ctx context.Context, request CallResolveRequest)
 		resolved.Process.Verify = &CallVerify{Command: verify.command, Timeout: verify.timeout, MaxAttempts: verify.maxAttempts, Instruction: verify.instruction}
 	}
 	resolved.Prompts = translated(res.prompts, func(prompt promptText) CallPrompt {
-		input := promptInput
+		given := CallPrompt{Input: input.PromptInput, Text: Resolved{Value: prompt.text, Identity: "sha256:" + prompt.sha256}}
 		if prompt.name != process.prompt {
-			input = guidanceInput + prompt.name
+			given.Input = input.GuidanceInput + prompt.name
 		}
-		return CallPrompt{Input: input, Text: Resolved{Value: prompt.text, Identity: "sha256:" + prompt.sha256}}
+		return given
 	})
 	resolved.Skills = translated(res.skills, func(skill givenSkill) CallSkill {
 		return CallSkill{Name: skill.name, Bytes: skill.bytes, Identity: "sha256:" + skill.sha256}
@@ -1739,9 +1740,9 @@ func (c *Calls) resolveValues(ctx context.Context, subject string, declared []Ca
 	files = make([]string, 0, len(values)+len(prompts))
 	texts := map[string]string{}
 	for _, value := range values {
-		if value.Source == collectionSource {
+		if value.Source == input.CollectionSource {
 			if collection == nil {
-				return nil, nil, refuse("input %s: %s is given only to a workflow's join", value.Name, collectionSource)
+				return nil, nil, refuse("input %s: %s is given only to a workflow's join", value.Name, input.CollectionSource)
 			}
 			if text, ok := collection.Value.(string); ok {
 				texts[value.Name] = text
@@ -1770,7 +1771,7 @@ func (c *Calls) resolveValues(ctx context.Context, subject string, declared []Ca
 		}
 	}
 	for _, prompt := range prompts {
-		inputs, files = append(inputs, run.Input{Name: prompt.Input, Source: promptSource, Identity: prompt.Text.Identity, Value: prompt.Text.Value}), append(files, "")
+		inputs, files = append(inputs, run.Input{Name: prompt.Input, Source: input.PromptSource, Identity: prompt.Text.Identity, Value: prompt.Text.Value}), append(files, "")
 	}
 	return inputs, files, nil
 }

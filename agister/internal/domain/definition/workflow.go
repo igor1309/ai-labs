@@ -6,16 +6,11 @@ import (
 	"gopkg.in/yaml.v3"
 
 	"github.com/igor1309/ai-labs/agister/internal/domain/document"
+	"github.com/igor1309/ai-labs/agister/internal/domain/input"
 )
 
 // WorkflowSchema is the schema of a workflow definition (ADR-003).
 const WorkflowSchema = "agister.workflow/v1alpha1"
-
-// CollectionSource is the input source through which a workflow's join
-// receives the collection: for each fan-out node, in declaration order, its
-// node name, process, run and recorded output. Only a join is given one; a
-// process called on its own, or as a fan-out node, has none to receive.
-const CollectionSource = "workflow.collection"
 
 // Node is one node of a workflow: a unique name, the process it calls and
 // the agent it binds the process to, which runs the node's call (ADR-030
@@ -61,7 +56,7 @@ func (w Workflow) Nodes() []Node {
 func (p Process) Collects() []string {
 	var names []string
 	for _, value := range p.Values {
-		if value.Source == CollectionSource {
+		if value.Source == input.CollectionSource {
 			names = append(names, value.Name)
 		}
 	}
@@ -125,11 +120,11 @@ func ParseWorkflow(doc document.Document) (Workflow, error) {
 		return workflow, p.err(subject)
 	}
 
-	input := fields(values["input"], "input", []string{"params", "values"}, p)
-	workflow.Params, workflow.Values = parseInputs(input, p)
+	inputFields := fields(values["input"], "input", []string{"params", "values"}, p)
+	workflow.Params, workflow.Values = parseInputs(inputFields, p)
 	for _, value := range workflow.Values {
-		if value.Source == CollectionSource {
-			p.add("input.values."+value.Name+".source", "%s is given only to a join", CollectionSource)
+		if value.Source == input.CollectionSource {
+			p.add("input.values."+value.Name+".source", "%s is given only to a join", input.CollectionSource)
 		}
 	}
 	switch list := values["fan_out"]; {

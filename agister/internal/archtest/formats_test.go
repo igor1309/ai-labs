@@ -237,7 +237,7 @@ func TestAFileOtherThanTheReadersThatImportsTheParserIsFound(t *testing.T) {
 		"unqualified.go": imported(`. "` + parserPath + `"`),
 		"blank.go":       imported(`_ "` + parserPath + `"`),
 		"twice.go":       imported(`"`+parserPath+`"`, `settings "`+parserPath+`"`),
-		"alone.go":       "package app\n\nimport \"" + parserPath + "\"\n\nconst promptInput = definition.PromptInput\n",
+		"alone.go":       "package app\n\nimport \"" + parserPath + "\"\n\nconst schema = definition.WorkflowSchema\n",
 	}
 	for name, source := range files {
 		if err := os.WriteFile(filepath.Join(dir, name), []byte(source), 0o600); err != nil {
@@ -688,6 +688,112 @@ func redeclared(t *testing.T, dir, of string) []string {
 	}
 	slices.Sort(found)
 	return slices.Compact(found)
+}
+
+// inputVocabularyGuard checks non-test sources: definition declares none of
+// the five moved names, and definition and app declare no const, var or type
+// alias whose value is exactly an imported input constant. Short variable
+// declarations count too. It follows import names and lexical identity,
+// ignoring parentheses; it does not follow further copies or assignments,
+// compare string literals or claim semantic equivalence.
+func inputVocabularyGuard(t *testing.T, dir string, isParser bool) []string {
+	t.Helper()
+	names := []string{"PromptInput", "GuidanceInput", "PromptSource", "CollectionSource", "FileSource"}
+	var found []string
+	inputVocabularySources(t, dir, func(name string, file *ast.File) {
+		var imports []string
+		for _, spec := range file.Imports {
+			path, err := strconv.Unquote(spec.Path.Value)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if path == module+"/internal/domain/input" {
+				importName := "input"
+				if spec.Name != nil {
+					importName = spec.Name.Name
+				}
+				imports = append(imports, importName)
+			}
+		}
+		declaration := func(ident *ast.Ident) {
+			if isParser && slices.Contains(names, ident.Name) {
+				found = append(found, fmt.Sprintf("%s: declares %s", name, ident.Name))
+			}
+		}
+		forward := func(ident *ast.Ident, value ast.Expr) {
+			if ident.Name == "_" || value == nil {
+				return
+			}
+			var moved string
+			switch value := ast.Unparen(value).(type) {
+			case *ast.SelectorExpr:
+				if pkg, ok := value.X.(*ast.Ident); ok && pkg.Obj == nil && pkg.Name != "_" && slices.Contains(imports, pkg.Name) {
+					moved = value.Sel.Name
+				}
+			case *ast.Ident:
+				if value.Obj == nil && slices.Contains(imports, ".") {
+					moved = value.Name
+				}
+			}
+			if slices.Contains(names, moved) {
+				found = append(found, fmt.Sprintf("%s: %s forwards input.%s", name, ident.Name, moved))
+			}
+		}
+		ast.Inspect(file, func(node ast.Node) bool {
+			switch node := node.(type) {
+			case *ast.FuncDecl:
+				if node.Recv == nil {
+					declaration(node.Name)
+				}
+			case *ast.TypeSpec:
+				declaration(node.Name)
+				if node.Assign.IsValid() {
+					forward(node.Name, node.Type)
+				}
+			case *ast.ValueSpec:
+				for i, ident := range node.Names {
+					declaration(ident)
+					if i < len(node.Values) {
+						forward(ident, node.Values[i])
+					}
+				}
+			case *ast.AssignStmt:
+				if node.Tok == token.DEFINE {
+					for i, lhs := range node.Lhs {
+						if ident, ok := lhs.(*ast.Ident); ok {
+							declaration(ident)
+							if i < len(node.Rhs) {
+								forward(ident, node.Rhs[i])
+							}
+						}
+					}
+				}
+			}
+			return true
+		})
+	})
+	slices.Sort(found)
+	return found
+}
+
+// inputVocabularySources reads the non-test Go sources of a guarded package.
+func inputVocabularySources(t *testing.T, dir string, inspect func(string, *ast.File)) {
+	t.Helper()
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, entry := range entries {
+		name := entry.Name()
+		if entry.IsDir() || !strings.HasSuffix(name, ".go") || strings.HasSuffix(name, "_test.go") {
+			continue
+		}
+		file, err := parser.ParseFile(token.NewFileSet(), filepath.Join(dir, name), nil, 0)
+		if err != nil {
+			t.Fatal(err)
+		}
+		inspect(name, file)
+	}
 }
 
 // validNameAppAndAdaptersGuard composes the source rules for app and its
@@ -1241,6 +1347,98 @@ type Source = document.Source
 	want := []string{"Composed", "ErrNotFound", "Kind", "KindAgent", "KindProcess", "ValidName"}
 	if !slices.Equal(got, want) {
 		t.Errorf("vocabulary names the parser declares = %q, want %q", got, want)
+	}
+}
+
+// The input vocabulary has one home, internal/domain/input. Definition
+// declares none of its names, and neither definition nor app forwards its
+// constants. Fixtures exercise the same guard as the real packages.
+func TestTheParserDeclaresNoneOfTheInputVocabulary(t *testing.T) {
+	t.Parallel()
+	for _, pkg := range []struct {
+		name, path string
+		isParser   bool
+	}{
+		{name: "definition", path: "../domain/definition", isParser: true},
+		{name: "app", path: "../app"},
+	} {
+		t.Run(pkg.name, func(t *testing.T) {
+			t.Parallel()
+			for _, finding := range inputVocabularyGuard(t, pkg.path, pkg.isParser) {
+				t.Errorf("%s/%s", pkg.path, finding)
+			}
+			names := []string{"PromptInput", "GuidanceInput", "PromptSource", "CollectionSource", "FileSource"}
+			type fixture struct {
+				name, source string
+				want         []string
+			}
+			var cases []fixture
+			for _, declared := range []struct{ name, source string }{
+				{"constant", "const %s = \"prompt\"\n"},
+				{"variable", "var %s = \"prompt\"\n"},
+				{"type", "type %s string\n"},
+				{"function", "func %s() {}\n"},
+				{"local", "func scope%s() { var %s = \"prompt\" }\n"},
+			} {
+				c := fixture{name: "declares moved names as " + declared.name}
+				for _, name := range names {
+					if declared.name == "local" {
+						c.source += fmt.Sprintf(declared.source, name, name)
+					} else {
+						c.source += fmt.Sprintf(declared.source, name)
+					}
+					if pkg.isParser {
+						c.want = append(c.want, "forward.go: declares "+name)
+					}
+				}
+				cases = append(cases, c)
+			}
+			for _, imported := range []struct{ name, alias, prefix string }{
+				{"default", "", "input."},
+				{"renamed", "vocabulary ", "vocabulary."},
+				{"dot", ". ", ""},
+			} {
+				c := fixture{
+					name:   "forwards moved constants " + imported.name,
+					source: "import " + imported.alias + strconv.Quote(module+"/internal/domain/input") + "\n",
+				}
+				for _, name := range names {
+					rule := imported.prefix + name
+					c.source += fmt.Sprintf("const constant%s = %s\nvar variable%s = (%s)\ntype alias%s = %s\nfunc scope%s() { const localConst%s = %s; var localVar%s = %s; short%s := %s; _ = short%s }\n",
+						name, rule, name, rule, name, rule, name, name, rule, name, rule, name, rule, name)
+					for _, prefix := range []string{"constant", "variable", "alias", "localConst", "localVar", "short"} {
+						c.want = append(c.want, "forward.go: "+prefix+name+" forwards input."+name)
+					}
+				}
+				cases = append(cases, c)
+			}
+			cases = append(cases, fixture{
+				name: "clean",
+				source: "import (\n" + strconv.Quote(module+"/internal/domain/input") + "\nother \"example.com/other/internal/domain/input\"\n)\n" +
+					"const literal = \"prompt\"; var unrelated = other.PromptInput\n" +
+					"func use() string { return input.PromptInput }\n" +
+					"func changed() { prefix := input.GuidanceInput + \"name\"; var copy = prefix; _ = copy }\n" +
+					"func shadowed(input struct { PromptInput string }) { var own = input.PromptInput; _ = own }\n",
+			})
+			for _, c := range cases {
+				t.Run(c.name, func(t *testing.T) {
+					t.Parallel()
+					dir := t.TempDir()
+					for name, source := range map[string]string{
+						"forward.go":      "package " + pkg.name + "\n" + c.source,
+						"ignored_test.go": "package " + pkg.name + "\nimport " + strconv.Quote(module+"/internal/domain/input") + "\nconst PromptInput = input.PromptInput\n",
+					} {
+						if err := os.WriteFile(filepath.Join(dir, name), []byte(source), 0o600); err != nil {
+							t.Fatal(err)
+						}
+					}
+					slices.Sort(c.want)
+					if got := inputVocabularyGuard(t, dir, pkg.isParser); !slices.Equal(got, c.want) {
+						t.Errorf("input vocabulary findings = %q, want %q", got, c.want)
+					}
+				})
+			}
+		})
 	}
 }
 

@@ -3,6 +3,8 @@ package settings
 import (
 	"fmt"
 	"strings"
+
+	"github.com/igor1309/ai-labs/agister/internal/domain/input"
 )
 
 // WorkflowProblems reports what keeps a workflow's nodes from running as
@@ -72,10 +74,10 @@ func WorkflowProblems(workflow Workflow, processes map[string]Process, bases map
 	}
 	switch collects := join.collects(); len(collects) {
 	case 0:
-		add("join node %s: process %s cannot receive the collection: it declares no input with source %s", workflow.Join.Name, join.Name, collectionSource)
+		add("join node %s: process %s cannot receive the collection: it declares no input with source %s", workflow.Join.Name, join.Name, input.CollectionSource)
 	case 1:
 	default:
-		add("join node %s: process %s declares more than one input with source %s: %s", workflow.Join.Name, join.Name, collectionSource, strings.Join(collects, ", "))
+		add("join node %s: process %s declares more than one input with source %s: %s", workflow.Join.Name, join.Name, input.CollectionSource, strings.Join(collects, ", "))
 	}
 	var callers []string
 	for _, param := range join.Params {

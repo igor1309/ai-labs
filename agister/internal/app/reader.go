@@ -53,21 +53,7 @@ func unread(err error) bool {
 	return errors.As(err, &failure)
 }
 
-// The names the parser gives what a call is given, which the package
-// takes from it, so that each is written once.
 const (
-	// promptInput is the input that gives a call its process's prompt, and
-	// guidanceInput the prefix of the one that gives each guidance prompt,
-	// which the prompt's name follows.
-	promptInput   = definition.PromptInput
-	guidanceInput = definition.GuidanceInput
-	// promptSource is the source a call records for the inputs that give
-	// its prompts.
-	promptSource = definition.PromptSource
-	// collectionSource is the input source through which a workflow's join
-	// is given the collection of its fan-out nodes' results (ADR-003 rule
-	// 4).
-	collectionSource = definition.CollectionSource
 	// obsoleteWorkspace is the warning for the workspace settings, which
 	// ADR-025 removed: they are read and ignored.
 	obsoleteWorkspace = definition.ObsoleteWorkspace

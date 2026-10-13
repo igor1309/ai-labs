@@ -13,10 +13,6 @@ import (
 // BriefSchema is the schema of a brief's form (ADR-026 rule 5).
 const BriefSchema = "agister.brief/v1alpha1"
 
-// FileSource is the input source that reads a file, the one whose value
-// may name the forms its text must have (ADR-026 rule 8).
-const FileSource = "file"
-
 // ReferenceFile is what a part that holds a reference to a file says: its
 // first back-quoted path, relative to the caller's directory, must exist.
 const ReferenceFile = "file"

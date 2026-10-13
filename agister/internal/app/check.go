@@ -10,6 +10,7 @@ import (
 
 	"github.com/igor1309/ai-labs/agister/internal/contract"
 	"github.com/igor1309/ai-labs/agister/internal/domain/document"
+	"github.com/igor1309/ai-labs/agister/internal/domain/input"
 	"github.com/igor1309/ai-labs/agister/internal/domain/settings"
 )
 
@@ -546,7 +547,7 @@ func (c *Checker) checkNow(ctx context.Context, probe bool) (CheckResult, error)
 	}
 	known := c.runtimes.Adapters()
 	// The core itself supplies a join's collection (ADR-003 rule 4).
-	sources := append(append([]string(nil), c.sources...), collectionSource)
+	sources := append(append([]string(nil), c.sources...), input.CollectionSource)
 	for _, p := range settings.Check(bundle, settings.Mechanisms{Sources: sources, Adapters: known}) {
 		settingsProblem(p)
 	}

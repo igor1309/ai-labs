@@ -10,6 +10,7 @@ import (
 	"gopkg.in/yaml.v3"
 
 	"github.com/igor1309/ai-labs/agister/internal/domain/document"
+	"github.com/igor1309/ai-labs/agister/internal/domain/input"
 )
 
 // Hierarchical documents (process, verification, runtime mapping) are
@@ -220,15 +221,15 @@ func parseProcess(doc document.Document, p *problems) Process {
 		process.Guidance = guidanceNames(stringList(node, "guidance", p), process.Prompt, p)
 	}
 
-	input := fields(values["input"], "input", []string{"instruction", "params", "values"}, p)
-	process.Instruction = required(input, "instruction", "input", p)
-	process.Params, process.Values = parseInputs(input, p)
+	inputFields := fields(values["input"], "input", []string{"instruction", "params", "values"}, p)
+	process.Instruction = required(inputFields, "instruction", "input", p)
+	process.Params, process.Values = parseInputs(inputFields, p)
 	// The prompt and the guidance are given as inputs of these names.
 	for _, value := range process.Values {
 		switch {
-		case value.Name == PromptInput:
+		case value.Name == input.PromptInput:
 			p.add("input.values."+value.Name, "is the input that gives the process's prompt (ADR-028): name this value otherwise")
-		case strings.HasPrefix(value.Name, GuidanceInput):
+		case strings.HasPrefix(value.Name, input.GuidanceInput):
 			p.add("input.values."+value.Name, "is the name of an input that gives a guidance prompt (ADR-028): name this value otherwise")
 		}
 	}
@@ -367,9 +368,9 @@ const (
 
 // parseInputs reads input.params, the values a caller supplies, and
 // input.values, each input and its source, in declaration order.
-func parseInputs(input map[string]*yaml.Node, p *problems) ([]Param, []Value) {
+func parseInputs(inputFields map[string]*yaml.Node, p *problems) ([]Param, []Value) {
 	var params []Param
-	for _, entry := range mapping(input["params"], "input.params", p) {
+	for _, entry := range mapping(inputFields["params"], "input.params", p) {
 		field := "input.params." + entry.key
 		param := Param{Name: entry.key}
 		spec := fields(entry.value, field, []string{"default"}, p)
@@ -380,7 +381,7 @@ func parseInputs(input map[string]*yaml.Node, p *problems) ([]Param, []Value) {
 		params = append(params, param)
 	}
 	var values []Value
-	for _, entry := range mapping(input["values"], "input.values", p) {
+	for _, entry := range mapping(inputFields["values"], "input.values", p) {
 		field := "input.values." + entry.key
 		value := Value{Name: entry.key, Args: map[string]string{}}
 		formed := false
@@ -420,10 +421,10 @@ func parseInputs(input map[string]*yaml.Node, p *problems) ([]Param, []Value) {
 		if value.Source == "" {
 			p.missing(field + ".source")
 		}
-		if formed && value.Source != FileSource && value.Source != "" {
-			p.add(field+".form", "applies to source %s only: a brief is read from a file", FileSource)
+		if formed && value.Source != input.FileSource && value.Source != "" {
+			p.add(field+".form", "applies to source %s only: a brief is read from a file", input.FileSource)
 		}
-		if value.Source == PromptSource {
+		if value.Source == input.PromptSource {
 			p.add(field+".source", retiredPromptSource)
 			values = append(values, value)
 			continue
