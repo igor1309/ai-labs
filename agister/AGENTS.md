@@ -13,11 +13,23 @@ verification rules. Issues are in the Multica project `Agister`, in the
   flag, a settings field or a behaviour a caller relies on, is done only
   when these say the same as the binary:
   - the caller skill, `skills/agister/SKILL.md`;
-  - `README.md`, with any new ADR in its list;
+  - the page in `docs/reference/` for each topic the change touches:
+    [settings and layering](docs/reference/settings-and-layering.md),
+    [processes and workflows](docs/reference/processes-and-workflows.md),
+    [permissions and runtimes](docs/reference/permissions-and-runtimes.md),
+    [runs and records](docs/reference/runs-and-records.md),
+    [the worktree and holds](docs/reference/worktree-and-holds.md),
+    [skills](docs/reference/skills.md), or [home](docs/reference/home.md);
   - the settings diagrams, `docs/settings-architecture/`;
   - the Pages settings view, `pages/`, with its tests.
 
   Its issue names these as done gates.
+- `README.md` is for orientation, `docs/reference/` for behaviour, and
+  `docs/adr/` for decisions. Add behaviour detail to the reference page
+  for its topic, adding a page and linking it from the reference index
+  when needed. Change the README only when what it summarises changes,
+  such as a new command or a new top-level concept. Link a new ADR from
+  the reference page for its topic; the README links to the ADR list.
 - The installed binary reads this repository's `.agister/` from the
   worktree it works in, so settings it does not know refuse every later
   run there: `--continue`, `code_review`, everything (LAB-122). A change

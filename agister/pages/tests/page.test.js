@@ -944,8 +944,9 @@ test('a workflow step and the calls line show the agent the node binds, and a pr
   assert.equal(card('process-lone').querySelector('div.cmd'), null);
 });
 
-// README, Settings: a process card shows the attempts of the verification
-// the process names, or marks it missing when these settings have none.
+// docs/reference/processes-and-workflows.md: a process card shows the
+// attempts of the verification the process names, or marks it missing
+// when these settings have none.
 test('a process card shows the verification its process names, or marks it missing', async () => {
   const naming = { ...agent, 'processes/implement.yaml': 'name: implement\nverify: verify:repo\n' };
   const output = async (files) => {
@@ -971,8 +972,9 @@ test('a process card shows the verification its process names, or marks it missi
   assert.equal(marker.title, 'No verify named repo in these settings: Agister refuses the call');
 });
 
-// README, Settings: a process card shows the prompts its process names,
-// each marked missing when these settings have none of that name.
+// docs/reference/processes-and-workflows.md: a process card shows the
+// prompts its process names, each marked missing when these settings
+// have none of that name.
 test('a process card shows the prompts its process names, and marks a missing one', async () => {
   const naming = { ...agent, 'processes/review.yaml': 'name: review\nprompt: rules\nguidance: [style]\ninput:\n  instruction: Review.\n' };
   const prompts = async (files) => {
@@ -993,9 +995,9 @@ test('a process card shows the prompts its process names, and marks a missing on
   assert.equal(marker.title, 'No prompt named style in these settings: Agister refuses the call');
 });
 
-// ADR-026, README Settings: a process card and a workflow card show the
-// brief forms their inputs name, each marked missing when these settings
-// have none of that name.
+// ADR-026, docs/reference/processes-and-workflows.md: a process card and
+// a workflow card show the brief forms their inputs name, each marked
+// missing when these settings have none of that name.
 test('a process card and a workflow card show the brief forms their inputs name, and mark a missing one', async () => {
   const naming = {
     ...agent,
@@ -1046,8 +1048,8 @@ test('a process card in a repo shows the layer each prompt comes from, each prom
   assert.deepEqual(line.querySelectorAll('span.chip').map((c) => c.textContent), ['home']);
 });
 
-// ADR-021, README Settings: a process card lists the skills its process
-// names, and a workflow step the skills its call gets, its process's then
+// ADR-021, docs/reference/skills.md: a process card lists the skills its
+// process names, and a workflow step the skills its call gets, its process's then
 // those of the agent the node binds, each once, with the layer each comes
 // from in a repo, and one these settings do not have marked missing. The
 // agents' table shows each agent's skills and the workflows that bind it. The skills are the server's inventory
