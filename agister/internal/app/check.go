@@ -180,7 +180,7 @@ func (c *Checker) checkNow(ctx context.Context, probe bool) (CheckResult, error)
 		processes: map[string]definition.Process{},
 		mappings:  map[string]runtimeMapping{},
 		schemas:   map[string]bool{},
-		workflows: map[string]definition.Workflow{},
+		workflows: map[string]declaredWorkflow{},
 		verifies:  map[string]definition.Verification{},
 		prompts:   map[string]bool{},
 		skills:    map[string]bool{},
@@ -353,7 +353,7 @@ func (c *Checker) checkNow(ctx context.Context, probe bool) (CheckResult, error)
 		{document.KindWorkflow, func(name string) (document.Source, error) {
 			w, source, err := c.documents.Workflow(ctx, name)
 			if err == nil {
-				parsed.workflows[w.Name] = w
+				parsed.workflows[w.name] = w
 			}
 			return source, err
 		}},
@@ -495,17 +495,17 @@ func (c *Checker) checkNow(ctx context.Context, probe bool) (CheckResult, error)
 		// A workflow uses the agent a node binds its process to, each once:
 		// its problems and blocks refuse the workflow (ADR-030 rule 10).
 		agents := map[string]bool{}
-		for _, node := range parsed.workflows[name].Nodes() {
-			link(from, document.KindProcess, node.Process, false)
-			if !agents[node.Agent] {
-				agents[node.Agent] = true
-				link(from, document.KindAgent, node.Agent, false)
+		for _, node := range parsed.workflows[name].nodes() {
+			link(from, document.KindProcess, node.process, false)
+			if !agents[node.agent] {
+				agents[node.agent] = true
+				link(from, document.KindAgent, node.agent, false)
 			}
 			if source, ok := index[from]; ok {
-				documents[source].Binds = append(documents[source].Binds, NodeBinding{Process: node.Process, Agent: node.Agent})
+				documents[source].Binds = append(documents[source].Binds, NodeBinding{Process: node.process, Agent: node.agent})
 			}
 		}
-		for _, form := range parsed.workflows[name].Forms() {
+		for _, form := range parsed.workflows[name].forms() {
 			link(from, document.KindBrief, form, false)
 		}
 	}

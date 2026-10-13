@@ -297,7 +297,7 @@ func (c callResolution) Resolve(ctx context.Context, request CallResolveRequest)
 	resolved := &ResolvedCall{
 		Process: CallProcess{
 			Name: process.Name, Instruction: process.Instruction,
-			Params: callParams(process.Params), Values: callValues(process.Values),
+			Params: callParams(processParams(process)), Values: callValues(processValues(process)),
 			Revision: process.Revision, Output: process.Output.Format, Clean: process.Clean,
 		},
 		Agent:   CallAgent{Name: agent.name, Command: agent.command, Model: agent.model, Effort: agent.effort},
@@ -338,26 +338,26 @@ func (c callResolution) Workflow(ctx context.Context, name string) (*ResolvedWor
 		return nil, found, err
 	}
 	workflow := res.workflow
-	node := func(node definition.Node) CallNode {
-		return CallNode{Name: node.Name, Process: node.Process, Agent: node.Agent}
+	node := func(node workflowNode) CallNode {
+		return CallNode{Name: node.name, Process: node.process, Agent: node.agent}
 	}
 	resolved := &ResolvedWorkflow{
 		Workflow: CallWorkflow{
-			Name: workflow.Name, Params: callParams(workflow.Params), Values: callValues(workflow.Values),
-			FanOut: translated(workflow.FanOut, node), Join: node(workflow.Join),
+			Name: workflow.name, Params: callParams(workflow.params), Values: callValues(workflow.values),
+			FanOut: translated(workflow.fanOut, node), Join: node(workflow.join),
 		},
 		NodeProcesses: make(map[string]CallNodeProcess, len(res.processes)),
 		Sources:       callSources(res.sources),
 		Layers:        callLayers(c.resolver.definitions.Layers(ctx)),
 		Forms:         callForms(res.forms),
 	}
-	if call := workflow.Call; call != nil {
+	if call := workflow.call; call != nil {
 		called := node(*call)
 		resolved.Workflow.Call = &called
 	}
 	for name, process := range res.processes {
 		resolved.NodeProcesses[name] = CallNodeProcess{
-			Params: translated(process.Params, func(param definition.Param) string { return param.Name }),
+			Params: translated(processParams(process), func(param declaredParam) string { return param.name }),
 		}
 	}
 	return resolved, found, err
@@ -390,15 +390,15 @@ func callStale(stale policy.Stale) CallStale {
 	return limits
 }
 
-func callParams(params []definition.Param) []CallParam {
-	return translated(params, func(param definition.Param) CallParam {
-		return CallParam{Name: param.Name, Default: param.Default, HasDefault: param.HasDefault}
+func callParams(params []declaredParam) []CallParam {
+	return translated(params, func(param declaredParam) CallParam {
+		return CallParam{Name: param.name, Default: param.defaultValue, HasDefault: param.hasDefault}
 	})
 }
 
-func callValues(values []definition.Value) []CallValue {
-	return translated(values, func(value definition.Value) CallValue {
-		return CallValue{Name: value.Name, Source: value.Source, Args: value.Args, Forms: value.Forms}
+func callValues(values []declaredValue) []CallValue {
+	return translated(values, func(value declaredValue) CallValue {
+		return CallValue{Name: value.name, Source: value.source, Args: value.args, Forms: value.forms}
 	})
 }
 
@@ -1713,7 +1713,7 @@ func (c *Calls) resolveValues(ctx context.Context, subject string, declared []Ca
 		if !ok {
 			return nil, nil, refuse("input %s: unknown source %q", value.Name, value.Source)
 		}
-		args, err := definition.Value{Name: value.Name, Source: value.Source, Args: value.Args}.Bind(params, texts)
+		args, err := boundArgs(value.Args, params, texts)
 		if err != nil {
 			return nil, nil, refuse("input %s: %v", value.Name, err)
 		}

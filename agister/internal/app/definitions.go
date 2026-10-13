@@ -467,12 +467,12 @@ func (s *Settings) ListWorkflows(ctx context.Context) ([]contract.WorkflowSummar
 			workflows = append(workflows, contract.WorkflowSummary{Name: name, Problem: "invalid (run `agister check`)", Refusal: refusal})
 			continue
 		}
-		summary := contract.WorkflowSummary{Name: workflow.Name, Join: workflow.Join.Name + ":" + workflow.Join.Process, Refusal: refusal}
-		if call := workflow.Call; call != nil {
-			summary.Join, summary.Call = "", call.Name+":"+call.Process
+		summary := contract.WorkflowSummary{Name: workflow.name, Join: workflow.join.name + ":" + workflow.join.process, Refusal: refusal}
+		if call := workflow.call; call != nil {
+			summary.Join, summary.Call = "", call.name+":"+call.process
 		}
-		for _, node := range workflow.FanOut {
-			summary.FanOut = append(summary.FanOut, node.Name+":"+node.Process)
+		for _, node := range workflow.fanOut {
+			summary.FanOut = append(summary.FanOut, node.name+":"+node.process)
 		}
 		workflows = append(workflows, summary)
 	}
@@ -668,7 +668,7 @@ func (r *Resolver) inspect(ctx context.Context, name, agent string, caller overr
 		Process: InspectedDefinition{
 			Name:         process.Name,
 			OutputFormat: process.Output.Format, OutputSchema: process.Output.Schema,
-			Params: inspectedParams(process.Params), Values: inspectedValues(process.Values),
+			Params: inspectedParams(processParams(process)), Values: inspectedValues(processValues(process)),
 			VerifyName: process.VerifyName, Prompt: process.Prompt, Guidance: process.Guidance, Skills: process.Skills,
 		},
 		Agent:       res.agent.name,
@@ -702,33 +702,33 @@ func (r *Resolver) InspectWorkflow(ctx context.Context, name string) (*Inspected
 		return nil, found, err
 	}
 	workflow := res.workflow
-	node := func(node definition.Node) InspectedNode {
-		return InspectedNode{Name: node.Name, Process: node.Process, Agent: node.Agent}
+	node := func(node workflowNode) InspectedNode {
+		return InspectedNode{Name: node.name, Process: node.process, Agent: node.agent}
 	}
 	inspected := &InspectedWorkflow{
 		Workflow: InspectedWorkflowDefinition{
-			Name: workflow.Name, Params: inspectedParams(workflow.Params), Values: inspectedValues(workflow.Values),
-			FanOut: translated(workflow.FanOut, node), Join: node(workflow.Join),
+			Name: workflow.name, Params: inspectedParams(workflow.params), Values: inspectedValues(workflow.values),
+			FanOut: translated(workflow.fanOut, node), Join: node(workflow.join),
 		},
 		NodeProcesses: make(map[string]InspectedNodeProcess, len(res.processes)),
 		Sources:       inspectedSources(res.sources),
 	}
-	if call := workflow.Call; call != nil {
+	if call := workflow.call; call != nil {
 		called := node(*call)
 		inspected.Workflow.Call = &called
 	}
 	for name, process := range res.processes {
 		inspected.NodeProcesses[name] = InspectedNodeProcess{
-			Params:   translated(process.Params, func(param definition.Param) string { return param.Name }),
+			Params:   translated(processParams(process), func(param declaredParam) string { return param.name }),
 			Collects: process.Collects(),
 		}
 	}
 	return inspected, found, err
 }
 
-func inspectedParams(params []definition.Param) []InspectedParam {
-	return translated(params, func(param definition.Param) InspectedParam {
-		return InspectedParam{Name: param.Name, Default: param.Default, HasDefault: param.HasDefault}
+func inspectedParams(params []declaredParam) []InspectedParam {
+	return translated(params, func(param declaredParam) InspectedParam {
+		return InspectedParam{Name: param.name, Default: param.defaultValue, HasDefault: param.hasDefault}
 	})
 }
 
@@ -741,9 +741,9 @@ func formed(forms []string) string {
 	return " (form " + strings.Join(forms, ", ") + ")"
 }
 
-func inspectedValues(values []definition.Value) []InspectedValue {
-	return translated(values, func(value definition.Value) InspectedValue {
-		return InspectedValue{Name: value.Name, Source: value.Source, Forms: value.Forms}
+func inspectedValues(values []declaredValue) []InspectedValue {
+	return translated(values, func(value declaredValue) InspectedValue {
+		return InspectedValue{Name: value.name, Source: value.source, Forms: value.forms}
 	})
 }
 
