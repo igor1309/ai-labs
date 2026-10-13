@@ -66,6 +66,8 @@ func TestDependencyRule(t *testing.T) {
 		for _, dep := range imported {
 			var allowed bool
 			switch {
+			case pkg == "internal/domain/input":
+				allowed = false // the input vocabulary depends on no other module package
 			case under(pkg, "internal/domain"):
 				allowed = under(dep, "internal/domain") ||
 					pkg == "internal/domain/definition" && (dep == "gopkg.in/yaml.v3" || dep == "github.com/BurntSushi/toml")

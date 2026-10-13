@@ -6,20 +6,6 @@ import (
 	"github.com/igor1309/ai-labs/agister/internal/domain/document"
 )
 
-// PromptSource is the source a call records for the inputs that give its
-// process's prompt and guidance (ADR-028 rule 8). It is no input source a
-// process may declare: one that does is refused, as is optional, which
-// went with it.
-const PromptSource = "prompt"
-
-// PromptInput is the input that gives a call its process's prompt, and
-// GuidanceInput the prefix of the one that gives each guidance prompt,
-// guidance.<name> (ADR-028 rule 8).
-const (
-	PromptInput   = "prompt"
-	GuidanceInput = "guidance."
-)
-
 // Prompt is a process's fixed text as a document of its own, which a
 // process names as its prompt or its guidance (ADR-014, ADR-028). The
 // document is its text.

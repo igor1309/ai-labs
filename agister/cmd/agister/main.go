@@ -32,6 +32,7 @@ import (
 	"github.com/igor1309/ai-labs/agister/internal/composition/install"
 	runtimecomposition "github.com/igor1309/ai-labs/agister/internal/composition/runtime"
 	"github.com/igor1309/ai-labs/agister/internal/contract"
+	"github.com/igor1309/ai-labs/agister/internal/domain/input"
 	"github.com/igor1309/ai-labs/agister/pages"
 	"github.com/igor1309/ai-labs/gokit/supervisor"
 )
@@ -314,7 +315,7 @@ func (c composition) wire(config cli.Config) (contract.Client, *app.BackgroundRe
 			Runners: runtimes,
 			Inputs: map[string]app.InputProvider{
 				"param":             inputs.Param{},
-				"file":              inputs.File{},
+				input.FileSource:    inputs.File{},
 				"git.revision":      workspaces.revision,
 				"git.merge_base":    workspaces.mergeBase,
 				"git.diff":          workspaces.diff,

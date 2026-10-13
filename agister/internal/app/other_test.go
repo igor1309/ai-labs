@@ -14,8 +14,8 @@ import (
 
 	"github.com/igor1309/ai-labs/agister/internal/app"
 	"github.com/igor1309/ai-labs/agister/internal/contract"
-	"github.com/igor1309/ai-labs/agister/internal/domain/definition"
 	"github.com/igor1309/ai-labs/agister/internal/domain/document"
+	"github.com/igor1309/ai-labs/agister/internal/domain/input"
 	"github.com/igor1309/ai-labs/agister/internal/domain/run"
 	"github.com/igor1309/ai-labs/gokit/clocktest"
 )
@@ -796,7 +796,7 @@ func TestInspectionShowsThroughTheResolverItDeclares(t *testing.T) {
 	summarize := &app.InspectedProcess{
 		Process: app.InspectedDefinition{
 			Name:         "summarize",
-			Values:       []app.InspectedValue{{Name: "findings", Source: definition.CollectionSource}},
+			Values:       []app.InspectedValue{{Name: "findings", Source: input.CollectionSource}},
 			OutputFormat: "text",
 		},
 		Agent:   "a",
@@ -854,7 +854,7 @@ func TestInspectionShowsThroughTheResolverItDeclares(t *testing.T) {
 		Inputs: []string{"diff <- git.diff"},
 		FanOut: []contract.WorkflowNode{{Name: "n1", Process: reviewView, Params: []string{"diff"}}},
 		Join: contract.WorkflowNode{Name: "j", Process: contract.ProcessView{
-			Name: "summarize", Agent: "a", Runtime: "rt", Output: "text", Inputs: []string{"findings <- " + definition.CollectionSource},
+			Name: "summarize", Agent: "a", Runtime: "rt", Output: "text", Inputs: []string{"findings <- " + input.CollectionSource},
 		}},
 		Collection: "findings",
 		Warnings:   []string{"node n1: " + app.VerifyWarning},

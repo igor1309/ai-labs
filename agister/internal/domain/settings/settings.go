@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/igor1309/ai-labs/agister/internal/domain/enforce"
+	"github.com/igor1309/ai-labs/agister/internal/domain/input"
 	"github.com/igor1309/ai-labs/agister/internal/domain/policy"
 )
 
@@ -94,16 +95,12 @@ type Value struct {
 	Forms []string
 }
 
-// collectionSource is the input source through which a workflow's join
-// receives the collection (ADR-003 rule 4).
-const collectionSource = "workflow.collection"
-
 // collects reports the inputs of the process that receive a workflow's
 // collection.
 func (p Process) collects() []string {
 	var names []string
 	for _, value := range p.Values {
-		if value.Source == collectionSource {
+		if value.Source == input.CollectionSource {
 			names = append(names, value.Name)
 		}
 	}

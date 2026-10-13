@@ -10,8 +10,8 @@ import (
 
 	"github.com/igor1309/ai-labs/agister/internal/app"
 	"github.com/igor1309/ai-labs/agister/internal/contract"
-	"github.com/igor1309/ai-labs/agister/internal/domain/definition"
 	"github.com/igor1309/ai-labs/agister/internal/domain/document"
+	"github.com/igor1309/ai-labs/agister/internal/domain/input"
 	"github.com/igor1309/ai-labs/agister/internal/domain/run"
 )
 
@@ -37,9 +37,9 @@ func guided(h *harness, guidance []string, prompts map[string]string) {
 // promptInputs are the inputs a call recorded from its prompts, in order.
 func promptInputs(record run.Record) []run.Input {
 	var inputs []run.Input
-	for _, input := range record.Inputs {
-		if input.Source == definition.PromptSource {
-			inputs = append(inputs, input)
+	for _, recordInput := range record.Inputs {
+		if recordInput.Source == input.PromptSource {
+			inputs = append(inputs, recordInput)
 		}
 	}
 	return inputs
@@ -56,7 +56,7 @@ func promptSources(record run.Record) []run.DefinitionSource {
 }
 
 func promptInput(name, text string) run.Input {
-	return run.Input{Name: name, Source: definition.PromptSource, Identity: "sha256:" + sha(text), Value: text}
+	return run.Input{Name: name, Source: input.PromptSource, Identity: "sha256:" + sha(text), Value: text}
 }
 
 // Rule 8: the agent is given the process's input values in their order,
