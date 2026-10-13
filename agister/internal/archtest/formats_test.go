@@ -220,8 +220,9 @@ const readerFile = "reader.go"
 
 // parses lists, sorted, each Parse function of the module's parser that a
 // non-test file of dir other than the one excepted names, called or passed
-// on. Syntax tells no type, so the parser imported unqualified is a finding
-// itself: its Parse functions would then go unseen.
+// on, under every name the file imports the parser by. Syntax tells no
+// type, so the parser imported unqualified is a finding itself: its Parse
+// functions would then go unseen.
 func parses(t *testing.T, dir, except string) []string {
 	t.Helper()
 	entries, err := os.ReadDir(dir)
@@ -238,7 +239,7 @@ func parses(t *testing.T, dir, except string) []string {
 		if err != nil {
 			t.Fatal(err)
 		}
-		parserName := ""
+		var parserNames []string
 		for _, spec := range file.Imports {
 			path, err := strconv.Unquote(spec.Path.Value)
 			if err != nil {
@@ -247,13 +248,14 @@ func parses(t *testing.T, dir, except string) []string {
 			if path != module+"/internal/domain/definition" {
 				continue
 			}
-			parserName = "definition"
+			parserName := "definition"
 			if spec.Name != nil {
 				parserName = spec.Name.Name
 			}
 			if parserName == "." {
 				found = append(found, name+": the parser's names, imported unqualified")
 			}
+			parserNames = append(parserNames, parserName)
 		}
 		ast.Inspect(file, func(node ast.Node) bool {
 			selector, ok := node.(*ast.SelectorExpr)
@@ -261,7 +263,7 @@ func parses(t *testing.T, dir, except string) []string {
 				return true
 			}
 			pkg, qualified := selector.X.(*ast.Ident)
-			if qualified && pkg.Name == parserName && strings.HasPrefix(selector.Sel.Name, "Parse") {
+			if qualified && slices.Contains(parserNames, pkg.Name) && strings.HasPrefix(selector.Sel.Name, "Parse") {
 				found = append(found, name+": "+types.ExprString(selector))
 			}
 			return true
@@ -281,8 +283,12 @@ func TestOnlyTheReadersFileOfTheAppParsesASettingsDocument(t *testing.T) {
 func TestAFileOtherThanTheReadersThatParsesIsFound(t *testing.T) {
 	t.Parallel()
 	dir := t.TempDir()
-	imported := func(as string) string {
-		return "package app\n\nimport " + as + " \"" + module + "/internal/domain/definition\"\n"
+	imported := func(as ...string) string {
+		source := "package app\n\nimport (\n"
+		for _, name := range as {
+			source += "\t" + name + " \"" + module + "/internal/domain/definition\"\n"
+		}
+		return source + ")\n"
 	}
 	files := map[string]string{
 		// None of these is a finding: the reader's file, which parses; a
@@ -322,6 +328,14 @@ var parseAgent = definition.ParseAgent
 		"renamed.go": imported("settings") + `
 func parse(doc document.Document) (settings.Workflow, error) { return settings.ParseWorkflow(doc) }
 `,
+		"twice.go": imported("", "settings") + `
+func parse(doc document.Document) (definition.Brief, error) {
+	if _, err := settings.ParseVerify(doc); err != nil {
+		return definition.Brief{}, err
+	}
+	return definition.ParseBrief(doc)
+}
+`,
 		"unqualified.go": imported(".") + `
 func parse(doc document.Document) (Skill, error) { return ParseSkill(doc) }
 `,
@@ -335,6 +349,8 @@ func parse(doc document.Document) (Skill, error) { return ParseSkill(doc) }
 		"parses.go: definition.ParseAgent",
 		"parses.go: definition.ParseProcess",
 		"renamed.go: settings.ParseWorkflow",
+		"twice.go: definition.ParseBrief",
+		"twice.go: settings.ParseVerify",
 		"unqualified.go: the parser's names, imported unqualified",
 	}
 	if got := parses(t, dir, readerFile); !slices.Equal(got, want) {
