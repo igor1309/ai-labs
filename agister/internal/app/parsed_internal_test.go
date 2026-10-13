@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/igor1309/ai-labs/agister/internal/domain/definition"
+	"github.com/igor1309/ai-labs/agister/internal/domain/enforce"
 	"github.com/igor1309/ai-labs/agister/internal/domain/policy"
 	"github.com/igor1309/ai-labs/agister/internal/domain/settings"
 )
@@ -18,8 +19,8 @@ func naming(verify definition.Verify) parsedSettings {
 	return parsedSettings{
 		service: &serviceSettings{ceilings: policy.Ceilings{MaxTimeout: time.Hour, MaxAttempts: 1, MaxVerifyAttempts: 3, Permissions: []string{"read", "write", "exec"}}},
 		agents:  map[string]definition.Agent{"a": {Name: "a", Runtime: "rt", Effort: "high"}},
-		mappings: map[string]definition.Mapping{"rt": {Name: "rt", Adapter: "claude-code", Efforts: []string{"high"}, Select: "any",
-			Primitives: []definition.Primitive{{Name: "Read", Grants: []string{"read"}, Verified: []string{"1."}}}}},
+		mappings: map[string]runtimeMapping{"rt": {name: "rt", adapter: "claude-code", efforts: []string{"high"},
+			offer: enforce.Offer{Primitives: []enforce.Primitive{{Name: "Read", Grants: []string{"read"}, Verified: []string{"1."}}}}}},
 		processes: map[string]definition.Process{"p": {Name: "p", Output: definition.Output{Format: "json", Schema: "s"},
 			Values: []definition.Value{{Name: "v", Source: "param"}}, Session: definition.SessionResumable, Revision: "v", VerifyName: "repo",
 			Limits: definition.Limits{Timeout: &timeout, Allow: []string{"read"}, AllowSet: true}}},

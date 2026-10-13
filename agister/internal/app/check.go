@@ -178,7 +178,7 @@ func (c *Checker) checkNow(ctx context.Context, probe bool) (CheckResult, error)
 	parsed := parsedSettings{
 		agents:    map[string]definition.Agent{},
 		processes: map[string]definition.Process{},
-		mappings:  map[string]definition.Mapping{},
+		mappings:  map[string]runtimeMapping{},
 		schemas:   map[string]bool{},
 		workflows: map[string]definition.Workflow{},
 		verifies:  map[string]definition.Verification{},
@@ -293,7 +293,7 @@ func (c *Checker) checkNow(ctx context.Context, probe bool) (CheckResult, error)
 		{document.KindRuntime, func(name string) (document.Source, error) {
 			m, source, err := c.documents.Mapping(ctx, name)
 			if err == nil {
-				parsed.mappings[m.Name] = m
+				parsed.mappings[m.name] = m
 			}
 			return source, err
 		}},
@@ -556,17 +556,17 @@ func (c *Checker) checkNow(ctx context.Context, probe bool) (CheckResult, error)
 			if !ok {
 				continue
 			}
-			if !contains(known, mapping.Adapter) {
+			if !contains(known, mapping.adapter) {
 				continue // reported as an unknown adapter
 			}
-			identity, err := c.runtimes.Identity(ctx, mapping.Adapter, agent.Command)
+			identity, err := c.runtimes.Identity(ctx, mapping.adapter, agent.Command)
 			// What a probe verifies is seen by every check that follows,
 			// of this agent and of any other on the same runtime.
 			checked := bundle.Mappings[agent.Runtime]
 			var probeFailed error
-			if err == nil && identity.Contract == mapping.Contract && !checked.Offer.Verified(identity.Version) && c.probes != nil {
+			if err == nil && identity.Contract == mapping.contract && !checked.Offer.Verified(identity.Version) && c.probes != nil {
 				var probed []string
-				if probed, probeFailed = c.probes.Verified(ctx, mapping.Adapter, agent.Command, identity.Version); probeFailed == nil {
+				if probed, probeFailed = c.probes.Verified(ctx, mapping.adapter, agent.Command, identity.Version); probeFailed == nil {
 					checked.Offer = checked.Offer.WithVerified(identity.Version, probed)
 					bundle.Mappings[agent.Runtime] = checked
 				}
@@ -574,12 +574,12 @@ func (c *Checker) checkNow(ctx context.Context, probe bool) (CheckResult, error)
 			switch {
 			case err != nil:
 				problem("agent "+name, "runtime unavailable: %v", err)
-			case identity.Contract != mapping.Contract:
-				problem("agent "+name, "adapter implements %s, mapping %s describes %s", identity.Contract, mapping.Name, mapping.Contract)
+			case identity.Contract != mapping.contract:
+				problem("agent "+name, "adapter implements %s, mapping %s describes %s", identity.Contract, mapping.name, mapping.contract)
 			case probeFailed != nil:
-				problem("agent "+name, "mapping %s verifies no primitive for runtime version %s%s", mapping.Name, identity.Version, probeRefusal(probeFailed))
+				problem("agent "+name, "mapping %s verifies no primitive for runtime version %s%s", mapping.name, identity.Version, probeRefusal(probeFailed))
 			case !checked.Offer.Verified(identity.Version):
-				problem("agent "+name, "mapping %s verifies no primitive for runtime version %s", mapping.Name, identity.Version)
+				problem("agent "+name, "mapping %s verifies no primitive for runtime version %s", mapping.name, identity.Version)
 			default:
 				installed[name] = identity.Version
 				for _, p := range settings.PlanProblems(bundle, bundle.Agents[name], identity.Version) {

@@ -10,6 +10,7 @@ import (
 
 	"github.com/igor1309/ai-labs/agister/internal/domain/definition"
 	"github.com/igor1309/ai-labs/agister/internal/domain/document"
+	"github.com/igor1309/ai-labs/agister/internal/domain/enforce"
 	"github.com/igor1309/ai-labs/agister/internal/domain/policy"
 )
 
@@ -101,7 +102,13 @@ func readerCases() map[string]readerCase {
 		"an agent": reads(document.KindAgent, "a", "schema = \"agister.agent/v1alpha1\"\nname = \"a\"\nruntime = \"rt\"\nmodel = \"m1\"\nmodel_family = \"fam\"\neffort = \"high\"\ncommand = \"/bin/spy\"\n",
 			documentReader.Agent, definition.ParseAgent),
 		"a runtime mapping": reads(document.KindRuntime, "rt", "schema: agister.runtime/v1alpha1\nname: rt\nadapter: spy\ncontract: spy/1\nefforts: [high]\nprimitives:\n  select: any\n  items:\n    Read: {grants: [repository.read], verified: [\"1.\"]}\n",
-			documentReader.Mapping, definition.ParseMapping),
+			documentReader.Mapping,
+			// A runtime mapping is read in the package's own type, as the
+			// service is.
+			func(doc document.Document) (runtimeMapping, error) {
+				mapping, err := definition.ParseMapping(doc)
+				return mappingOf(mapping), err
+			}),
 		"a verification": reads(document.KindVerify, "repo", "schema: agister.verify/v1alpha1\nname: repo\ncommand: go test ./...\ntimeout: 10m\nmax_attempts: 3\ninstruction: Fix the cause, not the check.\n",
 			documentReader.Verification, definition.ParseVerify),
 		"a prompt": reads(document.KindPrompt, "inspect", "Inspect the change for defects.\n",
@@ -348,6 +355,161 @@ func TestAServiceWithProblemsKeepsWhatParsedAndWhereEachProblemIs(t *testing.T) 
 				t.Fatalf("service = %+v, source %+v; want %+v, source %+v", got, source, c.want, doc.Source)
 			}
 		})
+	}
+}
+
+// mappingDocument is the document of the runtime mapping rt holding text,
+// composed from the layer files given, nearest first.
+func mappingDocument(text string, layers ...document.LayerFile) document.Document {
+	return document.Document{
+		Source: document.Source{Kind: document.KindRuntime, Name: "rt", Path: layers[0].Path, Layer: layers[0].Layer, SHA256: "digest of rt", Layers: layers},
+		Bytes:  []byte(text),
+	}
+}
+
+// A runtime mapping is read as the package uses it: its name, its adapter
+// and the contract it describes, the efforts it supports, and what it
+// offers a plan, exactly one primitive or any of them, each primitive with
+// its grants and the versions it was verified for, beside the document's
+// source.
+func TestTheReaderGivesARuntimeMappingAsThePackageUsesIt(t *testing.T) {
+	t.Parallel()
+	for name, c := range map[string]struct {
+		text string
+		want runtimeMapping
+	}{
+		"exactly one primitive": {
+			text: "schema: agister.runtime/v1alpha1\nname: rt\nadapter: spy\ncontract: spy/1\nefforts: [low, high]\nprimitives:\n  select: one\n  items:\n" +
+				"    read-only: {grants: [repository.read], verified: [\"1.\", \"2.0.\"]}\n" +
+				"    workspace-write: {grants: [repository.read, repository.write]}\n",
+			want: runtimeMapping{
+				name:     "rt",
+				adapter:  "spy",
+				contract: "spy/1",
+				efforts:  []string{"low", "high"},
+				offer: enforce.Offer{One: true, Primitives: []enforce.Primitive{
+					{Name: "read-only", Grants: []string{"repository.read"}, Verified: []string{"1.", "2.0."}},
+					{Name: "workspace-write", Grants: []string{"repository.read", "repository.write"}},
+				}},
+			},
+		},
+		// No efforts where the document lists none.
+		"any of its primitives": {
+			text: "schema: agister.runtime/v1alpha1\nname: rt\nadapter: other\ncontract: other/2\nprimitives:\n  select: any\n  items:\n" +
+				"    Read: {grants: [repository.read], verified: [\"1.\"]}\n" +
+				"    Shell: {grants: [process.execute, network], verified: [\"1.\"]}\n",
+			want: runtimeMapping{
+				name:     "rt",
+				adapter:  "other",
+				contract: "other/2",
+				offer: enforce.Offer{Primitives: []enforce.Primitive{
+					{Name: "Read", Grants: []string{"repository.read"}, Verified: []string{"1."}},
+					{Name: "Shell", Grants: []string{"process.execute", "network"}, Verified: []string{"1."}},
+				}},
+			},
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			doc := mappingDocument(c.text,
+				document.LayerFile{Layer: document.LayerRepository, Path: "/repo/.agister/runtimes/rt.yaml", Fields: []string{"efforts"}},
+				document.LayerFile{Layer: document.LayerHome, Path: "/home/runtimes/rt.yaml", Fields: []string{"schema", "name", "adapter", "contract", "primitives.select"}})
+			ref := DocumentRef{Kind: document.KindRuntime, Name: "rt"}
+			reader := newDocumentReader(definitionsFake{t: t, docs: map[DocumentRef]document.Document{ref: doc}})
+			got, source, err := reader.Mapping(context.Background(), "rt")
+			if err != nil || !reflect.DeepEqual(got, c.want) || !reflect.DeepEqual(source, doc.Source) {
+				t.Fatalf("mapping = %+v, source %+v, %v; want %+v, source %+v", got, source, err, c.want, doc.Source)
+			}
+		})
+	}
+}
+
+// A runtime mapping with problems fails with the parser's
+// *document.InvalidError: its problems in the parser's order, each
+// attributed to the layer file that set the field at fault or, for a field
+// none sets, to every file read, and the unknown ones flagged. What of the
+// document parsed is given beside it, with the document's source.
+func TestAMappingWithProblemsKeepsWhatParsedAndWhereEachProblemIs(t *testing.T) {
+	t.Parallel()
+	const repository, home = "/repo/.agister/runtimes/rt.yaml", "/home/runtimes/rt.yaml"
+	layers := []document.LayerFile{
+		{Layer: document.LayerRepository, Path: repository, Fields: []string{"colour", "primitives.items.Idle.grants"}},
+		{Layer: document.LayerHome, Path: home, Fields: []string{"schema", "name", "adapter", "efforts", "primitives.select", "primitives.items.Read.grants", "primitives.items.Read.verified"}},
+	}
+	for name, c := range map[string]struct {
+		text     string
+		want     runtimeMapping
+		problems []document.Problem
+	}{
+		"problems in two layers": {
+			text: "schema: agister.runtime/v1alpha1\nname: rt\nadapter: spy\ncolour: red\nefforts: [high]\nprimitives:\n  select: some\n  items:\n" +
+				"    Read: {grants: [repository.read], verified: [\"1.\"]}\n" +
+				"    Idle: {grants: []}\n",
+			want: runtimeMapping{
+				name:    "rt",
+				adapter: "spy",
+				efforts: []string{"high"},
+				offer: enforce.Offer{Primitives: []enforce.Primitive{
+					{Name: "Read", Grants: []string{"repository.read"}, Verified: []string{"1."}},
+					{Name: "Idle", Grants: []string{}},
+				}},
+			},
+			problems: []document.Problem{
+				{Message: "colour: unknown field (set in " + repository + ")", Unknown: true},
+				{Message: "contract: is required (no layer sets it: " + repository + ", " + home + ")"},
+				{Message: "primitives.select: must be \"any\" or \"one\" (set in " + home + ")"},
+				{Message: "primitives.items.Idle.grants: must grant at least one permission (set in " + repository + ")"},
+			},
+		},
+		"a schema of a newer version": {
+			text: "schema: agister.runtime/v2\nname: rt\nadapter: spy\ncontract: spy/1\nefforts: [high]\nprimitives:\n  select: one\n  items:\n" +
+				"    Read: {grants: [repository.read], verified: [\"1.\"]}\n",
+			want: runtimeMapping{
+				name:     "rt",
+				adapter:  "spy",
+				contract: "spy/1",
+				efforts:  []string{"high"},
+				offer: enforce.Offer{One: true, Primitives: []enforce.Primitive{
+					{Name: "Read", Grants: []string{"repository.read"}, Verified: []string{"1."}},
+				}},
+			},
+			problems: []document.Problem{
+				{Message: "schema: must be \"agister.runtime/v1alpha1\" (set in " + home + ")", Unknown: true},
+			},
+		},
+		// Only the name it was asked by, which no text gives.
+		"no text": {
+			text:     "\xff",
+			want:     runtimeMapping{name: "rt"},
+			problems: []document.Problem{{Message: "not a UTF-8 text file"}},
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			doc := mappingDocument(c.text, layers...)
+			ref := DocumentRef{Kind: document.KindRuntime, Name: "rt"}
+			reader := newDocumentReader(definitionsFake{t: t, docs: map[DocumentRef]document.Document{ref: doc}})
+			got, source, err := reader.Mapping(context.Background(), "rt")
+			invalid, ok := err.(*document.InvalidError)
+			if want := (&document.InvalidError{Subject: "runtime mapping rt (" + repository + ")", Problems: c.problems}); unread(err) || !ok || !reflect.DeepEqual(invalid, want) {
+				t.Fatalf("mapping error = %#v, want %#v", err, want)
+			}
+			if !reflect.DeepEqual(got, c.want) || !reflect.DeepEqual(source, doc.Source) {
+				t.Fatalf("mapping = %+v, source %+v; want %+v, source %+v", got, source, c.want, doc.Source)
+			}
+		})
+	}
+}
+
+// A runtime mapping that was not read has no value: the reader maps
+// nothing of it.
+func TestAMappingThatWasNotReadHasNoValue(t *testing.T) {
+	t.Parallel()
+	ref := DocumentRef{Kind: document.KindRuntime, Name: "rt"}
+	reader := newDocumentReader(definitionsFake{t: t, errs: map[DocumentRef]error{ref: document.ErrNotFound}})
+	got, _, err := reader.Mapping(context.Background(), "rt")
+	if !unread(err) || !reflect.DeepEqual(got, runtimeMapping{}) {
+		t.Fatalf("mapping = %+v, %#v; want none and a failure to read", got, err)
 	}
 }
 

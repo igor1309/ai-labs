@@ -11,7 +11,7 @@ type parsedSettings struct {
 	service   *serviceSettings
 	agents    map[string]definition.Agent
 	processes map[string]definition.Process
-	mappings  map[string]definition.Mapping
+	mappings  map[string]runtimeMapping
 	schemas   map[string]bool
 	workflows map[string]definition.Workflow
 	verifies  map[string]definition.Verification
@@ -81,8 +81,8 @@ func settingsAgent(agent definition.Agent) settings.Agent {
 	return settings.Agent{Name: agent.Name, Runtime: agent.Runtime, Effort: agent.Effort, Skills: agent.Skills}
 }
 
-func settingsMapping(mapping definition.Mapping) settings.Mapping {
-	return settings.Mapping{Name: mapping.Name, Adapter: mapping.Adapter, Efforts: mapping.Efforts, Offer: offer(mapping)}
+func settingsMapping(mapping runtimeMapping) settings.Mapping {
+	return settings.Mapping{Name: mapping.name, Adapter: mapping.adapter, Efforts: mapping.efforts, Offer: mapping.offer}
 }
 
 // settingsProcess is the process as settings checks it. A process that
