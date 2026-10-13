@@ -89,7 +89,7 @@ func ParseWorkflow(doc document.Document) (Workflow, error) {
 		spec := fields(item, field, []string{"node", "uses", "agent"}, p)
 		n := Node{Name: required(spec, "node", field, p)}
 		if n.Name != "" {
-			if !ValidName(n.Name) {
+			if !document.ValidName(n.Name) {
 				p.add(field+".node", "invalid node name %q", n.Name)
 			} else if first, ok := seen[n.Name]; ok {
 				p.add(field+".node", "duplicate node name %q (also %s)", n.Name, first)
@@ -105,7 +105,7 @@ func ParseWorkflow(doc document.Document) (Workflow, error) {
 		}
 		// The agent's name alone, as ADR-030 rule 5 writes a binding, on
 		// every node: nothing else chooses an agent.
-		if agent := required(spec, "agent", field, p); ValidName(agent) {
+		if agent := required(spec, "agent", field, p); document.ValidName(agent) {
 			n.Agent = agent
 		} else if agent != "" {
 			p.add(field+".agent", "must be an agent's name, not %q", agent)
