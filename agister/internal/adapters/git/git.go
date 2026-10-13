@@ -306,12 +306,48 @@ func (w Workspaces) worktree(ctx context.Context, repository string, args ...str
 	return w.worktrees.worktree(ctx, repository, args...)
 }
 
+// Root returns the canonical worktree root, distinct for linked worktrees
+// even when they share a git common directory.
 func (Workspaces) Root(ctx context.Context, cwd string) (string, error) {
 	out, err := run(ctx, cwd, "rev-parse", "--show-toplevel")
 	if err != nil {
 		return "", err
 	}
-	return strings.TrimSpace(out), nil
+	return filepath.EvalSymlinks(strings.TrimSpace(out))
+}
+
+// IsSubmodule reads gitlinks from the outer index, not .gitmodules: staged
+// additions count too, and configuration alone does not track a submodule.
+// A root beneath a tracked submodule stays within the outer boundary.
+func (Workspaces) IsSubmodule(ctx context.Context, worktree, root string) (bool, error) {
+	out, err := run(ctx, worktree, "ls-files", "--stage", "-z")
+	if err != nil {
+		return false, err
+	}
+	for _, entry := range strings.Split(out, "\x00") {
+		if entry == "" {
+			continue
+		}
+		metadata, path, ok := strings.Cut(entry, "\t")
+		if !ok {
+			return false, fmt.Errorf("git ls-files: unexpected entry %q", entry)
+		}
+		if !strings.HasPrefix(metadata, "160000 ") {
+			continue
+		}
+		module, err := filepath.EvalSymlinks(filepath.Join(worktree, path))
+		if err != nil {
+			return false, err
+		}
+		relative, err := filepath.Rel(module, root)
+		if err != nil {
+			return false, err
+		}
+		if relative != ".." && !strings.HasPrefix(relative, ".."+string(filepath.Separator)) {
+			return true, nil
+		}
+	}
+	return false, nil
 }
 
 // SameRepository compares the canonical Git common directories, shared

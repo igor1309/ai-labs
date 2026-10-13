@@ -393,6 +393,7 @@ func TestAnotherRunThatMayStillWriteInTheWorktreeRefusesTheCall(t *testing.T) {
 		outcome app.HoldReaping
 		err     error  // what ending the process fails with
 		root    string // the worktree asked for; /repo when empty
+		gitRoot string // the contained writer's root; the caller's when empty
 		reaped  []string
 		process string // the process the call says it asked to end; none when empty
 		want    string // the refusal; none when empty
@@ -441,6 +442,8 @@ func TestAnotherRunThatMayStillWriteInTheWorktreeRefusesTheCall(t *testing.T) {
 			want: "run run-0 worked in /repo (which holds worktree /repo/tool) and has not finished"},
 		"unfinished in a repository inside the worktree": {other: inPlaceRun("run-0", "/repo/tool", false, false),
 			want: "run run-0 worked in /repo/tool (inside worktree /repo) and has not finished"},
+		"unfinished in a nested worktree":       {other: inPlaceRun("run-0", "/repo/.claude/worktrees/task", false, false), gitRoot: "/repo/.claude/worktrees/task"},
+		"its process left in a nested worktree": {other: inPlaceRun("run-0", "/repo/.claude/worktrees/task", true, false), gitRoot: "/repo/.claude/worktrees/task", outcome: app.HoldReapLeft},
 		"its process left in a released checkout that holds the worktree": {other: temporaryRun("run-0", "/made"), root: "/made/tool", outcome: app.HoldReapLeft, reaped: []string{"ref-run-0"}, process: "runtime",
 			want: `run run-0 worked in /made (which holds worktree /made/tool), and its runtime process "ref-run-0" may still write there`},
 		// A writer works in its checkout, not in the directory made for it.
@@ -457,6 +460,13 @@ func TestAnotherRunThatMayStillWriteInTheWorktreeRefusesTheCall(t *testing.T) {
 				h.workspaces.root = root
 			}
 			h.runs.records[c.other.ID] = c.other
+			h.worktrees.root = func(string) (string, error) {
+				if c.gitRoot != "" {
+					return c.gitRoot, nil
+				}
+				return root, nil
+			}
+			h.worktrees.isSubmodule = func(string, string) (bool, error) { return false, nil }
 			h.writers.outcome, h.writers.err = c.outcome, c.err
 			record := h.call(t, contract.CallRequest{Cwd: root})
 
@@ -487,6 +497,94 @@ func TestAnotherRunThatMayStillWriteInTheWorktreeRefusesTheCall(t *testing.T) {
 			}
 			if len(h.runner.calls()) != 0 || h.worktrees.reads != 0 || h.locks.holds(root) {
 				t.Fatalf("turns %d, reads %d", len(h.runner.calls()), h.worktrees.reads)
+			}
+		})
+	}
+}
+
+// ADR-037: only a contained writer across a known git boundary is excluded.
+// Outer writers, submodules and removals retain their path overlap; an
+// unreadable boundary retains the existing refusal. The call's record and
+// turns prove admission, and no excluded writer is reaped.
+func TestWriterOverlapUsesTheGitBoundary(t *testing.T) {
+	t.Parallel()
+	for name, c := range map[string]struct {
+		caller, writer, root string
+		rootErr, moduleErr   error
+		submodule, removable bool
+		allowed              bool
+	}{
+		"nested worktree":                       {caller: "/repo", writer: "/repo/nested", root: "/repo/nested", allowed: true},
+		"directory in nested worktree":          {caller: "/repo", writer: "/repo/nested/src", root: "/repo/nested", allowed: true},
+		"outer writer":                          {caller: "/repo/nested", writer: "/repo", root: "/repo"},
+		"same worktree":                         {caller: "/repo", writer: "/repo", root: "/repo"},
+		"plain subdirectory":                    {caller: "/repo", writer: "/repo/src", root: "/repo"},
+		"submodule":                             {caller: "/repo", writer: "/repo/lib", root: "/repo/lib", submodule: true},
+		"directory in submodule":                {caller: "/repo", writer: "/repo/lib/src", root: "/repo/lib", submodule: true},
+		"worktree inside a submodule":           {caller: "/repo", writer: "/repo/lib/nested", root: "/repo/lib/nested", submodule: true},
+		"root fails":                            {caller: "/repo", writer: "/repo/nested", rootErr: errors.New("git root unavailable")},
+		"empty root":                            {caller: "/repo", writer: "/repo/nested"},
+		"root outside the caller":               {caller: "/repo", writer: "/repo/nested", root: "/elsewhere"},
+		"submodule lookup fails":                {caller: "/repo", writer: "/repo/nested", root: "/repo/nested", moduleErr: errors.New("index unreadable")},
+		"removable nested worktree":             {caller: "/repo", writer: "/repo/nested", root: "/repo/nested", removable: true},
+		"removable directory containing caller": {caller: "/made/nested", writer: "/made/workspace", root: "/made/workspace", removable: true},
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			h := newHarness()
+			h.workspaces.root = c.caller
+			other := inPlaceRun("run-0", c.writer, false, false)
+			if c.removable {
+				other.Effects.Copy = &run.Checkout{Dir: c.writer}
+			}
+			h.runs.records[other.ID] = other
+			var roots, modules int
+			h.worktrees.root = func(dir string) (string, error) {
+				roots++
+				if dir != c.writer {
+					t.Fatalf("Root directory %q, want %q", dir, c.writer)
+				}
+				return c.root, c.rootErr
+			}
+			h.worktrees.isSubmodule = func(worktree, root string) (bool, error) {
+				modules++
+				if worktree != c.caller || root != c.root {
+					t.Fatalf("submodule boundary (%q, %q)", worktree, root)
+				}
+				return c.submodule, c.moduleErr
+			}
+			record := h.call(t, contract.CallRequest{Cwd: c.caller})
+			if c.allowed {
+				if record.Result.Status != run.Completed || len(h.runner.calls()) != 1 || !recorded(h, "WORKTREE_ADMITTED") {
+					t.Fatalf("result %+v, turns %v, events %v", record.Result, h.runner.calls(), h.recorder.kinds())
+				}
+			} else {
+				if class(record) != run.ClassRefused || len(h.runner.calls()) != 0 || recorded(h, "WORKTREE_ADMITTED") {
+					t.Fatalf("result %+v, turns %v, events %v", record.Result, h.runner.calls(), h.recorder.kinds())
+				}
+				want := "has not finished: it may still write there"
+				if c.removable {
+					want = "Agister made that directory and removes it with all that is in it"
+				}
+				if !strings.Contains(message(record), want) {
+					t.Fatalf("refusal %q, want %q", message(record), want)
+				}
+			}
+			if len(h.writers.refs()) != 0 || h.locks.holds(c.caller) {
+				t.Fatalf("reaped %v, hold retained %v", h.writers.refs(), h.locks.holds(c.caller))
+			}
+			// The same directory in Workspace and InPlace is resolved once;
+			// removable, equal and containing paths need no git lookup.
+			wantRoots := 1
+			if c.removable || c.writer == c.caller || strings.HasPrefix(c.caller, c.writer+"/") {
+				wantRoots = 0
+			}
+			wantModules := 0
+			if wantRoots == 1 && c.rootErr == nil && strings.HasPrefix(c.root, c.caller+"/") {
+				wantModules = 1
+			}
+			if roots != wantRoots || modules != wantModules {
+				t.Fatalf("root reads %d, module reads %d; want %d, %d", roots, modules, wantRoots, wantModules)
 			}
 		})
 	}

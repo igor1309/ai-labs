@@ -55,6 +55,11 @@ var ErrWorktreeLocked = errors.New("the worktree's hold is taken")
 // HoldWorktrees reads a worktree's git state, and writes nothing in it.
 type HoldWorktrees interface {
 	State(ctx context.Context, dir, revision string) (WorktreeState, error)
+	// Root returns dir's canonical git worktree root.
+	Root(ctx context.Context, dir string) (string, error)
+	// IsSubmodule says whether root is within a submodule tracked by the
+	// worktree's index. A submodule remains part of its outer boundary.
+	IsSubmodule(ctx context.Context, worktree, root string) (bool, error)
 }
 
 // WorktreeState is what decides whether a worktree is still as revision
@@ -223,7 +228,7 @@ func (h *Holder) Hold(ctx context.Context, call HoldCall) (*Held, error) {
 	// What other runs still hold of the worktree, found once. A directory
 	// Agister removes is refused before any process is ended for the
 	// worktree: one that is not the caller's to hold ends nothing.
-	claims, err := h.claims(call, key, records)
+	claims, err := h.claims(ctx, call, key, records)
 	if err != nil {
 		return nil, err
 	}
@@ -281,12 +286,36 @@ type claim struct {
 // checkout included; and every directory of a writer's run that may still
 // write, which is one unfinished or one with a process not known to have
 // ended. A reader's run writes nothing (ADR-025 rule 4); a run that worked
-// in a checkout works in the checkout, not in the directory that holds it. A directory overlaps the worktree
-// when it is the worktree, holds it or lies in it, by its canonical path
-// alone: what a removal takes, and where a writer reaches, is everything
-// under a directory. records are every run's.
-func (h *Holder) claims(call HoldCall, key string, records []run.Record) ([]claim, error) {
+// in a checkout works in the checkout, not in the directory that holds it.
+// Removals overlap by canonical path containment alone. A writer's directory
+// inside the worktree overlaps only within its git boundary, including tracked
+// submodules (ADR-037). An unknown boundary overlaps too. An outer writer still
+// overlaps a nested worktree, since its permissions cover subfolders (ADR-025
+// rule 8). records are every run's.
+func (h *Holder) claims(ctx context.Context, call HoldCall, key string, records []run.Record) ([]claim, error) {
 	var claims []claim
+	// Workspace and InPlace may name the same directory, across many runs.
+	// Resolve each boundary once for this hold's view of the records.
+	inside := map[string]bool{}
+	submodules := map[string]bool{}
+	writerInside := func(dir string) bool {
+		if overlaps, known := inside[dir]; known {
+			return overlaps
+		}
+		root, err := h.worktrees.Root(ctx, dir)
+		overlaps := true
+		if err == nil && root != "" && root != key && lies(key, root) == "contains" {
+			var known bool
+			overlaps, known = submodules[root]
+			if !known {
+				tracked, err := h.worktrees.IsSubmodule(ctx, key, root)
+				overlaps = err != nil || tracked
+				submodules[root] = overlaps
+			}
+		}
+		inside[dir] = overlaps
+		return overlaps
+	}
 	for i := range records {
 		other := &records[i]
 		if other.ID == call.Record.ID {
@@ -341,6 +370,9 @@ func (h *Holder) claims(call HoldCall, key string, records []run.Record) ([]clai
 				return nil, refuse("worktree %s cannot be told apart from %s, which run %s recorded: %v", call.Dir, dir.dir, other.ID, err)
 			}
 			if how := lies(key, canonical); how != "" {
+				if how == "contains" && dir.removed == "" && !writerInside(canonical) {
+					continue
+				}
 				claims = append(claims, claim{run: other, dir: dir.dir, lies: how, removed: dir.removed})
 			}
 		}
@@ -351,7 +383,8 @@ func (h *Holder) claims(call HoldCall, key string, records []run.Record) ([]clai
 // lies says how the worktree lies to a directory, both by their canonical
 // paths: it "is" it, "is inside" it or "contains" it. It is empty when
 // neither holds the other, and for a directory that is not there, whose
-// path is empty.
+// path is empty. This is removal's whole overlap rule; a contained writer
+// also needs the git boundary check in claims (ADR-037).
 func lies(worktree, dir string) string {
 	under := func(path, dir string) bool {
 		separator := string(filepath.Separator)

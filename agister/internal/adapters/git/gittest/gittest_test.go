@@ -50,9 +50,15 @@ func TestARecordedRepositoryPlacesItsDirectories(t *testing.T) {
 	if same, err := fake.SameRepository(ctx, root, nested); err != nil || !same {
 		t.Fatalf("same: %t, %v", same, err)
 	}
+	if tracked, err := fake.IsSubmodule(ctx, root, nested); err != nil || tracked {
+		t.Fatalf("file-only fake reports a submodule: %v, %v", tracked, err)
+	}
 	other := t.TempDir()
 	if _, err := fake.Root(ctx, other); err == nil {
 		t.Fatal("a directory in no recorded repository has a root")
+	}
+	if tracked, err := fake.IsSubmodule(ctx, other, nested); err == nil || tracked {
+		t.Fatalf("an unrecorded outer repository has a submodule answer: %v, %v", tracked, err)
 	}
 	if _, err := (&gittest.Fake{}).Root(ctx, root); err == nil {
 		t.Fatal("the zero fake knows a repository")
