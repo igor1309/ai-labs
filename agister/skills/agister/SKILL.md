@@ -338,8 +338,17 @@ A call is refused before any turn, with exit 3 and the reason, when:
   ignore, or a tracked file that differs from HEAD, even one marked
   `assume-unchanged`. Ignored files are allowed.
 
-A directory overlaps the worktree when it is the worktree, lies inside it
-or contains it.
+A writer's directory overlaps the worktree when it is the worktree or
+contains it. One inside it overlaps when its canonical git root is the
+worktree or equals the canonical root of a submodule tracked in its index.
+A directory with that submodule's git root overlaps; an independent worktree
+beneath it does not. An absent, unrelated gitlink is skipped. A writer in a
+separate nested git worktree does not block an outer call; an outer writer
+still blocks a nested call, since its permissions cover subfolders. If the
+git boundary cannot be read or the submodule check fails, the directory still
+overlaps. Directories Agister may remove overlap by canonical path containment
+alone, across git boundaries too
+(ADR-037).
 
 ## Drive a step through the gate
 

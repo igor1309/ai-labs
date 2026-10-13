@@ -75,6 +75,108 @@ func linked(t *testing.T, repo, revision string) string {
 	return dir
 }
 
+// Contract test: git worktree roots and gitlinks in a real repository's
+// index, including staged submodules, independent descendant worktrees and
+// roots whose names end in tabs and spaces.
+func TestRootsAndTrackedSubmoduleBoundaries(t *testing.T) {
+	t.Parallel()
+	dir := repository(t)
+	root, err := filepath.EvalSymlinks(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	nested := filepath.Join(root, ".claude", "worktrees", "task")
+	sh(t, root, "worktree", "add", "--detach", "--quiet", nested, "HEAD")
+	plain := filepath.Join(root, "src")
+	inside := filepath.Join(nested, "src")
+	for _, path := range []string{plain, inside} {
+		if err := os.MkdirAll(path, 0o700); err != nil {
+			t.Fatal(err)
+		}
+	}
+	module := filepath.Join(root, "lib \tmodule")
+	sh(t, root, "-c", "protocol.file.allow=always", "submodule", "add", "--quiet", repository(t), "lib \tmodule")
+	moduleInside := filepath.Join(module, "src")
+	if err := os.Mkdir(moduleInside, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	embedded := filepath.Join(module, "nested")
+	sh(t, root, "worktree", "add", "--detach", "--quiet", embedded, "HEAD")
+	spaceRoot := filepath.Join(root, "task  ")
+	tabRoot := filepath.Join(root, "task\t")
+	for _, path := range []string{spaceRoot, tabRoot} {
+		sh(t, root, "worktree", "add", "--detach", "--quiet", path, "HEAD")
+	}
+	// Configuration is insufficient: this nested worktree has no gitlink.
+	sh(t, root, "config", "submodule.task.path", ".claude/worktrees/task")
+	modulesFile, err := os.OpenFile(filepath.Join(root, ".gitmodules"), os.O_APPEND|os.O_WRONLY, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, writeErr := modulesFile.WriteString("\n[submodule \"task\"]\n\tpath = .claude/worktrees/task\n\turl = unused\n")
+	closeErr := modulesFile.Close()
+	if writeErr != nil || closeErr != nil {
+		t.Fatalf(".gitmodules: write %v, close %v", writeErr, closeErr)
+	}
+	alias := filepath.Join(t.TempDir(), "alias")
+	if err := os.Symlink(root, alias); err != nil {
+		t.Fatal(err)
+	}
+	adapter := git.Workspaces{}
+	for name, c := range map[string]struct {
+		dir, wantRoot string
+		tracked       bool
+	}{
+		"main":                {root, root, false},
+		"plain directory":     {plain, root, false},
+		"nested worktree":     {nested, nested, false},
+		"nested directory":    {inside, nested, false},
+		"submodule":           {module, module, true},
+		"submodule directory": {moduleInside, module, true},
+		// Only the indexed submodule root overlaps, not a descendant root.
+		"root inside submodule": {embedded, embedded, false},
+		"root ending in spaces": {spaceRoot, spaceRoot, false},
+		"root ending in tab":    {tabRoot, tabRoot, false},
+		"symlink":               {filepath.Join(alias, "src"), root, false},
+	} {
+		// Serial: these cases share one repository and its index.
+		t.Run(name, func(t *testing.T) {
+			got, err := adapter.Root(context.Background(), c.dir)
+			if err != nil || got != c.wantRoot {
+				t.Fatalf("Root(%q) = %q, %v; want %q", c.dir, got, err, c.wantRoot)
+			}
+			tracked, err := adapter.IsSubmodule(context.Background(), root, got)
+			if err != nil || tracked != c.tracked {
+				t.Fatalf("IsSubmodule(%q) = %v, %v; want %v", got, tracked, err, c.tracked)
+			}
+		})
+	}
+	// Serial: this case changes the shared repository's index after the reads.
+	t.Run("unresolvable gitlink", func(t *testing.T) {
+		loop := filepath.Join(root, "loop")
+		if err := os.Symlink("loop", loop); err != nil {
+			t.Fatal(err)
+		}
+		sh(t, root, "update-index", "--add", "--cacheinfo", "160000,"+sh(t, root, "rev-parse", "HEAD")+",loop")
+		if tracked, err := adapter.IsSubmodule(context.Background(), root, nested); err == nil || tracked {
+			t.Fatalf("IsSubmodule(unresolvable gitlink) = %v, %v; want lookup failure", tracked, err)
+		}
+	})
+	t.Run("invalid git boundary", func(t *testing.T) {
+		t.Parallel()
+		bad := t.TempDir()
+		if err := os.WriteFile(filepath.Join(bad, ".git"), []byte("gitdir: missing\n"), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		if root, err := adapter.Root(context.Background(), bad); err == nil || root != "" {
+			t.Fatalf("Root(invalid boundary) = %q, %v", root, err)
+		}
+		if tracked, err := adapter.IsSubmodule(context.Background(), bad, nested); err == nil || tracked {
+			t.Fatalf("IsSubmodule(invalid boundary) = %v, %v", tracked, err)
+		}
+	})
+}
+
 // Contract test: the git adapter against real git, in a repository of the
 // test's own.
 func TestInputsResolveToImmutableIdentities(t *testing.T) {

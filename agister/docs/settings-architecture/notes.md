@@ -356,7 +356,14 @@ and ignored, and `check` warns (`internal/app/check.go:289`; ADR-025).
     changed by the reaper, as the reap beside the calls would change it.
     Everything else is still reaped beside the calls, and nobody waits
     for that reap. The ADR is not edited.
-  - ADR-025 rule 4 and ADR-022 rule 3 hold as written. A writer's run
+  - ADR-037 narrows ADR-025 rule 4's overlap, inherited from ADR-022 rule 3:
+    a contained writer in a separate nested git root does not block the
+    outer worktree. Plain subdirectories and indexed submodules still
+    overlap, as do outer writers and directories Agister may remove;
+    an unreadable git boundary keeps the path overlap. `HoldWorktrees`
+    supplies `Root` and `IsSubmodule`, implemented by the git adapter.
+    The Pages settings view has no overlap rule or setting to display.
+    A writer's run in an overlapping directory
     that is unfinished still refuses the call: one its owner holds is
     left alone, and one the reap cannot finish stays unfinished. A run
     the reap finishes is a finished run, asked about by its processes as

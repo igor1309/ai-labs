@@ -941,7 +941,23 @@ type worktreesSpy struct {
 	mu    sync.Mutex
 	reads int
 	// state, when set, is what the nth read (from 0) finds instead.
-	state func(revision string, n int) app.WorktreeState
+	state       func(revision string, n int) app.WorktreeState
+	root        func(dir string) (string, error)
+	isSubmodule func(worktree, root string) (bool, error)
+}
+
+func (s *worktreesSpy) Root(_ context.Context, dir string) (string, error) {
+	if s.root == nil {
+		return "", errors.New("Root stub is not supplied")
+	}
+	return s.root(dir)
+}
+
+func (s *worktreesSpy) IsSubmodule(_ context.Context, worktree, root string) (bool, error) {
+	if s.isSubmodule == nil {
+		return false, errors.New("IsSubmodule stub is not supplied")
+	}
+	return s.isSubmodule(worktree, root)
 }
 
 func (s *worktreesSpy) State(_ context.Context, _, revision string) (app.WorktreeState, error) {
