@@ -61,7 +61,7 @@ func TestCodexStreamMarksLossyFileChangesAndKeepsCommandsRepeatable(t *testing.T
 		stream.Reduce(fmt.Sprintf(`{"type":"item.started","item":{"id":"c%d","type":"command_execution","command":"go test"}}`, i))
 		for _, tool := range stream.TakeTools() {
 			call := tool.Started
-			watch.ToolStarted(app.ToolCall{ID: call.ID, Name: call.Name, Input: call.Input, Command: call.Command})
+			watch.ToolStarted(app.ToolCall{ID: call.ID, Name: call.Name, Input: call.Input, InputIncomplete: call.InputIncomplete, Command: call.Command})
 		}
 	}
 	if stale := watch.End(); stale == nil || stale.Count != 2 {
@@ -252,7 +252,7 @@ func TestAnIncompleteToolInputBreaksTheRepeatedCallStreak(t *testing.T) {
 	h.runner.acting = func(_ context.Context, sink app.EventSink) {
 		sink.ToolStarted(app.ToolCall{ID: "t1", Name: "Edit", Input: `[{"kind":"update","path":"a.go"}]`})
 		sink.ToolStarted(app.ToolCall{ID: "t2", Name: "Edit", Input: `[{"kind":"update","path":"a.go"}]`, InputIncomplete: true})
-		sink.ToolStarted(app.ToolCall{ID: "t3", Name: "Edit", Input: `[{"kind":"update","path":"a.go"}]`, InputIncomplete: true})
+		sink.ToolStarted(app.ToolCall{ID: "t3", Name: "Edit", Input: `[{"kind":"update","path":"a.go"}]`})
 	}
 	record := h.call(t, contract.CallRequest{})
 	if record.Result.Status != run.Completed || record.Turn.Stale != nil {
