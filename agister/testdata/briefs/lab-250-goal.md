@@ -24,6 +24,7 @@ Five constants name the inputs and input sources that a process, a workflow and 
 
 - The advisor's ruling in run `20261013T065554Z-1701f1`: the input names move to a new `internal/domain/input`, with no forwarding declarations left in `definition`.
 - As LAB-245's reviews ruled for `ValidName`, `app` keeps no local forwarders of moved vocabulary.
+- The guard in 6 is a source rule with stated bounds, as D-21 set for LAB-245's guard. It rejects a declaration in `definition` of any of the five names, and a `const`, `var` or alias declaration, at package or function level in `definition` or `app`, whose value is exactly `input.<Name>`, following `input`'s import name. It does not track values through further copies, compare string literals, or claim semantic detection. Its doc comment says so. Since the moved values repeat ordinary strings such as `"prompt"`, a literal match would reject legitimate code.
 
 ## Open
 
