@@ -96,6 +96,7 @@ func TestCheckReportsWhatDefinesWhat(t *testing.T) {
 	}
 }
 
+// ADR-036: missing version evidence warns instead of refusing a binding.
 func TestCheckProbesEachAgentsRuntime(t *testing.T) {
 	t.Parallel()
 	h := newHarness()
@@ -108,8 +109,8 @@ func TestCheckProbesEachAgentsRuntime(t *testing.T) {
 	}
 	h.runner.identity.Version = "9.0.0"
 	report, _ := checker.Check(context.Background(), true)
-	if !reflect.DeepEqual(messages(report.Problems), []string{"agent a: mapping rt verifies no primitive for runtime version 9.0.0"}) {
-		t.Fatalf("problems = %v", messages(report.Problems))
+	if len(report.Problems) != 0 || !strings.Contains(strings.Join(report.Warnings, "\n"), "version 9.0.0 has unverified primitives: Read, Grep") {
+		t.Fatalf("report = %+v", report)
 	}
 }
 
@@ -131,9 +132,8 @@ func TestCheckProbeAsksNoIdentityOfAnAdapterTheCodeDoesNotProvide(t *testing.T) 
 	}
 }
 
-// The installed version may verify some primitive, yet not the ones a process
-// needs: the problem of the workflow whose node binds the process to the
-// agent on that runtime (ADR-030 rule 8).
+// ADR-036: a required declared primitive remains available when only another
+// primitive has evidence for the installed version; the binding warns.
 func TestCheckProbePlansEachProcessOnTheInstalledVersion(t *testing.T) {
 	t.Parallel()
 	h := newHarness()
@@ -144,9 +144,8 @@ func TestCheckProbePlansEachProcessOnTheInstalledVersion(t *testing.T) {
 		t.Fatalf("problems = %v", messages(report.Problems))
 	}
 	report, _ := checker.Check(context.Background(), true)
-	if len(messages(report.Problems)) != 1 || !strings.HasPrefix(messages(report.Problems)[0], "workflow p_a: call node p: process p: cannot run on agent a's runtime rt version 1.2.3: ") ||
-		!strings.Contains(messages(report.Problems)[0], "not verified for version 1.2.3: Read") {
-		t.Fatalf("problems = %v", messages(report.Problems))
+	if len(report.Problems) != 0 || !strings.Contains(strings.Join(report.Warnings, "\n"), "version 1.2.3 has unverified primitives: Read") {
+		t.Fatalf("report = %+v", report)
 	}
 }
 
@@ -655,8 +654,7 @@ func TestCreateAgentWritesTheAgentAsItsSettingsDocument(t *testing.T) {
 }
 
 // narrowRuntime is a runtime mapping an agent can use alone, but on which
-// process p cannot run: its one primitive also grants a permission p does
-// not allow.
+// process p cannot run: its one primitive grants state-reaching host.read.
 const narrowRuntime = `schema: agister.runtime/v1alpha1
 name: narrow
 adapter: spy
@@ -665,7 +663,7 @@ efforts: [high]
 primitives:
   select: one
   items:
-    Bash: {grants: [process.execute, repository.read], verified: ["1."]}
+    Bash: {grants: [process.execute, repository.read, host.read], verified: ["1."]}
 `
 
 // An agent that is valid alone but breaks the settings is refused before

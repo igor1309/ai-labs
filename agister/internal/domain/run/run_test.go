@@ -80,7 +80,7 @@ func TestRecordJSONForDefinitionsPolicyAndPlanIsFixed(t *testing.T) {
 			Access:      "read-only",
 			Scope:       "candidate",
 		},
-		Plan: &run.Plan{Primitives: []string{"Read"}, Granted: []string{"repository.read"}, Withheld: []string{"repository.diff"}},
+		Plan: &run.Plan{Primitives: []string{"Read"}, Granted: []string{"repository.read", "process.execute"}, Withheld: []string{"repository.diff"}, Declared: []string{"repository.read"}, Extra: []string{"process.execute"}},
 	}
 	data, err := json.Marshal(record)
 	if err != nil {
@@ -95,7 +95,7 @@ func TestRecordJSONForDefinitionsPolicyAndPlanIsFixed(t *testing.T) {
 			`{"kind":"agents","name":"a","path":"/repo/.agister/agents/a.toml","sha256":"def","project":true,"overrides":"/home/.agister/agents/a.toml"}]`,
 		"effective": `{"timeout":1200000000000,"max_attempts":1,"max_cost_usd":0.5,"allow":["repository.read"],"deny":[],` +
 			`"permissions":["repository.read"],"require":["repository.read"],"access":"read-only","scope":"candidate"}`,
-		"plan": `{"primitives":["Read"],"granted":["repository.read"],"withheld":["repository.diff"]}`,
+		"plan": `{"primitives":["Read"],"granted":["repository.read","process.execute"],"withheld":["repository.diff"],"declared":["repository.read"],"extra":["process.execute"]}`,
 	}
 	for field, text := range want {
 		if string(got[field]) != text {

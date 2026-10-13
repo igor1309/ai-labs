@@ -79,5 +79,7 @@ func recordPlan(plan CallPlan) *run.Plan {
 		Primitives: slices.Clone(plan.Primitives),
 		Granted:    slices.Clone(plan.Granted),
 		Withheld:   slices.Clone(plan.Withheld),
+		Declared:   append([]string{}, plan.Declared...),
+		Extra:      append([]string{}, plan.Extra...),
 	}
 }

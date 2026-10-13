@@ -519,6 +519,7 @@ type InspectedProcess struct {
 	// required permission, or one the settings make, what else the plan
 	// refused or the settings' plan withholds.
 	Withheld []string
+	Warnings []string
 	Sources  []InspectedSource
 }
 
@@ -680,6 +681,7 @@ func (r *Resolver) inspect(ctx context.Context, name, agent string, caller overr
 		},
 		Primitives: res.plan.Primitives,
 		Withheld:   res.plan.Withheld,
+		Warnings:   res.warnings,
 		Sources:    inspectedSources(res.sources),
 	}
 	// A call refused for withholding a required permission, or by the
@@ -876,6 +878,7 @@ func (i *Inspection) shown(res *InspectedProcess, err error) (contract.ProcessVi
 		Stale:       contract.Stale(res.Effective.Stale),
 		Primitives:  res.Primitives,
 		Withheld:    res.Withheld,
+		Warnings:    res.Warnings,
 		VerifyName:  res.Process.VerifyName,
 		Prompt:      res.Process.Prompt,
 		Guidance:    res.Process.Guidance,

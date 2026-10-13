@@ -472,10 +472,11 @@
     }
 
     function runtimesTable(items, composed) {
-      return table('Runtimes', 'how Agister drives an agent’s CLI; tested with: the CLI versions checked',
-        ['Runtime', 'Adapter', 'Contract', 'Tested with'], items, (r) => [
-          r.adapter, r.contract,
-          r.verified.length ? r.verified.map((v) => v.replace(/\.$/, '.x')).join(', ') : null,
+      return table('Runtimes', 'Runtime permissions are best effort. Extra grants and unverified versions warn; require and state reach are hard checks. Tested with lists evidence, not a gate.',
+        ['Runtime', 'Adapter', 'Contract', 'Select', 'Declared grants', 'Tested with'], items, (r) => [
+          r.adapter, r.contract, r.select,
+          r.primitives.map((p) => `${p.name}: ${p.grants.length ? p.grants.join(', ') : '(none)'}`).join('; ') || null,
+          r.verified.length ? r.verified.map((v) => v.replace(/\.$/, '.x')).join(', ') : 'Unverified — warns',
         ], composed);
     }
 

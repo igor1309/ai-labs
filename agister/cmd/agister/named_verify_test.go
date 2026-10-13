@@ -108,7 +108,7 @@ func TestAVerificationInNeitherLayerRefusesOnlyTheProcessNamingIt(t *testing.T) 
 
 	r := agister(t, home, repo, "check")
 	warning := "warning process implement: names verify:repo, which does not exist; calls of it are refused until verifies/repo.yaml exists\n"
-	if r.code != 0 || !strings.HasPrefix(r.stdout, "settings OK:") || r.stderr != warning {
+	if r.code != 0 || !strings.HasPrefix(r.stdout, "settings OK:") || !strings.Contains(r.stderr, warning) {
 		t.Fatalf("check: %d\n%s%s", r.code, r.stdout, r.stderr)
 	}
 	r = agister(t, home, repo, "check", "--tree")

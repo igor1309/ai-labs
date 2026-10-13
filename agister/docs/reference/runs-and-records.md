@@ -116,3 +116,12 @@ back with the recorded digests; one that does not match fails, exit 1.
 An identical copy already there is kept; one that differs is never
 overwritten, and that run is refused, naming the file. An interrupted
 export reports the runs it exported and exits 2.
+
+## Permission warnings
+
+A call's `plan.declared` holds its effective permissions, `plan.granted`
+the selected primitives' grants, and `plan.extra` grants beyond declared.
+`result.warnings` records extra grants and missing runtime version
+evidence; a workflow result includes its nodes' warnings with node names.
+Printed results show them even with `--quiet`. Warnings do not change the
+status or exit code. See [permissions and runtimes](permissions-and-runtimes.md).

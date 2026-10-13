@@ -6,9 +6,8 @@ import (
 	"strings"
 )
 
-// A runtime offers a primitive on a version only once its grants were
-// checked against that version: a plan made for a version takes only the
-// primitives verified for it.
+// Version evidence describes the offer; planning uses the declared primitives
+// even when their version is unverified (ADR-036).
 
 // VerifiedFor reports whether version matches one of the primitive's
 // verified prefixes. A prefix matches whole components: "2.1" and "2.1."
@@ -23,8 +22,8 @@ func (p Primitive) VerifiedFor(version string) bool {
 	return false
 }
 
-// ForVersion keeps only the primitives verified for version, so a plan
-// made from it never grants an unchecked primitive, and names the rest.
+// ForVersion keeps the primitives verified for version and names the rest.
+// It partitions evidence, not the primitives available to a plan.
 func (o Offer) ForVersion(version string) (Offer, []string) {
 	return o.keep(func(p Primitive) bool { return p.VerifiedFor(version) })
 }

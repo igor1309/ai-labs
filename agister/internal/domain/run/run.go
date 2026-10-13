@@ -129,6 +129,7 @@ type Session struct {
 
 // Result is a node's output as a workflow sees it.
 type Result struct {
+	Warnings  []string        `json:"warnings,omitempty"`
 	Status    Status          `json:"status"`
 	Error     *Error          `json:"error,omitempty"`
 	Output    json.RawMessage `json:"output,omitempty"` // the latest turn's, when contract-valid, whatever then ended the node

@@ -66,7 +66,8 @@ func TestTheHomeFolderInstallsAndPassesCheckAsGlobalSettings(t *testing.T) {
 		t.Fatalf("check: %d %v\n%s%s", r.code, err, r.stdout, r.stderr)
 	}
 	for _, warning := range report.Warnings {
-		if !strings.Contains(warning, "names verify:repo, which does not exist") {
+		// ADR-036 also reports the selected primitives without version evidence.
+		if !strings.Contains(warning, "names verify:repo, which does not exist") && !strings.Contains(warning, "has unverified primitives:") {
 			t.Errorf("check warns %q, want only the verify:repo a repository fills", warning)
 		}
 	}
@@ -347,5 +348,21 @@ func TestHomeTreatsNoPermissionAsStateReaching(t *testing.T) {
 	}
 	if !meta.IsDefined("state_reaching") || len(service.StateReaching) != 0 {
 		t.Fatalf("%s: state_reaching = %q, want it set to []", path, service.StateReaching)
+	}
+}
+
+// Contract test: home's shipped settings and judge prompt on the filesystem.
+// The judge's evidence boundary is an instruction, independent of its runtime.
+func TestHomeUsesTheSharedJudgeWithEvidenceInstructions(t *testing.T) {
+	t.Parallel()
+	home := filepath.Join("..", "..", "home")
+	for _, path := range []string{"processes/review_judge_codex.yaml", "workflows/code_review_codex.yaml"} {
+		if _, err := os.Stat(filepath.Join(home, path)); !errors.Is(err, os.ErrNotExist) {
+			t.Fatalf("runtime-specific copy %s: %v", path, err)
+		}
+	}
+	instruction := read(t, filepath.Join(home, "prompts", "code-review-judge.md"))
+	if strings.Contains(instruction, "have no tools") || !strings.Contains(instruction, "Rule only on the evidence presented") || !strings.Contains(instruction, "Do not seek further evidence") {
+		t.Fatalf("judge evidence instruction = %s", instruction)
 	}
 }

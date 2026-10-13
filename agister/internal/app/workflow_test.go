@@ -1669,7 +1669,7 @@ join: {node: merge, uses: process:joiner, agent: a}
 // ADR-030 rule 8, ADR-015 rule 3: each binding of a process is resolved
 // before any node runs, so two nodes that bind one process to two agents
 // are two bindings. The second's agent is on a runtime whose one primitive
-// grants more than the process allows: the workflow is refused, with no
+// grants state-reaching host.read: the workflow is refused, with no
 // node's run and no turn, though the first's binding can run.
 func TestAProcessBoundTwiceIsCheckedOnEachAgent(t *testing.T) {
 	t.Parallel()
@@ -1682,13 +1682,13 @@ efforts: [high]
 primitives:
   select: one
   items:
-    Bash: {grants: [process.execute, repository.read], verified: ["1."]}
+    Bash: {grants: [process.execute, repository.read, host.read], verified: ["1."]}
 `)
 	h.defs.set(document.KindAgent, "c", strings.NewReplacer(`name = "a"`, `name = "c"`, `runtime = "rt"`, `runtime = "narrow"`).Replace(settingsDocs()[document.KindAgent]["a"]))
 	twice := strings.Replace(workflowDoc, "{node: two, uses: process:second, agent: a}", "{node: two, uses: process:first, agent: a}", 1)
 	h.defs.set(document.KindWorkflow, "w", boundTo(boundTo(twice, "one", "first", "a"), "two", "first", "c"))
 	record := h.store.wait(t, h.submit(t, contract.CallRequest{}))
-	const want = "workflow w uses process first: runtime narrow: cannot enforce the effective permissions: Bash also grants process.execute"
+	const want = "workflow w uses process first: runtime narrow: cannot enforce the effective permissions: Bash grants state_reaching permissions: host.read"
 	if class(record) != run.ClassRefused || message(record) != want {
 		t.Fatalf("result %+v, want refused: %s", record.Result, want)
 	}

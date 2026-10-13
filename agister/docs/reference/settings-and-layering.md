@@ -91,3 +91,21 @@ and is a problem, and `install` does not install one.
 Agister is a runner, not a guard: running it in a repository applies that
 repository's and project's `.agister/`, including the commands its agents
 run. Review settings you did not write.
+
+## Rebinding the review judge
+
+A join-only partial changes the judge's agent while inheriting the
+workflow's inputs, fan-out and judge process from home. Put this in
+`.agister/workflows/code_review.yaml` in the repository or project layer:
+
+```yaml
+schema: agister.workflow/v1alpha1
+name: code_review
+join:
+  agent: codex-sol-61
+```
+
+The join still uses `process:review_judge`, and the reviewers keep their
+bindings. No `review_judge_codex` process or `code_review_codex` workflow
+is needed. Run `agister check`, then `agister workflow show code_review`
+to see the inherited bindings and any permission warnings.

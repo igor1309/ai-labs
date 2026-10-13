@@ -60,21 +60,34 @@ func TestStateReachingPermissionsAreNeverGranted(t *testing.T) {
 	}
 }
 
-func TestOneRefusesWhenNoModeFits(t *testing.T) {
+// ADR-036: the narrowest mode covers require and reports extra grants.
+func TestOnePlansTheNarrowestRequiredMode(t *testing.T) {
 	t.Parallel()
-	_, err := enforce.Make([]string{"repository.read", "repository.diff", "repository.search"}, codex, nil, nil)
-	if err == nil || !strings.Contains(err.Error(), "read-only also grants process.execute") {
-		t.Fatalf("err = %v", err)
+	for _, c := range []struct {
+		required  []string
+		primitive string
+		extra     string
+	}{
+		{nil, "read-only", "process.execute"},
+		{[]string{"repository.write"}, "workspace-write", "process.execute,repository.write"},
+	} {
+		plan, err := enforce.Make([]string{"repository.read", "repository.diff", "repository.search"}, codex, c.required, nil)
+		if err != nil || strings.Join(plan.Primitives, ",") != c.primitive || strings.Join(plan.Extra, ",") != c.extra {
+			t.Fatalf("plan %+v, %v", plan, err)
+		}
 	}
-	plan, err := enforce.Make([]string{"repository.read", "repository.search", "repository.diff", "process.execute", "repository.write", "network"}, codex, nil, nil)
-	if err != nil || strings.Join(plan.Primitives, ",") != "workspace-write" || strings.Join(plan.Withheld, ",") != "network" {
-		t.Fatalf("the widest fitting mode is chosen: %+v, %v", plan, err)
+	_, err := enforce.Make([]string{"repository.read"}, codex, []string{"network"}, nil)
+	if err == nil || !strings.Contains(err.Error(), "required permissions would be withheld: network") {
+		t.Fatalf("missing require: %v", err)
+	}
+	_, err = enforce.Make([]string{"repository.read"}, codex, nil, []string{"process.execute"})
+	if err == nil || !strings.Contains(err.Error(), "state_reaching permissions: process.execute") {
+		t.Fatalf("state reach: %v", err)
 	}
 }
 
-// Property: whatever the offer and permissions, granted primitives never
-// grant anything outside the permissions, nor anything state-reaching.
-func TestPlansNeverExceedThePermissions(t *testing.T) {
+// ADR-036 permits extras only for select: one; state reach never crosses the plan.
+func TestPlansKeepTheHardChecksAndReportEveryExtra(t *testing.T) {
 	t.Parallel()
 	names := []string{"a", "b", "c", "d", "e", "f"}
 	random := rand.New(rand.NewSource(1))
@@ -92,21 +105,24 @@ func TestPlansNeverExceedThePermissions(t *testing.T) {
 		for j := 0; j < 1+random.Intn(5); j++ {
 			offer.Primitives = append(offer.Primitives, enforce.Primitive{Name: string(rune('P' + j)), Grants: pick()})
 		}
-		permissions, reaching := pick(), pick()
-		plan, err := enforce.Make(permissions, offer, nil, reaching)
+		permissions, reaching, required := pick(), pick(), pick()
+		plan, err := enforce.Make(permissions, offer, required, reaching)
 		if err != nil {
 			continue
 		}
-		for _, name := range plan.Primitives {
-			for _, primitive := range offer.Primitives {
-				if primitive.Name != name {
-					continue
-				}
-				for _, grant := range primitive.Grants {
-					if !contains(permissions, grant) || contains(reaching, grant) {
-						t.Fatalf("primitive %s grants %s outside %v (reaching %v)", name, grant, permissions, reaching)
-					}
-				}
+		for _, grant := range plan.Granted {
+			if contains(reaching, grant) || (!contains(permissions, grant) && (!offer.One || !contains(plan.Extra, grant))) {
+				t.Fatalf("unsafe or unreported grant: %+v", plan)
+			}
+		}
+		for _, extra := range plan.Extra {
+			if contains(permissions, extra) || !contains(plan.Granted, extra) {
+				t.Fatalf("incorrect extra: %+v", plan)
+			}
+		}
+		for _, need := range required {
+			if !contains(plan.Granted, need) {
+				t.Fatalf("missing require: %+v", plan)
 			}
 		}
 		if offer.One && len(plan.Primitives) != 1 {
@@ -122,4 +138,23 @@ func contains(list []string, value string) bool {
 		}
 	}
 	return false
+}
+
+// Narrowness is the grant count, with mapping order deciding equal counts;
+// neither a smaller unsafe mode nor one missing require can displace it.
+func TestOneSelectsTheNarrowestSafeRequiredPrimitive(t *testing.T) {
+	t.Parallel()
+	offer := enforce.Offer{One: true, Primitives: []enforce.Primitive{
+		{Name: "unsafe", Grants: []string{"read", "state"}},
+		{Name: "wide", Grants: []string{"read", "exec", "write"}},
+		{Name: "empty"},
+		{Name: "narrow", Grants: []string{"read", "exec"}},
+		{Name: "tied", Grants: []string{"read", "diff"}},
+	}}
+	for _, allow := range [][]string{{"read"}, {"read", "exec", "write", "diff"}} {
+		plan, err := enforce.Make(allow, offer, []string{"read"}, []string{"state"})
+		if err != nil || strings.Join(plan.Primitives, ",") != "narrow" || strings.Join(plan.Granted, ",") != "read,exec" {
+			t.Fatalf("plan %+v, %v", plan, err)
+		}
+	}
 }

@@ -95,6 +95,9 @@ func TestAProcessAnswersForItsOwnSession(t *testing.T) {
 // whose one primitive is the only one a call uses.
 func onC(mapping settings.Mapping) settings.Bundle {
 	b := bound("c")
+	if mapping.Name == "wide" {
+		b.Service.StateReaching = []string{"exec"}
+	}
 	mapping.Adapter, mapping.Efforts, mapping.Offer.One = "claude-code", []string{"high"}, true
 	b.Mappings[mapping.Name] = mapping
 	b.Agents["c"] = settings.Agent{Name: "c", Runtime: mapping.Name, Effort: "high"}
@@ -102,7 +105,7 @@ func onC(mapping settings.Mapping) settings.Bundle {
 }
 
 // wide is a runtime mapping whose one primitive also grants exec, which
-// process p does not allow.
+// the service marks state-reaching (ADR-036).
 func wide() settings.Mapping {
 	return settings.Mapping{Name: "wide", Offer: offering(enforce.Primitive{Name: "Shell", Grants: []string{"read", "exec"}, Verified: []string{"1."}})}
 }
@@ -113,8 +116,8 @@ func plain() settings.Mapping {
 	return settings.Mapping{Name: "plain", Offer: offering(enforce.Primitive{Name: "Read", Grants: []string{"read"}, Verified: []string{"1."}})}
 }
 
-// split is a runtime mapping that runs process p on version 2 and not on
-// version 1, where its one verified primitive also grants exec.
+// split verifies Read on version 2 and Shell on version 1; the declared
+// Read remains available on either version (ADR-036).
 func split() settings.Mapping {
 	return settings.Mapping{Name: "split", Offer: offering(
 		enforce.Primitive{Name: "Read", Grants: []string{"read"}, Verified: []string{"2."}},
@@ -138,7 +141,7 @@ func repairing(b settings.Bundle, resumable bool) settings.Bundle {
 // node, and not of the process, which names no agent (rule 2).
 func TestABindingThatCannotBePlannedIsAProblemOfItsWorkflow(t *testing.T) {
 	t.Parallel()
-	const refused = "cannot run on agent c's runtime wide: cannot enforce the effective permissions: Shell also grants exec"
+	const refused = "cannot run on agent c's runtime wide: cannot enforce the effective permissions: Shell grants state_reaching permissions: exec"
 	onJoin := onC(wide())
 	workflow := onJoin.Workflows["w"]
 	workflow.FanOut[0].Agent, workflow.Join.Agent = "a", "c"
@@ -216,13 +219,9 @@ func TestABindingIsPlannedOnTheInstalledVersion(t *testing.T) {
 	if got := problemsOf(b); got != nil {
 		t.Fatalf("before the version is known: problems = %q", got)
 	}
-	const refused = "cannot run on agent c's runtime split version 1.4: cannot enforce the effective permissions: Shell also grants exec (not verified for version 1.4: Read)"
-	want := []settings.Problem{
-		{Subject: "workflow w", Message: "fan-out node one: process p: " + refused},
-		{Subject: "workflow w", Message: "fan-out node two: process q: " + refused},
-	}
-	if got := settings.PlanProblems(b, b.Agents["c"], "1.4"); !reflect.DeepEqual(got, want) {
-		t.Fatalf("version 1.4: problems = %+v, want %+v", got, want)
+	// ADR-036: version evidence no longer withholds the declared Read primitive.
+	if got := settings.PlanProblems(b, b.Agents["c"], "1.4"); len(got) != 0 {
+		t.Fatalf("version 1.4: problems = %+v", got)
 	}
 	if got := settings.PlanProblems(b, b.Agents["c"], "2.0"); got != nil {
 		t.Fatalf("version 2.0: problems = %+v", got)
@@ -342,12 +341,16 @@ func TestEveryBindingIsPlanned(t *testing.T) {
 		installed map[string]string
 		want      []settings.BindingPlan
 	}{
-		"allowed, not required, withheld on the installed version": {writable("a"), installed("1.4"),
-			[]settings.BindingPlan{{Workflow: "w", Node: "one", Label: "fan-out node one", Process: "p", Agent: "a", Runtime: "rt", Version: "1.4", Withheld: []string{"write"}}, {Workflow: "w", Node: "merge", Label: "join node merge", Process: "j", Agent: "a", Runtime: "rt", Version: "1.4"}}},
-		"required, withheld on the installed version": {writable("a", "write"), installed("1.4"),
-			[]settings.BindingPlan{{Workflow: "w", Node: "one", Label: "fan-out node one", Process: "p", Agent: "a", Runtime: "rt", Version: "1.4", Required: []string{"write"}}, {Workflow: "w", Node: "merge", Label: "join node merge", Process: "j", Agent: "a", Runtime: "rt", Version: "1.4"}}},
+		"allowed, not required, granted with unverified evidence": {writable("a"), installed("1.4"),
+			[]settings.BindingPlan{{Workflow: "w", Node: "one", Label: "fan-out node one", Process: "p", Agent: "a", Runtime: "rt", Version: "1.4", Unverified: []string{"Write"}}, {Workflow: "w", Node: "merge", Label: "join node merge", Process: "j", Agent: "a", Runtime: "rt", Version: "1.4"}}},
+		"required, granted with unverified evidence": {writable("a", "write"), installed("1.4"),
+			[]settings.BindingPlan{{Workflow: "w", Node: "one", Label: "fan-out node one", Process: "p", Agent: "a", Runtime: "rt", Version: "1.4", Unverified: []string{"Write"}}, {Workflow: "w", Node: "merge", Label: "join node merge", Process: "j", Agent: "a", Runtime: "rt", Version: "1.4"}}},
 		"required, given on a version the runtime verifies": {writable("a", "write"), nil, one("a", "2", nil, nil)},
-		"a node that binds another agent":                   {onC, map[string]string{"c": "1.4"}, one("c", "1.4", nil, []string{"write"})},
+		"a node that binds another agent": {onC, map[string]string{"c": "1.4"}, func() []settings.BindingPlan {
+			plans := one("c", "1.4", nil, nil)
+			plans[0].Unverified = []string{"Write"}
+			return plans
+		}()},
 	} {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()

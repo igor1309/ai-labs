@@ -593,10 +593,10 @@ func TestExampleClaudeCodeSettingsGrantTheVerifiedWriteTools(t *testing.T) {
 	}
 	last := lastRun(t, home)
 	plan := last.record["plan"].(map[string]any)
-	if !reflect.DeepEqual(plan["primitives"], []any{"Read", "Glob", "Grep", "Edit", "Write"}) {
+	if !reflect.DeepEqual(plan["primitives"], []any{"Read", "Glob", "Grep", "Edit", "Write", "NotebookEdit", "WebFetch", "WebSearch"}) {
 		t.Fatalf("plan = %v", plan)
 	}
-	if args := strings.Join(last.argv(), " "); !strings.Contains(args, "--tools=Read,Glob,Grep,Edit,Write,Skill --allowedTools=Read,Glob,Grep,Edit,Write,Skill") {
+	if args := strings.Join(last.argv(), " "); !strings.Contains(args, "--tools=Read,Glob,Grep,Edit,Write,NotebookEdit,WebFetch,WebSearch,Skill --allowedTools=Read,Glob,Grep,Edit,Write,NotebookEdit,WebFetch,WebSearch,Skill") {
 		t.Fatalf("argv = %s", args)
 	}
 }
@@ -608,6 +608,10 @@ func TestExampleClaudeCodeSettingsGrantTheVerifiedWriteTools(t *testing.T) {
 func TestExampleClaudeCodeCallRequiringWritesWithoutHostWritesIsRefused(t *testing.T) {
 	t.Parallel()
 	home, repo := setup(t, "approve")
+	// The declared NotebookEdit primitive has no host grant; exclude it so
+	// this test proves the hard state boundary on Edit and Write (ADR-036).
+	mapping := filepath.Join(home, "runtimes", "claude-code.yaml")
+	write(t, mapping, strings.Replace(read(t, mapping), "    NotebookEdit: {grants: [repository.write]}\n", "", 1))
 	claudeWriteLimits(t, home)
 	const reason = "process ask: cannot run on agent assistant's runtime claude-code: cannot enforce the effective permissions: required permissions would be withheld: repository.write"
 	r := agister(t, home, repo, "check")
@@ -929,7 +933,7 @@ func TestAgentCreateAsksBeforeReplacing(t *testing.T) {
 	// An agent that would break the settings is refused before the question,
 	// and every command still works afterwards. Here the agent's runtime is
 	// valid, but the reviewer's processes cannot run on it: its one
-	// primitive also grants what their policy does not allow.
+	// primitive grants the service's state-reaching host.read.
 	write(t, filepath.Join(home, "runtimes", "narrow.yaml"), `schema: agister.runtime/v1alpha1
 name: narrow
 adapter: claude-code
@@ -938,7 +942,7 @@ efforts: [high]
 primitives:
   select: one
   items:
-    Bash: {grants: [process.execute, repository.read], verified: ["2.1."]}
+    Bash: {grants: [process.execute, repository.read, host.read], verified: ["2.1."]}
 `)
 	current := read(t, reviewer)
 	r := agisterInput(t, "yes\n", home, dir, "agent", "create", "reviewer", "--force", "--runtime", "narrow")

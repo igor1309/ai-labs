@@ -351,7 +351,7 @@ effort = &quot;high&quot;</pre></figure>
 <section id="runtime" class="kind runtime l2">
 <div class="desc"><header><h2>Runtime mapping</h2><p class="path"><code>runtimes/&lt;name&gt;.yaml</code></p><p class="under">under <a href="#agent">Agent</a></p></header>
 <p class="lead">One adapter, described in permissions: what each of its tools or sandbox modes lets an agent do.</p>
-<h3>Holds</h3><table><tr><th><code>adapter</code></th><td><code>claude-code</code>, <code>codex</code>, <code>pi</code> or <code>opencode</code></td></tr><tr><th><code>efforts</code></th><td>the efforts it accepts</td></tr><tr><th><code>primitives.select</code></th><td><code>one</code> (sandbox modes) or <code>any</code> (tools)</td></tr><tr><th><code>primitives.items[].grants</code></th><td>the permissions that primitive grants, from the service's vocabulary</td></tr><tr><th><code>primitives.items[].verified</code></th><td>the runtime versions it was checked against; a version no primitive lists is probed, where the adapter has a probe (ADR-029)</td></tr></table></div>
+<h3>Holds</h3><table><tr><th><code>adapter</code></th><td><code>claude-code</code>, <code>codex</code>, <code>pi</code> or <code>opencode</code></td></tr><tr><th><code>efforts</code></th><td>the efforts it accepts</td></tr><tr><th><code>primitives.select</code></th><td><code>one</code> (sandbox modes) or <code>any</code> (tools)</td></tr><tr><th><code>primitives.items[].grants</code></th><td>the permissions that primitive grants, from the service's vocabulary</td></tr><tr><th><code>primitives.items[].verified</code></th><td>the runtime versions it was checked against; unverified versions warn; a probe is observability, never a refusal (ADR-036)</td></tr></table></div>
 <figure class="ex"><figcaption>agister/home/runtimes/codex.yaml</figcaption><pre>name: codex
 adapter: codex
 contract: codex/2
@@ -392,9 +392,10 @@ primitives:
 <h3>Where permissions meet primitives</h3>
 <ul>
 <li>The call's effective permissions meet the runtime mapping of the agent its node binds.</li>
-<li>A primitive is granted only if everything it grants is allowed.</li>
+<li><code>select: one</code> takes the narrowest safe primitive covering require; extra grants beyond allow warn. <code>select: any</code> grants fitting safe tools. State-reaching grants remain forbidden (ADR-036).</li>
 <li>An allowed permission that no primitive provides is withheld. If the process requires it, the call is refused.</li>
 <li><code>check</code> makes the plan for every node of every workflow. A binding that would be refused is a problem of that workflow, naming the node; another workflow that binds the same process to an agent that can run it still runs. One that withholds an allowed permission is listed as <code>withheld</code>.</li>
+<li>Extra grants are recorded beside declared and granted permissions; outcomes and printed results carry warnings. A join-only partial rebinds the shared review judge.</li>
 </ul></div>
 
 </section>

@@ -59,7 +59,9 @@ type BindingPlan struct {
 	Version  string // the runtime version it is planned on
 	// Withheld are the permissions the process allows and does not require
 	// that the plan does not give: not a problem, but shown.
-	Withheld []string
+	Withheld   []string
+	Extra      []string
+	Unverified []string
 	// Required are the permissions in tools.require the plan would
 	// withhold.
 	Required []string
@@ -69,9 +71,8 @@ type BindingPlan struct {
 // the agent the node binds its process to, workflows by name, each
 // workflow's nodes in declaration order, the join last. installed is the runtime version found for an
 // agent, by name: an agent's runtime is planned on it where it is known,
-// and otherwise on the version its mapping verifies that withholds the
-// fewest required permissions, then the fewest others, the first when
-// tied. A node that cannot be planned at all is left out: what stops it is
+// and otherwise on the version with the most evidence for its selected
+// primitives, the first when tied. A node that cannot be planned at all is left out: what stops it is
 // a problem Check, PlanProblems or ResumeProblems reports.
 func BindingPlans(b Bundle, installed map[string]string) []BindingPlan {
 	if b.Service == nil {
@@ -107,6 +108,12 @@ func BindingPlans(b Bundle, installed map[string]string) []BindingPlan {
 			}
 			planned := BindingPlan{Workflow: name, Node: node.Name, Label: nodeLabel(workflow, i, node), Process: process.Name, Agent: agent.Name, Runtime: mapping.Name, Version: version}
 			planned.Required, planned.Withheld = split(plan.Withheld, effective.Require)
+			planned.Extra = plan.Extra
+			for _, primitive := range mapping.Offer.Primitives {
+				if contains(plan.Primitives, primitive.Name) && !primitive.VerifiedFor(version) {
+					planned.Unverified = append(planned.Unverified, primitive.Name)
+				}
+			}
 			plans = append(plans, planned)
 		}
 	}
@@ -116,8 +123,7 @@ func BindingPlans(b Bundle, installed map[string]string) []BindingPlan {
 // SettingsPlan is the plan a call composed to effective would be given on
 // what its runtime offers, stateReaching never granted, judged on the
 // settings alone, as BindingPlans plans a binding whose runtime was not
-// asked: on the version the offer verifies that withholds the fewest
-// required permissions, then the fewest others. Its Withheld has the
+// asked: on the version with the most evidence for its selected primitives. Its Withheld has the
 // required permissions it withholds too. It is for a view of a call the
 // settings refuse: never one a call is given. found is false where no
 // version can be planned.
@@ -126,28 +132,29 @@ func SettingsPlan(effective policy.Effective, offer enforce.Offer, stateReaching
 	return plan, found
 }
 
-// planOn plans effective on whichever of versions withholds the fewest
-// permissions in tools.require, then the fewest others, the first when
-// tied, required permissions withheld or not; found is false where none
-// can be planned.
-func planOn(effective policy.Effective, offer enforce.Offer, versions, stateReaching []string) (version string, best enforce.Plan, found bool) {
-	fewest := func(plan enforce.Plan) (required, others int) {
-		withheldRequired, withheld := split(plan.Withheld, effective.Require)
-		return len(withheldRequired), len(withheld)
+// planOn computes the declared plan once and chooses the version with the
+// most evidence for its primitives, version order breaking ties.
+func planOn(effective policy.Effective, offer enforce.Offer, versions, stateReaching []string) (version string, plan enforce.Plan, found bool) {
+	plan, err := enforce.Make(effective.Permissions, offer, effective.Require, stateReaching)
+	if refused, ok := err.(*enforce.RefusedError); ok && refused.Plan != nil {
+		plan, err = *refused.Plan, nil
 	}
+	if err != nil {
+		return "", enforce.Plan{}, false
+	}
+	most := -1
 	for _, candidate := range versions {
-		verified, _ := offer.ForVersion(candidate)
-		plan, err := enforce.Make(effective.Permissions, verified, nil, stateReaching)
-		if err != nil {
-			continue
+		count := 0
+		for _, primitive := range offer.Primitives {
+			if contains(plan.Primitives, primitive.Name) && primitive.VerifiedFor(candidate) {
+				count++
+			}
 		}
-		required, others := fewest(plan)
-		bestRequired, bestOthers := fewest(best)
-		if !found || required < bestRequired || required == bestRequired && others < bestOthers {
-			version, best, found = candidate, plan, true
+		if count > most {
+			version, most = candidate, count
 		}
 	}
-	return version, best, found
+	return version, plan, true
 }
 
 // split divides withheld into the permissions in required and the others.
