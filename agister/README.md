@@ -5,8 +5,6 @@ permissions and output contracts are settings, not code. The decisions are
 in [docs/adr/](docs/adr/); start with
 [ADR-001](docs/adr/001-agister-cli-architecture.md).
 
-- [ADR-037: A nested worktree writer does not block the outer](docs/adr/037-a-nested-worktree-writer-does-not-block-the-outer.md).
-
 ## Build and try
 
 ```bash
