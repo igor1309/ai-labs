@@ -28,14 +28,28 @@ func TestHolderDistinguishesNestedWorktreesFromSubmodules(t *testing.T) {
 	}
 	module := filepath.Join(repo, "lib")
 	gitCmd(t, repo, "-c", "protocol.file.allow=always", "submodule", "add", "--quiet", realLoopGit(t).repo, "lib")
+	moduleInside := filepath.Join(module, "src")
+	if err := os.Mkdir(moduleInside, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	embedded := filepath.Join(module, "nested")
+	gitCmd(t, repo, "worktree", "add", "--quiet", "--detach", embedded, "HEAD")
+	// The index may track a submodule whose checkout is absent.
+	missing := filepath.Join(repo, "libs", "missing")
+	gitCmd(t, repo, "update-index", "--add", "--cacheinfo", "160000,"+gitCmd(t, repo, "rev-parse", "HEAD")+",libs/missing")
+	if _, err := os.Stat(missing); !os.IsNotExist(err) {
+		t.Fatalf("absent gitlink %q: %v", missing, err)
+	}
 	for name, c := range map[string]struct {
 		caller, writer     string
 		removable, allowed bool
 	}{
-		"nested writer":             {caller: repo, writer: nested, allowed: true},
+		"nested writer with absent unrelated gitlink": {caller: repo, writer: nested, allowed: true},
 		"outer writer":              {caller: nested, writer: repo},
 		"plain subdirectory":        {caller: repo, writer: plain},
 		"submodule":                 {caller: repo, writer: module},
+		"directory in submodule":    {caller: repo, writer: moduleInside},
+		"worktree inside submodule": {caller: repo, writer: embedded, allowed: true},
 		"removable nested worktree": {caller: repo, writer: nested, removable: true},
 		"removable cleanup parent":  {caller: nested, writer: filepath.Join(repo, "old-copy"), removable: true},
 	} {

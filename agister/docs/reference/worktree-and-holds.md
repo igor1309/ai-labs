@@ -56,12 +56,15 @@ refused before any turn if:
 
 A writer's directory overlaps the worktree when it is the worktree or
 contains it, by their canonical paths. One inside it overlaps when its
-canonical git root is the worktree, or is within a submodule tracked in
-the worktree's index: a gitlink entry, mode `160000`, including a staged
-one. `.gitmodules` alone does not make it overlap. A writer in a separate
-nested git worktree does not block an outer call; an outer writer still
-blocks a nested call, since its permissions cover subfolders. If the git
-boundary cannot be read or the submodule check fails, the path overlap stays
+canonical git root is the worktree, or equals the canonical root of a
+submodule tracked in the worktree's index: a gitlink entry, mode `160000`,
+including a staged one. A directory with that submodule's git root still
+overlaps; an independent worktree beneath it does not. `.gitmodules` alone
+does not make it overlap. An absent, unrelated gitlink is skipped. A writer
+in a separate nested git worktree does not block an outer call; an outer
+writer still blocks a nested call, since its permissions cover subfolders.
+If the git boundary cannot be read or the submodule check fails, the path
+overlap stays
 ([ADR-037](../adr/037-a-nested-worktree-writer-does-not-block-the-outer.md)).
 
 Directories Agister may still remove overlap by canonical path alone:

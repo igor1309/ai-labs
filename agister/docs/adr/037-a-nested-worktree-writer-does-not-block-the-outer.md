@@ -31,16 +31,18 @@ direction stays: an outer writer's permissions cover its subfolders
 
 A writer's directory D inside the caller's worktree overlaps when D's
 canonical git root is the caller's worktree. A separate git root nested
-under it does not overlap, except when the outer index tracks it within
-a submodule: a gitlink entry, mode `160000`. A directory inside such a
-submodule remains within the outer boundary too. Configuration in
+under it does not overlap, except when its canonical root equals the
+root the outer index tracks as a submodule: a gitlink entry, mode `160000`.
+A directory whose git root is that submodule remains within the outer
+boundary too; an independent worktree beneath it does not. Configuration in
 `.gitmodules` alone is insufficient; staged gitlinks count.
 
 A writer's directory equal to the caller's worktree, or containing it,
 still overlaps by canonical path. An outer writer therefore still
 blocks a call in a nested worktree. An absent or unreadable git boundary,
 including a failed submodule check, keeps the path overlap: the hold
-fails closed.
+fails closed. An absent, unrelated gitlink is skipped because it cannot
+equal the existing canonical writer root.
 
 ### 2. Removal keeps plain path containment
 
@@ -51,7 +53,7 @@ under it does not protect the caller's worktree from removal.
 ### 3. The hold receives the boundary through its worktree port
 
 The Holder's worktree port reads a directory's root and whether that root
-is within an indexed submodule. The git adapter resolves
+equals an indexed submodule's canonical root. The git adapter resolves
 `git rev-parse --show-toplevel` to a canonical path and reads gitlinks
 with `git ls-files --stage -z`. The hold uses these only for contained
 writer directories, retaining the existing refusal messages and process

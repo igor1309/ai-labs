@@ -57,8 +57,9 @@ type HoldWorktrees interface {
 	State(ctx context.Context, dir, revision string) (WorktreeState, error)
 	// Root returns dir's canonical git worktree root.
 	Root(ctx context.Context, dir string) (string, error)
-	// IsSubmodule says whether root is within a submodule tracked by the
-	// worktree's index. A submodule remains part of its outer boundary.
+	// IsSubmodule says whether root is the canonical root of a submodule
+	// tracked by the worktree's index. That root remains in the outer boundary;
+	// an independent worktree beneath it does not.
 	IsSubmodule(ctx context.Context, worktree, root string) (bool, error)
 }
 

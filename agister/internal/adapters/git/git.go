@@ -313,12 +313,13 @@ func (Workspaces) Root(ctx context.Context, cwd string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return filepath.EvalSymlinks(strings.TrimSpace(out))
+	return filepath.EvalSymlinks(strings.TrimSuffix(out, "\n"))
 }
 
 // IsSubmodule reads gitlinks from the outer index, not .gitmodules: staged
 // additions count too, and configuration alone does not track a submodule.
-// A root beneath a tracked submodule stays within the outer boundary.
+// Only the indexed root itself stays within the outer boundary; an independent
+// worktree beneath it has its own boundary.
 func (Workspaces) IsSubmodule(ctx context.Context, worktree, root string) (bool, error) {
 	out, err := run(ctx, worktree, "ls-files", "--stage", "-z")
 	if err != nil {
@@ -336,14 +337,14 @@ func (Workspaces) IsSubmodule(ctx context.Context, worktree, root string) (bool,
 			continue
 		}
 		module, err := filepath.EvalSymlinks(filepath.Join(worktree, path))
+		if os.IsNotExist(err) {
+			// An absent gitlink cannot be the existing canonical writer root.
+			continue
+		}
 		if err != nil {
 			return false, err
 		}
-		relative, err := filepath.Rel(module, root)
-		if err != nil {
-			return false, err
-		}
-		if relative != ".." && !strings.HasPrefix(relative, ".."+string(filepath.Separator)) {
+		if module == root {
 			return true, nil
 		}
 	}

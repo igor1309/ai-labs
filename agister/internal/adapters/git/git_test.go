@@ -76,7 +76,8 @@ func linked(t *testing.T, repo, revision string) string {
 }
 
 // Contract test: git worktree roots and gitlinks in a real repository's
-// index, including staged submodules and paths containing tabs and spaces.
+// index, including staged submodules, independent descendant worktrees and
+// roots whose names end in tabs and spaces.
 func TestRootsAndTrackedSubmoduleBoundaries(t *testing.T) {
 	t.Parallel()
 	dir := repository(t)
@@ -101,6 +102,11 @@ func TestRootsAndTrackedSubmoduleBoundaries(t *testing.T) {
 	}
 	embedded := filepath.Join(module, "nested")
 	sh(t, root, "worktree", "add", "--detach", "--quiet", embedded, "HEAD")
+	spaceRoot := filepath.Join(root, "task  ")
+	tabRoot := filepath.Join(root, "task\t")
+	for _, path := range []string{spaceRoot, tabRoot} {
+		sh(t, root, "worktree", "add", "--detach", "--quiet", path, "HEAD")
+	}
 	// Configuration is insufficient: this nested worktree has no gitlink.
 	sh(t, root, "config", "submodule.task.path", ".claude/worktrees/task")
 	modulesFile, err := os.OpenFile(filepath.Join(root, ".gitmodules"), os.O_APPEND|os.O_WRONLY, 0)
@@ -121,13 +127,16 @@ func TestRootsAndTrackedSubmoduleBoundaries(t *testing.T) {
 		dir, wantRoot string
 		tracked       bool
 	}{
-		"main":                  {root, root, false},
-		"plain directory":       {plain, root, false},
-		"nested worktree":       {nested, nested, false},
-		"nested directory":      {inside, nested, false},
-		"submodule":             {module, module, true},
-		"submodule directory":   {moduleInside, module, true},
-		"root inside submodule": {embedded, embedded, true},
+		"main":                {root, root, false},
+		"plain directory":     {plain, root, false},
+		"nested worktree":     {nested, nested, false},
+		"nested directory":    {inside, nested, false},
+		"submodule":           {module, module, true},
+		"submodule directory": {moduleInside, module, true},
+		// Only the indexed submodule root overlaps, not a descendant root.
+		"root inside submodule": {embedded, embedded, false},
+		"root ending in spaces": {spaceRoot, spaceRoot, false},
+		"root ending in tab":    {tabRoot, tabRoot, false},
 		"symlink":               {filepath.Join(alias, "src"), root, false},
 	} {
 		// Serial: these cases share one repository and its index.
@@ -142,6 +151,17 @@ func TestRootsAndTrackedSubmoduleBoundaries(t *testing.T) {
 			}
 		})
 	}
+	// Serial: this case changes the shared repository's index after the reads.
+	t.Run("unresolvable gitlink", func(t *testing.T) {
+		loop := filepath.Join(root, "loop")
+		if err := os.Symlink("loop", loop); err != nil {
+			t.Fatal(err)
+		}
+		sh(t, root, "update-index", "--add", "--cacheinfo", "160000,"+sh(t, root, "rev-parse", "HEAD")+",loop")
+		if tracked, err := adapter.IsSubmodule(context.Background(), root, nested); err == nil || tracked {
+			t.Fatalf("IsSubmodule(unresolvable gitlink) = %v, %v; want lookup failure", tracked, err)
+		}
+	})
 	t.Run("invalid git boundary", func(t *testing.T) {
 		t.Parallel()
 		bad := t.TempDir()
