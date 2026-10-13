@@ -442,39 +442,10 @@ func validNameForwarders(t *testing.T, dir string) []string {
 			}
 			return false
 		}
-		isWrapper := func(typ *ast.FuncType, body *ast.BlockStmt) bool {
-			if body == nil || len(body.List) != 1 {
-				return false
-			}
-			returned, ok := body.List[0].(*ast.ReturnStmt)
-			if !ok || len(returned.Results) != 1 {
-				return false
-			}
-			call, ok := ast.Unparen(returned.Results[0]).(*ast.CallExpr)
-			if !ok || !isValidName(call.Fun) || call.Ellipsis.IsValid() {
-				return false
-			}
-			var params []string
-			for _, field := range typ.Params.List {
-				for _, param := range field.Names {
-					params = append(params, param.Name)
-				}
-			}
-			if len(params) != len(call.Args) {
-				return false
-			}
-			for i, arg := range call.Args {
-				ident, ok := ast.Unparen(arg).(*ast.Ident)
-				if !ok || ident.Name != params[i] {
-					return false
-				}
-			}
-			return true
-		}
 		for _, decl := range file.Decls {
 			switch decl := decl.(type) {
 			case *ast.FuncDecl:
-				if isWrapper(decl.Type, decl.Body) {
+				if validNameWrapper(decl.Type, decl.Body, isValidName) {
 					found = append(found, decl.Name.Name)
 				}
 			case *ast.GenDecl:
@@ -486,7 +457,7 @@ func validNameForwarders(t *testing.T, dir string) []string {
 					for i, expr := range value.Values {
 						forward := isValidName(expr)
 						if function, ok := ast.Unparen(expr).(*ast.FuncLit); ok {
-							forward = isWrapper(function.Type, function.Body)
+							forward = validNameWrapper(function.Type, function.Body, isValidName)
 						}
 						if forward {
 							found = append(found, value.Names[i].Name)
@@ -497,6 +468,115 @@ func validNameForwarders(t *testing.T, dir string) []string {
 		}
 	}
 	return found
+}
+
+// validNameWrapper follows unchanged parameters and the rule's result
+// through straight-line locals and named results. Object identity keeps
+// shadowed names distinct; other statements may add policy or change a
+// result indirectly, so they are not treated as forwarding.
+func validNameWrapper(typ *ast.FuncType, body *ast.BlockStmt, isValidName func(ast.Expr) bool) bool {
+	if body == nil || typ.Results == nil || len(typ.Results.List) != 1 || len(typ.Results.List[0].Names) > 1 {
+		return false
+	}
+	// Zero means an unknown or changed value, positive values identify
+	// the original parameters, and -1 is the unchanged ValidName result.
+	values := make(map[*ast.Object]int)
+	params := 0
+	for _, field := range typ.Params.List {
+		for _, param := range field.Names {
+			params++
+			values[param.Obj] = params
+		}
+	}
+	value := func(expr ast.Expr) int {
+		switch expr := ast.Unparen(expr).(type) {
+		case *ast.Ident:
+			return values[expr.Obj]
+		case *ast.CallExpr:
+			if !isValidName(expr.Fun) || expr.Ellipsis.IsValid() || len(expr.Args) != params {
+				return 0
+			}
+			for i, arg := range expr.Args {
+				ident, ok := ast.Unparen(arg).(*ast.Ident)
+				if !ok || ident.Obj == nil || values[ident.Obj] != i+1 {
+					return 0
+				}
+			}
+			return -1
+		}
+		return 0
+	}
+	assign := func(names []*ast.Ident, exprs []ast.Expr) bool {
+		if len(exprs) != 0 && len(names) != len(exprs) {
+			return false
+		}
+		next := make([]int, len(names))
+		for i, expr := range exprs {
+			pure := true
+			ast.Inspect(expr, func(node ast.Node) bool {
+				if call, ok := node.(*ast.CallExpr); ok && !isValidName(call.Fun) {
+					pure = false
+				}
+				return pure
+			})
+			if !pure {
+				return false
+			}
+			next[i] = value(expr)
+		}
+		for i, name := range names {
+			if name.Name == "_" {
+				continue
+			}
+			if name.Obj == nil {
+				return false
+			}
+			values[name.Obj] = next[i]
+		}
+		return true
+	}
+	for i, stmt := range body.List {
+		switch stmt := stmt.(type) {
+		case *ast.AssignStmt:
+			if stmt.Tok != token.ASSIGN && stmt.Tok != token.DEFINE {
+				return false
+			}
+			var names []*ast.Ident
+			for _, lhs := range stmt.Lhs {
+				name, ok := lhs.(*ast.Ident)
+				if !ok {
+					return false
+				}
+				names = append(names, name)
+			}
+			if !assign(names, stmt.Rhs) {
+				return false
+			}
+		case *ast.DeclStmt:
+			decl, ok := stmt.Decl.(*ast.GenDecl)
+			if !ok || decl.Tok != token.VAR {
+				return false
+			}
+			for _, spec := range decl.Specs {
+				declared := spec.(*ast.ValueSpec)
+				if !assign(declared.Names, declared.Values) {
+					return false
+				}
+			}
+		case *ast.ReturnStmt:
+			if i != len(body.List)-1 {
+				return false
+			}
+			if len(stmt.Results) == 1 {
+				return value(stmt.Results[0]) == -1
+			}
+			named := typ.Results.List[0].Names
+			return len(stmt.Results) == 0 && len(named) == 1 && values[named[0].Obj] == -1
+		default:
+			return false
+		}
+	}
+	return false
 }
 
 // redeclared lists, sorted, the exported names of the package in of that
@@ -523,6 +603,100 @@ func TestTheParserDeclaresNoneOfTheDocumentVocabulary(t *testing.T) {
 	t.Parallel()
 	for _, name := range redeclared(t, "../domain/definition", "../domain/document") {
 		t.Errorf("internal/domain/definition declares %s: document vocabulary belongs to internal/domain/document, and its users name it there directly", name)
+	}
+}
+
+// App's callers name the core rule directly, so app declares no helper
+// or variable that gives document.ValidName another name (LAB-245).
+func TestAppDeclaresNoValidNameForwarder(t *testing.T) {
+	t.Parallel()
+	for _, name := range validNameForwarders(t, "../app") {
+		t.Errorf("internal/app declares %s: callers name document.ValidName directly", name)
+	}
+}
+
+func TestAValidNameForwarderInAppIsFound(t *testing.T) {
+	t.Parallel()
+	type fixture struct {
+		name, declaration string
+		want              []string
+	}
+	cases := []fixture{
+		{
+			name: "variables",
+			declaration: `var helper = document.ValidName
+var ExportedHelper = (document.ValidName)
+var (other, grouped = false, document.ValidName)`,
+			want: []string{"ExportedHelper", "grouped", "helper"},
+		},
+		{
+			name:        "renamed import",
+			declaration: `var helper = vocabulary.ValidName; func ExportedHelper(name string) bool { valid := vocabulary.ValidName(name); return valid }`,
+			want:        []string{"ExportedHelper", "helper"},
+		},
+		{
+			name:        "dot import",
+			declaration: `var helper = ValidName; var ExportedHelper = func(name string) (valid bool) { valid = ValidName(name); return }`,
+			want:        []string{"ExportedHelper", "helper"},
+		},
+		{
+			name: "ordinary use",
+			declaration: `var Accepted = document.ValidName("agent")
+func ParseName(name string) string { valid := document.ValidName(name); if !valid { return "" }; return name }
+func Required(name string) bool { return name != "" && document.ValidName(name) }
+type Checker struct { ValidName func(string) bool }
+func (document Checker) Shadowed(name string) bool { valid := document.ValidName(name); return valid }`,
+		},
+	}
+	for _, wrapper := range []struct {
+		name, result, body string
+		forward            bool
+	}{
+		{"direct", "bool", "return document.ValidName(name)", true},
+		{"local", "bool", "valid := document.ValidName(name); return valid", true},
+		{"declared", "bool", "var valid = document.ValidName(name); return valid", true},
+		{"assigned", "bool", "var valid bool; valid = document.ValidName(name); return valid", true},
+		{"named explicit", "(valid bool)", "valid = document.ValidName(name); return valid", true},
+		{"named bare", "(valid bool)", "valid = document.ValidName(name); return", true},
+		{"copied", "bool", "valid := (document.ValidName)((name)); copied := valid; return (copied)", true},
+		{"negated", "bool", "valid := document.ValidName(name); return !valid", false},
+		{"reassigned", "bool", "valid := document.ValidName(name); valid = false; return valid", false},
+		{"named changed", "(valid bool)", "valid = document.ValidName(name); valid = !valid; return", false},
+		{"input changed", "bool", `name = "agent"; valid := document.ValidName(name); return valid`, false},
+		{"shadowed local", "bool", "valid := document.ValidName(name); { valid := false; return valid }; return valid", false},
+		{"deferred change", "(valid bool)", "valid = document.ValidName(name); defer func() { valid = false }(); return", false},
+		{"indirect change", "bool", "valid := document.ValidName(name); ignored := func() bool { valid = false; return true }(); _ = ignored; return valid", false},
+	} {
+		c := fixture{
+			name: wrapper.name,
+			declaration: fmt.Sprintf("func helper(name string) %s { %s }\nvar ExportedHelper = func(name string) %s { %s }",
+				wrapper.result, wrapper.body, wrapper.result, wrapper.body),
+		}
+		if wrapper.forward {
+			c.want = []string{"ExportedHelper", "helper"}
+		}
+		cases = append(cases, c)
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
+			dir := t.TempDir()
+			importName := ""
+			if c.name == "renamed import" {
+				importName = "vocabulary "
+			} else if c.name == "dot import" {
+				importName = ". "
+			}
+			source := "package app\nimport " + importName + strconv.Quote(module+"/internal/domain/document") + "\n" + c.declaration
+			if err := os.WriteFile(filepath.Join(dir, "helpers.go"), []byte(source), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			got := validNameForwarders(t, dir)
+			slices.Sort(got)
+			if !slices.Equal(got, c.want) {
+				t.Errorf("ValidName forwarders in app = %q, want %q", got, c.want)
+			}
+		})
 	}
 }
 
@@ -582,6 +756,12 @@ var (
 )
 var ValidateLiteral = func(name string) bool { return document.ValidName(name) }
 var validateLiteral = func(name string) bool { return document.ValidName(name) }
+var localLiteral = func(name string) bool { valid := document.ValidName(name); return valid }
+var declaredLiteral = func(name string) bool { var valid = document.ValidName(name); return valid }
+var assignedLiteral = func(name string) bool { var valid bool; valid = document.ValidName(name); return valid }
+var namedLiteral = func(name string) (valid bool) { valid = document.ValidName(name); return valid }
+var bareLiteral = func(name string) (valid bool) { valid = document.ValidName(name); return }
+var copiedLiteral = func(name string) bool { valid := document.ValidName(name); copied := valid; return copied }
 `,
 		"definition/wrappers.go": `package definition
 
@@ -590,6 +770,12 @@ import "` + module + `/internal/domain/document"
 func CheckName(name string) bool { return document.ValidName(name) }
 func checkName(name string) bool { return document.ValidName(name) }
 func checkParenthesized(name string) bool { return (document.ValidName)((name)) }
+func localWrapper(name string) bool { valid := document.ValidName(name); return valid }
+func declaredWrapper(name string) bool { var valid = document.ValidName(name); return valid }
+func assignedWrapper(name string) bool { var valid bool; valid = document.ValidName(name); return valid }
+func namedWrapper(name string) (valid bool) { valid = document.ValidName(name); return valid }
+func bareWrapper(name string) (valid bool) { valid = document.ValidName(name); return }
+func copiedWrapper(name string) bool { valid := document.ValidName(name); copied := valid; return (copied) }
 `,
 		"definition/renamed.go": `package definition
 
@@ -629,6 +815,21 @@ func ParseName(name string) string {
 }
 
 func CheckRequiredName(name string) bool { return name != "" && document.ValidName(name) }
+
+func ParseStoredName(name string) string {
+	valid := document.ValidName(name)
+	if !valid { return "" }
+	return name
+}
+
+func NegatedResult(name string) bool { valid := document.ValidName(name); return !valid }
+func ChangedResult(name string) bool { valid := document.ValidName(name); valid = false; return valid }
+func ChangedNamedResult(name string) (valid bool) { valid = document.ValidName(name); valid = !valid; return }
+func ChangedInput(name string) bool { name = "agent"; valid := document.ValidName(name); return valid }
+func ShadowedResult(name string) bool { valid := document.ValidName(name); { valid := false; return valid }; return valid }
+func DeferredChange(name string) (valid bool) { valid = document.ValidName(name); defer func() { valid = false }(); return }
+var ChangedLiteral = func(name string) bool { valid := document.ValidName(name); valid = !valid; return valid }
+var ChangedNamedLiteral = func(name string) (valid bool) { valid = document.ValidName(name); valid = false; return }
 `,
 		"definition/other.go": `package definition
 
@@ -666,7 +867,9 @@ func testWrapper(name string) bool { return document.ValidName(name) }
 	want := []string{
 		"CheckName", "Composed", "ErrNotFound", "Grouped", "Kind", "KindAgent", "KindProcess",
 		"Parenthesized", "RenamedVariable", "UnqualifiedVariable", "ValidName", "ValidateLiteral", "ValidateName",
-		"checkName", "checkParenthesized", "renamedWrapper", "unqualifiedWrapper", "validateLiteral", "validateName",
+		"assignedLiteral", "assignedWrapper", "bareLiteral", "bareWrapper", "checkName", "checkParenthesized",
+		"copiedLiteral", "copiedWrapper", "declaredLiteral", "declaredWrapper", "localLiteral", "localWrapper",
+		"namedLiteral", "namedWrapper", "renamedWrapper", "unqualifiedWrapper", "validateLiteral", "validateName",
 	}
 	if !slices.Equal(got, want) {
 		t.Errorf("vocabulary names the parser declares = %q, want %q", got, want)
