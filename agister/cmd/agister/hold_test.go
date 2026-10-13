@@ -1,13 +1,112 @@
 package main
 
 import (
+	"context"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 
+	"github.com/igor1309/ai-labs/agister/internal/adapters/fsruns"
+	"github.com/igor1309/ai-labs/agister/internal/adapters/git"
+	"github.com/igor1309/ai-labs/agister/internal/adapters/system"
+	"github.com/igor1309/ai-labs/agister/internal/app"
 	"github.com/igor1309/ai-labs/agister/internal/contract"
 	domain "github.com/igor1309/ai-labs/agister/internal/domain/run"
 )
+
+// Contract test: the real Holder over git boundaries, canonical filesystem
+// paths, worktree locks and stored run records. Processes are stand-ins.
+func TestHolderDistinguishesNestedWorktreesFromSubmodules(t *testing.T) {
+	t.Parallel()
+	repo := realLoopGit(t).repo
+	nested := filepath.Join(repo, ".claude", "worktrees", "task")
+	gitCmd(t, repo, "worktree", "add", "--quiet", "--detach", nested, "HEAD")
+	plain := filepath.Join(repo, "src")
+	if err := os.Mkdir(plain, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	module := filepath.Join(repo, "lib")
+	gitCmd(t, repo, "-c", "protocol.file.allow=always", "submodule", "add", "--quiet", realLoopGit(t).repo, "lib")
+	moduleInside := filepath.Join(module, "src")
+	if err := os.Mkdir(moduleInside, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	embedded := filepath.Join(module, "nested")
+	gitCmd(t, repo, "worktree", "add", "--quiet", "--detach", embedded, "HEAD")
+	// The index may track a submodule whose checkout is absent.
+	missing := filepath.Join(repo, "libs", "missing")
+	gitCmd(t, repo, "update-index", "--add", "--cacheinfo", "160000,"+gitCmd(t, repo, "rev-parse", "HEAD")+",libs/missing")
+	if _, err := os.Stat(missing); !os.IsNotExist(err) {
+		t.Fatalf("absent gitlink %q: %v", missing, err)
+	}
+	for name, c := range map[string]struct {
+		caller, writer     string
+		removable, allowed bool
+	}{
+		"nested writer with absent unrelated gitlink": {caller: repo, writer: nested, allowed: true},
+		"outer writer":              {caller: nested, writer: repo},
+		"plain subdirectory":        {caller: repo, writer: plain},
+		"submodule":                 {caller: repo, writer: module},
+		"directory in submodule":    {caller: repo, writer: moduleInside},
+		"worktree inside submodule": {caller: repo, writer: embedded, allowed: true},
+		"removable nested worktree": {caller: repo, writer: nested, removable: true},
+		"removable cleanup parent":  {caller: nested, writer: filepath.Join(repo, "old-copy"), removable: true},
+	} {
+		// Serial: these cases share a repository, including its cleanup parent.
+		t.Run(name, func(t *testing.T) {
+			if c.removable && c.writer != nested {
+				if err := os.Mkdir(c.writer, 0o700); err != nil {
+					t.Fatal(err)
+				}
+			}
+			ctx := context.Background()
+			store := fsruns.Store{Dir: t.TempDir(), Appends: fsruns.NewAppends()}
+			writer := true
+			other := domain.Record{Schema: domain.RecordSchema, ID: "writer", Process: "p", CreatedAt: stillAt,
+				Workspace: c.writer, InPlace: &domain.InPlace{Dir: c.writer, Worktree: c.writer, Writer: &writer}, Effects: &domain.Effects{}}
+			if c.removable {
+				other.Effects.Copy = &domain.Checkout{Dir: c.writer}
+			}
+			owner, err := store.Create(ctx, other)
+			if err != nil {
+				t.Fatal(err)
+			}
+			t.Cleanup(func() { _ = owner.Finish(finished(other.ID, nil)) })
+			holder := app.NewHolder(app.HoldAdapters{
+				Locks: system.WorktreeLocks{Dir: t.TempDir()}, Worktrees: git.Workspaces{}, Content: git.Workspaces{},
+				Runs: store, Reaper: ownedRuns{}, Writers: goneProcesses{},
+			})
+			record := domain.Record{Schema: domain.RecordSchema, ID: "caller"}
+			var admitted bool
+			held, err := holder.Hold(ctx, app.HoldCall{
+				Record: &record, Dir: c.caller,
+				Update: func(domain.Record) error { return nil },
+				Event:  func(_, kind string, _ map[string]any) { admitted = admitted || kind == "WORKTREE_ADMITTED" },
+			})
+			if held != nil {
+				t.Cleanup(func() {
+					if err := held.Release(); err != nil {
+						t.Error(err)
+					}
+				})
+			}
+			if c.allowed {
+				if err != nil || held == nil || !admitted || record.InPlace == nil || record.InPlace.Worktree != c.caller {
+					t.Fatalf("held %v, error %v, admitted %v, record %+v", held, err, admitted, record.InPlace)
+				}
+			} else {
+				want := "has not finished: it may still write there"
+				if c.removable {
+					want = "Agister made that directory and removes it with all that is in it"
+				}
+				if err == nil || held != nil || admitted || !strings.Contains(err.Error(), want) {
+					t.Fatalf("held %v, error %v, admitted %v; want %q", held, err, admitted, want)
+				}
+			}
+		})
+	}
+}
 
 // inPlaceSettings has impl declare the workspace settings ADR-025 rule 3
 // makes obsolete: a setup of its own, and a workspace.yaml with an
