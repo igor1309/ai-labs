@@ -273,17 +273,17 @@ func initApproved(approved, plan contract.InitResult) error {
 }
 
 func (s *Settings) CreateAgent(ctx context.Context, spec contract.Agent, overwrite bool, approved *contract.AgentWrite) (contract.AgentWrite, error) {
-	agent := definition.Agent{
-		Name: spec.Name, Runtime: spec.Runtime, Model: spec.Model, ModelFamily: spec.ModelFamily,
-		Effort: spec.Effort, Command: spec.Command,
+	agent := agentProfile{
+		name: spec.Name, runtime: spec.Runtime, model: spec.Model, modelFamily: spec.ModelFamily,
+		effort: spec.Effort, command: spec.Command,
 	}
-	if !definition.ValidName(agent.Name) {
-		return contract.AgentWrite{}, &contract.InputError{Message: fmt.Sprintf("invalid agent name %q", agent.Name)}
+	if !definition.ValidName(agent.name) {
+		return contract.AgentWrite{}, &contract.InputError{Message: fmt.Sprintf("invalid agent name %q", agent.name)}
 	}
-	mapping, _, err := s.documents.Mapping(ctx, agent.Runtime)
+	mapping, _, err := s.documents.Mapping(ctx, agent.runtime)
 	if unread(err) {
 		names, _ := s.definitions.List(ctx, document.KindRuntime)
-		return contract.AgentWrite{}, &contract.InputError{Message: fmt.Sprintf("unknown runtime %q (available: %s)", agent.Runtime, strings.Join(names, ", "))}
+		return contract.AgentWrite{}, &contract.InputError{Message: fmt.Sprintf("unknown runtime %q (available: %s)", agent.runtime, strings.Join(names, ", "))}
 	}
 	if err != nil {
 		var invalid *document.InvalidError
@@ -301,22 +301,22 @@ func (s *Settings) CreateAgent(ctx context.Context, spec contract.Agent, overwri
 		}
 		return contract.AgentWrite{}, &contract.InputError{Message: invalid.Error(), Unknown: unknown}
 	}
-	if agent.Effort != "" && !contains(mapping.efforts, agent.Effort) {
-		return contract.AgentWrite{}, &contract.InputError{Message: fmt.Sprintf("unsupported %s effort %q (supported: %s)", mapping.name, agent.Effort, strings.Join(mapping.efforts, ", "))}
+	if agent.effort != "" && !contains(mapping.efforts, agent.effort) {
+		return contract.AgentWrite{}, &contract.InputError{Message: fmt.Sprintf("unsupported %s effort %q (supported: %s)", mapping.name, agent.effort, strings.Join(mapping.efforts, ", "))}
 	}
-	data := definition.FormatAgent(agent)
-	if _, err := parsedAgent(agent.Name, data); err != nil {
+	data := formatAgent(agent)
+	if _, err := parsedAgent(agent.name, data); err != nil {
 		return contract.AgentWrite{}, err
 	}
-	path, digest, err := s.writer.Current(ctx, document.KindAgent, agent.Name)
+	path, digest, err := s.writer.Current(ctx, document.KindAgent, agent.name)
 	if err != nil {
 		return contract.AgentWrite{}, err
 	}
 	exists := digest != ""
 	if exists && !overwrite {
-		return contract.AgentWrite{}, &contract.InputError{Message: fmt.Sprintf("agent %s already exists at %s (overwrite to replace it)", agent.Name, path)}
+		return contract.AgentWrite{}, &contract.InputError{Message: fmt.Sprintf("agent %s already exists at %s (overwrite to replace it)", agent.name, path)}
 	}
-	if err := s.keepsSettingsValid(ctx, document.Document{Source: document.Source{Kind: document.KindAgent, Name: agent.Name, Path: path, Layer: document.LayerHome}, Bytes: data}); err != nil {
+	if err := s.keepsSettingsValid(ctx, document.Document{Source: document.Source{Kind: document.KindAgent, Name: agent.name, Path: path, Layer: document.LayerHome}, Bytes: data}); err != nil {
 		return contract.AgentWrite{}, err
 	}
 	sum := sha256.Sum256(data)
@@ -332,7 +332,7 @@ func (s *Settings) CreateAgent(ctx context.Context, spec contract.Agent, overwri
 	}
 	// Only the file as planned is written over: one created, edited or
 	// removed since is left as it is.
-	if _, written, err := s.writer.Write(ctx, document.KindAgent, agent.Name, data, digest); err != nil {
+	if _, written, err := s.writer.Write(ctx, document.KindAgent, agent.name, data, digest); err != nil {
 		return contract.AgentWrite{}, err
 	} else if !written {
 		return contract.AgentWrite{}, changedSinceApproved([]string{path})
@@ -390,7 +390,7 @@ func (s *Settings) ListAgents(ctx context.Context) ([]contract.Agent, error) {
 			agents = append(agents, contract.Agent{Name: name, Problem: "invalid (run `agister check`)", Refusal: refusal})
 			continue
 		}
-		agents = append(agents, contract.Agent{Name: agent.Name, Runtime: agent.Runtime, Model: agent.Model, ModelFamily: agent.ModelFamily, Effort: agent.Effort, Command: agent.Command, Refusal: refusal})
+		agents = append(agents, contract.Agent{Name: agent.name, Runtime: agent.runtime, Model: agent.model, ModelFamily: agent.modelFamily, Effort: agent.effort, Command: agent.command, Refusal: refusal})
 	}
 	return agents, nil
 }
@@ -671,8 +671,8 @@ func (r *Resolver) inspect(ctx context.Context, name, agent string, caller overr
 			Params: inspectedParams(process.Params), Values: inspectedValues(process.Values),
 			VerifyName: process.VerifyName, Prompt: process.Prompt, Guidance: process.Guidance, Skills: process.Skills,
 		},
-		Agent:       res.agent.Name,
-		AgentSkills: definition.CallSkills(process, res.agent)[len(process.Skills):],
+		Agent:       res.agent.name,
+		AgentSkills: callSkills(process, res.agent)[len(process.Skills):],
 		Runtime:     res.mapping.name,
 		Effective: InspectedLimits{
 			Timeout: res.effective.Timeout, MaxAttempts: res.effective.MaxAttempts, MaxCostUSD: res.effective.MaxCostUSD,

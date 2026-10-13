@@ -139,7 +139,7 @@ func Snapshot(ctx context.Context, src SnapshotSource) SnapshotSource {
 			continue
 		}
 		agent, _ := parseAgent(read.doc)
-		for _, name := range agent.Skills {
+		for _, name := range agent.skills {
 			named(document.KindSkill, name)
 		}
 	}

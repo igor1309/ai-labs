@@ -300,7 +300,7 @@ func (c callResolution) Resolve(ctx context.Context, request CallResolveRequest)
 			Params: callParams(process.Params), Values: callValues(process.Values),
 			Revision: process.Revision, Output: process.Output.Format, Clean: process.Clean,
 		},
-		Agent:   CallAgent{Name: agent.Name, Command: agent.Command, Model: agent.Model, Effort: agent.Effort},
+		Agent:   CallAgent{Name: agent.name, Command: agent.command, Model: agent.model, Effort: agent.effort},
 		Session: res.session,
 		Mapping: CallMapping{Name: res.mapping.name, Adapter: res.mapping.adapter},
 		Schema:  res.schema,

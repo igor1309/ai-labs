@@ -9,7 +9,7 @@ import (
 // check reads them.
 type parsedSettings struct {
 	service   *serviceSettings
-	agents    map[string]definition.Agent
+	agents    map[string]agentProfile
 	processes map[string]definition.Process
 	mappings  map[string]runtimeMapping
 	schemas   map[string]bool
@@ -77,8 +77,8 @@ func settingsService(service serviceSettings) settings.Service {
 	return settings.Service{Ceilings: service.ceilings, StateReaching: service.stateReaching}
 }
 
-func settingsAgent(agent definition.Agent) settings.Agent {
-	return settings.Agent{Name: agent.Name, Runtime: agent.Runtime, Effort: agent.Effort, Skills: agent.Skills}
+func settingsAgent(agent agentProfile) settings.Agent {
+	return settings.Agent{Name: agent.name, Runtime: agent.runtime, Effort: agent.effort, Skills: agent.skills}
 }
 
 func settingsMapping(mapping runtimeMapping) settings.Mapping {

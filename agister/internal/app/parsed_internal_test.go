@@ -18,7 +18,7 @@ func naming(verify definition.Verify) parsedSettings {
 	timeout := time.Minute
 	return parsedSettings{
 		service: &serviceSettings{ceilings: policy.Ceilings{MaxTimeout: time.Hour, MaxAttempts: 1, MaxVerifyAttempts: 3, Permissions: []string{"read", "write", "exec"}}},
-		agents:  map[string]definition.Agent{"a": {Name: "a", Runtime: "rt", Effort: "high"}},
+		agents:  map[string]agentProfile{"a": {name: "a", runtime: "rt", effort: "high"}},
 		mappings: map[string]runtimeMapping{"rt": {name: "rt", adapter: "claude-code", efforts: []string{"high"},
 			offer: enforce.Offer{Primitives: []enforce.Primitive{{Name: "Read", Grants: []string{"read"}, Verified: []string{"1."}}}}}},
 		processes: map[string]definition.Process{"p": {Name: "p", Output: definition.Output{Format: "json", Schema: "s"},
