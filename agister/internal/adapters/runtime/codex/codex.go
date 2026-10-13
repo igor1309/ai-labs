@@ -747,8 +747,9 @@ func (s *Stream) Reduce(line string) []Event {
 				}
 				s.searches[id] = true
 			}
-			input := wholeInput(item)
-			s.tools = append(s.tools, Tool{Started: &ToolCall{ID: id, Name: name, Input: input, Command: item["type"] == "command_execution", Writes: writes(item)}})
+			input := reportedInput(item)
+			// File changes report kinds and paths, without the edit content.
+			s.tools = append(s.tools, Tool{Started: &ToolCall{ID: id, Name: name, Input: input, InputIncomplete: item["type"] == "file_change", Command: item["type"] == "command_execution", Writes: writes(item)}})
 			return []Event{requested(item, name, input)}
 		}
 	case "item.completed":
@@ -773,8 +774,7 @@ func (s *Stream) Reduce(line string) []Event {
 }
 
 // exactly decodes a line Reduce has decoded, keeping its numbers as
-// written: a tool's input is the same text only for the same input, so a
-// large integer must not round into another.
+// written so distinct large integers remain distinct in reported inputs.
 func exactly(line string) map[string]any {
 	decoder := json.NewDecoder(strings.NewReader(line))
 	decoder.UseNumber()
@@ -933,8 +933,8 @@ func requested(item map[string]any, name, input string) Event {
 	return Event{SourceProtocol, "TOOL_REQUESTED", map[string]any{"tool_use_id": item["id"], "name": name, "input": truncate(input, 300)}}
 }
 
-// wholeInput is the item's input: the same text for the same input.
-func wholeInput(item map[string]any) string {
+// reportedInput is the input the item reports, which may omit edit content.
+func reportedInput(item map[string]any) string {
 	for _, key := range []string{"command", "query", "changes", "arguments"} {
 		if value, ok := item[key]; ok {
 			if text, ok := value.(string); ok {

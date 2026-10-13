@@ -13,11 +13,61 @@ import (
 	"time"
 	"unicode/utf8"
 
+	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/codex"
 	"github.com/igor1309/ai-labs/agister/internal/app"
 	"github.com/igor1309/ai-labs/agister/internal/contract"
 	"github.com/igor1309/ai-labs/agister/internal/domain/document"
 	"github.com/igor1309/ai-labs/agister/internal/domain/run"
 )
+
+type codexTestClock struct{ now time.Time }
+
+func (c codexTestClock) Now() time.Time { return c.now }
+
+type codexTestSink struct{}
+
+func (codexTestSink) Event(string, string, map[string]any) {}
+func (codexTestSink) Raw(string)                           {}
+func (codexTestSink) ProcessStarted(string) error          { return nil }
+func (codexTestSink) Touched(app.ToolCall)                 {}
+func (codexTestSink) Denied(app.PermissionDenial)          {}
+
+// The Codex stream reports file changes without edit content, so successive
+// changes on one path cannot trip repeated-call staleness; complete commands
+// still do.
+func TestCodexStreamMarksLossyFileChangesAndKeepsCommandsRepeatable(t *testing.T) {
+	t.Parallel()
+	clock := codexTestClock{now: time.Date(2026, 10, 13, 0, 0, 0, 0, time.UTC)}
+	stream := &codex.Stream{}
+	watch := app.WatchTurn(codexTestSink{}, app.CallStale{RepeatedToolCalls: 2}, nil, clock, func() {})
+	t.Cleanup(func() { watch.End() })
+	for _, line := range []string{
+		`{"type":"item.started","item":{"id":"f1","type":"file_change","changes":[{"kind":"update","path":"a.go"}]}}`,
+		`{"type":"item.started","item":{"id":"f2","type":"file_change","changes":[{"kind":"update","path":"a.go"}]}}`,
+	} {
+		stream.Reduce(line)
+		for _, tool := range stream.TakeTools() {
+			call := tool.Started
+			watch.ToolStarted(app.ToolCall{ID: call.ID, Name: call.Name, Input: call.Input, InputIncomplete: call.InputIncomplete, Command: call.Command, Writes: call.Writes})
+		}
+	}
+	if stale := watch.End(); stale != nil {
+		t.Fatalf("file changes stale = %+v", stale)
+	}
+
+	stream = &codex.Stream{}
+	watch = app.WatchTurn(codexTestSink{}, app.CallStale{RepeatedToolCalls: 2}, nil, clock, func() {})
+	for i := 1; i <= 2; i++ {
+		stream.Reduce(fmt.Sprintf(`{"type":"item.started","item":{"id":"c%d","type":"command_execution","command":"go test"}}`, i))
+		for _, tool := range stream.TakeTools() {
+			call := tool.Started
+			watch.ToolStarted(app.ToolCall{ID: call.ID, Name: call.Name, Input: call.Input, Command: call.Command})
+		}
+	}
+	if stale := watch.End(); stale == nil || stale.Count != 2 {
+		t.Fatalf("commands stale = %+v", stale)
+	}
+}
 
 // staleHarness is a harness whose process declares the staleness limits
 // given, over a clock and timers the test moves; its runtime reports tool
@@ -191,6 +241,22 @@ func TestCallsOfOneToolWithDifferentInputsAreNotARepeatedCall(t *testing.T) {
 	}
 	if _, ok := staleEvent(h); ok {
 		t.Fatalf("events = %v", h.recorder.kinds())
+	}
+}
+
+// An incomplete input cannot establish identity, so it breaks a preceding
+// streak instead of extending it.
+func TestAnIncompleteToolInputBreaksTheRepeatedCallStreak(t *testing.T) {
+	t.Parallel()
+	h, _ := staleHarness(t, "repeated_tool_calls: 2")
+	h.runner.acting = func(_ context.Context, sink app.EventSink) {
+		sink.ToolStarted(app.ToolCall{ID: "t1", Name: "Edit", Input: `[{"kind":"update","path":"a.go"}]`})
+		sink.ToolStarted(app.ToolCall{ID: "t2", Name: "Edit", Input: `[{"kind":"update","path":"a.go"}]`, InputIncomplete: true})
+		sink.ToolStarted(app.ToolCall{ID: "t3", Name: "Edit", Input: `[{"kind":"update","path":"a.go"}]`, InputIncomplete: true})
+	}
+	record := h.call(t, contract.CallRequest{})
+	if record.Result.Status != run.Completed || record.Turn.Stale != nil {
+		t.Fatalf("result = %+v, stale %+v", record.Result, record.Turn.Stale)
 	}
 }
 
