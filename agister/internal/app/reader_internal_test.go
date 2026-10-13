@@ -3,6 +3,7 @@ package app
 import (
 	"context"
 	"errors"
+	"maps"
 	"reflect"
 	"slices"
 	"testing"
@@ -140,7 +141,13 @@ func readerCases() map[string]readerCase {
 				return skillOf(skill), err
 			}),
 		"a workflow": reads(document.KindWorkflow, "w", "schema: agister.workflow/v1alpha1\nname: w\ntype: workflow\ncall: {node: p, uses: process:p, agent: a}\n",
-			documentReader.Workflow, definition.ParseWorkflow),
+			documentReader.Workflow,
+			// A workflow is read in the package's own type, as the service
+			// is.
+			func(doc document.Document) (declaredWorkflow, error) {
+				workflow, err := definition.ParseWorkflow(doc)
+				return workflowOf(workflow), err
+			}),
 		"a schema": reads(document.KindSchema, "s", `{"type":"object"}`,
 			documentReader.Schema, func(doc document.Document) ([]byte, error) { return doc.Bytes, nil }),
 		"the blocks": reads(document.KindBlocks, "blocks", "schema: agister.blocks/v1alpha1\nblocks:\n  - {ref: \"process:p\", reason: Not here.}\n",
@@ -1183,6 +1190,419 @@ func TestASkillThatWasNotReadHasNoValue(t *testing.T) {
 	got, _, err := reader.Skill(context.Background(), "review")
 	if !unread(err) || !reflect.DeepEqual(got, givenSkill{}) {
 		t.Fatalf("skill = %+v, %#v; want none and a failure to read", got, err)
+	}
+}
+
+// workflowDocument is the document of the workflow review holding text,
+// composed from the layer files given, nearest first.
+func workflowDocument(text string, layers ...document.LayerFile) document.Document {
+	return document.Document{
+		Source: document.Source{Kind: document.KindWorkflow, Name: "review", Path: layers[0].Path, Layer: layers[0].Layer, SHA256: "digest of review", Layers: layers},
+		Bytes:  []byte(text),
+	}
+}
+
+// A workflow is read as the package uses it, beside the document's source:
+// its params, each with its default where it has one, its input values in
+// the order the document declares them, each with its source, its
+// arguments as written and the forms it names, and its nodes, each with
+// its process and its agent: the fan-out nodes in the document's order and
+// the join, or the one call.
+func TestTheReaderGivesAWorkflowAsThePackageUsesIt(t *testing.T) {
+	t.Parallel()
+	for name, c := range map[string]struct {
+		text string
+		want declaredWorkflow
+	}{
+		"a workflow that fans out and joins": {
+			text: "schema: agister.workflow/v1alpha1\nname: review\nstatus: active\ntype: workflow\ninput:\n" +
+				"  params:\n" +
+				"    candidate: {default: HEAD}\n" +
+				"    brief: {}\n" +
+				"    note: {default: \"\"}\n" +
+				"  values:\n" +
+				"    candidate: {source: git.revision, rev: \"${param.candidate}\"}\n" +
+				"    diff: {source: git.diff, base: main, head: \"${value.candidate}\"}\n" +
+				"    brief: {source: file, path: \"${param.brief}\", form: [goal, step]}\n" +
+				"    status: {source: git.status}\n" +
+				"fan_out:\n" +
+				"  - {node: zeta, uses: process:inspect, agent: codex}\n" +
+				"  - {node: alpha, uses: process:inspect, agent: pi}\n" +
+				"  - {node: mid, uses: process:audit, agent: codex}\n" +
+				"join: {node: merge, uses: process:consolidate, agent: claude}\n",
+			want: declaredWorkflow{
+				name: "review",
+				params: []declaredParam{
+					{name: "candidate", defaultValue: "HEAD", hasDefault: true},
+					{name: "brief"},
+					{name: "note", hasDefault: true},
+				},
+				values: []declaredValue{
+					{name: "candidate", source: "git.revision", args: map[string]string{"rev": "${param.candidate}"}},
+					{name: "diff", source: "git.diff", args: map[string]string{"base": "main", "head": "${value.candidate}"}},
+					{name: "brief", source: "file", args: map[string]string{"path": "${param.brief}"}, forms: []string{"goal", "step"}},
+					{name: "status", source: "git.status", args: map[string]string{}},
+				},
+				fanOut: []workflowNode{
+					{name: "zeta", process: "inspect", agent: "codex"},
+					{name: "alpha", process: "inspect", agent: "pi"},
+					{name: "mid", process: "audit", agent: "codex"},
+				},
+				join: workflowNode{name: "merge", process: "consolidate", agent: "claude"},
+			},
+		},
+		// Its process's params and inputs are the workflow's: it declares
+		// none.
+		"a workflow of one call": {
+			text: "schema: agister.workflow/v1alpha1\nname: review\ntype: workflow\ncall: {node: implement, uses: process:build, agent: codex}\n",
+			want: declaredWorkflow{name: "review", call: &workflowNode{name: "implement", process: "build", agent: "codex"}},
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			doc := workflowDocument(c.text,
+				document.LayerFile{Layer: document.LayerRepository, Path: "/repo/.agister/workflows/review.yaml", Fields: []string{"join.agent"}},
+				document.LayerFile{Layer: document.LayerHome, Path: "/home/workflows/review.yaml", Fields: []string{"schema", "name", "type", "fan_out", "join.node", "join.uses"}})
+			ref := DocumentRef{Kind: document.KindWorkflow, Name: "review"}
+			reader := newDocumentReader(definitionsFake{t: t, docs: map[DocumentRef]document.Document{ref: doc}})
+			got, source, err := reader.Workflow(context.Background(), "review")
+			if err != nil || !reflect.DeepEqual(got, c.want) || !reflect.DeepEqual(source, doc.Source) {
+				t.Fatalf("workflow = %+v, source %+v, %v; want %+v, source %+v", got, source, err, c.want, doc.Source)
+			}
+		})
+	}
+}
+
+// A workflow with problems fails with the parser's *document.InvalidError:
+// its problems in the parser's order, each attributed to the layer file
+// that set the field at fault or, for a field none sets, to every file
+// read, and the unknown ones flagged. What of the document parsed is given
+// beside it, with the document's source.
+func TestAWorkflowWithProblemsKeepsWhatParsedAndWhereEachProblemIs(t *testing.T) {
+	t.Parallel()
+	const repository, home = "/repo/.agister/workflows/review.yaml", "/home/workflows/review.yaml"
+	layers := []document.LayerFile{
+		{Layer: document.LayerRepository, Path: repository, Fields: []string{"colour", "join.agent"}},
+		{Layer: document.LayerHome, Path: home, Fields: []string{
+			"schema", "type", "input.params.candidate.default", "input.values.candidate.source", "input.values.candidate.rev", "input.values.brief.path",
+			"fan_out", "join.node", "join.uses", "call.node", "call.uses", "call.agent",
+		}},
+	}
+	for name, c := range map[string]struct {
+		text     string
+		want     declaredWorkflow
+		problems []document.Problem
+	}{
+		// Each param, value and node as far as it parsed: a value that
+		// refers to a param nothing declares and one that names no source,
+		// a node that uses no process, one named as an earlier one is and
+		// a join bound to what is no agent's name.
+		"problems in two layers": {
+			text: "schema: agister.workflow/v1alpha1\ncolour: red\ntype: workflow\ninput:\n" +
+				"  params:\n" +
+				"    candidate: {default: HEAD}\n" +
+				"  values:\n" +
+				"    candidate: {source: git.revision, rev: \"${param.revision}\"}\n" +
+				"    brief: {path: goal.md}\n" +
+				"fan_out:\n" +
+				"  - {node: zeta, uses: inspect, agent: codex}\n" +
+				"  - {node: zeta, uses: process:inspect, agent: pi}\n" +
+				"join: {node: merge, uses: process:consolidate, agent: Claude}\n",
+			want: declaredWorkflow{
+				name:   "review",
+				params: []declaredParam{{name: "candidate", defaultValue: "HEAD", hasDefault: true}},
+				values: []declaredValue{
+					{name: "candidate", source: "git.revision", args: map[string]string{"rev": "${param.revision}"}},
+					{name: "brief", args: map[string]string{"path": "goal.md"}},
+				},
+				fanOut: []workflowNode{
+					{name: "zeta", agent: "codex"},
+					{name: "zeta", process: "inspect", agent: "pi"},
+				},
+				join: workflowNode{name: "merge", process: "consolidate"},
+			},
+			problems: []document.Problem{
+				{Message: "colour: unknown field (set in " + repository + ")", Unknown: true},
+				{Message: "name: is required (no layer sets it: " + repository + ", " + home + ")"},
+				{Message: "input.values.candidate: refers to ${param.revision}, which is not declared in input.params (set in " + home + ")"},
+				{Message: "input.values.brief.source: is required (no layer sets it: " + repository + ", " + home + ")"},
+				{Message: "fan_out[0].uses: must be \"process:<name>\" (set in " + home + ")"},
+				{Message: "fan_out[1].node: duplicate node name \"zeta\" (also fan_out[0]) (set in " + home + ")"},
+				{Message: "join.agent: must be an agent's name, not \"Claude\" (set in " + repository + ")"},
+			},
+		},
+		"a schema of a newer version": {
+			text: "schema: agister.workflow/v2\nname: review\ntype: workflow\ncall: {node: implement, uses: process:build, agent: codex}\n",
+			want: declaredWorkflow{name: "review", call: &workflowNode{name: "implement", process: "build", agent: "codex"}},
+			problems: []document.Problem{
+				{Message: "schema: must be \"agister.workflow/v1alpha1\" (set in " + home + ")", Unknown: true},
+			},
+		},
+		// One call is the whole workflow: what is declared beside it is not
+		// read.
+		"a call beside inputs and nodes": {
+			text: "schema: agister.workflow/v1alpha1\nname: review\ntype: workflow\ninput:\n" +
+				"  params:\n" +
+				"    candidate: {default: HEAD}\n" +
+				"fan_out:\n" +
+				"  - {node: zeta, uses: process:inspect, agent: codex}\n" +
+				"join: {node: merge, uses: process:consolidate, agent: claude}\n" +
+				"call: {node: implement, uses: process:build, agent: codex}\n",
+			want: declaredWorkflow{name: "review", call: &workflowNode{name: "implement", process: "build", agent: "codex"}},
+			problems: []document.Problem{
+				{Message: "input: a workflow with call has no input (ADR-030 rule 6) (set in " + home + ")"},
+				{Message: "fan_out: a workflow with call has no fan_out (ADR-030 rule 6) (set in " + home + ")"},
+				{Message: "join: a workflow with call has no join (ADR-030 rule 6) (set in " + repository + ", " + home + ")"},
+			},
+		},
+		"no node": {
+			text: "schema: agister.workflow/v1alpha1\nname: review\ntype: workflow\ninput:\n" +
+				"  params:\n" +
+				"    brief: {}\n" +
+				"  values:\n" +
+				"    brief: {source: file, path: \"${param.brief}\", form: [goal]}\n",
+			want: declaredWorkflow{
+				name:   "review",
+				params: []declaredParam{{name: "brief"}},
+				values: []declaredValue{{name: "brief", source: "file", args: map[string]string{"path": "${param.brief}"}, forms: []string{"goal"}}},
+			},
+			problems: []document.Problem{
+				{Message: "fan_out: is required: a workflow needs at least one fan-out node (set in " + home + ")"},
+				{Message: "join: is required (set in " + repository + ", " + home + ")"},
+			},
+		},
+		"no text": {
+			text:     "\xff",
+			want:     declaredWorkflow{name: "review"},
+			problems: []document.Problem{{Message: "not a UTF-8 text file"}},
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			doc := workflowDocument(c.text, layers...)
+			ref := DocumentRef{Kind: document.KindWorkflow, Name: "review"}
+			reader := newDocumentReader(definitionsFake{t: t, docs: map[DocumentRef]document.Document{ref: doc}})
+			got, source, err := reader.Workflow(context.Background(), "review")
+			invalid, ok := err.(*document.InvalidError)
+			if want := (&document.InvalidError{Subject: "workflow review (" + repository + ")", Problems: c.problems}); unread(err) || !ok || !reflect.DeepEqual(invalid, want) {
+				t.Fatalf("workflow error = %#v, want %#v", err, want)
+			}
+			if !reflect.DeepEqual(got, c.want) || !reflect.DeepEqual(source, doc.Source) {
+				t.Fatalf("workflow = %+v, source %+v; want %+v, source %+v", got, source, c.want, doc.Source)
+			}
+		})
+	}
+}
+
+// A workflow that was not read has no value: the reader maps nothing of
+// it.
+func TestAWorkflowThatWasNotReadHasNoValue(t *testing.T) {
+	t.Parallel()
+	ref := DocumentRef{Kind: document.KindWorkflow, Name: "review"}
+	reader := newDocumentReader(definitionsFake{t: t, errs: map[DocumentRef]error{ref: document.ErrNotFound}})
+	got, _, err := reader.Workflow(context.Background(), "review")
+	if !unread(err) || !reflect.DeepEqual(got, declaredWorkflow{}) {
+		t.Fatalf("workflow = %+v, %#v; want none and a failure to read", got, err)
+	}
+}
+
+// A workflow's nodes are its one call or, of one that fans out and joins,
+// its fan-out nodes in the order it declares them, then its join; listing
+// them changes nothing of the workflow.
+func TestAWorkflowsNodesAreItsCallOrItsFanOutThenItsJoin(t *testing.T) {
+	t.Parallel()
+	zeta, alpha := workflowNode{name: "zeta", process: "inspect", agent: "codex"}, workflowNode{name: "alpha", process: "inspect", agent: "pi"}
+	merge := workflowNode{name: "merge", process: "consolidate", agent: "claude"}
+	for name, c := range map[string]struct {
+		workflow declaredWorkflow
+		want     []workflowNode
+	}{
+		"fan-out nodes and a join": {
+			workflow: declaredWorkflow{fanOut: []workflowNode{zeta, alpha}, join: merge},
+			want:     []workflowNode{zeta, alpha, merge},
+		},
+		// What parsed of a workflow with problems: the join is listed as
+		// far as it parsed.
+		"a join alone": {
+			workflow: declaredWorkflow{join: merge},
+			want:     []workflowNode{merge},
+		},
+		"no node": {
+			want: []workflowNode{{}},
+		},
+		"one call": {
+			workflow: declaredWorkflow{call: &zeta},
+			want:     []workflowNode{zeta},
+		},
+		// One call is the whole workflow, whatever else parsed.
+		"one call beside other nodes": {
+			workflow: declaredWorkflow{fanOut: []workflowNode{alpha}, join: merge, call: &zeta},
+			want:     []workflowNode{zeta},
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			// Room for the join after the fan-out nodes: listing them must
+			// not write there.
+			fanOut := append(make([]workflowNode, 0, len(c.workflow.fanOut)+1), c.workflow.fanOut...)
+			workflow := c.workflow
+			workflow.fanOut = fanOut
+			got := workflow.nodes()
+			if !slices.Equal(got, c.want) {
+				t.Fatalf("nodes = %+v, want %+v", got, c.want)
+			}
+			if after := fanOut[:cap(fanOut)]; after[len(after)-1] != (workflowNode{}) {
+				t.Fatalf("listing the nodes wrote %+v after the workflow's fan-out nodes", after[len(after)-1])
+			}
+		})
+	}
+}
+
+// A workflow's forms are the brief forms its input values name, each once,
+// in the order they are first named.
+func TestAWorkflowsFormsAreTheOnesItsValuesNameEachOnce(t *testing.T) {
+	t.Parallel()
+	for name, c := range map[string]struct {
+		values []declaredValue
+		want   []string
+	}{
+		"forms named by several values": {
+			values: []declaredValue{
+				{name: "step", source: "file", forms: []string{"step", "goal"}},
+				{name: "diff", source: "git.diff"},
+				{name: "goal", source: "file", forms: []string{"goal", "note", "step"}},
+			},
+			want: []string{"step", "goal", "note"},
+		},
+		"values that name none": {
+			values: []declaredValue{{name: "diff", source: "git.diff"}},
+		},
+		"no value": {},
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			if got := (declaredWorkflow{values: c.values}).forms(); !slices.Equal(got, c.want) {
+				t.Fatalf("forms = %q, want %q", got, c.want)
+			}
+		})
+	}
+}
+
+// A process's params and input values are given as the package uses them,
+// as a workflow's are: in the order the process declares them, each param
+// with its default where it has one, each value with its source, its
+// arguments and the forms it names. A process that declares none has none.
+func TestAProcessParamsAndValuesAreGivenAsThePackageUsesThem(t *testing.T) {
+	t.Parallel()
+	for name, c := range map[string]struct {
+		process definition.Process
+		params  []declaredParam
+		values  []declaredValue
+	}{
+		"params and values": {
+			process: definition.Process{
+				Name: "inspect",
+				Params: []definition.Param{
+					{Name: "candidate", Default: "HEAD", HasDefault: true},
+					{Name: "brief"},
+					{Name: "note", HasDefault: true},
+				},
+				Values: []definition.Value{
+					{Name: "candidate", Source: "git.revision", Args: map[string]string{"rev": "${param.candidate}"}},
+					{Name: "brief", Source: "file", Args: map[string]string{"path": "${param.brief}"}, Forms: []string{"goal", "step"}},
+					{Name: "outcomes", Source: definition.CollectionSource, Args: map[string]string{}},
+				},
+			},
+			params: []declaredParam{
+				{name: "candidate", defaultValue: "HEAD", hasDefault: true},
+				{name: "brief"},
+				{name: "note", hasDefault: true},
+			},
+			values: []declaredValue{
+				{name: "candidate", source: "git.revision", args: map[string]string{"rev": "${param.candidate}"}},
+				{name: "brief", source: "file", args: map[string]string{"path": "${param.brief}"}, forms: []string{"goal", "step"}},
+				{name: "outcomes", source: "workflow.collection", args: map[string]string{}},
+			},
+		},
+		"none": {process: definition.Process{Name: "inspect"}},
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			if got := processParams(c.process); !reflect.DeepEqual(got, c.params) {
+				t.Errorf("params = %+v, want %+v", got, c.params)
+			}
+			if got := processValues(c.process); !reflect.DeepEqual(got, c.values) {
+				t.Errorf("values = %+v, want %+v", got, c.values)
+			}
+		})
+	}
+}
+
+// An input value's arguments are bound in one pass: each reference is
+// substituted once, ${param.<name>} from the params and ${value.<name>}
+// from the text of the values resolved before, and a text substituted is
+// not read for references again. A param that was not given is empty, a
+// value that has no text refuses the binding, naming the first of them by
+// name, and what is no reference stays as written. The arguments
+// themselves are left as they were.
+func TestAnInputValuesArgumentsAreBoundInOnePass(t *testing.T) {
+	t.Parallel()
+	params := map[string]string{"candidate": "HEAD", "nested": "${value.revision}", "again": "${param.candidate}", "name": "candidate", "open": "{"}
+	values := map[string]string{"revision": "abc123", "quoted": "${param.candidate}", "chained": "${value.revision}"}
+	for name, c := range map[string]struct {
+		args    map[string]string
+		want    map[string]string
+		refusal string
+	}{
+		"a param and a value": {
+			args: map[string]string{"rev": "${param.candidate}", "range": "${value.revision}..${param.candidate}", "base": "main"},
+			want: map[string]string{"rev": "HEAD", "range": "abc123..HEAD", "base": "main"},
+		},
+		"a param whose text is a reference": {
+			args: map[string]string{"rev": "${param.nested}", "head": "${param.again}"},
+			want: map[string]string{"rev": "${value.revision}", "head": "${param.candidate}"},
+		},
+		"a value whose text is a reference": {
+			args: map[string]string{"rev": "${value.quoted}", "head": "${value.chained}"},
+			want: map[string]string{"rev": "${param.candidate}", "head": "${value.revision}"},
+		},
+		// Substituting a reference makes no other of the text around it.
+		"a reference made by a substitution": {
+			args: map[string]string{"rev": "${param.${param.name}}", "head": "$${param.open}value.revision}"},
+			want: map[string]string{"rev": "${param.candidate}", "head": "${value.revision}"},
+		},
+		"a param that was not given": {
+			args: map[string]string{"rev": "[${param.missing}]"},
+			want: map[string]string{"rev": "[]"},
+		},
+		"what is no reference": {
+			args: map[string]string{"rev": "${input.candidate}", "head": "${param.Candidate}", "base": "$param.candidate"},
+			want: map[string]string{"rev": "${input.candidate}", "head": "${param.Candidate}", "base": "$param.candidate"},
+		},
+		"no argument": {
+			args: map[string]string{},
+			want: map[string]string{},
+		},
+		"a value that has no text": {
+			args:    map[string]string{"rev": "${value.zeta}", "head": "${value.alpha} ${value.revision}"},
+			refusal: "refers to ${value.alpha}, which has no text value",
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			args := maps.Clone(c.args)
+			got, err := boundArgs(args, params, values)
+			if c.refusal != "" {
+				if err == nil || err.Error() != c.refusal || got != nil {
+					t.Fatalf("bound = %q, %v; want none and the refusal %q", got, err, c.refusal)
+				}
+			} else if err != nil || !reflect.DeepEqual(got, c.want) {
+				t.Fatalf("bound = %q, %v; want %q", got, err, c.want)
+			}
+			if !reflect.DeepEqual(args, c.args) {
+				t.Fatalf("binding changed the arguments to %q, from %q", args, c.args)
+			}
+		})
 	}
 }
 

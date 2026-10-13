@@ -13,7 +13,7 @@ type parsedSettings struct {
 	processes map[string]definition.Process
 	mappings  map[string]runtimeMapping
 	schemas   map[string]bool
-	workflows map[string]definition.Workflow
+	workflows map[string]declaredWorkflow
 	verifies  map[string]definition.Verification
 	// prompts are the prompt documents the settings have; an unreadable
 	// one is a problem of its own, not of the processes that name it.
@@ -90,10 +90,10 @@ func settingsMapping(mapping runtimeMapping) settings.Mapping {
 func settingsProcess(process definition.Process) settings.Process {
 	out := settings.Process{
 		Name: process.Name,
-		Params: translated(process.Params, func(param definition.Param) settings.Param {
-			return settings.Param{Name: param.Name, HasDefault: param.HasDefault}
+		Params: translated(processParams(process), func(param declaredParam) settings.Param {
+			return settings.Param{Name: param.name, HasDefault: param.hasDefault}
 		}),
-		Values:    settingsValues(process.Values),
+		Values:    settingsValues(processValues(process)),
 		Prompt:    process.Prompt,
 		Guidance:  process.Guidance,
 		Skills:    process.Skills,
@@ -106,26 +106,26 @@ func settingsProcess(process definition.Process) settings.Process {
 	return out
 }
 
-func settingsWorkflow(workflow definition.Workflow) settings.Workflow {
+func settingsWorkflow(workflow declaredWorkflow) settings.Workflow {
 	out := settings.Workflow{
-		Name:   workflow.Name,
-		Values: settingsValues(workflow.Values),
-		FanOut: translated(workflow.FanOut, settingsNode),
-		Join:   settingsNode(workflow.Join),
+		Name:   workflow.name,
+		Values: settingsValues(workflow.values),
+		FanOut: translated(workflow.fanOut, settingsNode),
+		Join:   settingsNode(workflow.join),
 	}
-	if workflow.Call != nil {
-		call := settingsNode(*workflow.Call)
+	if workflow.call != nil {
+		call := settingsNode(*workflow.call)
 		out.Call = &call
 	}
 	return out
 }
 
-func settingsNode(node definition.Node) settings.Node {
-	return settings.Node{Name: node.Name, Process: node.Process, Agent: node.Agent}
+func settingsNode(node workflowNode) settings.Node {
+	return settings.Node{Name: node.name, Process: node.process, Agent: node.agent}
 }
 
-func settingsValues(values []definition.Value) []settings.Value {
-	return translated(values, func(value definition.Value) settings.Value {
-		return settings.Value{Name: value.Name, Source: value.Source, Forms: value.Forms}
+func settingsValues(values []declaredValue) []settings.Value {
+	return translated(values, func(value declaredValue) settings.Value {
+		return settings.Value{Name: value.name, Source: value.source, Forms: value.forms}
 	})
 }

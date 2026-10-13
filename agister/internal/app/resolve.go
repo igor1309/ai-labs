@@ -548,7 +548,7 @@ func withoutSkillTools(res *resolution, tools []string, verified enforce.Offer, 
 // workflowResolution is a workflow and its nodes' processes, as a run of it
 // uses them. Each node's call resolves its own process again, fully.
 type workflowResolution struct {
-	workflow  definition.Workflow
+	workflow  declaredWorkflow
 	processes map[string]definition.Process
 	sources   []document.Source    // the workflow's document, then its brief forms'
 	forms     map[string]briefForm // by name: the brief forms its inputs name (ADR-026 rule 8)
@@ -580,15 +580,15 @@ func (r *Resolver) workflow(ctx context.Context, name string) (*workflowResoluti
 		// missing named verification remains a refusal at its node.
 		var problems []string
 		seen := map[NodeBinding]bool{}
-		for _, node := range res.workflow.Nodes() {
-			binding := NodeBinding{Process: node.Process, Agent: node.Agent}
+		for _, node := range res.workflow.nodes() {
+			binding := NodeBinding{Process: node.process, Agent: node.agent}
 			if seen[binding] {
 				continue
 			}
 			seen[binding] = true
 			// Its nodes work in the caller's worktree, as any call does
 			// (ADR-025 rule 4), each on the agent it binds (ADR-030 rule 5).
-			if _, problem := r.resolve(ctx, node.Process, node.Agent, overrides{deferMissingVerify: true, node: true}); problem != nil {
+			if _, problem := r.resolve(ctx, node.process, node.agent, overrides{deferMissingVerify: true, node: true}); problem != nil {
 				problems = append(problems, "workflow "+name+" uses "+strings.Replace(problem.Error(), " uses ", ", which uses ", 1))
 			}
 		}
@@ -601,7 +601,7 @@ func (r *Resolver) workflow(ctx context.Context, name string) (*workflowResoluti
 
 // resolveWorkflow reads the workflow and its nodes' processes.
 func (r *Resolver) resolveWorkflow(ctx context.Context, name string) (*workflowResolution, error) {
-	res := &workflowResolution{workflow: definition.Workflow{Name: name}, processes: map[string]definition.Process{}}
+	res := &workflowResolution{workflow: declaredWorkflow{name: name}, processes: map[string]definition.Process{}}
 	workflow, source, err := r.documents.Workflow(ctx, name)
 	if unread(err) {
 		return res, refuse("workflow %q: %v", name, err)
@@ -613,7 +613,7 @@ func (r *Resolver) resolveWorkflow(ctx context.Context, name string) (*workflowR
 	}
 	// Each brief form its inputs name is read with the run, from the same
 	// settings, and recorded among its sources (ADR-026 rule 8).
-	for _, form := range res.workflow.Forms() {
+	for _, form := range res.workflow.forms() {
 		brief, source, err := r.documents.Brief(ctx, form)
 		if unread(err) {
 			return res, refuse("workflow %s names brief %q: %v", name, form, err)
@@ -627,18 +627,18 @@ func (r *Resolver) resolveWorkflow(ctx context.Context, name string) (*workflowR
 		}
 		res.forms[form] = brief
 	}
-	for _, node := range res.workflow.Nodes() {
-		if _, ok := res.processes[node.Process]; ok {
+	for _, node := range res.workflow.nodes() {
+		if _, ok := res.processes[node.process]; ok {
 			continue
 		}
-		process, _, err := r.documents.Process(ctx, node.Process)
+		process, _, err := r.documents.Process(ctx, node.process)
 		if unread(err) {
 			continue // a process that does not exist is a workflow problem
 		}
 		if err != nil {
-			return res, refuse("node %s: %v", node.Name, err)
+			return res, refuse("node %s: %v", node.name, err)
 		}
-		res.processes[node.Process] = process
+		res.processes[node.process] = process
 	}
 	if problems := settings.WorkflowProblems(settingsWorkflow(res.workflow), mapped(res.processes, settingsProcess), nil); len(problems) > 0 {
 		return res, refuse("workflow %s: %s", name, strings.Join(problems, "; "))

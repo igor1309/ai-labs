@@ -13,8 +13,9 @@ import (
 // documentReader reads a settings document as what it is: one method per
 // kind reads the document, parses it and returns the parsed value with the
 // document's source. The service settings, a runtime mapping, an agent, a
-// prompt, a brief form and a skill are returned in the package's own
-// types, which no other file of the package maps a parsed document to.
+// prompt, a brief form, a skill and a workflow are returned in the
+// package's own types, which no other file of the package maps a parsed
+// document to.
 // It reads only the document it is asked for (ADR-015 rule 1), and decides
 // nothing for its caller: what to read next, what a failure stops and how
 // it is worded are the caller's.
@@ -234,8 +235,73 @@ func skillOf(skill definition.Skill) givenSkill {
 	return givenSkill{name: skill.Name, bytes: skill.Bytes, sha256: skill.Source.SHA256}
 }
 
-func (r documentReader) Workflow(ctx context.Context, name string) (definition.Workflow, document.Source, error) {
-	return readParsed(ctx, r, document.KindWorkflow, name, definition.ParseWorkflow)
+// Workflow reads a workflow as the package uses it, not as its file holds
+// it.
+func (r documentReader) Workflow(ctx context.Context, name string) (declaredWorkflow, document.Source, error) {
+	workflow, source, err := readParsed(ctx, r, document.KindWorkflow, name, definition.ParseWorkflow)
+	return workflowOf(workflow), source, err
+}
+
+// workflowOf is a parsed workflow document as the package uses it. What
+// parsed of an invalid one is mapped the same, and of one that was not
+// read there is nothing.
+func workflowOf(workflow definition.Workflow) declaredWorkflow {
+	out := declaredWorkflow{
+		name:   workflow.Name,
+		params: paramsOf(workflow.Params),
+		values: valuesOf(workflow.Values),
+		fanOut: translated(workflow.FanOut, nodeOf),
+		join:   nodeOf(workflow.Join),
+	}
+	if workflow.Call != nil {
+		call := nodeOf(*workflow.Call)
+		out.call = &call
+	}
+	return out
+}
+
+func nodeOf(node definition.Node) workflowNode {
+	return workflowNode{name: node.Name, process: node.Process, agent: node.Agent}
+}
+
+// paramsOf are the params a parsed document declares, as the package uses
+// them, in the order it declares them.
+func paramsOf(params []definition.Param) []declaredParam {
+	return translated(params, func(param definition.Param) declaredParam {
+		return declaredParam{name: param.Name, defaultValue: param.Default, hasDefault: param.HasDefault}
+	})
+}
+
+// valuesOf are the input values a parsed document declares, as the
+// package uses them, in the order it declares them.
+func valuesOf(values []definition.Value) []declaredValue {
+	return translated(values, func(value definition.Value) declaredValue {
+		return declaredValue{name: value.Name, source: value.Source, args: value.Args, forms: value.Forms}
+	})
+}
+
+// processParams are the params process declares, as the package uses
+// them. A process is the parser's type, whose params only this file
+// names.
+func processParams(process definition.Process) []declaredParam {
+	return paramsOf(process.Params)
+}
+
+// processValues are the input values process declares, as the package
+// uses them. A process is the parser's type, whose values only this file
+// names.
+func processValues(process definition.Process) []declaredValue {
+	return valuesOf(process.Values)
+}
+
+// boundArgs is args, the arguments of a declared input value, with their
+// references substituted as the parser binds them, in one pass:
+// ${param.<name>} from params, ${value.<name>} from values, the text of
+// the input values resolved before it. A value reference values lacks is
+// an error. The parser checks the same references when it parses a value,
+// so what a reference is stays its own.
+func boundArgs(args, params, values map[string]string) (map[string]string, error) {
+	return definition.Value{Args: args}.Bind(params, values)
 }
 
 // Schema reads an output schema: its bytes as they are, which the caller's

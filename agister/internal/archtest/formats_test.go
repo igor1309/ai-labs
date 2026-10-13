@@ -370,7 +370,7 @@ func parse(doc document.Document) (Skill, error) { return ParseSkill(doc) }
 // ownTypes are the parser's types that internal/app has a type of its own
 // for (LAB-188): the reader's file maps the parser's to it, and no other
 // file of the package names the parser's.
-var ownTypes = []string{"Service", "Mapping", "Agent", "Prompt", "Brief", "BriefPart", "Skill"}
+var ownTypes = []string{"Service", "Mapping", "Agent", "Prompt", "Brief", "BriefPart", "Skill", "Workflow", "Node", "Param", "Value"}
 
 // parserTypes lists, sorted, each of the parser's types given that a
 // non-test file of dir other than the one excepted names, once per file,
@@ -523,14 +523,27 @@ type resolution struct {
 	skills  []definition.Skill
 }
 
+type workflowResolution struct {
+	workflow definition.Workflow
+	nodes    []definition.Node
+	params   []definition.Param
+	values   []definition.Value
+	verify   definition.Verification
+}
+
 func (r documentReader) held(ctx context.Context, name string) (runtimeMapping, error) {
 	mapping, _, err := r.documents.Mapping(ctx, name)
 	return mapping, err
 }
 
-func (r documentReader) bound(ctx context.Context, node definition.Node) (agentProfile, error) {
-	agent, _, err := r.documents.Agent(ctx, node.Agent)
+func (r documentReader) bound(ctx context.Context, node workflowNode) (agentProfile, error) {
+	agent, _, err := r.documents.Agent(ctx, node.agent)
 	return agent, err
+}
+
+func (r documentReader) declared(ctx context.Context, name string) (declaredWorkflow, []declaredParam, []declaredValue, error) {
+	workflow, _, err := r.documents.Workflow(ctx, name)
+	return workflow, workflow.params, workflow.values, err
 }
 
 func (r documentReader) given(ctx context.Context, process definition.Process) (promptText, briefForm, givenSkill, error) {
@@ -548,7 +561,8 @@ func (r documentReader) given(ctx context.Context, process definition.Process) (
 	}
 	want := []string{
 		"names.go: definition.Agent", "names.go: definition.Brief", "names.go: definition.BriefPart", "names.go: definition.Mapping",
-		"names.go: definition.Prompt", "names.go: definition.Service", "names.go: definition.Skill",
+		"names.go: definition.Node", "names.go: definition.Param", "names.go: definition.Prompt", "names.go: definition.Service",
+		"names.go: definition.Skill", "names.go: definition.Value", "names.go: definition.Workflow",
 	}
 	if got := parserTypes(t, dir, readerFile, ownTypes); !slices.Equal(got, want) {
 		t.Errorf("uses of the parser's types outside the reader's file = %q, want %q", got, want)
