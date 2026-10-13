@@ -359,3 +359,33 @@ func TestLatestTotalsAreTheSessionsLatestRecordedTurn(t *testing.T) {
 		}
 	}
 }
+
+func TestRecordIncludesPlanWarningsInOutcomes(t *testing.T) {
+	t.Parallel()
+	for _, c := range []struct {
+		name          string
+		plan          *run.Plan
+		outcome, want []string
+	}{
+		{name: "older record", outcome: []string{"outcome warning"}, want: []string{"outcome warning"}},
+		{name: "plan warning", plan: &run.Plan{Warnings: []string{"plan warning"}}, want: []string{"plan warning"}},
+		{name: "both sources", plan: &run.Plan{Warnings: []string{"plan warning"}}, outcome: []string{"outcome warning"}, want: []string{"outcome warning", "plan warning"}},
+		{name: "warning already included", plan: &run.Plan{Warnings: []string{"plan warning"}}, outcome: []string{"plan warning"}, want: []string{"plan warning"}},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
+			record := run.Record{Plan: c.plan}
+			result := record.WithWarnings(run.Result{Status: run.Completed, Warnings: c.outcome})
+			if result.Status != run.Completed || !reflect.DeepEqual(result.Warnings, c.want) {
+				t.Fatalf("outcome = %+v, want warnings %v", result, c.want)
+			}
+			result.Warnings[0] = "caller changed it"
+			if c.plan != nil && c.plan.Warnings[0] != "plan warning" {
+				t.Fatalf("outcome changed the snapshot: %v", c.plan.Warnings)
+			}
+			if len(c.outcome) > 0 && c.outcome[0] != c.want[0] {
+				t.Fatalf("outcome changed the original result: %v", c.outcome)
+			}
+		})
+	}
+}

@@ -1651,3 +1651,51 @@ func TestAnExportHoldsTheRunAgainstRecovery(t *testing.T) {
 		})
 	}
 }
+
+// Contract test: plan warnings round-trip through the run store's real files
+// and ownership locks, then through abandoned inspection and reaped records.
+func TestPlanWarningsSurviveStoredAbandonmentAndReaping(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	store := newStore(t)
+	want := []string{"runtime rt grants beyond tools.allow: process.execute", "runtime rt version 2.0.0 is unverified"}
+	record := run.Record{Schema: run.RecordSchema, ID: "warned", Process: "p", CreatedAt: time.Date(2026, 10, 1, 11, 0, 0, 0, time.UTC)}
+	handle, err := store.Create(ctx, record)
+	if err != nil {
+		t.Fatal(err)
+	}
+	letGo(t, handle)
+	record.Plan = &run.Plan{
+		Primitives: []string{"Read"}, Declared: []string{"repository.read"},
+		Granted: []string{"repository.read", "process.execute"}, Extra: []string{"process.execute"}, Warnings: want,
+	}
+	if err := handle.Update(record); err != nil {
+		t.Fatal(err)
+	}
+	if err := store.Abandon(record.ID); err != nil {
+		t.Fatal(err)
+	}
+	saved, state, err := store.Get(ctx, record.ID)
+	if err != nil || state != run.StateAbandoned || saved.Result != nil || !reflect.DeepEqual(saved.Plan, record.Plan) {
+		t.Fatalf("stored abandoned snapshot = %+v, %s, %v", saved, state, err)
+	}
+	runs := app.NewRuns(store, store, nil, nil, 0)
+	view, err := runs.Inspect(ctx, record.ID)
+	if err != nil || view.Result == nil || view.Result.Status != "lost" || !reflect.DeepEqual(view.Result.Warnings, want) {
+		t.Fatalf("stored abandoned outcome = %+v, %v", view.Result, err)
+	}
+	spies := &reapSpies{discard: func(context.Context, string) error {
+		t.Error("no checkout to discard")
+		return nil
+	}}
+	reaper := app.NewReaper(adopterOf(t, store), spies, spies, spies)
+	reaper.ReapContext = func(ctx context.Context) (context.Context, context.CancelFunc) { return context.WithCancel(ctx) }
+	finished, owned, err := reaper.ReapRun(ctx, record.ID)
+	if err != nil || owned || finished.Result == nil || !reflect.DeepEqual(finished.Result.Warnings, want) {
+		t.Fatalf("reap = %+v, owned %v, %v", finished.Result, owned, err)
+	}
+	saved, state, err = store.Get(ctx, record.ID)
+	if err != nil || state != run.StateFinished || saved.Result == nil || saved.Result.Status != run.Lost || !reflect.DeepEqual(saved.Result.Warnings, want) || !reflect.DeepEqual(saved.Plan, record.Plan) {
+		t.Fatalf("stored reaped outcome = %+v, %s, %v", saved.Result, state, err)
+	}
+}

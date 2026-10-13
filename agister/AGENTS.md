@@ -62,6 +62,8 @@ verification rules. Issues are in the Multica project `Agister`, in the
 - Runtime permissions are best effort (ADR-036): use runtimes as shipped,
   with documented options only, and no runtime-specific workarounds.
   `tools.require` and the service's `state_reaching` remain hard checks;
-  extra grants and unverified versions warn. Keep binding views, records
-  and printed outcomes consistent about those warnings. Prompts instruct
+  extra grants and unverified versions warn. Select by distinct grants and
+  persist warnings before runtime startup for abandoned and reaped outcomes.
+  Keep binding views, records and printed outcomes consistent about those
+  warnings. Prompts instruct
   which evidence to use and make no claim about the environment's tools.

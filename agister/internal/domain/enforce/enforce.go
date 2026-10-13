@@ -55,6 +55,7 @@ func Make(permissions []string, offer Offer, required, stateReaching []string) (
 	switch {
 	case offer.One:
 		var best, fallback *Primitive
+		var bestSize, fallbackSize int
 		var reasons []string
 		for i := range offer.Primitives {
 			primitive := &offer.Primitives[i]
@@ -62,11 +63,12 @@ func Make(permissions []string, offer Offer, required, stateReaching []string) (
 				reasons = append(reasons, fmt.Sprintf("%s grants state_reaching permissions: %s", primitive.Name, strings.Join(extra, ", ")))
 				continue
 			}
-			if fallback == nil || len(primitive.Grants) < len(fallback.Grants) {
-				fallback = primitive
+			size := distinctGrants(primitive.Grants)
+			if fallback == nil || size < fallbackSize {
+				fallback, fallbackSize = primitive, size
 			}
-			if subset(required, primitive.Grants) && (best == nil || len(primitive.Grants) < len(best.Grants)) {
-				best = primitive
+			if subset(required, primitive.Grants) && (best == nil || size < bestSize) {
+				best, bestSize = primitive, size
 			}
 		}
 		if best == nil {
@@ -150,4 +152,12 @@ func intersection(list, of []string) []string {
 		}
 	}
 	return out
+}
+
+func distinctGrants(grants []string) int {
+	seen := make(map[string]struct{}, len(grants))
+	for _, grant := range grants {
+		seen[grant] = struct{}{}
+	}
+	return len(seen)
 }

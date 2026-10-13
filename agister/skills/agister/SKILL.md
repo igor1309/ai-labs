@@ -286,10 +286,12 @@ Runtime permissions are best effort (ADR-036). Use runtimes as shipped
 with documented options only; no catalog or flag workaround. `tools.require`
 is hard, and service `state_reaching` permissions are never granted.
 `tools.allow` is a best-effort ceiling. A single-mode runtime takes the
-safe primitive with the fewest grants covering require, mapping order on
-sizes tied. Extra grants warn per binding in `check` and `workflow show`;
+safe primitive with the fewest distinct grants covering require, mapping
+order on sizes tied. Extra grants warn per binding in `check` and `workflow show`;
 a call records `plan.declared`, `plan.granted`, `plan.extra` and
-`result.warnings`, and the workflow result includes its nodes' warnings.
+`plan.warnings` before runtime startup. Finished, abandoned and reaped
+outcomes include them in `result.warnings`; the workflow result includes
+its nodes' warnings.
 Printed results show warnings even with `--quiet`, keeping the status
 and exit code. Unverified versions and selected primitives warn; a probe
 is observability and a failure does not refuse the call. A new Codex

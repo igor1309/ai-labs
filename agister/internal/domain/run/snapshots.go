@@ -87,6 +87,7 @@ type StaleRecover struct {
 
 // Plan is what the call was granted on its runtime.
 type Plan struct {
+	Warnings   []string `json:"warnings,omitempty"` // resolved before runtime startup
 	Primitives []string `json:"primitives"`
 	Granted    []string `json:"granted"`  // permissions the primitives provide
 	Withheld   []string `json:"withheld"` // allowed but not provided

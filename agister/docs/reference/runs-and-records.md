@@ -121,7 +121,9 @@ export reports the runs it exported and exits 2.
 
 A call's `plan.declared` holds its effective permissions, `plan.granted`
 the selected primitives' grants, and `plan.extra` grants beyond declared.
-`result.warnings` records extra grants and missing runtime version
-evidence; a workflow result includes its nodes' warnings with node names.
+`plan.warnings` persists extra grants and missing runtime version evidence
+before runtime startup. `result.warnings` includes them in finished,
+abandoned and reaped outcomes; a workflow result includes its nodes'
+warnings with node names.
 Printed results show them even with `--quiet`. Warnings do not change the
 status or exit code. See [permissions and runtimes](permissions-and-runtimes.md).

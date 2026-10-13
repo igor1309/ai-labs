@@ -407,7 +407,7 @@ func (c *Reaper) reap(ctx context.Context, handle ReapHandle, record run.Record,
 	}
 	if !finished {
 		record.ProcessesEnded = &ended
-		result := run.AbandonedResult(record.CreatedAt)
+		result := record.WithWarnings(run.AbandonedResult(record.CreatedAt))
 		result.Timing.FinishedAt = now
 		result.Timing.WallMS = now.Sub(record.CreatedAt).Milliseconds()
 		record.FinishedAt = &now

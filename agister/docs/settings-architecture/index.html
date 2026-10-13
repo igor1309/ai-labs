@@ -360,7 +360,7 @@ limits; a runtime mapping grants only its permissions.</p>
 <h2>Where permissions meet primitives</h2>
 
 <p>The process's effective permissions meet the bound agent's runtime
-mapping to make the enforcement plan. For <code>select: one</code>, the narrowest safe primitive covering
+mapping to make the enforcement plan. For <code>select: one</code>, the safe primitive with the fewest distinct grants covering
 <code>tools.require</code> is selected; grants beyond the best-effort
 <code>tools.allow</code> ceiling warn. For <code>select: any</code>, fitting
 safe tools are granted. State-reaching grants remain forbidden. An allowed permission that no primitive
@@ -370,7 +370,8 @@ binding that would be refused is a problem of that workflow, naming the
 node, and one that withholds an allowed permission is listed as
 <code>withheld</code>. Extra grants warn per binding and are recorded beside
 declared and granted permissions; run outcomes and printed results carry
-the warning. Unverified versions warn; probes are observability (ADR-036).</p>
+the warning. Plan warnings persist before runtime startup and remain in
+abandoned and reaped outcomes. Unverified versions warn; probes are observability (ADR-036).</p>
 
 <h2>Blocks</h2>
 

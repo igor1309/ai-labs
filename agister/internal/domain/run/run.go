@@ -5,6 +5,7 @@ package run
 import (
 	"encoding/json"
 	"fmt"
+	"slices"
 	"time"
 )
 
@@ -463,4 +464,18 @@ func AbandonedResult(startedAt time.Time) Result {
 		Cost:   Cost{Source: CostUnknown},
 		Timing: Timing{StartedAt: startedAt},
 	}
+}
+
+// WithWarnings includes the plan's persisted warnings in any outcome, including
+// one synthesized after the owner ends. Outcome-specific warnings are retained.
+func (r Record) WithWarnings(result Result) Result {
+	result.Warnings = slices.Clone(result.Warnings)
+	if r.Plan != nil {
+		for _, warning := range r.Plan.Warnings {
+			if !slices.Contains(result.Warnings, warning) {
+				result.Warnings = append(result.Warnings, warning)
+			}
+		}
+	}
+	return result
 }

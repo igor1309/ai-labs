@@ -1262,6 +1262,8 @@ test('Settings shows best-effort permissions and unverified declared grants', as
   const content = p.$('dashboard').textContent;
   assert.match(content, /Runtime permissions are best effort/);
   assert.match(content, /Extra grants and unverified versions warn; require and state reach are hard checks/);
+  assert.match(content, /Select one uses the fewest distinct grants/);
+  assert.match(content, /Plan warnings persist through abandonment and reaping/);
   assert.match(content, /read-only: repository.read, process.execute/);
   assert.match(content, /Unverified — warns/);
 });

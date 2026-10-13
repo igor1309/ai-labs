@@ -10,6 +10,7 @@ import (
 
 	"github.com/igor1309/ai-labs/agister/internal/app"
 	"github.com/igor1309/ai-labs/agister/internal/contract"
+	"github.com/igor1309/ai-labs/agister/internal/domain/document"
 	"github.com/igor1309/ai-labs/agister/internal/domain/run"
 )
 
@@ -181,5 +182,48 @@ func TestCheckProbesAnUnverifiedVersion(t *testing.T) {
 		if c.prober.err == nil && !reflect.DeepEqual(report.Bindings, []contract.Binding{{Workflow: "p_a", Node: "p", Process: "p", Agent: "a", Runtime: "rt", Version: "9.0.0", Withheld: []string{"repository.diff"}}}) {
 			t.Errorf("%s: bindings = %+v", name, report.Bindings)
 		}
+	}
+}
+
+// Integration test: temporary settings, a successful partial probe and the
+// resulting call record; the runtime, probe store and effects are spies.
+func TestSuccessfulPartialProbeLeavesDeclaredPrimitivesAvailable(t *testing.T) {
+	t.Parallel()
+	for _, required := range []bool{false, true} {
+		name := "optional primitive"
+		if required {
+			name = "required primitive"
+		}
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			h := newHarness()
+			h.runner.identity.Version = "2.0.0"
+			docs := settingsDocs()
+			if required {
+				docs[document.KindProcess]["p"] = strings.Replace(docs[document.KindProcess]["p"],
+					"tools: {allow: [repository.read, repository.search, repository.diff]}",
+					"tools: {allow: [repository.read, repository.search, repository.diff], require: [repository.search]}", 1)
+			}
+			prober := &proberSpy{probe: app.RuntimeProbe{Version: "2.0.0", Primitives: []string{"Read"}, Report: "Read held"}}
+			records := &probeRecordsSpy{}
+			h.probes = probesOver(prober, records)
+			client := h.clientOn(settingsFiles(t, docs))
+			report, err := client.Check(context.Background(), true)
+			const warning = "runtime rt version 2.0.0 has unverified primitives: Grep"
+			if err != nil || len(report.Problems) != 0 || !strings.Contains(strings.Join(report.Warnings, "\n"), warning) {
+				t.Fatalf("check = %+v, %v", report, err)
+			}
+			record := h.submit(t, client, contract.CallRequest{Process: "p_a"})
+			if record.Result.Status != run.Completed || !reflect.DeepEqual(record.Result.Warnings, []string{warning}) || record.Plan == nil || !reflect.DeepEqual(record.Plan.Primitives, []string{"Read", "Grep"}) || !reflect.DeepEqual(record.Plan.Granted, []string{"repository.read", "repository.search"}) {
+				t.Fatalf("result = %+v, plan %+v", record.Result, record.Plan)
+			}
+			turns := h.runner.calls()
+			if len(turns) != 1 || !reflect.DeepEqual(turns[0].Primitives, []string{"Read", "Grep"}) {
+				t.Fatalf("turns = %+v", turns)
+			}
+			if !reflect.DeepEqual(prober.commands(), []string{"/bin/spy"}) || !reflect.DeepEqual(records.probes["spy 2.0.0"].Primitives, []string{"Read"}) {
+				t.Fatalf("probe commands = %v, recorded probes %v", prober.commands(), records.probes)
+			}
+		})
 	}
 }

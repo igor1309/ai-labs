@@ -12,7 +12,8 @@ limit composition, is a best-effort ceiling, not a sandbox guarantee.
 The service's `state_reaching` permissions are never granted.
 
 For `select: one`, the plan chooses the safe primitive with the fewest
-grants that supplies everything required; equal sizes use mapping order.
+distinct grants that supplies everything required; equal sizes use mapping
+order.
 Grants beyond the effective allow set are `extra`: a loud warning, not a
 refusal. This also applies when a primitive fits allow: optional allowed
 permissions may be withheld by a narrower mode. For `select: any`, the
@@ -34,7 +35,9 @@ each node. `process show` shows the process on no agent.
 
 The call record's `plan` holds `declared` (effective permissions),
 `granted`, `extra` and `withheld`. Its `result.warnings` carries the
-permission and version warnings. A workflow result carries its nodes'
+permission and version warnings. The plan persists these as `plan.warnings`
+before runtime startup, so abandoned and reaped outcomes retain them. A
+workflow result carries its nodes'
 warnings with node names; the printed result shows `WARNING` even for a
 completed run and with `--quiet`. Warnings keep the completion status and
 exit code.

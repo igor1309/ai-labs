@@ -19,14 +19,14 @@ func TestPermissionWarningsAndHardRefusalsFromSettingsFiles(t *testing.T) {
 	t.Parallel()
 	for _, c := range []struct {
 		name, grants, required, version, warning, refusal string
-		extra                                             []string
+		extra, granted                                    []string
 		writer                                            bool
 	}{
-		{name: "extra grants", grants: "repository.read, process.execute", required: "repository.read", version: "1.", warning: "grants beyond tools.allow: process.execute", extra: []string{"process.execute"}},
-		{name: "extra writing grant", grants: "repository.read, repository.write", required: "repository.read", version: "1.", warning: "grants beyond tools.allow: repository.write", extra: []string{"repository.write"}, writer: true},
+		{name: "extra grants", grants: "repository.read, process.execute", required: "repository.read", version: "1.", warning: "grants beyond tools.allow: process.execute", extra: []string{"process.execute"}, granted: []string{"repository.read", "process.execute"}},
+		{name: "extra writing grant", grants: "repository.read, repository.write", required: "repository.read", version: "1.", warning: "grants beyond tools.allow: repository.write", extra: []string{"repository.write"}, granted: []string{"repository.read", "repository.write"}, writer: true},
 		{name: "require withheld", grants: "repository.read", required: "repository.search", version: "1.", refusal: "required permissions would be withheld: repository.search"},
 		{name: "state reaching", grants: "repository.read, host.read", required: "repository.read", version: "1.", refusal: "grants state_reaching permissions: host.read"},
-		{name: "unverified version", grants: "repository.read", required: "repository.read", version: "9.", warning: "unverified"},
+		{name: "unverified version", grants: "repository.read", required: "repository.read", version: "9.", warning: "unverified", granted: []string{"repository.read"}},
 	} {
 		t.Run(c.name, func(t *testing.T) {
 			t.Parallel()
@@ -47,6 +47,13 @@ func TestPermissionWarningsAndHardRefusalsFromSettingsFiles(t *testing.T) {
 				t.Fatal(err)
 			}
 			record := h.submit(t, client, contract.CallRequest{Process: "p_a"})
+			var granted []string
+			if record.Plan != nil {
+				granted = record.Plan.Granted
+			}
+			if !slices.Equal(granted, c.granted) {
+				t.Fatalf("recorded granted = %v, want %v", granted, c.granted)
+			}
 			if c.refusal != "" {
 				if len(report.Problems) == 0 || !strings.Contains(strings.Join(messages(report.Problems), "\n"), c.refusal) || !strings.Contains(view.Refusal, c.refusal) || class(record) != run.ClassRefused || !strings.Contains(message(record), c.refusal) || len(h.runner.calls()) != 0 {
 					t.Fatalf("hard check: report %+v, view %+v, result %+v", report, view, record.Result)
@@ -60,7 +67,7 @@ func TestPermissionWarningsAndHardRefusalsFromSettingsFiles(t *testing.T) {
 				t.Fatalf("binding extra = %v", report.Bindings[0].Extra)
 			}
 			child := record // A one-call workflow is the call's own record.
-			if child.Plan == nil || !reflect.DeepEqual(child.Plan.Declared, []string{"repository.read", "repository.search"}) || !slices.Equal(child.Plan.Extra, c.extra) || !contains(child.Plan.Granted, "repository.read") || !strings.Contains(strings.Join(child.Result.Warnings, "\n"), c.warning) {
+			if child.Plan == nil || !reflect.DeepEqual(child.Plan.Declared, []string{"repository.read", "repository.search"}) || !slices.Equal(child.Plan.Extra, c.extra) || !strings.Contains(strings.Join(child.Result.Warnings, "\n"), c.warning) {
 				t.Fatalf("call record = %+v", child)
 			}
 			if child.InPlace == nil || child.InPlace.HeldAlone() != c.writer {
@@ -132,5 +139,134 @@ func TestWorkflowOutcomeCarriesEachNodesPermissionWarning(t *testing.T) {
 	}
 	if len(record.Result.Warnings) != 3 {
 		t.Fatalf("warnings = %q", record.Result.Warnings)
+	}
+}
+
+// Integration test: repeated grants in temporary settings, resolution and run
+// records; runtime and worktree effects are the harness's spies.
+func TestOnePrimitiveCountsDistinctGrants(t *testing.T) {
+	t.Parallel()
+	for _, c := range []struct {
+		name, required string
+		primitives     []string
+		want           string
+		granted, extra []string
+		refused        bool
+	}{
+		{
+			name: "narrowest required mode", required: "repository.read",
+			primitives: []string{
+				`Wide: {grants: [repository.read, repository.search, repository.diff], verified: ["1."]}`,
+				`Narrow: {grants: [repository.read, process.execute, repository.read, process.execute], verified: ["1."]}`,
+			},
+			want: "Narrow", granted: []string{"repository.read", "process.execute"}, extra: []string{"process.execute"},
+		},
+		{
+			name: "narrowest refusal fallback", required: "repository.search", refused: true,
+			primitives: []string{
+				`Wide: {grants: [repository.read, process.execute], verified: ["1."]}`,
+				`Narrow: {grants: [repository.read, repository.read, repository.read], verified: ["1."]}`,
+			},
+			want: "Narrow", granted: []string{"repository.read"},
+		},
+		{
+			name: "required mode tie uses mapping order", required: "repository.read",
+			primitives: []string{
+				`First: {grants: [repository.read, repository.read], verified: ["1."]}`,
+				`Second: {grants: [repository.read], verified: ["1."]}`,
+			},
+			want: "First", granted: []string{"repository.read"},
+		},
+		{
+			name: "fallback tie uses mapping order", required: "repository.search", refused: true,
+			primitives: []string{
+				`First: {grants: [repository.read, repository.read], verified: ["1."]}`,
+				`Second: {grants: [process.execute], verified: ["1."]}`,
+			},
+			want: "First", granted: []string{"repository.read"},
+		},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
+			h := newHarness()
+			docs := settingsDocs()
+			docs[document.KindRuntime]["rt"] = oneOf("rt", c.primitives...)
+			docs[document.KindProcess]["p"] = strings.Replace(docs[document.KindProcess]["p"],
+				"tools: {allow: [repository.read, repository.search, repository.diff]}",
+				"tools: {allow: [repository.read, repository.search], require: ["+c.required+"]}", 1)
+			client := h.clientOn(settingsFiles(t, docs))
+			view, err := callShown(client, "p_a")
+			if err != nil || (!c.refused && !slices.Equal(view.Primitives, []string{c.want})) {
+				t.Fatalf("plan = %+v, %v; want %s granting %v, extra %v", view, err, c.want, c.granted, c.extra)
+			}
+			record := h.submit(t, client, contract.CallRequest{Process: "p_a"})
+			if c.refused {
+				if len(view.Warnings) != 0 || len(view.Withheld) != 0 {
+					t.Fatalf("fallback view = %+v; want no extra grants or optional withheld permissions", view)
+				}
+				if class(record) != run.ClassRefused || !strings.Contains(message(record), "required permissions would be withheld: repository.search") || len(h.runner.calls()) != 0 {
+					t.Fatalf("required permission: result %+v, turns %v", record.Result, h.runner.calls())
+				}
+				return
+			}
+			if record.Result.Status != run.Completed || record.Plan == nil || !slices.Equal(record.Plan.Primitives, []string{c.want}) || !slices.Equal(record.Plan.Granted, c.granted) || !slices.Equal(record.Plan.Extra, c.extra) || len(h.runner.calls()) != 1 {
+				t.Fatalf("recorded plan = %+v, result %+v, turns %v", record.Plan, record.Result, h.runner.calls())
+			}
+			if len(c.extra) > 0 && !contains(record.Result.Warnings, "runtime rt grants beyond tools.allow: process.execute") {
+				t.Fatalf("warnings = %v", record.Result.Warnings)
+			}
+		})
+	}
+}
+
+// Integration test: temporary settings, the recorder's runtime-start snapshot,
+// the abandoned reader view and reaper outcome; external effects are spies.
+func TestPermissionWarningsSurviveAbandonmentAndReaping(t *testing.T) {
+	t.Parallel()
+	h := newHarness()
+	docs := settingsDocs()
+	docs[document.KindRuntime]["rt"] = oneOf("rt", `Read: {grants: [repository.read, process.execute], verified: ["9."]}`)
+	want := []string{
+		"runtime rt grants beyond tools.allow: process.execute",
+		"runtime rt version 1.2.3 is unverified",
+	}
+	snapshot := make(chan run.Record, 1)
+	h.runner.during = func(app.TurnRequest) {
+		h.recorder.mu.Lock()
+		defer h.recorder.mu.Unlock()
+		for _, update := range h.recorder.updates {
+			if update.Plan != nil && (update.Effects == nil || update.Effects.Process == nil) {
+				snapshot <- update
+				return
+			}
+		}
+		snapshot <- run.Record{}
+	}
+	finished := h.submit(t, h.clientOn(settingsFiles(t, docs)), contract.CallRequest{Process: "p_a"})
+	if !slices.Equal(finished.Result.Warnings, want) {
+		t.Fatalf("finished warnings = %v, want %v", finished.Result.Warnings, want)
+	}
+	left := <-snapshot
+	if left.Result != nil || left.FinishedAt != nil || left.Plan == nil || !slices.Equal(left.Plan.Warnings, want) {
+		t.Fatalf("runtime-start snapshot = %+v, plan %+v", left, left.Plan)
+	}
+	reader := &readerSpy{record: left, state: run.StateAbandoned}
+	runs := app.NewRuns(reader, unwritten{}, &cancellerSpy{}, app.RunsTimer(h.timer), 0)
+	view, err := runs.Inspect(context.Background(), left.ID)
+	if err != nil || view.Result == nil || view.Result.Status != "lost" || !slices.Equal(view.Result.Warnings, want) {
+		t.Fatalf("abandoned result = %+v, %v", view.Result, err)
+	}
+	reaper := reaping(h, left)
+	if _, owned, err := reaper.ReapRun(context.Background(), left.ID); err != nil || owned {
+		t.Fatalf("reap: owned %v, %v", owned, err)
+	}
+	reaped := reaper.adopter.handles[left.ID].wait(t)
+	if reaped.Result == nil || reaped.Result.Status != run.Lost || class(reaped) != run.ClassAbandoned || !slices.Equal(reaped.Result.Warnings, want) {
+		t.Fatalf("reaped result = %+v", reaped.Result)
+	}
+	reader.record, reader.state = reaped, run.StateFinished
+	view, err = runs.Inspect(context.Background(), left.ID)
+	if err != nil || view.Result == nil || !slices.Equal(view.Result.Warnings, want) {
+		t.Fatalf("reaped caller result = %+v, %v", view.Result, err)
 	}
 }

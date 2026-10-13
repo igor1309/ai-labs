@@ -922,6 +922,7 @@ func (c *Calls) execute(ctx context.Context, handle RunHandle, record run.Record
 		}
 		result.Timing.FinishedAt = now
 		result.Timing.WallMS = now.Sub(result.Timing.StartedAt).Milliseconds()
+		result = record.WithWarnings(result)
 		record.Result = &result
 		final = record
 		data := map[string]any{"status": string(result.Status)}
@@ -1016,8 +1017,7 @@ func (c *Calls) execute(ctx context.Context, handle RunHandle, record run.Record
 	record.Verify = recordVerify(res.Process.Verify)
 	record.Runtime = &run.Runtime{Mapping: res.Mapping.Name, Adapter: res.Mapping.Adapter, Contract: res.Identity.Contract, Version: res.Identity.Version}
 	record.Plan = recordPlan(res.Plan)
-	result.Warnings = slices.Clone(res.Plan.Warnings)
-	for _, warning := range result.Warnings {
+	for _, warning := range record.Plan.Warnings {
 		event(run.SourceAgister, "WARNING", map[string]any{"message": warning})
 	}
 	_ = handle.Update(record)

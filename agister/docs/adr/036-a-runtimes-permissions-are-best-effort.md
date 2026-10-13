@@ -32,8 +32,8 @@ evidence are visible warnings.
 2. `tools.require` is a hard check: a plan withholding any required
    permission refuses the binding before any turn.
 3. `tools.allow`, after policy composition, is a best-effort ceiling.
-   Under `select: one`, choose the primitive with the fewest grants that
-   supplies every required permission and grants no `state_reaching`
+   Under `select: one`, choose the primitive with the fewest distinct
+   grants that supplies every required permission and grants no `state_reaching`
    permission. Equal sizes use mapping order. Record grants beyond the
    effective allow set as `extra`, and warn loudly; do not refuse them.
    Under `select: any`, grant each primitive whose grants fit the ceiling
