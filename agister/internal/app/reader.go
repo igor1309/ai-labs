@@ -6,13 +6,15 @@ import (
 
 	"github.com/igor1309/ai-labs/agister/internal/domain/definition"
 	"github.com/igor1309/ai-labs/agister/internal/domain/document"
+	"github.com/igor1309/ai-labs/agister/internal/domain/enforce"
 	"github.com/igor1309/ai-labs/agister/internal/domain/policy"
 )
 
 // documentReader reads a settings document as what it is: one method per
 // kind reads the document, parses it and returns the parsed value with the
-// document's source. The service settings are returned in the package's
-// own type, which no other file of the package maps a parsed document to.
+// document's source. The service settings and a runtime mapping are
+// returned in the package's own types, which no other file of the package
+// maps a parsed document to.
 // It reads only the document it is asked for (ADR-015 rule 1), and decides
 // nothing for its caller: what to read next, what a failure stops and how
 // it is worded are the caller's.
@@ -89,8 +91,29 @@ func (r documentReader) Agent(ctx context.Context, name string) (definition.Agen
 	return readParsed(ctx, r, document.KindAgent, name, parseAgent)
 }
 
-func (r documentReader) Mapping(ctx context.Context, name string) (definition.Mapping, document.Source, error) {
-	return readParsed(ctx, r, document.KindRuntime, name, definition.ParseMapping)
+// Mapping reads a runtime mapping as the package uses it, not as its file
+// holds it.
+func (r documentReader) Mapping(ctx context.Context, name string) (runtimeMapping, document.Source, error) {
+	mapping, source, err := readParsed(ctx, r, document.KindRuntime, name, definition.ParseMapping)
+	return mappingOf(mapping), source, err
+}
+
+// mappingOf is a parsed runtime document as the package uses it: its
+// primitives as what it offers enforce, of which a plan takes exactly one
+// where the document selects "one". What parsed of an invalid one is
+// mapped the same, and of one that was not read there is nothing.
+func mappingOf(mapping definition.Mapping) runtimeMapping {
+	var primitives []enforce.Primitive
+	for _, primitive := range mapping.Primitives {
+		primitives = append(primitives, enforce.Primitive{Name: primitive.Name, Grants: primitive.Grants, Verified: primitive.Verified})
+	}
+	return runtimeMapping{
+		name:     mapping.Name,
+		adapter:  mapping.Adapter,
+		contract: mapping.Contract,
+		efforts:  mapping.Efforts,
+		offer:    enforce.Offer{One: mapping.Select == "one", Primitives: primitives},
+	}
 }
 
 func (r documentReader) Verification(ctx context.Context, name string) (definition.Verification, document.Source, error) {

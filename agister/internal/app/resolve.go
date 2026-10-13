@@ -43,7 +43,7 @@ type resolution struct {
 	service serviceSettings
 	process definition.Process
 	agent   definition.Agent
-	mapping definition.Mapping
+	mapping runtimeMapping
 	schema  []byte
 	// prompts are the process's prompt, then its guidance, in order
 	// (ADR-028 rule 8).
@@ -321,11 +321,11 @@ func (r *Resolver) resolveCall(ctx context.Context, processName, agentOverride s
 		if err = took("", document.KindRuntime, res.agent.Runtime, source, err); err != nil {
 			return res, err
 		}
-		if unknown := offer(res.mapping).UnknownPermissions(res.service.ceilings.Permissions); len(unknown) > 0 {
-			return res, refuse("runtime mapping %s grants permissions not in the vocabulary: %s", res.mapping.Name, strings.Join(unknown, ", "))
+		if unknown := res.mapping.offer.UnknownPermissions(res.service.ceilings.Permissions); len(unknown) > 0 {
+			return res, refuse("runtime mapping %s grants permissions not in the vocabulary: %s", res.mapping.name, strings.Join(unknown, ", "))
 		}
-		if res.agent.Effort != "" && !contains(res.mapping.Efforts, res.agent.Effort) {
-			return res, refuse("agent %s: effort %q is not supported by runtime %s (supported: %s)", res.agent.Name, res.agent.Effort, res.mapping.Name, strings.Join(res.mapping.Efforts, ", "))
+		if res.agent.Effort != "" && !contains(res.mapping.efforts, res.agent.Effort) {
+			return res, refuse("agent %s: effort %q is not supported by runtime %s (supported: %s)", res.agent.Name, res.agent.Effort, res.mapping.name, strings.Join(res.mapping.efforts, ", "))
 		}
 	}
 	if res.process.Output.Format == "json" {
@@ -417,7 +417,7 @@ func (r *Resolver) resolveCall(ctx context.Context, processName, agentOverride s
 	// A call the settings refuse never asks its runtime: its view shows
 	// what the settings' plan withholds, which no call is given.
 	if settingsOnly {
-		res.refusedPlan, _ = settings.SettingsPlan(res.effective, offer(res.mapping), res.service.stateReaching)
+		res.refusedPlan, _ = settings.SettingsPlan(res.effective, res.mapping.offer, res.service.stateReaching)
 	}
 
 	// Whether the call's session may be resumed is its process's to say
@@ -435,36 +435,36 @@ func (r *Resolver) resolveCall(ctx context.Context, processName, agentOverride s
 	if settingsOnly {
 		return res, nil
 	}
-	subject = DocumentRef{Kind: document.KindRuntime, Name: res.mapping.Name}
-	if res.identity, err = r.identities.Identity(ctx, res.mapping.Adapter, res.agent.Command); err != nil {
+	subject = DocumentRef{Kind: document.KindRuntime, Name: res.mapping.name}
+	if res.identity, err = r.identities.Identity(ctx, res.mapping.adapter, res.agent.Command); err != nil {
 		subject = DocumentRef{Kind: document.KindAgent, Name: res.agent.Name}
-		return res, refuse("runtime %s is unavailable: %v", res.mapping.Name, err)
+		return res, refuse("runtime %s is unavailable: %v", res.mapping.name, err)
 	}
-	if res.identity.Contract != res.mapping.Contract {
-		return res, refuse("runtime mapping %s describes adapter contract %s, but the adapter implements %s", res.mapping.Name, res.mapping.Contract, res.identity.Contract)
+	if res.identity.Contract != res.mapping.contract {
+		return res, refuse("runtime mapping %s describes adapter contract %s, but the adapter implements %s", res.mapping.name, res.mapping.contract, res.identity.Contract)
 	}
 	if verify := res.process.Verify; verify.Repairs() && !res.identity.Resume {
 		subject = root
-		return res, refuse("verify.max_attempts %d repairs in the call's session, but runtime %s cannot resume sessions", verify.MaxAttempts, res.mapping.Name)
+		return res, refuse("verify.max_attempts %d repairs in the call's session, but runtime %s cannot resume sessions", verify.MaxAttempts, res.mapping.name)
 	}
 	if resumes := res.effective.Stale.Recover.MaxResumes; resumes > 0 && !res.identity.Resume {
 		subject = root
-		return res, refuse("stale.recover.max_resumes %d recovers in the call's session, but runtime %s cannot resume sessions", resumes, res.mapping.Name)
+		return res, refuse("stale.recover.max_resumes %d recovers in the call's session, but runtime %s cannot resume sessions", resumes, res.mapping.name)
 	}
-	offered := offer(res.mapping)
+	offered := res.mapping.offer
 	verified, unverified := offered.ForVersion(res.identity.Version)
 	// A version the settings verify nothing for is probed, once (ADR-029).
 	if len(verified.Primitives) == 0 && r.probes != nil {
-		probed, err := r.probes.Verified(ctx, res.mapping.Adapter, res.agent.Command, res.identity.Version)
+		probed, err := r.probes.Verified(ctx, res.mapping.adapter, res.agent.Command, res.identity.Version)
 		if err != nil {
-			return res, refuse("runtime mapping %s verifies no primitive for %s version %s%s", res.mapping.Name, res.mapping.Adapter, res.identity.Version, probeRefusal(err))
+			return res, refuse("runtime mapping %s verifies no primitive for %s version %s%s", res.mapping.name, res.mapping.adapter, res.identity.Version, probeRefusal(err))
 		}
 		verified, unverified = offered.WithVerified(res.identity.Version, probed).ForVersion(res.identity.Version)
 	}
 	if len(verified.Primitives) == 0 {
-		return res, refuse("runtime mapping %s verifies no primitive for %s version %s", res.mapping.Name, res.mapping.Adapter, res.identity.Version)
+		return res, refuse("runtime mapping %s verifies no primitive for %s version %s", res.mapping.name, res.mapping.adapter, res.identity.Version)
 	}
-	if message := settings.CostRefusal(res.effective, res.mapping.Name, res.identity.CostLimit); message != "" {
+	if message := settings.CostRefusal(res.effective, res.mapping.name, res.identity.CostLimit); message != "" {
 		subject = root
 		return res, refuse("%s", message)
 	}
@@ -473,16 +473,16 @@ func (r *Resolver) resolveCall(ctx context.Context, processName, agentOverride s
 	if len(res.skills) > 0 && !res.identity.Skills {
 		subject = root
 		names := translated(res.skills, func(skill definition.Skill) string { return skill.Name })
-		return res, refuse("adapter %s of runtime %s cannot give a call its skills (ADR-021): %s", res.mapping.Adapter, res.mapping.Name, strings.Join(names, ", "))
+		return res, refuse("adapter %s of runtime %s cannot give a call its skills (ADR-021): %s", res.mapping.adapter, res.mapping.name, strings.Join(names, ", "))
 	}
 	// The staleness limits on tool calls need the adapter to report them.
 	if stale := res.effective.Stale; !res.identity.ToolCalls {
 		subject = root
 		switch {
 		case stale.ToolCommand != nil:
-			return res, refuse("runtime %s does not report tool calls, so it cannot enforce stale.tool_command %s", res.mapping.Name, *stale.ToolCommand)
+			return res, refuse("runtime %s does not report tool calls, so it cannot enforce stale.tool_command %s", res.mapping.name, *stale.ToolCommand)
 		case stale.RepeatedToolCalls != nil:
-			return res, refuse("runtime %s does not report tool calls, so it cannot enforce stale.repeated_tool_calls %d", res.mapping.Name, *stale.RepeatedToolCalls)
+			return res, refuse("runtime %s does not report tool calls, so it cannot enforce stale.repeated_tool_calls %d", res.mapping.name, *stale.RepeatedToolCalls)
 		}
 	}
 	subject = root
@@ -490,11 +490,11 @@ func (r *Resolver) resolveCall(ctx context.Context, processName, agentOverride s
 		if refused := (*enforce.RefusedError)(nil); errors.As(err, &refused) && refused.Plan != nil {
 			res.refusedPlan = *refused.Plan
 		}
-		return res, refuse("runtime %s: %v%s", res.mapping.Name, err, unverifiedNote(unverified, "for version "+res.identity.Version))
+		return res, refuse("runtime %s: %v%s", res.mapping.name, err, unverifiedNote(unverified, "for version "+res.identity.Version))
 	}
 	if tools := res.identity.SkillTools; len(tools) > 0 && !slices.ContainsFunc(tools, func(tool string) bool { return contains(res.plan.Primitives, tool) }) {
 		return res, refuse("runtime %s needs %s to use the repository's skills (ADR-006), and the plan grants no such tool: %s",
-			res.mapping.Name, strings.Join(tools, " or "), withoutSkillTools(res, tools, verified, unverified))
+			res.mapping.name, strings.Join(tools, " or "), withoutSkillTools(res, tools, verified, unverified))
 	}
 	res.writer = res.process.Verify != nil || res.process.VerifyName != "" ||
 		slices.ContainsFunc(res.plan.Granted, func(permission string) bool { return contains(res.service.ceilings.Writing, permission) })
@@ -539,7 +539,7 @@ func withoutSkillTools(res *resolution, tools []string, verified enforce.Offer, 
 		case contains(unverified, tool):
 			reasons = append(reasons, tool+" is not verified for version "+res.identity.Version)
 		default:
-			reasons = append(reasons, "runtime mapping "+res.mapping.Name+" has no "+tool)
+			reasons = append(reasons, "runtime mapping "+res.mapping.name+" has no "+tool)
 		}
 	}
 	return strings.Join(reasons, "; ")
@@ -661,17 +661,6 @@ func contains(list []string, value string) bool {
 		}
 	}
 	return false
-}
-
-// offer is what the runtime mapping offers enforce: its primitives, each
-// with the versions it was verified for, and whether a plan takes exactly
-// one of them.
-func offer(mapping definition.Mapping) enforce.Offer {
-	primitives := make([]enforce.Primitive, 0, len(mapping.Primitives))
-	for _, primitive := range mapping.Primitives {
-		primitives = append(primitives, enforce.Primitive{Name: primitive.Name, Grants: primitive.Grants, Verified: primitive.Verified})
-	}
-	return enforce.Offer{One: mapping.Select == "one", Primitives: primitives}
 }
 
 // declared is what a process declares of its limits, for policy.

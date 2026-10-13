@@ -370,7 +370,7 @@ func parse(doc document.Document) (Skill, error) { return ParseSkill(doc) }
 // ownTypes are the parser's types that internal/app has a type of its own
 // for (LAB-188): the reader's file maps the parser's to it, and no other
 // file of the package names the parser's.
-var ownTypes = []string{"Service"}
+var ownTypes = []string{"Service", "Mapping"}
 
 // parserTypes lists, sorted, each of the parser's types given that a
 // non-test file of dir other than the one excepted names, once per file,
@@ -498,6 +498,33 @@ var none = Service{}
 		"unqualified.go: the parser's names, imported unqualified",
 	}
 	if got := parserTypes(t, dir, readerFile, []string{"Service"}); !slices.Equal(got, want) {
+		t.Errorf("uses of the parser's types outside the reader's file = %q, want %q", got, want)
+	}
+}
+
+// Each of the parser's types the app has its own for is kept out of the
+// package's other files: a file that names one is found, and the parser's
+// other types are not.
+func TestEachParserTypeTheAppHasItsOwnForIsFound(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	source := "package app\n\nimport \"" + module + "/internal/domain/definition\"\n" + `
+type parsedSettings struct {
+	service   *definition.Service
+	mappings  map[string]definition.Mapping
+	processes map[string]definition.Process
+}
+
+func (r documentReader) held(ctx context.Context, name string) (runtimeMapping, error) {
+	mapping, _, err := r.documents.Mapping(ctx, name)
+	return mapping, err
+}
+`
+	if err := os.WriteFile(filepath.Join(dir, "names.go"), []byte(source), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	want := []string{"names.go: definition.Mapping", "names.go: definition.Service"}
+	if got := parserTypes(t, dir, readerFile, ownTypes); !slices.Equal(got, want) {
 		t.Errorf("uses of the parser's types outside the reader's file = %q, want %q", got, want)
 	}
 }

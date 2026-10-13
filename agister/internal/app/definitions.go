@@ -301,8 +301,8 @@ func (s *Settings) CreateAgent(ctx context.Context, spec contract.Agent, overwri
 		}
 		return contract.AgentWrite{}, &contract.InputError{Message: invalid.Error(), Unknown: unknown}
 	}
-	if agent.Effort != "" && !contains(mapping.Efforts, agent.Effort) {
-		return contract.AgentWrite{}, &contract.InputError{Message: fmt.Sprintf("unsupported %s effort %q (supported: %s)", mapping.Name, agent.Effort, strings.Join(mapping.Efforts, ", "))}
+	if agent.Effort != "" && !contains(mapping.efforts, agent.Effort) {
+		return contract.AgentWrite{}, &contract.InputError{Message: fmt.Sprintf("unsupported %s effort %q (supported: %s)", mapping.name, agent.Effort, strings.Join(mapping.efforts, ", "))}
 	}
 	data := definition.FormatAgent(agent)
 	if _, err := parsedAgent(agent.Name, data); err != nil {
@@ -673,7 +673,7 @@ func (r *Resolver) inspect(ctx context.Context, name, agent string, caller overr
 		},
 		Agent:       res.agent.Name,
 		AgentSkills: definition.CallSkills(process, res.agent)[len(process.Skills):],
-		Runtime:     res.mapping.Name,
+		Runtime:     res.mapping.name,
 		Effective: InspectedLimits{
 			Timeout: res.effective.Timeout, MaxAttempts: res.effective.MaxAttempts, MaxCostUSD: res.effective.MaxCostUSD,
 			Allow: res.effective.Allow, Deny: res.effective.Deny, Permissions: res.effective.Permissions,
