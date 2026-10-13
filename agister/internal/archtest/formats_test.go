@@ -690,6 +690,24 @@ func redeclared(t *testing.T, dir, of string) []string {
 	return slices.Compact(found)
 }
 
+// validNameAppAndAdaptersGuard composes the source rules for app and its
+// adapters: callers return neither the rule's call nor its unchanged result,
+// and they do not take the rule as a function value.
+func validNameAppAndAdaptersGuard(t *testing.T, dir string) []string {
+	t.Helper()
+	var findings []string
+	for _, use := range validNameReturnedCalls(t, dir) {
+		findings = append(findings, fmt.Sprintf("%s: return results must not call document.ValidName", use))
+	}
+	for _, use := range validNameUnchangedResults(t, dir) {
+		findings = append(findings, fmt.Sprintf("%s: return results must not forward document.ValidName unchanged", use))
+	}
+	for _, use := range validNameFunctionValues(t, dir) {
+		findings = append(findings, fmt.Sprintf("%s: callers call document.ValidName directly, never take it as a function value", use))
+	}
+	return findings
+}
+
 // The document vocabulary has one home, internal/domain/document. The
 // parser names it there: a name of it declared in the parser's package
 // again, as an alias, a constant, a variable or a function,
@@ -820,12 +838,76 @@ func TestTheParserDeclaresNoneOfTheDocumentVocabulary(t *testing.T) {
 func TestAppAndAdaptersDeclareNoReturnedValidNameCall(t *testing.T) {
 	t.Parallel()
 	for _, dir := range []string{"../app", "../adapters"} {
-		for _, use := range validNameReturnedCalls(t, dir) {
-			t.Errorf("%s/%s: return results must not call document.ValidName", dir, use)
+		for _, finding := range validNameAppAndAdaptersGuard(t, dir) {
+			t.Errorf("%s/%s", dir, finding)
 		}
-		for _, use := range validNameUnchangedResults(t, dir) {
-			t.Errorf("%s/%s: return results must not forward document.ValidName unchanged", dir, use)
-		}
+	}
+}
+
+func TestAppAndAdaptersGuardFindsEveryValidNameForwarder(t *testing.T) {
+	t.Parallel()
+	documentImport := "import " + strconv.Quote(module+"/internal/domain/document") + "\n"
+	cases := []struct {
+		name, source string
+		want         []string
+	}{
+		{
+			name:   "declared forwarder",
+			source: documentImport + "var check = document.ValidName\n",
+			want:   []string{"forward.go: document.ValidName: callers call document.ValidName directly, never take it as a function value"},
+		},
+		{
+			name:   "directly returned call",
+			source: documentImport + "func check(name string) bool { return document.ValidName(name) }\n",
+			want:   []string{"forward.go: return document.ValidName(name): return results must not call document.ValidName"},
+		},
+		{
+			name:   "unchanged local result",
+			source: documentImport + "func check(name string) bool { valid := document.ValidName(name); return valid }\n",
+			want:   []string{"forward.go: return valid: return results must not forward document.ValidName unchanged"},
+		},
+		{
+			name:   "unchanged named result",
+			source: documentImport + "func check(name string) (valid bool) { valid = document.ValidName(name); return }\n",
+			want:   []string{"forward.go: return valid: return results must not forward document.ValidName unchanged"},
+		},
+		{
+			name:   "function value",
+			source: documentImport + "func accept(func(string) bool) {}\nfunc pass() { accept(document.ValidName) }\n",
+			want:   []string{"forward.go: document.ValidName: callers call document.ValidName directly, never take it as a function value"},
+		},
+		{
+			name:   "clean",
+			source: documentImport + "func check(name string) bool { return name != \"\" && document.ValidName(name) }\n",
+		},
+	}
+	for _, pkg := range []struct {
+		name, path string
+	}{
+		{name: "app", path: "app"},
+		{name: "adapter", path: filepath.Join("adapters", "fsdefs")},
+	} {
+		pkg := pkg
+		t.Run(pkg.name, func(t *testing.T) {
+			t.Parallel()
+			for _, c := range cases {
+				c := c
+				t.Run(c.name, func(t *testing.T) {
+					t.Parallel()
+					root := t.TempDir()
+					dir := filepath.Join(root, pkg.path)
+					if err := os.MkdirAll(dir, 0o700); err != nil {
+						t.Fatal(err)
+					}
+					if err := os.WriteFile(filepath.Join(dir, "forward.go"), []byte("package "+filepath.Base(dir)+"\n"+c.source), 0o600); err != nil {
+						t.Fatal(err)
+					}
+					if got := validNameAppAndAdaptersGuard(t, dir); !slices.Equal(got, c.want) {
+						t.Errorf("app and adapters guard findings = %q, want %q", got, c.want)
+					}
+				})
+			}
+		})
 	}
 }
 
