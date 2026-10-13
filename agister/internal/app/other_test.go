@@ -418,6 +418,7 @@ func TestAnAbandonedRunIsALostNode(t *testing.T) {
 
 type writerSpy struct {
 	writes  []string
+	stored  []string // what each write stored, in order
 	existed map[string]bool
 }
 
@@ -448,6 +449,7 @@ func createNow(settings *app.Settings, spec contract.Agent, overwrite bool) (con
 
 func (s *writerSpy) Write(ctx context.Context, kind document.Kind, name string, data []byte, expected string) (string, bool, error) {
 	s.writes = append(s.writes, string(kind)+"/"+name)
+	s.stored = append(s.stored, string(data))
 	key, current, _ := s.Current(ctx, kind, name)
 	return key, current == expected, nil
 }
@@ -614,6 +616,41 @@ func TestCreateAgentDryRun(t *testing.T) {
 	}
 	if written, err := settings.CreateAgent(context.Background(), spec, true, &plan); err != nil || written != plan || !reflect.DeepEqual(writer.writes, []string{"agents/b"}) {
 		t.Fatalf("written %+v, writes %v, %v", written, writer.writes, err)
+	}
+}
+
+// The agent is written as its settings document: the schema, then each
+// value the request gives, in the document's order, and no key for one it
+// does not give. The plan's content is the digest of those bytes.
+func TestCreateAgentWritesTheAgentAsItsSettingsDocument(t *testing.T) {
+	t.Parallel()
+	for name, c := range map[string]struct {
+		spec contract.Agent
+		want string
+	}{
+		"every value": {
+			spec: contract.Agent{Name: "b", Runtime: "rt", Model: "m1", ModelFamily: "fam", Effort: "high", Command: "/bin/spy"},
+			want: "schema = \"agister.agent/v1alpha1\"\nname = \"b\"\nruntime = \"rt\"\nmodel = \"m1\"\nmodel_family = \"fam\"\n" +
+				"effort = \"high\"\ncommand = \"/bin/spy\"\n",
+		},
+		"only what is required": {
+			spec: contract.Agent{Name: "b", Runtime: "rt"},
+			want: "schema = \"agister.agent/v1alpha1\"\nname = \"b\"\nruntime = \"rt\"\n",
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			writer := &writerSpy{}
+			settings := app.NewSettings(newHarness().defs, writer, nil, nil, settingsCheckStub{})
+			written, err := createNow(settings, c.spec, false)
+			if err != nil || !reflect.DeepEqual(writer.writes, []string{"agents/b"}) || !reflect.DeepEqual(writer.stored, []string{c.want}) {
+				t.Fatalf("writes %v stored %q, %v; want %q", writer.writes, writer.stored, err, c.want)
+			}
+			sum := sha256.Sum256([]byte(c.want))
+			if want := (contract.AgentWrite{Path: "agents/b", Content: hex.EncodeToString(sum[:])}); written != want {
+				t.Fatalf("written = %+v, want %+v", written, want)
+			}
+		})
 	}
 }
 

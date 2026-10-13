@@ -100,7 +100,13 @@ func readerCases() map[string]readerCase {
 		"a process": reads(document.KindProcess, "p", "schema: agister.process/v1alpha1\nname: p\ntype: process\nprompt: inspect\ninput:\n  instruction: Inspect the change.\noutput:\n  format: text\ntimeout: 20m\ntools: {allow: [repository.read]}\n",
 			documentReader.Process, definition.ParseProcess),
 		"an agent": reads(document.KindAgent, "a", "schema = \"agister.agent/v1alpha1\"\nname = \"a\"\nruntime = \"rt\"\nmodel = \"m1\"\nmodel_family = \"fam\"\neffort = \"high\"\ncommand = \"/bin/spy\"\n",
-			documentReader.Agent, definition.ParseAgent),
+			documentReader.Agent,
+			// An agent is read in the package's own type, as the service
+			// is.
+			func(doc document.Document) (agentProfile, error) {
+				agent, err := definition.ParseAgent(doc)
+				return agentOf(agent), err
+			}),
 		"a runtime mapping": reads(document.KindRuntime, "rt", "schema: agister.runtime/v1alpha1\nname: rt\nadapter: spy\ncontract: spy/1\nefforts: [high]\nprimitives:\n  select: any\n  items:\n    Read: {grants: [repository.read], verified: [\"1.\"]}\n",
 			documentReader.Mapping,
 			// A runtime mapping is read in the package's own type, as the
@@ -513,6 +519,206 @@ func TestAMappingThatWasNotReadHasNoValue(t *testing.T) {
 	}
 }
 
+// agentDocument is the document of the agent a holding text, composed from
+// the layer files given, nearest first.
+func agentDocument(text string, layers ...document.LayerFile) document.Document {
+	return document.Document{
+		Source: document.Source{Kind: document.KindAgent, Name: "a", Path: layers[0].Path, Layer: layers[0].Layer, SHA256: "digest of a", Layers: layers},
+		Bytes:  []byte(text),
+	}
+}
+
+// An agent is read as the package uses it: its name, the runtime it runs
+// on, its model and the model's family, its effort, its command and the
+// skills its calls are given, each as the document says it, beside the
+// document's source.
+func TestTheReaderGivesAnAgentAsThePackageUsesIt(t *testing.T) {
+	t.Parallel()
+	for name, c := range map[string]struct {
+		text string
+		want agentProfile
+	}{
+		"every field": {
+			text: "schema = \"agister.agent/v1alpha1\"\nname = \"a\"\nruntime = \"rt\"\nmodel = \"m1\"\nmodel_family = \"fam\"\n" +
+				"effort = \"high\"\ncommand = \"/bin/spy\"\nskills = [\"review\", \"style\"]\n",
+			want: agentProfile{
+				name:        "a",
+				runtime:     "rt",
+				model:       "m1",
+				modelFamily: "fam",
+				effort:      "high",
+				command:     "/bin/spy",
+				skills:      []string{"review", "style"},
+			},
+		},
+		// Nothing but its name and runtime where the document sets no
+		// more, and no skills.
+		"only what is required": {
+			text: "schema = \"agister.agent/v1alpha1\"\nname = \"a\"\nruntime = \"other\"\n",
+			want: agentProfile{name: "a", runtime: "other"},
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			doc := agentDocument(c.text,
+				document.LayerFile{Layer: document.LayerRepository, Path: "/repo/.agister/agents/a.toml", Fields: []string{"effort"}},
+				document.LayerFile{Layer: document.LayerHome, Path: "/home/agents/a.toml", Fields: []string{"schema", "name", "runtime"}})
+			ref := DocumentRef{Kind: document.KindAgent, Name: "a"}
+			reader := newDocumentReader(definitionsFake{t: t, docs: map[DocumentRef]document.Document{ref: doc}})
+			got, source, err := reader.Agent(context.Background(), "a")
+			if err != nil || !reflect.DeepEqual(got, c.want) || !reflect.DeepEqual(source, doc.Source) {
+				t.Fatalf("agent = %+v, source %+v, %v; want %+v, source %+v", got, source, err, c.want, doc.Source)
+			}
+		})
+	}
+}
+
+// An agent with problems fails with the parser's *document.InvalidError:
+// its problems in the parser's order, each attributed to the layer file
+// that set the field at fault or, for a field none sets, to every file
+// read, and the unknown ones flagged. What of the document parsed is given
+// beside it, with the document's source.
+func TestAnAgentWithProblemsKeepsWhatParsedAndWhereEachProblemIs(t *testing.T) {
+	t.Parallel()
+	const repository, home = "/repo/.agister/agents/a.toml", "/home/agents/a.toml"
+	layers := []document.LayerFile{
+		{Layer: document.LayerRepository, Path: repository, Fields: []string{"colour", "effort", "skills"}},
+		{Layer: document.LayerHome, Path: home, Fields: []string{"schema", "name", "model", "model_family", "command", "session", "skills"}},
+	}
+	for name, c := range map[string]struct {
+		text     string
+		want     agentProfile
+		problems []document.Problem
+	}{
+		"problems in two layers": {
+			text: "schema = \"agister.agent/v1alpha1\"\nname = \"a\"\nmodel = \"m1\"\nmodel_family = \"fam\"\neffort = \"\"\ncolour = \"red\"\n" +
+				"command = \"/bin/spy\"\nsession = \"resumable\"\nskills = [\"review\", \"Bad Name\", \"review\", \"style\"]\n",
+			want: agentProfile{
+				name:        "a",
+				model:       "m1",
+				modelFamily: "fam",
+				command:     "/bin/spy",
+				skills:      []string{"review", "style"},
+			},
+			problems: []document.Problem{
+				{Message: "colour: unknown field (set in " + repository + ")", Unknown: true},
+				{Message: "runtime: is required (no layer sets it: " + repository + ", " + home + ")"},
+				{Message: "effort: must be a non-empty string (set in " + repository + ")"},
+				{Message: "skills[1]: invalid skill name \"Bad Name\" (set in " + repository + ", " + home + ")"},
+				{Message: "skills[2]: skill \"review\" is named twice (also skills[0]) (set in " + repository + ", " + home + ")"},
+				{Message: "session: an agent holds no session (ADR-030 rule 1): set session on each process whose calls resume theirs, and remove it here (set in " + home + ")"},
+			},
+		},
+		"a schema of a newer version": {
+			text: "schema = \"agister.agent/v2\"\nname = \"a\"\nruntime = \"rt\"\nmodel = \"m1\"\nmodel_family = \"fam\"\n" +
+				"effort = \"high\"\ncommand = \"/bin/spy\"\nskills = [\"review\"]\n",
+			want: agentProfile{
+				name:        "a",
+				runtime:     "rt",
+				model:       "m1",
+				modelFamily: "fam",
+				effort:      "high",
+				command:     "/bin/spy",
+				skills:      []string{"review"},
+			},
+			problems: []document.Problem{
+				{Message: "schema: must be \"agister.agent/v1alpha1\" (set in " + home + ")", Unknown: true},
+			},
+		},
+		// The name it declares, not the one it was asked by.
+		"another agent's name": {
+			text: "schema = \"agister.agent/v1alpha1\"\nname = \"b\"\nruntime = \"rt\"\n",
+			want: agentProfile{name: "b", runtime: "rt"},
+			problems: []document.Problem{
+				{Message: "name: \"b\" does not match its definition name \"a\" (set in " + home + ")"},
+			},
+		},
+		"no text": {
+			text:     "\xff",
+			problems: []document.Problem{{Message: "not a UTF-8 text file"}},
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			doc := agentDocument(c.text, layers...)
+			ref := DocumentRef{Kind: document.KindAgent, Name: "a"}
+			reader := newDocumentReader(definitionsFake{t: t, docs: map[DocumentRef]document.Document{ref: doc}})
+			got, source, err := reader.Agent(context.Background(), "a")
+			invalid, ok := err.(*document.InvalidError)
+			if want := (&document.InvalidError{Subject: "agent a (" + repository + ")", Problems: c.problems}); unread(err) || !ok || !reflect.DeepEqual(invalid, want) {
+				t.Fatalf("agent error = %#v, want %#v", err, want)
+			}
+			if !reflect.DeepEqual(got, c.want) || !reflect.DeepEqual(source, doc.Source) {
+				t.Fatalf("agent = %+v, source %+v; want %+v, source %+v", got, source, c.want, doc.Source)
+			}
+		})
+	}
+}
+
+// An agent that was not read has no value: the reader maps nothing of it.
+func TestAnAgentThatWasNotReadHasNoValue(t *testing.T) {
+	t.Parallel()
+	ref := DocumentRef{Kind: document.KindAgent, Name: "a"}
+	reader := newDocumentReader(definitionsFake{t: t, errs: map[DocumentRef]error{ref: document.ErrNotFound}})
+	got, _, err := reader.Agent(context.Background(), "a")
+	if !unread(err) || !reflect.DeepEqual(got, agentProfile{}) {
+		t.Fatalf("agent = %+v, %#v; want none and a failure to read", got, err)
+	}
+}
+
+// An agent is formatted as its settings document: the schema, then each
+// value it has, in the document's order, and no key for one it lacks.
+func TestAnAgentIsFormattedAsItsSettingsDocument(t *testing.T) {
+	t.Parallel()
+	for name, c := range map[string]struct {
+		agent agentProfile
+		want  string
+	}{
+		"every value": {
+			agent: agentProfile{name: "a", runtime: "rt", model: "m1", modelFamily: "fam", effort: "high", command: "/bin/spy", skills: []string{"review", "style"}},
+			want: "schema = \"agister.agent/v1alpha1\"\nname = \"a\"\nruntime = \"rt\"\nmodel = \"m1\"\nmodel_family = \"fam\"\n" +
+				"effort = \"high\"\ncommand = \"/bin/spy\"\nskills = [\"review\", \"style\"]\n",
+		},
+		"only what is required": {
+			agent: agentProfile{name: "a", runtime: "rt"},
+			want:  "schema = \"agister.agent/v1alpha1\"\nname = \"a\"\nruntime = \"rt\"\n",
+		},
+		"no skills": {
+			agent: agentProfile{name: "a", runtime: "rt", effort: "high", skills: []string{}},
+			want:  "schema = \"agister.agent/v1alpha1\"\nname = \"a\"\nruntime = \"rt\"\neffort = \"high\"\n",
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			if got := string(formatAgent(c.agent)); got != c.want {
+				t.Fatalf("formatted agent =\n%s\nwant\n%s", got, c.want)
+			}
+		})
+	}
+}
+
+// The skills of a call are the process's, then its agent's that the
+// process does not name, each once (ADR-021 rule 2).
+func TestTheSkillsOfACallAreTheProcessThenItsAgents(t *testing.T) {
+	t.Parallel()
+	for name, c := range map[string]struct {
+		process, agent, want []string
+	}{
+		"both name some":    {process: []string{"review", "tests"}, agent: []string{"style", "review", "git"}, want: []string{"review", "tests", "style", "git"}},
+		"only the process":  {process: []string{"review", "tests"}, want: []string{"review", "tests"}},
+		"only the agent":    {agent: []string{"style", "git"}, want: []string{"style", "git"}},
+		"neither names any": {},
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			got := callSkills(definition.Process{Name: "p", Skills: c.process}, agentProfile{name: "a", runtime: "rt", skills: c.agent})
+			if !slices.Equal(got, c.want) {
+				t.Fatalf("skills of the call = %q, want %q", got, c.want)
+			}
+		})
+	}
+}
+
 // A prompt of the inventory is read as the settings list it, apart from the
 // prompt of the same name a call reads: parsed with its source, a failure
 // to read it told from a failure to parse it.
@@ -690,8 +896,8 @@ func TestAnAgentToStoreIsParsedAsTheAgentItNames(t *testing.T) {
 				t.Fatalf("the case's agent parses with %v", parseErr)
 			}
 			got, err := parsedAgent(source.Name, []byte(c.text))
-			if !reflect.DeepEqual(got, want) || !reflect.DeepEqual(got.Source, source) {
-				t.Fatalf("agent = %+v, want %+v, of source %+v", got, want, source)
+			if !reflect.DeepEqual(got, agentOf(want)) {
+				t.Fatalf("agent = %+v, want %+v", got, agentOf(want))
 			}
 			if c.valid {
 				if err != nil {
@@ -702,6 +908,12 @@ func TestAnAgentToStoreIsParsedAsTheAgentItNames(t *testing.T) {
 			invalid, ok := err.(*document.InvalidError)
 			if unread(err) || !ok || !reflect.DeepEqual(invalid, parseErr) {
 				t.Fatalf("error = %#v, want the parser's %#v", err, parseErr)
+			}
+			// The package's agent holds no source, so the error's subject
+			// tells what the bytes were parsed as: the agent named, of no
+			// file.
+			if invalid.Subject != "agent a" {
+				t.Fatalf("error's subject = %q, want %q", invalid.Subject, "agent a")
 			}
 		})
 	}
@@ -744,7 +956,12 @@ func TestADocumentAlreadyReadIsParsedByItsKindsParser(t *testing.T) {
 		})
 	}
 	agent := func(text string, valid bool, names ...string) parsedCase {
-		return parses(document.KindAgent, text, valid, names, parseAgent, definition.ParseAgent, func(a definition.Agent) []string { return a.Skills })
+		return parses(document.KindAgent, text, valid, names, parseAgent,
+			func(doc document.Document) (agentProfile, error) {
+				agent, err := definition.ParseAgent(doc)
+				return agentOf(agent), err
+			},
+			func(a agentProfile) []string { return a.skills })
 	}
 	for name, c := range map[string]parsedCase{
 		"a process": process("schema: agister.process/v1alpha1\nname: d\ntype: process\nprompt: inspect\nguidance: [style]\nskills: [review]\ninput:\n  instruction: Inspect the change.\noutput:\n  format: text\ntimeout: 20m\ntools: {allow: [repository.read]}\n",

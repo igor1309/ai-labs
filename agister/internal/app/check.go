@@ -176,7 +176,7 @@ func (c *Checker) checkNow(ctx context.Context, probe bool) (CheckResult, error)
 		settingsProblem(settings.Problem{Subject: subject, Message: fmt.Sprintf(format, args...)})
 	}
 	parsed := parsedSettings{
-		agents:    map[string]definition.Agent{},
+		agents:    map[string]agentProfile{},
 		processes: map[string]definition.Process{},
 		mappings:  map[string]runtimeMapping{},
 		schemas:   map[string]bool{},
@@ -300,7 +300,7 @@ func (c *Checker) checkNow(ctx context.Context, probe bool) (CheckResult, error)
 		{document.KindAgent, func(name string) (document.Source, error) {
 			a, source, err := c.documents.Agent(ctx, name)
 			if err == nil {
-				parsed.agents[a.Name] = a
+				parsed.agents[a.name] = a
 			}
 			return source, err
 		}},
@@ -462,8 +462,8 @@ func (c *Checker) checkNow(ctx context.Context, probe bool) (CheckResult, error)
 	}
 	for _, name := range sortedNames(parsed.agents) {
 		agent, from := parsed.agents[name], DocumentRef{Kind: document.KindAgent, Name: name}
-		link(from, document.KindRuntime, agent.Runtime, false)
-		for _, skill := range agent.Skills {
+		link(from, document.KindRuntime, agent.runtime, false)
+		for _, skill := range agent.skills {
 			link(from, document.KindSkill, skill, false)
 		}
 	}
@@ -552,23 +552,23 @@ func (c *Checker) checkNow(ctx context.Context, probe bool) (CheckResult, error)
 	if probe {
 		for _, name := range sortedNames(parsed.agents) {
 			agent := parsed.agents[name]
-			mapping, ok := parsed.mappings[agent.Runtime]
+			mapping, ok := parsed.mappings[agent.runtime]
 			if !ok {
 				continue
 			}
 			if !contains(known, mapping.adapter) {
 				continue // reported as an unknown adapter
 			}
-			identity, err := c.runtimes.Identity(ctx, mapping.adapter, agent.Command)
+			identity, err := c.runtimes.Identity(ctx, mapping.adapter, agent.command)
 			// What a probe verifies is seen by every check that follows,
 			// of this agent and of any other on the same runtime.
-			checked := bundle.Mappings[agent.Runtime]
+			checked := bundle.Mappings[agent.runtime]
 			var probeFailed error
 			if err == nil && identity.Contract == mapping.contract && !checked.Offer.Verified(identity.Version) && c.probes != nil {
 				var probed []string
-				if probed, probeFailed = c.probes.Verified(ctx, mapping.adapter, agent.Command, identity.Version); probeFailed == nil {
+				if probed, probeFailed = c.probes.Verified(ctx, mapping.adapter, agent.command, identity.Version); probeFailed == nil {
 					checked.Offer = checked.Offer.WithVerified(identity.Version, probed)
-					bundle.Mappings[agent.Runtime] = checked
+					bundle.Mappings[agent.runtime] = checked
 				}
 			}
 			switch {

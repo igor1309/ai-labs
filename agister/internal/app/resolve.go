@@ -42,7 +42,7 @@ func refuse(format string, args ...any) error { return &Refusal{Reason: fmt.Spri
 type resolution struct {
 	service serviceSettings
 	process definition.Process
-	agent   definition.Agent
+	agent   agentProfile
 	mapping runtimeMapping
 	schema  []byte
 	// prompts are the process's prompt, then its guidance, in order
@@ -317,15 +317,15 @@ func (r *Resolver) resolveCall(ctx context.Context, processName, agentOverride s
 		if err = took("", document.KindAgent, agentOverride, source, err); err != nil {
 			return res, err
 		}
-		res.mapping, source, err = r.documents.Mapping(ctx, res.agent.Runtime)
-		if err = took("", document.KindRuntime, res.agent.Runtime, source, err); err != nil {
+		res.mapping, source, err = r.documents.Mapping(ctx, res.agent.runtime)
+		if err = took("", document.KindRuntime, res.agent.runtime, source, err); err != nil {
 			return res, err
 		}
 		if unknown := res.mapping.offer.UnknownPermissions(res.service.ceilings.Permissions); len(unknown) > 0 {
 			return res, refuse("runtime mapping %s grants permissions not in the vocabulary: %s", res.mapping.name, strings.Join(unknown, ", "))
 		}
-		if res.agent.Effort != "" && !contains(res.mapping.efforts, res.agent.Effort) {
-			return res, refuse("agent %s: effort %q is not supported by runtime %s (supported: %s)", res.agent.Name, res.agent.Effort, res.mapping.name, strings.Join(res.mapping.efforts, ", "))
+		if res.agent.effort != "" && !contains(res.mapping.efforts, res.agent.effort) {
+			return res, refuse("agent %s: effort %q is not supported by runtime %s (supported: %s)", res.agent.name, res.agent.effort, res.mapping.name, strings.Join(res.mapping.efforts, ", "))
 		}
 	}
 	if res.process.Output.Format == "json" {
@@ -382,10 +382,10 @@ func (r *Resolver) resolveCall(ctx context.Context, processName, agentOverride s
 	}
 	// Each skill the process and its agent name is read with the call, from
 	// the same settings, and recorded among its sources (ADR-021 rule 3).
-	for _, name := range definition.CallSkills(res.process, res.agent) {
+	for _, name := range callSkills(res.process, res.agent) {
 		namer := "process " + res.process.Name
 		if !contains(res.process.Skills, name) {
-			namer = "agent " + res.agent.Name
+			namer = "agent " + res.agent.name
 		}
 		skill, source, err := r.documents.Skill(ctx, name)
 		if err = took(namer+" names ", document.KindSkill, name, source, err); err != nil {
@@ -436,8 +436,8 @@ func (r *Resolver) resolveCall(ctx context.Context, processName, agentOverride s
 		return res, nil
 	}
 	subject = DocumentRef{Kind: document.KindRuntime, Name: res.mapping.name}
-	if res.identity, err = r.identities.Identity(ctx, res.mapping.adapter, res.agent.Command); err != nil {
-		subject = DocumentRef{Kind: document.KindAgent, Name: res.agent.Name}
+	if res.identity, err = r.identities.Identity(ctx, res.mapping.adapter, res.agent.command); err != nil {
+		subject = DocumentRef{Kind: document.KindAgent, Name: res.agent.name}
 		return res, refuse("runtime %s is unavailable: %v", res.mapping.name, err)
 	}
 	if res.identity.Contract != res.mapping.contract {
@@ -455,7 +455,7 @@ func (r *Resolver) resolveCall(ctx context.Context, processName, agentOverride s
 	verified, unverified := offered.ForVersion(res.identity.Version)
 	// A version the settings verify nothing for is probed, once (ADR-029).
 	if len(verified.Primitives) == 0 && r.probes != nil {
-		probed, err := r.probes.Verified(ctx, res.mapping.adapter, res.agent.Command, res.identity.Version)
+		probed, err := r.probes.Verified(ctx, res.mapping.adapter, res.agent.command, res.identity.Version)
 		if err != nil {
 			return res, refuse("runtime mapping %s verifies no primitive for %s version %s%s", res.mapping.name, res.mapping.adapter, res.identity.Version, probeRefusal(err))
 		}

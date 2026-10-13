@@ -12,9 +12,9 @@ import (
 
 // documentReader reads a settings document as what it is: one method per
 // kind reads the document, parses it and returns the parsed value with the
-// document's source. The service settings and a runtime mapping are
-// returned in the package's own types, which no other file of the package
-// maps a parsed document to.
+// document's source. The service settings, a runtime mapping and an agent
+// are returned in the package's own types, which no other file of the
+// package maps a parsed document to.
 // It reads only the document it is asked for (ADR-015 rule 1), and decides
 // nothing for its caller: what to read next, what a failure stops and how
 // it is worded are the caller's.
@@ -87,8 +87,52 @@ func (r documentReader) Process(ctx context.Context, name string) (definition.Pr
 	return readParsed(ctx, r, document.KindProcess, name, parseProcess)
 }
 
-func (r documentReader) Agent(ctx context.Context, name string) (definition.Agent, document.Source, error) {
+// Agent reads an agent as the package uses it, not as its file holds it.
+func (r documentReader) Agent(ctx context.Context, name string) (agentProfile, document.Source, error) {
 	return readParsed(ctx, r, document.KindAgent, name, parseAgent)
+}
+
+// agentOf is a parsed agent document as the package uses it. What parsed
+// of an invalid one is mapped the same, and of one that was not read there
+// is nothing.
+func agentOf(agent definition.Agent) agentProfile {
+	return agentProfile{
+		name:        agent.Name,
+		runtime:     agent.Runtime,
+		model:       agent.Model,
+		modelFamily: agent.ModelFamily,
+		effort:      agent.Effort,
+		command:     agent.Command,
+		skills:      agent.Skills,
+	}
+}
+
+// parserAgent is agent as the parser holds one, for the parser's functions
+// that take an agent. It has no source: a document's provenance is
+// returned beside the package's agent, not in it.
+func parserAgent(agent agentProfile) definition.Agent {
+	return definition.Agent{
+		Name:        agent.name,
+		Runtime:     agent.runtime,
+		Model:       agent.model,
+		ModelFamily: agent.modelFamily,
+		Effort:      agent.effort,
+		Command:     agent.command,
+		Skills:      agent.skills,
+	}
+}
+
+// formatAgent is agent as the bytes of its settings document, which a
+// write stores.
+func formatAgent(agent agentProfile) []byte {
+	return definition.FormatAgent(parserAgent(agent))
+}
+
+// callSkills lists the skills a call of process on agent is given, as the
+// parser lists them: the process's, then the agent's, each once (ADR-021
+// rule 2).
+func callSkills(process definition.Process, agent agentProfile) []string {
+	return definition.CallSkills(process, parserAgent(agent))
 }
 
 // Mapping reads a runtime mapping as the package uses it, not as its file
@@ -189,14 +233,15 @@ func parseProcess(doc document.Document) (definition.Process, error) {
 }
 
 // parseAgent parses doc, an agent document already read, as parseProcess
-// parses a process.
-func parseAgent(doc document.Document) (definition.Agent, error) {
-	return definition.ParseAgent(doc)
+// parses a process, to the agent as the package uses it.
+func parseAgent(doc document.Document) (agentProfile, error) {
+	agent, err := definition.ParseAgent(doc)
+	return agentOf(agent), err
 }
 
 // parsedAgent parses data as the agent named name: what a write is about
 // to store, which is read from nowhere and so has no source but its name.
-func parsedAgent(name string, data []byte) (definition.Agent, error) {
+func parsedAgent(name string, data []byte) (agentProfile, error) {
 	return parseAgent(document.Document{Source: document.Source{Kind: document.KindAgent, Name: name}, Bytes: data})
 }
 
