@@ -693,7 +693,8 @@ func redeclared(t *testing.T, dir, of string) []string {
 // inputVocabularyGuard checks non-test sources: definition declares none of
 // the five moved names, and definition and app declare no const, var or type
 // alias whose value is exactly an imported input constant. Short variable
-// declarations count too. It follows import names and lexical identity,
+// declarations and blank identifiers count too, including inherited const
+// initializers. It follows import names and lexical identity,
 // ignoring parentheses; it does not follow further copies or assignments,
 // compare string literals or claim semantic equivalence.
 func inputVocabularyGuard(t *testing.T, dir string, isParser bool) []string {
@@ -721,7 +722,7 @@ func inputVocabularyGuard(t *testing.T, dir string, isParser bool) []string {
 			}
 		}
 		forward := func(ident *ast.Ident, value ast.Expr) {
-			if ident.Name == "_" || value == nil {
+			if value == nil {
 				return
 			}
 			var moved string
@@ -739,8 +740,22 @@ func inputVocabularyGuard(t *testing.T, dir string, isParser bool) []string {
 				found = append(found, fmt.Sprintf("%s: %s forwards input.%s", name, ident.Name, moved))
 			}
 		}
+		inherited := make(map[*ast.ValueSpec][]ast.Expr)
 		ast.Inspect(file, func(node ast.Node) bool {
 			switch node := node.(type) {
+			case *ast.GenDecl:
+				if node.Tok == token.CONST {
+					var values []ast.Expr
+					for _, spec := range node.Specs {
+						declared := spec.(*ast.ValueSpec)
+						if len(declared.Values) > 0 {
+							values = declared.Values
+						} else {
+							// An omitted initializer repeats the last explicit list in this group.
+							inherited[declared] = values
+						}
+					}
+				}
 			case *ast.FuncDecl:
 				if node.Recv == nil {
 					declaration(node.Name)
@@ -751,10 +766,14 @@ func inputVocabularyGuard(t *testing.T, dir string, isParser bool) []string {
 					forward(node.Name, node.Type)
 				}
 			case *ast.ValueSpec:
+				values := node.Values
+				if len(values) == 0 {
+					values = inherited[node]
+				}
 				for i, ident := range node.Names {
 					declaration(ident)
-					if i < len(node.Values) {
-						forward(ident, node.Values[i])
+					if i < len(values) {
+						forward(ident, values[i])
 					}
 				}
 			case *ast.AssignStmt:
@@ -1411,6 +1430,49 @@ func TestTheParserDeclaresNoneOfTheInputVocabulary(t *testing.T) {
 					}
 				}
 				cases = append(cases, c)
+				for _, shape := range []struct {
+					name, source string
+					targets      []string
+				}{
+					{
+						name: "inherits initializer",
+						source: "const (\n_ = (%[2]s)\ninherited%[1]s\nrepeated%[1]s\n_\n" +
+							"reset%[1]s = \"own\"\nown%[1]s\n)\n",
+						targets: []string{"_", "inherited", "repeated", "_"},
+					},
+					{
+						name:    "inherits expression list",
+						source:  "const (\n_, explicit%[1]s = \"own\", %[2]s\nown%[1]s, inherited%[1]s\n)\n",
+						targets: []string{"explicit", "inherited"},
+					},
+					{
+						name:    "blank identifiers",
+						source:  "const _ = %[2]s\nvar _ = %[2]s\ntype _ = %[2]s\n",
+						targets: []string{"_", "_", "_"},
+					},
+				} {
+					c := fixture{
+						name:   shape.name + " " + imported.name,
+						source: "import " + imported.alias + strconv.Quote(module+"/internal/domain/input") + "\n",
+					}
+					for _, name := range names {
+						source := fmt.Sprintf(shape.source, name, imported.prefix+name)
+						c.source += source + "func scope" + name + "() {\n" + source + "}\n"
+						for range 2 {
+							for _, target := range shape.targets {
+								if target != "_" {
+									target += name
+								}
+								c.want = append(c.want, "forward.go: "+target+" forwards input."+name)
+							}
+						}
+						if shape.name == "blank identifiers" {
+							c.source += fmt.Sprintf("func short%s() { _, own := %s, \"own\"; _ = own }\n", name, imported.prefix+name)
+							c.want = append(c.want, "forward.go: _ forwards input."+name)
+						}
+					}
+					cases = append(cases, c)
+				}
 			}
 			cases = append(cases, fixture{
 				name: "clean",
