@@ -79,6 +79,7 @@ type judgement struct {
 type summary struct {
 	Status     string      `json:"status"`
 	Reason     string      `json:"reason"`
+	Base       string      `json:"base"`
 	Implements []implement `json:"implements"`
 	Reviews    []review    `json:"reviews"`
 	// Left is the last counted review's items the gate did not act on:
@@ -210,6 +211,15 @@ func (g *gate) steps(ctx context.Context) error {
 	if err := g.clean(ctx); err != nil {
 		return err
 	}
+	if g.from == "implement" {
+		if err := g.resolveBase(ctx); err != nil {
+			return err
+		}
+	} else {
+		// A resumed review receives the commit printed by the preceding
+		// summary; resolving it again would let a ref move between reviews.
+		g.sum.Base = g.base
+	}
 	if err := g.briefs(); err != nil {
 		return err
 	}
@@ -240,6 +250,23 @@ func (g *gate) steps(ctx context.Context) error {
 			return err
 		}
 	}
+}
+
+// resolveBase pins the caller's revision before any run can move a shared
+// remote ref. The commit is then reused for every review and brief in this
+// step.
+func (g *gate) resolveBase(ctx context.Context) error {
+	out, err := g.run(ctx, g.dir, "git", "rev-parse", "--verify", g.base+"^{commit}")
+	if err != nil {
+		return fmt.Errorf("git rev-parse base %q: %w", g.base, err)
+	}
+	base := strings.TrimSpace(string(out))
+	if base == "" || strings.ContainsAny(base, " \t\r\n") {
+		return fmt.Errorf("git rev-parse base %q returned no commit", g.base)
+	}
+	g.base = base
+	g.sum.Base = base
+	return nil
 }
 
 // leave records the items of j the gate does not act on, and returns the
@@ -396,8 +423,8 @@ func (g *gate) briefs() error {
 	}
 	g.goal, g.step = filepath.Join(g.out, "goal.md"), filepath.Join(g.out, "step.md")
 	goal := fmt.Sprintf("# %s\n\n## Intent\n\nWhat the issue's text, under Done when, makes true.\n\n"+
-		"## Done when\n\n%s\n## Out of scope\n\nWhat the issue's text, under Done when, leaves out.\n\n## Open\n\nNone.\n",
-		g.title, fenced(string(issue)))
+		"## Base\n\n%s\n\n## Done when\n\n%s\n## Out of scope\n\nWhat the issue's text, under Done when, leaves out.\n\n## Open\n\nNone.\n",
+		g.title, g.base, fenced(string(issue)))
 	if err := os.WriteFile(g.goal, []byte(goal), 0o644); err != nil {
 		return err
 	}
@@ -416,7 +443,7 @@ func (g *gate) stepBrief(title, actsOn string) (string, error) {
 		return "", err
 	}
 	var b strings.Builder
-	fmt.Fprintf(&b, "# %s\n\n## Goal\n\n`%s`\n\n## Covers\n\n%s", title, g.goal, fenced(string(issue)))
+	fmt.Fprintf(&b, "# %s\n\n## Goal\n\n`%s`\n\n## Base\n\n%s\n\n## Covers\n\n%s", title, g.goal, g.base, fenced(string(issue)))
 	if actsOn != "" {
 		fmt.Fprintf(&b, "\n## Acts on\n\n%s", actsOn)
 	}

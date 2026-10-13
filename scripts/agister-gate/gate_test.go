@@ -31,11 +31,12 @@ type fake struct {
 
 	questions []string
 
-	briefs   []string
-	added    [][]string
-	commits  []string
-	statuses int
-	agisters int
+	briefs    []string
+	added     [][]string
+	commits   []string
+	statuses  int
+	revParses int
+	agisters  int
 }
 
 func (f *fake) run(_ context.Context, _ string, name string, args ...string) ([]byte, error) {
@@ -72,6 +73,7 @@ func (f *fake) run(_ context.Context, _ string, name string, args ...string) ([]
 		f.commits = append(f.commits, args[3])
 		return nil, nil
 	case name == "git" && args[0] == "rev-parse":
+		f.revParses++
 		return []byte(fmt.Sprintf("c%d\n", len(f.commits))), nil
 	case name == "agister" && args[1] == cmp.Or(f.review, "code_review"):
 		f.agisters++
@@ -201,12 +203,26 @@ func TestAStepPassesWhenItsReviewHasNoMajorToFix(t *testing.T) {
 	if len(sum.Implements) != 1 || sum.Implements[0].RunID != "i1" || sum.Implements[0].Commit != "c1" {
 		t.Errorf("implements %+v", sum.Implements)
 	}
+	if sum.Base != "c0" {
+		t.Errorf("base %q, want c0", sum.Base)
+	}
 	if len(sum.Reviews) != 1 || !sum.Reviews[0].Counted || sum.Reviews[0].Majors != 0 {
 		t.Errorf("reviews %+v", sum.Reviews)
 	}
 	want := left{Majors: []item{}, Minors: []item{minor}, Deferred: []item{deferred}}
 	if !reflect.DeepEqual(sum.Left, want) {
 		t.Errorf("left %+v, want %+v", sum.Left, want)
+	}
+}
+
+// A resumed review uses the commit supplied from the previous summary and
+// does not resolve that value again.
+func TestAResumedReviewUsesItsGivenCommit(t *testing.T) {
+	t.Parallel()
+	f := &fake{t: t, reviews: []string{reviewed("r1")}}
+	code, sum, _ := gated(t, f, "--from", "review", "--base", "deadbeef")
+	if code != exitPassed || sum.Base != "deadbeef" || f.revParses != 0 {
+		t.Fatalf("exit %d, base %q, rev-parse calls %d", code, sum.Base, f.revParses)
 	}
 }
 
@@ -240,7 +256,7 @@ func TestAMajorRuledFixGoesToAFixRunAndIsReviewedAgain(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := "# LAB-1 step 2\n\n## Goal\n\n`" + filepath.Join(out, "goal.md") + "`\n\n## Covers\n\n" +
+	want := "# LAB-1 step 2\n\n## Goal\n\n`" + filepath.Join(out, "goal.md") + "`\n\n## Base\n\nc0\n\n## Covers\n\n" +
 		"````text\n" + issue + "````\n\n" +
 		"## Acts on\n\nThe changes to make, as written:\n\n" +
 		"- **Prove the refusal**: Add a test that the call is refused.\n\n" +
@@ -304,6 +320,8 @@ func TestAChangeTheRunDidNotReportStopsTheStep(t *testing.T) {
 	}
 }
 
+// Contract test: the real git repository stages files reported from the
+// worktree root when --dir points below it.
 // A run reports its files from the worktree root; with --dir a
 // subdirectory, they are still the ones staged and committed, by real git.
 func TestTheRunsFilesAreCommittedFromTheRootWhenDirIsBelowIt(t *testing.T) {
@@ -362,6 +380,82 @@ func TestTheRunsFilesAreCommittedFromTheRootWhenDirIsBelowIt(t *testing.T) {
 	}
 }
 
+// Contract test: the real git repository and ref resolution used by the gate.
+// The review moves the shared ref after the step starts; its base remains the
+// commit resolved before the implement run.
+func TestTheBaseIsPinnedBeforeAReviewCanMoveTheRef(t *testing.T) {
+	t.Parallel()
+	repo, inputs := t.TempDir(), t.TempDir()
+	git := func(args ...string) string {
+		t.Helper()
+		out, err := commands(context.Background(), repo, "git", args...)
+		if err != nil {
+			t.Fatalf("git %q: %v", args, err)
+		}
+		return strings.TrimSpace(string(out))
+	}
+	git("init", "-q")
+	for _, kv := range [][2]string{{"user.name", "gate"}, {"user.email", "gate@test"}, {"commit.gpgsign", "false"}, {"core.hooksPath", "/dev/null"}} {
+		git("config", kv[0], kv[1])
+	}
+	if err := os.WriteFile(filepath.Join(repo, "tracked.txt"), []byte("before\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	git("add", "tracked.txt")
+	git("commit", "-q", "-m", "base")
+	git("branch", "origin/trunk")
+	base := git("rev-parse", "origin/trunk")
+	for name, text := range map[string]string{"issue.md": issue, "decisions.md": records} {
+		if err := os.WriteFile(filepath.Join(inputs, name), []byte(text), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	var reviewBase string
+	runner := func(ctx context.Context, dir, name string, args ...string) ([]byte, error) {
+		if name == "git" {
+			return commands(ctx, dir, name, args...)
+		}
+		if name != "agister" {
+			t.Fatalf("unexpected command %s %q", name, args)
+		}
+		switch args[1] {
+		case "implement_codex":
+			if err := os.WriteFile(filepath.Join(repo, "tracked.txt"), []byte("after\n"), 0o644); err != nil {
+				t.Fatal(err)
+			}
+			return []byte(implementResult("i1", "tracked.txt")), nil
+		case "code_review":
+			for _, arg := range args {
+				if strings.HasPrefix(arg, "base=") {
+					reviewBase = strings.TrimPrefix(arg, "base=")
+				}
+			}
+			git("branch", "-f", "origin/trunk", "HEAD")
+			return []byte(reviewed("r1")), nil
+		default:
+			t.Fatalf("unexpected workflow %q", args[1])
+			return nil, nil
+		}
+	}
+	args := []string{"--issue", filepath.Join(inputs, "issue.md"), "--title", "LAB-251 step 1",
+		"--implement", "implement_codex", "--advisor", "advisor_codex", "--decisions", filepath.Join(inputs, "decisions.md"),
+		"--base", "origin/trunk", "--message", "gate: pin base", "--out", filepath.Join(inputs, "out"), "--dir", repo}
+	var stdout, stderr bytes.Buffer
+	if code := run(context.Background(), args, runner, &stdout, &stderr); code != exitPassed {
+		t.Fatalf("exit %d\n%s\n%s", code, stdout.String(), stderr.String())
+	}
+	var sum summary
+	if err := json.Unmarshal(stdout.Bytes(), &sum); err != nil {
+		t.Fatal(err)
+	}
+	if sum.Base != base || reviewBase != base {
+		t.Fatalf("base summary=%q review=%q want=%q", sum.Base, reviewBase, base)
+	}
+	if moved := git("rev-parse", "origin/trunk"); moved == base {
+		t.Fatalf("review ref did not move from %s", base)
+	}
+}
+
 // A worktree with a change before the step stops it before any run.
 func TestADirtyWorktreeStopsTheStepBeforeAnyRun(t *testing.T) {
 	t.Parallel()
@@ -399,7 +493,7 @@ func TestTheBriefsAreTheIssuesTextAsWritten(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	wantGoal := "# LAB-1 step 2\n\n## Intent\n\nWhat the issue's text, under Done when, makes true.\n\n" +
+	wantGoal := "# LAB-1 step 2\n\n## Intent\n\nWhat the issue's text, under Done when, makes true.\n\n## Base\n\nc0\n\n" +
 		"## Done when\n\n````text\n" + issue + "````\n\n" +
 		"## Out of scope\n\nWhat the issue's text, under Done when, leaves out.\n\n## Open\n\nNone.\n"
 	if string(goal) != wantGoal {
@@ -412,7 +506,7 @@ func TestTheBriefsAreTheIssuesTextAsWritten(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	wantStep := "# LAB-1 step 2\n\n## Goal\n\n`" + filepath.Join(out, "goal.md") + "`\n\n" +
+	wantStep := "# LAB-1 step 2\n\n## Goal\n\n`" + filepath.Join(out, "goal.md") + "`\n\n## Base\n\nc0\n\n" +
 		"## Covers\n\n````text\n" + issue + "````\n\n" +
 		"## Constraints\n\n```text\n" + constraints + "```\n\n## Open\n\nNone.\n"
 	if string(step) != wantStep {
