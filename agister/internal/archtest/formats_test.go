@@ -483,9 +483,10 @@ func validNameReturnedCalls(t *testing.T, dir string) []string {
 // validNameUnchangedResults follows the imported rule's unchanged result through
 // straight-line declarations, assignments, copies and named results in each
 // function declaration or literal. Import and lexical identity distinguish
-// unrelated and shadowed names. Unsupported statements and potentially mutating
-// calls stop the analysis: it performs no control-flow joins, loop, pointer or
-// field tracking, or interprocedural analysis, and proves no semantic equivalence.
+// unrelated and shadowed names. Unrelated straight-line statements preserve the
+// results; unsupported statements and potentially mutating calls stop the analysis.
+// It performs no control-flow joins, loop, pointer or field tracking, or
+// interprocedural analysis, and proves no semantic equivalence.
 func validNameUnchangedResults(t *testing.T, dir string) []string {
 	t.Helper()
 	var found []string
@@ -567,7 +568,7 @@ func unchangedValidNameResults(typ *ast.FuncType, body *ast.BlockStmt, isValidNa
 		switch stmt := stmt.(type) {
 		case *ast.DeclStmt:
 			decl, ok := stmt.Decl.(*ast.GenDecl)
-			if !ok || decl.Tok != token.VAR {
+			if !ok || (decl.Tok != token.VAR && decl.Tok != token.CONST) {
 				return nil
 			}
 			for _, spec := range decl.Specs {
@@ -577,9 +578,6 @@ func unchangedValidNameResults(typ *ast.FuncType, body *ast.BlockStmt, isValidNa
 				}
 			}
 		case *ast.AssignStmt:
-			if stmt.Tok != token.ASSIGN && stmt.Tok != token.DEFINE {
-				return nil
-			}
 			var names []*ast.Ident
 			for _, expr := range stmt.Lhs {
 				name, ok := ast.Unparen(expr).(*ast.Ident)
@@ -588,9 +586,27 @@ func unchangedValidNameResults(typ *ast.FuncType, body *ast.BlockStmt, isValidNa
 				}
 				names = append(names, name)
 			}
+			if stmt.Tok != token.ASSIGN && stmt.Tok != token.DEFINE {
+				for _, name := range names {
+					if name.Obj == nil || values[name.Obj] {
+						return nil
+					}
+				}
+				for _, expr := range stmt.Rhs {
+					if !localExpression(expr) {
+						return nil
+					}
+				}
+				continue
+			}
 			if !assign(names, stmt.Rhs) {
 				return nil
 			}
+		case *ast.ExprStmt:
+			if !localExpression(stmt.X) {
+				return nil
+			}
+		case *ast.EmptyStmt:
 		case *ast.ReturnStmt:
 			if i != len(body.List)-1 {
 				return nil
@@ -700,7 +716,7 @@ func TestTheParserDeclaresNoneOfTheDocumentVocabulary(t *testing.T) {
 		t.Error(finding)
 	}
 	documentImport := "import " + strconv.Quote(module+"/internal/domain/document") + "\n"
-	for _, c := range []struct {
+	cases := []struct {
 		name, source string
 		want         []string
 	}{
@@ -733,7 +749,52 @@ func TestTheParserDeclaresNoneOfTheDocumentVocabulary(t *testing.T) {
 			name:   "clean",
 			source: documentImport + "func check(name string) bool { return name != \"\" && document.ValidName(name) }\n",
 		},
+		{
+			name:   "changed local result",
+			source: documentImport + "func check(name string) bool { valid := document.ValidName(name); valid = !valid; return valid }\n",
+		},
+		{
+			name:   "changed named result",
+			source: documentImport + "func check(name string) (valid bool) { valid = document.ValidName(name); valid = false; return }\n",
+		},
+	}
+	for _, statement := range []struct{ name, source string }{
+		{"const declaration", "const other = true;"},
+		{"var declaration", "var other = true;"},
+		{"expression statement", "document.ValidName(name);"},
+		{"untracked assignment", "name = \"agent\";"},
+		{"untracked compound assignment", "name += \"agent\";"},
+		{"empty statement", ";"},
 	} {
+		for _, result := range []struct{ name, signature, assignment, returned string }{
+			{"local", "bool", "valid := document.ValidName(name);", "return valid"},
+			{"named explicit", "(valid bool)", "valid = document.ValidName(name);", "return valid"},
+			{"named bare", "(valid bool)", "valid = document.ValidName(name);", "return"},
+		} {
+			for _, position := range []string{"before", "after"} {
+				body := statement.source + result.assignment
+				if position == "after" {
+					body = result.assignment + statement.source
+				}
+				for _, changed := range []bool{false, true} {
+					c := struct {
+						name, source string
+						want         []string
+					}{name: statement.name + " " + position + " " + result.name}
+					change := ""
+					if changed {
+						c.name += " changed"
+						change = "valid = !valid;"
+					} else {
+						c.want = []string{"internal/domain/definition/forward.go: return valid: return results must not forward document.ValidName unchanged"}
+					}
+					c.source = documentImport + fmt.Sprintf("func check(name string) %s { %s%s%s }\n", result.signature, body, change, result.returned)
+					cases = append(cases, c)
+				}
+			}
+		}
+	}
+	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			t.Parallel()
 			root := t.TempDir()
