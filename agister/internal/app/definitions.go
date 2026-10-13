@@ -420,11 +420,11 @@ func (s *Settings) ListProcesses(ctx context.Context) ([]contract.ProcessSummary
 			processes = append(processes, contract.ProcessSummary{Name: name, Problem: problem, Refusal: refusal})
 			continue
 		}
-		output := process.Output.Format
-		if process.Output.Schema != "" {
-			output += ":" + process.Output.Schema
+		output := process.output.format
+		if process.output.schema != "" {
+			output += ":" + process.output.schema
 		}
-		processes = append(processes, contract.ProcessSummary{Name: process.Name, Output: output, Refusal: refusal})
+		processes = append(processes, contract.ProcessSummary{Name: process.name, Output: output, Refusal: refusal})
 	}
 	return processes, nil
 }
@@ -666,13 +666,13 @@ func (r *Resolver) inspect(ctx context.Context, name, agent string, caller overr
 	process := res.process
 	inspected := &InspectedProcess{
 		Process: InspectedDefinition{
-			Name:         process.Name,
-			OutputFormat: process.Output.Format, OutputSchema: process.Output.Schema,
-			Params: inspectedParams(processParams(process)), Values: inspectedValues(processValues(process)),
-			VerifyName: process.VerifyName, Prompt: process.Prompt, Guidance: process.Guidance, Skills: process.Skills,
+			Name:         process.name,
+			OutputFormat: process.output.format, OutputSchema: process.output.schema,
+			Params: inspectedParams(process.params), Values: inspectedValues(process.values),
+			VerifyName: process.verifyName, Prompt: process.prompt, Guidance: process.guidance, Skills: process.skills,
 		},
 		Agent:       res.agent.name,
-		AgentSkills: callSkills(process, res.agent)[len(process.Skills):],
+		AgentSkills: callSkills(process, res.agent)[len(process.skills):],
 		Runtime:     res.mapping.name,
 		Effective: InspectedLimits{
 			Timeout: res.effective.Timeout, MaxAttempts: res.effective.MaxAttempts, MaxCostUSD: res.effective.MaxCostUSD,
@@ -688,8 +688,8 @@ func (r *Resolver) inspect(ctx context.Context, name, agent string, caller overr
 	if res.refusedPlan.Withheld != nil {
 		inspected.Withheld = slices.DeleteFunc(slices.Clone(res.refusedPlan.Withheld), func(permission string) bool { return contains(res.effective.Require, permission) })
 	}
-	if verify := process.Verify; verify != nil {
-		inspected.Process.Verify = &InspectedVerify{Command: verify.Command, Timeout: verify.Timeout, MaxAttempts: verify.MaxAttempts, Instruction: verify.Instruction}
+	if verify := process.verify; verify != nil {
+		inspected.Process.Verify = &InspectedVerify{Command: verify.command, Timeout: verify.timeout, MaxAttempts: verify.maxAttempts, Instruction: verify.instruction}
 	}
 	return inspected, err
 }
@@ -719,8 +719,8 @@ func (r *Resolver) InspectWorkflow(ctx context.Context, name string) (*Inspected
 	}
 	for name, process := range res.processes {
 		inspected.NodeProcesses[name] = InspectedNodeProcess{
-			Params:   translated(processParams(process), func(param declaredParam) string { return param.name }),
-			Collects: process.Collects(),
+			Params:   translated(process.params, func(param declaredParam) string { return param.name }),
+			Collects: collects(process),
 		}
 	}
 	return inspected, found, err

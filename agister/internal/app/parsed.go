@@ -1,20 +1,17 @@
 package app
 
-import (
-	"github.com/igor1309/ai-labs/agister/internal/domain/definition"
-	"github.com/igor1309/ai-labs/agister/internal/domain/settings"
-)
+import "github.com/igor1309/ai-labs/agister/internal/domain/settings"
 
 // parsedSettings are the settings documents that parsed, each by name, as
 // check reads them.
 type parsedSettings struct {
 	service   *serviceSettings
 	agents    map[string]agentProfile
-	processes map[string]definition.Process
+	processes map[string]declaredProcess
 	mappings  map[string]runtimeMapping
 	schemas   map[string]bool
 	workflows map[string]declaredWorkflow
-	verifies  map[string]definition.Verification
+	verifies  map[string]declaredVerification
 	// prompts are the prompt documents the settings have; an unreadable
 	// one is a problem of its own, not of the processes that name it.
 	prompts map[string]bool
@@ -32,10 +29,10 @@ type parsedSettings struct {
 // resolved returns the process named name with the verification it names
 // as its verify, as a call resolves it (ADR-010 rule 3). One that names a
 // verification the settings lack is returned without verify values.
-func (p parsedSettings) resolved(name string) definition.Process {
+func (p parsedSettings) resolved(name string) declaredProcess {
 	process := p.processes[name]
-	if verification, ok := p.verifies[process.VerifyName]; ok && process.VerifyName != "" {
-		process.Verify = &verification.Verify
+	if verification, ok := p.verifies[process.verifyName]; ok && process.verifyName != "" {
+		process.verify = &verification.verify
 	}
 	return process
 }
@@ -85,23 +82,22 @@ func settingsMapping(mapping runtimeMapping) settings.Mapping {
 	return settings.Mapping{Name: mapping.name, Adapter: mapping.adapter, Efforts: mapping.efforts, Offer: mapping.offer}
 }
 
-// settingsProcess is the process as settings checks it. A process that
-// sets no session is fresh-only (ADR-030 rule 2).
-func settingsProcess(process definition.Process) settings.Process {
+// settingsProcess is the process as settings checks it.
+func settingsProcess(process declaredProcess) settings.Process {
 	out := settings.Process{
-		Name: process.Name,
-		Params: translated(processParams(process), func(param declaredParam) settings.Param {
+		Name: process.name,
+		Params: translated(process.params, func(param declaredParam) settings.Param {
 			return settings.Param{Name: param.name, HasDefault: param.hasDefault}
 		}),
-		Values:    settingsValues(processValues(process)),
-		Prompt:    process.Prompt,
-		Guidance:  process.Guidance,
-		Skills:    process.Skills,
-		Limits:    declared(process),
-		Resumable: definition.CallSession(process) == definition.SessionResumable,
+		Values:    settingsValues(process.values),
+		Prompt:    process.prompt,
+		Guidance:  process.guidance,
+		Skills:    process.skills,
+		Limits:    process.declared(),
+		Resumable: process.resumable,
 	}
-	if process.Output.Format == "json" {
-		out.Schema = process.Output.Schema
+	if process.output.format == "json" {
+		out.Schema = process.output.schema
 	}
 	return out
 }

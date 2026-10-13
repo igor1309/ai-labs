@@ -28,3 +28,17 @@ type declaredValue struct {
 	// 8), by name; none: its text is not checked.
 	forms []string
 }
+
+// formsOf lists the brief forms values name, each once, in declaration
+// order.
+func formsOf(values []declaredValue) []string {
+	var names []string
+	for _, value := range values {
+		for _, name := range value.forms {
+			if !contains(names, name) {
+				names = append(names, name)
+			}
+		}
+	}
+	return names
+}

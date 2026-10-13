@@ -6,7 +6,6 @@ import (
 	"slices"
 	"time"
 
-	"github.com/igor1309/ai-labs/agister/internal/domain/definition"
 	"github.com/igor1309/ai-labs/agister/internal/domain/prompt"
 	"github.com/igor1309/ai-labs/agister/internal/domain/run"
 )
@@ -72,7 +71,7 @@ type VerifyCall struct {
 	Update   func(run.Record) error
 	Artifact func(name string, data []byte) (run.Artifact, error)
 
-	Verify   definition.Verify
+	Verify   CallVerify
 	Limit    *float64  // the call's cost limit, one budget for every turn
 	Deadline time.Time // the call's timeout, for every turn and run
 	// NoOutput is the call's staleness limit for a run: how long the
@@ -125,7 +124,7 @@ type verification struct {
 	update   func(run.Record) error
 	artifact func(name string, data []byte) (run.Artifact, error)
 
-	verify   definition.Verify
+	verify   CallVerify
 	limit    *float64  // the call's cost limit, one budget for every turn
 	deadline time.Time // the call's timeout, for every turn and run
 	// noOutput is how long a run may go without output; zero: no limit.

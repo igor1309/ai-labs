@@ -370,7 +370,10 @@ func parse(doc document.Document) (Skill, error) { return ParseSkill(doc) }
 // ownTypes are the parser's types that internal/app has a type of its own
 // for (LAB-188): the reader's file maps the parser's to it, and no other
 // file of the package names the parser's.
-var ownTypes = []string{"Service", "Mapping", "Agent", "Prompt", "Brief", "BriefPart", "Skill", "Workflow", "Node", "Param", "Value"}
+var ownTypes = []string{
+	"Service", "Mapping", "Agent", "Prompt", "Brief", "BriefPart", "Skill", "Workflow", "Node", "Param", "Value",
+	"Process", "Verification", "Verify", "Output", "Limits",
+}
 
 // parserTypes lists, sorted, each of the parser's types given that a
 // non-test file of dir other than the one excepted names, once per file,
@@ -514,6 +517,8 @@ type parsedSettings struct {
 	agents    map[string]definition.Agent
 	mappings  map[string]definition.Mapping
 	processes map[string]definition.Process
+	verifies  map[string]definition.Verification
+	blocks    definition.Blocks
 }
 
 type resolution struct {
@@ -528,7 +533,9 @@ type workflowResolution struct {
 	nodes    []definition.Node
 	params   []definition.Param
 	values   []definition.Value
-	verify   definition.Verification
+	verify   definition.Verify
+	output   definition.Output
+	limits   definition.Limits
 }
 
 func (r documentReader) held(ctx context.Context, name string) (runtimeMapping, error) {
@@ -546,23 +553,32 @@ func (r documentReader) declared(ctx context.Context, name string) (declaredWork
 	return workflow, workflow.params, workflow.values, err
 }
 
-func (r documentReader) given(ctx context.Context, process definition.Process) (promptText, briefForm, givenSkill, error) {
-	prompt, _, err := r.documents.Prompt(ctx, process.Prompt)
+func (r documentReader) given(ctx context.Context, process declaredProcess) (promptText, briefForm, givenSkill, error) {
+	prompt, _, err := r.documents.Prompt(ctx, process.prompt)
 	if prompt.name != definition.PromptInput {
 		return prompt, briefForm{}, givenSkill{}, err
 	}
 	form, _, err := r.documents.Brief(ctx, definition.BriefSchema)
-	skill, _, err := r.documents.Skill(ctx, process.Skills[0])
+	skill, _, err := r.documents.Skill(ctx, process.skills[0])
 	return prompt, form, skill, err
+}
+
+func (r documentReader) verified(ctx context.Context, process declaredProcess) (declaredVerification, *verifyValues, processOutput, *policy.Verify, error) {
+	verification, _, err := r.documents.Verification(ctx, process.verifyName)
+	if !definition.ValidName(verification.name) {
+		return verification, process.verify, process.output, process.limits.Verify, err
+	}
+	return verification, &verification.verify, process.output, process.declared().Verify, err
 }
 `
 	if err := os.WriteFile(filepath.Join(dir, "names.go"), []byte(source), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	want := []string{
-		"names.go: definition.Agent", "names.go: definition.Brief", "names.go: definition.BriefPart", "names.go: definition.Mapping",
-		"names.go: definition.Node", "names.go: definition.Param", "names.go: definition.Prompt", "names.go: definition.Service",
-		"names.go: definition.Skill", "names.go: definition.Value", "names.go: definition.Workflow",
+		"names.go: definition.Agent", "names.go: definition.Brief", "names.go: definition.BriefPart", "names.go: definition.Limits",
+		"names.go: definition.Mapping", "names.go: definition.Node", "names.go: definition.Output", "names.go: definition.Param",
+		"names.go: definition.Process", "names.go: definition.Prompt", "names.go: definition.Service", "names.go: definition.Skill",
+		"names.go: definition.Value", "names.go: definition.Verification", "names.go: definition.Verify", "names.go: definition.Workflow",
 	}
 	if got := parserTypes(t, dir, readerFile, ownTypes); !slices.Equal(got, want) {
 		t.Errorf("uses of the parser's types outside the reader's file = %q, want %q", got, want)

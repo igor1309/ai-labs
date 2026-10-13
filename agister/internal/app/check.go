@@ -177,11 +177,11 @@ func (c *Checker) checkNow(ctx context.Context, probe bool) (CheckResult, error)
 	}
 	parsed := parsedSettings{
 		agents:    map[string]agentProfile{},
-		processes: map[string]definition.Process{},
+		processes: map[string]declaredProcess{},
 		mappings:  map[string]runtimeMapping{},
 		schemas:   map[string]bool{},
 		workflows: map[string]declaredWorkflow{},
-		verifies:  map[string]definition.Verification{},
+		verifies:  map[string]declaredVerification{},
 		prompts:   map[string]bool{},
 		skills:    map[string]bool{},
 		briefs:    map[string]bool{},
@@ -307,7 +307,7 @@ func (c *Checker) checkNow(ctx context.Context, probe bool) (CheckResult, error)
 		{document.KindVerify, func(name string) (document.Source, error) {
 			v, source, err := c.documents.Verification(ctx, name)
 			if err == nil {
-				parsed.verifies[v.Name] = v
+				parsed.verifies[v.name] = v
 			}
 			return source, err
 		}},
@@ -335,7 +335,7 @@ func (c *Checker) checkNow(ctx context.Context, probe bool) (CheckResult, error)
 				// What a base leaves out is no problem of its own.
 				err = nil
 			case err == nil:
-				parsed.processes[p.Name] = p
+				parsed.processes[p.name] = p
 			}
 			return source, err
 		}},
@@ -379,7 +379,7 @@ func (c *Checker) checkNow(ctx context.Context, probe bool) (CheckResult, error)
 	// is a document that cannot be read, a problem of its own that refuses
 	// the process.
 	for _, name := range sortedNames(parsed.processes) {
-		for _, prompt := range parsed.processes[name].Prompts() {
+		for _, prompt := range parsed.processes[name].prompts() {
 			ref := DocumentRef{Kind: document.KindPrompt, Name: prompt}
 			if listed[ref] {
 				continue
@@ -469,18 +469,18 @@ func (c *Checker) checkNow(ctx context.Context, probe bool) (CheckResult, error)
 	}
 	for _, name := range sortedNames(parsed.processes) {
 		process, from := parsed.processes[name], DocumentRef{Kind: document.KindProcess, Name: name}
-		link(from, document.KindVerify, process.VerifyName, false)
-		link(from, document.KindPrompt, process.Prompt, false)
-		for _, prompt := range process.Guidance {
+		link(from, document.KindVerify, process.verifyName, false)
+		link(from, document.KindPrompt, process.prompt, false)
+		for _, prompt := range process.guidance {
 			link(from, document.KindPrompt, prompt, true)
 		}
-		for _, skill := range process.Skills {
+		for _, skill := range process.skills {
 			link(from, document.KindSkill, skill, false)
 		}
-		if process.Output.Format == "json" {
-			link(from, document.KindSchema, process.Output.Schema, false)
+		if process.output.format == "json" {
+			link(from, document.KindSchema, process.output.schema, false)
 		}
-		for _, form := range process.Forms() {
+		for _, form := range process.forms() {
 			link(from, document.KindBrief, form, false)
 		}
 	}
@@ -512,24 +512,24 @@ func (c *Checker) checkNow(ctx context.Context, probe bool) (CheckResult, error)
 
 	// Settings a call no longer reads are ignored, and said so (ADR-025).
 	for _, name := range sortedNames(parsed.processes) {
-		for _, obsolete := range parsed.processes[name].Obsolete {
+		for _, obsolete := range parsed.processes[name].obsolete {
 			report.Warnings = append(report.Warnings, "process "+name+": "+obsolete)
 		}
 	}
 	for _, name := range sortedNames(parsed.verifies) {
-		for _, obsolete := range parsed.verifies[name].Verify.Obsolete {
+		for _, obsolete := range parsed.verifies[name].obsolete {
 			report.Warnings = append(report.Warnings, "verification "+name+": "+obsolete)
 		}
 	}
 	for _, name := range sortedNames(parsed.processes) {
 		process := parsed.resolved(name)
 		switch {
-		case process.Verify != nil:
+		case process.verify != nil:
 			report.Warnings = append(report.Warnings, "process "+name+": "+VerifyWarning)
-		case process.VerifyName != "" && !listed[DocumentRef{Kind: document.KindVerify, Name: process.VerifyName}]:
+		case process.verifyName != "" && !listed[DocumentRef{Kind: document.KindVerify, Name: process.verifyName}]:
 			// Not a problem: every other process and workflow still runs
 			// (ADR-010 rule 4). An invalid one is a problem of its own.
-			report.Warnings = append(report.Warnings, fmt.Sprintf("process %s: names verify:%s, which does not exist; calls of it are refused until verifies/%s.yaml exists", name, process.VerifyName, process.VerifyName))
+			report.Warnings = append(report.Warnings, fmt.Sprintf("process %s: names verify:%s, which does not exist; calls of it are refused until verifies/%s.yaml exists", name, process.verifyName, process.verifyName))
 		}
 	}
 
@@ -625,7 +625,7 @@ func (c *Checker) namedPrompts(ctx context.Context) map[string]bool {
 	names, _ := c.definitions.List(ctx, document.KindProcess)
 	for _, name := range names {
 		if process, _, err := c.documents.Process(ctx, name); err == nil {
-			for _, prompt := range process.Prompts() {
+			for _, prompt := range process.prompts() {
 				named[prompt] = true
 			}
 		}

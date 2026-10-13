@@ -99,7 +99,13 @@ func readerCases() map[string]readerCase {
 	return map[string]readerCase{
 		"the service": service,
 		"a process": reads(document.KindProcess, "p", "schema: agister.process/v1alpha1\nname: p\ntype: process\nprompt: inspect\ninput:\n  instruction: Inspect the change.\noutput:\n  format: text\ntimeout: 20m\ntools: {allow: [repository.read]}\n",
-			documentReader.Process, definition.ParseProcess),
+			documentReader.Process,
+			// A process is read in the package's own type, as the service
+			// is.
+			func(doc document.Document) (declaredProcess, error) {
+				process, err := definition.ParseProcess(doc)
+				return processOf(process), err
+			}),
 		"an agent": reads(document.KindAgent, "a", "schema = \"agister.agent/v1alpha1\"\nname = \"a\"\nruntime = \"rt\"\nmodel = \"m1\"\nmodel_family = \"fam\"\neffort = \"high\"\ncommand = \"/bin/spy\"\n",
 			documentReader.Agent,
 			// An agent is read in the package's own type, as the service
@@ -117,7 +123,13 @@ func readerCases() map[string]readerCase {
 				return mappingOf(mapping), err
 			}),
 		"a verification": reads(document.KindVerify, "repo", "schema: agister.verify/v1alpha1\nname: repo\ncommand: go test ./...\ntimeout: 10m\nmax_attempts: 3\ninstruction: Fix the cause, not the check.\n",
-			documentReader.Verification, definition.ParseVerify),
+			documentReader.Verification,
+			// A verification is read in the package's own type, as the
+			// service is.
+			func(doc document.Document) (declaredVerification, error) {
+				verification, err := definition.ParseVerify(doc)
+				return verificationOf(verification), err
+			}),
 		"a prompt": reads(document.KindPrompt, "inspect", "Inspect the change for defects.\n",
 			documentReader.Prompt,
 			// A prompt is read in the package's own type, as the service is.
@@ -734,7 +746,7 @@ func TestTheSkillsOfACallAreTheProcessThenItsAgents(t *testing.T) {
 	} {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
-			got := callSkills(definition.Process{Name: "p", Skills: c.process}, agentProfile{name: "a", runtime: "rt", skills: c.agent})
+			got := callSkills(declaredProcess{name: "p", skills: c.process}, agentProfile{name: "a", runtime: "rt", skills: c.agent})
 			if !slices.Equal(got, c.want) {
 				t.Fatalf("skills of the call = %q, want %q", got, c.want)
 			}
@@ -1488,51 +1500,566 @@ func TestAWorkflowsFormsAreTheOnesItsValuesNameEachOnce(t *testing.T) {
 	}
 }
 
-// A process's params and input values are given as the package uses them,
-// as a workflow's are: in the order the process declares them, each param
-// with its default where it has one, each value with its source, its
-// arguments and the forms it names. A process that declares none has none.
-func TestAProcessParamsAndValuesAreGivenAsThePackageUsesThem(t *testing.T) {
+// processDocument is the document of the process inspect holding text,
+// composed from the layer files given, nearest first.
+func processDocument(text string, layers ...document.LayerFile) document.Document {
+	return document.Document{
+		Source: document.Source{Kind: document.KindProcess, Name: "inspect", Path: layers[0].Path, Layer: layers[0].Layer, SHA256: "digest of inspect", Layers: layers},
+		Bytes:  []byte(text),
+	}
+}
+
+// A process is read as the package uses it, beside the document's source:
+// its instruction, its prompt and guidance, its params and input values in
+// the order the document declares them, as a workflow's are, the revision
+// it pins and whether it starts clean, its skills, its output, its inline
+// verify values or the verification it names, its limits as it declares
+// them to policy, whether a call's session may be resumed, and the
+// warnings for its obsolete fields. One with only the required fields has
+// nothing else. A document already read parses to the same.
+func TestTheReaderGivesAProcessAsThePackageUsesIt(t *testing.T) {
 	t.Parallel()
+	timeout, attempts, cost := 30*time.Minute, 2, 2.5
+	noEvent, noOutput, toolCommand, repeated, resumes := 5*time.Minute, 4*time.Minute, 3*time.Minute, 4, 2
 	for name, c := range map[string]struct {
-		process definition.Process
-		params  []declaredParam
-		values  []declaredValue
+		text string
+		want declaredProcess
 	}{
-		"params and values": {
-			process: definition.Process{
-				Name: "inspect",
-				Params: []definition.Param{
-					{Name: "candidate", Default: "HEAD", HasDefault: true},
-					{Name: "brief"},
-					{Name: "note", HasDefault: true},
+		"every field": {
+			text: "schema: agister.process/v1alpha1\nname: inspect\nstatus: active\ntype: process\nsession: resumable\n" +
+				"prompt: inspect\nguidance: [style, tests]\nskills: [review, git]\n" +
+				"input:\n" +
+				"  instruction: Inspect the change.\n" +
+				"  params:\n" +
+				"    candidate: {default: HEAD}\n" +
+				"    brief: {}\n" +
+				"    note: {default: \"\"}\n" +
+				"  values:\n" +
+				"    candidate: {source: git.revision, rev: \"${param.candidate}\"}\n" +
+				"    brief: {source: file, path: \"${param.brief}\", form: [goal, step]}\n" +
+				"    outcomes: {source: workflow.collection}\n" +
+				"output:\n  format: json\n  schema: review-result\n  require_valid: true\n" +
+				"verify:\n  command: go test ./...\n  timeout: 10m\n  max_attempts: 3\n  instruction: Fix the cause, not the check.\n  where: workspace\n" +
+				"timeout: 30m\nmax_cost_usd: 2.5\nretry: {max_attempts: 2}\n" +
+				"stale:\n  no_event: 5m\n  no_output: 4m\n  tool_command: 3m\n  repeated_tool_calls: 4\n" +
+				"  recover: {max_resumes: 2, instruction: Say what stopped you.}\n" +
+				"tools: {allow: [repository.read, repository.write], require: [repository.read]}\n" +
+				"isolation: {deny: [network]}\n" +
+				"workspace: {access: read-write, scope: repository, revision: candidate, clean: true, setup: make deps}\n",
+			want: declaredProcess{
+				name:        "inspect",
+				instruction: "Inspect the change.",
+				prompt:      "inspect",
+				guidance:    []string{"style", "tests"},
+				params: []declaredParam{
+					{name: "candidate", defaultValue: "HEAD", hasDefault: true},
+					{name: "brief"},
+					{name: "note", hasDefault: true},
 				},
-				Values: []definition.Value{
-					{Name: "candidate", Source: "git.revision", Args: map[string]string{"rev": "${param.candidate}"}},
-					{Name: "brief", Source: "file", Args: map[string]string{"path": "${param.brief}"}, Forms: []string{"goal", "step"}},
-					{Name: "outcomes", Source: definition.CollectionSource, Args: map[string]string{}},
+				values: []declaredValue{
+					{name: "candidate", source: "git.revision", args: map[string]string{"rev": "${param.candidate}"}},
+					{name: "brief", source: "file", args: map[string]string{"path": "${param.brief}"}, forms: []string{"goal", "step"}},
+					{name: "outcomes", source: "workflow.collection", args: map[string]string{}},
 				},
-			},
-			params: []declaredParam{
-				{name: "candidate", defaultValue: "HEAD", hasDefault: true},
-				{name: "brief"},
-				{name: "note", hasDefault: true},
-			},
-			values: []declaredValue{
-				{name: "candidate", source: "git.revision", args: map[string]string{"rev": "${param.candidate}"}},
-				{name: "brief", source: "file", args: map[string]string{"path": "${param.brief}"}, forms: []string{"goal", "step"}},
-				{name: "outcomes", source: "workflow.collection", args: map[string]string{}},
+				revision: "candidate",
+				clean:    true,
+				skills:   []string{"review", "git"},
+				output:   processOutput{format: "json", schema: "review-result"},
+				verify:   &verifyValues{command: "go test ./...", timeout: 10 * time.Minute, maxAttempts: 3, instruction: "Fix the cause, not the check."},
+				limits: policy.Declared{
+					Process:     "inspect",
+					Timeout:     &timeout,
+					MaxAttempts: &attempts,
+					MaxCostUSD:  &cost,
+					Allow:       []string{"repository.read", "repository.write"},
+					Deny:        []string{"network"},
+					Require:     []string{"repository.read"},
+					Access:      "read-write",
+					Scope:       "repository",
+					Pinned:      true,
+					Stale: policy.DeclaredStale{
+						NoEvent: &noEvent, NoOutput: &noOutput, ToolCommand: &toolCommand, RepeatedToolCalls: &repeated,
+						MaxResumes: &resumes, Instruction: "Say what stopped you.",
+					},
+				},
+				resumable: true,
+				obsolete: []string{
+					"workspace.setup: is obsolete and ignored (ADR-025): a call works in the caller's worktree, which its caller prepares",
+					"verify.where: is obsolete and ignored (ADR-025): verification always runs in the call's worktree",
+				},
 			},
 		},
-		"none": {process: definition.Process{Name: "inspect"}},
+		"only the required fields": {
+			text: "schema: agister.process/v1alpha1\nname: inspect\ntype: process\nprompt: inspect\ninput:\n  instruction: Inspect the change.\noutput:\n  format: text\n",
+			want: declaredProcess{
+				name:        "inspect",
+				instruction: "Inspect the change.",
+				prompt:      "inspect",
+				output:      processOutput{format: "text"},
+				limits:      policy.Declared{Process: "inspect"},
+			},
+		},
+		// The verification it names is not read with it: it has the name,
+		// and no verify values.
+		"a verification it names": {
+			text: "schema: agister.process/v1alpha1\nname: inspect\ntype: process\nprompt: inspect\n" +
+				"input:\n  instruction: Inspect the change.\n  values:\n    candidate: {source: git.revision}\n" +
+				"output:\n  format: text\nverify: verify:repo\nworkspace: {revision: candidate, clean: true}\n",
+			want: declaredProcess{
+				name:        "inspect",
+				instruction: "Inspect the change.",
+				prompt:      "inspect",
+				values:      []declaredValue{{name: "candidate", source: "git.revision", args: map[string]string{}}},
+				revision:    "candidate",
+				clean:       true,
+				output:      processOutput{format: "text"},
+				verifyName:  "repo",
+				limits:      policy.Declared{Process: "inspect", Pinned: true},
+			},
+		},
 	} {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
-			if got := processParams(c.process); !reflect.DeepEqual(got, c.params) {
-				t.Errorf("params = %+v, want %+v", got, c.params)
+			doc := processDocument(c.text,
+				document.LayerFile{Layer: document.LayerRepository, Path: "/repo/.agister/processes/inspect.yaml", Fields: []string{"timeout"}},
+				document.LayerFile{Layer: document.LayerHome, Path: "/home/processes/inspect.yaml", Fields: []string{"schema", "name", "type", "prompt", "input.instruction", "output.format"}})
+			ref := DocumentRef{Kind: document.KindProcess, Name: "inspect"}
+			reader := newDocumentReader(definitionsFake{t: t, docs: map[DocumentRef]document.Document{ref: doc}})
+			got, source, err := reader.Process(context.Background(), "inspect")
+			if err != nil || !reflect.DeepEqual(got, c.want) || !reflect.DeepEqual(source, doc.Source) {
+				t.Fatalf("process = %+v, source %+v, %v; want %+v, source %+v", got, source, err, c.want, doc.Source)
 			}
-			if got := processValues(c.process); !reflect.DeepEqual(got, c.values) {
-				t.Errorf("values = %+v, want %+v", got, c.values)
+			if parsed, err := parseProcess(doc); err != nil || !reflect.DeepEqual(parsed, c.want) {
+				t.Fatalf("the document already read parses to %+v, %v; want %+v", parsed, err, c.want)
+			}
+		})
+	}
+}
+
+// A process with problems fails with the parser's *document.InvalidError:
+// its problems in the parser's order, each attributed to the layer file
+// that set the field at fault or, for a field none sets, to every file
+// read, and the unknown ones flagged. What of the document parsed is given
+// beside it, with the document's source, and a document already read
+// fails and parses to the same.
+func TestAProcessWithProblemsKeepsWhatParsedAndWhereEachProblemIs(t *testing.T) {
+	t.Parallel()
+	const repository, home = "/repo/.agister/processes/inspect.yaml", "/home/processes/inspect.yaml"
+	layers := []document.LayerFile{
+		{Layer: document.LayerRepository, Path: repository, Fields: []string{"colour", "session"}},
+		{Layer: document.LayerHome, Path: home, Fields: []string{
+			"schema", "type", "prompt", "guidance", "skills", "input.params.candidate.default", "input.values.candidate.source", "input.values.candidate.rev",
+			"output.format", "verify", "verify.timeout", "verify.max_attempts", "verify.instruction", "timeout", "tools.allow", "workspace.revision", "workspace.clean",
+		}},
+	}
+	timeout := 30 * time.Minute
+	for name, c := range map[string]struct {
+		text     string
+		want     declaredProcess
+		problems []document.Problem
+	}{
+		// Each value as far as it parsed: a session mode there is not,
+		// which leaves the process fresh-only, a guidance that is the
+		// prompt and a skill of no valid name, which are not kept, a value
+		// that refers to a param nothing declares, and a verification
+		// named by a process that pins no revision.
+		"problems in two layers": {
+			text: "schema: agister.process/v1alpha1\ncolour: red\ntype: process\nsession: sometimes\n" +
+				"prompt: inspect\nguidance: [style, inspect]\nskills: [review, Bad Name]\n" +
+				"input:\n" +
+				"  params:\n" +
+				"    candidate: {default: HEAD}\n" +
+				"  values:\n" +
+				"    candidate: {source: git.revision, rev: \"${param.revision}\"}\n" +
+				"output:\n  format: json\n" +
+				"verify: verify:repo\ntimeout: 30m\ntools: {allow: [repository.read]}\n",
+			want: declaredProcess{
+				name:       "inspect",
+				prompt:     "inspect",
+				guidance:   []string{"style"},
+				params:     []declaredParam{{name: "candidate", defaultValue: "HEAD", hasDefault: true}},
+				values:     []declaredValue{{name: "candidate", source: "git.revision", args: map[string]string{"rev": "${param.revision}"}}},
+				skills:     []string{"review"},
+				output:     processOutput{format: "json"},
+				verifyName: "repo",
+				limits:     policy.Declared{Process: "inspect", Timeout: &timeout, Allow: []string{"repository.read"}},
+			},
+			problems: []document.Problem{
+				{Message: "colour: unknown field (set in " + repository + ")", Unknown: true},
+				{Message: "name: is required (no layer sets it: " + repository + ", " + home + ")"},
+				{Message: "session: unsupported session mode \"sometimes\" (supported: fresh-only, resumable) (set in " + repository + ")"},
+				{Message: "guidance[1]: prompt \"inspect\" is the process's prompt: guidance names further prompts (set in " + home + ")"},
+				{Message: "input.instruction: is required (no layer sets it: " + repository + ", " + home + ")"},
+				{Message: "input.values.candidate: refers to ${param.revision}, which is not declared in input.params (set in " + home + ")"},
+				{Message: "skills[1]: invalid skill name \"Bad Name\" (set in " + home + ")"},
+				{Message: "output.schema: is required (no layer sets it: " + repository + ", " + home + ")"},
+				{Message: "output.require_valid: must be true (accepting invalid output is not supported) (no layer sets it: " + repository + ", " + home + ")"},
+				{Message: "verify: requires workspace.revision: verification proves the run's changes from the pinned revision (ADR-025 rule 3) (set in " + home + ")"},
+				{Message: "verify: requires workspace.clean: true: verification proves the run's changes from a clean start (ADR-025 rule 3) (set in " + home + ")"},
+			},
+		},
+		// The verify values of an inline block as far as they parsed: no
+		// command, and an attempt count there cannot be.
+		"an inline verify with problems": {
+			text: "schema: agister.process/v1alpha1\nname: inspect\ntype: process\nprompt: inspect\n" +
+				"input:\n  instruction: Inspect the change.\n  values:\n    candidate: {source: git.revision}\n" +
+				"output:\n  format: text\n" +
+				"verify:\n  timeout: 10m\n  max_attempts: -1\n  instruction: Fix it.\n" +
+				"workspace: {revision: candidate, clean: true}\n",
+			want: declaredProcess{
+				name:        "inspect",
+				instruction: "Inspect the change.",
+				prompt:      "inspect",
+				values:      []declaredValue{{name: "candidate", source: "git.revision", args: map[string]string{}}},
+				revision:    "candidate",
+				clean:       true,
+				output:      processOutput{format: "text"},
+				verify:      &verifyValues{timeout: 10 * time.Minute, maxAttempts: -1, instruction: "Fix it."},
+				limits:      policy.Declared{Process: "inspect", Pinned: true},
+			},
+			problems: []document.Problem{
+				{Message: "verify.command: is required (no layer sets it: " + repository + ", " + home + ")"},
+				{Message: "verify.max_attempts: must be at least 1 (set in " + home + ")"},
+			},
+		},
+		"a schema of a newer version": {
+			text: "schema: agister.process/v2\nname: inspect\ntype: process\nsession: resumable\nprompt: inspect\ninput:\n  instruction: Inspect the change.\noutput:\n  format: text\n",
+			want: declaredProcess{
+				name:        "inspect",
+				instruction: "Inspect the change.",
+				prompt:      "inspect",
+				output:      processOutput{format: "text"},
+				limits:      policy.Declared{Process: "inspect"},
+				resumable:   true,
+			},
+			problems: []document.Problem{
+				{Message: "schema: must be \"agister.process/v1alpha1\" (set in " + home + ")", Unknown: true},
+			},
+		},
+		"no text": {
+			text:     "\xff",
+			want:     declaredProcess{name: "inspect", limits: policy.Declared{Process: "inspect"}},
+			problems: []document.Problem{{Message: "not a UTF-8 text file"}},
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			doc := processDocument(c.text, layers...)
+			ref := DocumentRef{Kind: document.KindProcess, Name: "inspect"}
+			reader := newDocumentReader(definitionsFake{t: t, docs: map[DocumentRef]document.Document{ref: doc}})
+			want := &document.InvalidError{Subject: "process inspect (" + repository + ")", Problems: c.problems}
+			got, source, err := reader.Process(context.Background(), "inspect")
+			if invalid, ok := err.(*document.InvalidError); unread(err) || !ok || !reflect.DeepEqual(invalid, want) {
+				t.Fatalf("process error = %#v, want %#v", err, want)
+			}
+			if !reflect.DeepEqual(got, c.want) || !reflect.DeepEqual(source, doc.Source) {
+				t.Fatalf("process = %+v, source %+v; want %+v, source %+v", got, source, c.want, doc.Source)
+			}
+			parsed, err := parseProcess(doc)
+			if invalid, ok := err.(*document.InvalidError); !ok || !reflect.DeepEqual(invalid, want) || !reflect.DeepEqual(parsed, c.want) {
+				t.Fatalf("the document already read parses to %+v, %#v; want %+v, %#v", parsed, err, c.want, want)
+			}
+		})
+	}
+}
+
+// A process that was not read has no value: the reader maps nothing of it.
+func TestAProcessThatWasNotReadHasNoValue(t *testing.T) {
+	t.Parallel()
+	ref := DocumentRef{Kind: document.KindProcess, Name: "inspect"}
+	reader := newDocumentReader(definitionsFake{t: t, errs: map[DocumentRef]error{ref: document.ErrNotFound}})
+	got, _, err := reader.Process(context.Background(), "inspect")
+	if !unread(err) || !reflect.DeepEqual(got, declaredProcess{}) {
+		t.Fatalf("process = %+v, %#v; want none and a failure to read", got, err)
+	}
+}
+
+// ADR-030 rules 2 and 3: whether a call's session may be resumed is the
+// process's to say. One that sets no session is fresh-only, as one that
+// says so is, and one that says resumable is resumable; the mode a call
+// records and names is the one the document says.
+func TestAProcessThatSetsNoSessionIsFreshOnly(t *testing.T) {
+	t.Parallel()
+	for name, c := range map[string]struct {
+		session   string
+		resumable bool
+		mode      string
+	}{
+		"no session":      {session: "", resumable: false, mode: "fresh-only"},
+		"says fresh-only": {session: "session: fresh-only\n", resumable: false, mode: "fresh-only"},
+		"says resumable":  {session: "session: resumable\n", resumable: true, mode: "resumable"},
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			doc := processDocument("schema: agister.process/v1alpha1\nname: inspect\ntype: process\n"+c.session+"prompt: inspect\ninput:\n  instruction: Inspect the change.\noutput:\n  format: text\n",
+				document.LayerFile{Layer: document.LayerHome, Path: "/home/processes/inspect.yaml"})
+			ref := DocumentRef{Kind: document.KindProcess, Name: "inspect"}
+			reader := newDocumentReader(definitionsFake{t: t, docs: map[DocumentRef]document.Document{ref: doc}})
+			got, _, err := reader.Process(context.Background(), "inspect")
+			if err != nil || got.resumable != c.resumable || got.session() != c.mode {
+				t.Fatalf("process is resumable: %t, session mode %q, %v; want %t, %q", got.resumable, got.session(), err, c.resumable, c.mode)
+			}
+			if parsed, err := parseProcess(doc); err != nil || parsed.resumable != c.resumable {
+				t.Fatalf("the document already read is resumable: %t, %v; want %t", parsed.resumable, err, c.resumable)
+			}
+		})
+	}
+}
+
+// A process's prompts are its prompt, then its guidance in the order it
+// names them, each once; one whose prompt did not parse has its guidance
+// alone.
+func TestAProcessPromptsAreItsPromptThenItsGuidanceEachOnce(t *testing.T) {
+	t.Parallel()
+	for name, c := range map[string]struct {
+		process declaredProcess
+		want    []string
+	}{
+		"a prompt and guidance": {process: declaredProcess{prompt: "inspect", guidance: []string{"style", "tests"}}, want: []string{"inspect", "style", "tests"}},
+		"a prompt alone":        {process: declaredProcess{prompt: "inspect"}, want: []string{"inspect"}},
+		"guidance alone":        {process: declaredProcess{guidance: []string{"style", "tests"}}, want: []string{"style", "tests"}},
+		"a name named twice":    {process: declaredProcess{prompt: "inspect", guidance: []string{"style", "inspect", "style"}}, want: []string{"inspect", "style"}},
+		"neither":               {},
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			if got := c.process.prompts(); !slices.Equal(got, c.want) {
+				t.Fatalf("prompts = %q, want %q", got, c.want)
+			}
+		})
+	}
+}
+
+// A process's forms are listed as a workflow's are: the brief forms its
+// input values name, each once, in the order they are first named.
+func TestAProcessFormsAreTheOnesItsValuesNameEachOnce(t *testing.T) {
+	t.Parallel()
+	for name, c := range map[string]struct {
+		values []declaredValue
+		want   []string
+	}{
+		"forms named by several values": {
+			values: []declaredValue{
+				{name: "step", source: "file", forms: []string{"step", "goal"}},
+				{name: "diff", source: "git.diff"},
+				{name: "goal", source: "file", forms: []string{"goal", "note", "step"}},
+			},
+			want: []string{"step", "goal", "note"},
+		},
+		"values that name none": {
+			values: []declaredValue{{name: "diff", source: "git.diff"}},
+		},
+		"no value": {},
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			got := (declaredProcess{values: c.values}).forms()
+			if !slices.Equal(got, c.want) {
+				t.Fatalf("forms = %q, want %q", got, c.want)
+			}
+			if of := (declaredWorkflow{values: c.values}).forms(); !slices.Equal(got, of) {
+				t.Fatalf("forms = %q, and of a workflow with the same values %q", got, of)
+			}
+		})
+	}
+}
+
+// The inputs of a process that receive a workflow's collection are its
+// values of the source workflow.collection, in the order it declares
+// them; a process without one collects nothing.
+func TestAProcessCollectsThroughItsValuesOfTheCollectionSource(t *testing.T) {
+	t.Parallel()
+	for name, c := range map[string]struct {
+		values []declaredValue
+		want   []string
+	}{
+		"two among others": {
+			values: []declaredValue{
+				{name: "outcomes", source: "workflow.collection", args: map[string]string{}},
+				{name: "diff", source: "git.diff", args: map[string]string{"base": "main"}},
+				{name: "again", source: "workflow.collection"},
+			},
+			want: []string{"outcomes", "again"},
+		},
+		"none of that source": {values: []declaredValue{{name: "diff", source: "git.diff"}, {name: "workflow.collection", source: "file"}}},
+		"no value":            {},
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			if got := collects(declaredProcess{name: "consolidate", values: c.values}); !slices.Equal(got, c.want) {
+				t.Fatalf("collects = %q, want %q", got, c.want)
+			}
+		})
+	}
+}
+
+// What a process declares to policy is its own limits and, of the verify
+// it has, what bounds a call: the inline block's, or a named
+// verification's once the process has it. One without verify declares
+// none, and declaring changes nothing of the process.
+func TestWhatAProcessDeclaresToPolicyHoldsItsVerifysBounds(t *testing.T) {
+	t.Parallel()
+	timeout := 30 * time.Minute
+	own := policy.Declared{Process: "inspect", Timeout: &timeout, Allow: []string{"repository.read"}, Require: []string{"repository.read"}, Pinned: true}
+	process := declaredProcess{name: "inspect", verifyName: "repo", limits: own}
+	if got := process.declared(); !reflect.DeepEqual(got, own) {
+		t.Fatalf("without verify, declared = %+v, want %+v", got, own)
+	}
+	process.verify = &verifyValues{command: "go test ./...", timeout: 10 * time.Minute, maxAttempts: 3, instruction: "Fix it."}
+	want := own
+	want.Verify = &policy.Verify{Timeout: 10 * time.Minute, MaxAttempts: 3}
+	if got := process.declared(); !reflect.DeepEqual(got, want) {
+		t.Fatalf("with verify, declared = %+v, want %+v", got, want)
+	}
+	if process.limits.Verify != nil {
+		t.Fatalf("declaring gave the process's own limits the verify %+v", process.limits.Verify)
+	}
+}
+
+// verificationDocument is the document of the verification repo holding
+// text, composed from the layer files given, nearest first.
+func verificationDocument(text string, layers ...document.LayerFile) document.Document {
+	return document.Document{
+		Source: document.Source{Kind: document.KindVerify, Name: "repo", Path: layers[0].Path, Layer: layers[0].Layer, SHA256: "digest of repo", Layers: layers},
+		Bytes:  []byte(text),
+	}
+}
+
+// A verification is read as the package uses it, beside the document's
+// source: its name, its command, the timeout of a run, its attempts and
+// its instruction, each as the document says it, and the warning for the
+// obsolete field it holds.
+func TestTheReaderGivesAVerificationAsThePackageUsesIt(t *testing.T) {
+	t.Parallel()
+	for name, c := range map[string]struct {
+		text string
+		want declaredVerification
+	}{
+		"its fields": {
+			text: "schema: agister.verify/v1alpha1\nname: repo\ncommand: go test ./...\ntimeout: 10m\nmax_attempts: 3\ninstruction: Fix the cause, not the check.\n",
+			want: declaredVerification{
+				name:   "repo",
+				verify: verifyValues{command: "go test ./...", timeout: 10 * time.Minute, maxAttempts: 3, instruction: "Fix the cause, not the check."},
+			},
+		},
+		"an obsolete field beside them": {
+			text: "schema: agister.verify/v1alpha1\nname: repo\ncommand: make test\ntimeout: 90s\nmax_attempts: 1\ninstruction: Fix it.\nwhere: workspace\n",
+			want: declaredVerification{
+				name:     "repo",
+				verify:   verifyValues{command: "make test", timeout: 90 * time.Second, maxAttempts: 1, instruction: "Fix it."},
+				obsolete: []string{"where: is obsolete and ignored (ADR-025): verification always runs in the call's worktree"},
+			},
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			doc := verificationDocument(c.text,
+				document.LayerFile{Layer: document.LayerRepository, Path: "/repo/.agister/verifies/repo.yaml", Fields: []string{"command"}},
+				document.LayerFile{Layer: document.LayerHome, Path: "/home/verifies/repo.yaml", Fields: []string{"schema", "name", "timeout", "max_attempts", "instruction"}})
+			ref := DocumentRef{Kind: document.KindVerify, Name: "repo"}
+			reader := newDocumentReader(definitionsFake{t: t, docs: map[DocumentRef]document.Document{ref: doc}})
+			got, source, err := reader.Verification(context.Background(), "repo")
+			if err != nil || !reflect.DeepEqual(got, c.want) || !reflect.DeepEqual(source, doc.Source) {
+				t.Fatalf("verification = %+v, source %+v, %v; want %+v, source %+v", got, source, err, c.want, doc.Source)
+			}
+		})
+	}
+}
+
+// A verification with problems fails with the parser's
+// *document.InvalidError: its problems in the parser's order, each
+// attributed to the layer file that set the field at fault or, for a
+// field none sets, to every file read, and the unknown ones flagged. What
+// of the document parsed is given beside it, with the document's source.
+func TestAVerificationWithProblemsKeepsWhatParsedAndWhereEachProblemIs(t *testing.T) {
+	t.Parallel()
+	const repository, home = "/repo/.agister/verifies/repo.yaml", "/home/verifies/repo.yaml"
+	layers := []document.LayerFile{
+		{Layer: document.LayerRepository, Path: repository, Fields: []string{"colour", "command"}},
+		{Layer: document.LayerHome, Path: home, Fields: []string{"schema", "timeout", "max_attempts"}},
+	}
+	for name, c := range map[string]struct {
+		text     string
+		want     declaredVerification
+		problems []document.Problem
+	}{
+		// Each value as far as it parsed: no instruction, a timeout that
+		// is no duration and an attempt count there cannot be.
+		"problems in two layers": {
+			text: "schema: agister.verify/v1alpha1\ncolour: red\ncommand: go test ./...\ntimeout: soon\nmax_attempts: -2\n",
+			want: declaredVerification{name: "repo", verify: verifyValues{command: "go test ./...", maxAttempts: -2}},
+			problems: []document.Problem{
+				{Message: "colour: unknown field (set in " + repository + ")", Unknown: true},
+				{Message: "name: is required (no layer sets it: " + repository + ", " + home + ")"},
+				{Message: "instruction: is required (no layer sets it: " + repository + ", " + home + ")"},
+				{Message: "timeout: invalid duration \"soon\" (use e.g. 90s, 20m, 1h) (set in " + home + ")"},
+				{Message: "max_attempts: must be at least 1 (set in " + home + ")"},
+			},
+		},
+		"a schema of a newer version": {
+			text: "schema: agister.verify/v2\nname: repo\ncommand: make test\ntimeout: 90s\nmax_attempts: 2\ninstruction: Fix it.\nwhere: workspace\n",
+			want: declaredVerification{
+				name:     "repo",
+				verify:   verifyValues{command: "make test", timeout: 90 * time.Second, maxAttempts: 2, instruction: "Fix it."},
+				obsolete: []string{"where: is obsolete and ignored (ADR-025): verification always runs in the call's worktree"},
+			},
+			problems: []document.Problem{
+				{Message: "schema: must be \"agister.verify/v1alpha1\" (set in " + home + ")", Unknown: true},
+			},
+		},
+		"no text": {
+			text:     "\xff",
+			want:     declaredVerification{name: "repo"},
+			problems: []document.Problem{{Message: "not a UTF-8 text file"}},
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			doc := verificationDocument(c.text, layers...)
+			ref := DocumentRef{Kind: document.KindVerify, Name: "repo"}
+			reader := newDocumentReader(definitionsFake{t: t, docs: map[DocumentRef]document.Document{ref: doc}})
+			got, source, err := reader.Verification(context.Background(), "repo")
+			invalid, ok := err.(*document.InvalidError)
+			if want := (&document.InvalidError{Subject: "verification repo (" + repository + ")", Problems: c.problems}); unread(err) || !ok || !reflect.DeepEqual(invalid, want) {
+				t.Fatalf("verification error = %#v, want %#v", err, want)
+			}
+			if !reflect.DeepEqual(got, c.want) || !reflect.DeepEqual(source, doc.Source) {
+				t.Fatalf("verification = %+v, source %+v; want %+v, source %+v", got, source, c.want, doc.Source)
+			}
+		})
+	}
+}
+
+// A verification that was not read has no value: the reader maps nothing
+// of it.
+func TestAVerificationThatWasNotReadHasNoValue(t *testing.T) {
+	t.Parallel()
+	ref := DocumentRef{Kind: document.KindVerify, Name: "repo"}
+	reader := newDocumentReader(definitionsFake{t: t, errs: map[DocumentRef]error{ref: document.ErrNotFound}})
+	got, _, err := reader.Verification(context.Background(), "repo")
+	if !unread(err) || !reflect.DeepEqual(got, declaredVerification{}) {
+		t.Fatalf("verification = %+v, %#v; want none and a failure to read", got, err)
+	}
+}
+
+// A failed run may be followed by a repair turn where the verify values
+// allow more than one attempt; a process without verify repairs nothing.
+func TestVerifyValuesRepairWithMoreThanOneAttempt(t *testing.T) {
+	t.Parallel()
+	for name, c := range map[string]struct {
+		verify *verifyValues
+		want   bool
+	}{
+		"no verify":      {verify: nil, want: false},
+		"one attempt":    {verify: &verifyValues{command: "go test ./...", maxAttempts: 1}, want: false},
+		"two attempts":   {verify: &verifyValues{command: "go test ./...", maxAttempts: 2}, want: true},
+		"three attempts": {verify: &verifyValues{command: "go test ./...", maxAttempts: 3}, want: true},
+		"no attempt":     {verify: &verifyValues{command: "go test ./..."}, want: false},
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			if got := c.verify.repairs(); got != c.want {
+				t.Fatalf("repairs = %t, want %t", got, c.want)
 			}
 		})
 	}
@@ -1840,9 +2367,14 @@ func parses[T any](kind document.Kind, text string, valid bool, names []string, 
 func TestADocumentAlreadyReadIsParsedByItsKindsParser(t *testing.T) {
 	t.Parallel()
 	process := func(text string, valid bool, names ...string) parsedCase {
-		return parses(document.KindProcess, text, valid, names, parseProcess, definition.ParseProcess, func(p definition.Process) []string {
-			return append(append([]string{p.VerifyName}, p.Prompts()...), p.Skills...)
-		})
+		return parses(document.KindProcess, text, valid, names, parseProcess,
+			func(doc document.Document) (declaredProcess, error) {
+				process, err := definition.ParseProcess(doc)
+				return processOf(process), err
+			},
+			func(p declaredProcess) []string {
+				return append(append([]string{p.verifyName}, p.prompts()...), p.skills...)
+			})
 	}
 	agent := func(text string, valid bool, names ...string) parsedCase {
 		return parses(document.KindAgent, text, valid, names, parseAgent,
