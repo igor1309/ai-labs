@@ -187,9 +187,6 @@ func Check(b Bundle, m Mechanisms) []Problem {
 		if unknown := mapping.Offer.UnknownPermissions(vocabulary); len(unknown) > 0 {
 			add(subject, "grants permissions not in the vocabulary: %s", strings.Join(unknown, ", "))
 		}
-		if verified, _ := mapping.Offer.ForAnyVersion(); len(verified.Primitives) == 0 {
-			add(subject, "verifies no primitive against any runtime version; calls on it are refused")
-		}
 	}
 
 	for _, name := range sortedKeys(b.Agents) {
@@ -312,30 +309,10 @@ func (b Bundle) missingForms(value Value) []string {
 	return missing
 }
 
-// planOnSomeVersion succeeds if the plan can be made for at least one
-// version the mapping is verified for: a call runs on one version, so
-// primitives verified for different versions cannot be combined. Otherwise
-// it explains the failure on the version with the most verified primitives
-// (the first, when tied).
+// planOnSomeVersion checks the declared offer; version evidence is observability.
 func planOnSomeVersion(effective policy.Effective, offer enforce.Offer, stateReaching []string) error {
-	versions := offer.Versions()
-	if len(versions) == 0 {
-		versions = []string{""} // nothing verified: reported on the mapping
-	}
-	var closest error
-	most := -1
-	for _, version := range versions {
-		verified, unverified := offer.ForVersion(version)
-		_, err := enforce.Make(effective.Permissions, verified, effective.Require, stateReaching)
-		if err == nil {
-			return nil
-		}
-		if len(verified.Primitives) > most {
-			most = len(verified.Primitives)
-			closest = fmt.Errorf("%v%s", err, unverifiedNote(unverified, version))
-		}
-	}
-	return closest
+	_, err := enforce.Make(effective.Permissions, offer, effective.Require, stateReaching)
+	return err
 }
 
 // PlanProblems reports each node that binds a process to the agent which
@@ -346,10 +323,10 @@ func PlanProblems(b Bundle, agent Agent, version string) []Problem {
 	if !ok || b.Service == nil {
 		return nil
 	}
-	verified, unverified := mapping.Offer.ForVersion(version)
+	_, unverified := mapping.Offer.ForVersion(version)
 	// refused is why the plan cannot be made, "" when it can.
 	refused := func(effective policy.Effective) string {
-		if _, err := enforce.Make(effective.Permissions, verified, effective.Require, b.Service.StateReaching); err != nil {
+		if _, err := enforce.Make(effective.Permissions, mapping.Offer, effective.Require, b.Service.StateReaching); err != nil {
 			return fmt.Sprintf("cannot run on agent %s's runtime %s version %s: %v%s", agent.Name, mapping.Name, version, err, unverifiedNote(unverified, version))
 		}
 		return ""

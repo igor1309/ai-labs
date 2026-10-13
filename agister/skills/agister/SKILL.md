@@ -282,17 +282,44 @@ writing, or its process declares a verification; otherwise it is a reader.
 Readers share the worktree, so reviews of it run together; a writer holds
 it alone, for the whole call.
 
+Runtime permissions are best effort (ADR-036). Use runtimes as shipped
+with documented options only; no catalog or flag workaround. `tools.require`
+is hard, and service `state_reaching` permissions are never granted.
+`tools.allow` is a best-effort ceiling. A single-mode runtime takes the
+safe primitive with the fewest distinct grants covering require, mapping
+order on sizes tied. Extra grants warn per binding in `check` and `workflow show`;
+a call records `plan.declared`, `plan.granted`, `plan.extra` and
+`plan.warnings` before runtime startup. Finished, abandoned and reaped
+outcomes include them in `result.warnings`. A workflow persists node-labelled
+warnings in `workflow.warnings` as nodes finish; its finished, abandoned
+and reaped results include the warnings accumulated so far.
+Printed results show warnings even with `--quiet`, keeping the status
+and exit code. Unverified versions and selected primitives warn; a probe
+is observability and a failure does not refuse the call. A new Codex
+version may spend about 20 seconds probing (ADR-029); do not hide the
+warning by editing `verified` without evidence. Extra writing grants
+make the call a writer. Prompts tell the agent which evidence to use,
+without claiming what tools its environment provides.
+
+To rebind only the review judge, use a partial in
+`.agister/workflows/code_review.yaml`:
+
+```yaml
+schema: agister.workflow/v1alpha1
+name: code_review
+join:
+  agent: codex-sol-61
+```
+
+It inherits the reviewers, inputs and `process:review_judge` from home.
+Check and show the workflow before running it.
+
 A call is refused before any turn, with exit 3 and the reason, when:
 
 - a document it uses has a settings problem, or is blocked: the reason
   names each, its path, its problems and how the call reaches it. A
   problem this binary does not know adds the line above after the run's
   summary, and the record's `result.error.unknown` counts such problems.
-- its runtime's version is verified for no primitive and the adapter's
-  probe of it failed (`probing it failed`), with what the probe found. A
-  first call on a new Codex version spends about 20 seconds probing it
-  (ADR-029). Do not edit `verified` to get past this: the sandbox did
-  not hold, or the probe proved nothing; report the outcomes.
 - it cannot take its hold (`is in use`): a writer holds the worktree, or,
   for a writer, any other call holds it. A call is refused, not queued.
 - the worktree overlaps a directory another writer's run worked in and
@@ -618,3 +645,9 @@ that it passed. What a completed run's output means is yours to read.
   EOF, it cancels: it writes nothing and exits 64. Where home has a
   source folder in git, change the document there and install that
   folder (above).
+
+For the home install after LAB-243 merges, run
+`scripts/retire-review-judge-codex.sh` from `agister/` first. It backs up
+and removes any installed runtime-specific judge and workflow copies;
+folder install keeps home-only documents. Then install home and check it.
+The retirement prints the command that restores its backup.

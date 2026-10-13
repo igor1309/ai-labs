@@ -1,6 +1,6 @@
 // Package enforce turns effective permissions into runtime primitives using
-// what a runtime offers. A primitive is granted only if everything it grants
-// is allowed, so a plan never exceeds the offer.
+// what a runtime offers. Required and state-reaching permissions are hard
+// checks; a single-mode runtime may exceed the best-effort allow ceiling.
 package enforce
 
 import (
@@ -18,7 +18,7 @@ type Primitive struct {
 }
 
 // Offer is what a runtime offers a plan: its primitives, of which a plan
-// takes any that fit, or exactly One, the one that grants the most.
+// takes any that fit, or exactly One, the narrowest that covers require.
 type Offer struct {
 	One        bool
 	Primitives []Primitive
@@ -29,6 +29,7 @@ type Plan struct {
 	Primitives []string
 	Granted    []string // permissions the primitives provide
 	Withheld   []string // allowed but not provided
+	Extra      []string // granted beyond the effective allow set
 }
 
 // RefusedError explains why no acceptable plan exists.
@@ -53,19 +54,30 @@ func Make(permissions []string, offer Offer, required, stateReaching []string) (
 	var granted []Primitive
 	switch {
 	case offer.One:
-		var best *Primitive
+		var best, fallback *Primitive
+		var bestSize, fallbackSize int
 		var reasons []string
 		for i := range offer.Primitives {
-			primitive := offer.Primitives[i]
-			if !fits(primitive) {
-				reasons = append(reasons, fmt.Sprintf("%s also grants %s", primitive.Name, strings.Join(subtract(primitive.Grants, allowed), ", ")))
+			primitive := &offer.Primitives[i]
+			if extra := intersection(primitive.Grants, stateReaching); len(extra) > 0 {
+				reasons = append(reasons, fmt.Sprintf("%s grants state_reaching permissions: %s", primitive.Name, strings.Join(extra, ", ")))
 				continue
 			}
-			if best == nil || len(primitive.Grants) > len(best.Grants) {
-				best = &offer.Primitives[i]
+			size := distinctGrants(primitive.Grants)
+			if fallback == nil || size < fallbackSize {
+				fallback, fallbackSize = primitive, size
+			}
+			if subset(required, primitive.Grants) && (best == nil || size < bestSize) {
+				best, bestSize = primitive, size
 			}
 		}
 		if best == nil {
+			best = fallback // Keep the safe plan's withheld permissions in the refusal.
+		}
+		if best == nil {
+			if len(reasons) == 0 {
+				reasons = append(reasons, "runtime offers no primitive")
+			}
 			return Plan{}, &RefusedError{Reasons: reasons}
 		}
 		granted = []Primitive{*best}
@@ -91,9 +103,10 @@ func Make(permissions []string, offer Offer, required, stateReaching []string) (
 			plan.Withheld = append(plan.Withheld, permission)
 		}
 	}
+	plan.Extra = subtract(plan.Granted, permissions)
 	var missing []string
 	for _, permission := range required {
-		if contains(plan.Withheld, permission) {
+		if !contains(plan.Granted, permission) {
 			missing = append(missing, permission)
 		}
 	}
@@ -129,4 +142,22 @@ func contains(list []string, value string) bool {
 		}
 	}
 	return false
+}
+
+func intersection(list, of []string) []string {
+	var out []string
+	for _, item := range list {
+		if contains(of, item) {
+			out = append(out, item)
+		}
+	}
+	return out
+}
+
+func distinctGrants(grants []string) int {
+	seen := make(map[string]struct{}, len(grants))
+	for _, grant := range grants {
+		seen[grant] = struct{}{}
+	}
+	return len(seen)
 }

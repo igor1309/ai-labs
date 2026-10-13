@@ -55,6 +55,7 @@ type resolution struct {
 	effective policy.Effective
 	identity  RuntimeIdentity
 	plan      enforce.Plan
+	warnings  []string
 	// refusedPlan is the plan refused for withholding a required
 	// permission, or, for a call the settings refuse, the plan the
 	// settings would give it (settings.SettingsPlan): inspection shows what
@@ -451,18 +452,17 @@ func (r *Resolver) resolveCall(ctx context.Context, processName, agentOverride s
 		return res, refuse("stale.recover.max_resumes %d recovers in the call's session, but runtime %s cannot resume sessions", resumes, res.mapping.name)
 	}
 	offered := res.mapping.offer
-	verified, unverified := offered.ForVersion(res.identity.Version)
-	// A version the settings verify nothing for is probed, once (ADR-029).
-	if len(verified.Primitives) == 0 && r.probes != nil {
-		probed, err := r.probes.Verified(ctx, res.mapping.adapter, res.agent.command, res.identity.Version)
-		if err != nil {
-			return res, refuse("runtime mapping %s verifies no primitive for %s version %s%s", res.mapping.name, res.mapping.adapter, res.identity.Version, probeRefusal(err))
+	// Probes describe the runtime; they never decide whether it may run (ADR-036).
+	observed := offered
+	var probeFailed error
+	if !offered.Verified(res.identity.Version) && r.probes != nil {
+		var probed []string
+		probed, probeFailed = r.probes.Verified(ctx, res.mapping.adapter, res.agent.command, res.identity.Version)
+		if probeFailed == nil {
+			observed = offered.WithVerified(res.identity.Version, probed)
 		}
-		verified, unverified = offered.WithVerified(res.identity.Version, probed).ForVersion(res.identity.Version)
 	}
-	if len(verified.Primitives) == 0 {
-		return res, refuse("runtime mapping %s verifies no primitive for %s version %s", res.mapping.name, res.mapping.adapter, res.identity.Version)
-	}
+	_, unverified := observed.ForVersion(res.identity.Version)
 	if message := settings.CostRefusal(res.effective, res.mapping.name, res.identity.CostLimit); message != "" {
 		subject = root
 		return res, refuse("%s", message)
@@ -485,7 +485,7 @@ func (r *Resolver) resolveCall(ctx context.Context, processName, agentOverride s
 		}
 	}
 	subject = root
-	if res.plan, err = enforce.Make(res.effective.Permissions, verified, res.effective.Require, res.service.stateReaching); err != nil {
+	if res.plan, err = enforce.Make(res.effective.Permissions, offered, res.effective.Require, res.service.stateReaching); err != nil {
 		if refused := (*enforce.RefusedError)(nil); errors.As(err, &refused) && refused.Plan != nil {
 			res.refusedPlan = *refused.Plan
 		}
@@ -493,7 +493,21 @@ func (r *Resolver) resolveCall(ctx context.Context, processName, agentOverride s
 	}
 	if tools := res.identity.SkillTools; len(tools) > 0 && !slices.ContainsFunc(tools, func(tool string) bool { return contains(res.plan.Primitives, tool) }) {
 		return res, refuse("runtime %s needs %s to use the repository's skills (ADR-006), and the plan grants no such tool: %s",
-			res.mapping.name, strings.Join(tools, " or "), withoutSkillTools(res, tools, verified, unverified))
+			res.mapping.name, strings.Join(tools, " or "), withoutSkillTools(res, tools, offered))
+	}
+	if len(res.plan.Extra) > 0 {
+		res.warnings = append(res.warnings, "runtime "+res.mapping.name+" grants beyond tools.allow: "+strings.Join(res.plan.Extra, ", "))
+	}
+	var unchecked []string
+	for _, name := range res.plan.Primitives {
+		if contains(unverified, name) {
+			unchecked = append(unchecked, name)
+		}
+	}
+	if !observed.Verified(res.identity.Version) {
+		res.warnings = append(res.warnings, fmt.Sprintf("runtime %s version %s is unverified%s", res.mapping.name, res.identity.Version, probeRefusal(probeFailed)))
+	} else if len(unchecked) > 0 {
+		res.warnings = append(res.warnings, fmt.Sprintf("runtime %s version %s has unverified primitives: %s%s", res.mapping.name, res.identity.Version, strings.Join(unchecked, ", "), probeRefusal(probeFailed)))
 	}
 	res.writer = res.process.verify != nil || res.process.verifyName != "" ||
 		slices.ContainsFunc(res.plan.Granted, func(permission string) bool { return contains(res.service.ceilings.Writing, permission) })
@@ -501,20 +515,20 @@ func (r *Resolver) resolveCall(ctx context.Context, processName, agentOverride s
 }
 
 // withoutSkillTools says why the plan grants none of tools: each is
-// unverified for the version, absent from the mapping, or needs
+// absent from the mapping, or needs
 // permissions the plan withholds or the effective permissions do not
 // allow.
-func withoutSkillTools(res *resolution, tools []string, verified enforce.Offer, unverified []string) string {
+func withoutSkillTools(res *resolution, tools []string, offered enforce.Offer) string {
 	// What a primitive may grant: the effective permissions, less the
 	// state-reaching ones, which the plan withholds (enforce.Make).
 	allowed := slices.DeleteFunc(slices.Clone(res.effective.Permissions), func(p string) bool { return contains(res.service.stateReaching, p) })
 	var reasons []string
 	for _, tool := range tools {
-		i := slices.IndexFunc(verified.Primitives, func(p enforce.Primitive) bool { return p.Name == tool })
+		i := slices.IndexFunc(offered.Primitives, func(p enforce.Primitive) bool { return p.Name == tool })
 		switch {
 		case i >= 0:
 			var withheld, disallowed []string
-			for _, grant := range verified.Primitives[i].Grants {
+			for _, grant := range offered.Primitives[i].Grants {
 				switch {
 				case contains(allowed, grant):
 				case contains(res.plan.Withheld, grant):
@@ -535,8 +549,6 @@ func withoutSkillTools(res *resolution, tools []string, verified enforce.Offer, 
 			} else {
 				reasons = append(reasons, tool+" needs "+strings.Join(parts, ", and "))
 			}
-		case contains(unverified, tool):
-			reasons = append(reasons, tool+" is not verified for version "+res.identity.Version)
 		default:
 			reasons = append(reasons, "runtime mapping "+res.mapping.name+" has no "+tool)
 		}

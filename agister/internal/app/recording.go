@@ -76,8 +76,11 @@ func recordVerify(verify *CallVerify) *run.Verify {
 
 func recordPlan(plan CallPlan) *run.Plan {
 	return &run.Plan{
+		Warnings:   slices.Clone(plan.Warnings),
 		Primitives: slices.Clone(plan.Primitives),
 		Granted:    slices.Clone(plan.Granted),
 		Withheld:   slices.Clone(plan.Withheld),
+		Declared:   append([]string{}, plan.Declared...),
+		Extra:      append([]string{}, plan.Extra...),
 	}
 }

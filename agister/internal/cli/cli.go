@@ -818,6 +818,9 @@ func summarize(w io.Writer, run contract.Run) {
 		parts = append(parts, fmt.Sprintf("%d in/%d out tokens", *u.InputTokens, *u.OutputTokens))
 	}
 	fmt.Fprintln(w, strings.Join(parts, " "))
+	for _, warning := range result.Warnings {
+		fmt.Fprintln(w, "  WARNING: "+printable(warning))
+	}
 	if run.StderrTail != "" {
 		fmt.Fprintf(w, "  stderr: %s\n", printable(truncate(run.StderrTail, 500)))
 	}

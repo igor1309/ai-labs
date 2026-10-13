@@ -18,7 +18,7 @@ import (
 // Home verifies the same seven Pi primitives for 1.0.2 as for 0.85:
 // check --probe plans both implement workflows on their bound agents
 // (ADR-030 rule 8), and their runs record all seven tools. A later,
-// unverified patch version is still refused. Only the in-process fakes
+// unverified patch version runs with warnings (ADR-036). Only the in-process fakes
 // run: this proves the settings, not Pi's live primitive contracts.
 func TestHomePiSettingsVerify102AndKeep085(t *testing.T) {
 	t.Parallel()
@@ -35,17 +35,13 @@ func TestHomePiSettingsVerify102AndKeep085(t *testing.T) {
 			})
 			launch := filepath.Join(repo, "agister")
 			r := agister(t, home, launch, "check", "--probe", "--json")
-			if version == "1.0.3" {
-				const reason = "mapping pi verifies no primitive for runtime version 1.0.3"
-				if r.code != cli.ExitUsage || !strings.Contains(r.stdout+r.stderr, reason) {
-					t.Fatalf("unverified Pi: exit %d, want refused for %q\n%s%s", r.code, reason, r.stdout, r.stderr)
-				}
-				return
-			}
 
 			var report contract.CheckReport
 			if err := json.Unmarshal([]byte(r.stdout), &report); err != nil || r.code != 0 || len(report.Problems) != 0 {
 				t.Fatalf("check --probe: exit %d, decode %v\n%s%s", r.code, err, r.stdout, r.stderr)
+			}
+			if version == "1.0.3" && !strings.Contains(strings.Join(report.Warnings, "\n"), "runtime pi version 1.0.3 is unverified") {
+				t.Fatalf("warnings = %q", report.Warnings)
 			}
 			var bindings []contract.Binding
 			for _, binding := range report.Bindings {

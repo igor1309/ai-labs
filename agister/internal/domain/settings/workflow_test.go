@@ -34,7 +34,7 @@ func TestAWorkflowOfOneCallIsCheckedAsItsNode(t *testing.T) {
 			[]string{"workflow w: call node work: process j takes the collection (input gathered), which only a join receives"}},
 		// On its runtime: an agent holds no session to refuse it by.
 		"its process cannot run on its agent": {calling(onC(wide()), "p", "c"),
-			[]string{"workflow w: call node work: process p: cannot run on agent c's runtime wide: cannot enforce the effective permissions: Shell also grants exec"}},
+			[]string{"workflow w: call node work: process p: cannot run on agent c's runtime wide: cannot enforce the effective permissions: Shell grants state_reaching permissions: exec"}},
 	} {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()

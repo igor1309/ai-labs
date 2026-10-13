@@ -791,7 +791,7 @@
                               "id": "xKZhk",
                               "name": "Desc",
                               "fill": "#B9B19A",
-                              "content": "permissions meet primitives: the plan",
+                              "content": "best-effort allow; require and state reach are hard checks",
                               "fontFamily": "Inter",
                               "fontSize": 14,
                               "fontWeight": "normal"
@@ -1641,7 +1641,7 @@
                               "id": "DeZGL",
                               "name": "Desc",
                               "fill": "#E2D6AE",
-                              "content": "permissions meet primitives: the plan",
+                              "content": "best-effort allow; require and state reach are hard checks",
                               "fontFamily": "Inter",
                               "fontSize": 13,
                               "fontWeight": "normal"

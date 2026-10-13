@@ -40,3 +40,23 @@ without Go code sets `guidance: []` on those processes in its layer. This
 repository holds no `.agister/` of its own; project layers set their own
 verification without copying home's processes. A test installs
 the folder into an empty home and checks it as global settings.
+
+## Retiring the runtime-specific review judge
+
+Before the home install step after LAB-243 merges, run from `agister/`:
+
+```sh
+scripts/retire-review-judge-codex.sh
+agister install home
+agister check
+```
+
+The script uses `AGISTER_HOME`, otherwise `~/.agister`, or takes an
+explicit home path. It backs up and removes only
+`processes/review_judge_codex.yaml` and `workflows/code_review_codex.yaml`;
+`agister install --restore <stamp>` restores that backup. Shared judge
+and workflow documents stay. When neither copy exists it does nothing.
+The explicit retirement is needed because folder installation keeps
+home-only documents (ADR-016). Use a
+[join-only partial](settings-and-layering.md#rebinding-the-review-judge)
+to select the shared judge's runtime.

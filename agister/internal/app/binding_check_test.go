@@ -42,8 +42,8 @@ primitives:
     ` + strings.Join(primitives, "\n    ") + "\n"
 }
 
-// bash grants process.execute, which no node's process allows.
-const bash = `Bash: {grants: [process.execute, repository.read], verified: ["1."]}`
+// bash reaches host.read, which the service forbids (ADR-036).
+const bash = `Bash: {grants: [process.execute, repository.read, host.read], verified: ["1."]}`
 
 // repairingSecond has process second repair in its call's session, which
 // it says may be resumed.
@@ -98,13 +98,13 @@ func TestCheckJudgesEachBindingOfAWorkflow(t *testing.T) {
 		// process's own while the process named that agent (rule 2).
 		beside string
 	}{
-		{name: "no primitive of the agent's runtime is within what the process allows",
+		{name: "no primitive of the agent's runtime avoids state reach",
 			arrange: func() *harness {
 				h := onAgentC("narrow")
 				h.defs.docs[document.KindRuntime]["narrow"] = oneOf("narrow", bash)
 				return h
 			},
-			want: node + "cannot run on agent c's runtime narrow: cannot enforce the effective permissions: Bash also grants process.execute"},
+			want: node + "cannot run on agent c's runtime narrow: cannot enforce the effective permissions: Bash grants state_reaching permissions: host.read"},
 		{name: "no version of the agent's runtime gives a permission the process requires",
 			arrange: func() *harness {
 				h := onAgentC("reads")
@@ -113,23 +113,6 @@ func TestCheckJudgesEachBindingOfAWorkflow(t *testing.T) {
 				return h
 			},
 			want: node + "cannot run on agent c's runtime reads: cannot enforce the effective permissions: required permissions would be withheld: repository.search"},
-		{name: "the installed version withholds a permission the process requires",
-			arrange: func() *harness {
-				h := onAgentC("reads")
-				h.defs.docs[document.KindRuntime]["reads"] = reads
-				requiring(h, "repository.search")
-				return h
-			},
-			probe: true,
-			want:  node + "cannot run on agent c's runtime reads version 1.2.3: cannot enforce the effective permissions: required permissions would be withheld: repository.search (not verified for version 1.2.3: Grep)"},
-		{name: "the installed version verifies no primitive within what the process allows",
-			arrange: func() *harness {
-				h := onAgentC("split")
-				h.defs.docs[document.KindRuntime]["split"] = oneOf("split", `Read: {grants: [repository.read], verified: ["2."]}`, bash)
-				return h
-			},
-			probe: true,
-			want:  node + "cannot run on agent c's runtime split version 1.2.3: cannot enforce the effective permissions: Bash also grants process.execute (not verified for version 1.2.3: Read)"},
 		{name: "the runtime cannot resume a session, and the process repairs",
 			arrange: func() *harness {
 				h := onAgentC("rt")
@@ -205,13 +188,13 @@ func TestAWorkflowWithABindingThatCannotRunIsRefused(t *testing.T) {
 		arrange func() *harness
 		want    string
 	}{
-		{name: "no primitive of the agent's runtime is within what the process allows",
+		{name: "no primitive of the agent's runtime avoids state reach",
 			arrange: func() *harness {
 				h := onAgentC("narrow")
 				h.defs.docs[document.KindRuntime]["narrow"] = oneOf("narrow", bash)
 				return h
 			},
-			want: refused + "cannot run on agent c's runtime narrow: cannot enforce the effective permissions: Bash also grants process.execute"},
+			want: refused + "cannot run on agent c's runtime narrow: cannot enforce the effective permissions: Bash grants state_reaching permissions: host.read"},
 		{name: "the agent's runtime withholds a permission the process requires",
 			arrange: func() *harness {
 				h := onAgentC("narrow")
@@ -298,17 +281,16 @@ func TestCheckListsWhatEachBindingWithholds(t *testing.T) {
 			onA("w", "one", "first", version, "repository.diff"), two, onA("w", "merge", "joiner", version),
 		}
 	}
-	const refusal = "workflow w: fan-out node two: process second: cannot run on agent c's runtime reads version 1.2.3: cannot enforce the effective permissions: required permissions would be withheld: repository.search (not verified for version 1.2.3: Grep)"
 
 	t.Run("allowed and not required", func(t *testing.T) {
 		t.Parallel()
 		report := check(onReads(false), true)
-		want := bindings("1.2.3", contract.Binding{Workflow: "w", Node: "two", Process: "second", Agent: "c", Runtime: "reads", Version: "1.2.3", Withheld: []string{"repository.search", "repository.diff"}})
+		want := bindings("1.2.3", contract.Binding{Workflow: "w", Node: "two", Process: "second", Agent: "c", Runtime: "reads", Version: "1.2.3", Withheld: []string{"repository.diff"}})
 		if !reflect.DeepEqual(report.Bindings, want) {
 			t.Fatalf("bindings = %+v\nwant %+v", report.Bindings, want)
 		}
-		if len(report.Problems) != 0 || len(report.Warnings) != 0 {
-			t.Fatalf("problems %q, warnings %q; want none", messages(report.Problems), report.Warnings)
+		if len(report.Problems) != 0 || !strings.Contains(strings.Join(report.Warnings, "\n"), "unverified primitives: Grep") {
+			t.Fatalf("report = %+v", report)
 		}
 	})
 	t.Run("required, given on a version the runtime verifies", func(t *testing.T) {
@@ -322,17 +304,17 @@ func TestCheckListsWhatEachBindingWithholds(t *testing.T) {
 			t.Fatalf("problems %q, warnings %q; want none", messages(report.Problems), report.Warnings)
 		}
 	})
-	t.Run("required, withheld on the version installed", func(t *testing.T) {
+	t.Run("required, granted without version evidence", func(t *testing.T) {
 		t.Parallel()
 		report := check(onReads(true), true)
 		want := bindings("1.2.3", contract.Binding{Workflow: "w", Node: "two", Process: "second", Agent: "c", Runtime: "reads", Version: "1.2.3",
-			Withheld: []string{"repository.diff"}, Required: []string{"repository.search"}})
+			Withheld: []string{"repository.diff"}})
 		if !reflect.DeepEqual(report.Bindings, want) {
 			t.Fatalf("bindings = %+v\nwant %+v", report.Bindings, want)
 		}
-		// A refusal of workflow w, not a warning (ADR-030 rule 8).
-		if want := []string{refusal}; !reflect.DeepEqual(messages(report.Problems), want) || len(workflowWarnings(report)) != 0 {
-			t.Fatalf("problems %q, warnings %q; want %q and no warning", messages(report.Problems), report.Warnings, want)
+		// ADR-036: evidence warns while the declared primitive covers require.
+		if len(report.Problems) != 0 || !strings.Contains(strings.Join(report.Warnings, "\n"), "unverified primitives: Grep") {
+			t.Fatalf("report = %+v", report)
 		}
 	})
 }

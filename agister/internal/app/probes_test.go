@@ -10,6 +10,7 @@ import (
 
 	"github.com/igor1309/ai-labs/agister/internal/app"
 	"github.com/igor1309/ai-labs/agister/internal/contract"
+	"github.com/igor1309/ai-labs/agister/internal/domain/document"
 	"github.com/igor1309/ai-labs/agister/internal/domain/run"
 )
 
@@ -91,9 +92,8 @@ func TestACallOnAnUnverifiedVersionRunsOnceItsProbePasses(t *testing.T) {
 }
 
 // A call whose probe proves nothing, or finds no primitive holding, or
-// another version, is refused with what the probe found, before the
-// runtime runs, and nothing is recorded.
-func TestACallWhoseProbeFailsIsRefused(t *testing.T) {
+// another version, runs with a warning carrying the probe evidence (ADR-036).
+func TestACallWhoseProbeFailsRunsWithWarnings(t *testing.T) {
 	t.Parallel()
 	for name, c := range map[string]struct {
 		probe app.RuntimeProbe
@@ -109,10 +109,10 @@ func TestACallWhoseProbeFailsIsRefused(t *testing.T) {
 		records := &probeRecordsSpy{}
 		h.probes = probesOver(&proberSpy{probe: c.probe, err: c.err}, records)
 		record := h.submit(t, h.clientOn(h.defs), contract.CallRequest{Process: "p_a"})
-		if class(record) != run.ClassRefused || !strings.Contains(message(record), "verifies no primitive for spy version 2.0.0, and "+c.want) {
+		if record.Result.Status != run.Completed || !strings.Contains(strings.Join(record.Result.Warnings, "\n"), c.want) {
 			t.Errorf("%s: result = %q", name, message(record))
 		}
-		if len(h.runner.calls()) != 0 || len(records.probes) != 0 {
+		if len(h.runner.calls()) != 1 || len(records.probes) != 0 {
 			t.Errorf("%s: ran %d turns, recorded %v", name, len(h.runner.calls()), records.probes)
 		}
 	}
@@ -152,7 +152,7 @@ func TestAnAdapterWithNoProberIsNotProbed(t *testing.T) {
 	h.runner.identity.Version = "2.0.0"
 	h.probes = app.NewProbes(nil, &probeRecordsSpy{}, fixedClock{})
 	record := h.submit(t, h.clientOn(h.defs), contract.CallRequest{Process: "p_a"})
-	if class(record) != run.ClassRefused || !strings.HasSuffix(message(record), "verifies no primitive for spy version 2.0.0") {
+	if record.Result.Status != run.Completed || !strings.Contains(strings.Join(record.Result.Warnings, "\n"), "version 2.0.0 is unverified") {
 		t.Fatalf("result = %q", message(record))
 	}
 }
@@ -166,7 +166,7 @@ func TestCheckProbesAnUnverifiedVersion(t *testing.T) {
 		want   []string
 	}{
 		"passed": {&proberSpy{probe: app.RuntimeProbe{Version: "9.0.0", Primitives: []string{"Read", "Grep", "Bash"}}}, nil},
-		"failed": {&proberSpy{err: errors.New("nothing proved")}, []string{"agent a: mapping rt verifies no primitive for runtime version 9.0.0, and probing it failed: nothing proved"}},
+		"failed": {&proberSpy{err: errors.New("nothing proved")}, []string{"agent a: runtime rt version 9.0.0 is unverified, and probing it failed: nothing proved", "workflow p_a: call node p: process p on agent a runtime rt version 9.0.0 has unverified primitives: Read, Grep"}},
 	} {
 		h := newHarness()
 		h.runner.identity.Version = "9.0.0"
@@ -175,13 +175,55 @@ func TestCheckProbesAnUnverifiedVersion(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if got := messages(report.Problems); strings.Join(got, "\n") != strings.Join(c.want, "\n") {
+		if got := report.Warnings; len(report.Problems) != 0 || strings.Join(got, "\n") != strings.Join(c.want, "\n") {
 			t.Errorf("%s: problems = %q", name, got)
 		}
-		// The primitives the probe verified are what the binding is planned
-		// on: without them, it would withhold every permission.
+		// ADR-036: a successful probe supplies evidence for the declared plan.
 		if c.prober.err == nil && !reflect.DeepEqual(report.Bindings, []contract.Binding{{Workflow: "p_a", Node: "p", Process: "p", Agent: "a", Runtime: "rt", Version: "9.0.0", Withheld: []string{"repository.diff"}}}) {
 			t.Errorf("%s: bindings = %+v", name, report.Bindings)
 		}
+	}
+}
+
+// Integration test: temporary settings, a successful partial probe and the
+// resulting call record; the runtime, probe store and effects are spies.
+func TestSuccessfulPartialProbeLeavesDeclaredPrimitivesAvailable(t *testing.T) {
+	t.Parallel()
+	for _, required := range []bool{false, true} {
+		name := "optional primitive"
+		if required {
+			name = "required primitive"
+		}
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			h := newHarness()
+			h.runner.identity.Version = "2.0.0"
+			docs := settingsDocs()
+			if required {
+				docs[document.KindProcess]["p"] = strings.Replace(docs[document.KindProcess]["p"],
+					"tools: {allow: [repository.read, repository.search, repository.diff]}",
+					"tools: {allow: [repository.read, repository.search, repository.diff], require: [repository.search]}", 1)
+			}
+			prober := &proberSpy{probe: app.RuntimeProbe{Version: "2.0.0", Primitives: []string{"Read"}, Report: "Read held"}}
+			records := &probeRecordsSpy{}
+			h.probes = probesOver(prober, records)
+			client := h.clientOn(settingsFiles(t, docs))
+			report, err := client.Check(context.Background(), true)
+			const warning = "runtime rt version 2.0.0 has unverified primitives: Grep"
+			if err != nil || len(report.Problems) != 0 || !strings.Contains(strings.Join(report.Warnings, "\n"), warning) {
+				t.Fatalf("check = %+v, %v", report, err)
+			}
+			record := h.submit(t, client, contract.CallRequest{Process: "p_a"})
+			if record.Result.Status != run.Completed || !reflect.DeepEqual(record.Result.Warnings, []string{warning}) || record.Plan == nil || !reflect.DeepEqual(record.Plan.Primitives, []string{"Read", "Grep"}) || !reflect.DeepEqual(record.Plan.Granted, []string{"repository.read", "repository.search"}) {
+				t.Fatalf("result = %+v, plan %+v", record.Result, record.Plan)
+			}
+			turns := h.runner.calls()
+			if len(turns) != 1 || !reflect.DeepEqual(turns[0].Primitives, []string{"Read", "Grep"}) {
+				t.Fatalf("turns = %+v", turns)
+			}
+			if !reflect.DeepEqual(prober.commands(), []string{"/bin/spy"}) || !reflect.DeepEqual(records.probes["spy 2.0.0"].Primitives, []string{"Read"}) {
+				t.Fatalf("probe commands = %v, recorded probes %v", prober.commands(), records.probes)
+			}
+		})
 	}
 }
