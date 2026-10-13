@@ -11,7 +11,7 @@ Five constants name the inputs and input sources that a process, a workflow and 
 3. `app`'s local names for these constants in `reader.go` (such as `promptSource` and `collectionSource`) are gone. Their uses in `app` name `input.<Name>` directly.
 4. A committed test, `TestInputVocabularyKeepsRecordedNames`, in `internal/domain/input`, asserts each constant's value. Those values are written in settings files and run records.
 5. The existing `TestAnInputValuesArgumentsAreBoundInOnePass` (`internal/app/reader_internal_test.go`) keeps passing. It is edited only where it names a moved constant.
-6. A committed test, `TestTheParserDeclaresNoneOfTheInputVocabulary`, in `internal/archtest`, fails if `definition` declares any of the five names, or a constant, variable or alias whose value is one of them, taken from `input`. It is proved with `t.TempDir` fixtures: one that declares a moved name, one that forwards a moved constant, and one clean package that passes.
+6. A committed test, `TestTheParserDeclaresNoneOfTheInputVocabulary`, in `internal/archtest`, fails if `definition` declares any of the five names, or if `definition` or `app` declares a constant, variable or alias whose value is one of the moved constants taken from `input`. It is proved with `t.TempDir` fixtures: one that declares a moved name, one that forwards a moved constant, and one clean package that passes.
 7. Every output, message, exit code and JSON of `agister` is unchanged. The existing tests pass, edited only where they name a moved constant.
 8. `scripts/test.sh` passes.
 
