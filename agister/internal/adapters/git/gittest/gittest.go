@@ -187,6 +187,12 @@ func (f *Fake) Root(_ context.Context, cwd string) (string, error) {
 	return r.root, nil
 }
 
+// IsSubmodule reports no gitlinks: the fake's trees contain files only.
+func (f *Fake) IsSubmodule(_ context.Context, worktree, _ string) (bool, error) {
+	_, err := f.repository(worktree)
+	return false, err
+}
+
 // RepositoryIdentity names the recorded repository dir is in, as its
 // .git under its root.
 func (f *Fake) RepositoryIdentity(_ context.Context, dir string) (string, error) {
