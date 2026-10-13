@@ -135,13 +135,17 @@ func (w *turnWatch) ToolStarted(call ToolCall) {
 		return
 	}
 	now := w.clock.Now()
-	if w.count > 0 && call.Name == w.repeated.Name && call.Input == w.repeated.Input {
+	if call.InputIncomplete {
+		// A lossy report cannot establish identity and breaks the streak.
+		w.repeated, w.count, w.first = ToolCall{}, 0, time.Time{}
+		w.streak, w.result = nil, nil
+	} else if w.count > 0 && call.Name == w.repeated.Name && call.Input == w.repeated.Input {
 		w.count++
 	} else {
 		w.repeated, w.count, w.first = call, 1, now
 		w.streak, w.result = map[string]bool{}, nil
 	}
-	if call.ID != "" {
+	if call.ID != "" && !call.InputIncomplete {
 		w.streak[call.ID] = true
 	}
 	if limit := w.limits.RepeatedToolCalls; limit > 0 && w.count >= limit {
