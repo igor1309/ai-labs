@@ -24,9 +24,11 @@ import (
 // projectReplacements are the documents a layer of this repository holds
 // that home's settings folder holds too, by kind and name, as
 // "<layer>: <document>", each with the reason the layer's must differ from
-// home's (ADR-027 rule 6). Every other document of a layer is its own. None
-// does: the Go guidance is home's (ADR-033).
-var projectReplacements = map[string]string{}
+// home's (ADR-027 rule 6). Every other document of a layer is its own. The
+// Go guidance is home's (ADR-033).
+var projectReplacements = map[string]string{
+	"agister/.agister: workflows/code_review": "Agister is reviewed on Codex only: a join-only partial rebinds the judge (ADR-036 rule 8, LAB-253)",
+}
 
 // Home's settings folder installs into an empty home with this binary, every
 // file of it a settings document installed as it is, and passes check there
