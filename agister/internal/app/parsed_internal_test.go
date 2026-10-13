@@ -90,8 +90,9 @@ func TestANamedVerificationIsCheckedWithTheProcessThatNamesIt(t *testing.T) {
 
 func TestResolvedLeavesAnInlineVerifyAndTheParsedSettingsAsTheyAre(t *testing.T) {
 	t.Parallel()
-	parsed := naming(verifyValues{command: "true", timeout: time.Minute, maxAttempts: 1, instruction: "Fix it."})
-	if got := parsed.resolved("p").verify; got == nil || got.command != "true" || parsed.processes["p"].verify != nil {
+	want := verifyValues{command: "true", timeout: time.Minute, maxAttempts: 1, instruction: "Fix it."}
+	parsed := naming(want)
+	if got := parsed.resolved("p").verify; got == nil || !reflect.DeepEqual(*got, want) || parsed.processes["p"].verify != nil {
 		t.Fatalf("resolved verify %+v, the parsed one's %+v", got, parsed.processes["p"].verify)
 	}
 	inline := &verifyValues{command: "inline"}

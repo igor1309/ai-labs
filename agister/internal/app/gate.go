@@ -7,6 +7,7 @@ import (
 
 	"github.com/igor1309/ai-labs/agister/internal/contract"
 	"github.com/igor1309/ai-labs/agister/internal/domain/document"
+	"github.com/igor1309/ai-labs/agister/internal/domain/run"
 )
 
 // Gated refuses every use of the client while the settings have a problem
@@ -114,7 +115,7 @@ func NewClient(infra Infrastructure) contract.Client {
 		hosted = NewHosted()
 	}
 	holder := NewHolder(infra.Holder)
-	verifier := NewVerifier(infra.Verifier.Content, infra.Verifier.Commands, infra.Verifier.Clock)
+	verifier := CallsVerifier{Verifier: NewVerifier(infra.Verifier.Content, infra.Verifier.Commands, infra.Verifier.Clock)}
 	recoverer := NewRecoverer(infra.Recoverer.Clock)
 	sources := make([]string, 0, len(infra.Calls.Inputs))
 	for name := range infra.Calls.Inputs {
@@ -174,6 +175,26 @@ func NewClient(infra Infrastructure) contract.Client {
 		return infra.Decorate(host)
 	}
 	return &Gated{Definitions: infra.Definitions, Global: infra.Global, Build: build}
+}
+
+// CallsVerifier adapts the verifier's request to the request owned by Calls.
+// It lives at the composition root because it connects those two components.
+type CallsVerifier struct{ Verifier VerifyRunner }
+
+// VerifyRunner is the verifier as CallsVerifier reads it.
+type VerifyRunner interface {
+	Verify(ctx context.Context, call VerificationCall) (verified string, fault *run.Error)
+}
+
+func (v CallsVerifier) Verify(ctx context.Context, call VerifyCall) (string, *run.Error) {
+	return v.Verifier.Verify(ctx, VerificationCall{
+		Record: call.Record, Result: call.Result, Event: call.Event, Update: call.Update, Artifact: call.Artifact,
+		Verify: VerifyCommand{
+			Command: call.Verify.Command, Timeout: call.Verify.Timeout, MaxAttempts: call.Verify.MaxAttempts, Instruction: call.Verify.Instruction,
+		},
+		Limit: call.Limit, Deadline: call.Deadline, NoOutput: call.NoOutput, Dir: call.Dir, Base: call.Base,
+		Request: call.Request, Session: call.Session, Take: call.Take, Conclude: call.Conclude,
+	})
 }
 
 // InstallStager stages an install's result.

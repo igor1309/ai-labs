@@ -61,9 +61,17 @@ func NewVerifier(content VerifyContent, commands VerifyCommands, clock VerifyClo
 	return &Verifier{content: content, commands: commands, clock: clock}
 }
 
-// VerifyCall is what one call's verification loop checks, repairs with and
+// VerifyCommand is the command a verifier runs and its bounds.
+type VerifyCommand struct {
+	Command     string
+	Timeout     time.Duration // per run
+	MaxAttempts int           // runs, the first included
+	Instruction string        // what the agent is told when a run fails
+}
+
+// VerificationCall is what one verification loop checks, repairs with and
 // records to.
-type VerifyCall struct {
+type VerificationCall struct {
 	Record *run.Record
 	Result *run.Result
 	Event  func(source, kind string, data map[string]any)
@@ -71,7 +79,7 @@ type VerifyCall struct {
 	Update   func(run.Record) error
 	Artifact func(name string, data []byte) (run.Artifact, error)
 
-	Verify   CallVerify
+	Verify   VerifyCommand
 	Limit    *float64  // the call's cost limit, one budget for every turn
 	Deadline time.Time // the call's timeout, for every turn and run
 	// NoOutput is the call's staleness limit for a run: how long the
@@ -96,7 +104,7 @@ type VerifyCall struct {
 // Verify verifies the call's latest turn, which was valid, and repairs
 // until a run passes or the loop must stop. It returns the content the
 // passing run checked, and the fault that stopped the loop without a pass.
-func (v *Verifier) Verify(ctx context.Context, call VerifyCall) (verified string, fault *run.Error) {
+func (v *Verifier) Verify(ctx context.Context, call VerificationCall) (verified string, fault *run.Error) {
 	loop := &verification{
 		content: v.content, commands: v.commands, clock: v.clock,
 		record: call.Record, result: call.Result, event: call.Event, update: call.Update, artifact: call.Artifact,
@@ -124,7 +132,7 @@ type verification struct {
 	update   func(run.Record) error
 	artifact func(name string, data []byte) (run.Artifact, error)
 
-	verify   CallVerify
+	verify   VerifyCommand
 	limit    *float64  // the call's cost limit, one budget for every turn
 	deadline time.Time // the call's timeout, for every turn and run
 	// noOutput is how long a run may go without output; zero: no limit.
