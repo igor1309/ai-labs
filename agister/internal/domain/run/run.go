@@ -466,16 +466,23 @@ func AbandonedResult(startedAt time.Time) Result {
 	}
 }
 
-// WithWarnings includes the plan's persisted warnings in any outcome, including
-// one synthesized after the owner ends. Outcome-specific warnings are retained.
+// WithWarnings includes persisted call and workflow warnings in any outcome,
+// including one synthesized after the owner ends. Outcome-specific warnings
+// are retained.
 func (r Record) WithWarnings(result Result) Result {
 	result.Warnings = slices.Clone(result.Warnings)
-	if r.Plan != nil {
-		for _, warning := range r.Plan.Warnings {
+	include := func(warnings []string) {
+		for _, warning := range warnings {
 			if !slices.Contains(result.Warnings, warning) {
 				result.Warnings = append(result.Warnings, warning)
 			}
 		}
+	}
+	if r.Plan != nil {
+		include(r.Plan.Warnings)
+	}
+	if r.Workflow != nil {
+		include(r.Workflow.Warnings)
 	}
 	return result
 }

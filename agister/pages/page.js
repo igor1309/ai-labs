@@ -472,7 +472,7 @@
     }
 
     function runtimesTable(items, composed) {
-      return table('Runtimes', 'Runtime permissions are best effort. Extra grants and unverified versions warn; require and state reach are hard checks. Select one uses the fewest distinct grants. Plan warnings persist through abandonment and reaping. Tested with lists evidence, not a gate.',
+      return table('Runtimes', 'Runtime permissions are best effort. Extra grants and unverified versions warn; require and state reach are hard checks. Select one uses the fewest distinct grants. Plan warnings persist through abandonment and reaping. Workflows persist node warnings as nodes finish, including in abandoned and reaped parent outcomes. Tested with lists evidence, not a gate.',
         ['Runtime', 'Adapter', 'Contract', 'Select', 'Declared grants', 'Tested with'], items, (r) => [
           r.adapter, r.contract, r.select,
           r.primitives.map((p) => `${p.name}: ${p.grants.length ? p.grants.join(', ') : '(none)'}`).join('; ') || null,

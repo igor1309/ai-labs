@@ -2,9 +2,11 @@ package app_test
 
 import (
 	"context"
+	"encoding/json"
 	"reflect"
 	"slices"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/igor1309/ai-labs/agister/internal/app"
@@ -140,6 +142,9 @@ func TestWorkflowOutcomeCarriesEachNodesPermissionWarning(t *testing.T) {
 	if len(record.Result.Warnings) != 3 {
 		t.Fatalf("warnings = %q", record.Result.Warnings)
 	}
+	if !slices.Equal(record.Workflow.Warnings, record.Result.Warnings) {
+		t.Fatalf("persisted workflow warnings = %q, outcome warnings = %q", record.Workflow.Warnings, record.Result.Warnings)
+	}
 }
 
 // Integration test: repeated grants in temporary settings, resolution and run
@@ -257,6 +262,7 @@ func TestPermissionWarningsSurviveAbandonmentAndReaping(t *testing.T) {
 		t.Fatalf("abandoned result = %+v, %v", view.Result, err)
 	}
 	reaper := reaping(h, left)
+	reaper.ReapContext = func(ctx context.Context) (context.Context, context.CancelFunc) { return context.WithCancel(ctx) }
 	if _, owned, err := reaper.ReapRun(context.Background(), left.ID); err != nil || owned {
 		t.Fatalf("reap: owned %v, %v", owned, err)
 	}
@@ -268,5 +274,93 @@ func TestPermissionWarningsSurviveAbandonmentAndReaping(t *testing.T) {
 	view, err = runs.Inspect(context.Background(), left.ID)
 	if err != nil || view.Result == nil || !slices.Equal(view.Result.Warnings, want) {
 		t.Fatalf("reaped caller result = %+v, %v", view.Result, err)
+	}
+}
+
+// Integration test: temporary workflow settings, unfinished parent records,
+// abandoned inspection and reaping; channels control node completion and all
+// runtime, clock and worktree effects are spies.
+func TestWorkflowWarningsSurviveAbandonmentAndReaping(t *testing.T) {
+	t.Parallel()
+	for _, c := range []struct {
+		name, instruction, running string
+		completed                  []string
+	}{
+		{name: "sibling running", instruction: "Work as second.", running: "two", completed: []string{"one"}},
+		{name: "join running", instruction: "Join them.", running: "merge", completed: []string{"one", "two"}},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
+			h := newFlowHarness()
+			docs := workflowDocs()
+			docs[document.KindRuntime]["rt"] = oneOf("rt", `Read: {grants: [repository.read, process.execute], verified: ["9."]}`)
+			h.calls = h.callsOn(settingsFiles(t, docs))
+			held := h.script(c.instruction)
+			held.started, held.release = make(chan struct{}), make(chan struct{})
+			snapshot := make(chan run.Record, 1)
+			var once sync.Once
+			h.store.onUpdate = func(record run.Record) {
+				if record.Workflow == nil {
+					return
+				}
+				for _, node := range record.Workflow.Nodes {
+					if contains(c.completed, node.Name) && node.Status != run.Completed || node.Name == c.running && (node.Run == "" || node.Status != "") {
+						return
+					}
+				}
+				once.Do(func() {
+					// A serialized snapshot cannot change when the live parent
+					// records another node or finishes.
+					data, err := json.Marshal(record)
+					if err != nil {
+						t.Error(err)
+					}
+					var saved run.Record
+					if err := json.Unmarshal(data, &saved); err != nil {
+						t.Error(err)
+					}
+					snapshot <- saved
+				})
+			}
+			id := h.submit(t, contract.CallRequest{})
+			h.stopOnCleanup(t, id)
+			left := <-snapshot
+			<-held.started
+			want := []string{}
+			for _, node := range c.completed {
+				want = append(want, "node "+node+": runtime rt grants beyond tools.allow: process.execute", "node "+node+": runtime rt version 1.2.3 is unverified")
+			}
+			assertWarnings := func(got []string) {
+				t.Helper()
+				if !slices.Equal(slices.Sorted(slices.Values(got)), slices.Sorted(slices.Values(want))) {
+					t.Fatalf("warnings = %v, want %v", got, want)
+				}
+			}
+			if left.Result != nil || left.FinishedAt != nil || left.Plan != nil || left.Workflow == nil {
+				t.Fatalf("unfinished parent = %+v", left)
+			}
+			assertWarnings(left.Workflow.Warnings)
+			reader := &readerSpy{record: left, state: run.StateAbandoned}
+			runs := app.NewRuns(reader, unwritten{}, &cancellerSpy{}, app.RunsTimer(unfired), 0)
+			view, err := runs.Inspect(context.Background(), id)
+			if err != nil || view.Result == nil || view.Result.Status != "lost" {
+				t.Fatalf("abandoned parent = %+v, %v", view.Result, err)
+			}
+			assertWarnings(view.Result.Warnings)
+			reaper := app.NewReaper(&adopterSpy{runs: []run.Record{left}}, &processesSpy{}, h.workspaces, fixedClock{})
+			reaper.ReapContext = func(ctx context.Context) (context.Context, context.CancelFunc) { return context.WithCancel(ctx) }
+			reaped, owned, err := reaper.ReapRun(context.Background(), id)
+			if err != nil || owned || reaped.Result == nil || reaped.Result.Status != run.Lost || class(reaped) != run.ClassAbandoned {
+				t.Fatalf("reaped parent = %+v, owned %v, %v", reaped.Result, owned, err)
+			}
+			assertWarnings(reaped.Workflow.Warnings)
+			assertWarnings(reaped.Result.Warnings)
+			reader.record, reader.state = reaped, run.StateFinished
+			view, err = runs.Inspect(context.Background(), id)
+			if err != nil || view.Result == nil || view.Result.Status != "lost" {
+				t.Fatalf("reaped caller result = %+v, %v", view.Result, err)
+			}
+			assertWarnings(view.Result.Warnings)
+		})
 	}
 }

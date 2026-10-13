@@ -1264,6 +1264,7 @@ test('Settings shows best-effort permissions and unverified declared grants', as
   assert.match(content, /Extra grants and unverified versions warn; require and state reach are hard checks/);
   assert.match(content, /Select one uses the fewest distinct grants/);
   assert.match(content, /Plan warnings persist through abandonment and reaping/);
+  assert.match(content, /Workflows persist node warnings as nodes finish, including in abandoned and reaped parent outcomes/);
   assert.match(content, /read-only: repository.read, process.execute/);
   assert.match(content, /Unverified — warns/);
 });

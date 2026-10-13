@@ -191,6 +191,8 @@ type storeSpy struct {
 	// kept; onArtifact as an artifact is stored.
 	onFinish   func(record run.Record)
 	onArtifact func(id, name string)
+	// onUpdate observes a record after it has been kept.
+	onUpdate func(record run.Record)
 	// onEvent, when set, runs after an event is appended to a run.
 	onEvent func(id string, event run.Event)
 	// failCreate, when set, is asked, by its node's name, whether creating a
@@ -291,8 +293,11 @@ func (r *runSpy) Raw(string) error { return nil }
 
 func (r *runSpy) Update(record run.Record) error {
 	r.mu.Lock()
-	defer r.mu.Unlock()
 	r.record = record
+	r.mu.Unlock()
+	if hook := r.store.onUpdate; hook != nil {
+		hook(record)
+	}
 	return nil
 }
 
@@ -405,18 +410,22 @@ func newFlowHarness() *flowHarness {
 		}
 		return app.Resolved{}, fmt.Errorf("no source %s", spec.Source)
 	}}
-	runtimes := nodeRuntimes{runner: h.runner}
-	changes := &changesSpy{}
 	runs := &runsSpy{records: map[string]run.Record{}, states: map[string]run.State{}}
 	h.runs, h.copies, h.references = runs, &copiesSpy{}, &referencesSpy{}
-	h.calls = app.NewCalls(
-		app.NewResolver(h.defs, runtimes, okValidator{}, resolverCheckStub{}), runtimes,
+	h.calls = h.callsOn(h.defs)
+	return h
+}
+
+func (h *flowHarness) callsOn(src app.ResolverDefinitions) *app.Calls {
+	runtimes := nodeRuntimes{runner: h.runner}
+	changes := &changesSpy{}
+	return app.NewCalls(
+		app.NewResolver(src, runtimes, okValidator{}, resolverCheckStub{}), runtimes,
 		map[string]app.InputProvider{"git.revision": h.inputs, "git.diff": h.inputs, "file": h.inputs, "param": h.inputs}, h.copies, h.references,
-		h.workspaces, changes, app.NewHolder(app.HoldAdapters{Locks: h.locks, Worktrees: &worktreesSpy{}, Content: changes, Runs: runs, Reaper: &reaperSpy{}, Writers: &writersSpy{}}),
-		app.CallsVerifier{Verifier: app.NewVerifier(changes, &commandsSpy{}, fixedClock{})}, app.NewRecoverer(fixedClock{}), okValidator{}, h.store, runs,
+		h.workspaces, changes, app.NewHolder(app.HoldAdapters{Locks: h.locks, Worktrees: &worktreesSpy{}, Content: changes, Runs: h.runs, Reaper: &reaperSpy{}, Writers: &writersSpy{}}),
+		app.CallsVerifier{Verifier: app.NewVerifier(changes, &commandsSpy{}, fixedClock{})}, app.NewRecoverer(fixedClock{}), okValidator{}, h.store, h.runs,
 		fixedClock{}, unfired, &seqIDs{}, "/state", h.hosted,
 	)
-	return h
 }
 
 func (h *flowHarness) script(instruction string) *script { return h.runner.scripts[instruction] }

@@ -1276,6 +1276,7 @@ func (c *Calls) runWorkflow(ctx context.Context, handle RunHandle, record run.Re
 		result.Usage, result.Cost = totals.Usage, totals.Cost
 		result.Timing.FinishedAt = now
 		result.Timing.WallMS = now.Sub(result.Timing.StartedAt).Milliseconds()
+		result = record.WithWarnings(result)
 		record.Result = &result
 		data := map[string]any{"status": string(status)}
 		if fault != nil {
@@ -1377,14 +1378,14 @@ func (c *Calls) runWorkflow(ctx context.Context, handle RunHandle, record run.Re
 		node.Error = end.record.Result.Error
 		ran = append(ran, *end.record.Result)
 		for _, warning := range end.record.Result.Warnings {
-			result.Warnings = append(result.Warnings, "node "+node.Name+": "+warning)
+			state.Warnings = append(state.Warnings, "node "+node.Name+": "+warning)
 		}
+		_ = handle.Update(record)
 		data := map[string]any{"node": node.Name, "run": node.Run, "status": string(node.Status)}
 		if node.Error != nil {
 			data["class"] = string(node.Error.Class)
 		}
 		event("NODE_FINISHED", data)
-		_ = handle.Update(record)
 	}
 
 	// Fan out: a node that cannot start stops the rest from starting.

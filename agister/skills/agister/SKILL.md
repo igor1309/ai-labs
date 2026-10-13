@@ -290,8 +290,9 @@ safe primitive with the fewest distinct grants covering require, mapping
 order on sizes tied. Extra grants warn per binding in `check` and `workflow show`;
 a call records `plan.declared`, `plan.granted`, `plan.extra` and
 `plan.warnings` before runtime startup. Finished, abandoned and reaped
-outcomes include them in `result.warnings`; the workflow result includes
-its nodes' warnings.
+outcomes include them in `result.warnings`. A workflow persists node-labelled
+warnings in `workflow.warnings` as nodes finish; its finished, abandoned
+and reaped results include the warnings accumulated so far.
 Printed results show warnings even with `--quiet`, keeping the status
 and exit code. Unverified versions and selected primitives warn; a probe
 is observability and a failure does not refuse the call. A new Codex

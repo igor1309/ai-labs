@@ -371,7 +371,9 @@ node, and one that withholds an allowed permission is listed as
 <code>withheld</code>. Extra grants warn per binding and are recorded beside
 declared and granted permissions; run outcomes and printed results carry
 the warning. Plan warnings persist before runtime startup and remain in
-abandoned and reaped outcomes. Unverified versions warn; probes are observability (ADR-036).</p>
+abandoned and reaped outcomes. Workflows persist node-labelled warnings as
+nodes finish, retaining them when the parent is abandoned or reaped while
+another node runs. Unverified versions warn; probes are observability (ADR-036).</p>
 
 <h2>Blocks</h2>
 

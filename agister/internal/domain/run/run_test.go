@@ -360,21 +360,26 @@ func TestLatestTotalsAreTheSessionsLatestRecordedTurn(t *testing.T) {
 	}
 }
 
-func TestRecordIncludesPlanWarningsInOutcomes(t *testing.T) {
+func TestRecordIncludesPersistedWarningsInOutcomes(t *testing.T) {
 	t.Parallel()
 	for _, c := range []struct {
 		name          string
 		plan          *run.Plan
+		workflow      *run.Workflow
 		outcome, want []string
 	}{
 		{name: "older record", outcome: []string{"outcome warning"}, want: []string{"outcome warning"}},
 		{name: "plan warning", plan: &run.Plan{Warnings: []string{"plan warning"}}, want: []string{"plan warning"}},
 		{name: "both sources", plan: &run.Plan{Warnings: []string{"plan warning"}}, outcome: []string{"outcome warning"}, want: []string{"outcome warning", "plan warning"}},
 		{name: "warning already included", plan: &run.Plan{Warnings: []string{"plan warning"}}, outcome: []string{"plan warning"}, want: []string{"plan warning"}},
+		{name: "workflow warning", workflow: &run.Workflow{Warnings: []string{"node one: plan warning"}}, want: []string{"node one: plan warning"}},
+		{name: "older workflow", workflow: &run.Workflow{}, outcome: []string{"outcome warning"}, want: []string{"outcome warning"}},
+		{name: "workflow warning already included", workflow: &run.Workflow{Warnings: []string{"node one: plan warning"}}, outcome: []string{"node one: plan warning"}, want: []string{"node one: plan warning"}},
+		{name: "all sources", plan: &run.Plan{Warnings: []string{"plan warning"}}, workflow: &run.Workflow{Warnings: []string{"node one: plan warning"}}, outcome: []string{"outcome warning"}, want: []string{"outcome warning", "plan warning", "node one: plan warning"}},
 	} {
 		t.Run(c.name, func(t *testing.T) {
 			t.Parallel()
-			record := run.Record{Plan: c.plan}
+			record := run.Record{Plan: c.plan, Workflow: c.workflow}
 			result := record.WithWarnings(run.Result{Status: run.Completed, Warnings: c.outcome})
 			if result.Status != run.Completed || !reflect.DeepEqual(result.Warnings, c.want) {
 				t.Fatalf("outcome = %+v, want warnings %v", result, c.want)
@@ -382,6 +387,9 @@ func TestRecordIncludesPlanWarningsInOutcomes(t *testing.T) {
 			result.Warnings[0] = "caller changed it"
 			if c.plan != nil && c.plan.Warnings[0] != "plan warning" {
 				t.Fatalf("outcome changed the snapshot: %v", c.plan.Warnings)
+			}
+			if c.workflow != nil && len(c.workflow.Warnings) > 0 && c.workflow.Warnings[0] != "node one: plan warning" {
+				t.Fatalf("outcome changed the workflow snapshot: %v", c.workflow.Warnings)
 			}
 			if len(c.outcome) > 0 && c.outcome[0] != c.want[0] {
 				t.Fatalf("outcome changed the original result: %v", c.outcome)

@@ -489,7 +489,9 @@ and ignored, and `check` warns (`internal/app/check.go:289`; ADR-025).
   observability; a failed probe does not refuse the call (ADR-036).
 - Extra grants are shown per binding and kept as `plan.extra` beside
   `declared` and `granted`; `plan.warnings` persists before runtime startup
-  and finished, abandoned and reaped outcomes carry those warnings. Extra writing
+  and finished, abandoned and reaped outcomes carry those warnings. Workflows
+  persist node-labelled warnings in `workflow.warnings` as nodes finish,
+  retaining them through parent abandonment and reaping. Extra writing
   grants make the call a writer.
 - A join-only partial, `join: {agent: codex-sol-61}`, rebinds the shared
   judge without copying the reviewers or the judge process.

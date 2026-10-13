@@ -395,7 +395,7 @@ primitives:
 <li><code>select: one</code> takes the safe primitive with the fewest distinct grants covering require; extra grants beyond allow warn. <code>select: any</code> grants fitting safe tools. State-reaching grants remain forbidden (ADR-036).</li>
 <li>An allowed permission that no primitive provides is withheld. If the process requires it, the call is refused.</li>
 <li><code>check</code> makes the plan for every node of every workflow. A binding that would be refused is a problem of that workflow, naming the node; another workflow that binds the same process to an agent that can run it still runs. One that withholds an allowed permission is listed as <code>withheld</code>.</li>
-<li>Extra grants are recorded beside declared and granted permissions; plan warnings persist before runtime startup, and finished, abandoned and reaped outcomes and printed results carry them. A join-only partial rebinds the shared review judge.</li>
+<li>Extra grants are recorded beside declared and granted permissions; plan warnings persist before runtime startup, and finished, abandoned and reaped outcomes and printed results carry them. Workflows persist node-labelled warnings as nodes finish, retaining them through parent abandonment and reaping. A join-only partial rebinds the shared review judge.</li>
 </ul></div>
 
 </section>
