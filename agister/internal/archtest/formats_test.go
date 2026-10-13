@@ -680,14 +680,41 @@ func redeclared(t *testing.T, dir, of string) []string {
 // lets a user reach the vocabulary through the parser.
 func TestTheParserDeclaresNoneOfTheDocumentVocabulary(t *testing.T) {
 	t.Parallel()
-	for _, name := range redeclared(t, "../domain/definition", "../domain/document") {
-		t.Errorf("internal/domain/definition declares %s: document vocabulary belongs to internal/domain/document, and its users name it there directly", name)
+	guard := func(dir, documentDir string) []string {
+		var findings []string
+		for _, name := range redeclared(t, dir, documentDir) {
+			findings = append(findings, fmt.Sprintf("internal/domain/definition declares %s: document vocabulary belongs to internal/domain/document, and its users name it there directly", name))
+		}
+		for _, use := range validNameReturnedCalls(t, dir) {
+			findings = append(findings, fmt.Sprintf("internal/domain/definition/%s: return results must not call document.ValidName", use))
+		}
+		for _, use := range validNameUnchangedResults(t, dir) {
+			findings = append(findings, fmt.Sprintf("internal/domain/definition/%s: return results must not forward document.ValidName unchanged", use))
+		}
+		for _, use := range validNameFunctionValues(t, dir) {
+			findings = append(findings, fmt.Sprintf("internal/domain/definition/%s: callers call document.ValidName directly, never take it as a function value", use))
+		}
+		return findings
 	}
-	for _, use := range validNameReturnedCalls(t, "../domain/definition") {
-		t.Errorf("internal/domain/definition/%s: return results must not call document.ValidName", use)
+	for _, finding := range guard("../domain/definition", "../domain/document") {
+		t.Error(finding)
 	}
-	for _, use := range validNameUnchangedResults(t, "../domain/definition") {
-		t.Errorf("internal/domain/definition/%s: return results must not forward document.ValidName unchanged", use)
+	root := t.TempDir()
+	for name, source := range map[string]string{
+		"document/document.go":  "package document\nfunc ValidName(name string) bool { return false }\n",
+		"definition/forward.go": "package definition\nimport " + strconv.Quote(module+"/internal/domain/document") + "\nvar check = document.ValidName\n",
+	} {
+		path := filepath.Join(root, name)
+		if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(path, []byte(source), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	want := []string{"internal/domain/definition/forward.go: document.ValidName: callers call document.ValidName directly, never take it as a function value"}
+	if got := guard(filepath.Join(root, "definition"), filepath.Join(root, "document")); !slices.Equal(got, want) {
+		t.Errorf("parser vocabulary guard findings = %q, want %q", got, want)
 	}
 }
 
