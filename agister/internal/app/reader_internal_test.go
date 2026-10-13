@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"reflect"
+	"slices"
 	"testing"
 
 	"github.com/igor1309/ai-labs/agister/internal/domain/definition"
@@ -386,6 +387,84 @@ func TestAnAgentToStoreIsParsedAsTheAgentItNames(t *testing.T) {
 			if c.valid {
 				if err != nil {
 					t.Fatalf("a valid agent was refused: %v", err)
+				}
+				return
+			}
+			invalid, ok := err.(*document.InvalidError)
+			if unread(err) || !ok || !reflect.DeepEqual(invalid, parseErr) {
+				t.Fatalf("error = %#v, want the parser's %#v", err, parseErr)
+			}
+		})
+	}
+}
+
+// parsedCase is one document already read: its kind and text, whether it
+// is valid, the documents it names, the helper that parses it and the
+// kind's parser.
+type parsedCase struct {
+	kind   document.Kind
+	text   string
+	valid  bool
+	names  []string
+	parse  func(document.Document) (any, []string, error)
+	parser func(document.Document) (any, error)
+}
+
+// parses is the case of a document of kind holding text, which parse
+// parses as parser does and which names the documents named gives.
+func parses[T any](kind document.Kind, text string, valid bool, names []string, parse, parser func(document.Document) (T, error), named func(T) []string) parsedCase {
+	return parsedCase{
+		kind: kind, text: text, valid: valid, names: names,
+		parse: func(doc document.Document) (any, []string, error) {
+			value, err := parse(doc)
+			return value, named(value), err
+		},
+		parser: func(doc document.Document) (any, error) { return parser(doc) },
+	}
+}
+
+// A document already read is parsed by its kind's parser, as the reader
+// parses one it reads, and keeps the source it was read with. One with
+// problems fails with the parser's own *document.InvalidError, never as a
+// failure to read, beside what of it parsed: the documents it names.
+func TestADocumentAlreadyReadIsParsedByItsKindsParser(t *testing.T) {
+	t.Parallel()
+	process := func(text string, valid bool, names ...string) parsedCase {
+		return parses(document.KindProcess, text, valid, names, parseProcess, definition.ParseProcess, func(p definition.Process) []string {
+			return append(append([]string{p.VerifyName}, p.Prompts()...), p.Skills...)
+		})
+	}
+	agent := func(text string, valid bool, names ...string) parsedCase {
+		return parses(document.KindAgent, text, valid, names, parseAgent, definition.ParseAgent, func(a definition.Agent) []string { return a.Skills })
+	}
+	for name, c := range map[string]parsedCase{
+		"a process": process("schema: agister.process/v1alpha1\nname: d\ntype: process\nprompt: inspect\nguidance: [style]\nskills: [review]\ninput:\n  instruction: Inspect the change.\noutput:\n  format: text\ntimeout: 20m\ntools: {allow: [repository.read]}\n",
+			true, "", "inspect", "style", "review"),
+		"a process with problems": process("name: d\nprompt: inspect\nskills: [review]\nverify: verify:repo\n",
+			false, "repo", "inspect", "review"),
+		"no process": process("\xff", false, ""),
+		"an agent": agent("schema = \"agister.agent/v1alpha1\"\nname = \"d\"\nruntime = \"rt\"\nmodel = \"m1\"\nmodel_family = \"fam\"\neffort = \"high\"\ncommand = \"/bin/spy\"\nskills = [\"review\"]\n",
+			true, "review"),
+		"an agent with problems": agent("name = \"d\"\nskills = [\"review\"]\n", false, "review"),
+		"no agent":               agent("\xff", false),
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			doc := document.Document{
+				Source: document.Source{Kind: c.kind, Name: "d", Path: "mem/" + string(c.kind) + "/d", Layer: document.LayerHome, SHA256: "digest of d"},
+				Bytes:  []byte(c.text),
+			}
+			want, parseErr := c.parser(doc)
+			if (parseErr == nil) != c.valid {
+				t.Fatalf("the case's document parses with %v", parseErr)
+			}
+			got, names, err := c.parse(doc)
+			if !reflect.DeepEqual(got, want) || !slices.Equal(names, c.names) {
+				t.Fatalf("parsed = %+v, naming %q; want %+v, naming %q", got, names, want, c.names)
+			}
+			if c.valid {
+				if err != nil {
+					t.Fatalf("a valid document was refused: %v", err)
 				}
 				return
 			}
