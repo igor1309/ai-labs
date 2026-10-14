@@ -28,23 +28,22 @@ not try (ADR-001, invariant 5).
 Processes speak permissions; runtime mappings say which permissions each
 runtime option grants. Resolve plans each node from the two, and the
 runtime wrapper gets the plan's options, never permissions. A required
-permission and the service's state are hard checks; everything else the
-plan grants beyond what the process allows is a warning, not a refusal.
+permission is the one hard check; anything the plan grants beyond what
+the process allows is a warning, not a refusal.
 
 ## Rules
 
-### 1. Permissions are a vocabulary in the service settings
+### 1. The mappings' grants are the vocabulary
 
-The service settings name every permission, such as `repository.read`,
-`repository.write`, `process.execute`, `network`. They also name which
-permissions write, and which reach Agister's state. A permission is only a
-name; what it means is what the mappings grant under it.
+A permission is a name a runtime mapping grants, such as
+`repository.read` or `network`; what it means is what the mappings grant
+under it. A name a process uses that no mapping grants is a problem of
+the process.
 
 ### 2. A process speaks permissions
 
 A process names the permissions its work requires and the ones it
-allows, within those the service names. A process names no runtime
-option.
+allows. A process names no runtime option.
 
 ### 3. A runtime mapping offers options
 
@@ -58,18 +57,16 @@ runtime as shipped: no workarounds, no undocumented flags.
 For each node, resolve plans from its process's permissions and its
 agent's runtime mapping which options to grant. A plan gives every
 required permission, stays within what is allowed as far as the
-runtime's options let it, and never grants an option with a permission
-that reaches Agister's state. It records what was required, allowed,
+runtime's options let it. It records what was required, allowed,
 granted, granted beyond the allowed (`extra`) and withheld.
 
 ### 5. What refuses and what warns
 
-A plan that cannot give a required permission without reaching Agister's
-state refuses the node's workflow at resolve, as does a node that needs
-what its runtime cannot do (rule 7).
-Grants beyond what the process allows are a warning, shown by check and
-carried in the call's result; they do not change its status. A plan that
-grants a writing permission makes the call a writer.
+A plan that cannot give a required permission refuses the node's
+workflow at resolve, as does a node that needs what its runtime cannot do
+(rule 7). Grants beyond what the process allows are a warning, shown by
+check and carried in the call's result; they do not change its status.
+A call is a writer when its process's workspace access is read-write.
 
 ### 6. Runtime wrappers are permission-blind
 

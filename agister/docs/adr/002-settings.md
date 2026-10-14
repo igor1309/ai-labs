@@ -48,8 +48,7 @@ Each kind has its folder in a layer, and a document is the file named
 after it: `agents/<name>.toml`, `processes/<name>.yaml`,
 `workflows/<name>.yaml`, `runtimes/<name>.yaml`, `verifies/<name>.yaml`,
 `briefs/<name>.yaml`, `schemas/<name>.json`, `prompts/<name>.md`,
-`skills/<name>/SKILL.md`. The service settings, `service.toml`, are one
-document of their own. Nothing but kind and name joins files across
+`skills/<name>/SKILL.md`. Nothing but kind and name joins files across
 layers.
 
 ### 2. Three layers, each over its parent
@@ -94,8 +93,8 @@ and everything it references, and gives the definitions or a refusal. A
 refusal names the chain to the document at fault and its problem.
 
 A problem in a document refuses what depends on it, through any chain,
-and nothing else. A problem that belongs to no document, such as broken
-service settings, refuses every request.
+and nothing else. A problem that belongs to no document, such as a layer
+that cannot be read, refuses every request.
 
 What resolves may run; what is refused never reaches core, and no run is
 recorded (ADR-001, rule 4).

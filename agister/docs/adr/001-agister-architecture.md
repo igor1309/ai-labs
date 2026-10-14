@@ -82,10 +82,10 @@ Every part keeps these.
    they should. What resolves may run; the permissions it is given are
    best effort (invariant 5).
 2. **Definitions live in settings, not in code.** Agents, processes,
-   workflows, output contracts, runtime mappings, the permission
-   vocabulary, the service's limits and what an agent is told are defined
-   in settings files, and changed without rebuilding. Code adds a mechanism only where settings cannot express
-   it: a runtime, an input source kind.
+   workflows, output contracts, runtime mappings and what an agent is
+   told are defined in settings files, and changed without rebuilding.
+   Code adds a mechanism only where settings cannot express it: a
+   runtime, an input source kind.
 3. **Every call ends in one result shape.** A status (completed, failed,
    interrupted, lost) and a failure class from a closed set. Completed
    means output valid against its contract; what the output says, an
@@ -96,10 +96,10 @@ Every part keeps these.
 4. **Inputs are fixed before the first turn.** Each input is resolved to a
    value and its identity (a revision to its commit, content to its
    digest); that value is what the agent receives and what is recorded.
-5. **No permission Agister grants reaches its state.** Home, its settings
-   and its runs are outside every permission Agister grants an agent. A
-   runtime's permissions are best effort: Agister passes the runtime's
-   documented options and is no sandbox. A repository's settings are the
+5. **Agister grants no permission meant to reach its state.** Home, its
+   settings and its runs are not what any permission it grants is for.
+   This is best effort: Agister passes the runtime's documented options
+   and is no sandbox. A repository's settings are the
    repository's files, like any other.
 6. **The record is authoritative.** Per call it keeps the Agister identity
    apart from the provider session, the exact definitions with their
