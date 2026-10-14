@@ -54,11 +54,11 @@ workflow's nodes are calls like any other.
 
 ### 4. The call's changes stay in the worktree
 
-A call that pinned its revision records, at its end, its changes from that
-revision as a patch, with the content it was taken from. The changes are
-already in the worktree; nobody applies the patch. Whatever the end,
-Agister leaves the worktree as the call left it, for the caller to keep or
-discard.
+Every call records, at its end, the worktree's content. A call that
+pinned its revision also records its changes from that revision as a
+patch. The changes are already in the worktree; nobody applies the
+patch. Whatever the end, Agister leaves the worktree as the call left it,
+for the caller to keep or discard.
 
 ### 5. A continuation resumes in the same worktree
 

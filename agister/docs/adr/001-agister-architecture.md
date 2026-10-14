@@ -14,10 +14,11 @@ description: "ADR-001: Agister's architecture: what it is, its parts, their depe
 
 ## Context
 
-Agister is rewritten from scratch. This ADR fixes its shape before any
-code: the parts, who may depend on whom, and the invariants that hold
-across them. Each behaviour (verification, workflows, layering, holds and
-the rest) comes in an ADR of its own, in these parts' terms.
+Agister's behaviours (verification, workflows, layering, holds and the
+rest) each change for reasons of their own. Kept apart, each changes
+without the others; that needs parts, rules for who may depend on whom,
+and invariants that hold across them. This ADR fixes those; each
+behaviour comes in an ADR of its own, in these parts' terms.
 
 ## Decision
 
@@ -35,7 +36,7 @@ every call.
 | `runtime/<name>` | One wrapper per provider runtime (Claude Code, Codex, opencode, pi), with its own types. Knows nothing of core. |
 | `git` | A wrapper over git, with its own types. Knows nothing of settings or core. |
 | `runstore` | A wrapper that persists runs, with its own types. |
-| `pages` | Renders settings and runs from their files. Reads them directly. |
+| `pages` | A read-only viewer of settings and runs. Its design is open (backlog). |
 | `cmd/agister` | The composition root. |
 
 ## Rules
@@ -65,7 +66,7 @@ every call.
    revision; the content as recorded) and hands core the session.
    Core reads no runs.
 6. **Two file formats are contracts:** the settings files and the run
-   records. Pages reads both; its tests fail when either changes.
+   records.
 
 Rule 1 is enforced by an architecture test on import edges alone. When
 something seems to need an import these rules forbid, the design is wrong,
@@ -167,8 +168,7 @@ Core emits its events. An adapter in the composition turns them into
 `runstore`'s record, and `runstore` persists it. The composition knows
 where runs are placed. Core reads no runs: the CLI's commands on runs
 call `cli`'s port, which the
-composition serves from `runstore`. Pages reads the
-files.
+composition serves from `runstore`.
 
 ## A call
 
@@ -183,10 +183,7 @@ files.
 
 ## Implementation notes
 
-The composition connects parts with two kinds of small types. Each
-adapter and each decorator has its own tests, over spies on the ports it
-joins or wraps: the mapping both ways for an adapter, and for a decorator
-its concern and that it passes everything else through unchanged.
+The composition connects parts with two kinds of small types.
 
 - **Adapters** map a part's port onto a wrapper, or onto another part's
   port, and own no types. Why: each side keeps its own words, a change on
@@ -201,7 +198,6 @@ its concern and that it passes everything else through unchanged.
 
 - **Git input sources.** Where the revision, merge-base, diff and changed
   files sources go: the composition or nowhere.
-- **Pages and layering.** Pages renders settings from their files, so it
-  would repeat layering; it may get a dependency for that instead.
+- **Pages.** How it gets settings and runs.
 - **Where reaping lives.** Reaping a run whose owner died: in the hold, or
   with runs.

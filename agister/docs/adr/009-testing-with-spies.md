@@ -55,7 +55,9 @@ version check of ADR-003, rule 8.
 ### 4. An integration test names what it integrates
 
 Only what it names is real. An adapter or decorator is tested over spies
-on the ports it joins or wraps (ADR-001, implementation notes). The
+on the ports it joins or wraps (ADR-001, implementation notes): the
+mapping both ways for an adapter, and for a decorator its concern and
+that it passes everything else through unchanged. The
 composition's tests integrate its parts with spies in place of its
 wrappers. Few tests go through the built binary, each for what only the
 binary shows.
