@@ -183,24 +183,28 @@ func TestListsAndScalarsReplaceWhole(t *testing.T) {
 		"[1, 2]": func(origin tree.Origin) tree.Node { return listOf(origin, one(origin), integer(2, origin)) },
 		"{b: 2}": func(origin tree.Origin) tree.Node { return mapOf(origin, "b", integer(2, origin)) },
 	}
-	for _, c := range [][2]string{
-		{"1", "2"},
-		{`"1"`, "1"},
-		{"1", "true"},
-		{"text", `""`},
-		{"1", "[1, 2]"},
-		{"[1, 2]", "1"},
-		{"1", "{b: 2}"},
-		{"{b: 2}", "1"},
-		{"[1, 2]", "{b: 2}"},
-		{"{b: 2}", "[1, 2]"},
+	for _, c := range []struct {
+		under, over string
+		want        []string
+	}{
+		{"1", "2", []string{" map /o.yaml:1", ".a integer 2 /o.yaml:1"}},
+		{`"1"`, "1", []string{" map /o.yaml:1", ".a integer 1 /o.yaml:1"}},
+		{"1", "true", []string{" map /o.yaml:1", ".a boolean true /o.yaml:1"}},
+		{"text", `""`, []string{" map /o.yaml:1", `.a string "" /o.yaml:1`}},
+		{"1", "[1, 2]", []string{" map /o.yaml:1",
+			".a list /o.yaml:1", ".a[0] integer 1 /o.yaml:1", ".a[1] integer 2 /o.yaml:1"}},
+		{"[1, 2]", "1", []string{" map /o.yaml:1", ".a integer 1 /o.yaml:1"}},
+		{"1", "{b: 2}", []string{" map /o.yaml:1", ".a map /o.yaml:1", ".a.b integer 2 /o.yaml:1"}},
+		{"{b: 2}", "1", []string{" map /o.yaml:1", ".a integer 1 /o.yaml:1"}},
+		{"[1, 2]", "{b: 2}", []string{" map /o.yaml:1", ".a map /o.yaml:1", ".a.b integer 2 /o.yaml:1"}},
+		{"{b: 2}", "[1, 2]", []string{" map /o.yaml:1",
+			".a list /o.yaml:1", ".a[0] integer 1 /o.yaml:1", ".a[1] integer 2 /o.yaml:1"}},
 	} {
-		t.Run(c[1]+" over "+c[0], func(t *testing.T) {
+		t.Run(c.over+" over "+c.under, func(t *testing.T) {
 			t.Parallel()
-			under := mapOf(u(1), "a", values[c[0]](u(1)))
-			over := mapOf(o(1), "a", values[c[1]](o(1)))
-			want := dump(over)
-			assertDump(t, over.Over(under), want...)
+			under := mapOf(u(1), "a", values[c.under](u(1)))
+			over := mapOf(o(1), "a", values[c.over](o(1)))
+			assertDump(t, over.Over(under), c.want...)
 		})
 	}
 }
@@ -210,25 +214,30 @@ func TestATreeThatIsNoMapAtTheTopReplacesWhole(t *testing.T) {
 	for _, c := range []struct {
 		name        string
 		under, over tree.Node
+		want        []string
 	}{
-		{"a list over a map", mapOf(u(1), "a", integer(1, u(1))), listOf(o(1), str("b", o(1)))},
-		{"a map over a list", listOf(u(1), str("a", u(1))), mapOf(o(1), "b", integer(1, o(1)))},
-		{"a list over a list", listOf(u(1), str("a", u(1))), listOf(o(1), str("b", o(1)))},
-		{"a string over a string", str("a", u(1)), str("b", o(1))},
+		{"a list over a map", mapOf(u(1), "a", integer(1, u(1))), listOf(o(1), str("b", o(1))),
+			[]string{" list /o.yaml:1", "[0] string \"b\" /o.yaml:1"}},
+		{"a map over a list", listOf(u(1), str("a", u(1))), mapOf(o(1), "b", integer(1, o(1))),
+			[]string{" map /o.yaml:1", ".b integer 1 /o.yaml:1"}},
+		{"a list over a list", listOf(u(1), str("a", u(1))), listOf(o(1), str("b", o(1))),
+			[]string{" list /o.yaml:1", "[0] string \"b\" /o.yaml:1"}},
+		{"a string over a string", str("a", u(1)), str("b", o(1)),
+			[]string{" string \"b\" /o.yaml:1"}},
 	} {
 		t.Run(c.name, func(t *testing.T) {
 			t.Parallel()
-			assertDump(t, c.over.Over(c.under), dump(c.over)...)
+			assertDump(t, c.over.Over(c.under), c.want...)
 		})
 	}
 }
 
 func TestAnEmptyTreeIsPassedOver(t *testing.T) {
 	t.Parallel()
-	a := mapOf(o(1), "a", integer(1, o(1)))
+	a := mapOf(o(1), "a", integer(1, o(2)))
 	var empty tree.Node
-	assertDump(t, a.Over(empty), dump(a)...)
-	assertDump(t, empty.Over(a), dump(a)...)
+	assertDump(t, a.Over(empty), " map /o.yaml:1", ".a integer 1 /o.yaml:2")
+	assertDump(t, empty.Over(a), " map /o.yaml:1", ".a integer 1 /o.yaml:2")
 	assertDump(t, empty.Over(empty), " empty")
 }
 
