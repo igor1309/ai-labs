@@ -1,7 +1,8 @@
 // Package tree is a value tree whose every node keeps its origin: maps,
 // lists, strings, integers, numbers and booleans, each with the path it was
-// decoded from and its line. A tree is merged over another: maps merge by
-// key at every depth, lists and scalars replace whole, nothing unsets.
+// decoded from and its line. A tree is decoded from bytes in YAML or TOML,
+// and merged over another: maps merge by key at every depth, lists and
+// scalars replace whole, nothing unsets.
 //
 // A node is a value: nothing changes it once it is made, so trees share
 // nodes freely and merging changes neither tree.
