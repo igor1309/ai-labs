@@ -178,6 +178,7 @@ Feature: Layout reads the settings files of the layer folders it is given
       | file          | name     |
       | Bad Name.yaml | Bad Name |
       | Review.yaml   | Review   |
+      | aZ.yaml       | aZ       |
       | 0a.yaml       | 0a       |
       | -a.yaml       | -a       |
       | _a.yaml       | _a       |
