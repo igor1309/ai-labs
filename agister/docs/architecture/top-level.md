@@ -115,8 +115,10 @@ files.
 
 ## Implementation notes
 
-The composition connects parts with two kinds of small types, each tested
-alone.
+The composition connects parts with two kinds of small types. Each
+adapter and each decorator has its own tests, over fakes of the ports it
+joins or wraps: the mapping both ways for an adapter, and for a decorator
+its concern and that it passes everything else through unchanged.
 
 - **Adapters** map a part's port onto a wrapper, or onto another part's
   port, and own no types. Why: each side keeps its own words, a change on
