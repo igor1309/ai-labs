@@ -83,8 +83,3 @@ not change the worktree while a writer works in it.
 - Keeping work apart is the caller's: a worktree per change.
 - Core knows no git: the revision, the content, the patch and the
   worktree's root are answers to its ports.
-
-## Open
-
-- **Reaping.** A run whose owner died may still be writing; where it is
-  found and ended is ADR-001's open point.

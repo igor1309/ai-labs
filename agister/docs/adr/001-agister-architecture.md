@@ -170,6 +170,12 @@ where runs are placed. Core reads no runs: the CLI's commands on runs
 call `cli`'s port, which the
 composition serves from `runstore`.
 
+## Reaping
+
+A call whose owner died may leave processes running and its hold taken.
+The hold finds the dead owner, ends what that owner left running, and
+only then is released. The owner's run reads as lost (invariant 7).
+
 ## A call
 
 1. `cli` parses the command and calls its port.
@@ -193,9 +199,3 @@ The composition connects parts with two kinds of small types.
   diagnostics, logging, run placement, reporting a settings failure on
   stderr, checking a continuation. Why: a concern is added or removed
   without touching the part or its tests, and the part never learns of it.
-
-## Open
-
-- **Pages.** How it gets settings and runs.
-- **Where reaping lives.** Reaping a run whose owner died: in the hold, or
-  with runs.

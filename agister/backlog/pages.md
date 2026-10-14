@@ -27,8 +27,8 @@ archive ADRs 009 and 011) does far more than those two ADRs say.
 The archive's composition hands pages Agister's own settings composition,
 the run store (running or lost) and the folder dialog
 (`pages.Env{Settings, Observe, Choose}`): ports in all but name. ADR-001
-says pages reads settings and runs directly (its parts table and rule 6)
-and keeps "pages and layering" open. Writing the ADR means deciding that.
+makes pages a read-only viewer and leaves how it gets settings and runs
+to its ADR: through ports the composition answers.
 
 Its tests follow ADR-009: pages is tested over spies on its ports, so its
 ADR gives it ports for what it reads.
