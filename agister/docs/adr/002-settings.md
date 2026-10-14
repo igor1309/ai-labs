@@ -140,7 +140,7 @@ A schema, a prompt and a skill are taken whole from the nearest layer
 that holds them. `blocks.yaml` and `layer.yaml` are read for their own
 layer only.
 
-### 5. A process may extend one base
+### 5. A process may extend another
 
 ```yaml
 name: tests_review
@@ -148,16 +148,16 @@ extends: process:review
 prompt: code-review-tests
 ```
 
-- A base is a process another process extends. It extends nothing.
-- The base is composed from its layers first, then the extending process's
-  layers over it, each farthest first. `name` and `extends` are never
-  taken from the base.
-- A layer's partial of the base reaches every process that extends it. The
-  nearest layer that holds the whole process says what it extends; a
+- Any process may be extended. A process extends at most one other.
+- The extended process is composed first, with its own `extends`; then the
+  extending process's layers over it, farthest first. `name` and
+  `extends` are never taken from the extended process.
+- A layer's partial of a process reaches every process that extends it.
+  The nearest layer that holds the whole process says what it extends; a
   partial cannot set `extends`.
-- A base is not work: a node that binds it is a problem of the workflow.
-  A base is checked through each process that extends it, and may leave
-  out what they set.
+- Every process is complete as composed, and checked like any other. A
+  process that extends itself, directly or through others, has that
+  problem, as has each process in the cycle.
 
 Only processes extend.
 
@@ -275,8 +275,8 @@ known field with a wrong value is not marked. Every refusal that such a
 problem causes says the same.
 
 `check --tree`, `process show` and `workflow show` give each document's
-layer files, nearest first, and the layer each field came from, the base
-included. Listings show each refused workflow and process with its
+layer files, nearest first, and the layer each field came from, those of
+an extended process included. Listings show each refused workflow and process with its
 refusal. A write into home is refused if it adds a problem; problems
 already there do not stop it.
 
