@@ -18,8 +18,8 @@ Feature: Layout reads the settings files of the layer folders it is given
       | brief     | briefs     | .yaml     |
       | schema    | schemas    | .json     |
       | prompt    | prompts    | .md       |
-    And a name is a lowercase letter or digit, then lowercase letters,
-      digits, "_" and "-"
+    And a name is a lowercase letter, then lowercase letters, digits, "_"
+      and "-", as the archive's names are
 
   # Reading what is there
 
@@ -39,11 +39,18 @@ Feature: Layout reads the settings files of the layer folders it is given
     And it has no repository source and no project source
 
   Scenario: Every layer holds the same document
-    Given the home, repository and project folders
-    And each holds "processes/review.yaml" with bytes of its own
+    Given the home folder "/home/.agister" holds "processes/review.yaml"
+      with the bytes "timeout: 20m"
+    And the repository folder "/repo/.agister" holds
+      "processes/review.yaml" with the bytes "timeout: 30m"
+    And the project folder "/repo/p/.agister" holds
+      "processes/review.yaml" with the bytes "timeout: 40m"
     When layout reads
-    Then the document process "review" has a home, a repository and a
-      project source, each with its own folder's path and bytes
+    Then the document process "review" has the sources:
+      | source     | path                                     | bytes        |
+      | home       | /home/.agister/processes/review.yaml     | timeout: 20m |
+      | repository | /repo/.agister/processes/review.yaml     | timeout: 30m |
+      | project    | /repo/p/.agister/processes/review.yaml   | timeout: 40m |
 
   Scenario: Layers hold different documents
     Given the home folder holds "processes/a.yaml"
@@ -95,6 +102,14 @@ Feature: Layout reads the settings files of the layer folders it is given
       | home    | /home/.agister  |
       | project | /repo/p/.agister |
 
+  Scenario: Blocks that cannot be read are a problem of the repository layer
+    Given the repository folder "/repo/.agister" holds "blocks.yaml"
+    And "blocks.yaml" cannot be read
+    When layout reads
+    Then the snapshot has no blocks
+    And the repository layer has a problem naming
+      "/repo/.agister/blocks.yaml" and the read's error
+
   # Problems
 
   Scenario: A file that cannot be read is a problem of its document
@@ -105,18 +120,28 @@ Feature: Layout reads the settings files of the layer folders it is given
     And process "b" has a home source with its bytes
 
   Scenario: A layer folder that cannot be listed is a problem of its layer
-    Given the home and repository folders
-    And the repository folder cannot be listed
+    Given the home folder "/home/.agister" holds "processes/a.yaml"
+    And the repository folder "/repo/.agister" cannot be listed
     When layout reads
-    Then the repository layer has a problem naming its folder and the error
-    And the home folder's documents are read
+    Then the repository layer has a problem naming "/repo/.agister" and
+      the error
+    And process "a" has a home source
 
   Scenario: A kind's folder that cannot be listed is a problem of its layer
-    Given the home folder's "processes" folder cannot be listed
-    And the home folder holds "prompts/review.md"
+    Given the home folder "/home/.agister"
+    And its folder "processes" cannot be listed
+    And it holds "prompts/review.md"
     When layout reads
-    Then the home layer has a problem naming "processes" and the error
+    Then the home layer has a problem naming "/home/.agister/processes"
+      and the error
     And prompt "review" has a home source
+
+  Scenario: A kind's folder a layer does not have is no problem
+    Given the home folder "/home/.agister" holds "prompts/review.md"
+    And it has no other kind's folder
+    When layout reads
+    Then prompt "review" has a home source
+    And the snapshot has no problem
 
   Scenario: A layer folder given that does not exist is a problem
     Given the project folder "/repo/p/.agister", which does not exist
