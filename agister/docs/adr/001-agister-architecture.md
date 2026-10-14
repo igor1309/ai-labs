@@ -1,10 +1,25 @@
 ---
 date: 2026-10-14
 model: claude-opus-5-5
-description: "Agister top-level architecture: parts, dependency rules, settings, core, runs"
+description: "ADR-001: Agister's architecture: what it is, its parts, their dependency rules and the invariants every part keeps"
 ---
 
-# Agister: top-level architecture (proposal)
+# ADR-001: Agister's architecture
+
+- **Status:** Proposed
+- **Date:** 2026-10-14
+- **Scope:** what Agister is, its parts and how they depend on one
+  another, and the invariants every part keeps
+- **Decision type:** Architecture
+
+## Context
+
+Agister is rewritten from scratch. This ADR fixes its shape before any
+code: the parts, who may depend on whom, and the invariants that hold
+across them. Each behaviour (verification, workflows, layering, holds and
+the rest) comes in an ADR of its own, in these parts' terms.
+
+## Decision
 
 Agister runs AI-agent work that is defined as settings, through provider
 runtimes, in the caller's git worktree, and keeps an attributable record of
@@ -53,6 +68,47 @@ every call.
    records. Pages reads both; its tests fail when either changes.
 
 Rule 1 is enforced by an architecture test on import edges alone.
+
+## Invariants
+
+Every part keeps these.
+
+1. **Agister runs generic work.** It runs agent calls, the verification a
+   process declares and the workflow shapes settings define. It knows no
+   kind of work, no particular agent and no meaning of any output. It is a
+   runner, not a guard: it checks whether settings compose and can be
+   enforced as written, never whether they should be.
+2. **Definitions are settings.** Agents, processes, workflows, output
+   contracts, runtime mappings, the permission vocabulary, the service's
+   limits and what an agent is told are settings, changed without
+   rebuilding. Code adds a mechanism only where settings cannot express
+   it: a runtime, an input source kind.
+3. **Every call ends in one result shape.** A status (completed, failed,
+   interrupted, lost) and a failure class from a closed set. Completed
+   means output valid against its contract; what the output says, an
+   unfavourable verdict included, is not a status. Usage and cost as the
+   runtime reports them, with their source: an unreported cost is
+   unknown, never zero. Timing measured by Agister. The session the call
+   ran in. A workflow ends in the same shape.
+4. **Inputs are fixed before the first turn.** Each input is resolved to a
+   value and its identity (a revision to its commit, content to its
+   digest); that value is what the agent receives and what is recorded.
+5. **Agents cannot reach Agister's state.** Home, its settings and its runs
+   are outside every permission an agent is granted. A repository's
+   settings are the repository's files, like any other.
+6. **The record is authoritative.** Per call it keeps the Agister identity
+   apart from the provider session, the exact definitions with their
+   digests, the inputs, the permission plan, the ordered events and the
+   outcome. Anything needed to understand a call is in it. Diagnostics
+   describe Agister's own machinery; they are not the record, and never
+   change an argument, a result or an error.
+7. **Every effect has an owner and an end.** Each process and hold a call
+   creates is the call's, bounded, and ended on every exit path. A record
+   never finished reads as lost, never as running.
+8. **Calls are independent.** Concurrent calls share only settings, which
+   they read, and records, each writing its own. The exceptions are
+   deliberate: a continuation resumes an earlier run's session (rule 5),
+   and a join receives its own workflow's outcomes.
 
 ## Settings
 
@@ -129,7 +185,7 @@ its concern and that it passes everything else through unchanged.
   stderr, checking a continuation. Why: a concern is added or removed
   without touching the part or its tests, and the part never learns of it.
 
-## To consider later
+## Open
 
 - **Git-backed behaviour outside core.** Where each goes, the composition
   or nowhere: the pinned revision, the clean-worktree check, the changes

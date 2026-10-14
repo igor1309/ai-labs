@@ -9,7 +9,7 @@ description: "Tests for the new Agister, from the archived implementation's inte
 Source: the 284 `Test*` functions in `agister/archive/cmd/agister/*_test.go`,
 each named by its function, whose doc comment states the behaviour.
 Each behaviour below names the tests it comes from. The part is the one in
-`docs/architecture/top-level.md` that should own the test; "e2e" means
+`docs/adr/001-agister-architecture.md` that should own the test; "e2e" means
 through the built binary, as today.
 
 Marked **changed**: the architecture changes the behaviour the archive tests.
