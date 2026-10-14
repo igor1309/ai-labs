@@ -48,7 +48,7 @@ stands unchanged.
 
 ## Open in the written ADRs
 
-- ADR-001: git-backed behaviour outside core; where reaping lives; pages.
+- ADR-001: where reaping lives; pages.
 - Not yet in any ADR: who sets a call's time and cost limits, the caller
   or the process, and which wins.
 - ADR-002: lists of named items.

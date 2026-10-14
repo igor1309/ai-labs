@@ -196,8 +196,6 @@ The composition connects parts with two kinds of small types.
 
 ## Open
 
-- **Git input sources.** Where the revision, merge-base, diff and changed
-  files sources go: the composition or nowhere.
 - **Pages.** How it gets settings and runs.
 - **Where reaping lives.** Reaping a run whose owner died: in the hold, or
   with runs.
