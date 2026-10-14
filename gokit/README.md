@@ -47,5 +47,4 @@ gokit's check is `gokit/scripts/test.sh`: format, vet and race tests.
 gokit/scripts/test.sh
 ```
 
-Agister's check (`agister/scripts/test.sh`) ends by running it, and Agister's
-CI runs that on every change under `gokit/`.
+The `agister-core` CI job runs it on every change under `gokit/`.

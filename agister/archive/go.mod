@@ -13,4 +13,4 @@ require (
 
 require golang.org/x/text v0.14.0
 
-replace github.com/igor1309/ai-labs/gokit => ../gokit
+replace github.com/igor1309/ai-labs/gokit => ../../gokit

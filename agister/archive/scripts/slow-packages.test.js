@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
 import test from "node:test";
 
-const script = new URL("../../agister/scripts/slow-packages.sh", import.meta.url).pathname;
+const script = new URL("./slow-packages.sh", import.meta.url).pathname;
 
 function slow(output, budget = "60") {
   return execFileSync("sh", [script, budget], { encoding: "utf8", input: output });
