@@ -48,4 +48,4 @@ stands unchanged.
 
 ## Open in the written ADRs
 
-- ADR-002: lists of named items.
+None.

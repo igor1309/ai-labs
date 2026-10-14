@@ -67,7 +67,8 @@ settings, not the place of work.
 ### 3. A document is composed field by field
 
 From home toward the launch directory, maps merge by key at every depth,
-and lists and scalars replace whole. Nothing unsets. The composed
+and lists and scalars replace whole: a list's items are never merged,
+by name or otherwise. Nothing unsets. The composed
 document is what is checked. Schemas, prompts and skills are taken whole
 from the nearest layer that holds them.
 
@@ -120,9 +121,3 @@ from.
 - One broken or blocked document refuses only what uses it.
 - A refusal by resolve leaves no run; check shows the same problem before
   any call.
-
-## Open
-
-- **Lists of named items.** A list replaces whole, so changing one node of
-  a `fan_out` means repeating the list. Richer composition, such as
-  merging items by name, would be decided and checked at resolve.
