@@ -11,9 +11,10 @@ Feature: Tree decodes bytes into a value tree with origins and merges trees
     Given decode knows the formats YAML and TOML
     And a value is a map, a list, a string, an integer, a number or a
       boolean, and a map's keys are strings
-    And a node's origin is the path it was decoded from and its line
-    And a node's line is its key's line, a list item's the line of its
-      item, and the top's line 1
+    And a node's origin is the path it was decoded from and, for YAML,
+      its line; the line is optional, and a TOML node has none
+    And a YAML node's line is its key's line, a list item's the line of
+      its item, and the top's line 1
 
   # Decode: values
 
@@ -127,7 +128,7 @@ Feature: Tree decodes bytes into a value tree with origins and merges trees
       | items[1]      | /a/v.yaml | 4    |
       | items[1].name | /a/v.yaml | 4    |
 
-  Scenario: Every TOML node keeps its path and line
+  Scenario: Every TOML node keeps its path, and has no line
     Given the TOML bytes, from "/a/v.toml":
       """
       size = "20m"
@@ -138,10 +139,10 @@ Feature: Tree decodes bytes into a value tree with origins and merges trees
     When tree decodes them
     Then the nodes have the origins:
       | node        | path      | line |
-      | the top     | /a/v.toml | 1    |
-      | size        | /a/v.toml | 1    |
-      | shape       | /a/v.toml | 3    |
-      | shape.width | /a/v.toml | 4    |
+      | the top     | /a/v.toml | none |
+      | size        | /a/v.toml | none |
+      | shape       | /a/v.toml | none |
+      | shape.width | /a/v.toml | none |
 
   Scenario: Decode keeps the path it is given and reads nothing from it
     Given the YAML bytes "a: [x]", from "/a/v.toml"
@@ -193,8 +194,8 @@ Feature: Tree decodes bytes into a value tree with origins and merges trees
     Given the TOML bytes "a = 2026-10-14", from "/a/v.toml"
     When tree decodes them
     Then there is no tree
-    And it has a problem at "a", "/a/v.toml" line 1: a date is no value
-      of a tree
+    And it has a problem at "a", "/a/v.toml": a date is no value of a
+      tree
 
   Scenario: Every bad value of parsed bytes is reported
     Given the YAML bytes:
