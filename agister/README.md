@@ -1,13 +1,8 @@
 # Agister
 
-Agister runs AI-agent work defined in settings files, through provider
-runtimes, in the caller's git worktree, and keeps an attributable record of
-every call.
+A runner for AI-agent work defined in settings files.
 
-It is being rewritten from scratch to
-[its architecture, ADR-001](docs/adr/001-agister-architecture.md); each
-behaviour comes in an ADR of its own, starting with
-[settings, ADR-002](docs/adr/002-settings.md). The earlier
-implementation, with its ADRs, behaviour reference and tests, is kept
-unchanged in [archive/](archive/README.md) as reference; it is not built or
-tested in CI. The installed `agister` binary is that implementation.
+- [Architecture, ADR-001](docs/adr/001-agister-architecture.md)
+- [ADRs](docs/adr/)
+- [The earlier implementation](archive/README.md), kept unchanged as
+  reference; the installed `agister` binary is that implementation

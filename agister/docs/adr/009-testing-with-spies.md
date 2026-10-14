@@ -6,7 +6,7 @@ description: "ADR-009: testing with spies: a part is tested over spies on its po
 
 # ADR-009: Testing with spies
 
-- **Status:** Proposed
+- **Status:** Accepted
 - **Date:** 2026-10-14
 - **Scope:** how each part, wrapper and the composition is tested, where
   real processes, git, files and time may appear, and what the product
