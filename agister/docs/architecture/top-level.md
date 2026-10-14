@@ -14,7 +14,7 @@ every call.
 
 | Part | Responsibility |
 |---|---|
-| `cli` | Turns terminal commands into calls on the client contract. The outer level; fails on bad input. Depends on the contract alone. |
+| `cli` | Turns terminal commands into calls on the port it declares (run, observe, cancel, check, inspect, list, show, export). The outer level; fails on bad input. The composition implements its port. |
 | `settings/*` | The one owner of settings knowledge: where settings live (home, repository, project), how they are read, layered and resolved. Its primary operation is resolve ("can you resolve this?", "resolve this"). Check is built on resolve; the gate before a run is that check. Init, install, restore and the like use the same knowledge. Reads files through an abstract filesystem; the parser is internal. |
 | `core/*` | Takes resolved settings and a run command, runs the work and streams run events. Declares the runtime protocol and the ports it needs. Knows no git and no files. |
 | `runtime/<name>` | One wrapper per provider runtime (Claude Code, Codex, opencode, pi), with its own types. Knows nothing of core. |
@@ -25,8 +25,8 @@ every call.
 
 ## Rules
 
-1. **No package of `settings/*` or `core/*` imports another package of the
-   module, inside its group or outside it.** Each declares its own types and
+1. **No package of `cli`, `settings/*` or `core/*` imports another package
+   of the module, inside its group or outside it.** Each declares its own types and
    the ports it requires. This includes `settings/check` and
    `settings/resolve`: check is handed resolve, it does not import it.
 2. **Wrappers and adapters are different things.** A wrapper (a runtime,
@@ -36,8 +36,8 @@ every call.
 3. **The composition root is the only place that connects parts:** wiring,
    mappers where two independent parts meet, diagnostics, logging and run
    placement. Settings' resolve output and core's input are two
-   types; the composition maps one to the other. The client it builds behind the
-   contract is handed a `resolve func(ctx) (core.Settings, error)`: it
+   types; the composition maps one to the other. What it builds behind
+   `cli`'s port is handed a `resolve func(ctx) (core.Settings, error)`: it
    resolves, then runs. The CLI sees neither.
 4. **Settings are resolved before a run.** Settings that cannot be resolved
    never reach core: no run is recorded, and the composition reports the
@@ -63,8 +63,8 @@ what each kind means, what references what, and how home is managed.
 |---|---|---|
 | `settings/layout` | Where settings live: selects home, the repository's and the nearest project's `.agister/`; judges a layer's validity; maps a kind and name to its file; lists names; finds `layer.yaml`'s prompt folders. | filesystem (what is at a path, read, list, same directory); worktree root of a directory |
 | `settings/documents` | Bytes to typed definitions with per-field provenance. Three components, each with its own unit tests: **format** (one YAML document, unknown fields, schema version), **layering** (compose by field, `extends`, provenance), **kinds** (a composed tree to each kind's definition, with field problems). Its public interface has its own tests. | none: pure |
-| `settings/resolve` | A request (a workflow or a process, with its parameters) to resolved settings, or a refusal naming the chain: follows references, applies blocks, checks limits against ceilings, plans each node's permissions. | a document source; runtime facts (contracts, skills support), which the composition plugs in from the runtime wrappers |
-| `settings/check` | Built on resolve, with two views: **check** (every problem and what it refuses, the tree view, the newer-binary hint; the gate before a run) and **inspect** (process, workflow and agent listings and shows, with provenance). | resolve; list names |
+| `settings/resolve` | A request to resolved settings, or a refusal naming the chain. A request names any document by kind and name; a workflow or a process comes with its parameters. Resolve follows references, applies blocks, checks limits against ceilings, plans each node's permissions. | a document source; runtime facts (contracts, skills support), which the composition plugs in from the runtime wrappers |
+| `settings/check` | Built on resolve: lists every document's name and resolves each, so a document nothing uses is checked too. Two views: **check** (every problem and what it refuses, the tree view, the newer-binary hint; the gate before a run) and **inspect** (process, workflow and agent listings and shows, with provenance). | resolve; list names |
 | `settings/home` | Writes: init, install, restore, retire, backups, agent create. A write is refused if it adds a problem. | filesystem writes; clock; check of the staged result |
 
 The composition assembles the document source from `layout` and
@@ -98,20 +98,34 @@ The composition chains `admit`, `session` and `attempts` into a call, hands
 Core emits its events. An adapter in the composition turns them into
 `runstore`'s record, and `runstore` persists it. The composition knows
 where runs are placed. Core reads no runs: the CLI's runs
-commands (list, show, watch, export) call the client contract, and the
-client the composition builds serves them from `runstore`. Pages reads the
+commands (list, show, watch, export) call `cli`'s port, which the
+composition serves from `runstore`. Pages reads the
 files.
 
 ## A call
 
-1. `cli` parses the command and calls the client contract.
-2. The client asks settings to resolve; a failure goes to stderr and no run
+1. `cli` parses the command and calls its port.
+2. The composition asks settings to resolve; a failure goes to stderr and no run
    is recorded.
 3. For `--continue`, the composition checks the continuation against the earlier
    runs and takes its session.
 4. Core gets the resolved settings and the command, drives a runtime wrapper
    through its protocol (an adapter maps between them), and streams events;
    the composition places the run and `runstore` persists it.
+
+## Implementation notes
+
+The composition connects parts with two kinds of small types, each tested
+alone.
+
+- **Adapters** map a part's port onto a wrapper, or onto another part's
+  port, and own no types. Why: each side keeps its own words, a change on
+  one side changes only the adapter, and each side is tested without the
+  other.
+- **Decorators** wrap a port with the same port and add one concern:
+  diagnostics, logging, run placement, reporting a settings failure on
+  stderr, checking a continuation. Why: a concern is added or removed
+  without touching the part or its tests, and the part never learns of it.
 
 ## To consider later
 
