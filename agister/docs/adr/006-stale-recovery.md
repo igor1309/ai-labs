@@ -39,7 +39,10 @@ default.
 
 `core/watch` observes the turn's events and reports the limit reached and
 what went stale. `core/session` ends the turn, with its processes, and
-the work the turn did stays in the worktree.
+the work the turn did stays in the worktree. When no recovery turn
+follows, the call ends with the limit's status: a repeated call fails
+with its budget exhausted; a hung command or a quiet runtime is
+interrupted by timeout.
 
 ### 3. A recovery turn resumes the session
 
@@ -51,10 +54,8 @@ the call's latest turn, and what follows any turn follows it.
 
 ### 4. The same thing is never sent twice
 
-A limit reached again on the same thing ends the call: sending it again
-would tell the agent nothing new. The call then ends with the limit's
-status: a repeated call fails with its budget exhausted, a hung command
-or a quiet runtime is interrupted by timeout.
+A limit reached again on the same thing ends the call, as in rule 2:
+sending it again would tell the agent nothing new.
 
 ### 5. The result shape does not change
 
