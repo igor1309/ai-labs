@@ -42,9 +42,8 @@ name; what it means is what the mappings grant under it.
 
 ### 2. A process speaks permissions
 
-A process names the permissions its work requires, the ones it allows,
-and the ones it denies. Limits only narrow: the service, then the process,
-then the caller. A deny wins over an allow. A process names no runtime
+A process names the permissions its work requires and the ones it
+allows, within those the service names. A process names no runtime
 option.
 
 ### 3. A runtime mapping offers options
@@ -56,21 +55,18 @@ runtime as shipped: no workarounds, no undocumented flags.
 
 ### 4. Resolve plans each node
 
-For each node, resolve takes its process's composed permissions and its
-agent's runtime mapping, and chooses the options to grant:
+For each node, resolve plans from its process's permissions and its
+agent's runtime mapping which options to grant. A plan gives every
+required permission, stays within what is allowed as far as the
+runtime's options let it, and never grants an option with a permission
+that reaches Agister's state. It records what was required, allowed,
+granted, granted beyond the allowed (`extra`) and withheld.
 
-- the fewest grants that give everything required, when a call takes one
-  option;
-- every option within what is allowed, when it takes any number;
-- never an option that grants a permission reaching Agister's state.
+### 5. What refuses and what warns
 
-The plan records what was declared, granted, granted beyond the allowed
-(`extra`) and withheld.
-
-### 5. Two checks are hard, the rest warns
-
-A plan that cannot give a required permission, or that could only do so
-by reaching Agister's state, refuses the node's workflow at resolve.
+A plan that cannot give a required permission without reaching Agister's
+state refuses the node's workflow at resolve, as does a node that needs
+what its runtime cannot do (rule 7).
 Grants beyond what the process allows are a warning, shown by check and
 carried in the call's result; they do not change its status. A plan that
 grants a writing permission makes the call a writer.
@@ -85,8 +81,8 @@ and the call's own skills are given to it in the runtime's own way.
 ### 7. Resolve relies on runtime facts
 
 What a runtime wrapper can do is a fact resolve needs and does not own:
-the contract a mapping is written for, whether it resumes a session,
-whether it takes skills, the efforts it accepts. Resolve declares a port
+the contract a mapping is written for, its version, whether it takes
+skills, the efforts it accepts. Resolve declares a port
 for these facts; the composition answers it from the wrappers. A node
 that needs what its runtime cannot do is refused at resolve.
 
@@ -97,13 +93,16 @@ on another version warns and runs on the mapping as written.
 
 ## Consequences
 
-- A process runs on any agent whose runtime can give what it requires,
-  and the same process on two runtimes gets two plans.
-- Adding a runtime is a wrapper and a mapping; no process changes.
-- Agister is no sandbox: `allow` is a ceiling it passes on, and the
+- A process runs on any agent whose runtime it can be planned on, and
+  the same process on two runtimes gets two plans.
+- Adding a runtime is a wrapper, its mapping, and its facts answered in
+  the composition; no process changes.
+- Agister is no sandbox: the plan is what it asks of the runtime, and the
   runtime's own enforcement is what holds.
 
 ## Open
 
+- **Resuming a session.** Whether resolve or `core/admit` checks that a
+  runtime can resume one.
 - **Checking a version.** Whether a wrapper may probe an unverified
   version, and where what it found is kept.
