@@ -1,76 +1,93 @@
 ---
 date: 2026-10-14
 model: claude-opus-5-5
-description: "ADR-009: testing with spies: a part is tested over spies on its ports; real things only in a wrapper's contract tests; no test waits on real time"
+description: "ADR-009: testing with spies: a part is tested over spies on its ports; real things only in a wrapper's contract tests; time and progress are ports"
 ---
 
 # ADR-009: Testing with spies
 
 - **Status:** Proposed
 - **Date:** 2026-10-14
-- **Scope:** how each part, wrapper and the composition is tested, and
-  where real processes, git, files and time may appear
+- **Scope:** how each part, wrapper and the composition is tested, where
+  real processes, git, files and time may appear, and what the product
+  gives tests to drive it
 - **Decision type:** Architecture
 
 ## Context
 
 The archived implementation's tests set up real repositories, built and
-started real programs, and waited on real time for claims about settings,
-workflows and wiring. They were slow, and their outcomes depended on how
-busy the machine was. Its parts could not be tested apart: there was
-little to put a spy on.
+started real programs, and waited on real time, for claims about
+settings, workflows and wiring. Its composition tests ran near the test
+timeout and failed on a busy machine. Its parts could not be tested
+apart: their collaborators were built in, so there was little to put a
+spy on, and the logic of a part was proved only through the real things
+under it.
 
 ## Decision
 
 Every part is tested over spies on the ports it declares. Real things
 appear only in a wrapper's contract tests, whose claim is that real
-thing. Nothing a test proves waits on real time.
+thing. Time and progress are ports too, so no test sleeps or polls.
 
 ## Rules
 
 ### 1. A part is tested over spies on its ports
 
-A test of a part of `cli`, `settings/*` or `core/*` gives it spies for
-the ports it declares and asserts what it asked of them and what it gave.
-It starts no process, runs no `git`, touches no real file and reads no
-real clock.
+A test of a part of `cli`, `settings/*` or `core/*` gives it a spy for
+every port it declares and asserts what it asked of them and what it
+gave. It starts no process, runs no `git`, touches no real file and
+reads no real clock.
 
-### 2. Real things belong to a wrapper's contract tests
+### 2. Collaborators are given, never defaulted
+
+A part takes every collaborator it uses and falls back to none; a
+missing one fails when the part is built. A spy fills in nothing its
+test did not give. Only the composition names the real ones.
+
+### 3. Real things belong to a wrapper's contract tests
 
 A wrapper is tested against the real thing it wraps: a runtime wrapper
 against its runtime's program or a stand-in of it, `git` against git,
 `runstore` against files, the process supervisor against the operating
 system. Such a test says which real thing its claim is about. No other
-test uses one.
+test uses a real thing.
 
-### 3. The composition is tested over spies on its wrappers
+### 4. An integration test names what it integrates
 
-An adapter or decorator is tested over spies on the ports it joins or
-wraps (ADR-001, implementation notes). The composition's wiring is
-tested with spies in place of its wrappers. Few tests go through the
-built binary, each for what only the binary shows.
+Only what it names is real. An adapter or decorator is tested over spies
+on the ports it joins or wraps (ADR-001, implementation notes). The
+composition's tests integrate its parts with spies in place of its
+wrappers. Few tests go through the built binary, each for what only the
+binary shows.
 
-### 4. Time is a port
+### 5. Time and progress are ports
 
-Every wait, timeout and limit in the product reads a clock or a timer
-the part declares, and a test drives it. No outcome depends on how fast
-the machine is; a test that hangs is ended by the test run's timeout,
-which names it.
+Every wait, timeout and limit reads a clock or timer the part is given,
+and a test moves it. Work that goes on in the background says when it
+has progressed or ended. No outcome depends on how fast the machine is;
+a test that hangs is ended by the test run's timeout, which names it.
 
-### 5. What a test needs is a seam in the product
+### 6. A behaviour no test can fail lacks a port
 
 When a behaviour cannot be made to fail through the ports a part
-declares, the part lacks a port; it gets one. A test adds no trick of its
-own.
+declares, the part gets the port it lacks. A fix is proved by a
+committed test of that kind, never by a mutation or a hand check.
 
-### 6. Tests run apart
+### 7. Each behaviour has one home
 
-A test shares no state with another, so tests run in parallel. A test
-that must run alone says why.
+A case about a part's logic is that part's test; a case about a real
+thing is its wrapper's contract test. The same case is not proved twice.
+
+### 8. A check is kept; its cost is cut
+
+The race detector and the test run's timeout stay. A slow test is made
+cheaper, never given more time. Tests share no state, so they run in
+parallel; a test that must run alone says why.
 
 ## Consequences
 
-- A part's tests are fast and say only what the part does.
-- A change to a wrapper's real thing fails that wrapper's contract tests,
-  and no other.
-- The spies a part's tests need are the ports ADR-001 already gives it.
+- A part's tests are fast, and a failure names the rule that broke.
+- A change to a real thing fails its wrapper's contract tests, and no
+  other.
+- The spies a part's tests need are the ports ADR-001 already gives it;
+  a port a test needs and ADR-001 lacks is a change to the part.
