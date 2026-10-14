@@ -15,11 +15,13 @@
 package testdiscipline
 
 import (
+	"errors"
 	"fmt"
 	"go/ast"
 	"go/parser"
 	"go/token"
 	"io/fs"
+	"os"
 	"path/filepath"
 	"slices"
 	"sort"
@@ -70,7 +72,8 @@ func StandardMachinery() map[string][]string {
 // something there is named in machinery itself.
 //
 // A directory named testdata or vendor, or starting with . or _, is not
-// searched.
+// searched, and neither is one below root that holds a go.mod: its tests
+// are another module's, under that module's rules.
 func Findings(root string, machinery map[string][]string) ([]string, error) {
 	directories := map[string][]string{}
 	err := filepath.WalkDir(root, func(path string, entry fs.DirEntry, err error) error {
@@ -79,8 +82,16 @@ func Findings(root string, machinery map[string][]string) ([]string, error) {
 		}
 		name := entry.Name()
 		if entry.IsDir() {
-			if path != root && (name == "testdata" || name == "vendor" || strings.HasPrefix(name, ".") || strings.HasPrefix(name, "_")) {
+			if path == root {
+				return nil
+			}
+			if name == "testdata" || name == "vendor" || strings.HasPrefix(name, ".") || strings.HasPrefix(name, "_") {
 				return filepath.SkipDir
+			}
+			if _, err := os.Stat(filepath.Join(path, "go.mod")); err == nil {
+				return filepath.SkipDir
+			} else if !errors.Is(err, fs.ErrNotExist) {
+				return err
 			}
 			return nil
 		}
