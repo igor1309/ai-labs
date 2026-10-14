@@ -32,9 +32,8 @@ output.
 
 ### 1. What Agister runs is a workflow
 
-A caller runs a workflow, never a process or an agent alone: a
-workflow's node binds a process to the agent that runs it (ADR-002,
-rule 5).
+Core runs a workflow; a node binds a process to the agent that runs it
+(ADR-002, rule 5).
 
 ### 2. A `call` workflow is one call
 
