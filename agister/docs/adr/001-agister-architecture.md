@@ -78,8 +78,9 @@ Every part keeps these.
 1. **Agister runs generic work.** It runs agent calls, the verification a
    process declares and the workflow shapes settings define. It knows no
    kind of work, no particular agent and no meaning of any output. It is a
-   runner, not a guard: it checks whether settings compose and can be
-   enforced as written, never whether they should be.
+   runner, not a guard: it checks whether settings resolve, never whether
+   they should. What resolves may run; the permissions it is given are
+   best effort (invariant 5).
 2. **Definitions live in settings, not in code.** Agents, processes,
    workflows, output contracts, runtime mappings, the permission
    vocabulary, the service's limits and what an agent is told are defined
@@ -91,7 +92,7 @@ Every part keeps these.
    unfavourable verdict included, is not a status. Usage and cost as the
    runtime reports them, with their source: an unreported cost is
    unknown, never zero. Timing measured by Agister. The session the call
-   ran in. A workflow ends in the same shape.
+   ran in. Its warnings. A workflow ends in the same shape.
 4. **Inputs are fixed before the first turn.** Each input is resolved to a
    value and its identity (a revision to its commit, content to its
    digest); that value is what the agent receives and what is recorded.
