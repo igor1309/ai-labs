@@ -8,7 +8,9 @@ cd "$(dirname "$0")/.."
 
 ../gokit/scripts/test.sh
 
-unformatted=$(gofmt -l $(go list -f '{{.Dir}}' ./...))
+# Assigned on its own, so that a go list that fails stops the check.
+packages=$(go list -f '{{.Dir}}' ./...)
+unformatted=$(gofmt -l $packages)
 if ! test -z "$unformatted"; then
   echo "gofmt needed:"
   echo "$unformatted"
