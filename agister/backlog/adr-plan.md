@@ -31,7 +31,7 @@ of its own, written fresh in ADR-001's parts, one at a time.
 | 006 | Stale recovery | `core/session`, `core/watch` | 024 | Proposed |
 | 007 | Workflows | `core/workflow` | 003, 004, 030 rule 6, 034 | Proposed |
 | 008 | Install | `settings/home` | 016, 027 rules 8–9 | Proposed |
-| 009 | Testing with spies | all | 017 | |
+| 009 | Testing with spies | all | 017 | Proposed |
 
 `core/inputs` (026 rules 6–8) has no ADR in the order yet. Pages (009,
 011) is in the backlog: [pages.md](pages.md). 019 (gokit)
