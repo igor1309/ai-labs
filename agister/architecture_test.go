@@ -6,13 +6,17 @@ package agister_test
 import (
 	"errors"
 	"fmt"
+	"go/parser"
+	"go/token"
+	"io/fs"
 	"maps"
 	"os"
-	"os/exec"
-	"path/filepath"
+	"path"
 	"slices"
+	"strconv"
 	"strings"
 	"testing"
+	"testing/fstest"
 
 	"github.com/igor1309/ai-labs/gokit/testdiscipline"
 )
@@ -70,52 +74,90 @@ func TestBreachesFindsAnIsolatedPackageImportingTheModule(t *testing.T) {
 // Every package of cli, settings and core, its tests included, imports no
 // other package of the module (ADR-001, rule 1).
 //
-// Contract test: the module's real import graph, from go list.
+// Contract test: the module's Go files, as the file system has them.
 func TestTheIsolatedGroupsImportNothingOfTheModule(t *testing.T) {
 	t.Parallel()
-	imported, err := imports(".")
+	imported, err := imports(os.DirFS("."))
 	if err != nil {
 		t.Fatal(err)
 	}
 	if _, ok := imported["settings/documents"]; !ok {
-		t.Fatalf("go list did not list settings/documents: %q", imported)
+		t.Fatalf("imports did not list settings/documents: %q", imported)
 	}
 	for _, breach := range breaches(imported) {
 		t.Error(breach)
 	}
 }
 
-// imports collects the imports of every package of the module in dir, by
-// the package's path from the module's root: those of its own files, of
-// its internal tests and of its external tests.
-func imports(dir string) (map[string][]string, error) {
-	command := exec.Command("go", "list", "-f",
-		`{{.ImportPath}} {{join .Imports " "}} {{join .TestImports " "}} {{join .XTestImports " "}}`, "./...")
-	command.Dir = dir
-	out, err := command.Output()
-	if err != nil {
-		var exit *exec.ExitError
-		if errors.As(err, &exit) {
-			return nil, fmt.Errorf("go list: %w: %s", err, exit.Stderr)
-		}
-		return nil, fmt.Errorf("go list: %w", err)
-	}
+// imports collects the imports of every package of the module in fsys, by
+// the package's directory from the module's root: those of each of its Go
+// files, its tests' included, whichever build constraints select it. The
+// go command's own build selects only the files of one platform and tag
+// set, and leaves out a package none of whose files it selects; an import
+// rule holds for every build. Left out, as by the go command: a module
+// beneath the root, testdata, and a name starting with "." or "_".
+func imports(fsys fs.FS) (map[string][]string, error) {
 	imported := map[string][]string{}
-	for _, line := range strings.Split(strings.TrimSpace(string(out)), "\n") {
-		fields := strings.Fields(line)
-		pkg := strings.TrimPrefix(fields[0], module+"/")
-		imported[pkg] = fields[1:]
+	err := fs.WalkDir(fsys, ".", func(name string, entry fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if name == "." {
+			return nil
+		}
+		base := entry.Name()
+		ignored := strings.HasPrefix(base, ".") || strings.HasPrefix(base, "_")
+		if entry.IsDir() {
+			if ignored || base == "testdata" {
+				return fs.SkipDir
+			}
+			if _, err := fs.Stat(fsys, path.Join(name, "go.mod")); err == nil {
+				return fs.SkipDir
+			} else if !errors.Is(err, fs.ErrNotExist) {
+				return err
+			}
+			return nil
+		}
+		if ignored || path.Ext(base) != ".go" {
+			return nil
+		}
+		source, err := fs.ReadFile(fsys, name)
+		if err != nil {
+			return err
+		}
+		file, err := parser.ParseFile(token.NewFileSet(), name, source, parser.ImportsOnly)
+		if err != nil {
+			return err
+		}
+		pkg := path.Dir(name)
+		deps := imported[pkg]
+		for _, spec := range file.Imports {
+			dep, err := strconv.Unquote(spec.Path.Value)
+			if err != nil {
+				return fmt.Errorf("%s: %w", name, err)
+			}
+			deps = append(deps, dep)
+		}
+		imported[pkg] = deps
+		return nil
+	})
+	if err != nil {
+		return nil, err
 	}
 	return imported, nil
 }
 
 // An import of the module breaks rule 1 whichever of a package's files
-// makes it: its own, its internal tests' or its external tests'.
-//
-// Contract test: go list, over a module made for each case.
-func TestImportsCollectsThoseOfThePackageAndOfItsTests(t *testing.T) {
+// makes it: its own, its internal tests' or its external tests', selected
+// by the build or left out by its constraints. One in a module beneath the
+// root is that module's.
+func TestImportsCollectsThoseOfEveryFileOfThePackage(t *testing.T) {
 	t.Parallel()
-	const imported = "\n\nimport _ \"" + module + "/settings/b\"\n"
+	const (
+		imported = "\n\nimport _ \"" + module + "/settings/b\"\n"
+		tagged   = "//go:build architecture_case\n\n"
+	)
+	breach := []string{"settings/a imports settings/b"}
 	cases := []struct {
 		name  string
 		files map[string]string
@@ -124,34 +166,47 @@ func TestImportsCollectsThoseOfThePackageAndOfItsTests(t *testing.T) {
 		{"none", map[string]string{}, nil},
 		{"the package's own files", map[string]string{
 			"settings/a/a.go": "package a" + imported,
-		}, []string{"settings/a imports settings/b"}},
+		}, breach},
 		{"its internal tests", map[string]string{
 			"settings/a/a_test.go": "package a" + imported,
-		}, []string{"settings/a imports settings/b"}},
+		}, breach},
 		{"its external tests", map[string]string{
 			"settings/a/a_x_test.go": "package a_test\n\nimport _ \"" + module + "/settings/a\"" + imported,
-		}, []string{"settings/a imports settings/b"}},
+		}, breach},
+		{"its own file left out by a build tag", map[string]string{
+			"settings/a/tagged.go": tagged + "package a" + imported,
+		}, breach},
+		{"its own file of another platform", map[string]string{
+			"settings/a/a_plan9.go": "package a" + imported,
+		}, breach},
+		{"its internal test left out by a build tag", map[string]string{
+			"settings/a/tagged_test.go": tagged + "package a" + imported,
+		}, breach},
+		{"its external test left out by a build tag", map[string]string{
+			"settings/a/tagged_x_test.go": tagged + "package a_test\n\nimport _ \"" + module + "/settings/a\"" + imported,
+		}, breach},
+		{"a package each of whose files a build tag leaves out", map[string]string{
+			"settings/c/c.go": tagged + "package c" + imported,
+		}, []string{"settings/c imports settings/b"}},
+		{"a module beneath the root", map[string]string{
+			"settings/a/nested/go.mod": "module " + module + "/settings/a/nested\n\ngo 1.24\n",
+			"settings/a/nested/n.go":   "package nested" + imported,
+		}, nil},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			t.Parallel()
-			dir := t.TempDir()
 			files := map[string]string{
 				"go.mod":          "module " + module + "\n\ngo 1.24\n",
 				"settings/a/a.go": "package a\n",
 				"settings/b/b.go": "package b\n",
 			}
 			maps.Copy(files, c.files)
+			fsys := fstest.MapFS{}
 			for name, content := range files {
-				path := filepath.Join(dir, name)
-				if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
-					t.Fatal(err)
-				}
-				if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
-					t.Fatal(err)
-				}
+				fsys[name] = &fstest.MapFile{Data: []byte(content)}
 			}
-			imported, err := imports(dir)
+			imported, err := imports(fsys)
 			if err != nil {
 				t.Fatal(err)
 			}
