@@ -1,11 +1,12 @@
 // Package documents turns the bytes of settings files into documents
-// composed from their layers, with the file each field came from
-// (ADR-001, settings; ADR-002). It is pure: it reads no file and is handed
-// the files' bytes.
+// composed from their layers, with the file each field came from, or taken
+// whole from the nearest layer (ADR-001, settings; ADR-002). It is pure: it
+// reads no file and is handed the files' bytes.
 //
-// Inside it, format reads one file into a tree of its kind's fields, and
-// layering composes the trees of a document's files and of what it
-// extends.
+// Inside it, format reads one file into a tree of its kind's fields, or
+// reads a whole file in its kind's format, and layering composes the trees
+// of a document's files and of what it extends, or selects the nearest
+// file.
 package documents
 
 import (
@@ -14,8 +15,9 @@ import (
 	"slices"
 )
 
-// Kind is a kind of document that is composed from its layers (ADR-002,
-// rules 1 and 3).
+// Kind is a kind of document (ADR-002, rule 1). Agents through briefs are
+// composed from their layers; schemas, prompts and skills are taken whole
+// (rule 3).
 type Kind int
 
 const (
@@ -25,7 +27,13 @@ const (
 	Runtime
 	Verify
 	Brief
+	Schema
+	Prompt
+	Skill
 )
+
+// whole is whether documents of k are taken whole.
+func (k Kind) whole() bool { return k >= Schema }
 
 // Layer is a layer of settings, from the farthest to the nearest (ADR-002,
 // rule 2).
@@ -71,17 +79,23 @@ type Field struct {
 // Composed is a document composed from its files, and from what it extends
 // once Extend has put it over its base.
 type Composed struct {
+	kind Kind
+	name string
 	root *node
 }
 
-// Compose composes doc from its files, from home toward the launch
-// directory whatever their order in doc: maps merge by key at every depth,
-// a key only a nearer file holds coming after the farther file's keys, and
-// lists and scalars replace whole. Nothing unsets. Every file is read in
-// its kind's format, holding only its kind's fields, and the schema, which
-// some file must give, is its kind's. The error names each problem with
-// its file.
+// Compose composes doc, of a composed kind, from its files, from home
+// toward the launch directory whatever their order in doc: maps merge by
+// key at every depth, a key only a nearer file holds coming after the
+// farther file's keys, and lists and scalars replace whole. Nothing
+// unsets. Every file is read in its kind's format, holding only its kind's
+// fields, and the schema it names, if any, is its kind's. No file need
+// name it: what doc extends may, and Complete says whether some file did.
+// The error names each problem with its file.
 func Compose(doc Document) (Composed, error) {
+	if doc.Kind.whole() {
+		return Composed{}, fmt.Errorf("%s is taken whole, not composed", doc.Name)
+	}
 	if len(doc.Files) == 0 {
 		return Composed{}, fmt.Errorf("no file holds %s", doc.Name)
 	}
@@ -103,17 +117,28 @@ func Compose(doc Document) (Composed, error) {
 	if len(problems) > 0 {
 		return Composed{}, errors.Join(problems...)
 	}
-	if root.entry("schema") == nil {
-		return Composed{}, fmt.Errorf("no file of %s gives its schema, %q", doc.Name, doc.Kind.written().schema)
-	}
-	return Composed{root: root}, nil
+	return Composed{kind: doc.Kind, name: doc.Name, root: root}, nil
 }
 
 // Extend composes over onto base, a document it extends, as one layer onto
-// another (ADR-002, rule 4). Each field keeps where it came from. It
-// changes neither.
+// another (ADR-002, rule 4): the result is over's document. Each field
+// keeps where it came from. It changes neither.
 func Extend(base, over Composed) Composed {
-	return Composed{root: merged(base.root, over.root)}
+	return Composed{kind: over.kind, name: over.name, root: merged(base.root, over.root)}
+}
+
+// Complete is an error unless c, composed from its files and from
+// everything it extends, gives its kind's schema: the composed document is
+// what is checked (ADR-002, rule 3).
+func (c Composed) Complete() error {
+	if c.root.entry("schema") != nil {
+		return nil
+	}
+	schema := c.kind.written().schema
+	if c.root.entry("extends") != nil {
+		return fmt.Errorf("no file of %s or of what it extends gives its schema, %q", c.name, schema)
+	}
+	return fmt.Errorf("no file of %s gives its schema, %q", c.name, schema)
 }
 
 // Extends is the name of the document c extends, or "" if it extends none.
@@ -132,4 +157,28 @@ func (c Composed) Extends() (string, error) {
 // Fields lists c's fields, depth first, in the order of its keys.
 func (c Composed) Fields() []Field {
 	return c.root.fields(nil, nil)
+}
+
+// Whole is a document taken whole: its file's bytes, as the file holds
+// them, and where they came from.
+type Whole struct {
+	Data   []byte
+	Origin Origin
+}
+
+// Take takes doc, of a kind taken whole, from the nearest of its files,
+// whatever their order in doc (ADR-002, rule 3). That file is read in its
+// kind's format; a farther file is not read. The error names the file.
+func Take(doc Document) (Whole, error) {
+	if !doc.Kind.whole() {
+		return Whole{}, fmt.Errorf("%s is composed, not taken whole", doc.Name)
+	}
+	if len(doc.Files) == 0 {
+		return Whole{}, fmt.Errorf("no file holds %s", doc.Name)
+	}
+	file := nearest(doc.Files)
+	if err := readWhole(doc.Kind, file.Data); err != nil {
+		return Whole{}, fmt.Errorf("%s: %w", file.Path, err)
+	}
+	return Whole{Data: file.Data, Origin: Origin{Document: doc.Name, Layer: file.Layer, Path: file.Path}}, nil
 }

@@ -2,6 +2,7 @@ package documents
 
 import (
 	"bytes"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -15,7 +16,8 @@ import (
 // Format reads one file of a document into a tree: a map of keys, in the
 // order the file wrote them, over values. A list is a value whole, the
 // maps in it included. The file holds only fields its kind knows, and the
-// schema it names, if any, is its kind's (ADR-001, settings).
+// schema it names, if any, is its kind's (ADR-001, settings). A file taken
+// whole is only read in its kind's format.
 
 type format int
 
@@ -75,6 +77,20 @@ func read(k Kind, data []byte) (*node, []error) {
 		problems = append(problems, fmt.Errorf("schema: must be %q", written.schema))
 	}
 	return tree, problems
+}
+
+// readWhole reads data, the file of a document of kind k taken whole, in
+// its kind's format: a schema is one JSON document, and a prompt or a
+// skill is Markdown, which any text is.
+func readWhole(k Kind, data []byte) error {
+	if k != Schema {
+		return nil
+	}
+	var document any
+	if err := json.Unmarshal(data, &document); err != nil {
+		return fmt.Errorf("the file is not one JSON document: %w", err)
+	}
+	return nil
 }
 
 // parse reads data, one file in f, into a tree. The file must hold one

@@ -111,7 +111,11 @@ func TestADocumentIsComposedOverTheDocumentItExtends(t *testing.T) {
 		"output.schema = review-result  (review_base, home)",
 		"extends = review_base  (review, home)",
 	}
-	if got := listed(documents.Extend(base, review).Fields()); !reflect.DeepEqual(got, want) {
+	extended := documents.Extend(base, review)
+	if err := extended.Complete(); err != nil {
+		t.Errorf("complete: %v", err)
+	}
+	if got := listed(extended.Fields()); !reflect.DeepEqual(got, want) {
 		t.Errorf("fields\n got %q\nwant %q", got, want)
 	}
 }
@@ -149,15 +153,137 @@ func TestEveryProblemOfAFileIsNamedWithItsFile(t *testing.T) {
 	}
 }
 
-// A layer's file need not name the schema, but one of a document's files
-// must.
+// A layer's file need not name the schema, but the composed document must:
+// one of its files, or of what it extends, names it.
 func TestADocumentNamesItsSchema(t *testing.T) {
 	t.Parallel()
-	_, err := documents.Compose(documents.Document{Kind: documents.Verify, Name: "repo", Files: []documents.File{
+	repo := compose(t, documents.Document{Kind: documents.Verify, Name: "repo", Files: []documents.File{
 		{Layer: documents.Home, Path: "/home/.agister/verifies/repo.yaml", Data: []byte("command: scripts/test.sh\n")},
 		{Layer: documents.Repository, Path: "/repo/.agister/verifies/repo.yaml", Data: []byte("timeout: 5m\n")},
 	}})
-	if want := `no file of repo gives its schema, "agister.verify/v1alpha1"`; err == nil || err.Error() != want {
+	if want := `no file of repo gives its schema, "agister.verify/v1alpha1"`; repo.Complete() == nil || repo.Complete().Error() != want {
+		t.Errorf("error\n got %v\nwant %q", repo.Complete(), want)
+	}
+	base := compose(t, documents.Document{Kind: documents.Verify, Name: "repo_base", Files: []documents.File{
+		{Layer: documents.Home, Path: "/home/.agister/verifies/repo_base.yaml", Data: []byte("no_output: 2m\n")},
+	}})
+	extending := compose(t, documents.Document{Kind: documents.Verify, Name: "repo", Files: []documents.File{
+		{Layer: documents.Home, Path: "/home/.agister/verifies/repo.yaml", Data: []byte("extends: repo_base\ncommand: scripts/test.sh\n")},
+	}})
+	err := documents.Extend(base, extending).Complete()
+	if want := `no file of repo or of what it extends gives its schema, "agister.verify/v1alpha1"`; err == nil || err.Error() != want {
 		t.Errorf("error\n got %v\nwant %q", err, want)
+	}
+	named := compose(t, documents.Document{Kind: documents.Verify, Name: "repo", Files: []documents.File{
+		{Layer: documents.Repository, Path: "/repo/.agister/verifies/repo.yaml", Data: []byte("schema: agister.verify/v1alpha1\n")},
+	}})
+	if err := named.Complete(); err != nil {
+		t.Errorf("a document naming its schema: %v", err)
+	}
+}
+
+// An extending document need not name the schema: it takes it, with every
+// field it does not set, from what it extends, through any chain of
+// extends.
+func TestAnExtendingDocumentTakesItsSchemaFromItsBase(t *testing.T) {
+	t.Parallel()
+	process := func(name, data string) documents.Composed {
+		return compose(t, documents.Document{Kind: documents.Process, Name: name, Files: []documents.File{
+			{Layer: documents.Home, Path: "/home/.agister/processes/" + name + ".yaml", Data: []byte(data)},
+		}})
+	}
+	root := process("review_root", schema+"timeout: 20m\nretry:\n  max_attempts: 1\n")
+	base := process("review_base", "extends: review_root\ntimeout: 25m\n")
+	review := process("review", "extends: review_base\ntimeout: 30m\n")
+	cases := []struct {
+		name string
+		got  documents.Composed
+		want []string
+	}{
+		{"over the document naming the schema", documents.Extend(root, base), []string{
+			"schema = agister.process/v1alpha1  (review_root, home)",
+			"timeout = 25m  (review_base, home)",
+			"retry.max_attempts = 1  (review_root, home)",
+			"extends = review_root  (review_base, home)",
+		}},
+		{"through a chain", documents.Extend(documents.Extend(root, base), review), []string{
+			"schema = agister.process/v1alpha1  (review_root, home)",
+			"timeout = 30m  (review, home)",
+			"retry.max_attempts = 1  (review_root, home)",
+			"extends = review_base  (review, home)",
+		}},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
+			if err := c.got.Complete(); err != nil {
+				t.Errorf("complete: %v", err)
+			}
+			if got := listed(c.got.Fields()); !reflect.DeepEqual(got, c.want) {
+				t.Errorf("fields\n got %q\nwant %q", got, c.want)
+			}
+		})
+	}
+}
+
+// A schema, a prompt or a skill is the nearest layer's file, its bytes as
+// they are, whatever the order of the files, and only that file is read.
+func TestADocumentTakenWholeIsTheNearestLayersFile(t *testing.T) {
+	t.Parallel()
+	cases := []struct {
+		name  string
+		kind  documents.Kind
+		files []documents.File
+		want  documents.Whole
+	}{
+		{"a prompt", documents.Prompt, []documents.File{
+			{Layer: documents.Project, Path: "/repo/app/.agister/prompts/review.md", Data: []byte("Project instructions\n")},
+			{Layer: documents.Home, Path: "/home/.agister/prompts/review.md", Data: []byte("Home instructions\n")},
+		}, documents.Whole{Data: []byte("Project instructions\n"), Origin: documents.Origin{Document: "review", Layer: documents.Project, Path: "/repo/app/.agister/prompts/review.md"}}},
+		{"a skill", documents.Skill, []documents.File{
+			{Layer: documents.Home, Path: "/home/.agister/skills/review/SKILL.md", Data: []byte("---\nname: review\n---\nHome.\n")},
+			{Layer: documents.Repository, Path: "/repo/.agister/skills/review/SKILL.md", Data: []byte("---\nname: review\n---\nRepository.\n")},
+		}, documents.Whole{Data: []byte("---\nname: review\n---\nRepository.\n"), Origin: documents.Origin{Document: "review", Layer: documents.Repository, Path: "/repo/.agister/skills/review/SKILL.md"}}},
+		{"a schema over a farther file that is not read", documents.Schema, []documents.File{
+			{Layer: documents.Home, Path: "/home/.agister/schemas/review.json", Data: []byte("{not json")},
+			{Layer: documents.Repository, Path: "/repo/.agister/schemas/review.json", Data: []byte(`{"type": "object",  "required": ["verdict"]}`)},
+		}, documents.Whole{Data: []byte(`{"type": "object",  "required": ["verdict"]}`), Origin: documents.Origin{Document: "review", Layer: documents.Repository, Path: "/repo/.agister/schemas/review.json"}}},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
+			got, err := documents.Take(documents.Document{Kind: c.kind, Name: "review", Files: c.files})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !reflect.DeepEqual(got, c.want) {
+				t.Errorf("taken\n got %+v\nwant %+v", got, c.want)
+			}
+		})
+	}
+}
+
+// What is taken whole is read in its kind's format, and is never
+// composed; what is composed is never taken whole.
+func TestADocumentIsTakenWholeOrComposedByItsKind(t *testing.T) {
+	t.Parallel()
+	const path = "/repo/.agister/schemas/review.json"
+	_, err := documents.Take(documents.Document{Kind: documents.Schema, Name: "review", Files: []documents.File{
+		{Layer: documents.Home, Path: "/home/.agister/schemas/review.json", Data: []byte("{}")},
+		{Layer: documents.Repository, Path: path, Data: []byte("{} {}")},
+	}})
+	if want := path + ": the file is not one JSON document"; err == nil || !strings.HasPrefix(err.Error(), want) {
+		t.Errorf("error\n got %v\nwant %q", err, want)
+	}
+	if _, err := documents.Take(documents.Document{Kind: documents.Prompt, Name: "review"}); err == nil || err.Error() != "no file holds review" {
+		t.Errorf("a prompt no file holds: %v", err)
+	}
+	prompt := documents.Document{Kind: documents.Prompt, Name: "review", Files: []documents.File{{Path: "/home/.agister/prompts/review.md", Data: []byte("schema: x\n")}}}
+	if _, err := documents.Compose(prompt); err == nil || err.Error() != "review is taken whole, not composed" {
+		t.Errorf("a prompt composed: %v", err)
+	}
+	process := documents.Document{Kind: documents.Process, Name: "review", Files: []documents.File{{Path: homePath, Data: []byte(schema)}}}
+	if _, err := documents.Take(process); err == nil || err.Error() != "review is composed, not taken whole" {
+		t.Errorf("a process taken whole: %v", err)
 	}
 }

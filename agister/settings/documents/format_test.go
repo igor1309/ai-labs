@@ -372,3 +372,35 @@ func TestASchemaIsItsKindsAtTheVersionFormatReads(t *testing.T) {
 		})
 	}
 }
+
+// A schema is one JSON document; a prompt or a skill is any text.
+func TestAWholeFileIsReadInItsKindsFormat(t *testing.T) {
+	t.Parallel()
+	cases := []struct {
+		name string
+		kind Kind
+		data string
+		want string
+	}{
+		{"a schema", Schema, `{"type": "object", "properties": {"verdict": {"enum": ["pass", "fail"]}}}`, ""},
+		{"a schema that is true", Schema, "true\n", ""},
+		{"an empty schema", Schema, "", "the file is not one JSON document: unexpected end of JSON input"},
+		{"broken JSON", Schema, `{"type": `, "the file is not one JSON document: unexpected end of JSON input"},
+		{"two JSON documents", Schema, "{}\n{}\n", "the file is not one JSON document: invalid character '{' after top-level value"},
+		{"a prompt", Prompt, "# Review\n\n{not json\n", ""},
+		{"an empty prompt", Prompt, "", ""},
+		{"a skill", Skill, "---\nname: go\n---\nUse go test.\n", ""},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
+			got := ""
+			if err := readWhole(c.kind, []byte(c.data)); err != nil {
+				got = err.Error()
+			}
+			if got != c.want {
+				t.Errorf("error %q, want %q", got, c.want)
+			}
+		})
+	}
+}

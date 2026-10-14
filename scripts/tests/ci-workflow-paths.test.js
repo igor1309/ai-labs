@@ -176,6 +176,7 @@ test("ciRepoScripts_shouldRunEveryScriptsTest_onEveryChange", () => {
 // Each Go module, the command that tests it, and the job a change to its
 // code runs. A new module fails here until a workflow runs it.
 const goModules = {
+  agister: { runner: ".github/workflows/agister-core.yml", command: "run: agister/scripts/test.sh", job: "agister-core" },
   gokit: { runner: "agister/scripts/test.sh", command: "../gokit/scripts/test.sh", job: "agister-core" },
   "scripts/agister-gate": {
     runner: ".github/workflows/agister-core.yml",

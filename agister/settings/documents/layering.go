@@ -2,7 +2,20 @@ package documents
 
 import "slices"
 
-// Layering composes trees field by field (ADR-002, rules 3 and 4).
+// Layering composes trees field by field, or selects a file whole
+// (ADR-002, rules 3 and 4).
+
+// nearest is the file of the nearest layer among files, which holds at
+// least one; of two files of one layer, the later, as Compose layers them.
+func nearest(files []File) File {
+	found := files[0]
+	for _, file := range files[1:] {
+		if file.Layer >= found.Layer {
+			found = file
+		}
+	}
+	return found
+}
 
 // merged is over composed onto base, which may be nil: maps merge by key at
 // every depth, a key only over holds coming after base's keys, and lists,

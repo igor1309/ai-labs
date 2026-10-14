@@ -144,3 +144,32 @@ func TestMergedChangesNeitherTree(t *testing.T) {
 		t.Errorf("over\n got %q\nwant %q", got, want)
 	}
 }
+
+// The nearest layer's file is taken, whichever layers hold the document
+// and in whatever order they are given.
+func TestNearestIsTheNearestLayersFile(t *testing.T) {
+	t.Parallel()
+	home := File{Layer: Home, Path: "home"}
+	repository := File{Layer: Repository, Path: "repository"}
+	project := File{Layer: Project, Path: "project"}
+	cases := []struct {
+		name  string
+		files []File
+		want  string
+	}{
+		{"home alone", []File{home}, "home"},
+		{"repository over home", []File{home, repository}, "repository"},
+		{"project over all, given nearest first", []File{project, repository, home}, "project"},
+		{"project over all, given in no order", []File{repository, project, home}, "project"},
+		{"project over repository, without home", []File{project, repository}, "project"},
+		{"of one layer's two files, the later", []File{repository, {Layer: Repository, Path: "later"}, home}, "later"},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
+			if got := nearest(c.files).Path; got != c.want {
+				t.Errorf("nearest is %s, want %s", got, c.want)
+			}
+		})
+	}
+}
