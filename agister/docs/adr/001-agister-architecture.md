@@ -29,8 +29,8 @@ every call.
 
 | Part | Responsibility |
 |---|---|
-| `cli` | Turns terminal commands into calls on the port it declares (run, observe, cancel, check, inspect, list, show, export). The outer level; fails on bad input. The composition implements its port. |
-| `settings/*` | The one owner of settings knowledge: where settings live (home, repository, project), how they are read, layered and resolved. Its primary operation is resolve ("can you resolve this?", "resolve this"). Check is built on resolve; the gate before a run is that check. Init, install, restore and the like use the same knowledge. Reads files through an abstract filesystem; the parser is internal. |
+| `cli` | Turns terminal commands into calls on the port it declares. The outer level; fails on bad input. The composition implements its port. |
+| `settings/*` | The one owner of settings knowledge: where settings live (home, repository, project), how they are read, layered and resolved. Its primary operation is resolve ("can you resolve this?", "resolve this"). Resolve is the gate before a run: what resolves may run, what does not never reaches core. Check is built on resolve, which it is handed, and reports. Init, install, restore and the like use the same knowledge. Reads files through an abstract filesystem; the parser is internal. |
 | `core/*` | Takes resolved settings and a run command, runs the work and streams run events. Declares the runtime protocol and the ports it needs. Knows no git and no files. |
 | `runtime/<name>` | One wrapper per provider runtime (Claude Code, Codex, opencode, pi), with its own types. Knows nothing of core. |
 | `git` | A wrapper over git, with its own types. Knows nothing of settings or core. |
@@ -50,10 +50,10 @@ every call.
    and maps between a part's port and a wrapper, or between two parts.
 3. **The composition root is the only place that connects parts:** wiring,
    mappers where two independent parts meet, diagnostics, logging and run
-   placement. Settings' resolve output and core's input are two
-   types; the composition maps one to the other. What it builds behind
-   `cli`'s port is handed a `resolve func(ctx) (core.Settings, error)`: it
-   resolves, then runs. The CLI sees neither.
+   placement. What resolve gives and what core takes are each their own
+   part's; the composition maps one to the other. What it builds behind
+   `cli`'s port is handed resolve: it resolves, then runs. The CLI sees
+   neither.
 4. **Settings are resolved before a run.** Settings that cannot be resolved
    never reach core: no run is recorded, and the composition reports the
    failure on stderr, as for a bad command. Only what core emits is recorded, so a
@@ -93,9 +93,11 @@ Every part keeps these.
 4. **Inputs are fixed before the first turn.** Each input is resolved to a
    value and its identity (a revision to its commit, content to its
    digest); that value is what the agent receives and what is recorded.
-5. **Agents cannot reach Agister's state.** Home, its settings and its runs
-   are outside every permission an agent is granted. A repository's
-   settings are the repository's files, like any other.
+5. **No permission Agister grants reaches its state.** Home, its settings
+   and its runs are outside every permission Agister grants an agent. A
+   runtime's permissions are best effort: Agister passes the runtime's
+   documented options and is no sandbox. A repository's settings are the
+   repository's files, like any other.
 6. **The record is authoritative.** Per call it keeps the Agister identity
    apart from the provider session, the exact definitions with their
    digests, the inputs, the permission plan, the ordered events and the
@@ -104,11 +106,11 @@ Every part keeps these.
    change an argument, a result or an error.
 7. **Every effect has an owner and an end.** Each process and hold a call
    creates is the call's, bounded, and ended on every exit path. A record
-   never finished reads as lost, never as running.
+   whose call ended without finishing it reads as lost, never as running.
 8. **Calls are independent.** Concurrent calls share only settings, which
-   they read, and records, each writing its own. The exceptions are
-   deliberate: a continuation resumes an earlier run's session (rule 5),
-   and a join receives its own workflow's outcomes.
+   they read, records, each writing its own, and the worktree, through its
+   hold. The exceptions are deliberate: a continuation resumes an earlier
+   run's session, and a join receives its own workflow's outcomes.
 
 ## Settings
 
@@ -117,10 +119,10 @@ what each kind means, what references what, and how home is managed.
 
 | Package | Responsibility | Ports it declares |
 |---|---|---|
-| `settings/layout` | Where settings live: selects home, the repository's and the nearest project's `.agister/`; judges a layer's validity; maps a kind and name to its file; lists names; finds `layer.yaml`'s prompt folders. | filesystem (what is at a path, read, list, same directory); worktree root of a directory |
+| `settings/layout` | Where settings live: selects home, the repository's and the nearest project's `.agister/`; maps a kind and name to its file; lists names. | filesystem (what is at a path, read, list, same directory); worktree root of a directory |
 | `settings/documents` | Bytes to typed definitions with per-field provenance. Three components, each with its own unit tests: **format** (one YAML document, unknown fields, schema version), **layering** (compose by field, `extends`, provenance), **kinds** (a composed tree to each kind's definition, with field problems). Its public interface has its own tests. | none: pure |
 | `settings/resolve` | A request to resolved settings, or a refusal naming the chain. A request names any document by kind and name; a workflow or a process comes with its parameters. Resolve follows references, applies blocks, checks limits against ceilings, plans each node's permissions. | a document source; runtime facts (contracts, skills support), which the composition plugs in from the runtime wrappers |
-| `settings/check` | Built on resolve: lists every document's name and resolves each, so a document nothing uses is checked too. Two views: **check** (every problem and what it refuses, the tree view, the newer-binary hint; the gate before a run) and **inspect** (process, workflow and agent listings and shows, with provenance). | resolve; list names |
+| `settings/check` | Built on resolve: lists every document's name and resolves each, so a document nothing uses is checked too. Two views: **check** (every problem and what it refuses) and **inspect** (process, workflow and agent listings and shows, with provenance). | resolve; list names |
 | `settings/home` | Writes: init, install, restore, retire, backups, agent create. A write is refused if it adds a problem. | filesystem writes; clock; check of the staged result |
 
 The composition assembles the document source from `layout` and
@@ -192,5 +194,7 @@ its concern and that it passes everything else through unchanged.
   patch and the rebuild check after a verification, detecting an agent's
   commit, the git roots and submodules in hold overlap, and the git input
   sources (revision, merge-base, diff, changed files).
+- **Pages and layering.** Pages renders settings from their files, so it
+  would repeat layering; it may get a dependency for that instead.
 - **Where reaping lives.** Reaping a run whose owner died: in the hold, or
   with runs.
