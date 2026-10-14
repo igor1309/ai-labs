@@ -67,7 +67,9 @@ every call.
 6. **Two file formats are contracts:** the settings files and the run
    records. Pages reads both; its tests fail when either changes.
 
-Rule 1 is enforced by an architecture test on import edges alone.
+Rule 1 is enforced by an architecture test on import edges alone. When
+something seems to need an import these rules forbid, the design is wrong,
+not the rule: it gets a port.
 
 ## Invariants
 
@@ -111,6 +113,9 @@ Every part keeps these.
    they read, records, each writing its own, and the worktree, through its
    hold. The exceptions are deliberate: a continuation resumes an earlier
    run's session, and a join receives its own workflow's outcomes.
+9. **Agister is built to be changed.** The smallest design that does the
+   work. A case is handled when it is met, not foreseen. A part that is
+   hard to change is wrong, however much it covers.
 
 ## Settings
 

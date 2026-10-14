@@ -12,6 +12,10 @@ Each behaviour below names the tests it comes from. The part is the one in
 `docs/adr/001-agister-architecture.md` that should own the test; "e2e" means
 through the built binary, as today.
 
+Settings cases cut from ADR-002 are in its longer form at commit
+`d8058bc0`. A case joins the tests only when it guards behaviour someone
+needs.
+
 Marked **changed**: the architecture changes the behaviour the archive tests.
 
 ## 1. End to end, through the binary
