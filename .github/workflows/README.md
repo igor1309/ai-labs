@@ -25,7 +25,7 @@ Per-project workflows do not need their own path filters — the dispatcher's `c
 
 Each project's filter in the `changes` job is an **allowlist of build/test inputs** — source, tests, manifests, lockfiles, and build/deploy descriptors (e.g. `Dockerfile`, `compose`, `Caddyfile`, `wrangler.*`). It deliberately **excludes documentation** (`<project>/docs/**`, `README.md`, `TODO.md`, landing/`*.html`, research notes) so a docs-only change skips the expensive core job while the required `report` check still runs. Do **not** use a blanket `<project>/**` glob: it pulls `docs/**` into the trigger set and runs the full core pipeline (tests, and for some projects a Docker build + container smoke) on documentation edits. When adding a project, list its code paths explicitly, as `clipdeck` and `agonara` do.
 
-A document a project's tests read is a test input, not documentation, and its filter lists it. Agister's tests read its ADRs and diagrams (`agister/docs/**`), its skill, its `README.md`, `testdata/` and `scripts/`, and every `AGENTS.md` in the repository, so the `agister` filter lists each.
+A document a project's tests read is a test input, not documentation, and its filter lists it. Agister's tests read its ADRs and diagrams (`agister/docs/**`), its skill, its `README.md`, `testdata/` and `scripts/`, and every `AGENTS.md` in the repository, so the `agister` filter lists each. Those tests are now archived under `agister/archive/` and no job runs them; the filter stays for the rewrite.
 
 ## What CI runs
 
@@ -33,11 +33,9 @@ Each test, what runs it, and the change that triggers it (LAB-167, LAB-220, LAB-
 
 | Tests | Run by | Triggered by | Status |
 | --- | --- | --- | --- |
-| Agister's Go tests (`agister/`), gofmt, vet, race | `agister-core`: `agister/scripts/test.sh` | the `agister` filter | runs |
-| Agister Pages tests (`agister/pages/tests/*.test.js`) | `agister-core`: `agister/scripts/test.sh` | the `agister` filter | runs |
+| The archived Agister (`agister/archive/`): Go, Pages and script tests | nothing | — | excluded: archived, reference only |
 | gokit's Go tests (`gokit/`) | `agister-core`: `agister/scripts/test.sh` calls `gokit/scripts/test.sh` | `gokit/**` | runs |
 | The gate's Go tests (`scripts/agister-gate/`) | `agister-core`, step Gate | `scripts/agister-gate/**` | runs |
-| The example settings pass `agister check` | `agister-core` | the `agister` filter | runs |
 | warder's Go tests (`warder/`), gofmt, vet, race | `warder-core`: `warder/scripts/test.sh` | the `warder` filter | runs |
 | The repository scripts' tests (`scripts/tests/*.test.js`) | `repo-scripts` | every push and pull request | runs |
 | The release scripts' tests (`scripts/release/tests/*.test.js`) | `release-validation` | the `release` filter | runs |

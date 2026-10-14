@@ -16,9 +16,7 @@ jobs:
   core:
     runs-on: [self-hosted, local-mac]
     timeout-minutes: 10
-    defaults:
-      run:
-        working-directory: agister
+    # agister/archive is kept as reference and is not built or tested here.
     steps:
       - name: Checkout
         uses: actions/checkout@v5
@@ -28,20 +26,12 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
-          go-version-file: agister/go.mod
+          go-version-file: gokit/go.mod
           # Self-hosted: Go caches persist on the runner; uploading them hangs.
           cache: false
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v6
-        with:
-          node-version-file: .node-version
-
-      - name: Check
-        run: scripts/test.sh -coverpkg=./internal/...,./cmd/... -coverprofile=cover.out
-
-      - name: Coverage
-        run: go tool cover -func=cover.out | tail -1 | tee -a "$GITHUB_STEP_SUMMARY"
+      - name: Agister
+        run: agister/scripts/test.sh
 
       # The gate drives agister's runs and knows their kinds of work, so it
       # is its own module, outside agister's code.
@@ -51,14 +41,3 @@ jobs:
           test -z "$(gofmt -l .)"
           go vet ./...
           go test -race ./...
-
-      # Outside the repository: its .agister/ is laid over agister/home,
-      # not over the examples (ADR-027 rule 6), and the repository tests
-      # check that composition.
-      - name: Example settings pass check
-        run: |
-          go build -o bin/agister ./cmd/agister
-          agister="$PWD/bin/agister"
-          home="$(mktemp -d)"
-          echo yes | "$agister" --home "$home" init
-          cd "$home" && "$agister" --home "$home" check

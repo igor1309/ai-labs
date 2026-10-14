@@ -176,7 +176,6 @@ test("ciRepoScripts_shouldRunEveryScriptsTest_onEveryChange", () => {
 // Each Go module, the command that tests it, and the job a change to its
 // code runs. A new module fails here until a workflow runs it.
 const goModules = {
-  agister: { runner: ".github/workflows/agister-core.yml", command: "run: scripts/test.sh", job: "agister-core" },
   gokit: { runner: "agister/scripts/test.sh", command: "../gokit/scripts/test.sh", job: "agister-core" },
   "scripts/agister-gate": {
     runner: ".github/workflows/agister-core.yml",
@@ -186,11 +185,17 @@ const goModules = {
   warder: { runner: ".github/workflows/warder-core.yml", command: "run: warder/scripts/test.sh", job: "warder-core" },
 };
 
+// Go modules no job tests, each with the reason it needs none.
+const untestedModules = {
+  "agister/archive": "archived, reference only",
+};
+
 test("ciGoModules_shouldEachBeTestedByTheJobItsChangesRun", () => {
   const modules = execFileSync("git", ["ls-files", "*go.mod"], { cwd: repoRoot, encoding: "utf8" })
     .trim()
     .split("\n")
-    .map((file) => file.replace(/\/?go\.mod$/, ""));
+    .map((file) => file.replace(/\/?go\.mod$/, ""))
+    .filter((module) => !(module in untestedModules));
   assert.deepEqual(modules.toSorted(), Object.keys(goModules).toSorted());
 
   for (const [module, { runner, command, job }] of Object.entries(goModules)) {
@@ -203,6 +208,7 @@ test("ciGoModules_shouldEachBeTestedByTheJobItsChangesRun", () => {
 const unfilteredTests = {
   "scripts/tests/": "repo-scripts runs them on every change",
   "research/": "research, not a product",
+  "agister/archive/": "archived, reference only",
 };
 
 test("ciTestFiles_shouldEachRunSomeJob_whenChanged", () => {
