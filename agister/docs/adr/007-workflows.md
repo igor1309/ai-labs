@@ -52,8 +52,7 @@ workflow cannot be continued.
 ### 4. The join waits for every node and runs on what completed
 
 The join starts once every fan-out node has ended, if at least one
-completed. If none completed, no join runs, and the workflow ends with
-the status and class of its first node.
+completed.
 
 ### 5. The join is given the collection and nothing else
 
@@ -68,8 +67,7 @@ session.
 ### 6. The workflow ends in a call's result shape
 
 A workflow's status, class and output are its join's, or, with no join,
-its first node's. Usage and cost sum every node's; they are unknown if
-any node's is. Timing covers the whole workflow. Its warnings are every
+its first node's. Usage and cost cover every node. Timing covers the whole workflow. Its warnings are every
 node's. No status, class or field exists only for workflows (ADR-001,
 invariant 3).
 
@@ -82,8 +80,8 @@ names the workflow run it belongs to.
 
 ### 8. Cancelling a workflow is final
 
-A cancelled workflow starts no node, its join included, and cancels
-every node that is running; it ends interrupted, cancelled.
+A cancelled workflow starts no further node, its join included, and
+cancels those running.
 
 ## Consequences
 
