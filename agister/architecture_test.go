@@ -96,7 +96,8 @@ func TestTheIsolatedGroupsImportNothingOfTheModule(t *testing.T) {
 // go command's own build selects only the files of one platform and tag
 // set, and leaves out a package none of whose files it selects; an import
 // rule holds for every build. Left out, as by the go command: a module
-// beneath the root, testdata, and a name starting with "." or "_".
+// beneath the root, testdata, vendor, and a name starting with "." or
+// "_".
 func imports(fsys fs.FS) (map[string][]string, error) {
 	imported := map[string][]string{}
 	err := fs.WalkDir(fsys, ".", func(name string, entry fs.DirEntry, err error) error {
@@ -109,7 +110,7 @@ func imports(fsys fs.FS) (map[string][]string, error) {
 		base := entry.Name()
 		ignored := strings.HasPrefix(base, ".") || strings.HasPrefix(base, "_")
 		if entry.IsDir() {
-			if ignored || base == "testdata" {
+			if ignored || base == "testdata" || base == "vendor" {
 				return fs.SkipDir
 			}
 			if _, err := fs.Stat(fsys, path.Join(name, "go.mod")); err == nil {
@@ -189,6 +190,9 @@ func TestImportsCollectsThoseOfEveryFileOfThePackage(t *testing.T) {
 		{"a package each of whose files a build tag leaves out", map[string]string{
 			"settings/c/c.go": tagged + "package c" + imported,
 		}, []string{"settings/c imports settings/b"}},
+		{"vendored code", map[string]string{
+			"settings/a/vendor/example.com/v/v.go": "package v" + imported,
+		}, nil},
 		{"a module beneath the root", map[string]string{
 			"settings/a/nested/go.mod": "module " + module + "/settings/a/nested\n\ngo 1.24\n",
 			"settings/a/nested/n.go":   "package nested" + imported,
