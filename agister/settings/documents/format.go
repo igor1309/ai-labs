@@ -14,7 +14,8 @@ import (
 
 // Format reads one file of a document into a tree: a map of keys, in the
 // order the file wrote them, over values. A list is a value whole, the
-// maps in it included.
+// maps in it included. The file holds only fields its kind knows, and the
+// schema it names, if any, is its kind's (ADR-001, settings).
 
 type format int
 
@@ -58,8 +59,26 @@ func (n *node) stamp(origin Origin) {
 	}
 }
 
+// read reads data, one file of a document of kind k, into a tree: in its
+// kind's format, holding only its kind's fields, and naming its kind's
+// schema if it names one. A file need not name it: a layer sets the fields
+// it changes. Each problem is one error.
+func read(k Kind, data []byte) (*node, []error) {
+	written := k.written()
+	tree, err := parse(written.format, data)
+	if err != nil {
+		return nil, []error{err}
+	}
+	var problems []error
+	written.fields.check("", tree, &problems)
+	if schema := tree.entry("schema"); schema != nil && (schema.isMap || schema.value != written.schema) {
+		problems = append(problems, fmt.Errorf("schema: must be %q", written.schema))
+	}
+	return tree, problems
+}
+
 // parse reads data, one file in f, into a tree. The file must hold one
-// document that is a map whose keys are strings.
+// document that is a map whose keys are strings, as must every map in it.
 func parse(f format, data []byte) (*node, error) {
 	if f == tomlFormat {
 		return parseTOML(data)
@@ -92,35 +111,73 @@ func parseYAML(data []byte) (*node, error) {
 
 func yamlMap(mapping *yaml.Node) (*node, error) {
 	tree := &node{isMap: true}
+	err := yamlEntries(mapping, func(key string) bool { return tree.entry(key) != nil }, func(key string, value *yaml.Node) error {
+		var child *node
+		if value.Kind == yaml.MappingNode {
+			var err error
+			if child, err = yamlMap(value); err != nil {
+				return err
+			}
+		} else {
+			leaf, err := yamlLeaf(value)
+			if err != nil {
+				return err
+			}
+			child = &node{value: leaf}
+		}
+		tree.entries = append(tree.entries, entry{key: key, value: child})
+		return nil
+	})
+	return tree, err
+}
+
+// yamlEntries calls add for each entry of mapping, in order, once its key
+// is known to be a string that given does not hold yet.
+func yamlEntries(mapping *yaml.Node, given func(key string) bool, add func(key string, value *yaml.Node) error) error {
 	for i := 0; i < len(mapping.Content); i += 2 {
 		key, value := mapping.Content[i], mapping.Content[i+1]
 		if key.Kind != yaml.ScalarNode || key.Tag != "!!str" {
-			return nil, fmt.Errorf("line %d: a key is not a string", key.Line)
+			return fmt.Errorf("line %d: a key is not a string", key.Line)
 		}
-		if tree.entry(key.Value) != nil {
-			return nil, fmt.Errorf("line %d: %s is given twice", key.Line, key.Value)
+		if given(key.Value) {
+			return fmt.Errorf("line %d: %s is given twice", key.Line, key.Value)
 		}
-		child, err := yamlValue(value)
-		if err != nil {
-			return nil, err
+		if err := add(key.Value, value); err != nil {
+			return err
 		}
-		tree.entries = append(tree.entries, entry{key: key.Value, value: child})
 	}
-	return tree, nil
+	return nil
 }
 
-func yamlValue(value *yaml.Node) (*node, error) {
-	if value.Kind == yaml.MappingNode {
-		return yamlMap(value)
-	}
-	if value.Kind == yaml.AliasNode {
+// yamlLeaf is a value that is not a map of the tree: a scalar, or a list
+// as []any whose maps are map[string]any, held to the tree's rules.
+func yamlLeaf(value *yaml.Node) (any, error) {
+	switch value.Kind {
+	case yaml.AliasNode:
 		return nil, fmt.Errorf("line %d: an alias is not read", value.Line)
+	case yaml.SequenceNode:
+		list := make([]any, len(value.Content))
+		for i, item := range value.Content {
+			var err error
+			if list[i], err = yamlLeaf(item); err != nil {
+				return nil, err
+			}
+		}
+		return list, nil
+	case yaml.MappingNode:
+		table := map[string]any{}
+		err := yamlEntries(value, func(key string) bool { _, ok := table[key]; return ok }, func(key string, value *yaml.Node) error {
+			leaf, err := yamlLeaf(value)
+			table[key] = leaf
+			return err
+		})
+		return table, err
 	}
 	var leaf any
 	if err := value.Decode(&leaf); err != nil {
 		return nil, err
 	}
-	return &node{value: leaf}, nil
+	return leaf, nil
 }
 
 func parseTOML(data []byte) (*node, error) {
@@ -129,10 +186,14 @@ func parseTOML(data []byte) (*node, error) {
 	if err != nil {
 		return nil, err
 	}
+	// A table a dotted key or a header implies has no key of its own: it
+	// takes the place of the first key under it.
 	order := map[string]int{}
 	for i, key := range meta.Keys() {
-		if _, seen := order[key.String()]; !seen {
-			order[key.String()] = i
+		for n := 1; n <= len(key); n++ {
+			if _, seen := order[key[:n].String()]; !seen {
+				order[key[:n].String()] = i
+			}
 		}
 	}
 	return tomlMap(table, nil, order), nil
@@ -165,15 +226,28 @@ func tomlMap(table map[string]any, path []string, order map[string]int) *node {
 	return tree
 }
 
-// tomlLeaf is value with an array of tables as a list of maps.
+// tomlLeaf is value with every array of tables in it, at any depth, as a
+// list of maps.
 func tomlLeaf(value any) any {
-	tables, ok := value.([]map[string]any)
-	if !ok {
-		return value
+	switch value := value.(type) {
+	case []map[string]any:
+		list := make([]any, len(value))
+		for i, table := range value {
+			list[i] = tomlLeaf(table)
+		}
+		return list
+	case []any:
+		list := make([]any, len(value))
+		for i, item := range value {
+			list[i] = tomlLeaf(item)
+		}
+		return list
+	case map[string]any:
+		table := make(map[string]any, len(value))
+		for key, item := range value {
+			table[key] = tomlLeaf(item)
+		}
+		return table
 	}
-	list := make([]any, len(tables))
-	for i, table := range tables {
-		list[i] = table
-	}
-	return list
+	return value
 }

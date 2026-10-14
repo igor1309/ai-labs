@@ -3,8 +3,9 @@
 // (ADR-001, settings; ADR-002). It is pure: it reads no file and is handed
 // the files' bytes.
 //
-// Inside it, format reads one file into a tree, and layering composes the
-// trees of a document's files and of what it extends.
+// Inside it, format reads one file into a tree of its kind's fields, and
+// layering composes the trees of a document's files and of what it
+// extends.
 package documents
 
 import (
@@ -25,15 +26,6 @@ const (
 	Verify
 	Brief
 )
-
-// format is how a kind's files are written: an agent in TOML, every other
-// composed kind in YAML.
-func (k Kind) format() format {
-	if k == Agent {
-		return tomlFormat
-	}
-	return yamlFormat
-}
 
 // Layer is a layer of settings, from the farthest to the nearest (ADR-002,
 // rule 2).
@@ -86,7 +78,9 @@ type Composed struct {
 // directory whatever their order in doc: maps merge by key at every depth,
 // a key only a nearer file holds coming after the farther file's keys, and
 // lists and scalars replace whole. Nothing unsets. Every file is read in
-// its kind's format, and the error names each file that cannot be read.
+// its kind's format, holding only its kind's fields, and the schema, which
+// some file must give, is its kind's. The error names each problem with
+// its file.
 func Compose(doc Document) (Composed, error) {
 	if len(doc.Files) == 0 {
 		return Composed{}, fmt.Errorf("no file holds %s", doc.Name)
@@ -96,9 +90,11 @@ func Compose(doc Document) (Composed, error) {
 	var root *node
 	var problems []error
 	for _, file := range files {
-		tree, err := parse(doc.Kind.format(), file.Data)
-		if err != nil {
-			problems = append(problems, fmt.Errorf("%s: %w", file.Path, err))
+		tree, found := read(doc.Kind, file.Data)
+		for _, problem := range found {
+			problems = append(problems, fmt.Errorf("%s: %w", file.Path, problem))
+		}
+		if len(found) > 0 {
 			continue
 		}
 		tree.stamp(Origin{Document: doc.Name, Layer: file.Layer, Path: file.Path})
@@ -106,6 +102,9 @@ func Compose(doc Document) (Composed, error) {
 	}
 	if len(problems) > 0 {
 		return Composed{}, errors.Join(problems...)
+	}
+	if root.entry("schema") == nil {
+		return Composed{}, fmt.Errorf("no file of %s gives its schema, %q", doc.Name, doc.Kind.written().schema)
 	}
 	return Composed{root: root}, nil
 }
