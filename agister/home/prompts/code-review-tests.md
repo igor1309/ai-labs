@@ -105,6 +105,12 @@ Definition of done:
    constructor passes it explicitly, and a missing one fails at
    construction. A spy gives distinct answers for the states its test must
    tell apart; the case is two such states it answers alike.
+   A spy is asserted both ways. The calls it records are asserted: the
+   arguments each was made with, or only that it was made where it takes
+   none. Each value it gives is asserted to reach the outcome. Look for a
+   spy whose record no assertion reads, or whose answer no assertion
+   depends on; the case is the wrong call, or the answer dropped, that the
+   product could make while every test stays green.
 8. Look for the wall clock: any sleep, poll or real timer in a test. The
    case is the load or ordering that flips it, or the product change it
    lets pass; with it, name the clock, hook or event to inject so the test
