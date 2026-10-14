@@ -2,6 +2,7 @@ package tree_test
 
 import (
 	"fmt"
+	"maps"
 	"slices"
 	"strings"
 	"testing"
@@ -9,8 +10,10 @@ import (
 	"github.com/igor1309/ai-labs/gokit/tree"
 )
 
-// The scenarios of tree.feature's section "Decode: values": what each
-// node holds, whatever its origin.
+// The scenarios of tree.feature's sections "Decode": what each node holds,
+// whatever its origin, and where each node came from.
+
+// Decode: values
 
 // values is every node of n, one a line: its place, its kind and its value
 // when it is a scalar. Map keys come sorted, so equal values list equal.
@@ -173,6 +176,107 @@ func TestBytesThatHoldNoValueAreAnEmptyTree(t *testing.T) {
 			if got.Kind() != tree.Empty || got.Origin() != (tree.Origin{}) {
 				t.Errorf("tree %s from %+v, want the empty tree", got.Kind(), got.Origin())
 			}
+		})
+	}
+}
+
+// Decode: origins
+
+// origins is the origin of every node of n, by its place: "the top", or
+// as "items[0].name".
+func origins(n tree.Node) map[string]tree.Origin {
+	got := map[string]tree.Origin{}
+	var walk func(place string, n tree.Node)
+	walk = func(place string, n tree.Node) {
+		if place == "" {
+			got["the top"] = n.Origin()
+		} else {
+			got[place] = n.Origin()
+		}
+		for i, item := range n.Items() {
+			walk(fmt.Sprintf("%s[%d]", place, i), item)
+		}
+		for _, key := range n.Keys() {
+			value, _ := n.Get(key)
+			if place == "" {
+				walk(key, value)
+			} else {
+				walk(place+"."+key, value)
+			}
+		}
+	}
+	walk("", n)
+	return got
+}
+
+// assertOrigins decodes data in format from path and fails unless it gives
+// no problem and every node has the origin want gives it, and no other
+// node is there.
+func assertOrigins(t *testing.T, format tree.Format, data, path string, want map[string]tree.Origin) {
+	t.Helper()
+	got, problems := tree.Decode(format, []byte(data), path)
+	if len(problems) > 0 {
+		t.Fatalf("problems %v, want none", problems)
+	}
+	if origins := origins(got); !maps.Equal(origins, want) {
+		t.Fatalf("origins %v, want %v", origins, want)
+	}
+}
+
+func TestEveryYAMLNodeKeepsItsPathAndLine(t *testing.T) {
+	t.Parallel()
+	at := func(line int) tree.Origin { return tree.Origin{Path: "/a/v.yaml", Line: line} }
+	assertOrigins(t, tree.YAML, `size: 20m
+items:
+  - name: a
+  - name: b
+`, "/a/v.yaml", map[string]tree.Origin{
+		"the top":       at(1),
+		"size":          at(1),
+		"items":         at(2),
+		"items[0]":      at(3),
+		"items[0].name": at(3),
+		"items[1]":      at(4),
+		"items[1].name": at(4),
+	})
+}
+
+func TestEveryTOMLNodeKeepsItsPathAndHasNoLine(t *testing.T) {
+	t.Parallel()
+	path := tree.Origin{Path: "/a/v.toml"}
+	assertOrigins(t, tree.TOML, `size = "20m"
+
+[shape]
+width = 2
+`, "/a/v.toml", map[string]tree.Origin{
+		"the top":     path,
+		"size":        path,
+		"shape":       path,
+		"shape.width": path,
+	})
+}
+
+// The path names a file that is not there, of the other format's
+// extension: decode reads neither the file nor the format from it.
+func TestDecodeKeepsThePathItIsGivenAndReadsNothingFromIt(t *testing.T) {
+	t.Parallel()
+	for _, c := range []struct {
+		format tree.Format
+		data   string
+		path   string
+		line   int
+	}{
+		{tree.YAML, "a: [x]", "/a/v.toml", 1},
+		{tree.TOML, `a = ["x"]`, "/a/v.yaml", 0},
+	} {
+		t.Run(c.format.String()+" from "+c.path, func(t *testing.T) {
+			t.Parallel()
+			at := tree.Origin{Path: c.path, Line: c.line}
+			assertOrigins(t, c.format, c.data, c.path, map[string]tree.Origin{
+				"the top": at,
+				"a":       at,
+				"a[0]":    at,
+			})
 		})
 	}
 }
