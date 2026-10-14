@@ -6,6 +6,8 @@
   over their results
 - **Decision type:** Architecture
 - **Amends:** [ADR-001](001-agister-cli-architecture.md) rules 1 and 12
+- **Amended by:** [ADR-034](034-the-join-is-given-outcomes-not-the-workflow.md)
+  (rule 4's entry names no node, process or run)
 
 ## Context
 

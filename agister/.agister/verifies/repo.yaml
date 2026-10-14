@@ -1,0 +1,8 @@
+schema: agister.verify/v1alpha1
+name: repo
+command: agister/scripts/test.sh
+timeout: 5m
+max_attempts: 3
+instruction: >-
+  The verification command failed on your changes. Fix the cause in the
+  code; do not weaken, skip or delete a check or a test.

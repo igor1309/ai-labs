@@ -166,7 +166,7 @@ func TestNextCallReapsWhatAKilledRunLeftBehind(t *testing.T) {
 	t.Parallel()
 	home, repo := setupBuilt(t, "hang")
 	binary := agisterBinary(t)
-	victim := exec.Command(binary, "--home", home, "run", "adversarial_review", "--param", "base=main", "--quiet", "--timeout", "30s")
+	victim := exec.Command(binary, "--home", home, "run", "adversarial_review_reviewer", "--param", "base=main", "--quiet", "--timeout", "30s")
 	victim.Dir = repo
 	// Its own process group: only it is killed below, not the test.
 	victim.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
@@ -231,7 +231,7 @@ func TestNextCallReapsWhatAKilledRunLeftBehind(t *testing.T) {
 		t.Fatal(err)
 	}
 	id, err := client.Submit(context.Background(), contract.CallRequest{
-		Process: "adversarial_review", Params: map[string]string{"base": "main"}, Timeout: "7m", Cwd: repo,
+		Process: "adversarial_review_reviewer", Params: map[string]string{"base": "main"}, Timeout: "7m", Cwd: repo,
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -369,7 +369,7 @@ verify:
 	if err != nil {
 		t.Fatal(err)
 	}
-	id, err := victim.Submit(context.Background(), contract.CallRequest{Process: "verified", Params: map[string]string{"base": "main"}, Cwd: repo})
+	id, err := victim.Submit(context.Background(), contract.CallRequest{Process: bound(t, home, "verified", "reviewer"), Params: map[string]string{"base": "main"}, Cwd: repo})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -402,7 +402,7 @@ verify:
 		t.Fatal(err)
 	}
 	next, err := client.Submit(context.Background(), contract.CallRequest{
-		Process: "adversarial_review", Params: map[string]string{"base": "main"}, Timeout: "30s", Cwd: other,
+		Process: "adversarial_review_reviewer", Params: map[string]string{"base": "main"}, Timeout: "30s", Cwd: other,
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -484,7 +484,7 @@ func TestAWriterCallIsAdmittedWhereAKilledWriterLeftItsRun(t *testing.T) {
 	write(t, brief, "Do it. SCENARIO:hang\n")
 	ctx := context.Background()
 	config := cli.Config{Home: home, Cwd: repo}
-	request := contract.CallRequest{Process: "implement", Params: map[string]string{"candidate": "HEAD", "brief": brief}, Cwd: repo}
+	request := contract.CallRequest{Process: "implement_assistant", Params: map[string]string{"candidate": "HEAD", "brief": brief}, Cwd: repo}
 
 	// The process that is killed, at its call's abort. A killed process
 	// reaps nothing: its reap beside the calls is left out too.

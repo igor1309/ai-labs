@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/igor1309/ai-labs/agister/internal/domain/definition"
+	"github.com/igor1309/ai-labs/agister/internal/domain/document"
 )
 
 // A repository's blocks name a process, workflow, agent or runtime mapping
@@ -13,7 +14,7 @@ import (
 // (ADR-018 rule 1).
 func TestBlocksParsing(t *testing.T) {
 	t.Parallel()
-	blocks, err := definition.ParseBlocks(doc(definition.KindBlocks, "blocks", `
+	blocks, err := definition.ParseBlocks(doc(document.KindBlocks, "blocks", `
 schema: agister.blocks/v1alpha1
 blocks:
   - ref: agent:codex-implementer-sol-61
@@ -23,10 +24,10 @@ blocks:
   - {ref: "runtime:codex"}
 `))
 	want := []definition.Block{
-		{Kind: definition.KindAgent, Name: "codex-implementer-sol-61", Reason: "Codex does not implement in this repository"},
-		{Kind: definition.KindProcess, Name: "implement_codex"},
-		{Kind: definition.KindWorkflow, Name: "panel"},
-		{Kind: definition.KindRuntime, Name: "codex"},
+		{Kind: document.KindAgent, Name: "codex-implementer-sol-61", Reason: "Codex does not implement in this repository"},
+		{Kind: document.KindProcess, Name: "implement_codex"},
+		{Kind: document.KindWorkflow, Name: "panel"},
+		{Kind: document.KindRuntime, Name: "codex"},
 	}
 	if err != nil || !reflect.DeepEqual(blocks.Blocks, want) {
 		t.Fatalf("blocks = %+v, %v", blocks.Blocks, err)
@@ -34,7 +35,7 @@ blocks:
 	if ref := blocks.Blocks[3].Ref(); ref != "runtime:codex" {
 		t.Fatalf("ref = %q", ref)
 	}
-	if blocks, err := definition.ParseBlocks(doc(definition.KindBlocks, "blocks", "schema: agister.blocks/v1alpha1\nblocks: []\n")); err != nil || len(blocks.Blocks) != 0 {
+	if blocks, err := definition.ParseBlocks(doc(document.KindBlocks, "blocks", "schema: agister.blocks/v1alpha1\nblocks: []\n")); err != nil || len(blocks.Blocks) != 0 {
 		t.Fatalf("no blocks = %+v, %v", blocks, err)
 	}
 }
@@ -44,7 +45,7 @@ blocks:
 // named twice, an unknown field, a reason that is empty.
 func TestBlocksProblems(t *testing.T) {
 	t.Parallel()
-	_, err := definition.ParseBlocks(doc(definition.KindBlocks, "blocks", `
+	_, err := definition.ParseBlocks(doc(document.KindBlocks, "blocks", `
 schema: agister.blocks/v1alpha2
 blocks:
   - ref: policy:read-only
@@ -74,7 +75,7 @@ blocks:
 		}
 	}
 	for _, text := range []string{"schema: agister.blocks/v1alpha1\n", "schema: agister.blocks/v1alpha1\nblocks: {ref: agent:a}\n"} {
-		if _, err := definition.ParseBlocks(doc(definition.KindBlocks, "blocks", text)); err == nil || !strings.Contains(err.Error(), "blocks: ") {
+		if _, err := definition.ParseBlocks(doc(document.KindBlocks, "blocks", text)); err == nil || !strings.Contains(err.Error(), "blocks: ") {
 			t.Errorf("%q: %v", text, err)
 		}
 	}
@@ -84,7 +85,7 @@ blocks:
 // entries, is a problem: neither entry silently wins over the other.
 func TestBlocksRejectDuplicateKeys(t *testing.T) {
 	t.Parallel()
-	_, err := definition.ParseBlocks(doc(definition.KindBlocks, "blocks", `
+	_, err := definition.ParseBlocks(doc(document.KindBlocks, "blocks", `
 schema: agister.blocks/v1alpha1
 blocks:
   - ref: agent:reviewer
@@ -114,7 +115,7 @@ func TestBlocksRejectMoreThanOneDocument(t *testing.T) {
 		"---\n---\nschema: agister.blocks/v1alpha1\nblocks:\n  - ref: agent:reviewer\n",
 		"schema: agister.blocks/v1alpha1\nblocks: []\n---\nschema: agister.blocks/v1alpha1\nblocks:\n  - ref: agent:reviewer\n",
 	} {
-		blocks, err := definition.ParseBlocks(doc(definition.KindBlocks, "blocks", text))
+		blocks, err := definition.ParseBlocks(doc(document.KindBlocks, "blocks", text))
 		if err == nil || !strings.Contains(err.Error(), "must hold exactly one YAML document") {
 			t.Errorf("%q: %v", text, err)
 		}
@@ -123,7 +124,7 @@ func TestBlocksRejectMoreThanOneDocument(t *testing.T) {
 		}
 	}
 	for _, text := range []string{"", "# nothing\n"} {
-		if _, err := definition.ParseBlocks(doc(definition.KindBlocks, "blocks", text)); err == nil || !strings.Contains(err.Error(), "empty document") {
+		if _, err := definition.ParseBlocks(doc(document.KindBlocks, "blocks", text)); err == nil || !strings.Contains(err.Error(), "empty document") {
 			t.Errorf("%q: %v", text, err)
 		}
 	}

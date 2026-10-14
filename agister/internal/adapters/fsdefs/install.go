@@ -15,12 +15,13 @@ import (
 
 	"github.com/igor1309/ai-labs/agister/internal/contract"
 	"github.com/igor1309/ai-labs/agister/internal/domain/definition"
+	"github.com/igor1309/ai-labs/agister/internal/domain/document"
 )
 
 // kinds is every kind the store holds, in a fixed order.
-func kinds() []definition.Kind {
+func kinds() []document.Kind {
 	known := extensions()
-	all := make([]definition.Kind, 0, len(known))
+	all := make([]document.Kind, 0, len(known))
 	for kind := range known {
 		all = append(all, kind)
 	}
@@ -29,16 +30,48 @@ func kinds() []definition.Kind {
 }
 
 // singleton kinds are one document at the top of the store, not a folder.
-func singleton(kind definition.Kind) bool {
-	return kind == definition.KindService || kind == definition.KindWorkspace || kind == definition.KindBlocks
+func singleton(kind document.Kind) bool {
+	return kind == document.KindService || kind == document.KindWorkspace || kind == document.KindBlocks
+}
+
+// retired is the file extension of each kind the store held and holds no
+// more: policies (ADR-030 rule 4). An install backup made while it held
+// one names it, and its restore puts that file back or removes it (ADR-016
+// rule 6). A retired kind is no settings: it is not listed, read, written,
+// staged, installed or checked, and no new backup saves one.
+func retired() map[document.Kind]string {
+	return map[document.Kind]string{policiesDir: ".yaml"}
+}
+
+// backedUp is where the store keeps the document an install backup names:
+// path, and for a retired kind where the store kept it.
+func (s Store) backedUp(kind document.Kind, name string) (string, error) {
+	extension, ok := retired()[kind]
+	if !ok {
+		return s.path(kind, name)
+	}
+	if !document.ValidName(name) {
+		return "", fmt.Errorf("invalid name %q", name)
+	}
+	return filepath.Join(s.Dir, string(kind), name+extension), nil
+}
+
+// readBackedUp reads the store's own file of the document an install
+// backup names, as read does, a retired kind's where the store kept it.
+func (s Store) readBackedUp(kind document.Kind, name string) (document.Document, error) {
+	path, err := s.backedUp(kind, name)
+	if err != nil {
+		return document.Document{}, err
+	}
+	return s.readAt(kind, name, path)
 }
 
 // Documents reads every settings document of the store: those List names,
 // and the service when there is one. A file whose name breaks the naming
 // rule is no document, so it is not read. One that cannot be read is in
 // unreadable, by its source, with no digest.
-func (s Store) Documents(ctx context.Context) (docs []definition.Document, unreadable []definition.Source, err error) {
-	docs, err = s.documents(ctx, kinds(), func(doc definition.Document, _ error) error {
+func (s Store) Documents(ctx context.Context) (docs []document.Document, unreadable []document.Source, err error) {
+	docs, err = s.documents(ctx, kinds(), func(doc document.Document, _ error) error {
 		unreadable = append(unreadable, doc.Source)
 		return nil
 	})
@@ -48,11 +81,11 @@ func (s Store) Documents(ctx context.Context) (docs []definition.Document, unrea
 // documents reads every settings document of the given kinds, as Documents
 // does, and calls unreadable with each one that cannot be read and why; its
 // error stops the read.
-func (s Store) documents(ctx context.Context, kinds []definition.Kind, unreadable func(definition.Document, error) error) ([]definition.Document, error) {
-	var docs []definition.Document
+func (s Store) documents(ctx context.Context, kinds []document.Kind, unreadable func(document.Document, error) error) ([]document.Document, error) {
+	var docs []document.Document
 	for _, kind := range kinds {
 		var names []string
-		if kind == definition.KindService {
+		if kind == document.KindService {
 			path, _ := s.path(kind, string(kind))
 			info, err := os.Stat(path)
 			switch {
@@ -69,10 +102,10 @@ func (s Store) documents(ctx context.Context, kinds []definition.Kind, unreadabl
 			}
 		}
 		for _, name := range names {
-			if !singleton(kind) && !definition.ValidName(name) {
+			if !singleton(kind) && !document.ValidName(name) {
 				continue
 			}
-			doc, err := s.Read(ctx, kind, name)
+			doc, err := s.read(kind, name)
 			if err != nil {
 				if err := unreadable(doc, err); err != nil {
 					return nil, err
@@ -87,8 +120,8 @@ func (s Store) documents(ctx context.Context, kinds []definition.Kind, unreadabl
 
 // installed reports whether install reads a source folder's documents of
 // kind: not its blocks, as home has none (ADR-018 rule 6).
-func installed(kind definition.Kind) bool {
-	return kind != definition.KindBlocks
+func installed(kind document.Kind) bool {
+	return kind != document.KindBlocks
 }
 
 // Source reads the settings documents of the folder dir, laid out like the
@@ -100,7 +133,7 @@ func installed(kind definition.Kind) bool {
 // SKILL.md is not a regular file, refuses the folder, and a file directly
 // in skills/ is named (rule 9). A symbolic link in it refuses the whole
 // folder, so nothing outside it is installed.
-func (s Store) Source(ctx context.Context, dir string) ([]definition.Document, []string, error) {
+func (s Store) Source(ctx context.Context, dir string) ([]document.Document, []string, error) {
 	info, err := os.Stat(dir)
 	if errors.Is(err, fs.ErrNotExist) {
 		return nil, nil, &contract.InputError{Message: fmt.Sprintf("no folder %s to install", dir)}
@@ -131,11 +164,11 @@ func (s Store) Source(ctx context.Context, dir string) ([]definition.Document, [
 		}
 		rel = filepath.ToSlash(rel)
 		if entry.IsDir() {
-			if kind := definition.Kind(rel); extensions()[kind] != "" && !singleton(kind) && installed(kind) {
+			if kind := document.Kind(rel); extensions()[kind] != "" && !singleton(kind) && installed(kind) {
 				return nil
 			}
 			// A skill's folder is read, so what it holds is named.
-			if strings.HasPrefix(rel, string(definition.KindSkill)+"/") && strings.Count(rel, "/") == 1 {
+			if strings.HasPrefix(rel, string(document.KindSkill)+"/") && strings.Count(rel, "/") == 1 {
 				return nil
 			}
 			files = append(files, rel+"/")
@@ -147,11 +180,11 @@ func (s Store) Source(ctx context.Context, dir string) ([]definition.Document, [
 	if err != nil {
 		return nil, nil, err
 	}
-	read := slices.DeleteFunc(kinds(), func(kind definition.Kind) bool { return !installed(kind) })
+	read := slices.DeleteFunc(kinds(), func(kind document.Kind) bool { return !installed(kind) })
 	// A document of the folder that cannot be read refuses it; a skill
 	// that is not one is a problem of that skill (ADR-021 rule 1).
-	docs, err := Store{Dir: dir}.documents(ctx, read, func(doc definition.Document, err error) error {
-		if doc.Source.Kind == definition.KindSkill {
+	docs, err := Store{Dir: dir}.documents(ctx, read, func(doc document.Document, err error) error {
+		if doc.Source.Kind == document.KindSkill {
 			return &contract.InputError{Message: fmt.Sprintf("skill %s: %v; so nothing was installed", doc.Source.Name, err)}
 		}
 		return err
@@ -179,7 +212,7 @@ func (s Store) Source(ctx context.Context, dir string) ([]definition.Document, [
 // name breaks the naming rule or a document that cannot be read, is listed
 // and read from the store, so a check of the stage finds it as a check of
 // the store does.
-func (s Store) Stage(ctx context.Context, docs []definition.Document) (Staged, func(), error) {
+func (s Store) Stage(ctx context.Context, docs []document.Document) (Staged, func(), error) {
 	dir, err := os.MkdirTemp(s.temp, "agister-install-")
 	if err != nil {
 		return Staged{}, nil, err
@@ -208,25 +241,53 @@ type Staged struct {
 	home  Store
 }
 
-func (s Staged) Read(ctx context.Context, kind definition.Kind, name string) (definition.Document, error) {
-	doc, err := s.stage.Read(ctx, kind, name)
+// Read reads the document as home will hold it, a process laid over the
+// base it extends as home will hold that (ADR-030 rule 9).
+func (s Staged) Read(ctx context.Context, kind document.Kind, name string) (document.Document, error) {
+	doc, err := s.own(ctx, kind, name)
+	if kind != document.KindProcess || err != nil {
+		return doc, err
+	}
+	return definition.Extended(doc, func(base string) (document.Document, error) {
+		return s.own(ctx, kind, base)
+	})
+}
+
+// own reads the document as home will hold it, a process without its base.
+func (s Staged) own(ctx context.Context, kind document.Kind, name string) (document.Document, error) {
+	doc, err := s.stage.read(kind, name)
 	if errors.Is(err, errNotFound) {
-		return s.home.Read(ctx, kind, name)
+		return Layered{Home: s.home}.own(kind, name, true)
 	}
 	if err != nil {
 		return doc, err
 	}
-	doc.Source.Path, _ = s.home.path(kind, name)
-	if kind == definition.KindSkill {
+	path, _ := s.home.path(kind, name)
+	if kind == document.KindSkill {
 		// An install writes only a skill's SKILL.md: home's folder keeps
 		// what else it holds, so the staged skill is read as home will
 		// hold it (ADR-027 rule 8).
-		if err := skillWritten(doc.Source.Path); err != nil {
-			return definition.Document{Source: definition.Source{Kind: kind, Name: name, Path: doc.Source.Path}}, err
+		if err := skillWritten(path); err != nil {
+			return document.Document{Source: document.Source{Kind: kind, Name: name, Path: path, Layer: document.LayerHome}}, err
 		}
+	}
+	// The stage is home as the install leaves it: one layer.
+	file := document.LayerFile{Layer: document.LayerHome, Path: path, SHA256: doc.Source.SHA256}
+	doc.Source.Path, doc.Source.Layer, doc.Source.Layers = path, file.Layer, []document.LayerFile{file}
+	if document.Composed(kind) {
+		_, doc.Source.Layers, _ = definition.Compose(kind, []document.LayerText{{File: file, Bytes: doc.Bytes}})
 	}
 	return doc, nil
 }
+
+// ReadListed reads the document as Read does: a stage is home, which lists
+// no folders.
+func (s Staged) ReadListed(ctx context.Context, kind document.Kind, name string) (document.Document, error) {
+	return s.Read(ctx, kind, name)
+}
+
+// Layers is the one layer a stage is: home, as the install leaves it.
+func (s Staged) Layers(ctx context.Context) []document.LayerDir { return s.home.Layers(ctx) }
 
 // skillWritten reports what is wrong with the skill whose document is path
 // once its SKILL.md is written there: its folder a symbolic link, a folder
@@ -247,7 +308,7 @@ func skillWritten(path string) error {
 	return nil
 }
 
-func (s Staged) List(ctx context.Context, kind definition.Kind) ([]string, error) {
+func (s Staged) List(ctx context.Context, kind document.Kind) ([]string, error) {
 	staged, err := s.stage.List(ctx, kind)
 	if err != nil {
 		return nil, err
@@ -268,10 +329,11 @@ func (s Store) Lock(context.Context) (func(), error) {
 }
 
 // Put writes data as the document atomically: a temporary file in the same
-// folder, synced, then renamed into place. It takes no lock: the caller
-// holds it.
-func (s Store) Put(_ context.Context, kind definition.Kind, name string, data []byte) error {
-	path, err := s.path(kind, name)
+// folder, synced, then renamed into place. A restore puts back one of a
+// retired kind where the store kept it. It takes no lock: the caller holds
+// it.
+func (s Store) Put(_ context.Context, kind document.Kind, name string, data []byte) error {
+	path, err := s.backedUp(kind, name)
 	if err != nil {
 		return err
 	}
@@ -282,8 +344,8 @@ func (s Store) Put(_ context.Context, kind definition.Kind, name string, data []
 // is no document: a skill's folder with nothing in it, by its path, as
 // writeFile makes the folder before the file (ADR-027 rule 8). It is empty
 // when nothing is left. Remove removes what it names.
-func (s Store) Left(_ context.Context, kind definition.Kind, name string) (string, error) {
-	if kind != definition.KindSkill {
+func (s Store) Left(_ context.Context, kind document.Kind, name string) (string, error) {
+	if kind != document.KindSkill {
 		return "", nil
 	}
 	path, err := s.path(kind, name)
@@ -309,15 +371,16 @@ func (s Store) Left(_ context.Context, kind definition.Kind, name string) (strin
 // Remove removes the document; none there, or no folder for one, is no
 // error. A skill's folder goes with its SKILL.md when nothing else is
 // left in it (ADR-027 rule 8); one that is a symbolic link, or in a skills/
-// that is one, is refused, and nothing is removed through it. It takes no
-// lock: the caller holds it.
-func (s Store) Remove(_ context.Context, kind definition.Kind, name string) error {
-	path, err := s.path(kind, name)
+// that is one, is refused, and nothing is removed through it. A restore
+// removes one of a retired kind where the store kept it. It takes no lock:
+// the caller holds it.
+func (s Store) Remove(_ context.Context, kind document.Kind, name string) error {
+	path, err := s.backedUp(kind, name)
 	if err != nil {
 		return err
 	}
 	folder := filepath.Dir(path)
-	if kind == definition.KindSkill {
+	if kind == document.KindSkill {
 		// The SKILL.md a linked folder, or a linked skills/, reaches is not
 		// one an install made.
 		if err := skillFolderLinked(folder); err != nil {
@@ -327,7 +390,7 @@ func (s Store) Remove(_ context.Context, kind definition.Kind, name string) erro
 	if err := os.Remove(path); err != nil && !errors.Is(err, fs.ErrNotExist) {
 		return err
 	}
-	if kind == definition.KindSkill {
+	if kind == document.KindSkill {
 		entries, err := os.ReadDir(folder)
 		switch {
 		case errors.Is(err, fs.ErrNotExist):
@@ -435,7 +498,7 @@ func (b Backups) folder(stamp string) (string, error) {
 // Save writes each saved document, then the manifest, each durably. The
 // backup's folder is new: Save never writes into another backup, and
 // removes its own when it fails.
-func (b Backups) Save(_ context.Context, stamp string, manifest Manifest, saved []definition.Document) (err error) {
+func (b Backups) Save(_ context.Context, stamp string, manifest Manifest, saved []document.Document) (err error) {
 	dir, err := b.folder(stamp)
 	if err != nil {
 		return err
@@ -505,12 +568,14 @@ func (b Backups) Manifest(_ context.Context, stamp string) (Manifest, error) {
 	return manifest, nil
 }
 
-func (b Backups) Saved(ctx context.Context, stamp string, kind definition.Kind, name string) ([]byte, error) {
+// Saved reads the bytes the backup keeps of a document, one of a retired
+// kind where a backup made while the store held it keeps it.
+func (b Backups) Saved(_ context.Context, stamp string, kind document.Kind, name string) ([]byte, error) {
 	dir, err := b.folder(stamp)
 	if err != nil {
 		return nil, err
 	}
-	doc, err := Store{Dir: dir}.Read(ctx, kind, name)
+	doc, err := Store{Dir: dir}.readBackedUp(kind, name)
 	return doc.Bytes, err
 }
 

@@ -41,10 +41,11 @@ replace github.com/igor1309/ai-labs/gokit => ../gokit
 
 ## Test
 
-From `gokit/`:
+gokit's check is `gokit/scripts/test.sh`: format, vet and race tests.
 
 ```bash
-test -z "$(gofmt -l .)" && go vet ./... && go test -race -count=1 -timeout 1m ./...
+gokit/scripts/test.sh
 ```
 
-Agister's CI runs the same check on every change under `gokit/`.
+Agister's check (`agister/scripts/test.sh`) ends by running it, and Agister's
+CI runs that on every change under `gokit/`.

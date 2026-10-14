@@ -14,7 +14,7 @@ import (
 
 	"github.com/igor1309/ai-labs/agister/internal/app"
 	"github.com/igor1309/ai-labs/agister/internal/contract"
-	"github.com/igor1309/ai-labs/agister/internal/domain/definition"
+	"github.com/igor1309/ai-labs/agister/internal/domain/document"
 	"github.com/igor1309/ai-labs/agister/internal/domain/run"
 )
 
@@ -93,12 +93,12 @@ func commanding(timers *timersSpy, session string, call app.ToolCall) turnStep {
 // in session prov-1.
 func completes(h *harness) turnStep { return turnStep{turn: h.runner.turn} }
 
-// recoveryHarness is a staleHarness whose policy also gives the budget of
+// recoveryHarness is a staleHarness whose process also gives the budget of
 // resumes, with the instruction "Recover.", and whose agent is resumable.
 func recoveryHarness(t *testing.T, limits string, resumes int) (*harness, *timersSpy) {
 	t.Helper()
 	h, timers := staleHarness(t, fmt.Sprintf("%s, recover: {max_resumes: %d, instruction: Recover.}", limits, resumes))
-	h.defs.docs[definition.KindAgent]["a"] += "session = \"resumable\"\n"
+	h.defs.docs[document.KindProcess]["p"] += "session: resumable\n"
 	return h, timers
 }
 
@@ -135,7 +135,7 @@ var (
 	tailLog = app.ToolCall{Name: "Bash", Input: `{"command":"tail -f log"}`}
 )
 
-// staleCase is one staleness limit: the policy's limit, a turn that
+// staleCase is one staleness limit: the process's limit, a turn that
 // reaches it, the evidence a recovery turn is sent for it, and how a call
 // it ends is concluded.
 type staleCase struct {
@@ -155,7 +155,7 @@ func staleCases() []staleCase {
 		{
 			name: "repeated_tool_calls", limits: "repeated_tool_calls: 3", limit: run.StaleRepeatedToolCalls,
 			stale: func(*timersSpy) turnStep { return repeating("prov-1", goTest, "FAIL\texample.com/a") },
-			evidence: "## stale limit\n\nstale.repeated_tool_calls: the same tool call was made 3 times in a row, and Agister ended the turn.\n\n" +
+			evidence: "## stale limit\n\nstale.repeated_tool_calls: the same tool call was made 3 times in a row, and the turn was ended.\n\n" +
 				"## tool call\n\nBash\n\n```\n{\"command\":\"go test ./...\"}\n```\n\n## last result\n\n```\nFAIL\texample.com/a\n```",
 			// A repeated call takes no time here.
 			left: 20 * time.Minute, status: run.Failed, class: run.ClassBudgetExhausted,
@@ -163,7 +163,7 @@ func staleCases() []staleCase {
 		{
 			name: "tool_command", limits: "tool_command: 4m", limit: run.StaleToolCommand,
 			stale: func(timers *timersSpy) turnStep { return commanding(timers, "prov-1", tailLog) },
-			evidence: "## stale limit\n\nstale.tool_command: a tool's command ran for 4m0s, and Agister ended the turn.\n\n" +
+			evidence: "## stale limit\n\nstale.tool_command: a tool's command ran for 4m0s, and the turn was ended.\n\n" +
 				"## command\n\nBash\n\n```\n{\"command\":\"tail -f log\"}\n```",
 			left: 16 * time.Minute, status: run.Interrupted, class: run.ClassTimeout,
 		},
@@ -237,7 +237,7 @@ func TestARepeatedCallWithoutAReportedResultIsRecoveredWithTheCallAlone(t *testi
 	play(h, repeating("prov-1", goTest, ""), completes(h))
 	record := h.call(t, contract.CallRequest{})
 
-	want := "Recover.\n\n## stale limit\n\nstale.repeated_tool_calls: the same tool call was made 3 times in a row, and Agister ended the turn.\n\n" +
+	want := "Recover.\n\n## stale limit\n\nstale.repeated_tool_calls: the same tool call was made 3 times in a row, and the turn was ended.\n\n" +
 		"## tool call\n\nBash\n\n```\n{\"command\":\"go test ./...\"}\n```"
 	if turns := h.runner.calls(); record.Result.Status != run.Completed || len(turns) != 2 || turns[1].Prompt != want {
 		t.Fatalf("result = %+v, turns %+v", record.Result, turns)
@@ -450,7 +450,7 @@ func TestAStaleTurnIsNotRecoveredWhen(t *testing.T) {
 	}
 	cases := []struct {
 		name   string
-		policy string
+		limit  string
 		stale  func(*timersSpy) turnStep
 		reason string
 	}{
@@ -472,7 +472,7 @@ func TestAStaleTurnIsNotRecoveredWhen(t *testing.T) {
 		t.Run(c.name, func(t *testing.T) {
 			t.Parallel()
 			h, timers := recoveryHarness(t, "no_event: 5m", 1)
-			h.defs.docs[definition.KindPolicy]["pol"] += c.policy
+			h.defs.docs[document.KindProcess]["p"] += c.limit
 			play(h, c.stale(timers), completes(h))
 			record := h.call(t, contract.CallRequest{})
 
@@ -502,7 +502,7 @@ func TestARecoveryTurnGetsWhatIsLeftOfTheCostLimit(t *testing.T) {
 	t.Run("each turn reports its own cost", func(t *testing.T) {
 		t.Parallel()
 		h, timers := recoveryHarness(t, "no_event: 5m", 1)
-		h.defs.docs[definition.KindPolicy]["pol"] += "max_cost_usd: 2\n"
+		h.defs.docs[document.KindProcess]["p"] += "max_cost_usd: 2\n"
 		spent, cost := 0.5, 0.25
 		stale, recovered := silent(timers, "prov-1"), completes(h)
 		stale.turn.CostUSD, recovered.turn.CostUSD = &spent, &cost
@@ -520,7 +520,7 @@ func TestARecoveryTurnGetsWhatIsLeftOfTheCostLimit(t *testing.T) {
 	t.Run("each turn reports its session's totals", func(t *testing.T) {
 		t.Parallel()
 		h, timers := recoveryHarness(t, "no_event: 5m, repeated_tool_calls: 3", 2)
-		h.defs.docs[definition.KindPolicy]["pol"] += "max_cost_usd: 2\n"
+		h.defs.docs[document.KindProcess]["p"] += "max_cost_usd: 2\n"
 		totals := func(usd float64, input int64) *run.SessionTotals {
 			return &run.SessionTotals{CostUSD: &usd, Usage: &run.Usage{InputTokens: &input}}
 		}
@@ -713,7 +713,7 @@ func TestAStaleRepairTurnIsRecoveredAndVerificationGoesOn(t *testing.T) {
 	h, timers := staleHarness(t, "no_event: 5m, recover: {max_resumes: 1, instruction: Recover.}")
 	verifying(h)
 	// Two attempts: the second run is the last the process allows.
-	h.defs.docs[definition.KindProcess]["p"] = strings.Replace(h.defs.docs[definition.KindProcess]["p"], "max_attempts: 3", "max_attempts: 2", 1)
+	h.defs.docs[document.KindProcess]["p"] = strings.Replace(h.defs.docs[document.KindProcess]["p"], "max_attempts: 3", "max_attempts: 2", 1)
 	h.commands.exits = []int{1}
 	fresh(h)
 	play(h, completes(h), silent(timers, "prov-1"), completes(h))

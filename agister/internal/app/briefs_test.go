@@ -10,7 +10,7 @@ import (
 
 	"github.com/igor1309/ai-labs/agister/internal/app"
 	"github.com/igor1309/ai-labs/agister/internal/contract"
-	"github.com/igor1309/ai-labs/agister/internal/domain/definition"
+	"github.com/igor1309/ai-labs/agister/internal/domain/document"
 	"github.com/igor1309/ai-labs/agister/internal/domain/run"
 )
 
@@ -64,8 +64,8 @@ const (
 // which reads as text, with the value spec given after its path.
 func briefed(text, spec string) *harness {
 	h := newHarness()
-	h.defs.docs[definition.KindBrief] = map[string]string{"goal": goalForm, "step": stepForm}
-	h.defs.docs[definition.KindProcess]["p"] = strings.Replace(h.defs.docs[definition.KindProcess]["p"],
+	h.defs.docs[document.KindBrief] = map[string]string{"goal": goalForm, "step": stepForm}
+	h.defs.docs[document.KindProcess]["p"] = strings.Replace(h.defs.docs[document.KindProcess]["p"],
 		`    diff: {source: git.diff, base: "${param.base}", head: "${param.candidate}"}`+"\n",
 		`    diff: {source: git.diff, base: "${param.base}", head: "${param.candidate}"}`+"\n"+
 			"    brief: {source: file, path: brief.md"+spec+"}\n", 1)
@@ -95,7 +95,7 @@ func TestATextWithOneOfItsFormsRuns(t *testing.T) {
 			}
 			var forms []string
 			for _, source := range record.Definitions {
-				if source.Kind == string(definition.KindBrief) {
+				if source.Kind == string(document.KindBrief) {
 					forms = append(forms, source.Name)
 				}
 			}
@@ -282,7 +282,7 @@ func TestACallChecksItsTextWithTheFormChecksItIsGiven(t *testing.T) {
 			h.calls = app.NewCalls(
 				resolver, h.runtimes,
 				map[string]app.InputProvider{"git.revision": h.inputs, "git.diff": h.inputs, "file": h.inputs}, h.copies, h.references,
-				h.workspaces, h.changes, h.holder(), app.NewVerifier(h.changes, h.commands, h.clock), app.NewRecoverer(h.clock), h.validator, h.recorder, h.runs,
+				h.workspaces, h.changes, h.holder(), app.CallsVerifier{Verifier: app.NewVerifier(h.changes, h.commands, h.clock)}, app.NewRecoverer(h.clock), h.validator, h.recorder, h.runs,
 				h.clock, h.timer, fixedIDs{}, "/state", h.hosted,
 			)
 			record := h.call(t, contract.CallRequest{})
@@ -316,7 +316,7 @@ func TestAFormTheResolutionLacksRefusesTheCall(t *testing.T) {
 	h.calls = app.NewCalls(
 		resolver, h.runtimes,
 		map[string]app.InputProvider{"git.revision": h.inputs, "git.diff": h.inputs, "file": h.inputs}, h.copies, h.references,
-		h.workspaces, h.changes, h.holder(), app.NewVerifier(h.changes, h.commands, h.clock), app.NewRecoverer(h.clock), h.validator, h.recorder, h.runs,
+		h.workspaces, h.changes, h.holder(), app.CallsVerifier{Verifier: app.NewVerifier(h.changes, h.commands, h.clock)}, app.NewRecoverer(h.clock), h.validator, h.recorder, h.runs,
 		h.clock, h.timer, fixedIDs{}, "/state", h.hosted,
 	)
 	record := h.call(t, contract.CallRequest{})
@@ -338,7 +338,7 @@ func TestAValueWithoutFormIsUnchecked(t *testing.T) {
 		t.Fatalf("result = %+v, asked %q", record.Result.Error, h.references.asked)
 	}
 	for _, source := range record.Definitions {
-		if source.Kind == string(definition.KindBrief) {
+		if source.Kind == string(document.KindBrief) {
 			t.Fatalf("a form was read: %+v", record.Definitions)
 		}
 	}
@@ -353,10 +353,10 @@ func formedFlow(goal string) *flowHarness {
 			"    candidate: {default: HEAD}\n", "    candidate: {default: HEAD}\n    goal: {}\n", 1),
 			"  values:\n", "  values:\n    goal: {source: param, name: goal}\n", 1)
 	}
-	h.defs.docs[definition.KindProcess]["first"] = takesGoal(nodeProcess("first", "Work as first."))
-	h.defs.docs[definition.KindProcess]["second"] = takesGoal(nodeProcess("second", "Work as second."))
-	h.defs.docs[definition.KindBrief] = map[string]string{"goal": goalForm}
-	h.defs.docs[definition.KindWorkflow]["w"] = strings.Replace(workflowDoc, "  values:\n", "  values:\n    goal: {source: file, path: goal.md, form: [goal]}\n", 1)
+	h.defs.docs[document.KindProcess]["first"] = takesGoal(nodeProcess("first", "Work as first."))
+	h.defs.docs[document.KindProcess]["second"] = takesGoal(nodeProcess("second", "Work as second."))
+	h.defs.docs[document.KindBrief] = map[string]string{"goal": goalForm}
+	h.defs.docs[document.KindWorkflow]["w"] = strings.Replace(workflowDoc, "  values:\n", "  values:\n    goal: {source: file, path: goal.md, form: [goal]}\n", 1)
 	base := h.inputs.respond
 	h.inputs.respond = func(spec app.InputSpec) (app.Resolved, error) {
 		if spec.Source == "file" && spec.Args["path"] == "goal.md" {
@@ -384,7 +384,7 @@ func TestAWorkflowsGoalIsCheckedBeforeItsNodesStart(t *testing.T) {
 	if record.Result.Status != run.Completed {
 		t.Fatalf("result = %+v", record.Result)
 	}
-	if len(record.Definitions) != 2 || record.Definitions[1].Kind != "briefs" || record.Definitions[1].Name != "goal" || record.Definitions[1].SHA256 != sha(goalForm) {
+	if len(record.Definitions) != 2 || record.Definitions[1].Kind != "briefs" || record.Definitions[1].Name != "goal" || digestRecorded(record.Definitions[1]) != sha(goalForm) {
 		t.Fatalf("definitions = %+v", record.Definitions)
 	}
 }
@@ -400,7 +400,7 @@ func TestShowWorkflowShowsItsForms(t *testing.T) {
 	if err != nil || view.Refusal != "" || !contains(view.Inputs, "goal <- file (form goal)") || !contains(view.Inputs, "base <- git.revision") {
 		t.Fatalf("inputs %q, refusal %q, %v", view.Inputs, view.Refusal, err)
 	}
-	if origin := (contract.DefinitionOrigin{Kind: "briefs", Name: "goal", Layer: "global", Path: "mem/briefs/goal"}); !containsOrigin(view.Sources, origin) {
+	if origin := (contract.DefinitionOrigin{Kind: "briefs", Name: "goal", Layer: "home", Path: "mem/briefs/goal"}); !containsOrigin(view.Sources, origin) {
 		t.Fatalf("sources lack goal: %+v", view.Sources)
 	}
 }
@@ -426,11 +426,10 @@ func TestCheckReadsBriefsAndLinksWhatNamesThem(t *testing.T) {
 	h := briefed(goalText, ", form: [goal, step]")
 	// And the workflow w, whose goal takes the form goal.
 	flow := formedFlow(goalText).defs.docs
-	for name, doc := range flow[definition.KindProcess] {
-		h.defs.docs[definition.KindProcess][name] = doc
+	for name, doc := range flow[document.KindProcess] {
+		h.defs.docs[document.KindProcess][name] = doc
 	}
-	h.defs.docs[definition.KindPolicy]["joining"] = flow[definition.KindPolicy]["joining"]
-	h.defs.docs[definition.KindWorkflow] = map[string]string{"w": flow[definition.KindWorkflow]["w"]}
+	h.defs.docs[document.KindWorkflow] = map[string]string{"w": flow[document.KindWorkflow]["w"]}
 	report := briefCheck(t, h)
 	if len(report.Problems) != 0 || report.Checked["briefs"] != 2 || report.Checked["workflows"] != 1 {
 		t.Fatalf("problems %q, checked %v", messages(report.Problems), report.Checked)
@@ -439,11 +438,13 @@ func TestCheckReadsBriefsAndLinksWhatNamesThem(t *testing.T) {
 	for _, d := range report.Definitions {
 		got[ref(d.Kind, d.Name)] = d
 	}
-	processUses := []contract.DefinitionRef{ref("agents", "a"), ref("policies", "pol"), ref("schemas", "s"), ref("briefs", "goal"), ref("briefs", "step")}
+	// A process uses no agent: a workflow's node binds it to one.
+	processUses := []contract.DefinitionRef{ref("prompts", "inspect"), ref("schemas", "s"), ref("briefs", "goal"), ref("briefs", "step")}
 	if p := got[ref("processes", "p")]; !reflect.DeepEqual(p.Uses, processUses) {
 		t.Fatalf("p = %+v", p)
 	}
-	workflowUses := []contract.DefinitionRef{ref("processes", "first"), ref("processes", "second"), ref("processes", "joiner"), ref("briefs", "goal")}
+	// The agent its nodes bind their processes to is the workflow's to name.
+	workflowUses := []contract.DefinitionRef{ref("processes", "first"), ref("agents", "a"), ref("processes", "second"), ref("processes", "joiner"), ref("briefs", "goal")}
 	if w := got[ref("workflows", "w")]; !reflect.DeepEqual(w.Uses, workflowUses) {
 		t.Fatalf("w = %+v", w)
 	}
@@ -455,7 +456,7 @@ func TestCheckReadsBriefsAndLinksWhatNamesThem(t *testing.T) {
 	}
 
 	h = briefed(goalText, ", form: [goal, plan]")
-	h.defs.docs[definition.KindBrief]["step"] = stepForm + "extra: 1\n"
+	h.defs.docs[document.KindBrief]["step"] = stepForm + "extra: 1\n"
 	want := []string{"brief step: extra: unknown field", `process p: input brief: brief "plan" does not exist`}
 	if got := messages(briefCheck(t, h).Problems); !reflect.DeepEqual(got, want) {
 		t.Fatalf("problems %q, want %q", got, want)
@@ -468,12 +469,12 @@ func TestShowProcessShowsItsForms(t *testing.T) {
 	t.Parallel()
 	h := briefed(goalText, ", form: [goal, step]")
 	inspection := app.NewInspection(app.NewResolver(h.defs, struct{ app.ResolverIdentities }{h.runtimes}, h.validator, resolverCheckStub{}))
-	view, err := inspection.ShowProcess(context.Background(), "p", "")
+	view, err := callShown(inspection, "p_a")
 	if err != nil || view.Refusal != "" || !contains(view.Inputs, "brief <- file (form goal, step)") || !contains(view.Inputs, "diff <- git.diff") {
 		t.Fatalf("inputs %q, refusal %q, %v", view.Inputs, view.Refusal, err)
 	}
 	for _, name := range []string{"goal", "step"} {
-		if origin := (contract.DefinitionOrigin{Kind: "briefs", Name: name, Layer: "global", Path: "mem/briefs/" + name}); !containsOrigin(view.Sources, origin) {
+		if origin := (contract.DefinitionOrigin{Kind: "briefs", Name: name, Layer: "home", Path: "mem/briefs/" + name}); !containsOrigin(view.Sources, origin) {
 			t.Fatalf("sources lack %s: %+v", name, view.Sources)
 		}
 	}

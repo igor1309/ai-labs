@@ -1,0 +1,217 @@
+package settings
+
+import (
+	"fmt"
+
+	"github.com/igor1309/ai-labs/agister/internal/domain/enforce"
+	"github.com/igor1309/ai-labs/agister/internal/domain/policy"
+)
+
+// binding is one node of a workflow, which binds its process to an agent,
+// as a call of the node resolves it (ADR-030 rules 5 and 8).
+type binding struct {
+	node      string // as the workflow's problems name it
+	process   Process
+	agent     Agent
+	effective policy.Effective
+}
+
+// bindings are the nodes of the workflow, each with the process it binds
+// to its agent, in declaration order, the join last. A node whose process
+// is missing or does not compose, or whose agent is missing, is left out:
+// each is reported where it is found.
+func (b Bundle) bindings(workflow Workflow) []binding {
+	if b.Service == nil {
+		return nil
+	}
+	var bound []binding
+	for i, node := range workflow.nodes() {
+		agent, ok := b.Agents[node.Agent]
+		process, exists := b.Processes[node.Process]
+		if !ok || !exists {
+			continue
+		}
+		effective, err := policy.Compose(b.Service.Ceilings, process.Limits, policy.Caller{})
+		if err != nil {
+			continue
+		}
+		bound = append(bound, binding{node: nodeLabel(workflow, i, node), process: process, agent: agent, effective: effective})
+	}
+	return bound
+}
+
+// problem is a problem of the workflow named name about the binding: it
+// names the node, its process and why the process cannot run there.
+func (bound binding) problem(name, format string, args ...any) Problem {
+	return Problem{Subject: "workflow " + name, Message: bound.node + ": process " + bound.process.Name + ": " + fmt.Sprintf(format, args...)}
+}
+
+// BindingPlan is what a call of one node of a workflow would be given on
+// the runtime of the agent the node binds its process to (ADR-030 rules 7
+// and 8).
+type BindingPlan struct {
+	Workflow string
+	Node     string
+	Label    string // the node as the workflow's problems name it
+	Process  string
+	Agent    string
+	Runtime  string // the runtime mapping's name
+	Version  string // the runtime version it is planned on
+	// Withheld are the permissions the process allows and does not require
+	// that the plan does not give: not a problem, but shown.
+	Withheld   []string
+	Extra      []string
+	Unverified []string
+	// Required are the permissions in tools.require the plan would
+	// withhold.
+	Required []string
+}
+
+// BindingPlans plans every node of every workflow as its call would, on
+// the agent the node binds its process to, workflows by name, each
+// workflow's nodes in declaration order, the join last. installed is the runtime version found for an
+// agent, by name: an agent's runtime is planned on it where it is known,
+// and otherwise on the version with the most evidence for its selected
+// primitives, the first when tied. A node that cannot be planned at all is left out: what stops it is
+// a problem Check, PlanProblems or ResumeProblems reports.
+func BindingPlans(b Bundle, installed map[string]string) []BindingPlan {
+	if b.Service == nil {
+		return nil
+	}
+	var plans []BindingPlan
+	for _, name := range sortedKeys(b.Workflows) {
+		workflow := b.Workflows[name]
+		for i, node := range workflow.nodes() {
+			process, ok := b.Processes[node.Process]
+			if !ok {
+				continue
+			}
+			agent, ok := b.Agents[node.Agent]
+			if !ok {
+				continue
+			}
+			mapping, ok := b.Mappings[agent.Runtime]
+			if !ok {
+				continue
+			}
+			effective, err := policy.Compose(b.Service.Ceilings, process.Limits, policy.Caller{})
+			if err != nil {
+				continue
+			}
+			versions := mapping.Offer.Versions()
+			if version, ok := installed[agent.Name]; ok {
+				versions = []string{version}
+			}
+			version, plan, found := planOn(effective, mapping.Offer, versions, b.Service.StateReaching)
+			if !found {
+				continue
+			}
+			planned := BindingPlan{Workflow: name, Node: node.Name, Label: nodeLabel(workflow, i, node), Process: process.Name, Agent: agent.Name, Runtime: mapping.Name, Version: version}
+			planned.Required, planned.Withheld = split(plan.Withheld, effective.Require)
+			planned.Extra = plan.Extra
+			for _, primitive := range mapping.Offer.Primitives {
+				if contains(plan.Primitives, primitive.Name) && !primitive.VerifiedFor(version) {
+					planned.Unverified = append(planned.Unverified, primitive.Name)
+				}
+			}
+			plans = append(plans, planned)
+		}
+	}
+	return plans
+}
+
+// SettingsPlan is the plan a call composed to effective would be given on
+// what its runtime offers, stateReaching never granted, judged on the
+// settings alone, as BindingPlans plans a binding whose runtime was not
+// asked: on the version with the most evidence for its selected primitives. Its Withheld has the
+// required permissions it withholds too. It is for a view of a call the
+// settings refuse: never one a call is given. found is false where no
+// version can be planned.
+func SettingsPlan(effective policy.Effective, offer enforce.Offer, stateReaching []string) (plan enforce.Plan, found bool) {
+	_, plan, found = planOn(effective, offer, offer.Versions(), stateReaching)
+	return plan, found
+}
+
+// planOn computes the declared plan once and chooses the version with the
+// most evidence for its primitives, version order breaking ties.
+func planOn(effective policy.Effective, offer enforce.Offer, versions, stateReaching []string) (version string, plan enforce.Plan, found bool) {
+	plan, err := enforce.Make(effective.Permissions, offer, effective.Require, stateReaching)
+	if refused, ok := err.(*enforce.RefusedError); ok && refused.Plan != nil {
+		plan, err = *refused.Plan, nil
+	}
+	if err != nil {
+		return "", enforce.Plan{}, false
+	}
+	most := -1
+	for _, candidate := range versions {
+		count := 0
+		for _, primitive := range offer.Primitives {
+			if contains(plan.Primitives, primitive.Name) && primitive.VerifiedFor(candidate) {
+				count++
+			}
+		}
+		if count > most {
+			version, most = candidate, count
+		}
+	}
+	return version, plan, true
+}
+
+// split divides withheld into the permissions in required and the others.
+func split(withheld, required []string) (inRequired, others []string) {
+	for _, permission := range withheld {
+		if contains(required, permission) {
+			inRequired = append(inRequired, permission)
+		} else {
+			others = append(others, permission)
+		}
+	}
+	return inRequired, others
+}
+
+// CostRefusal is why a call composed to effective cannot run on the runtime
+// named runtime, which enforces a cost limit only where enforces says so:
+// the limit it sets, which the runtime cannot enforce; "" when the call can
+// run.
+func CostRefusal(effective policy.Effective, runtime string, enforces bool) string {
+	if effective.MaxCostUSD == nil || enforces {
+		return ""
+	}
+	return fmt.Sprintf("runtime %s cannot enforce the cost limit %g", runtime, *effective.MaxCostUSD)
+}
+
+// CostProblems reports each node that binds to the agent a process that
+// sets a cost limit, which the agent's runtime was found unable to enforce
+// (ADR-030 rule 8). Only the runtime can say whether it enforces one.
+func CostProblems(b Bundle, agent Agent) []Problem {
+	mapping, ok := b.Mappings[agent.Runtime]
+	if !ok || b.Service == nil {
+		return nil
+	}
+	var problems []Problem
+	for _, name := range sortedKeys(b.Workflows) {
+		for _, bound := range b.bindings(b.Workflows[name]) {
+			if bound.agent.Name != agent.Name {
+				continue
+			}
+			if message := CostRefusal(bound.effective, mapping.Name, false); message != "" {
+				problems = append(problems, bound.problem(name, "%s", message))
+			}
+		}
+	}
+	return problems
+}
+
+// unresumed are the turns of the process that resume its call's session, a
+// repair turn (ADR-002 rule 4) and a recovery turn (ADR-024 rule 6), each
+// with why the session cannot be resumed.
+func unresumed(process Process, effective policy.Effective, why string) []string {
+	var problems []string
+	if verify := process.Limits.Verify; verify != nil && verify.MaxAttempts > 1 {
+		problems = append(problems, fmt.Sprintf("verify.max_attempts %d repairs in the call's session, but %s", verify.MaxAttempts, why))
+	}
+	if resumes := effective.Stale.Recover.MaxResumes; resumes > 0 {
+		problems = append(problems, fmt.Sprintf("stale.recover.max_resumes %d recovers in the call's session, but %s", resumes, why))
+	}
+	return problems
+}

@@ -1,0 +1,6 @@
+schema: agister.workflow/v1alpha1
+name: implement_assistant
+
+type: workflow
+
+call: {node: implement, uses: process:implement, agent: assistant}

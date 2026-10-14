@@ -7,7 +7,8 @@ package fakeoutput
 func Enabled(getenv func(string) string) bool { return getenv("FAKE_OUTPUT") == "schema" }
 
 // Instance is a small value the schema accepts: the first enum value or
-// const, an object with each required property, an array of one item, and
+// const, an object with each required property, an array of as many items
+// as its minItems asks and at least one, and
 // otherwise a zero value of the first listed type. An anyOf is answered by
 // its first variant. It covers the keywords Agister's schemas use, not JSON
 // Schema at large.
@@ -42,7 +43,12 @@ func Instance(schema any) any {
 		return object
 	case "array":
 		if items, ok := s["items"]; ok {
-			return []any{Instance(items)}
+			n, _ := s["minItems"].(float64)
+			array := make([]any, max(1, int(n)))
+			for i := range array {
+				array[i] = Instance(items)
+			}
+			return array
 		}
 		return []any{}
 	case "string":

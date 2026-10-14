@@ -7,33 +7,29 @@ import (
 	"testing"
 	"time"
 
-	"github.com/igor1309/ai-labs/agister/internal/domain/definition"
 	"github.com/igor1309/ai-labs/agister/internal/domain/run"
 )
 
 func TestConclude(t *testing.T) {
 	t.Parallel()
-	jsonOutput := definition.Output{Format: "json"}
-	text := definition.Output{Format: "text"}
 	completed := run.Turn{Status: run.Completed, Output: []byte(`{"verdict":"request_changes"}`)}
 	cases := []struct {
-		name       string
-		turn       run.Turn
-		output     definition.Output
-		validation error
-		status     run.Status
-		class      run.Class
+		name    string
+		turn    run.Turn
+		invalid error
+		status  run.Status
+		class   run.Class
 	}{
 		// A domain result is output of a completed node, whatever it says.
-		{"verdict is output", completed, jsonOutput, nil, run.Completed, ""},
-		{"invalid output", completed, jsonOutput, errors.New("bad"), run.Failed, run.ClassInvalidOutput},
-		{"text needs no validation", run.Turn{Status: run.Completed, Text: "hi"}, text, nil, run.Completed, ""},
-		{"runtime failure kept", run.Turn{Status: run.Failed, Error: run.Fault(run.ClassRateLimited, "")}, jsonOutput, nil, run.Failed, run.ClassRateLimited},
-		{"interruption kept", run.Turn{Status: run.Interrupted, Error: run.Fault(run.ClassTimeout, "")}, text, nil, run.Interrupted, run.ClassTimeout},
-		{"a failure without a reason still has a class", run.Turn{Status: run.Lost}, text, nil, run.Lost, run.ClassRuntimeError},
+		{"verdict is output", completed, nil, run.Completed, ""},
+		{"invalid output", completed, errors.New("bad"), run.Failed, run.ClassInvalidOutput},
+		{"text needs no validation", run.Turn{Status: run.Completed, Text: "hi"}, nil, run.Completed, ""},
+		{"runtime failure kept", run.Turn{Status: run.Failed, Error: run.Fault(run.ClassRateLimited, "")}, nil, run.Failed, run.ClassRateLimited},
+		{"interruption kept", run.Turn{Status: run.Interrupted, Error: run.Fault(run.ClassTimeout, "")}, nil, run.Interrupted, run.ClassTimeout},
+		{"a failure without a reason still has a class", run.Turn{Status: run.Lost}, nil, run.Lost, run.ClassRuntimeError},
 	}
 	for _, c := range cases {
-		status, fault := run.Conclude(c.turn, c.output, c.validation)
+		status, fault := run.Conclude(c.turn, c.invalid)
 		class := run.Class("")
 		if fault != nil {
 			class = fault.Class
@@ -84,7 +80,7 @@ func TestRecordJSONForDefinitionsPolicyAndPlanIsFixed(t *testing.T) {
 			Access:      "read-only",
 			Scope:       "candidate",
 		},
-		Plan: &run.Plan{Primitives: []string{"Read"}, Granted: []string{"repository.read"}, Withheld: []string{"repository.diff"}},
+		Plan: &run.Plan{Primitives: []string{"Read"}, Granted: []string{"repository.read", "process.execute"}, Withheld: []string{"repository.diff"}, Declared: []string{"repository.read"}, Extra: []string{"process.execute"}},
 	}
 	data, err := json.Marshal(record)
 	if err != nil {
@@ -99,7 +95,7 @@ func TestRecordJSONForDefinitionsPolicyAndPlanIsFixed(t *testing.T) {
 			`{"kind":"agents","name":"a","path":"/repo/.agister/agents/a.toml","sha256":"def","project":true,"overrides":"/home/.agister/agents/a.toml"}]`,
 		"effective": `{"timeout":1200000000000,"max_attempts":1,"max_cost_usd":0.5,"allow":["repository.read"],"deny":[],` +
 			`"permissions":["repository.read"],"require":["repository.read"],"access":"read-only","scope":"candidate"}`,
-		"plan": `{"primitives":["Read"],"granted":["repository.read"],"withheld":["repository.diff"]}`,
+		"plan": `{"primitives":["Read"],"granted":["repository.read","process.execute"],"withheld":["repository.diff"],"declared":["repository.read"],"extra":["process.execute"]}`,
 	}
 	for field, text := range want {
 		if string(got[field]) != text {
@@ -361,5 +357,43 @@ func TestLatestTotalsAreTheSessionsLatestRecordedTurn(t *testing.T) {
 		if test.want == nil && got != nil || test.want != nil && (got == nil || *got.CostUSD != *test.want) {
 			t.Fatalf("%s: got %+v, want %v", test.name, got, test.want)
 		}
+	}
+}
+
+func TestRecordIncludesPersistedWarningsInOutcomes(t *testing.T) {
+	t.Parallel()
+	for _, c := range []struct {
+		name          string
+		plan          *run.Plan
+		workflow      *run.Workflow
+		outcome, want []string
+	}{
+		{name: "older record", outcome: []string{"outcome warning"}, want: []string{"outcome warning"}},
+		{name: "plan warning", plan: &run.Plan{Warnings: []string{"plan warning"}}, want: []string{"plan warning"}},
+		{name: "both sources", plan: &run.Plan{Warnings: []string{"plan warning"}}, outcome: []string{"outcome warning"}, want: []string{"outcome warning", "plan warning"}},
+		{name: "warning already included", plan: &run.Plan{Warnings: []string{"plan warning"}}, outcome: []string{"plan warning"}, want: []string{"plan warning"}},
+		{name: "workflow warning", workflow: &run.Workflow{Warnings: []string{"node one: plan warning"}}, want: []string{"node one: plan warning"}},
+		{name: "older workflow", workflow: &run.Workflow{}, outcome: []string{"outcome warning"}, want: []string{"outcome warning"}},
+		{name: "workflow warning already included", workflow: &run.Workflow{Warnings: []string{"node one: plan warning"}}, outcome: []string{"node one: plan warning"}, want: []string{"node one: plan warning"}},
+		{name: "all sources", plan: &run.Plan{Warnings: []string{"plan warning"}}, workflow: &run.Workflow{Warnings: []string{"node one: plan warning"}}, outcome: []string{"outcome warning"}, want: []string{"outcome warning", "plan warning", "node one: plan warning"}},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
+			record := run.Record{Plan: c.plan, Workflow: c.workflow}
+			result := record.WithWarnings(run.Result{Status: run.Completed, Warnings: c.outcome})
+			if result.Status != run.Completed || !reflect.DeepEqual(result.Warnings, c.want) {
+				t.Fatalf("outcome = %+v, want warnings %v", result, c.want)
+			}
+			result.Warnings[0] = "caller changed it"
+			if c.plan != nil && c.plan.Warnings[0] != "plan warning" {
+				t.Fatalf("outcome changed the snapshot: %v", c.plan.Warnings)
+			}
+			if c.workflow != nil && len(c.workflow.Warnings) > 0 && c.workflow.Warnings[0] != "node one: plan warning" {
+				t.Fatalf("outcome changed the workflow snapshot: %v", c.workflow.Warnings)
+			}
+			if len(c.outcome) > 0 && c.outcome[0] != c.want[0] {
+				t.Fatalf("outcome changed the original result: %v", c.outcome)
+			}
+		})
 	}
 }

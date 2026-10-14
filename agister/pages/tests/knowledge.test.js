@@ -57,8 +57,8 @@ test('a skill name lists its entries, is shared in several folders, and names th
 });
 
 // ADR-021, the amendment of ADR-011 rule 5: an agent's skills are two
-// lists. The ones its settings name (its own, and per process on it the
-// process's) carry their layer and the server's checks of that layer, as
+// lists. The ones its settings name (its own, and per process a
+// workflow's node binds to it the process's) carry their layer and the server's checks of that layer, as
 // config.js found them in the server's inventory (D-16), or are missing;
 // the ones its runtime loads are as before.
 test('an agent’s settings skills are its own and its processes’, with layer, checks or missing, apart from what its runtime loads', () => {
@@ -76,9 +76,10 @@ test('an agent’s settings skills are its own and its processes’, with layer,
       ...settings.agents.slice(1),
     ],
     processes: [
-      { name: 'review', agent: 'opus', skills: [found('go', 'home')] },
-      { name: 'quiet', agent: 'opus', skills: [] },
-      { name: 'elsewhere', agent: 'sol', skills: [found('plan', 'repo', true)] },
+      { name: 'review', agents: ['opus'], skills: [found('go', 'home')] },
+      { name: 'quiet', agents: ['opus'], skills: [] },
+      { name: 'elsewhere', agents: ['sol'], skills: [found('plan', 'repo', true)] },
+      { name: 'unbound', agents: [], skills: [found('plan', 'repo', true)] },
       { name: 'broken', file: 'processes/broken.yaml', error: 'does not parse' },
     ],
   };

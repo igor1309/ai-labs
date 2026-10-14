@@ -11,7 +11,7 @@ import (
 
 	"github.com/igor1309/ai-labs/agister/internal/app"
 	"github.com/igor1309/ai-labs/agister/internal/contract"
-	"github.com/igor1309/ai-labs/agister/internal/domain/definition"
+	"github.com/igor1309/ai-labs/agister/internal/domain/document"
 	"github.com/igor1309/ai-labs/agister/internal/domain/run"
 )
 
@@ -100,7 +100,7 @@ func TestACommandInTheWorktreeGetsOnlyTheCallsRemainingTime(t *testing.T) {
 	verifying(h)
 	changedByTheTurn(h)
 	rebuilding(h, "sha-HEAD")
-	h.defs.docs[definition.KindProcess]["p"] = strings.Replace(h.defs.docs[definition.KindProcess]["p"], "timeout: 10m", "timeout: 30s", 1)
+	h.defs.docs[document.KindProcess]["p"] = strings.Replace(h.defs.docs[document.KindProcess]["p"], "timeout: 10m", "timeout: 30s", 1)
 	h.runner.during = func(app.TurnRequest) { clock.advance(50 * time.Second) }
 	record := h.call(t, contract.CallRequest{Timeout: "60s"})
 
@@ -158,7 +158,7 @@ func TestAVerificationThatSaysWhereVerifiesInTheWorktree(t *testing.T) {
 			t.Parallel()
 			h := newHarness()
 			verifying(h)
-			h.defs.docs[definition.KindProcess]["p"] += "  where: " + where + "\n"
+			h.defs.docs[document.KindProcess]["p"] += "  where: " + where + "\n"
 			changedByTheTurn(h)
 			rebuilding(h, "sha-HEAD")
 			record := h.call(t, contract.CallRequest{})

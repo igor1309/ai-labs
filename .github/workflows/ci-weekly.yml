@@ -1,0 +1,31 @@
+name: CI Weekly
+
+# Weekly full run of CI on trunk (LAB-219). A push runs only the jobs its
+# changed paths select, so a job nothing touched for months is never run and
+# a breakage from outside the repository (a runner image, a toolchain, an
+# unpinned dependency) stays unseen until the next change to that project.
+# A manual dispatch of ci.yml runs every job; this dispatches it.
+# Runs at 00:37 UTC on Sunday (03:37 Moscow time), when the runners are idle.
+# A failure is reported by ci.yml's own notify job.
+
+on:
+  schedule:
+    - cron: "37 0 * * 0"   # Sunday 03:37 MSK
+  workflow_dispatch:
+
+permissions:
+  actions: write
+
+concurrency:
+  group: ci-weekly
+  cancel-in-progress: true
+
+jobs:
+  dispatch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Run every CI job on trunk
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run ci.yml --repo "$GITHUB_REPOSITORY" --ref trunk

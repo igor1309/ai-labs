@@ -69,12 +69,15 @@ func TestExampleWorkflowEndToEnd(t *testing.T) {
 			join = lastRunIn(t, filepath.Join(home, "runs", node.Run))
 		}
 	}
-	// The join's runtime received each fan-out output once, and nothing of
-	// the caller's.
+	// The join's runtime received each fan-out outcome once, naming no
+	// node, process or run (ADR-034), and nothing of the caller's.
 	prompt, _ := join.first["prompt"].(string)
-	for _, node := range []string{`"node": "adversarial"`, `"node": "architecture"`} {
-		if strings.Count(prompt, node) != 1 {
-			t.Fatalf("the join's prompt has %s %d times:\n%s", node, strings.Count(prompt, node), prompt)
+	if n := strings.Count(prompt, `"status": "completed"`); n != 2 {
+		t.Fatalf("the join's prompt has %d completed entries:\n%s", n, prompt)
+	}
+	for _, name := range []string{`"node"`, `"process"`, `"run"`, "adversarial", "architecture"} {
+		if strings.Contains(prompt, name) {
+			t.Fatalf("the join's prompt names %s:\n%s", name, prompt)
 		}
 	}
 	if strings.Contains(prompt, candidate) {
@@ -88,12 +91,12 @@ func TestExampleWorkflowEndToEnd(t *testing.T) {
 		t.Fatalf("runs: %d\n%s", r.code, r.stdout)
 	}
 
-	// What a caller may not give a workflow, and a join called on its own,
-	// are refused.
+	// What a caller may not give a workflow, and a join's process called
+	// on its own, by a workflow of one call, are refused.
 	if r := agister(t, home, repo, "run", "review_panel", "--param", "architecture=a.txt", "--timeout", "1m"); r.code != cli.ExitRefused {
 		t.Fatalf("with a timeout: exit %d\n%s", r.code, r.stderr)
 	}
-	if r := agister(t, home, repo, "run", "review_summary"); r.code != cli.ExitRefused || !strings.Contains(r.stderr, "given only to a workflow's join") {
+	if r := agister(t, home, repo, "run", bound(t, home, "review_summary", "reviewer")); r.code != cli.ExitRefused || !strings.Contains(r.stderr, "call node review_summary: process review_summary takes the collection (input reviews), which only a join receives") {
 		t.Fatalf("the join on its own: exit %d\n%s", r.code, r.stderr)
 	}
 }
@@ -111,7 +114,7 @@ func TestExampleWorkflowJoinsWithoutATimedOutNode(t *testing.T) {
 	// test passes once the turn waits on it.
 	path := filepath.Join(home, "processes", "adversarial_review.yaml")
 	process := strings.Replace(read(t, path), "  values:\n", "  values:\n    stall: {source: file, path: stall.txt}\n", 1)
-	write(t, path, strings.Replace(process, "workspace:\n", "timeout: 7m\n\nworkspace:\n", 1))
+	write(t, path, strings.Replace(process, "timeout: 20m\n", "timeout: 7m\n", 1))
 	write(t, filepath.Join(repo, "stall.txt"), "SCENARIO:hang\n")
 	const timeout = 7 * time.Minute
 	clock := clocktest.NewClock(time.Date(2026, 10, 3, 12, 0, 0, 0, time.UTC))
@@ -137,11 +140,12 @@ func TestExampleWorkflowJoinsWithoutATimedOutNode(t *testing.T) {
 	if err != nil || json.Unmarshal(data, &collection) != nil || len(collection) != 2 {
 		t.Fatalf("collection: %v\n%s", err, data)
 	}
+	// The entries stand in declaration order, adversarial first (ADR-034).
 	adversarial, architecture := collection[0], collection[1]
-	if adversarial["node"] != "adversarial" || adversarial["status"] != "interrupted" || adversarial["class"] != "timeout" || adversarial["output"] != nil {
+	if adversarial["status"] != "interrupted" || adversarial["class"] != "timeout" || adversarial["output"] != nil {
 		t.Fatalf("adversarial entry = %v", adversarial)
 	}
-	if architecture["node"] != "architecture" || architecture["status"] != "completed" || architecture["output"] == nil {
+	if architecture["status"] != "completed" || architecture["output"] == nil {
 		t.Fatalf("architecture entry = %v", architecture)
 	}
 }
@@ -152,9 +156,7 @@ func lastRunIn(t *testing.T, dir string) run {
 	var r run
 	r.dir = dir
 	readJSON(t, filepath.Join(dir, "record.json"), &r.record)
-	if data, err := os.ReadFile(filepath.Join(dir, "provider.jsonl")); err == nil {
-		_ = json.Unmarshal([]byte(strings.SplitN(string(data), "\n", 2)[0]), &r.first)
-	}
+	_ = json.Unmarshal([]byte(runtimeEcho(dir)), &r.first)
 	return r
 }
 
@@ -233,7 +235,7 @@ func TestNextCallReapsAKilledWorkflowsNodes(t *testing.T) {
 		t.Fatal(err)
 	}
 	next, err := client.Submit(ctx, contract.CallRequest{
-		Process: "adversarial_review", Params: map[string]string{"base": "main"}, Timeout: "7m", Cwd: repo,
+		Process: "adversarial_review_reviewer", Params: map[string]string{"base": "main"}, Timeout: "7m", Cwd: repo,
 	})
 	if err != nil {
 		t.Fatal(err)

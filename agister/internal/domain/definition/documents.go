@@ -8,24 +8,19 @@ import (
 	"time"
 
 	"gopkg.in/yaml.v3"
+
+	"github.com/igor1309/ai-labs/agister/internal/domain/document"
+	"github.com/igor1309/ai-labs/agister/internal/domain/input"
 )
 
-// Hierarchical documents (process, policy, verification, runtime mapping)
-// are YAML.
+// Hierarchical documents (process, verification, runtime mapping) are
+// YAML.
 
 const (
 	ProcessSchema = "agister.process/v1alpha1"
-	PolicySchema  = "agister.process-policy/v1alpha1"
 	RuntimeSchema = "agister.runtime/v1alpha1"
 	VerifySchema  = "agister.verify/v1alpha1"
 )
-
-// Policy is a reusable set of execution defaults.
-type Policy struct {
-	Name   string
-	Limits Limits
-	Source Source
-}
 
 // Param is a value supplied by the caller of a process.
 type Param struct {
@@ -67,8 +62,9 @@ type Verify struct {
 }
 
 // Repairs reports whether a failed run may be followed by a repair turn,
-// which resumes the call's session: an agent and runtime that cannot
-// continue sessions cannot run it.
+// which resumes the call's session: a call whose session may not be
+// resumed (CallSession), or whose runtime cannot resume one, cannot run
+// it.
 func (v *Verify) Repairs() bool { return v != nil && v.MaxAttempts > 1 }
 
 // Verification is a verification command as a document of its own, which
@@ -76,18 +72,22 @@ func (v *Verify) Repairs() bool { return v != nil && v.MaxAttempts > 1 }
 type Verification struct {
 	Name   string
 	Verify Verify
-	Source Source
+	Source document.Source
 }
 
-// Process is a named agent call.
+// Process is named work. It names no agent: a workflow's node binds it to
+// one (ADR-030 rules 2 and 5).
 type Process struct {
 	Name        string
-	Agent       string
-	Policy      string
 	Instruction string
-	Params      []Param
-	Values      []Value
-	Revision    string // name of the input whose revision HEAD must be (ADR-025 rule 2)
+	// Prompt names the prompt its calls are given as the input prompt, and
+	// Guidance the further prompts, each as the input guidance.<name>, in
+	// order (ADR-028 rule 8).
+	Prompt   string
+	Guidance []string
+	Params   []Param
+	Values   []Value
+	Revision string // name of the input whose revision HEAD must be (ADR-025 rule 2)
 	// Clean says a fresh call needs the worktree's content to be HEAD's
 	// (ADR-025 rule 3).
 	Clean   bool
@@ -98,12 +98,15 @@ type Process struct {
 	// resolved; unset: no verification, or a named one not resolved.
 	Verify     *Verify
 	VerifyName string // name of a verification definition, in place of the inline block
-	Limits     Limits // narrowing overrides
+	Limits     Limits // its own, within the service's ceilings (ADR-030 rule 4)
+	// Session says whether a call's session may be resumed, SessionFresh or
+	// SessionResumable (ADR-030 rule 3); unset: it may not (CallSession).
+	Session string
 	// Obsolete are the warnings for the fields it holds that ADR-025
 	// removed, which are read and ignored: workspace.setup, and verify.where
 	// in its inline block.
 	Obsolete []string
-	Source   Source
+	Source   document.Source
 }
 
 // Primitive is one restriction primitive a runtime offers.
@@ -121,7 +124,7 @@ type Mapping struct {
 	Efforts    []string
 	Select     string // "any" subset, or exactly "one"
 	Primitives []Primitive
-	Source     Source
+	Source     document.Source
 }
 
 func header(values map[string]*yaml.Node, schema, expected string, p *problems) {
@@ -147,25 +150,18 @@ func checkSchema(value, schema string, p *problems) {
 	}
 }
 
-// ParsePolicy parses a process policy.
-func ParsePolicy(doc Document) (Policy, error) {
-	p := &problems{}
-	root := parseOneYAML(doc.Bytes, p)
-	if root == nil {
-		return Policy{Name: doc.Source.Name, Source: doc.Source}, p.err("policy " + subjectName(doc.Source))
-	}
-	values := fields(root, "", append([]string{"schema", "name", "status"}, limitKeys...), p)
-	header(values, PolicySchema, doc.Source.Name, p)
-	limits, _, _ := parseLimits(values, []string{"allow"}, []string{"access", "scope"}, p)
-	return Policy{Name: doc.Source.Name, Limits: limits, Source: doc.Source}, p.err("policy " + subjectName(doc.Source))
+// ParseProcess parses a process definition.
+func ParseProcess(doc document.Document) (Process, error) {
+	p := problemsOf(doc.Source)
+	process := parseProcess(doc, p)
+	return process, p.err("process " + subjectName(doc.Source))
 }
 
-// ParseProcess parses a process definition.
-func ParseProcess(doc Document) (Process, error) {
-	p := &problems{}
+// parseProcess parses a process definition, adding its problems to p.
+func parseProcess(doc document.Document, p *problems) Process {
 	root := parseOneYAML(doc.Bytes, p)
 	if root == nil {
-		return Process{Name: doc.Source.Name, Source: doc.Source}, p.err("process " + subjectName(doc.Source))
+		return Process{Name: doc.Source.Name, Source: doc.Source}
 	}
 	// Read by key, a second verify would replace the first, so a process
 	// could declare both forms (ADR-010 rule 2) and run the one it names
@@ -178,31 +174,65 @@ func ParseProcess(doc Document) (Process, error) {
 	if declared(root, "skills") > 1 {
 		p.add("skills", "is declared more than once: one list names the process's skills")
 	}
-	values := fields(root, "", append([]string{"schema", "name", "status", "type", "uses", "policy", "input", "output", "verify", "skills"}, limitKeys...), p)
+	// And a second prompt or guidance: a call would run without one it
+	// names (ADR-028 rule 8).
+	if declared(root, "prompt") > 1 {
+		p.add("prompt", "is declared more than once: a process has one prompt")
+	}
+	if declared(root, "guidance") > 1 {
+		p.add("guidance", "is declared more than once: one list names the process's guidance")
+	}
+	values := fields(root, "", append([]string{"schema", "name", "status", "type", "extends", "uses", "policy", "session", "prompt", "guidance", "input", "output", "verify", "skills"}, limitKeys...), p)
 	header(values, ProcessSchema, doc.Source.Name, p)
 	if value, _ := scalar(values["type"], "type", p); value != "process" {
 		p.add("type", `must be "process"`)
 	}
 
 	process := Process{Name: doc.Source.Name, Source: doc.Source}
-	uses := required(values, "uses", "", p)
-	if agent, ok := strings.CutPrefix(uses, "agent:"); ok && agent != "" {
-		process.Agent = agent
-	} else if uses != "" {
-		p.add("uses", `must be "agent:<name>"`)
+	// The base is composed under the process as it is read (ADR-030 rule
+	// 9): here it is only named.
+	if node, ok := values["extends"]; ok && baseName(node) == "" {
+		p.add("extends", `must be "process:<name>"`)
 	}
-	if node, ok := values["policy"]; ok {
-		reference, _ := scalar(node, "policy", p)
-		if policy, ok := strings.CutPrefix(reference, "process-policy:"); ok && policy != "" {
-			process.Policy = policy
-		} else {
-			p.add("policy", `must be "process-policy:<name>"`)
+	// A process names no agent (ADR-030 rule 2).
+	if _, ok := values["uses"]; ok {
+		p.add("uses", "a process names no agent (ADR-030 rule 2): name the agent on each workflow node that binds the process, and remove uses")
+	}
+	// Policies are gone: a process holds its own limits (ADR-030 rule 4).
+	if _, ok := values["policy"]; ok {
+		p.add("policy", "there are no policies (ADR-030): set the policy's fields on the process and remove policy")
+	}
+	// Whether its calls' session may be resumed is the process's to say
+	// (ADR-030 rule 3).
+	if node, ok := values["session"]; ok {
+		if mode, ok := scalar(node, "session", p); ok {
+			process.Session = sessionMode(mode, p)
 		}
 	}
 
-	input := fields(values["input"], "input", []string{"instruction", "params", "values"}, p)
-	process.Instruction = required(input, "instruction", "input", p)
-	process.Params, process.Values = parseInputs(input, p)
+	// Literal document names, which nothing is substituted in (ADR-028
+	// rule 8).
+	if name := required(values, "prompt", "", p); name != "" && promptName(name, "prompt", p) {
+		process.Prompt = name
+	}
+	if node, ok := values["guidance"]; ok && node.Kind != yaml.SequenceNode {
+		p.add("guidance", "must be a list of prompt names; [] for none")
+	} else {
+		process.Guidance = guidanceNames(stringList(node, "guidance", p), process.Prompt, p)
+	}
+
+	inputFields := fields(values["input"], "input", []string{"instruction", "params", "values"}, p)
+	process.Instruction = required(inputFields, "instruction", "input", p)
+	process.Params, process.Values = parseInputs(inputFields, p)
+	// The prompt and the guidance are given as inputs of these names.
+	for _, value := range process.Values {
+		switch {
+		case value.Name == input.PromptInput:
+			p.add("input.values."+value.Name, "is the input that gives the process's prompt (ADR-028): name this value otherwise")
+		case strings.HasPrefix(value.Name, input.GuidanceInput):
+			p.add("input.values."+value.Name, "is the name of an input that gives a guidance prompt (ADR-028): name this value otherwise")
+		}
+	}
 
 	limits, tools, workspace := parseLimits(values, []string{"allow", "require"}, []string{"access", "scope", "revision", "clean", "setup", "checkout"}, p)
 	process.Limits = limits
@@ -249,7 +279,7 @@ func ParseProcess(doc Document) (Process, error) {
 
 	if node, ok := values["verify"]; ok {
 		if node.Kind == yaml.ScalarNode && node.Tag != "!!null" {
-			if name, ok := strings.CutPrefix(node.Value, "verify:"); ok && ValidName(name) {
+			if name, ok := strings.CutPrefix(node.Value, "verify:"); ok && document.ValidName(name) {
 				process.VerifyName = name
 			} else {
 				p.add("verify", `must be "verify:<name>" or the inline fields`)
@@ -268,13 +298,13 @@ func ParseProcess(doc Document) (Process, error) {
 		}
 	}
 
-	return process, p.err("process " + subjectName(doc.Source))
+	return process
 }
 
 // ParseVerify parses a verification: the fields of a process's inline
 // verify block, as a document a process names.
-func ParseVerify(doc Document) (Verification, error) {
-	p := &problems{}
+func ParseVerify(doc document.Document) (Verification, error) {
+	p := problemsOf(doc.Source)
 	verification := Verification{Name: doc.Source.Name, Source: doc.Source}
 	root := parseOneYAML(doc.Bytes, p)
 	if root == nil {
@@ -305,7 +335,7 @@ func verifyFields() []string {
 func parseVerify(values map[string]*yaml.Node, field string, p *problems) *Verify {
 	for _, key := range verifyKeys() {
 		if _, ok := values[key]; !ok {
-			p.add(join(field, key), "is required")
+			p.missing(join(field, key))
 		}
 	}
 	verify := &Verify{
@@ -338,9 +368,9 @@ const (
 
 // parseInputs reads input.params, the values a caller supplies, and
 // input.values, each input and its source, in declaration order.
-func parseInputs(input map[string]*yaml.Node, p *problems) ([]Param, []Value) {
+func parseInputs(inputFields map[string]*yaml.Node, p *problems) ([]Param, []Value) {
 	var params []Param
-	for _, entry := range mapping(input["params"], "input.params", p) {
+	for _, entry := range mapping(inputFields["params"], "input.params", p) {
 		field := "input.params." + entry.key
 		param := Param{Name: entry.key}
 		spec := fields(entry.value, field, []string{"default"}, p)
@@ -351,7 +381,7 @@ func parseInputs(input map[string]*yaml.Node, p *problems) ([]Param, []Value) {
 		params = append(params, param)
 	}
 	var values []Value
-	for _, entry := range mapping(input["values"], "input.values", p) {
+	for _, entry := range mapping(inputFields["values"], "input.values", p) {
 		field := "input.values." + entry.key
 		value := Value{Name: entry.key, Args: map[string]string{}}
 		formed := false
@@ -377,6 +407,10 @@ func parseInputs(input map[string]*yaml.Node, p *problems) ([]Param, []Value) {
 				p.unknown(join(field, arg.key), "must be a scalar")
 				continue
 			}
+			if arg.key == "optional" {
+				p.add(join(field, arg.key), retiredOptional)
+				continue
+			}
 			text, _ := scalar(arg.value, join(field, arg.key), p)
 			if arg.key == "source" {
 				value.Source = text
@@ -385,14 +419,13 @@ func parseInputs(input map[string]*yaml.Node, p *problems) ([]Param, []Value) {
 			}
 		}
 		if value.Source == "" {
-			p.add(field+".source", "is required")
+			p.missing(field + ".source")
 		}
-		if formed && value.Source != FileSource && value.Source != "" {
-			p.add(field+".form", "applies to source %s only: a brief is read from a file", FileSource)
+		if formed && value.Source != input.FileSource && value.Source != "" {
+			p.add(field+".form", "applies to source %s only: a brief is read from a file", input.FileSource)
 		}
-		if value.Source == PromptSource {
-			// A literal document name, which nothing is substituted in.
-			promptArgs(value, field, p)
+		if value.Source == input.PromptSource {
+			p.add(field+".source", retiredPromptSource)
 			values = append(values, value)
 			continue
 		}
@@ -403,12 +436,8 @@ func parseInputs(input map[string]*yaml.Node, p *problems) ([]Param, []Value) {
 		}
 		// Values resolve in order, so a value refers only to earlier ones.
 		for _, reference := range value.references("value") {
-			switch {
-			case !hasValue(values, reference):
+			if !hasValue(values, reference) {
 				p.add(field, "refers to ${value.%s}, which is not an input value declared before it", reference)
-			case optionalValue(values, reference):
-				// An input never depends on one that may be missing (ADR-019 rule 5).
-				p.add(field, "refers to ${value.%s}, an optional prompt, which may be missing", reference)
 			}
 		}
 		values = append(values, value)
@@ -417,8 +446,8 @@ func parseInputs(input map[string]*yaml.Node, p *problems) ([]Param, []Value) {
 }
 
 // ParseMapping parses a runtime permission mapping.
-func ParseMapping(doc Document) (Mapping, error) {
-	p := &problems{}
+func ParseMapping(doc document.Document) (Mapping, error) {
+	p := problemsOf(doc.Source)
 	root := parseOneYAML(doc.Bytes, p)
 	if root == nil {
 		return Mapping{Name: doc.Source.Name, Source: doc.Source}, p.err("runtime mapping " + subjectName(doc.Source))
@@ -456,82 +485,6 @@ func ParseMapping(doc Document) (Mapping, error) {
 		p.add("primitives.items", "must declare at least one primitive")
 	}
 	return m, p.err("runtime mapping " + subjectName(doc.Source))
-}
-
-// UnknownPermissions lists names used by the mapping that are not in vocabulary.
-func (m Mapping) UnknownPermissions(vocabulary []string) []string {
-	var unknown []string
-	for _, primitive := range m.Primitives {
-		for _, grant := range primitive.Grants {
-			if !contains(vocabulary, grant) && !contains(unknown, grant) {
-				unknown = append(unknown, grant)
-			}
-		}
-	}
-	return unknown
-}
-
-// VerifiedFor reports whether version matches one of the primitive's
-// verified prefixes. A prefix matches whole components: "2.1" and "2.1."
-// match 2.1.3, not 2.10.0.
-func (p Primitive) VerifiedFor(version string) bool {
-	for _, prefix := range p.Verified {
-		prefix = strings.TrimSuffix(prefix, ".")
-		if prefix != "" && (version == prefix || strings.HasPrefix(version, prefix+".")) {
-			return true
-		}
-	}
-	return false
-}
-
-// ForVersion keeps only the primitives verified for version, so a plan
-// made from it never grants an unchecked primitive, and names the rest.
-func (m Mapping) ForVersion(version string) (Mapping, []string) {
-	return m.keep(func(p Primitive) bool { return p.VerifiedFor(version) })
-}
-
-// Verified reports whether any primitive is verified for version.
-func (m Mapping) Verified(version string) bool {
-	verified, _ := m.ForVersion(version)
-	return len(verified.Primitives) > 0
-}
-
-// ForAnyVersion keeps the primitives verified for some version: what a
-// plan can use before the runtime's version is known.
-func (m Mapping) ForAnyVersion() (Mapping, []string) {
-	return m.keep(func(p Primitive) bool { return len(p.Verified) > 0 })
-}
-
-// Versions lists the distinct version prefixes some primitive is verified
-// for, sorted and without a trailing dot: each is a version a plan can be
-// made for.
-func (m Mapping) Versions() []string {
-	seen := map[string]bool{}
-	var versions []string
-	for _, primitive := range m.Primitives {
-		for _, prefix := range primitive.Verified {
-			if prefix = strings.TrimSuffix(prefix, "."); prefix != "" && !seen[prefix] {
-				seen[prefix] = true
-				versions = append(versions, prefix)
-			}
-		}
-	}
-	sort.Strings(versions)
-	return versions
-}
-
-func (m Mapping) keep(verified func(Primitive) bool) (Mapping, []string) {
-	kept := m
-	kept.Primitives = nil
-	var unverified []string
-	for _, primitive := range m.Primitives {
-		if verified(primitive) {
-			kept.Primitives = append(kept.Primitives, primitive)
-		} else {
-			unverified = append(unverified, primitive.Name)
-		}
-	}
-	return kept, unverified
 }
 
 var reference = regexp.MustCompile(`\$\{(param|value)\.([a-z_][a-z0-9_]*)\}`)
@@ -589,18 +542,6 @@ func hasParam(params []Param, name string) bool {
 func hasValue(values []Value, name string) bool {
 	for _, value := range values {
 		if value.Name == name {
-			return true
-		}
-	}
-	return false
-}
-
-// optionalValue reports whether any of values named name is an optional
-// prompt. Names may repeat, and at run time a later input of the name
-// supplies its text, so the first of them alone does not say.
-func optionalValue(values []Value, name string) bool {
-	for _, value := range values {
-		if value.Name == name && value.Optional() {
 			return true
 		}
 	}

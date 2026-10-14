@@ -10,7 +10,7 @@ description: "Phase 6 onboarding checklist for project/service labels, allowlist
 Onboard services without label drift, while keeping Loki label cardinality bounded and CI-enforced.
 
 ## Required labels (Docker Compose)
-Every service in every Compose manifest must define both labels:
+Every service in every Compose manifest of an onboarded project must define both labels. A project is onboarded when the allowlist's `projects` names it; the check reads the Compose manifests under the top-level folder of that name, and no others:
 - `com.logging.project`
 - `com.logging.service`
 

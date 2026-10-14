@@ -1,67 +1,35 @@
 # AGENTS (agister)
 
-Agister is developed by dogfooding: its own implementation and review run
-through Agister, from the repository root. These rules replace the root
-`AGENTS.md`'s implementation and review steps; its verification rules
-still apply.
+What any change to Agister needs, besides the root `AGENTS.md`'s
+verification rules. Issues are in the Multica project `Agister`, in the
+`ai-labs` workspace.
 
-- Implement through the `implement` process, from the change's worktree
-  (ADR-025): commit the candidate so the worktree is clean, write the
-  brief to a file, and run
-  `agister run implement --param candidate=HEAD --param brief=<file>`.
-  Its changes are then in that worktree, uncommitted, for you to verify
-  and commit; nothing is applied, and `changes.patch` is only the
-  evidence. Review fixes go to a fresh `implement` run with their own
-  brief; only a failing verify goes back to the same session, which
-  Agister does itself.
-- Test commands, from `agister/`, quiet (never `-v`: one line per package,
-  details only for failures): `go test -count=1 -timeout 1m ./<pkg>/...` for what you
-  touched, `-run <Test>` to narrow; the full check is
-  `test -z "$(gofmt -l .)" && go vet ./... && go test -count=1 -timeout 1m ./... &&
-  go test -race -count=1 -timeout 1m ./internal/app/...` (about 30 s), and, for
-  the `gokit` module Agister requires (ADR-019), from `gokit/`:
-  `test -z "$(gofmt -l .)" && go vet ./... && go test -race -count=1 -timeout 1m ./...`.
-- Verify the result yourself as the root `AGENTS.md` says:
-  `scripts/handoff-check.py`, then the tests. No mutation or revert checks.
-- Review a committed candidate from the same worktree, with the
-  candidate checked out:
-  `agister run code_review --param base=<rev> --param candidate=HEAD --param goal=<file>`.
-  Reviews are readers: they share the worktree and run together. The
-  goal is the file that says what the change is for, its issue or brief,
-  and a call without it is refused (ADR-023). The goal file names
-  the done gates the change touches, and any edit to an agent instruction
-  the owner asked for in the change. Act on
-  the rulings as written, without judging them again: fix items go to a
-  fresh `implement` run, owner items to the advisor (below), defer items to a
-  backlog issue in the Multica project Agister. Waive items get no repair and
-  no backlog issue; list them in the pull request description with their
-  switching condition. Rejections for missing evidence are feedback on the
-  reviewers' prompts, not the judge's.
-- For an owner item, write the question file: who asked (the workflow run
-  and item), the question and the options (the item's `action`, unedited),
-  nothing else. Commit what the question is about and run, with it
-  checked out,
-  `agister run advisor --param question=<file> --param revision=HEAD`.
-  Append its decision to `agister/docs/decisions.md` as a record, unedited,
-  with status `Provisional (advisor)` and the run ID, and list the
-  provisional records in the pull request description. Only an `owner`
-  answer goes to the owner.
-- Review a change that adds or edits an ADR with
-  `agister run adr_review --param base=<rev> --param candidate=HEAD --param goal=<file>`,
-  from the same worktree, before the code that follows it; its rulings
-  are acted on the same way.
-- At most 3 review rounds. Deferred work is a backlog issue in the
-  Multica project Agister: gap, trigger, done when, for real, observed
-  gaps only.
+- The full check is `agister/scripts/test.sh` (about 35 s): format, vet,
+  race tests, the Pages tests and `gokit`'s check, which Agister builds
+  against (ADR-019). CI and `verify:repo` run the same. Narrow it while
+  working, from `agister/`, quiet (never `-v`):
+  `go test -count=1 -timeout 2m ./<pkg>/...`, `-run <Test>` to narrow.
 - A change to what the CLI or the settings offer, such as a command, a
   flag, a settings field or a behaviour a caller relies on, is done only
   when these say the same as the binary:
   - the caller skill, `skills/agister/SKILL.md`;
-  - `README.md`, with any new ADR in its list;
+  - the page in `docs/reference/` for each topic the change touches:
+    [settings and layering](docs/reference/settings-and-layering.md),
+    [processes and workflows](docs/reference/processes-and-workflows.md),
+    [permissions and runtimes](docs/reference/permissions-and-runtimes.md),
+    [runs and records](docs/reference/runs-and-records.md),
+    [the worktree and holds](docs/reference/worktree-and-holds.md),
+    [skills](docs/reference/skills.md), or [home](docs/reference/home.md);
   - the settings diagrams, `docs/settings-architecture/`;
   - the Pages settings view, `pages/`, with its tests.
 
   Its issue names these as done gates.
+- `README.md` is for orientation, `docs/reference/` for behaviour, and
+  `docs/adr/` for decisions. Add behaviour detail to the reference page
+  for its topic, adding a page and linking it from the reference index
+  when needed. Change the README only when what it summarises changes,
+  such as a new command or a new top-level concept. Link a new ADR from
+  the reference page for its topic; the README links to the ADR list.
 - The installed binary reads this repository's `.agister/` from the
   worktree it works in, so settings it does not know refuse every later
   run there: `--continue`, `code_review`, everything (LAB-122). A change
@@ -81,51 +49,22 @@ still apply.
   which keeps only what is this repository's own. After a change to
   `home/`, or one that `home/` must follow, merges and
   `scripts/finish-merged-pr.sh` rebuilds Agister, install the folder
-  from `agister/` in the main checkout, `agister install home`, read its
+  from `agister/` in the main checkout. First run
+  `scripts/retire-review-judge-codex.sh` to back up and remove any
+  runtime-specific judge copies (ADR-036); then `agister install home`, read its
   plan, answer yes, and check home with the new binary (`agister check`).
   This step is the agent's, not the owner's. The exception is the
   folder's first install into home, after LAB-84 merges: it replaces
   home's hand copies, and the owner runs it (LAB-84, out of scope;
   ADR-027). Until the owner has, no agent installs the folder.
 - ADRs reference only earlier ADRs.
-- A failure of Agister itself during this work is a finding about Agister:
-  record it and fix it; do not route around it. A Claude Code subagent or
-  `codex exec` is a fallback only when Agister cannot run the step; say
-  why.
 
-## Decision records
-
-`agister/docs/decisions.md` holds the advisor's decisions on open build
-questions (ADR-007) and the owner's overrides; the first record creates
-it, under the heading `# Decisions`. Each record is appended:
-
-```markdown
-## D-<n>: <the question, in a line>
-
-- **Status:** Provisional (advisor) | Confirmed | Owner
-- **Supersedes:** D-<m> (only on a record that replaces an earlier one)
-- **Asked by:** <who asked; for a judge's item, its workflow run and item>
-- **Question:** <the question>
-- **Options:** <the options>
-- **Excluded:** <each option not chosen, and why>
-- **Decision:** <the option chosen>
-- **Rests on:** <the recorded decisions it rests on, or "none">
-- **Follow-ups:** <what is left to do; one that changes code names the
-  test that proves it>
-- **Advisor run:** <run ID> (not on an owner's record)
-```
-
-- A record is the advisor's output, unedited, numbered from D-1 in the
-  order appended. The output is one property, `advice`, of `kind`
-  `decision` or `owner`: a decision's other fields are the record's
-  (`asked_by`, `question`, `options`, `chosen` for **Decision**,
-  `excluded`, `rests_on`, `follow_ups`); an `owner` answer has only its
-  `reason`.
-- Its status is `Provisional (advisor)` until the owner rules. The owner
-  confirms it by setting the status to `Confirmed`.
-- Records are not edited otherwise. A later decision on the same question
-  is a new record that names the one it supersedes; the earlier record
-  gains only the line `- **Superseded by:** D-<n>`.
-- The owner overrides with a superseding record whose status is `Owner`.
-  An owner's record is superseded only by the owner.
-- An `owner` answer leaves no record.
+- Runtime permissions are best effort (ADR-036): use runtimes as shipped,
+  with documented options only, and no runtime-specific workarounds.
+  `tools.require` and the service's `state_reaching` remain hard checks;
+  extra grants and unverified versions warn. Select by distinct grants and
+  persist call warnings before runtime startup and workflow node warnings as
+  nodes finish for abandoned and reaped outcomes.
+  Keep binding views, records and printed outcomes consistent about those
+  warnings. Prompts instruct
+  which evidence to use and make no claim about the environment's tools.

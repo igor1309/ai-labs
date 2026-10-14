@@ -1,6 +1,7 @@
 // Package settings checks a whole set of parsed definitions for consistency:
-// references resolve, limits compose, every process can be enforced on its
-// agent's runtime, every workflow's nodes can run as ADR-003 has them. It reports every problem at once.
+// references resolve, limits compose, every process can be enforced on the
+// runtime of each agent a workflow's node binds it to, every workflow's
+// nodes can run as ADR-003 has them. It reports every problem at once.
 package settings
 
 import (
@@ -8,21 +9,20 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/igor1309/ai-labs/agister/internal/domain/definition"
 	"github.com/igor1309/ai-labs/agister/internal/domain/enforce"
+	"github.com/igor1309/ai-labs/agister/internal/domain/input"
 	"github.com/igor1309/ai-labs/agister/internal/domain/policy"
 )
 
-// Bundle is every definition that parsed.
+// Bundle is every definition that parsed, with what the checks use of
+// each.
 type Bundle struct {
-	Service   *definition.Service
-	Agents    map[string]definition.Agent
-	Processes map[string]definition.Process
-	Policies  map[string]definition.Policy
-	Mappings  map[string]definition.Mapping
+	Service   *Service
+	Agents    map[string]Agent
+	Processes map[string]Process
+	Mappings  map[string]Mapping
 	Schemas   map[string]bool
-	Workflows map[string]definition.Workflow
-	Verifies  map[string]definition.Verification
+	Workflows map[string]Workflow
 	// Prompts are the prompt documents the settings have; an unreadable
 	// one is a problem of its own, not of the processes that name it.
 	Prompts map[string]bool
@@ -32,40 +32,108 @@ type Bundle struct {
 	// Briefs are the brief forms the settings have; a broken one is a
 	// problem of its own, not of the processes and workflows that name it.
 	Briefs map[string]bool
+	// Bases are the processes some process extends, each with those that
+	// extend it, whether or not they parsed (ADR-030 rule 9).
+	Bases map[string][]string
 }
 
-// Resolved returns the process named name with the verification it names
-// as its verify, as a call resolves it (ADR-010 rule 3). One that names a
-// verification the bundle lacks is returned without verify values.
-func (b Bundle) Resolved(name string) definition.Process {
-	process := b.Processes[name]
-	if verification, ok := b.Verifies[process.VerifyName]; ok && process.VerifyName != "" {
-		process.Verify = &verification.Verify
-	}
-	return process
+// Service is what of the service bounds every call: its ceilings, whose
+// permissions are the vocabulary, and the permissions never granted.
+type Service struct {
+	Ceilings policy.Ceilings
+	// StateReaching are the permissions that would let an agent reach
+	// Agister's own state.
+	StateReaching []string
 }
 
-// Resumes is how many recovery turns a call of the process named name may
-// take (ADR-024 rule 5). It is 0 where the process's limits do not compose,
-// which Check reports.
-func (b Bundle) Resumes(name string) int {
-	process := b.Resolved(name)
-	var pol *definition.Policy
-	if process.Policy != "" {
-		found, ok := b.Policies[process.Policy]
-		if !ok {
-			return 0
+// Agent is a runtime profile, as a node binds a process to it.
+type Agent struct {
+	Name    string
+	Runtime string // the name of a runtime mapping
+	Effort  string
+	Skills  []string
+}
+
+// Mapping is what one runtime adapter offers: the efforts it supports and
+// the primitives a plan is made of.
+type Mapping struct {
+	Name    string
+	Adapter string
+	Efforts []string
+	Offer   enforce.Offer
+}
+
+// Process is named work, resolved as a call resolves it: its limits hold
+// the verification it names (ADR-010 rule 3), unless the settings lack it.
+type Process struct {
+	Name     string
+	Params   []Param
+	Values   []Value
+	Prompt   string
+	Guidance []string
+	Skills   []string
+	// Schema is the output schema its output is validated against; "": its
+	// output is text.
+	Schema string
+	Limits policy.Declared
+	// Resumable says a call's session may be resumed (ADR-030 rule 3);
+	// otherwise it is fresh-only.
+	Resumable bool
+}
+
+// Param is a value the caller of a process supplies.
+type Param struct {
+	Name       string
+	HasDefault bool
+}
+
+// Value is one input, and the kind of source it comes from.
+type Value struct {
+	Name   string
+	Source string
+	// Forms are the brief forms its text must have one of, by name.
+	Forms []string
+}
+
+// collects reports the inputs of the process that receive a workflow's
+// collection.
+func (p Process) collects() []string {
+	var names []string
+	for _, value := range p.Values {
+		if value.Source == input.CollectionSource {
+			names = append(names, value.Name)
 		}
-		pol = &found
 	}
-	if b.Service == nil {
-		return 0
+	return names
+}
+
+// Node is one node of a workflow: the process it calls and the agent it
+// binds the process to (ADR-030 rule 5).
+type Node struct {
+	Name    string
+	Process string
+	Agent   string
+}
+
+// Workflow is fan-out nodes and a join (ADR-003), or one call (ADR-030
+// rule 6).
+type Workflow struct {
+	Name   string
+	Values []Value
+	FanOut []Node
+	Join   Node
+	// Call is the one node of a workflow of one call; nil: the workflow
+	// fans out and joins.
+	Call *Node
+}
+
+// nodes lists a workflow's nodes: the one call, or the fan-out nodes in
+// declaration order, then the join.
+func (w Workflow) nodes() []Node {
+	if w.Call != nil {
+		return []Node{*w.Call}
 	}
-	effective, err := policy.Compose(*b.Service, pol, process, policy.Caller{})
-	if err != nil {
-		return 0
-	}
-	return effective.Stale.Recover.MaxResumes
+	return append(append([]Node(nil), w.FanOut...), w.Join)
 }
 
 // Mechanisms are what the code provides, named by settings.
@@ -105,7 +173,7 @@ func Check(b Bundle, m Mechanisms) []Problem {
 		add("service", "service settings are missing")
 		return problems
 	}
-	vocabulary := b.Service.Permissions
+	vocabulary := b.Service.Ceilings.Permissions
 
 	for _, name := range sortedKeys(b.Mappings) {
 		mapping := b.Mappings[name]
@@ -113,11 +181,8 @@ func Check(b Bundle, m Mechanisms) []Problem {
 		if !contains(m.Adapters, mapping.Adapter) {
 			unknown(subject, "unknown adapter %q (available: %s)", mapping.Adapter, strings.Join(m.Adapters, ", "))
 		}
-		if unknown := mapping.UnknownPermissions(vocabulary); len(unknown) > 0 {
+		if unknown := mapping.Offer.UnknownPermissions(vocabulary); len(unknown) > 0 {
 			add(subject, "grants permissions not in the vocabulary: %s", strings.Join(unknown, ", "))
-		}
-		if verified, _ := mapping.ForAnyVersion(); len(verified.Primitives) == 0 {
-			add(subject, "verifies no primitive against any runtime version; calls on it are refused")
 		}
 	}
 
@@ -140,30 +205,27 @@ func Check(b Bundle, m Mechanisms) []Problem {
 		}
 	}
 
-	for _, name := range sortedKeys(b.Policies) {
-		limits := b.Policies[name].Limits
-		for _, permission := range append(append([]string{}, limits.Allow...), limits.Deny...) {
-			if !contains(vocabulary, permission) {
-				add("policy "+name, "unknown permission %q", permission)
-			}
-		}
-	}
-
 	for _, name := range sortedKeys(b.Processes) {
-		process := b.Resolved(name)
+		process := b.Processes[name]
 		subject := "process " + name
 		for _, value := range process.Values {
 			if !contains(m.Sources, value.Source) {
 				unknown(subject, "input %s: unknown source %q (available: %s)", value.Name, value.Source, strings.Join(m.Sources, ", "))
 			}
-			// A prompt is part of the process (ADR-014 rule 4), unless its
-			// input is optional (ADR-019 rule 4).
-			if name := value.Args["name"]; value.Source == definition.PromptSource && name != "" && !b.Prompts[name] && !value.Optional() {
-				add(subject, "input %s: prompt %q does not exist", value.Name, name)
-			}
-			// So is a form its text must have (ADR-026 rule 8).
+			// A form its text must have is part of the process (ADR-026 rule
+			// 8).
 			for _, form := range b.missingForms(value) {
 				add(subject, "input %s: brief %q does not exist", value.Name, form)
+			}
+		}
+		// So are its prompt and its guidance: a name no layer has refuses
+		// its calls (ADR-028 rule 8).
+		if process.Prompt != "" && !b.Prompts[process.Prompt] {
+			add(subject, "prompt %q does not exist", process.Prompt)
+		}
+		for _, name := range process.Guidance {
+			if !b.Prompts[name] {
+				add(subject, "guidance: prompt %q does not exist", name)
 			}
 		}
 		// So is a skill (ADR-021 rule 4).
@@ -172,46 +234,21 @@ func Check(b Bundle, m Mechanisms) []Problem {
 				add(subject, "skill %q does not exist", skill)
 			}
 		}
-		if process.Output.Format == "json" && !b.Schemas[process.Output.Schema] {
-			add(subject, "output schema %q does not exist", process.Output.Schema)
+		if process.Schema != "" && !b.Schemas[process.Schema] {
+			add(subject, "output schema %q does not exist", process.Schema)
 		}
-		var pol *definition.Policy
-		if process.Policy != "" {
-			found, ok := b.Policies[process.Policy]
-			if !ok {
-				add(subject, "policy %q does not exist", process.Policy)
-				continue
-			}
-			pol = &found
-		}
-		effective, err := policy.Compose(*b.Service, pol, process, policy.Caller{})
+		effective, err := policy.Compose(b.Service.Ceilings, process.Limits, policy.Caller{})
 		if err != nil {
 			add(subject, "%v", strings.TrimPrefix(err.Error(), "process "+name+" is invalid:\n  "))
 			continue
 		}
-		// What follows depends on the agent: a call that selects another
-		// one is judged on that one (ADR-015 rule 2).
-		withAgent := func(format string, args ...any) {
-			problems = append(problems, Problem{Subject: subject, Message: fmt.Sprintf(format, args...), Agent: process.Agent})
-		}
-		agent, ok := b.Agents[process.Agent]
-		if !ok {
-			withAgent("agent %q does not exist", process.Agent)
-			continue
-		}
-		if process.Verify.Repairs() && agent.Session != definition.SessionResumable {
-			withAgent("verify.max_attempts %d repairs in the call's session, but agent %s is %s", process.Verify.MaxAttempts, agent.Name, agent.Session)
-		}
-		// So does a recovery turn (ADR-024 rule 6).
-		if resumes := effective.Stale.Recover.MaxResumes; resumes > 0 && agent.Session != definition.SessionResumable {
-			withAgent("stale.recover.max_resumes %d recovers in the call's session, but agent %s is %s", resumes, agent.Name, agent.Session)
-		}
-		mapping, ok := b.Mappings[agent.Runtime]
-		if !ok {
-			continue // reported on the agent
-		}
-		if err := planOnSomeVersion(effective, mapping, b.Service.StateReaching); err != nil {
-			withAgent("cannot run on agent %s's runtime %s: %v", agent.Name, mapping.Name, err)
+		// A repair turn resumes the call's session (ADR-002 rule 4), and so
+		// does a recovery turn (ADR-024 rule 6): each needs a session that
+		// may be resumed, which the process says (ADR-030 rule 3).
+		if !process.Resumable {
+			for _, message := range unresumed(process, effective, subject+" is fresh-only") {
+				add(subject, "%s", message)
+			}
 		}
 	}
 
@@ -230,8 +267,27 @@ func Check(b Bundle, m Mechanisms) []Problem {
 				add(subject, "input %s: brief %q does not exist", value.Name, form)
 			}
 		}
-		for _, problem := range WorkflowProblems(workflow, b.Processes) {
+		for _, problem := range WorkflowProblems(workflow, b.Processes, b.Bases) {
 			add(subject, "%s", problem)
+		}
+		// The agent a node binds its process to is the workflow's to name
+		// (ADR-030 rule 5).
+		for i, node := range workflow.nodes() {
+			if _, ok := b.Agents[node.Agent]; !ok {
+				add(subject, "%s: agent %q does not exist", nodeLabel(workflow, i, node), node.Agent)
+			}
+		}
+		// So is the binding: a process that cannot run on the agent a node
+		// binds it to is a problem of the workflow, which names the node
+		// (ADR-030 rule 8).
+		for _, bound := range b.bindings(workflow) {
+			mapping, ok := b.Mappings[bound.agent.Runtime]
+			if !ok {
+				continue // reported on the agent
+			}
+			if err := planOnSomeVersion(bound.effective, mapping.Offer, b.Service.StateReaching); err != nil {
+				problems = append(problems, bound.problem(name, "cannot run on agent %s's runtime %s: %v", bound.agent.Name, mapping.Name, err))
+			}
 		}
 	}
 
@@ -240,7 +296,7 @@ func Check(b Bundle, m Mechanisms) []Problem {
 }
 
 // missingForms lists the brief forms value names that the bundle lacks.
-func (b Bundle) missingForms(value definition.Value) []string {
+func (b Bundle) missingForms(value Value) []string {
 	var missing []string
 	for _, form := range value.Forms {
 		if !b.Briefs[form] {
@@ -250,61 +306,61 @@ func (b Bundle) missingForms(value definition.Value) []string {
 	return missing
 }
 
-// planOnSomeVersion succeeds if the plan can be made for at least one
-// version the mapping is verified for: a call runs on one version, so
-// primitives verified for different versions cannot be combined. Otherwise
-// it explains the failure on the version with the most verified primitives
-// (the first, when tied).
-func planOnSomeVersion(effective policy.Effective, mapping definition.Mapping, stateReaching []string) error {
-	versions := mapping.Versions()
-	if len(versions) == 0 {
-		versions = []string{""} // nothing verified: reported on the mapping
-	}
-	var closest error
-	most := -1
-	for _, version := range versions {
-		verified, unverified := mapping.ForVersion(version)
-		_, err := enforce.Make(effective.Permissions, verified, effective.Require, stateReaching)
-		if err == nil {
-			return nil
-		}
-		if len(verified.Primitives) > most {
-			most = len(verified.Primitives)
-			closest = fmt.Errorf("%v%s", err, unverifiedNote(unverified, version))
-		}
-	}
-	return closest
+// planOnSomeVersion checks the declared offer; version evidence is observability.
+func planOnSomeVersion(effective policy.Effective, offer enforce.Offer, stateReaching []string) error {
+	_, err := enforce.Make(effective.Permissions, offer, effective.Require, stateReaching)
+	return err
 }
 
-// PlanProblems reports the processes of the agent that cannot be planned on
-// the runtime version it was found to have. Composition problems are left
-// to Check.
-func PlanProblems(b Bundle, agent definition.Agent, version string) []Problem {
+// PlanProblems reports each node that binds a process to the agent which
+// cannot be planned on the runtime version the agent was found to have
+// (ADR-030 rule 8). Composition problems are left to Check.
+func PlanProblems(b Bundle, agent Agent, version string) []Problem {
 	mapping, ok := b.Mappings[agent.Runtime]
 	if !ok || b.Service == nil {
 		return nil
 	}
-	verified, unverified := mapping.ForVersion(version)
-	var problems []Problem
-	for _, name := range sortedKeys(b.Processes) {
-		process := b.Resolved(name)
-		if process.Agent != agent.Name {
-			continue
+	_, unverified := mapping.Offer.ForVersion(version)
+	// refused is why the plan cannot be made, "" when it can.
+	refused := func(effective policy.Effective) string {
+		if _, err := enforce.Make(effective.Permissions, mapping.Offer, effective.Require, b.Service.StateReaching); err != nil {
+			return fmt.Sprintf("cannot run on agent %s's runtime %s version %s: %v%s", agent.Name, mapping.Name, version, err, unverifiedNote(unverified, version))
 		}
-		var pol *definition.Policy
-		if process.Policy != "" {
-			found, ok := b.Policies[process.Policy]
-			if !ok {
+		return ""
+	}
+	var problems []Problem
+	for _, name := range sortedKeys(b.Workflows) {
+		for _, bound := range b.bindings(b.Workflows[name]) {
+			if bound.agent.Name != agent.Name {
 				continue
 			}
-			pol = &found
+			if message := refused(bound.effective); message != "" {
+				problems = append(problems, bound.problem(name, "%s", message))
+			}
 		}
-		effective, err := policy.Compose(*b.Service, pol, process, policy.Caller{})
-		if err != nil {
-			continue
-		}
-		if _, err := enforce.Make(effective.Permissions, verified, effective.Require, b.Service.StateReaching); err != nil {
-			problems = append(problems, Problem{Subject: "process " + name, Message: fmt.Sprintf("cannot run on agent %s's runtime %s version %s: %v%s", agent.Name, mapping.Name, version, err, unverifiedNote(unverified, version)), Agent: agent.Name})
+	}
+	return problems
+}
+
+// ResumeProblems reports each node that binds to the agent a process whose
+// turns resume their call's session, which the agent's runtime was found
+// unable to resume (ADR-030 rules 3 and 8). Only the runtime can say
+// whether it resumes one.
+func ResumeProblems(b Bundle, agent Agent) []Problem {
+	mapping, ok := b.Mappings[agent.Runtime]
+	if !ok || b.Service == nil {
+		return nil
+	}
+	why := "runtime " + mapping.Name + " cannot resume sessions"
+	var problems []Problem
+	for _, name := range sortedKeys(b.Workflows) {
+		for _, bound := range b.bindings(b.Workflows[name]) {
+			if bound.agent.Name != agent.Name {
+				continue
+			}
+			for _, message := range unresumed(bound.process, bound.effective, why) {
+				problems = append(problems, bound.problem(name, "%s", message))
+			}
 		}
 	}
 	return problems

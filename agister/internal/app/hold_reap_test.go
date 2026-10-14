@@ -191,7 +191,7 @@ func TestAWriterCallReapsTheRunAKilledWriterLeftInItsWorktree(t *testing.T) {
 		<-ctx.Done()
 		sink.Event(run.SourceAgister, "ABORT_REQUESTED", nil)
 	}
-	killed, err := h.calls.Submit(ctx, contract.CallRequest{Process: "p", Cwd: "/repo"})
+	killed, err := h.calls.Submit(ctx, contract.CallRequest{Process: "p_a", Cwd: "/repo"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -213,7 +213,7 @@ func TestAWriterCallReapsTheRunAKilledWriterLeftInItsWorktree(t *testing.T) {
 		t.Fatalf("the killed run's events %s, %v; lock held %v", kindsOf(events), err, h.locks.holds("/repo"))
 	}
 
-	next, err := h.calls.Submit(ctx, contract.CallRequest{Process: "p", Cwd: "/repo"})
+	next, err := h.calls.Submit(ctx, contract.CallRequest{Process: "p_a", Cwd: "/repo"})
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -1,11 +1,3 @@
-# What each OpenCode tool grants under adapter contract opencode/1
-# (opencode run --format json --pure, as a generated agent whose permission
-# denies everything but the tools granted). A primitive is an OpenCode
-# permission: edit is the one permission of the tools edit, write and
-# apply_patch. OpenCode has no sandbox: its file tools are declared to read
-# the host, and bash runs anything the user can. No tool is verified yet:
-# a plan uses only primitives verified for the installed version, so add
-# `verified` versions as each tool is checked live (docs/findings.md).
 schema: agister.runtime/v1alpha1
 name: opencode
 adapter: opencode
@@ -17,12 +9,10 @@ primitives:
     read: {grants: [repository.read, host.read]}
     grep: {grants: [repository.search, host.read]}
     glob: {grants: [repository.read, host.read]}
-    # Lists and loads the skills of the repository and of the user.
     skill: {grants: [repository.read, host.read]}
     edit: {grants: [repository.write]}
     webfetch: {grants: [network]}
     websearch: {grants: [network]}
-    # Like Claude Code's Bash, it grants everything.
     bash:
       grants:
         - process.execute

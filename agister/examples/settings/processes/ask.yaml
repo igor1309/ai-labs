@@ -1,11 +1,9 @@
-# A plain question about the repository, answered in text.
-
 schema: agister.process/v1alpha1
 name: ask
 
 type: process
-uses: agent:assistant
-policy: process-policy:read-only
+session: resumable
+prompt: ask
 
 input:
   instruction: >-
@@ -15,6 +13,21 @@ input:
     question: {}
   values:
     question: {source: param, name: question}
+
+workspace:
+  access: read-only
+  scope: repository
+
+tools:
+  allow:
+    - repository.read
+    - repository.diff
+    - repository.search
+    - repository.history.read
+    - process.execute
+    - host.read
+
+timeout: 10m
 
 output:
   format: text

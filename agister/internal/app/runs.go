@@ -166,7 +166,7 @@ func (r *Runs) view(record run.Record, state run.State) contract.Run {
 	}
 	result := record.Result
 	if state == run.StateAbandoned {
-		lost := run.AbandonedResult(record.CreatedAt)
+		lost := record.WithWarnings(run.AbandonedResult(record.CreatedAt))
 		result = &lost
 	}
 	if result != nil {

@@ -10,7 +10,7 @@ import (
 
 	"github.com/igor1309/ai-labs/agister/internal/app"
 	"github.com/igor1309/ai-labs/agister/internal/contract"
-	"github.com/igor1309/ai-labs/agister/internal/domain/definition"
+	"github.com/igor1309/ai-labs/agister/internal/domain/document"
 	"github.com/igor1309/ai-labs/agister/internal/domain/run"
 )
 
@@ -48,7 +48,7 @@ func inputOf(t *testing.T, record run.Record, name string) run.Input {
 // own identity, as inputs.Param makes it.
 func keptInputs(brief string) *harness {
 	h := newHarness()
-	h.defs.docs[definition.KindProcess]["p"] = strings.Replace(strings.Replace(h.defs.docs[definition.KindProcess]["p"],
+	h.defs.docs[document.KindProcess]["p"] = strings.Replace(strings.Replace(h.defs.docs[document.KindProcess]["p"],
 		"    candidate: {default: HEAD}\n", "    candidate: {default: HEAD}\n    goal: {default: short goal}\n", 1),
 		`    diff: {source: git.diff, base: "${param.base}", head: "${param.candidate}"}`+"\n",
 		`    diff: {source: git.diff, base: "${param.base}", head: "${param.candidate}"}`+"\n"+
@@ -231,9 +231,9 @@ func TestAWorkflowNodesLongParamIsRecordedAsADigest(t *testing.T) {
 			"    candidate: {default: HEAD}\n", "    candidate: {default: HEAD}\n    goal: {}\n", 1),
 			"  values:\n", "  values:\n    goal: {source: param, name: goal}\n", 1)
 	}
-	h.defs.docs[definition.KindProcess]["first"] = takesGoal(nodeProcess("first", "Work as first."))
-	h.defs.docs[definition.KindProcess]["second"] = takesGoal(nodeProcess("second", "Work as second."))
-	h.defs.docs[definition.KindWorkflow]["w"] = strings.Replace(workflowDoc, "  values:\n", "  values:\n    goal: {source: file, path: goal.md}\n", 1)
+	h.defs.docs[document.KindProcess]["first"] = takesGoal(nodeProcess("first", "Work as first."))
+	h.defs.docs[document.KindProcess]["second"] = takesGoal(nodeProcess("second", "Work as second."))
+	h.defs.docs[document.KindWorkflow]["w"] = strings.Replace(workflowDoc, "  values:\n", "  values:\n    goal: {source: file, path: goal.md}\n", 1)
 	base := h.inputs.respond
 	h.inputs.respond = func(spec app.InputSpec) (app.Resolved, error) {
 		if spec.Source == "file" && spec.Args["path"] == "goal.md" {
@@ -285,7 +285,7 @@ func TestInputArtifactsAreEachInputsOwn(t *testing.T) {
 	t.Parallel()
 	longName := strings.Repeat("a", 65)
 	h := newHarness()
-	h.defs.docs[definition.KindProcess]["p"] = strings.Replace(h.defs.docs[definition.KindProcess]["p"],
+	h.defs.docs[document.KindProcess]["p"] = strings.Replace(h.defs.docs[document.KindProcess]["p"],
 		`    diff: {source: git.diff, base: "${param.base}", head: "${param.candidate}"}`+"\n",
 		`    diff: {source: git.diff, base: "${param.base}", head: "${param.candidate}"}`+"\n"+
 			"    brief: {source: file, path: one.md}\n    brief: {source: file, path: two.md}\n    notes/today: {source: file, path: notes.md}\n"+
@@ -308,7 +308,7 @@ func TestInputArtifactsAreEachInputsOwn(t *testing.T) {
 		{"notes/today", texts["notes.md"], "input.4.txt"},
 		{longName, texts["long.md"], "input.5.txt"},
 	}
-	if len(record.Inputs) != 6 {
+	if len(record.Inputs) != 7 {
 		t.Fatalf("inputs = %+v", record.Inputs)
 	}
 	for i, want := range want {
@@ -333,7 +333,7 @@ func TestInputArtifactsAreEachInputsOwn(t *testing.T) {
 func TestInputArtifactsOfNamesThatDifferInCaseAreEachInputsOwn(t *testing.T) {
 	t.Parallel()
 	h := newHarness()
-	h.defs.docs[definition.KindProcess]["p"] = strings.Replace(h.defs.docs[definition.KindProcess]["p"],
+	h.defs.docs[document.KindProcess]["p"] = strings.Replace(h.defs.docs[document.KindProcess]["p"],
 		`    diff: {source: git.diff, base: "${param.base}", head: "${param.candidate}"}`+"\n",
 		`    diff: {source: git.diff, base: "${param.base}", head: "${param.candidate}"}`+"\n"+
 			"    goal: {source: file, path: lower.md}\n    Goal: {source: file, path: upper.md}\n    notes: {source: file, path: notes.md}\n", 1)
@@ -354,7 +354,7 @@ func TestInputArtifactsOfNamesThatDifferInCaseAreEachInputsOwn(t *testing.T) {
 		{"Goal", texts["upper.md"], "input.3.txt"},
 		{"notes", texts["notes.md"], "input-notes.txt"},
 	}
-	if len(record.Inputs) != 5 {
+	if len(record.Inputs) != 6 {
 		t.Fatalf("inputs = %+v", record.Inputs)
 	}
 	folded := map[string]bool{}
@@ -376,26 +376,36 @@ func TestInputArtifactsOfNamesThatDifferInCaseAreEachInputsOwn(t *testing.T) {
 }
 
 // A long prompt is kept as an artifact of the run that receives it, with
-// its digest, its identity; the agent receives it unchanged.
+// its digest, its identity; the agent receives it unchanged. So is a long
+// guidance prompt.
 func TestALongPromptIsKeptAsAnArtifactOfItsRun(t *testing.T) {
 	t.Parallel()
 	h := newHarness()
-	text := longText + "Review the change against the rules.\n"
-	prompted(h, text)
+	text := longText + "Inspect the change for defects.\n"
+	h.defs.docs[document.KindPrompt]["inspect"] = text
+	guidance := longText + "Prove each rule with a test.\n"
+	guided(h, []string{"testing"}, map[string]string{"testing": guidance})
 	record := h.call(t, contract.CallRequest{})
 	if record.Result.Status != run.Completed {
 		t.Fatalf("result %+v: %s", record.Result, message(record))
 	}
-	digest := "sha256:" + sha(text)
-	want := run.Artifact{Name: "input-rules.txt", Path: "artifacts/input-rules.txt", Digest: digest, Bytes: int64(len(text))}
-	if rules := inputOf(t, record, "rules"); rules.Source != "prompt" || rules.Value != nil || rules.Identity != digest || rules.Artifact == nil || *rules.Artifact != want {
-		t.Fatalf("rules = %+v, artifact %+v", rules, rules.Artifact)
-	}
-	if stored := string(h.recorder.artifacts["input-rules.txt"]); stored != text {
-		t.Fatalf("rules stored as %q", stored)
-	}
-	if calls := h.runner.calls(); len(calls) != 1 || !strings.Contains(calls[0].Prompt, text) {
-		t.Fatalf("the agent was not given the prompt: %+v", calls)
+	// guidance.testing is no plain name: its artifact is named by its place.
+	for input, c := range map[string]struct{ text, name string }{
+		"prompt":           {text, "input-prompt.txt"},
+		"guidance.testing": {guidance, "input.3.txt"},
+	} {
+		text, name := c.text, c.name
+		digest := "sha256:" + sha(text)
+		want := run.Artifact{Name: name, Path: "artifacts/" + name, Digest: digest, Bytes: int64(len(text))}
+		if got := inputOf(t, record, input); got.Source != "prompt" || got.Value != nil || got.Identity != digest || got.Artifact == nil || *got.Artifact != want {
+			t.Fatalf("%s = %+v, artifact %+v, want %+v", input, got, got.Artifact, want)
+		}
+		if stored := string(h.recorder.artifacts[name]); stored != text {
+			t.Fatalf("%s stored as %q", input, stored)
+		}
+		if calls := h.runner.calls(); len(calls) != 1 || !strings.Contains(calls[0].Prompt, text) {
+			t.Fatalf("the agent was not given %s: %+v", input, calls)
+		}
 	}
 }
 
@@ -434,7 +444,7 @@ func TestALongCollectionIsKeptAsAnArtifactOfTheJoin(t *testing.T) {
 func TestARefusedRunKeepsALongParamsText(t *testing.T) {
 	t.Parallel()
 	h := keptInputs(longText)
-	h.defs.docs[definition.KindProcess]["p"] = strings.Replace(h.defs.docs[definition.KindProcess]["p"],
+	h.defs.docs[document.KindProcess]["p"] = strings.Replace(h.defs.docs[document.KindProcess]["p"],
 		"    brief: {source: file, path: brief.md}\n    goal: {source: param, name: goal}\n",
 		"    goal: {source: param, name: goal}\n    brief: {source: file, path: missing.md}\n", 1)
 	keep := h.inputs.respond
@@ -469,9 +479,9 @@ func TestAWorkflowsLongParamReachesItsNodesWhole(t *testing.T) {
 			"    candidate: {default: HEAD}\n", "    candidate: {default: HEAD}\n    goal: {}\n", 1),
 			"  values:\n", "  values:\n    goal: {source: param, name: goal}\n", 1)
 	}
-	h.defs.docs[definition.KindProcess]["first"] = takesGoal(nodeProcess("first", "Work as first."))
-	h.defs.docs[definition.KindProcess]["second"] = takesGoal(nodeProcess("second", "Work as second."))
-	h.defs.docs[definition.KindWorkflow]["w"] = strings.Replace(strings.Replace(workflowDoc,
+	h.defs.docs[document.KindProcess]["first"] = takesGoal(nodeProcess("first", "Work as first."))
+	h.defs.docs[document.KindProcess]["second"] = takesGoal(nodeProcess("second", "Work as second."))
+	h.defs.docs[document.KindWorkflow]["w"] = strings.Replace(strings.Replace(workflowDoc,
 		"    candidate: {}\n", "    candidate: {}\n    goal: {}\n", 1),
 		"  values:\n", "  values:\n    goal: {source: param, name: goal}\n", 1)
 	goal := longText + "goal"

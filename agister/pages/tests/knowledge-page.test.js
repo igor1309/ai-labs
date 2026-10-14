@@ -100,7 +100,7 @@ function page({ storage = fakeStorage({ [VIEW_KEY]: 'knowledge', 'agister-pages:
   const button = (root, label) => root.querySelectorAll('button').find((b) => b.textContent === label);
   return {
     started, calls, storage, document, $, button,
-    shown: () => ['dashboard', 'runs', 'knowledge'].filter((id) => !$(id).hidden),
+    shown: () => ['dashboard', 'runs', 'compare', 'knowledge'].filter((id) => !$(id).hidden),
     // The overview: its agent columns, and per skill row its cells.
     columns: () => $('knowledge-overview').querySelectorAll('thead th').slice(1).map((th) => th.children.map((c) => c.textContent)),
     matrix: () => Object.fromEntries($('knowledge-overview').querySelectorAll('tbody tr').map((tr) => [tr.children[0].textContent, tr.children.slice(1).map((td) => td.textContent)])),
@@ -262,7 +262,8 @@ test('an observed run’s link shows Runs with that run opened', async () => {
   assert.ok(link.click().defaultPrevented);
   await settle();
   assert.deepEqual(p.shown(), ['runs']);
-  assert.equal(p.$('run-detail').querySelector('h3').textContent, 'run-1');
+  assert.equal(p.$('run-overlay').hidden, false);
+  assert.equal(p.$('run-detail').querySelector('article').dataset.run, 'run-1');
 });
 
 test('a skill opens with the agents that load it, each folder’s entry and its checks', async () => {
@@ -529,7 +530,8 @@ test('worst-case 256 KB skills of brackets, emphasis marks and backticks render'
 });
 
 // ADR-021, the amendment of ADR-011 rule 5: an agent's card shows the
-// skills its settings name, its own and its processes', each with its
+// skills its settings name, its own and those of the processes a
+// workflow's node binds to it, each with its
 // layer and checks or marked missing, apart from what its runtime would
 // load and from what its runs used, each labelled.
 test('an agent’s card lists the skills its settings name apart from what its runtime would load', async () => {
@@ -539,7 +541,8 @@ test('an agent’s card lists the skills its settings name apart from what its r
   const named = {
     ...files,
     'agents/opus.toml': `${files['agents/opus.toml']}skills = ["plan", "style", "gone"]\n`,
-    'processes/review.yaml': 'name: review\nuses: agent:opus\nskills: [ship]\ninput:\n  instruction: Review.\n',
+    'processes/review.yaml': 'name: review\nskills: [ship]\ninput:\n  instruction: Review.\n',
+    'workflows/review_opus.yaml': 'name: review_opus\ncall: {node: review, uses: process:review, agent: opus}\n',
   };
   const beside = 'holds notes.txt beside SKILL.md: a skill is its SKILL.md alone, and its other files are not given to a call';
   const read = {

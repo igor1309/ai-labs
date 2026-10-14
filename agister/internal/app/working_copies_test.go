@@ -9,7 +9,7 @@ import (
 
 	"github.com/igor1309/ai-labs/agister/internal/app"
 	"github.com/igor1309/ai-labs/agister/internal/contract"
-	"github.com/igor1309/ai-labs/agister/internal/domain/definition"
+	"github.com/igor1309/ai-labs/agister/internal/domain/document"
 	"github.com/igor1309/ai-labs/agister/internal/domain/run"
 )
 
@@ -46,7 +46,7 @@ func cacheFailures(events []run.Event) []map[string]any {
 func TestAProcessRunsFileInputsHaveWorkingCopies(t *testing.T) {
 	t.Parallel()
 	h := keptInputs(longText)
-	h.defs.docs[definition.KindProcess]["p"] = strings.Replace(h.defs.docs[definition.KindProcess]["p"],
+	h.defs.docs[document.KindProcess]["p"] = strings.Replace(h.defs.docs[document.KindProcess]["p"],
 		"    brief: {source: file, path: brief.md}\n", "    brief: {source: file, path: docs/brief.md}\n    notes: {source: file, path: notes.md}\n", 1)
 	file := h.inputs.respond
 	h.inputs.respond = func(spec app.InputSpec) (app.Resolved, error) {
@@ -136,9 +136,9 @@ func TestAWorkflowRunsFileInputsHaveWorkingCopies(t *testing.T) {
 					"    candidate: {default: HEAD}\n", "    candidate: {default: HEAD}\n    goal: {}\n", 1),
 					"  values:\n", "  values:\n    goal: {source: param, name: goal}\n", 1)
 			}
-			h.defs.docs[definition.KindProcess]["first"] = takesGoal(nodeProcess("first", "Work as first."))
-			h.defs.docs[definition.KindProcess]["second"] = takesGoal(nodeProcess("second", "Work as second."))
-			h.defs.docs[definition.KindWorkflow]["w"] = strings.Replace(workflowDoc, "  values:\n", "  values:\n    goal: {source: file, path: goal.md}\n", 1)
+			h.defs.docs[document.KindProcess]["first"] = takesGoal(nodeProcess("first", "Work as first."))
+			h.defs.docs[document.KindProcess]["second"] = takesGoal(nodeProcess("second", "Work as second."))
+			h.defs.docs[document.KindWorkflow]["w"] = strings.Replace(workflowDoc, "  values:\n", "  values:\n    goal: {source: file, path: goal.md}\n", 1)
 			readFrom(h.inputs)
 			if fails {
 				h.copies.err = func(string) error { return errors.New("cache full") }
@@ -163,14 +163,13 @@ func TestAWorkflowRunsFileInputsHaveWorkingCopies(t *testing.T) {
 	}
 }
 
-// A file input after a resolved prompt has its own working copy, and the
-// prompt input has none.
-func TestAFileInputAfterAPromptHasItsWorkingCopy(t *testing.T) {
+// A file input has its own working copy, and the prompt and guidance
+// inputs given after it have none (ADR-028 rule 8).
+func TestAFileInputHasItsWorkingCopyAndThePromptsNone(t *testing.T) {
 	t.Parallel()
 	h := keptInputs("the brief")
-	diff := `    diff: {source: git.diff, base: "${param.base}", head: "${param.candidate}"}` + "\n"
-	h.defs.docs[definition.KindProcess]["p"] = strings.Replace(h.defs.docs[definition.KindProcess]["p"], diff, diff+"    rules: {source: prompt, name: review}\n", 1)
-	h.defs.docs[definition.KindPrompt] = map[string]string{"review": reviewPrompt}
+	h.defs.docs[document.KindProcess]["p"] = strings.Replace(h.defs.docs[document.KindProcess]["p"], "prompt: inspect\n", "prompt: inspect\nguidance: [review]\n", 1)
+	h.defs.docs[document.KindPrompt]["review"] = reviewPrompt
 	readFrom(h.inputs)
 	record := h.call(t, contract.CallRequest{})
 	if record.Result.Status != run.Completed {
@@ -183,8 +182,10 @@ func TestAFileInputAfterAPromptHasItsWorkingCopy(t *testing.T) {
 	if want := map[string][]byte{brief.CachePath: []byte("the brief")}; !reflect.DeepEqual(h.copies.kept, want) {
 		t.Fatalf("kept %v, want %v", h.copies.kept, want)
 	}
-	if rules := inputOf(t, record, "rules"); rules.CachePath != "" {
-		t.Fatalf("rules = %+v", rules)
+	for _, name := range []string{"prompt", "guidance.review"} {
+		if input := inputOf(t, record, name); input.CachePath != "" {
+			t.Fatalf("%s = %+v", name, input)
+		}
 	}
 }
 

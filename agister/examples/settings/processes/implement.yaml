@@ -1,13 +1,9 @@
-# Implementation in the caller's worktree at the candidate, verified: the node
-# completes only once the verification command passes on the content it
-# delivers, and a failing run goes back to the agent in the same session.
-
 schema: agister.process/v1alpha1
 name: implement
 
 type: process
-uses: agent:assistant
-policy: process-policy:implement
+session: resumable
+prompt: implement
 
 input:
   instruction: >-
@@ -21,17 +17,22 @@ input:
     brief: {source: file, path: "${param.brief}"}
 
 workspace:
+  access: read-write
+  scope: candidate
   revision: candidate_revision
-  # The call works in the caller's worktree, which must be at the candidate
-  # with HEAD's content exactly: verification proves the agent's changes
-  # from a clean start (ADR-025).
   clean: true
+
+tools:
+  allow:
+    - repository.read
+    - repository.search
+    - repository.diff
+    - repository.write
+    - process.execute
+
+timeout: 30m
 
 output:
   format: text
 
-# The repository's verification, verifies/repo.yaml: the command, its
-# limits and what the agent is told when it fails. A repository supplies its
-# own in .agister/verifies/repo.yaml; without one in either place a call
-# of this process is refused.
 verify: verify:repo

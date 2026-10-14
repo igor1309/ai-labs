@@ -36,9 +36,11 @@ type ToolCall struct {
 	// ID is the runtime's name for the call; its end is reported by it.
 	ID   string
 	Name string
-	// Input is the whole input, the same text for the same input: two calls
-	// are identical when their Name and Input are.
+	// Input is the reported input, the same text for the same input.
 	Input string
+	// InputIncomplete means the CLI omits part of the input: equal Name
+	// and Input cannot establish that two calls are identical.
+	InputIncomplete bool
 	// Command is true when the tool runs a command.
 	Command bool
 	// Writes are the paths the call writes, as the CLI named them; none for

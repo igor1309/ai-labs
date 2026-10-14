@@ -73,7 +73,7 @@ func TestAnUnusedBrokenMappingRefusesNothing(t *testing.T) {
 		!strings.Contains(r.stderr, "\n  refuses nothing\n1 problem(s)") {
 		t.Fatalf("check: %d\n%s%s", r.code, r.stdout, r.stderr)
 	}
-	r = agister(t, home, repo, "run", "adversarial_review", "--quiet", "--param", "base=main", "--timeout", "1m")
+	r = agister(t, home, repo, "run", "adversarial_review_reviewer", "--quiet", "--param", "base=main", "--timeout", "1m")
 	if r.code != cli.ExitCompleted {
 		t.Fatalf("run: %d\n%s%s", r.code, r.stdout, r.stderr)
 	}
@@ -90,7 +90,8 @@ func TestAnUnusedBrokenMappingRefusesNothing(t *testing.T) {
 // A call whose agent runs on a broken mapping is refused before its first
 // turn and recorded, naming the document, its path, its problem and the
 // chain that reaches it; a workflow with a node on it is refused before any
-// node runs; with --agent, a call on a sound agent runs (ADR-015).
+// node runs; a workflow that binds the same process to a sound agent runs
+// (ADR-015).
 func TestACallOnABrokenMappingIsRefused(t *testing.T) {
 	t.Parallel()
 	home, repo := setup(t, "approve")
@@ -98,19 +99,20 @@ func TestACallOnABrokenMappingIsRefused(t *testing.T) {
 	agent := read(t, filepath.Join(home, "agents", "reviewer.toml"))
 	agent = strings.Replace(strings.Replace(agent, `name = "reviewer"`, `name = "stranded"`, 1), `runtime = "claude-code"`, `runtime = "elsewhere"`, 1)
 	write(t, filepath.Join(home, "agents", "stranded.toml"), agent)
-	process := filepath.Join(home, "processes", "adversarial_review.yaml")
-	write(t, process, strings.Replace(read(t, process), "uses: agent:reviewer", "uses: agent:stranded", 1))
+	bound(t, home, "adversarial_review", "stranded")
+	panel := filepath.Join(home, "workflows", "review_panel.yaml")
+	write(t, panel, strings.Replace(read(t, panel), "process:adversarial_review, agent: reviewer", "process:adversarial_review, agent: stranded", 1))
 
 	r := agister(t, home, repo, "check")
 	if r.code != cli.ExitUsage || !strings.Contains(r.stderr, "runtime mapping elsewhere: unknown adapter \"elsewhere\"") ||
-		!strings.Contains(r.stderr, "\n  refuses process adversarial_review, workflow review_panel\n") {
+		!strings.Contains(r.stderr, "\n  refuses workflow adversarial_review_stranded, workflow review_panel\n") {
 		t.Fatalf("check: %d\n%s%s", r.code, r.stdout, r.stderr)
 	}
 
 	runs := &newRuns{home: home}
 	runs.take(t)
-	r = agister(t, home, repo, "run", "adversarial_review", "--quiet", "--param", "base=main", "--timeout", "1m")
-	want := "process adversarial_review uses agent stranded, which uses runtime mapping elsewhere (" + path + "): unknown adapter \"elsewhere\""
+	r = agister(t, home, repo, "run", "adversarial_review_stranded", "--quiet", "--param", "base=main", "--timeout", "1m")
+	want := "workflow adversarial_review_stranded uses agent stranded, which uses runtime mapping elsewhere (" + path + "): unknown adapter \"elsewhere\""
 	if r.code != cli.ExitRefused || !strings.Contains(r.stderr, want) {
 		t.Fatalf("run: %d, want %q\n%s%s", r.code, want, r.stdout, r.stderr)
 	}
@@ -120,7 +122,7 @@ func TestACallOnABrokenMappingIsRefused(t *testing.T) {
 	}
 
 	r = agister(t, home, repo, "run", "review_panel", "--quiet", "--param", "base=main", "--param", "architecture=a.txt")
-	if r.code != cli.ExitRefused || !strings.Contains(r.stderr, "workflow review_panel uses process adversarial_review, which uses agent stranded, which uses runtime mapping elsewhere ("+path+")") {
+	if r.code != cli.ExitRefused || !strings.Contains(r.stderr, "workflow review_panel uses agent stranded, which uses runtime mapping elsewhere ("+path+")") {
 		t.Fatalf("workflow: %d\n%s%s", r.code, r.stdout, r.stderr)
 	}
 	// The workflow's run alone: no node was started.
@@ -128,19 +130,21 @@ func TestACallOnABrokenMappingIsRefused(t *testing.T) {
 		t.Fatalf("workflow record = %v", workflow.record)
 	}
 
-	for _, args := range [][]string{{"process", "list"}, {"workflow", "list"}} {
-		r := agister(t, home, repo, args...)
-		if r.code != 0 || !strings.Contains(r.stdout, "\tREFUSED: ") {
-			t.Fatalf("%v: %d\n%s%s", args, r.code, r.stdout, r.stderr)
-		}
+	// The mapping is reached through the workflows that bind its agent,
+	// and through no process (ADR-030 rule 2): they are the ones listed
+	// and shown refused.
+	r = agister(t, home, repo, "workflow", "list")
+	if r.code != 0 || !regexp.MustCompile(`(?m)^adversarial_review_stranded\b.*\tREFUSED: `).MatchString(r.stdout) || !regexp.MustCompile(`(?m)^review_panel\b.*\tREFUSED: `).MatchString(r.stdout) ||
+		regexp.MustCompile(`(?m)^adversarial_review_reviewer\b.*REFUSED`).MatchString(r.stdout) {
+		t.Fatalf("workflow list: %d\n%s%s", r.code, r.stdout, r.stderr)
 	}
-	if r := agister(t, home, repo, "process", "show", "adversarial_review"); r.code != 0 || !strings.Contains(r.stdout, "REFUSED: "+want) {
+	if r := agister(t, home, repo, "workflow", "show", "adversarial_review_stranded"); r.code != 0 || !strings.Contains(r.stdout, "REFUSED: "+want) {
 		t.Fatalf("show: %d\n%s%s", r.code, r.stdout, r.stderr)
 	}
 
-	r = agister(t, home, repo, "run", "adversarial_review", "--agent", "reviewer", "--quiet", "--param", "base=main", "--timeout", "1m")
+	r = agister(t, home, repo, "run", "adversarial_review_reviewer", "--quiet", "--param", "base=main", "--timeout", "1m")
 	if r.code != cli.ExitCompleted {
-		t.Fatalf("run --agent reviewer: %d\n%s%s", r.code, r.stdout, r.stderr)
+		t.Fatalf("run adversarial_review_reviewer: %d\n%s%s", r.code, r.stdout, r.stderr)
 	}
 	if ran := runs.one(t); ran.record["agent"] != "reviewer" || ran.first == nil {
 		t.Fatalf("the call did not run as reviewer: %v", ran.record)

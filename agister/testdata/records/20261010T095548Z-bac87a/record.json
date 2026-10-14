@@ -1,0 +1,147 @@
+{
+  "schema": "agister.run/v1alpha3",
+  "id": "20261010T095548Z-bac87a",
+  "process": "adr_review",
+  "request": {
+    "process": "adr_review",
+    "params": {
+      "base": "origin/trunk",
+      "candidate": "HEAD",
+      "goal": "testdata/briefs/lab-171-goal.md"
+    },
+    "cwd": "/Users/igormalyarov/Developer/my-apps/ai-labs/ai-labs.worktrees/lab-171/agister"
+  },
+  "created_at": "2026-10-10T09:55:48.080664Z",
+  "finished_at": "2026-10-10T10:05:07.555012Z",
+  "definitions": [
+    {
+      "kind": "workflows",
+      "name": "adr_review",
+      "layers": [
+        {
+          "layer": "home",
+          "path": "/Users/igormalyarov/.agister/workflows/adr_review.yaml",
+          "sha256": "5ee602ab6a03713620f266c885cf9e26c60d28fba497fa6bb016593a3ee600ce",
+          "fields": [
+            "schema",
+            "name",
+            "type",
+            "input.params.base.default",
+            "input.params.candidate.default",
+            "input.params.goal",
+            "input.values.base.source",
+            "input.values.base.rev",
+            "input.values.candidate.source",
+            "input.values.candidate.rev",
+            "input.values.goal.source",
+            "input.values.goal.path",
+            "fan_out",
+            "join.node",
+            "join.uses"
+          ]
+        }
+      ]
+    }
+  ],
+  "layers": [
+    {
+      "layer": "project",
+      "dir": "/Users/igormalyarov/Developer/my-apps/ai-labs/ai-labs.worktrees/lab-171/agister/.agister"
+    },
+    {
+      "layer": "repository",
+      "dir": "/Users/igormalyarov/Developer/my-apps/ai-labs/ai-labs.worktrees/lab-171/.agister"
+    },
+    {
+      "layer": "home",
+      "dir": "/Users/igormalyarov/.agister"
+    }
+  ],
+  "inputs": [
+    {
+      "name": "base",
+      "source": "git.revision",
+      "identity": "d9ac134d2c32c3cf3ca50eb06046500128823f6e",
+      "revision": true,
+      "value": "d9ac134d2c32c3cf3ca50eb06046500128823f6e"
+    },
+    {
+      "name": "candidate",
+      "source": "git.revision",
+      "identity": "4a55712d5c6cb492f07d8c322112cbc9be26e72f",
+      "revision": true,
+      "value": "4a55712d5c6cb492f07d8c322112cbc9be26e72f"
+    },
+    {
+      "name": "goal",
+      "source": "file",
+      "identity": "sha256:081e4a67c9339b9b39a12573c442f6f98a48c127be75fb86c96b1a9c3ba99ed3",
+      "value": "# LAB-171: an agent is a runtime, a process is work, a workflow binds them\n\n## Intent\n\nHome's settings repeat themselves along the agent: four `implement*`\nprocesses, five policies of three contents, five review processes that\ndiffer in a prompt, and agents that differ in `session` only. Each fact\ngets one document: the runtime's in the agent, the work's in the\nprocess, the choice of agent in the workflow. LAB-171 holds the findings\nand the owner's decisions.\n\n## Done when\n\n1. `agister/docs/adr/030-a-workflow-binds-a-process-to-an-agent.md`\n   records the decision and is accepted.\n2. `agister/home/` has one implement process, five review processes on\n   one base, no policy documents, five agents, and workflows that bind\n   every node to an agent.\n3. `agister run` runs workflows only, `--agent` does not exist, and\n   `agister check` reports a binding whose runtime cannot give what its\n   process requires.\n4. `agister check` passes on the composed settings, and an implement\n   workflow and `code_review` each complete a real run.\n5. The caller skill, the README, the settings diagrams and Pages say\n   what the binary does.\n\n## Out of scope\n\nA cap of an agent or a runtime. `extends` for any kind but a process.\nContinuing a fan-out workflow.\n\n## Decisions\n\nThe owner's, 2026-10-10:\n\n- The agent is concrete, the process abstract, the workflow binds them;\n  the workflow is the only place an agent is chosen.\n- Policies fold into processes.\n- `--agent` and bare process runs are dropped: a run is defined by its\n  settings.\n- The reviewers stay five processes, each defined by its prompt, on one\n  `review` base.\n- `extends` is defined narrowly: one level, a process and its base, the\n  base not runnable. This amends ADR-028 rule 1.\n- `session` moves from the agent to the process, `fresh-only` by\n  default. It is not a workflow field.\n- The work lands as expand, migrate, contract: the binary reads both\n  forms, the settings move, the old form goes.\n\n## Open\n\nNone.\n",
+      "cache_path": "/Users/igormalyarov/.agister/cache/081e4a67c9339b9b39a12573c442f6f98a48c127be75fb86c96b1a9c3ba99ed3/lab-171-goal.md"
+    }
+  ],
+  "workflow": {
+    "nodes": [
+      {
+        "name": "adr",
+        "process": "adr_review_codex",
+        "run": "20261010T095548Z-12b5cf",
+        "status": "completed"
+      },
+      {
+        "name": "judge",
+        "process": "review_judge",
+        "join": true,
+        "run": "20261010T100446Z-a4cd01",
+        "status": "completed"
+      }
+    ],
+    "barrier": {
+      "state": "passed"
+    },
+    "collection": {
+      "name": "collection.json",
+      "path": "artifacts/collection.json",
+      "digest": "sha256:22eab5f4e41ef7f926e3b43be733cffb8eadebe49ecf9513d4b9477d258d9468",
+      "bytes": 4217
+    }
+  },
+  "result": {
+    "status": "completed",
+    "output": {
+      "coverage_gaps": [],
+      "items": [
+        {
+          "action": "Question for the owner: do you accept ADR-030? Options: (a) accept, and change `Status: Proposed` to `Accepted` at agister/docs/adr/030-a-workflow-binds-a-process-to-an-agent.md:3; (b) accept, and add the acceptance amendment instead; (c) withhold acceptance, leaving LAB-171 Done when item 1 unmet and the goal not complete.",
+          "benefit": "LAB-171 Done when item 1 becomes true, and the migration that depends on the architecture rests on an accepted decision rather than a proposed one.",
+          "cost": "Trivial: one metadata line in the ADR after owner acceptance, no test changes. Risk contained: only the ADR status and its acceptance state change; no callers, stored records, configuration or CLI behaviour are affected.",
+          "missing_evidence": "",
+          "reason": "The evidence holds. The trace shows `Status: Proposed` at line 3 of the ADR and the goal's Done when item 1 (lab-171-goal.md:14-15) requiring the ADR to record the decision and be accepted. The scope `change` is supported: the status line is in the file the change touches. Major is supported: a stated completion condition is false, and the reviewer already weighed the small fix size in the rationale. The burden for a major is met on economics (trivial, contained cost against an unmet completion condition). But the fix as the reviewer states it is conditional on the owner accepting the decision and offers two ways to record it. Accepting an ADR is a stance only the owner can take, so a fixer cannot settle it.",
+          "ruling": "owner",
+          "severity": "major",
+          "sources": [
+            "1#1"
+          ],
+          "switching_condition": "Fix would win if a recorded owner acceptance of ADR-030 were presented, making the status line a mechanical change with one stated form. Reject would win if the goal's item 1 were shown not to require acceptance within this change.",
+          "title": "ADR-030 remains Proposed despite the goal requiring acceptance"
+        }
+      ],
+      "summary": "One finding, and its evidence holds: ADR-030 is still `Proposed` while LAB-171 Done when item 1 requires it accepted. It is ruled `owner`, because the reviewer's own fix depends on the owner's acceptance and offers two ways to record it. No reviewer's evidence fell short and there are no coverage gaps."
+    },
+    "text": "{\"summary\":\"One finding, and its evidence holds: ADR-030 is still `Proposed` while LAB-171 Done when item 1 requires it accepted. It is ruled `owner`, because the reviewer's own fix depends on the owner's acceptance and offers two ways to record it. No reviewer's evidence fell short and there are no coverage gaps.\",\"items\":[{\"severity\":\"major\",\"sources\":[\"1#1\"],\"title\":\"ADR-030 remains Proposed despite the goal requiring acceptance\",\"ruling\":\"owner\",\"reason\":\"The evidence holds. The trace shows `Status: Proposed` at line 3 of the ADR and the goal's Done when item 1 (lab-171-goal.md:14-15) requiring the ADR to record the decision and be accepted. The scope `change` is supported: the status line is in the file the change touches. Major is supported: a stated completion condition is false, and the reviewer already weighed the small fix size in the rationale. The burden for a major is met on economics (trivial, contained cost against an unmet completion condition). But the fix as the reviewer states it is conditional on the owner accepting the decision and offers two ways to record it. Accepting an ADR is a stance only the owner can take, so a fixer cannot settle it.\",\"action\":\"Question for the owner: do you accept ADR-030? Options: (a) accept, and change `Status: Proposed` to `Accepted` at agister/docs/adr/030-a-workflow-binds-a-process-to-an-agent.md:3; (b) accept, and add the acceptance amendment instead; (c) withhold acceptance, leaving LAB-171 Done when item 1 unmet and the goal not complete.\",\"missing_evidence\":\"\",\"benefit\":\"LAB-171 Done when item 1 becomes true, and the migration that depends on the architecture rests on an accepted decision rather than a proposed one.\",\"cost\":\"Trivial: one metadata line in the ADR after owner acceptance, no test changes. Risk contained: only the ADR status and its acceptance state change; no callers, stored records, configuration or CLI behaviour are affected.\",\"switching_condition\":\"Fix would win if a recorded owner acceptance of ADR-030 were presented, making the status line a mechanical change with one stated form. Reject would win if the goal's item 1 were shown not to require acceptance within this change.\"}],\"coverage_gaps\":[]}",
+    "usage": {
+      "input_tokens": 1468484,
+      "output_tokens": 10686,
+      "cache_read_tokens": 1215872
+    },
+    "cost": {
+      "usd": 0.8626692,
+      "source": "runtime"
+    },
+    "timing": {
+      "started_at": "2026-10-10T09:55:48.080664Z",
+      "finished_at": "2026-10-10T10:05:07.555012Z",
+      "wall_ms": 559474
+    }
+  }
+}

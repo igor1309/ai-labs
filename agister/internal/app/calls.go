@@ -14,7 +14,8 @@ import (
 	"time"
 
 	"github.com/igor1309/ai-labs/agister/internal/contract"
-	"github.com/igor1309/ai-labs/agister/internal/domain/definition"
+	"github.com/igor1309/ai-labs/agister/internal/domain/document"
+	"github.com/igor1309/ai-labs/agister/internal/domain/input"
 	"github.com/igor1309/ai-labs/agister/internal/domain/policy"
 	"github.com/igor1309/ai-labs/agister/internal/domain/prompt"
 	"github.com/igor1309/ai-labs/agister/internal/domain/run"
@@ -55,12 +56,18 @@ type CallResolution interface {
 	// what was resolved before the refusal, never nil.
 	Resolve(ctx context.Context, request CallResolveRequest) (*ResolvedCall, error)
 	// Workflow resolves the workflow of that name; found is false when the
-	// settings have none, and the name is a process's.
+	// settings have none.
 	Workflow(ctx context.Context, name string) (res *ResolvedWorkflow, found bool, err error)
+	// Binders are the workflows a node of which binds the process of that
+	// name (ADR-030 rule 5), sorted; listed is false when the settings
+	// list no such process.
+	Binders(ctx context.Context, process string) (workflows []string, listed bool, err error)
 }
 
 // CallResolveRequest is what a call is resolved from: its process, the
-// agent that overrides the process's, and the caller's narrowing limits.
+// agent it runs on, and the caller's narrowing limits. Every call is a
+// workflow node's, and Agent the agent the node binds its process to
+// (ADR-030 rule 5).
 type CallResolveRequest struct {
 	Process    string
 	Agent      string
@@ -72,16 +79,23 @@ type CallResolveRequest struct {
 type ResolvedCall struct {
 	Process CallProcess
 	Agent   CallAgent
+	// Session says whether the call's session may be resumed, as its process
+	// says it: fresh-only or resumable (ADR-030 rule 3).
+	Session string
 	Mapping CallMapping
 	Schema  []byte
-	Prompts map[string]Resolved // by name: each prompt's text, identified by its digest
-	Absent  []CallAbsent        // the optional prompt inputs whose prompt neither layer has (ADR-019)
+	// Prompts are the process's prompt, then each guidance prompt, in order,
+	// each as the input that gives it (ADR-028 rule 8).
+	Prompts []CallPrompt
 	// Forms are the brief forms its inputs name, by name (ADR-026 rule 8).
 	Forms map[string]CallForm
 	// Skills are the call's skills, in order: the process's, then its
 	// agent's, each once (ADR-021).
-	Skills    []CallSkill
-	Sources   []CallSource
+	Skills  []CallSkill
+	Sources []CallSource
+	// Layers are the settings layers the call selected, nearest first
+	// (ADR-028 rule 11).
+	Layers    []CallLayer
 	Effective CallLimits
 	Identity  CallRuntime
 	Plan      CallPlan
@@ -138,12 +152,12 @@ type CallValue struct {
 // part refers to exists.
 type CallForm func(text string, resolve func(path string) error) []string
 
-// CallAbsent is an optional prompt input whose prompt neither layer has
-// (ADR-019): the call goes ahead without it, and only it.
-type CallAbsent struct {
-	Index  int // among the process's values
-	Input  string
-	Prompt string
+// CallPrompt is a prompt a call is given, after its process's input
+// values: the input that gives it, prompt or guidance.<name>, and its
+// text, identified by its digest (ADR-028 rule 8).
+type CallPrompt struct {
+	Input string
+	Text  Resolved
 }
 
 // CallVerify is a process's verification command (ADR-002).
@@ -154,13 +168,43 @@ type CallVerify struct {
 	Instruction string        // what the agent is told when a run fails
 }
 
+// VerifyCall is one call's verification loop, and what it records to.
+type VerifyCall struct {
+	Record *run.Record
+	Result *run.Result
+	Event  func(source, kind string, data map[string]any)
+	// Update and Artifact write the run's evidence.
+	Update   func(run.Record) error
+	Artifact func(name string, data []byte) (run.Artifact, error)
+
+	Verify   CallVerify
+	Limit    *float64  // the call's cost limit, one budget for every turn
+	Deadline time.Time // the call's timeout, for every turn and run
+	// NoOutput is the call's staleness limit for a run: how long the
+	// command may go without output; zero: no such limit.
+	NoOutput time.Duration
+	Dir      string // the call's worktree, where the command runs
+	Base     string // the revision the process pins
+	// Request is the call's first turn, which every repair repeats with
+	// the failure as its prompt.
+	Request TurnRequest
+	// Session is the provider session of the call's first turn, which
+	// every repair resumes.
+	Session string
+
+	// Take runs a turn and records it with the call, given the resumed
+	// session's totals before it; Conclude says whether a turn ended
+	// validly, and why not.
+	Take     func(TurnRequest, *run.SessionTotals) run.Turn
+	Conclude func(run.Turn) *run.Error
+}
+
 // CallAgent is the runtime profile a call runs as.
 type CallAgent struct {
 	Name    string
 	Command string
 	Model   string
 	Effort  string
-	Session string // definition.SessionFresh or definition.SessionResumable
 }
 
 // CallMapping is the runtime permission mapping a call runs on.
@@ -169,14 +213,32 @@ type CallMapping struct {
 	Adapter string
 }
 
-// CallSource is where a definition a call resolved came from.
+// CallSource is a definition a call resolved, and the layer files it was
+// composed from, nearest first; a document taken whole has the one it was
+// read from (ADR-028 rule 11).
 type CallSource struct {
-	Kind      string
-	Name      string
-	Path      string
-	SHA256    string
-	Project   bool
-	Overrides string // the global definition this project one takes priority over
+	Kind   string
+	Name   string
+	Layers []CallSourceLayer
+}
+
+// CallSourceLayer is one layer's file of a definition a call resolved.
+type CallSourceLayer struct {
+	Layer  string // home, repository or project
+	Path   string
+	SHA256 string
+	// Fields are the fields the file gave the composition: none when it
+	// gave nothing, nil on a document taken whole.
+	Fields []string
+	// Process: on the files of a process that extends a base, the process
+	// whose file it is, the base or the process itself.
+	Process string
+}
+
+// CallLayer is one settings layer a call selected, and its directory.
+type CallLayer struct {
+	Layer string // home, repository or project
+	Dir   string
 }
 
 // CallLimits are a call's composed limits.
@@ -208,6 +270,9 @@ type CallPlan struct {
 	Primitives []string
 	Granted    []string // permissions the primitives provide
 	Withheld   []string // allowed but not provided
+	Declared   []string // effective permissions the caller offered
+	Extra      []string // granted beyond that offer
+	Warnings   []string
 }
 
 // ResolvedWorkflow is a workflow and its nodes' processes, as a run of it
@@ -216,6 +281,9 @@ type ResolvedWorkflow struct {
 	Workflow      CallWorkflow
 	NodeProcesses map[string]CallNodeProcess // by name
 	Sources       []CallSource               // the workflow's document, then its brief forms'
+	// Layers are the settings layers the run selected, nearest first: its
+	// nodes' calls resolve against the same (ADR-028 rule 10).
+	Layers []CallLayer
 	// Forms are the brief forms its inputs name, by name (ADR-026 rule 8).
 	Forms map[string]CallForm
 }
@@ -227,12 +295,17 @@ type CallWorkflow struct {
 	Values []CallValue
 	FanOut []CallNode
 	Join   CallNode
+	// Call is the one node of a workflow of one call (ADR-030 rule 6),
+	// whose run is the call's own; nil: the workflow fans out and joins.
+	Call *CallNode
 }
 
-// CallNode is one node of a workflow and the process it calls.
+// CallNode is one node of a workflow, the process it calls and the agent
+// it binds the process to.
 type CallNode struct {
 	Name    string
 	Process string
+	Agent   string
 }
 
 // CallNodeProcess is what a run of a workflow reads of a node's process:
@@ -252,42 +325,42 @@ func (r *Resolver) Snapshot(ctx context.Context) CallResolution {
 type callResolution struct{ resolver *Resolver }
 
 func (c callResolution) Resolve(ctx context.Context, request CallResolveRequest) (*ResolvedCall, error) {
-	res, err := c.resolver.resolve(ctx, request.Process, request.Agent, overrides{timeout: request.Timeout, maxCostUSD: request.MaxCostUSD})
+	res, err := c.resolver.resolve(ctx, request.Process, request.Agent, overrides{timeout: request.Timeout, maxCostUSD: request.MaxCostUSD, node: true})
 	process, agent, effective := res.process, res.agent, res.effective
 	resolved := &ResolvedCall{
 		Process: CallProcess{
-			Name: process.Name, Instruction: process.Instruction,
-			Params: callParams(process.Params), Values: callValues(process.Values),
-			Revision: process.Revision, Output: process.Output.Format, Clean: process.Clean,
+			Name: process.name, Instruction: process.instruction,
+			Params: callParams(process.params), Values: callValues(process.values),
+			Revision: process.revision, Output: process.output.format, Clean: process.clean,
 		},
-		Agent:   CallAgent{Name: agent.Name, Command: agent.Command, Model: agent.Model, Effort: agent.Effort, Session: agent.Session},
-		Mapping: CallMapping{Name: res.mapping.Name, Adapter: res.mapping.Adapter},
+		Agent:   CallAgent{Name: agent.name, Command: agent.command, Model: agent.model, Effort: agent.effort},
+		Session: res.session,
+		Mapping: CallMapping{Name: res.mapping.name, Adapter: res.mapping.adapter},
 		Schema:  res.schema,
 		Forms:   callForms(res.forms),
 		Sources: callSources(res.sources),
+		Layers:  callLayers(c.resolver.definitions.Layers(ctx)),
 		Effective: CallLimits{
 			Timeout: effective.Timeout, MaxAttempts: effective.MaxAttempts, MaxCostUSD: effective.MaxCostUSD,
 			Allow: effective.Allow, Deny: effective.Deny, Permissions: effective.Permissions, Require: effective.Require,
 			Access: effective.Access, Scope: effective.Scope, Stale: callStale(effective.Stale),
 		},
 		Identity: CallRuntime{Contract: res.identity.Contract, Version: res.identity.Version, Resume: res.identity.Resume, ResumeWhereItRan: res.identity.ResumeWhereItRan},
-		Plan:     CallPlan{Primitives: res.plan.Primitives, Granted: res.plan.Granted, Withheld: res.plan.Withheld},
+		Plan:     CallPlan{Primitives: res.plan.Primitives, Granted: res.plan.Granted, Withheld: res.plan.Withheld, Declared: effective.Permissions, Extra: res.plan.Extra, Warnings: res.warnings},
 		Writer:   res.writer,
 	}
-	if verify := process.Verify; verify != nil {
-		resolved.Process.Verify = &CallVerify{Command: verify.Command, Timeout: verify.Timeout, MaxAttempts: verify.MaxAttempts, Instruction: verify.Instruction}
+	if verify := process.verify; verify != nil {
+		resolved.Process.Verify = &CallVerify{Command: verify.command, Timeout: verify.timeout, MaxAttempts: verify.maxAttempts, Instruction: verify.instruction}
 	}
-	for name, prompt := range res.prompts {
-		if resolved.Prompts == nil {
-			resolved.Prompts = map[string]Resolved{}
+	resolved.Prompts = translated(res.prompts, func(prompt promptText) CallPrompt {
+		given := CallPrompt{Input: input.PromptInput, Text: Resolved{Value: prompt.text, Identity: "sha256:" + prompt.sha256}}
+		if prompt.name != process.prompt {
+			given.Input = input.GuidanceInput + prompt.name
 		}
-		resolved.Prompts[name] = Resolved{Value: prompt.Text, Identity: "sha256:" + prompt.Source.SHA256}
-	}
-	resolved.Absent = translated(res.absent, func(absent absentInput) CallAbsent {
-		return CallAbsent{Index: absent.index, Input: absent.input, Prompt: absent.prompt}
+		return given
 	})
-	resolved.Skills = translated(res.skills, func(skill definition.Skill) CallSkill {
-		return CallSkill{Name: skill.Name, Bytes: skill.Bytes, Identity: "sha256:" + skill.Source.SHA256}
+	resolved.Skills = translated(res.skills, func(skill givenSkill) CallSkill {
+		return CallSkill{Name: skill.name, Bytes: skill.bytes, Identity: "sha256:" + skill.sha256}
 	})
 	return resolved, err
 }
@@ -298,22 +371,37 @@ func (c callResolution) Workflow(ctx context.Context, name string) (*ResolvedWor
 		return nil, found, err
 	}
 	workflow := res.workflow
-	node := func(node definition.Node) CallNode { return CallNode{Name: node.Name, Process: node.Process} }
+	node := func(node workflowNode) CallNode {
+		return CallNode{Name: node.name, Process: node.process, Agent: node.agent}
+	}
 	resolved := &ResolvedWorkflow{
 		Workflow: CallWorkflow{
-			Name: workflow.Name, Params: callParams(workflow.Params), Values: callValues(workflow.Values),
-			FanOut: translated(workflow.FanOut, node), Join: node(workflow.Join),
+			Name: workflow.name, Params: callParams(workflow.params), Values: callValues(workflow.values),
+			FanOut: translated(workflow.fanOut, node), Join: node(workflow.join),
 		},
 		NodeProcesses: make(map[string]CallNodeProcess, len(res.processes)),
 		Sources:       callSources(res.sources),
+		Layers:        callLayers(c.resolver.definitions.Layers(ctx)),
 		Forms:         callForms(res.forms),
+	}
+	if call := workflow.call; call != nil {
+		called := node(*call)
+		resolved.Workflow.Call = &called
 	}
 	for name, process := range res.processes {
 		resolved.NodeProcesses[name] = CallNodeProcess{
-			Params: translated(process.Params, func(param definition.Param) string { return param.Name }),
+			Params: translated(process.params, func(param declaredParam) string { return param.name }),
 		}
 	}
 	return resolved, found, err
+}
+
+func (c callResolution) Binders(ctx context.Context, process string) ([]string, bool, error) {
+	reached, err := c.resolver.reach(ctx)
+	if err != nil {
+		return nil, false, err
+	}
+	return reached.binders(process), reached.listed(DocumentRef{Kind: document.KindProcess, Name: process}), nil
 }
 
 // callStale is the composed staleness limits as a call reads them: a zero
@@ -335,36 +423,48 @@ func callStale(stale policy.Stale) CallStale {
 	return limits
 }
 
-func callParams(params []definition.Param) []CallParam {
-	return translated(params, func(param definition.Param) CallParam {
-		return CallParam{Name: param.Name, Default: param.Default, HasDefault: param.HasDefault}
+func callParams(params []declaredParam) []CallParam {
+	return translated(params, func(param declaredParam) CallParam {
+		return CallParam{Name: param.name, Default: param.defaultValue, HasDefault: param.hasDefault}
 	})
 }
 
-func callValues(values []definition.Value) []CallValue {
-	return translated(values, func(value definition.Value) CallValue {
-		return CallValue{Name: value.Name, Source: value.Source, Args: value.Args, Forms: value.Forms}
+func callValues(values []declaredValue) []CallValue {
+	return translated(values, func(value declaredValue) CallValue {
+		return CallValue{Name: value.name, Source: value.source, Args: value.args, Forms: value.forms}
 	})
 }
 
 // callForms is each brief form as a call checks a text against it.
-func callForms(forms map[string]definition.Brief) map[string]CallForm {
+func callForms(forms map[string]briefForm) map[string]CallForm {
 	if forms == nil {
 		return nil
 	}
 	checks := make(map[string]CallForm, len(forms))
 	for name, form := range forms {
-		checks[name] = form.Check
+		checks[name] = formCheck(form)
 	}
 	return checks
 }
 
-func callSources(sources []definition.Source) []CallSource {
-	return translated(sources, func(source definition.Source) CallSource {
-		return CallSource{
-			Kind: string(source.Kind), Name: source.Name, Path: source.Path, SHA256: source.SHA256,
-			Project: source.Project, Overrides: source.Overrides,
+func callSources(sources []document.Source) []CallSource {
+	return translated(sources, func(source document.Source) CallSource {
+		files := source.Layers
+		if !document.Composed(source.Kind) && len(files) > 1 {
+			files = files[:1] // the nearest replaces the rest, which the call did not read
 		}
+		return CallSource{
+			Kind: string(source.Kind), Name: source.Name,
+			Layers: translated(files, func(file document.LayerFile) CallSourceLayer {
+				return CallSourceLayer{Layer: string(file.Layer), Path: file.Path, SHA256: file.SHA256, Fields: file.Fields, Process: file.Process}
+			}),
+		}
+	})
+}
+
+func callLayers(layers []document.LayerDir) []CallLayer {
+	return translated(layers, func(layer document.LayerDir) CallLayer {
+		return CallLayer{Layer: string(layer.Layer), Dir: layer.Dir}
 	})
 }
 
@@ -435,7 +535,6 @@ type EventSink interface {
 // RunHandle writes one run's evidence. Finish releases ownership.
 type RunHandle interface {
 	Append(event run.Event) error
-	Raw(line string) error
 	Update(record run.Record) error
 	// Artifact stores a file the call produced beside its evidence.
 	Artifact(name string, data []byte) (run.Artifact, error)
@@ -709,7 +808,6 @@ func (c *Calls) Submit(ctx context.Context, request contract.CallRequest) (strin
 		Request: run.Request{
 			Process:    request.Process,
 			Params:     request.Params,
-			Agent:      request.Agent,
 			Timeout:    request.Timeout,
 			MaxCostUSD: request.MaxCostUSD,
 			Continue:   request.Continue,
@@ -724,11 +822,19 @@ func (c *Calls) Submit(ctx context.Context, request contract.CallRequest) (strin
 	// too.
 	resolver := c.resolver.Snapshot(ctx)
 	workflow, isWorkflow, workflowErr := resolver.Workflow(ctx, request.Process)
+	// A workflow of one call is that call's run, which names the call
+	// from the start (ADR-030 rule 6).
+	var one *called
+	if isWorkflow && workflow != nil && workflow.Workflow.Call != nil {
+		call := workflow.Workflow.Call
+		record.Call = &run.Call{Node: call.Name, Process: call.Process, Agent: call.Agent}
+		one = &called{workflow: workflow, err: workflowErr}
+	}
 	handle, err := c.recorder.Create(ctx, record)
 	if err != nil {
 		return "", err
 	}
-	if isWorkflow {
+	if isWorkflow && one == nil {
 		runCtx, cancel := context.WithCancel(WithCorrelation(context.WithoutCancel(ctx), "workflow_run", record.ID, "workflow", request.Process))
 		// Cancelling the workflow is serialized with starting its nodes.
 		flow := &flow{cancel: cancel}
@@ -747,16 +853,41 @@ func (c *Calls) Submit(ctx context.Context, request contract.CallRequest) (strin
 		defer c.cancels.End(record.ID)
 		defer c.cancels.Remove(record.ID)
 		defer cancel()
-		c.execute(runCtx, handle, record, resolver, nil)
+		c.execute(runCtx, handle, record, resolver, nil, one)
 	}()
 	return record.ID, nil
+}
+
+// unbound is the refusal of a run of name, which names no workflow
+// (ADR-030 rule 7): a process's name is refused with the workflows that
+// bind it, which are what to run.
+func (c *Calls) unbound(ctx context.Context, resolver CallResolution, name string) error {
+	binders, listed, err := resolver.Binders(ctx, name)
+	switch {
+	case err != nil:
+		return err
+	case !listed:
+		return refuse("no workflow %q: agister run runs a workflow (ADR-030 rule 7)", name)
+	case len(binders) == 0:
+		return refuse("process %s is not run on its own: agister run runs a workflow (ADR-030 rule 7), and no workflow binds it", name)
+	}
+	return refuse("process %s is not run on its own: agister run runs a workflow (ADR-030 rule 7); run one that binds it: %s", name, strings.Join(binders, ", "))
+}
+
+// called is the workflow of one call a run is (ADR-030 rule 6), as the run
+// resolved it, and what refuses it.
+type called struct {
+	workflow *ResolvedWorkflow
+	err      error
 }
 
 // execute runs one call and returns its record as finished. Every refusal
 // happens before the runtime starts and is recorded; every effect is
 // released on every path. collection is what a workflow's join receives
-// through its collection input; nil for any other call.
-func (c *Calls) execute(ctx context.Context, handle RunHandle, record run.Record, resolver CallResolution, collection *Resolved) (final run.Record) {
+// through its collection input; nil for any other call. one is the
+// workflow of one call the run is, record.Call its call; nil for any
+// other.
+func (c *Calls) execute(ctx context.Context, handle RunHandle, record run.Record, resolver CallResolution, collection *Resolved, one *called) (final run.Record) {
 	event := func(source, kind string, data map[string]any) {
 		_ = handle.Append(run.Event{At: c.clock.Now(), Source: source, Kind: kind, Data: data})
 	}
@@ -792,6 +923,7 @@ func (c *Calls) execute(ctx context.Context, handle RunHandle, record run.Record
 		}
 		result.Timing.FinishedAt = now
 		result.Timing.WallMS = now.Sub(result.Timing.StartedAt).Milliseconds()
+		result = record.WithWarnings(result)
 		record.Result = &result
 		final = record
 		data := map[string]any{"status": string(result.Status)}
@@ -822,7 +954,11 @@ func (c *Calls) execute(ctx context.Context, handle RunHandle, record run.Record
 			finish(run.Fault(run.ClassInternal, "%v", recovered))
 		}
 	}()
-	event(run.SourceAgister, "CALL_SUBMITTED", map[string]any{"process": record.Process})
+	submitted := map[string]any{"process": record.Process}
+	if one != nil {
+		submitted["workflow"], submitted["process"] = record.Process, record.Call.Process
+	}
+	event(run.SourceAgister, "CALL_SUBMITTED", submitted)
 
 	fail := func(err error) {
 		// A cancelled call's probes and git fail as a consequence; the
@@ -840,12 +976,33 @@ func (c *Calls) execute(ctx context.Context, handle RunHandle, record run.Record
 		finish(run.Fault(run.ClassInternal, "%v", err))
 	}
 
-	res, err := resolver.Resolve(ctx, CallResolveRequest{
+	// agister run runs a workflow: a process runs only as a node that binds
+	// it to an agent (ADR-030 rules 5 and 7).
+	if one == nil && record.Parent == nil {
+		fail(c.unbound(ctx, resolver, record.Process))
+		return
+	}
+	resolving := CallResolveRequest{
 		Process: record.Request.Process, Agent: record.Request.Agent,
 		Timeout: record.Request.Timeout, MaxCostUSD: record.Request.MaxCostUSD,
-	})
-	record.Definitions = recordSources(res.Sources)
-	record.AbsentPrompts = recordAbsent(res.Absent)
+	}
+	var sources []run.DefinitionSource
+	if one != nil {
+		// The workflow's node binds the process to its agent, which no
+		// caller chooses (ADR-030 rule 5); its sources come first.
+		if one.workflow != nil {
+			sources = recordSources(one.workflow.Sources)
+			record.Definitions, record.Layers = sources, recordLayers(one.workflow.Layers)
+		}
+		if one.err != nil {
+			fail(one.err)
+			return
+		}
+		resolving.Process, resolving.Agent = record.Call.Process, record.Call.Agent
+	}
+	res, err := resolver.Resolve(ctx, resolving)
+	record.Definitions = append(sources, recordSources(res.Sources)...)
+	record.Layers = recordLayers(res.Layers)
 	if err != nil {
 		fail(err)
 		return
@@ -856,13 +1013,16 @@ func (c *Calls) execute(ctx context.Context, handle RunHandle, record run.Record
 		return
 	}
 	record.Agent = res.Agent.Name
-	record.Profile = &run.Profile{Model: res.Agent.Model, Effort: res.Agent.Effort, Session: res.Agent.Session}
+	record.Profile = &run.Profile{Model: res.Agent.Model, Effort: res.Agent.Effort, Session: res.Session}
 	record.Effective = recordEffective(res.Effective)
 	record.Verify = recordVerify(res.Process.Verify)
 	record.Runtime = &run.Runtime{Mapping: res.Mapping.Name, Adapter: res.Mapping.Adapter, Contract: res.Identity.Contract, Version: res.Identity.Version}
 	record.Plan = recordPlan(res.Plan)
+	for _, warning := range record.Plan.Warnings {
+		event(run.SourceAgister, "WARNING", map[string]any{"message": warning})
+	}
 	_ = handle.Update(record)
-	event(run.SourceAgister, "PLANNED", map[string]any{"primitives": res.Plan.Primitives, "granted": res.Plan.Granted, "withheld": res.Plan.Withheld})
+	event(run.SourceAgister, "PLANNED", map[string]any{"primitives": res.Plan.Primitives, "granted": res.Plan.Granted, "withheld": res.Plan.Withheld, "declared": res.Plan.Declared, "extra": res.Plan.Extra})
 	if len(res.Plan.Withheld) > 0 {
 		event(run.SourceAgister, "PERMISSIONS_WITHHELD", map[string]any{"permissions": res.Plan.Withheld})
 	}
@@ -872,7 +1032,7 @@ func (c *Calls) execute(ctx context.Context, handle RunHandle, record run.Record
 		return
 	}
 	_ = handle.Update(record)
-	resumed, err := c.continuation(ctx, res, record.ID, record.Request.Continue, record.Request.Cwd)
+	resumed, err := c.continuation(ctx, res, record.ID, record.Request.Continue, record.Request.Cwd, record.Call)
 	if err != nil {
 		fail(err)
 		return
@@ -889,7 +1049,12 @@ func (c *Calls) execute(ctx context.Context, handle RunHandle, record run.Record
 		return
 	}
 
-	inputs, files, err := c.resolveValues(ctx, "process "+res.Process.Name, res.Process.Params, res.Process.Values, record.Request, collection, res.Prompts, res.Absent, res.Forms)
+	// A workflow of one call takes its process's params as its own.
+	subject := "process " + res.Process.Name
+	if one != nil {
+		subject = "workflow " + record.Process
+	}
+	inputs, files, err := c.resolveValues(ctx, subject, res.Process.Params, res.Process.Values, record.Request, collection, res.Prompts, res.Forms)
 	// A refused text is recorded too: the refusal's evidence (ADR-026 rule
 	// 6).
 	if inputs != nil {
@@ -966,7 +1131,7 @@ func (c *Calls) execute(ctx context.Context, handle RunHandle, record run.Record
 	// A continued call is told that the session's work is in this worktree
 	// already (ADR-025 rule 7).
 	if resumed.worktree != nil {
-		text = strings.TrimSuffix(prompt.Continues(record.Request.Continue, resumed.worktree.ID, workspace.Dir, revision)+"\n\n"+text, "\n\n")
+		text = strings.TrimSuffix(prompt.Continues(workspace.Dir, revision)+"\n\n"+text, "\n\n")
 	}
 	request := TurnRequest{
 		Prompt:          text,
@@ -1043,7 +1208,7 @@ func (c *Calls) execute(ctx context.Context, handle RunHandle, record run.Record
 		if turn.Status == run.Completed && res.Process.Output == "json" {
 			validation = c.validator.Validate(res.Schema, turn.Output)
 		}
-		_, fault := run.Conclude(turn, definition.Output{Format: res.Process.Output}, validation)
+		_, fault := run.Conclude(turn, validation)
 		// A contract-valid output is kept whatever then ends the call: a
 		// failed verification is still the call's status and class.
 		if fault == nil && res.Process.Output == "json" {
@@ -1065,7 +1230,7 @@ func (c *Calls) execute(ctx context.Context, handle RunHandle, record run.Record
 	if verify := res.Process.Verify; fault == nil && verify != nil {
 		verified, fault = c.verifier.Verify(ctx, VerifyCall{
 			Record: &record, Result: &result, Event: event, Update: handle.Update, Artifact: handle.Artifact,
-			Verify: definition.Verify{Command: verify.Command, Timeout: verify.Timeout, MaxAttempts: verify.MaxAttempts, Instruction: verify.Instruction}, Limit: res.Effective.MaxCostUSD, Deadline: deadline, NoOutput: res.Effective.Stale.NoOutput,
+			Verify: *verify, Limit: res.Effective.MaxCostUSD, Deadline: deadline, NoOutput: res.Effective.Stale.NoOutput,
 			Dir: workspace.Dir, Base: revision, Request: request, Session: turn.ProviderSessionID,
 			Take: take, Conclude: conclude,
 		})
@@ -1112,6 +1277,7 @@ func (c *Calls) runWorkflow(ctx context.Context, handle RunHandle, record run.Re
 		result.Usage, result.Cost = totals.Usage, totals.Cost
 		result.Timing.FinishedAt = now
 		result.Timing.WallMS = now.Sub(result.Timing.StartedAt).Milliseconds()
+		result = record.WithWarnings(result)
 		record.Result = &result
 		data := map[string]any{"status": string(status)}
 		if fault != nil {
@@ -1143,6 +1309,7 @@ func (c *Calls) runWorkflow(ctx context.Context, handle RunHandle, record run.Re
 
 	if res != nil {
 		record.Definitions = recordSources(res.Sources)
+		record.Layers = recordLayers(res.Layers)
 	}
 	if resErr != nil {
 		refused(resErr)
@@ -1169,7 +1336,7 @@ func (c *Calls) runWorkflow(ctx context.Context, handle RunHandle, record run.Re
 
 	// Resolved once, before any node starts; every fan-out node receives the
 	// same values.
-	inputs, files, err := c.resolveValues(ctx, "workflow "+workflow.Name, workflow.Params, workflow.Values, record.Request, nil, nil, nil, res.Forms)
+	inputs, files, err := c.resolveValues(ctx, "workflow "+workflow.Name, workflow.Params, workflow.Values, record.Request, nil, nil, res.Forms)
 	// A refused text is recorded too: the refusal's evidence (ADR-026 rule
 	// 6).
 	if inputs != nil {
@@ -1211,12 +1378,15 @@ func (c *Calls) runWorkflow(ctx context.Context, handle RunHandle, record run.Re
 		node.Status = end.record.Result.Status
 		node.Error = end.record.Result.Error
 		ran = append(ran, *end.record.Result)
+		for _, warning := range end.record.Result.Warnings {
+			state.Warnings = append(state.Warnings, "node "+node.Name+": "+warning)
+		}
+		_ = handle.Update(record)
 		data := map[string]any{"node": node.Name, "run": node.Run, "status": string(node.Status)}
 		if node.Error != nil {
 			data["class"] = string(node.Error.Class)
 		}
 		event("NODE_FINISHED", data)
-		_ = handle.Update(record)
 	}
 
 	// Fan out: a node that cannot start stops the rest from starting.
@@ -1321,7 +1491,7 @@ func (c *Calls) startNode(ctx context.Context, parent string, node CallNode, par
 		Process:   node.Process,
 		CreatedAt: now,
 		Parent:    &run.Parent{Run: parent, Node: node.Name},
-		Request:   run.Request{Process: node.Process, Params: params, Cwd: cwd},
+		Request:   run.Request{Process: node.Process, Agent: node.Agent, Params: params, Cwd: cwd},
 	}
 	handle, err := c.recorder.Create(ctx, record)
 	if err != nil {
@@ -1333,7 +1503,7 @@ func (c *Calls) startNode(ctx context.Context, parent string, node CallNode, par
 		defer c.cancels.End(record.ID)
 		defer c.cancels.Remove(record.ID)
 		defer cancel()
-		ended(c.execute(nodeCtx, handle, record, resolver, collection))
+		ended(c.execute(nodeCtx, handle, record, resolver, collection, nil))
 	}()
 	return record.ID, nil
 }
@@ -1350,15 +1520,17 @@ type resumption struct {
 }
 
 // continuation checks a request to continue an earlier run's session and
-// returns what the call resumes. Continuing is deliberate: the agent must
-// allow it, the runtime must support it, and the earlier run must be
-// finished, by the same agent, with a session. self is the asking run.
-func (c *Calls) continuation(ctx context.Context, res *ResolvedCall, self, runID, cwd string) (resumption, error) {
+// returns what the call resumes. Continuing is deliberate: the process
+// must allow it (ADR-030 rule 3), the runtime must support it, and the
+// earlier run must be finished, by the same agent, with a session. self is the asking run. call is the
+// call of the workflow of one call that asks, nil for any other: it
+// continues only a run of a workflow's call of the same process (rule 11).
+func (c *Calls) continuation(ctx context.Context, res *ResolvedCall, self, runID, cwd string, call *run.Call) (resumption, error) {
 	if runID == "" {
 		return resumption{}, nil
 	}
-	if res.Agent.Session != definition.SessionResumable {
-		return resumption{}, refuse("agent %s is %s; it cannot continue run %s", res.Agent.Name, res.Agent.Session, runID)
+	if res.Session != sessionResumable {
+		return resumption{}, refuse("process %s is %s; it cannot continue run %s", res.Process.Name, res.Session, runID)
 	}
 	if !res.Identity.Resume {
 		return resumption{}, refuse("runtime %s cannot continue sessions", res.Mapping.Name)
@@ -1370,6 +1542,8 @@ func (c *Calls) continuation(ctx context.Context, res *ResolvedCall, self, runID
 	switch {
 	case state != run.StateFinished:
 		return resumption{}, refuse("run %s is %s, not finished", runID, state)
+	case call != nil && (prior.Call == nil || prior.Call.Process != call.Process):
+		return resumption{}, refuse("run %s is not a run of a workflow's call of process %s: its process and agent are not the ones the workflow binds (ADR-030 rule 11)", runID, call.Process)
 	case prior.Agent != res.Agent.Name:
 		return resumption{}, refuse("run %s ran agent %s; only agent %s's own runs can be continued by it", runID, prior.Agent, res.Agent.Name)
 	case prior.Runtime == nil || prior.Runtime.Adapter != res.Mapping.Adapter:
@@ -1526,16 +1700,15 @@ func (c *Calls) rebuilds(ctx context.Context, dir, revision string, patch []byte
 // value's arguments may use the text of the values resolved before it,
 // such as a commit hash. subject names the definition, e.g. "process p".
 // Only a join has a collection to receive; a collection input of any other
-// call is refused. prompts are the prompts resolved with the call, by name
-// (ADR-014 rule 3), and absent the optional prompt inputs neither layer has
-// the prompt of, by their index among values, which give no input (ADR-019
-// rule 2); a workflow has none. forms are the brief forms resolved with
+// call is refused. prompts are the prompts resolved with the call (ADR-014
+// rule 3), given after every value, in order (ADR-028 rule 8); a workflow
+// has none. forms are the brief forms resolved with
 // the call, by name, which a value's text must have one of (ADR-026 rule
 // 8). files are, by each input's place, the base name of the file it was
 // read from, empty for any other. A value its forms refuse refuses the
 // call with the inputs resolved so far, itself the last, to be kept as the
 // refusal's evidence (ADR-026 rule 6); any other refusal returns none.
-func (c *Calls) resolveValues(ctx context.Context, subject string, declared []CallParam, values []CallValue, request run.Request, collection *Resolved, prompts map[string]Resolved, absent []CallAbsent, forms map[string]CallForm) (inputs []run.Input, files []string, err error) {
+func (c *Calls) resolveValues(ctx context.Context, subject string, declared []CallParam, values []CallValue, request run.Request, collection *Resolved, prompts []CallPrompt, forms map[string]CallForm) (inputs []run.Input, files []string, err error) {
 	params := map[string]string{}
 	var unknown []string
 	for name := range request.Params {
@@ -1563,13 +1736,13 @@ func (c *Calls) resolveValues(ctx context.Context, subject string, declared []Ca
 		return nil, nil, refuse("%s is missing params: %s", subject, strings.Join(missing, ", "))
 	}
 
-	inputs = make([]run.Input, 0, len(values))
-	files = make([]string, 0, len(values))
+	inputs = make([]run.Input, 0, len(values)+len(prompts))
+	files = make([]string, 0, len(values)+len(prompts))
 	texts := map[string]string{}
-	for i, value := range values {
-		if value.Source == definition.CollectionSource {
+	for _, value := range values {
+		if value.Source == input.CollectionSource {
 			if collection == nil {
-				return nil, nil, refuse("input %s: %s is given only to a workflow's join", value.Name, definition.CollectionSource)
+				return nil, nil, refuse("input %s: %s is given only to a workflow's join", value.Name, input.CollectionSource)
 			}
 			if text, ok := collection.Value.(string); ok {
 				texts[value.Name] = text
@@ -1577,23 +1750,11 @@ func (c *Calls) resolveValues(ctx context.Context, subject string, declared []Ca
 			inputs, files = append(inputs, run.Input{Name: value.Name, Source: value.Source, Identity: collection.Identity, Value: collection.Value}), append(files, "")
 			continue
 		}
-		if value.Source == definition.PromptSource {
-			if slices.ContainsFunc(absent, func(a CallAbsent) bool { return a.Index == i }) {
-				continue
-			}
-			prompt, ok := prompts[value.Args["name"]]
-			if !ok {
-				return nil, nil, refuse("input %s: prompt %q was not resolved with the call", value.Name, value.Args["name"])
-			}
-			texts[value.Name] = prompt.Value.(string)
-			inputs, files = append(inputs, run.Input{Name: value.Name, Source: value.Source, Identity: prompt.Identity, Value: prompt.Value}), append(files, "")
-			continue
-		}
 		provider, ok := c.inputs[value.Source]
 		if !ok {
 			return nil, nil, refuse("input %s: unknown source %q", value.Name, value.Source)
 		}
-		args, err := definition.Value{Name: value.Name, Source: value.Source, Args: value.Args}.Bind(params, texts)
+		args, err := boundArgs(value.Args, params, texts)
 		if err != nil {
 			return nil, nil, refuse("input %s: %v", value.Name, err)
 		}
@@ -1608,6 +1769,9 @@ func (c *Calls) resolveValues(ctx context.Context, subject string, declared []Ca
 		if text, ok := resolved.Value.(string); ok {
 			texts[value.Name] = text
 		}
+	}
+	for _, prompt := range prompts {
+		inputs, files = append(inputs, run.Input{Name: prompt.Input, Source: input.PromptSource, Identity: prompt.Text.Identity, Value: prompt.Text.Value}), append(files, "")
 	}
 	return inputs, files, nil
 }
@@ -1751,7 +1915,9 @@ func (s *sink) Event(source, kind string, data map[string]any) {
 	_ = s.handle.Append(run.Event{At: s.clock.Now(), Source: source, Kind: kind, Data: data})
 }
 
-func (s *sink) Raw(line string) { _ = s.handle.Raw(line) }
+// Raw is a line of the runtime's stdout. It moves the turn (turnWatch),
+// and is not kept: the session is the runtime's, recorded by its ID.
+func (s *sink) Raw(string) {}
 
 // Touched records the paths a tool call writes, each as the runtime gave
 // it: an event per path, and on the record's trail the paths it does not

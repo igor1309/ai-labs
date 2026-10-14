@@ -4,6 +4,8 @@ import (
 	"strings"
 
 	"gopkg.in/yaml.v3"
+
+	"github.com/igor1309/ai-labs/agister/internal/domain/document"
 )
 
 // BlocksSchema is the schema of a repository's blocks (ADR-018).
@@ -11,18 +13,18 @@ const BlocksSchema = "agister.blocks/v1alpha1"
 
 // blockable is the kinds a block may name, by the prefix of its reference:
 // the choices a call makes (ADR-018 rule 1). Each call returns a new map.
-func blockable() map[string]Kind {
-	return map[string]Kind{
-		"process":  KindProcess,
-		"workflow": KindWorkflow,
-		"agent":    KindAgent,
-		"runtime":  KindRuntime,
+func blockable() map[string]document.Kind {
+	return map[string]document.Kind{
+		"process":  document.KindProcess,
+		"workflow": document.KindWorkflow,
+		"agent":    document.KindAgent,
+		"runtime":  document.KindRuntime,
 	}
 }
 
 // Block is one document a repository blocks, and why.
 type Block struct {
-	Kind   Kind
+	Kind   document.Kind
 	Name   string
 	Reason string // optional
 }
@@ -41,11 +43,11 @@ func (b Block) Ref() string {
 // Whether each exists is checked across documents.
 type Blocks struct {
 	Blocks []Block
-	Source Source
+	Source document.Source
 }
 
 // ParseBlocks parses a repository's blocks.
-func ParseBlocks(doc Document) (Blocks, error) {
+func ParseBlocks(doc document.Document) (Blocks, error) {
 	p := &problems{}
 	blocks := Blocks{Source: doc.Source}
 	root := parseOneYAML(doc.Bytes, p)
@@ -87,7 +89,7 @@ func ParseBlocks(doc Document) (Blocks, error) {
 		case !known:
 			p.add(field+".ref", "%q cannot be blocked: only a process, workflow, agent or runtime is", prefix)
 			continue
-		case !ValidName(name):
+		case !document.ValidName(name):
 			p.add(field+".ref", "invalid %s name %q", kind.Singular(), name)
 			continue
 		}

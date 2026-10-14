@@ -51,25 +51,21 @@ func verifyOpenCodeTools(t *testing.T, home string, tools ...string) {
 	write(t, mapping, text)
 }
 
-// The example verifies no tool: nothing about OpenCode's tools has been
-// checked live. So, as shipped, the settings do not pass check, which says
-// why and what it refuses, and a call on it is refused before its runtime
-// starts; with a tool verified they pass check and probe.
-func TestExampleOpenCodeSettingsVerifyNoTool(t *testing.T) {
+// ADR-036: a mapping without version evidence warns; the independent
+// skill-tool requirement still refuses a call whose service withholds host.read.
+func TestExampleOpenCodeSettingsWarnWithoutVersionEvidence(t *testing.T) {
 	t.Parallel()
 	home, repo := exampleOpenCodeSettings(t)
-	const problem = "verifies no primitive against any runtime version; calls on it are refused"
 	r := agister(t, home, repo, "check")
-	if r.code != cli.ExitUsage || !strings.Contains(r.stderr, "runtime mapping opencode: "+problem+"\n  refuses process ask_opencode\n") || !strings.Contains(r.stderr, "1 problem(s)") {
-		t.Fatalf("check: exit %d\n%s%s", r.code, r.stdout, r.stderr)
+	if r.code != 0 || !strings.Contains(r.stderr, "runtime mapping opencode: verifies no primitive against any runtime version; permissions are best effort") {
+		t.Fatalf("check: %d\n%s%s", r.code, r.stdout, r.stderr)
 	}
-	r = agister(t, home, repo, "run", "ask_opencode", "--param", "question=What does this repository do?")
-	want := "process ask_opencode uses agent opencode-minimax, which uses runtime mapping opencode (" + filepath.Join(home, "runtimes", "opencode.yaml") + "): " + problem
-	if r.code != cli.ExitRefused || !strings.Contains(r.stderr, want) {
-		t.Fatalf("run: exit %d, want %q\n%s%s", r.code, want, r.stdout, r.stderr)
+	r = agister(t, home, repo, "run", "ask_opencode_minimax", "--param", "question=What does this repository do?")
+	if r.code != cli.ExitRefused || !strings.Contains(r.stderr, "runtime opencode needs skill") {
+		t.Fatalf("run: %d\n%s%s", r.code, r.stdout, r.stderr)
 	}
-	if last := lastRun(t, home); last.record["result"].(map[string]any)["error"].(map[string]any)["class"] != "refused" || last.first != nil {
-		t.Fatalf("record = %v, runtime = %v", last.record, last.first)
+	if last := lastRun(t, home); last.first != nil {
+		t.Fatalf("runtime started: %v", last.first)
 	}
 
 	verifyOpenCodeTools(t, home, "read", "grep", "glob", "skill")
@@ -90,7 +86,7 @@ func TestOpenCodeCallRunsAsTheGeneratedAgent(t *testing.T) {
 	home, repo := exampleOpenCodeSettings(t)
 	verifyOpenCodeTools(t, home, "read", "grep", "glob", "skill")
 	allowHostReads(t, home, repo)
-	r := agister(t, home, repo, "run", "ask_opencode", "--param", "question=What does this repository do?", "--timeout", "30s")
+	r := agister(t, home, repo, "run", "ask_opencode_minimax", "--param", "question=What does this repository do?", "--timeout", "30s")
 	if r.code != cli.ExitCompleted || strings.TrimSpace(r.stdout) != "All good." {
 		t.Fatalf("exit %d\n%s%s", r.code, r.stdout, r.stderr)
 	}
@@ -133,7 +129,7 @@ func TestOpenCodeCallRunsAsTheGeneratedAgent(t *testing.T) {
 		t.Fatalf("tool events = %v, want %v", calls, want)
 	}
 
-	r = agister(t, home, repo, "run", "ask_opencode", "--param", "question=And its tests?", "--continue", filepath.Base(first.dir), "--timeout", "30s")
+	r = agister(t, home, repo, "run", "ask_opencode_minimax", "--param", "question=And its tests?", "--continue", filepath.Base(first.dir), "--timeout", "30s")
 	if r.code != cli.ExitCompleted {
 		t.Fatalf("exit %d\n%s%s", r.code, r.stdout, r.stderr)
 	}
@@ -167,13 +163,13 @@ func TestOpenCodeCallWithoutTheSkillToolIsRefused(t *testing.T) {
 	verifyOpenCodeTools(t, home, "read", "grep", "glob", "skill", "webfetch")
 	const reason = "runtime opencode needs skill to use the repository's skills (ADR-006), and the plan grants no such tool: " +
 		"skill needs host.read, which the plan withholds"
-	r := agister(t, home, repo, "run", "ask_opencode", "--param", "question=What does this repository do?")
+	r := agister(t, home, repo, "run", "ask_opencode_minimax", "--param", "question=What does this repository do?")
 	if r.code != cli.ExitRefused || !strings.Contains(r.stderr, reason) {
 		t.Fatalf("exit %d\n%s%s", r.code, r.stdout, r.stderr)
 	}
 	last := lastRun(t, home)
 	fault := last.record["result"].(map[string]any)["error"].(map[string]any)
-	want := "process ask_opencode (" + filepath.Join(home, "processes", "ask_opencode.yaml") + "): " + reason
+	want := "workflow ask_opencode_minimax uses process ask_opencode (" + filepath.Join(home, "processes", "ask_opencode.yaml") + "): " + reason
 	if fault["class"] != "refused" || fault["message"] != want || last.first != nil {
 		t.Fatalf("error = %v, OpenCode's first line %v", fault, last.first)
 	}
@@ -185,7 +181,7 @@ func TestOpenCodeCallUnderACostLimitIsRefused(t *testing.T) {
 	home, repo := exampleOpenCodeSettings(t)
 	verifyOpenCodeTools(t, home, "read", "grep", "glob", "skill")
 	allowHostReads(t, home, repo)
-	r := agister(t, home, repo, "run", "ask_opencode", "--param", "question=What does this repository do?", "--max-cost", "1")
+	r := agister(t, home, repo, "run", "ask_opencode_minimax", "--param", "question=What does this repository do?", "--max-cost", "1")
 	if r.code != cli.ExitRefused || !strings.Contains(r.stderr, "runtime opencode cannot enforce the cost limit 1") {
 		t.Fatalf("exit %d\n%s%s", r.code, r.stdout, r.stderr)
 	}
@@ -200,10 +196,10 @@ func TestOpenCodeCallUnderAToolCommandLimitIsRefused(t *testing.T) {
 	home, repo := exampleOpenCodeSettings(t)
 	verifyOpenCodeTools(t, home, "read", "grep", "glob", "skill")
 	allowHostReads(t, home, repo)
-	policy := filepath.Join(home, "policies", "read-only.yaml")
-	write(t, policy, read(t, policy)+"\nstale: {tool_command: 10m}\n")
+	process := filepath.Join(home, "processes", "ask_opencode.yaml")
+	write(t, process, read(t, process)+"\nstale: {tool_command: 10m}\n")
 	const reason = "runtime opencode does not report tool calls, so it cannot enforce stale.tool_command 10m0s"
-	r := agister(t, home, repo, "run", "ask_opencode", "--param", "question=What does this repository do?", "--timeout", "30s")
+	r := agister(t, home, repo, "run", "ask_opencode_minimax", "--param", "question=What does this repository do?", "--timeout", "30s")
 	if r.code != cli.ExitRefused || !strings.Contains(r.stderr, reason) {
 		t.Fatalf("exit %d\n%s%s", r.code, r.stdout, r.stderr)
 	}
@@ -212,9 +208,9 @@ func TestOpenCodeCallUnderAToolCommandLimitIsRefused(t *testing.T) {
 	}
 }
 
-// Even when every grant is allowed, the unverified edit and bash cannot
-// satisfy a required permission. The bad settings live only in a temp home.
-func TestExampleOpenCodeSettingsRefuseUnverifiedTools(t *testing.T) {
+// ADR-036: declared edit and bash satisfy require with a warning when their
+// version evidence is missing. Settings live only in a temp home.
+func TestExampleOpenCodeSettingsWarnForUnverifiedRequiredTools(t *testing.T) {
 	t.Parallel()
 	for _, permission := range []string{"repository.write", "process.execute"} {
 		t.Run(permission, func(t *testing.T) {
@@ -223,19 +219,14 @@ func TestExampleOpenCodeSettingsRefuseUnverifiedTools(t *testing.T) {
 			verifyOpenCodeTools(t, home, "read", "grep", "glob", "skill")
 			service := filepath.Join(home, "service.toml")
 			write(t, service, strings.Replace(read(t, service), `state_reaching = ["host.read", "host.write"]`, `state_reaching = []`, 1))
-			write(t, filepath.Join(home, "policies", "opencode-all.yaml"), `schema: agister.process-policy/v1alpha1
-name: opencode-all
-workspace: {access: read-write, scope: repository}
+			ownLimits(t, filepath.Join(home, "processes", "ask_opencode.yaml"), `workspace: {access: read-write, scope: repository}
 tools:
   allow: [repository.read, repository.search, repository.diff, repository.history.read, repository.write, repository.history.write, process.execute, network, host.read, host.write]
+  require: [`+permission+`]
 timeout: 10m
 `)
-			process := filepath.Join(home, "processes", "ask_opencode.yaml")
-			write(t, process, strings.Replace(read(t, process), "process-policy:read-only", "process-policy:opencode-all", 1)+"\ntools: {require: ["+permission+"]}\n")
 			r := agister(t, home, repo, "check")
-			if r.code != cli.ExitUsage ||
-				!strings.Contains(r.stderr, "required permissions would be withheld: "+permission) ||
-				!strings.Contains(r.stderr, "not verified for version 1.18: edit, webfetch, websearch, bash") {
+			if r.code != 0 || !strings.Contains(r.stderr, "unverified primitives: edit, webfetch, websearch, bash") {
 				t.Fatalf("exit %d\n%s%s", r.code, r.stdout, r.stderr)
 			}
 		})

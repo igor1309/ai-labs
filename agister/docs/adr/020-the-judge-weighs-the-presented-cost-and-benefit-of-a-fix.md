@@ -139,12 +139,11 @@ circumstances change" is not a switching condition. `reason` stays.
 
 ### 6. Left out
 
-- The round limit. It is the owner's rule (`AGENTS.md`) and stays. This
-  decision changes how each finding is disposed of; whether it also makes
-  rounds converge is what its measures (Consequences) test.
+- The round limit. It is the owner's rule and stays. This decision changes how
+  each finding is disposed of; whether it also makes rounds converge is
+  what its measures (Consequences) test.
 - `defer` on timing (in the change, but cheaper later). `defer` keeps its
-  scope meaning; `AGENTS.md` records in deferred work only a gap outside
-  the issue.
+  scope meaning: deferred work records only a gap outside the issue.
 - Reviewer confidence. The judge weighs the evidence, not the reviewer's
   confidence in it.
 - The judge reading recorded decisions. It still reads none (ADR-007).

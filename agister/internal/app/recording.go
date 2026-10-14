@@ -16,20 +16,19 @@ func recordSources(sources []CallSource) []run.DefinitionSource {
 	recorded := make([]run.DefinitionSource, len(sources))
 	for i, source := range sources {
 		recorded[i] = run.DefinitionSource{
-			Kind:      source.Kind,
-			Name:      source.Name,
-			Path:      source.Path,
-			SHA256:    source.SHA256,
-			Project:   source.Project,
-			Overrides: source.Overrides,
+			Kind: source.Kind,
+			Name: source.Name,
+			Layers: translated(source.Layers, func(layer CallSourceLayer) run.DefinitionLayer {
+				return run.DefinitionLayer{Layer: layer.Layer, Path: layer.Path, SHA256: layer.SHA256, Fields: layer.Fields, Process: layer.Process}
+			}),
 		}
 	}
 	return recorded
 }
 
-func recordAbsent(absent []CallAbsent) []run.AbsentPrompt {
-	return translated(absent, func(absent CallAbsent) run.AbsentPrompt {
-		return run.AbsentPrompt{Input: absent.Input, Prompt: absent.Prompt}
+func recordLayers(layers []CallLayer) []run.Layer {
+	return translated(layers, func(layer CallLayer) run.Layer {
+		return run.Layer{Layer: layer.Layer, Dir: layer.Dir}
 	})
 }
 
@@ -77,8 +76,11 @@ func recordVerify(verify *CallVerify) *run.Verify {
 
 func recordPlan(plan CallPlan) *run.Plan {
 	return &run.Plan{
+		Warnings:   slices.Clone(plan.Warnings),
 		Primitives: slices.Clone(plan.Primitives),
 		Granted:    slices.Clone(plan.Granted),
 		Withheld:   slices.Clone(plan.Withheld),
+		Declared:   append([]string{}, plan.Declared...),
+		Extra:      append([]string{}, plan.Extra...),
 	}
 }
