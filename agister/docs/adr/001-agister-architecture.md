@@ -62,7 +62,7 @@ every call.
 5. **`--continue` resolves settings again**, like any call. The composition
    checks the continuation's conditions against the earlier
    runs (the session's latest run; the same worktree, repository and
-   revision; the content and patch as recorded) and hands core the session.
+   revision; the content as recorded) and hands core the session.
    Core reads no runs.
 6. **Two file formats are contracts:** the settings files and the run
    records. Pages reads both; its tests fail when either changes.

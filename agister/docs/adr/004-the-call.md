@@ -46,13 +46,11 @@ does.
 
 ### 3. Readers share the worktree, a writer has it alone
 
-A call is a writer when its process declares read-write access or a
-verification, which runs with the caller's authority; otherwise it is a
-reader. For the whole call a writer holds the worktree alone and readers
-hold it together. A call that cannot take its hold is refused, not
-queued. A hold is on one worktree, by its root: a worktree nested in
-another is a worktree of its own. A workflow's nodes are calls like any
-other.
+A call is a writer when its process declares read-write access;
+otherwise it is a reader. For the whole call a writer holds the worktree
+alone and readers hold it together. A call that cannot take its hold is
+refused, not queued. A hold is on one worktree, by its root. A
+workflow's nodes are calls like any other.
 
 ### 4. The call's changes stay in the worktree
 
