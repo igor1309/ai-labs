@@ -6,7 +6,7 @@ description: "ADR-006: stale recovery: a turn that stopped moving is ended, and 
 
 # ADR-006: Stale recovery
 
-- **Status:** Proposed
+- **Status:** Accepted
 - **Date:** 2026-10-14
 - **Scope:** the staleness limits on a turn, what ends a stale turn, and
   the recovery turn that may follow it

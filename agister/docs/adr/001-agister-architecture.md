@@ -6,7 +6,7 @@ description: "ADR-001: Agister's architecture: what it is, its parts, their depe
 
 # ADR-001: Agister's architecture
 
-- **Status:** Proposed
+- **Status:** Accepted
 - **Date:** 2026-10-14
 - **Scope:** what Agister is, its parts and how they depend on one
   another, and the invariants every part keeps

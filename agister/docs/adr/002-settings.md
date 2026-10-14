@@ -6,7 +6,7 @@ description: "ADR-002: settings: documents in layers, composed by field, resolve
 
 # ADR-002: Settings
 
-- **Status:** Proposed
+- **Status:** Accepted
 - **Date:** 2026-10-14
 - **Scope:** the settings documents, their layers and composition, the
   references between them, blocks, and what resolve and check do with them

@@ -6,7 +6,7 @@ description: "ADR-007: workflows: one call, or a fan-out joined on its outcomes;
 
 # ADR-007: Workflows
 
-- **Status:** Proposed
+- **Status:** Accepted
 - **Date:** 2026-10-14
 - **Scope:** the two shapes of a workflow, how its nodes run, what the
   join is given, and the workflow's result and record

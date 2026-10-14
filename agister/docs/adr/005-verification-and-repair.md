@@ -6,7 +6,7 @@ description: "ADR-005: verification and repair: a process declares one check, ru
 
 # ADR-005: Verification and repair
 
-- **Status:** Proposed
+- **Status:** Accepted
 - **Date:** 2026-10-14
 - **Scope:** the verification a process declares, when it runs, how a
   failure is repaired, the limits on that loop, and what it records
