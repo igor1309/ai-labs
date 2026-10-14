@@ -1,7 +1,7 @@
 ---
 date: 2026-10-14
 model: claude-opus-5-5
-description: "ADR-002: what settings are, how their layers compose, what a problem in them refuses, and what check reports"
+description: "ADR-002: settings: documents in layers, composed by field, resolved by reference, blocked by name"
 ---
 
 # ADR-002: Settings
@@ -9,8 +9,7 @@ description: "ADR-002: what settings are, how their layers compose, what a probl
 - **Status:** Proposed
 - **Date:** 2026-10-14
 - **Scope:** the settings documents, their layers and composition, the
-  references between them, what a problem or a block refuses, and what
-  `check` reports
+  references between them, blocks, and what resolve and check do with them
 - **Decision type:** Architecture
 
 ## Context
@@ -33,273 +32,98 @@ Terms used here:
 - **definition**: a document composed from its layers' files, as resolve
   gives it and a run records it.
 
-This ADR decides what `settings/layout`, `settings/documents`,
-`settings/resolve` and `settings/check` do. Permission planning, the
-fields of the service settings and installing into home come in ADRs of
-their own.
-
 ## Decision
 
 Settings are named documents of known kinds in up to three layers. A
-document is composed field by field from the layers that hold it, and
-resolved with the documents it references. A problem belongs to one
-document, and refuses only what depends on it; what cannot be attributed
-stops every command. A repository blocks documents by name.
+document is composed field by field from its layers and from what it
+extends, and resolved with the documents it references. Resolve is the
+gate before a run; check is built on it. A repository blocks documents by
+name.
 
 ## Rules
 
 ### 1. A document is a kind and a name
 
-A layer is a directory holding a folder per kind and the singletons.
+Each kind has its folder in a layer, and a document is the file named
+after it: `agents/<name>.toml`, `processes/<name>.yaml`,
+`workflows/<name>.yaml`, `runtimes/<name>.yaml`, `verifies/<name>.yaml`,
+`briefs/<name>.yaml`, `schemas/<name>.json`, `prompts/<name>.md`,
+`skills/<name>/SKILL.md`. The service settings, `service.toml`, are one
+document of their own. Nothing but kind and name joins files across
+layers.
 
-| Kind | File | Composed (rule 4) |
-|---|---|---|
-| service | `service.toml` (singleton) | yes |
-| agent | `agents/<name>.toml` | yes |
-| process | `processes/<name>.yaml` | yes |
-| workflow | `workflows/<name>.yaml` | yes |
-| runtime mapping | `runtimes/<name>.yaml` | yes |
-| verification | `verifies/<name>.yaml` | yes |
-| brief form | `briefs/<name>.yaml` | yes |
-| schema | `schemas/<name>.json` | no: taken whole |
-| prompt | `prompts/<name>.md` | no: taken whole |
-| skill | `skills/<name>/SKILL.md` | no: taken whole |
-| blocks | `blocks.yaml` (singleton, repository layer only) | no |
-| layer | `layer.yaml` (singleton, repository and project layers) | no |
+### 2. Three layers, each over its parent
 
-A document's identity is its kind and its name, the file's name without
-its extension; a singleton's is its kind. Nothing else joins documents
-across layers: a `name` a file sets must be the file's name. A name
-follows one naming rule for every kind.
+- **home**: `~/.agister`;
+- **repository**: `.agister` at the root of the git worktree holding the
+  launch directory;
+- **project**: the nearest `.agister` below that root, from the launch
+  directory upward.
 
-A YAML file holds exactly one YAML document. A file's `schema` names its
-kind and version.
+The launch directory is where the command is launched, or `--dir`. A
+layer is over its parent alone: project over repository, repository over
+home. Outside a git worktree only home is read. The layers select
+settings, not the place of work.
 
-### 2. Three layers, each over its parent only
+### 3. A document is composed field by field
 
-- **home**: `~/.agister` (`$AGISTER_HOME`, `--home`);
-- **repository**: `<root>/.agister`, where `<root>` is the root of the git
-  worktree that holds the launch directory;
-- **project**: `<dir>/.agister`, where `<dir>` is the nearest directory
-  below `<root>` that holds one, from the launch directory upward.
+From home toward the launch directory, maps merge by key at every depth,
+and lists and scalars replace whole. Nothing unsets. The composed
+document is what is checked. Schemas, prompts and skills are taken whole
+from the nearest layer that holds them.
 
-The launch directory is where the command is launched, or `--dir`. Every
-command that reads settings takes `--dir`, so what a call launched there
-would get is read without launching it. The project layer is over the
-repository layer, and that over home. No layer reads a sibling.
+### 4. Every document can be extended
 
-Launched at `<root>`, or under no directory that holds `.agister/`, there
-is no project layer. Outside a git worktree only home is read. A
-`.agister` that is home itself is no layer.
+A document is extended by the nearer layers that hold it, and by another
+document of its kind that names it in `extends`. The extended document is
+composed first, then the extending document over it, by rule 3.
+`extends` is a field like any other.
 
-The layers select settings, not the place of work: a call works in the
-worktree, wherever in it the command is launched.
+### 5. References are literal names
 
-### 3. A layer can be invalid
+A document names the documents it uses by kind and name, fixed in the
+settings, so they resolve without a call. A workflow node binds a process
+to an agent; nothing else chooses an agent. A process names its prompt,
+its guidance, its output schema, its skills and its verification; an
+agent names its runtime mapping and its skills.
 
-A layer is invalid when:
+### 6. Resolve is the gate
 
-- a second `.agister/` stands between the project layer's directory and
-  `<root>`: there is no fourth layer;
-- it is a project layer holding `blocks.yaml`;
-- its `layer.yaml` is unreadable or invalid, or lists a folder that does
-  not exist, is not a folder, or is not inside the directory that holds
-  the layer's `.agister/`, by an absolute path, a `..` or a link that
-  leaves.
+Resolve takes a request naming a document by kind and name, composes it
+and everything it references, and gives the definitions or a refusal. A
+refusal names the chain to the document at fault and its problem.
 
-Home holding `blocks.yaml` or `layer.yaml` is not invalid: each is a
-problem that refuses nothing, and is not read.
+A problem in a document refuses what depends on it, through any chain,
+and nothing else. A problem that belongs to no document, such as broken
+service settings, refuses every request.
 
-An invalid layer stops every command launched under it, except those rule
-9 exempts. `check` names the layer, the path at fault and the reason. A
-command launched elsewhere in the worktree does not read that layer.
+What resolves may run; what is refused never reaches core, and no run is
+recorded (ADR-001, rule 4).
 
-### 4. A composed document is set field by field
+### 7. A repository blocks what home allows
 
-A layer's file of a composed kind holds the fields that layer sets: one
-YAML mapping or one TOML table, complete or not. The document is composed
-from home toward the launch directory:
+The repository layer's `blocks.yaml` names documents the repository
+refuses, each with a reason. A request that depends on a blocked document
+is refused as for a problem, naming the block. A block is not a problem.
+A block naming no document is a warning.
 
-- **A map merges by key, at every depth.** A key only the farther layer
-  holds is kept; a key only the nearer holds is added after the farther
-  one's keys; a key both hold keeps the farther one's position.
-- **A list or a scalar replaces whole.** `[]` is the list of none.
-- **Unlike values replace whole:** a map over a scalar or a list, or the
-  reverse.
-- **Nothing unsets.** An empty map over a map changes nothing; `null` is a
-  scalar and replaces.
+### 8. Check is built on resolve
 
-A TOML table is a map, an array a list.
-
-The composed document is what is checked: required fields, references,
-limits and the rules across fields. A document one layer alone holds must
-be complete there. A layer file that cannot be read or parsed breaks the
-document; the farther layers' files do not stand in for it.
-
-A schema, a prompt and a skill are taken whole from the nearest layer
-that holds them. `blocks.yaml` and `layer.yaml` are read for their own
-layer only.
-
-### 5. A process may extend another
-
-```yaml
-name: tests_review
-extends: process:review
-prompt: code-review-tests
-```
-
-- Any process may be extended. A process extends at most one other.
-- The extended process is composed first, with its own `extends`; then the
-  extending process's layers over it, farthest first. `name` and
-  `extends` are never taken from the extended process.
-- A layer's partial of a process reaches every process that extends it.
-  The nearest layer that holds the whole process says what it extends; a
-  partial cannot set `extends`.
-- Every process is complete as composed, and checked like any other. A
-  process that extends itself, directly or through others, has that
-  problem, as has each process in the cycle.
-
-Only processes extend.
-
-### 6. References
-
-Every reference is a literal name, fixed by the settings and never
-interpolated, so it resolves without a call.
-
-- **A workflow node binds a process to an agent:**
-  `{node: tests, uses: process:tests_review, agent: codex-sol-61}`.
-  `agent` is required on every node; nothing else chooses an agent. A
-  workflow is `call` (one node) or `fan_out` with `join`. `fan_out` is a
-  list, so a layer that rebinds one node gives the whole list; `call` and
-  `join` are maps, and a layer may set `call.agent` or `join.agent`
-  alone.
-- **An agent** names its runtime mapping and its skills.
-- **A process** names its `prompt` (required), its `guidance` (a list of
-  further prompts), its output schema, its skills, its verification
-  (`verify: verify:<name>`, or inline fields), and the brief form an input
-  takes.
-- **A prompt** of a layer is its `prompts/<name>.md`, else `<name>.md` in
-  each folder its `layer.yaml` lists, in order. A listed folder is read
-  only for names a process gives; its other files are not settings.
-
-A process's call gets its prompt as the input `prompt` and each guidance
-prompt, in order, as `guidance.<name>`, each with its digest. What a node
-must follow is in its prompt or guidance: nothing relies on an agent
-following a pointer in `AGENTS.md` or a skill.
-
-### 7. Resolve follows the chain
-
-Resolve takes a request naming any document by kind and name; a workflow
-or a process comes with its parameters. It composes that document and
-every document it reaches through references, and gives the resolved
-settings or a refusal. A workflow's nodes resolve against the layers of
-its launch directory; a node selects no layers of its own.
-
-What a request depends on is what it reaches. A broken runtime mapping
-therefore refuses every workflow with a node on an agent that uses it.
-A refusal names the chain to the document at fault, its path and each of
-its problems:
-`workflow implement_codex: node implement: agent codex-sol-61: runtime
-mapping codex: unknown adapter "codex2"`.
-
-A refused request never reaches core, and no run is recorded (ADR-001,
-rule 4).
-
-### 8. A problem belongs to one document
-
-A problem of a document refuses what depends on that document, and
-nothing else. A document's problems are its own: it cannot be parsed, a
-field is invalid, a reference names no document in any layer, a limit
-does not compose. A problem of a binding (a node's process cannot run on
-its agent) is the workflow's, naming the node: another workflow that
-binds the same process to another agent runs.
-
-A document with problems that nothing uses refuses nothing.
-
-A referenced verification that no layer holds is a warning, not a
-problem: the settings pass, and only a call of a process that names it is
-refused, naming the reference and every path it was expected at.
-
-### 9. What cannot be attributed stops every command
-
-These stop every command but `init`, `install`, `install --restore`,
-`check`, cancelling a run and following a run:
-
-- the service settings are missing, unreadable or invalid: every document
-  is checked against them;
-- a file or a skill folder whose name is not a name, or a settings
-  folder that cannot be listed: nothing can name what it holds;
-- a workflow named like a process: a name a command takes would not say
-  which it means;
-- an invalid layer (rule 3), for commands launched under it;
-- a broken `blocks.yaml` (rule 10).
-
-### 10. A repository blocks what home allows
-
-`<root>/.agister/blocks.yaml` lists documents the repository refuses:
-
-```yaml
-schema: agister.blocks/v1alpha1
-blocks:
-  - ref: agent:codex-sol-61
-    reason: Codex does not implement here
-  - ref: workflow:implement_pi
-```
-
-- An entry names an agent, a process, a workflow or a runtime mapping,
-  and may give a reason. Other kinds are not choices a call makes; block
-  what names them.
-- A request that depends on a blocked document is refused as for a
-  problem (rule 7); the refusal names the chain, then the block, its path
-  and its reason. A block applies whichever layer the document comes
-  from.
-- A block on a document that has problems blocks it as written; its
-  problems are reported as before.
-- A block is not a problem: settings with blocks pass `check`.
-- A `blocks.yaml` that is unreadable or invalid, or names a document no
-  layer holds, stops every command in the repository (rule 9): what it
-  was meant to block cannot be known.
-
-### 11. Check reports every problem and what it refuses
-
-`check` lists every document's name and resolves each, so a document
-nothing uses is checked too. It reports every problem, each with what it
-refuses, or that it refuses nothing, or that it stops every command; each
-block with what it refuses; and the warnings. It exits non-zero on any
-problem.
-
-A problem that names a field, a field's shape, an adapter, an input
-source or a schema version this binary does not know is marked, and a
-line after the problems says the settings may need a newer binary. A
-known field with a wrong value is not marked. Every refusal that such a
-problem causes says the same.
-
-`check --tree`, `process show` and `workflow show` give each document's
-layer files, nearest first, and the layer each field came from, those of
-an extended process included. Listings show each refused workflow and process with its
-refusal. A write into home is refused if it adds a problem; problems
-already there do not stop it.
-
-### 12. A run records its definitions
-
-A call's record holds each definition it ran on, with the layer files it
-was composed from, nearest first: each file's layer (`home`,
-`repository`, `project`), path, digest and the fields it gave, a field
-being the dotted path of a leaf. A document taken whole names its one
-file. The record also names the directory of each layer the call read.
+Check is handed resolve. It lists every document and resolves each, so a
+document nothing uses is checked too, and reports every problem with what
+it refuses. It also shows, for each definition, the layer each field came
+from.
 
 ## Consequences
 
-- A repository changes one field of a home document with a partial, and
-  can see in `check --tree` which layer gave each field.
-- Broken or blocked settings refuse only what uses them, so one bad file
-  never stops unrelated work; the few problems that cannot be attributed
-  stop everything, loudly.
-- A refusal from settings leaves no run. It is reported on stderr, and
-  `check` shows the same problem before any call.
-- Composition happens in `settings/documents` and the reference chain in
-  `settings/resolve`; `settings/layout` alone knows paths and folders.
+- A layer changes one field of a document without copying it, and a
+  document reuses another by extending it.
+- One broken or blocked document refuses only what uses it.
+- A refusal by resolve leaves no run; check shows the same problem before
+  any call.
 
 ## Open
 
-None.
+- **Lists of named items.** A list replaces whole, so changing one node of
+  a `fan_out` means repeating the list. Richer composition, such as
+  merging items by name, would be decided and checked at resolve.
