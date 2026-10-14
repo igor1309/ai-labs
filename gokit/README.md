@@ -51,7 +51,9 @@ replace github.com/igor1309/ai-labs/gokit => ../gokit
 
 gokit's check is `gokit/scripts/test.sh`: format, vet and race tests, each
 saying what it ran; the tests are reported by `testreport`. It runs the
-same check in `gokit/tree`, its stages headed `== gokit/tree`.
+same check in `gokit/tree`, its stages headed `== gokit/tree`. Its own test
+(`scripts/test_test.go`) runs a copy of it with spies for `go` and `gofmt`,
+and proves it fails when either module's tests or their report fail.
 
 ```bash
 gokit/scripts/test.sh
