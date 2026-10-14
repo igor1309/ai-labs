@@ -29,8 +29,14 @@
 //     with the record as its "## Acts on"; the summary lists the record.
 //     A conflict stops the step for the owner. A step puts one question:
 //     a second open point stops it (ADR-032).
+//   - The gate keeps its trail in <out>/events.jsonl: every program it ran
+//     with its output, every file it read or wrote with its digest and what
+//     a brief was made from, each ruling with what the gate did with it,
+//     every commit and why the step stopped. Its progress lines on stderr
+//     are those events, among the standard error of the programs it runs,
+//     which the trail keeps with each; a resumed step appends to the trail.
 //
-// The summary is printed as JSON on stdout; progress goes to stderr.
+// The summary is printed as JSON on stdout.
 //
 // Usage:
 //
@@ -47,6 +53,7 @@ package main
 
 import (
 	"context"
+	"io"
 	"os"
 	"os/exec"
 	"os/signal"
@@ -60,10 +67,10 @@ func main() {
 }
 
 // commands runs a program in dir, returning its standard output. Its
-// standard error goes to this process's, which is the caller's progress.
-func commands(ctx context.Context, dir, name string, args ...string) ([]byte, error) {
+// standard error goes to stderr.
+func commands(ctx context.Context, dir string, stderr io.Writer, name string, args ...string) ([]byte, error) {
 	cmd := exec.CommandContext(ctx, name, args...)
 	cmd.Dir = dir
-	cmd.Stderr = os.Stderr
+	cmd.Stderr = stderr
 	return cmd.Output()
 }

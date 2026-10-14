@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -20,7 +21,9 @@ import (
 // record once it is staged, or from the start when recorded is set. The
 // review is the workflow review names, code_review when it is empty.
 // `agister runs export` copies a review run's collection: collections's,
-// by the run's id, or reviewsOf(5, 2) when it has none.
+// by the run's id, or reviewsOf(5, 2) when it has none. Every command
+// writes complaint, if any, to its standard error. ran is every command it
+// answered, in order, with its answer.
 type fake struct {
 	t           *testing.T
 	implements  []string
@@ -31,6 +34,7 @@ type fake struct {
 	recorded    bool
 	review      string
 	collections map[string][]collected
+	complaint   string
 
 	questions []string
 
@@ -41,9 +45,25 @@ type fake struct {
 	revParses   int
 	agisters    int
 	reviewBases []string
+	ran         []answered
 }
 
-func (f *fake) run(_ context.Context, _ string, name string, args ...string) ([]byte, error) {
+type answered struct {
+	command []string
+	output  string
+	err     error
+}
+
+func (f *fake) run(ctx context.Context, dir string, stderr io.Writer, name string, args ...string) ([]byte, error) {
+	if f.complaint != "" {
+		fmt.Fprintln(stderr, f.complaint)
+	}
+	out, err := f.answer(ctx, dir, name, args...)
+	f.ran = append(f.ran, answered{append([]string{name}, args...), string(out), err})
+	return out, err
+}
+
+func (f *fake) answer(_ context.Context, _ string, name string, args ...string) ([]byte, error) {
 	switch {
 	case name == "git" && args[0] == "status":
 		f.statuses++
@@ -209,7 +229,29 @@ const constraints = "- Only cmd/ changes.\n"
 // summary and output directory.
 func gated(t *testing.T, call runner, extra ...string) (int, summary, string) {
 	t.Helper()
-	dir := t.TempDir()
+	code, sum, out, _ := gatedIn(t, t.TempDir(), call, extra...)
+	return code, sum, out
+}
+
+// gatedIn is gated in dir, which keeps a step's output for the step that
+// resumes it, and returns its progress lines too.
+func gatedIn(t *testing.T, dir string, call runner, extra ...string) (int, summary, string, string) {
+	t.Helper()
+	args, out := gateArgs(t, dir, extra...)
+	var stdout, stderr bytes.Buffer
+	code := run(context.Background(), args, call, &stdout, &stderr)
+	var sum summary
+	if err := json.Unmarshal(stdout.Bytes(), &sum); err != nil {
+		t.Fatalf("summary: %v\n%s\n%s", err, stdout.String(), stderr.String())
+	}
+	return code, sum, out, stderr.String()
+}
+
+// gateArgs writes the issue's text, the owner's constraints and the
+// decisions record into dir, and returns the gate's args for them, then
+// extra, and its output directory.
+func gateArgs(t *testing.T, dir string, extra ...string) ([]string, string) {
+	t.Helper()
 	for name, text := range map[string]string{"issue.md": issue, "constraints.md": constraints, "decisions.md": records} {
 		if err := os.WriteFile(filepath.Join(dir, name), []byte(text), 0o644); err != nil {
 			t.Fatal(err)
@@ -220,13 +262,7 @@ func gated(t *testing.T, call runner, extra ...string) (int, summary, string) {
 		"--constraints", filepath.Join(dir, "constraints.md"), "--implement", "implement_codex",
 		"--advisor", "advisor_codex", "--decisions", filepath.Join(dir, "decisions.md"),
 		"--base", "origin/trunk", "--message", "cmd: the call is refused", "--out", out, "--dir", dir}, extra...)
-	var stdout, stderr bytes.Buffer
-	code := run(context.Background(), args, call, &stdout, &stderr)
-	var sum summary
-	if err := json.Unmarshal(stdout.Bytes(), &sum); err != nil {
-		t.Fatalf("summary: %v\n%s\n%s", err, stdout.String(), stderr.String())
-	}
-	return code, sum, out
+	return args, out
 }
 
 // A step whose first review has no major ruled fix passes: one implement
@@ -436,8 +472,8 @@ func TestALimitedReviewDoesNotCount(t *testing.T) {
 	f := &fake{t: t, implements: []string{implementResult("i1", "a"), implementResult("i2", "a")},
 		reviews: []string{reviewed("r1", major), limited("r2")}}
 	base := strings.Repeat("a", 40)
-	call := func(ctx context.Context, dir, name string, args ...string) ([]byte, error) {
-		out, err := f.run(ctx, dir, name, args...)
+	call := func(ctx context.Context, dir string, stderr io.Writer, name string, args ...string) ([]byte, error) {
+		out, err := f.run(ctx, dir, stderr, name, args...)
 		if name == "git" && reflect.DeepEqual(args, []string{"rev-parse", "--verify", "origin/trunk^{commit}"}) {
 			return []byte(base + "\n"), err
 		}
@@ -491,7 +527,7 @@ func TestTheRunsFilesAreCommittedFromTheRootWhenDirIsBelowIt(t *testing.T) {
 	repo, inputs := t.TempDir(), t.TempDir()
 	git := func(args ...string) string {
 		t.Helper()
-		out, err := commands(context.Background(), repo, "git", args...)
+		out, err := commands(context.Background(), repo, io.Discard, "git", args...)
 		if err != nil {
 			t.Fatalf("git %q: %v", args, err)
 		}
@@ -516,16 +552,16 @@ func TestTheRunsFilesAreCommittedFromTheRootWhenDirIsBelowIt(t *testing.T) {
 		}
 	}
 	f := &fake{t: t, implements: []string{implementResult("i1", "project/a.go")}, reviews: []string{reviewed("r1")}}
-	runner := func(ctx context.Context, dir, name string, args ...string) ([]byte, error) {
+	runner := func(ctx context.Context, dir string, stderr io.Writer, name string, args ...string) ([]byte, error) {
 		if name == "git" {
-			return commands(ctx, dir, name, args...)
+			return commands(ctx, dir, stderr, name, args...)
 		}
 		if args[1] == "implement_codex" {
 			if err := os.WriteFile(filepath.Join(project, "a.go"), []byte("package a\n\nconst A = 1\n"), 0o644); err != nil {
 				t.Fatal(err)
 			}
 		}
-		return f.run(ctx, dir, name, args...)
+		return f.run(ctx, dir, stderr, name, args...)
 	}
 	args := []string{"--issue", filepath.Join(inputs, "issue.md"), "--title", "LAB-1 step 2",
 		"--implement", "implement_codex", "--advisor", "advisor_codex", "--decisions", filepath.Join(inputs, "decisions.md"),
@@ -552,7 +588,7 @@ func TestTheBaseIsPinnedBeforeSetupAndReview(t *testing.T) {
 			repo, inputs := t.TempDir(), t.TempDir()
 			git := func(args ...string) string {
 				t.Helper()
-				out, err := commands(context.Background(), repo, "git", args...)
+				out, err := commands(context.Background(), repo, io.Discard, "git", args...)
 				if err != nil {
 					t.Fatalf("git %q: %v", args, err)
 				}
@@ -585,12 +621,12 @@ func TestTheBaseIsPinnedBeforeSetupAndReview(t *testing.T) {
 				}
 				moved = true
 			}
-			runner := func(ctx context.Context, dir, name string, args ...string) ([]byte, error) {
+			runner := func(ctx context.Context, dir string, stderr io.Writer, name string, args ...string) ([]byte, error) {
 				if name == "git" {
 					if phase == "preflight" && !moved && args[0] == "status" {
 						moveRef()
 					}
-					out, err := commands(ctx, dir, name, args...)
+					out, err := commands(ctx, dir, stderr, name, args...)
 					if phase == "before review" && !moved && reflect.DeepEqual(args, []string{"rev-parse", "HEAD"}) {
 						moveRef()
 					}
@@ -605,7 +641,7 @@ func TestTheBaseIsPinnedBeforeSetupAndReview(t *testing.T) {
 				if name == "agister" && args[1] == "code_review" && !moved {
 					t.Fatal("review invoked before the ref moved")
 				}
-				return f.run(ctx, dir, name, args...)
+				return f.run(ctx, dir, stderr, name, args...)
 			}
 			out := filepath.Join(inputs, "out")
 			args := []string{"--issue", filepath.Join(inputs, "issue.md"), "--title", "LAB-251 step 1",
@@ -660,7 +696,7 @@ func TestAnUnresolvableBaseStopsBeforeSetup(t *testing.T) {
 	out := filepath.Join(t.TempDir(), "out")
 	failed := errors.New("unknown revision")
 	g := gate{options: options{base: "origin/missing", from: "implement", out: out, dir: t.TempDir()},
-		run: func(_ context.Context, _ string, name string, args ...string) ([]byte, error) {
+		run: func(_ context.Context, _ string, _ io.Writer, name string, args ...string) ([]byte, error) {
 			if name != "git" || !reflect.DeepEqual(args, []string{"rev-parse", "--verify", "origin/missing^{commit}"}) {
 				t.Fatalf("setup preceded base resolution: %s %q", name, args)
 			}

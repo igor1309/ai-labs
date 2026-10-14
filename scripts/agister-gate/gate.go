@@ -26,9 +26,10 @@ const (
 	exitOpen    = 5
 )
 
-// runner runs a program in dir and returns its standard output. A program
-// that exits non-zero returns its output and an error.
-type runner func(ctx context.Context, dir, name string, args ...string) ([]byte, error)
+// runner runs a program in dir and returns its standard output; its
+// standard error goes to stderr. A program that exits non-zero returns its
+// output and an error.
+type runner func(ctx context.Context, dir string, stderr io.Writer, name string, args ...string) ([]byte, error)
 
 // options are the command's flags.
 type options struct {
@@ -147,7 +148,11 @@ func run(ctx context.Context, args []string, call runner, stdout, stderr io.Writ
 	sum := g.drive(ctx)
 	out, _ := json.MarshalIndent(sum, "", "  ")
 	fmt.Fprintln(stdout, string(out))
-	switch sum.Status {
+	return exitCode(sum.Status)
+}
+
+func exitCode(status string) int {
+	switch status {
 	case "passed":
 		return exitPassed
 	case "owner":
@@ -173,7 +178,7 @@ func parse(args []string, stderr io.Writer) (options, error) {
 	fs.StringVar(&o.decisions, "decisions", "", "the decisions record, in the worktree, a decision is appended to")
 	fs.StringVar(&o.base, "base", "", "the revision the review compares with; --from review requires the full commit from the summary")
 	fs.StringVar(&o.message, "message", "", "the commit subject")
-	fs.StringVar(&o.out, "out", "", "the directory for the fix briefs and the runs' results")
+	fs.StringVar(&o.out, "out", "", "the directory for the briefs, the runs' results and the gate's trail, events.jsonl")
 	fs.StringVar(&o.dir, "dir", ".", "the worktree")
 	fs.StringVar(&o.from, "from", "implement", "implement, or review to resume at a review")
 	fs.IntVar(&o.reviews, "reviews", 0, "reviews of this step already counted, with --from review")
@@ -213,32 +218,55 @@ func parse(args []string, stderr io.Writer) (options, error) {
 
 type gate struct {
 	options
-	// goal and step are the briefs the gate writes from the issue's text.
-	goal, step string
-	run        runner
-	progress   io.Writer
-	sum        summary
-	seq        int
+	// goal and step are the briefs the gate writes from the issue's text,
+	// and issueText and constraintsText the texts it read, once.
+	goal, step                 string
+	issueText, constraintsText string
+	run                        runner
+	progress                   io.Writer
+	sum                        summary
+	// seq numbers the runs' results in out; events, the trail's events.
+	seq, events int
+	trail       io.WriteCloser
+	// create opens the trail's file to append to; os.OpenFile when nil.
+	create func(path string) (io.WriteCloser, error)
+	// pending are the events made before the trail is open; broken, the
+	// write to it that failed.
+	pending []event
+	broken  error
 }
 
 func (g *gate) drive(ctx context.Context) summary {
-	err := g.steps(ctx)
+	err := g.started()
+	if err == nil {
+		err = g.resolveBase(ctx)
+	}
+	if err == nil {
+		err = g.open()
+	}
+	if err == nil {
+		err = g.steps(ctx)
+	}
 	var s stop
 	if errors.As(err, &s) {
 		g.sum.Status, g.sum.Reason = s.status, s.reason
 	} else if err != nil {
 		g.sum.Status, g.sum.Reason = "stopped", err.Error()
 	}
+	if g.trail != nil {
+		// A step whose trail is not whole does not pass.
+		if err := g.emit("STOPPED", map[string]any{"status": g.sum.Status, "reason": g.sum.Reason, "exit": exitCode(g.sum.Status), "summary": g.sum},
+			fmt.Sprintf("stopped, %s: %s", g.sum.Status, g.sum.Reason)); err != nil {
+			g.sum.Status, g.sum.Reason = "stopped", g.sum.Reason+"; "+err.Error()
+		}
+		if err := g.trail.Close(); err != nil {
+			g.sum.Status, g.sum.Reason = "stopped", g.sum.Reason+"; trail: "+err.Error()
+		}
+	}
 	return g.sum
 }
 
 func (g *gate) steps(ctx context.Context) error {
-	if err := g.resolveBase(ctx); err != nil {
-		return err
-	}
-	if err := os.MkdirAll(g.out, 0o755); err != nil {
-		return err
-	}
 	if err := g.clean(ctx); err != nil {
 		return err
 	}
@@ -258,17 +286,21 @@ func (g *gate) steps(ctx context.Context) error {
 		}
 		counted++
 		majors := g.leave(j)
+		runID := g.sum.Reviews[len(g.sum.Reviews)-1].RunID
+		if err := g.rulings(counted, runID, j, counted == maxReviews); err != nil {
+			return err
+		}
 		if len(majors) == 0 {
 			return stop{"passed", fmt.Sprintf("review %d has no major ruled fix", counted)}
 		}
 		if counted == maxReviews {
 			return stop{"owner", fmt.Sprintf("review %d, the last, leaves %d major(s) ruled fix", counted, len(majors))}
 		}
-		reviews, err := g.collection(ctx, g.sum.Reviews[len(g.sum.Reviews)-1].RunID)
+		reviews, err := g.collection(ctx, runID)
 		if err != nil {
 			return err
 		}
-		brief, err := g.fixBrief(counted, majors, reviews)
+		brief, err := g.fixBrief(counted, runID, majors, reviews)
 		if err != nil {
 			return err
 		}
@@ -285,7 +317,7 @@ func (g *gate) resolveBase(ctx context.Context) error {
 		g.sum.Base = g.base
 		return nil
 	}
-	out, err := g.run(ctx, g.dir, "git", "rev-parse", "--verify", g.base+"^{commit}")
+	out, err := g.command(ctx, "git", "rev-parse", "--verify", g.base+"^{commit}")
 	if err != nil {
 		return fmt.Errorf("git rev-parse base %q: %w", g.base, err)
 	}
@@ -295,7 +327,7 @@ func (g *gate) resolveBase(ctx context.Context) error {
 	}
 	g.base = base
 	g.sum.Base = base
-	return nil
+	return g.emit("BASE_PINNED", map[string]any{"base": base}, "base pinned at "+base)
 }
 
 // leave records the items of j the gate does not act on, and returns the
@@ -318,7 +350,7 @@ func (g *gate) leave(j judgement) []item {
 // clean stops the step unless the worktree has no change: the gate commits
 // what a run reports, and only that.
 func (g *gate) clean(ctx context.Context) error {
-	out, err := g.run(ctx, g.dir, "git", "status", "--porcelain", "--untracked-files=all")
+	out, err := g.command(ctx, "git", "status", "--porcelain", "--untracked-files=all")
 	if err != nil {
 		return fmt.Errorf("git status: %w", err)
 	}
@@ -349,21 +381,23 @@ func (g *gate) implementAndCommit(ctx context.Context, brief, message string) er
 	for _, f := range out.FilesChanged {
 		add = append(add, ":(top)"+f)
 	}
-	if _, err := g.run(ctx, g.dir, "git", add...); err != nil {
+	if _, err := g.command(ctx, "git", add...); err != nil {
 		return fmt.Errorf("git add: %w", err)
 	}
 	if err := g.unreported(ctx, r.RunID); err != nil {
 		return err
 	}
-	if _, err := g.run(ctx, g.dir, "git", "commit", "-q", "-m", message); err != nil {
+	if _, err := g.command(ctx, "git", "commit", "-q", "-m", message); err != nil {
 		return fmt.Errorf("git commit: %w", err)
 	}
-	head, err := g.run(ctx, g.dir, "git", "rev-parse", "HEAD")
+	head, err := g.head(ctx)
 	if err != nil {
-		return fmt.Errorf("git rev-parse: %w", err)
+		return err
 	}
-	g.sum.Implements = append(g.sum.Implements, implement{RunID: r.RunID, Brief: brief, Commit: strings.TrimSpace(string(head))})
-	fmt.Fprintf(g.progress, "agister-gate: implement %s committed %s\n", r.RunID, strings.TrimSpace(string(head)))
+	g.sum.Implements = append(g.sum.Implements, implement{RunID: r.RunID, Brief: brief, Commit: head})
+	if err := g.committed(head, message, out.FilesChanged, map[string]any{"implement_run": r.RunID, "brief": brief}); err != nil {
+		return err
+	}
 	if len(out.Open) > 0 {
 		return g.advise(ctx, r.RunID, out.Open, message)
 	}
@@ -373,7 +407,7 @@ func (g *gate) implementAndCommit(ctx context.Context, brief, message string) er
 // unreported stops the step when, with the run's files staged, the
 // worktree still has a change: a file the run changed and did not report.
 func (g *gate) unreported(ctx context.Context, runID string) error {
-	out, err := g.run(ctx, g.dir, "git", "status", "--porcelain", "--untracked-files=all")
+	out, err := g.command(ctx, "git", "status", "--porcelain", "--untracked-files=all")
 	if err != nil {
 		return fmt.Errorf("git status: %w", err)
 	}
@@ -415,7 +449,6 @@ func (g *gate) review(ctx context.Context, n int) (judgement, error) {
 		}
 	}
 	g.sum.Reviews = append(g.sum.Reviews, review{RunID: r.RunID, Counted: true, Majors: majors})
-	fmt.Fprintf(g.progress, "agister-gate: review %d, %s: %d major(s) ruled fix\n", n, r.RunID, majors)
 	return j, nil
 }
 
@@ -423,9 +456,14 @@ func (g *gate) review(ctx context.Context, n int) (judgement, error) {
 // its result in out. A run that fails still prints its result.
 func (g *gate) agister(ctx context.Context, kind, workflow string, args ...string) (result, error) {
 	g.seq++
-	stdout, runErr := g.run(ctx, g.dir, "agister", append([]string{"run", workflow}, args...)...)
+	stdout, runErr := g.command(ctx, "agister", append([]string{"run", workflow}, args...)...)
+	// A run that fails still prints its result; a trail that fails stops
+	// the step.
+	if errors.As(runErr, new(trailError)) {
+		return result{}, runErr
+	}
 	path := filepath.Join(g.out, fmt.Sprintf("%02d-%s.json", g.seq, kind))
-	if err := os.WriteFile(path, stdout, 0o644); err != nil {
+	if err := g.write(path, stdout, kind+" run result", map[string]any{"workflow": workflow}); err != nil {
 		return result{}, err
 	}
 	var r result
@@ -446,45 +484,41 @@ func failure(r result) string {
 // when and Covers are the issue's text, and their Constraints the owner's,
 // as written: no brief says what the issue and the owner did not.
 func (g *gate) briefs() error {
-	issue, err := os.ReadFile(g.issue)
+	issue, err := g.read(g.issue, "issue")
 	if err != nil {
 		return err
+	}
+	g.issueText = string(issue)
+	if g.constraints != "" {
+		constraints, err := g.read(g.constraints, "constraints")
+		if err != nil {
+			return err
+		}
+		g.constraintsText = string(constraints)
 	}
 	g.goal, g.step = filepath.Join(g.out, "goal.md"), filepath.Join(g.out, "step.md")
 	goal := fmt.Sprintf("# %s\n\n## Intent\n\nWhat the issue's text, under Done when, makes true.\n\n"+
 		"## Base\n\n%s\n\n## Done when\n\n%s\n## Out of scope\n\nWhat the issue's text, under Done when, leaves out.\n\n## Open\n\nNone.\n",
-		g.title, g.base, fenced(string(issue)))
-	if err := os.WriteFile(g.goal, []byte(goal), 0o644); err != nil {
+		g.title, g.base, fenced(g.issueText))
+	if err := g.write(g.goal, []byte(goal), "goal brief", map[string]any{"issue": g.issue}); err != nil {
 		return err
 	}
-	step, err := g.stepBrief(g.title, "")
-	if err != nil {
-		return err
-	}
-	return os.WriteFile(g.step, []byte(step), 0o644)
+	return g.write(g.step, []byte(g.stepBrief(g.title, "")), "step brief", map[string]any{"issue": g.issue, "constraints": g.constraints})
 }
 
 // stepBrief is the step brief titled title, with actsOn as its "## Acts on"
 // when there is one.
-func (g *gate) stepBrief(title, actsOn string) (string, error) {
-	issue, err := os.ReadFile(g.issue)
-	if err != nil {
-		return "", err
-	}
+func (g *gate) stepBrief(title, actsOn string) string {
 	var b strings.Builder
-	fmt.Fprintf(&b, "# %s\n\n## Goal\n\n`%s`\n\n## Base\n\n%s\n\n## Covers\n\n%s", title, g.goal, g.base, fenced(string(issue)))
+	fmt.Fprintf(&b, "# %s\n\n## Goal\n\n`%s`\n\n## Base\n\n%s\n\n## Covers\n\n%s", title, g.goal, g.base, fenced(g.issueText))
 	if actsOn != "" {
 		fmt.Fprintf(&b, "\n## Acts on\n\n%s", actsOn)
 	}
 	if g.constraints != "" {
-		constraints, err := os.ReadFile(g.constraints)
-		if err != nil {
-			return "", err
-		}
-		fmt.Fprintf(&b, "\n## Constraints\n\n%s", fenced(string(constraints)))
+		fmt.Fprintf(&b, "\n## Constraints\n\n%s", fenced(g.constraintsText))
 	}
 	b.WriteString("\n## Open\n\nNone.\n")
-	return b.String(), nil
+	return b.String()
 }
 
 // fenced is text as written, in a code fence longer than any run of back
@@ -511,10 +545,10 @@ func (g *gate) collection(ctx context.Context, runID string) ([]collected, error
 	if err := os.MkdirAll(to, 0o755); err != nil {
 		return nil, err
 	}
-	if out, err := g.run(ctx, g.dir, "agister", "runs", "export", runID, "--to", to); err != nil {
+	if out, err := g.command(ctx, "agister", "runs", "export", runID, "--to", to); err != nil {
 		return nil, fmt.Errorf("agister runs export %s: %w: %s", runID, err, out)
 	}
-	data, err := os.ReadFile(filepath.Join(to, runID, "artifacts", "collection.json"))
+	data, err := g.read(filepath.Join(to, runID, "artifacts", "collection.json"), "review collection")
 	if err != nil {
 		return nil, fmt.Errorf("review run %s: %w", runID, err)
 	}
@@ -533,7 +567,7 @@ func (g *gate) collection(ctx context.Context, runID string) ([]collected, error
 // ruling or source: the implementer is given the changes to make and what
 // shows them, not the process that asked for them (LAB-200). A source that
 // names no finding of reviews stops the step.
-func (g *gate) fixBrief(n int, majors []item, reviews []collected) (string, error) {
+func (g *gate) fixBrief(n int, runID string, majors []item, reviews []collected) (string, error) {
 	var acts strings.Builder
 	acts.WriteString("The changes to make, as written, each with the evidence the reviews give for it:\n\n")
 	for _, it := range majors {
@@ -551,12 +585,28 @@ func (g *gate) fixBrief(n int, majors []item, reviews []collected) (string, erro
 			}
 		}
 	}
-	brief, err := g.stepBrief(g.title, acts.String())
-	if err != nil {
-		return "", err
+	items := make([]map[string]any, len(majors))
+	for i, it := range majors {
+		items[i] = map[string]any{"title": it.Title, "sources": it.Sources}
 	}
 	path := filepath.Join(g.out, fmt.Sprintf("fix-%d.md", n))
-	return path, os.WriteFile(path, []byte(brief), 0o644)
+	return path, g.write(path, []byte(g.stepBrief(g.title, acts.String())), "fix brief",
+		map[string]any{"review": n, "review_run": runID, "items": items, "issue": g.issue, "constraints": g.constraints})
+}
+
+// head is the commit HEAD names.
+func (g *gate) head(ctx context.Context) (string, error) {
+	out, err := g.command(ctx, "git", "rev-parse", "HEAD")
+	if err != nil {
+		return "", fmt.Errorf("git rev-parse: %w", err)
+	}
+	return strings.TrimSpace(string(out)), nil
+}
+
+// committed records commit: its message, its files and what it came from.
+func (g *gate) committed(commit, message string, files []string, from map[string]any) error {
+	return g.emit("COMMITTED", map[string]any{"commit": commit, "message": message, "files": files, "from": from},
+		fmt.Sprintf("committed %s: %s", commit, message))
 }
 
 // resolve is the finding source names, "<review>#<finding>", each counted
