@@ -5,8 +5,11 @@ understanding a codebase before changing it, and what they hand to the
 implementer (sections 1 to 3, collected on 2026-10-08 for Multica
 LAB-127), and what our own repositories already do (sections 4 and 5,
 collected the same day for LAB-126, ground the investigator role). What
-the owner decided from it, and the proposals that are still draft, are in
-[`investigator-draft.md`](investigator-draft.md).
+was decided from it is in
+[ADR-028](../../../agister/docs/adr/028-a-run-keeps-its-output.md) and
+[ADR-029](../../../agister/docs/adr/029-the-investigator-grounds-a-task.md);
+the draft they were written from,
+[`investigator-draft.md`](investigator-draft.md), now only points to them.
 
 A word on names. The owner ruled on LAB-126 that a brief is what the
 implementer gets: the task and the onboarding. The investigator's output
@@ -151,7 +154,7 @@ Sources: [research_codebase command](https://raw.githubusercontent.com/humanlaye
 
 ### Whether the grounding is kept
 
-The sources disagree on whether it is kept: HumanLayer stores every research document as searchable history; Claude Code and Roo discard them. The owner decided this on LAB-127: it stays in the run that produced it, and a disposable cache copy carries it between runs. See [`investigator-draft.md`](investigator-draft.md).
+The sources disagree on whether it is kept: HumanLayer stores every research document as searchable history; Claude Code and Roo discard them. The owner decided this on LAB-127: it stays in the run that produced it, and a disposable cache copy carries it between runs. See [ADR-028](../../../agister/docs/adr/028-a-run-keeps-its-output.md) and [ADR-029](../../../agister/docs/adr/029-the-investigator-grounds-a-task.md).
 
 ## 4. Our own practice
 
