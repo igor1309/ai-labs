@@ -17,7 +17,6 @@ jobs:
     runs-on: [self-hosted, local-mac]
     timeout-minutes: 10
     # agister/archive is kept as reference and is not built or tested here.
-    # What still runs: gokit, which the rewrite builds on, and the gate.
     steps:
       - name: Checkout
         uses: actions/checkout@v5
@@ -31,8 +30,8 @@ jobs:
           # Self-hosted: Go caches persist on the runner; uploading them hangs.
           cache: false
 
-      - name: gokit
-        run: gokit/scripts/test.sh
+      - name: Agister
+        run: agister/scripts/test.sh
 
       # The gate drives agister's runs and knows their kinds of work, so it
       # is its own module, outside agister's code.

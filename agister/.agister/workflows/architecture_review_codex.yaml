@@ -1,0 +1,4 @@
+schema: agister.workflow/v1alpha1
+name: architecture_review_codex
+type: workflow
+call: {node: architecture, uses: process:architecture_review, agent: codex-sol-61}
