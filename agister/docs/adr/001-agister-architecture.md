@@ -79,11 +79,11 @@ Every part keeps these.
    process declares and the workflow shapes settings define. It knows no
    kind of work, no particular agent and no meaning of any output. It is a
    runner, not a guard: it checks whether settings resolve, never whether
-   they should. What resolves may run; the permissions it is given are
-   best effort (invariant 5).
+   they should. A workflow that resolves may run; what it is granted is
+   best effort (invariant 10).
 2. **Definitions live in settings, not in code.** Agents, processes,
-   workflows, output contracts, runtime mappings and what an agent is
-   told are defined in settings files, and changed without rebuilding.
+   workflows, output contracts, runtime mappings and what Agister tells
+   an agent are defined in settings files, and changed without rebuilding.
    Code adds a mechanism only where settings cannot express it: a
    runtime, an input source kind.
 3. **Every call ends in one result shape.** A status (completed, failed,
@@ -97,14 +97,12 @@ Every part keeps these.
    value and its identity (a revision to its commit, content to its
    digest); that value is what the agent receives and what is recorded.
 5. **Agister grants no permission meant to reach its state.** Home, its
-   settings and its runs are not what any permission it grants is for.
-   This is best effort: Agister passes the runtime's documented options
-   and is no sandbox. A repository's settings are the
-   repository's files, like any other.
+   settings and its runs are not what any permission it grants is for. A
+   repository's settings are the repository's files, like any other.
 6. **The record is authoritative.** Per call it keeps the Agister identity
    apart from the provider session, the exact definitions with their
    digests, the inputs, the permission plan, the ordered events and the
-   outcome. Anything needed to understand a call is in it. Diagnostics
+   outcome. Everything Agister gave the call is in it. Diagnostics
    describe Agister's own machinery; they are not the record, and never
    change an argument, a result or an error.
 7. **Every effect has an owner and an end.** Each process and hold a call
@@ -117,6 +115,11 @@ Every part keeps these.
 9. **Agister is built to be changed.** The smallest design that does the
    work. A case is handled when it is met, not foreseen. A part that is
    hard to change is wrong, however much it covers.
+10. **Agister acts on what settings declare, best effort.** A hold follows
+    a process's declared access, and a plan is what Agister asks of the
+    runtime. What a runtime, the repository or its setup grants or does
+    beyond that is outside Agister: not explored, not enforced. Agister is
+    no sandbox.
 
 ## Settings
 
@@ -126,10 +129,10 @@ what each kind means, what references what, and how home is managed.
 | Package | Responsibility | Ports it declares |
 |---|---|---|
 | `settings/layout` | Where settings live: selects home, the repository's and the nearest project's `.agister/`; maps a kind and name to its file; lists names. | filesystem (what is at a path, read, list, same directory); worktree root of a directory |
-| `settings/documents` | Bytes to typed definitions with per-field provenance. Three components, each with its own unit tests: **format** (one YAML document, unknown fields, schema version), **layering** (compose by field, `extends`, provenance), **kinds** (a composed tree to each kind's definition, with field problems). Its public interface has its own tests. | none: pure |
-| `settings/resolve` | A request to resolved settings, or a refusal naming the chain. A request names any document by kind and name; a workflow or a process comes with its parameters. Resolve follows references, applies blocks, checks limits against ceilings, plans each node's permissions. | a document source; runtime facts (contracts, skills support), which the composition plugs in from the runtime wrappers |
+| `settings/documents` | Bytes to typed definitions with per-field provenance. Three components inside the package, each with its own unit tests: **format** (one document per file in its kind's format, unknown fields, schema version), **layering** (compose by field, `extends`, provenance), **kinds** (a composed tree to each kind's definition, with field problems). Its public interface has its own tests. | none: pure |
+| `settings/resolve` | A request to resolved settings, or a refusal naming the chain. A request names any document by kind and name; a workflow or a process comes with its parameters. Resolve follows references, applies blocks, plans each node's permissions. | a document source; runtime facts (contracts, skills support), which the composition plugs in from the runtime wrappers |
 | `settings/check` | Built on resolve: lists every document's name and resolves each, so a document nothing uses is checked too. Two views: **check** (every problem and what it refuses) and **inspect** (process, workflow and agent listings and shows, with provenance). | resolve; list names |
-| `settings/home` | Writes: init, install, restore, retire, backups, agent create. A write is refused if it adds a problem. | filesystem writes; clock; check of the staged result |
+| `settings/home` | Writes into home: installing settings, with backups to restore from. A write is refused if it adds a problem. | filesystem writes; clock; check of the staged result |
 
 The composition assembles the document source from `layout` and
 `documents`, hands `check` a resolve, and hands `home` a check. It plugs a
@@ -146,23 +149,24 @@ stream of events and a result.
 | Package | Responsibility | Ports it declares |
 |---|---|---|
 | `core/workflow` | Runs a workflow: one `call`, or `fan_out` then `join`; hands the join the collection (each node's status, class and output, in order); gathers the nodes' warnings. | run a call; events |
-| `core/admit` | Admits a call before its first turn: the process and runtime allow what the command asks (a resumable session for `--continue`), and the worktree is held, as a writer alone or a reader shared. | hold; events |
-| `core/session` | The conversation with the agent: turns on the runtime, and a recovery turn when a staleness limit ended one, while the budget allows. Declares the runtime protocol (turn request, tool and denial events, result, capabilities). | runtime protocol; events; clock |
+| `core/admit` | Admits a call before its first turn: the process and runtime allow what the command asks, and the worktree is held, as a writer alone or a reader shared. | hold; events |
+| `core/session` | The conversation with the agent: turns on the runtime, and a recovery turn when a staleness limit ended one, while the budget allows. Declares the runtime protocol. | runtime protocol; staleness; events; clock |
 | `core/attempts` | Verification and repair: runs the verification, and on a failure asks the session for a repair turn, while attempts are left. | verify; another turn of the session; events |
 | `core/verify` | Runs a verification command: timeout, `no_output` staleness, bounded head and tail, digest. | command runner (the process supervisor) |
 | `core/inputs` | Resolves a call's inputs from their sources to a value and an identity; checks a text against its brief form; keeps long values as artifacts. | sources (by name, plugged in by the composition); artifact store |
-| `core/watch` | Staleness limits on a turn: no event, a tool command, repeated identical tool calls. A pure observer of the event stream. | none: pure |
+| `core/watch` | Staleness limits on a turn: no event, a tool command, repeated identical tool calls. Observes the event stream and reports a limit reached; it ends nothing itself. | none: pure |
 | `core/trail` | What the agent touched and was denied. A pure observer of the event stream. | none: pure |
 
-The composition chains `admit`, `session` and `attempts` into a call, hands
-`workflow` that call, and plugs `watch` and `trail` into the event stream.
+The composition chains `inputs`, `admit`, `session` and `attempts` into a
+call, hands `workflow` that call, plugs `watch` and `trail` into the event
+stream, and hands `watch`'s reports to `session`'s staleness port.
 
 ## Runs
 
 Core emits its events. An adapter in the composition turns them into
 `runstore`'s record, and `runstore` persists it. The composition knows
-where runs are placed. Core reads no runs: the CLI's runs
-commands (list, show, watch, export) call `cli`'s port, which the
+where runs are placed. Core reads no runs: the CLI's commands on runs
+call `cli`'s port, which the
 composition serves from `runstore`. Pages reads the
 files.
 

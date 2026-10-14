@@ -1,7 +1,7 @@
 ---
 date: 2026-10-14
 model: claude-opus-5-5
-description: "ADR-002: settings: documents in layers, composed by field, resolved by reference, blocked by name"
+description: "ADR-002: settings: documents in layers, composed by field, resolved by reference, blocked by kind and name"
 ---
 
 # ADR-002: Settings
@@ -38,7 +38,7 @@ Settings are named documents of known kinds in up to three layers. A
 document is composed field by field from its layers and from what it
 extends, and resolved with the documents it references. Resolve is the
 gate before a run; check is built on it. A repository blocks documents by
-name.
+kind and name.
 
 ## Rules
 
@@ -71,9 +71,9 @@ and lists and scalars replace whole. Nothing unsets. The composed
 document is what is checked. Schemas, prompts and skills are taken whole
 from the nearest layer that holds them.
 
-### 4. Every document can be extended
+### 4. A composed document can be extended
 
-A document is extended by the nearer layers that hold it, and by another
+A document of a composed kind is extended by the nearer layers that hold it, and by another
 document of its kind that names it in `extends`. The extended document is
 composed first, then the extending document over it, by rule 3.
 `extends` is a field like any other.
@@ -96,14 +96,14 @@ A problem in a document refuses what depends on it, through any chain,
 and nothing else. A problem that belongs to no document, such as a layer
 that cannot be read, refuses every request.
 
-What resolves may run; what is refused never reaches core, and no run is
+A workflow that resolves may run; what is refused never reaches core, and no run is
 recorded (ADR-001, rule 4).
 
 ### 7. A repository blocks what home allows
 
-The repository layer's `blocks.yaml` names documents the repository
-refuses, each with a reason. A request that depends on a blocked document
-is refused as for a problem, naming the block. A block is not a problem.
+The repository layer's `blocks.yaml` names documents, by kind and name,
+that the repository refuses, each with a reason. A request that depends
+on a blocked document is refused as for a problem, naming the block. A block is not a problem.
 A block naming no document is a warning.
 
 ### 8. Check is built on resolve

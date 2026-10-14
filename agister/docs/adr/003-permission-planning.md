@@ -21,7 +21,7 @@ that: Codex has sandbox modes, Claude Code has tools, others have flags.
 A process must not be written for one runtime, and a runtime must not
 learn what a process is (ADR-001, parts). The runtimes enforce their own
 options, and do so as well as they do; Agister cannot do better and does
-not try (ADR-001, invariant 5).
+not try (ADR-001, invariant 10).
 
 ## Decision
 
@@ -37,8 +37,7 @@ the process allows is a warning, not a refusal.
 
 A permission is a name a runtime mapping grants, such as
 `repository.read` or `network`; what it means is what the mappings grant
-under it. A name a process uses that no mapping grants is a problem of
-the process.
+under it.
 
 ### 2. A process speaks permissions
 
