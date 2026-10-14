@@ -116,7 +116,7 @@ files.
 ## Implementation notes
 
 The composition connects parts with two kinds of small types. Each
-adapter and each decorator has its own tests, over fakes of the ports it
+adapter and each decorator has its own tests, over spies on the ports it
 joins or wraps: the mapping both ways for an adapter, and for a decorator
 its concern and that it passes everything else through unchanged.
 
