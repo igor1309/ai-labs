@@ -1,7 +1,12 @@
 package tree
 
 import (
+	"bytes"
+	"errors"
 	"fmt"
+	"io"
+	"maps"
+	"slices"
 	"time"
 
 	"github.com/BurntSushi/toml"
@@ -49,8 +54,9 @@ func (p Problem) String() string {
 
 // Decode is the tree data holds in format, every node from path, which is
 // kept as given and never read. Bytes that hold no value are the empty
-// tree. Bytes with a problem give no tree: the node is the empty one, and
-// the problems say why.
+// tree; YAML bytes hold one document at most. Bytes with a problem give no
+// tree: the node is the empty one, and the problems say why, every bad
+// value one.
 func Decode(format Format, data []byte, path string) (Node, []Problem) {
 	var d decoder
 	var top Node
@@ -87,8 +93,20 @@ func key(place, k string) string {
 func item(place string, i int) string { return fmt.Sprintf("%s[%d]", place, i) }
 
 func (d *decoder) yaml(data []byte, path string) Node {
+	// A decoder, not Unmarshal: Unmarshal reads the first document and
+	// passes over any after it.
+	documents := yaml.NewDecoder(bytes.NewReader(data))
 	var document yaml.Node
-	if err := yaml.Unmarshal(data, &document); err != nil {
+	if err := documents.Decode(&document); errors.Is(err, io.EOF) {
+		return Node{}
+	} else if err != nil {
+		d.add("", Origin{Path: path}, "%v", err)
+		return Node{}
+	}
+	if err := documents.Decode(&yaml.Node{}); err == nil {
+		d.add("", Origin{Path: path}, "the bytes hold more than one document")
+		return Node{}
+	} else if !errors.Is(err, io.EOF) {
 		d.add("", Origin{Path: path}, "%v", err)
 		return Node{}
 	}
@@ -196,8 +214,10 @@ func (d *decoder) tomlValue(v any, place string, origin Origin) Node {
 	switch v := v.(type) {
 	case map[string]any:
 		entries := make(map[string]Node, len(v))
-		for k, value := range v {
-			entries[k] = d.tomlValue(value, key(place, k), origin)
+		// In the order of their keys, so a table's problems come in the
+		// same order every time.
+		for _, k := range slices.Sorted(maps.Keys(v)) {
+			entries[k] = d.tomlValue(v[k], key(place, k), origin)
 		}
 		return NewMap(entries, origin)
 	case []map[string]any:

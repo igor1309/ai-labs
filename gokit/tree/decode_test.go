@@ -9,7 +9,9 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/BurntSushi/toml"
 	"github.com/igor1309/ai-labs/gokit/tree"
+	"gopkg.in/yaml.v3"
 )
 
 // The scenarios of tree.feature's sections "Decode": what each node holds,
@@ -389,6 +391,160 @@ func TestDecodeKeepsThePathItIsGivenAndReadsNothingFromIt(t *testing.T) {
 				}
 			})
 		}
+	}
+}
+
+// Decode: problems
+
+// assertProblems decodes data in format from path and fails unless it
+// gives no tree and exactly the problems want, in their order. It is the
+// problems decoded.
+func assertProblems(t *testing.T, format tree.Format, data, path string, want ...tree.Problem) []tree.Problem {
+	t.Helper()
+	got, problems := tree.Decode(format, []byte(data), path)
+	if !slices.Equal(problems, want) {
+		t.Errorf("problems %+v, want %+v", problems, want)
+	}
+	if got.Kind() != tree.Empty || got.Origin() != (tree.Origin{}) {
+		t.Errorf("tree %s from %+v, want none", got.Kind(), got.Origin())
+	}
+	return problems
+}
+
+// The problem is the parser's own error, at the bytes as a whole, and
+// says the path.
+func TestBytesThatCannotBeParsedAreAProblem(t *testing.T) {
+	t.Parallel()
+	for _, c := range []struct {
+		format tree.Format
+		path   string
+		data   string
+		parse  func(data string) error
+	}{
+		{tree.YAML, "/a/bad.yaml", "a: [b", func(data string) error {
+			return yaml.Unmarshal([]byte(data), &yaml.Node{})
+		}},
+		{tree.TOML, "/a/bad.toml", `a = [ "b"`, func(data string) error {
+			_, err := toml.Decode(data, &map[string]any{})
+			return err
+		}},
+	} {
+		t.Run(c.format.String(), func(t *testing.T) {
+			t.Parallel()
+			err := c.parse(c.data)
+			if err == nil {
+				t.Fatalf("the parser takes %q", c.data)
+			}
+			problems := assertProblems(t, c.format, c.data, c.path, tree.Problem{Origin: tree.Origin{Path: c.path}, Message: err.Error()})
+			if want := c.path + ": " + err.Error(); len(problems) == 1 && problems[0].String() != want {
+				t.Errorf("problem %q, want %q", problems[0], want)
+			}
+		})
+	}
+}
+
+// Any document after the first is a problem, whatever it holds; a single
+// document is none, its start marked or not.
+func TestASecondYAMLDocumentIsAProblem(t *testing.T) {
+	t.Parallel()
+	more := tree.Problem{Origin: tree.Origin{Path: "/a/two.yaml"}, Message: "the bytes hold more than one document"}
+	for _, c := range []struct {
+		name string
+		data string
+		want []tree.Problem
+	}{
+		{"a second map", "a: 1\n---\nb: 2\n", []tree.Problem{more}},
+		{"a second empty document", "a: 1\n---\n", []tree.Problem{more}},
+		{"a second and a third", "a: 1\n---\nb: 2\n---\nc: 3\n", []tree.Problem{more}},
+		{"a second of another kind", "a: 1\n---\n- b\n", []tree.Problem{more}},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
+			assertProblems(t, tree.YAML, c.data, "/a/two.yaml", c.want...)
+		})
+	}
+	for _, data := range []string{"---\na: 1\n", "a: 1\n...\n", "---\na: 1\n...\n"} {
+		t.Run(fmt.Sprintf("one document %q", data), func(t *testing.T) {
+			t.Parallel()
+			assertDecodes(t, tree.YAML, data, " map", ".a integer 1")
+		})
+	}
+}
+
+// A null over a value would unset it, and nothing unsets.
+func TestAKeyWithNoValueIsAProblem(t *testing.T) {
+	t.Parallel()
+	for _, data := range []string{"a: {b: }", "a: {b: null}", "a: {b: ~}"} {
+		t.Run(data, func(t *testing.T) {
+			t.Parallel()
+			assertProblems(t, tree.YAML, data, "/a/v.yaml", tree.Problem{
+				Place:   "a.b",
+				Origin:  tree.Origin{Path: "/a/v.yaml", Line: 1},
+				Message: "the key has no value",
+			})
+		})
+	}
+}
+
+// Every kind of TOML date and time is a problem at its place.
+func TestATOMLDateIsAProblem(t *testing.T) {
+	t.Parallel()
+	for _, data := range []string{
+		"a = 2026-10-14",
+		"a = 2026-10-14T07:32:00",
+		"a = 2026-10-14T07:32:00Z",
+		"a = 07:32:00",
+	} {
+		t.Run(data, func(t *testing.T) {
+			t.Parallel()
+			assertProblems(t, tree.TOML, data, "/a/v.toml", tree.Problem{
+				Place:   "a",
+				Origin:  tree.Origin{Path: "/a/v.toml"},
+				Message: "a date is no value of a tree",
+			})
+		})
+	}
+}
+
+// Decode goes on past a bad value: every one is a problem, in the order of
+// the bytes for YAML, of the keys for TOML, whose parser keeps no order.
+func TestEveryBadValueOfParsedBytesIsReported(t *testing.T) {
+	t.Parallel()
+	yamlAt := func(line int) tree.Origin { return tree.Origin{Path: "/a/v.yaml", Line: line} }
+	tomlAt := tree.Origin{Path: "/a/v.toml"}
+	date := "a date is no value of a tree"
+	for _, c := range []struct {
+		name   string
+		format tree.Format
+		data   string
+		want   []tree.Problem
+	}{
+		{"two keys with no value", tree.YAML, "a:\nb:\n", []tree.Problem{
+			{Place: "a", Origin: yamlAt(1), Message: "the key has no value"},
+			{Place: "b", Origin: yamlAt(2), Message: "the key has no value"},
+		}},
+		{"bad values at every depth, between good ones", tree.YAML, "a:\n  b:\n  c: [1, ~, 2026-10-14]\nd: x\ne: ~\n", []tree.Problem{
+			{Place: "a.b", Origin: yamlAt(2), Message: "the key has no value"},
+			{Place: "a.c[1]", Origin: yamlAt(3), Message: "the item has no value"},
+			{Place: "a.c[2]", Origin: yamlAt(3), Message: date},
+			{Place: "e", Origin: yamlAt(5), Message: "the key has no value"},
+		}},
+		{"dates at every depth, between good values", tree.TOML, "z = 2026-10-14\nm = 1\nb = [2026-10-14]\n[a]\ny = 2026-10-14\nx = 2026-10-14\n", []tree.Problem{
+			{Place: "a.x", Origin: tomlAt, Message: date},
+			{Place: "a.y", Origin: tomlAt, Message: date},
+			{Place: "b[0]", Origin: tomlAt, Message: date},
+			{Place: "z", Origin: tomlAt, Message: date},
+		}},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
+			path := "/a/v." + strings.ToLower(c.format.String())
+			// Decoded again and again, as a TOML table's keys come in a new
+			// order each time it is walked.
+			for range 20 {
+				assertProblems(t, c.format, c.data, path, c.want...)
+			}
+		})
 	}
 }
 
