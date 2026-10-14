@@ -481,14 +481,18 @@ func helper(t *testing.T) {}`, nil},
 }
 
 // Every directory under the root is checked on its own, a finding names its
-// file from the root, and testdata is not checked.
+// file from the root, and neither testdata nor another module is checked.
 func TestTestFilesAreFoundUnderTheRoot(t *testing.T) {
 	t.Parallel()
 	const serial = "package a\n\nimport \"testing\"\n\nfunc TestA(t *testing.T) {}\n"
 	got := findingsIn(t, map[string]string{
+		"go.mod":                        "module example.com/kit\n",
 		"internal/a/a_test.go":          serial,
 		"internal/a/testdata/a_test.go": serial,
 		"internal/a/a.go":               serial,
+		"internal/d/go.mod":             "module example.com/d\n",
+		"internal/d/d_test.go":          serial,
+		"internal/d/e/e_test.go":        serial,
 		// The same name in another directory is another declaration.
 		"internal/b/b_test.go": `package b
 

@@ -18,6 +18,9 @@ Reusable Go code, standard library only, module
   timer started.
 - `testdiscipline`: checks a module's tests: real machinery only with a
   `Contract test:` line, and `t.Parallel()` first or a `Serial:` reason.
+- `testreport` (and `cmd/testreport`): turns `go test -json` into a report
+  of what ran: tests and subtests per package, passed, failed and skipped,
+  each skip with its reason and each failure in full.
 
 ## Use from another module
 
@@ -41,7 +44,8 @@ replace github.com/igor1309/ai-labs/gokit => ../gokit
 
 ## Test
 
-gokit's check is `gokit/scripts/test.sh`: format, vet and race tests.
+gokit's check is `gokit/scripts/test.sh`: format, vet and race tests, each
+saying what it ran; the tests are reported by `testreport`.
 
 ```bash
 gokit/scripts/test.sh
