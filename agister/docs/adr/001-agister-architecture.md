@@ -199,9 +199,8 @@ its concern and that it passes everything else through unchanged.
 
 ## Open
 
-- **Git-backed behaviour outside core.** Where each goes, the composition
-  or nowhere: the rebuild check after a verification, and the git input
-  sources (revision, merge-base, diff, changed files).
+- **Git input sources.** Where the revision, merge-base, diff and changed
+  files sources go: the composition or nowhere.
 - **Pages and layering.** Pages renders settings from their files, so it
   would repeat layering; it may get a dependency for that instead.
 - **Where reaping lives.** Reaping a run whose owner died: in the hold, or
