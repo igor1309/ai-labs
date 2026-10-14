@@ -76,6 +76,26 @@ type judgement struct {
 	Items []item `json:"items"`
 }
 
+// collected is a review as the judge received it, one entry of the review
+// run's collection: a completed review's findings.
+type collected struct {
+	Output *struct {
+		Findings []finding `json:"findings"`
+	} `json:"output"`
+}
+
+// finding is the part of a review's finding that a fix run is given: where
+// it is and its evidence.
+type finding struct {
+	File     string `json:"file"`
+	Line     *int   `json:"line"`
+	Evidence struct {
+		Case  string   `json:"case"`
+		Trace []string `json:"trace"`
+	} `json:"evidence"`
+	Requirement string `json:"requirement"`
+}
+
 // summary is what the gate prints when it stops.
 type summary struct {
 	Status     string      `json:"status"`
@@ -244,7 +264,11 @@ func (g *gate) steps(ctx context.Context) error {
 		if counted == maxReviews {
 			return stop{"owner", fmt.Sprintf("review %d, the last, leaves %d major(s) ruled fix", counted, len(majors))}
 		}
-		brief, err := g.fixBrief(counted, majors)
+		reviews, err := g.collection(ctx, g.sum.Reviews[len(g.sum.Reviews)-1].RunID)
+		if err != nil {
+			return err
+		}
+		brief, err := g.fixBrief(counted, majors, reviews)
 		if err != nil {
 			return err
 		}
@@ -479,16 +503,53 @@ func fenced(text string) string {
 	return fmt.Sprintf("%stext\n%s\n%s\n", fence, strings.TrimRight(text, "\n"), fence)
 }
 
+// collection is the reviews the judge of review run runID received, in
+// their order, read from the run as `agister runs export` copies it into
+// out.
+func (g *gate) collection(ctx context.Context, runID string) ([]collected, error) {
+	to := filepath.Join(g.out, "runs")
+	if err := os.MkdirAll(to, 0o755); err != nil {
+		return nil, err
+	}
+	if out, err := g.run(ctx, g.dir, "agister", "runs", "export", runID, "--to", to); err != nil {
+		return nil, fmt.Errorf("agister runs export %s: %w: %s", runID, err, out)
+	}
+	data, err := os.ReadFile(filepath.Join(to, runID, "artifacts", "collection.json"))
+	if err != nil {
+		return nil, fmt.Errorf("review run %s: %w", runID, err)
+	}
+	var reviews []collected
+	if err := json.Unmarshal(data, &reviews); err != nil {
+		return nil, fmt.Errorf("review run %s: collection: %w", runID, err)
+	}
+	return reviews, nil
+}
+
 // fixBrief writes the brief of the fix run after review n: the step's
 // brief with the majors as its "## Acts on", each its title and action as
-// the judge wrote them. The brief names no review, run, ruling or source:
-// the implementer is given the changes to make, not the process that
-// asked for them (LAB-200).
-func (g *gate) fixBrief(n int, majors []item) (string, error) {
+// the judge wrote them, then the evidence of the findings it rests on, as
+// the reviews wrote it: each finding's place, case, trace and requirement,
+// a finding two reviews give alike once. The brief names no review, run,
+// ruling or source: the implementer is given the changes to make and what
+// shows them, not the process that asked for them (LAB-200). A source that
+// names no finding of reviews stops the step.
+func (g *gate) fixBrief(n int, majors []item, reviews []collected) (string, error) {
 	var acts strings.Builder
-	acts.WriteString("The changes to make, as written:\n\n")
+	acts.WriteString("The changes to make, as written, each with the evidence the reviews give for it:\n\n")
 	for _, it := range majors {
-		fmt.Fprintf(&acts, "- **%s**: %s\n", it.Title, it.Action)
+		fmt.Fprintf(&acts, "- **%s**: %s\n", it.Title, indented(it.Action, "  "))
+		seen := map[string]bool{}
+		for _, source := range it.Sources {
+			f, err := resolve(source, reviews)
+			if err != nil {
+				return "", stop{"stopped", fmt.Sprintf("review %d: item %q: %v", n, it.Title, err)}
+			}
+			text := evidence(f)
+			if !seen[text] {
+				seen[text] = true
+				acts.WriteString(text)
+			}
+		}
 	}
 	brief, err := g.stepBrief(g.title, acts.String())
 	if err != nil {
@@ -496,4 +557,39 @@ func (g *gate) fixBrief(n int, majors []item) (string, error) {
 	}
 	path := filepath.Join(g.out, fmt.Sprintf("fix-%d.md", n))
 	return path, os.WriteFile(path, []byte(brief), 0o644)
+}
+
+// resolve is the finding source names, "<review>#<finding>", each counted
+// from 1 in the order the judge received them.
+func resolve(source string, reviews []collected) (finding, error) {
+	var r, i int
+	if _, err := fmt.Sscanf(source, "%d#%d", &r, &i); err != nil || fmt.Sprintf("%d#%d", r, i) != source {
+		return finding{}, fmt.Errorf("source %q is not <review>#<finding>", source)
+	}
+	if r < 1 || r > len(reviews) || reviews[r-1].Output == nil || i < 1 || i > len(reviews[r-1].Output.Findings) {
+		return finding{}, fmt.Errorf("source %q names no finding of the %d reviews", source, len(reviews))
+	}
+	return reviews[r-1].Output.Findings[i-1], nil
+}
+
+// evidence is f's place, case, trace and requirement, as a list item under
+// its change.
+func evidence(f finding) string {
+	place := f.File
+	if f.Line != nil {
+		place = fmt.Sprintf("%s:%d", f.File, *f.Line)
+	}
+	var b strings.Builder
+	fmt.Fprintf(&b, "  - `%s`: %s\n", place, indented(f.Evidence.Case, "    "))
+	for _, step := range f.Evidence.Trace {
+		fmt.Fprintf(&b, "    - %s\n", indented(step, "      "))
+	}
+	fmt.Fprintf(&b, "    - Requirement: %s\n", indented(f.Requirement, "      "))
+	return b.String()
+}
+
+// indented is text with every line after its first indented by prefix, so
+// that it stays inside its list item.
+func indented(text, prefix string) string {
+	return strings.ReplaceAll(strings.TrimRight(text, "\n"), "\n", "\n"+prefix)
 }
