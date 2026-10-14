@@ -2,6 +2,7 @@ package testreport_test
 
 import (
 	"encoding/json"
+	"errors"
 	"strings"
 	"testing"
 
@@ -150,19 +151,87 @@ func TestATestThatNeverEndedCountsAsFailed(t *testing.T) {
 	}
 }
 
+func buildSaid(importPath, output string) map[string]any {
+	return map[string]any{"Action": "build-output", "ImportPath": importPath, "Output": output}
+}
+
+// The events are those go test -json writes for a package whose test build
+// fails: build events by ImportPath, then the package's fail naming it.
 func TestAPackageThatDidNotBuildFailsTheReportWithTheBuildOutput(t *testing.T) {
 	t.Parallel()
+	const build = "example.com/a [example.com/a.test]"
 	out, ok := report(t, stream(t,
-		map[string]any{"Action": "build-output", "Package": a, "Output": "a.go:3:1: syntax error\n"},
-		pkgEnded("fail", a, 0),
+		buildSaid(build, "# "+build+"\n"),
+		buildSaid(build, "a.go:3:23: cannot use \"x\" as int value\n"),
+		map[string]any{"Action": "build-fail", "ImportPath": build},
+		map[string]any{"Action": "start", "Package": a},
+		frame(a, "", "FAIL\texample.com/a [build failed]\n"),
+		map[string]any{"Action": "fail", "Package": a, "FailedBuild": build},
 	))
 	if ok {
 		t.Error("a package that did not build passed the report")
 	}
-	want := "example.com/a: FAIL (fail), 0 tests and 0 subtests: 0 passed, 0 failed, 0 skipped\n" +
-		"    a.go:3:1: syntax error\n"
-	if !strings.HasPrefix(out, want) {
-		t.Errorf("got\n%s\nwant it to start\n%s", out, want)
+	want := "example.com/a: FAIL (the build of " + build + " failed), 0 tests and 0 subtests: 0 passed, 0 failed, 0 skipped\n" +
+		"    # " + build + "\n" +
+		"    a.go:3:23: cannot use \"x\" as int value\n" +
+		"    FAIL\texample.com/a [build failed]\n" +
+		"total: 1 packages, 0 tests and 0 subtests: 0 passed, 0 failed, 0 skipped\n"
+	if out != want {
+		t.Errorf("got\n%s\nwant\n%s", out, want)
+	}
+}
+
+func TestBuildOutputOfABuildThatDidNotFailIsShownAndFailsNothing(t *testing.T) {
+	t.Parallel()
+	out, ok := report(t, stream(t,
+		buildSaid("example.com/c", "c.go:1: a warning\n"),
+		run(a, "TestOne"), ended("pass", a, "TestOne"),
+		pkgEnded("pass", a, 0.1),
+	))
+	if !ok {
+		t.Error("build output alone failed the report")
+	}
+	want := "build output of example.com/c:\n    c.go:1: a warning\n"
+	if !strings.Contains(out, want) {
+		t.Errorf("the report has no %q:\n%s", want, out)
+	}
+	if strings.Contains(out, "total: 2 packages") {
+		t.Errorf("a build counts as a package:\n%s", out)
+	}
+}
+
+// go test -count=2 runs a test twice under one name.
+func TestATestThatFailedOnceOfItsRunsCountsAsFailed(t *testing.T) {
+	t.Parallel()
+	out, ok := report(t, stream(t,
+		run(a, "TestFlaky"),
+		said(a, "TestFlaky", "    flaky_test.go:5: lost the race\n"),
+		ended("fail", a, "TestFlaky"),
+		run(a, "TestFlaky"),
+		ended("pass", a, "TestFlaky"),
+		pkgEnded("fail", a, 0.2),
+	))
+	if ok {
+		t.Error("a test that failed once passed the report")
+	}
+	for _, want := range []string{"1 failed", "  failed TestFlaky:\n        flaky_test.go:5: lost the race\n"} {
+		if !strings.Contains(out, want) {
+			t.Errorf("the report has no %q:\n%s", want, out)
+		}
+	}
+}
+
+type brokenWriter struct{}
+
+func (brokenWriter) Write([]byte) (int, error) { return 0, errors.New("disk full") }
+
+func TestAReportThatCannotBeWrittenIsAnError(t *testing.T) {
+	t.Parallel()
+	_, err := testreport.Write(brokenWriter{}, strings.NewReader(stream(t,
+		run(a, "TestOne"), ended("pass", a, "TestOne"), pkgEnded("pass", a, 0.1),
+	)))
+	if err == nil || err.Error() != "disk full" {
+		t.Errorf("got %v, want the writer's error", err)
 	}
 }
 
