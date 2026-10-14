@@ -16,15 +16,20 @@ func recordSources(sources []CallSource) []run.DefinitionSource {
 	recorded := make([]run.DefinitionSource, len(sources))
 	for i, source := range sources {
 		recorded[i] = run.DefinitionSource{
-			Kind:      source.Kind,
-			Name:      source.Name,
-			Path:      source.Path,
-			SHA256:    source.SHA256,
-			Project:   source.Project,
-			Overrides: source.Overrides,
+			Kind: source.Kind,
+			Name: source.Name,
+			Layers: translated(source.Layers, func(layer CallSourceLayer) run.DefinitionLayer {
+				return run.DefinitionLayer{Layer: layer.Layer, Path: layer.Path, SHA256: layer.SHA256, Fields: layer.Fields, Process: layer.Process}
+			}),
 		}
 	}
 	return recorded
+}
+
+func recordLayers(layers []CallLayer) []run.Layer {
+	return translated(layers, func(layer CallLayer) run.Layer {
+		return run.Layer{Layer: layer.Layer, Dir: layer.Dir}
+	})
 }
 
 func recordEffective(effective CallLimits) *run.EffectivePolicy {
@@ -35,6 +40,9 @@ func recordEffective(effective CallLimits) *run.EffectivePolicy {
 			NoOutput:          effective.Stale.NoOutput,
 			ToolCommand:       effective.Stale.ToolCommand,
 			RepeatedToolCalls: effective.Stale.RepeatedToolCalls,
+		}
+		if recover := effective.Stale.Recover; recover != (CallRecover{}) {
+			stale.Recover = &run.StaleRecover{MaxResumes: recover.MaxResumes, Instruction: recover.Instruction}
 		}
 	}
 	return &run.EffectivePolicy{
@@ -55,25 +63,24 @@ func recordVerify(verify *CallVerify) *run.Verify {
 	if verify == nil {
 		return nil
 	}
-	return &run.Verify{
+	recorded := &run.Verify{
 		Command:     verify.Command,
 		Timeout:     verify.Timeout,
 		MaxAttempts: verify.MaxAttempts,
 		Instruction: verify.Instruction,
+		// It runs in the call's worktree (ADR-025 rule 5).
+		Where: run.VerifyInWorkspace,
 	}
-}
-
-func recordSetup(setup *CallSetup) *run.Setup {
-	if setup == nil {
-		return nil
-	}
-	return &run.Setup{Command: setup.Command, Timeout: setup.Timeout, From: setup.From, Path: setup.Path}
+	return recorded
 }
 
 func recordPlan(plan CallPlan) *run.Plan {
 	return &run.Plan{
+		Warnings:   slices.Clone(plan.Warnings),
 		Primitives: slices.Clone(plan.Primitives),
 		Granted:    slices.Clone(plan.Granted),
 		Withheld:   slices.Clone(plan.Withheld),
+		Declared:   append([]string{}, plan.Declared...),
+		Extra:      append([]string{}, plan.Extra...),
 	}
 }

@@ -19,11 +19,11 @@ import (
 	"time"
 
 	"github.com/igor1309/ai-labs/agister/internal/adapters/fsdefs"
-	"github.com/igor1309/ai-labs/agister/internal/adapters/system/systemtest"
 	"github.com/igor1309/ai-labs/agister/internal/app"
 	"github.com/igor1309/ai-labs/agister/internal/cli"
 	"github.com/igor1309/ai-labs/agister/internal/contract"
-	"github.com/igor1309/ai-labs/agister/internal/domain/definition"
+	"github.com/igor1309/ai-labs/agister/internal/domain/document"
+	"github.com/igor1309/ai-labs/gokit/clocktest"
 )
 
 // countedStamps names each install's backup by the time and a count, so
@@ -49,7 +49,7 @@ type stagerSpy struct {
 	staged, removed *int
 }
 
-func (s stagerSpy) Stage(ctx context.Context, docs []definition.Document) (app.GateDefinitions, func(), error) {
+func (s stagerSpy) Stage(ctx context.Context, docs []document.Document) (app.GateDefinitions, func(), error) {
 	staged, remove, err := s.InstallStager.Stage(ctx, docs)
 	if err != nil {
 		return nil, nil, err
@@ -73,22 +73,22 @@ func (s homeSpy) Lock(ctx context.Context) (func(), error) {
 	}, nil
 }
 
-func (s homeSpy) Documents(ctx context.Context) ([]definition.Document, []definition.Source, error) {
+func (s homeSpy) Documents(ctx context.Context) ([]document.Document, []document.Source, error) {
 	*s.events = append(*s.events, "Documents")
 	return s.InstallHome.Documents(ctx)
 }
 
-func (s homeSpy) Current(ctx context.Context, kind definition.Kind, name string) (string, string, error) {
+func (s homeSpy) Current(ctx context.Context, kind document.Kind, name string) (string, string, error) {
 	*s.events = append(*s.events, "Current "+string(kind)+"/"+name)
 	return s.InstallHome.Current(ctx, kind, name)
 }
 
-func (s homeSpy) Put(ctx context.Context, kind definition.Kind, name string, data []byte) error {
+func (s homeSpy) Put(ctx context.Context, kind document.Kind, name string, data []byte) error {
 	*s.events = append(*s.events, "Put "+string(kind)+"/"+name)
 	return s.InstallHome.Put(ctx, kind, name, data)
 }
 
-func (s homeSpy) Remove(ctx context.Context, kind definition.Kind, name string) error {
+func (s homeSpy) Remove(ctx context.Context, kind document.Kind, name string) error {
 	*s.events = append(*s.events, "Remove "+string(kind)+"/"+name)
 	return s.InstallHome.Remove(ctx, kind, name)
 }
@@ -121,7 +121,7 @@ func installClientAdjusted(t *testing.T, home string, adjust func(*app.InstallAd
 	compose.stages = in.stages
 	compose.adjust = func(infra *app.Infrastructure) {
 		infra.Installer.Home = homeSpy{InstallHome: infra.Installer.Home, events: &in.events}
-		infra.Installer.Clock = systemtest.NewClock(time.Date(2026, 10, 2, 12, 0, 0, 0, time.UTC))
+		infra.Installer.Clock = clocktest.NewClock(time.Date(2026, 10, 2, 12, 0, 0, 0, time.UTC))
 		infra.Installer.Stamps = countedStamps{&stamps}
 		infra.Staging = stagerSpy{InstallStager: infra.Staging, staged: &in.staged, removed: &in.removed}
 		adjust(&infra.Installer)
@@ -160,7 +160,7 @@ func agisterInstalling(t *testing.T, input, home, cwd string, args ...string) re
 		compose.stages = stages
 		client, _, err := compose.wire(config)
 		return client, err
-	})
+	}, diagnostics)
 	if left := files(t, stages); len(left) != 0 {
 		t.Errorf("stages left in %s: %v", stages, left)
 	}
@@ -277,7 +277,7 @@ func TestInstallPlansEachDocument(t *testing.T) {
 		{Kind: "agents", Name: "reviewer", Path: filepath.Join(home, "agents", "reviewer.toml"), Action: contract.InstallReplace,
 			Before: digestText(reviewer), After: digestText(reviewer + "# tuned\n"),
 			Diff: "--- " + filepath.Join(home, "agents", "reviewer.toml") + "\n+++ " + filepath.Join(src, "agents", "reviewer.toml") + "\n" +
-				"@@ -5,3 +5,4 @@\n model_family = \"anthropic\"\n effort = \"high\"\n session = \"fresh-only\"\n+# tuned\n"},
+				"@@ -4,3 +4,4 @@\n model = \"sonnet\"\n model_family = \"anthropic\"\n effort = \"high\"\n+# tuned\n"},
 		{Kind: "prompts", Name: "house", Path: filepath.Join(home, "prompts", "house.md"), Action: contract.InstallCreate, After: digestText("Follow the house style.\n")},
 		{Kind: "service", Name: "service", Path: filepath.Join(home, "service.toml"), Action: contract.InstallUnchanged,
 			Before: digestText(before["service.toml"]), After: digestText(before["service.toml"])},
@@ -289,10 +289,10 @@ func TestInstallPlansEachDocument(t *testing.T) {
 		t.Fatalf("ignored: %v", plan.Ignored)
 	}
 	// What only home has is kept, and only settings are planned.
-	if len(plan.Kept) != 13 || plan.Kept[0] != filepath.Join(home, "agents", "assistant.toml") {
+	if len(plan.Kept) != 20 || plan.Kept[0] != filepath.Join(home, "agents", "assistant.toml") {
 		t.Fatalf("kept: %v", plan.Kept)
 	}
-	if len(plan.Inventory) != 15 || plan.Inventory[filepath.Join(home, "service.toml")] != digestText(before["service.toml"]) {
+	if len(plan.Inventory) != 22 || plan.Inventory[filepath.Join(home, "service.toml")] != digestText(before["service.toml"]) {
 		t.Fatalf("inventory: %v", plan.Inventory)
 	}
 	if in.staged != 1 || !reflect.DeepEqual(files(t, home), before) || backups(t, home) != nil {
@@ -471,6 +471,45 @@ func TestRestoreUndoesAnInstall(t *testing.T) {
 	}
 }
 
+// A restore puts back the bytes the install replaced, and reads home's
+// file as written: a process the install made extend a base is put back
+// though its base was removed since (ADR-016, ADR-030 rule 9).
+func TestRestorePutsBackAProcessWhoseBaseIsGone(t *testing.T) {
+	t.Parallel()
+	home := initedHome(t)
+	child := filepath.Join(home, "processes", "child_ask.yaml")
+	standalone := strings.NewReplacer("name: base_ask", "name: child_ask").Replace(baseAsk) + "prompt: ask\n"
+	write(t, child, standalone)
+	src := filepath.Join(tempDir(t), ".agister")
+	write(t, filepath.Join(src, "processes", "base_ask.yaml"), baseAsk)
+	write(t, filepath.Join(src, "processes", "child_ask.yaml"), childAsk)
+	in := installClient(t, home, nil)
+	result, err := in.installNow(t, src)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Remove(filepath.Join(home, "processes", "base_ask.yaml")); err != nil {
+		t.Fatal(err)
+	}
+
+	plan, err := in.restoreNow(t, result.Stamp)
+	if err != nil {
+		t.Fatalf("restore: %v", err)
+	}
+	var diff string
+	for _, doc := range plan.Documents {
+		if doc.Path == child {
+			diff = doc.Diff
+		}
+	}
+	if !strings.Contains(diff, "-extends: process:base_ask\n") || !strings.Contains(diff, "+timeout: 10m\n") {
+		t.Fatalf("restore plan %+v", plan)
+	}
+	if got := read(t, child); got != standalone {
+		t.Fatalf("after restore %s holds:\n%s", child, got)
+	}
+}
+
 // The yes binds the restore plan: a document it touches changed since, or
 // one the install created already removed, refuses the restore, with
 // nothing written.
@@ -555,7 +594,7 @@ type failingBackups struct {
 	err error
 }
 
-func (b failingBackups) Save(context.Context, string, app.InstallManifest, []definition.Document) error {
+func (b failingBackups) Save(context.Context, string, app.InstallManifest, []document.Document) error {
 	return b.err
 }
 
@@ -581,6 +620,27 @@ func TestInstallWritesNothingWhenTheBackupFails(t *testing.T) {
 	}
 	if !reflect.DeepEqual(files(t, home), before) {
 		t.Fatal("home changed after the backup failed")
+	}
+}
+
+// An install that fails once approved, its backup's folder a file, makes
+// no run: the failure is in the log as an error, as stderr says it.
+func TestAnInstallThatFailsIsLogged(t *testing.T) {
+	t.Parallel()
+	home := initedHome(t)
+	src := repoSettings(t, home)
+	write(t, filepath.Join(home, "backups"), "not a folder")
+	r := agisterInstalling(t, "yes\n", home, tempDir(t), "install", src)
+	if r.code == 0 || !strings.Contains(r.stderr, "not a directory") {
+		t.Fatalf("install: %d\n%s%s", r.code, r.stdout, r.stderr)
+	}
+	logged := loggedAs(t, home, "the command failed")
+	if len(logged) != 1 {
+		t.Fatalf("failures logged = %v", logged)
+	}
+	message, _ := logged[0]["error"].(string)
+	if logged[0]["level"] != "ERROR" || logged[0]["command"] != "install" || !strings.Contains(r.stderr, "agister: "+message+"\n") {
+		t.Fatalf("logged = %v, stderr:\n%s", logged[0], r.stderr)
 	}
 }
 

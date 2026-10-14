@@ -2,9 +2,13 @@
 //
 //	record.json     the run record, replaced atomically
 //	events.jsonl    ordered events, appended
-//	provider.jsonl  raw runtime output, appended
-//	owner.lock      held (flock) by the process running the call
+//	owner.lock      held (flock) alone by the process running the call,
+//	                and shared by the readers of its state
 //	artifacts/      files the call produced
+//
+// A run recorded before LAB-181 may also hold provider.jsonl, the
+// runtime's raw output; it is read and exported as any other file. A run
+// keeps none now: the runtime's session is its own, named by its ID.
 //
 // A record that is not finished and whose lock nobody holds is abandoned.
 //
@@ -17,12 +21,14 @@ package fsruns
 
 import (
 	"bufio"
+	"bytes"
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -31,6 +37,7 @@ import (
 	"strings"
 	"sync"
 	"syscall"
+	"time"
 
 	"github.com/igor1309/ai-labs/agister/internal/app"
 	"github.com/igor1309/ai-labs/agister/internal/contract"
@@ -51,10 +58,13 @@ type Store struct {
 var _ app.RunRecorder = Store{}
 var _ app.RunsReader = Store{}
 var _ app.RunsAppends = Store{}
-var _ app.RunAdopter = Store{}
 var _ app.CallRuns = Store{}
+var _ app.ExportRuns = Store{}
 
 func (s Store) runDir(id string) string { return filepath.Join(s.Dir, id) }
+
+// RunDir is the directory run id's record and artifacts are kept in.
+func (s Store) RunDir(id string) string { return s.runDir(id) }
 
 // A run ID names one directory under Dir; anything else, such as a path
 // out of it, is refused before it reaches the filesystem.
@@ -78,7 +88,7 @@ func (s Store) Create(_ context.Context, record run.Record) (app.RunHandle, erro
 	if err := os.Mkdir(dir, 0o700); err != nil {
 		return nil, err
 	}
-	lock, err := os.OpenFile(filepath.Join(dir, "owner.lock"), os.O_CREATE|os.O_RDWR, 0o600)
+	lock, err := os.OpenFile(filepath.Join(dir, ownerLock), os.O_CREATE|os.O_RDWR, 0o600)
 	if err != nil {
 		return nil, err
 	}
@@ -145,33 +155,95 @@ func (s Store) LiveCheckouts(ctx context.Context) ([]string, error) {
 	return dirs, nil
 }
 
+// Adopter adopts the runs of a Store whose owner ended (app.RunAdopter).
+// A run's owner, and a process adopting it, hold its owner lock alone; a
+// reader holds it shared: a status probe for the moment it reads the
+// run's state, an export for as long as it copies the run (Hold). Adopt
+// refuses at once a run whose lock is held alone, and waits, bounded, for
+// the readers of one held shared to let go.
+type Adopter struct {
+	store Store
+	// timer starts the wait between two attempts at a lock readers hold:
+	// the next attempt is due when fired delivers, and stop releases the
+	// wait.
+	timer func(wait time.Duration) (fired <-chan time.Time, stop func())
+}
+
+var _ app.RunAdopter = Adopter{}
+
+// NewAdopter returns the Adopter of store's runs, whose waits for readers
+// start on timer. Both are required.
+func NewAdopter(store Store, timer func(wait time.Duration) (fired <-chan time.Time, stop func())) Adopter {
+	if timer == nil {
+		panic("fsruns.NewAdopter: no timer")
+	}
+	return Adopter{store: store, timer: timer}
+}
+
+// readerRetry is the wait between two attempts at an owner lock readers
+// hold, and readerAttempts how many waits Adopt gives them: about a
+// second, for a status probe holds the lock only for the moment it reads,
+// and an export holds it for as long as it copies the run.
+const (
+	readerRetry    = 10 * time.Millisecond
+	readerAttempts = 100
+)
+
+// Abandoned lists the unfinished runs nobody owns that recorded effects,
+// and the finished runs whose record still names a clean copy or an
+// unreleased checkout.
+func (a Adopter) Abandoned(ctx context.Context) ([]run.Record, error) {
+	return a.store.Abandoned(ctx)
+}
+
+// LiveCheckouts lists the checkout directories, workspaces and clean
+// copies, of unfinished runs that some process still owns.
+func (a Adopter) LiveCheckouts(ctx context.Context) ([]string, error) {
+	return a.store.LiveCheckouts(ctx)
+}
+
 // Adopt takes the owner lock of an unfinished run, or of a finished one
 // whose record still names a clean copy or an unreleased checkout, so
-// exactly one process ends what its dead owner left.
-func (s Store) Adopt(ctx context.Context, id string) (app.ReapHandle, run.Record, error) {
+// exactly one process ends what its dead owner left. A run whose lock
+// another holds alone, its owner or another adopter, is app.ErrRunOwned
+// at once; one whose readers still hold it once the wait for them is
+// over, or ctx is, app.ErrRunRead. One finished with neither on record is
+// app.ErrRunFinished, with its record. Under the lock, it ends the events
+// on a whole line where the dead owner did not finish appending one,
+// keeping a complete event and cutting off an incomplete one, so the
+// adopter's events read and are numbered after every event delivered.
+func (a Adopter) Adopt(ctx context.Context, id string) (app.ReapHandle, run.Record, error) {
+	s := a.store
 	var record run.Record
 	if err := checkID(id); err != nil {
 		return nil, record, err
 	}
-	lock, err := os.OpenFile(filepath.Join(s.runDir(id), "owner.lock"), os.O_RDWR, 0)
+	lock, err := os.OpenFile(filepath.Join(s.runDir(id), ownerLock), os.O_RDWR, 0)
 	if errors.Is(err, fs.ErrNotExist) {
 		return nil, record, fmt.Errorf("run %s: %w", id, contract.ErrNotFound)
 	}
 	if err != nil {
 		return nil, record, err
 	}
-	if err := syscall.Flock(int(lock.Fd()), syscall.LOCK_EX|syscall.LOCK_NB); err != nil {
+	if err := a.lockAlone(ctx, lock); err != nil {
 		lock.Close()
-		return nil, record, fmt.Errorf("run %s is owned: %w", id, err)
+		return nil, record, fmt.Errorf("run %s: %w", id, err)
 	}
 	// Read under the lock: the owner may have finished before it was released.
 	record, _, err = s.Get(ctx, id)
 	if err == nil && record.FinishedAt != nil && !reapable(record.Effects) {
-		err = fmt.Errorf("run %s is finished", id)
+		err = fmt.Errorf("run %s: %w", id, app.ErrRunFinished)
 	}
 	if err != nil {
 		lock.Close()
 		return nil, record, err
+	}
+	// An owner killed while it appended an event left a line without its
+	// newline: the adopter's events would follow it on that line, and read
+	// as torn too.
+	if err := repairTail(filepath.Join(s.runDir(id), "events.jsonl")); err != nil {
+		lock.Close()
+		return nil, record, fmt.Errorf("run %s: repairing its events: %w", id, err)
 	}
 	seq := 0
 	if events, _, err := s.Events(ctx, id, 0); err == nil && len(events) > 0 {
@@ -180,6 +252,47 @@ func (s Store) Adopt(ctx context.Context, id string) (app.ReapHandle, run.Record
 	h := &handle{dir: s.runDir(id), lock: lock, seq: seq, appends: s.Appends}
 	s.Appends.hold(h.dir, seq, h)
 	return h, record, nil
+}
+
+// lockAlone takes the owner lock open in lock alone. A lock that cannot
+// be had shared either is held alone: app.ErrRunOwned. One that can is
+// held by readers only, and is tried again after readerRetry, up to
+// readerAttempts times while ctx lasts; readers that still hold it then
+// are app.ErrRunRead.
+func (a Adopter) lockAlone(ctx context.Context, lock *os.File) error {
+	fd := int(lock.Fd())
+	for attempt := 0; ; attempt++ {
+		err := syscall.Flock(fd, syscall.LOCK_EX|syscall.LOCK_NB)
+		if err == nil {
+			return nil
+		}
+		if !errors.Is(err, syscall.EWOULDBLOCK) {
+			return fmt.Errorf("taking its owner lock: %w", err)
+		}
+		// Readers share the lock with this one; an owner shares it with
+		// none.
+		err = syscall.Flock(fd, syscall.LOCK_SH|syscall.LOCK_NB)
+		if errors.Is(err, syscall.EWOULDBLOCK) {
+			return app.ErrRunOwned
+		}
+		if err != nil {
+			return fmt.Errorf("asking who holds its owner lock: %w", err)
+		}
+		if err := syscall.Flock(fd, syscall.LOCK_UN); err != nil {
+			return fmt.Errorf("asking who holds its owner lock: %w", err)
+		}
+		if attempt == readerAttempts {
+			return app.ErrRunRead
+		}
+		fired, stop := a.timer(readerRetry)
+		select {
+		case <-fired:
+			stop()
+		case <-ctx.Done():
+			stop()
+			return fmt.Errorf("%w: %w", app.ErrRunRead, ctx.Err())
+		}
+	}
 }
 
 // Abandon leaves run id, whose handle this process holds, as a killed owner
@@ -196,6 +309,32 @@ func (s Store) Abandon(id string) error {
 		return nil
 	}
 	return fmt.Errorf("run %s: no handle in this process holds it", id)
+}
+
+// repairTail ends the events file at path on a whole line. What follows its
+// last newline is an event its writer did not finish appending: a complete
+// one, killed before its newline, is kept and given the newline, as a
+// reader has delivered it already; an incomplete one is cut off. The whole
+// lines, every complete event, stay. A run with no events file has none to
+// repair. Only the run's owner may repair it: an owner still appending
+// would lose its event.
+func repairTail(path string) error {
+	data, err := os.ReadFile(path)
+	if errors.Is(err, fs.ErrNotExist) {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	whole := bytes.LastIndexByte(data, '\n') + 1
+	if whole == len(data) {
+		return nil
+	}
+	var event run.Event
+	if json.Unmarshal(data[whole:], &event) == nil {
+		return appendText(path, "")
+	}
+	return os.Truncate(path, int64(whole))
 }
 
 // reapable says a finished run's effects leave something to remove: a
@@ -257,15 +396,6 @@ func (h *handle) Append(event run.Event) error {
 	}
 	h.appends.appended(h.dir, event.Seq)
 	return nil
-}
-
-func (h *handle) Raw(line string) error {
-	h.mu.Lock()
-	defer h.mu.Unlock()
-	if h.abandoned {
-		return errAbandoned
-	}
-	return appendText(filepath.Join(h.dir, "provider.jsonl"), line)
 }
 
 func (h *handle) Update(record run.Record) error {
@@ -359,6 +489,128 @@ func (s Store) Artifact(_ context.Context, id string, artifact run.Artifact) ([]
 		return nil, fmt.Errorf("run %s: artifact %s: %w", id, name, contract.ErrNotFound)
 	}
 	return data, err
+}
+
+// ownerLock is the name of the run's owner lock: the store's own state, not
+// evidence.
+const ownerLock = "owner.lock"
+
+// Hold takes a stable read of run id, for an export: a shared hold of its
+// owner lock, which keeps out both its owner and a process adopting it to
+// recover what it left, each of which takes the lock alone. Its record is
+// read once held, and its state told from that record: finished, or
+// abandoned. A run whose lock another process holds is not held
+// (app.RunOwnedError). A run with no owner lock has none to take: nothing
+// can own it, so it is read as it is.
+func (s Store) Hold(ctx context.Context, id string) (app.ExportRead, error) {
+	if err := checkID(id); err != nil {
+		return nil, err
+	}
+	dir := s.runDir(id)
+	lock, err := os.Open(filepath.Join(dir, ownerLock))
+	switch {
+	case errors.Is(err, fs.ErrNotExist):
+		lock = nil
+	case err != nil:
+		return nil, err
+	default:
+		if err := syscall.Flock(int(lock.Fd()), syscall.LOCK_SH|syscall.LOCK_NB); err != nil {
+			lock.Close()
+			if !errors.Is(err, syscall.EWOULDBLOCK) {
+				return nil, fmt.Errorf("run %s: %w", id, err)
+			}
+			record, _, err := s.Get(ctx, id)
+			if err != nil {
+				return nil, err
+			}
+			return nil, &app.RunOwnedError{ID: id, Finished: record.FinishedAt != nil}
+		}
+	}
+	read := &held{id: id, dir: dir, lock: lock, state: run.StateAbandoned}
+	data, err := os.ReadFile(filepath.Join(dir, "record.json"))
+	if errors.Is(err, fs.ErrNotExist) {
+		err = fmt.Errorf("run %s: %w", id, contract.ErrNotFound)
+	}
+	if err == nil {
+		if err = json.Unmarshal(data, &read.record); err != nil {
+			err = fmt.Errorf("run %s: %w", id, err)
+		}
+	}
+	if err != nil {
+		read.Release()
+		return nil, err
+	}
+	if read.record.FinishedAt != nil {
+		read.state = run.StateFinished
+	}
+	return read, nil
+}
+
+// held is a stable read of the run in dir, holding its owner lock shared
+// until it is released; lock is nil for a run that has none.
+type held struct {
+	id, dir string
+	lock    *os.File
+	record  run.Record
+	state   run.State
+}
+
+func (h *held) Record() run.Record { return h.record }
+
+func (h *held) State() run.State { return h.state }
+
+// Files lists the files of the run's directory by slash-separated path
+// relative to it, sorted: its record, events and artifacts, and the
+// provider.jsonl of a run recorded before LAB-181.
+// The owner lock is the store's own state, not evidence, and is not
+// listed. Anything there that is neither a file nor a directory fails the
+// listing.
+func (h *held) Files() ([]string, error) {
+	var files []string
+	err := filepath.WalkDir(h.dir, func(path string, entry fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if entry.IsDir() {
+			return nil
+		}
+		relative, err := filepath.Rel(h.dir, path)
+		if err != nil {
+			return err
+		}
+		relative = filepath.ToSlash(relative)
+		if !entry.Type().IsRegular() {
+			return fmt.Errorf("run %s: %s is not a regular file", h.id, relative)
+		}
+		if relative != ownerLock {
+			files = append(files, relative)
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	sort.Strings(files)
+	return files, nil
+}
+
+// Open opens the run's file at the slash-separated path, as Files lists it:
+// only a file inside the run's directory, and never its owner lock.
+func (h *held) Open(path string) (io.ReadCloser, error) {
+	local := filepath.FromSlash(path)
+	if !filepath.IsLocal(local) || path == ownerLock {
+		return nil, fmt.Errorf("run %s: invalid file path %q", h.id, path)
+	}
+	return os.Open(filepath.Join(h.dir, local))
+}
+
+// Release lets go of the owner lock; once released, the read holds
+// nothing.
+func (h *held) Release() {
+	if h.lock != nil {
+		h.lock.Close()
+		h.lock = nil
+	}
 }
 
 func (s Store) Events(ctx context.Context, id string, afterSeq int) ([]run.Event, run.State, error) {
@@ -534,7 +786,11 @@ func (s Store) List(ctx context.Context) ([]run.Record, error) {
 }
 
 // ListStrict returns every run's record or an error: a partial listing
-// cannot establish which run last changed a continued session.
+// cannot establish which run last changed a continued session. A run
+// whose directory holds no record.json yet is being created (Create makes
+// the directory before it writes the record): it has recorded nothing, so
+// nothing of it is on record, and it is left out. A record that exists but
+// cannot be read or parsed fails the listing.
 func (s Store) ListStrict(ctx context.Context) ([]run.Record, error) {
 	return s.list(ctx, true)
 }
@@ -558,7 +814,7 @@ func (s Store) list(ctx context.Context, strict bool) ([]run.Record, error) {
 	for _, id := range ids {
 		record, _, err := s.Get(ctx, id)
 		if err != nil {
-			if strict {
+			if strict && !errors.Is(err, contract.ErrNotFound) {
 				return nil, fmt.Errorf("listing run %s: %w", id, err)
 			}
 			continue
@@ -574,7 +830,7 @@ func (s Store) status(id string, record run.Record) run.State {
 	if record.FinishedAt != nil {
 		return run.StateFinished
 	}
-	lock, err := os.Open(filepath.Join(s.runDir(id), "owner.lock"))
+	lock, err := os.Open(filepath.Join(s.runDir(id), ownerLock))
 	if err != nil {
 		return run.StateAbandoned
 	}

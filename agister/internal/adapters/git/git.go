@@ -10,7 +10,6 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"io/fs"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -70,7 +69,10 @@ func commit(ctx context.Context, dir, revision string) (string, error) {
 
 // Worktrees runs Agister's worktree changes in one repository one at a
 // time: git worktree add reads each .git/worktrees/*/commondir, and dies on
-// one a parallel add has created and not yet written. It holds one lock per
+// one a parallel add has created and not yet written. No call adds a
+// worktree since ADR-025: what is left is the reap's removal of the
+// checkouts and clean copies runs made before it left on record (ADR-025
+// rule 9), which still takes its turn with any other Agister's add. It holds one lock per
 // repository, keyed by its git common directory: two paths into a
 // repository, or two of its worktrees, share one. A process builds one and
 // gives it to every Workspaces value it makes. Other processes are held
@@ -265,22 +267,22 @@ type worktreeCommands interface {
 
 var errNoWorktrees = errors.New("git worktree: Workspaces built without NewWorkspaces over NewWorktrees")
 
-// Workspaces locates repositories and makes detached checkouts. Its
-// worktree changes go through worktrees: the zero value makes none.
+// Workspaces locates repositories, names and diffs content, and removes
+// the checkouts runs made before ADR-025 left on record. Its worktree
+// changes go through worktrees: the zero value makes none.
 type Workspaces struct {
-	// Cleanup, when set, gives the bounded context a checkout's release or
-	// a removal runs under, in place of a deadline of cleanupDeadline from
+	// Cleanup, when set, gives the bounded context a removal runs under, in place of a deadline of cleanupDeadline from
 	// now on the worktrees' clock: tests make it pass at will.
 	Cleanup func(ctx context.Context) (context.Context, context.CancelFunc)
 
 	worktrees worktreeCommands
 }
 
-// cleanupDeadline bounds a release or removal, waits for the lock another
-// process holds included.
+// cleanupDeadline bounds a removal, waits for the lock another process
+// holds included.
 const cleanupDeadline = time.Minute
 
-// cleanup bounds ctx for a release or removal.
+// cleanup bounds ctx for a removal.
 func (w Workspaces) cleanup(ctx context.Context) (context.Context, context.CancelFunc) {
 	if w.Cleanup != nil {
 		return w.Cleanup(ctx)
@@ -304,12 +306,49 @@ func (w Workspaces) worktree(ctx context.Context, repository string, args ...str
 	return w.worktrees.worktree(ctx, repository, args...)
 }
 
+// Root returns the canonical worktree root, distinct for linked worktrees
+// even when they share a git common directory.
 func (Workspaces) Root(ctx context.Context, cwd string) (string, error) {
 	out, err := run(ctx, cwd, "rev-parse", "--show-toplevel")
 	if err != nil {
 		return "", err
 	}
-	return strings.TrimSpace(out), nil
+	return filepath.EvalSymlinks(strings.TrimSuffix(out, "\n"))
+}
+
+// IsSubmodule reads gitlinks from the outer index, not .gitmodules: staged
+// additions count too, and configuration alone does not track a submodule.
+// Only the indexed root itself stays within the outer boundary; an independent
+// worktree beneath it has its own boundary.
+func (Workspaces) IsSubmodule(ctx context.Context, worktree, root string) (bool, error) {
+	out, err := run(ctx, worktree, "ls-files", "--stage", "-z")
+	if err != nil {
+		return false, err
+	}
+	for _, entry := range strings.Split(out, "\x00") {
+		if entry == "" {
+			continue
+		}
+		metadata, path, ok := strings.Cut(entry, "\t")
+		if !ok {
+			return false, fmt.Errorf("git ls-files: unexpected entry %q", entry)
+		}
+		if !strings.HasPrefix(metadata, "160000 ") {
+			continue
+		}
+		module, err := filepath.EvalSymlinks(filepath.Join(worktree, path))
+		if os.IsNotExist(err) {
+			// An absent gitlink cannot be the existing canonical writer root.
+			continue
+		}
+		if err != nil {
+			return false, err
+		}
+		if module == root {
+			return true, nil
+		}
+	}
+	return false, nil
 }
 
 // SameRepository compares the canonical Git common directories, shared
@@ -344,96 +383,18 @@ func commonDirectory(ctx context.Context, repository string) (string, error) {
 	return filepath.EvalSymlinks(common)
 }
 
-func (w Workspaces) Checkout(ctx context.Context, repository, revision string) (string, func() error, error) {
-	parent, err := os.MkdirTemp("", "agister-checkout-")
-	if err != nil {
-		return "", nil, err
-	}
-	dir := filepath.Join(parent, workspace(filepath.Base(parent)))
-	if _, err := w.worktree(ctx, repository, "add", "--detach", "--quiet", dir, revision); err != nil {
-		os.RemoveAll(parent)
-		return "", nil, err
-	}
-	release := func() error {
-		// Independent of the call's cancellation, but bounded.
-		ctx, cancel := w.cleanup(context.WithoutCancel(ctx))
-		defer cancel()
-		_, err := w.worktree(ctx, repository, "remove", "--force", dir)
-		if removeErr := os.RemoveAll(parent); err == nil {
-			err = removeErr
-		}
-		return err
-	}
-	return dir, release, nil
-}
-
-// Place names the directory the clean copies of call are made in: the
-// same for every attempt of the call, one no other call's copies use, and
-// shaped as Discard removes it. Nothing is made there: the call records it
-// first, so a copy is never on disk before it is on record.
-func (Workspaces) Place(call string) string {
-	parent := "agister-checkout-" + call + "-copy"
-	return filepath.Join(os.TempDir(), parent, workspace(parent))
-}
-
-// workspace names the checkout in parent after parent's own unique part:
-// git names a worktree's admin directory after its basename, so checkouts
-// made at the same time in one repository never race on one name.
+// workspace is the name Agister gave a checkout in parent, after parent's
+// own unique part: git names a worktree's admin directory after its
+// basename, so checkouts made at the same time in one repository never
+// raced on one name.
 func workspace(parent string) string {
 	return "workspace-" + strings.TrimPrefix(parent, "agister-checkout-")
 }
 
-// Copy checks revision out at dir, a directory Place named, as Checkout
-// does, and applies patch to its files, not its index: where a
-// verification run checks exactly what the patch delivers. Whatever is at
-// dir already is not this copy's, so Copy refuses without touching it
-// (app.ErrPlaceTaken); a copy it cannot finish, it removes. A copy whose
-// worktree add never started, as when ctx ends while it waits its turn,
-// left nothing in the repository: only the directory made for it is
-// removed, with no second wait, and the error says that nothing is left
-// to discard (app.ErrCopyNotStarted).
-func (w Workspaces) Copy(ctx context.Context, repository, dir, revision string, patch []byte) error {
-	if err := made(dir); err != nil {
-		return err
-	}
-	if err := os.Mkdir(filepath.Dir(dir), 0o700); errors.Is(err, fs.ErrExist) {
-		return fmt.Errorf("%s: %w", filepath.Dir(dir), app.ErrPlaceTaken)
-	} else if err != nil {
-		return err
-	}
-	started, err := w.worktree(ctx, repository, "add", "--detach", "--quiet", dir, revision)
-	if !started {
-		if removeErr := os.Remove(filepath.Dir(dir)); removeErr != nil {
-			return errors.Join(err, removeErr)
-		}
-		return fmt.Errorf("%w: %w", app.ErrCopyNotStarted, err)
-	}
-	if err == nil && len(patch) > 0 {
-		err = w.Apply(ctx, dir, patch, false)
-	}
-	if err != nil {
-		_ = w.Discard(context.WithoutCancel(ctx), repository, dir)
-		return err
-	}
-	return nil
-}
-
-// Apply applies patch, as Changes makes it, to dir's files, not its index;
-// with check, it only checks that the whole patch applies and changes
-// nothing. A patch that does not apply changes nothing either.
-func (Workspaces) Apply(ctx context.Context, dir string, patch []byte, check bool) error {
-	args := []string{"apply", "--binary", "--whitespace=nowarn"}
-	if check {
-		args = append(args, "--check")
-	}
-	_, err := runWith(ctx, dir, nil, patch, append(args, "-")...)
-	return err
-}
-
 // Discard removes a checkout whose call ended without releasing it, or a
-// clean copy. Only a directory Checkout or Copy could have made is touched:
-// <temp>/agister-checkout-<id>/workspace-<id>, or <temp>/agister-checkout-*/workspace
-// as earlier versions made them. The removal is bounded by a deadline of
+// clean copy, made before ADR-025 (rule 9). Only a directory Agister made
+// is touched: <temp>/agister-checkout-<id>/workspace-<id>, or
+// <temp>/agister-checkout-*/workspace as earlier versions made them. The removal is bounded by a deadline of
 // its own, as well as by ctx.
 func (w Workspaces) Discard(ctx context.Context, repository, dir string) error {
 	if err := made(dir); err != nil {
@@ -458,8 +419,9 @@ func (w Workspaces) Discard(ctx context.Context, repository, dir string) error {
 	return err
 }
 
-// made refuses a directory Checkout, Place and Copy could not have made, now
-// or under the name "workspace" earlier versions gave every checkout.
+// made refuses a directory Agister could not have made for a checkout or a
+// clean copy, under its own name or the name "workspace" earlier versions
+// gave every checkout.
 func made(dir string) error {
 	parent := filepath.Dir(dir)
 	if base := filepath.Base(dir); base != "workspace" && base != workspace(filepath.Base(parent)) ||
@@ -500,6 +462,56 @@ func (Workspaces) Identity(ctx context.Context, dir, revision string) (string, e
 	return tree, err
 }
 
+// State reads what decides whether the worktree at dir is still as
+// revision left it, besides its content: the commit HEAD names, revision's
+// tree, and, as status reports them whatever the configuration says, the
+// staged paths, the dirty submodules and the untracked files that are not
+// ignored. It writes nothing in the worktree, its index included.
+func (Workspaces) State(ctx context.Context, dir, revision string) (app.WorktreeState, error) {
+	var state app.WorktreeState
+	head, err := run(ctx, dir, "rev-parse", "--verify", "HEAD")
+	if err != nil {
+		return state, err
+	}
+	state.Head = strings.TrimSpace(head)
+	tree, err := run(ctx, dir, "rev-parse", "--verify", revision+"^{tree}")
+	if err != nil {
+		return state, err
+	}
+	state.Tree = strings.TrimSpace(tree)
+	status, err := run(ctx, dir, "--no-optional-locks", "status", "--porcelain=v2", "-z", "--untracked-files=normal", "--ignore-submodules=none")
+	if err != nil {
+		return state, err
+	}
+	fields := strings.Split(status, "\x00")
+	for i := 0; i < len(fields); i++ {
+		entry := fields[i]
+		kind, rest, _ := strings.Cut(entry, " ")
+		switch kind {
+		case "?":
+			state.Untracked = append(state.Untracked, rest)
+		case "1", "2", "u":
+			// <XY> <sub> ... <path>; a rename's original path follows in a
+			// field of its own.
+			parts := strings.SplitN(rest, " ", map[string]int{"1": 8, "2": 9, "u": 10}[kind])
+			if kind == "2" {
+				i++
+			}
+			if len(parts) < 3 {
+				return state, fmt.Errorf("git status: unexpected entry %q", entry)
+			}
+			xy, sub, path := parts[0], parts[1], parts[len(parts)-1]
+			if kind == "u" || xy[0] != '.' {
+				state.Staged = append(state.Staged, path)
+			}
+			if strings.HasPrefix(sub, "S") && sub != "S..." {
+				state.DirtySubmodules = append(state.DirtySubmodules, path)
+			}
+		}
+	}
+	return state, nil
+}
+
 // Changes is the binary patch from one tree or commit to another, as plain
 // git would apply it: no external diff, text conversion or colour, and the
 // standard prefixes, whatever the configuration says.
@@ -507,6 +519,31 @@ func (Workspaces) Changes(ctx context.Context, dir, from, to string) ([]byte, er
 	out, err := run(ctx, dir, "diff", "--binary", "--no-ext-diff", "--no-textconv", "--no-color",
 		"--src-prefix=a/", "--dst-prefix=b/", from, to, "--")
 	return []byte(out), err
+}
+
+// Rebuild names the content revision has with patch applied, as Identity
+// names a checkout: the tree it writes through an index of its own, seeded
+// from revision, with the patch applied there. No checkout is made, and
+// nothing in dir, its index included, is read or written but the
+// repository's objects.
+func (Workspaces) Rebuild(ctx context.Context, dir, revision string, patch []byte) (string, error) {
+	var tree string
+	err := scratchIndex(func(env []string) error {
+		if _, err := runWith(ctx, dir, env, nil, "read-tree", revision); err != nil {
+			return err
+		}
+		// An empty patch is no change, which apply would refuse. Its
+		// whitespace is content: apply.whitespace=fix must not rewrite it.
+		if len(patch) > 0 {
+			if _, err := runWith(ctx, dir, env, patch, "apply", "--cached", "--binary", "--whitespace=nowarn", "-"); err != nil {
+				return err
+			}
+		}
+		out, err := runWith(ctx, dir, env, nil, "write-tree")
+		tree = strings.TrimSpace(out)
+		return err
+	})
+	return tree, err
 }
 
 // scratchIndex gives do the environment of a temporary index, removed after.

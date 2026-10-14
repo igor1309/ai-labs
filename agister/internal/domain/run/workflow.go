@@ -11,6 +11,10 @@ type Workflow struct {
 	// Collection is the join's collection input as the join received it;
 	// unset when no join started.
 	Collection *Artifact `json:"collection,omitempty"`
+	// Warnings accumulate node-labelled warnings as nodes finish, so an
+	// unfinished parent retains them even when its owner ends. Unset on
+	// records written before warnings were persisted.
+	Warnings []string `json:"warnings,omitempty"`
 }
 
 // Node is one node of a workflow run.
@@ -49,4 +53,13 @@ type Barrier struct {
 type Parent struct {
 	Run  string `json:"run"`
 	Node string `json:"node"`
+}
+
+// Call is set on the run of a workflow of one call (ADR-030 rule 6), which
+// is that call's run: its node, the process the node calls and the agent
+// it binds the process to. No node record is made.
+type Call struct {
+	Node    string `json:"node"`
+	Process string `json:"process"`
+	Agent   string `json:"agent"`
 }

@@ -1,11 +1,19 @@
 package pages
 
 import (
+	"context"
+	"errors"
+	"fmt"
+	"io/fs"
+	"net/http"
 	"os"
 	"path/filepath"
 	"reflect"
+	"sort"
 	"strings"
 	"testing"
+
+	"github.com/igor1309/ai-labs/agister/internal/domain/document"
 )
 
 func symlink(t *testing.T, target, link string) {
@@ -448,12 +456,13 @@ func TestSkillsEndpointReadsTheFoldersOfTheSettingsRuntimes(t *testing.T) {
 	write(t, filepath.Join(home, "runtimes", "main.yaml"), "adapter: pi\n")
 	write(t, filepath.Join(home, "runtimes", "broken.yaml"), "adapter: [\n")
 	repo := filepath.Join(root, "repo")
-	// The repo's main.yml replaces home's main.yaml: codex, not pi.
-	write(t, filepath.Join(repo, ".agister", "runtimes", "main.yml"), "adapter: codex\n")
+	write(t, filepath.Join(repo, ".git"), "gitdir: settings-test-marker\n")
+	// The binary ignores .yml, even beside a recognized .yaml file.
+	write(t, filepath.Join(repo, ".agister", "runtimes", "main.yml"), "adapter: [\n")
 	write(t, filepath.Join(repo, ".claude", "skills", "r", "SKILL.md"), skillMD("r", "R."))
 	write(t, filepath.Join(user, ".claude", "skills", "u", "SKILL.md"), skillMD("u", "U."))
 	write(t, filepath.Join(user, ".pi", "agent", "skills", "p", "SKILL.md"), skillMD("p", "P."))
-	h := Handler(home, noChoose(t), owners(), SkillHomes{Home: user})
+	h := Handler(home, noChoose(t), owners(), SkillHomes{Home: user}, binarySettings)
 
 	var got SkillsReply
 	if code := get(t, h, "127.0.0.1", "/api/skills?path="+q(repo), &got); code != 200 {
@@ -463,9 +472,9 @@ func TestSkillsEndpointReadsTheFoldersOfTheSettingsRuntimes(t *testing.T) {
 	for _, f := range got.Folders {
 		folders = append(folders, f.Folder)
 	}
-	if got.Home || !reflect.DeepEqual(got.Adapters, []string{"claude-code", "codex"}) || !reflect.DeepEqual(folders, []string{
-		".claude/skills", ".agents/skills", ".codex/skills",
-		"~/.claude/skills", "~/.claude/skills/synced", "~/.agents/skills", "~/.codex/skills", "~/.codex/skills/.system",
+	if got.Home || !reflect.DeepEqual(got.Adapters, []string{"claude-code", "pi"}) || !reflect.DeepEqual(folders, []string{
+		".claude/skills", ".agents/skills", ".pi/skills",
+		"~/.claude/skills", "~/.claude/skills/synced", "~/.agents/skills", "~/.pi/agent/skills",
 	}) {
 		t.Fatalf("repo: home=%v adapters=%v folders=%q", got.Home, got.Adapters, folders)
 	}
@@ -498,12 +507,13 @@ func TestARepoRuntimeSettingsLeavesOutReplacesNothing(t *testing.T) {
 	home := filepath.Join(user, ".agister")
 	write(t, filepath.Join(home, "runtimes", "main.yaml"), "adapter: pi\n")
 	repo := filepath.Join(root, "repo")
+	write(t, filepath.Join(repo, ".git"), "gitdir: settings-test-marker\n")
 	write(t, filepath.Join(repo, ".agister", "runtimes", "main.yaml"), "adapter: codex\n"+strings.Repeat("#", fileCap))
-	// A file Settings admits that does not parse still replaces home's.
+	// A partial retains the parent adapter (ADR-028 rule 4).
 	write(t, filepath.Join(home, "runtimes", "other.yaml"), "adapter: claude-code\n")
-	write(t, filepath.Join(repo, ".agister", "runtimes", "other.yaml"), "adapter: [\n")
+	write(t, filepath.Join(repo, ".agister", "runtimes", "other.yaml"), "primitives: {}\n")
 	write(t, filepath.Join(user, ".pi", "agent", "skills", "p", "SKILL.md"), skillMD("p", "P."))
-	h := Handler(home, noChoose(t), owners(), SkillHomes{Home: user})
+	h := Handler(home, noChoose(t), owners(), SkillHomes{Home: user}, binarySettings)
 
 	var settings struct {
 		Files, HomeFiles map[string]string
@@ -518,8 +528,8 @@ func TestARepoRuntimeSettingsLeavesOutReplacesNothing(t *testing.T) {
 	if code := get(t, h, "127.0.0.1", "/api/skills?path="+q(repo), &skills); code != 200 {
 		t.Fatalf("skills: status %d", code)
 	}
-	if !reflect.DeepEqual(skills.Adapters, []string{"pi"}) {
-		t.Fatalf("adapters %v, want home's pi", skills.Adapters)
+	if !reflect.DeepEqual(skills.Adapters, []string{"claude-code", "pi"}) {
+		t.Fatalf("adapters %v, want inherited adapters", skills.Adapters)
 	}
 	for _, f := range skills.Folders {
 		if f.Folder == "~/.pi/agent/skills" && (len(f.Skills) != 1 || f.Skills[0].Name != "p") {
@@ -531,11 +541,11 @@ func TestARepoRuntimeSettingsLeavesOutReplacesNothing(t *testing.T) {
 func TestSkillsEndpointRefusesWhatSettingsRefuses(t *testing.T) {
 	t.Parallel()
 	home := t.TempDir()
-	h := Handler(home, noChoose(t), owners(), SkillHomes{Home: home})
+	h := Handler(home, noChoose(t), owners(), SkillHomes{Home: home}, binarySettings)
 	for target, want := range map[string]int{
 		"/api/skills?path=relative":             400,
 		"/api/skills?path=":                     400,
-		"/api/skills?path=" + q(t.TempDir()):    404,
+		"/api/skills?path=" + q(t.TempDir()):    200, // outside git: home alone (ADR-028)
 		"/api/skills?path=" + q("/no/such/dir"): 404,
 	} {
 		if code := get(t, h, "127.0.0.1", target, nil); code != want {
@@ -551,5 +561,496 @@ func TestSkillsEndpointRefusesWhatSettingsRefuses(t *testing.T) {
 	}
 	if code := get(t, h, "127.0.0.1", "/api/skills?path=~", &tilde); code != 200 || tilde.Adapters == nil || tilde.Folders == nil || len(tilde.Folders) != 0 {
 		t.Errorf("no runtimes: %d %+v", code, tilde)
+	}
+}
+
+// A runtime file holds one YAML document (LAB-77): one with a second after
+// a valid first, empty or not, in the repo or the home, is refused, naming
+// the file and Agister's problem, not read for its first document alone.
+func TestSkillsEndpointRefusesARuntimeFileOfTwoDocuments(t *testing.T) {
+	t.Parallel()
+	for name, second := range map[string]string{"a second": "adapter: pi\n", "an empty second": ""} {
+		for _, scope := range []string{"repo", "home"} {
+			t.Run(name+" in the "+scope, func(t *testing.T) {
+				t.Parallel()
+				root := realDir(t, t.TempDir())
+				user := filepath.Join(root, "user")
+				home := filepath.Join(user, ".agister")
+				repo := filepath.Join(root, "repo")
+				write(t, filepath.Join(repo, ".git"), "gitdir: settings-test-marker\n")
+				write(t, filepath.Join(home, "runtimes", "home.yaml"), "adapter: claude-code\n")
+				write(t, filepath.Join(repo, ".agister", "runtimes", "repo.yaml"), "adapter: claude-code\n")
+				dir := filepath.Join(repo, ".agister")
+				if scope == "home" {
+					dir = home
+				}
+				file := filepath.Join(dir, "runtimes", "main.yaml")
+				write(t, file, "adapter: codex\n---\n"+second)
+				h := Handler(home, noChoose(t), owners(), SkillHomes{Home: user}, binarySettings)
+
+				paths := []string{repo}
+				if scope == "home" {
+					paths = append(paths, Home)
+				}
+				for _, path := range paths {
+					var reply struct{ Error string }
+					if code := get(t, h, "127.0.0.1", "/api/skills?path="+q(path), &reply); code != http.StatusUnprocessableEntity {
+						t.Fatalf("%s: status %d, want %d: %+v", path, code, http.StatusUnprocessableEntity, reply)
+					}
+					if want := file + ": must hold exactly one YAML document"; reply.Error != want {
+						t.Errorf("%s: error %q, want %q", path, reply.Error, want)
+					}
+				}
+			})
+		}
+	}
+}
+
+// ADR-028 rule 5: a malformed parent is not skipped by a partial.
+// Contract test: the endpoint reads malformed files in temporary layers.
+func TestARepoRuntimeRefusesAHomeRuntimeFileOfTwoDocuments(t *testing.T) {
+	t.Parallel()
+	for _, name := range []string{"main.yaml", "main.yml"} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			root := realDir(t, t.TempDir())
+			home, repo := filepath.Join(root, "home"), filepath.Join(root, "repo")
+			write(t, filepath.Join(repo, ".git"), "gitdir: settings-test-marker\n")
+			bad := filepath.Join(home, "runtimes", "main.yaml")
+			write(t, bad, "adapter: pi\n---\nadapter: pi\n")
+			write(t, filepath.Join(repo, ".agister", "runtimes", name), "adapter: codex\n")
+			h := Handler(home, noChoose(t), owners(), SkillHomes{}, binarySettings)
+			var got struct{ Error string }
+			code := get(t, h, "127.0.0.1", "/api/skills?path="+q(repo), &got)
+			if code != http.StatusUnprocessableEntity || !strings.Contains(got.Error, bad) || !strings.Contains(got.Error, "must hold exactly one YAML document") {
+				t.Fatalf("status %d: %+v", code, got)
+			}
+		})
+	}
+}
+
+// ADR-021 rule 1, ADR-011 rule 7: a settings skill is checked as any skill
+// is, and its folder holds SKILL.md alone; a check names what else it
+// holds. Only a regular SKILL.md within the limit is read.
+func TestASettingsSkillFailsEachCheckAndPassesWhenWhole(t *testing.T) {
+	t.Parallel()
+	dir := realDir(t, t.TempDir())
+	skills := filepath.Join(dir, "skills")
+	for name, text := range map[string]string{
+		"whole":    skillMD("whole", "W."),
+		"no-front": "# Just Markdown\n",
+		"no-name":  "---\ndescription: D.\n---\n",
+		"no-desc":  "---\nname: no-desc\n---\n",
+		"renamed":  skillMD("other", "D."),
+		"extra":    skillMD("extra", "E."),
+		"broken":   "---\nname: broken\n---\n",
+	} {
+		write(t, filepath.Join(skills, name, "SKILL.md"), text)
+	}
+	write(t, filepath.Join(skills, "extra", "notes.txt"), "beside")
+	mkdir(t, filepath.Join(skills, "extra", "scripts"))
+	write(t, filepath.Join(skills, "broken", "notes.txt"), "beside")
+	write(t, filepath.Join(skills, "bare", "notes.txt"), "no SKILL.md")
+	write(t, filepath.Join(skills, "big", "SKILL.md"), "---\nname: big\n---\n"+strings.Repeat("x", fileCap))
+	write(t, filepath.Join(dir, "elsewhere", "SKILL.md"), skillMD("linked", "L."))
+	symlink(t, filepath.Join(dir, "elsewhere", "SKILL.md"), filepath.Join(skills, "linked", "SKILL.md"))
+	mkdir(t, filepath.Join(skills, "dir", "SKILL.md"))
+	// A symlinked skill folder is listed, as Agister lists it, and fails;
+	// it is not followed (D-16).
+	symlink(t, filepath.Join(dir, "elsewhere"), filepath.Join(skills, "followed"))
+	write(t, filepath.Join(skills, "loose.md"), "a file in skills/ is no skill")
+
+	var reads []string
+	read := func(path string) ([]byte, error) {
+		reads = append(reads, path)
+		return os.ReadFile(path)
+	}
+	got := settingsSkillsIn(t, dir, read)
+	beside := func(what string) string {
+		return "holds " + what + " beside SKILL.md: a skill is its SKILL.md alone, and its other files are not given to a call"
+	}
+	for name, want := range map[string]struct {
+		state  string
+		failed []string
+	}{
+		"whole":    {},
+		"no-front": {failed: []string{"no front matter"}},
+		"no-name":  {failed: []string{"name is missing or empty"}},
+		"no-desc":  {failed: []string{"description is missing or empty"}},
+		"renamed":  {failed: []string{"name other is not the folder's name renamed"}},
+		"extra":    {failed: []string{beside("notes.txt, scripts")}},
+		"broken":   {failed: []string{"description is missing or empty", beside("notes.txt")}},
+		"bare":     {SkillMissing, []string{"SKILL.md is missing", beside("notes.txt")}},
+		"big":      {SkillTooLarge, []string{"SKILL.md is over 256 KB"}},
+		"linked":   {SkillNotAFile, []string{"SKILL.md is not a regular file"}},
+		"dir":      {SkillNotAFile, []string{"SKILL.md is not a regular file"}},
+		"followed": {SkillLinkedFolder, []string{"the folder is a symbolic link: a skill is a folder holding its SKILL.md"}},
+	} {
+		s, ok := got[name]
+		if !ok {
+			t.Errorf("%s: not listed", name)
+			continue
+		}
+		if s.Scope != "repo" || s.Path != filepath.Join(skills, name) || s.State != want.state ||
+			s.Checks.Passed != (want.failed == nil) || !reflect.DeepEqual(s.Checks.Failed, want.failed) {
+			t.Errorf("%s: %+v, want state %q failed %q", name, s, want.state, want.failed)
+		}
+	}
+	if s := got["whole"]; s.Description != "W." || s.Content != skillMD("whole", "W.") {
+		t.Errorf("whole: %+v", s)
+	}
+	if s := got["followed"]; s.Link != filepath.Join(dir, "elsewhere") || s.Content != "" {
+		t.Errorf("followed: %+v", s)
+	}
+	// 12, not 11 as before D-16: the symlinked folder is listed now, as a
+	// broken skill; a file is still none.
+	if len(got) != 12 {
+		t.Errorf("listed %d skills, want 12 (no file): %v", len(got), got)
+	}
+	var want []string
+	for _, name := range []string{"broken", "extra", "no-desc", "no-front", "no-name", "renamed", "whole"} {
+		want = append(want, filepath.Join(skills, name, "SKILL.md"))
+	}
+	sort.Strings(reads)
+	if !reflect.DeepEqual(reads, want) {
+		t.Errorf("read %q, want %q", reads, want)
+	}
+}
+
+// ADR-021 amendment of ADR-011 rule 5: /api/skills carries the skills of
+// each settings layer, the repo's first, each with its state and checks as
+// decoded from the wire; ~ has home's only.
+func TestSkillsEndpointCarriesTheSettingsSkillsOfEachLayer(t *testing.T) {
+	t.Parallel()
+	root := realDir(t, t.TempDir())
+	user := filepath.Join(root, "user")
+	home := filepath.Join(user, ".agister")
+	write(t, filepath.Join(home, "skills", "plan", "SKILL.md"), skillMD("plan", "Home plan."))
+	write(t, filepath.Join(home, "skills", "go", "SKILL.md"), skillMD("go", "Go."))
+	repo := filepath.Join(root, "repo")
+	write(t, filepath.Join(repo, ".git"), "gitdir: settings-test-marker\n")
+	write(t, filepath.Join(repo, ".agister", "skills", "plan", "SKILL.md"), skillMD("plan", "Repo plan."))
+	write(t, filepath.Join(repo, ".agister", "skills", "torn", "notes.txt"), "no SKILL.md")
+	h := Handler(home, noChoose(t), owners(), SkillHomes{Home: user}, binarySettings)
+
+	type layer struct {
+		Scope, Name, Description, State string
+		Passed                          bool
+		Failed                          []string
+	}
+	layers := func(path string) []layer {
+		var got SkillsReply
+		if code := get(t, h, "127.0.0.1", "/api/skills?path="+q(path), &got); code != 200 {
+			t.Fatalf("%s: status %d", path, code)
+		}
+		var out []layer
+		for _, s := range got.Settings {
+			out = append(out, layer{s.Scope, s.Name, s.Description, s.State, s.Checks.Passed, s.Checks.Failed})
+		}
+		return out
+	}
+	torn := layer{Scope: "repo", Name: "torn", State: SkillMissing, Failed: []string{
+		"SKILL.md is missing",
+		"holds notes.txt beside SKILL.md: a skill is its SKILL.md alone, and its other files are not given to a call",
+	}}
+	goSkill := layer{Scope: "home", Name: "go", Description: "Go.", Passed: true}
+	homePlan := layer{Scope: "home", Name: "plan", Description: "Home plan.", Passed: true}
+	if got, want := layers(repo), []layer{
+		{Scope: "repo", Name: "plan", Description: "Repo plan.", Passed: true}, torn, goSkill, homePlan,
+	}; !reflect.DeepEqual(got, want) {
+		t.Errorf("repo:\n got %+v\nwant %+v", got, want)
+	}
+	if got, want := layers("~"), []layer{goSkill, homePlan}; !reflect.DeepEqual(got, want) {
+		t.Errorf("~:\n got %+v\nwant %+v", got, want)
+	}
+}
+
+// D-16, ADR-021 rule 1: a repo skill that is there goes over home's of the
+// same name whatever its state, as in Agister, which refuses the call
+// rather than fall back to home's; it shows its failed checks. Only a repo
+// skill that is absent leaves home's in effect.
+func TestSettingsSkillInventoryPreservesBrokenRepoOverride(t *testing.T) {
+	t.Parallel()
+	root := realDir(t, t.TempDir())
+	user := filepath.Join(root, "user")
+	home := filepath.Join(user, ".agister")
+	names := []string{"big", "empty", "blank", "bare", "linked", "linked-md", "absent"}
+	for _, name := range names {
+		write(t, filepath.Join(home, "skills", name, "SKILL.md"), skillMD(name, "Home's."))
+	}
+	repo := filepath.Join(root, "repo")
+	write(t, filepath.Join(repo, ".git"), "gitdir: settings-test-marker\n")
+	skills := filepath.Join(repo, ".agister", "skills")
+	write(t, filepath.Join(skills, "big", "SKILL.md"), skillMD("big", "Big.")+strings.Repeat("x", fileCap))
+	mkdir(t, filepath.Join(skills, "empty"))
+	write(t, filepath.Join(skills, "blank", "SKILL.md"), "")
+	write(t, filepath.Join(skills, "bare", "notes.txt"), "no SKILL.md")
+	write(t, filepath.Join(root, "shared", "linked", "SKILL.md"), skillMD("linked", "Shared."))
+	symlink(t, filepath.Join(root, "shared", "linked"), filepath.Join(skills, "linked"))
+	symlink(t, filepath.Join(root, "shared", "linked", "SKILL.md"), filepath.Join(skills, "linked-md", "SKILL.md"))
+	h := Handler(home, noChoose(t), owners(), SkillHomes{Home: user}, binarySettings)
+
+	var reply SkillsReply
+	if code := get(t, h, "127.0.0.1", "/api/skills?path="+q(repo), &reply); code != 200 {
+		t.Fatalf("status %d", code)
+	}
+	// The skill in effect: the repo's when the repo lists one, else home's.
+	effective := map[string]SettingsSkill{}
+	for _, s := range reply.Settings {
+		if e, ok := effective[s.Name]; !ok || e.Scope != "repo" {
+			effective[s.Name] = s
+		}
+	}
+	beside := "holds notes.txt beside SKILL.md: a skill is its SKILL.md alone, and its other files are not given to a call"
+	for name, want := range map[string]struct {
+		scope, state string
+		failed       []string
+	}{
+		"big":       {"repo", SkillTooLarge, []string{"SKILL.md is over 256 KB"}},
+		"empty":     {"repo", SkillMissing, []string{"SKILL.md is missing"}},
+		"blank":     {"repo", "", []string{"no front matter"}},
+		"bare":      {"repo", SkillMissing, []string{"SKILL.md is missing", beside}},
+		"linked":    {"repo", SkillLinkedFolder, []string{"the folder is a symbolic link: a skill is a folder holding its SKILL.md"}},
+		"linked-md": {"repo", SkillNotAFile, []string{"SKILL.md is not a regular file"}},
+		"absent":    {"home", "", nil},
+	} {
+		s, ok := effective[name]
+		if !ok {
+			t.Errorf("%s: not listed", name)
+			continue
+		}
+		if s.Scope != want.scope || s.State != want.state || s.Checks.Passed != (want.failed == nil) || !reflect.DeepEqual(s.Checks.Failed, want.failed) {
+			t.Errorf("%s: %+v, want %s state %q failed %q", name, s, want.scope, want.state, want.failed)
+		}
+	}
+	if s := effective["absent"]; s.Path != filepath.Join(home, "skills", "absent") || s.Description != "Home's." {
+		t.Errorf("absent: %+v", s)
+	}
+	// Home's skills are listed beside the repo's, each passing.
+	for _, s := range reply.Settings {
+		if s.Scope == "home" && !s.Checks.Passed {
+			t.Errorf("home %s: %+v", s.Name, s)
+		}
+	}
+	if len(reply.Settings) != 2*len(names)-1 {
+		t.Errorf("listed %d settings skills, want %d", len(reply.Settings), 2*len(names)-1)
+	}
+}
+
+// D-16, ADR-011 rule 9: the inventory reads a settings skill's SKILL.md
+// and nothing else of it. Files beside it are named, failing its checks,
+// and never read, an unreadable one too; a SKILL.md that is too large or
+// lies outside its skill is listed and not read.
+func TestSettingsSkillInventoryReadsOnlySKILLMD(t *testing.T) {
+	t.Parallel()
+	dir := realDir(t, t.TempDir())
+	skills := filepath.Join(dir, "skills")
+	write(t, filepath.Join(skills, "plan", "SKILL.md"), skillMD("plan", "P."))
+	write(t, filepath.Join(skills, "plan", "notes.txt"), "beside")
+	unreadable(t, filepath.Join(skills, "plan", "locked.txt"))
+	write(t, filepath.Join(skills, "big", "SKILL.md"), skillMD("big", "B.")+strings.Repeat("x", fileCap))
+	write(t, filepath.Join(dir, "secret.md"), skillMD("outside", "Not this skill's."))
+	symlink(t, filepath.Join(dir, "secret.md"), filepath.Join(skills, "outside", "SKILL.md"))
+
+	var reads []string
+	read := func(path string) ([]byte, error) {
+		reads = append(reads, path)
+		return os.ReadFile(path)
+	}
+	got := settingsSkillsIn(t, dir, read)
+	if want := []string{filepath.Join(skills, "plan", "SKILL.md")}; !reflect.DeepEqual(reads, want) {
+		t.Errorf("read %q, want %q", reads, want)
+	}
+	plan := got["plan"]
+	if want := []string{"holds locked.txt, notes.txt beside SKILL.md: a skill is its SKILL.md alone, and its other files are not given to a call"}; plan.Description != "P." || plan.Content != skillMD("plan", "P.") ||
+		plan.Checks.Passed || !reflect.DeepEqual(plan.Checks.Failed, want) {
+		t.Errorf("plan: %+v", plan)
+	}
+	if s := got["big"]; s.State != SkillTooLarge || s.Content != "" || s.Checks.Passed {
+		t.Errorf("big: %+v", s)
+	}
+	if s := got["outside"]; s.State != SkillNotAFile || s.Content != "" || s.Checks.Passed {
+		t.Errorf("outside: %+v", s)
+	}
+}
+
+// settingsSkillsIn reads the settings skills of dir with read, by name.
+func settingsSkillsIn(t *testing.T, dir string, read func(string) ([]byte, error)) map[string]SettingsSkill {
+	t.Helper()
+	skills, err := readSettingsSkills("repo", dir, read)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := map[string]SettingsSkill{}
+	for _, s := range skills {
+		got[s.Name] = s
+	}
+	return got
+}
+
+// The page reads /api/skills' settings by their JSON keys (D-16): checked
+// on the raw reply, not decoded into a Go type, whose field matching
+// ignores case.
+func TestSkillsEndpointNamesTheSettingsSkillsKeysAsThePageReadsThem(t *testing.T) {
+	t.Parallel()
+	root := realDir(t, t.TempDir())
+	user := filepath.Join(root, "user")
+	home := filepath.Join(user, ".agister")
+	write(t, filepath.Join(home, "skills", "go", "SKILL.md"), skillMD("go", "Go."))
+	repo := filepath.Join(root, "repo")
+	write(t, filepath.Join(repo, ".git"), "gitdir: settings-test-marker\n")
+	write(t, filepath.Join(repo, ".agister", "skills", "plan", "SKILL.md"), skillMD("plan", "Repo plan."))
+	write(t, filepath.Join(repo, ".agister", "skills", "torn", "notes.txt"), "no SKILL.md")
+	h := Handler(home, noChoose(t), owners(), SkillHomes{Home: user}, binarySettings)
+
+	var raw map[string]any
+	if code := get(t, h, "127.0.0.1", "/api/skills?path="+q(repo), &raw); code != 200 {
+		t.Fatalf("status %d", code)
+	}
+	want := []any{
+		map[string]any{
+			"scope": "repo", "name": "plan", "path": filepath.Join(repo, ".agister", "skills", "plan"),
+			"content": skillMD("plan", "Repo plan."), "description": "Repo plan.",
+			"checks": map[string]any{"passed": true},
+		},
+		map[string]any{
+			"scope": "repo", "name": "torn", "path": filepath.Join(repo, ".agister", "skills", "torn"), "state": "missing",
+			"checks": map[string]any{"passed": false, "failed": []any{
+				"SKILL.md is missing",
+				"holds notes.txt beside SKILL.md: a skill is its SKILL.md alone, and its other files are not given to a call",
+			}},
+		},
+		map[string]any{
+			"scope": "home", "name": "go", "path": filepath.Join(home, "skills", "go"),
+			"content": skillMD("go", "Go."), "description": "Go.",
+			"checks": map[string]any{"passed": true},
+		},
+	}
+	if got := raw["settings"]; !reflect.DeepEqual(got, want) {
+		t.Errorf("settings:\n got %#v\nwant %#v", got, want)
+	}
+}
+
+// D-16: only a repo skills/ that does not exist leaves home's skills in
+// effect. One that cannot be listed fails the reply, as Agister refuses
+// the call, rather than show home's skill as the one in effect.
+func TestAnUnreadableRepoSkillsFolderFailsTheInventory(t *testing.T) {
+	t.Parallel()
+	root := realDir(t, t.TempDir())
+	user := filepath.Join(root, "user")
+	home := filepath.Join(user, ".agister")
+	write(t, filepath.Join(home, "skills", "plan", "SKILL.md"), skillMD("plan", "Home plan."))
+	repo := filepath.Join(root, "repo")
+	write(t, filepath.Join(repo, ".git"), "gitdir: settings-test-marker\n")
+	skills := filepath.Join(repo, ".agister", "skills")
+	write(t, filepath.Join(skills, "plan", "SKILL.md"), skillMD("plan", "Repo plan."))
+	if err := os.Chmod(skills, 0); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.Chmod(skills, 0o755) })
+	h := Handler(home, noChoose(t), owners(), SkillHomes{Home: user}, binarySettings)
+
+	var got map[string]any
+	if code := get(t, h, "127.0.0.1", "/api/skills?path="+q(repo), &got); code != 403 {
+		t.Fatalf("status %d, want 403: %v", code, got)
+	}
+	if msg, _ := got["error"].(string); !strings.Contains(msg, skills) || got["settings"] != nil {
+		t.Errorf("reply %v, want an error naming %s and no settings", got, skills)
+	}
+}
+
+// A SKILL.md that cannot be read is shown as such, with no content, not
+// checked as if empty.
+func TestASettingsSkillMDThatCannotBeReadSaysSo(t *testing.T) {
+	t.Parallel()
+	dir := realDir(t, t.TempDir())
+	write(t, filepath.Join(dir, "skills", "plan", "SKILL.md"), skillMD("plan", "P."))
+	read := func(string) ([]byte, error) { return nil, fs.ErrPermission }
+
+	s := settingsSkillsIn(t, dir, read)["plan"]
+	if s.State != SkillMissing || s.Content != "" || s.Description != "" || s.Checks.Passed ||
+		!reflect.DeepEqual(s.Checks.Failed, []string{"SKILL.md cannot be read"}) {
+		t.Errorf("plan: %+v", s)
+	}
+}
+
+// ADR-021 rule 1, ADR-011 rule 7: Agister compares a skill's name as
+// written, so a padded one is not the folder's and fails.
+func TestASettingsSkillsPaddedNameIsNotItsFolders(t *testing.T) {
+	t.Parallel()
+	dir := realDir(t, t.TempDir())
+	write(t, filepath.Join(dir, "skills", "plan", "SKILL.md"), "---\nname: \" plan \"\ndescription: P.\n---\n")
+	write(t, filepath.Join(dir, "skills", "go", "SKILL.md"), "---\nname: go   \ndescription: G.\n---\n")
+
+	got := settingsSkillsIn(t, dir, os.ReadFile)
+	if s := got["plan"]; s.State != "" || s.Checks.Passed || !reflect.DeepEqual(s.Checks.Failed, []string{`name " plan " is not the folder's name plan`}) {
+		t.Errorf("plan: %+v", s)
+	}
+	// YAML drops the spaces after a plain value: the name is go.
+	if s := got["go"]; !s.Checks.Passed {
+		t.Errorf("go: %+v", s)
+	}
+}
+
+// runtimeStandIn answers runtime discovery's two reads from a map, nothing
+// more: a name without a document is not found, and failed names one whose
+// read fails.
+type runtimeStandIn struct {
+	docs   map[string]string
+	failed string
+}
+
+func (s runtimeStandIn) List(_ context.Context, kind document.Kind) ([]string, error) {
+	if kind != document.KindRuntime {
+		return nil, fmt.Errorf("listed %s", kind)
+	}
+	names := []string{"gone"}
+	for name := range s.docs {
+		names = append(names, name)
+	}
+	if s.failed != "" {
+		names = append(names, s.failed)
+	}
+	sort.Strings(names)
+	return names, nil
+}
+
+func (s runtimeStandIn) Read(_ context.Context, kind document.Kind, name string) (document.Document, error) {
+	if kind != document.KindRuntime {
+		return document.Document{}, fmt.Errorf("read %s %s", kind, name)
+	}
+	if name == s.failed {
+		return document.Document{}, errors.New("/s/runtimes/" + name + ".yaml: broken parent")
+	}
+	text, ok := s.docs[name]
+	if !ok {
+		return document.Document{}, document.ErrNotFound
+	}
+	return document.Document{Bytes: []byte(text), Source: document.Source{Path: "/s/runtimes/" + name + ".yaml"}}, nil
+}
+
+// Runtime discovery needs only the runtimes' names and composed documents:
+// each adapter once, sorted; a runtime not found is skipped, a document
+// naming none adds nothing, and a read or a second document refuses it.
+func TestRuntimeAdaptersReadOnlyRuntimeDocuments(t *testing.T) {
+	t.Parallel()
+	got, err := runtimeAdapters(runtimeStandIn{docs: map[string]string{
+		"main": "adapter: pi\n", "fast": "adapter: codex\n", "again": "adapter: pi\n", "bare": "contract: x\n",
+	}})
+	if err != nil || !reflect.DeepEqual(got, []string{"codex", "pi"}) {
+		t.Fatalf("adapters %v, %v", got, err)
+	}
+	for name, store := range map[string]runtimeStandIn{
+		"failed read":     {docs: map[string]string{"main": "adapter: pi\n"}, failed: "broken"},
+		"second document": {docs: map[string]string{"main": "adapter: pi\n---\n"}},
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			_, err := runtimeAdapters(store)
+			var refused statusError
+			if !errors.As(err, &refused) || refused.status != http.StatusUnprocessableEntity || !strings.Contains(err.Error(), "/s/runtimes/") {
+				t.Fatalf("error %v", err)
+			}
+		})
 	}
 }

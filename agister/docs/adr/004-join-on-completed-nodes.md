@@ -5,6 +5,8 @@
 - **Scope:** a workflow whose fan-out nodes do not all complete
 - **Decision type:** Architecture
 - **Amends:** [ADR-003](003-fan-out-and-join-workflow.md) rules 3 and 4
+- **Amended by:** [ADR-034](034-the-join-is-given-outcomes-not-the-workflow.md)
+  (rule 2's entry names no node, process or run)
 
 ## Context
 

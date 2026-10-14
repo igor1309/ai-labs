@@ -1,0 +1,22 @@
+schema = "agister.service/v1alpha1"
+
+max_timeout = "1h"
+max_attempts = 1
+max_verify_attempts = 3
+
+permissions = [
+  "repository.read",
+  "repository.search",
+  "repository.diff",
+  "repository.history.read",
+  "repository.write",
+  "repository.history.write",
+  "process.execute",
+  "network",
+  "host.read",
+  "host.write",
+]
+
+writing = ["repository.write", "repository.history.write"]
+
+state_reaching = []

@@ -32,3 +32,24 @@ func TestInstanceAnswersAnAnyOfByItsFirstVariant(t *testing.T) {
 		t.Fatalf("instance = %v, want %v", got, want)
 	}
 }
+
+// An array holds as many items as its minItems asks, and at least one.
+func TestInstanceFillsAnArrayToItsMinItems(t *testing.T) {
+	t.Parallel()
+	const document = `{
+		"type": "object",
+		"required": ["two", "none"],
+		"properties": {
+			"two": {"type": "array", "minItems": 2, "items": {"type": "string"}},
+			"none": {"type": "array", "items": {"type": "integer"}}
+		}
+	}`
+	var schema any
+	if err := json.Unmarshal([]byte(document), &schema); err != nil {
+		t.Fatal(err)
+	}
+	want := map[string]any{"two": []any{"fake", "fake"}, "none": []any{1}}
+	if got := fakeoutput.Instance(schema); !reflect.DeepEqual(got, want) {
+		t.Fatalf("instance = %v, want %v", got, want)
+	}
+}

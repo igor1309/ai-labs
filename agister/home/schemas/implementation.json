@@ -1,0 +1,37 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["summary", "files_changed", "checks", "notes", "open"],
+  "properties": {
+    "summary": {"type": "string"},
+    "files_changed": {"type": "array", "items": {"type": "string"}},
+    "checks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["command", "exit_code", "final_line"],
+        "properties": {
+          "command": {"type": "string"},
+          "exit_code": {"type": "integer"},
+          "final_line": {"type": "string"}
+        }
+      }
+    },
+    "notes": {"type": "string"},
+    "open": {
+      "type": "array",
+      "description": "Each point left open. Empty when the work went through.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["question", "options", "searched"],
+        "properties": {
+          "question": {"type": "string", "pattern": "\\S", "description": "The question the work cannot go on without."},
+          "options": {"type": "array", "minItems": 2, "items": {"type": "string"}, "description": "The options, each a whole answer."},
+          "searched": {"type": "array", "minItems": 1, "items": {"type": "string"}, "description": "Each ADR, decisions record and file searched for the answer, with what it says or that it is silent."}
+        }
+      }
+    }
+  }
+}

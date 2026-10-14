@@ -24,7 +24,7 @@ func (*sink) Event(string, string, map[string]any) {}
 func (*sink) Raw(string)                           {}
 func (*sink) ProcessStarted(string) error          { return nil }
 func (*sink) ToolStarted(opencode.ToolCall)        {}
-func (*sink) ToolFinished(string)                  {}
+func (*sink) ToolFinished(opencode.ToolResult)     {}
 
 const fresh = "ses_f06fe64c3ffeLyBkwYK7e1GfJs"
 

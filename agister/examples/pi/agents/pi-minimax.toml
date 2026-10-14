@@ -3,6 +3,3 @@ name = "pi-minimax"
 runtime = "pi"
 model = "opencode-go/minimax-m3"
 model_family = "minimax"
-# May continue an earlier run's session when the caller asks (--continue),
-# from the directory that run worked in.
-session = "resumable"

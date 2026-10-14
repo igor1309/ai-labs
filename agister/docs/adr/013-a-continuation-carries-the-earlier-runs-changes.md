@@ -1,6 +1,7 @@
 # ADR-013: A continuation carries the earlier run's changes
 
 - **Status:** Accepted
+- **Superseded by:** [ADR-025](025-a-call-works-where-it-is-called.md)
 - **Date:** 2026-10-02
 - **Scope:** continued calls whose process checks out a revision
 - **Decision type:** Architecture

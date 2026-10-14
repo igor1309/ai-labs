@@ -155,14 +155,99 @@
     font: inherit; color: var(--fg); background: var(--card); border: 1px solid var(--line); border-radius: 6px; padding: 3px 6px;
   }
   tr.pick { cursor: pointer; }
+  /* A run still running stands out: a tint across its row, its start and
+     status in the active colour. */
+  tr.pick.running td { background: color-mix(in srgb, var(--active) 8%, transparent); }
+  tr.pick.running td.name, tr.pick.running td[data-label="Status"] { color: var(--active); }
   tr.pick:hover td, tr.pick.chosen td { background: var(--line); }
   tr.pick:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
-  #run-detail { margin-top: 16px; }
-  #run-detail .facts a { color: var(--accent); }
+  /* Runs fits the window: the list takes the height the rest leaves and
+     scrolls under its head; a window too short for a few rows scrolls the
+     page instead. */
+  body:has(#runs:not([hidden])) { height: 100vh; height: 100dvh; display: flex; flex-direction: column; }
+  body:has(#runs:not([hidden])) > main { flex: 1; min-height: 0; width: 100%; display: flex; flex-direction: column; padding-bottom: 20px; }
+  #runs:not([hidden]), #run-list { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+  #run-list > section.card { flex: 0 1 auto; min-height: 0; display: flex; flex-direction: column; margin-bottom: 8px; }
+  .run-scroll { flex: 1; min-height: 200px; overflow: auto; }
+  .run-scroll table { border-collapse: separate; border-spacing: 0; }
+  .run-scroll th { position: sticky; top: 0; z-index: 1; background: var(--card); }
+  .run-scroll td { white-space: nowrap; }
+  .run-scroll td.clip { max-width: 240px; overflow: hidden; text-overflow: ellipsis; }
+  /* A status's mark: completed, failed, interrupted. */
+  .mark { font-weight: 700; }
+  .mark.ok { color: var(--low); }
+  .mark.failed { color: var(--high); }
+  /* The opened run, over the page. */
+  .overlay {
+    position: fixed; inset: 0; z-index: 20; display: flex; align-items: flex-start; justify-content: center;
+    padding: 6vh 20px; background: rgb(0 0 0 / .55);
+  }
+  body:has(#runs:not([hidden]) .overlay:not([hidden])) { overflow: hidden; }
+  .overlay .panel {
+    width: min(900px, 100%); max-height: 88vh; overflow: auto; padding: 18px 22px;
+    box-shadow: 0 20px 60px rgb(0 0 0 / .5);
+  }
+  .panel:focus { outline: none; }
+  /* A skill opened from a run, over the run. */
+  .overlay.over { z-index: 30; padding-top: 9vh; background: rgb(0 0 0 / .35); }
+  #skill-detail a { color: var(--accent); }
+  .skill-card .markdown { max-width: 80ch; }
+  .run-title { display: flex; align-items: baseline; flex-wrap: wrap; gap: 6px 14px; min-width: 0; }
+  .run-title h3 { font-size: 17px; }
+  .run-title .mark { font-size: 16px; }
+  .figure { font: 600 15px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--fg); }
+  .close { font-size: 22px; line-height: 1; padding: 2px 8px; border-radius: 6px; color: var(--fg3); }
+  .close:hover { color: var(--fg); background: var(--line); }
+  .run-when { margin: 4px 0 14px; color: var(--fg3); font-size: 12.5px; }
+  .run-id { font: 11px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace; }
+  #run-detail a { color: var(--accent); }
+  .nodes { margin-top: 16px; }
+  /* What a run's result says: a part per key, values toned as they read. */
+  .tone-ok { color: var(--low); }
+  .tone-bad { color: var(--high); }
+  .tone-warn { color: var(--mid); }
+  .chip.tone-ok { color: var(--low); border-color: #1d4d2a; }
+  .chip.tone-bad { color: var(--high); border-color: #5a2320; }
+  .chip.tone-warn { color: var(--mid); border-color: #4a3a12; }
+  .run-title .verdict { font-size: 12px; align-self: center; }
+  .output { margin-top: 18px; display: grid; gap: 16px; }
+  .part h4 {
+    margin: 0 0 6px; font-size: 11px; font-weight: 600; text-transform: uppercase;
+    letter-spacing: .06em; color: var(--dim);
+  }
+  .part-error h4, .part-error .markdown { color: var(--high); }
+  .part h4:last-child { margin-bottom: 0; }
+  /* One size for all of it, prose and monospace alike; what stands out does
+     so by colour. */
+  .output .markdown { margin-top: 0; max-width: none; font-size: 13px; color: var(--fg2); }
+  .part-summary .markdown { color: var(--fg); max-width: 80ch; }
+  .part .markdown > :last-child { margin-bottom: 0; }
+  .part ul.mono { margin: 0; padding-left: 18px; color: var(--fg2); overflow-wrap: anywhere; }
+  .part details summary, .finding .more summary { cursor: pointer; color: var(--fg3); font-size: 12px; }
+  /* Cells wrap between words; the first column, an item's name, keeps room
+     for its words and reads brighter. */
+  .part-table td { overflow-wrap: break-word; font: 13px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; }
+  .part-table td:first-child { min-width: 11em; color: var(--fg); }
+  .part-table td[class^="tone-"] { white-space: nowrap; }
+  .part pre.json {
+    margin: 0; padding: 10px; white-space: pre-wrap; overflow-wrap: anywhere;
+    background: var(--bg); border: 1px solid var(--line); border-radius: 6px; color: var(--fg2);
+  }
+  .finding { padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); }
+  .finding + .finding { margin-top: 8px; }
+  .finding-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; margin-bottom: 6px; }
+  .finding-head strong { color: var(--fg); font-size: 13px; font-weight: 600; }
+  .finding-head .where { font: 12px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--fg3); overflow-wrap: anywhere; }
+  .finding-text .label {
+    display: block; margin-top: 6px; font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--dim);
+  }
+  .finding .more { margin-top: 6px; }
+  .finding .more .facts { margin-top: 6px; }
   .record { margin-top: 14px; }
   .record summary { cursor: pointer; color: var(--fg3); font-size: 12px; }
   .record pre {
     margin: 8px 0 0; padding: 10px; max-height: 480px; overflow: auto;
+    white-space: pre-wrap; overflow-wrap: anywhere;
     background: var(--bg); border: 1px solid var(--line); border-radius: 6px; color: var(--fg2);
   }
   /* Knowledge: the matrix of skills and agents, and the opened agent or skill. */
@@ -204,6 +289,7 @@
     td[data-label] > * { justify-self: start; }
     td.name { white-space: normal; margin-bottom: 2px; }
     td[data-label]:empty { display: none; }
+    .run-scroll td { white-space: normal; }
     /* A skill's own table stays a table. */
     .markdown table { display: table; }
     .markdown thead { display: table-header-group; }
@@ -220,6 +306,7 @@
   <div class="views" role="group" aria-label="View">
     <button id="view-settings" type="button" aria-pressed="true">Settings</button>
     <button id="view-runs" type="button" aria-pressed="false">Runs</button>
+    <button id="view-compare" type="button" aria-pressed="false">Compare</button>
     <button id="view-knowledge" type="button" aria-pressed="false">Knowledge</button>
   </div>
   </div>
@@ -249,6 +336,7 @@
   <p id="status" class="error" role="status" hidden></p>
   <div id="dashboard" hidden></div>
   <div id="runs" hidden></div>
+  <div id="compare" hidden></div>
   <div id="knowledge" hidden></div>
 </main>
 <script src="repos.js"></script>

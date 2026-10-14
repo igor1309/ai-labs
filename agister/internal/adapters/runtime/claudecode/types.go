@@ -25,6 +25,10 @@ type RuntimeIdentity struct {
 	// repository's skills, which are used by reading them (ADR-006); none
 	// when the runtime reads them without a granted tool.
 	SkillTools []string
+	// The adapter gives a call the skills its settings name (ADR-021 rule
+	// 6); on one that does not, a call that names a skill is refused before
+	// its first turn.
+	Skills bool
 }
 
 // ToolCall describes a tool invocation reported by this CLI.
@@ -37,7 +41,32 @@ type ToolCall struct {
 	Input string
 	// Command is true when the tool runs a command.
 	Command bool
+	// Writes are the paths the call writes, as the CLI named them; none for
+	// a tool that writes no file.
+	Writes []string
 }
+
+// PermissionDenial is a tool call the CLI refused for want of a permission,
+// as its result lists it: the tool and its input, bounded as an event
+// quotes a tool call's.
+type PermissionDenial struct {
+	Tool  string
+	Input string
+}
+
+// ToolResult is the end of a tool call: its ID and the result the CLI
+// reported for it, if it reported one, bounded to ToolResultBytes.
+type ToolResult struct {
+	ID string
+	// Output is the result's text: its head and tail when longer than
+	// ToolResultBytes, with a mark where the middle was cut.
+	Output string
+	// Reported is whether the CLI reported a result's text for the call.
+	Reported bool
+}
+
+// ToolResultBytes bounds the text of a tool call's result as reported.
+const ToolResultBytes = 1 << 10
 
 // TurnRequest asks this wrapper for one CLI turn.
 type TurnRequest struct {
@@ -53,6 +82,16 @@ type TurnRequest struct {
 	Primitives      []string
 	Timeout         time.Duration
 	OutputSchema    json.RawMessage
+	// Skills are the turn's skills, in order, written for the turn into a
+	// folder of its own outside the working directory and given to the
+	// runtime; none: nothing is written or passed.
+	Skills []Skill
+}
+
+// Skill is one skill a turn is given: its name and its whole SKILL.md.
+type Skill struct {
+	Name  string
+	Bytes []byte
 }
 
 type Status string
@@ -141,7 +180,8 @@ type EventSink interface {
 	ProcessStarted(ref string) error
 	Raw(line string)
 	ToolStarted(ToolCall)
-	ToolFinished(id string)
+	ToolFinished(ToolResult)
+	PermissionDenied(PermissionDenial)
 }
 type Turn struct {
 	Status            Status          `json:"status"`

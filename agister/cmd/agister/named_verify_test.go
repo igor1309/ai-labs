@@ -1,10 +1,8 @@
 package main
 
 import (
-	"encoding/json"
 	"os"
 	"path/filepath"
-	"reflect"
 	"regexp"
 	"strings"
 	"testing"
@@ -40,14 +38,12 @@ func namingHome(t *testing.T) (home, repo string) {
 	return home, repo
 }
 
+// showImplement is implement as the workflow that binds it to the
+// assistant shows it: a process alone names no agent to be planned on
+// (ADR-030 rule 2).
 func showImplement(t *testing.T, home, repo string) contract.ProcessView {
 	t.Helper()
-	r := agister(t, home, repo, "process", "show", "implement", "--json")
-	var view contract.ProcessView
-	if err := json.Unmarshal([]byte(r.stdout), &view); err != nil || r.code != 0 {
-		t.Fatalf("process show: %d %v\n%s%s", r.code, err, r.stdout, r.stderr)
-	}
-	return view
+	return shownCall(t, home, repo, "implement_assistant")
 }
 
 // The issue's case (LAB-49): the process is global, the verification the
@@ -73,21 +69,21 @@ func TestAGlobalProcessVerifiesWithTheRepositorysVerification(t *testing.T) {
 			process = source
 		}
 	}
-	if want := (contract.DefinitionOrigin{Kind: "verifies", Name: "repo", Layer: "project", Path: project}); verification != want {
-		t.Fatalf("verification source = %+v, want %+v", verification, want)
+	if verification.Layer != "repository" || verification.Path != project || len(verification.Layers) != 1 {
+		t.Fatalf("verification source = %+v", verification)
 	}
-	if process.Layer != "global" || process.Path != filepath.Join(home, "processes", "implement.yaml") {
+	if process.Layer != "home" || process.Path != filepath.Join(home, "processes", "implement.yaml") {
 		t.Fatalf("process source = %+v", process)
 	}
 
 	r := agister(t, home, repo, "check", "--tree")
-	if r.code != 0 || !regexp.MustCompile(`└─ verification repo +project `+regexp.QuoteMeta(project)+"\n").MatchString(r.stdout) ||
+	if r.code != 0 || !regexp.MustCompile(`[├└]─ verification repo +repository `+regexp.QuoteMeta(project)+"\n").MatchString(r.stdout) ||
 		!strings.Contains(r.stderr, "warning process implement: verify runs its command with the operator's authority") {
 		t.Fatalf("check --tree: %d\n%s%s", r.code, r.stdout, r.stderr)
 	}
 	r = agister(t, home, repo, "process", "show", "implement")
 	if r.code != 0 || !strings.Contains(r.stdout, "verify       go vet ./... && go test ./...\n") || !strings.Contains(r.stdout, "  from       verify:repo\n") ||
-		!strings.Contains(r.stdout, "verification repo: project "+project+"\n") {
+		!strings.Contains(r.stdout, "verification repo: repository "+project+"\n") {
 		t.Fatalf("process show: %d\n%s%s", r.code, r.stdout, r.stderr)
 	}
 }
@@ -112,11 +108,11 @@ func TestAVerificationInNeitherLayerRefusesOnlyTheProcessNamingIt(t *testing.T) 
 
 	r := agister(t, home, repo, "check")
 	warning := "warning process implement: names verify:repo, which does not exist; calls of it are refused until verifies/repo.yaml exists\n"
-	if r.code != 0 || !strings.HasPrefix(r.stdout, "settings OK:") || r.stderr != warning {
+	if r.code != 0 || !strings.HasPrefix(r.stdout, "settings OK:") || !strings.Contains(r.stderr, warning) {
 		t.Fatalf("check: %d\n%s%s", r.code, r.stdout, r.stderr)
 	}
 	r = agister(t, home, repo, "check", "--tree")
-	if r.code != 0 || !regexp.MustCompile(`└─ verification repo +MISSING\n`).MatchString(r.stdout) {
+	if r.code != 0 || !regexp.MustCompile(`[├└]─ verification repo +MISSING\n`).MatchString(r.stdout) {
 		t.Fatalf("check --tree: %d\n%s%s", r.code, r.stdout, r.stderr)
 	}
 
@@ -125,12 +121,12 @@ func TestAVerificationInNeitherLayerRefusesOnlyTheProcessNamingIt(t *testing.T) 
 		t.Fatalf("verify %+v from %q, warnings %q, refusal %q\nwant %q", view.Verify, view.VerifyName, view.Warnings, view.Refusal, reason)
 	}
 	r = agister(t, home, repo, "process", "show", "implement")
-	if r.code != 0 || !strings.Contains(r.stdout, "verify       verify:repo (not resolved)\nplan         REFUSED: "+reason+"\n") {
+	if r.code != 0 || !strings.Contains(r.stdout, "verify       verify:repo (not resolved)\nprompt       implement (not resolved)\nguidance     (none)\nplan         REFUSED: "+reason+"\n") {
 		t.Fatalf("process show: %d\n%s%s", r.code, r.stdout, r.stderr)
 	}
 
 	write(t, filepath.Join(repo, "brief.md"), "Do it.\n")
-	r = agister(t, home, repo, "run", "implement", "--quiet", "--param", "brief=brief.md")
+	r = agister(t, home, repo, "run", "implement_assistant", "--quiet", "--param", "brief=brief.md")
 	last := lastRun(t, home)
 	result, _ := last.record["result"].(map[string]any)
 	fault, _ := result["error"].(map[string]any)
@@ -141,16 +137,16 @@ func TestAVerificationInNeitherLayerRefusesOnlyTheProcessNamingIt(t *testing.T) 
 		t.Fatalf("events = %s", kinds)
 	}
 
-	if r := agister(t, home, repo, "process", "show", "ask"); r.code != 0 || strings.Contains(r.stdout, "REFUSED") {
+	if r := agister(t, home, repo, "workflow", "show", "ask_assistant"); r.code != 0 || strings.Contains(r.stdout, "REFUSED") {
 		t.Fatalf("show another process: %d\n%s%s", r.code, r.stdout, r.stderr)
 	}
-	if r := agister(t, home, repo, "run", "ask", "--quiet", "--param", "question=q", "--timeout", "1m"); r.code != cli.ExitCompleted {
+	if r := agister(t, home, repo, "run", "ask_assistant", "--quiet", "--param", "question=q", "--timeout", "1m"); r.code != cli.ExitCompleted {
 		t.Fatalf("run another process: %d\n%s", r.code, r.stderr)
 	}
 }
 
-// A repository's verification replaces the global one of the same name,
-// whole, as any document does.
+// A repository's verification comes before the global one of the same
+// name: every field it sets is its own (ADR-028 rule 4).
 func TestARepositoryVerificationReplacesAGlobalOne(t *testing.T) {
 	t.Parallel()
 	home, repo := setup(t, "approve")
@@ -167,14 +163,14 @@ func TestARepositoryVerificationReplacesAGlobalOne(t *testing.T) {
 	if view.Verify == nil || *view.Verify != want {
 		t.Fatalf("verify = %+v", view.Verify)
 	}
-	origin := contract.DefinitionOrigin{Kind: "verifies", Name: "repo", Layer: "project", Path: project, Overrides: global}
 	var sources []contract.DefinitionOrigin
 	for _, source := range view.Sources {
 		if source.Kind == "verifies" {
 			sources = append(sources, source)
 		}
 	}
-	if !reflect.DeepEqual(sources, []contract.DefinitionOrigin{origin}) {
+	if len(sources) != 1 || sources[0].Name != "repo" || sources[0].Layer != "repository" || sources[0].Path != project || len(sources[0].Layers) != 2 ||
+		sources[0].Layers[0].Layer != "repository" || sources[0].Layers[0].Path != project || sources[0].Layers[1].Layer != "home" || sources[0].Layers[1].Path != global {
 		t.Fatalf("sources = %+v", sources)
 	}
 	r := agister(t, home, repo, "check")
@@ -192,17 +188,17 @@ func TestAnInvalidRepositoryVerificationFailsCheck(t *testing.T) {
 	path := filepath.Join(repo, ".agister", "verifies", "repo.yaml")
 	write(t, path, strings.Replace(repoVerification, "timeout: 7m\n", "", 1))
 	r := agister(t, home, repo, "check")
-	if r.code != cli.ExitUsage || !strings.Contains(r.stderr, "verification repo: timeout: is required\n  refuses process implement\n1 problem(s) in ") || strings.Contains(r.stderr, "\nprocess implement") {
+	if r.code != cli.ExitUsage || !strings.Contains(r.stderr, "verification repo: timeout: is required\n  refuses process implement, workflow implement_assistant\n1 problem(s) in ") || strings.Contains(r.stderr, "\nprocess implement") {
 		t.Fatalf("check: %d\n%s%s", r.code, r.stdout, r.stderr)
 	}
-	r = agister(t, home, repo, "run", "implement", "--quiet", "--param", "candidate=HEAD", "--param", "brief=b.md")
-	if want := "process implement uses verification repo (" + path + "): timeout: is required"; r.code != cli.ExitRefused || !strings.Contains(r.stderr, want) {
+	r = agister(t, home, repo, "run", "implement_assistant", "--quiet", "--param", "candidate=HEAD", "--param", "brief=b.md")
+	if want := "workflow implement_assistant uses process implement, which uses verification repo (" + path + "): timeout: is required"; r.code != cli.ExitRefused || !strings.Contains(r.stderr, want) {
 		t.Fatalf("run: %d, want %q\n%s%s", r.code, want, r.stdout, r.stderr)
 	}
 	if last := lastRun(t, home); last.record["result"].(map[string]any)["error"].(map[string]any)["class"] != "refused" || len(last.events) == 0 {
 		t.Fatalf("record = %v", last.record)
 	}
-	if r := agister(t, home, repo, "run", "adversarial_review", "--quiet", "--param", "base=main", "--timeout", "1m"); r.code != cli.ExitCompleted {
+	if r := agister(t, home, repo, "run", "adversarial_review_reviewer", "--quiet", "--param", "base=main", "--timeout", "1m"); r.code != cli.ExitCompleted {
 		t.Fatalf("a process that does not name it: %d\n%s", r.code, r.stderr)
 	}
 }

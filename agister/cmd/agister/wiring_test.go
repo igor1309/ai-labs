@@ -15,6 +15,7 @@ import (
 	"slices"
 	"strings"
 	"sync"
+	"syscall"
 	"testing"
 	"time"
 
@@ -22,13 +23,14 @@ import (
 	"github.com/igor1309/ai-labs/agister/internal/adapters/fsruns"
 	"github.com/igor1309/ai-labs/agister/internal/adapters/git"
 	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/runtimetest"
-	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/supervisor"
-	"github.com/igor1309/ai-labs/agister/internal/adapters/system/systemtest"
 	"github.com/igor1309/ai-labs/agister/internal/app"
 	"github.com/igor1309/ai-labs/agister/internal/cli"
 	"github.com/igor1309/ai-labs/agister/internal/contract"
-	"github.com/igor1309/ai-labs/agister/internal/domain/definition"
+	"github.com/igor1309/ai-labs/agister/internal/domain/document"
 	domain "github.com/igor1309/ai-labs/agister/internal/domain/run"
+	"github.com/igor1309/ai-labs/gokit/clocktest"
+	"github.com/igor1309/ai-labs/gokit/supervisor"
+	"github.com/igor1309/ai-labs/gokit/supervisor/supervisortest"
 )
 
 // marker is a definitions source told apart from every other by identity,
@@ -38,35 +40,45 @@ type marker struct {
 	name string
 
 	mu    sync.Mutex
-	reads map[definition.Kind]int
-	lists map[definition.Kind]int
+	reads map[document.Kind]int
+	lists map[document.Kind]int
 }
 
 func newMarker(name string) *marker {
-	return &marker{name: name, reads: map[definition.Kind]int{}, lists: map[definition.Kind]int{}}
+	return &marker{name: name, reads: map[document.Kind]int{}, lists: map[document.Kind]int{}}
 }
 
-func (m *marker) Read(_ context.Context, kind definition.Kind, name string) (definition.Document, error) {
+func (m *marker) Read(_ context.Context, kind document.Kind, name string) (document.Document, error) {
 	m.mu.Lock()
 	m.reads[kind]++
 	m.mu.Unlock()
 	pattern := string(kind) + "/" + name + ".*"
-	if kind == definition.KindService {
+	if kind == document.KindService {
 		pattern = "service.*"
 	}
 	matches, _ := fs.Glob(examples.Settings(), pattern)
 	if len(matches) != 1 {
-		return definition.Document{}, fmt.Errorf("%s has no %s %q", m.name, kind, name)
+		return document.Document{}, fmt.Errorf("%s has no %s %q", m.name, kind, name)
 	}
 	data, err := fs.ReadFile(examples.Settings(), matches[0])
 	sum := sha256.Sum256(data)
-	return definition.Document{
-		Source: definition.Source{Kind: kind, Name: name, Path: m.name + "/" + matches[0], SHA256: hex.EncodeToString(sum[:])},
+	return document.Document{
+		Source: document.Source{Kind: kind, Name: name, Path: m.name + "/" + matches[0], Layer: document.LayerHome, SHA256: hex.EncodeToString(sum[:])},
 		Bytes:  data,
 	}, err
 }
 
-func (m *marker) List(_ context.Context, kind definition.Kind) ([]string, error) {
+// ReadListed reads as Read does: home lists no folders.
+func (m *marker) ReadListed(ctx context.Context, kind document.Kind, name string) (document.Document, error) {
+	return m.Read(ctx, kind, name)
+}
+
+// Layers are home alone, which the marker stands for.
+func (m *marker) Layers(context.Context) []document.LayerDir {
+	return []document.LayerDir{{Layer: document.LayerHome, Dir: m.name}}
+}
+
+func (m *marker) List(_ context.Context, kind document.Kind) ([]string, error) {
 	m.mu.Lock()
 	m.lists[kind]++
 	m.mu.Unlock()
@@ -129,7 +141,7 @@ func TestBuiltClientReadsOnlyTheSourcesGiven(t *testing.T) {
 				"settings": func(c contract.Client) error { _, err := c.ListAgents(ctx); return err },
 				"check":    func(c contract.Client) error { _, err := c.Check(ctx, false); return err },
 				"inspection": func(c contract.Client) error {
-					_, err := c.ShowProcess(ctx, "ask", "")
+					_, err := c.ShowProcess(ctx, "ask")
 					return err
 				},
 				"settings workflows": func(c contract.Client) error { _, err := c.ListWorkflows(ctx); return err },
@@ -174,10 +186,10 @@ func TestBuiltClientReadsOnlyTheSourcesGiven(t *testing.T) {
 			if _, err := decorated.Client.CreateAgent(ctx, agent, false, nil); err != nil {
 				t.Fatal(err)
 			}
-			if global.lists[definition.KindAgent] == 0 {
+			if global.lists[document.KindAgent] == 0 {
 				t.Error("the global write scope did not check the global-only source")
 			}
-			if got := layered.lists[definition.KindAgent] > 0; got != tc.project {
+			if got := layered.lists[document.KindAgent] > 0; got != tc.project {
 				t.Errorf("the project write scope checks the layered source = %v, want %v", got, tc.project)
 			}
 		})
@@ -413,10 +425,26 @@ func TestBuiltReaperLogsAFailedReap(t *testing.T) {
 	}
 }
 
-// The adapters the composition builds share its worktree coordinator:
-// while a caller's checkout holds a repository, the verifier's copy and the
-// reaper's discard there wait for it. What waits is decided by the held
-// command, never by timing.
+// oldCheckout is a checkout of main in repo as runs made them before
+// ADR-025, at <temp>/agister-checkout-<id>/workspace-<id>, left on record
+// for the reap to remove; whatever the test leaves of it is removed at its
+// end.
+func oldCheckout(t *testing.T, repo string) string {
+	t.Helper()
+	parent, err := os.MkdirTemp("", "agister-checkout-")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.RemoveAll(parent) })
+	dir := filepath.Join(parent, "workspace-"+strings.TrimPrefix(filepath.Base(parent), "agister-checkout-"))
+	gitCmd(t, repo, "worktree", "add", "--detach", "--quiet", dir, "main")
+	return dir
+}
+
+// The reaper's discard the composition builds takes its turn in the
+// process's worktree coordinator: while one removal of an old checkout
+// holds a repository, the others there wait for it (ADR-025 rule 9). What
+// waits is decided by the held command, never by timing.
 //
 // Contract test: the composition's worktree coordinator over real git and
 // its lock files.
@@ -463,8 +491,11 @@ func TestBuiltWorkspaceAdaptersShareTheWorktreeCoordinator(t *testing.T) {
 		}()
 		return done
 	}
+	discard := func(dir string) <-chan error {
+		return start(func() error { return adapters.discarder.Discard(ctx, repo, dir) })
+	}
 	// reports fails the test unless worker's worktree command reports want
-	// next; a worker that ends first did not meet the held checkout.
+	// next; a worker that ends first did not meet the held removal.
 	reports := func(worker <-chan error, want, what string) {
 		t.Helper()
 		select {
@@ -473,51 +504,41 @@ func TestBuiltWorkspaceAdaptersShareTheWorktreeCoordinator(t *testing.T) {
 				t.Fatalf("%s %s, not %s", what, got, want)
 			}
 		case err := <-worker:
-			t.Fatalf("%s ended without meeting the held checkout: %v", what, err)
+			t.Fatalf("%s ended without meeting the held removal: %v", what, err)
 		}
 	}
-	var release func() error
-	copied := adapters.copies.Place(fmt.Sprintf("wiring-%d", os.Getpid()))
 	// Whatever point the test reached: the held command is let through and
-	// every worker joined, then the checkout and the copy are removed.
+	// every worker joined.
 	pass := sync.OnceFunc(func() { close(released) })
 	t.Cleanup(func() {
 		pass()
 		workers.Wait()
-		if release != nil {
-			if err := release(); err != nil {
-				t.Errorf("releasing the checkout: %v", err)
-			}
-		}
-		if err := adapters.discarder.Discard(ctx, repo, copied); err != nil {
-			t.Errorf("discarding the copy: %v", err)
-		}
 	})
 
-	checkout := start(func() (err error) {
-		_, release, err = adapters.calls.Checkout(ctx, repo, "main")
-		return err
-	})
-	reports(checkout, runs, "the caller's checkout")
-	copying := start(func() error { return adapters.copies.Copy(ctx, repo, copied, "main", nil) })
-	reports(copying, waits, "the verifier's copy")
+	held := discard(oldCheckout(t, repo))
+	reports(held, runs, "the held discard")
+	waiting := discard(oldCheckout(t, repo))
+	reports(waiting, waits, "the next discard")
 	// A checkout already gone is discarded as success, once it had its turn.
-	gone := adapters.copies.Place(fmt.Sprintf("wiring-%d-gone", os.Getpid()))
-	discarding := start(func() error { return adapters.discarder.Discard(ctx, repo, gone) })
-	reports(discarding, waits, "the reaper's discard")
+	name := fmt.Sprintf("wiring-%d-gone", os.Getpid())
+	gone := discard(filepath.Join(os.TempDir(), "agister-checkout-"+name, "workspace-"+name))
+	reports(gone, waits, "the discard of one gone")
 
 	pass()
 	for what, worker := range map[string]<-chan error{
-		"the caller's checkout": checkout, "the verifier's copy": copying, "the reaper's discard": discarding,
+		"the held discard": held, "the next discard": waiting, "the discard of one gone": gone,
 	} {
 		if err := <-worker; err != nil {
 			t.Errorf("%s: %v", what, err)
 		}
 	}
+	if list := gitCmd(t, repo, "worktree", "list"); strings.Count(list, "\n") != 0 {
+		t.Fatalf("worktrees left:\n%s", list)
+	}
 }
 
 // The process's worktree coordinator keeps its lock files under the home:
-// a checkout and its release leave one there, empty.
+// the removal of an old checkout leaves one there, empty.
 //
 // Contract test: the composition's worktree coordinator over real git and
 // its lock files.
@@ -525,11 +546,7 @@ func TestTheProcessWorktreeCoordinatorLocksUnderTheHome(t *testing.T) {
 	t.Parallel()
 	home, repo := tempDir(t), repository(t, "x")
 	adapters := process(cli.Config{Home: home}, fsruns.NewAppends()).git
-	_, release, err := adapters.calls.Checkout(context.Background(), repo, "main")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := release(); err != nil {
+	if err := adapters.discarder.Discard(context.Background(), repo, oldCheckout(t, repo)); err != nil {
 		t.Fatal(err)
 	}
 	locks := filepath.Join(home, "locks", "worktrees")
@@ -542,6 +559,30 @@ func TestTheProcessWorktreeCoordinatorLocksUnderTheHome(t *testing.T) {
 	}
 	if info, err := entries[0].Info(); err != nil || !info.Mode().IsRegular() || info.Size() != 0 {
 		t.Fatalf("lock file %s: %v, %v", entries[0].Name(), info, err)
+	}
+}
+
+// The process tells the user's CODEX_HOME from the environment and home
+// it runs in: $CODEX_HOME when it is set, else .codex in the user's home.
+func TestTheProcessTellsTheUsersCodexHomeFromItsEnvironment(t *testing.T) {
+	t.Parallel()
+	for name, c := range map[string]struct{ env, want string }{
+		"set":   {"/elsewhere/codex", "/elsewhere/codex"},
+		"unset": {"", filepath.Join("/users/me", ".codex")},
+	} {
+		getenv := func(key string) string {
+			if key == "CODEX_HOME" {
+				return c.env
+			}
+			return "/wrong"
+		}
+		composed := processIn(cli.Config{Home: tempDir(t)}, fsruns.NewAppends(), getenv, func() (string, error) { return "/users/me", nil })
+		if composed.codexHome == nil {
+			t.Fatalf("%s: the process tells no CODEX_HOME", name)
+		}
+		if home, err := composed.codexHome(); err != nil || home != c.want {
+			t.Errorf("%s: CODEX_HOME %q, %v, want %q", name, home, err, c.want)
+		}
 	}
 }
 
@@ -567,7 +608,7 @@ func (s *started) Start(command supervisor.Command) (supervisor.Process, error) 
 func TestTheInProcessCompositionWaitsOnAClockThatNeverMoves(t *testing.T) {
 	t.Parallel()
 	c := inProcess(cli.Config{Home: tempDir(t)})
-	for name, timer := range map[string]timer{"its turns and commands": c.timer, "its observing": c.poll} {
+	for name, timer := range map[string]timer{"its turns and commands": c.timer, "its observing": c.poll, "its reaps' waits for readers": c.readers} {
 		fired, stop := timer(0)
 		if at := <-fired; !at.Equal(stillAt) {
 			t.Errorf("%s wait on a clock that tells %v, want %v", name, at, stillAt)
@@ -587,17 +628,17 @@ func TestTheCompositionStartsItsRuntimesThroughItsStarter(t *testing.T) {
 	if composed.starter != (supervisor.Exec{}) {
 		t.Fatalf("the process starts its runtimes with a %T", composed.starter)
 	}
-	starter := &started{}
+	starter := &started{InProcess: runtimetest.InProcess{Groups: supervisortest.NewGroups()}}
 	composed.starter = starter
 	composed.git = fakeGit(gitOf(t, home))
 	// The call waits on a clock that never moves, not on the process's.
-	composed.timer = systemtest.NewClock(stillAt).Timer
+	composed.timer = clocktest.NewClock(stillAt).Timer
 	client, _, err := composed.wire(config)
 	if err != nil {
 		t.Fatal(err)
 	}
 	id, err := client.Submit(context.Background(), contract.CallRequest{
-		Process: "adversarial_review", Params: map[string]string{"base": "main"}, Timeout: "1m", Cwd: repo,
+		Process: "adversarial_review_reviewer", Params: map[string]string{"base": "main"}, Timeout: "1m", Cwd: repo,
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -627,13 +668,15 @@ func TestTheCompositionStartsItsRuntimesThroughItsStarter(t *testing.T) {
 // The process's commands start through the operating system, which also
 // reaps what its runs left, over the run store under its home; and a
 // composition starts its commands through the starter it holds: a call
-// over a starter of the test's asks it for bash, once for the checkout's
-// setup and once for the verification, and for no runtime.
+// over a starter of the test's asks it for bash once, for the
+// verification, and for no runtime. The workspace.yaml's setup, obsolete
+// (ADR-025 rule 3), is never started.
 func TestTheCompositionStartsItsCommandsThroughItsStarter(t *testing.T) {
 	t.Parallel()
 	home, repo := setup(t, "approve")
 	write(t, filepath.Join(home, "workspace.yaml"), "schema: agister.workspace/v1alpha1\nsetup:\n  command: echo prepared\n  timeout: 20s\n")
 	shipped := read(t, filepath.Join(home, "processes", "adversarial_review.yaml"))
+	shipped = strings.Replace(shipped, "  revision: candidate_revision\n", "  revision: candidate_revision\n  clean: true\n", 1)
 	write(t, filepath.Join(home, "processes", "verified.yaml"), strings.Replace(shipped, "name: adversarial_review", "name: verified", 1)+`
 verify:
   command: test -f a.txt
@@ -651,17 +694,18 @@ verify:
 	if want := (fsruns.Store{Dir: filepath.Join(home, "runs"), Appends: appends}); composed.runs != want {
 		t.Fatalf("the process's run store = %+v, want %+v", composed.runs, want)
 	}
-	starter := &started{}
-	composed.starter, composed.commands = runtimetest.InProcess{}, starter
+	groups := supervisortest.NewGroups()
+	starter := &started{InProcess: runtimetest.InProcess{Groups: groups}}
+	composed.starter, composed.commands = runtimetest.InProcess{Groups: groups}, starter
 	composed.git = fakeGit(gitOf(t, home))
 	// The call waits on a clock that never moves, not on the process's.
-	composed.timer = systemtest.NewClock(stillAt).Timer
+	composed.timer = clocktest.NewClock(stillAt).Timer
 	client, _, err := composed.wire(config)
 	if err != nil {
 		t.Fatal(err)
 	}
 	id, err := client.Submit(context.Background(), contract.CallRequest{
-		Process: "verified", Params: map[string]string{"base": "main"}, Timeout: "1m", Cwd: repo,
+		Process: bound(t, home, "verified", "reviewer"), Params: map[string]string{"base": "main"}, Timeout: "1m", Cwd: repo,
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -672,7 +716,221 @@ verify:
 	}
 	starter.mu.Lock()
 	defer starter.mu.Unlock()
-	if want := [][]string{{"bash", "-c", "echo prepared"}, {"bash", "-c", "test -f a.txt"}}; !reflect.DeepEqual(starter.commands, want) {
+	if want := [][]string{{"bash", "-c", "test -f a.txt"}}; !reflect.DeepEqual(starter.commands, want) {
 		t.Fatalf("started %q, want %q", starter.commands, want)
+	}
+}
+
+// The process holds the caller's worktree for a call through the holder
+// it composes (ADR-025): a call through the CLI completes, its turn in the
+// worktree it was launched from, with the worktree on its record by the
+// lock's canonical path, the review on record as a reader, the lock taken
+// under the home, and no checkout made for it.
+func TestTheCompositionLendsAnInPlaceCallTheCallersWorktree(t *testing.T) {
+	t.Parallel()
+	home, repo := setup(t, "approve")
+	r := agister(t, home, repo, "run", "adversarial_review_reviewer", "--param", "base=main", "--timeout", "1m")
+	if r.code != cli.ExitCompleted {
+		t.Fatalf("exit %d\n%s", r.code, r.stderr)
+	}
+
+	last := lastRun(t, home)
+	record := last.record
+	if result := record["result"].(map[string]any); result["status"] != "completed" || result["output"].(map[string]any)["verdict"] != "approve" {
+		t.Fatalf("record = %v", record)
+	}
+	// The review changed nothing: the content its changes were captured
+	// from is the revision's.
+	head := revision(t, home, repo, "HEAD")
+	content, err := gitOf(t, home).Identity(context.Background(), repo, head)
+	if err != nil || content == "" {
+		t.Fatalf("the worktree's content = %q, %v", content, err)
+	}
+	want := map[string]any{"dir": repo, "worktree": repo, "repository_identity": filepath.Join(repo, ".git"), "revision": head, "writer": false, "content": content}
+	if !reflect.DeepEqual(record["in_place"], want) || record["workspace"] != repo || record["processes_ended"] != true {
+		t.Fatalf("in place %v, want %v; workspace %v, processes ended %v", record["in_place"], want, record["workspace"], record["processes_ended"])
+	}
+	if effects, _ := record["effects"].(map[string]any); effects["checkout"] != nil || effects["copy"] != nil || effects["unreleased"] != nil {
+		t.Fatalf("effects %v", effects)
+	}
+	noCheckoutLeft(t, home)
+	if last.first["cwd"] != repo {
+		t.Fatalf("the turn ran in %v, not %s", last.first["cwd"], repo)
+	}
+	if kinds := strings.Join(last.kinds(), " "); !strings.Contains(kinds, "WORKTREE_LOCKED WORKTREE_ADMITTED") {
+		t.Fatalf("events %s", kinds)
+	}
+	// The lock is the home's, in the namespace of the holds.
+	if locks, err := os.ReadDir(filepath.Join(home, "locks", "in-place")); err != nil || len(locks) != 1 {
+		t.Fatalf("locks %v, %v", locks, err)
+	}
+}
+
+// A hold a binary from before ADR-025 takes, still running, excludes the
+// composition's writer (ADR-025 rule 4): with the worktree's lock file in
+// locks/in-place held shared, as an older reader holds it, a writer call
+// is refused before any turn, and nothing is changed in the worktree.
+//
+// Contract test: the kernel's flock on the composition's lock file, taken
+// here as an older binary takes it.
+func TestAnOlderBinarysHoldExcludesTheCompositionsWriter(t *testing.T) {
+	t.Parallel()
+	home, repo := setup(t, "approve")
+	write(t, filepath.Join(repo, "b.md"), "Do it.\n")
+	key, err := filepath.EvalSymlinks(repo)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// The older binary's lock file: under the home's locks/in-place, named
+	// by a digest of the worktree's canonical path.
+	sum := sha256.Sum256([]byte(key))
+	path := filepath.Join(home, "locks", "in-place", hex.EncodeToString(sum[:])+".lock")
+	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	held, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE, 0o600)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { held.Close() })
+	if err := syscall.Flock(int(held.Fd()), syscall.LOCK_SH|syscall.LOCK_NB); err != nil {
+		t.Fatal(err)
+	}
+
+	r := agister(t, home, repo, "run", "implement_assistant", "--quiet", "--param", "candidate=HEAD", "--param", "brief=b.md")
+	if want := "worktree " + repo + " is in use: another call holds it, and a writer holds it alone"; r.code != cli.ExitRefused || !strings.Contains(r.stderr, want) {
+		t.Fatalf("run: %d, want %q\n%s%s", r.code, want, r.stdout, r.stderr)
+	}
+	if kinds := strings.Join(lastRun(t, home).kinds(), " "); strings.Contains(kinds, "WORKTREE_LOCKED") || strings.Contains(kinds, "PROCESS_STARTED") {
+		t.Fatalf("events %s", kinds)
+	}
+}
+
+// The composition gives the recoverer what it recovers on (ADR-024): a
+// call through the composed client whose turn goes without an event for
+// the process's stale.no_event is resumed in the session that turn
+// reported, with the process's instruction and the evidence, and completes
+// with the recovery on its record.
+func TestTheCompositionRecoversAStaleTurn(t *testing.T) {
+	t.Parallel()
+	const noEvent = 7 * time.Second
+	home, repo := setup(t, "approve")
+	process := filepath.Join(home, "processes", "ask.yaml")
+	write(t, process, read(t, process)+"\nstale: {no_event: 7s, recover: {max_resumes: 1, instruction: Go on.}}\n")
+	config := cli.Config{Home: home, Cwd: repo}
+	clock := clocktest.NewClock(stillAt)
+	composed := on(config, clock.Timer)
+	client, _, err := composed.wire(config)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx := context.Background()
+	// The question makes the fake's first turn hang; the recovery's message
+	// does not carry it, so that turn ends.
+	id, err := client.Submit(ctx, contract.CallRequest{Process: "ask_assistant", Params: map[string]string{"question": "SCENARIO:hang"}, Timeout: "1m", Cwd: repo})
+	if err != nil {
+		t.Fatal(err)
+	}
+	cleanupRun(t, client, composed.hosted, id)
+	// The first turn's wait for an event starts four times: at the turn's
+	// start, at its process's start, at the line the fake prints before it
+	// hangs and at the event the adapter reports for that line. Then
+	// nothing comes for the whole limit.
+	for range 4 {
+		clock.Started(noEvent)
+	}
+	clock.Advance(noEvent)
+	<-composed.hosted.Done(id)
+
+	record, stored, err := composed.runs.Get(ctx, id)
+	if err != nil || stored != domain.StateFinished || record.Result == nil || record.Result.Status != domain.Completed {
+		t.Fatalf("run %s: %s, %+v, %v", id, stored, record.Result, err)
+	}
+	const session = "00000000-0000-4000-8000-000000000000"
+	digest := sha256.Sum256([]byte("Go on.\n\n## stale limit\n\nstale.no_event: the turn was interrupted after 7s without an event from the runtime."))
+	if len(record.Recoveries) != 1 {
+		t.Fatalf("recoveries = %+v", record.Recoveries)
+	}
+	got := record.Recoveries[0]
+	if got.Number != 1 || got.Follows != 1 || got.Stale.Limit != domain.StaleNoEvent || got.Stale.After != noEvent ||
+		got.MessageSHA256 != hex.EncodeToString(digest[:]) || got.Resumed != session || got.Session != session ||
+		got.Outcome != domain.RecoveryCompleted || got.Error != nil {
+		t.Fatalf("recovery = %+v", got)
+	}
+	// The recovery is timed on the clock the composition gave.
+	if got.StartedAt.IsZero() || got.FinishedAt.Before(got.StartedAt) {
+		t.Fatalf("recovery from %v to %v", got.StartedAt, got.FinishedAt)
+	}
+	// The runtime was started again, to resume the session.
+	started, _ := json.Marshal(processesStarted(filepath.Join(home, "runs", id)))
+	if !strings.Contains(string(started), `"--resume","`+session+`"`) {
+		t.Fatalf("the processes started:\n%s", started)
+	}
+}
+
+// A log that cannot be written, its path a directory, fails the setup of
+// diagnostics and so the client and every command, instead of losing each
+// warning later in silence. A command line that cannot be read is still
+// refused as one.
+//
+// Contract test: the composition's diagnostics over the log on the real
+// filesystem.
+func TestAnUnusableLogFailsAtSetup(t *testing.T) {
+	t.Parallel()
+	home := tempDir(t)
+	path := filepath.Join(home, "logs", "agister.jsonl")
+	if err := os.MkdirAll(path, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	config := cli.Config{Home: home}
+	if _, err := diagnostics(config); err == nil || !strings.Contains(err.Error(), path) {
+		t.Fatalf("diagnostics: %v", err)
+	}
+	if client, _, err := inProcess(config).wire(config); err == nil || client != nil || !strings.Contains(err.Error(), path) {
+		t.Fatalf("wire: %v, %v", client, err)
+	}
+	if r := agister(t, home, tempDir(t), "check"); r.code != cli.ExitInternal || !strings.Contains(r.stderr, path) {
+		t.Fatalf("check: %d\n%s", r.code, r.stderr)
+	}
+	if r := agister(t, home, tempDir(t), "check", "--bogus"); r.code != cli.ExitUsage || !strings.Contains(r.stderr, "flag provided but not defined: -bogus") || strings.Contains(r.stderr, path) {
+		t.Fatalf("check --bogus: %d\n%s", r.code, r.stderr)
+	}
+}
+
+// The log as shipped rotates once it would pass 5 MB, not before, and
+// keeps three old files: the oldest of three is dropped and no fourth is
+// kept.
+//
+// Contract test: the composition's diagnostics over the log on the real
+// filesystem.
+func TestTheLogIsKeptWithinTheShippedCap(t *testing.T) {
+	t.Parallel()
+	home := tempDir(t)
+	path := filepath.Join(home, "logs", "agister.jsonl")
+	// The log 1000 bytes short of its cap, and three old files.
+	seed := strings.Repeat("x", 5<<20-1001) + "\n"
+	write(t, path, seed)
+	for n := 1; n <= 3; n++ {
+		write(t, fmt.Sprintf("%s.%d.gz", path, n), fmt.Sprintf("old %d", n))
+	}
+	log, err := diagnostics(cli.Config{Home: home})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	log.Warn("within the cap")
+	if kept := read(t, path); !strings.HasPrefix(kept, seed) || !strings.Contains(kept[len(seed):], `"msg":"within the cap"`) {
+		t.Fatalf("the log was rotated before its cap, %d bytes", len(kept))
+	}
+	log.Warn("past the cap", "padding", strings.Repeat("p", 1000))
+	if kept := read(t, path); strings.Count(kept, "\n") != 1 || !strings.Contains(kept, `"msg":"past the cap"`) {
+		t.Fatalf("the log after its cap, %d bytes: %.200s", len(kept), kept)
+	}
+	if newest, second, third := read(t, path+".1.gz"), read(t, path+".2.gz"), read(t, path+".3.gz"); len(newest) >= len(seed) || second != "old 1" || third != "old 2" {
+		t.Fatalf("the old files: the newest %d bytes, then %q and %q", len(newest), second, third)
+	}
+	// The log and its three old files, read above, and no fourth.
+	if entries, err := os.ReadDir(filepath.Dir(path)); err != nil || len(entries) != 4 {
+		t.Fatalf("the log's folder = %v, %v", entries, err)
 	}
 }

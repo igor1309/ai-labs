@@ -1,0 +1,6 @@
+schema = "agister.agent/v1alpha1"
+name = "codex-sol-61"
+runtime = "codex"
+model = "gpt-6.1-sol"
+model_family = "openai"
+effort = "high"

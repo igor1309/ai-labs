@@ -8,7 +8,7 @@ import (
 
 	"github.com/igor1309/ai-labs/agister/internal/app"
 	"github.com/igor1309/ai-labs/agister/internal/contract"
-	"github.com/igor1309/ai-labs/agister/internal/domain/definition"
+	"github.com/igor1309/ai-labs/agister/internal/domain/document"
 )
 
 // clientFake answers every method and records which were reached.
@@ -43,7 +43,7 @@ func (c *clientFake) ListProcesses(context.Context) ([]contract.ProcessSummary, 
 	c.hit("ListProcesses")
 	return nil, nil
 }
-func (c *clientFake) ShowProcess(context.Context, string, string) (contract.ProcessView, error) {
+func (c *clientFake) ShowProcess(context.Context, string) (contract.ProcessView, error) {
 	c.hit("ShowProcess")
 	return contract.ProcessView{}, nil
 }
@@ -78,6 +78,10 @@ func (c *clientFake) ListRuns(context.Context) ([]contract.Run, error) {
 	c.hit("ListRuns")
 	return nil, nil
 }
+func (c *clientFake) Export(context.Context, contract.ExportRequest) (contract.ExportResult, error) {
+	c.hit("Export")
+	return contract.ExportResult{}, nil
+}
 
 // While the settings have a problem that stops every command, or one whose
 // reach the report does not say, every use is refused before it reaches the
@@ -105,13 +109,14 @@ func TestGatedRefusesUseOfBrokenSettings(t *testing.T) {
 	_, refused["CreateAgent"] = gated.CreateAgent(ctx, contract.Agent{}, false, nil)
 	_, refused["ListAgents"] = gated.ListAgents(ctx)
 	_, refused["ListProcesses"] = gated.ListProcesses(ctx)
-	_, refused["ShowProcess"] = gated.ShowProcess(ctx, "p", "")
+	_, refused["ShowProcess"] = gated.ShowProcess(ctx, "p")
 	_, refused["ListWorkflows"] = gated.ListWorkflows(ctx)
 	_, refused["ShowWorkflow"] = gated.ShowWorkflow(ctx, "w")
 	_, refused["Submit"] = gated.Submit(ctx, contract.CallRequest{})
 	refused["Observe other"] = gated.Observe(ctx, "other", 0, nil)
 	_, refused["Inspect other"] = gated.Inspect(ctx, "other")
 	_, refused["ListRuns"] = gated.ListRuns(ctx)
+	_, refused["Export"] = gated.Export(ctx, contract.ExportRequest{Runs: []string{"run-1"}, To: "/audit"})
 	for name, err := range refused {
 		var settings *contract.SettingsError
 		if !errors.As(err, &settings) || settings.Report.Problems[0].Message != "agent a: bad" {
@@ -196,7 +201,6 @@ func (c *afterCheck) Check(ctx context.Context, probe bool) (contract.CheckRepor
 // source once they were read.
 func TestGatedOperationUsesTheCheckedSettings(t *testing.T) {
 	t.Parallel()
-	ctx := context.Background()
 	h := newHarness()
 	sources := []string{"git.revision", "git.diff", "param"}
 	readsAfterCheck := -1
@@ -212,14 +216,14 @@ func TestGatedOperationUsesTheCheckedSettings(t *testing.T) {
 				},
 				f: func() {
 					readsAfterCheck = h.defs.readCount()
-					h.defs.set(definition.KindProcess, "p", "not a process")
-					h.defs.set(definition.KindAgent, "a", "not an agent")
+					h.defs.set(document.KindProcess, "p", "not a process")
+					h.defs.set(document.KindAgent, "a", "not an agent")
 					edited = true
 				},
 			}
 		},
 	}
-	view, err := gated.ShowProcess(ctx, "p", "")
+	view, err := callShown(gated, "p_a")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -257,18 +261,18 @@ func TestGatedSubmitRecordsTheCheckedSettings(t *testing.T) {
 			}
 		},
 	}
-	if _, err := gated.Submit(ctx, contract.CallRequest{Process: "p", Cwd: "/repo"}); err != nil {
+	if _, err := gated.Submit(ctx, contract.CallRequest{Process: "p_a", Cwd: "/repo"}); err != nil {
 		t.Fatal(err)
 	}
-	h.defs.set(definition.KindAgent, "a", strings.Replace(settingsDocs()[definition.KindAgent]["a"], "m1", "m2", 1))
+	h.defs.set(document.KindAgent, "a", strings.Replace(settingsDocs()[document.KindAgent]["a"], "m1", "m2", 1))
 	close(h.recorder.hold)
 	record := h.recorder.wait(t)
 	if class(record) != "" {
 		t.Fatalf("call failed: %s", message(record))
 	}
 	for _, source := range record.Definitions {
-		if want := original[string(source.Kind)+"/"+source.Name]; source.SHA256 != want {
-			t.Errorf("%s/%s recorded %s, checked %s", source.Kind, source.Name, source.SHA256, want)
+		if want := original[string(source.Kind)+"/"+source.Name]; digestRecorded(source) != want {
+			t.Errorf("%s/%s recorded %s, checked %s", source.Kind, source.Name, digestRecorded(source), want)
 		}
 	}
 	if len(record.Definitions) == 0 {
@@ -299,13 +303,13 @@ func TestGatedSubmitRecordsWhatTheCheckRead(t *testing.T) {
 					Calls:   h.callsOn(src),
 				},
 				f: func() {
-					h.defs.set(definition.KindAgent, "a", strings.Replace(settingsDocs()[definition.KindAgent]["a"], "m1", "m2", 1))
+					h.defs.set(document.KindAgent, "a", strings.Replace(settingsDocs()[document.KindAgent]["a"], "m1", "m2", 1))
 					edited = true
 				},
 			}
 		},
 	}
-	if _, err := gated.Submit(ctx, contract.CallRequest{Process: "p", Cwd: "/repo"}); err != nil {
+	if _, err := gated.Submit(ctx, contract.CallRequest{Process: "p_a", Cwd: "/repo"}); err != nil {
 		t.Fatal(err)
 	}
 	if !edited {
@@ -317,11 +321,11 @@ func TestGatedSubmitRecordsWhatTheCheckRead(t *testing.T) {
 	}
 	seen := false
 	for _, source := range record.Definitions {
-		if source.Kind == string(definition.KindAgent) && source.Name == "a" {
+		if source.Kind == string(document.KindAgent) && source.Name == "a" {
 			seen = true
 		}
-		if want := original[string(source.Kind)+"/"+source.Name]; source.SHA256 != want {
-			t.Errorf("%s/%s recorded %s, checked %s", source.Kind, source.Name, source.SHA256, want)
+		if want := original[string(source.Kind)+"/"+source.Name]; digestRecorded(source) != want {
+			t.Errorf("%s/%s recorded %s, checked %s", source.Kind, source.Name, digestRecorded(source), want)
 		}
 	}
 	if !seen {
@@ -336,9 +340,9 @@ func TestGatedWriteScopeChecksTheGlobalSnapshot(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
 	h := newHarness()
-	h.defs.docs[definition.KindRuntime]["narrow"] = narrowRuntime
+	h.defs.docs[document.KindRuntime]["narrow"] = narrowRuntime
 	global := &definitionsSpy{docs: settingsDocs()}
-	global.docs[definition.KindRuntime]["narrow"] = narrowRuntime
+	global.docs[document.KindRuntime]["narrow"] = narrowRuntime
 	gated := &app.Gated{
 		Definitions: h.defs,
 		Global:      global,
@@ -353,7 +357,7 @@ func TestGatedWriteScopeChecksTheGlobalSnapshot(t *testing.T) {
 				},
 				f: func() {
 					// Live, process p can run on runtime narrow.
-					global.set(definition.KindRuntime, "narrow", strings.Replace(settingsDocs()[definition.KindRuntime]["rt"], "name: rt", "name: narrow", 1))
+					global.set(document.KindRuntime, "narrow", strings.Replace(settingsDocs()[document.KindRuntime]["rt"], "name: rt", "name: narrow", 1))
 				},
 			}
 		},
@@ -366,5 +370,19 @@ func TestGatedWriteScopeChecksTheGlobalSnapshot(t *testing.T) {
 	}
 	if got := global.readCount(); got == 0 {
 		t.Fatal("the global settings were never read")
+	}
+}
+
+// A gated command checks the settings it froze once: the gate, the
+// listings and the resolver share the check, so the schema is compiled by
+// it once and by the resolver for the process's output once.
+func TestAGatedCommandChecksItsSettingsOnce(t *testing.T) {
+	t.Parallel()
+	h := newHarness()
+	if _, err := h.clientOn(h.defs).ShowProcess(context.Background(), "p"); err != nil {
+		t.Fatal(err)
+	}
+	if got := len(h.validator.compiled); got != 2 {
+		t.Fatalf("schema compiled %d times, want 2: once by the check, once by the resolver", got)
 	}
 }

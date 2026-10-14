@@ -1,0 +1,6 @@
+schema = "agister.agent/v1alpha1"
+name = "claude-opus"
+runtime = "claude-code"
+model = "opus"
+model_family = "anthropic"
+effort = "high"

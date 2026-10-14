@@ -5,9 +5,9 @@ import (
 	"errors"
 	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/codex"
 	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/runtimetest"
-	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/supervisor"
 	"github.com/igor1309/ai-labs/agister/internal/app"
 	"github.com/igor1309/ai-labs/agister/internal/domain/run"
+	"github.com/igor1309/ai-labs/gokit/supervisor"
 	"reflect"
 	"testing"
 	"time"
@@ -20,6 +20,13 @@ type codexStandIn struct {
 	identityError error
 	ctx           context.Context
 	recordError   error
+	admitted      codex.TurnRequest
+	refusal       *codex.Error
+}
+
+func (s *codexStandIn) Admit(r codex.TurnRequest) *codex.Error {
+	s.admitted = r
+	return s.refusal
 }
 
 func (s *codexStandIn) Identity(ctx context.Context) (codex.RuntimeIdentity, error) {
@@ -30,8 +37,8 @@ func (s *codexStandIn) RunTurn(ctx context.Context, r codex.TurnRequest, sink co
 	s.ctx = ctx
 	s.request = r
 	sink.Event("protocol", "TOOL_REQUESTED", map[string]any{"tool_use_id": "id", "input": "full"})
-	sink.ToolStarted(codex.ToolCall{ID: "id", Name: "bash", Input: "full", Command: true})
-	sink.ToolFinished("id")
+	sink.ToolStarted(codex.ToolCall{ID: "id", Name: "bash", Input: "full", Command: true, Writes: []string{"a.go", "/b.go"}})
+	sink.ToolFinished(codex.ToolResult{ID: "id", Output: "done", Reported: true})
 	sink.Raw("raw")
 	s.recordError = sink.ProcessStarted("pgid:42")
 	return s.result
@@ -46,22 +53,22 @@ func TestCodexApplicationAdapter(t *testing.T) {
 	turns := 2
 	runtimeMS := int64(75)
 	refusal := errors.New("disk full")
-	stub := &codexStandIn{result: codex.Turn{Status: codex.Failed, Error: &codex.Error{Class: codex.ClassRateLimited, Message: "quota"}, ProviderSessionID: "session", Model: "model", Output: []byte(`{"answer":1}`), Text: "answer", CostUSD: &cost, Usage: &codex.Usage{InputTokens: &tokens, OutputTokens: &tokens, CacheReadTokens: &tokens, CacheWriteTokens: &tokens, ReasoningTokens: &tokens}, RuntimeMS: &runtimeMS, NumTurns: &turns, PermissionDenials: 3, Exit: &codex.Exit{Code: &code, Signal: "signal"}, StderrTail: "tail", StderrOmitted: 55, Session: &codex.SessionTotals{CostUSD: &cost, Usage: &codex.Usage{InputTokens: &tokens, OutputTokens: &tokens, CacheReadTokens: &tokens, CacheWriteTokens: &tokens, ReasoningTokens: &tokens}}}, identity: codex.RuntimeIdentity{Contract: "contract", Version: "1.2.3", Resume: true, ResumeWhereItRan: true, CostLimit: true, ToolCalls: true, SkillTools: []string{"skill"}}}
+	stub := &codexStandIn{result: codex.Turn{Status: codex.Failed, Error: &codex.Error{Class: codex.ClassRateLimited, Message: "quota"}, ProviderSessionID: "session", Model: "model", Output: []byte(`{"answer":1}`), Text: "answer", CostUSD: &cost, Usage: &codex.Usage{InputTokens: &tokens, OutputTokens: &tokens, CacheReadTokens: &tokens, CacheWriteTokens: &tokens, ReasoningTokens: &tokens}, RuntimeMS: &runtimeMS, NumTurns: &turns, PermissionDenials: 3, Exit: &codex.Exit{Code: &code, Signal: "signal"}, StderrTail: "tail", StderrOmitted: 55, Session: &codex.SessionTotals{CostUSD: &cost, Usage: &codex.Usage{InputTokens: &tokens, OutputTokens: &tokens, CacheReadTokens: &tokens, CacheWriteTokens: &tokens, ReasoningTokens: &tokens}}}, identity: codex.RuntimeIdentity{Contract: "contract", Version: "1.2.3", Resume: true, ResumeWhereItRan: true, CostLimit: true, ToolCalls: true, SkillTools: []string{"skill"}, Skills: true}}
 	adapter := AdaptCodex(stub)
 	sink := &runtimetest.Recorder{ProcessErr: refusal}
-	request := app.TurnRequest{Prompt: "prompt", Instruction: "instruction", Cwd: "/checkout", ResumeSessionID: "session", MaxCostUSD: &cost, Model: "model", Effort: "high", Primitives: []string{"read"}, Timeout: time.Minute, OutputSchema: []byte(`{"type":"object"}`)}
+	request := app.TurnRequest{Prompt: "prompt", Instruction: "instruction", Cwd: "/checkout", ResumeSessionID: "session", MaxCostUSD: &cost, Model: "model", Effort: "high", Primitives: []string{"read"}, Timeout: time.Minute, OutputSchema: []byte(`{"type":"object"}`), Skills: []app.TurnSkill{{Name: "review", Bytes: []byte("review")}, {Name: "style", Bytes: []byte("style")}}}
 	got := adapter.RunTurn(ctx, request, sink)
-	wantRequest := codex.TurnRequest{Prompt: "prompt", Instruction: "instruction", Cwd: "/checkout", ResumeSessionID: "session", MaxCostUSD: &cost, Model: "model", Effort: "high", Primitives: []string{"read"}, Timeout: time.Minute, OutputSchema: []byte(`{"type":"object"}`)}
+	wantRequest := codex.TurnRequest{Prompt: "prompt", Instruction: "instruction", Cwd: "/checkout", ResumeSessionID: "session", MaxCostUSD: &cost, Model: "model", Effort: "high", Primitives: []string{"read"}, Timeout: time.Minute, OutputSchema: []byte(`{"type":"object"}`), Skills: []codex.Skill{{Name: "review", Bytes: []byte("review")}, {Name: "style", Bytes: []byte("style")}}}
 	usage := &run.Usage{InputTokens: &tokens, OutputTokens: &tokens, CacheReadTokens: &tokens, CacheWriteTokens: &tokens, ReasoningTokens: &tokens}
 	want := run.Turn{Status: run.Failed, Error: &run.Error{Class: run.ClassRateLimited, Message: "quota"}, ProviderSessionID: "session", Model: "model", Output: []byte(`{"answer":1}`), Text: "answer", CostUSD: &cost, Usage: usage, RuntimeMS: &runtimeMS, NumTurns: &turns, PermissionDenials: 3, Exit: &run.Exit{Code: &code, Signal: "signal"}, StderrTail: "tail", StderrOmitted: 55, Session: &run.SessionTotals{CostUSD: &cost, Usage: usage}}
 	if stub.ctx != ctx || !reflect.DeepEqual(stub.request, wantRequest) || !reflect.DeepEqual(got, want) || stub.recordError != refusal {
 		t.Fatalf("request %+v, result %+v, record error %v", stub.request, got, stub.recordError)
 	}
-	if !reflect.DeepEqual(sink.Trace, []string{"TOOL_REQUESTED id", "ToolStarted id", "ToolFinished id"}) || !reflect.DeepEqual(sink.Tools, []app.ToolCall{{ID: "id", Name: "bash", Input: "full", Command: true}}) || !reflect.DeepEqual(sink.Lines, []string{"raw"}) || !reflect.DeepEqual(sink.Processes, []string{"pgid:42"}) || !reflect.DeepEqual(sink.Events[0].Data, map[string]any{"tool_use_id": "id", "input": "full"}) || sink.Events[0].Source != "protocol" {
+	if !reflect.DeepEqual(sink.Trace, []string{"TOOL_REQUESTED id", "ToolStarted id", "ToolFinished id"}) || !reflect.DeepEqual(sink.Tools, []app.ToolCall{{ID: "id", Name: "bash", Input: "full", Command: true, Writes: []string{"a.go", "/b.go"}}}) || !reflect.DeepEqual(sink.Results, []app.ToolResult{{ID: "id", Output: "done", Reported: true}}) || !reflect.DeepEqual(sink.Lines, []string{"raw"}) || !reflect.DeepEqual(sink.Processes, []string{"pgid:42"}) || !reflect.DeepEqual(sink.Events[0].Data, map[string]any{"tool_use_id": "id", "input": "full"}) || sink.Events[0].Source != "protocol" {
 		t.Fatalf("sink %+v", sink)
 	}
 	identity, err := adapter.Identity(ctx)
-	wantIdentity := app.RuntimeIdentity{Contract: "contract", Version: "1.2.3", Resume: true, ResumeWhereItRan: true, CostLimit: true, ToolCalls: true, SkillTools: []string{"skill"}}
+	wantIdentity := app.RuntimeIdentity{Contract: "contract", Version: "1.2.3", Resume: true, ResumeWhereItRan: true, CostLimit: true, ToolCalls: true, SkillTools: []string{"skill"}, Skills: true}
 	if err != nil || !reflect.DeepEqual(identity, wantIdentity) || stub.ctx != ctx {
 		t.Fatalf("identity %+v, err %v", identity, err)
 	}
@@ -90,7 +97,7 @@ func TestCodexSupervisorAdapter(t *testing.T) {
 	refusal := errors.New("record refused")
 	sink := &runtimetest.Recorder{ProcessErr: refusal}
 	var lines []string
-	want := supervisor.Spec{Command: "/cli", Args: []string{"run", "--json"}, Dir: "/checkout", Stdin: "prompt", Timeout: time.Minute, KillGrace: time.Second}
+	want := supervisor.Spec{Command: "/cli", Args: []string{"run", "--json"}, Dir: "/checkout", Env: []string{"CODEX_HOME=/homes/thread"}, Stdin: "prompt", Timeout: time.Minute, KillGrace: time.Second}
 	transport := CodexTransport{Supervisor: supervisorStandIn{run: func(c context.Context, spec supervisor.Spec, s supervisor.Sink, onLine func(string)) supervisor.Evidence {
 		if c != ctx || !reflect.DeepEqual(spec, want) {
 			t.Fatalf("spec %+v", spec)
@@ -108,7 +115,7 @@ func TestCodexSupervisorAdapter(t *testing.T) {
 		}
 		return "1.2.3", refusal
 	}}}
-	spec := codex.Spec{Command: "/cli", Args: []string{"run", "--json"}, Dir: "/checkout", Stdin: "prompt", Timeout: time.Minute, KillGrace: time.Second}
+	spec := codex.Spec{Command: "/cli", Args: []string{"run", "--json"}, Dir: "/checkout", Env: []string{"CODEX_HOME=/homes/thread"}, Stdin: "prompt", Timeout: time.Minute, KillGrace: time.Second}
 	got := transport.Run(ctx, spec, sink, func(line string) { lines = append(lines, line) })
 	expected := codex.Evidence{Exit: &codex.Exit{Code: &code, Signal: "signal"}, SpawnError: "spawn", TimedOut: true, Aborted: true, StderrTail: "tail", StderrOmitted: 123, RecordError: "record"}
 	if !reflect.DeepEqual(got, expected) || !reflect.DeepEqual(lines, []string{"line"}) || !reflect.DeepEqual(sink.Lines, []string{"raw"}) || !reflect.DeepEqual(sink.Processes, []string{"pgid:42"}) || !reflect.DeepEqual(sink.Kinds(), []string{"PROCESS_STARTED"}) {
@@ -122,5 +129,67 @@ func TestCodexSupervisorAdapter(t *testing.T) {
 	}}}
 	if e := empty.Run(ctx, codex.Spec{}, sink, func(string) {}); !reflect.DeepEqual(e, codex.Evidence{}) {
 		t.Fatalf("empty evidence %+v", e)
+	}
+}
+
+// The user's CODEX_HOME is $CODEX_HOME when it is set, else .codex in the
+// user's home.
+func TestCodexHomeIsTheEnvironmentsOrInTheUsersHome(t *testing.T) {
+	t.Parallel()
+	userHome := func() (string, error) { return "/users/me", nil }
+	for name, c := range map[string]struct {
+		env      string
+		userHome func() (string, error)
+		want     string
+		err      bool
+	}{
+		"set":          {"/elsewhere/codex", func() (string, error) { return "", errors.New("unused") }, "/elsewhere/codex", false},
+		"unset":        {"", userHome, "/users/me/.codex", false},
+		"no user home": {"", func() (string, error) { return "", errors.New("$HOME is not defined") }, "", true},
+	} {
+		getenv := func(key string) string {
+			if key == "CODEX_HOME" {
+				return c.env
+			}
+			return "/wrong"
+		}
+		home, err := CodexHome(getenv, c.userHome)()
+		if home != c.want || (err != nil) != c.err {
+			t.Errorf("%s: home %q, err %v", name, home, err)
+		}
+	}
+}
+
+// The Codex adapter puts a first turn to the wrapper as a request that
+// resumes its session with its skills, and the wrapper's fault is the
+// call's, translated.
+func TestCodexAdmitsAsTheWrapperDoes(t *testing.T) {
+	t.Parallel()
+	stub := &codexStandIn{}
+	adapter := AdaptCodex(stub)
+	start := app.TurnStart{ResumeSessionID: "thread", Skills: []app.TurnSkill{{Name: "review", Bytes: []byte("review")}}}
+	if fault := adapter.Admit(start); fault != nil {
+		t.Fatalf("admit = %+v", fault)
+	}
+	if want := (codex.TurnRequest{ResumeSessionID: "thread", Skills: []codex.Skill{{Name: "review", Bytes: []byte("review")}}}); !reflect.DeepEqual(stub.admitted, want) {
+		t.Fatalf("admitted %+v", stub.admitted)
+	}
+	stub.refusal = &codex.Error{Class: codex.ClassRefused, Message: "thread ran in the user's CODEX_HOME"}
+	if fault := adapter.Admit(start); !reflect.DeepEqual(fault, &run.Error{Class: run.ClassRefused, Message: "thread ran in the user's CODEX_HOME"}) {
+		t.Fatalf("admit = %+v", fault)
+	}
+}
+
+// Claude Code, Pi and OpenCode can run any first turn: a resumed session
+// with skills is admitted.
+func TestEveryOtherRuntimeAdmitsAnyFirstTurn(t *testing.T) {
+	t.Parallel()
+	start := app.TurnStart{ResumeSessionID: "session", Skills: []app.TurnSkill{{Name: "review", Bytes: []byte("review")}}}
+	for name, adapter := range map[string]app.TurnRunner{
+		"claude-code": AdaptClaudeCode(&claudecodeStandIn{}), "pi": AdaptPi(&piStandIn{}), "opencode": AdaptOpenCode(&opencodeStandIn{}),
+	} {
+		if fault := adapter.Admit(start); fault != nil {
+			t.Fatalf("%s: admit = %+v", name, fault)
+		}
 	}
 }

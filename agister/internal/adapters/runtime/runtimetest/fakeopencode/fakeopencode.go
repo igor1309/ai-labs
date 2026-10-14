@@ -17,7 +17,8 @@ import (
 	"time"
 
 	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/runtimetest/fakeoutput"
-	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/runtimetest/fakeproc"
+	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/runtimetest/fakeskills"
+	"github.com/igor1309/ai-labs/gokit/fakeproc"
 )
 
 // FreshSession is the ID of every session the fake starts.
@@ -56,7 +57,8 @@ func Main(p fakeproc.Process) int {
 
 	config := p.Getenv("OPENCODE_CONFIG_CONTENT")
 	var parsed struct {
-		Agent map[string]struct {
+		Skills struct{ Paths []string }
+		Agent  map[string]struct {
 			Prompt     string
 			Permission json.RawMessage
 		}
@@ -112,7 +114,7 @@ func Main(p fakeproc.Process) int {
 
 	// The fake's echo: what it was given. OpenCode writes no such line.
 	cwd := p.Dir
-	data, _ := json.Marshal(map[string]any{"type": "fake_echo", "argv": args, "prompt": prompt, "config": config, "system": agent.Prompt, "permission": agent.Permission, "cwd": cwd, "id": session})
+	data, _ := json.Marshal(map[string]any{"type": "fake_echo", "argv": args, "prompt": prompt, "config": config, "system": agent.Prompt, "permission": agent.Permission, "cwd": cwd, "id": session, "skills": fakeskills.Given(parsed.Skills.Paths)})
 	fmt.Fprintln(p.Stdout, string(data))
 
 	switch scenario {

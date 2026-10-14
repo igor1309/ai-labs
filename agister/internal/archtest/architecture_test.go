@@ -15,7 +15,29 @@ import (
 
 const module = "github.com/igor1309/ai-labs/agister"
 
+// supervisor is the process supervisor, a runtime adapter that lives in
+// gokit (ADR-019).
+const supervisor = "github.com/igor1309/ai-labs/gokit/supervisor"
+
+// packages is the module's import graph without the standard library.
 func packages(t *testing.T) map[string][]string {
+	t.Helper()
+	all := graph(t)
+	imports := map[string][]string{}
+	for pkg, imported := range all {
+		imports[pkg] = nil
+		for _, dep := range imported {
+			if _, own := all[dep]; own || strings.Contains(strings.Split(dep, "/")[0], ".") {
+				imports[pkg] = append(imports[pkg], dep)
+			}
+		}
+	}
+	return imports
+}
+
+// graph is the module's import graph, the standard library included, with
+// the module's own packages named from its root.
+func graph(t *testing.T) map[string][]string {
 	t.Helper()
 	command := exec.Command("go", "list", "-f", `{{.ImportPath}} {{join .Imports " "}}`, "./...")
 	command.Dir = "../.."
@@ -27,17 +49,9 @@ func packages(t *testing.T) map[string][]string {
 	for _, line := range strings.Split(strings.TrimSpace(string(out)), "\n") {
 		fields := strings.Fields(line)
 		pkg := strings.TrimPrefix(fields[0], module+"/")
+		imports[pkg] = nil
 		for _, imported := range fields[1:] {
-			if strings.HasPrefix(imported, module+"/") {
-				imports[pkg] = append(imports[pkg], strings.TrimPrefix(imported, module+"/"))
-			} else if !strings.Contains(strings.Split(imported, "/")[0], ".") {
-				continue // standard library
-			} else {
-				imports[pkg] = append(imports[pkg], imported)
-			}
-		}
-		if _, ok := imports[pkg]; !ok {
-			imports[pkg] = nil
+			imports[pkg] = append(imports[pkg], strings.TrimPrefix(imported, module+"/"))
 		}
 	}
 	return imports
@@ -52,8 +66,11 @@ func TestDependencyRule(t *testing.T) {
 		for _, dep := range imported {
 			var allowed bool
 			switch {
+			case pkg == "internal/domain/input":
+				allowed = false // the input vocabulary depends on no other module package
 			case under(pkg, "internal/domain"):
-				allowed = under(dep, "internal/domain") || dep == "gopkg.in/yaml.v3" || dep == "github.com/BurntSushi/toml"
+				allowed = under(dep, "internal/domain") ||
+					pkg == "internal/domain/definition" && (dep == "gopkg.in/yaml.v3" || dep == "github.com/BurntSushi/toml")
 			case pkg == "internal/contract":
 				allowed = false
 			case pkg == "internal/app":
@@ -62,12 +79,12 @@ func TestDependencyRule(t *testing.T) {
 				allowed = dep == "internal/contract"
 			case under(pkg, "internal/adapters"):
 				allowed = under(dep, "internal/domain") || dep == "internal/app" || dep == "internal/contract" ||
-					(under(pkg, "internal/adapters/runtime") && under(dep, "internal/adapters/runtime")) ||
-					!strings.HasPrefix(dep, "internal/") && !strings.HasPrefix(dep, "cmd/") && dep != "examples"
+					(under(pkg, "internal/adapters/runtime") && (under(dep, "internal/adapters/runtime") || under(dep, supervisor))) ||
+					!strings.HasPrefix(dep, "internal/") && !strings.HasPrefix(dep, "cmd/") && dep != "examples" && !under(dep, supervisor)
 			case pkg == "examples":
 				allowed = false
-			case pkg == "cmd/agister":
-				allowed = true // the composition root
+			case pkg == "cmd/agister", pkg == "cmd/retire-implement-processes", pkg == "cmd/retire-settings":
+				allowed = true // a composition root
 			default:
 				allowed = true
 			}
@@ -78,17 +95,18 @@ func TestDependencyRule(t *testing.T) {
 	}
 }
 
-// Only the composition root instantiates adapters.
+// Only a composition root instantiates adapters: agister's, the
+// retirement's, and the modules' construction functions it calls.
 //
 // Contract test: the module's real import graph, from go list.
 func TestOnlyTheCompositionRootImportsAdapters(t *testing.T) {
 	t.Parallel()
 	for pkg, imported := range packages(t) {
-		if pkg == "cmd/agister" || pkg == "internal/composition/runtime" || under(pkg, "internal/adapters") {
+		if pkg == "cmd/agister" || pkg == "cmd/retire-implement-processes" || pkg == "cmd/retire-settings" || pkg == "internal/composition/runtime" || pkg == "internal/composition/install" || under(pkg, "internal/adapters") {
 			continue
 		}
 		for _, dep := range imported {
-			if under(dep, "internal/adapters") || dep == "examples" {
+			if under(dep, "internal/adapters") || under(dep, supervisor) || dep == "examples" {
 				t.Errorf("%s imports %s", pkg, dep)
 			}
 		}
@@ -103,12 +121,11 @@ func TestOnlyTheCompositionRootImportsAdapters(t *testing.T) {
 // Contract test: the module's real import graph, from go list.
 func TestRuntimeAdaptersDoNotImportTheSupervisor(t *testing.T) {
 	t.Parallel()
-	const supervisor = "internal/adapters/runtime/supervisor"
 	for pkg, imported := range packages(t) {
-		if !under(pkg, "internal/adapters/runtime") || pkg == supervisor || under(pkg, "internal/adapters/runtime/runtimetest") {
+		if !under(pkg, "internal/adapters/runtime") || under(pkg, "internal/adapters/runtime/runtimetest") {
 			continue
 		}
-		if slices.Contains(imported, supervisor) {
+		if slices.ContainsFunc(imported, func(dep string) bool { return under(dep, supervisor) }) {
 			t.Errorf("%s imports %s", pkg, supervisor)
 		}
 	}

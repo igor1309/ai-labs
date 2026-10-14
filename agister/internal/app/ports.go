@@ -35,6 +35,10 @@ type RuntimeIdentity struct {
 	// repository's skills, which are used by reading them (ADR-006); none
 	// when the runtime reads them without a granted tool.
 	SkillTools []string
+	// The adapter gives a call the skills its settings name (ADR-021 rule
+	// 6); on one that does not, a call that names a skill is refused before
+	// its first turn.
+	Skills bool
 }
 
 // ToolCall is a tool call the agent started, as the runtime adapter reports
@@ -43,11 +47,36 @@ type ToolCall struct {
 	// ID is the runtime's name for the call; its end is reported by it.
 	ID   string
 	Name string
-	// Input is the whole input, the same text for the same input: two calls
-	// are identical when their Name and Input are.
+	// Input is the reported input, the same text for the same input.
 	Input string
+	// InputIncomplete means the runtime omits part of the input: equal
+	// Name and Input cannot establish that two calls are identical.
+	InputIncomplete bool
 	// Command is true when the tool runs a command.
 	Command bool
+	// Writes are the paths the call writes, as the runtime named them; none
+	// for a tool that writes no file, or an adapter that cannot tell.
+	Writes []string
+}
+
+// PermissionDenial is a tool call the runtime refused for want of a
+// permission, as the runtime adapter reports it: the tool and its input,
+// bounded by the adapter.
+type PermissionDenial struct {
+	Tool  string
+	Input string
+}
+
+// ToolResult is the end of a tool call, as the runtime adapter reports it:
+// the call's ID and, where the runtime's stream carries it, the result's
+// text, bounded by the adapter.
+type ToolResult struct {
+	ID string
+	// Output is the result's text, as bounded; empty unless Reported.
+	Output string
+	// Reported is whether the runtime reported a result's text for the
+	// call; an adapter whose stream carries none never does.
+	Reported bool
 }
 
 // TurnRequest is one runtime turn, expressed in primitives, not permissions.
@@ -64,6 +93,25 @@ type TurnRequest struct {
 	Primitives      []string
 	Timeout         time.Duration
 	OutputSchema    json.RawMessage
+	// Skills are the call's skills, in order, which the adapter gives every
+	// turn of the call (ADR-021 rules 5 and 6); none when it names none.
+	Skills []TurnSkill
+}
+
+// TurnStart is what a call's first turn carries that a runner may refuse
+// before the call has any effect.
+type TurnStart struct {
+	// The provider session the turn resumes; empty for a fresh one.
+	ResumeSessionID string
+	// Skills are the call's skills, in order, as the turn carries them.
+	Skills []TurnSkill
+}
+
+// TurnSkill is one skill a turn is given, as the call recorded it.
+type TurnSkill struct {
+	Name string
+	// Bytes are the whole SKILL.md, front matter included.
+	Bytes []byte
 }
 
 // CommandRequest is one run of a process's verification command.
@@ -110,6 +158,10 @@ type Resolved struct {
 	Value    any    // string or []string
 	Identity string // commit, content digest, or the literal
 	Revision bool   // Identity is a commit that can be checked out
+	// File is the base name of the file the value was read from, which its
+	// working copy is named by (ADR-026 rule 6); empty for a value not read
+	// from a file.
+	File string
 }
 
 // correlation carries identifying fields for diagnostics through context.

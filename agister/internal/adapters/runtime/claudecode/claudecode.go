@@ -9,6 +9,15 @@
 // (ADR-006). Permission mappings for this contract describe what each tool
 // grants under exactly these flags.
 //
+// A turn given skills (ADR-021) gets them as a plugin: before the turn,
+// the adapter writes a plugin named agister into a folder of its own
+// outside the working directory, holding only its manifest
+// (.claude-plugin/plugin.json) and skills/<name>/SKILL.md for each skill,
+// passes it as --plugin-dir, and removes it when the turn ends. Its skills
+// are agister:<name>, so they never meet the repository's or the user's;
+// Skill, granted on every turn, uses them. A turn given none writes and
+// passes nothing.
+//
 // Agister never chooses the session ID; Claude Code reports it. A
 // continuation resumes the reported session in place with --resume, and
 // the turn must report that same session, or it fails. A cost limit is
@@ -19,7 +28,10 @@
 //
 // Tool calls are reported as they start and finish: a tool_use block with
 // its whole input, and the tool_result that answers it. Bash is the tool
-// that runs commands.
+// that runs commands. Edit, Write and MultiEdit write the file their input
+// names as file_path, NotebookEdit the one it names as notebook_path. The
+// tool calls the result lists as permission_denials are reported one by
+// one, each with its tool and its input.
 //
 // Turn status precedence: the runtime's `result` message, then Agister's
 // timeout or cancellation, then the process exit.
@@ -34,11 +46,14 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
+	"path/filepath"
 	"regexp"
 	"slices"
 	"strconv"
 	"strings"
 	"time"
+	"unicode/utf8"
 )
 
 const Contract = "claude-code/3"
@@ -48,6 +63,10 @@ const skill = "Skill"
 
 // commandTool is the tool that runs commands.
 const commandTool = "Bash"
+
+// Plugin is the name of the plugin a turn's skills are given in: each is
+// Plugin:<name>.
+const Plugin = "agister"
 
 // Transport is what the runner needs of a process supervisor: to run the
 // runtime to its exit, passing each line of its stdout to onLine, and to
@@ -96,6 +115,9 @@ type Runner struct {
 	// supervisor.
 	Transport Transport
 	KillGrace time.Duration // zero: the supervisor default
+	// TempDir is the folder a turn's own temporary folder is made in;
+	// empty: the system's temporary directory.
+	TempDir string
 }
 
 func New(command string, transport Transport) *Runner {
@@ -116,11 +138,12 @@ func (r *Runner) Identity(ctx context.Context) (RuntimeIdentity, error) {
 	if version == "" {
 		return RuntimeIdentity{}, fmt.Errorf("unrecognized version output %q", out)
 	}
-	return RuntimeIdentity{Contract: Contract, Version: version, Resume: true, CostLimit: true, ToolCalls: true}, nil
+	return RuntimeIdentity{Contract: Contract, Version: version, Resume: true, CostLimit: true, ToolCalls: true, Skills: true}, nil
 }
 
-// Arguments builds the command line for a turn.
-func Arguments(request TurnRequest) ([]string, error) {
+// Arguments builds the command line for a turn whose skills are in the
+// plugin folder plugin (unused when it has none).
+func Arguments(request TurnRequest, plugin string) ([]string, error) {
 	for _, tool := range request.Primitives {
 		if tool == "" || strings.ContainsAny(tool, ", ") {
 			return nil, fmt.Errorf("invalid tool primitive %q", tool)
@@ -146,6 +169,9 @@ func Arguments(request TurnRequest) ([]string, error) {
 		args = append(args, "--max-budget-usd", strconv.FormatFloat(*request.MaxCostUSD, 'f', -1, 64))
 	}
 	args = append(args, "--strict-mcp-config")
+	if len(request.Skills) > 0 {
+		args = append(args, "--plugin-dir", plugin)
+	}
 	if request.Model != "" {
 		args = append(args, "--model", request.Model)
 	}
@@ -162,7 +188,19 @@ func Arguments(request TurnRequest) ([]string, error) {
 }
 
 func (r *Runner) RunTurn(ctx context.Context, request TurnRequest, sink EventSink) Turn {
-	args, err := Arguments(request)
+	var plugin string
+	if len(request.Skills) > 0 {
+		dir, err := os.MkdirTemp(r.TempDir, "agister-claude-")
+		if err != nil {
+			return failedTurn(ClassInternal, err)
+		}
+		defer os.RemoveAll(dir)
+		if err := WritePlugin(dir, request.Skills); err != nil {
+			return failedTurn(ClassInternal, err)
+		}
+		plugin = dir
+	}
+	args, err := Arguments(request, plugin)
 	if err != nil {
 		return failedTurn(ClassInternal, err)
 	}
@@ -182,11 +220,44 @@ func (r *Runner) RunTurn(ctx context.Context, request TurnRequest, sink EventSin
 			if tool.Started != nil {
 				sink.ToolStarted(*tool.Started)
 			} else {
-				sink.ToolFinished(tool.Finished)
+				sink.ToolFinished(*tool.Finished)
 			}
+		}
+		for _, denial := range state.TakeDenials() {
+			sink.PermissionDenied(denial)
 		}
 	})
 	return state.Reconcile(evidence, len(request.OutputSchema) > 0)
+}
+
+// WritePlugin writes, into the empty folder dir, the plugin a turn's skills
+// are given in: its manifest naming it Plugin, and skills/<name>/SKILL.md
+// for each skill, from its bytes.
+func WritePlugin(dir string, skills []Skill) error {
+	manifest := filepath.Join(dir, ".claude-plugin")
+	if err := os.Mkdir(manifest, 0o700); err != nil {
+		return err
+	}
+	data, _ := json.Marshal(map[string]string{"name": Plugin})
+	if err := os.WriteFile(filepath.Join(manifest, "plugin.json"), append(data, '\n'), 0o600); err != nil {
+		return err
+	}
+	folder := filepath.Join(dir, "skills")
+	if err := os.Mkdir(folder, 0o700); err != nil {
+		return err
+	}
+	for _, skill := range skills {
+		if name := skill.Name; name != filepath.Base(name) || name == "." || name == ".." {
+			return fmt.Errorf("%s cannot give skill %q: not a folder's name", Contract, name)
+		}
+		if err := os.Mkdir(filepath.Join(folder, skill.Name), 0o700); err != nil {
+			return err
+		}
+		if err := os.WriteFile(filepath.Join(folder, skill.Name, "SKILL.md"), skill.Bytes, 0o600); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // Event is a normalized observation from the stream.
@@ -209,13 +280,16 @@ type Stream struct {
 	RateLimit         string // set when the provider rejected a request
 	// tools are the tool calls reduced and not yet taken (TakeTools).
 	tools []Tool
+	// denials are the permission denials reduced and not yet taken
+	// (TakeDenials).
+	denials []PermissionDenial
 }
 
-// Tool is a tool call the stream reported: its start, or the ID of the one
-// that finished.
+// Tool is a tool call the stream reported: its start, or the end of one,
+// with its result.
 type Tool struct {
 	Started  *ToolCall
-	Finished string
+	Finished *ToolResult
 }
 
 // TakeTools returns the tool calls reduced since it was last called, in
@@ -224,6 +298,14 @@ func (s *Stream) TakeTools() []Tool {
 	tools := s.tools
 	s.tools = nil
 	return tools
+}
+
+// TakeDenials returns the permission denials reduced since it was last
+// called, in order.
+func (s *Stream) TakeDenials() []PermissionDenial {
+	denials := s.denials
+	s.denials = nil
+	return denials
 }
 
 func (s *Stream) Reduce(line string) []Event {
@@ -242,6 +324,7 @@ func (s *Stream) Reduce(line string) []Event {
 	case "user":
 		return s.user(message)
 	case "result":
+		s.denials = append(s.denials, denials(exactly(line))...)
 		return s.result(message)
 	case "rate_limit_event":
 		info, _ := message["rate_limit_info"].(map[string]any)
@@ -290,7 +373,7 @@ func (s *Stream) assistant(message map[string]any) []Event {
 			input, _ := json.Marshal(block["input"])
 			id, _ := block["id"].(string)
 			name, _ := block["name"].(string)
-			s.tools = append(s.tools, Tool{Started: &ToolCall{ID: id, Name: name, Input: string(input), Command: name == commandTool}})
+			s.tools = append(s.tools, Tool{Started: &ToolCall{ID: id, Name: name, Input: string(input), Command: name == commandTool, Writes: writes(name, block["input"])}})
 			events = append(events, Event{SourceProtocol, "TOOL_REQUESTED", map[string]any{"tool_use_id": block["id"], "name": block["name"], "input": truncate(string(input), 300)}})
 		case "text":
 			if text, _ := block["text"].(string); strings.TrimSpace(text) != "" {
@@ -308,7 +391,8 @@ func (s *Stream) user(message map[string]any) []Event {
 		if block["type"] == "tool_result" {
 			isError, _ := block["is_error"].(bool)
 			if id, _ := block["tool_use_id"].(string); id != "" {
-				s.tools = append(s.tools, Tool{Finished: id})
+				text, reported := resultText(block["content"])
+				s.tools = append(s.tools, Tool{Finished: finished(id, text, reported)})
 			}
 			events = append(events, Event{SourceProtocol, "TOOL_RESULT", map[string]any{"tool_use_id": block["tool_use_id"], "is_error": isError}})
 		}
@@ -332,6 +416,46 @@ func (s *Stream) result(message map[string]any) []Event {
 		data["permission_denials"] = len(denials)
 	}
 	return append([]Event{{SourceProtocol, kind, data}}, mismatch...)
+}
+
+// writes are the paths a call of the tool name writes, from its input: the
+// one a tool that writes a file names, as it names it; none for any other
+// tool, or an input that names none.
+func writes(name string, input any) []string {
+	var key string
+	switch name {
+	case "Edit", "Write", "MultiEdit":
+		key = "file_path"
+	case "NotebookEdit":
+		key = "notebook_path"
+	default:
+		return nil
+	}
+	fields, _ := input.(map[string]any)
+	if path, _ := fields[key].(string); path != "" {
+		return []string{path}
+	}
+	return nil
+}
+
+// denials are the tool calls a result lists as permission_denials, in
+// order, one for each entry, so their number is the count the turn reports:
+// the entry's tool_name and its tool_input, bounded as a tool call's input
+// is in its event, each empty where the entry has none.
+func denials(result map[string]any) []PermissionDenial {
+	entries, _ := result["permission_denials"].([]any)
+	var denied []PermissionDenial
+	for _, entry := range entries {
+		fields, _ := entry.(map[string]any)
+		denial := PermissionDenial{}
+		denial.Tool, _ = fields["tool_name"].(string)
+		if input, ok := fields["tool_input"]; ok {
+			data, _ := json.Marshal(input)
+			denial.Input = truncate(string(data), 300)
+		}
+		denied = append(denied, denial)
+	}
+	return denied
 }
 
 // Reconcile decides the turn status from the stream and the transport.
@@ -470,6 +594,26 @@ func count(source map[string]any, key string) *int64 {
 	return &n
 }
 
+// resultText is the text of a tool_result block's content: the string it
+// is, or its text blocks joined; reported is false when it has neither.
+func resultText(content any) (text string, reported bool) {
+	switch content := content.(type) {
+	case string:
+		return content, true
+	case []any:
+		var texts []string
+		for _, item := range content {
+			if block, ok := item.(map[string]any); ok && block["type"] == "text" {
+				if text, ok := block["text"].(string); ok {
+					texts = append(texts, text)
+				}
+			}
+		}
+		return strings.Join(texts, "\n"), len(texts) > 0
+	}
+	return "", false
+}
+
 func blocks(message map[string]any) []map[string]any {
 	inner, _ := message["message"].(map[string]any)
 	content, _ := inner["content"].([]any)
@@ -497,4 +641,27 @@ func truncate(text string, max int) string {
 		return text
 	}
 	return text[:max] + "…"
+}
+
+// finished is the end of the call id, with the result's text the stream
+// reported for it, if it reported one: bounded to ToolResultBytes, its head
+// and tail kept, each cut on a rune boundary.
+func finished(id, text string, reported bool) *ToolResult {
+	result := &ToolResult{ID: id, Output: text, Reported: reported}
+	if !reported {
+		result.Output = ""
+		return result
+	}
+	if len(text) <= ToolResultBytes {
+		return result
+	}
+	head, tail := ToolResultBytes/2, len(text)-ToolResultBytes/2
+	for head > 0 && !utf8.RuneStart(text[head]) {
+		head--
+	}
+	for tail < len(text) && !utf8.RuneStart(text[tail]) {
+		tail++
+	}
+	result.Output = text[:head] + "\n…\n" + text[tail:]
+	return result
 }

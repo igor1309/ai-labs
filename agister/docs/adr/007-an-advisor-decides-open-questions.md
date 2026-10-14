@@ -1,6 +1,11 @@
 # ADR-007: An advisor decides open build questions
 
 - **Status:** Accepted
+- **Amended by:** [ADR-031](031-the-judge-rules-on-the-quoted-record.md)
+  (judge items no longer reach the advisor);
+  [ADR-032](032-the-advisor-always-decides.md) (rules 1, 2 and 5: no
+  `owner` answer, the record asked in order, the driver appends the
+  record)
 - **Date:** 2026-10-01
 - **Scope:** who answers a question that stops the work, and where the
   answer is kept
@@ -78,8 +83,7 @@ judge's, a read-only policy, a prompt and an output schema, run once per
 question:
 `agister run advisor --param question=<file> --param revision=<rev>`.
 Whoever acts on the judge's rulings writes the question file, runs the
-advisor and appends the record; `agister/AGENTS.md` says so in place of
-"owner items to the owner".
+advisor and appends the record, in place of "owner items to the owner".
 
 It needs no code. The core knows no advisor and no decision
 ([ADR-001](001-agister-cli-architecture.md) rule 1); the process, prompt and schema are settings (rule 2); an `owner`

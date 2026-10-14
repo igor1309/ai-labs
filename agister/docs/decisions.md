@@ -76,3 +76,163 @@
 - **Decision:** (c). The whole-session guarantee holds for chains made entirely after ADR-013. A legacy chain carries only its latest run's patch, and ADR-013 says so.
 - **Rests on:** D-6
 - **Follow-ups:** none
+
+## D-8: Is ADR-018, edited after its first commit on the unmerged branch, still a draft?
+
+- **Status:** Owner
+- **Asked by:** workflow run 20261003T090214Z-2d9680 (code_review), judge item "Implementation commit rewrites ADR-018 rule 5's exemption wording"; advisor run 20261003T090858Z-c19838 answered `owner`
+- **Question:** does an ADR committed earlier on the same unmerged branch count as a recorded decision?
+- **Options:** (a) no: keep the clarified install/restore exemption as part of ADR-018 before merge; (b) yes: restore the original sentence and record the install/restore exemption as an owner-authored amendment.
+- **Excluded:** (b): an ADR stays a draft until its branch merges to trunk (D-5).
+- **Decision:** (a). ADR-018 rule 5 keeps the install and restore exemption as edited on the branch.
+- **Rests on:** D-5
+- **Follow-ups:** none
+
+## D-9: Do fixed lookup tables count as hidden collaborators?
+
+- **Status:** Owner
+- **Asked by:** workflow run 20261003T093630Z-b601a0 (code_review), judge item "Package-level kind catalogs (blockable, extensions, allKinds) are read without injection"; advisor run 20261003T094142Z-091eb1 answered `owner`
+- **Question:** does the hidden-collaborator rule cover fixed lookup tables?
+- **Options:** (a) leave all three as they are, as constant vocabulary; (b) turn only the new blockable map into a pure lookup function, which leaves it inconsistent with the existing catalogs; (c) turn all three into pure functions, which goes beyond LAB-59 and should be its own deferred item.
+- **Excluded:** (a): a package-level mutable table is a hidden collaborator under the review rule, with no exception recorded. (b): it leaves the catalogs inconsistent.
+- **Decision:** (c), done in LAB-59 rather than deferred: `blockable`, `extensions` and `allKinds` become pure functions.
+- **Rests on:** none
+- **Follow-ups:** none
+
+## D-10: May LAB-66 edit the recorded review prompts?
+
+- **Status:** Owner
+- **Asked by:** workflow run 20261005T120632Z-10c77a (code_review), judge item "The change rewrites six recorded review prompts that are owner-controlled"
+- **Question:** do you approve the LAB-66 policy edits to the six recorded prompts (code-review-tests, -adr, -adversarial, -architecture, -clarity, -judge)?
+- **Options:** (a) approve them as the intended LAB-66 change and keep them; (b) restore the recorded prompts and send the policy changes to the owner as a separate decision; (c) keep some edits and restore the rest.
+- **Excluded:** (b), (c): the edits are the change the owner asked for. LAB-66 is the owner's issue, recommending the tests prompt rewrite; the owner decided that reviewers never run tests and that this rule lives in the reviewer prompts.
+- **Decision:** (a). All six prompt edits stay.
+- **Rests on:** none
+- **Follow-ups:** none
+
+## D-11: How Agister tells that an optional prompt is absent
+
+- **Status:** Owner
+- **Asked by:** workflow run 20261003T130421Z-aa12ef (code_review), judge item "Absence is inferred from listing membership and a name-keyed map, and each edge leaks"; advisor run 20261003T130940Z-6a1ce4 answered `owner`
+- **Question:** should absence of an optional prompt stay "not in the listing" plus a name-keyed map with each edge patched, or should resolution carry a distinguishable not-found result per input?
+- **Options:** (a) keep the listing inference and the name-keyed map; list matching directories, require unique input names, add a listing-error test; (b) resolution carries, per input, a distinguishable not-found result from the read path, so only a genuine not-found in both layers omits the input and no name collision can suppress a different input.
+- **Excluded:** (a): it patches each edge of an inference that keeps leaking, and its unique-name rule reaches beyond ADR-019.
+- **Decision:** (b).
+- **Rests on:** none
+- **Follow-ups:** the LAB-64 round 1 fixes: a directory at an optional prompt's path refuses the call; a duplicate input name cannot drop a present required prompt; a prompt-listing error refuses the call, each with a test.
+
+## D-12: May LAB-67 edit the recorded review prompts?
+
+- **Status:** Owner
+- **Asked by:** workflow run 20261005T124709Z-9e1ae1 (code_review), judge item "Edits to six recorded review prompts need the owner's decision"
+- **Question:** may this change revise the six recorded review prompts (five reviewers' reporting obligations and the judge's responsibilities)?
+- **Options:** (a) authorize revising the six prompts as the candidate does; (b) preserve the prompts as recorded and adjust the schema changes accordingly.
+- **Excluded:** (b): the prompt edits are the change. The owner approved LAB-67, whose scope is these prompts: reviewers report their definition-of-done coverage, and the judge gets a definition of done. Same question as D-10.
+- **Decision:** (a). All six prompt edits stay.
+- **Rests on:** D-10
+- **Follow-ups:** none
+
+## D-13: May LAB-63 edit the recorded architecture prompt and implement instructions?
+
+- **Status:** Owner
+- **Asked by:** workflow run 20261005T131604Z-25a2b5 (code_review), judge item "LAB-63 edits existing agent instructions as its brief requests"; advisor run 20261005T132214Z-bc707a answered `owner`
+- **Question:** do LAB-63's two edits to existing agent instructions stay?
+- **Options:** (a) they stay, and an owner decision is appended to decisions.md as D-12 did for LAB-67; (b) revert both to the recorded text and ship only the new prompts and optional inputs.
+- **Excluded:** (b): the edits are the change LAB-63 asks for.
+- **Decision:** (a). The architecture review prompt loses its ADR-001 rule 15 parenthesis, and the four implement instructions gain the sentence on guidance given as further inputs.
+- **Rests on:** none
+- **Follow-ups:** none
+
+## D-14: May LAB-68 revise the recorded review instructions?
+
+- **Status:** Owner
+- **Asked by:** workflow run 20261005T132619Z-57d1bc (code_review), judge item "Recorded review instructions (six prompts and agister/AGENTS.md) are revised by this change"
+- **Question:** does the owner accept the LAB-68 revisions to the recorded instructions: the judge prompt's severity check, waive ruling and severity-dependent burdens; the "case for value" obligation in the five reviewer prompts; and the waive handling in agister/AGENTS.md?
+- **Options:** (a) accept them as written and record the disposition here, with no code or test change; (b) decline or amend them, so the instruction edits are changed or taken out of this change before merge.
+- **Excluded:** (b): the edits are the change. The owner accepted ADR-020 and approved LAB-68, whose scope is carrying it out in these prompts and in AGENTS.md. Same question as D-10, D-12 and D-13.
+- **Decision:** (a). The revisions stay as written.
+- **Rests on:** D-12, D-13, ADR-020
+- **Follow-ups:** none
+
+## D-15: Keep the persistent per-thread Codex home, or change the mechanism?
+
+- **Status:** Owner
+- **Asked by:** workflow run 20261005T164518Z-570644 (code_review), judge item "Edge-case findings pile up on the persistent per-thread Codex home" (sources 1#1, 2#1, 3#1, 3#2)
+- **Question:** keep the persistent per-thread Codex home and fix each edge, or change the mechanism?
+- **Options:** (a) keep it and land the four fixes; (b) give every Codex call an Agister-owned home, skilled or not, so continuation never meets a thread run in the user's CODEX_HOME and the late refusal goes away; (c) rebuild the home's managed links and skills on every turn from a single function, so fresh and resumed turns share one path.
+- **Excluded:** (b): it changes ADR-021 rule 6, and every Codex call would leave the user's `~/.codex`.
+- **Decision:** (a). The four fixes land; (c)'s one rebuild path is how the stale-links fix is made.
+- **Rests on:** none
+- **Follow-ups:** the Codex continuation refusal moves before checkout and setup; a Calls test asserts the refusal invokes neither.
+
+## D-16: How pages decides a settings skill's existence and layer
+
+- **Status:** Provisional (advisor)
+- **Asked by:** workflow run 20261005T174331Z-cca858 (code_review), judge item "Skill folders are found only from the files the settings endpoint returns, so a broken repo override disappears and home's skill shows as passing" (sources 1#2, 2#1, 3#1, 4#1)
+- **Question:** how does pages decide a settings skill's existence and layer? Today the page rebuilds skill folders from the files /api/settings returns, so an oversized, empty or symlinked repo skill drops out and home's skill shows as passing, while Agister refuses the call.
+- **Options:** (a) feed the existing /api/skills per-layer inventory through page composition into config.js, so existence and layer no longer depend on readable file contents; add an endpoint-to-page regression with a broken repo override over a valid home skill; fixes both the Settings and Knowledge views; substantial, moderate risk. (b) resolve existence and precedence in fromSettings (knowledge.js) from the settings-skill entries, with a page regression for an oversized repo plan over a valid home plan; small, but leaves the Settings view's wrong layer. (c) make the server's skill inventory the single source of skill existence and stop discovering skills through the generic settings traversal; takes in the related fix that /api/settings reads every file under a skill rather than SKILL.md only (ADR-011 rule 9).
+- **Excluded:** (a): it fixes both views, but retains generic skill traversal and leaves the stated reading of other skill files unresolved. Option (c) addresses both through one inventory under the existing reading bounds. (b): it leaves the Settings view reporting the wrong effective layer and retains generic skill traversal. Repository precedence belongs to the skill document, independently of whether its contents can be read.
+- **Decision:** (c) make the server's skill inventory the single source of skill existence and stop discovering skills through the generic settings traversal; takes in the related fix that /api/settings reads every file under a skill rather than SKILL.md only (ADR-011 rule 9).
+- **Rests on:** ADR-021 rule 1, ADR-021 rule 4, ADR-021 Amendments: ADR-011 rule 5, ADR-011 rules 7 and 9, AGENTS.md: Verifying fixes, ADR-017 rules 1 and 5
+- **Follow-ups:** Feed the server's per-layer settings-skill inventory through page composition into config.js and both views. Prove with TestSettingsSkillInventoryPreservesBrokenRepoOverride using t.TempDir(), and an endpoint-to-page regression named BrokenRepoOverrideRemainsEffectiveInSettingsAndKnowledge: oversized, empty, missing-SKILL.md and symlinked repo overrides over valid home skills retain repo precedence and show their failed checks; genuine repo absence selects home. Remove skills from generic /api/settings traversal and obtain skill content through the skill inventory reader alone. Prove with TestSettingsEndpointDoesNotReadSkillFiles and TestSettingsSkillInventoryReadsOnlySKILLMD, using t.TempDir() and an injected reader spy: sibling files are never read, extra files fail the settings skill's checks, and oversized or outside-skill SKILL.md files remain inventoried without being read.
+- **Advisor run:** 20261005T175049Z-fd9d17
+
+## D-17: How the CLI's command table and the parser's flag registrations are kept in agreement
+
+- **Status:** Owner
+- **Asked by:** workflow run 20261006T062639Z-6ae9d0 (code_review), judge item 2#2 "Guard's flag catalog is not checked against the parser's actual flag registrations"; advisor run 20261006T064212Z-a3f5dc returned it to the owner
+- **Question:** how should the command table and the parser's flag registrations be kept in agreement?
+- **Options:** Option A: add an invariant test that every flag in each `Commands()` entry is accepted by the real parser registration. Option B: derive both the table's flags and the FlagSet registrations from one source in cli.go, so they cannot differ. Option C: waive, accepting that a table typo would be caught at runtime by the parser's usage error.
+- **Excluded:** B: a larger change to cli.go than the gap needs. C: leaves a table typo unseen until a command line uses the flag.
+- **Decision:** Option A: an invariant test that every flag in each `Commands()` entry, and every global flag, is registered with the real parser.
+- **Rests on:** none
+- **Follow-ups:** a test in `internal/cli` that fails when a `Commands()` or `GlobalFlags()` entry names a flag the parser's FlagSet does not register.
+
+## D-18: Accept LAB-88's edits to the agent instructions
+
+- **Status:** Confirmed
+- **Asked by:** code_review workflow run 20261006T132134Z-1984da, judge item 5 (sources 4#1)
+- **Question:** do you accept the changes to agent instructions in this change? These are:
+  - `agister/AGENTS.md`: a change to the CLI or settings is done only when the skill, README, diagrams and Pages match, and its issue names these gates;
+  - `agister/skills/agister/SKILL.md`: do not apply an in-place run's patch again; do not change the worktree while a call runs.
+- **Options:** (a) accept and record the disposition in agister/docs/decisions.md; (b) decline and restore the original text; (c) accept some of the edits and restore the rest.
+- **Excluded:** (b), (c): the owner asked for both edits directly in the LAB-88 session (2026-10-06): the AGENTS.md done gate ("this branch"), and the caller skill update as a done gate of LAB-88.
+- **Decision:** (a) accept and record the disposition in agister/docs/decisions.md.
+- **Rests on:** none
+- **Follow-ups:** none
+- **Confirmed:** by the owner, 2026-10-06, after code_review run 20261006T143919Z-a1b768 item 2 asked whether D-18 was the owner's own decision.
+
+## D-19: Accept LAB-43's edits to the caller skill
+
+- **Status:** Owner
+- **Asked by:** code_review workflow run 20261006T192743Z-715c9c, judge item 4 "The change edits the existing caller skill (SKILL.md)"; advisor run 20261006T193619Z-89fb0f answered `owner`
+- **Question:** do the SKILL.md edits stay in this change?
+- **Options:** (a) restore the three hunks (lines 53, 184, 190) here and make the instruction change separately as the owner's decision, accepting that the skill describes the old behaviour until then; (b) approve the edits as part of this change, as the owner's decision on the instruction.
+- **Excluded:** (a): the skill would describe the old behaviour, against the done gate D-18 confirmed.
+- **Decision:** (b) approve the edits as part of this change.
+- **Rests on:** D-18
+- **Follow-ups:** none
+
+## D-20: LAB-245: is a third round of ValidName forwarder detection worth doing?
+
+- **Status:** Provisional (advisor)
+- **Asked by:** Orchestrator, Multica issue LAB-245, on code_review run 20261013T084251Z-c55b10 (2#1 to 5#1)
+- **Question:** LAB-245 moves `ValidName` from `internal/domain/definition` to `internal/domain/document` (goal: `agister/testdata/briefs/lab-245-goal.md`). Criterion 2: "no alias, wrapper or variable forwards to it". Criterion 5: `TestTheParserDeclaresNoneOfTheDocumentVocabulary` fails if the parser declares `ValidName` or a forwarder to it. The move itself was clean in the first review. Since then each review has ruled a minor "fix" on the AST guard (`internal/archtest/formats_test.go`), each a new forwarder shape: 1. Review `20261013T072247Z-f4fd28`: a renamed forwarder (variable or wrapper under another name). Fixed. 2. Review `20261013T082500Z-fc61e8`: a wrapper that returns an unchanged local or named result; also add an `app` guard. Fixed. 3. Review `20261013T084251Z-c55b10` (now): calls through local function aliases, through declarations, assignments, copies and reassignment. No forwarder exists in the code. These are gaps in what the test could detect. A static AST guard cannot be complete: method values, struct fields, closures over a captured func value, generics and reflect are all further shapes. Fix round 3, or waive it and close the guard's scope? If waived, on what basis, and what does the PR record? If fixed, where does it stop, so that round 4 is not another shape? Consider the root AGENTS.md ("a check that fails or is slow is kept: cut the work it checks, do not loosen the check") and the repository's rules on tests and seams.
+- **Options:** 1. Fix round 3 2. waive it and close the guard's scope
+- **Excluded:** waive it and close the guard's scope: Closing scope to exclude local aliases would qualify LAB-245 criteria 2 and 5 without a supporting recorded decision, contrary to ADR-032 rule 1. ADR-031 rule 2 says, "An unsettled reading is never a reason to `waive`; `waive` weighs presented cost against presented benefit and nothing else." ADR-020 permits a minor waiver when presented cost exceeds presented benefit; that case is not established here. Root AGENTS.md's rule concerns failing or slow checks, so it does not prohibit every waiver, but it supplies no authority to weaken this required guard.
+- **Decision:** Fix round 3. Criterion 2 settles the direction: "Every caller (the parser, the adapters and `app`) names `document.ValidName`." Enforce this directly in the guarded packages: reject references to the imported function used as a function value, while preserving the existing forwarding-wrapper checks. This closes the alias acquisition route without tracking declarations, copies, reassignment, captured function values or fields individually. Keep the current checks and fixture assertions. The stopping point is enforcement of that source-level invariant, with ordinary direct calls permitted; do not claim a proof of arbitrary Go semantic equivalence. No recorded rule guarantees immunity from a later concrete defect. ADR-020 rule 3 says, "When the presented case leaves benefit and cost equal or unresolved, the presumption stands." The question establishes incompleteness, but does not establish that this bounded fix costs more than its benefit. Earlier repair effort is sunk.
+- **Rests on:** agister/testdata/briefs/lab-245-goal.md: Done when 2, 3 and 5, AGENTS.md: Fixing a problem; Verifying fixes, agister/AGENTS.md: full check, agister/docs/adr/020-the-judge-weighs-the-presented-cost-and-benefit-of-a-fix.md: rules 1, 3 and 5, agister/docs/adr/031-the-judge-rules-on-the-quoted-record.md: rules 1 and 2, agister/docs/adr/032-the-advisor-always-decides.md: rules 1 and 5, agister/docs/adr/007-an-advisor-decides-open-questions.md: rules 3 and 4, agister/docs/adr/017-tests-fake-at-seams.md: decision and rule 5, agister/docs/decisions.md: D-14, agister/internal/archtest/formats_test.go
+- **Follow-ups:** In internal/archtest/formats_test.go, reject taking the imported document.ValidName as a function value in definition and app, preserving import identity, shadowing distinctions, parenthesized direct calls and existing wrapper detection. Prove the class with a committed TestValidNameFunctionValuesAreRejected using t.TempDir(): initialized and separately assigned aliases, copies, reassignment, and function literals in both packages; genuine direct calls and unrelated or shadowed selectors pass. Keep TestAVocabularyNameTheParserDeclaresIsFound and TestAValidNameForwarderInAppIsFound proving their existing cases, alongside TestTheParserDeclaresNoneOfTheDocumentVocabulary and TestAppDeclaresNoValidNameForwarder. The directory-based helper already supplies the fixture seam; no production seam is needed. Run the targeted archtest tests and agister/scripts/test.sh after implementation, retaining race checks and timeouts. The driver appends this advice unedited as a Provisional (advisor) record and lists it in the PR. The PR records round 3 as fixed, the direct-call enforcement and fixture coverage, and the absence of any claim of exhaustive semantic detection. It grants no blanket waiver for future findings.
+- **Advisor run:** 20261013T085438Z-14995d
+
+## D-21: LAB-245: fix or waive the round-5 guard finding?
+
+- **Status:** Provisional (advisor)
+- **Asked by:** Orchestrator, Multica issue LAB-245, on code_review run 20261013T113406Z-249c47 (2#1, 3#1, 5#1)
+- **Question:** Fix it (dataflow-ish detection of an unchanged result through locals and named results), or waive it as beyond the source-level guard the round-3 ruling bounded? If waive, say what the PR records. If fix, say where it stops.
+- **Options:** 1. Fix it (dataflow-ish detection of an unchanged result through locals and named results) 2. waive it as beyond the source-level guard the round-3 ruling bounded
+- **Excluded:** waive it as beyond the source-level guard the round-3 ruling bounded: The goal requires the guard to fail for “ValidName or a forwarder to it.” ADR-023 rule 2 says “A brief's claims are not binding”; ADR-026 rule 9 says “A step brief's claims are testimony.” Round 4's “whole contract” claim therefore cannot narrow that requirement. The round-3 brief explicitly says “Keep the existing wrapper detection,” which already covered unchanged locals and named results. Restoring that bounded coverage does not require exhaustive semantic detection. The earlier ruling grants no blanket waiver, and ADR-020 rule 1 says “Effort already spent is sunk and never counts.”
+- **Decision:** Fix it (dataflow-ish detection of an unchanged result through locals and named results)
+- **Rests on:** AGENTS.md: Fixing a problem; Verifying fixes, agister/AGENTS.md: full verification check, agister/docs/adr/023-reviewers-know-the-goal.md rule 2, agister/docs/adr/026-the-brief-is-a-runs-input-contract.md rules 2, 4 and 9, agister/docs/adr/020-the-judge-weighs-the-presented-cost-and-benefit-of-a-fix.md rules 1 and 3, agister/docs/adr/032-the-advisor-always-decides.md rules 1, 2 and 5, agister/testdata/briefs/lab-245-goal.md Done when 2, 3 and 5, agister/testdata/briefs/lab-245-review-2.md Acts on, agister/testdata/briefs/lab-245-review-3.md Acts on: account of advisor run 20261013T085438Z-14995d and preservation of wrapper detection, agister/testdata/briefs/lab-245-review-4.md Constraints, agister/internal/archtest/formats_test.go: current fixtures and history of removed wrapper coverage
+- **Follow-ups:** Fix the guard in LAB-245's PR. Restore bounded, function-local analysis of straight-line forwarding through declarations, assignments, copies and named results, including explicit and bare returns, for function declarations and literals. Apply it in definition, app and adapter subpackages. Prove it with a committed TestUnchangedValidNameResultsAreRejected using t.TempDir() fixtures and connect the detection to TestTheParserDeclaresNoneOfTheDocumentVocabulary and the app/adapters guard. Stop at that bounded analysis: no control-flow joins, loops, pointer or field tracking, interprocedural analysis, or semantic-equivalence claims. Preserve import and lexical identity, invalidate changed results, and keep ordinary local validation allowed. TestUnchangedValidNameResultsAreRejected must include passing cases for changed results, ordinary local use, unrelated imports and shadowed identifiers. Keep TestReturnedValidNameCallsAreFound and TestValidNameFunctionValuesAreRejected proving the existing source rules. Correct the guard's comment and the next step brief to state this boundary; remove the claim that round 4's two rules exhaust the goal. Later findings receive individual dispositions, without a blanket waiver. Run agister/scripts/test.sh, including the new regression test and existing architecture tests. The driver appends this decision unedited to agister/docs/decisions.md and lists it in the PR. The PR records the restored coverage and its explicit limits.
+- **Advisor run:** 20261013T113814Z-b7db45

@@ -14,18 +14,53 @@
 // limit cost. The usage turn.completed reports is the thread's, counting
 // the turns it resumed (observed live with codex-cli 0.159.2).
 //
+// A turn given skills (ADR-021) runs Codex with CODEX_HOME set to a home
+// of its thread's: Codex takes no skill folder, loads skills from
+// $CODEX_HOME/skills, and resumes a thread only with the CODEX_HOME it ran
+// in. A fresh thread whose turn names skills gets a new home under Homes,
+// holding links to the user's auth.json, AGENTS.md and AGENTS.override.md
+// where they exist, and skills/: a link to each entry of the user's
+// $CODEX_HOME/skills but .system, which Codex writes into the home itself,
+// and the turn's skills, <home>/skills/<name>/SKILL.md from their bytes. A
+// user's skill named as one of the turn's is linked as <name>.user, a
+// folder name the naming rule of settings rejects, so no turn's skill can
+// take it: both are given, each with its own front matter (ADR-021 rule
+// 7). After the turn the home is named by the thread Codex reported, as
+// Pi's sessions are, or removed when it reported none; a home that cannot
+// be so named fails the turn, naming where it stays. A turn that resumes
+// a thread whose home is under Homes runs with it, made ready as a fresh
+// one is, whatever else Codex keeps there: the links to the user's files
+// as the user's CODEX_HOME holds them now, and skills/ rebuilt; a skills/
+// that is not a folder, a link among them, is removed, never followed; a
+// home under the thread's name that is not a folder, a link among them,
+// fails the turn before Codex starts. A
+// thread with no home there ran in the user's CODEX_HOME, where a turn's
+// skills cannot be given, so a turn naming skills is refused before Codex
+// starts; Admit refuses it by the same rule before the call has any
+// effect. Every other turn runs with the user's CODEX_HOME, its
+// environment unchanged. argv is the same either way.
+//
 // Codex reports no cost. The thread's cost, every turn it had, is
 // ccusage's: `ccusage codex session --json` prices each session from its
 // rollout (observed with ccusage 20.0.26), read after the turn within
-// what is left of the turn's timeout. The lookup is supervised as the
-// runtime process is: its group is on record, and ended on timeout or
-// cancellation. A lookup that fails leaves the cost unknown, and nothing
-// else about the turn.
+// what is left of the turn's timeout, with the CODEX_HOME the turn ran
+// with. The lookup is supervised as the runtime process is: its group is
+// on record, and ended on timeout or cancellation. A lookup that fails
+// leaves the cost unknown, and nothing else about the turn.
 //
 // Tool calls are reported as they start and finish: item.started and
 // item.completed of a command execution, file change, MCP call or web
-// search, with the item's whole input. A command execution is the tool that
-// runs commands.
+// search, with the item's whole input, which identifies the call. A command
+// execution is the tool that runs commands; a file change writes the path of
+// each of its changes. A web search's item.started
+// carries an empty query (observed 2026-10-07): the query is on
+// item.completed only. Such a search is not reported at its start but when
+// its item completes, started and finished together, with the completed
+// item's input: its query, and its action where that says more than a search
+// for the query, as an opened page does. One whose start carries a query is
+// reported at its start, and not again when it completes.
+// Codex's stream lists no tool call it refused for want of a permission, so
+// none is reported.
 //
 // Only turn.completed and turn.failed decide a turn. Top-level `error`
 // events and error items occur mid-turn (reconnects, transport fallback)
@@ -43,11 +78,13 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
 	"time"
+	"unicode/utf8"
 )
 
 const Contract = "codex/2"
@@ -64,9 +101,12 @@ type Transport interface {
 
 // Spec is the process a turn runs.
 type Spec struct {
-	Command   string
-	Args      []string
-	Dir       string
+	Command string
+	Args    []string
+	Dir     string
+	// Env is added to the environment the process inherits, as
+	// "KEY=value"; it replaces an inherited variable of the same name.
+	Env       []string
 	Stdin     string
 	Timeout   time.Duration
 	KillGrace time.Duration // zero: the transport's default
@@ -101,6 +141,13 @@ type Runner struct {
 	// supervisor.
 	Transport Transport
 	KillGrace time.Duration
+	// Homes is the directory the Codex homes of threads given skills are
+	// kept under, one per thread, named by its ID; empty:
+	// agister-codex-homes in the temporary directory.
+	Homes string
+	// UserHome tells the user's own CODEX_HOME, whose files and skills a
+	// home of Agister's links to; nil: the user has none to link.
+	UserHome func() (string, error)
 	// Sessions lists Codex sessions with their costs, as
 	// `ccusage codex session --json` does; nil: the cost is unknown.
 	Sessions Sessions
@@ -108,10 +155,11 @@ type Runner struct {
 	Now func() time.Time
 }
 
-// Sessions returns the output of `ccusage codex session --json`, ending
-// the lookup once timeout passes or ctx ends. It reports its process to
-// sink as the runtime's is reported.
-type Sessions func(ctx context.Context, timeout time.Duration, sink LookupSink) ([]byte, error)
+// Sessions returns the output of `ccusage codex session --json` with
+// CODEX_HOME set to home (empty: the user's own, the environment
+// unchanged), ending the lookup once timeout passes or ctx ends. It
+// reports its process to sink as the runtime's is reported.
+type Sessions func(ctx context.Context, timeout time.Duration, home string, sink LookupSink) ([]byte, error)
 
 // LookupSink is what a lookup reports to: its events and its process, as
 // the turn's sink takes them. A lookup has no raw output to report.
@@ -139,11 +187,12 @@ type Execution interface {
 // supervisor's default). Anything but a clean exit is an error. Its output
 // is the listing, not the turn's raw output.
 func CCUsage(execution Execution, command string, killGrace time.Duration) Sessions {
-	return func(ctx context.Context, timeout time.Duration, sink LookupSink) ([]byte, error) {
+	return func(ctx context.Context, timeout time.Duration, home string, sink LookupSink) ([]byte, error) {
 		var listing bytes.Buffer
 		evidence := execution.Run(ctx, Spec{
 			Command:   command,
 			Args:      []string{"codex", "session", "--json"},
+			Env:       homeEnv(home),
 			Timeout:   timeout,
 			KillGrace: killGrace,
 		}, lookupSink{sink}, func(line string) {
@@ -213,7 +262,7 @@ func (r *Runner) Identity(ctx context.Context) (RuntimeIdentity, error) {
 	if version == "" {
 		return RuntimeIdentity{}, fmt.Errorf("unrecognized version output %q", out)
 	}
-	return RuntimeIdentity{Contract: Contract, Version: version, Resume: true, ToolCalls: true}, nil
+	return RuntimeIdentity{Contract: Contract, Version: version, Resume: true, ToolCalls: true, Skills: true}, nil
 }
 
 // Arguments builds the command line for a turn.
@@ -277,11 +326,17 @@ func (r *Runner) RunTurn(ctx context.Context, request TurnRequest, sink EventSin
 	if err != nil {
 		return failedTurn(ClassInternal, err)
 	}
+	root := r.homes()
+	home, fresh, fault := r.home(root, request)
+	if fault != nil {
+		return Turn{Status: StatusOf(fault.Class), Error: fault}
+	}
 	state := &Stream{ResumedThreadID: request.ResumeSessionID}
 	evidence := r.Transport.Run(ctx, Spec{
 		Command:   r.Command,
 		Args:      args,
 		Dir:       request.Cwd,
+		Env:       homeEnv(home),
 		Stdin:     Prompt(request),
 		Timeout:   request.Timeout,
 		KillGrace: r.KillGrace,
@@ -293,25 +348,325 @@ func (r *Runner) RunTurn(ctx context.Context, request TurnRequest, sink EventSin
 			if tool.Started != nil {
 				sink.ToolStarted(*tool.Started)
 			} else {
-				sink.ToolFinished(tool.Finished)
+				sink.ToolFinished(*tool.Finished)
 			}
 		}
+		// Permission denials would be reported here: Codex's stream has
+		// none, in its events or at the turn's end.
 	})
 	turn := state.Reconcile(evidence, schemaPath != "")
-	r.cost(ctx, &turn, request.ResumeSessionID, deadline.Sub(now()), sink)
+	if fresh {
+		kept, err := keep(root, home, state.ThreadID)
+		if err != nil {
+			message := fmt.Sprintf("thread %s's CODEX_HOME stays at %s, where no turn resumes it: %v", state.ThreadID, home, err)
+			if turn.Error != nil {
+				message += "; the turn: " + turn.Error.String()
+			}
+			turn.Status, turn.Error = Failed, Fault(ClassInternal, "%s", message)
+			return turn
+		}
+		if home = kept; home == "" {
+			// No thread is left to price.
+			return turn
+		}
+	}
+	r.cost(ctx, &turn, request.ResumeSessionID, home, deadline.Sub(now()), sink)
 	return turn
 }
 
+// userFiles are the files of the user's CODEX_HOME a home of Agister's
+// links to, where they exist.
+func userFiles() []string { return []string{"auth.json", "AGENTS.md", "AGENTS.override.md"} }
+
+// systemSkills is the folder of a home's skills Codex writes itself.
+const systemSkills = ".system"
+
+// homeEnv is the environment a process runs with in the CODEX_HOME home;
+// none for the user's own (empty).
+func homeEnv(home string) []string {
+	if home == "" {
+		return nil
+	}
+	return []string{"CODEX_HOME=" + home}
+}
+
+// home is the CODEX_HOME a turn runs with, made ready for it under root:
+// empty for the user's own. A fresh thread given skills gets a new one,
+// which fresh reports; a resumed thread keeps the one it ran in; either is
+// made ready the same way (prepare). A fault ends the turn before Codex
+// starts: a thread ID that cannot name a folder, a home that cannot be
+// made, or skills for a thread that ran in the user's CODEX_HOME, which
+// refuses the turn.
+func (r *Runner) home(root string, request TurnRequest) (home string, fresh bool, fault *Error) {
+	id := request.ResumeSessionID
+	if id == "" {
+		if len(request.Skills) == 0 {
+			return "", false, nil
+		}
+		if err := os.MkdirAll(root, 0o700); err != nil {
+			return "", false, Fault(ClassInternal, "%v", err)
+		}
+		dir, err := os.MkdirTemp(root, "new-")
+		if err != nil {
+			return "", false, Fault(ClassInternal, "%v", err)
+		}
+		if err := r.prepare(dir, request.Skills); err != nil {
+			os.RemoveAll(dir)
+			return "", false, Fault(ClassInternal, "%v", err)
+		}
+		return dir, true, nil
+	}
+	dir, fault := threadHome(root, id, request.Skills)
+	if dir == "" || fault != nil {
+		return "", false, fault
+	}
+	if err := r.prepare(dir, request.Skills); err != nil {
+		return "", false, Fault(ClassInternal, "%v", err)
+	}
+	return dir, false, nil
+}
+
+// Admit tells, before a call has any effect, whether a turn that resumes
+// thread request.ResumeSessionID with request.Skills can run: by the rule
+// home applies (threadHome), under the same root. A fresh thread can.
+func (r *Runner) Admit(request TurnRequest) *Error {
+	if request.ResumeSessionID == "" {
+		return nil
+	}
+	_, fault := threadHome(r.homes(), request.ResumeSessionID, request.Skills)
+	return fault
+}
+
+// homes is the directory the homes of threads given skills are kept under.
+func (r *Runner) homes() string {
+	if r.Homes == "" {
+		return filepath.Join(os.TempDir(), "agister-codex-homes")
+	}
+	return r.Homes
+}
+
+// threadHome is the home under root resumed thread id ran in; empty when
+// it ran in the user's CODEX_HOME, which a turn with skills cannot resume:
+// the turn is refused. A thread ID that cannot name a folder, or a home
+// under its name that cannot be read or is not a folder, is a fault.
+func threadHome(root, id string, skills []Skill) (string, *Error) {
+	if !validID(id) {
+		return "", Fault(ClassRuntimeError, "%s cannot resume thread %q: not a thread ID", Contract, id)
+	}
+	dir := filepath.Join(root, id)
+	info, err := os.Lstat(dir)
+	switch {
+	case errors.Is(err, fs.ErrNotExist) && len(skills) == 0:
+		return "", nil
+	case errors.Is(err, fs.ErrNotExist):
+		names := make([]string, len(skills))
+		for i, skill := range skills {
+			names[i] = skill.Name
+		}
+		return "", Fault(ClassRefused, "thread %s ran in the user's CODEX_HOME, where a call's skills cannot be given (ADR-021): %s; a fresh run gets them",
+			id, strings.Join(names, ", "))
+	case err != nil:
+		return "", Fault(ClassInternal, "%v", err)
+	case !info.IsDir():
+		return "", Fault(ClassInternal, "%s cannot resume thread %s: %s is not its CODEX_HOME", Contract, id, dir)
+	}
+	return dir, nil
+}
+
+// userHome is the user's own CODEX_HOME, absolute; empty when the runner
+// has none.
+func (r *Runner) userHome() (string, error) {
+	if r.UserHome == nil {
+		return "", nil
+	}
+	home, err := r.UserHome()
+	if err == nil && home == "" {
+		err = errors.New("it is empty")
+	}
+	if err != nil {
+		return "", fmt.Errorf("the user's CODEX_HOME is unknown: %w", err)
+	}
+	return filepath.Abs(home)
+}
+
+// prepare makes home, new or a resumed thread's, a Codex home of the
+// user's and of a turn's skills, before every turn: its links to the
+// user's files (linkUserFiles) and its skills/ (giveSkills).
+func (r *Runner) prepare(home string, skills []Skill) error {
+	user, err := r.userHome()
+	if err != nil {
+		return err
+	}
+	if err := linkUserFiles(home, user); err != nil {
+		return err
+	}
+	return giveSkills(home, user, skills)
+}
+
+// linkUserFiles makes the links of home to the user's files (userFiles) as
+// the user's CODEX_HOME holds them now: a link already at one of their
+// names goes, and one is made to each that exists. Anything else at one of
+// their names, a file Codex wrote itself, is left as it is. user empty:
+// no link is made.
+func linkUserFiles(home, user string) error {
+	for _, name := range userFiles() {
+		at := filepath.Join(home, name)
+		info, err := os.Lstat(at)
+		switch {
+		case errors.Is(err, fs.ErrNotExist):
+		case err != nil:
+			return err
+		case info.Mode()&fs.ModeSymlink == 0:
+			continue
+		default:
+			if err := os.Remove(at); err != nil {
+				return err
+			}
+		}
+		if user == "" {
+			continue
+		}
+		target := filepath.Join(user, name)
+		if _, err := os.Stat(target); errors.Is(err, fs.ErrNotExist) {
+			continue
+		} else if err != nil {
+			return err
+		}
+		if err := os.Symlink(target, at); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// giveSkills rebuilds the skills/ of home for a turn: a skills/ that is not
+// a folder is removed, not followed, and a folder made; every entry but
+// .system, Codex's own, goes; then each entry of the user's <user>/skills
+// but .system is linked, under its own name or, when it is named as one of
+// the turn's skills, under userName's; and each of the turn's is written,
+// <name>/SKILL.md from its bytes. user empty: nothing of the user's is
+// linked.
+func giveSkills(home, user string, skills []Skill) error {
+	given := map[string]bool{}
+	for _, skill := range skills {
+		if name := skill.Name; name != filepath.Base(name) || name == "." || name == ".." {
+			return fmt.Errorf("%s cannot give skill %q: not a folder's name", Contract, name)
+		}
+		given[skill.Name] = true
+	}
+	dir := filepath.Join(home, "skills")
+	if err := ownFolder(dir); err != nil {
+		return err
+	}
+	held, err := os.ReadDir(dir)
+	if err != nil {
+		return err
+	}
+	for _, entry := range held {
+		if entry.Name() != systemSkills {
+			if err := os.RemoveAll(filepath.Join(dir, entry.Name())); err != nil {
+				return err
+			}
+		}
+	}
+	if user != "" {
+		mine, err := os.ReadDir(filepath.Join(user, "skills"))
+		if err != nil && !errors.Is(err, fs.ErrNotExist) {
+			return err
+		}
+		taken := map[string]bool{}
+		for _, entry := range mine {
+			taken[entry.Name()] = true
+		}
+		for _, entry := range mine {
+			name := entry.Name()
+			if name == systemSkills {
+				continue
+			}
+			link := name
+			if given[name] {
+				link = userName(name, func(name string) bool { return taken[name] || given[name] })
+			}
+			if err := os.Symlink(filepath.Join(user, "skills", name), filepath.Join(dir, link)); err != nil {
+				return err
+			}
+		}
+	}
+	for _, skill := range skills {
+		if err := os.Mkdir(filepath.Join(dir, skill.Name), 0o700); err != nil {
+			return err
+		}
+		if err := os.WriteFile(filepath.Join(dir, skill.Name, "SKILL.md"), skill.Bytes, 0o600); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// ownFolder makes dir a folder the adapter owns: one that is there is
+// kept; anything else at dir, a link to the user's skills among them, is
+// removed itself, never what it links to, and a folder made in its place.
+func ownFolder(dir string) error {
+	info, err := os.Lstat(dir)
+	switch {
+	case errors.Is(err, fs.ErrNotExist):
+	case err != nil:
+		return err
+	case info.IsDir():
+		return nil
+	default:
+		if err := os.Remove(dir); err != nil {
+			return err
+		}
+	}
+	return os.Mkdir(dir, 0o700)
+}
+
+// userName is the folder name a user's skill named as one of a turn's is
+// linked under: <name>.user, which the naming rule of settings rejects, so
+// no turn's skill takes it; another .user is added while taken says the
+// name is in use.
+func userName(name string, taken func(string) bool) string {
+	link := name + ".user"
+	for taken(link) {
+		link += ".user"
+	}
+	return link
+}
+
+// keep names a fresh thread's home after the thread Codex reported, for
+// the turns that resume it, and returns where the home is; it removes the
+// home, returning empty, when Codex reported no thread, or one that
+// cannot name a folder. A home that cannot be named so stays where it is,
+// its thread cannot be resumed with it, and the error says why.
+func keep(root, home, id string) (string, error) {
+	if !validID(id) {
+		os.RemoveAll(home)
+		return "", nil
+	}
+	named := filepath.Join(root, id)
+	if err := os.Rename(home, named); err != nil {
+		return home, err
+	}
+	return named, nil
+}
+
+var idPattern = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._-]*$`)
+
+// validID reports whether id can name a folder under the homes root.
+func validID(id string) bool { return idPattern.MatchString(id) }
+
 // cost sets the thread's cost on a turn that reported the thread it ran
-// on, looking it up within left, what remains of the turn's timeout; a
+// on, looking it up with the CODEX_HOME home the turn ran with (empty:
+// the user's own) within left, what remains of the turn's timeout; a
 // failed, timed-out or cancelled lookup leaves it unknown, and none is
 // started once the turn's time is up or its call is cancelled.
-func (r *Runner) cost(ctx context.Context, turn *Turn, resumed string, left time.Duration, sink LookupSink) {
+func (r *Runner) cost(ctx context.Context, turn *Turn, resumed, home string, left time.Duration, sink LookupSink) {
 	thread := turn.ProviderSessionID
 	if r.Sessions == nil || thread == "" || resumed != "" && thread != resumed || left <= 0 || ctx.Err() != nil {
 		return
 	}
-	listing, err := r.Sessions(ctx, left, sink)
+	listing, err := r.Sessions(ctx, left, home, sink)
 	if err != nil {
 		return
 	}
@@ -343,13 +698,16 @@ type Stream struct {
 	Usage           map[string]any
 	// tools are the tool calls reduced and not yet taken (TakeTools).
 	tools []Tool
+	// searches are the web searches reported at their start and not yet
+	// completed, by item ID: any other is reported when it completes.
+	searches map[string]bool
 }
 
-// Tool is a tool call the stream reported: its start, or the ID of the one
-// that finished.
+// Tool is a tool call the stream reported: its start, or the end of one,
+// with its result.
 type Tool struct {
 	Started  *ToolCall
-	Finished string
+	Finished *ToolResult
 }
 
 // TakeTools returns the tool calls reduced since it was last called, in
@@ -378,12 +736,25 @@ func (s *Stream) Reduce(line string) []Event {
 		item, _ := exactly(line)["item"].(map[string]any)
 		if name := toolName(item); name != "" {
 			id, _ := item["id"].(string)
-			s.tools = append(s.tools, Tool{Started: &ToolCall{ID: id, Name: name, Input: wholeInput(item), Command: item["type"] == "command_execution"}})
-			return []Event{{SourceProtocol, "TOOL_REQUESTED", map[string]any{"tool_use_id": item["id"], "name": name, "input": toolInput(item)}}}
+			if item["type"] == "web_search" {
+				// A search without its query is no call to tell from another:
+				// it is reported when its item completes (itemCompleted).
+				if query, _ := item["query"].(string); query == "" {
+					return nil
+				}
+				if s.searches == nil {
+					s.searches = map[string]bool{}
+				}
+				s.searches[id] = true
+			}
+			input := reportedInput(item)
+			// File changes report kinds and paths, without the edit content.
+			s.tools = append(s.tools, Tool{Started: &ToolCall{ID: id, Name: name, Input: input, InputIncomplete: item["type"] == "file_change", Command: item["type"] == "command_execution", Writes: writes(item)}})
+			return []Event{requested(item, name, input)}
 		}
 	case "item.completed":
 		item, _ := message["item"].(map[string]any)
-		return s.itemCompleted(item)
+		return s.itemCompleted(item, line)
 	case "error":
 		s.LastError = fmt.Sprint(message["message"])
 		return []Event{{SourceProtocol, "PROVIDER_ERROR", map[string]any{"message": truncate(s.LastError, 300)}}}
@@ -403,8 +774,7 @@ func (s *Stream) Reduce(line string) []Event {
 }
 
 // exactly decodes a line Reduce has decoded, keeping its numbers as
-// written: a tool's input is the same text only for the same input, so a
-// large integer must not round into another.
+// written so distinct large integers remain distinct in reported inputs.
 func exactly(line string) map[string]any {
 	decoder := json.NewDecoder(strings.NewReader(line))
 	decoder.UseNumber()
@@ -413,7 +783,8 @@ func exactly(line string) map[string]any {
 	return message
 }
 
-func (s *Stream) itemCompleted(item map[string]any) []Event {
+// itemCompleted reduces the completed item of line.
+func (s *Stream) itemCompleted(item map[string]any, line string) []Event {
 	switch item["type"] {
 	case "agent_message":
 		text, _ := item["text"].(string)
@@ -422,14 +793,29 @@ func (s *Stream) itemCompleted(item map[string]any) []Event {
 	case "error":
 		return []Event{{SourceProtocol, "PROVIDER_ERROR", map[string]any{"message": truncate(fmt.Sprint(item["message"]), 300)}}}
 	case "command_execution", "file_change", "mcp_tool_call", "web_search":
-		if id, _ := item["id"].(string); id != "" {
-			s.tools = append(s.tools, Tool{Finished: id})
+		var events []Event
+		id, _ := item["id"].(string)
+		if item["type"] == "web_search" {
+			// A search not reported at its start starts here, with the input
+			// its completed item carries.
+			if !s.searches[id] {
+				whole, _ := exactly(line)["item"].(map[string]any)
+				name, input := toolName(item), searchInput(whole)
+				s.tools = append(s.tools, Tool{Started: &ToolCall{ID: id, Name: name, Input: input}})
+				events = append(events, requested(item, name, input))
+			}
+			delete(s.searches, id)
+		}
+		if id != "" {
+			// Only a command's item carries its output.
+			output, reported := item["aggregated_output"].(string)
+			s.tools = append(s.tools, Tool{Finished: finished(id, output, reported)})
 		}
 		failed := item["status"] == "failed"
 		if code, ok := item["exit_code"].(float64); ok && code != 0 {
 			failed = true
 		}
-		return []Event{{SourceProtocol, "TOOL_RESULT", map[string]any{"tool_use_id": item["id"], "is_error": failed}}}
+		return append(events, Event{SourceProtocol, "TOOL_RESULT", map[string]any{"tool_use_id": item["id"], "is_error": failed}})
 	}
 	return nil
 }
@@ -524,13 +910,31 @@ func toolName(item map[string]any) string {
 	return ""
 }
 
-// toolInput is the item's input, bounded, as an event quotes it.
-func toolInput(item map[string]any) string {
-	return truncate(wholeInput(item), 300)
+// writes are the paths an item writes: for a file change, the path of each
+// of its changes, in order, as Codex names it; none for any other item.
+func writes(item map[string]any) []string {
+	if item["type"] != "file_change" {
+		return nil
+	}
+	changes, _ := item["changes"].([]any)
+	var paths []string
+	for _, change := range changes {
+		fields, _ := change.(map[string]any)
+		if path, _ := fields["path"].(string); path != "" {
+			paths = append(paths, path)
+		}
+	}
+	return paths
 }
 
-// wholeInput is the item's input: the same text for the same input.
-func wholeInput(item map[string]any) string {
+// requested is the event of the item's tool call, quoting its input
+// bounded.
+func requested(item map[string]any, name, input string) Event {
+	return Event{SourceProtocol, "TOOL_REQUESTED", map[string]any{"tool_use_id": item["id"], "name": name, "input": truncate(input, 300)}}
+}
+
+// reportedInput is the input the item reports, which may omit edit content.
+func reportedInput(item map[string]any) string {
 	for _, key := range []string{"command", "query", "changes", "arguments"} {
 		if value, ok := item[key]; ok {
 			if text, ok := value.(string); ok {
@@ -541,6 +945,25 @@ func wholeInput(item map[string]any) string {
 		}
 	}
 	return ""
+}
+
+// searchInput is the input of a completed web search: its query, followed
+// by its action where that says more than a search for the query, as an
+// opened page does. The same text for the same input.
+func searchInput(item map[string]any) string {
+	query, _ := item["query"].(string)
+	action, ok := item["action"]
+	if !ok || action == nil {
+		return query
+	}
+	if search, ok := action.(map[string]any); ok && len(search) == 2 && search["type"] == "search" && search["query"] == query {
+		return query
+	}
+	data, _ := json.Marshal(action)
+	if query == "" {
+		return string(data)
+	}
+	return query + " " + string(data)
 }
 
 func contains(list []string, value string) bool {
@@ -557,4 +980,27 @@ func truncate(text string, max int) string {
 		return text
 	}
 	return text[:max] + "…"
+}
+
+// finished is the end of the call id, with the result's text the stream
+// reported for it, if it reported one: bounded to ToolResultBytes, its head
+// and tail kept, each cut on a rune boundary.
+func finished(id, text string, reported bool) *ToolResult {
+	result := &ToolResult{ID: id, Output: text, Reported: reported}
+	if !reported {
+		result.Output = ""
+		return result
+	}
+	if len(text) <= ToolResultBytes {
+		return result
+	}
+	head, tail := ToolResultBytes/2, len(text)-ToolResultBytes/2
+	for head > 0 && !utf8.RuneStart(text[head]) {
+		head--
+	}
+	for tail < len(text) && !utf8.RuneStart(text[tail]) {
+		tail++
+	}
+	result.Output = text[:head] + "\n…\n" + text[tail:]
+	return result
 }

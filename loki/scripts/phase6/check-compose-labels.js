@@ -12,9 +12,9 @@ if (isExecutedAsScript()) {
 export function runLabelCompliance({ allowlistPath, filePaths, repoRoot }) {
   const normalizedRepoRoot = repoRoot ?? process.cwd()
   const normalizedAllowlistPath = resolvePath(normalizedRepoRoot, allowlistPath)
-  const composePaths = normalizeComposePaths(normalizedRepoRoot, filePaths)
-
   const allowlists = parseAllowlistFile(readFileSync(normalizedAllowlistPath, "utf8"))
+  const composePaths = normalizeComposePaths(normalizedRepoRoot, filePaths, allowlists.projects)
+
   const issues = []
 
   for (const composePath of composePaths) {
@@ -140,12 +140,14 @@ export function parseComposeServiceLabels(composeContent) {
   return parsedServices
 }
 
-function normalizeComposePaths(repoRoot, filePaths) {
+// Discovery checks only the compose files of onboarded projects: those in a
+// top-level folder the allowlist names. Named files are always checked.
+function normalizeComposePaths(repoRoot, filePaths, projects) {
   if (Array.isArray(filePaths) && filePaths.length > 0) {
     return filePaths.map(($0) => resolvePath(repoRoot, $0))
   }
 
-  return discoverComposeFiles(repoRoot)
+  return discoverComposeFiles(repoRoot).filter(($0) => projects.includes(relative(repoRoot, $0).split("/")[0]))
 }
 
 function resolvePath(repoRoot, maybeAbsolutePath) {

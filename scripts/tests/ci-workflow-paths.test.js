@@ -1,9 +1,11 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { execFileSync } from "node:child_process";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { matchesGlob } from "node:path";
 import test from "node:test";
 
-const workflow = readFileSync(new URL("../../.github/workflows/ci.yml", import.meta.url), "utf8");
+const repoRoot = new URL("../../", import.meta.url);
+const workflow = readFileSync(new URL(".github/workflows/ci.yml", repoRoot), "utf8");
 
 test("ciPathFilters_shouldRunAgonaraCore_onPackageLockChanges", () => {
   const agonaraFilter = filterSection("agonara", "agonara-ci");
@@ -18,14 +20,14 @@ test("ciPathFilters_shouldNotTreatDashboardScriptAsSharedInfrastructure", () => 
 });
 
 test("ciPathFilters_shouldRunAgisterCore_onAgisterProcessChangeOnly", () => {
-  const changedFiles = [".agister/processes/tests_review_codex.yaml"];
+  const changedFiles = [".agister/processes/tests_review.yaml"];
 
   assert.equal(matchingFilters(changedFiles).has("agister"), true);
   assert.equal(jobRuns("agister-core", changedFiles), true);
 });
 
-test("ciPathFilters_shouldRunAgisterCore_onCodeReviewPromptChangeOnly", () => {
-  const changedFiles = ["prompts/code-review-tests.md"];
+test("ciPathFilters_shouldRunAgisterCore_onHomeSettingsChangeOnly", () => {
+  const changedFiles = ["agister/home/prompts/code-review-tests.md"];
 
   assert.equal(matchingFilters(changedFiles).has("agister"), true);
   assert.equal(jobRuns("agister-core", changedFiles), true);
@@ -38,9 +40,201 @@ test("ciPathFilters_shouldNotRunAgisterCore_onUnrelatedPromptChange", () => {
   assert.equal(jobRuns("agister-core", changedFiles), false);
 });
 
+test("ciPathFilters_shouldRunAgisterCore_onAgisterLayerChangeOnly", () => {
+  const changedFiles = ["agister/.agister/verifies/repo.yaml"];
+
+  assert.equal(matchingFilters(changedFiles).has("agister"), true);
+  assert.equal(jobRuns("agister-core", changedFiles), true);
+});
+
+test("ciPathFilters_shouldRunWarderCore_onWarderLayerChangeOnly", () => {
+  const changedFiles = ["warder/.agister/verifies/repo.yaml"];
+
+  assert.equal(matchingFilters(changedFiles).has("warder"), true);
+  assert.equal(jobRuns("warder-core", changedFiles), true);
+});
+
+test("ciPathFilters_shouldRunWarderCore_onWarderMainChangeOnly", () => {
+  const changedFiles = ["warder/cmd/warder/main.go"];
+
+  assert.equal(matchingFilters(changedFiles).has("warder"), true);
+  assert.equal(jobRuns("warder-core", changedFiles), true);
+});
+
 test("ciJobs_shouldSelectAgisterCore_fromAgisterFilterOutputAlone", () => {
   assert.equal(jobRunsForFilters("agister-core", new Set(["agister"])), true);
   assert.equal(jobRunsForFilters("agister-core", new Set()), false);
+});
+
+// One file of each kind Agister's tests read, beside its code: a change to
+// any of them must run agister-core.
+test("ciPathFilters_shouldRunAgisterCore_onEachKindOfFileItsTestsRead", () => {
+  const read = [
+    "agister/docs/adr/032-the-advisor-always-decides.md",
+    "agister/docs/settings-architecture/notes.md",
+    "agister/skills/agister/SKILL.md",
+    "agister/README.md",
+    "agister/AGENTS.md",
+    "agister/testdata/briefs/lab-119-goal.md",
+    "agister/scripts/test.sh",
+    "agister/home/prompts/go-architecture.md",
+    "AGENTS.md",
+    "warder/AGENTS.md",
+    "gokit/supervisor/supervisor.go",
+  ];
+
+  for (const file of read) {
+    assert.equal(jobRuns("agister-core", [file]), true, `${file} does not run agister-core`);
+  }
+});
+
+// The files beyond their code that agonara's and noreta's tests read: a
+// change to any of them must run the project's job (LAB-220).
+test("ciPathFilters_shouldRunEachProjectsJob_onTheDocumentsItsTestsRead", () => {
+  const read = {
+    "agonara-core": [
+      "agonara/docs/api/openapi.yml",
+      "agonara/docs/api/redocly.yaml",
+      "agonara/docs/intent/intent_learning_program_app.md",
+      "agonara/skills/README.md",
+      "agonara/skills-publish-manifest.json",
+      "agonara/publish-assets/README.md",
+      "docs/loc-dashboard.html",
+    ],
+    "noreta-core": ["noreta/docs/qa.md"],
+  };
+
+  for (const [job, files] of Object.entries(read)) {
+    for (const file of files) {
+      assert.equal(jobRuns(job, [file]), true, `${file} does not run ${job}`);
+    }
+  }
+});
+
+// The projects whose tests ran in no workflow before LAB-220: each test,
+// the command its workflow runs, and the job a change to it runs.
+const auditedTests = {
+  "session-digest/tests/_bootstrap.test.ts": {
+    runner: ".github/workflows/session-digest-core.yml",
+    command: "npm run test:session-digest",
+    job: "session-digest-core",
+  },
+  "loki/tests/verify-host.test.js": {
+    runner: ".github/workflows/loki-core.yml",
+    command: "node --test loki/tests/*.test.js",
+    job: "loki-core",
+  },
+  "neris/packages/swift-neris/Tests/Core/AgentLoopTests.swift": {
+    runner: ".github/workflows/neris-core.yml",
+    command: "working-directory: neris/packages/swift-neris",
+    job: "neris-core",
+  },
+  "claude-insights/test_claude_insights.py": {
+    runner: ".github/workflows/claude-insights-core.yml",
+    command: "pytest -q claude-insights/test_claude_insights.py",
+    job: "claude-insights-core",
+  },
+  "claude-insights/supabase/functions/_shared/format.test.ts": {
+    runner: ".github/workflows/claude-insights-core.yml",
+    command: "deno test format.test.ts",
+    job: "claude-insights-core",
+  },
+  "tests/test_langfuse_shared_stack.py": {
+    runner: ".github/workflows/langfuse-core.yml",
+    command: "pytest -q tests/test_langfuse_shared_stack.py",
+    job: "langfuse-core",
+  },
+  "tools/mac-health/tests/test-disk.sh": {
+    runner: ".github/workflows/mac-health-core.yml",
+    command: "sh tools/mac-health/tests/run-all.sh",
+    job: "mac-health-core",
+  },
+};
+
+test("ciAuditedProjects_shouldEachBeTestedByTheJobItsChangesRun", () => {
+  for (const [file, { runner, command, job }] of Object.entries(auditedTests)) {
+    assert.ok(existsSync(new URL(file, repoRoot)), `${file} does not exist`);
+    assert.ok(readFileSync(new URL(runner, repoRoot), "utf8").includes(command), `${runner} does not run ${file}`);
+    assert.equal(jobRuns(job, [file]), true, `a change to ${file} does not run ${job}`);
+  }
+});
+
+test("ciRepoScripts_shouldRunEveryScriptsTest_onEveryChange", () => {
+  const job = workflow.match(/\n  repo-scripts:\n((?:    .*\n|\n)+?)(?=\n  [\w-]+:\n)/);
+  assert.ok(job, "missing repo-scripts job");
+  assert.doesNotMatch(job[1], /^    (if|needs):/m);
+  const globs = job[1].match(/node --test (.+)$/m)[1].split(" ");
+
+  const tests = readdirSync(new URL("./", import.meta.url)).filter((name) => name.endsWith(".test.js"));
+  assert.ok(tests.length > 0);
+  for (const name of tests) {
+    const file = `scripts/tests/${name}`;
+    assert.ok(globs.some((glob) => matchesGlob(file, glob)), `${file} is run by no CI job`);
+  }
+});
+
+// Each Go module, the command that tests it, and the job a change to its
+// code runs. A new module fails here until a workflow runs it.
+const goModules = {
+  agister: { runner: ".github/workflows/agister-core.yml", command: "run: scripts/test.sh", job: "agister-core" },
+  gokit: { runner: "agister/scripts/test.sh", command: "../gokit/scripts/test.sh", job: "agister-core" },
+  "scripts/agister-gate": {
+    runner: ".github/workflows/agister-core.yml",
+    command: "working-directory: scripts/agister-gate",
+    job: "agister-core",
+  },
+  warder: { runner: ".github/workflows/warder-core.yml", command: "run: warder/scripts/test.sh", job: "warder-core" },
+};
+
+test("ciGoModules_shouldEachBeTestedByTheJobItsChangesRun", () => {
+  const modules = execFileSync("git", ["ls-files", "*go.mod"], { cwd: repoRoot, encoding: "utf8" })
+    .trim()
+    .split("\n")
+    .map((file) => file.replace(/\/?go\.mod$/, ""));
+  assert.deepEqual(modules.toSorted(), Object.keys(goModules).toSorted());
+
+  for (const [module, { runner, command, job }] of Object.entries(goModules)) {
+    assert.ok(readFileSync(new URL(runner, repoRoot), "utf8").includes(command), `${runner} does not test ${module}`);
+    assert.equal(jobRuns(job, [`${module}/x.go`]), true, `a change to ${module} does not run ${job}`);
+  }
+});
+
+// Test files no path filter covers, each with the reason it needs none.
+const unfilteredTests = {
+  "scripts/tests/": "repo-scripts runs them on every change",
+  "research/": "research, not a product",
+};
+
+test("ciTestFiles_shouldEachRunSomeJob_whenChanged", () => {
+  const tracked = execFileSync("git", ["ls-files"], { cwd: repoRoot, encoding: "utf8" }).trim().split("\n");
+  const tests = tracked.filter(isTestFile);
+  assert.ok(tests.length > 0);
+  assert.deepEqual(testsRunningNoJob(tests), []);
+  for (const prefix of Object.keys(unfilteredTests)) {
+    assert.ok(tests.some((file) => file.startsWith(prefix)), `no test file is under ${prefix}`);
+  }
+});
+
+test("ciTestFiles_shouldBeNamed_whenNoJobRunsThem", () => {
+  const unrun = ["newtool/tests/test-install.sh", "newtool/src/parse.test.ts", "newtool/parse_test.go"];
+  assert.deepEqual(unrun.filter(isTestFile), unrun);
+  assert.deepEqual(testsRunningNoJob([...unrun, "loki/tests/verify-host.test.js"]), unrun);
+});
+
+test("ciJobs_shouldEachRun_onManualDispatch", () => {
+  const filtered = [...workflow.matchAll(/\n  ([\w-]+):\n(?:    .*\n)*?    if: (.*needs\.changes\.outputs\..*)\n/g)];
+  assert.ok(filtered.length > 0);
+  for (const [, job, condition] of filtered) {
+    assert.ok(condition.includes("github.event_name == 'workflow_dispatch'"), `${job} does not run on a manual dispatch`);
+  }
+});
+
+test("ciWeekly_shouldDispatchCiOnTrunk_onASchedule", () => {
+  const weekly = readFileSync(new URL(".github/workflows/ci-weekly.yml", repoRoot), "utf8");
+  assert.match(weekly, /^  schedule:\n    - cron: "\d+ \d+ \* \* [0-6]"/m);
+  assert.match(weekly, /^permissions:\n  actions: write$/m);
+  assert.match(weekly, /run: gh workflow run ci\.yml --repo "\$GITHUB_REPOSITORY" --ref trunk$/m);
+  assert.match(workflow, /^on:\n(?:  .*\n)*?  workflow_dispatch:$/m);
 });
 
 test("ciReport_shouldBeNamedReport_onlyForPullRequest", () => {
@@ -60,6 +254,24 @@ function reportCheckName(eventName) {
   assert.ok(name, "unsupported report job name");
   const [, event, matched, otherwise] = name;
   return eventName === event ? matched : otherwise.replace("{0}", eventName);
+}
+
+function isTestFile(file) {
+  const named = /(_test\.go|\.(test|spec)\.[cm]?[jt]sx?|(^|\/)test_[^/]*\.py|_test\.py|Tests?\.swift|Test\.kt|\.test\.sh|\.bats)$/;
+  const inTestsDirectory = /(^|\/)(tests?|Tests|__tests__)\/.*\.(go|[cm]?[jt]sx?|py|swift|kt|sh)$/;
+  return named.test(file) || inTestsDirectory.test(file);
+}
+
+// The test files whose change selects no job: no filter that some job's
+// condition reads matches them, and no reason in unfilteredTests covers them.
+function testsRunningNoJob(files) {
+  const read = [...pathFilters()].filter(([name]) => workflow.includes(`needs.changes.outputs.${name} == 'true'`));
+  return files.filter((file) => {
+    if (Object.keys(unfilteredTests).some((prefix) => file.startsWith(prefix))) {
+      return false;
+    }
+    return !read.some(([, patterns]) => patterns.some((pattern) => matchesGlob(file, pattern)));
+  });
 }
 
 function filterSection(filterName, nextFilterName) {

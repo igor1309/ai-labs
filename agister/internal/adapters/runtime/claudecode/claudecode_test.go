@@ -8,13 +8,14 @@ import (
 	"slices"
 	"strings"
 	"testing"
+	"unicode/utf8"
 
 	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/claudecode"
 )
 
 func TestArgumentsCarryPrimitivesAndContractFlags(t *testing.T) {
 	t.Parallel()
-	args, err := claudecode.Arguments(claudecode.TurnRequest(request("hello")))
+	args, err := claudecode.Arguments(claudecode.TurnRequest(request("hello")), "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -53,7 +54,7 @@ func TestEveryTurnLoadsTheRepositoryAndGetsSkill(t *testing.T) {
 	} {
 		r := request("x")
 		r.Primitives, r.ResumeSessionID = c.primitives, c.resume
-		args, err := claudecode.Arguments(claudecode.TurnRequest(r))
+		args, err := claudecode.Arguments(claudecode.TurnRequest(r), "")
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -68,7 +69,7 @@ func TestInvalidPrimitiveIsRejected(t *testing.T) {
 	t.Parallel()
 	r := request("x")
 	r.Primitives = []string{"Bash(git diff:*)"}
-	if _, err := claudecode.Arguments(claudecode.TurnRequest(r)); err == nil {
+	if _, err := claudecode.Arguments(claudecode.TurnRequest(r), ""); err == nil {
 		t.Fatal("a primitive with spaces must be rejected")
 	}
 }
@@ -174,7 +175,7 @@ func TestResultPrecedence(t *testing.T) {
 // continuation resumes the reported one in place, without forking.
 func TestContinuationResumesInPlaceAndCostLimitIsPassed(t *testing.T) {
 	t.Parallel()
-	fresh, err := claudecode.Arguments(claudecode.TurnRequest(request("x")))
+	fresh, err := claudecode.Arguments(claudecode.TurnRequest(request("x")), "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -185,7 +186,7 @@ func TestContinuationResumesInPlaceAndCostLimitIsPassed(t *testing.T) {
 	r.ResumeSessionID = "earlier"
 	limit := 0.5
 	r.MaxCostUSD = &limit
-	args, err := claudecode.Arguments(claudecode.TurnRequest(r))
+	args, err := claudecode.Arguments(claudecode.TurnRequest(r), "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -327,7 +328,7 @@ func TestStreamReportsToolCalls(t *testing.T) {
 	started := func(call claudecode.ToolCall) claudecode.Tool { return claudecode.Tool{Started: &call} }
 	want := []claudecode.Tool{
 		started(claudecode.ToolCall{ID: "t1", Name: "Bash", Input: string(bash), Command: true}),
-		{Finished: "t1"},
+		{Finished: &claudecode.ToolResult{ID: "t1"}},
 		started(claudecode.ToolCall{ID: "t2", Name: "Read", Input: `{"file_path":"a.go"}`}),
 	}
 	if got := stream.TakeTools(); !reflect.DeepEqual(got, want) {
@@ -356,5 +357,125 @@ func TestLargeIntegerInputsAreNotRepeatedCalls(t *testing.T) {
 	first, second := *tools[0].Started, *tools[1].Started
 	if first.Name != second.Name || first.Input != `{"offset":9007199254740993}` || second.Input != `{"offset":9007199254740992}` {
 		t.Fatalf("calls = %+v, %+v", first, second)
+	}
+}
+
+// A tool call's end carries the result the stream reported for it: a
+// tool_result's content as text, the string it is or its text blocks, and
+// none where the block has no text. A long one keeps its head and tail,
+// each cut on a rune boundary.
+func TestStreamReportsAToolCallsResult(t *testing.T) {
+	t.Parallel()
+	// A cut at the bound's half would split a rune: the head ends before it.
+	long := "a" + strings.Repeat("é", claudecode.ToolResultBytes)
+	result := func(content any) *claudecode.ToolResult {
+		block := map[string]any{"type": "tool_result", "tool_use_id": "t1"}
+		if content != nil {
+			block["content"] = content
+		}
+		data, _ := json.Marshal(map[string]any{"type": "user", "message": map[string]any{"content": []any{block}}})
+		stream := &claudecode.Stream{}
+		stream.Reduce(string(data))
+		tools := stream.TakeTools()
+		if len(tools) != 1 || tools[0].Finished == nil {
+			t.Fatalf("tools = %+v", tools)
+		}
+		return tools[0].Finished
+	}
+	if got := result("exit status 1"); *got != (claudecode.ToolResult{ID: "t1", Output: "exit status 1", Reported: true}) {
+		t.Fatalf("a string: %+v", got)
+	}
+	blocks := []any{map[string]any{"type": "text", "text": "one"}, map[string]any{"type": "image"}, map[string]any{"type": "text", "text": "two"}}
+	if got := result(blocks); *got != (claudecode.ToolResult{ID: "t1", Output: "one\ntwo", Reported: true}) {
+		t.Fatalf("text blocks: %+v", got)
+	}
+	if got := result([]any{map[string]any{"type": "image"}}); *got != (claudecode.ToolResult{ID: "t1"}) {
+		t.Fatalf("no text: %+v", got)
+	}
+	if got := result(nil); *got != (claudecode.ToolResult{ID: "t1"}) {
+		t.Fatalf("no content: %+v", got)
+	}
+	half := claudecode.ToolResultBytes / 4
+	if got := result(long); !got.Reported || got.Output != "a"+strings.Repeat("é", half-1)+"\n…\n"+strings.Repeat("é", half) || !utf8.ValidString(got.Output) {
+		t.Fatalf("a long one: %d bytes, valid UTF-8 %t", len(got.Output), utf8.ValidString(got.Output))
+	}
+	// So does the tail's cut: the tail starts after the rune it would split.
+	// wide is count runes of two bytes each.
+	wide := func(count int) string { return strings.Repeat("é", count) }
+	for _, c := range []struct{ name, text, want string }{
+		{"the tail's cut", wide(4*half) + "a", wide(half) + "\n…\n" + wide(half-1) + "a"},
+		{"both cuts", "a" + wide(4*half) + "a", "a" + wide(half-1) + "\n…\n" + wide(half-1) + "a"},
+	} {
+		if got := result(c.text); !got.Reported || got.Output != c.want || !utf8.ValidString(got.Output) {
+			t.Fatalf("%s inside a rune: %d bytes, valid UTF-8 %t", c.name, len(got.Output), utf8.ValidString(got.Output))
+		}
+	}
+}
+
+// The tools that write a file are reported with the path their input names,
+// as it names it: file_path, or notebook_path for a notebook. A tool that
+// writes none, and an input that names no path, report none.
+func TestStreamReportsThePathAToolCallWrites(t *testing.T) {
+	t.Parallel()
+	for _, c := range []struct {
+		name, input string
+		want        []string
+	}{
+		{"Edit", `{"file_path":"a.go","old_string":"a","new_string":"b"}`, []string{"a.go"}},
+		{"Write", `{"file_path":"../outside/b.go","content":""}`, []string{"../outside/b.go"}},
+		{"MultiEdit", `{"file_path":"/abs/c.go","edits":[]}`, []string{"/abs/c.go"}},
+		{"NotebookEdit", `{"notebook_path":"n.ipynb","new_source":""}`, []string{"n.ipynb"}},
+		{"NotebookEdit", `{"file_path":"not-the-notebook"}`, nil},
+		{"Read", `{"file_path":"a.go"}`, nil},
+		{"Bash", `{"command":"echo x > a.go"}`, nil},
+		{"Write", `{"content":"no path"}`, nil},
+		{"Write", `{"file_path":7}`, nil},
+	} {
+		stream := &claudecode.Stream{}
+		stream.Reduce(`{"type":"assistant","message":{"content":[{"type":"tool_use","id":"t1","name":"` + c.name + `","input":` + c.input + `}]}}`)
+		tools := stream.TakeTools()
+		if len(tools) != 1 || tools[0].Started == nil || !reflect.DeepEqual(tools[0].Started.Writes, c.want) {
+			t.Errorf("%s %s: tools = %+v, want writes %q", c.name, c.input, tools, c.want)
+		}
+	}
+}
+
+// A result's permission denials are reported one for each entry, in order:
+// the tool, and its input bounded as a tool call's is in its event, with
+// its numbers as written. An entry without one of them is still reported,
+// so the denials reported are as many as the turn counts.
+func TestStreamReportsAResultsPermissionDenials(t *testing.T) {
+	t.Parallel()
+	stream := &claudecode.Stream{}
+	long, _ := json.Marshal(strings.Repeat("x", 400))
+	events := stream.Reduce(`{"type":"result","subtype":"success","is_error":false,"permission_denials":[` +
+		`{"tool_name":"Write","tool_use_id":"t1","tool_input":{"file_path":"/etc/hosts","content":` + string(long) + `}},` +
+		`{"tool_name":"Read","tool_use_id":"t2","tool_input":{"offset":9007199254740993}},` +
+		`{"tool_name":"Edit"},` +
+		`"unreadable"]}`)
+	if len(events) != 1 || events[0].Kind != "TURN_COMPLETED" || events[0].Data["permission_denials"] != 4 {
+		t.Fatalf("events = %+v", events)
+	}
+	want := []claudecode.PermissionDenial{
+		{Tool: "Write", Input: `{"content":"` + strings.Repeat("x", 288) + "…"},
+		{Tool: "Read", Input: `{"offset":9007199254740993}`},
+		{Tool: "Edit"},
+		{},
+	}
+	if got := stream.TakeDenials(); !reflect.DeepEqual(got, want) {
+		t.Fatalf("denials = %+v", got)
+	}
+	if again := stream.TakeDenials(); len(again) != 0 {
+		t.Fatalf("taken twice: %+v", again)
+	}
+	code := 0
+	if turn := stream.Reconcile(claudecode.Evidence{Exit: &claudecode.Exit{Code: &code}}, false); turn.PermissionDenials != 4 {
+		t.Fatalf("turn = %+v", turn)
+	}
+	// A result that lists none reports none.
+	none := &claudecode.Stream{}
+	none.Reduce(`{"type":"result","subtype":"success","is_error":false,"permission_denials":[]}`)
+	if got := none.TakeDenials(); len(got) != 0 {
+		t.Fatalf("denials = %+v", got)
 	}
 }

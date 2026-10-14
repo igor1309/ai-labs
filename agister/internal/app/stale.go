@@ -22,6 +22,15 @@ type CallStale struct {
 	NoOutput          time.Duration // a verification run without output
 	ToolCommand       time.Duration // one command an agent's tool runs
 	RepeatedToolCalls int           // identical tool calls in a row
+	// Recover is what may follow a turn that one of them ended.
+	Recover CallRecover
+}
+
+// CallRecover is a call's recovery of a stale turn (ADR-024 rule 5). It is
+// zero unless the call has a budget.
+type CallRecover struct {
+	MaxResumes  int    // recovery turns the call may take; 0: none
+	Instruction string // what the agent is told with the evidence
 }
 
 // CallTimer starts the wait of a staleness limit: the limit is reached when
@@ -37,6 +46,10 @@ type turnSink interface {
 	Event(source, kind string, data map[string]any)
 	Raw(line string)
 	ProcessStarted(ref string) error
+	// Touched records the paths a tool call writes, and Denied a tool call
+	// the runtime refused.
+	Touched(call ToolCall)
+	Denied(denial PermissionDenial)
 }
 
 // turnWatch is the sink of one turn. It passes the turn's events on, one at
@@ -63,10 +76,13 @@ type turnWatch struct {
 	// commands disarms the wait of each tool command in flight, by call ID.
 	commands map[string]func()
 	// repeated is the latest tool call, made count times in a row, the
-	// first of them at first.
+	// first of them at first; streak holds the IDs of those calls, and
+	// result is the last result the runtime reported for one of them.
 	repeated ToolCall
 	count    int
 	first    time.Time
+	streak   map[string]bool
+	result   *string
 }
 
 // watchTurn returns the sink of a turn that starts now. cancel ends the
@@ -102,23 +118,41 @@ func (w *turnWatch) ProcessStarted(ref string) error {
 	return w.inner.ProcessStarted(ref)
 }
 
-// ToolStarted counts the call against the one before it and, when it runs a
-// command, starts the command's wait.
+// ToolStarted has the paths the call writes recorded, counts the call
+// against the one before it and, when it runs a command, starts the
+// command's wait.
 func (w *turnWatch) ToolStarted(call ToolCall) {
 	w.mu.Lock()
 	defer w.mu.Unlock()
-	if w.ended || w.stale != nil {
+	if w.ended {
+		return
+	}
+	// What a call writes is evidence whichever limit was reached before it.
+	if len(call.Writes) > 0 {
+		w.inner.Touched(call)
+	}
+	if w.stale != nil {
 		return
 	}
 	now := w.clock.Now()
-	if w.count > 0 && call.Name == w.repeated.Name && call.Input == w.repeated.Input {
+	if call.InputIncomplete {
+		// A lossy report cannot establish identity and breaks the streak.
+		w.repeated, w.count, w.first = ToolCall{}, 0, time.Time{}
+		w.streak, w.result = nil, nil
+	} else if w.count > 0 && call.Name == w.repeated.Name && call.Input == w.repeated.Input {
 		w.count++
 	} else {
 		w.repeated, w.count, w.first = call, 1, now
+		w.streak, w.result = map[string]bool{}, nil
+	}
+	if call.ID != "" && !call.InputIncomplete {
+		w.streak[call.ID] = true
 	}
 	if limit := w.limits.RepeatedToolCalls; limit > 0 && w.count >= limit {
 		first := w.first
-		w.found(run.Stale{Limit: run.StaleRepeatedToolCalls, Count: w.count, Since: &first, Tool: recordedCall(call)})
+		tool := recordedCall(call)
+		tool.Result = w.result
+		w.found(run.Stale{Limit: run.StaleRepeatedToolCalls, Count: w.count, Since: &first, Tool: tool})
 		return
 	}
 	// A call the runtime does not name has no end to wait for.
@@ -133,13 +167,30 @@ func (w *turnWatch) ToolStarted(call ToolCall) {
 	}
 }
 
-func (w *turnWatch) ToolFinished(id string) {
+// ToolFinished ends the wait of the call's command, if one runs, and keeps
+// the result of a call of the current streak, the evidence a repeated call
+// is recovered with.
+func (w *turnWatch) ToolFinished(result ToolResult) {
 	w.mu.Lock()
 	defer w.mu.Unlock()
-	if disarm, ok := w.commands[id]; ok {
+	if disarm, ok := w.commands[result.ID]; ok {
 		disarm()
-		delete(w.commands, id)
+		delete(w.commands, result.ID)
 	}
+	if result.Reported && w.streak[result.ID] {
+		output := result.Output
+		w.result = &output
+	}
+}
+
+// PermissionDenied has the denial recorded. It counts against no limit.
+func (w *turnWatch) PermissionDenied(denial PermissionDenial) {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	if w.ended {
+		return
+	}
+	w.inner.Denied(denial)
 }
 
 // end stops watching once the turn returned and says which limit ended it,
@@ -215,6 +266,9 @@ func (w *turnWatch) found(stale run.Stale) {
 	}
 	if tool := stale.Tool; tool != nil {
 		data["tool_use_id"], data["name"], data["input"], data["input_sha256"] = tool.ID, tool.Name, tool.Input, tool.SHA256
+		if tool.Result != nil {
+			data["result"] = *tool.Result
+		}
 	}
 	w.inner.Event(run.SourceAgister, "STALE", data)
 	w.cancel()

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"reflect"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -45,71 +46,53 @@ func reaping(h *harness, runs ...run.Record) *reaper {
 
 func (r *reaper) reap() error { return r.Reap(context.Background()) }
 
+// The worktree is on record before the runtime starts, and the runtime's
+// process as soon as it exists; the worktree is no effect (ADR-025 rule 1).
 func TestCallRecordsItsEffectsAsSoonAsTheyExist(t *testing.T) {
 	t.Parallel()
 	h := newHarness()
 	record := h.call(t, contract.CallRequest{})
-	if want := (&run.Effects{Checkout: &run.Checkout{Repository: "/repo", RepositoryIdentity: "/repo", Dir: "/work/checkout", Revision: "sha-HEAD"}, Process: &run.Process{Ref: "ref-4242"}}); !reflect.DeepEqual(record.Effects, want) {
+	if want := (&run.Effects{Process: &run.Process{Ref: "ref-4242"}}); !reflect.DeepEqual(record.Effects, want) {
 		t.Fatalf("effects = %+v", record.Effects)
 	}
-	// The checkout was written down before the runtime started.
-	var checkoutOnly bool
+	// The worktree was written down before the runtime started.
+	var worktreeOnly bool
 	for _, update := range h.recorder.updates {
-		if e := update.Effects; e != nil && e.Checkout != nil && e.Process == nil {
-			checkoutOnly = true
+		if update.InPlace != nil && update.InPlace.Worktree == "/repo" && (update.Effects == nil || update.Effects.Process == nil) {
+			worktreeOnly = true
 		}
 	}
-	if !checkoutOnly {
-		t.Fatal("no update carried the checkout before the process")
+	if !worktreeOnly {
+		t.Fatal("no update carried the worktree before the process")
 	}
 }
 
-// A checkout that cannot be recorded is one no reap could find: the call is
-// refused before the runtime starts, and the checkout is released.
-func TestCheckoutThatCannotBeRecordedIsReleasedAndTheCallRefused(t *testing.T) {
+// A worktree that cannot be recorded is one no later call could tell a
+// leftover writer by: the call fails before the runtime starts, and the
+// hold is let go.
+func TestAWorktreeThatCannotBeRecordedIsLetGoAndTheCallRefused(t *testing.T) {
 	t.Parallel()
 	h := newHarness()
 	h.recorder.updateErr = func(record run.Record) error {
-		if record.Effects != nil && record.Effects.Checkout != nil {
+		if record.InPlace != nil {
 			return errors.New("disk full")
 		}
 		return nil
 	}
 	record := h.call(t, contract.CallRequest{})
-	if h.workspaces.releases() != 1 {
-		t.Fatalf("releases = %d", h.workspaces.releases())
+	if h.locks.releases("/repo") != 1 || h.locks.holds("/repo") {
+		t.Fatalf("releases = %d", h.locks.releases("/repo"))
 	}
 	if len(h.runner.calls()) != 0 {
 		t.Fatalf("a turn ran: %+v", h.runner.calls())
 	}
 	if class(record) != run.ClassInternal || record.Result.Status != run.Failed ||
-		!strings.Contains(message(record), "recording the checkout failed") || !strings.Contains(message(record), "disk full") {
+		!strings.Contains(message(record), "recording the worktree failed") || !strings.Contains(message(record), "disk full") {
 		t.Fatalf("result = %+v", record.Result)
 	}
-	// The record does not claim a checkout it could not write down.
-	if record.Effects != nil {
-		t.Fatalf("effects = %+v", record.Effects)
-	}
-}
-
-// A checkout that could not be recorded and then could not be released is
-// still left for a reap: the finished record names it as unreleased.
-func TestACheckoutThatCannotBeRecordedNorReleasedIsLeftForAReap(t *testing.T) {
-	t.Parallel()
-	h := newHarness()
-	h.recorder.updateErr = func(record run.Record) error {
-		if record.Effects != nil && record.Effects.Checkout != nil {
-			return errors.New("disk full")
-		}
-		return nil
-	}
-	h.workspaces.releaseErr = context.DeadlineExceeded
-	record := h.call(t, contract.CallRequest{})
-	if h.workspaces.releases() != 1 || record.FinishedAt == nil || class(record) != run.ClassInternal {
-		t.Fatalf("releases = %d, finished %v, result %+v", h.workspaces.releases(), record.FinishedAt, record.Result)
-	}
-	if checkout := (&run.Checkout{Repository: "/repo", RepositoryIdentity: "/repo", Dir: "/work/checkout", Revision: "sha-HEAD"}); record.Effects == nil || !reflect.DeepEqual(record.Effects.Unreleased, checkout) {
-		t.Fatalf("effects = %+v", record.Effects)
+	// The record does not claim a worktree it could not write down.
+	if record.InPlace != nil || record.Effects != nil {
+		t.Fatalf("in place %+v, effects = %+v", record.InPlace, record.Effects)
 	}
 }
 
@@ -134,7 +117,7 @@ func TestProcessThatCannotBeRecordedIsReportedToTheRuntime(t *testing.T) {
 	if record.Result.Status != run.Failed || !strings.Contains(message(record), "recording the process failed") {
 		t.Fatalf("result = %+v", record.Result)
 	}
-	if record.Effects == nil || record.Effects.Process != nil || record.Effects.Checkout == nil {
+	if record.Effects != nil && record.Effects.Process != nil {
 		t.Fatalf("effects = %+v", record.Effects)
 	}
 }
@@ -264,20 +247,19 @@ func TestAFinishedRunsCleanCopyIsReaped(t *testing.T) {
 	}
 }
 
-// A call whose release fails at its cleanup deadline leaves a finished run
-// that names the checkout as unreleased (ADR-008 rule 6). A reap leaves it
-// while a running run records the directory, and once the lock is free
-// removes it and clears it, while the run keeps its end and its Checkout.
+// A call made before ADR-025 whose release failed at its cleanup deadline
+// left a finished run that names the checkout as unreleased (ADR-008 rule
+// 6). A reap leaves it while a running run records the directory, and once
+// the lock is free removes it and clears it, while the run keeps its end
+// and its Checkout (ADR-025 rule 9).
 func TestACheckoutWhoseReleaseHitTheDeadlineIsReapedLater(t *testing.T) {
 	t.Parallel()
 	h := newHarness()
-	h.workspaces.releaseErr = fmt.Errorf("git worktree remove: %w", context.DeadlineExceeded)
-	finished := h.call(t, contract.CallRequest{})
 	checkout := &run.Checkout{Repository: "/repo", RepositoryIdentity: "/repo", Dir: "/work/checkout", Revision: "sha-HEAD"}
-	if finished.FinishedAt == nil || finished.Effects == nil ||
-		!reflect.DeepEqual(finished.Effects.Unreleased, checkout) || !reflect.DeepEqual(finished.Effects.Checkout, checkout) {
-		t.Fatalf("finished %v, effects %+v", finished.FinishedAt, finished.Effects)
-	}
+	at := time.Date(2026, 9, 28, 11, 30, 0, 0, time.UTC)
+	finished := run.Record{Schema: run.RecordSchema, ID: "run-1", Process: "p", CreatedAt: at, FinishedAt: &at,
+		Effects: &run.Effects{Checkout: checkout, Process: &run.Process{Ref: "ref-4242"}, Unreleased: checkout},
+		Result:  &run.Result{Status: run.Completed}, ProcessesEnded: known(true)}
 
 	r := reaping(h, finished)
 	r.adopter.live = []string{checkout.Dir}
@@ -309,8 +291,9 @@ func TestACheckoutWhoseReleaseHitTheDeadlineIsReapedLater(t *testing.T) {
 	}
 }
 
-// A release that succeeds records nothing for a reap.
-func TestAReleasedCheckoutIsNotLeftForAReap(t *testing.T) {
+// A call works in the caller's worktree and records nothing for a reap to
+// remove (ADR-025 rule 1).
+func TestACallLeavesNothingForAReap(t *testing.T) {
 	t.Parallel()
 	h := newHarness()
 	if record := h.call(t, contract.CallRequest{}); record.Effects == nil || record.Effects.Unreleased != nil {
@@ -595,5 +578,416 @@ func TestAReapThatCannotRecordARunFails(t *testing.T) {
 				t.Fatalf("run b = %+v", finished.Result)
 			}
 		})
+	}
+}
+
+// ADR-022 rule 3: a reap records that a run's processes are known to have
+// ended only when it ended each one or found it gone; a step that failed,
+// or a process left, leaves that unsaid, for an in-place call to ask again.
+// An in-place run's worktree is no checkout: the reap leaves it alone.
+func TestAReapRecordsWhetherTheRunsProcessesEnded(t *testing.T) {
+	t.Parallel()
+	for name, c := range map[string]struct {
+		outcome app.Reaping
+		err     error
+		ended   bool
+	}{
+		"killed":        {outcome: app.ReapKilled, ended: true},
+		"gone":          {outcome: app.ReapGone, ended: true},
+		"left":          {outcome: app.ReapLeft},
+		"a failed step": {outcome: app.ReapKilled, err: errors.New("process 777 is alive")},
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			h := newHarness()
+			abandoned := abandonedRun("old")
+			abandoned.Effects.Checkout = nil
+			abandoned.InPlace = &run.InPlace{Dir: "/repo", Worktree: "/repo", Revision: "sha-HEAD"}
+			r := reaping(h, abandoned)
+			r.processes.outcome, r.processes.err = c.outcome, c.err
+			if err := r.reap(); err != nil {
+				t.Fatal(err)
+			}
+			old := r.adopter.handles["old"].wait(t)
+			if !says(old, c.ended) || old.FinishedAt == nil {
+				t.Fatalf("processes ended %s, want %v", said(old), c.ended)
+			}
+			if len(h.workspaces.discarded) != 0 || old.InPlace == nil || old.Effects.Unreleased != nil {
+				t.Fatalf("discarded %v, in place %+v, effects %+v", h.workspaces.discarded, old.InPlace, old.Effects)
+			}
+		})
+	}
+}
+
+// unbounded has the reaper's reaps bounded by their caller's context
+// alone, which the test ends: no real timer runs.
+func unbounded(r *reaper) {
+	r.ReapContext = func(ctx context.Context) (context.Context, context.CancelFunc) { return context.WithCancel(ctx) }
+}
+
+// deadlined is a context that says it has a deadline at, and is never done
+// by it: what a reap passes on of its deadline is told without a timer.
+type deadlined struct {
+	context.Context
+	at time.Time
+}
+
+func (c deadlined) Deadline() (time.Time, bool) { return c.at, true }
+
+// blocked is the gate a goroutine of the test waits at until the test
+// lets it go (release), as often as it likes.
+type blocked struct {
+	gate chan struct{}
+	once sync.Once
+}
+
+func newBlocked() *blocked { return &blocked{gate: make(chan struct{})} }
+
+func (b *blocked) release() { b.once.Do(func() { close(b.gate) }) }
+
+// started runs work in a goroutine, once the test's cleanup is set to open
+// the gate and join it: on every path, failures included, the goroutine
+// ends with its test.
+func started(t *testing.T, gate *blocked, work func()) {
+	t.Helper()
+	ended := make(chan struct{})
+	t.Cleanup(func() {
+		gate.release()
+		<-ended
+	})
+	go func() {
+		defer close(ended)
+		work()
+	}()
+}
+
+// LAB-123: a reap of one run takes that run alone, by the step a reap of
+// all takes each run by: the live checkouts are read before the run is
+// adopted, its effects are ended under the reap deadline, and it is
+// finished as lost and abandoned, which is the record the reap returns.
+func TestAReapOfOneRunIsTheReapersStepForThatRun(t *testing.T) {
+	t.Parallel()
+	h := newHarness()
+	r := reaping(h, abandonedRun("a"), abandonedRun("b"))
+	deadline := time.Date(2026, 10, 1, 0, 0, 30, 0, time.UTC)
+	r.ReapContext = func(ctx context.Context) (context.Context, context.CancelFunc) {
+		return deadlined{Context: ctx, at: deadline}, func() {}
+	}
+	var bounded time.Time
+	r.processes.hook = func(ctx context.Context) { bounded, _ = ctx.Deadline() }
+
+	finished, owned, err := r.ReapRun(context.Background(), "b")
+
+	if err != nil || owned || finished.ID != "b" || finished.FinishedAt == nil || finished.Result == nil || finished.Result.Status != run.Lost || class(finished) != run.ClassAbandoned || !says(finished, true) {
+		t.Fatalf("the reap of b = %+v, result %+v, owned %v, %v", finished, finished.Result, owned, err)
+	}
+	if want := []string{"live", "adopt:b"}; !reflect.DeepEqual(r.adopter.order, want) {
+		t.Fatalf("adopter asked in the order %v, want %v", r.adopter.order, want)
+	}
+	// The record it returns is the one it finished the run with.
+	handle := r.adopter.handles["b"]
+	if written := handle.wait(t); !reflect.DeepEqual(written, finished) || !reflect.DeepEqual(handle.kinds(), []string{"EFFECTS_REAPED"}) {
+		t.Fatalf("b was finished as %+v, returned as %+v; its events %v", written, finished, handle.kinds())
+	}
+	if _, taken := r.adopter.handles["a"]; taken {
+		t.Fatal("a was adopted by the reap of b")
+	}
+	if !bounded.Equal(deadline) || !reflect.DeepEqual(r.processes.refs(), []string{"ref-777"}) || !reflect.DeepEqual(h.workspaces.discarded, [][2]string{{"/repo", "/tmp/agister-checkout-1/workspace"}}) {
+		t.Fatalf("the process was ended by %v, want the reap deadline %v; reaped %v, discarded %v", bounded, deadline, r.processes.refs(), h.workspaces.discarded)
+	}
+}
+
+// A run another holds is its owner's: the reap of it says so and touches
+// nothing of it. One that finished meanwhile, with nothing left to remove,
+// is returned as it finished. Neither is an error; any other reason the run
+// was not adopted is.
+func TestAReapOfOneRunTellsAnOwnedRunFromOneItCannotReap(t *testing.T) {
+	t.Parallel()
+	done := completedRun(abandonedRun("a"))
+	for name, c := range map[string]struct {
+		adoptErr error
+		declined run.Record // what the adoption returns beside its error
+		finished run.Record
+		owned    bool
+		err      string
+	}{
+		"owned":      {adoptErr: fmt.Errorf("run a: %w", app.ErrRunOwned), owned: true},
+		"finished":   {adoptErr: fmt.Errorf("run a: %w", app.ErrRunFinished), declined: done, finished: done},
+		"unreadable": {adoptErr: errors.New("run a: reading its record: bad disk"), err: "run a: reading its record: bad disk"},
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			h := newHarness()
+			r := reaping(h, abandonedRun("a"))
+			unbounded(r)
+			r.adopter.adoptErr, r.adopter.declined = map[string]error{"a": c.adoptErr}, map[string]run.Record{"a": c.declined}
+
+			finished, owned, err := r.ReapRun(context.Background(), "a")
+
+			if !reflect.DeepEqual(finished, c.finished) || owned != c.owned || (err == nil) != (c.err == "") || err != nil && err.Error() != c.err {
+				t.Fatalf("the reap of a = %+v, owned %v, %v; want %+v, owned %v, %q", finished, owned, err, c.finished, c.owned, c.err)
+			}
+			if want := []string{"a"}; !reflect.DeepEqual(r.adopter.adopted, want) || len(r.processes.refs()) != 0 || len(h.workspaces.discarded) != 0 {
+				t.Fatalf("adopted %v, want %v; reaped %v, discarded %v", r.adopter.adopted, want, r.processes.refs(), h.workspaces.discarded)
+			}
+		})
+	}
+}
+
+// A reap of one run that waits for the step holding that run waits no
+// longer than its caller: once the caller's context ends, it gives up with
+// the context's error, and adopts nothing.
+func TestAReapOfOneRunThatWaitsEndsWithItsCaller(t *testing.T) {
+	t.Parallel()
+	h := newHarness()
+	r := reaping(h, abandonedRun("a"))
+	unbounded(r)
+	inFlight, step := make(chan struct{}), newBlocked()
+	r.processes.hook = func(context.Context) {
+		close(inFlight)
+		<-step.gate
+	}
+	first := make(chan error, 1)
+	started(t, step, func() {
+		_, _, err := r.ReapRun(context.Background(), "a")
+		first <- err
+	})
+	<-inFlight
+	ctx, cancel := context.WithCancel(context.Background())
+	r.OnWaiting(cancel)
+
+	_, owned, err := r.ReapRun(ctx, "a")
+
+	if !errors.Is(err, context.Canceled) || owned {
+		t.Fatalf("the second reap of a = owned %v, %v; want the caller's cancellation", owned, err)
+	}
+	step.release()
+	if err := <-first; err != nil {
+		t.Fatal(err)
+	}
+	if want := []string{"a"}; !reflect.DeepEqual(r.adopter.adopted, want) {
+		t.Fatalf("adopted %v, want %v", r.adopter.adopted, want)
+	}
+}
+
+// LAB-123: a step that ends one run's effects holds that run alone. A reap
+// of another run, asked for meanwhile, adopts and finishes it without
+// waiting for the first, whose removal of a directory may run past any
+// deadline; the first then finishes its own run.
+func TestAReapOfOneRunDoesNotWaitForAStepOfAnother(t *testing.T) {
+	t.Parallel()
+	h := newHarness()
+	a, b := abandonedRun("a"), abandonedRun("b")
+	a.Effects.Checkout.Dir = "/tmp/agister-checkout-a/workspace"
+	r := reaping(h, a, b)
+	unbounded(r)
+	removing, removal := make(chan struct{}), newBlocked()
+	// A wait would last as long as the removal: it is let go, and the test
+	// fails.
+	r.OnWaiting(func() {
+		t.Error("the reap of b waited for the step of a")
+		removal.release()
+	})
+	h.workspaces.discardHook = func(_ context.Context, dir string) error {
+		if dir == a.Effects.Checkout.Dir {
+			close(removing)
+			<-removal.gate
+		}
+		return nil
+	}
+	first := make(chan error, 1)
+	started(t, removal, func() {
+		_, _, err := r.ReapRun(context.Background(), "a")
+		first <- err
+	})
+	<-removing
+
+	finished, owned, err := r.ReapRun(context.Background(), "b")
+
+	if err != nil || owned || finished.ID != "b" || finished.Result == nil || finished.Result.Status != run.Lost {
+		t.Fatalf("the reap of b while a's checkout is removed = %+v, owned %v, %v", finished.Result, owned, err)
+	}
+	removal.release()
+	if err := <-first; err != nil {
+		t.Fatal(err)
+	}
+	if reaped := r.adopter.handles["a"].wait(t); reaped.Result == nil || reaped.Result.Status != run.Lost {
+		t.Fatalf("run a = %+v", reaped.Result)
+	}
+	if want := []string{"a", "b"}; !reflect.DeepEqual(r.adopter.adopted, want) {
+		t.Fatalf("adopted %v, want %v", r.adopter.adopted, want)
+	}
+}
+
+// A reap of one run that cannot write the run's event or its end has no
+// durable word of the reap: the failure reaches its caller, naming the run,
+// and the run is not read as owned.
+func TestAReapOfOneRunThatCannotRecordTheRunFails(t *testing.T) {
+	t.Parallel()
+	eventsFull, recordFull := errors.New("events full"), errors.New("record full")
+	for name, c := range map[string]struct {
+		fail func(*recorderSpy)
+		err  error
+		want string
+	}{
+		"event": {fail: func(h *recorderSpy) { h.appendErr = eventsFull }, err: eventsFull, want: "reaping run a: recording the reap: events full"},
+		"end":   {fail: func(h *recorderSpy) { h.finishErr = recordFull }, err: recordFull, want: "reaping run a: finishing the run: record full"},
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			h := newHarness()
+			r := reaping(h, abandonedRun("a"))
+			unbounded(r)
+			r.adopter.failing = map[string]func(*recorderSpy){"a": c.fail}
+
+			_, owned, err := r.ReapRun(context.Background(), "a")
+
+			if !errors.Is(err, c.err) || err.Error() != c.want || owned {
+				t.Fatalf("the reap of a = owned %v, %v; want %q", owned, err, c.want)
+			}
+			if want := []string{"a"}; !reflect.DeepEqual(r.adopter.adopted, want) {
+				t.Fatalf("adopted %v, want %v", r.adopter.adopted, want)
+			}
+		})
+	}
+}
+
+// probingAdopter lists the abandoned runs as the run store does, by
+// probing each run's owner lock: while the listing holds its probe, an
+// adoption finds the lock taken and fails with ErrRunOwned. The listing
+// says when it holds the probe (probing) and holds it until the test lets
+// it go (probe). A run it adopted and that finished is declined after as
+// finished, with its end, as the store declines it.
+type probingAdopter struct {
+	*adopterSpy
+	probing chan struct{}
+	probe   *blocked
+
+	mu    sync.Mutex
+	held  bool
+	ends  map[string]run.Record
+	taken []string // the runs it adopted
+}
+
+func newProbingAdopter(runs ...run.Record) *probingAdopter {
+	return &probingAdopter{adopterSpy: &adopterSpy{runs: runs}, probing: make(chan struct{}), probe: newBlocked(), ends: map[string]run.Record{}}
+}
+
+func (a *probingAdopter) Abandoned(ctx context.Context) ([]run.Record, error) {
+	a.mu.Lock()
+	a.held = true
+	a.mu.Unlock()
+	close(a.probing)
+	<-a.probe.gate
+	a.mu.Lock()
+	a.held = false
+	a.mu.Unlock()
+	return a.adopterSpy.Abandoned(ctx)
+}
+
+func (a *probingAdopter) Adopt(ctx context.Context, id string) (app.ReapHandle, run.Record, error) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	if a.held {
+		return nil, run.Record{}, fmt.Errorf("run %s: %w", id, app.ErrRunOwned)
+	}
+	if end, ok := a.ends[id]; ok {
+		return nil, end, fmt.Errorf("run %s: %w", id, app.ErrRunFinished)
+	}
+	handle, record, err := a.adopterSpy.Adopt(ctx, id)
+	if err != nil {
+		return nil, record, err
+	}
+	a.taken = append(a.taken, id)
+	return endedHandle{ReapHandle: handle, ended: func(end run.Record) {
+		a.mu.Lock()
+		defer a.mu.Unlock()
+		a.ends[id] = end
+	}}, record, nil
+}
+
+// adopted are the runs it adopted, in order.
+func (a *probingAdopter) adopted() []string {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	return append([]string(nil), a.taken...)
+}
+
+// endedHandle tells ended the end its run was finished with.
+type endedHandle struct {
+	app.ReapHandle
+	ended func(run.Record)
+}
+
+func (h endedHandle) Finish(record run.Record) error {
+	if err := h.ReapHandle.Finish(record); err != nil {
+		return err
+	}
+	h.ended(record)
+	return nil
+}
+
+// LAB-123: the reaper lists the abandoned runs in its turn. The run store
+// lists them by probing each run's owner lock, which an adoption meanwhile
+// would read as the run's owner. A reap of one run asked for while the
+// listing probes waits for the turn, then has the run finished as lost and
+// abandoned: it does not read the run as owned. The run is reaped once,
+// by whichever step takes it first.
+func TestAReapOfOneRunWaitsForTheListingOfAbandonedRuns(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	h := newHarness()
+	adopter, processes := newProbingAdopter(abandonedRun("a")), &processesSpy{}
+	r := app.NewReaper(adopter, processes, h.workspaces, fixedClock{})
+	r.ReapContext = func(ctx context.Context) (context.Context, context.CancelFunc) { return context.WithCancel(ctx) }
+	// The reap of a waits for the turn: the listing lets its probe go then.
+	r.OnWaiting(adopter.probe.release)
+	beside := make(chan error, 1)
+	started(t, adopter.probe, func() { beside <- r.Reap(ctx) })
+	<-adopter.probing
+
+	finished, owned, err := r.ReapRun(ctx, "a")
+
+	if err != nil || owned || finished.ID != "a" || finished.Result == nil || finished.Result.Status != run.Lost || class(finished) != run.ClassAbandoned || !says(finished, true) {
+		t.Fatalf("the reap of a while the abandoned runs are listed = %+v, owned %v, %v", finished.Result, owned, err)
+	}
+	if err := <-beside; err != nil {
+		t.Fatal(err)
+	}
+	if adopted := adopter.adopted(); !reflect.DeepEqual(adopted, []string{"a"}) || !reflect.DeepEqual(processes.refs(), []string{"ref-777"}) {
+		t.Fatalf("adopted %v, asked to end %v; want a once", adopted, processes.refs())
+	}
+}
+
+// A reap of one run that waits for the reaper's turn waits no longer than
+// its caller: once the caller's context ends while the abandoned runs are
+// listed, it gives up with the context's error, before the listing lets
+// its turn go, and adopts nothing. The reap beside then reaps the run.
+func TestAReapOfOneRunThatWaitsForTheTurnEndsWithItsCaller(t *testing.T) {
+	t.Parallel()
+	h := newHarness()
+	adopter, processes := newProbingAdopter(abandonedRun("a")), &processesSpy{}
+	r := app.NewReaper(adopter, processes, h.workspaces, fixedClock{})
+	r.ReapContext = func(ctx context.Context) (context.Context, context.CancelFunc) { return context.WithCancel(ctx) }
+	beside := make(chan error, 1)
+	started(t, adopter.probe, func() { beside <- r.Reap(context.Background()) })
+	<-adopter.probing
+	ctx, cancel := context.WithCancel(context.Background())
+	r.OnWaiting(cancel)
+
+	_, owned, err := r.ReapRun(ctx, "a")
+
+	if !errors.Is(err, context.Canceled) || owned {
+		t.Fatalf("the reap of a while the abandoned runs are listed = owned %v, %v; want the caller's cancellation", owned, err)
+	}
+	if adopted := adopter.adopted(); len(adopted) != 0 {
+		t.Fatalf("adopted %v before the listing let its turn go", adopted)
+	}
+	adopter.probe.release()
+	if err := <-beside; err != nil {
+		t.Fatal(err)
+	}
+	if adopted := adopter.adopted(); !reflect.DeepEqual(adopted, []string{"a"}) || !reflect.DeepEqual(processes.refs(), []string{"ref-777"}) {
+		t.Fatalf("adopted %v, asked to end %v; want a once, by the reap beside", adopted, processes.refs())
 	}
 }

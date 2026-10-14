@@ -1,0 +1,47 @@
+schema: agister.brief/v1alpha1
+name: goal
+
+parts:
+  - {heading: "## Intent", required: true}
+  - {heading: "## Done when", required: true}
+  - {heading: "## Expected behaviour", required: false}
+  - {heading: "## Out of scope", required: true}
+  - {heading: "## Sources", required: false}
+  - {heading: "## Decisions", required: false}
+  - {heading: "## Open", required: true, reads: None.}
+
+template: |
+  # <issue>: <what the work makes true, in a line>
+
+  ## Intent
+
+  <What should be true and why, or a reference to the artifact that
+  states it: Product Intent, SPEC or issue. A reference is preferred.>
+
+  ## Done when
+
+  1. <An observable criterion; reuse the upstream story or scenario id
+     where there is one.>
+
+  ## Expected behaviour
+
+  <For a bug fix only: the behaviour with its source, or "source
+  missing", and the reproduction. Leave the part out otherwise.>
+
+  ## Out of scope
+
+  None.
+
+  ## Sources
+
+  <When correctness depends on an upstream artifact: references, not
+  copies. Leave the part out otherwise.>
+
+  ## Decisions
+
+  <When the owner has ruled: each decision, dated. Leave the part out
+  otherwise.>
+
+  ## Open
+
+  None.

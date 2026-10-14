@@ -1,0 +1,6 @@
+schema = "agister.agent/v1alpha1"
+name = "pi-glm-53"
+runtime = "pi"
+model = "opencode-go/glm-5.3"
+model_family = "glm"
+effort = "high"

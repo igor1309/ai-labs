@@ -1,10 +1,12 @@
 // Package prompt assembles what the agent receives. The words come from the
 // process definition; this package only arranges them with the resolved
-// inputs and the granted permissions, or with a verification run's failure.
-// The one exception is a continuation's notice (Continues), whose facts
-// only Agister knows.
+// inputs and the granted permissions, with a verification run's failure, or
+// with the evidence of a stale turn.
+// The one exception is a continuation's notice (Continues),
+// whose facts only Agister knows.
 //
-// It depends on the run package's evidence types (run.Input, run.Output):
+// It depends on the run package's evidence types (run.Input, run.Output,
+// run.Stale):
 // the agent receives exactly what the call records, so the prompt is built
 // from the recorded values rather than from copies of them.
 package prompt
@@ -41,19 +43,13 @@ func Inputs(inputs []run.Input) string {
 	return strings.Join(sections, "\n\n")
 }
 
-// Continues is Agister's notice to a continued call that works in a
-// checkout of its own (ADR-013 rule 4): the run it continues, the checkout
-// at dir, of revision, and whose changes are applied there. carriedFrom is
-// the session's latest run whose changes were carried, often the run
-// continued; empty when none were.
-func Continues(continued, carriedFrom, dir, revision string) string {
-	text := fmt.Sprintf("This call continues run %s. It works in a new checkout at %s, at revision %s.", continued, dir, revision)
-	if carriedFrom == "" {
-		text += " No changes were carried: the checkout holds the revision as committed."
-	} else {
-		text += fmt.Sprintf(" The changes of run %s, the latest run of the session, are applied there, uncommitted.", carriedFrom)
-	}
-	return "## continuation\n\n" + text + " The directory the earlier run worked in is gone."
+// Continues is Agister's notice to a continued call, which works in the
+// caller's worktree (ADR-025 rule 7): the worktree at dir, at revision,
+// and that the session's changes are already there. It names no run
+// (ADR-035).
+func Continues(dir, revision string) string {
+	return "## continuation\n\n" + fmt.Sprintf("This call continues the session's earlier work. It works in the worktree at %s, at revision %s, where the session worked before."+
+		" The session's changes are already in this worktree, uncommitted.", dir, revision)
 }
 
 func render(value any) string {
@@ -103,6 +99,39 @@ func Repair(instruction, command, ended string, output run.Output) string {
 		"## command\n\n" + fenced(command),
 		"## exit status\n\n" + ended,
 		fmt.Sprintf("## output\n\n%d bytes, sha256 %s\n\n%s", output.Bytes, output.SHA256, fenced(text)),
+	}
+	return strings.Join(sections, "\n\n")
+}
+
+// Recovery is what a recovery turn receives (ADR-024 rules 2 and 4): the
+// process's stale.recover instruction, then the evidence of what went
+// stale, which names the limit. It is the evidence only: what to do about
+// it is the instruction's to say.
+func Recovery(instruction string, stale run.Stale) string {
+	sections := []string{strings.TrimSpace(instruction)}
+	call := func(title string) {
+		if stale.Tool == nil {
+			return
+		}
+		section := "## " + title + "\n\n" + stale.Tool.Name
+		if stale.Tool.Input != "" {
+			section += "\n\n" + fenced(stale.Tool.Input)
+		}
+		sections = append(sections, section)
+	}
+	switch stale.Limit {
+	case run.StaleRepeatedToolCalls:
+		sections = append(sections, fmt.Sprintf("## stale limit\n\nstale.repeated_tool_calls: the same tool call was made %d times in a row, and the turn was ended.", stale.Count))
+		call("tool call")
+		// A runtime that reports no result leaves nothing to say of one.
+		if stale.Tool != nil && stale.Tool.Result != nil {
+			sections = append(sections, "## last result\n\n"+fenced(*stale.Tool.Result))
+		}
+	case run.StaleToolCommand:
+		sections = append(sections, fmt.Sprintf("## stale limit\n\nstale.tool_command: a tool's command ran for %s, and the turn was ended.", stale.After))
+		call("command")
+	default:
+		sections = append(sections, fmt.Sprintf("## stale limit\n\nstale.%s: the turn was interrupted after %s without an event from the runtime.", stale.Limit, stale.After))
 	}
 	return strings.Join(sections, "\n\n")
 }

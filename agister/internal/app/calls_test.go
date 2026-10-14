@@ -16,21 +16,21 @@ import (
 	"github.com/igor1309/ai-labs/agister/internal/app"
 	"github.com/igor1309/ai-labs/agister/internal/contract"
 	"github.com/igor1309/ai-labs/agister/internal/domain/definition"
-	"github.com/igor1309/ai-labs/agister/internal/domain/prompt"
+	"github.com/igor1309/ai-labs/agister/internal/domain/document"
 	"github.com/igor1309/ai-labs/agister/internal/domain/run"
 )
 
 const schema = `{"type":"object"}`
 
-func settingsDocs() map[definition.Kind]map[string]string {
-	return map[definition.Kind]map[string]string{
-		definition.KindService: {"service": `schema = "agister.service/v1alpha1"
+func settingsDocs() map[document.Kind]map[string]string {
+	return map[document.Kind]map[string]string{
+		document.KindService: {"service": `schema = "agister.service/v1alpha1"
 max_timeout = "1h"
 permissions = ["repository.read", "repository.search", "repository.diff", "process.execute", "host.read"]
 writing = []
 state_reaching = ["host.read"]
 `},
-		definition.KindRuntime: {"rt": `schema: agister.runtime/v1alpha1
+		document.KindRuntime: {"rt": `schema: agister.runtime/v1alpha1
 name: rt
 adapter: spy
 contract: spy/1
@@ -42,7 +42,7 @@ primitives:
     Grep: {grants: [repository.search], verified: ["1."]}
     Bash: {grants: [process.execute, repository.read, repository.search, repository.diff, host.read], verified: ["1."]}
 `},
-		definition.KindAgent: {"a": `schema = "agister.agent/v1alpha1"
+		document.KindAgent: {"a": `schema = "agister.agent/v1alpha1"
 name = "a"
 runtime = "rt"
 model = "m1"
@@ -50,17 +50,10 @@ model_family = "fam"
 effort = "high"
 command = "/bin/spy"
 `},
-		definition.KindPolicy: {"pol": `schema: agister.process-policy/v1alpha1
-name: pol
-timeout: 20m
-tools: {allow: [repository.read, repository.search, repository.diff]}
-workspace: {access: read-only, scope: candidate}
-`},
-		definition.KindProcess: {"p": `schema: agister.process/v1alpha1
+		document.KindProcess: {"p": `schema: agister.process/v1alpha1
 name: p
 type: process
-uses: agent:a
-policy: process-policy:pol
+prompt: inspect
 input:
   instruction: Inspect the change.
   params:
@@ -70,15 +63,59 @@ input:
     candidate_revision: {source: git.revision, rev: "${param.candidate}"}
     diff: {source: git.diff, base: "${param.base}", head: "${param.candidate}"}
 workspace:
-  checkout: candidate_revision
+  revision: candidate_revision
 output:
   format: json
   schema: s
   require_valid: true
+timeout: 20m
+tools: {allow: [repository.read, repository.search, repository.diff]}
 `},
-		definition.KindSchema: {"s": schema},
+		document.KindWorkflow: {"p_a": pOnA},
+		document.KindSchema:   {"s": schema},
+		document.KindPrompt:   {"inspect": inspectPrompt},
 	}
 }
+
+// pOnA is the harness's workflow p_a, one call (ADR-030 rule 6): node p
+// binds process p to agent a. A call the harness makes runs it unless its
+// request names another.
+const pOnA = `schema: agister.workflow/v1alpha1
+name: p_a
+type: workflow
+call: {node: p, uses: process:p, agent: a}
+`
+
+// onA is workflow p_a's call, as a run of it records it.
+func onA() *run.Call { return &run.Call{Node: "p", Process: "p", Agent: "a"} }
+
+// workflowShower shows a workflow, as an Inspection and a client do.
+type workflowShower interface {
+	ShowWorkflow(context.Context, string) (contract.WorkflowView, error)
+}
+
+// callShown is the process of the workflow of one call named workflow, as
+// that call would see it: a process is planned only on the agent a node
+// binds it to (ADR-030 rule 5), so its view is its node's.
+func callShown(shower workflowShower, workflow string) (contract.ProcessView, error) {
+	view, err := shower.ShowWorkflow(context.Background(), workflow)
+	if err != nil || view.Call == nil {
+		return contract.ProcessView{}, err
+	}
+	return view.Call.Process, nil
+}
+
+// bind gives the harness workflow name, one call: node work binds process
+// to agent, as nothing else runs a process (ADR-030 rules 5 and 6).
+func (h *harness) bind(name, process, agent string) {
+	if h.defs.docs[document.KindWorkflow] == nil {
+		h.defs.docs[document.KindWorkflow] = map[string]string{}
+	}
+	h.defs.docs[document.KindWorkflow][name] = "schema: agister.workflow/v1alpha1\nname: " + name + "\ntype: workflow\ncall: {node: work, uses: process:" + process + ", agent: " + agent + "}\n"
+}
+
+// inspectPrompt is the harness's process p's prompt (ADR-028 rule 8).
+const inspectPrompt = "Inspect the change for defects.\n"
 
 type harness struct {
 	calls      *app.Calls
@@ -92,13 +129,27 @@ type harness struct {
 	inputs     *inputsSpy
 	workspaces *workspacesSpy
 	changes    *changesSpy
-	copies     *copiesSpy
-	// setup runs the checkout's setup commands; commands the
-	// verification's.
-	setup     *setupCommandsSpy
+	// commands runs the verification's commands.
 	commands  *commandsSpy
 	validator *validatorSpy
 	recorder  *recorderSpy
+	// copies keeps the working copies of the calls' file inputs.
+	copies *copiesSpy
+	// references says which files a brief's parts refer to exist.
+	references *referencesSpy
+	// locks, worktrees, reaps and writers are what a call's holder runs on;
+	// processes is what a reaper beside it ends processes through.
+	locks     *locksSpy
+	worktrees *worktreesSpy
+	reaps     *reaperSpy
+	writers   *writersSpy
+	processes *processesSpy
+	// reaper finishes the unfinished runs the holder meets: reaps, unless
+	// a test gives the holder a reaper over its run store.
+	reaper app.HoldReaper
+	// probes verify the versions the settings do not, for the client
+	// clientOn builds; nil: none is probed.
+	probes app.ResolverProbes
 }
 
 func newHarness() *harness {
@@ -110,12 +161,18 @@ func newHarness() *harness {
 		},
 		workspaces: &workspacesSpy{root: "/repo", dir: "/work/checkout"},
 		changes:    &changesSpy{},
-		copies:     &copiesSpy{},
-		setup:      &setupCommandsSpy{},
 		commands:   &commandsSpy{},
 		validator:  &validatorSpy{},
 		recorder:   newRecorderSpy(),
+		copies:     &copiesSpy{},
+		references: &referencesSpy{},
+		locks:      &locksSpy{},
+		worktrees:  &worktreesSpy{},
+		reaps:      &reaperSpy{},
+		writers:    &writersSpy{},
+		processes:  &processesSpy{},
 	}
+	h.reaper = h.reaps
 	h.runtimes = &runtimesSpy{runner: h.runner}
 	h.runs = &runsSpy{records: map[string]run.Record{}, states: map[string]run.State{}}
 	h.inputs = &inputsSpy{respond: func(spec app.InputSpec) (app.Resolved, error) {
@@ -146,16 +203,25 @@ func (h *harness) callsRecordedWith(src app.ResolverDefinitions, workspaces app.
 	return app.NewCalls(
 		app.NewResolver(src, h.runtimes, h.validator, resolverCheckStub{}),
 		h.runtimes,
-		map[string]app.InputProvider{"git.revision": h.inputs, "git.diff": h.inputs, "git.changed_files": h.inputs, "file": h.inputs, "param": h.inputs},
-		workspaces, changes, app.NewPreparer(changes, h.setup, h.clock), app.NewVerifier(changes, h.copies, h.commands, h.clock), h.validator, recorder, runs,
+		map[string]app.InputProvider{"git.revision": h.inputs, "git.diff": h.inputs, "git.changed_files": h.inputs, "file": h.inputs, "param": h.inputs}, h.copies, h.references,
+		workspaces, changes, h.holderOver(changes, runs), app.CallsVerifier{Verifier: app.NewVerifier(changes, h.commands, h.clock)}, app.NewRecoverer(h.clock), h.validator, recorder, runs,
 		h.clock, h.timer, ids, "/state", h.hosted,
 	)
+}
+
+// holder is the holder of the harness's calls.
+func (h *harness) holder() *app.Holder {
+	return h.holderOver(h.changes, h.runs)
+}
+
+func (h *harness) holderOver(changes app.CallChanges, runs app.CallRuns) *app.Holder {
+	return app.NewHolder(app.HoldAdapters{Locks: h.locks, Worktrees: h.worktrees, Content: changes, Runs: runs, Reaper: h.reaper, Writers: h.writers})
 }
 
 func (h *harness) call(t *testing.T, request contract.CallRequest) run.Record {
 	t.Helper()
 	if request.Process == "" {
-		request.Process = "p"
+		request.Process = "p_a"
 	}
 	if request.Cwd == "" {
 		request.Cwd = "/repo"
@@ -201,9 +267,10 @@ func TestCompletedCallSendsTheComposedPayloads(t *testing.T) {
 	if !reflect.DeepEqual(gotArgs, wantArgs) || h.inputs.specs[0].Cwd != "/repo" {
 		t.Fatalf("input specs = %+v", h.inputs.specs)
 	}
-	// The checkout is of the resolved revision, and released once.
-	if !reflect.DeepEqual(h.workspaces.checkouts, [][2]string{{"/repo", "sha-HEAD"}}) || h.workspaces.releases() != 1 {
-		t.Fatalf("checkouts %v, released %d", h.workspaces.checkouts, h.workspaces.releases())
+	// The call works in the caller's worktree, at the resolved revision,
+	// and lets its hold go once (ADR-025 rule 1).
+	if record.InPlace == nil || record.InPlace.Revision != "sha-HEAD" || h.locks.releases("/repo") != 1 {
+		t.Fatalf("in place %+v, released %d", record.InPlace, h.locks.releases("/repo"))
 	}
 	// The turn request carries primitives, not permissions, and a fresh
 	// call names no session: the runtime reports the one it starts.
@@ -213,29 +280,32 @@ func TestCompletedCallSendsTheComposedPayloads(t *testing.T) {
 	}
 	got := requests[0]
 	if !reflect.DeepEqual(got.Primitives, []string{"Read", "Grep"}) ||
-		got.Cwd != "/work/checkout" || got.Model != "m1" || got.Effort != "high" ||
+		got.Cwd != "/repo" || got.Model != "m1" || got.Effort != "high" ||
 		got.Timeout != 20*time.Minute || got.ResumeSessionID != "" || string(got.OutputSchema) != schema {
 		t.Fatalf("turn request = %+v", got)
 	}
 	if got.Instruction != "Inspect the change.\n\nGranted permissions: repository.read, repository.search\nWithheld permissions: repository.diff" {
 		t.Fatalf("instruction = %q", got.Instruction)
 	}
-	if got.Prompt != "## candidate_revision\n\nsha-HEAD\n\n## diff\n\n```\nline one\nline two\n```" {
+	if got.Prompt != "## candidate_revision\n\nsha-HEAD\n\n## diff\n\n```\nline one\nline two\n```\n\n## prompt\n\n```\n"+inspectPrompt+"```" {
 		t.Fatalf("prompt = %q", got.Prompt)
 	}
-	// The schema was compiled before the call and the output validated after.
-	if len(h.validator.compiled) != 1 || string(h.validator.validated[0]) != `{"outcome":"no"}` {
+	// The schema was compiled before the call, as the workflow was checked
+	// and as its call was resolved, where a process run on its own
+	// compiled it once, and the output validated after.
+	if len(h.validator.compiled) != 2 || string(h.validator.validated[0]) != `{"outcome":"no"}` {
 		t.Fatalf("validator: compiled %d, validated %v", len(h.validator.compiled), h.validator.validated)
 	}
 	// Evidence: definitions with digests, plan, inputs, identities.
 	var kinds []string
 	for _, source := range record.Definitions {
 		kinds = append(kinds, string(source.Kind)+"/"+source.Name)
-		if len(source.SHA256) != 64 {
+		if len(digestRecorded(source)) != 64 {
 			t.Fatalf("source without digest: %+v", source)
 		}
 	}
-	if strings.Join(kinds, ",") != "service/service,processes/p,policies/pol,agents/a,runtimes/rt,schemas/s" {
+	// The workflow that binds the call, then the call's own.
+	if strings.Join(kinds, ",") != "workflows/p_a,service/service,processes/p,agents/a,runtimes/rt,schemas/s,prompts/inspect" {
 		t.Fatalf("definitions = %v", kinds)
 	}
 	if record.Plan == nil || !reflect.DeepEqual(record.Plan.Withheld, []string{"repository.diff"}) ||
@@ -248,11 +318,8 @@ func TestCompletedCallSendsTheComposedPayloads(t *testing.T) {
 		t.Fatalf("profile = %+v", record.Profile)
 	}
 	order := strings.Join(h.recorder.kinds(), " ")
-	if order != "CALL_SUBMITTED PLANNED PERMISSIONS_WITHHELD PROCESS_STARTED NO_CHANGES CALL_FINISHED" {
+	if order != "CALL_SUBMITTED PLANNED PERMISSIONS_WITHHELD WORKTREE_LOCKED WORKTREE_ADMITTED PROCESS_STARTED NO_CHANGES CALL_FINISHED" {
 		t.Fatalf("events = %s", order)
-	}
-	if !reflect.DeepEqual(h.recorder.raw, []string{`{"raw":true}`}) {
-		t.Fatalf("raw = %v", h.recorder.raw)
 	}
 }
 
@@ -287,8 +354,8 @@ func TestNodeStatusFollowsTheResponses(t *testing.T) {
 			if record.Result.Output != nil {
 				t.Fatalf("output recorded for a node that did not complete: %s", record.Result.Output)
 			}
-			if h.workspaces.releases() != 1 {
-				t.Fatalf("released %d times", h.workspaces.releases())
+			if h.locks.releases("/repo") != 1 {
+				t.Fatalf("released %d times", h.locks.releases("/repo"))
 			}
 		})
 	}
@@ -328,7 +395,7 @@ func TestResultCarriesUsageCostTimingAndSession(t *testing.T) {
 func TestCostLimitReachesTheRuntimeOrRefuses(t *testing.T) {
 	t.Parallel()
 	h := newHarness()
-	h.defs.docs[definition.KindPolicy]["pol"] += "max_cost_usd: 2\n"
+	h.defs.docs[document.KindProcess]["p"] += "max_cost_usd: 2\n"
 	limit := 0.5
 	record := h.call(t, contract.CallRequest{MaxCostUSD: &limit})
 	if got := h.runner.calls()[0].MaxCostUSD; got == nil || *got != 0.5 || *record.Effective.MaxCostUSD != 0.5 {
@@ -336,59 +403,70 @@ func TestCostLimitReachesTheRuntimeOrRefuses(t *testing.T) {
 	}
 
 	h = newHarness()
-	h.defs.docs[definition.KindPolicy]["pol"] += "max_cost_usd: 2\n"
+	h.defs.docs[document.KindProcess]["p"] += "max_cost_usd: 2\n"
 	h.runner.identity.CostLimit = false
 	if record := h.call(t, contract.CallRequest{}); class(record) != run.ClassRefused || !strings.Contains(message(record), "cannot enforce the cost limit 2") {
 		t.Fatalf("result = %+v", record.Result)
 	}
 }
 
-// The shipped ask, review and implement processes and their read-only,
-// static-review and implement policies set no cost limit, so a runtime that
-// cannot enforce one runs them.
+// shippedPrompts gives the harness's settings every prompt the examples
+// ship, which their processes name (ADR-028 rule 8).
+func shippedPrompts(t *testing.T, h *harness) {
+	t.Helper()
+	files, err := fs.Glob(examples.Settings(), "prompts/*.md")
+	if err != nil || len(files) == 0 {
+		t.Fatalf("shipped prompts %q, %v", files, err)
+	}
+	for _, file := range files {
+		data, err := fs.ReadFile(examples.Settings(), file)
+		if err != nil {
+			t.Fatal(err)
+		}
+		h.defs.docs[document.KindPrompt][strings.TrimSuffix(strings.TrimPrefix(file, "prompts/"), ".md")] = string(data)
+	}
+}
+
+// The shipped ask, review and implement processes set no cost limit, so a
+// runtime that cannot enforce one runs them.
 func TestShippedProcessesRunOnARuntimeWithoutACostLimit(t *testing.T) {
 	t.Parallel()
 	for _, c := range []struct {
-		process, policy, agent string
-		params                 map[string]string
-		output                 string
+		process, agent string
+		params         map[string]string
+		output         string
 	}{
-		{"ask", "read-only", "assistant", map[string]string{"question": "What is a.txt?"}, `"an answer"`},
-		{"adversarial_review", "static-review", "reviewer", nil, `{"outcome":"no"}`},
-		{"architecture_review", "static-review", "reviewer", map[string]string{"architecture": "docs/architecture.md"}, `{"outcome":"no"}`},
-		{"implement", "implement", "assistant", map[string]string{"brief": "brief.md"}, `"done"`},
+		{"ask", "assistant", map[string]string{"question": "What is a.txt?"}, `"an answer"`},
+		{"adversarial_review", "reviewer", nil, `{"outcome":"no"}`},
+		{"architecture_review", "reviewer", map[string]string{"architecture": "docs/architecture.md"}, `{"outcome":"no"}`},
+		{"implement", "assistant", map[string]string{"brief": "brief.md"}, `"done"`},
 	} {
 		t.Run(c.process, func(t *testing.T) {
 			t.Parallel()
 			h := newHarness()
-			for kind, name := range map[definition.Kind]string{definition.KindProcess: c.process, definition.KindPolicy: c.policy} {
-				data, err := fs.ReadFile(examples.Settings(), string(kind)+"/"+name+".yaml")
-				if err != nil {
-					t.Fatal(err)
-				}
-				h.defs.docs[kind][name] = string(data)
+			data, err := fs.ReadFile(examples.Settings(), "processes/"+c.process+".yaml")
+			if err != nil {
+				t.Fatal(err)
 			}
+			h.defs.docs[document.KindProcess][c.process] = string(data)
 			service, err := fs.ReadFile(examples.Settings(), "service.toml")
 			if err != nil {
 				t.Fatal(err)
 			}
-			h.defs.docs[definition.KindService]["service"] = string(service)
-			h.defs.docs[definition.KindAgent][c.agent] = strings.Replace(h.defs.docs[definition.KindAgent]["a"], `name = "a"`, `name = "`+c.agent+`"`, 1)
-			if c.agent == "assistant" {
-				// Resumable, as the shipped assistant is: implement's
-				// verification repairs in the call's session.
-				h.defs.docs[definition.KindAgent][c.agent] += "session = \"resumable\"\n"
-			}
-			h.defs.docs[definition.KindSchema]["review-result"] = schema
+			h.defs.docs[document.KindService]["service"] = string(service)
+			shippedPrompts(t, h)
+			h.defs.docs[document.KindAgent][c.agent] = strings.Replace(h.defs.docs[document.KindAgent]["a"], `name = "a"`, `name = "`+c.agent+`"`, 1)
+			h.bind("shipped", c.process, c.agent)
+			h.defs.docs[document.KindSchema]["review-result"] = schema
 			// The verification the shipped implement names.
 			repo, err := fs.ReadFile(examples.Settings(), "verifies/repo.yaml")
 			if err != nil {
 				t.Fatal(err)
 			}
-			h.defs.docs[definition.KindVerify] = map[string]string{"repo": string(repo)}
+			h.defs.docs[document.KindVerify] = map[string]string{"repo": string(repo)}
 			h.runner.identity.CostLimit = false
 			h.runner.turn.Output = json.RawMessage(c.output)
-			record := h.call(t, contract.CallRequest{Process: c.process, Params: c.params})
+			record := h.call(t, contract.CallRequest{Process: "shipped", Params: c.params})
 			if record.Result.Status != run.Completed || record.Effective.MaxCostUSD != nil || h.runner.calls()[0].MaxCostUSD != nil {
 				t.Fatalf("result %+v, effective cost limit %v", record.Result, record.Effective.MaxCostUSD)
 			}
@@ -396,7 +474,7 @@ func TestShippedProcessesRunOnARuntimeWithoutACostLimit(t *testing.T) {
 	}
 }
 
-// The shipped read-only policy allows everything Codex's read-only sandbox
+// The shipped ask allows everything Codex's read-only sandbox
 // grants under contract codex/2, but the shipped service treats reading the
 // host as state-reaching, so the shipped ask is refused on a Codex agent,
 // naming host.read. A service configured to accept host reads, as a
@@ -445,25 +523,23 @@ func TestShippedAskRunsOnACodexRuntime(t *testing.T) {
 	})
 }
 
-// askOnCodex runs the shipped ask under the shipped read-only policy on a
-// Codex agent, with the shipped service as configure returns it, and
+// askOnCodex runs the shipped ask on a Codex agent, with the shipped service as configure returns it, and
 // returns the harness and the call's record.
 func askOnCodex(t *testing.T, configure func(service string) string) (*harness, run.Record) {
 	t.Helper()
 	h := newHarness()
-	for kind, name := range map[definition.Kind]string{definition.KindProcess: "ask", definition.KindPolicy: "read-only"} {
-		data, err := fs.ReadFile(examples.Settings(), string(kind)+"/"+name+".yaml")
-		if err != nil {
-			t.Fatal(err)
-		}
-		h.defs.docs[kind][name] = string(data)
+	ask, err := fs.ReadFile(examples.Settings(), "processes/ask.yaml")
+	if err != nil {
+		t.Fatal(err)
 	}
+	h.defs.docs[document.KindProcess]["ask"] = string(ask)
 	service, err := fs.ReadFile(examples.Settings(), "service.toml")
 	if err != nil {
 		t.Fatal(err)
 	}
-	h.defs.docs[definition.KindService]["service"] = configure(string(service))
-	h.defs.docs[definition.KindRuntime]["codex"] = `schema: agister.runtime/v1alpha1
+	h.defs.docs[document.KindService]["service"] = configure(string(service))
+	shippedPrompts(t, h)
+	h.defs.docs[document.KindRuntime]["codex"] = `schema: agister.runtime/v1alpha1
 name: codex
 adapter: spy
 contract: codex/2
@@ -479,7 +555,7 @@ primitives:
                repository.write, host.write]
       verified: ["0.159."]
 `
-	h.defs.docs[definition.KindAgent]["codex-agent"] = `schema = "agister.agent/v1alpha1"
+	h.defs.docs[document.KindAgent]["codex-agent"] = `schema = "agister.agent/v1alpha1"
 name = "codex-agent"
 runtime = "codex"
 model = "m1"
@@ -490,10 +566,11 @@ command = "/bin/codex"
 	h.runner.identity = app.RuntimeIdentity{Contract: "codex/2", Version: "0.159.2", Resume: true}
 	h.runner.turn.Output = json.RawMessage(`"an answer"`)
 
-	return h, h.call(t, contract.CallRequest{Process: "ask", Agent: "codex-agent", Params: map[string]string{"question": "What is a.txt?"}})
+	h.bind("ask_codex", "ask", "codex-agent")
+	return h, h.call(t, contract.CallRequest{Process: "ask_codex", Params: map[string]string{"question": "What is a.txt?"}})
 }
 
-// The example Codex review's sandboxed-review policy allows everything
+// The example Codex review allows everything
 // Codex's read-only sandbox grants under contract codex/2, so, as with the
 // shipped ask, the shipped service refuses it on the example agent, naming
 // host.read, and a service that opts in to host reads, as its README
@@ -540,7 +617,7 @@ func TestExampleCodexReviewRunsOnACodexRuntime(t *testing.T) {
 }
 
 // reviewOnCodex runs the example adversarial_review_sandboxed with its
-// policy, agent and runtime from examples/codex, the runtime on the spy
+// agent and runtime from examples/codex, the runtime on the spy
 // adapter and verified for the spy's version, under the shipped service as
 // configure returns it, and returns the harness and the call's record.
 func reviewOnCodex(t *testing.T, configure func(service string) string) (*harness, run.Record) {
@@ -554,11 +631,12 @@ func reviewOnCodex(t *testing.T, configure func(service string) string) (*harnes
 		}
 		return string(data)
 	}
-	h.defs.docs[definition.KindProcess]["adversarial_review_sandboxed"] = read(codex, "processes/adversarial_review_sandboxed.yaml")
-	h.defs.docs[definition.KindPolicy]["sandboxed-review"] = read(codex, "policies/sandboxed-review.yaml")
-	h.defs.docs[definition.KindAgent]["codex-reviewer"] = read(codex, "agents/codex-reviewer.toml")
-	h.defs.docs[definition.KindSchema]["review-result"] = schema
-	h.defs.docs[definition.KindService]["service"] = configure(read(examples.Settings(), "service.toml"))
+	h.defs.docs[document.KindProcess]["adversarial_review_sandboxed"] = read(codex, "processes/adversarial_review_sandboxed.yaml")
+	h.defs.docs[document.KindAgent]["codex-reviewer"] = read(codex, "agents/codex-reviewer.toml")
+	h.defs.docs[document.KindSchema]["review-result"] = schema
+	h.defs.docs[document.KindService]["service"] = configure(read(examples.Settings(), "service.toml"))
+	// The example names the shipped prompt it reviews to.
+	shippedPrompts(t, h)
 
 	runtime := read(codex, "runtimes/codex.yaml")
 	for _, edit := range [][2]string{
@@ -570,20 +648,30 @@ func reviewOnCodex(t *testing.T, configure func(service string) string) (*harnes
 		}
 		runtime = strings.Replace(runtime, edit[0], edit[1], 1)
 	}
-	h.defs.docs[definition.KindRuntime]["codex"] = runtime + "      verified: [\"0.159.\"]\n"
+	h.defs.docs[document.KindRuntime]["codex"] = runtime + "      verified: [\"0.159.\"]\n"
 
 	h.runner.identity = app.RuntimeIdentity{Contract: "codex/2", Version: "0.159.2", Resume: true}
-	return h, h.call(t, contract.CallRequest{Process: "adversarial_review_sandboxed"})
+	h.defs.docs[document.KindWorkflow]["adversarial_review_sandboxed_codex"] = read(codex, "workflows/adversarial_review_sandboxed_codex.yaml")
+	return h, h.call(t, contract.CallRequest{Process: "adversarial_review_sandboxed_codex"})
+}
+
+// leftInTheWorktree is record as a run that worked in the worktree /repo
+// at sha-HEAD and left its content tree there, where a continuation
+// resumes it (ADR-025 rule 7).
+func leftInTheWorktree(record run.Record) run.Record {
+	record.Workspace = "/repo"
+	record.InPlace = &run.InPlace{Dir: "/repo", Worktree: "/repo", RepositoryIdentity: "/repo", Revision: "sha-HEAD", Content: "tree"}
+	return record
 }
 
 func TestContinuationResumesAFinishedRunsSession(t *testing.T) {
 	t.Parallel()
 	resumable := func(h *harness) {
-		h.defs.docs[definition.KindAgent]["a"] += "session = \"resumable\"\n"
+		h.defs.docs[document.KindProcess]["p"] += "session: resumable\n"
 	}
 	finished := time.Date(2026, 9, 28, 11, 0, 0, 0, time.UTC)
-	earlier := run.Record{ID: "run-0", Agent: "a", Runtime: &run.Runtime{Adapter: "spy"}, FinishedAt: &finished,
-		Result: &run.Result{Status: run.Interrupted, Session: &run.Session{ProviderSessionID: "prov-0"}}}
+	earlier := leftInTheWorktree(run.Record{ID: "run-0", Agent: "a", Call: onA(), Runtime: &run.Runtime{Adapter: "spy"}, FinishedAt: &finished,
+		Result: &run.Result{Status: run.Interrupted, Session: &run.Session{ProviderSessionID: "prov-0"}}})
 
 	h := newHarness()
 	resumable(h)
@@ -603,7 +691,8 @@ func TestContinuationResumesAFinishedRunsSession(t *testing.T) {
 		arrange func(*harness)
 		reason  string
 	}{
-		{"fresh-only agent", func(h *harness) {}, "agent a is fresh-only; it cannot continue run run-0"},
+		// The process says it, where its agent did (ADR-030 rule 3).
+		{"fresh-only process", func(h *harness) {}, "process p is fresh-only; it cannot continue run run-0"},
 		{"runtime cannot resume", func(h *harness) { resumable(h); h.runner.identity.Resume = false }, "runtime rt cannot continue sessions"},
 		{"unknown run", func(h *harness) { resumable(h); delete(h.runs.records, "run-0") }, "run run-0: not found"},
 		{"run still running", func(h *harness) { resumable(h); h.runs.states["run-0"] = run.StateRunning }, "run run-0 is running, not finished"},
@@ -629,7 +718,7 @@ func TestContinuationResumesAFinishedRunsSession(t *testing.T) {
 			if class(record) != run.ClassRefused || !strings.Contains(message(record), c.reason) {
 				t.Fatalf("result %+v, want refusal %q", record.Result.Error, c.reason)
 			}
-			if len(h.runner.calls()) != 0 || len(h.workspaces.checkouts) != 0 {
+			if len(h.runner.calls()) != 0 {
 				t.Fatal("effects before the refusal")
 			}
 		})
@@ -637,26 +726,29 @@ func TestContinuationResumesAFinishedRunsSession(t *testing.T) {
 }
 
 // A runtime that resumes a session only in the directory it ran in cannot
-// continue a run anywhere else: not in a checkout made for the call, nor
-// from another directory. Each is refused before any workspace is made;
-// from the directory the run worked in, the session is resumed there.
+// continue a run anywhere else: not one that worked in a checkout of its
+// own, made before ADR-025, nor from another directory. Each is refused
+// before any turn; from the directory the run worked in, the session is
+// resumed there.
 func TestContinuationWhereTheSessionDidNotRunIsRefused(t *testing.T) {
 	t.Parallel()
 	// run-0 left its session's evidence: it worked in checkout A.
 	ended := fixedClock{}.Now()
-	earlier := run.Record{ID: "run-0", Agent: "a", Runtime: &run.Runtime{Adapter: "spy"}, Workspace: "/work/checkout-a",
+	earlier := run.Record{ID: "run-0", Agent: "a", Call: onA(), Runtime: &run.Runtime{Adapter: "spy"}, Workspace: "/work/checkout-a",
 		FinishedAt: &ended, Turn: &run.Turn{ProviderSessionID: "prov-0"},
 		Result: &run.Result{Status: run.Completed, Session: &run.Session{ProviderSessionID: "prov-0"}}}
 	arrange := func(workspace string, checkout bool) *harness {
 		h := newHarness()
-		h.defs.docs[definition.KindAgent]["a"] += "session = \"resumable\"\n"
+		h.defs.docs[document.KindProcess]["p"] += "session: resumable\n"
 		h.runner.identity.ResumeWhereItRan = true
 		if !checkout {
-			h.defs.docs[definition.KindProcess]["p"] = strings.Replace(h.defs.docs[definition.KindProcess]["p"], "workspace:\n  checkout: candidate_revision\n", "", 1)
-			h.defs.docs[definition.KindPolicy]["pol"] = strings.Replace(h.defs.docs[definition.KindPolicy]["pol"], "scope: candidate", "scope: repository", 1)
+			h.defs.docs[document.KindProcess]["p"] = strings.Replace(h.defs.docs[document.KindProcess]["p"], "workspace:\n  revision: candidate_revision\n", "", 1)
 		}
 		prior := earlier
 		prior.Workspace = workspace
+		if checkout {
+			prior.Effects = &run.Effects{Checkout: &run.Checkout{Repository: "/repo", Dir: workspace, Revision: "sha-HEAD"}}
+		}
 		h.runs.records["run-0"], h.runs.states["run-0"] = prior, run.StateFinished
 		return h
 	}
@@ -666,7 +758,7 @@ func TestContinuationWhereTheSessionDidNotRunIsRefused(t *testing.T) {
 		checkout  bool
 		reason    string
 	}{
-		{"a checkout of its own", "/work/checkout-a", true, "runtime rt resumes a session only in the directory it ran in, and process p works in a checkout of its own; it cannot continue run run-0"},
+		{"a checkout of its own", "/work/checkout-a", true, "run run-0, the latest run of the session, worked in a checkout of its own (/work/checkout-a), made before ADR-025; it cannot be continued"},
 		{"another directory", "/elsewhere", false, "runtime rt resumes a session only in the directory it ran in: run run-0 worked in /elsewhere, not /repo"},
 		{"no directory recorded", "", false, "run run-0 recorded none"},
 	} {
@@ -677,8 +769,8 @@ func TestContinuationWhereTheSessionDidNotRunIsRefused(t *testing.T) {
 			if class(record) != run.ClassRefused || !strings.Contains(message(record), c.reason) {
 				t.Fatalf("result %+v, want refusal %q", record.Result.Error, c.reason)
 			}
-			if len(h.runner.calls()) != 0 || len(h.workspaces.checkouts) != 0 {
-				t.Fatalf("turns %d, checkouts %v before the refusal", len(h.runner.calls()), h.workspaces.checkouts)
+			if len(h.runner.calls()) != 0 {
+				t.Fatalf("turns %d before the refusal", len(h.runner.calls()))
 			}
 		})
 	}
@@ -688,8 +780,8 @@ func TestContinuationWhereTheSessionDidNotRunIsRefused(t *testing.T) {
 	if len(h.runner.calls()) != 1 {
 		t.Fatalf("result %+v", record.Result.Error)
 	}
-	if got := h.runner.calls()[0]; got.ResumeSessionID != "prov-0" || got.Cwd != "/repo" || len(h.workspaces.checkouts) != 0 {
-		t.Fatalf("request %+v, checkouts %v", got, h.workspaces.checkouts)
+	if got := h.runner.calls()[0]; got.ResumeSessionID != "prov-0" || got.Cwd != "/repo" {
+		t.Fatalf("request %+v", got)
 	}
 }
 
@@ -709,15 +801,19 @@ func TestAContinuationCostsWhatItAddedToItsSession(t *testing.T) {
 	}
 	// run-0 started prov-0; run-0b continued it, after it.
 	recorded := func(id, continues string, created, finished int, totals *run.SessionTotals) run.Record {
-		return run.Record{ID: id, Agent: "a", Runtime: &run.Runtime{Adapter: "spy"}, Request: run.Request{Continue: continues},
+		return leftInTheWorktree(run.Record{ID: id, Agent: "a", Call: onA(), Runtime: &run.Runtime{Adapter: "spy"}, Request: run.Request{Continue: continues},
 			CreatedAt: *at(created), FinishedAt: at(finished), Turn: &run.Turn{ProviderSessionID: "prov-0", Session: totals},
-			Result: &run.Result{Status: run.Completed, Session: &run.Session{ProviderSessionID: "prov-0", Continues: continues}}}
+			Result: &run.Result{Status: run.Completed, Session: &run.Session{ProviderSessionID: "prov-0", Continues: continues}}})
 	}
 	// run-0b continued run-0; it ran no turn, and either started its
 	// runtime process and was reaped, or was refused before it.
 	unturned := func(process bool) run.Record {
-		record := run.Record{ID: "run-0b", Agent: "a", Runtime: &run.Runtime{Adapter: "spy"}, Request: run.Request{Continue: "run-0"},
-			CreatedAt: *at(2), FinishedAt: at(3), Result: &run.Result{Status: run.Failed}}
+		record := leftInTheWorktree(run.Record{ID: "run-0b", Agent: "a", Call: onA(), Runtime: &run.Runtime{Adapter: "spy"}, Request: run.Request{Continue: "run-0"},
+			CreatedAt: *at(2), FinishedAt: at(3), Result: &run.Result{Status: run.Failed}})
+		// A reader: what it left behind does not refuse the call (ADR-025
+		// rule 4).
+		reader := false
+		record.InPlace.Writer = &reader
 		if process {
 			result := run.AbandonedResult(record.CreatedAt)
 			record.Effects, record.Result = &run.Effects{Process: &run.Process{Ref: "ref-0b"}}, &result
@@ -754,7 +850,7 @@ func TestAContinuationCostsWhatItAddedToItsSession(t *testing.T) {
 		t.Run(c.name, func(t *testing.T) {
 			t.Parallel()
 			h := newHarness()
-			h.defs.docs[definition.KindAgent]["a"] += "session = \"resumable\"\n"
+			h.defs.docs[document.KindProcess]["p"] += "session: resumable\n"
 			for _, record := range c.records {
 				h.runs.records[record.ID], h.runs.states[record.ID] = record, run.StateFinished
 			}
@@ -778,305 +874,39 @@ func TestAContinuationCostsWhatItAddedToItsSession(t *testing.T) {
 	}
 }
 
-// carrying is a harness whose agent resumes sessions and whose process p
-// runs a setup in its checkout, with an empty order of what happened.
-func carrying() (*harness, *[]string) {
+// resuming is a harness whose agent resumes sessions, with an empty order
+// of what happened: each turn. A call working in the caller's worktree
+// carries no patch into it (ADR-025 rule 7).
+func resuming() (*harness, *[]string) {
 	h := newHarness()
-	h.defs.docs[definition.KindAgent]["a"] += "session = \"resumable\"\n"
-	ownSetup(h)
+	h.defs.docs[document.KindProcess]["p"] += "session: resumable\n"
 	order := new([]string)
-	h.changes.applying = func(check bool) error {
-		*order = append(*order, map[bool]string{true: "check", false: "apply"}[check])
-		return nil
-	}
-	h.setup.running = func(app.SetupCommandRequest) { *order = append(*order, "setup") }
 	h.runner.during = func(app.TurnRequest) { *order = append(*order, "turn") }
 	return h, order
 }
 
 // patchedRun records a finished run of p in session prov-0, created and
-// finished at those minutes, that hit a rate limit in a checkout of /repo
-// at sha-HEAD and kept patch as its changes; none when patch is empty.
+// finished at those minutes, that hit a rate limit in the worktree /repo
+// at sha-HEAD, leaving its content tree, and kept patch as its changes;
+// none when patch is empty (ADR-025 rule 7).
 func patchedRun(h *harness, id, continues string, created, finished int, patch string) run.Record {
 	at := func(minute int) time.Time { return time.Date(2026, 9, 28, 11, minute, 0, 0, time.UTC) }
 	end := at(finished)
-	record := run.Record{ID: id, Process: "p", Agent: "a", Runtime: &run.Runtime{Adapter: "spy"},
-		Request:   run.Request{Process: "p", Continue: continues, Cwd: "/repo"},
-		CreatedAt: at(created), FinishedAt: &end,
+	record := run.Record{ID: id, Process: "p_a", Agent: "a", Call: onA(), Runtime: &run.Runtime{Adapter: "spy"},
+		Request:   run.Request{Process: "p_a", Continue: continues, Cwd: "/repo"},
+		CreatedAt: at(created), FinishedAt: &end, Workspace: "/repo",
 		Inputs:  []run.Input{{Name: "candidate_revision", Source: "git.revision", Identity: "sha-HEAD", Revision: true}},
-		Effects: &run.Effects{Checkout: &run.Checkout{Repository: "/repo", Dir: "/work/checkout-" + id, Revision: "sha-HEAD"}},
+		InPlace: &run.InPlace{Dir: "/repo", Worktree: "/repo", RepositoryIdentity: "/repo", Revision: "sha-HEAD", Content: "tree"},
 		Turn:    &run.Turn{Status: run.Failed, Error: run.Fault(run.ClassRateLimited, "429"), ProviderSessionID: "prov-0"},
 		Result: &run.Result{Status: run.Failed, Error: run.Fault(run.ClassRateLimited, "429"),
 			Session: &run.Session{ProviderSessionID: "prov-0", Continues: continues}},
 	}
-	record.Definitions = []run.DefinitionSource{{Kind: string(definition.KindProcess), Name: "p", SHA256: sha(h.defs.docs[definition.KindProcess]["p"])}}
+	record.Definitions = []run.DefinitionSource{{Kind: string(document.KindProcess), Name: "p", SHA256: sha(h.defs.docs[document.KindProcess]["p"])}}
 	if patch != "" {
 		record.Result.Artifacts = []run.Artifact{h.runs.store(id, "changes.patch", []byte(patch))}
 	}
 	h.runs.records[id], h.runs.states[id] = record, run.StateFinished
 	return record
-}
-
-// A continuation with a checkout carries the changes.patch of its session's
-// latest run (ADR-013): checked before the setup, applied after it, before
-// the first turn, whose prompt says so; the run's events record it. The
-// call's own patch is still from the revision.
-func TestAContinuationCarriesTheLatestRunsChanges(t *testing.T) {
-	t.Parallel()
-	h, order := carrying()
-	patchedRun(h, "run-0", "", 0, 1, "diff A\n")
-	record := h.call(t, contract.CallRequest{Continue: "run-0"})
-	if record.Result.Status != run.Completed || len(h.runner.calls()) != 1 {
-		t.Fatalf("result %+v", record.Result)
-	}
-	if want := []string{"check", "setup", "apply", "turn"}; !reflect.DeepEqual(*order, want) {
-		t.Fatalf("order %v, want %v", *order, want)
-	}
-	if want := []appliedPatch{{"/work/checkout", "diff A\n", true}, {"/work/checkout", "diff A\n", false}}; !reflect.DeepEqual(h.changes.applies(), want) {
-		t.Fatalf("applied %+v", h.changes.applies())
-	}
-	got := h.runner.calls()[0]
-	notice := prompt.Continues("run-0", "run-0", "/work/checkout", "sha-HEAD")
-	if got.ResumeSessionID != "prov-0" || !strings.HasPrefix(got.Prompt, notice+"\n\n## candidate_revision") || strings.Contains(got.Instruction, "continues") {
-		t.Fatalf("request %+v", got)
-	}
-	var carried *run.Event
-	for i, event := range h.recorder.events {
-		if event.Kind == "CHANGES_CARRIED" {
-			carried = &h.recorder.events[i]
-		}
-	}
-	artifact := h.runs.records["run-0"].Result.Artifacts[0]
-	if carried == nil || carried.Data["run"] != "run-0" || carried.Data["digest"] != artifact.Digest || carried.Data["bytes"] != artifact.Bytes {
-		t.Fatalf("events %+v", h.recorder.events)
-	}
-	// The call's own changes, asked last, after the setup's, are from the
-	// revision: they hold the carried ones once.
-	if changed := h.changes.changed; changed[len(changed)-1] != [2]string{"/work/checkout", "sha-HEAD"} {
-		t.Fatalf("changes asked %v", changed)
-	}
-
-	// An older record names no revision: the input its process checked out
-	// does, when it ran the same process.
-	h, order = carrying()
-	legacy := patchedRun(h, "run-0", "", 0, 1, "diff A\n")
-	legacy.Effects.Checkout.Revision = ""
-	h.runs.records["run-0"] = legacy
-	if record := h.call(t, contract.CallRequest{Continue: "run-0"}); record.Result.Status != run.Completed || len(h.changes.applies()) != 2 {
-		t.Fatalf("result %+v, applied %+v", record.Result, h.changes.applies())
-	}
-}
-
-// A continuation keeps the changes of its session so far: the patch it
-// stores, from the revision, holds the carried changes and its turn's,
-// each once.
-func TestAContinuationStoresItsChangesWithTheCarriedOnes(t *testing.T) {
-	t.Parallel()
-	h, _ := carrying()
-	patchedRun(h, "run-0", "", 0, 1, "+A\n")
-	// The checkout holds what was applied to it and what the turn added,
-	// and its content is named apart at each step: the revision's, the
-	// carried changes', the turn's.
-	var content string
-	var carried, turned bool
-	ordered := h.changes.applying
-	h.changes.applying = func(check bool) error {
-		carried = carried || !check
-		return ordered(check)
-	}
-	h.runner.during = func(app.TurnRequest) {
-		for _, applied := range h.changes.applies() {
-			if !applied.check {
-				content += applied.patch
-			}
-		}
-		content += "+B\n"
-		turned = true
-	}
-	h.changes.identify = func() string {
-		switch {
-		case turned:
-			return "tree-turned"
-		case carried:
-			return "tree-carried"
-		}
-		return "tree"
-	}
-	// Only the revision against the content the turn left is the
-	// cumulative patch; a snapshot taken before the turn is not.
-	h.changes.patch = func(from, to string) []byte {
-		switch {
-		case from == "sha-HEAD" && to == "tree":
-			return nil
-		case from == "sha-HEAD" && to == "tree-turned":
-			return []byte(content)
-		}
-		return []byte("from " + from + " to " + to)
-	}
-	record := h.call(t, contract.CallRequest{Continue: "run-0"})
-	stored := string(h.recorder.artifacts["changes.patch"])
-	if record.Result.Status != run.Completed || stored != "+A\n+B\n" {
-		t.Fatalf("result %+v, patch %q", record.Result, stored)
-	}
-	if artifacts := record.Result.Artifacts; len(artifacts) != 1 || artifacts[0].Name != "changes.patch" || artifacts[0].Bytes != int64(len(stored)) {
-		t.Fatalf("artifacts %+v", artifacts)
-	}
-}
-
-// The changes carried are the session's latest run's: continuing a
-// continuation carries that run's patch alone, which holds the earlier
-// one's; continuing the first run again, after the session moved on,
-// carries the later run's too (D-6).
-func TestAContinuationCarriesTheSessionsLatestPatch(t *testing.T) {
-	t.Parallel()
-	for _, continued := range []string{"run-0b", "run-0"} {
-		t.Run(continued, func(t *testing.T) {
-			t.Parallel()
-			h, _ := carrying()
-			patchedRun(h, "run-0", "", 0, 1, "diff A\n")
-			patchedRun(h, "run-0b", "run-0", 2, 3, "diff AB\n")
-			record := h.call(t, contract.CallRequest{Continue: continued})
-			if record.Result.Status != run.Completed {
-				t.Fatalf("result %+v", record.Result)
-			}
-			if want := []appliedPatch{{"/work/checkout", "diff AB\n", true}, {"/work/checkout", "diff AB\n", false}}; !reflect.DeepEqual(h.changes.applies(), want) {
-				t.Fatalf("applied %+v", h.changes.applies())
-			}
-			if !reflect.DeepEqual(h.runs.read, []string{"run-0b/artifacts/changes.patch"}) {
-				t.Fatalf("read %v", h.runs.read)
-			}
-			if notice := prompt.Continues(continued, "run-0b", "/work/checkout", "sha-HEAD"); !strings.HasPrefix(h.runner.calls()[0].Prompt, notice) {
-				t.Fatalf("prompt %q", h.runner.calls()[0].Prompt)
-			}
-		})
-	}
-}
-
-// A latest run that worked in no checkout, or kept no patch, carries
-// nothing: the call runs on the revision, and is told so.
-func TestAContinuationWithNothingToCarryRuns(t *testing.T) {
-	t.Parallel()
-	for _, c := range []struct {
-		name    string
-		arrange func(*harness)
-	}{
-		{"no checkout", func(h *harness) {
-			prior := patchedRun(h, "run-0", "", 0, 1, "diff A\n")
-			prior.Effects = nil
-			h.runs.records["run-0"] = prior
-		}},
-		{"no patch", func(h *harness) { patchedRun(h, "run-0", "", 0, 1, "") }},
-	} {
-		t.Run(c.name, func(t *testing.T) {
-			t.Parallel()
-			h, order := carrying()
-			c.arrange(h)
-			record := h.call(t, contract.CallRequest{Continue: "run-0"})
-			if record.Result.Status != run.Completed || len(h.changes.applies()) != 0 || !reflect.DeepEqual(*order, []string{"setup", "turn"}) {
-				t.Fatalf("result %+v, applied %+v, order %v", record.Result, h.changes.applies(), *order)
-			}
-			if notice := prompt.Continues("run-0", "", "/work/checkout", "sha-HEAD"); !strings.HasPrefix(h.runner.calls()[0].Prompt, notice) {
-				t.Fatalf("prompt %q", h.runner.calls()[0].Prompt)
-			}
-			if contains(h.recorder.kinds(), "CHANGES_CARRIED") {
-				t.Fatalf("events %v", h.recorder.kinds())
-			}
-		})
-	}
-}
-
-// Changes that cannot be carried refuse the call before any turn, and
-// before the checkout is made where that can be told without it; a patch
-// that does not apply costs no setup. The checkout is released either way.
-func TestAContinuationWhoseChangesCannotBeCarriedIsRefused(t *testing.T) {
-	t.Parallel()
-	failing := func(when bool) func(*harness) {
-		return func(h *harness) {
-			patchedRun(h, "run-0", "", 0, 1, "diff A\n")
-			applying := h.changes.applying
-			h.changes.applying = func(check bool) error {
-				if err := applying(check); err != nil || check != when {
-					return err
-				}
-				return errors.New("patch failed: a.txt:1")
-			}
-		}
-	}
-	prior := func(change func(*run.Record)) func(*harness) {
-		return func(h *harness) {
-			record := patchedRun(h, "run-0", "", 0, 1, "diff A\n")
-			change(&record)
-			h.runs.records["run-0"] = record
-		}
-	}
-	for _, c := range []struct {
-		name    string
-		arrange func(*harness)
-		reason  string
-		order   []string // what happened; a checkout was made when set
-	}{
-		{"a patch that does not apply", failing(true),
-			"run run-0's changes do not apply to revision sha-HEAD: patch failed: a.txt:1", []string{"check"}},
-		{"a patch that fails to apply", failing(false),
-			"run run-0's changes could not be applied to revision sha-HEAD: patch failed: a.txt:1", []string{"check", "setup", "apply"}},
-		{"another revision", prior(func(r *run.Record) { r.Effects.Checkout.Revision = "sha-other" }),
-			"run run-0's changes are from revision sha-other, not sha-HEAD", nil},
-		{"another repository", prior(func(r *run.Record) { r.Effects.Checkout.Repository = "/other" }),
-			"run run-0's changes are of repository /other, not /repo; a continuation carries them only into the same repository", nil},
-		{"another stored repository identity", prior(func(r *run.Record) { r.Effects.Checkout.RepositoryIdentity = "/other" }),
-			"run run-0's changes are of repository /other, not /repo; a continuation carries them only into the same repository", nil},
-		{"an older record of another process", prior(func(r *run.Record) {
-			r.Effects.Checkout.Revision, r.Request.Process, r.Process = "", "q", "q"
-		}), "the revision run run-0 worked on is unknown", nil},
-		{"a patch whose digest does not match", prior(func(r *run.Record) { r.Result.Artifacts[0].Digest = "sha256:recorded" }),
-			"run run-0's changes.patch is sha256:" + sha("diff A\n") + ", not sha256:recorded as recorded", nil},
-		{"a patch that cannot be read", prior(func(r *run.Record) { r.Result.Artifacts[0].Path = "artifacts/gone.patch" }),
-			"run run-0's changes.patch cannot be read: no artifact artifacts/gone.patch", nil},
-		{"latest run has another revision", func(h *harness) {
-			patchedRun(h, "run-0", "", 0, 1, "diff A\n")
-			later := patchedRun(h, "run-0b", "run-0", 2, 3, "diff AB\n")
-			later.Effects.Checkout.Revision = "sha-other"
-			h.runs.records[later.ID] = later
-		}, "run run-0b's changes are from revision sha-other, not sha-HEAD", nil},
-		{"latest run has another repository", func(h *harness) {
-			patchedRun(h, "run-0", "", 0, 1, "diff A\n")
-			later := patchedRun(h, "run-0b", "run-0", 2, 3, "diff AB\n")
-			later.Effects.Checkout.Repository = "/other"
-			h.runs.records[later.ID] = later
-		}, "run run-0b's changes are of repository /other, not /repo; a continuation carries them only into the same repository", nil},
-		{"overlapping finished runs", func(h *harness) {
-			patchedRun(h, "run-0", "", 0, 3, "diff A\n")
-			patchedRun(h, "run-0b", "run-0", 2, 4, "diff AB\n")
-		}, "the latest run of run run-0's session is unknown", nil},
-		{"a run of the session still running", func(h *harness) {
-			patchedRun(h, "run-0", "", 0, 1, "diff A\n")
-			later := patchedRun(h, "run-0b", "run-0", 2, 3, "diff AB\n")
-			later.FinishedAt, later.Result = nil, nil
-			h.runs.records["run-0b"], h.runs.states["run-0b"] = later, run.StateRunning
-		}, "the latest run of run run-0's session is unknown", nil},
-	} {
-		t.Run(c.name, func(t *testing.T) {
-			t.Parallel()
-			h, order := carrying()
-			c.arrange(h)
-			record := h.call(t, contract.CallRequest{Continue: "run-0"})
-			if class(record) != run.ClassRefused || !strings.Contains(message(record), c.reason) || !contains(h.recorder.kinds(), "REFUSED") {
-				t.Fatalf("result %+v, want refusal %q", record.Result.Error, c.reason)
-			}
-			if len(h.runner.calls()) != 0 || !reflect.DeepEqual(*order, c.order) {
-				t.Fatalf("turns %d, order %v, want %v", len(h.runner.calls()), *order, c.order)
-			}
-			if checkouts := len(h.workspaces.checkouts); checkouts != h.workspaces.releases() || (checkouts == 1) != (c.order != nil) {
-				t.Fatalf("checkouts %v, released %d", h.workspaces.checkouts, h.workspaces.releases())
-			}
-			if c.order == nil && (len(h.workspaces.checkouts) != 0 || len(h.setup.runs()) != 0 || len(h.changes.applies()) != 0 || record.Effects != nil) {
-				t.Fatalf("checkouts %v, setup %v, applied %v, effects %+v", h.workspaces.checkouts, h.setup.runs(), h.changes.applies(), record.Effects)
-			}
-			if len(record.Result.Artifacts) != 0 || contains(h.recorder.kinds(), "CHANGES_CARRIED") {
-				t.Fatalf("artifacts %+v, events %v", record.Result.Artifacts, h.recorder.kinds())
-			}
-		})
-	}
 }
 
 func TestWorkspaceChangesBecomeArtifacts(t *testing.T) {
@@ -1098,19 +928,19 @@ func TestWorkspaceChangesBecomeArtifacts(t *testing.T) {
 				h.runner.turn = *c.turn
 			}
 			h.changes.changes = []byte("diff --git a/x b/x\n")
-			h.recorder.onArtifact = func() int { return h.workspaces.releases() }
+			h.recorder.onArtifact = func() int { return h.locks.releases("/repo") }
 			record := h.call(t, contract.CallRequest{})
 			if record.Result.Status != c.status {
 				t.Fatalf("result %+v", record.Result)
 			}
-			if !reflect.DeepEqual(h.changes.changed, [][2]string{{"/work/checkout", "sha-HEAD"}}) || string(h.recorder.artifacts["changes.patch"]) != "diff --git a/x b/x\n" {
+			if !reflect.DeepEqual(h.changes.changed, [][2]string{{"/repo", "sha-HEAD"}}) || string(h.recorder.artifacts["changes.patch"]) != "diff --git a/x b/x\n" {
 				t.Fatalf("changes asked %v, stored %v", h.changes.changed, h.recorder.artifacts)
 			}
 			if len(record.Result.Artifacts) != 1 || record.Result.Artifacts[0].Path != "artifacts/changes.patch" || !contains(h.recorder.kinds(), "ARTIFACT_STORED") || contains(h.recorder.kinds(), "NO_CHANGES") {
 				t.Fatalf("artifacts %+v, events %v", record.Result.Artifacts, h.recorder.kinds())
 			}
-			if released, stored := h.recorder.releasedAtArtifact["changes.patch"]; !stored || released != 0 || h.workspaces.releases() != 1 {
-				t.Fatalf("stored %v with %d releases before, %d after", stored, released, h.workspaces.releases())
+			if released, stored := h.recorder.releasedAtArtifact["changes.patch"]; !stored || released != 0 || h.locks.releases("/repo") != 1 {
+				t.Fatalf("stored %v with %d releases before, %d after", stored, released, h.locks.releases("/repo"))
 			}
 		})
 	}
@@ -1130,8 +960,7 @@ func TestWorkspaceChangesBecomeArtifacts(t *testing.T) {
 
 	// A workspace the call does not own is the caller's; its changes are not taken.
 	h = newHarness()
-	h.defs.docs[definition.KindProcess]["p"] = strings.Replace(h.defs.docs[definition.KindProcess]["p"], "workspace:\n  checkout: candidate_revision\n", "", 1)
-	h.defs.docs[definition.KindPolicy]["pol"] = strings.Replace(h.defs.docs[definition.KindPolicy]["pol"], "scope: candidate", "scope: repository", 1)
+	h.defs.docs[document.KindProcess]["p"] = strings.Replace(h.defs.docs[document.KindProcess]["p"], "workspace:\n  revision: candidate_revision\n", "", 1)
 	h.changes.changes = []byte("x")
 	if record := h.call(t, contract.CallRequest{}); record.Result.Status != run.Completed || len(h.changes.changed) != 0 {
 		t.Fatalf("result %+v, changes asked %v", record.Result, h.changes.changed)
@@ -1148,8 +977,8 @@ func TestPanicInChangeCollectionFinishesTheRecord(t *testing.T) {
 	if class(record) != run.ClassInternal || !strings.Contains(message(record), "changes exploded") {
 		t.Fatalf("result = %+v", record.Result.Error)
 	}
-	if len(h.changes.changed) != 1 || h.workspaces.releases() != 1 {
-		t.Fatalf("changes asked %d times, released %d", len(h.changes.changed), h.workspaces.releases())
+	if len(h.changes.changed) != 1 || h.locks.releases("/repo") != 1 {
+		t.Fatalf("changes asked %d times, released %d", len(h.changes.changed), h.locks.releases("/repo"))
 	}
 }
 
@@ -1162,14 +991,14 @@ func TestCallsResolveThroughTheResolutionTheyDeclare(t *testing.T) {
 	h := newHarness()
 	double := &snapshotCounter{reason: "the double refuses"}
 	h.calls = app.NewCalls(
-		double, h.runtimes, map[string]app.InputProvider{}, h.workspaces, h.changes, app.NewPreparer(h.changes, h.setup, h.clock), app.NewVerifier(h.changes, h.copies, h.commands, h.clock),
+		double, h.runtimes, map[string]app.InputProvider{}, h.copies, h.references, h.workspaces, h.changes, h.holder(), app.CallsVerifier{Verifier: app.NewVerifier(h.changes, h.commands, h.clock)}, app.NewRecoverer(h.clock),
 		h.validator, h.recorder, h.runs, h.clock, h.timer, fixedIDs{}, "/state", h.hosted,
 	)
 	record := h.call(t, contract.CallRequest{})
 	if class(record) != run.ClassRefused || message(record) != "the double refuses" {
 		t.Fatalf("result %+v", record.Result)
 	}
-	if snapshots, resolved := double.count(); snapshots != 1 || !reflect.DeepEqual(resolved, []string{"p"}) {
+	if snapshots, resolved := double.count(); snapshots != 1 || !reflect.DeepEqual(resolved, []string{"p_a"}) {
 		t.Fatalf("snapshots %d, resolved %v", snapshots, resolved)
 	}
 	if len(h.runtimes.asked) != 0 || len(h.defs.reads) != 0 {
@@ -1210,20 +1039,30 @@ func (r counted) Resolve(_ context.Context, request app.CallResolveRequest) (*ap
 	return &app.ResolvedCall{}, &app.Refusal{Reason: r.counter.reason}
 }
 
-// Workflow finds none: every name is a process's.
-func (r counted) Workflow(context.Context, string) (*app.ResolvedWorkflow, bool, error) {
+// Workflow finds one for every name: a workflow of one call of the
+// process of that name, which its node binds to agent a.
+func (r counted) Workflow(_ context.Context, name string) (*app.ResolvedWorkflow, bool, error) {
+	call := &app.CallNode{Name: "n", Process: name, Agent: "a"}
+	return &app.ResolvedWorkflow{Workflow: app.CallWorkflow{Name: name, Call: call}}, true, nil
+}
+
+// Binders finds no process: every name is a workflow's.
+func (r counted) Binders(context.Context, string) ([]string, bool, error) {
 	return nil, false, nil
 }
 
 // The runtime a call is resolved on is checked through the identity of its
-// adapter and command, and the runner for the same adapter and command is
-// asked for only when the call executes.
+// adapter and command, as its workflow is checked and as the call is
+// resolved, where a process run on its own was checked once; the runner
+// for the same adapter and command is asked for only when the call
+// executes.
 func TestCallChecksAndRunsTheRuntimeOfItsAgent(t *testing.T) {
 	t.Parallel()
 	h := newHarness()
 	h.call(t, contract.CallRequest{})
-	if want := []string{"spy|/bin/spy"}; !reflect.DeepEqual(h.runtimes.identified, want) || !reflect.DeepEqual(h.runtimes.asked, want) {
-		t.Fatalf("identified %v, runner built for %v, want %v", h.runtimes.identified, h.runtimes.asked, want)
+	const want = "spy|/bin/spy"
+	if !reflect.DeepEqual(h.runtimes.identified, []string{want, want}) || !reflect.DeepEqual(h.runtimes.asked, []string{want}) {
+		t.Fatalf("identified %v, runner built for %v, want %s twice and once", h.runtimes.identified, h.runtimes.asked, want)
 	}
 }
 
@@ -1231,31 +1070,33 @@ func TestCallChecksAndRunsTheRuntimeOfItsAgent(t *testing.T) {
 func TestRefusalsComeBeforeEffects(t *testing.T) {
 	t.Parallel()
 	cases := []struct {
-		name     string
-		arrange  func(*harness)
-		request  contract.CallRequest
-		reason   string
-		checkout bool // whether a checkout may already have happened
+		name    string
+		arrange func(*harness)
+		request contract.CallRequest
+		reason  string
 	}{
-		{"missing definition", func(h *harness) { delete(h.defs.docs[definition.KindPolicy], "pol") }, contract.CallRequest{}, `policy "pol": not found`, false},
-		{"invalid definition", func(h *harness) { h.defs.docs[definition.KindProcess]["p"] += "surprise: 1\n" }, contract.CallRequest{}, "surprise: unknown field", false},
-		{"schema does not compile", func(h *harness) { h.validator.compileErr = errors.New("bad schema") }, contract.CallRequest{}, `schema "s": bad schema`, false},
-		{"runtime unavailable", func(h *harness) { h.runner.identityErr = errors.New("no binary") }, contract.CallRequest{}, "runtime rt is unavailable: no binary", false},
-		{"runner cannot be built", func(h *harness) { h.runtimes.runnerErr = errors.New("no such command") }, contract.CallRequest{}, "runtime mapping rt: no such command", false},
-		{"adapter contract mismatch", func(h *harness) { h.runner.identity.Contract = "spy/2" }, contract.CallRequest{}, "describes adapter contract spy/1, but the adapter implements spy/2", false},
-		{"unverified version", func(h *harness) { h.runner.identity.Version = "2.0.0" }, contract.CallRequest{}, "verifies no primitive for spy version 2.0.0", false},
-		{"caller widens timeout", nil, contract.CallRequest{Timeout: "2h"}, "caller timeout 2h0m0s widens the effective 20m0s", false},
-		{"unknown param", nil, contract.CallRequest{Params: map[string]string{"focus": "x"}}, "takes no params: focus", false},
+		{"missing definition", func(h *harness) { delete(h.defs.docs[document.KindSchema], "s") }, contract.CallRequest{}, `schema "s": not found`},
+		{"invalid definition", func(h *harness) { h.defs.docs[document.KindProcess]["p"] += "surprise: 1\n" }, contract.CallRequest{}, "surprise: unknown field"},
+		{"schema does not compile", func(h *harness) { h.validator.compileErr = errors.New("bad schema") }, contract.CallRequest{}, `schema "s": bad schema`},
+		{"runtime unavailable", func(h *harness) { h.runner.identityErr = errors.New("no binary") }, contract.CallRequest{}, "runtime rt is unavailable: no binary"},
+		{"runner cannot be built", func(h *harness) { h.runtimes.runnerErr = errors.New("no such command") }, contract.CallRequest{}, "runtime mapping rt: no such command"},
+		{"adapter contract mismatch", func(h *harness) { h.runner.identity.Contract = "spy/2" }, contract.CallRequest{}, "describes adapter contract spy/1, but the adapter implements spy/2"},
+		// ADR-036: missing version evidence warns; missing require still refuses.
+		{"required grant missing", func(h *harness) {
+			h.defs.docs[document.KindProcess]["p"] = strings.Replace(h.defs.docs[document.KindProcess]["p"], "repository.diff]}", "repository.diff], require: [repository.diff]}", 1)
+		}, contract.CallRequest{}, "required permissions would be withheld: repository.diff"},
+		{"caller widens timeout", nil, contract.CallRequest{Timeout: "2h"}, "caller timeout 2h0m0s widens the effective 20m0s"},
+		{"unknown param", nil, contract.CallRequest{Params: map[string]string{"focus": "x"}}, "takes no params: focus"},
 		{"input fails", func(h *harness) {
 			h.inputs.respond = func(app.InputSpec) (app.Resolved, error) { return app.Resolved{}, errors.New("not a commit") }
-		}, contract.CallRequest{}, "input candidate_revision: not a commit", false},
-		{"workspace overlaps state", func(h *harness) { h.workspaces.root = "/state/repo" }, contract.CallRequest{}, "workspace /state/repo overlaps Agister's state /state", false},
+		}, contract.CallRequest{}, "input candidate_revision: not a commit"},
+		{"workspace overlaps state", func(h *harness) { h.workspaces.root = "/state/repo" }, contract.CallRequest{}, "workspace /state/repo overlaps Agister's state /state"},
 		{"input uses a value with no text", func(h *harness) {
-			h.defs.docs[definition.KindProcess]["p"] = strings.Replace(h.defs.docs[definition.KindProcess]["p"], `head: "${param.candidate}"`, `head: "${value.candidate_revision}"`, 1)
+			h.defs.docs[document.KindProcess]["p"] = strings.Replace(h.defs.docs[document.KindProcess]["p"], `head: "${param.candidate}"`, `head: "${value.candidate_revision}"`, 1)
 			h.inputs.respond = func(app.InputSpec) (app.Resolved, error) {
 				return app.Resolved{Value: []string{"a.go"}, Identity: "sha-x", Revision: true}, nil
 			}
-		}, contract.CallRequest{}, "input diff: refers to ${value.candidate_revision}, which has no text value", false},
+		}, contract.CallRequest{}, "input diff: refers to ${value.candidate_revision}, which has no text value"},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
@@ -1271,9 +1112,6 @@ func TestRefusalsComeBeforeEffects(t *testing.T) {
 			if len(h.runner.calls()) != 0 {
 				t.Fatal("the runtime ran after a refusal")
 			}
-			if !c.checkout && len(h.workspaces.checkouts) != 0 {
-				t.Fatal("a workspace was checked out before the refusal")
-			}
 			if kinds := h.recorder.kinds(); !contains(kinds, "REFUSED") || kinds[len(kinds)-1] != "CALL_FINISHED" {
 				t.Fatalf("events = %v", kinds)
 			}
@@ -1284,39 +1122,27 @@ func TestRefusalsComeBeforeEffects(t *testing.T) {
 func TestStateReachingPrimitivesAreNeverGranted(t *testing.T) {
 	t.Parallel()
 	h := newHarness()
-	policy := h.defs.docs[definition.KindPolicy]["pol"]
-	h.defs.docs[definition.KindPolicy]["pol"] = strings.Replace(policy, "repository.diff]", "repository.diff, process.execute, host.read]", 1)
+	h.defs.docs[document.KindProcess]["p"] = strings.Replace(h.defs.docs[document.KindProcess]["p"], "repository.diff]", "repository.diff, process.execute, host.read]", 1)
 	h.call(t, contract.CallRequest{})
 	if primitives := h.runner.calls()[0].Primitives; contains(primitives, "Bash") {
 		t.Fatalf("Bash reaches host.read but was granted: %v", primitives)
 	}
 }
 
-// A primitive whose grants were never checked against the runtime's version
-// is not granted, even when everything it declares is allowed.
-func TestUnverifiedPrimitivesAreNeverGranted(t *testing.T) {
+// ADR-036: an unverified primitive runs and warns, including when required.
+func TestUnverifiedPrimitivesRunWithWarnings(t *testing.T) {
 	t.Parallel()
-	h := newHarness()
-	mapping := h.defs.docs[definition.KindRuntime]["rt"]
-	h.defs.docs[definition.KindRuntime]["rt"] = strings.Replace(mapping, "  items:\n", `  items:
-    Glob: {grants: [repository.read]}
-    Diff: {grants: [repository.diff], verified: ["2."]}
-`, 1)
-	h.call(t, contract.CallRequest{})
-	if primitives := h.runner.calls()[0].Primitives; !reflect.DeepEqual(primitives, []string{"Read", "Grep"}) {
-		t.Fatalf("primitives = %v, want only the ones verified for 1.2.3", primitives)
-	}
-
-	// Requiring what only an unverified primitive provides refuses, and says why.
-	h = newHarness()
-	h.defs.docs[definition.KindRuntime]["rt"] = strings.Replace(mapping, "  items:\n", "  items:\n    Diff: {grants: [repository.diff], verified: [\"2.\"]}\n", 1)
-	h.defs.docs[definition.KindProcess]["p"] = strings.Replace(h.defs.docs[definition.KindProcess]["p"], "uses: agent:a\n", "uses: agent:a\ntools: {require: [repository.diff]}\n", 1)
-	record := h.call(t, contract.CallRequest{})
-	if class(record) != run.ClassRefused || !strings.Contains(message(record), "required permissions would be withheld: repository.diff (not verified for version 1.2.3: Diff)") {
-		t.Fatalf("result %+v", record.Result.Error)
-	}
-	if len(h.runner.calls()) != 0 {
-		t.Fatal("the runtime ran after a refusal")
+	for _, require := range []bool{false, true} {
+		h := newHarness()
+		mapping := h.defs.docs[document.KindRuntime]["rt"]
+		h.defs.docs[document.KindRuntime]["rt"] = strings.Replace(mapping, "  items:\n", "  items:\n    Diff: {grants: [repository.diff], verified: [\"2.\"]}\n", 1)
+		if require {
+			h.defs.docs[document.KindProcess]["p"] = strings.Replace(h.defs.docs[document.KindProcess]["p"], "repository.diff]}", "repository.diff], require: [repository.diff]}", 1)
+		}
+		record := h.call(t, contract.CallRequest{})
+		if record.Result.Status != run.Completed || !reflect.DeepEqual(h.runner.calls()[0].Primitives, []string{"Diff", "Read", "Grep"}) || !strings.Contains(strings.Join(record.Result.Warnings, "\n"), "unverified primitives: Diff") {
+			t.Fatalf("record = %+v", record)
+		}
 	}
 }
 
@@ -1326,12 +1152,11 @@ func TestUnverifiedPrimitivesAreNeverGranted(t *testing.T) {
 func TestACallThatCannotReadASkillIsRefused(t *testing.T) {
 	t.Parallel()
 	widen := func(h *harness) {
-		policy := h.defs.docs[definition.KindPolicy]["pol"]
-		h.defs.docs[definition.KindPolicy]["pol"] = strings.Replace(policy, "repository.diff]", "repository.diff, process.execute, host.read]", 1)
+		h.defs.docs[document.KindProcess]["p"] = strings.Replace(h.defs.docs[document.KindProcess]["p"], "repository.diff]", "repository.diff, process.execute, host.read]", 1)
 	}
-	unverified := func(h *harness) {
-		mapping := h.defs.docs[definition.KindRuntime]["rt"]
-		h.defs.docs[definition.KindRuntime]["rt"] = strings.Replace(mapping, "  items:\n", "  items:\n    Cat: {grants: [repository.read], verified: [\"2.\"]}\n", 1)
+	stateReaching := func(h *harness) {
+		mapping := h.defs.docs[document.KindRuntime]["rt"]
+		h.defs.docs[document.KindRuntime]["rt"] = strings.Replace(mapping, "  items:\n", "  items:\n    Cat: {grants: [repository.read, host.read], verified: [\"2.\"]}\n", 1)
 	}
 	cases := []struct {
 		name    string
@@ -1340,12 +1165,12 @@ func TestACallThatCannotReadASkillIsRefused(t *testing.T) {
 		reason  string
 	}{
 		{"not allowed", nil, []string{"Bash"},
-			"process p: runtime rt needs Bash to use the repository's skills (ADR-006), and the plan grants no such tool: Bash needs process.execute, host.read, which the effective permissions do not allow"},
+			"workflow p_a uses process p: runtime rt needs Bash to use the repository's skills (ADR-006), and the plan grants no such tool: Bash needs process.execute, host.read, which the effective permissions do not allow"},
 		{"withheld", widen, []string{"Bash"},
-			"process p: runtime rt needs Bash to use the repository's skills (ADR-006), and the plan grants no such tool: Bash needs host.read, which the plan withholds"},
-		{"unverified or unknown", unverified, []string{"Cat", "Bash", "Head"},
-			"process p: runtime rt needs Cat or Bash or Head to use the repository's skills (ADR-006), and the plan grants no such tool: " +
-				"Cat is not verified for version 1.2.3; Bash needs process.execute, host.read, which the effective permissions do not allow; runtime mapping rt has no Head"},
+			"workflow p_a uses process p: runtime rt needs Bash to use the repository's skills (ADR-006), and the plan grants no such tool: Bash needs host.read, which the plan withholds"},
+		{"state reaching or unknown", stateReaching, []string{"Cat", "Bash", "Head"},
+			"workflow p_a uses process p: runtime rt needs Cat or Bash or Head to use the repository's skills (ADR-006), and the plan grants no such tool: " +
+				"Cat needs host.read, which the effective permissions do not allow; Bash needs process.execute, host.read, which the effective permissions do not allow; runtime mapping rt has no Head"},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
@@ -1359,7 +1184,7 @@ func TestACallThatCannotReadASkillIsRefused(t *testing.T) {
 			if class(record) != run.ClassRefused || message(record) != c.reason {
 				t.Fatalf("result %+v\nwant refused: %s", record.Result.Error, c.reason)
 			}
-			if len(h.runner.calls()) != 0 || len(h.workspaces.checkouts) != 0 {
+			if len(h.runner.calls()) != 0 {
 				t.Fatal("the call went on after the refusal")
 			}
 			if kinds := h.recorder.kinds(); !contains(kinds, "REFUSED") {
@@ -1382,7 +1207,7 @@ func TestCancelInterruptsAndReleases(t *testing.T) {
 	h.runner.block = true
 	h.runner.started = make(chan struct{})
 	runs := app.NewRuns(nil, nil, h.hosted, nil, 0)
-	if _, err := h.calls.Submit(context.Background(), contract.CallRequest{Process: "p", Cwd: "/repo"}); err != nil {
+	if _, err := h.calls.Submit(context.Background(), contract.CallRequest{Process: "p_a", Cwd: "/repo"}); err != nil {
 		t.Fatal(err)
 	}
 	// However the test ends, the blocked turn does not outlive it.
@@ -1396,8 +1221,8 @@ func TestCancelInterruptsAndReleases(t *testing.T) {
 		t.Fatal(err)
 	}
 	record := h.recorder.wait(t)
-	if record.Result.Status != run.Interrupted || class(record) != run.ClassCancelled || h.workspaces.releases() != 1 {
-		t.Fatalf("result = %+v, released %d", record.Result, h.workspaces.releases())
+	if record.Result.Status != run.Interrupted || class(record) != run.ClassCancelled || h.locks.releases("/repo") != 1 {
+		t.Fatalf("result = %+v, released %d", record.Result, h.locks.releases("/repo"))
 	}
 	var input *contract.InputError
 	if err := runs.Cancel(context.Background(), "run-1"); !errors.As(err, &input) {
@@ -1424,7 +1249,7 @@ func TestCancelBeforeTheTurnIsCancelled(t *testing.T) {
 	if kinds := h.recorder.kinds(); contains(kinds, "REFUSED") {
 		t.Fatalf("events = %v", kinds)
 	}
-	if len(h.runner.calls()) != 0 || len(h.workspaces.checkouts) != 0 {
+	if len(h.runner.calls()) != 0 {
 		t.Fatal("the call went on after the cancel")
 	}
 }
@@ -1440,8 +1265,8 @@ func TestCallsCancelThroughTheCancelsTheyDeclare(t *testing.T) {
 	cancels := &cancelsSpy{held: map[string]func() bool{}, ended: make(chan string, 1)}
 	h.calls = app.NewCalls(
 		app.NewResolver(h.defs, h.runtimes, h.validator, resolverCheckStub{}), h.runtimes,
-		map[string]app.InputProvider{"git.revision": h.inputs, "git.diff": h.inputs},
-		h.workspaces, h.changes, app.NewPreparer(h.changes, h.setup, h.clock), app.NewVerifier(h.changes, h.copies, h.commands, h.clock), h.validator, h.recorder, h.runs,
+		map[string]app.InputProvider{"git.revision": h.inputs, "git.diff": h.inputs}, h.copies, h.references,
+		h.workspaces, h.changes, h.holder(), app.CallsVerifier{Verifier: app.NewVerifier(h.changes, h.commands, h.clock)}, app.NewRecoverer(h.clock), h.validator, h.recorder, h.runs,
 		h.clock, h.timer, fixedIDs{}, "/state", cancels,
 	)
 	// However the test ends, the blocked turn is released and the call
@@ -1455,7 +1280,7 @@ func TestCallsCancelThroughTheCancelsTheyDeclare(t *testing.T) {
 			h.recorder.wait(t)
 		}
 	})
-	if _, err := h.calls.Submit(context.Background(), contract.CallRequest{Process: "p", Cwd: "/repo"}); err != nil {
+	if _, err := h.calls.Submit(context.Background(), contract.CallRequest{Process: "p_a", Cwd: "/repo"}); err != nil {
 		joined = true // nothing was started
 		t.Fatal(err)
 	}
@@ -1486,22 +1311,22 @@ func TestCallsCancelThroughTheCancelsTheyDeclare(t *testing.T) {
 }
 
 // Done closes once a hosted call has finished: its record is finished and
-// its cleanup attempted, a release that failed recorded on the run. It is
+// its hold let go, a release that failed recorded on the run. It is
 // not closed before, not even as the record is finished. Done of a call
 // not running here is closed already.
 func TestHostedDoneClosesOnceTheCallHasFinished(t *testing.T) {
 	t.Parallel()
 	h := newHarness()
-	h.workspaces.releaseErr = errors.New("worktree busy")
+	h.locks.unlockErr = errors.New("lock file gone")
 	released := make(chan struct{})
 	release := sync.OnceFunc(func() { close(released) })
 	h.runner.block, h.runner.release, h.runner.started = true, released, make(chan struct{})
 	doneAtFinish := true
 	h.recorder.onFinish = func() int {
 		doneAtFinish = isClosed(h.hosted.Done("run-1"))
-		return h.workspaces.releases()
+		return h.locks.releases("/repo")
 	}
-	id, err := h.calls.Submit(context.Background(), contract.CallRequest{Process: "p", Cwd: "/repo"})
+	id, err := h.calls.Submit(context.Background(), contract.CallRequest{Process: "p_a", Cwd: "/repo"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1520,12 +1345,12 @@ func TestHostedDoneClosesOnceTheCallHasFinished(t *testing.T) {
 	}
 	release()
 	<-done
-	record := h.recorder.wait(t)
+	h.recorder.wait(t)
 	if doneAtFinish {
 		t.Fatal("done before the record was finished")
 	}
-	if h.workspaces.releases() != 1 || !contains(h.recorder.kinds(), "WORKSPACE_RELEASE_FAILED") || record.Effects == nil || record.Effects.Unreleased == nil {
-		t.Fatalf("released %d, events %v, effects %+v", h.workspaces.releases(), h.recorder.kinds(), record.Effects)
+	if h.locks.releases("/repo") != 1 || h.recorder.releasedAtFinish != 1 || !contains(h.recorder.kinds(), "WORKSPACE_RELEASE_FAILED") {
+		t.Fatalf("released %d, at finish %d, events %v", h.locks.releases("/repo"), h.recorder.releasedAtFinish, h.recorder.kinds())
 	}
 	if !isClosed(h.hosted.Done(id)) || !isClosed(h.hosted.Done("never-hosted")) {
 		t.Fatal("Done of a call not running here is not closed")
@@ -1589,16 +1414,12 @@ func contains(list []string, value string) bool {
 	return false
 }
 
-// The workspace is released before the record is finished, so a finished
-// run never has a live workspace.
+// The worktree's hold is let go before the record is finished, so a
+// finished run never holds its worktree.
 func TestWorkspaceIsReleasedBeforeTheRunFinishes(t *testing.T) {
 	t.Parallel()
 	h := newHarness()
-	h.recorder.onFinish = func() int {
-		h.workspaces.mu.Lock()
-		defer h.workspaces.mu.Unlock()
-		return h.workspaces.released
-	}
+	h.recorder.onFinish = func() int { return h.locks.releases("/repo") }
 	h.call(t, contract.CallRequest{})
 	if h.recorder.releasedAtFinish != 1 {
 		t.Fatalf("released %d times when the run finished", h.recorder.releasedAtFinish)
@@ -1614,15 +1435,15 @@ func TestCallResolvesFromTheSettingsReadBeforeItsRunWasRecorded(t *testing.T) {
 	readsAtCreate := -1
 	h.recorder.onCreate = func() { readsAtCreate = h.defs.readCount() }
 	h.recorder.hold = make(chan struct{})
-	if _, err := h.calls.Submit(context.Background(), contract.CallRequest{Process: "p", Cwd: "/repo"}); err != nil {
+	if _, err := h.calls.Submit(context.Background(), contract.CallRequest{Process: "p_a", Cwd: "/repo"}); err != nil {
 		t.Fatal(err)
 	}
 	if readsAtCreate <= 0 {
 		t.Fatalf("settings were not read before the run was recorded (%d reads)", readsAtCreate)
 	}
 	readsAtSubmit := h.defs.readCount()
-	h.defs.set(definition.KindAgent, "a", strings.Replace(settingsDocs()[definition.KindAgent]["a"], "m1", "m2", 1))
-	h.defs.set(definition.KindProcess, "p", "not a process")
+	h.defs.set(document.KindAgent, "a", strings.Replace(settingsDocs()[document.KindAgent]["a"], "m1", "m2", 1))
+	h.defs.set(document.KindProcess, "p", "not a process")
 	close(h.recorder.hold)
 	record := h.recorder.wait(t)
 	if class(record) != "" {
@@ -1631,21 +1452,21 @@ func TestCallResolvesFromTheSettingsReadBeforeItsRunWasRecorded(t *testing.T) {
 	if got := h.defs.readCount(); got != readsAtSubmit {
 		t.Fatalf("the call read the live settings %d more times", got-readsAtSubmit)
 	}
-	want := sha(settingsDocs()[definition.KindAgent]["a"])
+	want := sha(settingsDocs()[document.KindAgent]["a"])
 	for _, source := range record.Definitions {
-		if source.Kind == string(definition.KindAgent) && source.SHA256 != want {
-			t.Errorf("agent recorded %s, want %s", source.SHA256, want)
+		if source.Kind == string(document.KindAgent) && digestRecorded(source) != want {
+			t.Errorf("agent recorded %s, want %s", digestRecorded(source), want)
 		}
 	}
 }
 
 // A value's arguments may use the text of the values resolved before it:
 // the diff is taken between the very commits the call resolved, one of
-// which it checks out, not between names that could move meanwhile.
+// which the call works at, not between names that could move meanwhile.
 func TestInputsUseTheValuesResolvedBeforeThem(t *testing.T) {
 	t.Parallel()
 	h := newHarness()
-	h.defs.docs[definition.KindProcess]["p"] = strings.Replace(h.defs.docs[definition.KindProcess]["p"],
+	h.defs.docs[document.KindProcess]["p"] = strings.Replace(h.defs.docs[document.KindProcess]["p"],
 		`    diff: {source: git.diff, base: "${param.base}", head: "${param.candidate}"}`,
 		`    base_revision: {source: git.revision, rev: "${param.base}"}
     diff: {source: git.diff, base: "${value.base_revision}", head: "${value.candidate_revision}"}`, 1)
@@ -1661,8 +1482,8 @@ func TestInputsUseTheValuesResolvedBeforeThem(t *testing.T) {
 	if !reflect.DeepEqual(gotArgs, wantArgs) {
 		t.Fatalf("input args = %v", gotArgs)
 	}
-	if !reflect.DeepEqual(h.workspaces.checkouts, [][2]string{{"/repo", "sha-HEAD"}}) {
-		t.Fatalf("checkouts = %v", h.workspaces.checkouts)
+	if record.InPlace == nil || record.InPlace.Revision != "sha-HEAD" {
+		t.Fatalf("in place %+v", record.InPlace)
 	}
 }
 
@@ -1672,7 +1493,7 @@ func TestInputsUseTheValuesResolvedBeforeThem(t *testing.T) {
 func TestCallRecordsWhatItResolvedUnderTheRecordsOwnTypes(t *testing.T) {
 	t.Parallel()
 	h := newHarness()
-	h.defs.docs[definition.KindProcess]["p"] = strings.Replace(h.defs.docs[definition.KindProcess]["p"], "uses: agent:a\n", "uses: agent:a\ntools: {require: [repository.read]}\n", 1)
+	h.defs.docs[document.KindProcess]["p"] = strings.Replace(h.defs.docs[document.KindProcess]["p"], "repository.diff]}", "repository.diff], require: [repository.read]}", 1)
 	record := h.call(t, contract.CallRequest{})
 	encode := func(v any) string {
 		data, err := json.Marshal(v)
@@ -1681,9 +1502,13 @@ func TestCallRecordsWhatItResolvedUnderTheRecordsOwnTypes(t *testing.T) {
 		}
 		return string(data)
 	}
-	wantService := `{"kind":"service","name":"service","path":"mem/service/service","sha256":"` + sha(settingsDocs()[definition.KindService]["service"]) + `"}`
-	if len(record.Definitions) != 6 || encode(record.Definitions[0]) != wantService {
+	wantService := `{"kind":"service","name":"service","layers":[{"layer":"home","path":"mem/service/service","sha256":"` + sha(settingsDocs()[document.KindService]["service"]) + `"}]}`
+	// The workflow that binds the call comes first, then the call's own.
+	if len(record.Definitions) != 7 || record.Definitions[0].Kind != "workflows" || record.Definitions[0].Name != "p_a" || encode(record.Definitions[1]) != wantService {
 		t.Errorf("definitions = %s", encode(record.Definitions))
+	}
+	if got := encode(record.Layers); got != `[{"layer":"home","dir":"mem"}]` {
+		t.Errorf("layers = %s", got)
 	}
 	wantEffective := `{"timeout":1200000000000,"max_attempts":1,` +
 		`"allow":["repository.read","repository.search","repository.diff"],"deny":[],` +
@@ -1692,7 +1517,7 @@ func TestCallRecordsWhatItResolvedUnderTheRecordsOwnTypes(t *testing.T) {
 	if got := encode(record.Effective); got != wantEffective {
 		t.Errorf("effective\n got %s\nwant %s", got, wantEffective)
 	}
-	wantPlan := `{"primitives":["Read","Grep"],"granted":["repository.read","repository.search"],"withheld":["repository.diff"]}`
+	wantPlan := `{"primitives":["Read","Grep"],"granted":["repository.read","repository.search"],"withheld":["repository.diff"],"declared":["repository.read","repository.search","repository.diff"],"extra":[]}`
 	if got := encode(record.Plan); got != wantPlan {
 		t.Errorf("plan\n got %s\nwant %s", got, wantPlan)
 	}

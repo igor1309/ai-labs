@@ -10,6 +10,7 @@ import (
 
 	"testing"
 	"time"
+	"unicode/utf8"
 
 	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/codex"
 )
@@ -172,7 +173,7 @@ func TestUnrecordedProcessFailsTheTurnWhateverTheStreamSays(t *testing.T) {
 }
 
 func listing(cost string) codex.Sessions {
-	return func(context.Context, time.Duration, codex.LookupSink) ([]byte, error) {
+	return func(context.Context, time.Duration, string, codex.LookupSink) ([]byte, error) {
 		return []byte(listingJSON(cost)), nil
 	}
 }
@@ -216,7 +217,7 @@ func TestStreamReportsToolCalls(t *testing.T) {
 		stream.Reduce(line)
 	}
 	tools := stream.TakeTools()
-	if len(tools) != 3 || tools[0].Started == nil || tools[1].Finished != "item_1" || tools[2].Started == nil {
+	if len(tools) != 3 || tools[0].Started == nil || *tools[1].Finished != (codex.ToolResult{ID: "item_1"}) || tools[2].Started == nil {
 		t.Fatalf("tools = %+v", tools)
 	}
 	if first := *tools[0].Started; first.ID != "item_1" || first.Name == "" || first.Input != long || !first.Command {
@@ -227,6 +228,77 @@ func TestStreamReportsToolCalls(t *testing.T) {
 	}
 	if again := stream.TakeTools(); len(again) != 0 {
 		t.Fatalf("taken twice: %+v", again)
+	}
+}
+
+// A web search's start carries no query, which is on its completed item
+// only: the search is reported when it completes, started and finished
+// together, with the completed item's query, and its action where that says
+// more, so searches that differ are different calls and identical ones the
+// same. The recorded TOOL_REQUESTED carries that input too. A start that
+// does carry a query is reported at the start, and not again at completion.
+func TestAWebSearchIsReportedWithTheInputItsCompletedItemCarries(t *testing.T) {
+	t.Parallel()
+	started := func(id string) string {
+		return `{"type":"item.started","item":{"id":"` + id + `","type":"web_search","query":"","action":{"type":"other"}}}`
+	}
+	searched := func(id, query string) string {
+		quoted, _ := json.Marshal(query)
+		return `{"type":"item.completed","item":{"id":"` + id + `","type":"web_search","query":` + string(quoted) + `,"action":{"type":"search","query":` + string(quoted) + `},"results":[]}}`
+	}
+	const (
+		first  = `site:github.com/openai/codex "handle_patch_apply_end" "FileChange"`
+		second = `site:github.com/openai/codex "apply_patch" "PatchApplyEnd"`
+		page   = "https://raw.githubusercontent.com/openai/codex/main/x.rs"
+	)
+	stream := &codex.Stream{}
+	var trace []string
+	var calls []codex.ToolCall
+	for _, line := range []string{
+		// Two searches in flight; the later one completes first.
+		started("item_1"),
+		started("item_2"),
+		searched("item_2", first),
+		searched("item_1", second),
+		started("item_3"),
+		searched("item_3", second),
+		started("item_4"),
+		`{"type":"item.completed","item":{"id":"item_4","type":"web_search","query":"` + page + `","action":{"type":"open_page","url":"` + page + `"},"results":[]}}`,
+		`{"type":"item.started","item":{"id":"item_5","type":"web_search","query":"agister"}}`,
+		`{"type":"item.completed","item":{"id":"item_5","type":"web_search","query":"agister","action":{"type":"search","query":"agister"},"results":[]}}`,
+	} {
+		for _, event := range stream.Reduce(line) {
+			entry := event.Kind + " " + event.Data["tool_use_id"].(string)
+			if event.Kind == "TOOL_REQUESTED" {
+				entry += ": " + event.Data["input"].(string)
+			}
+			trace = append(trace, entry)
+		}
+		for _, tool := range stream.TakeTools() {
+			if tool.Started != nil {
+				calls = append(calls, *tool.Started)
+				trace = append(trace, "ToolStarted "+tool.Started.ID+": "+tool.Started.Input)
+			} else {
+				trace = append(trace, "ToolFinished "+tool.Finished.ID)
+			}
+		}
+	}
+	opened := page + ` {"type":"open_page","url":"` + page + `"}`
+	want := []string{
+		"TOOL_REQUESTED item_2: " + first, "TOOL_RESULT item_2", "ToolStarted item_2: " + first, "ToolFinished item_2",
+		"TOOL_REQUESTED item_1: " + second, "TOOL_RESULT item_1", "ToolStarted item_1: " + second, "ToolFinished item_1",
+		"TOOL_REQUESTED item_3: " + second, "TOOL_RESULT item_3", "ToolStarted item_3: " + second, "ToolFinished item_3",
+		"TOOL_REQUESTED item_4: " + opened, "TOOL_RESULT item_4", "ToolStarted item_4: " + opened, "ToolFinished item_4",
+		"TOOL_REQUESTED item_5: agister", "ToolStarted item_5: agister",
+		"TOOL_RESULT item_5", "ToolFinished item_5",
+	}
+	if !reflect.DeepEqual(trace, want) {
+		t.Fatalf("trace =\n%q\nwant\n%q", trace, want)
+	}
+	for _, call := range calls {
+		if call.Name != calls[0].Name || call.Name == "" || call.Command {
+			t.Fatalf("calls = %+v", calls)
+		}
 	}
 }
 
@@ -248,5 +320,46 @@ func TestLargeIntegerInputsAreNotRepeatedCalls(t *testing.T) {
 	first, second := *tools[0].Started, *tools[1].Started
 	if first.Name != second.Name || first.Input != `{"offset":9007199254740993}` || second.Input != `{"offset":9007199254740992}` {
 		t.Fatalf("calls = %+v, %+v", first, second)
+	}
+}
+
+// A command's end carries the output its completed item reported, bounded
+// to its head and tail; an item that reports none carries no result.
+func TestStreamReportsACommandsResult(t *testing.T) {
+	t.Parallel()
+	finished := func(item string) codex.ToolResult {
+		stream := &codex.Stream{}
+		stream.Reduce(`{"type":"item.completed","item":` + item + `}`)
+		tools := stream.TakeTools()
+		if len(tools) != 1 || tools[0].Finished == nil {
+			t.Fatalf("tools = %+v", tools)
+		}
+		return *tools[0].Finished
+	}
+	if got := finished(`{"id":"item_1","type":"command_execution","aggregated_output":"FAIL\n","exit_code":1,"status":"failed"}`); got != (codex.ToolResult{ID: "item_1", Output: "FAIL\n", Reported: true}) {
+		t.Fatalf("a command: %+v", got)
+	}
+	if got := finished(`{"id":"item_2","type":"file_change","status":"completed"}`); got != (codex.ToolResult{ID: "item_2"}) {
+		t.Fatalf("no output: %+v", got)
+	}
+	long, _ := json.Marshal(strings.Repeat("é", codex.ToolResultBytes))
+	half := strings.Repeat("é", codex.ToolResultBytes/4)
+	if got := finished(`{"id":"item_3","type":"command_execution","aggregated_output":` + string(long) + `}`); !got.Reported || got.Output != half+"\n…\n"+half {
+		t.Fatalf("a long one: %d bytes", len(got.Output))
+	}
+	// A cut at a half of the bound that would split a rune moves to the
+	// rune's boundary: the head ends before it, the tail starts after it.
+	// wide is count runes of two bytes each.
+	quarter := codex.ToolResultBytes / 4
+	wide := func(count int) string { return strings.Repeat("é", count) }
+	for _, c := range []struct{ name, text, want string }{
+		{"the head's cut", "a" + wide(4*quarter), "a" + wide(quarter-1) + "\n…\n" + wide(quarter)},
+		{"the tail's cut", wide(4*quarter) + "a", wide(quarter) + "\n…\n" + wide(quarter-1) + "a"},
+		{"both cuts", "a" + wide(4*quarter) + "a", "a" + wide(quarter-1) + "\n…\n" + wide(quarter-1) + "a"},
+	} {
+		text, _ := json.Marshal(c.text)
+		if got := finished(`{"id":"item_3","type":"command_execution","aggregated_output":` + string(text) + `}`); !got.Reported || got.Output != c.want || !utf8.ValidString(got.Output) {
+			t.Fatalf("%s inside a rune: %d bytes, valid UTF-8 %t", c.name, len(got.Output), utf8.ValidString(got.Output))
+		}
 	}
 }

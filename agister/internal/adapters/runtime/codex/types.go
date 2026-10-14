@@ -25,6 +25,10 @@ type RuntimeIdentity struct {
 	// repository's skills, which are used by reading them (ADR-006); none
 	// when the runtime reads them without a granted tool.
 	SkillTools []string
+	// The adapter gives a call the skills its settings name (ADR-021 rule
+	// 6); on one that does not, a call that names a skill is refused before
+	// its first turn.
+	Skills bool
 }
 
 // ToolCall describes a tool invocation reported by this CLI.
@@ -32,12 +36,31 @@ type ToolCall struct {
 	// ID is the runtime's name for the call; its end is reported by it.
 	ID   string
 	Name string
-	// Input is the whole input, the same text for the same input: two calls
-	// are identical when their Name and Input are.
+	// Input is the reported input, the same text for the same input.
 	Input string
+	// InputIncomplete means the CLI omits part of the input: equal Name
+	// and Input cannot establish that two calls are identical.
+	InputIncomplete bool
 	// Command is true when the tool runs a command.
 	Command bool
+	// Writes are the paths the call writes, as the CLI named them; none for
+	// a tool that writes no file.
+	Writes []string
 }
+
+// ToolResult is the end of a tool call: its ID and the result the CLI
+// reported for it, if it reported one, bounded to ToolResultBytes.
+type ToolResult struct {
+	ID string
+	// Output is the result's text: its head and tail when longer than
+	// ToolResultBytes, with a mark where the middle was cut.
+	Output string
+	// Reported is whether the CLI reported a result's text for the call.
+	Reported bool
+}
+
+// ToolResultBytes bounds the text of a tool call's result as reported.
+const ToolResultBytes = 1 << 10
 
 // TurnRequest asks this wrapper for one CLI turn.
 type TurnRequest struct {
@@ -53,6 +76,16 @@ type TurnRequest struct {
 	Primitives      []string
 	Timeout         time.Duration
 	OutputSchema    json.RawMessage
+	// Skills are the turn's skills, in order, written for the turn into
+	// the skills/ of a Codex home of the thread's; none: a fresh thread
+	// runs with the user's CODEX_HOME.
+	Skills []Skill
+}
+
+// Skill is one skill a turn is given: its name and its whole SKILL.md.
+type Skill struct {
+	Name  string
+	Bytes []byte
 }
 
 type Status string
@@ -141,7 +174,7 @@ type EventSink interface {
 	ProcessStarted(ref string) error
 	Raw(line string)
 	ToolStarted(ToolCall)
-	ToolFinished(id string)
+	ToolFinished(ToolResult)
 }
 type Turn struct {
 	Status            Status          `json:"status"`

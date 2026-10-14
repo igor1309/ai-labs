@@ -1,0 +1,410 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Agister's settings, document by document</title>
+<style>
+  :root {
+    color-scheme: dark;
+    --ground:#08080A; --surface:#17171A; --surface-2:#1E1E22;
+    --line:#2A2A2F; --line-soft:#232327;
+    --text:#F5F5F7; --text-dim:#8A8A96; --text-faint:#68686F;
+    --text-body:#D9D9DF; --text-sub:#B4B4C0;
+    --workflow:#F28DB0; --process:#8DB8FF; --agent:#5FE0BC; --runtime:#FFC24D;
+    --rule:#FF8F6B; --run:#F5E6B0;
+    --display:"Iowan Old Style","Palatino Linotype",Palatino,"Hoefler Text",Georgia,serif;
+    --sans:-apple-system,BlinkMacSystemFont,"Helvetica Neue",system-ui,sans-serif;
+    --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; scroll-padding-top: 20px; }
+  body {
+    margin: 0; background: var(--ground); color: var(--text-body); overflow-wrap: break-word;
+    font: 16px/1.6 var(--sans); -webkit-text-size-adjust: 100%;
+  }
+  main { max-width: 96rem; margin: 0 auto; padding: 0 16px 48px; }
+  main > header { padding: 32px 0 20px; margin-bottom: 28px; border-bottom: 1px solid var(--line); }
+  .eyebrow {
+    margin: 0 0 .75rem; font-family: var(--mono); font-size: .72rem;
+    letter-spacing: .18em; text-transform: uppercase; color: var(--text-faint);
+  }
+  h1, h2 { font-family: var(--display); font-weight: 400; }
+  h1 { margin: 0; font-size: clamp(2rem, 5vw, 2.6rem); line-height: 1.08; letter-spacing: -.01em; }
+  h2 { margin: 0; font-size: 1.6rem; line-height: 1.25; color: var(--k, var(--text)); }
+  h3 {
+    margin: 1.2rem 0 .4rem; font-family: var(--mono); font-weight: 400; font-size: .72rem;
+    letter-spacing: .14em; text-transform: uppercase; color: var(--text-dim);
+  }
+  p { margin: 0 0 12px; }
+  code, pre { font-family: var(--mono); }
+  code {
+    font-size: .85em; padding: 1px 5px; border-radius: 2px;
+    background: var(--surface); border: 1px solid var(--line-soft);
+  }
+  a { color: var(--text-dim); text-decoration-color: var(--text-faint); text-underline-offset: 3px; }
+  a:hover { color: var(--text); }
+  :focus-visible { outline: 2px solid var(--text-dim); outline-offset: 2px; }
+
+  nav { display: flex; flex-wrap: wrap; gap: 4px 16px; margin-bottom: 24px; font-size: 14px; }
+  nav a { text-decoration: none; }
+  /* A document stands under what names it: one indent per level. */
+  .under { margin: 0; color: var(--text-faint); font-size: 13px; }
+
+  section {
+    margin: 0 0 20px; padding: 22px 24px 20px; border-radius: 3px;
+    background: var(--surface); border: 1px solid var(--line-soft);
+    border-left: 3px solid var(--k, var(--line));
+  }
+  .kind.workflow { --k: var(--workflow); }
+  .kind.process { --k: var(--process); }
+  .kind.agent { --k: var(--agent); }
+  .kind.runtime { --k: var(--runtime); }
+  .kind.service { --k: #B5AD8C; }
+  section > header { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 18px; margin-bottom: 10px; }
+  .path { margin: 0; color: var(--text-dim); font-size: 14px; }
+  .lead { font-size: 1.05rem; max-width: 46rem; }
+  .note { margin-top: 14px; color: var(--text-dim); font-size: 15px; max-width: 34rem; }
+  section { display: grid; gap: 20px; }
+  .desc { min-width: 0; }
+  table { border-collapse: collapse; width: 100%; font-size: 15px; }
+  th, td { text-align: left; vertical-align: top; padding: 6px 0; border-top: 1px solid var(--line-soft); }
+  th { font-weight: 400; padding-right: 16px; white-space: nowrap; width: 1%; }
+  td { color: var(--text-dim); }
+  td b { color: var(--text); font-weight: 600; }
+  .ex { margin: 0; min-width: 0; }
+  .ex figcaption {
+    font-family: var(--mono); font-size: .72rem; letter-spacing: .06em; color: var(--text-faint);
+    margin-bottom: 6px;
+  }
+  pre {
+    margin: 0; padding: 14px 16px; overflow-x: auto; border-radius: 2px;
+    background: var(--ground); border: 1px solid var(--line-soft);
+    font-size: 12.5px; line-height: 1.55; color: #C9C6C2;
+  }
+  ul { margin: 0; padding-left: 1.2em; max-width: 46rem; }
+  /* A section's list is detail under its lead: a step quieter. */
+  .desc ul, .more ul { font-size: 15px; line-height: 1.55; color: var(--text-sub); }
+  .desc ul code, .more ul code { color: var(--text-body); }
+  li { margin-bottom: 6px; }
+  footer {
+    margin-top: 32px; padding-top: 16px; border-top: 1px solid var(--line);
+    display: flex; gap: 20px; font-family: var(--mono); font-size: .8rem; letter-spacing: .04em;
+  }
+
+  @media (max-width: 34rem) { th { white-space: normal; } }
+  @media (min-width: 900px) {
+    main {
+      padding: 0 32px 56px;
+      display: grid; grid-template-columns: 11rem minmax(0, 1fr); column-gap: 40px; align-items: start;
+    }
+    main > header, main > footer { grid-column: 1 / -1; }
+    nav { position: sticky; top: 20px; flex-direction: column; gap: 6px; margin: 0; }
+    nav a.l1, section.l1 { margin-left: 16px; }
+    nav a.l2, section.l2 { margin-left: 32px; }
+    /* Every row: the description, then its example, in the same two columns. */
+    section { grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr); gap: 36px; }
+    .ex { padding-top: 6px; }
+    /* A section with no example spreads its list over both columns. */
+    section > .desc:only-child { grid-column: 1 / -1; }
+    section > .desc:only-child ul { max-width: none; columns: 2; column-gap: 36px; }
+    section > .desc:only-child li { break-inside: avoid; }
+    /* A long list under a short example runs below both. */
+    .more { grid-column: 1 / -1; }
+    .more ul { max-width: none; columns: 2; column-gap: 36px; }
+    .more li { break-inside: avoid; }
+  }
+</style>
+</head>
+<body>
+<main>
+<header>
+<p class="eyebrow">Agister · Settings · Details</p>
+<h1>The settings, document by document</h1>
+</header>
+
+<nav aria-label="Documents"><a href="#layers">Three layers</a><a href="#service">Service</a><a href="#workflow">Workflow</a><a href="#process" class="l1">Process</a><a href="#extends" class="l2">Extends</a><a href="#schema" class="l2">Output schema</a><a href="#verification" class="l2">Verification</a><a href="#prompts" class="l2">Prompts</a><a href="#skills" class="l2">Skills</a><a href="#briefs" class="l2">Briefs</a><a href="#agent" class="l1">Agent</a><a href="#runtime" class="l2">Runtime mapping</a><a href="#skills" class="l2">Skills</a><a href="#blocks">Blocks</a><a href="#compose">How they compose</a></nav>
+
+<div>
+<section id="layers">
+<div class="desc"><header><h2>Three layers</h2><p class="path"><code>&lt;project&gt;/.agister</code> over <code>&lt;repo&gt;/.agister</code> over <code>~/.agister</code></p></header>
+<p class="lead">The launch directory or <code>--dir</code> selects the nearest project layer below the worktree root; outside git only home is read. Each inherits from its parent only.</p>
+<ul>
+<li>Documents of the same kind and filename compose by field. Maps merge by key at every depth; lists and scalars replace whole, <code>[]</code> means none. A partial sets only what it changes; prompts, skills and schemas are taken whole.</li>
+<li>What exists is the union of the selected layers.</li>
+<li>A YAML file holds exactly one YAML document. A second, after a <code>---</code>, even an empty one, makes the file invalid; it is never left unread.</li>
+<li>Documents name each other by name, not by path. So a process in home can name <code>verify:repo</code> or a prompt, and each repo supplies its own.</li>
+<li>Home is <code>$AGISTER_HOME</code>, else <code>~/.agister</code>. Agents cannot reach home; they can change a repo's <code>.agister</code> when they may write the repo.</li>
+<li>A second project <code>.agister</code> between the nearest one and the root, a project <code>blocks.yaml</code> or an invalid <code>layer.yaml</code> invalidates the layer and refuses commands launched under it.</li>
+<li><code>process show</code> lists layer files nearest first and each composed document's leaf fields with their layers; <code>check --tree</code> lists files and, under each but the farthest, the fields it gave.</li>
+</ul></div>
+
+</section>
+
+<section id="service" class="kind service">
+<div class="desc"><header><h2>Service</h2><p class="path"><code>service.toml</code> · one, with no name</p></header>
+<p class="lead">Applies to every run: not a step in it, but the frame around every document below. No document names it; processes and runtime mappings must keep its rules.</p>
+<h3>Holds</h3><table><tr><th><code>max_timeout</code></th><td>the longest any call may run</td></tr><tr><th><code>max_attempts</code></th><td>the most attempts any call may have</td></tr><tr><th><code>max_verify_attempts</code></th><td>the most turns a verification may allow</td></tr><tr><th><code>max_cost_usd</code></th><td>the most any call may cost, if set</td></tr><tr><th><code>permissions</code></th><td>the vocabulary: a process uses only these, a runtime mapping grants only these</td></tr><tr><th><code>writing</code></th><td>the permissions that change the worktree; read-only access withholds them, and a call granted one holds the worktree alone</td></tr><tr><th><code>state_reaching</code></th><td>permissions that would reach Agister's own state; never granted</td></tr></table></div>
+<figure class="ex"><figcaption>~/.agister/service.toml</figcaption><pre>max_timeout = &quot;1h&quot;
+max_attempts = 1
+max_verify_attempts = 3
+
+permissions = [
+  &quot;repository.read&quot;,
+  &quot;repository.search&quot;,
+  &quot;repository.diff&quot;,
+  &quot;repository.history.read&quot;,
+  &quot;repository.write&quot;,
+  &quot;repository.history.write&quot;,
+  &quot;process.execute&quot;,
+  &quot;network&quot;,
+  &quot;host.read&quot;,
+  &quot;host.write&quot;,
+]
+
+writing = [&quot;repository.write&quot;, &quot;repository.history.write&quot;]
+state_reaching = []</pre></figure>
+</section>
+
+<section id="workflow" class="kind workflow">
+<div class="desc"><header><h2>Workflow</h2><p class="path"><code>workflows/&lt;name&gt;.yaml</code> · run with <code>agister run &lt;name&gt;</code></p></header>
+<p class="lead">Composes process calls into one run, and binds each node's process to the agent that runs it. Its settings fix what each call receives, never whoever starts it. It is the only thing <code>agister run</code> runs.</p>
+<h3>Holds</h3><table><tr><th><code>input.params</code></th><td>what the caller supplies, each with an optional default</td></tr><tr><th><code>input.values</code></th><td>resolved once from the params, before any node starts; every fan-out node receives the same ones</td></tr></table><h3>Names</h3><table><tr><th><code>fan_out[].uses</code></th><td>a <b>process</b> per node, all run at once over the same inputs</td></tr><tr><th><code>join.uses</code></th><td>one <b>process</b>, given the fan-out nodes' results</td></tr><tr><th><code>call.uses</code></th><td>the one <b>process</b> of a workflow of one call</td></tr><tr><th><code>agent</code></th><td>on every node, the <b>agent</b> it binds its process to; required, and nothing else chooses one</td></tr><tr><th><code>input.values[].form</code></th><td>the <b>brief forms</b> a <code>file</code> value's text must have one of, checked before any node starts</td></tr></table><p class="note">Two shapes today, with no conditions, loops or graphs: fan-out then join, like this one and <code>adr_review</code>; or one <code>call</code>, with no <code>input</code>, <code>fan_out</code> or <code>join</code>, which takes its process's params and is that call's one run, as <code>implement_codex</code>: <code>call: {node: implement, uses: process:implement, agent: codex-sol-61}</code>. A layer rebinds a node: it gives the whole <code>fan_out</code> list, or sets <code>join.agent</code> or <code>call.agent</code> alone. A workflow whose node binds a blocked or broken agent is refused until a layer rebinds it.</p></div>
+<figure class="ex"><figcaption>agister/home/workflows/code_review.yaml</figcaption><pre>name: code_review
+type: workflow
+
+input:
+  params:
+    base: {default: origin/trunk}
+    candidate: {default: HEAD}
+    goal: {}
+  values:
+    base: {source: git.revision, rev: &quot;${param.base}&quot;}
+    candidate: {source: git.revision, rev: &quot;${param.candidate}&quot;}
+    goal: {source: file, path: &quot;${param.goal}&quot;, form: [goal]}
+
+fan_out:
+  - {node: architecture, uses: process:architecture_review, agent: codex-sol-61}
+  - {node: tests, uses: process:tests_review, agent: codex-sol-61}
+  - {node: adversarial, uses: process:adversarial_review, agent: codex-sol-61}
+  - {node: clarity, uses: process:clarity_review, agent: codex-sol-61}
+  - {node: intent, uses: process:intent_review, agent: codex-sol-61}
+
+join: {node: judge, uses: process:review_judge, agent: claude-opus}</pre></figure>
+</section>
+
+<section id="process" class="kind process l1">
+<div class="desc"><header><h2>Process</h2><p class="path"><code>processes/&lt;name&gt;.yaml</code> · run by a workflow's node</p><p class="under">under <a href="#workflow">Workflow</a></p></header>
+<p class="lead">The work: the task, what it takes in, what must come out, and its own limits. It names no agent; a workflow's node binds it to one. It speaks in permissions, never in a runtime's tools.</p>
+<h3>Holds</h3><table><tr><th><code>input.instruction</code></th><td>the task, in words</td></tr><tr><th><code>input.params</code></th><td>what the caller supplies</td></tr><tr><th><code>input.values</code></th><td>the inputs, each from a source: <code>param</code>, <code>file</code>, <code>git.revision</code>, <code>git.merge_base</code>, <code>git.diff</code>, <code>git.changed_files</code></td></tr><tr><th><code>workspace.revision</code></th><td>the value whose revision HEAD must be at; Agister does not move HEAD</td></tr><tr><th><code>workspace.clean</code></th><td><code>true</code>: a fresh call needs the worktree's content to be HEAD's; unset is <code>false</code></td></tr><tr><th><code>workspace.access</code></th><td><code>read-only</code>, the default, or <code>read-write</code></td></tr><tr><th><code>workspace.scope</code></th><td><code>candidate</code> or <code>repository</code></td></tr><tr><th><code>tools.allow</code></th><td>permissions, from the service's vocabulary</td></tr><tr><th><code>tools.require</code></th><td>permissions the call cannot do without</td></tr><tr><th><code>isolation.deny</code></th><td>permissions it never gets; denied wins over allowed</td></tr><tr><th><code>timeout</code></th><td>required, within the service's maximum</td></tr><tr><th><code>retry.max_attempts</code></th><td>within the service's maximum</td></tr><tr><th><code>max_cost_usd</code></th><td>within the service's maximum, if it sets one</td></tr><tr><th><code>stale</code></th><td>when a silent or looping call is ended; no limit above <code>timeout</code></td></tr><tr><th><code>stale.recover.max_resumes</code></th><td>how many recovery turns a call may take after a turn ended at a staleness limit: each resumes its session with what went stale; unset is 0, none</td></tr><tr><th><code>stale.recover.instruction</code></th><td>what the agent is told with the evidence; a budget above 0 needs one</td></tr><tr><th><code>session</code></th><td><code>resumable</code>: its session may be resumed, by a repair turn, a recovery turn or <code>--continue</code>; unset is <code>fresh-only</code></td></tr></table><h3>Names</h3><table><tr><th><code>extends</code></th><td>the <b>base process</b> it extends, if any</td></tr><tr><th><code>output.schema</code></th><td>its <b>output schema</b></td></tr><tr><th><code>verify</code></th><td>its <b>verification</b>, by name or held inline</td></tr><tr><th><code>prompt, guidance</code></th><td>one required <b>prompt</b> and a list of further prompts, which may be empty</td></tr><tr><th><code>input.values[].form</code></th><td>the <b>brief forms</b> a <code>file</code> value's text must have one of</td></tr><tr><th><code>skills</code></th><td>its <b>skills</b></td></tr></table><p class="note">A process whose verification repairs, or whose <code>stale.recover.max_resumes</code> is above 0, must be <code>resumable</code>, on a runtime that resumes sessions. A process with a verification, like this one, is still a process, not a workflow, and declares both <code>workspace.revision</code> and <code>workspace.clean: true</code>. Every call works in the caller's worktree, or the one <code>--dir</code> names: Agister makes no checkout and runs no setup.</p></div>
+<figure class="ex"><figcaption>agister/home/processes/implement.yaml</figcaption><pre>name: implement
+type: process
+session: resumable
+prompt: implement
+
+input:
+  instruction: Implement the task given as input brief,
+    as input prompt says.
+  params:
+    candidate: {default: HEAD}
+    brief: {}
+  values:
+    candidate_revision: {source: git.revision, rev: &quot;${param.candidate}&quot;}
+    brief: {source: file, path: &quot;${param.brief}&quot;, form: [goal, step]}
+
+workspace:
+  access: read-write
+  scope: candidate
+  revision: candidate_revision
+  clean: true
+
+tools:
+  require: [repository.read, repository.write, process.execute]
+  allow:
+    - repository.read
+    - repository.search
+    - repository.diff
+    - repository.history.read
+    - repository.write
+    - repository.history.write
+    - process.execute
+    - network
+    - host.read
+    - host.write
+
+timeout: 45m
+retry:
+  max_attempts: 1
+
+stale:
+  no_event: 21m
+  tool_command: 15m
+  repeated_tool_calls: 5
+
+output:
+  format: json
+  schema: implementation
+  require_valid: true
+
+verify: verify:repo</pre></figure>
+</section>
+
+<section id="extends" class="kind process l2">
+<div class="desc"><header><h2>Extends</h2><p class="path"><code>extends: process:&lt;base&gt;</code> · one level</p><p class="under">under <a href="#process">Process</a></p></header>
+<p class="lead">A process may extend one base process of its layer and take its fields. The base extends nothing and is not work: a node that binds it is a problem of the workflow.</p></div>
+<figure class="ex"><figcaption>agister/home/processes/tests_review.yaml</figcaption><pre>name: tests_review
+type: process
+extends: process:review
+prompt: code-review-tests</pre></figure>
+<div class="more"><ul>
+<li>The base is composed from its own layers first, then the extending process's layers over it.</li>
+<li>Maps merge by key; lists and scalars are replaced whole. <code>name</code> and <code>extends</code> are never taken from the base.</li>
+<li>The base is checked through each process that extends it, so it may leave out what each of them sets, <code>prompt</code> here.</li>
+<li>A layer's partial of the base reaches every process that extends it; a partial may not set <code>extends</code>.</li>
+<li>The base is of the process's own layer. The layer whose file holds the whole process and names the base defines the base too: its file of the base and the extending file together set every field a process requires.</li>
+<li>A base only home has, or a repository's partial of it that leaves a required field to home's file, is no base for a process the repository defines: <code>check</code> reports the process and its run is refused. Partials that do not set <code>extends</code>, over a process home defines or over its base, still compose.</li>
+<li><code>process show</code> and the record name the base for each field it gave.</li>
+</ul><p class="note">Home's six reviews, the five code reviews and the ADR review, extend its <code>review</code> base, which holds their input, permissions and limits.</p></div>
+</section>
+
+<section id="schema" class="kind l2">
+<div class="desc"><header><h2>Output schema</h2><p class="path"><code>schemas/&lt;name&gt;.json</code></p><p class="under">under <a href="#process">Process</a></p></header>
+<p class="lead">A JSON Schema the process's output must match.</p>
+<p class="note">A process names it as <code>output.schema</code>. Only JSON is supported.</p></div>
+<figure class="ex"><figcaption>agister/home/schemas/review-result.json</figcaption><pre>{
+  &quot;type&quot;: &quot;object&quot;,
+  &quot;additionalProperties&quot;: false,
+  &quot;required&quot;: [&quot;verdict&quot;, &quot;summary&quot;, &quot;findings&quot;, &quot;coverage&quot;],
+  &quot;properties&quot;: {
+    &quot;verdict&quot;: {
+      &quot;type&quot;: &quot;string&quot;,
+      &quot;enum&quot;: [&quot;approve&quot;, &quot;request_changes&quot;]
+    },
+    …
+  }
+}</pre></figure>
+</section>
+
+<section id="verification" class="kind l2">
+<div class="desc"><header><h2>Verification</h2><p class="path"><code>verifies/&lt;name&gt;.yaml</code>, or inline in the process</p><p class="under">under <a href="#process">Process</a></p></header>
+<p class="lead">A command that must pass on the call's changes before the call completes.</p>
+<h3>Holds</h3><table><tr><th><code>command</code></th><td>what to run</td></tr><tr><th><code>timeout</code></th><td>how long it may take</td></tr><tr><th><code>max_attempts</code></th><td>how many turns the agent gets to make it pass</td></tr><tr><th><code>instruction</code></th><td>what the agent is told when it fails</td></tr></table><p class="note">A process in home can name <code>verify:repo</code>, and each project fills <code>verifies/repo.yaml</code> in its own layer. If no layer fills it, <code>implement</code> is refused. The command runs from the worktree root, even for a project.</p></div>
+<figure class="ex"><figcaption>agister/.agister/verifies/repo.yaml, the agister project's layer</figcaption><pre>name: repo
+command: agister/scripts/test.sh
+timeout: 5m
+max_attempts: 3
+instruction: &gt;-
+  The verification command failed on your changes. Fix
+  the cause in the code; do not weaken, skip or delete a
+  check or a test.</pre></figure>
+</section>
+
+<section id="prompts" class="kind l2">
+<div class="desc"><header><h2>Prompts</h2><p class="path"><code>prompts/&lt;name&gt;.md</code></p><p class="under">under <a href="#process">Process</a></p></header>
+<p class="lead">Plain text: the file is the value. The nearest layer that has a named prompt gives it whole; a missing name refuses the call. <code>{source: prompt}</code> and <code>optional</code> are refused.</p>
+<p class="note">A repository or project <code>layer.yaml</code> (<code>schema: agister.layer/v1alpha1</code>, <code>prompts: [prompts]</code>) names extra folders relative to the directory holding <code>.agister</code>. They must exist inside it; its own <code>prompts/</code> comes first. Only names a process gives are read in the listed folders. Guidance a node must follow is in its <code>prompt</code> or <code>guidance</code>, never a pointer in <code>AGENTS.md</code> or a skill.</p></div>
+<figure class="ex"><figcaption>Home's implement: prompt and Go guidance; a layer without Go code sets <code>guidance: []</code></figcaption><pre>prompt: implement
+guidance: [go-testing-seams, go-architecture]</pre></figure>
+</section>
+
+<section id="skills" class="kind l2">
+<div class="desc"><header><h2>Skills</h2><p class="path"><code>skills/&lt;name&gt;/SKILL.md</code></p><p class="under">under <a href="#process">Process</a> and <a href="#agent">Agent</a></p></header>
+<p class="lead">One <code>SKILL.md</code> each, the folder's only file. A process names its skills and an agent names its own; the two lists are separate. A node's call gets its process's skills, then its agent's, each once.</p>
+<h3>Names</h3><table><tr><th><code>skills (in a process)</code></th><td>the skills this call needs for its task</td></tr><tr><th><code>skills (in an agent)</code></th><td>the skills this agent always carries</td></tr></table></div>
+
+</section>
+
+<section id="briefs" class="kind l2">
+<div class="desc"><header><h2>Briefs</h2><p class="path"><code>briefs/&lt;name&gt;.yaml</code></p><p class="under">under <a href="#process">Process</a></p></header>
+<p class="lead">A brief's form: its parts in order and the template a caller copies. Agister checks a text's structure against it, never its meaning.</p>
+<h3>Holds</h3><table><tr><th><code>parts[].heading</code></th><td>the part's Markdown heading line, such as <code>## Intent</code>; the part runs to the next heading of its level or above</td></tr><tr><th><code>parts[].required</code></th><td><code>true</code>: the text must have the part, once and not empty</td></tr><tr><th><code>parts[].reads</code></th><td>the exact text the part must read, as <code>None.</code> for Open</td></tr><tr><th><code>parts[].reference</code></th><td><code>file</code>: the part's first back-quoted path, relative to the caller's directory, must exist</td></tr><tr><th><code>template</code></th><td>the text a caller copies; its headings are the parts', each once and in order</td></tr></table><p class="note">A <code>file</code> value names the forms its text must have one of, as <code>form: [goal, step]</code>; one with no <code>form</code> is not checked. A call whose text has none of them is refused before it starts, exit 3, naming the input, each form and each wrong part. A form no layer has makes what names it invalid. The examples ship <code>goal</code> and <code>step</code>.</p></div>
+<figure class="ex"><figcaption>agister/home/briefs/step.yaml</figcaption><pre>schema: agister.brief/v1alpha1
+name: step
+
+parts:
+  - {heading: &quot;## Goal&quot;, required: true, reference: file}
+  - {heading: &quot;## Covers&quot;, required: true}
+  - {heading: &quot;## Acts on&quot;, required: false}
+  - {heading: &quot;## Constraints&quot;, required: false}
+  - {heading: &quot;## Open&quot;, required: true, reads: None.}
+
+template: |
+  # &lt;issue&gt; step &lt;n&gt;: &lt;what this run makes true, in a line&gt;
+
+  ## Goal
+
+  `&lt;the goal file, relative to the directory the call is made from&gt;`
+  …</pre></figure>
+</section>
+
+<section id="agent" class="kind agent l1">
+<div class="desc"><header><h2>Agent</h2><p class="path"><code>agents/&lt;name&gt;.toml</code></p><p class="under">under <a href="#workflow">Workflow</a></p></header>
+<p class="lead">A runtime profile: who does the work and how hard. It carries no task, no permissions, no limits and no session; a workflow's node binds it to a process.</p>
+<h3>Holds</h3><table><tr><th><code>model, model_family</code></th><td>which model</td></tr><tr><th><code>effort</code></th><td>one of the efforts its runtime mapping accepts</td></tr><tr><th><code>command</code></th><td>the runtime's executable, where not the default</td></tr></table><h3>Names</h3><table><tr><th><code>runtime</code></th><td>its <b>runtime mapping</b></td></tr><tr><th><code>skills</code></th><td>its own <b>skills</b></td></tr></table></div>
+<figure class="ex"><figcaption>agister/home/agents/claude-opus.toml</figcaption><pre>name = &quot;claude-opus&quot;
+runtime = &quot;claude-code&quot;
+model = &quot;opus&quot;
+model_family = &quot;anthropic&quot;
+effort = &quot;high&quot;</pre></figure>
+</section>
+
+<section id="runtime" class="kind runtime l2">
+<div class="desc"><header><h2>Runtime mapping</h2><p class="path"><code>runtimes/&lt;name&gt;.yaml</code></p><p class="under">under <a href="#agent">Agent</a></p></header>
+<p class="lead">One adapter, described in permissions: what each of its tools or sandbox modes lets an agent do.</p>
+<h3>Holds</h3><table><tr><th><code>adapter</code></th><td><code>claude-code</code>, <code>codex</code>, <code>pi</code> or <code>opencode</code></td></tr><tr><th><code>efforts</code></th><td>the efforts it accepts</td></tr><tr><th><code>primitives.select</code></th><td><code>one</code> (sandbox modes) or <code>any</code> (tools)</td></tr><tr><th><code>primitives.items[].grants</code></th><td>the permissions that primitive grants, from the service's vocabulary</td></tr><tr><th><code>primitives.items[].verified</code></th><td>the runtime versions it was checked against; unverified versions warn; a probe is observability, never a refusal (ADR-036)</td></tr></table></div>
+<figure class="ex"><figcaption>agister/home/runtimes/codex.yaml</figcaption><pre>name: codex
+adapter: codex
+contract: codex/2
+efforts: [minimal, low, medium, high, xhigh]
+primitives:
+  select: one
+  items:
+    read-only:
+      grants: [repository.read, repository.search,
+               repository.diff, repository.history.read,
+               process.execute, host.read]
+      verified: [&quot;0.158.&quot;, &quot;0.159.&quot;, &quot;0.160.&quot;, &quot;0.161.&quot;]
+    workspace-write:
+      grants: [repository.read, repository.search,
+               repository.diff, repository.history.read,
+               process.execute, host.read,
+               repository.write, host.write]
+      verified: [&quot;0.159.&quot;, &quot;0.160.&quot;, &quot;0.161.&quot;]</pre></figure>
+</section>
+
+<section id="blocks" class="kind ">
+<div class="desc"><header><h2>Blocks</h2><p class="path"><code>blocks.yaml</code> · one, repo only</p></header>
+<p class="lead">What this repo refuses, even though home allows it; a project layer holds no <code>blocks.yaml</code>.</p>
+<h3>Holds</h3><table><tr><th><code>blocks[].ref</code></th><td><code>agent:&lt;name&gt;</code>, <code>process:&lt;name&gt;</code>, <code>workflow:&lt;name&gt;</code> or <code>runtime:&lt;name&gt;</code></td></tr><tr><th><code>blocks[].reason</code></th><td>why, optional</td></tr></table></div>
+
+</section>
+
+<section id="compose">
+<div class="desc"><header><h2>How they compose</h2></header>
+<h3>Limits only narrow</h3>
+<ul>
+<li>The service bounds the process, the process bounds the caller's <code>--timeout</code> and <code>--max-cost</code>.</li>
+<li>Asking for more than the level above allows is rejected, never quietly reduced.</li>
+<li>A process holds its own <code>workspace.access</code>: <code>read-write</code> where it sets it, read-only where it sets none.</li>
+<li>The caller has no override for the process's <code>stale</code> block.</li>
+<li>A denied permission always wins over an allowed one.</li>
+</ul>
+<h3>Where permissions meet primitives</h3>
+<ul>
+<li>The call's effective permissions meet the runtime mapping of the agent its node binds.</li>
+<li><code>select: one</code> takes the safe primitive with the fewest distinct grants covering require; extra grants beyond allow warn. <code>select: any</code> grants fitting safe tools. State-reaching grants remain forbidden (ADR-036).</li>
+<li>An allowed permission that no primitive provides is withheld. If the process requires it, the call is refused.</li>
+<li><code>check</code> makes the plan for every node of every workflow. A binding that would be refused is a problem of that workflow, naming the node; another workflow that binds the same process to an agent that can run it still runs. One that withholds an allowed permission is listed as <code>withheld</code>.</li>
+<li>Extra grants are recorded beside declared and granted permissions; plan warnings persist before runtime startup, and finished, abandoned and reaped outcomes and printed results carry them. Workflows persist node-labelled warnings as nodes finish, retaining them through parent abandonment and reaping. A join-only partial rebinds the shared review judge.</li>
+</ul></div>
+
+</section>
+</div>
+
+<footer>
+<a href="index.html">Top level</a>
+<a href="notes.md">Sources</a>
+</footer>
+</main>
+</body>
+</html>

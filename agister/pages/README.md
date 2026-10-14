@@ -3,87 +3,169 @@
 `agister pages` serves a page that shows what Agister can run with a
 repo's settings and what that is made of, and how its runs went. `~` in
 the picker at the top right is Agister home, `~/.agister`; the picker also
-opens repos and lists recent ones. **Settings**, **Runs** and **Knowledge**
-at the top left switch between the three views; the page opens on the one
-shown last.
+opens repos and lists recent ones. **Settings**, **Runs**, **Compare** and
+**Knowledge** at the top left switch between the four views; the page opens
+on the one shown last.
 
 ## Settings
 
-For a repo the page shows what Agister uses there: Agister home's settings
-with the repo's `.agister` over them. As in Agister, a repo file replaces
-the home file of the same kind and name, and the repo's `service.toml`
-replaces home's. Each item is marked `repo`, `home` or `repo, replaces
-home`.
+For a launch directory the page shows home's settings, the worktree root's
+`.agister` and the nearest project `.agister` below that root. Documents
+compose by field: maps merge by key; lists and scalars replace whole.
+Prompts, skills and schemas come whole from the nearest layer. Each item
+names its layer files, nearest first, as `home`, `repository` or `project`;
+a card lists the surviving fields from each file, and a table's layer chip
+shows them on hover. A file that gave no fields says `(none)`. Outside a
+git worktree only home is read. The server selects the layers and reads
+and composes the documents with Agister's own selection and store, given
+to it by `agister`, so the page says what a call launched there would
+use: a launch directory reached through a link is the directory it leads
+to, a farther layer's prompt or schema is named but not opened, a linked
+file is followed, and only the file names Agister reads count (`.yaml`,
+not `.yml`). On top of that the page shows no file over 256 KB, left out
+as if absent, and refuses a layer's file that is not a regular file, which
+it neither waits on nor replaces with the parent's.
 
-- **Workflows** and **Processes**, as cards: what each does (its leading
-  comment), the `agister run` command with its required params (Copy puts
-  it on the clipboard), the defaults, and then:
-  - for a process, its agent (runtime, model, effort, session), its policy
-    (workspace, timeout, cost cap, what it allows and denies), its output
-    schema and verify attempts (of the verification it names, when it
-    names one; marked missing when these settings have none of that name),
-    and the prompts it names, each once, marked missing when these
-    settings have none of that name, and for a repo with the layer it
-    comes from, and the setup its checkout runs: its own, or `workspace.yaml`'s, the
-    repo's over home's (ADR-012);
-  - for a workflow, its calls in one line (`4 × gpt-6.1-sol at once, then
-    opus`), then the steps: the ones run at once (`First` when there is
-    one) and the one run after them. Each step shows its name, what it
-    does, its agent and its policy. Steps are not repeated under
-    Processes; they still run alone.
-- **Building blocks**, as tables: agents, policies, runtimes and the service
-  limits, each with what it means.
+- **Workflows**, as cards: what each does (its leading comment), the
+  `agister run` command with its required params (Copy puts it on the
+  clipboard; a workflow of one `call` takes its process's params), the
+  defaults, its calls in one line (`4 × gpt-6.1-sol at once, then opus`),
+  the brief forms its inputs name, listed as a process's, then its steps:
+  the ones run at once (`First` when there is one) and the one run after
+  them, or its one call. Each step is a node, which binds a process to an
+  agent (ADR-030): it shows the process's name and what it does, the agent
+  the node binds (name, model, effort), or `none` in red when the node
+  binds none or the agent is missing, as Agister refuses the workflow; and
+  the process's own limits: its workspace access, read-only when it sets
+  none, timeout, cost cap, attempts and scope. Then, per step, the base its
+  process `extends`, its session (`resumable`, which `--continue` can
+  continue, or `fresh-only`, its default), its required `prompt` and its
+  `guidance` list separately (`none` for an empty list), names marked
+  missing when no layer has them, with their layer files, and one Agister
+  cannot read with its error, as Agister refuses the call; the skills its
+  call gets, its process's and then those of the agent the node binds
+  (ADR-021), listed the same way, each that fails its checks marked
+  `checks failed` (D-16); its output schema with its layer files and
+  verify attempts (of the verification it names, when it names one; marked
+  missing when these settings have none of that name), its layer files and
+  that verification's layer files with the fields each gave.
+- **Processes**, as cards: only those no workflow's node binds. A process
+  names no agent and has no command: `agister run` runs a workflow, never
+  a process (ADR-030), and the card says its agent is `none`. A base that
+  other processes `extend` is one of these: it is not work, and its card
+  names the processes that extend it. Besides what a step shows, a card
+  shows the process's limits in full (what it requires, allows and
+  denies), the skills it names, the brief forms its file inputs name
+  (`form`, ADR-026), listed as prompts are, and what its call needs of the
+  caller's worktree (ADR-025): `HEAD at` the input its
+  `workspace.revision` names, and `clean` when it declares
+  `workspace.clean: true`.
+- **Building blocks**, as tables: agents (runtime, model, effort, the
+  skills each names, listed as on a step, and the workflows whose nodes
+  bind it), runtimes and the service limits, each with what it means.
 
 A workspace that can be written shows in amber; read-only is not marked. On
 a narrow screen the cards go to one column and each table row becomes label
 and value lines.
 
 A name the settings do not define shows in red as missing: Agister refuses
-such a call. A file that does not parse shows its error. ↻ reads the
-settings again.
+such a call. A file that does not parse shows its error. Every YAML
+settings file holds exactly one YAML document, as in Agister: a `---`
+may open it, but one with a second after a `---`, even an empty one, does
+not parse, and a runtime
+file with a second document is refused by the server's skill inventory
+with the problem `must hold exactly one YAML document`, even when a
+nearer layer holds a partial, so the page does not open those settings. ↻ reads the settings again.
 
 ## Runs
 
 The runs are Agister home's, whatever the picker shows. ↻ reads them
 again.
 
-- **Compare**: a table per process, a row per runtime adapter, model and
-  effort (`-` when the call asked for none): runs, completed, pass rate,
-  mean verify attempts, median wall time and cost per completed run, with
-  the count of runs of unknown cost when there are any. Workflows are not
-  compared; their steps are.
-- **Runs**, newest first: when it started, the process, the implementor
+- Newest first, as tall as the window leaves room for, so Runs fits one
+  screen, under a head that stays put while the list scrolls: when it
+  started, the process, the implementor
   (`adapter model effort`; the model the runtime reported shows on hover
-  when it differs), status, verify (`2 ✓`: the attempts used and whether
+  when it differs), status (a green ✓ completed, a red ⚠ failed or
+  interrupted, the word for the others; the status on hover), verify (`2 ✓`: the attempts used and whether
   the last passed; empty without verify), wall time, cost, the skills used
-  (`name×n`) and the tool calls. A workflow's row shows its node count and
+  (`name×n`, the times the run loaded it, when more than once) and the tool calls. A workflow's row shows its node count and
   its judge's rulings instead of implementor and skills. Process and status
-  filter the list. Runs whose record does not parse are counted under it.
-- Clicking a run opens it below the list: implementor, policy, outcome
-  (verify as `2/3 ✓`, out of the process's most), skills, the workflow it
-  belongs to, and for a workflow its nodes and its judge's items by
-  ruling, by severity and per source review. A link opens that run. The
+  filter the list. A run still running is accented: a tint across its row,
+  its start and status in the active colour. Runs whose record does not
+  parse are counted under it.
+- Clicking a run opens it over the page; Close, Escape or a click beside
+  it closes it. Its head is the process, its status, cost and wall time,
+  then when it ran (`4:07 PM – 4:10 PM, 10.10.26`), its agent and, small,
+  its ID. Then implementor, limits, verify (`2/3 ✓`, out of the process's
+  most), turn and runtime timing, tool calls, the skills it used, each a
+  link, the workflow it belongs to, and for a workflow its judge's items by ruling and by
+  severity and its nodes as a table: process, status, wall, cost and the
+  rulings of the items each node was a source of. A link opens that run in
+  its place. Then what its result says: a review's verdict in the head
+  (green approve, red request changes), then its error, if any, its class in its
+  head (a red `ERROR: TIMEOUT`, one line when the error holds no more), and its
+  output, a part per key: summary first, then findings, a judge's items and
+  decisions as cards (severity, ruling, title, file and line, sources; the
+  detail, reason and action; the rest folded under *more*), coverage and
+  other lists of alike objects as tables, lists of strings as lists, text
+  as markdown, the rest as it nests; an empty list and an implement's checks are left out. Without an output the result's text
+  shows; with one, the text is that output as JSON and is left out. The
   record as stored is folded at the bottom.
+- A skill's link opens it over the run, rendered; Close, Escape or a click
+  beside it closes it and leaves the run open. A run keeps no copy of its
+  skills, so this is the skill as it is now, found as the run's runtime
+  would find it (the settings' skills, then the folders its adapter
+  loads): in the run's working directory, else, when that is gone or has
+  no such skill, the folder the picker shows, else Agister home. It says
+  which, and that it can differ from what the run read.
 
 Durations read `1m 47s` or `412ms`, costs `$0.50`, times in local time. A
 failed or interrupted run shows in red.
 
+## Compare
+
+The runs Runs lists, compared; ↻ reads the comparison again. A table per
+process, a row per runtime adapter, model and effort (`-` when the call
+asked for none): runs, completed, pass rate, mean verify attempts, median
+wall time and cost per completed run, with the count of runs of unknown
+cost when there are any. Workflows are not compared; their steps are.
+Clicking a process shows Runs filtered to it, with any status filter let
+go; a process none of the listed runs has leaves the list unfiltered.
+
 ## Knowledge
 
-The skills each agent works with, read-only (ADR-011). Agister does not
-choose an agent's skills: a call loads what its runtime loads in the repo
-and the home (ADR-006), so an agent's skills are the skill folders of its
-runtime's adapter, and the view says so. Nothing is edited, reviewed or
-approved here. ↻ reads the settings, the skills and the runs again.
+The skills each agent works with, read-only (ADR-011, as ADR-021 amends
+it). An agent's skills are two lists, shown apart and labelled so: the
+skills its settings name, which Agister gives its calls (ADR-021), and the
+skills its runtime would load from the repo and the home, the skill
+folders of its runtime's adapter (ADR-006). Nothing is edited, reviewed or
+approved here, and the view says so. ↻ reads the settings, the skills and
+the runs again.
 
-- **Overview**: a matrix, a row per skill name and a column per agent
+A settings skill's existence, layer and checks come from one place, the
+`settings` list of `/api/skills`, read with the settings files, which
+leave skills out (D-16); both views show that. A project or repository skill that is there
+goes over farther layers' skills of the same name whatever its state: too
+large, empty,
+without `SKILL.md` or a symlink, as Agister refuses the call rather than
+fall back to a farther layer's; it shows its failed checks. Only a skill
+the nearer layer does not have comes from a farther one.
+
+- **Overview**: what the runtimes would load, as a matrix, a row per
+  skill name and a column per agent
   (its runtime adapter, model and effort, from the settings); `●` where
   the agent's runtime loads a skill of that name, `● ×2` where it loads
   two. A name in several folders is marked `shared ×n`; all are shown, and
   the page does not decide which one a runtime uses. Clicking an agent or
   a skill opens it below; clicking it again closes it.
-- **An agent**: its runtime, adapter, model and effort; the skills its
-  runtime would load, each with `repo` or `home`, its folder and its
+- **An agent**: its runtime, adapter, model and effort; under *Its
+  settings name*, the skills of the settings' `skills/` folders that it
+  names and that each process a workflow's node binds to it names, each
+  with what names it (the agent, or `process <name>`), its layer files (`project`, `repository`,
+  `home`) and its checks, or marked missing when no layer has it;
+  under *Its runtime would load from the repo and the home*, the skills
+  its runtime would load, each with `repo` or `home`, its folder and its
   checks; what that runtime loads from elsewhere and the list leaves out
   (built-in, plugin and package skills, and per runtime: Claude Code's
   managed-settings skills, `.claude/commands/` and a `.claude/skills`
@@ -108,12 +190,15 @@ approved here. ↻ reads the settings, the skills and the runs again.
 
 The checks are of structure only: `SKILL.md` is there, is a file of at
 most 256 KB, its front matter parses, `name` and `description` are there
-and not empty, and `name` is the folder's name. They read `checks passed`
-or `checks failed: …` with each failed check. A failed check does not mean
-the runtime refuses the skill.
+and not empty, and `name` is the folder's name. A skill of the settings
+is checked the same way, and its `SKILL.md` must be a regular file, not a
+link, and the only thing in its folder: one that holds more fails a check
+that names what else it holds, as Agister refuses it (ADR-021 rule 1).
+They read `checks passed` or `checks failed: …` with each failed check. A
+failed check does not mean the runtime refuses the skill.
 
-For a repo the view shows its working tree; a call on a checkout loads
-what that checkout holds. For `~` it shows the home folders only.
+For a repo the view shows its working tree; a call loads what the
+worktree it works in holds. For `~` it shows the home folders only.
 
 ## Run it
 
@@ -134,16 +219,26 @@ The server writes nothing and answers these endpoints:
   folder`) and returns the chosen path, empty when cancelled. It needs the
   `X-Agister-Pages` header, which a page on another site cannot send.
 - `GET /api/settings?path=<absolute repo path | ~>`: the settings files of
-  `<path>/.agister`, or of Agister home for `~`: `agents`, `policies`,
-  `processes`, `runtimes`, `schemas`, `verifies`, `prompts`, `workflows`,
-  `service.toml` and `workspace.yaml`, each
-  at most 256 KB. `runs/` and `logs/` are skipped.
+  `<path>/.agister`, or of Agister home for `~`: `agents`,
+  `processes`, `runtimes`, `schemas`, `verifies`, `prompts`, `briefs`,
+  `workflows` and `service.toml`, each regular file at most 256 KB.
+  `runs/`, `logs/` and the obsolete `workspace.yaml` (ADR-025) are
+  skipped, and so is `skills/`: no
+  file of it is read here, so one that cannot be read fails nothing; the
+  settings' skills are `/api/skills`' `settings` (ADR-011 rule 9, D-16).
+  With them come `layers`, the layers selected for `<path>`, farthest
+  first; `composedFiles`, each document as Agister composes it, and the
+  prompts a process names as `prompt` or `guidance`, found as a call finds
+  them, in the folders a `layer.yaml` lists too; and `sources`, each
+  document's layer files, nearest first, with the fields each gave, or the
+  error that stops the document.
 - `GET /api/skills?path=<absolute repo path | ~>`: the skill folders of
   ADR-011's table for the runtime adapters the settings at that path
   define (the `adapter` of each `runtimes/` file, the repo's over Agister
   home's of the same name), in the repo and in the home; for `~` the home
-  folders only. No request names a file. It answers `home`, `adapters` and
-  `folders`, repo folders first, each folder once: its `scope` (`repo` or
+  folders only, and the settings' own skills. No request names a file. It
+  answers `home`, `adapters`, `settings` (below) and `folders`, repo
+  folders first, each folder once: its `scope` (`repo` or
   `home`), `folder` (as named: `.claude/skills`, `~/.codex/skills`,
   `$CODEX_HOME/skills` when that is set), `path`, `real` path, `link`
   target when it is a symlink, the `adapters` that load it, a `state` when
@@ -163,13 +258,23 @@ The server writes nothing and answers these endpoints:
   too, the skills sit one level down in groups (`synced/<id>/<name>`); a
   group that is a symlink is not followed. The
   home folders come from pages' own `HOME`, `CODEX_HOME` and
-  `PI_CODING_AGENT_DIR`.
+  `PI_CODING_AGENT_DIR`. `settings` lists the skills of the settings
+  layers, the repo's `.agister/skills` first, then Agister home's (home's
+  only for `~`): each folder there, whatever its state, with its `scope`
+  (`repo` or `home`), `name`, `path`, `content`, `description` and
+  `checks`, or a `state` as above; a `SKILL.md` that is a link or not a
+  file is `not_a_file`, and an entry that is a symlink, which Agister
+  lists as a broken skill, is `linked_folder`, with its `link` target, and
+  not followed. Only `SKILL.md` is read, and only a regular one within
+  256 KB; of the folder's other entries only the names are, for the
+  check.
 - `GET /api/runs?limit=<n>`: a summary of each run in Agister home's
   `runs/`, newest first, at most `limit` (default 200, at most 1000).
   A run whose `record.json` does not parse is left out and counted in
   `skipped`; `total` counts the ones that parse.
 - `GET /api/runs/<run-id>`: one run's `summary` and its `record` as
-  stored. An ID that is not a plain run directory name is refused (400);
+  stored; a workflow's nodes carry their runs' `wall_ms` and `cost_usd`
+  once those have finished, which the list leaves out. An ID that is not a plain run directory name is refused (400);
   a run that is not there is a 404.
 - `GET /api/runs/compare`: the completed and failed calls (not
   workflows), grouped by process, then by runtime adapter, model and
@@ -188,7 +293,8 @@ A run summary holds, from the record:
   call asked for, else the one the runtime reported), the reported model,
   and the effort the call asked for. Runs recorded before the agent profile
   was have no effort; the agent file is never read again for it;
-- `policy`: the effective timeout, cost cap, access and scope;
+- `policy`: the limits the call ran under, the record's `effective`
+  ones: timeout, cost cap, access and scope;
 - `outcome`: the verify attempts used and whether the last one passed
   (none when the process has no verify), wall, turn and runtime ms, and the
   cost in USD with its source;
@@ -211,7 +317,7 @@ It listens on loopback only and refuses a request whose Host is not
 The page itself is `index.html`, embedded in the binary with `repos.js`
 (the picker and the calls to the server), `config.js` (reading the
 settings; its YAML and TOML parsers cover what Agister settings use),
-`runs.js` (the Runs view's formatting, filters and compare tables),
+`runs.js` (the Runs and Compare views' formatting, filters, compare tables and how a run's output reads),
 `markdown-it.min.js` (markdown-it 15.0.2, the package's
 `dist/browser/markdown-it.umd.min.js` unchanged under a header with its
 source, checksum and MIT license; no npm dependency, no build step),
@@ -250,8 +356,8 @@ The browser's localStorage keeps, for the page's address:
   recent first, at most 10.
 - `agister-pages:current`: what was shown last (`~` or a repo path); the
   page opens on it.
-- `agister-pages:view`: the view shown last, `settings`, `runs` or
-  `knowledge`; the page opens on it.
+- `agister-pages:view`: the view shown last, `settings`, `runs`,
+  `compare` or `knowledge`; the page opens on it.
 
 ## Test
 

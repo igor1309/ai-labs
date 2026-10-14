@@ -6,17 +6,19 @@ import (
 	"sync"
 
 	"github.com/igor1309/ai-labs/agister/internal/contract"
-	"github.com/igor1309/ai-labs/agister/internal/domain/definition"
+	"github.com/igor1309/ai-labs/agister/internal/domain/document"
+	"github.com/igor1309/ai-labs/agister/internal/domain/run"
 )
 
 // Gated refuses every use of the client while the settings have a problem
-// that stops every command (ADR-015 rule 4), except Init, Install and
-// Restore, which write them, and Check, which reports them. Stopping a run
+// that stops every command (ADR-015 rule 4), a broken blocks.yaml among
+// them (ADR-018 rule 5), except Init, Install and Restore, which write
+// them, and Check, which reports them. Stopping a run
 // is never refused, and a run it admitted stays observable, so editing
 // settings mid-run cannot strand a call that already started. Any other
-// problem refuses only the calls that depend on the document it is about,
-// which the client it builds refuses and its listings and views show
-// refused.
+// problem, and a block, refuses only the calls that depend on the document
+// it is about, which the client it builds refuses and its listings and
+// views show refused.
 //
 // Each gated operation reads the settings (layered, and the global layer
 // alone) once into snapshots, builds its client on them, checks with that client and then runs the
@@ -43,10 +45,12 @@ type Gated struct {
 }
 
 // GateDefinitions supplies the settings the gate checks and hands to the
-// client it builds.
+// client it builds, and the layers they are read from.
 type GateDefinitions interface {
-	Read(ctx context.Context, kind definition.Kind, name string) (definition.Document, error)
-	List(ctx context.Context, kind definition.Kind) ([]string, error)
+	Read(ctx context.Context, kind document.Kind, name string) (document.Document, error)
+	ReadListed(ctx context.Context, kind document.Kind, name string) (document.Document, error)
+	List(ctx context.Context, kind document.Kind) ([]string, error)
+	Layers(ctx context.Context) []document.LayerDir
 }
 
 var _ contract.Client = (*Gated)(nil)
@@ -59,16 +63,23 @@ type Infrastructure struct {
 	// layer alone (see Gated).
 	Definitions GateDefinitions
 	Global      GateDefinitions
-	// Project names the repository whose settings are layered over the
-	// global ones, for messages; empty when there are none.
+	// Project names the directory whose settings are layered over the
+	// global ones, the repository's root or the project's directory, for
+	// messages; empty when there are none.
 	Project  string
 	Settings SettingsAdapters
 	Checker  CheckAdapters
 	Resolver ResolverAdapters
 	Calls    CallAdapters
-	Preparer SetupAdapters
+	// Holder holds the caller's worktree for every call (ADR-025 rule 4).
+	Holder   HoldAdapters
 	Verifier VerifyAdapters
-	Runs     RunsAdapters
+	// Recoverer recovers a call's stale turns (ADR-024).
+	Recoverer RecoverAdapters
+	Runs      RunsAdapters
+	// Exporter copies runs from the run store to a folder the caller
+	// names (ADR-026 rule 7).
+	Exporter ExportAdapters
 	// Installer works on home's settings and their backups.
 	Installer InstallAdapters
 	// Staging stages an install's result, where it is checked.
@@ -97,32 +108,34 @@ type GateCheck interface {
 // refused (ADR-015). Every field of infra is required but Checks and
 // Hosted.
 func NewClient(infra Infrastructure) contract.Client {
-	// The calls hosted in this process, the preparer and the verifier are
-	// shared by every client the gate builds.
+	// The calls hosted in this process, the holder, the verifier and the
+	// recoverer are shared by every client the gate builds.
 	hosted := infra.Hosted
 	if hosted == nil {
 		hosted = NewHosted()
 	}
-	preparer := NewPreparer(infra.Preparer.Content, infra.Preparer.Commands, infra.Preparer.Clock)
-	verifier := NewVerifier(infra.Verifier.Content, infra.Verifier.Copies, infra.Verifier.Commands, infra.Verifier.Clock)
+	holder := NewHolder(infra.Holder)
+	verifier := CallsVerifier{Verifier: NewVerifier(infra.Verifier.Content, infra.Verifier.Commands, infra.Verifier.Clock)}
+	recoverer := NewRecoverer(infra.Recoverer.Clock)
 	sources := make([]string, 0, len(infra.Calls.Inputs))
 	for name := range infra.Calls.Inputs {
 		sources = append(sources, name)
 	}
 	sort.Strings(sources)
 	checkerOn := func(definitions GateDefinitions) *Checker {
-		return NewChecker(definitions, infra.Checker.Validator, infra.Checker.Runtimes, sources)
+		checker := NewChecker(definitions, infra.Checker.Validator, infra.Checker.Runtimes, sources)
+		checker.probes = infra.Checker.Probes
+		return checker
 	}
 	// An install checks its result as checkerOn's checkers check home's.
 	installer := NewInstaller(infra.Installer, installCheck{stager: infra.Staging, on: checkerOn})
-	checksOn := infra.Checks
-	if checksOn == nil {
-		checksOn = func(definitions GateDefinitions) GateCheck { return checkerOn(definitions) }
-	}
 	// Each use case that resolves a process gets a resolver of its own,
-	// which refuses a call that depends on a document with a problem.
-	resolverOn := func(definitions GateDefinitions) *Resolver {
-		return NewResolver(definitions, infra.Resolver.Identities, infra.Resolver.Validator, resolverCheck{checksOn(definitions)})
+	// which refuses a call that depends on a document with a problem checks
+	// finds.
+	resolverOn := func(definitions GateDefinitions, checks GateCheck) *Resolver {
+		resolver := NewResolver(definitions, infra.Resolver.Identities, infra.Resolver.Validator, resolverCheck{checks})
+		resolver.probes = infra.Resolver.Probes
+		return resolver
 	}
 	// build makes the whole client over the sources given: the layered
 	// settings and the global layer alone. The gate builds it on snapshots
@@ -133,19 +146,30 @@ func NewClient(infra Infrastructure) contract.Client {
 		// Writes go to global settings, which must stay valid on their own
 		// and with the project in view.
 		scopes := []Scope{{Name: "global settings", Check: checkerOn(globalOnly)}}
+		// Settings a snapshot froze cannot change: the gate, the listings
+		// and the resolvers share one check of them.
+		checker := checkerOn(layered)
+		if _, frozen := layered.(*snapshot); frozen {
+			checker.once = &checkOnce{}
+		}
 		if infra.Project != "" {
-			scopes = append(scopes, Scope{Name: "settings in " + infra.Project, Check: checkerOn(layered)})
+			scopes = append(scopes, Scope{Name: "settings in " + infra.Project, Check: checker})
+		}
+		checks := GateCheck(checker)
+		if infra.Checks != nil {
+			checks = infra.Checks(layered)
 		}
 		calls := infra.Calls
 		host := &Host{
-			Settings:   NewSettings(layered, infra.Settings.Writer, infra.Settings.Examples, scopes, settingsCheck{checksOn(layered)}),
-			Checker:    checkerOn(layered),
-			Inspection: NewInspection(resolverOn(layered)),
+			Settings:   NewSettings(layered, infra.Settings.Writer, infra.Settings.Examples, scopes, settingsCheck{checks}),
+			Checker:    checker,
+			Inspection: NewInspection(resolverOn(layered, checks)),
 			Calls: NewCalls(
-				resolverOn(layered), calls.Runners, calls.Inputs, calls.Workspaces, calls.Changes, preparer, verifier, calls.Validator,
+				resolverOn(layered, checks), calls.Runners, calls.Inputs, calls.Copies, calls.References, calls.Workspaces, calls.Changes, holder, verifier, recoverer, calls.Validator,
 				calls.Recorder, calls.Runs, calls.Clock, calls.Timer, calls.IDs, calls.StateDir, hosted,
 			),
 			Runs:      NewRuns(infra.Runs.Reader, infra.Runs.Appends, hosted, infra.Runs.Timer, 0),
+			Exporter:  NewExporter(infra.Exporter.Runs, infra.Exporter.Folders),
 			Installer: installer,
 		}
 		return infra.Decorate(host)
@@ -153,12 +177,32 @@ func NewClient(infra Infrastructure) contract.Client {
 	return &Gated{Definitions: infra.Definitions, Global: infra.Global, Build: build}
 }
 
+// CallsVerifier adapts the verifier's request to the request owned by Calls.
+// It lives at the composition root because it connects those two components.
+type CallsVerifier struct{ Verifier VerifyRunner }
+
+// VerifyRunner is the verifier as CallsVerifier reads it.
+type VerifyRunner interface {
+	Verify(ctx context.Context, call VerificationCall) (verified string, fault *run.Error)
+}
+
+func (v CallsVerifier) Verify(ctx context.Context, call VerifyCall) (string, *run.Error) {
+	return v.Verifier.Verify(ctx, VerificationCall{
+		Record: call.Record, Result: call.Result, Event: call.Event, Update: call.Update, Artifact: call.Artifact,
+		Verify: VerifyCommand{
+			Command: call.Verify.Command, Timeout: call.Verify.Timeout, MaxAttempts: call.Verify.MaxAttempts, Instruction: call.Verify.Instruction,
+		},
+		Limit: call.Limit, Deadline: call.Deadline, NoOutput: call.NoOutput, Dir: call.Dir, Base: call.Base,
+		Request: call.Request, Session: call.Session, Take: call.Take, Conclude: call.Conclude,
+	})
+}
+
 // InstallStager stages an install's result.
 type InstallStager interface {
 	// Stage writes docs into a new temporary folder laid out like home's
 	// settings, and returns its settings, read as home's would be, and the
 	// folder's removal. What home lists that docs lack is read from home.
-	Stage(ctx context.Context, docs []definition.Document) (staged GateDefinitions, remove func(), err error)
+	Stage(ctx context.Context, docs []document.Document) (staged GateDefinitions, remove func(), err error)
 }
 
 // installCheck checks an install's result as global settings alone: staged
@@ -169,7 +213,7 @@ type installCheck struct {
 	on     func(GateDefinitions) *Checker
 }
 
-func (c installCheck) Check(ctx context.Context, result []definition.Document) (contract.CheckReport, error) {
+func (c installCheck) Check(ctx context.Context, result []document.Document) (contract.CheckReport, error) {
 	staged, remove, err := c.stager.Stage(ctx, result)
 	if err != nil {
 		return contract.CheckReport{}, err
@@ -226,12 +270,15 @@ func (c resolverCheck) Check(ctx context.Context) (ResolverChecked, error) {
 	}
 	var result ResolverChecked
 	for _, d := range found.Documents {
-		result.Documents = append(result.Documents, ResolverDocument{Ref: d.Ref, Path: d.Path, Uses: d.Uses})
+		result.Documents = append(result.Documents, ResolverDocument(d))
 	}
 	for _, p := range found.Problems {
 		if p.About != nil {
-			result.Problems = append(result.Problems, ResolverProblem{About: *p.About, Message: p.Message, Agent: p.Agent})
+			result.Problems = append(result.Problems, ResolverProblem{About: *p.About, Message: p.Message, Agent: p.Agent, Unknown: p.Unknown})
 		}
+	}
+	for _, b := range found.Blocks {
+		result.Blocks = append(result.Blocks, ResolverBlock(b))
 	}
 	return result, nil
 }
@@ -251,12 +298,15 @@ func (c settingsCheck) Check(ctx context.Context) (SettingsChecked, error) {
 	}
 	var result SettingsChecked
 	for _, d := range found.Documents {
-		result.Documents = append(result.Documents, SettingsDocument{Ref: d.Ref, Path: d.Path, Uses: d.Uses})
+		result.Documents = append(result.Documents, SettingsDocument(d))
 	}
 	for _, p := range found.Problems {
 		if p.About != nil {
-			result.Problems = append(result.Problems, SettingsProblem{About: *p.About, Message: p.Message})
+			result.Problems = append(result.Problems, SettingsProblem{About: *p.About, Message: p.Message, Agent: p.Agent})
 		}
+	}
+	for _, b := range found.Blocks {
+		result.Blocks = append(result.Blocks, SettingsBlock(b))
 	}
 	return result, nil
 }
@@ -313,12 +363,12 @@ func (g *Gated) ListProcesses(ctx context.Context) ([]contract.ProcessSummary, e
 	return client.ListProcesses(ctx)
 }
 
-func (g *Gated) ShowProcess(ctx context.Context, name, agent string) (contract.ProcessView, error) {
+func (g *Gated) ShowProcess(ctx context.Context, name string) (contract.ProcessView, error) {
 	client, err := g.gate(ctx)
 	if err != nil {
 		return contract.ProcessView{}, err
 	}
-	return client.ShowProcess(ctx, name, agent)
+	return client.ShowProcess(ctx, name)
 }
 
 func (g *Gated) ListWorkflows(ctx context.Context) ([]contract.WorkflowSummary, error) {
@@ -380,4 +430,12 @@ func (g *Gated) ListRuns(ctx context.Context) ([]contract.Run, error) {
 		return nil, err
 	}
 	return client.ListRuns(ctx)
+}
+
+func (g *Gated) Export(ctx context.Context, request contract.ExportRequest) (contract.ExportResult, error) {
+	client, err := g.gate(ctx)
+	if err != nil {
+		return contract.ExportResult{}, err
+	}
+	return client.Export(ctx, request)
 }

@@ -1,0 +1,192 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "verdict",
+    "summary",
+    "findings",
+    "coverage"
+  ],
+  "properties": {
+    "verdict": {
+      "type": "string",
+      "enum": [
+        "approve",
+        "request_changes"
+      ],
+      "description": "request_changes when there is any blocker or major finding, otherwise approve."
+    },
+    "summary": {
+      "type": "string",
+      "description": "Two or three sentences on the change and its overall risk."
+    },
+    "findings": {
+      "type": "array",
+      "description": "Material findings only. Do not invent problems to fill the list.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "severity",
+          "file",
+          "line",
+          "title",
+          "detail",
+          "evidence",
+          "requirement",
+          "consequence",
+          "severity_rationale",
+          "fix_cost"
+        ],
+        "properties": {
+          "severity": {
+            "type": "string",
+            "enum": [
+              "blocker",
+              "major",
+              "minor",
+              "nit"
+            ],
+            "description": "blocker: the change cannot stand with it. major: real defect or risk to fix. minor: worth fixing. nit: optional polish."
+          },
+          "file": {
+            "type": "string",
+            "description": "Repository-relative path."
+          },
+          "line": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "description": "1-based line in the candidate, or null."
+          },
+          "title": {
+            "type": "string"
+          },
+          "detail": {
+            "type": "string",
+            "description": "What is wrong and the smallest fix. Why it matters goes in consequence."
+          },
+          "evidence": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "case",
+              "trace",
+              "scope"
+            ],
+            "properties": {
+              "case": {
+                "type": "string",
+                "description": "The concrete case: an input, a sequence of events, or a use the project has now. Not 'could' or 'might'."
+              },
+              "trace": {
+                "type": "array",
+                "minItems": 1,
+                "items": {
+                  "type": "string"
+                },
+                "description": "The steps you verified, each as path:line and what happens there."
+              },
+              "scope": {
+                "type": "string",
+                "enum": [
+                  "change",
+                  "goal",
+                  "outside"
+                ],
+                "description": "change: the change introduced the problem, or left it in code it touched. goal: the change did not cause it, but the goal fails because of it; case names a concrete scenario the goal requires, trace shows how this defect stops its outcome, and requirement quotes the goal's condition with every qualification it carries, and where in the goal it stands. A missing test is goal only with a specific goal behaviour that the existing assertions let break. outside: neither."
+              }
+            }
+          },
+          "requirement": {
+            "type": "string",
+            "description": "The rule, invariant, recorded decision or contract the finding violates, quoted or named. For a finding of scope goal: the goal's condition, quoted with every qualification it carries, and where in the goal it stands."
+          },
+          "consequence": {
+            "type": "string",
+            "description": "What happens if it stays, in the concrete case given."
+          },
+          "severity_rationale": {
+            "type": "string",
+            "description": "Why this severity and not the one below it."
+          },
+          "fix_cost": {
+            "type": "object",
+            "additionalProperties": false,
+            "description": "The cost of the smallest fix: a band for its size and one for its change risk, each with its basis. Where a fix meets more than one anchor, the highest is its band.",
+            "required": [
+              "size",
+              "size_basis",
+              "change_risk",
+              "change_risk_basis"
+            ],
+            "properties": {
+              "size": {
+                "type": "string",
+                "enum": [
+                  "trivial",
+                  "small",
+                  "substantial",
+                  "major"
+                ],
+                "description": "trivial: one function, no new test. small: one function or file, with its test. substantial: several files, or a new seam for its test. major: crosses a component boundary, or changes a contract."
+              },
+              "size_basis": {
+                "type": "string",
+                "description": "The files, functions and tests the fix touches."
+              },
+              "change_risk": {
+                "type": "string",
+                "enum": [
+                  "contained",
+                  "moderate",
+                  "broad"
+                ],
+                "description": "contained: nothing outside the touched code depends on what changes. moderate: callers inside the same component. broad: other components, stored records, config or CLI users."
+              },
+              "change_risk_basis": {
+                "type": "string",
+                "description": "The callers and users that depend on what changes, or that none do."
+              }
+            }
+          }
+        }
+      }
+    },
+    "coverage": {
+      "type": "array",
+      "minItems": 1,
+      "description": "What the review checked: one entry per numbered definition-of-done item of its prompt, in order.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "item",
+          "status",
+          "detail"
+        ],
+        "properties": {
+          "item": {
+            "type": "string",
+            "description": "The definition-of-done item it reports on, as \"<number>. <short name>\"."
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "checked",
+              "finding",
+              "rule_only",
+              "not_checked"
+            ],
+            "description": "checked: no finding. finding: reported in findings. rule_only: a rule violation with no concrete case. not_checked: not looked at."
+          },
+          "detail": {
+            "type": "string",
+            "description": "finding: the 1-based finding number(s). rule_only: the rule, the location as path:line, and why no concrete case could be shown. not_checked: why. checked: what was checked, briefly."
+          }
+        }
+      }
+    }
+  }
+}

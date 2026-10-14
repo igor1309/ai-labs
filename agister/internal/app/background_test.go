@@ -78,7 +78,7 @@ func TestABlockedReapDoesNotDelayTheCall(t *testing.T) {
 
 	submitted := make(chan error, 1)
 	go func() {
-		_, err := client.Submit(context.Background(), contract.CallRequest{Process: "p", Cwd: "/repo"})
+		_, err := client.Submit(context.Background(), contract.CallRequest{Process: "p_a", Cwd: "/repo"})
 		submitted <- err
 	}()
 	// Submit returns while the reap is still blocked.

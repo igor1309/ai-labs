@@ -19,8 +19,9 @@ import (
 	"github.com/igor1309/ai-labs/agister/internal/domain/run"
 
 	// fresh is the session the fake starts.
-	supervisor "github.com/igor1309/ai-labs/agister/internal/adapters/runtime/supervisor"
-	"github.com/igor1309/ai-labs/agister/internal/adapters/system/systemtest"
+	"github.com/igor1309/ai-labs/gokit/clocktest"
+	supervisor "github.com/igor1309/ai-labs/gokit/supervisor"
+	"github.com/igor1309/ai-labs/gokit/supervisor/supervisortest"
 )
 
 // The fake this package builds is removed when its tests end.
@@ -34,12 +35,12 @@ const fake = "opencode"
 // lookup times out unless a test advances a clock of its own, and no grace
 // passes.
 func stillSupervisor() supervisor.Runtime {
-	return stillOver(runtimetest.InProcess{})
+	return stillOver(runtimetest.InProcess{Groups: supervisortest.NewGroups()})
 }
 
 // stillOver is stillSupervisor starting through starter.
 func stillOver(starter runtimetest.InProcess) supervisor.Runtime {
-	return supervisor.Runtime{Starter: starter, Timer: systemtest.NewClock(time.Date(2026, 10, 3, 12, 0, 0, 0, time.UTC)).Timer}
+	return supervisor.Runtime{Starter: starter, Timer: clocktest.NewClock(time.Date(2026, 10, 3, 12, 0, 0, 0, time.UTC)).Timer}
 }
 
 const fresh = "ses_f06fe64c3ffeLyBkwYK7e1GfJs"
@@ -64,7 +65,7 @@ func runner(t *testing.T) *opencode.Runner {
 // process under the real supervisor.
 func TestConformance(t *testing.T) {
 	t.Parallel()
-	clock := systemtest.NewClock(time.Date(2026, 10, 3, 12, 0, 0, 0, time.UTC))
+	clock := clocktest.NewClock(time.Date(2026, 10, 3, 12, 0, 0, 0, time.UTC))
 	runtimetest.Conformance(t, runtimetest.Subject{
 		New: func(command string) app.TurnRunner {
 			return composition.AdaptOpenCode(&opencode.Runner{Transport: composition.OpenCodeTransport{Supervisor: supervisor.Runtime{Timer: clock.Timer}}, Command: command})
@@ -116,7 +117,7 @@ func TestATurnRunsAsItsOwnGeneratedAgent(t *testing.T) {
 		}
 		e := echoed(t, sink)
 		agent := e.Argv[5]
-		if e.Argv[4] != "--agent" || !name.MatchString(agent) || e.Config != opencode.Config(opencode.TurnRequest(r), agent) {
+		if e.Argv[4] != "--agent" || !name.MatchString(agent) || e.Config != opencode.Config(composition.OpenCodeRequest(r), agent, "") {
 			t.Fatalf("argv %q, config %s", e.Argv, e.Config)
 		}
 		if e.Prompt != "hello SCENARIO:approve" || !strings.HasPrefix(e.System, "Do the thing.\n\n") ||
@@ -136,7 +137,8 @@ func TestTheConfigReplacesAnInheritedOne(t *testing.T) {
 	t.Parallel()
 	inherited := runner(t)
 	inherited.Transport = composition.OpenCodeTransport{Supervisor: stillOver(runtimetest.InProcess{
-		Env: []string{opencode.ConfigVariable + `={"agent":{"build":{"permission":{"*":"allow"}}}}`},
+		Groups: supervisortest.NewGroups(),
+		Env:    []string{opencode.ConfigVariable + `={"agent":{"build":{"permission":{"*":"allow"}}}}`},
 	})}
 	sink := &runtimetest.Recorder{}
 	if turn := composition.AdaptOpenCode(inherited).RunTurn(context.Background(), request("SCENARIO:approve"), sink); string(turn.Status) != string(run.Completed) {
@@ -154,7 +156,7 @@ func TestRefusesATurnThatCannotUseASkill(t *testing.T) {
 	for _, primitives := range [][]string{nil, {}, {"read", "grep", "glob"}, {"bash"}, {"edit"}} {
 		r := request("x")
 		r.Primitives = primitives
-		if args, err := opencode.Arguments(opencode.TurnRequest(r), "a"); err == nil || err.Error() != "opencode/1 needs skill to use the repository's skills (ADR-006)" {
+		if args, err := opencode.Arguments(composition.OpenCodeRequest(r), "a"); err == nil || err.Error() != "opencode/1 needs skill to use the repository's skills (ADR-006)" {
 			t.Errorf("primitives %q: args %q, err = %v", primitives, args, err)
 		}
 	}
@@ -172,7 +174,7 @@ func TestRejectsWhatItCannotHonour(t *testing.T) {
 	r := request("x")
 	limit := 1.0
 	r.MaxCostUSD = &limit
-	if _, err := opencode.Arguments(opencode.TurnRequest(r), "a"); err == nil || err.Error() != "opencode/1 cannot limit cost" {
+	if _, err := opencode.Arguments(composition.OpenCodeRequest(r), "a"); err == nil || err.Error() != "opencode/1 cannot limit cost" {
 		t.Fatalf("cost limit: err = %v", err)
 	}
 	// write is no permission of its own, list no tool of 1.18.33, and the
@@ -180,13 +182,13 @@ func TestRejectsWhatItCannotHonour(t *testing.T) {
 	for _, primitives := range [][]string{{"Bash"}, {"skill", "write"}, {"skill", "list"}, {"skill", "task"}, {"skill", "todowrite"}, {"skill", "question"}, {"skill", "*"}, {""}} {
 		r := request("x")
 		r.Primitives = primitives
-		if _, err := opencode.Arguments(opencode.TurnRequest(r), "a"); err == nil || !strings.Contains(err.Error(), "opencode/1 has no tool") {
+		if _, err := opencode.Arguments(composition.OpenCodeRequest(r), "a"); err == nil || !strings.Contains(err.Error(), "opencode/1 has no tool") {
 			t.Errorf("primitives %q: err = %v", primitives, err)
 		}
 	}
 	r = request("x")
 	r.Effort = "extreme"
-	if _, err := opencode.Arguments(opencode.TurnRequest(r), "a"); err == nil || !strings.Contains(err.Error(), "opencode/1 has no variant") {
+	if _, err := opencode.Arguments(composition.OpenCodeRequest(r), "a"); err == nil || !strings.Contains(err.Error(), "opencode/1 has no variant") {
 		t.Fatalf("an unknown variant: err = %v", err)
 	}
 	// Refused before OpenCode starts.
@@ -202,7 +204,7 @@ func TestRejectsWhatItCannotHonour(t *testing.T) {
 func TestIdentity(t *testing.T) {
 	t.Parallel()
 	identity, err := opencode.New(fake, composition.OpenCodeTransport{Supervisor: stillSupervisor()}).Identity(context.Background())
-	want := opencode.RuntimeIdentity{Contract: "opencode/1", Version: "1.18.33", Resume: true, ResumeWhereItRan: true, SkillTools: []string{"skill"}}
+	want := opencode.RuntimeIdentity{Contract: "opencode/1", Version: "1.18.33", Resume: true, ResumeWhereItRan: true, SkillTools: []string{"skill"}, Skills: true}
 	if err != nil || !reflect.DeepEqual(identity, want) {
 		t.Fatalf("identity = %+v, %v", identity, err)
 	}

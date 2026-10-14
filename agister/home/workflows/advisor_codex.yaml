@@ -1,0 +1,4 @@
+schema: agister.workflow/v1alpha1
+name: advisor_codex
+type: workflow
+call: {node: advisor, uses: process:advisor, agent: codex-sol-61}

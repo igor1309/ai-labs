@@ -127,7 +127,7 @@ func TestALookupThatDidNotExitCleanlyFails(t *testing.T) {
 		spy := &spyRuns{Answer: func(codex.Spec) ([]string, codex.Evidence) {
 			return strings.Split(listingJSON("0.25"), "\n"), evidence
 		}}
-		listing, err := codex.CCUsage(spy, "ccusage", 2*time.Second)(context.Background(), time.Minute, &sink{})
+		listing, err := codex.CCUsage(spy, "ccusage", 2*time.Second)(context.Background(), time.Minute, "", &sink{})
 		if err == nil || listing != nil {
 			t.Errorf("%s: listing %q, err %v", name, listing, err)
 		}
@@ -143,6 +143,11 @@ func TestIdentityAsksTheTransportForTheVersion(t *testing.T) {
 	identity, err := codex.New("/opt/codex", spy).Identity(context.Background())
 	if err != nil || identity.Version != "0.130.0" || identity.Contract != codex.Contract {
 		t.Fatalf("identity = %+v, %v", identity, err)
+	}
+	// Codex gives a call its skills through a home of its thread's
+	// (ADR-021 rule 6).
+	if !identity.Skills {
+		t.Fatalf("identity = %+v, which gives no skills", identity)
 	}
 	if versions := spy.Versions(); !reflect.DeepEqual(versions, []string{"/opt/codex"}) {
 		t.Fatalf("versions = %q", versions)
@@ -174,5 +179,44 @@ func TestTheTransportStderrDecidesASilentFailure(t *testing.T) {
 		if result.Status != codex.Failed || result.Error == nil || result.Error.Class != codex.ClassRuntimeError || result.Error.Message != c.message || result.StderrTail != c.tail || result.StderrOmitted != c.omitted {
 			t.Fatalf("turn = %+v", result)
 		}
+	}
+}
+
+// A turn reports, in the stream's order, the paths each file change writes
+// as the change starts: the path of each of its changes, as the stream
+// named it. An item that changes no file reports none.
+func TestATurnReportsThePathsAFileChangeWrites(t *testing.T) {
+	t.Parallel()
+	lines := []string{
+		`{"type":"thread.started","thread_id":"t-1"}`,
+		`{"type":"turn.started"}`,
+		`{"type":"item.started","item":{"id":"item_1","type":"file_change","changes":[{"path":"/work/a.go","kind":"update"},{"path":"/work/docs/new.md","kind":"add"}],"status":"in_progress"}}`,
+		`{"type":"item.completed","item":{"id":"item_1","type":"file_change","changes":[{"path":"/work/a.go","kind":"update"},{"path":"/work/docs/new.md","kind":"add"}],"status":"completed"}}`,
+		`{"type":"item.started","item":{"id":"item_2","type":"command_execution","command":"rm /work/b.go","status":"in_progress"}}`,
+		`{"type":"item.started","item":{"id":"item_3","type":"file_change","changes":[{"path":"/work/old.go","kind":"delete"},{"kind":"update"},{"path":"/work/a.go","kind":"update"}],"status":"in_progress"}}`,
+		`{"type":"item.started","item":{"id":"item_4","type":"file_change","status":"in_progress"}}`,
+		`{"type":"turn.completed"}`,
+	}
+	code := 0
+	spy := &spyTransport{Runs: spyRuns{Answer: func(codex.Spec) ([]string, codex.Evidence) {
+		return lines, codex.Evidence{Exit: &codex.Exit{Code: &code}}
+	}}}
+	runner := &codex.Runner{Transport: spy, Command: "codex"}
+	sink := &told{}
+	r := request("hello")
+	r.OutputSchema = nil
+	turn := runner.RunTurn(context.Background(), r, sink)
+
+	want := []string{
+		`started item_1 file_change writes ["/work/a.go" "/work/docs/new.md"]`,
+		`started item_2 command writes []`,
+		`started item_3 file_change writes ["/work/old.go" "/work/a.go"]`,
+		`started item_4 file_change writes []`,
+	}
+	if !reflect.DeepEqual(sink.reports, want) {
+		t.Fatalf("reported\n%q\nwant\n%q", sink.reports, want)
+	}
+	if turn.Status != codex.Completed {
+		t.Fatalf("turn = %+v", turn)
 	}
 }

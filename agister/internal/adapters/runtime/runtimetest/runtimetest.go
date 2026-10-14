@@ -20,9 +20,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/supervisor"
 	"github.com/igor1309/ai-labs/agister/internal/app"
 	"github.com/igor1309/ai-labs/agister/internal/domain/run"
+	"github.com/igor1309/ai-labs/gokit/supervisor"
 )
 
 var (
@@ -108,10 +108,14 @@ type Recorder struct {
 	Events    []run.Event
 	Lines     []string
 	Processes []string // references, in the order reported
-	// Tools are the tool calls reported started, in order, and Finished the
-	// IDs of those reported finished.
+	// Tools are the tool calls reported started, in order, Finished the
+	// IDs of those reported finished, and Results what each finish
+	// reported, in the same order.
 	Tools    []app.ToolCall
 	Finished []string
+	Results  []app.ToolResult
+	// Denials are the permission denials reported, in order.
+	Denials []app.PermissionDenial
 	// Trace is every event and tool call reported, in the order they
 	// arrived: an event as its kind, followed by the tool call it names if
 	// any ("TOOL_RESULT toolu_1"), a tool call as "ToolStarted <id>" or
@@ -149,11 +153,18 @@ func (r *Recorder) ToolStarted(call app.ToolCall) {
 	r.Trace = append(r.Trace, "ToolStarted "+call.ID)
 }
 
-func (r *Recorder) ToolFinished(id string) {
+func (r *Recorder) ToolFinished(result app.ToolResult) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	r.Finished = append(r.Finished, id)
-	r.Trace = append(r.Trace, "ToolFinished "+id)
+	r.Finished = append(r.Finished, result.ID)
+	r.Results = append(r.Results, result)
+	r.Trace = append(r.Trace, "ToolFinished "+result.ID)
+}
+
+func (r *Recorder) PermissionDenied(denial app.PermissionDenial) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.Denials = append(r.Denials, denial)
 }
 
 func (r *Recorder) ProcessStarted(ref string) error {
@@ -229,7 +240,7 @@ type Subject struct {
 	Clock Clock
 }
 
-// Clock is a manual clock (systemtest.Clock is one): Started returns once
+// Clock is a manual clock (clocktest.Clock is one): Started returns once
 // a timer of wait has been started, and Advance moves the clock on, firing
 // the timers whose wait it passes.
 type Clock interface {
@@ -269,6 +280,13 @@ func Conformance(t *testing.T, subject Subject) {
 		}
 	})
 
+	t.Run("a fresh first turn is admitted", func(t *testing.T) {
+		request := subject.Request("SCENARIO:approve")
+		if fault := subject.New(subject.Fake).Admit(app.TurnStart{Skills: request.Skills}); fault != nil {
+			t.Fatalf("admit = %v", fault)
+		}
+	})
+
 	t.Run("completed turn with structured output", func(t *testing.T) {
 		result, sink := turn(t, "SCENARIO:approve", nil, context.Background())
 		if result.Status != run.Completed || len(result.Output) == 0 || result.ProviderSessionID == "" {
@@ -295,6 +313,11 @@ func Conformance(t *testing.T, subject Subject) {
 		if len(sink.Tools) != 1 || sink.Tools[0].ID == "" || sink.Tools[0].Name == "" || sink.Tools[0].Input == "" ||
 			len(sink.Finished) != 1 || sink.Finished[0] != sink.Tools[0].ID {
 			t.Fatalf("tool calls started %+v, finished %q", sink.Tools, sink.Finished)
+		}
+		// The call's result is the evidence a repeated call is recovered
+		// with (ADR-024 rule 2): every fake's stream carries one.
+		if result := sink.Results[0]; !result.Reported || result.Output == "" {
+			t.Fatalf("tool call finished without its result: %+v", result)
 		}
 		// During the turn, in order: the call is started before its result
 		// is reported, and finished before the turn completes.

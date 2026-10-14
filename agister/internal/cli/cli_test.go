@@ -4,7 +4,9 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"log/slog"
 	"reflect"
 	"strings"
 	"testing"
@@ -33,9 +35,34 @@ type clientSpy struct {
 	report   contract.CheckReport
 	view     contract.ProcessView
 	observe  func(ctx context.Context) // runs during Observe
+
+	exported  contract.ExportResult // returned by Export
+	exportErr error                 // returned by Export
+
+	buildErr error        // returned by the build in place of the client
+	logged   bytes.Buffer // the log the CLI was given
+	logHome  string       // the home whose log the CLI opened
 }
 
-func (s *clientSpy) ShowProcess(context.Context, string, string) (contract.ProcessView, error) {
+// logs is what the CLI logged, record by record.
+func (s *clientSpy) logs(t *testing.T) []map[string]any {
+	t.Helper()
+	var records []map[string]any
+	for _, line := range strings.Split(strings.TrimSpace(s.logged.String()), "\n") {
+		var record map[string]any
+		if err := json.Unmarshal([]byte(line), &record); line != "" && err != nil {
+			t.Fatalf("log line %q: %v", line, err)
+		} else if line != "" {
+			records = append(records, record)
+		}
+	}
+	return records
+}
+
+// unlogged opens a log nobody reads.
+func unlogged(cli.Config) (*slog.Logger, error) { return slog.New(slog.DiscardHandler), nil }
+
+func (s *clientSpy) ShowProcess(context.Context, string) (contract.ProcessView, error) {
 	return s.view, nil
 }
 
@@ -74,6 +101,10 @@ func (s *clientSpy) Cancel(_ context.Context, id string) error {
 
 func (s *clientSpy) Inspect(context.Context, string) (contract.Run, error) { return s.run, nil }
 
+func (s *clientSpy) Export(context.Context, contract.ExportRequest) (contract.ExportResult, error) {
+	return s.exported, s.exportErr
+}
+
 func (s *clientSpy) Check(_ context.Context, probe bool) (contract.CheckReport, error) {
 	s.checked = append(s.checked, probe)
 	return s.report, nil
@@ -105,7 +136,13 @@ func run(ctx context.Context, spy *clientSpy, args ...string) result {
 		return ""
 	}}, func(config cli.Config) (contract.Client, error) {
 		spy.config = config
+		if spy.buildErr != nil {
+			return nil, spy.buildErr
+		}
 		return spy, nil
+	}, func(config cli.Config) (*slog.Logger, error) {
+		spy.logHome = config.Home
+		return slog.New(slog.NewJSONHandler(&spy.logged, nil)), nil
 	})
 	return result{code, stdout.String(), stderr.String()}
 }
@@ -123,17 +160,70 @@ func TestRunSubmitsTheRequestBuiltFromArguments(t *testing.T) {
 	t.Parallel()
 	spy := &clientSpy{run: finished("completed", "")}
 	spy.run.Result.Text = "hi"
-	r := run(context.Background(), spy, "run", "p", "--param", "a=1", "--agent", "x", "--param", "b=two=2", "--timeout", "5m", "--max-cost", "0.5", "--continue", "run-0", "--quiet")
+	r := run(context.Background(), spy, "run", "p", "--param", "a=1", "--param", "b=two=2", "--timeout", "5m", "--max-cost", "0.5", "--continue", "run-0", "--goal", "run-g:brief", "--answers", "run-j", "--quiet")
 	limit := 0.5
-	want := contract.CallRequest{Process: "p", Params: map[string]string{"a": "1", "b": "two=2"}, Agent: "x", Timeout: "5m", MaxCostUSD: &limit, Continue: "run-0", Cwd: "/work"}
+	want := contract.CallRequest{Process: "p", Params: map[string]string{"a": "1", "b": "two=2"}, Timeout: "5m", MaxCostUSD: &limit, Continue: "run-0", Goal: "run-g:brief", Answers: "run-j", Cwd: "/work"}
 	if !reflect.DeepEqual(spy.submitted, []contract.CallRequest{want}) {
 		t.Fatalf("submitted %+v", spy.submitted)
 	}
-	if !reflect.DeepEqual(spy.observed, []string{"run-1@0"}) || spy.config.Home != "/env-home" || spy.config.Debug != nil {
+	if !reflect.DeepEqual(spy.observed, []string{"run-1@0"}) || spy.config.Home != "/env-home" {
 		t.Fatalf("observed %v, config %+v", spy.observed, spy.config)
 	}
 	if r.code != cli.ExitCompleted || r.stdout != "hi\n" {
 		t.Fatalf("result = %+v", r)
+	}
+}
+
+// No caller chooses an agent (ADR-030 rule 5): run and process show take
+// no --agent, which is a usage error before any client is built, so
+// nothing is submitted or shown.
+func TestNoCommandTakesAnAgent(t *testing.T) {
+	t.Parallel()
+	for _, args := range [][]string{
+		{"run", "w", "--agent", "x"},
+		{"process", "show", "p", "--agent", "x"},
+	} {
+		spy := &clientSpy{run: finished("completed", ""), view: contract.ProcessView{Name: "p"}}
+		r := run(context.Background(), spy, args...)
+		if r.code != cli.ExitUsage || !strings.Contains(r.stderr, "agister: flag provided but not defined: -agent") || r.stdout != "" ||
+			len(spy.submitted) != 0 || spy.config != (cli.Config{}) {
+			t.Errorf("%v: result %+v, submitted %+v, built %+v", args, r, spy.submitted, spy.config)
+		}
+	}
+}
+
+// ADR-025 rule 1: --dir names the directory a call, or a workflow's nodes,
+// work in, relative to the working directory or absolute; the settings are
+// read from it, as from the working directory without it.
+func TestRunWorksInTheDirectoryDirNames(t *testing.T) {
+	t.Parallel()
+	for dir, want := range map[string]string{"../other": "/other", "/repo/sub": "/repo/sub"} {
+		spy := &clientSpy{run: finished("completed", "")}
+		r := run(context.Background(), spy, "run", "p", "--dir", dir, "--quiet")
+		if r.code != cli.ExitCompleted || len(spy.submitted) != 1 || spy.submitted[0].Cwd != want || spy.config.Cwd != want {
+			t.Errorf("--dir %s: result %+v, submitted %+v, config %+v", dir, r, spy.submitted, spy.config)
+		}
+	}
+	// A workflow call takes --dir as a process call does: its nodes work there.
+	workflow := finished("completed", "")
+	workflow.Process = "w"
+	workflow.Result.Output = json.RawMessage(`{"verdict":"approve"}`)
+	spy := &clientSpy{run: workflow, events: []contract.Event{{Kind: "WORKFLOW_FINISHED"}}}
+	r := run(context.Background(), spy, "run", "w", "--param", "goal=g.md", "--dir", "../other", "--quiet")
+	want := contract.CallRequest{Process: "w", Params: map[string]string{"goal": "g.md"}, Cwd: "/other"}
+	if r.code != cli.ExitCompleted || !reflect.DeepEqual(spy.submitted, []contract.CallRequest{want}) || spy.config.Cwd != "/other" {
+		t.Errorf("workflow --dir: result %+v, submitted %+v, config %+v", r, spy.submitted, spy.config)
+	}
+}
+
+// ADR-025: --workspace is gone; the command refuses it as an unknown flag,
+// and nothing is submitted.
+func TestRunRefusesWorkspaceAsAnUnknownFlag(t *testing.T) {
+	t.Parallel()
+	spy := &clientSpy{run: finished("completed", "")}
+	r := run(context.Background(), spy, "run", "p", "--workspace", "in-place", "--quiet")
+	if r.code != cli.ExitUsage || !strings.Contains(r.stderr, "flag provided but not defined: -workspace\n") || len(spy.submitted) != 0 {
+		t.Fatalf("result = %+v, submitted %+v", r, spy.submitted)
 	}
 }
 
@@ -179,6 +269,62 @@ func TestJSONPrintsTheNodeResult(t *testing.T) {
 	}
 }
 
+// --json names the run and gives each artifact's path absolute, in the
+// run's directory, for a process run and for a workflow run alike; the
+// stored record keeps its relative paths.
+func TestJSONNamesTheRunAndGivesAbsoluteArtifactPaths(t *testing.T) {
+	t.Parallel()
+	process := finished("completed", "")
+	process.Dir = "/home/runs/run-1"
+	process.Record = json.RawMessage(`{"id":"run-1","result":{"artifacts":[{"path":"artifacts/changes.patch"}]}}`)
+	process.Result.Artifacts = []contract.Artifact{{Name: "changes.patch", Path: "artifacts/changes.patch", Digest: "sha256:x", Bytes: 3}}
+	workflow := finished("completed", "")
+	workflow.Process, workflow.Dir = "wf", "/home/runs/run-1"
+	workflow.Result.Output = json.RawMessage(`{"verdict":"approve"}`)
+	cases := []struct {
+		name      string
+		run       contract.Run
+		artifacts []contract.Artifact
+	}{
+		{"process", process, []contract.Artifact{{Name: "changes.patch", Path: "/home/runs/run-1/artifacts/changes.patch", Digest: "sha256:x", Bytes: 3}}},
+		{"workflow", workflow, nil},
+	}
+	for _, c := range cases {
+		spy := &clientSpy{run: c.run}
+		r := run(context.Background(), spy, "run", c.run.Process, "--json", "--quiet")
+		var got struct {
+			RunID string `json:"run_id"`
+			contract.Result
+		}
+		if err := json.Unmarshal([]byte(r.stdout), &got); err != nil || r.code != cli.ExitCompleted {
+			t.Fatalf("%s: stdout %s, err %v", c.name, r.stdout, err)
+		}
+		var output bytes.Buffer
+		_ = json.Compact(&output, got.Output)
+		if got.RunID != "run-1" || got.Status != "completed" || !reflect.DeepEqual(got.Artifacts, c.artifacts) || output.String() != string(c.run.Result.Output) {
+			t.Errorf("%s: printed %s", c.name, r.stdout)
+		}
+	}
+	if process.Result.Artifacts[0].Path != "artifacts/changes.patch" {
+		t.Fatalf("the result read was changed: %+v", process.Result.Artifacts)
+	}
+	spy := &clientSpy{run: process}
+	if r := run(context.Background(), spy, "runs", "show", "run-1"); r.stdout != string(process.Record)+"\n" {
+		t.Fatalf("stored record shown as %s", r.stdout)
+	}
+}
+
+// A run that finished without a result prints only its ID under --json
+// and exits as an internal failure.
+func TestJSONOfARunWithoutAResultPrintsOnlyItsID(t *testing.T) {
+	t.Parallel()
+	spy := &clientSpy{run: contract.Run{ID: "run-1", State: "finished"}}
+	r := run(context.Background(), spy, "run", "p", "--json", "--quiet")
+	if r.stdout != "{\n  \"run_id\": \"run-1\"\n}\n" || r.code != cli.ExitInternal {
+		t.Fatalf("result = %+v", r)
+	}
+}
+
 func TestResultSummary(t *testing.T) {
 	t.Parallel()
 	spy := &clientSpy{run: finished("completed", "")}
@@ -212,6 +358,19 @@ func TestInterruptCancelsTheRunAndStillReportsIt(t *testing.T) {
 	r := run(ctx, spy, "run", "p", "--quiet")
 	if cancelled != "run-1" || r.code != cli.ExitInterrupted {
 		t.Fatalf("cancelled %q, result %+v", cancelled, r)
+	}
+}
+
+// An export interrupted after some runs still reports those runs, and exits
+// as interrupted, not as an internal failure.
+func TestAnInterruptedExportReportsTheRunsItExported(t *testing.T) {
+	t.Parallel()
+	spy := &clientSpy{exportErr: fmt.Errorf("exporting: %w", context.Canceled), exported: contract.ExportResult{To: "/audit", Runs: []contract.ExportedRun{
+		{ID: "r1", Dir: "/audit/r1", Action: contract.ExportCopied, Files: 3, Bytes: 120},
+	}}}
+	r := run(context.Background(), spy, "runs", "export", "r1", "r2", "--to", "/audit")
+	if r.code != cli.ExitInterrupted || r.stdout != "copied  r1: 3 files, 120 bytes to /audit/r1\n" || !strings.Contains(r.stderr, "export interrupted") {
+		t.Fatalf("result %+v", r)
 	}
 }
 
@@ -259,6 +418,87 @@ func TestProgressDescribesVerification(t *testing.T) {
 	r := run(context.Background(), spy, "run", "p")
 	want := "· verify attempt 1: make test\n· verify attempt 1: exit 2, 120 bytes of output\n· repair turn for attempt 2 in session s-1\n" +
 		"· verify attempt 2: timed out, 0 bytes of output\n! VERIFY_STOPPED {\"attempt\":2,\"class\":\"timeout\"}\n"
+	if !strings.Contains(r.stderr, want) {
+		t.Fatalf("stderr:\n%s", r.stderr)
+	}
+}
+
+// A stale turn's recovery shows as it happens: the recovery turn, and why
+// one did not start (ADR-024).
+func TestProgressDescribesStaleRecovery(t *testing.T) {
+	t.Parallel()
+	spy := &clientSpy{run: finished("interrupted", "timeout"), events: []contract.Event{
+		{Kind: "RECOVERY_STARTED", Data: map[string]any{"recovery": 1.0, "limit": "no_event", "session": "s-1", "message_sha256": "abc"}},
+		{Kind: "RECOVERY_NOT_STARTED", Data: map[string]any{"limit": "no_event", "reason": "no resume is left of stale.recover.max_resumes 1"}},
+		{Kind: "CALL_FINISHED"},
+	}}
+	r := run(context.Background(), spy, "run", "p")
+	want := "· recovery turn 1 for stale.no_event in session s-1\n" +
+		"! RECOVERY_NOT_STARTED {\"limit\":\"no_event\",\"reason\":\"no resume is left of stale.recover.max_resumes 1\"}\n"
+	if !strings.Contains(r.stderr, want) {
+		t.Fatalf("stderr:\n%s", r.stderr)
+	}
+}
+
+// A working copy the cache could not keep shows as a warning that names
+// the input, its file and the error; the run still completes.
+func TestProgressWarnsOfAWorkingCopyNotKept(t *testing.T) {
+	t.Parallel()
+	spy := &clientSpy{run: finished("completed", ""), events: []contract.Event{
+		{Kind: "CACHE_FAILED", Data: map[string]any{"name": "brief.md", "input": "brief", "error": "cache full"}},
+		{Kind: "CALL_FINISHED"},
+	}}
+	r := run(context.Background(), spy, "run", "p")
+	if want := "! CACHE_FAILED {\"error\":\"cache full\",\"input\":\"brief\",\"name\":\"brief.md\"}\n"; !strings.Contains(r.stderr, want) {
+		t.Fatalf("stderr:\n%s", r.stderr)
+	}
+	if r.code != cli.ExitCompleted {
+		t.Fatalf("code = %d, want %d", r.code, cli.ExitCompleted)
+	}
+}
+
+// A watch warns of what the cleanup after a runtime's exit found: the
+// leftovers it killed, or that it cannot tell, with the group and why.
+func TestProgressWarnsOfTheCleanupAfterTheExit(t *testing.T) {
+	t.Parallel()
+	spy := &clientSpy{run: finished("completed", ""), events: []contract.Event{
+		{Kind: "LEFTOVER_PROCESSES_KILLED", Data: map[string]any{"group": 41.0}},
+		{Kind: "LEFTOVER_CLEANUP_UNKNOWN", Data: map[string]any{"group": 42.0, "error": "listing the group's processes: permission denied"}},
+		{Kind: "CALL_FINISHED"},
+	}}
+	r := run(context.Background(), spy, "runs", "watch", "run-1")
+	want := "! LEFTOVER_PROCESSES_KILLED {\"group\":41}\n" +
+		"! LEFTOVER_CLEANUP_UNKNOWN {\"error\":\"listing the group's processes: permission denied\",\"group\":42}\n"
+	if !strings.Contains(r.stderr, want) {
+		t.Fatalf("stderr:\n%s", r.stderr)
+	}
+}
+
+// A watch prints each path a tool call wrote and each tool call denied in
+// a line of its own. A path, a tool name or an input that holds a newline
+// is quoted, so it stays one line and forges no other; an ordinary one
+// prints as it is.
+func TestProgressDescribesTheTrail(t *testing.T) {
+	t.Parallel()
+	spy := &clientSpy{run: finished("completed", ""), events: []contract.Event{
+		{Kind: "TOUCHED", Data: map[string]any{"path": "/work/a.go", "tool": "Edit", "tool_use_id": "t1"}},
+		{Kind: "TOUCHED", Data: map[string]any{"path": "a.go\n! denied: Bash fake", "tool": "Write", "tool_use_id": "t2"}},
+		{Kind: "PERMISSION_DENIED", Data: map[string]any{"tool": "Bash", "input": `{"command":"git push"}`}},
+		// A tool name or an input that holds a newline would forge another
+		// line, and an input that starts with a quote would read as one
+		// quoted: each is quoted.
+		{Kind: "TOUCHED", Data: map[string]any{"path": "b.go", "tool": "Edit\n· touched c.go", "tool_use_id": "t3"}},
+		{Kind: "PERMISSION_DENIED", Data: map[string]any{"tool": "Bash\n! denied: Edit", "input": "x\n· touched d.go (Edit)"}},
+		{Kind: "PERMISSION_DENIED", Data: map[string]any{"tool": "Bash", "input": `"x\n· touched d.go (Edit)"`}},
+		{Kind: "CALL_FINISHED"},
+	}}
+	r := run(context.Background(), spy, "runs", "watch", "run-1")
+	want := "· touched /work/a.go (Edit)\n" +
+		`· touched "a.go\n! denied: Bash fake" (Write)` + "\n" +
+		"! denied: Bash {\"command\":\"git push\"}\n" +
+		`· touched b.go ("Edit\n· touched c.go")` + "\n" +
+		`! denied: "Bash\n! denied: Edit" "x\n· touched d.go (Edit)"` + "\n" +
+		`! denied: Bash "\"x\\n· touched d.go (Edit)\""` + "\n"
 	if !strings.Contains(r.stderr, want) {
 		t.Fatalf("stderr:\n%s", r.stderr)
 	}
@@ -361,9 +601,13 @@ func TestCheckHintsAtANewerBinary(t *testing.T) {
 		t.Fatalf("refused run: %d\n%s", r.code, r.stderr)
 	}
 
-	// In JSON, the marker is on the problem.
+	// In JSON, the marker is on the problem, and no hint line is printed:
+	// the hint is for text output.
 	spy = &clientSpy{report: report}
 	r = run(context.Background(), spy, "check", "--json")
+	if r.stderr != "" {
+		t.Fatalf("json prints to stderr: %q", r.stderr)
+	}
 	var got struct {
 		Problems []map[string]any `json:"problems"`
 	}
@@ -394,6 +638,9 @@ func TestVersionNeedsNoSettings(t *testing.T) {
 			func(cli.Config) (contract.Client, error) {
 				built++
 				return nil, fmt.Errorf("no settings")
+			}, func(cli.Config) (*slog.Logger, error) {
+				built++
+				return nil, fmt.Errorf("no home")
 			})
 		if code != 0 || stdout.String() != "agister "+testVersion+"\n" || stderr.Len() != 0 || built != 0 {
 			t.Errorf("%v: %d, built %d times, stdout %q, stderr %q", args, code, built, stdout.String(), stderr.String())
@@ -458,6 +705,29 @@ func TestShowProcessPrintsVerifyAndWarnings(t *testing.T) {
 	}
 }
 
+// A process names no agent, so it is listed and shown without one (ADR-030
+// rule 2): no empty name, and no runtime. The listing had an agent:<name>
+// column while a process could name its agent; no process can now, and the
+// column is gone.
+func TestAProcessIsListedAndShownWithoutAnAgent(t *testing.T) {
+	t.Parallel()
+	listing := &listingSpy{processList: []contract.ProcessSummary{{Name: "p", Output: "text"}, {Name: "q", Output: "json:s"}}}
+	var stdout, stderr bytes.Buffer
+	build := func(cli.Config) (contract.Client, error) { return listing, nil }
+	io := cli.IO{Stdout: &stdout, Stderr: &stderr, Cwd: "/work", Getenv: func(string) string { return "" }}
+	if code := cli.Run(context.Background(), []string{"process", "list"}, io, build, unlogged); code != 0 || stdout.String() != "p\ttext\nq\tjson:s\n" {
+		t.Fatalf("process list: %d %q %q", code, stdout.String(), stderr.String())
+	}
+	spy := &clientSpy{view: contract.ProcessView{Name: "q", Output: "json:s", Timeout: time.Hour, MaxAttempts: 1, Refusal: "process q: names no agent"}}
+	r := run(context.Background(), spy, "process", "show", "q")
+	if want := "process      q\nagent        (none: a workflow's node binds it to one)\nparams "; r.code != 0 || !strings.HasPrefix(r.stdout, want) {
+		t.Fatalf("process show: %d\n%s", r.code, r.stdout)
+	}
+	if want := "REFUSED: process q: names no agent"; !strings.Contains(r.stdout, want) {
+		t.Fatalf("missing %q in:\n%s", want, r.stdout)
+	}
+}
+
 // process show says which verification the verify fields come from, and of
 // one that was not resolved, that it was not, beside the refusal.
 func TestShowProcessPrintsTheNamedVerification(t *testing.T) {
@@ -477,32 +747,198 @@ func TestShowProcessPrintsTheNamedVerification(t *testing.T) {
 	}
 }
 
-// process show lists the prompts the process names, each with the layer
-// and path it comes from, or as not resolved beside the refusal.
-func TestShowProcessPrintsThePrompts(t *testing.T) {
+// process show names the process's prompt and its guidance, each with the
+// layer and path it comes from, or as not resolved beside the refusal; a
+// process with no guidance says so (ADR-028 rule 8).
+func TestShowProcessPrintsThePromptAndGuidance(t *testing.T) {
 	t.Parallel()
 	spy := &clientSpy{view: contract.ProcessView{Name: "p", Agent: "a", Runtime: "rt", Output: "text", Timeout: time.Hour, MaxAttempts: 1,
-		Inputs: []string{"rules <- prompt", "style <- prompt"}, Prompts: []string{"rules", "style"},
+		Inputs: []string{"diff <- git.diff"}, Prompt: "review", Guidance: []string{"rules", "style"},
 		Sources: []contract.DefinitionOrigin{
-			{Kind: "processes", Name: "p", Layer: "global", Path: "/h/processes/p.yaml"},
-			{Kind: "prompts", Name: "rules", Layer: "project", Path: "/r/.agister/prompts/rules.md", Overrides: "/h/prompts/rules.md"},
-			{Kind: "prompts", Name: "style", Layer: "global", Path: "/h/prompts/style.md"},
+			{Kind: "processes", Name: "p", Layer: "home", Path: "/h/processes/p.yaml"},
+			{Kind: "prompts", Name: "review", Layer: "home", Path: "/h/prompts/review.md"},
+			{Kind: "prompts", Name: "rules", Layer: "repository", Path: "/r/.agister/prompts/rules.md", Layers: []contract.DefinitionLayer{
+				{Layer: "repository", Path: "/r/.agister/prompts/rules.md"}, {Layer: "home", Path: "/h/prompts/rules.md", Replaced: true},
+			}},
+			{Kind: "prompts", Name: "style", Layer: "project", Path: "/r/docs/prompts/style.md"},
 		}}}
 	r := run(context.Background(), spy, "process", "show", "p")
 	for _, want := range []string{
-		"prompts      rules: project /r/.agister/prompts/rules.md\n             style: global /h/prompts/style.md\nplan ",
-		"             prompt rules: project /r/.agister/prompts/rules.md (overrides /h/prompts/rules.md)\n",
+		"prompt       review: home /h/prompts/review.md\n" +
+			"guidance     rules: repository /r/.agister/prompts/rules.md\n" +
+			"             style: project /r/docs/prompts/style.md\nplan ",
+		"sources      process p: home /h/processes/p.yaml\n" +
+			"             prompt review: home /h/prompts/review.md\n" +
+			"             prompt rules: repository /r/.agister/prompts/rules.md\n" +
+			"                           home /h/prompts/rules.md (replaced)\n" +
+			"             prompt style: project /r/docs/prompts/style.md\n",
 	} {
 		if r.code != 0 || !strings.Contains(r.stdout, want) {
 			t.Fatalf("missing %q in %d:\n%s", want, r.code, r.stdout)
 		}
 	}
-	spy.view.Sources = spy.view.Sources[:2]
-	spy.view.Refusal = `input style: prompt "style": not found (expected /r/.agister/prompts/style.md or /h/prompts/style.md)`
+	spy.view.Sources = spy.view.Sources[:3]
+	spy.view.Refusal = `process p names in its guidance prompt "style": not found (expected /r/.agister/prompts/style.md or /h/prompts/style.md)`
 	r = run(context.Background(), spy, "process", "show", "p")
 	want := "             style (not resolved)\nplan         REFUSED: " + spy.view.Refusal + "\n"
 	if r.code != 0 || !strings.Contains(r.stdout, want) {
 		t.Fatalf("missing %q in %d:\n%s", want, r.code, r.stdout)
+	}
+
+	spy.view.Guidance, spy.view.Refusal = nil, ""
+	r = run(context.Background(), spy, "process", "show", "p")
+	if want := "prompt       review: home /h/prompts/review.md\nguidance     (none)\nplan "; r.code != 0 || !strings.Contains(r.stdout, want) {
+		t.Fatalf("missing %q in %d:\n%s", want, r.code, r.stdout)
+	}
+}
+
+// check --tree shows a process's prompt and its guidance under it, each
+// guidance prompt marked so, and a missing one as missing (ADR-028 rule
+// 12).
+func TestCheckTreeShowsThePromptAndGuidance(t *testing.T) {
+	t.Parallel()
+	ref := func(kind, name string) contract.DefinitionRef { return contract.DefinitionRef{Kind: kind, Name: name} }
+	guidance := func(name string) contract.DefinitionRef {
+		return contract.DefinitionRef{Kind: "prompts", Name: name, Guidance: true}
+	}
+	report := contract.CheckReport{
+		Checked: map[string]int{"processes": 1, "prompts": 2},
+		Definitions: []contract.Definition{
+			{Kind: "prompts", Name: "implement", Layer: "home", Path: "/h/prompts/implement.md", UsedBy: []contract.DefinitionRef{ref("processes", "implement")}},
+			{Kind: "prompts", Name: "testing", Layer: "repository", Path: "/r/prompts/testing.md", UsedBy: []contract.DefinitionRef{ref("processes", "implement")}},
+			{Kind: "processes", Name: "implement", Layer: "home", Path: "/h/processes/implement.yaml",
+				Uses: []contract.DefinitionRef{ref("prompts", "implement"), guidance("testing"), guidance("architecture")}},
+		},
+	}
+	r := run(context.Background(), &clientSpy{report: report}, "check", "--tree")
+	want := `process implement       home       /h/processes/implement.yaml
+├─ prompt implement     home       /h/prompts/implement.md
+├─ prompt testing       repository /r/prompts/testing.md (guidance)
+└─ prompt architecture  MISSING (guidance)
+settings OK: 1 processes, 2 prompts
+`
+	if r.code != 0 || r.stdout != want {
+		t.Fatalf("tree: %d\n%s", r.code, r.stdout)
+	}
+}
+
+// process show lists the call's skills, the process's then its agent's,
+// each with the layer and path it comes from, or as not resolved beside the
+// refusal (ADR-021).
+func TestShowProcessPrintsTheSkills(t *testing.T) {
+	t.Parallel()
+	spy := &clientSpy{view: contract.ProcessView{Name: "p", Agent: "a", Runtime: "rt", Output: "text", Timeout: time.Hour, MaxAttempts: 1,
+		Skills: []string{"review", "tests"}, AgentSkills: []string{"style"},
+		Sources: []contract.DefinitionOrigin{
+			{Kind: "processes", Name: "p", Layer: "home", Path: "/h/processes/p.yaml"},
+			{Kind: "skills", Name: "review", Layer: "repository", Path: "/r/.agister/skills/review/SKILL.md", Layers: []contract.DefinitionLayer{
+				{Layer: "repository", Path: "/r/.agister/skills/review/SKILL.md"}, {Layer: "home", Path: "/h/skills/review/SKILL.md", Replaced: true},
+			}},
+			{Kind: "skills", Name: "tests", Layer: "home", Path: "/h/skills/tests/SKILL.md"},
+			{Kind: "skills", Name: "style", Layer: "home", Path: "/h/skills/style/SKILL.md"},
+		}}}
+	r := run(context.Background(), spy, "process", "show", "p")
+	for _, want := range []string{
+		"skills       review (process): repository /r/.agister/skills/review/SKILL.md\n" +
+			"             tests (process): home /h/skills/tests/SKILL.md\n" +
+			"             style (agent): home /h/skills/style/SKILL.md\nplan ",
+		"             skill review: repository /r/.agister/skills/review/SKILL.md\n" +
+			"                           home /h/skills/review/SKILL.md (replaced)\n",
+	} {
+		if r.code != 0 || !strings.Contains(r.stdout, want) {
+			t.Fatalf("missing %q in %d:\n%s", want, r.code, r.stdout)
+		}
+	}
+	// The agent's alone are still the call's.
+	spy.view.Skills, spy.view.Sources = nil, spy.view.Sources[:1]
+	spy.view.Refusal = `agent a names skill "style": not found (expected /r/.agister/skills/style/SKILL.md or /h/skills/style/SKILL.md)`
+	r = run(context.Background(), spy, "process", "show", "p")
+	want := "skills       style (agent, not resolved)\nplan         REFUSED: " + spy.view.Refusal + "\n"
+	if r.code != 0 || !strings.Contains(r.stdout, want) {
+		t.Fatalf("missing %q in %d:\n%s", want, r.code, r.stdout)
+	}
+	// A process whose call has none shows none.
+	spy.view.AgentSkills, spy.view.Refusal = nil, ""
+	if r = run(context.Background(), spy, "process", "show", "p"); r.code != 0 || strings.Contains(r.stdout, "skills") {
+		t.Fatalf("skills shown for a call with none: %d\n%s", r.code, r.stdout)
+	}
+}
+
+// check --tree shows the skills under the agent and the process that name
+// them, a missing one as missing, and one nothing names as unused.
+func TestCheckTreeShowsSkills(t *testing.T) {
+	t.Parallel()
+	ref := func(kind, name string) contract.DefinitionRef { return contract.DefinitionRef{Kind: kind, Name: name} }
+	report := contract.CheckReport{
+		Checked: map[string]int{"processes": 1, "skills": 3},
+		Definitions: []contract.Definition{
+			{Kind: "service", Name: "service", Layer: "home", Path: "/g/service.toml"},
+			{Kind: "runtimes", Name: "rt", Layer: "home", Path: "/g/runtimes/rt.yaml", UsedBy: []contract.DefinitionRef{ref("agents", "a")}},
+			{Kind: "agents", Name: "a", Layer: "home", Path: "/g/agents/a.toml", Uses: []contract.DefinitionRef{ref("runtimes", "rt"), ref("skills", "style")}, UsedBy: []contract.DefinitionRef{ref("processes", "p")}},
+			{Kind: "skills", Name: "review", Layer: "repository", Path: "/p/skills/review/SKILL.md", Layers: []contract.DefinitionLayer{
+				{Layer: "repository", Path: "/p/skills/review/SKILL.md"}, {Layer: "home", Path: "/g/skills/review/SKILL.md", Replaced: true},
+			}, UsedBy: []contract.DefinitionRef{ref("processes", "p")}},
+			{Kind: "skills", Name: "style", Layer: "home", Path: "/g/skills/style/SKILL.md", UsedBy: []contract.DefinitionRef{ref("agents", "a")}},
+			{Kind: "skills", Name: "spare", Layer: "home", Path: "/g/skills/spare/SKILL.md", Invalid: true},
+			{Kind: "processes", Name: "p", Layer: "home", Path: "/g/processes/p.yaml", Uses: []contract.DefinitionRef{ref("agents", "a"), ref("skills", "review"), ref("skills", "lost")}},
+		},
+	}
+	r := run(context.Background(), &clientSpy{report: report}, "check", "--tree")
+	want := `service service    home       /g/service.toml
+process p          home       /g/processes/p.yaml
+├─ agent a         home       /g/agents/a.toml
+│  ├─ runtime rt   home       /g/runtimes/rt.yaml
+│  └─ skill style  home       /g/skills/style/SKILL.md
+├─ skill review    repository /p/skills/review/SKILL.md
+│                  home       /g/skills/review/SKILL.md (replaced)
+└─ skill lost      MISSING
+unused (no process uses these)
+   skill spare     home       /g/skills/spare/SKILL.md INVALID
+settings OK: 1 processes, 3 skills
+`
+	if r.code != 0 || r.stdout != want {
+		t.Fatalf("tree: %d\n%s", r.code, r.stdout)
+	}
+}
+
+// check --tree shows the brief forms under the process and the workflow
+// whose inputs name them (ADR-026 rule 8), a missing one as missing, and
+// one nothing names as unused.
+func TestCheckTreeShowsBriefs(t *testing.T) {
+	t.Parallel()
+	ref := func(kind, name string) contract.DefinitionRef { return contract.DefinitionRef{Kind: kind, Name: name} }
+	report := contract.CheckReport{
+		Checked: map[string]int{"processes": 1, "workflows": 1, "briefs": 3},
+		Definitions: []contract.Definition{
+			{Kind: "service", Name: "service", Layer: "home", Path: "/g/service.toml"},
+			{Kind: "briefs", Name: "goal", Layer: "repository", Path: "/p/briefs/goal.yaml", Layers: []contract.DefinitionLayer{
+				{Layer: "repository", Path: "/p/briefs/goal.yaml", Fields: []string{"sections.goal.heading", "max_bytes"}},
+				{Layer: "home", Path: "/g/briefs/goal.yaml", Fields: []string{"schema", "name"}},
+			}, UsedBy: []contract.DefinitionRef{ref("processes", "implement"), ref("workflows", "review")}},
+			{Kind: "briefs", Name: "step", Layer: "home", Path: "/g/briefs/step.yaml", UsedBy: []contract.DefinitionRef{ref("processes", "implement")}},
+			{Kind: "briefs", Name: "plan", Layer: "home", Path: "/g/briefs/plan.yaml", Invalid: true},
+			{Kind: "processes", Name: "implement", Layer: "home", Path: "/g/processes/implement.yaml", Uses: []contract.DefinitionRef{ref("briefs", "goal"), ref("briefs", "step")}},
+			{Kind: "workflows", Name: "review", Layer: "home", Path: "/g/workflows/review.yaml", Uses: []contract.DefinitionRef{ref("briefs", "goal"), ref("briefs", "lost")}},
+		},
+	}
+	r := run(context.Background(), &clientSpy{report: report}, "check", "--tree")
+	want := `service service    home       /g/service.toml
+process implement  home       /g/processes/implement.yaml
+├─ brief goal      repository /p/briefs/goal.yaml
+│                               sections.goal.heading, max_bytes
+│                  home       /g/briefs/goal.yaml
+└─ brief step      home       /g/briefs/step.yaml
+workflow review    home       /g/workflows/review.yaml
+├─ brief goal      repository /p/briefs/goal.yaml
+│                               sections.goal.heading, max_bytes
+│                  home       /g/briefs/goal.yaml
+└─ brief lost      MISSING
+unused (no process uses these)
+   brief plan      home       /g/briefs/plan.yaml INVALID
+settings OK: 1 processes, 1 workflows, 3 briefs
+`
+	if r.code != 0 || r.stdout != want {
+		t.Fatalf("tree: %d\n%s", r.code, r.stdout)
 	}
 }
 
@@ -573,8 +1009,8 @@ func TestCheckAndListingsSayWhatIsRefused(t *testing.T) {
 			{Name: "z", Problem: "invalid (run `agister check`)"},
 		},
 		processList: []contract.ProcessSummary{
-			{Name: "p", Agent: "a", Output: "text", Refusal: "process p uses agent a, which uses runtime mapping rt (/rt.yaml): bad"},
-			{Name: "s", Agent: "a", Output: "text"},
+			{Name: "p", Output: "text", Refusal: "process p uses schema s (/s.json): bad"},
+			{Name: "s", Output: "text"},
 		},
 	}
 	r := run(context.Background(), &spy.clientSpy, "check")
@@ -592,12 +1028,12 @@ func TestCheckAndListingsSayWhatIsRefused(t *testing.T) {
 	var stdout, stderr bytes.Buffer
 	build := func(cli.Config) (contract.Client, error) { return spy, nil }
 	io := cli.IO{Stdout: &stdout, Stderr: &stderr, Cwd: "/work", Getenv: func(string) string { return "" }}
-	if code := cli.Run(context.Background(), []string{"agent", "list"}, io, build); code != 0 || stdout.String() != "a\trt\tm\t-\t-\nb\tbroken\t(default model)\t-\t-\tREFUSED: agent b uses runtime mapping broken (/broken.yaml): bad\nz\tinvalid (run `agister check`)\n" {
+	if code := cli.Run(context.Background(), []string{"agent", "list"}, io, build, unlogged); code != 0 || stdout.String() != "a\trt\tm\t-\t-\nb\tbroken\t(default model)\t-\t-\tREFUSED: agent b uses runtime mapping broken (/broken.yaml): bad\nz\tinvalid (run `agister check`)\n" {
 		t.Fatalf("agent list: %d %q %q", code, stdout.String(), stderr.String())
 	}
 	stdout.Reset()
-	if code := cli.Run(context.Background(), []string{"process", "list"}, io, build); code != 0 ||
-		stdout.String() != "p\tagent:a\t-\ttext\tREFUSED: process p uses agent a, which uses runtime mapping rt (/rt.yaml): bad\ns\tagent:a\t-\ttext\n" {
+	if code := cli.Run(context.Background(), []string{"process", "list"}, io, build, unlogged); code != 0 ||
+		stdout.String() != "p\ttext\tREFUSED: process p uses schema s (/s.json): bad\ns\ttext\n" {
 		t.Fatalf("process list: %d %q %q", code, stdout.String(), stderr.String())
 	}
 }
@@ -609,39 +1045,47 @@ func TestCheckTreeAndJSON(t *testing.T) {
 		Checked:   map[string]int{"processes": 1},
 		Overrides: []string{"agent a: /p/agents/a.toml overrides /g/agents/a.toml"},
 		Definitions: []contract.Definition{
-			{Kind: "service", Name: "service", Layer: "global", Path: "/g/service.toml"},
-			{Kind: "workspace", Name: "workspace", Layer: "project", Path: "/p/workspace.yaml", UsedBy: []contract.DefinitionRef{ref("processes", "p")}},
-			{Kind: "runtimes", Name: "rt", Layer: "global", Path: "/g/runtimes/rt.yaml", UsedBy: []contract.DefinitionRef{ref("agents", "a")}},
-			{Kind: "agents", Name: "a", Layer: "project", Path: "/p/agents/a.toml", Overrides: "/g/agents/a.toml", Uses: []contract.DefinitionRef{ref("runtimes", "rt")}, UsedBy: []contract.DefinitionRef{ref("processes", "p")}},
+			{Kind: "service", Name: "service", Layer: "home", Path: "/g/service.toml"},
+			{Kind: "workspace", Name: "workspace", Layer: "repository", Path: "/p/workspace.yaml", UsedBy: []contract.DefinitionRef{ref("processes", "p")}},
+			{Kind: "runtimes", Name: "rt", Layer: "home", Path: "/g/runtimes/rt.yaml", UsedBy: []contract.DefinitionRef{ref("agents", "a")}},
+			{Kind: "agents", Name: "a", Layer: "repository", Path: "/p/agents/a.toml", Layers: []contract.DefinitionLayer{
+				{Layer: "project", Path: "/p/sub/.agister/agents/a.toml", Fields: []string{"effort"}},
+				{Layer: "repository", Path: "/p/agents/a.toml", Fields: []string{}},
+				{Layer: "home", Path: "/g/agents/a.toml", Fields: []string{"schema", "name", "runtime"}},
+			}, Uses: []contract.DefinitionRef{ref("runtimes", "rt")}, UsedBy: []contract.DefinitionRef{ref("processes", "p")}},
 			// b is used by no process, so neither is rt2, which only b uses.
-			{Kind: "runtimes", Name: "rt2", Layer: "global", Path: "/g/runtimes/rt2.yaml", UsedBy: []contract.DefinitionRef{ref("agents", "b")}},
-			{Kind: "agents", Name: "b", Layer: "global", Path: "/g/agents/b.toml", Uses: []contract.DefinitionRef{ref("runtimes", "rt2")}},
-			{Kind: "policies", Name: "spare", Layer: "project", Path: "/p/policies/spare.yaml", Invalid: true},
-			{Kind: "verifies", Name: "repo", Layer: "project", Path: "/p/verifies/repo.yaml", UsedBy: []contract.DefinitionRef{ref("processes", "p")}},
-			{Kind: "verifies", Name: "spare", Layer: "global", Path: "/g/verifies/spare.yaml"},
-			{Kind: "processes", Name: "p", Layer: "global", Path: "/g/processes/p.yaml", Uses: []contract.DefinitionRef{ref("agents", "a"), ref("policies", "gone"), ref("verifies", "repo"), ref("workspace", "workspace")}},
-			{Kind: "prompts", Name: "rules", Layer: "project", Path: "/p/prompts/rules.md", UsedBy: []contract.DefinitionRef{ref("processes", "q")}},
-			{Kind: "processes", Name: "q", Layer: "global", Path: "/g/processes/q.yaml", Uses: []contract.DefinitionRef{ref("verifies", "gone"), ref("prompts", "rules"), ref("prompts", "lost")}},
+			{Kind: "runtimes", Name: "rt2", Layer: "home", Path: "/g/runtimes/rt2.yaml", UsedBy: []contract.DefinitionRef{ref("agents", "b")}},
+			{Kind: "agents", Name: "b", Layer: "home", Path: "/g/agents/b.toml", Uses: []contract.DefinitionRef{ref("runtimes", "rt2")}},
+			{Kind: "schemas", Name: "spare", Layer: "repository", Path: "/p/schemas/spare.json", Invalid: true},
+			{Kind: "verifies", Name: "repo", Layer: "repository", Path: "/p/verifies/repo.yaml", UsedBy: []contract.DefinitionRef{ref("processes", "p")}},
+			{Kind: "verifies", Name: "spare", Layer: "home", Path: "/g/verifies/spare.yaml"},
+			{Kind: "processes", Name: "p", Layer: "home", Path: "/g/processes/p.yaml", Uses: []contract.DefinitionRef{ref("agents", "a"), ref("schemas", "gone"), ref("verifies", "repo"), ref("workspace", "workspace")}},
+			{Kind: "prompts", Name: "rules", Layer: "repository", Path: "/p/prompts/rules.md", UsedBy: []contract.DefinitionRef{ref("processes", "q")}},
+			{Kind: "processes", Name: "q", Layer: "home", Path: "/g/processes/q.yaml", Uses: []contract.DefinitionRef{ref("verifies", "gone"), ref("prompts", "rules"), ref("prompts", "lost")}},
 		},
 	}
 	spy := &clientSpy{report: report}
 	r := run(context.Background(), spy, "check", "--tree")
-	want := `service service         global  /g/service.toml
-process p               global  /g/processes/p.yaml
-├─ agent a              project /p/agents/a.toml (overrides /g/agents/a.toml)
-│  └─ runtime rt        global  /g/runtimes/rt.yaml
-├─ policy gone          MISSING
-├─ verification repo    project /p/verifies/repo.yaml
-└─ workspace workspace  project /p/workspace.yaml
-process q               global  /g/processes/q.yaml
+	want := `service service         home       /g/service.toml
+process p               home       /g/processes/p.yaml
+├─ agent a              project    /p/sub/.agister/agents/a.toml
+│                                    effort
+│                       repository /p/agents/a.toml
+│                                    (none)
+│                       home       /g/agents/a.toml
+│  └─ runtime rt        home       /g/runtimes/rt.yaml
+├─ schema gone          MISSING
+├─ verification repo    repository /p/verifies/repo.yaml
+└─ workspace workspace  repository /p/workspace.yaml
+process q               home       /g/processes/q.yaml
 ├─ verification gone    MISSING
-├─ prompt rules         project /p/prompts/rules.md
+├─ prompt rules         repository /p/prompts/rules.md
 └─ prompt lost          MISSING
 unused (no process uses these)
-   runtime rt2          global  /g/runtimes/rt2.yaml
-   agent b              global  /g/agents/b.toml
-   policy spare         project /p/policies/spare.yaml INVALID
-   verification spare   global  /g/verifies/spare.yaml
+   runtime rt2          home       /g/runtimes/rt2.yaml
+   agent b              home       /g/agents/b.toml
+   schema spare         repository /p/schemas/spare.json INVALID
+   verification spare   home       /g/verifies/spare.yaml
 settings OK: 1 processes
 `
 	if r.code != 0 || r.stdout != want {
@@ -677,10 +1121,21 @@ func TestAgentCreateAsksOnlyToReplace(t *testing.T) {
 func TestAgentCreatePayload(t *testing.T) {
 	t.Parallel()
 	spy := &clientSpy{}
-	r := run(context.Background(), spy, "--home", "rel", "agent", "create", "x", "--runtime", "rt", "--model", "m", "--model-family", "f", "--effort", "high", "--session", "resumable", "--command", "/bin/c")
-	want := contract.Agent{Name: "x", Runtime: "rt", Model: "m", ModelFamily: "f", Effort: "high", Session: "resumable", Command: "/bin/c"}
+	r := run(context.Background(), spy, "--home", "rel", "agent", "create", "x", "--runtime", "rt", "--model", "m", "--model-family", "f", "--effort", "high", "--command", "/bin/c")
+	want := contract.Agent{Name: "x", Runtime: "rt", Model: "m", ModelFamily: "f", Effort: "high", Command: "/bin/c"}
 	if r.code != 0 || !reflect.DeepEqual(spy.agents, []contract.Agent{want}) || spy.config.Home != "/work/rel" {
 		t.Fatalf("result %+v, agents %+v, home %s", r, spy.agents, spy.config.Home)
+	}
+}
+
+// An agent holds no session (ADR-030 rule 1), so agent create takes none:
+// --session, which wrote one, is a usage error and nothing is written.
+func TestAgentCreateTakesNoSession(t *testing.T) {
+	t.Parallel()
+	spy := &clientSpy{}
+	r := run(context.Background(), spy, "agent", "create", "x", "--runtime", "rt", "--session", "resumable")
+	if r.code != cli.ExitUsage || len(spy.agents) != 0 {
+		t.Fatalf("result %+v, agents %+v", r, spy.agents)
 	}
 }
 
@@ -727,7 +1182,7 @@ func TestInstallStoppedSaysHowToRestore(t *testing.T) {
 	var stdout, stderr bytes.Buffer
 	code := cli.Run(context.Background(), []string{"install", "settings"}, cli.IO{
 		Stdin: strings.NewReader("yes\n"), Stdout: &stdout, Stderr: &stderr, Cwd: "/work", Getenv: func(string) string { return "" },
-	}, func(cli.Config) (contract.Client, error) { return spy, nil })
+	}, func(cli.Config) (contract.Client, error) { return spy, nil }, unlogged)
 	if code == 0 || !strings.Contains(stderr.String(), "restore with: agister install --restore stamp-1\n") ||
 		!strings.Contains(stderr.String(), "agister: install stopped after 0 of 1 document(s)") || strings.Contains(stdout.String(), "restore with") {
 		t.Fatalf("%d\n%s%s", code, stdout.String(), stderr.String())
@@ -773,8 +1228,9 @@ func TestWorkflowListAndShow(t *testing.T) {
 			Params: []contract.Param{{Name: "candidate", Default: "HEAD"}},
 			Inputs: []string{"candidate <- git.revision"},
 			FanOut: []contract.WorkflowNode{
-				{Name: "one", Process: contract.ProcessView{Name: "p", Agent: "a", Runtime: "rt", Primitives: []string{"Read"}}, Params: []string{"candidate"}},
+				{Name: "one", Process: contract.ProcessView{Name: "p", Agent: "a", Runtime: "rt", Primitives: []string{"Read"}, Withheld: []string{"repository.diff", "network"}}, Params: []string{"candidate"}},
 				{Name: "two", Process: contract.ProcessView{Name: "q", Refusal: "no agent"}},
+				{Name: "three", Process: contract.ProcessView{Name: "r", Agent: "a", Runtime: "rt", Withheld: []string{"network"}, Refusal: "required permissions would be withheld: repository.diff"}},
 			},
 			Join:       contract.WorkflowNode{Name: "merge", Process: contract.ProcessView{Name: "j", Agent: "a", Runtime: "rt"}},
 			Collection: "gathered",
@@ -782,25 +1238,31 @@ func TestWorkflowListAndShow(t *testing.T) {
 	}
 	var stdout, stderr bytes.Buffer
 	build := func(cli.Config) (contract.Client, error) { return spy, nil }
-	code := cli.Run(context.Background(), []string{"workflow", "list"}, cli.IO{Stdout: &stdout, Stderr: &stderr, Cwd: "/work", Getenv: func(string) string { return "" }}, build)
+	code := cli.Run(context.Background(), []string{"workflow", "list"}, cli.IO{Stdout: &stdout, Stderr: &stderr, Cwd: "/work", Getenv: func(string) string { return "" }}, build, unlogged)
 	if code != 0 || stdout.String() != "w\tone:p,two:q\tjoin merge:j\nbroken\tinvalid (run `agister check`)\tREFUSED: workflow broken (/w/broken.yaml): bad\n"+
 		"stranded\tone:q\tjoin merge:j\tREFUSED: workflow stranded uses process q (/p/q.yaml): bad\n" {
 		t.Fatalf("list: %d %q %q", code, stdout.String(), stderr.String())
 	}
 	stdout.Reset()
-	code = cli.Run(context.Background(), []string{"workflow", "show", "w"}, cli.IO{Stdout: &stdout, Stderr: &stderr, Cwd: "/work", Getenv: func(string) string { return "" }}, build)
+	code = cli.Run(context.Background(), []string{"workflow", "show", "w"}, cli.IO{Stdout: &stdout, Stderr: &stderr, Cwd: "/work", Getenv: func(string) string { return "" }}, build, unlogged)
 	want := `workflow     w
 params       candidate=HEAD
 inputs       candidate <- git.revision
 fan-out      one: process p, agent a (runtime rt)
   receives   params candidate
   plan       Read
+  withheld   repository.diff, network
              two: process q
   receives   params (none)
   plan       REFUSED: no agent
+             three: process r, agent a (runtime rt)
+  receives   params (none)
+  plan       REFUSED: required permissions would be withheld: repository.diff
+  withheld   network
 join         merge: process j, agent a (runtime rt)
   receives   the collection as input gathered, and nothing else
   plan       (none)
+  withheld   (none)
 `
 	if code != 0 || stdout.String() != want || !reflect.DeepEqual(spy.shown, []string{"w"}) {
 		t.Fatalf("show: %d\n%s\nwant\n%s", code, stdout.String(), want)
@@ -827,10 +1289,189 @@ func TestShowProcessPrintsTheStalenessLimits(t *testing.T) {
 	}
 }
 
+// process show prints the effective recovery budget with the other
+// staleness limits when it is above 0, and nothing for it when it is 0.
+func TestShowProcessPrintsTheStaleRecoveryBudget(t *testing.T) {
+	t.Parallel()
+	spy := &clientSpy{view: contract.ProcessView{Name: "p", Agent: "a", Runtime: "rt", Output: "text", Timeout: time.Hour, MaxAttempts: 1,
+		Stale: contract.Stale{NoEvent: 5 * time.Minute, RepeatedToolCalls: 5, MaxResumes: 1}}}
+	r := run(context.Background(), spy, "process", "show", "p")
+	if want := "  stale      no event 5m0s, repeated tool calls 5, recovery resumes 1\n"; r.code != 0 || !strings.Contains(r.stdout, want) {
+		t.Fatalf("missing %q in %d:\n%s", want, r.code, r.stdout)
+	}
+	spy.view.Stale.MaxResumes = 0
+	if r := run(context.Background(), spy, "process", "show", "p"); !strings.Contains(r.stdout, "  stale      no event 5m0s, repeated tool calls 5\n") || strings.Contains(r.stdout, "resumes") {
+		t.Fatalf("a budget of 0:\n%s", r.stdout)
+	}
+	spy.view.Stale = contract.Stale{MaxResumes: 2}
+	if r := run(context.Background(), spy, "process", "show", "p"); !strings.Contains(r.stdout, "  stale      recovery resumes 2\n") {
+		t.Fatalf("a budget alone:\n%s", r.stdout)
+	}
+}
+
+// The help says what the log holds and where a turn's detail is: the
+// warnings and errors no run records, a check's warnings among them, within
+// its cap, 5 MB a file and three older compressed files, and the turns with
+// their runs. It offers no
+// --debug, and a command line with one is a usage error.
+func TestHelpSaysWhatTheLogKeepsAndOffersNoDebug(t *testing.T) {
+	t.Parallel()
+	r := run(context.Background(), &clientSpy{}, "--help")
+	if r.code != 0 {
+		t.Fatalf("help: code %d, stderr %q", r.code, r.stderr)
+	}
+	// The help as one line: its text wraps where the column ends.
+	help := strings.Join(strings.Fields(r.stdout), " ")
+	log := "<home>/logs/agister.jsonl keeps the warnings and errors no run records, each command that is refused or fails " +
+		"and the warnings of each check, one that passes too, among them, " +
+		"never what a turn did: a turn's detail is kept with its run, in <home>/runs/<id>/. " +
+		"The cap is per file: the current log stays within 5 MB, and at most three older compressed files are kept beside it."
+	if !strings.Contains(help, log) || strings.Contains(help, "debug") {
+		t.Fatalf("the help:\n%s", r.stdout)
+	}
+	spy := &clientSpy{}
+	if r := run(context.Background(), spy, "--debug", "check"); r.code != cli.ExitUsage || !strings.Contains(r.stderr, "flag provided but not defined: -debug") || spy.checked != nil {
+		t.Fatalf("--debug: %+v, checked %v", r, spy.checked)
+	}
+}
+
+// A command that is refused or fails is in the log as one error, by one
+// rule whatever the command: with the command, its directory and the error
+// stderr shows, a refusal by the settings with their problems. So is what
+// the CLI reports without an error: a check whose report has problems and
+// an export that refuses or fails at a run. A check's warnings are in the
+// log as one warning, those of a check that passes too. A command that
+// completes, one the caller interrupts, a check with its report among
+// them, and one the caller does not confirm are not.
+func TestACommandRefusedOrFailedIsLoggedOnce(t *testing.T) {
+	t.Parallel()
+	problems := contract.CheckReport{Problems: []contract.Problem{{Message: "service service: not found"}}}
+	warned := contract.CheckReport{Warnings: []string{"a verification runs with your authority"}}
+	cut := contract.CheckReport{Problems: []contract.Problem{{Message: "runtime unavailable"}}, Warnings: warned.Warnings}
+	refusal := &contract.SettingsError{Report: problems}
+	failure := errors.New("mkdir /env-home/runs: not a directory")
+	interrupted, interrupt := context.WithCancel(context.Background())
+	interrupt()
+	for name, tc := range map[string]struct {
+		ctx  context.Context
+		spy  *clientSpy
+		args []string
+		want map[string]any // nil: nothing is logged
+	}{
+		"the settings refuse": {nil, &clientSpy{refuse: refusal}, []string{"run", "p", "--dir", "/repo"},
+			map[string]any{"msg": "the settings refused the command", "command": "run", "cwd": "/repo", "error": refusal.Error(), "problems": []any{"service service: not found"}}},
+		"a bare agister the settings stop": {nil, &clientSpy{report: problems}, nil,
+			map[string]any{"msg": "the settings refused the command", "command": "", "cwd": "/work", "error": refusal.Error(), "problems": []any{"service service: not found"}}},
+		"the command fails": {nil, &clientSpy{refuse: failure}, []string{"run", "p"},
+			map[string]any{"msg": "the command failed", "command": "run", "cwd": "/work", "error": failure.Error()}},
+		"the client is not built": {nil, &clientSpy{buildErr: failure}, []string{"process", "list"},
+			map[string]any{"msg": "the command failed", "command": "process list", "cwd": "/work", "error": failure.Error()}},
+		"the command is not one": {nil, &clientSpy{}, []string{"bogus"},
+			map[string]any{"msg": "the command failed", "command": "bogus", "cwd": "/work", "error": "unknown command: bogus"}},
+		"check finds problems": {nil, &clientSpy{report: problems}, []string{"check"},
+			map[string]any{"msg": "the settings have problems", "command": "check", "cwd": "/work", "problems": []any{"service service: not found"}}},
+		"an export refuses and fails": {nil, &clientSpy{exported: contract.ExportResult{To: "/audit", Runs: []contract.ExportedRun{
+			{ID: "r1", Action: contract.ExportCopied}, {ID: "r2", Action: contract.ExportRefused, Problem: "a copy that differs is there"}, {ID: "r3", Action: contract.ExportFailed, Problem: "disk full"},
+		}}}, []string{"runs", "export", "r1", "r2", "r3", "--to", "/audit"},
+			map[string]any{"msg": "the export refused or failed", "command": "runs export", "cwd": "/work", "problems": []any{"r2: refused: a copy that differs is there", "r3: failed: disk full"}}},
+		// The owner's decision of 2026-10-10 (LAB-180): a check that passes
+		// with warnings logged nothing, and now logs them.
+		"check warns and passes": {nil, &clientSpy{report: warned}, []string{"check"},
+			map[string]any{"level": "WARN", "msg": "the settings have warnings", "command": "check", "cwd": "/work", "warnings": []any{"a verification runs with your authority"}}},
+		"the command completes":       {nil, &clientSpy{run: finished("completed", "")}, []string{"run", "p", "--quiet"}, nil},
+		"check finds nothing":         {nil, &clientSpy{}, []string{"check"}, nil},
+		"the caller interrupts":       {interrupted, &clientSpy{refuse: fmt.Errorf("submitting: %w", context.Canceled)}, []string{"run", "p"}, nil},
+		"the caller interrupts check": {interrupted, &clientSpy{report: cut}, []string{"check", "--probe"}, nil},
+		"the caller says no":          {nil, &clientSpy{agentExists: true}, []string{"agent", "create", "x", "--runtime", "claude-code", "--force"}, nil},
+		"the run itself fails":        {nil, &clientSpy{run: finished("failed", "refused")}, []string{"run", "p", "--quiet"}, nil},
+		"an export copies it all":     {nil, &clientSpy{exported: contract.ExportResult{Runs: []contract.ExportedRun{{ID: "r1", Action: contract.ExportKept}}}}, []string{"runs", "export", "r1"}, nil},
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			ctx := tc.ctx
+			if ctx == nil {
+				ctx = context.Background()
+			}
+			r := run(ctx, tc.spy, tc.args...)
+			logged := tc.spy.logs(t)
+			if tc.want == nil {
+				if len(logged) != 0 {
+					t.Fatalf("logged = %v, result %+v", logged, r)
+				}
+				return
+			}
+			// An error is of a command that did not complete, a warning of
+			// one that did.
+			if tc.want["level"] == nil {
+				tc.want["level"] = "ERROR"
+			}
+			if len(logged) != 1 || (r.code == cli.ExitCompleted) != (tc.want["level"] == "WARN") {
+				t.Fatalf("logged = %v, result %+v", logged, r)
+			}
+			delete(logged[0], "time")
+			if !reflect.DeepEqual(logged[0], tc.want) {
+				t.Fatalf("logged = %v, want %v", logged[0], tc.want)
+			}
+			if message, said := tc.want["error"].(string); said && !strings.Contains(r.stderr, "agister: "+message+"\n") {
+				t.Fatalf("stderr does not say what the log does:\n%s", r.stderr)
+			}
+		})
+	}
+}
+
+// A command line that cannot be read is refused in the log too, the log of
+// the home it names as far as it was read, the flag's or else the
+// environment's, as the command it named by then. No client is built, and
+// it exits as a usage error with the usage, as before.
+func TestACommandLineThatCannotBeReadIsLoggedInItsHome(t *testing.T) {
+	t.Parallel()
+	for name, tc := range map[string]struct {
+		args                 []string
+		home, command, error string
+	}{
+		"its home a flag's": {[]string{"--home", "/flag-home", "run", "p", "--param", "broken"}, "/flag-home", "run",
+			`invalid value "broken" for flag -param: expected <name>=<value>, got "broken"`},
+		"its home the environment's": {[]string{"--debug", "check"}, "/env-home", "", "flag provided but not defined: -debug"},
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			spy := &clientSpy{}
+			r := run(context.Background(), spy, tc.args...)
+			if r.code != cli.ExitUsage || !strings.Contains(r.stderr, "agister: "+tc.error+"\n\nagister ") || !strings.Contains(r.stderr, "\nUsage:\n") || spy.config != (cli.Config{}) {
+				t.Fatalf("result %+v, client built for %+v", r, spy.config)
+			}
+			logged := spy.logs(t)
+			if len(logged) != 1 || spy.logHome != tc.home {
+				t.Fatalf("logged = %v, in the log of %q", logged, spy.logHome)
+			}
+			delete(logged[0], "time")
+			want := map[string]any{"level": "ERROR", "msg": "the command failed", "command": tc.command, "cwd": "/work", "error": tc.error}
+			if !reflect.DeepEqual(logged[0], want) {
+				t.Fatalf("logged = %v, want %v", logged[0], want)
+			}
+		})
+	}
+}
+
 func TestHelpNamesTheSessionsLatestRunAsThePatchSource(t *testing.T) {
 	t.Parallel()
 	r := run(context.Background(), &clientSpy{}, "--help")
 	if r.code != 0 || !strings.Contains(r.stdout, "the session's latest run's changes") {
 		t.Fatalf("help: code %d, stdout %q, stderr %q", r.code, r.stdout, r.stderr)
+	}
+}
+
+// ADR-036 warnings remain visible on a completed run, including quiet output.
+func TestResultSummaryPrintsPermissionWarnings(t *testing.T) {
+	t.Parallel()
+	for _, args := range [][]string{{"run", "w"}, {"run", "w", "--quiet"}} {
+		spy := &clientSpy{run: finished("completed", "")}
+		spy.run.Result.Warnings = []string{"node judge: runtime rt grants beyond tools.allow: process.execute", "runtime rt version 9 is unverified"}
+		r := run(context.Background(), spy, args...)
+		for _, warning := range spy.run.Result.Warnings {
+			if r.code != 0 || !strings.Contains(r.stdout+r.stderr, "WARNING: "+warning) {
+				t.Fatalf("%v: %+v", args, r)
+			}
+		}
 	}
 }

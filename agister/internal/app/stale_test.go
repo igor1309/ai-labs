@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"errors"
+	"fmt"
 	"reflect"
 	"strings"
 	"sync"
@@ -12,20 +13,70 @@ import (
 	"time"
 	"unicode/utf8"
 
+	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/codex"
 	"github.com/igor1309/ai-labs/agister/internal/app"
 	"github.com/igor1309/ai-labs/agister/internal/contract"
-	"github.com/igor1309/ai-labs/agister/internal/domain/definition"
+	"github.com/igor1309/ai-labs/agister/internal/domain/document"
 	"github.com/igor1309/ai-labs/agister/internal/domain/run"
 )
 
-// staleHarness is a harness whose policy declares the staleness limits
+type codexTestClock struct{ now time.Time }
+
+func (c codexTestClock) Now() time.Time { return c.now }
+
+type codexTestSink struct{}
+
+func (codexTestSink) Event(string, string, map[string]any) {}
+func (codexTestSink) Raw(string)                           {}
+func (codexTestSink) ProcessStarted(string) error          { return nil }
+func (codexTestSink) Touched(app.ToolCall)                 {}
+func (codexTestSink) Denied(app.PermissionDenial)          {}
+
+// The Codex stream reports file changes without edit content, so successive
+// changes on one path cannot trip repeated-call staleness; complete commands
+// still do.
+func TestCodexStreamMarksLossyFileChangesAndKeepsCommandsRepeatable(t *testing.T) {
+	t.Parallel()
+	clock := codexTestClock{now: time.Date(2026, 10, 13, 0, 0, 0, 0, time.UTC)}
+	stream := &codex.Stream{}
+	watch := app.WatchTurn(codexTestSink{}, app.CallStale{RepeatedToolCalls: 2}, nil, clock, func() {})
+	t.Cleanup(func() { watch.End() })
+	for _, line := range []string{
+		`{"type":"item.started","item":{"id":"f1","type":"file_change","changes":[{"kind":"update","path":"a.go"}]}}`,
+		`{"type":"item.started","item":{"id":"f2","type":"file_change","changes":[{"kind":"update","path":"a.go"}]}}`,
+	} {
+		stream.Reduce(line)
+		for _, tool := range stream.TakeTools() {
+			call := tool.Started
+			watch.ToolStarted(app.ToolCall{ID: call.ID, Name: call.Name, Input: call.Input, InputIncomplete: call.InputIncomplete, Command: call.Command, Writes: call.Writes})
+		}
+	}
+	if stale := watch.End(); stale != nil {
+		t.Fatalf("file changes stale = %+v", stale)
+	}
+
+	stream = &codex.Stream{}
+	watch = app.WatchTurn(codexTestSink{}, app.CallStale{RepeatedToolCalls: 2}, nil, clock, func() {})
+	for i := 1; i <= 2; i++ {
+		stream.Reduce(fmt.Sprintf(`{"type":"item.started","item":{"id":"c%d","type":"command_execution","command":"go test"}}`, i))
+		for _, tool := range stream.TakeTools() {
+			call := tool.Started
+			watch.ToolStarted(app.ToolCall{ID: call.ID, Name: call.Name, Input: call.Input, InputIncomplete: call.InputIncomplete, Command: call.Command})
+		}
+	}
+	if stale := watch.End(); stale == nil || stale.Count != 2 {
+		t.Fatalf("commands stale = %+v", stale)
+	}
+}
+
+// staleHarness is a harness whose process declares the staleness limits
 // given, over a clock and timers the test moves; its runtime reports tool
 // calls. However the test ends, a turn still blocked is released and the
 // call joined: its end does not depend on the limit under test.
 func staleHarness(t *testing.T, limits string) (*harness, *timersSpy) {
 	t.Helper()
 	h := newHarness()
-	h.defs.docs[definition.KindPolicy]["pol"] += "stale: {" + limits + "}\n"
+	h.defs.docs[document.KindProcess]["p"] += "stale: {" + limits + "}\n"
 	h.runner.identity.ToolCalls = true
 	clock := &settableClock{now: fixedClock{}.Now()}
 	timers := &timersSpy{clock: clock}
@@ -141,7 +192,7 @@ func TestARepeatedIdenticalToolCallEndsTheTurn(t *testing.T) {
 		call := func(id string, call app.ToolCall) {
 			call.ID = id
 			sink.ToolStarted(call)
-			sink.ToolFinished(id)
+			sink.ToolFinished(app.ToolResult{ID: id})
 		}
 		call("t1", same)
 		call("t2", same)
@@ -170,6 +221,45 @@ func TestARepeatedIdenticalToolCallEndsTheTurn(t *testing.T) {
 	}
 }
 
+// Calls of one tool whose inputs differ are not one call repeated: made
+// stale.repeated_tool_calls times in a row, they do not end the turn.
+func TestCallsOfOneToolWithDifferentInputsAreNotARepeatedCall(t *testing.T) {
+	t.Parallel()
+	h, _ := staleHarness(t, "repeated_tool_calls: 5")
+	var cancelled error
+	h.runner.acting = func(ctx context.Context, sink app.EventSink) {
+		for i := 1; i <= 5; i++ {
+			id := fmt.Sprintf("t%d", i)
+			sink.ToolStarted(app.ToolCall{ID: id, Name: "web_search", Input: fmt.Sprintf("query %d", i)})
+			sink.ToolFinished(app.ToolResult{ID: id})
+		}
+		cancelled = ctx.Err()
+	}
+	record := h.call(t, contract.CallRequest{})
+	if record.Result.Status != run.Completed || record.Turn.Stale != nil || cancelled != nil {
+		t.Fatalf("result = %+v, stale %+v, turn context %v", record.Result, record.Turn.Stale, cancelled)
+	}
+	if _, ok := staleEvent(h); ok {
+		t.Fatalf("events = %v", h.recorder.kinds())
+	}
+}
+
+// An incomplete input cannot establish identity, so it breaks a preceding
+// streak instead of extending it.
+func TestAnIncompleteToolInputBreaksTheRepeatedCallStreak(t *testing.T) {
+	t.Parallel()
+	h, _ := staleHarness(t, "repeated_tool_calls: 2")
+	h.runner.acting = func(_ context.Context, sink app.EventSink) {
+		sink.ToolStarted(app.ToolCall{ID: "t1", Name: "Edit", Input: `[{"kind":"update","path":"a.go"}]`})
+		sink.ToolStarted(app.ToolCall{ID: "t2", Name: "Edit", Input: `[{"kind":"update","path":"a.go"}]`, InputIncomplete: true})
+		sink.ToolStarted(app.ToolCall{ID: "t3", Name: "Edit", Input: `[{"kind":"update","path":"a.go"}]`})
+	}
+	record := h.call(t, contract.CallRequest{})
+	if record.Result.Status != run.Completed || record.Turn.Stale != nil {
+		t.Fatalf("result = %+v, stale %+v", record.Result, record.Turn.Stale)
+	}
+}
+
 // What a stale turn's evidence quotes of a tool call is bounded on a whole
 // character, and the digest beside it is of the whole input.
 func TestAStaleTurnsToolCallIsBoundedWithTheDigestOfTheWhole(t *testing.T) {
@@ -180,7 +270,7 @@ func TestAStaleTurnsToolCallIsBoundedWithTheDigestOfTheWhole(t *testing.T) {
 	input := "a" + strings.Repeat("€", 200)
 	h.runner.acting = func(_ context.Context, sink app.EventSink) {
 		sink.ToolStarted(app.ToolCall{ID: "t1", Name: "Write", Input: input})
-		sink.ToolFinished("t1")
+		sink.ToolFinished(app.ToolResult{ID: "t1"})
 		sink.ToolStarted(app.ToolCall{ID: "t2", Name: "Write", Input: input})
 	}
 	record := h.call(t, contract.CallRequest{})
@@ -228,8 +318,9 @@ func TestATurnThatPanicsIsNoLongerWatched(t *testing.T) {
 	}
 }
 
-// The watcher passes a turn on to the sink it declares, records the limit
-// reached there, and ends the turn by the cancel it was given.
+// The watcher passes a turn on to the sink it declares, with the paths its
+// tool calls write and the calls it was denied, records the limit reached
+// there, and ends the turn by the cancel it was given.
 func TestTheWatcherReportsToTheSinkItDeclares(t *testing.T) {
 	t.Parallel()
 	clock := &settableClock{now: fixedClock{}.Now()}
@@ -260,9 +351,23 @@ func TestTheWatcherReportsToTheSinkItDeclares(t *testing.T) {
 	if got := spy.seen(); !reflect.DeepEqual(got, append(want, "event agister STALE")) || cancels != 1 {
 		t.Fatalf("at the limit: passed on %q, %d cancels", got, cancels)
 	}
+	// The paths a tool call writes and a call denied are passed on, after
+	// the limit too, until the turn has returned.
+	watch.ToolStarted(app.ToolCall{ID: "t1", Name: "Read"})
+	watch.ToolStarted(app.ToolCall{ID: "t2", Name: "Edit", Writes: []string{"a.go"}})
+	watch.PermissionDenied(app.PermissionDenial{Tool: "Bash", Input: "git push"})
+	want = append(want, "event agister STALE", `touched t2 ["a.go"]`, "denied Bash git push")
+	if got := spy.seen(); !reflect.DeepEqual(got, want) {
+		t.Fatalf("after the limit: passed on %q", got)
+	}
 	stale := watch.End()
 	if stale == nil || stale.Limit != run.StaleNoEvent || stale.After != 5*time.Minute {
 		t.Fatalf("stale = %+v", stale)
+	}
+	watch.ToolStarted(app.ToolCall{ID: "t3", Name: "Write", Writes: []string{"b.go"}})
+	watch.PermissionDenied(app.PermissionDenial{Tool: "Write"})
+	if got := spy.seen(); !reflect.DeepEqual(got, want) {
+		t.Fatalf("after the turn returned: passed on %q", got)
 	}
 }
 
@@ -291,6 +396,14 @@ func (s *turnSinkSpy) ProcessStarted(ref string) error {
 	return s.err
 }
 
+func (s *turnSinkSpy) Touched(call app.ToolCall) {
+	s.tell(fmt.Sprintf("touched %s %q", call.ID, call.Writes))
+}
+
+func (s *turnSinkSpy) Denied(denial app.PermissionDenial) {
+	s.tell("denied " + denial.Tool + " " + denial.Input)
+}
+
 func (s *turnSinkSpy) seen() []string {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -307,7 +420,7 @@ func TestAToolCommandThatRunsTooLongEndsTheTurn(t *testing.T) {
 	h.runner.acting = func(ctx context.Context, sink app.EventSink) {
 		sink.ToolStarted(app.ToolCall{ID: "c1", Name: "Bash", Input: `{"command":"make"}`, Command: true})
 		timers.advance(9 * time.Minute)
-		sink.ToolFinished("c1")
+		sink.ToolFinished(app.ToolResult{ID: "c1"})
 		// A tool that runs no command is not bounded by the limit.
 		sink.ToolStarted(app.ToolCall{ID: "r1", Name: "Read", Input: `{"file_path":"a.go"}`})
 		sink.ToolStarted(app.ToolCall{ID: "c2", Name: "Bash", Input: `{"command":"tail -f log"}`, Command: true})
@@ -349,7 +462,7 @@ func TestAStaleTurnsOwnFailureIsNotReplaced(t *testing.T) {
 	}
 }
 
-// A policy without staleness limits starts no wait and records none.
+// A process without staleness limits starts no wait and records none.
 func TestWithoutStalenessLimitsNothingIsWatched(t *testing.T) {
 	t.Parallel()
 	h := newHarness()
@@ -373,12 +486,16 @@ func TestWithoutStalenessLimitsNothingIsWatched(t *testing.T) {
 }
 
 // A verification run that produces no output for stale.no_output is ended
-// by its runner before verify.timeout; the call ends as a timeout and the
-// attempt's run records the cause.
+// by its runner before verify.timeout; with no repair to follow it, the
+// call ends as a timeout and the attempt's run records the cause.
 func TestAVerificationRunWithoutOutputEndsTheCall(t *testing.T) {
 	t.Parallel()
 	h, _ := staleHarness(t, "no_output: 2m")
 	verifying(h)
+	// One attempt: since ADR-024 rule 8 such a run is a failed attempt,
+	// which a repair turn follows while attempts are left; with none left
+	// the call ends as it did before.
+	h.defs.docs[document.KindProcess]["p"] = strings.Replace(h.defs.docs[document.KindProcess]["p"], "max_attempts: 3", "max_attempts: 1", 1)
 	h.commands.stale = true
 	record := h.call(t, contract.CallRequest{})
 
@@ -401,6 +518,119 @@ func TestAVerificationRunWithoutOutputEndsTheCall(t *testing.T) {
 	}
 }
 
+// A run found silent for stale.no_output never passes, whatever its exit
+// (ADR-024 rule 8): one that exited zero before the kill for its silence
+// landed, its content unchanged, is a failed run of its attempt, and with
+// no repair to follow it the call ends as a timeout.
+func TestAStaleVerificationRunThatExitedZeroDoesNotPass(t *testing.T) {
+	t.Parallel()
+	h, _ := staleHarness(t, "no_output: 2m")
+	verifying(h)
+	h.defs.docs[document.KindProcess]["p"] = strings.Replace(h.defs.docs[document.KindProcess]["p"], "max_attempts: 3", "max_attempts: 1", 1)
+	zero := 0
+	h.commands.stale, h.commands.staleExit = true, &zero
+	record := h.call(t, contract.CallRequest{})
+
+	if record.Result.Status != run.Interrupted || class(record) != run.ClassTimeout ||
+		message(record) != "stale: attempt 1's run produced no output for 2m0s (stale.no_output)" {
+		t.Fatalf("result = %+v", record.Result)
+	}
+	if len(record.Attempts) != 1 || record.Attempts[0].Run == nil {
+		t.Fatalf("attempts = %+v", record.Attempts)
+	}
+	// The run is the one the predicate would pass but for its staleness:
+	// exit code zero, and the content it checked unchanged.
+	ran := record.Attempts[0].Run
+	if ran.Passed || ran.Stale == nil || ran.Stale.Limit != run.StaleNoOutput || ran.Exit.Code == nil || *ran.Exit.Code != 0 || ran.After != "" {
+		t.Fatalf("run = %+v, exit %+v, stale %+v", ran, ran.Exit, ran.Stale)
+	}
+	if _, ok := h.recorder.artifacts["changes.patch"]; ok || len(h.runner.calls()) != 1 {
+		t.Fatalf("artifacts %v, turns %d", h.recorder.artifacts, len(h.runner.calls()))
+	}
+}
+
+// fresh makes each turn of the harness's call leave content not checked
+// before, so the verification loop reruns its command after a repair.
+func fresh(h *harness) { changingEachTurn(h) }
+
+// A verification run ended at stale.no_output is a failed attempt (ADR-024
+// rule 8): while attempts are left a repair turn follows it in the call's
+// session, told that the run went without output for the limit and was
+// ended by Agister, with the output the run produced before it hung; the
+// next run passes and the call completes. It spends a verification
+// attempt and no resume: the call has no stale.recover at all.
+func TestAVerificationRunWithoutOutputIsRepaired(t *testing.T) {
+	t.Parallel()
+	h, _ := staleHarness(t, "no_output: 2m")
+	verifying(h)
+	fresh(h)
+	h.commands.staleRuns = 1
+	record := h.call(t, contract.CallRequest{})
+
+	if record.Result.Status != run.Completed {
+		t.Fatalf("result = %+v: %s", record.Result, message(record))
+	}
+	turns := h.runner.calls()
+	if len(turns) != 2 || turns[1].ResumeSessionID != "prov-1" {
+		t.Fatalf("turns = %+v", turns)
+	}
+	want := "## command\n\n```\ngo test ./...\n```\n\n" +
+		"## exit status\n\nno output for 2m0s, then ended by Agister\n\n" +
+		"## output\n\n18 bytes, sha256 sha-stale\n\n```\n=== RUN TestHangs\n```"
+	if !strings.HasSuffix(turns[1].Prompt, want) {
+		t.Fatalf("repair message\n%s\nwant it to end\n%s", turns[1].Prompt, want)
+	}
+	if runs := h.commands.runs(); len(runs) != 2 || runs[1].NoOutput != 2*time.Minute {
+		t.Fatalf("command runs = %+v", runs)
+	}
+	if len(record.Attempts) != 2 || record.Attempts[0].Run.Stale == nil || record.Attempts[0].Run.Stale.Limit != run.StaleNoOutput ||
+		record.Attempts[1].Run == nil || !record.Attempts[1].Run.Passed || record.Attempts[1].Run.Stale != nil {
+		t.Fatalf("attempts = %+v", record.Attempts)
+	}
+	if len(record.Recoveries) != 0 || contains(h.recorder.kinds(), "RECOVERY_STARTED") {
+		t.Fatalf("a stale run spent a resume: recoveries %+v, events %v", record.Recoveries, h.recorder.kinds())
+	}
+}
+
+// Content a stale run checked is not run again: a repair turn that leaves
+// it unchanged ends the call for no progress, as after any failed run,
+// and the command, which hung on that content, is not started on it twice.
+func TestUnchangedContentAfterAStaleRunIsNotRerun(t *testing.T) {
+	t.Parallel()
+	h, _ := staleHarness(t, "no_output: 2m")
+	verifying(h)
+	h.commands.staleRuns = 1
+	record := h.call(t, contract.CallRequest{})
+
+	if record.Result.Status != run.Failed || class(record) != run.ClassBudgetExhausted ||
+		message(record) != "no progress: attempt 2's content is what attempt 1 checked" {
+		t.Fatalf("result = %+v", record.Result)
+	}
+	if len(h.runner.calls()) != 2 || len(h.commands.runs()) != 1 {
+		t.Fatalf("turns %d, command runs %d", len(h.runner.calls()), len(h.commands.runs()))
+	}
+}
+
+// A run that goes stale again as the one before it did, after the same
+// output, is no progress: no repair follows it, though attempts are left,
+// and the call ends as its limit ends it, a timeout.
+func TestAStaleRunThatRepeatsEndsTheCall(t *testing.T) {
+	t.Parallel()
+	h, _ := staleHarness(t, "no_output: 2m")
+	verifying(h)
+	fresh(h)
+	h.commands.staleRuns = 2
+	record := h.call(t, contract.CallRequest{})
+
+	if record.Result.Status != run.Interrupted || class(record) != run.ClassTimeout ||
+		message(record) != "stale: attempt 2's run produced no output for 2m0s (stale.no_output)" {
+		t.Fatalf("result = %+v", record.Result)
+	}
+	if len(h.runner.calls()) != 2 || len(h.commands.runs()) != 2 || len(record.Attempts) != 2 {
+		t.Fatalf("turns %d, command runs %d, attempts %+v", len(h.runner.calls()), len(h.commands.runs()), record.Attempts)
+	}
+}
+
 // A limit on tool calls needs a runtime that reports them: without one the
 // call is refused before any effect, and check says so when it probes.
 func TestToolCallLimitsNeedARuntimeThatReportsThem(t *testing.T) {
@@ -415,14 +645,14 @@ func TestToolCallLimitsNeedARuntimeThatReportsThem(t *testing.T) {
 		if record.Result.Status != run.Failed || class(record) != run.ClassRefused || !strings.Contains(message(record), want) {
 			t.Fatalf("%s: result %+v", limit, record.Result)
 		}
-		if len(h.runner.calls()) != 0 || len(h.workspaces.checkouts) != 0 {
-			t.Fatalf("%s: turns %d, checkouts %v after the refusal", limit, len(h.runner.calls()), h.workspaces.checkouts)
+		if len(h.runner.calls()) != 0 {
+			t.Fatalf("%s: turns %d after the refusal", limit, len(h.runner.calls()))
 		}
 	}
 }
 
-// check rejects a staleness limit above the timeout, in the policy that
-// declares both and in a process that narrows its policy's timeout.
+// check rejects a staleness limit above the timeout of the process that
+// declares both.
 func TestCheckRejectsAStalenessLimitAboveTheTimeout(t *testing.T) {
 	t.Parallel()
 	check := func(h *harness) []string {
@@ -441,37 +671,23 @@ func TestCheckRejectsAStalenessLimitAboveTheTimeout(t *testing.T) {
 
 	h, _ = staleHarness(t, "no_event: 30m")
 	if problems := strings.Join(check(h), "\n"); !strings.Contains(problems, "stale.no_event: 30m0s exceeds timeout 20m0s") {
-		t.Fatalf("policy above its timeout: %q", problems)
-	}
-
-	h, _ = staleHarness(t, "no_event: 15m")
-	h.defs.docs[definition.KindProcess]["p"] += "timeout: 10m\n"
-	if problems := strings.Join(check(h), "\n"); !strings.Contains(problems, "stale.no_event 15m0s exceeds the timeout 10m0s") {
-		t.Fatalf("process timeout below the policy's limit: %q", problems)
-	}
-
-	h, _ = staleHarness(t, "no_event: 5m")
-	h.defs.docs[definition.KindProcess]["p"] += "stale: {no_event: 6m}\n"
-	if problems := strings.Join(check(h), "\n"); !strings.Contains(problems, "stale.no_event: 6m0s widens the policy's 5m0s") {
-		t.Fatalf("process widening its policy's limit: %q", problems)
+		t.Fatalf("process above its timeout: %q", problems)
 	}
 }
 
-// process show shows the effective limits: the policy's, narrowed by the
-// process.
+// process show shows the effective limits: the process's own.
 func TestShowProcessShowsTheEffectiveStalenessLimits(t *testing.T) {
 	t.Parallel()
 	h := newHarness()
 	inspection := app.NewInspection(app.NewResolver(h.defs, struct{ app.ResolverIdentities }{h.runtimes}, h.validator, resolverCheckStub{}))
-	view, err := inspection.ShowProcess(context.Background(), "p", "")
+	view, err := callShown(inspection, "p_a")
 	if err != nil || view.Stale != (contract.Stale{}) {
 		t.Fatalf("without limits: %+v, %v", view.Stale, err)
 	}
 
-	h, _ = staleHarness(t, "no_event: 5m, no_output: 2m, tool_command: 10m, repeated_tool_calls: 5")
-	h.defs.docs[definition.KindProcess]["p"] += "stale: {no_event: 3m, repeated_tool_calls: 4}\n"
+	h, _ = staleHarness(t, "no_event: 3m, no_output: 2m, tool_command: 10m, repeated_tool_calls: 4")
 	inspection = app.NewInspection(app.NewResolver(h.defs, struct{ app.ResolverIdentities }{h.runtimes}, h.validator, resolverCheckStub{}))
-	view, err = inspection.ShowProcess(context.Background(), "p", "")
+	view, err = callShown(inspection, "p_a")
 	want := contract.Stale{NoEvent: 3 * time.Minute, NoOutput: 2 * time.Minute, ToolCommand: 10 * time.Minute, RepeatedToolCalls: 4}
 	if err != nil || view.Stale != want || view.Refusal != "" {
 		t.Fatalf("stale = %+v, refusal %q, %v", view.Stale, view.Refusal, err)

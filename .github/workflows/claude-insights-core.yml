@@ -1,0 +1,42 @@
+name: Claude Insights Core
+
+on:
+  workflow_call:
+    inputs:
+      ref:
+        description: "Git ref to checkout."
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  core:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ inputs.ref || github.sha }}
+
+      - name: Setup Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Setup Deno
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+
+      - name: Install pytest
+        run: python -m pip install --quiet pytest
+
+      - name: Run the script's tests
+        run: python -m pytest -q claude-insights/test_claude_insights.py
+
+      - name: Run the functions' tests
+        working-directory: claude-insights/supabase/functions/_shared
+        run: deno test format.test.ts

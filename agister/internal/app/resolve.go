@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/igor1309/ai-labs/agister/internal/domain/definition"
+	"github.com/igor1309/ai-labs/agister/internal/domain/document"
 	"github.com/igor1309/ai-labs/agister/internal/domain/enforce"
 	"github.com/igor1309/ai-labs/agister/internal/domain/policy"
 	"github.com/igor1309/ai-labs/agister/internal/domain/run"
@@ -16,9 +16,22 @@ import (
 )
 
 // Refusal is why a call cannot proceed. It is recorded as the run's outcome.
-type Refusal struct{ Reason string }
+type Refusal struct {
+	Reason string
+	// Unknown counts the settings problems it names that name something
+	// this code does not know, as settings written for a newer Agister
+	// would (LAB-122).
+	Unknown int
+}
 
 func (r *Refusal) Error() string { return r.Reason }
+
+// fault is the refusal as the run's error.
+func (r *Refusal) fault() *run.Error {
+	fault := run.Fault(run.ClassRefused, "%s", r.Reason)
+	fault.Unknown = r.Unknown
+	return fault
+}
 
 func refuse(format string, args ...any) error { return &Refusal{Reason: fmt.Sprintf(format, args...)} }
 
@@ -26,34 +39,49 @@ func refuse(format string, args ...any) error { return &Refusal{Reason: fmt.Spri
 // consumer is given its own translation of it (see Resolver.Snapshot and
 // Resolver.InspectProcess).
 type resolution struct {
-	service   definition.Service
-	process   definition.Process
-	policy    *definition.Policy
-	agent     definition.Agent
-	mapping   definition.Mapping
-	schema    []byte
-	prompts   map[string]definition.Prompt // by name
-	sources   []definition.Source
+	service serviceSettings
+	process declaredProcess
+	agent   agentProfile
+	mapping runtimeMapping
+	schema  []byte
+	// prompts are the process's prompt, then its guidance, in order
+	// (ADR-028 rule 8).
+	prompts []promptText
+	forms   map[string]briefForm // by name: the brief forms its inputs name (ADR-026 rule 8)
+	// skills are the call's skills, in order: the process's, then its
+	// agent's, each once (ADR-021 rule 2).
+	skills    []givenSkill
+	sources   []document.Source
 	effective policy.Effective
 	identity  RuntimeIdentity
 	plan      enforce.Plan
-	// setup is the setup the call's checkout runs (ADR-012); nil when none.
-	setup *resolvedSetup
-}
-
-// resolvedSetup is a call's effective setup and the document it came from.
-type resolvedSetup struct {
-	definition.Setup
-	from string // run.SetupFromProcess or run.SetupFromWorkspace
-	path string
+	warnings  []string
+	// refusedPlan is the plan refused for withholding a required
+	// permission, or, for a call the settings refuse, the plan the
+	// settings would give it (settings.SettingsPlan): inspection shows what
+	// else it withholds, and no call is given it.
+	refusedPlan enforce.Plan
+	// writer says the call holds the worktree alone (ADR-025 rule 4): its
+	// plan grants a permission the service lists as writing, or its process
+	// declares verify, whose command runs with the operator's authority.
+	writer bool
+	// session is the session mode the call runs under, which its process
+	// says (ADR-030 rule 3).
+	session string
 }
 
 // Resolver loads and checks definitions, composes limits, checks the
 // runtime and plans enforcement. Every failure is a refusal.
 type Resolver struct {
 	definitions ResolverDefinitions
-	identities  ResolverIdentities
-	validator   ResolverValidator
+	// documents reads each document a call or a workflow resolves, from
+	// definitions.
+	documents  documentReader
+	identities ResolverIdentities
+	validator  ResolverValidator
+	// probes verify a version the settings verify nothing for; nil: none
+	// is probed.
+	probes ResolverProbes
 	// check checks the definitions the resolver reads, which must not
 	// change under it (a snapshot), so a call that depends on a document
 	// with a problem is refused (ADR-015).
@@ -70,12 +98,13 @@ type ResolverCheck interface {
 }
 
 // ResolverChecked is what a check of the settings tells a call: each
-// document listed, what it uses, and the problems that refuse what depends
-// on it. A problem that stops every command is not here: the gate refuses
-// every command for it first.
+// document listed, what it uses, and the problems and blocks that refuse
+// what depends on it. A problem that stops every command is not here: the
+// gate refuses every command for it first.
 type ResolverChecked struct {
 	Documents []ResolverDocument
 	Problems  []ResolverProblem
+	Blocks    []ResolverBlock
 }
 
 // ResolverDocument is one document the settings list.
@@ -83,6 +112,8 @@ type ResolverDocument struct {
 	Ref  DocumentRef
 	Path string
 	Uses []DocumentRef // whether or not they exist
+	// Binds are a workflow's nodes, in declaration order, the join last.
+	Binds []NodeBinding
 }
 
 // ResolverProblem is one problem of a document.
@@ -92,15 +123,28 @@ type ResolverProblem struct {
 	// Set on a process's problem that depends on the agent it names: a
 	// call that selects another agent does not have it (ADR-015 rule 2).
 	Agent string
+	// Unknown: it names something this code does not know, as settings
+	// written for a newer Agister would.
+	Unknown bool
+}
+
+// ResolverBlock is one document the repository blocks (ADR-018).
+type ResolverBlock struct {
+	Ref    DocumentRef
+	Path   string // of the blocks.yaml
+	Reason string
 }
 
 func (f ResolverChecked) reach() *reach {
 	r := newReach()
 	for _, d := range f.Documents {
-		r.documents[d.Ref] = reachDocument{path: d.Path, uses: d.Uses}
+		r.documents[d.Ref] = reachDocument{path: d.Path, uses: d.Uses, binds: d.Binds}
 	}
 	for _, p := range f.Problems {
-		r.about[p.About] = append(r.about[p.About], reachProblem{message: p.Message, agent: p.Agent})
+		r.about[p.About] = append(r.about[p.About], reachProblem{message: p.Message, agent: p.Agent, unknown: p.Unknown})
+	}
+	for _, b := range f.Blocks {
+		r.blocked[b.Ref] = reachBlock{path: b.Path, reason: b.Reason}
 	}
 	return r
 }
@@ -111,16 +155,26 @@ type checkedReach struct {
 }
 
 // ResolverDefinitions supplies the documents a call or a view is resolved
-// from.
+// from, and the layers they are read from. ReadListed is read by the
+// snapshot a resolver freezes them in, which its check checks.
 type ResolverDefinitions interface {
-	Read(ctx context.Context, kind definition.Kind, name string) (definition.Document, error)
-	List(ctx context.Context, kind definition.Kind) ([]string, error)
+	Read(ctx context.Context, kind document.Kind, name string) (document.Document, error)
+	ReadListed(ctx context.Context, kind document.Kind, name string) (document.Document, error)
+	List(ctx context.Context, kind document.Kind) ([]string, error)
+	Layers(ctx context.Context) []document.LayerDir
 }
 
 // ResolverIdentities asks a runtime adapter what it reports about itself,
 // to check the runtime a call would use.
 type ResolverIdentities interface {
 	Identity(ctx context.Context, adapter, command string) (RuntimeIdentity, error)
+}
+
+// ResolverProbes verify a runtime version the settings verify no
+// primitive for (ADR-029): the primitives a probe found holding, none when
+// its adapter has no probe, and an error when the probe failed.
+type ResolverProbes interface {
+	Verified(ctx context.Context, adapter, command, version string) ([]string, error)
 }
 
 // ResolverValidator compiles an output schema.
@@ -133,13 +187,16 @@ type ResolverValidator interface {
 type ResolverAdapters struct {
 	Identities ResolverIdentities
 	Validator  ResolverValidator
+	// Probes verify a runtime version the settings verify no primitive
+	// for (ADR-029); nil: none is probed.
+	Probes ResolverProbes
 }
 
 // NewResolver returns the component that resolves a process into what a
 // call or a view needs. check checks definitions; every collaborator is
 // required.
 func NewResolver(definitions ResolverDefinitions, identities ResolverIdentities, validator ResolverValidator, check ResolverCheck) *Resolver {
-	return &Resolver{definitions: definitions, identities: identities, validator: validator, check: check}
+	return &Resolver{definitions: definitions, documents: newDocumentReader(definitions), identities: identities, validator: validator, check: check}
 }
 
 // frozen returns a resolver over the definitions as they are now, which
@@ -147,6 +204,7 @@ func NewResolver(definitions ResolverDefinitions, identities ResolverIdentities,
 func (r *Resolver) frozen(ctx context.Context) *Resolver {
 	copied := *r
 	copied.definitions = Snapshot(ctx, r.definitions)
+	copied.documents = newDocumentReader(copied.definitions)
 	copied.checked = nil
 	reached, err := copied.reach(ctx)
 	copied.checked = &checkedReach{reach: reached, err: err}
@@ -171,12 +229,15 @@ type overrides struct {
 	maxCostUSD *float64
 	// A workflow defers only a missing named verification to its node.
 	deferMissingVerify bool
+	// The call is a workflow node's: its agent is the one the node binds
+	// its process to (ADR-030 rule 5).
+	node bool
 }
 
 // resolve resolves the process named processName. A refused one's
 // resolution has what was resolved before the refusal. A call that depends
-// on a document with a problem is refused for it, naming each, before its
-// runtime is asked anything (ADR-015).
+// on a document with a problem, or a blocked one, is refused for it, naming
+// each, before its runtime is asked anything (ADR-015, ADR-018).
 func (r *Resolver) resolve(ctx context.Context, processName, agentOverride string, caller overrides) (*resolution, error) {
 	reached, err := r.reach(ctx)
 	if err != nil {
@@ -186,8 +247,8 @@ func (r *Resolver) resolve(ctx context.Context, processName, agentOverride strin
 	res, err := r.resolveCall(ctx, processName, agentOverride, caller, refused != nil)
 	if refused != nil {
 		// A listed but unreadable process still has an identity for its view.
-		if reached.listed(DocumentRef{Kind: definition.KindProcess, Name: processName}) && res.process.Name == "" {
-			res.process.Name = processName
+		if reached.listed(DocumentRef{Kind: document.KindProcess, Name: processName}) && res.process.name == "" {
+			res.process.name = processName
 		}
 		return res, refused
 	}
@@ -198,7 +259,7 @@ func (r *Resolver) resolve(ctx context.Context, processName, agentOverride strin
 // is asked anything.
 func (r *Resolver) resolveCall(ctx context.Context, processName, agentOverride string, caller overrides, settingsOnly bool) (res *resolution, err error) {
 	res = &resolution{}
-	root := DocumentRef{Kind: definition.KindProcess, Name: processName}
+	root := DocumentRef{Kind: document.KindProcess, Name: processName}
 	subject := root
 	defer func() {
 		// Static problems already carry their document and chain. Problems
@@ -213,7 +274,7 @@ func (r *Resolver) resolveCall(ctx context.Context, processName, agentOverride s
 		}
 		reached, checkErr := r.reach(ctx)
 		if checkErr == nil {
-			if subject.Kind == definition.KindVerify {
+			if subject.Kind == document.KindVerify {
 				if !reached.listed(subject) {
 					// ADR-010's missing-verification refusal already names
 					// the process, reference and both expected paths.
@@ -223,117 +284,114 @@ func (r *Resolver) resolveCall(ctx context.Context, processName, agentOverride s
 			err = reached.explain(root, agentOverride, subject, refusal.Reason)
 		}
 	}()
-	load := func(kind definition.Kind, name string) (definition.Document, error) {
+	// took makes the document asked of the reader the subject of a refusal
+	// and records the source of one that was read. One that was not read is
+	// refused as namer names it, an invalid one by its problems.
+	took := func(namer string, kind document.Kind, name string, source document.Source, err error) error {
 		subject = DocumentRef{Kind: kind, Name: name}
-		doc, err := r.definitions.Read(ctx, kind, name)
-		if err != nil {
-			return doc, refuse("%s %q: %v", kind.Singular(), name, err)
+		if unread(err) {
+			return refuse("%s%s %q: %v", namer, kind.Singular(), name, err)
 		}
-		res.sources = append(res.sources, doc.Source)
-		return doc, nil
-	}
-	parsed := func(err error) error {
-		var invalid *definition.InvalidError
+		res.sources = append(res.sources, source)
+		var invalid *document.InvalidError
 		if errors.As(err, &invalid) {
 			return refuse("%v", err)
 		}
 		return err
 	}
 
-	doc, err := load(definition.KindService, "service")
-	if err != nil {
+	var source document.Source
+	res.service, source, err = r.documents.Service(ctx)
+	if err = took("", document.KindService, "service", source, err); err != nil {
 		return res, err
 	}
-	if res.service, err = definition.ParseService(doc); err != nil {
-		return res, parsed(err)
-	}
-	if doc, err = load(definition.KindProcess, processName); err != nil {
+	res.process, source, err = r.documents.Process(ctx, processName)
+	if err = took("", document.KindProcess, processName, source, err); err != nil {
 		return res, err
 	}
-	if res.process, err = definition.ParseProcess(doc); err != nil {
-		return res, parsed(err)
-	}
-	if err := r.resolveSetup(ctx, res, load, parsed); err != nil {
-		return res, err
-	}
-	if res.process.Policy != "" {
-		if doc, err = load(definition.KindPolicy, res.process.Policy); err != nil {
+	// A process names no agent, and has one only as a node that binds it
+	// to one: nothing else chooses an agent (ADR-030 rules 2 and 5).
+	bound := caller.node && agentOverride != ""
+	if bound {
+		res.agent, source, err = r.documents.Agent(ctx, agentOverride)
+		if err = took("", document.KindAgent, agentOverride, source, err); err != nil {
 			return res, err
 		}
-		pol, err := definition.ParsePolicy(doc)
-		if err != nil {
-			return res, parsed(err)
-		}
-		res.policy = &pol
-	}
-	agentName := res.process.Agent
-	if agentOverride != "" {
-		agentName = agentOverride
-	}
-	if doc, err = load(definition.KindAgent, agentName); err != nil {
-		return res, err
-	}
-	if res.agent, err = definition.ParseAgent(doc); err != nil {
-		return res, parsed(err)
-	}
-	if doc, err = load(definition.KindRuntime, res.agent.Runtime); err != nil {
-		return res, err
-	}
-	if res.mapping, err = definition.ParseMapping(doc); err != nil {
-		return res, parsed(err)
-	}
-	if unknown := res.mapping.UnknownPermissions(res.service.Permissions); len(unknown) > 0 {
-		return res, refuse("runtime mapping %s grants permissions not in the vocabulary: %s", res.mapping.Name, strings.Join(unknown, ", "))
-	}
-	if res.agent.Effort != "" && !contains(res.mapping.Efforts, res.agent.Effort) {
-		return res, refuse("agent %s: effort %q is not supported by runtime %s (supported: %s)", res.agent.Name, res.agent.Effort, res.mapping.Name, strings.Join(res.mapping.Efforts, ", "))
-	}
-	if res.process.Output.Format == "json" {
-		if doc, err = load(definition.KindSchema, res.process.Output.Schema); err != nil {
+		res.mapping, source, err = r.documents.Mapping(ctx, res.agent.runtime)
+		if err = took("", document.KindRuntime, res.agent.runtime, source, err); err != nil {
 			return res, err
 		}
-		res.schema = doc.Bytes
+		if unknown := res.mapping.offer.UnknownPermissions(res.service.ceilings.Permissions); len(unknown) > 0 {
+			return res, refuse("runtime mapping %s grants permissions not in the vocabulary: %s", res.mapping.name, strings.Join(unknown, ", "))
+		}
+		if res.agent.effort != "" && !contains(res.mapping.efforts, res.agent.effort) {
+			return res, refuse("agent %s: effort %q is not supported by runtime %s (supported: %s)", res.agent.name, res.agent.effort, res.mapping.name, strings.Join(res.mapping.efforts, ", "))
+		}
+	}
+	if res.process.output.format == "json" {
+		res.schema, source, err = r.documents.Schema(ctx, res.process.output.schema)
+		if err = took("", document.KindSchema, res.process.output.schema, source, err); err != nil {
+			return res, err
+		}
 		// Fail before the agent runs, not when its output is validated.
 		if err := r.validator.Compile(res.schema); err != nil {
-			return res, refuse("schema %q: %v", res.process.Output.Schema, err)
+			return res, refuse("schema %q: %v", res.process.output.schema, err)
 		}
 	}
 	// The verification a process names is the call's from here on
 	// (ADR-010 rule 3); without it the call is refused, never run unverified.
-	if name := res.process.VerifyName; name != "" {
-		names, listErr := r.definitions.List(ctx, definition.KindVerify)
+	if name := res.process.verifyName; name != "" {
+		names, listErr := r.definitions.List(ctx, document.KindVerify)
 		if listErr != nil {
 			return res, listErr
 		}
 		if !caller.deferMissingVerify || contains(names, name) {
-			if doc, err = load(definition.KindVerify, name); err != nil {
-				return res, refuse("process %s names verify:%s: %v", res.process.Name, name, err)
+			verification, source, err := r.documents.Verification(ctx, name)
+			if err = took(fmt.Sprintf("process %s names verify:%s: ", res.process.name, name), document.KindVerify, name, source, err); err != nil {
+				return res, err
 			}
-			verification, err := definition.ParseVerify(doc)
-			if err != nil {
-				return res, parsed(err)
-			}
-			res.process.Verify = &verification.Verify
+			res.process.verify = &verification.verify
 		}
 	}
-	// Each prompt a process names is read with the call, from the same
-	// settings, and recorded among its sources (ADR-014 rule 3).
-	for _, value := range res.process.Values {
-		name := value.Args["name"]
-		if _, ok := res.prompts[name]; ok || value.Source != definition.PromptSource {
-			continue
+	// The prompt and each guidance prompt a process names are read with
+	// the call, from the same settings, and recorded among its sources
+	// (ADR-014 rule 3). One no layer has refuses the call, as any other
+	// document does (ADR-028 rule 8).
+	for _, name := range res.process.prompts() {
+		namer := "process " + res.process.name + " names "
+		if name != res.process.prompt {
+			namer += "in its guidance "
 		}
-		if doc, err = load(definition.KindPrompt, name); err != nil {
-			return res, refuse("input %s: %v", value.Name, err)
+		prompt, source, err := r.documents.Prompt(ctx, name)
+		if err = took(namer, document.KindPrompt, name, source, err); err != nil {
+			return res, err
 		}
-		prompt, err := definition.ParsePrompt(doc)
-		if err != nil {
-			return res, parsed(err)
+		res.prompts = append(res.prompts, prompt)
+	}
+	// Each brief form its inputs name is read with the call, from the same
+	// settings, and recorded among its sources (ADR-026 rule 8).
+	for _, name := range res.process.forms() {
+		brief, source, err := r.documents.Brief(ctx, name)
+		if err = took("process "+res.process.name+" names ", document.KindBrief, name, source, err); err != nil {
+			return res, err
 		}
-		if res.prompts == nil {
-			res.prompts = map[string]definition.Prompt{}
+		if res.forms == nil {
+			res.forms = map[string]briefForm{}
 		}
-		res.prompts[name] = prompt
+		res.forms[name] = brief
+	}
+	// Each skill the process and its agent name is read with the call, from
+	// the same settings, and recorded among its sources (ADR-021 rule 3).
+	for _, name := range callSkills(res.process, res.agent) {
+		namer := "process " + res.process.name
+		if !contains(res.process.skills, name) {
+			namer = "agent " + res.agent.name
+		}
+		skill, source, err := r.documents.Skill(ctx, name)
+		if err = took(namer+" names ", document.KindSkill, name, source, err); err != nil {
+			return res, err
+		}
+		res.skills = append(res.skills, skill)
 	}
 
 	subject = root
@@ -348,108 +406,129 @@ func (r *Resolver) resolveCall(ctx context.Context, processName, agentOverride s
 	if caller.maxCostUSD != nil && *caller.maxCostUSD <= 0 {
 		return res, refuse("invalid cost limit %g", *caller.maxCostUSD)
 	}
-	if res.effective, err = policy.Compose(res.service, res.policy, res.process, limits); err != nil {
+	if res.effective, err = policy.Compose(res.service.ceilings, res.process.declared(), limits); err != nil {
 		return res, refuse("%v", err)
 	}
+	// Refused once everything that needs no agent is resolved, so its view
+	// has it.
+	if !bound {
+		return res, refuse("names no agent: only a workflow's node binds it to one (ADR-030 rule 5); run a workflow that binds it")
+	}
+	// A call the settings refuse never asks its runtime: its view shows
+	// what the settings' plan withholds, which no call is given.
+	if settingsOnly {
+		res.refusedPlan, _ = settings.SettingsPlan(res.effective, res.mapping.offer, res.service.stateReaching)
+	}
 
+	// Whether the call's session may be resumed is its process's to say
+	// (ADR-030 rule 3).
+	res.session = res.process.session()
 	// A repair turn resumes the call's own session (ADR-002 rule 4).
-	if verify := res.process.Verify; verify.Repairs() && res.agent.Session != definition.SessionResumable {
-		return res, refuse("verify.max_attempts %d repairs in the call's session, but agent %s is %s", verify.MaxAttempts, res.agent.Name, res.agent.Session)
+	if verify := res.process.verify; verify.repairs() && !res.process.resumable {
+		return res, refuse("verify.max_attempts %d repairs in the call's session, but process %s is %s", verify.maxAttempts, res.process.name, res.session)
+	}
+	// So does a recovery turn (ADR-024 rule 6).
+	if resumes := res.effective.Stale.Recover.MaxResumes; resumes > 0 && !res.process.resumable {
+		return res, refuse("stale.recover.max_resumes %d recovers in the call's session, but process %s is %s", resumes, res.process.name, res.session)
 	}
 
 	if settingsOnly {
 		return res, nil
 	}
-	subject = DocumentRef{Kind: definition.KindRuntime, Name: res.mapping.Name}
-	if res.identity, err = r.identities.Identity(ctx, res.mapping.Adapter, res.agent.Command); err != nil {
-		subject = DocumentRef{Kind: definition.KindAgent, Name: res.agent.Name}
-		return res, refuse("runtime %s is unavailable: %v", res.mapping.Name, err)
+	subject = DocumentRef{Kind: document.KindRuntime, Name: res.mapping.name}
+	if res.identity, err = r.identities.Identity(ctx, res.mapping.adapter, res.agent.command); err != nil {
+		subject = DocumentRef{Kind: document.KindAgent, Name: res.agent.name}
+		return res, refuse("runtime %s is unavailable: %v", res.mapping.name, err)
 	}
-	if res.identity.Contract != res.mapping.Contract {
-		return res, refuse("runtime mapping %s describes adapter contract %s, but the adapter implements %s", res.mapping.Name, res.mapping.Contract, res.identity.Contract)
+	if res.identity.Contract != res.mapping.contract {
+		return res, refuse("runtime mapping %s describes adapter contract %s, but the adapter implements %s", res.mapping.name, res.mapping.contract, res.identity.Contract)
 	}
-	if verify := res.process.Verify; verify.Repairs() && !res.identity.Resume {
+	if verify := res.process.verify; verify.repairs() && !res.identity.Resume {
 		subject = root
-		return res, refuse("verify.max_attempts %d repairs in the call's session, but runtime %s cannot resume sessions", verify.MaxAttempts, res.mapping.Name)
+		return res, refuse("verify.max_attempts %d repairs in the call's session, but runtime %s cannot resume sessions", verify.maxAttempts, res.mapping.name)
 	}
-	verified, unverified := res.mapping.ForVersion(res.identity.Version)
-	if len(verified.Primitives) == 0 {
-		return res, refuse("runtime mapping %s verifies no primitive for %s version %s", res.mapping.Name, res.mapping.Adapter, res.identity.Version)
-	}
-	if res.effective.MaxCostUSD != nil && !res.identity.CostLimit {
+	if resumes := res.effective.Stale.Recover.MaxResumes; resumes > 0 && !res.identity.Resume {
 		subject = root
-		return res, refuse("runtime %s cannot enforce the cost limit %g", res.mapping.Name, *res.effective.MaxCostUSD)
+		return res, refuse("stale.recover.max_resumes %d recovers in the call's session, but runtime %s cannot resume sessions", resumes, res.mapping.name)
+	}
+	offered := res.mapping.offer
+	// Probes describe the runtime; they never decide whether it may run (ADR-036).
+	observed := offered
+	var probeFailed error
+	if !offered.Verified(res.identity.Version) && r.probes != nil {
+		var probed []string
+		probed, probeFailed = r.probes.Verified(ctx, res.mapping.adapter, res.agent.command, res.identity.Version)
+		if probeFailed == nil {
+			observed = offered.WithVerified(res.identity.Version, probed)
+		}
+	}
+	_, unverified := observed.ForVersion(res.identity.Version)
+	if message := settings.CostRefusal(res.effective, res.mapping.name, res.identity.CostLimit); message != "" {
+		subject = root
+		return res, refuse("%s", message)
+	}
+	// An adapter that cannot give skills refuses a call that names one: it
+	// must not run without them (ADR-021 rule 6).
+	if len(res.skills) > 0 && !res.identity.Skills {
+		subject = root
+		names := translated(res.skills, func(skill givenSkill) string { return skill.name })
+		return res, refuse("adapter %s of runtime %s cannot give a call its skills (ADR-021): %s", res.mapping.adapter, res.mapping.name, strings.Join(names, ", "))
 	}
 	// The staleness limits on tool calls need the adapter to report them.
 	if stale := res.effective.Stale; !res.identity.ToolCalls {
 		subject = root
 		switch {
 		case stale.ToolCommand != nil:
-			return res, refuse("runtime %s does not report tool calls, so it cannot enforce stale.tool_command %s", res.mapping.Name, *stale.ToolCommand)
+			return res, refuse("runtime %s does not report tool calls, so it cannot enforce stale.tool_command %s", res.mapping.name, *stale.ToolCommand)
 		case stale.RepeatedToolCalls != nil:
-			return res, refuse("runtime %s does not report tool calls, so it cannot enforce stale.repeated_tool_calls %d", res.mapping.Name, *stale.RepeatedToolCalls)
+			return res, refuse("runtime %s does not report tool calls, so it cannot enforce stale.repeated_tool_calls %d", res.mapping.name, *stale.RepeatedToolCalls)
 		}
 	}
 	subject = root
-	if res.plan, err = enforce.Make(res.effective.Permissions, verified, res.effective.Require, res.service.StateReaching); err != nil {
-		return res, refuse("runtime %s: %v%s", res.mapping.Name, err, unverifiedNote(unverified, "for version "+res.identity.Version))
+	if res.plan, err = enforce.Make(res.effective.Permissions, offered, res.effective.Require, res.service.stateReaching); err != nil {
+		if refused := (*enforce.RefusedError)(nil); errors.As(err, &refused) && refused.Plan != nil {
+			res.refusedPlan = *refused.Plan
+		}
+		return res, refuse("runtime %s: %v%s", res.mapping.name, err, unverifiedNote(unverified, "for version "+res.identity.Version))
 	}
 	if tools := res.identity.SkillTools; len(tools) > 0 && !slices.ContainsFunc(tools, func(tool string) bool { return contains(res.plan.Primitives, tool) }) {
 		return res, refuse("runtime %s needs %s to use the repository's skills (ADR-006), and the plan grants no such tool: %s",
-			res.mapping.Name, strings.Join(tools, " or "), withoutSkillTools(res, tools, verified, unverified))
+			res.mapping.name, strings.Join(tools, " or "), withoutSkillTools(res, tools, offered))
 	}
+	if len(res.plan.Extra) > 0 {
+		res.warnings = append(res.warnings, "runtime "+res.mapping.name+" grants beyond tools.allow: "+strings.Join(res.plan.Extra, ", "))
+	}
+	var unchecked []string
+	for _, name := range res.plan.Primitives {
+		if contains(unverified, name) {
+			unchecked = append(unchecked, name)
+		}
+	}
+	if !observed.Verified(res.identity.Version) {
+		res.warnings = append(res.warnings, fmt.Sprintf("runtime %s version %s is unverified%s", res.mapping.name, res.identity.Version, probeRefusal(probeFailed)))
+	} else if len(unchecked) > 0 {
+		res.warnings = append(res.warnings, fmt.Sprintf("runtime %s version %s has unverified primitives: %s%s", res.mapping.name, res.identity.Version, strings.Join(unchecked, ", "), probeRefusal(probeFailed)))
+	}
+	res.writer = res.process.verify != nil || res.process.verifyName != "" ||
+		slices.ContainsFunc(res.plan.Granted, func(permission string) bool { return contains(res.service.ceilings.Writing, permission) })
 	return res, nil
 }
 
-// resolveSetup fixes the setup a call's checkout runs: the process's own,
-// or the workspace settings' default, read only when it applies, so the
-// call's definitions name the document its setup came from (ADR-012).
-func (r *Resolver) resolveSetup(ctx context.Context, res *resolution, load func(definition.Kind, string) (definition.Document, error), parsed func(error) error) error {
-	process := res.process
-	var workspace *definition.Workspace
-	if process.Checkout != "" && process.Setup == nil {
-		names, err := r.definitions.List(ctx, definition.KindWorkspace)
-		if err != nil {
-			return refuse("workspace settings: %v", err)
-		}
-		if contains(names, string(definition.KindWorkspace)) {
-			doc, err := load(definition.KindWorkspace, string(definition.KindWorkspace))
-			if err != nil {
-				return err
-			}
-			parsedWorkspace, err := definition.ParseWorkspace(doc)
-			if err != nil {
-				return parsed(err)
-			}
-			workspace = &parsedWorkspace
-		}
-	}
-	setup, fromWorkspace := process.EffectiveSetup(workspace)
-	switch {
-	case setup == nil:
-	case fromWorkspace:
-		res.setup = &resolvedSetup{Setup: *setup, from: run.SetupFromWorkspace, path: workspace.Source.Path}
-	default:
-		res.setup = &resolvedSetup{Setup: *setup, from: run.SetupFromProcess, path: process.Source.Path}
-	}
-	return nil
-}
-
 // withoutSkillTools says why the plan grants none of tools: each is
-// unverified for the version, absent from the mapping, or needs
+// absent from the mapping, or needs
 // permissions the plan withholds or the effective permissions do not
 // allow.
-func withoutSkillTools(res *resolution, tools []string, verified definition.Mapping, unverified []string) string {
+func withoutSkillTools(res *resolution, tools []string, offered enforce.Offer) string {
 	// What a primitive may grant: the effective permissions, less the
 	// state-reaching ones, which the plan withholds (enforce.Make).
-	allowed := slices.DeleteFunc(slices.Clone(res.effective.Permissions), func(p string) bool { return contains(res.service.StateReaching, p) })
+	allowed := slices.DeleteFunc(slices.Clone(res.effective.Permissions), func(p string) bool { return contains(res.service.stateReaching, p) })
 	var reasons []string
 	for _, tool := range tools {
-		i := slices.IndexFunc(verified.Primitives, func(p definition.Primitive) bool { return p.Name == tool })
+		i := slices.IndexFunc(offered.Primitives, func(p enforce.Primitive) bool { return p.Name == tool })
 		switch {
 		case i >= 0:
 			var withheld, disallowed []string
-			for _, grant := range verified.Primitives[i].Grants {
+			for _, grant := range offered.Primitives[i].Grants {
 				switch {
 				case contains(allowed, grant):
 				case contains(res.plan.Withheld, grant):
@@ -470,10 +549,8 @@ func withoutSkillTools(res *resolution, tools []string, verified definition.Mapp
 			} else {
 				reasons = append(reasons, tool+" needs "+strings.Join(parts, ", and "))
 			}
-		case contains(unverified, tool):
-			reasons = append(reasons, tool+" is not verified for version "+res.identity.Version)
 		default:
-			reasons = append(reasons, "runtime mapping "+res.mapping.Name+" has no "+tool)
+			reasons = append(reasons, "runtime mapping "+res.mapping.name+" has no "+tool)
 		}
 	}
 	return strings.Join(reasons, "; ")
@@ -482,17 +559,19 @@ func withoutSkillTools(res *resolution, tools []string, verified definition.Mapp
 // workflowResolution is a workflow and its nodes' processes, as a run of it
 // uses them. Each node's call resolves its own process again, fully.
 type workflowResolution struct {
-	workflow  definition.Workflow
-	processes map[string]definition.Process
-	sources   []definition.Source // the workflow's document
+	workflow  declaredWorkflow
+	processes map[string]declaredProcess
+	sources   []document.Source    // the workflow's document, then its brief forms'
+	forms     map[string]briefForm // by name: the brief forms its inputs name (ADR-026 rule 8)
 }
 
 // workflow resolves the workflow named name, refusing one whose nodes
 // cannot run as ADR-003 has them (settings.WorkflowProblems), and one that
-// depends on a document with a problem (ADR-015). found is false when the
+// depends on a document with a problem (ADR-015) or a blocked one
+// (ADR-018). found is false when the
 // settings list no workflow of that name.
 func (r *Resolver) workflow(ctx context.Context, name string) (*workflowResolution, bool, error) {
-	names, err := r.definitions.List(ctx, definition.KindWorkflow)
+	names, err := r.definitions.List(ctx, document.KindWorkflow)
 	if err != nil || !contains(names, name) {
 		return nil, false, nil
 	}
@@ -502,7 +581,8 @@ func (r *Resolver) workflow(ctx context.Context, name string) (*workflowResoluti
 	}
 	res, err := r.resolveWorkflow(ctx, name)
 	// Refused before any node runs, for a problem in what the workflow or
-	// any node's call depends on (ADR-015 rule 3).
+	// any node's call depends on (ADR-015 rule 3), or a block on it
+	// (ADR-018 rule 2).
 	if refused := reached.workflow(name); refused != nil {
 		return res, true, refused
 	}
@@ -510,13 +590,16 @@ func (r *Resolver) workflow(ctx context.Context, name string) (*workflowResoluti
 		// Resolve every node, including the join, before any turn. Only a
 		// missing named verification remains a refusal at its node.
 		var problems []string
-		seen := map[string]bool{}
-		for _, node := range res.workflow.Nodes() {
-			if seen[node.Process] {
+		seen := map[NodeBinding]bool{}
+		for _, node := range res.workflow.nodes() {
+			binding := NodeBinding{Process: node.process, Agent: node.agent}
+			if seen[binding] {
 				continue
 			}
-			seen[node.Process] = true
-			if _, problem := r.resolve(ctx, node.Process, "", overrides{deferMissingVerify: true}); problem != nil {
+			seen[binding] = true
+			// Its nodes work in the caller's worktree, as any call does
+			// (ADR-025 rule 4), each on the agent it binds (ADR-030 rule 5).
+			if _, problem := r.resolve(ctx, node.process, node.agent, overrides{deferMissingVerify: true, node: true}); problem != nil {
 				problems = append(problems, "workflow "+name+" uses "+strings.Replace(problem.Error(), " uses ", ", which uses ", 1))
 			}
 		}
@@ -529,30 +612,46 @@ func (r *Resolver) workflow(ctx context.Context, name string) (*workflowResoluti
 
 // resolveWorkflow reads the workflow and its nodes' processes.
 func (r *Resolver) resolveWorkflow(ctx context.Context, name string) (*workflowResolution, error) {
-	res := &workflowResolution{workflow: definition.Workflow{Name: name}, processes: map[string]definition.Process{}}
-	doc, err := r.definitions.Read(ctx, definition.KindWorkflow, name)
-	if err != nil {
+	res := &workflowResolution{workflow: declaredWorkflow{name: name}, processes: map[string]declaredProcess{}}
+	workflow, source, err := r.documents.Workflow(ctx, name)
+	if unread(err) {
 		return res, refuse("workflow %q: %v", name, err)
 	}
-	res.sources = append(res.sources, doc.Source)
-	if res.workflow, err = definition.ParseWorkflow(doc); err != nil {
+	res.sources = append(res.sources, source)
+	res.workflow = workflow
+	if err != nil {
 		return res, refuse("%v", err)
 	}
-	for _, node := range res.workflow.Nodes() {
-		if _, ok := res.processes[node.Process]; ok {
+	// Each brief form its inputs name is read with the run, from the same
+	// settings, and recorded among its sources (ADR-026 rule 8).
+	for _, form := range res.workflow.forms() {
+		brief, source, err := r.documents.Brief(ctx, form)
+		if unread(err) {
+			return res, refuse("workflow %s names brief %q: %v", name, form, err)
+		}
+		res.sources = append(res.sources, source)
+		if err != nil {
+			return res, refuse("%v", err)
+		}
+		if res.forms == nil {
+			res.forms = map[string]briefForm{}
+		}
+		res.forms[form] = brief
+	}
+	for _, node := range res.workflow.nodes() {
+		if _, ok := res.processes[node.process]; ok {
 			continue
 		}
-		doc, err := r.definitions.Read(ctx, definition.KindProcess, node.Process)
-		if err != nil {
+		process, _, err := r.documents.Process(ctx, node.process)
+		if unread(err) {
 			continue // a process that does not exist is a workflow problem
 		}
-		process, err := definition.ParseProcess(doc)
 		if err != nil {
-			return res, refuse("node %s: %v", node.Name, err)
+			return res, refuse("node %s: %v", node.name, err)
 		}
-		res.processes[node.Process] = process
+		res.processes[node.process] = process
 	}
-	if problems := settings.WorkflowProblems(res.workflow, res.processes); len(problems) > 0 {
+	if problems := settings.WorkflowProblems(settingsWorkflow(res.workflow), mapped(res.processes, settingsProcess), nil); len(problems) > 0 {
 		return res, refuse("workflow %s: %s", name, strings.Join(problems, "; "))
 	}
 	return res, nil

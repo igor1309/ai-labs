@@ -104,7 +104,8 @@
   async function fetchSettings(fetchFn, path) {
     const body = await getJson(fetchFn, `api/settings?path=${encodeURIComponent(path)}`);
     const home = body.home || !body.homeFiles;
-    return { id: body.home ? HOME_ID : path, files: body.files || {}, homeFiles: home ? null : body.homeFiles };
+    return { id: body.home ? HOME_ID : path, files: body.files || {}, homeFiles: home ? null : body.homeFiles,
+      ...(body.composedFiles && { composedFiles: body.composedFiles, sources: body.sources }) };
   }
 
   // The folder the user chose in the Mac's folder dialog, or null when they
@@ -131,7 +132,8 @@
   }
 
   // The skill folders the runtimes of the settings at path load, in the
-  // repo and the home, each with its skills: { home, adapters, folders }.
+  // repo and the home, each with its skills, and the settings layers' own
+  // skills: { home, adapters, folders, settings }.
   async function fetchSkills(fetchFn, path) {
     return getJson(fetchFn, `api/skills?path=${encodeURIComponent(path)}`);
   }

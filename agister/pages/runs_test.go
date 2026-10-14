@@ -157,7 +157,7 @@ func TestReadRunReturnsTheRecordAsStored(t *testing.T) {
 		Summary RunSummary     `json:"summary"`
 		Record  map[string]any `json:"record"`
 	}
-	if code := get(t, Handler(home, noChoose(t), owners(), SkillHomes{}), "localhost:7465", "/api/runs/run-1", &detail); code != http.StatusOK {
+	if code := get(t, Handler(home, noChoose(t), owners(), SkillHomes{}, binarySettings), "localhost:7465", "/api/runs/run-1", &detail); code != http.StatusOK {
 		t.Fatalf("code %d", code)
 	}
 	var want map[string]any
@@ -187,7 +187,7 @@ func TestAnUnfinishedRunIsRunningWhileOwnedAndLostOnceNot(t *testing.T) {
 		t.Fatalf("left: %+v", detail.Summary)
 	}
 	// The endpoints read the owners from the run store they are given.
-	h := Handler(home, noChoose(t), owners("owned"), SkillHomes{})
+	h := Handler(home, noChoose(t), owners("owned"), SkillHomes{}, binarySettings)
 	var listed RunList
 	if code := get(t, h, "localhost:7465", "/api/runs", &listed); code != http.StatusOK ||
 		listed.Runs[0].Status != "running" || listed.Runs[1].Status != "lost" {
@@ -290,6 +290,33 @@ func TestWorkflowSummaryCountsJudgeItems(t *testing.T) {
 	}
 }
 
+func TestAWorkflowRunReadAloneGivesEachNodeItsRunsWallAndCost(t *testing.T) {
+	t.Parallel()
+	runs := t.TempDir()
+	runRecord(t, runs, "wf-1", `{"schema":"agister.run/v1alpha3","id":"wf-1","process":"code_review","request":{"process":"code_review","cwd":"/r"},"created_at":"2026-10-01T10:00:00Z",`+
+		`"workflow":{"nodes":[{"name":"first","process":"review","run":"r-1","status":"completed"},{"name":"second","process":"review","run":"r-2"},`+
+		`{"name":"gone","process":"review","run":"r-3"},{"name":"bad","process":"review","run":"../r-1"},{"name":"unstarted","process":"review"}]}}`)
+	runRecord(t, runs, "r-1", call("r-1", "review", "2026-10-01T10:00:00Z",
+		`,"result":{"status":"completed","cost":{"usd":0.25,"source":"runtime"},"timing":{"started_at":"2026-10-01T10:00:00Z","finished_at":"2026-10-01T10:00:01Z","wall_ms":1200}}`))
+	runRecord(t, runs, "r-2", call("r-2", "review", "2026-10-01T10:00:00Z", ""))
+
+	nodes := readRun(t, runs, "wf-1").Summary.Workflow.Nodes
+	if nodes[0].WallMS == nil || *nodes[0].WallMS != 1200 || deref(nodes[0].CostUSD) != 0.25 {
+		t.Fatalf("finished node: wall %v, cost %v", nodes[0].WallMS, deref(nodes[0].CostUSD))
+	}
+	for _, node := range nodes[1:] {
+		if node.WallMS != nil || node.CostUSD != nil {
+			t.Fatalf("%s: a node whose run is unfinished, missing or not a run ID has no wall or cost: %+v", node.Name, node)
+		}
+	}
+	// The list leaves them out: it would read every node's record.
+	for _, r := range listRuns(t, runs, 10).Runs {
+		if r.Workflow != nil && r.Workflow.Nodes[0].WallMS != nil {
+			t.Fatalf("listed workflow node has a wall: %+v", r.Workflow.Nodes[0])
+		}
+	}
+}
+
 func TestSummaryCountsSkillsAndToolCalls(t *testing.T) {
 	t.Parallel()
 	runs := t.TempDir()
@@ -359,7 +386,7 @@ func TestRunListLimitsDefaultAndCap(t *testing.T) {
 		}
 		return ids
 	}
-	h := Handler(home, noChoose(t), owners(), SkillHomes{})
+	h := Handler(home, noChoose(t), owners(), SkillHomes{}, binarySettings)
 	for target, want := range map[string][]string{
 		"/api/runs":            newest(200),
 		"/api/runs?limit=1001": newest(1000),
@@ -386,7 +413,7 @@ func TestRunEndpoints(t *testing.T) {
 	runRecord(t, runs, "run-1", call("run-1", "p", "2026-10-01T09:00:00Z", ""))
 	runRecord(t, runs, "run-2", call("run-2", "p", "2026-10-01T10:00:00Z", ""))
 	runRecord(t, runs, "bad", `not json`)
-	h := Handler(home, noChoose(t), owners(), SkillHomes{})
+	h := Handler(home, noChoose(t), owners(), SkillHomes{}, binarySettings)
 
 	var list RunList
 	if code := get(t, h, "localhost:7465", "/api/runs?limit=1", &list); code != http.StatusOK ||
@@ -505,4 +532,37 @@ func deref(f *float64) any {
 		return nil
 	}
 	return *f
+}
+
+// A run's links and its inputs' working copies (ADR-026 rule 6) are in the
+// record Pages shows, as stored; a run recorded before them still lists
+// and reads.
+func TestARunsLinksAndWorkingCopiesAreShownAndAnEarlierRunStillReads(t *testing.T) {
+	t.Parallel()
+	runs := filepath.Join(t.TempDir(), "runs")
+	finished := `,"finished_at":"2026-10-07T10:00:01Z","result":{"status":"completed","cost":{"source":"unknown"},"timing":{"started_at":"2026-10-07T10:00:00Z","finished_at":"2026-10-07T10:00:01Z","wall_ms":1000}}`
+	runRecord(t, runs, "20261007T100000Z-aaaaaa", call("20261007T100000Z-aaaaaa", "implement", "2026-10-07T10:00:00Z",
+		`,"inputs":[{"name":"brief","source":"file","identity":"sha256:b"}]`+finished))
+	links := `{"goal":{"run":"20261007T100000Z-aaaaaa","input":"brief","digest":"sha256:b"},"judgement":{"run":"20261007T100000Z-aaaaaa"}}`
+	runRecord(t, runs, "20261007T110000Z-bbbbbb", call("20261007T110000Z-bbbbbb", "implement", "2026-10-07T11:00:00Z",
+		`,"inputs":[{"name":"brief","source":"file","identity":"sha256:c","value":"the step","cache_path":"/home/.agister/cache/c/brief.md"}],"links":`+links+finished))
+
+	if list := listRuns(t, runs, 10); list.Total != 2 || list.Skipped != 0 {
+		t.Fatalf("list = %+v", list)
+	}
+	var shown map[string]any
+	if err := json.Unmarshal(readRun(t, runs, "20261007T110000Z-bbbbbb").Record, &shown); err != nil {
+		t.Fatal(err)
+	}
+	var want any
+	if err := json.Unmarshal([]byte(links), &want); err != nil {
+		t.Fatal(err)
+	}
+	inputs, _ := shown["inputs"].([]any)
+	if !reflect.DeepEqual(shown["links"], want) || len(inputs) != 1 || inputs[0].(map[string]any)["cache_path"] != "/home/.agister/cache/c/brief.md" {
+		t.Fatalf("record = %v", shown)
+	}
+	if earlier := readRun(t, runs, "20261007T100000Z-aaaaaa"); earlier.Summary.Status != "completed" {
+		t.Fatalf("earlier = %+v", earlier.Summary)
+	}
 }

@@ -1,7 +1,10 @@
 // Package fakecodex stands in for `codex exec --json` and `codex exec
 // resume --json`, including the non-terminal error events observed from the
 // real CLI. The scenario is chosen by a SCENARIO:<name> marker in the
-// prompt (stdin).
+// prompt (stdin). Its first event, thread.started, echoes what it was given:
+// its argv, working directory, prompt and schema, its CODEX_HOME (empty
+// when unset), the names under that home's skills/, and the regular files
+// under it, the skills written there, by the folder.
 package fakecodex
 
 import (
@@ -9,11 +12,13 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"regexp"
 	"strings"
 
 	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/runtimetest/fakeoutput"
-	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/runtimetest/fakeproc"
+	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/runtimetest/fakeskills"
+	"github.com/igor1309/ai-labs/gokit/fakeproc"
 )
 
 // Main is the fake as the process p; it returns the code it exits with.
@@ -56,7 +61,18 @@ func Main(p fakeproc.Process) int {
 		thread = args[2]
 	}
 	cwd := p.Dir
-	emit(map[string]any{"type": "thread.started", "thread_id": thread, "argv": args, "cwd": cwd, "prompt": prompt, "schema": schema})
+	// The home's skills, read while the fake runs: none without a home.
+	home := p.Getenv("CODEX_HOME")
+	names, skills := []string{}, map[string]map[string]string{}
+	if home != "" {
+		dir := filepath.Join(p.Path(home), "skills")
+		entries, _ := os.ReadDir(dir)
+		for _, entry := range entries {
+			names = append(names, entry.Name())
+		}
+		skills = fakeskills.Given([]string{dir})
+	}
+	emit(map[string]any{"type": "thread.started", "thread_id": thread, "argv": args, "cwd": cwd, "prompt": prompt, "schema": schema, "codex_home": home, "skill_names": names, "skills": skills})
 	switch scenario {
 	case "no_result":
 		return 0
@@ -90,7 +106,7 @@ func Main(p fakeproc.Process) int {
 		return 0
 	}
 	emit(map[string]any{"type": "item.started", "item": map[string]any{"id": "item_1", "type": "command_execution", "command": "git diff --stat", "status": "in_progress"}})
-	emit(map[string]any{"type": "item.completed", "item": map[string]any{"id": "item_1", "type": "command_execution", "command": "git diff --stat", "exit_code": 0, "status": "completed"}})
+	emit(map[string]any{"type": "item.completed", "item": map[string]any{"id": "item_1", "type": "command_execution", "command": "git diff --stat", "aggregated_output": " a.txt | 1 +\n", "exit_code": 0, "status": "completed"}})
 	text := "All good."
 	if schema != nil {
 		output := map[string]any{"verdict": "approve", "summary": "Looks fine.", "findings": []any{}}

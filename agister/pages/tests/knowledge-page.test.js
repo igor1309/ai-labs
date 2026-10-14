@@ -100,7 +100,7 @@ function page({ storage = fakeStorage({ [VIEW_KEY]: 'knowledge', 'agister-pages:
   const button = (root, label) => root.querySelectorAll('button').find((b) => b.textContent === label);
   return {
     started, calls, storage, document, $, button,
-    shown: () => ['dashboard', 'runs', 'knowledge'].filter((id) => !$(id).hidden),
+    shown: () => ['dashboard', 'runs', 'compare', 'knowledge'].filter((id) => !$(id).hidden),
     // The overview: its agent columns, and per skill row its cells.
     columns: () => $('knowledge-overview').querySelectorAll('thead th').slice(1).map((th) => th.children.map((c) => c.textContent)),
     matrix: () => Object.fromEntries($('knowledge-overview').querySelectorAll('tbody tr').map((tr) => [tr.children[0].textContent, tr.children.slice(1).map((td) => td.textContent)])),
@@ -137,7 +137,9 @@ test('Knowledge is a third view, remembered, read from the settings, their skill
   const p = page({ storage });
   await p.started;
   assert.deepEqual(p.shown(), ['dashboard']);
-  assert.ok(!p.calls.some((u) => u.startsWith('api/skills')));
+  // Settings read their skills' inventory with the settings files (D-16);
+  // the runs only Knowledge reads.
+  assert.deepEqual(p.calls, ['api/settings?path=%2Fr', 'api/skills?path=%2Fr']);
 
   p.$('view-knowledge').click();
   await settle();
@@ -145,7 +147,7 @@ test('Knowledge is a third view, remembered, read from the settings, their skill
   assert.deepEqual(p.shown(), ['knowledge']);
   assert.equal(p.$('view-knowledge').getAttribute('aria-pressed'), 'true');
   assert.equal(p.$('view-settings').getAttribute('aria-pressed'), 'false');
-  assert.equal(p.calls.at(-2), 'api/skills?path=%2Fr');
+  assert.deepEqual(p.calls.slice(2), ['api/settings?path=%2Fr', 'api/skills?path=%2Fr', 'api/runs']);
   assert.match(p.$('read-at').title, /^Knowledge read/);
 
   // The next visit opens on Knowledge.
@@ -194,7 +196,10 @@ test('the overview is a matrix of skills and agents, with shared names marked', 
     ['.agents/skills', 'repo', '/r/.agents/skills', 'codex', '2'],
     ['~/.claude/skills', 'home', '/h/.claude/skills', 'claude-code', 'not there'],
   ]);
-  assert.match(p.$('knowledge').textContent, /Agister does not choose an agent’s skills/);
+  // ADR-021 amended ADR-011 rule 5: the tab no longer says Agister does
+  // not choose an agent's skills; editing is still not part of it.
+  assert.doesNotMatch(p.$('knowledge').textContent, /does not choose/);
+  assert.match(p.$('knowledge').textContent, /two lists, shown apart: the skills its settings name.*the skills its runtime would load from the repo and the home.*editing is not part of it/);
 });
 
 test('an agent opens below the overview: what its runtime would load, and apart from it what its runs used', async () => {
@@ -206,7 +211,8 @@ test('an agent opens below the overview: what its runtime would load, and apart 
   assert.equal(p.detail(), 'opus');
   const detail = p.$('agent-detail');
   assert.equal(detail.querySelector('div.facts').textContent, 'runtimeclaude-code — adapter claude-codemodelopusefforthigh');
-  assert.match(detail.textContent, /Agister does not choose an agent’s skills.*\(ADR-006\).*editing is not part of it/);
+  assert.doesNotMatch(detail.textContent, /does not choose/);
+  assert.match(detail.textContent, /two lists, shown apart.*\(ADR-021\).*\(ADR-006\).*editing is not part of it/);
   assert.deepEqual(p.table('agent-loads'), [
     ['big', 'repo', '.claude/skills', 'checks failed: SKILL.md is over 256 KB'],
     ['plan shared', 'repo', '.claude/skills', 'checks passed'],
@@ -256,7 +262,8 @@ test('an observed run’s link shows Runs with that run opened', async () => {
   assert.ok(link.click().defaultPrevented);
   await settle();
   assert.deepEqual(p.shown(), ['runs']);
-  assert.equal(p.$('run-detail').querySelector('h3').textContent, 'run-1');
+  assert.equal(p.$('run-overlay').hidden, false);
+  assert.equal(p.$('run-detail').querySelector('article').dataset.run, 'run-1');
 });
 
 test('a skill opens with the agents that load it, each folder’s entry and its checks', async () => {
@@ -340,13 +347,17 @@ test('~ shows the home folders only, and says so', async () => {
   assert.deepEqual(p.columns().map((c) => c[0]), ['ghost', 'opus', 'sol']);
 });
 
+// The skills are read with the settings (D-16), the runs by Knowledge.
 test('a Knowledge read that fails says why; one that ends after the user left leaves the page alone', async () => {
   const failing = page({ answers: { 'api/skills': () => respond({ error: 'no .agister folder at /r/.agister' }, 404) } });
   await failing.started;
   assert.equal(failing.$('status').textContent, 'no .agister folder at /r/.agister');
+  const noRuns = page({ answers: { 'api/runs': () => respond({ error: 'the runs could not be read' }, 500) } });
+  await noRuns.started;
+  assert.equal(noRuns.$('status').textContent, 'the runs could not be read');
 
   let answer;
-  const slow = page({ answers: { 'api/skills': () => new Promise((r) => { answer = r; }) } });
+  const slow = page({ answers: { 'api/runs': () => new Promise((r) => { answer = r; }) } });
   await settle();
   slow.$('view-settings').click();
   await settle();
@@ -365,7 +376,7 @@ test('a Knowledge read that ends after a newer settings read failed leaves the e
       'api/settings': (n) => (n === 1
         ? respond({ path: '/r', dir: '/r/.agister', home: false, files, homeFiles: {} })
         : respond({ error: 'settings unreadable' }, 500)),
-      'api/skills': () => new Promise((r) => { answer = r; }),
+      'api/runs': () => new Promise((r) => { answer = r; }),
     },
   });
   await settle();
@@ -373,7 +384,7 @@ test('a Knowledge read that ends after a newer settings read failed leaves the e
   await settle();
   assert.equal(p.$('status').textContent, 'settings unreadable');
 
-  answer(respond(skills));
+  answer(respond({ runs, total: runs.length, skipped: 0 }));
   await p.started;
   await settle();
   assert.equal(p.$('status').textContent, 'settings unreadable');
@@ -402,12 +413,15 @@ test('a skill of 130,000 inline nodes opens, and Source and Rendered switch', as
   assert.equal(md().querySelectorAll('code').length, 65000);
 });
 
+// A failed skills read fails the settings read, which keeps what was shown
+// (D-16); a failed runs read fails Knowledge alone.
 test('Knowledge read for one folder is not shown under another: a failed read after a switch leaves none', async () => {
   const home = { path: '~', dir: '/u/.agister', home: true, files };
   const p = page({
     answers: {
       'api/settings': (n) => respond(n <= 2 ? { path: '/r', dir: '/r/.agister', home: false, files, homeFiles: {} } : home),
-      'api/skills': (n) => (n === 1 ? respond(skills) : respond({ error: 'skills unreadable' }, 500)),
+      'api/skills': (n) => (n === 2 ? respond({ error: 'skills unreadable' }, 500) : respond(n === 1 ? skills : { ...skills, path: '~', home: true })),
+      'api/runs': (n) => (n === 1 ? respond({ runs, total: runs.length, skipped: 0 }) : respond({ error: 'runs unreadable' }, 500)),
     },
   });
   await p.started;
@@ -425,7 +439,7 @@ test('Knowledge read for one folder is not shown under another: a failed read af
   await settle();
   assert.ok(p.calls.includes('api/skills?path=~'));
   assert.equal(p.$('picker-label').textContent, '~');
-  assert.equal(p.$('status').textContent, 'skills unreadable');
+  assert.equal(p.$('status').textContent, 'runs unreadable');
   assert.equal(p.$('knowledge-overview'), null);
   assert.equal(p.$('knowledge').textContent, '');
 });
@@ -513,4 +527,123 @@ test('worst-case 256 KB skills of brackets, emphasis marks and backticks render'
     assert.ok(count <= text.length, `${text.slice(0, 6)}…: ${count} elements for ${text.length} characters`);
     assert.deepEqual(document.markup, []);
   }
+});
+
+// ADR-021, the amendment of ADR-011 rule 5: an agent's card shows the
+// skills its settings name, its own and those of the processes a
+// workflow's node binds to it, each with its
+// layer and checks or marked missing, apart from what its runtime would
+// load and from what its runs used, each labelled.
+test('an agent’s card lists the skills its settings name apart from what its runtime would load', async () => {
+  // The skills are the inventory api/skills gives; api/settings sends no
+  // file of skills/ (D-16).
+  const homeFiles = {};
+  const named = {
+    ...files,
+    'agents/opus.toml': `${files['agents/opus.toml']}skills = ["plan", "style", "gone"]\n`,
+    'processes/review.yaml': 'name: review\nskills: [ship]\ninput:\n  instruction: Review.\n',
+    'workflows/review_opus.yaml': 'name: review_opus\ncall: {node: review, uses: process:review, agent: opus}\n',
+  };
+  const beside = 'holds notes.txt beside SKILL.md: a skill is its SKILL.md alone, and its other files are not given to a call';
+  const read = {
+    ...skills,
+    settings: [
+      { scope: 'repo', name: 'plan', path: '/r/.agister/skills/plan', description: 'Repo plan.', checks: { passed: true } },
+      { scope: 'home', name: 'plan', path: '/h/.agister/skills/plan', description: 'Home plan.', checks: { passed: true } },
+      { scope: 'home', name: 'style', path: '/h/.agister/skills/style', description: 'Style.', checks: { passed: false, failed: [beside] } },
+    ],
+  };
+  const p = page({ answers: {
+    'api/settings': () => respond({ path: '/r', dir: '/r/.agister', home: false, files: named, homeFiles }),
+    'api/skills': () => respond(read),
+  } });
+  await p.started;
+  p.open('opus');
+
+  const section = p.$('agent-settings-skills');
+  assert.equal(section.querySelector('h4').textContent, 'Its settings name');
+  assert.match(section.querySelector('p').textContent, /skills\/ folders, which Agister gives the call/);
+  assert.deepEqual(p.table('agent-settings-skills'), [
+    ['plan', 'agent', 'repo, replaces home', 'checks passed'],
+    ['style', 'agent', 'home', `checks failed: ${beside}`],
+    ['gone (missing skill)', 'agent', '—', '—'],
+    ['ship (missing skill)', 'process review', '—', '—'],
+  ]);
+  assert.equal(section.querySelectorAll('span.missing').map((m) => m.title)[0], 'No skill named gone in these settings: Agister refuses the call');
+
+  // The runtime's list is as before and labelled as the runtime's; neither
+  // list holds the other's skills, and observed use is apart from both.
+  assert.equal(p.$('agent-loads').querySelector('h4').textContent, 'Its runtime would load from the repo and the home');
+  assert.deepEqual(p.table('agent-loads'), [
+    ['big', 'repo', '.claude/skills', 'checks failed: SKILL.md is over 256 KB'],
+    ['plan shared', 'repo', '.claude/skills', 'checks passed'],
+    ['torn', 'repo', '.claude/skills', 'checks failed: no front matter'],
+  ]);
+  assert.doesNotMatch(p.$('agent-loads').textContent, /style|gone|ship|process/);
+  assert.doesNotMatch(section.textContent, /\.claude\/skills|torn|big|review \d|run-/);
+  assert.doesNotMatch(p.$('agent-observed').textContent, /style|gone|plan/);
+
+  // An agent whose settings name none says so.
+  p.open('sol');
+  assert.deepEqual(p.table('agent-settings-skills'), []);
+  assert.match(p.$('agent-settings-skills').textContent, /Its settings name no skills, and no process on it does\./);
+});
+
+// D-16, ADR-021 rule 1: a repo skill that is there goes over home's of the
+// same name whatever its state, as in Agister, which refuses the call
+// rather than fall back to home's. Too large, empty, without SKILL.md or a
+// symbolic link, it is the repo's in both views, with its failed checks;
+// only a skill the repo does not have is home's. The replies are as
+// pages/serve.go and pages/skills.go send them: no skill files in the
+// settings, the inventory in api/skills' settings.
+test('BrokenRepoOverrideRemainsEffectiveInSettingsAndKnowledge', async () => {
+  const names = ['big', 'empty', 'blank', 'bare', 'linked', 'absent'];
+  const settingsFiles = {
+    'agents/opus.toml': `name = "opus"\nruntime = "claude-code"\nskills = [${names.map((n) => `"${n}"`).join(', ')}]\n`,
+    'runtimes/claude-code.yaml': 'name: claude-code\nadapter: claude-code\n',
+  };
+  const beside = 'holds notes.txt beside SKILL.md: a skill is its SKILL.md alone, and its other files are not given to a call';
+  const broken = {
+    big: { state: 'too_large', checks: { passed: false, failed: ['SKILL.md is over 256 KB'] } },
+    empty: { state: 'missing', checks: { passed: false, failed: ['SKILL.md is missing'] } },
+    blank: { content: '', checks: { passed: false, failed: ['no front matter'] } },
+    bare: { state: 'missing', checks: { passed: false, failed: ['SKILL.md is missing', beside] } },
+    linked: { link: '/shared/linked', state: 'linked_folder', checks: { passed: false, failed: ['the folder is a symbolic link: a skill is a folder holding its SKILL.md'] } },
+  };
+  const inventory = [
+    ...Object.entries(broken).map(([name, s]) => ({ scope: 'repo', name, path: `/r/.agister/skills/${name}`, ...s })),
+    ...names.map((name) => ({
+      scope: 'home', name, path: `/u/.agister/skills/${name}`,
+      content: `---\nname: ${name}\ndescription: Home's.\n---\n`, description: 'Home\'s.', checks: { passed: true },
+    })),
+  ];
+  const p = page({
+    storage: fakeStorage({ 'agister-pages:current': '/r' }),
+    answers: {
+      'api/settings': () => respond({ path: '/r', dir: '/r/.agister', home: false, files: settingsFiles, homeFiles: {} }),
+      'api/skills': () => respond({ path: '/r', home: false, adapters: ['claude-code'], folders: [], settings: inventory }),
+    },
+  });
+  await p.started;
+
+  // Settings: the agents table names each skill with the layer in effect.
+  assert.deepEqual(p.shown(), ['dashboard']);
+  const cell = p.$('Agents-opus').querySelectorAll('td').find((td) => td.dataset.label === 'Skills');
+  assert.equal(cell.textContent, [
+    ...Object.keys(broken).map((n) => `${n} repo, replaces home checks failed`), 'absent home',
+  ].join(', '));
+  assert.deepEqual(cell.querySelectorAll('span.failed').map((s) => s.title), Object.values(broken).map((s) => s.checks.failed.join('; ')));
+  assert.equal(cell.querySelectorAll('span.missing').length, 0);
+
+  // Knowledge: the agent's settings skills, each the repo's with its failed
+  // checks, and absent home's, passing.
+  p.$('view-knowledge').click();
+  await settle();
+  p.open('opus');
+  assert.deepEqual(p.table('agent-settings-skills'), [
+    ...Object.entries(broken).map(([name, s]) => [name, 'agent', 'repo, replaces home', `checks failed: ${s.checks.failed.join('; ')}`]),
+    ['absent', 'agent', 'home', 'checks passed'],
+  ]);
+  const paths = p.$('agent-settings-skills').querySelectorAll('tbody tr').map((tr) => tr.children[0].querySelector('span').title);
+  assert.deepEqual(paths, [...Object.keys(broken).map((n) => `/r/.agister/skills/${n}`), '/u/.agister/skills/absent']);
 });

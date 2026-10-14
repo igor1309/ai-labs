@@ -7,6 +7,7 @@ import (
 
 	"strings"
 	"testing"
+	"unicode/utf8"
 
 	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/pi"
 	// fresh is the session the fake starts.
@@ -14,7 +15,7 @@ import (
 
 func TestArguments(t *testing.T) {
 	t.Parallel()
-	args, err := pi.Arguments(pi.TurnRequest(request("hello")), "/sessions/new-1", "/tmp/system-prompt.md")
+	args, err := pi.Arguments(pi.TurnRequest(request("hello")), "/sessions/new-1", "/tmp/system-prompt.md", "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -36,7 +37,7 @@ func TestResumeArguments(t *testing.T) {
 	t.Parallel()
 	r := request("hello")
 	r.ResumeSessionID = "s-1"
-	args, err := pi.Arguments(pi.TurnRequest(r), "/sessions/s-1", "/tmp/system-prompt.md")
+	args, err := pi.Arguments(pi.TurnRequest(r), "/sessions/s-1", "/tmp/system-prompt.md", "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -56,7 +57,7 @@ func TestResumeArguments(t *testing.T) {
 // an allowlist.
 func TestDefaults(t *testing.T) {
 	t.Parallel()
-	args, err := pi.Arguments(pi.TurnRequest(pi.TurnRequest{Prompt: "x", Primitives: []string{"read"}}), "/sessions/new-1", "")
+	args, err := pi.Arguments(pi.TurnRequest(pi.TurnRequest{Prompt: "x", Primitives: []string{"read"}}), "/sessions/new-1", "", "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -75,14 +76,14 @@ func TestToolsAndThinkingLevels(t *testing.T) {
 	for _, tool := range pi.Tools {
 		r := request("x")
 		r.Primitives = []string{"read", tool}
-		if args, err := pi.Arguments(pi.TurnRequest(r), "/s", ""); err != nil || !follows(args, "--tools", "read,"+tool) {
+		if args, err := pi.Arguments(pi.TurnRequest(r), "/s", "", ""); err != nil || !follows(args, "--tools", "read,"+tool) {
 			t.Errorf("tool %s: %q, %v", tool, args, err)
 		}
 	}
 	for _, level := range []string{"off", "minimal", "low", "medium", "high", "xhigh", "max"} {
 		r := request("x")
 		r.Effort = level
-		if args, err := pi.Arguments(pi.TurnRequest(r), "/s", ""); err != nil || !follows(args, "--thinking", level) {
+		if args, err := pi.Arguments(pi.TurnRequest(r), "/s", "", ""); err != nil || !follows(args, "--thinking", level) {
 			t.Errorf("effort %s: %q, %v", level, args, err)
 		}
 	}
@@ -349,7 +350,7 @@ func TestToolCallsAreReported(t *testing.T) {
 		t.Fatalf("read runs a command: %+v", tools[0].Started)
 	}
 	events = stream.Reduce(`{"type":"tool_execution_end","toolCallId":"c1","toolName":"bash","result":{},"isError":true}`)
-	if tools := stream.TakeTools(); len(tools) != 1 || tools[0].Finished != "c1" {
+	if tools := stream.TakeTools(); len(tools) != 1 || *tools[0].Finished != (pi.ToolResult{ID: "c1"}) {
 		t.Fatalf("tools = %+v", tools)
 	}
 	if events[0].Kind != "TOOL_RESULT" || events[0].Data["is_error"] != true {
@@ -388,5 +389,46 @@ func TestUnrecordedProcessFailsTheTurnWhateverTheStreamSays(t *testing.T) {
 	turn := stream.Reconcile(pi.Evidence{RecordError: "disk full"}, false)
 	if string(turn.Status) != string(pi.Failed) || turn.Error == nil || string(turn.Error.Class) != string(pi.ClassInternal) || !strings.Contains(turn.Error.Message, "disk full") {
 		t.Fatalf("turn = %+v", turn)
+	}
+}
+
+// A tool call's end carries the text of the result the stream reported,
+// bounded to its head and tail; a result without text carries none.
+func TestAToolCallsResultIsReported(t *testing.T) {
+	t.Parallel()
+	finished := func(result string) pi.ToolResult {
+		stream := &pi.Stream{}
+		stream.Reduce(`{"type":"tool_execution_end","toolCallId":"c1","toolName":"bash","result":` + result + `,"isError":false}`)
+		tools := stream.TakeTools()
+		if len(tools) != 1 || tools[0].Finished == nil {
+			t.Fatalf("tools = %+v", tools)
+		}
+		return *tools[0].Finished
+	}
+	if got := finished(`{"content":[{"type":"text","text":"one"},{"type":"image"},{"type":"text","text":"two"}]}`); got != (pi.ToolResult{ID: "c1", Output: "one\ntwo", Reported: true}) {
+		t.Fatalf("text: %+v", got)
+	}
+	if got := finished(`{"content":[{"type":"image"}]}`); got != (pi.ToolResult{ID: "c1"}) {
+		t.Fatalf("no text: %+v", got)
+	}
+	long, _ := json.Marshal(strings.Repeat("é", pi.ToolResultBytes))
+	half := strings.Repeat("é", pi.ToolResultBytes/4)
+	if got := finished(`{"content":[{"type":"text","text":` + string(long) + `}]}`); !got.Reported || got.Output != half+"\n…\n"+half {
+		t.Fatalf("a long one: %d bytes", len(got.Output))
+	}
+	// A cut at a half of the bound that would split a rune moves to the
+	// rune's boundary: the head ends before it, the tail starts after it.
+	// wide is count runes of two bytes each.
+	quarter := pi.ToolResultBytes / 4
+	wide := func(count int) string { return strings.Repeat("é", count) }
+	for _, c := range []struct{ name, text, want string }{
+		{"the head's cut", "a" + wide(4*quarter), "a" + wide(quarter-1) + "\n…\n" + wide(quarter)},
+		{"the tail's cut", wide(4*quarter) + "a", wide(quarter) + "\n…\n" + wide(quarter-1) + "a"},
+		{"both cuts", "a" + wide(4*quarter) + "a", "a" + wide(quarter-1) + "\n…\n" + wide(quarter-1) + "a"},
+	} {
+		text, _ := json.Marshal(c.text)
+		if got := finished(`{"content":[{"type":"text","text":` + string(text) + `}]}`); !got.Reported || got.Output != c.want || !utf8.ValidString(got.Output) {
+			t.Fatalf("%s inside a rune: %d bytes, valid UTF-8 %t", c.name, len(got.Output), utf8.ValidString(got.Output))
+		}
 	}
 }

@@ -36,4 +36,8 @@ type ToolCall struct {
 	Name   string `json:"name"`
 	Input  string `json:"input,omitempty"`
 	SHA256 string `json:"sha256,omitempty"`
+	// Result is, for a repeated call, the last result the runtime reported
+	// for one of its identical calls, as the adapter bounded it; nil when
+	// it reported none.
+	Result *string `json:"result,omitempty"`
 }

@@ -1,7 +1,7 @@
 // Package gittest is an in-memory fake of the ports the composition root
 // builds from the git adapter (ADR-017 rule 3, seam 5): the calls'
-// workspaces, the verifier's clean copies, the reaper's discard, the
-// content namer and differ, and the git input sources. A test records a
+// workspaces, the reaper's discard, the content namer and differ, the state
+// of a held worktree, and the git input sources. A test records a
 // repository's revisions as file trees; the fake answers from them and runs
 // no git.
 //
@@ -16,7 +16,6 @@ import (
 	"crypto/sha1"
 	"crypto/sha256"
 	"encoding/hex"
-	"errors"
 	"fmt"
 	"io/fs"
 	"os"
@@ -29,9 +28,10 @@ import (
 	"github.com/igor1309/ai-labs/agister/internal/app"
 )
 
-// Fake answers for the repositories a test recorded. Checkouts and clean
-// copies are directories under its scratch directory; the zero Fake knows
-// no repository, so it makes none.
+// Fake answers for the repositories a test recorded. The checkouts and
+// clean copies runs made before ADR-025 left, which its Discard removes, are
+// directories under its scratch directory; the zero Fake knows no
+// repository, and discards none.
 type Fake struct {
 	scratch string
 
@@ -45,8 +45,8 @@ type Fake struct {
 // tree is a directory's files, by slash-separated path.
 type tree map[string]string
 
-// New is a fake that makes its checkouts and clean copies under scratch,
-// a directory the test owns.
+// New is a fake whose checkouts and clean copies are under scratch, a
+// directory the test owns.
 func New(scratch string) *Fake { return &Fake{scratch: scratch} }
 
 // Repository is a repository recorded at a root directory: its branches
@@ -124,7 +124,7 @@ func (r *Repository) mergeBase(a, b string) (string, error) {
 }
 
 // Left lists what is under the scratch directory: the checkouts and clean
-// copies made and not yet released or discarded.
+// copies not yet discarded.
 func (f *Fake) Left() ([]string, error) {
 	entries, err := os.ReadDir(f.scratch)
 	if err != nil {
@@ -187,6 +187,12 @@ func (f *Fake) Root(_ context.Context, cwd string) (string, error) {
 	return r.root, nil
 }
 
+// IsSubmodule reports no gitlinks: the fake's trees contain files only.
+func (f *Fake) IsSubmodule(_ context.Context, worktree, _ string) (bool, error) {
+	_, err := f.repository(worktree)
+	return false, err
+}
+
 // RepositoryIdentity names the recorded repository dir is in, as its
 // .git under its root.
 func (f *Fake) RepositoryIdentity(_ context.Context, dir string) (string, error) {
@@ -208,24 +214,6 @@ func (f *Fake) SameRepository(ctx context.Context, first, second string) (bool, 
 	return a == b, err
 }
 
-// Checkout writes revision's tree to a directory of its own under the
-// scratch directory; release removes it.
-func (f *Fake) Checkout(_ context.Context, repository, revision string) (string, func() error, error) {
-	content, err := f.revisionOf(repository, revision)
-	if err != nil {
-		return "", nil, err
-	}
-	parent, err := os.MkdirTemp(f.scratch, "checkout-")
-	if err != nil {
-		return "", nil, err
-	}
-	dir := filepath.Join(parent, "workspace")
-	if err := content.write(dir); err != nil {
-		return "", nil, errors.Join(err, os.RemoveAll(parent))
-	}
-	return dir, func() error { return os.RemoveAll(parent) }, nil
-}
-
 // revisionOf is the tree of revision, resolved in the repository at root.
 func (f *Fake) revisionOf(root, revision string) (tree, error) {
 	r, err := f.repository(root)
@@ -241,40 +229,9 @@ func (f *Fake) revisionOf(root, revision string) (tree, error) {
 	return f.content(resolved)
 }
 
-// Place names the directory the clean copies of call are made in, under
-// the scratch directory; nothing is made there.
-func (f *Fake) Place(call string) string {
-	return filepath.Join(f.scratch, "copy-"+call, "workspace")
-}
-
-// Copy writes revision's tree at dir, a directory Place named, and applies
-// patch to it. It refuses with app.ErrPlaceTaken when something is there
-// already, and removes a copy it cannot finish.
-func (f *Fake) Copy(ctx context.Context, repository, dir, revision string, patch []byte) error {
-	if err := f.made(dir); err != nil {
-		return err
-	}
-	parent := filepath.Dir(dir)
-	if err := os.Mkdir(parent, 0o700); errors.Is(err, fs.ErrExist) {
-		return fmt.Errorf("%s: %w", parent, app.ErrPlaceTaken)
-	} else if err != nil {
-		return err
-	}
-	content, err := f.revisionOf(repository, revision)
-	if err == nil {
-		err = content.write(dir)
-	}
-	if err == nil && len(patch) > 0 {
-		err = f.Apply(ctx, dir, patch, false)
-	}
-	if err != nil {
-		return errors.Join(err, os.RemoveAll(parent))
-	}
-	return nil
-}
-
-// Discard removes a checkout or clean copy the fake made; one already gone
-// is success, and a directory the fake could not have made is refused.
+// Discard removes a checkout or clean copy under the scratch directory; one
+// already gone is success, and a directory elsewhere, or named otherwise, is
+// refused.
 func (f *Fake) Discard(_ context.Context, _, dir string) error {
 	if err := f.made(dir); err != nil {
 		return err
@@ -308,6 +265,29 @@ func (f *Fake) Identity(_ context.Context, dir, _ string) (string, error) {
 	return identity, nil
 }
 
+// State is the worktree at dir as git status would read it: HEAD is the
+// branch its repository checked out last, and revision's tree the identity
+// of revision's files. The fake knows no index, submodule or ignore rule:
+// nothing is staged or dirty in a submodule, and every file is content, so
+// an untracked one changes the identity.
+func (f *Fake) State(_ context.Context, dir, revision string) (app.WorktreeState, error) {
+	r, err := f.repository(dir)
+	if err != nil {
+		return app.WorktreeState{}, err
+	}
+	f.mu.Lock()
+	head, err := r.resolve("HEAD")
+	f.mu.Unlock()
+	if err != nil {
+		return app.WorktreeState{}, err
+	}
+	content, err := f.revisionOf(r.root, revision)
+	if err != nil {
+		return app.WorktreeState{}, err
+	}
+	return app.WorktreeState{Head: head, Tree: content.identity()}, nil
+}
+
 // Changes is the patch from one recorded content, a revision or an
 // identity, to another; empty when they are the same.
 func (f *Fake) Changes(_ context.Context, _, from, to string) ([]byte, error) {
@@ -322,19 +302,35 @@ func (f *Fake) Changes(_ context.Context, _, from, to string) ([]byte, error) {
 	return diff(a, b), nil
 }
 
-// Apply applies a patch Changes made to dir's files; with check, it only
-// checks that the whole patch applies. A patch that does not apply changes
-// nothing. The patch is checked against dir's files as they are and as it
-// leaves them, so a file may become a directory and back: it removes before
-// it writes.
-func (f *Fake) Apply(_ context.Context, dir string, patch []byte, check bool) error {
+// Rebuild names the content revision has, in the repository dir is in,
+// with patch applied, as Identity names a directory's, and keeps it under
+// that name for Changes. Nothing is written.
+func (f *Fake) Rebuild(_ context.Context, dir, revision string, patch []byte) (string, error) {
+	r, err := f.repository(dir)
+	if err != nil {
+		return "", err
+	}
+	content, err := f.revisionOf(r.root, revision)
+	if err != nil {
+		return "", err
+	}
+	produced, err := applied(content, patch)
+	if err != nil {
+		return "", err
+	}
+	identity := produced.identity()
+	f.mu.Lock()
+	f.record(identity, produced)
+	f.mu.Unlock()
+	return identity, nil
+}
+
+// applied is content with patch applied; an error when the patch does not
+// apply.
+func applied(content tree, patch []byte) (tree, error) {
 	files, err := parse(patch)
 	if err != nil {
-		return err
-	}
-	content, err := read(dir)
-	if err != nil {
-		return err
+		return nil, err
 	}
 	produced := tree{}
 	for path, text := range content {
@@ -343,7 +339,7 @@ func (f *Fake) Apply(_ context.Context, dir string, patch []byte, check bool) er
 	for _, file := range files {
 		text, ok := content[file.path]
 		if ok != (file.old != nil) || ok && text != *file.old {
-			return fmt.Errorf("patch does not apply: %s is not as the patch expects", file.path)
+			return nil, fmt.Errorf("patch does not apply: %s is not as the patch expects", file.path)
 		}
 		if file.new == nil {
 			delete(produced, file.path)
@@ -355,47 +351,11 @@ func (f *Fake) Apply(_ context.Context, dir string, patch []byte, check bool) er
 		for at := path; strings.Contains(at, "/"); {
 			at = at[:strings.LastIndexByte(at, '/')]
 			if _, ok := produced[at]; ok {
-				return fmt.Errorf("patch does not apply: %s would be both a file and a directory", at)
+				return nil, fmt.Errorf("patch does not apply: %s would be both a file and a directory", at)
 			}
 		}
 	}
-	if check {
-		return nil
-	}
-	for _, file := range files {
-		if file.new == nil {
-			if err := remove(dir, filepath.Join(dir, filepath.FromSlash(file.path))); err != nil {
-				return err
-			}
-		}
-	}
-	for _, file := range files {
-		if file.new == nil {
-			continue
-		}
-		path := filepath.Join(dir, filepath.FromSlash(file.path))
-		if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
-			return err
-		}
-		if err := os.WriteFile(path, []byte(*file.new), 0o600); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-// remove removes a file under dir and the directories its removal leaves
-// empty, as git does, so a file may take a directory's place.
-func remove(dir, path string) error {
-	if err := os.Remove(path); err != nil {
-		return err
-	}
-	for at := filepath.Dir(path); at != filepath.Clean(dir); at = filepath.Dir(at) {
-		if os.Remove(at) != nil {
-			break
-		}
-	}
-	return nil
+	return produced, nil
 }
 
 // Revision is the git.revision input: {rev} resolved to a revision.
@@ -498,12 +458,14 @@ func changed(r *Repository, args map[string]string) (tree, tree, error) {
 	return a, b, nil
 }
 
-// read is the tree of dir's files. A file that is neither a regular file
-// nor a directory is refused: the fake does not name it.
+// read is the tree of dir's files. A symbolic link is left out, as an
+// ignored file: a worktree a call works in (ADR-025) may link to settings
+// no revision of the fake holds. Any other file that is neither a regular
+// file nor a directory is refused: the fake does not name it.
 func read(dir string) (tree, error) {
 	content := tree{}
 	err := filepath.WalkDir(dir, func(path string, entry fs.DirEntry, err error) error {
-		if err != nil || entry.IsDir() {
+		if err != nil || entry.IsDir() || entry.Type()&fs.ModeSymlink != 0 {
 			return err
 		}
 		if !entry.Type().IsRegular() {
@@ -518,23 +480,6 @@ func read(dir string) (tree, error) {
 		return err
 	})
 	return content, err
-}
-
-// write writes the tree's files under dir.
-func (t tree) write(dir string) error {
-	if err := os.MkdirAll(dir, 0o700); err != nil {
-		return err
-	}
-	for path, text := range t {
-		full := filepath.Join(dir, filepath.FromSlash(path))
-		if err := os.MkdirAll(filepath.Dir(full), 0o700); err != nil {
-			return err
-		}
-		if err := os.WriteFile(full, []byte(text), 0o600); err != nil {
-			return err
-		}
-	}
-	return nil
 }
 
 // identity names the tree by its paths and their contents.

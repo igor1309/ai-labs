@@ -4,9 +4,9 @@ import (
 	"context"
 
 	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/opencode"
-	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/supervisor"
 	"github.com/igor1309/ai-labs/agister/internal/app"
 	"github.com/igor1309/ai-labs/agister/internal/domain/run"
+	"github.com/igor1309/ai-labs/gokit/supervisor"
 )
 
 // OpenCodeSupervisor is the process dependency this transport consumes.
@@ -19,7 +19,7 @@ type OpenCodeSupervisor interface {
 type OpenCodeTransport struct{ Supervisor OpenCodeSupervisor }
 
 func (t OpenCodeTransport) Run(ctx context.Context, spec opencode.Spec, sink opencode.Sink, onLine func(string)) opencode.Evidence {
-	e := t.Supervisor.Run(ctx, supervisor.Spec{Command: spec.Command, Args: spec.Args, Dir: spec.Dir, Env: spec.Env, Stdin: spec.Stdin, Timeout: spec.Timeout, KillGrace: spec.KillGrace}, sink, onLine)
+	e := t.Supervisor.Run(ctx, supervisor.Spec{Command: spec.Command, Args: spec.Args, Dir: spec.Dir, Env: spec.Env, Stdin: spec.Stdin, Timeout: spec.Timeout, KillGrace: spec.KillGrace}, supervisorSink{sink}, onLine)
 	var exit *opencode.Exit
 	if e.Exit != nil {
 		exit = &opencode.Exit{Code: e.Exit.Code, Signal: e.Exit.Signal}
@@ -43,13 +43,29 @@ func (r opencodeRunner) Identity(ctx context.Context) (app.RuntimeIdentity, erro
 	return app.RuntimeIdentity(identity), err
 }
 
+// Admit admits every first turn: the runtime can run any it is given.
+func (opencodeRunner) Admit(app.TurnStart) *run.Error { return nil }
+
 type opencodeSink struct{ app.EventSink }
 
 func (s opencodeSink) ToolStarted(tool opencode.ToolCall) {
-	s.EventSink.ToolStarted(app.ToolCall(tool))
+	s.EventSink.ToolStarted(app.ToolCall{ID: tool.ID, Name: tool.Name, Input: tool.Input, Command: tool.Command})
+}
+func (s opencodeSink) ToolFinished(result opencode.ToolResult) {
+	s.EventSink.ToolFinished(app.ToolResult(result))
 }
 func (r opencodeRunner) RunTurn(ctx context.Context, request app.TurnRequest, sink app.EventSink) run.Turn {
-	return OpenCodeResult(r.wrapper.RunTurn(ctx, opencode.TurnRequest(request), opencodeSink{sink}))
+	return OpenCodeResult(r.wrapper.RunTurn(ctx, OpenCodeRequest(request), opencodeSink{sink}))
+}
+
+// OpenCodeRequest translates the application's turn request to the wrapper's,
+// its skills in order.
+func OpenCodeRequest(r app.TurnRequest) opencode.TurnRequest {
+	request := opencode.TurnRequest{Prompt: r.Prompt, Instruction: r.Instruction, Cwd: r.Cwd, ResumeSessionID: r.ResumeSessionID, MaxCostUSD: r.MaxCostUSD, Model: r.Model, Effort: r.Effort, Primitives: r.Primitives, Timeout: r.Timeout, OutputSchema: r.OutputSchema}
+	for _, skill := range r.Skills {
+		request.Skills = append(request.Skills, opencode.Skill{Name: skill.Name, Bytes: skill.Bytes})
+	}
+	return request
 }
 
 // OpenCodeResult translates a wrapper's reported result to the application's domain.

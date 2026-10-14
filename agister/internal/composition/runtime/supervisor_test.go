@@ -3,9 +3,14 @@ package runtime
 import (
 	"context"
 	"errors"
+	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/claudecode"
+	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/codex"
+	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/opencode"
+	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/pi"
 	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/runtimetest"
-	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/supervisor"
 	"github.com/igor1309/ai-labs/agister/internal/app"
+	"github.com/igor1309/ai-labs/agister/internal/domain/run"
+	"github.com/igor1309/ai-labs/gokit/supervisor"
 	"reflect"
 	"testing"
 	"time"
@@ -78,26 +83,60 @@ func TestProcessAdapter(t *testing.T) {
 	}
 }
 
-func TestSetupCommandAdapter(t *testing.T) {
+func TestHoldProcessAdapter(t *testing.T) {
 	t.Parallel()
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	code := 7
-	refusal := errors.New("disk full")
-	for _, result := range []supervisor.CommandResult{
-		{},
-		{ExitCode: &code, Signal: "killed", TimedOut: true, Cancelled: true, Stale: true, Error: "record failed", Head: []byte("head"), Tail: []byte("tail"), Bytes: 100, SHA256: "digest"},
+	failure := errors.New("unknown reference")
+	for result, want := range map[supervisor.Reaping]app.HoldReaping{
+		supervisor.ReapGone: app.HoldReapGone, supervisor.ReapKilled: app.HoldReapKilled, supervisor.ReapLeft: app.HoldReapLeft,
 	} {
-		stub := &commandStandIn{result: result}
-		var ref string
-		got := (SetupCommands{Supervisor: stub}).Run(ctx, app.SetupCommandRequest{Command: "./setup.sh", Dir: "/checkout", Timeout: time.Minute, Bound: 64}, func(r string) error { ref = r; return refusal })
-		wantRequest := supervisor.CommandRequest{Command: "./setup.sh", Dir: "/checkout", Timeout: time.Minute, Bound: 64}
-		want := app.SetupCommandResult{ExitCode: result.ExitCode, Signal: result.Signal, TimedOut: result.TimedOut, Cancelled: result.Cancelled, Error: result.Error, Head: result.Head, Tail: result.Tail, Bytes: result.Bytes, SHA256: result.SHA256}
-		if stub.ctx != ctx || !reflect.DeepEqual(stub.request, wantRequest) || !reflect.DeepEqual(got, want) || ref != "pgid:42" || stub.recordError != refusal {
-			t.Fatalf("stub %+v, result %+v, ref %q", stub, got, ref)
+		stub := &processStandIn{result: result, err: failure}
+		got, err := (HoldProcesses{Supervisor: stub}).Reap(ctx, "pgid:42:token")
+		if stub.ctx != ctx || stub.ref != "pgid:42:token" || got != want || err != failure {
+			t.Fatalf("stub %+v, result %s, want %s, err %v", stub, got, want, err)
 		}
 	}
 }
 
 // recorder is the app side of the shipped adapters.
 var _ app.EventSink = (*runtimetest.Recorder)(nil)
+
+// Each transport passes the supervisor's own decisions to its adapter's
+// sink as Agister's, so the stale watch does not take them for the runtime
+// moving, and the process's events as the process's.
+func TestTransportsRecordTheSupervisorsDecisionsAsAgisters(t *testing.T) {
+	t.Parallel()
+	standIn := supervisorStandIn{run: func(_ context.Context, _ supervisor.Spec, s supervisor.Sink, _ func(string)) supervisor.Evidence {
+		s.Event(supervisor.SourceProcess, "PROCESS_STARTED", nil)
+		s.Event(supervisor.SourceSupervisor, "TIMEOUT", nil)
+		return supervisor.Evidence{}
+	}}
+	for name, turn := range map[string]func(*runtimetest.Recorder){
+		"claude code": func(sink *runtimetest.Recorder) {
+			ClaudeCodeTransport{Supervisor: standIn}.Run(context.Background(), claudecode.Spec{}, sink, func(string) {})
+		},
+		"codex": func(sink *runtimetest.Recorder) {
+			CodexTransport{Supervisor: standIn}.Run(context.Background(), codex.Spec{}, sink, func(string) {})
+		},
+		"opencode": func(sink *runtimetest.Recorder) {
+			OpenCodeTransport{Supervisor: standIn}.Run(context.Background(), opencode.Spec{}, sink, func(string) {})
+		},
+		"pi": func(sink *runtimetest.Recorder) {
+			PiTransport{Supervisor: standIn}.Run(context.Background(), pi.Spec{}, sink, func(string) {})
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			sink := &runtimetest.Recorder{}
+			turn(sink)
+			var sources []string
+			for _, event := range sink.Events {
+				sources = append(sources, event.Kind+" "+event.Source)
+			}
+			if want := []string{"PROCESS_STARTED " + run.SourceProcess, "TIMEOUT " + run.SourceAgister}; !reflect.DeepEqual(sources, want) {
+				t.Fatalf("events %q, want %q", sources, want)
+			}
+		})
+	}
+}

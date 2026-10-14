@@ -3,18 +3,17 @@ package main
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 	"time"
 
-	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/supervisor"
-	"github.com/igor1309/ai-labs/agister/internal/adapters/system/systemtest"
 	"github.com/igor1309/ai-labs/agister/internal/cli"
 	"github.com/igor1309/ai-labs/agister/internal/contract"
 	domain "github.com/igor1309/ai-labs/agister/internal/domain/run"
+	"github.com/igor1309/ai-labs/gokit/clocktest"
+	"github.com/igor1309/ai-labs/gokit/supervisor"
 )
 
 // workflowRun finds the workflow's own run among home's runs and returns
@@ -70,12 +69,15 @@ func TestExampleWorkflowEndToEnd(t *testing.T) {
 			join = lastRunIn(t, filepath.Join(home, "runs", node.Run))
 		}
 	}
-	// The join's runtime received each fan-out output once, and nothing of
-	// the caller's.
+	// The join's runtime received each fan-out outcome once, naming no
+	// node, process or run (ADR-034), and nothing of the caller's.
 	prompt, _ := join.first["prompt"].(string)
-	for _, node := range []string{`"node": "adversarial"`, `"node": "architecture"`} {
-		if strings.Count(prompt, node) != 1 {
-			t.Fatalf("the join's prompt has %s %d times:\n%s", node, strings.Count(prompt, node), prompt)
+	if n := strings.Count(prompt, `"status": "completed"`); n != 2 {
+		t.Fatalf("the join's prompt has %d completed entries:\n%s", n, prompt)
+	}
+	for _, name := range []string{`"node"`, `"process"`, `"run"`, "adversarial", "architecture"} {
+		if strings.Contains(prompt, name) {
+			t.Fatalf("the join's prompt names %s:\n%s", name, prompt)
 		}
 	}
 	if strings.Contains(prompt, candidate) {
@@ -89,12 +91,12 @@ func TestExampleWorkflowEndToEnd(t *testing.T) {
 		t.Fatalf("runs: %d\n%s", r.code, r.stdout)
 	}
 
-	// What a caller may not give a workflow, and a join called on its own,
-	// are refused.
+	// What a caller may not give a workflow, and a join's process called
+	// on its own, by a workflow of one call, are refused.
 	if r := agister(t, home, repo, "run", "review_panel", "--param", "architecture=a.txt", "--timeout", "1m"); r.code != cli.ExitRefused {
 		t.Fatalf("with a timeout: exit %d\n%s", r.code, r.stderr)
 	}
-	if r := agister(t, home, repo, "run", "review_summary"); r.code != cli.ExitRefused || !strings.Contains(r.stderr, "given only to a workflow's join") {
+	if r := agister(t, home, repo, "run", bound(t, home, "review_summary", "reviewer")); r.code != cli.ExitRefused || !strings.Contains(r.stderr, "call node review_summary: process review_summary takes the collection (input reviews), which only a join receives") {
 		t.Fatalf("the join on its own: exit %d\n%s", r.code, r.stderr)
 	}
 }
@@ -112,10 +114,10 @@ func TestExampleWorkflowJoinsWithoutATimedOutNode(t *testing.T) {
 	// test passes once the turn waits on it.
 	path := filepath.Join(home, "processes", "adversarial_review.yaml")
 	process := strings.Replace(read(t, path), "  values:\n", "  values:\n    stall: {source: file, path: stall.txt}\n", 1)
-	write(t, path, strings.Replace(process, "workspace:\n", "timeout: 7m\n\nworkspace:\n", 1))
+	write(t, path, strings.Replace(process, "timeout: 20m\n", "timeout: 7m\n", 1))
 	write(t, filepath.Join(repo, "stall.txt"), "SCENARIO:hang\n")
 	const timeout = 7 * time.Minute
-	clock := systemtest.NewClock(time.Date(2026, 10, 3, 12, 0, 0, 0, time.UTC))
+	clock := clocktest.NewClock(time.Date(2026, 10, 3, 12, 0, 0, 0, time.UTC))
 	go func() { clock.Started(timeout); clock.Advance(timeout) }()
 
 	r := agisterOn(t, timeoutOn(clock, timeout), home, repo, "run", "review_panel", "--param", "base=main", "--param", "architecture=a.txt")
@@ -138,11 +140,12 @@ func TestExampleWorkflowJoinsWithoutATimedOutNode(t *testing.T) {
 	if err != nil || json.Unmarshal(data, &collection) != nil || len(collection) != 2 {
 		t.Fatalf("collection: %v\n%s", err, data)
 	}
+	// The entries stand in declaration order, adversarial first (ADR-034).
 	adversarial, architecture := collection[0], collection[1]
-	if adversarial["node"] != "adversarial" || adversarial["status"] != "interrupted" || adversarial["class"] != "timeout" || adversarial["output"] != nil {
+	if adversarial["status"] != "interrupted" || adversarial["class"] != "timeout" || adversarial["output"] != nil {
 		t.Fatalf("adversarial entry = %v", adversarial)
 	}
-	if architecture["node"] != "architecture" || architecture["status"] != "completed" || architecture["output"] == nil {
+	if architecture["status"] != "completed" || architecture["output"] == nil {
 		t.Fatalf("architecture entry = %v", architecture)
 	}
 }
@@ -153,14 +156,12 @@ func lastRunIn(t *testing.T, dir string) run {
 	var r run
 	r.dir = dir
 	readJSON(t, filepath.Join(dir, "record.json"), &r.record)
-	if data, err := os.ReadFile(filepath.Join(dir, "provider.jsonl")); err == nil {
-		_ = json.Unmarshal([]byte(strings.SplitN(string(data), "\n", 2)[0]), &r.first)
-	}
+	_ = json.Unmarshal([]byte(runtimeEcho(dir)), &r.first)
 	return r
 }
 
-// A CLI killed while a workflow's fan-out nodes run leaves their runtimes
-// and checkouts behind. The next call's reap treats each node's run like
+// A CLI killed while a workflow's fan-out nodes run in its worktree
+// (ADR-025) leaves their runtimes behind. The next call's reap treats each node's run like
 // any unfinished run: it ends their effects and finishes them lost; the
 // workflow run, unfinished and unowned, reads lost too. The runs are
 // abandoned in process, as the kill leaves them, with their runtimes
@@ -180,7 +181,7 @@ func TestNextCallReapsAKilledWorkflowsNodes(t *testing.T) {
 	config := cli.Config{Home: home, Cwd: repo}
 	// The process that is killed: its nodes' waits are on a clock that
 	// never moves, so only the test ends their runtimes.
-	killed := on(config, systemtest.NewClock(at).Timer)
+	killed := on(config, clocktest.NewClock(at).Timer)
 	killed.poll = unpolled(t)
 	victim, _, err := killed.wire(config)
 	if err != nil {
@@ -195,7 +196,7 @@ func TestNextCallReapsAKilledWorkflowsNodes(t *testing.T) {
 	// it, whatever point the test reached.
 	cleanupRun(t, victim, killed.hosted, id)
 
-	// Both fan-out nodes run, each with its runtime and checkout on record.
+	// Both fan-out nodes run, each with its runtime and worktree on record.
 	var started []string
 	until(t, victim, id, func(event contract.Event) bool {
 		if node, ok := event.Data["run"].(string); ok && event.Kind == "NODE_STARTED" {
@@ -207,7 +208,7 @@ func TestNextCallReapsAKilledWorkflowsNodes(t *testing.T) {
 	for _, node := range started {
 		until(t, victim, node, func(event contract.Event) bool { return event.Kind == "PROCESS_STARTED" })
 		record, _, err := killed.runs.Get(ctx, node)
-		if err != nil || record.Parent == nil || record.Effects == nil || record.Effects.Process == nil || record.Effects.Checkout == nil {
+		if err != nil || record.Parent == nil || record.Effects == nil || record.Effects.Process == nil || record.InPlace == nil || record.InPlace.Dir != repo {
 			t.Fatalf("node run %s: %+v, %v", node, record.Effects, err)
 		}
 		if _, token, err := supervisor.ParseRef(record.Effects.Process.Ref); err != nil || token == "" {
@@ -226,7 +227,7 @@ func TestNextCallReapsAKilledWorkflowsNodes(t *testing.T) {
 	}
 
 	const timeout = 7 * time.Minute
-	clock := systemtest.NewClock(at)
+	clock := clocktest.NewClock(at)
 	composed := on(config, timeoutOn(clock, timeout))
 	composed.processes = left
 	client, background, err := composed.wire(config)
@@ -234,7 +235,7 @@ func TestNextCallReapsAKilledWorkflowsNodes(t *testing.T) {
 		t.Fatal(err)
 	}
 	next, err := client.Submit(ctx, contract.CallRequest{
-		Process: "adversarial_review", Params: map[string]string{"base": "main"}, Timeout: "7m", Cwd: repo,
+		Process: "adversarial_review_reviewer", Params: map[string]string{"base": "main"}, Timeout: "7m", Cwd: repo,
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -247,9 +248,6 @@ func TestNextCallReapsAKilledWorkflowsNodes(t *testing.T) {
 	for _, node := range nodes {
 		if left.alive(node.Effects.Process.Ref) {
 			t.Fatalf("node run %s's runtime was not reaped", node.ID)
-		}
-		if _, err := os.Stat(node.Effects.Checkout.Dir); !errors.Is(err, os.ErrNotExist) {
-			t.Fatalf("checkout left behind: %v", err)
 		}
 		reaped, state, err := composed.runs.Get(ctx, node.ID)
 		if err != nil || state != domain.StateFinished || reaped.Result.Status != domain.Lost || reaped.Result.Error.Class != domain.ClassAbandoned {

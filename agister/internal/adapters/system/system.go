@@ -1,4 +1,5 @@
-// Package system provides the real clock and identifier sources.
+// Package system provides the real clock and identifier sources, and the
+// locks of the worktrees calls hold.
 package system
 
 import (

@@ -35,6 +35,13 @@
 // commentary.
 // Pi cannot limit cost.
 //
+// A turn given skills (ADR-021) gets each as --skill <folder>/<name>, in
+// order: before the turn, the adapter writes them into a folder of its own
+// outside the working directory, <folder>/<name>/SKILL.md, beside the
+// system prompt file, and removes it with that file when the turn ends.
+// They are added to the skills Pi discovers, and read as those are. A turn
+// given none writes and passes nothing.
+//
 // Sessions are kept in a directory Agister chooses (--session-dir), never
 // in ~/.pi: under Sessions, a fresh turn's in a new directory, renamed
 // after the turn to the session ID Pi reported in the stream's session
@@ -77,6 +84,7 @@ import (
 	"slices"
 	"strings"
 	"time"
+	"unicode/utf8"
 )
 
 const Contract = "pi/1"
@@ -140,6 +148,9 @@ type Runner struct {
 	// supervisor.
 	Transport Transport
 	KillGrace time.Duration // zero: the supervisor default
+	// TempDir is the folder a turn's own temporary folder is made in;
+	// empty: the system's temporary directory.
+	TempDir string
 	// Sessions is the directory Pi's sessions are kept under, one
 	// directory per session, named by its ID; empty: agister-pi-sessions
 	// in the temporary directory.
@@ -164,13 +175,14 @@ func (r *Runner) Identity(ctx context.Context) (RuntimeIdentity, error) {
 	if version == "" {
 		return RuntimeIdentity{}, fmt.Errorf("unrecognized version output %q", out)
 	}
-	return RuntimeIdentity{Contract: Contract, Version: version, Resume: true, ResumeWhereItRan: true, ToolCalls: true, SkillTools: slices.Clone(SkillTools)}, nil
+	return RuntimeIdentity{Contract: Contract, Version: version, Resume: true, ResumeWhereItRan: true, ToolCalls: true, SkillTools: slices.Clone(SkillTools), Skills: true}, nil
 }
 
 // Arguments builds the command line for a turn whose sessions are kept in
-// sessionDir and whose system prompt addition is the file systemPrompt
-// (none when empty).
-func Arguments(request TurnRequest, sessionDir, systemPrompt string) ([]string, error) {
+// sessionDir, whose system prompt addition is the file systemPrompt (none
+// when empty) and whose skills are in the folder skills (unused when it
+// has none).
+func Arguments(request TurnRequest, sessionDir, systemPrompt, skills string) ([]string, error) {
 	if request.MaxCostUSD != nil {
 		return nil, errors.New("pi/1 cannot limit cost")
 	}
@@ -201,6 +213,9 @@ func Arguments(request TurnRequest, sessionDir, systemPrompt string) ([]string, 
 		args = append(args, "--thinking", request.Effort)
 	}
 	args = append(args, "--tools", strings.Join(request.Primitives, ","))
+	for _, skill := range request.Skills {
+		args = append(args, "--skill", filepath.Join(skills, skill.Name))
+	}
 	if systemPrompt != "" {
 		args = append(args, "--append-system-prompt", systemPrompt)
 	}
@@ -227,23 +242,32 @@ func (r *Runner) RunTurn(ctx context.Context, request TurnRequest, sink EventSin
 	if root == "" {
 		root = filepath.Join(os.TempDir(), "agister-pi-sessions")
 	}
-	sessionDir, err := r.sessionDir(root, request)
-	if err != nil {
-		return failedTurn(ClassRuntimeError, err)
-	}
-	var systemPrompt string
-	if text := SystemPrompt(request); text != "" {
-		dir, err := os.MkdirTemp("", "agister-pi-")
+	// The turn's own files: its system prompt and its skills.
+	var systemPrompt, skills string
+	if text := SystemPrompt(request); text != "" || len(request.Skills) > 0 {
+		dir, err := os.MkdirTemp(r.TempDir, "agister-pi-")
 		if err != nil {
 			return failedTurn(ClassInternal, err)
 		}
 		defer os.RemoveAll(dir)
-		systemPrompt = filepath.Join(dir, "system-prompt.md")
-		if err := os.WriteFile(systemPrompt, []byte(text), 0o600); err != nil {
-			return failedTurn(ClassInternal, err)
+		if text != "" {
+			systemPrompt = filepath.Join(dir, "system-prompt.md")
+			if err := os.WriteFile(systemPrompt, []byte(text), 0o600); err != nil {
+				return failedTurn(ClassInternal, err)
+			}
+		}
+		if len(request.Skills) > 0 {
+			skills = filepath.Join(dir, "skills")
+			if err := WriteSkills(skills, request.Skills); err != nil {
+				return failedTurn(ClassInternal, err)
+			}
 		}
 	}
-	args, err := Arguments(request, sessionDir, systemPrompt)
+	sessionDir, err := r.sessionDir(root, request)
+	if err != nil {
+		return failedTurn(ClassRuntimeError, err)
+	}
+	args, err := Arguments(request, sessionDir, systemPrompt, skills)
 	if err != nil {
 		if request.ResumeSessionID == "" {
 			os.RemoveAll(sessionDir)
@@ -266,7 +290,7 @@ func (r *Runner) RunTurn(ctx context.Context, request TurnRequest, sink EventSin
 			if tool.Started != nil {
 				sink.ToolStarted(*tool.Started)
 			} else {
-				sink.ToolFinished(tool.Finished)
+				sink.ToolFinished(*tool.Finished)
 			}
 		}
 	})
@@ -274,6 +298,26 @@ func (r *Runner) RunTurn(ctx context.Context, request TurnRequest, sink EventSin
 		keep(root, sessionDir, state.SessionID)
 	}
 	return state.Reconcile(evidence, len(request.OutputSchema) > 0)
+}
+
+// WriteSkills writes a turn's skills into the folder dir, which it makes:
+// <dir>/<name>/SKILL.md for each skill, from its bytes.
+func WriteSkills(dir string, skills []Skill) error {
+	if err := os.Mkdir(dir, 0o700); err != nil {
+		return err
+	}
+	for _, skill := range skills {
+		if name := skill.Name; name != filepath.Base(name) || name == "." || name == ".." {
+			return fmt.Errorf("%s cannot give skill %q: not a folder's name", Contract, name)
+		}
+		if err := os.Mkdir(filepath.Join(dir, skill.Name), 0o700); err != nil {
+			return err
+		}
+		if err := os.WriteFile(filepath.Join(dir, skill.Name, "SKILL.md"), skill.Bytes, 0o600); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // sessionDir is the directory a turn's session is kept in: a new one
@@ -395,11 +439,11 @@ type Message struct {
 	ErrorMessage string
 }
 
-// Tool is a tool call the stream reported: its start, or the ID of the one
-// that finished.
+// Tool is a tool call the stream reported: its start, or the end of one,
+// with its result.
 type Tool struct {
 	Started  *ToolCall
-	Finished string
+	Finished *ToolResult
 }
 
 // TakeTools returns the tool calls reduced since it was last called, in
@@ -439,7 +483,9 @@ func (s *Stream) Reduce(line string) []Event {
 	case "tool_execution_end":
 		id, _ := message["toolCallId"].(string)
 		if id != "" {
-			s.tools = append(s.tools, Tool{Finished: id})
+			result, _ := message["result"].(map[string]any)
+			text, reported := contentText(result["content"])
+			s.tools = append(s.tools, Tool{Finished: finished(id, text, reported)})
 		}
 		isError, _ := message["isError"].(bool)
 		return []Event{{SourceProtocol, "TOOL_RESULT", map[string]any{"tool_use_id": id, "is_error": isError}}}
@@ -697,4 +743,42 @@ func truncate(text string, max int) string {
 		return text
 	}
 	return text[:max] + "…"
+}
+
+// finished is the end of the call id, with the result's text the stream
+// reported for it, if it reported one: bounded to ToolResultBytes, its head
+// and tail kept, each cut on a rune boundary.
+func finished(id, text string, reported bool) *ToolResult {
+	result := &ToolResult{ID: id, Output: text, Reported: reported}
+	if !reported {
+		result.Output = ""
+		return result
+	}
+	if len(text) <= ToolResultBytes {
+		return result
+	}
+	head, tail := ToolResultBytes/2, len(text)-ToolResultBytes/2
+	for head > 0 && !utf8.RuneStart(text[head]) {
+		head--
+	}
+	for tail < len(text) && !utf8.RuneStart(text[tail]) {
+		tail++
+	}
+	result.Output = text[:head] + "\n…\n" + text[tail:]
+	return result
+}
+
+// contentText is the text of a tool result's content blocks, joined;
+// reported is false when it has none.
+func contentText(content any) (text string, reported bool) {
+	blocks, _ := content.([]any)
+	var texts []string
+	for _, item := range blocks {
+		if block, ok := item.(map[string]any); ok && block["type"] == "text" {
+			if text, ok := block["text"].(string); ok {
+				texts = append(texts, text)
+			}
+		}
+	}
+	return strings.Join(texts, "\n"), len(texts) > 0
 }

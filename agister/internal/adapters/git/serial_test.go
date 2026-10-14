@@ -11,14 +11,14 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"syscall"
 	"testing"
 	"time"
 
-	"github.com/igor1309/ai-labs/agister/internal/adapters/system/systemtest"
-	"github.com/igor1309/ai-labs/agister/internal/app"
+	"github.com/igor1309/ai-labs/gokit/clocktest"
 )
 
 // What runs when is decided by the gate, never by timing: the deadline
@@ -42,6 +42,24 @@ func emptyRepository(t *testing.T) string {
 	return dir
 }
 
+// planted is a checkout of main in repository as runs made them before
+// ADR-025, at <temp>/agister-checkout-<id>/workspace-<id>, made outside any
+// coordinator: an old run's checkout on record for the reap to remove.
+// Whatever the test leaves of it is removed at its end.
+func planted(t *testing.T, repository string) string {
+	t.Helper()
+	parent, err := os.MkdirTemp("", "agister-checkout-")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.RemoveAll(parent) })
+	dir := filepath.Join(parent, workspace(filepath.Base(parent)))
+	if _, err := run(context.Background(), repository, "worktree", "add", "--detach", "--quiet", dir, "main"); err != nil {
+		t.Fatal(err)
+	}
+	return dir
+}
+
 // event is what a worktree command tells the gate: that it found the lock
 // held and waits, or that it has the lock and runs in dir.
 type event struct {
@@ -52,8 +70,7 @@ type event struct {
 // gate is the worktree runner of a test's own Worktrees: every worktree
 // command reports the directory it runs in, and one in the held directory
 // (any, when held is empty) then stays under its lock until pass lets it
-// run. Workers, checkouts and copies started through the gate are its to
-// end: see gated.
+// run. Workers started through the gate are its to end: see gated.
 type gate struct {
 	workspaces Workspaces
 	held       string
@@ -62,42 +79,13 @@ type gate struct {
 	// open, once closed, lets every command through unreported.
 	open chan struct{}
 
-	workers   sync.WaitGroup
-	checkouts []*checkout
-	copies    [][2]string
-}
-
-// checkout is a checkout's release, from the moment it succeeds until it
-// is run.
-type checkout struct {
-	mu      sync.Mutex
-	release func() error
-}
-
-func (c *checkout) made(release func() error) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	c.release = release
-}
-
-// run releases the checkout, once: nothing is left to do for one that
-// failed or is released already.
-func (c *checkout) run() error {
-	c.mu.Lock()
-	release := c.release
-	c.release = nil
-	c.mu.Unlock()
-	if release == nil {
-		return nil
-	}
-	return release()
+	workers sync.WaitGroup
 }
 
 // gated makes Workspaces whose worktree commands pass through a gate. Its
 // cleanup, which runs before the cleanup of every repository made before
-// it, opens the gate and joins the workers, and only then releases the
-// checkouts not released yet and discards the copies: whatever a failed
-// test left running or on disk.
+// it, opens the gate and joins the workers: whatever a failed test left
+// running.
 func gated(t *testing.T, held string) *gate {
 	t.Helper()
 	g := &gate{held: held, events: make(chan event, 16), proceed: make(chan struct{}), open: make(chan struct{})}
@@ -120,18 +108,7 @@ func gated(t *testing.T, held string) *gate {
 		select {
 		case <-joined:
 		case <-time.After(hangGuard):
-			t.Error("workers still run with the gate open: their checkouts are not released")
-			return
-		}
-		for _, made := range g.checkouts {
-			if err := made.run(); err != nil {
-				t.Errorf("releasing a checkout: %v", err)
-			}
-		}
-		for _, copy := range g.copies {
-			if err := g.workspaces.Discard(context.Background(), copy[0], copy[1]); err != nil {
-				t.Errorf("discarding a copy: %v", err)
-			}
+			t.Error("workers still run with the gate open")
 		}
 	})
 	return g
@@ -163,29 +140,9 @@ func (g *gate) start(do func() error) <-chan error {
 	return done
 }
 
-// checkout starts a checkout of main at path aside. From the moment it
-// succeeds its release is the gate's to run at cleanup, unless the test
-// runs the release it is given first.
-func (g *gate) checkout(ctx context.Context, path string) (<-chan error, func() error) {
-	made := &checkout{}
-	g.checkouts = append(g.checkouts, made)
-	return g.start(func() error {
-		_, release, err := g.workspaces.Checkout(ctx, path, "main")
-		if err == nil {
-			made.made(release)
-		}
-		return err
-	}), made.run
-}
-
-var places atomic.Int64
-
-// place names the directory of a copy in repository, which the gate
-// discards at cleanup.
-func (g *gate) place(repository string) string {
-	dir := g.workspaces.Place(fmt.Sprintf("serial-%d-%d", os.Getpid(), places.Add(1)))
-	g.copies = append(g.copies, [2]string{repository, dir})
-	return dir
+// discard starts the removal of the old checkout dir in repository aside.
+func (g *gate) discard(ctx context.Context, repository, dir string) <-chan error {
+	return g.start(func() error { return g.workspaces.Discard(ctx, repository, dir) })
 }
 
 // next is the next event of the gate. A worker (up to three are watched)
@@ -281,24 +238,11 @@ func TestWorktreeCommandsOfOneRepositoryNeverOverlap(t *testing.T) {
 		done(t, two)
 	}
 
-	var release func() error
-	checkout := func() (worker <-chan error) {
-		worker, release = g.checkout(ctx, repo)
-		return worker
-	}
-	dir := g.place(repo)
-	copy := func() <-chan error {
-		return g.start(func() error { return g.workspaces.Copy(ctx, repo, dir, "main", nil) })
-	}
-	discard := func() <-chan error {
-		return g.start(func() error { return g.workspaces.Discard(ctx, repo, dir) })
-	}
-	released := func() <-chan error { return g.start(release) }
-
-	inTurn(checkout, copy)
-	inTurn(released, discard)
-	inTurn(copy, checkout)
-	inTurn(discard, released)
+	first, second := planted(t, repo), planted(t, repo)
+	inTurn(
+		func() <-chan error { return g.discard(ctx, repo, first) },
+		func() <-chan error { return g.discard(ctx, repo, second) },
+	)
 }
 
 // Contract test: the worktree coordinator over real git and its real lock
@@ -313,12 +257,12 @@ func TestDifferentRepositoriesDoNotWaitOnEachOther(t *testing.T) {
 
 	// Both stay at the gate, each under its repository's lock, until both
 	// are seen there: neither worker can end while an event is awaited.
-	held, _ := g.checkout(context.Background(), busy)
+	held := g.discard(context.Background(), busy, planted(t, busy))
 	g.enters(t, held)
 
-	free, _ := g.checkout(context.Background(), other)
+	free := g.discard(context.Background(), other, planted(t, other))
 	if g.next(t, held, free).waited {
-		t.Fatal("a checkout in another repository waited for the busy one")
+		t.Fatal("a removal in another repository waited for the busy one")
 	}
 
 	g.pass(t)
@@ -358,11 +302,11 @@ func TestTwoPathsOfOneRepositoryShareTheLock(t *testing.T) {
 	}
 	g := gated(t, absolute)
 
-	held, _ := g.checkout(context.Background(), absolute)
+	held := g.discard(context.Background(), absolute, planted(t, repo))
 	g.enters(t, held)
 	workers := []<-chan error{held}
 	for _, path := range []string{relative, linked, link} {
-		waiting, _ := g.checkout(context.Background(), path)
+		waiting := g.discard(context.Background(), path, planted(t, repo))
 		g.queues(t, held, waiting)
 		workers = append(workers, waiting)
 	}
@@ -383,30 +327,19 @@ func TestACancelledContextStopsTheWait(t *testing.T) {
 	repo := emptyRepository(t)
 	g := gated(t, "")
 
-	held, _ := g.checkout(context.Background(), repo)
+	held := g.discard(context.Background(), repo, planted(t, repo))
 	g.enters(t, held)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	waiting, _ := g.checkout(ctx, repo)
+	waiting := g.discard(ctx, repo, planted(t, repo))
 	g.queues(t, held, waiting)
-	dir := g.place(repo)
-	copying := g.start(func() error { return g.workspaces.Copy(ctx, repo, dir, "main", nil) })
-	g.queues(t, held, waiting, copying)
 	cancel()
 	if err := result(t, waiting); !errors.Is(err, context.Canceled) {
-		t.Fatalf("a checkout cancelled while it waited: %v", err)
-	}
-	// The copy returns while the lock is still held: it does not wait a
-	// second time, without cancellation, to remove what it never added.
-	if err := result(t, copying); !errors.Is(err, context.Canceled) || !errors.Is(err, app.ErrCopyNotStarted) {
-		t.Fatalf("a copy cancelled while it waited: %v", err)
+		t.Fatalf("a removal cancelled while it waited: %v", err)
 	}
 	if len(g.events) != 0 {
-		t.Fatal("a cancelled checkout or copy reached the lock again")
-	}
-	if _, err := os.Stat(filepath.Dir(dir)); !errors.Is(err, os.ErrNotExist) {
-		t.Fatalf("the cancelled copy left its directory: %v", err)
+		t.Fatal("a cancelled removal reached the lock again")
 	}
 
 	g.pass(t)
@@ -417,10 +350,12 @@ func TestACancelledContextStopsTheWait(t *testing.T) {
 func TestWorkspacesWithoutWorktreesMakeNoWorktreeChange(t *testing.T) {
 	t.Parallel()
 	repo := emptyRepository(t)
-	dir, release, err := Workspaces{}.Checkout(context.Background(), repo, "main")
-	if err == nil {
-		release()
-		t.Fatalf("a checkout outside the process's Worktrees was made at %s", dir)
+	dir := planted(t, repo)
+	if err := (Workspaces{}).Discard(context.Background(), repo, dir); !errors.Is(err, errNoWorktrees) {
+		t.Fatalf("a removal outside the process's Worktrees: %v", err)
+	}
+	if out, err := run(context.Background(), repo, "worktree", "list", "--porcelain"); err != nil || !strings.Contains(out, filepath.Base(dir)) {
+		t.Fatalf("the checkout's record went: %v\n%s", err, out)
 	}
 }
 
@@ -723,63 +658,6 @@ func (e *expiry) Err() error {
 // Serial: a lock is its open file's (flock). A process another test starts
 // holds a copy from its fork to its exec, and a lock just released would
 // read as held.
-func TestACheckoutReleaseStopsWaitingForTheLockFileAtTheCleanupDeadline(t *testing.T) {
-	repo := emptyRepository(t)
-	l := newTurns(t)
-	one, two := l.coordinator("one"), l.coordinator("two")
-	// The second process's checkout is real: its release has a worktree to
-	// remove.
-	two.Git = nil
-	deadline := expiring(t)
-	workspaces := NewWorkspaces(two.Worktrees)
-	workspaces.Cleanup = func(ctx context.Context) (context.Context, context.CancelFunc) {
-		deadline.Context = ctx
-		return deadline, func() {}
-	}
-	dir, release, err := workspaces.Checkout(context.Background(), repo, "main")
-	if err != nil {
-		t.Fatal(err)
-	}
-	// However the test ends, the deadline passes and the holders end
-	// first, and the checkout is then discarded under a fresh cleanup
-	// context, not the one that passed.
-	t.Cleanup(func() {
-		deadline.pass()
-		l.end(t)
-		if err := NewWorkspaces(two.Worktrees).Discard(context.Background(), repo, dir); err != nil {
-			t.Errorf("discarding the checkout: %v", err)
-		}
-	})
-
-	held := l.command(context.Background(), one, repo)
-	receive(t, l.entered, "the held command entering git")
-	released := l.start(context.Background(), func(context.Context) error { return release() })
-	receive(t, two.waits, "the release waiting for the lock file")
-	deadline.pass()
-	if err := receive(t, released, "the release ending at its deadline"); !errors.Is(err, context.DeadlineExceeded) {
-		t.Fatalf("a release whose cleanup deadline passed while it waited: %v", err)
-	}
-	select {
-	case err := <-held:
-		t.Fatalf("the holder ended before the release returned: %v", err)
-	default:
-	}
-	if got, want := l.entries(), []string{"one in"}; fmt.Sprint(got) != fmt.Sprint(want) {
-		t.Fatalf("commands ran as %v, not %v", got, want)
-	}
-
-	l.free()
-	if err := receive(t, held, "the held command ending"); err != nil {
-		t.Fatal(err)
-	}
-}
-
-// Contract test: the lock files two coordinators share as two processes do,
-// the kernel's flock. The timers only guard a hang.
-//
-// Serial: a lock is its open file's (flock). A process another test starts
-// holds a copy from its fork to its exec, and a lock just released would
-// read as held.
 func TestDiscardStopsWaitingForTheLockFileAtTheCleanupDeadline(t *testing.T) {
 	repo := emptyRepository(t)
 	l := newTurns(t)
@@ -790,7 +668,7 @@ func TestDiscardStopsWaitingForTheLockFileAtTheCleanupDeadline(t *testing.T) {
 		deadline.Context = ctx
 		return deadline, func() {}
 	}
-	dir := workspaces.Place(fmt.Sprintf("serial-%d-%d", os.Getpid(), places.Add(1)))
+	dir := planted(t, repo)
 
 	held := l.command(context.Background(), one, repo)
 	receive(t, l.entered, "the held command entering git")
@@ -822,7 +700,7 @@ func TestTheDefaultCleanupContextHasADeadlineOfOneMinute(t *testing.T) {
 	t.Parallel()
 	now := time.Date(2026, 10, 3, 12, 0, 0, 0, time.UTC)
 	worktrees := NewWorktrees(t.TempDir())
-	worktrees.Clock = systemtest.NewClock(now)
+	worktrees.Clock = clocktest.NewClock(now)
 	ctx, cancel := NewWorkspaces(worktrees).cleanup(context.Background())
 	defer cancel()
 	if deadline, ok := ctx.Deadline(); !ok || !deadline.Equal(now.Add(time.Minute)) {
@@ -844,7 +722,7 @@ func TestALockFileHeldIsTriedAgainOnlyOnceTheRetryHasPassed(t *testing.T) {
 	repo := emptyRepository(t)
 	l := newTurns(t)
 	one, two := l.coordinator("one"), l.coordinator("two")
-	clock := systemtest.NewClock(time.Date(2026, 10, 3, 12, 0, 0, 0, time.UTC))
+	clock := clocktest.NewClock(time.Date(2026, 10, 3, 12, 0, 0, 0, time.UTC))
 	two.Timer = clock.Timer
 	ctx := context.Background()
 

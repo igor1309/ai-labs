@@ -16,26 +16,29 @@ import (
 	"testing"
 	"time"
 
+	"github.com/igor1309/ai-labs/agister/internal/adapters/fscache"
 	"github.com/igor1309/ai-labs/agister/internal/adapters/fsdefs"
 	"github.com/igor1309/ai-labs/agister/internal/adapters/fsruns"
 	"github.com/igor1309/ai-labs/agister/internal/adapters/git"
 	"github.com/igor1309/ai-labs/agister/internal/adapters/git/gittest"
+	"github.com/igor1309/ai-labs/agister/internal/adapters/inputs"
 	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/runtimetest"
-	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/supervisor"
 	"github.com/igor1309/ai-labs/agister/internal/adapters/schema"
 	"github.com/igor1309/ai-labs/agister/internal/adapters/system"
-	"github.com/igor1309/ai-labs/agister/internal/adapters/system/systemtest"
 	"github.com/igor1309/ai-labs/agister/internal/app"
 	runtimecomposition "github.com/igor1309/ai-labs/agister/internal/composition/runtime"
 	"github.com/igor1309/ai-labs/agister/internal/contract"
 	domain "github.com/igor1309/ai-labs/agister/internal/domain/run"
+	"github.com/igor1309/ai-labs/gokit/clocktest"
+	"github.com/igor1309/ai-labs/gokit/supervisor"
+	"github.com/igor1309/ai-labs/gokit/supervisor/supervisortest"
 )
 
-// The verification loop (ADR-002; where the command runs, ADR-005) on
-// checkouts of temporary repositories of the fake of git, with the real
-// command runner and evidence store; a few tests keep real git, where
-// their claim is the checkouts, clean copies and patches git makes. The
-// runtime is a scripted fake whose turns write files in the checkout, and
+// The verification loop (ADR-002; where the command runs, ADR-025 rule 5)
+// in the worktrees of temporary repositories of the fake of git, with the
+// real command runner and evidence store; a few tests keep real git, where
+// their claim is the content and patches git makes. The runtime is a
+// scripted fake whose turns write files in the worktree, and
 // the verification command is a fixture driven by those files: by default
 // it prints the file state and passes when it says "pass". The shell the
 // runner starts for it is a fake run in process (inProcessCommands); what
@@ -43,7 +46,7 @@ import (
 
 const passWhenStateSaysPass = "cat state; grep -qx pass state"
 
-// step is one scripted turn: it may change the checkout and says how the
+// step is one scripted turn: it may change the worktree and says how the
 // turn ended.
 type step func(t *testing.T, request app.TurnRequest) domain.Turn
 
@@ -53,17 +56,27 @@ type scripted struct {
 	mu       sync.Mutex
 	steps    []step
 	requests []app.TurnRequest
+	// toolCalls is whether the runtime reports its tool calls; reports,
+	// when set, is what turn n, counted from 0, reports before its step:
+	// it returns once the turn may end. Both are set before the first call.
+	toolCalls bool
+	reports   func(ctx context.Context, sink app.EventSink, n int)
 }
 
 func (s *scripted) Identity(context.Context) (app.RuntimeIdentity, error) {
-	return app.RuntimeIdentity{Contract: "fake/1", Version: "1.0.0", Resume: true, CostLimit: true}, nil
+	return app.RuntimeIdentity{Contract: "fake/1", Version: "1.0.0", Resume: true, CostLimit: true, ToolCalls: s.toolCalls}, nil
 }
 
-func (s *scripted) RunTurn(_ context.Context, request app.TurnRequest, _ app.EventSink) domain.Turn {
+func (*scripted) Admit(app.TurnStart) *domain.Error { return nil }
+
+func (s *scripted) RunTurn(ctx context.Context, request app.TurnRequest, sink app.EventSink) domain.Turn {
 	s.mu.Lock()
 	n := len(s.requests)
 	s.requests = append(s.requests, request)
 	s.mu.Unlock()
+	if s.reports != nil {
+		s.reports(ctx, sink, n)
+	}
 	if n >= len(s.steps) {
 		return domain.Turn{Status: domain.Failed, Error: domain.Fault(domain.ClassRuntimeError, "no turn %d scripted", n+1)}
 	}
@@ -83,7 +96,21 @@ func (noProblems) Check(context.Context) (app.ResolverChecked, error) {
 	return app.ResolverChecked{}, nil
 }
 
+// goneProcesses finds every process an earlier in-place run recorded gone.
+type goneProcesses struct{}
+
+func (goneProcesses) Reap(context.Context, string) (app.HoldReaping, error) {
+	return app.HoldReapGone, nil
+}
+
 // fakeRuntimes builds the scripted runtime for the fake adapter.
+// ownedRuns leaves every unfinished run to its owner.
+type ownedRuns struct{}
+
+func (ownedRuns) ReapRun(context.Context, string) (domain.Record, bool, error) {
+	return domain.Record{}, true, nil
+}
+
 type fakeRuntimes struct{ runner *scripted }
 
 func (f fakeRuntimes) Runner(string, string) (app.TurnRunner, error) { return f.runner, nil }
@@ -106,7 +133,7 @@ func turn(mutate ...func(*domain.Turn)) domain.Turn {
 	return result
 }
 
-// writes is a step that writes files in the checkout and ends as turn does.
+// writes is a step that writes files in the worktree and ends as turn does.
 func writes(files map[string]string, mutate ...func(*domain.Turn)) step {
 	return func(t *testing.T, request app.TurnRequest) domain.Turn {
 		for name, content := range files {
@@ -128,24 +155,23 @@ type verifySettings struct {
 	command     string
 	timeout     string // verify.timeout; 20s when empty
 	maxAttempts int    // 3 when zero
-	policy      string // appended to the policy
+	limits      string // appended to the process
 	// setup is the process's workspace.setup, in flow style; none when
-	// empty.
+	// empty. A call ignores it (ADR-025 rule 3).
 	setup string
-	// workspace and globalWorkspace are the workspace.yaml of the
-	// settings and of a global layer under them; none when empty.
-	workspace, globalWorkspace string
+	// workspace is the settings' workspace.yaml; none when empty.
+	workspace string
 }
 
 type loopHarness struct {
 	t    *testing.T
 	repo string
 	home string
-	// left lists the checkouts and clean copies not yet removed.
+	// left lists the worktrees beside the repository's own, which no call
+	// makes (ADR-025 rule 1).
 	left     func() []string
 	runner   *scripted
 	commands *recordingCommands
-	setup    *recordingSetupCommands
 	calls    *app.Calls
 	runs     *app.Runs
 	// hosted holds the harness's calls; wait awaits their Done.
@@ -174,25 +200,6 @@ func (c *recordingCommands) requests() []app.CommandRequest {
 	return append([]app.CommandRequest(nil), c.seen...)
 }
 
-// recordingSetupCommands keeps setup requests while preserving command injection.
-type recordingSetupCommands struct {
-	app.SetupCommands
-	mu   sync.Mutex
-	seen []app.SetupCommandRequest
-}
-
-func (c *recordingSetupCommands) Run(ctx context.Context, request app.SetupCommandRequest, started func(string) error) app.SetupCommandResult {
-	c.mu.Lock()
-	c.seen = append(c.seen, request)
-	c.mu.Unlock()
-	return c.SetupCommands.Run(ctx, request, started)
-}
-func (c *recordingSetupCommands) requests() []app.SetupCommandRequest {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	return append([]app.SetupCommandRequest(nil), c.seen...)
-}
-
 // seams are the harness's collaborators a test replaces; each left zero is
 // the harness's own.
 type seams struct {
@@ -201,12 +208,12 @@ type seams struct {
 	changes app.CallChanges
 	// clock tells the time, for the call and its verification alike.
 	clock app.CallClock
-	// copies wraps what makes the verification's clean copies.
-	copies func(app.VerifyCopies) app.VerifyCopies
 	// commands runs the verification command.
 	commands app.VerifyCommands
-	// setupCommands runs the checkout setup command.
-	setupCommands app.SetupCommands
+	// groups numbers the process groups of the commands run in process: a
+	// test that gives commands of its own (inProcessCommands) gives the
+	// Groups they number from.
+	groups *supervisortest.Groups
 }
 
 // newLoop is a repository of the fake of git with a base revision,
@@ -223,7 +230,7 @@ func newLoopWith(t *testing.T, with seams, settings verifySettings, steps ...ste
 }
 
 // newGitLoop is newLoop in a real git repository, for the tests whose
-// claim is what git makes of the checkouts, clean copies and patches.
+// claim is what git makes of the content and patches.
 func newGitLoop(t *testing.T, settings verifySettings, steps ...step) *loopHarness {
 	return newGitLoopWith(t, seams{}, settings, steps...)
 }
@@ -241,9 +248,10 @@ type loopGit struct {
 	repo       string
 	workspaces app.CallWorkspaces
 	content    app.CallChanges
-	copies     app.VerifyCopies
 	revision   app.InputProvider
-	// left lists the checkouts and clean copies not yet removed.
+	// state reads the worktree a call holds.
+	state app.HoldWorktrees
+	// left lists the worktrees beside the repository's own.
 	left func() []string
 	// given gives the git to every composition over home.
 	given func(home string)
@@ -263,7 +271,7 @@ func fakeLoopGit(t *testing.T) loopGit {
 	fake := gittest.New(tempDir(t))
 	fake.Record(repo).Commit("main", base)
 	return loopGit{
-		repo: repo, workspaces: fake, content: fake, copies: fake, revision: fake.Revision(),
+		repo: repo, workspaces: fake, content: fake, revision: fake.Revision(), state: fake,
 		left: func() []string {
 			left, err := fake.Left()
 			if err != nil {
@@ -292,7 +300,7 @@ func realLoopGit(t *testing.T) loopGit {
 	gitCmd(t, repo, "commit", "--quiet", "-m", "base")
 	workspaces := git.NewWorkspaces(git.NewWorktrees(tempDir(t)))
 	return loopGit{
-		repo: repo, workspaces: workspaces, content: workspaces, copies: workspaces, revision: git.Revision{},
+		repo: repo, workspaces: workspaces, content: workspaces, revision: git.Revision{}, state: git.Workspaces{},
 		left:  func() []string { return strings.Split(gitCmd(t, repo, "worktree", "list"), "\n")[1:] },
 		given: func(home string) { onRealGit(t, home) },
 	}
@@ -307,18 +315,14 @@ func loopOn(t *testing.T, over loopGit, with seams, settings verifySettings, ste
 	if with.clock == nil {
 		with.clock = system.Clock{}
 	}
-	copies := over.copies
-	if with.copies != nil {
-		copies = with.copies(copies)
-	}
 	// A turn or a command that ends by itself waits on no time: its
 	// timeout, graces and staleness limits are on a clock that never moves.
-	still := systemtest.NewClock(time.Date(2026, 9, 30, 12, 0, 0, 0, time.UTC))
-	if with.commands == nil {
-		with.commands = runtimecomposition.Commands{Supervisor: inProcessCommands(still.Timer)}
+	still := clocktest.NewClock(time.Date(2026, 9, 30, 12, 0, 0, 0, time.UTC))
+	if with.groups == nil {
+		with.groups = supervisortest.NewGroups()
 	}
-	if with.setupCommands == nil {
-		with.setupCommands = runtimecomposition.SetupCommands{Supervisor: inProcessCommands(still.Timer)}
+	if with.commands == nil {
+		with.commands = runtimecomposition.Commands{Supervisor: inProcessCommands(with.groups, still.Timer)}
 	}
 	repo := over.repo
 
@@ -356,20 +360,16 @@ runtime = "fake"
 model = "m"
 model_family = "fam"
 command = "fake"
-session = "resumable"
 `,
-		"policies/impl.yaml": `schema: agister.process-policy/v1alpha1
-name: impl
-timeout: 1m
-tools: {allow: [repository.read, repository.write]}
-workspace: {access: read-write, scope: candidate}
-` + settings.policy,
 		"schemas/done.json": `{"type":"object","required":["done"],"properties":{"done":{"type":"boolean"}}}`,
+		"prompts/impl.md":   "Make the change the check asks for.\n",
 		"processes/impl.yaml": fmt.Sprintf(`schema: agister.process/v1alpha1
 name: impl
 type: process
-uses: agent:impl
-policy: process-policy:impl
+session: resumable
+timeout: 1m
+tools: {allow: [repository.read, repository.write]}
+prompt: impl
 input:
   instruction: Make the check pass.
   params:
@@ -377,7 +377,10 @@ input:
   values:
     candidate_revision: {source: git.revision, rev: "${param.candidate}"}
 workspace:
-  checkout: candidate_revision
+  access: read-write
+  scope: candidate
+  revision: candidate_revision
+  clean: true
 %soutput:
   format: json
   schema: done
@@ -387,7 +390,14 @@ verify:
   timeout: %s
   max_attempts: %d
   instruction: The check failed. Fix the cause, not the check.
-`, setupLine(settings.setup), strconv.Quote(settings.command), settings.timeout, settings.maxAttempts),
+`, setupLine(settings.setup), strconv.Quote(settings.command), settings.timeout, settings.maxAttempts) + settings.limits,
+		// Nothing but a workflow's node runs a process (ADR-030 rule 5):
+		// this one's call binds impl to agent impl.
+		"workflows/implement.yaml": `schema: agister.workflow/v1alpha1
+name: implement
+type: workflow
+call: {node: impl, uses: process:impl, agent: impl}
+`,
 		"workspace.yaml": settings.workspace,
 	} {
 		if text == "" {
@@ -399,21 +409,20 @@ verify:
 		write(t, filepath.Join(defs, name), text)
 	}
 
-	h := &loopHarness{t: t, repo: repo, home: tempDir(t), left: over.left, runner: &scripted{t: t, steps: steps}, commands: &recordingCommands{VerifyCommands: with.commands}, setup: &recordingSetupCommands{SetupCommands: with.setupCommands}}
+	h := &loopHarness{t: t, repo: repo, home: tempDir(t), left: over.left, runner: &scripted{t: t, steps: steps}, commands: &recordingCommands{VerifyCommands: with.commands}}
 	h.store = fsruns.Store{Dir: filepath.Join(h.home, "runs"), Appends: fsruns.NewAppends()}
 	over.given(h.home)
 	runtimes := fakeRuntimes{runner: h.runner}
 	h.hosted = app.NewHosted()
 	var definitions app.ResolverDefinitions = fsdefs.Store{Dir: defs}
-	if settings.globalWorkspace != "" {
-		global := fsdefs.Store{Dir: tempDir(t)}
-		write(t, filepath.Join(global.Dir, "workspace.yaml"), settings.globalWorkspace)
-		definitions = fsdefs.Layered{Global: global, Project: &fsdefs.Store{Dir: defs}}
-	}
+	holder := app.NewHolder(app.HoldAdapters{
+		Locks:     system.WorktreeLocks{Dir: filepath.Join(h.home, "locks", "in-place")},
+		Worktrees: over.state, Content: with.changes, Runs: h.store, Reaper: ownedRuns{}, Writers: goneProcesses{},
+	})
 	h.calls = app.NewCalls(
 		app.NewResolver(definitions, runtimes, schema.Validator{}, noProblems{}), runtimes,
-		map[string]app.InputProvider{"git.revision": over.revision},
-		over.workspaces, with.changes, app.NewPreparer(with.changes, h.setup, with.clock), app.NewVerifier(with.changes, copies, h.commands, with.clock), schema.Validator{},
+		map[string]app.InputProvider{"git.revision": over.revision}, fscache.Store{Dir: filepath.Join(h.home, "cache")}, inputs.File{},
+		over.workspaces, with.changes, holder, app.CallsVerifier{Verifier: app.NewVerifier(with.changes, h.commands, with.clock)}, app.NewRecoverer(with.clock), schema.Validator{},
 		h.store, h.store, with.clock, still.Timer, system.IDs{}, h.home, h.hosted,
 	)
 	// Observing a call hosted here waits on its appends, never on a poll.
@@ -422,9 +431,10 @@ verify:
 }
 
 // inProcessCommands is the command runner, the bash it starts a fake run
-// in process: no command is started as a process. Its waits are on timer.
-func inProcessCommands(timer timer) supervisor.Commands {
-	return supervisor.Commands{Starter: runtimetest.InProcess{}, Timer: timer}
+// in process: no command is started as a process. Its groups are numbered
+// by groups and its waits are on timer.
+func inProcessCommands(groups *supervisortest.Groups, timer timer) supervisor.Commands {
+	return supervisor.Commands{Starter: runtimetest.InProcess{Groups: groups}, Timer: timer}
 }
 
 // unpolled is Observe's poll timer for tests whose runs all run in the
@@ -447,7 +457,7 @@ func setupLine(setup string) string {
 
 func (h *loopHarness) submit(request contract.CallRequest) string {
 	h.t.Helper()
-	request.Process, request.Cwd = "impl", h.repo
+	request.Process, request.Cwd = "implement", h.repo
 	id, err := h.calls.Submit(context.Background(), request)
 	if err != nil {
 		h.t.Fatal(err)
@@ -455,8 +465,8 @@ func (h *loopHarness) submit(request contract.CallRequest) string {
 	return id
 }
 
-// wait returns the run's record once the call is done; the checkout and
-// every clean copy are gone by then.
+// wait returns the run's record once the call is done; no worktree is left
+// beside the repository's own.
 func (h *loopHarness) wait(id string) domain.Record {
 	h.t.Helper()
 	<-h.hosted.Done(id)
@@ -465,7 +475,7 @@ func (h *loopHarness) wait(id string) domain.Record {
 		h.t.Fatalf("run %s: %s, %v", id, state, err)
 	}
 	if left := h.left(); len(left) != 0 {
-		h.t.Fatalf("checkout left: %v", left)
+		h.t.Fatalf("worktrees left: %v", left)
 	}
 	return record
 }
@@ -524,10 +534,10 @@ func TestVerifyFirstPassMakesNoRepairTurn(t *testing.T) {
 }
 
 // A failing run is given back to the agent in the same session and the
-// same checkout, with the instruction, the command, its exit status and
+// same worktree, with the instruction, the command, its exit status and
 // its output; the repair turn is validated and the command runs again. The
 // output is the latest turn's; usage and cost sum every turn.
-func TestVerifyFailingRunIsRepairedInTheSameSessionAndCheckout(t *testing.T) {
+func TestVerifyFailingRunIsRepairedInTheSameSessionAndWorktree(t *testing.T) {
 	t.Parallel()
 	h := newLoop(t, verifySettings{}, state("one"), state("pass", func(turn *domain.Turn) {
 		turn.Output = json.RawMessage(`{"done":true,"turn":2}`)
@@ -610,9 +620,9 @@ func TestVerifyStopsOnTheSameFailureTwice(t *testing.T) {
 	}
 }
 
-// A run that changes the content of the clean copy it runs in fails
+// A run that changes the content of the worktree it runs in fails
 // whatever its exit status, and the evidence keeps what it changed.
-func TestVerifyRunThatChangesItsCleanCopyFails(t *testing.T) {
+func TestVerifyRunThatChangesTheContentItChecksFails(t *testing.T) {
 	t.Parallel()
 	h := newLoop(t, verifySettings{command: "grep -qx pass state && echo ran > ran.txt", maxAttempts: 1}, state("pass"))
 	record := h.call(contract.CallRequest{})
@@ -627,11 +637,11 @@ func TestVerifyRunThatChangesItsCleanCopyFails(t *testing.T) {
 	}
 }
 
-// Files a run writes in its clean copy that the repository ignores are not
+// Files a run writes in the worktree that the repository ignores are not
 // content: such a run passes, its content unchanged.
 //
-// Contract test: the composition's checkouts, clean copies and patches in a
-// real git repository; turns and commands are fakes run in process.
+// Contract test: the composition's worktrees and patches in a real git
+// repository; turns and commands are fakes run in process.
 func TestVerifyRunThatWritesOnlyIgnoredFilesPasses(t *testing.T) {
 	t.Parallel()
 	h := newGitLoop(t, verifySettings{command: "grep -qx pass state && echo ran > ran.log", maxAttempts: 1}, state("pass"))
@@ -654,9 +664,10 @@ func TestVerifyRunTimeout(t *testing.T) {
 	t.Parallel()
 	// The run's timeout passes on the command runner's clock once the run
 	// waits on it.
-	clock := systemtest.NewClock(time.Date(2026, 9, 30, 12, 0, 0, 0, time.UTC))
-	commands := runtimecomposition.Commands{Supervisor: inProcessCommands(clock.Timer)}
-	h := newLoopWith(t, seams{commands: commands}, verifySettings{command: blocks, timeout: "1s"}, state("one"))
+	clock := clocktest.NewClock(time.Date(2026, 9, 30, 12, 0, 0, 0, time.UTC))
+	groups := supervisortest.NewGroups()
+	commands := runtimecomposition.Commands{Supervisor: inProcessCommands(groups, clock.Timer)}
+	h := newLoopWith(t, seams{commands: commands, groups: groups}, verifySettings{command: blocks, timeout: "1s"}, state("one"))
 	id := h.submit(contract.CallRequest{Timeout: "30s"})
 	// Should the test fail first, the cleanup ends the call, and the
 	// command with it.
@@ -671,19 +682,17 @@ func TestVerifyRunTimeout(t *testing.T) {
 }
 
 // The call's timeout bounds the whole loop: a run gets only the time the
-// turns and the preparation before it left.
+// turns before it left.
 func TestVerifyCallTimeoutBoundsTheLoop(t *testing.T) {
 	t.Parallel()
-	// Making the clean copy uses 59 of the call's 60 seconds on the call's
-	// clock, which leaves the run one second of its 20. The clock moves
-	// only once the copy is made, so the real time making it takes decides
-	// nothing, and the run's second passes on the same clock.
-	clock := systemtest.NewClock(time.Date(2026, 9, 30, 12, 0, 0, 0, time.UTC))
-	copies := func(made app.VerifyCopies) app.VerifyCopies {
-		return slowCopies{VerifyCopies: made, after: func() { clock.Advance(59 * time.Second) }}
-	}
-	commands := runtimecomposition.Commands{Supervisor: inProcessCommands(clock.Timer)}
-	h := newLoopWith(t, seams{clock: clock, copies: copies, commands: commands}, verifySettings{command: blocks, timeout: "20s"}, state("one"))
+	// The turn uses 59 of the call's 60 seconds on the call's clock, which
+	// leaves the run one second of its 20. The turn's own timeout is on a
+	// clock that never moves, and the run's second passes on the call's.
+	clock := clocktest.NewClock(time.Date(2026, 9, 30, 12, 0, 0, 0, time.UTC))
+	groups := supervisortest.NewGroups()
+	commands := runtimecomposition.Commands{Supervisor: inProcessCommands(groups, clock.Timer)}
+	slow := state("one", func(*domain.Turn) { clock.Advance(59 * time.Second) })
+	h := newLoopWith(t, seams{clock: clock, commands: commands, groups: groups}, verifySettings{command: blocks, timeout: "20s"}, slow)
 	id := h.submit(contract.CallRequest{})
 	cleanupRun(t, h.runs, h.hosted, id)
 	clock.Started(time.Second)
@@ -703,21 +712,6 @@ func TestVerifyCallTimeoutBoundsTheLoop(t *testing.T) {
 	if requests := h.commands.requests(); len(requests) != 1 || requests[0].Timeout != time.Second {
 		t.Fatalf("command requests %+v", requests)
 	}
-}
-
-// slowCopies makes clean copies as the copies it wraps do, and calls after
-// once each is made.
-type slowCopies struct {
-	app.VerifyCopies
-	after func()
-}
-
-func (c slowCopies) Copy(ctx context.Context, repository, dir, revision string, patch []byte) error {
-	err := c.VerifyCopies.Copy(ctx, repository, dir, revision, patch)
-	if err == nil {
-		c.after()
-	}
-	return err
 }
 
 // blockedCommand is a verification command that never ends on its own:
@@ -822,7 +816,7 @@ func TestContinuationsCountFromTheSessionsLatestRecordedTurn(t *testing.T) {
 	t.Parallel()
 	// Each turn reports the session's running totals, as Claude Code does
 	// for cost and Codex for usage, a second after it started.
-	clock := systemtest.NewClock(time.Date(2026, 9, 30, 12, 0, 0, 0, time.UTC))
+	clock := clocktest.NewClock(time.Date(2026, 9, 30, 12, 0, 0, 0, time.UTC))
 	totals := func(usd float64, in int64) step {
 		return state("pass", func(turn *domain.Turn) {
 			clock.Advance(time.Second)
@@ -861,7 +855,7 @@ func TestContinuationsCountFromTheSessionsLatestRecordedTurn(t *testing.T) {
 // an earlier turn with an unknown cost blocks repair.
 func TestVerifyUnknownCostBlocksRepair(t *testing.T) {
 	t.Parallel()
-	h := newLoop(t, verifySettings{policy: "max_cost_usd: 5\n"}, state("one", func(turn *domain.Turn) { turn.CostUSD = nil }), state("pass"))
+	h := newLoop(t, verifySettings{limits: "max_cost_usd: 5\n"}, state("one", func(turn *domain.Turn) { turn.CostUSD = nil }), state("pass"))
 	record := h.call(contract.CallRequest{})
 	expect(t, record, domain.Failed, domain.ClassBudgetExhausted, "a turn's cost is unknown, so the cost limit 5 cannot be enforced")
 	if len(h.runner.turns()) != 1 || record.Result.Cost.Source != domain.CostUnknown {
@@ -869,7 +863,7 @@ func TestVerifyUnknownCostBlocksRepair(t *testing.T) {
 	}
 
 	spend := func(usd float64) func(*domain.Turn) { return func(turn *domain.Turn) { turn.CostUSD = &usd } }
-	h = newLoop(t, verifySettings{policy: "max_cost_usd: 5\n"}, state("one", spend(1.5)), state("pass", spend(2)))
+	h = newLoop(t, verifySettings{limits: "max_cost_usd: 5\n"}, state("one", spend(1.5)), state("pass", spend(2)))
 	expect(t, h.call(contract.CallRequest{}), domain.Completed, "", "")
 	if turns := h.runner.turns(); len(turns) != 2 || *turns[0].MaxCostUSD != 5 || *turns[1].MaxCostUSD != 3.5 {
 		t.Fatalf("cost limits sent: %v, %v", *turns[0].MaxCostUSD, turns[1].MaxCostUSD)
@@ -883,7 +877,7 @@ func TestVerifySpentBudgetBlocksRepair(t *testing.T) {
 	for _, usd := range []float64{5, 6} {
 		t.Run(fmt.Sprintf("$%g of $5", usd), func(t *testing.T) {
 			t.Parallel()
-			h := newLoop(t, verifySettings{policy: "max_cost_usd: 5\n"}, state("one", func(turn *domain.Turn) { turn.CostUSD = &usd }), state("pass"))
+			h := newLoop(t, verifySettings{limits: "max_cost_usd: 5\n"}, state("one", func(turn *domain.Turn) { turn.CostUSD = &usd }), state("pass"))
 			record := h.call(contract.CallRequest{})
 			expect(t, record, domain.Failed, domain.ClassBudgetExhausted, "the cost limit 5 is spent")
 			if len(h.runner.turns()) != 1 || len(runsOf(record)) != 1 {
@@ -949,17 +943,14 @@ func (l lossy) Changes(ctx context.Context, dir, from, to string) ([]byte, error
 }
 
 // The captured changes, applied to the pinned base, rebuild exactly the
-// content that passed: committed, edited, new and binary files alike. A
-// capture that leaves content out prevents completion.
+// content that passed: edited, new and binary files alike. A capture that
+// leaves content out prevents completion (ADR-025 rule 5).
 //
-// Contract test: the composition's checkouts, clean copies and patches in a
-// real git repository; turns and commands are fakes run in process.
+// Contract test: the composition's worktrees and patches in a real git
+// repository; turns and commands are fakes run in process.
 func TestVerifyCaptureReproducesThePassingContent(t *testing.T) {
 	t.Parallel()
 	agent := func(t *testing.T, request app.TurnRequest) domain.Turn {
-		write(t, filepath.Join(request.Cwd, "committed.txt"), "committed\n")
-		gitCmd(t, request.Cwd, "add", "committed.txt")
-		gitCmd(t, request.Cwd, "commit", "--quiet", "-m", "agent")
 		write(t, filepath.Join(request.Cwd, "extra.txt"), "new\n")
 		if err := os.WriteFile(filepath.Join(request.Cwd, "data.bin"), []byte{0, 1, 2, 0xff}, 0o600); err != nil {
 			t.Error(err)
@@ -984,26 +975,26 @@ func TestVerifyCaptureReproducesThePassingContent(t *testing.T) {
 
 	h = newGitLoopWith(t, seams{changes: lossy{}}, verifySettings{}, agent)
 	record = h.call(contract.CallRequest{})
-	expect(t, record, domain.Failed, domain.ClassInternal, "the captured changes do not reproduce attempt 1's content")
-	if len(runsOf(record)) != 0 {
-		t.Fatalf("the command ran: %+v", record.Attempts)
+	expect(t, record, domain.Failed, domain.ClassInternal, "the captured changes do not rebuild the content that passed")
+	if len(record.Result.Artifacts) != 0 {
+		t.Fatalf("artifacts = %+v", record.Result.Artifacts)
 	}
 }
 
-// The case of LAB-15: the base ignores *.log and has no new.log; the agent
-// creates new.log, and the check needs it. The patch cannot carry an
-// ignored file, so the check fails on the clean copy the patch makes,
-// though it would pass in the agent's checkout. A file the patch carries
-// passes the same check.
+// A pass proves the worktree, ignored state included (ADR-025 rule 5),
+// where LAB-15's clean copy proved only the patch: the base ignores *.log
+// and has no new.log; the agent creates new.log, and the check that needs
+// it passes in the worktree, though the patch cannot carry it. A file the
+// patch carries passes the same check, and the patch holds it.
 //
-// Contract test: the composition's checkouts, clean copies and patches in a
-// real git repository; turns and commands are fakes run in process.
-func TestVerifyChecksWhatThePatchDelivers(t *testing.T) {
+// Contract test: the composition's worktrees and patches in a real git
+// repository; turns and commands are fakes run in process.
+func TestVerifyChecksTheWorktreeIgnoredStateIncluded(t *testing.T) {
 	t.Parallel()
 	h := newGitLoop(t, verifySettings{command: "test -f new.log", maxAttempts: 1}, writes(map[string]string{"new.log": "made\n"}))
 	record := h.call(contract.CallRequest{})
-	expect(t, record, domain.Failed, domain.ClassBudgetExhausted, "attempt 1 of 1 failed (exit code 1)")
-	if ran := runsOf(record); len(ran) != 1 || ran[0].Dir == record.Workspace || len(record.Result.Artifacts) != 0 {
+	expect(t, record, domain.Completed, "", "")
+	if ran := runsOf(record); len(ran) != 1 || ran[0].Dir != h.repo || len(record.Result.Artifacts) != 0 {
 		t.Fatalf("attempts %+v, artifacts %+v", record.Attempts, record.Result.Artifacts)
 	}
 
@@ -1051,7 +1042,7 @@ func TestVerifyEvidenceForEveryAttempt(t *testing.T) {
 		want := []string{"one", "two", "pass"}[i]
 		sum := sha256.Sum256([]byte(want + "\n"))
 		if attempt.Number != i+1 || attempt.Session != "sess-1" || attempt.Turn.ProviderSessionID != "sess-1" || attempt.Identity == "" || ran == nil ||
-			ran.Command != passWhenStateSaysPass || ran.Dir == "" || ran.Dir == record.Workspace || ran.Exit.Code == nil || (*ran.Exit.Code == 0) != (want == "pass") ||
+			ran.Command != passWhenStateSaysPass || ran.Dir != h.repo || ran.Exit.Code == nil || (*ran.Exit.Code == 0) != (want == "pass") ||
 			ran.Output.Head != want+"\n" || ran.Output.Bytes != int64(len(want)+1) || ran.Output.SHA256 != hex.EncodeToString(sum[:]) ||
 			ran.StartedAt.IsZero() || ran.FinishedAt.Before(ran.StartedAt) || ran.Passed != (want == "pass") {
 			t.Fatalf("attempt %d = %+v, run %+v", i+1, attempt, ran)
@@ -1072,18 +1063,23 @@ func TestVerifyEvidenceForEveryAttempt(t *testing.T) {
 	}
 }
 
-// A run that produces no output for the policy's stale.no_output is killed,
-// group and all, before verify.timeout: the node is interrupted as a
-// timeout, and the attempt's run says what went stale.
+// A run that produces no output for the process's stale.no_output is killed,
+// group and all, before verify.timeout: with no repair to follow it, the
+// node is interrupted as a timeout, and the attempt's run says what went
+// stale.
 func TestVerifyRunWithoutOutputIsKilledAsStale(t *testing.T) {
 	t.Parallel()
 	// The wait for output passes on the command runner's clock once the
 	// run waits on it, well short of the run's timeout: the command never
 	// ends on its own.
 	const noOutput = 7 * time.Second
-	clock := systemtest.NewClock(time.Date(2026, 9, 30, 12, 0, 0, 0, time.UTC))
-	stale := inProcessCommands(clock.Timer)
-	h := newLoopWith(t, seams{commands: runtimecomposition.Commands{Supervisor: stale}}, verifySettings{command: blocks + " & wait", policy: "stale: {no_output: 7s}\n"}, state("one"))
+	clock := clocktest.NewClock(time.Date(2026, 9, 30, 12, 0, 0, 0, time.UTC))
+	groups := supervisortest.NewGroups()
+	stale := inProcessCommands(groups, clock.Timer)
+	// One attempt: since ADR-024 rule 8 such a run is a failed attempt,
+	// which a repair turn follows while attempts are left; with none left
+	// the node ends as it did before.
+	h := newLoopWith(t, seams{commands: runtimecomposition.Commands{Supervisor: stale}, groups: groups}, verifySettings{command: blocks + " & wait", maxAttempts: 1, limits: "stale: {no_output: 7s}\n"}, state("one"))
 	id := h.submit(contract.CallRequest{})
 	cleanupRun(t, h.runs, h.hosted, id)
 	clock.Started(noOutput)
@@ -1107,5 +1103,114 @@ func TestVerifyRunWithoutOutputIsKilledAsStale(t *testing.T) {
 	}
 	if _, _, err := supervisor.ParseRef(record.Effects.Command.Ref); err != nil {
 		t.Fatal(err)
+	}
+}
+
+// A run killed for its silence is a failed attempt (ADR-024 rule 8): with
+// attempts left a repair turn follows it in the call's session, told that
+// the run went without output for the limit and was ended by Agister, with
+// the output the run produced before it hung; the next run passes and the
+// node completes.
+func TestVerifyRunWithoutOutputIsRepaired(t *testing.T) {
+	t.Parallel()
+	const noOutput = 7 * time.Second
+	clock := clocktest.NewClock(time.Date(2026, 9, 30, 12, 0, 0, 0, time.UTC))
+	groups := supervisortest.NewGroups()
+	stale := inProcessCommands(groups, clock.Timer)
+	// The command prints the state, then hangs unless the state says pass.
+	h := newLoopWith(t, seams{commands: runtimecomposition.Commands{Supervisor: stale}, groups: groups},
+		verifySettings{command: passWhenStateSaysPass + " || " + blocks, limits: "stale: {no_output: 7s}\n"}, state("one"), state("pass"))
+	id := h.submit(contract.CallRequest{})
+	cleanupRun(t, h.runs, h.hosted, id)
+	// The first run's wait for output starts twice, at its start and again
+	// at the state it prints; then it is silent for the whole limit.
+	clock.Started(noOutput)
+	clock.Started(noOutput)
+	clock.Advance(noOutput)
+	record := h.wait(id)
+
+	expect(t, record, domain.Completed, "", "")
+	turns := h.runner.turns()
+	if len(turns) != 2 || turns[1].ResumeSessionID != "sess-1" {
+		t.Fatalf("turns = %+v", turns)
+	}
+	for _, want := range []string{"The check failed. Fix the cause, not the check.", "## exit status\n\nno output for 7s, then ended by Agister\n", "4 bytes", "```\none\n```"} {
+		if !strings.Contains(turns[1].Prompt, want) {
+			t.Fatalf("repair prompt misses %q:\n%s", want, turns[1].Prompt)
+		}
+	}
+	ran := runsOf(record)
+	if len(ran) != 2 || ran[0].Passed || ran[0].Stale == nil || ran[0].Stale.Limit != domain.StaleNoOutput || ran[0].Stale.After != noOutput ||
+		!ran[1].Passed || ran[1].Stale != nil {
+		t.Fatalf("attempts = %+v", record.Attempts)
+	}
+	// A verification attempt was spent, not a resume.
+	if len(record.Recoveries) != 0 {
+		t.Fatalf("recoveries = %+v", record.Recoveries)
+	}
+}
+
+// A turn Agister ended at a staleness limit is recovered in its session
+// (ADR-024): the recovery turn receives the process's instruction with the
+// evidence, verification runs on what it left, and runs show prints the
+// recovery with the record.
+func TestAStaleTurnIsRecoveredAndRunsShowPrintsTheRecovery(t *testing.T) {
+	t.Parallel()
+	// The first turn makes the same call three times and never ends by
+	// itself: it ends, as a runtime's turn does, once Agister ends it.
+	ended := func(*testing.T, app.TurnRequest) domain.Turn {
+		return turn(func(turn *domain.Turn) {
+			turn.Status, turn.Output, turn.Error = domain.Interrupted, nil, domain.Fault(domain.ClassCancelled, "")
+		})
+	}
+	// The recovery turn costs what no other turn of the call does.
+	const cost = 0.25
+	h := newLoop(t, verifySettings{limits: "stale: {repeated_tool_calls: 3, recover: {max_resumes: 1, instruction: Change the approach.}}\n"}, ended,
+		state("pass", func(turn *domain.Turn) { usd := cost; turn.CostUSD = &usd }))
+	h.runner.toolCalls = true
+	h.runner.reports = func(ctx context.Context, sink app.EventSink, n int) {
+		if n != 0 {
+			return
+		}
+		for _, id := range []string{"t1", "t2", "t3"} {
+			sink.ToolStarted(app.ToolCall{ID: id, Name: "Bash", Input: `{"command":"make"}`})
+			sink.ToolFinished(app.ToolResult{ID: id, Output: "make: *** No rule", Reported: true})
+		}
+		<-ctx.Done()
+	}
+	if r := agisterInput(t, "yes\n", h.home, h.repo, "init"); r.code != 0 {
+		t.Fatalf("init: %d %s", r.code, r.stderr)
+	}
+	record := h.call(contract.CallRequest{})
+
+	expect(t, record, domain.Completed, "", "")
+	turns := h.runner.turns()
+	want := "Change the approach.\n\n## stale limit\n\nstale.repeated_tool_calls: the same tool call was made 3 times in a row, and the turn was ended.\n\n" +
+		"## tool call\n\nBash\n\n```\n{\"command\":\"make\"}\n```\n\n## last result\n\n```\nmake: *** No rule\n```"
+	if len(turns) != 2 || turns[1].ResumeSessionID != "sess-1" || turns[1].Prompt != want {
+		t.Fatalf("turns = %+v", turns)
+	}
+	// One verification run, on what the recovery turn left.
+	if ran := runsOf(record); len(ran) != 1 || !ran[0].Passed {
+		t.Fatalf("attempts = %+v", record.Attempts)
+	}
+	digest := sha256.Sum256([]byte(want))
+	if got := record.Recoveries; len(got) != 1 || got[0].Outcome != domain.RecoveryCompleted || got[0].MessageSHA256 != hex.EncodeToString(digest[:]) {
+		t.Fatalf("recoveries = %+v", got)
+	}
+	// The stored record names what the recovery turn itself cost (rule 9).
+	if got := record.Recoveries[0].CostUSD; got == nil || *got != cost {
+		t.Fatalf("stored recovery cost = %v, want %v", got, cost)
+	}
+
+	r := agister(t, h.home, h.repo, "runs", "show", record.ID)
+	if r.code != 0 || !strings.Contains(r.stdout, `"recoveries":[{"number":1,"follows":1,"stale":{"limit":"repeated_tool_calls"`) ||
+		!strings.Contains(r.stdout, `"resumed":"sess-1","session":"sess-1"`) || !strings.Contains(r.stdout, `"outcome":"completed"`) {
+		t.Fatalf("runs show: %d\n%s%s", r.code, r.stdout, r.stderr)
+	}
+	// So does the record runs show prints.
+	var shown domain.Record
+	if err := json.Unmarshal([]byte(r.stdout), &shown); err != nil || len(shown.Recoveries) != 1 || shown.Recoveries[0].CostUSD == nil || *shown.Recoveries[0].CostUSD != cost {
+		t.Fatalf("runs show: %v, recoveries %+v\n%s", err, shown.Recoveries, r.stdout)
 	}
 }

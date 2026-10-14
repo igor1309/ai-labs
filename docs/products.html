@@ -465,6 +465,19 @@
           <span class="tag">Git</span>
         </div>
       </div>
+      <div class="product reveal">
+        <div class="product-header">
+          <span class="product-name">Warder</span>
+        </div>
+        <p class="product-desc">
+          <strong>Local monitor for coding-agent runs, MVP stage</strong> Polls each enabled source — Claude Code through <code>claude agents --json</code> — every few seconds and writes one complete JSONL observation per successful read on stdout (<code>source</code>, <code>observedAt</code>, agents with their state), diagnostics on stderr. <em>Failed or timed-out reads publish nothing</em>; other programs consume the stream.
+        </p>
+        <div class="product-stack">
+          <span class="tag">Go</span>
+          <span class="tag">JSONL</span>
+          <span class="tag">Claude Code</span>
+        </div>
+      </div>
     </div>
 
     <h3 class="group-title">MCP Servers</h3>
@@ -549,7 +562,7 @@
           <span class="product-name">Agister</span>
         </div>
         <p class="product-desc">
-          <strong>Agister orchestrator, CLI stage: generic agent calls through Claude Code, with an opt-in Codex adapter pending live verification; agents, processes, policies, permission mappings and output contracts are settings (ADR-001); no service yet</strong>
+          <strong>Agister orchestrator, CLI stage: generic agent calls through Claude Code, with opt-in Codex, Pi, and OpenCode adapters (Codex and OpenCode pending live verification); agents, processes, policies, permission mappings and output contracts are settings (ADR-001); no service yet</strong>
         </p>
       </div>
       <div class="product reveal">
@@ -566,6 +579,14 @@
           <span class="tag">Naming</span>
           <span class="tag">Spec</span>
         </div>
+      </div>
+      <div class="product reveal">
+        <div class="product-header">
+          <span class="product-name">Gokit</span>
+        </div>
+        <p class="product-desc">
+          <strong>Reusable Go packages extracted from Agister (ADR-019): process supervisor, manual clock, fake program and shell, in-process starter, test-discipline check</strong>
+        </p>
       </div>
       <div class="product reveal">
         <div class="product-header">
@@ -592,7 +613,7 @@
   </section>
 
   <footer>
-    Last updated: 2026-05-27 &middot; ai-labs
+    Last updated: 2026-10-09 &middot; ai-labs
   </footer>
 </div>
 

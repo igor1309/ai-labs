@@ -2,9 +2,11 @@
 //
 // A classic script that sets globalThis.AgisterKnowledge, as runs.js sets
 // AgisterRuns. The skills it reads are what agister pages serves at
-// api/skills (pages/skills.go, ADR-011): the skill folders the settings'
-// runtimes load, in the repo and the home. Nothing here assigns a skill to
-// an agent: an agent's skills are what its runtime loads (ADR-006).
+// api/skills (pages/skills.go): the skill folders the settings' runtimes
+// load, in the repo and the home (ADR-011), and the settings' own skills
+// with their checks (ADR-021), which reach it through config.js's model of
+// the settings (D-16). An agent's skills are two lists, kept apart: the
+// skills its settings name, and the skills its runtime loads.
 (() => {
   // What each runtime loads that the folders leave out (ADR-011 rule 3).
   const COMMON_LEFT_OUT = 'skills built into the runtime, and plugin or package skills';
@@ -26,10 +28,13 @@
   const byText = (a, b) => (a < b ? -1 : a > b ? 1 : 0);
 
   // The view's model: settings is config.js's model of the shown settings,
-  // skills the api/skills reply for them, runs the run summaries.
-  //   agents: each agent with its runtime's adapter, the folders that
-  //     adapter loads, the skills in them (loads) and, apart from them, what
-  //     its runs used (observed);
+  // its skills from the inventory api/skills gave; skills the api/skills
+  // reply for them, of which the folders are read here; runs the run
+  // summaries.
+  //   agents: each agent with its runtime's adapter; the skills its
+  //     settings name (named: its own, and per process a workflow's node
+  //     binds to it the process's); the folders that adapter loads and the skills in them
+  //     (loads); and, apart from both, what its runs used (observed);
   //   skills: each skill name with its entries in every folder, shared when
   //     there is more than one, and the agents whose runtime loads it.
   function model(settings, skills, runs) {
@@ -42,6 +47,11 @@
       const loaded = (f) => !!adapter && (f.adapters ?? []).includes(adapter);
       return {
         name: a.name, runtime: a.runtime, runtimeMissing: !runtime, adapter, model: a.model, effort: a.effort,
+        named: {
+          own: (a.skills ?? []).map(fromSettings),
+          processes: settings.processes.filter((p) => !p.error && p.agents?.includes(a.name) && p.skills?.length)
+            .map((p) => ({ name: p.name, skills: p.skills.map(fromSettings) })),
+        },
         folders: folders.filter(loaded),
         loads: entries.filter((e) => loaded(e.folder)),
         observed: observed(runs, a.name),
@@ -54,6 +64,18 @@
       agents: agents.filter((a) => a.loads.some((e) => e.name === name)).map((a) => a.name),
     }));
     return { home: !!skills?.home, adapters: skills?.adapters ?? [], folders, agents, skills: skillList };
+  }
+
+  // A skill the settings name, as config.js found it in the server's
+  // inventory of the settings' skills (D-16): with its layer, home's when
+  // the settings are not composed (~), and what the server read of it there.
+  function fromSettings(x) {
+    if (x.outside) return { name: x.name, missing: true };
+    return {
+      name: x.name, missing: false, source: x.source ?? 'home', overrides: !!x.overrides,
+      path: x.path ?? null, state: x.state ?? null, description: x.description ?? null,
+      checks: x.checks ?? null,
+    };
   }
 
   // What the agent's runs used, as the Runs view counts it: per skill its
@@ -89,6 +111,7 @@
     broken_link: 'broken: a link that does not resolve',
     missing: 'no SKILL.md',
     not_a_file: 'SKILL.md is not a file',
+    linked_folder: 'a symbolic link, not a folder: not followed',
   };
   const FOLDER_STATES = {
     missing: 'not there',

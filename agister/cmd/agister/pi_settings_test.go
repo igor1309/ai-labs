@@ -11,6 +11,7 @@ import (
 
 	"github.com/igor1309/ai-labs/agister/internal/adapters/runtime/runtimetest"
 	"github.com/igor1309/ai-labs/agister/internal/cli"
+	"github.com/igor1309/ai-labs/gokit/supervisor/supervisortest"
 )
 
 // examplePiSettings is setup with the Pi example's settings: its agent
@@ -59,7 +60,7 @@ func TestExamplePiSettingsPassCheck(t *testing.T) {
 		t.Fatalf("exit %d\n%s%s", r.code, r.stdout, r.stderr)
 	}
 	allowHostReads(t, home, repo)
-	r = agister(t, home, repo, "run", "ask_pi", "--param", "question=What does this repository do?", "--timeout", "30s")
+	r = agister(t, home, repo, "run", "ask_pi_minimax", "--param", "question=What does this repository do?", "--timeout", "30s")
 	if r.code != cli.ExitCompleted {
 		t.Fatalf("exit %d\n%s%s", r.code, r.stdout, r.stderr)
 	}
@@ -83,13 +84,13 @@ func TestExamplePiCallWithoutASkillToolIsRefused(t *testing.T) {
 	const reason = "runtime pi needs read or bash to use the repository's skills (ADR-006), and the plan grants no such tool: " +
 		"read needs host.read, which the plan withholds; bash needs host.read, which the plan withholds, " +
 		"and repository.write, repository.history.write, network, host.write, which the effective permissions do not allow"
-	r := agister(t, home, repo, "run", "ask_pi", "--param", "question=What does this repository do?")
+	r := agister(t, home, repo, "run", "ask_pi_minimax", "--param", "question=What does this repository do?")
 	if r.code != cli.ExitRefused || !strings.Contains(r.stderr, reason) {
 		t.Fatalf("exit %d\n%s%s", r.code, r.stdout, r.stderr)
 	}
 	last := lastRun(t, home)
 	fault := last.record["result"].(map[string]any)["error"].(map[string]any)
-	want := "process ask_pi (" + filepath.Join(home, "processes", "ask_pi.yaml") + "): " + reason
+	want := "workflow ask_pi_minimax uses process ask_pi (" + filepath.Join(home, "processes", "ask_pi.yaml") + "): " + reason
 	if fault["class"] != "refused" || fault["message"] != want {
 		t.Fatalf("error = %v", fault)
 	}
@@ -137,7 +138,7 @@ func piSessionsAreKeptUnder(t *testing.T, home, repo string) {
 		return ""
 	}
 
-	r := agister(t, home, repo, "run", "ask_pi", "--param", "question=What does this repository do?", "--timeout", "30s")
+	r := agister(t, home, repo, "run", "ask_pi_minimax", "--param", "question=What does this repository do?", "--timeout", "30s")
 	if r.code != cli.ExitCompleted {
 		t.Fatalf("exit %d\n%s%s", r.code, r.stdout, r.stderr)
 	}
@@ -151,7 +152,7 @@ func piSessionsAreKeptUnder(t *testing.T, home, repo string) {
 		t.Fatalf("session %q: %s holds %v, session files %v", id, sessions, entries, kept)
 	}
 
-	r = agister(t, home, repo, "run", "ask_pi", "--param", "question=And its tests?", "--continue", filepath.Base(first.dir), "--timeout", "30s")
+	r = agister(t, home, repo, "run", "ask_pi_minimax", "--param", "question=And its tests?", "--continue", filepath.Base(first.dir), "--timeout", "30s")
 	if r.code != cli.ExitCompleted {
 		t.Fatalf("exit %d\n%s%s", r.code, r.stdout, r.stderr)
 	}
@@ -188,7 +189,7 @@ func TestPiInstallsNoPackageTheProjectLists(t *testing.T) {
 	home, repo := examplePiSettings(t)
 	allowHostReads(t, home, repo)
 	write(t, filepath.Join(repo, ".pi", "settings.json"), `{"packages": ["npm:@example/pi-tracer", {"source": "npm:pi-extras"}]}`)
-	reports := make(chan runtimetest.Report)
+	reports := make(chan supervisortest.Report)
 	var installs []string
 	read := make(chan struct{})
 	go func() {
@@ -201,7 +202,7 @@ func TestPiInstallsNoPackageTheProjectLists(t *testing.T) {
 	}()
 	startThrough(t, home, runtimetest.InProcess{Reports: reports})
 
-	r := agister(t, home, repo, "run", "ask_pi", "--param", "question=What does this repository do?", "--timeout", "30s")
+	r := agister(t, home, repo, "run", "ask_pi_minimax", "--param", "question=What does this repository do?", "--timeout", "30s")
 	// Every fake the call started has returned: none reports any more.
 	close(reports)
 	<-read
@@ -219,19 +220,16 @@ func TestPiInstallsNoPackageTheProjectLists(t *testing.T) {
 	}
 }
 
-// piAllPolicy points ask_pi at a policy that allows every permission and
-// makes the call require permission. The settings live only in a temp home.
-func piAllPolicy(t *testing.T, home, permission string) {
+// piAllLimits has ask_pi allow every permission and makes the call require
+// permission. The settings live only in a temp home.
+func piAllLimits(t *testing.T, home, permission string) {
 	t.Helper()
-	write(t, filepath.Join(home, "policies", "pi-all.yaml"), `schema: agister.process-policy/v1alpha1
-name: pi-all
-workspace: {access: read-write, scope: repository}
+	ownLimits(t, filepath.Join(home, "processes", "ask_pi.yaml"), `workspace: {access: read-write, scope: repository}
 tools:
   allow: [repository.read, repository.search, repository.diff, repository.history.read, repository.write, repository.history.write, process.execute, network, host.read, host.write]
+  require: [`+permission+`]
 timeout: 10m
 `)
-	process := filepath.Join(home, "processes", "ask_pi.yaml")
-	write(t, process, strings.Replace(read(t, process), "process-policy:read-only", "process-policy:pi-all", 1)+"\ntools: {require: ["+permission+"]}\n")
 }
 
 // edit, write and bash are verified for 0.85: when every grant is allowed,
@@ -245,8 +243,8 @@ func TestExamplePiSettingsGrantTheVerifiedWriteToolsAndBash(t *testing.T) {
 			home, repo := examplePiSettings(t)
 			service := filepath.Join(home, "service.toml")
 			write(t, service, strings.Replace(read(t, service), `state_reaching = ["host.read", "host.write"]`, `state_reaching = []`, 1))
-			piAllPolicy(t, home, permission)
-			r := agister(t, home, repo, "run", "ask_pi", "--param", "question=What does this repository do?", "--timeout", "30s")
+			piAllLimits(t, home, permission)
+			r := agister(t, home, repo, "run", "ask_pi_minimax", "--param", "question=What does this repository do?", "--timeout", "30s")
 			if r.code != cli.ExitCompleted {
 				t.Fatalf("exit %d\n%s%s", r.code, r.stdout, r.stderr)
 			}
@@ -270,7 +268,7 @@ func TestExamplePiCallRequiringWritesWithoutHostWritesIsRefused(t *testing.T) {
 	t.Parallel()
 	home, repo := examplePiSettings(t)
 	allowHostReads(t, home, repo)
-	piAllPolicy(t, home, "repository.write")
+	piAllLimits(t, home, "repository.write")
 	const reason = "process ask_pi: cannot run on agent pi-minimax's runtime pi: cannot enforce the effective permissions: required permissions would be withheld: repository.write"
 	r := agister(t, home, repo, "check")
 	if r.code == 0 || !strings.Contains(r.stdout+r.stderr, reason) {

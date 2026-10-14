@@ -1,0 +1,185 @@
+package main
+
+import (
+	"context"
+	"os"
+	"path/filepath"
+	"strings"
+	"testing"
+
+	"github.com/igor1309/ai-labs/agister/internal/adapters/fsruns"
+	"github.com/igor1309/ai-labs/agister/internal/adapters/git"
+	"github.com/igor1309/ai-labs/agister/internal/adapters/system"
+	"github.com/igor1309/ai-labs/agister/internal/app"
+	"github.com/igor1309/ai-labs/agister/internal/contract"
+	domain "github.com/igor1309/ai-labs/agister/internal/domain/run"
+)
+
+// Contract test: the real Holder over git boundaries, canonical filesystem
+// paths, worktree locks and stored run records. Processes are stand-ins.
+func TestHolderDistinguishesNestedWorktreesFromSubmodules(t *testing.T) {
+	t.Parallel()
+	repo := realLoopGit(t).repo
+	nested := filepath.Join(repo, ".claude", "worktrees", "task")
+	gitCmd(t, repo, "worktree", "add", "--quiet", "--detach", nested, "HEAD")
+	plain := filepath.Join(repo, "src")
+	if err := os.Mkdir(plain, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	module := filepath.Join(repo, "lib")
+	gitCmd(t, repo, "-c", "protocol.file.allow=always", "submodule", "add", "--quiet", realLoopGit(t).repo, "lib")
+	moduleInside := filepath.Join(module, "src")
+	if err := os.Mkdir(moduleInside, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	embedded := filepath.Join(module, "nested")
+	gitCmd(t, repo, "worktree", "add", "--quiet", "--detach", embedded, "HEAD")
+	// The index may track a submodule whose checkout is absent.
+	missing := filepath.Join(repo, "libs", "missing")
+	gitCmd(t, repo, "update-index", "--add", "--cacheinfo", "160000,"+gitCmd(t, repo, "rev-parse", "HEAD")+",libs/missing")
+	if _, err := os.Stat(missing); !os.IsNotExist(err) {
+		t.Fatalf("absent gitlink %q: %v", missing, err)
+	}
+	for name, c := range map[string]struct {
+		caller, writer     string
+		removable, allowed bool
+	}{
+		"nested writer with absent unrelated gitlink": {caller: repo, writer: nested, allowed: true},
+		"outer writer":              {caller: nested, writer: repo},
+		"plain subdirectory":        {caller: repo, writer: plain},
+		"submodule":                 {caller: repo, writer: module},
+		"directory in submodule":    {caller: repo, writer: moduleInside},
+		"worktree inside submodule": {caller: repo, writer: embedded, allowed: true},
+		"removable nested worktree": {caller: repo, writer: nested, removable: true},
+		"removable cleanup parent":  {caller: nested, writer: filepath.Join(repo, "old-copy"), removable: true},
+	} {
+		// Serial: these cases share a repository, including its cleanup parent.
+		t.Run(name, func(t *testing.T) {
+			if c.removable && c.writer != nested {
+				if err := os.Mkdir(c.writer, 0o700); err != nil {
+					t.Fatal(err)
+				}
+			}
+			ctx := context.Background()
+			store := fsruns.Store{Dir: t.TempDir(), Appends: fsruns.NewAppends()}
+			writer := true
+			other := domain.Record{Schema: domain.RecordSchema, ID: "writer", Process: "p", CreatedAt: stillAt,
+				Workspace: c.writer, InPlace: &domain.InPlace{Dir: c.writer, Worktree: c.writer, Writer: &writer}, Effects: &domain.Effects{}}
+			if c.removable {
+				other.Effects.Copy = &domain.Checkout{Dir: c.writer}
+			}
+			owner, err := store.Create(ctx, other)
+			if err != nil {
+				t.Fatal(err)
+			}
+			t.Cleanup(func() { _ = owner.Finish(finished(other.ID, nil)) })
+			holder := app.NewHolder(app.HoldAdapters{
+				Locks: system.WorktreeLocks{Dir: t.TempDir()}, Worktrees: git.Workspaces{}, Content: git.Workspaces{},
+				Runs: store, Reaper: ownedRuns{}, Writers: goneProcesses{},
+			})
+			record := domain.Record{Schema: domain.RecordSchema, ID: "caller"}
+			var admitted bool
+			held, err := holder.Hold(ctx, app.HoldCall{
+				Record: &record, Dir: c.caller,
+				Update: func(domain.Record) error { return nil },
+				Event:  func(_, kind string, _ map[string]any) { admitted = admitted || kind == "WORKTREE_ADMITTED" },
+			})
+			if held != nil {
+				t.Cleanup(func() {
+					if err := held.Release(); err != nil {
+						t.Error(err)
+					}
+				})
+			}
+			if c.allowed {
+				if err != nil || held == nil || !admitted || record.InPlace == nil || record.InPlace.Worktree != c.caller {
+					t.Fatalf("held %v, error %v, admitted %v, record %+v", held, err, admitted, record.InPlace)
+				}
+			} else {
+				want := "has not finished: it may still write there"
+				if c.removable {
+					want = "Agister made that directory and removes it with all that is in it"
+				}
+				if err == nil || held != nil || admitted || !strings.Contains(err.Error(), want) {
+					t.Fatalf("held %v, error %v, admitted %v; want %q", held, err, admitted, want)
+				}
+			}
+		})
+	}
+}
+
+// inPlaceSettings has impl declare the workspace settings ADR-025 rule 3
+// makes obsolete: a setup of its own, and a workspace.yaml with an
+// in-place mode and a precheck. A call ignores them all.
+func inPlaceSettings() verifySettings {
+	return verifySettings{
+		setup:     `{command: "echo prepared >> config.log", timeout: 20s}`,
+		workspace: "schema: agister.workspace/v1alpha1\nmode: in-place\nprecheck: {command: \"true\", timeout: 20s}\n",
+	}
+}
+
+// ADR-025: a call works in the caller's worktree, on real git. The turns
+// run there, with the writer's hold, no setup or precheck runs, the
+// verification runs there too (rule 5), and the changes stay in the
+// worktree, captured from the revision as changes.patch (rule 6). No
+// worktree is made for the call, and none is left (wait checks that).
+//
+// Contract test: real git, in a repository of the test's own.
+func TestAnInPlaceCallWorksInTheCallersWorktree(t *testing.T) {
+	t.Parallel()
+	h := newGitLoop(t, inPlaceSettings(), state("one"), state("pass"))
+	revision := gitCmd(t, h.repo, "rev-parse", "HEAD")
+	record := h.call(contract.CallRequest{})
+	expect(t, record, domain.Completed, "", "")
+
+	for _, turn := range h.runner.turns() {
+		if turn.Cwd != h.repo {
+			t.Fatalf("a turn ran in %s", turn.Cwd)
+		}
+	}
+	if in := record.InPlace; in == nil || in.Dir != h.repo || in.Worktree != h.repo || in.Revision != revision || in.Verify != domain.VerifyInWorkspace || in.Content == "" || in.Writer == nil || !*in.Writer {
+		t.Fatalf("in place %+v", record.InPlace)
+	}
+	if record.SetupRun != nil || record.PrecheckRun != nil {
+		t.Fatalf("setup run %+v, precheck run %+v", record.SetupRun, record.PrecheckRun)
+	}
+	if ran := runsOf(record); len(ran) != 2 || ran[0].Dir != h.repo || ran[1].Dir != h.repo || !ran[1].Passed {
+		t.Fatalf("verification runs %+v", ran)
+	}
+	if got := read(t, filepath.Join(h.repo, "state")); got != "pass\n" {
+		t.Fatalf("the worktree's state is %q", got)
+	}
+	if head := gitCmd(t, h.repo, "rev-parse", "HEAD"); head != revision {
+		t.Fatalf("HEAD moved to %s", head)
+	}
+	artifacts := record.Result.Artifacts
+	if len(artifacts) != 1 || !strings.Contains(read(t, filepath.Join(h.home, "runs", record.ID, artifacts[0].Path)), "+pass") {
+		t.Fatalf("artifacts %+v", artifacts)
+	}
+	if effects := record.Effects; effects != nil && (effects.Checkout != nil || effects.Copy != nil || effects.Unreleased != nil) {
+		t.Fatalf("effects %+v", effects)
+	}
+}
+
+// ADR-025 rule 3, on real git: a worktree that is not exactly the
+// revision's is refused before any turn of a process that declares
+// workspace.clean, and is left as it was.
+//
+// Contract test: real git, in a repository of the test's own.
+func TestAnInPlaceCallRefusesAWorktreeItCannotAdmit(t *testing.T) {
+	t.Parallel()
+	h := newGitLoop(t, inPlaceSettings(), state("pass"))
+	write(t, filepath.Join(h.repo, "state"), "edited\n")
+	record := h.call(contract.CallRequest{})
+	expect(t, record, domain.Failed, domain.ClassRefused, "has content")
+	if len(h.runner.turns()) != 0 || read(t, filepath.Join(h.repo, "state")) != "edited\n" {
+		t.Fatalf("turns %d", len(h.runner.turns()))
+	}
+
+	// The worktree as the revision left it is admitted again, and an
+	// ignored file in it counts for nothing.
+	gitCmd(t, h.repo, "checkout", "--quiet", "--", "state")
+	write(t, filepath.Join(h.repo, "build.log"), "x\n")
+	record = h.call(contract.CallRequest{})
+	expect(t, record, domain.Completed, "", "")
+}

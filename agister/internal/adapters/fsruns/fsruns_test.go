@@ -1,13 +1,18 @@
 package fsruns
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"reflect"
+	"sort"
+	"strings"
+	"sync"
 	"syscall"
 	"testing"
 	"time"
@@ -15,6 +20,7 @@ import (
 	"github.com/igor1309/ai-labs/agister/internal/app"
 	"github.com/igor1309/ai-labs/agister/internal/contract"
 	"github.com/igor1309/ai-labs/agister/internal/domain/run"
+	"github.com/igor1309/ai-labs/gokit/clocktest"
 )
 
 // newStore is a Store over a directory of the test's own that signals
@@ -25,11 +31,60 @@ func newStore(t *testing.T) Store {
 	return Store{Dir: t.TempDir(), Appends: NewAppends()}
 }
 
+// adopterOf is the Adopter of store's runs where it meets no reader: a
+// wait for one fails the test, and has passed at once.
+func adopterOf(t *testing.T, store Store) Adopter {
+	t.Helper()
+	return NewAdopter(store, func(wait time.Duration) (<-chan time.Time, func()) {
+		t.Errorf("the adopter waited %v for a run's readers", wait)
+		return passed(), func() {}
+	})
+}
+
+// passed is a timer's channel whose wait has passed.
+func passed() <-chan time.Time {
+	fired := make(chan time.Time, 1)
+	fired <- time.Time{}
+	return fired
+}
+
+// waits is a timer whose every wait has passed at once, which keeps the
+// waits started on it.
+type waits struct {
+	mu    sync.Mutex
+	waits []time.Duration
+}
+
+func (w *waits) timer(wait time.Duration) (<-chan time.Time, func()) {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	w.waits = append(w.waits, wait)
+	return passed(), func() {}
+}
+
+// waited lists the waits started so far, in order.
+func (w *waits) waited() []time.Duration {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	return append([]time.Duration(nil), w.waits...)
+}
+
 // letGo abandons h's run once the test ends, unless the test finished or
 // abandoned it: no handle outlives its test holding its run.
 func letGo(t *testing.T, h app.ReapHandle) {
 	t.Helper()
 	t.Cleanup(func() { h.(*handle).abandon() })
+}
+
+// holdErr is the error store gives to a hold of run id; a read it gives
+// instead is let go once the test ends.
+func holdErr(t *testing.T, store Store, id string) error {
+	t.Helper()
+	read, err := store.Hold(context.Background(), id)
+	if err == nil {
+		t.Cleanup(read.Release)
+	}
+	return err
 }
 
 // Contract test: the run store against the real filesystem, and the
@@ -91,6 +146,55 @@ func TestFinishedRecord(t *testing.T) {
 	}
 }
 
+// A run whose directory holds no record.json yet is being created and has
+// recorded nothing: the strict listing leaves it out. A record that exists
+// but is not valid JSON, or cannot be read at all, still fails it.
+//
+// Contract test: the run store against the real filesystem, and the
+// kernel's flock on a run's owner.lock.
+func TestListStrictSkipsARunBeingCreatedAndFailsOnABrokenRecord(t *testing.T) {
+	t.Parallel()
+	store := newStore(t)
+	ctx := context.Background()
+	record := run.Record{Schema: run.RecordSchema, ID: "r1", Process: "p", CreatedAt: time.Now()}
+	h, err := store.Create(ctx, record)
+	if err != nil {
+		t.Fatal(err)
+	}
+	letGo(t, h)
+	if err := os.Mkdir(filepath.Join(store.Dir, "r2"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	records, err := store.ListStrict(ctx)
+	if err != nil || len(records) != 1 || records[0].ID != "r1" {
+		t.Fatalf("listed %+v, err %v", records, err)
+	}
+
+	if err := os.Mkdir(filepath.Join(store.Dir, "r3"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(store.Dir, "r3", "record.json"), []byte("{"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	records, err = store.ListStrict(ctx)
+	if err == nil || errors.Is(err, contract.ErrNotFound) || !strings.Contains(err.Error(), "listing run r3: ") || records != nil {
+		t.Fatalf("a broken record must fail the strict listing: listed %+v, err %v", records, err)
+	}
+
+	t.Run("a record that cannot be read", func(t *testing.T) {
+		t.Parallel()
+		store := newStore(t)
+		// A directory where the record is: it exists, and reading it fails.
+		if err := os.MkdirAll(filepath.Join(store.Dir, "r4", "record.json"), 0o700); err != nil {
+			t.Fatal(err)
+		}
+		records, err := store.ListStrict(ctx)
+		if err == nil || errors.Is(err, contract.ErrNotFound) || !strings.Contains(err.Error(), "listing run r4: ") || records != nil {
+			t.Fatalf("a record that cannot be read must fail the strict listing: listed %+v, err %v", records, err)
+		}
+	})
+}
+
 // Contract test: the run store against the real filesystem, and the
 // kernel's flock on a run's owner.lock.
 func TestArtifactsAreStoredWithTheirDigest(t *testing.T) {
@@ -106,7 +210,10 @@ func TestArtifactsAreStoredWithTheirDigest(t *testing.T) {
 		artifact.Digest != "sha256:df087996d45b03e7eb8c133c0298fd98d35113fca26aaba58612fef3cc212cad" {
 		t.Fatalf("artifact %+v, %v", artifact, err)
 	}
-	data, err := os.ReadFile(filepath.Join(store.Dir, "r3", artifact.Path))
+	if dir := store.RunDir("r3"); dir != filepath.Join(store.Dir, "r3") {
+		t.Fatalf("run directory %q", dir)
+	}
+	data, err := os.ReadFile(filepath.Join(store.RunDir("r3"), artifact.Path))
 	if err != nil || string(data) != "diff" {
 		t.Fatalf("stored %q, %v", data, err)
 	}
@@ -205,12 +312,13 @@ func TestAdoptTakesOnlyAnAbandonedRun(t *testing.T) {
 	letGo(t, h)
 	_ = h.Append(run.Event{Kind: "E"})
 
-	// Owned: neither listed nor adoptable.
+	// Owned: neither listed nor adoptable, at once: the adopter waits for
+	// no reader of a run its owner holds (adopterOf).
 	if abandoned, _ := store.Abandoned(ctx); len(abandoned) != 0 {
 		t.Fatalf("owned run listed: %+v", abandoned)
 	}
-	if _, _, err := store.Adopt(ctx, "r1"); err == nil {
-		t.Fatal("adopted a run its owner holds")
+	if _, _, err := adopterOf(t, store).Adopt(ctx, "r1"); !errors.Is(err, app.ErrRunOwned) {
+		t.Fatalf("adopting a run its owner holds = %v, want it owned", err)
 	}
 
 	// The owner disappears: the run is listed and adopted once.
@@ -218,7 +326,7 @@ func TestAdoptTakesOnlyAnAbandonedRun(t *testing.T) {
 	if abandoned, _ := store.Abandoned(ctx); len(abandoned) != 1 || abandoned[0].ID != "r1" {
 		t.Fatalf("abandoned = %+v", abandoned)
 	}
-	adopted, got, err := store.Adopt(ctx, "r1")
+	adopted, got, err := adopterOf(t, store).Adopt(ctx, "r1")
 	if err != nil || got.Effects == nil || got.Effects.Checkout.Dir != effects.Checkout.Dir {
 		t.Fatalf("adopt: %+v, %v", got, err)
 	}
@@ -226,8 +334,8 @@ func TestAdoptTakesOnlyAnAbandonedRun(t *testing.T) {
 	if _, status, _ := store.Get(ctx, "r1"); status != run.StateRunning {
 		t.Fatalf("adopted run reads %s", status)
 	}
-	if _, _, err := store.Adopt(ctx, "r1"); err == nil {
-		t.Fatal("adopted a run twice")
+	if _, _, err := adopterOf(t, store).Adopt(ctx, "r1"); !errors.Is(err, app.ErrRunOwned) {
+		t.Fatalf("adopting a run twice = %v, want it owned", err)
 	}
 
 	// The adopter can append (numbering on) and finish it.
@@ -246,12 +354,115 @@ func TestAdoptTakesOnlyAnAbandonedRun(t *testing.T) {
 	if _, status, _ := store.Get(ctx, "r1"); status != run.StateFinished {
 		t.Fatalf("finished run reads %s", status)
 	}
-	if _, _, err := store.Adopt(ctx, "r1"); err == nil {
+	if _, _, err := adopterOf(t, store).Adopt(ctx, "r1"); err == nil {
 		t.Fatal("adopted a finished run")
 	}
 	if abandoned, _ := store.Abandoned(ctx); len(abandoned) != 0 {
 		t.Fatalf("finished run listed: %+v", abandoned)
 	}
+}
+
+// LAB-123: an owner killed while it appended an event leaves a last line
+// without its newline. Adoption ends the events on a whole line under the
+// owner lock: it keeps every complete event, the unterminated one too, as
+// a follower has read it already, and cuts off only an incomplete one. The
+// event the adopter appends, as a reap's EFFECTS_REAPED, reads after them,
+// numbered on, and a follower reading after the last event it was given
+// sees it.
+//
+// Contract test: the run store against the real filesystem, and the
+// kernel's flock on a run's owner.lock.
+func TestAdoptionRepairsTheEventTailItsDeadOwnerLeft(t *testing.T) {
+	t.Parallel()
+	for _, tc := range []struct {
+		name string
+		// tail is what the owner wrote of its last event, without a newline.
+		tail string
+		// delivered is the last event a follower read before the adoption.
+		delivered int
+		want      []string
+	}{
+		{
+			name:      "an incomplete event is cut off",
+			tail:      `{"seq":3,"kind":"PROC`,
+			delivered: 2,
+			want:      []string{"1 STARTED", "2 ABORT_REQUESTED", "3 EFFECTS_REAPED"},
+		},
+		{
+			name:      "a complete event is kept",
+			tail:      `{"seq":3,"source":"runtime","kind":"PROCESS_STARTED"}`,
+			delivered: 3,
+			want:      []string{"1 STARTED", "2 ABORT_REQUESTED", "3 PROCESS_STARTED", "4 EFFECTS_REAPED"},
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			store := newStore(t)
+			ctx := context.Background()
+			record := run.Record{Schema: run.RecordSchema, ID: "r1", Process: "p", CreatedAt: time.Now(), Effects: &run.Effects{}}
+			h, err := store.Create(ctx, record)
+			if err != nil {
+				t.Fatal(err)
+			}
+			letGo(t, h)
+			for _, kind := range []string{"STARTED", "ABORT_REQUESTED"} {
+				if err := h.Append(run.Event{Kind: kind}); err != nil {
+					t.Fatal(err)
+				}
+			}
+			events := filepath.Join(store.RunDir("r1"), "events.jsonl")
+			complete, err := os.ReadFile(events)
+			if err != nil {
+				t.Fatal(err)
+			}
+			// The owner is killed mid-append.
+			if err := os.WriteFile(events, append(complete, tc.tail...), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			if err := store.Abandon("r1"); err != nil {
+				t.Fatal(err)
+			}
+			before, _, err := store.Events(ctx, "r1", 0)
+			if err != nil || len(before) == 0 || before[len(before)-1].Seq != tc.delivered {
+				t.Fatalf("events before the adoption = %v, %v; want the last delivered seq %d", before, err, tc.delivered)
+			}
+
+			adopted, _, err := adopterOf(t, store).Adopt(ctx, "r1")
+			if err != nil {
+				t.Fatal(err)
+			}
+			letGo(t, adopted)
+			if err := adopted.Append(run.Event{Kind: "EFFECTS_REAPED"}); err != nil {
+				t.Fatal(err)
+			}
+
+			read, _, err := store.Events(ctx, "r1", 0)
+			if got := seqKinds(read); err != nil || !reflect.DeepEqual(got, tc.want) {
+				t.Fatalf("events = %v, %v; want %v", got, err, tc.want)
+			}
+			after, _, err := store.Events(ctx, "r1", tc.delivered)
+			if got, want := seqKinds(after), tc.want[len(tc.want)-1:]; err != nil || !reflect.DeepEqual(got, want) {
+				t.Fatalf("events after seq %d = %v, %v; want %v", tc.delivered, got, err, want)
+			}
+			data, err := os.ReadFile(events)
+			if err != nil {
+				t.Fatal(err)
+			}
+			lines := strings.Split(strings.TrimSuffix(string(data), "\n"), "\n")
+			if !bytes.HasPrefix(data, complete) || !bytes.HasSuffix(data, []byte("\n")) || len(lines) != len(tc.want) {
+				t.Fatalf("events file = %q; want the complete events kept, one per line, and no torn one", data)
+			}
+		})
+	}
+}
+
+// seqKinds is each of events as its seq and kind.
+func seqKinds(events []run.Event) []string {
+	var got []string
+	for _, event := range events {
+		got = append(got, fmt.Sprintf("%d %s", event.Seq, event.Kind))
+	}
+	return got
 }
 
 // A finished run whose record still names a clean copy is listed and
@@ -282,10 +493,10 @@ func TestAFinishedRunWithACleanCopyOnRecordIsAdopted(t *testing.T) {
 	if abandoned, err := store.Abandoned(ctx); err != nil || len(abandoned) != 1 || abandoned[0].ID != "copy" {
 		t.Fatalf("abandoned = %+v, %v", abandoned, err)
 	}
-	if _, _, err := store.Adopt(ctx, "none"); err == nil {
+	if _, _, err := adopterOf(t, store).Adopt(ctx, "none"); err == nil {
 		t.Fatal("adopted a finished run with no copy on record")
 	}
-	adopted, record, err := store.Adopt(ctx, "copy")
+	adopted, record, err := adopterOf(t, store).Adopt(ctx, "copy")
 	if err != nil || record.FinishedAt == nil || record.Effects.Copy == nil {
 		t.Fatalf("adopt: %+v, %v", record, err)
 	}
@@ -331,10 +542,12 @@ func TestAFinishedRunWithAnUnreleasedCheckoutOnRecordIsAdopted(t *testing.T) {
 	if abandoned, err := store.Abandoned(ctx); err != nil || len(abandoned) != 1 || abandoned[0].ID != "unreleased" {
 		t.Fatalf("abandoned = %+v, %v", abandoned, err)
 	}
-	if _, _, err := store.Adopt(ctx, "released"); err == nil {
-		t.Fatal("adopted a finished run with only its Checkout on record")
+	// It is told apart from a run that is owned, and comes with its record
+	// as it finished.
+	if _, finished, err := adopterOf(t, store).Adopt(ctx, "released"); !errors.Is(err, app.ErrRunFinished) || errors.Is(err, app.ErrRunOwned) || finished.FinishedAt == nil || finished.Result == nil || finished.Result.Status != run.Completed {
+		t.Fatalf("adopting a finished run with only its Checkout on record = %+v, %v", finished, err)
 	}
-	adopted, record, err := store.Adopt(ctx, "unreleased")
+	adopted, record, err := adopterOf(t, store).Adopt(ctx, "unreleased")
 	if err != nil || record.FinishedAt == nil || !reflect.DeepEqual(record.Effects.Unreleased, checkout) {
 		t.Fatalf("adopt: %+v, %v", record, err)
 	}
@@ -423,7 +636,7 @@ func TestACheckoutAReapCouldNotRemoveIsReapedLater(t *testing.T) {
 
 	var discarded []string
 	spies := &reapSpies{}
-	reaper := app.NewReaper(store, spies, spies, spies)
+	reaper := app.NewReaper(adopterOf(t, store), spies, spies, spies)
 	// The deadline passes while the first removal waits.
 	var deadline context.CancelFunc
 	reaper.ReapContext = func(ctx context.Context) (context.Context, context.CancelFunc) {
@@ -460,6 +673,147 @@ func TestACheckoutAReapCouldNotRemoveIsReapedLater(t *testing.T) {
 	}
 	if abandoned, err := store.Abandoned(ctx); err != nil || len(abandoned) != 0 {
 		t.Fatalf("abandoned after the second reap = %+v, %v", abandoned, err)
+	}
+}
+
+// probe holds the owner lock of run id in store shared, as a status read
+// holds it for the moment it reads the run's state, until the release it
+// returns, or the test's end.
+func probe(t *testing.T, store Store, id string) (release func()) {
+	t.Helper()
+	lock, err := os.Open(filepath.Join(store.Dir, id, ownerLock))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := syscall.Flock(int(lock.Fd()), syscall.LOCK_SH|syscall.LOCK_NB); err != nil {
+		lock.Close()
+		t.Fatal(err)
+	}
+	var once sync.Once
+	release = func() { once.Do(func() { lock.Close() }) }
+	t.Cleanup(release)
+	return release
+}
+
+// reaping is what a ReapRun returned.
+type reaping struct {
+	finished run.Record
+	owned    bool
+	err      error
+}
+
+// abandonedWithACheckout is run "r" in store, its checkout on record,
+// left as a SIGKILLed owner leaves it.
+func abandonedWithACheckout(t *testing.T, store Store) *run.Checkout {
+	t.Helper()
+	checkout := &run.Checkout{Repository: "/repo", Dir: "/tmp/agister-checkout-1/workspace-1"}
+	h, err := store.Create(context.Background(), run.Record{Schema: run.RecordSchema, ID: "r", Process: "p", CreatedAt: time.Now(), Effects: &run.Effects{Checkout: checkout}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := h.Append(run.Event{Kind: "E"}); err != nil {
+		t.Fatal(err)
+	}
+	if err := store.Abandon("r"); err != nil {
+		t.Fatal(err)
+	}
+	return checkout
+}
+
+// LAB-123: a status read holds a run's owner lock shared for the moment it
+// reads the run's state, as Pages and the holder's listing do beside the
+// reaper. A reap that meets one on a run its owner left is not refused as
+// if an owner held the run: it waits for the reader to let go, on the
+// adopter's timer, and recovers the run, which ends lost and abandoned
+// with its reap on record.
+//
+// Contract test: the run store against the real filesystem, and the
+// kernel's flock on a run's owner.lock.
+func TestAReapRecoversARunWhoseStatusIsBeingRead(t *testing.T) {
+	t.Parallel()
+	store := newStore(t)
+	ctx := context.Background()
+	checkout := abandonedWithACheckout(t, store)
+	var discarded []string
+	spies := &reapSpies{discard: func(_ context.Context, dir string) error {
+		discarded = append(discarded, dir)
+		return nil
+	}}
+	clock := clocktest.NewClock(time.Date(2026, 10, 8, 12, 0, 0, 0, time.UTC))
+	reaper := app.NewReaper(NewAdopter(store, clock.Timer), spies, spies, spies)
+	reaper.ReapContext = func(ctx context.Context) (context.Context, context.CancelFunc) { return context.WithCancel(ctx) }
+
+	release := probe(t, store, "r")
+	reaped := make(chan reaping, 1)
+	go func() {
+		finished, owned, err := reaper.ReapRun(ctx, "r")
+		reaped <- reaping{finished, owned, err}
+	}()
+	clock.Started(readerRetry)
+	select {
+	case got := <-reaped:
+		t.Fatalf("the reap ended while the status read held the run: %+v", got)
+	default:
+	}
+	if _, state, _ := store.Get(ctx, "r"); state != run.StateAbandoned {
+		t.Fatalf("the run reads %s while the reap waits for its reader", state)
+	}
+	release()
+	clock.Advance(readerRetry)
+
+	got := <-reaped
+	if got.err != nil || got.owned || got.finished.FinishedAt == nil || got.finished.Result == nil ||
+		got.finished.Result.Status != run.Lost || got.finished.Result.Error == nil || got.finished.Result.Error.Class != run.ClassAbandoned {
+		t.Fatalf("the reap after the status read: %+v, owned %v, %v", got.finished.Result, got.owned, got.err)
+	}
+	record, state, err := store.Get(ctx, "r")
+	if err != nil || state != run.StateFinished || record.Result == nil || record.Result.Status != run.Lost {
+		t.Fatalf("the run's record after the reap: %s, %+v, %v", state, record.Result, err)
+	}
+	events, _, err := store.Events(ctx, "r", 0)
+	if err != nil || len(events) != 2 || events[1].Kind != "EFFECTS_REAPED" || !reflect.DeepEqual(discarded, []string{checkout.Dir}) {
+		t.Fatalf("the run's events after the reap: %+v, discarded %v, %v", events, discarded, err)
+	}
+}
+
+// The wait for a run's readers ends with the reap's deadline: a reap whose
+// deadline arrives while a reader holds the run leaves the run alone, as
+// read, not owned.
+//
+// Contract test: the run store against the real filesystem, and the
+// kernel's flock on a run's owner.lock.
+func TestTheWaitForARunsReadersEndsWithTheReapsDeadline(t *testing.T) {
+	t.Parallel()
+	store := newStore(t)
+	ctx := context.Background()
+	abandonedWithACheckout(t, store)
+	spies := &reapSpies{discard: func(context.Context, string) error {
+		t.Error("the reap removed the checkout of a run it did not adopt")
+		return nil
+	}}
+	clock := clocktest.NewClock(time.Date(2026, 10, 8, 12, 0, 0, 0, time.UTC))
+	reaper := app.NewReaper(NewAdopter(store, clock.Timer), spies, spies, spies)
+	var deadline context.CancelFunc
+	reaper.ReapContext = func(ctx context.Context) (context.Context, context.CancelFunc) {
+		ctx, deadline = context.WithCancel(ctx)
+		return ctx, deadline
+	}
+
+	probe(t, store, "r")
+	reaped := make(chan reaping, 1)
+	go func() {
+		finished, owned, err := reaper.ReapRun(ctx, "r")
+		reaped <- reaping{finished, owned, err}
+	}()
+	clock.Started(readerRetry)
+	deadline()
+
+	got := <-reaped
+	if !errors.Is(got.err, app.ErrRunRead) || !errors.Is(got.err, context.Canceled) || got.owned || got.finished.FinishedAt != nil {
+		t.Fatalf("the reap at its deadline: %+v, owned %v, %v", got.finished, got.owned, got.err)
+	}
+	if _, state, _ := store.Get(ctx, "r"); state != run.StateAbandoned {
+		t.Fatalf("the run the reap left reads %s", state)
 	}
 }
 
@@ -504,7 +858,7 @@ func TestAppendedIsClosedAlreadyWhenALaterEventExists(t *testing.T) {
 }
 
 // The notification closes when the run appends its next event, and not
-// before: raw output, record updates and artifacts do not close it.
+// before: record updates and artifacts do not close it.
 //
 // Contract test: the run store against the real filesystem, and the
 // kernel's flock on a run's owner.lock.
@@ -520,9 +874,6 @@ func TestAppendedClosesOnTheNextAppendAndNotBefore(t *testing.T) {
 	appended, ok := store.Appended(ctx, "r", 0)
 	if !ok || closed(appended) {
 		t.Fatalf("a run with no events: ok %v, closed %v", ok, ok && closed(appended))
-	}
-	if err := h.Raw("line"); err != nil {
-		t.Fatal(err)
 	}
 	if err := h.Update(run.Record{Schema: run.RecordSchema, ID: "r", Process: "p"}); err != nil {
 		t.Fatal(err)
@@ -641,7 +992,7 @@ func TestAppendedSignalsAnAdoptedRun(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	adopted, _, err := store.Adopt(ctx, "r")
+	adopted, _, err := adopterOf(t, store).Adopt(ctx, "r")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -716,7 +1067,6 @@ func TestAbandonLeavesTheRunAsAKilledOwnerDoes(t *testing.T) {
 		}
 	}
 	refused("Append", h.Append(run.Event{Kind: "LATE"}))
-	refused("Raw", h.Raw("late"))
 	refused("Update", h.Update(finished))
 	_, err = h.Artifact("late.txt", []byte("late"))
 	refused("Artifact", err)
@@ -725,15 +1075,13 @@ func TestAbandonLeavesTheRunAsAKilledOwnerDoes(t *testing.T) {
 	if err != nil || state != run.StateAbandoned || len(events) != 1 || events[0].Kind != "E" {
 		t.Fatalf("events after the refused writes = %+v, %s, %v", events, state, err)
 	}
-	for _, name := range []string{"provider.jsonl", "artifacts"} {
-		if _, err := os.Stat(filepath.Join(store.Dir, "r", name)); !errors.Is(err, os.ErrNotExist) {
-			t.Fatalf("%s after the refused writes: %v", name, err)
-		}
+	if _, err := os.Stat(filepath.Join(store.Dir, "r", "artifacts")); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("artifacts after the refused writes: %v", err)
 	}
 
 	// The run is the adopter's now: the abandoned handle's finish neither
 	// writes its record nor ends its notification.
-	adopted, _, err := store.Adopt(ctx, "r")
+	adopted, _, err := adopterOf(t, store).Adopt(ctx, "r")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -945,7 +1293,7 @@ func TestARunAdoptedBeforeItsOwnerReleasesItsSignalKeepsItsOwn(t *testing.T) {
 					adoptErr = fmt.Errorf("unlocked %s, the owner's signal closed %v", dir, closed(observed))
 					return
 				}
-				if adopted, _, adoptErr = store.Adopt(ctx, "r"); adoptErr == nil {
+				if adopted, _, adoptErr = adopterOf(t, store).Adopt(ctx, "r"); adoptErr == nil {
 					letGo(t, adopted)
 				}
 			}
@@ -979,6 +1327,396 @@ func TestARunAdoptedBeforeItsOwnerReleasesItsSignalKeepsItsOwn(t *testing.T) {
 			}
 			if _, state, _ := store.Get(ctx, "r"); state != run.StateFinished || !closed(finishing) {
 				t.Fatalf("after the adopter's finish: %s, closed %v", state, closed(finishing))
+			}
+		})
+	}
+}
+
+// A held read lists a run's evidence, artifacts among it, and not its
+// owner lock; it opens each, and nothing outside the run, a neighbouring
+// run's record there included, nor the lock.
+//
+// Contract test: the run store against the real filesystem, and the
+// kernel's flock on a run's owner.lock.
+func TestAHeldReadListsARunsEvidenceWithoutItsLock(t *testing.T) {
+	t.Parallel()
+	store := newStore(t)
+	ctx := context.Background()
+	at := time.Now()
+	record := run.Record{Schema: run.RecordSchema, ID: "r1", Process: "p", CreatedAt: at}
+	h, err := store.Create(ctx, record)
+	if err != nil {
+		t.Fatal(err)
+	}
+	letGo(t, h)
+	if err := h.Append(run.Event{Kind: "E"}); err != nil {
+		t.Fatal(err)
+	}
+	// A run recorded before LAB-181 holds the runtime's raw output too.
+	if err := os.WriteFile(filepath.Join(store.Dir, "r1", "provider.jsonl"), []byte(`{"raw":true}`+"\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := h.Artifact("out.txt", []byte("bytes\n")); err != nil {
+		t.Fatal(err)
+	}
+	record.FinishedAt = &at
+	if err := h.Finish(record); err != nil {
+		t.Fatal(err)
+	}
+	neighbour, err := store.Create(ctx, run.Record{Schema: run.RecordSchema, ID: "r2", Process: "p", CreatedAt: at})
+	if err != nil {
+		t.Fatal(err)
+	}
+	letGo(t, neighbour)
+	if _, err := os.Stat(filepath.Join(store.Dir, "r2", "record.json")); err != nil {
+		t.Fatalf("the neighbouring run's record: %v", err)
+	}
+
+	read, err := store.Hold(ctx, "r1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer read.Release()
+	if read.State() != run.StateFinished || read.Record().ID != "r1" || read.Record().FinishedAt == nil {
+		t.Fatalf("held: %s, %+v", read.State(), read.Record())
+	}
+	files, err := read.Files()
+	if want := []string{"artifacts/out.txt", "events.jsonl", "provider.jsonl", "record.json"}; err != nil || !reflect.DeepEqual(files, want) {
+		t.Fatalf("files = %v, %v, want %v", files, err, want)
+	}
+	file, err := read.Open("artifacts/out.txt")
+	if err != nil {
+		t.Fatal(err)
+	}
+	data, err := io.ReadAll(file)
+	file.Close()
+	if err != nil || string(data) != "bytes\n" {
+		t.Fatalf("artifact = %q, %v", data, err)
+	}
+	for _, path := range []string{"owner.lock", "../r2/record.json", "/etc/hosts"} {
+		if file, err := read.Open(path); err == nil {
+			file.Close()
+			t.Errorf("opened %s", path)
+		}
+	}
+	if err := holdErr(t, store, "absent"); !errors.Is(err, contract.ErrNotFound) {
+		t.Fatalf("an absent run: %v", err)
+	}
+	if err := holdErr(t, store, "../r1"); err == nil {
+		t.Fatal("held a path out of the store")
+	}
+}
+
+// A held read keeps every writer out until it is released: a run's owner
+// holds it alone, so a run running is not held; a process adopting a run
+// to recover it takes it alone, so a held run is not adopted, and one
+// being recovered is not held. Reads share a run, and a held run's state
+// still reads as it is.
+//
+// Contract test: the run store against the real filesystem, and the
+// kernel's flock on a run's owner.lock.
+func TestAHeldReadKeepsWritersOut(t *testing.T) {
+	t.Parallel()
+	store := newStore(t)
+	ctx := context.Background()
+	effects := &run.Effects{Checkout: &run.Checkout{Repository: "/repo", Dir: "/tmp/agister-checkout-1/workspace"}}
+	h, err := store.Create(ctx, run.Record{Schema: run.RecordSchema, ID: "r1", Process: "p", CreatedAt: time.Now(), Effects: effects})
+	if err != nil {
+		t.Fatal(err)
+	}
+	letGo(t, h)
+	var owned *app.RunOwnedError
+	if err := holdErr(t, store, "r1"); !errors.As(err, &owned) || owned.ID != "r1" || owned.Finished {
+		t.Fatalf("a running run: %v", err)
+	}
+
+	// Its owner is killed: the run is abandoned, and is held.
+	h.(*handle).lock.Close()
+	read, err := store.Hold(ctx, "r1")
+	if err != nil {
+		t.Fatalf("an abandoned run: %v", err)
+	}
+	t.Cleanup(read.Release)
+	if state := read.State(); state != run.StateAbandoned {
+		t.Fatalf("an abandoned run is held as %s", state)
+	}
+	other, err := store.Hold(ctx, "r1")
+	if err != nil {
+		t.Fatalf("a second read: %v", err)
+	}
+	t.Cleanup(other.Release)
+	other.Release()
+	if _, state, _ := store.Get(ctx, "r1"); state != run.StateAbandoned {
+		t.Fatalf("a held run reads %s", state)
+	}
+	// A held run is not owned: it is read, and the adopter waits for its
+	// reader as long as it waits for any, and leaves it alone.
+	reading := &waits{}
+	if _, _, err := NewAdopter(store, reading.timer).Adopt(ctx, "r1"); !errors.Is(err, app.ErrRunRead) || errors.Is(err, app.ErrRunOwned) {
+		t.Fatalf("adopting a held run = %v, want it read", err)
+	}
+	if got := reading.waited(); len(got) != readerAttempts || got[0] != readerRetry {
+		t.Fatalf("the adopter waited %v for the held run's reader, want %d waits of %v", got, readerAttempts, readerRetry)
+	}
+	if _, state, _ := store.Get(ctx, "r1"); state != run.StateAbandoned {
+		t.Fatalf("a held run the adopter left reads %s", state)
+	}
+	read.Release()
+	read.Release()
+
+	adopted, record, err := adopterOf(t, store).Adopt(ctx, "r1")
+	if err != nil {
+		t.Fatalf("adopting a released run: %v", err)
+	}
+	letGo(t, adopted)
+	if err := holdErr(t, store, "r1"); !errors.As(err, &owned) || owned.Finished {
+		t.Fatalf("an abandoned run being recovered: %v", err)
+	}
+	now := time.Now()
+	record.FinishedAt, record.Result = &now, &run.Result{Status: run.Lost}
+	record.Effects = &run.Effects{Checkout: effects.Checkout, Unreleased: effects.Checkout}
+	if err := adopted.Finish(record); err != nil {
+		t.Fatal(err)
+	}
+	// Finished with its checkout unreleased, it is adopted again to remove
+	// it.
+	adopted, _, err = adopterOf(t, store).Adopt(ctx, "r1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	letGo(t, adopted)
+	if err := holdErr(t, store, "r1"); !errors.As(err, &owned) || !owned.Finished {
+		t.Fatalf("a finished run being recovered: %v", err)
+	}
+}
+
+// memoryFolders keeps the copies an export makes in memory. A stage calls
+// created as it creates each file, before it writes it.
+type memoryFolders struct {
+	copies  map[string]map[string][]byte
+	created func(path string)
+}
+
+func (f *memoryFolders) Folder(string) error { return nil }
+
+func (f *memoryFolders) Copy(_, id string) ([]string, bool, error) {
+	files, ok := f.copies[id]
+	var paths []string
+	for path := range files {
+		paths = append(paths, path)
+	}
+	sort.Strings(paths)
+	return paths, ok, nil
+}
+
+func (f *memoryFolders) OpenCopy(_, id, path string) (io.ReadCloser, error) {
+	return memoryFile(f.copies[id], path)
+}
+
+func (f *memoryFolders) Stage(_, id string) (app.ExportStage, error) {
+	return &memoryStage{folders: f, id: id, files: map[string]*bytes.Buffer{}}, nil
+}
+
+type memoryStage struct {
+	folders *memoryFolders
+	id      string
+	files   map[string]*bytes.Buffer
+}
+
+func (s *memoryStage) Create(path string) (io.WriteCloser, error) {
+	s.folders.created(path)
+	s.files[path] = &bytes.Buffer{}
+	return nopCloser{s.files[path]}, nil
+}
+
+func (s *memoryStage) Open(path string) (io.ReadCloser, error) {
+	return memoryFile(s.written(), path)
+}
+
+func (s *memoryStage) Commit() error {
+	s.folders.copies[s.id] = s.written()
+	return nil
+}
+
+func (s *memoryStage) Discard() error { return nil }
+
+func (s *memoryStage) written() map[string][]byte {
+	files := map[string][]byte{}
+	for path, data := range s.files {
+		files[path] = data.Bytes()
+	}
+	return files
+}
+
+type nopCloser struct{ io.Writer }
+
+func (nopCloser) Close() error { return nil }
+
+func memoryFile(files map[string][]byte, path string) (io.ReadCloser, error) {
+	data, ok := files[path]
+	if !ok {
+		return nil, fmt.Errorf("%s: %w", path, contract.ErrNotFound)
+	}
+	return io.NopCloser(bytes.NewReader(data)), nil
+}
+
+// An export holds the run it copies against recovery: a reap that comes
+// while the export has copied the run's events and not yet its record
+// does not adopt the run, so the copy is the run as it was, its record and
+// events together. Once the export is done, the reap recovers the run.
+// So for a finished run whose checkout was never released, and for an
+// abandoned one.
+//
+// Contract test: the run store against the real filesystem, and the
+// kernel's flock on a run's owner.lock.
+func TestAnExportHoldsTheRunAgainstRecovery(t *testing.T) {
+	t.Parallel()
+	checkout := &run.Checkout{Repository: "/repo", Dir: "/tmp/agister-checkout-1/workspace-1"}
+	for _, c := range []struct {
+		name string
+		// leave leaves the run as its owner did.
+		leave func(t *testing.T, h app.RunHandle, record run.Record)
+	}{
+		{"unreleased", func(t *testing.T, h app.RunHandle, record run.Record) {
+			now := time.Now()
+			record.FinishedAt, record.Result = &now, &run.Result{Status: run.Completed}
+			record.Effects = &run.Effects{Checkout: checkout, Unreleased: checkout}
+			if err := h.Finish(record); err != nil {
+				t.Fatal(err)
+			}
+		}},
+		{"abandoned", func(t *testing.T, h app.RunHandle, _ run.Record) {
+			h.(*handle).lock.Close()
+		}},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
+			store := newStore(t)
+			ctx := context.Background()
+			record := run.Record{Schema: run.RecordSchema, ID: "r1", Process: "p", CreatedAt: time.Now(), Effects: &run.Effects{Checkout: checkout}}
+			h, err := store.Create(ctx, record)
+			if err != nil {
+				t.Fatal(err)
+			}
+			letGo(t, h)
+			if err := h.Append(run.Event{Kind: "E"}); err != nil {
+				t.Fatal(err)
+			}
+			c.leave(t, h, record)
+			before := map[string][]byte{}
+			for _, name := range []string{"record.json", "events.jsonl"} {
+				if before[name], err = os.ReadFile(filepath.Join(store.Dir, "r1", name)); err != nil {
+					t.Fatal(err)
+				}
+			}
+
+			var discarded []string
+			spies := &reapSpies{discard: func(_ context.Context, dir string) error {
+				discarded = append(discarded, dir)
+				return nil
+			}}
+			// The reap during the export waits for its reader as long as it
+			// waits for any, and leaves the run alone.
+			reading := &waits{}
+			reaper := app.NewReaper(NewAdopter(store, reading.timer), spies, spies, spies)
+			reaper.ReapContext = func(ctx context.Context) (context.Context, context.CancelFunc) { return context.WithCancel(ctx) }
+			var reapErr error
+			reaped := false
+			folders := &memoryFolders{copies: map[string]map[string][]byte{}, created: func(path string) {
+				if path == "record.json" {
+					reaped, reapErr = true, reaper.Reap(ctx)
+				}
+			}}
+
+			result, err := app.NewExporter(store, folders).Export(ctx, contract.ExportRequest{Runs: []string{"r1"}, To: "/audit"})
+			if err != nil || len(result.Runs) != 1 || result.Runs[0].Action != contract.ExportCopied {
+				t.Fatalf("export: %+v, %v", result, err)
+			}
+			if !reaped || reapErr != nil || len(discarded) != 0 || len(reading.waited()) != readerAttempts {
+				t.Fatalf("the reap during the export: reached %v, %v, discarded %v, waited %v", reaped, reapErr, discarded, reading.waited())
+			}
+			for name, data := range before {
+				if got := folders.copies["r1"][name]; !bytes.Equal(got, data) {
+					t.Errorf("the copy's %s = %s, the run's was %s", name, got, data)
+				}
+			}
+
+			if err := reaper.Reap(ctx); err != nil {
+				t.Fatal(err)
+			}
+			events, _, err := store.Events(ctx, "r1", 0)
+			if err != nil || len(discarded) != 1 || len(events) != 2 || events[1].Kind != "EFFECTS_REAPED" {
+				t.Fatalf("the reap after the export: discarded %v, events %+v, %v", discarded, events, err)
+			}
+		})
+	}
+}
+
+// Contract test: call and workflow warnings round-trip through the run store's real files
+// and ownership locks, then through abandoned inspection and reaped records.
+func TestWarningsSurviveStoredAbandonmentAndReaping(t *testing.T) {
+	t.Parallel()
+	warnings := []string{"runtime rt grants beyond tools.allow: process.execute", "runtime rt version 2.0.0 is unverified"}
+	workflowWarnings := []string{"node one: " + warnings[0], "node one: " + warnings[1]}
+	for _, c := range []struct {
+		name     string
+		plan     *run.Plan
+		workflow *run.Workflow
+		warnings []string
+	}{
+		{name: "call", plan: &run.Plan{
+			Primitives: []string{"Read"}, Declared: []string{"repository.read"},
+			Granted: []string{"repository.read", "process.execute"}, Extra: []string{"process.execute"}, Warnings: warnings,
+		}, warnings: warnings},
+		{name: "workflow", workflow: &run.Workflow{
+			Nodes:   []run.Node{{Name: "one", Run: "child-one", Status: run.Completed}, {Name: "two", Run: "child-two"}},
+			Barrier: run.Barrier{State: run.BarrierWaiting}, Warnings: workflowWarnings,
+		}, warnings: workflowWarnings},
+		{name: "older workflow", workflow: &run.Workflow{
+			Nodes:   []run.Node{{Name: "one", Run: "child-one", Status: run.Completed}, {Name: "two", Run: "child-two"}},
+			Barrier: run.Barrier{State: run.BarrierWaiting},
+		}},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
+			ctx := context.Background()
+			store := newStore(t)
+			want := c.warnings
+			record := run.Record{Schema: run.RecordSchema, ID: "warned", Process: "p", CreatedAt: time.Date(2026, 10, 1, 11, 0, 0, 0, time.UTC)}
+			handle, err := store.Create(ctx, record)
+			if err != nil {
+				t.Fatal(err)
+			}
+			letGo(t, handle)
+			record.Plan, record.Workflow = c.plan, c.workflow
+			if err := handle.Update(record); err != nil {
+				t.Fatal(err)
+			}
+			if err := store.Abandon(record.ID); err != nil {
+				t.Fatal(err)
+			}
+			saved, state, err := store.Get(ctx, record.ID)
+			if err != nil || state != run.StateAbandoned || saved.Result != nil || (!reflect.DeepEqual(saved.Plan, record.Plan) || !reflect.DeepEqual(saved.Workflow, record.Workflow)) {
+				t.Fatalf("stored abandoned snapshot = %+v, %s, %v", saved, state, err)
+			}
+			runs := app.NewRuns(store, store, nil, nil, 0)
+			view, err := runs.Inspect(ctx, record.ID)
+			if err != nil || view.Result == nil || view.Result.Status != "lost" || !reflect.DeepEqual(view.Result.Warnings, want) {
+				t.Fatalf("stored abandoned outcome = %+v, %v", view.Result, err)
+			}
+			spies := &reapSpies{discard: func(context.Context, string) error {
+				t.Error("no checkout to discard")
+				return nil
+			}}
+			reaper := app.NewReaper(adopterOf(t, store), spies, spies, spies)
+			reaper.ReapContext = func(ctx context.Context) (context.Context, context.CancelFunc) { return context.WithCancel(ctx) }
+			finished, owned, err := reaper.ReapRun(ctx, record.ID)
+			if err != nil || owned || finished.Result == nil || !reflect.DeepEqual(finished.Result.Warnings, want) {
+				t.Fatalf("reap = %+v, owned %v, %v", finished.Result, owned, err)
+			}
+			saved, state, err = store.Get(ctx, record.ID)
+			if err != nil || state != run.StateFinished || saved.Result == nil || saved.Result.Status != run.Lost || !reflect.DeepEqual(saved.Result.Warnings, want) || (!reflect.DeepEqual(saved.Plan, record.Plan) || !reflect.DeepEqual(saved.Workflow, record.Workflow)) {
+				t.Fatalf("stored reaped outcome = %+v, %s, %v", saved.Result, state, err)
 			}
 		})
 	}

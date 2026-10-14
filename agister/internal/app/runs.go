@@ -31,6 +31,8 @@ type RunsReader interface {
 	Get(ctx context.Context, id string) (run.Record, run.State, error)
 	Events(ctx context.Context, id string, afterSeq int) ([]run.Event, run.State, error)
 	List(ctx context.Context) ([]run.Record, error)
+	// RunDir is the directory run id's record and artifacts are kept in.
+	RunDir(id string) string
 }
 
 // RunsAppends says when a run this process writes has more to read.
@@ -160,10 +162,11 @@ func (r *Runs) view(record run.Record, state run.State) contract.Run {
 		Agent:     record.Agent,
 		State:     string(state),
 		CreatedAt: record.CreatedAt,
+		Dir:       r.reader.RunDir(record.ID),
 	}
 	result := record.Result
 	if state == run.StateAbandoned {
-		lost := run.AbandonedResult(record.CreatedAt)
+		lost := record.WithWarnings(run.AbandonedResult(record.CreatedAt))
 		result = &lost
 	}
 	if result != nil {

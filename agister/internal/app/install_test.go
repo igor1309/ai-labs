@@ -10,38 +10,40 @@ import (
 
 	"github.com/igor1309/ai-labs/agister/internal/app"
 	"github.com/igor1309/ai-labs/agister/internal/contract"
-	"github.com/igor1309/ai-labs/agister/internal/domain/definition"
+	"github.com/igor1309/ai-labs/agister/internal/domain/document"
 )
 
 // installSource is a folder of settings that holds docs.
-type installSource struct{ docs []definition.Document }
+type installSource struct{ docs []document.Document }
 
-func (s installSource) Source(context.Context, string) ([]definition.Document, []string, error) {
+func (s installSource) Source(context.Context, string) ([]document.Document, []string, error) {
 	return s.docs, nil, nil
 }
 
 // installHomeSpy is home's settings in memory; it records what is written,
-// and fails each Put with putErr and each Remove with removeErr.
+// and fails each Put with putErr and each Remove with removeErr. left is
+// what a failed write left, by kind and name.
 type installHomeSpy struct {
-	docs              []definition.Document
+	docs              []document.Document
+	left              map[string]string
 	writes            []string
 	putErr, removeErr error
 }
 
-func (h *installHomeSpy) Documents(context.Context) ([]definition.Document, []definition.Source, error) {
+func (h *installHomeSpy) Documents(context.Context) ([]document.Document, []document.Source, error) {
 	return h.docs, nil, nil
 }
 
-func (h *installHomeSpy) Read(_ context.Context, kind definition.Kind, name string) (definition.Document, error) {
+func (h *installHomeSpy) File(_ context.Context, kind document.Kind, name string) ([]byte, error) {
 	for _, doc := range h.docs {
 		if doc.Source.Kind == kind && doc.Source.Name == name {
-			return doc, nil
+			return doc.Bytes, nil
 		}
 	}
-	return definition.Document{}, errors.New("not found")
+	return nil, errors.New("not found")
 }
 
-func (h *installHomeSpy) Current(_ context.Context, kind definition.Kind, name string) (string, string, error) {
+func (h *installHomeSpy) Current(_ context.Context, kind document.Kind, name string) (string, string, error) {
 	path := "home/" + string(kind) + "/" + name
 	for _, doc := range h.docs {
 		if doc.Source.Kind == kind && doc.Source.Name == name {
@@ -51,14 +53,18 @@ func (h *installHomeSpy) Current(_ context.Context, kind definition.Kind, name s
 	return path, "", nil
 }
 
+func (h *installHomeSpy) Left(_ context.Context, kind document.Kind, name string) (string, error) {
+	return h.left[string(kind)+"/"+name], nil
+}
+
 func (h *installHomeSpy) Lock(context.Context) (func(), error) { return func() {}, nil }
 
-func (h *installHomeSpy) Put(_ context.Context, kind definition.Kind, name string, _ []byte) error {
+func (h *installHomeSpy) Put(_ context.Context, kind document.Kind, name string, _ []byte) error {
 	h.writes = append(h.writes, "Put "+string(kind)+"/"+name)
 	return h.putErr
 }
 
-func (h *installHomeSpy) Remove(_ context.Context, kind definition.Kind, name string) error {
+func (h *installHomeSpy) Remove(_ context.Context, kind document.Kind, name string) error {
 	h.writes = append(h.writes, "Remove "+string(kind)+"/"+name)
 	return h.removeErr
 }
@@ -72,7 +78,7 @@ type installBackupsSpy struct {
 	removeErr error
 }
 
-func (b *installBackupsSpy) Save(_ context.Context, stamp string, _ app.InstallManifest, _ []definition.Document) error {
+func (b *installBackupsSpy) Save(_ context.Context, stamp string, _ app.InstallManifest, _ []document.Document) error {
 	b.saved = append(b.saved, stamp)
 	return nil
 }
@@ -86,7 +92,7 @@ func (b *installBackupsSpy) Manifest(context.Context, string) (app.InstallManife
 	return *b.manifest, nil
 }
 
-func (b *installBackupsSpy) Saved(_ context.Context, _ string, _ definition.Kind, name string) ([]byte, error) {
+func (b *installBackupsSpy) Saved(_ context.Context, _ string, _ document.Kind, name string) ([]byte, error) {
 	if data, ok := b.bytes[name]; ok {
 		return data, nil
 	}
@@ -103,17 +109,17 @@ func (installStamps) Stamp(time.Time) string { return "stamp-1" }
 // records the results checked.
 type installCheckStub struct {
 	report  contract.CheckReport
-	checked [][]definition.Document
+	checked [][]document.Document
 }
 
-func (c *installCheckStub) Check(_ context.Context, result []definition.Document) (contract.CheckReport, error) {
+func (c *installCheckStub) Check(_ context.Context, result []document.Document) (contract.CheckReport, error) {
 	c.checked = append(c.checked, result)
 	return c.report, nil
 }
 
-func installDoc(kind definition.Kind, name, text string) definition.Document {
-	return definition.Document{
-		Source: definition.Source{Kind: kind, Name: name, Path: "home/" + string(kind) + "/" + name, SHA256: sha(text)},
+func installDoc(kind document.Kind, name, text string) document.Document {
+	return document.Document{
+		Source: document.Source{Kind: kind, Name: name, Path: "home/" + string(kind) + "/" + name, SHA256: sha(text)},
 		Bytes:  []byte(text),
 	}
 }
@@ -121,11 +127,11 @@ func installDoc(kind definition.Kind, name, text string) definition.Document {
 // installerOver installs a folder that replaces home's reviewer and adds a
 // prompt, its result checked by check.
 func installerOver(check app.InstallCheck) (*app.Installer, *installHomeSpy, *installBackupsSpy) {
-	home := &installHomeSpy{docs: []definition.Document{installDoc(definition.KindAgent, "reviewer", "name = \"reviewer\"\n")}}
+	home := &installHomeSpy{docs: []document.Document{installDoc(document.KindAgent, "reviewer", "name = \"reviewer\"\n")}}
 	backups := &installBackupsSpy{}
-	source := installSource{docs: []definition.Document{
-		installDoc(definition.KindAgent, "reviewer", "name = \"reviewer\"\n# tuned\n"),
-		installDoc(definition.KindPrompt, "house", "Follow the house style.\n"),
+	source := installSource{docs: []document.Document{
+		installDoc(document.KindAgent, "reviewer", "name = \"reviewer\"\n# tuned\n"),
+		installDoc(document.KindPrompt, "house", "Follow the house style.\n"),
 	}}
 	installer := app.NewInstaller(app.InstallAdapters{Source: source, Home: home, Backups: backups, Clock: fixedClock{}, Stamps: installStamps{}}, check)
 	return installer, home, backups
@@ -237,15 +243,15 @@ func TestInstallerRestoreStoppedSaysToRunItAgain(t *testing.T) {
 	} {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
-			home := &installHomeSpy{docs: []definition.Document{
-				installDoc(definition.KindAgent, "reviewer", "tuned\n"),
-				installDoc(definition.KindPrompt, "house", "house\n"),
+			home := &installHomeSpy{docs: []document.Document{
+				installDoc(document.KindAgent, "reviewer", "tuned\n"),
+				installDoc(document.KindPrompt, "house", "house\n"),
 			}}
 			backups := &installBackupsSpy{
 				saved: []string{"stamp-1"},
 				manifest: &app.InstallManifest{Stamp: "stamp-1", Documents: []app.InstallManifestEntry{
-					{Kind: string(definition.KindAgent), Name: "reviewer", Action: contract.InstallReplace, Before: sha("old\n"), After: sha("tuned\n")},
-					{Kind: string(definition.KindPrompt), Name: "house", Action: contract.InstallCreate, After: sha("house\n")},
+					{Kind: string(document.KindAgent), Name: "reviewer", Action: contract.InstallReplace, Before: sha("old\n"), After: sha("tuned\n")},
+					{Kind: string(document.KindPrompt), Name: "house", Action: contract.InstallCreate, After: sha("house\n")},
 				}},
 				bytes: map[string][]byte{"reviewer": []byte("old\n")},
 			}
@@ -264,5 +270,38 @@ func TestInstallerRestoreStoppedSaysToRunItAgain(t *testing.T) {
 				t.Fatalf("err = %v, want %q", err, tc.want)
 			}
 		})
+	}
+}
+
+// A created document that is not there is unchanged, unless a failed write
+// left something in its place: that is planned as a remove, under its own
+// path, and removed as the document would be.
+func TestInstallerRestoreRemovesWhatAFailedWriteLeft(t *testing.T) {
+	t.Parallel()
+	home := &installHomeSpy{left: map[string]string{"skills/review": "home/skills/review"}}
+	backups := &installBackupsSpy{
+		saved: []string{"stamp-1"},
+		manifest: &app.InstallManifest{Stamp: "stamp-1", Documents: []app.InstallManifestEntry{
+			{Kind: string(document.KindSkill), Name: "review", Action: contract.InstallCreate, After: sha("review\n")},
+			{Kind: string(document.KindSkill), Name: "style", Action: contract.InstallCreate, After: sha("style\n")},
+		}},
+	}
+	installer := app.NewInstaller(app.InstallAdapters{Source: installSource{}, Home: home, Backups: backups, Clock: fixedClock{}, Stamps: installStamps{}}, &installCheckStub{})
+	ctx := context.Background()
+
+	plan, err := installer.Restore(ctx, "stamp-1", nil)
+
+	want := []contract.RestoreDocument{
+		{Kind: "skills", Name: "review", Path: "home/skills/review", Action: contract.RestoreRemove},
+		{Kind: "skills", Name: "style", Path: "home/skills/style", Action: contract.RestoreUnchanged},
+	}
+	if err != nil || !reflect.DeepEqual(plan.Documents, want) || len(home.writes) != 0 {
+		t.Fatalf("plan %+v, %v, writes %v, want %+v and none", plan.Documents, err, home.writes, want)
+	}
+	if _, err := installer.Restore(ctx, "stamp-1", &plan); err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(home.writes, []string{"Remove skills/review"}) {
+		t.Fatalf("writes = %v, want the one remove", home.writes)
 	}
 }

@@ -5,9 +5,8 @@ package run
 import (
 	"encoding/json"
 	"fmt"
+	"slices"
 	"time"
-
-	"github.com/igor1309/ai-labs/agister/internal/domain/definition"
 )
 
 // Status is how a node ended. Every kind of node (an agent call today;
@@ -40,6 +39,7 @@ const (
 	ClassRuntimeUnavailable Class = "runtime_unavailable" // the runtime could not be started
 	ClassInternal           Class = "internal"            // Agister's own failure
 	ClassSetupFailed        Class = "setup_failed"        // the checkout's setup command failed (ADR-012)
+	ClassCommitted          Class = "committed"           // the agent committed in the caller's worktree (ADR-022 rule 7)
 	// interrupted
 	ClassTimeout   Class = "timeout"
 	ClassCancelled Class = "cancelled"
@@ -64,6 +64,10 @@ func StatusOf(class Class) Status {
 type Error struct {
 	Class   Class  `json:"class"`
 	Message string `json:"message,omitempty"`
+	// Unknown counts, on a refusal for the settings, the problems it names
+	// that name something this binary does not know: the settings may
+	// need a newer one (LAB-122).
+	Unknown int `json:"unknown,omitempty"`
 }
 
 // Fault builds an error; the status follows from its class.
@@ -126,6 +130,7 @@ type Session struct {
 
 // Result is a node's output as a workflow sees it.
 type Result struct {
+	Warnings  []string        `json:"warnings,omitempty"`
 	Status    Status          `json:"status"`
 	Error     *Error          `json:"error,omitempty"`
 	Output    json.RawMessage `json:"output,omitempty"` // the latest turn's, when contract-valid, whatever then ended the node
@@ -190,13 +195,31 @@ type Turn struct {
 	Stale *Stale `json:"stale,omitempty"`
 }
 
+// AbsentPrompt is an optional prompt input the call went ahead without:
+// the input, and the prompt it names that neither settings layer had. Only
+// records written before ADR-028 hold one.
+type AbsentPrompt struct {
+	Input  string `json:"input"`
+	Prompt string `json:"prompt"`
+}
+
 // Input is one resolved, immutable input.
 type Input struct {
 	Name     string `json:"name"`
 	Source   string `json:"source"`
-	Identity string `json:"identity"`           // commit, digest, or the literal itself
+	Identity string `json:"identity"`           // commit, digest, or the literal itself; a long literal's digest
 	Revision bool   `json:"revision,omitempty"` // Identity is a commit that can be checked out
 	Value    any    `json:"value,omitempty"`    // omitted from records when large
+	// Artifact keeps a value the record leaves out, beside the run's other
+	// artifacts (ADR-026 rule 6); unset for a value kept inline, and on
+	// records made before inputs were kept.
+	Artifact *Artifact `json:"artifact,omitempty"`
+	// CachePath is a disposable working copy of a file input's bytes, under
+	// Agister's cache in a folder named by their digest (ADR-026 rule 6).
+	// The cache may be cleared at any time; the run's own copy, its value
+	// or its artifact, is the source. Unset for any other input, when the
+	// copy could not be written, and on records made before.
+	CachePath string `json:"cache_path,omitempty"`
 }
 
 // Runtime identifies the runtime a call ran on.
@@ -209,7 +232,8 @@ type Runtime struct {
 
 // Profile is the agent profile a call ran as: the model and effort it asked
 // for, each empty when the agent left it to the runtime, and the session
-// mode. The model the runtime reports is the turn's.
+// mode the call ran under, its process's, fresh-only where the process
+// sets none (ADR-030 rule 3). The model the runtime reports is the turn's.
 type Profile struct {
 	Model   string `json:"model,omitempty"`
 	Effort  string `json:"effort,omitempty"`
@@ -229,25 +253,74 @@ type Record struct {
 	CreatedAt   time.Time          `json:"created_at"`
 	FinishedAt  *time.Time         `json:"finished_at,omitempty"`
 	Definitions []DefinitionSource `json:"definitions,omitempty"`
-	Effective   *EffectivePolicy   `json:"effective,omitempty"`
-	Verify      *Verify            `json:"verify,omitempty"`
+	// Layers are the settings layers the call selected, nearest first;
+	// unset on records written before ADR-028.
+	Layers []Layer `json:"layers,omitempty"`
+	// AbsentPrompts are the optional prompt inputs whose prompt neither
+	// settings layer had, so the agent was not given them (ADR-019 rule 3).
+	// No longer written (ADR-028 rule 11): a record written before reads
+	// as it was.
+	AbsentPrompts []AbsentPrompt   `json:"absent_prompts,omitempty"`
+	Effective     *EffectivePolicy `json:"effective,omitempty"`
+	Verify        *Verify          `json:"verify,omitempty"`
 	// Setup is the setup command the call's checkout runs (ADR-012), as
 	// resolved; SetupRun is its one run, once it ran.
-	Setup     *Setup      `json:"setup,omitempty"`
-	SetupRun  *CommandRun `json:"setup_run,omitempty"`
-	Runtime   *Runtime    `json:"runtime,omitempty"`
-	Plan      *Plan       `json:"plan,omitempty"`
-	Inputs    []Input     `json:"inputs,omitempty"`
-	Workspace string      `json:"workspace,omitempty"`
-	Effects   *Effects    `json:"effects,omitempty"`
+	Setup    *Setup      `json:"setup,omitempty"`
+	SetupRun *CommandRun `json:"setup_run,omitempty"`
+	// Precheck is the precheck that gates an in-place call (ADR-022 rule 5),
+	// as resolved; PrecheckRun is its one run, once it ran.
+	Precheck    *Precheck   `json:"precheck,omitempty"`
+	PrecheckRun *CommandRun `json:"precheck_run,omitempty"`
+	Runtime     *Runtime    `json:"runtime,omitempty"`
+	Plan        *Plan       `json:"plan,omitempty"`
+	Inputs      []Input     `json:"inputs,omitempty"`
+	Workspace   string      `json:"workspace,omitempty"`
+	// InPlace is the caller's worktree the call worked in (ADR-025 rule 1;
+	// before it, an in-place call's, ADR-022 rule 2). It is not an effect: no
+	// release or reap reads it, and nothing of Agister's removes it. Unset on
+	// a call refused before it held the worktree, and on a record made
+	// before ADR-025 of a call that worked elsewhere.
+	InPlace *InPlace `json:"in_place,omitempty"`
+	Effects *Effects `json:"effects,omitempty"`
+	// ProcessesEnded says every process the run recorded (Effects.Process
+	// and Effects.Command) is known to have ended: the call ended them
+	// itself, or a reap did. False, a process it recorded may still run.
+	// Nil on records written before it was recorded, which
+	// ProcessesKnownEnded reads.
+	ProcessesEnded *bool `json:"processes_ended,omitempty"`
 	// Turn is the latest turn; with verification, Attempts has every one.
 	Turn     *Turn     `json:"turn,omitempty"`
 	Attempts []Attempt `json:"attempts,omitempty"`
+	// Recoveries are the call's recovery turns, in order (ADR-024 rule 9).
+	Recoveries []Recovery `json:"recoveries,omitempty"`
+	// Trail is what the runtime reported the agent did on the way, over
+	// every turn of the call: the paths its tool calls wrote and the tool
+	// calls it was denied. Unset when it reported neither.
+	Trail *Trail `json:"trail,omitempty"`
 	// Workflow is set on a workflow's own run (ADR-003): its nodes and
 	// barrier. Parent is set on a node's run: the workflow run it belongs to.
+	// Call is set on the run of a workflow of one call instead (ADR-030
+	// rule 6): the call it binds.
 	Workflow *Workflow `json:"workflow,omitempty"`
 	Parent   *Parent   `json:"parent,omitempty"`
-	Result   *Result   `json:"result,omitempty"` // set when finished
+	Call     *Call     `json:"call,omitempty"`
+	// Links are the earlier runs the caller named this one's goal and
+	// judgement in (ADR-026 rules 2 and 6); unset when it named neither,
+	// and on records made before.
+	Links  *Links  `json:"links,omitempty"`
+	Result *Result `json:"result,omitempty"` // set when finished
+}
+
+// ProcessesKnownEnded says whether every process the run recorded is known
+// to have ended: what ProcessesEnded says, when the record has it. A record
+// written before has it only by how the run ended: a call that finished its
+// run ended its processes first, so they are; a run its call left
+// unfinished, or one a reap finished, says nothing of them.
+func (r Record) ProcessesKnownEnded() bool {
+	if r.ProcessesEnded != nil {
+		return *r.ProcessesEnded
+	}
+	return r.FinishedAt != nil && !reaped(r)
 }
 
 // Effects are what a call leaves outside its record, written down as soon
@@ -281,6 +354,44 @@ type Checkout struct {
 	Revision           string `json:"revision,omitempty"`
 }
 
+// InPlace is the caller's worktree a call worked in (ADR-025 rule 1): its
+// directory, its identity, the repository, the revision it started from,
+// how the call verifies and whether it held the worktree as a writer.
+type InPlace struct {
+	Dir string `json:"dir"`
+	// Worktree is the worktree's canonical path, symlinks resolved: the key
+	// of its lock, by which runs in one worktree are found.
+	Worktree string `json:"worktree"`
+	// RepositoryIdentity is the canonical Git common directory; Revision
+	// the revision the call pinned. Both empty for a call whose process
+	// pins none.
+	RepositoryIdentity string `json:"repository_identity"`
+	Revision           string `json:"revision"`
+	// Writer says the call held the worktree alone, as a writer, not with
+	// other readers (ADR-025 rule 4). Nil on records made before it was
+	// recorded, which held it alone: HeldAlone reads it.
+	Writer *bool `json:"writer,omitempty"`
+	// Verify is where the call's verification runs (ADR-022 rule 6):
+	// VerifyInWorkspace or VerifyOnCopy; empty when the call verifies
+	// nothing.
+	Verify string `json:"verify,omitempty"`
+	// Content names the worktree's content the call's changes.patch was
+	// captured from (ADR-022 rule 7); empty until then, and when the
+	// capture failed.
+	Content string `json:"content,omitempty"`
+}
+
+// HeldAlone says the call held the worktree as a writer: what Writer says,
+// when the record has it; a record made before always did (ADR-022 rule 3).
+func (p *InPlace) HeldAlone() bool { return p.Writer == nil || *p.Writer }
+
+// Where verification runs: on a clean copy (ADR-005), before ADR-025, or in
+// the call's worktree (ADR-025 rule 5).
+const (
+	VerifyOnCopy      = "copy"
+	VerifyInWorkspace = "workspace"
+)
+
 // Process is the runtime's process as an opaque reference, made and read
 // only by the runtime adapter that started it. Records of v1alpha2 carry no
 // effects, so the reaper never lists them and what such a run left is not
@@ -296,13 +407,25 @@ const RecordSchema = "agister.run/v1alpha3"
 type Request struct {
 	Process string            `json:"process"`
 	Params  map[string]string `json:"params,omitempty"`
-	Agent   string            `json:"agent,omitempty"`   // override of the process's agent
+	Agent   string            `json:"agent,omitempty"`   // on a node's run, the agent its node binds; on a run made before ADR-030, its caller's --agent
 	Timeout string            `json:"timeout,omitempty"` // narrowing override
 	// Narrowing cost override.
 	MaxCostUSD *float64 `json:"max_cost_usd,omitempty"`
 	// A finished run whose session to continue; empty for a fresh session.
 	Continue string `json:"continue,omitempty"`
-	Cwd      string `json:"cwd"`
+	// Goal names the goal the call serves, <run-id>[:<input>], and Answers
+	// the run whose judgement it answers, as given; empty when not named.
+	// What each names is recorded in Record.Links.
+	Goal    string `json:"goal,omitempty"`
+	Answers string `json:"answers,omitempty"`
+	// Workspace is the workspace mode the caller asked for (ADR-022 rule 1),
+	// "in-place" or "temporary"; empty: the repository's setting. Only on
+	// records made before ADR-025 removed it.
+	Workspace string `json:"workspace,omitempty"`
+	// Cwd is the caller's directory, its working directory or --dir: the
+	// call works in the root of the git worktree that holds it (ADR-025
+	// rule 1).
+	Cwd string `json:"cwd"`
 }
 
 // State of a record as read.
@@ -316,16 +439,18 @@ const (
 
 // Conclude derives the node status from a turn and the output contract:
 // a runtime's failure is never upgraded, and a completed turn counts only
-// with contract-valid output. What the output means is not Agister's.
-func Conclude(turn Turn, output definition.Output, validation error) (Status, *Error) {
+// with contract-valid output. invalid is why the output breaks its
+// contract, nil when it keeps it or has none. What the output means is not
+// Agister's.
+func Conclude(turn Turn, invalid error) (Status, *Error) {
 	if turn.Status != Completed {
 		if turn.Error == nil {
 			return turn.Status, Fault(ClassRuntimeError, "no reason reported")
 		}
 		return turn.Status, turn.Error
 	}
-	if output.Format == "json" && validation != nil {
-		return Failed, Fault(ClassInvalidOutput, "%v", validation)
+	if invalid != nil {
+		return Failed, Fault(ClassInvalidOutput, "%v", invalid)
 	}
 	return Completed, nil
 }
@@ -339,4 +464,25 @@ func AbandonedResult(startedAt time.Time) Result {
 		Cost:   Cost{Source: CostUnknown},
 		Timing: Timing{StartedAt: startedAt},
 	}
+}
+
+// WithWarnings includes persisted call and workflow warnings in any outcome,
+// including one synthesized after the owner ends. Outcome-specific warnings
+// are retained.
+func (r Record) WithWarnings(result Result) Result {
+	result.Warnings = slices.Clone(result.Warnings)
+	include := func(warnings []string) {
+		for _, warning := range warnings {
+			if !slices.Contains(result.Warnings, warning) {
+				result.Warnings = append(result.Warnings, warning)
+			}
+		}
+	}
+	if r.Plan != nil {
+		include(r.Plan.Warnings)
+	}
+	if r.Workflow != nil {
+		include(r.Workflow.Warnings)
+	}
+	return result
 }

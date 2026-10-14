@@ -2,22 +2,15 @@ package git_test
 
 import (
 	"context"
-	"errors"
-	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"reflect"
 	"strings"
-	"sync"
-	"sync/atomic"
 	"testing"
-	"time"
 
 	"github.com/igor1309/ai-labs/agister/internal/adapters/git"
 	"github.com/igor1309/ai-labs/agister/internal/app"
-	"github.com/igor1309/ai-labs/agister/internal/domain/definition"
-	"github.com/igor1309/ai-labs/agister/internal/domain/run"
 )
 
 func sh(t *testing.T, dir string, args ...string) string {
@@ -57,6 +50,131 @@ func resolve(t *testing.T, provider app.InputProvider, dir string, args map[stri
 		t.Fatal(err)
 	}
 	return resolved
+}
+
+// oldCheckout is a checkout of HEAD in repo as runs made them before ADR-025,
+// at <temp>/agister-checkout-<id>/workspace-<id>, left on record for the
+// reap to remove; whatever the test leaves of it is removed at its end.
+func oldCheckout(t *testing.T, repo string) string {
+	t.Helper()
+	parent, err := os.MkdirTemp("", "agister-checkout-")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.RemoveAll(parent) })
+	dir := filepath.Join(parent, "workspace-"+strings.TrimPrefix(filepath.Base(parent), "agister-checkout-"))
+	sh(t, repo, "worktree", "add", "--detach", "--quiet", dir, "HEAD")
+	return dir
+}
+
+// linked is a linked worktree of repo, detached at revision.
+func linked(t *testing.T, repo, revision string) string {
+	t.Helper()
+	dir := filepath.Join(t.TempDir(), "linked")
+	sh(t, repo, "worktree", "add", "--detach", "--quiet", dir, revision)
+	return dir
+}
+
+// Contract test: git worktree roots and gitlinks in a real repository's
+// index, including staged submodules, independent descendant worktrees and
+// roots whose names end in tabs and spaces.
+func TestRootsAndTrackedSubmoduleBoundaries(t *testing.T) {
+	t.Parallel()
+	dir := repository(t)
+	root, err := filepath.EvalSymlinks(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	nested := filepath.Join(root, ".claude", "worktrees", "task")
+	sh(t, root, "worktree", "add", "--detach", "--quiet", nested, "HEAD")
+	plain := filepath.Join(root, "src")
+	inside := filepath.Join(nested, "src")
+	for _, path := range []string{plain, inside} {
+		if err := os.MkdirAll(path, 0o700); err != nil {
+			t.Fatal(err)
+		}
+	}
+	module := filepath.Join(root, "lib \tmodule")
+	sh(t, root, "-c", "protocol.file.allow=always", "submodule", "add", "--quiet", repository(t), "lib \tmodule")
+	moduleInside := filepath.Join(module, "src")
+	if err := os.Mkdir(moduleInside, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	embedded := filepath.Join(module, "nested")
+	sh(t, root, "worktree", "add", "--detach", "--quiet", embedded, "HEAD")
+	spaceRoot := filepath.Join(root, "task  ")
+	tabRoot := filepath.Join(root, "task\t")
+	for _, path := range []string{spaceRoot, tabRoot} {
+		sh(t, root, "worktree", "add", "--detach", "--quiet", path, "HEAD")
+	}
+	// Configuration is insufficient: this nested worktree has no gitlink.
+	sh(t, root, "config", "submodule.task.path", ".claude/worktrees/task")
+	modulesFile, err := os.OpenFile(filepath.Join(root, ".gitmodules"), os.O_APPEND|os.O_WRONLY, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, writeErr := modulesFile.WriteString("\n[submodule \"task\"]\n\tpath = .claude/worktrees/task\n\turl = unused\n")
+	closeErr := modulesFile.Close()
+	if writeErr != nil || closeErr != nil {
+		t.Fatalf(".gitmodules: write %v, close %v", writeErr, closeErr)
+	}
+	alias := filepath.Join(t.TempDir(), "alias")
+	if err := os.Symlink(root, alias); err != nil {
+		t.Fatal(err)
+	}
+	adapter := git.Workspaces{}
+	for name, c := range map[string]struct {
+		dir, wantRoot string
+		tracked       bool
+	}{
+		"main":                {root, root, false},
+		"plain directory":     {plain, root, false},
+		"nested worktree":     {nested, nested, false},
+		"nested directory":    {inside, nested, false},
+		"submodule":           {module, module, true},
+		"submodule directory": {moduleInside, module, true},
+		// Only the indexed submodule root overlaps, not a descendant root.
+		"root inside submodule": {embedded, embedded, false},
+		"root ending in spaces": {spaceRoot, spaceRoot, false},
+		"root ending in tab":    {tabRoot, tabRoot, false},
+		"symlink":               {filepath.Join(alias, "src"), root, false},
+	} {
+		// Serial: these cases share one repository and its index.
+		t.Run(name, func(t *testing.T) {
+			got, err := adapter.Root(context.Background(), c.dir)
+			if err != nil || got != c.wantRoot {
+				t.Fatalf("Root(%q) = %q, %v; want %q", c.dir, got, err, c.wantRoot)
+			}
+			tracked, err := adapter.IsSubmodule(context.Background(), root, got)
+			if err != nil || tracked != c.tracked {
+				t.Fatalf("IsSubmodule(%q) = %v, %v; want %v", got, tracked, err, c.tracked)
+			}
+		})
+	}
+	// Serial: this case changes the shared repository's index after the reads.
+	t.Run("unresolvable gitlink", func(t *testing.T) {
+		loop := filepath.Join(root, "loop")
+		if err := os.Symlink("loop", loop); err != nil {
+			t.Fatal(err)
+		}
+		sh(t, root, "update-index", "--add", "--cacheinfo", "160000,"+sh(t, root, "rev-parse", "HEAD")+",loop")
+		if tracked, err := adapter.IsSubmodule(context.Background(), root, nested); err == nil || tracked {
+			t.Fatalf("IsSubmodule(unresolvable gitlink) = %v, %v; want lookup failure", tracked, err)
+		}
+	})
+	t.Run("invalid git boundary", func(t *testing.T) {
+		t.Parallel()
+		bad := t.TempDir()
+		if err := os.WriteFile(filepath.Join(bad, ".git"), []byte("gitdir: missing\n"), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		if root, err := adapter.Root(context.Background(), bad); err == nil || root != "" {
+			t.Fatalf("Root(invalid boundary) = %q, %v", root, err)
+		}
+		if tracked, err := adapter.IsSubmodule(context.Background(), bad, nested); err == nil || tracked {
+			t.Fatalf("IsSubmodule(invalid boundary) = %v, %v", tracked, err)
+		}
+	})
 }
 
 // Contract test: the git adapter against real git, in a repository of the
@@ -125,49 +243,12 @@ func TestInputErrors(t *testing.T) {
 
 // Contract test: the git adapter against real git, in a repository of the
 // test's own.
-func TestCheckoutIsDetachedAndReleased(t *testing.T) {
-	t.Parallel()
-	dir := repository(t)
-	base := sh(t, dir, "rev-parse", "main")
-	workspaces := git.NewWorkspaces(git.NewWorktrees(t.TempDir()))
-	root, err := workspaces.Root(context.Background(), filepath.Join(dir))
-	if err != nil {
-		t.Fatal(err)
-	}
-	checkout, release, err := workspaces.Checkout(context.Background(), root, base)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if data, _ := os.ReadFile(filepath.Join(checkout, "a.txt")); string(data) != "one\n" {
-		t.Fatalf("checkout content = %q", data)
-	}
-	if err := release(); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := os.Stat(checkout); !os.IsNotExist(err) {
-		t.Fatal("checkout left behind")
-	}
-	if lines := strings.Split(sh(t, dir, "worktree", "list"), "\n"); len(lines) != 1 {
-		t.Fatalf("worktrees = %v", lines)
-	}
-}
-
-// Contract test: the git adapter against real git, in a repository of the
-// test's own.
 func TestRepositoryEquivalenceUsesCanonicalCommonDirectories(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
 	repo := repository(t)
 	workspaces := git.NewWorkspaces(git.NewWorktrees(t.TempDir()))
-	checkout, release, err := workspaces.Checkout(ctx, repo, sh(t, repo, "rev-parse", "HEAD"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() {
-		if err := release(); err != nil {
-			t.Error(err)
-		}
-	})
+	checkout := linked(t, repo, sh(t, repo, "rev-parse", "HEAD"))
 	link := filepath.Join(t.TempDir(), "repository")
 	if err := os.Symlink(repo, link); err != nil {
 		t.Fatal(err)
@@ -235,9 +316,8 @@ func TestRepositoryIdentityOutlivesTheWorktreeItWasReadFrom(t *testing.T) {
 }
 
 // The content identity covers what is committed, edited and untracked, but
-// not ignored; the patch from the revision to it, applied to a copy of the
-// revision, makes that content exactly, and neither touches the checkout's
-// own index.
+// not ignored; the patch from the revision to it, rebuilt on the revision,
+// makes that content exactly, and neither touches the worktree's own index.
 //
 // Contract test: the git adapter against real git, in a repository of the
 // test's own.
@@ -247,19 +327,15 @@ func TestChangesCoverEverythingSinceTheRevision(t *testing.T) {
 	ctx := context.Background()
 	workspaces := git.NewWorkspaces(git.NewWorktrees(t.TempDir()))
 	revision := sh(t, repo, "rev-parse", "HEAD")
-	dir, release, err := workspaces.Checkout(ctx, repo, revision)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer release()
+	dir := linked(t, repo, revision)
 	untouched, err := workspaces.Identity(ctx, dir, revision)
 	if err != nil || untouched != sh(t, repo, "rev-parse", revision+"^{tree}") {
-		t.Fatalf("untouched checkout: %q, %v", untouched, err)
+		t.Fatalf("untouched worktree: %q, %v", untouched, err)
 	}
 	if patch, err := workspaces.Changes(ctx, dir, revision, untouched); err != nil || len(patch) != 0 {
-		t.Fatalf("untouched checkout: %q, %v", patch, err)
+		t.Fatalf("untouched worktree: %q, %v", patch, err)
 	}
-	// A commit in the checkout, an edit, an untracked file, a binary one,
+	// A commit in the worktree, an edit, an untracked file, a binary one,
 	// an ignored one, and an edit its own index is told to overlook.
 	os.WriteFile(filepath.Join(dir, "c.txt"), []byte("committed\n"), 0o600)
 	sh(t, dir, "add", "c.txt")
@@ -289,16 +365,16 @@ func TestChangesCoverEverythingSinceTheRevision(t *testing.T) {
 	if strings.Contains(string(patch), "x.log") {
 		t.Fatalf("patch has the ignored file:\n%s", patch)
 	}
-	if copied := copied(t, repo, revision, patch); copied != identity {
-		t.Fatalf("the copy has %s; want %s", copied, identity)
+	if rebuilt, err := workspaces.Rebuild(ctx, repo, revision, patch); err != nil || rebuilt != identity {
+		t.Fatalf("rebuilt %q, %v; want %s", rebuilt, err, identity)
 	}
 	// A patch that leaves something out makes other content.
-	if copied := copied(t, repo, revision, nil); copied != untouched {
-		t.Fatalf("the copy has %s; want %s", copied, untouched)
+	if rebuilt, err := workspaces.Rebuild(ctx, repo, revision, nil); err != nil || rebuilt != untouched {
+		t.Fatalf("rebuilt %q, %v; want %s", rebuilt, err, untouched)
 	}
-	// The checkout's own index and the repository are untouched.
+	// The worktree's own index and the repository are untouched.
 	if after := sh(t, dir, "status", "--porcelain"); after != status {
-		t.Fatalf("checkout status %q, was %q", after, status)
+		t.Fatalf("worktree status %q, was %q", after, status)
 	}
 	if status := sh(t, repo, "status", "--porcelain"); status != "" {
 		t.Fatalf("repository changed: %s", status)
@@ -322,13 +398,9 @@ func TestTrackedIgnoredFilesStayContent(t *testing.T) {
 	sh(t, repo, "add", "--force", ".gitignore", "kept.log", "edited.log")
 	sh(t, repo, "commit", "--quiet", "-m", "tracked, though ignored")
 	revision := sh(t, repo, "rev-parse", "HEAD")
-	dir, release, err := workspaces.Checkout(ctx, repo, revision)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer release()
+	dir := linked(t, repo, revision)
 	if untouched, err := workspaces.Identity(ctx, dir, revision); err != nil || untouched != sh(t, repo, "rev-parse", revision+"^{tree}") {
-		t.Fatalf("untouched checkout: %q, %v", untouched, err)
+		t.Fatalf("untouched worktree: %q, %v", untouched, err)
 	}
 
 	os.WriteFile(filepath.Join(dir, "edited.log"), []byte("after\n"), 0o600)
@@ -345,256 +417,88 @@ func TestTrackedIgnoredFilesStayContent(t *testing.T) {
 		strings.Contains(text, "kept.log") || strings.Contains(text, "new.log") || strings.Contains(text, "deleted file") {
 		t.Fatalf("patch:\n%s", patch)
 	}
-	if copied := copied(t, repo, revision, patch); copied != identity {
-		t.Fatalf("the copy has %s; want %s", copied, identity)
+	if rebuilt, err := workspaces.Rebuild(ctx, repo, revision, patch); err != nil || rebuilt != identity {
+		t.Fatalf("rebuilt %q, %v; want %s", rebuilt, err, identity)
 	}
 }
 
-// copied names the content of a copy of revision with patch applied, and
-// removes the copy, as a verification attempt does.
-func copied(t *testing.T, repo, revision string, patch []byte) string {
-	t.Helper()
-	ctx := context.Background()
-	workspaces := git.NewWorkspaces(git.NewWorktrees(t.TempDir()))
-	dir := workspaces.Place(call())
-	if err := workspaces.Copy(ctx, repo, dir, revision, patch); err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { _ = workspaces.Discard(context.Background(), repo, dir) })
-	identity, err := workspaces.Identity(ctx, dir, revision)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := workspaces.Discard(ctx, repo, dir); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := os.Stat(filepath.Dir(dir)); !os.IsNotExist(err) {
-		t.Fatalf("copy %s left behind", dir)
-	}
-	if lines := strings.Split(sh(t, repo, "worktree", "list"), "\n"); len(lines) != 2 {
-		t.Fatalf("worktrees = %v", lines)
-	}
-	return identity
-}
-
-// call names a call no other test's copies use.
-func call() string { return fmt.Sprintf("test-%d-%d", os.Getpid(), calls.Add(1)) }
-
-var calls atomic.Int64
-
-// A patch that does not apply fails the copy with git's error, and leaves
-// neither a directory nor a worktree registration behind.
+// Rebuild names, without a checkout, the content revision has with a patch
+// applied: the worktree's own content for the patch Changes took from it,
+// ignored files left out, and the revision's for no patch; a patch that
+// does not apply is an error. The worktree, its index and its ignored files
+// are as they were.
 //
 // Contract test: the git adapter against real git, in a repository of the
 // test's own.
-func TestACopyWhosePatchDoesNotApplyLeavesNothing(t *testing.T) {
+func TestRebuildNamesTheContentAPatchMakesFromTheRevision(t *testing.T) {
 	t.Parallel()
 	repo := repository(t)
 	ctx := context.Background()
 	workspaces := git.NewWorkspaces(git.NewWorktrees(t.TempDir()))
-	dir := workspaces.Place(call())
-	err := workspaces.Copy(ctx, repo, dir, sh(t, repo, "rev-parse", "HEAD"), []byte("not a git patch\n"))
-	t.Cleanup(func() { _ = workspaces.Discard(context.Background(), repo, dir) })
-	if err == nil || !strings.Contains(err.Error(), "git apply") {
-		t.Fatalf("copy = %v", err)
+	revision := sh(t, repo, "rev-parse", "HEAD")
+	os.WriteFile(filepath.Join(repo, "a.txt"), []byte("edited\n"), 0o600)
+	os.WriteFile(filepath.Join(repo, "d.txt"), []byte("untracked\n"), 0o600)
+	os.WriteFile(filepath.Join(repo, "e.bin"), []byte{0, 1, 2, 0xff}, 0o600)
+	os.WriteFile(filepath.Join(repo, ".gitignore"), []byte("*.log\n"), 0o600)
+	os.WriteFile(filepath.Join(repo, "x.log"), []byte("ignored\n"), 0o600)
+	status := sh(t, repo, "status", "--porcelain", "--ignored")
+
+	identity, err := workspaces.Identity(ctx, repo, revision)
+	if err != nil {
+		t.Fatal(err)
 	}
-	if _, err := os.Stat(filepath.Dir(dir)); !os.IsNotExist(err) {
-		t.Fatalf("copy %s left behind: %v", dir, err)
+	patch, err := workspaces.Changes(ctx, repo, revision, identity)
+	if err != nil {
+		t.Fatal(err)
 	}
-	if lines := strings.Split(sh(t, repo, "worktree", "list"), "\n"); len(lines) != 1 {
-		t.Fatalf("worktrees = %v", lines)
+	if rebuilt, err := workspaces.Rebuild(ctx, repo, revision, patch); err != nil || rebuilt != identity {
+		t.Fatalf("rebuilt %q, %v; want %s", rebuilt, err, identity)
+	}
+	if rebuilt, err := workspaces.Rebuild(ctx, repo, revision, nil); err != nil || rebuilt != sh(t, repo, "rev-parse", revision+"^{tree}") {
+		t.Fatalf("no patch: %q, %v", rebuilt, err)
+	}
+	if _, err := workspaces.Rebuild(ctx, repo, revision, []byte("diff --git a/nope b/nope\n--- a/nope\n+++ b/nope\n@@ -1 +1 @@\n-x\n+y\n")); err == nil {
+		t.Fatal("a patch that does not apply was rebuilt")
+	}
+	if after := sh(t, repo, "status", "--porcelain", "--ignored"); after != status {
+		t.Fatalf("worktree status %q, was %q", after, status)
 	}
 }
 
-// A checkout's changes, kept as a patch, apply to another checkout of the
-// same revision, a binary file included: to its files, not its index. A
-// check changes nothing.
+// Rebuild keeps a patch's whitespace as it is, even where the repository
+// configures apply.whitespace=fix: an added line with trailing whitespace
+// rebuilds to the worktree's own content.
 //
 // Contract test: the git adapter against real git, in a repository of the
 // test's own.
-func TestApplyCarriesAPatchIntoACheckout(t *testing.T) {
+func TestRebuildKeepsThePatchWhitespace(t *testing.T) {
 	t.Parallel()
 	repo := repository(t)
 	ctx := context.Background()
 	workspaces := git.NewWorkspaces(git.NewWorktrees(t.TempDir()))
-	head := sh(t, repo, "rev-parse", "HEAD")
-	from, releaseFrom, err := workspaces.Checkout(ctx, repo, head)
+	sh(t, repo, "config", "apply.whitespace", "fix")
+	revision := sh(t, repo, "rev-parse", "HEAD")
+	os.WriteFile(filepath.Join(repo, "a.txt"), []byte("one\ntwo\nthree  \n"), 0o600)
+
+	identity, err := workspaces.Identity(ctx, repo, revision)
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(func() { _ = releaseFrom() })
-	os.WriteFile(filepath.Join(from, "a.txt"), []byte("one\ntwo\nthree\n"), 0o600)
-	os.WriteFile(filepath.Join(from, "blob.bin"), []byte{0, 1, 2, 0xff, 0}, 0o600)
-	identity, err := workspaces.Identity(ctx, from, head)
+	patch, err := workspaces.Changes(ctx, repo, revision, identity)
 	if err != nil {
 		t.Fatal(err)
 	}
-	patch, err := workspaces.Changes(ctx, from, head, identity)
-	if err != nil || !strings.Contains(string(patch), "GIT binary patch") {
-		t.Fatalf("patch %q, %v", patch, err)
+	if !strings.Contains(string(patch), "+three  \n") {
+		t.Fatalf("patch:\n%s", patch)
 	}
-
-	to, releaseTo, err := workspaces.Checkout(ctx, repo, head)
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { _ = releaseTo() })
-	if err := workspaces.Apply(ctx, to, patch, true); err != nil {
-		t.Fatal(err)
-	}
-	if status := sh(t, to, "status", "--porcelain"); status != "" {
-		t.Fatalf("a check changed the checkout: %q", status)
-	}
-	if err := workspaces.Apply(ctx, to, patch, false); err != nil {
-		t.Fatal(err)
-	}
-	if data, _ := os.ReadFile(filepath.Join(to, "a.txt")); string(data) != "one\ntwo\nthree\n" {
-		t.Fatalf("a.txt = %q", data)
-	}
-	if data, _ := os.ReadFile(filepath.Join(to, "blob.bin")); string(data) != string([]byte{0, 1, 2, 0xff, 0}) {
-		t.Fatalf("blob.bin = %v", data)
-	}
-	if again, err := workspaces.Identity(ctx, to, head); err != nil || again != identity {
-		t.Fatalf("content %s, want %s: %v", again, identity, err)
-	}
-	if staged := sh(t, to, "diff", "--cached", "--name-only"); staged != "" {
-		t.Fatalf("staged %q", staged)
+	if rebuilt, err := workspaces.Rebuild(ctx, repo, revision, patch); err != nil || rebuilt != identity {
+		t.Fatalf("rebuilt %q, %v; want %s", rebuilt, err, identity)
 	}
 }
 
-// A patch that conflicts with the checkout fails its check and leaves the
-// checkout as it was; applying it changes nothing either.
-//
-// Contract test: the git adapter against real git, in a repository of the
-// test's own.
-func TestApplyOfAConflictingPatchLeavesTheCheckoutAsItWas(t *testing.T) {
-	t.Parallel()
-	repo := repository(t)
-	ctx := context.Background()
-	workspaces := git.NewWorkspaces(git.NewWorktrees(t.TempDir()))
-	head := sh(t, repo, "rev-parse", "HEAD")
-	dir, release, err := workspaces.Checkout(ctx, repo, head)
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { _ = release() })
-	// b.txt applies; a.txt does not: its context is not the checkout's.
-	patch := []byte("diff --git a/b.txt b/b.txt\n--- a/b.txt\n+++ b/b.txt\n@@ -1 +1 @@\n-new\n+newer\n" +
-		"diff --git a/a.txt b/a.txt\n--- a/a.txt\n+++ b/a.txt\n@@ -1,2 +1,2 @@\n-uno\n+eins\n two\n")
-	for _, check := range []bool{true, false} {
-		if err := workspaces.Apply(ctx, dir, patch, check); err == nil || !strings.Contains(err.Error(), "git apply") {
-			t.Fatalf("apply, check %v = %v", check, err)
-		}
-		if status := sh(t, dir, "status", "--porcelain"); status != "" {
-			t.Fatalf("check %v changed the checkout: %q", check, status)
-		}
-	}
-}
-
-// A copy is never made over what is at its path already, which stays as
-// it was.
-//
-// Contract test: the git adapter against real git, in a repository of the
-// test's own.
-func TestACopyIsNotMadeWhereSomethingIs(t *testing.T) {
-	t.Parallel()
-	repo := repository(t)
-	workspaces := git.NewWorkspaces(git.NewWorktrees(t.TempDir()))
-	dir := workspaces.Place(call())
-	if err := os.MkdirAll(dir, 0o700); err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { _ = os.RemoveAll(filepath.Dir(dir)) })
-	kept := filepath.Join(dir, "kept.txt")
-	if err := os.WriteFile(kept, []byte("kept\n"), 0o600); err != nil {
-		t.Fatal(err)
-	}
-	if err := workspaces.Copy(context.Background(), repo, dir, sh(t, repo, "rev-parse", "HEAD"), nil); !errors.Is(err, app.ErrPlaceTaken) {
-		t.Fatalf("copy over an existing directory = %v", err)
-	}
-	if data, err := os.ReadFile(kept); err != nil || string(data) != "kept\n" {
-		t.Fatalf("kept.txt = %q, %v", data, err)
-	}
-	if lines := strings.Split(sh(t, repo, "worktree", "list"), "\n"); len(lines) != 1 {
-		t.Fatalf("worktrees = %v", lines)
-	}
-}
-
-// A verifying call whose copy's place is taken fails, and leaves what is
-// there as it was: it is not the call's, so nothing removes it, and the
-// record no longer names it as the call's copy.
-//
-// Contract test: the git adapter against real git, in a repository of the
-// test's own.
-func TestAVerifierLeavesAnOccupiedPlaceAlone(t *testing.T) {
-	t.Parallel()
-	repo := repository(t)
-	ctx := context.Background()
-	workspaces := git.NewWorkspaces(git.NewWorktrees(t.TempDir()))
-	base := sh(t, repo, "rev-parse", "HEAD")
-	checkout, release, err := workspaces.Checkout(ctx, repo, base)
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { _ = release() })
-	record := run.Record{ID: call(), Turn: &run.Turn{Status: run.Completed, ProviderSessionID: "session"}}
-	dir := workspaces.Place(record.ID)
-	if err := os.MkdirAll(dir, 0o700); err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { _ = os.RemoveAll(filepath.Dir(dir)) })
-	kept := filepath.Join(dir, "kept.txt")
-	if err := os.WriteFile(kept, []byte("kept\n"), 0o600); err != nil {
-		t.Fatal(err)
-	}
-
-	var copies []*run.Checkout // the copy on record at each update
-	var turns int
-	_, fault := app.NewVerifier(workspaces, workspaces, noCommands{t}, wallClock{}).Verify(ctx, app.VerifyCall{
-		Record: &record, Result: &run.Result{},
-		Event: func(string, string, map[string]any) {},
-		Update: func(updated run.Record) error {
-			var copy *run.Checkout
-			if updated.Effects != nil {
-				copy = updated.Effects.Copy
-			}
-			copies = append(copies, copy)
-			return nil
-		},
-		Artifact: func(name string, data []byte) (run.Artifact, error) { return run.Artifact{Name: name}, nil },
-		Verify:   definition.Verify{Command: "true", Timeout: time.Minute, MaxAttempts: 2},
-		Deadline: time.Now().Add(time.Minute), Dir: checkout, Base: base, Repository: repo, Session: "session",
-		Take:     func(app.TurnRequest, *run.SessionTotals) run.Turn { turns++; return run.Turn{} },
-		Conclude: func(run.Turn) *run.Error { return nil },
-	})
-	if fault == nil || fault.Class != run.ClassInternal || !strings.Contains(fault.Message, "attempt 1 cannot make its clean copy") || turns != 0 {
-		t.Fatalf("fault %v, repair turns %d", fault, turns)
-	}
-	if data, err := os.ReadFile(kept); err != nil || string(data) != "kept\n" {
-		t.Fatalf("kept.txt = %q, %v", data, err)
-	}
-	if len(copies) < 2 || !reflect.DeepEqual(copies[0], &run.Checkout{Repository: repo, Dir: dir}) || copies[len(copies)-1] != nil {
-		t.Fatalf("copies on record = %v", copies)
-	}
-	if record.Effects != nil && record.Effects.Copy != nil {
-		t.Fatalf("effects = %+v", record.Effects)
-	}
-}
-
-// noCommands fails a test that runs a verification command.
-type noCommands struct{ t *testing.T }
-
-func (c noCommands) Run(context.Context, app.CommandRequest, func(string) error) app.CommandResult {
-	c.t.Error("the verification command ran")
-	return app.CommandResult{Error: "not run"}
-}
-
-type wallClock struct{}
-
-func (wallClock) Now() time.Time { return time.Now() }
-
-// A checkout its call never released (the process was killed) is removed
-// from disk and from the repository's worktree list.
+// A checkout its call never released before ADR-025 (the process was
+// killed) is removed from disk and from the repository's worktree list
+// (ADR-025 rule 9).
 //
 // Contract test: the git adapter against real git, in a repository of the
 // test's own.
@@ -602,10 +506,7 @@ func TestDiscardRemovesAnUnreleasedCheckout(t *testing.T) {
 	t.Parallel()
 	repo := repository(t)
 	ctx := context.Background()
-	checkout, _, err := git.NewWorkspaces(git.NewWorktrees(t.TempDir())).Checkout(ctx, repo, sh(t, repo, "rev-parse", "HEAD"))
-	if err != nil {
-		t.Fatal(err)
-	}
+	checkout := oldCheckout(t, repo)
 	if err := git.NewWorkspaces(git.NewWorktrees(t.TempDir())).Discard(ctx, repo, checkout); err != nil {
 		t.Fatal(err)
 	}
@@ -621,7 +522,7 @@ func TestDiscardRemovesAnUnreleasedCheckout(t *testing.T) {
 	}
 }
 
-// Only a directory Checkout could have made is ever removed: each case
+// Only a directory Agister could have made for a checkout is ever removed: each case
 // breaks exactly one part of the pattern.
 //
 // Contract test: the git adapter against real git, in a repository of the
@@ -665,10 +566,7 @@ func TestDiscardDropsACheckoutThatIsGone(t *testing.T) {
 	t.Parallel()
 	repo := repository(t)
 	ctx := context.Background()
-	checkout, _, err := git.NewWorkspaces(git.NewWorktrees(t.TempDir())).Checkout(ctx, repo, sh(t, repo, "rev-parse", "HEAD"))
-	if err != nil {
-		t.Fatal(err)
-	}
+	checkout := oldCheckout(t, repo)
 	if err := os.RemoveAll(filepath.Dir(checkout)); err != nil {
 		t.Fatal(err)
 	}
@@ -694,66 +592,13 @@ func TestDiscardLeavesOtherStaleWorktreesAlone(t *testing.T) {
 	if err := os.RemoveAll(other); err != nil {
 		t.Fatal(err)
 	}
-	checkout, _, err := git.NewWorkspaces(git.NewWorktrees(t.TempDir())).Checkout(ctx, repo, sh(t, repo, "rev-parse", "HEAD"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { _ = os.RemoveAll(filepath.Dir(checkout)) })
+	checkout := oldCheckout(t, repo)
 	if err := git.NewWorkspaces(git.NewWorktrees(t.TempDir())).Discard(ctx, repo, checkout); err != nil {
 		t.Fatal(err)
 	}
 	list := sh(t, repo, "worktree", "list")
 	if lines := strings.Split(list, "\n"); len(lines) != 2 || !strings.HasSuffix(lines[1], "prunable") ||
 		!strings.Contains(lines[1], filepath.Base(other)) {
-		t.Fatalf("worktrees = %v", lines)
-	}
-}
-
-// Checkouts and copies made at the same time in one repository each get a
-// worktree admin directory of their own, named after their own path.
-//
-// Contract test: the git adapter against real git, in a repository of the
-// test's own.
-func TestConcurrentCheckoutsAndCopiesHaveTheirOwnWorktrees(t *testing.T) {
-	t.Parallel()
-	repo := repository(t)
-	ctx := context.Background()
-	workspaces := git.NewWorkspaces(git.NewWorktrees(t.TempDir()))
-	revision := sh(t, repo, "rev-parse", "HEAD")
-	const each = 4
-	dirs := make([]string, 2*each)
-	errs := make([]error, 2*each)
-	var wg sync.WaitGroup
-	for i := range each {
-		dirs[each+i] = workspaces.Place(call())
-		wg.Add(2)
-		go func() {
-			defer wg.Done()
-			var release func() error
-			dirs[i], release, errs[i] = workspaces.Checkout(ctx, repo, revision)
-			if release != nil {
-				t.Cleanup(func() { _ = release() })
-			}
-		}()
-		go func() {
-			defer wg.Done()
-			errs[each+i] = workspaces.Copy(ctx, repo, dirs[each+i], revision, nil)
-			t.Cleanup(func() { _ = workspaces.Discard(context.Background(), repo, dirs[each+i]) })
-		}()
-	}
-	wg.Wait()
-	admins := map[string]bool{}
-	for i, dir := range dirs {
-		if errs[i] != nil {
-			t.Fatalf("%s: %v", dir, errs[i])
-		}
-		admin := filepath.Base(sh(t, dir, "rev-parse", "--git-dir"))
-		if admin != filepath.Base(dir) || admins[admin] {
-			t.Fatalf("%s has admin directory %s; others have %v", dir, admin, admins)
-		}
-		admins[admin] = true
-	}
-	if lines := strings.Split(sh(t, repo, "worktree", "list"), "\n"); len(lines) != 1+len(dirs) {
 		t.Fatalf("worktrees = %v", lines)
 	}
 }
@@ -781,5 +626,152 @@ func TestDiscardRemovesACheckoutUnderTheOldName(t *testing.T) {
 	}
 	if lines := strings.Split(sh(t, repo, "worktree", "list"), "\n"); len(lines) != 1 {
 		t.Fatalf("worktrees = %v", lines)
+	}
+}
+
+// What admits a worktree in-place (ADR-022 rule 4), as git tells it: HEAD,
+// the revision's tree, the staged paths, the dirty submodules and the
+// untracked files that are not ignored; and the content identity, which a
+// tracked file's change moves off the tree, even one the index marks
+// unchanged. A path a merge left unmerged is staged, even with its file put
+// back as the revision has it: the content identity is the tree's then,
+// and tells nothing. Ignored files count for nothing. Reading writes
+// nothing in the index.
+//
+// Contract test: the git adapter against real git, in a repository of the
+// test's own.
+func TestWorktreeStateTellsWhatAdmitsAWorktree(t *testing.T) {
+	t.Parallel()
+	for name, c := range map[string]struct {
+		change func(t *testing.T, dir string)
+		want   func(state app.WorktreeState) bool
+		clean  bool // the content is the revision's tree
+	}{
+		"clean": {
+			change: func(*testing.T, string) {},
+			want: func(s app.WorktreeState) bool {
+				return s.Staged == nil && s.Untracked == nil && s.DirtySubmodules == nil
+			},
+			clean: true,
+		},
+		"an ignored file": {
+			change: func(t *testing.T, dir string) {
+				os.WriteFile(filepath.Join(dir, ".git", "info", "exclude"), []byte("*.log\n"), 0o600)
+				os.WriteFile(filepath.Join(dir, "build.log"), []byte("x\n"), 0o600)
+			},
+			want:  func(s app.WorktreeState) bool { return s.Untracked == nil },
+			clean: true,
+		},
+		"a modified tracked file": {
+			change: func(t *testing.T, dir string) { os.WriteFile(filepath.Join(dir, "a.txt"), []byte("edited\n"), 0o600) },
+			want:   func(s app.WorktreeState) bool { return s.Staged == nil && s.Untracked == nil },
+		},
+		"a modification the index marks unchanged": {
+			change: func(t *testing.T, dir string) {
+				os.WriteFile(filepath.Join(dir, "a.txt"), []byte("hidden\n"), 0o600)
+				sh(t, dir, "update-index", "--assume-unchanged", "a.txt")
+			},
+			want: func(s app.WorktreeState) bool { return s.Staged == nil && s.Untracked == nil },
+		},
+		"a staged change": {
+			change: func(t *testing.T, dir string) {
+				os.WriteFile(filepath.Join(dir, "a.txt"), []byte("staged\n"), 0o600)
+				sh(t, dir, "add", "a.txt")
+			},
+			want: func(s app.WorktreeState) bool { return reflect.DeepEqual(s.Staged, []string{"a.txt"}) },
+		},
+		"an untracked file": {
+			change: func(t *testing.T, dir string) { os.WriteFile(filepath.Join(dir, "notes.md"), []byte("x\n"), 0o600) },
+			want:   func(s app.WorktreeState) bool { return reflect.DeepEqual(s.Untracked, []string{"notes.md"}) },
+		},
+		"a conflict left unmerged, its file put back": {
+			change: func(t *testing.T, dir string) {
+				sh(t, dir, "checkout", "--quiet", "-b", "other", "main")
+				os.WriteFile(filepath.Join(dir, "a.txt"), []byte("one\nother\n"), 0o600)
+				sh(t, dir, "commit", "--quiet", "-am", "other")
+				sh(t, dir, "checkout", "--quiet", "feature")
+				merge := exec.Command("git", "merge", "--quiet", "other")
+				merge.Dir = dir
+				if out, err := merge.CombinedOutput(); err == nil {
+					t.Fatalf("the merge left no conflict:\n%s", out)
+				}
+				if unmerged := sh(t, dir, "ls-files", "--unmerged", "--", "a.txt"); unmerged == "" {
+					t.Fatal("the index holds no unmerged entry of a.txt")
+				}
+				// As HEAD has it, and not staged: the index keeps the conflict.
+				os.WriteFile(filepath.Join(dir, "a.txt"), []byte("one\ntwo\n"), 0o600)
+			},
+			want: func(s app.WorktreeState) bool {
+				return reflect.DeepEqual(s.Staged, []string{"a.txt"}) && s.Untracked == nil
+			},
+			clean: true,
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			dir := repository(t)
+			revision := sh(t, dir, "rev-parse", "HEAD")
+			c.change(t, dir)
+			index, _ := os.ReadFile(filepath.Join(dir, ".git", "index"))
+			state, err := git.Workspaces{}.State(context.Background(), dir, revision)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if state.Head != revision || state.Tree != sh(t, dir, "rev-parse", revision+"^{tree}") || !c.want(state) {
+				t.Fatalf("state %+v", state)
+			}
+			identity, err := git.Workspaces{}.Identity(context.Background(), dir, revision)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if (identity == state.Tree) != c.clean {
+				t.Fatalf("identity %s, tree %s, want clean %v", identity, state.Tree, c.clean)
+			}
+			if after, _ := os.ReadFile(filepath.Join(dir, ".git", "index")); string(after) != string(index) {
+				t.Fatal("reading the state wrote the index")
+			}
+		})
+	}
+}
+
+// A worktree whose HEAD moved past the revision says so.
+//
+// Contract test: the git adapter against real git, in a repository of the
+// test's own.
+func TestWorktreeStateTellsAMovedHead(t *testing.T) {
+	t.Parallel()
+	dir := repository(t)
+	revision := sh(t, dir, "rev-parse", "HEAD")
+	sh(t, dir, "commit", "--quiet", "--allow-empty", "-m", "after")
+	state, err := git.Workspaces{}.State(context.Background(), dir, revision)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if head := sh(t, dir, "rev-parse", "HEAD"); state.Head != head || head == revision {
+		t.Fatalf("state %+v", state)
+	}
+}
+
+// A submodule with changes of its own is dirty, even one the repository's
+// configuration has status ignore (submodule.<name>.ignore); a clean one is
+// not.
+//
+// Contract test: the git adapter against real git, in repositories of the
+// test's own.
+func TestWorktreeStateTellsADirtySubmodule(t *testing.T) {
+	t.Parallel()
+	library, dir := repository(t), repository(t)
+	sh(t, dir, "-c", "protocol.file.allow=always", "submodule", "add", "--quiet", library, "lib")
+	sh(t, dir, "commit", "--quiet", "-m", "submodule")
+	revision := sh(t, dir, "rev-parse", "HEAD")
+	state, err := git.Workspaces{}.State(context.Background(), dir, revision)
+	if err != nil || state.DirtySubmodules != nil || state.Staged != nil {
+		t.Fatalf("clean: state %+v, %v", state, err)
+	}
+	sh(t, dir, "config", "submodule.lib.ignore", "all")
+	os.WriteFile(filepath.Join(dir, "lib", "a.txt"), []byte("edited\n"), 0o600)
+	state, err = git.Workspaces{}.State(context.Background(), dir, revision)
+	if err != nil || !reflect.DeepEqual(state.DirtySubmodules, []string{"lib"}) || state.Staged != nil {
+		t.Fatalf("dirty: state %+v, %v", state, err)
 	}
 }

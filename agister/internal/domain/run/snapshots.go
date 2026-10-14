@@ -9,21 +9,48 @@ import "time"
 // A field removed from these types is dropped when an earlier record is
 // rewritten (a reap finishing it).
 
-// DefinitionSource is where a definition the call used came from, with the
-// digest of what was read.
+// DefinitionSource is a definition the call used, with the layer files it
+// was composed from, nearest first (ADR-028 rule 11). A document taken
+// whole, a prompt, a skill or a schema, has the one layer it was read from.
 type DefinitionSource struct {
-	Kind   string `json:"kind"`
-	Name   string `json:"name"`
-	Path   string `json:"path"`
-	SHA256 string `json:"sha256"`
-	// From a project's own settings rather than the global ones.
-	Project bool `json:"project,omitempty"`
-	// The global definition this project one takes priority over.
+	Kind   string            `json:"kind"`
+	Name   string            `json:"name"`
+	Layers []DefinitionLayer `json:"layers,omitempty"`
+	// Path, SHA256, Project and Overrides are what a record written before
+	// ADR-028 holds in place of Layers: the one file the document was read
+	// from and its digest, whether that was the repository's (Project) and
+	// not home's, and home's file it replaced. They are no longer written.
+	Path      string `json:"path,omitempty"`
+	SHA256    string `json:"sha256,omitempty"`
+	Project   bool   `json:"project,omitempty"`
 	Overrides string `json:"overrides,omitempty"`
 }
 
+// DefinitionLayer is one layer's file of a definition the call used, with
+// the digest of what was read.
+type DefinitionLayer struct {
+	Layer  string `json:"layer"` // home, repository or project
+	Path   string `json:"path"`
+	SHA256 string `json:"sha256"`
+	// Fields are the fields the file gave the composition, each the path
+	// of a leaf, its keys joined by ".": none when it gave nothing. Unset
+	// on a document taken whole, which has no fields.
+	Fields []string `json:"fields,omitzero"`
+	// Process is set on the files of a process that extends a base: the
+	// process whose file it is, the base or the process itself (ADR-030
+	// rule 9).
+	Process string `json:"process,omitempty"`
+}
+
+// Layer is one settings layer the call selected, and its directory
+// (ADR-028 rule 11).
+type Layer struct {
+	Layer string `json:"layer"` // home, repository or project
+	Dir   string `json:"dir"`
+}
+
 // EffectivePolicy is the limits a call ran under, composed from the
-// service, policy, process and caller.
+// service, process and caller.
 type EffectivePolicy struct {
 	Timeout     time.Duration `json:"timeout"`
 	MaxAttempts int           `json:"max_attempts"`
@@ -45,13 +72,28 @@ type StaleLimits struct {
 	NoOutput          time.Duration `json:"no_output,omitempty"`
 	ToolCommand       time.Duration `json:"tool_command,omitempty"`
 	RepeatedToolCalls int           `json:"repeated_tool_calls,omitempty"`
+	// Recover is the call's recovery of a stale turn; unset when it had no
+	// budget for one.
+	Recover *StaleRecover `json:"recover,omitempty"`
+}
+
+// StaleRecover is the recovery of a stale turn a call ran under (ADR-024
+// rule 5): how many turns might resume its session with the evidence of
+// what went stale, and what they were told.
+type StaleRecover struct {
+	MaxResumes  int    `json:"max_resumes"`
+	Instruction string `json:"instruction"`
 }
 
 // Plan is what the call was granted on its runtime.
 type Plan struct {
+	Warnings   []string `json:"warnings,omitempty"` // resolved before runtime startup
 	Primitives []string `json:"primitives"`
 	Granted    []string `json:"granted"`  // permissions the primitives provide
 	Withheld   []string `json:"withheld"` // allowed but not provided
+	// Nil preserves older records; a new plan writes an explicit empty list.
+	Declared []string `json:"declared,omitzero"`
+	Extra    []string `json:"extra,omitzero"`
 }
 
 // Verify is the verification command a call's process declared, as
@@ -62,6 +104,19 @@ type Verify struct {
 	Timeout     time.Duration `json:"timeout"`
 	MaxAttempts int           `json:"max_attempts"`
 	Instruction string        `json:"instruction"`
+	// Where is "workspace" when the verification declares it (ADR-022 rule
+	// 6); empty: a clean copy.
+	Where string `json:"where,omitempty"`
+}
+
+// Precheck is the command that gates an in-place call (ADR-022 rule 5), as
+// resolved from the workspace settings at Path. SHA256 is the hex digest of
+// Command.
+type Precheck struct {
+	Command string        `json:"command"`
+	Timeout time.Duration `json:"timeout"`
+	SHA256  string        `json:"sha256"`
+	Path    string        `json:"path"`
 }
 
 // Setup is the setup command a call's checkout runs (ADR-012), as
