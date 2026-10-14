@@ -1,9 +1,9 @@
 ---
-date: 2026-10-06
+date: 2026-10-12
 author: Igor Malyarov
 model: claude-opus-5-5
 name: Code review — tests
-version: 0.1.3
+version: 0.1.8
 type: prompt
 ---
 
@@ -24,6 +24,11 @@ Every finding names its concrete case, one of:
   behaviour, and the product change that breaks it while the existing
   assertions stay green.
 
+A case stands for a class: the inputs, states or variants the test
+misses for the same reason. The finding names the class, with its case as
+the witness, and asks for a test that covers the class (a table over it,
+or an assertion on what holds for all of it), not the one case.
+
 The rules below say where to look; a rule broken is not a finding by
 itself. Ask for a new seam only together with the case that needs it. A
 rule violation for which no concrete case can be shown is not a finding:
@@ -42,7 +47,7 @@ shows how the defect stops that scenario's outcome, and its `requirement`
 quotes the goal's condition with every qualification it carries and says
 where in the goal it stands. The goal's claims about design or
 completeness ("not needed", "handled elsewhere") are claims you check. Its
-scope exclusions ("out of scope") are the owner's: you may show that one
+scope exclusions ("out of scope") stand: you may show that one
 stops the goal, quoting it in the finding, but you cannot override it. A missing test
 counts as stopping the goal only with a specific goal behaviour that the
 existing assertions let break.
@@ -53,7 +58,11 @@ Definition of done:
    reverted. Name any fix or guard with no such test; the revert is its
    case. Each behaviour the goal requires has one too, in tests the change
    did not touch or in new ones; the case is the goal behaviour the
-   existing assertions let break.
+   existing assertions let break. A changed setting value is a changed
+   behaviour too. Where it claims how an external tool behaves (a version
+   a runtime is verified for), its test is a contract test against that
+   tool; a comment or note recording a hand observation is no test. The
+   case is the value that could be wrong while every test stays green.
 2. Proof rests on normal tests only: deterministic, cheap, rerunnable. Look
    for a test's claim that rests on mutation or revert checks (plants,
    mutation specs, reverting by hand), and for a behaviour no normal test
@@ -98,7 +107,15 @@ Definition of done:
    lets pass; with it, name the clock, hook or event to inject so the test
    drives time itself. If the product has no event, hook or result that
    says "done", the seam is missing from the product, not only the test;
-   say which. A wall-clock wait in an integration test whose subject needs
+   say which. The same holds for a measure of the whole process
+   taken as a test's result: allocations, memory or goroutines counted
+   process-wide (`testing.AllocsPerRun`, `runtime.MemStats`) count
+   whatever else runs in it. Running it serially does not isolate it:
+   goroutines an earlier test left and the runtime's own still run. Such
+   an assertion is a finding as it stands; its case is the work outside
+   the product that the count takes in, and the product's own work it then
+   cannot tell apart. Name the seam that observes the product's own work
+   instead (a buffer or allocator it is given). A wall-clock wait in an integration test whose subject needs
    it follows these rules:
    * **Its expiry decides the result.** A sleep that must outlast some
      logic, a timer that must fire before (or must not fire before)
@@ -111,11 +128,13 @@ Definition of done:
    * **A deadline may only guard a hang.** Look for a test that reports a
      timeout as a fact about the product ("no response", "no report
      arrived"); the case is the slow but correct run it fails.
-   * **It is long.** No test timeout, bound, poll deadline or test-process
-     lifetime exceeds 1 minute. Longer waits bury real bugs: a hang reads
-     as slowness, nobody waits for it, and the feedback loop becomes too
-     long to use. Report each one with its value; the case is the hang,
-     path:line, that would read as slowness behind it.
+   * **It is long.** No test timeout, bound or poll deadline within a test
+     exceeds 1 minute, and no test-process lifetime (a package's whole
+     run, `go test -timeout`) exceeds 2 minutes: it covers every test of
+     the package on a machine that may be under heavy load. Longer waits
+     bury real bugs: a hang reads as slowness, nobody waits for it, and the
+     feedback loop becomes too long to use. Report each one with its value;
+     the case is the hang, path:line, that would read as slowness behind it.
 9. Look for cost: a test slow for what it claims, or one that rebuilds or
    restarts what another test already built. Report its rough cost, read
    from what the code builds, starts or waits for.

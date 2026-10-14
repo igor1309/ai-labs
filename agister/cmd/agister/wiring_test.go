@@ -26,7 +26,7 @@ import (
 	"github.com/igor1309/ai-labs/agister/internal/app"
 	"github.com/igor1309/ai-labs/agister/internal/cli"
 	"github.com/igor1309/ai-labs/agister/internal/contract"
-	"github.com/igor1309/ai-labs/agister/internal/domain/definition"
+	"github.com/igor1309/ai-labs/agister/internal/domain/document"
 	domain "github.com/igor1309/ai-labs/agister/internal/domain/run"
 	"github.com/igor1309/ai-labs/gokit/clocktest"
 	"github.com/igor1309/ai-labs/gokit/supervisor"
@@ -40,35 +40,45 @@ type marker struct {
 	name string
 
 	mu    sync.Mutex
-	reads map[definition.Kind]int
-	lists map[definition.Kind]int
+	reads map[document.Kind]int
+	lists map[document.Kind]int
 }
 
 func newMarker(name string) *marker {
-	return &marker{name: name, reads: map[definition.Kind]int{}, lists: map[definition.Kind]int{}}
+	return &marker{name: name, reads: map[document.Kind]int{}, lists: map[document.Kind]int{}}
 }
 
-func (m *marker) Read(_ context.Context, kind definition.Kind, name string) (definition.Document, error) {
+func (m *marker) Read(_ context.Context, kind document.Kind, name string) (document.Document, error) {
 	m.mu.Lock()
 	m.reads[kind]++
 	m.mu.Unlock()
 	pattern := string(kind) + "/" + name + ".*"
-	if kind == definition.KindService {
+	if kind == document.KindService {
 		pattern = "service.*"
 	}
 	matches, _ := fs.Glob(examples.Settings(), pattern)
 	if len(matches) != 1 {
-		return definition.Document{}, fmt.Errorf("%s has no %s %q", m.name, kind, name)
+		return document.Document{}, fmt.Errorf("%s has no %s %q", m.name, kind, name)
 	}
 	data, err := fs.ReadFile(examples.Settings(), matches[0])
 	sum := sha256.Sum256(data)
-	return definition.Document{
-		Source: definition.Source{Kind: kind, Name: name, Path: m.name + "/" + matches[0], SHA256: hex.EncodeToString(sum[:])},
+	return document.Document{
+		Source: document.Source{Kind: kind, Name: name, Path: m.name + "/" + matches[0], Layer: document.LayerHome, SHA256: hex.EncodeToString(sum[:])},
 		Bytes:  data,
 	}, err
 }
 
-func (m *marker) List(_ context.Context, kind definition.Kind) ([]string, error) {
+// ReadListed reads as Read does: home lists no folders.
+func (m *marker) ReadListed(ctx context.Context, kind document.Kind, name string) (document.Document, error) {
+	return m.Read(ctx, kind, name)
+}
+
+// Layers are home alone, which the marker stands for.
+func (m *marker) Layers(context.Context) []document.LayerDir {
+	return []document.LayerDir{{Layer: document.LayerHome, Dir: m.name}}
+}
+
+func (m *marker) List(_ context.Context, kind document.Kind) ([]string, error) {
 	m.mu.Lock()
 	m.lists[kind]++
 	m.mu.Unlock()
@@ -131,7 +141,7 @@ func TestBuiltClientReadsOnlyTheSourcesGiven(t *testing.T) {
 				"settings": func(c contract.Client) error { _, err := c.ListAgents(ctx); return err },
 				"check":    func(c contract.Client) error { _, err := c.Check(ctx, false); return err },
 				"inspection": func(c contract.Client) error {
-					_, err := c.ShowProcess(ctx, "ask", "")
+					_, err := c.ShowProcess(ctx, "ask")
 					return err
 				},
 				"settings workflows": func(c contract.Client) error { _, err := c.ListWorkflows(ctx); return err },
@@ -176,10 +186,10 @@ func TestBuiltClientReadsOnlyTheSourcesGiven(t *testing.T) {
 			if _, err := decorated.Client.CreateAgent(ctx, agent, false, nil); err != nil {
 				t.Fatal(err)
 			}
-			if global.lists[definition.KindAgent] == 0 {
+			if global.lists[document.KindAgent] == 0 {
 				t.Error("the global write scope did not check the global-only source")
 			}
-			if got := layered.lists[definition.KindAgent] > 0; got != tc.project {
+			if got := layered.lists[document.KindAgent] > 0; got != tc.project {
 				t.Errorf("the project write scope checks the layered source = %v, want %v", got, tc.project)
 			}
 		})
@@ -628,7 +638,7 @@ func TestTheCompositionStartsItsRuntimesThroughItsStarter(t *testing.T) {
 		t.Fatal(err)
 	}
 	id, err := client.Submit(context.Background(), contract.CallRequest{
-		Process: "adversarial_review", Params: map[string]string{"base": "main"}, Timeout: "1m", Cwd: repo,
+		Process: "adversarial_review_reviewer", Params: map[string]string{"base": "main"}, Timeout: "1m", Cwd: repo,
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -695,7 +705,7 @@ verify:
 		t.Fatal(err)
 	}
 	id, err := client.Submit(context.Background(), contract.CallRequest{
-		Process: "verified", Params: map[string]string{"base": "main"}, Timeout: "1m", Cwd: repo,
+		Process: bound(t, home, "verified", "reviewer"), Params: map[string]string{"base": "main"}, Timeout: "1m", Cwd: repo,
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -719,7 +729,7 @@ verify:
 func TestTheCompositionLendsAnInPlaceCallTheCallersWorktree(t *testing.T) {
 	t.Parallel()
 	home, repo := setup(t, "approve")
-	r := agister(t, home, repo, "run", "adversarial_review", "--param", "base=main", "--timeout", "1m")
+	r := agister(t, home, repo, "run", "adversarial_review_reviewer", "--param", "base=main", "--timeout", "1m")
 	if r.code != cli.ExitCompleted {
 		t.Fatalf("exit %d\n%s", r.code, r.stderr)
 	}
@@ -787,7 +797,7 @@ func TestAnOlderBinarysHoldExcludesTheCompositionsWriter(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	r := agister(t, home, repo, "run", "implement", "--quiet", "--param", "candidate=HEAD", "--param", "brief=b.md")
+	r := agister(t, home, repo, "run", "implement_assistant", "--quiet", "--param", "candidate=HEAD", "--param", "brief=b.md")
 	if want := "worktree " + repo + " is in use: another call holds it, and a writer holds it alone"; r.code != cli.ExitRefused || !strings.Contains(r.stderr, want) {
 		t.Fatalf("run: %d, want %q\n%s%s", r.code, want, r.stdout, r.stderr)
 	}
@@ -798,15 +808,15 @@ func TestAnOlderBinarysHoldExcludesTheCompositionsWriter(t *testing.T) {
 
 // The composition gives the recoverer what it recovers on (ADR-024): a
 // call through the composed client whose turn goes without an event for
-// the policy's stale.no_event is resumed in the session that turn
-// reported, with the policy's instruction and the evidence, and completes
+// the process's stale.no_event is resumed in the session that turn
+// reported, with the process's instruction and the evidence, and completes
 // with the recovery on its record.
 func TestTheCompositionRecoversAStaleTurn(t *testing.T) {
 	t.Parallel()
 	const noEvent = 7 * time.Second
 	home, repo := setup(t, "approve")
-	policy := filepath.Join(home, "policies", "read-only.yaml")
-	write(t, policy, read(t, policy)+"\nstale: {no_event: 7s, recover: {max_resumes: 1, instruction: Go on.}}\n")
+	process := filepath.Join(home, "processes", "ask.yaml")
+	write(t, process, read(t, process)+"\nstale: {no_event: 7s, recover: {max_resumes: 1, instruction: Go on.}}\n")
 	config := cli.Config{Home: home, Cwd: repo}
 	clock := clocktest.NewClock(stillAt)
 	composed := on(config, clock.Timer)
@@ -817,7 +827,7 @@ func TestTheCompositionRecoversAStaleTurn(t *testing.T) {
 	ctx := context.Background()
 	// The question makes the fake's first turn hang; the recovery's message
 	// does not carry it, so that turn ends.
-	id, err := client.Submit(ctx, contract.CallRequest{Process: "ask", Params: map[string]string{"question": "SCENARIO:hang"}, Timeout: "1m", Cwd: repo})
+	id, err := client.Submit(ctx, contract.CallRequest{Process: "ask_assistant", Params: map[string]string{"question": "SCENARIO:hang"}, Timeout: "1m", Cwd: repo})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -852,7 +862,75 @@ func TestTheCompositionRecoversAStaleTurn(t *testing.T) {
 		t.Fatalf("recovery from %v to %v", got.StartedAt, got.FinishedAt)
 	}
 	// The runtime was started again, to resume the session.
-	if provider := read(t, filepath.Join(home, "runs", id, "provider.jsonl")); !strings.Contains(provider, `"--resume","`+session+`"`) {
-		t.Fatalf("provider evidence:\n%s", provider)
+	started, _ := json.Marshal(processesStarted(filepath.Join(home, "runs", id)))
+	if !strings.Contains(string(started), `"--resume","`+session+`"`) {
+		t.Fatalf("the processes started:\n%s", started)
+	}
+}
+
+// A log that cannot be written, its path a directory, fails the setup of
+// diagnostics and so the client and every command, instead of losing each
+// warning later in silence. A command line that cannot be read is still
+// refused as one.
+//
+// Contract test: the composition's diagnostics over the log on the real
+// filesystem.
+func TestAnUnusableLogFailsAtSetup(t *testing.T) {
+	t.Parallel()
+	home := tempDir(t)
+	path := filepath.Join(home, "logs", "agister.jsonl")
+	if err := os.MkdirAll(path, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	config := cli.Config{Home: home}
+	if _, err := diagnostics(config); err == nil || !strings.Contains(err.Error(), path) {
+		t.Fatalf("diagnostics: %v", err)
+	}
+	if client, _, err := inProcess(config).wire(config); err == nil || client != nil || !strings.Contains(err.Error(), path) {
+		t.Fatalf("wire: %v, %v", client, err)
+	}
+	if r := agister(t, home, tempDir(t), "check"); r.code != cli.ExitInternal || !strings.Contains(r.stderr, path) {
+		t.Fatalf("check: %d\n%s", r.code, r.stderr)
+	}
+	if r := agister(t, home, tempDir(t), "check", "--bogus"); r.code != cli.ExitUsage || !strings.Contains(r.stderr, "flag provided but not defined: -bogus") || strings.Contains(r.stderr, path) {
+		t.Fatalf("check --bogus: %d\n%s", r.code, r.stderr)
+	}
+}
+
+// The log as shipped rotates once it would pass 5 MB, not before, and
+// keeps three old files: the oldest of three is dropped and no fourth is
+// kept.
+//
+// Contract test: the composition's diagnostics over the log on the real
+// filesystem.
+func TestTheLogIsKeptWithinTheShippedCap(t *testing.T) {
+	t.Parallel()
+	home := tempDir(t)
+	path := filepath.Join(home, "logs", "agister.jsonl")
+	// The log 1000 bytes short of its cap, and three old files.
+	seed := strings.Repeat("x", 5<<20-1001) + "\n"
+	write(t, path, seed)
+	for n := 1; n <= 3; n++ {
+		write(t, fmt.Sprintf("%s.%d.gz", path, n), fmt.Sprintf("old %d", n))
+	}
+	log, err := diagnostics(cli.Config{Home: home})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	log.Warn("within the cap")
+	if kept := read(t, path); !strings.HasPrefix(kept, seed) || !strings.Contains(kept[len(seed):], `"msg":"within the cap"`) {
+		t.Fatalf("the log was rotated before its cap, %d bytes", len(kept))
+	}
+	log.Warn("past the cap", "padding", strings.Repeat("p", 1000))
+	if kept := read(t, path); strings.Count(kept, "\n") != 1 || !strings.Contains(kept, `"msg":"past the cap"`) {
+		t.Fatalf("the log after its cap, %d bytes: %.200s", len(kept), kept)
+	}
+	if newest, second, third := read(t, path+".1.gz"), read(t, path+".2.gz"), read(t, path+".3.gz"); len(newest) >= len(seed) || second != "old 1" || third != "old 2" {
+		t.Fatalf("the old files: the newest %d bytes, then %q and %q", len(newest), second, third)
+	}
+	// The log and its three old files, read above, and no fourth.
+	if entries, err := os.ReadDir(filepath.Dir(path)); err != nil || len(entries) != 4 {
+		t.Fatalf("the log's folder = %v, %v", entries, err)
 	}
 }

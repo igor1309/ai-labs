@@ -1,0 +1,805 @@
+{
+  "schema": "agister.run/v1alpha3",
+  "id": "20261010T181147Z-999397",
+  "process": "implement",
+  "agent": "claude-implementer-opus",
+  "profile": {
+    "model": "opus",
+    "effort": "high",
+    "session": "resumable"
+  },
+  "request": {
+    "process": "implement",
+    "params": {
+      "brief": "/tmp/lab-171/v/s8-step.md"
+    },
+    "continue": "20261010T172508Z-da7f75",
+    "cwd": "/Users/igormalyarov/Developer/my-apps/ai-labs/ai-labs.worktrees/lab-171/agister"
+  },
+  "created_at": "2026-10-10T18:11:47.03215Z",
+  "finished_at": "2026-10-10T18:18:14.694303Z",
+  "definitions": [
+    {
+      "kind": "service",
+      "name": "service",
+      "layers": [
+        {
+          "layer": "home",
+          "path": "/Users/igormalyarov/.agister/service.toml",
+          "sha256": "c98d09ad18e4fa52ce2aa131e0d2ae2aefe1c74005839d6ab6bca3f079ee5d49",
+          "fields": [
+            "schema",
+            "max_timeout",
+            "max_attempts",
+            "max_verify_attempts",
+            "permissions",
+            "writing",
+            "state_reaching"
+          ]
+        }
+      ]
+    },
+    {
+      "kind": "processes",
+      "name": "implement",
+      "layers": [
+        {
+          "layer": "repository",
+          "path": "/Users/igormalyarov/Developer/my-apps/ai-labs/ai-labs.worktrees/lab-171/.agister/processes/implement.yaml",
+          "sha256": "6a2c25ec8f5add1403bcea4da85f7c1c9fe1762767202e48710a4e143310d91c",
+          "fields": [
+            "guidance"
+          ]
+        },
+        {
+          "layer": "home",
+          "path": "/Users/igormalyarov/.agister/processes/implement.yaml",
+          "sha256": "594c5b973168e603b66ed35c49852b005c1ee8bbfcc5a0801aa640873c34ccf1",
+          "fields": [
+            "schema",
+            "name",
+            "type",
+            "uses",
+            "policy",
+            "prompt",
+            "input.instruction",
+            "input.params.candidate.default",
+            "input.params.brief",
+            "input.values.candidate_revision.source",
+            "input.values.candidate_revision.rev",
+            "input.values.brief.source",
+            "input.values.brief.path",
+            "input.values.brief.form",
+            "workspace.revision",
+            "workspace.clean",
+            "output.format",
+            "output.schema",
+            "output.require_valid",
+            "verify"
+          ]
+        }
+      ]
+    },
+    {
+      "kind": "policies",
+      "name": "implement",
+      "layers": [
+        {
+          "layer": "home",
+          "path": "/Users/igormalyarov/.agister/policies/implement.yaml",
+          "sha256": "11a612a7bce8f56702754a3c2c33049e605b637090e0e011d674e88a641623bb",
+          "fields": [
+            "schema",
+            "name",
+            "workspace.access",
+            "workspace.scope",
+            "tools.allow",
+            "timeout",
+            "retry.max_attempts",
+            "stale.no_event",
+            "stale.tool_command",
+            "stale.repeated_tool_calls"
+          ]
+        }
+      ]
+    },
+    {
+      "kind": "agents",
+      "name": "claude-implementer-opus",
+      "layers": [
+        {
+          "layer": "home",
+          "path": "/Users/igormalyarov/.agister/agents/claude-implementer-opus.toml",
+          "sha256": "c07215a5e572bab71824220b3a4f1d4f4876d247bfdc6d87709f2fcca5317eb1",
+          "fields": [
+            "schema",
+            "name",
+            "runtime",
+            "model",
+            "model_family",
+            "effort",
+            "session"
+          ]
+        }
+      ]
+    },
+    {
+      "kind": "runtimes",
+      "name": "claude-code",
+      "layers": [
+        {
+          "layer": "home",
+          "path": "/Users/igormalyarov/.agister/runtimes/claude-code.yaml",
+          "sha256": "6e0dbe3900bc2d52c641ef7122985d45237c91b06701122bb809a16aacac6269",
+          "fields": [
+            "schema",
+            "name",
+            "adapter",
+            "contract",
+            "efforts",
+            "primitives.select",
+            "primitives.items.Read.grants",
+            "primitives.items.Read.verified",
+            "primitives.items.Glob.grants",
+            "primitives.items.Glob.verified",
+            "primitives.items.Grep.grants",
+            "primitives.items.Grep.verified",
+            "primitives.items.Edit.grants",
+            "primitives.items.Edit.verified",
+            "primitives.items.Write.grants",
+            "primitives.items.Write.verified",
+            "primitives.items.NotebookEdit.grants",
+            "primitives.items.WebFetch.grants",
+            "primitives.items.WebSearch.grants",
+            "primitives.items.Bash.verified",
+            "primitives.items.Bash.grants"
+          ]
+        }
+      ]
+    },
+    {
+      "kind": "schemas",
+      "name": "implementation",
+      "layers": [
+        {
+          "layer": "home",
+          "path": "/Users/igormalyarov/.agister/schemas/implementation.json",
+          "sha256": "807c17bbb8c96031046dbe38195998b656d3a79c3966bfa2545a835e973399c6"
+        }
+      ]
+    },
+    {
+      "kind": "verifies",
+      "name": "repo",
+      "layers": [
+        {
+          "layer": "project",
+          "path": "/Users/igormalyarov/Developer/my-apps/ai-labs/ai-labs.worktrees/lab-171/agister/.agister/verifies/repo.yaml",
+          "sha256": "e9a406200abb668196c7d664b2afd2df641c15f25d347bb086e393445d62bb80",
+          "fields": [
+            "schema",
+            "name",
+            "command",
+            "timeout",
+            "max_attempts",
+            "instruction"
+          ]
+        }
+      ]
+    },
+    {
+      "kind": "prompts",
+      "name": "implement",
+      "layers": [
+        {
+          "layer": "home",
+          "path": "/Users/igormalyarov/.agister/prompts/implement.md",
+          "sha256": "99843a6849aa2896b66ce28405cd925193346ec3d3cfc1d88bc462aba54cb00f"
+        }
+      ]
+    },
+    {
+      "kind": "prompts",
+      "name": "go-testing-seams",
+      "layers": [
+        {
+          "layer": "repository",
+          "path": "/Users/igormalyarov/Developer/my-apps/ai-labs/ai-labs.worktrees/lab-171/prompts/go-testing-seams.md",
+          "sha256": "47450a4d83a3d0d662b90ff4886523c1115ebbae0e8b507ac3e7ace8bb3105a5"
+        }
+      ]
+    },
+    {
+      "kind": "prompts",
+      "name": "go-architecture",
+      "layers": [
+        {
+          "layer": "repository",
+          "path": "/Users/igormalyarov/Developer/my-apps/ai-labs/ai-labs.worktrees/lab-171/prompts/go-architecture.md",
+          "sha256": "d6bc4259e6b03b18afdd205f86eeb3362b421e89f8c6b088ea0e1e8e6e7a68af"
+        }
+      ]
+    },
+    {
+      "kind": "briefs",
+      "name": "goal",
+      "layers": [
+        {
+          "layer": "home",
+          "path": "/Users/igormalyarov/.agister/briefs/goal.yaml",
+          "sha256": "4b7f446de58add9abcd4c6ca033cbe5dcf3c7aaa7c31d731b3d86983a99938fc",
+          "fields": [
+            "schema",
+            "name",
+            "parts",
+            "template"
+          ]
+        }
+      ]
+    },
+    {
+      "kind": "briefs",
+      "name": "step",
+      "layers": [
+        {
+          "layer": "home",
+          "path": "/Users/igormalyarov/.agister/briefs/step.yaml",
+          "sha256": "f4379773ddcb1f3c82e5b560a9ff5b48cba4241484033f77ca5dc865b6dd8414",
+          "fields": [
+            "schema",
+            "name",
+            "parts",
+            "template"
+          ]
+        }
+      ]
+    }
+  ],
+  "layers": [
+    {
+      "layer": "project",
+      "dir": "/Users/igormalyarov/Developer/my-apps/ai-labs/ai-labs.worktrees/lab-171/agister/.agister"
+    },
+    {
+      "layer": "repository",
+      "dir": "/Users/igormalyarov/Developer/my-apps/ai-labs/ai-labs.worktrees/lab-171/.agister"
+    },
+    {
+      "layer": "home",
+      "dir": "/Users/igormalyarov/.agister"
+    }
+  ],
+  "effective": {
+    "timeout": 2700000000000,
+    "max_attempts": 1,
+    "allow": [
+      "repository.read",
+      "repository.search",
+      "repository.diff",
+      "repository.history.read",
+      "repository.write",
+      "repository.history.write",
+      "process.execute",
+      "network",
+      "host.read",
+      "host.write"
+    ],
+    "deny": [],
+    "permissions": [
+      "repository.read",
+      "repository.search",
+      "repository.diff",
+      "repository.history.read",
+      "repository.write",
+      "repository.history.write",
+      "process.execute",
+      "network",
+      "host.read",
+      "host.write"
+    ],
+    "access": "read-write",
+    "scope": "candidate",
+    "stale": {
+      "no_event": 1260000000000,
+      "tool_command": 900000000000,
+      "repeated_tool_calls": 5
+    }
+  },
+  "verify": {
+    "command": "agister/scripts/test.sh",
+    "timeout": 300000000000,
+    "max_attempts": 3,
+    "instruction": "The verification command failed on your changes. Fix the cause in the code; do not weaken, skip or delete a check or a test.",
+    "where": "workspace"
+  },
+  "runtime": {
+    "mapping": "claude-code",
+    "adapter": "claude-code",
+    "contract": "claude-code/3",
+    "version": "2.1.296"
+  },
+  "plan": {
+    "primitives": [
+      "Read",
+      "Glob",
+      "Grep",
+      "Edit",
+      "Write",
+      "Bash"
+    ],
+    "granted": [
+      "repository.read",
+      "host.read",
+      "repository.search",
+      "repository.write",
+      "host.write",
+      "process.execute",
+      "repository.diff",
+      "repository.history.read",
+      "repository.history.write",
+      "network"
+    ],
+    "withheld": []
+  },
+  "inputs": [
+    {
+      "name": "candidate_revision",
+      "source": "git.revision",
+      "identity": "583cd10ce28ebdb0da97036f301289422ef0430a",
+      "revision": true,
+      "value": "583cd10ce28ebdb0da97036f301289422ef0430a"
+    },
+    {
+      "name": "brief",
+      "source": "file",
+      "identity": "sha256:704ccb3aadcb01f0580722c674c422ebc5e5d97470a0581b4e30795fa9a275e2",
+      "value": "# LAB-171 S8\n\n## Goal\n\n`/tmp/lab-171/v/s8-goal.md`\n\n## Covers\n\n- **S8. Binary: no policy kind.**\n  - Changes: `policy:` on a process and a file in a layer's `policies/` are problems.\n  - Tests first: each is reported by `check`.\n\n## Constraints\n\n- Do not touch any docs.\n- Obey ADR-030. Violation is not allowed.\n- Stop if you cannot do the task.\n\n## Open\n\nNone.\n",
+      "cache_path": "/Users/igormalyarov/.agister/cache/704ccb3aadcb01f0580722c674c422ebc5e5d97470a0581b4e30795fa9a275e2/s8-step.md"
+    },
+    {
+      "name": "prompt",
+      "source": "prompt",
+      "identity": "sha256:99843a6849aa2896b66ce28405cd925193346ec3d3cfc1d88bc462aba54cb00f",
+      "value": "---\ndate: 2026-10-10\nauthor: Igor Malyarov\nmodel: claude-opus-5-5\nname: Implement — one change in the caller's worktree\nversion: 0.1.0\ntype: prompt\n---\n\nImplement the task given as input brief in this worktree, at the\ncandidate. Do not commit; your changes stay here, uncommitted.\n\nBefore you finish, run your testing command, as your skills and the\nrepository's AGENTS.md describe it, and any further checks the brief asks\nfor.\n\nReport only the change: what you changed, each check you ran with its exit\ncode and final line, every file you changed, repository-relative, and the\npoints left open; nothing about how the work was organised or dispatched.\n\nRun commands in the foreground: once your turn ends, nothing waits for a\nbackground command.\n\nAny guidance given as further inputs applies to the code it names.\n"
+    },
+    {
+      "name": "guidance.go-testing-seams",
+      "source": "prompt",
+      "identity": "sha256:47450a4d83a3d0d662b90ff4886523c1115ebbae0e8b507ac3e7ace8bb3105a5",
+      "artifact": {
+        "name": "input.3.txt",
+        "path": "artifacts/input.3.txt",
+        "digest": "sha256:47450a4d83a3d0d662b90ff4886523c1115ebbae0e8b507ac3e7ace8bb3105a5",
+        "bytes": 7697
+      }
+    },
+    {
+      "name": "guidance.go-architecture",
+      "source": "prompt",
+      "identity": "sha256:d6bc4259e6b03b18afdd205f86eeb3362b421e89f8c6b088ea0e1e8e6e7a68af",
+      "artifact": {
+        "name": "input.4.txt",
+        "path": "artifacts/input.4.txt",
+        "digest": "sha256:d6bc4259e6b03b18afdd205f86eeb3362b421e89f8c6b088ea0e1e8e6e7a68af",
+        "bytes": 5368
+      }
+    }
+  ],
+  "workspace": "/Users/igormalyarov/Developer/my-apps/ai-labs/ai-labs.worktrees/lab-171",
+  "in_place": {
+    "dir": "/Users/igormalyarov/Developer/my-apps/ai-labs/ai-labs.worktrees/lab-171",
+    "worktree": "/Users/igormalyarov/Developer/my-apps/ai-labs/ai-labs.worktrees/lab-171",
+    "repository_identity": "/Users/igormalyarov/Developer/my-apps/ai-labs/ai-labs/.git",
+    "revision": "583cd10ce28ebdb0da97036f301289422ef0430a",
+    "writer": true,
+    "verify": "workspace",
+    "content": "e78c344b10a75d5ab6512c9b5a50f1f4da28d992"
+  },
+  "effects": {
+    "process": {
+      "ref": "pgid:39080:Sat Oct 10 21:11:49 2026     claude"
+    },
+    "command": {
+      "ref": "pgid:46924:Sat Oct 10 21:17:33 2026     bash"
+    }
+  },
+  "processes_ended": true,
+  "turn": {
+    "status": "completed",
+    "provider_session_id": "2e63931d-0b7e-40a0-b56a-14a27fdf5932",
+    "model": "claude-opus-5-5",
+    "output": {
+      "checks": [
+        {
+          "command": "cd agister \u0026\u0026 test -z \"$(gofmt -l .)\"",
+          "exit_code": 0,
+          "final_line": "(no output)"
+        },
+        {
+          "command": "cd agister \u0026\u0026 go vet ./...",
+          "exit_code": 0,
+          "final_line": "(no output)"
+        },
+        {
+          "command": "cd agister \u0026\u0026 go test -count=1 -timeout 1m ./...",
+          "exit_code": 0,
+          "final_line": "ok  \tgithub.com/igor1309/ai-labs/agister/pages\t6.289s"
+        },
+        {
+          "command": "agister/scripts/test.sh",
+          "exit_code": 0,
+          "final_line": "ok  \tgithub.com/igor1309/ai-labs/gokit/testdiscipline\t2.911s"
+        }
+      ],
+      "files_changed": [
+        "agister/cmd/agister/extends_test.go",
+        "agister/cmd/agister/install_test.go",
+        "agister/cmd/agister/layers_test.go",
+        "agister/cmd/agister/links_test.go",
+        "agister/cmd/agister/main_test.go",
+        "agister/cmd/agister/opencode_settings_test.go",
+        "agister/cmd/agister/pages_test.go",
+        "agister/cmd/agister/pi_settings_test.go",
+        "agister/cmd/agister/policies_test.go",
+        "agister/cmd/agister/prompts_test.go",
+        "agister/cmd/agister/repo_settings_test.go",
+        "agister/cmd/agister/skills_test.go",
+        "agister/cmd/agister/verify_loop_test.go",
+        "agister/cmd/agister/wiring_test.go",
+        "agister/cmd/agister/workflow_test.go",
+        "agister/examples/codex/policies/sandboxed-review.yaml",
+        "agister/examples/codex/processes/adversarial_review_sandboxed.yaml",
+        "agister/examples/opencode/processes/ask_opencode.yaml",
+        "agister/examples/pi/processes/ask_pi.yaml",
+        "agister/examples/settings/policies/implement.yaml",
+        "agister/examples/settings/policies/read-only.yaml",
+        "agister/examples/settings/policies/static-review.yaml",
+        "agister/examples/settings/processes/adversarial_review.yaml",
+        "agister/examples/settings/processes/architecture_review.yaml",
+        "agister/examples/settings/processes/ask.yaml",
+        "agister/examples/settings/processes/implement.yaml",
+        "agister/examples/settings/processes/review_summary.yaml",
+        "agister/internal/adapters/fsdefs/fsdefs.go",
+        "agister/internal/adapters/fsdefs/fsdefs_test.go",
+        "agister/internal/adapters/fsdefs/layers_test.go",
+        "agister/internal/app/adr012_test.go",
+        "agister/internal/app/briefs_test.go",
+        "agister/internal/app/calls_test.go",
+        "agister/internal/app/check.go",
+        "agister/internal/app/definitions.go",
+        "agister/internal/app/hold_test.go",
+        "agister/internal/app/named_verify_test.go",
+        "agister/internal/app/other_test.go",
+        "agister/internal/app/prompts_test.go",
+        "agister/internal/app/reach_test.go",
+        "agister/internal/app/recover_test.go",
+        "agister/internal/app/resolve.go",
+        "agister/internal/app/skills_test.go",
+        "agister/internal/app/snapshot.go",
+        "agister/internal/app/snapshot_test.go",
+        "agister/internal/app/stale_recover_test.go",
+        "agister/internal/app/stale_test.go",
+        "agister/internal/app/verify_test.go",
+        "agister/internal/app/workflow_test.go",
+        "agister/internal/cli/cli.go",
+        "agister/internal/cli/cli_test.go",
+        "agister/internal/contract/contract.go",
+        "agister/internal/domain/definition/definition.go",
+        "agister/internal/domain/definition/definition_test.go",
+        "agister/internal/domain/definition/documents.go",
+        "agister/internal/domain/definition/layers.go",
+        "agister/internal/domain/definition/layers_test.go",
+        "agister/internal/domain/definition/limits.go",
+        "agister/internal/domain/definition/setup_test.go",
+        "agister/internal/domain/definition/toml.go",
+        "agister/internal/domain/policy/policy.go",
+        "agister/internal/domain/policy/policy_test.go",
+        "agister/internal/domain/policy/verify_test.go",
+        "agister/internal/domain/prompt/prompt.go",
+        "agister/internal/domain/run/snapshots.go",
+        "agister/internal/domain/settings/settings.go",
+        "agister/internal/domain/settings/settings_test.go",
+        "agister/pages/settings.go"
+      ],
+      "notes": "Points left open:\n\n- **Installed home blocks on deploy.** `~/.agister/policies/` still holds five files (`codex-review`, `implement`, `implement_codex`, `implement_pi`, `judge`). Once this binary is deployed, every command stops on them until they are removed. `agister install home` will not remove them, because it keeps home files that the source lacks, and its staged check reads home's layers and so refuses too. I did not touch `~/.agister`.\n- **Docs still describe policies.** Per the constraint I touched no docs: `README.md`, `skills/agister/SKILL.md`, `docs/settings-architecture/` and the example READMEs still mention policies and the deleted example files.\n- **Pages still knows policies.** The Go side no longer lists the kind (`pages/settings.go`), but `pages/serve.go` still serves a `policies/` directory, and the Pages JS and its tests (`pages/tests/*.test.js`) still render and reference policies. I left these alone.\n- **ADR-024 rule 5 behaviour changed.** With no policy to grant it, a process now sets its own `stale.recover.max_resumes` and instruction; before, a process could only lower a policy's budget. I read ADR-030 rules 2 and 4 as requiring this.\n- **Removed assertions.** The per-process \"names no policy\" tests in `repo_settings_test.go` are replaced by one test that the home folder holds no `policies/`. The cases for a process widening or narrowing its policy's stale limits and recovery budget are removed, since the behaviour no longer exists.\n- **Deletions are unstaged.** The four example policy files are deleted in the working tree only; nothing is staged or committed.",
+      "summary": "LAB-171 S8 is implemented and uncommitted: the binary has no policy kind, and `check` reports both `policy:` on a process and any file in a layer's `policies/` as problems. The full check passes.\n\n**What the binary does now**\n- **`policy:` on a process** is a problem of that process: `process \u003cname\u003e: policy: there are no policies (ADR-030): set the policy's fields on the process and remove policy`. Its call is refused.\n- **A file in a layer's `policies/`** (home, repository or project) is a problem of that layer, one per entry, naming the path: `a layer holds no policies (ADR-030 rule 4): set the policy's fields on each process that names it, then remove it`. It stops every command launched under that layer; a project layer's stops only what is launched below it. An empty `policies/` is no problem.\n- **Limits** compose as service ⊇ process ⊇ caller. A process must set its own `timeout`, and may now set its own `stale.recover` budget, which needs its own instruction.\n- **Removed from the surface:** the policy kind and its parser, the `policy` field on `process show` and its JSON, the policy column of `process list`, and policies among a run's recorded definitions and the `check` tree.\n- **Kept:** the recorded effective limits on run records (`run.EffectivePolicy`, Pages `RunPolicy`), so old records still read (ADR-030 rule 11).\n\n**Examples**\n- The four example policy files are deleted, and their fields are set on the example processes that named them, since `agister init` copies `examples/settings`.\n\n**Tests**\n- New `check` tests in `agister/cmd/agister/policies_test.go`: `TestCheckReportsAProcessThatNamesAPolicy` and `TestCheckReportsAFileInALayersPolicies` (one case per layer).\n- Supporting tests added earlier: `TestAProcessNamesNoPolicy` (definition) and `TestAFileInPoliciesMakesItsLayerInvalid` (fsdefs).\n- Existing tests were moved from policy fixtures to limits on the process. Tests that only asserted policy narrowing or \"names no policy\" were removed or rewritten to the process's own limits."
+    },
+    "text": "{\"summary\":\"LAB-171 S8 is implemented and uncommitted: the binary has no policy kind, and `check` reports both `policy:` on a process and any file in a layer's `policies/` as problems. The full check passes.\\n\\n**What the binary does now**\\n- **`policy:` on a process** is a problem of that process: `process \u003cname\u003e: policy: there are no policies (ADR-030): set the policy's fields on the process and remove policy`. Its call is refused.\\n- **A file in a layer's `policies/`** (home, repository or project) is a problem of that layer, one per entry, naming the path: `a layer holds no policies (ADR-030 rule 4): set the policy's fields on each process that names it, then remove it`. It stops every command launched under that layer; a project layer's stops only what is launched below it. An empty `policies/` is no problem.\\n- **Limits** compose as service ⊇ process ⊇ caller. A process must set its own `timeout`, and may now set its own `stale.recover` budget, which needs its own instruction.\\n- **Removed from the surface:** the policy kind and its parser, the `policy` field on `process show` and its JSON, the policy column of `process list`, and policies among a run's recorded definitions and the `check` tree.\\n- **Kept:** the recorded effective limits on run records (`run.EffectivePolicy`, Pages `RunPolicy`), so old records still read (ADR-030 rule 11).\\n\\n**Examples**\\n- The four example policy files are deleted, and their fields are set on the example processes that named them, since `agister init` copies `examples/settings`.\\n\\n**Tests**\\n- New `check` tests in `agister/cmd/agister/policies_test.go`: `TestCheckReportsAProcessThatNamesAPolicy` and `TestCheckReportsAFileInALayersPolicies` (one case per layer).\\n- Supporting tests added earlier: `TestAProcessNamesNoPolicy` (definition) and `TestAFileInPoliciesMakesItsLayerInvalid` (fsdefs).\\n- Existing tests were moved from policy fixtures to limits on the process. Tests that only asserted policy narrowing or \\\"names no policy\\\" were removed or rewritten to the process's own limits.\",\"files_changed\":[\"agister/cmd/agister/extends_test.go\",\"agister/cmd/agister/install_test.go\",\"agister/cmd/agister/layers_test.go\",\"agister/cmd/agister/links_test.go\",\"agister/cmd/agister/main_test.go\",\"agister/cmd/agister/opencode_settings_test.go\",\"agister/cmd/agister/pages_test.go\",\"agister/cmd/agister/pi_settings_test.go\",\"agister/cmd/agister/policies_test.go\",\"agister/cmd/agister/prompts_test.go\",\"agister/cmd/agister/repo_settings_test.go\",\"agister/cmd/agister/skills_test.go\",\"agister/cmd/agister/verify_loop_test.go\",\"agister/cmd/agister/wiring_test.go\",\"agister/cmd/agister/workflow_test.go\",\"agister/examples/codex/policies/sandboxed-review.yaml\",\"agister/examples/codex/processes/adversarial_review_sandboxed.yaml\",\"agister/examples/opencode/processes/ask_opencode.yaml\",\"agister/examples/pi/processes/ask_pi.yaml\",\"agister/examples/settings/policies/implement.yaml\",\"agister/examples/settings/policies/read-only.yaml\",\"agister/examples/settings/policies/static-review.yaml\",\"agister/examples/settings/processes/adversarial_review.yaml\",\"agister/examples/settings/processes/architecture_review.yaml\",\"agister/examples/settings/processes/ask.yaml\",\"agister/examples/settings/processes/implement.yaml\",\"agister/examples/settings/processes/review_summary.yaml\",\"agister/internal/adapters/fsdefs/fsdefs.go\",\"agister/internal/adapters/fsdefs/fsdefs_test.go\",\"agister/internal/adapters/fsdefs/layers_test.go\",\"agister/internal/app/adr012_test.go\",\"agister/internal/app/briefs_test.go\",\"agister/internal/app/calls_test.go\",\"agister/internal/app/check.go\",\"agister/internal/app/definitions.go\",\"agister/internal/app/hold_test.go\",\"agister/internal/app/named_verify_test.go\",\"agister/internal/app/other_test.go\",\"agister/internal/app/prompts_test.go\",\"agister/internal/app/reach_test.go\",\"agister/internal/app/recover_test.go\",\"agister/internal/app/resolve.go\",\"agister/internal/app/skills_test.go\",\"agister/internal/app/snapshot.go\",\"agister/internal/app/snapshot_test.go\",\"agister/internal/app/stale_recover_test.go\",\"agister/internal/app/stale_test.go\",\"agister/internal/app/verify_test.go\",\"agister/internal/app/workflow_test.go\",\"agister/internal/cli/cli.go\",\"agister/internal/cli/cli_test.go\",\"agister/internal/contract/contract.go\",\"agister/internal/domain/definition/definition.go\",\"agister/internal/domain/definition/definition_test.go\",\"agister/internal/domain/definition/documents.go\",\"agister/internal/domain/definition/layers.go\",\"agister/internal/domain/definition/layers_test.go\",\"agister/internal/domain/definition/limits.go\",\"agister/internal/domain/definition/setup_test.go\",\"agister/internal/domain/definition/toml.go\",\"agister/internal/domain/policy/policy.go\",\"agister/internal/domain/policy/policy_test.go\",\"agister/internal/domain/policy/verify_test.go\",\"agister/internal/domain/prompt/prompt.go\",\"agister/internal/domain/run/snapshots.go\",\"agister/internal/domain/settings/settings.go\",\"agister/internal/domain/settings/settings_test.go\",\"agister/pages/settings.go\"],\"checks\":[{\"command\":\"cd agister \u0026\u0026 test -z \\\"$(gofmt -l .)\\\"\",\"exit_code\":0,\"final_line\":\"(no output)\"},{\"command\":\"cd agister \u0026\u0026 go vet ./...\",\"exit_code\":0,\"final_line\":\"(no output)\"},{\"command\":\"cd agister \u0026\u0026 go test -count=1 -timeout 1m ./...\",\"exit_code\":0,\"final_line\":\"ok  \\tgithub.com/igor1309/ai-labs/agister/pages\\t6.289s\"},{\"command\":\"agister/scripts/test.sh\",\"exit_code\":0,\"final_line\":\"ok  \\tgithub.com/igor1309/ai-labs/gokit/testdiscipline\\t2.911s\"}],\"notes\":\"Points left open:\\n\\n- **Installed home blocks on deploy.** `~/.agister/policies/` still holds five files (`codex-review`, `implement`, `implement_codex`, `implement_pi`, `judge`). Once this binary is deployed, every command stops on them until they are removed. `agister install home` will not remove them, because it keeps home files that the source lacks, and its staged check reads home's layers and so refuses too. I did not touch `~/.agister`.\\n- **Docs still describe policies.** Per the constraint I touched no docs: `README.md`, `skills/agister/SKILL.md`, `docs/settings-architecture/` and the example READMEs still mention policies and the deleted example files.\\n- **Pages still knows policies.** The Go side no longer lists the kind (`pages/settings.go`), but `pages/serve.go` still serves a `policies/` directory, and the Pages JS and its tests (`pages/tests/*.test.js`) still render and reference policies. I left these alone.\\n- **ADR-024 rule 5 behaviour changed.** With no policy to grant it, a process now sets its own `stale.recover.max_resumes` and instruction; before, a process could only lower a policy's budget. I read ADR-030 rules 2 and 4 as requiring this.\\n- **Removed assertions.** The per-process \\\"names no policy\\\" tests in `repo_settings_test.go` are replaced by one test that the home folder holds no `policies/`. The cases for a process widening or narrowing its policy's stale limits and recovery budget are removed, since the behaviour no longer exists.\\n- **Deletions are unstaged.** The four example policy files are deleted in the working tree only; nothing is staged or committed.\"}",
+    "usage": {
+      "input_tokens": 44,
+      "output_tokens": 12656,
+      "cache_read_tokens": 3341683,
+      "cache_write_tokens": 173006
+    },
+    "runtime_ms": 341462,
+    "num_turns": 24,
+    "exit": {
+      "code": 0
+    },
+    "session": {
+      "cost_usd": 9.455738799999999
+    }
+  },
+  "attempts": [
+    {
+      "number": 1,
+      "session": "2e63931d-0b7e-40a0-b56a-14a27fdf5932",
+      "turn": {
+        "status": "completed",
+        "provider_session_id": "2e63931d-0b7e-40a0-b56a-14a27fdf5932",
+        "model": "claude-opus-5-5",
+        "output": {
+          "checks": [
+            {
+              "command": "cd agister \u0026\u0026 test -z \"$(gofmt -l .)\"",
+              "exit_code": 0,
+              "final_line": "(no output)"
+            },
+            {
+              "command": "cd agister \u0026\u0026 go vet ./...",
+              "exit_code": 0,
+              "final_line": "(no output)"
+            },
+            {
+              "command": "cd agister \u0026\u0026 go test -count=1 -timeout 1m ./...",
+              "exit_code": 0,
+              "final_line": "ok  \tgithub.com/igor1309/ai-labs/agister/pages\t6.289s"
+            },
+            {
+              "command": "agister/scripts/test.sh",
+              "exit_code": 0,
+              "final_line": "ok  \tgithub.com/igor1309/ai-labs/gokit/testdiscipline\t2.911s"
+            }
+          ],
+          "files_changed": [
+            "agister/cmd/agister/extends_test.go",
+            "agister/cmd/agister/install_test.go",
+            "agister/cmd/agister/layers_test.go",
+            "agister/cmd/agister/links_test.go",
+            "agister/cmd/agister/main_test.go",
+            "agister/cmd/agister/opencode_settings_test.go",
+            "agister/cmd/agister/pages_test.go",
+            "agister/cmd/agister/pi_settings_test.go",
+            "agister/cmd/agister/policies_test.go",
+            "agister/cmd/agister/prompts_test.go",
+            "agister/cmd/agister/repo_settings_test.go",
+            "agister/cmd/agister/skills_test.go",
+            "agister/cmd/agister/verify_loop_test.go",
+            "agister/cmd/agister/wiring_test.go",
+            "agister/cmd/agister/workflow_test.go",
+            "agister/examples/codex/policies/sandboxed-review.yaml",
+            "agister/examples/codex/processes/adversarial_review_sandboxed.yaml",
+            "agister/examples/opencode/processes/ask_opencode.yaml",
+            "agister/examples/pi/processes/ask_pi.yaml",
+            "agister/examples/settings/policies/implement.yaml",
+            "agister/examples/settings/policies/read-only.yaml",
+            "agister/examples/settings/policies/static-review.yaml",
+            "agister/examples/settings/processes/adversarial_review.yaml",
+            "agister/examples/settings/processes/architecture_review.yaml",
+            "agister/examples/settings/processes/ask.yaml",
+            "agister/examples/settings/processes/implement.yaml",
+            "agister/examples/settings/processes/review_summary.yaml",
+            "agister/internal/adapters/fsdefs/fsdefs.go",
+            "agister/internal/adapters/fsdefs/fsdefs_test.go",
+            "agister/internal/adapters/fsdefs/layers_test.go",
+            "agister/internal/app/adr012_test.go",
+            "agister/internal/app/briefs_test.go",
+            "agister/internal/app/calls_test.go",
+            "agister/internal/app/check.go",
+            "agister/internal/app/definitions.go",
+            "agister/internal/app/hold_test.go",
+            "agister/internal/app/named_verify_test.go",
+            "agister/internal/app/other_test.go",
+            "agister/internal/app/prompts_test.go",
+            "agister/internal/app/reach_test.go",
+            "agister/internal/app/recover_test.go",
+            "agister/internal/app/resolve.go",
+            "agister/internal/app/skills_test.go",
+            "agister/internal/app/snapshot.go",
+            "agister/internal/app/snapshot_test.go",
+            "agister/internal/app/stale_recover_test.go",
+            "agister/internal/app/stale_test.go",
+            "agister/internal/app/verify_test.go",
+            "agister/internal/app/workflow_test.go",
+            "agister/internal/cli/cli.go",
+            "agister/internal/cli/cli_test.go",
+            "agister/internal/contract/contract.go",
+            "agister/internal/domain/definition/definition.go",
+            "agister/internal/domain/definition/definition_test.go",
+            "agister/internal/domain/definition/documents.go",
+            "agister/internal/domain/definition/layers.go",
+            "agister/internal/domain/definition/layers_test.go",
+            "agister/internal/domain/definition/limits.go",
+            "agister/internal/domain/definition/setup_test.go",
+            "agister/internal/domain/definition/toml.go",
+            "agister/internal/domain/policy/policy.go",
+            "agister/internal/domain/policy/policy_test.go",
+            "agister/internal/domain/policy/verify_test.go",
+            "agister/internal/domain/prompt/prompt.go",
+            "agister/internal/domain/run/snapshots.go",
+            "agister/internal/domain/settings/settings.go",
+            "agister/internal/domain/settings/settings_test.go",
+            "agister/pages/settings.go"
+          ],
+          "notes": "Points left open:\n\n- **Installed home blocks on deploy.** `~/.agister/policies/` still holds five files (`codex-review`, `implement`, `implement_codex`, `implement_pi`, `judge`). Once this binary is deployed, every command stops on them until they are removed. `agister install home` will not remove them, because it keeps home files that the source lacks, and its staged check reads home's layers and so refuses too. I did not touch `~/.agister`.\n- **Docs still describe policies.** Per the constraint I touched no docs: `README.md`, `skills/agister/SKILL.md`, `docs/settings-architecture/` and the example READMEs still mention policies and the deleted example files.\n- **Pages still knows policies.** The Go side no longer lists the kind (`pages/settings.go`), but `pages/serve.go` still serves a `policies/` directory, and the Pages JS and its tests (`pages/tests/*.test.js`) still render and reference policies. I left these alone.\n- **ADR-024 rule 5 behaviour changed.** With no policy to grant it, a process now sets its own `stale.recover.max_resumes` and instruction; before, a process could only lower a policy's budget. I read ADR-030 rules 2 and 4 as requiring this.\n- **Removed assertions.** The per-process \"names no policy\" tests in `repo_settings_test.go` are replaced by one test that the home folder holds no `policies/`. The cases for a process widening or narrowing its policy's stale limits and recovery budget are removed, since the behaviour no longer exists.\n- **Deletions are unstaged.** The four example policy files are deleted in the working tree only; nothing is staged or committed.",
+          "summary": "LAB-171 S8 is implemented and uncommitted: the binary has no policy kind, and `check` reports both `policy:` on a process and any file in a layer's `policies/` as problems. The full check passes.\n\n**What the binary does now**\n- **`policy:` on a process** is a problem of that process: `process \u003cname\u003e: policy: there are no policies (ADR-030): set the policy's fields on the process and remove policy`. Its call is refused.\n- **A file in a layer's `policies/`** (home, repository or project) is a problem of that layer, one per entry, naming the path: `a layer holds no policies (ADR-030 rule 4): set the policy's fields on each process that names it, then remove it`. It stops every command launched under that layer; a project layer's stops only what is launched below it. An empty `policies/` is no problem.\n- **Limits** compose as service ⊇ process ⊇ caller. A process must set its own `timeout`, and may now set its own `stale.recover` budget, which needs its own instruction.\n- **Removed from the surface:** the policy kind and its parser, the `policy` field on `process show` and its JSON, the policy column of `process list`, and policies among a run's recorded definitions and the `check` tree.\n- **Kept:** the recorded effective limits on run records (`run.EffectivePolicy`, Pages `RunPolicy`), so old records still read (ADR-030 rule 11).\n\n**Examples**\n- The four example policy files are deleted, and their fields are set on the example processes that named them, since `agister init` copies `examples/settings`.\n\n**Tests**\n- New `check` tests in `agister/cmd/agister/policies_test.go`: `TestCheckReportsAProcessThatNamesAPolicy` and `TestCheckReportsAFileInALayersPolicies` (one case per layer).\n- Supporting tests added earlier: `TestAProcessNamesNoPolicy` (definition) and `TestAFileInPoliciesMakesItsLayerInvalid` (fsdefs).\n- Existing tests were moved from policy fixtures to limits on the process. Tests that only asserted policy narrowing or \"names no policy\" were removed or rewritten to the process's own limits."
+        },
+        "text": "{\"summary\":\"LAB-171 S8 is implemented and uncommitted: the binary has no policy kind, and `check` reports both `policy:` on a process and any file in a layer's `policies/` as problems. The full check passes.\\n\\n**What the binary does now**\\n- **`policy:` on a process** is a problem of that process: `process \u003cname\u003e: policy: there are no policies (ADR-030): set the policy's fields on the process and remove policy`. Its call is refused.\\n- **A file in a layer's `policies/`** (home, repository or project) is a problem of that layer, one per entry, naming the path: `a layer holds no policies (ADR-030 rule 4): set the policy's fields on each process that names it, then remove it`. It stops every command launched under that layer; a project layer's stops only what is launched below it. An empty `policies/` is no problem.\\n- **Limits** compose as service ⊇ process ⊇ caller. A process must set its own `timeout`, and may now set its own `stale.recover` budget, which needs its own instruction.\\n- **Removed from the surface:** the policy kind and its parser, the `policy` field on `process show` and its JSON, the policy column of `process list`, and policies among a run's recorded definitions and the `check` tree.\\n- **Kept:** the recorded effective limits on run records (`run.EffectivePolicy`, Pages `RunPolicy`), so old records still read (ADR-030 rule 11).\\n\\n**Examples**\\n- The four example policy files are deleted, and their fields are set on the example processes that named them, since `agister init` copies `examples/settings`.\\n\\n**Tests**\\n- New `check` tests in `agister/cmd/agister/policies_test.go`: `TestCheckReportsAProcessThatNamesAPolicy` and `TestCheckReportsAFileInALayersPolicies` (one case per layer).\\n- Supporting tests added earlier: `TestAProcessNamesNoPolicy` (definition) and `TestAFileInPoliciesMakesItsLayerInvalid` (fsdefs).\\n- Existing tests were moved from policy fixtures to limits on the process. Tests that only asserted policy narrowing or \\\"names no policy\\\" were removed or rewritten to the process's own limits.\",\"files_changed\":[\"agister/cmd/agister/extends_test.go\",\"agister/cmd/agister/install_test.go\",\"agister/cmd/agister/layers_test.go\",\"agister/cmd/agister/links_test.go\",\"agister/cmd/agister/main_test.go\",\"agister/cmd/agister/opencode_settings_test.go\",\"agister/cmd/agister/pages_test.go\",\"agister/cmd/agister/pi_settings_test.go\",\"agister/cmd/agister/policies_test.go\",\"agister/cmd/agister/prompts_test.go\",\"agister/cmd/agister/repo_settings_test.go\",\"agister/cmd/agister/skills_test.go\",\"agister/cmd/agister/verify_loop_test.go\",\"agister/cmd/agister/wiring_test.go\",\"agister/cmd/agister/workflow_test.go\",\"agister/examples/codex/policies/sandboxed-review.yaml\",\"agister/examples/codex/processes/adversarial_review_sandboxed.yaml\",\"agister/examples/opencode/processes/ask_opencode.yaml\",\"agister/examples/pi/processes/ask_pi.yaml\",\"agister/examples/settings/policies/implement.yaml\",\"agister/examples/settings/policies/read-only.yaml\",\"agister/examples/settings/policies/static-review.yaml\",\"agister/examples/settings/processes/adversarial_review.yaml\",\"agister/examples/settings/processes/architecture_review.yaml\",\"agister/examples/settings/processes/ask.yaml\",\"agister/examples/settings/processes/implement.yaml\",\"agister/examples/settings/processes/review_summary.yaml\",\"agister/internal/adapters/fsdefs/fsdefs.go\",\"agister/internal/adapters/fsdefs/fsdefs_test.go\",\"agister/internal/adapters/fsdefs/layers_test.go\",\"agister/internal/app/adr012_test.go\",\"agister/internal/app/briefs_test.go\",\"agister/internal/app/calls_test.go\",\"agister/internal/app/check.go\",\"agister/internal/app/definitions.go\",\"agister/internal/app/hold_test.go\",\"agister/internal/app/named_verify_test.go\",\"agister/internal/app/other_test.go\",\"agister/internal/app/prompts_test.go\",\"agister/internal/app/reach_test.go\",\"agister/internal/app/recover_test.go\",\"agister/internal/app/resolve.go\",\"agister/internal/app/skills_test.go\",\"agister/internal/app/snapshot.go\",\"agister/internal/app/snapshot_test.go\",\"agister/internal/app/stale_recover_test.go\",\"agister/internal/app/stale_test.go\",\"agister/internal/app/verify_test.go\",\"agister/internal/app/workflow_test.go\",\"agister/internal/cli/cli.go\",\"agister/internal/cli/cli_test.go\",\"agister/internal/contract/contract.go\",\"agister/internal/domain/definition/definition.go\",\"agister/internal/domain/definition/definition_test.go\",\"agister/internal/domain/definition/documents.go\",\"agister/internal/domain/definition/layers.go\",\"agister/internal/domain/definition/layers_test.go\",\"agister/internal/domain/definition/limits.go\",\"agister/internal/domain/definition/setup_test.go\",\"agister/internal/domain/definition/toml.go\",\"agister/internal/domain/policy/policy.go\",\"agister/internal/domain/policy/policy_test.go\",\"agister/internal/domain/policy/verify_test.go\",\"agister/internal/domain/prompt/prompt.go\",\"agister/internal/domain/run/snapshots.go\",\"agister/internal/domain/settings/settings.go\",\"agister/internal/domain/settings/settings_test.go\",\"agister/pages/settings.go\"],\"checks\":[{\"command\":\"cd agister \u0026\u0026 test -z \\\"$(gofmt -l .)\\\"\",\"exit_code\":0,\"final_line\":\"(no output)\"},{\"command\":\"cd agister \u0026\u0026 go vet ./...\",\"exit_code\":0,\"final_line\":\"(no output)\"},{\"command\":\"cd agister \u0026\u0026 go test -count=1 -timeout 1m ./...\",\"exit_code\":0,\"final_line\":\"ok  \\tgithub.com/igor1309/ai-labs/agister/pages\\t6.289s\"},{\"command\":\"agister/scripts/test.sh\",\"exit_code\":0,\"final_line\":\"ok  \\tgithub.com/igor1309/ai-labs/gokit/testdiscipline\\t2.911s\"}],\"notes\":\"Points left open:\\n\\n- **Installed home blocks on deploy.** `~/.agister/policies/` still holds five files (`codex-review`, `implement`, `implement_codex`, `implement_pi`, `judge`). Once this binary is deployed, every command stops on them until they are removed. `agister install home` will not remove them, because it keeps home files that the source lacks, and its staged check reads home's layers and so refuses too. I did not touch `~/.agister`.\\n- **Docs still describe policies.** Per the constraint I touched no docs: `README.md`, `skills/agister/SKILL.md`, `docs/settings-architecture/` and the example READMEs still mention policies and the deleted example files.\\n- **Pages still knows policies.** The Go side no longer lists the kind (`pages/settings.go`), but `pages/serve.go` still serves a `policies/` directory, and the Pages JS and its tests (`pages/tests/*.test.js`) still render and reference policies. I left these alone.\\n- **ADR-024 rule 5 behaviour changed.** With no policy to grant it, a process now sets its own `stale.recover.max_resumes` and instruction; before, a process could only lower a policy's budget. I read ADR-030 rules 2 and 4 as requiring this.\\n- **Removed assertions.** The per-process \\\"names no policy\\\" tests in `repo_settings_test.go` are replaced by one test that the home folder holds no `policies/`. The cases for a process widening or narrowing its policy's stale limits and recovery budget are removed, since the behaviour no longer exists.\\n- **Deletions are unstaged.** The four example policy files are deleted in the working tree only; nothing is staged or committed.\"}",
+        "usage": {
+          "input_tokens": 44,
+          "output_tokens": 12656,
+          "cache_read_tokens": 3341683,
+          "cache_write_tokens": 173006
+        },
+        "runtime_ms": 341462,
+        "num_turns": 24,
+        "exit": {
+          "code": 0
+        },
+        "session": {
+          "cost_usd": 9.455738799999999
+        }
+      },
+      "identity": "e78c344b10a75d5ab6512c9b5a50f1f4da28d992",
+      "changes": {
+        "name": "attempt-1.patch",
+        "path": "artifacts/attempt-1.patch",
+        "digest": "sha256:c11b6c3d9248728c3ff10fa1ce975884e1b42128d60f029e945c6886bef76c82",
+        "bytes": 218715
+      },
+      "run": {
+        "command": "agister/scripts/test.sh",
+        "dir": "/Users/igormalyarov/Developer/my-apps/ai-labs/ai-labs.worktrees/lab-171",
+        "exit": {
+          "code": 0
+        },
+        "started_at": "2026-10-10T18:17:33.64301Z",
+        "finished_at": "2026-10-10T18:18:14.022151Z",
+        "wall_ms": 40379,
+        "output": {
+          "head": "ok  \tgithub.com/igor1309/ai-labs/agister/cmd/agister\t32.289s\nok  \tgithub.com/igor1309/ai-labs/agister/deploy\t4.139s\n?   \tgithub.com/igor1309/ai-labs/agister/examples\t[no test files]\nok  \tgithub.com/igor1309/ai-labs/agister/internal/adapters/fscache\t1.611s\nok  \tgithub.com/igor1309/ai-labs/agister/internal/adapters/fsdefs\t2.687s\nok  \tgithub.com/igor1309/ai-labs/agister/internal/adapters/fsexport\t2.250s\nok  \tgithub.com/igor1309/ai-labs/agister/internal/adapters/fsprobes\t1.795s\nok  \tgithub.com/igor1309/ai-labs/agister/internal/adapters/fsruns\t2.671s\nok  \tgithub.com/igor1309/ai-labs/agister/internal/adapters/git\t5.383s\nok  \tgithub.com/igor1309/ai-labs/agister/internal/adapters/git/gittest\t2.906s\nok  \tgithub.com/igor1309/ai-labs/agister/internal/adapters/inputs\t3.071s\nok  \tgithub.com/igor1309/ai-labs/agister/internal/adapters/logging\t4.496s\n?   \tgithub.com/igor1309/ai-labs/agister/internal/adapters/runtime\t[no test files]\nok  \tgithub.com/igor1309/ai-labs/agister/internal/adapters/runtime/claudecode\t3.446s\nok  \tgithub.com/igor1309/ai-labs/agister/internal/adapters/runtime/codex\t3.703s\nok  \tgithub.com/igor1309/ai-labs/agister/internal/adapters/runtime/opencode\t3.727s\nok  \tgithub.com/igor1309/ai-labs/agister/internal/adapters/runtime/pi\t2.625s\nok  \tgithub.com/igor1309/ai-labs/agister/internal/adapters/runtime/runtimetest\t2.635s\n?   \tgithub.com/igor1309/ai-labs/agister/internal/adapters/runtime/runtimetest/fakeclaude\t[no test files]\n?   \tgithub.com/igor1309/ai-labs/agister/internal/adapters/runtime/runtimetest/fakeclaude/cmd\t[no test files]\n?   \tgithub.com/igor1309/ai-labs/agister/internal/adapters/runtime/runtimetest/fakecodex\t[no test files]\n?   \tgithub.com/igor1309/ai-labs/agister/internal/adapters/runtime/runtimetest/fakecodex/cmd\t[no test files]\n?   \tgithub.com/igor1309/ai-labs/agister/internal/adapters/runtime/runtimetest/fakeopencode\t[no test files]\n?   \tgithub.com/igor1309/ai-labs/agister/internal/adapters/runtime/runtimetest/fakeopencode/cmd\t[no test files]\nok  \tgithub.com/igor1309/ai-labs/agister/internal/adapters/runtime/runtimetest/fakeoutput\t2.362s\n?   \tgithub.com/igor1309/ai-labs/agister/internal/adapters/runtime/runtimetest/fakepi\t[no test files]\n?   \tgithub.com/igor1309/ai-labs/agister/internal/adapters/runtime/runtimetest/fakepi/cmd\t[no test files]\n?   \tgithub.com/igor1309/ai-labs/agister/internal/adapters/runtime/runtimetest/fakeskills\t[no test files]\nok  \tgithub.com/igor1309/ai-labs/agister/internal/adapters/schema\t2.140s\nok  \tgithub.com/igor1309/ai-labs/agister/internal/adapters/system\t2.317s\nok  \tgithub.com/igor1309/ai-labs/agister/internal/app\t4.646s\nok  \tgithub.com/igor1309/ai-labs/agister/internal/archtest\t3.001s\nok  \tgithub.com/igor1309/ai-labs/agister/internal/cli\t2.169s\nok  \tgithub.com/igor1309/ai-labs/agister/internal/composition/runtime\t2.116s\nok  \tgithub.com/igor1309/ai-labs/agister/internal/composition/runtime/claudecode\t3.786s\nok  \tgithub.com/igor1309/ai-labs/agister/internal/composition/runtime/codex\t3.981s\nok  \tgithub.com/igor1309/ai-labs/agister/internal/composition/runtime/opencode\t4.023s\nok  \tgithub.com/igor1309/ai-labs/agister/internal/composition/runtime/pi\t4.202s\n?   \tgithub.com/igor1309/ai-labs/agister/internal/contract\t[no test files]\nok  \tgithub.com/igor1309/ai-labs/agister/internal/domain/definition\t2.542s\nok  \tgithub.com/igor1309/ai-labs/agister/internal/domain/enforce\t2.434s\nok  \tgithub.com/igor1309/ai-labs/agister/internal/domain/policy\t2.363s\nok  \tgithub.com/igor1309/ai-labs/agister/internal/domain/prompt\t2.369s\nok  \tgithub.com/igor1309/ai-labs/agister/internal/domain/run\t2.352s\nok  \tgithub.com/igor1309/ai-labs/agister/internal/domain/settings\t2.664s\nok  \tgithub.com/igor1309/ai-labs/agister/pages\t5.191s\nok  \tgithub.com/igor1309/ai-labs/gokit\t1.362s\nok  \tgithub.com/igor1309/ai-labs/gokit/clocktest\t1.980s\nok  \tgithub.com/igor1309/ai-labs/gokit/fakebash\t1.865s\n?   \tgithub.com/igor1309/ai-labs/gokit/fakeproc\t[no test files]\nok  \tgithub.com/igor1309/ai-labs/gokit/supervisor\t4.698s\nok  \tgithub.com/igor1309/ai-labs/gokit/supervisor/supervisortest\t1.610s\nok  \tgithub.com/igor1309/ai-labs/gokit/testdiscipline\t2.212s\n",
+          "bytes": 4120,
+          "sha256": "7899939596c0410df46002cb0ab1118c7a657864abaca718a4f018e10d8d3713"
+        },
+        "passed": true
+      },
+      "where": "workspace"
+    }
+  ],
+  "trail": {
+    "touched": [
+      {
+        "path": "/Users/igormalyarov/Developer/my-apps/ai-labs/ai-labs.worktrees/lab-171/agister/cmd/agister/policies_test.go",
+        "tool": "Write"
+      }
+    ]
+  },
+  "result": {
+    "status": "completed",
+    "output": {
+      "checks": [
+        {
+          "command": "cd agister \u0026\u0026 test -z \"$(gofmt -l .)\"",
+          "exit_code": 0,
+          "final_line": "(no output)"
+        },
+        {
+          "command": "cd agister \u0026\u0026 go vet ./...",
+          "exit_code": 0,
+          "final_line": "(no output)"
+        },
+        {
+          "command": "cd agister \u0026\u0026 go test -count=1 -timeout 1m ./...",
+          "exit_code": 0,
+          "final_line": "ok  \tgithub.com/igor1309/ai-labs/agister/pages\t6.289s"
+        },
+        {
+          "command": "agister/scripts/test.sh",
+          "exit_code": 0,
+          "final_line": "ok  \tgithub.com/igor1309/ai-labs/gokit/testdiscipline\t2.911s"
+        }
+      ],
+      "files_changed": [
+        "agister/cmd/agister/extends_test.go",
+        "agister/cmd/agister/install_test.go",
+        "agister/cmd/agister/layers_test.go",
+        "agister/cmd/agister/links_test.go",
+        "agister/cmd/agister/main_test.go",
+        "agister/cmd/agister/opencode_settings_test.go",
+        "agister/cmd/agister/pages_test.go",
+        "agister/cmd/agister/pi_settings_test.go",
+        "agister/cmd/agister/policies_test.go",
+        "agister/cmd/agister/prompts_test.go",
+        "agister/cmd/agister/repo_settings_test.go",
+        "agister/cmd/agister/skills_test.go",
+        "agister/cmd/agister/verify_loop_test.go",
+        "agister/cmd/agister/wiring_test.go",
+        "agister/cmd/agister/workflow_test.go",
+        "agister/examples/codex/policies/sandboxed-review.yaml",
+        "agister/examples/codex/processes/adversarial_review_sandboxed.yaml",
+        "agister/examples/opencode/processes/ask_opencode.yaml",
+        "agister/examples/pi/processes/ask_pi.yaml",
+        "agister/examples/settings/policies/implement.yaml",
+        "agister/examples/settings/policies/read-only.yaml",
+        "agister/examples/settings/policies/static-review.yaml",
+        "agister/examples/settings/processes/adversarial_review.yaml",
+        "agister/examples/settings/processes/architecture_review.yaml",
+        "agister/examples/settings/processes/ask.yaml",
+        "agister/examples/settings/processes/implement.yaml",
+        "agister/examples/settings/processes/review_summary.yaml",
+        "agister/internal/adapters/fsdefs/fsdefs.go",
+        "agister/internal/adapters/fsdefs/fsdefs_test.go",
+        "agister/internal/adapters/fsdefs/layers_test.go",
+        "agister/internal/app/adr012_test.go",
+        "agister/internal/app/briefs_test.go",
+        "agister/internal/app/calls_test.go",
+        "agister/internal/app/check.go",
+        "agister/internal/app/definitions.go",
+        "agister/internal/app/hold_test.go",
+        "agister/internal/app/named_verify_test.go",
+        "agister/internal/app/other_test.go",
+        "agister/internal/app/prompts_test.go",
+        "agister/internal/app/reach_test.go",
+        "agister/internal/app/recover_test.go",
+        "agister/internal/app/resolve.go",
+        "agister/internal/app/skills_test.go",
+        "agister/internal/app/snapshot.go",
+        "agister/internal/app/snapshot_test.go",
+        "agister/internal/app/stale_recover_test.go",
+        "agister/internal/app/stale_test.go",
+        "agister/internal/app/verify_test.go",
+        "agister/internal/app/workflow_test.go",
+        "agister/internal/cli/cli.go",
+        "agister/internal/cli/cli_test.go",
+        "agister/internal/contract/contract.go",
+        "agister/internal/domain/definition/definition.go",
+        "agister/internal/domain/definition/definition_test.go",
+        "agister/internal/domain/definition/documents.go",
+        "agister/internal/domain/definition/layers.go",
+        "agister/internal/domain/definition/layers_test.go",
+        "agister/internal/domain/definition/limits.go",
+        "agister/internal/domain/definition/setup_test.go",
+        "agister/internal/domain/definition/toml.go",
+        "agister/internal/domain/policy/policy.go",
+        "agister/internal/domain/policy/policy_test.go",
+        "agister/internal/domain/policy/verify_test.go",
+        "agister/internal/domain/prompt/prompt.go",
+        "agister/internal/domain/run/snapshots.go",
+        "agister/internal/domain/settings/settings.go",
+        "agister/internal/domain/settings/settings_test.go",
+        "agister/pages/settings.go"
+      ],
+      "notes": "Points left open:\n\n- **Installed home blocks on deploy.** `~/.agister/policies/` still holds five files (`codex-review`, `implement`, `implement_codex`, `implement_pi`, `judge`). Once this binary is deployed, every command stops on them until they are removed. `agister install home` will not remove them, because it keeps home files that the source lacks, and its staged check reads home's layers and so refuses too. I did not touch `~/.agister`.\n- **Docs still describe policies.** Per the constraint I touched no docs: `README.md`, `skills/agister/SKILL.md`, `docs/settings-architecture/` and the example READMEs still mention policies and the deleted example files.\n- **Pages still knows policies.** The Go side no longer lists the kind (`pages/settings.go`), but `pages/serve.go` still serves a `policies/` directory, and the Pages JS and its tests (`pages/tests/*.test.js`) still render and reference policies. I left these alone.\n- **ADR-024 rule 5 behaviour changed.** With no policy to grant it, a process now sets its own `stale.recover.max_resumes` and instruction; before, a process could only lower a policy's budget. I read ADR-030 rules 2 and 4 as requiring this.\n- **Removed assertions.** The per-process \"names no policy\" tests in `repo_settings_test.go` are replaced by one test that the home folder holds no `policies/`. The cases for a process widening or narrowing its policy's stale limits and recovery budget are removed, since the behaviour no longer exists.\n- **Deletions are unstaged.** The four example policy files are deleted in the working tree only; nothing is staged or committed.",
+      "summary": "LAB-171 S8 is implemented and uncommitted: the binary has no policy kind, and `check` reports both `policy:` on a process and any file in a layer's `policies/` as problems. The full check passes.\n\n**What the binary does now**\n- **`policy:` on a process** is a problem of that process: `process \u003cname\u003e: policy: there are no policies (ADR-030): set the policy's fields on the process and remove policy`. Its call is refused.\n- **A file in a layer's `policies/`** (home, repository or project) is a problem of that layer, one per entry, naming the path: `a layer holds no policies (ADR-030 rule 4): set the policy's fields on each process that names it, then remove it`. It stops every command launched under that layer; a project layer's stops only what is launched below it. An empty `policies/` is no problem.\n- **Limits** compose as service ⊇ process ⊇ caller. A process must set its own `timeout`, and may now set its own `stale.recover` budget, which needs its own instruction.\n- **Removed from the surface:** the policy kind and its parser, the `policy` field on `process show` and its JSON, the policy column of `process list`, and policies among a run's recorded definitions and the `check` tree.\n- **Kept:** the recorded effective limits on run records (`run.EffectivePolicy`, Pages `RunPolicy`), so old records still read (ADR-030 rule 11).\n\n**Examples**\n- The four example policy files are deleted, and their fields are set on the example processes that named them, since `agister init` copies `examples/settings`.\n\n**Tests**\n- New `check` tests in `agister/cmd/agister/policies_test.go`: `TestCheckReportsAProcessThatNamesAPolicy` and `TestCheckReportsAFileInALayersPolicies` (one case per layer).\n- Supporting tests added earlier: `TestAProcessNamesNoPolicy` (definition) and `TestAFileInPoliciesMakesItsLayerInvalid` (fsdefs).\n- Existing tests were moved from policy fixtures to limits on the process. Tests that only asserted policy narrowing or \"names no policy\" were removed or rewritten to the process's own limits."
+    },
+    "text": "{\"summary\":\"LAB-171 S8 is implemented and uncommitted: the binary has no policy kind, and `check` reports both `policy:` on a process and any file in a layer's `policies/` as problems. The full check passes.\\n\\n**What the binary does now**\\n- **`policy:` on a process** is a problem of that process: `process \u003cname\u003e: policy: there are no policies (ADR-030): set the policy's fields on the process and remove policy`. Its call is refused.\\n- **A file in a layer's `policies/`** (home, repository or project) is a problem of that layer, one per entry, naming the path: `a layer holds no policies (ADR-030 rule 4): set the policy's fields on each process that names it, then remove it`. It stops every command launched under that layer; a project layer's stops only what is launched below it. An empty `policies/` is no problem.\\n- **Limits** compose as service ⊇ process ⊇ caller. A process must set its own `timeout`, and may now set its own `stale.recover` budget, which needs its own instruction.\\n- **Removed from the surface:** the policy kind and its parser, the `policy` field on `process show` and its JSON, the policy column of `process list`, and policies among a run's recorded definitions and the `check` tree.\\n- **Kept:** the recorded effective limits on run records (`run.EffectivePolicy`, Pages `RunPolicy`), so old records still read (ADR-030 rule 11).\\n\\n**Examples**\\n- The four example policy files are deleted, and their fields are set on the example processes that named them, since `agister init` copies `examples/settings`.\\n\\n**Tests**\\n- New `check` tests in `agister/cmd/agister/policies_test.go`: `TestCheckReportsAProcessThatNamesAPolicy` and `TestCheckReportsAFileInALayersPolicies` (one case per layer).\\n- Supporting tests added earlier: `TestAProcessNamesNoPolicy` (definition) and `TestAFileInPoliciesMakesItsLayerInvalid` (fsdefs).\\n- Existing tests were moved from policy fixtures to limits on the process. Tests that only asserted policy narrowing or \\\"names no policy\\\" were removed or rewritten to the process's own limits.\",\"files_changed\":[\"agister/cmd/agister/extends_test.go\",\"agister/cmd/agister/install_test.go\",\"agister/cmd/agister/layers_test.go\",\"agister/cmd/agister/links_test.go\",\"agister/cmd/agister/main_test.go\",\"agister/cmd/agister/opencode_settings_test.go\",\"agister/cmd/agister/pages_test.go\",\"agister/cmd/agister/pi_settings_test.go\",\"agister/cmd/agister/policies_test.go\",\"agister/cmd/agister/prompts_test.go\",\"agister/cmd/agister/repo_settings_test.go\",\"agister/cmd/agister/skills_test.go\",\"agister/cmd/agister/verify_loop_test.go\",\"agister/cmd/agister/wiring_test.go\",\"agister/cmd/agister/workflow_test.go\",\"agister/examples/codex/policies/sandboxed-review.yaml\",\"agister/examples/codex/processes/adversarial_review_sandboxed.yaml\",\"agister/examples/opencode/processes/ask_opencode.yaml\",\"agister/examples/pi/processes/ask_pi.yaml\",\"agister/examples/settings/policies/implement.yaml\",\"agister/examples/settings/policies/read-only.yaml\",\"agister/examples/settings/policies/static-review.yaml\",\"agister/examples/settings/processes/adversarial_review.yaml\",\"agister/examples/settings/processes/architecture_review.yaml\",\"agister/examples/settings/processes/ask.yaml\",\"agister/examples/settings/processes/implement.yaml\",\"agister/examples/settings/processes/review_summary.yaml\",\"agister/internal/adapters/fsdefs/fsdefs.go\",\"agister/internal/adapters/fsdefs/fsdefs_test.go\",\"agister/internal/adapters/fsdefs/layers_test.go\",\"agister/internal/app/adr012_test.go\",\"agister/internal/app/briefs_test.go\",\"agister/internal/app/calls_test.go\",\"agister/internal/app/check.go\",\"agister/internal/app/definitions.go\",\"agister/internal/app/hold_test.go\",\"agister/internal/app/named_verify_test.go\",\"agister/internal/app/other_test.go\",\"agister/internal/app/prompts_test.go\",\"agister/internal/app/reach_test.go\",\"agister/internal/app/recover_test.go\",\"agister/internal/app/resolve.go\",\"agister/internal/app/skills_test.go\",\"agister/internal/app/snapshot.go\",\"agister/internal/app/snapshot_test.go\",\"agister/internal/app/stale_recover_test.go\",\"agister/internal/app/stale_test.go\",\"agister/internal/app/verify_test.go\",\"agister/internal/app/workflow_test.go\",\"agister/internal/cli/cli.go\",\"agister/internal/cli/cli_test.go\",\"agister/internal/contract/contract.go\",\"agister/internal/domain/definition/definition.go\",\"agister/internal/domain/definition/definition_test.go\",\"agister/internal/domain/definition/documents.go\",\"agister/internal/domain/definition/layers.go\",\"agister/internal/domain/definition/layers_test.go\",\"agister/internal/domain/definition/limits.go\",\"agister/internal/domain/definition/setup_test.go\",\"agister/internal/domain/definition/toml.go\",\"agister/internal/domain/policy/policy.go\",\"agister/internal/domain/policy/policy_test.go\",\"agister/internal/domain/policy/verify_test.go\",\"agister/internal/domain/prompt/prompt.go\",\"agister/internal/domain/run/snapshots.go\",\"agister/internal/domain/settings/settings.go\",\"agister/internal/domain/settings/settings_test.go\",\"agister/pages/settings.go\"],\"checks\":[{\"command\":\"cd agister \u0026\u0026 test -z \\\"$(gofmt -l .)\\\"\",\"exit_code\":0,\"final_line\":\"(no output)\"},{\"command\":\"cd agister \u0026\u0026 go vet ./...\",\"exit_code\":0,\"final_line\":\"(no output)\"},{\"command\":\"cd agister \u0026\u0026 go test -count=1 -timeout 1m ./...\",\"exit_code\":0,\"final_line\":\"ok  \\tgithub.com/igor1309/ai-labs/agister/pages\\t6.289s\"},{\"command\":\"agister/scripts/test.sh\",\"exit_code\":0,\"final_line\":\"ok  \\tgithub.com/igor1309/ai-labs/gokit/testdiscipline\\t2.911s\"}],\"notes\":\"Points left open:\\n\\n- **Installed home blocks on deploy.** `~/.agister/policies/` still holds five files (`codex-review`, `implement`, `implement_codex`, `implement_pi`, `judge`). Once this binary is deployed, every command stops on them until they are removed. `agister install home` will not remove them, because it keeps home files that the source lacks, and its staged check reads home's layers and so refuses too. I did not touch `~/.agister`.\\n- **Docs still describe policies.** Per the constraint I touched no docs: `README.md`, `skills/agister/SKILL.md`, `docs/settings-architecture/` and the example READMEs still mention policies and the deleted example files.\\n- **Pages still knows policies.** The Go side no longer lists the kind (`pages/settings.go`), but `pages/serve.go` still serves a `policies/` directory, and the Pages JS and its tests (`pages/tests/*.test.js`) still render and reference policies. I left these alone.\\n- **ADR-024 rule 5 behaviour changed.** With no policy to grant it, a process now sets its own `stale.recover.max_resumes` and instruction; before, a process could only lower a policy's budget. I read ADR-030 rules 2 and 4 as requiring this.\\n- **Removed assertions.** The per-process \\\"names no policy\\\" tests in `repo_settings_test.go` are replaced by one test that the home folder holds no `policies/`. The cases for a process widening or narrowing its policy's stale limits and recovery budget are removed, since the behaviour no longer exists.\\n- **Deletions are unstaged.** The four example policy files are deleted in the working tree only; nothing is staged or committed.\"}",
+    "usage": {
+      "input_tokens": 44,
+      "output_tokens": 12656,
+      "cache_read_tokens": 3341683,
+      "cache_write_tokens": 173006
+    },
+    "cost": {
+      "source": "unknown"
+    },
+    "timing": {
+      "started_at": "2026-10-10T18:11:47.03215Z",
+      "finished_at": "2026-10-10T18:18:14.694303Z",
+      "wall_ms": 387662,
+      "turn_ms": 343208,
+      "runtime_ms": 341462
+    },
+    "artifacts": [
+      {
+        "name": "changes.patch",
+        "path": "artifacts/changes.patch",
+        "digest": "sha256:c11b6c3d9248728c3ff10fa1ce975884e1b42128d60f029e945c6886bef76c82",
+        "bytes": 218715
+      }
+    ],
+    "session": {
+      "provider_session_id": "2e63931d-0b7e-40a0-b56a-14a27fdf5932",
+      "continues": "20261010T172508Z-da7f75"
+    }
+  }
+}

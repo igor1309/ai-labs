@@ -5,9 +5,8 @@ package run
 import (
 	"encoding/json"
 	"fmt"
+	"slices"
 	"time"
-
-	"github.com/igor1309/ai-labs/agister/internal/domain/definition"
 )
 
 // Status is how a node ended. Every kind of node (an agent call today;
@@ -131,6 +130,7 @@ type Session struct {
 
 // Result is a node's output as a workflow sees it.
 type Result struct {
+	Warnings  []string        `json:"warnings,omitempty"`
 	Status    Status          `json:"status"`
 	Error     *Error          `json:"error,omitempty"`
 	Output    json.RawMessage `json:"output,omitempty"` // the latest turn's, when contract-valid, whatever then ended the node
@@ -196,7 +196,8 @@ type Turn struct {
 }
 
 // AbsentPrompt is an optional prompt input the call went ahead without:
-// the input, and the prompt it names that neither settings layer had.
+// the input, and the prompt it names that neither settings layer had. Only
+// records written before ADR-028 hold one.
 type AbsentPrompt struct {
 	Input  string `json:"input"`
 	Prompt string `json:"prompt"`
@@ -231,7 +232,8 @@ type Runtime struct {
 
 // Profile is the agent profile a call ran as: the model and effort it asked
 // for, each empty when the agent left it to the runtime, and the session
-// mode. The model the runtime reports is the turn's.
+// mode the call ran under, its process's, fresh-only where the process
+// sets none (ADR-030 rule 3). The model the runtime reports is the turn's.
 type Profile struct {
 	Model   string `json:"model,omitempty"`
 	Effort  string `json:"effort,omitempty"`
@@ -251,8 +253,13 @@ type Record struct {
 	CreatedAt   time.Time          `json:"created_at"`
 	FinishedAt  *time.Time         `json:"finished_at,omitempty"`
 	Definitions []DefinitionSource `json:"definitions,omitempty"`
+	// Layers are the settings layers the call selected, nearest first;
+	// unset on records written before ADR-028.
+	Layers []Layer `json:"layers,omitempty"`
 	// AbsentPrompts are the optional prompt inputs whose prompt neither
 	// settings layer had, so the agent was not given them (ADR-019 rule 3).
+	// No longer written (ADR-028 rule 11): a record written before reads
+	// as it was.
 	AbsentPrompts []AbsentPrompt   `json:"absent_prompts,omitempty"`
 	Effective     *EffectivePolicy `json:"effective,omitempty"`
 	Verify        *Verify          `json:"verify,omitempty"`
@@ -292,8 +299,11 @@ type Record struct {
 	Trail *Trail `json:"trail,omitempty"`
 	// Workflow is set on a workflow's own run (ADR-003): its nodes and
 	// barrier. Parent is set on a node's run: the workflow run it belongs to.
+	// Call is set on the run of a workflow of one call instead (ADR-030
+	// rule 6): the call it binds.
 	Workflow *Workflow `json:"workflow,omitempty"`
 	Parent   *Parent   `json:"parent,omitempty"`
+	Call     *Call     `json:"call,omitempty"`
 	// Links are the earlier runs the caller named this one's goal and
 	// judgement in (ADR-026 rules 2 and 6); unset when it named neither,
 	// and on records made before.
@@ -397,7 +407,7 @@ const RecordSchema = "agister.run/v1alpha3"
 type Request struct {
 	Process string            `json:"process"`
 	Params  map[string]string `json:"params,omitempty"`
-	Agent   string            `json:"agent,omitempty"`   // override of the process's agent
+	Agent   string            `json:"agent,omitempty"`   // on a node's run, the agent its node binds; on a run made before ADR-030, its caller's --agent
 	Timeout string            `json:"timeout,omitempty"` // narrowing override
 	// Narrowing cost override.
 	MaxCostUSD *float64 `json:"max_cost_usd,omitempty"`
@@ -429,16 +439,18 @@ const (
 
 // Conclude derives the node status from a turn and the output contract:
 // a runtime's failure is never upgraded, and a completed turn counts only
-// with contract-valid output. What the output means is not Agister's.
-func Conclude(turn Turn, output definition.Output, validation error) (Status, *Error) {
+// with contract-valid output. invalid is why the output breaks its
+// contract, nil when it keeps it or has none. What the output means is not
+// Agister's.
+func Conclude(turn Turn, invalid error) (Status, *Error) {
 	if turn.Status != Completed {
 		if turn.Error == nil {
 			return turn.Status, Fault(ClassRuntimeError, "no reason reported")
 		}
 		return turn.Status, turn.Error
 	}
-	if output.Format == "json" && validation != nil {
-		return Failed, Fault(ClassInvalidOutput, "%v", validation)
+	if invalid != nil {
+		return Failed, Fault(ClassInvalidOutput, "%v", invalid)
 	}
 	return Completed, nil
 }
@@ -452,4 +464,25 @@ func AbandonedResult(startedAt time.Time) Result {
 		Cost:   Cost{Source: CostUnknown},
 		Timing: Timing{StartedAt: startedAt},
 	}
+}
+
+// WithWarnings includes persisted call and workflow warnings in any outcome,
+// including one synthesized after the owner ends. Outcome-specific warnings
+// are retained.
+func (r Record) WithWarnings(result Result) Result {
+	result.Warnings = slices.Clone(result.Warnings)
+	include := func(warnings []string) {
+		for _, warning := range warnings {
+			if !slices.Contains(result.Warnings, warning) {
+				result.Warnings = append(result.Warnings, warning)
+			}
+		}
+	}
+	if r.Plan != nil {
+		include(r.Plan.Warnings)
+	}
+	if r.Workflow != nil {
+		include(r.Workflow.Warnings)
+	}
+	return result
 }

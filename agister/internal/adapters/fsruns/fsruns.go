@@ -2,10 +2,13 @@
 //
 //	record.json     the run record, replaced atomically
 //	events.jsonl    ordered events, appended
-//	provider.jsonl  raw runtime output, appended
 //	owner.lock      held (flock) alone by the process running the call,
 //	                and shared by the readers of its state
 //	artifacts/      files the call produced
+//
+// A run recorded before LAB-181 may also hold provider.jsonl, the
+// runtime's raw output; it is read and exported as any other file. A run
+// keeps none now: the runtime's session is its own, named by its ID.
 //
 // A record that is not finished and whose lock nobody holds is abandoned.
 //
@@ -395,15 +398,6 @@ func (h *handle) Append(event run.Event) error {
 	return nil
 }
 
-func (h *handle) Raw(line string) error {
-	h.mu.Lock()
-	defer h.mu.Unlock()
-	if h.abandoned {
-		return errAbandoned
-	}
-	return appendText(filepath.Join(h.dir, "provider.jsonl"), line)
-}
-
 func (h *handle) Update(record run.Record) error {
 	h.mu.Lock()
 	defer h.mu.Unlock()
@@ -566,7 +560,8 @@ func (h *held) Record() run.Record { return h.record }
 func (h *held) State() run.State { return h.state }
 
 // Files lists the files of the run's directory by slash-separated path
-// relative to it, sorted: its record, events, provider log and artifacts.
+// relative to it, sorted: its record, events and artifacts, and the
+// provider.jsonl of a run recorded before LAB-181.
 // The owner lock is the store's own state, not evidence, and is not
 // listed. Anything there that is neither a file nor a directory fails the
 // listing.

@@ -14,7 +14,7 @@ import (
 	"github.com/igor1309/ai-labs/agister/internal/adapters/fsruns"
 	"github.com/igor1309/ai-labs/agister/internal/app"
 	"github.com/igor1309/ai-labs/agister/internal/contract"
-	"github.com/igor1309/ai-labs/agister/internal/domain/definition"
+	"github.com/igor1309/ai-labs/agister/internal/domain/document"
 	"github.com/igor1309/ai-labs/agister/internal/domain/run"
 )
 
@@ -82,10 +82,10 @@ func TestAnInPlaceCallWorksInTheCallersWorktree(t *testing.T) {
 }
 
 // writing has the harness's plan grant a permission the service lists as
-// writing, under a policy that lets the call write: the call is a writer.
+// writing, in a process that lets the call write: the call is a writer.
 func writing(h *harness) {
-	h.defs.docs[definition.KindService]["service"] = strings.Replace(h.defs.docs[definition.KindService]["service"], "writing = []", "writing = [\"repository.read\"]", 1)
-	h.defs.docs[definition.KindPolicy]["pol"] = strings.Replace(h.defs.docs[definition.KindPolicy]["pol"], "access: read-only", "access: read-write", 1)
+	h.defs.docs[document.KindService]["service"] = strings.Replace(h.defs.docs[document.KindService]["service"], "writing = []", "writing = [\"repository.read\"]", 1)
+	h.defs.docs[document.KindProcess]["p"] = strings.Replace(h.defs.docs[document.KindProcess]["p"], "workspace:\n", "workspace:\n  access: read-write\n", 1)
 }
 
 // ADR-025 rule 4: a call is a writer when its plan grants a permission the
@@ -164,8 +164,7 @@ func TestReadersShareTheWorktreeAndAWriterHasItAlone(t *testing.T) {
 // inTheRepositoryItself has the harness's process p work in the
 // repository, without a checkout.
 func inTheRepositoryItself(h *harness) {
-	h.defs.docs[definition.KindProcess]["p"] = strings.Replace(h.defs.docs[definition.KindProcess]["p"], "workspace:\n  revision: candidate_revision\n", "", 1)
-	h.defs.docs[definition.KindPolicy]["pol"] = strings.Replace(h.defs.docs[definition.KindPolicy]["pol"], "scope: candidate", "scope: repository", 1)
+	h.defs.docs[document.KindProcess]["p"] = strings.Replace(h.defs.docs[document.KindProcess]["p"], "workspace:\n  revision: candidate_revision\n", "", 1)
 }
 
 // ADR-025 rules 2 and 3: a worktree whose HEAD is not the revision the
@@ -267,7 +266,7 @@ func TestWithoutACleanWorktreeOnlyHEADIsChecked(t *testing.T) {
 
 	h = newHarness()
 	inTheRepositoryItself(h)
-	h.defs.docs[definition.KindProcess]["p"] += "workspace:\n  clean: true\n"
+	h.defs.docs[document.KindProcess]["p"] += "workspace:\n  clean: true\n"
 	var asked []string
 	h.worktrees.state = func(revision string, _ int) app.WorktreeState {
 		asked = append(asked, revision)
@@ -394,6 +393,7 @@ func TestAnotherRunThatMayStillWriteInTheWorktreeRefusesTheCall(t *testing.T) {
 		outcome app.HoldReaping
 		err     error  // what ending the process fails with
 		root    string // the worktree asked for; /repo when empty
+		gitRoot string // the contained writer's root; the caller's when empty
 		reaped  []string
 		process string // the process the call says it asked to end; none when empty
 		want    string // the refusal; none when empty
@@ -442,6 +442,8 @@ func TestAnotherRunThatMayStillWriteInTheWorktreeRefusesTheCall(t *testing.T) {
 			want: "run run-0 worked in /repo (which holds worktree /repo/tool) and has not finished"},
 		"unfinished in a repository inside the worktree": {other: inPlaceRun("run-0", "/repo/tool", false, false),
 			want: "run run-0 worked in /repo/tool (inside worktree /repo) and has not finished"},
+		"unfinished in a nested worktree":       {other: inPlaceRun("run-0", "/repo/.claude/worktrees/task", false, false), gitRoot: "/repo/.claude/worktrees/task"},
+		"its process left in a nested worktree": {other: inPlaceRun("run-0", "/repo/.claude/worktrees/task", true, false), gitRoot: "/repo/.claude/worktrees/task", outcome: app.HoldReapLeft},
 		"its process left in a released checkout that holds the worktree": {other: temporaryRun("run-0", "/made"), root: "/made/tool", outcome: app.HoldReapLeft, reaped: []string{"ref-run-0"}, process: "runtime",
 			want: `run run-0 worked in /made (which holds worktree /made/tool), and its runtime process "ref-run-0" may still write there`},
 		// A writer works in its checkout, not in the directory made for it.
@@ -458,6 +460,13 @@ func TestAnotherRunThatMayStillWriteInTheWorktreeRefusesTheCall(t *testing.T) {
 				h.workspaces.root = root
 			}
 			h.runs.records[c.other.ID] = c.other
+			h.worktrees.root = func(string) (string, error) {
+				if c.gitRoot != "" {
+					return c.gitRoot, nil
+				}
+				return root, nil
+			}
+			h.worktrees.isSubmodule = func(string, string) (bool, error) { return false, nil }
 			h.writers.outcome, h.writers.err = c.outcome, c.err
 			record := h.call(t, contract.CallRequest{Cwd: root})
 
@@ -488,6 +497,182 @@ func TestAnotherRunThatMayStillWriteInTheWorktreeRefusesTheCall(t *testing.T) {
 			}
 			if len(h.runner.calls()) != 0 || h.worktrees.reads != 0 || h.locks.holds(root) {
 				t.Fatalf("turns %d, reads %d", len(h.runner.calls()), h.worktrees.reads)
+			}
+		})
+	}
+}
+
+// ADR-037: only a contained writer across a known git boundary is excluded.
+// Outer writers, submodules and removals retain their path overlap; an
+// unreadable boundary retains the existing refusal. The call's record and
+// turns prove admission, and no excluded writer is reaped.
+func TestWriterOverlapUsesTheGitBoundary(t *testing.T) {
+	t.Parallel()
+	checkout := temporaryRun("run-0", "/repo/nested")
+	checkout.Workspace = "/origin"
+	for name, c := range map[string]struct {
+		caller, writer, root string
+		other                run.Record
+		rootErr, moduleErr   error
+		submodule, removable bool
+		allowed              bool
+	}{
+		"nested worktree":              {caller: "/repo", writer: "/repo/nested", root: "/repo/nested", allowed: true},
+		"directory in nested worktree": {caller: "/repo", writer: "/repo/nested/src", root: "/repo/nested", allowed: true},
+		"checkout-less, unfinished in nested worktree": {caller: "/repo", writer: "/repo/nested", root: "/repo/nested", allowed: true,
+			other: checkoutLessRun("run-0", "/repo/nested", false, false)},
+		"checkout-less, process left in nested worktree": {caller: "/repo", writer: "/repo/nested", root: "/repo/nested", allowed: true,
+			other: checkoutLessRun("run-0", "/repo/nested", true, false)},
+		"released checkout and workspace in nested worktree": {caller: "/repo", writer: "/repo/nested", root: "/repo/nested", allowed: true,
+			other: temporaryRun("run-0", "/repo/nested")},
+		"released checkout distinct from workspace in nested worktree": {caller: "/repo", writer: "/repo/nested", root: "/repo/nested", allowed: true,
+			other: checkout},
+		"outer writer":           {caller: "/repo/nested", writer: "/repo", root: "/repo"},
+		"same worktree":          {caller: "/repo", writer: "/repo", root: "/repo"},
+		"plain subdirectory":     {caller: "/repo", writer: "/repo/src", root: "/repo"},
+		"submodule":              {caller: "/repo", writer: "/repo/lib", root: "/repo/lib", submodule: true},
+		"directory in submodule": {caller: "/repo", writer: "/repo/lib/src", root: "/repo/lib", submodule: true},
+		// The indexed root exception excludes independent descendant roots.
+		"worktree inside a submodule":           {caller: "/repo", writer: "/repo/lib/nested", root: "/repo/lib/nested", allowed: true},
+		"root fails":                            {caller: "/repo", writer: "/repo/nested", rootErr: errors.New("git root unavailable")},
+		"empty root":                            {caller: "/repo", writer: "/repo/nested"},
+		"root outside the caller":               {caller: "/repo", writer: "/repo/nested", root: "/elsewhere"},
+		"submodule lookup fails":                {caller: "/repo", writer: "/repo/nested", root: "/repo/nested", moduleErr: errors.New("index unreadable")},
+		"removable nested worktree":             {caller: "/repo", writer: "/repo/nested", root: "/repo/nested", removable: true},
+		"removable directory containing caller": {caller: "/made/nested", writer: "/made/workspace", root: "/made/workspace", removable: true},
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			h := newHarness()
+			h.workspaces.root = c.caller
+			other := c.other
+			if other.ID == "" {
+				other = inPlaceRun("run-0", c.writer, false, false)
+			}
+			if c.removable {
+				other.Effects.Copy = &run.Checkout{Dir: c.writer}
+			}
+			h.runs.records[other.ID] = other
+			h.writers.outcome = app.HoldReapLeft
+			var rootDirs []string
+			var moduleBoundaries [][2]string
+			h.worktrees.root = func(dir string) (string, error) {
+				rootDirs = append(rootDirs, dir)
+				return c.root, c.rootErr
+			}
+			h.worktrees.isSubmodule = func(worktree, root string) (bool, error) {
+				moduleBoundaries = append(moduleBoundaries, [2]string{worktree, root})
+				return c.submodule, c.moduleErr
+			}
+			record := h.call(t, contract.CallRequest{Cwd: c.caller})
+			if c.allowed {
+				if record.Result.Status != run.Completed || len(h.runner.calls()) != 1 || !recorded(h, "WORKTREE_ADMITTED") {
+					t.Fatalf("result %+v, turns %v, events %v", record.Result, h.runner.calls(), h.recorder.kinds())
+				}
+			} else {
+				if class(record) != run.ClassRefused || len(h.runner.calls()) != 0 || recorded(h, "WORKTREE_ADMITTED") {
+					t.Fatalf("result %+v, turns %v, events %v", record.Result, h.runner.calls(), h.recorder.kinds())
+				}
+				want := "has not finished: it may still write there"
+				if c.removable {
+					want = "Agister made that directory and removes it with all that is in it"
+				}
+				if !strings.Contains(message(record), want) {
+					t.Fatalf("refusal %q, want %q", message(record), want)
+				}
+			}
+			if len(h.writers.refs()) != 0 || h.locks.holds(c.caller) {
+				t.Fatalf("reaped %v, hold retained %v", h.writers.refs(), h.locks.holds(c.caller))
+			}
+			// Repeated writer directories in a record are resolved once;
+			// removable, equal and containing paths need no git lookup.
+			wantRoots := 1
+			if c.removable || c.writer == c.caller || strings.HasPrefix(c.caller, c.writer+"/") {
+				wantRoots = 0
+			}
+			wantModules := 0
+			if wantRoots == 1 && c.rootErr == nil && strings.HasPrefix(c.root, c.caller+"/") {
+				wantModules = 1
+			}
+			var wantDirs []string
+			if wantRoots == 1 {
+				wantDirs = []string{c.writer}
+			}
+			var wantBoundaries [][2]string
+			if wantModules == 1 {
+				wantBoundaries = [][2]string{{c.caller, c.root}}
+			}
+			if !reflect.DeepEqual(rootDirs, wantDirs) || !reflect.DeepEqual(moduleBoundaries, wantBoundaries) {
+				t.Fatalf("root directories %v, want %v; module boundaries %v, want %v", rootDirs, wantDirs, moduleBoundaries, wantBoundaries)
+			}
+		})
+	}
+}
+
+// ADR-037: mixed writers retain their own boundary answers in either record
+// order. Repeated directories reuse Root, distinct directories sharing a root
+// reuse IsSubmodule, and only tracked-submodule writers are reaped or refuse.
+func TestMixedWriterBoundariesReuseOnlyMatchingLookups(t *testing.T) {
+	t.Parallel()
+	for name, c := range map[string]struct {
+		moduleFirst bool
+		outcome     app.HoldReaping
+	}{
+		"nested first, processes ended":    {outcome: app.HoldReapKilled},
+		"submodule first, processes ended": {moduleFirst: true, outcome: app.HoldReapKilled},
+		"nested first, process left":       {outcome: app.HoldReapLeft},
+		"submodule first, process left":    {moduleFirst: true, outcome: app.HoldReapLeft},
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			h := newHarness()
+			h.writers.outcome = c.outcome
+			nested := []string{"/repo/nested", "/repo/nested", "/repo/nested/src"}
+			module := []string{"/repo/lib", "/repo/lib", "/repo/lib/src"}
+			dirs := append(nested, module...)
+			if c.moduleFirst {
+				dirs = append(module, nested...)
+			}
+			var wantReaped []string
+			for i, dir := range dirs {
+				id := fmt.Sprintf("other-%d", i)
+				other := inPlaceRun(id, dir, true, false)
+				other.Workspace = dir
+				h.runs.records[id] = other
+				if strings.HasPrefix(dir, "/repo/lib") {
+					wantReaped = append(wantReaped, "ref-"+id)
+				}
+			}
+			roots := map[string]string{
+				"/repo/nested": "/repo/nested", "/repo/nested/src": "/repo/nested",
+				"/repo/lib": "/repo/lib", "/repo/lib/src": "/repo/lib",
+			}
+			rootReads := map[string]int{}
+			moduleReads := map[[2]string]int{}
+			h.worktrees.root = func(dir string) (string, error) {
+				rootReads[dir]++
+				return roots[dir], nil
+			}
+			h.worktrees.isSubmodule = func(worktree, root string) (bool, error) {
+				moduleReads[[2]string{worktree, root}]++
+				return root == "/repo/lib", nil
+			}
+			record := h.call(t, contract.CallRequest{})
+			if c.outcome == app.HoldReapLeft {
+				wantReaped = wantReaped[:1]
+				if class(record) != run.ClassRefused || !strings.Contains(message(record), wantReaped[0]+`" may still write there`) || len(h.runner.calls()) != 0 || recorded(h, "WORKTREE_ADMITTED") {
+					t.Fatalf("result %+v, turns %v, events %v", record.Result, h.runner.calls(), h.recorder.kinds())
+				}
+			} else if record.Result.Status != run.Completed || len(h.runner.calls()) != 1 || !recorded(h, "WORKTREE_ADMITTED") {
+				t.Fatalf("result %+v, turns %v, events %v", record.Result, h.runner.calls(), h.recorder.kinds())
+			}
+			if got := h.writers.refs(); !reflect.DeepEqual(got, wantReaped) || h.locks.holds("/repo") {
+				t.Fatalf("reaped %v, want %v; hold retained %v", got, wantReaped, h.locks.holds("/repo"))
+			}
+			wantRoots := map[string]int{"/repo/nested": 1, "/repo/nested/src": 1, "/repo/lib": 1, "/repo/lib/src": 1}
+			wantModules := map[[2]string]int{{"/repo", "/repo/nested"}: 1, {"/repo", "/repo/lib"}: 1}
+			if !reflect.DeepEqual(rootReads, wantRoots) || !reflect.DeepEqual(moduleReads, wantModules) {
+				t.Fatalf("root reads %v, want %v; module reads %v, want %v", rootReads, wantRoots, moduleReads, wantModules)
 			}
 		})
 	}
@@ -689,7 +874,7 @@ func TestACheckoutLessCallKilledOnceItsWorkspaceIsOnRecordIsReaped(t *testing.T)
 	inTheRepositoryItself(h)
 	store, hold := storedHolds(t, h)
 	h.calls = h.callsRecordedWith(h.defs, h.workspaces, h.changes, store, killedOnceItWorks{store}, fixedIDs{})
-	id, err := h.calls.Submit(ctx, contract.CallRequest{Process: "p", Cwd: "/repo"})
+	id, err := h.calls.Submit(ctx, contract.CallRequest{Process: "p_a", Cwd: "/repo"})
 	if err != nil {
 		t.Fatal(err)
 	}

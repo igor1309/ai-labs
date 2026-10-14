@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/igor1309/ai-labs/agister/internal/domain/definition"
+	"github.com/igor1309/ai-labs/agister/internal/domain/document"
 )
 
 // Settings give an agent its skills (ADR-021).
@@ -17,13 +18,13 @@ const reviewSkill = "---\nname: review\ndescription: How to review a change.\nli
 // runtime's.
 func TestASkillIsItsSkillFile(t *testing.T) {
 	t.Parallel()
-	skill, err := definition.ParseSkill(doc(definition.KindSkill, "review", reviewSkill))
-	if err != nil || skill.Name != "review" || skill.Description != "How to review a change." || string(skill.Bytes) != reviewSkill || skill.Source.Kind != definition.KindSkill {
+	skill, err := definition.ParseSkill(doc(document.KindSkill, "review", reviewSkill))
+	if err != nil || skill.Name != "review" || skill.Description != "How to review a change." || string(skill.Bytes) != reviewSkill || skill.Source.Kind != document.KindSkill {
 		t.Fatalf("skill = %+v, %v", skill, err)
 	}
 	// The front matter may end the file, and a description may be folded.
 	folded := "---\r\nname: review\r\ndescription: >\r\n  How to review\r\n  a change.\r\n---"
-	if skill, err := definition.ParseSkill(doc(definition.KindSkill, "review", folded)); err != nil || skill.Description != "How to review a change." || string(skill.Bytes) != folded {
+	if skill, err := definition.ParseSkill(doc(document.KindSkill, "review", folded)); err != nil || skill.Description != "How to review a change." || string(skill.Bytes) != folded {
 		t.Fatalf("folded = %+v, %v", skill, err)
 	}
 }
@@ -51,7 +52,7 @@ func TestASkillsFrontMatterNamesItAndDescribesIt(t *testing.T) {
 	for name, c := range cases {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
-			_, err := definition.ParseSkill(doc(definition.KindSkill, "review", c.text))
+			_, err := definition.ParseSkill(doc(document.KindSkill, "review", c.text))
 			if err == nil || !strings.HasPrefix(err.Error(), "skill review (review) is invalid:\n  ") || !strings.Contains(err.Error(), "\n  "+c.want) {
 				t.Fatalf("err = %v, want %q", err, c.want)
 			}
@@ -69,7 +70,7 @@ func skilledProcess(lines string) string {
 	return `schema: agister.process/v1alpha1
 name: p
 type: process
-uses: agent:a
+prompt: review
 ` + lines + `input:
   instruction: Review it.
   params:
@@ -83,22 +84,22 @@ output:
 // document name, in the order written.
 func TestAnAgentAndAProcessNameTheirSkills(t *testing.T) {
 	t.Parallel()
-	agent, err := definition.ParseAgent(doc(definition.KindAgent, "a", skilledAgent+"skills = [\"style\", \"review\"]\n"))
+	agent, err := definition.ParseAgent(doc(document.KindAgent, "a", skilledAgent+"skills = [\"style\", \"review\"]\n"))
 	if err != nil || !reflect.DeepEqual(agent.Skills, []string{"style", "review"}) {
 		t.Fatalf("agent skills = %q, %v", agent.Skills, err)
 	}
-	process, err := definition.ParseProcess(doc(definition.KindProcess, "p", skilledProcess("skills: [review, tests]\n")))
+	process, err := definition.ParseProcess(doc(document.KindProcess, "p", skilledProcess("skills: [review, tests]\n")))
 	if err != nil || !reflect.DeepEqual(process.Skills, []string{"review", "tests"}) {
 		t.Fatalf("process skills = %q, %v", process.Skills, err)
 	}
 	// Neither needs any.
 	for _, text := range []string{skilledAgent, skilledAgent + "skills = []\n"} {
-		if agent, err := definition.ParseAgent(doc(definition.KindAgent, "a", text)); err != nil || len(agent.Skills) != 0 {
+		if agent, err := definition.ParseAgent(doc(document.KindAgent, "a", text)); err != nil || len(agent.Skills) != 0 {
 			t.Fatalf("agent skills = %q, %v", agent.Skills, err)
 		}
 	}
 	for _, lines := range []string{"", "skills: []\n"} {
-		if process, err := definition.ParseProcess(doc(definition.KindProcess, "p", skilledProcess(lines))); err != nil || len(process.Skills) != 0 {
+		if process, err := definition.ParseProcess(doc(document.KindProcess, "p", skilledProcess(lines))); err != nil || len(process.Skills) != 0 {
 			t.Fatalf("process skills = %q, %v", process.Skills, err)
 		}
 	}
@@ -122,11 +123,11 @@ func TestASkillNameIsLiteralAndNamedOnce(t *testing.T) {
 	for name, c := range cases {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
-			_, err := definition.ParseAgent(doc(definition.KindAgent, "a", skilledAgent+"skills = "+c.toml+"\n"))
+			_, err := definition.ParseAgent(doc(document.KindAgent, "a", skilledAgent+"skills = "+c.toml+"\n"))
 			if err == nil || !strings.Contains(err.Error(), "\n  "+c.want) {
 				t.Errorf("agent: err = %v, want %q", err, c.want)
 			}
-			_, err = definition.ParseProcess(doc(definition.KindProcess, "p", skilledProcess("skills: "+c.yaml+"\n")))
+			_, err = definition.ParseProcess(doc(document.KindProcess, "p", skilledProcess("skills: "+c.yaml+"\n")))
 			if err == nil || !strings.Contains(err.Error(), "\n  "+c.want) {
 				t.Errorf("process: err = %v, want %q", err, c.want)
 			}
@@ -147,23 +148,23 @@ func TestSkillsDeclaredTwiceIsInvalid(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 			// The TOML parser refuses a key defined twice itself.
-			agent, err := definition.ParseAgent(doc(definition.KindAgent, "a", skilledAgent+c.toml))
+			agent, err := definition.ParseAgent(doc(document.KindAgent, "a", skilledAgent+c.toml))
 			if want := "(last key \"skills\"): Key 'skills' has already been defined."; err == nil || !strings.Contains(err.Error(), want) || len(agent.Skills) != 0 {
 				t.Errorf("agent: skills %q, err = %v, want %q", agent.Skills, err, want)
 			}
-			_, err = definition.ParseProcess(doc(definition.KindProcess, "p", skilledProcess(c.yaml)))
+			_, err = definition.ParseProcess(doc(document.KindProcess, "p", skilledProcess(c.yaml)))
 			if want := "\n  skills: is declared more than once: one list names the process's skills"; err == nil || !strings.Contains(err.Error(), want) {
 				t.Errorf("process: err = %v, want %q", err, want)
 			}
 		})
 	}
 	// Apart at the two ends of the document, as next to each other.
-	_, err := definition.ParseProcess(doc(definition.KindProcess, "p", skilledProcess("skills: [review]\n")+"skills: []\n"))
+	_, err := definition.ParseProcess(doc(document.KindProcess, "p", skilledProcess("skills: [review]\n")+"skills: []\n"))
 	if err == nil || !strings.Contains(err.Error(), "\n  skills: is declared more than once") {
 		t.Fatalf("apart: err = %v", err)
 	}
 	// A skills that is not the process's own is not a second one.
-	_, err = definition.ParseProcess(doc(definition.KindProcess, "p", skilledProcess("skills: [review]\n")+"  skills: []\n"))
+	_, err = definition.ParseProcess(doc(document.KindProcess, "p", skilledProcess("skills: [review]\n")+"  skills: []\n"))
 	if err == nil || strings.Contains(err.Error(), "more than once") || !strings.Contains(err.Error(), "\n  output.skills: unknown field") {
 		t.Fatalf("nested: err = %v", err)
 	}
@@ -192,7 +193,7 @@ func TestACallsSkillsAreTheProcessesThenItsAgents(t *testing.T) {
 func TestAnAgentsSkillsRoundTrip(t *testing.T) {
 	t.Parallel()
 	agent := definition.Agent{Name: "r", Runtime: "claude-code", Skills: []string{"review", "style"}}
-	parsed, err := definition.ParseAgent(doc(definition.KindAgent, "r", string(definition.FormatAgent(agent))))
+	parsed, err := definition.ParseAgent(doc(document.KindAgent, "r", string(definition.FormatAgent(agent))))
 	if err != nil || !reflect.DeepEqual(parsed.Skills, agent.Skills) {
 		t.Fatalf("skills = %q, %v", parsed.Skills, err)
 	}
@@ -204,7 +205,7 @@ func TestAnAgentsSkillsRoundTrip(t *testing.T) {
 // Rule 4: a skill is not a kind blocks.yaml names (ADR-018 rule 1).
 func TestASkillCannotBeBlocked(t *testing.T) {
 	t.Parallel()
-	_, err := definition.ParseBlocks(doc(definition.KindBlocks, "blocks", "schema: agister.blocks/v1alpha1\nblocks:\n  - ref: skill:review\n"))
+	_, err := definition.ParseBlocks(doc(document.KindBlocks, "blocks", "schema: agister.blocks/v1alpha1\nblocks:\n  - ref: skill:review\n"))
 	if want := `blocks[0].ref: "skill" cannot be blocked: only a process, workflow, agent or runtime is`; err == nil || !strings.Contains(err.Error(), want) {
 		t.Fatalf("err = %v, want %q", err, want)
 	}

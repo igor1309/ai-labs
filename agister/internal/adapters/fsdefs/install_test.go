@@ -2,6 +2,8 @@ package fsdefs_test
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"io/fs"
 	"os"
@@ -13,7 +15,7 @@ import (
 
 	"github.com/igor1309/ai-labs/agister/internal/adapters/fsdefs"
 	"github.com/igor1309/ai-labs/agister/internal/contract"
-	"github.com/igor1309/ai-labs/agister/internal/domain/definition"
+	"github.com/igor1309/ai-labs/agister/internal/domain/document"
 )
 
 func put(t *testing.T, path, text string) {
@@ -126,7 +128,7 @@ func TestDocumentsSkipsInvalidNames(t *testing.T) {
 	if !reflect.DeepEqual(read, []string{"agents/a", "service/service"}) {
 		t.Fatalf("read %v", read)
 	}
-	want := []definition.Source{{Kind: definition.KindPrompt, Name: "x", Path: filepath.Join(dir, "prompts", "x.md")}}
+	want := []document.Source{{Kind: document.KindPrompt, Name: "x", Path: filepath.Join(dir, "prompts", "x.md")}}
 	if !reflect.DeepEqual(unreadable, want) {
 		t.Fatalf("unreadable %+v", unreadable)
 	}
@@ -145,7 +147,7 @@ func TestStageReadsAsTheStore(t *testing.T) {
 	put(t, filepath.Join(home.Dir, "agents", "Bad Name.toml"), "x")
 	dangle(t, filepath.Join(home.Dir, "prompts", "x.md"))
 	before := tree(t, home.Dir)
-	staged, remove, err := home.Stage(ctx, []definition.Document{{Source: definition.Source{Kind: definition.KindAgent, Name: "a"}, Bytes: []byte("x")}})
+	staged, remove, err := home.Stage(ctx, []document.Document{{Source: document.Source{Kind: document.KindAgent, Name: "a"}, Bytes: []byte("x")}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -153,21 +155,21 @@ func TestStageReadsAsTheStore(t *testing.T) {
 	if entries, _ := os.ReadDir(root); len(entries) != 1 {
 		t.Fatalf("stages %v, want one", entries)
 	}
-	doc, err := staged.Read(ctx, definition.KindAgent, "a")
+	doc, err := staged.Read(ctx, document.KindAgent, "a")
 	if err != nil || doc.Source.Path != filepath.Join(home.Dir, "agents", "a.toml") || string(doc.Bytes) != "x" {
 		t.Fatalf("read %+v, %v", doc, err)
 	}
-	if _, err := staged.Read(ctx, definition.KindAgent, "b"); err == nil || !strings.Contains(err.Error(), filepath.Join(home.Dir, "agents", "b.toml")) {
+	if _, err := staged.Read(ctx, document.KindAgent, "b"); err == nil || !strings.Contains(err.Error(), filepath.Join(home.Dir, "agents", "b.toml")) {
 		t.Fatalf("missing: %v", err)
 	}
-	if names, _ := staged.List(ctx, definition.KindAgent); !reflect.DeepEqual(names, []string{"Bad Name", "a"}) {
+	if names, _ := staged.List(ctx, document.KindAgent); !reflect.DeepEqual(names, []string{"Bad Name", "a"}) {
 		t.Fatalf("list %v", names)
 	}
-	if names, _ := staged.List(ctx, definition.KindPrompt); !reflect.DeepEqual(names, []string{"x"}) {
+	if names, _ := staged.List(ctx, document.KindPrompt); !reflect.DeepEqual(names, []string{"x"}) {
 		t.Fatalf("list prompts %v", names)
 	}
-	_, want := home.Read(ctx, definition.KindPrompt, "x")
-	if _, err := staged.Read(ctx, definition.KindPrompt, "x"); err == nil || err.Error() != want.Error() {
+	_, want := home.Read(ctx, document.KindPrompt, "x")
+	if _, err := staged.Read(ctx, document.KindPrompt, "x"); err == nil || err.Error() != want.Error() {
 		t.Fatalf("unreadable: %v, want %v", err, want)
 	}
 	remove()
@@ -176,6 +178,30 @@ func TestStageReadsAsTheStore(t *testing.T) {
 	}
 	if after := tree(t, home.Dir); !reflect.DeepEqual(after, before) {
 		t.Fatalf("staging wrote into the store: %v", after)
+	}
+}
+
+// A process is read from a stage laid over its base as home will hold
+// both: home's process over the base the install writes (ADR-030 rule 9).
+func TestStageLaysAProcessOverItsStagedBase(t *testing.T) {
+	t.Parallel()
+	home := fsdefs.Store{Dir: t.TempDir()}.StagingIn(t.TempDir())
+	ctx := context.Background()
+	// The base leaves out the prompt, which its process sets.
+	base := func(instruction string) string {
+		return "schema: agister.process/v1alpha1\nname: base\ntype: process\ntimeout: 10m\ninput:\n  instruction: " + instruction + "\noutput:\n  format: text\n"
+	}
+	put(t, filepath.Join(home.Dir, "processes", "base.yaml"), base("home"))
+	put(t, filepath.Join(home.Dir, "processes", "child.yaml"), "name: child\nextends: process:base\nprompt: p\n")
+	staged, remove, err := home.Stage(ctx, []document.Document{{Source: document.Source{Kind: document.KindProcess, Name: "base"}, Bytes: []byte(base("staged"))}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(remove)
+	doc, err := staged.Read(ctx, document.KindProcess, "child")
+	want := "schema: agister.process/v1alpha1\ntype: process\ntimeout: 10m\ninput:\n  instruction: staged\noutput:\n  format: text\nname: child\nextends: process:base\nprompt: p\n"
+	if err != nil || string(doc.Bytes) != want {
+		t.Fatalf("read %q, %v\nwant %q", doc.Bytes, err, want)
 	}
 }
 
@@ -203,20 +229,20 @@ func TestPutAndRemove(t *testing.T) {
 	store := fsdefs.Store{Dir: t.TempDir()}
 	ctx := context.Background()
 	for _, text := range []string{"one", "two"} {
-		if err := store.Put(ctx, definition.KindPrompt, "p", []byte(text)); err != nil {
+		if err := store.Put(ctx, document.KindPrompt, "p", []byte(text)); err != nil {
 			t.Fatal(err)
 		}
 	}
 	entries, _ := os.ReadDir(filepath.Join(store.Dir, "prompts"))
-	if doc, err := store.Read(ctx, definition.KindPrompt, "p"); err != nil || string(doc.Bytes) != "two" || len(entries) != 1 {
+	if doc, err := store.Read(ctx, document.KindPrompt, "p"); err != nil || string(doc.Bytes) != "two" || len(entries) != 1 {
 		t.Fatalf("read %q, %v, entries %v", doc.Bytes, err, entries)
 	}
 	for range 2 {
-		if err := store.Remove(ctx, definition.KindPrompt, "p"); err != nil {
+		if err := store.Remove(ctx, document.KindPrompt, "p"); err != nil {
 			t.Fatal(err)
 		}
 	}
-	if _, digest, _ := store.Current(ctx, definition.KindPrompt, "p"); digest != "" {
+	if _, digest, _ := store.Current(ctx, document.KindPrompt, "p"); digest != "" {
 		t.Fatal("not removed")
 	}
 }
@@ -231,7 +257,7 @@ func TestBackups(t *testing.T) {
 	ctx := context.Background()
 	manifest := fsdefs.Manifest{Stamp: "s1", Source: "/repo/.agister", Installed: time.Date(2026, 10, 2, 0, 0, 0, 0, time.UTC),
 		Documents: []fsdefs.ManifestEntry{{Path: "/home/service.toml", Kind: "service", Name: "service", Action: "replace", Before: "b", After: "a"}}}
-	saved := []definition.Document{{Source: definition.Source{Kind: definition.KindService, Name: "service"}, Bytes: []byte("old")}}
+	saved := []document.Document{{Source: document.Source{Kind: document.KindService, Name: "service"}, Bytes: []byte("old")}}
 	if err := backups.Save(ctx, "s1", manifest, saved); err != nil {
 		t.Fatal(err)
 	}
@@ -241,7 +267,7 @@ func TestBackups(t *testing.T) {
 	if got, err := backups.Manifest(ctx, "s1"); err != nil || !reflect.DeepEqual(got, manifest) {
 		t.Fatalf("manifest %+v, %v", got, err)
 	}
-	if data, err := backups.Saved(ctx, "s1", definition.KindService, "service"); err != nil || string(data) != "old" {
+	if data, err := backups.Saved(ctx, "s1", document.KindService, "service"); err != nil || string(data) != "old" {
 		t.Fatalf("saved %q, %v", data, err)
 	}
 	if err := backups.Save(ctx, "s0", fsdefs.Manifest{}, nil); err != nil {
@@ -279,7 +305,7 @@ func TestBackupsSaveLeavesNothingWhenAWriteFails(t *testing.T) {
 		written = append(written, path)
 		return os.WriteFile(path, data, 0o600)
 	})
-	saved := []definition.Document{{Source: definition.Source{Kind: definition.KindService, Name: "service"}, Bytes: []byte("old")}}
+	saved := []document.Document{{Source: document.Source{Kind: document.KindService, Name: "service"}, Bytes: []byte("old")}}
 	if err := backups.Save(context.Background(), "s1", fsdefs.Manifest{Stamp: "s1"}, saved); !errors.Is(err, full) {
 		t.Fatalf("save: %v", err)
 	}
@@ -289,4 +315,77 @@ func TestBackupsSaveLeavesNothingWhenAWriteFails(t *testing.T) {
 	if entries, err := os.ReadDir(dir); err != nil || len(entries) != 0 {
 		t.Fatalf("left %v, %v", entries, err)
 	}
+}
+
+// A policy is found where the store kept it by what a restore runs on: a
+// backup made before ADR-030 names it, and its restore puts that file back
+// or removes it (ADR-016 rule 6). It is no settings: the store neither
+// lists, reads, writes nor installs it, and a new backup saves none.
+//
+// Contract test: the settings store against the real filesystem.
+func TestAPolicyIsFoundOnlyByARestore(t *testing.T) {
+	t.Parallel()
+	const policies = document.Kind("policies")
+	ctx := context.Background()
+	store := fsdefs.Store{Dir: t.TempDir()}
+	path := filepath.Join(store.Dir, "policies", "read-only.yaml")
+	if got, digest, err := store.Current(ctx, policies, "read-only"); err != nil || got != path || digest != "" {
+		t.Fatalf("current of none: %q, %q, %v", got, digest, err)
+	}
+	if err := store.Put(ctx, policies, "read-only", []byte("old")); err != nil {
+		t.Fatal(err)
+	}
+	if data, err := os.ReadFile(path); err != nil || string(data) != "old" {
+		t.Fatalf("put %q, %v", data, err)
+	}
+	if got, digest, err := store.Current(ctx, policies, "read-only"); err != nil || got != path || digest != sha("old") {
+		t.Fatalf("current: %q, %q, %v", got, digest, err)
+	}
+	if data, err := store.File(ctx, policies, "read-only"); err != nil || string(data) != "old" {
+		t.Fatalf("file %q, %v", data, err)
+	}
+	backups := fsdefs.Backups{Dir: filepath.Join(t.TempDir(), "backups")}
+	put(t, filepath.Join(backups.Dir, "s1", "policies", "read-only.yaml"), "before")
+	if data, err := backups.Saved(ctx, "s1", policies, "read-only"); err != nil || string(data) != "before" {
+		t.Fatalf("saved %q, %v", data, err)
+	}
+	// A manifest's name is one name: nothing outside policies/ is reached.
+	for _, name := range []string{"", "../agents/a", "a/b"} {
+		if _, _, err := store.Current(ctx, policies, name); err == nil || !strings.Contains(err.Error(), "invalid name") {
+			t.Errorf("current of %q: %v", name, err)
+		}
+		if err := store.Remove(ctx, policies, name); err == nil || !strings.Contains(err.Error(), "invalid name") {
+			t.Errorf("remove of %q: %v", name, err)
+		}
+	}
+
+	const unknown = `unknown definition kind "policies"`
+	if _, err := store.Read(ctx, policies, "read-only"); err == nil || !strings.Contains(err.Error(), unknown) {
+		t.Errorf("read: %v", err)
+	}
+	if _, _, err := store.Write(ctx, policies, "other", []byte("x"), ""); err == nil || !strings.Contains(err.Error(), unknown) {
+		t.Errorf("write: %v", err)
+	}
+	saved := []document.Document{{Source: document.Source{Kind: policies, Name: "read-only"}, Bytes: []byte("old")}}
+	if err := backups.Save(ctx, "s2", fsdefs.Manifest{Stamp: "s2"}, saved); err == nil || !strings.Contains(err.Error(), unknown) {
+		t.Errorf("save: %v", err)
+	}
+	if docs, unreadable, err := store.Documents(ctx); err != nil || len(docs) != 0 || len(unreadable) != 0 {
+		t.Errorf("documents %+v, unreadable %+v, %v", docs, unreadable, err)
+	}
+	if docs, ignored, err := (fsdefs.Store{Dir: t.TempDir()}).Source(ctx, store.Dir); err != nil || len(docs) != 0 || !reflect.DeepEqual(ignored, []string{"policies/"}) {
+		t.Errorf("source: read %+v, ignored %v, %v", docs, ignored, err)
+	}
+
+	if err := store.Remove(ctx, policies, "read-only"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Lstat(path); !errors.Is(err, fs.ErrNotExist) {
+		t.Fatalf("not removed: %v", err)
+	}
+}
+
+func sha(text string) string {
+	sum := sha256.Sum256([]byte(text))
+	return hex.EncodeToString(sum[:])
 }

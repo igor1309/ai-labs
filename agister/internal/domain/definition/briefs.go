@@ -6,14 +6,12 @@ import (
 	"strings"
 
 	"gopkg.in/yaml.v3"
+
+	"github.com/igor1309/ai-labs/agister/internal/domain/document"
 )
 
 // BriefSchema is the schema of a brief's form (ADR-026 rule 5).
 const BriefSchema = "agister.brief/v1alpha1"
-
-// FileSource is the input source that reads a file, the one whose value
-// may name the forms its text must have (ADR-026 rule 8).
-const FileSource = "file"
 
 // ReferenceFile is what a part that holds a reference to a file says: its
 // first back-quoted path, relative to the caller's directory, must exist.
@@ -26,7 +24,7 @@ type Brief struct {
 	Name     string
 	Parts    []BriefPart
 	Template string
-	Source   Source
+	Source   document.Source
 }
 
 // BriefPart is one part of a brief's form.
@@ -51,8 +49,8 @@ var headingLine = regexp.MustCompile(`^#{1,6} \S(.*\S)?$`)
 // ParseBrief parses a brief's form: its parts, each with its heading,
 // whether it is required, the text it must read and the reference it
 // holds; and its template, whose headings are the parts', in order.
-func ParseBrief(doc Document) (Brief, error) {
-	p := &problems{}
+func ParseBrief(doc document.Document) (Brief, error) {
+	p := problemsOf(doc.Source)
 	subject := "brief " + subjectName(doc.Source)
 	brief := Brief{Name: doc.Source.Name, Source: doc.Source}
 	root := parseOneYAML(doc.Bytes, p)
@@ -110,7 +108,7 @@ func ParseBrief(doc Document) (Brief, error) {
 // each part's once, in the parts' order. The rule and the template are one
 // document so that they cannot drift.
 func (b Brief) templateProblems(p *problems) {
-	found := b.sections(b.Template)
+	found := b.sections(b.Template, newSectionBody)
 	last := -1
 	for i, part := range b.Parts {
 		switch at := found[i]; len(at) {
@@ -135,7 +133,7 @@ func (b Brief) templateProblems(p *problems) {
 // (ADR-026 rule 8). resolve is given the path as written.
 func (b Brief) Check(text string, resolve func(path string) error) []string {
 	var wrong []string
-	found := b.sections(text)
+	found := b.sections(text, newSectionBody)
 	for i, part := range b.Parts {
 		at := found[i]
 		if len(at) > 1 {
@@ -183,12 +181,20 @@ type section struct {
 	body string
 }
 
+// sectionBody receives normalized lines directly into its reserved buffer.
+type sectionBody interface {
+	WriteString(string) (int, error)
+	WriteByte(byte) error
+	String() string
+}
+
 // sections finds each part's heading in text, outside fenced code, by its
 // index among b.Parts. A section ends at the next heading of its level or
 // above; a part's heading below its level opens a section of its own and
 // stays in its body. A section's body is its lines, each without trailing
 // blanks and ended by a newline, joined once when the section closes.
-func (b Brief) sections(text string) map[int][]section {
+// newBody reserves the complete body's buffer before any line is written.
+func (b Brief) sections(text string, newBody func(size int) sectionBody) map[int][]section {
 	byHeading := map[string]int{}
 	for i, part := range b.Parts {
 		byHeading[part.Heading] = i
@@ -203,7 +209,7 @@ func (b Brief) sections(text string) map[int][]section {
 	closeFrom := func(level, end int) {
 		for len(open) > 0 && open[len(open)-1].level >= level {
 			last := open[len(open)-1]
-			found[last.index] = append(found[last.index], section{line: last.line, body: joined(lines[last.line+1 : end])})
+			found[last.index] = append(found[last.index], section{line: last.line, body: joined(lines[last.line+1:end], newBody)})
 			open = open[:len(open)-1]
 		}
 	}
@@ -228,14 +234,20 @@ func (b Brief) sections(text string) map[int][]section {
 	return found
 }
 
-// joined is lines, each ended by a newline, built in one allocation.
-func joined(lines []string) string {
+// newSectionBody reserves a section's buffer in one allocation.
+func newSectionBody(size int) sectionBody {
+	body := new(strings.Builder)
+	body.Grow(size)
+	return body
+}
+
+// joined is lines, each ended by a newline, written into one reserved buffer.
+func joined(lines []string, newBody func(size int) sectionBody) string {
 	size := len(lines)
 	for _, line := range lines {
 		size += len(line)
 	}
-	var body strings.Builder
-	body.Grow(size)
+	body := newBody(size)
 	for _, line := range lines {
 		body.WriteString(line)
 		body.WriteByte('\n')
@@ -297,7 +309,7 @@ func formNames(names []string, field string, p *problems) []string {
 		switch first, again := seen[name]; {
 		case strings.Contains(name, "${"):
 			p.add(at, "is not interpolated: name the brief document literally")
-		case !ValidName(name):
+		case !document.ValidName(name):
 			p.add(at, "invalid brief name %q", name)
 		case again:
 			p.add(at, "form %q is named twice (also %s)", name, first)

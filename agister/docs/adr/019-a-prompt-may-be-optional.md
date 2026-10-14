@@ -1,6 +1,7 @@
 # ADR-019: A prompt may be optional
 
 - **Status:** Accepted
+- **Superseded by:** [ADR-028](028-settings-are-layered-by-field.md)
 - **Date:** 2026-10-03
 - **Scope:** a process's prompt input that some repositories supply and
   others do not

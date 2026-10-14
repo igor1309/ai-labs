@@ -3,7 +3,7 @@ date: 2026-10-06
 author: Igor Malyarov
 model: gpt-6.1
 name: Code review — architecture decisions
-version: 0.3.5
+version: 0.3.6
 type: prompt
 ---
 
@@ -25,7 +25,7 @@ shows how the defect stops that scenario's outcome, and its `requirement`
 quotes the goal's condition with every qualification it carries and says
 where in the goal it stands. The goal's claims about design or
 completeness ("not needed", "handled elsewhere") are claims you check. Its
-scope exclusions ("out of scope") are the owner's: you may show that one
+scope exclusions ("out of scope") stand: you may show that one
 stops the goal, quoting it in the finding, but you cannot override it.
 
 Definition of done, for each ADR the change adds or edits:

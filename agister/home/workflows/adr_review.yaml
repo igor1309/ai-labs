@@ -1,8 +1,3 @@
-# Review of the architecture decisions one change adds or edits: the ADR
-# review of the candidate against the base, then the judge's rulings on it.
-# The review is also given the goal: the file that says what the change is
-# for, such as its issue or brief (ADR-023 rule 1). The judge is not.
-#   agister run adr_review --param base=<rev> --param candidate=<rev> --param goal=<file>
 schema: agister.workflow/v1alpha1
 name: adr_review
 
@@ -12,16 +7,13 @@ input:
   params:
     base: {default: origin/trunk}
     candidate: {default: HEAD}
-    # Required: a call without it is refused.
     goal: {}
-  # Resolved once: the review gets these two commits and, as its param goal,
-  # the text of the goal file.
   values:
     base: {source: git.revision, rev: "${param.base}"}
     candidate: {source: git.revision, rev: "${param.candidate}"}
     goal: {source: file, path: "${param.goal}"}
 
 fan_out:
-  - {node: adr, uses: process:adr_review_codex}
+  - {node: adr, uses: process:adr_review_codex, agent: codex-sol-61}
 
-join: {node: judge, uses: process:review_judge}
+join: {node: judge, uses: process:review_judge, agent: claude-opus}

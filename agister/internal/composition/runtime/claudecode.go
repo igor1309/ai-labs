@@ -49,7 +49,7 @@ func (claudecodeRunner) Admit(app.TurnStart) *run.Error { return nil }
 type claudecodeSink struct{ app.EventSink }
 
 func (s claudecodeSink) ToolStarted(tool claudecode.ToolCall) {
-	s.EventSink.ToolStarted(app.ToolCall(tool))
+	s.EventSink.ToolStarted(app.ToolCall{ID: tool.ID, Name: tool.Name, Input: tool.Input, Command: tool.Command, Writes: tool.Writes})
 }
 func (s claudecodeSink) ToolFinished(result claudecode.ToolResult) {
 	s.EventSink.ToolFinished(app.ToolResult(result))

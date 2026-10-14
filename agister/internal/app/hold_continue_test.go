@@ -8,7 +8,7 @@ import (
 
 	"github.com/igor1309/ai-labs/agister/internal/app"
 	"github.com/igor1309/ai-labs/agister/internal/contract"
-	"github.com/igor1309/ai-labs/agister/internal/domain/definition"
+	"github.com/igor1309/ai-labs/agister/internal/domain/document"
 	"github.com/igor1309/ai-labs/agister/internal/domain/prompt"
 	"github.com/igor1309/ai-labs/agister/internal/domain/run"
 )
@@ -17,7 +17,7 @@ import (
 // holding content.
 func resumingInPlace(content string) *harness {
 	h := newHarness()
-	h.defs.docs[definition.KindAgent]["a"] += "session = \"resumable\"\n"
+	h.defs.docs[document.KindProcess]["p"] += "session: resumable\n"
 	h.changes.identity = content
 	return h
 }
@@ -29,8 +29,8 @@ func resumingInPlace(content string) *harness {
 func workedInPlace(h *harness, id, continues string, created, finished int, content, patch string) run.Record {
 	at := func(minute int) time.Time { return time.Date(2026, 9, 28, 11, minute, 0, 0, time.UTC) }
 	end := at(finished)
-	record := run.Record{ID: id, Process: "p", Agent: "a", Runtime: &run.Runtime{Adapter: "spy"},
-		Request:   run.Request{Process: "p", Continue: continues, Cwd: "/repo"},
+	record := run.Record{ID: id, Process: "p_a", Agent: "a", Call: onA(), Runtime: &run.Runtime{Adapter: "spy"},
+		Request:   run.Request{Process: "p_a", Continue: continues, Cwd: "/repo"},
 		CreatedAt: at(created), FinishedAt: &end, Workspace: "/repo",
 		InPlace:        &run.InPlace{Dir: "/repo", Worktree: "/repo", RepositoryIdentity: "/repo", Revision: "sha-HEAD", Content: content},
 		ProcessesEnded: known(true),
@@ -70,8 +70,8 @@ func TestAnInPlaceContinuationResumesInTheSameWorktree(t *testing.T) {
 		t.Fatalf("events %v", h.recorder.kinds())
 	}
 	got := h.runner.calls()[0]
-	notice := prompt.Continues("run-0", "run-0", "/repo", "sha-HEAD")
-	if got.ResumeSessionID != "prov-0" || got.Cwd != "/repo" || !strings.HasPrefix(got.Prompt, notice+"\n\n## candidate_revision") || strings.Contains(got.Prompt, "gone") {
+	notice := prompt.Continues("/repo", "sha-HEAD")
+	if got.ResumeSessionID != "prov-0" || got.Cwd != "/repo" || !strings.HasPrefix(got.Prompt, notice+"\n\n## candidate_revision") || strings.Contains(got.Prompt, "gone") || strings.Contains(got.Prompt, "run-0") {
 		t.Fatalf("request %+v", got)
 	}
 	// The latest run's patch was checked against its digest, under the lock.
@@ -137,7 +137,7 @@ func TestTheSessionsLatestRunDecidesTheExpectedContent(t *testing.T) {
 			if record.Result.Status != run.Completed {
 				t.Fatalf("result %+v", record.Result)
 			}
-			if notice := prompt.Continues("run-0", "run-0b", "/repo", "sha-HEAD"); !strings.HasPrefix(h.runner.calls()[0].Prompt, notice) {
+			if notice := prompt.Continues("/repo", "sha-HEAD"); !strings.HasPrefix(h.runner.calls()[0].Prompt, notice) {
 				t.Fatalf("prompt %q", h.runner.calls()[0].Prompt)
 			}
 		})

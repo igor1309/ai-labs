@@ -1,11 +1,9 @@
 schema = "agister.service/v1alpha1"
 
-# Hard limits no policy may exceed. Retries are not supported yet.
 max_timeout = "1h"
 max_attempts = 1
 max_verify_attempts = 3
 
-# The permission vocabulary. Policies and runtime mappings may use only these.
 permissions = [
   "repository.read",
   "repository.search",
@@ -19,11 +17,6 @@ permissions = [
   "host.write",
 ]
 
-# Permissions that change the workspace or its history. Read-only
-# workspace access withholds them.
 writing = ["repository.write", "repository.history.write"]
 
-# Nothing is treated as state-reaching: Claude Code's Bash, Edit and Write
-# grant host.write and Codex read-only reads the host, so listing either
-# would leave implementers without write tools. We accept that reach.
 state_reaching = []

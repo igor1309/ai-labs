@@ -1,12 +1,3 @@
-# Review of one change (ADR-003): the architecture, tests, adversarial,
-# clarity and intent reviews of the same candidate against the same base,
-# concurrently, then the judge's rulings on them. The judge starts once every
-# review ended, if at least one completed (ADR-004), and receives each
-# review's outcome and, if it completed, its recorded output as its
-# collection, and nothing else. Every review is also given the goal: the file
-# that says what the change is for, such as its issue or brief (ADR-023 rule
-# 1). The judge is not.
-#   agister run code_review --param base=<rev> --param candidate=<rev> --param goal=<file>
 schema: agister.workflow/v1alpha1
 name: code_review
 
@@ -16,22 +7,17 @@ input:
   params:
     base: {default: origin/trunk}
     candidate: {default: HEAD}
-    # Required: a call without it is refused.
     goal: {}
-  # Resolved once: every review gets the same two commits and, as its param
-  # goal, the same text of the goal file.
   values:
     base: {source: git.revision, rev: "${param.base}"}
     candidate: {source: git.revision, rev: "${param.candidate}"}
-    # The call is refused unless its text has the goal's form (ADR-026),
-    # briefs/goal.yaml.
     goal: {source: file, path: "${param.goal}", form: [goal]}
 
 fan_out:
-  - {node: architecture, uses: process:architecture_review_codex}
-  - {node: tests, uses: process:tests_review_codex}
-  - {node: adversarial, uses: process:adversarial_review_codex}
-  - {node: clarity, uses: process:clarity_review_codex}
-  - {node: intent, uses: process:intent_review_codex}
+  - {node: architecture, uses: process:architecture_review, agent: codex-sol-61}
+  - {node: tests, uses: process:tests_review, agent: codex-sol-61}
+  - {node: adversarial, uses: process:adversarial_review, agent: codex-sol-61}
+  - {node: clarity, uses: process:clarity_review, agent: codex-sol-61}
+  - {node: intent, uses: process:intent_review, agent: codex-sol-61}
 
-join: {node: judge, uses: process:review_judge}
+join: {node: judge, uses: process:review_judge, agent: claude-opus}

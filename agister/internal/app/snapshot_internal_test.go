@@ -4,7 +4,7 @@ import (
 	"slices"
 	"testing"
 
-	"github.com/igor1309/ai-labs/agister/internal/domain/definition"
+	"github.com/igor1309/ai-labs/agister/internal/domain/document"
 )
 
 // A caller that changes the kinds it was given does not change the next
@@ -13,7 +13,7 @@ func TestAllKindsReturnsANewSliceEachCall(t *testing.T) {
 	t.Parallel()
 	want := allKinds()
 	changed := allKinds()
-	changed[0] = definition.KindBlocks
+	changed[0] = document.KindBlocks
 	slices.Reverse(changed)
 	if got := allKinds(); !slices.Equal(got, want) {
 		t.Fatalf("allKinds() after a caller changed its slice = %v, want %v", got, want)

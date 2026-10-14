@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/igor1309/ai-labs/agister/internal/domain/definition"
+	"github.com/igor1309/ai-labs/agister/internal/domain/document"
 )
 
 // settingUpProcess is a process whose workspace block is the one given,
@@ -13,7 +14,7 @@ func settingUpProcess(workspace string) string {
 	return `schema: agister.process/v1alpha1
 name: p
 type: process
-uses: agent:a
+prompt: review
 input:
   instruction: Implement it.
   values:
@@ -36,27 +37,15 @@ func TestSetupIsObsolete(t *testing.T) {
 	} {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
-			process, err := definition.ParseProcess(doc(definition.KindProcess, "p", settingUpProcess(workspace)))
+			process, err := definition.ParseProcess(doc(document.KindProcess, "p", settingUpProcess(workspace)))
 			if err != nil || len(process.Obsolete) != 1 || process.Obsolete[0] != definition.ObsoleteSetup || !strings.Contains(definition.ObsoleteSetup, "is obsolete and ignored (ADR-025)") {
 				t.Fatalf("obsolete %q, %v", process.Obsolete, err)
 			}
 		})
 	}
-	without, err := definition.ParseProcess(doc(definition.KindProcess, "p", settingUpProcess("  revision: candidate_revision\n")))
+	without, err := definition.ParseProcess(doc(document.KindProcess, "p", settingUpProcess("  revision: candidate_revision\n")))
 	if err != nil || len(without.Obsolete) != 0 {
 		t.Fatalf("without: %q, %v", without.Obsolete, err)
-	}
-}
-
-// A policy's workspace block has no setup: it belongs to the process.
-func TestPolicyDeclaresNoSetup(t *testing.T) {
-	t.Parallel()
-	_, err := definition.ParsePolicy(doc(definition.KindPolicy, "pol", `schema: agister.process-policy/v1alpha1
-name: pol
-workspace: {access: read-only, setup: {command: ./s.sh, timeout: 2m}}
-`))
-	if err == nil || !strings.Contains(err.Error(), "workspace.setup: unknown field") {
-		t.Fatalf("err = %v", err)
 	}
 }
 
@@ -65,11 +54,11 @@ workspace: {access: read-only, setup: {command: ./s.sh, timeout: 2m}}
 // the pin is not lost to a field read and ignored.
 func TestCheckoutIsNowRevision(t *testing.T) {
 	t.Parallel()
-	_, err := definition.ParseProcess(doc(definition.KindProcess, "p", settingUpProcess("  checkout: candidate_revision\n")))
+	_, err := definition.ParseProcess(doc(document.KindProcess, "p", settingUpProcess("  checkout: candidate_revision\n")))
 	if err == nil || !strings.Contains(err.Error(), "workspace.checkout: is now workspace.revision (ADR-025)") {
 		t.Fatalf("err = %v", err)
 	}
-	process, err := definition.ParseProcess(doc(definition.KindProcess, "p", settingUpProcess("  revision: candidate_revision\n")))
+	process, err := definition.ParseProcess(doc(document.KindProcess, "p", settingUpProcess("  revision: candidate_revision\n")))
 	if err != nil || process.Revision != "candidate_revision" {
 		t.Fatalf("revision %q, %v", process.Revision, err)
 	}

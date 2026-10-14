@@ -71,15 +71,14 @@ func (f *flow) cancelled() bool {
 
 // collected is one fan-out node's entry in the collection: its outcome and,
 // only when it completed, its recorded output, unchanged, or its text when
-// its process's output is text.
+// its process's output is text. It names no node, process or run: the join
+// tells entries apart by their place, and the workflow's record keeps the
+// names (ADR-034).
 type collected struct {
-	Node    string          `json:"node"`
-	Process string          `json:"process"`
-	Run     string          `json:"run,omitempty"`
-	Status  run.Status      `json:"status"`
-	Class   run.Class       `json:"class,omitempty"`
-	Output  json.RawMessage `json:"output,omitempty"`
-	Text    string          `json:"text,omitempty"`
+	Status run.Status      `json:"status"`
+	Class  run.Class       `json:"class,omitempty"`
+	Output json.RawMessage `json:"output,omitempty"`
+	Text   string          `json:"text,omitempty"`
 }
 
 // nodeEnd is a node's run as it finished; index is the node's in the
@@ -90,13 +89,10 @@ type nodeEnd struct {
 }
 
 // workflowRequest refuses what a workflow cannot take from its caller:
-// each node runs with its own process's agent and limits, and continuing a
-// workflow is not supported.
+// each node runs on the agent it binds, with its process's limits, and
+// continuing a workflow is not supported.
 func workflowRequest(request run.Request) error {
 	var given []string
-	if request.Agent != "" {
-		given = append(given, "an agent")
-	}
 	if request.Timeout != "" {
 		given = append(given, "a timeout")
 	}
@@ -107,7 +103,7 @@ func workflowRequest(request run.Request) error {
 		given = append(given, "a run to continue")
 	}
 	if len(given) > 0 {
-		return refuse("workflow %s takes params only, not %s: each node runs with its own process's agent and limits", request.Process, strings.Join(given, ", "))
+		return refuse("workflow %s takes params only, not %s: each node runs on the agent it binds, with its process's limits", request.Process, strings.Join(given, ", "))
 	}
 	return nil
 }
@@ -131,14 +127,14 @@ func passedValues(inputs []run.Input) (map[string]string, error) {
 
 // collect builds the collection from the fan-out nodes' outcomes, nodes in
 // the workflow record, and their finished records: for each node in
-// declaration order, whatever order they finished in, its name, process, run,
-// status and class, and, only if it completed, its recorded output. It
+// declaration order, whatever order they finished in, its status and class,
+// and, only if it completed, its recorded output (ADR-034). It
 // returns the collection as the join's input value, identified by its
 // digest, and its bytes.
 func collect(workflow CallWorkflow, nodes []run.Node, records []run.Record) (Resolved, []byte, error) {
 	entries := make([]collected, len(workflow.FanOut))
-	for i, node := range workflow.FanOut {
-		entries[i] = collected{Node: node.Name, Process: node.Process, Run: nodes[i].Run, Status: nodes[i].Status}
+	for i := range workflow.FanOut {
+		entries[i] = collected{Status: nodes[i].Status}
 		if nodes[i].Error != nil {
 			entries[i].Class = nodes[i].Error.Class
 		}

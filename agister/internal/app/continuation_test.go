@@ -13,7 +13,7 @@ import (
 	"github.com/igor1309/ai-labs/agister/internal/adapters/fsruns"
 	"github.com/igor1309/ai-labs/agister/internal/app"
 	"github.com/igor1309/ai-labs/agister/internal/contract"
-	"github.com/igor1309/ai-labs/agister/internal/domain/definition"
+	"github.com/igor1309/ai-labs/agister/internal/domain/document"
 	"github.com/igor1309/ai-labs/agister/internal/domain/run"
 )
 
@@ -150,7 +150,7 @@ func TestAContinuationCannotAdvanceTheSessionWhileAnotherIsUnderWay(t *testing.T
 	}
 	first.calls = first.callsRecordedWith(first.defs, first.workspaces, first.changes, store,
 		observedStore{store, first.recorder}, continuationID("run-1"))
-	if _, err := first.calls.Submit(ctx, contract.CallRequest{Process: "p", Continue: "run-0", Cwd: "/repo"}); err != nil {
+	if _, err := first.calls.Submit(ctx, contract.CallRequest{Process: "p_a", Continue: "run-0", Cwd: "/repo"}); err != nil {
 		t.Fatal(err)
 	}
 	select {
@@ -162,7 +162,7 @@ func TestAContinuationCannotAdvanceTheSessionWhileAnotherIsUnderWay(t *testing.T
 	inTheRepositoryItself(second)
 	second.calls = second.callsRecordedWith(second.defs, second.workspaces, second.changes, store,
 		observedStore{store, second.recorder}, continuationID("run-2"))
-	_, err := second.calls.Submit(ctx, contract.CallRequest{Process: "p", Continue: "run-0", Cwd: "/repo"})
+	_, err := second.calls.Submit(ctx, contract.CallRequest{Process: "p_a", Continue: "run-0", Cwd: "/repo"})
 	if err != nil {
 		close(resume)
 		first.recorder.wait(t)
@@ -214,8 +214,8 @@ func TestAContinuationRechecksItsSelectionUnderItsHold(t *testing.T) {
 // runtime whose adapter gives skills, and run-0 to continue.
 func skilledResuming() (*harness, *[]string) {
 	h, order := resuming()
-	h.defs.docs[definition.KindProcess]["p"] = withSkills(h.defs.docs[definition.KindProcess]["p"], "review")
-	h.defs.docs[definition.KindSkill] = map[string]string{"review": skillDoc("review")}
+	h.defs.docs[document.KindProcess]["p"] = withSkills(h.defs.docs[document.KindProcess]["p"], "review")
+	h.defs.docs[document.KindSkill] = map[string]string{"review": skillDoc("review")}
 	h.runner.identity.Skills = true
 	patchedRun(h, "run-0", "", 0, 1, "diff A\n")
 	return h, order

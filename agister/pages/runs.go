@@ -94,13 +94,17 @@ type WorkflowSummary struct {
 	Items *ItemCounts   `json:"items,omitempty"`
 }
 
-// NodeSummary is one node of a workflow run.
+// NodeSummary is one node of a workflow run. WallMS and CostUSD are its
+// run's, read with ReadRun only, and unset while that run has not
+// finished or is not there.
 type NodeSummary struct {
-	Name    string `json:"name"`
-	Process string `json:"process"`
-	Join    bool   `json:"join,omitempty"`
-	Run     string `json:"run,omitempty"`
-	Status  string `json:"status,omitempty"`
+	Name    string   `json:"name"`
+	Process string   `json:"process"`
+	Join    bool     `json:"join,omitempty"`
+	Run     string   `json:"run,omitempty"`
+	Status  string   `json:"status,omitempty"`
+	WallMS  *int64   `json:"wall_ms,omitempty"`
+	CostUSD *float64 `json:"cost_usd,omitempty"`
 }
 
 // ItemCounts counts a judge's items by ruling and by severity, and per
@@ -198,7 +202,26 @@ func ReadRun(ctx context.Context, dir string, runs RunObserver, id string) (RunD
 	}
 	summary := summarise(observed, state)
 	addEvents(&summary, filepath.Join(dir, id, "events.jsonl"))
+	addNodeOutcomes(&summary, dir)
 	return RunDetail{Summary: summary, Record: json.RawMessage(data)}, nil
+}
+
+// addNodeOutcomes gives each node of a workflow run its run's wall time and
+// cost, from that run's record under dir.
+func addNodeOutcomes(summary *RunSummary, dir string) {
+	if summary.Workflow == nil {
+		return
+	}
+	for i := range summary.Workflow.Nodes {
+		node := &summary.Workflow.Nodes[i]
+		if !runID.MatchString(node.Run) {
+			continue
+		}
+		if _, record, err := readRecord(dir, node.Run); err == nil && record.Result != nil {
+			wall := record.Result.Timing.WallMS
+			node.WallMS, node.CostUSD = &wall, record.Result.Cost.USD
+		}
+	}
 }
 
 // readRecord is the run id's record.json under dir, as stored and parsed.

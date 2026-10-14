@@ -14,7 +14,7 @@ import (
 
 	"github.com/igor1309/ai-labs/agister/internal/app"
 	"github.com/igor1309/ai-labs/agister/internal/contract"
-	"github.com/igor1309/ai-labs/agister/internal/domain/definition"
+	"github.com/igor1309/ai-labs/agister/internal/domain/document"
 	"github.com/igor1309/ai-labs/agister/internal/domain/run"
 )
 
@@ -27,8 +27,7 @@ func nodeProcess(name, instruction string) string {
 	return `schema: agister.process/v1alpha1
 name: ` + name + `
 type: process
-uses: agent:a
-policy: process-policy:pol
+prompt: inspect
 input:
   instruction: ` + instruction + `
   params:
@@ -43,14 +42,15 @@ output:
   format: json
   schema: s
   require_valid: true
+timeout: 20m
+tools: {allow: [repository.read, repository.search, repository.diff]}
 `
 }
 
 const joinProcess = `schema: agister.process/v1alpha1
 name: joiner
 type: process
-uses: agent:a
-policy: process-policy:joining
+prompt: inspect
 input:
   instruction: Join them.
   values:
@@ -60,6 +60,8 @@ output:
   format: json
   schema: s
   require_valid: true
+timeout: 10m
+tools: {allow: [repository.read]}
 `
 
 const workflowDoc = `schema: agister.workflow/v1alpha1
@@ -73,25 +75,19 @@ input:
     base: {source: git.revision, rev: "${param.base}"}
     candidate: {source: git.revision, rev: "${param.candidate}"}
 fan_out:
-  - {node: one, uses: process:first}
-  - {node: two, uses: process:second}
-join: {node: merge, uses: process:joiner}
+  - {node: one, uses: process:first, agent: a}
+  - {node: two, uses: process:second, agent: a}
+join: {node: merge, uses: process:joiner, agent: a}
 `
 
-func workflowDocs() map[definition.Kind]map[string]string {
+func workflowDocs() map[document.Kind]map[string]string {
 	docs := settingsDocs()
-	docs[definition.KindProcess] = map[string]string{
+	docs[document.KindProcess] = map[string]string{
 		"first":  nodeProcess("first", "Work as first."),
 		"second": nodeProcess("second", "Work as second."),
 		"joiner": joinProcess,
 	}
-	docs[definition.KindPolicy]["joining"] = `schema: agister.process-policy/v1alpha1
-name: joining
-timeout: 10m
-tools: {allow: [repository.read]}
-workspace: {access: read-only, scope: repository}
-`
-	docs[definition.KindWorkflow] = map[string]string{"w": workflowDoc}
+	docs[document.KindWorkflow] = map[string]string{"w": workflowDoc}
 	return docs
 }
 
@@ -195,6 +191,8 @@ type storeSpy struct {
 	// kept; onArtifact as an artifact is stored.
 	onFinish   func(record run.Record)
 	onArtifact func(id, name string)
+	// onUpdate observes a record after it has been kept.
+	onUpdate func(record run.Record)
 	// onEvent, when set, runs after an event is appended to a run.
 	onEvent func(id string, event run.Event)
 	// failCreate, when set, is asked, by its node's name, whether creating a
@@ -295,8 +293,11 @@ func (r *runSpy) Raw(string) error { return nil }
 
 func (r *runSpy) Update(record run.Record) error {
 	r.mu.Lock()
-	defer r.mu.Unlock()
 	r.record = record
+	r.mu.Unlock()
+	if hook := r.store.onUpdate; hook != nil {
+		hook(record)
+	}
 	return nil
 }
 
@@ -409,18 +410,22 @@ func newFlowHarness() *flowHarness {
 		}
 		return app.Resolved{}, fmt.Errorf("no source %s", spec.Source)
 	}}
-	runtimes := nodeRuntimes{runner: h.runner}
-	changes := &changesSpy{}
 	runs := &runsSpy{records: map[string]run.Record{}, states: map[string]run.State{}}
 	h.runs, h.copies, h.references = runs, &copiesSpy{}, &referencesSpy{}
-	h.calls = app.NewCalls(
-		app.NewResolver(h.defs, runtimes, okValidator{}, resolverCheckStub{}), runtimes,
+	h.calls = h.callsOn(h.defs)
+	return h
+}
+
+func (h *flowHarness) callsOn(src app.ResolverDefinitions) *app.Calls {
+	runtimes := nodeRuntimes{runner: h.runner}
+	changes := &changesSpy{}
+	return app.NewCalls(
+		app.NewResolver(src, runtimes, okValidator{}, resolverCheckStub{}), runtimes,
 		map[string]app.InputProvider{"git.revision": h.inputs, "git.diff": h.inputs, "file": h.inputs, "param": h.inputs}, h.copies, h.references,
-		h.workspaces, changes, app.NewHolder(app.HoldAdapters{Locks: h.locks, Worktrees: &worktreesSpy{}, Content: changes, Runs: runs, Reaper: &reaperSpy{}, Writers: &writersSpy{}}),
-		app.NewVerifier(changes, &commandsSpy{}, fixedClock{}), app.NewRecoverer(fixedClock{}), okValidator{}, h.store, runs,
+		h.workspaces, changes, app.NewHolder(app.HoldAdapters{Locks: h.locks, Worktrees: &worktreesSpy{}, Content: changes, Runs: h.runs, Reaper: &reaperSpy{}, Writers: &writersSpy{}}),
+		app.CallsVerifier{Verifier: app.NewVerifier(changes, &commandsSpy{}, fixedClock{})}, app.NewRecoverer(fixedClock{}), okValidator{}, h.store, h.runs,
 		fixedClock{}, unfired, &seqIDs{}, "/state", h.hosted,
 	)
-	return h
 }
 
 func (h *flowHarness) script(instruction string) *script { return h.runner.scripts[instruction] }
@@ -505,8 +510,8 @@ func TestWorkflowJoinReceivesEveryFanOutOutputOnce(t *testing.T) {
 	join := h.store.wait(t, "run-4")
 	entries := collectionOf(t, join)
 	want := []map[string]any{
-		{"node": "one", "process": "first", "run": "run-2", "status": "completed", "output": map[string]any{"from": "first"}},
-		{"node": "two", "process": "second", "run": "run-3", "status": "completed", "output": map[string]any{"from": "second"}},
+		{"status": "completed", "output": map[string]any{"from": "first"}},
+		{"status": "completed", "output": map[string]any{"from": "second"}},
 	}
 	if !reflect.DeepEqual(entries, want) {
 		t.Fatalf("collection = %v", entries)
@@ -561,12 +566,13 @@ func TestWorkflowCollectionOrderIgnoresCompletionOrder(t *testing.T) {
 	if !reflect.DeepEqual(finished, []string{"two", "one"}) {
 		t.Fatalf("fan-out nodes finished in order %v, want two then one", finished)
 	}
-	var nodes []string
+	// An entry names no node: its output says which node's it is.
+	var from []any
 	for _, entry := range collectionOf(t, h.store.wait(t, "run-4")) {
-		nodes = append(nodes, entry["node"].(string))
+		from = append(from, entry["output"].(map[string]any)["from"])
 	}
-	if !reflect.DeepEqual(nodes, []string{"one", "two"}) {
-		t.Fatalf("collection order = %v", nodes)
+	if !reflect.DeepEqual(from, []any{"first", "second"}) {
+		t.Fatalf("collection order = %v", from)
 	}
 }
 
@@ -672,7 +678,7 @@ func TestWorkflowJoinsWithoutAnUnsuccessfulNode(t *testing.T) {
 	}{
 		"refused": {
 			prepare: func(h *flowHarness) {
-				h.defs.set(definition.KindProcess, "second", strings.Replace(nodeProcess("second", "Work as second."),
+				h.defs.set(document.KindProcess, "second", strings.Replace(nodeProcess("second", "Work as second."),
 					"workspace:", "    notes: {source: file, path: missing.md}\nworkspace:", 1))
 			},
 			status: run.Failed, class: run.ClassRefused,
@@ -708,8 +714,8 @@ func TestWorkflowJoinsWithoutAnUnsuccessfulNode(t *testing.T) {
 				t.Fatalf("node two = %+v", two)
 			}
 			want := []map[string]any{
-				{"node": "one", "process": "first", "run": "run-2", "status": "completed", "output": map[string]any{"from": "first"}},
-				{"node": "two", "process": "second", "run": "run-3", "status": string(tc.status), "class": string(tc.class)},
+				{"status": "completed", "output": map[string]any{"from": "first"}},
+				{"status": string(tc.status), "class": string(tc.class)},
 			}
 			if entries := collectionOf(t, h.store.wait(t, "run-4")); !reflect.DeepEqual(entries, want) {
 				t.Fatalf("collection = %v", entries)
@@ -733,10 +739,10 @@ func TestWorkflowJoinsWithoutAnUnsuccessfulNode(t *testing.T) {
 func TestWorkflowJoinsOnTheNodesThatCompleted(t *testing.T) {
 	t.Parallel()
 	h := newFlowHarness()
-	h.defs.set(definition.KindWorkflow, "w", strings.Replace(workflowDoc, "  - {node: two, uses: process:second}\n",
-		"  - {node: two, uses: process:second}\n  - {node: three, uses: process:third}\n  - {node: four, uses: process:fourth}\n  - {node: five, uses: process:fifth}\n", 1))
+	h.defs.set(document.KindWorkflow, "w", strings.Replace(workflowDoc, "  - {node: two, uses: process:second, agent: a}\n",
+		"  - {node: two, uses: process:second, agent: a}\n  - {node: three, uses: process:third, agent: a}\n  - {node: four, uses: process:fourth, agent: a}\n  - {node: five, uses: process:fifth, agent: a}\n", 1))
 	for _, name := range []string{"third", "fourth", "fifth"} {
-		h.defs.set(definition.KindProcess, name, nodeProcess(name, "Work as "+name+"."))
+		h.defs.set(document.KindProcess, name, nodeProcess(name, "Work as "+name+"."))
 	}
 	h.script("Work as second.").turn = run.Turn{Status: run.Failed, Error: run.Fault(run.ClassRuntimeError, "boom"), Text: "second's text", Output: json.RawMessage(`{"from":"second"}`)}
 	h.runner.scripts["Work as third."] = &script{turn: run.Turn{Status: run.Failed, Error: run.Fault(run.ClassRateLimited, "slow down"), Text: "third's text"}}
@@ -776,11 +782,11 @@ func TestWorkflowJoinsOnTheNodesThatCompleted(t *testing.T) {
 		t.Fatalf("join node = %+v", join)
 	}
 	want := []map[string]any{
-		{"node": "one", "process": "first", "run": "run-2", "status": "completed", "output": map[string]any{"from": "first"}},
-		{"node": "two", "process": "second", "run": "run-3", "status": "failed", "class": "runtime_error"},
-		{"node": "three", "process": "third", "run": "run-4", "status": "failed", "class": "rate_limited"},
-		{"node": "four", "process": "fourth", "run": "run-5", "status": "interrupted", "class": "timeout"},
-		{"node": "five", "process": "fifth", "run": "run-6", "status": "completed", "output": map[string]any{"from": "fifth"}},
+		{"status": "completed", "output": map[string]any{"from": "first"}},
+		{"status": "failed", "class": "runtime_error"},
+		{"status": "failed", "class": "rate_limited"},
+		{"status": "interrupted", "class": "timeout"},
+		{"status": "completed", "output": map[string]any{"from": "fifth"}},
 	}
 	if entries := collectionOf(t, h.store.wait(t, "run-7")); !reflect.DeepEqual(entries, want) {
 		t.Fatalf("collection = %v", entries)
@@ -825,9 +831,9 @@ func TestWorkflowNoJoinWhenNoNodeCompleted(t *testing.T) {
 // threeNodes makes the workflow fan out to three nodes, the third a process
 // of its own.
 func threeNodes(h *flowHarness) {
-	h.defs.set(definition.KindWorkflow, "w", strings.Replace(workflowDoc, "  - {node: two, uses: process:second}\n",
-		"  - {node: two, uses: process:second}\n  - {node: three, uses: process:third}\n", 1))
-	h.defs.set(definition.KindProcess, "third", nodeProcess("third", "Work as third."))
+	h.defs.set(document.KindWorkflow, "w", strings.Replace(workflowDoc, "  - {node: two, uses: process:second, agent: a}\n",
+		"  - {node: two, uses: process:second, agent: a}\n  - {node: three, uses: process:third, agent: a}\n", 1))
+	h.defs.set(document.KindProcess, "third", nodeProcess("third", "Work as third."))
 	h.runner.scripts["Work as third."] = &script{turn: completed(`{"from":"third"}`, 0.3, 3)}
 }
 
@@ -884,9 +890,9 @@ func TestWorkflowJoinsWithoutNodesThatNeverStarted(t *testing.T) {
 		t.Fatalf("%d turns ran for nodes that never started", n)
 	}
 	want := []map[string]any{
-		{"node": "one", "process": "first", "run": "run-2", "status": "completed", "output": map[string]any{"from": "first"}},
-		{"node": "two", "process": "second", "status": "failed", "class": "internal"},
-		{"node": "three", "process": "third", "status": "failed", "class": "internal"},
+		{"status": "completed", "output": map[string]any{"from": "first"}},
+		{"status": "failed", "class": "internal"},
+		{"status": "failed", "class": "internal"},
 	}
 	if entries := collectionOf(t, h.store.wait(t, "run-4")); !reflect.DeepEqual(entries, want) {
 		t.Fatalf("collection = %v", entries)
@@ -937,8 +943,8 @@ func TestWorkflowJoinsWithoutANodeWhoseFinalRecordWasNotSaved(t *testing.T) {
 		t.Fatalf("node two's record = %+v, want its last unfinished one", kept)
 	}
 	want := []map[string]any{
-		{"node": "one", "process": "first", "run": "run-2", "status": "completed", "output": map[string]any{"from": "first"}},
-		{"node": "two", "process": "second", "run": "run-3", "status": "failed", "class": "internal"},
+		{"status": "completed", "output": map[string]any{"from": "first"}},
+		{"status": "failed", "class": "internal"},
 	}
 	if entries := collectionOf(t, h.store.wait(t, "run-4")); !reflect.DeepEqual(entries, want) {
 		t.Fatalf("collection = %v", entries)
@@ -1021,8 +1027,9 @@ func TestWorkflowNoJoinWhenTheFirstNodeCannotStart(t *testing.T) {
 	}
 }
 
-// The join receives the collection and the fixed values its own process
-// declares, and nothing from the caller: no param, no workflow value.
+// The join receives the collection, the fixed values its own process
+// declares and its prompt, and nothing from the caller: no param, no
+// workflow value.
 func TestWorkflowJoinReceivesNothingButTheCollection(t *testing.T) {
 	t.Parallel()
 	h := newFlowHarness()
@@ -1036,7 +1043,7 @@ func TestWorkflowJoinReceivesNothingButTheCollection(t *testing.T) {
 	for _, input := range join.Inputs {
 		names = append(names, input.Name+"<-"+input.Source)
 	}
-	if !reflect.DeepEqual(names, []string{"gathered<-workflow.collection", "guide<-file"}) || len(join.Request.Params) != 0 {
+	if !reflect.DeepEqual(names, []string{"gathered<-workflow.collection", "guide<-file", "prompt<-prompt"}) || len(join.Request.Params) != 0 {
 		t.Fatalf("join inputs %v, params %v", names, join.Request.Params)
 	}
 	if join.Parent == nil || join.Parent.Node != "merge" || join.Request.Continue != "" || join.Result.Session.Continues != "" {
@@ -1063,13 +1070,13 @@ func TestWorkflowJoinReceivesNothingButTheCollection(t *testing.T) {
 	}
 }
 
-// A caller cannot give a workflow an agent, limits or a run to continue:
-// the workflow is refused and no node starts.
+// A caller cannot give a workflow limits or a run to continue: the
+// workflow is refused and no node starts. No caller gives an agent: the
+// request has none (ADR-030 rule 5).
 func TestWorkflowRefusesCallerOverrides(t *testing.T) {
 	t.Parallel()
 	limit := 1.0
 	for name, request := range map[string]contract.CallRequest{
-		"agent":    {Agent: "a"},
 		"timeout":  {Timeout: "1m"},
 		"cost":     {MaxCostUSD: &limit},
 		"continue": {Continue: "run-0"},
@@ -1092,7 +1099,7 @@ func TestWorkflowRefusesCallerOverrides(t *testing.T) {
 func TestAWorkflowWithInPlaceWorkspaceSettingsRunsInTheWorktree(t *testing.T) {
 	t.Parallel()
 	h := newFlowHarness()
-	h.defs.docs[definition.KindWorkspace] = map[string]string{"workspace": "schema: agister.workspace/v1alpha1\nmode: in-place\n"}
+	h.defs.docs[document.KindWorkspace] = map[string]string{"workspace": "schema: agister.workspace/v1alpha1\nmode: in-place\n"}
 	id := h.submit(t, contract.CallRequest{})
 	record := h.store.wait(t, id)
 	if record.Result.Status != run.Completed || len(h.store.ids()) != 4 {
@@ -1113,25 +1120,28 @@ func TestAWorkflowWithInPlaceWorkspaceSettingsRunsInTheWorktree(t *testing.T) {
 func TestWorkflowWithAnInvalidJoinIsRefused(t *testing.T) {
 	t.Parallel()
 	h := newFlowHarness()
-	h.defs.set(definition.KindWorkflow, "w", strings.Replace(workflowDoc, "process:joiner", "process:first", 1))
+	h.defs.set(document.KindWorkflow, "w", strings.Replace(workflowDoc, "process:joiner", "process:first", 1))
 	id := h.submit(t, contract.CallRequest{})
 	record := h.store.wait(t, id)
 	if class(record) != run.ClassRefused || !strings.Contains(message(record), "cannot receive the collection") || len(h.store.ids()) != 1 {
 		t.Fatalf("result %+v, runs %v", record.Result, h.store.ids())
 	}
-	if len(record.Definitions) != 1 || record.Definitions[0].Kind != "workflows" || record.Definitions[0].SHA256 != sha(strings.Replace(workflowDoc, "process:joiner", "process:first", 1)) {
+	if len(record.Definitions) != 1 || record.Definitions[0].Kind != "workflows" || digestRecorded(record.Definitions[0]) != sha(strings.Replace(workflowDoc, "process:joiner", "process:first", 1)) {
 		t.Fatalf("definitions = %+v", record.Definitions)
 	}
 }
 
 // A process that takes the collection, called on its own, is refused: only
-// a join is given one.
+// a join is given one. On its own is as the call of a workflow of one
+// call, which alone runs a process (ADR-030 rules 5 and 6), so the refusal
+// is that workflow's.
 func TestCollectionInputOutsideAJoinIsRefused(t *testing.T) {
 	t.Parallel()
 	h := newFlowHarness()
-	id := h.submit(t, contract.CallRequest{Process: "joiner", Params: map[string]string{}})
+	h.defs.set(document.KindWorkflow, "alone", "schema: agister.workflow/v1alpha1\nname: alone\ntype: workflow\ncall: {node: work, uses: process:joiner, agent: a}\n")
+	id := h.submit(t, contract.CallRequest{Process: "alone", Params: map[string]string{}})
 	record := h.store.wait(t, id)
-	if class(record) != run.ClassRefused || !strings.Contains(message(record), "workflow.collection is given only to a workflow's join") {
+	if class(record) != run.ClassRefused || !strings.Contains(message(record), "process joiner takes the collection (input gathered), which only a join receives") {
 		t.Fatalf("result = %+v", record.Result)
 	}
 	if len(h.runner.turns("Join them.")) != 0 {
@@ -1272,7 +1282,7 @@ func TestWorkflowRecordLinksParentAndChildren(t *testing.T) {
 	if record.Process != "w" || record.Parent != nil || record.Agent != "" {
 		t.Fatalf("record = %+v", record)
 	}
-	if len(record.Definitions) != 1 || record.Definitions[0].Kind != "workflows" || record.Definitions[0].Name != "w" || record.Definitions[0].SHA256 != sha(workflowDoc) {
+	if len(record.Definitions) != 1 || record.Definitions[0].Kind != "workflows" || record.Definitions[0].Name != "w" || digestRecorded(record.Definitions[0]) != sha(workflowDoc) {
 		t.Fatalf("definitions = %+v", record.Definitions)
 	}
 	if len(record.Inputs) != 2 || record.Inputs[0].Name != "base" || !record.Inputs[1].Revision {
@@ -1312,19 +1322,19 @@ func TestCheckRejectsWorkflowsThatCannotRun(t *testing.T) {
 	}{
 		"valid": {workflow: workflowDoc},
 		"no fan-out node": {
-			workflow: strings.Replace(strings.Replace(workflowDoc, "  - {node: one, uses: process:first}\n  - {node: two, uses: process:second}\n", "", 1), "fan_out:\n", "fan_out: []\n", 1),
+			workflow: strings.Replace(strings.Replace(workflowDoc, "  - {node: one, uses: process:first, agent: a}\n  - {node: two, uses: process:second, agent: a}\n", "", 1), "fan_out:\n", "fan_out: []\n", 1),
 			want:     "workflow w: fan_out: must list at least one node",
 		},
 		"fan-out missing": {
-			workflow: strings.Replace(strings.Replace(workflowDoc, "  - {node: one, uses: process:first}\n  - {node: two, uses: process:second}\n", "", 1), "fan_out:\n", "", 1),
+			workflow: strings.Replace(strings.Replace(workflowDoc, "  - {node: one, uses: process:first, agent: a}\n  - {node: two, uses: process:second, agent: a}\n", "", 1), "fan_out:\n", "", 1),
 			want:     "workflow w: fan_out: is required",
 		},
 		"missing node name": {
-			workflow: strings.Replace(workflowDoc, "{node: two, uses: process:second}", "{uses: process:second}", 1),
+			workflow: strings.Replace(workflowDoc, "{node: two, uses: process:second, agent: a}", "{uses: process:second, agent: a}", 1),
 			want:     "workflow w: fan_out[1].node: is required",
 		},
 		"missing join node name": {
-			workflow: strings.Replace(workflowDoc, "{node: merge, uses: process:joiner}", "{uses: process:joiner}", 1),
+			workflow: strings.Replace(workflowDoc, "{node: merge, uses: process:joiner, agent: a}", "{uses: process:joiner, agent: a}", 1),
 			want:     "workflow w: join.node: is required",
 		},
 		"duplicate node name": {
@@ -1375,9 +1385,9 @@ func TestCheckRejectsWorkflowsThatCannotRun(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 			h := newFlowHarness()
-			h.defs.set(definition.KindWorkflow, "w", tc.workflow)
+			h.defs.set(document.KindWorkflow, "w", tc.workflow)
 			for process, text := range tc.process {
-				h.defs.set(definition.KindProcess, process, text)
+				h.defs.set(document.KindProcess, process, text)
 			}
 			checker := app.NewChecker(h.defs, okValidator{}, nodeRuntimes{runner: h.runner}, []string{"git.revision", "git.diff", "file", "param"})
 			report, err := checker.Check(context.Background(), false)
@@ -1426,7 +1436,7 @@ func TestShowWorkflow(t *testing.T) {
 	if _, err := inspection.ShowWorkflow(context.Background(), "nope"); err == nil {
 		t.Fatal("an unknown workflow was shown")
 	}
-	h.defs.set(definition.KindWorkflow, "w", strings.Replace(workflowDoc, "process:joiner", "process:first", 1))
+	h.defs.set(document.KindWorkflow, "w", strings.Replace(workflowDoc, "process:joiner", "process:first", 1))
 	if view, err := inspection.ShowWorkflow(context.Background(), "w"); err != nil || !strings.Contains(view.Refusal, "cannot receive the collection") {
 		t.Fatalf("view %+v, %v", view, err)
 	}
@@ -1541,5 +1551,191 @@ func TestWorkflowRefusesACancelCapturedBeforeItEnded(t *testing.T) {
 	handle.mu.Unlock()
 	if !reflect.DeepEqual(after, ended) || len(h.store.handle(t, id).kinds()) != eventsAtEnd {
 		t.Fatalf("the refused cancel changed the workflow: %+v", after.Result)
+	}
+}
+
+// withAgentB adds agent b to the harness: agent a but for its name and its
+// model, m2.
+func withAgentB(h *flowHarness) {
+	h.defs.set(document.KindAgent, "b", strings.NewReplacer(`name = "a"`, `name = "b"`, `model = "m1"`, `model = "m2"`).Replace(settingsDocs()[document.KindAgent]["a"]))
+}
+
+// boundTo is the workflow document with node, which names process, bound to
+// agent in place of agent a.
+func boundTo(document, node, process, agent string) string {
+	spec := "{node: " + node + ", uses: process:" + process
+	return strings.Replace(document, spec+", agent: a}", spec+", agent: "+agent+"}", 1)
+}
+
+// ADR-030 rule 5: a node's agent runs its call, in place of the agent its
+// process names, a fan-out node's and the join's alike; a node that names
+// none runs on its process's. Each node's run records the agent it ran on,
+// and its turn carries that agent's model.
+func TestANodesAgentRunsItsCall(t *testing.T) {
+	t.Parallel()
+	h := newFlowHarness()
+	withAgentB(h)
+	h.defs.set(document.KindWorkflow, "w", boundTo(boundTo(workflowDoc, "two", "second", "b"), "merge", "joiner", "b"))
+	id := h.submit(t, contract.CallRequest{})
+	record := h.store.wait(t, id)
+	if record.Result.Status != run.Completed || record.Result.Error != nil {
+		t.Fatalf("result = %+v", record.Result)
+	}
+	for _, node := range []struct{ name, run, instruction, agent, model string }{
+		{"one", "run-2", "Work as first.", "a", "m1"},
+		{"two", "run-3", "Work as second.", "b", "m2"},
+		{"merge", "run-4", "Join them.", "b", "m2"},
+	} {
+		child := h.store.wait(t, node.run)
+		if child.Parent == nil || child.Parent.Node != node.name || child.Agent != node.agent || child.Profile == nil || child.Profile.Model != node.model {
+			t.Errorf("node %s: run %s of %+v ran on agent %q, profile %+v; want agent %s, model %s", node.name, node.run, child.Parent, child.Agent, child.Profile, node.agent, node.model)
+		}
+		turns := h.runner.turns(node.instruction)
+		if len(turns) != 1 || turns[0].Model != node.model {
+			t.Errorf("node %s: turns %+v, want one on model %s", node.name, turns, node.model)
+		}
+	}
+}
+
+// ADR-030 rules 2 and 5: a process names no agent, and runs when a node
+// binds it to one, on that agent. A node that names no agent for it
+// refuses its workflow, which does not parse, before any node starts. On
+// its own it is not run (TestARunOfAProcessIsRefusedWithTheWorkflowsThatBindIt).
+func TestAProcessRunsOnlyAsANode(t *testing.T) {
+	t.Parallel()
+	t.Run("bound by a node", func(t *testing.T) {
+		t.Parallel()
+		h := newFlowHarness()
+		withAgentB(h)
+		h.defs.set(document.KindWorkflow, "w", boundTo(workflowDoc, "two", "second", "b"))
+		record := h.store.wait(t, h.submit(t, contract.CallRequest{}))
+		if record.Result.Status != run.Completed || record.Result.Error != nil {
+			t.Fatalf("result = %+v", record.Result)
+		}
+		if child, turns := h.store.wait(t, "run-3"), h.runner.turns("Work as second."); child.Process != "second" || child.Agent != "b" || len(turns) != 1 || turns[0].Model != "m2" {
+			t.Fatalf("node two: process %s on agent %q, turns %+v", child.Process, child.Agent, turns)
+		}
+	})
+	t.Run("bound by a node that names no agent", func(t *testing.T) {
+		t.Parallel()
+		h := newFlowHarness()
+		h.defs.set(document.KindWorkflow, "w", strings.Replace(workflowDoc, "{node: two, uses: process:second, agent: a}", "{node: two, uses: process:second}", 1))
+		record := h.store.wait(t, h.submit(t, contract.CallRequest{}))
+		const want = "workflow w (mem/workflows/w) is invalid:\n  fan_out[1].agent: is required"
+		if class(record) != run.ClassRefused || message(record) != want || len(h.store.ids()) != 1 {
+			t.Fatalf("result %+v, runs %v, want refused: %s", record.Result, h.store.ids(), want)
+		}
+	})
+}
+
+// ADR-030 rule 7: agister run runs a workflow. A process's name is
+// refused, as a run of its own, before anything of the process is resolved
+// and with no turn, naming the workflows that bind it, a fan-out one and a
+// workflow of one call alike, and no other; a process no workflow binds,
+// and a name that is neither, are refused as such. Through the whole
+// client, whose check finds what each workflow binds.
+func TestARunOfAProcessIsRefusedWithTheWorkflowsThatBindIt(t *testing.T) {
+	t.Parallel()
+	for name, c := range map[string]struct {
+		process string
+		want    string
+	}{
+		"bound by two workflows": {"p", "process p is not run on its own: agister run runs a workflow (ADR-030 rule 7); run one that binds it: p_a, panel"},
+		"bound by none":          {"lone", "process lone is not run on its own: agister run runs a workflow (ADR-030 rule 7), and no workflow binds it"},
+		"neither":                {"nothing", `no workflow "nothing": agister run runs a workflow (ADR-030 rule 7)`},
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			h := newHarness()
+			lone := strings.Replace(settingsDocs()[document.KindProcess]["p"], "name: p", "name: lone", 1)
+			h.defs.docs[document.KindProcess]["lone"] = lone
+			h.defs.docs[document.KindProcess]["q"] = strings.Replace(lone, "name: lone", "name: q", 1)
+			h.defs.docs[document.KindProcess]["joiner"] = joinProcess
+			h.defs.docs[document.KindWorkflow]["q_a"] = callOf("q_a", "q", "a")
+			h.defs.docs[document.KindWorkflow]["panel"] = `schema: agister.workflow/v1alpha1
+name: panel
+type: workflow
+fan_out:
+  - {node: one, uses: process:q, agent: a}
+  - {node: two, uses: process:p, agent: a}
+join: {node: merge, uses: process:joiner, agent: a}
+`
+			client := h.clientOn(h.defs)
+			if report, err := client.Check(context.Background(), false); err != nil || len(report.Problems) != 0 {
+				t.Fatalf("check: %v, %v", messages(report.Problems), err)
+			}
+			record := h.submit(t, client, contract.CallRequest{Process: c.process})
+			if class(record) != run.ClassRefused || message(record) != c.want || record.Process != c.process || record.Agent != "" {
+				t.Fatalf("record of %s on %q: %+v, want refused: %s", record.Process, record.Agent, record.Result, c.want)
+			}
+			if len(h.runner.calls()) != 0 || len(h.recorder.records()) != 1 {
+				t.Fatalf("turns %d, records %d, want the refused one alone", len(h.runner.calls()), len(h.recorder.records()))
+			}
+		})
+	}
+}
+
+// ADR-030 rule 8, ADR-015 rule 3: each binding of a process is resolved
+// before any node runs, so two nodes that bind one process to two agents
+// are two bindings. The second's agent is on a runtime whose one primitive
+// grants state-reaching host.read: the workflow is refused, with no
+// node's run and no turn, though the first's binding can run.
+func TestAProcessBoundTwiceIsCheckedOnEachAgent(t *testing.T) {
+	t.Parallel()
+	h := newFlowHarness()
+	h.defs.set(document.KindRuntime, "narrow", `schema: agister.runtime/v1alpha1
+name: narrow
+adapter: spy
+contract: spy/1
+efforts: [high]
+primitives:
+  select: one
+  items:
+    Bash: {grants: [process.execute, repository.read, host.read], verified: ["1."]}
+`)
+	h.defs.set(document.KindAgent, "c", strings.NewReplacer(`name = "a"`, `name = "c"`, `runtime = "rt"`, `runtime = "narrow"`).Replace(settingsDocs()[document.KindAgent]["a"]))
+	twice := strings.Replace(workflowDoc, "{node: two, uses: process:second, agent: a}", "{node: two, uses: process:first, agent: a}", 1)
+	h.defs.set(document.KindWorkflow, "w", boundTo(boundTo(twice, "one", "first", "a"), "two", "first", "c"))
+	record := h.store.wait(t, h.submit(t, contract.CallRequest{}))
+	const want = "workflow w uses process first: runtime narrow: cannot enforce the effective permissions: Bash grants state_reaching permissions: host.read"
+	if class(record) != run.ClassRefused || message(record) != want {
+		t.Fatalf("result %+v, want refused: %s", record.Result, want)
+	}
+	if ids := h.store.ids(); !reflect.DeepEqual(ids, []string{record.ID}) || record.Parent != nil {
+		t.Fatalf("runs %v, parent %+v, want the workflow's record alone", ids, record.Parent)
+	}
+	for _, instruction := range []string{"Work as first.", "Work as second.", "Join them."} {
+		if turns := h.runner.turns(instruction); len(turns) != 0 {
+			t.Errorf("%q: %d turns, want none", instruction, len(turns))
+		}
+	}
+}
+
+// workflow show shows each node as its binding runs (ADR-030 rule 7): on
+// the agent the node names.
+func TestShowWorkflowShowsEachNodeOnTheAgentItBinds(t *testing.T) {
+	t.Parallel()
+	h := newFlowHarness()
+	withAgentB(h)
+	h.defs.set(document.KindWorkflow, "w", boundTo(boundTo(workflowDoc, "two", "second", "b"), "merge", "joiner", "b"))
+	inspection := app.NewInspection(app.NewResolver(h.defs, nodeRuntimes{runner: h.runner}, okValidator{}, resolverCheckStub{}))
+	view, err := inspection.ShowWorkflow(context.Background(), "w")
+	if err != nil || view.Refusal != "" {
+		t.Fatalf("view %+v, %v", view, err)
+	}
+	shown := map[string]string{}
+	for _, node := range append(append([]contract.WorkflowNode(nil), view.FanOut...), view.Join) {
+		if node.Process.Refusal != "" || len(node.Process.Primitives) == 0 {
+			t.Errorf("node %s: refusal %q, plan %v", node.Name, node.Process.Refusal, node.Process.Primitives)
+		}
+		shown[node.Name] = node.Process.Name + " on " + node.Process.Agent
+	}
+	if want := map[string]string{"one": "first on a", "two": "second on b", "merge": "joiner on b"}; !reflect.DeepEqual(shown, want) {
+		t.Fatalf("nodes = %v, want %v", shown, want)
+	}
+	// On its own the process shows its work, and that it is not run so.
+	process, err := inspection.ShowProcess(context.Background(), "second")
+	if err != nil || process.Name != "second" || process.Agent != "" || !strings.Contains(process.Refusal, "names no agent") {
+		t.Fatalf("process show: %+v, %v", process, err)
 	}
 }

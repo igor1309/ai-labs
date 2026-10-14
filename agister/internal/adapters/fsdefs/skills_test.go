@@ -18,7 +18,7 @@ import (
 
 	"github.com/igor1309/ai-labs/agister/internal/adapters/fsdefs"
 	"github.com/igor1309/ai-labs/agister/internal/contract"
-	"github.com/igor1309/ai-labs/agister/internal/domain/definition"
+	"github.com/igor1309/ai-labs/agister/internal/domain/document"
 )
 
 // Settings give an agent its skills (ADR-021 rule 1).
@@ -45,32 +45,32 @@ func TestASkillIsAFolderOfALayer(t *testing.T) {
 	put(t, filepath.Join(global.Dir, "skills", "notes.md"), "x")
 	put(t, filepath.Join(global.Dir, "skills", "SKILL.md"), "x")
 
-	layered := fsdefs.Layered{Global: global, Project: &project}
-	if names, err := layered.List(ctx, definition.KindSkill); err != nil || !reflect.DeepEqual(names, []string{"review", "style", "tests"}) {
+	layered := fsdefs.Layered{Home: global, Repository: &project}
+	if names, err := layered.List(ctx, document.KindSkill); err != nil || !reflect.DeepEqual(names, []string{"review", "style", "tests"}) {
 		t.Fatalf("list = %v, %v", names, err)
 	}
-	if names, err := global.List(ctx, definition.KindSkill); err != nil || !reflect.DeepEqual(names, []string{"review", "style"}) {
+	if names, err := global.List(ctx, document.KindSkill); err != nil || !reflect.DeepEqual(names, []string{"review", "style"}) {
 		t.Fatalf("home's = %v, %v", names, err)
 	}
-	review, err := layered.Read(ctx, definition.KindSkill, "review")
-	if err != nil || string(review.Bytes) != skillText("review") || review.Source.Path != projectReview || !review.Source.Project || review.Source.Overrides != homeReview || review.Source.SHA256 == "" {
+	review, err := layered.Read(ctx, document.KindSkill, "review")
+	if err != nil || string(review.Bytes) != skillText("review") || review.Source.Path != projectReview || review.Source.Layer != document.LayerRepository || replaced(review.Source) != homeReview || review.Source.SHA256 == "" {
 		t.Fatalf("review = %+v, %v", review.Source, err)
 	}
-	style, err := layered.Read(ctx, definition.KindSkill, "style")
-	if err != nil || string(style.Bytes) != skillText("style") || style.Source.Path != homeStyle || style.Source.Project || style.Source.Overrides != "" {
+	style, err := layered.Read(ctx, document.KindSkill, "style")
+	if err != nil || string(style.Bytes) != skillText("style") || style.Source.Path != homeStyle || style.Source.Layer == document.LayerRepository || replaced(style.Source) != "" {
 		t.Fatalf("style = %+v, %v", style.Source, err)
 	}
-	tests, err := layered.Read(ctx, definition.KindSkill, "tests")
-	if err != nil || tests.Source.Path != projectTests || !tests.Source.Project || tests.Source.Overrides != "" {
+	tests, err := layered.Read(ctx, document.KindSkill, "tests")
+	if err != nil || tests.Source.Path != projectTests || tests.Source.Layer != document.LayerRepository || replaced(tests.Source) != "" {
 		t.Fatalf("tests = %+v, %v", tests.Source, err)
 	}
 	// Outside a project, home's is the skill.
-	if doc, err := (fsdefs.Layered{Global: global}).Read(ctx, definition.KindSkill, "review"); err != nil || string(doc.Bytes) != "home's "+skillText("review") || doc.Source.Project {
+	if doc, err := (fsdefs.Layered{Home: global}).Read(ctx, document.KindSkill, "review"); err != nil || string(doc.Bytes) != "home's "+skillText("review") || doc.Source.Layer == document.LayerRepository {
 		t.Fatalf("home's review = %+v, %v", doc.Source, err)
 	}
 	want := "not found (expected " + filepath.Join(project.Dir, "skills", "git", "SKILL.md") + " or " + filepath.Join(global.Dir, "skills", "git", "SKILL.md") + ")"
 	for _, name := range []string{"git", "notes"} {
-		if _, err := layered.Read(ctx, definition.KindSkill, name); err == nil || err.Error() != strings.ReplaceAll(want, "git", name) {
+		if _, err := layered.Read(ctx, document.KindSkill, name); err == nil || err.Error() != strings.ReplaceAll(want, "git", name) {
 			t.Fatalf("%s = %v, want %q", name, err, want)
 		}
 	}
@@ -112,11 +112,11 @@ func TestABrokenSkillIsListedAndNotRead(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	names, err := store.List(ctx, definition.KindSkill)
+	names, err := store.List(ctx, document.KindSkill)
 	if want := []string{"alias", "dangling", "empty", "good", "linked", "lowercase", "nested", "scripted", "second"}; err != nil || !reflect.DeepEqual(names, want) {
 		t.Fatalf("list = %v, %v", names, err)
 	}
-	if doc, err := store.Read(ctx, definition.KindSkill, "good"); err != nil || string(doc.Bytes) != skillText("good") {
+	if doc, err := store.Read(ctx, document.KindSkill, "good"); err != nil || string(doc.Bytes) != skillText("good") {
 		t.Fatalf("good = %+v, %v", doc.Source, err)
 	}
 	wants := map[string]string{
@@ -130,12 +130,12 @@ func TestABrokenSkillIsListedAndNotRead(t *testing.T) {
 		"alias":     folder("alias") + " is a symbolic link: a skill is a folder holding its SKILL.md",
 	}
 	for name, want := range wants {
-		doc, err := store.Read(ctx, definition.KindSkill, name)
+		doc, err := store.Read(ctx, document.KindSkill, name)
 		if err == nil || err.Error() != want {
 			t.Errorf("%s = %v, want %q", name, err, want)
 		}
 		// What is broken is still named: a problem of that skill.
-		if doc.Source.Kind != definition.KindSkill || doc.Source.Name != name || doc.Source.Path != file(name) || doc.Bytes != nil {
+		if doc.Source.Kind != document.KindSkill || doc.Source.Name != name || doc.Source.Path != file(name) || doc.Bytes != nil {
 			t.Errorf("%s: document = %+v, %q", name, doc.Source, doc.Bytes)
 		}
 	}
@@ -168,14 +168,14 @@ func TestASkillFileThatIsNotRegularIsNotRead(t *testing.T) {
 		t.Fatalf("fixture = %v, %v: not a socket", info, err)
 	}
 
-	if names, err := store.List(ctx, definition.KindSkill); err != nil || !reflect.DeepEqual(names, []string{"special"}) {
+	if names, err := store.List(ctx, document.KindSkill); err != nil || !reflect.DeepEqual(names, []string{"special"}) {
 		t.Fatalf("list = %v, %v", names, err)
 	}
-	doc, err := store.Read(ctx, definition.KindSkill, "special")
+	doc, err := store.Read(ctx, document.KindSkill, "special")
 	if want := file + " is not a regular file"; err == nil || err.Error() != want {
 		t.Fatalf("err = %v, want %q", err, want)
 	}
-	if doc.Source.Kind != definition.KindSkill || doc.Source.Name != "special" || doc.Source.Path != file || doc.Bytes != nil {
+	if doc.Source.Kind != document.KindSkill || doc.Source.Name != "special" || doc.Source.Path != file || doc.Bytes != nil {
 		t.Fatalf("document = %+v, %q", doc.Source, doc.Bytes)
 	}
 }
@@ -267,7 +267,7 @@ func TestASkillFileReplacedByAFIFOIsNotWaitedOn(t *testing.T) {
 	})
 
 	type read struct {
-		doc definition.Document
+		doc document.Document
 		err error
 	}
 	done := make(chan read, 1)
@@ -275,7 +275,7 @@ func TestASkillFileReplacedByAFIFOIsNotWaitedOn(t *testing.T) {
 	workers.Add(1)
 	go func() {
 		defer workers.Done()
-		doc, err := store.Read(ctx, definition.KindSkill, "review")
+		doc, err := store.Read(ctx, document.KindSkill, "review")
 		done <- read{doc, err}
 	}()
 	select {
@@ -286,7 +286,7 @@ func TestASkillFileReplacedByAFIFOIsNotWaitedOn(t *testing.T) {
 		if want := file + " is not a regular file"; got.err == nil || got.err.Error() != want {
 			t.Fatalf("err = %v, want %q", got.err, want)
 		}
-		if got.doc.Source.Kind != definition.KindSkill || got.doc.Source.Name != "review" || got.doc.Source.Path != file || got.doc.Bytes != nil {
+		if got.doc.Source.Kind != document.KindSkill || got.doc.Source.Name != "review" || got.doc.Source.Path != file || got.doc.Bytes != nil {
 			t.Fatalf("document = %+v, %q", got.doc.Source, got.doc.Bytes)
 		}
 	case <-time.After(5 * time.Second):
@@ -302,11 +302,11 @@ func TestAProjectsBrokenSkillDoesNotFallBackToHomes(t *testing.T) {
 	global, project := fsdefs.Store{Dir: t.TempDir()}, fsdefs.Store{Dir: t.TempDir()}
 	put(t, filepath.Join(global.Dir, "skills", "review", "SKILL.md"), skillText("review"))
 	put(t, filepath.Join(project.Dir, "skills", "review", "notes.md"), "x")
-	doc, err := fsdefs.Layered{Global: global, Project: &project}.Read(ctx, definition.KindSkill, "review")
+	doc, err := fsdefs.Layered{Home: global, Repository: &project}.Read(ctx, document.KindSkill, "review")
 	if want := filepath.Join(project.Dir, "skills", "review") + " has no SKILL.md"; err == nil || err.Error() != want {
 		t.Fatalf("err = %v, want %q", err, want)
 	}
-	if !doc.Source.Project || doc.Bytes != nil {
+	if doc.Source.Layer != document.LayerRepository || doc.Bytes != nil {
 		t.Fatalf("document = %+v, %q", doc.Source, doc.Bytes)
 	}
 }
@@ -318,13 +318,13 @@ func TestASkillFolderWithAnInvalidNameIsListed(t *testing.T) {
 	ctx := context.Background()
 	store := fsdefs.Store{Dir: t.TempDir()}
 	put(t, filepath.Join(store.Dir, "skills", "Code Review", "SKILL.md"), skillText("Code Review"))
-	if names, err := store.List(ctx, definition.KindSkill); err != nil || !reflect.DeepEqual(names, []string{"Code Review"}) {
+	if names, err := store.List(ctx, document.KindSkill); err != nil || !reflect.DeepEqual(names, []string{"Code Review"}) {
 		t.Fatalf("list = %v, %v", names, err)
 	}
-	if _, err := store.Read(ctx, definition.KindSkill, "Code Review"); err == nil || err.Error() != `invalid name "Code Review"` {
+	if _, err := store.Read(ctx, document.KindSkill, "Code Review"); err == nil || err.Error() != `invalid name "Code Review"` {
 		t.Fatalf("read = %v", err)
 	}
-	if _, err := store.Read(ctx, definition.KindSkill, "../agents"); err == nil || err.Error() != `invalid name "../agents"` {
+	if _, err := store.Read(ctx, document.KindSkill, "../agents"); err == nil || err.Error() != `invalid name "../agents"` {
 		t.Fatalf("read = %v", err)
 	}
 }
@@ -345,7 +345,7 @@ func TestHomesSkillsAreItsDocuments(t *testing.T) {
 	if err != nil || len(docs) != 1 || docs[0].Source.Path != review || string(docs[0].Bytes) != skillText("review") {
 		t.Fatalf("documents = %+v, %v", docs, err)
 	}
-	if len(unreadable) != 1 || unreadable[0].Kind != definition.KindSkill || unreadable[0].Name != "broken" || unreadable[0].Path != broken {
+	if len(unreadable) != 1 || unreadable[0].Kind != document.KindSkill || unreadable[0].Name != "broken" || unreadable[0].Path != broken {
 		t.Fatalf("unreadable = %+v", unreadable)
 	}
 	staged, remove, err := home.StagingIn(t.TempDir()).Stage(ctx, docs)
@@ -353,13 +353,13 @@ func TestHomesSkillsAreItsDocuments(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer remove()
-	if names, err := staged.List(ctx, definition.KindSkill); err != nil || !reflect.DeepEqual(names, []string{"broken", "review"}) {
+	if names, err := staged.List(ctx, document.KindSkill); err != nil || !reflect.DeepEqual(names, []string{"broken", "review"}) {
 		t.Fatalf("staged list = %v, %v", names, err)
 	}
-	if doc, err := staged.Read(ctx, definition.KindSkill, "review"); err != nil || string(doc.Bytes) != skillText("review") || doc.Source.Path != review {
+	if doc, err := staged.Read(ctx, document.KindSkill, "review"); err != nil || string(doc.Bytes) != skillText("review") || doc.Source.Path != review {
 		t.Fatalf("staged review = %+v, %v", doc.Source, err)
 	}
-	if _, err := staged.Read(ctx, definition.KindSkill, "broken"); err == nil || !strings.Contains(err.Error(), "holds extra.md beside SKILL.md") {
+	if _, err := staged.Read(ctx, document.KindSkill, "broken"); err == nil || !strings.Contains(err.Error(), "holds extra.md beside SKILL.md") {
 		t.Fatalf("staged broken = %v", err)
 	}
 }
@@ -473,13 +473,13 @@ func TestAStagedSkillReadsAsHomeWillHoldIt(t *testing.T) {
 			home := fsdefs.Store{Dir: t.TempDir()}
 			folder := filepath.Join(home.Dir, "skills", "review")
 			c.make(t, folder)
-			doc := definition.Document{Source: definition.Source{Kind: definition.KindSkill, Name: "review"}, Bytes: []byte(skillText("review"))}
-			staged, remove, err := home.StagingIn(t.TempDir()).Stage(ctx, []definition.Document{doc})
+			doc := document.Document{Source: document.Source{Kind: document.KindSkill, Name: "review"}, Bytes: []byte(skillText("review"))}
+			staged, remove, err := home.StagingIn(t.TempDir()).Stage(ctx, []document.Document{doc})
 			if err != nil {
 				t.Fatal(err)
 			}
 			defer remove()
-			got, err := staged.Read(ctx, definition.KindSkill, "review")
+			got, err := staged.Read(ctx, document.KindSkill, "review")
 			if c.want == "" {
 				if err != nil || string(got.Bytes) != skillText("review") || got.Source.Path != filepath.Join(folder, "SKILL.md") {
 					t.Fatalf("staged = %+v, %v", got.Source, err)
@@ -503,14 +503,14 @@ func TestRemovingASkillRemovesItsEmptiedFolder(t *testing.T) {
 	ctx := context.Background()
 	store := fsdefs.Store{Dir: t.TempDir()}
 	for _, name := range []string{"review", "style"} {
-		if err := store.Put(ctx, definition.KindSkill, name, []byte(skillText(name))); err != nil {
+		if err := store.Put(ctx, document.KindSkill, name, []byte(skillText(name))); err != nil {
 			t.Fatal(err)
 		}
 	}
 	put(t, filepath.Join(store.Dir, "skills", "style", "notes.md"), "mine")
 	for range 2 {
 		for _, name := range []string{"review", "style"} {
-			if err := store.Remove(ctx, definition.KindSkill, name); err != nil {
+			if err := store.Remove(ctx, document.KindSkill, name); err != nil {
 				t.Fatal(err)
 			}
 		}
@@ -560,7 +560,7 @@ func TestRemovingASkillThroughALinkedFolderIsRefused(t *testing.T) {
 			}
 
 			want := link + c.want
-			if err := store.Remove(ctx, definition.KindSkill, "review"); err == nil || err.Error() != want {
+			if err := store.Remove(ctx, document.KindSkill, "review"); err == nil || err.Error() != want {
 				t.Fatalf("remove = %v, want %q", err, want)
 			}
 			if data, err := os.ReadFile(kept); err != nil || string(data) != skillText("theirs") {
@@ -573,7 +573,7 @@ func TestRemovingASkillThroughALinkedFolderIsRefused(t *testing.T) {
 				t.Fatalf("%s = %v, %v: want the link left", link, info, err)
 			}
 			// Nor is what the link reaches taken for the skill there.
-			if path, digest, err := store.Current(ctx, definition.KindSkill, "review"); err == nil || err.Error() != want {
+			if path, digest, err := store.Current(ctx, document.KindSkill, "review"); err == nil || err.Error() != want {
 				t.Fatalf("current = %q, %q, %v, want %q", path, digest, err, want)
 			}
 		})
@@ -631,7 +631,7 @@ func TestTheCurrentSkillIsNotWaitedOnOrFollowed(t *testing.T) {
 		workers.Add(1)
 		go func() {
 			defer workers.Done()
-			path, digest, err := store.Current(ctx, definition.KindSkill, name)
+			path, digest, err := store.Current(ctx, document.KindSkill, name)
 			done <- current{path, digest, err}
 		}()
 		select {
@@ -684,7 +684,7 @@ func TestAnEmptySkillFolderIsLeftByAFailedWriteAndRemoved(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	if err := store.Put(ctx, definition.KindSkill, "whole", []byte(skillText("whole"))); err != nil {
+	if err := store.Put(ctx, document.KindSkill, "whole", []byte(skillText("whole"))); err != nil {
 		t.Fatal(err)
 	}
 	put(t, filepath.Join(skills, "notes", "notes.md"), "mine")
@@ -698,21 +698,21 @@ func TestAnEmptySkillFolderIsLeftByAFailedWriteAndRemoved(t *testing.T) {
 		"linked":  "",
 		"missing": "",
 	} {
-		if left, err := store.Left(ctx, definition.KindSkill, name); err != nil || left != want {
+		if left, err := store.Left(ctx, document.KindSkill, name); err != nil || left != want {
 			t.Errorf("skill %s: left %q, %v, want %q", name, left, err, want)
 		}
 	}
-	if left, err := store.Left(ctx, definition.KindPrompt, "empty"); err != nil || left != "" {
+	if left, err := store.Left(ctx, document.KindPrompt, "empty"); err != nil || left != "" {
 		t.Errorf("prompt empty: left %q, %v, want none", left, err)
 	}
 
-	if err := store.Remove(ctx, definition.KindSkill, "empty"); err != nil {
+	if err := store.Remove(ctx, document.KindSkill, "empty"); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := os.Lstat(filepath.Join(skills, "empty")); !os.IsNotExist(err) {
 		t.Fatalf("the empty folder is left: %v", err)
 	}
-	if left, err := store.Left(ctx, definition.KindSkill, "empty"); err != nil || left != "" {
+	if left, err := store.Left(ctx, document.KindSkill, "empty"); err != nil || left != "" {
 		t.Fatalf("after Remove: left %q, %v, want none", left, err)
 	}
 }
@@ -725,7 +725,7 @@ func TestRemovingFromAnAbsentFolderIsNoError(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
 	store := fsdefs.Store{Dir: t.TempDir()}
-	for _, kind := range []definition.Kind{definition.KindSkill, definition.KindPrompt} {
+	for _, kind := range []document.Kind{document.KindSkill, document.KindPrompt} {
 		if err := store.Remove(ctx, kind, "review"); err != nil {
 			t.Errorf("%s: %v", kind, err)
 		}

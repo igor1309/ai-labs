@@ -12,7 +12,7 @@ import (
 
 	"github.com/igor1309/ai-labs/agister/internal/app"
 	"github.com/igor1309/ai-labs/agister/internal/contract"
-	"github.com/igor1309/ai-labs/agister/internal/domain/definition"
+	"github.com/igor1309/ai-labs/agister/internal/domain/document"
 	"github.com/igor1309/ai-labs/agister/internal/domain/run"
 )
 
@@ -23,21 +23,25 @@ const verifyBlock = `verify:
   instruction: The verification command failed. Fix the cause, not the check.
 `
 
-// verifying gives the harness's process p the verify block, a service
-// ceiling of 3 attempts, a resumable agent a and a fresh-only agent f.
+// verifying gives the harness's process p the verify block and a session
+// that may be resumed, and the service a ceiling of 3 attempts.
 func verifying(h *harness) {
 	cleanly(h)
-	h.defs.docs[definition.KindProcess]["p"] += verifyBlock
-	h.defs.docs[definition.KindService]["service"] += "max_verify_attempts = 3\n"
-	h.defs.docs[definition.KindAgent]["a"] += "session = \"resumable\"\n"
-	h.defs.docs[definition.KindAgent]["f"] = strings.Replace(settingsDocs()[definition.KindAgent]["a"], `name = "a"`, `name = "f"`, 1)
+	h.defs.docs[document.KindProcess]["p"] += "session: resumable\n" + verifyBlock
+	h.defs.docs[document.KindService]["service"] += "max_verify_attempts = 3\n"
+}
+
+// freshOnly has the harness's process p, as verifying left it, say its
+// calls' session may not be resumed.
+func freshOnly(h *harness) {
+	h.defs.docs[document.KindProcess]["p"] = strings.Replace(h.defs.docs[document.KindProcess]["p"], "session: resumable\n", "session: fresh-only\n", 1)
 }
 
 // cleanly has the harness's process p need a clean worktree: a fresh call
 // starts from HEAD's content exactly (ADR-025 rule 3), as a process that
 // declares verify must.
 func cleanly(h *harness) {
-	h.defs.docs[definition.KindProcess]["p"] = strings.Replace(h.defs.docs[definition.KindProcess]["p"],
+	h.defs.docs[document.KindProcess]["p"] = strings.Replace(h.defs.docs[document.KindProcess]["p"],
 		"  revision: candidate_revision\n", "  revision: candidate_revision\n  clean: true\n", 1)
 }
 
@@ -93,7 +97,7 @@ func TestAFailedRunIsRepairedInTheCallsSession(t *testing.T) {
 	h.clock = &steppingClock{now: time.Date(2026, 9, 28, 12, 0, 0, 0, time.UTC)}
 	h.calls = h.callsOn(h.defs)
 	verifying(h)
-	h.defs.docs[definition.KindPolicy]["pol"] += "max_cost_usd: 2\n"
+	h.defs.docs[document.KindProcess]["p"] += "max_cost_usd: 2\n"
 	cost := 0.5
 	h.runner.turn.CostUSD = &cost
 	h.commands.exits = []int{1}
@@ -141,12 +145,12 @@ func TestARepairCostsWhatItAddedToTheCallsSession(t *testing.T) {
 			t.Parallel()
 			h := newHarness()
 			verifying(h)
-			h.defs.docs[definition.KindPolicy]["pol"] += c.limit
+			h.defs.docs[document.KindProcess]["p"] += c.limit
 			session, request := "prov-1", contract.CallRequest{}
 			if c.continues {
 				session, request.Continue = "prov-0", "run-0"
 				finished := time.Date(2026, 9, 28, 11, 0, 0, 0, time.UTC)
-				h.runs.records["run-0"] = run.Record{ID: "run-0", Agent: "a", Runtime: &run.Runtime{Adapter: "spy"}, FinishedAt: &finished,
+				h.runs.records["run-0"] = run.Record{ID: "run-0", Agent: "a", Call: onA(), Runtime: &run.Runtime{Adapter: "spy"}, FinishedAt: &finished,
 					InPlace: &run.InPlace{Dir: "/repo", Worktree: "/repo", RepositoryIdentity: "/repo", Revision: "sha-HEAD", Content: "tree"},
 					Turn:    &run.Turn{ProviderSessionID: "prov-0", Session: &run.SessionTotals{CostUSD: usd(7.75)}},
 					Result:  &run.Result{Status: run.Completed, Session: &run.Session{ProviderSessionID: "prov-0"}}}
@@ -267,7 +271,7 @@ func TestAFailedVerificationKeepsTheLatestValidOutput(t *testing.T) {
 			t.Parallel()
 			h := newHarness()
 			verifying(h)
-			h.defs.docs[definition.KindProcess]["p"] = strings.Replace(h.defs.docs[definition.KindProcess]["p"], "max_attempts: 3", "max_attempts: 2", 1)
+			h.defs.docs[document.KindProcess]["p"] = strings.Replace(h.defs.docs[document.KindProcess]["p"], "max_attempts: 3", "max_attempts: 2", 1)
 			h.runner.turns = []run.Turn{h.runner.turn, c.repair}
 			h.commands.exits = []int{1, 1}
 			changingEachTurn(h)
@@ -283,8 +287,9 @@ func TestAFailedVerificationKeepsTheLatestValidOutput(t *testing.T) {
 }
 
 // Rule 6: a repair turn resumes the call's session, so more than one
-// attempt with an agent or a runtime that cannot continue sessions refuses
-// the call before its first turn, and the refusal is recorded.
+// attempt of a process or on a runtime that cannot continue sessions
+// refuses the call before its first turn, and the refusal is recorded. The
+// process says whether it can, where its agent did (ADR-030 rule 3).
 func TestVerifyRepairsWithoutResumableSessionsRefuseTheCall(t *testing.T) {
 	t.Parallel()
 	cases := []struct {
@@ -293,10 +298,10 @@ func TestVerifyRepairsWithoutResumableSessionsRefuseTheCall(t *testing.T) {
 		request contract.CallRequest
 		reason  string
 	}{
-		{"fresh-only agent", nil, contract.CallRequest{Agent: "f"},
-			"process p: verify.max_attempts 3 repairs in the call's session, but agent f is fresh-only"},
+		{"fresh-only process", freshOnly, contract.CallRequest{},
+			"workflow p_a uses process p: verify.max_attempts 3 repairs in the call's session, but process p is fresh-only"},
 		{"runtime without resume", func(h *harness) { h.runner.identity.Resume = false }, contract.CallRequest{},
-			"process p: verify.max_attempts 3 repairs in the call's session, but runtime rt cannot resume sessions"},
+			"workflow p_a uses process p: verify.max_attempts 3 repairs in the call's session, but runtime rt cannot resume sessions"},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
@@ -327,12 +332,12 @@ func TestRecordedVerifyIsTheResolvedOneUnderTheProcessDigest(t *testing.T) {
 	t.Parallel()
 	h := newHarness()
 	verifying(h)
-	resolved := h.defs.docs[definition.KindProcess]["p"]
+	resolved := h.defs.docs[document.KindProcess]["p"]
 	h.recorder.hold = make(chan struct{})
-	if _, err := h.calls.Submit(context.Background(), contract.CallRequest{Process: "p", Cwd: "/repo"}); err != nil {
+	if _, err := h.calls.Submit(context.Background(), contract.CallRequest{Process: "p_a", Cwd: "/repo"}); err != nil {
 		t.Fatal(err)
 	}
-	h.defs.set(definition.KindProcess, "p", strings.Replace(resolved, "go test ./...", "true", 1))
+	h.defs.set(document.KindProcess, "p", strings.Replace(resolved, "go test ./...", "true", 1))
 	close(h.recorder.hold)
 	record := h.recorder.wait(t)
 	if class(record) != "" {
@@ -344,8 +349,8 @@ func TestRecordedVerifyIsTheResolvedOneUnderTheProcessDigest(t *testing.T) {
 	}
 	var digest string
 	for _, source := range record.Definitions {
-		if source.Kind == string(definition.KindProcess) {
-			digest = source.SHA256
+		if source.Kind == string(document.KindProcess) {
+			digest = digestRecorded(source)
 		}
 	}
 	// The digest is of the document with the verify block as resolved; a
@@ -361,13 +366,13 @@ func TestShowProcessShowsVerifyAndItsWarning(t *testing.T) {
 	t.Parallel()
 	h := newHarness()
 	inspection := app.NewInspection(app.NewResolver(h.defs, struct{ app.ResolverIdentities }{h.runtimes}, h.validator, resolverCheckStub{}))
-	view, err := inspection.ShowProcess(context.Background(), "p", "")
+	view, err := callShown(inspection, "p_a")
 	if err != nil || view.Verify != nil || len(view.Warnings) != 0 {
 		t.Fatalf("without verify: %+v, %v, %v", view.Verify, view.Warnings, err)
 	}
 
 	verifying(h)
-	view, err = inspection.ShowProcess(context.Background(), "p", "")
+	view, err = callShown(inspection, "p_a")
 	want := contract.Verify{Command: "go test ./...", Timeout: 10 * time.Minute, MaxAttempts: 3, Instruction: "The verification command failed. Fix the cause, not the check."}
 	if err != nil || view.Verify == nil || *view.Verify != want || view.Refusal != "" {
 		t.Fatalf("verify = %+v, refusal %q, %v", view.Verify, view.Refusal, err)
@@ -377,7 +382,8 @@ func TestShowProcessShowsVerifyAndItsWarning(t *testing.T) {
 		t.Fatalf("warnings = %q", view.Warnings)
 	}
 
-	view, err = inspection.ShowProcess(context.Background(), "p", "f")
+	freshOnly(h)
+	view, err = callShown(inspection, "p_a")
 	if err != nil || view.Verify == nil || view.Refusal == "" || len(view.Warnings) != 0 {
 		t.Fatalf("refused: verify %+v, refusal %q, warnings %q, %v", view.Verify, view.Refusal, view.Warnings, err)
 	}
@@ -389,8 +395,9 @@ func TestCheckWarnsOncePerProcessWithVerify(t *testing.T) {
 	t.Parallel()
 	h := newHarness()
 	verifying(h)
-	h.defs.docs[definition.KindProcess]["q"] = strings.Replace(settingsDocs()[definition.KindProcess]["p"], "name: p", "name: q", 1)
-	h.defs.docs[definition.KindProcess]["r"] = strings.Replace(h.defs.docs[definition.KindProcess]["p"], "name: p", "name: r", 1)
+	h.defs.docs[document.KindProcess]["q"] = strings.Replace(settingsDocs()[document.KindProcess]["p"], "name: p", "name: q", 1)
+	h.defs.docs[document.KindProcess]["r"] = strings.Replace(h.defs.docs[document.KindProcess]["p"], "name: p", "name: r", 1)
+	h.bind("r_a", "r", "a")
 	checker := app.NewChecker(h.defs, h.validator, h.runtimes, []string{"git.revision", "git.diff"})
 	report, err := checker.Check(context.Background(), false)
 	if err != nil || len(messages(report.Problems)) != 0 {
@@ -402,9 +409,11 @@ func TestCheckWarnsOncePerProcessWithVerify(t *testing.T) {
 
 	h.runner.identity.Resume = false
 	report, _ = checker.Check(context.Background(), true)
+	// Each is the problem of the workflow whose node binds the process to
+	// an agent on that runtime (ADR-030 rule 8).
 	want := []string{
-		"process p: verify.max_attempts 3 repairs in the call's session, but runtime rt cannot resume sessions",
-		"process r: verify.max_attempts 3 repairs in the call's session, but runtime rt cannot resume sessions",
+		"workflow p_a: call node p: process p: verify.max_attempts 3 repairs in the call's session, but runtime rt cannot resume sessions",
+		"workflow r_a: call node work: process r: verify.max_attempts 3 repairs in the call's session, but runtime rt cannot resume sessions",
 	}
 	if !reflect.DeepEqual(messages(report.Problems), want) {
 		t.Fatalf("problems = %q", messages(report.Problems))

@@ -31,11 +31,12 @@ import (
 var assets embed.FS
 
 // The .agister entries that hold settings files; runs and logs are not
-// settings, nor is workspace.yaml, obsolete (ADR-025). Skills are settings
-// too, but not read here: /api/skills inventories them and reads each
-// one's SKILL.md alone (ADR-011 rule 9, D-16).
+// settings, nor is workspace.yaml, obsolete (ADR-025); there are no
+// policies (ADR-030), and the store refuses a layer that holds one. Skills
+// are settings too, but not read here: /api/skills inventories them and
+// reads each one's SKILL.md alone (ADR-011 rule 9, D-16).
 var settingsEntries = map[string]bool{
-	"agents": true, "policies": true, "processes": true, "runtimes": true,
+	"agents": true, "processes": true, "runtimes": true,
 	"schemas": true, "verifies": true, "prompts": true, "briefs": true,
 	"workflows": true, "service.toml": true,
 }
@@ -61,14 +62,15 @@ type Observe func(runsDir string) RunObserver
 
 // Handler serves the page and its endpoints. agisterHome is Agister's home
 // (what ~ names); choose asks the user for a folder; observe reads the
-// runs' owners; homes are where the home skill folders are.
-func Handler(agisterHome string, choose Choose, observe Observe, homes SkillHomes) http.Handler {
-	return handler(agisterHome, choose, observe, homes, os.ReadFile)
+// runs' owners; homes are where the home skill folders are; settings
+// selects and reads the settings layers as the binary does.
+func Handler(agisterHome string, choose Choose, observe Observe, homes SkillHomes, settings SelectSettings) http.Handler {
+	return handler(agisterHome, choose, observe, homes, settings, os.ReadFile)
 }
 
 // handler is Handler reading every settings file and SKILL.md with read,
 // the only file contents its settings and skills endpoints read.
-func handler(agisterHome string, choose Choose, observe Observe, homes SkillHomes, read func(string) ([]byte, error)) http.Handler {
+func handler(agisterHome string, choose Choose, observe Observe, homes SkillHomes, selectLayers SelectSettings, read func(string) ([]byte, error)) http.Handler {
 	mux := http.NewServeMux()
 	var dialog sync.Mutex
 	mux.Handle("GET /", http.FileServerFS(assets))
@@ -92,19 +94,29 @@ func handler(agisterHome string, choose Choose, observe Observe, homes SkillHome
 	})
 	mux.HandleFunc("GET /api/settings", func(w http.ResponseWriter, r *http.Request) {
 		path := r.URL.Query().Get("path")
-		dir := filepath.Join(path, ".agister")
-		if path == Home {
-			dir = agisterHome
+		texts := map[string]string{}
+		selected, err := selectSettings(path, agisterHome, selectLayers, pageSettingsReader(read, texts))
+		if err != nil {
+			reply(w, nil, err)
+			return
 		}
-		files, err := settings(dir, read)
-		// home: dir is Agister's home, asked as ~ or as the folder holding
-		// it (the user's home), so the page shows it as ~.
-		home := filepath.Clean(dir) == filepath.Clean(agisterHome)
+		dir := selected.layers[len(selected.layers)-1].Dir
+		if !isDir(dir) {
+			reply(w, nil, notFound("no .agister folder at "+dir))
+			return
+		}
+		composed, sources, err := settingsComposition(selected.store)
+		var files map[string]string
+		if err == nil {
+			files, err = settings(dir, read, texts)
+		}
+		home := path == Home || filepath.Clean(filepath.Join(path, ".agister")) == filepath.Clean(agisterHome)
 		body := map[string]any{"path": path, "dir": dir, "home": home, "files": files}
-		// A repo's settings go over Agister home's, so the page gets both:
-		// homeFiles, empty when there is no home.
+		if err == nil {
+			body["composedFiles"], body["sources"], body["layers"] = composed, sources, selected.layers
+		}
 		if err == nil && !home {
-			homeFiles, homeErr := settings(agisterHome, read)
+			homeFiles, homeErr := settings(agisterHome, read, texts)
 			if homeErr != nil {
 				homeFiles = map[string]string{}
 			}
@@ -113,7 +125,7 @@ func handler(agisterHome string, choose Choose, observe Observe, homes SkillHome
 		reply(w, body, err)
 	})
 	mux.HandleFunc("GET /api/skills", func(w http.ResponseWriter, r *http.Request) {
-		skills, err := skillsAt(r.URL.Query().Get("path"), agisterHome, homes, read)
+		skills, err := skillsAt(r.URL.Query().Get("path"), agisterHome, homes, selectLayers, read)
 		reply(w, skills, err)
 	})
 	runs := filepath.Join(agisterHome, "runs")
@@ -166,8 +178,10 @@ func isLoopbackIP(host string) bool {
 
 // settings returns the settings files under dir, a .agister folder, by
 // slash-separated path, each read with read: at most fileCap bytes each,
-// larger ones left out.
-func settings(dir string, read func(string) ([]byte, error)) (map[string]string, error) {
+// larger ones left out. Direct documents use the store's reads in texts;
+// replaced whole documents have provenance only. Other inventory files,
+// including nested files no definition names, are read here.
+func settings(dir string, read func(string) ([]byte, error), texts map[string]string) (map[string]string, error) {
 	if !filepath.IsAbs(dir) {
 		return nil, badRequest("path must be absolute or ~: " + dir)
 	}
@@ -192,7 +206,22 @@ func settings(dir string, read func(string) ([]byte, error)) (map[string]string,
 		if entry.IsDir() {
 			return nil
 		}
-		info, err := entry.Info()
+		rel = filepath.ToSlash(rel)
+		if filepath.Ext(rel) == ".yml" {
+			return nil // the binary recognizes .yaml alone
+		}
+		if text, ok := texts[path]; ok {
+			files[rel] = text
+			return nil
+		}
+		_, rest, _ := strings.Cut(rel, "/")
+		if rel == "service.toml" || !strings.Contains(rest, "/") {
+			switch filepath.Ext(rel) {
+			case ".yaml", ".toml", ".json", ".md":
+				return nil // direct documents are read only by the store
+			}
+		}
+		info, err := os.Stat(path)
 		if err != nil || !info.Mode().IsRegular() || info.Size() > fileCap {
 			return nil
 		}
@@ -200,7 +229,9 @@ func settings(dir string, read func(string) ([]byte, error)) (map[string]string,
 		if err != nil {
 			return err
 		}
-		files[filepath.ToSlash(rel)] = string(data)
+		if len(data) <= fileCap {
+			files[rel] = string(data)
+		}
 		return nil
 	})
 	return files, err
@@ -255,6 +286,8 @@ type Env struct {
 	Listen func(network, address string) (net.Listener, error)
 	// Observe is the run store the runs' owners are read from.
 	Observe Observe
+	// Settings selects and reads the settings layers as the binary does.
+	Settings SelectSettings
 }
 
 // Usage is the help for agister pages.
@@ -312,6 +345,10 @@ func Main(ctx context.Context, args []string, env Env) int {
 		fmt.Fprintln(env.Stderr, "agister pages: no run store to read the runs from")
 		return 70
 	}
+	if env.Settings == nil {
+		fmt.Fprintln(env.Stderr, "agister pages: no settings store to read the settings with")
+		return 70
+	}
 	listen := env.Listen
 	if listen == nil {
 		listen = net.Listen
@@ -326,7 +363,7 @@ func Main(ctx context.Context, args []string, env Env) int {
 		choose = func(context.Context) (string, error) { return "", errors.New("no folder dialog on this system") }
 	}
 	homes := SkillHomesFrom(env.Getenv, userHome)
-	server := &http.Server{Handler: Handler(agisterHome, choose, env.Observe, homes), ReadHeaderTimeout: 10 * time.Second}
+	server := &http.Server{Handler: Handler(agisterHome, choose, env.Observe, homes, env.Settings), ReadHeaderTimeout: 10 * time.Second}
 	url := "http://" + listener.Addr().String() + "/"
 	fmt.Fprintf(env.Stdout, "Agister pages at %s (Ctrl-C stops)\n", url)
 	if env.Open != nil && !*noOpen {

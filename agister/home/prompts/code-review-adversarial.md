@@ -3,7 +3,7 @@ date: 2026-10-06
 author: Igor Malyarov
 model: claude-opus-5-5
 name: Code review — adversarial
-version: 0.1.5
+version: 0.1.7
 type: prompt
 ---
 
@@ -25,7 +25,7 @@ shows how the defect stops that scenario's outcome, and its `requirement`
 quotes the goal's condition with every qualification it carries and says
 where in the goal it stands. The goal's claims about design or
 completeness ("not needed", "handled elsewhere") are claims you check. Its
-scope exclusions ("out of scope") are the owner's: you may show that one
+scope exclusions ("out of scope") stand: you may show that one
 stops the goal, quoting it in the finding, but you cannot override it.
 
 Definition of done:
@@ -47,15 +47,14 @@ Definition of done:
    is the wrong one, when its edge cases keep producing defects.
 7. Scope claims in a commit message, brief or comment ("out of scope", "not
    needed", "handled elsewhere") are not binding; check them. A scope
-   exclusion of the goal is the owner's: show that it stops the goal, do
+   exclusion of the goal stands: show that it stops the goal, do
    not override it.
 8. "Could" and "might" are not findings. Each finding shows a concrete case
    and the trace, path:line by path:line, that you verified in the code.
 
 Stop once you have tried to break every changed path. The goal widens
 that: try also to break each scenario the goal requires, through the code
-it runs, changed or not. Say which ones you checked in `coverage`; a review
-with no findings and no coverage reads as one that read nothing.
+it runs, changed or not. Say which ones you checked in `coverage`.
 
 Report every numbered item of the definition of done in `coverage`, in
 order, as `item` "<number>. <short name>", with its status: `checked` (what

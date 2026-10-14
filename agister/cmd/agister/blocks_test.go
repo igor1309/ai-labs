@@ -28,17 +28,20 @@ func writeBlocks(t *testing.T, dir string, entries ...string) string {
 // Home allows the reviewer and the repository blocks it (ADR-018): every
 // call that depends on it is refused before its first turn and recorded,
 // naming the chain, the block's path and its reason; a workflow with a node
-// on it is refused before any node runs; --agent naming it is refused, and
-// --agent naming another agent runs. check passes and lists the block with
-// what it refuses, and listings show the refusal.
+// on it is refused before any node runs, and a workflow that binds the same
+// process to another agent runs. check passes and lists the block with
+// what it refuses, the workflows that bind the agent (ADR-030 rule 5), and
+// listings show the refusal.
 func TestARepositoryBlocksAnAgentHomeAllows(t *testing.T) {
 	t.Parallel()
 	home, repo := setup(t, "approve")
+	bound(t, home, "ask", "reviewer")
+	bound(t, home, "adversarial_review", "assistant")
 	path := writeBlocks(t, filepath.Join(repo, ".agister"), "{ref: 'agent:reviewer', reason: Reviews are done by hand here}")
 
 	r := agister(t, home, repo, "check")
 	if r.code != 0 || !strings.Contains(r.stdout, "block agent reviewer: "+path+": Reviews are done by hand here\n"+
-		"  refuses process adversarial_review, process architecture_review, process review_summary, workflow review_panel\n") ||
+		"  refuses workflow adversarial_review_reviewer, workflow ask_reviewer, workflow review_panel\n") ||
 		!strings.Contains(r.stdout, "settings OK") || !strings.Contains(r.stdout, "1 blocks") {
 		t.Fatalf("check: %d\n%s%s", r.code, r.stdout, r.stderr)
 	}
@@ -46,15 +49,15 @@ func TestARepositoryBlocksAnAgentHomeAllows(t *testing.T) {
 	r = agister(t, home, repo, "check", "--json")
 	if err := json.Unmarshal([]byte(r.stdout), &report); err != nil || r.code != 0 || len(report.Problems) != 0 || len(report.Blocks) != 1 ||
 		report.Blocks[0].Ref != (contract.DefinitionRef{Kind: "agents", Name: "reviewer"}) || report.Blocks[0].Path != path || report.Blocks[0].Reason != "Reviews are done by hand here" ||
-		!reflect.DeepEqual(report.Blocks[0].Processes, []string{"adversarial_review", "architecture_review", "review_summary"}) ||
-		!reflect.DeepEqual(report.Blocks[0].Workflows, []string{"review_panel"}) {
+		len(report.Blocks[0].Processes) != 0 ||
+		!reflect.DeepEqual(report.Blocks[0].Workflows, []string{"adversarial_review_reviewer", "ask_reviewer", "review_panel"}) {
 		t.Fatalf("check --json: %d %v\n%s", r.code, err, r.stdout)
 	}
 
 	runs := &newRuns{home: home}
 	runs.take(t)
-	want := "process adversarial_review: agent reviewer is blocked by " + path + ": Reviews are done by hand here"
-	r = agister(t, home, repo, "run", "adversarial_review", "--quiet", "--param", "base=main", "--timeout", "1m")
+	want := "workflow adversarial_review_reviewer: agent reviewer is blocked by " + path + ": Reviews are done by hand here"
+	r = agister(t, home, repo, "run", "adversarial_review_reviewer", "--quiet", "--param", "base=main", "--timeout", "1m")
 	if r.code != cli.ExitRefused || !strings.Contains(r.stderr, want) {
 		t.Fatalf("run: %d, want %q\n%s%s", r.code, want, r.stdout, r.stderr)
 	}
@@ -64,23 +67,23 @@ func TestARepositoryBlocksAnAgentHomeAllows(t *testing.T) {
 	}
 
 	r = agister(t, home, repo, "run", "review_panel", "--quiet", "--param", "base=main", "--param", "architecture=a.txt")
-	if r.code != cli.ExitRefused || !strings.Contains(r.stderr, "workflow review_panel uses process adversarial_review: agent reviewer is blocked by "+path+": Reviews are done by hand here") {
+	if r.code != cli.ExitRefused || !strings.Contains(r.stderr, "workflow review_panel: agent reviewer is blocked by "+path+": Reviews are done by hand here") {
 		t.Fatalf("workflow: %d\n%s%s", r.code, r.stdout, r.stderr)
 	}
 	if workflow := runs.one(t); workflow.record["process"] != "review_panel" || workflow.record["workflow"] != nil {
 		t.Fatalf("workflow record = %v", workflow.record)
 	}
 
-	r = agister(t, home, repo, "run", "ask", "--agent", "reviewer", "--quiet", "--param", "question=q", "--timeout", "1m")
-	if r.code != cli.ExitRefused || !strings.Contains(r.stderr, "process ask: agent reviewer is blocked by "+path) {
-		t.Fatalf("run ask --agent reviewer: %d\n%s%s", r.code, r.stdout, r.stderr)
+	r = agister(t, home, repo, "run", "ask_reviewer", "--quiet", "--param", "question=q", "--timeout", "1m")
+	if r.code != cli.ExitRefused || !strings.Contains(r.stderr, "workflow ask_reviewer: agent reviewer is blocked by "+path) {
+		t.Fatalf("run ask_reviewer: %d\n%s%s", r.code, r.stdout, r.stderr)
 	}
 	if refused := runs.one(t); refused.first != nil {
 		t.Fatalf("the runtime ran: %v", refused.first)
 	}
-	r = agister(t, home, repo, "run", "adversarial_review", "--agent", "assistant", "--quiet", "--param", "base=main", "--timeout", "1m")
+	r = agister(t, home, repo, "run", "adversarial_review_assistant", "--quiet", "--param", "base=main", "--timeout", "1m")
 	if r.code != cli.ExitCompleted {
-		t.Fatalf("run --agent assistant: %d\n%s%s", r.code, r.stdout, r.stderr)
+		t.Fatalf("run adversarial_review_assistant: %d\n%s%s", r.code, r.stdout, r.stderr)
 	}
 	if ran := runs.one(t); ran.record["agent"] != "assistant" || ran.first == nil {
 		t.Fatalf("the call did not run as assistant: %v", ran.record)
@@ -90,8 +93,8 @@ func TestARepositoryBlocksAnAgentHomeAllows(t *testing.T) {
 		args           []string
 		refused, sound string
 	}{
-		{[]string{"process", "list"}, "adversarial_review", "ask"},
-		{[]string{"workflow", "list"}, "review_panel", ""},
+		{[]string{"workflow", "list"}, "adversarial_review_reviewer", "adversarial_review_assistant"},
+		{[]string{"workflow", "list"}, "review_panel", "ask_assistant"},
 		{[]string{"agent", "list"}, "reviewer", "assistant"},
 	} {
 		r := agister(t, home, repo, listing.args...)
@@ -100,13 +103,13 @@ func TestARepositoryBlocksAnAgentHomeAllows(t *testing.T) {
 			t.Fatalf("%v: %d\n%s%s", listing.args, r.code, r.stdout, r.stderr)
 		}
 	}
-	if r := agister(t, home, repo, "process", "show", "adversarial_review"); r.code != 0 || !strings.Contains(r.stdout, "REFUSED: "+want) {
+	if r := agister(t, home, repo, "workflow", "show", "adversarial_review_reviewer"); r.code != 0 || !strings.Contains(r.stdout, "REFUSED: "+want) {
 		t.Fatalf("show: %d\n%s%s", r.code, r.stdout, r.stderr)
 	}
 
 	// Home is unchanged for a repository without blocks.
 	other := recordRepository(t, gitOf(t, home), "approve")
-	if r := agister(t, home, other, "run", "adversarial_review", "--quiet", "--param", "base=main", "--timeout", "1m"); r.code != cli.ExitCompleted {
+	if r := agister(t, home, other, "run", "adversarial_review_reviewer", "--quiet", "--param", "base=main", "--timeout", "1m"); r.code != cli.ExitCompleted {
 		t.Fatalf("run in a repository without blocks: %d\n%s%s", r.code, r.stdout, r.stderr)
 	}
 	if ran := runs.one(t); ran.record["agent"] != "reviewer" || ran.first == nil {
@@ -121,8 +124,8 @@ func TestARepositoryBlocksAnAgentHomeAllows(t *testing.T) {
 }
 
 // A block on a process refuses its calls and the workflows with a node on
-// it; a block on a runtime mapping refuses every process whose agent runs
-// on it, through the chain (ADR-018 rule 2). A block without a reason names
+// it; a block on a runtime mapping refuses every workflow that binds an
+// agent on it, through the chain (ADR-018 rule 2). A block without a reason names
 // its path.
 func TestBlocksOnAProcessAndARuntimeMapping(t *testing.T) {
 	t.Parallel()
@@ -133,26 +136,29 @@ func TestBlocksOnAProcessAndARuntimeMapping(t *testing.T) {
 	if r.code != 0 || !strings.Contains(r.stdout, "block process review_summary: "+path+"\n  refuses process review_summary, workflow review_panel\n") {
 		t.Fatalf("check: %d\n%s%s", r.code, r.stdout, r.stderr)
 	}
+	// The process is not run on its own (ADR-030 rule 7), so its block
+	// refuses the workflow that binds it, below, and the run of its name is
+	// refused as a process's, naming that workflow.
 	r = agister(t, home, repo, "run", "review_summary", "--quiet", "--param", "base=main", "--timeout", "1m")
-	if r.code != cli.ExitRefused || !strings.Contains(r.stderr, "process review_summary is blocked by "+path+")") {
+	if r.code != cli.ExitRefused || !strings.Contains(r.stderr, "process review_summary is not run on its own: agister run runs a workflow (ADR-030 rule 7); run one that binds it: review_panel") {
 		t.Fatalf("run: %d\n%s%s", r.code, r.stdout, r.stderr)
 	}
 	r = agister(t, home, repo, "run", "review_panel", "--quiet", "--param", "base=main", "--param", "architecture=a.txt")
 	if r.code != cli.ExitRefused || !strings.Contains(r.stderr, "workflow review_panel: process review_summary is blocked by "+path) {
 		t.Fatalf("workflow: %d\n%s%s", r.code, r.stdout, r.stderr)
 	}
-	if r := agister(t, home, repo, "run", "adversarial_review", "--quiet", "--param", "base=main", "--timeout", "1m"); r.code != cli.ExitCompleted {
+	if r := agister(t, home, repo, "run", "adversarial_review_reviewer", "--quiet", "--param", "base=main", "--timeout", "1m"); r.code != cli.ExitCompleted {
 		t.Fatalf("unblocked run: %d\n%s%s", r.code, r.stdout, r.stderr)
 	}
 
 	writeBlocks(t, filepath.Join(repo, ".agister"), "{ref: 'runtime:claude-code', reason: no Claude here}")
-	r = agister(t, home, repo, "run", "ask", "--quiet", "--param", "question=q", "--timeout", "1m")
-	want := "process ask uses agent assistant: runtime mapping claude-code is blocked by " + path + ": no Claude here"
+	r = agister(t, home, repo, "run", "ask_assistant", "--quiet", "--param", "question=q", "--timeout", "1m")
+	want := "workflow ask_assistant uses agent assistant: runtime mapping claude-code is blocked by " + path + ": no Claude here"
 	if r.code != cli.ExitRefused || !strings.Contains(r.stderr, want) {
 		t.Fatalf("run on the blocked runtime: %d, want %q\n%s%s", r.code, want, r.stdout, r.stderr)
 	}
 	r = agister(t, home, repo, "check")
-	if r.code != 0 || !strings.Contains(r.stdout, "block runtime claude-code: "+path+": no Claude here\n  refuses process adversarial_review, process architecture_review, process ask, process implement, process review_summary, workflow review_panel\n") {
+	if r.code != 0 || !strings.Contains(r.stdout, "block runtime claude-code: "+path+": no Claude here\n  refuses workflow adversarial_review_reviewer, workflow ask_assistant, workflow implement_assistant, workflow review_panel\n") {
 		t.Fatalf("check: %d\n%s%s", r.code, r.stdout, r.stderr)
 	}
 }
@@ -203,7 +209,7 @@ func TestABlockOnAWorkflow(t *testing.T) {
 		t.Fatalf("process list: %d\n%s%s", r.code, r.stdout, r.stderr)
 	}
 
-	if r := agister(t, home, repo, "run", "adversarial_review", "--quiet", "--param", "base=main", "--timeout", "1m"); r.code != cli.ExitCompleted {
+	if r := agister(t, home, repo, "run", "adversarial_review_reviewer", "--quiet", "--param", "base=main", "--timeout", "1m"); r.code != cli.ExitCompleted {
 		t.Fatalf("a node's process on its own: %d\n%s%s", r.code, r.stdout, r.stderr)
 	}
 	if ran := runs.one(t); ran.record["agent"] != "reviewer" || ran.first == nil {
@@ -277,7 +283,7 @@ func TestABrokenBlockListStopsEveryCommandButInstallAndRestore(t *testing.T) {
 			runs := &newRuns{home: home}
 			runs.take(t)
 			for _, args := range [][]string{
-				{"run", "ask", "--quiet", "--param", "question=q", "--timeout", "1m"},
+				{"run", "ask_assistant", "--quiet", "--param", "question=q", "--timeout", "1m"},
 				{"run", "review_panel", "--quiet", "--param", "base=main", "--param", "architecture=a.txt"},
 				{"process", "list"}, {"process", "show", "ask"}, {"workflow", "list"}, {"agent", "list"}, {"runs"},
 			} {
@@ -322,7 +328,7 @@ func TestABlockOnABrokenDocumentBlocksItAsWritten(t *testing.T) {
 	}
 	runs := &newRuns{home: home}
 	runs.take(t)
-	if r := agister(t, home, repo, "run", "ask", "--quiet", "--param", "question=q", "--timeout", "1m"); r.code != cli.ExitCompleted {
+	if r := agister(t, home, repo, "run", "ask_assistant", "--quiet", "--param", "question=q", "--timeout", "1m"); r.code != cli.ExitCompleted {
 		t.Fatalf("run ask: %d\n%s%s", r.code, r.stdout, r.stderr)
 	}
 	if ran := runs.one(t); ran.record["agent"] != "assistant" || ran.first == nil {
@@ -343,7 +349,7 @@ func TestHomeBlocksNothing(t *testing.T) {
 		!strings.Contains(r.stderr, "\n  refuses nothing\n1 problem(s)") || strings.Contains(r.stdout, "block agent") {
 		t.Fatalf("check: %d\n%s%s", r.code, r.stdout, r.stderr)
 	}
-	if r := agister(t, home, repo, "run", "adversarial_review", "--quiet", "--param", "base=main", "--timeout", "1m"); r.code != cli.ExitCompleted {
+	if r := agister(t, home, repo, "run", "adversarial_review_reviewer", "--quiet", "--param", "base=main", "--timeout", "1m"); r.code != cli.ExitCompleted {
 		t.Fatalf("run: %d\n%s%s", r.code, r.stdout, r.stderr)
 	}
 
@@ -353,7 +359,7 @@ func TestHomeBlocksNothing(t *testing.T) {
 		!strings.Contains(r.stdout, "block process ask: "+own+"\n") || strings.Contains(r.stdout, "block agent") {
 		t.Fatalf("check with the repository's blocks: %d\n%s%s", r.code, r.stdout, r.stderr)
 	}
-	if r := agister(t, home, repo, "run", "adversarial_review", "--quiet", "--param", "base=main", "--timeout", "1m"); r.code != cli.ExitCompleted {
+	if r := agister(t, home, repo, "run", "adversarial_review_reviewer", "--quiet", "--param", "base=main", "--timeout", "1m"); r.code != cli.ExitCompleted {
 		t.Fatalf("run with the repository's blocks: %d\n%s%s", r.code, r.stdout, r.stderr)
 	}
 }
