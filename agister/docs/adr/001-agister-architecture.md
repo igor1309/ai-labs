@@ -152,9 +152,9 @@ stream of events and a result.
 | `core/admit` | Admits a call before its first turn: the process and runtime allow what the command asks, and the worktree is held, as a writer alone or a reader shared. | worktree facts (revision, content), answered by the composition from `git`; hold; events |
 | `core/session` | The conversation with the agent: turns on the runtime, each turn's output checked against its contract, and a recovery turn when a staleness limit ended one, while the budget allows. Declares the runtime protocol. | runtime protocol; staleness; events; clock |
 | `core/attempts` | Verification and repair: runs the verification, and on a failure asks the session for a repair turn, while attempts are left. | verify; another turn of the session; events |
-| `core/verify` | Runs a verification command: timeout, `no_output` staleness, bounded head and tail, digest. | command runner (the process supervisor) |
+| `core/verify` | Runs a verification command: timeout, `no_output` staleness, bounded head and tail, digest. | command runner (the process supervisor); clock; timer |
 | `core/inputs` | Resolves a call's inputs from their sources to a value and an identity; checks a text against its brief form; keeps long values as artifacts. | sources (by name, plugged in by the composition); artifact store |
-| `core/watch` | Staleness limits on a turn: no event, a tool command, repeated identical tool calls. Observes the event stream and reports a limit reached; it ends nothing itself. | none: pure |
+| `core/watch` | Staleness limits on a turn: no event, a tool command, repeated identical tool calls. Observes the event stream and reports a limit reached; it ends nothing itself. | clock; timer |
 | `core/trail` | What the agent touched and was denied. A pure observer of the event stream. | none: pure |
 
 The composition chains `inputs`, `admit`, `session` and `attempts` into a

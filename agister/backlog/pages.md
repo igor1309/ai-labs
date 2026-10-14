@@ -29,3 +29,6 @@ the run store (running or lost) and the folder dialog
 (`pages.Env{Settings, Observe, Choose}`): ports in all but name. ADR-001
 says pages reads settings and runs directly (its parts table and rule 6)
 and keeps "pages and layering" open. Writing the ADR means deciding that.
+
+Its tests follow ADR-009: pages is tested over spies on its ports, so its
+ADR gives it ports for what it reads.

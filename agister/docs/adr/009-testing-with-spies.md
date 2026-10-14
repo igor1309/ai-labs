@@ -15,13 +15,12 @@ description: "ADR-009: testing with spies: a part is tested over spies on its po
 
 ## Context
 
-The archived implementation's tests set up real repositories, built and
-started real programs, and waited on real time, for claims about
-settings, workflows and wiring. Its composition tests ran near the test
-timeout and failed on a busy machine. Its parts could not be tested
-apart: their collaborators were built in, so there was little to put a
-spy on, and the logic of a part was proved only through the real things
-under it.
+A test that reaches real processes, git, files or the wall clock for a
+claim about settings, workflows or wiring is slow, its outcome depends on
+how busy the machine is, and its failure does not name the rule that
+broke. A part whose collaborators are built in cannot be tested apart:
+there is nothing to put a spy on, and its logic is proved only through
+the real things under it.
 
 ## Decision
 
@@ -46,11 +45,12 @@ test did not give. Only the composition names the real ones.
 
 ### 3. Real things belong to a wrapper's contract tests
 
-A wrapper is tested against the real thing it wraps: a runtime wrapper
-against its runtime's program or a stand-in of it, `git` against git,
+A wrapper is tested against the real thing it wraps: `git` against git,
 `runstore` against files, the process supervisor against the operating
 system. Such a test says which real thing its claim is about. No other
-test uses a real thing.
+test uses a real thing. A runtime wrapper is tested over a spy of its
+runtime's program; whether the real program still behaves so is the
+version check of ADR-003, rule 8.
 
 ### 4. An integration test names what it integrates
 
@@ -64,7 +64,7 @@ binary shows.
 
 Every wait, timeout and limit reads a clock or timer the part is given,
 and a test moves it. Work that goes on in the background says when it
-has progressed or ended. No outcome depends on how fast the machine is;
+has progressed or ended. No test outcome depends on how fast the machine is;
 a test that hangs is ended by the test run's timeout, which names it.
 
 ### 6. A behaviour no test can fail lacks a port
@@ -87,7 +87,8 @@ parallel; a test that must run alone says why.
 ## Consequences
 
 - A part's tests are fast, and a failure names the rule that broke.
-- A change to a real thing fails its wrapper's contract tests, and no
-  other.
+- A change to git, files or the operating system fails its wrapper's
+  contract tests, and no other; a runtime release is caught by its
+  version, not by a test.
 - The spies a part's tests need are the ports ADR-001 already gives it;
   a port a test needs and ADR-001 lacks is a change to the part.
