@@ -67,8 +67,3 @@ and the recovery turn that followed.
 
 - A stuck turn costs a message, not the call, where a message can help.
 - A process that sets no budget runs as if recovery did not exist.
-
-## Open
-
-- **Who checks that a recovery can resume.** A budget above none needs a
-  session that resumes; where that is checked is ADR-003's open point.

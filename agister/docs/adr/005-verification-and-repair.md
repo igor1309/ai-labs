@@ -83,9 +83,3 @@ what it runs can be code the agent wrote. Agister does not confine it
 - A repository states its check once, and every process that uses it
   gets it.
 - Fixing a failing test needs no retry node and no workflow.
-
-## Open
-
-- **Who checks that a repair can resume.** A verification with more than
-  one attempt needs a session that resumes; where that is checked is
-  ADR-003's open point.

@@ -77,14 +77,17 @@ and the call's own skills are given to it in the runtime's own way.
 
 What a runtime wrapper can do is a fact resolve needs and does not own:
 the contract a mapping is written for, its version, whether it takes
-skills, the efforts it accepts. Resolve declares a port
-for these facts; the composition answers it from the wrappers. A node
-that needs what its runtime cannot do is refused at resolve.
+skills, the efforts it accepts, whether it resumes a session. Resolve
+declares a port for these facts; the composition answers it from the
+wrappers. A node that needs what its runtime cannot do is refused at
+resolve, such as a repair (ADR-005) or a recovery (ADR-006) on a runtime
+that cannot resume.
 
 ### 8. An unverified runtime version warns
 
 A mapping says which runtime versions its options were checked on. A call
-on another version warns and runs on the mapping as written.
+on another version warns and runs on the mapping as written. The wrapper
+does not probe the version; the warning is carried in the call's result.
 
 ## Consequences
 
@@ -94,10 +97,3 @@ on another version warns and runs on the mapping as written.
   the composition; no process changes.
 - Agister is no sandbox: the plan is what it asks of the runtime, and the
   runtime's own enforcement is what holds.
-
-## Open
-
-- **Resuming a session.** Whether resolve or `core/admit` checks that a
-  runtime can resume one.
-- **Checking a version.** Whether a wrapper may probe an unverified
-  version, and where what it found is kept.
