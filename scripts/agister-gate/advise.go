@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
-	"os"
 	"path/filepath"
 	"regexp"
 	"strconv"
@@ -39,7 +38,7 @@ func (g *gate) advise(ctx context.Context, runID string, open []point, message s
 		g.sum.Open = open
 		return stop{"open", fmt.Sprintf("implement run %s left %d points open, and a step puts one to the advisor; its work is committed, unreviewed", runID, len(open))}
 	}
-	recorded, err := g.run(ctx, g.dir, "git", "diff", "--name-only", g.base, "HEAD", "--", g.decisions)
+	recorded, err := g.command(ctx, "git", "diff", "--name-only", g.base, "HEAD", "--", g.decisions)
 	if err != nil {
 		return fmt.Errorf("git diff: %w", err)
 	}
@@ -47,8 +46,9 @@ func (g *gate) advise(ctx context.Context, runID string, open []point, message s
 		g.sum.Open = open
 		return stop{"open", fmt.Sprintf("implement run %s left a second point open, and the step's one question is decided; its work is committed, unreviewed", runID)}
 	}
-	question := filepath.Join(g.out, "question.md")
-	if err := os.WriteFile(question, []byte(questionFile(fmt.Sprintf("implement run %s, %s", runID, g.title), open[0])), 0o644); err != nil {
+	question := filepath.Join(g.out, fmt.Sprintf("%02d-question.md", g.seq+1))
+	if err := g.write(question, []byte(questionFile(fmt.Sprintf("implement run %s, %s", runID, g.title), open[0])), "question",
+		map[string]any{"implement_run": runID}); err != nil {
 		return err
 	}
 	r, err := g.agister(ctx, "advisor", g.advisor, "--param", "question="+question, "--param", "revision=HEAD", "--json")
@@ -73,24 +73,28 @@ func (g *gate) advise(ctx context.Context, runID string, open []point, message s
 	if err != nil {
 		return err
 	}
-	if _, err := g.run(ctx, g.dir, "git", "add", "--", g.decisions); err != nil {
+	if _, err := g.command(ctx, "git", "add", "--", g.decisions); err != nil {
 		return fmt.Errorf("git add: %w", err)
 	}
-	if _, err := g.run(ctx, g.dir, "git", "commit", "-q", "-m", fmt.Sprintf("%s (%s recorded)", message, id)); err != nil {
+	subject := fmt.Sprintf("%s (%s recorded)", message, id)
+	if _, err := g.command(ctx, "git", "commit", "-q", "-m", subject); err != nil {
 		return fmt.Errorf("git commit: %w", err)
 	}
 	g.sum.Records = append(g.sum.Records, id)
-	fmt.Fprintf(g.progress, "agister-gate: advisor %s decided; %s appended\n", r.RunID, id)
+	head, err := g.head(ctx)
+	if err != nil {
+		return err
+	}
+	if err := g.committed(head, subject, []string{g.decisions}, map[string]any{"advisor_run": r.RunID, "decision": id}); err != nil {
+		return err
+	}
 
 	// The brief names the record where it stands in the repository, not
 	// the run that made it (LAB-200).
 	acts := fmt.Sprintf("The decision `%s`, recorded in `%s`, as written:\n\n%s", id, g.decisions, fenced(record))
-	brief, err := g.stepBrief(fmt.Sprintf("%s, decision %s", g.title, id), acts)
-	if err != nil {
-		return err
-	}
-	path := filepath.Join(g.out, "decision-"+id+".md")
-	if err := os.WriteFile(path, []byte(brief), 0o644); err != nil {
+	path := filepath.Join(g.out, fmt.Sprintf("%02d-decision-%s.md", g.seq+1, id))
+	if err := g.write(path, []byte(g.stepBrief(fmt.Sprintf("%s, decision %s", g.title, id), acts)), "decision brief",
+		map[string]any{"decision": id, "decisions": g.decisions, "advisor_run": r.RunID, "issue": g.issue, "constraints": g.constraints}); err != nil {
 		return err
 	}
 	return g.implementAndCommit(ctx, path, fmt.Sprintf("%s (%s)", message, id))
@@ -109,7 +113,7 @@ var recordID = regexp.MustCompile(`(?m)^## D-(\d+):`)
 // D-<n>, with what the asker searched and the advisor's run, and returns
 // its id and text.
 func (g *gate) appendRecord(a advice, searched []string, runID string) (string, string, error) {
-	records, err := os.ReadFile(g.decisions)
+	records, err := g.read(g.decisions, "decisions record")
 	if errors.Is(err, fs.ErrNotExist) {
 		records, err = []byte("# Decisions\n"), nil
 	}
@@ -135,8 +139,13 @@ func (g *gate) appendRecord(a advice, searched []string, runID string) (string, 
 	fmt.Fprintf(&b, "- **Decision:** %s\n- **Rests on:**\n%s", a.Chosen, bullets("  - ", a.RestsOn))
 	fmt.Fprintf(&b, "- **Follow-ups:**\n%s- **Advisor run:** %s\n", bullets("  - ", a.FollowUps), runID)
 	record := b.String()
-	text := strings.TrimRight(string(records), "\n") + "\n\n" + record
-	return id, record, os.WriteFile(g.decisions, []byte(text), 0o644)
+	// The record is appended: what the file held stays as it was.
+	text := string(records)
+	if !strings.HasSuffix(text, "\n") {
+		text += "\n"
+	}
+	text += "\n" + record
+	return id, record, g.write(g.decisions, []byte(text), "decisions record", map[string]any{"advisor_run": runID, "decision": id})
 }
 
 // bullets is items as a list, each after prefix.
