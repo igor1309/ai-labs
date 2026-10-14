@@ -43,3 +43,9 @@
   The topic file is the one `~/.claude/hooks/limit-hit-ntfy.sh` uses.
 - Push only for a real block or a decision that is the owner's: one ask per
   push. Keep working on whatever does not depend on the answer.
+
+## Long waits
+
+- Run anything that waits for minutes (a Codex review, a CI watch, a long
+  test run) in the background, never as a foreground command. Act on its
+  completion notice; do not poll its output.
