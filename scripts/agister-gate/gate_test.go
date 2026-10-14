@@ -21,7 +21,9 @@ import (
 // record once it is staged, or from the start when recorded is set. The
 // review is the workflow review names, code_review when it is empty.
 // `agister runs export` copies a review run's collection: collections's,
-// by the run's id, or reviewsOf(5, 2) when it has none. Every command
+// by the run's id, or reviewsOf(5, 2) when it has none, and its record,
+// records's by the run's id, if any, with artifacts's, by "<id>/<path>".
+// Every command
 // writes complaint, if any, to its standard error. ran is every command it
 // answered, in order, with its answer.
 type fake struct {
@@ -34,6 +36,8 @@ type fake struct {
 	recorded    bool
 	review      string
 	collections map[string][]collected
+	records     map[string]string
+	artifacts   map[string]string
 	complaint   string
 
 	questions []string
@@ -97,6 +101,18 @@ func (f *fake) answer(_ context.Context, _ string, name string, args ...string) 
 		}
 		if err := os.WriteFile(filepath.Join(dir, "collection.json"), data, 0o644); err != nil {
 			f.t.Fatal(err)
+		}
+		for name, data := range f.artifacts {
+			if path, ok := strings.CutPrefix(name, id+"/"); ok {
+				if err := os.WriteFile(filepath.Join(to, id, path), []byte(data), 0o644); err != nil {
+					f.t.Fatal(err)
+				}
+			}
+		}
+		if record, ok := f.records[id]; ok {
+			if err := os.WriteFile(filepath.Join(to, id, "record.json"), []byte(record), 0o644); err != nil {
+				f.t.Fatal(err)
+			}
 		}
 		return nil, nil
 	case name == "agister" && args[1] == "advisor_codex":
@@ -901,6 +917,107 @@ func TestASecondOpenPointStopsTheStep(t *testing.T) {
 			}
 			if len(tc.f.questions) != tc.advisors || len(sum.Reviews) != 0 {
 				t.Errorf("advisor runs %d, want %d; reviews %+v", len(tc.f.questions), tc.advisors, sum.Reviews)
+			}
+		})
+	}
+}
+
+// recordOf is the record of a run of process that reviewed base against
+// candidate for goal, with status, judged as items.
+func recordOf(process, base, candidate, goal, status string, items ...item) string {
+	if items == nil {
+		items = []item{}
+	}
+	out, _ := json.Marshal(map[string]any{"process": process,
+		"inputs": []map[string]any{{"name": "base", "value": base}, {"name": "candidate", "value": candidate}, {"name": "goal", "value": goal}},
+		"result": map[string]any{"status": status, "output": map[string]any{"items": items}}})
+	return string(out)
+}
+
+// A completed review run of the step's base against HEAD is taken as the
+// next review: its majors go to a fix run, from its collection, and the
+// review after the fix is the gate's own.
+func TestAReviewRunTakenIsTheNextReview(t *testing.T) {
+	t.Parallel()
+	base := strings.Repeat("deadbeef", 5)
+	f := &fake{t: t, implements: []string{implementResult("i2", "cmd/a.go")}, reviews: []string{reviewed("r3")},
+		records: map[string]string{"r2": recordOf("code_review", base, "c0", issue, "completed", major, minor)}}
+	code, sum, out := gated(t, f.run, "--from", "review", "--reviews", "1", "--base", base, "--reviewed", "r2")
+	if code != exitPassed || len(sum.Reviews) != 2 || sum.Reviews[0].RunID != "r2" || sum.Reviews[0].Majors != 1 || sum.Reviews[1].RunID != "r3" {
+		t.Fatalf("exit %d, %+v", code, sum)
+	}
+	if want := []string{filepath.Join(out, "fix-2.md")}; !reflect.DeepEqual(f.briefs, want) {
+		t.Fatalf("briefs %q, want %q", f.briefs, want)
+	}
+	brief, err := os.ReadFile(f.briefs[0])
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(brief), "- **Prove the refusal**: Add a test that the call is refused.\n  - `cmd/r2.go:1`: Case 2#1.\n") {
+		t.Errorf("fix brief:\n%s", brief)
+	}
+	if !reflect.DeepEqual(f.reviewBases, []string{base}) {
+		t.Errorf("reviews run %q, want only the one after the fix", f.reviewBases)
+	}
+}
+
+// A review run taken must be a completed run of the step's review that
+// reviewed its base against HEAD for its goal or the issue's text; one that
+// is not stops the step before any run.
+func TestAReviewRunTakenReviewedTheStep(t *testing.T) {
+	t.Parallel()
+	base := strings.Repeat("deadbeef", 5)
+	for name, record := range map[string]string{
+		"another workflow":  recordOf("adr_review", base, "c0", issue, "completed", major),
+		"another base":      recordOf("code_review", strings.Repeat("a", 40), "c0", issue, "completed", major),
+		"another candidate": recordOf("code_review", base, "c9", issue, "completed", major),
+		"another goal":      recordOf("code_review", base, "c0", "Another goal.", "completed", major),
+		"not completed":     recordOf("code_review", base, "c0", issue, "failed"),
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			f := &fake{t: t, records: map[string]string{"r2": record}}
+			code, sum, _ := gated(t, f.run, "--from", "review", "--reviews", "1", "--base", base, "--reviewed", "r2")
+			if code != exitStopped || !strings.Contains(sum.Reason, "review run r2") || f.agisters != 0 || len(f.commits) != 0 {
+				t.Fatalf("exit %d, runs %d, commits %q, %+v", code, f.agisters, f.commits, sum)
+			}
+		})
+	}
+}
+
+// --reviewed takes a review only where the step resumes at one.
+func TestAReviewRunIsTakenOnlyFromReview(t *testing.T) {
+	t.Parallel()
+	var stdout, stderr bytes.Buffer
+	args, _ := gateArgs(t, t.TempDir(), "--reviewed", "r2")
+	if code := run(context.Background(), args, (&fake{t: t}).run, &stdout, &stderr); code != exitUsage || !strings.Contains(stderr.String(), "--reviewed") {
+		t.Errorf("exit %d, %s", code, stderr.String())
+	}
+}
+
+// A goal a review run kept as an artifact is read from its export.
+func TestAReviewRunTakenMayKeepItsGoalAsAnArtifact(t *testing.T) {
+	t.Parallel()
+	base := strings.Repeat("deadbeef", 5)
+	var record map[string]any
+	if err := json.Unmarshal([]byte(recordOf("code_review", base, "c0", "", "completed")), &record); err != nil {
+		t.Fatal(err)
+	}
+	record["inputs"].([]any)[2] = map[string]any{"name": "goal", "artifact": map[string]any{"path": "artifacts/input-goal.txt"}}
+	data, _ := json.Marshal(record)
+	for name, tc := range map[string]struct {
+		goal string
+		exit int
+	}{
+		"the issue's text": {issue, exitPassed},
+		"another goal":     {"Another goal.", exitStopped},
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			f := &fake{t: t, records: map[string]string{"r2": string(data)}, artifacts: map[string]string{"r2/artifacts/input-goal.txt": tc.goal}}
+			code, sum, _ := gated(t, f.run, "--from", "review", "--reviews", "1", "--base", base, "--reviewed", "r2")
+			if code != tc.exit {
+				t.Errorf("exit %d, want %d: %+v", code, tc.exit, sum)
 			}
 		})
 	}

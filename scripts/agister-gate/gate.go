@@ -33,8 +33,8 @@ type runner func(ctx context.Context, dir string, stderr io.Writer, name string,
 
 // options are the command's flags.
 type options struct {
-	issue, title, constraints, implement, advisor, review, decisions, base, message, out, dir, from string
-	reviews                                                                                         int
+	issue, title, constraints, implement, advisor, review, decisions, base, message, out, dir, from, reviewed string
+	reviews                                                                                                   int
 }
 
 // result is what `agister run --json` prints: a run's id, status, output
@@ -182,6 +182,7 @@ func parse(args []string, stderr io.Writer) (options, error) {
 	fs.StringVar(&o.dir, "dir", ".", "the worktree")
 	fs.StringVar(&o.from, "from", "implement", "implement, or review to resume at a review")
 	fs.IntVar(&o.reviews, "reviews", 0, "reviews of this step already counted, with --from review")
+	fs.StringVar(&o.reviewed, "reviewed", "", "a completed review run of base against HEAD, taken as the next review, with --from review")
 	if err := fs.Parse(args); err != nil {
 		return o, err
 	}
@@ -199,6 +200,9 @@ func parse(args []string, stderr io.Writer) (options, error) {
 		if err != nil || (len(o.base) != 40 && len(o.base) != 64) {
 			return o, fmt.Errorf("--from review requires --base to be the full commit from the preceding summary")
 		}
+	}
+	if o.reviewed != "" && o.from != "review" {
+		return o, fmt.Errorf("--reviewed takes a review run with --from review")
 	}
 	if o.reviews < 0 || o.reviews >= maxReviews {
 		return o, fmt.Errorf("--reviews is 0 to %d", maxReviews-1)
@@ -280,7 +284,11 @@ func (g *gate) steps(ctx context.Context) error {
 		}
 	}
 	for {
-		j, err := g.review(ctx, counted+1)
+		review := g.review
+		if g.reviewed != "" && counted == g.reviews {
+			review = g.taken
+		}
+		j, err := review(ctx, counted+1)
 		if err != nil {
 			return err
 		}
@@ -438,9 +446,14 @@ func (g *gate) review(ctx context.Context, n int) (judgement, error) {
 		}
 		return judgement{}, stop{"stopped", fmt.Sprintf("review run %s %s%s", r.RunID, r.Status, failure(r))}
 	}
+	return g.judged(r.RunID, r.Output)
+}
+
+// judged counts the judgement output of review run runID.
+func (g *gate) judged(runID string, output json.RawMessage) (judgement, error) {
 	var j judgement
-	if err := json.Unmarshal(r.Output, &j); err != nil {
-		return j, fmt.Errorf("review run %s: output: %w", r.RunID, err)
+	if err := json.Unmarshal(output, &j); err != nil {
+		return j, fmt.Errorf("review run %s: output: %w", runID, err)
 	}
 	majors := 0
 	for _, it := range j.Items {
@@ -448,8 +461,75 @@ func (g *gate) review(ctx context.Context, n int) (judgement, error) {
 			majors++
 		}
 	}
-	g.sum.Reviews = append(g.sum.Reviews, review{RunID: r.RunID, Counted: true, Majors: majors})
+	g.sum.Reviews = append(g.sum.Reviews, review{RunID: runID, Counted: true, Majors: majors})
 	return j, nil
+}
+
+// taken takes review run g.reviewed as review n, in place of a run of its
+// own. It must be a completed run of the step's review workflow that
+// reviewed the step's base against HEAD, given as its goal the gate's goal
+// or the issue's text as written: what a run of the gate's own would
+// review.
+func (g *gate) taken(ctx context.Context, n int) (judgement, error) {
+	dir, err := g.export(ctx, g.reviewed)
+	if err != nil {
+		return judgement{}, err
+	}
+	data, err := g.read(filepath.Join(dir, "record.json"), "review run record")
+	if err != nil {
+		return judgement{}, fmt.Errorf("review run %s: %w", g.reviewed, err)
+	}
+	var record struct {
+		Process string `json:"process"`
+		Inputs  []struct {
+			Name     string `json:"name"`
+			Value    any    `json:"value"`
+			Artifact *struct {
+				Path string `json:"path"`
+			} `json:"artifact"`
+		} `json:"inputs"`
+		Result struct {
+			Status string          `json:"status"`
+			Output json.RawMessage `json:"output"`
+		} `json:"result"`
+	}
+	if err := json.Unmarshal(data, &record); err != nil {
+		return judgement{}, fmt.Errorf("review run %s: record: %w", g.reviewed, err)
+	}
+	if record.Process != g.options.review {
+		return judgement{}, stop{"stopped", fmt.Sprintf("review run %s ran %s, and the step's review is %s", g.reviewed, record.Process, g.options.review)}
+	}
+	if record.Result.Status != "completed" {
+		return judgement{}, stop{"stopped", fmt.Sprintf("review run %s is %s, not completed", g.reviewed, record.Result.Status)}
+	}
+	head, err := g.head(ctx)
+	if err != nil {
+		return judgement{}, err
+	}
+	// A long input is kept as an artifact of the run in place of its value.
+	inputs := map[string]any{}
+	for _, in := range record.Inputs {
+		inputs[in.Name] = in.Value
+		if in.Value == nil && in.Artifact != nil {
+			data, err := g.read(filepath.Join(dir, in.Artifact.Path), "review run input "+in.Name)
+			if err != nil {
+				return judgement{}, fmt.Errorf("review run %s: %w", g.reviewed, err)
+			}
+			inputs[in.Name] = string(data)
+		}
+	}
+	if inputs["base"] != g.base || inputs["candidate"] != head {
+		return judgement{}, stop{"stopped", fmt.Sprintf("review run %s reviewed %v against %v, and the step is %s against %s",
+			g.reviewed, inputs["base"], inputs["candidate"], g.base, head)}
+	}
+	goal, err := os.ReadFile(g.goal)
+	if err != nil {
+		return judgement{}, err
+	}
+	if inputs["goal"] != string(goal) && inputs["goal"] != g.issueText {
+		return judgement{}, stop{"stopped", fmt.Sprintf("review run %s was given a goal that is neither the step's goal nor the issue's text", g.reviewed)}
+	}
+	return g.judged(g.reviewed, record.Result.Output)
 }
 
 // agister runs `agister run <workflow> args...` in the worktree and keeps
@@ -541,14 +621,11 @@ func fenced(text string) string {
 // their order, read from the run as `agister runs export` copies it into
 // out.
 func (g *gate) collection(ctx context.Context, runID string) ([]collected, error) {
-	to := filepath.Join(g.out, "runs")
-	if err := os.MkdirAll(to, 0o755); err != nil {
+	dir, err := g.export(ctx, runID)
+	if err != nil {
 		return nil, err
 	}
-	if out, err := g.command(ctx, "agister", "runs", "export", runID, "--to", to); err != nil {
-		return nil, fmt.Errorf("agister runs export %s: %w: %s", runID, err, out)
-	}
-	data, err := g.read(filepath.Join(to, runID, "artifacts", "collection.json"), "review collection")
+	data, err := g.read(filepath.Join(dir, "artifacts", "collection.json"), "review collection")
 	if err != nil {
 		return nil, fmt.Errorf("review run %s: %w", runID, err)
 	}
@@ -557,6 +634,19 @@ func (g *gate) collection(ctx context.Context, runID string) ([]collected, error
 		return nil, fmt.Errorf("review run %s: collection: %w", runID, err)
 	}
 	return reviews, nil
+}
+
+// export copies run runID, with its nodes, into out with `agister runs
+// export`, and returns the run's copy.
+func (g *gate) export(ctx context.Context, runID string) (string, error) {
+	to := filepath.Join(g.out, "runs")
+	if err := os.MkdirAll(to, 0o755); err != nil {
+		return "", err
+	}
+	if out, err := g.command(ctx, "agister", "runs", "export", runID, "--to", to); err != nil {
+		return "", fmt.Errorf("agister runs export %s: %w: %s", runID, err, out)
+	}
+	return filepath.Join(to, runID), nil
 }
 
 // fixBrief writes the brief of the fix run after review n: the step's

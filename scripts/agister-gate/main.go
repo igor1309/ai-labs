@@ -21,7 +21,8 @@
 //     and `--from review --reviews <n> --base <summary.base>` resumes it at
 //     that review. A new step pins --base before setup; a resumed step
 //     requires the full commit printed in the preceding summary. Every
-//     review and brief uses that commit.
+//     review and brief uses that commit. --reviewed takes a completed review
+//     run of base against HEAD as that review, in place of a new run.
 //   - A point an implement run leaves open goes to the advisor, at the
 //     run's commit: the question file is the point as the run wrote it.
 //     The advisor's decision is appended to the decisions record as the
@@ -44,6 +45,7 @@
 //	  --implement <workflow> --advisor <workflow> --decisions <file>
 //	  --base <rev> --message <subject> --out <dir>
 //	  [--review <workflow>] [--dir <worktree>] [--from implement|review] [--reviews <n>]
+//	  [--reviewed <run-id>]
 //
 // Exit 0: no major is left to fix. 3: the owner decides: a major is left
 // after the third review, or the advisor found a conflict in the record.
