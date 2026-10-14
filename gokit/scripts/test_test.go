@@ -46,6 +46,11 @@ const (
 // reported on.
 const reportMarker = "testreport spy reported"
 
+// stepMarker leads the line each spy's step prints to the check's output
+// as it starts, before "<module> <step>": its stdout may be captured by
+// the script, its stderr never is.
+const stepMarker = "spy step"
+
 // stages are the steps of the check, in order, when every one runs.
 var stages = []string{
 	"gokit gofmt", "gokit go list", "gokit go vet", "gokit go test", "gokit testreport",
@@ -137,11 +142,14 @@ func gofmtSpy(p fakeproc.Process) int {
 	})
 }
 
-// step records the step as "<module> <name>" and then does it: it exits 1
-// when it is the step that fails, 0 otherwise.
+// step records the step as "<module> <name>", prints its marker, and
+// then does it: it exits 1 when it is the step that fails, 0 otherwise.
 func step(p fakeproc.Process, name string, do func() error) int {
 	if err := record(p, stepsRecord, name); err != nil {
 		fmt.Fprintln(p.Stderr, err)
+		return 2
+	}
+	if _, err := fmt.Fprintln(p.Stderr, stepMarker, module(p, p.Dir), name); err != nil {
 		return 2
 	}
 	if err := do(); err != nil {
@@ -187,21 +195,45 @@ func module(p fakeproc.Process, dir string) string {
 	return filepath.ToSlash(filepath.Join("gokit", rel))
 }
 
-// headings are the check's stage headings, in order, when every stage
-// runs: each module's gofmt with its files counted, vet with the packages
-// go list printed, and go test.
-var headings = []string{
+// transcript is the check's stage headings and its steps' markers, in
+// order, when every stage runs: each module's gofmt heading, its files
+// counted, before gofmt runs; vet's, with the packages go list printed,
+// after go list and before vet; and go test's before go test and
+// testreport. So each heading is tied to the output of its own stage.
+var transcript = []string{
 	"== gokit gofmt -l: 2 files",
+	stepMarker + " gokit gofmt",
+	stepMarker + " gokit go list",
 	"== gokit go vet ./...: 1 packages",
+	stepMarker + " gokit go vet",
 	"== gokit go test -race -count=1 -timeout 1m ./...",
+	stepMarker + " gokit go test",
+	stepMarker + " gokit testreport",
 	"== gokit/tree gofmt -l: 2 files",
+	stepMarker + " gokit/tree gofmt",
+	stepMarker + " gokit/tree go list",
 	"== gokit/tree go vet ./...: 1 packages",
+	stepMarker + " gokit/tree go vet",
 	"== gokit/tree go test -race -count=1 -timeout 1m ./...",
+	stepMarker + " gokit/tree go test",
+	stepMarker + " gokit/tree testreport",
+}
+
+// transcribed is the lines of out that are headings or steps' markers, in
+// order.
+func transcribed(out string) []string {
+	var lines []string
+	for line := range strings.Lines(out) {
+		if strings.HasPrefix(line, "== ") || strings.HasPrefix(line, stepMarker+" ") {
+			lines = append(lines, strings.TrimSuffix(line, "\n"))
+		}
+	}
+	return lines
 }
 
 // The check fails when go test or testreport fails in either module, and
-// still runs every stage of both, each under its heading; it passes when
-// none fails. In each run gofmt is given each module's own files, its
+// still runs every stage of both, each under its own heading; it passes
+// when none fails. In each run gofmt is given each module's own files, its
 // packages' at any depth but none of the module inside it, and each
 // module's testreport reads all of that module's test events and prints to
 // the check's output.
@@ -234,14 +266,8 @@ func TestTheCheckFailsWhenTestsOrTheirReportFail(t *testing.T) {
 			if !slices.Equal(run.ran, stages) {
 				t.Errorf("the check ran:\n%s\nwant:\n%s", strings.Join(run.ran, "\n"), strings.Join(stages, "\n"))
 			}
-			var headed []string
-			for line := range strings.Lines(run.out) {
-				if strings.HasPrefix(line, "== ") {
-					headed = append(headed, strings.TrimSuffix(line, "\n"))
-				}
-			}
-			if !slices.Equal(headed, headings) {
-				t.Errorf("the check's headings:\n%s\nwant:\n%s", strings.Join(headed, "\n"), strings.Join(headings, "\n"))
+			if got := transcribed(run.out); !slices.Equal(got, transcript) {
+				t.Errorf("the check's headings and steps:\n%s\nwant:\n%s", strings.Join(got, "\n"), strings.Join(transcript, "\n"))
 			}
 			for module, want := range gofmtFiles {
 				if got := slices.Sorted(slices.Values(run.gofmt[module])); !slices.Equal(got, want) {
@@ -268,7 +294,8 @@ func TestTheCheckFailsWhenTestsOrTheirReportFail(t *testing.T) {
 
 // The check fails, and stops, when gofmt or go vet fails in either module
 // or gofmt lists unformatted files, which it names; every stage before
-// the one that failed has run.
+// the one that failed has run, each under its own heading, and nothing
+// is headed or run after the step that failed.
 //
 // Contract test: test.sh run by sh, with the test binary as its go and
 // gofmt.
@@ -312,6 +339,10 @@ func TestTheCheckStopsWhenFormatOrVetFails(t *testing.T) {
 			}
 			if !slices.Equal(run.ran, c.ran) {
 				t.Errorf("the check ran:\n%s\nwant:\n%s", strings.Join(run.ran, "\n"), strings.Join(c.ran, "\n"))
+			}
+			last := slices.Index(transcript, stepMarker+" "+c.ran[len(c.ran)-1])
+			if got, want := transcribed(run.out), transcript[:last+1]; !slices.Equal(got, want) {
+				t.Errorf("the check's headings and steps:\n%s\nwant:\n%s", strings.Join(got, "\n"), strings.Join(want, "\n"))
 			}
 			if c.unformatted == "" {
 				return

@@ -3,6 +3,8 @@ package tree_test
 import (
 	"fmt"
 	"maps"
+	"os"
+	"path/filepath"
 	"slices"
 	"strings"
 	"testing"
@@ -211,8 +213,8 @@ func origins(n tree.Node) map[string]tree.Origin {
 
 // assertOrigins decodes data in format from path and fails unless it gives
 // no problem and every node has the origin want gives it, and no other
-// node is there.
-func assertOrigins(t *testing.T, format tree.Format, data, path string, want map[string]tree.Origin) {
+// node is there. It is the tree decoded.
+func assertOrigins(t *testing.T, format tree.Format, data, path string, want map[string]tree.Origin) tree.Node {
 	t.Helper()
 	got, problems := tree.Decode(format, []byte(data), path)
 	if len(problems) > 0 {
@@ -221,6 +223,7 @@ func assertOrigins(t *testing.T, format tree.Format, data, path string, want map
 	if origins := origins(got); !maps.Equal(origins, want) {
 		t.Fatalf("origins %v, want %v", origins, want)
 	}
+	return got
 }
 
 func TestEveryYAMLNodeKeepsItsPathAndLine(t *testing.T) {
@@ -256,28 +259,136 @@ width = 2
 	})
 }
 
-// The path names a file that is not there, of the other format's
-// extension: decode reads neither the file nor the format from it.
+// Every scalar kind keeps its origin in either format, as a key's value
+// and as a list's item: in YAML the line of its key or of its item, in
+// TOML the path alone.
+func TestEveryScalarKindKeepsItsOrigin(t *testing.T) {
+	t.Parallel()
+	scalars := []struct {
+		// want is the scalar as values lists it, and written as each format
+		// writes it.
+		want    string
+		written map[tree.Format]string
+	}{
+		{`string "text"`, map[tree.Format]string{tree.YAML: "text", tree.TOML: `"text"`}},
+		{`string "3"`, map[tree.Format]string{tree.YAML: `"3"`, tree.TOML: `"3"`}},
+		{"integer 3", map[tree.Format]string{tree.YAML: "3", tree.TOML: "3"}},
+		{"number 2.5", map[tree.Format]string{tree.YAML: "2.5", tree.TOML: "2.5"}},
+		{"boolean true", map[tree.Format]string{tree.YAML: "true", tree.TOML: "true"}},
+	}
+	formats := []struct {
+		format tree.Format
+		path   string
+		// layout is bytes holding value as "a" and as "b"'s item, each on
+		// a line of its own, and lines the line each node has.
+		layout func(value string) string
+		lines  map[string]int
+	}{
+		{
+			tree.YAML, "/a/v.yaml",
+			func(value string) string { return fmt.Sprintf("a: %[1]s\nb:\n  - %[1]s\n", value) },
+			map[string]int{"the top": 1, "a": 1, "b": 2, "b[0]": 3},
+		},
+		{
+			tree.TOML, "/a/v.toml",
+			func(value string) string { return fmt.Sprintf("a = %[1]s\nb = [\n  %[1]s,\n]\n", value) },
+			map[string]int{"the top": 0, "a": 0, "b": 0, "b[0]": 0},
+		},
+	}
+	for _, f := range formats {
+		for _, s := range scalars {
+			t.Run(f.format.String()+" "+s.want, func(t *testing.T) {
+				t.Parallel()
+				want := map[string]tree.Origin{}
+				for place, line := range f.lines {
+					want[place] = tree.Origin{Path: f.path, Line: line}
+				}
+				got := assertOrigins(t, f.format, f.layout(s.written[f.format]), f.path, want)
+				wantValues := []string{" map", ".a " + s.want, ".b list", ".b[0] " + s.want}
+				if lines := values(got); !slices.Equal(lines, wantValues) {
+					t.Errorf("values:\n%s\nwant:\n%s", strings.Join(lines, "\n"), strings.Join(wantValues, "\n"))
+				}
+			})
+		}
+	}
+}
+
+// A YAML node's line is its key's, wherever its value is written below
+// it, and the top's is 1, whatever comes before its value: the lines the
+// parser gives the values are not the origins.
+func TestANodesLineIsItsKeysAndTheTopsIs1(t *testing.T) {
+	t.Parallel()
+	for _, c := range []struct {
+		name   string
+		format tree.Format
+		data   string
+		lines  map[string]int
+	}{
+		{"a string below its key", tree.YAML, "a:\n  text\n", map[string]int{"the top": 1, "a": 1}},
+		{"a quoted string below its key", tree.YAML, "a:\n  \"3\"\n", map[string]int{"the top": 1, "a": 1}},
+		{"an integer below its key", tree.YAML, "a:\n  3\n", map[string]int{"the top": 1, "a": 1}},
+		{"a number below its key", tree.YAML, "a:\n  2.5\n", map[string]int{"the top": 1, "a": 1}},
+		{"a boolean below its key", tree.YAML, "a:\n  true\n", map[string]int{"the top": 1, "a": 1}},
+		{"a value below a blank line and a comment", tree.YAML, "a:\n\n  # c\n  3\n", map[string]int{"the top": 1, "a": 1}},
+		{"a value below a nested key", tree.YAML, "a:\n  b:\n    3\n", map[string]int{"the top": 1, "a": 1, "a.b": 2}},
+		{"a value below its key in a list's item", tree.YAML, "- a:\n    3\n", map[string]int{"the top": 1, "[0]": 1, "[0].a": 1}},
+		{"a map after a leading comment", tree.YAML, "# c\na: 1\n", map[string]int{"the top": 1, "a": 2}},
+		{"a map after leading blank lines", tree.YAML, "\n\na: 1\n", map[string]int{"the top": 1, "a": 3}},
+		{"a list after a comment and a blank line", tree.YAML, "# c\n\n- x\n", map[string]int{"the top": 1, "[0]": 3}},
+		{"a scalar after a leading comment", tree.YAML, "# c\ntext\n", map[string]int{"the top": 1}},
+		{"a TOML table after a comment and a blank line", tree.TOML, "# c\n\na = 1\n", map[string]int{"the top": 0, "a": 0}},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
+			path := "/a/v." + strings.ToLower(c.format.String())
+			want := map[string]tree.Origin{}
+			for place, line := range c.lines {
+				want[place] = tree.Origin{Path: path, Line: line}
+			}
+			assertOrigins(t, c.format, c.data, path, want)
+		})
+	}
+}
+
+// The path names a file of the other format's extension in a temporary
+// directory, either holding other values in the format its extension
+// names or not there: decode reads neither the file nor the format from
+// the path, and the bytes it is given are the tree.
+//
+// Contract test: the filesystem, a file at the path decode is given.
 func TestDecodeKeepsThePathItIsGivenAndReadsNothingFromIt(t *testing.T) {
 	t.Parallel()
 	for _, c := range []struct {
 		format tree.Format
 		data   string
-		path   string
-		line   int
+		// name is the file's, and file what it holds when it is there.
+		name, file string
+		line       int
 	}{
-		{tree.YAML, "a: [x]", "/a/v.toml", 1},
-		{tree.TOML, `a = ["x"]`, "/a/v.yaml", 0},
+		{tree.YAML, "a: [x]", "v.toml", "a = [\"y\"]\nb = 1\n", 1},
+		{tree.TOML, `a = ["x"]`, "v.yaml", "a: [y]\nb: 1\n", 0},
 	} {
-		t.Run(c.format.String()+" from "+c.path, func(t *testing.T) {
-			t.Parallel()
-			at := tree.Origin{Path: c.path, Line: c.line}
-			assertOrigins(t, c.format, c.data, c.path, map[string]tree.Origin{
-				"the top": at,
-				"a":       at,
-				"a[0]":    at,
+		for _, there := range []bool{true, false} {
+			t.Run(fmt.Sprintf("%s from %s, there: %t", c.format, c.name, there), func(t *testing.T) {
+				t.Parallel()
+				path := filepath.Join(t.TempDir(), c.name)
+				if there {
+					if err := os.WriteFile(path, []byte(c.file), 0o600); err != nil {
+						t.Fatal(err)
+					}
+				}
+				at := tree.Origin{Path: path, Line: c.line}
+				got := assertOrigins(t, c.format, c.data, path, map[string]tree.Origin{
+					"the top": at,
+					"a":       at,
+					"a[0]":    at,
+				})
+				want := []string{" map", ".a list", `.a[0] string "x"`}
+				if lines := values(got); !slices.Equal(lines, want) {
+					t.Errorf("values:\n%s\nwant:\n%s", strings.Join(lines, "\n"), strings.Join(want, "\n"))
+				}
 			})
-		})
+		}
 	}
 }
 

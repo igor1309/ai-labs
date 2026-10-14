@@ -54,7 +54,8 @@ saying what it ran; the tests are reported by `testreport`. It runs the
 same check in `gokit/tree`, its stages headed `== gokit/tree`. Its own test
 (`scripts/test_test.go`) runs a copy of it with spies for `go` and `gofmt`:
 it proves the check fails when either module's format, vet, tests or their
-report fail, that gofmt is given each module's own files, and that each
+report fail, that each stage's heading comes before that stage's own
+output, that gofmt is given each module's own files, and that each
 module's test events reach its report.
 
 ```bash
