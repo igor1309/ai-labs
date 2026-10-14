@@ -187,11 +187,24 @@ func module(p fakeproc.Process, dir string) string {
 	return filepath.ToSlash(filepath.Join("gokit", rel))
 }
 
+// headings are the check's stage headings, in order, when every stage
+// runs: each module's gofmt with its files counted, vet with the packages
+// go list printed, and go test.
+var headings = []string{
+	"== gokit gofmt -l: 2 files",
+	"== gokit go vet ./...: 1 packages",
+	"== gokit go test -race -count=1 -timeout 1m ./...",
+	"== gokit/tree gofmt -l: 2 files",
+	"== gokit/tree go vet ./...: 1 packages",
+	"== gokit/tree go test -race -count=1 -timeout 1m ./...",
+}
+
 // The check fails when go test or testreport fails in either module, and
-// still runs every stage of both; it passes when none fails. In each run
-// gofmt is given each module's own files, its packages' at any depth but
-// none of the module inside it, and each module's testreport reads all of
-// that module's test events and prints to the check's output.
+// still runs every stage of both, each under its heading; it passes when
+// none fails. In each run gofmt is given each module's own files, its
+// packages' at any depth but none of the module inside it, and each
+// module's testreport reads all of that module's test events and prints to
+// the check's output.
 //
 // Contract test: test.sh run by sh, with the test binary as its go and
 // gofmt.
@@ -220,6 +233,15 @@ func TestTheCheckFailsWhenTestsOrTheirReportFail(t *testing.T) {
 			}
 			if !slices.Equal(run.ran, stages) {
 				t.Errorf("the check ran:\n%s\nwant:\n%s", strings.Join(run.ran, "\n"), strings.Join(stages, "\n"))
+			}
+			var headed []string
+			for line := range strings.Lines(run.out) {
+				if strings.HasPrefix(line, "== ") {
+					headed = append(headed, strings.TrimSuffix(line, "\n"))
+				}
+			}
+			if !slices.Equal(headed, headings) {
+				t.Errorf("the check's headings:\n%s\nwant:\n%s", strings.Join(headed, "\n"), strings.Join(headings, "\n"))
 			}
 			for module, want := range gofmtFiles {
 				if got := slices.Sorted(slices.Values(run.gofmt[module])); !slices.Equal(got, want) {
