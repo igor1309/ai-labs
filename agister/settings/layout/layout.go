@@ -166,6 +166,8 @@ func (l *Layout) Read(folders Folders) Snapshot {
 	return snapshot
 }
 
+// readLayer reads a layer folder's blocks and kinds' folders. Anything else
+// there, hidden or not, is no settings, and is neither listed nor read.
 func (l *Layout) readLayer(snapshot *Snapshot, at layer, folder string) {
 	entries, err := l.files.Entries(folder)
 	if errors.Is(err, fs.ErrNotExist) {

@@ -428,14 +428,35 @@ func TestAFolderInsideAKindsFolderIsAProblem(t *testing.T) {
 	assertNotAsked(t, files, folder, folder+"/review.yaml")
 }
 
-// A hidden file in a kind's folder is no settings, so no name to judge.
-func TestAHiddenFileInAKindsFolderIsSkipped(t *testing.T) {
+// What is not settings is skipped: no document, no problem, and neither the
+// file nor a folder that is no kind's on its way is listed or read. A
+// hidden file in a kind's folder is no settings, so no name to judge.
+func TestWhatIsNotSettingsIsSkipped(t *testing.T) {
 	t.Parallel()
-	path := homeFolder + "/processes/.DS_Store"
-	files := &spyFiles{files: map[string]string{path: "\x00"}}
-	got := read(t, files, layout.Folders{Home: homeFolder})
-	assertSnapshot(t, got, layout.Snapshot{Documents: map[layout.Kind]map[string]layout.Document{}})
-	assertNotAsked(t, files, path)
+	for _, c := range []struct {
+		path string
+		// unlisted are the folders on the path that are not listed.
+		unlisted []string
+	}{
+		{".DS_Store", nil},
+		{"processes/.DS_Store", nil},
+		{".git/config", []string{".git"}},
+		{"service.toml", nil},
+		{"notes/todo.md", []string{"notes"}},
+		{"skills/review/SKILL.md", []string{"skills", "skills/review"}},
+	} {
+		t.Run(c.path, func(t *testing.T) {
+			t.Parallel()
+			path := homeFolder + "/" + c.path
+			files := &spyFiles{files: map[string]string{path: "\x00"}}
+			got := read(t, files, layout.Folders{Home: homeFolder})
+			assertSnapshot(t, got, layout.Snapshot{Documents: map[layout.Kind]map[string]layout.Document{}})
+			assertNotAsked(t, files, path)
+			for _, folder := range c.unlisted {
+				assertNotAsked(t, files, homeFolder+"/"+folder)
+			}
+		})
+	}
 }
 
 func assertNotAsked(t *testing.T, files *spyFiles, paths ...string) {
