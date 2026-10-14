@@ -149,8 +149,8 @@ stream of events and a result.
 | Package | Responsibility | Ports it declares |
 |---|---|---|
 | `core/workflow` | Runs a workflow: one `call`, or `fan_out` then `join`; hands the join the collection (each node's status, class and output, in order); gathers the nodes' warnings. | run a call; events |
-| `core/admit` | Admits a call before its first turn: the process and runtime allow what the command asks, and the worktree is held, as a writer alone or a reader shared. | hold; events |
-| `core/session` | The conversation with the agent: turns on the runtime, and a recovery turn when a staleness limit ended one, while the budget allows. Declares the runtime protocol. | runtime protocol; staleness; events; clock |
+| `core/admit` | Admits a call before its first turn: the process and runtime allow what the command asks, and the worktree is held, as a writer alone or a reader shared. | worktree facts (revision, content), answered by the composition from `git`; hold; events |
+| `core/session` | The conversation with the agent: turns on the runtime, each turn's output checked against its contract, and a recovery turn when a staleness limit ended one, while the budget allows. Declares the runtime protocol. | runtime protocol; staleness; events; clock |
 | `core/attempts` | Verification and repair: runs the verification, and on a failure asks the session for a repair turn, while attempts are left. | verify; another turn of the session; events |
 | `core/verify` | Runs a verification command: timeout, `no_output` staleness, bounded head and tail, digest. | command runner (the process supervisor) |
 | `core/inputs` | Resolves a call's inputs from their sources to a value and an identity; checks a text against its brief form; keeps long values as artifacts. | sources (by name, plugged in by the composition); artifact store |

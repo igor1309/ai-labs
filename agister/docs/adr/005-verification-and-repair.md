@@ -14,29 +14,25 @@ description: "ADR-005: verification and repair: a process declares one check, ru
 
 ## Context
 
-An agent's claim that its work is done is not evidence. A declared check
-has to pass first, on the content the call leaves. When it fails, the
-agent that did the work is the one to fix it, in the conversation it is
-in, a few times at most. The check is the repository's (its formatter,
-its tests); the process that uses it is not.
+A process may want a check run on what its call leaves, such as the
+repository's tests, with a failure handed back to the agent to fix.
 
 ## Decision
 
-A process may declare one verification. After a turn whose output is
-valid, `core/attempts` runs it through `core/verify` in the call's
-worktree. If it fails and attempts are left, `core/attempts` asks the
-session for a repair turn with the failure, and runs it again. The call
-completes only when the latest run passes on content it did not change.
+A process may declare one verification. After the agent's turn, the
+verification runs in the call's worktree. A failure, while attempts
+last, goes back into the same session to fix, and the verification runs
+again.
 
 ## Rules
 
 ### 1. A verification is declared, never chosen by the agent
 
-A verification is a command, a timeout per run, a number of attempts, and
-the instruction the agent is given when a run fails. A process declares
-it inline or names a verification document. A process meant for every
-repository names one each repository supplies. The agent cannot choose,
-change or skip it.
+A verification is a command, a timeout per run, a limit on time without
+output, a number of attempts, and the instruction the agent is given when
+a run fails. A process declares it inline or names a verification
+document. A process meant for every repository names one each repository
+supplies. The agent cannot choose, change or skip it.
 
 ### 2. It runs on a known start
 
@@ -61,32 +57,22 @@ attempt is a caller's step, not a repair.
 
 Each run has its timeout, and the call's limits on time and cost cover
 every turn and every run. Verification attempts are a limit of their own.
-A run that gives no output for its staleness limit is ended and is a
-failed attempt.
+A run that gives no output for its limit is ended and is a failed
+attempt.
 
-### 6. No rerun without progress
+### 6. How a verification ends a call
 
-A run never repeats on content already checked, and the same failure
-twice ends the loop. The call then fails as its budget exhausted.
+A call with a verification completes only when its latest run passes.
+One that runs out of attempts, or repeats a failure, fails with its
+budget exhausted. Usage and cost cover every turn; timing covers the
+whole loop.
 
-### 7. A pass counts only on unchanged content
+### 7. Every attempt is recorded
 
-A run that changes the worktree's content fails, whatever its exit
-status. A passing run leaves the content it checked.
+Each run is recorded with its turn: the command, how it ended, and its
+bounded output with the digest of the whole.
 
-### 8. The result shape does not change
-
-Completed means valid output and a passing latest run. A last attempt
-that failed, or no progress, is failed with its budget exhausted. Usage
-and cost cover every turn; timing covers the whole loop.
-
-### 9. Every attempt is recorded
-
-Each run is recorded with its turn: the command, how it ended, its bounded
-output with the digest of the whole, the content it checked, and the
-changes the turn before it made.
-
-### 10. The command runs with the caller's authority
+### 8. The command runs with the caller's authority
 
 The command is the caller's infrastructure, not an agent permission, and
 what it runs can be code the agent wrote. Agister does not confine it
@@ -97,8 +83,6 @@ what it runs can be code the agent wrote. Agister does not confine it
 - A repository states its check once, and every process that uses it
   gets it.
 - Fixing a failing test needs no retry node and no workflow.
-- `core/attempts` knows no git: the worktree's content is an answer to a
-  port the composition answers from `git`.
 
 ## Open
 
