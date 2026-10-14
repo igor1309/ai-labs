@@ -11,26 +11,44 @@ import (
 
 // A scalar gives its value through its own getter and is no scalar of any
 // other kind; a map, a list and the empty tree are no scalar at all. Each
-// node's origin is the one it was made with.
+// node's origin is the one it was made with, whether that origin has a
+// line or not, whatever the node's kind.
 func TestEachNodeIsTheScalarOfItsKindAloneAndKeepsItsOrigin(t *testing.T) {
 	t.Parallel()
-	for _, c := range []struct {
+	type made struct {
 		name   string
 		node   tree.Node
 		kind   tree.Kind
 		value  any
 		origin tree.Origin
+	}
+	cases := []made{{"the empty tree", tree.Node{}, tree.Empty, nil, tree.Origin{}}}
+	for _, k := range []struct {
+		name  string
+		build func(tree.Origin) tree.Node
+		kind  tree.Kind
+		value any
 	}{
-		{"a string", tree.NewString("text", from("/s.yaml", 2)), tree.String, "text", from("/s.yaml", 2)},
-		{"an empty string", tree.NewString("", from("/e.yaml", 3)), tree.String, "", from("/e.yaml", 3)},
-		{"an integer", tree.NewInteger(-3, from("/i.yaml", 4)), tree.Integer, int64(-3), from("/i.yaml", 4)},
-		{"a number", tree.NewNumber(2.5, from("/n.toml", 0)), tree.Number, 2.5, from("/n.toml", 0)},
-		{"a boolean true", tree.NewBoolean(true, from("/t.yaml", 5)), tree.Boolean, true, from("/t.yaml", 5)},
-		{"a boolean false", tree.NewBoolean(false, from("/f.yaml", 6)), tree.Boolean, false, from("/f.yaml", 6)},
-		{"a map", mapOf(from("/m.yaml", 7), "a", integer(1, from("/m.yaml", 8))), tree.Map, nil, from("/m.yaml", 7)},
-		{"a list", listOf(from("/l.yaml", 9), integer(1, from("/l.yaml", 10))), tree.List, nil, from("/l.yaml", 9)},
-		{"the empty tree", tree.Node{}, tree.Empty, nil, tree.Origin{}},
+		{"a string", func(o tree.Origin) tree.Node { return tree.NewString("text", o) }, tree.String, "text"},
+		{"an empty string", func(o tree.Origin) tree.Node { return tree.NewString("", o) }, tree.String, ""},
+		{"an integer", func(o tree.Origin) tree.Node { return tree.NewInteger(-3, o) }, tree.Integer, int64(-3)},
+		{"a number", func(o tree.Origin) tree.Node { return tree.NewNumber(2.5, o) }, tree.Number, 2.5},
+		{"a boolean true", func(o tree.Origin) tree.Node { return tree.NewBoolean(true, o) }, tree.Boolean, true},
+		{"a boolean false", func(o tree.Origin) tree.Node { return tree.NewBoolean(false, o) }, tree.Boolean, false},
+		{"a map", func(o tree.Origin) tree.Node { return mapOf(o, "a", integer(1, from("/m.yaml", 8))) }, tree.Map, nil},
+		{"a list", func(o tree.Origin) tree.Node { return listOf(o, integer(1, from("/l.yaml", 10))) }, tree.List, nil},
 	} {
+		for _, o := range []struct {
+			name   string
+			origin tree.Origin
+		}{
+			{"with a line", from("/lined.yaml", 7)},
+			{"without a line", from("/unlined.toml", 0)},
+		} {
+			cases = append(cases, made{k.name + " from an origin " + o.name, k.build(o.origin), k.kind, k.value, o.origin})
+		}
+	}
+	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			t.Parallel()
 			if got := c.node.Kind(); got != c.kind {
