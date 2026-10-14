@@ -113,11 +113,24 @@ Feature: Layout reads the settings files of the layer folders it is given
   # Problems
 
   Scenario: A file that cannot be read is a problem of its document
-    Given the home folder holds "processes/a.yaml" and "processes/b.yaml"
+    Given the home folder "/home/.agister" holds "processes/a.yaml" and
+      "processes/b.yaml"
     And "processes/a.yaml" cannot be read
     When layout reads
-    Then process "a" has a problem naming its path and the read's error
+    Then the snapshot holds process "a"
+    And process "a" has a problem naming "/home/.agister/processes/a.yaml"
+      and the read's error
+    And process "a" has no bytes from that file
     And process "b" has a home source with its bytes
+
+  Scenario: A nearer layer's file that cannot be read is no fall back
+    Given the home folder "/home/.agister" holds "processes/review.yaml"
+    And the repository folder "/repo/.agister" holds
+      "processes/review.yaml", which cannot be read
+    When layout reads
+    Then process "review" has a home source with its bytes
+    And process "review" has a problem naming
+      "/repo/.agister/processes/review.yaml" and the read's error
 
   Scenario: A layer folder that cannot be listed is a problem of its layer
     Given the home folder "/home/.agister" holds "processes/a.yaml"
@@ -155,12 +168,32 @@ Feature: Layout reads the settings files of the layer folders it is given
       ".yaml" file
     And the file is not read
 
-  Scenario: A file whose name is no name is a problem
-    Given the home folder holds "processes/Bad Name.yaml"
+  Scenario Outline: A file whose name is no name is a problem
+    Given the home folder holds "processes/<file>"
     When layout reads
-    Then the file "processes/Bad Name.yaml" has a problem: "Bad Name" is
-      no name
+    Then the file "processes/<file>" has a problem: "<name>" is no name
     And the file is not read
+
+    Examples:
+      | file          | name     |
+      | Bad Name.yaml | Bad Name |
+      | Review.yaml   | Review   |
+      | 0a.yaml       | 0a       |
+      | -a.yaml       | -a       |
+      | _a.yaml       | _a       |
+      | a.b.yaml      | a.b      |
+
+  Scenario Outline: A name of letters, digits, "_" and "-" is a name
+    Given the home folder holds "processes/<file>"
+    When layout reads
+    Then the snapshot holds process "<name>"
+    And it has no problem
+
+    Examples:
+      | file         | name   |
+      | a.yaml       | a      |
+      | a-b_c.yaml   | a-b_c  |
+      | a0.yaml      | a0     |
 
   Scenario: A folder inside a kind's folder is a problem
     Given the home folder holds "processes/team/review.yaml"
