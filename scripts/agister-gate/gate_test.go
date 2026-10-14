@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -19,17 +20,30 @@ import (
 // after `git add` when unreported is set; git diff names the decisions
 // record once it is staged, or from the start when recorded is set. The
 // review is the workflow review names, code_review when it is empty.
+// `agister runs export` copies a review run's collection: collections's,
+// by the run's id, or reviewsOf(5, 2) when it has none, and its record,
+// records's by the run's id, if any, with artifacts's, by "<id>/<path>".
+// Every command
+// writes complaint, if any, to its standard error. ran is every command it
+// answered, in order, with its answer.
 type fake struct {
-	t          *testing.T
-	implements []string
-	reviews    []string
-	advisors   []string
-	dirty      string
-	unreported string
-	recorded   bool
-	review     string
+	t           *testing.T
+	implements  []string
+	reviews     []string
+	advisors    []string
+	dirty       string
+	unreported  string
+	recorded    bool
+	review      string
+	collections map[string][]collected
+	records     map[string]string
+	artifacts   map[string]string
+	complaint   string
 
 	questions []string
+	// planted is written into the out dir while the next implement run
+	// runs, by name, as another hand would.
+	planted map[string]string
 
 	briefs      []string
 	added       [][]string
@@ -38,9 +52,25 @@ type fake struct {
 	revParses   int
 	agisters    int
 	reviewBases []string
+	ran         []answered
 }
 
-func (f *fake) run(_ context.Context, _ string, name string, args ...string) ([]byte, error) {
+type answered struct {
+	command []string
+	output  string
+	err     error
+}
+
+func (f *fake) run(ctx context.Context, dir string, stderr io.Writer, name string, args ...string) ([]byte, error) {
+	if f.complaint != "" {
+		fmt.Fprintln(stderr, f.complaint)
+	}
+	out, err := f.answer(ctx, dir, name, args...)
+	f.ran = append(f.ran, answered{append([]string{name}, args...), string(out), err})
+	return out, err
+}
+
+func (f *fake) answer(_ context.Context, _ string, name string, args ...string) ([]byte, error) {
 	switch {
 	case name == "git" && args[0] == "status":
 		f.statuses++
@@ -59,6 +89,33 @@ func (f *fake) run(_ context.Context, _ string, name string, args ...string) ([]
 	case name == "git" && args[0] == "diff":
 		if f.recorded {
 			return []byte(args[len(args)-1] + "\n"), nil
+		}
+		return nil, nil
+	case name == "agister" && args[0] == "runs":
+		id, to := args[2], args[4]
+		reviews, ok := f.collections[id]
+		if !ok {
+			reviews = reviewsOf(5, 2)
+		}
+		data, _ := json.Marshal(reviews)
+		dir := filepath.Join(to, id, "artifacts")
+		if err := os.MkdirAll(dir, 0o755); err != nil {
+			f.t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(dir, "collection.json"), data, 0o644); err != nil {
+			f.t.Fatal(err)
+		}
+		for name, data := range f.artifacts {
+			if path, ok := strings.CutPrefix(name, id+"/"); ok {
+				if err := os.WriteFile(filepath.Join(to, id, path), []byte(data), 0o644); err != nil {
+					f.t.Fatal(err)
+				}
+			}
+		}
+		if record, ok := f.records[id]; ok {
+			if err := os.WriteFile(filepath.Join(to, id, "record.json"), []byte(record), 0o644); err != nil {
+				f.t.Fatal(err)
+			}
 		}
 		return nil, nil
 	case name == "agister" && args[1] == "advisor_codex":
@@ -97,6 +154,12 @@ func (f *fake) run(_ context.Context, _ string, name string, args ...string) ([]
 		}
 		out := f.implements[0]
 		f.implements = f.implements[1:]
+		for name, data := range f.planted {
+			if err := os.WriteFile(filepath.Join(filepath.Dir(strings.TrimPrefix(args[3], "brief=")), name), []byte(data), 0o644); err != nil {
+				f.t.Fatal(err)
+			}
+		}
+		f.planted = nil
 		if strings.Contains(out, `"failed"`) {
 			return []byte(out), errors.New("exit status 1")
 		}
@@ -130,6 +193,29 @@ func reviewed(id string, items ...item) string {
 	}
 	out, _ := json.Marshal(map[string]any{"run_id": id, "status": "completed", "output": map[string]any{"items": items}})
 	return string(out)
+}
+
+// reviewsOf is a collection of n reviews with m findings each; finding i
+// of review r is findingOf(r, i).
+func reviewsOf(n, m int) []collected {
+	reviews := make([]collected, n)
+	for r := range reviews {
+		reviews[r].Output = &struct {
+			Findings []finding `json:"findings"`
+		}{}
+		for i := range m {
+			reviews[r].Output.Findings = append(reviews[r].Output.Findings, findingOf(r+1, i+1))
+		}
+	}
+	return reviews
+}
+
+// findingOf is a finding whose every field names it: r#i.
+func findingOf(r, i int) finding {
+	f := finding{File: fmt.Sprintf("cmd/r%d.go", r), Line: &i, Requirement: fmt.Sprintf("Rule %d#%d.", r, i)}
+	f.Evidence.Case = fmt.Sprintf("Case %d#%d.", r, i)
+	f.Evidence.Trace = []string{fmt.Sprintf("cmd/r%d.go:%d - step %d#%d.", r, i, r, i)}
+	return f
 }
 
 func limited(id string) string {
@@ -168,7 +254,29 @@ const constraints = "- Only cmd/ changes.\n"
 // summary and output directory.
 func gated(t *testing.T, call runner, extra ...string) (int, summary, string) {
 	t.Helper()
-	dir := t.TempDir()
+	code, sum, out, _ := gatedIn(t, t.TempDir(), call, extra...)
+	return code, sum, out
+}
+
+// gatedIn is gated in dir, which keeps a step's output for the step that
+// resumes it, and returns its progress lines too.
+func gatedIn(t *testing.T, dir string, call runner, extra ...string) (int, summary, string, string) {
+	t.Helper()
+	args, out := gateArgs(t, dir, extra...)
+	var stdout, stderr bytes.Buffer
+	code := run(context.Background(), args, call, &stdout, &stderr)
+	var sum summary
+	if err := json.Unmarshal(stdout.Bytes(), &sum); err != nil {
+		t.Fatalf("summary: %v\n%s\n%s", err, stdout.String(), stderr.String())
+	}
+	return code, sum, out, stderr.String()
+}
+
+// gateArgs writes the issue's text, the owner's constraints and the
+// decisions record into dir, and returns the gate's args for them, then
+// extra, and its output directory.
+func gateArgs(t *testing.T, dir string, extra ...string) ([]string, string) {
+	t.Helper()
 	for name, text := range map[string]string{"issue.md": issue, "constraints.md": constraints, "decisions.md": records} {
 		if err := os.WriteFile(filepath.Join(dir, name), []byte(text), 0o644); err != nil {
 			t.Fatal(err)
@@ -179,13 +287,7 @@ func gated(t *testing.T, call runner, extra ...string) (int, summary, string) {
 		"--constraints", filepath.Join(dir, "constraints.md"), "--implement", "implement_codex",
 		"--advisor", "advisor_codex", "--decisions", filepath.Join(dir, "decisions.md"),
 		"--base", "origin/trunk", "--message", "cmd: the call is refused", "--out", out, "--dir", dir}, extra...)
-	var stdout, stderr bytes.Buffer
-	code := run(context.Background(), args, call, &stdout, &stderr)
-	var sum summary
-	if err := json.Unmarshal(stdout.Bytes(), &sum); err != nil {
-		t.Fatalf("summary: %v\n%s\n%s", err, stdout.String(), stderr.String())
-	}
-	return code, sum, out
+	return args, out
 }
 
 // A step whose first review has no major ruled fix passes: one implement
@@ -246,7 +348,7 @@ func TestAResumedReviewUsesItsGivenCommit(t *testing.T) {
 				if f.revParses != len(f.commits) {
 					t.Fatalf("rev-parse calls %d, want only %d commit HEAD reads", f.revParses, len(f.commits))
 				}
-				paths := append([]string{filepath.Join(out, "goal.md"), filepath.Join(out, "step.md")}, f.briefs...)
+				paths := append([]string{filepath.Join(out, "01-goal.md"), filepath.Join(out, "01-step.md")}, f.briefs...)
 				for _, path := range paths {
 					brief, err := os.ReadFile(path)
 					if err != nil {
@@ -273,9 +375,10 @@ func TestTheReviewIsTheWorkflowReviewNames(t *testing.T) {
 }
 
 // A major ruled fix goes to a fix run whose brief is the step's, with the
-// major's title and action as its "## Acts on" as the judge wrote them, and
-// no review, run, ruling or source named; its commit is named for the
-// review, and the next review decides.
+// major's title and action as its "## Acts on" as the judge wrote them,
+// then the place, case, trace and requirement of the finding it rests on,
+// as the review wrote them, and no review, run, ruling or source named;
+// its commit is named for the review, and the next review decides.
 func TestAMajorRuledFixGoesToAFixRunAndIsReviewedAgain(t *testing.T) {
 	t.Parallel()
 	f := &fake{t: t, implements: []string{implementResult("i1", "cmd/a.go"), implementResult("i2", "cmd/a_test.go")},
@@ -284,23 +387,145 @@ func TestAMajorRuledFixGoesToAFixRunAndIsReviewedAgain(t *testing.T) {
 	if code != exitPassed || len(sum.Reviews) != 2 || sum.Reviews[0].Majors != 1 {
 		t.Fatalf("exit %d, %+v", code, sum)
 	}
-	if want := filepath.Join(out, "fix-1.md"); len(f.briefs) != 2 || f.briefs[1] != want {
+	if want := filepath.Join(out, "03-fix.md"); len(f.briefs) != 2 || f.briefs[1] != want {
 		t.Fatalf("briefs %q, want the second %s", f.briefs, want)
 	}
 	brief, err := os.ReadFile(f.briefs[1])
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := "# LAB-1 step 2\n\n## Goal\n\n`" + filepath.Join(out, "goal.md") + "`\n\n## Base\n\nc0\n\n## Covers\n\n" +
+	want := "# LAB-1 step 2\n\n## Goal\n\n`" + filepath.Join(out, "01-goal.md") + "`\n\n## Base\n\nc0\n\n## Covers\n\n" +
 		"````text\n" + issue + "````\n\n" +
-		"## Acts on\n\nThe changes to make, as written:\n\n" +
-		"- **Prove the refusal**: Add a test that the call is refused.\n\n" +
+		"## Acts on\n\nThe changes to make, as written, each with the evidence the reviews give for it:\n\n" +
+		"- **Prove the refusal**: Add a test that the call is refused.\n" +
+		"  - `cmd/r2.go:1`: Case 2#1.\n" +
+		"    - cmd/r2.go:1 - step 2#1.\n" +
+		"    - Requirement: Rule 2#1.\n\n" +
 		"## Constraints\n\n```text\n" + constraints + "```\n\n## Open\n\nNone.\n"
 	if string(brief) != want {
 		t.Errorf("fix brief:\n%s\nwant:\n%s", brief, want)
 	}
-	if !reflect.DeepEqual(f.commits, []string{"cmd: the call is refused", "cmd: the call is refused (review 1)"}) {
+	if !reflect.DeepEqual(f.commits, []string{"cmd: the call is refused", "cmd: the call is refused (answers review r1)"}) {
 		t.Errorf("commits %q", f.commits)
+	}
+}
+
+// A minor ruled fix stays unfixed without --minors; with it, the minor goes
+// to the fix run with the majors, and the step passes only when the review
+// leaves neither.
+func TestMinorsGoToTheFixRunWithMinors(t *testing.T) {
+	t.Parallel()
+	without := &fake{t: t, implements: []string{implementResult("i1", "cmd/a.go")}, reviews: []string{reviewed("r1", minor)}}
+	if code, sum, _ := gated(t, without.run); code != exitPassed || len(without.briefs) != 1 || len(sum.Left.Minors) != 1 {
+		t.Fatalf("without --minors: exit %d, briefs %q, %+v", code, without.briefs, sum)
+	}
+	f := &fake{t: t, implements: []string{implementResult("i1", "cmd/a.go"), implementResult("i2", "cmd/a.go"), implementResult("i3", "cmd/a.go")},
+		reviews: []string{reviewed("r1", major, minor), reviewed("r2", minor), reviewed("r3")}}
+	code, sum, out := gated(t, f.run, "--minors")
+	if code != exitPassed || len(sum.Reviews) != 3 {
+		t.Fatalf("exit %d, %+v", code, sum)
+	}
+	if started := ofKind(trailOf(t, out), "GATE_STARTED"); started[0].Data["minors"] != true {
+		t.Errorf("started %+v, want --minors kept", started[0].Data)
+	}
+	if want := []string{filepath.Join(out, "01-step.md"), filepath.Join(out, "03-fix.md"), filepath.Join(out, "05-fix.md")}; !reflect.DeepEqual(f.briefs, want) {
+		t.Fatalf("briefs %q, want %q", f.briefs, want)
+	}
+	for i, titles := range [][]string{{major.Title, minor.Title}, {minor.Title}} {
+		brief, err := os.ReadFile(f.briefs[i+1])
+		if err != nil {
+			t.Fatal(err)
+		}
+		_, acts, _ := strings.Cut(string(brief), "## Acts on")
+		for _, title := range titles {
+			if !strings.Contains(acts, "- **"+title+"**") {
+				t.Errorf("fix brief %d acts on no %q:\n%s", i+1, title, brief)
+			}
+		}
+	}
+}
+
+// A file the gate would write over stops the step: a file written into
+// the out dir while a run runs stays as it was written, and no run is
+// given a brief the trail does not hold.
+func TestAFileTheGateWouldWriteOverStopsTheStep(t *testing.T) {
+	t.Parallel()
+	f := &fake{t: t, implements: []string{implementResult("i1", "cmd/a.go")}, reviews: []string{reviewed("r1", major)},
+		planted: map[string]string{"03-fix.md": "# Another brief\n"}}
+	code, sum, out := gated(t, f.run)
+	fix := filepath.Join(out, "03-fix.md")
+	if code != exitStopped || !strings.Contains(sum.Reason, fix) {
+		t.Fatalf("exit %d, %+v", code, sum)
+	}
+	if data, err := os.ReadFile(fix); err != nil || string(data) != "# Another brief\n" {
+		t.Errorf("fix brief %q, %v; want it kept", data, err)
+	}
+	if len(f.briefs) != 1 {
+		t.Errorf("briefs %q, want only the step's", f.briefs)
+	}
+}
+
+// An item's evidence is every finding it rests on, in the order of its
+// sources, a finding two reviews give alike once and a finding without a
+// line by its file; text of several lines stays inside its list item.
+func TestAFixBriefGivesTheEvidenceOfEveryFindingAnItemRestsOn(t *testing.T) {
+	t.Parallel()
+	reviews := reviewsOf(3, 2)
+	reviews[2].Output.Findings[0] = findingOf(1, 2)
+	reviews[1].Output.Findings[1].Line = nil
+	reviews[1].Output.Findings[1].Evidence.Case = "Case 2#2,\nover two lines."
+	it := item{Ruling: "fix", Severity: "major", Sources: []string{"1#2", "2#2", "3#1"}, Title: "Fix it", Action: "Do this,\nthen that."}
+	f := &fake{t: t, implements: []string{implementResult("i1", "cmd/a.go"), implementResult("i2", "cmd/a.go")},
+		reviews: []string{reviewed("r1", it), reviewed("r2")}, collections: map[string][]collected{"r1": reviews}}
+	code, sum, _ := gated(t, f.run)
+	if code != exitPassed {
+		t.Fatalf("exit %d, %+v", code, sum)
+	}
+	brief, err := os.ReadFile(f.briefs[1])
+	if err != nil {
+		t.Fatal(err)
+	}
+	acts := "- **Fix it**: Do this,\n  then that.\n" +
+		"  - `cmd/r1.go:2`: Case 1#2.\n" +
+		"    - cmd/r1.go:2 - step 1#2.\n" +
+		"    - Requirement: Rule 1#2.\n" +
+		"  - `cmd/r2.go`: Case 2#2,\n    over two lines.\n" +
+		"    - cmd/r2.go:2 - step 2#2.\n" +
+		"    - Requirement: Rule 2#2.\n\n## Constraints"
+	if !strings.Contains(string(brief), acts) {
+		t.Errorf("fix brief:\n%s\nwant its Acts on to end:\n%s", brief, acts)
+	}
+}
+
+// A source that names no finding the judge received stops the step before
+// any fix run: the gate does not drop what an item rests on.
+func TestASourceThatNamesNoFindingStopsTheStep(t *testing.T) {
+	t.Parallel()
+	for _, source := range []string{"6#1", "1#3", "0#1", "1#0", "1", "1#1x"} {
+		t.Run(source, func(t *testing.T) {
+			t.Parallel()
+			it := item{Ruling: "fix", Severity: "major", Sources: []string{"1#1", source}, Title: "Fix it", Action: "Do it."}
+			f := &fake{t: t, implements: []string{implementResult("i1", "cmd/a.go")}, reviews: []string{reviewed("r1", it)}}
+			code, sum, _ := gated(t, f.run)
+			if code != exitStopped || len(f.briefs) != 1 || !strings.Contains(sum.Reason, source) {
+				t.Errorf("exit %d, briefs %q, reason %q; want a stop naming %s before any fix run", code, f.briefs, sum.Reason, source)
+			}
+		})
+	}
+}
+
+// A review whose items name no review the gate can read stops the step: a
+// collection that is missing, or a review that did not complete.
+func TestACollectionThatCannotBeReadStopsTheStep(t *testing.T) {
+	t.Parallel()
+	failed := reviewsOf(2, 1)
+	failed[1].Output = nil
+	it := item{Ruling: "fix", Severity: "major", Sources: []string{"2#1"}, Title: "Fix it", Action: "Do it."}
+	f := &fake{t: t, implements: []string{implementResult("i1", "cmd/a.go")}, reviews: []string{reviewed("r1", it)},
+		collections: map[string][]collected{"r1": failed}}
+	code, sum, _ := gated(t, f.run)
+	if code != exitStopped || len(f.briefs) != 1 || !strings.Contains(sum.Reason, "2#1") {
+		t.Errorf("exit %d, briefs %q, reason %q", code, f.briefs, sum.Reason)
 	}
 }
 
@@ -327,8 +552,8 @@ func TestALimitedReviewDoesNotCount(t *testing.T) {
 	f := &fake{t: t, implements: []string{implementResult("i1", "a"), implementResult("i2", "a")},
 		reviews: []string{reviewed("r1", major), limited("r2")}}
 	base := strings.Repeat("a", 40)
-	call := func(ctx context.Context, dir, name string, args ...string) ([]byte, error) {
-		out, err := f.run(ctx, dir, name, args...)
+	call := func(ctx context.Context, dir string, stderr io.Writer, name string, args ...string) ([]byte, error) {
+		out, err := f.run(ctx, dir, stderr, name, args...)
 		if name == "git" && reflect.DeepEqual(args, []string{"rev-parse", "--verify", "origin/trunk^{commit}"}) {
 			return []byte(base + "\n"), err
 		}
@@ -382,7 +607,7 @@ func TestTheRunsFilesAreCommittedFromTheRootWhenDirIsBelowIt(t *testing.T) {
 	repo, inputs := t.TempDir(), t.TempDir()
 	git := func(args ...string) string {
 		t.Helper()
-		out, err := commands(context.Background(), repo, "git", args...)
+		out, err := commands(context.Background(), repo, io.Discard, "git", args...)
 		if err != nil {
 			t.Fatalf("git %q: %v", args, err)
 		}
@@ -407,16 +632,16 @@ func TestTheRunsFilesAreCommittedFromTheRootWhenDirIsBelowIt(t *testing.T) {
 		}
 	}
 	f := &fake{t: t, implements: []string{implementResult("i1", "project/a.go")}, reviews: []string{reviewed("r1")}}
-	runner := func(ctx context.Context, dir, name string, args ...string) ([]byte, error) {
+	runner := func(ctx context.Context, dir string, stderr io.Writer, name string, args ...string) ([]byte, error) {
 		if name == "git" {
-			return commands(ctx, dir, name, args...)
+			return commands(ctx, dir, stderr, name, args...)
 		}
 		if args[1] == "implement_codex" {
 			if err := os.WriteFile(filepath.Join(project, "a.go"), []byte("package a\n\nconst A = 1\n"), 0o644); err != nil {
 				t.Fatal(err)
 			}
 		}
-		return f.run(ctx, dir, name, args...)
+		return f.run(ctx, dir, stderr, name, args...)
 	}
 	args := []string{"--issue", filepath.Join(inputs, "issue.md"), "--title", "LAB-1 step 2",
 		"--implement", "implement_codex", "--advisor", "advisor_codex", "--decisions", filepath.Join(inputs, "decisions.md"),
@@ -443,7 +668,7 @@ func TestTheBaseIsPinnedBeforeSetupAndReview(t *testing.T) {
 			repo, inputs := t.TempDir(), t.TempDir()
 			git := func(args ...string) string {
 				t.Helper()
-				out, err := commands(context.Background(), repo, "git", args...)
+				out, err := commands(context.Background(), repo, io.Discard, "git", args...)
 				if err != nil {
 					t.Fatalf("git %q: %v", args, err)
 				}
@@ -476,12 +701,12 @@ func TestTheBaseIsPinnedBeforeSetupAndReview(t *testing.T) {
 				}
 				moved = true
 			}
-			runner := func(ctx context.Context, dir, name string, args ...string) ([]byte, error) {
+			runner := func(ctx context.Context, dir string, stderr io.Writer, name string, args ...string) ([]byte, error) {
 				if name == "git" {
 					if phase == "preflight" && !moved && args[0] == "status" {
 						moveRef()
 					}
-					out, err := commands(ctx, dir, name, args...)
+					out, err := commands(ctx, dir, stderr, name, args...)
 					if phase == "before review" && !moved && reflect.DeepEqual(args, []string{"rev-parse", "HEAD"}) {
 						moveRef()
 					}
@@ -496,7 +721,7 @@ func TestTheBaseIsPinnedBeforeSetupAndReview(t *testing.T) {
 				if name == "agister" && args[1] == "code_review" && !moved {
 					t.Fatal("review invoked before the ref moved")
 				}
-				return f.run(ctx, dir, name, args...)
+				return f.run(ctx, dir, stderr, name, args...)
 			}
 			out := filepath.Join(inputs, "out")
 			args := []string{"--issue", filepath.Join(inputs, "issue.md"), "--title", "LAB-251 step 1",
@@ -530,7 +755,7 @@ func TestTheBaseIsPinnedBeforeSetupAndReview(t *testing.T) {
 			if sum.Base != base || !reflect.DeepEqual(f.reviewBases, []string{base, base}) {
 				t.Fatalf("base summary=%q reviews=%q want=%q", sum.Base, f.reviewBases, base)
 			}
-			paths := append([]string{filepath.Join(out, "goal.md"), filepath.Join(out, "step.md")}, f.briefs...)
+			paths := append([]string{filepath.Join(out, "01-goal.md"), filepath.Join(out, "01-step.md")}, f.briefs...)
 			for _, path := range paths {
 				brief, err := os.ReadFile(path)
 				if err != nil {
@@ -551,7 +776,7 @@ func TestAnUnresolvableBaseStopsBeforeSetup(t *testing.T) {
 	out := filepath.Join(t.TempDir(), "out")
 	failed := errors.New("unknown revision")
 	g := gate{options: options{base: "origin/missing", from: "implement", out: out, dir: t.TempDir()},
-		run: func(_ context.Context, _ string, name string, args ...string) ([]byte, error) {
+		run: func(_ context.Context, _ string, _ io.Writer, name string, args ...string) ([]byte, error) {
 			if name != "git" || !reflect.DeepEqual(args, []string{"rev-parse", "--verify", "origin/missing^{commit}"}) {
 				t.Fatalf("setup preceded base resolution: %s %q", name, args)
 			}
@@ -622,7 +847,7 @@ func TestTheBriefsAreTheIssuesTextAsWritten(t *testing.T) {
 	t.Parallel()
 	f := &fake{t: t, implements: []string{implementResult("i1", "a")}, reviews: []string{reviewed("r1")}}
 	_, _, out := gated(t, f.run)
-	goal, err := os.ReadFile(filepath.Join(out, "goal.md"))
+	goal, err := os.ReadFile(filepath.Join(out, "01-goal.md"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -632,14 +857,14 @@ func TestTheBriefsAreTheIssuesTextAsWritten(t *testing.T) {
 	if string(goal) != wantGoal {
 		t.Errorf("goal:\n%s\nwant:\n%s", goal, wantGoal)
 	}
-	if want := filepath.Join(out, "step.md"); len(f.briefs) != 1 || f.briefs[0] != want {
+	if want := filepath.Join(out, "01-step.md"); len(f.briefs) != 1 || f.briefs[0] != want {
 		t.Fatalf("briefs %q, want %s", f.briefs, want)
 	}
 	step, err := os.ReadFile(f.briefs[0])
 	if err != nil {
 		t.Fatal(err)
 	}
-	wantStep := "# LAB-1 step 2\n\n## Goal\n\n`" + filepath.Join(out, "goal.md") + "`\n\n## Base\n\nc0\n\n" +
+	wantStep := "# LAB-1 step 2\n\n## Goal\n\n`" + filepath.Join(out, "01-goal.md") + "`\n\n## Base\n\nc0\n\n" +
 		"## Covers\n\n````text\n" + issue + "````\n\n" +
 		"## Constraints\n\n```text\n" + constraints + "```\n\n## Open\n\nNone.\n"
 	if string(step) != wantStep {
@@ -756,6 +981,107 @@ func TestASecondOpenPointStopsTheStep(t *testing.T) {
 			}
 			if len(tc.f.questions) != tc.advisors || len(sum.Reviews) != 0 {
 				t.Errorf("advisor runs %d, want %d; reviews %+v", len(tc.f.questions), tc.advisors, sum.Reviews)
+			}
+		})
+	}
+}
+
+// recordOf is the record of a run of process that reviewed base against
+// candidate for goal, with status, judged as items.
+func recordOf(process, base, candidate, goal, status string, items ...item) string {
+	if items == nil {
+		items = []item{}
+	}
+	out, _ := json.Marshal(map[string]any{"process": process,
+		"inputs": []map[string]any{{"name": "base", "value": base}, {"name": "candidate", "value": candidate}, {"name": "goal", "value": goal}},
+		"result": map[string]any{"status": status, "output": map[string]any{"items": items}}})
+	return string(out)
+}
+
+// A completed review run of the step's base against HEAD is taken as the
+// next review: its majors go to a fix run, from its collection, and the
+// review after the fix is the gate's own.
+func TestAReviewRunTakenIsTheNextReview(t *testing.T) {
+	t.Parallel()
+	base := strings.Repeat("deadbeef", 5)
+	f := &fake{t: t, implements: []string{implementResult("i2", "cmd/a.go")}, reviews: []string{reviewed("r3")},
+		records: map[string]string{"r2": recordOf("code_review", base, "c0", issue, "completed", major, minor)}}
+	code, sum, out := gated(t, f.run, "--from", "review", "--reviews", "1", "--base", base, "--reviewed", "r2")
+	if code != exitPassed || len(sum.Reviews) != 2 || sum.Reviews[0].RunID != "r2" || sum.Reviews[0].Majors != 1 || sum.Reviews[1].RunID != "r3" {
+		t.Fatalf("exit %d, %+v", code, sum)
+	}
+	if want := []string{filepath.Join(out, "01-fix.md")}; !reflect.DeepEqual(f.briefs, want) {
+		t.Fatalf("briefs %q, want %q", f.briefs, want)
+	}
+	brief, err := os.ReadFile(f.briefs[0])
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(brief), "- **Prove the refusal**: Add a test that the call is refused.\n  - `cmd/r2.go:1`: Case 2#1.\n") {
+		t.Errorf("fix brief:\n%s", brief)
+	}
+	if !reflect.DeepEqual(f.reviewBases, []string{base}) {
+		t.Errorf("reviews run %q, want only the one after the fix", f.reviewBases)
+	}
+}
+
+// A review run taken must be a completed run of the step's review that
+// reviewed its base against HEAD for its goal or the issue's text; one that
+// is not stops the step before any run.
+func TestAReviewRunTakenReviewedTheStep(t *testing.T) {
+	t.Parallel()
+	base := strings.Repeat("deadbeef", 5)
+	for name, record := range map[string]string{
+		"another workflow":  recordOf("adr_review", base, "c0", issue, "completed", major),
+		"another base":      recordOf("code_review", strings.Repeat("a", 40), "c0", issue, "completed", major),
+		"another candidate": recordOf("code_review", base, "c9", issue, "completed", major),
+		"another goal":      recordOf("code_review", base, "c0", "Another goal.", "completed", major),
+		"not completed":     recordOf("code_review", base, "c0", issue, "failed"),
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			f := &fake{t: t, records: map[string]string{"r2": record}}
+			code, sum, _ := gated(t, f.run, "--from", "review", "--reviews", "1", "--base", base, "--reviewed", "r2")
+			if code != exitStopped || !strings.Contains(sum.Reason, "review run r2") || f.agisters != 0 || len(f.commits) != 0 {
+				t.Fatalf("exit %d, runs %d, commits %q, %+v", code, f.agisters, f.commits, sum)
+			}
+		})
+	}
+}
+
+// --reviewed takes a review only where the step resumes at one.
+func TestAReviewRunIsTakenOnlyFromReview(t *testing.T) {
+	t.Parallel()
+	var stdout, stderr bytes.Buffer
+	args, _ := gateArgs(t, t.TempDir(), "--reviewed", "r2")
+	if code := run(context.Background(), args, (&fake{t: t}).run, &stdout, &stderr); code != exitUsage || !strings.Contains(stderr.String(), "--reviewed") {
+		t.Errorf("exit %d, %s", code, stderr.String())
+	}
+}
+
+// A goal a review run kept as an artifact is read from its export.
+func TestAReviewRunTakenMayKeepItsGoalAsAnArtifact(t *testing.T) {
+	t.Parallel()
+	base := strings.Repeat("deadbeef", 5)
+	var record map[string]any
+	if err := json.Unmarshal([]byte(recordOf("code_review", base, "c0", "", "completed")), &record); err != nil {
+		t.Fatal(err)
+	}
+	record["inputs"].([]any)[2] = map[string]any{"name": "goal", "artifact": map[string]any{"path": "artifacts/input-goal.txt"}}
+	data, _ := json.Marshal(record)
+	for name, tc := range map[string]struct {
+		goal string
+		exit int
+	}{
+		"the issue's text": {issue, exitPassed},
+		"another goal":     {"Another goal.", exitStopped},
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			f := &fake{t: t, records: map[string]string{"r2": string(data)}, artifacts: map[string]string{"r2/artifacts/input-goal.txt": tc.goal}}
+			code, sum, _ := gated(t, f.run, "--from", "review", "--reviews", "1", "--base", base, "--reviewed", "r2")
+			if code != tc.exit {
+				t.Errorf("exit %d, want %d: %+v", code, tc.exit, sum)
 			}
 		})
 	}
