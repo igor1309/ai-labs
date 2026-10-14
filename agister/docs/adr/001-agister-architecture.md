@@ -200,9 +200,7 @@ its concern and that it passes everything else through unchanged.
 ## Open
 
 - **Git-backed behaviour outside core.** Where each goes, the composition
-  or nowhere: the pinned revision, the clean-worktree check, the changes
-  patch and the rebuild check after a verification, detecting an agent's
-  commit, the git roots and submodules in hold overlap, and the git input
+  or nowhere: the rebuild check after a verification, and the git input
   sources (revision, merge-base, diff, changed files).
 - **Pages and layering.** Pages renders settings from their files, so it
   would repeat layering; it may get a dependency for that instead.

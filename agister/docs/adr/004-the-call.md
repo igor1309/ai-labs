@@ -1,0 +1,91 @@
+---
+date: 2026-10-14
+model: claude-opus-5-5
+description: "ADR-004: the call: it works in the caller's worktree, is admitted against the worktree, holds it as a reader or a writer, and a continuation resumes there"
+---
+
+# ADR-004: The call
+
+- **Status:** Proposed
+- **Date:** 2026-10-14
+- **Scope:** where a call works, what admits it, the hold on its
+  worktree, what it leaves, and how a continuation resumes
+- **Decision type:** Architecture
+
+## Context
+
+A caller hands Agister steps of its own task: implement, review, verify.
+Those steps belong where the task's work lives, in the caller's worktree
+with its environment already prepared. Making and preparing worktrees is
+the caller's: it makes one per change and calls Agister there. Calls in
+one worktree must not trample each other, and a caller must be able to
+go on with a session where it stopped.
+
+## Decision
+
+A call works in the caller's worktree; Agister makes no worktree, checkout
+or copy, and moves, resets or cleans nothing in it. `core/admit` admits a
+call against facts about the worktree and holds it, readers together and
+a writer alone. The facts come through ports core declares; the
+composition answers them from `git`.
+
+## Rules
+
+### 1. A call works where it is called
+
+A call works in the root of the git worktree that holds the launch
+directory. The caller prepares it; Agister runs no setup.
+
+### 2. A process may pin a revision and ask for a clean worktree
+
+A process may name an input that resolves to a revision: the call is
+admitted only if the worktree's HEAD is that revision. A process may ask
+for a clean worktree: the call is admitted only if the worktree's content
+is its HEAD's. Agister does not move HEAD or clean anything; the caller
+does.
+
+### 3. Readers share the worktree, a writer has it alone
+
+A call is a writer when its process declares read-write access or a
+verification, which runs with the caller's authority; otherwise it is a
+reader. For the whole call a writer holds the worktree alone and readers
+hold it together. A call that cannot take its hold is refused, not
+queued. A hold is on one worktree, by its root: a worktree nested in
+another is a worktree of its own. A workflow's nodes are calls like any
+other.
+
+### 4. The call's changes stay in the worktree
+
+A call that pinned its revision records, at its end, its changes from that
+revision as a patch, with the content it was taken from. The changes are
+already in the worktree; nobody applies the patch. Whatever the end,
+Agister leaves the worktree as the call left it, for the caller to keep or
+discard.
+
+### 5. A continuation resumes in the same worktree
+
+A continuation resumes the provider session of the session's latest run,
+in place. The composition admits it only if that run worked in the same
+worktree, repository and revision, and the worktree's content is what that
+run recorded at its end. The agent is told that it continues its earlier
+work and that its changes are in this worktree; it is told no run. The
+record names the run continued.
+
+### 6. Cooperation, not confinement
+
+Agister checks the worktree before a call and records it after. It does
+not confine the agent to it (ADR-001, invariant 10), and the caller does
+not change the worktree while a writer works in it.
+
+## Consequences
+
+- A call sees the caller's environment as it is: its bindings, its build
+  output, its ignored files.
+- Keeping work apart is the caller's: a worktree per change.
+- Core knows no git: the revision, the content, the patch and the
+  worktree's root are answers to its ports.
+
+## Open
+
+- **Reaping.** A run whose owner died may still be writing; where it is
+  found and ended is ADR-001's open point.

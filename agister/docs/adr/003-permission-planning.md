@@ -65,7 +65,6 @@ A plan that cannot give a required permission refuses the node's
 workflow at resolve, as does a node that needs what its runtime cannot do
 (rule 7). Grants beyond what the process allows are a warning, shown by
 check and carried in the call's result; they do not change its status.
-A call is a writer when its process's workspace access is read-write.
 
 ### 6. Runtime wrappers are permission-blind
 

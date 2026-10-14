@@ -26,7 +26,7 @@ of its own, written fresh in ADR-001's parts, one at a time.
 | 001 | Architecture and invariants | all | 001 | Proposed |
 | 002 | Settings: documents, layers, composition, extends, references, resolve, blocks, check | `settings/layout`, `documents`, `resolve`, `check` | 001 rules 3–4 and 7, 014, 015, 018, 021 rules 1–4, 028 (layered), 030 | Proposed |
 | 003 | Permission planning and runtime facts | `settings/resolve`, `runtime/<name>` | 001 rule 5, 006, 021 rules 5–6, 029 (probe), 036 | Proposed |
-| 004 | The call: admission, worktree holds, continuation | `core/admit`, the composition; git outside core | 001 rule 12, 025, 035, 037 | |
+| 004 | The call: admission, worktree holds, continuation | `core/admit`, the composition; git outside core | 001 rule 12, 025, 035, 037 | Proposed |
 | 005 | Verification and repair | `core/attempts`, `core/verify` | 002, 010, 024 rule 8 | |
 | 006 | Stale recovery | `core/session`, `core/watch` | 024 | |
 | 007 | Workflows | `core/workflow` | 003, 004, 030 rule 6, 034 | |
