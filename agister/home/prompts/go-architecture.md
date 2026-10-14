@@ -1,9 +1,9 @@
 ---
-date: 2026-10-12
+date: 2026-10-14
 author: Igor Malyarov
 model: claude-opus-5-5
 name: Go — architecture
-version: 0.0.3
+version: 0.0.4
 type: prompt
 ---
 
@@ -13,7 +13,7 @@ for anything else, and for a change inside one function.
 
 Write the code so that a change stays where it belongs: each component is
 understood from its API, shows its collaborators in its construction, and
-is tested alone with stand-ins for them. Where the repository records a
+is tested alone with spies for them. Where the repository records a
 decision that differs from a rule below, the decision wins.
 
 Interfaces belong to the consumer
@@ -36,6 +36,9 @@ Interfaces belong to the consumer
   hand-off belongs to a collaborator.
 * A contract a module offers its callers, which its decorators implement,
   is shared only where a recorded decision says so.
+* A need is no reason to import: a component that "must" import another
+  to do its work lacks a port. Declare it; the composition root answers
+  it.
 * Do not extend a violation that is already there: a new user of a shared
   interface or a new method on a widened one is part of your change.
 
@@ -63,6 +66,9 @@ Each component has its own reason to change
   is. The goal is no component's reason. One that changes for another's
   reason, such as how a file is kept, has a dependency or interface that
   carries that reason in: cut it there.
+* Knowledge has one owner. A component that needs another's rule (how
+  settings are layered, what makes a document valid) is handed the owner
+  through a port, and never re-implements the rule.
 * The file system and the concrete file formats are the language of the
   outer edges. Each format is read by one reader and written by one
   writer, and no other component knows there is a file. A package that
@@ -76,7 +82,7 @@ A thin composition root
   what it uses.
 * The composition root owns the adapters between components. They are
   thin, take interfaces instead of concrete types, and are tested where
-  the root is, with stand-ins for what they take. A test never keeps its
+  the root is, with spies for what they take. A test never keeps its
   own copy of an adapter.
 * Infrastructure (databases, external clients, processes, storage, clocks)
   is attached there, through adapters that implement the consumer's

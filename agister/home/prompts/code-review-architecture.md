@@ -1,9 +1,9 @@
 ---
-date: 2026-10-12
+date: 2026-10-14
 author: Igor Malyarov
 model: gpt-6
 name: Code review — architecture
-version: 0.0.12
+version: 0.0.13
 type: prompt
 ---
 
@@ -21,9 +21,13 @@ The lens
 
 Read every component the change touches as it stands at the candidate, not only its lines in the diff: a dependency that predates the change is still how the change reached it. Review each by its responsibility, its dependencies (what it is given and what it imports) and its interfaces (what it offers and what it requires of its collaborators), and ask of each one question: what is its own reason to change? The goal, or a decision it carries out, is no component's reason to change: a component's reason is its own responsibility, and the question is what it had to know for the change to reach it. A change to how settings or records are kept (a document kind, a field, a file, a link between documents) is the reason of that file's reader and writer only; any other component it reached knew the file's words, even when the change only removes code. A component the change touched for another component's reason is a finding: name that reason and the dependency or interface that carried it in (a port, a shared type, a field passed on to be printed, a name spelled in a test).
 
+A dependency the code or its comments justify by need ("it must import X to do Y") is still a finding: the need is real, the import is not the way to meet it. The fix is the port the component lacks, answered by the composition root.
+
 Separation is judged by its language, not its form. A type a component declares is its own only when it speaks that component's words. Types of its own that carry another component's words (a file's kind, document, field, path or digest) are no boundary, and a finding. An adapter that copies fields one to one translates nothing: between internal components, two types of the same shape are a reason to look at what each component needs, and how different responsibilities came to the same shape. At the persistence edge such a copy is fine.
 
 The file system and the concrete file formats are the language of the outer edges only. Each format is read by one reader and written by one writer, and no other component knows there is a file. A package that parses a format is an edge, whatever its path.
+
+Knowledge has one owner, as a format does. A component that re-implements a rule another component owns (how settings are layered, what makes a document valid) instead of being handed the owner through a port is a finding: the two copies drift, and a change to the rule is made twice.
 
 The width of the change is evidence. When one decision changes many components, account for each one by the responsibility it would have if no file existed.
 
@@ -66,7 +70,7 @@ Go-specific interpretation
 * Database implementations, external clients, queues, storage, clocks, and similar infrastructure are connected through adapters implementing consumer-owned interfaces.
 * Boundary adapters perform translation between the caller’s types and the callee’s API types.
 * An adapter inside a component's own package that imports another component (the application core, its domain, an infrastructure module) to implement or call it is a finding: it belongs to a composition root.
-* Adapters are tested where their composition root is, with stand-ins for the interfaces they take. A test that keeps its own copy of an adapter is a finding.
+* Adapters are tested where their composition root is, with spies for the interfaces they take. A test that keeps its own copy of an adapter is a finding.
 * Decorators wrap specific collaborators or module entrypoints at wiring locations.
 * Generic helpers, adapters, or decorators are appropriate when the abstraction represents the same semantic role across usages.
 
