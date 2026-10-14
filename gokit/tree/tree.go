@@ -13,7 +13,8 @@ import (
 )
 
 // Origin is where a node came from: the path its bytes were decoded from,
-// and its line, 1 the first.
+// and its line, 1 the first. The line is optional: 0 is none, as for a
+// node decoded from a format that gives no line.
 type Origin struct {
 	Path string
 	Line int
