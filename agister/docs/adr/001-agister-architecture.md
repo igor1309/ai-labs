@@ -21,7 +21,7 @@ the rest) comes in an ADR of its own, in these parts' terms.
 
 ## Decision
 
-Agister runs AI-agent work that is defined as settings, through provider
+Agister runs AI-agent work defined in settings files, through provider
 runtimes, in the caller's git worktree, and keeps an attributable record of
 every call.
 
@@ -78,10 +78,10 @@ Every part keeps these.
    kind of work, no particular agent and no meaning of any output. It is a
    runner, not a guard: it checks whether settings compose and can be
    enforced as written, never whether they should be.
-2. **Definitions are settings.** Agents, processes, workflows, output
-   contracts, runtime mappings, the permission vocabulary, the service's
-   limits and what an agent is told are settings, changed without
-   rebuilding. Code adds a mechanism only where settings cannot express
+2. **Definitions live in settings, not in code.** Agents, processes,
+   workflows, output contracts, runtime mappings, the permission
+   vocabulary, the service's limits and what an agent is told are defined
+   in settings files, and changed without rebuilding. Code adds a mechanism only where settings cannot express
    it: a runtime, an input source kind.
 3. **Every call ends in one result shape.** A status (completed, failed,
    interrupted, lost) and a failure class from a closed set. Completed

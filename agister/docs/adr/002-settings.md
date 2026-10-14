@@ -15,11 +15,23 @@ description: "ADR-002: what settings are, how their layers compose, what a probl
 
 ## Context
 
-Agister's work is defined as settings (ADR-001, invariant 2). Settings
-come from home and from the repository a command is launched in, and a
-repository may change what home gives it without copying it. A problem in
-one document must not stop work that does not use it, and a repository
-must be able to refuse what home allows.
+Agister's agents, processes, workflows and the rest are defined in
+settings files, not in code (ADR-001, invariant 2). The files sit in up to
+three layers: home, the repository, and a project inside the repository.
+
+- A nearer layer must be able to change one field of what a farther layer
+  defines, without copying the rest.
+- A layer cannot remove what a farther layer defines. A repository that
+  must not use something home defines needs another way to say so: it
+  blocks it.
+- A problem in one document must not stop work that does not use it.
+
+Terms used here:
+
+- **settings**: the files in the layers;
+- **document**: a kind and a name, held by one or more layers' files;
+- **definition**: a document composed from its layers' files, as resolve
+  gives it and a run records it.
 
 This ADR decides what `settings/layout`, `settings/documents`,
 `settings/resolve` and `settings/check` do. Permission planning, the

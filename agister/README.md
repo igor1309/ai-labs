@@ -1,6 +1,6 @@
 # Agister
 
-Agister runs AI-agent work that is defined as settings, through provider
+Agister runs AI-agent work defined in settings files, through provider
 runtimes, in the caller's git worktree, and keeps an attributable record of
 every call.
 
