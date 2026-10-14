@@ -21,18 +21,20 @@ reviews it ruled on. Most work needs one call.
 
 ## Decision
 
-A workflow is defined in settings and has one of two shapes: one `call`,
-or a `fan_out` of calls over the same inputs followed by one `join`. Every
-node binds a process to an agent and runs as a call. `core/workflow`
-runs the shape through the port it declares to run a call; it knows no
-meaning of any node's output.
+A workflow is a piece of work Agister can run: one `call`, or a
+`fan_out` of calls over the same inputs followed by one `join`. Every
+node binds a process to an agent and runs as a call. Settings hold how a
+workflow is written (ADR-002); `core/workflow` runs it, resolved, through
+the port it declares to run a call, and knows no meaning of any node's
+output.
 
 ## Rules
 
-### 1. Every run is a workflow
+### 1. What Agister runs is a workflow
 
-What a caller runs is a workflow. A process is never run without one: a
-workflow's node binds it to the agent that runs it (ADR-002, rule 5).
+A caller runs a workflow, never a process or an agent alone: a
+workflow's node binds a process to the agent that runs it (ADR-002,
+rule 5).
 
 ### 2. A `call` workflow is one call
 
