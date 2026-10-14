@@ -132,10 +132,10 @@ what each kind means, what references what, and how home is managed.
 | `settings/documents` | Bytes to typed definitions with per-field provenance. Three components inside the package, each with its own unit tests: **format** (one document per file in its kind's format, unknown fields, schema version), **layering** (compose by field, `extends`, provenance), **kinds** (a composed tree to each kind's definition, with field problems). Its public interface has its own tests. | none: pure |
 | `settings/resolve` | A request to resolved settings, or a refusal naming the chain. A request names any document by kind and name; a workflow or a process comes with its parameters. Resolve follows references, applies blocks, plans each node's permissions. | a document source; runtime facts (contracts, skills support), which the composition plugs in from the runtime wrappers |
 | `settings/check` | Built on resolve: lists every document's name and resolves each, so a document nothing uses is checked too. Two views: **check** (every problem and what it refuses) and **inspect** (process, workflow and agent listings and shows, with provenance). | resolve; list names |
-| `settings/home` | Writes into home: installing settings, with backups to restore from. A write is refused if it adds a problem. | filesystem writes; clock; check of the staged result |
+| `settings/home` | Writes into home: installing settings, with backups to restore from. | filesystem writes; clock |
 
 The composition assembles the document source from `layout` and
-`documents`, hands `check` a resolve, and hands `home` a check. It plugs a
+`documents`, hands `check` a resolve. It plugs a
 git-backed answer into `layout`'s worktree-root port: the root of the git
 worktree that holds a directory, or none outside one. `layout` knows no git.
 
