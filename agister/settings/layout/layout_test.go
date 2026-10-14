@@ -197,6 +197,39 @@ func TestAKindsFolderAndExtensionGiveItsDocuments(t *testing.T) {
 	}
 }
 
+// Kinds share names and layers share kinds: each file is its own source,
+// read once, in one read.
+func TestDocumentsOfDifferentKindsAreReadInOneRead(t *testing.T) {
+	t.Parallel()
+	files := &spyFiles{files: map[string]string{
+		homeFolder + "/processes/review.yaml":       "home process review",
+		homeFolder + "/prompts/review.md":           "home prompt review",
+		homeFolder + "/agents/codex.toml":           "home agent codex",
+		repositoryFolder + "/processes/review.yaml": "repository process review",
+		repositoryFolder + "/schemas/report.json":   "repository schema report",
+		projectFolder + "/prompts/review.md":        "project prompt review",
+	}}
+	got := read(t, files, allFolders)
+	source := func(path string) *layout.Source {
+		return &layout.Source{Path: path, Bytes: []byte(files.files[path])}
+	}
+	assertSnapshot(t, got, layout.Snapshot{Documents: map[layout.Kind]map[string]layout.Document{
+		layout.Process: {"review": {Sources: layout.Sources{
+			Home:       source(homeFolder + "/processes/review.yaml"),
+			Repository: source(repositoryFolder + "/processes/review.yaml"),
+		}}},
+		layout.Prompt: {"review": {Sources: layout.Sources{
+			Home:    source(homeFolder + "/prompts/review.md"),
+			Project: source(projectFolder + "/prompts/review.md"),
+		}}},
+		layout.Agent:  {"codex": {Sources: layout.Sources{Home: source(homeFolder + "/agents/codex.toml")}}},
+		layout.Schema: {"report": {Sources: layout.Sources{Repository: source(repositoryFolder + "/schemas/report.json")}}},
+	}})
+	for path := range files.files {
+		assertAskedOnce(t, files, path)
+	}
+}
+
 func TestAnEmptyFileIsASourceWithNoBytes(t *testing.T) {
 	t.Parallel()
 	path := homeFolder + "/processes/review.yaml"
@@ -235,6 +268,7 @@ func TestBlocksOutsideTheRepositoryFolderAreAProblem(t *testing.T) {
 				Documents: map[layout.Kind]map[string]layout.Document{},
 				Problems:  []layout.Problem{{Path: c.folder + "/blocks.yaml", Err: layout.ErrBlocksOutsideRepository}},
 			})
+			assertAsked(t, files, c.folder)
 		})
 	}
 }
@@ -456,6 +490,23 @@ func TestWhatIsNotSettingsIsSkipped(t *testing.T) {
 				assertNotAsked(t, files, homeFolder+"/"+folder)
 			}
 		})
+	}
+}
+
+// assertAsked asserts the spy was asked for exactly these paths, listed or
+// read, each once, in any order.
+func assertAsked(t *testing.T, files *spyFiles, paths ...string) {
+	t.Helper()
+	got, want := slices.Sorted(slices.Values(files.asked)), slices.Sorted(slices.Values(paths))
+	if !slices.Equal(got, want) {
+		t.Errorf("asked %q, want %q", got, want)
+	}
+}
+
+func assertAskedOnce(t *testing.T, files *spyFiles, path string) {
+	t.Helper()
+	if n := len(slices.DeleteFunc(slices.Clone(files.asked), func(p string) bool { return p != path })); n != 1 {
+		t.Errorf("%s was asked %d times, want once; asked %q", path, n, files.asked)
 	}
 }
 
