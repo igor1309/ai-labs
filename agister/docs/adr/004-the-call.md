@@ -9,7 +9,8 @@ description: "ADR-004: the call: it works in the caller's worktree, is admitted 
 - **Status:** Proposed
 - **Date:** 2026-10-14
 - **Scope:** where a call works, what admits it, the hold on its
-  worktree, what it leaves, and how a continuation resumes
+  worktree, what it leaves, how a continuation resumes, and who sets its
+  limits
 - **Decision type:** Architecture
 
 ## Context
@@ -75,6 +76,11 @@ record names the run continued.
 Agister checks the worktree before a call and records it after. It does
 not confine the agent to it (ADR-001, invariant 10), and the caller does
 not change the worktree while a writer works in it.
+
+### 7. The process sets the call's limits
+
+A process sets its call's limits on time and cost. A caller may tighten
+them, never loosen them.
 
 ## Consequences
 
