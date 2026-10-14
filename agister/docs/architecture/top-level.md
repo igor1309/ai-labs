@@ -1,6 +1,10 @@
-# Agister: top-level architecture (proposal)
+---
+date: 2026-10-14
+model: claude-opus-5-5
+description: "Agister top-level architecture: parts, dependency rules, settings, core, runs"
+---
 
-This is the target the rewrite builds. The archived implementation (`agister/archive/`) is not shaped this way.
+# Agister: top-level architecture (proposal)
 
 Agister runs AI-agent work that is defined as settings, through provider
 runtimes, in the caller's git worktree, and keeps an attributable record of
@@ -30,18 +34,18 @@ every call.
    it. An adapter lives in the composition root, has no types of its own,
    and maps between a part's port and a wrapper, or between two parts.
 3. **The composition root is the only place that connects parts:** wiring,
-   mappers where two independent parts meet, and decorators (diagnostics,
-   logging, run placement). Settings' resolve output and core's input are two
+   mappers where two independent parts meet, diagnostics, logging and run
+   placement. Settings' resolve output and core's input are two
    types; the composition maps one to the other. The client it builds behind the
    contract is handed a `resolve func(ctx) (core.Settings, error)`: it
    resolves, then runs. The CLI sees neither.
 4. **Settings are resolved before a run.** Settings that cannot be resolved
-   never reach core: no run is recorded, and a decorator reports the failure
-   on stderr, as for a bad command. Only what core emits is recorded, so a
+   never reach core: no run is recorded, and the composition reports the
+   failure on stderr, as for a bad command. Only what core emits is recorded, so a
    refusal after resolution (a held worktree, admission) is recorded. Core
    never reads settings files.
-5. **`--continue` resolves settings again**, like any call. A decorator in
-   the composition checks the continuation's conditions against the earlier
+5. **`--continue` resolves settings again**, like any call. The composition
+   checks the continuation's conditions against the earlier
    runs (the session's latest run; the same worktree, repository and
    revision; the content and patch as recorded) and hands core the session.
    Core reads no runs.
@@ -92,8 +96,8 @@ The composition chains `admit`, `session` and `attempts` into a call, hands
 ## Runs
 
 Core emits its events. An adapter in the composition turns them into
-`runstore`'s record, and `runstore` persists it. A decorator in the
-composition knows where runs are placed. Core reads no runs: the CLI's runs
+`runstore`'s record, and `runstore` persists it. The composition knows
+where runs are placed. Core reads no runs: the CLI's runs
 commands (list, show, watch, export) call the client contract, and the
 client the composition builds serves them from `runstore`. Pages reads the
 files.
@@ -103,31 +107,18 @@ files.
 1. `cli` parses the command and calls the client contract.
 2. The client asks settings to resolve; a failure goes to stderr and no run
    is recorded.
-3. For `--continue`, a decorator checks the continuation against the earlier
+3. For `--continue`, the composition checks the continuation against the earlier
    runs and takes its session.
 4. Core gets the resolved settings and the command, drives a runtime wrapper
    through its protocol (an adapter maps between them), and streams events;
-   a decorator places the run and `runstore` persists it.
-
-## Decisions this departs from
-
-A new ADR records these before any code moves:
-
-- ADR-001 rules 1 and 2: the core resolves definitions and owns what they
-  mean. Here settings does.
-- ADR-015 and the settings reference: a call refused for broken settings is
-  recorded. Here it is not; only what core emits is.
-- ADR-001 rule 12: a continuation reads the earlier run's evidence. Here a
-  decorator in the composition does, and core reads no runs.
+   the composition places the run and `runstore` persists it.
 
 ## To consider later
 
-- **Git-backed behaviour, now outside core.** Where each goes, a decorator
-  in the composition or nowhere: the pinned revision, the clean-worktree
-  check, the changes patch and the rebuild check after a verification,
-  detecting an agent's commit, the git roots and submodules in hold overlap,
-  and the git input sources
-  (revision, merge-base, diff, changed files). Removing the checkouts made
-  before ADR-025 is migration code and can go.
-- **Where reaping lives.** Reaping a run whose owner died works today
-  (`app.Reaper`); the open point is its place: in the hold, or with runs.
+- **Git-backed behaviour outside core.** Where each goes, the composition
+  or nowhere: the pinned revision, the clean-worktree check, the changes
+  patch and the rebuild check after a verification, detecting an agent's
+  commit, the git roots and submodules in hold overlap, and the git input
+  sources (revision, merge-base, diff, changed files).
+- **Where reaping lives.** Reaping a run whose owner died: in the hold, or
+  with runs.
