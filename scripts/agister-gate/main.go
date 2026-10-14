@@ -49,9 +49,17 @@
 //	  [--review <workflow>] [--dir <worktree>] [--from implement|review] [--reviews <n>]
 //	  [--reviewed <run-id>] [--minors]
 //
+//	agister-gate show [--full] <events.jsonl or out dir>
+//
+// show prints a trail for a person to read: each step with its options,
+// then every program run, file read or written and what a brief was made
+// from, each ruling with what the gate did, every commit and the stop. A
+// program's output and standard error are counted unless --full.
+//
 // Exit 0: no major is left to fix, nor with --minors a minor. 3: the owner
-// decides: a major, or with --minors a minor, is left after the third review, or the advisor found a conflict in the record.
-// 4: a review hit a provider limit. 5: a second point was left open; the
+// decides: a major, or with --minors a minor, is left after the third
+// review, or the advisor found a conflict in the record. 4: a review hit a
+// provider limit. 5: a second point was left open; the
 // issue does not say enough. 1: anything else stopped the step. 2: usage.
 package main
 

@@ -141,6 +141,9 @@ type stop struct {
 func (s stop) Error() string { return s.reason }
 
 func run(ctx context.Context, args []string, call runner, stdout, stderr io.Writer) int {
+	if len(args) > 0 && args[0] == "show" {
+		return showCommand(args[1:], stdout, stderr)
+	}
 	o, err := parse(args, stderr)
 	if err != nil {
 		fmt.Fprintln(stderr, "agister-gate:", err)
@@ -151,6 +154,22 @@ func run(ctx context.Context, args []string, call runner, stdout, stderr io.Writ
 	out, _ := json.MarshalIndent(sum, "", "  ")
 	fmt.Fprintln(stdout, string(out))
 	return exitCode(sum.Status)
+}
+
+// showCommand runs `show [--full] <events.jsonl or out dir>`.
+func showCommand(args []string, stdout, stderr io.Writer) int {
+	fs := flag.NewFlagSet("agister-gate show", flag.ContinueOnError)
+	fs.SetOutput(stderr)
+	full := fs.Bool("full", false, "show each program's output and standard error")
+	if err := fs.Parse(args); err != nil || fs.NArg() != 1 {
+		fmt.Fprintln(stderr, "usage: agister-gate show [--full] <events.jsonl or out dir>")
+		return exitUsage
+	}
+	if err := show(fs.Arg(0), *full, stdout); err != nil {
+		fmt.Fprintln(stderr, "agister-gate:", err)
+		return exitStopped
+	}
+	return exitPassed
 }
 
 func exitCode(status string) int {

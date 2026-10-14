@@ -49,16 +49,6 @@ func ofKind(events []event, kind string) []event {
 	return found
 }
 
-// strs is a JSON list of strings, as the trail gives it back.
-func strs(v any) []string {
-	list, _ := v.([]any)
-	out := make([]string, len(list))
-	for i, s := range list {
-		out[i], _ = s.(string)
-	}
-	return out
-}
-
 // A step that is fixed once: a commit, a review, a fix, a review.
 func fixedOnce(t *testing.T) *fake {
 	return &fake{t: t, implements: []string{implementResult("i1", "cmd/a.go"), implementResult("i2", "cmd/a_test.go")},
