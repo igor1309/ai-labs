@@ -169,7 +169,7 @@ func TestTheTrailHoldsEveryFileTheGateReadOrWrote(t *testing.T) {
 				}
 			}
 			if name == "fixed once" {
-				from := written[filepath.Join(out, "fix-1.md")].Data["from"].(map[string]any)
+				from := written[filepath.Join(out, "03-fix.md")].Data["from"].(map[string]any)
 				items := from["items"].([]any)
 				if from["review_run"] != "r1" || len(items) != 1 || items[0].(map[string]any)["title"] != major.Title ||
 					!reflect.DeepEqual(strs(items[0].(map[string]any)["sources"]), major.Sources) || !read["review collection"] {
@@ -196,7 +196,7 @@ func TestTheTrailGivesEachRulingWhatTheGateDidWithIt(t *testing.T) {
 		it := it.(map[string]any)
 		got = append(got, it["title"].(string)+": "+it["gate"].(string))
 	}
-	want := []string{major.Title + ": sent to the fix run", minor.Title + ": left: the gate fixes no minor",
+	want := []string{major.Title + ": sent to the fix run", minor.Title + ": left: the gate fixes no minor without --minors",
 		deferred.Title + ": left: deferred", waived.Title + ": not acted on: ruled waive"}
 	if !reflect.DeepEqual(got, want) {
 		t.Errorf("rulings\n got %q\nwant %q", got, want)
@@ -205,7 +205,7 @@ func TestTheTrailGivesEachRulingWhatTheGateDidWithIt(t *testing.T) {
 	for _, e := range ofKind(events, "COMMITTED") {
 		commits = append(commits, e.Data["commit"].(string)+" "+e.Data["message"].(string))
 	}
-	if want := []string{"c1 cmd: the call is refused", "c2 cmd: the call is refused (review 1)"}; !reflect.DeepEqual(commits, want) {
+	if want := []string{"c1 cmd: the call is refused", "c2 cmd: the call is refused (answers review r1)"}; !reflect.DeepEqual(commits, want) {
 		t.Errorf("commits %q, want %q", commits, want)
 	}
 }
@@ -233,7 +233,8 @@ func TestTheTrailEndsWithWhyTheStepStopped(t *testing.T) {
 	code, sum, out, progress := gatedIn(t, t.TempDir(), f.run)
 	events := trailOf(t, out)
 	first, last := events[0], events[len(events)-1]
-	if first.Kind != "GATE_STARTED" || first.Data["title"] != "LAB-1 step 2" || first.Data["implement"] != "implement_codex" {
+	if first.Kind != "GATE_STARTED" || first.Data["title"] != "LAB-1 step 2" || first.Data["implement"] != "implement_codex" ||
+		first.Data["minors"] != false || first.Data["reviewed"] != "" {
 		t.Errorf("first event %+v", first)
 	}
 	if last.Kind != "STOPPED" || last.Data["status"] != sum.Status || last.Data["reason"] != sum.Reason || last.Data["exit"] != float64(code) {
@@ -263,9 +264,9 @@ func TestAResumedStepAppendsToItsTrail(t *testing.T) {
 	}
 	base := strings.Repeat("deadbeef", 5)
 	second := &fake{t: t, reviews: []string{reviewed("r2")}}
-	code, _, out, _ := gatedIn(t, dir, second.run, "--from", "review", "--reviews", "0", "--base", base)
+	code, sum2, out, _ := gatedIn(t, dir, second.run, "--from", "review", "--reviews", "0", "--base", base)
 	if code != exitPassed {
-		t.Fatalf("exit %d", code)
+		t.Fatalf("exit %d %+v", code, sum2)
 	}
 	events := trailOf(t, out)
 	for i, e := range events {
@@ -275,6 +276,11 @@ func TestAResumedStepAppendsToItsTrail(t *testing.T) {
 	}
 	if started, stopped := ofKind(events, "GATE_STARTED"), ofKind(events, "STOPPED"); len(started) != 2 || len(stopped) != 2 {
 		t.Errorf("%d starts and %d stops, want both steps'", len(started), len(stopped))
+	}
+	for name, base := range map[string]string{"01-goal.md": "c0", "03-goal.md": base} {
+		if data, err := os.ReadFile(filepath.Join(out, name)); err != nil || !strings.Contains(string(data), "## Base\n\n"+base+"\n") {
+			t.Errorf("%s: %v, %s; want the goal on base %s", name, err, data, base)
+		}
 	}
 	for name, run := range map[string]string{"01-implement.json": "i1", "02-review.json": "r1", "03-review.json": "r2"} {
 		if data, err := os.ReadFile(filepath.Join(out, name)); err != nil || !strings.Contains(string(data), `"`+run+`"`) {

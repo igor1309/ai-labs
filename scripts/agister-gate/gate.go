@@ -10,6 +10,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 )
 
@@ -35,6 +36,7 @@ type runner func(ctx context.Context, dir string, stderr io.Writer, name string,
 type options struct {
 	issue, title, constraints, implement, advisor, review, decisions, base, message, out, dir, from, reviewed string
 	reviews                                                                                                   int
+	minors                                                                                                    bool
 }
 
 // result is what `agister run --json` prints: a run's id, status, output
@@ -182,6 +184,7 @@ func parse(args []string, stderr io.Writer) (options, error) {
 	fs.StringVar(&o.dir, "dir", ".", "the worktree")
 	fs.StringVar(&o.from, "from", "implement", "implement, or review to resume at a review")
 	fs.IntVar(&o.reviews, "reviews", 0, "reviews of this step already counted, with --from review")
+	fs.BoolVar(&o.minors, "minors", false, "send the minors ruled fix to the fix run with the majors")
 	fs.StringVar(&o.reviewed, "reviewed", "", "a completed review run of base against HEAD, taken as the next review, with --from review")
 	if err := fs.Parse(args); err != nil {
 		return o, err
@@ -293,26 +296,28 @@ func (g *gate) steps(ctx context.Context) error {
 			return err
 		}
 		counted++
-		majors := g.leave(j)
+		fix := g.leave(j)
 		runID := g.sum.Reviews[len(g.sum.Reviews)-1].RunID
 		if err := g.rulings(counted, runID, j, counted == maxReviews); err != nil {
 			return err
 		}
-		if len(majors) == 0 {
-			return stop{"passed", fmt.Sprintf("review %d has no major ruled fix", counted)}
+		if len(fix) == 0 {
+			return stop{"passed", fmt.Sprintf("review %d has no %s ruled fix", counted, g.fixed())}
 		}
 		if counted == maxReviews {
-			return stop{"owner", fmt.Sprintf("review %d, the last, leaves %d major(s) ruled fix", counted, len(majors))}
+			return stop{"owner", fmt.Sprintf("review %d, the last, leaves %d %s(s) ruled fix", counted, len(fix), g.fixed())}
 		}
 		reviews, err := g.collection(ctx, runID)
 		if err != nil {
 			return err
 		}
-		brief, err := g.fixBrief(counted, runID, majors, reviews)
+		brief, err := g.fixBrief(counted, runID, fix, reviews)
 		if err != nil {
 			return err
 		}
-		if err := g.implementAndCommit(ctx, brief, fmt.Sprintf("%s (review %d)", g.message, counted)); err != nil {
+		// The review run names the commit: a resumed step counts its reviews
+		// again, and a count would name two commits alike.
+		if err := g.implementAndCommit(ctx, brief, fmt.Sprintf("%s (answers review %s)", g.message, runID)); err != nil {
 			return err
 		}
 	}
@@ -338,8 +343,17 @@ func (g *gate) resolveBase(ctx context.Context) error {
 	return g.emit("BASE_PINNED", map[string]any{"base": base}, "base pinned at "+base)
 }
 
+// fixed is what the gate fixes: majors, or with --minors, majors and
+// minors.
+func (g *gate) fixed() string {
+	if g.minors {
+		return "major or minor"
+	}
+	return "major"
+}
+
 // leave records the items of j the gate does not act on, and returns the
-// majors ruled fix.
+// items ruled fix it acts on: the majors, then with --minors the minors.
 func (g *gate) leave(j judgement) []item {
 	g.sum.Left = left{Majors: []item{}, Minors: []item{}, Deferred: []item{}}
 	for _, it := range j.Items {
@@ -351,6 +365,9 @@ func (g *gate) leave(j judgement) []item {
 		case it.Ruling == "defer":
 			g.sum.Left.Deferred = append(g.sum.Left.Deferred, it)
 		}
+	}
+	if g.minors {
+		return append(slices.Clone(g.sum.Left.Majors), g.sum.Left.Minors...)
 	}
 	return g.sum.Left.Majors
 }
@@ -576,7 +593,10 @@ func (g *gate) briefs() error {
 		}
 		g.constraintsText = string(constraints)
 	}
-	g.goal, g.step = filepath.Join(g.out, "goal.md"), filepath.Join(g.out, "step.md")
+	// The briefs take the number of the first run they are given to: a
+	// resumed step writes its own, and keeps the last step's.
+	g.goal = filepath.Join(g.out, fmt.Sprintf("%02d-goal.md", g.seq+1))
+	g.step = filepath.Join(g.out, fmt.Sprintf("%02d-step.md", g.seq+1))
 	goal := fmt.Sprintf("# %s\n\n## Intent\n\nWhat the issue's text, under Done when, makes true.\n\n"+
 		"## Base\n\n%s\n\n## Done when\n\n%s\n## Out of scope\n\nWhat the issue's text, under Done when, leaves out.\n\n## Open\n\nNone.\n",
 		g.title, g.base, fenced(g.issueText))
@@ -679,7 +699,7 @@ func (g *gate) fixBrief(n int, runID string, majors []item, reviews []collected)
 	for i, it := range majors {
 		items[i] = map[string]any{"title": it.Title, "sources": it.Sources}
 	}
-	path := filepath.Join(g.out, fmt.Sprintf("fix-%d.md", n))
+	path := filepath.Join(g.out, fmt.Sprintf("%02d-fix.md", g.seq+1))
 	return path, g.write(path, []byte(g.stepBrief(g.title, acts.String())), "fix brief",
 		map[string]any{"review": n, "review_run": runID, "items": items, "issue": g.issue, "constraints": g.constraints})
 }

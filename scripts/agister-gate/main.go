@@ -13,8 +13,8 @@
 //   - The review workflow named, code_review unless --review names
 //     another, reviews the commits since base against the goal.
 //   - Items the judge rules fix with severity major go to a fix run: the
-//     step's brief, with the items as its "## Acts on". Minors are not
-//     fixed by the gate.
+//     step's brief, with the items as its "## Acts on". Minors go with
+//     them only with --minors.
 //   - A major still ruled fix after the third review stops the step for
 //     the owner. Nothing major is deferred by the gate.
 //   - A review that a provider limit failed does not count: the step stops,
@@ -36,6 +36,8 @@
 //     every commit and why the step stopped. Its progress lines on stderr
 //     are those events, among the standard error of the programs it runs,
 //     which the trail keeps with each; a resumed step appends to the trail.
+//     A file the gate wrote is never written over: a brief is numbered with
+//     the run it is given to.
 //
 // The summary is printed as JSON on stdout.
 //
@@ -45,10 +47,10 @@
 //	  --implement <workflow> --advisor <workflow> --decisions <file>
 //	  --base <rev> --message <subject> --out <dir>
 //	  [--review <workflow>] [--dir <worktree>] [--from implement|review] [--reviews <n>]
-//	  [--reviewed <run-id>]
+//	  [--reviewed <run-id>] [--minors]
 //
-// Exit 0: no major is left to fix. 3: the owner decides: a major is left
-// after the third review, or the advisor found a conflict in the record.
+// Exit 0: no major is left to fix, nor with --minors a minor. 3: the owner
+// decides: a major, or with --minors a minor, is left after the third review, or the advisor found a conflict in the record.
 // 4: a review hit a provider limit. 5: a second point was left open; the
 // issue does not say enough. 1: anything else stopped the step. 2: usage.
 package main

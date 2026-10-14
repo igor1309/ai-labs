@@ -46,7 +46,7 @@ func (g *gate) advise(ctx context.Context, runID string, open []point, message s
 		g.sum.Open = open
 		return stop{"open", fmt.Sprintf("implement run %s left a second point open, and the step's one question is decided; its work is committed, unreviewed", runID)}
 	}
-	question := filepath.Join(g.out, "question.md")
+	question := filepath.Join(g.out, fmt.Sprintf("%02d-question.md", g.seq+1))
 	if err := g.write(question, []byte(questionFile(fmt.Sprintf("implement run %s, %s", runID, g.title), open[0])), "question",
 		map[string]any{"implement_run": runID}); err != nil {
 		return err
@@ -92,7 +92,7 @@ func (g *gate) advise(ctx context.Context, runID string, open []point, message s
 	// The brief names the record where it stands in the repository, not
 	// the run that made it (LAB-200).
 	acts := fmt.Sprintf("The decision `%s`, recorded in `%s`, as written:\n\n%s", id, g.decisions, fenced(record))
-	path := filepath.Join(g.out, "decision-"+id+".md")
+	path := filepath.Join(g.out, fmt.Sprintf("%02d-decision-%s.md", g.seq+1, id))
 	if err := g.write(path, []byte(g.stepBrief(fmt.Sprintf("%s, decision %s", g.title, id), acts)), "decision brief",
 		map[string]any{"decision": id, "decisions": g.decisions, "advisor_run": r.RunID, "issue": g.issue, "constraints": g.constraints}); err != nil {
 		return err
@@ -139,7 +139,12 @@ func (g *gate) appendRecord(a advice, searched []string, runID string) (string, 
 	fmt.Fprintf(&b, "- **Decision:** %s\n- **Rests on:**\n%s", a.Chosen, bullets("  - ", a.RestsOn))
 	fmt.Fprintf(&b, "- **Follow-ups:**\n%s- **Advisor run:** %s\n", bullets("  - ", a.FollowUps), runID)
 	record := b.String()
-	text := strings.TrimRight(string(records), "\n") + "\n\n" + record
+	// The record is appended: what the file held stays as it was.
+	text := string(records)
+	if !strings.HasSuffix(text, "\n") {
+		text += "\n"
+	}
+	text += "\n" + record
 	return id, record, g.write(g.decisions, []byte(text), "decisions record", map[string]any{"advisor_run": runID, "decision": id})
 }
 

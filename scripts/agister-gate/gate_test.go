@@ -41,6 +41,9 @@ type fake struct {
 	complaint   string
 
 	questions []string
+	// planted is written into the out dir while the next implement run
+	// runs, by name, as another hand would.
+	planted map[string]string
 
 	briefs      []string
 	added       [][]string
@@ -151,6 +154,12 @@ func (f *fake) answer(_ context.Context, _ string, name string, args ...string) 
 		}
 		out := f.implements[0]
 		f.implements = f.implements[1:]
+		for name, data := range f.planted {
+			if err := os.WriteFile(filepath.Join(filepath.Dir(strings.TrimPrefix(args[3], "brief=")), name), []byte(data), 0o644); err != nil {
+				f.t.Fatal(err)
+			}
+		}
+		f.planted = nil
 		if strings.Contains(out, `"failed"`) {
 			return []byte(out), errors.New("exit status 1")
 		}
@@ -339,7 +348,7 @@ func TestAResumedReviewUsesItsGivenCommit(t *testing.T) {
 				if f.revParses != len(f.commits) {
 					t.Fatalf("rev-parse calls %d, want only %d commit HEAD reads", f.revParses, len(f.commits))
 				}
-				paths := append([]string{filepath.Join(out, "goal.md"), filepath.Join(out, "step.md")}, f.briefs...)
+				paths := append([]string{filepath.Join(out, "01-goal.md"), filepath.Join(out, "01-step.md")}, f.briefs...)
 				for _, path := range paths {
 					brief, err := os.ReadFile(path)
 					if err != nil {
@@ -378,14 +387,14 @@ func TestAMajorRuledFixGoesToAFixRunAndIsReviewedAgain(t *testing.T) {
 	if code != exitPassed || len(sum.Reviews) != 2 || sum.Reviews[0].Majors != 1 {
 		t.Fatalf("exit %d, %+v", code, sum)
 	}
-	if want := filepath.Join(out, "fix-1.md"); len(f.briefs) != 2 || f.briefs[1] != want {
+	if want := filepath.Join(out, "03-fix.md"); len(f.briefs) != 2 || f.briefs[1] != want {
 		t.Fatalf("briefs %q, want the second %s", f.briefs, want)
 	}
 	brief, err := os.ReadFile(f.briefs[1])
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := "# LAB-1 step 2\n\n## Goal\n\n`" + filepath.Join(out, "goal.md") + "`\n\n## Base\n\nc0\n\n## Covers\n\n" +
+	want := "# LAB-1 step 2\n\n## Goal\n\n`" + filepath.Join(out, "01-goal.md") + "`\n\n## Base\n\nc0\n\n## Covers\n\n" +
 		"````text\n" + issue + "````\n\n" +
 		"## Acts on\n\nThe changes to make, as written, each with the evidence the reviews give for it:\n\n" +
 		"- **Prove the refusal**: Add a test that the call is refused.\n" +
@@ -396,8 +405,63 @@ func TestAMajorRuledFixGoesToAFixRunAndIsReviewedAgain(t *testing.T) {
 	if string(brief) != want {
 		t.Errorf("fix brief:\n%s\nwant:\n%s", brief, want)
 	}
-	if !reflect.DeepEqual(f.commits, []string{"cmd: the call is refused", "cmd: the call is refused (review 1)"}) {
+	if !reflect.DeepEqual(f.commits, []string{"cmd: the call is refused", "cmd: the call is refused (answers review r1)"}) {
 		t.Errorf("commits %q", f.commits)
+	}
+}
+
+// A minor ruled fix stays unfixed without --minors; with it, the minor goes
+// to the fix run with the majors, and the step passes only when the review
+// leaves neither.
+func TestMinorsGoToTheFixRunWithMinors(t *testing.T) {
+	t.Parallel()
+	without := &fake{t: t, implements: []string{implementResult("i1", "cmd/a.go")}, reviews: []string{reviewed("r1", minor)}}
+	if code, sum, _ := gated(t, without.run); code != exitPassed || len(without.briefs) != 1 || len(sum.Left.Minors) != 1 {
+		t.Fatalf("without --minors: exit %d, briefs %q, %+v", code, without.briefs, sum)
+	}
+	f := &fake{t: t, implements: []string{implementResult("i1", "cmd/a.go"), implementResult("i2", "cmd/a.go"), implementResult("i3", "cmd/a.go")},
+		reviews: []string{reviewed("r1", major, minor), reviewed("r2", minor), reviewed("r3")}}
+	code, sum, out := gated(t, f.run, "--minors")
+	if code != exitPassed || len(sum.Reviews) != 3 {
+		t.Fatalf("exit %d, %+v", code, sum)
+	}
+	if started := ofKind(trailOf(t, out), "GATE_STARTED"); started[0].Data["minors"] != true {
+		t.Errorf("started %+v, want --minors kept", started[0].Data)
+	}
+	if want := []string{filepath.Join(out, "01-step.md"), filepath.Join(out, "03-fix.md"), filepath.Join(out, "05-fix.md")}; !reflect.DeepEqual(f.briefs, want) {
+		t.Fatalf("briefs %q, want %q", f.briefs, want)
+	}
+	for i, titles := range [][]string{{major.Title, minor.Title}, {minor.Title}} {
+		brief, err := os.ReadFile(f.briefs[i+1])
+		if err != nil {
+			t.Fatal(err)
+		}
+		_, acts, _ := strings.Cut(string(brief), "## Acts on")
+		for _, title := range titles {
+			if !strings.Contains(acts, "- **"+title+"**") {
+				t.Errorf("fix brief %d acts on no %q:\n%s", i+1, title, brief)
+			}
+		}
+	}
+}
+
+// A file the gate would write over stops the step: a file written into
+// the out dir while a run runs stays as it was written, and no run is
+// given a brief the trail does not hold.
+func TestAFileTheGateWouldWriteOverStopsTheStep(t *testing.T) {
+	t.Parallel()
+	f := &fake{t: t, implements: []string{implementResult("i1", "cmd/a.go")}, reviews: []string{reviewed("r1", major)},
+		planted: map[string]string{"03-fix.md": "# Another brief\n"}}
+	code, sum, out := gated(t, f.run)
+	fix := filepath.Join(out, "03-fix.md")
+	if code != exitStopped || !strings.Contains(sum.Reason, fix) {
+		t.Fatalf("exit %d, %+v", code, sum)
+	}
+	if data, err := os.ReadFile(fix); err != nil || string(data) != "# Another brief\n" {
+		t.Errorf("fix brief %q, %v; want it kept", data, err)
+	}
+	if len(f.briefs) != 1 {
+		t.Errorf("briefs %q, want only the step's", f.briefs)
 	}
 }
 
@@ -691,7 +755,7 @@ func TestTheBaseIsPinnedBeforeSetupAndReview(t *testing.T) {
 			if sum.Base != base || !reflect.DeepEqual(f.reviewBases, []string{base, base}) {
 				t.Fatalf("base summary=%q reviews=%q want=%q", sum.Base, f.reviewBases, base)
 			}
-			paths := append([]string{filepath.Join(out, "goal.md"), filepath.Join(out, "step.md")}, f.briefs...)
+			paths := append([]string{filepath.Join(out, "01-goal.md"), filepath.Join(out, "01-step.md")}, f.briefs...)
 			for _, path := range paths {
 				brief, err := os.ReadFile(path)
 				if err != nil {
@@ -783,7 +847,7 @@ func TestTheBriefsAreTheIssuesTextAsWritten(t *testing.T) {
 	t.Parallel()
 	f := &fake{t: t, implements: []string{implementResult("i1", "a")}, reviews: []string{reviewed("r1")}}
 	_, _, out := gated(t, f.run)
-	goal, err := os.ReadFile(filepath.Join(out, "goal.md"))
+	goal, err := os.ReadFile(filepath.Join(out, "01-goal.md"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -793,14 +857,14 @@ func TestTheBriefsAreTheIssuesTextAsWritten(t *testing.T) {
 	if string(goal) != wantGoal {
 		t.Errorf("goal:\n%s\nwant:\n%s", goal, wantGoal)
 	}
-	if want := filepath.Join(out, "step.md"); len(f.briefs) != 1 || f.briefs[0] != want {
+	if want := filepath.Join(out, "01-step.md"); len(f.briefs) != 1 || f.briefs[0] != want {
 		t.Fatalf("briefs %q, want %s", f.briefs, want)
 	}
 	step, err := os.ReadFile(f.briefs[0])
 	if err != nil {
 		t.Fatal(err)
 	}
-	wantStep := "# LAB-1 step 2\n\n## Goal\n\n`" + filepath.Join(out, "goal.md") + "`\n\n## Base\n\nc0\n\n" +
+	wantStep := "# LAB-1 step 2\n\n## Goal\n\n`" + filepath.Join(out, "01-goal.md") + "`\n\n## Base\n\nc0\n\n" +
 		"## Covers\n\n````text\n" + issue + "````\n\n" +
 		"## Constraints\n\n```text\n" + constraints + "```\n\n## Open\n\nNone.\n"
 	if string(step) != wantStep {
@@ -946,7 +1010,7 @@ func TestAReviewRunTakenIsTheNextReview(t *testing.T) {
 	if code != exitPassed || len(sum.Reviews) != 2 || sum.Reviews[0].RunID != "r2" || sum.Reviews[0].Majors != 1 || sum.Reviews[1].RunID != "r3" {
 		t.Fatalf("exit %d, %+v", code, sum)
 	}
-	if want := []string{filepath.Join(out, "fix-2.md")}; !reflect.DeepEqual(f.briefs, want) {
+	if want := []string{filepath.Join(out, "01-fix.md")}; !reflect.DeepEqual(f.briefs, want) {
 		t.Fatalf("briefs %q, want %q", f.briefs, want)
 	}
 	brief, err := os.ReadFile(f.briefs[0])

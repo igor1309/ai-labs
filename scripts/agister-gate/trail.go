@@ -42,7 +42,8 @@ func (g *gate) started() error {
 	o := g.options
 	return g.emit("GATE_STARTED", map[string]any{"issue": o.issue, "title": o.title, "constraints": o.constraints,
 		"implement": o.implement, "advisor": o.advisor, "review": o.review, "decisions": o.decisions, "base": o.base,
-		"message": o.message, "out": o.out, "dir": o.dir, "from": o.from, "reviews": o.reviews},
+		"message": o.message, "out": o.out, "dir": o.dir, "from": o.from, "reviews": o.reviews,
+		"reviewed": o.reviewed, "minors": o.minors},
 		fmt.Sprintf("started at %s, %d review(s) counted, base %s; trail %s", o.from, o.reviews, o.base, filepath.Join(o.out, trailFile)))
 }
 
@@ -64,9 +65,11 @@ func (g *gate) open() error {
 	if err != nil {
 		return err
 	}
+	// A brief takes the number of the run it is given to, so every file
+	// numbered counts.
 	for _, entry := range entries {
 		number, _, _ := strings.Cut(entry.Name(), "-")
-		if n, err := strconv.Atoi(number); err == nil && strings.HasSuffix(entry.Name(), ".json") {
+		if n, err := strconv.Atoi(number); err == nil {
 			g.seq = max(g.seq, n)
 		}
 	}
@@ -185,8 +188,17 @@ func (g *gate) read(path, what string) ([]byte, error) {
 }
 
 // write writes data to path and records it: what it is, its digest and
-// what it was made from.
+// what it was made from. What path holds stays: data must begin with it,
+// as an appended record does, so that every digest the trail holds stays
+// the digest of a file there was.
 func (g *gate) write(path string, data []byte, what string, from map[string]any) error {
+	kept, err := os.ReadFile(path)
+	if err != nil && !errors.Is(err, fs.ErrNotExist) {
+		return err
+	}
+	if !bytes.HasPrefix(data, kept) {
+		return stop{"stopped", fmt.Sprintf("%s %s holds what the gate would write over", what, path)}
+	}
 	if err := os.WriteFile(path, data, 0o644); err != nil {
 		return err
 	}
@@ -202,12 +214,12 @@ func (g *gate) rulings(n int, runID string, j judgement, last bool) error {
 	for i, it := range j.Items {
 		var done string
 		switch {
-		case it.Ruling == "fix" && it.Severity == "major" && last:
+		case it.Ruling == "fix" && (it.Severity == "major" || g.minors) && last:
 			done, majors = "left for the owner: the last review rules it fix", majors+1
-		case it.Ruling == "fix" && it.Severity == "major":
+		case it.Ruling == "fix" && (it.Severity == "major" || g.minors):
 			done, majors = "sent to the fix run", majors+1
 		case it.Ruling == "fix":
-			done = "left: the gate fixes no minor"
+			done = "left: the gate fixes no minor without --minors"
 		case it.Ruling == "defer":
 			done = "left: deferred"
 		default:
@@ -217,7 +229,7 @@ func (g *gate) rulings(n int, runID string, j judgement, last bool) error {
 			"sources": it.Sources, "action": it.Action, "gate": done}
 	}
 	return g.emit("RULINGS_READ", map[string]any{"review": n, "run_id": runID, "items": items},
-		fmt.Sprintf("review %d, %s: %d major(s) ruled fix", n, runID, majors))
+		fmt.Sprintf("review %d, %s: %d %s(s) ruled fix", n, runID, majors, g.fixed()))
 }
 
 func digest(data []byte) string {
