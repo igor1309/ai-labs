@@ -96,6 +96,9 @@ func show(s layout.Snapshot) string {
 			}
 		}
 	}
+	if s.Blocks != nil {
+		fmt.Fprintf(&b, "\n  blocks %s %q", s.Blocks.Path, s.Blocks.Bytes)
+	}
 	for _, p := range s.Problems {
 		fmt.Fprintf(&b, "\n  problem %s: %v", p.Path, p.Err)
 	}
@@ -226,4 +229,50 @@ func TestAPathThatCannotBeListedOrReadIsAProblem(t *testing.T) {
 			})
 		})
 	}
+}
+
+func TestTheRepositoryFolderHoldsBlocks(t *testing.T) {
+	t.Parallel()
+	files := &spyFiles{files: map[string]string{"/repo/.agister/blocks.yaml": "- process: review"}}
+	got := read(t, files, layout.Folders{Repository: "/repo/.agister"})
+	assertSnapshot(t, got, layout.Snapshot{
+		Documents: map[layout.Kind]map[string]layout.Sources{},
+		Blocks:    &layout.Source{Path: "/repo/.agister/blocks.yaml", Bytes: []byte("- process: review")},
+	})
+}
+
+func TestBlocksOutsideTheRepositoryFolderAreAProblem(t *testing.T) {
+	t.Parallel()
+	for _, c := range []struct {
+		layer   string
+		folders layout.Folders
+		folder  string
+	}{
+		{"home", layout.Folders{Home: homeFolder}, homeFolder},
+		{"project", layout.Folders{Project: projectFolder}, projectFolder},
+	} {
+		t.Run(c.layer, func(t *testing.T) {
+			t.Parallel()
+			files := &spyFiles{files: map[string]string{c.folder + "/blocks.yaml": "- process: review"}}
+			got := read(t, files, c.folders)
+			assertSnapshot(t, got, layout.Snapshot{
+				Documents: map[layout.Kind]map[string]layout.Sources{},
+				Problems:  []layout.Problem{{Path: c.folder + "/blocks.yaml", Err: layout.ErrBlocksOutsideRepository}},
+			})
+		})
+	}
+}
+
+func TestBlocksThatCannotBeReadAreAProblemOfTheRepositoryLayer(t *testing.T) {
+	t.Parallel()
+	err := errors.New("permission denied")
+	files := &spyFiles{
+		files:   map[string]string{"/repo/.agister/blocks.yaml": "- process: review"},
+		failing: map[string]error{"/repo/.agister/blocks.yaml": err},
+	}
+	got := read(t, files, layout.Folders{Repository: "/repo/.agister"})
+	assertSnapshot(t, got, layout.Snapshot{
+		Documents: map[layout.Kind]map[string]layout.Sources{},
+		Problems:  []layout.Problem{{Path: "/repo/.agister/blocks.yaml", Err: err}},
+	})
 }

@@ -55,7 +55,11 @@ const (
 type Snapshot struct {
 	// Documents are each document's sources, by kind and name.
 	Documents map[Kind]map[string]Sources
-	Problems  []Problem
+	// Blocks are the repository folder's blocks file; nil where it holds
+	// none, or it cannot be read. They are no document: no kind, no name,
+	// no other layer.
+	Blocks   *Source
+	Problems []Problem
 }
 
 // Sources are a document's files, one slot per layer; nil where the
@@ -71,11 +75,19 @@ type Source struct {
 	Bytes []byte
 }
 
-// Problem is a path the filesystem could not list or read, and why.
+// Problem is a path the filesystem could not list or read, or a file in a
+// wrong place, and why.
 type Problem struct {
 	Path string
 	Err  error
 }
+
+// ErrBlocksOutsideRepository is the problem of a blocks file in the home or
+// the project folder.
+var ErrBlocksOutsideRepository = errors.New("blocks belong to the repository folder alone")
+
+// blocksFile is the blocks file's name in a layer folder.
+const blocksFile = "blocks.yaml"
 
 type Layout struct {
 	files FileSystem
@@ -116,13 +128,30 @@ func (l *Layout) readLayer(snapshot *Snapshot, at layer, folder string) {
 		return
 	}
 	for _, entry := range entries {
-		if entry.Kind != Folder {
-			continue
-		}
-		if files, ok := kindOfFolder(entry.Name); ok {
-			l.readKind(snapshot, at, filepath.Join(folder, entry.Name), files)
+		switch {
+		case entry.Kind == RegularFile && entry.Name == blocksFile:
+			l.readBlocks(snapshot, at, filepath.Join(folder, entry.Name))
+		case entry.Kind == Folder:
+			if files, ok := kindOfFolder(entry.Name); ok {
+				l.readKind(snapshot, at, filepath.Join(folder, entry.Name), files)
+			}
 		}
 	}
+}
+
+// readBlocks reads the repository folder's blocks; a blocks file in another
+// layer is a problem, and is not read.
+func (l *Layout) readBlocks(snapshot *Snapshot, at layer, path string) {
+	if at != repository {
+		snapshot.Problems = append(snapshot.Problems, Problem{Path: path, Err: ErrBlocksOutsideRepository})
+		return
+	}
+	bytes, err := l.files.Bytes(path)
+	if err != nil {
+		snapshot.Problems = append(snapshot.Problems, Problem{Path: path, Err: err})
+		return
+	}
+	snapshot.Blocks = &Source{Path: path, Bytes: bytes}
 }
 
 func (l *Layout) readKind(snapshot *Snapshot, at layer, folder string, files kindFiles) {
