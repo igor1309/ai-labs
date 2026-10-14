@@ -34,7 +34,8 @@ the agent was given. A text may be checked against a brief form.
 A process names each input, the source it comes from and what the source
 takes, such as a param the caller gives. A source is a kind of code, not
 of settings (ADR-001, invariant 2): a param, a file, a revision, the
-changed files between two revisions.
+changed files between two revisions. A join takes no input from the
+caller (ADR-007, rule 5).
 
 ### 2. Sources are ports
 
@@ -58,8 +59,8 @@ call.
 
 ### 5. A brief form checks structure, never meaning
 
-A text input may name the brief forms its text must have; a form is a
-settings document (ADR-002, rule 1). A text that has none of them is
+A text input may name the brief forms its text may take; a form is a
+settings document (ADR-002, rule 1). A text that takes none of them is
 refused before the first turn, naming what is wrong. Agister does not
 write, judge or repair a brief.
 
