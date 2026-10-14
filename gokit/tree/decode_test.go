@@ -411,27 +411,42 @@ func assertProblems(t *testing.T, format tree.Format, data, path string, want ..
 	return problems
 }
 
+// secondYAMLDocument is the parser's error on what follows a first
+// document, which it must take.
+func secondYAMLDocument(t *testing.T, data string) error {
+	t.Helper()
+	documents := yaml.NewDecoder(strings.NewReader(data))
+	if err := documents.Decode(&yaml.Node{}); err != nil {
+		t.Fatalf("the parser turns away the first document of %q: %v", data, err)
+	}
+	return documents.Decode(&yaml.Node{})
+}
+
 // The problem is the parser's own error, at the bytes as a whole, and
-// says the path.
+// says the path; bytes the parser fails on after a first document it
+// takes give that error, and no tree of the first.
 func TestBytesThatCannotBeParsedAreAProblem(t *testing.T) {
 	t.Parallel()
 	for _, c := range []struct {
+		name   string
 		format tree.Format
 		path   string
 		data   string
-		parse  func(data string) error
+		parse  func(t *testing.T, data string) error
 	}{
-		{tree.YAML, "/a/bad.yaml", "a: [b", func(data string) error {
+		{"YAML", tree.YAML, "/a/bad.yaml", "a: [b", func(_ *testing.T, data string) error {
 			return yaml.Unmarshal([]byte(data), &yaml.Node{})
 		}},
-		{tree.TOML, "/a/bad.toml", `a = [ "b"`, func(data string) error {
+		{"YAML after an ended first document", tree.YAML, "/a/bad.yaml", "a: 1\n...\n---\nb: [c\n", secondYAMLDocument},
+		{"YAML after a first document", tree.YAML, "/a/bad.yaml", "a: 1\n---\nb: [c\n", secondYAMLDocument},
+		{"TOML", tree.TOML, "/a/bad.toml", `a = [ "b"`, func(_ *testing.T, data string) error {
 			_, err := toml.Decode(data, &map[string]any{})
 			return err
 		}},
 	} {
-		t.Run(c.format.String(), func(t *testing.T) {
+		t.Run(c.name, func(t *testing.T) {
 			t.Parallel()
-			err := c.parse(c.data)
+			err := c.parse(t, c.data)
 			if err == nil {
 				t.Fatalf("the parser takes %q", c.data)
 			}
