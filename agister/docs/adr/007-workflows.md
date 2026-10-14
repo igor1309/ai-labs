@@ -21,8 +21,8 @@ reviews it ruled on. Most work needs one call.
 
 ## Decision
 
-A workflow is a settings document of one of two shapes: one `call`, or a
-`fan_out` of calls over the same inputs followed by one `join`. Every
+A workflow is defined in settings and has one of two shapes: one `call`,
+or a `fan_out` of calls over the same inputs followed by one `join`. Every
 node binds a process to an agent and runs as a call. `core/workflow`
 runs the shape through the port it declares to run a call; it knows no
 meaning of any node's output.

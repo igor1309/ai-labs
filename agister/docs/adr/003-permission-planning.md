@@ -46,7 +46,7 @@ allows. A process names no runtime option.
 
 ### 3. A runtime mapping offers options
 
-A runtime mapping is a settings document for one runtime wrapper. It lists
+A runtime mapping is defined in settings for one runtime wrapper. It lists
 the runtime's documented options, each with the permissions it grants,
 and says whether a call takes one of them or any number. It describes the
 runtime as shipped: no workarounds, no undocumented flags.
