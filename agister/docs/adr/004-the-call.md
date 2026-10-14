@@ -65,7 +65,8 @@ for the caller to keep or discard.
 A continuation resumes the provider session of the session's latest run,
 in place. The composition admits it only if that run worked in the same
 worktree, repository and revision, and the worktree's content is what that
-run recorded at its end. The agent is told that it continues its earlier
+run recorded at its end. These conditions take the place of a request
+for a clean worktree. The agent is told that it continues its earlier
 work and that its changes are in this worktree; it is told no run. The
 record names the run continued.
 

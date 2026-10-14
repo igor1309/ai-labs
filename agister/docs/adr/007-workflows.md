@@ -66,9 +66,11 @@ session.
 
 ### 6. The workflow ends in a call's result shape
 
-A workflow's status, class and output are its join's, or, with no join,
-its first node's. Usage and cost cover every node. Timing covers the whole workflow. Its warnings are every
-node's. No status, class or field exists only for workflows (ADR-001,
+A `call` workflow's status, class and output are its call's; a fan-out
+workflow's are its join's. A fan-out whose join does not run is
+interrupted when it was cancelled, and failed when no node completed.
+Usage and cost cover every node. Timing covers the whole workflow. Its
+warnings are every node's. No status, class or field exists only for workflows (ADR-001,
 invariant 3).
 
 ### 7. The workflow run records its nodes
