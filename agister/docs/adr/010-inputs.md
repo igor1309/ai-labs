@@ -11,31 +11,34 @@ description: "ADR-010: inputs: each input is resolved once from a named source t
 - **Scope:** what a call is given besides its prompt, where it comes from,
   what is kept of it, and the check a brief's text may get
 - **Decision type:** Architecture
+- **Amended by:** ADR-011 (2026-10-15)
 
 ## Context
 
 A call's work starts from what the caller hands in and from facts about
 the worktree: a brief, a goal, a revision, the files a change touched.
-Each must be fixed before the agent starts, the same for every node that
+Each must be fixed before the agent starts, the same for every primitive that
 shares it, and kept so the call can be understood after the caller's
 copy is gone.
 
 ## Decision
 
-A process declares its inputs, each from a named source. `core/inputs`
-resolves them before the first turn to a value and its identity, through
+A workflow declares its inputs at its boundary, and a process or a
+command its own, each from a named source or a binding (ADR-011,
+rule 3). `core/inputs` resolves them before the primitive starts to a value and its identity, through
 a port for each source that the composition answers. The run keeps what
 the agent was given. A text may be checked against a brief form.
 
 ## Rules
 
-### 1. A process declares its inputs
+### 1. A workflow, a process and a command declare their inputs
 
-A process names each input, the source it comes from and what the source
+Each names its inputs, the source each comes from and what the source
 takes, such as a param the caller gives. A source is a kind of code, not
 of settings (ADR-001, invariant 2): a param, a file, a revision, the
-changed files between two revisions. A join takes no input from the
-caller (ADR-007, rule 5).
+changed files between two revisions. A binding gives a child a value
+from its workflow's inputs, an earlier result or repetition state
+(ADR-011, rule 3).
 
 ### 2. Sources are ports
 
@@ -46,9 +49,10 @@ the filesystem, from `git`.
 ### 3. Inputs are resolved once, before the first turn
 
 Each input is resolved to a value and its identity (ADR-001,
-invariant 4), once per call, or once for a fan-out's nodes (ADR-007,
-rule 3). An input that cannot be resolved refuses the call before its
-first turn.
+invariant 4), once, before the primitive that takes it starts; an input
+shared by parallel children once, before they start (ADR-011, rule 3).
+An input that cannot be resolved refuses the primitive before it
+starts.
 
 ### 4. The run keeps what it was given
 
