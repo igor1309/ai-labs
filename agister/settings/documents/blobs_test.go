@@ -213,6 +213,7 @@ func TestAKindThatIsNoBlobIsAProblem(t *testing.T) {
 		{documents.Runtime, "a runtime is a tree, not a blob"},
 		{documents.Brief, "a brief is a tree, not a blob"},
 		{"skill", `the kind "skill" is not known`},
+		{"verify", `the kind "verify" is not known`},
 	}
 	for _, c := range cases {
 		t.Run(string(c.kind), func(t *testing.T) {

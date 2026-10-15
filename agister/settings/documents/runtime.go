@@ -9,7 +9,8 @@ import (
 // RuntimeDefinition is a runtime mapping, for one runtime wrapper: its
 // name, the adapter and the contract of the wrapper, which it must give;
 // the efforts the runtime accepts, and what it grants with no option, which
-// it may; and the options it offers, which it may, with the select that
+// it may, none among it, for a nearer layer to drop the base's grants with;
+// and the options it offers, which it may, with the select that
 // says whether a plan takes "any" of them or exactly "one", given with
 // them and only with them.
 type RuntimeDefinition struct {
@@ -65,7 +66,7 @@ func typeRuntime(name string, root tree.Node) (RuntimeDefinition, []Problem) {
 		Adapter:  t.text("adapter", required),
 		Contract: t.text("contract", required),
 		Efforts:  t.texts("efforts", optional),
-		Grants:   grants(t, optional),
+		Grants:   t.texts("grants", optional),
 		Select:   t.oneOf("select", neededIf(offers), "any", "one"),
 	}
 	options := t.entries("options", neededIf(selects))
@@ -80,7 +81,7 @@ func typeRuntime(name string, root tree.Node) (RuntimeDefinition, []Problem) {
 	for _, entry := range options.Value {
 		option := Option{
 			Name:     entry.name,
-			Grants:   grants(entry.fields, required),
+			Grants:   grants(entry.fields),
 			Verified: entry.fields.texts("verified", optional),
 		}
 		entry.fields.done()
@@ -92,10 +93,10 @@ func typeRuntime(name string, root tree.Node) (RuntimeDefinition, []Problem) {
 	return runtime, nil
 }
 
-// grants is the field grants of f: given, it grants a permission, for
-// grants of none would fit every plan.
-func grants(f *fields, need need) Field[[]string] {
-	grants := f.texts("grants", need)
+// grants is the grants of an option, which it must give: at least one, for
+// an option granting nothing would fit every plan.
+func grants(f *fields) Field[[]string] {
+	grants := f.texts("grants", required)
 	if grants.Given && len(grants.Value) == 0 {
 		f.problem(grants.Origin, f.at("grants"), "it grants a permission")
 	}

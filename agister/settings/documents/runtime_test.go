@@ -150,6 +150,37 @@ func TestARuntimeMayOfferNoOption(t *testing.T) {
 	})
 }
 
+// runtime.feature, "A runtime's fields": a select is "any" as it is
+// "one", with its origin.
+func TestARuntimesSelectIsAnyOrOne(t *testing.T) {
+	t.Parallel()
+	for _, value := range []string{"any", "one"} {
+		t.Run(value, func(t *testing.T) {
+			t.Parallel()
+			got, problems := typeRuntime(t, runtimeHeader+"select: "+value+"\noptions:\n  x: {grants: [a]}\n")
+			assertProblems(t, problems, nil)
+			if want := text(value, homeRuntime, 5); got.Select != want {
+				t.Errorf("select %+v, want %+v", got.Select, want)
+			}
+		})
+	}
+}
+
+// runtime.feature, "A nearer layer drops what the runtime grants with no
+// option": lists replace whole (ADR-002, rule 3), so the repository's
+// none is the runtime's grants, and its other fields are the home's.
+func TestANearerLayerDropsWhatTheRuntimeGrantsWithNoOption(t *testing.T) {
+	t.Parallel()
+	got, problems := runtimesOf(map[string]documents.Document{"a": {Sources: documents.Sources{
+		Home:       source(homeRuntime, validRuntime),
+		Repository: source(repositoryRuntime, "grants: []\n"),
+	}}}).Runtime("a")
+	assertProblems(t, problems, nil)
+	want := validRuntimeDefinition()
+	want.Grants = texts(repositoryRuntime, 1, []string{}...)
+	assertRuntime(t, got, want)
+}
+
 // runtime.feature, "A runtime needs its adapter and its contract": each
 // missing one is in no file.
 func TestARuntimeNeedsItsAdapterAndItsContract(t *testing.T) {
@@ -170,7 +201,6 @@ func TestARuntimesOptionsAreChosenOneOrAnyAndEachGrantsSomething(t *testing.T) {
 		bytes string
 		want  documents.Problem
 	}{
-		{"the grants []", runtimeHeader + "grants: []\n", inHomeRuntime(5, "grants", "it grants a permission")},
 		{"the select some", runtimeHeader + "select: some\noptions:\n  x: {grants: [a]}\n",
 			inHomeRuntime(5, "select", `it is "any" or "one"`)},
 		{"options with no select", runtimeHeader + "options:\n  x: {grants: [a]}\n", missing("select")},
@@ -182,6 +212,12 @@ func TestARuntimesOptionsAreChosenOneOrAnyAndEachGrantsSomething(t *testing.T) {
 			missing("options.x.grants")},
 		{"an option granting nothing", runtimeHeader + "select: one\noptions:\n  x: {grants: []}\n",
 			inHomeRuntime(7, "options.x.grants", "it grants a permission")},
+		// A value of the wrong type, once for each typing a runtime alone
+		// reads: a list, a choice and a map of entries.
+		{"efforts that are no list", runtimeHeader + "efforts: high\n", inHomeRuntime(5, "efforts", "it is a list, not a string")},
+		{"a select that is no string", runtimeHeader + "select: 1\noptions:\n  x: {grants: [a]}\n",
+			inHomeRuntime(5, "select", "it is a string, not an integer")},
+		{"options that are no map", runtimeHeader + "select: one\noptions: [x]\n", inHomeRuntime(6, "options", "it is a map, not a list")},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {

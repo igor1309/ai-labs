@@ -408,6 +408,7 @@ func TestAKindThatIsNoTreeIsAProblem(t *testing.T) {
 		{documents.Schema, "a schema is a blob, not a tree"},
 		{documents.Prompt, "a prompt is a blob, not a tree"},
 		{"skill", `the kind "skill" is not known`},
+		{"verify", `the kind "verify" is not known`},
 	}
 	for _, c := range cases {
 		t.Run(string(c.kind), func(t *testing.T) {
