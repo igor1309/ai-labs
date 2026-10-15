@@ -14,7 +14,6 @@ Feature: Documents composes a tree document's layers
       | process  | tree | YAML   |
       | workflow | tree | YAML   |
       | runtime  | tree | YAML   |
-      | verify   | tree | YAML   |
       | brief    | tree | YAML   |
       | schema   | blob |        |
       | prompt   | blob |        |
@@ -30,7 +29,6 @@ Feature: Documents composes a tree document's layers
       | process  | YAML   |
       | workflow | YAML   |
       | runtime  | YAML   |
-      | verify   | YAML   |
       | brief    | YAML   |
 
   Scenario: The nearer layer wins, field by field

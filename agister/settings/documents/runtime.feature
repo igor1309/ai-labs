@@ -3,8 +3,9 @@
 # document's sources by kind and name, one slot per layer, and the
 # problems of its files, it gives one document: a definition, or its
 # problems.
-  # The runtime (ADR-003, rule 3): a runtime mapping, for one runtime
-  # wrapper, of the options it offers and what each grants.
+  # The runtime (ADR-003, rule 3; ADR-012, rule 4): a runtime mapping, for
+  # one runtime wrapper, of what it grants with no option, and of the
+  # options it offers, one or any of them, with what each grants.
 
 Feature: Documents gives a runtime
 
@@ -16,32 +17,39 @@ Feature: Documents gives a runtime
       adapter: codex
       contract: codex/2
       efforts: [low, high]
-      primitives:
-        select: one
-        items:
-          read-only: {grants: [repository.read], verified: ["0.161."]}
-          workspace-write: {grants: [repository.read, repository.write]}
+      grants: [host.read]
+      select: one
+      options:
+        read-only: {grants: [repository.read], verified: ["0.161."]}
+        workspace-write: {grants: [repository.read, repository.write]}
       """
     When documents is asked for the runtime "a"
     Then it gives the runtime "a" with the adapter "codex", the contract
-      "codex/2", the efforts "low" and "high", and the select "one"
-    And its primitives, by name:
-      | primitive       | grants                            | verified |
+      "codex/2", the efforts "low" and "high", the grants "host.read",
+      and the select "one"
+    And its options, by name:
+      | option          | grants                            | verified |
       | read-only       | repository.read                   | 0.161.   |
       | workspace-write | repository.read, repository.write |          |
     And each field's origin is "/home/.agister/runtimes/a.yaml"
     And it has no problem
 
-  Scenario: A runtime needs its adapter, its contract and its primitives
-    Given the runtime "a" has a home source of its schema, its name and
-      "efforts: [low]"
+  Scenario: A runtime may offer no option
+    Given the runtime "a" has a home source of its schema, its name, its
+      adapter, its contract and "grants: [process.execute]"
+    When documents is asked for the runtime "a"
+    Then it gives the runtime "a" with the grants "process.execute", no
+      select and no option
+
+  Scenario: A runtime needs its adapter and its contract
+    Given the runtime "a" has a home source of its schema and its name
     When documents is asked for the runtime "a"
     Then there is no definition
-    And it has exactly three problems: at "adapter", "contract" and
-      "primitives", each "it is missing"
+    And it has exactly two problems: at "adapter" and "contract", each
+      "it is missing"
 
-  Scenario Outline: A runtime's primitives are a choice of options, each
-    granting something
+  Scenario Outline: A runtime's options are chosen one or any, and each
+    grants something
     Given the runtime "a" has a home source of a valid runtime but for
       <fault>
     When documents is asked for the runtime "a"
@@ -49,12 +57,11 @@ Feature: Documents gives a runtime
     And it has a problem at "<field>": <message>
 
     Examples:
-      | fault                              | field                     | message                        |
-      | the select "some"                  | primitives.select         | it is "any" or "one"           |
-      | no select                          | primitives.select         | it is missing                  |
-      | no items                           | primitives.items          | it is missing                  |
-      | the items {}                       | primitives.items          | it names a primitive           |
-      | the item "x: {verified: ['0.1.']}" | primitives.items.x.grants | it is missing                  |
-      | the item "x: {grants: []}"         | primitives.items.x.grants | it grants a permission         |
-      | the item "x: {grants: [a], y: 1}"  | primitives.items.x.y      | the field is not known         |
-      | the efforts [1]                    | efforts[0]                | it is a string, not an integer |
+      | fault                             | field            | message                |
+      | the grants []                     | grants           | it grants a permission |
+      | the select "some"                 | select           | it is "any" or "one"   |
+      | options with no select            | select           | it is missing          |
+      | a select with no options          | options          | it is missing          |
+      | the options {}                    | options          | it names an option     |
+      | the option "x: {verified: [0.1]}" | options.x.grants | it is missing          |
+      | the option "x: {grants: []}"      | options.x.grants | it grants a permission |
