@@ -134,6 +134,20 @@ func step(name, process, agent string) resolve.Item {
 	return resolve.Item{Name: name, Process: resolve.Name{Value: process}, Agent: resolve.Name{Value: agent}}
 }
 
+// stepAt is the step name binding process to agent at place, its process
+// and agent at their own places there, as a source gives them.
+func stepAt(name, process, agent, place string) resolve.Item {
+	return resolve.Item{
+		Name: name, Origin: resolve.Origin{Place: place},
+		Process: named(process, place+".process"), Agent: named(agent, place+".agent"),
+	}
+}
+
+// named is the name value, given at place.
+func named(value, place string) resolve.Name {
+	return resolve.Name{Value: value, Origin: resolve.Origin{Place: place}}
+}
+
 // param, input and state read the param, the input or the repeat's state
 // of name; outputs, the outputs of the item name, or their field, "" for
 // the whole; session, the session of the item name; and queryItem, the
@@ -196,14 +210,48 @@ func TestNewNeedsASourceAndWrappers(t *testing.T) {
 	}
 }
 
-// request.feature, "A workflow requested resolves with what it reaches".
+// request.feature, "A workflow requested resolves with what it reaches":
+// each definition is given whole, every field its document gives.
 func TestAWorkflowRequestedResolvesWithWhatItReaches(t *testing.T) {
 	t.Parallel()
 	s := newSource()
-	w := resolve.Workflow{Name: "w", Steps: []resolve.Item{step("s", "p", "a")}}
+	base := []resolve.Param{{Name: "base", Default: true}}
+	item := stepAt("s", "p", "a", "steps[0]")
+	item.Inputs = []resolve.Binding{{Name: "base", From: ptr(param("base"))}}
+	w := resolve.Workflow{
+		Name:    "w",
+		Params:  base,
+		Inputs:  []resolve.Input{{Name: "goal", Forms: []resolve.Name{named("wb", "inputs.goal.form[0]")}, Arguments: []resolve.Binding{{Name: "path", From: ptr(param("base"))}}}},
+		Steps:   []resolve.Item{item},
+		Outputs: []resolve.Binding{{Name: "verdict", From: ptr(outputs("s", "verdict"))}, {Name: "note", Text: "done"}},
+	}
 	s.workflows["w"] = w
-	s.processes["p"] = resolve.Process{Name: "p"}
-	s.pair("a", "r")
+	s.processes["p"] = resolve.Process{
+		Name:              "p",
+		Prompt:            named("pr", "prompt"),
+		Guidance:          []resolve.Name{named("g", "guidance[0]")},
+		Skills:            []resolve.Name{named("k", "skills[0]")},
+		Params:            base,
+		Inputs:            []resolve.Input{{Name: "rev", Forms: []resolve.Name{named("b", "inputs.rev.form[0]")}, Arguments: []resolve.Binding{{Name: "rev", From: ptr(param("base"))}}}},
+		Environment:       []resolve.Binding{{Name: "HEAD", From: ptr(param("base"))}, {Name: "MODE", Text: "ci"}},
+		Revision:          ptr(input("rev")),
+		Schema:            named("sc", "output.schema"),
+		Require:           []string{"read"},
+		Allow:             []string{"read", "write"},
+		Recovery:          true,
+		StaleToolCalls:    true,
+		StaleToolCommands: true,
+	}
+	s.agents["a"] = resolve.Agent{Name: "a", Runtime: named("r", "runtime"), Model: named("m", "model"), Effort: named("high", "effort")}
+	s.runtimes["r"] = resolve.Runtime{Name: "r", Contract: named(able, "contract"), Grants: []string{"tmp"}, Select: "any",
+		Options: []resolve.Option{{Name: "look", Grants: []string{"read"}}, {Name: "edit", Grants: []string{"write"}}}}
+	facts := s.facts[able]
+	facts.Efforts = []string{"high"}
+	s.facts[able] = facts
+	for _, other := range []resolve.Reference{ref(resolve.KindBrief, "wb"), ref(resolve.KindPrompt, "pr"),
+		ref(resolve.KindPrompt, "g"), ref(resolve.KindSkill, "k"), ref(resolve.KindBrief, "b"), ref(resolve.KindSchema, "sc")} {
+		s.other(other.Kind, other.Name)
+	}
 
 	got, faults := newResolver(t, s).Resolve(resolve.Document(resolve.KindWorkflow, "w"))
 
@@ -211,7 +259,11 @@ func TestAWorkflowRequestedResolvesWithWhatItReaches(t *testing.T) {
 	if !reflect.DeepEqual(got.Workflow, &w) {
 		t.Errorf("workflow\n got %+v\nwant %+v", got.Workflow, w)
 	}
-	assertReached(t, got, ref(resolve.KindWorkflow, "w"), ref(resolve.KindProcess, "p"),
+	// It reached the workflow, the process, the agent and the runtime, and
+	// the documents of which resolve reads nothing that they name.
+	assertReached(t, got, ref(resolve.KindWorkflow, "w"), ref(resolve.KindBrief, "wb"),
+		ref(resolve.KindProcess, "p"), ref(resolve.KindPrompt, "pr"), ref(resolve.KindPrompt, "g"), ref(resolve.KindSkill, "k"),
+		ref(resolve.KindBrief, "b"), ref(resolve.KindSchema, "sc"),
 		ref(resolve.KindAgent, "a"), ref(resolve.KindRuntime, "r"))
 	assertDefinitions(t, got, s, []string{"w"}, []string{"p"}, []string{"a"}, []string{"r"})
 }
@@ -255,14 +307,22 @@ func TestAStepRequestedAloneIsAWorkflowOfThatOneStep(t *testing.T) {
 	got, faults := newResolver(t, s).Resolve(resolve.Step("p", "a"))
 
 	assertResolved(t, faults)
+	// The made workflow has no document, so resolve gives its places.
+	fromParam := func(name string) resolve.Binding {
+		reads := param(name)
+		reads.Origin = resolve.Origin{Place: "steps[0].inputs." + name}
+		return resolve.Binding{Name: name, From: &reads, Origin: reads.Origin}
+	}
+	output := outputs("p", "")
+	output.Origin = resolve.Origin{Place: "outputs.output"}
 	want := resolve.Workflow{
 		Params: params,
-		Inputs: inputs,
 		Steps: []resolve.Item{{
-			Name: "p", Process: resolve.Name{Value: "p"}, Agent: resolve.Name{Value: "a"},
-			Inputs: []resolve.Binding{{Name: "base", From: ptr(param("base"))}, {Name: "goal", From: ptr(param("goal"))}},
+			Name: "p", Origin: resolve.Origin{Place: "steps[0]"},
+			Process: named("p", "steps[0].process"), Agent: named("a", "steps[0].agent"),
+			Inputs: []resolve.Binding{fromParam("base"), fromParam("goal")},
 		}},
-		Outputs: []resolve.Binding{{Name: "output", From: ptr(outputs("p", ""))}},
+		Outputs: []resolve.Binding{{Name: "output", From: &output, Origin: output.Origin}},
 	}
 	if !reflect.DeepEqual(got.Workflow, &want) {
 		t.Errorf("workflow\n got %+v\nwant %+v", got.Workflow, want)
@@ -274,7 +334,7 @@ func TestAStepRequestedAloneIsAWorkflowOfThatOneStep(t *testing.T) {
 func TestAStepRequestedAloneResolvesAsItsParts(t *testing.T) {
 	t.Parallel()
 	s := newSource()
-	problem := resolve.Problem{Path: "/home/.agister/processes/p.yaml", Line: 2, Place: "prompt", Message: "it is a string"}
+	problem := resolve.Problem{Origin: resolve.Origin{Path: "/home/.agister/processes/p.yaml", Line: 2, Place: "prompt"}, Message: "it is a string"}
 	s.fail(resolve.KindProcess, "p", problem)
 	s.pair("a", "r")
 
@@ -317,7 +377,7 @@ func TestAProblemOfNoDocumentRefusesEveryRequest(t *testing.T) {
 			s.workflows["w"] = resolve.Workflow{Name: "w", Steps: []resolve.Item{step("s", "p", "a")}}
 			s.processes["p"] = resolve.Process{Name: "p"}
 			s.pair("a", "r")
-			problem := resolve.Problem{Path: "/repo/.agister", Message: "it cannot be listed"}
+			problem := resolve.Problem{Origin: resolve.Origin{Path: "/repo/.agister"}, Message: "it cannot be listed"}
 			s.none = []resolve.Problem{problem}
 
 			got, faults := newResolver(t, s).Resolve(request)
@@ -368,38 +428,42 @@ func TestEveryNameADocumentGivesIsFollowed(t *testing.T) {
 }
 
 // references.feature, "A problem refuses with the chain that reached it",
-// for every document resolve reads nothing of, wherever it is named.
+// for every document resolve reads nothing of, wherever it is named: each
+// link at the origin the source gives the name it follows.
 func TestEveryDocumentReachedIsChecked(t *testing.T) {
 	t.Parallel()
+	link := func(kind resolve.Kind, name, place string) resolve.Link {
+		return resolve.Link{Kind: kind, Name: name, Origin: resolve.Origin{Place: place}}
+	}
 	w := resolve.Link{Kind: resolve.KindWorkflow, Name: "w"}
-	p := resolve.Link{Kind: resolve.KindProcess, Name: "p", Place: "steps[0].process"}
+	p := link(resolve.KindProcess, "p", "steps[0].process")
 	for _, test := range []struct {
 		kind  resolve.Kind
 		name  string
 		chain []resolve.Link
 	}{
-		{resolve.KindBrief, "wb", []resolve.Link{w, {Kind: resolve.KindBrief, Name: "wb", Place: "inputs.brief.form[0]"}}},
-		{resolve.KindPrompt, "pr", []resolve.Link{w, p, {Kind: resolve.KindPrompt, Name: "pr", Place: "prompt"}}},
-		{resolve.KindPrompt, "g", []resolve.Link{w, p, {Kind: resolve.KindPrompt, Name: "g", Place: "guidance[0]"}}},
-		{resolve.KindSkill, "k", []resolve.Link{w, p, {Kind: resolve.KindSkill, Name: "k", Place: "skills[0]"}}},
-		{resolve.KindBrief, "b", []resolve.Link{w, p, {Kind: resolve.KindBrief, Name: "b", Place: "inputs.goal.form[0]"}}},
-		{resolve.KindSchema, "sc", []resolve.Link{w, p, {Kind: resolve.KindSchema, Name: "sc", Place: "output.schema"}}},
+		{resolve.KindBrief, "wb", []resolve.Link{w, link(resolve.KindBrief, "wb", "inputs.brief.form[0]")}},
+		{resolve.KindPrompt, "pr", []resolve.Link{w, p, link(resolve.KindPrompt, "pr", "prompt")}},
+		{resolve.KindPrompt, "g", []resolve.Link{w, p, link(resolve.KindPrompt, "g", "guidance[0]")}},
+		{resolve.KindSkill, "k", []resolve.Link{w, p, link(resolve.KindSkill, "k", "skills[0]")}},
+		{resolve.KindBrief, "b", []resolve.Link{w, p, link(resolve.KindBrief, "b", "inputs.goal.form[0]")}},
+		{resolve.KindSchema, "sc", []resolve.Link{w, p, link(resolve.KindSchema, "sc", "output.schema")}},
 	} {
 		t.Run(string(test.kind)+" "+test.name, func(t *testing.T) {
 			t.Parallel()
 			s := newSource()
 			s.workflows["w"] = resolve.Workflow{
 				Name:   "w",
-				Inputs: []resolve.Input{{Name: "brief", Forms: []resolve.Name{{Value: "wb"}}}},
-				Steps:  []resolve.Item{step("s", "p", "a")},
+				Inputs: []resolve.Input{{Name: "brief", Forms: []resolve.Name{named("wb", "inputs.brief.form[0]")}}},
+				Steps:  []resolve.Item{stepAt("s", "p", "a", "steps[0]")},
 			}
 			s.processes["p"] = resolve.Process{
 				Name:     "p",
-				Prompt:   resolve.Name{Value: "pr"},
-				Guidance: []resolve.Name{{Value: "g"}},
-				Skills:   []resolve.Name{{Value: "k"}},
-				Inputs:   []resolve.Input{{Name: "goal", Forms: []resolve.Name{{Value: "b"}}}},
-				Schema:   resolve.Name{Value: "sc"},
+				Prompt:   named("pr", "prompt"),
+				Guidance: []resolve.Name{named("g", "guidance[0]")},
+				Skills:   []resolve.Name{named("k", "skills[0]")},
+				Inputs:   []resolve.Input{{Name: "goal", Forms: []resolve.Name{named("b", "inputs.goal.form[0]")}}},
+				Schema:   named("sc", "output.schema"),
 			}
 			s.pair("a", "r")
 			for _, other := range []resolve.Reference{ref(resolve.KindBrief, "wb"), ref(resolve.KindPrompt, "pr"),
@@ -445,8 +509,8 @@ func TestEveryItemIsFollowedInBranchesARunMayNotTakeToo(t *testing.T) {
 func TestAProblemRefusesWithTheChainThatReachedIt(t *testing.T) {
 	t.Parallel()
 	s := newSource()
-	process := resolve.Origin{Path: "/home/.agister/workflows/w.yaml", Line: 4}
-	prompt := resolve.Origin{Path: "/home/.agister/processes/p.yaml", Line: 3}
+	process := resolve.Origin{Path: "/home/.agister/workflows/w.yaml", Line: 4, Place: "steps[0].process"}
+	prompt := resolve.Origin{Path: "/home/.agister/processes/p.yaml", Line: 3, Place: "prompt"}
 	s.workflows["w"] = resolve.Workflow{Name: "w", Steps: []resolve.Item{{
 		Name: "s", Process: resolve.Name{Value: "p", Origin: process}, Agent: resolve.Name{Value: "a"},
 	}}}
@@ -458,8 +522,8 @@ func TestAProblemRefusesWithTheChainThatReachedIt(t *testing.T) {
 	assertFaults(t, got, faults, resolve.Fault{
 		Chain: []resolve.Link{
 			{Kind: resolve.KindWorkflow, Name: "w"},
-			{Kind: resolve.KindProcess, Name: "p", Place: "steps[0].process", Origin: process},
-			{Kind: resolve.KindPrompt, Name: "pr", Place: "prompt", Origin: prompt},
+			{Kind: resolve.KindProcess, Name: "p", Origin: process},
+			{Kind: resolve.KindPrompt, Name: "pr", Origin: prompt},
 		},
 		Problems: []resolve.Problem{noLayer},
 	})
@@ -470,9 +534,9 @@ func TestAProblemRefusesWithTheChainThatReachedIt(t *testing.T) {
 func TestEveryDocumentAtFaultIsGivenOnceWithItsFirstChain(t *testing.T) {
 	t.Parallel()
 	s := newSource()
-	s.workflows["w"] = resolve.Workflow{Name: "w", Steps: []resolve.Item{step("s", "p", "a"), step("t", "q", "a")}}
-	s.processes["p"] = resolve.Process{Name: "p", Prompt: resolve.Name{Value: "pr"}}
-	s.processes["q"] = resolve.Process{Name: "q", Prompt: resolve.Name{Value: "pr"}, Schema: resolve.Name{Value: "sc"}}
+	s.workflows["w"] = resolve.Workflow{Name: "w", Steps: []resolve.Item{stepAt("s", "p", "a", "steps[0]"), stepAt("t", "q", "a", "steps[1]")}}
+	s.processes["p"] = resolve.Process{Name: "p", Prompt: named("pr", "prompt")}
+	s.processes["q"] = resolve.Process{Name: "q", Prompt: named("pr", "prompt"), Schema: named("sc", "output.schema")}
 	s.pair("a", "r")
 	broken := resolve.Problem{Message: "it is broken"}
 	s.fail(resolve.KindPrompt, "pr", broken)
@@ -483,12 +547,12 @@ func TestEveryDocumentAtFaultIsGivenOnceWithItsFirstChain(t *testing.T) {
 	w := resolve.Link{Kind: resolve.KindWorkflow, Name: "w"}
 	assertFaults(t, got, faults,
 		resolve.Fault{Chain: []resolve.Link{w,
-			{Kind: resolve.KindProcess, Name: "p", Place: "steps[0].process"},
-			{Kind: resolve.KindPrompt, Name: "pr", Place: "prompt"},
+			{Kind: resolve.KindProcess, Name: "p", Origin: resolve.Origin{Place: "steps[0].process"}},
+			{Kind: resolve.KindPrompt, Name: "pr", Origin: resolve.Origin{Place: "prompt"}},
 		}, Problems: []resolve.Problem{broken}},
 		resolve.Fault{Chain: []resolve.Link{w,
-			{Kind: resolve.KindProcess, Name: "q", Place: "steps[1].process"},
-			{Kind: resolve.KindSchema, Name: "sc", Place: "output.schema"},
+			{Kind: resolve.KindProcess, Name: "q", Origin: resolve.Origin{Place: "steps[1].process"}},
+			{Kind: resolve.KindSchema, Name: "sc", Origin: resolve.Origin{Place: "output.schema"}},
 		}, Problems: []resolve.Problem{broken}},
 	)
 	for reference, times := range s.asked {
@@ -502,7 +566,7 @@ func TestEveryDocumentAtFaultIsGivenOnceWithItsFirstChain(t *testing.T) {
 func TestADocumentWithAProblemIsNotFollowed(t *testing.T) {
 	t.Parallel()
 	s := newSource()
-	s.workflows["w"] = resolve.Workflow{Name: "w", Steps: []resolve.Item{step("s", "p", "a")}}
+	s.workflows["w"] = resolve.Workflow{Name: "w", Steps: []resolve.Item{stepAt("s", "p", "a", "steps[0]")}}
 	broken := resolve.Problem{Message: "it is broken"}
 	s.fail(resolve.KindProcess, "p", broken)
 	s.pair("a", "r")
@@ -511,7 +575,7 @@ func TestADocumentWithAProblemIsNotFollowed(t *testing.T) {
 
 	assertFaults(t, got, faults, resolve.Fault{Chain: []resolve.Link{
 		{Kind: resolve.KindWorkflow, Name: "w"},
-		{Kind: resolve.KindProcess, Name: "p", Place: "steps[0].process"},
+		{Kind: resolve.KindProcess, Name: "p", Origin: resolve.Origin{Place: "steps[0].process"}},
 	}, Problems: []resolve.Problem{broken}})
 }
 
@@ -538,7 +602,7 @@ func TestAWorkflowThatReachesItselfIsRefused(t *testing.T) {
 	t.Parallel()
 	s := newSource()
 	child := func(name string) resolve.Item {
-		return resolve.Item{Name: "child", Workflow: resolve.Name{Value: name}}
+		return resolve.Item{Name: "child", Workflow: named(name, "steps[0].workflow")}
 	}
 	s.workflows["w"] = resolve.Workflow{Name: "w", Steps: []resolve.Item{child("c")}}
 	s.workflows["c"] = resolve.Workflow{Name: "c", Steps: []resolve.Item{child("w")}}
@@ -547,8 +611,8 @@ func TestAWorkflowThatReachesItselfIsRefused(t *testing.T) {
 
 	assertFaults(t, got, faults, resolve.Fault{Chain: []resolve.Link{
 		{Kind: resolve.KindWorkflow, Name: "w"},
-		{Kind: resolve.KindWorkflow, Name: "c", Place: "steps[0].workflow"},
-		{Kind: resolve.KindWorkflow, Name: "w", Place: "steps[0].workflow"},
+		{Kind: resolve.KindWorkflow, Name: "c", Origin: resolve.Origin{Place: "steps[0].workflow"}},
+		{Kind: resolve.KindWorkflow, Name: "w", Origin: resolve.Origin{Place: "steps[0].workflow"}},
 	}, Problems: []resolve.Problem{{Message: "it reaches itself"}}})
 }
 
@@ -557,19 +621,19 @@ func TestAWorkflowThatReachesItselfIsRefused(t *testing.T) {
 func TestAWorkflowThatReachesItselfTwiceIsGivenOnceWithItsFirstCycle(t *testing.T) {
 	t.Parallel()
 	s := newSource()
-	child := func(item, name string) resolve.Item {
-		return resolve.Item{Name: item, Workflow: resolve.Name{Value: name}}
+	child := func(item, name, place string) resolve.Item {
+		return resolve.Item{Name: item, Workflow: named(name, place)}
 	}
-	s.workflows["w"] = resolve.Workflow{Name: "w", Steps: []resolve.Item{child("one", "c"), child("two", "d")}}
-	s.workflows["c"] = resolve.Workflow{Name: "c", Steps: []resolve.Item{child("back", "w")}}
-	s.workflows["d"] = resolve.Workflow{Name: "d", Steps: []resolve.Item{child("back", "w")}}
+	s.workflows["w"] = resolve.Workflow{Name: "w", Steps: []resolve.Item{child("one", "c", "steps[0].workflow"), child("two", "d", "steps[1].workflow")}}
+	s.workflows["c"] = resolve.Workflow{Name: "c", Steps: []resolve.Item{child("back", "w", "steps[0].workflow")}}
+	s.workflows["d"] = resolve.Workflow{Name: "d", Steps: []resolve.Item{child("back", "w", "steps[0].workflow")}}
 
 	got, faults := newResolver(t, s).Resolve(resolve.Document(resolve.KindWorkflow, "w"))
 
 	assertFaults(t, got, faults, resolve.Fault{Chain: []resolve.Link{
 		{Kind: resolve.KindWorkflow, Name: "w"},
-		{Kind: resolve.KindWorkflow, Name: "c", Place: "steps[0].workflow"},
-		{Kind: resolve.KindWorkflow, Name: "w", Place: "steps[0].workflow"},
+		{Kind: resolve.KindWorkflow, Name: "c", Origin: resolve.Origin{Place: "steps[0].workflow"}},
+		{Kind: resolve.KindWorkflow, Name: "w", Origin: resolve.Origin{Place: "steps[0].workflow"}},
 	}, Problems: []resolve.Problem{{Message: "it reaches itself"}}})
 }
 
@@ -582,7 +646,7 @@ func TestTheSourcesProblemsAreNotChangedByARequest(t *testing.T) {
 	s.workflows["w"] = resolve.Workflow{Name: "w", Steps: []resolve.Item{step("s", "p", "a")}}
 	s.processes["p"] = resolve.Process{Name: "p"}
 	s.pair("a", "r")
-	problem := resolve.Problem{Path: "/repo/.agister", Message: "it cannot be listed"}
+	problem := resolve.Problem{Origin: resolve.Origin{Path: "/repo/.agister"}, Message: "it cannot be listed"}
 	// Room beyond its length, which an append in place would write to.
 	s.none = append(make([]resolve.Problem, 0, 4), problem)
 	r := newResolver(t, s)

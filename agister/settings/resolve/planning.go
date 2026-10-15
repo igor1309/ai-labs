@@ -5,30 +5,29 @@ import (
 	"slices"
 )
 
-// planAll plans every step of items at place, in the workflow of name,
-// those in branches a run may not take too, and gives each problem of
-// theirs to fault.
-func (w *walk) planAll(name string, items []Item, place string, fault func(Problem)) {
-	for i, item := range items {
-		at := fmt.Sprintf("%s[%d]", place, i)
+// planAll plans every step of items, in the workflow of name, those in
+// branches a run may not take too, and gives each problem of theirs to
+// fault.
+func (w *walk) planAll(name string, items []Item, fault func(Problem)) {
+	for _, item := range items {
 		switch {
 		case item.Process.Value != "":
-			w.planStep(name, item, at, fault)
+			w.planStep(name, item, fault)
 		case item.Parallel != nil:
-			w.planAll(name, item.Parallel, at+".parallel", fault)
+			w.planAll(name, item.Parallel, fault)
 		case item.Branch != nil:
-			w.planAll(name, item.Branch, at+".branch", fault)
+			w.planAll(name, item.Branch, fault)
 		case item.Repeat != nil:
-			w.planAll(name, item.Repeat.Steps, at+".repeat.steps", fault)
+			w.planAll(name, item.Repeat.Steps, fault)
 		}
 	}
 }
 
-// planStep plans the step item at place: what its process and the step
-// need of its runtime, and the permissions its process requires. A step
-// whose process, agent or runtime is at fault is not planned: they refuse
-// it.
-func (w *walk) planStep(name string, item Item, place string, fault func(Problem)) {
+// planStep plans the step item: what its process and the step need of its
+// runtime, and the permissions its process requires, each problem at the
+// step's origin. A step whose process, agent or runtime is at fault is not
+// planned: they refuse it.
+func (w *walk) planStep(name string, item Item, fault func(Problem)) {
 	process, ok := w.processes[item.Process.Value]
 	if !ok {
 		return
@@ -42,7 +41,7 @@ func (w *walk) planStep(name string, item Item, place string, fault func(Problem
 		return
 	}
 	problem := func(format string, args ...any) {
-		fault(Problem{Path: item.Origin.Path, Line: item.Origin.Line, Place: place, Message: fmt.Sprintf(format, args...)})
+		fault(Problem{Origin: item.Origin, Message: fmt.Sprintf(format, args...)})
 	}
 	who := fmt.Sprintf("its process %q", process.Name)
 	for _, need := range []struct {
@@ -66,7 +65,7 @@ func (w *walk) planStep(name string, item Item, place string, fault func(Problem
 			problem("its runtime %q grants the permission %q, as its process %q requires", runtime.Name, required, process.Name)
 		}
 	}
-	plan.Workflow, plan.Place, plan.Agent = name, place, agent.Name
+	plan.Workflow, plan.Place, plan.Agent = name, item.Origin.Place, agent.Name
 	w.plans = append(w.plans, plan)
 }
 
@@ -75,7 +74,8 @@ func (w *walk) planStep(name string, item Item, place string, fault func(Problem
 // requires with the fewest grants beyond what it allows, the first in the
 // mapping's order of those that tie. Of "any", an option for each required
 // permission not yet granted; of "one", the one option that gives most of
-// what is required.
+// what is required. An option grants each permission once, however often
+// it lists one.
 func planOf(process Process, runtime Runtime) Plan {
 	allowed := slices.Clone(process.Allow)
 	for _, required := range process.Require {
@@ -89,7 +89,7 @@ func planOf(process Process, runtime Runtime) Plan {
 	// allowed; lacking, how many required permissions granted with it lacks.
 	beyond := func(option Option) int {
 		n := 0
-		for _, grant := range option.Grants {
+		for _, grant := range distinct(option.Grants) {
 			if !slices.Contains(granted, grant) && !slices.Contains(allowed, grant) {
 				n++
 			}
@@ -157,19 +157,30 @@ func planOf(process Process, runtime Runtime) Plan {
 	return plan
 }
 
+// distinct is permissions, each once, in the order first listed.
+func distinct(permissions []string) []string {
+	var once []string
+	for _, permission := range permissions {
+		if !slices.Contains(once, permission) {
+			once = append(once, permission)
+		}
+	}
+	return once
+}
+
 // takes is the problems of agent on the runtime of its name, of the
 // runtime's facts: a model it takes none of, and an effort it does not
 // accept.
 func takes(agent Agent, runtime string, facts Facts) []Problem {
 	var problems []Problem
-	problem := func(name Name, place, format string, args ...any) {
-		problems = append(problems, Problem{Path: name.Origin.Path, Line: name.Origin.Line, Place: place, Message: fmt.Sprintf(format, args...)})
+	problem := func(name Name, format string, args ...any) {
+		problems = append(problems, Problem{Origin: name.Origin, Message: fmt.Sprintf(format, args...)})
 	}
 	if agent.Model.Value != "" && !facts.Model {
-		problem(agent.Model, "model", "its runtime %q takes a model", runtime)
+		problem(agent.Model, "its runtime %q takes a model", runtime)
 	}
 	if agent.Effort.Value != "" && !slices.Contains(facts.Efforts, agent.Effort.Value) {
-		problem(agent.Effort, "effort", "its runtime %q takes the effort %q", runtime, agent.Effort.Value)
+		problem(agent.Effort, "its runtime %q takes the effort %q", runtime, agent.Effort.Value)
 	}
 	return problems
 }

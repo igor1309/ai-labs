@@ -93,6 +93,41 @@ func TestAStepIsPlannedFromItsPermissionsAndItsMapping(t *testing.T) {
 			offers: options(map[string][]string{"ro": {"read"}, "rw": {"read", "write"}}, "ro", "rw"),
 			want:   resolve.Plan{Options: []string{"rw"}, Allowed: []string{"write"}, Granted: []string{"read", "write"}, Extra: []string{"read"}},
 		},
+		// A permission an option lists more than once is one grant beyond
+		// the allowed.
+		"any, a grant listed twice counted once": {
+			required: []string{"read"}, allowed: []string{"read"}, selects: "any",
+			offers: options(map[string][]string{"broad": {"read", "write", "net"}, "narrow": {"read", "write", "write", "write"}}, "broad", "narrow"),
+			want:   resolve.Plan{Options: []string{"narrow"}, Allowed: []string{"read"}, Granted: []string{"read", "write"}, Extra: []string{"write"}},
+		},
+		"one, a grant listed twice counted once": {
+			required: []string{"read"}, allowed: []string{"read"}, selects: "one",
+			offers: options(map[string][]string{"broad": {"read", "write", "net"}, "narrow": {"read", "write", "write", "write"}}, "broad", "narrow"),
+			want:   resolve.Plan{Options: []string{"narrow"}, Allowed: []string{"read"}, Granted: []string{"read", "write"}, Extra: []string{"write"}},
+		},
+		// Options are planned over what the runtime grants with no option: a
+		// grant it gives already is none beyond the allowed, and a required
+		// permission it gives needs no option.
+		"any, over what the runtime grants with no option": {
+			required: []string{"read"}, allowed: []string{"read"}, base: []string{"host"}, selects: "any",
+			offers: options(map[string][]string{"new": {"read", "net"}, "reuse": {"read", "host"}}, "new", "reuse"),
+			want:   resolve.Plan{Options: []string{"reuse"}, Allowed: []string{"read"}, Granted: []string{"host", "read"}, Extra: []string{"host"}},
+		},
+		"one, over what the runtime grants with no option": {
+			required: []string{"read"}, allowed: []string{"read"}, base: []string{"host"}, selects: "one",
+			offers: options(map[string][]string{"new": {"read", "net"}, "reuse": {"read", "host"}}, "new", "reuse"),
+			want:   resolve.Plan{Options: []string{"reuse"}, Allowed: []string{"read"}, Granted: []string{"host", "read"}, Extra: []string{"host"}},
+		},
+		"any, none for what the runtime grants with no option": {
+			required: []string{"read"}, allowed: []string{"read"}, base: []string{"read"}, selects: "any",
+			offers: options(map[string][]string{"look": {"read"}}, "look"),
+			want:   resolve.Plan{Allowed: []string{"read"}, Granted: []string{"read"}},
+		},
+		"one, what the runtime does not grant with no option": {
+			required: []string{"read", "write"}, allowed: []string{"read", "write"}, base: []string{"read"}, selects: "one",
+			offers: options(map[string][]string{"ro": {"read"}, "rw": {"write"}}, "ro", "rw"),
+			want:   resolve.Plan{Options: []string{"rw"}, Allowed: []string{"read", "write"}, Granted: []string{"read", "write"}},
+		},
 	} {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
@@ -125,33 +160,33 @@ func TestARequiredPermissionNoPlanGivesRefusesTheStep(t *testing.T) {
 			t.Parallel()
 			s := onRuntime(newSource(), runtime)
 			s.processes["p"] = resolve.Process{Name: "p", Require: []string{"write", "net"}}
-			s.workflows["w"] = resolve.Workflow{Name: "w", Steps: []resolve.Item{at(step("s", "p", "a"), 4)}}
+			s.workflows["w"] = resolve.Workflow{Name: "w", Steps: []resolve.Item{at(step("s", "p", "a"), 4, "steps[0]")}}
 			assertProblemsOf(t, s, requestW, resolve.KindWorkflow, "w",
 				problemOfW(4, "steps[0]", `its runtime "r" grants the permission "net", as its process "p" requires`))
 		})
 	}
 }
 
-// at is item, on line of w's file.
-func at(item resolve.Item, line int) resolve.Item {
-	item.Origin = resolve.Origin{Path: homeW, Line: line}
+// at is item, on line of w's file, at place.
+func at(item resolve.Item, line int, place string) resolve.Item {
+	item.Origin = resolve.Origin{Path: homeW, Line: line, Place: place}
 	return item
 }
 
 // planning.feature, "Every step is planned, in branches a run may not
 // take too"; each plan is its step's whole, of its own process, agent and
-// runtime.
+// runtime, at the place its step's origin gives.
 func TestEveryStepIsPlannedInBranchesARunMayNotTakeToo(t *testing.T) {
 	t.Parallel()
 	s := newSource()
-	arm := step("b", "pb", "ab")
+	arm := stepAt("b", "pb", "ab", "steps[1].branch[0]")
 	arm.If = resolve.Condition{Reads: []resolve.Read{param("base")}}
 	s.workflows["w"] = resolve.Workflow{Name: "w", Params: []resolve.Param{{Name: "base", Default: true}}, Steps: []resolve.Item{
-		{Name: "both", Parallel: []resolve.Item{step("a", "pa", "aa")}},
+		{Name: "both", Parallel: []resolve.Item{stepAt("a", "pa", "aa", "steps[0].parallel[0]")}},
 		{Name: "pick", Branch: []resolve.Item{arm, {Name: "child", Workflow: resolve.Name{Value: "c"}}}},
-		{Name: "loop", Repeat: &resolve.Repeat{Steps: []resolve.Item{step("d", "pd", "ad")}}},
+		{Name: "loop", Repeat: &resolve.Repeat{Steps: []resolve.Item{stepAt("d", "pd", "ad", "steps[2].repeat.steps[0]")}}},
 	}}
-	s.workflows["c"] = resolve.Workflow{Name: "c", Steps: []resolve.Item{step("e", "pe", "ae")}}
+	s.workflows["c"] = resolve.Workflow{Name: "c", Steps: []resolve.Item{stepAt("e", "pe", "ae", "steps[0]")}}
 	// Each step's process requires and allows its own permission, which its
 	// own runtime grants with an extra of its own, or an option, or withholds.
 	s.processes["pa"] = resolve.Process{Name: "pa", Require: []string{"read"}}
@@ -226,10 +261,10 @@ func TestAStepNeedsWhatItsRuntimeCanDo(t *testing.T) {
 			s := onRuntime(newSource(), resolve.Runtime{}, facts...)
 			s.other(resolve.KindSchema, "sc")
 			s.other(resolve.KindSkill, "k")
-			process, item := resolve.Process{Name: "p"}, at(step("s", "p", "a"), 5)
+			process, item := resolve.Process{Name: "p"}, at(step("s", "p", "a"), 5, "steps[1]")
 			test.need(&process, &item)
 			s.processes["p"], s.processes["q"] = process, resolve.Process{Name: "q"}
-			s.workflows["w"] = resolve.Workflow{Name: "w", Steps: []resolve.Item{step("first", "q", "a"), item}}
+			s.workflows["w"] = resolve.Workflow{Name: "w", Steps: []resolve.Item{stepAt("first", "q", "a", "steps[0]"), item}}
 			return s
 		}
 		t.Run(name+", cannot", func(t *testing.T) {
@@ -257,7 +292,7 @@ func TestAStepNeedsWhatItsRuntimeCanDo(t *testing.T) {
 func TestAnAgentGivesWhatItsRuntimeTakes(t *testing.T) {
 	t.Parallel()
 	const homeA = "/home/.agister/agents/a.yaml"
-	origin := resolve.Origin{Path: homeA, Line: 3}
+	at := func(place string) resolve.Origin { return resolve.Origin{Path: homeA, Line: 3, Place: place} }
 	model := func(f *resolve.Facts) { f.Model = false }
 	efforts := func(f *resolve.Facts) { f.Efforts = []string{"low", "high"} }
 	for name, test := range map[string]struct {
@@ -266,19 +301,19 @@ func TestAnAgentGivesWhatItsRuntimeTakes(t *testing.T) {
 		place, problem string
 	}{
 		"a model, of a runtime taking one": {
-			agent: func(a *resolve.Agent) { a.Model = resolve.Name{Value: "m", Origin: origin} },
+			agent: func(a *resolve.Agent) { a.Model = resolve.Name{Value: "m", Origin: at("model")} },
 			facts: func(f *resolve.Facts) { f.Model = true },
 		},
 		"a model, of a runtime taking none": {
-			agent: func(a *resolve.Agent) { a.Model = resolve.Name{Value: "m", Origin: origin} },
+			agent: func(a *resolve.Agent) { a.Model = resolve.Name{Value: "m", Origin: at("model")} },
 			facts: model, place: "model", problem: `its runtime "r" takes a model`,
 		},
 		"an effort its runtime accepts": {
-			agent: func(a *resolve.Agent) { a.Effort = resolve.Name{Value: "high", Origin: origin} },
+			agent: func(a *resolve.Agent) { a.Effort = resolve.Name{Value: "high", Origin: at("effort")} },
 			facts: efforts,
 		},
 		"an effort its runtime does not accept": {
-			agent: func(a *resolve.Agent) { a.Effort = resolve.Name{Value: "highest", Origin: origin} },
+			agent: func(a *resolve.Agent) { a.Effort = resolve.Name{Value: "highest", Origin: at("effort")} },
 			facts: efforts, place: "effort", problem: `its runtime "r" takes the effort "highest"`,
 		},
 	} {
@@ -298,7 +333,7 @@ func TestAnAgentGivesWhatItsRuntimeTakes(t *testing.T) {
 				return
 			}
 			assertProblemsOf(t, s, request, resolve.KindAgent, "a",
-				resolve.Problem{Path: homeA, Line: 3, Place: test.place, Message: test.problem})
+				resolve.Problem{Origin: at(test.place), Message: test.problem})
 		})
 	}
 }
@@ -308,9 +343,10 @@ func TestARuntimeIsOfAContractAWrapperTakes(t *testing.T) {
 	t.Parallel()
 	const homeR = "/home/.agister/runtimes/r.yaml"
 	s := newSource()
-	s.runtimes["r"] = resolve.Runtime{Name: "r", Contract: resolve.Name{Value: "nobody/1", Origin: resolve.Origin{Path: homeR, Line: 2}}}
+	contract := resolve.Origin{Path: homeR, Line: 2, Place: "contract"}
+	s.runtimes["r"] = resolve.Runtime{Name: "r", Contract: resolve.Name{Value: "nobody/1", Origin: contract}}
 	assertProblemsOf(t, s, resolve.Document(resolve.KindRuntime, "r"), resolve.KindRuntime, "r",
-		resolve.Problem{Path: homeR, Line: 2, Place: "contract", Message: `a runtime wrapper takes the contract "nobody/1"`})
+		resolve.Problem{Origin: contract, Message: `a runtime wrapper takes the contract "nobody/1"`})
 }
 
 // planning.feature, "A step requested alone its runtime cannot do refuses
@@ -324,6 +360,6 @@ func TestAStepRequestedAloneItsRuntimeCannotDoRefusesTheRequest(t *testing.T) {
 	got, faults := newResolver(t, s).Resolve(resolve.Step("p", "a"))
 
 	assertFaults(t, got, faults, resolve.Fault{Problems: []resolve.Problem{
-		{Place: "steps[0]", Message: `its runtime "r" checks output against a schema, as its process "p" needs`},
+		{Origin: resolve.Origin{Place: "steps[0]"}, Message: `its runtime "r" checks output against a schema, as its process "p" needs`},
 	}})
 }

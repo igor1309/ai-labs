@@ -20,7 +20,7 @@ func block(kind resolve.Kind, name string, line int) resolve.Block {
 func withPrompt(s *source) *source {
 	s.processes["p"] = resolve.Process{Name: "p", Prompt: resolve.Name{Value: "pr"}}
 	s.other(resolve.KindPrompt, "pr")
-	s.workflows["w"] = resolve.Workflow{Name: "w", Steps: []resolve.Item{step("s", "p", "a")}}
+	s.workflows["w"] = resolve.Workflow{Name: "w", Steps: []resolve.Item{stepAt("s", "p", "a", "steps[0]")}}
 	s.pair("a", "r")
 	return s
 }
@@ -38,7 +38,7 @@ func TestARequestThatReachesABlockedDocumentIsRefusedNamingTheBlock(t *testing.T
 	assertFaults(t, got, faults, resolve.Fault{
 		Chain: []resolve.Link{
 			{Kind: resolve.KindWorkflow, Name: "w"},
-			{Kind: resolve.KindProcess, Name: "p", Place: "steps[0].process"},
+			{Kind: resolve.KindProcess, Name: "p", Origin: resolve.Origin{Place: "steps[0].process"}},
 		},
 		Block: &blocked,
 	})
@@ -108,7 +108,7 @@ func TestABlockNamingNoDocumentIsAWarning(t *testing.T) {
 	got, faults := newResolver(t, s).Resolve(requestW)
 
 	assertResolved(t, faults)
-	want := []resolve.Problem{{Path: repoBlocks, Line: 2, Message: `it blocks the agent "gone", which no layer holds`}}
+	want := []resolve.Problem{{Origin: resolve.Origin{Path: repoBlocks, Line: 2}, Message: `it blocks the agent "gone", which no layer holds`}}
 	if !reflect.DeepEqual(got.Warnings, want) {
 		t.Errorf("warnings\n got %+v\nwant %+v", got.Warnings, want)
 	}
@@ -124,8 +124,8 @@ func TestARefusalGivesNoWarning(t *testing.T) {
 	}
 	s.runtimes["r"] = resolve.Runtime{Name: "r", Contract: resolve.Name{Value: able}, Grants: []string{"read", "net"}}
 	s.blocks = []resolve.Block{block(resolve.KindAgent, "gone", 2)}
-	item := step("s", "p", "a")
-	item.Inputs = []resolve.Binding{from("x", param("head"), 4)}
+	item := stepAt("s", "p", "a", "steps[0]")
+	item.Inputs = []resolve.Binding{from("x", param("head"), 4, "steps[0].inputs.x")}
 	s.workflows["w"] = resolve.Workflow{Name: "w", Steps: []resolve.Item{item}}
 
 	got, faults := newResolver(t, s).Resolve(requestW)

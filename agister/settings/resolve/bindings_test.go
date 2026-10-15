@@ -9,15 +9,15 @@ import (
 
 const homeW = "/home/.agister/workflows/w.yaml"
 
-// from is the binding name reading reads, on line of w's file.
-func from(name string, reads resolve.Read, line int) resolve.Binding {
-	reads.Origin = resolve.Origin{Path: homeW, Line: line}
+// from is the binding name reading reads, on line of w's file, at place.
+func from(name string, reads resolve.Read, line int, place string) resolve.Binding {
+	reads.Origin = resolve.Origin{Path: homeW, Line: line, Place: place}
 	return resolve.Binding{Name: name, From: &reads, Origin: reads.Origin}
 }
 
 // problemOfW is the problem of w's file on line, at place.
 func problemOfW(line int, place, message string) resolve.Problem {
-	return resolve.Problem{Path: homeW, Line: line, Place: place, Message: message}
+	return resolve.Problem{Origin: resolve.Origin{Path: homeW, Line: line, Place: place}, Message: message}
 }
 
 // withSteps is s holding the workflow w of items, each step's process it
@@ -87,7 +87,8 @@ var requestW = resolve.Document(resolve.KindWorkflow, "w")
 // body "fix". Each place a
 // reference sits reads what is declared and has ended, but those in
 // reads, by place: "step", "if", "arm", "state", "next", "until", "output"
-// and "path". Each reference is on its own line, its place's.
+// and "path". Each reference is on its own line, its place's, at the place
+// the source gives it.
 func background(reads map[string]resolve.Read) *source {
 	read := func(place string, otherwise resolve.Read) resolve.Read {
 		if r, ok := reads[place]; ok {
@@ -96,12 +97,17 @@ func background(reads map[string]resolve.Read) *source {
 		return otherwise
 	}
 	lines := map[string]int{"step": 5, "if": 6, "arm": 7, "state": 8, "next": 9, "until": 10, "output": 11, "path": 12}
+	places := map[string]string{
+		"step": "steps[0].inputs.x", "if": "steps[1].branch[0].if", "arm": "steps[1].branch[0].outputs.x",
+		"state": "steps[2].repeat.state.review", "next": "steps[2].repeat.next.x", "until": "steps[2].repeat.until",
+		"output": "outputs.x", "path": "inputs.goal.path",
+	}
 	bind := func(place string, otherwise resolve.Read) []resolve.Binding {
 		name := "x"
 		if place == "state" {
 			name = "review"
 		}
-		return []resolve.Binding{from(name, read(place, otherwise), lines[place])}
+		return []resolve.Binding{from(name, read(place, otherwise), lines[place], places[place])}
 	}
 	condition := func(place string, otherwise ...resolve.Read) resolve.Condition {
 		var c resolve.Condition
@@ -109,7 +115,7 @@ func background(reads map[string]resolve.Read) *source {
 			otherwise = []resolve.Read{r}
 		}
 		for _, r := range otherwise {
-			r.Origin = resolve.Origin{Path: homeW, Line: lines[place]}
+			r.Origin = resolve.Origin{Path: homeW, Line: lines[place], Place: places[place]}
 			c.Reads = append(c.Reads, r)
 		}
 		return c
@@ -118,11 +124,11 @@ func background(reads map[string]resolve.Read) *source {
 	one.If = condition("if", outputs("a", "findings"), queryItem("fixed"))
 	one.Outputs = bind("arm", outputs("one", ""))
 	other := reading("other")
-	other.Outputs = []resolve.Binding{from("x", outputs("other", ""), 13)}
+	other.Outputs = []resolve.Binding{from("x", outputs("other", ""), 13, "steps[1].branch[1].outputs.x")}
 	s := newSource()
 	s.workflows["w"] = resolve.Workflow{
 		Params:  []resolve.Param{{Name: "base", Default: true}},
-		Inputs:  []resolve.Input{{Name: "goal", Arguments: []resolve.Binding{from("path", read("path", param("base")), lines["path"])}}},
+		Inputs:  []resolve.Input{{Name: "goal", Arguments: []resolve.Binding{from("path", read("path", param("base")), lines["path"], places["path"])}}},
 		Outputs: bind("output", input("goal")),
 	}
 	return withSteps(s,
@@ -130,7 +136,7 @@ func background(reads map[string]resolve.Read) *source {
 		resolve.Item{Name: "pick", Branch: []resolve.Item{one, other}},
 		resolve.Item{Name: "loop", Repeat: &resolve.Repeat{
 			State: bind("state", outputs("a", "")),
-			Steps: []resolve.Item{reading("fix", from("x", state("review"), 4))},
+			Steps: []resolve.Item{reading("fix", from("x", state("review"), 4, "steps[2].repeat.steps[0].inputs.x"))},
 			Next:  bind("next", outputs("fix", "")),
 			Until: condition("until", state("review")),
 		}},
@@ -142,6 +148,23 @@ func TestWhatIsDeclaredAndHasEndedIsRead(t *testing.T) {
 	t.Parallel()
 	_, faults := newResolver(t, background(nil)).Resolve(requestW)
 	assertResolved(t, faults)
+}
+
+// bindings.feature, "What is declared, and has ended, is read", of a
+// repeat's until reading the items of its body, which have ended when it
+// is read.
+func TestARepeatsUntilReadsTheItemsOfItsBody(t *testing.T) {
+	t.Parallel()
+	for name, reads := range map[string]resolve.Read{
+		"outputs":         outputs("fix", ""),
+		"a field of them": outputs("fix", "fixed"),
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			_, faults := newResolver(t, background(map[string]resolve.Read{"until": reads})).Resolve(requestW)
+			assertResolved(t, faults)
+		})
+	}
 }
 
 // bindings.feature, "A reference reads what is there, wherever it is".
@@ -186,8 +209,9 @@ func TestItemsThatMayRunTogetherOrNotBothCannotReadEachOther(t *testing.T) {
 	} {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
-			s := withSteps(newSource(), test.operator(reading("a"), reading("b", from("x", outputs("a", ""), 6))))
-			assertProblemsOf(t, s, requestW, resolve.KindWorkflow, "w", problemOfW(6, "steps[0]."+name+"[1].inputs.x", test.problem))
+			place := "steps[0]." + name + "[1].inputs.x"
+			s := withSteps(newSource(), test.operator(reading("a"), reading("b", from("x", outputs("a", ""), 6, place))))
+			assertProblemsOf(t, s, requestW, resolve.KindWorkflow, "w", problemOfW(6, place, test.problem))
 		})
 	}
 }
@@ -229,7 +253,7 @@ func TestAStepContinuesTheSessionOfAStep(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 			continues := test.continues
-			continues.Origin = resolve.Origin{Path: homeW, Line: 6}
+			continues.Origin = resolve.Origin{Path: homeW, Line: 6, Place: "steps[1].session"}
 			s := newSource()
 			s.workflows["w"] = resolve.Workflow{Params: []resolve.Param{{Name: "base", Default: true}}}
 			item := reading("s")
@@ -252,21 +276,24 @@ func TestAStepContinuesTheSessionOfAStep(t *testing.T) {
 func TestAProcesssReferencesReadItsOwnParamsAndInputs(t *testing.T) {
 	t.Parallel()
 	const homeP = "/home/.agister/processes/p.yaml"
-	at := func(line int) resolve.Origin { return resolve.Origin{Path: homeP, Line: line} }
+	at := func(line int, place string) resolve.Origin {
+		return resolve.Origin{Path: homeP, Line: line, Place: place}
+	}
 	process := func(reads map[string]resolve.Read) resolve.Process {
-		read := func(place string, otherwise resolve.Read, line int) resolve.Read {
-			if r, ok := reads[place]; ok {
+		read := func(where string, otherwise resolve.Read, origin resolve.Origin) resolve.Read {
+			if r, ok := reads[where]; ok {
 				otherwise = r
 			}
-			otherwise.Origin = at(line)
+			otherwise.Origin = origin
 			return otherwise
 		}
-		revision := read("revision", input("rev"), 7)
+		argument, environment := at(3, "inputs.rev.rev"), at(5, "environment.HEAD")
+		revision := read("revision", input("rev"), at(7, "workspace.revision"))
 		return resolve.Process{
 			Name:        "p",
 			Params:      []resolve.Param{{Name: "base", Default: true}},
-			Inputs:      []resolve.Input{{Name: "rev", Arguments: []resolve.Binding{{Name: "rev", From: ptr(read("argument", param("base"), 3)), Origin: at(3)}}}},
-			Environment: []resolve.Binding{{Name: "HEAD", From: ptr(read("environment", param("base"), 5)), Origin: at(5)}},
+			Inputs:      []resolve.Input{{Name: "rev", Arguments: []resolve.Binding{{Name: "rev", From: ptr(read("argument", param("base"), argument)), Origin: argument}}}},
+			Environment: []resolve.Binding{{Name: "HEAD", From: ptr(read("environment", param("base"), environment)), Origin: environment}},
 			Revision:    &revision,
 		}
 	}
@@ -292,7 +319,7 @@ func TestAProcesssReferencesReadItsOwnParamsAndInputs(t *testing.T) {
 			s := withSteps(newSource(), reading("p"))
 			s.processes["p"] = process(map[string]resolve.Read{test.where: test.reads})
 			assertProblemsOf(t, s, requestW, resolve.KindProcess, "p",
-				resolve.Problem{Path: homeP, Line: test.line, Place: test.place, Message: test.problem})
+				resolve.Problem{Origin: at(test.line, test.place), Message: test.problem})
 		})
 	}
 }

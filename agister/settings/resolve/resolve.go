@@ -53,11 +53,14 @@ type Block struct {
 	Origin Origin
 }
 
-// Origin is where a document gives a value: its file's path, and its line
-// there, 0 for none.
+// Origin is where a document gives a value: its file's path; its line
+// there, 0 for none; and its place in the document, "" for the whole. The
+// composition takes it from documents: resolve gives a problem at it, and
+// spells no place of a document.
 type Origin struct {
-	Path string
-	Line int
+	Path  string
+	Line  int
+	Place string
 }
 
 // Name is a name a document gives, and where; "" where it gives none.
@@ -67,12 +70,9 @@ type Name struct {
 }
 
 // Problem is one thing wrong with a document, or with no document: the
-// path of the file it is in, "" for none; the line there, 0 for none; the
-// place in the document, "" for the whole; and what is wrong.
+// origin of what it is about, the zero origin for none, and what is wrong.
 type Problem struct {
-	Path    string
-	Line    int
-	Place   string
+	Origin  Origin
 	Message string
 }
 
@@ -286,10 +286,10 @@ type Resolved struct {
 }
 
 // Plan is a step's plan (ADR-003, rule 4): the step, by its workflow's
-// name, "" for one made of a step, and its place there; its process,
-// agent and runtime; the options it takes; and the permissions required,
-// allowed, granted, granted beyond the allowed, its warning, and allowed
-// but withheld.
+// name, "" for one made of a step, and its place there, as its origin
+// gives it; its process, agent and runtime; the options it takes; and the
+// permissions required, allowed, granted, granted beyond the allowed, its
+// warning, and allowed but withheld.
 type Plan struct {
 	Workflow string
 	Place    string
@@ -314,11 +314,11 @@ type Fault struct {
 }
 
 // Link is a document of a chain: its kind and name, and where the document
-// before it names it, its place and origin; none for the first.
+// before it names it, the origin of the name it follows; none for the
+// first.
 type Link struct {
 	Kind   Kind
 	Name   string
-	Place  string
 	Origin Origin
 }
 
@@ -378,11 +378,11 @@ func (r *Resolver) Resolve(request Request) (Resolved, []Fault) {
 	// A named workflow's steps are its own; a made one's are the request's.
 	for _, reference := range w.reached {
 		if named, ok := w.workflows[reference.Name]; ok && reference.Kind == KindWorkflow {
-			w.planAll(reference.Name, named.Steps, "steps", func(p Problem) { w.fault(reference, p) })
+			w.planAll(reference.Name, named.Steps, func(p Problem) { w.fault(reference, p) })
 		}
 	}
 	if request.kind == "" {
-		w.planAll("", workflow.Steps, "steps", func(p Problem) { problems = append(problems, p) })
+		w.planAll("", workflow.Steps, func(p Problem) { problems = append(problems, p) })
 	}
 	var faults []Fault
 	if len(problems) > 0 {
@@ -402,7 +402,7 @@ func (r *Resolver) Resolve(request Request) (Resolved, []Fault) {
 	var warnings []Problem
 	for _, block := range r.source.Blocks() {
 		if !r.source.Holds(block.Kind, block.Name) {
-			warnings = append(warnings, Problem{Path: block.Origin.Path, Line: block.Origin.Line,
+			warnings = append(warnings, Problem{Origin: block.Origin,
 				Message: fmt.Sprintf("it blocks the %s %q, which no layer holds", block.Kind, block.Name)})
 		}
 	}
@@ -446,27 +446,30 @@ type walk struct {
 }
 
 // step is the workflow of one step resolve makes of the process on the
-// agent (ADR-013, rule 1): the process's inputs, and its params, each
-// given to the step from the workflow's of its name; and the step's output
-// its output.
+// agent (ADR-013, rule 1): the process's params, each given to the step
+// from the workflow's of its name, and no input, for the process's inputs
+// are its step's, resolved once, at its call; and the step's output its
+// output. It has no document, so resolve gives its places.
 func (w *walk) step(process, agent string) Workflow {
 	w.follow(nil, Link{Kind: KindProcess, Name: process})
 	w.follow(nil, Link{Kind: KindAgent, Name: agent})
 	p := w.processes[process]
 	inputs := []Binding{}
 	for _, param := range p.Params {
-		inputs = append(inputs, Binding{Name: param.Name, From: &Read{Root: RootParam, Name: param.Name}})
+		at := Origin{Place: "steps[0].inputs." + param.Name}
+		inputs = append(inputs, Binding{Name: param.Name, From: &Read{Root: RootParam, Name: param.Name, Origin: at}, Origin: at})
 	}
+	output := Origin{Place: "outputs.output"}
 	return Workflow{
 		Params: p.Params,
-		Inputs: p.Inputs,
 		Steps: []Item{{
 			Name:    process,
-			Process: Name{Value: process},
-			Agent:   Name{Value: agent},
+			Origin:  Origin{Place: "steps[0]"},
+			Process: Name{Value: process, Origin: Origin{Place: "steps[0].process"}},
+			Agent:   Name{Value: agent, Origin: Origin{Place: "steps[0].agent"}},
 			Inputs:  inputs,
 		}},
-		Outputs: []Binding{{Name: "output", From: &Read{Root: RootOutputs, Name: process}}},
+		Outputs: []Binding{{Name: "output", From: &Read{Root: RootOutputs, Name: process, Origin: output}, Origin: output}},
 	}
 }
 
@@ -504,7 +507,7 @@ func (w *walk) follow(chain []Link, link Link) {
 		w.workflows[link.Name] = workflow
 		w.forms(chain, workflow.Inputs)
 		w.open[link.Name] = true
-		w.items(chain, "steps", workflow.Steps)
+		w.items(chain, workflow.Steps)
 		delete(w.open, link.Name)
 	case KindProcess:
 		process, problems := w.source.Process(link.Name)
@@ -512,21 +515,21 @@ func (w *walk) follow(chain []Link, link Link) {
 			return
 		}
 		w.processes[link.Name] = process
-		w.optional(chain, KindPrompt, process.Prompt, "prompt")
-		for i, guidance := range process.Guidance {
-			w.optional(chain, KindPrompt, guidance, fmt.Sprintf("guidance[%d]", i))
+		w.optional(chain, KindPrompt, process.Prompt)
+		for _, guidance := range process.Guidance {
+			w.optional(chain, KindPrompt, guidance)
 		}
-		for i, skill := range process.Skills {
-			w.optional(chain, KindSkill, skill, fmt.Sprintf("skills[%d]", i))
+		for _, skill := range process.Skills {
+			w.optional(chain, KindSkill, skill)
 		}
 		w.forms(chain, process.Inputs)
-		w.optional(chain, KindSchema, process.Schema, "output.schema")
+		w.optional(chain, KindSchema, process.Schema)
 	case KindAgent:
 		agent, problems := w.source.Agent(link.Name)
 		if w.fault(reference, problems...) {
 			return
 		}
-		w.optional(chain, KindRuntime, agent.Runtime, "runtime")
+		w.optional(chain, KindRuntime, agent.Runtime)
 		if runtime, ok := w.runtimes[agent.Runtime.Value]; ok {
 			w.fault(reference, takes(agent, runtime.Name, w.facts[runtime.Name])...)
 		}
@@ -538,7 +541,7 @@ func (w *walk) follow(chain []Link, link Link) {
 		}
 		facts, ok := w.wrappers.Facts(runtime.Contract.Value)
 		if !ok {
-			w.fault(reference, Problem{Path: runtime.Contract.Origin.Path, Line: runtime.Contract.Origin.Line, Place: "contract",
+			w.fault(reference, Problem{Origin: runtime.Contract.Origin,
 				Message: fmt.Sprintf("a runtime wrapper takes the contract %q", runtime.Contract.Value)})
 			return
 		}
@@ -555,22 +558,21 @@ func (w *walk) fault(reference Reference, problems ...Problem) bool {
 	return len(problems) > 0
 }
 
-// items follows the items at place of the workflow chain ends at.
-func (w *walk) items(chain []Link, place string, items []Item) {
-	for i, item := range items {
-		at := fmt.Sprintf("%s[%d]", place, i)
+// items follows the items of the workflow chain ends at.
+func (w *walk) items(chain []Link, items []Item) {
+	for _, item := range items {
 		switch {
 		case item.Process.Value != "":
-			w.follow(chain, named(KindProcess, item.Process, at+".process"))
-			w.follow(chain, named(KindAgent, item.Agent, at+".agent"))
+			w.follow(chain, named(KindProcess, item.Process))
+			w.follow(chain, named(KindAgent, item.Agent))
 		case item.Workflow.Value != "":
-			w.follow(chain, named(KindWorkflow, item.Workflow, at+".workflow"))
+			w.follow(chain, named(KindWorkflow, item.Workflow))
 		case item.Parallel != nil:
-			w.items(chain, at+".parallel", item.Parallel)
+			w.items(chain, item.Parallel)
 		case item.Branch != nil:
-			w.items(chain, at+".branch", item.Branch)
+			w.items(chain, item.Branch)
 		case item.Repeat != nil:
-			w.items(chain, at+".repeat.steps", item.Repeat.Steps)
+			w.items(chain, item.Repeat.Steps)
 		}
 	}
 }
@@ -578,20 +580,20 @@ func (w *walk) items(chain []Link, place string, items []Item) {
 // forms follows the brief forms of inputs.
 func (w *walk) forms(chain []Link, inputs []Input) {
 	for _, input := range inputs {
-		for i, form := range input.Forms {
-			w.optional(chain, KindBrief, form, fmt.Sprintf("inputs.%s.form[%d]", input.Name, i))
+		for _, form := range input.Forms {
+			w.optional(chain, KindBrief, form)
 		}
 	}
 }
 
-// optional follows name, of kind, at place, where it is given.
-func (w *walk) optional(chain []Link, kind Kind, name Name, place string) {
+// optional follows name, of kind, where it is given.
+func (w *walk) optional(chain []Link, kind Kind, name Name) {
 	if name.Value != "" {
-		w.follow(chain, named(kind, name, place))
+		w.follow(chain, named(kind, name))
 	}
 }
 
-// named is the link to the document of kind name gives, at place.
-func named(kind Kind, name Name, place string) Link {
-	return Link{Kind: kind, Name: name.Value, Place: place, Origin: name.Origin}
+// named is the link to the document of kind name gives, at its origin.
+func named(kind Kind, name Name) Link {
+	return Link{Kind: kind, Name: name.Value, Origin: name.Origin}
 }

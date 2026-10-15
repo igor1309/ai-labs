@@ -16,7 +16,7 @@ func TestAStepBindsTheParamsItsProcessDeclares(t *testing.T) {
 		problem  resolve.Problem
 	}{
 		"one it does not declare": {
-			[]resolve.Binding{{Name: "base", Text: "main"}, from("head", param("head"), 5)},
+			[]resolve.Binding{{Name: "base", Text: "main"}, from("head", param("head"), 5, "steps[0].inputs.head")},
 			problemOfW(5, "steps[0].inputs.head", `the process "p" declares the param "head"`),
 		},
 		"none of no default": {
@@ -26,8 +26,7 @@ func TestAStepBindsTheParamsItsProcessDeclares(t *testing.T) {
 	} {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
-			item := reading("p", test.bindings...)
-			item.Origin = resolve.Origin{Path: homeW, Line: 4}
+			item := at(reading("p", test.bindings...), 4, "steps[0]")
 			s := newSource()
 			s.processes["p"] = resolve.Process{Name: "p", Params: params}
 			s.workflows["w"] = resolve.Workflow{Params: []resolve.Param{{Name: "head", Default: true}}}
@@ -42,8 +41,8 @@ func TestAStepBindsTheParamsItsProcessDeclares(t *testing.T) {
 func TestAWorkflowItemBindsTheParamsItsWorkflowDeclares(t *testing.T) {
 	t.Parallel()
 	s := withSteps(newSource(), resolve.Item{
-		Name: "child", Origin: resolve.Origin{Path: homeW, Line: 4}, Workflow: resolve.Name{Value: "c"},
-		Inputs: []resolve.Binding{{Name: "head", Text: "HEAD", Origin: resolve.Origin{Path: homeW, Line: 5}}},
+		Name: "child", Origin: resolve.Origin{Path: homeW, Line: 4, Place: "steps[0]"}, Workflow: resolve.Name{Value: "c"},
+		Inputs: []resolve.Binding{{Name: "head", Text: "HEAD", Origin: resolve.Origin{Path: homeW, Line: 5, Place: "steps[0].inputs.head"}}},
 	})
 	s.workflows["c"] = resolve.Workflow{Name: "c", Params: []resolve.Param{{Name: "base"}}, Steps: []resolve.Item{reading("t")}}
 	s.processes["t"] = resolve.Process{Name: "t"}
@@ -56,20 +55,21 @@ func TestAWorkflowItemBindsTheParamsItsWorkflowDeclares(t *testing.T) {
 func TestAChildWorkflowIsReadThroughItsOutputs(t *testing.T) {
 	t.Parallel()
 	s := withSteps(newSource(), resolve.Item{Name: "child", Workflow: resolve.Name{Value: "c"}},
-		reading("use", from("verdict", outputs("child", "verdict"), 5), from("summary", outputs("child", "summary"), 6)))
+		reading("use", from("verdict", outputs("child", "verdict"), 5, "steps[1].inputs.verdict"),
+			from("summary", outputs("child", "summary"), 6, "steps[1].inputs.summary")))
 	s.workflows["c"] = resolve.Workflow{Name: "c", Steps: []resolve.Item{reading("t")},
-		Outputs: []resolve.Binding{from("verdict", outputs("t", "verdict"), 3)}}
+		Outputs: []resolve.Binding{from("verdict", outputs("t", "verdict"), 3, "outputs.verdict")}}
 	s.processes["t"] = resolve.Process{Name: "t"}
 	assertProblemsOf(t, s, requestW, resolve.KindWorkflow, "w",
 		problemOfW(6, "steps[1].inputs.summary", `the workflow "c" gives the output "summary"`))
 }
 
-// arm is the step name, an arm of a branch on line of w's file, giving
-// each of gives from its own outputs' field of that name.
-func arm(name string, line int, gives ...string) resolve.Item {
-	item := at(reading(name), line)
+// arm is the step name, an arm of a branch on line of w's file, at place,
+// giving each of gives from its own outputs' field of that name.
+func arm(name string, line int, place string, gives ...string) resolve.Item {
+	item := at(reading(name), line, place)
 	for _, output := range gives {
-		item.Outputs = append(item.Outputs, from(output, outputs(name, output), line))
+		item.Outputs = append(item.Outputs, from(output, outputs(name, output), line, place+".outputs."+output))
 	}
 	return item
 }
@@ -77,12 +77,13 @@ func arm(name string, line int, gives ...string) resolve.Item {
 // boundaries.feature, "A branch is read through its outputs".
 func TestABranchIsReadThroughItsOutputs(t *testing.T) {
 	t.Parallel()
-	fix := arm("fix", 4, "summary")
+	fix := arm("fix", 4, "steps[0].branch[0]", "summary")
 	fix.If = resolve.Condition{Reads: []resolve.Read{param("base")}}
 	s := newSource()
 	s.workflows["w"] = resolve.Workflow{Params: []resolve.Param{{Name: "base", Default: true}}}
-	withSteps(s, resolve.Item{Name: "decide", Branch: []resolve.Item{fix, arm("done", 6, "summary")}},
-		reading("use", from("summary", outputs("decide", "summary"), 8), from("diff", outputs("decide", "diff"), 9)))
+	withSteps(s, resolve.Item{Name: "decide", Branch: []resolve.Item{fix, arm("done", 6, "steps[0].branch[1]", "summary")}},
+		reading("use", from("summary", outputs("decide", "summary"), 8, "steps[1].inputs.summary"),
+			from("diff", outputs("decide", "diff"), 9, "steps[1].inputs.diff")))
 	assertProblemsOf(t, s, requestW, resolve.KindWorkflow, "w",
 		problemOfW(9, "steps[1].inputs.diff", `the branch "decide" gives the output "diff"`))
 }
@@ -95,16 +96,16 @@ func TestEveryArmOfABranchGivesTheBranchsOutputs(t *testing.T) {
 		line      int
 		place     string
 	}{
-		"the later arm gives less":   {[]string{"summary", "diff"}, []string{"summary"}, 8, "steps[0].branch[1].outputs"},
-		"the earlier arm gives less": {[]string{"summary"}, []string{"summary", "diff"}, 4, "steps[0].branch[0].outputs"},
+		"the later arm gives less":   {[]string{"summary", "diff"}, []string{"summary"}, 8, "steps[0].branch[1]"},
+		"the earlier arm gives less": {[]string{"summary"}, []string{"summary", "diff"}, 4, "steps[0].branch[0]"},
 	} {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
-			fix := arm("fix", 4, test.fix...)
+			fix := arm("fix", 4, "steps[0].branch[0]", test.fix...)
 			fix.If = resolve.Condition{Reads: []resolve.Read{param("base")}}
 			s := newSource()
 			s.workflows["w"] = resolve.Workflow{Params: []resolve.Param{{Name: "base", Default: true}}}
-			withSteps(s, resolve.Item{Name: "decide", Branch: []resolve.Item{fix, arm("done", 8, test.done...)}})
+			withSteps(s, resolve.Item{Name: "decide", Branch: []resolve.Item{fix, arm("done", 8, "steps[0].branch[1]", test.done...)}})
 			assertProblemsOf(t, s, requestW, resolve.KindWorkflow, "w",
 				problemOfW(test.line, test.place, `it gives the output "diff", as another arm of its branch does`))
 		})
