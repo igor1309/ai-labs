@@ -1,7 +1,8 @@
 # The behaviours of settings/resolve, before its code: what a reference
 # reads (ADR-011, rules 3, 4 and 6). See request.feature for what resolve
 # is given and what it gives. A reference's problem is its document's, at
-# the reference's place and origin.
+# the reference's origin: its file, its line and its place, as the
+# source gives them.
 
 Feature: Resolve checks that every reference reads what is there
 

@@ -2,7 +2,9 @@
 # (ADR-002, rule 6; ADR-013). Resolve is given a source, a spy in every
 # test (ADR-009): each document by kind and name, in resolve's types,
 # holding only what resolve reads, or its problems; and the problems of
-# no document. A reference is given as what it reads, not as its text;
+# no document. Each value has its origin, as the source gives it: its
+# file, its line and its place, which resolve gives a problem at and
+# does not spell. A reference is given as what it reads, not as its text;
 # a scenario writes it as a document does. It gives what a run needs:
 # the workflow, every document it reached, by kind and name, the
 # definitions of the workflows, processes, agents and runtime mappings

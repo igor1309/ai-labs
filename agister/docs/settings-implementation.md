@@ -189,16 +189,19 @@ is given with what resolves; a refusal gives none.
 
 Resolve declares its ports in its own words (ADR-001, rule 1). Its
 source gives a document by kind and name in resolve's types, each
-holding only what resolve reads: the names it references, its params
-and inputs, its items, their bindings and conditions, its permissions,
-each with its origin. A reference is given as what it reads, not as
-its text: a param, an input or a repeat's state, by name; an item's
-outputs, or one field of them; an item's session; or the item of an
-all or any query. The composition translates it from documents. A
-document resolve reads nothing
-of, a brief, a prompt, a schema or a skill, is given as its problems
-alone. The source also gives the problems of no document, which refuse
-every request. The composition answers the source from documents.
+holding only what resolve reads: the names it references, its params and
+inputs, its items, their bindings and conditions, its permissions, each
+with its origin: its file, its line and its place in the document.
+Resolve spells no field of a document: a problem is at the origin of
+what it is about, and a link of a chain at the origin of the name it
+follows; only in the workflow it makes of a step does resolve give the
+places. A reference is given as what it reads, not as its text: a param,
+an input or a repeat's state, by name; an item's outputs, or one field
+of them; an item's session; or the item of an all or any query. The
+composition translates it from documents. A document resolve reads
+nothing of, a brief, a prompt, a schema or a skill, is given as its
+problems alone. The source also gives the problems of no document, which
+refuse every request. The composition answers the source from documents.
 
 Its facts port gives, by a runtime mapping's contract, what the runtime
 wrapper can do: check output against a schema, resume a session, take

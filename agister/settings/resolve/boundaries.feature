@@ -49,8 +49,8 @@ Feature: Resolve checks what crosses each boundary
     Given the branch "decide" of "w" has the arms "fix", of the outputs
       "summary" and "diff", and "done", of the output "summary"
     When resolve is asked for the workflow "w"
-    Then it refuses: the problem at "steps[0].branch[1].outputs": it
-      gives the output "diff", as another arm of its branch does
+    Then it refuses: the problem at the arm "done", "steps[0].branch[1]":
+      it gives the output "diff", as another arm of its branch does
 
   # The request's problems are its own, not its document's: the workflow
   # is not at fault for a param a request leaves out.
