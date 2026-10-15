@@ -3,7 +3,6 @@ package resolve
 import (
 	"fmt"
 	"slices"
-	"strings"
 )
 
 // check checks what each workflow and process reached reads, and what
@@ -105,8 +104,8 @@ func (w *walk) checkProcess(reference Reference, process Process) {
 	s := &scope{walk: w, reference: reference, params: process.Params, inputs: process.Inputs}
 	s.bindings(process.Environment, "environment", at{})
 	s.arguments(process.Inputs)
-	if process.Revision.Value != "" {
-		s.read(process.Revision, "workspace.revision", at{})
+	if process.Revision != nil {
+		s.read(*process.Revision, "workspace.revision", at{})
 	}
 }
 
@@ -158,8 +157,12 @@ func (s *scope) together(items []Item, place string, a at, arms bool) {
 func (s *scope) item(item Item, place string, a at) {
 	s.condition(item.If, place+".if", a)
 	s.bindings(item.Inputs, place+".inputs", a)
-	if item.Session.Value != "" {
-		s.read(item.Session, place+".session", a)
+	// A step continues an earlier step's session, and reads nothing else
+	// there (ADR-011, rule 3).
+	if session := item.Session; session != nil && session.Root != RootSession {
+		s.problem(session.Origin, place+".session", "it reads a step's session")
+	} else if session != nil {
+		s.read(*session, place+".session", a)
 	}
 	inner := a.inside(item.Name)
 	switch {
@@ -213,6 +216,18 @@ func (s *scope) boundary(item Item, place, kind, name string, params []Param) {
 // arms checks that every arm of a branch gives each output another arm
 // gives: the branch has one output mapping for every path.
 func (s *scope) arms(arms []Item, place string) {
+	for i, arm := range arms {
+		for _, output := range branchOutputs(arms) {
+			if !slices.ContainsFunc(arm.Outputs, func(b Binding) bool { return b.Name == output }) {
+				s.problem(arm.Origin, fmt.Sprintf("%s[%d].outputs", place, i), "it gives the output %q, as another arm of its branch does", output)
+			}
+		}
+	}
+}
+
+// branchOutputs is the outputs of a branch of arms: each one an arm gives,
+// in the order first given.
+func branchOutputs(arms []Item) []string {
 	var outputs []string
 	for _, arm := range arms {
 		for _, output := range arm.Outputs {
@@ -221,19 +236,13 @@ func (s *scope) arms(arms []Item, place string) {
 			}
 		}
 	}
-	for i, arm := range arms {
-		for _, output := range outputs {
-			if !slices.ContainsFunc(arm.Outputs, func(b Binding) bool { return b.Name == output }) {
-				s.problem(arm.Origin, fmt.Sprintf("%s[%d].outputs", place, i), "it gives the output %q, as another arm of its branch does", output)
-			}
-		}
-	}
+	return outputs
 }
 
 func (s *scope) bindings(bindings []Binding, place string, a at) {
 	for _, binding := range bindings {
-		if binding.From != "" {
-			s.read(Name{Value: binding.From, Origin: binding.Origin}, place+"."+binding.Name, a)
+		if binding.From != nil {
+			s.read(*binding.From, place+"."+binding.Name, a)
 		}
 	}
 }
@@ -244,37 +253,33 @@ func (s *scope) condition(condition Condition, place string, a at) {
 	}
 }
 
-// read checks that reference reads what is there, read from a.
-func (s *scope) read(reference Name, place string, a at) {
-	parts := strings.Split(reference.Value, ".")
-	field := func(i int) string {
-		if i < len(parts) {
-			return parts[i]
-		}
-		return ""
-	}
+// read checks that reference reads what is there, read from a. The item
+// of an all or any query is its condition's, and is not checked here.
+func (s *scope) read(reference Read, place string, a at) {
 	owner := string(s.reference.Kind)
-	switch name := field(1); parts[0] {
-	case "params":
-		if !declares(s.params, name) {
-			s.problem(reference.Origin, place, "its %s declares the param %q", owner, name)
+	switch reference.Root {
+	case RootParam:
+		if !declares(s.params, reference.Name) {
+			s.problem(reference.Origin, place, "its %s declares the param %q", owner, reference.Name)
 		}
-	case "inputs":
-		if !slices.ContainsFunc(s.inputs, func(i Input) bool { return i.Name == name }) {
-			s.problem(reference.Origin, place, "its %s declares the input %q", owner, name)
+	case RootInput:
+		if !slices.ContainsFunc(s.inputs, func(i Input) bool { return i.Name == reference.Name }) {
+			s.problem(reference.Origin, place, "its %s declares the input %q", owner, reference.Name)
 		}
-	case "state":
-		if !slices.Contains(a.state, name) {
-			s.problem(reference.Origin, place, "it is in no repeat of the state %q", name)
+	case RootState:
+		if !slices.Contains(a.state, reference.Name) {
+			s.problem(reference.Origin, place, "it is in no repeat of the state %q", reference.Name)
 		}
-	case "steps":
-		s.step(reference, place, a, name, field(2), field(3), len(parts))
+	case RootOutputs, RootSession:
+		s.step(reference, place, a)
 	}
 }
 
-// step checks a reference to the item name, reading what of it, and of
-// that the output field.
-func (s *scope) step(reference Name, place string, a at, name, what, field string, parts int) {
+// step checks a reference to an item's outputs or session: the item has
+// ended where it is read, a session is a step's, and a field of the
+// outputs of a child workflow or of a branch is one it gives.
+func (s *scope) step(reference Read, place string, a at) {
+	name := reference.Name
 	item, known := s.items[name]
 	holder := s.holders[name]
 	switch {
@@ -288,14 +293,16 @@ func (s *scope) step(reference Name, place string, a at, name, what, field strin
 		s.problem(reference.Origin, place, "the item %q is another arm of its branch", name)
 	case !a.ended[name]:
 		s.problem(reference.Origin, place, "the item %q has ended before it", name)
-	case what != "outputs" && (what != "session" || parts > 3):
-		s.problem(reference.Origin, place, "it reads an item's outputs or its session")
-	case what == "session" && item.Process.Value == "":
+	case reference.Root == RootSession && item.Process.Value == "":
 		s.problem(reference.Origin, place, "the item %q is no step, and has no session", name)
-	case what == "outputs" && field != "" && item.Workflow.Value != "":
+	case reference.Root == RootOutputs && reference.Field != "" && item.Workflow.Value != "":
 		child, ok := s.walk.workflows[item.Workflow.Value]
-		if ok && !slices.ContainsFunc(child.Outputs, func(b Binding) bool { return b.Name == field }) {
-			s.problem(reference.Origin, place, "the workflow %q gives the output %q", item.Workflow.Value, field)
+		if ok && !slices.ContainsFunc(child.Outputs, func(b Binding) bool { return b.Name == reference.Field }) {
+			s.problem(reference.Origin, place, "the workflow %q gives the output %q", item.Workflow.Value, reference.Field)
+		}
+	case reference.Root == RootOutputs && reference.Field != "" && item.Branch != nil:
+		if !slices.Contains(branchOutputs(item.Branch), reference.Field) {
+			s.problem(reference.Origin, place, "the branch %q gives the output %q", name, reference.Field)
 		}
 	}
 }

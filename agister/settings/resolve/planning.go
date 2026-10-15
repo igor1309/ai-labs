@@ -51,7 +51,7 @@ func (w *walk) planStep(name string, item Item, place string, fault func(Problem
 	}{
 		{process.Schema.Value != "", w.facts[runtime.Name].Schema, "checks output against a schema", who},
 		{process.Recovery, w.facts[runtime.Name].Session, "resumes a session", who},
-		{item.Session.Value != "", w.facts[runtime.Name].Session, "resumes a session", "it"},
+		{item.Session != nil, w.facts[runtime.Name].Session, "resumes a session", "it"},
 		{len(process.Skills) > 0, w.facts[runtime.Name].Skills, "takes skills", who},
 		{process.StaleToolCalls, w.facts[runtime.Name].ToolCalls, "reports tool calls", who},
 		{process.StaleToolCommands, w.facts[runtime.Name].ToolCommands, "reports tool commands", who},
@@ -157,18 +157,19 @@ func planOf(process Process, runtime Runtime) Plan {
 	return plan
 }
 
-// takes is the problems of agent on runtime, of the facts: a model the
-// runtime takes none of, and an effort it does not accept.
-func takes(agent Agent, runtime Runtime, facts Facts) []Problem {
+// takes is the problems of agent on the runtime of its name, of the
+// runtime's facts: a model it takes none of, and an effort it does not
+// accept.
+func takes(agent Agent, runtime string, facts Facts) []Problem {
 	var problems []Problem
 	problem := func(name Name, place, format string, args ...any) {
 		problems = append(problems, Problem{Path: name.Origin.Path, Line: name.Origin.Line, Place: place, Message: fmt.Sprintf(format, args...)})
 	}
 	if agent.Model.Value != "" && !facts.Model {
-		problem(agent.Model, "model", "its runtime %q takes a model", runtime.Name)
+		problem(agent.Model, "model", "its runtime %q takes a model", runtime)
 	}
-	if agent.Effort.Value != "" && !slices.Contains(runtime.Efforts, agent.Effort.Value) {
-		problem(agent.Effort, "effort", "its runtime %q takes the effort %q", runtime.Name, agent.Effort.Value)
+	if agent.Effort.Value != "" && !slices.Contains(facts.Efforts, agent.Effort.Value) {
+		problem(agent.Effort, "effort", "its runtime %q takes the effort %q", runtime, agent.Effort.Value)
 	}
 	return problems
 }

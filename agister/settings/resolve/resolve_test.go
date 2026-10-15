@@ -134,6 +134,21 @@ func step(name, process, agent string) resolve.Item {
 	return resolve.Item{Name: name, Process: resolve.Name{Value: process}, Agent: resolve.Name{Value: agent}}
 }
 
+// param, input and state read the param, the input or the repeat's state
+// of name; outputs, the outputs of the item name, or their field, "" for
+// the whole; session, the session of the item name; and queryItem, the
+// field of the item of an all or any query.
+func param(name string) resolve.Read { return resolve.Read{Root: resolve.RootParam, Name: name} }
+func input(name string) resolve.Read { return resolve.Read{Root: resolve.RootInput, Name: name} }
+func state(name string) resolve.Read { return resolve.Read{Root: resolve.RootState, Name: name} }
+func outputs(item, field string) resolve.Read {
+	return resolve.Read{Root: resolve.RootOutputs, Name: item, Field: field}
+}
+func session(item string) resolve.Read { return resolve.Read{Root: resolve.RootSession, Name: item} }
+func queryItem(field string) resolve.Read {
+	return resolve.Read{Root: resolve.RootQueryItem, Field: field}
+}
+
 func newResolver(t *testing.T, s *source) *resolve.Resolver {
 	t.Helper()
 	r, err := resolve.New(s, s)
@@ -198,6 +213,34 @@ func TestAWorkflowRequestedResolvesWithWhatItReaches(t *testing.T) {
 	}
 	assertReached(t, got, ref(resolve.KindWorkflow, "w"), ref(resolve.KindProcess, "p"),
 		ref(resolve.KindAgent, "a"), ref(resolve.KindRuntime, "r"))
+	assertDefinitions(t, got, s, []string{"w"}, []string{"p"}, []string{"a"}, []string{"r"})
+}
+
+// assertDefinitions asserts that got gives the definitions s holds of the
+// workflows, processes, agents and runtimes of those names, and no other.
+func assertDefinitions(t *testing.T, got resolve.Resolved, s *source, workflows, processes, agents, runtimes []string) {
+	t.Helper()
+	if want := held(s.workflows, workflows); !reflect.DeepEqual(got.Workflows, want) {
+		t.Errorf("workflows\n got %+v\nwant %+v", got.Workflows, want)
+	}
+	if want := held(s.processes, processes); !reflect.DeepEqual(got.Processes, want) {
+		t.Errorf("processes\n got %+v\nwant %+v", got.Processes, want)
+	}
+	if want := held(s.agents, agents); !reflect.DeepEqual(got.Agents, want) {
+		t.Errorf("agents\n got %+v\nwant %+v", got.Agents, want)
+	}
+	if want := held(s.runtimes, runtimes); !reflect.DeepEqual(got.Runtimes, want) {
+		t.Errorf("runtimes\n got %+v\nwant %+v", got.Runtimes, want)
+	}
+}
+
+// held is the documents of names in documents, by name.
+func held[T any](documents map[string]T, names []string) map[string]T {
+	picked := map[string]T{}
+	for _, name := range names {
+		picked[name] = documents[name]
+	}
+	return picked
 }
 
 // request.feature, "A step requested alone is a workflow of that one step".
@@ -205,7 +248,8 @@ func TestAStepRequestedAloneIsAWorkflowOfThatOneStep(t *testing.T) {
 	t.Parallel()
 	s := newSource()
 	params := []resolve.Param{{Name: "base", Default: true}, {Name: "goal", Default: true}}
-	s.processes["p"] = resolve.Process{Name: "p", Params: params}
+	inputs := []resolve.Input{{Name: "rev", Arguments: []resolve.Binding{{Name: "rev", From: ptr(param("base"))}}}}
+	s.processes["p"] = resolve.Process{Name: "p", Params: params, Inputs: inputs, Revision: ptr(input("rev"))}
 	s.pair("a", "r")
 
 	got, faults := newResolver(t, s).Resolve(resolve.Step("p", "a"))
@@ -213,11 +257,12 @@ func TestAStepRequestedAloneIsAWorkflowOfThatOneStep(t *testing.T) {
 	assertResolved(t, faults)
 	want := resolve.Workflow{
 		Params: params,
+		Inputs: inputs,
 		Steps: []resolve.Item{{
 			Name: "p", Process: resolve.Name{Value: "p"}, Agent: resolve.Name{Value: "a"},
-			Inputs: []resolve.Binding{{Name: "base", From: "params.base"}, {Name: "goal", From: "params.goal"}},
+			Inputs: []resolve.Binding{{Name: "base", From: ptr(param("base"))}, {Name: "goal", From: ptr(param("goal"))}},
 		}},
-		Outputs: []resolve.Binding{{Name: "output", From: "steps.p.outputs"}},
+		Outputs: []resolve.Binding{{Name: "output", From: ptr(outputs("p", ""))}},
 	}
 	if !reflect.DeepEqual(got.Workflow, &want) {
 		t.Errorf("workflow\n got %+v\nwant %+v", got.Workflow, want)
@@ -255,6 +300,7 @@ func TestADocumentOfAnotherKindResolvesAndIsNoWorkflow(t *testing.T) {
 		t.Errorf("workflow %+v, want none", got.Workflow)
 	}
 	assertReached(t, got, ref(resolve.KindAgent, "a"), ref(resolve.KindRuntime, "r"))
+	assertDefinitions(t, got, s, nil, nil, []string{"a"}, []string{"r"})
 }
 
 // request.feature, "A problem of no document refuses every request".
@@ -309,10 +355,65 @@ func TestEveryNameADocumentGivesIsFollowed(t *testing.T) {
 	got, faults := newResolver(t, s).Resolve(resolve.Document(resolve.KindWorkflow, "w"))
 
 	assertResolved(t, faults)
-	assertReached(t, got, ref(resolve.KindWorkflow, "w"), ref(resolve.KindBrief, "wb"),
+	reached := []resolve.Reference{ref(resolve.KindWorkflow, "w"), ref(resolve.KindBrief, "wb"),
 		ref(resolve.KindProcess, "p"), ref(resolve.KindPrompt, "pr"), ref(resolve.KindPrompt, "g"), ref(resolve.KindSkill, "k"),
 		ref(resolve.KindBrief, "b"), ref(resolve.KindSchema, "sc"),
-		ref(resolve.KindAgent, "a"), ref(resolve.KindRuntime, "r"))
+		ref(resolve.KindAgent, "a"), ref(resolve.KindRuntime, "r")}
+	assertReached(t, got, reached...)
+	for _, reference := range reached {
+		if times := s.asked[reference]; times != 1 {
+			t.Errorf("%v asked %d times, want once", reference, times)
+		}
+	}
+}
+
+// references.feature, "A problem refuses with the chain that reached it",
+// for every document resolve reads nothing of, wherever it is named.
+func TestEveryDocumentReachedIsChecked(t *testing.T) {
+	t.Parallel()
+	w := resolve.Link{Kind: resolve.KindWorkflow, Name: "w"}
+	p := resolve.Link{Kind: resolve.KindProcess, Name: "p", Place: "steps[0].process"}
+	for _, test := range []struct {
+		kind  resolve.Kind
+		name  string
+		chain []resolve.Link
+	}{
+		{resolve.KindBrief, "wb", []resolve.Link{w, {Kind: resolve.KindBrief, Name: "wb", Place: "inputs.brief.form[0]"}}},
+		{resolve.KindPrompt, "pr", []resolve.Link{w, p, {Kind: resolve.KindPrompt, Name: "pr", Place: "prompt"}}},
+		{resolve.KindPrompt, "g", []resolve.Link{w, p, {Kind: resolve.KindPrompt, Name: "g", Place: "guidance[0]"}}},
+		{resolve.KindSkill, "k", []resolve.Link{w, p, {Kind: resolve.KindSkill, Name: "k", Place: "skills[0]"}}},
+		{resolve.KindBrief, "b", []resolve.Link{w, p, {Kind: resolve.KindBrief, Name: "b", Place: "inputs.goal.form[0]"}}},
+		{resolve.KindSchema, "sc", []resolve.Link{w, p, {Kind: resolve.KindSchema, Name: "sc", Place: "output.schema"}}},
+	} {
+		t.Run(string(test.kind)+" "+test.name, func(t *testing.T) {
+			t.Parallel()
+			s := newSource()
+			s.workflows["w"] = resolve.Workflow{
+				Name:   "w",
+				Inputs: []resolve.Input{{Name: "brief", Forms: []resolve.Name{{Value: "wb"}}}},
+				Steps:  []resolve.Item{step("s", "p", "a")},
+			}
+			s.processes["p"] = resolve.Process{
+				Name:     "p",
+				Prompt:   resolve.Name{Value: "pr"},
+				Guidance: []resolve.Name{{Value: "g"}},
+				Skills:   []resolve.Name{{Value: "k"}},
+				Inputs:   []resolve.Input{{Name: "goal", Forms: []resolve.Name{{Value: "b"}}}},
+				Schema:   resolve.Name{Value: "sc"},
+			}
+			s.pair("a", "r")
+			for _, other := range []resolve.Reference{ref(resolve.KindBrief, "wb"), ref(resolve.KindPrompt, "pr"),
+				ref(resolve.KindPrompt, "g"), ref(resolve.KindSkill, "k"), ref(resolve.KindBrief, "b"), ref(resolve.KindSchema, "sc")} {
+				if other != ref(test.kind, test.name) {
+					s.other(other.Kind, other.Name)
+				}
+			}
+
+			got, faults := newResolver(t, s).Resolve(resolve.Document(resolve.KindWorkflow, "w"))
+
+			assertFaults(t, got, faults, resolve.Fault{Chain: test.chain, Problems: []resolve.Problem{noLayer}})
+		})
+	}
 }
 
 // references.feature, "Every item is followed, in branches a run may not
@@ -449,4 +550,50 @@ func TestAWorkflowThatReachesItselfIsRefused(t *testing.T) {
 		{Kind: resolve.KindWorkflow, Name: "c", Place: "steps[0].workflow"},
 		{Kind: resolve.KindWorkflow, Name: "w", Place: "steps[0].workflow"},
 	}, Problems: []resolve.Problem{{Message: "it reaches itself"}}})
+}
+
+// references.feature, "Every document at fault is given once, with its
+// first chain", of a workflow that reaches itself by two cycles.
+func TestAWorkflowThatReachesItselfTwiceIsGivenOnceWithItsFirstCycle(t *testing.T) {
+	t.Parallel()
+	s := newSource()
+	child := func(item, name string) resolve.Item {
+		return resolve.Item{Name: item, Workflow: resolve.Name{Value: name}}
+	}
+	s.workflows["w"] = resolve.Workflow{Name: "w", Steps: []resolve.Item{child("one", "c"), child("two", "d")}}
+	s.workflows["c"] = resolve.Workflow{Name: "c", Steps: []resolve.Item{child("back", "w")}}
+	s.workflows["d"] = resolve.Workflow{Name: "d", Steps: []resolve.Item{child("back", "w")}}
+
+	got, faults := newResolver(t, s).Resolve(resolve.Document(resolve.KindWorkflow, "w"))
+
+	assertFaults(t, got, faults, resolve.Fault{Chain: []resolve.Link{
+		{Kind: resolve.KindWorkflow, Name: "w"},
+		{Kind: resolve.KindWorkflow, Name: "c", Place: "steps[0].workflow"},
+		{Kind: resolve.KindWorkflow, Name: "w", Place: "steps[0].workflow"},
+	}, Problems: []resolve.Problem{{Message: "it reaches itself"}}})
+}
+
+// The source's problems of no document are its own: resolve adds a
+// request's to a copy, so neither the source's nor another request's
+// refusal changes with a later request.
+func TestTheSourcesProblemsAreNotChangedByARequest(t *testing.T) {
+	t.Parallel()
+	s := newSource()
+	s.workflows["w"] = resolve.Workflow{Name: "w", Steps: []resolve.Item{step("s", "p", "a")}}
+	s.processes["p"] = resolve.Process{Name: "p"}
+	s.pair("a", "r")
+	problem := resolve.Problem{Path: "/repo/.agister", Message: "it cannot be listed"}
+	// Room beyond its length, which an append in place would write to.
+	s.none = append(make([]resolve.Problem, 0, 4), problem)
+	r := newResolver(t, s)
+
+	first, firstFaults := r.Resolve(requestW.WithParams("head"))
+	_, _ = r.Resolve(requestW.WithParams("tail"))
+
+	assertFaults(t, first, firstFaults, resolve.Fault{Problems: []resolve.Problem{
+		problem, {Message: `the workflow declares the param "head"`},
+	}})
+	if got := s.none[:cap(s.none)]; got[1] != (resolve.Problem{}) {
+		t.Errorf("the source's problems were written beyond their length: %+v", got)
+	}
 }

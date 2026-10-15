@@ -113,3 +113,25 @@ func TestABlockNamingNoDocumentIsAWarning(t *testing.T) {
 		t.Errorf("warnings\n got %+v\nwant %+v", got.Warnings, want)
 	}
 }
+
+// blocks.feature, "A refusal gives no warning": neither a plan's extra nor
+// a block naming no document.
+func TestARefusalGivesNoWarning(t *testing.T) {
+	t.Parallel()
+	s := withPrompt(newSource())
+	s.processes["p"] = resolve.Process{
+		Name: "p", Prompt: resolve.Name{Value: "pr"}, Params: []resolve.Param{{Name: "x"}}, Allow: []string{"read"},
+	}
+	s.runtimes["r"] = resolve.Runtime{Name: "r", Contract: resolve.Name{Value: able}, Grants: []string{"read", "net"}}
+	s.blocks = []resolve.Block{block(resolve.KindAgent, "gone", 2)}
+	item := step("s", "p", "a")
+	item.Inputs = []resolve.Binding{from("x", param("head"), 4)}
+	s.workflows["w"] = resolve.Workflow{Name: "w", Steps: []resolve.Item{item}}
+
+	got, faults := newResolver(t, s).Resolve(requestW)
+
+	assertFaults(t, got, faults, resolve.Fault{
+		Chain:    []resolve.Link{{Kind: resolve.KindWorkflow, Name: "w"}},
+		Problems: []resolve.Problem{problemOfW(4, "steps[0].inputs.x", `its workflow declares the param "head"`)},
+	})
+}

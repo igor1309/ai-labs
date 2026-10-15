@@ -10,6 +10,7 @@ package resolve
 import (
 	"errors"
 	"fmt"
+	"slices"
 )
 
 // Kind is a kind of document.
@@ -93,17 +94,18 @@ type Param struct {
 }
 
 // Item is one item of a workflow, named, unique in its workflow, and one
-// of five: a step, its process and agent, and the session it continues; a
-// workflow, by name; a parallel or a branch, of items; or a repeat. A step
-// and a workflow have their inputs. An arm of a branch has the condition
-// it is taken on, but the default, and its outputs, the branch's.
+// of five: a step, its process and agent, and the session it continues,
+// nil for none; a workflow, by name; a parallel or a branch, of items; or
+// a repeat. A step and a workflow have their inputs. An arm of a branch
+// has the condition it is taken on, but the default, and its outputs, the
+// branch's.
 type Item struct {
 	Name     string
 	Origin   Origin
 	If       Condition
 	Process  Name
 	Agent    Name
-	Session  Name
+	Session  *Read
 	Workflow Name
 	Inputs   []Binding
 	Parallel []Item
@@ -121,27 +123,51 @@ type Repeat struct {
 	Until Condition
 }
 
-// Condition is a condition of a workflow: every reference it reads, an
-// item of a collection among them.
+// Condition is a condition of a workflow: every reference it reads, the
+// item of an all or any query among them.
 type Condition struct {
-	Reads []Name
+	Reads []Read
 }
 
-// Binding is a value given by name: a text, or what a reference reads in
-// From.
+// Binding is a value given by name, where its document gives it: a text,
+// or what a reference reads in From, nil for a text.
 type Binding struct {
 	Name   string
 	Text   string
-	From   string
+	From   *Read
 	Origin Origin
 }
 
+// Read is what a reference reads, where its document gives it (ADR-011,
+// rules 3 and 4): a param, an input or a repeat's state, by Name; an item's
+// outputs, or one Field of them, "" for the whole; an item's session; or
+// the item of an all or any query. The composition translates it from a
+// document's reference, so resolve parses no reference's text.
+type Read struct {
+	Root   Root
+	Name   string
+	Field  string
+	Origin Origin
+}
+
+// Root is what a reference reads of.
+type Root string
+
+const (
+	RootParam     Root = "param"
+	RootInput     Root = "input"
+	RootState     Root = "state"
+	RootOutputs   Root = "outputs"
+	RootSession   Root = "session"
+	RootQueryItem Root = "item"
+)
+
 // Process is a process: the prompt it is given, its guidance and its
 // skills; its params and its inputs; its environment; the input whose
-// revision its worktree must be at; the schema of its output; the
-// permissions it requires and those it allows (ADR-003, rule 2); whether
-// it recovers a stale turn; and whether a turn is stale by the same tool
-// call made in a row, or by a tool command running too long.
+// revision its worktree must be at, nil for none; the schema of its
+// output; the permissions it requires and those it allows (ADR-003, rule
+// 2); whether it recovers a stale turn; and whether a turn is stale by the
+// same tool call made in a row, or by a tool command running too long.
 type Process struct {
 	Name              string
 	Prompt            Name
@@ -150,7 +176,7 @@ type Process struct {
 	Params            []Param
 	Inputs            []Input
 	Environment       []Binding
-	Revision          Name
+	Revision          *Read
 	Schema            Name
 	Require           []string
 	Allow             []string
@@ -177,13 +203,12 @@ type Agent struct {
 }
 
 // Runtime is a runtime mapping (ADR-003, rule 3): the contract of the
-// wrapper it is for; the efforts its runtime accepts; what it grants with
-// no option; and its options, of which a plan takes "any" or exactly
-// "one", "" where it offers none.
+// wrapper it is for; what it grants with no option; and its options, of
+// which a plan takes "any" or exactly "one", "" where it offers none. The
+// efforts its runtime accepts are its wrapper's facts, not the mapping's.
 type Runtime struct {
 	Name     string
 	Contract Name
-	Efforts  []string
 	Grants   []string
 	Select   string
 	Options  []Option
@@ -201,14 +226,15 @@ type Wrappers interface {
 	Facts(contract string) (Facts, bool)
 }
 
-// Facts are what a runtime wrapper can do: check output against a schema,
-// resume a session, take skills, take a model, and report tool calls and
-// tool commands.
+// Facts are what a runtime wrapper can do (ADR-003, rule 7): check output
+// against a schema, resume a session, take skills, take a model, the
+// efforts it accepts, and report tool calls and tool commands.
 type Facts struct {
 	Schema       bool
 	Session      bool
 	Skills       bool
 	Model        bool
+	Efforts      []string
 	ToolCalls    bool
 	ToolCommands bool
 }
@@ -241,16 +267,22 @@ type Reference struct {
 	Name string
 }
 
-// Resolved is what resolve checked: the workflow, requested or made of a
-// step, nil for a request of another kind; every document it reached, in
-// the order it reached them; the plan of every step, in the order its
-// workflow was reached; and its warnings, each a block naming no
-// document. A plan's extra is a warning of its own.
+// Resolved is what a run needs (ADR-002, rule 6): the workflow, requested
+// or made of a step, nil for a request of another kind; every document it
+// reached, in the order it reached them; the definitions of the workflows,
+// processes, agents and runtime mappings among them, each by its name; the
+// plan of every step, in the order its workflow was reached; and its
+// warnings, each a block naming no document. A plan's extra is a warning
+// of its own.
 type Resolved struct {
-	Workflow *Workflow
-	Reached  []Reference
-	Plans    []Plan
-	Warnings []Problem
+	Workflow  *Workflow
+	Reached   []Reference
+	Workflows map[string]Workflow
+	Processes map[string]Process
+	Agents    map[string]Agent
+	Runtimes  map[string]Runtime
+	Plans     []Plan
+	Warnings  []Problem
 }
 
 // Plan is a step's plan (ADR-003, rule 4): the step, by its workflow's
@@ -317,7 +349,7 @@ func (r *Resolver) Resolve(request Request) (Resolved, []Fault) {
 	w := &walk{
 		blocks: map[Reference]Block{}, blocked: map[Reference]bool{},
 		source: r.source, wrappers: r.wrappers, index: map[Reference]int{}, chains: map[Reference][]Link{},
-		problems: map[Reference][]Problem{}, open: map[string]bool{},
+		problems: map[Reference][]Problem{}, open: map[string]bool{}, cycled: map[Reference]bool{},
 		workflows: map[string]Workflow{}, processes: map[string]Process{},
 		agents: map[string]Agent{}, runtimes: map[string]Runtime{}, facts: map[string]Facts{},
 	}
@@ -338,7 +370,8 @@ func (r *Resolver) Resolve(request Request) (Resolved, []Fault) {
 		w.follow(nil, Link{Kind: request.kind, Name: request.name})
 	}
 	w.check()
-	problems := r.source.Problems()
+	// The source's problems are its own: the request's are added to a copy.
+	problems := slices.Clone(r.source.Problems())
 	if workflow != nil {
 		problems = append(problems, given(request, *workflow)...)
 	}
@@ -373,7 +406,13 @@ func (r *Resolver) Resolve(request Request) (Resolved, []Fault) {
 				Message: fmt.Sprintf("it blocks the %s %q, which no layer holds", block.Kind, block.Name)})
 		}
 	}
-	return Resolved{Workflow: workflow, Reached: w.reached, Plans: w.plans, Warnings: warnings}, nil
+	// What resolves has no document at fault, so each document it reached
+	// that resolve reads is among those kept, with no problem.
+	return Resolved{
+		Workflow: workflow, Reached: w.reached,
+		Workflows: w.workflows, Processes: w.processes, Agents: w.agents, Runtimes: w.runtimes,
+		Plans: w.plans, Warnings: warnings,
+	}, nil
 }
 
 // walk follows names from a request, each document once, and keeps each
@@ -390,8 +429,10 @@ type walk struct {
 	chains   map[Reference][]Link
 	// problems are each document's, by the document at fault.
 	problems map[Reference][]Problem
-	// open are the workflows being followed: one named again is a cycle.
-	open map[string]bool
+	// open are the workflows being followed: one named again is a cycle;
+	// cycled, the workflows at fault for one.
+	open   map[string]bool
+	cycled map[Reference]bool
 	// workflows and processes are those reached that have no problem of
 	// their own source.
 	workflows map[string]Workflow
@@ -405,36 +446,41 @@ type walk struct {
 }
 
 // step is the workflow of one step resolve makes of the process on the
-// agent (ADR-013): the process's params, each given to the step from the
-// workflow's of its name, and the step's output its output.
+// agent (ADR-013, rule 1): the process's inputs, and its params, each
+// given to the step from the workflow's of its name; and the step's output
+// its output.
 func (w *walk) step(process, agent string) Workflow {
 	w.follow(nil, Link{Kind: KindProcess, Name: process})
 	w.follow(nil, Link{Kind: KindAgent, Name: agent})
 	p := w.processes[process]
 	inputs := []Binding{}
 	for _, param := range p.Params {
-		inputs = append(inputs, Binding{Name: param.Name, From: "params." + param.Name})
+		inputs = append(inputs, Binding{Name: param.Name, From: &Read{Root: RootParam, Name: param.Name}})
 	}
 	return Workflow{
 		Params: p.Params,
+		Inputs: p.Inputs,
 		Steps: []Item{{
 			Name:    process,
 			Process: Name{Value: process},
 			Agent:   Name{Value: agent},
 			Inputs:  inputs,
 		}},
-		Outputs: []Binding{{Name: "output", From: "steps." + process + ".outputs"}},
+		Outputs: []Binding{{Name: "output", From: &Read{Root: RootOutputs, Name: process}}},
 	}
 }
 
 // follow follows the document link names, reached by chain.
 func (w *walk) follow(chain []Link, link Link) {
 	reference := Reference{Kind: link.Kind, Name: link.Name}
-	// A workflow being followed, named again, is at fault by the chain
-	// that closes the cycle, which its first chain begins.
+	// A workflow being followed, named again, is at fault by the first
+	// chain that closes a cycle, which its first chain begins.
 	if link.Kind == KindWorkflow && w.open[link.Name] {
-		w.chains[reference] = append(chain[:len(chain):len(chain)], link)
-		w.fault(reference, Problem{Message: "it reaches itself"})
+		if !w.cycled[reference] {
+			w.cycled[reference] = true
+			w.chains[reference] = append(chain[:len(chain):len(chain)], link)
+			w.fault(reference, Problem{Message: "it reaches itself"})
+		}
 		return
 	}
 	if _, seen := w.index[reference]; seen {
@@ -482,7 +528,7 @@ func (w *walk) follow(chain []Link, link Link) {
 		}
 		w.optional(chain, KindRuntime, agent.Runtime, "runtime")
 		if runtime, ok := w.runtimes[agent.Runtime.Value]; ok {
-			w.fault(reference, takes(agent, runtime, w.facts[runtime.Name])...)
+			w.fault(reference, takes(agent, runtime.Name, w.facts[runtime.Name])...)
 		}
 		w.agents[link.Name] = agent
 	case KindRuntime:

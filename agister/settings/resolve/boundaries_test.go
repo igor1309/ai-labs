@@ -1,7 +1,6 @@
 package resolve_test
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/igor1309/ai-labs/agister/settings/resolve"
@@ -17,7 +16,7 @@ func TestAStepBindsTheParamsItsProcessDeclares(t *testing.T) {
 		problem  resolve.Problem
 	}{
 		"one it does not declare": {
-			[]resolve.Binding{{Name: "base", Text: "main"}, from("head", "params.head", 5)},
+			[]resolve.Binding{{Name: "base", Text: "main"}, from("head", param("head"), 5)},
 			problemOfW(5, "steps[0].inputs.head", `the process "p" declares the param "head"`),
 		},
 		"none of no default": {
@@ -57,25 +56,40 @@ func TestAWorkflowItemBindsTheParamsItsWorkflowDeclares(t *testing.T) {
 func TestAChildWorkflowIsReadThroughItsOutputs(t *testing.T) {
 	t.Parallel()
 	s := withSteps(newSource(), resolve.Item{Name: "child", Workflow: resolve.Name{Value: "c"}},
-		reading("use", from("verdict", "steps.child.outputs.verdict", 5), from("summary", "steps.child.outputs.summary", 6)))
+		reading("use", from("verdict", outputs("child", "verdict"), 5), from("summary", outputs("child", "summary"), 6)))
 	s.workflows["c"] = resolve.Workflow{Name: "c", Steps: []resolve.Item{reading("t")},
-		Outputs: []resolve.Binding{{Name: "verdict", From: "steps.t.outputs.verdict"}}}
+		Outputs: []resolve.Binding{from("verdict", outputs("t", "verdict"), 3)}}
 	s.processes["t"] = resolve.Process{Name: "t"}
 	assertProblemsOf(t, s, requestW, resolve.KindWorkflow, "w",
 		problemOfW(6, "steps[1].inputs.summary", `the workflow "c" gives the output "summary"`))
 }
 
+// arm is the step name, an arm of a branch on line of w's file, giving
+// each of gives from its own outputs' field of that name.
+func arm(name string, line int, gives ...string) resolve.Item {
+	item := at(reading(name), line)
+	for _, output := range gives {
+		item.Outputs = append(item.Outputs, from(output, outputs(name, output), line))
+	}
+	return item
+}
+
+// boundaries.feature, "A branch is read through its outputs".
+func TestABranchIsReadThroughItsOutputs(t *testing.T) {
+	t.Parallel()
+	fix := arm("fix", 4, "summary")
+	fix.If = resolve.Condition{Reads: []resolve.Read{param("base")}}
+	s := newSource()
+	s.workflows["w"] = resolve.Workflow{Params: []resolve.Param{{Name: "base", Default: true}}}
+	withSteps(s, resolve.Item{Name: "decide", Branch: []resolve.Item{fix, arm("done", 6, "summary")}},
+		reading("use", from("summary", outputs("decide", "summary"), 8), from("diff", outputs("decide", "diff"), 9)))
+	assertProblemsOf(t, s, requestW, resolve.KindWorkflow, "w",
+		problemOfW(9, "steps[1].inputs.diff", `the branch "decide" gives the output "diff"`))
+}
+
 // boundaries.feature, "Every arm of a branch gives the branch's outputs".
 func TestEveryArmOfABranchGivesTheBranchsOutputs(t *testing.T) {
 	t.Parallel()
-	arm := func(name string, line int, outputs ...string) resolve.Item {
-		item := reading(name)
-		item.Origin = resolve.Origin{Path: homeW, Line: line}
-		for _, output := range outputs {
-			item.Outputs = append(item.Outputs, from(output, fmt.Sprintf("steps.%s.outputs.%s", name, output), line))
-		}
-		return item
-	}
 	for name, test := range map[string]struct {
 		fix, done []string
 		line      int
@@ -87,7 +101,7 @@ func TestEveryArmOfABranchGivesTheBranchsOutputs(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 			fix := arm("fix", 4, test.fix...)
-			fix.If = resolve.Condition{Reads: []resolve.Name{{Value: "params.base"}}}
+			fix.If = resolve.Condition{Reads: []resolve.Read{param("base")}}
 			s := newSource()
 			s.workflows["w"] = resolve.Workflow{Params: []resolve.Param{{Name: "base", Default: true}}}
 			withSteps(s, resolve.Item{Name: "decide", Branch: []resolve.Item{fix, arm("done", 8, test.done...)}})
