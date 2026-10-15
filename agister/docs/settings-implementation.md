@@ -183,6 +183,30 @@ A request that depends on a blocked document is refused, naming the
 block; a block is not a problem, and a block naming no document is a
 warning.
 
+Resolve declares its ports in its own words (ADR-001, rule 1). Its
+source gives a document by kind and name in resolve's types, each
+holding only what resolve reads: the names it references, with their
+origins, its bindings, its permissions. A document resolve reads nothing
+of, a brief, a prompt, a schema or a skill, is given as its problems
+alone. The source also gives the problems of no document, which refuse
+every request. The composition answers the source from documents, and
+the runtime facts from the wrappers.
+
+What resolve gives is what it checked: the workflow, requested or made
+of a step (ADR-013), every document it reached, by kind and name, and
+each step's plan. The composition takes each reached document's
+definition from documents, for core and the record; the snapshot is
+fixed, so they are what resolve checked.
+
+A refusal is every document at fault, each with its problems and the
+first chain that reached it, in the order the request names them. A
+link of the chain is a document's kind and name, and where the document
+before it names it.
+
+Resolve comes in four sections, each specified, then coded: the request
+and its references; boundaries and bindings; planning and runtime facts;
+blocks.
+
 ## Where each check sits
 
 | Check | Step |
