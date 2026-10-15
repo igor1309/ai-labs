@@ -13,13 +13,21 @@ changes unless a decision below says so.
 
 ## The next work
 
-Done in the settings kinds PR: `settings/documents` types processes and
-workflows by `process.feature` and `workflow.feature`, which record the
-syntax decided below and since; `agister/home`'s processes and workflows
-are in the new language, its one-step workflows are gone (ADR-013), and
-it ships a bash runtime mapping, granting every permission, and a bash
-agent. `agister/.agister` stays: the installed Agister reads it when run
-in this repository. Resolve is next.
+Specify, then type, in `settings/documents`, feature files first:
+
+- **process**: its prompt, guidance, inputs, environment, output schema,
+  permissions, skills and limits (ADR-012, terms).
+- **workflow**: its inputs, output contract, and children by ADR-011's
+  four operators, with bindings and conditions; a child is a step,
+  written in the workflow and naming a process and an agent, or a
+  workflow by name.
+- **bash**: an agent naming only the bash runtime; the bash runtime
+  mapping, granting what its environment gives, with no options; a
+  script is a prompt.
+
+Move `agister/home`'s processes and workflows to the new language in the
+same PR, as #1019 moved the runtime mappings. `agister/.agister` stays:
+the installed Agister reads it when run in this repository.
 
 ## Decisions (2026-10-15)
 

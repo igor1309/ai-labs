@@ -305,3 +305,49 @@ colour: red
 		inHomeWorkflow(13, "colour", "the field is not known"),
 	})
 }
+
+// workflow.feature, "A workflow's fields": a condition of each operator is
+// typed whole: its operator, what its reference reads, its value, and its
+// conditions.
+func TestAConditionOfEachOperator(t *testing.T) {
+	t.Parallel()
+	type conditions = []documents.Field[documents.Condition]
+	present := func(what string) documents.Field[documents.Condition] {
+		return ofWorkflow(documents.Condition{Operator: "present", Reads: ofWorkflow(what, 3)}, 3)
+	}
+	equals := func(what string, value any) documents.Condition {
+		return documents.Condition{Operator: "equals", Reads: ofWorkflow(what, 3), Equals: ofWorkflow(value, 3)}
+	}
+	cases := []struct {
+		condition string
+		want      documents.Condition
+	}{
+		{"{equals: [{from: steps.x.outputs.verdict}, approve]}", equals("steps.x.outputs.verdict", "approve")},
+		{"{equals: [{from: steps.x.outputs.code}, 0]}", equals("steps.x.outputs.code", int64(0))},
+		{"{equals: [{from: steps.x.outputs.ok}, true]}", equals("steps.x.outputs.ok", true)},
+		{"{present: {from: inputs.a}}", present("inputs.a").Value},
+		{"{all: {in: {from: steps.x.outputs.items}, where: {present: {from: item.ok}}}}",
+			documents.Condition{Operator: "all", Reads: ofWorkflow("steps.x.outputs.items", 3), Of: conditions{present("item.ok")}}},
+		{"{any: {in: {from: steps.x.outputs.items}, where: {present: {from: item.ok}}}}",
+			documents.Condition{Operator: "any", Reads: ofWorkflow("steps.x.outputs.items", 3), Of: conditions{present("item.ok")}}},
+		{"{and: [{present: {from: inputs.a}}, {present: {from: params.b}}]}",
+			documents.Condition{Operator: "and", Of: conditions{present("inputs.a"), present("params.b")}}},
+		{"{or: [{present: {from: inputs.a}}, {present: {from: params.b}}]}",
+			documents.Condition{Operator: "or", Of: conditions{present("inputs.a"), present("params.b")}}},
+		{"{not: {present: {from: state.s}}}", documents.Condition{Operator: "not", Of: conditions{present("state.s")}}},
+	}
+	for _, c := range cases {
+		t.Run(c.condition, func(t *testing.T) {
+			t.Parallel()
+			got, problems := typeWorkflow(t, workflowHeader+"steps:\n"+
+				"  - {name: a, branch: [{name: b, process: p, agent: x, outputs: {}, if: "+c.condition+"}, {name: c, process: p, agent: x, outputs: {}}]}\n")
+			assertProblems(t, problems, nil)
+			if len(got.Steps.Value) == 0 {
+				t.Fatal("no step")
+			}
+			if condition := got.Steps.Value[0].Value.Branch.Value[0].Value.If; !reflect.DeepEqual(condition, ofWorkflow(c.want, 3)) {
+				t.Errorf("condition\n got %+v\nwant %+v", condition, ofWorkflow(c.want, 3))
+			}
+		})
+	}
+}
