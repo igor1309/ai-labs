@@ -213,8 +213,8 @@ has it give, the composition takes from documents for each document
 reached, for core and the record; the snapshot is fixed, so they are
 what resolve checked.
 
-A refusal is every document at fault, each with its problems and the
-first chain that reached it, in the order the request names them; and
+A refusal is every document at fault, each with its problems, or the
+block that refuses it, and the first chain that reached it, in the order the request names them; and
 the problems of no document, the request's among them. A
 link of the chain is a document's kind and name, and where the document
 before it names it.

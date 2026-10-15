@@ -3,9 +3,10 @@
 # test (ADR-009): each document by kind and name, in resolve's types,
 # holding only what resolve reads, or its problems; and the problems of
 # no document. It gives what it checked: the workflow, every document it
-# reached, by kind and name; or a refusal: every document at fault, each
-# with its problems and the first chain that reached it; and the
-# problems of no document, the request's among them.
+# reached, by kind and name, each step's plan, and its warnings; or a
+# refusal, with no warning: every document at fault, each with its
+# problems, or the block that refuses it, and the first chain that
+# reached it; and the problems of no document, the request's among them.
 
 Feature: Resolve takes a request naming a document or a step
 

@@ -3,7 +3,11 @@
 # request.feature for what resolve is given and what it gives. Resolve
 # asks the runtime wrappers' facts through a port, by the contract of a
 # runtime mapping. What a process requires it allows. A plan grants what
-# its runtime grants with no option, and the options it takes.
+# its runtime grants with no option, and the options it takes: of "any",
+# for each required permission not yet granted, the option granting it
+# with the fewest grants beyond the allowed; of "one", the option giving
+# most of what is required, then the fewest grants beyond the allowed;
+# of those that tie, the first in the mapping's order.
 
 Feature: Resolve plans every step on its runtime
 

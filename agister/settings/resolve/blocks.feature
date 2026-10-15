@@ -13,23 +13,26 @@ Feature: Resolve refuses what depends on a blocked document
       "it writes to main"
     When resolve is asked for the workflow "w"
     Then it refuses: the process "p", reached by the workflow "w" at
-      "steps[0].process", blocked on line 1: it writes to main
+      "steps[0].process", blocked by the blocks' file, on line 1: it
+      writes to main
     And it did not ask for the process "p", nor reach the prompt "pr"
 
   Scenario Outline: A block on any document the request reaches refuses it
-    Given the step of the process "p" on the agent "a" of the runtime "r"
-    And the process "p" names the prompt "pr"
+    Given the workflow "w" has the step "s", the process "p" on the agent "a"
+    And the process "p" names the prompt "pr", and the agent "a" the
+      runtime "r"
     And the repository's blocks block the <kind> "<name>"
     When resolve is asked for <request>
     Then it refuses: the <kind> "<name>", blocked
 
     Examples:
-      | request                                      | kind    | name |
-      | the step of the process "p" on the agent "a" | process | p    |
-      | the step of the process "p" on the agent "a" | agent   | a    |
-      | the step of the process "p" on the agent "a" | runtime | r    |
-      | the step of the process "p" on the agent "a" | prompt  | pr   |
-      | the agent "a"                                | agent   | a    |
+      | request                                      | kind     | name |
+      | the workflow "w"                             | workflow | w    |
+      | the step of the process "p" on the agent "a" | process  | p    |
+      | the step of the process "p" on the agent "a" | agent    | a    |
+      | the step of the process "p" on the agent "a" | runtime  | r    |
+      | the step of the process "p" on the agent "a" | prompt   | pr   |
+      | the agent "a"                                | agent    | a    |
 
   Scenario: A block on a document the request does not reach refuses nothing
     Given the workflow "w" has the step "s", the process "p" on the agent "a"
