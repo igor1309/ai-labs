@@ -7,9 +7,10 @@ import (
 	"github.com/igor1309/ai-labs/agister/settings/resolve"
 )
 
-// source is a spy of resolve's source: the documents and problems its test
-// gives, and nothing else. A document it holds neither of has the problem
-// "no layer holds it". It counts what it is asked.
+// source is a spy of resolve's source and wrappers: the documents,
+// problems and runtime facts its test gives, and nothing else. A document
+// it holds neither of has the problem "no layer holds it". It counts what
+// it is asked.
 type source struct {
 	workflows map[string]resolve.Workflow
 	processes map[string]resolve.Process
@@ -21,7 +22,12 @@ type source struct {
 	// none are the problems of no document.
 	none  []resolve.Problem
 	asked map[resolve.Reference]int
+	// facts are the runtime facts, by contract.
+	facts map[string]resolve.Facts
 }
+
+// able is the contract of a wrapper that can do everything.
+const able = "able/1"
 
 func newSource() *source {
 	return &source{
@@ -29,6 +35,7 @@ func newSource() *source {
 		agents: map[string]resolve.Agent{}, runtimes: map[string]resolve.Runtime{},
 		others: map[resolve.Reference]bool{}, problems: map[resolve.Reference][]resolve.Problem{},
 		asked: map[resolve.Reference]int{},
+		facts: map[string]resolve.Facts{able: {Schema: true, Session: true, Skills: true, Model: true, ToolCalls: true, ToolCommands: true}},
 	}
 }
 
@@ -79,6 +86,11 @@ func (s *source) Other(kind resolve.Kind, name string) []resolve.Problem {
 
 func (s *source) Problems() []resolve.Problem { return s.none }
 
+func (s *source) Facts(contract string) (resolve.Facts, bool) {
+	facts, ok := s.facts[contract]
+	return facts, ok
+}
+
 // other holds the document of kind and name, of which resolve reads
 // nothing.
 func (s *source) other(kind resolve.Kind, name string) {
@@ -91,10 +103,11 @@ func (s *source) fail(kind resolve.Kind, name string, problem resolve.Problem) {
 	s.problems[reference] = append(s.problems[reference], problem)
 }
 
-// pair holds the agent name on the runtime of its name, and the runtime.
+// pair holds the agent name on the runtime of its name, and the runtime,
+// of a wrapper that can do everything.
 func (s *source) pair(agent, runtime string) {
 	s.agents[agent] = resolve.Agent{Name: agent, Runtime: resolve.Name{Value: runtime}}
-	s.runtimes[runtime] = resolve.Runtime{Name: runtime}
+	s.runtimes[runtime] = resolve.Runtime{Name: runtime, Contract: resolve.Name{Value: able}}
 }
 
 // step is the item name, a step binding process to agent.
@@ -104,7 +117,7 @@ func step(name, process, agent string) resolve.Item {
 
 func newResolver(t *testing.T, s *source) *resolve.Resolver {
 	t.Helper()
-	r, err := resolve.New(s)
+	r, err := resolve.New(s, s)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -139,10 +152,13 @@ func assertFaults(t *testing.T, got resolve.Resolved, faults []resolve.Fault, wa
 	}
 }
 
-func TestNewNeedsASource(t *testing.T) {
+func TestNewNeedsASourceAndWrappers(t *testing.T) {
 	t.Parallel()
-	if _, err := resolve.New(nil); err == nil {
-		t.Error("New(nil) gave no error")
+	if _, err := resolve.New(nil, newSource()); err == nil {
+		t.Error("New with no source gave no error")
+	}
+	if _, err := resolve.New(newSource(), nil); err == nil {
+		t.Error("New with no wrappers gave no error")
 	}
 }
 

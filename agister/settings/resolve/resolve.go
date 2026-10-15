@@ -1,9 +1,10 @@
 // Package resolve is the gate before a run (ADR-002, rule 6): given a
 // request naming a document by kind and name, or a step, it follows every
-// name from it and gives what it checked, or a refusal naming the chain to
-// each document at fault. It reads no file: its source gives each document
-// in resolve's own types, holding only what resolve reads, and the
-// composition answers the source.
+// name from it, plans every step, and gives what it checked, or a refusal
+// naming the chain to each document at fault. It reads no file: its
+// source gives each document in resolve's own types, holding only what
+// resolve reads, its wrappers give each runtime's facts, and the
+// composition answers both.
 package resolve
 
 import (
@@ -124,17 +125,25 @@ type Binding struct {
 
 // Process is a process: the prompt it is given, its guidance and its
 // skills; its params and its inputs; its environment; the input whose
-// revision its worktree must be at; and the schema of its output.
+// revision its worktree must be at; the schema of its output; the
+// permissions it requires and those it allows (ADR-003, rule 2); whether
+// it recovers a stale turn; and whether a turn is stale by the same tool
+// call made in a row, or by a tool command running too long.
 type Process struct {
-	Name        string
-	Prompt      Name
-	Guidance    []Name
-	Skills      []Name
-	Params      []Param
-	Inputs      []Input
-	Environment []Binding
-	Revision    Name
-	Schema      Name
+	Name              string
+	Prompt            Name
+	Guidance          []Name
+	Skills            []Name
+	Params            []Param
+	Inputs            []Input
+	Environment       []Binding
+	Revision          Name
+	Schema            Name
+	Require           []string
+	Allow             []string
+	Recovery          bool
+	StaleToolCalls    bool
+	StaleToolCommands bool
 }
 
 // Input is an input of a workflow or a process, by name: the brief forms
@@ -145,15 +154,50 @@ type Input struct {
 	Arguments []Binding
 }
 
-// Agent is an agent: the runtime mapping it names.
+// Agent is an agent: the runtime mapping it names, and the model, or its
+// family, and the effort it gives, "" for none.
 type Agent struct {
 	Name    string
 	Runtime Name
+	Model   Name
+	Effort  Name
 }
 
-// Runtime is a runtime mapping.
+// Runtime is a runtime mapping (ADR-003, rule 3): the contract of the
+// wrapper it is for; the efforts its runtime accepts; what it grants with
+// no option; and its options, of which a plan takes "any" or exactly
+// "one", "" where it offers none.
 type Runtime struct {
-	Name string
+	Name     string
+	Contract Name
+	Efforts  []string
+	Grants   []string
+	Select   string
+	Options  []Option
+}
+
+// Option is an option of a runtime, by name, and what it grants.
+type Option struct {
+	Name   string
+	Grants []string
+}
+
+// Wrappers is what resolve asks of the runtime wrappers: the facts of the
+// one that takes contract, and whether one does (ADR-003, rule 7).
+type Wrappers interface {
+	Facts(contract string) (Facts, bool)
+}
+
+// Facts are what a runtime wrapper can do: check output against a schema,
+// resume a session, take skills, take a model, and report tool calls and
+// tool commands.
+type Facts struct {
+	Schema       bool
+	Session      bool
+	Skills       bool
+	Model        bool
+	ToolCalls    bool
+	ToolCommands bool
 }
 
 // Request is what resolve is asked for: a document, by kind and name, or a
@@ -185,11 +229,32 @@ type Reference struct {
 }
 
 // Resolved is what resolve checked: the workflow, requested or made of a
-// step, nil for a request of another kind; and every document it reached,
-// in the order it reached them.
+// step, nil for a request of another kind; every document it reached, in
+// the order it reached them; and the plan of every step, in the order its
+// workflow was reached.
 type Resolved struct {
 	Workflow *Workflow
 	Reached  []Reference
+	Plans    []Plan
+}
+
+// Plan is a step's plan (ADR-003, rule 4): the step, by its workflow's
+// name, "" for one made of a step, and its place there; its process,
+// agent and runtime; the options it takes; and the permissions required,
+// allowed, granted, granted beyond the allowed, its warning, and allowed
+// but withheld.
+type Plan struct {
+	Workflow string
+	Place    string
+	Process  string
+	Agent    string
+	Runtime  string
+	Options  []string
+	Required []string
+	Allowed  []string
+	Granted  []string
+	Extra    []string
+	Withheld []string
 }
 
 // Fault is a document at fault, the last link of its chain, and its
@@ -209,17 +274,22 @@ type Link struct {
 	Origin Origin
 }
 
-// Resolver resolves requests from its source.
+// Resolver resolves requests from its source and its wrappers.
 type Resolver struct {
-	source Source
+	source   Source
+	wrappers Wrappers
 }
 
-// New gives a resolver asking source.
-func New(source Source) (*Resolver, error) {
+// New gives a resolver asking source for documents and wrappers for
+// runtime facts.
+func New(source Source, wrappers Wrappers) (*Resolver, error) {
 	if source == nil {
 		return nil, errors.New("resolve: no source")
 	}
-	return &Resolver{source: source}, nil
+	if wrappers == nil {
+		return nil, errors.New("resolve: no wrappers")
+	}
+	return &Resolver{source: source, wrappers: wrappers}, nil
 }
 
 // Resolve gives what request reaches, or the faults that refuse it: the
@@ -229,9 +299,10 @@ func New(source Source) (*Resolver, error) {
 // what each document it reached reads.
 func (r *Resolver) Resolve(request Request) (Resolved, []Fault) {
 	w := &walk{
-		source: r.source, index: map[Reference]int{}, chains: map[Reference][]Link{},
+		source: r.source, wrappers: r.wrappers, index: map[Reference]int{}, chains: map[Reference][]Link{},
 		problems: map[Reference][]Problem{}, open: map[string]bool{},
 		workflows: map[string]Workflow{}, processes: map[string]Process{},
+		agents: map[string]Agent{}, runtimes: map[string]Runtime{}, facts: map[string]Facts{},
 	}
 	var workflow *Workflow
 	switch {
@@ -251,6 +322,15 @@ func (r *Resolver) Resolve(request Request) (Resolved, []Fault) {
 	if workflow != nil {
 		problems = append(problems, given(request, *workflow)...)
 	}
+	// A named workflow's steps are its own; a made one's are the request's.
+	for _, reference := range w.reached {
+		if named, ok := w.workflows[reference.Name]; ok && reference.Kind == KindWorkflow {
+			w.planAll(reference.Name, named.Steps, "steps", func(p Problem) { w.fault(reference, p) })
+		}
+	}
+	if request.kind == "" {
+		w.planAll("", workflow.Steps, "steps", func(p Problem) { problems = append(problems, p) })
+	}
 	var faults []Fault
 	if len(problems) > 0 {
 		faults = append(faults, Fault{Problems: problems})
@@ -263,16 +343,17 @@ func (r *Resolver) Resolve(request Request) (Resolved, []Fault) {
 	if len(faults) > 0 {
 		return Resolved{}, faults
 	}
-	return Resolved{Workflow: workflow, Reached: w.reached}, nil
+	return Resolved{Workflow: workflow, Reached: w.reached, Plans: w.plans}, nil
 }
 
 // walk follows names from a request, each document once, and keeps each
 // document's chain and problems.
 type walk struct {
-	source  Source
-	reached []Reference
-	index   map[Reference]int
-	chains  map[Reference][]Link
+	source   Source
+	wrappers Wrappers
+	reached  []Reference
+	index    map[Reference]int
+	chains   map[Reference][]Link
 	// problems are each document's, by the document at fault.
 	problems map[Reference][]Problem
 	// open are the workflows being followed: one named again is a cycle.
@@ -281,6 +362,12 @@ type walk struct {
 	// their own source.
 	workflows map[string]Workflow
 	processes map[string]Process
+	// agents and runtimes are those reached that have no problem of their
+	// own source, and facts each runtime's, by its name.
+	agents   map[string]Agent
+	runtimes map[string]Runtime
+	facts    map[string]Facts
+	plans    []Plan
 }
 
 // step is the workflow of one step resolve makes of the process on the
@@ -355,9 +442,22 @@ func (w *walk) follow(chain []Link, link Link) {
 			return
 		}
 		w.optional(chain, KindRuntime, agent.Runtime, "runtime")
+		if runtime, ok := w.runtimes[agent.Runtime.Value]; ok {
+			w.fault(reference, takes(agent, runtime, w.facts[runtime.Name])...)
+		}
+		w.agents[link.Name] = agent
 	case KindRuntime:
-		_, problems := w.source.Runtime(link.Name)
-		w.fault(reference, problems...)
+		runtime, problems := w.source.Runtime(link.Name)
+		if w.fault(reference, problems...) {
+			return
+		}
+		facts, ok := w.wrappers.Facts(runtime.Contract.Value)
+		if !ok {
+			w.fault(reference, Problem{Path: runtime.Contract.Origin.Path, Line: runtime.Contract.Origin.Line, Place: "contract",
+				Message: fmt.Sprintf("a runtime wrapper takes the contract %q", runtime.Contract.Value)})
+			return
+		}
+		w.runtimes[link.Name], w.facts[link.Name] = runtime, facts
 	default:
 		w.fault(reference, w.source.Other(link.Kind, link.Name)...)
 	}

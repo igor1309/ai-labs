@@ -1,0 +1,174 @@
+package resolve
+
+import (
+	"fmt"
+	"slices"
+)
+
+// planAll plans every step of items at place, in the workflow of name,
+// those in branches a run may not take too, and gives each problem of
+// theirs to fault.
+func (w *walk) planAll(name string, items []Item, place string, fault func(Problem)) {
+	for i, item := range items {
+		at := fmt.Sprintf("%s[%d]", place, i)
+		switch {
+		case item.Process.Value != "":
+			w.planStep(name, item, at, fault)
+		case item.Parallel != nil:
+			w.planAll(name, item.Parallel, at+".parallel", fault)
+		case item.Branch != nil:
+			w.planAll(name, item.Branch, at+".branch", fault)
+		case item.Repeat != nil:
+			w.planAll(name, item.Repeat.Steps, at+".repeat.steps", fault)
+		}
+	}
+}
+
+// planStep plans the step item at place: what its process and the step
+// need of its runtime, and the permissions its process requires. A step
+// whose process, agent or runtime is at fault is not planned: they refuse
+// it.
+func (w *walk) planStep(name string, item Item, place string, fault func(Problem)) {
+	process, ok := w.processes[item.Process.Value]
+	if !ok {
+		return
+	}
+	agent, ok := w.agents[item.Agent.Value]
+	if !ok {
+		return
+	}
+	runtime, ok := w.runtimes[agent.Runtime.Value]
+	if !ok {
+		return
+	}
+	problem := func(format string, args ...any) {
+		fault(Problem{Path: item.Origin.Path, Line: item.Origin.Line, Place: place, Message: fmt.Sprintf(format, args...)})
+	}
+	who := fmt.Sprintf("its process %q", process.Name)
+	for _, need := range []struct {
+		needs, can bool
+		what, who  string
+	}{
+		{process.Schema.Value != "", w.facts[runtime.Name].Schema, "checks output against a schema", who},
+		{process.Recovery, w.facts[runtime.Name].Session, "resumes a session", who},
+		{item.Session.Value != "", w.facts[runtime.Name].Session, "resumes a session", "it"},
+		{len(process.Skills) > 0, w.facts[runtime.Name].Skills, "takes skills", who},
+		{process.StaleToolCalls, w.facts[runtime.Name].ToolCalls, "reports tool calls", who},
+		{process.StaleToolCommands, w.facts[runtime.Name].ToolCommands, "reports tool commands", who},
+	} {
+		if need.needs && !need.can {
+			problem("its runtime %q %s, as %s needs", runtime.Name, need.what, need.who)
+		}
+	}
+	plan := planOf(process, runtime)
+	for _, required := range process.Require {
+		if !slices.Contains(plan.Granted, required) {
+			problem("its runtime %q grants the permission %q, as its process %q requires", runtime.Name, required, process.Name)
+		}
+	}
+	plan.Workflow, plan.Place, plan.Agent = name, place, agent.Name
+	w.plans = append(w.plans, plan)
+}
+
+// planOf is the plan of process on runtime (ADR-003, rule 4): what the
+// runtime grants with no option, and the options that give what process
+// requires with the fewest grants beyond what it allows, the first in the
+// mapping's order of those that tie. Of "any", an option for each required
+// permission not yet granted; of "one", the one option that gives most of
+// what is required.
+func planOf(process Process, runtime Runtime) Plan {
+	allowed := slices.Clone(process.Allow)
+	for _, required := range process.Require {
+		if !slices.Contains(allowed, required) {
+			allowed = append(allowed, required)
+		}
+	}
+	plan := Plan{Process: process.Name, Runtime: runtime.Name, Required: process.Require, Allowed: allowed}
+	granted := slices.Clone(runtime.Grants)
+	// beyond is how many of option's grants are neither granted nor
+	// allowed; lacking, how many required permissions granted with it lacks.
+	beyond := func(option Option) int {
+		n := 0
+		for _, grant := range option.Grants {
+			if !slices.Contains(granted, grant) && !slices.Contains(allowed, grant) {
+				n++
+			}
+		}
+		return n
+	}
+	lacking := func(option Option) int {
+		n := 0
+		for _, required := range process.Require {
+			if !slices.Contains(granted, required) && !slices.Contains(option.Grants, required) {
+				n++
+			}
+		}
+		return n
+	}
+	take := func(option Option) {
+		plan.Options = append(plan.Options, option.Name)
+		for _, grant := range option.Grants {
+			if !slices.Contains(granted, grant) {
+				granted = append(granted, grant)
+			}
+		}
+	}
+	switch runtime.Select {
+	case "any":
+		for _, required := range process.Require {
+			best := -1
+			for i, option := range runtime.Options {
+				if !slices.Contains(granted, required) && slices.Contains(option.Grants, required) &&
+					(best < 0 || beyond(option) < beyond(runtime.Options[best])) {
+					best = i
+				}
+			}
+			if best >= 0 {
+				take(runtime.Options[best])
+			}
+		}
+	case "one":
+		best := -1
+		for i, option := range runtime.Options {
+			if best < 0 {
+				best = i
+				continue
+			}
+			b := runtime.Options[best]
+			if lacking(option) < lacking(b) || lacking(option) == lacking(b) && beyond(option) < beyond(b) {
+				best = i
+			}
+		}
+		if best >= 0 {
+			take(runtime.Options[best])
+		}
+	}
+	plan.Granted = granted
+	for _, grant := range granted {
+		if !slices.Contains(allowed, grant) {
+			plan.Extra = append(plan.Extra, grant)
+		}
+	}
+	for _, permission := range allowed {
+		if !slices.Contains(granted, permission) {
+			plan.Withheld = append(plan.Withheld, permission)
+		}
+	}
+	return plan
+}
+
+// takes is the problems of agent on runtime, of the facts: a model the
+// runtime takes none of, and an effort it does not accept.
+func takes(agent Agent, runtime Runtime, facts Facts) []Problem {
+	var problems []Problem
+	problem := func(name Name, place, format string, args ...any) {
+		problems = append(problems, Problem{Path: name.Origin.Path, Line: name.Origin.Line, Place: place, Message: fmt.Sprintf(format, args...)})
+	}
+	if agent.Model.Value != "" && !facts.Model {
+		problem(agent.Model, "model", "its runtime %q takes a model", runtime.Name)
+	}
+	if agent.Effort.Value != "" && !slices.Contains(runtime.Efforts, agent.Effort.Value) {
+		problem(agent.Effort, "effort", "its runtime %q takes the effort %q", runtime.Name, agent.Effort.Value)
+	}
+	return problems
+}
