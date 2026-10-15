@@ -26,7 +26,6 @@ const (
 	Process  Kind = "process"
 	Workflow Kind = "workflow"
 	Runtime  Kind = "runtime"
-	Verify   Kind = "verify"
 	Brief    Kind = "brief"
 	Schema   Kind = "schema"
 	Prompt   Kind = "prompt"
@@ -378,7 +377,7 @@ func shapeOf(kind Kind) (format tree.Format, isTree, known bool) {
 	switch kind {
 	case Agent:
 		return tree.TOML, true, true
-	case Process, Workflow, Runtime, Verify, Brief:
+	case Process, Workflow, Runtime, Brief:
 		return tree.YAML, true, true
 	case Schema, Prompt:
 		return 0, false, true

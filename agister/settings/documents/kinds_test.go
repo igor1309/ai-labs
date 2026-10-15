@@ -74,7 +74,6 @@ func TestEveryTreeDocumentNamesItsSchemaAndItsName(t *testing.T) {
 		{"the process's", "schema = 'agister.process/v1alpha1'\nname = 'a'\nruntime = 'codex'\n", inHome("schema", notTheAgents)},
 		{"the workflow's", "schema = 'agister.workflow/v1alpha1'\nname = 'a'\nruntime = 'codex'\n", inHome("schema", notTheAgents)},
 		{"the runtime's", "schema = 'agister.runtime/v1alpha1'\nname = 'a'\nruntime = 'codex'\n", inHome("schema", notTheAgents)},
-		{"the verify's", "schema = 'agister.verify/v1alpha1'\nname = 'a'\nruntime = 'codex'\n", inHome("schema", notTheAgents)},
 		{"the brief's", "schema = 'agister.brief/v1alpha1'\nname = 'a'\nruntime = 'codex'\n", inHome("schema", notTheAgents)},
 		{"a schema that is no string", "schema = 1\nname = 'a'\nruntime = 'codex'\n",
 			inHome("schema", "it is a string, not an integer")},

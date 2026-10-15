@@ -211,7 +211,6 @@ func TestAKindThatIsNoBlobIsAProblem(t *testing.T) {
 		{documents.Process, "a process is a tree, not a blob"},
 		{documents.Workflow, "a workflow is a tree, not a blob"},
 		{documents.Runtime, "a runtime is a tree, not a blob"},
-		{documents.Verify, "a verify is a tree, not a blob"},
 		{documents.Brief, "a brief is a tree, not a blob"},
 		{"skill", `the kind "skill" is not known`},
 	}

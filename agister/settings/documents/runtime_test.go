@@ -13,17 +13,16 @@ import (
 const (
 	homeRuntime       = "/home/.agister/runtimes/a.yaml"
 	repositoryRuntime = "/repo/.agister/runtimes/a.yaml"
-	// runtimeHeader is a runtime's first four lines: all it must give but
-	// its primitives.
+	// runtimeHeader is a runtime's first four lines: all it must give.
 	runtimeHeader = "schema: agister.runtime/v1alpha1\nname: a\nadapter: codex\ncontract: codex/2\n"
 	// validRuntime is the runtime of runtime.feature's "A runtime's
 	// fields".
 	validRuntime = runtimeHeader + `efforts: [low, high]
-primitives:
-  select: one
-  items:
-    read-only: {grants: [repository.read], verified: ["0.161."]}
-    workspace-write: {grants: [repository.read, repository.write]}
+grants: [host.read]
+select: one
+options:
+  read-only: {grants: [repository.read], verified: ["0.161."]}
+  workspace-write: {grants: [repository.read, repository.write]}
 `
 )
 
@@ -62,23 +61,18 @@ func texts(path string, line int, values ...string) documents.Field[[]string] {
 	return documents.Field[[]string]{Value: values, Origin: documents.Origin{Path: path, Line: line}, Given: true}
 }
 
-// primitive is the option name, given by the file at path, on line.
-func primitive(path string, line int, name string, grants, verified documents.Field[[]string]) documents.Field[documents.Primitive] {
-	return documents.Field[documents.Primitive]{
-		Value:  documents.Primitive{Name: name, Grants: grants, Verified: verified},
+// option is the option name, given by the file at path, on line.
+func option(path string, line int, name string, grants, verified documents.Field[[]string]) documents.Field[documents.Option] {
+	return documents.Field[documents.Option]{
+		Value:  documents.Option{Name: name, Grants: grants, Verified: verified},
 		Origin: documents.Origin{Path: path, Line: line},
 		Given:  true,
 	}
 }
 
-// primitives are a runtime's primitives, given by the file at path, on
-// line.
-func primitives(path string, line int, selects documents.Field[string], items ...documents.Field[documents.Primitive]) documents.Field[documents.Primitives] {
-	return documents.Field[documents.Primitives]{
-		Value:  documents.Primitives{Select: selects, Items: items},
-		Origin: documents.Origin{Path: path, Line: line},
-		Given:  true,
-	}
+// options are a runtime's options, given by the file at path, on line.
+func options(path string, line int, items ...documents.Field[documents.Option]) documents.Field[[]documents.Field[documents.Option]] {
+	return documents.Field[[]documents.Field[documents.Option]]{Value: items, Origin: documents.Origin{Path: path, Line: line}, Given: true}
 }
 
 // inHomeRuntime is a problem at place of the runtime a's home file, on
@@ -95,9 +89,11 @@ func validRuntimeDefinition() documents.RuntimeDefinition {
 		Adapter:  text("codex", homeRuntime, 3),
 		Contract: text("codex/2", homeRuntime, 4),
 		Efforts:  texts(homeRuntime, 5, "low", "high"),
-		Primitives: primitives(homeRuntime, 6, text("one", homeRuntime, 7),
-			primitive(homeRuntime, 9, "read-only", texts(homeRuntime, 9, "repository.read"), texts(homeRuntime, 9, "0.161.")),
-			primitive(homeRuntime, 10, "workspace-write", texts(homeRuntime, 10, "repository.read", "repository.write"), documents.Field[[]string]{}),
+		Grants:   texts(homeRuntime, 6, "host.read"),
+		Select:   text("one", homeRuntime, 7),
+		Options: options(homeRuntime, 8,
+			option(homeRuntime, 9, "read-only", texts(homeRuntime, 9, "repository.read"), texts(homeRuntime, 9, "0.161.")),
+			option(homeRuntime, 10, "workspace-write", texts(homeRuntime, 10, "repository.read", "repository.write"), documents.Field[[]string]{}),
 		),
 	}
 }
@@ -121,9 +117,10 @@ func TestARuntimeGivenIsTheCallersOwn(t *testing.T) {
 		change func(*documents.RuntimeDefinition)
 	}{
 		{"its efforts", func(r *documents.RuntimeDefinition) { r.Efforts.Value[0] = "x" }},
-		{"its primitives' items", func(r *documents.RuntimeDefinition) { r.Primitives.Value.Items[0].Value.Name = "x" }},
-		{"a primitive's grants", func(r *documents.RuntimeDefinition) { r.Primitives.Value.Items[0].Value.Grants.Value[0] = "x" }},
-		{"a primitive's verified versions", func(r *documents.RuntimeDefinition) { r.Primitives.Value.Items[0].Value.Verified.Value[0] = "x" }},
+		{"its grants", func(r *documents.RuntimeDefinition) { r.Grants.Value[0] = "x" }},
+		{"its options", func(r *documents.RuntimeDefinition) { r.Options.Value[0].Value.Name = "x" }},
+		{"an option's grants", func(r *documents.RuntimeDefinition) { r.Options.Value[0].Value.Grants.Value[0] = "x" }},
+		{"an option's verified versions", func(r *documents.RuntimeDefinition) { r.Options.Value[0].Value.Verified.Value[0] = "x" }},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
@@ -138,70 +135,53 @@ func TestARuntimeGivenIsTheCallersOwn(t *testing.T) {
 	}
 }
 
-// A runtime's efforts may be left out; its adapter, its contract and its
-// primitives may not, and each missing one is in no file.
-func TestARuntimeNeedsItsAdapterItsContractAndItsPrimitives(t *testing.T) {
+// runtime.feature, "A runtime may offer no option": a runtime of its
+// grants alone has no select and no option, and its efforts may be left
+// out too.
+func TestARuntimeMayOfferNoOption(t *testing.T) {
 	t.Parallel()
-	got, problems := typeRuntime(t, "schema: agister.runtime/v1alpha1\nname: a\nefforts: [low]\n")
-	assertNoRuntime(t, got)
-	assertProblems(t, problems, []documents.Problem{missing("adapter"), missing("contract"), missing("primitives")})
-
-	got, problems = typeRuntime(t, runtimeHeader+"primitives:\n  select: any\n  items:\n    x: {grants: [a]}\n")
+	got, problems := typeRuntime(t, runtimeHeader+"grants: [process.execute]\n")
 	assertProblems(t, problems, nil)
 	assertRuntime(t, got, documents.RuntimeDefinition{
 		Name:     "a",
 		Adapter:  text("codex", homeRuntime, 3),
 		Contract: text("codex/2", homeRuntime, 4),
-		Primitives: primitives(homeRuntime, 5, text("any", homeRuntime, 6),
-			primitive(homeRuntime, 8, "x", texts(homeRuntime, 8, "a"), documents.Field[[]string]{})),
+		Grants:   texts(homeRuntime, 5, "process.execute"),
 	})
 }
 
-// runtime.feature, "A runtime's primitives are a choice of options, each
-// granting something": a nested field's problem is at its place in the
+// runtime.feature, "A runtime needs its adapter and its contract": each
+// missing one is in no file.
+func TestARuntimeNeedsItsAdapterAndItsContract(t *testing.T) {
+	t.Parallel()
+	got, problems := typeRuntime(t, "schema: agister.runtime/v1alpha1\nname: a\n")
+	assertNoRuntime(t, got)
+	assertProblems(t, problems, []documents.Problem{missing("adapter"), missing("contract")})
+}
+
+// runtime.feature, "A runtime's options are chosen one or any, and each
+// grants something": a nested field's problem is at its place in the
 // tree, in the file and on the line that gave it; a missing one is in no
 // file.
-func TestARuntimesPrimitivesAreAChoiceOfOptionsEachGrantingSomething(t *testing.T) {
+func TestARuntimesOptionsAreChosenOneOrAnyAndEachGrantsSomething(t *testing.T) {
 	t.Parallel()
-	// withPrimitives is a runtime whose primitives, from line 5, are lines.
-	withPrimitives := func(lines string) string { return runtimeHeader + "primitives:\n" + lines }
 	cases := []struct {
 		name  string
 		bytes string
 		want  documents.Problem
 	}{
-		{"the select some", withPrimitives("  select: some\n  items:\n    x: {grants: [a]}\n"),
-			inHomeRuntime(6, "primitives.select", `it is "any" or "one"`)},
-		{"no select", withPrimitives("  items:\n    x: {grants: [a]}\n"), missing("primitives.select")},
-		{"a select that is no string", withPrimitives("  select: 1\n  items:\n    x: {grants: [a]}\n"),
-			inHomeRuntime(6, "primitives.select", "it is a string, not an integer")},
-		{"no items", withPrimitives("  select: one\n"), missing("primitives.items")},
-		{"the items {}", withPrimitives("  select: one\n  items: {}\n"),
-			inHomeRuntime(7, "primitives.items", "it names a primitive")},
-		{"items that are no map", withPrimitives("  select: one\n  items: [x]\n"),
-			inHomeRuntime(7, "primitives.items", "it is a map, not a list")},
-		{"an item that is no map", withPrimitives("  select: one\n  items:\n    x: read\n"),
-			inHomeRuntime(8, "primitives.items.x", "it is a map, not a string")},
-		{"an item with no grants", withPrimitives("  select: one\n  items:\n    x: {verified: ['0.1.']}\n"),
-			missing("primitives.items.x.grants")},
-		{"an item granting nothing", withPrimitives("  select: one\n  items:\n    x: {grants: []}\n"),
-			inHomeRuntime(8, "primitives.items.x.grants", "it grants a permission")},
-		{"grants that are no list", withPrimitives("  select: one\n  items:\n    x: {grants: a}\n"),
-			inHomeRuntime(8, "primitives.items.x.grants", "it is a list, not a string")},
-		{"a grant that is no string", withPrimitives("  select: one\n  items:\n    x:\n      grants:\n        - a\n        - 2\n"),
-			inHomeRuntime(11, "primitives.items.x.grants[1]", "it is a string, not an integer")},
-		{"a verified version that is no string", withPrimitives("  select: one\n  items:\n    x: {grants: [a], verified: [true]}\n"),
-			inHomeRuntime(8, "primitives.items.x.verified[0]", "it is a string, not a boolean")},
-		{"a field of an item no kind knows", withPrimitives("  select: one\n  items:\n    x: {grants: [a], y: 1}\n"),
-			inHomeRuntime(8, "primitives.items.x.y", "the field is not known")},
-		{"a field of the primitives no kind knows", withPrimitives("  select: one\n  colour: red\n  items:\n    x: {grants: [a]}\n"),
-			inHomeRuntime(7, "primitives.colour", "the field is not known")},
-		{"primitives that are no map", runtimeHeader + "primitives: [x]\n",
-			inHomeRuntime(5, "primitives", "it is a map, not a list")},
-		{"the efforts [1]", runtimeHeader + "efforts: [1]\nprimitives:\n  select: one\n  items:\n    x: {grants: [a]}\n",
-			inHomeRuntime(5, "efforts[0]", "it is a string, not an integer")},
-		{"efforts that are no list", runtimeHeader + "efforts: high\nprimitives:\n  select: one\n  items:\n    x: {grants: [a]}\n",
-			inHomeRuntime(5, "efforts", "it is a list, not a string")},
+		{"the grants []", runtimeHeader + "grants: []\n", inHomeRuntime(5, "grants", "it grants a permission")},
+		{"the select some", runtimeHeader + "select: some\noptions:\n  x: {grants: [a]}\n",
+			inHomeRuntime(5, "select", `it is "any" or "one"`)},
+		{"options with no select", runtimeHeader + "options:\n  x: {grants: [a]}\n", missing("select")},
+		{"a select with no options", runtimeHeader + "select: one\n", missing("options")},
+		{"the options {}", runtimeHeader + "select: one\noptions: {}\n", inHomeRuntime(6, "options", "it names an option")},
+		{"an option that is no map", runtimeHeader + "select: one\noptions:\n  x: read\n",
+			inHomeRuntime(7, "options.x", "it is a map, not a string")},
+		{"an option with no grants", runtimeHeader + "select: one\noptions:\n  x: {verified: ['0.1.']}\n",
+			missing("options.x.grants")},
+		{"an option granting nothing", runtimeHeader + "select: one\noptions:\n  x: {grants: []}\n",
+			inHomeRuntime(7, "options.x.grants", "it grants a permission")},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
@@ -214,39 +194,44 @@ func TestARuntimesPrimitivesAreAChoiceOfOptionsEachGrantingSomething(t *testing.
 }
 
 // Every problem of a runtime's fields is reported, nested or not, in the
-// order its fields are read: the fields no kind knows of a map after that
-// map's own.
+// order its fields are read: each bad item of a list, whatever lies
+// between them, and the fields no kind knows of a map after that map's
+// own.
 func TestEveryRuntimeFieldProblemIsReported(t *testing.T) {
 	t.Parallel()
 	got, problems := typeRuntime(t, `schema: agister.runtime/v1alpha1
 name: a
 adapter: codex
-efforts: [1]
+efforts: [1, high, true]
 colour: red
-primitives:
-  select: some
-  items:
-    x: {grants: []}
-    y: {grants: [a], z: 1}
+select: some
+options:
+  x: {grants: []}
+  y: {grants: [a, 2, b, 3], verified: [true, "0.1.", false], z: 1}
 `)
 	assertNoRuntime(t, got)
 	assertProblems(t, problems, []documents.Problem{
 		missing("contract"),
 		inHomeRuntime(4, "efforts[0]", "it is a string, not an integer"),
-		inHomeRuntime(7, "primitives.select", `it is "any" or "one"`),
-		inHomeRuntime(9, "primitives.items.x.grants", "it grants a permission"),
-		inHomeRuntime(10, "primitives.items.y.z", "the field is not known"),
+		inHomeRuntime(4, "efforts[2]", "it is a string, not a boolean"),
+		inHomeRuntime(6, "select", `it is "any" or "one"`),
+		inHomeRuntime(8, "options.x.grants", "it grants a permission"),
+		inHomeRuntime(9, "options.y.grants[1]", "it is a string, not an integer"),
+		inHomeRuntime(9, "options.y.grants[3]", "it is a string, not an integer"),
+		inHomeRuntime(9, "options.y.verified[0]", "it is a string, not a boolean"),
+		inHomeRuntime(9, "options.y.verified[2]", "it is a string, not a boolean"),
+		inHomeRuntime(9, "options.y.z", "the field is not known"),
 		inHomeRuntime(5, "colour", "the field is not known"),
 	})
 }
 
-// runtime.feature, "A runtime's fields": a runtime's primitives are in
+// runtime.feature, "A runtime's fields": a runtime's options are in
 // the order of their names, whatever order, lines or format the file gives
 // them in.
-func TestARuntimesPrimitivesAreByName(t *testing.T) {
+func TestARuntimesOptionsAreByName(t *testing.T) {
 	t.Parallel()
 	yaml := func(items string) tree.Node {
-		root, decoded := tree.Decode(tree.YAML, []byte(runtimeHeader+"primitives:\n  select: any\n  items:\n"+items), homeRuntime)
+		root, decoded := tree.Decode(tree.YAML, []byte(runtimeHeader+"select: any\noptions:\n"+items), homeRuntime)
 		if len(decoded) > 0 {
 			t.Fatalf("the runtime does not decode: %v", decoded)
 		}
@@ -256,11 +241,10 @@ func TestARuntimesPrimitivesAreByName(t *testing.T) {
 name = "a"
 adapter = "codex"
 contract = "codex/2"
-[primitives]
 select = "any"
-[primitives.items.z]
+[options.z]
 grants = ["a"]
-[primitives.items.b]
+[options.b]
 grants = ["a"]
 `), "/home/.agister/runtimes/a.toml")
 	if len(decoded) > 0 {
@@ -271,9 +255,9 @@ grants = ["a"]
 		root tree.Node
 		want []string
 	}{
-		{"each on a line of its own", yaml("    z: {grants: [a]}\n    b: {grants: [a]}\n    m: {grants: [a]}\n"), []string{"b", "m", "z"}},
-		{"each over lines of its own", yaml("    z:\n      grants: [a]\n    b:\n      grants: [a]\n"), []string{"b", "z"}},
-		{"on one line", yaml("    {z: {grants: [a]}, b: {grants: [a]}}\n"), []string{"b", "z"}},
+		{"each on a line of its own", yaml("  z: {grants: [a]}\n  b: {grants: [a]}\n  m: {grants: [a]}\n"), []string{"b", "m", "z"}},
+		{"each over lines of its own", yaml("  z:\n    grants: [a]\n  b:\n    grants: [a]\n"), []string{"b", "z"}},
+		{"on one line", yaml("  {z: {grants: [a]}, b: {grants: [a]}}\n"), []string{"b", "z"}},
 		{"of a format that gives no line", toml, []string{"b", "z"}},
 	}
 	for _, c := range cases {
@@ -282,11 +266,11 @@ grants = ["a"]
 			got, problems := documents.TypeRuntime("a", c.root)
 			assertProblems(t, problems, nil)
 			var names []string
-			for _, item := range got.Primitives.Value.Items {
+			for _, item := range got.Options.Value {
 				names = append(names, item.Value.Name)
 			}
 			if !slices.Equal(names, c.want) {
-				t.Errorf("primitives %q, want %q", names, c.want)
+				t.Errorf("options %q, want %q", names, c.want)
 			}
 		})
 	}
@@ -303,16 +287,16 @@ func TestANestedFieldIsOfTheFileThatGaveIt(t *testing.T) {
 		}}}).Runtime("a")
 	}
 
-	got, problems := runtime("primitives:\n  items:\n    read-only: {verified: ['0.162.']}\n")
+	got, problems := runtime("options:\n  read-only: {verified: ['0.162.']}\n")
 	assertProblems(t, problems, nil)
-	if want := primitive(repositoryRuntime, 3, "read-only", texts(homeRuntime, 9, "repository.read"), texts(repositoryRuntime, 3, "0.162.")); !reflect.DeepEqual(got.Primitives.Value.Items[0], want) {
-		t.Errorf("the primitive read-only\n got %+v\nwant %+v", got.Primitives.Value.Items[0], want)
+	if want := option(repositoryRuntime, 2, "read-only", texts(homeRuntime, 9, "repository.read"), texts(repositoryRuntime, 2, "0.162.")); !reflect.DeepEqual(got.Options.Value[0], want) {
+		t.Errorf("the option read-only\n got %+v\nwant %+v", got.Options.Value[0], want)
 	}
 
-	got, problems = runtime("primitives:\n  items:\n    read-only: {grants: []}\n")
+	got, problems = runtime("options:\n  read-only: {grants: []}\n")
 	assertNoRuntime(t, got)
 	assertProblems(t, problems, []documents.Problem{
-		{Path: repositoryRuntime, Line: 3, Place: "primitives.items.read-only.grants", Message: "it grants a permission"},
+		{Path: repositoryRuntime, Line: 2, Place: "options.read-only.grants", Message: "it grants a permission"},
 	})
 }
 
@@ -351,8 +335,8 @@ func TestEachRuntimeIsTypedOnce(t *testing.T) {
 	if want := []string{"a", "b"}; !slices.Equal(got, want) {
 		t.Errorf("typed\n got %q\nwant %q", got, want)
 	}
-	if _, problems := d.Runtime("b"); !slices.Equal(problems, []documents.Problem{missing("adapter"), missing("contract"), missing("primitives")}) {
-		t.Errorf("runtime b's problems %q, want its adapter, contract and primitives missing", problems)
+	if _, problems := d.Runtime("b"); !slices.Equal(problems, []documents.Problem{missing("adapter"), missing("contract")}) {
+		t.Errorf("runtime b's problems %q, want its adapter and contract missing", problems)
 	}
 	_, want := d.Tree(documents.Runtime, "c")
 	if len(want) == 0 {

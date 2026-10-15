@@ -218,6 +218,17 @@ func TestABriefsParts(t *testing.T) {
 	}
 }
 
+// Every part that is no map is a problem, whatever parts lie between them.
+func TestEveryPartThatIsNoMapIsReported(t *testing.T) {
+	t.Parallel()
+	got, problems := homeBriefOf(withParts(`"## Goal\n"`, `"## Open"`, `{heading: "## Goal", required: true}`, `"## Notes"`))
+	assertNoBrief(t, got)
+	assertProblems(t, problems, []documents.Problem{
+		inHomeBrief(4, "parts[0]", "it is a map, not a string"),
+		inHomeBrief(6, "parts[2]", "it is a map, not a string"),
+	})
+}
+
 // A part's heading is one line of one to six "#", a space and its text.
 func TestAPartsHeadingIsAMarkdownHeadingLine(t *testing.T) {
 	t.Parallel()

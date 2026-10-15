@@ -3,27 +3,26 @@ name: claude-code
 adapter: claude-code
 contract: claude-code/3
 efforts: [low, medium, high, xhigh, max]
-primitives:
-  select: any
-  items:
-    Read: {grants: [repository.read, host.read], verified: ["2.1."]}
-    Glob: {grants: [repository.read, host.read], verified: ["2.1."]}
-    Grep: {grants: [repository.search, host.read], verified: ["2.1."]}
-    Edit: {grants: [repository.write, host.write], verified: ["2.1."]}
-    Write: {grants: [repository.write, host.write], verified: ["2.1."]}
-    NotebookEdit: {grants: [repository.write]}
-    WebFetch: {grants: [network]}
-    WebSearch: {grants: [network]}
-    Bash:
-      verified: ["2.1."]
-      grants:
-        - process.execute
-        - repository.read
-        - repository.search
-        - repository.diff
-        - repository.history.read
-        - repository.write
-        - repository.history.write
-        - network
-        - host.read
-        - host.write
+select: any
+options:
+  Read: {grants: [repository.read, host.read], verified: ["2.1."]}
+  Glob: {grants: [repository.read, host.read], verified: ["2.1."]}
+  Grep: {grants: [repository.search, host.read], verified: ["2.1."]}
+  Edit: {grants: [repository.write, host.write], verified: ["2.1."]}
+  Write: {grants: [repository.write, host.write], verified: ["2.1."]}
+  NotebookEdit: {grants: [repository.write]}
+  WebFetch: {grants: [network]}
+  WebSearch: {grants: [network]}
+  Bash:
+    verified: ["2.1."]
+    grants:
+      - process.execute
+      - repository.read
+      - repository.search
+      - repository.diff
+      - repository.history.read
+      - repository.write
+      - repository.history.write
+      - network
+      - host.read
+      - host.write
