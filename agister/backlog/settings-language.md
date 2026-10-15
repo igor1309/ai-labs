@@ -1,33 +1,23 @@
 ---
 date: 2026-10-15
 model: claude-opus-5-5
-description: "Backlog: the settings language: the next work, specifying processes and workflows in settings/documents; the owner's decisions on research/borrowed-from-build-systems.md; operators against needs"
+description: "Backlog: the settings language: the next work, settings/resolve; the owner's decisions on research/borrowed-from-build-systems.md; operators against needs"
 ---
 
 # The settings language
 
-What is left of ADR-012's amendments: the kinds `settings/documents`
-does not type yet, in the language decided here. The decisions come
+The language of the settings kinds, decided here. The decisions come
 from `research/borrowed-from-build-systems.md`. Syntax only: no ADR
 changes unless a decision below says so.
 
 ## The next work
 
-Specify, then type, in `settings/documents`, feature files first:
-
-- **process**: its prompt, guidance, inputs, environment, output schema,
-  permissions, skills and limits (ADR-012, terms).
-- **workflow**: its inputs, output contract, and children by ADR-011's
-  four operators, with bindings and conditions; a child is a step,
-  written in the workflow and naming a process and an agent, or a
-  workflow by name.
-- **bash**: an agent naming only the bash runtime; the bash runtime
-  mapping, granting what its environment gives, with no options; a
-  script is a prompt.
-
-Move `agister/home`'s processes and workflows to the new language in the
-same PR, as #1019 moved the runtime mappings. `agister/.agister` stays:
-the installed Agister reads it when run in this repository.
+`settings/documents` types every kind, and `agister/home` is in the
+language. Next is `settings/resolve` (`docs/settings-implementation.md`,
+step 6): a request, naming a workflow or a step (ADR-013), → what a run
+needs, or a refusal naming the chain. Then `settings/check`.
+`agister/.agister` stays: the installed Agister reads it when run in
+this repository.
 
 ## Decisions (2026-10-15)
 
