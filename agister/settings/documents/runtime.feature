@@ -13,7 +13,6 @@ Feature: Documents gives a runtime
     Given the runtime "a" has a home source:
       """
       schema: agister.runtime/v1alpha1
-      name: a
       adapter: codex
       contract: codex/2
       efforts: [low, high]
@@ -35,8 +34,8 @@ Feature: Documents gives a runtime
     And it has no problem
 
   Scenario: A runtime may offer no option
-    Given the runtime "a" has a home source of its schema, its name, its
-      adapter, its contract and "grants: [process.execute]"
+    Given the runtime "a" has a home source of its schema, its adapter,
+      its contract and "grants: [process.execute]"
     When documents is asked for the runtime "a"
     Then it gives the runtime "a" with the grants "process.execute", no
       select and no option
@@ -49,7 +48,7 @@ Feature: Documents gives a runtime
       home source's
 
   Scenario: A runtime needs its adapter and its contract
-    Given the runtime "a" has a home source of its schema and its name
+    Given the runtime "a" has a home source of its schema alone
     When documents is asked for the runtime "a"
     Then there is no definition
     And it has exactly two problems: at "adapter" and "contract", each

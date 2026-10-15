@@ -11,7 +11,6 @@ Feature: Documents gives an agent
     Given the agent "a" has a home source:
       """
       schema = "agister.agent/v1alpha1"
-      name = "a"
       runtime = "claude-code"
       model = "opus"
       model_family = "anthropic"
@@ -30,7 +29,7 @@ Feature: Documents gives an agent
     And it has no problem
 
   Scenario: An agent needs only its runtime
-    Given the agent "a" has a home source of its schema, its name and
+    Given the agent "a" has a home source of its schema and
       "runtime = 'codex'"
     When documents is asked for the agent "a"
     Then it gives the agent "a" with the runtime "codex" and no model,
@@ -38,7 +37,7 @@ Feature: Documents gives an agent
     And it has no problem
 
   Scenario: An agent with no runtime is a problem
-    Given the agent "a" has a home source of its schema and its name
+    Given the agent "a" has a home source of its schema alone
     When documents is asked for the agent "a"
     Then there is no definition
     And it has a problem at "runtime": it is missing
@@ -46,7 +45,7 @@ Feature: Documents gives an agent
   # An agent names its runtime mapping (ADR-002, rule 5): a reference,
   # whose name is given bare or with its kind before it.
   Scenario Outline: An agent names its runtime, with its kind or without
-    Given the agent "a" has a home source of its schema, its name and
+    Given the agent "a" has a home source of its schema and
       "runtime = '<runtime>'"
     When documents is asked for the agent "a"
     Then <outcome>
