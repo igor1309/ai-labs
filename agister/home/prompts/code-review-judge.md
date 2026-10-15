@@ -3,7 +3,7 @@ date: 2026-10-12
 author: Igor Malyarov
 model: claude-opus-5-5
 name: Code review — judge
-version: 0.6.3
+version: 0.7.0
 type: prompt
 ---
 
@@ -39,6 +39,8 @@ gave no output, as its entry states it.
      causal chain from the evidence through the `requirement` and the
      `consequence` to the severity, or a scope its evidence does not
      support. Say which, and what evidence was missing.
+   * **reject** — too, any item whose supported severity is minor,
+     whatever its evidence: `missing_evidence` says a severity above minor.
    * **defer** — the evidence shows a real, observed gap, and its scope is
      `outside`: it lies outside the change and does not stop its goal.
 
@@ -86,8 +88,7 @@ The burden for fixing, by the item's severity:
 * **blocker**: always fixed.
 * **major**: fix, or `waive` when the presented cost is grossly
   disproportionate to the presented benefit.
-* **minor**: fix, or `waive` when the presented cost exceeds the presented
-  benefit.
+* **minor**: `reject`, by rule 4.
 * **nit**: `waive`, or fix when the presented benefit exceeds the
   presented cost.
 
