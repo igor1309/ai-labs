@@ -41,9 +41,10 @@ Syntax only: no ADR changes unless a decision below says so.
 - The shipped settings' `${…}` splices become references: `rev:
   "${param.base}"` is `rev: {from: params.base}`.
 - Seven of the ten shipped workflows are one step, there to bind a
-  process to an agent. Whether a request may name a step itself, a
-  process and an agent with no workflow file, is the owner's: it changes
-  what a request names (ADR-002, rule 6).
+  process to an agent. Decided by the owner (2026-10-15): a request may
+  name a step, a process and an agent, with no workflow file (ADR-013).
+  The one-step workflows go when the shipped settings move to the new
+  language.
 
 ## Operators against `needs`
 
