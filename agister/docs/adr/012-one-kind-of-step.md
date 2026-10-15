@@ -6,7 +6,7 @@ description: "ADR-012: one kind of step: a process bound to an agent, bash a run
 
 # ADR-012: One kind of step
 
-- **Status:** Proposed
+- **Status:** Accepted
 - **Topic:** Running work
 - **Date:** 2026-10-15
 - **Scope:** the leaf of a workflow, the runtimes it runs on, what a

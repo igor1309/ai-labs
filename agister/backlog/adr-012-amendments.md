@@ -18,6 +18,7 @@ ADR-008 is untouched.
 1. **Review ADR-012 and this plan** with Codex, then fold the findings.
    Done (2026-10-15): three major and five minor findings, folded.
 2. **The owner decides the open points** below and accepts ADR-012.
+   Done (2026-10-15): accepted; open points decided as below.
 3. **Write the amendments**, one ADR per commit, in place, each with
    "Amended by: ADR-012 (<date>)". Design only (agister/AGENTS.md).
 4. **Review** with the `adr_review` workflow, then merge.
@@ -26,7 +27,7 @@ ADR-008 is untouched.
 6. **Specify the kinds** in `settings/documents`: steps in a workflow,
    bash agents and processes.
 
-## Open points for the owner
+## Open points, decided by the owner (2026-10-15)
 
 1. **An unknown cost spends no budget** (ADR-012, rule 5). A cost budget
    then limits reported cost only: a model runtime that reports no cost
@@ -35,11 +36,13 @@ ADR-008 is untouched.
    bash out of any workflow with one unless bash's facts say its cost is
    none. Counting unknown as zero is what invariant 3 forbids. Either
    answer qualifies ADR-004, rule 7 and ADR-011, rule 6.
+   **Decided:** an unknown cost spends no budget; a cost budget limits
+   reported cost.
 2. **Bash warnings** (ADR-012, rule 4). A bash process warns when the
    mapping grants more than it allows, which, with a mapping granting
    all its environment gives, is nearly every bash process. Proposed:
    accept it; the warning is true, and holds remain the process's
-   declared access.
+   declared access. **Decided:** accepted.
 3. **Where a script lives.** ADR-012 makes a script a prompt, and
    `settings/layout` maps prompts to `prompts/<name>.md`
    (`layout.go:296`); `docs/settings-implementation.md` says "Scripts
@@ -47,7 +50,8 @@ ADR-008 is untouched.
    nothing forces a change. Proposed: leave the extension as it is; a
    script's own extension is a settings decision for later, costing
    layout lookup, listing and tests that one name across extensions is
-   one document.
+   one document. **Decided:** left to the implementation; no ADR states
+   it.
 4. **"Step" for the leaf.** Accepted by the owner (2026-10-15).
 
 ## The amendments
