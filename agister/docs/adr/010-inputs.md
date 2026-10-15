@@ -18,17 +18,18 @@ description: "ADR-010: inputs: each input is resolved once from a named source t
 
 A call's work starts from what the caller hands in and from facts about
 the worktree: a brief, a goal, a revision, the files a change touched.
-Each must be fixed before the agent starts, the same for every primitive that
-shares it, and kept so the call can be understood after the caller's
-copy is gone.
+Each must be fixed before the primitive starts, the same for every
+primitive that shares it, and kept so the call can be understood after
+the caller's copy is gone.
 
 ## Decision
 
 A workflow declares its inputs at its boundary, and a process or a
-command its own, each from a named source or a binding (ADR-011,
-rule 3). `core/inputs` resolves them before the primitive starts to a value and its identity, through
-a port for each source that the composition answers. The run keeps what
-the agent was given. A text may be checked against a brief form.
+command its own, each from a named source or a binding. `core/inputs`
+resolves them before the primitive starts to a value and its identity,
+through a port for each source that the composition answers. The run
+keeps what each primitive was given. A text may be checked against a
+brief form.
 
 ## Rules
 
@@ -38,8 +39,10 @@ Each names its inputs, the source each comes from and what the source
 takes, such as a param the caller gives. A source is a kind of code, not
 of settings (ADR-001, invariant 2): a param, a file, a revision, the
 changed files between two revisions. A binding gives a child a value
-from its workflow's inputs, an earlier result or repetition state
-(ADR-011, rule 3).
+from its workflow's inputs, an earlier result or repetition state.
+
+An agent receives its inputs in what it is told. A command receives
+them in its command and its environment, where it declares them.
 
 ### 2. Sources are ports
 
@@ -47,18 +50,18 @@ from its workflow's inputs, an earlier result or repetition state
 declares, and the composition answers it: from the caller's params, from
 the filesystem, from `git`.
 
-### 3. Inputs are resolved once, before the first turn
+### 3. Inputs are resolved once, before the primitive starts
 
 Each input is resolved to a value and its identity (ADR-001,
 invariant 4), once, before the primitive that takes it starts; an input
-shared by parallel children once, before they start (ADR-011, rule 3).
+shared by parallel children once, before they start.
 An input that cannot be resolved refuses the primitive before it
 starts.
 
 ### 4. The run keeps what it was given
 
 The record holds every input with its identity, and the run keeps the
-bytes the agent received, however long. The caller's copy, a file under
+bytes each primitive received, however long. The caller's copy, a file under
 a temporary folder or one that later changes, is not what explains the
 call.
 
@@ -66,7 +69,7 @@ call.
 
 A text input may name the brief forms its text may take; a form is a
 settings document (ADR-002, rule 1). A text that takes none of them is
-refused before the first turn, naming what is wrong. Agister does not
+refused before the primitive starts, naming what is wrong. Agister does not
 write, judge or repair a brief.
 
 ## Consequences

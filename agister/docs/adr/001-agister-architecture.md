@@ -68,7 +68,7 @@ every call.
    runs (the session's latest run; the same worktree, repository and
    revision; the content as recorded) and hands core the session.
    Core reads no runs. Inside a workflow, a session is continued by a
-   binding (ADR-011, rule 3).
+   binding of an earlier invocation's session.
 6. **Two file formats are contracts:** the settings files and the run
    records.
 
@@ -82,11 +82,10 @@ Every part keeps these.
 
 1. **Agister runs generic work.** It runs two primitives, an agent
    invocation and a command execution, and the workflows settings compose
-   from them (ADR-011). It knows no
-   kind of work, no particular agent and no meaning of any output. It is a
-   runner, not a guard: it checks whether settings resolve, never whether
-   they should. A workflow that resolves may run; what it is granted is
-   best effort (invariant 10).
+   from them. It knows no kind of work, no particular agent and no
+   meaning of any output. It is a runner, not a guard: it checks whether
+   settings resolve, never whether they should. A workflow that resolves
+   may run; what it is granted is best effort (invariant 10).
 2. **Definitions live in settings, not in code.** Agents, processes,
    workflows, output contracts, runtime mappings and what Agister tells
    an agent are defined in settings files, and changed without rebuilding.
@@ -102,21 +101,23 @@ Every part keeps these.
    cost is unknown, never zero. Timing measured by Agister. The session
    an agent invocation ran in. Its warnings. A workflow ends in the same
    shape.
-4. **Inputs are fixed before the first turn.** Each input is resolved to a
-   value and its identity (a revision to its commit, content to its
-   digest); that value is what the agent receives and what is recorded.
+4. **Inputs are fixed before a primitive starts.** Each input is resolved
+   to a value and its identity (a revision to its commit, content to its
+   digest); that value is what the primitive receives and what is
+   recorded. An agent receives its inputs in what it is told; a command
+   in its command and environment, where it declares them.
 5. **Agister grants no permission meant to reach its state.** Home, its
    settings and its runs are not what any permission it grants is for. A
    repository's settings are the repository's files, like any other.
 6. **The record is authoritative.** Per primitive it keeps the Agister
    identity apart from the provider session, the exact definitions with
-   their digests, the inputs, the permission plan, the ordered events and
-   the outcome. Everything Agister gave the primitive is in it. Per
-   workflow it keeps its definition, its inputs, its children's records,
-   iterations, condition values, branch choices, state transitions and
-   stopping reason (ADR-011, rule 6). Diagnostics
-   describe Agister's own machinery; they are not the record, and never
-   change an argument, a result or an error.
+   their digests, the inputs, an agent invocation's permission plan, the
+   ordered events and the outcome. Everything Agister gave the primitive
+   is in it. Per workflow it keeps its definition, its inputs, its
+   children's records, iterations, condition values, branch choices,
+   state transitions and stopping reason. Diagnostics describe Agister's
+   own machinery; they are not the record, and never change an argument,
+   a result or an error.
 7. **Every effect has an owner and an end.** Each process and hold a
    primitive creates is the primitive's, bounded, and ended on every exit
    path. A record whose primitive ended without finishing it reads as
@@ -125,15 +126,16 @@ Every part keeps these.
    settings, which they read, records, each writing its own, and the
    worktree, through its hold. The exceptions are deliberate: a
    continuation resumes an earlier session, and a binding gives a child
-   an earlier result of its own workflow (ADR-011, rule 3).
+   an earlier result of its own workflow.
 9. **Agister is built to be changed.** The smallest design that does the
    work. A case is handled when it is met, not foreseen. A part that is
    hard to change is wrong, however much it covers.
 10. **Agister acts on what settings declare, best effort.** A hold follows
-    a process's declared access, and a plan is what Agister asks of the
-    runtime. What a runtime, the repository or its setup grants or does
-    beyond that is outside Agister: not explored, not enforced. Agister is
-    no sandbox.
+    the access a process or a command declares, and a plan is what
+    Agister asks of an agent's runtime. A command execution has no
+    permission plan: it runs with whatever its environment grants. What a
+    runtime, the repository or its setup grants or does beyond that is
+    outside Agister: not explored, not enforced. Agister is no sandbox.
 
 ## Settings
 
@@ -163,7 +165,7 @@ for `--continue`), and gives a stream of events and a result.
 | Package | Responsibility | Ports it declares |
 |---|---|---|
 | `core/workflow` | Runs a workflow: its operators (sequence, parallel, branch, bounded repetition), conditions, bindings and repetition state; gathers its children's warnings. | invoke an agent; run a command; events |
-| `core/admit` | Admits a primitive before it starts: what it declares and its runtime allow what the run command asks, and the worktree is held, as a writer alone or a reader shared. | worktree facts (revision, content), answered by the composition from `git`; hold; events |
+| `core/admit` | Admits a primitive before it starts: what it declares, and for an agent invocation its runtime, allow what the run command asks, and the worktree is held, as a writer alone or a reader shared. | worktree facts (revision, content), answered by the composition from `git`; hold; events |
 | `core/session` | The conversation with the agent: turns on the runtime, each turn's output checked against its contract, and a recovery turn when a staleness limit ended one, while the budget allows. Declares the runtime protocol. | runtime protocol; staleness; events; clock |
 | `core/command` | Runs a command execution: its limits, `no_output` staleness, bounded head and tail, digest. | command runner (the process supervisor); clock; timer |
 | `core/inputs` | Resolves a primitive's inputs from their sources to a value and an identity; checks a text against its brief form; keeps long values as artifacts. | sources (by name, plugged in by the composition); artifact store |

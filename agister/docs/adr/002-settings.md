@@ -85,8 +85,8 @@ composed first, then the extending document over it, by rule 3.
 A document names the documents it uses by kind and name, fixed in the
 settings, so they resolve without a call. A workflow names its
 children: an agent invocation, which binds a process to an agent, a
-command execution, or another workflow (ADR-011, rule 2). Nothing but an
-agent invocation chooses an agent. A process names its prompt, its
+command execution, or another workflow. Nothing but an agent invocation
+chooses an agent. A process names its prompt, its
 guidance, its output schema and its skills; an agent names its runtime
 mapping and its skills.
 
