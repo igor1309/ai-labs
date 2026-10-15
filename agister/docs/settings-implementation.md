@@ -180,7 +180,11 @@ a run may not take too.
 
 A request that depends on a blocked document is refused, naming the
 block; a block is not a problem, and a block naming no document is a
-warning.
+warning. A blocked document is not asked for, nor followed. The source
+gives the blocks, each a document by kind and name, with its reason and
+origin, and whether a layer holds a document; documents types the
+blocks file, and its problems are problems of no document. A warning
+is given with what resolves; a refusal gives none.
 
 Resolve declares its ports in its own words (ADR-001, rule 1). Its
 source gives a document by kind and name in resolve's types, each
