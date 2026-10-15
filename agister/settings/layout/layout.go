@@ -48,7 +48,6 @@ const (
 	Process  Kind = "process"
 	Workflow Kind = "workflow"
 	Runtime  Kind = "runtime"
-	Verify   Kind = "verify"
 	Brief    Kind = "brief"
 	Schema   Kind = "schema"
 	Prompt   Kind = "prompt"
@@ -292,7 +291,6 @@ func kindOfFolder(folder string) (kindFiles, bool) {
 		{Process, "processes", ".yaml"},
 		{Workflow, "workflows", ".yaml"},
 		{Runtime, "runtimes", ".yaml"},
-		{Verify, "verifies", ".yaml"},
 		{Brief, "briefs", ".yaml"},
 		{Schema, "schemas", ".json"},
 		{Prompt, "prompts", ".md"},

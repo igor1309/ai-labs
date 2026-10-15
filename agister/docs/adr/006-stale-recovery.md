@@ -7,10 +7,12 @@ description: "ADR-006: stale recovery: a turn that stopped moving is ended, and 
 # ADR-006: Stale recovery
 
 - **Status:** Accepted
+- **Topic:** Running work
 - **Date:** 2026-10-14
 - **Scope:** the staleness limits on a turn, what ends a stale turn, and
   the recovery turn that may follow it
 - **Decision type:** Architecture
+- **Amended by:** ADR-011 (2026-10-15)
 
 ## Context
 
@@ -59,8 +61,7 @@ sending it again would tell the agent nothing new.
 
 ### 5. The result shape does not change
 
-A recovery turn has no status or class of its own, and spends no
-verification attempt. The record holds each stale turn, what went stale,
+A recovery turn has no status or class of its own. The record holds each stale turn, what went stale,
 and the recovery turn that followed.
 
 ## Consequences

@@ -1,17 +1,19 @@
 ---
 date: 2026-10-14
 model: claude-opus-5-5
-description: "ADR-003: permission planning: processes speak permissions, runtime mappings offer primitives, resolve plans each node, runtimes are used as shipped"
+description: "ADR-003: permission planning: processes speak permissions, runtime mappings offer primitives, resolve plans each agent invocation, runtimes are used as shipped"
 ---
 
 # ADR-003: Permission planning and runtime facts
 
 - **Status:** Accepted
+- **Topic:** Running work
 - **Date:** 2026-10-14
 - **Scope:** the permission vocabulary, how a process's permissions meet a
-  runtime's options, the plan resolve makes for each node, and the facts
+  runtime's options, the plan resolve makes for each agent invocation, and the facts
   about runtimes resolve relies on
 - **Decision type:** Architecture
+- **Amended by:** ADR-011 (2026-10-15)
 
 ## Context
 
@@ -26,7 +28,7 @@ not try (ADR-001, invariant 10).
 ## Decision
 
 Processes speak permissions; runtime mappings say which permissions each
-runtime option grants. Resolve plans each node from the two, and the
+runtime option grants. Resolve plans each agent invocation from the two, and the
 runtime wrapper gets the plan's options, never permissions. A required
 permission is the one hard check; anything the plan grants beyond what
 the process allows is a warning, not a refusal.
@@ -51,9 +53,9 @@ the runtime's documented options, each with the permissions it grants,
 and says whether a call takes one of them or any number. It describes the
 runtime as shipped: no workarounds, no undocumented flags.
 
-### 4. Resolve plans each node
+### 4. Resolve plans each agent invocation
 
-For each node, resolve plans from its process's permissions and its
+For each agent invocation, resolve plans from its process's permissions and its
 agent's runtime mapping which options to grant. A plan gives every
 required permission, stays within what is allowed as far as the
 runtime's options let it. It records what was required, allowed,
@@ -61,8 +63,8 @@ granted, granted beyond the allowed (`extra`) and withheld.
 
 ### 5. What refuses and what warns
 
-A plan that cannot give a required permission refuses the node's
-workflow at resolve, as does a node that needs what its runtime cannot do
+A plan that cannot give a required permission refuses the invocation's
+workflow at resolve, as does an invocation that needs what its runtime cannot do
 (rule 7). Grants beyond what the process allows are a warning, shown by
 check and carried in the call's result; they do not change its status.
 
@@ -79,9 +81,10 @@ What a runtime wrapper can do is a fact resolve needs and does not own:
 the contract a mapping is written for, its version, whether it takes
 skills, the efforts it accepts, whether it resumes a session. Resolve
 declares a port for these facts; the composition answers it from the
-wrappers. A node that needs what its runtime cannot do is refused at
-resolve, such as a repair (ADR-005) or a recovery (ADR-006) on a runtime
-that cannot resume.
+wrappers. An invocation that needs what its runtime cannot do is refused
+at resolve, such as a session continued by a binding in a workflow, or
+a recovery turn after a staleness limit, on a runtime that cannot
+resume.
 
 ### 8. An unverified runtime version warns
 
