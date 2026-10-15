@@ -13,8 +13,8 @@ description: "ADR-012: one kind of step: a process bound to an agent, bash a run
   runtime can do, and the names of what settings define and what a run
   executes
 - **Decision type:** Architecture
-- **Amends:** ADR-001, ADR-002, ADR-003, ADR-004, ADR-006, ADR-010 and
-  ADR-011
+- **Amends:** ADR-001, ADR-002, ADR-003, ADR-004, ADR-006, ADR-009,
+  ADR-010 and ADR-011
 
 ## Context
 
@@ -57,7 +57,8 @@ Definitions, in settings:
   permissions and limits.
 - **agent**: who does it: a runtime mapping, and the model, effort and
   skills its runtime takes.
-- **runtime mapping**: a runtime's options and what each grants.
+- **runtime mapping**: what a runtime grants with no option, and its
+  options with what each grants.
 - **binding** and **condition**: data flow and decisions in a workflow
   (ADR-011, rules 3 and 4).
 
@@ -91,6 +92,11 @@ an agent; the agent names the runtime. `core/workflow` declares one
 port, to call a step, and never learns the runtime. A workflow of one
 step executes as a run with one call.
 
+A session belongs to the calls that held it. A continuation, by the
+caller or by a binding, continues from the session's latest call: its
+worktree, repository and revision, and the content it recorded at its
+end (ADR-004, rule 5).
+
 ### 2. Bash is a runtime
 
 A bash agent names the bash runtime and nothing a model takes. A prompt
@@ -99,8 +105,10 @@ How a runtime takes a call's inputs is one of its facts: a model in what
 it is told, bash in the script's environment.
 
 Bash runs the script once, in one turn. Its output is the exit code,
-stdout and stderr: the call completes whatever the exit code, and
-conditions read it (ADR-011, rule 5). Bash keeps no session.
+stdout and stderr. A call whose script exits normally completes whatever
+the exit code, and conditions read it (ADR-011, rule 5); a script that
+cannot start, is ended by a limit or a cancellation, or is lost keeps
+that status. Bash keeps no session.
 
 ### 3. A runtime's facts say what it can do
 
@@ -112,11 +120,12 @@ skills, or a staleness limit on tool calls.
 
 ### 4. Every step is planned
 
-A runtime mapping may name what its runtime grants with no option. The
-bash mapping grants what its environment gives, and offers no options.
-Resolve plans a bash step as any other (ADR-003, rule 4): a required
-permission the mapping cannot give refuses it, and what it grants beyond
-what the process allows is a warning. The plan is what Agister asks;
+A runtime mapping names what its runtime grants with no option, and
+its options; a plan accounts for both. The bash mapping grants what its
+environment gives, and offers no options. Resolve plans a bash step as
+any other (ADR-003, rule 4): a required permission the mapping cannot
+give refuses it, and what it grants beyond what the process allows is a
+warning. The plan is what Agister asks;
 bash, like every runtime, is not confined (ADR-001, invariant 10).
 
 ### 5. An unreported cost is unknown, not spent
@@ -127,9 +136,10 @@ budget, and makes the enclosing run's cost unknown, as its result says.
 
 ### 6. One supervisor runs every program
 
-`supervisor` is a wrapper that starts a program in a directory with an
-environment, streams its output, ends the program and all it started on
-every exit path, and ends what a dead owner left running. Every runtime
+`supervisor` is a wrapper that starts a program at the worktree root
+with an environment, streams its output, keeps a bounded head and tail
+of each stream with a digest of the whole, ends the program and all it
+started on every exit path, and ends what a dead owner left running. Every runtime
 wrapper runs its program through it: a wrapper may use another wrapper,
 and neither knows the parts that use it (ADR-001, rule 2). A dead
 owner's hold is released after the supervisor has ended what it left.
@@ -153,12 +163,16 @@ bash a call has one turn. The composition chains `inputs`, `admit` and
   bash step that writes is a writer (ADR-004, rule 3).
 - Verifying is a process on a bash agent, named and reused like any
   process.
+- A process names no runtime option, yet its prompt is read as its
+  runtime reads it: a script given to a model is a message. Reusing a
+  process across runtimes needs runtimes that read its prompt alike.
 - A bash process that allows less than its environment gives warns on
   every check: bash is not confined, and the plan says so.
 - Adoption amends the parts, invariants and core (ADR-001), a workflow's
   children and prompts (ADR-002), planning and runtime facts (ADR-003),
-  the call (ADR-004), staleness and recovery (ADR-006), input delivery
-  (ADR-010), and the primitives and their terms (ADR-011).
+  the call and its continuation (ADR-004), staleness and recovery
+  (ADR-006), the word for a program (ADR-009), input delivery (ADR-010),
+  and the primitives and their terms (ADR-011).
 
 ## Non-Goals
 
