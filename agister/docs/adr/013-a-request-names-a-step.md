@@ -1,7 +1,7 @@
 ---
 date: 2026-10-15
 model: claude-opus-5-5
-description: "ADR-013: a request names a workflow or a step; a step requested alone runs as a workflow of that one step"
+description: "ADR-013: a request names a workflow or a step; a step requested alone resolves into a workflow of that one step"
 ---
 
 # ADR-013: A request names a step
@@ -36,8 +36,9 @@ run executes it as any workflow.
 ### 1. A requested step is a workflow of one step
 
 The workflow resolve makes has the process's inputs as its inputs and
-the step's output as its output. It is no document: it has no file, no
-layer and no name, and nothing extends or blocks it.
+the step's output as its output. It is a definition resolve makes, not
+a document: it has no file, no layer and no name, and nothing extends
+or blocks it.
 
 ### 2. It resolves as its parts
 
@@ -52,8 +53,8 @@ the step's process and agent where it would name a workflow.
 
 ## Consequences
 
-- A process runs with an agent without a workflow file; a workflow is
-  written when it composes more than one step.
+- A request binds a process to an agent without a workflow file; a
+  workflow is written when it composes more than one step.
 - A repository blocks a process or an agent, not a pairing of them.
 - The command-line syntax for naming a step is the CLI's.
 - Adoption amends the request and resolve (ADR-001, ADR-002).
