@@ -7,6 +7,7 @@ description: "ADR-004: the call: it works in the caller's worktree, is admitted 
 # ADR-004: The call
 
 - **Status:** Accepted
+- **Topic:** Running work
 - **Date:** 2026-10-14
 - **Scope:** where a call works, what admits it, the hold on its
   worktree, what it leaves, how a continuation resumes, and who sets its

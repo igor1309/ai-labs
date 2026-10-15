@@ -7,6 +7,7 @@ description: "ADR-010: inputs: each input is resolved once from a named source t
 # ADR-010: Inputs
 
 - **Status:** Accepted
+- **Topic:** Running work
 - **Date:** 2026-10-14
 - **Scope:** what a call is given besides its prompt, where it comes from,
   what is kept of it, and the check a brief's text may get

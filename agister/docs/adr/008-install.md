@@ -7,6 +7,7 @@ description: "ADR-008: install: settings/home alone writes home's settings, ever
 # ADR-008: Install
 
 - **Status:** Accepted
+- **Topic:** Install
 - **Date:** 2026-10-14
 - **Scope:** how settings reach home and how that is undone
 - **Decision type:** Architecture

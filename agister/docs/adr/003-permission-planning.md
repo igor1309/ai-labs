@@ -7,6 +7,7 @@ description: "ADR-003: permission planning: processes speak permissions, runtime
 # ADR-003: Permission planning and runtime facts
 
 - **Status:** Accepted
+- **Topic:** Running work
 - **Date:** 2026-10-14
 - **Scope:** the permission vocabulary, how a process's permissions meet a
   runtime's options, the plan resolve makes for each agent invocation, and the facts
