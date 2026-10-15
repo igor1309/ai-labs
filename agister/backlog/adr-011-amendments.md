@@ -118,3 +118,60 @@ What each ADR says that ADR-011 contradicts (✗) or leaves open (?).
 
 - `docs/settings-implementation.md`: the `verifies` kind and a process's
   verification.
+
+## Step 2: decisions
+
+### The owner's (2026-10-15)
+
+- **`verifies` is out.** Implement and verify is a sequence of an agent
+  invocation and a command execution; repair is a bounded repetition
+  whose body runs the command and, while it fails, an agent invocation
+  continuing the implementer's session by a binding.
+- **A command runs best effort**, as everything Agister runs (ADR-001,
+  invariant 10). No permission plan for it; nothing new to state.
+- **A command is admitted and held as a call is** (ADR-004): it pins a
+  revision, asks for a clean worktree, is a reader or a writer, and
+  records its content at its end, by the same rules. Agister does no git
+  for it either.
+- **Recovery counts as any turn.** Enclosing budgets cover every
+  descendant (ADR-011, rule 6); a recovery turn needs time and cost left
+  under all of them. No rule of its own.
+- **Inputs are per workflow.** Each workflow declares its inputs at its
+  boundary (ADR-011, rule 3); primitives get values by bindings. A source
+  resolves a declared input; `workflow.collection` goes, a parallel's
+  results are bound instead.
+- **`docs/settings-implementation.md` is rewritten** after the
+  amendments (plan, step 5).
+
+### Proposed, open
+
+- **Result shape (ADR-001, invariant 3):** ADR-011, rule 5 in its place.
+  Completed means the primitive produced its output: an agent's valid
+  against its contract, a command's its exit code, stdout and stderr.
+- **Core parts (ADR-001):** `core/workflow` runs operators, conditions
+  and repetition state, with a port to invoke an agent and one to run a
+  command. `core/attempts` goes. `core/verify` becomes `core/command`.
+  The composition chains `inputs`, `admit`, `session` into an agent
+  invocation, and `inputs`, `admit`, `command` into a command execution.
+- **The record (ADR-001, invariant 6):** one per primitive, and one per
+  workflow holding its children, iterations, conditions, branch choices
+  and stopping reason, as ADR-011, rule 6.
+- **`--continue` (ADR-001, rule 5; ADR-004, rule 5):** continues a run
+  whose workflow is one agent invocation, as today; continuation inside a
+  workflow is a binding. Resuming a composed workflow is ADR-011's
+  non-goal.
+- **Kinds (ADR-002, rule 1):** agents, processes, workflows, runtimes,
+  briefs, schemas, prompts, skills. A command execution is declared in a
+  workflow; a named workflow packages one for reuse (ADR-011, decision).
+- **A child (ADR-002, rule 5):** an agent invocation (a process and an
+  agent), a command execution, or a named workflow by reference.
+- **A runtime that cannot resume (ADR-003, rule 7):** resolve refuses a
+  bound continuation on it, as it refused a repair.
+- **Syntax and conditions:** ADR-011 leaves them out of ADRs. They are
+  the settings file format, a contract (ADR-001, rule 6): specified in
+  `settings/documents`' feature files, drafted by rewriting the shipped
+  `implement_*` (sequence and repetition) and `code_review` (parallel and
+  a join) workflows.
+- **Form of the amendments:** each ADR edited in place, with a line
+  "Amended by ADR-011 (2026-10-15)". They are a day old and nothing built
+  on them is merged.
