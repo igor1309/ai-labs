@@ -82,8 +82,9 @@ the contract a mapping is written for, its version, whether it takes
 skills, the efforts it accepts, whether it resumes a session. Resolve
 declares a port for these facts; the composition answers it from the
 wrappers. An invocation that needs what its runtime cannot do is refused
-at resolve, such as a session continued by a binding in a workflow or a
-recovery (ADR-006) on a runtime that cannot resume.
+at resolve, such as a session continued by a binding in a workflow, or
+a recovery turn after a staleness limit, on a runtime that cannot
+resume.
 
 ### 8. An unverified runtime version warns
 

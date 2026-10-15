@@ -9,18 +9,20 @@ description: "ADR-010: inputs: each input is resolved once from a named source t
 - **Status:** Accepted
 - **Topic:** Running work
 - **Date:** 2026-10-14
-- **Scope:** what a call is given besides its prompt, where it comes from,
-  what is kept of it, and the check a brief's text may get
+- **Scope:** what a workflow and each primitive it runs are given
+  besides a prompt, where it comes from, what is kept of it, and the
+  check a brief's text may get
 - **Decision type:** Architecture
 - **Amended by:** ADR-011 (2026-10-15)
 
 ## Context
 
-A call's work starts from what the caller hands in and from facts about
-the worktree: a brief, a goal, a revision, the files a change touched.
-Each must be fixed before the primitive starts, the same for every
-primitive that shares it, and kept so the call can be understood after
-the caller's copy is gone.
+A workflow's work starts from what the caller hands in and from facts
+about the worktree: a brief, a goal, a revision, the files a change
+touched. Its children, agent invocations and command executions, take
+those values and earlier results. Each must be fixed before the
+primitive starts, the same for every primitive that shares it, and kept
+so the run can be understood after the caller's copy is gone.
 
 ## Decision
 
@@ -74,8 +76,8 @@ write, judge or repair a brief.
 
 ## Consequences
 
-- A call can be understood from its run alone, whatever happened to the
-  caller's files.
+- A run, and each primitive in it, can be understood from the record
+  alone, whatever happened to the caller's files.
 - Git reaches inputs only through the composition; core stays without
   it.
 - A new kind of source is code: a port answer in the composition, and
