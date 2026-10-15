@@ -178,6 +178,7 @@ test("ciRepoScripts_shouldRunEveryScriptsTest_onEveryChange", () => {
 const goModules = {
   agister: { runner: ".github/workflows/agister-core.yml", command: "run: agister/scripts/test.sh", job: "agister-core" },
   gokit: { runner: "agister/scripts/test.sh", command: "../gokit/scripts/test.sh", job: "agister-core" },
+  "gokit/tree": { runner: "gokit/scripts/test.sh", command: "check tree gokit/tree", job: "agister-core" },
   "scripts/agister-gate": {
     runner: ".github/workflows/agister-core.yml",
     command: "working-directory: scripts/agister-gate",
