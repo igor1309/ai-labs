@@ -1,0 +1,168 @@
+---
+date: 2026-10-15
+model: claude-opus-5-5
+description: "ADR-012: one kind of step: a process bound to an agent, bash a runtime like any other; a run executes a workflow, a call executes a step"
+---
+
+# ADR-012: One kind of step
+
+- **Status:** Proposed
+- **Topic:** Running work
+- **Date:** 2026-10-15
+- **Scope:** the leaf of a workflow, the runtimes it runs on, what a
+  runtime can do, and the names of what settings define and what a run
+  executes
+- **Decision type:** Architecture
+- **Amends:** ADR-001, ADR-002, ADR-003, ADR-004, ADR-006, ADR-010 and
+  ADR-011
+
+## Context
+
+ADR-011 names two primitives, an agent invocation and a command
+execution. Its amendments give them one result shape, the same limits,
+the same admission and holds, the same inputs and the same records. What
+remains apart is a second port on `core/workflow`, a second chain in the
+composition, and `core/command`, which starts, streams, limits and ends
+a program as each runtime wrapper does. And a command can be reused only
+by wrapping it in a named workflow.
+
+Each runtime Agister drives is a program that streams events until it
+ends; a shell is one too. ADR-003 already treats runtimes as unequal:
+whether one resumes, takes skills or accepts an effort is a fact resolve
+checks.
+
+The ADRs also name one thing three ways (a primitive, an invocation, a
+call), and mix what settings define with what a run executes.
+
+## Decision
+
+A workflow's leaf is a step: a process bound to an agent. Bash is a
+runtime, with its wrapper, its mapping and its facts; a command is a
+step whose agent's runtime is bash. The command execution goes, with its
+port, its chain and `core/command`.
+
+Each definition has one name, each execution has one name, and an
+execution names the definition it executes: a run executes a workflow,
+a call executes a step.
+
+## Terms
+
+Definitions, in settings:
+
+- **workflow**: work defined by its inputs, its output contract, and its
+  children, composed by sequence, parallel, branch or repetition. A
+  child is a step or a workflow.
+- **step**: a process bound to an agent.
+- **process**: what a step does: its prompt, inputs, output schema,
+  permissions and limits.
+- **agent**: who does it: a runtime mapping, and the model, effort and
+  skills its runtime takes.
+- **runtime mapping**: a runtime's options and what each grants.
+- **binding** and **condition**: data flow and decisions in a workflow
+  (ADR-011, rules 3 and 4).
+
+Executions, in records:
+
+- **run**: an execution of a workflow. The command line starts the root
+  run; a child workflow executes as a child run.
+- **call**: an execution of a step.
+- **iteration**: one execution of a repetition's body.
+- **turn**: one exchange of a call with its runtime.
+- **session**: the conversation a call held, on a runtime that keeps
+  one.
+
+Machinery, in code:
+
+- **runtime**: a program Agister drives through its wrapper.
+- **runtime facts**: what a runtime can do (ADR-003, rule 7).
+- **program**: an operating-system process Agister starts.
+- **hold**: a call's claim on the worktree (ADR-004).
+
+A definition is declared, resolved and planned; it never runs or ends.
+An execution starts and ends; it is never declared. "Primitive",
+"invocation" and "command execution" are retired.
+
+## Rules / Invariants
+
+### 1. A step is the one leaf
+
+A workflow's children are steps and workflows. A step binds a process to
+an agent; the agent names the runtime. `core/workflow` declares one
+port, to call a step, and never learns the runtime. A workflow of one
+step executes as a run with one call.
+
+### 2. Bash is a runtime
+
+A bash agent names the bash runtime and nothing a model takes. A prompt
+is the text a runtime is given: a message to a model, a script to bash.
+How a runtime takes a call's inputs is one of its facts: a model in what
+it is told, bash in the script's environment.
+
+Bash runs the script once, in one turn. Its output is the exit code,
+stdout and stderr: the call completes whatever the exit code, and
+conditions read it (ADR-011, rule 5). Bash keeps no session.
+
+### 3. A runtime's facts say what it can do
+
+The facts resolve reads include what a runtime produces and reports:
+output checked against a schema, tool calls, cost, a session it can
+resume, skills it takes. A step that needs what its runtime cannot do is
+refused at resolve: an output schema, a continued or recovered session,
+skills, or a staleness limit on tool calls.
+
+### 4. Every step is planned
+
+A runtime mapping may name what its runtime grants with no option. The
+bash mapping grants what its environment gives, and offers no options.
+Resolve plans a bash step as any other (ADR-003, rule 4): a required
+permission the mapping cannot give refuses it, and what it grants beyond
+what the process allows is a warning. The plan is what Agister asks;
+bash, like every runtime, is not confined (ADR-001, invariant 10).
+
+### 5. An unreported cost is unknown, not spent
+
+A runtime that reports no cost leaves its call's cost unknown (ADR-001,
+invariant 3). An unknown cost spends nothing of an enclosing cost
+budget, and makes the enclosing run's cost unknown, as its result says.
+
+### 6. One supervisor runs every program
+
+`supervisor` is a wrapper that starts a program in a directory with an
+environment, streams its output, ends the program and all it started on
+every exit path, and ends what a dead owner left running. Every runtime
+wrapper runs its program through it: a wrapper may use another wrapper,
+and neither knows the parts that use it (ADR-001, rule 2). A dead
+owner's hold is released after the supervisor has ended what it left.
+
+A turn's no-output and no-event limits are one limit, observed by
+`core/watch` on every runtime.
+
+### 7. Core makes every call the same way
+
+`core/call` makes a call: turns on the runtime, the output checked
+against its contract, and a recovery turn where the runtime resumes. On
+bash a call has one turn. The composition chains `inputs`, `admit` and
+`call`, and hands the chain to `core/workflow` as its port.
+`core/session` and `core/command` go.
+
+## Consequences
+
+- A new kind of program to run is a runtime: a wrapper, its mapping and
+  its facts. No leaf, port or kind is added.
+- A process's access decides its call's hold whatever the runtime: a
+  bash step that writes is a writer (ADR-004, rule 3).
+- Verifying is a process on a bash agent, named and reused like any
+  process.
+- A bash process that allows less than its environment gives warns on
+  every check: bash is not confined, and the plan says so.
+- Adoption amends the parts, invariants and core (ADR-001), a workflow's
+  children and prompts (ADR-002), planning and runtime facts (ADR-003),
+  the call (ADR-004), staleness and recovery (ADR-006), input delivery
+  (ADR-010), and the primitives and their terms (ADR-011).
+
+## Non-Goals
+
+- A schema over a bash step's stdout. Handled when a workflow needs it.
+- Settings syntax for a bash agent, process and script: `settings/documents`
+  specifies it, as ADR-011 leaves syntax out.
+- Renaming the `processes` kind.
