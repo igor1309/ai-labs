@@ -9,7 +9,7 @@ description: "ADR-012: one kind of step: a process bound to an agent, bash a run
 - **Status:** Accepted
 - **Topic:** Running work
 - **Date:** 2026-10-15
-- **Scope:** the leaf of a workflow, the runtimes it runs on, what a
+- **Scope:** the leaf of a workflow, the runtimes a call runs on, what a
   runtime can do, and the names of what settings define and what a run
   executes
 - **Decision type:** Architecture

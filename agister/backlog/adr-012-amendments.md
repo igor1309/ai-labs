@@ -21,6 +21,7 @@ ADR-008 is untouched.
    Done (2026-10-15): accepted; open points decided as below.
 3. **Write the amendments**, one ADR per commit, in place, each with
    "Amended by: ADR-012 (<date>)". Design only (agister/AGENTS.md).
+   Done (2026-10-15): ADR-001, 002, 003, 004, 006, 009, 010 and 011.
 4. **Review** with the `adr_review` workflow, then merge.
 5. **Rewrite `docs/settings-implementation.md`** (ADR-011's step 5, now
    after this).
