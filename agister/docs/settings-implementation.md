@@ -160,24 +160,22 @@ to bash types, and resolve refuses the step that uses it.
 
 ## 6. Resolve
 
-Follows every name from the request: a workflow's children, each step's
-process and agent, and each child workflow; a process's prompt, guidance,
-schema, skills and input brief forms; an agent's runtime mapping and
-skills. A tree document named goes through steps 2 to 5; a blob is taken
-from its nearest slot, with its digest, and is a problem if no layer
-holds it.
+Follows every name from the request: a workflow's input brief forms and
+its children, each step's process and agent, and each child workflow; a
+process's prompt, guidance, skills, input brief forms and schema; an
+agent's runtime mapping. A tree document named goes through steps 2 to
+5; a blob is taken from its nearest slot, with its digest; its source
+finds both, and gives a blob no layer holds as a problem. Skills are
+left out for now: a skill named is followed, and refused while no layer
+holds one.
 
 It checks each workflow's boundaries and bindings (ADR-011, rule 6), and
 plans each step: its process's permissions against its agent's runtime
 mapping (ADR-003). A step that needs what its runtime cannot do, by the
-runtime's facts, is refused: an output schema, a continued session,
-skills, an effort, a staleness limit on tool calls (ADR-003, rule 7;
-ADR-012, rule 3). Every step is resolved and planned, those of branches
+runtime's facts, is refused: an output schema, a continued or recovered
+session, skills, a model, an effort, a staleness limit on tool calls or
+tool commands (ADR-003, rule 7; ADR-012, rule 3). Every step is resolved and planned, those of branches
 a run may not take too.
-
-Resolve gives what a run needs, or a refusal naming the chain to the
-document at fault. What a run needs: the workflow, and every step's
-process, agent, runtime mapping and permission plan.
 
 A request that depends on a blocked document is refused, naming the
 block; a block is not a problem, and a block naming no document is a
@@ -185,21 +183,24 @@ warning.
 
 Resolve declares its ports in its own words (ADR-001, rule 1). Its
 source gives a document by kind and name in resolve's types, each
-holding only what resolve reads: the names it references, with their
-origins, its bindings, its permissions. A document resolve reads nothing
+holding only what resolve reads: the names it references, its params
+and inputs, its items, their bindings and conditions, its permissions,
+each with its origin. A document resolve reads nothing
 of, a brief, a prompt, a schema or a skill, is given as its problems
 alone. The source also gives the problems of no document, which refuse
 every request. The composition answers the source from documents, and
 the runtime facts from the wrappers.
 
-What resolve gives is what it checked: the workflow, requested or made
-of a step (ADR-013), every document it reached, by kind and name, and
-each step's plan. The composition takes each reached document's
-definition from documents, for core and the record; the snapshot is
-fixed, so they are what resolve checked.
+What resolve gives is what it checked, and its warnings: the workflow,
+requested or made of a step (ADR-013), every document it reached, by
+kind and name, and each step's plan. The definitions ADR-002 (rule 6)
+has it give, the composition takes from documents for each document
+reached, for core and the record; the snapshot is fixed, so they are
+what resolve checked.
 
 A refusal is every document at fault, each with its problems and the
-first chain that reached it, in the order the request names them. A
+first chain that reached it, in the order the request names them; and
+the problems of no document, the request's among them. A
 link of the chain is a document's kind and name, and where the document
 before it names it.
 
@@ -216,7 +217,7 @@ blocks.
 | bytes that are not their format | 2, decode |
 | an `extends` naming no document of its kind, or a cycle | 4, extends |
 | an unknown field, a wrong type, a missing field | 5, type |
-| a name that reaches no document; a blob no layer holds | 6, resolve |
+| a name that reaches no document; a blob no layer holds | 6, resolve, from its source |
 | a blocked document; a block naming no document, a warning | 6, resolve |
 | a binding or a condition that reads what is not there | 6, resolve |
 | a step its runtime cannot do; a model or effort its runtime does not take | 6, resolve |

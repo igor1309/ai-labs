@@ -23,8 +23,10 @@ Feature: Resolve checks what crosses each boundary
     Given the workflow "c" declares the param "base", of no default
     And the item "child" of "w" names "c" and binds "head"
     When resolve is asked for the workflow "w"
-    Then it refuses: the workflow "c" declares the param "head"; and it
-      binds the param "base" of the workflow "c", which has no default
+    Then it refuses: the workflow "w", and the problems at
+      "steps[0].inputs.head": the workflow "c" declares the param "head";
+      and at "steps[0]": it binds the param "base" of the workflow "c",
+      which has no default
 
   Scenario: A child workflow is read through its outputs
     Given the workflow "c" has the output "verdict"
@@ -41,14 +43,22 @@ Feature: Resolve checks what crosses each boundary
     Then it refuses: the problem at "steps[0].branch[1].outputs": it
       gives the output "diff", as another arm of its branch does
 
+  # The request's problems are its own, not its document's: the workflow
+  # is not at fault for a param a request leaves out.
+
   Scenario: The request gives the params its workflow declares
     Given the workflow "w" declares the param "base", of no default
     When resolve is asked for the workflow "w" with the param "head"
-    Then it refuses: the workflow "w", and the problems: the request
-      gives the param "base", which has no default; and the workflow
-      declares the param "head"
+    Then it refuses, of no document and no chain, with the problems: the
+      request gives the param "base", which has no default; and the
+      workflow declares the param "head"
 
-  Scenario: A step requested alone takes its process's params
+  Scenario Outline: A step requested alone takes its process's params
     Given the process "p" declares the param "base", of no default
-    When resolve is asked for the step of "p" on "a" with the param "base"
-    Then it resolves
+    When resolve is asked for the step of "p" on "a" <with>
+    Then <outcome>
+
+    Examples:
+      | with                  | outcome                                                                                           |
+      | with the param "base" | it resolves                                                                                       |
+      | with no param         | it refuses, of no document and no chain: the request gives the param "base", which has no default |

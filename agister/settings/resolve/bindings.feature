@@ -8,13 +8,16 @@ Feature: Resolve checks that every reference reads what is there
   Background:
     Given the workflow "w" declares the param "base" and the input "goal"
     And its steps are the step "a"; the branch "pick", of the arm "one",
-      on a condition; and the repeat "loop", of the state "review"
+      on a condition, and the default "other"; and the repeat "loop", of
+      the state "review" and the body "fix"
 
   Scenario: What is declared, and has ended, is read
-    Given every place below reads "params.base", "inputs.goal" or
-      "steps.a.outputs"; the repeat's body, next and until read
-      "state.review"; and the arm's condition reads "item.fixed" of all
-      items in "steps.a.outputs.findings"
+    Given the step reads "params.base", and the input goal's path too
+    And the arm's condition reads "item.fixed" of all items in
+      "steps.a.outputs.findings", and each arm's output its own outputs
+    And the repeat's state reads "steps.a.outputs", its body and until
+      "state.review", and its next "steps.fix.outputs"
+    And the workflow's output reads "inputs.goal"
     When resolve is asked for the workflow "w"
     Then it resolves
 
@@ -25,30 +28,30 @@ Feature: Resolve checks that every reference reads what is there
       <problem>
 
     Examples:
-      | where                    | reads           | place                       | problem                                  |
-      | the step's input x       | params.head     | steps[0].inputs.x           | its workflow declares the param "head"   |
-      | the step's input x       | inputs.brief    | steps[0].inputs.x           | its workflow declares the input "brief"  |
-      | the step's input x       | state.review    | steps[0].inputs.x           | it is in no repeat of the state "review" |
-      | the step's input x       | steps.no.outputs | steps[0].inputs.x          | its workflow has the item "no"           |
-      | the arm's condition      | params.head     | steps[1].branch[0].if       | its workflow declares the param "head"   |
-      | the arm's output x       | params.head     | steps[1].branch[0].outputs.x | its workflow declares the param "head"  |
-      | the repeat's state x     | state.review    | steps[2].repeat.state.x     | it is in no repeat of the state "review" |
-      | the repeat's next x      | params.head     | steps[2].repeat.next.x      | its workflow declares the param "head"   |
-      | the repeat's until       | params.head     | steps[2].repeat.until       | its workflow declares the param "head"   |
-      | the workflow's output x  | params.head     | outputs.x                   | its workflow declares the param "head"   |
-      | the input goal's path    | params.head     | inputs.goal.path            | its workflow declares the param "head"   |
-      | the workflow's output x  | steps.a.output  | outputs.x                   | it reads an item's outputs or its session |
+      | where                     | reads            | place                        | problem                                   |
+      | the step's input x        | params.head      | steps[0].inputs.x            | its workflow declares the param "head"    |
+      | the step's input x        | inputs.brief     | steps[0].inputs.x            | its workflow declares the input "brief"   |
+      | the step's input x        | state.review     | steps[0].inputs.x            | it is in no repeat of the state "review"  |
+      | the step's input x        | steps.no.outputs | steps[0].inputs.x            | its workflow has the item "no"            |
+      | the arm's condition       | params.head      | steps[1].branch[0].if        | its workflow declares the param "head"    |
+      | the arm's output x        | params.head      | steps[1].branch[0].outputs.x | its workflow declares the param "head"    |
+      | the repeat's state review | state.review     | steps[2].repeat.state.review | it is in no repeat of the state "review"  |
+      | the repeat's next x       | params.head      | steps[2].repeat.next.x       | its workflow declares the param "head"    |
+      | the repeat's until        | params.head      | steps[2].repeat.until        | its workflow declares the param "head"    |
+      | the workflow's output x   | params.head      | outputs.x                    | its workflow declares the param "head"    |
+      | the input goal's path     | params.head      | inputs.goal.path             | its workflow declares the param "head"    |
+      | the workflow's output x   | steps.a.output   | outputs.x                    | it reads an item's outputs or its session |
 
-  Scenario Outline: Concurrent items cannot read each other
+  Scenario Outline: Items that may run together, or not both, cannot read each other
     Given the workflow "c" has a <operator> of "a" and "b"
     And "b" reads "steps.a.outputs"
     When resolve is asked for the workflow "c"
-    Then it refuses: the item "a" runs beside it
+    Then it refuses: the item "a" <problem>
 
     Examples:
-      | operator |
-      | parallel |
-      | branch   |
+      | operator | problem                      |
+      | parallel | runs beside it               |
+      | branch   | is another arm of its branch |
 
   Scenario: An item reads the items that ended before it
     Given the step "a" reads "steps.pick.outputs"
@@ -74,7 +77,7 @@ Feature: Resolve checks that every reference reads what is there
       <problem>
 
     Examples:
-      | where              | reads       | place              | problem                                 |
-      | environment's HEAD | params.head | environment.HEAD   | its process declares the param "head"   |
-      | input rev's rev    | params.head | inputs.rev.rev     | its process declares the param "head"   |
-      | revision           | inputs.head | workspace.revision | its process declares the input "head"   |
+      | where              | reads       | place              | problem                               |
+      | environment's HEAD | params.head | environment.HEAD   | its process declares the param "head" |
+      | input rev's rev    | params.head | inputs.rev.rev     | its process declares the param "head" |
+      | revision           | inputs.head | workspace.revision | its process declares the input "head" |
