@@ -35,9 +35,11 @@ Syntax only: no ADR changes unless a decision below says so.
   keeps the version.
 - A workflow's steps are written in it, each named, unique in its
   workflow; a step names a process and an agent.
-- A reference reads `params.<name>`, `inputs.<name>`, `state.<name>` or
-  `steps.<name>.outputs.<field>`. A child workflow's step is read through
-  its output contract alone (ADR-011, rule 3).
+- A reference reads `params.<name>`, `inputs.<name>`, `state.<name>`,
+  `steps.<name>.outputs.<field>` or `steps.<name>.session`, the session
+  an earlier call held, which a binding names to continue it. A child
+  workflow's step is read through its output contract alone (ADR-011,
+  rule 3).
 - The shipped settings' `${…}` splices become references: `rev:
   "${param.base}"` is `rev: {from: params.base}`.
 - Seven of the ten shipped workflows are one step, there to bind a
