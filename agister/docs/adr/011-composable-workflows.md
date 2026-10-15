@@ -39,14 +39,16 @@ of one step included.
 ### 1. A call executes a step
 
 A step binds a process to an agent. The process declares the prompt,
-inputs, environment, output contract, permissions and limits; the agent
+inputs, environment, output schema, permissions and limits; the agent
 names the runtime. A call returns its output and, on a runtime that
 keeps one, a provider session reference. The call owns its turns and the
 tool calls in them. On bash the prompt is the script, and the output is
-exit code, stdout and stderr.
+the exit code and the bounded head and tail of stdout and stderr, each
+with a digest of the whole. The declared environment reaches every
+runtime's program.
 
 Limits belong to every call, whatever its runtime: time, cost where the
-runtime reports it, and staleness (no output, no event).
+runtime reports it, and staleness (no output or event).
 
 ### 2. Operators compose steps and workflows
 
@@ -57,7 +59,9 @@ runtime reports it, and staleness (no output, no event).
 | Branch | Run the first child whose condition holds, or the declared default child. Resolve refuses a branch without a default. |
 | Bounded repetition | Run a body with explicit state until its stopping condition holds or its iteration limit is reached. |
 
-A join is a workflow following parallel work in a sequence. Named
+A child that starts, ends or completes means its execution: a call for
+a step, a run for a workflow; a body's, an iteration. A join is a
+workflow following parallel work in a sequence. Named
 references are fixed in settings and acyclic; repetition expresses
 execution cycles.
 
