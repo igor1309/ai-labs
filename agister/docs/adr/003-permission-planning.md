@@ -1,7 +1,7 @@
 ---
 date: 2026-10-14
 model: claude-opus-5-5
-description: "ADR-003: permission planning: processes speak permissions, runtime mappings offer primitives, resolve plans each agent invocation, runtimes are used as shipped"
+description: "ADR-003: permission planning: processes speak permissions, runtime mappings offer grants and options, resolve plans each step, runtimes are used as shipped"
 ---
 
 # ADR-003: Permission planning and runtime facts
@@ -10,25 +10,27 @@ description: "ADR-003: permission planning: processes speak permissions, runtime
 - **Topic:** Running work
 - **Date:** 2026-10-14
 - **Scope:** the permission vocabulary, how a process's permissions meet a
-  runtime's options, the plan resolve makes for each agent invocation, and the facts
-  about runtimes resolve relies on
+  runtime's grants and options, the plan resolve makes for each step,
+  and the facts about runtimes resolve relies on
 - **Decision type:** Architecture
-- **Amended by:** ADR-011 (2026-10-15)
+- **Amended by:** ADR-011 (2026-10-15), ADR-012 (2026-10-15)
 
 ## Context
 
 A process says what its work may do: read the repository, write it, run
 commands, reach the network. Each runtime offers its own options for
-that: Codex has sandbox modes, Claude Code has tools, others have flags.
-A process must not be written for one runtime, and a runtime must not
-learn what a process is (ADR-001, parts). The runtimes enforce their own
+that: Codex has sandbox modes, Claude Code has tools, others have flags,
+and bash grants what its environment gives. A process must not name one
+runtime's options, and a runtime must not learn what a process is
+(ADR-001, parts). The runtimes enforce their own
 options, and do so as well as they do; Agister cannot do better and does
 not try (ADR-001, invariant 10).
 
 ## Decision
 
-Processes speak permissions; runtime mappings say which permissions each
-runtime option grants. Resolve plans each agent invocation from the two, and the
+Processes speak permissions; runtime mappings say which permissions a
+runtime grants with no option and which each option grants. Resolve
+plans each step from the two, and the
 runtime wrapper gets the plan's options, never permissions. A required
 permission is the one hard check; anything the plan grants beyond what
 the process allows is a warning, not a refusal.
@@ -46,25 +48,27 @@ under it.
 A process names the permissions its work requires and the ones it
 allows. A process names no runtime option.
 
-### 3. A runtime mapping offers options
+### 3. A runtime mapping offers grants and options
 
-A runtime mapping is defined in settings for one runtime wrapper. It lists
-the runtime's documented options, each with the permissions it grants,
-and says whether a call takes one of them or any number. It describes the
+A runtime mapping is defined in settings for one runtime wrapper. It
+names the permissions the runtime grants with no option, and lists the
+runtime's documented options, each with the permissions it grants, and
+says whether a call takes one of them or any number. A runtime may offer
+no options, as bash does. It describes the
 runtime as shipped: no workarounds, no undocumented flags.
 
-### 4. Resolve plans each agent invocation
+### 4. Resolve plans each step
 
-For each agent invocation, resolve plans from its process's permissions and its
-agent's runtime mapping which options to grant. A plan gives every
-required permission, stays within what is allowed as far as the
+For each step, resolve plans from its process's permissions and its
+agent's runtime mapping which options to grant, over what the runtime
+grants with no option. A plan gives every required permission, stays within what is allowed as far as the
 runtime's options let it. It records what was required, allowed,
 granted, granted beyond the allowed (`extra`) and withheld.
 
 ### 5. What refuses and what warns
 
-A plan that cannot give a required permission refuses the invocation's
-workflow at resolve, as does an invocation that needs what its runtime cannot do
+A plan that cannot give a required permission refuses the step's
+workflow at resolve, as does a step that needs what its runtime cannot do
 (rule 7). Grants beyond what the process allows are a warning, shown by
 check and carried in the call's result; they do not change its status.
 
@@ -79,12 +83,13 @@ and the call's own skills are given to it in the runtime's own way.
 
 What a runtime wrapper can do is a fact resolve needs and does not own:
 the contract a mapping is written for, its version, whether it takes
-skills, the efforts it accepts, whether it resumes a session. Resolve
-declares a port for these facts; the composition answers it from the
-wrappers. An invocation that needs what its runtime cannot do is refused
-at resolve, such as a session continued by a binding in a workflow, or
-a recovery turn after a staleness limit, on a runtime that cannot
-resume.
+skills, the efforts it accepts, whether it resumes a session, whether
+it produces output checked against a schema, whether it reports tool
+calls and cost, and how it takes its inputs. Resolve declares a port for
+these facts; the composition answers it from the wrappers. A step that
+needs what its runtime cannot do is refused at resolve: an output
+schema, a continued or recovered session, skills, or a staleness limit
+on tool calls.
 
 ### 8. An unverified runtime version warns
 
@@ -94,8 +99,10 @@ does not probe the version; the warning is carried in the call's result.
 
 ## Consequences
 
-- A process runs on any agent whose runtime it can be planned on, and
-  the same process on two runtimes gets two plans.
+- A process can be bound to any agent whose runtime it can be planned
+  on, and the same process on two runtimes gets two plans. Its prompt
+  is read as each runtime reads it: reusing a process across runtimes
+  needs runtimes that read its prompt alike.
 - Adding a runtime is a wrapper, its mapping, and its facts answered in
   the composition; no process changes.
 - Agister is no sandbox: the plan is what it asks of the runtime, and the
