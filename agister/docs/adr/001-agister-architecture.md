@@ -11,6 +11,7 @@ description: "ADR-001: Agister's architecture: what it is, its parts, their depe
 - **Scope:** what Agister is, its parts and how they depend on one
   another, and the invariants every part keeps
 - **Decision type:** Architecture
+- **Amended by:** ADR-011 (2026-10-15)
 
 ## Context
 
@@ -60,11 +61,13 @@ every call.
    failure on stderr, as for a bad command. Only what core emits is recorded, so a
    refusal after resolution (a held worktree, admission) is recorded. Core
    never reads settings files.
-5. **`--continue` resolves settings again**, like any call. The composition
+5. **`--continue` resolves settings again**, like any call. It continues
+   a run whose workflow is one agent invocation. The composition
    checks the continuation's conditions against the earlier
    runs (the session's latest run; the same worktree, repository and
    revision; the content as recorded) and hands core the session.
-   Core reads no runs.
+   Core reads no runs. Inside a workflow, a session is continued by a
+   binding (ADR-011, rule 3).
 6. **Two file formats are contracts:** the settings files and the run
    records.
 
@@ -76,8 +79,9 @@ not the rule: it gets a port.
 
 Every part keeps these.
 
-1. **Agister runs generic work.** It runs agent calls, the verification a
-   process declares and the workflow shapes settings define. It knows no
+1. **Agister runs generic work.** It runs two primitives, an agent
+   invocation and a command execution, and the workflows settings compose
+   from them (ADR-011). It knows no
    kind of work, no particular agent and no meaning of any output. It is a
    runner, not a guard: it checks whether settings resolve, never whether
    they should. A workflow that resolves may run; what it is granted is
@@ -87,32 +91,40 @@ Every part keeps these.
    an agent are defined in settings files, and changed without rebuilding.
    Code adds a mechanism only where settings cannot express it: a
    runtime, an input source kind.
-3. **Every call ends in one result shape.** A status (completed, failed,
-   interrupted, lost) and a failure class from a closed set. Completed
-   means output valid against its contract; what the output says, an
-   unfavourable verdict included, is not a status. Usage and cost as the
-   runtime reports them, with their source: an unreported cost is
-   unknown, never zero. Timing measured by Agister. The session the call
-   ran in. Its warnings. A workflow ends in the same shape.
+3. **Every primitive ends in one result shape.** A status (completed,
+   failed, interrupted, lost) and a failure class from a closed set.
+   Completed means the primitive produced its output: an agent
+   invocation's valid against its contract, a command execution's its
+   exit code, stdout and stderr. What the output says, an unfavourable
+   verdict or a failing exit code included, is not a status. Usage and
+   cost as the runtime reports them, with their source: an unreported
+   cost is unknown, never zero. Timing measured by Agister. The session
+   an agent invocation ran in. Its warnings. A workflow ends in the same
+   shape.
 4. **Inputs are fixed before the first turn.** Each input is resolved to a
    value and its identity (a revision to its commit, content to its
    digest); that value is what the agent receives and what is recorded.
 5. **Agister grants no permission meant to reach its state.** Home, its
    settings and its runs are not what any permission it grants is for. A
    repository's settings are the repository's files, like any other.
-6. **The record is authoritative.** Per call it keeps the Agister identity
-   apart from the provider session, the exact definitions with their
-   digests, the inputs, the permission plan, the ordered events and the
-   outcome. Everything Agister gave the call is in it. Diagnostics
+6. **The record is authoritative.** Per primitive it keeps the Agister
+   identity apart from the provider session, the exact definitions with
+   their digests, the inputs, the permission plan, the ordered events and
+   the outcome. Everything Agister gave the primitive is in it. Per
+   workflow it keeps its definition, its inputs, its children's records,
+   iterations, condition values, branch choices, state transitions and
+   stopping reason (ADR-011, rule 6). Diagnostics
    describe Agister's own machinery; they are not the record, and never
    change an argument, a result or an error.
-7. **Every effect has an owner and an end.** Each process and hold a call
-   creates is the call's, bounded, and ended on every exit path. A record
-   whose call ended without finishing it reads as lost, never as running.
-8. **Calls are independent.** Concurrent calls share only settings, which
-   they read, records, each writing its own, and the worktree, through its
-   hold. The exceptions are deliberate: a continuation resumes an earlier
-   run's session, and a join receives its own workflow's outcomes.
+7. **Every effect has an owner and an end.** Each process and hold a
+   primitive creates is the primitive's, bounded, and ended on every exit
+   path. A record whose primitive ended without finishing it reads as
+   lost, never as running.
+8. **Primitives are independent.** Concurrent primitives share only
+   settings, which they read, records, each writing its own, and the
+   worktree, through its hold. The exceptions are deliberate: a
+   continuation resumes an earlier session, and a binding gives a child
+   an earlier result of its own workflow (ADR-011, rule 3).
 9. **Agister is built to be changed.** The smallest design that does the
    work. A case is handled when it is met, not foreseen. A part that is
    hard to change is wrong, however much it covers.
@@ -131,7 +143,7 @@ what each kind means, what references what, and how home is managed.
 |---|---|---|
 | `settings/layout` | Where settings live: selects home, the repository's and the nearest project's `.agister/`; maps a kind and name to its file; lists names. | filesystem (what is at a path, read, list, same directory); worktree root of a directory |
 | `settings/documents` | Bytes to typed definitions with per-field provenance. Three components inside the package, each with its own unit tests: **format** (one document per file in its kind's format, unknown fields, schema version), **layering** (compose by field, `extends`, provenance), **kinds** (a composed tree to each kind's definition, with field problems). Its public interface has its own tests. | none: pure |
-| `settings/resolve` | A request to resolved settings, or a refusal naming the chain. A request names any document by kind and name; a workflow or a process comes with its parameters. Resolve follows references, applies blocks, plans each node's permissions. | a document source; runtime facts (contracts, skills support), which the composition plugs in from the runtime wrappers |
+| `settings/resolve` | A request to resolved settings, or a refusal naming the chain. A request names any document by kind and name; a workflow or a process comes with its parameters. Resolve follows references, applies blocks, checks boundaries and bindings, and plans each agent invocation's permissions, in unselected branches too. | a document source; runtime facts (contracts, skills support), which the composition plugs in from the runtime wrappers |
 | `settings/check` | Built on resolve: lists every document's name and resolves each, so a document nothing uses is checked too. Two views: **check** (every problem and what it refuses) and **inspect** (process, workflow and agent listings and shows, with provenance). | resolve; list names |
 | `settings/home` | Writes into home: installing settings, with backups to restore from. | filesystem writes; clock |
 
@@ -142,24 +154,24 @@ worktree that holds a directory, or none outside one. `layout` knows no git.
 
 ## Core
 
-Core takes resolved settings (every node's process, agent, runtime mapping
-and permission plan) and a run command (the workflow, its params, the
-caller's limits, the earlier run's session for `--continue`), and gives a
-stream of events and a result.
+Core takes resolved settings (the workflow, and every agent invocation's
+process, agent, runtime mapping and permission plan) and a run command
+(the workflow, its params, the caller's limits, the earlier run's session
+for `--continue`), and gives a stream of events and a result.
 
 | Package | Responsibility | Ports it declares |
 |---|---|---|
-| `core/workflow` | Runs a workflow: one `call`, or `fan_out` then `join`; hands the join the collection (each node's status, class and output, in order); gathers the nodes' warnings. | run a call; events |
-| `core/admit` | Admits a call before its first turn: the process and runtime allow what the command asks, and the worktree is held, as a writer alone or a reader shared. | worktree facts (revision, content), answered by the composition from `git`; hold; events |
+| `core/workflow` | Runs a workflow: its operators (sequence, parallel, branch, bounded repetition), conditions, bindings and repetition state; gathers its children's warnings. | invoke an agent; run a command; events |
+| `core/admit` | Admits a primitive before it starts: what it declares and its runtime allow what the run command asks, and the worktree is held, as a writer alone or a reader shared. | worktree facts (revision, content), answered by the composition from `git`; hold; events |
 | `core/session` | The conversation with the agent: turns on the runtime, each turn's output checked against its contract, and a recovery turn when a staleness limit ended one, while the budget allows. Declares the runtime protocol. | runtime protocol; staleness; events; clock |
-| `core/attempts` | Verification and repair: runs the verification, and on a failure asks the session for a repair turn, while attempts are left. | verify; another turn of the session; events |
-| `core/verify` | Runs a verification command: timeout, `no_output` staleness, bounded head and tail, digest. | command runner (the process supervisor); clock; timer |
-| `core/inputs` | Resolves a call's inputs from their sources to a value and an identity; checks a text against its brief form; keeps long values as artifacts. | sources (by name, plugged in by the composition); artifact store |
+| `core/command` | Runs a command execution: its limits, `no_output` staleness, bounded head and tail, digest. | command runner (the process supervisor); clock; timer |
+| `core/inputs` | Resolves a primitive's inputs from their sources to a value and an identity; checks a text against its brief form; keeps long values as artifacts. | sources (by name, plugged in by the composition); artifact store |
 | `core/watch` | Staleness limits on a turn: no event, a tool command, repeated identical tool calls. Observes the event stream and reports a limit reached; it ends nothing itself. | clock; timer |
 | `core/trail` | What the agent touched and was denied. A pure observer of the event stream. | none: pure |
 
-The composition chains `inputs`, `admit`, `session` and `attempts` into a
-call, hands `workflow` that call, plugs `watch` and `trail` into the event
+The composition chains `inputs`, `admit` and `session` into an agent
+invocation, and `inputs`, `admit` and `command` into a command execution,
+hands `workflow` the two, plugs `watch` and `trail` into the event
 stream, and hands `watch`'s reports to `session`'s staleness port.
 
 ## Runs
@@ -172,7 +184,7 @@ composition serves from `runstore`.
 
 ## Reaping
 
-A call whose owner died may leave processes running and its hold taken.
+A primitive whose owner died may leave processes running and its hold taken.
 The hold finds the dead owner, ends what that owner left running, and
 only then is released. The owner's run reads as lost (invariant 7).
 
