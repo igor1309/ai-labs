@@ -219,7 +219,7 @@ func TestEachAgentIsTypedOnce(t *testing.T) {
 			"d":    agent("d", "model = [1"),
 		},
 		documents.Process: {"a": {Sources: documents.Sources{Home: source(homeProcess, "{x: 1}")}}},
-	}}, documents.Typers{Agent: typeAgent, Runtime: documents.TypeRuntime, Brief: documents.TypeBrief})
+	}}, documents.Typers{Agent: typeAgent, Runtime: documents.TypeRuntime, Brief: documents.TypeBrief, Process: documents.TypeProcess})
 	want := []string{"a", "base", "c"}
 	assertTyped := func(when string) {
 		t.Helper()

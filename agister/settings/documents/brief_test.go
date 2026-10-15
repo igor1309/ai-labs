@@ -424,7 +424,7 @@ func TestEachBriefIsTypedOnce(t *testing.T) {
 			"c": brief("c", "x: [1"),
 		},
 		documents.Runtime: {"a": {Sources: documents.Sources{Home: source(homeRuntime, validRuntime)}}},
-	}}, documents.Typers{Agent: documents.TypeAgent, Runtime: documents.TypeRuntime, Brief: typeBrief})
+	}}, documents.Typers{Agent: documents.TypeAgent, Runtime: documents.TypeRuntime, Brief: typeBrief, Process: documents.TypeProcess})
 	for range 3 {
 		for _, name := range []string{"a", "b", "c", "z"} {
 			d.Brief(name)

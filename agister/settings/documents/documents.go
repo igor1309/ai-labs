@@ -90,6 +90,8 @@ type Documents struct {
 	agents   map[string]definition[AgentDefinition]
 	runtimes map[string]definition[RuntimeDefinition]
 	briefs   map[string]definition[BriefDefinition]
+	// processes are each process typed.
+	processes map[string]definition[ProcessDefinition]
 }
 
 type treeResult struct {
@@ -114,6 +116,7 @@ type typers struct {
 	agent   typer[AgentDefinition]
 	runtime typer[RuntimeDefinition]
 	brief   typer[BriefDefinition]
+	process typer[ProcessDefinition]
 }
 
 // definition is a document typed as a definition of its kind, or its
@@ -125,7 +128,7 @@ type definition[T any] struct {
 
 // New gives the documents of snapshot.
 func New(snapshot Snapshot) *Documents {
-	return newDocuments(snapshot, tree.Decode, typers{agent: typeAgent, runtime: typeRuntime, brief: typeBrief})
+	return newDocuments(snapshot, tree.Decode, typers{agent: typeAgent, runtime: typeRuntime, brief: typeBrief, process: typeProcess})
 }
 
 func newDocuments(snapshot Snapshot, decode decoder, typers typers) *Documents {
@@ -160,6 +163,7 @@ func newDocuments(snapshot Snapshot, decode decoder, typers typers) *Documents {
 	d.agents = typeEach(d.trees[Agent], typers.agent)
 	d.runtimes = typeEach(d.trees[Runtime], typers.runtime)
 	d.briefs = typeEach(d.trees[Brief], typers.brief)
+	d.processes = typeEach(d.trees[Process], typers.process)
 	return d
 }
 

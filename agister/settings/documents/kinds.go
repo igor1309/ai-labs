@@ -5,6 +5,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/igor1309/ai-labs/gokit/tree"
 )
@@ -118,6 +119,65 @@ func (f *fields) boolean(key string, need need) Field[bool] {
 	return Field[bool]{Value: value, Origin: originOf(node), Given: true}
 }
 
+// integer is the integer field key, least or more.
+func (f *fields) integer(key string, need need, least int) Field[int] {
+	node, ok := f.field(key, tree.Integer, need)
+	if !ok {
+		return Field[int]{}
+	}
+	value, _ := node.Integer()
+	if value < int64(least) {
+		f.typing.problems = append(f.typing.problems, at(node, f.at(key), fmt.Sprintf("it is at least %d", least)))
+		return Field[int]{}
+	}
+	return Field[int]{Value: int(value), Origin: originOf(node), Given: true}
+}
+
+// duration is the string field key, a duration in the form of Go's
+// time.ParseDuration, as "5m" or "1h30m", more than zero: each duration a
+// document gives is a limit, and one of no time allows nothing.
+func (f *fields) duration(key string, need need) Field[time.Duration] {
+	field := f.text(key, need)
+	if !field.Given {
+		return Field[time.Duration]{}
+	}
+	value, err := time.ParseDuration(field.Value)
+	if err != nil {
+		f.problem(field.Origin, f.at(key), `it is a duration, as "5m"`)
+		return Field[time.Duration]{}
+	}
+	if value <= 0 {
+		f.problem(field.Origin, f.at(key), "it is more than zero")
+		return Field[time.Duration]{}
+	}
+	return Field[time.Duration]{Value: value, Origin: field.Origin, Given: true}
+}
+
+// amount is the field key, a number, whole or not, more than zero: a
+// limit, and one of nothing allows nothing.
+func (f *fields) amount(key string, need need) Field[float64] {
+	node, ok := f.given(key, need)
+	if !ok {
+		return Field[float64]{}
+	}
+	var value float64
+	switch node.Kind() {
+	case tree.Integer:
+		whole, _ := node.Integer()
+		value = float64(whole)
+	case tree.Number:
+		value, _ = node.Number()
+	default:
+		f.typing.problems = append(f.typing.problems, at(node, f.at(key), notA(tree.Number, node.Kind())))
+		return Field[float64]{}
+	}
+	if value <= 0 {
+		f.typing.problems = append(f.typing.problems, at(node, f.at(key), "it is more than zero"))
+		return Field[float64]{}
+	}
+	return Field[float64]{Value: value, Origin: originOf(node), Given: true}
+}
+
 // reference is the string field key, the name of a document of kind, given
 // bare or with kind before it; the field holds the name.
 func (f *fields) reference(key string, need need, kind Kind) Field[string] {
@@ -132,6 +192,85 @@ func (f *fields) reference(key string, need need, kind Kind) Field[string] {
 	}
 	field.Value = name
 	return field
+}
+
+// references is the field key, a list of names of documents of kind, each
+// given bare or with kind before it: none given where an item names
+// another kind, each such item a problem at its place in the list.
+func (f *fields) references(key string, need need, kind Kind) Field[[]string] {
+	list := f.texts(key, need)
+	if !list.Given {
+		return list
+	}
+	node, _ := f.node.Get(key)
+	names := []string{}
+	for i, item := range node.Items() {
+		value, _ := item.Text()
+		name, ok := nameOf(kind, value)
+		if !ok {
+			f.typing.problems = append(f.typing.problems, at(item, f.item(key, i), namesA(kind)))
+			continue
+		}
+		names = append(names, name)
+	}
+	if len(names) < len(list.Value) {
+		return Field[[]string]{}
+	}
+	list.Value = names
+	return list
+}
+
+// Value is a value a document gives: a text, or a reference, which holds
+// what it reads in From.
+type Value struct {
+	Text string
+	From string
+}
+
+// value is the field key, a string, or a reference that reads one of
+// roots.
+func (f *fields) value(key string, need need, roots ...string) Field[Value] {
+	node, ok := f.given(key, need)
+	if !ok {
+		return Field[Value]{}
+	}
+	switch node.Kind() {
+	case tree.String:
+		text, _ := node.Text()
+		return Field[Value]{Value: Value{Text: text}, Origin: originOf(node), Given: true}
+	case tree.Map:
+		from := f.from(key, need, roots...)
+		if !from.Given {
+			return Field[Value]{}
+		}
+		return Field[Value]{Value: Value{From: from.Value}, Origin: from.Origin, Given: true}
+	}
+	f.typing.problems = append(f.typing.problems, at(node, f.at(key), "it is a string, or a reference"))
+	return Field[Value]{}
+}
+
+// from is the field key, a reference, {from: <what it reads>}: one of
+// roots, a "." and a name. The field holds what it reads.
+func (f *fields) from(key string, need need, roots ...string) Field[string] {
+	reference := f.mapping(key, need)
+	if !reference.Given {
+		return Field[string]{}
+	}
+	read := reference.Value.text("from", required)
+	reference.Value.done()
+	if !read.Given {
+		return Field[string]{}
+	}
+	root, name, _ := strings.Cut(read.Value, ".")
+	if !slices.Contains(roots, root) || name == "" {
+		readable := make([]string, len(roots))
+		for i, root := range roots {
+			readable[i] = root + ".<name>"
+		}
+		f.problem(reference.Origin, f.at(key), "it reads "+strings.Join(readable, " or "))
+		return Field[string]{}
+	}
+	return Field[string]{Value: read.Value, Origin: reference.Origin, Given: true}
 }
 
 // texts is the field key, a list of strings: none given where an item is
@@ -211,9 +350,22 @@ func (f *fields) inner(key string, node tree.Node) *fields {
 	return &fields{typing: f.typing, node: node, place: f.at(key), known: map[string]bool{}}
 }
 
-// field is the field key, if it is given and of kind; a field that must be
-// given and is not is in no file.
+// field is the field key, if it is given and of kind.
 func (f *fields) field(key string, kind tree.Kind, need need) (tree.Node, bool) {
+	node, ok := f.given(key, need)
+	if !ok {
+		return tree.Node{}, false
+	}
+	if node.Kind() != kind {
+		f.typing.problems = append(f.typing.problems, at(node, f.at(key), notA(kind, node.Kind())))
+		return tree.Node{}, false
+	}
+	return node, true
+}
+
+// given is the field key, of any type, if it is given; a field that must
+// be given and is not is in no file.
+func (f *fields) given(key string, need need) (tree.Node, bool) {
 	f.known[key] = true
 	// A root that is no map has been reported, and has no field.
 	if k := f.node.Kind(); k != tree.Map && k != tree.Empty {
@@ -224,10 +376,6 @@ func (f *fields) field(key string, kind tree.Kind, need need) (tree.Node, bool) 
 		if need == required {
 			f.typing.problems = append(f.typing.problems, Problem{Place: f.at(key), Message: "it is missing"})
 		}
-		return tree.Node{}, false
-	}
-	if node.Kind() != kind {
-		f.typing.problems = append(f.typing.problems, at(node, f.at(key), notA(kind, node.Kind())))
 		return tree.Node{}, false
 	}
 	return node, true

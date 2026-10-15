@@ -357,7 +357,7 @@ func TestEachRuntimeIsTypedOnce(t *testing.T) {
 			"c": runtime("c", "x: [1"),
 		},
 		documents.Agent: {"a": {Sources: documents.Sources{Home: source(homeAgent, validAgent)}}},
-	}}, documents.Typers{Agent: documents.TypeAgent, Runtime: typeRuntime, Brief: documents.TypeBrief})
+	}}, documents.Typers{Agent: documents.TypeAgent, Runtime: typeRuntime, Brief: documents.TypeBrief, Process: documents.TypeProcess})
 	for range 3 {
 		for _, name := range []string{"a", "b", "c", "z"} {
 			d.Runtime(name)
