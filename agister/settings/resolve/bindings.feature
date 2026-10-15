@@ -28,19 +28,18 @@ Feature: Resolve checks that every reference reads what is there
       <problem>
 
     Examples:
-      | where                     | reads            | place                        | problem                                   |
-      | the step's input x        | params.head      | steps[0].inputs.x            | its workflow declares the param "head"    |
-      | the step's input x        | inputs.brief     | steps[0].inputs.x            | its workflow declares the input "brief"   |
-      | the step's input x        | state.review     | steps[0].inputs.x            | it is in no repeat of the state "review"  |
-      | the step's input x        | steps.no.outputs | steps[0].inputs.x            | its workflow has the item "no"            |
-      | the arm's condition       | params.head      | steps[1].branch[0].if        | its workflow declares the param "head"    |
-      | the arm's output x        | params.head      | steps[1].branch[0].outputs.x | its workflow declares the param "head"    |
-      | the repeat's state review | state.review     | steps[2].repeat.state.review | it is in no repeat of the state "review"  |
-      | the repeat's next x       | params.head      | steps[2].repeat.next.x       | its workflow declares the param "head"    |
-      | the repeat's until        | params.head      | steps[2].repeat.until        | its workflow declares the param "head"    |
-      | the workflow's output x   | params.head      | outputs.x                    | its workflow declares the param "head"    |
-      | the input goal's path     | params.head      | inputs.goal.path             | its workflow declares the param "head"    |
-      | the workflow's output x   | steps.a.output   | outputs.x                    | it reads an item's outputs or its session |
+      | where                     | reads            | place                        | problem                                  |
+      | the step's input x        | params.head      | steps[0].inputs.x            | its workflow declares the param "head"   |
+      | the step's input x        | inputs.brief     | steps[0].inputs.x            | its workflow declares the input "brief"  |
+      | the step's input x        | state.review     | steps[0].inputs.x            | it is in no repeat of the state "review" |
+      | the step's input x        | steps.no.outputs | steps[0].inputs.x            | its workflow has the item "no"           |
+      | the arm's condition       | params.head      | steps[1].branch[0].if        | its workflow declares the param "head"   |
+      | the arm's output x        | params.head      | steps[1].branch[0].outputs.x | its workflow declares the param "head"   |
+      | the repeat's state review | state.review     | steps[2].repeat.state.review | it is in no repeat of the state "review" |
+      | the repeat's next x       | params.head      | steps[2].repeat.next.x       | its workflow declares the param "head"   |
+      | the repeat's until        | params.head      | steps[2].repeat.until        | its workflow declares the param "head"   |
+      | the workflow's output x   | params.head      | outputs.x                    | its workflow declares the param "head"   |
+      | the input goal's path     | params.head      | inputs.goal.path             | its workflow declares the param "head"   |
 
   Scenario Outline: Items that may run together, or not both, cannot read each other
     Given the workflow "c" has a <operator> of "a" and "b"
@@ -63,11 +62,16 @@ Feature: Resolve checks that every reference reads what is there
     When resolve is asked for the workflow "w"
     Then it refuses: the item "one" is read through the item holding it
 
-  Scenario: A session is a step's
-    Given the workflow "c" has the workflow item "d", then the step "s"
-    And "s" continues the session "steps.d.session"
+  Scenario Outline: A step continues the session of a step
+    Given the workflow "c" has the <item> "d", then the step "s"
+    And "s" continues "<reads>"
     When resolve is asked for the workflow "c"
-    Then it refuses: the item "d" is no step, and has no session
+    Then it refuses: the problem at "steps[1].session": <problem>
+
+    Examples:
+      | item          | reads           | problem                                     |
+      | workflow item | steps.d.session | the item "d" is no step, and has no session |
+      | step          | steps.d.outputs | it reads a step's session                   |
 
   Scenario Outline: A process's references read its own params and inputs
     Given the process "p" declares the param "base" and the input "rev"

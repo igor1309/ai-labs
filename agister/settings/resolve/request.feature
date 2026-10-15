@@ -2,8 +2,11 @@
 # (ADR-002, rule 6; ADR-013). Resolve is given a source, a spy in every
 # test (ADR-009): each document by kind and name, in resolve's types,
 # holding only what resolve reads, or its problems; and the problems of
-# no document. It gives what it checked: the workflow, every document it
-# reached, by kind and name, each step's plan, and its warnings; or a
+# no document. A reference is given as what it reads, not as its text;
+# a scenario writes it as a document does. It gives what a run needs:
+# the workflow, every document it reached, by kind and name, the
+# definitions of the workflows, processes, agents and runtime mappings
+# among them, each step's plan, and its warnings; or a
 # refusal, with no warning: every document at fault, each with its
 # problems, or the block that refuses it, and the first chain that
 # reached it; and the problems of no document, the request's among them.
@@ -16,7 +19,7 @@ Feature: Resolve takes a request naming a document or a step
     When resolve is asked for the workflow "w"
     Then it gives the workflow "w"
     And it reached the workflow "w", the process "p", the agent "a" and
-      the runtime "r"
+      the runtime "r", and gives the definition of each
 
   # The made workflow has the process's inputs (ADR-013, rule 1) as a
   # caller can give them, by the params they are resolved from (ADR-010,

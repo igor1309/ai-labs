@@ -36,6 +36,15 @@ Feature: Resolve checks what crosses each boundary
     Then it refuses only "steps.child.outputs.summary": the workflow "c"
       gives the output "summary"
 
+  Scenario: A branch is read through its outputs
+    Given the branch "decide" of "w" has the arms "fix" and "done", each
+      of the output "summary"
+    And "w" reads "steps.decide.outputs.summary" and
+      "steps.decide.outputs.diff"
+    When resolve is asked for the workflow "w"
+    Then it refuses only "steps.decide.outputs.diff": the branch "decide"
+      gives the output "diff"
+
   Scenario: Every arm of a branch gives the branch's outputs
     Given the branch "decide" of "w" has the arms "fix", of the outputs
       "summary" and "diff", and "done", of the output "summary"

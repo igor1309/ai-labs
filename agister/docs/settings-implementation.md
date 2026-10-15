@@ -190,28 +190,31 @@ Resolve declares its ports in its own words (ADR-001, rule 1). Its
 source gives a document by kind and name in resolve's types, each
 holding only what resolve reads: the names it references, its params
 and inputs, its items, their bindings and conditions, its permissions,
-each with its origin. A document resolve reads nothing
+each with its origin. A reference is given as what it reads, not as
+its text: a param, an input or a repeat's state, by name; an item's
+outputs, or one field of them; an item's session; or the item of an
+all or any query. The composition translates it from documents. A
+document resolve reads nothing
 of, a brief, a prompt, a schema or a skill, is given as its problems
 alone. The source also gives the problems of no document, which refuse
 every request. The composition answers the source from documents.
 
 Its facts port gives, by a runtime mapping's contract, what the runtime
 wrapper can do: check output against a schema, resume a session, take
-skills, take a model, report tool calls and tool commands. The
-composition answers it from the wrappers; a contract no wrapper takes
-is the mapping's problem. The efforts a runtime accepts are its
-mapping's. What a process or a step needs of its runtime, and a
+skills, take a model, the efforts it accepts, report tool calls and
+tool commands (ADR-003, rule 7). The composition answers it from the
+wrappers; a contract no wrapper takes is the mapping's problem. What a process or a step needs of its runtime, and a
 required permission no plan gives, is a problem of the step, at its
 place in its workflow, of no document for a step requested alone; a
 model or an effort the runtime does not take is its agent's. A plan's
 extra is its warning.
 
-What resolve gives is what it checked, and its warnings: the workflow,
-requested or made of a step (ADR-013), every document it reached, by
-kind and name, and each step's plan. The definitions ADR-002 (rule 6)
-has it give, the composition takes from documents for each document
-reached, for core and the record; the snapshot is fixed, so they are
-what resolve checked.
+Resolve gives what a run needs (ADR-002, rule 6), and its warnings: the
+workflow, requested or made of a step (ADR-013); every document it
+reached, by kind and name; the definitions of the workflows, processes,
+agents and runtime mappings among them, in resolve's types; and each
+step's plan. A document resolve reads nothing of, the composition gives
+from the same fixed snapshot, by the name resolve reached.
 
 A refusal is every document at fault, each with its problems, or the
 block that refuses it, and the first chain that reached it, in the order the request names them; and
@@ -222,6 +225,25 @@ before it names it.
 Resolve comes in four sections, each specified, then coded: the request
 and its references; boundaries and bindings; planning and runtime facts;
 blocks.
+
+Decisions of its reviews, each with its reason:
+
+- A step requested alone takes its process's inputs as params a caller
+  gives (ADR-010, rule 1); the made workflow declares no inputs of its
+  own (`request.feature`).
+- The made workflow's one output, `output`, is the step's output whole:
+  a workflow's outputs are named.
+- A session bound from a step whose runtime keeps none is not refused:
+  a case not yet met.
+- A message states what must hold, in the repository's style.
+- A step's output field against its process's schema, and a block
+  reached through `extends`, are backlogged
+  (`backlog/step-output-fields.md`, `backlog/blocks-through-extends.md`).
+- A reference read outside what it may read in its document alone, a
+  query's item outside any query, is documents' to type
+  (`backlog/references-typed-in-documents.md`).
+- An agent's effort is checked against its runtime's facts (ADR-003,
+  rule 7); a mapping's `efforts` is not read (`backlog/mapping-efforts.md`).
 
 ## Where each check sits
 

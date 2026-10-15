@@ -73,9 +73,9 @@ Feature: Resolve plans every step on its runtime
       runtime "r" <takes>
 
     Examples:
-      | gives                | runtime                                | place  | takes                      |
-      | the model "m"        | the facts of "r" say it takes no model | model  | takes a model              |
-      | the effort "highest" | "r" lists the efforts "low" and "high" | effort | takes the effort "highest" |
+      | gives                | runtime                                                      | place  | takes                      |
+      | the model "m"        | the facts of "r" say it takes no model                       | model  | takes a model              |
+      | the effort "highest" | the facts of "r" say it accepts the efforts "low" and "high" | effort | takes the effort "highest" |
 
   Scenario: A runtime is of a contract a wrapper takes
     Given the runtime "r" is of the contract "nobody/1", which no wrapper
