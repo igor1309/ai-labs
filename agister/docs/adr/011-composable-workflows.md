@@ -5,11 +5,11 @@ description: "ADR-011: workflows are primitive invocations or compositions of wo
 
 # ADR-011: Composable workflows
 
-- **Status:** Proposed
+- **Status:** Accepted
 - **Date:** 2026-10-14
 - **Scope:** workflow composition, control flow, data flow and execution records
 - **Decision type:** Architecture
-- **Supersedes on acceptance:** ADR-005 and ADR-007
+- **Supersedes:** ADR-005 and ADR-007
 
 ## Executive Summary
 
