@@ -16,7 +16,7 @@ specified in `settings/documents`' feature files.
 
 | Package | Does | Knows |
 |---|---|---|
-| `settings/layout` | a filesystem and three layer folders → a snapshot | folders and file names; no content |
+| `settings/layout` | home's folder and the launch directory → the layers found, and a snapshot | where layers are, folders and file names; no content |
 | tree, a library | bytes → a value tree with origins; one tree merged over another | values and origins; no Agister word |
 | `settings/documents` | a snapshot, a kind and a name → one definition, or its problems | what each kind is, and `extends` |
 | `settings/resolve` | a request → what a run needs, or a refusal naming the chain | how documents name one another; blocks; plans |
@@ -37,8 +37,8 @@ through ports.
 
 ## The pipeline
 
-1. **layout**: a filesystem and three layer folders → a snapshot of
-   sources, and file problems.
+1. **layout**: home's folder and the launch directory → the layers
+   found, a snapshot of sources, and file problems.
 2. **decode**: each source's bytes → a tree with origins; blobs stay
    bytes.
 3. **merge**: per document, its sources' trees → one tree, the nearest
@@ -56,11 +56,14 @@ from the wrappers.
 
 ## 1. Layout
 
-The only step that knows files. It takes a filesystem as a dependency and
-the three layers' folders as parameters: home's, the repository's and the
-project's, each of them or none. The composition finds them; layout
-searches for nothing, knows no git and no launch directory. It reads the
-folders it is given.
+The only step that knows files. It takes a filesystem and a worktree
+root as ports, and home's folder and the launch directory as
+parameters. It finds the layers (ADR-002, rule 2): home; the
+repository's `.agister` at the root of the git worktree holding the
+launch directory; the nearest `.agister` below that root, from the
+launch directory upward. Outside a git worktree it reads home alone.
+The composition answers the worktree root from git; layout knows no
+git.
 
 It knows folders and file names: the folder of each kind and the file of
 each name (`processes/<name>.yaml`, `prompts/<name>.md`, …). It knows no
