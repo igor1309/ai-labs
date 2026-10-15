@@ -12,7 +12,8 @@ description: "ADR-001: Agister's architecture: what it is, its parts, their depe
 - **Scope:** what Agister is, its parts and how they depend on one
   another, and the invariants every part keeps
 - **Decision type:** Architecture
-- **Amended by:** ADR-011 (2026-10-15), ADR-012 (2026-10-15)
+- **Amended by:** ADR-011 (2026-10-15), ADR-012 (2026-10-15), ADR-013
+  (2026-10-15)
 
 ## Context
 
@@ -156,7 +157,7 @@ what each kind means, what references what, and how home is managed.
 |---|---|---|
 | `settings/layout` | Where settings live: selects home, the repository's and the nearest project's `.agister/`; maps a kind and name to its file; lists names. | filesystem (what is at a path, read, list, same directory); worktree root of a directory |
 | `settings/documents` | Bytes to typed definitions with per-field provenance. Three components inside the package, each with its own unit tests: **format** (one document per file in its kind's format, unknown fields, schema version), **layering** (compose by field, `extends`, provenance), **kinds** (a composed tree to each kind's definition, with field problems). Its public interface has its own tests. | none: pure |
-| `settings/resolve` | A request to resolved settings, or a refusal naming the chain. A request names any document by kind and name; a workflow comes with its parameters. Resolve follows references, applies blocks, checks boundaries and bindings, and plans each step's permissions, in unselected branches too. | a document source; runtime facts (contracts, output against a schema, tool calls and tool commands, sessions, skills, input delivery), which the composition plugs in from the runtime wrappers |
+| `settings/resolve` | A request to resolved settings, or a refusal naming the chain. A request names any document by kind and name, or a step, a process and an agent, which resolves as a workflow of that one step; a workflow comes with its parameters. Resolve follows references, applies blocks, checks boundaries and bindings, and plans each step's permissions, in unselected branches too. | a document source; runtime facts (contracts, output against a schema, tool calls and tool commands, sessions, skills, input delivery), which the composition plugs in from the runtime wrappers |
 | `settings/check` | Built on resolve: lists every document's name and resolves each, so a document nothing uses is checked too. Two views: **check** (every problem and what it refuses) and **inspect** (process, workflow and agent listings and shows, with provenance). | resolve; list names |
 | `settings/home` | Writes into home: installing settings, with backups to restore from. | filesystem writes; clock |
 
@@ -169,7 +170,7 @@ worktree that holds a directory, or none outside one. `layout` knows no git.
 
 Core takes resolved settings (the workflow, and every step's process,
 agent, runtime mapping and permission plan) and a run request (the
-workflow, its params, the caller's limits, the session for
+workflow, or the step requested alone, its params, the caller's limits, the session for
 `--continue`), and gives a stream of events and a result.
 
 | Package | Responsibility | Ports it declares |

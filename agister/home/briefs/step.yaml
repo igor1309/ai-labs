@@ -1,5 +1,4 @@
 schema: agister.brief/v1alpha1
-name: step
 
 parts:
   - {heading: "## Goal", required: true, reference: file}

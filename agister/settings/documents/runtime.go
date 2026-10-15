@@ -56,7 +56,7 @@ func (r RuntimeDefinition) clone() RuntimeDefinition {
 }
 
 func typeRuntime(name string, root tree.Node) (RuntimeDefinition, []Problem) {
-	t := newTyping(Runtime, name, root)
+	t := newTyping(Runtime, root)
 	// A select chooses among options, and options need a select to be
 	// chosen: each is needed where the other is given.
 	_, selects := t.node.Get("select")

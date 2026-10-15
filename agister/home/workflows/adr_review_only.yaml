@@ -1,4 +1,0 @@
-schema: agister.workflow/v1alpha1
-name: adr_review_only
-type: workflow
-call: {node: adr, uses: process:adr_review_codex, agent: codex-sol-61}

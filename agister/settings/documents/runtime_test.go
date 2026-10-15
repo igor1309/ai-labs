@@ -13,8 +13,7 @@ import (
 const (
 	homeRuntime       = "/home/.agister/runtimes/a.yaml"
 	repositoryRuntime = "/repo/.agister/runtimes/a.yaml"
-	// runtimeHeader is a runtime's first four lines: all it must give.
-	runtimeHeader = "schema: agister.runtime/v1alpha1\nname: a\nadapter: codex\ncontract: codex/2\n"
+	runtimeHeader     = "schema: agister.runtime/v1alpha1\nadapter: codex\ncontract: codex/2\n"
 	// validRuntime is the runtime of runtime.feature's "A runtime's
 	// fields".
 	validRuntime = runtimeHeader + `efforts: [low, high]
@@ -86,14 +85,14 @@ func inHomeRuntime(line int, place, message string) documents.Problem {
 func validRuntimeDefinition() documents.RuntimeDefinition {
 	return documents.RuntimeDefinition{
 		Name:     "a",
-		Adapter:  text("codex", homeRuntime, 3),
-		Contract: text("codex/2", homeRuntime, 4),
-		Efforts:  texts(homeRuntime, 5, "low", "high"),
-		Grants:   texts(homeRuntime, 6, "host.read"),
-		Select:   text("one", homeRuntime, 7),
-		Options: options(homeRuntime, 8,
-			option(homeRuntime, 9, "read-only", texts(homeRuntime, 9, "repository.read"), texts(homeRuntime, 9, "0.161.")),
-			option(homeRuntime, 10, "workspace-write", texts(homeRuntime, 10, "repository.read", "repository.write"), documents.Field[[]string]{}),
+		Adapter:  text("codex", homeRuntime, 2),
+		Contract: text("codex/2", homeRuntime, 3),
+		Efforts:  texts(homeRuntime, 4, "low", "high"),
+		Grants:   texts(homeRuntime, 5, "host.read"),
+		Select:   text("one", homeRuntime, 6),
+		Options: options(homeRuntime, 7,
+			option(homeRuntime, 8, "read-only", texts(homeRuntime, 8, "repository.read"), texts(homeRuntime, 8, "0.161.")),
+			option(homeRuntime, 9, "workspace-write", texts(homeRuntime, 9, "repository.read", "repository.write"), documents.Field[[]string]{}),
 		),
 	}
 }
@@ -144,9 +143,9 @@ func TestARuntimeMayOfferNoOption(t *testing.T) {
 	assertProblems(t, problems, nil)
 	assertRuntime(t, got, documents.RuntimeDefinition{
 		Name:     "a",
-		Adapter:  text("codex", homeRuntime, 3),
-		Contract: text("codex/2", homeRuntime, 4),
-		Grants:   texts(homeRuntime, 5, "process.execute"),
+		Adapter:  text("codex", homeRuntime, 2),
+		Contract: text("codex/2", homeRuntime, 3),
+		Grants:   texts(homeRuntime, 4, "process.execute"),
 	})
 }
 
@@ -159,7 +158,7 @@ func TestARuntimesSelectIsAnyOrOne(t *testing.T) {
 			t.Parallel()
 			got, problems := typeRuntime(t, runtimeHeader+"select: "+value+"\noptions:\n  x: {grants: [a]}\n")
 			assertProblems(t, problems, nil)
-			if want := text(value, homeRuntime, 5); got.Select != want {
+			if want := text(value, homeRuntime, 4); got.Select != want {
 				t.Errorf("select %+v, want %+v", got.Select, want)
 			}
 		})
@@ -185,7 +184,7 @@ func TestANearerLayerDropsWhatTheRuntimeGrantsWithNoOption(t *testing.T) {
 // missing one is in no file.
 func TestARuntimeNeedsItsAdapterAndItsContract(t *testing.T) {
 	t.Parallel()
-	got, problems := typeRuntime(t, "schema: agister.runtime/v1alpha1\nname: a\n")
+	got, problems := typeRuntime(t, "schema: agister.runtime/v1alpha1\n")
 	assertNoRuntime(t, got)
 	assertProblems(t, problems, []documents.Problem{missing("adapter"), missing("contract")})
 }
@@ -202,22 +201,22 @@ func TestARuntimesOptionsAreChosenOneOrAnyAndEachGrantsSomething(t *testing.T) {
 		want  documents.Problem
 	}{
 		{"the select some", runtimeHeader + "select: some\noptions:\n  x: {grants: [a]}\n",
-			inHomeRuntime(5, "select", `it is "any" or "one"`)},
+			inHomeRuntime(4, "select", `it is "any" or "one"`)},
 		{"options with no select", runtimeHeader + "options:\n  x: {grants: [a]}\n", missing("select")},
 		{"a select with no options", runtimeHeader + "select: one\n", missing("options")},
-		{"the options {}", runtimeHeader + "select: one\noptions: {}\n", inHomeRuntime(6, "options", "it names an option")},
+		{"the options {}", runtimeHeader + "select: one\noptions: {}\n", inHomeRuntime(5, "options", "it names an option")},
 		{"an option that is no map", runtimeHeader + "select: one\noptions:\n  x: read\n",
-			inHomeRuntime(7, "options.x", "it is a map, not a string")},
+			inHomeRuntime(6, "options.x", "it is a map, not a string")},
 		{"an option with no grants", runtimeHeader + "select: one\noptions:\n  x: {verified: ['0.1.']}\n",
 			missing("options.x.grants")},
 		{"an option granting nothing", runtimeHeader + "select: one\noptions:\n  x: {grants: []}\n",
-			inHomeRuntime(7, "options.x.grants", "it grants a permission")},
+			inHomeRuntime(6, "options.x.grants", "it grants a permission")},
 		// A value of the wrong type, once for each typing a runtime alone
 		// reads: a list, a choice and a map of entries.
-		{"efforts that are no list", runtimeHeader + "efforts: high\n", inHomeRuntime(5, "efforts", "it is a list, not a string")},
+		{"efforts that are no list", runtimeHeader + "efforts: high\n", inHomeRuntime(4, "efforts", "it is a list, not a string")},
 		{"a select that is no string", runtimeHeader + "select: 1\noptions:\n  x: {grants: [a]}\n",
-			inHomeRuntime(5, "select", "it is a string, not an integer")},
-		{"options that are no map", runtimeHeader + "select: one\noptions: [x]\n", inHomeRuntime(6, "options", "it is a map, not a list")},
+			inHomeRuntime(4, "select", "it is a string, not an integer")},
+		{"options that are no map", runtimeHeader + "select: one\noptions: [x]\n", inHomeRuntime(5, "options", "it is a map, not a list")},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
@@ -236,7 +235,6 @@ func TestARuntimesOptionsAreChosenOneOrAnyAndEachGrantsSomething(t *testing.T) {
 func TestEveryRuntimeFieldProblemIsReported(t *testing.T) {
 	t.Parallel()
 	got, problems := typeRuntime(t, `schema: agister.runtime/v1alpha1
-name: a
 adapter: codex
 efforts: [1, high, true]
 colour: red
@@ -248,16 +246,16 @@ options:
 	assertNoRuntime(t, got)
 	assertProblems(t, problems, []documents.Problem{
 		missing("contract"),
-		inHomeRuntime(4, "efforts[0]", "it is a string, not an integer"),
-		inHomeRuntime(4, "efforts[2]", "it is a string, not a boolean"),
-		inHomeRuntime(6, "select", `it is "any" or "one"`),
-		inHomeRuntime(8, "options.x.grants", "it grants a permission"),
-		inHomeRuntime(9, "options.y.grants[1]", "it is a string, not an integer"),
-		inHomeRuntime(9, "options.y.grants[3]", "it is a string, not an integer"),
-		inHomeRuntime(9, "options.y.verified[0]", "it is a string, not a boolean"),
-		inHomeRuntime(9, "options.y.verified[2]", "it is a string, not a boolean"),
-		inHomeRuntime(9, "options.y.z", "the field is not known"),
-		inHomeRuntime(5, "colour", "the field is not known"),
+		inHomeRuntime(3, "efforts[0]", "it is a string, not an integer"),
+		inHomeRuntime(3, "efforts[2]", "it is a string, not a boolean"),
+		inHomeRuntime(5, "select", `it is "any" or "one"`),
+		inHomeRuntime(7, "options.x.grants", "it grants a permission"),
+		inHomeRuntime(8, "options.y.grants[1]", "it is a string, not an integer"),
+		inHomeRuntime(8, "options.y.grants[3]", "it is a string, not an integer"),
+		inHomeRuntime(8, "options.y.verified[0]", "it is a string, not a boolean"),
+		inHomeRuntime(8, "options.y.verified[2]", "it is a string, not a boolean"),
+		inHomeRuntime(8, "options.y.z", "the field is not known"),
+		inHomeRuntime(4, "colour", "the field is not known"),
 	})
 }
 
@@ -274,7 +272,6 @@ func TestARuntimesOptionsAreByName(t *testing.T) {
 		return root
 	}
 	toml, decoded := tree.Decode(tree.TOML, []byte(`schema = "agister.runtime/v1alpha1"
-name = "a"
 adapter = "codex"
 contract = "codex/2"
 select = "any"
@@ -325,7 +322,7 @@ func TestANestedFieldIsOfTheFileThatGaveIt(t *testing.T) {
 
 	got, problems := runtime("options:\n  read-only: {verified: ['0.162.']}\n")
 	assertProblems(t, problems, nil)
-	if want := option(repositoryRuntime, 2, "read-only", texts(homeRuntime, 9, "repository.read"), texts(repositoryRuntime, 2, "0.162.")); !reflect.DeepEqual(got.Options.Value[0], want) {
+	if want := option(repositoryRuntime, 2, "read-only", texts(homeRuntime, 8, "repository.read"), texts(repositoryRuntime, 2, "0.162.")); !reflect.DeepEqual(got.Options.Value[0], want) {
 		t.Errorf("the option read-only\n got %+v\nwant %+v", got.Options.Value[0], want)
 	}
 
@@ -355,11 +352,11 @@ func TestEachRuntimeIsTypedOnce(t *testing.T) {
 	d := documents.NewTypingWith(documents.Snapshot{Documents: map[documents.Kind]map[string]documents.Document{
 		documents.Runtime: {
 			"a": runtime("a", validRuntime),
-			"b": runtime("b", "schema: agister.runtime/v1alpha1\nname: b\n"),
+			"b": runtime("b", "schema: agister.runtime/v1alpha1\n"),
 			"c": runtime("c", "x: [1"),
 		},
 		documents.Agent: {"a": {Sources: documents.Sources{Home: source(homeAgent, validAgent)}}},
-	}}, documents.Typers{Agent: documents.TypeAgent, Runtime: typeRuntime, Brief: documents.TypeBrief})
+	}}, documents.Typers{Agent: documents.TypeAgent, Runtime: typeRuntime, Brief: documents.TypeBrief, Process: documents.TypeProcess, Workflow: documents.TypeWorkflow})
 	for range 3 {
 		for _, name := range []string{"a", "b", "c", "z"} {
 			d.Runtime(name)

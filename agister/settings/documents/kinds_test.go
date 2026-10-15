@@ -10,7 +10,7 @@ import (
 
 const (
 	homeAgent  = "/home/.agister/agents/a.toml"
-	validAgent = "schema = 'agister.agent/v1alpha1'\nname = 'a'\nruntime = 'codex'\n"
+	validAgent = "schema = 'agister.agent/v1alpha1'\nruntime = 'codex'\n"
 )
 
 // typeAgent is the agent a typed from bytes, decoded in TOML as its home
@@ -53,10 +53,11 @@ func inHome(place, message string) documents.Problem {
 	return documents.Problem{Path: homeAgent, Place: place, Message: message}
 }
 
-// A tree document's schema is its kind's, a schema of another tree kind is
-// not its kind's, any other is not known; its name is the document's. A
-// missing one is in no file.
-func TestEveryTreeDocumentNamesItsSchemaAndItsName(t *testing.T) {
+// typing.feature, "Every tree document names its schema, and only it": a
+// tree document's schema is its kind's, a schema of another tree kind is
+// not its kind's, any other is not known, and a missing one is in no file;
+// a name is a field no kind knows.
+func TestEveryTreeDocumentNamesItsSchemaAndOnlyIt(t *testing.T) {
 	t.Parallel()
 	notTheAgents := "an agent's schema is \"agister.agent/v1alpha1\""
 	cases := []struct {
@@ -64,26 +65,22 @@ func TestEveryTreeDocumentNamesItsSchemaAndItsName(t *testing.T) {
 		bytes string
 		want  documents.Problem
 	}{
-		{"no schema", "name = 'a'\nruntime = 'codex'\n", missing("schema")},
-		{"a later version", "schema = 'agister.agent/v2'\nname = 'a'\nruntime = 'codex'\n",
+		{"no schema", "runtime = 'codex'\n", missing("schema")},
+		{"a later version", "schema = 'agister.agent/v2'\nruntime = 'codex'\n",
 			inHome("schema", `the schema "agister.agent/v2" is not known`)},
-		{"no Agister schema", "schema = 'x'\nname = 'a'\nruntime = 'codex'\n",
+		{"no Agister schema", "schema = 'x'\nruntime = 'codex'\n",
 			inHome("schema", `the schema "x" is not known`)},
-		{"a blob's kind", "schema = 'agister.prompt/v1alpha1'\nname = 'a'\nruntime = 'codex'\n",
+		{"a blob's kind", "schema = 'agister.prompt/v1alpha1'\nruntime = 'codex'\n",
 			inHome("schema", `the schema "agister.prompt/v1alpha1" is not known`)},
-		{"the process's", "schema = 'agister.process/v1alpha1'\nname = 'a'\nruntime = 'codex'\n", inHome("schema", notTheAgents)},
-		{"the workflow's", "schema = 'agister.workflow/v1alpha1'\nname = 'a'\nruntime = 'codex'\n", inHome("schema", notTheAgents)},
-		{"the runtime's", "schema = 'agister.runtime/v1alpha1'\nname = 'a'\nruntime = 'codex'\n", inHome("schema", notTheAgents)},
-		{"the brief's", "schema = 'agister.brief/v1alpha1'\nname = 'a'\nruntime = 'codex'\n", inHome("schema", notTheAgents)},
-		{"the retired verify's", "schema = 'agister.verify/v1alpha1'\nname = 'a'\nruntime = 'codex'\n",
+		{"the process's", "schema = 'agister.process/v1alpha1'\nruntime = 'codex'\n", inHome("schema", notTheAgents)},
+		{"the workflow's", "schema = 'agister.workflow/v1alpha1'\nruntime = 'codex'\n", inHome("schema", notTheAgents)},
+		{"the runtime's", "schema = 'agister.runtime/v1alpha1'\nruntime = 'codex'\n", inHome("schema", notTheAgents)},
+		{"the brief's", "schema = 'agister.brief/v1alpha1'\nruntime = 'codex'\n", inHome("schema", notTheAgents)},
+		{"the retired verify's", "schema = 'agister.verify/v1alpha1'\nruntime = 'codex'\n",
 			inHome("schema", `the schema "agister.verify/v1alpha1" is not known`)},
-		{"a schema that is no string", "schema = 1\nname = 'a'\nruntime = 'codex'\n",
+		{"a schema that is no string", "schema = 1\nruntime = 'codex'\n",
 			inHome("schema", "it is a string, not an integer")},
-		{"no name", "schema = 'agister.agent/v1alpha1'\nruntime = 'codex'\n", missing("name")},
-		{"another name", "schema = 'agister.agent/v1alpha1'\nname = 'b'\nruntime = 'codex'\n",
-			inHome("name", `it is "a", the document's name`)},
-		{"a name that is no string", "schema = 'agister.agent/v1alpha1'\nname = ['a']\nruntime = 'codex'\n",
-			inHome("name", "it is a string, not a list")},
+		{"a name", "schema = 'agister.agent/v1alpha1'\nname = 'a'\nruntime = 'codex'\n", inHome("name", "the field is not known")},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
@@ -143,7 +140,7 @@ func TestAFieldOfTheWrongTypeIsAProblem(t *testing.T) {
 		for _, v := range values {
 			t.Run(field+" "+v.toml, func(t *testing.T) {
 				t.Parallel()
-				bytes := "schema = 'agister.agent/v1alpha1'\nname = 'a'\n" + field + " = " + v.toml + "\n"
+				bytes := "schema = 'agister.agent/v1alpha1'\n" + field + " = " + v.toml + "\n"
 				if field != "runtime" {
 					bytes += "runtime = 'codex'\n"
 				}
@@ -157,7 +154,7 @@ func TestAFieldOfTheWrongTypeIsAProblem(t *testing.T) {
 
 func TestEveryFieldProblemIsReported(t *testing.T) {
 	t.Parallel()
-	got, problems := typeAgent(t, "schema = 'agister.agent/v1alpha1'\nname = 'a'\nmodel = 3\ncolour = 'red'\n")
+	got, problems := typeAgent(t, "schema = 'agister.agent/v1alpha1'\nmodel = 3\ncolour = 'red'\n")
 	assertNoAgent(t, got)
 	assertProblems(t, problems, []documents.Problem{
 		missing("runtime"),
@@ -197,7 +194,6 @@ func TestAnAgentsFieldKeepsTheLineItsFormatGives(t *testing.T) {
 	t.Parallel()
 	const yamlAgent = "/home/.agister/agents/a.yaml"
 	root, decoded := tree.Decode(tree.YAML, []byte(`schema: agister.agent/v1alpha1
-name: a
 runtime: claude-code
 model: opus
 model_family: anthropic
@@ -211,11 +207,11 @@ command: /usr/local/bin/claude
 	assertProblems(t, problems, nil)
 	assertAgent(t, got, documents.AgentDefinition{
 		Name:        "a",
-		Runtime:     text("claude-code", yamlAgent, 3),
-		Model:       text("opus", yamlAgent, 4),
-		ModelFamily: text("anthropic", yamlAgent, 5),
-		Effort:      text("high", yamlAgent, 6),
-		Command:     text("/usr/local/bin/claude", yamlAgent, 7),
+		Runtime:     text("claude-code", yamlAgent, 2),
+		Model:       text("opus", yamlAgent, 3),
+		ModelFamily: text("anthropic", yamlAgent, 4),
+		Effort:      text("high", yamlAgent, 5),
+		Command:     text("/usr/local/bin/claude", yamlAgent, 6),
 	})
 }
 
@@ -228,7 +224,7 @@ func TestAnAgentNeedsOnlyItsRuntime(t *testing.T) {
 
 func TestAnAgentWithNoRuntimeIsAProblem(t *testing.T) {
 	t.Parallel()
-	got, problems := typeAgent(t, "schema = 'agister.agent/v1alpha1'\nname = 'a'\nmodel = 'opus'\n")
+	got, problems := typeAgent(t, "schema = 'agister.agent/v1alpha1'\nmodel = 'opus'\n")
 	assertNoAgent(t, got)
 	assertProblems(t, problems, []documents.Problem{missing("runtime")})
 }

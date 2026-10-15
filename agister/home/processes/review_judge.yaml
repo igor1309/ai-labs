@@ -1,33 +1,27 @@
 schema: agister.process/v1alpha1
-name: review_judge
-
-type: process
 prompt: code-review-judge
+instruction: >-
+  Rule on the review findings given as input reviews, following the prompt
+  given as input prompt. Each review is numbered by its place in
+  reviews, from 1. They are all you have: rule on the evidence each
+  finding presents.
+
+params:
+  reviews: {}
+inputs:
+  reviews: {source: param, name: reviews}
 
 workspace:
   access: read-only
 
-tools:
+permissions:
   require: []
   allow: []
 
-timeout: 10m
-retry:
-  max_attempts: 1
-
-stale:
-  no_event: 3m
-
-input:
-  instruction: >-
-    Rule on the review findings given as input reviews, following the prompt
-    given as input prompt. Each review is numbered by its place in
-    reviews, from 1. They are all you have: rule on the evidence each
-    finding presents.
-  values:
-    reviews: {source: workflow.collection}
+limits:
+  time: 10m
+  stale:
+    no_event: 3m
 
 output:
-  format: json
   schema: judgement
-  require_valid: true

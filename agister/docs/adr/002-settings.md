@@ -12,7 +12,8 @@ description: "ADR-002: settings: documents in layers, composed by field, resolve
 - **Scope:** the settings documents, their layers and composition, the
   references between them, blocks, and what resolve and check do with them
 - **Decision type:** Architecture
-- **Amended by:** ADR-011 (2026-10-15), ADR-012 (2026-10-15)
+- **Amended by:** ADR-011 (2026-10-15), ADR-012 (2026-10-15), ADR-013
+  (2026-10-15)
 
 ## Context
 
@@ -31,8 +32,8 @@ Terms used here:
 
 - **settings**: the files in the layers;
 - **document**: a kind and a name, held by one or more layers' files;
-- **definition**: a document composed from its layers' files, as resolve
-  gives it and a run records it.
+- **definition**: what resolve gives and a run records: a document
+  composed from its layers' files, and what resolve makes of documents.
 
 ## Decision
 
@@ -91,15 +92,16 @@ mapping and its skills.
 
 ### 6. Resolve is the gate
 
-Resolve takes a request naming a document by kind and name, composes it
-and everything it references, and gives the definitions or a refusal. A
-refusal names the chain to the document at fault and its problem.
+Resolve takes a request naming a document by kind and name, or a step,
+a process and an agent, composes it and everything it references, and
+gives the definitions or a refusal. A refusal names the chain to the
+document at fault and its problem.
 
 A problem in a document refuses what depends on it, through any chain,
 and nothing else. A problem that belongs to no document refuses every
 request.
 
-A workflow that resolves may be run; what is refused never reaches core, and no run is
+A workflow or a step that resolves may be run; what is refused never reaches core, and no run is
 recorded (ADR-001, rule 4).
 
 ### 7. A repository blocks what home allows

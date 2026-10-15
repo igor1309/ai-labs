@@ -1,7 +1,4 @@
 schema: agister.process/v1alpha1
-name: adversarial_review
-
-type: process
-extends: process:review
+extends: review
 prompt: code-review-adversarial
 guidance: [go-testing-seams, go-architecture]

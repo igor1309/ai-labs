@@ -1,5 +1,4 @@
 schema: agister.runtime/v1alpha1
-name: claude-code
 adapter: claude-code
 contract: claude-code/3
 efforts: [low, medium, high, xhigh, max]

@@ -1,5 +1,4 @@
 schema: agister.brief/v1alpha1
-name: goal
 
 parts:
   - {heading: "## Intent", required: true}

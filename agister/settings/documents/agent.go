@@ -22,7 +22,7 @@ func (d *Documents) Agent(name string) (AgentDefinition, []Problem) {
 }
 
 func typeAgent(name string, root tree.Node) (AgentDefinition, []Problem) {
-	t := newTyping(Agent, name, root)
+	t := newTyping(Agent, root)
 	agent := AgentDefinition{
 		Name:        name,
 		Runtime:     t.reference("runtime", required, Runtime),

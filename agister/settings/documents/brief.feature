@@ -13,7 +13,6 @@ Feature: Documents gives a brief
     Given the brief "a" has a home source:
       """
       schema: agister.brief/v1alpha1
-      name: a
       parts:
         - {heading: "## Goal", required: true, reference: file}
         - {heading: "## Notes", required: false}
@@ -38,7 +37,7 @@ Feature: Documents gives a brief
     And it has no problem
 
   Scenario: A brief needs its parts and its template
-    Given the brief "a" has a home source of its schema and its name
+    Given the brief "a" has a home source of its schema alone
     When documents is asked for the brief "a"
     Then there is no definition
     And it has exactly two problems: at "parts" and "template", each "it

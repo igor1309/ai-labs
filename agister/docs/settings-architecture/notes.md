@@ -74,9 +74,11 @@ The page states no syntax: settings syntax is specified in
 - References are literal names, fixed in settings, so they resolve
   without a run. (ADR-002, rule 5)
 - Resolve takes a request naming a document by kind and name (a
-  workflow with its parameters), composes it and all it references, and
-  gives definitions or a refusal naming the chain. (ADR-002, rule 6;
-  ADR-001, settings)
+  workflow with its parameters), or a step, a process and an agent,
+  composes it and all it references, and gives definitions or a refusal
+  naming the chain. A step requested alone resolves as a workflow of
+  that one step, which is no document. (ADR-002, rule 6; ADR-001,
+  settings; ADR-013)
 - Resolve follows references, applies blocks, checks boundaries and
   bindings, plans each step's permissions, and refuses a step that
   needs what its runtime cannot do, in unselected branches too.
