@@ -28,9 +28,12 @@ ADR-008 is untouched.
    extension in ADR-002) left, as the owner left it to the
    implementation.
 5. **Rewrite `docs/settings-implementation.md`** (ADR-011's step 5, now
-   after this).
+   after this). Done (2026-10-15): the kinds, the script as a prompt, and
+   where each check sits.
 6. **Specify the kinds** in `settings/documents`: steps in a workflow,
-   bash agents and processes.
+   bash agents and processes. The documents core branch predates
+   ADR-012: it still types a `verify` kind and names a runtime's options
+   "primitives"; both go here.
 
 ## Open points, decided by the owner (2026-10-15)
 
