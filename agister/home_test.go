@@ -132,11 +132,11 @@ func shipped(t *testing.T) documents.Snapshot {
 	return snapshot
 }
 
-// The shipped settings say what the old shape said, but what the owner
-// dropped: each process's workspace, permissions and output, each review
-// workflow's revisions resolved once at its boundary and shared by its
-// reviewers (ADR-010, rule 3), and bash granting every permission there is
-// to an agent that names only its runtime.
+// The shipped settings say what they mean: each process's workspace,
+// permissions and output, each review workflow's revisions resolved once
+// at its boundary and shared by its reviewers (ADR-010, rule 3), and bash
+// granting every permission there is to an agent that names only its
+// runtime.
 //
 // Contract test: the files home holds, as Agister ships them.
 func TestTheShippedSettingsSayWhatTheyMean(t *testing.T) {
@@ -154,8 +154,13 @@ func TestTheShippedSettingsSayWhatTheyMean(t *testing.T) {
 			[]string{"repository.read", "repository.write", "process.execute"},
 			[]string{"repository.read", "repository.search", "repository.diff", "repository.history.read",
 				"repository.write", "repository.history.write", "process.execute", "network", "host.read", "host.write"}},
-		{"architecture_review", "read-only", "inputs.candidate_revision", "review-result", []string{"repository.read", "repository.diff"}, reads},
+		{"review", "read-only", "inputs.candidate_revision", "review-result", []string{"repository.read", "repository.diff"}, reads},
 		{"adr_review_codex", "read-only", "inputs.candidate_revision", "review-result", []string{"repository.read", "repository.diff"}, reads},
+		{"adversarial_review", "read-only", "inputs.candidate_revision", "review-result", []string{"repository.read", "repository.diff"}, reads},
+		{"architecture_review", "read-only", "inputs.candidate_revision", "review-result", []string{"repository.read", "repository.diff"}, reads},
+		{"clarity_review", "read-only", "inputs.candidate_revision", "review-result", []string{"repository.read", "repository.diff"}, reads},
+		{"intent_review", "read-only", "inputs.candidate_revision", "review-result", []string{"repository.read", "repository.diff"}, reads},
+		{"tests_review", "read-only", "inputs.candidate_revision", "review-result", []string{"repository.read", "repository.diff"}, reads},
 		{"advisor", "read-only", "inputs.revision", "advice", []string{"repository.read"}, reads},
 		{"review_judge", "read-only", "", "judgement", []string{}, []string{}},
 	}
@@ -190,15 +195,19 @@ func TestTheShippedSettingsSayWhatTheyMean(t *testing.T) {
 			if len(problems) > 0 {
 				t.Fatalf("problems %v", problems)
 			}
-			sources := map[string]string{}
+			inputs := map[string]documents.Input{}
 			for _, input := range w.Inputs.Value {
-				for _, argument := range input.Value.Arguments {
-					sources[input.Value.Name] = input.Value.Source.Value + " " + argument.Value.Value.From
-				}
+				inputs[input.Value.Name] = input.Value
 			}
 			for _, revision := range []string{"base", "candidate"} {
-				if want := "git.revision params." + revision; sources[revision] != want {
-					t.Errorf("the input %s is %q, want %q", revision, sources[revision], want)
+				input := inputs[revision]
+				arguments := map[string]documents.Value{}
+				for _, argument := range input.Arguments {
+					arguments[argument.Value.Name] = argument.Value.Value
+				}
+				want := map[string]documents.Value{"rev": {From: "params." + revision}}
+				if input.Source.Value != "git.revision" || !maps.Equal(arguments, want) {
+					t.Errorf("the input %s is %q of %v, want git.revision of %v", revision, input.Source.Value, arguments, want)
 				}
 			}
 			reviewers := w.Steps.Value[0].Value.Parallel.Value
