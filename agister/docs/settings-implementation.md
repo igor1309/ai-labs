@@ -156,7 +156,8 @@ The kinds:
 - **brief**: a form a text input may take (ADR-010, rule 5).
 
 Typing knows a kind's shape, not a runtime: an agent that gives a model
-to bash types, and resolve refuses the step that uses it.
+to bash types, and resolve refuses the agent, and every request that
+reaches it.
 
 ## 6. Resolve
 
@@ -188,8 +189,18 @@ and inputs, its items, their bindings and conditions, its permissions,
 each with its origin. A document resolve reads nothing
 of, a brief, a prompt, a schema or a skill, is given as its problems
 alone. The source also gives the problems of no document, which refuse
-every request. The composition answers the source from documents, and
-the runtime facts from the wrappers.
+every request. The composition answers the source from documents.
+
+Its facts port gives, by a runtime mapping's contract, what the runtime
+wrapper can do: check output against a schema, resume a session, take
+skills, take a model, report tool calls and tool commands. The
+composition answers it from the wrappers; a contract no wrapper takes
+is the mapping's problem. The efforts a runtime accepts are its
+mapping's. What a process or a step needs of its runtime, and a
+required permission no plan gives, is a problem of the step, at its
+place in its workflow, of no document for a step requested alone; a
+model or an effort the runtime does not take is its agent's. A plan's
+extra is its warning.
 
 What resolve gives is what it checked, and its warnings: the workflow,
 requested or made of a step (ADR-013), every document it reached, by
