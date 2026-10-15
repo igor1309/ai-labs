@@ -22,7 +22,7 @@ Feature: Documents gives a process
         base: {default: origin/trunk}
         goal: {}
       inputs:
-        base: {source: git.revision, rev: {from: params.base}}
+        base: {source: git.revision, rev: {from: params.base}, remote: origin}
         goal: {source: file, path: {from: params.goal}, form: [goal]}
       environment:
         MODE: strict

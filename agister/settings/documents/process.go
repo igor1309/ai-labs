@@ -26,7 +26,7 @@ type ProcessDefinition struct {
 	Skills      Field[[]string]
 	Params      Field[[]Field[Param]]
 	Inputs      Field[[]Field[Input]]
-	Environment Field[[]Field[Variable]]
+	Environment Field[[]Field[Binding]]
 	Permissions Field[Permissions]
 	Workspace   Field[Workspace]
 	Limits      Field[Limits]
@@ -49,19 +49,7 @@ type Input struct {
 	Name      string
 	Source    Field[string]
 	Form      Field[[]string]
-	Arguments []Field[Argument]
-}
-
-// Argument is one argument of an input's source, by name.
-type Argument struct {
-	Name  string
-	Value Value
-}
-
-// Variable is one variable of the environment, by name.
-type Variable struct {
-	Name  string
-	Value Value
+	Arguments []Field[Binding]
 }
 
 // Permissions are the permissions a process's work requires, and those it
@@ -137,7 +125,7 @@ func (p ProcessDefinition) clone() ProcessDefinition {
 
 // processReads is what a process's references may read: its params and its
 // inputs.
-var processReads = []string{"params", "inputs"}
+func processReads() []string { return []string{"params", "inputs"} }
 
 func typeProcess(name string, root tree.Node) (ProcessDefinition, []Problem) {
 	t := newTyping(Process, root)
@@ -149,7 +137,7 @@ func typeProcess(name string, root tree.Node) (ProcessDefinition, []Problem) {
 		Skills:      t.references("skills", optional, skill),
 		Params:      typeParams(t),
 		Inputs:      typeInputs(t),
-		Environment: typeEnvironment(t),
+		Environment: t.bindings("environment", optional, processReads()...),
 	}
 	if permissions := t.mapping("permissions", optional); permissions.Given {
 		p := permissions.Value
@@ -216,36 +204,21 @@ func typeInputs(t *fields) Field[[]Field[Input]] {
 			Name:      entry.name,
 			Source:    entry.fields.text("source", required),
 			Form:      entry.fields.references("form", optional, Brief),
-			Arguments: []Field[Argument]{},
+			Arguments: []Field[Binding]{},
 		}
 		// Every other field is an argument of the source.
 		for _, key := range entry.fields.node.Keys() {
 			if key == "source" || key == "form" {
 				continue
 			}
-			if value := entry.fields.value(key, required, processReads...); value.Given {
-				input.Arguments = append(input.Arguments, Field[Argument]{Value: Argument{Name: key, Value: value.Value}, Origin: value.Origin, Given: true})
+			if value := entry.fields.value(key, required, processReads()...); value.Given {
+				input.Arguments = append(input.Arguments, Field[Binding]{Value: Binding{Name: key, Value: value.Value}, Origin: value.Origin, Given: true})
 			}
 		}
 		entry.fields.done()
 		typed = append(typed, Field[Input]{Value: input, Origin: originOf(entry.fields.node), Given: true})
 	}
 	return Field[[]Field[Input]]{Value: typed, Origin: inputs.Origin, Given: true}
-}
-
-func typeEnvironment(t *fields) Field[[]Field[Variable]] {
-	environment := t.mapping("environment", optional)
-	if !environment.Given {
-		return Field[[]Field[Variable]]{}
-	}
-	e := environment.Value
-	typed := []Field[Variable]{}
-	for _, key := range e.node.Keys() {
-		if value := e.value(key, required, processReads...); value.Given {
-			typed = append(typed, Field[Variable]{Value: Variable{Name: key, Value: value.Value}, Origin: value.Origin, Given: true})
-		}
-	}
-	return Field[[]Field[Variable]]{Value: typed, Origin: environment.Origin, Given: true}
 }
 
 func typeLimits(l *fields) Limits {

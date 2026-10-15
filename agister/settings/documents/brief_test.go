@@ -14,8 +14,7 @@ import (
 const (
 	homeBrief       = "/home/.agister/briefs/a.yaml"
 	repositoryBrief = "/repo/.agister/briefs/a.yaml"
-	// briefHeader is a brief's schema and name, its first two lines.
-	briefHeader = "schema: agister.brief/v1alpha1\n"
+	briefHeader     = "schema: agister.brief/v1alpha1\n"
 	// validTemplate is the template of validBrief.
 	validTemplate = "## Goal\n\n## Notes\n\n## Open\n\nNone.\n"
 	// validBrief is the brief of brief.feature's "A brief's fields".
@@ -424,7 +423,7 @@ func TestEachBriefIsTypedOnce(t *testing.T) {
 			"c": brief("c", "x: [1"),
 		},
 		documents.Runtime: {"a": {Sources: documents.Sources{Home: source(homeRuntime, validRuntime)}}},
-	}}, documents.Typers{Agent: documents.TypeAgent, Runtime: documents.TypeRuntime, Brief: typeBrief, Process: documents.TypeProcess})
+	}}, documents.Typers{Agent: documents.TypeAgent, Runtime: documents.TypeRuntime, Brief: typeBrief, Process: documents.TypeProcess, Workflow: documents.TypeWorkflow})
 	for range 3 {
 		for _, name := range []string{"a", "b", "c", "z"} {
 			d.Brief(name)

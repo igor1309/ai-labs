@@ -100,13 +100,17 @@ func (f *fields) oneOf(key string, need need, values ...string) Field[string] {
 	for i, value := range values {
 		quoted[i] = strconv.Quote(value)
 	}
-	last := len(quoted) - 1
-	message := "it is " + quoted[last]
-	if last > 0 {
-		message = "it is " + strings.Join(quoted[:last], ", ") + " or " + quoted[last]
-	}
-	f.problem(field.Origin, f.at(key), message)
+	f.problem(field.Origin, f.at(key), "it is "+either(quoted))
 	return Field[string]{}
+}
+
+// either is choices, "a", "a or b", "a, b or c".
+func either(choices []string) string {
+	last := len(choices) - 1
+	if last == 0 {
+		return choices[0]
+	}
+	return strings.Join(choices[:last], ", ") + " or " + choices[last]
 }
 
 // boolean is the boolean field key.
@@ -256,8 +260,14 @@ func (f *fields) from(key string, need need, roots ...string) Field[string] {
 	if !reference.Given {
 		return Field[string]{}
 	}
-	read := reference.Value.text("from", required)
-	reference.Value.done()
+	return reference.Value.reads(roots...)
+}
+
+// reads is what the reference f reads, its one field from: one of roots, a
+// "." and a name; a problem at the reference where it reads another.
+func (f *fields) reads(roots ...string) Field[string] {
+	read := f.text("from", required)
+	f.done()
 	if !read.Given {
 		return Field[string]{}
 	}
@@ -267,10 +277,33 @@ func (f *fields) from(key string, need need, roots ...string) Field[string] {
 		for i, root := range roots {
 			readable[i] = root + ".<name>"
 		}
-		f.problem(reference.Origin, f.at(key), "it reads "+strings.Join(readable, " or "))
+		f.problem(originOf(f.node), f.place, "it reads "+either(readable))
 		return Field[string]{}
 	}
-	return Field[string]{Value: read.Value, Origin: reference.Origin, Given: true}
+	return Field[string]{Value: read.Value, Origin: originOf(f.node), Given: true}
+}
+
+// Binding is a value given by name: a text, or what a reference reads.
+type Binding struct {
+	Name  string
+	Value Value
+}
+
+// bindings is the field key, a map of values by name, each a string or a
+// reference that reads one of roots, in the order of their names.
+func (f *fields) bindings(key string, need need, roots ...string) Field[[]Field[Binding]] {
+	mapping := f.mapping(key, need)
+	if !mapping.Given {
+		return Field[[]Field[Binding]]{}
+	}
+	m := mapping.Value
+	typed := []Field[Binding]{}
+	for _, name := range m.node.Keys() {
+		if value := m.value(name, required, roots...); value.Given {
+			typed = append(typed, Field[Binding]{Value: Binding{Name: name, Value: value.Value}, Origin: value.Origin, Given: true})
+		}
+	}
+	return Field[[]Field[Binding]]{Value: typed, Origin: mapping.Origin, Given: true}
 }
 
 // texts is the field key, a list of strings: none given where an item is

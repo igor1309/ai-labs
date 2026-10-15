@@ -22,7 +22,7 @@ params:
   base: {default: origin/trunk}
   goal: {}
 inputs:
-  base: {source: git.revision, rev: {from: params.base}}
+  base: {source: git.revision, rev: {from: params.base}, remote: origin}
   goal: {source: file, path: {from: params.goal}, form: [goal]}
 environment:
   MODE: strict
@@ -89,16 +89,17 @@ func validProcessDefinition() documents.ProcessDefinition {
 			given(documents.Param{Name: "goal"}, 8),
 		}, 6),
 		Inputs: given([]documents.Field[documents.Input]{
-			given(documents.Input{Name: "base", Source: given("git.revision", 10), Arguments: []documents.Field[documents.Argument]{
-				given(documents.Argument{Name: "rev", Value: documents.Value{From: "params.base"}}, 10),
+			given(documents.Input{Name: "base", Source: given("git.revision", 10), Arguments: []documents.Field[documents.Binding]{
+				given(documents.Binding{Name: "remote", Value: documents.Value{Text: "origin"}}, 10),
+				given(documents.Binding{Name: "rev", Value: documents.Value{From: "params.base"}}, 10),
 			}}, 10),
-			given(documents.Input{Name: "goal", Source: given("file", 11), Form: given([]string{"goal"}, 11), Arguments: []documents.Field[documents.Argument]{
-				given(documents.Argument{Name: "path", Value: documents.Value{From: "params.goal"}}, 11),
+			given(documents.Input{Name: "goal", Source: given("file", 11), Form: given([]string{"goal"}, 11), Arguments: []documents.Field[documents.Binding]{
+				given(documents.Binding{Name: "path", Value: documents.Value{From: "params.goal"}}, 11),
 			}}, 11),
 		}, 9),
-		Environment: given([]documents.Field[documents.Variable]{
-			given(documents.Variable{Name: "BASE", Value: documents.Value{From: "inputs.base"}}, 14),
-			given(documents.Variable{Name: "MODE", Value: documents.Value{Text: "strict"}}, 13),
+		Environment: given([]documents.Field[documents.Binding]{
+			given(documents.Binding{Name: "BASE", Value: documents.Value{From: "inputs.base"}}, 14),
+			given(documents.Binding{Name: "MODE", Value: documents.Value{Text: "strict"}}, 13),
 		}, 12),
 		Permissions: given(documents.Permissions{
 			Require: given([]string{"repository.read"}, 15),
@@ -130,6 +131,27 @@ func TestAProcesssFields(t *testing.T) {
 	got, problems := d.Process("a")
 	assertProblems(t, problems, nil)
 	assertProcess(t, got, validProcessDefinition())
+}
+
+// process.feature, "A process's fields each hold what they name": a
+// process with a field's problem, asked of documents, is no process and
+// has the problem; one whose tree has problems has its tree's.
+func TestDocumentsGivesAProcesssProblems(t *testing.T) {
+	t.Parallel()
+	d := documents.New(snapshotOf(map[string]documents.Document{
+		"a": {Sources: documents.Sources{Home: source(homeProcess, strings.Replace(validProcess, "cost: 2.5", "cost: 0", 1))}},
+		"b": {Sources: documents.Sources{Home: source("/home/.agister/processes/b.yaml", "x: [1")}},
+	}))
+	got, problems := d.Process("a")
+	assertNoProcess(t, got)
+	assertProblems(t, problems, []documents.Problem{inHomeProcess(19, "limits.cost", "it is more than zero")})
+	_, want := d.Tree(documents.Process, "b")
+	if len(want) == 0 {
+		t.Fatal("the process b's tree has no problem")
+	}
+	got, problems = d.Process("b")
+	assertNoProcess(t, got)
+	assertProblems(t, problems, want)
 }
 
 // A process given is the caller's own: changing any slice of it changes
@@ -184,7 +206,7 @@ func TestAProcesssFieldsEachHoldWhatTheyName(t *testing.T) {
 		{"the input x: {path: a}", "  goal: {source: file", "  x: {path: a}\n  goal: {source: file", missing("inputs.x.source")},
 		{"the form [brief:goal, agent:x]", "form: [goal]", "form: [brief:goal, agent:x]",
 			inHomeProcess(11, "inputs.goal.form[1]", "it names a brief")},
-		{"the rev {from: steps.x.outputs.y}", "{from: params.base}}", "{from: steps.x.outputs.y}}",
+		{"the rev {from: steps.x.outputs.y}", "rev: {from: params.base}", "rev: {from: steps.x.outputs.y}",
 			inHomeProcess(10, "inputs.base.rev", "it reads params.<name> or inputs.<name>")},
 		{"the variable MODE: [a]", "MODE: strict", "MODE: [a]", inHomeProcess(13, "environment.MODE", "it is a string, or a reference")},
 		{"the access write", "access: read-only", "access: write", inHomeProcess(16, "workspace.access", `it is "read-only" or "read-write"`)},

@@ -47,12 +47,16 @@ func assertProblems(t *testing.T, got layout.Snapshot, want []layout.Problem) {
 func TestOutsideAGitWorktreeOnlyHomeIsRead(t *testing.T) {
 	t.Parallel()
 	files := &spyFiles{files: map[string]string{
-		homeFolder + "/processes/a.yaml":      "",
+		homeFolder + "/processes/a.yaml":      "home",
 		"/tmp/work/.agister/processes/b.yaml": "",
 	}}
 	roots := &spyRoots{}
 	got := find(t, files, roots, "/tmp/work")
 	assertLayers(t, got, layout.Folders{Home: homeFolder})
+	want := layout.Sources{Home: &layout.Source{Path: homeFolder + "/processes/a.yaml", Bytes: []byte("home")}}
+	if sources := got.Documents[layout.Process]["a"].Sources; !reflect.DeepEqual(sources, want) {
+		t.Errorf("sources %+v, want %+v", sources, want)
+	}
 	if !reflect.DeepEqual(roots.asked, []string{"/tmp/work"}) {
 		t.Errorf("asked the root of %q, want of the launch directory", roots.asked)
 	}
@@ -87,13 +91,21 @@ func TestAWorktreeRootWithNoAgisterHasNoRepositoryLayer(t *testing.T) {
 func TestTheProjectLayerIsTheNearestAgisterBelowTheRoot(t *testing.T) {
 	t.Parallel()
 	files := &spyFiles{files: map[string]string{
-		homeFolder + "/processes/a.yaml":      "",
-		"/repo/.agister/processes/a.yaml":     "",
-		"/repo/p/.agister/processes/a.yaml":   "",
-		"/repo/p/q/.agister/processes/a.yaml": "",
+		homeFolder + "/processes/a.yaml":      "home",
+		"/repo/.agister/processes/a.yaml":     "repository",
+		"/repo/p/.agister/processes/a.yaml":   "farther",
+		"/repo/p/q/.agister/processes/a.yaml": "project",
 	}}
 	got := find(t, files, &spyRoots{root: "/repo"}, "/repo/p/q")
 	assertLayers(t, got, layout.Folders{Home: homeFolder, Repository: "/repo/.agister", Project: "/repo/p/q/.agister"})
+	want := layout.Sources{
+		Home:       &layout.Source{Path: homeFolder + "/processes/a.yaml", Bytes: []byte("home")},
+		Repository: &layout.Source{Path: "/repo/.agister/processes/a.yaml", Bytes: []byte("repository")},
+		Project:    &layout.Source{Path: "/repo/p/q/.agister/processes/a.yaml", Bytes: []byte("project")},
+	}
+	if sources := got.Documents[layout.Process]["a"].Sources; !reflect.DeepEqual(sources, want) {
+		t.Errorf("sources\n got %+v\nwant %+v", sources, want)
+	}
 	assertProblems(t, got, nil)
 }
 

@@ -13,8 +13,7 @@ import (
 const (
 	homeRuntime       = "/home/.agister/runtimes/a.yaml"
 	repositoryRuntime = "/repo/.agister/runtimes/a.yaml"
-	// runtimeHeader is a runtime's first four lines: all it must give.
-	runtimeHeader = "schema: agister.runtime/v1alpha1\nadapter: codex\ncontract: codex/2\n"
+	runtimeHeader     = "schema: agister.runtime/v1alpha1\nadapter: codex\ncontract: codex/2\n"
 	// validRuntime is the runtime of runtime.feature's "A runtime's
 	// fields".
 	validRuntime = runtimeHeader + `efforts: [low, high]
@@ -357,7 +356,7 @@ func TestEachRuntimeIsTypedOnce(t *testing.T) {
 			"c": runtime("c", "x: [1"),
 		},
 		documents.Agent: {"a": {Sources: documents.Sources{Home: source(homeAgent, validAgent)}}},
-	}}, documents.Typers{Agent: documents.TypeAgent, Runtime: typeRuntime, Brief: documents.TypeBrief, Process: documents.TypeProcess})
+	}}, documents.Typers{Agent: documents.TypeAgent, Runtime: typeRuntime, Brief: documents.TypeBrief, Process: documents.TypeProcess, Workflow: documents.TypeWorkflow})
 	for range 3 {
 		for _, name := range []string{"a", "b", "c", "z"} {
 			d.Runtime(name)
