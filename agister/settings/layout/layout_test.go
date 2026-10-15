@@ -180,7 +180,6 @@ func TestAKindsFolderAndExtensionGiveItsDocuments(t *testing.T) {
 		{layout.Process, "processes", ".yaml"},
 		{layout.Workflow, "workflows", ".yaml"},
 		{layout.Runtime, "runtimes", ".yaml"},
-		{layout.Verify, "verifies", ".yaml"},
 		{layout.Brief, "briefs", ".yaml"},
 		{layout.Schema, "schemas", ".json"},
 		{layout.Prompt, "prompts", ".md"},
