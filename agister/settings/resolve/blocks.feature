@@ -54,6 +54,7 @@ Feature: Resolve refuses what depends on a blocked document
       process allows
     And line 2 of the repository's blocks blocks the agent "gone", which
       no layer holds
-    And the workflow "w" has a problem
+    And the workflow "w" reads a param it does not declare, a problem
+      resolve finds, so the step is still planned
     When resolve is asked for the workflow "w"
     Then it refuses, giving no plan and no warning

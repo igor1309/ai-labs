@@ -13,6 +13,8 @@ description: "ADR-013: a request names a workflow or a step; a step requested al
   record make of a step requested alone
 - **Decision type:** Architecture
 - **Amends:** ADR-001 and ADR-002
+- **Revised:** 2026-10-16, rule 1, by the owner: the made workflow has
+  the process's params, not its inputs, so each input resolves once
 
 ## Context
 
@@ -35,8 +37,10 @@ run executes it as any workflow.
 
 ### 1. A requested step is a workflow of one step
 
-The workflow resolve makes has the process's inputs as its inputs and
-the step's output as its output. It is a definition resolve makes, not
+The workflow resolve makes has the process's params as its params and
+the step's output as its output. The process's inputs are its step's,
+resolved once, before its call, from those params (ADR-010, rules 1
+and 3). It is a definition resolve makes, not
 a document: it has no file, no layer and no name, and nothing extends
 or blocks it.
 

@@ -22,6 +22,10 @@ Left out of the first cut of resolve, for core first (2026-10-15).
   JSON Schema; resolve reads no schema language.
 - **How deep.** A field of a field, an item of an array, a field one of
   several alternatives gives.
+- **A repeat's or a parallel's outputs.** ADR-011 does not say what a
+  repeat gives; documents' example reads a repeat through its outputs,
+  and resolve accepts it unchecked. A parallel returns its children's
+  available outputs (ADR-011, rule 2).
 - **A step with no schema.** Its output is text; a field of it is a
   problem, or is not checked.
 
