@@ -24,6 +24,8 @@ type source struct {
 	asked map[resolve.Reference]int
 	// facts are the runtime facts, by contract.
 	facts map[string]resolve.Facts
+	// blocks are the repository's.
+	blocks []resolve.Block
 }
 
 // able is the contract of a wrapper that can do everything.
@@ -85,6 +87,23 @@ func (s *source) Other(kind resolve.Kind, name string) []resolve.Problem {
 }
 
 func (s *source) Problems() []resolve.Problem { return s.none }
+
+func (s *source) Blocks() []resolve.Block { return s.blocks }
+
+// Holds is whether s holds the document of kind and name, problems or not.
+func (s *source) Holds(kind resolve.Kind, name string) bool {
+	reference := resolve.Reference{Kind: kind, Name: name}
+	held := map[resolve.Kind]bool{
+		resolve.KindWorkflow: has(s.workflows, name), resolve.KindProcess: has(s.processes, name),
+		resolve.KindAgent: has(s.agents, name), resolve.KindRuntime: has(s.runtimes, name),
+	}
+	return held[kind] || s.others[reference] || len(s.problems[reference]) > 0
+}
+
+func has[T any](held map[string]T, name string) bool {
+	_, ok := held[name]
+	return ok
+}
 
 func (s *source) Facts(contract string) (resolve.Facts, bool) {
 	facts, ok := s.facts[contract]

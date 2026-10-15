@@ -28,8 +28,9 @@ const (
 
 // Source is what resolve asks of the settings: each document it reads, by
 // name, or its problems; the problems of a document it reads nothing of,
-// a brief, a prompt, a schema or a skill; and the problems of no document.
-// A document with problems is given as the zero document.
+// a brief, a prompt, a schema or a skill; the problems of no document; the
+// repository's blocks; and whether a layer holds a document. A document
+// with problems is given as the zero document.
 type Source interface {
 	Workflow(name string) (Workflow, []Problem)
 	Process(name string) (Process, []Problem)
@@ -37,6 +38,18 @@ type Source interface {
 	Runtime(name string) (Runtime, []Problem)
 	Other(kind Kind, name string) []Problem
 	Problems() []Problem
+	Blocks() []Block
+	Holds(kind Kind, name string) bool
+}
+
+// Block is a document the repository refuses (ADR-002, rule 7), by kind
+// and name, its reason, and where the blocks give it. A block is not a
+// problem.
+type Block struct {
+	Kind   Kind
+	Name   string
+	Reason string
+	Origin Origin
 }
 
 // Origin is where a document gives a value: its file's path, and its line
@@ -230,12 +243,14 @@ type Reference struct {
 
 // Resolved is what resolve checked: the workflow, requested or made of a
 // step, nil for a request of another kind; every document it reached, in
-// the order it reached them; and the plan of every step, in the order its
-// workflow was reached.
+// the order it reached them; the plan of every step, in the order its
+// workflow was reached; and its warnings, each a block naming no
+// document. A plan's extra is a warning of its own.
 type Resolved struct {
 	Workflow *Workflow
 	Reached  []Reference
 	Plans    []Plan
+	Warnings []Problem
 }
 
 // Plan is a step's plan (ADR-003, rule 4): the step, by its workflow's
@@ -258,11 +273,12 @@ type Plan struct {
 }
 
 // Fault is a document at fault, the last link of its chain, and its
-// problems; or problems of no document, the request's among them, with no
-// chain.
+// problems, or the block that refuses it; or problems of no document, the
+// request's among them, with no chain.
 type Fault struct {
 	Chain    []Link
 	Problems []Problem
+	Block    *Block
 }
 
 // Link is a document of a chain: its kind and name, and where the document
@@ -299,10 +315,14 @@ func New(source Source, wrappers Wrappers) (*Resolver, error) {
 // what each document it reached reads.
 func (r *Resolver) Resolve(request Request) (Resolved, []Fault) {
 	w := &walk{
+		blocks: map[Reference]Block{}, blocked: map[Reference]bool{},
 		source: r.source, wrappers: r.wrappers, index: map[Reference]int{}, chains: map[Reference][]Link{},
 		problems: map[Reference][]Problem{}, open: map[string]bool{},
 		workflows: map[string]Workflow{}, processes: map[string]Process{},
 		agents: map[string]Agent{}, runtimes: map[string]Runtime{}, facts: map[string]Facts{},
+	}
+	for _, block := range r.source.Blocks() {
+		w.blocks[Reference{Kind: block.Kind, Name: block.Name}] = block
 	}
 	var workflow *Workflow
 	switch {
@@ -336,19 +356,33 @@ func (r *Resolver) Resolve(request Request) (Resolved, []Fault) {
 		faults = append(faults, Fault{Problems: problems})
 	}
 	for _, reference := range w.reached {
-		if problems := w.problems[reference]; len(problems) > 0 {
+		if w.blocked[reference] {
+			block := w.blocks[reference]
+			faults = append(faults, Fault{Chain: w.chains[reference], Block: &block})
+		} else if problems := w.problems[reference]; len(problems) > 0 {
 			faults = append(faults, Fault{Chain: w.chains[reference], Problems: problems})
 		}
 	}
 	if len(faults) > 0 {
 		return Resolved{}, faults
 	}
-	return Resolved{Workflow: workflow, Reached: w.reached, Plans: w.plans}, nil
+	var warnings []Problem
+	for _, block := range r.source.Blocks() {
+		if !r.source.Holds(block.Kind, block.Name) {
+			warnings = append(warnings, Problem{Path: block.Origin.Path, Line: block.Origin.Line,
+				Message: fmt.Sprintf("it blocks the %s %q, which no layer holds", block.Kind, block.Name)})
+		}
+	}
+	return Resolved{Workflow: workflow, Reached: w.reached, Plans: w.plans, Warnings: warnings}, nil
 }
 
 // walk follows names from a request, each document once, and keeps each
 // document's chain and problems.
 type walk struct {
+	// blocks are the repository's, by the document each blocks; blocked,
+	// the documents reached that a block refuses.
+	blocks   map[Reference]Block
+	blocked  map[Reference]bool
 	source   Source
 	wrappers Wrappers
 	reached  []Reference
@@ -410,6 +444,11 @@ func (w *walk) follow(chain []Link, link Link) {
 	w.reached = append(w.reached, reference)
 	chain = append(chain[:len(chain):len(chain)], link)
 	w.chains[reference] = chain
+	// A blocked document is not asked for, nor followed.
+	if _, ok := w.blocks[reference]; ok {
+		w.blocked[reference] = true
+		return
+	}
 	switch link.Kind {
 	case KindWorkflow:
 		workflow, problems := w.source.Workflow(link.Name)
