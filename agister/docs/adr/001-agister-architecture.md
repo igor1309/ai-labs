@@ -53,10 +53,12 @@ program is an operating-system process Agister starts.
    of the module, inside its group or outside it.** Each declares its own types and
    the ports it requires. This includes `settings/check` and
    `settings/resolve`: check is handed resolve, it does not import it.
-2. **Wrappers and adapters are different things.** A wrapper (a runtime,
-   the supervisor, git, the run store) owns its types and knows nothing of
-   the parts that use it; a runtime wrapper uses the supervisor. An adapter lives in the composition root, has no types of its own,
-   and maps between a part's port and a wrapper, or between two parts.
+2. **Wrappers and adapters are different things.** A wrapper (a runtime
+   wrapper, the supervisor, git, the run store) owns its types and knows
+   nothing of the parts that use it; a runtime wrapper uses the
+   supervisor. An adapter lives in the composition root, has no types of
+   its own, and maps between a part's port and a wrapper, or between two
+   parts.
 3. **The composition root is the only place that connects parts:** wiring,
    mappers where two independent parts meet, diagnostics, logging and run
    placement. What resolve gives and what core takes are each their own
@@ -68,13 +70,14 @@ program is an operating-system process Agister starts.
    failure on stderr, as for a bad command. Only what core emits is recorded, so a
    refusal after resolution (a held worktree, admission) is recorded. Core
    never reads settings files.
-5. **`--continue` resolves settings again**, like any run. It continues
-   a run whose workflow is one step. The composition checks the
-   continuation's conditions against the session's latest call (the
-   same worktree, repository and revision; the content that call
-   recorded at its end) and hands core the session. Core reads no runs.
-   Inside a workflow, a binding continues an earlier call's session,
-   under the same conditions.
+5. **`--continue` resolves settings again**, like any run. It starts a
+   run that continues the session of an earlier one-step run's call. The
+   composition checks the continuation's conditions against the
+   session's latest call (the same worktree, repository and revision;
+   the content that call recorded at its end) and hands core the
+   session. Core reads no runs.
+   Inside a run, a binding continues an earlier call's session, under
+   the same conditions, which `core/admit` checks.
 6. **Two file formats are contracts:** the settings files and the run
    records.
 
@@ -101,7 +104,8 @@ Every part keeps these.
    failed, interrupted, lost) and a failure class from a closed set.
    Completed means the runtime produced its output: valid against the
    process's schema where it names one; on bash, a script that exited
-   normally, with its exit code, stdout and stderr. What the output
+   normally, with its exit code and the bounded head and tail of stdout
+   and stderr, each with a digest of the whole. What the output
    says, an unfavourable verdict or a failing exit code included, is not
    a status. Usage and cost as the runtime reports them, with their
    source: an unreported cost is unknown, never zero, and spends nothing
@@ -152,7 +156,7 @@ what each kind means, what references what, and how home is managed.
 |---|---|---|
 | `settings/layout` | Where settings live: selects home, the repository's and the nearest project's `.agister/`; maps a kind and name to its file; lists names. | filesystem (what is at a path, read, list, same directory); worktree root of a directory |
 | `settings/documents` | Bytes to typed definitions with per-field provenance. Three components inside the package, each with its own unit tests: **format** (one document per file in its kind's format, unknown fields, schema version), **layering** (compose by field, `extends`, provenance), **kinds** (a composed tree to each kind's definition, with field problems). Its public interface has its own tests. | none: pure |
-| `settings/resolve` | A request to resolved settings, or a refusal naming the chain. A request names any document by kind and name; a workflow or a process comes with its parameters. Resolve follows references, applies blocks, checks boundaries and bindings, and plans each step's permissions, in unselected branches too. | a document source; runtime facts (contracts, output against a schema, tool calls, cost, sessions, skills), which the composition plugs in from the runtime wrappers |
+| `settings/resolve` | A request to resolved settings, or a refusal naming the chain. A request names any document by kind and name; a workflow comes with its parameters. Resolve follows references, applies blocks, checks boundaries and bindings, and plans each step's permissions, in unselected branches too. | a document source; runtime facts (contracts, output against a schema, tool calls and tool commands, sessions, skills, input delivery), which the composition plugs in from the runtime wrappers |
 | `settings/check` | Built on resolve: lists every document's name and resolves each, so a document nothing uses is checked too. Two views: **check** (every problem and what it refuses) and **inspect** (process, workflow and agent listings and shows, with provenance). | resolve; list names |
 | `settings/home` | Writes into home: installing settings, with backups to restore from. | filesystem writes; clock |
 
@@ -170,15 +174,15 @@ workflow, its params, the caller's limits, the session for
 
 | Package | Responsibility | Ports it declares |
 |---|---|---|
-| `core/workflow` | Executes a workflow as a run: its operators (sequence, parallel, branch, bounded repetition), conditions, bindings and repetition state; gathers its children's warnings. | call a step; events |
-| `core/admit` | Admits a call before it starts: what its process declares and its runtime allow what the run request asks, and the worktree is held, as a writer alone or a reader shared. | worktree facts (revision, content), answered by the composition from `git`; hold; events |
-| `core/call` | Makes a call: turns on the runtime, each turn's output checked against its contract, and a recovery turn when a staleness limit ended one, on a runtime that resumes, while the budget allows. On bash a call has one turn. Declares the runtime protocol. | runtime protocol; staleness; events; clock |
-| `core/inputs` | Resolves a call's inputs from their sources to a value and an identity; checks a text against its brief form; keeps long values as artifacts. | sources (by name, plugged in by the composition); artifact store |
+| `core/workflow` | Executes a workflow as a run: its operators (sequence, parallel, branch, bounded repetition), conditions, bindings and repetition state; resolves the workflow's inputs at its boundary; starts no child once an enclosing time or cost budget is spent; gathers its children's warnings. | inputs; call a step; events; clock |
+| `core/admit` | Admits a call before it starts: what its process declares and its runtime allow what the run request asks; a call that continues a session, only if the worktree is as that session's latest call left it; and the worktree is held, as a writer alone or a reader shared. | worktree facts (revision, content), answered by the composition from `git`; hold; events |
+| `core/call` | Makes a call: turns on the runtime, each turn's output checked against its contract, and a recovery turn when a staleness limit ended one, on a runtime that resumes, while the budget allows; ends the call at its time or cost limit. On bash a call has one turn. Declares the runtime protocol. | runtime protocol; staleness; events; clock; timer |
+| `core/inputs` | Resolves a workflow's and a call's inputs from their sources to a value and an identity; checks a text against its brief form; keeps long values as artifacts. | sources (by name, plugged in by the composition); artifact store |
 | `core/watch` | Staleness limits on a turn: no event or output, a tool command, repeated identical tool calls. Observes the event stream and reports a limit reached; it ends nothing itself. | clock; timer |
 | `core/trail` | What the agent touched and was denied. A pure observer of the event stream. | none: pure |
 
 The composition chains `inputs`, `admit` and `call`, hands `workflow`
-the chain as its port, plugs `watch` and `trail` into the event stream,
+the chain as its port to call a step and `inputs` for its boundary, plugs `watch` and `trail` into the event stream,
 and hands `watch`'s reports to `call`'s staleness port.
 
 ## Runs
@@ -191,8 +195,9 @@ go through `cli`'s port, which the composition serves from `runstore`.
 ## Reaping
 
 A call whose owner died may leave programs running and its hold taken.
-The hold finds the dead owner; the supervisor ends what that owner left
-running, and only then is the hold released. The owner's call and run
+The supervisor starts each program under its owner's identity. The hold
+finds the dead owner; the composition has the supervisor end what was
+started under that identity, and only then releases the hold. The owner's call and run
 read as lost (invariant 7).
 
 ## Starting a run
