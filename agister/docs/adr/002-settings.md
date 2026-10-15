@@ -96,8 +96,8 @@ and everything it references, and gives the definitions or a refusal. A
 refusal names the chain to the document at fault and its problem.
 
 A problem in a document refuses what depends on it, through any chain,
-and nothing else. A problem that belongs to no document, such as a layer
-that cannot be read, refuses every request.
+and nothing else. A problem that belongs to no document refuses every
+request.
 
 A workflow that resolves may be run; what is refused never reaches core, and no run is
 recorded (ADR-001, rule 4).

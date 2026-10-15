@@ -57,7 +57,8 @@ the filesystem, from `git`.
 
 Each input is resolved to a value and its identity (ADR-001,
 invariant 4), once, before the call that takes it starts; an input
-shared by parallel children once, before they start. An input that
+shared by parallel children once, at their workflow's boundary, before
+any of their calls starts. An input that
 cannot be resolved refuses the call before it starts.
 
 ### 4. The run keeps what it was given

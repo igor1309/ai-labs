@@ -85,11 +85,11 @@ What a runtime wrapper can do is a fact resolve needs and does not own:
 the contract a mapping is written for, its version, whether it takes
 skills, the efforts it accepts, whether it resumes a session, whether
 it produces output checked against a schema, whether it reports tool
-calls and cost, and how it takes its inputs. Resolve declares a port for
-these facts; the composition answers it from the wrappers. A step that
-needs what its runtime cannot do is refused at resolve: an output
-schema, a continued or recovered session, skills, or a staleness limit
-on tool calls.
+calls and tool commands, and how it takes its inputs. Resolve declares a
+port for these facts; the composition answers it from the wrappers. A
+step that needs what its runtime cannot do is refused at resolve: an
+output schema, a continued or recovered session, skills, or a staleness
+limit on tool calls or tool commands.
 
 ### 8. An unverified runtime version warns
 

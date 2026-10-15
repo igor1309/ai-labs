@@ -69,4 +69,5 @@ and the recovery turn that followed.
 ## Consequences
 
 - A stuck turn costs a message, not the call, where a message can help.
-- A process that sets no budget runs as if recovery did not exist.
+- A call whose process sets no budget runs as if recovery did not
+  exist.
