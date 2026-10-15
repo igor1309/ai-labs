@@ -1,14 +1,33 @@
 ---
 date: 2026-10-15
 model: claude-opus-5-5
-description: "Backlog: the settings language: the owner's decisions on research/borrowed-from-build-systems.md, what plan step 6 takes from it, and operators against needs"
+description: "Backlog: the settings language: the next work, specifying processes and workflows in settings/documents; the owner's decisions on research/borrowed-from-build-systems.md; operators against needs"
 ---
 
 # The settings language
 
-Inputs to specifying the kinds in `settings/documents` (ADR-012
-amendments, plan step 6), from `research/borrowed-from-build-systems.md`.
-Syntax only: no ADR changes unless a decision below says so.
+What is left of ADR-012's amendments: the kinds `settings/documents`
+does not type yet, in the language decided here. The decisions come
+from `research/borrowed-from-build-systems.md`. Syntax only: no ADR
+changes unless a decision below says so.
+
+## The next work
+
+Specify, then type, in `settings/documents`, feature files first:
+
+- **process**: its prompt, guidance, inputs, environment, output schema,
+  permissions, skills and limits (ADR-012, terms).
+- **workflow**: its inputs, output contract, and children by ADR-011's
+  four operators, with bindings and conditions; a child is a step,
+  written in the workflow and naming a process and an agent, or a
+  workflow by name.
+- **bash**: an agent naming only the bash runtime; the bash runtime
+  mapping, granting what its environment gives, with no options; a
+  script is a prompt.
+
+Move `agister/home`'s processes and workflows to the new language in the
+same PR, as #1019 moved the runtime mappings. `agister/.agister` stays:
+the installed Agister reads it when run in this repository.
 
 ## Decisions (2026-10-15)
 
@@ -29,7 +48,7 @@ Syntax only: no ADR changes unless a decision below says so.
 | 13, 14, 16 | Later: listing workflows with a description, a dry run, a JSON Schema per kind. |
 | 15. Errors point at the line | A problem has its file, line and field; a refusal shows it with the chain. |
 
-## For step 6
+## The language
 
 - A workflow, a process and an agent state no name or type; `schema`
   keeps the version.
