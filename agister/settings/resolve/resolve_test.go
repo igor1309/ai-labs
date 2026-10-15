@@ -169,14 +169,15 @@ func TestAWorkflowRequestedResolvesWithWhatItReaches(t *testing.T) {
 func TestAStepRequestedAloneIsAWorkflowOfThatOneStep(t *testing.T) {
 	t.Parallel()
 	s := newSource()
-	s.processes["p"] = resolve.Process{Name: "p", Params: []string{"base", "goal"}}
+	params := []resolve.Param{{Name: "base", Default: true}, {Name: "goal", Default: true}}
+	s.processes["p"] = resolve.Process{Name: "p", Params: params}
 	s.pair("a", "r")
 
 	got, faults := newResolver(t, s).Resolve(resolve.Step("p", "a"))
 
 	assertResolved(t, faults)
 	want := resolve.Workflow{
-		Params: []string{"base", "goal"},
+		Params: params,
 		Steps: []resolve.Item{{
 			Name: "p", Process: resolve.Name{Value: "p"}, Agent: resolve.Name{Value: "a"},
 			Inputs: []resolve.Binding{{Name: "base", From: "params.base"}, {Name: "goal", From: "params.goal"}},
@@ -224,23 +225,36 @@ func TestADocumentOfAnotherKindResolvesAndIsNoWorkflow(t *testing.T) {
 // request.feature, "A problem of no document refuses every request".
 func TestAProblemOfNoDocumentRefusesEveryRequest(t *testing.T) {
 	t.Parallel()
-	s := newSource()
-	s.workflows["w"] = resolve.Workflow{Name: "w", Steps: []resolve.Item{step("s", "p", "a")}}
-	s.processes["p"] = resolve.Process{Name: "p"}
-	s.pair("a", "r")
-	problem := resolve.Problem{Path: "/repo/.agister", Message: "it cannot be listed"}
-	s.none = []resolve.Problem{problem}
+	for name, request := range map[string]resolve.Request{
+		"workflow": resolve.Document(resolve.KindWorkflow, "w"),
+		"step":     resolve.Step("p", "a"),
+		"agent":    resolve.Document(resolve.KindAgent, "a"),
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			s := newSource()
+			s.workflows["w"] = resolve.Workflow{Name: "w", Steps: []resolve.Item{step("s", "p", "a")}}
+			s.processes["p"] = resolve.Process{Name: "p"}
+			s.pair("a", "r")
+			problem := resolve.Problem{Path: "/repo/.agister", Message: "it cannot be listed"}
+			s.none = []resolve.Problem{problem}
 
-	got, faults := newResolver(t, s).Resolve(resolve.Document(resolve.KindWorkflow, "w"))
+			got, faults := newResolver(t, s).Resolve(request)
 
-	assertFaults(t, got, faults, resolve.Fault{Problems: []resolve.Problem{problem}})
+			assertFaults(t, got, faults, resolve.Fault{Problems: []resolve.Problem{problem}})
+		})
+	}
 }
 
 // references.feature, "Every name a document gives is followed".
 func TestEveryNameADocumentGivesIsFollowed(t *testing.T) {
 	t.Parallel()
 	s := newSource()
-	s.workflows["w"] = resolve.Workflow{Name: "w", Steps: []resolve.Item{step("s", "p", "a")}}
+	s.workflows["w"] = resolve.Workflow{
+		Name:   "w",
+		Inputs: []resolve.Input{{Name: "brief", Forms: []resolve.Name{{Value: "wb"}}}},
+		Steps:  []resolve.Item{step("s", "p", "a")},
+	}
 	s.processes["p"] = resolve.Process{
 		Name:     "p",
 		Prompt:   resolve.Name{Value: "pr"},
@@ -250,6 +264,7 @@ func TestEveryNameADocumentGivesIsFollowed(t *testing.T) {
 		Schema:   resolve.Name{Value: "sc"},
 	}
 	s.pair("a", "r")
+	s.other(resolve.KindBrief, "wb")
 	s.other(resolve.KindPrompt, "pr")
 	s.other(resolve.KindPrompt, "g")
 	s.other(resolve.KindSkill, "k")
@@ -259,8 +274,8 @@ func TestEveryNameADocumentGivesIsFollowed(t *testing.T) {
 	got, faults := newResolver(t, s).Resolve(resolve.Document(resolve.KindWorkflow, "w"))
 
 	assertResolved(t, faults)
-	assertReached(t, got, ref(resolve.KindWorkflow, "w"), ref(resolve.KindProcess, "p"),
-		ref(resolve.KindPrompt, "pr"), ref(resolve.KindPrompt, "g"), ref(resolve.KindSkill, "k"),
+	assertReached(t, got, ref(resolve.KindWorkflow, "w"), ref(resolve.KindBrief, "wb"),
+		ref(resolve.KindProcess, "p"), ref(resolve.KindPrompt, "pr"), ref(resolve.KindPrompt, "g"), ref(resolve.KindSkill, "k"),
 		ref(resolve.KindBrief, "b"), ref(resolve.KindSchema, "sc"),
 		ref(resolve.KindAgent, "a"), ref(resolve.KindRuntime, "r"))
 }

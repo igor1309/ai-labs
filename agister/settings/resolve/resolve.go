@@ -62,33 +62,55 @@ type Problem struct {
 }
 
 // Workflow is a workflow (ADR-011): its name, "" for one resolve makes of
-// a step (ADR-013); the params a caller gives it; its steps, a sequence of
-// items; and its outputs.
+// a step (ADR-013); the params a caller gives it, and the inputs it reads;
+// its steps, a sequence of items; and its outputs.
 type Workflow struct {
 	Name    string
-	Params  []string
+	Params  []Param
+	Inputs  []Input
 	Steps   []Item
 	Outputs []Binding
 }
 
-// Item is one item of a workflow, named, and one of five: a step, its
-// process and agent; a workflow, by name; a parallel or a branch, of
-// items; or a repeat, of a body of items. A step and a workflow have their
-// inputs.
+// Param is a param a caller gives, by name, and whether it has a default.
+type Param struct {
+	Name    string
+	Default bool
+}
+
+// Item is one item of a workflow, named, unique in its workflow, and one
+// of five: a step, its process and agent, and the session it continues; a
+// workflow, by name; a parallel or a branch, of items; or a repeat. A step
+// and a workflow have their inputs. An arm of a branch has the condition
+// it is taken on, but the default, and its outputs, the branch's.
 type Item struct {
 	Name     string
+	Origin   Origin
+	If       Condition
 	Process  Name
 	Agent    Name
+	Session  Name
 	Workflow Name
 	Inputs   []Binding
 	Parallel []Item
 	Branch   []Item
 	Repeat   *Repeat
+	Outputs  []Binding
 }
 
-// Repeat is a bounded repetition: its body.
+// Repeat is a bounded repetition: its initial state, its body, its next
+// state and its stopping condition.
 type Repeat struct {
+	State []Binding
 	Steps []Item
+	Next  []Binding
+	Until Condition
+}
+
+// Condition is a condition of a workflow: every reference it reads, an
+// item of a collection among them.
+type Condition struct {
+	Reads []Name
 }
 
 // Binding is a value given by name: a text, or what a reference reads in
@@ -101,23 +123,26 @@ type Binding struct {
 }
 
 // Process is a process: the prompt it is given, its guidance and its
-// skills; its params, the names a caller gives; its inputs; and the schema
-// of its output.
+// skills; its params and its inputs; its environment; the input whose
+// revision its worktree must be at; and the schema of its output.
 type Process struct {
-	Name     string
-	Prompt   Name
-	Guidance []Name
-	Skills   []Name
-	Params   []string
-	Inputs   []Input
-	Schema   Name
+	Name        string
+	Prompt      Name
+	Guidance    []Name
+	Skills      []Name
+	Params      []Param
+	Inputs      []Input
+	Environment []Binding
+	Revision    Name
+	Schema      Name
 }
 
-// Input is an input of a process, by name, and the brief forms its text
-// may take.
+// Input is an input of a workflow or a process, by name: the brief forms
+// its text may take, and its source's arguments.
 type Input struct {
-	Name  string
-	Forms []Name
+	Name      string
+	Forms     []Name
+	Arguments []Binding
 }
 
 // Agent is an agent: the runtime mapping it names.
@@ -132,11 +157,18 @@ type Runtime struct {
 }
 
 // Request is what resolve is asked for: a document, by kind and name, or a
-// step, a process on an agent.
+// step, a process on an agent; and the names of the params it gives.
 type Request struct {
 	kind           Kind
 	name           string
 	process, agent string
+	params         []string
+}
+
+// WithParams is the request giving the params names.
+func (r Request) WithParams(names ...string) Request {
+	r.params = names
+	return r
 }
 
 // Document is the request for the document of kind and name.
@@ -191,51 +223,73 @@ func New(source Source) (*Resolver, error) {
 
 // Resolve gives what request reaches, or the faults that refuse it: the
 // problems of no document first, then each document at fault once, with
-// the first chain that reached it, in the order reached.
+// the first chain that reached it, in the order reached. It follows every
+// name from the request, then checks what each document it reached reads.
 func (r *Resolver) Resolve(request Request) (Resolved, []Fault) {
-	w := &walk{source: r.source, seen: map[Reference]bool{}, open: map[string]bool{}}
+	w := &walk{
+		source: r.source, index: map[Reference]int{}, chains: map[Reference][]Link{},
+		problems: map[Reference][]Problem{}, open: map[string]bool{},
+		workflows: map[string]Workflow{}, processes: map[string]Process{},
+	}
 	var workflow *Workflow
 	switch {
 	case request.kind == "":
 		made := w.step(request.process, request.agent)
 		workflow = &made
 	case request.kind == KindWorkflow:
-		if made, ok := w.workflow(nil, Link{Kind: KindWorkflow, Name: request.name}); ok {
-			workflow = &made
+		w.follow(nil, Link{Kind: KindWorkflow, Name: request.name})
+		if requested, ok := w.workflows[request.name]; ok {
+			workflow = &requested
 		}
 	default:
 		w.follow(nil, Link{Kind: request.kind, Name: request.name})
+	}
+	w.check()
+	if workflow != nil {
+		w.given(request, *workflow)
 	}
 	var faults []Fault
 	if problems := r.source.Problems(); len(problems) > 0 {
 		faults = append(faults, Fault{Problems: problems})
 	}
-	faults = append(faults, w.faults...)
+	for _, reference := range w.reached {
+		if problems := w.problems[reference]; len(problems) > 0 {
+			faults = append(faults, Fault{Chain: w.chains[reference], Problems: problems})
+		}
+	}
 	if len(faults) > 0 {
 		return Resolved{}, faults
 	}
 	return Resolved{Workflow: workflow, Reached: w.reached}, nil
 }
 
-// walk follows names from a request, each document once.
+// walk follows names from a request, each document once, and keeps each
+// document's chain and problems.
 type walk struct {
 	source  Source
-	seen    map[Reference]bool
 	reached []Reference
-	faults  []Fault
+	index   map[Reference]int
+	chains  map[Reference][]Link
+	// problems are each document's, by the document at fault.
+	problems map[Reference][]Problem
 	// open are the workflows being followed: one named again is a cycle.
 	open map[string]bool
+	// workflows and processes are those reached that have no problem of
+	// their own source.
+	workflows map[string]Workflow
+	processes map[string]Process
 }
 
 // step is the workflow of one step resolve makes of the process on the
 // agent (ADR-013): the process's params, each given to the step from the
 // workflow's of its name, and the step's output its output.
 func (w *walk) step(process, agent string) Workflow {
-	p, _ := w.process(nil, Link{Kind: KindProcess, Name: process})
-	w.agent(nil, Link{Kind: KindAgent, Name: agent})
+	w.follow(nil, Link{Kind: KindProcess, Name: process})
+	w.follow(nil, Link{Kind: KindAgent, Name: agent})
+	p := w.processes[process]
 	inputs := []Binding{}
 	for _, param := range p.Params {
-		inputs = append(inputs, Binding{Name: param, From: "params." + param})
+		inputs = append(inputs, Binding{Name: param.Name, From: "params." + param.Name})
 	}
 	return Workflow{
 		Params: p.Params,
@@ -251,64 +305,66 @@ func (w *walk) step(process, agent string) Workflow {
 
 // follow follows the document link names, reached by chain.
 func (w *walk) follow(chain []Link, link Link) {
+	reference := Reference{Kind: link.Kind, Name: link.Name}
+	// A workflow being followed, named again, is at fault by the chain
+	// that closes the cycle, which its first chain begins.
+	if link.Kind == KindWorkflow && w.open[link.Name] {
+		w.chains[reference] = append(chain[:len(chain):len(chain)], link)
+		w.fault(reference, Problem{Message: "it reaches itself"})
+		return
+	}
+	if _, seen := w.index[reference]; seen {
+		return
+	}
+	w.index[reference] = len(w.reached)
+	w.reached = append(w.reached, reference)
+	chain = append(chain[:len(chain):len(chain)], link)
+	w.chains[reference] = chain
 	switch link.Kind {
 	case KindWorkflow:
-		w.workflow(chain, link)
+		workflow, problems := w.source.Workflow(link.Name)
+		if w.fault(reference, problems...) {
+			return
+		}
+		w.workflows[link.Name] = workflow
+		w.forms(chain, workflow.Inputs)
+		w.open[link.Name] = true
+		w.items(chain, "steps", workflow.Steps)
+		delete(w.open, link.Name)
 	case KindProcess:
-		w.process(chain, link)
+		process, problems := w.source.Process(link.Name)
+		if w.fault(reference, problems...) {
+			return
+		}
+		w.processes[link.Name] = process
+		w.optional(chain, KindPrompt, process.Prompt, "prompt")
+		for i, guidance := range process.Guidance {
+			w.optional(chain, KindPrompt, guidance, fmt.Sprintf("guidance[%d]", i))
+		}
+		for i, skill := range process.Skills {
+			w.optional(chain, KindSkill, skill, fmt.Sprintf("skills[%d]", i))
+		}
+		w.forms(chain, process.Inputs)
+		w.optional(chain, KindSchema, process.Schema, "output.schema")
 	case KindAgent:
-		w.agent(chain, link)
+		agent, problems := w.source.Agent(link.Name)
+		if w.fault(reference, problems...) {
+			return
+		}
+		w.optional(chain, KindRuntime, agent.Runtime, "runtime")
 	case KindRuntime:
-		if chain, ok := w.reach(chain, link); ok {
-			_, problems := w.source.Runtime(link.Name)
-			w.fault(chain, problems)
-		}
+		_, problems := w.source.Runtime(link.Name)
+		w.fault(reference, problems...)
 	default:
-		if chain, ok := w.reach(chain, link); ok {
-			w.fault(chain, w.source.Other(link.Kind, link.Name))
-		}
+		w.fault(reference, w.source.Other(link.Kind, link.Name)...)
 	}
 }
 
-// reach is chain with link, and whether link's document is reached for the
-// first time; it is then among the reached.
-func (w *walk) reach(chain []Link, link Link) ([]Link, bool) {
-	reference := Reference{Kind: link.Kind, Name: link.Name}
-	if w.seen[reference] {
-		return nil, false
-	}
-	w.seen[reference] = true
-	w.reached = append(w.reached, reference)
-	return append(chain[:len(chain):len(chain)], link), true
-}
-
-// fault keeps problems as the fault of the document chain ends at, and
-// whether there are any.
-func (w *walk) fault(chain []Link, problems []Problem) bool {
-	if len(problems) == 0 {
-		return false
-	}
-	w.faults = append(w.faults, Fault{Chain: chain, Problems: problems})
-	return true
-}
-
-func (w *walk) workflow(chain []Link, link Link) (Workflow, bool) {
-	if w.open[link.Name] {
-		w.fault(append(chain[:len(chain):len(chain)], link), []Problem{{Message: "it reaches itself"}})
-		return Workflow{}, false
-	}
-	chain, first := w.reach(chain, link)
-	if !first {
-		return Workflow{}, false
-	}
-	workflow, problems := w.source.Workflow(link.Name)
-	if w.fault(chain, problems) {
-		return Workflow{}, false
-	}
-	w.open[link.Name] = true
-	w.items(chain, "steps", workflow.Steps)
-	delete(w.open, link.Name)
-	return workflow, true
+// fault adds problems to those of the document reference, and is whether
+// there are any.
+func (w *walk) fault(reference Reference, problems ...Problem) bool {
+	w.problems[reference] = append(w.problems[reference], problems...)
+	return len(problems) > 0
 }
 
 // items follows the items at place of the workflow chain ends at.
@@ -331,41 +387,13 @@ func (w *walk) items(chain []Link, place string, items []Item) {
 	}
 }
 
-func (w *walk) process(chain []Link, link Link) (Process, bool) {
-	chain, first := w.reach(chain, link)
-	if !first {
-		return Process{}, false
-	}
-	process, problems := w.source.Process(link.Name)
-	if w.fault(chain, problems) {
-		return Process{}, false
-	}
-	w.optional(chain, KindPrompt, process.Prompt, "prompt")
-	for i, guidance := range process.Guidance {
-		w.optional(chain, KindPrompt, guidance, fmt.Sprintf("guidance[%d]", i))
-	}
-	for i, skill := range process.Skills {
-		w.optional(chain, KindSkill, skill, fmt.Sprintf("skills[%d]", i))
-	}
-	for _, input := range process.Inputs {
+// forms follows the brief forms of inputs.
+func (w *walk) forms(chain []Link, inputs []Input) {
+	for _, input := range inputs {
 		for i, form := range input.Forms {
 			w.optional(chain, KindBrief, form, fmt.Sprintf("inputs.%s.form[%d]", input.Name, i))
 		}
 	}
-	w.optional(chain, KindSchema, process.Schema, "output.schema")
-	return process, true
-}
-
-func (w *walk) agent(chain []Link, link Link) {
-	chain, first := w.reach(chain, link)
-	if !first {
-		return
-	}
-	agent, problems := w.source.Agent(link.Name)
-	if w.fault(chain, problems) {
-		return
-	}
-	w.optional(chain, KindRuntime, agent.Runtime, "runtime")
 }
 
 // optional follows name, of kind, at place, where it is given.
