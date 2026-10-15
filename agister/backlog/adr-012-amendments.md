@@ -33,7 +33,8 @@ ADR-008 is untouched.
 6. **Specify the kinds** in `settings/documents`: steps in a workflow,
    bash agents and processes. The documents core branch predates
    ADR-012: it still types a `verify` kind and names a runtime's options
-   "primitives"; both go here.
+   "primitives"; both go here. The language's decisions and inputs:
+   `backlog/settings-language.md`.
 
 ## Open points, decided by the owner (2026-10-15)
 
