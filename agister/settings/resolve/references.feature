@@ -5,13 +5,14 @@
 Feature: Resolve follows every name from the request
 
   Scenario: Every name a document gives is followed
-    Given the workflow "w" has the step "s", the process "p" on the agent "a"
+    Given the workflow "w" has an input of the form "wb", and the step
+      "s", the process "p" on the agent "a"
     And the process "p" names the prompt "pr", the guidance "g", the
       skill "k", an input of the form "b", and the output schema "sc"
     And the agent "a" names the runtime "r"
     When resolve is asked for the workflow "w"
-    Then it reached, in this order, the workflow "w", the process "p", the
-      prompt "pr", the prompt "g", the skill "k", the brief "b", the
+    Then it reached, in this order, the workflow "w", the brief "wb", the
+      process "p", the prompt "pr", the prompt "g", the skill "k", the brief "b", the
       schema "sc", the agent "a" and the runtime "r"
 
   Scenario: Every item is followed, in branches a run may not take too

@@ -1,60 +1,80 @@
 # The behaviours of settings/resolve, before its code: what a reference
-# reads (ADR-011, rules 3 and 6). See request.feature for what resolve is
-# given and what it gives. A reference's problem is its document's, at
+# reads (ADR-011, rules 3, 4 and 6). See request.feature for what resolve
+# is given and what it gives. A reference's problem is its document's, at
 # the reference's place and origin.
 
 Feature: Resolve checks that every reference reads what is there
 
-  Scenario Outline: A reference reads what its workflow declares
+  Background:
     Given the workflow "w" declares the param "base" and the input "goal"
-    And its step "s" binds "x" from "<reads>"
-    When resolve is asked for the workflow "w"
-    Then it refuses: the workflow "w", and the problem at
-      "steps[0].inputs.x": <problem>
+    And its steps are the step "a"; the branch "pick", of the arm "one",
+      on a condition; and the repeat "loop", of the state "review"
 
-    Examples:
-      | reads        | problem                                   |
-      | params.head  | its workflow declares the param "head"    |
-      | inputs.brief | its workflow declares the input "brief"   |
-      | state.review | a repeat it is in declares the state "review" |
-
-  Scenario: An item reads the items that ended before it
-    Given the workflow "w" has the steps "a", then "b", then "c"
-    And "b" reads "steps.a.outputs" and "steps.c.outputs"
-    When resolve is asked for the workflow "w"
-    Then it refuses: the workflow "w", and the problem at "b"'s binding
-      of "steps.c.outputs": the item "c" has ended before it
-
-  Scenario: Concurrent items cannot read each other
-    Given the workflow "w" has a parallel of "a" and "b"
-    And "b" reads "steps.a.outputs"
-    When resolve is asked for the workflow "w"
-    Then it refuses: the item "a" has ended before it
-
-  Scenario: An item inside another is read through the item holding it
-    Given the workflow "w" has the parallel "reviews" of "a", then "judge"
-    And "judge" reads "steps.reviews.outputs" and "steps.a.outputs"
-    When resolve is asked for the workflow "w"
-    Then it refuses only "steps.a.outputs": the item "a" is read through
-      the item holding it
-
-  Scenario: Inside a repeat, its body, next and until read its state
-    Given the workflow "w" has a repeat of the state "review" and the
-      body "repair", reading "state.review"
-    And its next reads "steps.repair.outputs", and its until reads
-      "state.review.findings"
+  Scenario: What is declared, and has ended, is read
+    Given every place below reads "params.base", "inputs.goal" or
+      "steps.a.outputs"; the repeat's body, next and until read
+      "state.review"; and the arm's condition reads "item.fixed" of all
+      items in "steps.a.outputs.findings"
     When resolve is asked for the workflow "w"
     Then it resolves
 
-  Scenario: A session is a step's
-    Given the workflow "w" has the workflow item "c", then the step "s"
-    And "s" continues the session "steps.c.session"
+  Scenario Outline: A reference reads what is there, wherever it is
+    Given <where> reads "<reads>"
     When resolve is asked for the workflow "w"
-    Then it refuses: the item "c" is a step, with a session
+    Then it refuses: the workflow "w", and the problem at "<place>":
+      <problem>
 
-  Scenario: A process's references read its own params and inputs
-    Given the process "p" declares the param "base"
-    And its environment binds "HEAD" from "params.head"
+    Examples:
+      | where                    | reads           | place                       | problem                                  |
+      | the step's input x       | params.head     | steps[0].inputs.x           | its workflow declares the param "head"   |
+      | the step's input x       | inputs.brief    | steps[0].inputs.x           | its workflow declares the input "brief"  |
+      | the step's input x       | state.review    | steps[0].inputs.x           | it is in no repeat of the state "review" |
+      | the step's input x       | steps.no.outputs | steps[0].inputs.x          | its workflow has the item "no"           |
+      | the arm's condition      | params.head     | steps[1].branch[0].if       | its workflow declares the param "head"   |
+      | the arm's output x       | params.head     | steps[1].branch[0].outputs.x | its workflow declares the param "head"  |
+      | the repeat's state x     | state.review    | steps[2].repeat.state.x     | it is in no repeat of the state "review" |
+      | the repeat's next x      | params.head     | steps[2].repeat.next.x      | its workflow declares the param "head"   |
+      | the repeat's until       | params.head     | steps[2].repeat.until       | its workflow declares the param "head"   |
+      | the workflow's output x  | params.head     | outputs.x                   | its workflow declares the param "head"   |
+      | the input goal's path    | params.head     | inputs.goal.path            | its workflow declares the param "head"   |
+      | the workflow's output x  | steps.a.output  | outputs.x                   | it reads an item's outputs or its session |
+
+  Scenario Outline: Concurrent items cannot read each other
+    Given the workflow "c" has a <operator> of "a" and "b"
+    And "b" reads "steps.a.outputs"
+    When resolve is asked for the workflow "c"
+    Then it refuses: the item "a" runs beside it
+
+    Examples:
+      | operator |
+      | parallel |
+      | branch   |
+
+  Scenario: An item reads the items that ended before it
+    Given the step "a" reads "steps.pick.outputs"
+    When resolve is asked for the workflow "w"
+    Then it refuses: the item "pick" has ended before it
+
+  Scenario: An item inside another is read through the item holding it
+    Given the workflow's output "x" reads "steps.one.outputs"
+    When resolve is asked for the workflow "w"
+    Then it refuses: the item "one" is read through the item holding it
+
+  Scenario: A session is a step's
+    Given the workflow "c" has the workflow item "d", then the step "s"
+    And "s" continues the session "steps.d.session"
+    When resolve is asked for the workflow "c"
+    Then it refuses: the item "d" is no step, and has no session
+
+  Scenario Outline: A process's references read its own params and inputs
+    Given the process "p" declares the param "base" and the input "rev"
+    And its <where> reads "<reads>"
     When resolve is asked for a workflow with a step of "p"
-    Then it refuses: the process "p", and the problem at
-      "environment.HEAD": its process declares the param "head"
+    Then it refuses: the process "p", and the problem at "<place>":
+      <problem>
+
+    Examples:
+      | where              | reads       | place              | problem                                 |
+      | environment's HEAD | params.head | environment.HEAD   | its process declares the param "head"   |
+      | input rev's rev    | params.head | inputs.rev.rev     | its process declares the param "head"   |
+      | revision           | inputs.head | workspace.revision | its process declares the input "head"   |

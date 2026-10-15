@@ -38,8 +38,14 @@ Feature: Resolve takes a request naming a document or a step
     Then it gives no workflow
     And it reached the agent "a" and the runtime "r"
 
-  Scenario: A problem of no document refuses every request
+  Scenario Outline: A problem of no document refuses every request
     Given the source has a problem of no document
-    And the workflow "w" resolves on its own
-    When resolve is asked for the workflow "w"
+    And <request> resolves on its own
+    When resolve is asked for <request>
     Then it refuses: the problem, of no document and no chain
+
+    Examples:
+      | request                                 |
+      | the workflow "w"                        |
+      | the step of the process "p" on the agent "a" |
+      | the agent "a"                           |
