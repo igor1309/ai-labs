@@ -104,6 +104,9 @@ available for when a workflow needs an ordering that is not nested.
 Decided by the owner: top-level `grants`, what the runtime grants with
 no option; top-level `select`, `one` or `any`; and `options`, each by
 name with its `grants` and `verified`. Bash writes neither `select` nor
-`options`. The documents core branch takes it, and migrates
+`options`. Top-level `grants` may be empty or left out: `[]` is how a
+nearer layer drops the base's grants. An option's `grants` are never
+empty. A mapping with neither grants nor options is no problem; planning
+refuses a step it cannot serve. The documents core branch takes it, and migrates
 `home/runtimes/*.yaml` in its PR: the installed Agister reads none of
 them.
