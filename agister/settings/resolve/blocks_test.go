@@ -55,6 +55,7 @@ func TestABlockOnAnyDocumentTheRequestReachesRefusesIt(t *testing.T) {
 		request resolve.Request
 		blocked resolve.Reference
 	}{
+		{requestW, ref(resolve.KindWorkflow, "w")},
 		{resolve.Step("p", "a"), ref(resolve.KindProcess, "p")},
 		{resolve.Step("p", "a"), ref(resolve.KindAgent, "a")},
 		{resolve.Step("p", "a"), ref(resolve.KindRuntime, "r")},
