@@ -71,11 +71,11 @@ func (s *spyFiles) Bytes(file string) ([]byte, error) {
 
 func read(t *testing.T, files *spyFiles, folders layout.Folders) layout.Snapshot {
 	t.Helper()
-	l, err := layout.New(files)
+	l, err := layout.New(files, &spyRoots{})
 	if err != nil {
 		t.Fatal(err)
 	}
-	return l.Read(folders)
+	return layout.ReadFolders(l, folders)
 }
 
 func assertSnapshot(t *testing.T, got, want layout.Snapshot) {
@@ -114,8 +114,15 @@ func show(s layout.Snapshot) string {
 
 func TestNewRefusesNoFilesystem(t *testing.T) {
 	t.Parallel()
-	if _, err := layout.New(nil); err == nil {
-		t.Error("New(nil) gave no error")
+	if _, err := layout.New(nil, &spyRoots{}); err == nil {
+		t.Error("New with no filesystem gave no error")
+	}
+}
+
+func TestNewRefusesNoWorktreeRoot(t *testing.T) {
+	t.Parallel()
+	if _, err := layout.New(&spyFiles{}, nil); err == nil {
+		t.Error("New with no worktree root gave no error")
 	}
 }
 

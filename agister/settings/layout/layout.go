@@ -1,8 +1,9 @@
-// Package layout reads the settings files of the layer folders it is
-// given, home's, the repository's and the project's, into a snapshot: each
+// Package layout finds the layers from home's folder and the launch
+// directory, and reads their settings files into a snapshot: each
 // document's sources by kind and name, and the problems met on the way.
-// It knows folders and file names; no content, no precedence and no run.
-// It searches for nothing: the composition finds the folders.
+// It knows where layers are, folders and file names; no content, no
+// precedence and no run. It knows no git: the root of the worktree holding
+// a directory is a port, which the composition answers.
 package layout
 
 import (
@@ -19,6 +20,12 @@ import (
 type FileSystem interface {
 	Entries(folder string) ([]Entry, error)
 	Bytes(file string) ([]byte, error)
+}
+
+// WorktreeRoot is what layout asks of git: the root of the git worktree
+// that holds a directory, or "" when none does.
+type WorktreeRoot interface {
+	Root(dir string) (string, error)
 }
 
 // Entry is a name in a folder and what is there.
@@ -55,6 +62,8 @@ const (
 
 // Snapshot is what the layer folders held when layout read them.
 type Snapshot struct {
+	// Layers are the layers' folders layout found and read.
+	Layers Folders
 	// Documents are each document, by kind and name.
 	Documents map[Kind]map[string]Document
 	// Blocks are the repository folder's blocks file; nil where it holds
@@ -133,16 +142,24 @@ func (e NameError) Error() string {
 // blocksFile is the blocks file's name in a layer folder.
 const blocksFile = "blocks.yaml"
 
+// layerFolder is a layer's folder's name in its directory.
+const layerFolder = ".agister"
+
 type Layout struct {
 	files FileSystem
+	roots WorktreeRoot
 }
 
-// New gives a layout reading files.
-func New(files FileSystem) (*Layout, error) {
+// New gives a layout reading files, asking roots for a directory's
+// worktree root.
+func New(files FileSystem, roots WorktreeRoot) (*Layout, error) {
 	if files == nil {
 		return nil, errors.New("layout: no filesystem")
 	}
-	return &Layout{files: files}, nil
+	if roots == nil {
+		return nil, errors.New("layout: no worktree root")
+	}
+	return &Layout{files: files, roots: roots}, nil
 }
 
 type layer int
@@ -153,8 +170,72 @@ const (
 	project
 )
 
-// Read reads every layer folder given, whole.
-func (l *Layout) Read(folders Folders) Snapshot {
+// Read finds the layers of home's folder and the launch directory, and
+// reads them whole (ADR-002, rule 2).
+func (l *Layout) Read(home, launch string) Snapshot {
+	folders, problems := l.find(home, launch)
+	snapshot := l.readFolders(folders)
+	snapshot.Layers = folders
+	snapshot.Problems = append(problems, snapshot.Problems...)
+	return snapshot
+}
+
+// find gives home's folder; the repository's, .agister at the root of the
+// git worktree holding launch; and the project's, the nearest .agister
+// below that root, from launch upward. Outside a git worktree, home's
+// alone. A root that cannot be found, or a directory that cannot be listed,
+// is a problem of no layer.
+func (l *Layout) find(home, launch string) (Folders, []Problem) {
+	folders := Folders{Home: home}
+	root, err := l.roots.Root(launch)
+	if err != nil {
+		return folders, []Problem{{Path: launch, Err: err}}
+	}
+	if root == "" {
+		return folders, nil
+	}
+	root, launch = filepath.Clean(root), filepath.Clean(launch)
+	var problems []Problem
+	for dir := launch; dir != root && dir != filepath.Dir(dir); dir = filepath.Dir(dir) {
+		found, err := l.holdsLayer(dir)
+		if err != nil {
+			problems = append(problems, Problem{Path: dir, Err: err})
+			break
+		}
+		if found {
+			folders.Project = filepath.Join(dir, layerFolder)
+			break
+		}
+	}
+	found, err := l.holdsLayer(root)
+	if err != nil {
+		problems = append(problems, Problem{Path: root, Err: err})
+	} else if found {
+		folders.Repository = filepath.Join(root, layerFolder)
+	}
+	return folders, problems
+}
+
+// holdsLayer tells whether dir holds a layer folder; a dir that does not
+// exist holds none.
+func (l *Layout) holdsLayer(dir string) (bool, error) {
+	entries, err := l.files.Entries(dir)
+	if errors.Is(err, fs.ErrNotExist) {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	for _, entry := range entries {
+		if entry.Name == layerFolder && entry.Kind == Folder {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+// readFolders reads every layer folder given, whole.
+func (l *Layout) readFolders(folders Folders) Snapshot {
 	snapshot := Snapshot{Documents: map[Kind]map[string]Document{}}
 	given := [...]string{home: folders.Home, repository: folders.Repository, project: folders.Project}
 	for at, folder := range given {
