@@ -81,8 +81,9 @@ var requestW = resolve.Document(resolve.KindWorkflow, "w")
 
 // background is a source holding bindings.feature's workflow w: the param
 // "base", of a default, and the input "goal", whose path reads it; the
-// step "a"; the branch "pick", of the arm "one", on a condition; and the
-// repeat "loop", of the state "review", of the body "fix". Each place a
+// step "a"; the branch "pick", of the arm "one", on a condition, and the
+// default "other"; and the repeat "loop", of the state "review", of the
+// body "fix". Each place a
 // reference sits reads what is declared and has ended, but those in
 // reads, by place: "step", "if", "arm", "state", "next", "until", "output"
 // and "path". Each reference is on its own line, its place's.
@@ -114,6 +115,8 @@ func background(reads map[string]string) *source {
 	one := reading("one")
 	one.If = condition("if", "steps.a.outputs.findings", "item.fixed")
 	one.Outputs = bind("arm", "steps.one.outputs")
+	other := reading("other")
+	other.Outputs = []resolve.Binding{from("x", "steps.other.outputs", 13)}
 	s := newSource()
 	s.workflows["w"] = resolve.Workflow{
 		Params:  []resolve.Param{{Name: "base", Default: true}},
@@ -122,7 +125,7 @@ func background(reads map[string]string) *source {
 	}
 	return withSteps(s,
 		reading("a", bind("step", "params.base")...),
-		resolve.Item{Name: "pick", Branch: []resolve.Item{one}},
+		resolve.Item{Name: "pick", Branch: []resolve.Item{one, other}},
 		resolve.Item{Name: "loop", Repeat: &resolve.Repeat{
 			State: bind("state", "steps.a.outputs"),
 			Steps: []resolve.Item{reading("fix", from("x", "state.review", 4))},
@@ -167,18 +170,21 @@ func TestAReferenceReadsWhatIsThereWhereverItIs(t *testing.T) {
 	}
 }
 
-// bindings.feature, "Concurrent items cannot read each other".
-func TestConcurrentItemsCannotReadEachOther(t *testing.T) {
+// bindings.feature, "Items that may run together, or not both, cannot
+// read each other".
+func TestItemsThatMayRunTogetherOrNotBothCannotReadEachOther(t *testing.T) {
 	t.Parallel()
-	for name, operator := range map[string]func(...resolve.Item) resolve.Item{
-		"parallel": func(items ...resolve.Item) resolve.Item { return resolve.Item{Name: "both", Parallel: items} },
-		"branch":   func(items ...resolve.Item) resolve.Item { return resolve.Item{Name: "both", Branch: items} },
+	for name, test := range map[string]struct {
+		operator func(...resolve.Item) resolve.Item
+		problem  string
+	}{
+		"parallel": {func(items ...resolve.Item) resolve.Item { return resolve.Item{Name: "both", Parallel: items} }, `the item "a" runs beside it`},
+		"branch":   {func(items ...resolve.Item) resolve.Item { return resolve.Item{Name: "both", Branch: items} }, `the item "a" is another arm of its branch`},
 	} {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
-			s := withSteps(newSource(), operator(reading("a"), reading("b", from("x", "steps.a.outputs", 6))))
-			problem := problemOfW(6, "steps[0]."+name+"[1].inputs.x", `the item "a" runs beside it`)
-			assertProblemsOf(t, s, requestW, resolve.KindWorkflow, "w", problem)
+			s := withSteps(newSource(), test.operator(reading("a"), reading("b", from("x", "steps.a.outputs", 6))))
+			assertProblemsOf(t, s, requestW, resolve.KindWorkflow, "w", problemOfW(6, "steps[0]."+name+"[1].inputs.x", test.problem))
 		})
 	}
 }

@@ -24,24 +24,26 @@ func (w *walk) check() {
 	}
 }
 
-// given checks the params request gives against those workflow declares:
-// the workflow's problems where it was requested, its process's where it
-// was made of a step.
-func (w *walk) given(request Request, workflow Workflow) {
-	owner, reference := "workflow", Reference{Kind: KindWorkflow, Name: request.name}
+// given is the request's problems: the params it gives against those
+// workflow declares, its process's where it was made of a step. They are
+// the request's, of no document.
+func given(request Request, workflow Workflow) []Problem {
+	owner := "workflow"
 	if request.kind == "" {
-		owner, reference = "process", Reference{Kind: KindProcess, Name: request.process}
+		owner = "process"
 	}
+	var problems []Problem
 	for _, param := range workflow.Params {
 		if !param.Default && !slices.Contains(request.params, param.Name) {
-			w.fault(reference, Problem{Message: fmt.Sprintf("the request gives the param %q, which has no default", param.Name)})
+			problems = append(problems, Problem{Message: fmt.Sprintf("the request gives the param %q, which has no default", param.Name)})
 		}
 	}
 	for _, name := range request.params {
 		if !declares(workflow.Params, name) {
-			w.fault(reference, Problem{Message: fmt.Sprintf("the %s declares the param %q", owner, name)})
+			problems = append(problems, Problem{Message: fmt.Sprintf("the %s declares the param %q", owner, name)})
 		}
 	}
+	return problems
 }
 
 // scope is what a document's references may read: its params and inputs;
@@ -57,11 +59,12 @@ type scope struct {
 }
 
 // at is where a reference reads from: the items that have ended before it,
-// those that run beside it, the items it is inside, and the state of the
-// repeats it is in.
+// those that run beside it, the other arms of the branches it is in, the
+// items it is inside, and the state of the repeats it is in.
 type at struct {
 	ended  map[string]bool
 	beside []string
+	arms   []string
 	within []string
 	state  []string
 }
@@ -90,7 +93,7 @@ func (w *walk) checkWorkflow(reference Reference, workflow Workflow) {
 		items: map[string]Item{}, holders: map[string]string{}}
 	s.index(workflow.Steps, "")
 	s.arguments(workflow.Inputs)
-	s.sequence(workflow.Steps, "steps", at{}, false)
+	s.sequence(workflow.Steps, "steps", at{})
 	var steps []string
 	for _, item := range workflow.Steps {
 		steps = append(steps, item.Name)
@@ -127,19 +130,28 @@ func (s *scope) index(items []Item, holder string) {
 	}
 }
 
-// sequence checks items at place, read from a; concurrent items, a
-// parallel's or a branch's, do not read one another.
-func (s *scope) sequence(items []Item, place string, a at, concurrent bool) {
-	if concurrent {
-		for _, item := range items {
+// sequence checks items at place, read from a, each after the one before
+// it.
+func (s *scope) sequence(items []Item, place string, a at) {
+	for i, item := range items {
+		s.item(item, fmt.Sprintf("%s[%d]", place, i), a)
+		a = a.with(item.Name)
+	}
+}
+
+// together checks items at place, read from a, none after another: a
+// parallel's, which run beside one another, or a branch's arms, of which
+// one runs.
+func (s *scope) together(items []Item, place string, a at, arms bool) {
+	for _, item := range items {
+		if arms {
+			a.arms = append(a.arms[:len(a.arms):len(a.arms)], item.Name)
+		} else {
 			a.beside = append(a.beside[:len(a.beside):len(a.beside)], item.Name)
 		}
 	}
 	for i, item := range items {
 		s.item(item, fmt.Sprintf("%s[%d]", place, i), a)
-		if !concurrent {
-			a = a.with(item.Name)
-		}
 	}
 }
 
@@ -160,9 +172,9 @@ func (s *scope) item(item Item, place string, a at) {
 			s.boundary(item, place, "workflow", item.Workflow.Value, child.Params)
 		}
 	case item.Parallel != nil:
-		s.sequence(item.Parallel, place+".parallel", inner, true)
+		s.together(item.Parallel, place+".parallel", inner, false)
 	case item.Branch != nil:
-		s.sequence(item.Branch, place+".branch", inner, true)
+		s.together(item.Branch, place+".branch", inner, true)
 		s.arms(item.Branch, place+".branch")
 	case item.Repeat != nil:
 		repeat := item.Repeat
@@ -170,7 +182,7 @@ func (s *scope) item(item Item, place string, a at) {
 		for _, state := range repeat.State {
 			inner.state = append(inner.state[:len(inner.state):len(inner.state)], state.Name)
 		}
-		s.sequence(repeat.Steps, place+".repeat.steps", inner, false)
+		s.sequence(repeat.Steps, place+".repeat.steps", inner)
 		var body []string
 		for _, step := range repeat.Steps {
 			body = append(body, step.Name)
@@ -272,6 +284,8 @@ func (s *scope) step(reference Name, place string, a at, name, what, field strin
 		s.problem(reference.Origin, place, "the item %q is read through the item holding it", name)
 	case !a.ended[name] && slices.Contains(a.beside, name):
 		s.problem(reference.Origin, place, "the item %q runs beside it", name)
+	case !a.ended[name] && slices.Contains(a.arms, name):
+		s.problem(reference.Origin, place, "the item %q is another arm of its branch", name)
 	case !a.ended[name]:
 		s.problem(reference.Origin, place, "the item %q has ended before it", name)
 	case what != "outputs" && (what != "session" || parts > 3):

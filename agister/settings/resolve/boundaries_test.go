@@ -104,9 +104,13 @@ func TestTheRequestGivesTheParamsItsWorkflowDeclares(t *testing.T) {
 	s := newSource()
 	s.workflows["w"] = resolve.Workflow{Params: []resolve.Param{{Name: "base"}}}
 	withSteps(s, reading("s"))
-	assertProblemsOf(t, s, requestW.WithParams("head"), resolve.KindWorkflow, "w",
-		resolve.Problem{Message: `the request gives the param "base", which has no default`},
-		resolve.Problem{Message: `the workflow declares the param "head"`})
+
+	got, faults := newResolver(t, s).Resolve(requestW.WithParams("head"))
+
+	assertFaults(t, got, faults, resolve.Fault{Problems: []resolve.Problem{
+		{Message: `the request gives the param "base", which has no default`},
+		{Message: `the workflow declares the param "head"`},
+	}})
 }
 
 // boundaries.feature, "A step requested alone takes its process's params".
@@ -115,10 +119,18 @@ func TestAStepRequestedAloneTakesItsProcesssParams(t *testing.T) {
 	s := newSource()
 	s.processes["p"] = resolve.Process{Name: "p", Params: []resolve.Param{{Name: "base"}}}
 	s.pair("a", "r")
+	resolver := newResolver(t, s)
 
-	_, faults := newResolver(t, s).Resolve(resolve.Step("p", "a").WithParams("base"))
-	assertResolved(t, faults)
-
-	assertProblemsOf(t, s, resolve.Step("p", "a"), resolve.KindProcess, "p",
-		resolve.Problem{Message: `the request gives the param "base", which has no default`})
+	t.Run("with the param", func(t *testing.T) {
+		t.Parallel()
+		_, faults := resolver.Resolve(resolve.Step("p", "a").WithParams("base"))
+		assertResolved(t, faults)
+	})
+	t.Run("with no param", func(t *testing.T) {
+		t.Parallel()
+		got, faults := resolver.Resolve(resolve.Step("p", "a"))
+		assertFaults(t, got, faults, resolve.Fault{Problems: []resolve.Problem{
+			{Message: `the request gives the param "base", which has no default`},
+		}})
+	})
 }

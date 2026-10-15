@@ -193,7 +193,8 @@ type Resolved struct {
 }
 
 // Fault is a document at fault, the last link of its chain, and its
-// problems; or problems of no document, with no chain.
+// problems; or problems of no document, the request's among them, with no
+// chain.
 type Fault struct {
 	Chain    []Link
 	Problems []Problem
@@ -222,9 +223,10 @@ func New(source Source) (*Resolver, error) {
 }
 
 // Resolve gives what request reaches, or the faults that refuse it: the
-// problems of no document first, then each document at fault once, with
-// the first chain that reached it, in the order reached. It follows every
-// name from the request, then checks what each document it reached reads.
+// problems of no document first, the source's, then the request's; then
+// each document at fault once, with the first chain that reached it, in
+// the order reached. It follows every name from the request, then checks
+// what each document it reached reads.
 func (r *Resolver) Resolve(request Request) (Resolved, []Fault) {
 	w := &walk{
 		source: r.source, index: map[Reference]int{}, chains: map[Reference][]Link{},
@@ -245,11 +247,12 @@ func (r *Resolver) Resolve(request Request) (Resolved, []Fault) {
 		w.follow(nil, Link{Kind: request.kind, Name: request.name})
 	}
 	w.check()
+	problems := r.source.Problems()
 	if workflow != nil {
-		w.given(request, *workflow)
+		problems = append(problems, given(request, *workflow)...)
 	}
 	var faults []Fault
-	if problems := r.source.Problems(); len(problems) > 0 {
+	if len(problems) > 0 {
 		faults = append(faults, Fault{Problems: problems})
 	}
 	for _, reference := range w.reached {
