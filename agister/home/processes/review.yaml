@@ -1,42 +1,37 @@
 schema: agister.process/v1alpha1
-name: review
+instruction: >-
+  Review the exact candidate, your working directory, against the base,
+  following the prompt given as input prompt. Read the
+  change yourself: git diff <base_revision> <candidate_revision>, whole or
+  per file of changed_files. Report material findings
+  only, with repository-relative paths and candidate line numbers.
+  Each finding carries its evidence: the concrete case, the trace you
+  verified and its scope: in the change, or outside it but stopping the
+  goal, or neither. A finding stands on that evidence alone; one without
+  it is no finding.
+  The input goal says what the change is for. Its claims about design or
+  completeness are claims you check, as you check a commit message's. Its
+  scope exclusions stand: you may show that one stops the goal,
+  but you cannot override it.
+  Any guidance given as further inputs holds the rules the repository
+  gives for the code it names: code in the change that departs from one
+  is a finding, which quotes the rule.
 
-type: process
-
-input:
-  instruction: >-
-    Review the exact candidate, your working directory, against the base,
-    following the prompt given as input prompt. Read the
-    change yourself: git diff <base_revision> <candidate_revision>, whole or
-    per file of changed_files. Report material findings
-    only, with repository-relative paths and candidate line numbers.
-    Each finding carries its evidence: the concrete case, the trace you
-    verified and its scope: in the change, or outside it but stopping the
-    goal, or neither. A finding stands on that evidence alone; one without
-    it is no finding.
-    The input goal says what the change is for. Its claims about design or
-    completeness are claims you check, as you check a commit message's. Its
-    scope exclusions stand: you may show that one stops the goal,
-    but you cannot override it.
-    Any guidance given as further inputs holds the rules the repository
-    gives for the code it names: code in the change that departs from one
-    is a finding, which quotes the rule.
-  params:
-    base: {default: origin/trunk}
-    candidate: {default: HEAD}
-    goal: {}
-  values:
-    base_revision: {source: git.revision, rev: "${param.base}"}
-    candidate_revision: {source: git.revision, rev: "${param.candidate}"}
-    changed_files: {source: git.changed_files, base: "${value.base_revision}", head: "${value.candidate_revision}"}
-    goal: {source: param, name: goal}
+params:
+  base: {default: origin/trunk}
+  candidate: {default: HEAD}
+  goal: {}
+inputs:
+  base_revision: {source: git.revision, rev: {from: params.base}}
+  candidate_revision: {source: git.revision, rev: {from: params.candidate}}
+  changed_files: {source: git.changed_files, base: {from: inputs.base_revision}, head: {from: inputs.candidate_revision}}
+  goal: {source: param, name: goal}
 
 workspace:
   access: read-only
-  scope: candidate
-  revision: candidate_revision
+  revision: {from: inputs.candidate_revision}
 
-tools:
+permissions:
   require:
     - repository.read
     - repository.diff
@@ -48,22 +43,12 @@ tools:
     - process.execute
     - host.read
 
-timeout: 20m
-retry:
-  max_attempts: 1
-
-stale:
-  no_event: 10m
-  tool_command: 8m
-  repeated_tool_calls: 5
-
-isolation:
-  deny:
-    - repository.write
-    - repository.history.write
-    - network
+limits:
+  time: 20m
+  stale:
+    no_event: 10m
+    tool_command: 8m
+    repeated_tool_calls: 5
 
 output:
-  format: json
   schema: review-result
-  require_valid: true
