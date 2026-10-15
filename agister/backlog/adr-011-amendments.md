@@ -143,7 +143,7 @@ What each ADR says that ADR-011 contradicts (✗) or leaves open (?).
 - **`docs/settings-implementation.md` is rewritten** after the
   amendments (plan, step 5).
 
-### Proposed, open
+### Proposed, accepted by the owner (2026-10-15)
 
 - **Result shape (ADR-001, invariant 3):** ADR-011, rule 5 in its place.
   Completed means the primitive produced its output: an agent's valid
