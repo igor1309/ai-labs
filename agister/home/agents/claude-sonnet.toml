@@ -1,5 +1,4 @@
 schema = "agister.agent/v1alpha1"
-name = "claude-sonnet"
 runtime = "claude-code"
 model = "sonnet"
 model_family = "anthropic"

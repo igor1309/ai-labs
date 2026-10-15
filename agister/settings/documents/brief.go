@@ -45,7 +45,7 @@ func (b BriefDefinition) clone() BriefDefinition {
 }
 
 func typeBrief(name string, root tree.Node) (BriefDefinition, []Problem) {
-	t := newTyping(Brief, name, root)
+	t := newTyping(Brief, root)
 	brief := BriefDefinition{Name: name}
 	parts := t.list("parts", required)
 	// A form of no part would take any text.

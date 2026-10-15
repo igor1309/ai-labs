@@ -15,7 +15,7 @@ const (
 	homeBrief       = "/home/.agister/briefs/a.yaml"
 	repositoryBrief = "/repo/.agister/briefs/a.yaml"
 	// briefHeader is a brief's schema and name, its first two lines.
-	briefHeader = "schema: agister.brief/v1alpha1\nname: a\n"
+	briefHeader = "schema: agister.brief/v1alpha1\n"
 	// validTemplate is the template of validBrief.
 	validTemplate = "## Goal\n\n## Notes\n\n## Open\n\nNone.\n"
 	// validBrief is the brief of brief.feature's "A brief's fields".
@@ -87,14 +87,14 @@ func parts(path string, line int, items ...documents.Field[documents.Part]) docu
 // validBriefDefinition is validBrief typed: every field it gives, each
 // with its value and the origin of its home file, on its line.
 func validBriefDefinition() documents.BriefDefinition {
-	goal := part(homeBrief, 4, "## Goal", true)
-	goal.Value.Reference = text("file", homeBrief, 4)
-	open := part(homeBrief, 6, "## Open", true)
-	open.Value.Reads = text("None.", homeBrief, 6)
+	goal := part(homeBrief, 3, "## Goal", true)
+	goal.Value.Reference = text("file", homeBrief, 3)
+	open := part(homeBrief, 5, "## Open", true)
+	open.Value.Reads = text("None.", homeBrief, 5)
 	return documents.BriefDefinition{
 		Name:     "a",
-		Parts:    parts(homeBrief, 3, goal, part(homeBrief, 5, "## Notes", false), open),
-		Template: text(validTemplate, homeBrief, 7),
+		Parts:    parts(homeBrief, 2, goal, part(homeBrief, 4, "## Notes", false), open),
+		Template: text(validTemplate, homeBrief, 6),
 	}
 }
 
@@ -132,8 +132,8 @@ func TestABriefsPartsAreInTheFilesOrder(t *testing.T) {
 	assertProblems(t, problems, nil)
 	assertBrief(t, got, documents.BriefDefinition{
 		Name:     "a",
-		Parts:    parts(homeBrief, 3, part(homeBrief, 4, "## Open", true), part(homeBrief, 5, "## Goal", true), part(homeBrief, 6, "## Notes", false)),
-		Template: text("## Open\n## Goal\n## Notes\n", homeBrief, 7),
+		Parts:    parts(homeBrief, 2, part(homeBrief, 3, "## Open", true), part(homeBrief, 4, "## Goal", true), part(homeBrief, 5, "## Notes", false)),
+		Template: text("## Open\n## Goal\n## Notes\n", homeBrief, 6),
 	})
 }
 
@@ -166,8 +166,8 @@ func TestAPartNeedsItsHeadingAndWhetherItIsRequired(t *testing.T) {
 	assertProblems(t, problems, nil)
 	assertBrief(t, got, documents.BriefDefinition{
 		Name:     "a",
-		Parts:    parts(homeBrief, 3, part(homeBrief, 4, "## Goal", false)),
-		Template: text("## Goal\n", homeBrief, 5),
+		Parts:    parts(homeBrief, 2, part(homeBrief, 3, "## Goal", false)),
+		Template: text("## Goal\n", homeBrief, 4),
 	})
 }
 
@@ -182,31 +182,31 @@ func TestABriefsParts(t *testing.T) {
 		bytes string
 		want  documents.Problem
 	}{
-		{"the parts []", briefHeader + "parts: []\ntemplate: x\n", inHomeBrief(3, "parts", "it names a part")},
+		{"the parts []", briefHeader + "parts: []\ntemplate: x\n", inHomeBrief(2, "parts", "it names a part")},
 		{"parts that are no list", briefHeader + "parts: {heading: '## Goal'}\ntemplate: x\n",
-			inHomeBrief(3, "parts", "it is a list, not a map")},
-		{"a part that is no map", withParts(`"## Goal\n"`, goal, `"## Open"`), inHomeBrief(5, "parts[1]", "it is a map, not a string")},
+			inHomeBrief(2, "parts", "it is a list, not a map")},
+		{"a part that is no map", withParts(`"## Goal\n"`, goal, `"## Open"`), inHomeBrief(4, "parts[1]", "it is a map, not a string")},
 		{"a first part with no heading", withParts(`"## Goal\n"`, `{required: true}`), missing("parts[0].heading")},
 		{`a first part headed "Goal"`, withParts(`"Goal\n"`, `{heading: Goal, required: true}`),
-			inHomeBrief(4, "parts[0].heading", `it is a Markdown heading line, as "## Goal"`)},
+			inHomeBrief(3, "parts[0].heading", `it is a Markdown heading line, as "## Goal"`)},
 		{"a heading that is no string", withParts(`"## Goal\n"`, `{heading: 1, required: true}`),
-			inHomeBrief(4, "parts[0].heading", "it is a string, not an integer")},
+			inHomeBrief(3, "parts[0].heading", "it is a string, not an integer")},
 		{"a second part headed as the first", withParts(`"## Goal\n"`, goal, goal),
-			inHomeBrief(5, "parts[1].heading", "it is also the heading of parts[0]")},
+			inHomeBrief(4, "parts[1].heading", "it is also the heading of parts[0]")},
 		{"a third part headed as the first", withParts(`"## Goal\n## Open\n"`, goal, `{heading: "## Open", required: true}`, goal),
-			inHomeBrief(6, "parts[2].heading", "it is also the heading of parts[0]")},
+			inHomeBrief(5, "parts[2].heading", "it is also the heading of parts[0]")},
 		{"a first part with no required", withParts(`"## Goal\n"`, `{heading: "## Goal"}`), missing("parts[0].required")},
 		{`a first part whose required is "yes"`, withParts(`"## Goal\n"`, `{heading: "## Goal", required: "yes"}`),
-			inHomeBrief(4, "parts[0].required", "it is a boolean, not a string")},
+			inHomeBrief(3, "parts[0].required", "it is a boolean, not a string")},
 		{`a first part whose reference is "url"`, withParts(`"## Goal\n"`, `{heading: "## Goal", required: true, reference: url}`),
-			inHomeBrief(4, "parts[0].reference", `it is "file"`)},
+			inHomeBrief(3, "parts[0].reference", `it is "file"`)},
 		{"a reference that is no string", withParts(`"## Goal\n"`, `{heading: "## Goal", required: true, reference: [file]}`),
-			inHomeBrief(4, "parts[0].reference", "it is a string, not a list")},
+			inHomeBrief(3, "parts[0].reference", "it is a string, not a list")},
 		{"reads that is no string", withParts(`"## Goal\n"`, `{heading: "## Goal", required: true, reads: 1}`),
-			inHomeBrief(4, "parts[0].reads", "it is a string, not an integer")},
+			inHomeBrief(3, "parts[0].reads", "it is a string, not an integer")},
 		{"a field of a part no kind knows", withParts(`"## Goal\n"`, `{heading: "## Goal", required: true, colour: red}`),
-			inHomeBrief(4, "parts[0].colour", "the field is not known")},
-		{"a template that is no string", withParts("[x]", goal), inHomeBrief(5, "template", "it is a string, not a list")},
+			inHomeBrief(3, "parts[0].colour", "the field is not known")},
+		{"a template that is no string", withParts("[x]", goal), inHomeBrief(4, "template", "it is a string, not a list")},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
@@ -224,8 +224,8 @@ func TestEveryPartThatIsNoMapIsReported(t *testing.T) {
 	got, problems := homeBriefOf(withParts(`"## Goal\n"`, `"## Open"`, `{heading: "## Goal", required: true}`, `"## Notes"`))
 	assertNoBrief(t, got)
 	assertProblems(t, problems, []documents.Problem{
-		inHomeBrief(4, "parts[0]", "it is a map, not a string"),
-		inHomeBrief(6, "parts[2]", "it is a map, not a string"),
+		inHomeBrief(3, "parts[0]", "it is a map, not a string"),
+		inHomeBrief(5, "parts[2]", "it is a map, not a string"),
 	})
 }
 
@@ -255,25 +255,24 @@ func TestAPartsHeadingIsAMarkdownHeadingLine(t *testing.T) {
 			t.Parallel()
 			root := tree.NewMap(map[string]tree.Node{
 				"schema": tree.NewString("agister.brief/v1alpha1", tree.Origin{Path: homeBrief, Line: 1}),
-				"name":   tree.NewString("a", tree.Origin{Path: homeBrief, Line: 2}),
 				"parts": tree.NewList([]tree.Node{tree.NewMap(map[string]tree.Node{
-					"heading":  tree.NewString(c.heading, tree.Origin{Path: homeBrief, Line: 4}),
-					"required": tree.NewBoolean(true, tree.Origin{Path: homeBrief, Line: 4}),
-				}, tree.Origin{Path: homeBrief, Line: 4})}, tree.Origin{Path: homeBrief, Line: 3}),
-				"template": tree.NewString(c.heading+"\n", tree.Origin{Path: homeBrief, Line: 5}),
+					"heading":  tree.NewString(c.heading, tree.Origin{Path: homeBrief, Line: 3}),
+					"required": tree.NewBoolean(true, tree.Origin{Path: homeBrief, Line: 3}),
+				}, tree.Origin{Path: homeBrief, Line: 3})}, tree.Origin{Path: homeBrief, Line: 2}),
+				"template": tree.NewString(c.heading+"\n", tree.Origin{Path: homeBrief, Line: 4}),
 			}, tree.Origin{Path: homeBrief, Line: 1})
 			got, problems := documents.TypeBrief("a", root)
 			if c.valid {
 				assertProblems(t, problems, nil)
 				assertBrief(t, got, documents.BriefDefinition{
 					Name:     "a",
-					Parts:    parts(homeBrief, 3, part(homeBrief, 4, c.heading, true)),
-					Template: text(c.heading+"\n", homeBrief, 5),
+					Parts:    parts(homeBrief, 2, part(homeBrief, 3, c.heading, true)),
+					Template: text(c.heading+"\n", homeBrief, 4),
 				})
 				return
 			}
 			assertNoBrief(t, got)
-			assertProblems(t, problems, []documents.Problem{inHomeBrief(4, "parts[0].heading", `it is a Markdown heading line, as "## Goal"`)})
+			assertProblems(t, problems, []documents.Problem{inHomeBrief(3, "parts[0].heading", `it is a Markdown heading line, as "## Goal"`)})
 		})
 	}
 }
@@ -312,7 +311,7 @@ func TestABriefsTemplateHasThePartsHeadings(t *testing.T) {
 			assertNoBrief(t, got)
 			var want []documents.Problem
 			for _, message := range c.want {
-				want = append(want, inHomeBrief(4+len(c.parts), "template", message))
+				want = append(want, inHomeBrief(3+len(c.parts), "template", message))
 			}
 			assertProblems(t, problems, want)
 		})
@@ -340,7 +339,7 @@ func TestATemplateHoldsMoreThanThePartsHeadings(t *testing.T) {
 			t.Parallel()
 			got, problems := homeBriefOf(withParts(c.template, `{heading: "## Goal", required: true}`, `{heading: "## Open", required: false}`))
 			assertProblems(t, problems, nil)
-			if want := text(c.want, homeBrief, 6); got.Template != want {
+			if want := text(c.want, homeBrief, 5); got.Template != want {
 				t.Errorf("template\n got %+v\nwant %+v", got.Template, want)
 			}
 		})
@@ -354,7 +353,6 @@ func TestATemplateHoldsMoreThanThePartsHeadings(t *testing.T) {
 func TestEveryBriefFieldProblemIsReported(t *testing.T) {
 	t.Parallel()
 	got, problems := homeBriefOf(`schema: agister.brief/v1alpha1
-name: a
 colour: red
 parts:
   - {heading: Goal, required: yes}
@@ -365,14 +363,14 @@ template: "## Notes\n"
 `)
 	assertNoBrief(t, got)
 	assertProblems(t, problems, []documents.Problem{
-		inHomeBrief(5, "parts[0].heading", `it is a Markdown heading line, as "## Goal"`),
-		inHomeBrief(5, "parts[0].required", "it is a boolean, not a string"),
+		inHomeBrief(4, "parts[0].heading", `it is a Markdown heading line, as "## Goal"`),
+		inHomeBrief(4, "parts[0].required", "it is a boolean, not a string"),
 		missing("parts[1].required"),
-		inHomeBrief(6, "parts[1].colour", "the field is not known"),
-		inHomeBrief(7, "parts[2].heading", "it is also the heading of parts[1]"),
-		inHomeBrief(7, "parts[2].reference", `it is "file"`),
-		inHomeBrief(9, "template", `it has the heading "## Open"`),
-		inHomeBrief(3, "colour", "the field is not known"),
+		inHomeBrief(5, "parts[1].colour", "the field is not known"),
+		inHomeBrief(6, "parts[2].heading", "it is also the heading of parts[1]"),
+		inHomeBrief(6, "parts[2].reference", `it is "file"`),
+		inHomeBrief(8, "template", `it has the heading "## Open"`),
+		inHomeBrief(2, "colour", "the field is not known"),
 	})
 }
 
@@ -396,7 +394,7 @@ func TestABriefsFieldIsOfTheFileThatGaveIt(t *testing.T) {
 
 	got, problems = brief("parts:\n  - {heading: \"## Plan\", required: true}\n")
 	assertNoBrief(t, got)
-	assertProblems(t, problems, []documents.Problem{inHomeBrief(7, "template", `it has the heading "## Plan"`)})
+	assertProblems(t, problems, []documents.Problem{inHomeBrief(6, "template", `it has the heading "## Plan"`)})
 
 	got, problems = brief("parts:\n  - {heading: \"## Goal\", required: 1}\n")
 	assertNoBrief(t, got)
@@ -422,7 +420,7 @@ func TestEachBriefIsTypedOnce(t *testing.T) {
 	d := documents.NewTypingWith(documents.Snapshot{Documents: map[documents.Kind]map[string]documents.Document{
 		documents.Brief: {
 			"a": brief("a", validBrief),
-			"b": brief("b", "schema: agister.brief/v1alpha1\nname: b\n"),
+			"b": brief("b", "schema: agister.brief/v1alpha1\n"),
 			"c": brief("c", "x: [1"),
 		},
 		documents.Runtime: {"a": {Sources: documents.Sources{Home: source(homeRuntime, validRuntime)}}},

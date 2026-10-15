@@ -26,7 +26,6 @@ func agentsOf(agents map[string]documents.Document) *documents.Documents {
 func TestAnAgentsFields(t *testing.T) {
 	t.Parallel()
 	d := agentsOf(map[string]documents.Document{"a": {Sources: documents.Sources{Home: source(homeAgent, `schema = "agister.agent/v1alpha1"
-name = "a"
 runtime = "claude-code"
 model = "opus"
 model_family = "anthropic"
@@ -69,7 +68,7 @@ func TestAnAgentsRuntimeIsGivenWithItsKindOrWithout(t *testing.T) {
 		t.Run(c.name, func(t *testing.T) {
 			t.Parallel()
 			runtime := "runtime = '" + c.runtime + "'\n"
-			sources := documents.Sources{Home: source(agentFile("/home", "a"), "schema = 'agister.agent/v1alpha1'\nname = 'a'\n"+runtime)}
+			sources := documents.Sources{Home: source(agentFile("/home", "a"), "schema = 'agister.agent/v1alpha1'\n"+runtime)}
 			if c.layer == "/repo" {
 				sources.Home = source(agentFile("/home", "a"), validAgent)
 				sources.Repository = source(agentFile("/repo", "a"), runtime)
@@ -88,7 +87,7 @@ func TestADocumentWhoseOnlyFileIsEmptyMissesEveryFieldItNeeds(t *testing.T) {
 	d := agentsOf(map[string]documents.Document{"a": {Sources: documents.Sources{Home: source(agentFile("/home", "a"), "")}}})
 	got, problems := d.Agent("a")
 	assertNoAgent(t, got)
-	assertProblems(t, problems, []documents.Problem{missing("schema"), missing("name"), missing("runtime")})
+	assertProblems(t, problems, []documents.Problem{missing("schema"), missing("runtime")})
 }
 
 // A field's problem is in the file of the layer whose value the composed
@@ -105,9 +104,6 @@ func TestAFieldProblemNamesTheFileThatGaveTheField(t *testing.T) {
 		}},
 		{"a field of the wrong type in the project, over the repository's", "model = 'opus'", "model = 3", documents.Problem{
 			Path: agentFile("/repo/p", "a"), Place: "model", Message: "it is a string, not an integer",
-		}},
-		{"another name in the repository", "name = 'b'", "", documents.Problem{
-			Path: agentFile("/repo", "a"), Place: "name", Message: `it is "a", the document's name`,
 		}},
 		{"a field no kind knows in the project", "", "colour = 'red'", documents.Problem{
 			Path: agentFile("/repo/p", "a"), Place: "colour", Message: "the field is not known",
@@ -136,9 +132,9 @@ func TestAFieldTheExtendingDocumentLeavesToItsBaseIsTypedFromTheBase(t *testing.
 	t.Parallel()
 	d := agentsOf(map[string]documents.Document{
 		"base": {Sources: documents.Sources{Home: source(agentFile("/home", "base"),
-			"schema = 'agister.agent/v1alpha1'\nname = 'base'\nruntime = 'codex'\nmodel = 'o3'\n")}},
+			"schema = 'agister.agent/v1alpha1'\nruntime = 'codex'\nmodel = 'o3'\n")}},
 		"a": {Sources: documents.Sources{Home: source(agentFile("/home", "a"),
-			"schema = 'agister.agent/v1alpha1'\nname = 'a'\nextends = 'base'\neffort = 'high'\n")}},
+			"schema = 'agister.agent/v1alpha1'\nextends = 'base'\neffort = 'high'\n")}},
 	})
 	got, problems := d.Agent("a")
 	assertProblems(t, problems, nil)
@@ -218,8 +214,8 @@ func TestEachAgentIsTypedOnce(t *testing.T) {
 	d := documents.NewTypingWith(documents.Snapshot{Documents: map[documents.Kind]map[string]documents.Document{
 		documents.Agent: {
 			"a":    agent("a", validAgent+"extends = 'base'\n"),
-			"base": agent("base", "schema = 'agister.agent/v1alpha1'\nname = 'base'\nruntime = 'codex'\n"),
-			"c":    agent("c", "schema = 'agister.agent/v1alpha1'\nname = 'c'\n"),
+			"base": agent("base", "schema = 'agister.agent/v1alpha1'\nruntime = 'codex'\n"),
+			"c":    agent("c", "schema = 'agister.agent/v1alpha1'\n"),
 			"d":    agent("d", "model = [1"),
 		},
 		documents.Process: {"a": {Sources: documents.Sources{Home: source(homeProcess, "{x: 1}")}}},
@@ -266,7 +262,7 @@ func TestAnAgentsProblemsAreTheCallersOwn(t *testing.T) {
 		"b": {Problems: []documents.Problem{{Path: agentFile("/repo", "b"), Message: "permission denied"}}},
 	})
 	cases := map[string][]documents.Problem{
-		"a": {missing("schema"), missing("name"), missing("runtime")},
+		"a": {missing("schema"), missing("runtime")},
 		"b": {{Path: agentFile("/repo", "b"), Message: "permission denied"}},
 	}
 	for name, want := range cases {

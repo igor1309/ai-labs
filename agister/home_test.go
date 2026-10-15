@@ -55,3 +55,45 @@ func TestTheShippedRuntimeMappingsType(t *testing.T) {
 		})
 	}
 }
+
+// Every agent and brief Agister ships in home types with no problem.
+//
+// Contract test: the files home/agents and home/briefs hold, as Agister
+// ships them.
+func TestTheShippedAgentsAndBriefsType(t *testing.T) {
+	t.Parallel()
+	cases := []struct {
+		kind      documents.Kind
+		folder    string
+		extension string
+		names     []string
+	}{
+		{documents.Agent, "home/agents/", ".toml", []string{"claude-opus", "claude-sonnet", "codex-sol-61", "pi-glm-53", "pi-m3"}},
+		{documents.Brief, "home/briefs/", ".yaml", []string{"goal", "step"}},
+	}
+	for _, c := range cases {
+		for _, name := range c.names {
+			t.Run(string(c.kind)+" "+name, func(t *testing.T) {
+				t.Parallel()
+				path := c.folder + name + c.extension
+				bytes, err := os.ReadFile(path)
+				if err != nil {
+					t.Fatal(err)
+				}
+				d := documents.New(documents.Snapshot{Documents: map[documents.Kind]map[string]documents.Document{
+					c.kind: {name: {Sources: documents.Sources{Home: &documents.Source{Path: path, Bytes: bytes}}}},
+				}})
+				var problems []documents.Problem
+				switch c.kind {
+				case documents.Agent:
+					_, problems = d.Agent(name)
+				case documents.Brief:
+					_, problems = d.Brief(name)
+				}
+				if len(problems) > 0 {
+					t.Errorf("problems %v", problems)
+				}
+			})
+		}
+	}
+}

@@ -57,10 +57,10 @@ type entry struct {
 	fields *fields
 }
 
-// newTyping begins typing root as the document of kind and name: a tree
-// document is a map, or the empty tree of an empty file, and names its
-// kind's schema and its own name.
-func newTyping(kind Kind, name string, root tree.Node) *fields {
+// newTyping begins typing root as the document of kind: a tree document is
+// a map, or the empty tree of an empty file, and names its kind's schema.
+// It states no name: its file gives it (ADR-002, rule 1).
+func newTyping(kind Kind, root tree.Node) *fields {
 	t := &fields{typing: &typing{}, node: root, known: map[string]bool{"extends": true}}
 	if k := root.Kind(); k != tree.Map && k != tree.Empty {
 		t.typing.problems = append(t.typing.problems, at(root, "", notA(tree.Map, k)))
@@ -74,9 +74,6 @@ func newTyping(kind Kind, name string, root tree.Node) *fields {
 		default:
 			t.problem(schema.Origin, "schema", fmt.Sprintf("the schema %q is not known", schema.Value))
 		}
-	}
-	if named := t.text("name", required); named.Given && named.Value != name {
-		t.problem(named.Origin, "name", fmt.Sprintf("it is %q, the document's name", name))
 	}
 	return t
 }
