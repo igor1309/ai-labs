@@ -168,15 +168,16 @@ agent's runtime mapping. A tree document named goes through steps 2 to
 5; a blob is taken from its nearest slot, with its digest; its source
 finds both, and gives a blob no layer holds as a problem. Skills are
 left out for now: a skill named is followed, and refused while no layer
-holds one.
+holds one. An agent's skills, which documents does not type yet, are
+left out with them (`backlog/skills.md`).
 
 It checks each workflow's boundaries and bindings (ADR-011, rule 6), and
 plans each step: its process's permissions against its agent's runtime
 mapping (ADR-003). A step that needs what its runtime cannot do, by the
 runtime's facts, is refused: an output schema, a continued or recovered
 session, skills, a model, an effort, a staleness limit on tool calls or
-tool commands (ADR-003, rule 7; ADR-012, rule 3). Every step is resolved and planned, those of branches
-a run may not take too.
+tool commands (ADR-003, rule 7; ADR-012, rule 3). Every step is resolved
+and planned, those of branches a run may not take too.
 
 A request that depends on a blocked document is refused, naming the
 block; a block is not a problem, and a block naming no document is a
@@ -201,13 +202,15 @@ every request. The composition answers the source from documents.
 
 Its facts port gives, by a runtime mapping's contract, what the runtime
 wrapper can do: check output against a schema, resume a session, take
-skills, take a model, the efforts it accepts, report tool calls and
-tool commands (ADR-003, rule 7). The composition answers it from the
-wrappers; a contract no wrapper takes is the mapping's problem. What a process or a step needs of its runtime, and a
-required permission no plan gives, is a problem of the step, at its
-place in its workflow, of no document for a step requested alone; a
-model or an effort the runtime does not take is its agent's. A plan's
-extra is its warning.
+skills, take a model, the efforts it accepts, report tool calls and tool
+commands (ADR-003, rule 7). The composition answers it from the
+wrappers; a contract no wrapper takes is the mapping's problem. What a
+process or a step needs of its runtime, and a required permission no
+plan gives, is a problem of the step, at its place in its workflow, of
+no document for a step requested alone; a model or an effort the runtime
+does not take is its agent's. A plan's extra is its warning. How a
+runtime takes its inputs, the fact ADR-003 (rule 7) names last, refuses
+no step, and the port does not give it yet.
 
 Resolve gives what a run needs (ADR-002, rule 6), and its warnings: the
 workflow, requested or made of a step (ADR-013); every document it
@@ -217,10 +220,10 @@ step's plan. A document resolve reads nothing of, the composition gives
 from the same fixed snapshot, by the name resolve reached.
 
 A refusal is every document at fault, each with its problems, or the
-block that refuses it, and the first chain that reached it, in the order the request names them; and
-the problems of no document, the request's among them. A
-link of the chain is a document's kind and name, and where the document
-before it names it.
+block that refuses it, and the first chain that reached it, in the order
+the request names them; and the problems of no document, the request's
+among them. A link of the chain is a document's kind and name, and where
+the document before it names it.
 
 Resolve comes in four sections, each specified, then coded: the request
 and its references; boundaries and bindings; planning and runtime facts;
@@ -228,14 +231,14 @@ blocks.
 
 Decisions of its reviews, each with its reason:
 
-- A step requested alone takes its process's inputs as params a caller
-  gives (ADR-010, rule 1); the made workflow declares no inputs of its
-  own (`request.feature`).
+- A step requested alone is a workflow declaring the process's params
+  and its inputs (ADR-013, rule 1; `request.feature`).
 - The made workflow's one output, `output`, is the step's output whole:
   a workflow's outputs are named.
 - A session bound from a step whose runtime keeps none is not refused:
   a case not yet met.
-- A message states what must hold, in the repository's style.
+- A message is short, as documents' are: what must hold, or what is
+  wrong. The messages stay as they are.
 - A step's output field against its process's schema, and a block
   reached through `extends`, are backlogged
   (`backlog/step-output-fields.md`, `backlog/blocks-through-extends.md`).
@@ -257,6 +260,9 @@ Decisions of its reviews, each with its reason:
 | a name that reaches no document; a blob no layer holds | 6, resolve, from its source |
 | a blocked document; a block naming no document, a warning | 6, resolve |
 | a binding or a condition that reads what is not there | 6, resolve |
+| a param a step, a workflow item or a request gives that is not declared, or leaves out with no default | 6, resolve |
+| a workflow that reaches itself | 6, resolve |
+| a runtime mapping of a contract no wrapper takes | 6, resolve |
 | a step its runtime cannot do; a model or effort its runtime does not take | 6, resolve |
 | a required permission its mapping cannot give; a grant beyond the allowed, a warning | 6, resolve |
 
@@ -265,5 +271,5 @@ Decisions of its reviews, each with its reason:
 A broken file is a problem of its document, not of the whole: it is kept
 as data with the document, and refuses only what reaches it. A layer
 that cannot be read is a problem of no document, and refuses every
-request. Check shows every problem. How a run's record keeps the problems of documents it did
-not use is open; they are data, so it can.
+request. Check shows every problem. How a run's record keeps the
+problems of documents it did not use is open; they are data, so it can.

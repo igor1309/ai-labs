@@ -12,8 +12,8 @@ Feature: Resolve follows every name from the request
     And the agent "a" names the runtime "r"
     When resolve is asked for the workflow "w"
     Then it reached, in this order, the workflow "w", the brief "wb", the
-      process "p", the prompt "pr", the prompt "g", the skill "k", the brief "b", the
-      schema "sc", the agent "a" and the runtime "r"
+      process "p", the prompt "pr", the prompt "g", the skill "k", the
+      brief "b", the schema "sc", the agent "a" and the runtime "r"
 
   Scenario: Every item is followed, in branches a run may not take too
     Given the workflow "w" has a parallel, a branch and a repeat

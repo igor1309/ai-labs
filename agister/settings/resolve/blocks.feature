@@ -48,3 +48,12 @@ Feature: Resolve refuses what depends on a blocked document
     When resolve is asked for the workflow "w"
     Then it resolves, with the warning of the blocks' file, on line 2: it
       blocks the agent "gone", which no layer holds
+
+  Scenario: A refusal gives no warning
+    Given the step "s" of "w" has a plan granting "net" beyond what its
+      process allows
+    And line 2 of the repository's blocks blocks the agent "gone", which
+      no layer holds
+    And the workflow "w" has a problem
+    When resolve is asked for the workflow "w"
+    Then it refuses, giving no plan and no warning

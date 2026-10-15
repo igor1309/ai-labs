@@ -21,15 +21,17 @@ Feature: Resolve takes a request naming a document or a step
     And it reached the workflow "w", the process "p", the agent "a" and
       the runtime "r", and gives the definition of each
 
-  # The made workflow has the process's inputs (ADR-013, rule 1) as a
-  # caller can give them, by the params they are resolved from (ADR-010,
-  # rule 1); each param keeps its default.
+  # The made workflow has the process's inputs (ADR-013, rule 1), and
+  # its params, which a caller gives and its inputs' sources take
+  # (ADR-010, rule 1); each param keeps its default.
 
   Scenario: A step requested alone is a workflow of that one step
-    Given the process "p" has the params "base" and "goal"
+    Given the process "p" has the params "base" and "goal", and the input
+      "rev", of a revision
     And the agent "a" names the runtime "r"
     When resolve is asked for the step of the process "p" on the agent "a"
-    Then it gives a workflow of no name, with the params "base" and "goal"
+    Then it gives a workflow of no name, with the params "base" and
+      "goal", and the input "rev"
     And its one step "p" binds the process "p" to the agent "a", each
       param given from the workflow's of its name
     And its output "output" reads "steps.p.outputs"
