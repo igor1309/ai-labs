@@ -12,7 +12,7 @@ description: "ADR-002: settings: documents in layers, composed by field, resolve
 - **Scope:** the settings documents, their layers and composition, the
   references between them, blocks, and what resolve and check do with them
 - **Decision type:** Architecture
-- **Amended by:** ADR-011 (2026-10-15)
+- **Amended by:** ADR-011 (2026-10-15), ADR-012 (2026-10-15)
 
 ## Context
 
@@ -83,10 +83,9 @@ composed first, then the extending document over it, by rule 3.
 ### 5. References are literal names
 
 A document names the documents it uses by kind and name, fixed in the
-settings, so they resolve without a call. A workflow names its
-children: an agent invocation, which binds a process to an agent, a
-command execution, or another workflow. Nothing but an agent invocation
-chooses an agent. A process names its prompt, its
+settings, so they resolve without a run. A workflow names its
+children: steps, each binding a process to an agent, and other
+workflows. Nothing but a step chooses an agent. A process names its prompt, its
 guidance, its output schema and its skills; an agent names its runtime
 mapping and its skills.
 
@@ -97,10 +96,10 @@ and everything it references, and gives the definitions or a refusal. A
 refusal names the chain to the document at fault and its problem.
 
 A problem in a document refuses what depends on it, through any chain,
-and nothing else. A problem that belongs to no document, such as a layer
-that cannot be read, refuses every request.
+and nothing else. A problem that belongs to no document refuses every
+request.
 
-A workflow that resolves may run; what is refused never reaches core, and no run is
+A workflow that resolves may be run; what is refused never reaches core, and no run is
 recorded (ADR-001, rule 4).
 
 ### 7. A repository blocks what home allows

@@ -1,0 +1,249 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Agister's settings architecture</title>
+<style>
+  :root {
+    color-scheme: dark;
+    --ground:#08080A; --surface:#17171A; --surface-2:#1E1E22;
+    --line:#2A2A2F; --line-soft:#232327; --line-strong:#3C3C43;
+    --text:#F5F5F7; --text-dim:#8A8A96; --text-faint:#68686F;
+    --text-body:#D9D9DF; --text-sub:#B4B4C0;
+    --workflow:#F28DB0; --step:#C8A2FF; --process:#8DB8FF; --agent:#5FE0BC;
+    --runtime:#FFC24D; --doc:#B4B4C0; --run:#F5E6B0; --rule:#FF8F6B;
+    --display:"Iowan Old Style","Palatino Linotype",Palatino,"Hoefler Text",Georgia,serif;
+    --sans:-apple-system,BlinkMacSystemFont,"Helvetica Neue",system-ui,sans-serif;
+    --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--ground); color: var(--text-body); overflow-wrap: break-word;
+    font: 16px/1.6 var(--sans); -webkit-text-size-adjust: 100%;
+  }
+  main { max-width: 44rem; margin: 0 auto; padding: 0 16px 48px; }
+  header { padding: 40px 0 20px; margin-bottom: 24px; border-bottom: 1px solid var(--line); }
+  .eyebrow {
+    margin: 0 0 .75rem; font-family: var(--mono); font-size: .72rem;
+    letter-spacing: .18em; text-transform: uppercase; color: var(--text-faint);
+  }
+  h1, h2 { font-family: var(--display); font-weight: 400; }
+  h1 { margin: 0; font-size: clamp(2rem, 5vw, 2.6rem); line-height: 1.08; letter-spacing: -.01em; }
+  h2 { margin: 2.25rem 0 .5rem; font-size: 1.5rem; line-height: 1.25; }
+  p { margin: 0 0 12px; }
+  .intro { font-size: 1.05rem; }
+  .src { color: var(--text-faint); font-size: .85rem; }
+  code {
+    font-family: var(--mono); font-size: .85em; padding: 1px 5px; border-radius: 2px;
+    background: var(--surface); border: 1px solid var(--line-soft);
+  }
+  a { color: var(--text-dim); text-underline-offset: 3px; }
+  table { width: 100%; border-collapse: collapse; margin: 8px 0 16px; font-size: .92rem; }
+  th, td { text-align: left; vertical-align: top; padding: 6px 8px; border-bottom: 1px solid var(--line-soft); }
+  th { font-family: var(--mono); font-weight: 400; font-size: .72rem; letter-spacing: .12em; text-transform: uppercase; color: var(--text-dim); }
+  figure { margin: 16px 0 20px; padding: 12px; background: var(--surface); border: 1px solid var(--line); border-radius: 4px; }
+  figcaption { margin-top: 8px; font-size: .85rem; color: var(--text-dim); }
+  svg { display: block; width: 100%; height: auto; }
+  svg text { font-family: var(--sans); font-size: 13px; fill: var(--text-body); }
+  svg .label { font-size: 11px; fill: var(--text-dim); }
+  svg .box { fill: var(--surface-2); stroke-width: 1.5; }
+  svg .edge { stroke: var(--line-strong); stroke-width: 1.5; fill: none; marker-end: url(#arrow); }
+  .k-workflow { color: var(--workflow); } .k-step { color: var(--step); }
+  .k-process { color: var(--process); } .k-agent { color: var(--agent); }
+  .k-runtime { color: var(--runtime); } .k-run { color: var(--run); }
+</style>
+</head>
+<body>
+<main>
+<header>
+  <p class="eyebrow">Agister · settings</p>
+  <h1>Agister's settings architecture</h1>
+</header>
+
+<p class="intro">Settings define the work; runs and calls are what executed it.
+Agister reads settings from up to three layers, composes each document field by
+field, and resolves a request into definitions core can run, or into a refusal
+that names the chain at fault. Facts and sources are in
+<a href="notes.md">notes.md</a>; the decisions are ADR-001 to ADR-012.</p>
+
+<h2>Three axes</h2>
+<p>Each thing has one name, on one axis. A definition is declared, resolved and
+planned; it never runs. An execution starts and ends; it is never declared.</p>
+<table>
+  <tr><th>Definitions (settings)</th><th>Executions (records)</th><th>Machinery (code)</th></tr>
+  <tr>
+    <td><span class="k-workflow">workflow</span>: work defined by inputs, an output contract and children</td>
+    <td><span class="k-run">run</span>: executes a workflow</td>
+    <td><span class="k-runtime">runtime</span>: a program Agister drives through its wrapper</td>
+  </tr>
+  <tr>
+    <td><span class="k-step">step</span>: a process bound to an agent, the one leaf</td>
+    <td><span class="k-run">call</span>: executes a step</td>
+    <td>runtime facts: what a runtime can do</td>
+  </tr>
+  <tr>
+    <td><span class="k-process">process</span>: what a step does</td>
+    <td>iteration: one execution of a repetition's body</td>
+    <td>program: an operating-system process</td>
+  </tr>
+  <tr>
+    <td><span class="k-agent">agent</span>: who does it, on which runtime</td>
+    <td>turn: one exchange of a call with its runtime</td>
+    <td>hold: a call's claim on the worktree</td>
+  </tr>
+  <tr>
+    <td><span class="k-runtime">runtime mapping</span>: grants and options</td>
+    <td>session: the conversation a call held</td>
+    <td>supervisor: runs every program</td>
+  </tr>
+  <tr>
+    <td>binding, condition: data flow and decisions</td>
+    <td></td><td></td>
+  </tr>
+</table>
+<p class="src">ADR-012, terms.</p>
+
+<h2>What a workflow names</h2>
+<p>Documents name each other by kind and name, fixed in settings, so they
+resolve without a run. A workflow composes steps and other workflows by
+sequence, parallel, branch or bounded repetition. A step binds a process to an
+agent; nothing but a step chooses an agent. Bash is a runtime like any other:
+its agent names only the runtime, and its prompt is a script.</p>
+<figure>
+<svg viewBox="0 0 670 290" role="img" aria-label="The documents a workflow references">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#3C3C43"/>
+    </marker>
+  </defs>
+  <path class="edge" d="M150,170 L198,170"/>
+  <path class="edge" d="M55,150 C55,100 115,100 115,148"/>
+  <text class="label" x="45" y="95">child workflow</text>
+  <path class="edge" d="M320,162 L378,108"/>
+  <path class="edge" d="M320,178 L378,242"/>
+  <path class="edge" d="M490,92 L538,40"/>
+  <path class="edge" d="M490,98 L538,87"/>
+  <path class="edge" d="M490,105 L538,134"/>
+  <path class="edge" d="M490,112 L538,180"/>
+  <path class="edge" d="M490,244 L538,194"/>
+  <path class="edge" d="M490,252 L538,253"/>
+
+  <rect class="box" x="20" y="150" width="130" height="40" rx="4" stroke="#F28DB0"/>
+  <text x="85" y="175" text-anchor="middle">workflow</text>
+  <rect class="box" x="200" y="150" width="120" height="40" rx="4" stroke="#C8A2FF"/>
+  <text x="260" y="175" text-anchor="middle">step</text>
+  <rect class="box" x="380" y="80" width="110" height="40" rx="4" stroke="#8DB8FF"/>
+  <text x="435" y="105" text-anchor="middle">process</text>
+  <rect class="box" x="380" y="230" width="110" height="40" rx="4" stroke="#5FE0BC"/>
+  <text x="435" y="255" text-anchor="middle">agent</text>
+
+  <rect class="box" x="540" y="20" width="120" height="34" rx="4" stroke="#B4B4C0"/>
+  <text x="600" y="42" text-anchor="middle">prompt</text>
+  <rect class="box" x="540" y="70" width="120" height="34" rx="4" stroke="#B4B4C0"/>
+  <text x="600" y="92" text-anchor="middle">schema</text>
+  <rect class="box" x="540" y="120" width="120" height="34" rx="4" stroke="#B4B4C0"/>
+  <text x="600" y="142" text-anchor="middle">brief</text>
+  <rect class="box" x="540" y="170" width="120" height="34" rx="4" stroke="#B4B4C0"/>
+  <text x="600" y="192" text-anchor="middle">skill</text>
+  <rect class="box" x="540" y="236" width="120" height="34" rx="4" stroke="#FFC24D"/>
+  <text x="600" y="258" text-anchor="middle">runtime mapping</text>
+</svg>
+<figcaption>A process names its prompt, its output schema, its skills, and the
+brief forms its text inputs may take; an agent names its runtime mapping and its
+skills. ADR-002, rule 5; ADR-010, rule 5; ADR-011, rule 2; ADR-012, rules 1 and 2.</figcaption>
+</figure>
+
+<h2>Where settings live</h2>
+<p>Each kind has its folder in a layer, and a document is the file named after
+it. Nothing but kind and name joins files across layers.</p>
+<table>
+  <tr><th>Kind</th><th>File</th></tr>
+  <tr><td class="k-agent">agent</td><td><code>agents/&lt;name&gt;.toml</code></td></tr>
+  <tr><td class="k-process">process</td><td><code>processes/&lt;name&gt;.yaml</code></td></tr>
+  <tr><td class="k-workflow">workflow</td><td><code>workflows/&lt;name&gt;.yaml</code></td></tr>
+  <tr><td class="k-runtime">runtime mapping</td><td><code>runtimes/&lt;name&gt;.yaml</code></td></tr>
+  <tr><td>brief</td><td><code>briefs/&lt;name&gt;.yaml</code></td></tr>
+  <tr><td>schema</td><td><code>schemas/&lt;name&gt;.json</code></td></tr>
+  <tr><td>prompt</td><td><code>prompts/&lt;name&gt;.md</code></td></tr>
+  <tr><td>skill</td><td><code>skills/&lt;name&gt;/SKILL.md</code></td></tr>
+</table>
+<figure>
+<svg viewBox="0 0 670 200" role="img" aria-label="Three layers composed toward the launch directory">
+  <rect class="box" x="20" y="20" width="460" height="44" rx="4" stroke="#3C3C43"/>
+  <text x="36" y="47">home · <tspan font-family="ui-monospace,Menlo,monospace">~/.agister</tspan></text>
+  <rect class="box" x="20" y="78" width="460" height="44" rx="4" stroke="#3C3C43"/>
+  <text x="36" y="105">repository · <tspan font-family="ui-monospace,Menlo,monospace">.agister</tspan> at the worktree root · <tspan font-family="ui-monospace,Menlo,monospace">blocks.yaml</tspan></text>
+  <rect class="box" x="20" y="136" width="460" height="44" rx="4" stroke="#3C3C43"/>
+  <text x="36" y="163">project · the nearest <tspan font-family="ui-monospace,Menlo,monospace">.agister</tspan> below the root</text>
+  <path class="edge" d="M520,24 L520,176"/>
+  <text class="label" x="534" y="70">composed toward</text>
+  <text class="label" x="534" y="86">the launch directory</text>
+  <text class="label" x="534" y="118">maps merge by key</text>
+  <text class="label" x="534" y="134">lists, scalars replace</text>
+  <text class="label" x="534" y="150">nothing unsets</text>
+</svg>
+<figcaption>Each layer is over its parent alone; outside a git worktree only home
+is read. Schemas, prompts and skills are taken whole from the nearest layer.
+A document may <code>extends</code> another of its kind, composed first. The
+repository blocks documents by kind and name. ADR-002, rules 2, 3, 4 and 7.</figcaption>
+</figure>
+
+<h2>From files to definitions</h2>
+<p>Resolve is the gate before a run: what resolves may be run, what does not
+never reaches core and leaves no run. A problem in a document refuses only what
+depends on it; a refusal names the chain to the document at fault.</p>
+<figure>
+<svg viewBox="0 0 670 220" role="img" aria-label="Settings packages from files to core and check">
+  <rect class="box" x="10" y="70" width="90" height="56" rx="4" stroke="#3C3C43"/>
+  <text x="55" y="102" text-anchor="middle">files</text>
+  <rect class="box" x="130" y="70" width="100" height="56" rx="4" stroke="#B4B4C0"/>
+  <text x="180" y="96" text-anchor="middle">layout</text>
+  <text class="label" x="180" y="114" text-anchor="middle">kind, name → file</text>
+  <rect class="box" x="260" y="60" width="120" height="76" rx="4" stroke="#B4B4C0"/>
+  <text x="320" y="84" text-anchor="middle">documents</text>
+  <text class="label" x="320" y="102" text-anchor="middle">format</text>
+  <text class="label" x="320" y="116" text-anchor="middle">layering · kinds</text>
+  <rect class="box" x="410" y="40" width="130" height="116" rx="4" stroke="#FF8F6B"/>
+  <text x="475" y="64" text-anchor="middle">resolve</text>
+  <text class="label" x="475" y="84" text-anchor="middle">references · blocks</text>
+  <text class="label" x="475" y="100" text-anchor="middle">boundaries · bindings</text>
+  <text class="label" x="475" y="116" text-anchor="middle">each step's plan</text>
+  <text class="label" x="475" y="132" text-anchor="middle">runtime facts</text>
+  <rect class="box" x="570" y="40" width="90" height="44" rx="4" stroke="#F5E6B0"/>
+  <text x="615" y="67" text-anchor="middle">core</text>
+  <rect class="box" x="570" y="112" width="90" height="44" rx="4" stroke="#3C3C43"/>
+  <text x="615" y="139" text-anchor="middle">check</text>
+  <rect class="box" x="410" y="176" width="130" height="34" rx="4" stroke="#FFC24D"/>
+  <text x="475" y="198" text-anchor="middle">runtime wrappers</text>
+  <path class="edge" d="M100,98 L128,98"/>
+  <path class="edge" d="M230,98 L258,98"/>
+  <path class="edge" d="M380,98 L408,98"/>
+  <path class="edge" d="M540,70 L568,62"/>
+  <path class="edge" d="M568,134 L542,126"/>
+  <path class="edge" d="M475,176 L475,158"/>
+</svg>
+<figcaption><code>layout</code> and <code>documents</code> make the document
+source; <code>resolve</code> plans each step from its process's permissions and
+its agent's mapping, and refuses a step that needs what its runtime cannot do,
+in unselected branches too; <code>check</code> is handed resolve and resolves
+every document. The composition answers runtime facts from the wrappers.
+ADR-001, settings; ADR-002, rules 6 and 8; ADR-003.</figcaption>
+</figure>
+
+<h2>The parts</h2>
+<table>
+  <tr><th>Package</th><th>Owns</th><th>Ports</th></tr>
+  <tr><td><code>settings/layout</code></td><td>where settings live; a kind and name to a file; names</td><td>filesystem; worktree root</td></tr>
+  <tr><td><code>settings/documents</code></td><td>bytes to typed definitions with per-field provenance: format, layering, kinds</td><td>none: pure</td></tr>
+  <tr><td><code>settings/resolve</code></td><td>a request to definitions or a refusal naming the chain</td><td>document source; runtime facts</td></tr>
+  <tr><td><code>settings/check</code></td><td>check (every problem and what it refuses) and inspect (with provenance)</td><td>resolve; list names</td></tr>
+  <tr><td><code>settings/home</code></td><td>install into home and restore; every write can be undone</td><td>filesystem writes; clock</td></tr>
+</table>
+<p>No settings package imports another; the composition connects them. Core
+takes the resolved workflow and every step's process, agent, runtime mapping
+and permission plan, and never reads a settings file.</p>
+<p class="src">ADR-001, rules 1 and 4, settings and core; ADR-008.</p>
+</main>
+</body>
+</html>

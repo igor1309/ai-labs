@@ -10,13 +10,14 @@ description: "ADR-009: testing with spies: a part is tested over spies on its po
 - **Topic:** Testing
 - **Date:** 2026-10-14
 - **Scope:** how each part, wrapper and the composition is tested, where
-  real processes, git, files and time may appear, and what the product
+  real programs, git, files and time may appear, and what the product
   gives tests to drive it
 - **Decision type:** Architecture
+- **Amended by:** ADR-012 (2026-10-15)
 
 ## Context
 
-A test that reaches real processes, git, files or the wall clock for a
+A test that reaches real programs, git, files or the wall clock for a
 claim about settings, workflows or wiring is slow, its outcome depends on
 how busy the machine is, and its failure does not name the rule that
 broke. A part whose collaborators are built in cannot be tested apart:
@@ -35,7 +36,7 @@ thing. Time and progress are ports too, so no test sleeps or polls.
 
 A test of a part of `cli`, `settings/*` or `core/*` gives it a spy for
 every port it declares and asserts what it asked of them and what it
-gave. It starts no process, runs no `git`, touches no real file and
+gave. It starts no program, runs no `git`, touches no real file and
 reads no real clock.
 
 ### 2. Collaborators are given, never defaulted
@@ -47,7 +48,7 @@ test did not give. Only the composition names the real ones.
 ### 3. Real things belong to a wrapper's contract tests
 
 A wrapper is tested against the real thing it wraps: `git` against git,
-`runstore` against files, the process supervisor against the operating
+`runstore` against files, the supervisor against the operating
 system. Such a test says which real thing its claim is about. No other
 test uses a real thing. A runtime wrapper is tested over a spy of its
 runtime's program; whether the real program still behaves so is the
