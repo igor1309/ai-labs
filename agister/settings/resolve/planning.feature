@@ -44,21 +44,22 @@ Feature: Resolve plans every step on its runtime
       order reached
 
   Scenario Outline: A step needs what its runtime can do
-    Given the step "s" of "w" binds the process "p" to the agent "a" of "r"
+    Given the workflow "w" has a step, then the step "s", binding the
+      process "p" to the agent "a" of "r"
     And <need>
     And the facts of the runtime "r" say it <cannot>
     When resolve is asked for the workflow "w"
-    Then it refuses: the workflow "w", and the problem at "steps[0]": its
+    Then it refuses: the workflow "w", and the problem at "steps[1]": its
       runtime "r" <can>, as <who> needs
 
     Examples:
-      | need                                        | cannot                       | can                            | who             |
-      | "p" names the output schema "sc"            | checks no output against one | checks output against a schema | its process "p" |
-      | "p" recovers a stale turn                   | resumes no session           | resumes a session              | its process "p" |
-      | "s" continues the session of a step         | resumes no session           | resumes a session              | it              |
-      | "p" names the skill "k"                     | takes no skills              | takes skills                   | its process "p" |
-      | "p" limits the same tool call made in a row | reports no tool calls        | reports tool calls             | its process "p" |
-      | "p" limits how long a tool command runs     | reports no tool commands     | reports tool commands          | its process "p" |
+      | need                                            | cannot                       | can                            | who             |
+      | "p" names the output schema "sc"                | checks no output against one | checks output against a schema | its process "p" |
+      | "p" recovers a stale turn                       | resumes no session           | resumes a session              | its process "p" |
+      | "s" continues the session of the step before it | resumes no session           | resumes a session              | it              |
+      | "p" names the skill "k"                         | takes no skills              | takes skills                   | its process "p" |
+      | "p" limits the same tool call made in a row     | reports no tool calls        | reports tool calls             | its process "p" |
+      | "p" limits how long a tool command runs         | reports no tool commands     | reports tool commands          | its process "p" |
 
   Scenario Outline: An agent gives what its runtime takes
     Given the agent "a" of the runtime "r" gives <gives>
