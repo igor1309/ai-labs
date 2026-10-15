@@ -41,6 +41,13 @@ Feature: Documents gives a runtime
     Then it gives the runtime "a" with the grants "process.execute", no
       select and no option
 
+  Scenario: A nearer layer drops what the runtime grants with no option
+    Given the runtime "a" has a home source of a valid runtime
+    And a repository source "grants: []"
+    When documents is asked for the runtime "a"
+    Then it gives the runtime "a" with no grant, its other fields the
+      home source's
+
   Scenario: A runtime needs its adapter and its contract
     Given the runtime "a" has a home source of its schema and its name
     When documents is asked for the runtime "a"
@@ -58,7 +65,6 @@ Feature: Documents gives a runtime
 
     Examples:
       | fault                             | field            | message                |
-      | the grants []                     | grants           | it grants a permission |
       | the select "some"                 | select           | it is "any" or "one"   |
       | options with no select            | select           | it is missing          |
       | a select with no options          | options          | it is missing          |
