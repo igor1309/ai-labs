@@ -32,8 +32,8 @@ Terms used here:
 
 - **settings**: the files in the layers;
 - **document**: a kind and a name, held by one or more layers' files;
-- **definition**: a document composed from its layers' files, as resolve
-  gives it and a run records it.
+- **definition**: what resolve gives and a run records: a document
+  composed from its layers' files, and what resolve makes of documents.
 
 ## Decision
 
