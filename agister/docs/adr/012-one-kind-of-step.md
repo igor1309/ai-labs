@@ -37,9 +37,9 @@ call), and mix what settings define with what a run executes.
 ## Decision
 
 A workflow's leaf is a step: a process bound to an agent. Bash is a
-runtime, with its wrapper, its mapping and its facts; a command is a
-step whose agent's runtime is bash. The command execution goes, with its
-port, its chain and `core/command`.
+runtime, with its wrapper, its mapping and its facts; a step whose
+agent's runtime is bash runs a script. The command execution goes, with
+its port, its chain and `core/command`.
 
 Each definition has one name, each execution has one name, and an
 execution names the definition it executes: a run executes a workflow,
@@ -53,8 +53,8 @@ Definitions, in settings:
   children, composed by sequence, parallel, branch or repetition. A
   child is a step or a workflow.
 - **step**: a process bound to an agent.
-- **process**: what a step does: its prompt, inputs, output schema,
-  permissions and limits.
+- **process**: what a step does: its prompt, inputs, environment,
+  output schema, permissions and limits.
 - **agent**: who does it: a runtime mapping, and the model, effort and
   skills its runtime takes.
 - **runtime mapping**: what a runtime grants with no option, and its
@@ -102,10 +102,12 @@ end (ADR-004, rule 5).
 A bash agent names the bash runtime and nothing a model takes. A prompt
 is the text a runtime is given: a message to a model, a script to bash.
 How a runtime takes a call's inputs is one of its facts: a model in what
-it is told, bash in the script's environment.
+it is told, bash in the script's environment. The environment a process
+declares reaches every runtime's program.
 
-Bash runs the script once, in one turn. Its output is the exit code,
-stdout and stderr. A call whose script exits normally completes whatever
+Bash runs the script once, in one turn. Its output is the exit code and
+the bounded head and tail of stdout and stderr, each with a digest of
+the whole, as the supervisor keeps them (rule 6). A call whose script exits normally completes whatever
 the exit code, and conditions read it (ADR-011, rule 5); a script that
 cannot start, is ended by a limit or a cancellation, or is lost keeps
 that status. Bash keeps no session.
@@ -113,10 +115,11 @@ that status. Bash keeps no session.
 ### 3. A runtime's facts say what it can do
 
 The facts resolve reads include what a runtime produces and reports:
-output checked against a schema, tool calls, cost, a session it can
-resume, skills it takes. A step that needs what its runtime cannot do is
-refused at resolve: an output schema, a continued or recovered session,
-skills, or a staleness limit on tool calls.
+output checked against a schema, tool calls and tool commands, a session
+it can resume, skills it takes. A step that needs what its runtime
+cannot do is refused at resolve: an output schema, a continued or
+recovered session, skills, or a staleness limit on tool calls or tool
+commands.
 
 ### 4. Every step is planned
 
@@ -125,8 +128,8 @@ its options; a plan accounts for both. The bash mapping grants what its
 environment gives, and offers no options. Resolve plans a bash step as
 any other (ADR-003, rule 4): a required permission the mapping cannot
 give refuses it, and what it grants beyond what the process allows is a
-warning. The plan is what Agister asks;
-bash, like every runtime, is not confined (ADR-001, invariant 10).
+warning. The plan is what Agister asks; bash, like every runtime, is
+not confined (ADR-001, invariant 10).
 
 ### 5. An unreported cost is unknown, not spent
 
@@ -137,12 +140,13 @@ budget, and makes the enclosing run's cost unknown, as its result says.
 ### 6. One supervisor runs every program
 
 `supervisor` is a wrapper that starts a program at the worktree root
-with an environment, streams its output, keeps a bounded head and tail
-of each stream with a digest of the whole, ends the program and all it
-started on every exit path, and ends what a dead owner left running. Every runtime
-wrapper runs its program through it: a wrapper may use another wrapper,
-and neither knows the parts that use it (ADR-001, rule 2). A dead
-owner's hold is released after the supervisor has ended what it left.
+with an environment, under its owner's identity; streams its output;
+keeps a bounded head and tail of each stream with a digest of the whole;
+ends the program and all it started on every exit path; and ends what
+was started under a dead owner's identity. Every runtime wrapper runs
+its program through it: a wrapper may use another wrapper, and neither
+knows the parts that use it (ADR-001, rule 2). A dead owner's hold is
+released after the supervisor has ended what it left.
 
 A turn's no-output and no-event limits are one limit, observed by
 `core/watch` on every runtime.
@@ -150,10 +154,13 @@ A turn's no-output and no-event limits are one limit, observed by
 ### 7. Core makes every call the same way
 
 `core/call` makes a call: turns on the runtime, the output checked
-against its contract, and a recovery turn where the runtime resumes. On
-bash a call has one turn. The composition chains `inputs`, `admit` and
-`call`, and hands the chain to `core/workflow` as its port.
-`core/session` and `core/command` go.
+against its contract, a recovery turn where the runtime resumes, and the
+call ended at its time or cost limit. On bash a call has one turn.
+`core/workflow` resolves its boundary inputs through `core/inputs` and
+starts no child once an enclosing budget is spent. The composition
+chains `inputs`, `admit` and `call`, and hands the chain to
+`core/workflow` as its one port to call a step. `core/session` and
+`core/command` go.
 
 ## Consequences
 

@@ -6,7 +6,7 @@ description: "Backlog: the amendments ADR-012 needs: one kind of step, bash a ru
 
 # ADR-012 amendments
 
-ADR-012 (proposed) makes a step, a process bound to an agent, the one
+ADR-012 (accepted) makes a step, a process bound to an agent, the one
 leaf of a workflow, and bash a runtime. It names definitions apart from
 executions: a run executes a workflow, a call executes a step. Its
 consequences name the ADRs it amends: 001, 002, 003, 004, 006, 009, 010
@@ -22,7 +22,11 @@ ADR-008 is untouched.
 3. **Write the amendments**, one ADR per commit, in place, each with
    "Amended by: ADR-012 (<date>)". Design only (agister/AGENTS.md).
    Done (2026-10-15): ADR-001, 002, 003, 004, 006, 009, 010 and 011.
-4. **Review** with the `adr_review` workflow, then merge.
+4. **Review** the ADR set, then merge. Done (2026-10-15) with a Claude
+   reviewer and Codex in place of `adr_review`, at the owner's word:
+   three major and twelve minor findings folded; one (a script's file
+   extension in ADR-002) left, as the owner left it to the
+   implementation.
 5. **Rewrite `docs/settings-implementation.md`** (ADR-011's step 5, now
    after this).
 6. **Specify the kinds** in `settings/documents`: steps in a workflow,
