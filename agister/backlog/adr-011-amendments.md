@@ -173,5 +173,7 @@ What each ADR says that ADR-011 contradicts (✗) or leaves open (?).
   `implement_*` (sequence and repetition) and `code_review` (parallel and
   a join) workflows.
 - **Form of the amendments:** each ADR edited in place, with a line
-  "Amended by ADR-011 (2026-10-15)". They are a day old and nothing built
-  on them is merged.
+  "Amended by ADR-011 (2026-10-15)". They are a day old. Of what is
+  merged, only `settings/layout` rests on a changed rule: its kind
+  `verify` (`layout.go:51`) goes, with its scenarios and tests, in the
+  same PR as ADR-002's amendment.
