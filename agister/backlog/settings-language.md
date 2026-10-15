@@ -95,6 +95,14 @@ Three ways forward:
    Actions, but a branch loses exactly one and its default, and failure
    gets new rules.
 
-Proposed: 1 now, and 2 when a workflow needs an ordering that is not
-nested, as ADR-011's conditions grow when a workflow needs more. The
-owner's to decide; nothing in step 6 waits on it.
+**Decided by the owner (2026-10-15): 1, keep the operators.** 2 stays
+available for when a workflow needs an ordering that is not nested.
+
+## The runtime mapping (2026-10-15)
+
+Decided by the owner: top-level `grants`, what the runtime grants with
+no option; top-level `select`, `one` or `any`; and `options`, each by
+name with its `grants` and `verified`. Bash writes neither `select` nor
+`options`. The documents core branch takes it, and migrates
+`home/runtimes/*.yaml` in its PR: the installed Agister reads none of
+them.
