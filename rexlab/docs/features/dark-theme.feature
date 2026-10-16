@@ -1,6 +1,5 @@
 # Build order: the quiz (English only), then language, then dark theme.
 
-@next
 Feature: Dark theme
   The app is comfortable in a dark room as well as in daylight.
   The theme is System, Light or Dark; System follows the device.
