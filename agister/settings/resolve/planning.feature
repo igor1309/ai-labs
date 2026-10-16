@@ -91,3 +91,10 @@ Feature: Resolve plans every step on its runtime
     Then it refuses, of no document and no chain, with the problem at
       "steps[0]": its runtime "r" checks output against a schema, as its
       process "p" needs
+
+  Scenario: A plan's extra is a warning, at its step's place
+    Given the step "s" of "w" has a plan granting "net" beyond what its
+      process "p" allows
+    When resolve is asked for the workflow "w"
+    Then it resolves, with the warning at "steps[0]": its plan grants
+      "net" beyond what its process "p" allows
