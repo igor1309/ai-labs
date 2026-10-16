@@ -23,6 +23,24 @@ if ! test -z "$unformatted"; then
   exit 1
 fi
 
+# The repository's size limits, as its pre-commit hook holds them: a
+# feature file at most 100 lines, a test file at most 1000. Checked here
+# too, so whoever runs the check meets them before a commit does.
+echo "== agister size limits: features 100 lines, tests 1000"
+too_big=$(find . -path ./archive -prune -o -type f \( -name '*.feature' -o -name '*_test.go' \) -exec awk '
+  function report(limit) {
+    limit = (prev ~ /\.feature$/) ? 100 : 1000
+    if (n > limit) printf "  %s: %d lines, limit %d\n", prev, n, limit
+  }
+  FNR == 1 && prev != "" { report() }
+  { prev = FILENAME; n = FNR }
+  END { if (prev != "") report() }' {} +)
+if ! test -z "$too_big"; then
+  echo "over the size limit:"
+  echo "$too_big"
+  exit 1
+fi
+
 packages=$(go list ./... | wc -l | tr -d ' ')
 echo "== agister go vet ./...: $packages packages"
 go vet ./...
