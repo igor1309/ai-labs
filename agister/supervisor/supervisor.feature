@@ -43,6 +43,13 @@ Feature: The supervisor runs a program and ends all it started
     When the supervisor runs it
     Then the program exited with code 0, and the child is gone
 
+  Scenario: Output held open by what left the group is not waited on
+    Given a program that starts a child in a session of its own, holding
+      stdout, then exits 0
+    When the supervisor runs it, and the grace timer passes 2s
+    Then it gives that the program exited with code 0, its streams kept
+      so far and marked incomplete
+
   Scenario: A signal from elsewhere is given by name
     Given a program that kills itself with SIGKILL
     When the supervisor runs it

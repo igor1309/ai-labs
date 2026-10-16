@@ -27,6 +27,12 @@ Feature: A call makes its turn and ends in the result shape
       | is cancelled by the caller, then exits 0  | interrupted | cancelled           |
       | is ended by a signal Agister did not send | failed      | killed              |
 
+  Scenario: A call whose context is already cancelled makes no turn
+    Given the caller has cancelled
+    When the call is made
+    Then no turn is asked, and it ends interrupted, class "cancelled",
+      its warnings the plan's
+
   Scenario: A completed call's output is the exit code and both streams
     Given the turn exits with code 4, stdout "o" and stderr "e"
     When the call is made
