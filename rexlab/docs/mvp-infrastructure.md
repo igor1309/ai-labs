@@ -10,10 +10,11 @@ description: "RexLab MVP infrastructure and technical architecture: a static Clo
 ## 1. Product scope
 
 - **Platform:** Web application, optimized for iPad in landscape orientation.
-- **Audience:** Children around 6 years old; large, readable text and touch-friendly controls.
+- **Audience:** Children aged 5–7, who are just learning to read: dinosaur names in large capitals, meaning carried by symbols and pictures, touch-friendly controls.
 - **First game:** Two dinosaur cards; choose the dinosaur that matches a comparison question (e.g., bigger, heavier, taller).
 - **Round:** 10 pairs/questions, with immediate answer feedback and a final score.
-- **Gamification:** Scores, achievements, and personal-best celebration. Compare the new score with the **highest historical score**, never with the most recent score if it is lower.
+- **First build:** compares mass and height, always asking which dinosaur has more ("Who is heavier?", "Who is taller?"). English only; Russian, then a dark theme follow. Behaviour: `docs/features/`.
+- **Gamification:** Essential. Scores and personal-best celebration in the first build; achievements follow (LAB-266). Compare the new score with the **highest historical score**, never with the most recent score if it is lower.
 - **Accounts:** None for MVP.
 - **Data durability:** Best effort only; losing browser-local scores is acceptable.
 
@@ -44,7 +45,7 @@ Each dinosaur is a record with descriptive metadata, multiple image variants, an
 ```json
 {
   "id": "triceratops",
-  "name": "Triceratops",
+  "name": { "en": "Triceratops", "ru": "Трицератопс" },
   "images": {
     "thumbnail": "/dinos/triceratops/thumb.webp",
     "fullBody": "/dinos/triceratops/body.webp",
@@ -53,7 +54,7 @@ Each dinosaur is a record with descriptive metadata, multiple image variants, an
   "attributes": {
     "lengthMeters": 9,
     "heightMeters": 3,
-    "weightKg": 7000,
+    "massKg": 7000,
     "hornCount": 3
   }
 }
@@ -69,11 +70,11 @@ Additional views can be added to `images` without changing the hosting architect
 2. Display the question and two large tappable dinosaur cards.
 3. Evaluate the selected answer entirely in the browser.
 4. Display clear correct/incorrect feedback, then proceed to the next pair.
-5. After 10 questions, calculate the score, award achievements, and update personal best if improved.
+5. After 10 questions, calculate the score and update the personal best if improved. Achievements follow the first build (LAB-266).
 
 The same comparison machinery can support **length, height, weight/mass, and number of horns**. Possible future attributes include age/geological period, but those require well-defined rules and appropriate wording for children.
 
-**Fairness constraint:** Dinosaur size and mass are estimates. Generate pairs with sufficiently different values to make each answer unambiguous; avoid close or scientifically disputed comparisons.
+**Fairness constraint:** Dinosaur size and mass are estimates. In each question the larger value is at least 1.5 times the smaller one, and no two questions in a round use the same two dinosaurs, whichever attribute they compare. The dinosaur list must hold enough such pairs to fill a round.
 
 ## 5. Scores and achievements
 
@@ -92,21 +93,23 @@ Store progress under versioned browser-local keys, for example:
 }
 ```
 
-On round completion:
+`bestScore` is `null` until a round is finished. On round completion:
 
 ```ts
-const newBest = Math.max(previousBest, currentScore);
-const beatPersonalBest = currentScore > previousBest;
+const firstBest = previousBest === null && currentScore > 0;
+const beatPersonalBest = previousBest !== null && currentScore > previousBest;
+const newBest = previousBest === null ? currentScore : Math.max(previousBest, currentScore);
 ```
 
-Use `beatPersonalBest` to trigger a **new personal best** celebration. Example initial achievements: first completed round, perfect 10/10, improved personal best. Browser storage may be cleared; this is an accepted product trade-off.
+Use `firstBest` and `beatPersonalBest` to trigger the **first best** and **new personal best** celebrations; a first round of 0/10 is not celebrated. Each finished round increments `roundsPlayed`; an unfinished round changes nothing. Stored progress that is unreadable or has an unknown `schemaVersion` counts as no progress and is replaced; when the browser refuses storage, the round shows its score but no best score and no celebration. Example initial achievements: first completed round, perfect 10/10, improved personal best. Browser storage may be cleared; this is an accepted product trade-off.
 
 ## 6. iPad interaction constraints
 
 - Landscape-first layout with side-by-side cards.
 - Large typography and large touch targets for six-year-olds.
-- Immediate visual feedback on card selection.
-- Full-body dinosaur illustrations where useful for size comparisons; additional thumbnails/head images for other screens or games.
+- Immediate visual feedback on card selection: a pressed state on tap, then a ✓ or ✗ mark with colour, never colour alone.
+- In portrait, a screen asks to turn the iPad sideways.
+- Dinosaur pictures on question cards are all the same size, so the picture never gives away or contradicts the answer; the revealed values do. Additional thumbnails/head images for other screens or games.
 
 ## 7. Deployment workflow
 

@@ -1,4 +1,3 @@
-# Draft: decisions marked (proposed) are open for review.
 # Build order: the quiz (English only), then language, then dark theme.
 
 @next
@@ -6,25 +5,52 @@ Feature: English and Russian
   Interface text, dinosaur names and units appear in the chosen language.
 
   Background:
-    Given the app is open on an iPad in landscape
+    Given an iPad in landscape
 
-  Scenario: The app starts in the device language (proposed)
-    Given the device language is Russian
-    When I open the app for the first time
+  Scenario Outline: The app starts in the device language
+    Given no language has been chosen in the app
+    And the device language is <device>
+    When I open the app
+    Then the app is in <language>
+
+    Examples:
+      | device | language |
+      | ru-RU  | Russian  |
+      | en-GB  | English  |
+      | de-DE  | English  |
+
+  Scenario: Choosing a language is remembered
+    Given the app is open in English on the home page
+    When I switch the language to Russian
+    Then the app is in Russian
+    When I close and reopen the app
     Then the app is in Russian
 
-  Scenario: Choosing a language is remembered (proposed)
-    Given the app is in English
-    When I switch the language to Russian on the home page
-    Then all text, dinosaur names and units are in Russian
-    And the app opens in Russian next time
+  Scenario Outline: Russian text
+    Given the app is in Russian
+    When I see the <item>
+    Then it reads "<text>"
+
+    Examples:
+      | item                | text         |
+      | mass prompt         | Кто тяжелее? |
+      | height prompt       | Кто выше?    |
+      | Next button         | Дальше       |
+      | See result button   | Результат    |
+      | Play again button   | Ещё раз      |
+      | Home button         | Домой        |
+      | name of Triceratops | ТРИЦЕРАТОПС  |
 
   Scenario Outline: Values are written in the chosen language
     Given the app is in <language>
-    When Triceratops's mass of 6500 kg is revealed
-    Then it reads "<mass>"
+    When a <attribute> of <value> is revealed
+    Then it reads "<text>"
 
     Examples:
-      | language | mass  |
-      | English  | 6.5 t |
-      | Russian  | 6,5 т |
+      | language | attribute | value   | text  |
+      | English  | mass      | 15 kg   | 15 kg |
+      | Russian  | mass      | 15 kg   | 15 кг |
+      | English  | mass      | 6500 kg | 6.5 t |
+      | Russian  | mass      | 6500 kg | 6,5 т |
+      | English  | height    | 3 m     | 3 m   |
+      | Russian  | height    | 3 m     | 3 м   |

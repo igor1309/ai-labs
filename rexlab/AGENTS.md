@@ -10,6 +10,21 @@ RexLab is a dinosaur learning web app for children aged 5–7, served at
 https://rexlab.enoa.ai from the Cloudflare Pages project `rexlab`.
 Architecture: `docs/mvp-infrastructure.md`.
 
+## Product principles
+
+- Gamification is essential, not decoration. Every game rewards the child:
+  scores, best-score celebrations, achievements. Treat a missing or weak
+  reward as a defect.
+- Children of 5–7 are just learning to read. Write dinosaur names in large
+  capitals, keep the interface visually clear and easy to operate, and carry
+  meaning with symbols and pictures rather than text. Guidance text for
+  parents, only where it is truly needed, is a small, slightly faded footnote.
+
+## Specs
+
+Behaviour is specified in Gherkin under `docs/features/`; a feature tagged
+`@next` is not in the current build.
+
 ## Commands
 
 Run from `rexlab/`: `npm ci`, `npm run typecheck`, `npm test`, `npm run build`.
