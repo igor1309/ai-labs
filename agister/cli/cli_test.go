@@ -10,11 +10,11 @@ import (
 	"github.com/igor1309/ai-labs/agister/cli"
 )
 
-// request is one request made on the port: its operation, where, and the
-// kind listed or the document shown.
+// request is one request made on the port: its operation, the launch
+// directory, and the kind listed or the document shown.
 type request struct {
 	op       string
-	where    cli.Where
+	launch   string
 	kind     cli.Kind
 	document cli.Document
 }
@@ -29,18 +29,18 @@ type settingsSpy struct {
 	err      error
 }
 
-func (s *settingsSpy) Check(where cli.Where) (cli.Report, error) {
-	s.requests = append(s.requests, request{op: "check", where: where})
+func (s *settingsSpy) Check(launch string) (cli.Report, error) {
+	s.requests = append(s.requests, request{op: "check", launch: launch})
 	return s.report, s.err
 }
 
-func (s *settingsSpy) List(where cli.Where, kind cli.Kind) ([]cli.Listed, error) {
-	s.requests = append(s.requests, request{op: "list", where: where, kind: kind})
+func (s *settingsSpy) List(launch string, kind cli.Kind) ([]cli.Listed, error) {
+	s.requests = append(s.requests, request{op: "list", launch: launch, kind: kind})
 	return s.listed, s.err
 }
 
-func (s *settingsSpy) Show(where cli.Where, document cli.Document) (cli.Shown, error) {
-	s.requests = append(s.requests, request{op: "show", where: where, document: document})
+func (s *settingsSpy) Show(launch string, document cli.Document) (cli.Shown, error) {
+	s.requests = append(s.requests, request{op: "show", launch: launch, document: document})
 	return s.shown, s.err
 }
 
@@ -50,8 +50,7 @@ type ran struct {
 	code           int
 }
 
-// run runs "agister <args>" over spy in the working directory "/work",
-// the user's home directory "/u".
+// run runs "agister <args>" over spy in the working directory "/work".
 func run(t *testing.T, spy *settingsSpy, args ...string) ran {
 	t.Helper()
 	var stdout, stderr strings.Builder
@@ -59,7 +58,7 @@ func run(t *testing.T, spy *settingsSpy, args ...string) ran {
 	if err != nil {
 		t.Fatal(err)
 	}
-	code := c.Run(args, "/work", "/u")
+	code := c.Run(args, "/work")
 	return ran{stdout: stdout.String(), stderr: stderr.String(), code: code}
 }
 
@@ -135,9 +134,9 @@ func TestCheckPrintsABlockWithItsReason(t *testing.T) {
 `, 1)
 }
 
-// commands.feature, "The launch directory and home". A relative --dir is
-// the working directory's; --dir takes its value after "=" too.
-func TestTheLaunchDirectoryAndHome(t *testing.T) {
+// commands.feature, "The launch directory". A relative --dir is the
+// working directory's; --dir takes its value after "=" too.
+func TestTheLaunchDirectory(t *testing.T) {
 	t.Parallel()
 	cases := []struct {
 		args   []string
@@ -154,9 +153,8 @@ func TestTheLaunchDirectoryAndHome(t *testing.T) {
 			t.Parallel()
 			spy := &settingsSpy{shown: cli.Shown{Held: true}}
 			run(t, spy, c.args...)
-			want := cli.Where{Launch: c.launch, Home: "/u/.agister"}
-			if len(spy.requests) != 1 || spy.requests[0].where != want {
-				t.Errorf("requests %+v, want one at %+v", spy.requests, want)
+			if len(spy.requests) != 1 || spy.requests[0].launch != c.launch {
+				t.Errorf("requests %+v, want one at %q", spy.requests, c.launch)
 			}
 		})
 	}
@@ -212,20 +210,69 @@ func TestAFailureOfThePortIsReportedOnStderr(t *testing.T) {
 	}
 }
 
+// failingWriter fails its first write with err, and keeps every write
+// after it.
+type failingWriter struct {
+	err     error
+	failed  bool
+	written strings.Builder
+}
+
+func (w *failingWriter) Write(p []byte) (int, error) {
+	if !w.failed {
+		w.failed = true
+		return 0, w.err
+	}
+	return w.written.Write(p)
+}
+
+// commands.feature, "Output that cannot be written is an error". So it is
+// for a listing and a show, each with output of many writes: nothing is
+// written after the write that fails, and its error is the command's.
+func TestOutputThatCannotBeWrittenIsAnError(t *testing.T) {
+	t.Parallel()
+	a := cli.Document{Kind: cli.KindAgent, Name: "a"}
+	for _, args := range [][]string{{"check"}, {"inspect", "agents"}, {"inspect", "agent", "a"}} {
+		t.Run(strings.Join(args, " "), func(t *testing.T) {
+			t.Parallel()
+			spy := &settingsSpy{
+				report: cli.Report{Warnings: []cli.Warning{{Problem: cli.Problem{Message: "w"}, With: []cli.Document{a}}},
+					Names: []cli.Status{{Document: a, Resolves: true}}},
+				listed: []cli.Listed{{Name: "a", Resolves: true}, {Name: "b", Resolves: true}},
+				shown: cli.Shown{Held: true, Fields: []cli.Field{{Place: "runtime", Value: "codex"}},
+					Reached: []cli.Document{a}, Warnings: []cli.Problem{{Message: "w"}}},
+			}
+			stdout := &failingWriter{err: errors.New("write /dev/stdout: broken pipe")}
+			var stderr strings.Builder
+			c, err := cli.New(spy, stdout, &stderr)
+			if err != nil {
+				t.Fatal(err)
+			}
+			code := c.Run(args, "/work")
+			if want := "agister: write /dev/stdout: broken pipe\n"; stderr.String() != want || code != 1 {
+				t.Errorf("stderr %q, exit %d; want %q, 1", stderr.String(), code, want)
+			}
+			if got := stdout.written.String(); got != "" {
+				t.Errorf("written after the write that failed: %q, want nothing", got)
+			}
+		})
+	}
+}
+
 // inspect.feature, "inspect asks the port to list a kind, or show one".
 func TestInspectAsksThePortToListAKindOrShowOne(t *testing.T) {
 	t.Parallel()
-	where := cli.Where{Launch: "/work", Home: "/u/.agister"}
+	const launch = "/work"
 	cases := []struct {
 		args string
 		want request
 	}{
-		{"processes", request{op: "list", where: where, kind: cli.KindProcess}},
-		{"workflows", request{op: "list", where: where, kind: cli.KindWorkflow}},
-		{"agents", request{op: "list", where: where, kind: cli.KindAgent}},
-		{"process p", request{op: "show", where: where, document: cli.Document{Kind: cli.KindProcess, Name: "p"}}},
-		{"workflow w", request{op: "show", where: where, document: cli.Document{Kind: cli.KindWorkflow, Name: "w"}}},
-		{"agent a", request{op: "show", where: where, document: cli.Document{Kind: cli.KindAgent, Name: "a"}}},
+		{"processes", request{op: "list", launch: launch, kind: cli.KindProcess}},
+		{"workflows", request{op: "list", launch: launch, kind: cli.KindWorkflow}},
+		{"agents", request{op: "list", launch: launch, kind: cli.KindAgent}},
+		{"process p", request{op: "show", launch: launch, document: cli.Document{Kind: cli.KindProcess, Name: "p"}}},
+		{"workflow w", request{op: "show", launch: launch, document: cli.Document{Kind: cli.KindWorkflow, Name: "w"}}},
+		{"agent a", request{op: "show", launch: launch, document: cli.Document{Kind: cli.KindAgent, Name: "a"}}},
 	}
 	for _, c := range cases {
 		t.Run(c.args, func(t *testing.T) {

@@ -2,6 +2,7 @@ package cli
 
 import (
 	"fmt"
+	"io"
 	"strconv"
 	"strings"
 	"text/tabwriter"
@@ -9,23 +10,23 @@ import (
 
 // check prints each fault, each warning, then how many names resolve and
 // how many are refused; it exits 1 where it reports any fault.
-func (c *CLI) check(where Where) (int, error) {
-	report, err := c.settings.Check(where)
+func (c *CLI) check(out io.Writer, launch string) (int, error) {
+	report, err := c.settings.Check(launch)
 	if err != nil {
 		return 0, err
 	}
 	for _, problem := range report.Problems {
-		fmt.Fprintln(c.stdout, problemText(problem))
-		fmt.Fprintln(c.stdout, "  refuses every request")
+		fmt.Fprintln(out, problemText(problem))
+		fmt.Fprintln(out, "  refuses every request")
 	}
 	for _, finding := range report.Findings {
-		fmt.Fprintln(c.stdout, documentText(finding.Document))
-		c.printFault(finding.Problems, finding.Block, "  ")
-		fmt.Fprintln(c.stdout, "  refuses "+documentsText(finding.Refuses))
+		fmt.Fprintln(out, documentText(finding.Document))
+		printFault(out, finding.Problems, finding.Block, "  ")
+		fmt.Fprintln(out, "  refuses "+documentsText(finding.Refuses))
 	}
 	for _, warning := range report.Warnings {
-		fmt.Fprintln(c.stdout, "warning: "+problemText(warning.Problem))
-		fmt.Fprintln(c.stdout, "  with "+documentsText(warning.With))
+		fmt.Fprintln(out, "warning: "+problemText(warning.Problem))
+		fmt.Fprintln(out, "  with "+documentsText(warning.With))
 	}
 	var resolve, refused int
 	for _, status := range report.Names {
@@ -39,7 +40,7 @@ func (c *CLI) check(where Where) (int, error) {
 	if resolve == 1 {
 		verb = "resolves"
 	}
-	fmt.Fprintf(c.stdout, "%d %s, %d refused\n", resolve, verb, refused)
+	fmt.Fprintf(out, "%d %s, %d refused\n", resolve, verb, refused)
 	if len(report.Problems) > 0 || len(report.Findings) > 0 {
 		return exitFault, nil
 	}
@@ -48,12 +49,12 @@ func (c *CLI) check(where Where) (int, error) {
 
 // list prints each name of kind, the layers that hold it and whether it
 // resolves.
-func (c *CLI) list(where Where, kind Kind) (int, error) {
-	listed, err := c.settings.List(where, kind)
+func (c *CLI) list(out io.Writer, launch string, kind Kind) (int, error) {
+	listed, err := c.settings.List(launch, kind)
 	if err != nil {
 		return 0, err
 	}
-	w := tabwriter.NewWriter(c.stdout, 0, 0, 2, ' ', 0)
+	w := tabwriter.NewWriter(out, 0, 0, 2, ' ', 0)
 	for _, l := range listed {
 		layers := make([]string, 0, len(l.Layers))
 		for _, layer := range l.Layers {
@@ -72,16 +73,16 @@ func (c *CLI) list(where Where, kind Kind) (int, error) {
 // layer; then the documents reached, the plans and the warnings, or the
 // refusal with its chains. A refusal shown is what was asked, and exits 0;
 // a document no layer holds exits 1.
-func (c *CLI) show(where Where, document Document) (int, error) {
-	shown, err := c.settings.Show(where, document)
+func (c *CLI) show(out io.Writer, launch string, document Document) (int, error) {
+	shown, err := c.settings.Show(launch, document)
 	if err != nil {
 		return 0, err
 	}
 	if !shown.Held {
-		fmt.Fprintf(c.stdout, "no layer holds the %s\n", documentText(document))
+		fmt.Fprintf(out, "no layer holds the %s\n", documentText(document))
 		return exitFault, nil
 	}
-	w := tabwriter.NewWriter(c.stdout, 0, 0, 2, ' ', 0)
+	w := tabwriter.NewWriter(out, 0, 0, 2, ' ', 0)
 	for _, field := range shown.Fields {
 		fmt.Fprintf(w, "%s\t%s\t%s\t%s\n", field.Place, strconv.Quote(field.Value), at(field.Source, ""), field.Source.Layer)
 	}
@@ -89,23 +90,23 @@ func (c *CLI) show(where Where, document Document) (int, error) {
 		return 0, err
 	}
 	if len(shown.Faults) > 0 {
-		fmt.Fprintln(c.stdout, "refused")
+		fmt.Fprintln(out, "refused")
 		for _, fault := range shown.Faults {
 			if len(fault.Chain) == 0 {
-				fmt.Fprintln(c.stdout, "  of no document")
+				fmt.Fprintln(out, "  of no document")
 			} else {
-				fmt.Fprintln(c.stdout, "  "+documentText(fault.Chain[len(fault.Chain)-1].Document))
-				fmt.Fprintln(c.stdout, "    chain: "+chainText(fault.Chain))
+				fmt.Fprintln(out, "  "+documentText(fault.Chain[len(fault.Chain)-1].Document))
+				fmt.Fprintln(out, "    chain: "+chainText(fault.Chain))
 			}
-			c.printFault(fault.Problems, fault.Block, "    ")
+			printFault(out, fault.Problems, fault.Block, "    ")
 		}
 		return 0, nil
 	}
 	if len(shown.Reached) > 0 {
-		fmt.Fprintln(c.stdout, "reached "+documentsText(shown.Reached))
+		fmt.Fprintln(out, "reached "+documentsText(shown.Reached))
 	}
 	for _, plan := range shown.Plans {
-		fmt.Fprintf(c.stdout, "plan of %s %s: process %s, agent %s, runtime %s\n", plan.Workflow, plan.Place, plan.Process, plan.Agent, plan.Runtime)
+		fmt.Fprintf(out, "plan of %s %s: process %s, agent %s, runtime %s\n", plan.Workflow, plan.Place, plan.Process, plan.Agent, plan.Runtime)
 		for _, list := range []struct {
 			name   string
 			values []string
@@ -118,24 +119,24 @@ func (c *CLI) show(where Where, document Document) (int, error) {
 			{"withheld", plan.Withheld},
 		} {
 			if len(list.values) > 0 {
-				fmt.Fprintf(c.stdout, "  %s: %s\n", list.name, strings.Join(list.values, ", "))
+				fmt.Fprintf(out, "  %s: %s\n", list.name, strings.Join(list.values, ", "))
 			}
 		}
 	}
 	for _, warning := range shown.Warnings {
-		fmt.Fprintln(c.stdout, "warning: "+problemText(warning))
+		fmt.Fprintln(out, "warning: "+problemText(warning))
 	}
 	return 0, nil
 }
 
 // printFault prints a fault's problems, or the block that refuses its
 // document, each line after indent.
-func (c *CLI) printFault(problems []Problem, block *Block, indent string) {
+func printFault(out io.Writer, problems []Problem, block *Block, indent string) {
 	for _, problem := range problems {
-		fmt.Fprintln(c.stdout, indent+problemText(problem))
+		fmt.Fprintln(out, indent+problemText(problem))
 	}
 	if block != nil {
-		fmt.Fprintln(c.stdout, indent+problemText(Problem{Source: block.Source, Message: "blocked: " + block.Reason}))
+		fmt.Fprintln(out, indent+problemText(Problem{Source: block.Source, Message: "blocked: " + block.Reason}))
 	}
 }
 

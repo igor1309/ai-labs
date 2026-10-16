@@ -36,11 +36,12 @@ func (s *checkerSpy) Show(document check.Reference) (check.Shown, error) {
 // built are the home and launch directory each checker was built at.
 type built struct{ home, launch string }
 
-// settingsOf is cli's port over spy, each checker built at the home and
-// launch directory it keeps in builds; err fails the build.
+// settingsOf is cli's port over spy and home's folder "/u/.agister", each
+// checker built at the home and launch directory it keeps in builds; err
+// fails the build.
 func settingsOf(t *testing.T, spy *checkerSpy, builds *[]built, err error) *settings {
 	t.Helper()
-	s, e := newSettings(func(home, launch string) (inspector, error) {
+	s, e := newSettings("/u/.agister", func(home, launch string) (inspector, error) {
 		*builds = append(*builds, built{home: home, launch: launch})
 		if err != nil {
 			return nil, err
@@ -53,8 +54,8 @@ func settingsOf(t *testing.T, spy *checkerSpy, builds *[]built, err error) *sett
 	return s
 }
 
-// where is the launch directory "/r/a" and home's folder "/u/.agister".
-func where() cli.Where { return cli.Where{Launch: "/r/a", Home: "/u/.agister"} }
+// launch is the launch directory of each request.
+const launch = "/r/a"
 
 func checkSource(file string, line int, layer check.Layer) check.Source {
 	return check.Source{File: file, Line: line, Layer: layer}
@@ -65,7 +66,8 @@ func cliSourceOf(file string, line int, layer cli.Layer) cli.Source {
 }
 
 // Check's report is given to cli whole, each kind and layer in cli's
-// words, from a checker built at the request's home and launch directory.
+// words, from a checker built at home's folder, which the port is given,
+// and the request's launch directory.
 func TestCLIsCheckComesFromCheck(t *testing.T) {
 	t.Parallel()
 	w, p := check.Reference{Kind: check.KindWorkflow, Name: "w"}, check.Reference{Kind: check.KindProcess, Name: "p"}
@@ -79,7 +81,7 @@ func TestCLIsCheckComesFromCheck(t *testing.T) {
 		Names:    []check.Status{{Document: w}, {Document: check.Reference{Kind: check.KindRuntime, Name: "r"}, Resolves: true}},
 	}}
 	var builds []built
-	got, err := settingsOf(t, spy, &builds, nil).Check(where())
+	got, err := settingsOf(t, spy, &builds, nil).Check(launch)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -121,7 +123,7 @@ func TestCLIsListComesFromCheck(t *testing.T) {
 				{Name: "b", Layers: []check.Layer{check.LayerProject}},
 			}}
 			var builds []built
-			got, err := settingsOf(t, spy, &builds, nil).List(where(), c.kind)
+			got, err := settingsOf(t, spy, &builds, nil).List(launch, c.kind)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -196,7 +198,7 @@ func TestCLIsShowComesFromCheck(t *testing.T) {
 			t.Parallel()
 			spy := &checkerSpy{shown: c.shown}
 			var builds []built
-			got, err := settingsOf(t, spy, &builds, nil).Show(where(), cli.Document{Kind: cli.KindWorkflow, Name: "w"})
+			got, err := settingsOf(t, spy, &builds, nil).Show(launch, cli.Document{Kind: cli.KindWorkflow, Name: "w"})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -216,10 +218,10 @@ func TestCLIsPortGivesChecksErrors(t *testing.T) {
 	t.Parallel()
 	failed := errors.New("check: no names")
 	requests := map[string]func(s *settings) error{
-		"check": func(s *settings) error { _, err := s.Check(where()); return err },
-		"list":  func(s *settings) error { _, err := s.List(where(), cli.KindAgent); return err },
+		"check": func(s *settings) error { _, err := s.Check(launch); return err },
+		"list":  func(s *settings) error { _, err := s.List(launch, cli.KindAgent); return err },
 		"show": func(s *settings) error {
-			_, err := s.Show(where(), cli.Document{Kind: cli.KindAgent, Name: "a"})
+			_, err := s.Show(launch, cli.Document{Kind: cli.KindAgent, Name: "a"})
 			return err
 		},
 	}
@@ -242,7 +244,11 @@ func TestCLIsPortGivesChecksErrors(t *testing.T) {
 			}
 		})
 	}
-	if _, err := newSettings(nil); err == nil {
+	checkers := func(string, string) (inspector, error) { return &checkerSpy{}, nil }
+	if _, err := newSettings("", checkers); err == nil {
+		t.Error("settings built with no home, want an error")
+	}
+	if _, err := newSettings("/u/.agister", nil); err == nil {
 		t.Error("settings built with no checkers, want an error")
 	}
 }

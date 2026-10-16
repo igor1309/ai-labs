@@ -9,11 +9,6 @@ import (
 	"slices"
 	"strings"
 	"testing"
-
-	"github.com/igor1309/ai-labs/agister/runtime/bash"
-	"github.com/igor1309/ai-labs/agister/runtime/claudecode"
-	"github.com/igor1309/ai-labs/agister/runtime/codex"
-	"github.com/igor1309/ai-labs/agister/runtime/pi"
 )
 
 // shippedHome is every file home holds as Agister ships it, at home's
@@ -46,25 +41,27 @@ type ran struct {
 }
 
 // compose runs "agister <args>" in "/r", the user's home directory "/u",
-// through the composition: its parts and cli, over a filesystem holding
+// through the composition as main builds it, over a filesystem holding
 // home's files as Agister ships them and the files repository gives, at
-// their paths; a git whose worktree root of "/r" and below is "/r"; and
-// the runtime facts, each wrapper's as runtime/<name> gives them.
+// their paths; and a git whose worktree root of "/r" and below is "/r".
 func compose(t *testing.T, repository map[string]string, args ...string) ran {
 	t.Helper()
 	settings := shippedHome(t)
 	maps.Copy(settings, repository)
-	wrappers, err := newContracts(
-		claudeCodeFacts(claudecode.New()), codexFacts(codex.New()), piFacts(pi.New()), bashFacts(bash.New()))
-	if err != nil {
-		t.Fatal(err)
-	}
+	return asBuilt(t, settings, args...)
+}
+
+// asBuilt runs "agister <args>" in "/r", the user's home directory "/u",
+// over the command line build gives over a filesystem holding settings, by
+// path, and a git whose worktree root of "/r" and below is "/r".
+func asBuilt(t *testing.T, settings map[string]string, args ...string) ran {
+	t.Helper()
 	var stdout, stderr strings.Builder
-	commandLine, err := newCommandLine(newFilesystemSpy(settings), rootSpy{root: "/r"}, wrappers, &stdout, &stderr)
+	commandLine, err := build("/u", newFilesystemSpy(settings), rootSpy{root: "/r"}, &stdout, &stderr)
 	if err != nil {
 		t.Fatal(err)
 	}
-	code := commandLine.Run(args, "/r", "/u")
+	code := commandLine.Run(args, "/r")
 	return ran{stdout: stdout.String(), stderr: stderr.String(), code: code}
 }
 
@@ -217,5 +214,23 @@ func TestAStepsPlanComesThroughTheSourceAndTheFacts(t *testing.T) {
 	}
 	if !maps.Equal(plans, want) {
 		t.Errorf("plans %+v, want %+v", plans, want)
+	}
+}
+
+// compose.feature, "The command runs over every runtime wrapper and the
+// user's home". Home holds a runtime of each wrapper's contract, and no
+// other document: each resolves only where home is read at
+// "/u/.agister" and a wrapper takes its contract.
+func TestTheCommandRunsOverEveryRuntimeWrapperAndTheUsersHome(t *testing.T) {
+	t.Parallel()
+	settings := map[string]string{}
+	for _, contract := range []string{"claude-code/3", "codex/2", "pi/1", "bash/1"} {
+		adapter, _, _ := strings.Cut(contract, "/")
+		settings["/u/.agister/runtimes/"+adapter+".yaml"] = fmt.Sprintf(
+			"schema: agister.runtime/v1alpha1\nadapter: %s\ncontract: %s\n", adapter, contract)
+	}
+	got := asBuilt(t, settings, "check")
+	if want := (ran{stdout: "4 resolve, 0 refused\n"}); got != want {
+		t.Errorf("ran %+v, want %+v", got, want)
 	}
 }

@@ -11,10 +11,10 @@ import (
 )
 
 // newCommandLine is the command line over the settings of home's folder
-// and each command's launch directory, read through fs and roots, each
-// step planned with the facts of wrappers.
-func newCommandLine(fs layout.FileSystem, roots layout.WorktreeRoot, wrappers resolve.Wrappers, stdout, stderr io.Writer) (*cli.CLI, error) {
-	port, err := newSettings(func(home, launch string) (inspector, error) {
+// home and each command's launch directory, read through fs and roots,
+// each step planned with the facts of wrappers.
+func newCommandLine(home string, fs layout.FileSystem, roots layout.WorktreeRoot, wrappers resolve.Wrappers, stdout, stderr io.Writer) (*cli.CLI, error) {
+	port, err := newSettings(home, func(home, launch string) (inspector, error) {
 		checker, err := newChecker(home, launch, fs, roots, wrappers)
 		if err != nil {
 			return nil, err
@@ -39,21 +39,25 @@ type inspector interface {
 type checkers func(home, launch string) (inspector, error)
 
 // settings answers cli's port from check, over a checker of its own for
-// each request: a command reads the settings once, at its launch
-// directory.
+// each request: a command reads the settings once, at home's folder and
+// its launch directory.
 type settings struct {
+	home     string
 	checkers checkers
 }
 
-func newSettings(checkers checkers) (*settings, error) {
+func newSettings(home string, checkers checkers) (*settings, error) {
+	if home == "" {
+		return nil, errors.New("settings: no home")
+	}
 	if checkers == nil {
 		return nil, errors.New("settings: no checkers")
 	}
-	return &settings{checkers: checkers}, nil
+	return &settings{home: home, checkers: checkers}, nil
 }
 
-func (s *settings) Check(where cli.Where) (cli.Report, error) {
-	checker, err := s.checkers(where.Home, where.Launch)
+func (s *settings) Check(launch string) (cli.Report, error) {
+	checker, err := s.checkers(s.home, launch)
 	if err != nil {
 		return cli.Report{}, err
 	}
@@ -72,8 +76,8 @@ func (s *settings) Check(where cli.Where) (cli.Report, error) {
 	return mapped, nil
 }
 
-func (s *settings) List(where cli.Where, kind cli.Kind) ([]cli.Listed, error) {
-	checker, err := s.checkers(where.Home, where.Launch)
+func (s *settings) List(launch string, kind cli.Kind) ([]cli.Listed, error) {
+	checker, err := s.checkers(s.home, launch)
 	if err != nil {
 		return nil, err
 	}
@@ -92,8 +96,8 @@ func (s *settings) List(where cli.Where, kind cli.Kind) ([]cli.Listed, error) {
 	return mapped, nil
 }
 
-func (s *settings) Show(where cli.Where, document cli.Document) (cli.Shown, error) {
-	checker, err := s.checkers(where.Home, where.Launch)
+func (s *settings) Show(launch string, document cli.Document) (cli.Shown, error) {
+	checker, err := s.checkers(s.home, launch)
 	if err != nil {
 		return cli.Shown{}, err
 	}

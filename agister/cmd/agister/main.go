@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 
 	"github.com/igor1309/ai-labs/agister/cli"
 	"github.com/igor1309/ai-labs/agister/files"
@@ -27,8 +28,8 @@ func main() {
 	os.Exit(run(context.Background(), os.Args[1:], os.Stdout, os.Stderr))
 }
 
-// run runs the command args over the real wrappers, in the working
-// directory, for the user's home directory, and gives its exit code.
+// run runs the command args in the working directory, over the user's
+// home directory, files and git, and gives its exit code.
 func run(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 	user, err := os.UserHomeDir()
 	if err != nil {
@@ -40,17 +41,16 @@ func run(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintln(stderr, "agister:", err)
 		return 1
 	}
-	commandLine, err := build(ctx, stdout, stderr)
+	commandLine, err := connect(ctx, user, stdout, stderr)
 	if err != nil {
 		fmt.Fprintln(stderr, "agister:", err)
 		return 1
 	}
-	return commandLine.Run(args, dir, user)
+	return commandLine.Run(args, dir)
 }
 
-// build is the command line over files, git and the runtime wrappers'
-// facts.
-func build(ctx context.Context, stdout, stderr io.Writer) (*cli.CLI, error) {
+// connect is the command line build gives over files and git.
+func connect(ctx context.Context, user string, stdout, stderr io.Writer) (*cli.CLI, error) {
 	g, err := git.New("git")
 	if err != nil {
 		return nil, err
@@ -63,12 +63,19 @@ func build(ctx context.Context, stdout, stderr io.Writer) (*cli.CLI, error) {
 	if err != nil {
 		return nil, err
 	}
+	return build(user, fs, roots, stdout, stderr)
+}
+
+// build is the command line over fs and roots and every runtime wrapper's
+// facts, for the user whose home directory is user: home's folder is its
+// ".agister" (ADR-002, rule 2).
+func build(user string, fs layout.FileSystem, roots layout.WorktreeRoot, stdout, stderr io.Writer) (*cli.CLI, error) {
 	wrappers, err := newContracts(
 		claudeCodeFacts(claudecode.New()), codexFacts(codex.New()), piFacts(pi.New()), bashFacts(bash.New()))
 	if err != nil {
 		return nil, err
 	}
-	return newCommandLine(fs, roots, wrappers, stdout, stderr)
+	return newCommandLine(filepath.Join(user, ".agister"), fs, roots, wrappers, stdout, stderr)
 }
 
 // newChecker is check over the settings of home's folder and the launch

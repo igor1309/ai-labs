@@ -1,8 +1,9 @@
 // Package cli is the command line (ADR-001): it turns "agister check" and
 // "agister inspect" into requests on the port it declares, and prints what
-// the port gives. It is given its arguments, its working directory, the
-// user's home directory and its output streams (ADR-009, rule 2); the
-// composition answers its port.
+// the port gives. It is given its arguments, its working directory and its
+// output streams (ADR-009, rule 2); a write that fails is its error. The
+// composition answers its port, over home's folder, which is the
+// composition's.
 package cli
 
 import (
@@ -36,20 +37,14 @@ const (
 	LayerProject    Layer = "project"
 )
 
-// Where is where a command reads the settings: its launch directory and
-// home's folder.
-type Where struct {
-	Launch string
-	Home   string
-}
-
-// Settings is the port: what the command line asks of the settings at
-// where. Check gives every fault and every name; List the names of the
-// process, workflow or agent kind; Show one process, workflow or agent.
+// Settings is the port: what the command line asks of the settings read
+// at a command's launch directory. Check gives every fault and every name;
+// List the names of the process, workflow or agent kind; Show one process,
+// workflow or agent.
 type Settings interface {
-	Check(where Where) (Report, error)
-	List(where Where, kind Kind) ([]Listed, error)
-	Show(where Where, document Document) (Shown, error)
+	Check(launch string) (Report, error)
+	List(launch string, kind Kind) ([]Listed, error)
+	Show(launch string, document Document) (Shown, error)
 }
 
 // Document is a document, by kind and name.
@@ -176,8 +171,8 @@ type Link struct {
 	Place    string
 }
 
-// Exit codes: a fault reported, or a document no layer holds; a bad
-// command.
+// Exit codes: a fault reported, a document no layer holds, or a failure;
+// a bad command.
 const (
 	exitFault = 1
 	exitUsage = 2
@@ -212,23 +207,27 @@ func New(settings Settings, stdout, stderr io.Writer) (*CLI, error) {
 }
 
 // Run runs the command args, the program's name left out, in the working
-// directory dir, for the user whose home directory is userHome, and gives
-// its exit code. The launch directory is --dir, relative to dir, or dir;
-// home's folder is userHome's ".agister" (ADR-002, rule 2).
-func (c *CLI) Run(args []string, dir, userHome string) int {
+// directory dir, and gives its exit code. The launch directory is --dir,
+// relative to dir, or dir. A write to stdout that fails ends the command's
+// output, and is its error.
+func (c *CLI) Run(args []string, dir string) int {
 	cmd, err := parse(args)
 	if err != nil {
 		fmt.Fprintf(c.stderr, "agister: %v\n%s", err, usage)
 		return exitUsage
 	}
-	where := Where{Launch: dir, Home: filepath.Join(userHome, ".agister")}
+	launch := dir
 	if cmd.dir != "" {
-		where.Launch = cmd.dir
+		launch = cmd.dir
 		if !filepath.IsAbs(cmd.dir) {
-			where.Launch = filepath.Join(dir, cmd.dir)
+			launch = filepath.Join(dir, cmd.dir)
 		}
 	}
-	code, err := cmd.run(c, where)
+	out := &output{w: c.stdout}
+	code, err := cmd.run(c, out, launch)
+	if err == nil {
+		err = out.err
+	}
 	if err != nil {
 		fmt.Fprintf(c.stderr, "agister: %v\n", err)
 		return exitFault
@@ -236,10 +235,30 @@ func (c *CLI) Run(args []string, dir, userHome string) int {
 	return code
 }
 
+// output is stdout as one command writes it: the first write that fails
+// is kept, and nothing is written after it, so the command's output is
+// whole or reported lost.
+type output struct {
+	w   io.Writer
+	err error
+}
+
+func (o *output) Write(p []byte) (int, error) {
+	if o.err != nil {
+		return 0, o.err
+	}
+	n, err := o.w.Write(p)
+	if err == nil && n < len(p) {
+		err = io.ErrShortWrite
+	}
+	o.err = err
+	return n, err
+}
+
 // command is a command parsed: what it runs, and the launch directory
 // --dir gives, "" for none.
 type command struct {
-	run func(c *CLI, where Where) (int, error)
+	run func(c *CLI, out io.Writer, launch string) (int, error)
 	dir string
 }
 
@@ -302,10 +321,10 @@ func parse(args []string) (command, error) {
 	case verb == "check" && len(rest) == 0:
 		cmd.run = (*CLI).check
 	case list != "" && len(rest) == 1:
-		cmd.run = func(c *CLI, where Where) (int, error) { return c.list(where, list) }
+		cmd.run = func(c *CLI, out io.Writer, launch string) (int, error) { return c.list(out, launch, list) }
 	case show != "" && len(rest) == 2:
 		document := Document{Kind: show, Name: rest[1]}
-		cmd.run = func(c *CLI, where Where) (int, error) { return c.show(where, document) }
+		cmd.run = func(c *CLI, out io.Writer, launch string) (int, error) { return c.show(out, launch, document) }
 	default:
 		return command{}, fmt.Errorf("bad command %q", strings.Join(words, " "))
 	}
