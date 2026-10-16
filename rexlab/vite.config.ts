@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { defineConfig } from "vite";
-import { stampVersion } from "./src/release";
+import { stampVersion } from "./src/release.ts";
 
 const PACKAGE_JSON = new URL("package.json", import.meta.url);
 const VERSION = `v${JSON.parse(readFileSync(PACKAGE_JSON, "utf8")).version}`;
