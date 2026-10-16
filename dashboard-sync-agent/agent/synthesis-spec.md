@@ -99,12 +99,12 @@ Categories are derived from `Type` via the following authoritative mapping. Type
 | Components `Type` | Category header |
 |-------------------|-----------------|
 | `Editorial channel`, `Editorial Channel` | `Editorial` |
-| `Application`, `Product`, `Product (research)`, `App family` | `Applications` |
-| `Web App`, `Static page` | `Web Apps` |
+| `Application`, `Product (research)` | `Applications` |
+| `Web App` | `Web Apps` |
 | `Service`, `Service (on hold)` | `Services` |
-| `CLI`, `CLI (Go)`, `CLI Utilities`, `CLI release unit`, `Tool`, `Tool (MVP stage)`, `Tooling` | `CLI & Tooling` |
+| `CLI`, `CLI Utilities`, `CLI release unit`, `Tooling` | `CLI & Tooling` |
 | `MCP Server`, `MCP tool` | `MCP Servers` |
-| `Framework`, `Library (Go)` | `Foundations` |
+| `Framework` | `Foundations` |
 | `Concept` | `Concepts` |
 | `Observability`, `Automation` | `Observability & Automation` |
 | `Agent definition`, `Agent Definition`, `Agent definitions` | `Agents` |
@@ -149,9 +149,7 @@ The agent edits exactly the `const data = [ … ];` block.
 
 ### Inputs
 
-The agent runs `bash scripts/loc-dashboard.sh --sort=name` (with the loop already updated by surface (1) in the same run) and parses its tabular output. Each row in the output (excluding the `TOTAL` row, the `agents` and `repo-scripts` aggregate rows, and the `repo-text` row) contributes one entry.
-
-The script's synthetic `repo-text` row (repo-wide text and docs, not a directory) is **never** in the `data` array: the maintainer removed it on 2026-09-07 (commit `182b7bcb`). Its absence is expected, not structural drift.
+The agent runs `bash scripts/loc-dashboard.sh --sort=name` (with the loop already updated by surface (1) in the same run) and parses its tabular output. Each row in the output (excluding the `TOTAL` row and excluding the `agents` and `repo-scripts` aggregate rows) contributes one entry.
 
 The aggregate rows `agents` and `repo-scripts` are part of the displayed dataset but are **not** in the registry. They are appended verbatim (the script's output for these rows is treated as the source of truth, not the registry). Sort order: alphabetical alongside the project entries.
 
