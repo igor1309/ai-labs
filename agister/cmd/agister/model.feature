@@ -6,8 +6,8 @@
 # of the text "p", its guidance "g" of the text "rules", its instruction
 # "i", its input "q" from the param "q", its environment A=1, its output
 # schema "answer", its permissions requiring repository.read; a git, whose
-# worktree root of "/r" is "/r"; the claude-code and codex wrappers; and
-# the validator.
+# worktree root of "/r" is "/r"; the bash, claude-code and codex wrappers;
+# and the validator.
 
 Feature: The composition runs a step on a model runtime
 
@@ -25,8 +25,7 @@ Feature: The composition runs a step on a model runtime
     When "agister run --process ask --agent codex-sol-61 --param q=why"
       runs in "/r"
     Then codex runs the message with the model "gpt-6.1-sol", the effort
-      "high" and the option "read-only", its schema folder the system's
-      temporary folder
+      "high", the option "read-only" and the bytes of the schema "answer"
 
   Scenario: A completed step prints its reply's output and usage
     Given claude-code replies with the structured output {"ok":true}, the
