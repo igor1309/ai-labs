@@ -318,6 +318,54 @@ Decisions of its reviews, each with its reason:
 - A warning of a refused name is not reported: resolve gives none with
   a refusal, and check reports every problem; a warning is no problem.
 
+## The composition
+
+The composition, `cmd/agister`, connects the settings parts, and the
+command line, to the files (ADR-001, rule 3). It comes in four sections,
+each specified, then coded: what documents adds; the runtime facts; the
+adapters; the command line.
+
+**What documents adds.** A reference is typed whole: its root and name,
+and of a step, its outputs, one field of them, or its session; a
+reference that is none of these is a problem at typing, and so is
+`item` read outside an all or any query
+(`backlog/references-typed-in-documents.md`). The repository's blocks
+file is typed: a list, each block a document by kind and name, its one
+kind among the kinds, and its reason, a text; its problems are problems
+of no document.
+
+**The runtime facts.** Each runtime wrapper, `runtime/<name>`, gives its
+contract and what it can do (ADR-003, rule 7), in its own types: check
+output against a schema, resume a session, take skills, take a model,
+the efforts it accepts, report tool calls and tool commands. The
+wrappers are claude-code, codex, pi and bash; each gives its facts
+alone until it runs its program. A runtime is added when met.
+
+**The adapters.** The composition reads the files through an operating
+system filesystem, and answers layout's worktree root from git, by a
+`git` wrapper. It maps layout's snapshot to documents', and answers
+resolve's source from documents: each definition in resolve's types,
+each value with its origin, the place spelled as documents spells a
+problem's; a reference as what it reads; the problems of no document,
+layout's and the blocks file's; the blocks; whether a layer holds a
+document. It answers resolve's wrappers from the runtime facts, by
+contract. It answers check's names from layout's snapshot, check's
+resolve from resolve, giving a workflow every param it declares, and
+check's fields from documents' tree, each leaf with its file, its line
+and the layer of its file. Every answer comes from one snapshot, read
+once a command.
+
+**The command line.** `cli` turns `check` and `inspect` into requests on
+its port, and prints what the port gives; the composition answers the
+port from check. `agister check` prints each fault, each warning, then
+how many names resolve and how many are refused, and exits 1 where any
+is refused; `agister inspect processes`, `workflows` or `agents` prints
+a listing; `agister inspect process <name>`, `workflow` or `agent`
+shows one. Each takes `--dir`, the launch directory, the working
+directory by default, and `--home`, home's folder, `$AGISTER_HOME` or
+`~/.agister` by default. A bad
+command prints its usage and exits 2.
+
 ## Where each check sits
 
 | Check | Step |
