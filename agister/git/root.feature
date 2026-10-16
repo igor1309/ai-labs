@@ -19,3 +19,8 @@ Feature: git gives the root of a directory's worktree
     Given the folder "o", in no git repository
     When git is asked the root of "o"
     Then it gives none, and no error
+
+  Scenario: A directory asked through a link keeps its spelling
+    Given a git repository at "r", and the link "l" to "r"
+    When git is asked the root of "l/a"
+    Then it gives "l", not where "l" leads

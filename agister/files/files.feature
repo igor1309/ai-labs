@@ -1,9 +1,9 @@
 # files, a wrapper (docs/settings-implementation.md, "The composition"):
-# the operating system's filesystem, as layout's port asks it: a folder's
+# the operating system's filesystem, in its own types: a folder's
 # entries, and a file's bytes. Contract tests against real files, in a
 # temporary folder (ADR-009, rule 3).
 
-Feature: files answers layout's filesystem port from the operating system
+Feature: files reads the operating system's filesystem
 
   Scenario: A folder's entries, with what each is
     Given the folder "d" holds the file "f", the folder "s" and a link "l"

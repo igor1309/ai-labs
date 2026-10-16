@@ -16,9 +16,9 @@ Feature: Documents types a reference whole
       | inputs.base       | the input "base"                             |
       | state.review      | the state "review"                           |
       | state.review.x    | the field "x" of the state "review"          |
-      | steps.a.outputs   | the outputs of the step "a"                  |
-      | steps.a.outputs.v | the field "v" of the outputs of the step "a" |
-      | steps.a.session   | the session of the step "a"                  |
+      | steps.a.outputs   | the outputs of the item "a"                  |
+      | steps.a.outputs.v | the field "v" of the outputs of the item "a" |
+      | steps.a.session   | the session of the item "a"                  |
 
   Scenario Outline: A reference that reads none of these is a problem
     Given the <document> has <field> that reads "<reads>"
@@ -41,10 +41,10 @@ Feature: Documents types a reference whole
     Then <what>
 
     Examples:
-      | reads      | what                                                                              |
-      | item       | the query reads the item                                                          |
-      | item.fixed | the query reads the field "fixed" of the item                                     |
-      | item.a.b   | it has a problem at the where: it reads item[.<field>] or what its workflow reads |
+      | reads      | what                                                                                                                                                                  |
+      | item       | the query reads the item                                                                                                                                              |
+      | item.fixed | the query reads the field "fixed" of the item                                                                                                                         |
+      | item.a.b   | it has the problem at "steps[0].repeat.until.all.where.present": it reads item[.<field>], params.<name>, inputs.<name>, state.<name>[.<field>] or steps.<name>.<part> |
 
   Scenario Outline: The item read outside a query's where is a problem
     Given the workflow "w"'s first step is a branch whose first arm's

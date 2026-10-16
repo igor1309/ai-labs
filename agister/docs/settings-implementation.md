@@ -326,7 +326,7 @@ adapters; the command line.
 
 **What documents adds.** A reference is typed whole, in a workflow and a
 process alike: `params` and `inputs` read a name; `state` a name, or one
-field of it; `steps.<name>` the step's outputs, one field of them, or
+field of it; `steps.<name>` the item's outputs, one field of them, or
 its session; `item` the item of an all or any query, or one field of it.
 A reference that is none of these, or reads a root its place may not
 read, is a problem at typing, naming the roots its place reads; so is
@@ -343,7 +343,8 @@ the efforts it accepts, report tool calls and tool commands. The
 wrappers are claude-code, codex, pi and bash, as home's runtime mappings
 name them; each gives its facts alone until it runs its program, and a
 runtime is added when met. `git` gives the root of the git worktree that
-holds a directory, or none outside one; `files` is the operating
+holds a directory, spelled as the directory was asked, so layout's walk
+up from it meets the root; or none outside one; `files` is the operating
 system's filesystem: a folder's entries, each with what it is, and a
 file's bytes. Each wrapper has its own types. `git` and `files` are
 tested against their real things (ADR-009, rule 3); a runtime wrapper's
@@ -376,9 +377,14 @@ hold it and whether it resolves; `agister inspect process <name>`,
 and layer, then the documents reached, the plans and the warnings, or
 the refusal with its chains, and a fault of no document as such. Inspect
 exits 0, a refusal shown being what was asked; one no layer holds is
-said so, and exits 1. Each takes `--dir`, the launch directory, the
-working directory by default; home is `~/.agister` (ADR-002, rule 2). A
-bad command prints its usage to stderr and exits 2.
+said so, and exits 1. Both print to stdout. Each takes `--dir`, the
+launch directory, the working directory by default; home is `~/.agister`
+(ADR-002, rule 2). A bad command prints its usage to stderr and exits 2.
+
+Decisions of its reviews, each with its reason:
+
+- A link in a settings folder is skipped, with no problem: layout
+  follows no link, and reporting one is layout's work, when met.
 
 ## Where each check sits
 

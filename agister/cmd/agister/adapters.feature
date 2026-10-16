@@ -13,9 +13,9 @@ Feature: The adapters map one part's words to another's
       | the param "base"                             | the root param, the name "base"                  |
       | the input "base"                             | the root input, the name "base"                  |
       | the state "review"                           | the root state, the name "review"                |
-      | the outputs of the step "a"                  | the root outputs, the name "a"                   |
-      | the field "v" of the outputs of the step "a" | the root outputs, the name "a", the field "v"    |
-      | the session of the step "a"                  | the root session, the name "a"                   |
+      | the outputs of the item "a"                  | the root outputs, the name "a"                   |
+      | the field "v" of the outputs of the item "a" | the root outputs, the name "a", the field "v"    |
+      | the session of the item "a"                  | the root session, the name "a"                   |
       | the field "x" of the state "review"          | the root state, the name "review", the field "x" |
       | the item                                     | the root item                                    |
       | the field "fixed" of the item                | the root item, the field "fixed"                 |
@@ -43,20 +43,6 @@ Feature: The adapters map one part's words to another's
   Scenario: One command reads the settings once
     When "agister check" runs over a filesystem spy
     Then layout read each file once
-
-  Scenario Outline: The source gives resolve what decides a refusal
-    Given documents types <given>
-    When the source gives resolve <what>
-    Then it gives <gives>
-
-    Examples:
-      | given                                                                  | what                                | gives                                                               |
-      | the agent "a", model "opus", effort "high", runtime "r"                | the agent "a"                       | its model, effort and runtime, each with its origin                 |
-      | the runtime "r", contract "c/1", select one, options x and y           | the runtime "r"                     | its contract, its grants, select one, and x and y with their grants |
-      | the process "p", require read, allow write, recovery, stale tool calls | the process "p"                     | its require, its allow, recovery, and stale tool calls              |
-      | the process "p", its worktree at "inputs.base"                         | the process "p"                     | its revision, reading the input "base"                              |
-      | the blocks file's block of the process "p", on line 2                  | the blocks                          | the process "p", its reason, at the file's line 2                   |
-      | no layer holding the agent "z"                                         | whether a layer holds the agent "z" | that none does                                                      |
 
   Scenario: The problems of no document are layout's and the blocks file's
     Given layout's snapshot has a problem of no document, and the blocks
@@ -90,3 +76,19 @@ Feature: The adapters map one part's words to another's
       folder, and "x", neither
     When layout asks the entries of "/u/.agister"
     Then it gives "agents", a folder, and "x", other
+
+  Scenario Outline: Layout's worktree root comes from git
+    Given git gives <git>
+    When layout asks the root of "/r/a"
+    Then it gives <layout>
+
+    Examples:
+      | git           | layout             |
+      | the root "/r" | "/r"               |
+      | none          | ""                 |
+      | an error      | the error, wrapped |
+
+  Scenario: A folder files does not find is one layout does not find
+    Given files gives an error that is fs.ErrNotExist for "/r/.agister"
+    When layout asks the entries of "/r/.agister"
+    Then it gives an error that is, or wraps, fs.ErrNotExist

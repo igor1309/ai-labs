@@ -46,6 +46,7 @@ Feature: The command line inspects settings
       cannot be read"
     When "agister inspect workflow w" runs
     Then it prints the problem, of no document, with no chain
+    And it exits 0
 
   Scenario: A document no layer holds is said so
     Given the port shows that no layer holds the agent "z"

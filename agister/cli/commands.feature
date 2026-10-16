@@ -15,7 +15,7 @@ Feature: The command line checks settings
     Then it prints the process "p", its problem with its file and line,
       and the names it refuses; then the warning; then "1 resolves, 2
       refused"
-    And it exits 1
+    And it exits 1, all of it on stdout
 
   Scenario: check with a problem of no document and no name exits 1
     Given the port's check gives, of no document, "home cannot be read",

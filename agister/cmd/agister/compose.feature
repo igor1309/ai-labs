@@ -15,7 +15,8 @@ Feature: The composition checks and inspects settings
     Given "/r/.agister/agents/claude-opus.toml" names the runtime "gone"
     When "agister check" runs in "/r"
     Then it prints the runtime "gone", which no layer holds, refusing the
-      agent "claude-opus" and each workflow that names it
+      agent "claude-opus" and the workflows "adr_review" and
+      "code_review"
     And it exits 1
 
   Scenario: A blocked document is reported with what it refuses
