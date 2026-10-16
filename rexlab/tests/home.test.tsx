@@ -19,7 +19,7 @@ describe("the home page", () => {
     const { card } = openHomePage();
 
     expect(card.textContent).toContain("COMPARE");
-    expect(within(card).getByRole("img", { name: "Two dinosaurs" }).textContent).toBe("🦖🦕");
+    expect(within(card).getByRole("img", { name: "TWO DINOSAURS" }).textContent).toBe("🦖🦕");
   });
 
   it("brightens the quiz card under a pointer", async () => {
@@ -39,11 +39,11 @@ describe("the home page", () => {
     await user.pointer({ keys: "[TouchA>]", target: card });
 
     expect(getComputedStyle(card).transform).toMatch(/^scale\(0\.\d+\)$/);
-    expect(screen.queryByLabelText("Progress")).toBeNull();
+    expect(screen.queryByLabelText("PROGRESS")).toBeNull();
 
     await user.pointer({ keys: "[/TouchA]", target: card });
 
-    expect(screen.getByLabelText("Progress").textContent).toBe("1/10");
+    expect(screen.getByLabelText("PROGRESS").textContent).toBe("1/10");
   });
 
   it("starts a round of 10 questions on a tap", async () => {
@@ -51,7 +51,7 @@ describe("the home page", () => {
 
     await user.click(card);
 
-    expect(screen.getByLabelText("Progress").textContent).toBe("1/10");
-    expect(within(screen.getByRole("group", { name: "Dinosaurs" })).getAllByRole("button")).toHaveLength(2);
+    expect(screen.getByLabelText("PROGRESS").textContent).toBe("1/10");
+    expect(within(screen.getByRole("group", { name: "DINOSAURS" })).getAllByRole("button")).toHaveLength(2);
   });
 });

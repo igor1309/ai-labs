@@ -3,6 +3,7 @@ import userEvent, { type UserEvent } from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 import { App } from "../src/App.tsx";
 import type { Language } from "../src/language/language.ts";
+import { TEXTS } from "../src/language/texts.ts";
 import { LANGUAGE_KEY, localLanguage } from "../src/localLanguage.ts";
 import { localProgress } from "../src/localProgress.ts";
 import { QuestionScreen } from "../src/QuestionScreen.tsx";
@@ -21,12 +22,12 @@ import {
 
 const QUIZ_CARD: Record<Language, string> = { en: "COMPARE", ru: "СРАВНИ" };
 const BUTTONS: Record<Language, { next: string; seeResult: string; playAgain: string; home: string }> = {
-  en: { next: "Next", seeResult: "See result", playAgain: "Play again", home: "Home" },
-  ru: { next: "Дальше", seeResult: "Результат", playAgain: "Ещё раз", home: "Домой" }
+  en: { next: "NEXT", seeResult: "SEE RESULT", playAgain: "PLAY AGAIN", home: "HOME" },
+  ru: { next: "ДАЛЬШЕ", seeResult: "РЕЗУЛЬТАТ", playAgain: "ЕЩЁ РАЗ", home: "ДОМОЙ" }
 };
 const PROMPTS: Record<Language, Record<Attribute, string>> = {
-  en: { mass: "Who is heavier?", height: "Who is taller?" },
-  ru: { mass: "Кто тяжелее?", height: "Кто выше?" }
+  en: { mass: "WHO IS HEAVIER?", height: "WHO IS TALLER?" },
+  ru: { mass: "КТО ТЯЖЕЛЕЕ?", height: "КТО ВЫШЕ?" }
 };
 
 const nothing = () => {};
@@ -209,7 +210,7 @@ describe("Russian text", () => {
         renderQuestion("ru", { question: { attribute: "mass", left: byName("Triceratops"), right: byName("Velociraptor") } });
         return screen.getByRole("heading");
       },
-      "Кто тяжелее?"
+      "КТО ТЯЖЕЛЕЕ?"
     ],
     [
       "height prompt",
@@ -217,45 +218,45 @@ describe("Russian text", () => {
         renderQuestion("ru", { question: { attribute: "height", left: byName("Triceratops"), right: byName("Velociraptor") } });
         return screen.getByRole("heading");
       },
-      "Кто выше?"
+      "КТО ВЫШЕ?"
     ],
     [
       "Next button",
       () => {
         renderQuestion("ru", { choice: "triceratops" });
-        return screen.getByRole("button", { name: "Дальше" });
+        return screen.getByRole("button", { name: "ДАЛЬШЕ" });
       },
-      "Дальше"
+      "ДАЛЬШЕ"
     ],
     [
       "See result button",
       () => {
         renderQuestion("ru", { choice: "triceratops", last: true });
-        return screen.getByRole("button", { name: "Результат" });
+        return screen.getByRole("button", { name: "РЕЗУЛЬТАТ" });
       },
-      "Результат"
+      "РЕЗУЛЬТАТ"
     ],
     [
       "Play again button",
       () => {
         render(<ResultScreen language="ru" score={6} total={10} best={8} celebration={null} onPlayAgain={nothing} onHome={nothing} />);
-        return screen.getByRole("button", { name: "Ещё раз" });
+        return screen.getByRole("button", { name: "ЕЩЁ РАЗ" });
       },
-      "Ещё раз"
+      "ЕЩЁ РАЗ"
     ],
     [
       "Home button",
       () => {
         renderQuestion("ru");
-        return screen.getByRole("button", { name: "Домой" });
+        return screen.getByRole("button", { name: "ДОМОЙ" });
       },
-      "Домой"
+      "ДОМОЙ"
     ],
     [
       "name of Triceratops",
       () => {
         renderQuestion("ru");
-        return within(screen.getByRole("group", { name: "Динозавры" })).getByRole("button", { name: "Трицератопс" });
+        return within(screen.getByRole("group", { name: "ДИНОЗАВРЫ" })).getByRole("button", { name: "Трицератопс" });
       },
       "ТРИЦЕРАТОПС"
     ]
@@ -268,16 +269,16 @@ describe("Russian text", () => {
   it("reads the Home button on the result in Russian too", () => {
     render(<ResultScreen language="ru" score={6} total={10} best={8} celebration={null} onPlayAgain={nothing} onHome={nothing} />);
 
-    expect(words(screen.getByRole("button", { name: "Домой" }))).toBe("Домой");
+    expect(words(screen.getByRole("button", { name: "ДОМОЙ" }))).toBe("ДОМОЙ");
   });
 });
 
 describe("revealed values", () => {
   it.each<[Language, Question, string, string]>([
-    ["en", { attribute: "mass", left: byName("Triceratops"), right: byName("Velociraptor") }, "7 t", "15 kg"],
-    ["ru", { attribute: "mass", left: byName("Triceratops"), right: byName("Velociraptor") }, "7 т", "15 кг"],
-    ["en", { attribute: "height", left: byName("Brachiosaurus"), right: byName("Triceratops") }, "12.5 m", "3 m"],
-    ["ru", { attribute: "height", left: byName("Brachiosaurus"), right: byName("Triceratops") }, "12,5 м", "3 м"]
+    ["en", { attribute: "mass", left: byName("Triceratops"), right: byName("Velociraptor") }, "7 T", "15 KG"],
+    ["ru", { attribute: "mass", left: byName("Triceratops"), right: byName("Velociraptor") }, "7 Т", "15 КГ"],
+    ["en", { attribute: "height", left: byName("Brachiosaurus"), right: byName("Triceratops") }, "12.5 M", "3 M"],
+    ["ru", { attribute: "height", left: byName("Brachiosaurus"), right: byName("Triceratops") }, "12,5 М", "3 М"]
   ])("are written in %s", (language, question, leftValue, rightValue) => {
     renderQuestion(language, { question, choice: question.left.id });
 
@@ -286,29 +287,46 @@ describe("revealed values", () => {
   });
 });
 
-// The app's strings are checked by script: a text left in English shows up
-// as Latin letters in Russian, and the other way round. Only the switch's
-// "EN" and "RU" read the same in both.
-describe("every string shown", () => {
-  const FOREIGN: Record<Language, RegExp> = { en: /[А-Яа-яЁё]/, ru: /[A-Za-z]/ };
+// What the child is shown on every screen and in every state: the home
+// page, the portrait gate, two rounds, one with mistakes and one without,
+// and both results, played on a device in `language`.
+type Seen = {
+  // Every visible word and every label read out, outside the language
+  // switch.
+  texts: string[];
+  // The labels that are a dinosaur's own name, kept as the list writes it.
+  names: string[];
+  // The language switch's own label, for parents.
+  switchLabels: string[];
+};
 
-  // The text of every visible word and every label read out on the page,
-  // except the language switch's own.
-  function shownTexts(): string[] {
+async function playEveryScreen(language: Language): Promise<Seen> {
+  const orientation = manualOrientation("landscape");
+  const progressStorage = memoryStorage();
+  const { user } = openApp({
+    device: language === "ru" ? "ru-RU" : "en-GB",
+    orientation,
+    progress: localProgress(() => progressStorage)
+  });
+  const seen: Seen = { texts: [], names: [], switchLabels: [] };
+  const isName = (label: string) => SHIPPED_DINOSAURS.some((dinosaur) => dinosaur.name[language] === label);
+
+  const look = () => {
     const control = screen.queryByRole("navigation");
     const outsideSwitch = (node: Node) => !control?.contains(node);
     const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
-    const texts: string[] = [];
     for (let node = walker.nextNode(); node; node = walker.nextNode()) {
-      if (outsideSwitch(node) && node.textContent?.trim()) texts.push(node.textContent);
+      if (outsideSwitch(node) && node.textContent?.trim()) seen.texts.push(node.textContent);
     }
     for (const element of document.body.querySelectorAll("[aria-label]")) {
-      texts.push(element.getAttribute("aria-label") ?? "");
+      const label = element.getAttribute("aria-label") ?? "";
+      if (!outsideSwitch(element)) seen.switchLabels.push(label);
+      else if (isName(label)) seen.names.push(label);
+      else seen.texts.push(label);
     }
-    return texts;
-  }
+  };
 
-  function shownQuestion(language: Language): Question {
+  const shownQuestion = (): Question => {
     const heading = screen.getByRole("heading").textContent ?? "";
     const attribute: Attribute = heading.includes(PROMPTS[language].mass) ? "mass" : "height";
     const [left, right] = within(screen.getByRole("group"))
@@ -316,47 +334,75 @@ describe("every string shown", () => {
       .map((card) => byName(card.getAttribute("aria-label") ?? "", language));
     if (!left || !right) throw new Error("Expected two dinosaur cards");
     return { attribute, left, right };
+  };
+
+  async function playRound(correct: number) {
+    for (let number = 1; number <= 10; number++) {
+      const question = shownQuestion();
+      const larger = largerOf(question);
+      const tapped = number <= correct ? larger : larger === question.left ? question.right : question.left;
+      look();
+      await user.click(within(screen.getByRole("group")).getByRole("button", { name: tapped.name[language] }));
+      look();
+      await user.click(screen.getByRole("button", { name: number < 10 ? BUTTONS[language].next : BUTTONS[language].seeResult }));
+    }
+    look();
   }
 
+  look();
+  act(() => orientation.turn("portrait"));
+  look();
+  act(() => orientation.turn("landscape"));
+
+  await user.click(screen.getByRole("button", { name: QUIZ_CARD[language] }));
+  await playRound(5);
+  expect(screen.getAllByRole("status")).toHaveLength(1);
+  await user.click(screen.getByRole("button", { name: BUTTONS[language].playAgain }));
+  await playRound(10);
+  expect(screen.getAllByRole("status")).toHaveLength(1);
+  await user.click(screen.getByRole("button", { name: BUTTONS[language].home }));
+  look();
+
+  return seen;
+}
+
+// The app's strings are checked by script: a text left in English shows up
+// as Latin letters in Russian, and the other way round. Only the switch's
+// "EN" and "RU" read the same in both.
+describe("every string shown", () => {
+  const FOREIGN: Record<Language, RegExp> = { en: /[А-Яа-яЁё]/, ru: /[A-Za-z]/ };
+
   it.each(["en", "ru"] as const)("is in %s, on every screen and in every state", async (language) => {
-    const orientation = manualOrientation("landscape");
-    const progressStorage = memoryStorage();
-    const { user } = openApp({
-      device: language === "ru" ? "ru-RU" : "en-GB",
-      orientation,
-      progress: localProgress(() => progressStorage)
-    });
-    const seen: string[] = [];
-    const look = () => seen.push(...shownTexts());
+    const { texts, names, switchLabels } = await playEveryScreen(language);
+    const seen = [...texts, ...names, ...switchLabels];
 
-    async function playRound(correct: number) {
-      for (let number = 1; number <= 10; number++) {
-        const question = shownQuestion(language);
-        const larger = largerOf(question);
-        const tapped = number <= correct ? larger : larger === question.left ? question.right : question.left;
-        look();
-        await user.click(within(screen.getByRole("group")).getByRole("button", { name: tapped.name[language] }));
-        look();
-        await user.click(screen.getByRole("button", { name: number < 10 ? BUTTONS[language].next : BUTTONS[language].seeResult }));
-      }
-      look();
-    }
-
-    look();
-    act(() => orientation.turn("portrait"));
-    look();
-    act(() => orientation.turn("landscape"));
-
-    await user.click(screen.getByRole("button", { name: QUIZ_CARD[language] }));
-    await playRound(5);
-    expect(screen.getAllByRole("status")).toHaveLength(1);
-    await user.click(screen.getByRole("button", { name: BUTTONS[language].playAgain }));
-    await playRound(10);
-    expect(screen.getAllByRole("status")).toHaveLength(1);
-    await user.click(screen.getByRole("button", { name: BUTTONS[language].home }));
-    look();
-
-    expect(seen.length).toBeGreaterThan(0);
+    expect(texts.length).toBeGreaterThan(0);
     expect(seen.filter((text) => FOREIGN[language].test(text))).toEqual([]);
+  });
+});
+
+// The version footer, also for parents, is part of the static page, not
+// the app: release.test.ts proves it reads the version as stamped.
+describe("text for children", () => {
+  const LANGUAGE_SWITCH: Record<Language, string> = { en: "Language", ru: "Язык" };
+
+  it.each(["en", "ru"] as const)("is in capitals on every screen and in every state in %s", async (language) => {
+    const { texts, switchLabels } = await playEveryScreen(language);
+
+    expect(texts.length).toBeGreaterThan(0);
+    expect(texts.filter((text) => text !== text.toLocaleUpperCase(language))).toEqual([]);
+    expect(new Set(switchLabels)).toEqual(new Set([LANGUAGE_SWITCH[language]]));
+  });
+
+  // Every dictionary entry, including those only shown in a state the
+  // round above may not reach, such as either celebration.
+  it.each(["en", "ru"] as const)("is written in capitals in the %s dictionary, all but the switch's label", (language) => {
+    const { languageSwitch, stars, ...forChildren } = TEXTS[language];
+    const strings = (value: unknown): string[] =>
+      typeof value === "string" ? [value] : Object.values(value as Record<string, unknown>).flatMap(strings);
+    const texts = [...strings(forChildren), stars(7, 10)];
+
+    expect(texts.filter((text) => text !== text.toLocaleUpperCase(language))).toEqual([]);
+    expect(languageSwitch).toBe(LANGUAGE_SWITCH[language]);
   });
 });

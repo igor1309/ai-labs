@@ -16,12 +16,12 @@ const byName = (name: string) => {
   return found;
 };
 
-const group = () => screen.getByRole("group", { name: "Dinosaurs" });
+const group = () => screen.getByRole("group", { name: "DINOSAURS" });
 const cardOf = (name: string) => within(group()).getByRole("button", { name });
-const progress = () => screen.getByLabelText("Progress").textContent;
+const progress = () => screen.getByLabelText("PROGRESS").textContent;
 
 function shownQuestion(): Question {
-  const attribute = screen.getByRole("heading").textContent?.includes("heavier") ? "mass" : "height";
+  const attribute = screen.getByRole("heading").textContent?.includes("HEAVIER") ? "mass" : "height";
   const [left, right] = within(group())
     .getAllByRole("button")
     .map((card) => byName(card.getAttribute("aria-label") ?? ""));
@@ -62,13 +62,13 @@ async function answer(user: UserEvent, correct: number, count = 10) {
     const larger = largerOf(question);
     const tapped = number <= correct ? larger : larger === question.left ? question.right : question.left;
     await user.click(cardOf(tapped.name.en));
-    if (number < 10) await user.click(screen.getByRole("button", { name: "Next" }));
+    if (number < 10) await user.click(screen.getByRole("button", { name: "NEXT" }));
   }
 }
 
 async function finishRound(user: UserEvent, correct: number) {
   await answer(user, correct);
-  await user.click(screen.getByRole("button", { name: "See result" }));
+  await user.click(screen.getByRole("button", { name: "SEE RESULT" }));
 }
 
 const celebrations = () => screen.queryAllByRole("status").map((status) => status.getAttribute("aria-label"));
@@ -79,7 +79,7 @@ const shownCelebration = () =>
     .filter((part) => getComputedStyle(part).display !== "none" && getComputedStyle(part).visibility !== "hidden")
     .map((part) => part.textContent);
 const shownBest = () => {
-  const best = screen.queryByLabelText("Best score");
+  const best = screen.queryByLabelText("BEST SCORE");
   return best && within(best).getByText(/^\d+$/).textContent;
 };
 
@@ -89,34 +89,34 @@ describe("the result", () => {
     const user = openApp(storage);
     await answer(user, 7);
 
-    await user.click(screen.getByRole("button", { name: "See result" }));
+    await user.click(screen.getByRole("button", { name: "SEE RESULT" }));
 
     expect(screen.getByText("7/10")).toBeDefined();
-    expect(screen.getByRole("img", { name: "7 of 10 stars" })).toBeDefined();
+    expect(screen.getByRole("img", { name: "7 OF 10 STARS" })).toBeDefined();
     expect(shownBest()).toBe("9");
-    expect(screen.getByRole("button", { name: "Play again" }).textContent).toBe("🔄 Play again");
-    expect(screen.getByRole("button", { name: "Home" }).textContent).toBe("🏠 Home");
+    expect(screen.getByRole("button", { name: "PLAY AGAIN" }).textContent).toBe("🔄 PLAY AGAIN");
+    expect(screen.getByRole("button", { name: "HOME" }).textContent).toBe("🏠 HOME");
   });
 
   it("starts a new round of 10 questions on Play again", async () => {
     const user = openApp(memoryStorage());
     await finishRound(user, 5);
 
-    await user.click(screen.getByRole("button", { name: "Play again" }));
+    await user.click(screen.getByRole("button", { name: "PLAY AGAIN" }));
 
     expect(progress()).toBe("1/10");
     expect(within(group()).getAllByRole("button")).toHaveLength(2);
-    expect(screen.queryByLabelText("Score")).toBeNull();
+    expect(screen.queryByLabelText("SCORE")).toBeNull();
   });
 
   it("returns to the home page on Home", async () => {
     const user = openApp(memoryStorage());
     await finishRound(user, 5);
 
-    await user.click(screen.getByRole("button", { name: "Home" }));
+    await user.click(screen.getByRole("button", { name: "HOME" }));
 
     expect(screen.getByRole("button", { name: "COMPARE" })).toBeDefined();
-    expect(screen.queryByLabelText("Score")).toBeNull();
+    expect(screen.queryByLabelText("SCORE")).toBeNull();
   });
 });
 
@@ -136,7 +136,7 @@ describe("stored progress", () => {
 
     await finishRound(user, 7);
 
-    expect(celebrations()).toEqual(["New best score"]);
+    expect(celebrations()).toEqual(["NEW BEST SCORE"]);
     expect(shownCelebration()).toEqual(["🎉🏆🎉", "NEW BEST!"]);
     expect(shownBest()).toBe("7");
     expect(storedGame(storage)).toEqual({ bestScore: 7, roundsPlayed: 4 });
@@ -160,7 +160,7 @@ describe("stored progress", () => {
 
     await finishRound(user, 4);
 
-    expect(celebrations()).toEqual(["First best score"]);
+    expect(celebrations()).toEqual(["FIRST BEST SCORE"]);
     expect(shownCelebration()).toEqual(["🎉⭐🎉", "FIRST BEST!"]);
     expect(shownBest()).toBe("4");
     expect(storedGame(storage)).toEqual({ bestScore: 4, roundsPlayed: 1 });
@@ -185,7 +185,7 @@ describe("stored progress", () => {
     await answer(user, 4, 4);
     expect(progress()).toBe("5/10");
 
-    await user.click(screen.getByRole("button", { name: "Home" }));
+    await user.click(screen.getByRole("button", { name: "HOME" }));
 
     expect(screen.getByRole("button", { name: "COMPARE" })).toBeDefined();
     expect(confirm).not.toHaveBeenCalled();
@@ -201,7 +201,7 @@ describe("stored progress", () => {
 
     await finishRound(user, 4);
 
-    expect(celebrations()).toEqual(["First best score"]);
+    expect(celebrations()).toEqual(["FIRST BEST SCORE"]);
     expect(shownBest()).toBe("4");
     expect(stored(storage)).toEqual({ schemaVersion: 1, games: { "compare-dinosaurs": { bestScore: 4, roundsPlayed: 1 } } });
   });
@@ -213,7 +213,7 @@ describe("stored progress", () => {
     await finishRound(user, 4);
 
     expect(screen.getByText("4/10")).toBeDefined();
-    expect(screen.queryByLabelText("Best score")).toBeNull();
+    expect(screen.queryByLabelText("BEST SCORE")).toBeNull();
     expect(celebrations()).toEqual([]);
     expect(storage.items.get(PROGRESS_KEY)).toBe(record(2, 3));
   });
@@ -224,7 +224,7 @@ describe("stored progress", () => {
 
     await finishRound(user, 7);
 
-    expect(celebrations()).toEqual(["New best score"]);
+    expect(celebrations()).toEqual(["NEW BEST SCORE"]);
     expect(shownBest()).toBe("7");
     expect(storedGame(storage)).toEqual({ bestScore: 6, roundsPlayed: 3 });
   });

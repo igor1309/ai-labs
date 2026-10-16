@@ -1,5 +1,9 @@
 # rexlab — Change Log
 
+## 2026-10-17
+
+- Wrote all text for children in capitals, in English and Russian: prompts, buttons, marks, score, best score, stars, the turn-sideways picture and units. The language switch and the version footer, for parents, stay in normal case.
+
 ## 2026-10-16
 
 - Added English and Russian: interface text from typed dictionaries, dinosaur names in both languages, values written with the chosen language's numbers and units, the device language first, and a small "EN | RU" switch for parents on the home page, remembered in `localStorage`.

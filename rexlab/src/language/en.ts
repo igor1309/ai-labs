@@ -2,24 +2,24 @@ import type { Texts } from "./texts.ts";
 
 export const en: Texts = {
   quizCard: "COMPARE",
-  quizCardPicture: "Two dinosaurs",
+  quizCardPicture: "TWO DINOSAURS",
   languageSwitch: "Language",
-  turnSideways: "Turn the iPad sideways",
-  home: "Home",
-  progress: "Progress",
-  dinosaurs: "Dinosaurs",
-  prompts: { mass: "Who is heavier?", height: "Who is taller?" },
-  marks: { correct: "Correct", wrong: "Wrong" },
-  next: "Next",
-  seeResult: "See result",
-  units: { kilograms: "kg", tonnes: "t", metres: "m" },
+  turnSideways: "TURN THE IPAD SIDEWAYS",
+  home: "HOME",
+  progress: "PROGRESS",
+  dinosaurs: "DINOSAURS",
+  prompts: { mass: "WHO IS HEAVIER?", height: "WHO IS TALLER?" },
+  marks: { correct: "CORRECT", wrong: "WRONG" },
+  next: "NEXT",
+  seeResult: "SEE RESULT",
+  units: { kilograms: "KG", tonnes: "T", metres: "M" },
   celebrations: {
-    "first-best": { label: "First best score", text: "FIRST BEST!" },
-    "new-best": { label: "New best score", text: "NEW BEST!" }
+    "first-best": { label: "FIRST BEST SCORE", text: "FIRST BEST!" },
+    "new-best": { label: "NEW BEST SCORE", text: "NEW BEST!" }
   },
-  stars: (score, total) => `${score} of ${total} stars`,
-  score: "Score",
-  bestScore: "Best score",
-  best: "Best",
-  playAgain: "Play again"
+  stars: (score, total) => `${score} OF ${total} STARS`,
+  score: "SCORE",
+  bestScore: "BEST SCORE",
+  best: "BEST",
+  playAgain: "PLAY AGAIN"
 };

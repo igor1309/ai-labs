@@ -4,10 +4,12 @@ import { ru } from "./ru.ts";
 
 // Every string the app shows or reads out, in one language. Both
 // dictionaries are typed by it, so a text missing from one fails the
-// typecheck.
+// typecheck. Children are just learning to read, so every text for them,
+// shown or read out, is written in capitals here rather than styled so.
 export type Texts = {
   quizCard: string;
   quizCardPicture: string;
+  // The language switch is for parents, so its label is in normal case.
   languageSwitch: string;
   turnSideways: string;
   home: string;

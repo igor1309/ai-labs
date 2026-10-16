@@ -12,8 +12,8 @@ const byName = (name: string): Dinosaur => {
   return found;
 };
 
-const cards = () => within(screen.getByRole("group", { name: "Dinosaurs" })).getAllByRole("button");
-const progress = () => screen.getByLabelText("Progress").textContent;
+const cards = () => within(screen.getByRole("group", { name: "DINOSAURS" })).getAllByRole("button");
+const progress = () => screen.getByLabelText("PROGRESS").textContent;
 const shownQuestion = () => ({
   prompt: screen.getByRole("heading").textContent,
   names: cards().map((card) => card.getAttribute("aria-label"))
@@ -23,13 +23,13 @@ async function answerAndGoOn(user: UserEvent) {
   const [first] = cards();
   if (!first) throw new Error("No dinosaur card to tap");
   await user.click(first);
-  await user.click(screen.getByRole("button", { name: "Next" }));
+  await user.click(screen.getByRole("button", { name: "NEXT" }));
 }
 
 describe("a question", () => {
   it.each<[Attribute, string, string]>([
-    ["mass", "⚖️", "Who is heavier?"],
-    ["height", "📏", "Who is taller?"]
+    ["mass", "⚖️", "WHO IS HEAVIER?"],
+    ["height", "📏", "WHO IS TALLER?"]
   ])("comparing %s shows %s, its prompt and two dinosaur cards", (attribute, symbol, prompt) => {
     const nothing = () => {};
     render(
@@ -65,9 +65,9 @@ describe("a question", () => {
     expect(leftSize?.height).toMatch(/^[\d.]+px$/);
     expect(rightSize).toEqual(leftSize);
 
-    const home = screen.getByRole("button", { name: "Home" });
-    expect(home.textContent).toBe("🏠 Home");
-    expect(screen.getByRole("group", { name: "Dinosaurs" }).contains(home)).toBe(false);
+    const home = screen.getByRole("button", { name: "HOME" });
+    expect(home.textContent).toBe("🏠 HOME");
+    expect(screen.getByRole("group", { name: "DINOSAURS" }).contains(home)).toBe(false);
   });
 });
 
@@ -84,8 +84,8 @@ describe("a round", () => {
 
     act(() => orientation.turn("portrait"));
 
-    expect(screen.getByRole("img", { name: "Turn the iPad sideways" })).toBeDefined();
-    expect(screen.queryByLabelText("Progress")).toBeNull();
+    expect(screen.getByRole("img", { name: "TURN THE IPAD SIDEWAYS" })).toBeDefined();
+    expect(screen.queryByLabelText("PROGRESS")).toBeNull();
 
     act(() => orientation.turn("landscape"));
 
@@ -107,7 +107,7 @@ describe("a round", () => {
         asked.push([...shownQuestion().names].sort().join(" & "));
         if (number < 10) await answerAndGoOn(user);
       }
-      await user.click(screen.getByRole("button", { name: "Home" }));
+      await user.click(screen.getByRole("button", { name: "HOME" }));
       return asked;
     }
 

@@ -19,19 +19,19 @@ const byName = (name: string): Dinosaur => {
   return found;
 };
 
-const group = () => screen.getByRole("group", { name: "Dinosaurs" });
+const group = () => screen.getByRole("group", { name: "DINOSAURS" });
 const cards = () => within(group()).getAllByRole("button");
 const cardOf = (dinosaur: Dinosaur) => within(group()).getByRole("button", { name: dinosaur.name.en });
 const marksOn = (card: HTMLElement) =>
   within(card)
-    .queryAllByRole("img", { name: /^(Correct|Wrong)$/ })
+    .queryAllByRole("img", { name: /^(CORRECT|WRONG)$/ })
     .map((mark) => `${mark.getAttribute("aria-label")} ${mark.textContent}`);
-const progress = () => screen.getByLabelText("Progress").textContent;
+const progress = () => screen.getByLabelText("PROGRESS").textContent;
 
 // The question on screen, read back from the shipped list by its prompt
 // and the names on its cards.
 function shownQuestion(): Question {
-  const attribute: Attribute = screen.getByRole("heading").textContent?.includes("heavier") ? "mass" : "height";
+  const attribute: Attribute = screen.getByRole("heading").textContent?.includes("HEAVIER") ? "mass" : "height";
   const [left, right] = cards().map((card) => byName(card.getAttribute("aria-label") ?? ""));
   if (!left || !right) throw new Error("Expected two dinosaur cards");
   return { attribute, left, right };
@@ -50,7 +50,7 @@ async function answerUpTo(user: UserEvent, number: number) {
   for (;;) {
     await user.click(cardOf(largerOf(shownQuestion())));
     if (progress() === `${number}/10`) return;
-    await user.click(screen.getByRole("button", { name: "Next" }));
+    await user.click(screen.getByRole("button", { name: "NEXT" }));
   }
 }
 
@@ -78,8 +78,8 @@ function contrast(a: string, b: string): number {
 
 describe("answering a question", () => {
   const examples: Array<[string, Attribute, string, string, string, string]> = [
-    ["Who is heavier?", "mass", "Triceratops", "Velociraptor", "7 t", "15 kg"],
-    ["Who is taller?", "height", "Brachiosaurus", "Triceratops", "12.5 m", "3 m"]
+    ["WHO IS HEAVIER?", "mass", "Triceratops", "Velociraptor", "7 T", "15 KG"],
+    ["WHO IS TALLER?", "height", "Brachiosaurus", "Triceratops", "12.5 M", "3 M"]
   ];
   const cases = examples.flatMap(([prompt, attribute, larger, smaller, largerValue, smallerValue]) =>
     (["right answer", "wrong answer"] as const).flatMap((answer) =>
@@ -103,12 +103,12 @@ describe("answering a question", () => {
       expect(chosen).toEqual([tapped.id]);
       rerender(<QuestionScreen language="en" {...questionView(question, "en", tapped.id)} {...handlers} />);
 
-      expect(marksOn(cardOf(big))).toEqual(["Correct ✓"]);
-      expect(marksOn(cardOf(small))).toEqual(answer === "right answer" ? [] : ["Wrong ✗"]);
+      expect(marksOn(cardOf(big))).toEqual(["CORRECT ✓"]);
+      expect(marksOn(cardOf(small))).toEqual(answer === "right answer" ? [] : ["WRONG ✗"]);
       expect(within(cardOf(big)).getByText(largerValue)).toBeDefined();
       expect(within(cardOf(small)).getByText(smallerValue)).toBeDefined();
       expect(score(choose(startPlay([question]), tapped.id))).toBe(answer === "right answer" ? 1 : 0);
-      expect(screen.getByRole("button", { name: "Next" }).textContent).toBe("▶ Next");
+      expect(screen.getByRole("button", { name: "NEXT" }).textContent).toBe("▶ NEXT");
     }
   );
 
@@ -122,12 +122,12 @@ describe("answering a question", () => {
       const tapped = number % 2 === 0 ? right : wrong;
       await user.click(cardOf(tapped));
 
-      expect(marksOn(cardOf(right))).toEqual(["Correct ✓"]);
-      expect(marksOn(cardOf(wrong))).toEqual(tapped === wrong ? ["Wrong ✗"] : []);
+      expect(marksOn(cardOf(right))).toEqual(["CORRECT ✓"]);
+      expect(marksOn(cardOf(wrong))).toEqual(tapped === wrong ? ["WRONG ✗"] : []);
       for (const dinosaur of [right, wrong]) {
         expect(within(cardOf(dinosaur)).getByText(ENGLISH_VALUES[question.attribute](dinosaur.measures[question.attribute]))).toBeDefined();
       }
-      if (number < 10) await user.click(screen.getByRole("button", { name: "Next" }));
+      if (number < 10) await user.click(screen.getByRole("button", { name: "NEXT" }));
     }
   });
 
@@ -162,7 +162,7 @@ describe("answering a question", () => {
     );
 
     const marks = [cardOf(big), cardOf(small)].map((card) => {
-      const mark = within(card).getByRole("img", { name: /^(Correct|Wrong)$/ });
+      const mark = within(card).getByRole("img", { name: /^(CORRECT|WRONG)$/ });
       return { symbol: mark.textContent, color: getComputedStyle(mark).color, card: getComputedStyle(card) };
     });
 
@@ -194,14 +194,14 @@ describe("Next", () => {
     await start();
     await answerUpTo(user, 3);
 
-    await user.click(screen.getByRole("button", { name: "Next" }));
+    await user.click(screen.getByRole("button", { name: "NEXT" }));
 
     expect(progress()).toBe("4/10");
     for (const card of cards()) {
       expect(card.textContent).not.toMatch(/\d/);
       expect(marksOn(card)).toEqual([]);
     }
-    expect(screen.queryByRole("button", { name: "Next" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "NEXT" })).toBeNull();
   });
 
   it("skips nothing on a quick double tap", async () => {
@@ -209,7 +209,7 @@ describe("Next", () => {
     await start();
     await answerUpTo(user, 3);
 
-    await user.dblClick(screen.getByRole("button", { name: "Next" }));
+    await user.dblClick(screen.getByRole("button", { name: "NEXT" }));
 
     expect(progress()).toBe("4/10");
   });
@@ -220,7 +220,7 @@ describe("Next", () => {
 
     await answerUpTo(user, 10);
 
-    expect(screen.getByRole("button", { name: "See result" }).textContent).toBe("🏆 See result");
-    expect(screen.queryByRole("button", { name: "Next" })).toBeNull();
+    expect(screen.getByRole("button", { name: "SEE RESULT" }).textContent).toBe("🏆 SEE RESULT");
+    expect(screen.queryByRole("button", { name: "NEXT" })).toBeNull();
   });
 });
