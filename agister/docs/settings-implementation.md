@@ -330,11 +330,12 @@ field of it; `steps.<name>` the item's outputs, one field of them, or
 its session; `item` the item of an all or any query, or one field of it.
 A reference that is none of these, or reads a root its place may not
 read, is a problem at typing, naming the roots its place reads; so is
-`item` read outside an all or any query's `where`. The repository's
-blocks file is typed: a list, each block one kind among the kinds with
-its document's name, and its reason, a text; its problems are problems
-of no document. A block naming no document is resolve's warning; whether
-its name is a name is not documents' to say.
+`item` read outside an all or any query's `where`. Each reference has
+its place, a condition's operands each theirs, spelled as a problem's
+place is. The repository's blocks file is typed: a list, each block one
+kind among the kinds with its document's name, and its reason, a text;
+its problems are problems of no document. A block naming no document is
+resolve's warning; whether its name is a name is not documents' to say.
 
 **The wrappers.** Each runtime wrapper, `runtime/<name>`, gives its
 contract and what it can do (ADR-003, rule 7), in its own types: check
@@ -352,18 +353,20 @@ facts touch none.
 
 **The adapters.** The composition maps layout's snapshot to documents',
 and answers resolve's source from documents: each definition in
-resolve's types, each value with its origin, the place spelled as
-documents spells a problem's; a reference as what it reads; the problems
-of no document, layout's and the blocks file's; the blocks; whether a
-layer holds a document. It answers resolve's wrappers from the runtime
-facts, by contract, a contract no wrapper takes being none; layout's
-filesystem from `files`, and its worktree root from `git`; check's names
-from layout's snapshot; check's resolve from resolve, giving a workflow
-every param it declares; and check's fields from documents' tree, each
-leaf with its file, its line and the layer of its file. Every answer
-comes from one snapshot, which layout reads once a command. Its tests
-give spies in place of the wrappers (ADR-009, rule 4): a filesystem
-holding home's files as Agister ships them, a git and the facts.
+resolve's types, each value with its origin and the place documents
+gives it, building none; a reference as what it reads; the problems of
+no document, layout's and the blocks file's; the blocks; whether a layer
+holds a document. It answers resolve's wrappers from the runtime facts,
+by contract, a contract no wrapper takes being none; layout's filesystem
+from `files`, and its worktree root from `git`; the launch directory
+with its links resolved, by `files`, so that layout's walk up and git's
+root are of one path; check's names from layout's snapshot; check's
+resolve from resolve, giving a workflow every param it declares; and
+check's fields from documents' tree, each leaf with its file, its line
+and the layer of its file. Every answer comes from one snapshot, which
+layout reads once a command. Its tests give spies in place of the
+wrappers (ADR-009, rule 4): a filesystem holding home's files as Agister
+ships them, a git and the facts.
 
 **The command line.** `cli` turns `check` and `inspect` into requests on
 its port, and prints what the port gives; the composition answers the
@@ -386,6 +389,10 @@ Decisions of its reviews, each with its reason:
 
 - A link in a settings folder is skipped, with no problem: layout
   follows no link, and reporting one is layout's work, when met.
+- Inspect gives each step's plan whole, in its categories, as ADR-003,
+  rule 4 names them; check and cli each declare it in their own types
+  and print it as it is. A projection of it would carry the same
+  categories, and translate nothing.
 
 ## Where each check sits
 

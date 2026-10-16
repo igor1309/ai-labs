@@ -46,3 +46,9 @@ Feature: The composition checks and inspects settings
     When "agister check" runs
     Then the port reads home at "/u/.agister", and the facts of
       claude-code/3, codex/2, pi/1 and bash/1
+
+  Scenario: A launch through a link reads the settings where it leads
+    Given the link "/o/x" to "/r/a", and "/o/.agister" holding a process
+      "stray"
+    When "agister inspect processes" runs in "/o/x"
+    Then it lists home's processes, and not "stray"

@@ -57,3 +57,16 @@ Feature: Documents types a reference whole
       | condition                                                   | place                         |
       | {present: {from: item.fixed}}                               | steps[0].branch[0].if.present |
       | {all: {in: {from: item.x}, where: {present: {from: item}}}} | steps[0].branch[0].if.all.in  |
+
+  Scenario Outline: Each operand of a condition has its place
+    Given the workflow "w"'s first step is a branch whose first arm's
+      condition is <condition>
+    When documents gives the workflow "w"
+    Then the reference "<reads>" has the place "<place>"
+
+    Examples:
+      | condition                                                     | reads    | place                                    |
+      | {equals: [{from: params.a}, x]}                               | params.a | steps[0].branch[0].if.equals[0]          |
+      | {not: {and: [{present: {from: state.s}}]}}                    | state.s  | steps[0].branch[0].if.not.and[0].present |
+      | {any: {in: {from: params.l}, where: {present: {from: item}}}} | params.l | steps[0].branch[0].if.any.in             |
+      | {any: {in: {from: params.l}, where: {present: {from: item}}}} | item     | steps[0].branch[0].if.any.where.present  |
