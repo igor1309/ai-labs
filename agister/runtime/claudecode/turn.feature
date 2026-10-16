@@ -51,12 +51,13 @@ Feature: The claude-code wrapper runs a turn
       result's errors or text
 
     Examples:
-      | seen                  | result                                    | class            |
-      | an init event         | of api_error_status 429                   | rate_limited     |
-      | a rejected rate limit | error_during_execution                    | rate_limited     |
-      | an init event         | of api_error_status 401                   | auth             |
-      | an init event         | of is_error true and "Prompt is too long" | context_overflow |
-      | an init event         | error_max_turns                           | runtime_error    |
+      | seen                  | result                                                   | class            |
+      | an init event         | of api_error_status 429                                  | rate_limited     |
+      | a rejected rate limit | error_during_execution                                   | rate_limited     |
+      | an init event         | of api_error_status 401                                  | auth             |
+      | an init event         | of is_error true and "Not logged in · Please run /login" | auth             |
+      | an init event         | of is_error true and "Prompt is too long"                | context_overflow |
+      | an init event         | error_max_turns                                          | runtime_error    |
 
   Scenario: A schema given and no structured output is invalid output
     Given a schema, and the lines of a success result of the text "done"

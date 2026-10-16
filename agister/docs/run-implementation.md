@@ -162,7 +162,8 @@ assistant text, and the result event: its text, its
 cache read and cache write tokens, each unknown where not reported,
 never 0). A result that is not a success is the runtime's failure,
 classed by its fields as the archive did: a status 429 or a rejected
-rate-limit event seen, `rate_limited`; 401 or 403, `auth`; 413, a prompt
+rate-limit event seen, `rate_limited`; 401 or 403, or
+"not logged in" in its text, `auth`; 413, a prompt
 too long or the context window, `context_overflow`; else
 `runtime_error`; its reason the result's errors or text. A schema given
 and a success with no structured output is `invalid_output`. With no
@@ -273,6 +274,21 @@ staleness and an item that is not a step. Every process `home` ships
 asks one of these, so none of them runs yet: a repository's own process
 does.
 
+**Home's folder** is `$AGISTER_HOME` where it is set, else
+`~/.agister` (ADR-002, rule 2): a seam, so a test, or a person trying
+the new Agister beside the archive's settings, points it elsewhere
+while claude-code and codex keep their own logins under the real home.
+
+**The end-to-end check**, `scripts/e2e.sh`, runs the built `agister` on
+a scratch git repository, its home a copy of `home` and a process
+`ask`, whose output has a schema: one step on claude-code with the model
+`haiku`, one on codex at the effort `minimal`. Each completes, its
+output valid, its usage and session reported. It runs real programs on
+the owner's logins and costs a few cents, so it is opt-in: its tests
+run only with `AGISTER_E2E=1`, and `scripts/test.sh` says it skipped
+them. It is run before every PR that touches the run path
+(`docs/process.md`).
+
 Decisions, each with its reason:
 
 - Pi waits: its wrapper keeps sessions in files of its own, and two
@@ -301,5 +317,8 @@ Decisions, each with its reason:
   a reason is the runtime's words cut to 1 KiB, a line too long is
   skipped, a bad schema fails its call. Each is enough to run and to
   see why a call failed; more waits for a need.
+- A step's output is a JSON object: bindings read its fields
+  (ADR-011, rule 3). A schema that lets a reply be another value, an
+  array or a string, gets `invalid_output` for it.
 - The run carries each step's session, by its name, until the record
   keeps it (ADR-011, rule 5).
