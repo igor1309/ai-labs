@@ -18,6 +18,7 @@ import (
 	"time"
 
 	"github.com/igor1309/ai-labs/agister/core/call"
+	"github.com/igor1309/ai-labs/agister/runtime/bash"
 	"github.com/igor1309/ai-labs/agister/settings/resolve"
 	"github.com/igor1309/ai-labs/agister/supervisor"
 	"github.com/igor1309/ai-labs/gokit/clocktest"
@@ -81,20 +82,20 @@ func (s *supervisorSpy) ran() []supervisor.Program {
 
 // echoes answers as bash runs echo "$what": its exit code 0, and stdout
 // the last value of "what" its environment gives, and a newline.
-func echoes(_ context.Context, program supervisor.Program) (supervisor.Result, error) {
+func echoes(_ context.Context, turn bash.Turn) (bash.Ended, error) {
 	var what string
-	for _, entry := range program.Env {
+	for _, entry := range turn.Env {
 		if value, ok := strings.CutPrefix(entry, "what="); ok {
 			what = value
 		}
 	}
-	return supervisor.Result{Stdout: kept(what + "\n"), Stderr: kept("")}, nil
+	return bash.Ended{Stdout: kept(what + "\n"), Stderr: kept("")}, nil
 }
 
-// kept is what the supervisor keeps of a stream that wrote text.
-func kept(text string) supervisor.Stream {
+// kept is what bash gives of a stream that wrote text.
+func kept(text string) bash.Stream {
 	digest := sha256.Sum256([]byte(text))
-	return supervisor.Stream{Head: text, Tail: text, Size: int64(len(text)), Digest: hex.EncodeToString(digest[:])}
+	return bash.Stream{Head: text, Tail: text, Size: int64(len(text)), Digest: hex.EncodeToString(digest[:])}
 }
 
 // keptJSON is a stream that wrote text, as the result prints it.
@@ -132,27 +133,28 @@ var runStart = time.Date(2026, 10, 16, 10, 0, 0, 0, time.UTC)
 
 // runFixture is the composition as build gives it, over a filesystem
 // holding its settings; a git whose worktree root of "/r" and below is
-// "/r"; the supervisor spy; the validator, jsonschema's unless its test
-// gives another; and the machine: Agister's environment environ, a manual
-// clock, the signals spy, and the temporary folder temp, "/t" unless its
-// test gives one that is there.
+// "/r"; the runtime wrappers' spies, bash's answering by the answer its
+// test gives, claude-code's and codex's by those it sets; the validator,
+// jsonschema's unless its test gives another; and the machine: Agister's
+// environment environ, a manual clock and the signals spy.
 type runFixture struct {
-	settings   map[string]string
-	supervisor *supervisorSpy
-	validator  call.Validator
-	signals    *signalsSpy
-	clock      *clocktest.Clock
-	temp       string
+	settings  map[string]string
+	runtimes  *runtimesSpy
+	validator call.Validator
+	signals   *signalsSpy
+	clock     *clocktest.Clock
 }
 
-func newRunFixture(settings map[string]string, answer func(context.Context, supervisor.Program) (supervisor.Result, error)) *runFixture {
+func newRunFixture(t *testing.T, settings map[string]string, answer func(context.Context, bash.Turn) (bash.Ended, error)) *runFixture {
+	t.Helper()
+	runtimes := newRuntimesSpy(t)
+	runtimes.bash.answer = answer
 	return &runFixture{
-		settings:   settings,
-		supervisor: &supervisorSpy{answer: answer},
-		validator:  schemaValidator{},
-		signals:    &signalsSpy{fired: make(chan os.Signal)},
-		clock:      clocktest.NewClock(runStart),
-		temp:       "/t",
+		settings:  settings,
+		runtimes:  runtimes,
+		validator: schemaValidator{},
+		signals:   &signalsSpy{fired: make(chan os.Signal)},
+		clock:     clocktest.NewClock(runStart),
 	}
 }
 
@@ -165,8 +167,8 @@ func (f *runFixture) run(t *testing.T, dir string, args ...string) ran {
 func (f *runFixture) runWatching(t *testing.T, watch signals, environment []string, dir string, args ...string) ran {
 	t.Helper()
 	var stdout, stderr strings.Builder
-	machine := host{ctx: context.Background(), environ: environment, clock: f.clock, timer: f.clock.Timer, signals: watch, temp: f.temp}
-	commandLine, err := build("/u", &linksSpy{}, newFilesystemSpy(f.settings), rootSpy{root: "/r"}, f.supervisor, f.validator, machine, &stdout, &stderr)
+	machine := host{ctx: context.Background(), environ: environment, clock: f.clock, timer: f.clock.Timer, signals: watch}
+	commandLine, err := build("/u", &linksSpy{}, newFilesystemSpy(f.settings), rootSpy{root: "/r"}, f.runtimes.runtimes(), f.validator, machine, &stdout, &stderr)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -192,10 +194,10 @@ func printedOf(t *testing.T, got ran) printedResult {
 	return p
 }
 
-// bashProgram is the program bash runs script as, in "/r", its environment
+// bashTurn is the turn bash runs script in, in "/r", its environment
 // Agister's then each of env.
-func bashProgram(script string, env ...string) supervisor.Program {
-	return supervisor.Program{Name: "bash", Args: []string{"-c", script}, Dir: "/r", Env: append(slices.Clone(environ), env...)}
+func bashTurn(script string, env ...string) bash.Turn {
+	return bash.Turn{Script: script, Dir: "/r", Env: append(slices.Clone(environ), env...)}
 }
 
 // run.feature, "A step requested alone runs on bash". Bash grants what a
@@ -204,13 +206,13 @@ func bashProgram(script string, env ...string) supervisor.Program {
 // Contract test: the files home holds, as Agister ships them.
 func TestAStepRequestedAloneRunsOnBash(t *testing.T) {
 	t.Parallel()
-	f := newRunFixture(runSettings(t, nil), echoes)
+	f := newRunFixture(t, runSettings(t, nil), echoes)
 	got := f.run(t, "/r/a", "run", "--process", "say", "--agent", "bash", "--param", "what=hi")
 	if got.stderr != "" || got.code != 0 {
 		t.Fatalf("stderr %q, exit %d; want none, 0", got.stderr, got.code)
 	}
-	if want := []supervisor.Program{bashProgram(`echo "$what"`, "what=hi")}; !reflect.DeepEqual(f.supervisor.ran(), want) {
-		t.Errorf("ran %+v, want %+v", f.supervisor.ran(), want)
+	if want := []bash.Turn{bashTurn(`echo "$what"`, "what=hi")}; !reflect.DeepEqual(f.runtimes.bash.ran(), want) {
+		t.Errorf("ran %+v, want %+v", f.runtimes.bash.ran(), want)
 	}
 	var warnings []string
 	for _, grant := range []string{"repository.read", "repository.search", "repository.diff", "repository.history.read",
@@ -232,13 +234,13 @@ func TestAStepRequestedAloneRunsOnBash(t *testing.T) {
 // Contract test: the files home holds, as Agister ships them.
 func TestANamedWorkflowRunsItsStepsInOrderBound(t *testing.T) {
 	t.Parallel()
-	f := newRunFixture(runSettings(t, nil), echoes)
+	f := newRunFixture(t, runSettings(t, nil), echoes)
 	got := f.run(t, "/r", "run", "pair")
 	if got.stderr != "" || got.code != 0 {
 		t.Fatalf("stderr %q, exit %d; want none, 0", got.stderr, got.code)
 	}
-	if want := []supervisor.Program{bashProgram(`echo "$what"`, "what=hi"), bashProgram(`echo "$what"`, "what=hi\n")}; !reflect.DeepEqual(f.supervisor.ran(), want) {
-		t.Errorf("ran %#v, want %#v", f.supervisor.ran(), want)
+	if want := []bash.Turn{bashTurn(`echo "$what"`, "what=hi"), bashTurn(`echo "$what"`, "what=hi\n")}; !reflect.DeepEqual(f.runtimes.bash.ran(), want) {
+		t.Errorf("ran %#v, want %#v", f.runtimes.bash.ran(), want)
 	}
 	if p := printedOf(t, got); p.Status != "completed" || p.Class != nil || !reflect.DeepEqual(p.Output, map[string]any{"said": "hi\n\n"}) {
 		t.Errorf("printed %+v, want completed, no class, said %q", p, "hi\n\n")
@@ -250,13 +252,13 @@ func TestANamedWorkflowRunsItsStepsInOrderBound(t *testing.T) {
 // Contract test: the files home holds, as Agister ships them.
 func TestARequestThatDoesNotResolveRunsNothing(t *testing.T) {
 	t.Parallel()
-	f := newRunFixture(runSettings(t, nil), echoes)
+	f := newRunFixture(t, runSettings(t, nil), echoes)
 	got := f.run(t, "/r", "run", "--process", "nope", "--agent", "bash")
 	want := ran{stderr: "agister: the run is refused, and nothing runs:\n  process nope: no layer holds the process \"nope\"\n", code: 1}
 	if got != want {
 		t.Errorf("ran %+v, want %+v", got, want)
 	}
-	if ran := f.supervisor.ran(); len(ran) > 0 {
+	if ran := f.runtimes.bash.ran(); len(ran) > 0 {
 		t.Errorf("ran %+v, want nothing", ran)
 	}
 }
@@ -266,13 +268,13 @@ func TestARequestThatDoesNotResolveRunsNothing(t *testing.T) {
 // Contract test: the files home holds, as Agister ships them.
 func TestOutsideAGitWorktreeTheRequestIsRefused(t *testing.T) {
 	t.Parallel()
-	f := newRunFixture(runSettings(t, nil), echoes)
+	f := newRunFixture(t, runSettings(t, nil), echoes)
 	got := f.run(t, "/elsewhere", "run", "--process", "say", "--agent", "bash", "--param", "what=hi")
 	want := ran{stderr: "agister: the run is refused, and nothing runs:\n  the launch directory \"/elsewhere\" is in no git worktree\n", code: 1}
 	if got != want {
 		t.Errorf("ran %+v, want %+v", got, want)
 	}
-	if ran := f.supervisor.ran(); len(ran) > 0 {
+	if ran := f.runtimes.bash.ran(); len(ran) > 0 {
 		t.Errorf("ran %+v, want nothing", ran)
 	}
 }
@@ -319,13 +321,13 @@ func TestWhatThisSliceDoesNotRunIsRefusedBeforeAnything(t *testing.T) {
 			t.Parallel()
 			files := map[string]string{"/u/.agister/processes/say.yaml": fmt.Sprintf(sayProcess, c.input, c.more)}
 			maps.Copy(files, c.files)
-			f := newRunFixture(runSettings(t, files), echoes)
+			f := newRunFixture(t, runSettings(t, files), echoes)
 			got := f.run(t, "/r", "run", "--process", "say", "--agent", c.agent, "--param", "what=hi")
 			want := ran{stderr: "agister: the run is refused, and nothing runs:\n  " + c.what + " is not run yet\n", code: 1}
 			if got != want {
 				t.Errorf("ran %+v, want %+v", got, want)
 			}
-			if ran := f.supervisor.ran(); len(ran) > 0 {
+			if ran := f.runtimes.bash.ran(); len(ran) > 0 {
 				t.Errorf("ran %+v, want nothing", ran)
 			}
 		})
@@ -339,7 +341,7 @@ func TestWhatThisSliceDoesNotRunIsRefusedBeforeAnything(t *testing.T) {
 // Contract test: the files home holds, as Agister ships them.
 func TestAWorkflowWithAnItemThatIsNotAStepIsRefused(t *testing.T) {
 	t.Parallel()
-	f := newRunFixture(runSettings(t, nil), echoes)
+	f := newRunFixture(t, runSettings(t, nil), echoes)
 	got := f.run(t, "/r", "run", "code_review", "--param", "goal=g")
 	lines := []string{
 		`the workflow "code_review": the input "base" from the source "git.revision" is not run yet`,
@@ -353,7 +355,7 @@ func TestAWorkflowWithAnItemThatIsNotAStepIsRefused(t *testing.T) {
 	if got != want {
 		t.Errorf("ran\n%+v\nwant\n%+v", got, want)
 	}
-	if ran := f.supervisor.ran(); len(ran) > 0 {
+	if ran := f.runtimes.bash.ran(); len(ran) > 0 {
 		t.Errorf("ran %+v, want nothing", ran)
 	}
 }
@@ -397,7 +399,7 @@ func TestASignalToAgisterCancelsTheRun(t *testing.T) {
 			defer cancel()
 			started := make(chan struct{})
 			ended := make(chan error, 1)
-			f := newRunFixture(runSettings(t, nil), func(runCtx context.Context, _ supervisor.Program) (supervisor.Result, error) {
+			f := newRunFixture(t, runSettings(t, nil), func(runCtx context.Context, _ bash.Turn) (bash.Ended, error) {
 				close(started)
 				select {
 				case <-runCtx.Done():
@@ -405,7 +407,7 @@ func TestASignalToAgisterCancelsTheRun(t *testing.T) {
 				case <-ctx.Done():
 					ended <- ctx.Err()
 				}
-				return supervisor.Result{Stdout: kept(""), Stderr: kept("")}, nil
+				return bash.Ended{Stdout: kept(""), Stderr: kept("")}, nil
 			})
 			unwatched := make(chan struct{})
 			watch := cancellationSignals()

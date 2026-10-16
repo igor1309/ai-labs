@@ -7,6 +7,7 @@ package e2e_test
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -14,7 +15,9 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"syscall"
 	"testing"
+	"time"
 )
 
 // optedIn tells whether getenv opts in to the end-to-end tests.
@@ -130,6 +133,17 @@ type printed struct {
 	Sessions map[string]string `json:"sessions"`
 }
 
+// runDeadline guards a run that hangs: at it, Agister is sent SIGTERM,
+// which cancels its run and ends its runtime's process group, and
+// cancelBound is how long it then has, the supervisor's grace and its
+// reading after it, before it is killed. A run left past both would keep
+// a real model's processes running on the owner's login after the test
+// binary's timeout.
+const (
+	runDeadline = time.Minute
+	cancelBound = 10 * time.Second
+)
+
 // e2e.feature, "A step on a real runtime completes". A step alone's run
 // gives its step's output as its output "output" (ADR-013, rule 1).
 //
@@ -142,12 +156,19 @@ func TestAStepOnARealRuntimeCompletes(t *testing.T) {
 		t.Run(agent, func(t *testing.T) {
 			t.Parallel()
 			home, repo := scratch(t)
-			run := exec.Command(binary, "run", "--process", "ask", "--agent", agent, "--param", "q=hi")
+			ctx, cancel := context.WithTimeout(t.Context(), runDeadline)
+			defer cancel()
+			run := exec.CommandContext(ctx, binary, "run", "--process", "ask", "--agent", agent, "--param", "q=hi")
+			run.Cancel = func() error { return run.Process.Signal(syscall.SIGTERM) }
+			run.WaitDelay = cancelBound
 			run.Dir = repo
 			run.Env = append(os.Environ(), "AGISTER_HOME="+home)
 			var stdout, stderr bytes.Buffer
 			run.Stdout, run.Stderr = &stdout, &stderr
 			err := run.Run()
+			if ctx.Err() != nil {
+				t.Fatalf("the run hung past %v, and Agister was sent SIGTERM: %v\nstdout:\n%s\nstderr:\n%s", runDeadline, err, stdout.Bytes(), stderr.Bytes())
+			}
 			if exit := (*exec.ExitError)(nil); err != nil && !errors.As(err, &exit) {
 				t.Fatal(err)
 			}

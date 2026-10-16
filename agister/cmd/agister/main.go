@@ -7,6 +7,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -58,11 +59,12 @@ func run(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 	return commandLine.Run(args, dir)
 }
 
-// connect is the command line build gives over files, git, the
-// supervisor, its programs started in gokit's process groups and its grace
-// on the wall clock, jsonschema's validator, and the machine: Agister's
-// environment, the wall clock, SIGINT and SIGTERM, each cancelling a
-// run, and the system's temporary folder.
+// connect is the command line build gives over files, git, the runtime
+// wrappers over the supervisor, its programs started in gokit's process
+// groups and its grace on the wall clock, codex's schemas under the
+// system's temporary folder, jsonschema's validator, and the machine:
+// Agister's environment, the wall clock, and SIGINT and SIGTERM, each
+// cancelling a run.
 func connect(ctx context.Context, user string, stdout, stderr io.Writer) (*cli.CLI, error) {
 	g, err := git.New("git")
 	if err != nil {
@@ -85,8 +87,43 @@ func connect(ctx context.Context, user string, stdout, stderr io.Writer) (*cli.C
 	if err != nil {
 		return nil, err
 	}
-	machine := host{ctx: ctx, environ: os.Environ(), clock: wallClock{}, timer: wallTimer, signals: cancellationSignals(), temp: os.TempDir()}
-	return build(user, f, fs, roots, programs, schemaValidator{}, machine, stdout, stderr)
+	wrappers, err := newRuntimes(programs, os.TempDir())
+	if err != nil {
+		return nil, err
+	}
+	machine := host{ctx: ctx, environ: os.Environ(), clock: wallClock{}, timer: wallTimer, signals: cancellationSignals()}
+	return build(user, f, fs, roots, wrappers, schemaValidator{}, machine, stdout, stderr)
+}
+
+// newRuntimes is the runtime wrappers over programs: bash, claude-code and
+// codex each run their turns through it, codex writing its turns' schemas
+// under temp; and pi, which runs nothing yet.
+func newRuntimes(programs programs, temp string) (runtimes, error) {
+	supervising, err := newSupervised(programs)
+	if err != nil {
+		return runtimes{}, err
+	}
+	b, err := bash.New(supervising)
+	if err != nil {
+		return runtimes{}, err
+	}
+	claudeSupervising, err := newClaudeCodeSupervised(programs)
+	if err != nil {
+		return runtimes{}, err
+	}
+	claude, err := claudecode.New(claudeSupervising)
+	if err != nil {
+		return runtimes{}, err
+	}
+	codexSupervising, err := newCodexSupervised(programs)
+	if err != nil {
+		return runtimes{}, err
+	}
+	cx, err := codex.New(codexSupervising, temp)
+	if err != nil {
+		return runtimes{}, err
+	}
+	return runtimes{bash: b, claude: claude, codex: cx, pi: pi.New()}, nil
 }
 
 // wallTimer starts wait on the wall clock.
@@ -112,38 +149,49 @@ func notified(kinds ...os.Signal) signals {
 	}
 }
 
+// runtimes are the runtime wrappers the command line runs over: each
+// one's facts, and the turns of bash, claude-code and codex.
+type runtimes struct {
+	bash   bashWrapper
+	claude claudeCodeWrapper
+	codex  codexWrapper
+	pi     piWrapper
+}
+
+// bashWrapper is what build asks of the bash wrapper.
+type bashWrapper interface {
+	bashRuns
+	Facts() bash.Facts
+}
+
+// claudeCodeWrapper is what build asks of the claude-code wrapper.
+type claudeCodeWrapper interface {
+	claudeCodeRuns
+	Facts() claudecode.Facts
+}
+
+// codexWrapper is what build asks of the codex wrapper.
+type codexWrapper interface {
+	codexRuns
+	Facts() codex.Facts
+}
+
+// piWrapper is what build asks of the pi wrapper.
+type piWrapper interface {
+	Facts() pi.Facts
+}
+
 // build is the command line over links, fs and roots and every runtime
-// wrapper's facts, the bash, claude-code and codex wrappers' turns run by
-// programs, its runs on machine, codex's schemas under its temporary
-// folder, a call's output checked by validator, for the user whose home
-// directory is user: home's folder is homeFolder's.
-func build(user string, links links, fs layout.FileSystem, roots layout.WorktreeRoot, programs programs, validator call.Validator, machine host, stdout, stderr io.Writer) (*cli.CLI, error) {
-	supervising, err := newSupervised(programs)
-	if err != nil {
-		return nil, err
+// wrapper's facts, the turns of runtimes' bash, claude-code and codex, its
+// runs on machine, a call's output checked by validator, for the user
+// whose home directory is user: home's folder is homeFolder's.
+func build(user string, links links, fs layout.FileSystem, roots layout.WorktreeRoot, runtimes runtimes, validator call.Validator, machine host, stdout, stderr io.Writer) (*cli.CLI, error) {
+	if runtimes.bash == nil || runtimes.claude == nil || runtimes.codex == nil || runtimes.pi == nil {
+		return nil, errors.New("build: a runtime wrapper is missing")
 	}
-	b, err := bash.New(supervising)
-	if err != nil {
-		return nil, err
-	}
-	claudeSupervising, err := newClaudeCodeSupervised(programs)
-	if err != nil {
-		return nil, err
-	}
-	claude, err := claudecode.New(claudeSupervising)
-	if err != nil {
-		return nil, err
-	}
-	codexSupervising, err := newCodexSupervised(programs)
-	if err != nil {
-		return nil, err
-	}
-	cx, err := codex.New(codexSupervising, machine.temp)
-	if err != nil {
-		return nil, err
-	}
+	b, claude, cx := runtimes.bash, runtimes.claude, runtimes.codex
 	wrappers, err := newContracts(
-		claudeCodeFacts(claude), codexFacts(cx), piFacts(pi.New()), bashFacts(b))
+		claudeCodeFacts(claude), codexFacts(cx), piFacts(runtimes.pi), bashFacts(b))
 	if err != nil {
 		return nil, err
 	}

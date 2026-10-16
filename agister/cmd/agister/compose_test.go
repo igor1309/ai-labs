@@ -61,11 +61,12 @@ func asBuilt(t *testing.T, settings map[string]string, args ...string) ran {
 }
 
 // builtIn runs "agister <args>" in dir as asBuilt does, over links, which
-// git sees through as well, and a supervisor that runs no program.
+// git sees through as well, and spies of the runtime wrappers that run no
+// turn.
 func builtIn(t *testing.T, settings map[string]string, links *linksSpy, dir string, args ...string) ran {
 	t.Helper()
 	var stdout, stderr strings.Builder
-	commandLine, err := build("/u", links, newFilesystemSpy(settings), rootSpy{root: "/r", links: links.links}, programsSpy{t}, schemaValidator{}, idleHost(t), &stdout, &stderr)
+	commandLine, err := build("/u", links, newFilesystemSpy(settings), rootSpy{root: "/r", links: links.links}, newRuntimesSpy(t).runtimes(), schemaValidator{}, idleHost(t), &stdout, &stderr)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -271,7 +272,7 @@ func TestAgisterHomeNamesHomesFolder(t *testing.T) {
 			machine := idleHost(t)
 			machine.environ = c.environ
 			var stdout, stderr strings.Builder
-			commandLine, err := build("/u", &linksSpy{}, newFilesystemSpy(settings), rootSpy{root: "/r"}, programsSpy{t}, schemaValidator{}, machine, &stdout, &stderr)
+			commandLine, err := build("/u", &linksSpy{}, newFilesystemSpy(settings), rootSpy{root: "/r"}, newRuntimesSpy(t).runtimes(), schemaValidator{}, machine, &stdout, &stderr)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -328,7 +329,27 @@ func TestALaunchDirectoryThatDoesNotResolveFailsTheCommand(t *testing.T) {
 	if got.code == 0 || got.stdout != "" || !strings.Contains(got.stderr, "/gone") || !strings.Contains(got.stderr, fs.ErrNotExist.Error()) {
 		t.Errorf("ran %+v, want a failure naming /gone and %q", got, fs.ErrNotExist)
 	}
-	if _, err := build("/u", nil, newFilesystemSpy(nil), rootSpy{root: "/r"}, programsSpy{t}, schemaValidator{}, idleHost(t), io.Discard, io.Discard); err == nil {
+	if _, err := build("/u", nil, newFilesystemSpy(nil), rootSpy{root: "/r"}, newRuntimesSpy(t).runtimes(), schemaValidator{}, idleHost(t), io.Discard, io.Discard); err == nil {
 		t.Error("command line built with no links, want an error")
+	}
+}
+
+// A command line is built with every runtime wrapper.
+func TestACommandLineIsBuiltWithEveryRuntimeWrapper(t *testing.T) {
+	t.Parallel()
+	for name, without := range map[string]func(*runtimes){
+		"bash":        func(r *runtimes) { r.bash = nil },
+		"claude-code": func(r *runtimes) { r.claude = nil },
+		"codex":       func(r *runtimes) { r.codex = nil },
+		"pi":          func(r *runtimes) { r.pi = nil },
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			wrappers := newRuntimesSpy(t).runtimes()
+			without(&wrappers)
+			if _, err := build("/u", &linksSpy{}, newFilesystemSpy(nil), rootSpy{root: "/r"}, wrappers, schemaValidator{}, idleHost(t), io.Discard, io.Discard); err == nil {
+				t.Errorf("command line built with no %s wrapper, want an error", name)
+			}
+		})
 	}
 }

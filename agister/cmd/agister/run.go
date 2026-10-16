@@ -38,16 +38,14 @@ type clock interface {
 
 // host is what a run is given of the machine Agister runs on: the context
 // every run ends within; Agister's own environment, as "KEY=value"; the
-// clock and the timer a call's timing and time limit are kept on; the
-// signals that cancel a run; and the system's temporary folder, under
-// which codex writes its turns' schemas.
+// clock and the timer a call's timing and time limit are kept on; and the
+// signals that cancel a run.
 type host struct {
 	ctx     context.Context
 	environ []string
 	clock   clock
 	timer   call.Timer
 	signals signals
-	temp    string
 }
 
 // turn is a runtime a step takes its turn on: the contract of its wrapper,

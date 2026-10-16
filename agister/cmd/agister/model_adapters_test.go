@@ -191,35 +191,20 @@ func TestCoreTakesTheInputsOnAModelAsItsFactsSay(t *testing.T) {
 			t.Errorf("codex's %d taken as %d, want %d", c.codex, got, c.want)
 		}
 	}
-	claude, err := claudecode.New(&claudeCodeRunSupervisor{})
+	claude, err := claudecode.New(idleSupervisor[claudecode.Program, claudecode.Ended]{})
 	if err != nil {
 		t.Fatal(err)
 	}
 	if got := claudeCodeInputs(claude.Facts().Inputs); got != call.InMessage {
 		t.Errorf("claude-code's inputs taken as %d, want in the message", got)
 	}
-	cx, err := codex.New(&codexRunSupervisor{}, "/t")
+	cx, err := codex.New(idleSupervisor[codex.Program, codex.Ended]{}, "/t")
 	if err != nil {
 		t.Fatal(err)
 	}
 	if got := codexInputs(cx.Facts().Inputs); got != call.InMessage {
 		t.Errorf("codex's inputs taken as %d, want in the message", got)
 	}
-}
-
-// claudeCodeRunSupervisor and codexRunSupervisor are each wrapper's
-// supervisor for a test that runs nothing.
-type (
-	claudeCodeRunSupervisor struct{}
-	codexRunSupervisor      struct{}
-)
-
-func (claudeCodeRunSupervisor) Run(context.Context, claudecode.Program) (claudecode.Ended, error) {
-	return claudecode.Ended{}, errors.New("nothing runs here")
-}
-
-func (codexRunSupervisor) Run(context.Context, codex.Program) (codex.Ended, error) {
-	return codex.Ended{}, errors.New("nothing runs here")
 }
 
 // Each step's call is made by the caller of its turn's contract, and step

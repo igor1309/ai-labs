@@ -11,10 +11,13 @@ import (
 	"testing"
 	"time"
 
+	"github.com/igor1309/ai-labs/agister/runtime/bash"
+	"github.com/igor1309/ai-labs/agister/runtime/claudecode"
+	"github.com/igor1309/ai-labs/agister/runtime/codex"
+	"github.com/igor1309/ai-labs/agister/runtime/pi"
 	"github.com/igor1309/ai-labs/agister/settings/documents"
 	"github.com/igor1309/ai-labs/agister/settings/layout"
 	"github.com/igor1309/ai-labs/agister/settings/resolve"
-	"github.com/igor1309/ai-labs/agister/supervisor"
 	"github.com/igor1309/ai-labs/gokit/clocktest"
 )
 
@@ -253,20 +256,101 @@ func (s *gitSpy) Root(ctx context.Context, dir string) (string, error) {
 	return s.root, s.err
 }
 
-// programsSpy answers in place of the supervisor for a command that runs
-// no program: a program it is asked to run fails the test.
-type programsSpy struct{ t *testing.T }
+// wrapperSpy is a spy of a runtime wrapper whose facts are F, its turns T
+// and its results R: it gives the facts its test gives, keeps each turn it
+// is asked to run, and answers by answer; with none, a turn fails the
+// test. It is safe for concurrent use.
+type wrapperSpy[F, T, R any] struct {
+	t      *testing.T
+	facts  F
+	answer func(ctx context.Context, turn T) (R, error)
+	mu     sync.Mutex
+	turns  []T
+}
 
-func (s programsSpy) Run(_ context.Context, program supervisor.Program) (supervisor.Result, error) {
-	s.t.Errorf("asked to run %q, want no program run", program.Name)
-	return supervisor.Result{}, errors.New("no program runs here")
+func (s *wrapperSpy[F, T, R]) Facts() F { return s.facts }
+
+func (s *wrapperSpy[F, T, R]) Run(ctx context.Context, turn T) (R, error) {
+	s.mu.Lock()
+	s.turns = append(s.turns, turn)
+	s.mu.Unlock()
+	if s.answer == nil {
+		s.t.Errorf("asked to run %+v, want no turn run", turn)
+		var none R
+		return none, errors.New("no turn runs here")
+	}
+	return s.answer(ctx, turn)
+}
+
+func (s *wrapperSpy[F, T, R]) ran() []T {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return slices.Clone(s.turns)
+}
+
+// The spies of the bash, claude-code and codex wrappers.
+type (
+	bashWrapperSpy       = wrapperSpy[bash.Facts, bash.Turn, bash.Ended]
+	claudeCodeWrapperSpy = wrapperSpy[claudecode.Facts, claudecode.Turn, claudecode.Result]
+	codexWrapperSpy      = wrapperSpy[codex.Facts, codex.Turn, codex.Result]
+)
+
+// answers answers every turn with result.
+func answers[T, R any](result R) func(context.Context, T) (R, error) {
+	return func(context.Context, T) (R, error) { return result, nil }
+}
+
+// idleSupervisor is a wrapper's supervisor that runs nothing, its programs
+// P and their ends E: a wrapper over it gives only its facts.
+type idleSupervisor[P, E any] struct{}
+
+func (idleSupervisor[P, E]) Run(context.Context, P) (E, error) {
+	var none E
+	return none, errors.New("nothing runs here")
+}
+
+// runtimesSpy is a spy of each runtime wrapper, each giving its wrapper's
+// facts, as runtime/<name> gives them, and running no turn its test does
+// not answer.
+type runtimesSpy struct {
+	bash   *bashWrapperSpy
+	claude *claudeCodeWrapperSpy
+	codex  *codexWrapperSpy
+	pi     piSpy
+}
+
+func newRuntimesSpy(t *testing.T) *runtimesSpy {
+	t.Helper()
+	b, err := bash.New(idleSupervisor[bash.Program, bash.Ended]{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	claude, err := claudecode.New(idleSupervisor[claudecode.Program, claudecode.Ended]{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	cx, err := codex.New(idleSupervisor[codex.Program, codex.Ended]{}, "/t")
+	if err != nil {
+		t.Fatal(err)
+	}
+	return &runtimesSpy{
+		bash:   &bashWrapperSpy{t: t, facts: b.Facts()},
+		claude: &claudeCodeWrapperSpy{t: t, facts: claude.Facts()},
+		codex:  &codexWrapperSpy{t: t, facts: cx.Facts()},
+		pi:     piSpy{facts: pi.New().Facts()},
+	}
+}
+
+// runtimes is the spies as build takes them.
+func (s *runtimesSpy) runtimes() runtimes {
+	return runtimes{bash: s.bash, claude: s.claude, codex: s.codex, pi: s.pi}
 }
 
 // idleHost is the machine for a command that runs nothing: a run that
 // watches its signals fails the test.
 func idleHost(t *testing.T) host {
 	clock := clocktest.NewClock(time.Date(2026, 10, 16, 10, 0, 0, 0, time.UTC))
-	return host{ctx: context.Background(), clock: clock, timer: clock.Timer, temp: "/t",
+	return host{ctx: context.Background(), clock: clock, timer: clock.Timer,
 		signals: func() (<-chan os.Signal, func()) {
 			t.Error("a run watched the signals, want none run")
 			return nil, func() {}

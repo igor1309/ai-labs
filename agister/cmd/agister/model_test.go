@@ -6,15 +6,13 @@ import (
 	"errors"
 	"fmt"
 	"maps"
-	"os"
-	"path/filepath"
 	"reflect"
 	"slices"
-	"strings"
 	"sync"
 	"testing"
 
-	"github.com/igor1309/ai-labs/agister/supervisor"
+	"github.com/igor1309/ai-labs/agister/runtime/claudecode"
+	"github.com/igor1309/ai-labs/agister/runtime/codex"
 )
 
 // askProcess is the repository's process "ask" of model.feature.
@@ -78,37 +76,17 @@ func (s *validatorSpy) checks() [][2]string {
 	return slices.Clone(s.checked)
 }
 
-// replies answers as a program that writes lines to stdout, one by one,
-// and exits 0.
-func replies(lines ...string) func(context.Context, supervisor.Program) (supervisor.Result, error) {
-	return func(_ context.Context, program supervisor.Program) (supervisor.Result, error) {
-		for _, line := range lines {
-			program.Line(line)
-		}
-		return supervisor.Result{Stdout: kept(strings.Join(lines, "\n")), Stderr: kept("")}, nil
-	}
+// tokens is a reported count of n tokens.
+func tokens(n int64) *int64 { return &n }
+
+// claudeReply is a turn on claude-code that exited 0, its reply reply.
+func claudeReply(reply claudecode.Reply) func(context.Context, claudecode.Turn) (claudecode.Result, error) {
+	return answers[claudecode.Turn](claudecode.Result{Reply: &reply})
 }
 
-// claudeResult is a result event of claude's stream-json, a success, its
-// session "s1", given what else it reports.
-func claudeResult(t *testing.T, more map[string]any) string {
-	t.Helper()
-	event := map[string]any{"type": "result", "subtype": "success", "is_error": false, "session_id": "s1", "result": "done"}
-	maps.Copy(event, more)
-	line, err := json.Marshal(event)
-	if err != nil {
-		t.Fatal(err)
-	}
-	return string(line)
-}
-
-// unlined is programs with no line function, so that they compare.
-func unlined(programs []supervisor.Program) []supervisor.Program {
-	programs = slices.Clone(programs)
-	for i := range programs {
-		programs[i].Line = nil
-	}
-	return programs
+// codexReply is a turn on codex that exited 0, its reply reply.
+func codexReply(reply codex.Reply) func(context.Context, codex.Turn) (codex.Result, error) {
+	return answers[codex.Turn](codex.Result{Reply: &reply})
 }
 
 // modelPrinted is what a test of a model's step reads of a result as cli
@@ -138,57 +116,34 @@ func modelPrintedOf(t *testing.T, got ran) modelPrinted {
 // Contract test: the files home holds, as Agister ships them.
 func TestAStepOnClaudeCodeIsGivenItsMessageInstructionModelEffortOptionsAndSchema(t *testing.T) {
 	t.Parallel()
-	f := newRunFixture(modelSettings(t, nil), replies(claudeResult(t, map[string]any{"structured_output": map[string]any{"ok": true}})))
+	f := newRunFixture(t, modelSettings(t, nil), nil)
+	f.runtimes.claude.answer = claudeReply(claudecode.Reply{Output: []byte(`{"ok":true}`), Session: "s1"})
 	got := f.run(t, "/r", "run", "--process", "ask", "--agent", "claude-opus", "--param", "q=why")
 	if got.stderr != "" || got.code != 0 {
 		t.Fatalf("stderr %q, exit %d; want none, 0", got.stderr, got.code)
 	}
-	want := []supervisor.Program{{Name: "claude", Args: []string{
-		"-p", "--output-format", "stream-json", "--verbose", "--permission-mode", "dontAsk",
-		"--tools=Glob,Skill", "--allowedTools=Glob,Skill", "--strict-mcp-config",
-		"--model", "opus", "--effort", "high", "--append-system-prompt", "i", "--json-schema", answerSchema,
-	}, Dir: "/r", Env: append(slices.Clone(environ), "A=1"), Stdin: askMessage}}
-	if ran := unlined(f.supervisor.ran()); !reflect.DeepEqual(ran, want) {
+	want := []claudecode.Turn{{Message: askMessage, Dir: "/r", Env: append(slices.Clone(environ), "A=1"), Instruction: "i",
+		Model: "opus", Effort: "high", Options: []string{"Glob"}, Schema: []byte(answerSchema)}}
+	if ran := f.runtimes.claude.ran(); !reflect.DeepEqual(ran, want) {
 		t.Errorf("ran\n%#v\nwant\n%#v", ran, want)
 	}
 }
 
-// model.feature, "A step on codex is given its plan's one option": its
-// schema is written in a folder of its own under the system's temporary
-// folder.
+// model.feature, "A step on codex is given its plan's one option".
 //
-// Contract test: the files home holds, as Agister ships them; and the
-// temporary folder codex writes its schema in.
+// Contract test: the files home holds, as Agister ships them.
 func TestAStepOnCodexIsGivenItsPlansOneOption(t *testing.T) {
 	t.Parallel()
-	var schemaFile, schema string
-	f := newRunFixture(modelSettings(t, nil), func(ctx context.Context, program supervisor.Program) (supervisor.Result, error) {
-		if i := slices.Index(program.Args, "--output-schema"); i >= 0 && i+1 < len(program.Args) {
-			schemaFile = program.Args[i+1]
-			read, err := os.ReadFile(schemaFile)
-			if err != nil {
-				return supervisor.Result{}, err
-			}
-			schema = string(read)
-		}
-		return replies(`{"type":"item.completed","item":{"id":"i","type":"agent_message","text":"{\"ok\":true}"}}`,
-			`{"type":"turn.completed","usage":{"input_tokens":1,"output_tokens":1}}`)(ctx, program)
-	})
-	f.temp = t.TempDir()
+	f := newRunFixture(t, modelSettings(t, nil), nil)
+	f.runtimes.codex.answer = codexReply(codex.Reply{Output: []byte(`{"ok":true}`), Session: "t1"})
 	got := f.run(t, "/r", "run", "--process", "ask", "--agent", "codex-sol-61", "--param", "q=why")
 	if got.stderr != "" || got.code != 0 {
 		t.Fatalf("stderr %q, exit %d, stdout %s; want none, 0", got.stderr, got.code, got.stdout)
 	}
-	want := []supervisor.Program{{Name: "codex", Args: []string{
-		"exec", "--json", "--skip-git-repo-check", "--sandbox", "read-only",
-		"--config", `approval_policy="never"`, "--ignore-user-config", "--ignore-rules",
-		"--model", "gpt-6.1-sol", "--config", `model_reasoning_effort="high"`, "--output-schema", schemaFile, "-",
-	}, Dir: "/r", Env: append(slices.Clone(environ), "A=1"), Stdin: "<instructions>\ni\n</instructions>\n\n" + askMessage}}
-	if ran := unlined(f.supervisor.ran()); !reflect.DeepEqual(ran, want) {
+	want := []codex.Turn{{Message: askMessage, Dir: "/r", Env: append(slices.Clone(environ), "A=1"), Instruction: "i",
+		Model: "gpt-6.1-sol", Effort: "high", Options: []string{"read-only"}, Schema: []byte(answerSchema)}}
+	if ran := f.runtimes.codex.ran(); !reflect.DeepEqual(ran, want) {
 		t.Errorf("ran\n%#v\nwant\n%#v", ran, want)
-	}
-	if folder := filepath.Dir(filepath.Dir(schemaFile)); folder != f.temp || schema != answerSchema {
-		t.Errorf("the schema's file %s held %q; want it in a folder of its own under %s, holding %q", schemaFile, schema, f.temp, answerSchema)
 	}
 }
 
@@ -197,15 +152,16 @@ func TestAStepOnCodexIsGivenItsPlansOneOption(t *testing.T) {
 // Contract test: the files home holds, as Agister ships them.
 func TestACompletedStepPrintsItsReplysOutputAndUsage(t *testing.T) {
 	t.Parallel()
-	f := newRunFixture(modelSettings(t, nil), replies(claudeResult(t, map[string]any{"structured_output": map[string]any{"ok": true},
-		"total_cost_usd": 0.25, "usage": map[string]any{"input_tokens": 10, "output_tokens": 3}})))
+	cost := 0.25
+	f := newRunFixture(t, modelSettings(t, nil), nil)
+	f.runtimes.claude.answer = claudeReply(claudecode.Reply{Output: []byte(`{"ok":true}`), Session: "s1", Cost: &cost,
+		Usage: claudecode.Usage{Input: tokens(10), Output: tokens(3)}})
 	validator := &validatorSpy{}
 	f.validator = validator
 	got := f.run(t, "/r", "run", "--process", "ask", "--agent", "claude-opus", "--param", "q=why")
 	if got.stderr != "" || got.code != 0 {
 		t.Fatalf("stderr %q, exit %d; want none, 0", got.stderr, got.code)
 	}
-	cost := 0.25
 	want := modelPrinted{
 		Status: "completed",
 		Output: map[string]any{"output": map[string]any{"ok": true}},
@@ -222,10 +178,10 @@ func TestACompletedStepPrintsItsReplysOutputAndUsage(t *testing.T) {
 	}
 }
 
-// model.feature, "Each step runs on its own agent's runtime".
+// model.feature, "Each step runs on its own agent's runtime": codex is
+// asked once bash has run, and claude-code, unanswered, runs nothing.
 //
-// Contract test: the files home holds, as Agister ships them; and the
-// temporary folder codex writes its schema in.
+// Contract test: the files home holds, as Agister ships them.
 func TestEachStepRunsOnItsOwnAgentsRuntime(t *testing.T) {
 	t.Parallel()
 	settings := modelSettings(t, map[string]string{
@@ -243,28 +199,19 @@ outputs:
   answer: {from: steps.ask.outputs.ok}
 `,
 	})
-	codex := replies(`{"type":"item.completed","item":{"id":"i","type":"agent_message","text":"{\"ok\":true}"}}`, `{"type":"turn.completed"}`)
-	f := newRunFixture(settings, func(ctx context.Context, program supervisor.Program) (supervisor.Result, error) {
-		if program.Name == "bash" {
-			return echoes(ctx, program)
-		}
-		return codex(ctx, program)
-	})
-	f.temp = t.TempDir()
+	f := newRunFixture(t, settings, echoes)
+	var bashFirst bool
+	f.runtimes.codex.answer = func(ctx context.Context, turn codex.Turn) (codex.Result, error) {
+		bashFirst = len(f.runtimes.bash.ran()) == 1
+		return codexReply(codex.Reply{Output: []byte(`{"ok":true}`)})(ctx, turn)
+	}
 	got := f.run(t, "/r", "run", "mixed", "--param", "what=hi", "--param", "q=why")
 	if got.stderr != "" || got.code != 0 {
 		t.Fatalf("stderr %q, exit %d, stdout %s; want none, 0", got.stderr, got.code, got.stdout)
 	}
-	ran := f.supervisor.ran()
-	var names []string
-	for _, program := range ran {
-		names = append(names, program.Name)
-	}
-	if !slices.Equal(names, []string{"bash", "codex"}) {
-		t.Fatalf("ran %q, want bash, then codex, and no claude", names)
-	}
-	if ran[0].Args[1] != `echo "$what"` || ran[1].Stdin != "<instructions>\ni\n</instructions>\n\n"+askMessage {
-		t.Errorf("bash ran %q and codex was given %q; want the script of say, then the message of ask", ran[0].Args, ran[1].Stdin)
+	bashRan, codexRan := f.runtimes.bash.ran(), f.runtimes.codex.ran()
+	if len(bashRan) != 1 || bashRan[0].Script != `echo "$what"` || len(codexRan) != 1 || codexRan[0].Message != askMessage || !bashFirst {
+		t.Errorf("bash ran %+v and codex %+v, codex after bash %t; want the script of say, then the message of ask", bashRan, codexRan, bashFirst)
 	}
 	if p := modelPrintedOf(t, got); !reflect.DeepEqual(p.Output, map[string]any{"said": "hi\n", "answer": true}) {
 		t.Errorf("printed the output %v, want said hi and answer true", p.Output)
@@ -276,7 +223,8 @@ outputs:
 // Contract test: the files home holds, as Agister ships them.
 func TestOutputTheSchemaRejectsFailsTheStep(t *testing.T) {
 	t.Parallel()
-	f := newRunFixture(modelSettings(t, nil), replies(claudeResult(t, map[string]any{"structured_output": map[string]any{"ok": 1}})))
+	f := newRunFixture(t, modelSettings(t, nil), nil)
+	f.runtimes.claude.answer = claudeReply(claudecode.Reply{Output: []byte(`{"ok":1}`), Session: "s1"})
 	f.validator = &validatorSpy{err: errors.New("at /ok: got number, want boolean")}
 	got := f.run(t, "/r", "run", "--process", "ask", "--agent", "claude-opus", "--param", "q=why")
 	if got.stderr != "" || got.code != 1 {
@@ -293,19 +241,19 @@ func TestOutputTheSchemaRejectsFailsTheStep(t *testing.T) {
 // Contract test: the files home holds, as Agister ships them.
 func TestAStepGivenASessionIsNotRunYet(t *testing.T) {
 	t.Parallel()
-	f := newRunFixture(modelSettings(t, map[string]string{"/r/.agister/workflows/resumed.yaml": `schema: agister.workflow/v1alpha1
+	f := newRunFixture(t, modelSettings(t, map[string]string{"/r/.agister/workflows/resumed.yaml": `schema: agister.workflow/v1alpha1
 params:
   q: {}
 steps:
   - {name: first, process: ask, agent: claude-opus, inputs: {q: {from: params.q}}}
   - {name: second, process: ask, agent: claude-opus, session: {from: steps.first.session}, inputs: {q: {from: params.q}}}
-`}), replies())
+`}), nil)
 	got := f.run(t, "/r", "run", "resumed", "--param", "q=why")
 	want := ran{stderr: "agister: the run is refused, and nothing runs:\n  the step \"second\": the session is not run yet\n", code: 1}
 	if got != want {
 		t.Errorf("ran %+v, want %+v", got, want)
 	}
-	if ran := f.supervisor.ran(); len(ran) > 0 {
+	if ran := f.runtimes.claude.ran(); len(ran) > 0 {
 		t.Errorf("ran %+v, want nothing", ran)
 	}
 }
@@ -315,8 +263,8 @@ steps:
 // Contract test: the files home holds, as Agister ships them.
 func TestAStepAlonePrintsItsSessionByItsProcesssName(t *testing.T) {
 	t.Parallel()
-	f := newRunFixture(modelSettings(t, nil), replies(`{"type":"system","subtype":"init","session_id":"s1"}`,
-		claudeResult(t, map[string]any{"session_id": "", "structured_output": map[string]any{"ok": true}})))
+	f := newRunFixture(t, modelSettings(t, nil), nil)
+	f.runtimes.claude.answer = claudeReply(claudecode.Reply{Output: []byte(`{"ok":true}`), Session: "s1"})
 	f.validator = &validatorSpy{}
 	got := f.run(t, "/r", "run", "--process", "ask", "--agent", "claude-opus", "--param", "q=why")
 	if got.stderr != "" || got.code != 0 {

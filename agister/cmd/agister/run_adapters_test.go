@@ -50,8 +50,10 @@ func TestARunAsksGitForTheRootOnce(t *testing.T) {
 	t.Parallel()
 	roots := &countedRoots{asked: map[string]int{}}
 	clock := clocktest.NewClock(runStart)
-	machine := host{ctx: context.Background(), environ: environ, clock: clock, timer: clock.Timer, signals: (&signalsSpy{}).watch, temp: "/t"}
-	commandLine, err := build("/u", &linksSpy{}, newFilesystemSpy(runSettings(t, nil)), roots, &supervisorSpy{answer: echoes}, schemaValidator{}, machine, &strings.Builder{}, &strings.Builder{})
+	machine := host{ctx: context.Background(), environ: environ, clock: clock, timer: clock.Timer, signals: (&signalsSpy{}).watch}
+	wrappers := newRuntimesSpy(t)
+	wrappers.bash.answer = echoes
+	commandLine, err := build("/u", &linksSpy{}, newFilesystemSpy(runSettings(t, nil)), roots, wrappers.runtimes(), schemaValidator{}, machine, &strings.Builder{}, &strings.Builder{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -291,13 +293,13 @@ outputs:
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			t.Parallel()
-			f := newRunFixture(runSettings(t, c.files), echoes)
+			f := newRunFixture(t, runSettings(t, c.files), echoes)
 			got := f.run(t, "/r", c.args...)
 			if got.stderr != "" || got.code != 0 {
 				t.Fatalf("stderr %q, exit %d; want none, 0", got.stderr, got.code)
 			}
-			if want := []supervisor.Program{bashProgram(`echo "$what"`, "what="+c.what)}; !reflect.DeepEqual(f.supervisor.ran(), want) {
-				t.Errorf("ran %+v, want %+v", f.supervisor.ran(), want)
+			if want := []bash.Turn{bashTurn(`echo "$what"`, "what="+c.what)}; !reflect.DeepEqual(f.runtimes.bash.ran(), want) {
+				t.Errorf("ran %+v, want %+v", f.runtimes.bash.ran(), want)
 			}
 		})
 	}
@@ -639,16 +641,15 @@ environment:
   what: process
 `,
 			})
-			f := newRunFixture(settings, echoes)
+			f := newRunFixture(t, settings, echoes)
 			hostEnv := append(slices.Clone(environ), "MODE=host", "what=host")
 			got := f.runWatching(t, f.signals.watch, hostEnv, "/r", "run", "--process", "say", "--agent", "bash", "--param", "what=hi")
 			if got.code != 0 || got.stderr != "" {
 				t.Fatalf("exit %d, stderr %q", got.code, got.stderr)
 			}
-			want := supervisor.Program{Name: "bash", Args: []string{"-c", `echo "$what"`}, Dir: "/r",
-				Env: append(slices.Clone(environ), "MODE="+c.want, "what=input-value")}
-			if programs := f.supervisor.ran(); !reflect.DeepEqual(programs, []supervisor.Program{want}) {
-				t.Errorf("ran %+v, want %+v", programs, want)
+			want := bashTurn(`echo "$what"`, "MODE="+c.want, "what=input-value")
+			if turns := f.runtimes.bash.ran(); !reflect.DeepEqual(turns, []bash.Turn{want}) {
+				t.Errorf("ran %+v, want %+v", turns, want)
 			}
 		})
 	}
