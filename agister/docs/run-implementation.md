@@ -28,8 +28,10 @@ open by a process that left the group is read no longer than the
 grace: the streams are kept so far, marked incomplete. Where it cannot
 observe a program's exit before reaping it, it starts nothing, and says
 the program could not start. A
-program that cannot start is an error that says so. Its tests run real
-programs (ADR-009, rule 3).
+program that cannot start is an error that says so. It starts programs
+through a starter it declares, in its own types, which the composition
+answers from gokit's process groups. Its tests run real programs
+(ADR-009, rule 3).
 
 **The bash wrapper** runs a turn: a script, a directory and an
 environment, as `bash -c <script>`, through the supervisor, and gives

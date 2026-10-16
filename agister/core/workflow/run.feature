@@ -26,11 +26,21 @@ Feature: A workflow's steps run in order
     Then the inputs are resolved once, before "a" is called, and "a" is
       called with t "x"
 
-  Scenario: A step that does not complete ends the run
-    Given the steps "a", then "b"
-    And "a" ends interrupted, class "timeout"
+  Scenario Outline: A step that does not complete ends the run
+    Given the steps "a", "b", then "c", and the output "result" from "r"
+    And the steps before <step> complete, and <step> ends <status>, class
+      <class>
     When the workflow runs
-    Then "b" is not called, and the run ends interrupted, class "timeout"
+    Then no step after <step> is called, and the run ends <status>, class
+      <class>, with no output
+
+    Examples:
+      | step | status      | class               |
+      | a    | failed      | runtime_error       |
+      | b    | failed      | runtime_unavailable |
+      | a    | interrupted | timeout             |
+      | b    | interrupted | cancelled           |
+      | c    | failed      | killed              |
 
   Scenario Outline: The run's output is its output mapping
     Given the param "p", the input "i" from the source "param" named "p",

@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -58,11 +59,43 @@ func TestMain(m *testing.M) {
 // by the system, which gives no event of it.
 const goneBound = 30 * time.Second
 
+// osPrograms starts real programs (ADR-009, rule 3) in the operating
+// system's process groups, through gokit, in the supervisor's words.
+type osPrograms struct{}
+
+func (osPrograms) CheckExitObservation() error { return group.Exec{}.CheckExitObservation() }
+
+func (osPrograms) Start(program supervisor.Program, stderr *os.File) (supervisor.Process, error) {
+	process, err := group.Exec{}.Start(group.Command{Name: program.Name, Args: program.Args, Dir: program.Dir, Env: program.Env, Stderr: stderr})
+	if err != nil {
+		return nil, err
+	}
+	return osProcess{process: process}, nil
+}
+
+// osProcess is a program osPrograms started; its group's ID is for a test
+// to see that the group has ended.
+type osProcess struct{ process group.Process }
+
+func (p osProcess) Stdout() io.ReadCloser              { return p.process.Stdout() }
+func (p osProcess) Signal(signal syscall.Signal) error { return p.process.Signal(signal) }
+func (p osProcess) Exited() error                      { return p.process.Exited() }
+func (p osProcess) Group() int                         { return p.process.Group() }
+
+func (p osProcess) Wait() supervisor.Exit {
+	exit := p.process.Wait()
+	ended := supervisor.Exit{Signal: exit.Signal}
+	if exit.Code != nil {
+		ended.Code = *exit.Code
+	}
+	return ended
+}
+
 // newSupervisor is a supervisor whose grace runs on the clock it gives.
 func newSupervisor(t *testing.T) (*supervisor.Supervisor, *clocktest.Clock) {
 	t.Helper()
 	clock := clocktest.NewClock(time.Time{})
-	s, err := supervisor.New(clock.Timer, group.Exec{}, func(string, int64) {})
+	s, err := supervisor.New(clock.Timer, osPrograms{}, func(string, int64) {})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -328,7 +361,7 @@ func TestOutputHeldOpenByWhatLeftTheGroupIsNotWaitedOn(t *testing.T) {
 	t.Parallel()
 	clock := clocktest.NewClock(time.Time{})
 	captured := make(chan string, 2)
-	s, err := supervisor.New(clock.Timer, group.Exec{}, func(name string, size int64) {
+	s, err := supervisor.New(clock.Timer, osPrograms{}, func(name string, size int64) {
 		want := map[string]int64{"stdout": int64(len("started\n")), "stderr": int64(len("diagnostics\n"))}
 		if size == want[name] {
 			captured <- name
@@ -403,13 +436,13 @@ func TestASupervisorNeedsItsCollaborators(t *testing.T) {
 	t.Parallel()
 	clock := clocktest.NewClock(time.Time{})
 	progress := func(string, int64) {}
-	if _, err := supervisor.New(nil, group.Exec{}, progress); err == nil {
+	if _, err := supervisor.New(nil, osPrograms{}, progress); err == nil {
 		t.Error("a supervisor built with no timer")
 	}
 	if _, err := supervisor.New(clock.Timer, nil, progress); err == nil {
 		t.Error("a supervisor built with no programs")
 	}
-	if _, err := supervisor.New(clock.Timer, group.Exec{}, nil); err == nil {
+	if _, err := supervisor.New(clock.Timer, osPrograms{}, nil); err == nil {
 		t.Error("a supervisor built with no read progress")
 	}
 }
@@ -418,7 +451,7 @@ func TestASupervisorNeedsItsCollaborators(t *testing.T) {
 type unsupportedPrograms struct{ t *testing.T }
 
 func (unsupportedPrograms) CheckExitObservation() error { return errors.ErrUnsupported }
-func (s unsupportedPrograms) Start(group.Command) (group.Process, error) {
+func (s unsupportedPrograms) Start(supervisor.Program, *os.File) (supervisor.Process, error) {
 	s.t.Error("started a program without exit observation")
 	return nil, errors.New("unexpected start")
 }
@@ -439,13 +472,13 @@ func TestUnsupportedExitObservationStartsNothing(t *testing.T) {
 
 // observationFailure starts real programs but cannot observe their exits.
 type observationFailure struct {
-	group.Exec
+	osPrograms
 	err     error
-	process group.Process
+	process supervisor.Process
 }
 
-func (s *observationFailure) Start(c group.Command) (group.Process, error) {
-	p, err := s.Exec.Start(c)
+func (s *observationFailure) Start(program supervisor.Program, stderr *os.File) (supervisor.Process, error) {
+	p, err := s.osPrograms.Start(program, stderr)
 	if err != nil {
 		return nil, err
 	}
@@ -454,7 +487,7 @@ func (s *observationFailure) Start(c group.Command) (group.Process, error) {
 }
 
 type failedObservation struct {
-	group.Process
+	supervisor.Process
 	err error
 }
 
@@ -480,6 +513,6 @@ func TestAnObservationErrorIsKeptAfterCleanup(t *testing.T) {
 		t.Errorf("error %v, want observation failure after start", err)
 	}
 	if programs.process != nil {
-		gone(t, programs.process.Group())
+		gone(t, programs.process.(osProcess).Group())
 	}
 }

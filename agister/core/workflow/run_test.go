@@ -31,10 +31,11 @@ func (s *resolverSpy) Resolve(_ context.Context, given map[string]string) (workf
 	return s.answer, s.err
 }
 
-// callerSpy answers each step by its test's answer for its name, a
-// completed call with no output for a step it has none for, and keeps each
-// call's params.
+// callerSpy answers each step by its test's answer for its name, and keeps
+// each call's params. A step it has no answer for fails its test, and is
+// answered with nothing.
 type callerSpy struct {
+	t       *testing.T
 	trail   *trail
 	answers map[string]func() workflow.Result
 	params  []map[string]string
@@ -43,10 +44,12 @@ type callerSpy struct {
 func (s *callerSpy) Call(_ context.Context, step string, params map[string]string) workflow.Result {
 	*s.trail = append(*s.trail, step)
 	s.params = append(s.params, params)
-	if answer, ok := s.answers[step]; ok {
-		return answer()
+	answer, ok := s.answers[step]
+	if !ok {
+		s.t.Errorf("step %q called, with no answer given", step)
+		return workflow.Result{}
 	}
-	return workflow.Result{Status: workflow.Completed}
+	return answer()
 }
 
 // completes is a completed call whose output is the exit code code.
@@ -73,7 +76,7 @@ func newFixture(t *testing.T, boundary workflow.Boundary, answers map[string]fun
 	t.Helper()
 	f := &fixture{clock: clocktest.NewClock(start)}
 	f.resolver = &resolverSpy{trail: &f.trail, answer: boundary}
-	f.caller = &callerSpy{trail: &f.trail, answers: answers}
+	f.caller = &callerSpy{t: t, trail: &f.trail, answers: answers}
 	runner, err := workflow.New(f.resolver, f.caller, f.clock)
 	if err != nil {
 		t.Fatal(err)
@@ -104,7 +107,7 @@ func bind(name string, value workflow.Value) workflow.Binding {
 func TestNewFailsWithoutACollaborator(t *testing.T) {
 	t.Parallel()
 	var tr trail
-	resolver, caller, clock := &resolverSpy{trail: &tr}, &callerSpy{trail: &tr}, clocktest.NewClock(start)
+	resolver, caller, clock := &resolverSpy{trail: &tr}, &callerSpy{t: t, trail: &tr}, clocktest.NewClock(start)
 	cases := []struct {
 		name     string
 		resolver workflow.Resolver
@@ -129,7 +132,7 @@ func TestNewFailsWithoutACollaborator(t *testing.T) {
 func TestEachStepIsCalledInOrderItsParamsBound(t *testing.T) {
 	t.Parallel()
 	f := newFixture(t, workflow.Boundary{Params: map[string]string{"goal": "x"}},
-		map[string]func() workflow.Result{"a": completes(0)})
+		map[string]func() workflow.Result{"a": completes(0), "b": completes(0)})
 	got := f.runner.Run(context.Background(), workflow.Workflow{
 		Steps: []workflow.Step{
 			{Name: "a", Bindings: []workflow.Binding{bind("g", param("goal"))}},
@@ -159,6 +162,7 @@ func TestABindingGivesAValueThatIsNotTextAsItsJSON(t *testing.T) {
 	}
 	f := newFixture(t, workflow.Boundary{}, map[string]func() workflow.Result{
 		"a": func() workflow.Result { return workflow.Result{Status: workflow.Completed, Output: output} },
+		"b": completes(0),
 	})
 	f.runner.Run(context.Background(), workflow.Workflow{
 		Steps: []workflow.Step{
@@ -188,6 +192,7 @@ func TestABindingReadsAFieldWithinAStepsOutputField(t *testing.T) {
 	output := map[string]any{"stdout": map[string]any{"head": "hi\n", "size": int64(3)}}
 	f := newFixture(t, workflow.Boundary{}, map[string]func() workflow.Result{
 		"a": func() workflow.Result { return workflow.Result{Status: workflow.Completed, Output: output} },
+		"b": completes(0),
 	})
 	f.runner.Run(context.Background(), workflow.Workflow{
 		Steps: []workflow.Step{
@@ -207,7 +212,7 @@ func TestTheWorkflowsInputsAreResolvedOnceAtItsBoundary(t *testing.T) {
 	f := newFixture(t, workflow.Boundary{
 		Params: map[string]string{"g": "x"},
 		Inputs: map[string]string{"goal": "x"},
-	}, nil)
+	}, map[string]func() workflow.Result{"a": completes(0)})
 	w := workflow.Workflow{
 		Steps: []workflow.Step{{Name: "a", Bindings: []workflow.Binding{bind("t", input("goal"))}}},
 	}
@@ -223,21 +228,43 @@ func TestTheWorkflowsInputsAreResolvedOnceAtItsBoundary(t *testing.T) {
 	}
 }
 
-// run.feature, "A step that does not complete ends the run".
+// run.feature, "A step that does not complete ends the run": a failed or
+// interrupted step, first, between or last, ends the run in its status
+// and class.
 func TestAStepThatDoesNotCompleteEndsTheRun(t *testing.T) {
 	t.Parallel()
-	f := newFixture(t, workflow.Boundary{}, map[string]func() workflow.Result{
-		"a": func() workflow.Result { return workflow.Result{Status: "interrupted", Class: "timeout"} },
-	})
-	got := f.runner.Run(context.Background(), workflow.Workflow{
-		Steps:   []workflow.Step{{Name: "a"}, {Name: "b"}},
-		Outputs: []workflow.Binding{bind("result", text("r"))},
-	}, nil)
-	if want := (trail{"resolve", "a"}); !slices.Equal(f.trail, want) {
-		t.Errorf("asked %q, want %q", f.trail, want)
+	cases := []struct {
+		step   string
+		status workflow.Status
+		class  workflow.Class
+		called trail
+	}{
+		{"a", "failed", "runtime_error", trail{"resolve", "a"}},
+		{"b", "failed", "runtime_unavailable", trail{"resolve", "a", "b"}},
+		{"a", "interrupted", "timeout", trail{"resolve", "a"}},
+		{"b", "interrupted", "cancelled", trail{"resolve", "a", "b"}},
+		{"c", "failed", "killed", trail{"resolve", "a", "b", "c"}},
 	}
-	if got.Status != "interrupted" || got.Class != "timeout" || got.Output != nil {
-		t.Errorf("ended %q, class %q, output %v; want interrupted, class timeout, no output", got.Status, got.Class, got.Output)
+	for _, c := range cases {
+		t.Run(c.step+" "+string(c.status)+" "+string(c.class), func(t *testing.T) {
+			t.Parallel()
+			answers := map[string]func() workflow.Result{}
+			for _, before := range c.called[1 : len(c.called)-1] {
+				answers[before] = completes(0)
+			}
+			answers[c.step] = func() workflow.Result { return workflow.Result{Status: c.status, Class: c.class} }
+			f := newFixture(t, workflow.Boundary{}, answers)
+			got := f.runner.Run(context.Background(), workflow.Workflow{
+				Steps:   []workflow.Step{{Name: "a"}, {Name: "b"}, {Name: "c"}},
+				Outputs: []workflow.Binding{bind("result", text("r"))},
+			}, nil)
+			if !slices.Equal(f.trail, c.called) {
+				t.Errorf("asked %q, want %q", f.trail, c.called)
+			}
+			if got.Status != c.status || got.Class != c.class || got.Output != nil {
+				t.Errorf("ended %q, class %q, output %v; want %s, class %s, no output", got.Status, got.Class, got.Output, c.status, c.class)
+			}
+		})
 	}
 }
 
@@ -260,7 +287,7 @@ func TestTheRunsOutputIsItsOutputMapping(t *testing.T) {
 			f := newFixture(t, workflow.Boundary{
 				Params: map[string]string{"p": "x"},
 				Inputs: map[string]string{"i": "x"},
-			}, map[string]func() workflow.Result{"a": completes(7)})
+			}, map[string]func() workflow.Result{"a": completes(7), "b": completes(0)})
 			got := f.runner.Run(context.Background(), workflow.Workflow{
 				Steps:   []workflow.Step{{Name: "a"}, {Name: "b"}},
 				Outputs: []workflow.Binding{bind("result", c.value)},
@@ -337,7 +364,7 @@ func TestARunsCostIsItsCallsSummedWhenEachIsKnown(t *testing.T) {
 // defaults included, not those given.
 func TestAParamNotGivenTakesItsDefault(t *testing.T) {
 	t.Parallel()
-	f := newFixture(t, workflow.Boundary{Params: map[string]string{"base": "main"}}, nil)
+	f := newFixture(t, workflow.Boundary{Params: map[string]string{"base": "main"}}, map[string]func() workflow.Result{"a": completes(0)})
 	w := workflow.Workflow{
 		Steps: []workflow.Step{{Name: "a", Bindings: []workflow.Binding{bind("b", param("base"))}}},
 	}

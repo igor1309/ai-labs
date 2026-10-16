@@ -4,11 +4,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"maps"
 	"os"
 	"slices"
 	"strconv"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/igor1309/ai-labs/agister/cli"
@@ -20,6 +22,7 @@ import (
 	"github.com/igor1309/ai-labs/agister/settings/layout"
 	"github.com/igor1309/ai-labs/agister/settings/resolve"
 	"github.com/igor1309/ai-labs/agister/supervisor"
+	group "github.com/igor1309/ai-labs/gokit/supervisor"
 )
 
 // signals starts watching the signals that cancel a run: fired delivers
@@ -767,4 +770,62 @@ func (s *supervised) Run(ctx context.Context, program bash.Program) (bash.Ended,
 		return bash.Stream{Head: s.Head, Tail: s.Tail, Size: s.Size, Digest: s.Digest, Incomplete: s.Incomplete}
 	}
 	return bash.Ended{Code: result.Code, Signal: result.Signal, Stdout: stream(result.Stdout), Stderr: stream(result.Stderr)}, nil
+}
+
+// processGroups is what the supervisor's starter asks of gokit's process
+// groups.
+type processGroups interface {
+	CheckExitObservation() error
+	Start(group.Command) (group.Process, error)
+}
+
+// groupStarter answers the supervisor's starter from gokit's process
+// groups: a program is started as gokit's command, its stderr the file the
+// supervisor gives.
+type groupStarter struct {
+	groups processGroups
+}
+
+func newGroupStarter(groups processGroups) (*groupStarter, error) {
+	if groups == nil {
+		return nil, errors.New("group starter: no process groups")
+	}
+	return &groupStarter{groups: groups}, nil
+}
+
+func (g *groupStarter) CheckExitObservation() error { return g.groups.CheckExitObservation() }
+
+func (g *groupStarter) Start(program supervisor.Program, stderr *os.File) (supervisor.Process, error) {
+	process, err := g.groups.Start(group.Command{Name: program.Name, Args: program.Args, Dir: program.Dir, Env: program.Env, Stderr: stderr})
+	if err != nil {
+		return nil, err
+	}
+	return groupProcess{process: process}, nil
+}
+
+// groupLeader is what the supervisor's process asks of a gokit process.
+type groupLeader interface {
+	Stdout() io.ReadCloser
+	Signal(syscall.Signal) error
+	Exited() error
+	Wait() group.Exit
+}
+
+// groupProcess answers the supervisor's process from a gokit process: an
+// exit with no code, ended by a signal, has the code 0.
+type groupProcess struct {
+	process groupLeader
+}
+
+func (p groupProcess) Stdout() io.ReadCloser              { return p.process.Stdout() }
+func (p groupProcess) Signal(signal syscall.Signal) error { return p.process.Signal(signal) }
+func (p groupProcess) Exited() error                      { return p.process.Exited() }
+
+func (p groupProcess) Wait() supervisor.Exit {
+	exit := p.process.Wait()
+	ended := supervisor.Exit{Signal: exit.Signal}
+	if exit.Code != nil {
+		ended.Code = *exit.Code
+	}
+	return ended
 }

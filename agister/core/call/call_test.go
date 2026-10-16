@@ -173,22 +173,36 @@ func TestACallWhoseContextIsAlreadyCancelledMakesNoTurn(t *testing.T) {
 }
 
 // call.feature, "A completed call's output is the exit code and both
-// streams".
+// streams": each stream's head and tail as the turn kept them, the same
+// where the stream is short and distinct where it is not, and stdout and
+// stderr distinct in every field.
 func TestACompletedCallsOutputIsTheExitCodeAndBothStreams(t *testing.T) {
 	t.Parallel()
-	spy := &runtimeSpy{turn: exits(call.Ended{
-		Code:   4,
-		Stdout: call.Stream{Head: "o", Tail: "o", Size: 1, Digest: "od"},
-		Stderr: call.Stream{Head: "e", Tail: "e", Size: 1, Digest: "ed"},
-	})}
-	got := caller(t, spy, clocktest.NewClock(start), "/r").Call(context.Background(), call.Step{Prompt: "s"})
-	want := map[string]any{
-		"exit_code": 4,
-		"stdout":    map[string]any{"head": "o", "tail": "o", "size": int64(1), "digest": "od"},
-		"stderr":    map[string]any{"head": "e", "tail": "e", "size": int64(1), "digest": "ed"},
+	cases := []struct {
+		ends           string
+		stdout, stderr call.Stream
+	}{
+		{"overlapping",
+			call.Stream{Head: "o", Tail: "o", Size: 1, Digest: "od"},
+			call.Stream{Head: "e", Tail: "e", Size: 1, Digest: "ed"}},
+		{"distinct",
+			call.Stream{Head: "out-beginning", Tail: "out-ending", Size: 40000, Digest: "od"},
+			call.Stream{Head: "err-beginning", Tail: "err-ending", Size: 50000, Digest: "ed"}},
 	}
-	if got.Status != call.Completed || !reflect.DeepEqual(got.Output, want) {
-		t.Errorf("ended %q, output\n got %v\nwant %v", got.Status, got.Output, want)
+	for _, c := range cases {
+		t.Run(c.ends, func(t *testing.T) {
+			t.Parallel()
+			spy := &runtimeSpy{turn: exits(call.Ended{Code: 4, Stdout: c.stdout, Stderr: c.stderr})}
+			got := caller(t, spy, clocktest.NewClock(start), "/r").Call(context.Background(), call.Step{Prompt: "s"})
+			want := map[string]any{
+				"exit_code": 4,
+				"stdout":    map[string]any{"head": c.stdout.Head, "tail": c.stdout.Tail, "size": c.stdout.Size, "digest": c.stdout.Digest},
+				"stderr":    map[string]any{"head": c.stderr.Head, "tail": c.stderr.Tail, "size": c.stderr.Size, "digest": c.stderr.Digest},
+			}
+			if got.Status != call.Completed || !reflect.DeepEqual(got.Output, want) {
+				t.Errorf("ended %q, output\n got %v\nwant %v", got.Status, got.Output, want)
+			}
+		})
 	}
 }
 

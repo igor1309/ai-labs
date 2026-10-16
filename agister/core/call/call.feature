@@ -33,11 +33,18 @@ Feature: A call makes its turn and ends in the result shape
     Then no turn is asked, and it ends interrupted, class "cancelled",
       its warnings the plan's
 
-  Scenario: A completed call's output is the exit code and both streams
-    Given the turn exits with code 4, stdout "o" and stderr "e"
+  Scenario Outline: A completed call's output is the exit code and both streams
+    Given the turn exits with code 4, stdout kept with the head
+      <stdout head> and the tail <stdout tail>, and stderr with the head
+      <stderr head> and the tail <stderr tail>
     When the call is made
     Then its output is the exit code 4, and stdout and stderr, each its
-      head, tail, size and digest
+      head, tail, size and digest as the turn kept them
+
+    Examples:
+      | ends        | stdout head     | stdout tail  | stderr head     | stderr tail  |
+      | overlapping | "o"             | "o"          | "e"             | "e"          |
+      | distinct    | "out-beginning" | "out-ending" | "err-beginning" | "err-ending" |
 
   Scenario: A time limit ends the turn
     Given a time limit of 1s, and a turn that exits 0 once its context

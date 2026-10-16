@@ -56,7 +56,8 @@ func run(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 }
 
 // connect is the command line build gives over files, git, the
-// supervisor, its grace on the wall clock, and the machine: Agister's
+// supervisor, its programs started in gokit's process groups and its grace
+// on the wall clock, and the machine: Agister's
 // environment, the wall clock, and SIGINT and SIGTERM, each cancelling a
 // run.
 func connect(ctx context.Context, user string, stdout, stderr io.Writer) (*cli.CLI, error) {
@@ -64,7 +65,11 @@ func connect(ctx context.Context, user string, stdout, stderr io.Writer) (*cli.C
 	if err != nil {
 		return nil, err
 	}
-	programs, err := supervisor.New(wallTimer, group.Exec{}, func(string, int64) {})
+	groups, err := newGroupStarter(group.Exec{})
+	if err != nil {
+		return nil, err
+	}
+	programs, err := supervisor.New(wallTimer, groups, func(string, int64) {})
 	if err != nil {
 		return nil, err
 	}

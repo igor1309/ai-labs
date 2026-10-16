@@ -19,8 +19,6 @@ import (
 	"sync"
 	"syscall"
 	"time"
-
-	group "github.com/igor1309/ai-labs/gokit/supervisor"
 )
 
 const (
@@ -70,10 +68,39 @@ type Stream struct {
 // releases it.
 type Timer func(wait time.Duration) (fired <-chan time.Time, stop func())
 
-// starter starts programs whose exit can be observed before reaping.
-type starter interface {
+// Starter starts programs, each the leader of a process group of its own.
+type Starter interface {
+	// CheckExitObservation fails where a program's exit cannot be observed
+	// before it is reaped.
 	CheckExitObservation() error
-	Start(group.Command) (group.Process, error)
+	// Start starts program as it is given, its stderr written to the file
+	// stderr: no copy of it outlives the program's exit.
+	Start(program Program, stderr *os.File) (Process, error)
+}
+
+// Process is a started program and the group it leads.
+type Process interface {
+	// Stdout reads what the program writes to stdout. It ends once every
+	// holder of the writing end has closed it; closing it ends a read in
+	// progress.
+	Stdout() io.ReadCloser
+	// Signal signals every process of the group. Once Wait has begun, the
+	// group's ID may be another's.
+	Signal(syscall.Signal) error
+	// Exited returns once the program has exited, without reaping it: until
+	// Wait, its ID, and so the group's, stays reserved. An error means the
+	// exit could not be observed: Signal still reaches the group, and Wait
+	// still reaps the program.
+	Exited() error
+	// Wait reaps the program and says how it exited.
+	Wait() Exit
+}
+
+// Exit is how a program exited: the code it exited with, when Signal, the
+// name of the signal that ended it, is empty.
+type Exit struct {
+	Code   int
+	Signal string
 }
 
 // Captured reports the stream name (stdout or stderr) and total bytes read
@@ -83,12 +110,12 @@ type Captured func(name string, size int64)
 // Supervisor runs programs, the grace before a kill kept on its timer.
 type Supervisor struct {
 	timer    Timer
-	programs starter
+	programs Starter
 	captured Captured
 }
 
 // New gives a supervisor over programs, its grace on timer and read progress on captured.
-func New(timer Timer, programs starter, captured Captured) (*Supervisor, error) {
+func New(timer Timer, programs Starter, captured Captured) (*Supervisor, error) {
 	if timer == nil {
 		return nil, errors.New("supervisor: no timer")
 	}
@@ -113,13 +140,12 @@ func (s *Supervisor) Run(ctx context.Context, program Program) (Result, error) {
 	if err := s.programs.CheckExitObservation(); err != nil {
 		return Result{}, notStarted(program, err)
 	}
-	dir := program.Dir
-	if dir != "" {
-		resolved, err := filepath.EvalSymlinks(dir)
+	if program.Dir != "" {
+		resolved, err := filepath.EvalSymlinks(program.Dir)
 		if err != nil {
 			return Result{}, notStarted(program, err)
 		}
-		dir = resolved
+		program.Dir = resolved
 	}
 	// stderr is a pipe of its own, given to the program as a file: Wait
 	// then copies nothing, and returns once the program exits.
@@ -127,9 +153,7 @@ func (s *Supervisor) Run(ctx context.Context, program Program) (Result, error) {
 	if err != nil {
 		return Result{}, notStarted(program, err)
 	}
-	process, err := s.programs.Start(group.Command{
-		Name: program.Name, Args: program.Args, Dir: dir, Env: program.Env, Stderr: stderrWriter,
-	})
+	process, err := s.programs.Start(program, stderrWriter)
 	stderrWriter.Close()
 	if err != nil {
 		stderr.Close()
@@ -215,10 +239,7 @@ func (s *Supervisor) Run(ctx context.Context, program Program) (Result, error) {
 	}
 	stopHeld()
 
-	result := Result{Signal: exit.Signal, Stdout: out.kept(), Stderr: errs.kept()}
-	if exit.Code != nil {
-		result.Code = *exit.Code
-	}
+	result := Result{Code: exit.Code, Signal: exit.Signal, Stdout: out.kept(), Stderr: errs.kept()}
 	if observationErr != nil {
 		return result, fmt.Errorf("observing %s exiting: %w", program.Name, observationErr)
 	}
