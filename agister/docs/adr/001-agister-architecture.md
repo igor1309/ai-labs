@@ -39,6 +39,9 @@ program is an operating-system process Agister starts.
 
 ## Parts
 
+The parts as seen when this was designed, not a closed list: a part
+added later that keeps the rules below needs no revision.
+
 | Part | Responsibility |
 |---|---|
 | `cli` | Turns terminal commands into requests on the port it declares. The outer level; fails on bad input. The composition implements its port. |
