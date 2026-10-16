@@ -2,6 +2,7 @@ package check_test
 
 import (
 	"reflect"
+	"slices"
 	"testing"
 
 	"github.com/igor1309/ai-labs/agister/settings/check"
@@ -10,7 +11,9 @@ import (
 // spy is a spy of check's ports: the documents held, the answers of
 // resolve and the fields its test gives, and nothing else. A document it
 // is asked for that its test does not answer fails the test. It keeps
-// what it is asked, in order.
+// what it is asked, in order. It gives a copy of each answer, so a result
+// that changes what it was given does not change the test's expectation
+// with it.
 type spy struct {
 	t    *testing.T
 	held []check.Held
@@ -34,7 +37,13 @@ func newSpy(t *testing.T) *spy {
 	return &spy{t: t, answers: map[check.Reference]answer{}, fields: map[check.Reference][]check.Field{}}
 }
 
-func (s *spy) Held() []check.Held { return s.held }
+func (s *spy) Held() []check.Held {
+	held := slices.Clone(s.held)
+	for i := range held {
+		held[i].Layers = slices.Clone(held[i].Layers)
+	}
+	return held
+}
 
 func (s *spy) Resolve(document check.Reference) (check.Resolved, []check.Fault) {
 	s.resolved = append(s.resolved, document)
@@ -42,12 +51,31 @@ func (s *spy) Resolve(document check.Reference) (check.Resolved, []check.Fault) 
 	if !ok {
 		s.t.Errorf("resolve asked for %v, which the test does not answer", document)
 	}
-	return a.resolved, a.faults
+	resolved := check.Resolved{
+		Reached:  slices.Clone(a.resolved.Reached),
+		Plans:    slices.Clone(a.resolved.Plans),
+		Warnings: slices.Clone(a.resolved.Warnings),
+	}
+	for i, plan := range resolved.Plans {
+		for _, permissions := range []*[]string{&plan.Options, &plan.Required, &plan.Allowed, &plan.Granted, &plan.Extra, &plan.Withheld} {
+			*permissions = slices.Clone(*permissions)
+		}
+		resolved.Plans[i] = plan
+	}
+	faults := slices.Clone(a.faults)
+	for i := range faults {
+		faults[i].Chain = slices.Clone(faults[i].Chain)
+		faults[i].Problems = slices.Clone(faults[i].Problems)
+		if block := faults[i].Block; block != nil {
+			faults[i].Block = &check.Block{Reason: block.Reason, Source: block.Source}
+		}
+	}
+	return resolved, faults
 }
 
 func (s *spy) Problems() []check.Problem {
 	s.problems++
-	return s.none
+	return slices.Clone(s.none)
 }
 
 func (s *spy) Fields(document check.Reference) []check.Field {
@@ -56,7 +84,7 @@ func (s *spy) Fields(document check.Reference) []check.Field {
 	if !ok {
 		s.t.Errorf("fields asked for %v, which the test does not give", document)
 	}
-	return fields
+	return slices.Clone(fields)
 }
 
 // hold holds the documents, each in home.
@@ -297,6 +325,65 @@ func TestAWarningIsReportedOnceWithEveryNameItCameWith(t *testing.T) {
 	assertReport(t, got, check.Report{
 		Warnings: []check.Warning{{Problem: warning, With: []check.Reference{workflow("w"), workflow("w1"), workflow("w2")}}},
 		Names:    []check.Status{{Document: workflow("w"), Resolves: true}, {Document: workflow("w1"), Resolves: true}, {Document: workflow("w2"), Resolves: true}},
+	})
+}
+
+// check.feature, "A warning is reported once, with every name it came
+// with": a warning that differs from another in any of its source, its
+// place or its message is another warning, reported apart.
+func TestWarningsThatDifferAreReportedApart(t *testing.T) {
+	t.Parallel()
+	warning := check.Problem{Source: check.Source{File: "/home/.agister/workflows/w.yaml", Line: 4, Layer: check.LayerHome},
+		Place: "steps[0]", Message: "the runtime grants beyond the allowed: net"}
+	for name, differ := range map[string]func(*check.Problem){
+		"file":    func(p *check.Problem) { p.Source.File = "/home/.agister/workflows/v.yaml" },
+		"line":    func(p *check.Problem) { p.Source.Line = 9 },
+		"layer":   func(p *check.Problem) { p.Source.Layer = check.LayerRepository },
+		"place":   func(p *check.Problem) { p.Place = "steps[1]" },
+		"message": func(p *check.Problem) { p.Message = "the runtime grants beyond the allowed: tmp" },
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			other := warning
+			differ(&other)
+			s := newSpy(t)
+			s.hold(workflow("w1"), workflow("w2"))
+			s.answers[workflow("w1")] = answer{resolved: check.Resolved{Warnings: []check.Problem{warning, other}}}
+			s.answers[workflow("w2")] = answer{resolved: check.Resolved{Warnings: []check.Problem{other, warning}}}
+
+			got := newChecker(t, s).Check()
+
+			assertReport(t, got, check.Report{
+				Warnings: []check.Warning{
+					{Problem: warning, With: []check.Reference{workflow("w1"), workflow("w2")}},
+					{Problem: other, With: []check.Reference{workflow("w1"), workflow("w2")}},
+				},
+				Names: []check.Status{{Document: workflow("w1"), Resolves: true}, {Document: workflow("w2"), Resolves: true}},
+			})
+		})
+	}
+}
+
+// check.feature, "A fault met by many names is reported once, with each":
+// documents of one name and different kinds are different documents, each
+// at fault apart, with its own problems and the names it refuses.
+func TestDocumentsOfOneNameAndDifferentKindsAreReportedApart(t *testing.T) {
+	t.Parallel()
+	s := newSpy(t)
+	s.hold(workflow("w"), process("x"), agent("x"))
+	ofProcess, ofAgent := problem("prompt is missing"), problem("runtime is missing")
+	s.refuses([]check.Fault{at(ofAgent, workflow("w"), agent("x")), at(ofProcess, workflow("w"), process("x"))}, workflow("w"))
+	s.refuses([]check.Fault{at(ofProcess, process("x"))}, process("x"))
+	s.refuses([]check.Fault{at(ofAgent, agent("x"))}, agent("x"))
+
+	got := newChecker(t, s).Check()
+
+	assertReport(t, got, check.Report{
+		Findings: []check.Finding{
+			{Document: agent("x"), Problems: problem("runtime is missing"), Refuses: []check.Reference{workflow("w"), agent("x")}},
+			{Document: process("x"), Problems: problem("prompt is missing"), Refuses: []check.Reference{workflow("w"), process("x")}},
+		},
+		Names: []check.Status{{Document: workflow("w")}, {Document: process("x")}, {Document: agent("x")}},
 	})
 }
 

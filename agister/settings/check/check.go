@@ -110,7 +110,8 @@ type Resolved struct {
 
 // Plan is a step's plan (ADR-003, rule 4): the step, by its workflow's name
 // and its place there; its process, agent and runtime; the options it
-// takes; and the permissions it grants and those it withholds.
+// takes; and the permissions required, allowed, granted, granted beyond
+// the allowed, and allowed but withheld.
 type Plan struct {
 	Workflow string
 	Place    string
@@ -118,7 +119,10 @@ type Plan struct {
 	Agent    string
 	Runtime  string
 	Options  []string
+	Required []string
+	Allowed  []string
 	Granted  []string
+	Extra    []string
 	Withheld []string
 }
 

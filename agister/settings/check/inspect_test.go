@@ -117,7 +117,9 @@ func TestADocumentShownGivesEachFieldWithItsSource(t *testing.T) {
 	}
 }
 
-// inspect.feature, "A document shown gives what resolve gives".
+// inspect.feature, "A document shown gives what resolve gives", the plan
+// whole (ADR-003, rule 4): what is required, allowed, granted, granted
+// beyond the allowed and withheld.
 func TestADocumentShownGivesWhatResolveGives(t *testing.T) {
 	t.Parallel()
 	s := newSpy(t)
@@ -125,8 +127,16 @@ func TestADocumentShownGivesWhatResolveGives(t *testing.T) {
 	fields := []check.Field{{Place: "steps[0].process", Value: "p", Source: check.Source{File: "home/workflows/w.yaml", Line: 3, Layer: check.LayerHome}}}
 	s.fields[workflow("w")] = fields
 	resolved := check.Resolved{
-		Reached:  []check.Reference{workflow("w"), process("p"), agent("a")},
-		Plans:    []check.Plan{{Workflow: "w", Place: "steps[0]", Process: "p", Agent: "a", Runtime: "r", Granted: []string{"net"}}},
+		Reached: []check.Reference{workflow("w"), process("p"), agent("a")},
+		Plans: []check.Plan{{
+			Workflow: "w", Place: "steps[0]", Process: "p", Agent: "a", Runtime: "r",
+			Options:  []string{"--sandbox"},
+			Required: []string{"read"},
+			Allowed:  []string{"read", "edit"},
+			Granted:  []string{"read", "net"},
+			Extra:    []string{"net"},
+			Withheld: []string{"edit"},
+		}},
 		Warnings: []check.Problem{{Place: "steps[0]", Message: "the runtime grants beyond the allowed: net"}},
 	}
 	s.answers[workflow("w")] = answer{resolved: resolved}
