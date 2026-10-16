@@ -8,10 +8,10 @@
 # a scenario writes it as a document does. It gives what a run needs:
 # the workflow, every document it reached, by kind and name, the
 # definitions of the workflows, processes, agents and runtime mappings
-# among them, each step's plan, and its warnings; or a
-# refusal, with no warning: every document at fault, each with its
-# problems, or the block that refuses it, and the first chain that
-# reached it; and the problems of no document, the request's among them.
+# among them, each step's plan, and its warnings; or a refusal, with no
+# warning: the problems of no document, the source's, then the request's;
+# then every document at fault, each with its problems, or the block that
+# refuses it, and the first chain that reached it.
 
 Feature: Resolve takes a request naming a document or a step
 
@@ -50,6 +50,30 @@ Feature: Resolve takes a request naming a document or a step
     When resolve is asked for the agent "a"
     Then it gives no workflow
     And it reached the agent "a" and the runtime "r"
+
+  Scenario Outline: A document requested alone is followed, and planned not
+    Given the process "p" names the prompt "pr"
+    When resolve is asked for the <request>
+    Then it gives no workflow and no plan
+    And it reached <reached>
+
+    Examples:
+      | request      | reached                              |
+      | process "p"  | the process "p" and the prompt "pr" |
+      | prompt "pr"  | the prompt "pr"                      |
+
+  Scenario: A process requested alone has its own references checked
+    Given the process "p" has its environment's HEAD read "params.head",
+      which it does not declare
+    When resolve is asked for the process "p"
+    Then it refuses: the process "p", and the problem at
+      "environment.HEAD": its process declares the param "head"
+
+  Scenario: The problems of no document come before the documents at fault
+    Given the source has a problem of no document
+    And the process "p" has a problem
+    When resolve is asked for the process "p"
+    Then it refuses: the problem of no document, then the process "p"
 
   Scenario Outline: A problem of no document refuses every request
     Given the source has a problem of no document

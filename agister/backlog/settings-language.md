@@ -1,7 +1,7 @@
 ---
 date: 2026-10-15
 model: claude-opus-5-5
-description: "Backlog: the settings language: the next work, settings/resolve; the owner's decisions on research/borrowed-from-build-systems.md; operators against needs"
+description: "Backlog: the settings language: the next work, settings/check and the composition; the owner's decisions on research/borrowed-from-build-systems.md; operators against needs"
 ---
 
 # The settings language
@@ -12,13 +12,12 @@ changes unless a decision below says so.
 
 ## The next work
 
-`settings/documents` types every kind, and `agister/home` is in the
-language. Next is `settings/resolve` (`docs/settings-implementation.md`,
-step 6): a request, naming a workflow or a step (ADR-013), → what a run
-needs, or a refusal naming the chain. Then `settings/check`, and the
-composition: `settings/documents` types the repository's blocks file,
-each block a document by kind and name with its reason (ADR-002,
-rule 7; `settings/layout/blocks.feature` shows one with none).
+`settings/documents` types every kind, `agister/home` is in the
+language, and `settings/resolve` is built. Next is `settings/check`
+(`docs/settings-implementation.md`, "Check"), then the composition:
+`settings/documents` types the repository's blocks file, each block a
+document by kind and name with its reason (ADR-002, rule 7;
+`settings/layout/blocks.feature` shows one with none).
 `agister/.agister` stays: the installed Agister reads it when run in
 this repository.
 

@@ -67,6 +67,7 @@ goes to `backlog/`; nothing is dropped silently.
   TEST_DIR=agister
   FEATURES="agister/settings/<part>/*.feature"
   NOTES=agister/docs/settings-implementation.md
+  SECTION='the section "<title>"'   # the notes' part under review
   ```
 - Long runs (tests, Codex, agister, CI) in the background; wait for the
   notification, never poll.
