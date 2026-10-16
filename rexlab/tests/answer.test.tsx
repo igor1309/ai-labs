@@ -6,7 +6,7 @@ import { formatValue } from "../src/formatValue.ts";
 import { QuestionScreen, type QuestionScreenProps } from "../src/QuestionScreen.tsx";
 import { choose, score, startPlay } from "../src/quiz/play.ts";
 import { largerOf, type Attribute, type Dinosaur, type Question } from "../src/quiz/round.ts";
-import { SHIPPED_DINOSAURS, manualOrientation, seededRandom } from "./support.ts";
+import { SHIPPED_DINOSAURS, emptyProgress, manualOrientation, seededRandom } from "./support.ts";
 
 const byName = (name: string): Dinosaur => {
   const found = SHIPPED_DINOSAURS.find((d) => d.name === name);
@@ -35,7 +35,7 @@ function shownQuestion(): Question {
 const smallerOf = (question: Question) => (largerOf(question) === question.left ? question.right : question.left);
 
 function startRound(seed: number) {
-  render(<App dinosaurs={SHIPPED_DINOSAURS} random={seededRandom(seed)} orientation={manualOrientation("landscape")} />);
+  render(<App dinosaurs={SHIPPED_DINOSAURS} random={seededRandom(seed)} orientation={manualOrientation("landscape")} progress={emptyProgress()} />);
   const user = userEvent.setup();
   return { user, start: () => user.click(screen.getByRole("button", { name: "COMPARE" })) };
 }

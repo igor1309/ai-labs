@@ -71,7 +71,8 @@ button {
 }
 
 .home-button,
-.next-button {
+.next-button,
+.play-again-button {
   min-height: 4rem;
   padding: 0.5rem 1.5rem;
   border: 3px solid #2f4a1f;
@@ -163,4 +164,87 @@ button {
 
 .turn-sideways-picture {
   font-size: 10rem;
+}
+
+.result {
+  min-height: 100vh;
+  box-sizing: border-box;
+  padding: 1.5rem 2rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1.5rem;
+}
+
+.celebration {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  animation: celebrate 600ms ease-out both;
+}
+
+.celebration-picture {
+  font-size: 6rem;
+  line-height: 1;
+}
+
+.celebration-text {
+  font-size: 3rem;
+  font-weight: 800;
+  color: #8a4b00;
+}
+
+@keyframes celebrate {
+  0% {
+    transform: scale(0.3);
+    opacity: 0;
+  }
+  70% {
+    transform: scale(1.15);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .celebration {
+    animation: none;
+  }
+}
+
+.result-stars {
+  margin: 0;
+  display: flex;
+  gap: 0.25rem;
+  font-size: 3rem;
+  line-height: 1;
+}
+
+.star {
+  color: #c9d3bd;
+}
+
+.star-won {
+  color: #e0a100;
+}
+
+.result-score {
+  margin: 0;
+  font-size: 5rem;
+  font-weight: 800;
+}
+
+.best-score {
+  margin: 0;
+  font-size: 2.25rem;
+  font-weight: 700;
+}
+
+.result-actions {
+  display: flex;
+  gap: 2rem;
 }

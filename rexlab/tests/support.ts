@@ -1,5 +1,6 @@
 import records from "../src/data/dinosaurs.json";
 import { readDinosaurs } from "../src/dinosaurs.ts";
+import { localProgress, type KeyValueStorage } from "../src/localProgress.ts";
 import type { Orientation } from "../src/OrientationGate.tsx";
 import type { Random } from "../src/quiz/round.ts";
 
@@ -34,4 +35,33 @@ export function manualOrientation(initial: "portrait" | "landscape"): ManualOrie
       listeners.forEach((onChange) => onChange());
     }
   };
+}
+
+export type MemoryStorage = KeyValueStorage & { items: Map<string, string> };
+
+// Browser storage held in a map the test reads. `read: false` throws on
+// every read, as a browser that blocks storage does; `save: false` throws
+// on every write, as a full or read-only storage does.
+export function memoryStorage(
+  items: Record<string, string> = {},
+  { read = true, save = true }: { read?: boolean; save?: boolean } = {}
+): MemoryStorage {
+  const map = new Map(Object.entries(items));
+  return {
+    items: map,
+    getItem: (key) => {
+      if (!read) throw new DOMException("The storage cannot be read", "SecurityError");
+      return map.get(key) ?? null;
+    },
+    setItem: (key, value) => {
+      if (!save) throw new DOMException("The storage is full", "QuotaExceededError");
+      map.set(key, value);
+    }
+  };
+}
+
+// Progress for tests that are not about it: none kept yet, and saving works.
+export function emptyProgress() {
+  const storage = memoryStorage();
+  return localProgress(() => storage);
 }
