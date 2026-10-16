@@ -58,6 +58,18 @@ it('reports Reinix as a code component once implementation exists', () => {
   );
 });
 
+it('charts every project the script counts, and no repo-text row', () => {
+  const script = readFileSync('scripts/loc-dashboard.sh', 'utf8');
+  const projects = script.match(/^for proj in ([^;]+); do$/m)[1].split(' ');
+  const html = readFileSync('docs/loc-dashboard.html', 'utf8');
+  const charted = [...html.matchAll(/\{ name: "([^"]+)",/g)].map((match) => match[1]);
+
+  assert.deepEqual(
+    charted.filter((name) => name !== 'repo-scripts').sort(),
+    [...projects].sort()
+  );
+});
+
 it('counts scripts tests in the repo-scripts test total', () => {
   const output = execFileSync('bash', ['scripts/loc-dashboard.sh'], {
     cwd: process.cwd(),
