@@ -51,9 +51,10 @@ type host struct {
 }
 
 // turn is the one runtime this slice takes a turn on: the contract of its
-// wrapper, and its turns.
+// wrapper, how it takes a call's inputs, and its turns.
 type turn struct {
 	contract string
+	inputs   call.Inputs
 	runtime  call.Runtime
 }
 
@@ -61,18 +62,20 @@ type turn struct {
 // "The first run"): a request resolves over the settings of home's folder
 // and its launch directory, read once; what this slice does not run is
 // refused before anything runs; and the workflow runs in the root of the
-// git worktree that holds the launch directory, a signal cancelling it.
+// git worktree that holds the launch directory, a signal cancelling it. A
+// call's output is checked against its schema by the validator.
 type runs struct {
-	home     string
-	links    links
-	fs       layout.FileSystem
-	roots    layout.WorktreeRoot
-	wrappers resolve.Wrappers
-	turn     turn
-	host     host
+	home      string
+	links     links
+	fs        layout.FileSystem
+	roots     layout.WorktreeRoot
+	wrappers  resolve.Wrappers
+	turn      turn
+	validator call.Validator
+	host      host
 }
 
-func newRuns(home string, links links, fs layout.FileSystem, roots layout.WorktreeRoot, wrappers resolve.Wrappers, turn turn, host host) (*runs, error) {
+func newRuns(home string, links links, fs layout.FileSystem, roots layout.WorktreeRoot, wrappers resolve.Wrappers, turn turn, validator call.Validator, host host) (*runs, error) {
 	switch {
 	case home == "":
 		return nil, errors.New("runs: no home")
@@ -86,6 +89,10 @@ func newRuns(home string, links links, fs layout.FileSystem, roots layout.Worktr
 		return nil, errors.New("runs: no wrappers")
 	case turn.contract == "" || turn.runtime == nil:
 		return nil, errors.New("runs: no turn")
+	case turn.inputs == 0:
+		return nil, errors.New("runs: no turn's inputs")
+	case validator == nil:
+		return nil, errors.New("runs: no validator")
 	case host.ctx == nil:
 		return nil, errors.New("runs: no context")
 	case host.clock == nil:
@@ -95,7 +102,7 @@ func newRuns(home string, links links, fs layout.FileSystem, roots layout.Worktr
 	case host.signals == nil:
 		return nil, errors.New("runs: no signals")
 	}
-	return &runs{home: home, links: links, fs: fs, roots: roots, wrappers: wrappers, turn: turn, host: host}, nil
+	return &runs{home: home, links: links, fs: fs, roots: roots, wrappers: wrappers, turn: turn, validator: validator, host: host}, nil
 }
 
 func (r *runs) Run(launch string, request cli.Request) (cli.Result, error) {
@@ -140,7 +147,7 @@ func (r *runs) Run(launch string, request cli.Request) (cli.Result, error) {
 // runner is core's runner of built, its calls' turns taken in dir over
 // Agister's environment.
 func (r *runs) runner(built plan, dir string) (*workflow.Runner, error) {
-	caller, err := call.New(r.turn.runtime, r.host.clock, r.host.timer, dir, r.host.environ)
+	caller, err := call.New(r.turn.runtime, r.turn.inputs, r.validator, r.host.clock, r.host.timer, dir, r.host.environ)
 	if err != nil {
 		return nil, err
 	}
@@ -648,8 +655,10 @@ type turnCaller interface {
 
 // stepCalls answers core/workflow's caller from core/inputs and core/call:
 // a step's process's inputs and environment are resolved over the params
-// its bindings give before its call starts, and one that cannot be
-// resolved refuses the call, its turn not taken.
+// its bindings give before its call starts, the inputs given in the order
+// its process declares them, and one that cannot be resolved refuses the
+// call, its turn not taken. A call with no usage, as on bash, has every
+// count of it unknown.
 type stepCalls struct {
 	inputs declaredResolver
 	caller turnCaller
@@ -679,14 +688,24 @@ func (s *stepCalls) Call(ctx context.Context, name string, params map[string]str
 		return s.refused(planned.step.Warnings)
 	}
 	step := planned.step
-	step.Environment, step.Inputs = resolved.Environment, values(resolved.Inputs)
+	step.Environment = resolved.Environment
+	for _, input := range planned.declared.Inputs {
+		step.Inputs = append(step.Inputs, call.Named{Name: input.Name, Text: resolved.Inputs[input.Name].Value})
+	}
 	called := s.caller.Call(ctx, step)
+	var usage workflow.Usage
+	if u := called.Usage; u != nil {
+		usage = workflow.Usage(*u)
+	}
 	return workflow.Result{
 		Status:   workflow.Status(called.Status),
 		Class:    workflow.Class(called.Class),
 		Output:   called.Output,
 		Timing:   workflow.Timing{Started: called.Timing.Started, Ended: called.Timing.Ended, Duration: called.Timing.Duration},
 		Cost:     called.Cost,
+		Usage:    usage,
+		Session:  called.Session,
+		Reason:   called.Reason,
 		Warnings: called.Warnings,
 	}
 }
@@ -706,6 +725,9 @@ func cliResult(result workflow.Result) cli.Result {
 		Output:   result.Output,
 		Timing:   cli.Timing{Started: result.Timing.Started, Ended: result.Timing.Ended, Duration: result.Timing.Duration},
 		Cost:     result.Cost,
+		Usage:    cli.Usage(result.Usage),
+		Sessions: result.Sessions,
+		Reason:   result.Reason,
 		Warnings: result.Warnings,
 	}
 }
@@ -713,6 +735,18 @@ func cliResult(result workflow.Result) cli.Result {
 // bashRuns is what a turn on bash asks of the bash wrapper.
 type bashRuns interface {
 	Run(ctx context.Context, turn bash.Turn) (bash.Ended, error)
+}
+
+// bashInputs is how core/call takes a call's inputs on bash, as its
+// wrapper's facts say.
+func bashInputs(inputs bash.Inputs) call.Inputs {
+	switch inputs {
+	case bash.InEnvironment:
+		return call.InEnvironment
+	case bash.InMessage:
+		return call.InMessage
+	}
+	return 0
 }
 
 // bashTurns answers core/call's runtime from the bash wrapper: the turn's

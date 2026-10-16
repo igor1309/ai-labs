@@ -111,8 +111,8 @@ func notified(kinds ...os.Signal) signals {
 
 // build is the command line over links, fs and roots and every runtime
 // wrapper's facts, the bash wrapper's turns run by programs, its runs on
-// machine, for the user whose home directory is user: home's folder is
-// its ".agister" (ADR-002, rule 2).
+// machine, a call's output checked by jsonschema, for the user whose home
+// directory is user: home's folder is its ".agister" (ADR-002, rule 2).
 func build(user string, links links, fs layout.FileSystem, roots layout.WorktreeRoot, programs programs, machine host, stdout, stderr io.Writer) (*cli.CLI, error) {
 	supervising, err := newSupervised(programs)
 	if err != nil {
@@ -148,7 +148,9 @@ func build(user string, links links, fs layout.FileSystem, roots layout.Worktree
 		return nil, err
 	}
 	home := filepath.Join(user, ".agister")
-	runner, err := newRuns(home, links, fs, roots, wrappers, turn{contract: b.Facts().Contract, runtime: turns}, machine)
+	facts := b.Facts()
+	runner, err := newRuns(home, links, fs, roots, wrappers,
+		turn{contract: facts.Contract, inputs: bashInputs(facts.Inputs), runtime: turns}, schemaValidator{}, machine)
 	if err != nil {
 		return nil, err
 	}
