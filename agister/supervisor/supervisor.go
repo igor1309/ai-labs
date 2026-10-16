@@ -2,7 +2,8 @@
 // types: it starts a program in a directory with an environment, the
 // program leading a process group of its own; keeps the ends of its stdout
 // and stderr, with their size and digest; and ends all the group started,
-// when its context ends and when the program exits.
+// when its context ends and when the program exits. Output held open by a
+// process that left the group is read no longer than the grace.
 package supervisor
 
 import (
@@ -26,7 +27,8 @@ const (
 	// Kept is how much of each end of a stream is kept, in bytes.
 	Kept = 16 << 10
 	// Grace is how long a program told to end by SIGTERM has before its
-	// group is killed.
+	// group is killed, and how long its streams are read once it and its
+	// group have ended.
 	Grace = 2 * time.Second
 )
 
@@ -55,11 +57,13 @@ type Result struct {
 
 // Stream is what is kept of one of a program's streams: its first and its
 // last Kept bytes, which overlap when it is shorter than twice that, its
-// size and the hex SHA-256 digest of the whole.
+// size and the hex SHA-256 digest of the whole. A stream not read to its
+// end is Incomplete: what was read of it is kept so.
 type Stream struct {
 	Head, Tail string
 	Size       int64
 	Digest     string
+	Incomplete bool
 }
 
 // Timer starts a wait: fired delivers once it has passed, and stop
@@ -83,7 +87,9 @@ func New(timer Timer) (*Supervisor, error) {
 // ended. The directory is given with its links resolved, so the program's
 // working directory and its PWD name the same path. When ctx ends, the
 // group is sent SIGTERM, then SIGKILL once Grace has passed; when the
-// program exits, what it left running in its group is killed. A program
+// program exits, what it left running in its group is killed. A stream
+// held open once the group has ended, by a process that left it, is read
+// no longer than Grace on the timer, and is then incomplete. A program
 // that cannot start is an error wrapping ErrNotStarted.
 func (s *Supervisor) Run(ctx context.Context, program Program) (Result, error) {
 	dir := program.Dir
@@ -112,10 +118,21 @@ func (s *Supervisor) Run(ctx context.Context, program Program) (Result, error) {
 	defer stdout.Close()
 	defer stderr.Close()
 	out, errs := newStream(), newStream()
-	var read sync.WaitGroup
-	read.Add(2)
-	go func() { defer read.Done(); _, _ = io.Copy(out, stdout) }()
-	go func() { defer read.Done(); _, _ = io.Copy(errs, stderr) }()
+	var reading sync.WaitGroup
+	reading.Add(2)
+	for _, copied := range []struct {
+		to   *stream
+		from io.Reader
+	}{{out, stdout}, {errs, stderr}} {
+		go func() {
+			defer reading.Done()
+			if _, err := io.Copy(copied.to, copied.from); err != nil {
+				copied.to.incomplete = true
+			}
+		}()
+	}
+	read := make(chan struct{})
+	go func() { reading.Wait(); close(read) }()
 
 	// The group is signalled only while the unreaped program keeps its ID
 	// reserved: reaping is set, under mu, before the program is reaped,
@@ -163,8 +180,17 @@ func (s *Supervisor) Run(ctx context.Context, program Program) (Result, error) {
 	exit := process.Wait()
 	close(exited)
 	<-watched
-	// Every holder of the pipes was in the group, killed by now.
-	read.Wait()
+	// What the group held of the pipes is closed by now; a process that left
+	// the group may hold them still, for as long as it runs.
+	held, stopHeld := s.timer(Grace)
+	select {
+	case <-read:
+	case <-held:
+		stdout.Close()
+		stderr.Close()
+		<-read
+	}
+	stopHeld()
 
 	result := Result{Signal: exit.Signal, Stdout: out.kept(), Stderr: errs.kept()}
 	if exit.Code != nil {
@@ -182,6 +208,7 @@ type stream struct {
 	head, tail []byte
 	size       int64
 	digest     hash.Hash
+	incomplete bool
 }
 
 func newStream() *stream { return &stream{digest: sha256.New()} }
@@ -202,6 +229,6 @@ func (s *stream) Write(p []byte) (int, error) {
 func (s *stream) kept() Stream {
 	return Stream{
 		Head: string(s.head), Tail: string(s.tail), Size: s.size,
-		Digest: hex.EncodeToString(s.digest.Sum(nil)),
+		Digest: hex.EncodeToString(s.digest.Sum(nil)), Incomplete: s.incomplete,
 	}
 }

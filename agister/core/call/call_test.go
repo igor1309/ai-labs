@@ -147,6 +147,31 @@ func TestHowTheTurnEndedDecidesTheStatusAndClass(t *testing.T) {
 	}
 }
 
+// call.feature, "A call whose context is already cancelled makes no turn":
+// no turn is asked and no time limit kept, and its timing is the clock's.
+func TestACallWhoseContextIsAlreadyCancelledMakesNoTurn(t *testing.T) {
+	t.Parallel()
+	clock := clocktest.NewClock(start)
+	spy := &runtimeSpy{turn: exits(call.Ended{Code: 0})}
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	got := caller(t, spy, clock, "/r").Call(ctx, call.Step{Prompt: "s", TimeLimit: time.Second, Warnings: []string{"w"}})
+	want := call.Result{
+		Status: call.Interrupted, Class: call.Cancelled,
+		Timing:   call.Timing{Started: start, Ended: start},
+		Warnings: []string{"w"},
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("result %+v, want %+v", got, want)
+	}
+	if len(spy.given) > 0 {
+		t.Errorf("turns %+v, want none", spy.given)
+	}
+	if waits := clock.Waits(); len(waits) > 0 {
+		t.Errorf("timers %v, want none", waits)
+	}
+}
+
 // call.feature, "A completed call's output is the exit code and both
 // streams".
 func TestACompletedCallsOutputIsTheExitCodeAndBothStreams(t *testing.T) {

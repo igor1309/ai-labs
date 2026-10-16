@@ -144,22 +144,32 @@ var (
 // Call makes step's one turn, its environment the caller's, then the
 // process's, then each input by its name, and ends it at the step's time
 // limit or when ctx ends. A turn whose context the call ended ends
-// interrupted, however its program then exited.
+// interrupted, however its program then exited. A call whose ctx has
+// already ended makes no turn: its program would start, and act, only to
+// be ended.
 func (c *Caller) Call(ctx context.Context, step Step) Result {
-	turnCtx, cancel := context.WithCancelCause(ctx)
 	started := c.clock.Now()
+	timed := func() Result {
+		finished := c.clock.Now()
+		return Result{
+			Timing:   Timing{Started: started, Ended: finished, Duration: finished.Sub(started)},
+			Warnings: slices.Clone(step.Warnings),
+		}
+	}
+	if ctx.Err() != nil {
+		result := timed()
+		result.Status, result.Class = Interrupted, Cancelled
+		return result
+	}
+	turnCtx, cancel := context.WithCancelCause(ctx)
 	watched := c.watch(turnCtx, cancel, step.TimeLimit)
 	ended, err := c.runtime.Turn(turnCtx, Turn{Prompt: step.Prompt, Dir: c.dir, Env: c.environment(step)})
 	// The cause is fixed once the turn has returned: a limit that passes
 	// later ends nothing.
 	cancel(errTurnReturn)
 	<-watched
-	finished := c.clock.Now()
 
-	result := Result{
-		Timing:   Timing{Started: started, Ended: finished, Duration: finished.Sub(started)},
-		Warnings: slices.Clone(step.Warnings),
-	}
+	result := timed()
 	switch cause := context.Cause(turnCtx); {
 	case errors.Is(cause, errTimeout):
 		result.Status, result.Class = Interrupted, Timeout

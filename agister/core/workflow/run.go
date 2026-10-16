@@ -31,27 +31,11 @@ type Class string
 // could not be resolved: no later step starts.
 const Refused Class = "refused"
 
-// Workflow is what a run executes: its params and its inputs, each in its
-// order; its steps, in sequence; and its output mapping.
+// Workflow is what a run executes: its steps, in sequence, and its output
+// mapping.
 type Workflow struct {
-	Params  []Param
-	Inputs  []Input
 	Steps   []Step
 	Outputs []Binding
-}
-
-// Param is a param a caller gives, with its default, nil for none.
-type Param struct {
-	Name    string
-	Default *string
-}
-
-// Input is an input of the workflow, by name: the source it comes from and
-// the arguments the source takes.
-type Input struct {
-	Name      string
-	Source    string
-	Arguments []Binding
 }
 
 // Step is a step of the workflow, by its name, unique in the workflow, and
@@ -99,10 +83,11 @@ type Boundary struct {
 	Inputs map[string]string
 }
 
-// Resolver resolves the workflow's params and inputs over the params given.
-// An error refuses the run.
+// Resolver resolves the workflow's boundary over the params given: what
+// the workflow declares of its params and inputs is the resolver's. An
+// error refuses the run.
 type Resolver interface {
-	Resolve(ctx context.Context, params []Param, inputs []Input, given map[string]string) (Boundary, error)
+	Resolve(ctx context.Context, given map[string]string) (Boundary, error)
 }
 
 // Caller calls the step named step, its process's params given by name.
@@ -172,7 +157,7 @@ func (r *Runner) Run(ctx context.Context, w Workflow, given map[string]string) R
 		return finish()
 	}
 
-	boundary, err := r.resolver.Resolve(ctx, w.Params, w.Inputs, given)
+	boundary, err := r.resolver.Resolve(ctx, given)
 	if err != nil {
 		return refuse()
 	}

@@ -16,24 +16,18 @@ import (
 // the step called.
 type trail []string
 
-// resolverSpy answers the boundary with its test's answer, and keeps what
-// it is asked.
+// resolverSpy answers the boundary with its test's answer, and keeps the
+// params it is given each time it is asked.
 type resolverSpy struct {
 	trail  *trail
 	answer workflow.Boundary
 	err    error
-	asked  []resolved
+	asked  []map[string]string
 }
 
-type resolved struct {
-	params []workflow.Param
-	inputs []workflow.Input
-	given  map[string]string
-}
-
-func (s *resolverSpy) Resolve(_ context.Context, params []workflow.Param, inputs []workflow.Input, given map[string]string) (workflow.Boundary, error) {
+func (s *resolverSpy) Resolve(_ context.Context, given map[string]string) (workflow.Boundary, error) {
 	*s.trail = append(*s.trail, "resolve")
-	s.asked = append(s.asked, resolved{params: params, inputs: inputs, given: given})
+	s.asked = append(s.asked, given)
 	return s.answer, s.err
 }
 
@@ -137,7 +131,6 @@ func TestEachStepIsCalledInOrderItsParamsBound(t *testing.T) {
 	f := newFixture(t, workflow.Boundary{Params: map[string]string{"goal": "x"}},
 		map[string]func() workflow.Result{"a": completes(0)})
 	got := f.runner.Run(context.Background(), workflow.Workflow{
-		Params: []workflow.Param{{Name: "goal"}},
 		Steps: []workflow.Step{
 			{Name: "a", Bindings: []workflow.Binding{bind("g", param("goal"))}},
 			{Name: "b", Bindings: []workflow.Binding{bind("code", outputs("a", "exit_code"))}},
@@ -207,7 +200,8 @@ func TestABindingReadsAFieldWithinAStepsOutputField(t *testing.T) {
 	}
 }
 
-// run.feature, "The workflow's inputs are resolved once, at its boundary".
+// run.feature, "The workflow's inputs are resolved once, at its boundary":
+// the input "goal" from the param "g" is the resolver's, which answers it.
 func TestTheWorkflowsInputsAreResolvedOnceAtItsBoundary(t *testing.T) {
 	t.Parallel()
 	f := newFixture(t, workflow.Boundary{
@@ -215,17 +209,14 @@ func TestTheWorkflowsInputsAreResolvedOnceAtItsBoundary(t *testing.T) {
 		Inputs: map[string]string{"goal": "x"},
 	}, nil)
 	w := workflow.Workflow{
-		Params: []workflow.Param{{Name: "g"}},
-		Inputs: []workflow.Input{{Name: "goal", Source: "param", Arguments: []workflow.Binding{bind("name", text("g"))}}},
-		Steps:  []workflow.Step{{Name: "a", Bindings: []workflow.Binding{bind("t", input("goal"))}}},
+		Steps: []workflow.Step{{Name: "a", Bindings: []workflow.Binding{bind("t", input("goal"))}}},
 	}
 	f.runner.Run(context.Background(), w, map[string]string{"g": "x"})
 	if want := (trail{"resolve", "a"}); !slices.Equal(f.trail, want) {
 		t.Errorf("asked %q, want %q", f.trail, want)
 	}
-	want := []resolved{{params: w.Params, inputs: w.Inputs, given: map[string]string{"g": "x"}}}
-	if !reflect.DeepEqual(f.resolver.asked, want) {
-		t.Errorf("resolved\n got %+v\nwant %+v", f.resolver.asked, want)
+	if want := []map[string]string{{"g": "x"}}; !reflect.DeepEqual(f.resolver.asked, want) {
+		t.Errorf("resolved over\n got %v\nwant %v", f.resolver.asked, want)
 	}
 	if want := []map[string]string{{"t": "x"}}; !reflect.DeepEqual(f.caller.params, want) {
 		t.Errorf("params %v, want %v", f.caller.params, want)
@@ -271,8 +262,6 @@ func TestTheRunsOutputIsItsOutputMapping(t *testing.T) {
 				Inputs: map[string]string{"i": "x"},
 			}, map[string]func() workflow.Result{"a": completes(7)})
 			got := f.runner.Run(context.Background(), workflow.Workflow{
-				Params:  []workflow.Param{{Name: "p"}},
-				Inputs:  []workflow.Input{{Name: "i", Source: "param", Arguments: []workflow.Binding{bind("name", text("p"))}}},
 				Steps:   []workflow.Step{{Name: "a"}, {Name: "b"}},
 				Outputs: []workflow.Binding{bind("result", c.value)},
 			}, map[string]string{"p": "x"})
@@ -343,19 +332,18 @@ func TestARunsCostIsItsCallsSummedWhenEachIsKnown(t *testing.T) {
 	}
 }
 
-// run.feature, "A param not given takes its default": the params bound
-// are those the boundary resolved, defaults included, not those given.
+// run.feature, "A param not given takes its default": the default is the
+// resolver's, and the params bound are those the boundary resolved,
+// defaults included, not those given.
 func TestAParamNotGivenTakesItsDefault(t *testing.T) {
 	t.Parallel()
 	f := newFixture(t, workflow.Boundary{Params: map[string]string{"base": "main"}}, nil)
-	main := "main"
 	w := workflow.Workflow{
-		Params: []workflow.Param{{Name: "base", Default: &main}},
-		Steps:  []workflow.Step{{Name: "a", Bindings: []workflow.Binding{bind("b", param("base"))}}},
+		Steps: []workflow.Step{{Name: "a", Bindings: []workflow.Binding{bind("b", param("base"))}}},
 	}
 	f.runner.Run(context.Background(), w, nil)
-	if len(f.resolver.asked) != 1 || !reflect.DeepEqual(f.resolver.asked[0].params, w.Params) || len(f.resolver.asked[0].given) != 0 {
-		t.Errorf("resolved %+v, want the param base, default main, none given", f.resolver.asked)
+	if len(f.resolver.asked) != 1 || len(f.resolver.asked[0]) != 0 {
+		t.Errorf("resolved over %v, want once, no param given", f.resolver.asked)
 	}
 	if want := []map[string]string{{"b": "main"}}; !reflect.DeepEqual(f.caller.params, want) {
 		t.Errorf("params %v, want %v", f.caller.params, want)

@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"slices"
 	"strconv"
@@ -18,6 +19,38 @@ import (
 	"github.com/igor1309/ai-labs/agister/supervisor"
 	"github.com/igor1309/ai-labs/gokit/clocktest"
 )
+
+// helperEnv set makes the test binary the program its value names, in
+// place of its tests.
+const helperEnv = "AGISTER_SUPERVISOR_HELPER"
+
+func TestMain(m *testing.M) {
+	switch os.Getenv(helperEnv) {
+	case "":
+		os.Exit(m.Run())
+	case "escape":
+		// Starts the binary as a sleeper in a session of its own, holding
+		// stdout and stderr; writes its ID to PID_FILE and "started" to
+		// stdout; then exits 0.
+		child := exec.Command(os.Args[0])
+		child.Env = append(os.Environ(), helperEnv+"=sleep")
+		child.Stdout, child.Stderr = os.Stdout, os.Stderr
+		child.SysProcAttr = &syscall.SysProcAttr{Setsid: true}
+		if err := child.Start(); err != nil {
+			os.Exit(2)
+		}
+		if err := os.WriteFile(os.Getenv("PID_FILE"), []byte(strconv.Itoa(child.Process.Pid)), 0o600); err != nil {
+			os.Exit(2)
+		}
+		os.Stdout.WriteString("started\n")
+		os.Exit(0)
+	case "sleep":
+		// Never ends by itself: its test kills it.
+		for {
+			time.Sleep(time.Hour)
+		}
+	}
+}
 
 // goneBound is how long a killed group's processes may take to be reaped
 // by the system, which gives no event of it.
@@ -191,23 +224,27 @@ func TestAProgramThatCannotStartIsAnErrorThatSaysSo(t *testing.T) {
 // started". The child writes the signal it traps to the file "child", and
 // the program, trapping SIGTERM, waits for the child to end before it
 // ends itself by the signal: so each shows it was sent SIGTERM, and the
-// grace timer never fires.
+// grace timer never fires. Each says it is ready, the program once it
+// holds the child's ID, before the context ends.
 //
 // Contract test: the operating system, signalling a real process group.
 func TestAnEndedContextEndsTheProgramAndAllItStarted(t *testing.T) {
 	t.Parallel()
 	s, clock := newSupervisor(t)
 	dir := t.TempDir()
-	started := fifo(t, dir, "started")
+	started, ready := fifo(t, dir, "started"), fifo(t, dir, "ready")
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	child := `trap 'echo SIGTERM > child; exit 0' TERM; sleep 60 & echo $$ > started; wait`
 	done := runInBackground(ctx, s, sh(
-		`trap 'wait "$child"; trap - TERM; kill -TERM $$' TERM; sh -c "$CHILD" & child=$!; wait`,
+		`trap 'wait "$child"; trap - TERM; kill -TERM $$' TERM; sh -c "$CHILD" & child=$!; echo $$ > ready; wait`,
 		dir, "CHILD="+child))
 	group, err := syscall.Getpgid(pidFrom(t, started))
 	if err != nil {
 		t.Fatal(err)
+	}
+	if program := pidFrom(t, ready); program != group {
+		t.Fatalf("the program %d leads no group of the child's %d", program, group)
 	}
 	cancel()
 	got := <-done
@@ -220,8 +257,10 @@ func TestAnEndedContextEndsTheProgramAndAllItStarted(t *testing.T) {
 	if trapped, err := os.ReadFile(filepath.Join(dir, "child")); err != nil || string(trapped) != "SIGTERM\n" {
 		t.Errorf("the child trapped %q, %v, want SIGTERM", trapped, err)
 	}
-	if waits := clock.Waits(); !slices.Equal(waits, []time.Duration{supervisor.Grace}) || clock.Pending() != 0 {
-		t.Errorf("timers started %v, %d pending, want the grace of %s alone, stopped", waits, clock.Pending(), supervisor.Grace)
+	// The second grace is the streams': it is started once the group has
+	// ended, whatever holds them.
+	if waits := clock.Waits(); !slices.Equal(waits, []time.Duration{supervisor.Grace, supervisor.Grace}) || clock.Pending() != 0 {
+		t.Errorf("timers started %v, %d pending, want the grace of %s for the kill, then the streams', each stopped", waits, clock.Pending(), supervisor.Grace)
 	}
 	gone(t, group)
 }
@@ -272,6 +311,60 @@ func TestWhatAProgramLeavesRunningIsEndedWhenItExits(t *testing.T) {
 		t.Fatal(err)
 	}
 	gone(t, group)
+}
+
+// supervisor.feature, "Output held open by what left the group is not
+// waited on". The program is the test binary, which starts itself as a
+// sleeper in a session of its own, holding stdout and stderr, and exits:
+// the sleeper never ends by itself, so a run that returns was ended by the
+// grace. What was read before it passed is kept, its size and digest its
+// own, whatever the reads had reached.
+//
+// Contract test: the operating system, a process that leaves its group
+// holding the pipes.
+func TestOutputHeldOpenByWhatLeftTheGroupIsNotWaitedOn(t *testing.T) {
+	t.Parallel()
+	s, clock := newSupervisor(t)
+	pidFile := filepath.Join(t.TempDir(), "pid")
+	t.Cleanup(func() {
+		if pid, err := strconv.Atoi(readText(pidFile)); err == nil && pid > 1 {
+			_ = syscall.Kill(pid, syscall.SIGKILL)
+		}
+	})
+	done := runInBackground(context.Background(), s, supervisor.Program{
+		Name: os.Args[0], Dir: t.TempDir(), Env: []string{helperEnv + "=escape", "PID_FILE=" + pidFile},
+	})
+	// The program exits by itself: the one grace is the streams'.
+	clock.Started(supervisor.Grace)
+	clock.Advance(supervisor.Grace)
+	got := <-done
+	if got.err != nil {
+		t.Fatal(got.err)
+	}
+	if got.result.Code != 0 || got.result.Signal != "" {
+		t.Errorf("ended with code %d, signal %q, want code 0", got.result.Code, got.result.Signal)
+	}
+	for name, kept := range map[string]struct {
+		stream  supervisor.Stream
+		written string
+	}{"stdout": {got.result.Stdout, "started\n"}, "stderr": {got.result.Stderr, ""}} {
+		read := kept.stream.Head
+		sum := sha256.Sum256([]byte(read))
+		want := supervisor.Stream{Head: read, Tail: read, Size: int64(len(read)), Digest: hex.EncodeToString(sum[:]), Incomplete: true}
+		if kept.stream != want || !strings.HasPrefix(kept.written, read) {
+			t.Errorf("%s %+v, want what was read of %q, kept, and marked incomplete", name, kept.stream, kept.written)
+		}
+	}
+}
+
+// readText is the text of the file at path, spaces trimmed; "" when it
+// cannot be read.
+func readText(path string) string {
+	written, err := os.ReadFile(path)
+	if err != nil {
+		return ""
+	}
+	return strings.TrimSpace(string(written))
 }
 
 // supervisor.feature, "A signal from elsewhere is given by name".

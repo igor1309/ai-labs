@@ -319,11 +319,8 @@ func TestWhatThisSliceDoesNotRunIsRefusedBeforeAnything(t *testing.T) {
 }
 
 // run.feature, "A workflow with an item that is not a step is refused".
-// Of code_review's documents, the workflow gives three inputs from other
-// sources than "param", the third with a brief form, and the parallel
-// "reviews"; its step "judge" is on claude-code; and its process
-// "review_judge" has a staleness limit. Its instruction is not named: it
-// is not on bash.
+// A process's instruction is named only for a step on bash: on another
+// runtime, the runtime's turn is named instead.
 //
 // Contract test: the files home holds, as Agister ships them.
 func TestAWorkflowWithAnItemThatIsNotAStepIsRefused(t *testing.T) {
@@ -444,14 +441,14 @@ func TestARunAsksGitForTheRootOnce(t *testing.T) {
 }
 
 // sayCall is the call of the process "say" of runSettings, its script
-// prompt and its plan's one warning "w".
+// prompt, its time limit a minute and its plan's one warning "w".
 func sayCall(prompt string) plannedCall {
 	return plannedCall{
 		declared: inputs.Declared{
 			Params: []inputs.Param{{Name: "what"}},
 			Inputs: []inputs.Input{{Name: "what", Source: "param", Arguments: map[string]inputs.Value{"name": {Text: "what"}}}},
 		},
-		step: call.Step{Prompt: prompt, Warnings: []string{"w"}},
+		step: call.Step{Prompt: prompt, TimeLimit: time.Minute, Warnings: []string{"w"}},
 	}
 }
 
@@ -468,7 +465,8 @@ func (s *turnSpy) Call(_ context.Context, step call.Step) call.Result {
 }
 
 // A step's call is given its process's environment and inputs, resolved
-// over the params its bindings give, and gives core/call's result in
+// over the params its bindings give, and its plan's time limit, and gives
+// core/call's result in
 // core/workflow's words; one whose inputs cannot be resolved is refused,
 // failed, class "refused", with its plan's warnings, and no turn is
 // taken.
@@ -497,7 +495,8 @@ func TestAStepsCallResolvesItsInputsBeforeItStarts(t *testing.T) {
 	if !reflect.DeepEqual(got, want) {
 		t.Errorf("a gave %+v, want %+v", got, want)
 	}
-	wantStep := call.Step{Prompt: `echo "$what"`, Environment: map[string]string{"MODE": "quiet"}, Inputs: map[string]string{"what": "hi"}, Warnings: []string{"w"}}
+	wantStep := call.Step{Prompt: `echo "$what"`, Environment: map[string]string{"MODE": "quiet"}, Inputs: map[string]string{"what": "hi"},
+		TimeLimit: time.Minute, Warnings: []string{"w"}}
 	if len(spy.steps) != 1 || !reflect.DeepEqual(spy.steps[0], wantStep) {
 		t.Errorf("called %+v, want %+v", spy.steps, wantStep)
 	}
@@ -512,19 +511,36 @@ func TestAStepsCallResolvesItsInputsBeforeItStarts(t *testing.T) {
 	}
 }
 
-// A workflow's params and inputs reach core/inputs at its boundary, a
-// param's default and an input's arguments with them.
+// inputsSpy is a spy of core/inputs: it keeps what it is asked to
+// resolve, and answers resolved and err.
+type inputsSpy struct {
+	resolved inputs.Resolved
+	err      error
+	declared []inputs.Declared
+	given    []map[string]string
+}
+
+func (s *inputsSpy) Resolve(_ context.Context, declared inputs.Declared, given map[string]string) (inputs.Resolved, error) {
+	s.declared = append(s.declared, declared)
+	s.given = append(s.given, given)
+	return s.resolved, s.err
+}
+
+// A workflow's boundary is what it declares, resolved by core/inputs over
+// the params given: its params and each input's value; core/inputs'
+// refusal refuses it.
 func TestTheBoundaryIsResolvedByCoreInputs(t *testing.T) {
 	t.Parallel()
-	resolver, err := inputs.New(map[string]inputs.Source{"param": inputs.ParamSource{}})
-	if err != nil {
-		t.Fatal(err)
-	}
 	main := "main"
-	got, err := boundary{inputs: resolver}.Resolve(context.Background(),
-		[]workflow.Param{{Name: "base", Default: &main}, {Name: "goal"}},
-		[]workflow.Input{{Name: "g", Source: "param", Arguments: []workflow.Binding{{Name: "name", Value: workflow.Value{Text: "goal"}}}}},
-		map[string]string{"goal": "x"})
+	declared := inputs.Declared{
+		Params: []inputs.Param{{Name: "base", Default: &main}, {Name: "goal"}},
+		Inputs: []inputs.Input{{Name: "g", Source: "param", Arguments: map[string]inputs.Value{"name": {Text: "goal"}}}},
+	}
+	spy := &inputsSpy{resolved: inputs.Resolved{
+		Params: map[string]string{"base": "main", "goal": "x"},
+		Inputs: map[string]inputs.Fixed{"g": {Value: "x", Identity: "digest"}},
+	}}
+	got, err := boundary{inputs: spy, declared: declared}.Resolve(context.Background(), map[string]string{"goal": "x"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -532,39 +548,144 @@ func TestTheBoundaryIsResolvedByCoreInputs(t *testing.T) {
 	if !reflect.DeepEqual(got, want) {
 		t.Errorf("boundary %+v, want %+v", got, want)
 	}
+	if !reflect.DeepEqual(spy.declared, []inputs.Declared{declared}) || !reflect.DeepEqual(spy.given, []map[string]string{{"goal": "x"}}) {
+		t.Errorf("resolved %+v over %v, want %+v over goal=x", spy.declared, spy.given, declared)
+	}
+
+	refusal := &inputs.Refusal{Reason: `input "g": no param "goal" is given`}
+	if _, err := (boundary{inputs: &inputsSpy{err: refusal}, declared: declared}).Resolve(context.Background(), nil); !errors.Is(err, refusal) {
+		t.Errorf("refused with %v, want %v", err, refusal)
+	}
+}
+
+// A workflow's boundary declares what its documents give: each param, in
+// its order, with its default; and each input, with its source and its
+// arguments, a text or what they read.
+//
+// Contract test: the files home holds, as Agister ships them.
+func TestAWorkflowsBoundaryIsDeclaredFromItsDocuments(t *testing.T) {
+	t.Parallel()
+	settings := runSettings(t, map[string]string{"/u/.agister/workflows/greet.yaml": `schema: agister.workflow/v1alpha1
+params:
+  base: {default: main}
+  goal: {}
+inputs:
+  g: {source: param, name: {from: params.goal}}
+  h: {source: param, name: base}
+steps:
+  - {name: a, process: say, agent: bash, inputs: {what: {from: inputs.g}}}
+`})
+	read, err := readSettings("/u/.agister", "/r", newFilesystemSpy(settings), rootSpy{root: "/r"}, wrappersSpy{"bash/1": {}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	resolved, faults := read.resolver.Resolve(resolve.Document(resolve.KindWorkflow, "greet").WithParams("goal"))
+	if len(faults) > 0 {
+		t.Fatalf("faults %+v", faults)
+	}
+	built, unrun, err := planOf("greet", resolved, read.documents, "bash/1")
+	if err != nil || len(unrun) > 0 {
+		t.Fatalf("not run %q, error %v", unrun, err)
+	}
+	main := "main"
+	want := inputs.Declared{
+		Params: []inputs.Param{{Name: "base", Default: &main}, {Name: "goal"}},
+		Inputs: []inputs.Input{
+			{Name: "g", Source: "param", Arguments: map[string]inputs.Value{"name": {Reads: &inputs.Reference{Of: inputs.Params, Name: "goal"}}}},
+			{Name: "h", Source: "param", Arguments: map[string]inputs.Value{"name": {Text: "base"}}},
+		},
+	}
+	if !reflect.DeepEqual(built.boundary, want) {
+		t.Errorf("boundary\n got %+v\nwant %+v", built.boundary, want)
+	}
+}
+
+// A param not given takes its default, and one given overrides it: a
+// workflow's, and a process's, whether it runs alone or under a step that
+// binds it no value.
+//
+// Contract test: the files home holds, as Agister ships them.
+func TestAParamNotGivenTakesItsDefaultThroughTheRun(t *testing.T) {
+	t.Parallel()
+	const (
+		greet = `schema: agister.workflow/v1alpha1
+params:
+  what: {default: hi}
+steps:
+  - {name: a, process: say, agent: bash, inputs: {what: {from: params.what}}}
+outputs:
+  said: {from: steps.a.outputs.stdout.head}
+`
+		quiet = `schema: agister.workflow/v1alpha1
+steps:
+  - {name: a, process: say, agent: bash}
+outputs:
+  said: {from: steps.a.outputs.stdout.head}
+`
+	)
+	workflow := map[string]string{"/u/.agister/workflows/greet.yaml": greet}
+	process := map[string]string{"/u/.agister/processes/say.yaml": strings.Replace(fmt.Sprintf(sayProcess, "", ""), "what: {}", "what: {default: hi}", 1)}
+	unbound := map[string]string{"/u/.agister/workflows/quiet.yaml": quiet}
+	maps.Copy(unbound, process)
+	cases := []struct {
+		name  string
+		files map[string]string
+		args  []string
+		what  string
+	}{
+		{"a workflow's, not given", workflow, []string{"run", "greet"}, "hi"},
+		{"a workflow's, given", workflow, []string{"run", "greet", "--param", "what=yo"}, "yo"},
+		{"a process's run alone, not given", process, []string{"run", "--process", "say", "--agent", "bash"}, "hi"},
+		{"a process's run alone, given", process, []string{"run", "--process", "say", "--agent", "bash", "--param", "what=yo"}, "yo"},
+		{"a process's under a step that binds it none", unbound, []string{"run", "quiet"}, "hi"},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
+			f := newRunFixture(runSettings(t, c.files), echoes)
+			got := f.run(t, "/r", c.args...)
+			if got.stderr != "" || got.code != 0 {
+				t.Fatalf("stderr %q, exit %d; want none, 0", got.stderr, got.code)
+			}
+			if want := []supervisor.Program{bashProgram(`echo "$what"`, "what="+c.what)}; !reflect.DeepEqual(f.supervisor.ran(), want) {
+				t.Errorf("ran %+v, want %+v", f.supervisor.ran(), want)
+			}
+		})
+	}
 }
 
 // bashRunSpy is a spy of the bash wrapper: it keeps each turn and answers
 // result and err.
 type bashRunSpy struct {
-	result supervisor.Result
+	result bash.Ended
 	err    error
 	turns  []bash.Turn
 }
 
-func (s *bashRunSpy) Run(_ context.Context, turn bash.Turn) (supervisor.Result, error) {
+func (s *bashRunSpy) Run(_ context.Context, turn bash.Turn) (bash.Ended, error) {
 	s.turns = append(s.turns, turn)
 	return s.result, s.err
 }
 
 // A turn on bash runs its prompt as the script, in its directory with its
-// environment, and gives how the program ended; a program that could not
+// environment, and gives how the program ended, each stream by the fields
+// of a call's output, incomplete or not; a program that could not
 // start is core's ErrNotStarted, and any other error passes as it is.
 func TestATurnOnBashRunsItsPromptAsTheScript(t *testing.T) {
 	t.Parallel()
 	other := errors.New("broken pipe")
 	cases := []struct {
 		name       string
-		result     supervisor.Result
+		result     bash.Ended
 		err        error
 		want       call.Ended
 		notStarted bool
 		wantErr    error
 	}{
-		{name: "an exit", result: supervisor.Result{Code: 3, Stdout: kept("o"), Stderr: kept("e")},
-			want: call.Ended{Code: 3, Stdout: call.Stream(kept("o")), Stderr: call.Stream(kept("e"))}},
-		{name: "a signal", result: supervisor.Result{Signal: "killed"}, want: call.Ended{Signal: "killed"}},
-		{name: "no start", err: fmt.Errorf("bash: %w", supervisor.ErrNotStarted), notStarted: true, wantErr: supervisor.ErrNotStarted},
+		{name: "an exit", result: bash.Ended{Code: 3, Stdout: bash.Stream{Head: "oh", Tail: "ot", Size: 3, Digest: "od"}, Stderr: bash.Stream{Head: "eh", Tail: "et", Size: 5, Digest: "ed", Incomplete: true}},
+			want: call.Ended{Code: 3, Stdout: call.Stream{Head: "oh", Tail: "ot", Size: 3, Digest: "od"}, Stderr: call.Stream{Head: "eh", Tail: "et", Size: 5, Digest: "ed"}}},
+		{name: "a signal", result: bash.Ended{Signal: "killed"}, want: call.Ended{Signal: "killed"}},
+		{name: "no start", err: fmt.Errorf("bash: %w", bash.ErrNotStarted), notStarted: true, wantErr: bash.ErrNotStarted},
 		{name: "another error", err: other, wantErr: other},
 	}
 	for _, c := range cases {
@@ -581,6 +702,48 @@ func TestATurnOnBashRunsItsPromptAsTheScript(t *testing.T) {
 			}
 			if want := []bash.Turn{{Script: "echo", Dir: "/r", Env: []string{"A=1"}}}; !reflect.DeepEqual(spy.turns, want) {
 				t.Errorf("turns %+v, want %+v", spy.turns, want)
+			}
+		})
+	}
+}
+
+// A program bash asks for runs on the supervisor as it is asked, and gives
+// how it ended, each stream as the supervisor kept it, incomplete or not;
+// a program that could not start is bash's ErrNotStarted, and any other
+// error passes as it is.
+func TestBashsProgramRunsOnTheSupervisor(t *testing.T) {
+	t.Parallel()
+	other := errors.New("broken pipe")
+	cases := []struct {
+		name       string
+		result     supervisor.Result
+		err        error
+		want       bash.Ended
+		notStarted bool
+		wantErr    error
+	}{
+		{name: "an exit", result: supervisor.Result{Code: 3,
+			Stdout: supervisor.Stream{Head: "oh", Tail: "ot", Size: 3, Digest: "od"},
+			Stderr: supervisor.Stream{Head: "eh", Tail: "et", Size: 5, Digest: "ed", Incomplete: true}},
+			want: bash.Ended{Code: 3, Stdout: bash.Stream{Head: "oh", Tail: "ot", Size: 3, Digest: "od"}, Stderr: bash.Stream{Head: "eh", Tail: "et", Size: 5, Digest: "ed", Incomplete: true}}},
+		{name: "a signal", result: supervisor.Result{Signal: "killed"}, want: bash.Ended{Signal: "killed"}},
+		{name: "no start", err: fmt.Errorf("bash: %w", supervisor.ErrNotStarted), notStarted: true, wantErr: supervisor.ErrNotStarted},
+		{name: "another error", err: other, wantErr: other},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
+			spy := &supervisorSpy{answer: func(context.Context, supervisor.Program) (supervisor.Result, error) { return c.result, c.err }}
+			programs, err := newSupervised(spy)
+			if err != nil {
+				t.Fatal(err)
+			}
+			got, err := programs.Run(context.Background(), bash.Program{Name: "bash", Args: []string{"-c", "echo"}, Dir: "/r", Env: []string{"A=1"}})
+			if !reflect.DeepEqual(got, c.want) || !errors.Is(err, c.wantErr) || errors.Is(err, bash.ErrNotStarted) != c.notStarted {
+				t.Errorf("ended %+v, %v; want %+v, %v, not started %v", got, err, c.want, c.wantErr, c.notStarted)
+			}
+			if want := []supervisor.Program{{Name: "bash", Args: []string{"-c", "echo"}, Dir: "/r", Env: []string{"A=1"}}}; !reflect.DeepEqual(spy.ran(), want) {
+				t.Errorf("ran %+v, want %+v", spy.ran(), want)
 			}
 		})
 	}

@@ -58,7 +58,7 @@ func (d *Documents) Workflow(name string) (WorkflowDefinition, []Problem) {
 	workflow.Params.Value = slices.Clone(workflow.Params.Value)
 	workflow.Inputs.Value = cloneInputs(workflow.Inputs.Value)
 	workflow.Steps.Value = cloneItems(workflow.Steps.Value)
-	workflow.Outputs.Value = slices.Clone(workflow.Outputs.Value)
+	workflow.Outputs.Value = cloneBindings(workflow.Outputs.Value)
 	return workflow, problems
 }
 
@@ -206,7 +206,7 @@ func cloneInputs(inputs []Field[Input]) []Field[Input] {
 	for i := range inputs {
 		input := &inputs[i].Value
 		input.Form.Value = slices.Clone(input.Form.Value)
-		input.Arguments = slices.Clone(input.Arguments)
+		input.Arguments = cloneBindings(input.Arguments)
 	}
 	return inputs
 }
@@ -217,17 +217,29 @@ func cloneItems(items []Field[Item]) []Field[Item] {
 	for i := range items {
 		item := &items[i].Value
 		item.If.Value = item.If.Value.clone()
-		item.Inputs.Value = slices.Clone(item.Inputs.Value)
+		item.Session.Value = item.Session.Value.clone()
+		item.Inputs.Value = cloneBindings(item.Inputs.Value)
 		item.Parallel.Value = cloneItems(item.Parallel.Value)
 		item.Branch.Value = cloneItems(item.Branch.Value)
-		item.Outputs.Value = slices.Clone(item.Outputs.Value)
+		item.Outputs.Value = cloneBindings(item.Outputs.Value)
 		repeat := &item.Repeat.Value
-		repeat.State.Value = slices.Clone(repeat.State.Value)
+		repeat.State.Value = cloneBindings(repeat.State.Value)
 		repeat.Steps.Value = cloneItems(repeat.Steps.Value)
-		repeat.Next.Value = slices.Clone(repeat.Next.Value)
+		repeat.Next.Value = cloneBindings(repeat.Next.Value)
 		repeat.Until.Value = repeat.Until.Value.clone()
 	}
 	return items
+}
+
+// cloneBindings is bindings with slices of their own, each reference's
+// path included.
+func cloneBindings(bindings []Field[Binding]) []Field[Binding] {
+	bindings = slices.Clone(bindings)
+	for i := range bindings {
+		value := &bindings[i].Value.Value
+		value.From = value.From.clone()
+	}
+	return bindings
 }
 
 // itemPlace is the place of the item i of the list at place.

@@ -197,40 +197,98 @@ func TestDocumentsGivesAWorkflowsProblems(t *testing.T) {
 	assertProblems(t, problems, want)
 }
 
+// pathsWorkflow is a workflow each of whose kinds of reference reads a
+// path within an output field: a step's, a parallel's item's and a repeat's
+// step's inputs, an arm's condition, inputs and outputs, a repeat's state,
+// next state and until, and the workflow's outputs.
+const pathsWorkflow = workflowHeader + `steps:
+  - {name: a, process: p, agent: x, inputs: {what: {from: steps.a.outputs.stdout.head}}}
+  - name: both
+    parallel:
+      - {name: b, process: p, agent: x, inputs: {what: {from: steps.a.outputs.stdout.head}}}
+  - name: pick
+    branch:
+      - name: c
+        if: {not: {present: {from: steps.a.outputs.stdout.head}}}
+        process: p
+        agent: x
+        inputs: {what: {from: steps.a.outputs.stdout.head}}
+        outputs: {said: {from: steps.c.outputs.stdout.head}}
+      - name: loop
+        repeat:
+          state: {last: {from: steps.a.outputs.stdout.head}}
+          steps:
+            - {name: d, process: p, agent: x, inputs: {what: {from: steps.a.outputs.stdout.head}}}
+          next: {last: {from: steps.d.outputs.stdout.head}}
+          until: {equals: [{from: steps.d.outputs.stdout.tail}, done]}
+          max: 2
+        outputs: {said: {from: steps.d.outputs.stdout.head}}
+outputs:
+  said: {from: steps.a.outputs.stdout.head}
+`
+
 // A workflow given is the caller's own: changing any slice of it, at any
-// depth, changes nothing the documents hold, and the next call gives the
-// workflow as typed.
+// depth, a reference's path included, changes nothing the documents hold,
+// and the next call gives what documents of their own, over the same file,
+// give.
 func TestAWorkflowGivenIsTheCallersOwn(t *testing.T) {
 	t.Parallel()
 	decide := func(w *documents.WorkflowDefinition) *documents.Item { return &w.Steps.Value[2].Value }
 	fix := func(w *documents.WorkflowDefinition) *documents.Item { return &decide(w).Branch.Value[0].Value }
+	pick := func(w *documents.WorkflowDefinition, arm int) *documents.Item {
+		return &w.Steps.Value[2].Value.Branch.Value[arm].Value
+	}
+	loop := func(w *documents.WorkflowDefinition) *documents.Repeat { return &pick(w, 1).Repeat.Value }
+	path := func(binding *documents.Field[documents.Binding]) []string { return binding.Value.Value.From.Path }
 	cases := []struct {
-		name   string
-		change func(*documents.WorkflowDefinition)
+		name     string
+		workflow string
+		change   func(*documents.WorkflowDefinition)
 	}{
-		{"its params", func(w *documents.WorkflowDefinition) { w.Params.Value[0].Value.Name = "x" }},
-		{"its inputs", func(w *documents.WorkflowDefinition) { w.Inputs.Value[0].Value.Arguments[0].Value.Name = "x" }},
-		{"its outputs", func(w *documents.WorkflowDefinition) { w.Outputs.Value[0].Value.Name = "x" }},
-		{"its steps", func(w *documents.WorkflowDefinition) { w.Steps.Value[0].Value.Name = "x" }},
-		{"a parallel's items", func(w *documents.WorkflowDefinition) { w.Steps.Value[0].Value.Parallel.Value[0].Value.Name = "x" }},
-		{"a step's inputs", func(w *documents.WorkflowDefinition) { w.Steps.Value[1].Value.Inputs.Value[0].Value.Name = "x" }},
-		{"a branch's arms", func(w *documents.WorkflowDefinition) { decide(w).Branch.Value[1].Value.Name = "x" }},
-		{"an arm's outputs", func(w *documents.WorkflowDefinition) { fix(w).Outputs.Value[0].Value.Name = "x" }},
-		{"a condition's conditions", func(w *documents.WorkflowDefinition) { fix(w).If.Value.Of[0].Value.Operator = "x" }},
-		{"a repeat's state", func(w *documents.WorkflowDefinition) { fix(w).Repeat.Value.State.Value[0].Value.Name = "x" }},
-		{"a repeat's steps", func(w *documents.WorkflowDefinition) { fix(w).Repeat.Value.Steps.Value[0].Value.Name = "x" }},
-		{"a repeat's next state", func(w *documents.WorkflowDefinition) { fix(w).Repeat.Value.Next.Value[0].Value.Name = "x" }},
-		{"a repeat's until", func(w *documents.WorkflowDefinition) { fix(w).Repeat.Value.Until.Value.Of[0].Value.Operator = "x" }},
+		{"its params", validWorkflow, func(w *documents.WorkflowDefinition) { w.Params.Value[0].Value.Name = "x" }},
+		{"its inputs", validWorkflow, func(w *documents.WorkflowDefinition) { w.Inputs.Value[0].Value.Arguments[0].Value.Name = "x" }},
+		{"its outputs", validWorkflow, func(w *documents.WorkflowDefinition) { w.Outputs.Value[0].Value.Name = "x" }},
+		{"its steps", validWorkflow, func(w *documents.WorkflowDefinition) { w.Steps.Value[0].Value.Name = "x" }},
+		{"a parallel's items", validWorkflow, func(w *documents.WorkflowDefinition) { w.Steps.Value[0].Value.Parallel.Value[0].Value.Name = "x" }},
+		{"a step's inputs", validWorkflow, func(w *documents.WorkflowDefinition) { w.Steps.Value[1].Value.Inputs.Value[0].Value.Name = "x" }},
+		{"a branch's arms", validWorkflow, func(w *documents.WorkflowDefinition) { decide(w).Branch.Value[1].Value.Name = "x" }},
+		{"an arm's outputs", validWorkflow, func(w *documents.WorkflowDefinition) { fix(w).Outputs.Value[0].Value.Name = "x" }},
+		{"a condition's conditions", validWorkflow, func(w *documents.WorkflowDefinition) { fix(w).If.Value.Of[0].Value.Operator = "x" }},
+		{"a repeat's state", validWorkflow, func(w *documents.WorkflowDefinition) { fix(w).Repeat.Value.State.Value[0].Value.Name = "x" }},
+		{"a repeat's steps", validWorkflow, func(w *documents.WorkflowDefinition) { fix(w).Repeat.Value.Steps.Value[0].Value.Name = "x" }},
+		{"a repeat's next state", validWorkflow, func(w *documents.WorkflowDefinition) { fix(w).Repeat.Value.Next.Value[0].Value.Name = "x" }},
+		{"a repeat's until", validWorkflow, func(w *documents.WorkflowDefinition) { fix(w).Repeat.Value.Until.Value.Of[0].Value.Operator = "x" }},
+		{"the path of its outputs", pathsWorkflow, func(w *documents.WorkflowDefinition) { path(&w.Outputs.Value[0])[0] = "x" }},
+		{"the path of a step's inputs", pathsWorkflow, func(w *documents.WorkflowDefinition) { path(&w.Steps.Value[0].Value.Inputs.Value[0])[0] = "x" }},
+		{"the path of a parallel's item's inputs", pathsWorkflow, func(w *documents.WorkflowDefinition) {
+			path(&w.Steps.Value[1].Value.Parallel.Value[0].Value.Inputs.Value[0])[0] = "x"
+		}},
+		{"the path of an arm's condition", pathsWorkflow, func(w *documents.WorkflowDefinition) {
+			pick(w, 0).If.Value.Of[0].Value.Reads.Value.Path[0] = "x"
+		}},
+		{"the path of an arm's inputs", pathsWorkflow, func(w *documents.WorkflowDefinition) { path(&pick(w, 0).Inputs.Value[0])[0] = "x" }},
+		{"the path of an arm's outputs", pathsWorkflow, func(w *documents.WorkflowDefinition) { path(&pick(w, 0).Outputs.Value[0])[0] = "x" }},
+		{"the path of a repeat's state", pathsWorkflow, func(w *documents.WorkflowDefinition) { path(&loop(w).State.Value[0])[0] = "x" }},
+		{"the path of a repeat's step's inputs", pathsWorkflow, func(w *documents.WorkflowDefinition) {
+			path(&loop(w).Steps.Value[0].Value.Inputs.Value[0])[0] = "x"
+		}},
+		{"the path of a repeat's next state", pathsWorkflow, func(w *documents.WorkflowDefinition) { path(&loop(w).Next.Value[0])[0] = "x" }},
+		{"the path of a repeat's until", pathsWorkflow, func(w *documents.WorkflowDefinition) { loop(w).Until.Value.Reads.Value.Path[0] = "x" }},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			t.Parallel()
-			d := workflowsOf(map[string]documents.Document{"a": {Sources: documents.Sources{Home: source(homeWorkflow, validWorkflow)}}})
+			of := func() *documents.Documents {
+				return workflowsOf(map[string]documents.Document{"a": {Sources: documents.Sources{Home: source(homeWorkflow, c.workflow)}}})
+			}
+			want, problems := of().Workflow("a")
+			assertProblems(t, problems, nil)
+			d := of()
 			gotten, _ := d.Workflow("a")
 			c.change(&gotten)
 			got, problems := d.Workflow("a")
 			assertProblems(t, problems, nil)
-			assertWorkflow(t, got, validWorkflowDefinition())
+			assertWorkflow(t, got, want)
 		})
 	}
 }

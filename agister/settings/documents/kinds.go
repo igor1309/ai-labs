@@ -247,6 +247,12 @@ type Reference struct {
 	Path  []string
 }
 
+// clone is the reference with a path of its own.
+func (r Reference) clone() Reference {
+	r.Path = slices.Clone(r.Path)
+	return r
+}
+
 // Root is what a reference reads of.
 type Root string
 

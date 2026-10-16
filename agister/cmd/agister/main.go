@@ -104,8 +104,12 @@ func notified(kinds ...os.Signal) signals {
 // wrapper's facts, the bash wrapper's turns run by programs, its runs on
 // machine, for the user whose home directory is user: home's folder is
 // its ".agister" (ADR-002, rule 2).
-func build(user string, links links, fs layout.FileSystem, roots layout.WorktreeRoot, programs bash.Supervisor, machine host, stdout, stderr io.Writer) (*cli.CLI, error) {
-	b, err := bash.New(programs)
+func build(user string, links links, fs layout.FileSystem, roots layout.WorktreeRoot, programs programs, machine host, stdout, stderr io.Writer) (*cli.CLI, error) {
+	supervising, err := newSupervised(programs)
+	if err != nil {
+		return nil, err
+	}
+	b, err := bash.New(supervising)
 	if err != nil {
 		return nil, err
 	}

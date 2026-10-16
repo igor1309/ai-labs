@@ -145,7 +145,7 @@ func (r *runs) runner(built plan, dir string) (*workflow.Runner, error) {
 	if err != nil {
 		return nil, err
 	}
-	return workflow.New(boundary{inputs: resolver}, steps, r.host.clock)
+	return workflow.New(boundary{inputs: resolver, declared: built.boundary}, steps, r.host.clock)
 }
 
 // cancelled is the host's context, ended once a signal arrives; stop ends
@@ -252,9 +252,11 @@ type runDocuments interface {
 	Blob(kind documents.Kind, name string) (documents.Blob, []documents.Problem)
 }
 
-// plan is a run built for core: its workflow, and each step's call, by
-// the step's name.
+// plan is a run built for core: what its workflow declares of its params
+// and inputs, which core/inputs resolves at its boundary; its workflow; and
+// each step's call, by the step's name.
 type plan struct {
+	boundary inputs.Declared
 	workflow workflow.Workflow
 	calls    map[string]plannedCall
 }
@@ -305,14 +307,14 @@ func planOf(name string, resolved resolve.Resolved, docs runDocuments, bash stri
 	built := plan{calls: map[string]plannedCall{}}
 	defaults := declaredParams(params)
 	for _, param := range w.Params {
-		built.workflow.Params = append(built.workflow.Params, workflow.Param{Name: param.Name, Default: defaults[param.Name]})
+		built.boundary.Params = append(built.boundary.Params, inputs.Param{Name: param.Name, Default: defaults[param.Name]})
 	}
 	for _, input := range w.Inputs {
-		arguments, err := workflowBindings(input.Arguments)
+		arguments, err := inputsArguments(input.Arguments)
 		if err != nil {
 			return plan{}, nil, err
 		}
-		built.workflow.Inputs = append(built.workflow.Inputs, workflow.Input{Name: input.Name, Source: sources[input.Name], Arguments: arguments})
+		built.boundary.Inputs = append(built.boundary.Inputs, inputs.Input{Name: input.Name, Source: sources[input.Name], Arguments: arguments})
 	}
 	for _, item := range w.Steps {
 		planned, err := plannedCallOf(item, resolved, docs)
@@ -414,13 +416,9 @@ func plannedCallOf(item resolve.Item, resolved resolve.Resolved, docs runDocumen
 		planned.declared.Params = append(planned.declared.Params, inputs.Param{Name: param.Name, Default: defaults[param.Name]})
 	}
 	for _, input := range process.Inputs {
-		arguments := map[string]inputs.Value{}
-		for _, argument := range input.Arguments {
-			value, err := inputsValue(argument)
-			if err != nil {
-				return plannedCall{}, err
-			}
-			arguments[argument.Name] = value
+		arguments, err := inputsArguments(input.Arguments)
+		if err != nil {
+			return plannedCall{}, err
 		}
 		planned.declared.Inputs = append(planned.declared.Inputs, inputs.Input{Name: input.Name, Source: sources[input.Name], Arguments: arguments})
 	}
@@ -533,6 +531,19 @@ func workflowBindings(bindings []resolve.Binding) ([]workflow.Binding, error) {
 	return mapped, nil
 }
 
+// inputsArguments is an input's arguments in core/inputs' words, by name.
+func inputsArguments(bindings []resolve.Binding) (map[string]inputs.Value, error) {
+	arguments := map[string]inputs.Value{}
+	for _, binding := range bindings {
+		value, err := inputsValue(binding)
+		if err != nil {
+			return nil, err
+		}
+		arguments[binding.Name] = value
+	}
+	return arguments, nil
+}
+
 // inputsValue is the value of binding in core/inputs' words: a text, or
 // the param or the input it reads.
 func inputsValue(binding resolve.Binding) (inputs.Value, error) {
@@ -546,7 +557,7 @@ func inputsValue(binding resolve.Binding) (inputs.Value, error) {
 	case resolve.RootInput:
 		return inputs.Value{Reads: &inputs.Reference{Of: inputs.Inputs, Name: read.Name}}, nil
 	}
-	return inputs.Value{}, fmt.Errorf("%s reads the root %q, which a process does not read",
+	return inputs.Value{}, fmt.Errorf("%s reads the root %q, which an input's argument or an environment does not read",
 		problemLine(read.Origin, binding.Name), read.Root)
 }
 
@@ -555,36 +566,16 @@ type declaredResolver interface {
 	Resolve(ctx context.Context, declared inputs.Declared, given map[string]string) (inputs.Resolved, error)
 }
 
-// boundary answers core/workflow's resolver from core/inputs: the
-// workflow's params and inputs resolved at its boundary.
+// boundary answers core/workflow's resolver from core/inputs: what the
+// workflow declares of its params and inputs, resolved at its boundary over
+// the params given.
 type boundary struct {
-	inputs declaredResolver
+	inputs   declaredResolver
+	declared inputs.Declared
 }
 
-func (b boundary) Resolve(ctx context.Context, params []workflow.Param, ins []workflow.Input, given map[string]string) (workflow.Boundary, error) {
-	var declared inputs.Declared
-	for _, param := range params {
-		declared.Params = append(declared.Params, inputs.Param{Name: param.Name, Default: param.Default})
-	}
-	for _, input := range ins {
-		arguments := map[string]inputs.Value{}
-		for _, argument := range input.Arguments {
-			value := inputs.Value{Text: argument.Value.Text}
-			if read := argument.Value.Reads; read != nil {
-				switch read.Of {
-				case workflow.Params:
-					value.Reads = &inputs.Reference{Of: inputs.Params, Name: read.Name}
-				case workflow.Inputs:
-					value.Reads = &inputs.Reference{Of: inputs.Inputs, Name: read.Name}
-				default:
-					return workflow.Boundary{}, fmt.Errorf("the input %q: its argument %q reads neither a param nor an input", input.Name, argument.Name)
-				}
-			}
-			arguments[argument.Name] = value
-		}
-		declared.Inputs = append(declared.Inputs, inputs.Input{Name: input.Name, Source: input.Source, Arguments: arguments})
-	}
-	resolved, err := b.inputs.Resolve(ctx, declared, given)
+func (b boundary) Resolve(ctx context.Context, given map[string]string) (workflow.Boundary, error) {
+	resolved, err := b.inputs.Resolve(ctx, b.declared, given)
 	if err != nil {
 		return workflow.Boundary{}, err
 	}
@@ -671,12 +662,13 @@ func cliResult(result workflow.Result) cli.Result {
 
 // bashRuns is what a turn on bash asks of the bash wrapper.
 type bashRuns interface {
-	Run(ctx context.Context, turn bash.Turn) (supervisor.Result, error)
+	Run(ctx context.Context, turn bash.Turn) (bash.Ended, error)
 }
 
 // bashTurns answers core/call's runtime from the bash wrapper: the turn's
 // prompt is its script. A program that could not start is core's
-// ErrNotStarted.
+// ErrNotStarted. A stream is given by the fields a call's output has: an
+// incomplete one as it was kept.
 type bashTurns struct {
 	bash bashRuns
 }
@@ -690,14 +682,46 @@ func newBashTurns(bash bashRuns) (*bashTurns, error) {
 
 func (b *bashTurns) Turn(ctx context.Context, turn call.Turn) (call.Ended, error) {
 	result, err := b.bash.Run(ctx, bash.Turn{Script: turn.Prompt, Dir: turn.Dir, Env: turn.Env})
-	if errors.Is(err, supervisor.ErrNotStarted) {
+	if errors.Is(err, bash.ErrNotStarted) {
 		return call.Ended{}, fmt.Errorf("%w: %w", call.ErrNotStarted, err)
 	}
 	if err != nil {
 		return call.Ended{}, err
 	}
-	stream := func(s supervisor.Stream) call.Stream {
+	stream := func(s bash.Stream) call.Stream {
 		return call.Stream{Head: s.Head, Tail: s.Tail, Size: s.Size, Digest: s.Digest}
 	}
 	return call.Ended{Code: result.Code, Signal: result.Signal, Stdout: stream(result.Stdout), Stderr: stream(result.Stderr)}, nil
+}
+
+// programs is what the bash wrapper's supervisor asks of the supervisor.
+type programs interface {
+	Run(ctx context.Context, program supervisor.Program) (supervisor.Result, error)
+}
+
+// supervised answers the bash wrapper's supervisor from the supervisor. A
+// program that could not start is bash's ErrNotStarted.
+type supervised struct {
+	programs programs
+}
+
+func newSupervised(programs programs) (*supervised, error) {
+	if programs == nil {
+		return nil, errors.New("supervised: no programs")
+	}
+	return &supervised{programs: programs}, nil
+}
+
+func (s *supervised) Run(ctx context.Context, program bash.Program) (bash.Ended, error) {
+	result, err := s.programs.Run(ctx, supervisor.Program{Name: program.Name, Args: program.Args, Dir: program.Dir, Env: program.Env})
+	if errors.Is(err, supervisor.ErrNotStarted) {
+		return bash.Ended{}, fmt.Errorf("%w: %w", bash.ErrNotStarted, err)
+	}
+	if err != nil {
+		return bash.Ended{}, err
+	}
+	stream := func(s supervisor.Stream) bash.Stream {
+		return bash.Stream{Head: s.Head, Tail: s.Tail, Size: s.Size, Digest: s.Digest, Incomplete: s.Incomplete}
+	}
+	return bash.Ended{Code: result.Code, Signal: result.Signal, Stdout: stream(result.Stdout), Stderr: stream(result.Stderr)}, nil
 }
