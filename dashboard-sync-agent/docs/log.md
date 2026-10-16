@@ -1,5 +1,9 @@
 # Log
 
+## 2026-10-16
+
+- PR #1012 (commit `bb00e523`) removed reinix, which exists, added the `repo-text` row the maintainer removed on 2026-09-07, and moved Noreta and Warder to Research. Three spec causes, fixed: `project-registry.md` classified a row as a sub-component by its Type before checking its directory, so reinix's `CLI release unit` dropped it; the directory now decides first. `synthesis-spec.md` named only `agents` and `repo-scripts` among the script's aggregate rows, so `repo-text` flipped in and out by run; it is now never charted. The category map lacked six Types the README uses (`Product`, `App family`, `Static page`, `CLI (Go)`, `Tool (MVP stage)`, `Library (Go)`), so their cards went to Research; they are mapped. `scripts/tests/loc-dashboard.test.js` now checks the chart names exactly the script's projects and `repo-scripts`.
+
 ## 2026-09-05
 
 - Exclude the repository task backlog from untracked project candidates, matching its existing LOC-script classification.
