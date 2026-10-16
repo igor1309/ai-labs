@@ -5,7 +5,7 @@ import { App } from "../src/App.tsx";
 import type { Language } from "../src/language/language.ts";
 import { LANGUAGE_KEY, localLanguage } from "../src/localLanguage.ts";
 import { localProgress } from "../src/localProgress.ts";
-import { QuestionScreen, type QuestionScreenProps } from "../src/QuestionScreen.tsx";
+import { QuestionScreen } from "../src/QuestionScreen.tsx";
 import { ResultScreen } from "../src/ResultScreen.tsx";
 import { largerOf, type Attribute, type Dinosaur, type Question } from "../src/quiz/round.ts";
 import {
@@ -13,6 +13,7 @@ import {
   emptyProgress,
   manualOrientation,
   memoryStorage,
+  questionView,
   seededRandom,
   type ManualOrientation,
   type MemoryStorage
@@ -74,20 +75,16 @@ function words(element: HTMLElement): string {
   return copy.textContent?.trim() ?? "";
 }
 
-function renderQuestion(language: Language, props: Partial<QuestionScreenProps> = {}) {
+function renderQuestion(
+  language: Language,
+  {
+    question = { attribute: "mass", left: byName("Triceratops"), right: byName("Velociraptor") },
+    choice,
+    last = false
+  }: { question?: Question; choice?: string; last?: boolean } = {}
+) {
   render(
-    <QuestionScreen
-      language={language}
-      question={{ attribute: "mass", left: byName("Triceratops"), right: byName("Velociraptor") }}
-      number={1}
-      total={10}
-      choice={null}
-      last={false}
-      onChoose={nothing}
-      onNext={nothing}
-      onHome={nothing}
-      {...props}
-    />
+    <QuestionScreen language={language} {...questionView(question, language, choice)} last={last} onChoose={nothing} onNext={nothing} onHome={nothing} />
   );
 }
 

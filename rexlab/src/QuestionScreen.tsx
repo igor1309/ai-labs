@@ -1,47 +1,42 @@
-import { formatValue } from "./formatValue.ts";
 import type { Language } from "./language/language.ts";
-import { TEXTS } from "./language/texts.ts";
-import { largerOf, type Attribute, type Dinosaur, type Question } from "./quiz/round.ts";
+import { TEXTS, type Texts } from "./language/texts.ts";
 import { usePointerState } from "./usePointerState.ts";
 
-const SYMBOLS: Record<Attribute, string> = { mass: "⚖️", height: "📏" };
+// What the prompt asks about.
+export type Prompt = keyof Texts["prompts"];
 
-type Mark = "correct" | "wrong";
+const SYMBOLS: Record<Prompt, string> = { mass: "⚖️", height: "📏" };
+
+export type Mark = keyof Texts["marks"];
 
 const MARKS: Record<Mark, string> = { correct: "✓", wrong: "✗" };
 
+export type DinosaurCardView = {
+  id: string;
+  name: string;
+  // The dinosaur's value, written out, once the question is answered.
+  value: string | undefined;
+  mark: Mark | undefined;
+};
+
 export type QuestionScreenProps = {
   language: Language;
-  question: Question;
+  prompt: Prompt;
   number: number;
   total: number;
-  choice: string | null;
+  left: DinosaurCardView;
+  right: DinosaurCardView;
+  answered: boolean;
   last: boolean;
-  onChoose: (dinosaur: Dinosaur) => void;
+  onChoose: (id: string) => void;
   onNext: () => void;
   onHome: () => void;
 };
 
-export function QuestionScreen({ language, question, number, total, choice, last, onChoose, onNext, onHome }: QuestionScreenProps) {
+export function QuestionScreen({ language, prompt, number, total, left, right, answered, last, onChoose, onNext, onHome }: QuestionScreenProps) {
   const text = TEXTS[language];
-  const answered = choice !== null;
-  // Once answered, the right answer is marked whichever card was tapped,
-  // so a wrong answer still shows the child which one is larger.
-  const markOf = (dinosaur: Dinosaur): Mark | undefined => {
-    if (!answered) return undefined;
-    if (dinosaur.id === largerOf(question).id) return "correct";
-    return dinosaur.id === choice ? "wrong" : undefined;
-  };
-  const card = (dinosaur: Dinosaur) => (
-    <DinosaurCard
-      key={dinosaur.id}
-      dinosaur={dinosaur}
-      language={language}
-      answered={answered}
-      value={answered ? formatValue(question.attribute, dinosaur.measures[question.attribute], language) : undefined}
-      mark={markOf(dinosaur)}
-      onChoose={onChoose}
-    />
+  const card = (view: DinosaurCardView) => (
+    <DinosaurCard key={view.id} view={view} language={language} answered={answered} onChoose={onChoose} />
   );
   return (
     <main className="question">
@@ -54,11 +49,11 @@ export function QuestionScreen({ language, question, number, total, choice, last
         </p>
       </header>
       <h1 className="prompt">
-        <span aria-hidden="true">{SYMBOLS[question.attribute]}</span> {text.prompts[question.attribute]}
+        <span aria-hidden="true">{SYMBOLS[prompt]}</span> {text.prompts[prompt]}
       </h1>
       <div className="dinosaur-cards" role="group" aria-label={text.dinosaurs}>
-        {card(question.left)}
-        {card(question.right)}
+        {card(left)}
+        {card(right)}
       </div>
       {answered && (
         <button type="button" className="next-button" onClick={onNext}>
@@ -78,16 +73,13 @@ export function QuestionScreen({ language, question, number, total, choice, last
 }
 
 type DinosaurCardProps = {
-  dinosaur: Dinosaur;
+  view: DinosaurCardView;
   language: Language;
   answered: boolean;
-  value: string | undefined;
-  mark: Mark | undefined;
-  onChoose: (dinosaur: Dinosaur) => void;
+  onChoose: (id: string) => void;
 };
 
-function DinosaurCard({ dinosaur, language, answered, value, mark, onChoose }: DinosaurCardProps) {
-  const name = dinosaur.name[language];
+function DinosaurCard({ view: { id, name, value, mark }, language, answered, onChoose }: DinosaurCardProps) {
   const { "data-hovered": hovered, "data-pressed": pressed, ...pointer } = usePointerState();
   // An answered card no longer responds to touch: only the first tap
   // counts, and a card that still looked pressable would say otherwise.
@@ -100,7 +92,7 @@ function DinosaurCard({ dinosaur, language, answered, value, mark, onChoose }: D
       data-mark={mark}
       data-hovered={answered ? undefined : hovered}
       data-pressed={answered ? undefined : pressed}
-      onClick={() => onChoose(dinosaur)}
+      onClick={() => onChoose(id)}
       {...pointer}
     >
       {mark && (

@@ -1,6 +1,7 @@
 import type { Language } from "./language/language.ts";
-import { TEXTS } from "./language/texts.ts";
-import type { Celebration } from "./quiz/progress.ts";
+import { TEXTS, type Texts } from "./language/texts.ts";
+
+export type Celebration = keyof Texts["celebrations"];
 
 const CELEBRATION_SYMBOLS: Record<Celebration, string> = { "first-best": "⭐", "new-best": "🏆" };
 

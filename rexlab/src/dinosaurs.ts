@@ -1,4 +1,4 @@
-import type { Dinosaur } from "./quiz/round.ts";
+import type { Dinosaur } from "./quiz/index.ts";
 
 // One entry of the shipped dinosaur list, in the content model's format.
 export type DinosaurRecord = {

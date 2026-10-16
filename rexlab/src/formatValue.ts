@@ -1,6 +1,5 @@
 import type { Language } from "./language/language.ts";
 import { TEXTS } from "./language/texts.ts";
-import type { Attribute } from "./quiz/round.ts";
 
 const NUMBERS: Record<Language, Intl.NumberFormat> = {
   en: new Intl.NumberFormat("en", { maximumFractionDigits: 1 }),
@@ -11,14 +10,16 @@ const NUMBERS: Record<Language, Intl.NumberFormat> = {
 // whole kilograms below a tonne and in tonnes to one decimal from there,
 // height in metres to one decimal. A trailing zero decimal is dropped, and
 // the number and its unit are written in the chosen language.
-export function formatValue(attribute: Attribute, value: number, language: Language): string {
+export function formatMass(kilograms: number, language: Language): string {
   const { units } = TEXTS[language];
-  const number = (n: number) => NUMBERS[language].format(n);
-  if (attribute === "height") {
-    return `${number(oneDecimal(value))} ${units.metres}`;
-  }
-  const kilograms = Math.round(value);
-  return kilograms < 1000 ? `${number(kilograms)} ${units.kilograms}` : `${number(oneDecimal(value / 1000))} ${units.tonnes}`;
+  const whole = Math.round(kilograms);
+  return whole < 1000
+    ? `${NUMBERS[language].format(whole)} ${units.kilograms}`
+    : `${NUMBERS[language].format(oneDecimal(kilograms / 1000))} ${units.tonnes}`;
+}
+
+export function formatHeight(metres: number, language: Language): string {
+  return `${NUMBERS[language].format(oneDecimal(metres))} ${TEXTS[language].units.metres}`;
 }
 
 function oneDecimal(value: number): number {

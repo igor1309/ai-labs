@@ -1,29 +1,37 @@
 import { describe, expect, it } from "vitest";
-import { formatValue } from "../src/formatValue.ts";
+import { formatHeight, formatMass } from "../src/formatValue.ts";
 import type { Language } from "../src/language/language.ts";
-import { ATTRIBUTES, type Attribute } from "../src/quiz/round.ts";
 import { SHIPPED_DINOSAURS } from "./support.ts";
 
-describe("formatValue", () => {
-  it.each<[Attribute, number, string]>([
-    ["mass", 15, "15 kg"],
-    ["mass", 14.6, "15 kg"],
-    ["mass", 999, "999 kg"],
-    ["mass", 999.6, "1 t"],
-    ["mass", 1000, "1 t"],
-    ["mass", 6543, "6.5 t"],
-    ["mass", 6500, "6.5 t"],
-    ["mass", 7000, "7 t"],
-    ["height", 3, "3 m"],
-    ["height", 0.5, "0.5 m"],
-    ["height", 12.26, "12.3 m"]
-  ])("writes a %s of %s as %s", (attribute, value, text) => {
-    expect(formatValue(attribute, value, "en")).toBe(text);
+describe("formatMass", () => {
+  it.each<[number, string]>([
+    [15, "15 kg"],
+    [14.6, "15 kg"],
+    [999, "999 kg"],
+    [999.6, "1 t"],
+    [1000, "1 t"],
+    [6543, "6.5 t"],
+    [6500, "6.5 t"],
+    [7000, "7 t"]
+  ])("writes a mass of %s as %s", (kilograms, text) => {
+    expect(formatMass(kilograms, "en")).toBe(text);
   });
+});
 
+describe("formatHeight", () => {
+  it.each<[number, string]>([
+    [3, "3 m"],
+    [0.5, "0.5 m"],
+    [12.26, "12.3 m"]
+  ])("writes a height of %s as %s", (metres, text) => {
+    expect(formatHeight(metres, "en")).toBe(text);
+  });
+});
+
+describe("values in the chosen language", () => {
   // The examples of "Values are written in the chosen language" in
   // docs/features/language.feature.
-  it.each<[Language, Attribute, number, string]>([
+  it.each<[Language, "mass" | "height", number, string]>([
     ["en", "mass", 15, "15 kg"],
     ["ru", "mass", 15, "15 кг"],
     ["ru", "mass", 1000, "1 т"],
@@ -31,23 +39,21 @@ describe("formatValue", () => {
     ["ru", "mass", 6500, "6,5 т"],
     ["en", "height", 3, "3 m"],
     ["ru", "height", 3, "3 м"]
-  ])("writes in %s a %s of %s as %s", (language, attribute, value, text) => {
-    expect(formatValue(attribute, value, language)).toBe(text);
+  ])("writes in %s a %s of %s as %s", (language, measure, value, text) => {
+    expect((measure === "mass" ? formatMass : formatHeight)(value, language)).toBe(text);
   });
 
-  const formats: Record<Language, { point: string; units: Record<Attribute, string> }> = {
-    en: { point: "\\.", units: { mass: "(kg|t)", height: "m" } },
-    ru: { point: ",", units: { mass: "(кг|т)", height: "м" } }
+  const formats: Record<Language, { point: string; mass: string; height: string }> = {
+    en: { point: "\\.", mass: "(kg|t)", height: "m" },
+    ru: { point: ",", mass: "(кг|т)", height: "м" }
   };
 
-  it.each(ATTRIBUTES.flatMap((attribute) => (["en", "ru"] as const).map((language) => [attribute, language] as const)))(
-    "writes every shipped %s in %s as a plain number and its unit",
-    (attribute, language) => {
-      const { point, units } = formats[language];
-      const plain = new RegExp(`^(?:[1-9]\\d*(?:${point}[1-9])?|0${point}[1-9]) ${units[attribute]}$`);
-      for (const { measures } of SHIPPED_DINOSAURS) {
-        expect(formatValue(attribute, measures[attribute], language)).toMatch(plain);
-      }
+  it.each(["en", "ru"] as const)("writes every shipped mass and height in %s as a plain number and its unit", (language) => {
+    const { point, mass, height } = formats[language];
+    const plain = (unit: string) => new RegExp(`^(?:[1-9]\\d*(?:${point}[1-9])?|0${point}[1-9]) ${unit}$`);
+    for (const { measures } of SHIPPED_DINOSAURS) {
+      expect(formatMass(measures.mass, language)).toMatch(plain(mass));
+      expect(formatHeight(measures.height, language)).toMatch(plain(height));
     }
-  );
+  });
 });

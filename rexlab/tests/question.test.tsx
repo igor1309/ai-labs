@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 import { App } from "../src/App.tsx";
 import { QuestionScreen } from "../src/QuestionScreen.tsx";
 import type { Attribute, Dinosaur } from "../src/quiz/round.ts";
-import { SHIPPED_DINOSAURS, emptyProgress, englishDevice, manualOrientation, seededRandom } from "./support.ts";
+import { SHIPPED_DINOSAURS, emptyProgress, englishDevice, manualOrientation, questionView, seededRandom } from "./support.ts";
 
 const byName = (name: string): Dinosaur => {
   const found = SHIPPED_DINOSAURS.find((d) => d.name.en === name);
@@ -35,11 +35,7 @@ describe("a question", () => {
     render(
       <QuestionScreen
         language="en"
-        question={{ attribute, left: byName("Triceratops"), right: byName("Velociraptor") }}
-        number={1}
-        total={10}
-        choice={null}
-        last={false}
+        {...questionView({ attribute, left: byName("Triceratops"), right: byName("Velociraptor") }, "en")}
         onChoose={nothing}
         onNext={nothing}
         onHome={nothing}

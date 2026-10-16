@@ -1,5 +1,3 @@
-import type { Celebration } from "../quiz/progress.ts";
-import type { Attribute } from "../quiz/round.ts";
 import { en } from "./en.ts";
 import type { Language } from "./language.ts";
 import { ru } from "./ru.ts";
@@ -15,17 +13,20 @@ export type Texts = {
   home: string;
   progress: string;
   dinosaurs: string;
-  prompts: Record<Attribute, string>;
+  prompts: { mass: string; height: string };
   marks: { correct: string; wrong: string };
   next: string;
   seeResult: string;
   units: { kilograms: string; tonnes: string; metres: string };
-  celebrations: Record<Celebration, { label: string; text: string }>;
+  celebrations: { "first-best": Celebrated; "new-best": Celebrated };
   stars: (score: number, total: number) => string;
   score: string;
   bestScore: string;
   best: string;
   playAgain: string;
 };
+
+// A celebration's label, read out, and its text, shown.
+type Celebrated = { label: string; text: string };
 
 export const TEXTS: Record<Language, Texts> = { en, ru };

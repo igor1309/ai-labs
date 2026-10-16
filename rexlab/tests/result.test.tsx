@@ -72,6 +72,12 @@ async function finishRound(user: UserEvent, correct: number) {
 }
 
 const celebrations = () => screen.queryAllByRole("status").map((status) => status.getAttribute("aria-label"));
+// What the one celebration shows a child who cannot read its label: each
+// visible part's text, its symbol and then its words.
+const shownCelebration = () =>
+  [...screen.getByRole("status").children]
+    .filter((part) => getComputedStyle(part).display !== "none" && getComputedStyle(part).visibility !== "hidden")
+    .map((part) => part.textContent);
 const shownBest = () => {
   const best = screen.queryByLabelText("Best score");
   return best && within(best).getByText(/^\d+$/).textContent;
@@ -131,6 +137,7 @@ describe("stored progress", () => {
     await finishRound(user, 7);
 
     expect(celebrations()).toEqual(["New best score"]);
+    expect(shownCelebration()).toEqual(["🎉🏆🎉", "NEW BEST!"]);
     expect(shownBest()).toBe("7");
     expect(storedGame(storage)).toEqual({ bestScore: 7, roundsPlayed: 4 });
   });
@@ -154,6 +161,7 @@ describe("stored progress", () => {
     await finishRound(user, 4);
 
     expect(celebrations()).toEqual(["First best score"]);
+    expect(shownCelebration()).toEqual(["🎉⭐🎉", "FIRST BEST!"]);
     expect(shownBest()).toBe("4");
     expect(storedGame(storage)).toEqual({ bestScore: 4, roundsPlayed: 1 });
   });

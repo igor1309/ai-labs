@@ -1,4 +1,4 @@
-import { NO_PROGRESS, type GameProgress } from "./quiz/progress.ts";
+import { NO_PROGRESS, type GameProgress } from "./quiz/index.ts";
 
 export const PROGRESS_KEY = "rexlab-progress";
 

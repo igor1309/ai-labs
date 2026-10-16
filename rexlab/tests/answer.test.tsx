@@ -2,11 +2,16 @@ import { render, screen, within } from "@testing-library/react";
 import userEvent, { type UserEvent } from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 import { App } from "../src/App.tsx";
-import { formatValue } from "../src/formatValue.ts";
-import { QuestionScreen, type QuestionScreenProps } from "../src/QuestionScreen.tsx";
+import { formatHeight, formatMass } from "../src/formatValue.ts";
+import { QuestionScreen } from "../src/QuestionScreen.tsx";
 import { choose, score, startPlay } from "../src/quiz/play.ts";
 import { largerOf, type Attribute, type Dinosaur, type Question } from "../src/quiz/round.ts";
-import { SHIPPED_DINOSAURS, emptyProgress, englishDevice, manualOrientation, seededRandom } from "./support.ts";
+import { SHIPPED_DINOSAURS, emptyProgress, englishDevice, manualOrientation, questionView, seededRandom } from "./support.ts";
+
+const ENGLISH_VALUES: Record<Attribute, (value: number) => string> = {
+  mass: (value) => formatMass(value, "en"),
+  height: (value) => formatHeight(value, "en")
+};
 
 const byName = (name: string): Dinosaur => {
   const found = SHIPPED_DINOSAURS.find((d) => d.name.en === name);
@@ -88,24 +93,15 @@ describe("answering a question", () => {
       const [big, small] = [byName(larger), byName(smaller)];
       const question: Question = side === "left" ? { attribute, left: big, right: small } : { attribute, left: small, right: big };
       const tapped = answer === "right answer" ? big : small;
-      const chosen: Dinosaur[] = [];
+      const chosen: string[] = [];
       const nothing = () => {};
-      const props: Omit<QuestionScreenProps, "choice"> = {
-        language: "en",
-        question,
-        number: 3,
-        total: 10,
-        last: false,
-        onChoose: (dinosaur) => chosen.push(dinosaur),
-        onNext: nothing,
-        onHome: nothing
-      };
-      const { rerender } = render(<QuestionScreen {...props} choice={null} />);
+      const handlers = { onChoose: (id: string) => chosen.push(id), onNext: nothing, onHome: nothing };
+      const { rerender } = render(<QuestionScreen language="en" {...questionView(question, "en")} {...handlers} />);
       expect(screen.getByRole("heading").textContent).toContain(prompt);
 
       await userEvent.setup().click(cardOf(tapped));
-      expect(chosen).toEqual([tapped]);
-      rerender(<QuestionScreen {...props} choice={tapped.id} />);
+      expect(chosen).toEqual([tapped.id]);
+      rerender(<QuestionScreen language="en" {...questionView(question, "en", tapped.id)} {...handlers} />);
 
       expect(marksOn(cardOf(big))).toEqual(["Correct ✓"]);
       expect(marksOn(cardOf(small))).toEqual(answer === "right answer" ? [] : ["Wrong ✗"]);
@@ -129,7 +125,7 @@ describe("answering a question", () => {
       expect(marksOn(cardOf(right))).toEqual(["Correct ✓"]);
       expect(marksOn(cardOf(wrong))).toEqual(tapped === wrong ? ["Wrong ✗"] : []);
       for (const dinosaur of [right, wrong]) {
-        expect(within(cardOf(dinosaur)).getByText(formatValue(question.attribute, dinosaur.measures[question.attribute], "en"))).toBeDefined();
+        expect(within(cardOf(dinosaur)).getByText(ENGLISH_VALUES[question.attribute](dinosaur.measures[question.attribute]))).toBeDefined();
       }
       if (number < 10) await user.click(screen.getByRole("button", { name: "Next" }));
     }
@@ -158,11 +154,7 @@ describe("answering a question", () => {
     render(
       <QuestionScreen
         language="en"
-        question={{ attribute: "mass", left: big, right: small }}
-        number={1}
-        total={10}
-        choice={small.id}
-        last={false}
+        {...questionView({ attribute: "mass", left: big, right: small }, "en", small.id)}
         onChoose={nothing}
         onNext={nothing}
         onHome={nothing}

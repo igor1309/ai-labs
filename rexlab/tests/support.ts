@@ -3,7 +3,11 @@ import { readDinosaurs } from "../src/dinosaurs.ts";
 import { localLanguage } from "../src/localLanguage.ts";
 import { localProgress, type KeyValueStorage } from "../src/localProgress.ts";
 import type { Orientation } from "../src/OrientationGate.tsx";
-import type { Random } from "../src/quiz/round.ts";
+import type { Language } from "../src/language/language.ts";
+import { presentQuestion } from "../src/presentation.ts";
+import { choose, questionState, type Random } from "../src/quiz/index.ts";
+import { startPlay } from "../src/quiz/play.ts";
+import { ROUND_LENGTH, type Question } from "../src/quiz/round.ts";
 
 export const SHIPPED_DINOSAURS = readDinosaurs(records);
 
@@ -72,4 +76,30 @@ export function emptyProgress() {
 export function englishDevice() {
   const storage = memoryStorage();
   return { deviceLanguage: "en-GB", languageStore: localLanguage(() => storage) };
+}
+
+// What the question screen shows of `question`, asked first in a round of
+// it alone, once `choice` is chosen when one is given: the quiz's state of
+// the question, presented as the app presents it.
+export function questionView(question: Question, language: Language, choice?: string) {
+  const play = startPlay(Array.from({ length: ROUND_LENGTH }, () => question));
+  return presentQuestion(questionState(choice === undefined ? play : choose(play, choice)), language);
+}
+
+// A media query list whose match the test sets.
+export function portraitQuery(matches: boolean) {
+  const target = new EventTarget();
+  const queries: string[] = [];
+  const list = Object.assign(target, { matches, media: "" }) as unknown as MediaQueryList;
+  return {
+    queries,
+    matchMedia: (query: string) => {
+      queries.push(query);
+      return list;
+    },
+    change: (to: boolean) => {
+      (list as { matches: boolean }).matches = to;
+      target.dispatchEvent(new Event("change"));
+    }
+  };
 }
