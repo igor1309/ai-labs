@@ -31,6 +31,12 @@ export function isFair(a: Dinosaur, b: Dinosaur, attribute: Attribute): boolean 
   return a.id !== b.id && small > 0 && large >= FAIR_RATIO * small;
 }
 
+// The question always asks which has more. A fair pair's values are never
+// equal, so one dinosaur is always the larger.
+export function largerOf({ attribute, left, right }: Question): Dinosaur {
+  return left.measures[attribute] > right.measures[attribute] ? left : right;
+}
+
 // Two dinosaurs are the same pair whichever side each is on and whatever
 // the question compares.
 export function pairKey(a: Dinosaur, b: Dinosaur): string {

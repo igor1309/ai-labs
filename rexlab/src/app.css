@@ -99,8 +99,44 @@ button {
 }
 
 .dinosaur-card {
+  position: relative;
   flex: 1 1 0;
   max-width: 28rem;
+}
+
+/* A mark is a symbol in a colour that keeps at least 3:1 contrast with
+   its card, so it reads without telling colours apart. */
+.dinosaur-card[data-mark="correct"] {
+  border-color: #1b6e2d;
+  background: #e6f4e8;
+}
+
+.dinosaur-card[data-mark="wrong"] {
+  border-color: #b3261e;
+  background: #fbe9e7;
+}
+
+.mark {
+  position: absolute;
+  top: 0.75rem;
+  right: 1rem;
+  font-size: 4rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.dinosaur-card[data-mark="correct"] .mark {
+  color: #1b6e2d;
+}
+
+.dinosaur-card[data-mark="wrong"] .mark {
+  color: #b3261e;
+}
+
+.dinosaur-value {
+  font-size: 2.5rem;
+  font-weight: 700;
+  white-space: nowrap;
 }
 
 .dinosaur-picture {

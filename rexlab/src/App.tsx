@@ -2,6 +2,7 @@ import { useState } from "react";
 import { HomePage } from "./HomePage.tsx";
 import { OrientationGate, type Orientation } from "./OrientationGate.tsx";
 import { QuestionScreen } from "./QuestionScreen.tsx";
+import { choose, currentChoice, currentQuestion, isLastQuestion, next, startPlay, type Play } from "./quiz/play.ts";
 import { generateRound, type Dinosaur, type Random, type Round } from "./quiz/round.ts";
 
 export type AppProps = {
@@ -10,7 +11,7 @@ export type AppProps = {
   orientation: Orientation;
 };
 
-type Screen = { kind: "home" } | { kind: "question"; round: Round; index: number; choice: string | null };
+type Screen = { kind: "home" } | { kind: "question"; play: Play };
 
 export function App({ dinosaurs, random, orientation }: AppProps) {
   const [screen, setScreen] = useState<Screen>({ kind: "home" });
@@ -19,34 +20,27 @@ export function App({ dinosaurs, random, orientation }: AppProps) {
   const startRound = () => {
     const round = generateRound(dinosaurs, random, lastRound);
     setLastRound(round);
-    setScreen({ kind: "question", round, index: 0, choice: null });
+    setScreen({ kind: "question", play: startPlay(round) });
   };
 
-  // Each update checks the state it moves from, so a tap that lands after
-  // the screen has already moved on changes nothing.
-  const choose = (dinosaur: Dinosaur) =>
-    setScreen((current) =>
-      current.kind === "question" && current.choice === null ? { ...current, choice: dinosaur.id } : current
-    );
-  const next = () =>
-    setScreen((current) =>
-      current.kind === "question" && current.choice !== null && current.index + 1 < current.round.length
-        ? { ...current, index: current.index + 1, choice: null }
-        : current
-    );
+  // Each update moves from the state it is given, not the one last
+  // rendered, so a tap that lands after the screen has already moved on
+  // changes nothing.
+  const play = (move: (play: Play) => Play) =>
+    setScreen((current) => (current.kind === "question" ? { ...current, play: move(current.play) } : current));
   const home = () => setScreen({ kind: "home" });
 
-  const question = screen.kind === "question" ? screen.round[screen.index] : undefined;
   return (
     <OrientationGate orientation={orientation}>
-      {screen.kind === "question" && question ? (
+      {screen.kind === "question" ? (
         <QuestionScreen
-          question={question}
-          number={screen.index + 1}
-          total={screen.round.length}
-          answered={screen.choice !== null}
-          onChoose={choose}
-          onNext={next}
+          question={currentQuestion(screen.play)}
+          number={screen.play.index + 1}
+          total={screen.play.round.length}
+          choice={currentChoice(screen.play)}
+          last={isLastQuestion(screen.play)}
+          onChoose={(dinosaur) => play((current) => choose(current, dinosaur.id))}
+          onNext={() => play(next)}
           onHome={home}
         />
       ) : (
