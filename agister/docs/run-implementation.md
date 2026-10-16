@@ -25,7 +25,9 @@ group started when its context ends, by SIGTERM, then SIGKILL when the
 two seconds' grace has passed on the timer it is given (ADR-009, rule
 5), and when the program exits, whatever it left running. Output held
 open by a process that left the group is read no longer than the
-grace: the streams are kept so far, marked incomplete. A
+grace: the streams are kept so far, marked incomplete. Where it cannot
+observe a program's exit before reaping it, it starts nothing, and says
+the program could not start. A
 program that cannot start is an error that says so. Its tests run real
 programs (ADR-009, rule 3).
 

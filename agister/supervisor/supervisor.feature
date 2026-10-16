@@ -50,6 +50,13 @@ Feature: The supervisor runs a program and ends all it started
     Then it gives that the program exited with code 0, its streams kept
       so far and marked incomplete
 
+  Scenario: Where a program's exit cannot be observed, nothing starts
+    Given a platform where the supervisor cannot observe a program's
+      exit before reaping it
+    When the supervisor runs "sh -c 'exit 0'"
+    Then it gives an error that the program could not start, and
+      nothing was started
+
   Scenario: A signal from elsewhere is given by name
     Given a program that kills itself with SIGKILL
     When the supervisor runs it
