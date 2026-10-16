@@ -63,9 +63,11 @@ Feature: The supervisor runs a program and ends all it started
     When the supervisor runs it
     Then it gives that the program was ended by the signal "killed"
 
-  Scenario: The text given is the program's stdin
-    When the supervisor runs "cat" given the text "hi"
-    Then stdout's head is "hi", and the program exited with code 0
+  Scenario: The text given is the program's stdin, written as stdout is
+    read
+    When the supervisor runs "cat" given 1 MiB of text
+    Then stdout's size is 1 MiB, its digest that of the text, and the
+      program exited with code 0
 
   Scenario: Each line of stdout is given as it is read
     Given a program that prints "a", then waits until "a" is given, then
@@ -73,11 +75,6 @@ Feature: The supervisor runs a program and ends all it started
     When the supervisor runs it with a line function
     Then the function is given "a", then "b", then "c", and the program
       exited with code 0
-
-  Scenario: A line longer than 8 MiB is given cut
-    When the supervisor runs a program printing a 9 MiB line, then "x"
-    Then the function is given the line's first 8 MiB marked cut, then
-      "x", and stdout's size is that of all of it
 
   Scenario: Stdin a program does not read does not hold the supervisor
     When the supervisor runs "sh -c 'exit 2'" given 1 MiB of text

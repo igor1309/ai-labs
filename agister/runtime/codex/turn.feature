@@ -74,12 +74,17 @@ Feature: The codex wrapper runs a turn
   Scenario Outline: With no deciding event, how the program exited decides
     Given the lines of thread.started, and the program <exited>
     When codex runs a turn
-    Then the reply's failure class is "<class>"
+    Then the reply's failure class is "<class>", its reason <reason>
 
     Examples:
-      | exited                         | class         |
-      | exited 1, stderr's tail "boom" | runtime_error |
-      | exited 0                       | no_result     |
+      | exited                         | class         | reason |
+      | exited 1, stderr's tail "boom" | runtime_error | "boom" |
+      | exited 0                       | no_result     | none   |
+
+  Scenario: A turn.failed with a schema given is the runtime's failure
+    Given a schema, and the lines of turn.failed "401 Unauthorized"
+    When codex runs a turn
+    Then the reply's failure class is "auth"
 
   Scenario: A program that could not start is the turn's
     Given the supervisor gives that the program could not start

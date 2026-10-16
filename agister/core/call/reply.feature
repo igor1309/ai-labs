@@ -13,10 +13,10 @@ Feature: A call keeps its reply's usage, session, cost and reason
       3 output tokens, cache read, cache write and reasoning unknown,
       printed as null
 
-  Scenario: A bash call's usage is unknown
+  Scenario: A bash call has no usage
     Given a bash step whose script exits 0
     When the call is made
-    Then its usage is unknown, each count printed as null
+    Then it has no usage, printed as null
 
   Scenario: A failed call keeps the runtime's reason
     Given a model step, and the turn's reply of the failure class "auth"
@@ -24,19 +24,9 @@ Feature: A call keeps its reply's usage, session, cost and reason
     When the call is made
     Then it ends failed, class "auth", its reason "not logged in"
 
-  Scenario Outline: A reason is at most 1 KiB
+  Scenario: A reason is cut to 1 KiB
     Given a model step, and the turn's reply of the failure class
-      "runtime_error" and the reason of <reason>
+      "runtime_error" and a reason of 2 KiB
     When the call is made
-    Then its reason is <kept>
+    Then its reason is the first KiB of it
 
-    Examples:
-      | reason                     | kept          |
-      | the result's 2 KiB of text | its first KiB |
-      | stderr's tail of 2 KiB     | its last KiB  |
-
-  Scenario: The validator's rejection is the reason
-    Given a model step with a schema, and the validator rejects the
-      structured output saying "missing ok"
-    When the call is made
-    Then it ends failed, class "invalid_output", its reason "missing ok"

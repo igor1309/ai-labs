@@ -41,6 +41,7 @@ Feature: A workflow's steps run in order
       | a    | interrupted | timeout             |
       | b    | interrupted | cancelled           |
       | c    | failed      | killed              |
+      | b    | lost        | no_result           |
 
   Scenario Outline: The run's output is its output mapping
     Given the param "p", the input "i" from the source "param" named "p",
@@ -69,14 +70,15 @@ Feature: A workflow's steps run in order
     When the workflow runs with no param
     Then "a" is called with b "main"
 
-  Scenario Outline: The run's usage sums its calls', and its reason is
-    its last call's
-    Given the step "a" completes, its usage <a>, and the step "b" fails,
-      its usage <b> and its reason "r"
+  Scenario: The run's usage sums what its calls reported, and its reason
+    is its last call's
+    Given the step "a" completes, its usage 10 input and 3 output, and
+      the step "b" fails, its usage 5 input and its reason "r"
     When the workflow runs
-    Then its usage is <usage>, and its reason "r"
+    Then its usage is 15 input and 3 output, the rest null, and its
+      reason "r"
 
-    Examples:
-      | a                  | b                       | usage                   |
-      | 10 input, 3 output | 5 input, 1 output       | 15 input, 4 output      |
-      | 10 input, 3 output | input unknown, 1 output | input unknown, 4 output |
+  Scenario: A run carries each step's session by its name
+    Given the step "a" reports the session "s1", and "b" none
+    When the workflow runs
+    Then its sessions are "a" to "s1", and nothing for "b"

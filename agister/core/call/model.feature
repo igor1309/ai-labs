@@ -42,14 +42,15 @@ Feature: A call on a model takes its inputs in its message
     Then it ends <status>, class "<class>"
 
     Examples:
-      | schema         | reply                                 | status    | class          |
-      | with no schema | of the text "t"                       | completed |                |
-      | with a schema  | the validator accepts                 | completed |                |
-      | with a schema  | the validator rejects                 | failed    | invalid_output |
-      | with a schema  | of the failure class "invalid_output" | failed    | invalid_output |
-      | with no schema | of the failure class "rate_limited"   | failed    | rate_limited   |
-      | with no schema | of the failure class "no_result"      | lost      | no_result      |
-      | with no schema | of the failure class "overloaded"     | failed    | runtime_error  |
+      | schema         | reply                                             | status    | class          |
+      | with no schema | of the text "t"                                   | completed |                |
+      | with a schema  | the validator accepts                             | completed |                |
+      | with a schema  | the validator rejects                             | failed    | invalid_output |
+      | with a schema  | of the failure class "invalid_output"             | failed    | invalid_output |
+      | with a schema  | of the failure class "auth", no structured output | failed    | auth           |
+      | with no schema | of the failure class "rate_limited"               | failed    | rate_limited   |
+      | with no schema | of the failure class "no_result"                  | lost      | no_result      |
+      | with no schema | of the failure class "overloaded"                 | failed    | runtime_error  |
 
   Scenario Outline: How the program ended comes before the reply
     Given a model step, and the turn <ended>, with a reply of the
@@ -58,9 +59,10 @@ Feature: A call on a model takes its inputs in its message
     Then it ends <status>, class "<class>"
 
     Examples:
-      | ended                                     | status      | class     |
-      | is cancelled by the caller, then exits 0  | interrupted | cancelled |
-      | is ended by a signal Agister did not send | failed      | killed    |
+      | ended                                     | status      | class         |
+      | is cancelled by the caller, then exits 0  | interrupted | cancelled     |
+      | is ended by a signal Agister did not send | failed      | killed        |
+      | gives another error                       | failed      | runtime_error |
 
   Scenario Outline: A completed call's output is what the reply gives
     Given a model step <schema>, and the turn's reply of the text "t" and

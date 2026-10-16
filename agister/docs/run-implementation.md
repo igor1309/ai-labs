@@ -144,18 +144,18 @@ types; what the archive did besides one turn waits
 **The supervisor** writes the text it is given to the program's stdin,
 then closes it, and gives each line of stdout, as it reads it, to a
 function it is given, besides keeping the ends of the stream as before.
-A line longer than 8 MiB is given cut at 8 MiB, marked cut; the rest of
-it is dropped. Writing stdin stops once the program has exited or its
-context has ended: what is not written is dropped, no error, and an
-stdin pipe held open by what left the group waits no longer than the
-grace, as stdout does. Stdin closed early by the program is no error.
+Stdin is written as stdout is read; stdin the program does not read is
+dropped, no error. Best effort: a line too long to hold is skipped.
 
 **The claude-code wrapper** runs a turn: the message on stdin, and
 `claude -p --output-format stream-json --verbose --permission-mode
-dontAsk --tools=<options> --allowedTools=<options>
---strict-mcp-config`, then `--model`, `--effort`,
-`--append-system-prompt <instruction>` and `--json-schema <schema>`
-where given; the options joined by commas, none given as empty. It reads
+dontAsk --tools=<tools> --allowedTools=<tools> --strict-mcp-config`,
+then `--model`, `--effort`, `--append-system-prompt <instruction>` and
+`--json-schema <schema>` where given; the tools the options and `Skill`,
+joined by commas, `Skill` once and on every turn, as the archive gave
+it: the repository's skills load as they would for a person (ADR-003,
+rule 6), and the mapping's contract, `claude-code/3`, is written for
+these flags. It reads
 stdout's lines as stream-json: the session from the init event, the last
 assistant text, and the result event: its text, its
 `structured_output`, its `total_cost_usd`, its `usage` (input, output,
@@ -165,9 +165,9 @@ classed by its fields as the archive did: a status 429 or a rejected
 rate-limit event seen, `rate_limited`; 401 or 403, `auth`; 413, a prompt
 too long or the context window, `context_overflow`; else
 `runtime_error`; its reason the result's errors or text. A schema given
-and no structured output is `invalid_output`. With no result event, a
-program that exited non-zero is `runtime_error`, its reason stderr's
-tail; one that exited 0 is `no_result`. A cut line is read as no event.
+and a success with no structured output is `invalid_output`. With no
+result event, a program that exited non-zero is `runtime_error`, its
+reason stderr's tail; one that exited 0 is `no_result`.
 Its tests give a spy in place of the supervisor, fed recorded lines.
 
 **The codex wrapper** runs a turn: `<instructions>`, the instruction,
@@ -187,10 +187,10 @@ of `turn.failed`, classed by its words as the archive did: a rate or
 usage limit or 429, `rate_limited`; unauthorized, 401 or login, `auth`;
 the context window or length, `context_overflow`; else `runtime_error`;
 its reason the message. Only `turn.completed` and `turn.failed` decide;
-an `error` event does not. With a schema, the last message is the
-structured output: none is `invalid_output`, as is one that is not
-JSON. Its cost is unknown. With neither deciding event, it ends as
-claude-code's does with no result.
+an `error` event does not. With a schema, the last message of a
+completed turn is the structured output: none is `invalid_output`, as
+is one that is not JSON. Its cost is unknown. With neither deciding
+event, it ends as claude-code's does with no result.
 
 **Each wrapper's facts** say how its runtime takes a call's inputs
 (ADR-003, rule 7; ADR-010, rule 1): bash in its program's environment;
@@ -201,14 +201,16 @@ instruction, the model, the effort, the options and the schema, each
 none where not given; and a model's turn gives, besides how its program
 ended, its reply: its text, its structured output, its session, its cost
 and usage as reported, and its failure class and reason where it reports
-one. A caller is made for a runtime with how it takes its inputs. A
-model's message is a section for each input, then each document the
-step is given, in order: `## <name>`, a blank line, and the text;
-sections apart by a blank line. A text with a newline in it is fenced:
-a fence of more backticks than the longest run in it, at least three,
-on its own line; the text; a newline, unless it ends in one; and the
-fence again. Its inputs reach no environment; the process's environment
-reaches every program (ADR-012, rule 2).
+one. A caller is made for a runtime with how it takes its inputs. A step
+gives its inputs in the order its process declares them, and the
+documents it is given, each a name and a text, in order. Core builds a
+model's message: a section for each input, then each document, in order:
+`## <name>`, a blank line, and the text; sections apart by a blank line.
+A text with a newline in it is fenced: a fence of more backticks than
+the longest run in it, at least three, on its own line; the text; a
+newline, unless it ends in one; and the fence again. Its inputs reach no
+environment; the process's environment reaches every program (ADR-012,
+rule 2).
 
 A model's call ends as a bash call does where its context was ended, its
 program could not start or was ended by a signal, or the runtime gave
@@ -219,41 +221,46 @@ an error; otherwise by its reply:
 | the failure class `no_result` | lost | `no_result` |
 | another failure class of core's | failed | that class |
 | a failure class core has not | failed | `runtime_error` |
-| a schema given, its structured output not valid against it | failed | `invalid_output` |
+| no failure class, a schema given, its structured output not valid against it | failed | `invalid_output` |
 | otherwise | completed | |
 
-Core's classes, a closed set (ADR-001, invariant 3), are the first
-run's and `invalid_output`, `rate_limited`, `auth`, `context_overflow`
-and `no_result`. A completed call's output is its structured output,
-where a schema was given; else `text`, its reply's text. A schema is
-checked through a validator core declares, which gives why it rejects;
-the composition answers it. The result gains the call's `usage`,
-`session` and `reason`: usage as the runtime reported it, input, output,
-cache read, cache write and reasoning tokens, each unknown, printed as
-`null`, where not reported, all unknown on bash; the session the runtime
-reported; and the reason of a call that did not complete where the
-runtime or the validator gave one, at most 1 KiB: its first KiB, or of
-stderr's tail its last. Cost is the runtime's own report, unknown where
-it gives none (ADR-012, rule 5).
+The runtime's failure decides before the schema: a turn that failed is
+not checked.
 
-**`core/workflow`** gives the run's `usage` and `reason`: each count of
-usage the sum of its calls', unknown where any call's is, as cost is;
-the reason its last call's, as its status and class are. A run has no
-session; a call's is the record's to keep. **`cli`** prints them, after
-cost: `usage`, its five counts, and `reason`, `null` where there is none.
+Core's classes, a closed set (ADR-001, invariant 3), are the first run's
+and `invalid_output`, `rate_limited`, `auth`, `context_overflow` and
+`no_result`. A completed call's output is its structured output, where a
+schema was given; else `text`, its reply's text. A schema is checked
+through a validator core declares, which gives why it rejects; the
+composition answers it. The result gains the call's `usage`, `session`
+and `reason`: usage as the runtime reported it, input, output, cache
+read, cache write and reasoning tokens, each unknown, printed as `null`,
+where not reported, and none on bash; the session the runtime reported;
+and the reason of a call that did not complete, the runtime's or the
+validator's words, cut to 1 KiB. Cost is the runtime's own report,
+unknown where it gives none (ADR-012, rule 5).
+
+**`core/workflow`** gives the run's `usage`, `sessions` and `reason`:
+each count of usage the sum of what the calls reported, `null` where
+none reported it; its sessions, each step's name to the session its call
+reported, those that reported one; the reason its last call's, as its
+status and class are. A step that ends lost ends the run lost, as one
+that fails ends it failed. **`cli`** prints them, after cost: `usage`,
+its five counts, `sessions`, and `reason`, `null` where there is none; a
+run requested as a step alone has the step named by its process.
 
 **The composition** gives each step its own caller, for the runtime its
 agent names: bash, claude-code or codex, each through the supervisor,
-with how its wrapper's facts say it takes its inputs. It builds a model
-step's turn: its message from the call's inputs, in the order its
-process declares them, then the prompt document as `prompt`, then each
+with how its wrapper's facts say it takes its inputs. It gives a model
+step its inputs, in the order its process declares them; its documents,
+the prompt document as `prompt` where its process names one, then each
 guidance document by its name; its instruction, its process's; the
 model and the effort, its agent's; the options, its plan's; the schema,
 the bytes of its process's output schema in the snapshot. Codex's
 schema folder is the system's temporary folder. The validator is
-`github.com/santhosh-tekuri/jsonschema/v6`, which the archive used; each
-schema a request's steps name is compiled before anything runs, and one
-that does not compile refuses the request, naming it and why. What this
+`github.com/santhosh-tekuri/jsonschema/v6`, which the archive used; a
+schema that does not compile fails the call that names it,
+`invalid_output`, its reason the validator's. What this
 slice does not run is refused before anything runs, naming it, as
 before: a step on pi; a step's session; a process's recovery; a
 process's cost limit; an input named as a document of its step, `prompt`
@@ -288,5 +295,9 @@ Decisions, each with its reason:
   `runtime_error`, still failed.
 - A turn with no result is lost, not failed: it ended without finishing
   (ADR-001, invariant 3), as the archive held.
-- A call's reason is in its result, bounded: a model call that did not
-  complete is otherwise unexplained until the record.
+- Best effort, not guarantees: usage is summed from what was reported,
+  a reason is the runtime's words cut to 1 KiB, a line too long is
+  skipped, a bad schema fails its call. Each is enough to run and to
+  see why a call failed; more waits for a need.
+- The run carries each step's session, by its name, until the record
+  keeps it (ADR-011, rule 5).

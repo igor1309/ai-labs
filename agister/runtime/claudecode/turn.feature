@@ -12,15 +12,21 @@ Feature: The claude-code wrapper runs a turn
     Then the supervisor is asked to run "claude" in "/r" with goal=g,
       given the text "m", and the arguments "-p", "--output-format",
       "stream-json", "--verbose", "--permission-mode", "dontAsk",
-      "--tools=Read,Grep", "--allowedTools=Read,Grep",
+      "--tools=Read,Grep,Skill", "--allowedTools=Read,Grep,Skill",
       "--strict-mcp-config", "--model", "opus", "--effort", "high",
       "--append-system-prompt", "i", "--json-schema", "{}"
 
   Scenario: What is not given is left out
     When claude-code runs the message "m" with nothing else
     Then the arguments are "-p", "--output-format", "stream-json",
-      "--verbose", "--permission-mode", "dontAsk", "--tools=",
-      "--allowedTools=", "--strict-mcp-config"
+      "--verbose", "--permission-mode", "dontAsk", "--tools=Skill",
+      "--allowedTools=Skill", "--strict-mcp-config"
+
+  Scenario: Skill is given once
+    When claude-code runs the message "m" with the options "Skill" and
+      "Read"
+    Then the arguments hold "--tools=Skill,Read" and
+      "--allowedTools=Skill,Read"
 
   Scenario: A successful result is the reply
     Given the lines of an init event of the session "s1", an assistant
@@ -57,16 +63,21 @@ Feature: The claude-code wrapper runs a turn
     When claude-code runs a turn
     Then the reply's failure class is "invalid_output"
 
-  Scenario Outline: With no result, how the program exited decides
-    Given the lines of an init event, <cut>, and the program <exited>
+  Scenario: A failed result with a schema given is the runtime's failure
+    Given a schema, and the lines of a result of api_error_status 401
     When claude-code runs a turn
-    Then the reply's failure class is "<class>"
+    Then the reply's failure class is "auth"
+
+  Scenario Outline: With no result, how the program exited decides
+    Given the lines of an init event, and the program <exited>
+    When claude-code runs a turn
+    Then the reply's failure class is "<class>", its reason <reason>
 
     Examples:
-      | cut                         | exited                         | class         |
-      | nothing more                | exited 1, stderr's tail "boom" | runtime_error |
-      | nothing more                | exited 0                       | no_result     |
-      | a success result marked cut | exited 0                       | no_result     |
+      | exited                         | class         | reason |
+      | exited 1, stderr's tail "boom" | runtime_error | "boom" |
+      | exited 0                       | no_result     | none   |
+
 
   Scenario: What the supervisor gives besides is the turn's
     Given the supervisor gives that the program was ended by the signal
