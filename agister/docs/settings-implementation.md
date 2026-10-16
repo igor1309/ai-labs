@@ -256,8 +256,7 @@ Decisions of its reviews, each with its reason:
   reached through `extends`, are backlogged
   (`backlog/step-output-fields.md`, `backlog/blocks-through-extends.md`).
 - A reference whose root its document may not read, a query's item
-  outside any query, is documents' to type
-  (`backlog/references-typed-in-documents.md`).
+  outside any query, is documents' to type ("The composition").
 - An agent's effort is checked against its runtime's facts (ADR-003,
   rule 7); a mapping's `efforts` is not read (`backlog/mapping-efforts.md`).
 
@@ -322,49 +321,59 @@ Decisions of its reviews, each with its reason:
 
 The composition, `cmd/agister`, connects the settings parts, and the
 command line, to the files (ADR-001, rule 3). It comes in four sections,
-each specified, then coded: what documents adds; the runtime facts; the
+each specified, then coded: what documents adds; the wrappers; the
 adapters; the command line.
 
-**What documents adds.** A reference is typed whole: its root and name,
-and of a step, its outputs, one field of them, or its session; a
-reference that is none of these is a problem at typing, and so is
-`item` read outside an all or any query
-(`backlog/references-typed-in-documents.md`). The repository's blocks
-file is typed: a list, each block a document by kind and name, its one
-kind among the kinds, and its reason, a text; its problems are problems
-of no document.
+**What documents adds.** A reference is typed whole: `params`, `inputs`
+and `state` read a name; `steps.<name>` reads the step's outputs, one
+field of them, or its session; `item` reads the item of an all or any
+query, or one field of it. A reference that is none of these is a
+problem at typing, and so is `item` read outside an all or any query's
+`where`. The repository's blocks file is typed: a list, each block one
+kind among the kinds with its document's name, and its reason, a text;
+its problems are problems of no document. A block naming no document is
+resolve's warning; whether its name is a name is not documents' to say.
 
-**The runtime facts.** Each runtime wrapper, `runtime/<name>`, gives its
+**The wrappers.** Each runtime wrapper, `runtime/<name>`, gives its
 contract and what it can do (ADR-003, rule 7), in its own types: check
 output against a schema, resume a session, take skills, take a model,
 the efforts it accepts, report tool calls and tool commands. The
-wrappers are claude-code, codex, pi and bash; each gives its facts
-alone until it runs its program. A runtime is added when met.
+wrappers are claude-code, codex, pi and bash, as home's runtime mappings
+name them; each gives its facts alone until it runs its program, and a
+runtime is added when met. `git` gives the root of the git worktree that
+holds a directory, or none outside one; `files` is the operating
+system's filesystem, as layout's port asks it. Each is tested against
+its real thing (ADR-009, rule 3).
 
-**The adapters.** The composition reads the files through an operating
-system filesystem, and answers layout's worktree root from git, by a
-`git` wrapper. It maps layout's snapshot to documents', and answers
-resolve's source from documents: each definition in resolve's types,
-each value with its origin, the place spelled as documents spells a
-problem's; a reference as what it reads; the problems of no document,
-layout's and the blocks file's; the blocks; whether a layer holds a
-document. It answers resolve's wrappers from the runtime facts, by
-contract. It answers check's names from layout's snapshot, check's
-resolve from resolve, giving a workflow every param it declares, and
-check's fields from documents' tree, each leaf with its file, its line
-and the layer of its file. Every answer comes from one snapshot, read
-once a command.
+**The adapters.** The composition maps layout's snapshot to documents',
+and answers resolve's source from documents: each definition in
+resolve's types, each value with its origin, the place spelled as
+documents spells a problem's; a reference as what it reads; the
+problems of no document, layout's and the blocks file's; the blocks;
+whether a layer holds a document. It answers resolve's wrappers from the
+runtime facts, by contract; layout's worktree root from `git`; check's
+names from layout's snapshot; check's resolve from resolve, giving a
+workflow every param it declares; and check's fields from documents'
+tree, each leaf with its file, its line and the layer of its file. Every
+answer comes from one snapshot, which layout reads once a command. Its
+tests give spies in place of the wrappers (ADR-009, rule 4): a
+filesystem holding home's files as Agister ships them, a git and the
+facts.
 
 **The command line.** `cli` turns `check` and `inspect` into requests on
 its port, and prints what the port gives; the composition answers the
-port from check. `agister check` prints each fault, each warning, then
-how many names resolve and how many are refused, and exits 1 where any
-is refused; `agister inspect processes`, `workflows` or `agents` prints
-a listing; `agister inspect process <name>`, `workflow` or `agent`
-shows one. Each takes `--dir`, the launch directory, the working
-directory by default, and `--home`, home's folder, `$AGISTER_HOME` or
-`~/.agister` by default. A bad
-command prints its usage and exits 2.
+port from check. It is given its arguments, its working directory, the
+user's home directory and its output streams. `agister check` prints
+each fault, each warning, then how many names resolve and how many are
+refused, and exits 1 where it reports any fault. `agister inspect
+processes`, `workflows` or `agents` prints each name, the layers that
+hold it and whether it resolves; `agister inspect process <name>`,
+`workflow` or `agent` prints each field with its value, its file, line
+and layer, then the documents reached, the plans and the warnings, or
+the refusal with its chains; one no layer holds is said so, and exits 1.
+Each takes `--dir`, the launch directory, the working directory by
+default; home is `~/.agister` (ADR-002, rule 2). A bad command prints
+its usage to stderr and exits 2.
 
 ## Where each check sits
 

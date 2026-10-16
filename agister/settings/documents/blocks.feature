@@ -20,17 +20,16 @@ Feature: Documents types the repository's blocks
     Then there are none, and no problem
 
   Scenario Outline: A block that is not a kind, a name and a reason is a problem
-    Given the blocks file holds "<block>"
+    Given the blocks file holds the list "- <block>"
     When documents gives the blocks
-    Then there are no blocks, and the problem at "<place>": <problem>
+    Then there are no blocks, and <problems>
 
     Examples:
-      | block                               | place       | problem                      |
-      | {process: review}                   | [0].reason  | it is required               |
-      | {reason: why}                       | [0]         | it names one kind and a name |
-      | {process: a, agent: b, reason: why} | [0]         | it names one kind and a name |
-      | {pages: a, reason: why}             | [0].pages   | the field is not known       |
-      | {process: Bad Name, reason: why}    | [0].process | "Bad Name" is no name        |
+      | block                               | problems                                                                                    |
+      | {process: review}                   | the problem at "[0].reason": it is missing                                                  |
+      | {reason: why}                       | the problem at "[0]": it names one kind and a name                                          |
+      | {process: a, agent: b, reason: why} | the problem at "[0]": it names one kind and a name                                          |
+      | {pages: a, reason: why}             | the problems at "[0].pages": the field is not known; at "[0]": it names one kind and a name |
 
   Scenario: A blocks file that is not a list is a problem
     Given the blocks file holds "process: review"
