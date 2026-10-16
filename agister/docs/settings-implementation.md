@@ -393,6 +393,9 @@ Decisions of its reviews, each with its reason:
   rule 4 names them; check and cli each declare it in their own types
   and print it as it is. A projection of it would carry the same
   categories, and translate nothing.
+- A relative `--dir` is joined to the working directory as Go joins a
+  path, cleaned before its links are resolved: a `..` after a link is
+  a corner case, handled when met.
 
 ## Where each check sits
 

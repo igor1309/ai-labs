@@ -208,6 +208,9 @@ func TestCLIsShowComesFromCheck(t *testing.T) {
 			if want := []check.Reference{{Kind: check.KindWorkflow, Name: "w"}}; !reflect.DeepEqual(spy.shows, want) {
 				t.Errorf("check shows %+v, want %+v", spy.shows, want)
 			}
+			if want := []built{{home: "/u/.agister", launch: "/r/a"}}; !reflect.DeepEqual(builds, want) {
+				t.Errorf("checkers built at %+v, want %+v", builds, want)
+			}
 		})
 	}
 }
