@@ -14,6 +14,8 @@ description: "ADR-002: settings: documents in layers, composed by field, resolve
 - **Decision type:** Architecture
 - **Amended by:** ADR-011 (2026-10-15), ADR-012 (2026-10-15), ADR-013
   (2026-10-15)
+- **Revised:** 2026-10-16, rule 1, by the owner: the ADR no longer
+  names the folders and files; `settings/layout` does
 
 ## Context
 
@@ -48,10 +50,8 @@ kind and name.
 ### 1. A document is a kind and a name
 
 Each kind has its folder in a layer, and a document is the file named
-after it: `agents/<name>.toml`, `processes/<name>.yaml`,
-`workflows/<name>.yaml`, `runtimes/<name>.yaml`, `briefs/<name>.yaml`, `schemas/<name>.json`, `prompts/<name>.md`,
-`skills/<name>/SKILL.md`. Nothing but kind and name joins files across
-layers.
+after it; `settings/layout` names each kind's folder and file. Nothing
+but kind and name joins files across layers.
 
 ### 2. Three layers, each over its parent
 

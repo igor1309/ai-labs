@@ -54,10 +54,12 @@ The page states no syntax: settings syntax is specified in
 
 ## Kinds and files
 
-- A document is a kind and a name: `agents/<name>.toml`,
-  `processes/<name>.yaml`, `workflows/<name>.yaml`,
-  `runtimes/<name>.yaml`, `briefs/<name>.yaml`, `schemas/<name>.json`,
-  `prompts/<name>.md`, `skills/<name>/SKILL.md`. (ADR-002, rule 1)
+- A document is a kind and a name, the file named after it in its
+  kind's folder (ADR-002, rule 1). The folders and files are
+  `settings/layout`'s: `agents/<name>.toml`, `processes/<name>.yaml`,
+  `workflows/<name>.yaml`, `runtimes/<name>.yaml`,
+  `brief-forms/<name>.yaml`, `schemas/<name>.json`, `prompts/<name>.md`,
+  `skills/<name>/SKILL.md`. (`settings/layout/reading.feature`)
 - The repository layer's `blocks.yaml` names documents it refuses, each
   with a reason. (ADR-002, rule 7)
 

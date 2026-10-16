@@ -372,7 +372,7 @@ func kindOfFolder(folder string) (kindFiles, bool) {
 		{Process, "processes", ".yaml"},
 		{Workflow, "workflows", ".yaml"},
 		{Runtime, "runtimes", ".yaml"},
-		{Brief, "briefs", ".yaml"},
+		{Brief, "brief-forms", ".yaml"},
 		{Schema, "schemas", ".json"},
 		{Prompt, "prompts", ".md"},
 	} {

@@ -9,14 +9,14 @@ Feature: Layout reads the settings files of the layer folders it is given
 
   Background:
     Given each kind has its folder and its file extension:
-      | kind      | folder     | extension |
-      | agent     | agents     | .toml     |
-      | process   | processes  | .yaml     |
-      | workflow  | workflows  | .yaml     |
-      | runtime   | runtimes   | .yaml     |
-      | brief     | briefs     | .yaml     |
-      | schema    | schemas    | .json     |
-      | prompt    | prompts    | .md       |
+      | kind     | folder      | extension |
+      | agent    | agents      | .toml     |
+      | process  | processes   | .yaml     |
+      | workflow | workflows   | .yaml     |
+      | runtime  | runtimes    | .yaml     |
+      | brief    | brief-forms | .yaml     |
+      | schema   | schemas     | .json     |
+      | prompt   | prompts     | .md       |
     And a name is a lowercase letter, then lowercase letters, digits, "_"
       and "-", as the archive's names are
 
@@ -46,10 +46,10 @@ Feature: Layout reads the settings files of the layer folders it is given
       "processes/review.yaml" with the bytes "timeout: 40m"
     When layout reads
     Then the document process "review" has the sources:
-      | source     | path                                     | bytes        |
-      | home       | /home/.agister/processes/review.yaml     | timeout: 20m |
-      | repository | /repo/.agister/processes/review.yaml     | timeout: 30m |
-      | project    | /repo/p/.agister/processes/review.yaml   | timeout: 40m |
+      | source     | path                                   | bytes        |
+      | home       | /home/.agister/processes/review.yaml   | timeout: 20m |
+      | repository | /repo/.agister/processes/review.yaml   | timeout: 30m |
+      | project    | /repo/p/.agister/processes/review.yaml | timeout: 40m |
 
   Scenario: Layers hold different documents
     Given the home folder holds "processes/a.yaml"
@@ -64,14 +64,14 @@ Feature: Layout reads the settings files of the layer folders it is given
     Then the snapshot holds the <kind> "review", with a home source
 
     Examples:
-      | kind     | folder    | extension |
-      | agent    | agents    | .toml     |
-      | process  | processes | .yaml     |
-      | workflow | workflows | .yaml     |
-      | runtime  | runtimes  | .yaml     |
-      | brief    | briefs    | .yaml     |
-      | schema   | schemas   | .json     |
-      | prompt   | prompts   | .md       |
+      | kind     | folder      | extension |
+      | agent    | agents      | .toml     |
+      | process  | processes   | .yaml     |
+      | workflow | workflows   | .yaml     |
+      | runtime  | runtimes    | .yaml     |
+      | brief    | brief-forms | .yaml     |
+      | schema   | schemas     | .json     |
+      | prompt   | prompts     | .md       |
 
   Scenario: An empty file is a source with no bytes
     Given the home folder holds "processes/review.yaml" with no bytes

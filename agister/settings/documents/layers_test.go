@@ -22,7 +22,7 @@ func TestATreeDocumentIsDecodedInItsKindsFormat(t *testing.T) {
 		{documents.Process, "/home/.agister/processes/a.yaml", tree.YAML, "x: 1\ny:\n  z: w\n"},
 		{documents.Workflow, "/home/.agister/workflows/a.yaml", tree.YAML, "x: 1\ny:\n  z: w\n"},
 		{documents.Runtime, "/home/.agister/runtimes/a.yaml", tree.YAML, "x: 1\ny:\n  z: w\n"},
-		{documents.Brief, "/home/.agister/briefs/a.yaml", tree.YAML, "x: 1\ny:\n  z: w\n"},
+		{documents.Brief, "/home/.agister/brief-forms/a.yaml", tree.YAML, "x: 1\ny:\n  z: w\n"},
 	}
 	for _, c := range cases {
 		t.Run(string(c.kind), func(t *testing.T) {
