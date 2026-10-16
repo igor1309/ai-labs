@@ -67,7 +67,7 @@ jobs:
         run: node scripts/release/validate-foliotell-release-notes.js
 
   core:
-    if: ${{ needs.verify.outputs.basename != 'foliotell' && needs.verify.outputs.basename != 'notio-backend' && needs.verify.outputs.basename != 'notio-frontend' }}
+    if: ${{ needs.verify.outputs.basename != 'foliotell' && needs.verify.outputs.basename != 'notio-backend' && needs.verify.outputs.basename != 'notio-frontend' && needs.verify.outputs.basename != 'rexlab' }}
     needs: [verify]
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -568,6 +568,14 @@ jobs:
       ref: ${{ github.ref_name }}
     secrets: inherit
 
+  deploy-rexlab:
+    if: ${{ needs.verify.outputs.basename == 'rexlab' }}
+    needs: [verify]
+    uses: ./.github/workflows/rexlab-deploy.yml
+    with:
+      ref: ${{ github.ref_name }}
+    secrets: inherit
+
   deploy-clipdeck:
     if: ${{ needs.verify.outputs.basename == 'clipdeck' }}
     needs: [core, verify]
@@ -632,7 +640,7 @@ jobs:
         working-directory: foliotell/ios
 
   github-release:
-    needs: [core, verify, test-notio-backend, test-foliotell, deploy-nomos-staging, deploy-nomos-prod, deploy-agonara-staging, deploy-agonara-prod, deploy-notio-backend, deploy-notio-frontend, deploy-clipdeck, deploy-foliotell-testflight]
+    needs: [core, verify, test-notio-backend, test-foliotell, deploy-nomos-staging, deploy-nomos-prod, deploy-agonara-staging, deploy-agonara-prod, deploy-notio-backend, deploy-notio-frontend, deploy-rexlab, deploy-clipdeck, deploy-foliotell-testflight]
     if: >-
       ${{ always() && !cancelled()
       && needs.verify.result == 'success'
@@ -648,6 +656,8 @@ jobs:
       && (needs.deploy-agonara-prod.result == 'success' || needs.deploy-agonara-prod.result == 'skipped')
       && (needs.deploy-notio-backend.result == 'success' || needs.deploy-notio-backend.result == 'skipped')
       && (needs.deploy-notio-frontend.result == 'success' || needs.deploy-notio-frontend.result == 'skipped')
+      && (needs.verify.outputs.basename != 'rexlab' || needs.deploy-rexlab.result == 'success')
+      && (needs.deploy-rexlab.result == 'success' || needs.deploy-rexlab.result == 'skipped')
       && (needs.deploy-clipdeck.result == 'success' || needs.deploy-clipdeck.result == 'skipped')
       && (needs.deploy-foliotell-testflight.result == 'success' || needs.deploy-foliotell-testflight.result == 'skipped')
       }}
@@ -703,11 +713,12 @@ jobs:
       || needs.deploy-agonara-prod.result == 'failure'
       || needs.deploy-notio-backend.result == 'failure'
       || needs.deploy-notio-frontend.result == 'failure'
+      || needs.deploy-rexlab.result == 'failure'
       || needs.deploy-clipdeck.result == 'failure'
       || needs.deploy-foliotell-testflight.result == 'failure'
       || needs.github-release.result == 'failure')
       }}
-    needs: [verify, core, test-notio-backend, test-foliotell, deploy-nomos-staging, deploy-nomos-prod, deploy-agonara-staging, deploy-agonara-prod, deploy-notio-backend, deploy-notio-frontend, deploy-clipdeck, deploy-foliotell-testflight, github-release]
+    needs: [verify, core, test-notio-backend, test-foliotell, deploy-nomos-staging, deploy-nomos-prod, deploy-agonara-staging, deploy-agonara-prod, deploy-notio-backend, deploy-notio-frontend, deploy-rexlab, deploy-clipdeck, deploy-foliotell-testflight, github-release]
     uses: ./.github/workflows/notify-telegram-failure.yml
     with:
       title: "Release Unit"
@@ -724,6 +735,7 @@ jobs:
         deploy-agonara-prod=${{ needs.deploy-agonara-prod.result }}
         deploy-notio-backend=${{ needs.deploy-notio-backend.result }}
         deploy-notio-frontend=${{ needs.deploy-notio-frontend.result }}
+        deploy-rexlab=${{ needs.deploy-rexlab.result }}
         deploy-clipdeck=${{ needs.deploy-clipdeck.result }}
         deploy-foliotell-testflight=${{ needs.deploy-foliotell-testflight.result }}
         github-release=${{ needs.github-release.result }}

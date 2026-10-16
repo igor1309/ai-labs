@@ -24,7 +24,7 @@ description: "RexLab MVP infrastructure and technical architecture: a static Clo
 | Concern | MVP solution | Notes |
 | --- | --- | --- |
 | Hosting | Cloudflare Pages (Free tier) | User already has Cloudflare Pages deployments. |
-| Deployments | GitHub → Cloudflare Pages build/deploy | Use existing workflow where possible. |
+| Deployments | `rexlab_v<version>` tag → `release-unit.yml` → Wrangler → Cloudflare Pages | Pages project `rexlab`, domain `rexlab.enoa.ai`. |
 | Front end | React + TypeScript + Vite | Proposed stack. |
 | Quiz machinery | Client-side TypeScript | Select pairs, evaluate answers, advance rounds. |
 | Dinosaur information | Versioned static JSON | Source-controlled; fetched with the app. |
@@ -35,7 +35,7 @@ description: "RexLab MVP infrastructure and technical architecture: a static Clo
 | Backend / database | None | Reconsider only when a concrete use case appears. |
 | Offline use | Optional PWA enhancement | Manifest and service worker can be added later. |
 
-**Cost target:** $0/month for static hosting within Cloudflare Pages Free limits, using an existing or free Pages subdomain. A newly registered custom domain would have a separate annual cost.
+**Cost target:** $0/month for static hosting within Cloudflare Pages Free limits, on the existing `enoa.ai` domain.
 
 ## 3. Content model
 
@@ -110,15 +110,16 @@ Use `beatPersonalBest` to trigger a **new personal best** celebration. Example i
 
 ## 7. Deployment workflow
 
-1. Maintain the app, dinosaur JSON and image assets in the source repository.
-2. Build the static site with Vite.
-3. Deploy the generated assets to Cloudflare Pages on Git push.
-4. Serve content over HTTPS through Cloudflare's CDN.
-5. Update game content with normal version-controlled deployments.
+Agreed: RexLab ships through the repository's tag release, like the Notio frontend. There is no deploy on push.
+
+1. Keep the app, dinosaur JSON and image assets in `rexlab/`; `rexlab/package.json` holds the version.
+2. Every pull request that touches RexLab runs `rexlab-core.yml`: typecheck, tests, Vite build.
+3. A `rexlab_v<version>` tag on trunk runs `release-unit.yml`, which checks the tag against `release-units.toml` and calls `rexlab-deploy.yml`.
+4. The deploy builds `rexlab/dist`, runs `wrangler pages deploy` to the Cloudflare Pages project `rexlab`, and passes only when `https://rexlab.enoa.ai/` serves the tag's version in its `rexlab-version` meta tag.
+5. Cloudflare serves the site over HTTPS through its CDN at `rexlab.enoa.ai`.
 
 ## 8. Open implementation choices
 
-- Use an existing Cloudflare Pages project/subdomain or create a new project for RexLab.
 - Specify the validated dinosaur dataset and image sourcing/licensing workflow.
 - Finalize comparison attributes and pair-selection thresholds.
 - Decide whether installable PWA/offline support belongs in MVP or a later iteration.

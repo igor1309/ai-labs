@@ -6,4 +6,4 @@
 # Example for nested component roots:
 # paths = [{ path = "notio/backend", basename = "notio-backend" }]
 
-paths = ["agonara", "clipdeck", { path = "foliotell/ios", basename = "foliotell" }, "loki", "nomos", { path = "notio/backend", basename = "notio-backend" }, { path = "notio/frontend", basename = "notio-frontend" }, "oracle", "reinix"]
+paths = ["agonara", "clipdeck", { path = "foliotell/ios", basename = "foliotell" }, "loki", "nomos", { path = "notio/backend", basename = "notio-backend" }, { path = "notio/frontend", basename = "notio-frontend" }, "oracle", "reinix", "rexlab"]
