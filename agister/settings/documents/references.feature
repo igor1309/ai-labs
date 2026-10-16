@@ -11,14 +11,15 @@ Feature: Documents types a reference whole
     Then the output "o" reads <what>
 
     Examples:
-      | reads             | what                                         |
-      | params.base       | the param "base"                             |
-      | inputs.base       | the input "base"                             |
-      | state.review      | the state "review"                           |
-      | state.review.x    | the field "x" of the state "review"          |
-      | steps.a.outputs   | the outputs of the item "a"                  |
-      | steps.a.outputs.v | the field "v" of the outputs of the item "a" |
-      | steps.a.session   | the session of the item "a"                  |
+      | reads               | what                                                          |
+      | params.base         | the param "base"                                              |
+      | inputs.base         | the input "base"                                              |
+      | state.review        | the state "review"                                            |
+      | state.review.x      | the field "x" of the state "review"                           |
+      | steps.a.outputs     | the outputs of the item "a"                                   |
+      | steps.a.outputs.v   | the field "v" of the outputs of the item "a"                  |
+      | steps.a.outputs.v.w | the field "w" of the field "v" of the outputs of the item "a" |
+      | steps.a.session     | the session of the item "a"                                   |
 
   Scenario Outline: A reference that reads none of these is a problem
     Given the <document> has <field> that reads "<reads>"
@@ -30,7 +31,7 @@ Feature: Documents types a reference whole
       | workflow "w" | an output "o"          | params.base.x       | outputs.o        | params.<name>, inputs.<name>, state.<name>[.<field>] or steps.<name>.<part> |
       | workflow "w" | an output "o"          | state.review.x.y    | outputs.o        | params.<name>, inputs.<name>, state.<name>[.<field>] or steps.<name>.<part> |
       | workflow "w" | an output "o"          | steps.a             | outputs.o        | params.<name>, inputs.<name>, state.<name>[.<field>] or steps.<name>.<part> |
-      | workflow "w" | an output "o"          | steps.a.outputs.v.w | outputs.o        | params.<name>, inputs.<name>, state.<name>[.<field>] or steps.<name>.<part> |
+      | workflow "w" | an output "o"          | steps.a.outputs..w  | outputs.o        | params.<name>, inputs.<name>, state.<name>[.<field>] or steps.<name>.<part> |
       | process "p"  | its environment's HEAD | state.review        | environment.HEAD | params.<name> or inputs.<name>                                              |
       | process "p"  | its environment's HEAD | params.base.x       | environment.HEAD | params.<name> or inputs.<name>                                              |
 

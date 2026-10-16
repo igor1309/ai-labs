@@ -127,6 +127,7 @@ func scalar(node tree.Node) any {
 
 // clone is the condition with slices of its own, at every depth.
 func (c Condition) clone() Condition {
+	c.Reads.Value = c.Reads.Value.clone()
 	c.Of = slices.Clone(c.Of)
 	for i := range c.Of {
 		c.Of[i].Value = c.Of[i].Value.clone()

@@ -19,11 +19,12 @@ type links interface {
 
 // newCommandLine is the command line over the settings of home's folder
 // home and each command's launch directory, its links resolved by links,
-// read through fs and roots, each step planned with the facts of wrappers.
+// read through fs and roots, each step planned with the facts of wrappers;
+// and runner, which answers its run.
 // Layout walks up the launch directory to the root git gives of it, which
 // git spells as it is asked: a launch through a link would walk up where
 // the link is, and miss the root of where it leads.
-func newCommandLine(home string, links links, fs layout.FileSystem, roots layout.WorktreeRoot, wrappers resolve.Wrappers, stdout, stderr io.Writer) (*cli.CLI, error) {
+func newCommandLine(home string, links links, fs layout.FileSystem, roots layout.WorktreeRoot, wrappers resolve.Wrappers, runner cli.Runner, stdout, stderr io.Writer) (*cli.CLI, error) {
 	if links == nil {
 		return nil, errors.New("command line: no links")
 	}
@@ -41,7 +42,7 @@ func newCommandLine(home string, links links, fs layout.FileSystem, roots layout
 	if err != nil {
 		return nil, err
 	}
-	return cli.New(port, stdout, stderr)
+	return cli.New(port, runner, stdout, stderr)
 }
 
 // inspector is what cli's port asks of check.

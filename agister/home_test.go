@@ -1,8 +1,8 @@
 package agister_test
 
 import (
-	"maps"
 	"os"
+	"reflect"
 	"slices"
 	"strings"
 	"testing"
@@ -176,7 +176,7 @@ func TestTheShippedSettingsSayWhatTheyMean(t *testing.T) {
 			if c.revision == "" {
 				revision = documents.Reference{}
 			}
-			if w.Access.Value != c.access || w.Revision.Value != revision {
+			if w.Access.Value != c.access || !reflect.DeepEqual(w.Revision.Value, revision) {
 				t.Errorf("workspace %q at %+v, want %q at %+v", w.Access.Value, w.Revision.Value, c.access, revision)
 			}
 			if w.Clean.Value != (c.access == "read-write") {
@@ -210,7 +210,7 @@ func TestTheShippedSettingsSayWhatTheyMean(t *testing.T) {
 					arguments[argument.Value.Name] = argument.Value.Value
 				}
 				want := map[string]documents.Value{"rev": {From: documents.Reference{Root: documents.ReadsParam, Name: revision}}}
-				if input.Source.Value != "git.revision" || !maps.Equal(arguments, want) {
+				if input.Source.Value != "git.revision" || !reflect.DeepEqual(arguments, want) {
 					t.Errorf("the input %s is %q of %v, want git.revision of %v", revision, input.Source.Value, arguments, want)
 				}
 			}
@@ -227,7 +227,7 @@ func TestTheShippedSettingsSayWhatTheyMean(t *testing.T) {
 				for _, name := range []string{"base", "candidate", "goal"} {
 					want[name] = documents.Reference{Root: documents.ReadsInput, Name: name}
 				}
-				if !maps.Equal(bound, want) {
+				if !reflect.DeepEqual(bound, want) {
 					t.Errorf("the reviewer %s binds %v, want %v", reviewer.Value.Name, bound, want)
 				}
 			}

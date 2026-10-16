@@ -24,9 +24,9 @@ func state(name, field string) documents.Reference {
 }
 
 // outputs is a reference to the outputs of the item name, or their field,
-// "" for the whole.
-func outputs(name, field string) documents.Reference {
-	return documents.Reference{Root: documents.ReadsOutputs, Name: name, Field: field}
+// "" for the whole, and the fields of path within it.
+func outputs(name, field string, path ...string) documents.Reference {
+	return documents.Reference{Root: documents.ReadsOutputs, Name: name, Field: field, Path: path}
 }
 
 // session is a reference to the session of the item name.
@@ -89,6 +89,8 @@ func TestAReferenceGivesWhatItReads(t *testing.T) {
 		{"state.review.x", state("review", "x")},
 		{"steps.a.outputs", outputs("a", "")},
 		{"steps.a.outputs.v", outputs("a", "v")},
+		{"steps.a.outputs.v.w", outputs("a", "v", "w")},
+		{"steps.a.outputs.v.w.x", outputs("a", "v", "w", "x")},
 		{"steps.a.session", session("a")},
 	}
 	for _, c := range cases {
@@ -119,7 +121,7 @@ func TestAReferenceThatReadsNoneOfTheseIsAProblem(t *testing.T) {
 		{workflowReading, "params.base.x", inHomeWorkflow(5, "outputs.o", workflowRoots)},
 		{workflowReading, "state.review.x.y", inHomeWorkflow(5, "outputs.o", workflowRoots)},
 		{workflowReading, "steps.a", inHomeWorkflow(5, "outputs.o", workflowRoots)},
-		{workflowReading, "steps.a.outputs.v.w", inHomeWorkflow(5, "outputs.o", workflowRoots)},
+		{workflowReading, "steps.a.outputs..w", inHomeWorkflow(5, "outputs.o", workflowRoots)},
 		{processReading, "state.review", inHomeProcess(3, "environment.HEAD", processRoots)},
 		{processReading, "params.base.x", inHomeProcess(3, "environment.HEAD", processRoots)},
 		{workflowReading, "params", inHomeWorkflow(5, "outputs.o", workflowRoots)},

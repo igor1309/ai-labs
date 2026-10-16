@@ -12,14 +12,12 @@ changes unless a decision below says so.
 
 ## The next work
 
-`settings/documents` types every kind, `agister/home` is in the
-language, and `settings/resolve` is built. Next is `settings/check`
-(`docs/settings-implementation.md`, "Check"), then the composition:
-`settings/documents` types the repository's blocks file, each block a
-document by kind and name with its reason (ADR-002, rule 7;
-`settings/layout/blocks.feature` shows one with none).
-`agister/.agister` stays: the installed Agister reads it when run in
-this repository.
+`settings/documents`, `layout`, `resolve`, `check` and the composition
+are built, with `agister check` and `agister inspect`. Next is the run
+path (`docs/run-implementation.md`, `backlog/run-path.md`); then home
+moves to this language, when the new Agister can run what the old one
+does. `agister/.agister` stays: the installed Agister reads it when run
+in this repository.
 
 ## Decisions (2026-10-15)
 

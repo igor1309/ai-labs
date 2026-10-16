@@ -11,6 +11,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/igor1309/ai-labs/agister/core/workflow"
 	"github.com/igor1309/ai-labs/agister/files"
 	"github.com/igor1309/ai-labs/agister/runtime/bash"
 	"github.com/igor1309/ai-labs/agister/runtime/claudecode"
@@ -36,6 +37,8 @@ func TestAReferenceIsGivenToResolveAsWhatItReads(t *testing.T) {
 		{documents.Reference{Root: documents.ReadsState, Name: "review"}, resolve.Read{Root: resolve.RootState, Name: "review"}},
 		{documents.Reference{Root: documents.ReadsOutputs, Name: "a"}, resolve.Read{Root: resolve.RootOutputs, Name: "a"}},
 		{documents.Reference{Root: documents.ReadsOutputs, Name: "a", Field: "v"}, resolve.Read{Root: resolve.RootOutputs, Name: "a", Field: "v"}},
+		{documents.Reference{Root: documents.ReadsOutputs, Name: "a", Field: "stdout", Path: []string{"head"}},
+			resolve.Read{Root: resolve.RootOutputs, Name: "a", Field: "stdout"}},
 		{documents.Reference{Root: documents.ReadsSession, Name: "a"}, resolve.Read{Root: resolve.RootSession, Name: "a"}},
 		{documents.Reference{Root: documents.ReadsState, Name: "review", Field: "x"}, resolve.Read{Root: resolve.RootState, Name: "review", Field: "x"}},
 		{documents.Reference{Root: documents.ReadsItem}, resolve.Read{Root: resolve.RootQueryItem}},
@@ -56,7 +59,7 @@ func TestAReferenceIsGivenToResolveAsWhatItReads(t *testing.T) {
 			}
 			want := c.read
 			want.Origin = at(file, 5, "outputs.o")
-			if got := workflow.Outputs[0].From; got == nil || *got != want {
+			if got := workflow.Outputs[0].From; got == nil || !reflect.DeepEqual(*got, want) {
 				t.Errorf("it reads %+v, want %+v", got, want)
 			}
 		})
@@ -763,5 +766,33 @@ func TestEveryKindIsOneKindInEachPartsWords(t *testing.T) {
 		if kindOf(k.resolve) != k || checkKind(k.check) != k || documentsKind(k.documents) != k || cliKind(k.cli) != k {
 			t.Errorf("%+v is not found by each of its words", k)
 		}
+	}
+}
+
+// Execution bindings come straight from checked documents, including the
+// nested output path that resolve does not need for its checks.
+func TestWorkflowBindingsReadTheCheckedDocuments(t *testing.T) {
+	t.Parallel()
+	for _, c := range []struct {
+		name  string
+		value documents.Value
+		want  workflow.Value
+	}{
+		{"literal", documents.Value{Text: "hello"}, workflow.Value{Text: "hello"}},
+		{"param", documents.Value{From: documents.Reference{Root: documents.ReadsParam, Name: "p"}}, workflow.Value{Reads: &workflow.Reference{Of: workflow.Params, Name: "p"}}},
+		{"input", documents.Value{From: documents.Reference{Root: documents.ReadsInput, Name: "i"}}, workflow.Value{Reads: &workflow.Reference{Of: workflow.Inputs, Name: "i"}}},
+		{"whole output", documents.Value{From: documents.Reference{Root: documents.ReadsOutputs, Name: "a"}}, workflow.Value{Reads: &workflow.Reference{Of: workflow.Outputs, Name: "a"}}},
+		{"nested output", documents.Value{From: documents.Reference{Root: documents.ReadsOutputs, Name: "a", Field: "stdout", Path: []string{"head"}}}, workflow.Value{Reads: &workflow.Reference{Of: workflow.Outputs, Name: "a", Field: "stdout", Path: []string{"head"}}}},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
+			got, err := documentWorkflowBindings([]documents.Field[documents.Binding]{{Value: documents.Binding{Name: "x", Value: c.value}}})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if want := []workflow.Binding{{Name: "x", Value: c.want}}; !reflect.DeepEqual(got, want) {
+				t.Errorf("bindings %+v, want %+v", got, want)
+			}
+		})
 	}
 }

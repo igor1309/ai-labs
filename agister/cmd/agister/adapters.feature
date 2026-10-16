@@ -9,16 +9,17 @@ Feature: The adapters map one part's words to another's
     Then it reads <read>
 
     Examples:
-      | reads                                        | read                                             |
-      | the param "base"                             | the root param, the name "base"                  |
-      | the input "base"                             | the root input, the name "base"                  |
-      | the state "review"                           | the root state, the name "review"                |
-      | the outputs of the item "a"                  | the root outputs, the name "a"                   |
-      | the field "v" of the outputs of the item "a" | the root outputs, the name "a", the field "v"    |
-      | the session of the item "a"                  | the root session, the name "a"                   |
-      | the field "x" of the state "review"          | the root state, the name "review", the field "x" |
-      | the item                                     | the root item                                    |
-      | the field "fixed" of the item                | the root item, the field "fixed"                 |
+      | reads                                                                 | read                                                                |
+      | the param "base"                                                      | the root param, the name "base"                                     |
+      | the input "base"                                                      | the root input, the name "base"                                     |
+      | the state "review"                                                    | the root state, the name "review"                                   |
+      | the outputs of the item "a"                                           | the root outputs, the name "a"                                      |
+      | the field "v" of the outputs of the item "a"                          | the root outputs, the name "a", the field "v"                       |
+      | the field "head" of the field "stdout" of the outputs of the item "a" | the root outputs, the name "a", the field "stdout"                  |
+      | the session of the item "a"                                           | the root session, the name "a"                                      |
+      | the field "x" of the state "review"                                   | the root state, the name "review", the field "x"                    |
+      | the item                                                              | the root item                                                       |
+      | the field "fixed" of the item                                         | the root item, the field "fixed"                                    |
 
   Scenario: A value's origin carries its place
     Given documents types the workflow "w", whose first step names the

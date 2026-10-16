@@ -4,14 +4,18 @@ import (
 	"context"
 	"errors"
 	"io/fs"
+	"os"
 	"slices"
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/igor1309/ai-labs/agister/settings/documents"
 	"github.com/igor1309/ai-labs/agister/settings/layout"
 	"github.com/igor1309/ai-labs/agister/settings/resolve"
+	"github.com/igor1309/ai-labs/agister/supervisor"
+	"github.com/igor1309/ai-labs/gokit/clocktest"
 )
 
 // typed is what documents gives for one document: its definition, or its
@@ -247,4 +251,24 @@ func (s *gitSpy) Root(ctx context.Context, dir string) (string, error) {
 	}
 	s.dirs = append(s.dirs, dir)
 	return s.root, s.err
+}
+
+// programsSpy answers in place of the supervisor for a command that runs
+// no program: a program it is asked to run fails the test.
+type programsSpy struct{ t *testing.T }
+
+func (s programsSpy) Run(_ context.Context, program supervisor.Program) (supervisor.Result, error) {
+	s.t.Errorf("asked to run %q, want no program run", program.Name)
+	return supervisor.Result{}, errors.New("no program runs here")
+}
+
+// idleHost is the machine for a command that runs nothing: a run that
+// watches its signals fails the test.
+func idleHost(t *testing.T) host {
+	clock := clocktest.NewClock(time.Date(2026, 10, 16, 10, 0, 0, 0, time.UTC))
+	return host{ctx: context.Background(), clock: clock, timer: clock.Timer,
+		signals: func() (<-chan os.Signal, func()) {
+			t.Error("a run watched the signals, want none run")
+			return nil, func() {}
+		}}
 }
