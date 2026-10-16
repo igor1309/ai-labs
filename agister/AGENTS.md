@@ -13,3 +13,9 @@
   decision. Check every import, port and type against them.
 - A claim that a part needs to break a rule to do its job is wrong.
   Find the port it should declare.
+
+## How we work
+
+- Work on agister follows `docs/process.md`: spec, reviews, triage, the
+  owner's go, implement, branch review, PR. Its scripts are
+  `scripts/loop/`.
