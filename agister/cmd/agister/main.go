@@ -10,6 +10,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/igor1309/ai-labs/agister/cli"
 	"github.com/igor1309/ai-labs/agister/files"
@@ -22,6 +23,7 @@ import (
 	"github.com/igor1309/ai-labs/agister/settings/documents"
 	"github.com/igor1309/ai-labs/agister/settings/layout"
 	"github.com/igor1309/ai-labs/agister/settings/resolve"
+	"github.com/igor1309/ai-labs/agister/supervisor"
 )
 
 func main() {
@@ -49,9 +51,14 @@ func run(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 	return commandLine.Run(args, dir)
 }
 
-// connect is the command line build gives over files and git.
+// connect is the command line build gives over files, git and the
+// supervisor, its grace on the wall clock.
 func connect(ctx context.Context, user string, stdout, stderr io.Writer) (*cli.CLI, error) {
 	g, err := git.New("git")
+	if err != nil {
+		return nil, err
+	}
+	programs, err := supervisor.New(wallTimer)
 	if err != nil {
 		return nil, err
 	}
@@ -64,15 +71,26 @@ func connect(ctx context.Context, user string, stdout, stderr io.Writer) (*cli.C
 	if err != nil {
 		return nil, err
 	}
-	return build(user, f, fs, roots, stdout, stderr)
+	return build(user, f, fs, roots, programs, stdout, stderr)
+}
+
+// wallTimer starts wait on the wall clock.
+func wallTimer(wait time.Duration) (<-chan time.Time, func()) {
+	timer := time.NewTimer(wait)
+	return timer.C, func() { timer.Stop() }
 }
 
 // build is the command line over links, fs and roots and every runtime
-// wrapper's facts, for the user whose home directory is user: home's
-// folder is its ".agister" (ADR-002, rule 2).
-func build(user string, links links, fs layout.FileSystem, roots layout.WorktreeRoot, stdout, stderr io.Writer) (*cli.CLI, error) {
+// wrapper's facts, the bash wrapper's turns run by programs, for the user
+// whose home directory is user: home's folder is its ".agister" (ADR-002,
+// rule 2).
+func build(user string, links links, fs layout.FileSystem, roots layout.WorktreeRoot, programs bash.Supervisor, stdout, stderr io.Writer) (*cli.CLI, error) {
+	b, err := bash.New(programs)
+	if err != nil {
+		return nil, err
+	}
 	wrappers, err := newContracts(
-		claudeCodeFacts(claudecode.New()), codexFacts(codex.New()), piFacts(pi.New()), bashFacts(bash.New()))
+		claudeCodeFacts(claudecode.New()), codexFacts(codex.New()), piFacts(pi.New()), bashFacts(b))
 	if err != nil {
 		return nil, err
 	}
