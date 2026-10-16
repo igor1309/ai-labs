@@ -19,6 +19,7 @@ func TestItsFacts(t *testing.T) {
 		Efforts:      []string{"off", "minimal", "low", "medium", "high", "xhigh", "max"},
 		ToolCalls:    true,
 		ToolCommands: true,
+		Inputs:       pi.InMessage,
 	}
 	if got := pi.New().Facts(); !reflect.DeepEqual(got, want) {
 		t.Errorf("facts\n got %+v\nwant %+v", got, want)

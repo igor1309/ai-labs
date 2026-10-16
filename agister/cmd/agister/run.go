@@ -18,6 +18,7 @@ import (
 	"github.com/igor1309/ai-labs/agister/core/inputs"
 	"github.com/igor1309/ai-labs/agister/core/workflow"
 	"github.com/igor1309/ai-labs/agister/runtime/bash"
+	"github.com/igor1309/ai-labs/agister/runtime/claudecode"
 	"github.com/igor1309/ai-labs/agister/settings/documents"
 	"github.com/igor1309/ai-labs/agister/settings/layout"
 	"github.com/igor1309/ai-labs/agister/settings/resolve"
@@ -770,6 +771,42 @@ func (s *supervised) Run(ctx context.Context, program bash.Program) (bash.Ended,
 		return bash.Stream{Head: s.Head, Tail: s.Tail, Size: s.Size, Digest: s.Digest, Incomplete: s.Incomplete}
 	}
 	return bash.Ended{Code: result.Code, Signal: result.Signal, Stdout: stream(result.Stdout), Stderr: stream(result.Stderr)}, nil
+}
+
+// claudeCodePrograms is what the claude-code wrapper's supervisor asks of
+// the supervisor.
+type claudeCodePrograms interface {
+	Run(ctx context.Context, program supervisor.Program) (supervisor.Result, error)
+}
+
+// claudeCodeSupervised answers the claude-code wrapper's supervisor from
+// the supervisor: the program's stdin and its line function pass as they
+// are. A program that could not start is claude-code's ErrNotStarted.
+type claudeCodeSupervised struct {
+	programs claudeCodePrograms
+}
+
+func newClaudeCodeSupervised(programs claudeCodePrograms) (*claudeCodeSupervised, error) {
+	if programs == nil {
+		return nil, errors.New("claude-code supervised: no programs")
+	}
+	return &claudeCodeSupervised{programs: programs}, nil
+}
+
+func (s *claudeCodeSupervised) Run(ctx context.Context, program claudecode.Program) (claudecode.Ended, error) {
+	result, err := s.programs.Run(ctx, supervisor.Program{
+		Name: program.Name, Args: program.Args, Dir: program.Dir, Env: program.Env, Stdin: program.Stdin, Line: program.Line,
+	})
+	if errors.Is(err, supervisor.ErrNotStarted) {
+		return claudecode.Ended{}, fmt.Errorf("%w: %w", claudecode.ErrNotStarted, err)
+	}
+	if err != nil {
+		return claudecode.Ended{}, err
+	}
+	stream := func(s supervisor.Stream) claudecode.Stream {
+		return claudecode.Stream{Head: s.Head, Tail: s.Tail, Size: s.Size, Digest: s.Digest, Incomplete: s.Incomplete}
+	}
+	return claudecode.Ended{Code: result.Code, Signal: result.Signal, Stdout: stream(result.Stdout), Stderr: stream(result.Stderr)}, nil
 }
 
 // processGroups is what the supervisor's starter asks of gokit's process

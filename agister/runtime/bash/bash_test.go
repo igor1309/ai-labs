@@ -45,6 +45,7 @@ func TestItsFacts(t *testing.T) {
 		Efforts:      nil,
 		ToolCalls:    false,
 		ToolCommands: false,
+		Inputs:       bash.InEnvironment,
 	}
 	if got := wrapper(t, &supervisorSpy{}).Facts(); !reflect.DeepEqual(got, want) {
 		t.Errorf("facts\n got %+v\nwant %+v", got, want)

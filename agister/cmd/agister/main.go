@@ -122,8 +122,16 @@ func build(user string, links links, fs layout.FileSystem, roots layout.Worktree
 	if err != nil {
 		return nil, err
 	}
+	claudeSupervising, err := newClaudeCodeSupervised(programs)
+	if err != nil {
+		return nil, err
+	}
+	claude, err := claudecode.New(claudeSupervising)
+	if err != nil {
+		return nil, err
+	}
 	wrappers, err := newContracts(
-		claudeCodeFacts(claudecode.New()), codexFacts(codex.New()), piFacts(pi.New()), bashFacts(b))
+		claudeCodeFacts(claude), codexFacts(codex.New()), piFacts(pi.New()), bashFacts(b))
 	if err != nil {
 		return nil, err
 	}

@@ -19,6 +19,7 @@ func TestItsFacts(t *testing.T) {
 		Efforts:      []string{"minimal", "low", "medium", "high", "xhigh"},
 		ToolCalls:    true,
 		ToolCommands: true,
+		Inputs:       codex.InMessage,
 	}
 	if got := codex.New().Facts(); !reflect.DeepEqual(got, want) {
 		t.Errorf("facts\n got %+v\nwant %+v", got, want)
