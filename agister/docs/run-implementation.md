@@ -282,12 +282,12 @@ while claude-code and codex keep their own logins under the real home.
 **The end-to-end check**, `scripts/e2e.sh`, runs the built `agister` on
 a scratch git repository, its home a copy of `home` and a process
 `ask`, whose output has a schema: one step on claude-code with the model
-`haiku`, one on codex at the effort `minimal`. Each completes, its
-output valid, its usage and session reported. It runs real programs on
-the owner's logins and costs a few cents, so it is opt-in: its tests
-run only with `AGISTER_E2E=1`, and `scripts/test.sh` says it skipped
-them. It is run before every PR that touches the run path
-(`docs/process.md`).
+`haiku`, one on codex at the effort `low`, the least its models take.
+Each completes, its output valid, its usage and session reported. It
+runs real programs on the owner's logins and costs a few cents, so it
+is opt-in: its tests run only with `AGISTER_E2E=1`, and
+`scripts/test.sh` says it skipped them. It is run before every PR that
+touches the run path (`docs/process.md`).
 
 Decisions, each with its reason:
 

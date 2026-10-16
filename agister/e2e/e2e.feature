@@ -5,7 +5,7 @@
 # holds a process "ask", its input "q" from the param "q", its output
 # schema an object of a string "answer"; AGISTER_HOME is a copy of home
 # with the agents "e2e-haiku", claude-code's model "haiku", and
-# "e2e-codex", codex at the effort "minimal".
+# "e2e-codex", codex at the effort "low", the least its models take.
 
 Feature: agister runs a step on the real model runtimes
 
