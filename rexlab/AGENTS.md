@@ -35,6 +35,13 @@ Run from `rexlab/`: `npm ci`, `npm run typecheck`, `npm test`, `npm run build`.
 Day to day, run `npm run dev` from `rexlab/` and open http://localhost:5173.
 Vite reloads the page on every save; nothing is deployed.
 
+- On an iPad on the same Wi-Fi, run `npm run dev -- --host` and open the
+  Network address Vite prints.
+- Do not run `npm ci` while the server is running: it replaces
+  `node_modules` under it.
+- Progress lives in `localStorage` under `rexlab-progress`; delete that key
+  in the browser's developer tools to play as a new child.
+
 ## Shipping a release
 
 Releases go out only by tag; merging to trunk deploys nothing.
