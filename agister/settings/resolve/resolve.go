@@ -114,13 +114,15 @@ type Item struct {
 	Outputs  []Binding
 }
 
-// Repeat is a bounded repetition: its initial state, its body, its next
-// state and its stopping condition.
+// Repeat is a bounded repetition (ADR-011, rule 4): its initial state, its
+// body, its next state, its stopping condition, and its bound, the most
+// times its body runs.
 type Repeat struct {
 	State []Binding
 	Steps []Item
 	Next  []Binding
 	Until Condition
+	Max   int
 }
 
 // Condition is a condition of a workflow: every reference it reads, the
@@ -272,8 +274,9 @@ type Reference struct {
 // reached, in the order it reached them; the definitions of the workflows,
 // processes, agents and runtime mappings among them, each by its name; the
 // plan of every step, in the order its workflow was reached; and its
-// warnings, each a block naming no document. A plan's extra is a warning
-// of its own.
+// warnings: each grant of a plan beyond what its process allows, at its
+// step's origin, in the order planned; then each block naming no
+// document.
 type Resolved struct {
 	Workflow  *Workflow
 	Reached   []Reference
@@ -399,7 +402,7 @@ func (r *Resolver) Resolve(request Request) (Resolved, []Fault) {
 	if len(faults) > 0 {
 		return Resolved{}, faults
 	}
-	var warnings []Problem
+	warnings := w.warnings
 	for _, block := range r.source.Blocks() {
 		if !r.source.Holds(block.Kind, block.Name) {
 			warnings = append(warnings, Problem{Origin: block.Origin,
@@ -443,6 +446,8 @@ type walk struct {
 	runtimes map[string]Runtime
 	facts    map[string]Facts
 	plans    []Plan
+	// warnings are the plans' extras, given only with what resolves.
+	warnings []Problem
 }
 
 // step is the workflow of one step resolve makes of the process on the

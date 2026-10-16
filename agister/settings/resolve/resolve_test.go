@@ -218,11 +218,18 @@ func TestAWorkflowRequestedResolvesWithWhatItReaches(t *testing.T) {
 	base := []resolve.Param{{Name: "base", Default: true}}
 	item := stepAt("s", "p", "a", "steps[0]")
 	item.Inputs = []resolve.Binding{{Name: "base", From: ptr(param("base"))}}
+	loop := resolve.Item{Name: "loop", Origin: resolve.Origin{Place: "steps[1]"}, Repeat: &resolve.Repeat{
+		State: []resolve.Binding{{Name: "round", Text: "1"}},
+		Steps: []resolve.Item{stepAt("t", "p", "a", "steps[1].repeat.steps[0]")},
+		Next:  []resolve.Binding{{Name: "round", From: ptr(state("round"))}},
+		Until: resolve.Condition{Reads: []resolve.Read{outputs("t", "done")}},
+		Max:   3,
+	}}
 	w := resolve.Workflow{
 		Name:    "w",
 		Params:  base,
 		Inputs:  []resolve.Input{{Name: "goal", Forms: []resolve.Name{named("wb", "inputs.goal.form[0]")}, Arguments: []resolve.Binding{{Name: "path", From: ptr(param("base"))}}}},
-		Steps:   []resolve.Item{item},
+		Steps:   []resolve.Item{item, loop},
 		Outputs: []resolve.Binding{{Name: "verdict", From: ptr(outputs("s", "verdict"))}, {Name: "note", Text: "done"}},
 	}
 	s.workflows["w"] = w

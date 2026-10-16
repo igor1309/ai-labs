@@ -25,7 +25,7 @@ func (w *walk) planAll(name string, items []Item, fault func(Problem)) {
 
 // planStep plans the step item: what its process and the step need of its
 // runtime, and the permissions its process requires, each problem at the
-// step's origin. A step whose process, agent or runtime is at fault is not
+// step's origin; and each extra of its plan, a warning there. A step whose process, agent or runtime is at fault is not
 // planned: they refuse it.
 func (w *walk) planStep(name string, item Item, fault func(Problem)) {
 	process, ok := w.processes[item.Process.Value]
@@ -67,6 +67,10 @@ func (w *walk) planStep(name string, item Item, fault func(Problem)) {
 	}
 	plan.Workflow, plan.Place, plan.Agent = name, item.Origin.Place, agent.Name
 	w.plans = append(w.plans, plan)
+	for _, extra := range plan.Extra {
+		w.warnings = append(w.warnings, Problem{Origin: item.Origin,
+			Message: fmt.Sprintf("its plan grants %q beyond what its process %q allows", extra, process.Name)})
+	}
 }
 
 // planOf is the plan of process on runtime (ADR-003, rule 4): what the

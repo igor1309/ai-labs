@@ -143,6 +143,62 @@ func TestAStepIsPlannedFromItsPermissionsAndItsMapping(t *testing.T) {
 			if !reflect.DeepEqual(got.Plans, []resolve.Plan{want}) {
 				t.Errorf("plans\n got %+v\nwant %+v", got.Plans, []resolve.Plan{want})
 			}
+			// Each extra is a warning at the step's place in the made workflow.
+			var warnings []resolve.Problem
+			for _, extra := range want.Extra {
+				warnings = append(warnings, resolve.Problem{Origin: resolve.Origin{Place: "steps[0]"},
+					Message: `its plan grants "` + extra + `" beyond what its process "p" allows`})
+			}
+			if !reflect.DeepEqual(got.Warnings, warnings) {
+				t.Errorf("warnings\n got %+v\nwant %+v", got.Warnings, warnings)
+			}
+		})
+	}
+}
+
+// planning.feature, "A plan's extra is a warning, at its step's place":
+// each extra its own, in the order planned, before a block's.
+func TestAPlansExtraIsAWarningAtItsStepsPlace(t *testing.T) {
+	t.Parallel()
+	for name, test := range map[string]struct {
+		grants []string
+		blocks []resolve.Block
+		want   []resolve.Problem
+	}{
+		"one extra": {
+			grants: []string{"read", "net"},
+			want:   []resolve.Problem{problemOfW(4, "steps[0]", `its plan grants "net" beyond what its process "p" allows`)},
+		},
+		"no extra": {grants: []string{"read"}},
+		"two extras": {
+			grants: []string{"net", "read", "host"},
+			want: []resolve.Problem{
+				problemOfW(4, "steps[0]", `its plan grants "net" beyond what its process "p" allows`),
+				problemOfW(4, "steps[0]", `its plan grants "host" beyond what its process "p" allows`),
+			},
+		},
+		"with a block naming no document": {
+			grants: []string{"read", "net"},
+			blocks: []resolve.Block{block(resolve.KindAgent, "gone", 2)},
+			want: []resolve.Problem{
+				problemOfW(4, "steps[0]", `its plan grants "net" beyond what its process "p" allows`),
+				{Origin: resolve.Origin{Path: repoBlocks, Line: 2}, Message: `it blocks the agent "gone", which no layer holds`},
+			},
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			s := onRuntime(newSource(), resolve.Runtime{Grants: test.grants})
+			s.processes["p"] = resolve.Process{Name: "p", Allow: []string{"read"}}
+			s.workflows["w"] = resolve.Workflow{Name: "w", Steps: []resolve.Item{at(step("s", "p", "a"), 4, "steps[0]")}}
+			s.blocks = test.blocks
+
+			got, faults := newResolver(t, s).Resolve(requestW)
+
+			assertResolved(t, faults)
+			if !reflect.DeepEqual(got.Warnings, test.want) {
+				t.Errorf("warnings\n got %+v\nwant %+v", got.Warnings, test.want)
+			}
 		})
 	}
 }
