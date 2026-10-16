@@ -1,10 +1,11 @@
 # The behaviours of settings/check, before its code: check (ADR-002,
 # rule 8). Check is given three ports, spies in every test (ADR-009): its
 # names, each document a layer holds, by kind and name, with the layers
-# that hold it; its resolve, a document by kind and name to what
-# resolves, with its warnings, or a refusal: every document at fault,
-# with its problems, or the block that refuses it, and the chain that
-# reached it, and the problems of no document; and its fields. A source
+# that hold it; its resolve, a document by kind and name, a workflow as a
+# caller giving every param it declares, to what resolves, with its
+# warnings, or a refusal: every document at fault, with its problems, or
+# the block that refuses it, and the chain that reached it, and the
+# problems of no document; and its fields. A source
 # is a file, a line and its layer. Check gives data, and gates nothing.
 
 Feature: Check resolves every document and reports every problem once

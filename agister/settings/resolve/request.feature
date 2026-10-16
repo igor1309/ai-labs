@@ -51,6 +51,14 @@ Feature: Resolve takes a request naming a document or a step
     Then it gives no workflow
     And it reached the agent "a" and the runtime "r"
 
+  Scenario: A process requested alone is followed and checked, and planned not
+    Given the process "p" names the prompt "pr", and its environment's
+      HEAD reads "params.head", which it does not declare
+    When resolve is asked for the process "p"
+    Then it refuses: the process "p", and the problem at
+      "environment.HEAD": its process declares the param "head"
+    And it reached the process "p" and the prompt "pr", and planned no step
+
   Scenario Outline: A problem of no document refuses every request
     Given the source has a problem of no document
     And <request> resolves on its own

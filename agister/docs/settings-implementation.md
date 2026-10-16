@@ -175,10 +175,13 @@ It checks each workflow's boundaries and bindings, and each process's
 own references (ADR-011, rule 6), and plans each step: its process's
 permissions against its agent's runtime mapping (ADR-003). A step that
 needs what its runtime cannot do, by the runtime's facts, is refused: an
-output schema, a continued or recovered session, skills, a model, an
-effort, a staleness limit on tool calls or tool commands (ADR-003, rule
-7; ADR-012, rules 2 and 3). Every step is resolved and planned, those of
-branches a run may not take too.
+output schema, a continued or recovered session, skills, a staleness
+limit on tool calls or tool commands (ADR-003, rule 7; ADR-012, rule 3);
+a model or an effort its runtime does not take refuses its agent
+(ADR-012, rule 2). Every step is resolved and planned, those of
+branches a run may not take too. A process, an agent or a runtime
+mapping requested alone is followed and checked as it would be in a
+step, and plans no step.
 
 A request that depends on a blocked document is refused, naming the
 block; a block is not a problem, and a block naming no document is a
@@ -222,12 +225,15 @@ Resolve gives what a run needs (ADR-002, rule 6), and its warnings: the
 workflow, requested or made of a step (ADR-013); every document it
 reached, by kind and name; the definitions of the workflows, processes,
 agents and runtime mappings among them, in resolve's types; and each
-step's plan. A document resolve reads nothing of, the composition gives
-from the same fixed snapshot, by the name resolve reached.
+step's plan. Every document reached, the composition gives whole, as
+documents types it, from the same fixed snapshot, by the name resolve
+reached: resolve's definitions hold only what it reads, and a run needs
+all of a document, its limits and its conditions' values among them.
 
-A refusal is every document at fault, each with its problems, or the
+A refusal is the problems of no document, the source's, then the
+request's; then every document at fault, each with its problems, or the
 block that refuses it, and the first chain that reached it, in the order
-reached; and the problems of no document, the request's among them. A
+reached. A
 link of the chain is a document's kind and name, and where the document
 before it names it.
 
@@ -262,7 +268,9 @@ Check is handed three ports, each declared in its own words (ADR-001,
 rule 1): its names, each document a layer holds, by kind and name, with
 the layers that hold it, which the composition answers from layout; its
 resolve, a document by kind and name to what resolves, with its
-warnings, or a refusal, which the composition answers from resolve; and
+warnings, or a refusal, which the composition answers from resolve,
+asking for a workflow as a caller giving every param it declares, so a
+param with no default refuses no document; and
 its fields, a document's fields, each its place, its value as text and
 its source, which the composition answers from documents. A source is a
 file, a line and the layer of the file; the composition gives the layer
@@ -291,6 +299,18 @@ chain. A document no layer holds is shown as such, and resolve is not
 asked.
 
 Check gives data; the command line prints it, and is the composition's.
+
+Decisions of its reviews, each with its reason:
+
+- A workflow is checked as if a caller gave every param it declares: a
+  param no caller gives is a fault of a run's request, not of the
+  settings. The composition gives the params, from documents, and its
+  tests prove it; resolve is unchanged.
+- The input delivery fact refuses no step, and section 6 says so; it
+  needs no backlog file until a runtime takes inputs another way.
+- Resolve's scenarios keep their wording: a block's chain, a refusal
+  with no place, and "withheld", which `resolve.Plan` defines, are taste
+  and merged; `planning.feature` is at its limit.
 
 ## Where each check sits
 
