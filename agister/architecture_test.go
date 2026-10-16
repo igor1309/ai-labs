@@ -1,6 +1,6 @@
 // Package agister_test checks what the module as a whole promises: the
-// dependency rule of its architecture (ADR-001, rule 1) and the marker and
-// parallelism of its tests (ADR-009).
+// dependency rules of its architecture (ADR-001, rules 1 and 2) and the
+// marker and parallelism of its tests (ADR-009).
 package agister_test
 
 import (
@@ -27,17 +27,26 @@ const module = "github.com/igor1309/ai-labs/agister"
 // module, inside their group or outside it (ADR-001, rule 1).
 var isolated = []string{"cli", "settings", "core"}
 
+// wrappers are the groups of the wrappers, which know nothing of the parts
+// that use them (ADR-001, rule 2): their packages import no package of the
+// module but a wrapper's, as a runtime wrapper the supervisor's.
+var wrappers = []string{"runtime", "supervisor", "git", "runstore", "files"}
+
 // breaches lists, sorted, every import edge of imports, a package's
-// imports by its path from the module's root, that breaks rule 1.
+// imports by its path from the module's root, that breaks rule 1 or 2.
 func breaches(imports map[string][]string) []string {
 	var found []string
 	for pkg, imported := range imports {
-		if !slices.ContainsFunc(isolated, func(group string) bool { return under(pkg, group) }) {
+		alone, wrapper := within(pkg, isolated), within(pkg, wrappers)
+		if !alone && !wrapper {
 			continue
 		}
 		for _, dep := range imported {
 			own := strings.TrimPrefix(dep, module+"/")
-			if own != pkg && (dep == module || own != dep) {
+			if own == pkg || (dep != module && own == dep) {
+				continue
+			}
+			if alone || !within(own, wrappers) {
 				found = append(found, pkg+" imports "+own)
 			}
 		}
@@ -46,9 +55,14 @@ func breaches(imports map[string][]string) []string {
 	return found
 }
 
+// within tells whether pkg is under one of groups.
+func within(pkg string, groups []string) bool {
+	return slices.ContainsFunc(groups, func(group string) bool { return under(pkg, group) })
+}
+
 func under(pkg, group string) bool { return pkg == group || strings.HasPrefix(pkg, group+"/") }
 
-func TestBreachesFindsAnIsolatedPackageImportingTheModule(t *testing.T) {
+func TestBreachesFindsAnIsolatedPackageImportingTheModuleAndAWrapperImportingAPart(t *testing.T) {
 	t.Parallel()
 	got := breaches(map[string][]string{
 		"settings/check":     {"fmt", module + "/settings/resolve"},
@@ -56,7 +70,10 @@ func TestBreachesFindsAnIsolatedPackageImportingTheModule(t *testing.T) {
 		"core/session":       {module + "/core/watch", module + "/runtime/codex"},
 		"cli":                {module + "/settings/check"},
 		"cmd/agister":        {module + "/settings/check", module + "/core/session"},
-		"runtime/codex":      {module + "/git"},
+		"runtime/codex":      {module + "/git", module + "/supervisor"},
+		"runtime/pi":         {module + "/core/call"},
+		"git":                {"os/exec", module + "/settings/layout"},
+		"files":              {module},
 		"settings/documents": {"gopkg.in/yaml.v3"},
 		"settingsx":          {module + "/core/watch"},
 	})
@@ -64,6 +81,9 @@ func TestBreachesFindsAnIsolatedPackageImportingTheModule(t *testing.T) {
 		"cli imports settings/check",
 		"core/session imports core/watch",
 		"core/session imports runtime/codex",
+		"files imports " + module,
+		"git imports settings/layout",
+		"runtime/pi imports core/call",
 		"settings/check imports settings/resolve",
 	}
 	if !slices.Equal(got, want) {
@@ -72,10 +92,11 @@ func TestBreachesFindsAnIsolatedPackageImportingTheModule(t *testing.T) {
 }
 
 // Every package of cli, settings and core, its tests included, imports no
-// other package of the module (ADR-001, rule 1).
+// other package of the module (ADR-001, rule 1), and every wrapper's no
+// package of the module but a wrapper's (rule 2).
 //
 // Contract test: the module's Go files, as the file system has them.
-func TestTheIsolatedGroupsImportNothingOfTheModule(t *testing.T) {
+func TestTheModuleKeepsTheImportRules(t *testing.T) {
 	t.Parallel()
 	imported, err := imports(os.DirFS("."))
 	if err != nil {
