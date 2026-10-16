@@ -15,6 +15,16 @@ for f in "$@"; do
   [[ -e $f ]] || git ls-files --error-unmatch "$f" > /dev/null 2>&1 \
     || [[ -n $(git diff --cached --name-only -- "$f") ]] || { echo "no such file: $f" >&2; exit 2; }
 done
+# Spec and code are committed apart: a feature file or a doc with a Go
+# file is refused.
+spec=0; code=0
+for f in "$@"; do
+  case $f in
+    *.feature|*/docs/*) spec=1 ;;
+    *.go) code=1 ;;
+  esac
+done
+(( spec && code )) && { echo "spec and code in one commit: commit them apart" >&2; exit 2; }
 if ! (cd "$TEST_DIR" && ./scripts/test.sh) > "$dir/test-last.log" 2>&1; then
   tail -20 "$dir/test-last.log"
   echo "tests failed: nothing committed; $dir/test-last.log" >&2
