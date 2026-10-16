@@ -37,12 +37,12 @@ Feature: English and Russian
     Examples:
       | item                | text              |
       | quiz card           | СРАВНИ            |
-      | mass prompt         | Кто тяжелее?      |
-      | height prompt       | Кто выше?         |
-      | Next button         | Дальше            |
-      | See result button   | Результат         |
-      | Play again button   | Ещё раз           |
-      | Home button         | Домой             |
+      | mass prompt         | КТО ТЯЖЕЛЕЕ?      |
+      | height prompt       | КТО ВЫШЕ?         |
+      | Next button         | ДАЛЬШЕ            |
+      | See result button   | РЕЗУЛЬТАТ         |
+      | Play again button   | ЕЩЁ РАЗ           |
+      | Home button         | ДОМОЙ             |
       | name of Triceratops | ТРИЦЕРАТОПС       |
 
   Scenario Outline: Values are written in the chosen language
@@ -52,10 +52,21 @@ Feature: English and Russian
 
     Examples:
       | language | attribute | value   | text  |
-      | English  | mass      | 15 kg   | 15 kg |
-      | Russian  | mass      | 15 kg   | 15 кг |
-      | Russian  | mass      | 1000 kg | 1 т   |
-      | English  | mass      | 6500 kg | 6.5 t |
-      | Russian  | mass      | 6500 kg | 6,5 т |
-      | English  | height    | 3 m     | 3 m   |
-      | Russian  | height    | 3 m     | 3 м   |
+      | English  | mass      | 15 kg   | 15 KG |
+      | Russian  | mass      | 15 kg   | 15 КГ |
+      | Russian  | mass      | 1000 kg | 1 Т   |
+      | English  | mass      | 6500 kg | 6.5 T |
+      | Russian  | mass      | 6500 kg | 6,5 Т |
+      | English  | height    | 3 m     | 3 M   |
+      | Russian  | height    | 3 m     | 3 М   |
+
+  Scenario Outline: Text for children is in capitals
+    Given the app is in <language>
+    When I play a round through to the result
+    Then every text on every screen is in capitals
+    But the language switch and the version footer, which are for parents, are not
+
+    Examples:
+      | language |
+      | English  |
+      | Russian  |

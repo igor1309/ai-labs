@@ -40,12 +40,12 @@ Feature: Compare dinosaurs quiz: starting a round and asking
     And each name is in large capital letters
     And both pictures are the same size
     And no values are shown yet
-    And I see a "Home" button with a 🏠 symbol, away from the dinosaur cards
+    And I see a "HOME" button with a 🏠 symbol, away from the dinosaur cards
 
     Examples:
       | attribute | symbol | prompt          |
-      | mass      | ⚖️     | Who is heavier? |
-      | height    | 📏      | Who is taller?  |
+      | mass      | ⚖️     | WHO IS HEAVIER? |
+      | height    | 📏      | WHO IS TALLER?  |
 
   Scenario: Every question in a round is a fair pair
     When a round of 10 questions is generated

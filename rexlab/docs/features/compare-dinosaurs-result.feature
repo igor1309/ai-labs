@@ -7,20 +7,20 @@ Feature: Compare dinosaurs quiz: the result and the best score
 
   Scenario: The round ends with a score
     Given I have answered all 10 questions with 7 correct
-    When I tap "See result"
+    When I tap "SEE RESULT"
     Then I see "7/10"
     And I see my best score
-    And I see "Play again" with a 🔄 symbol and "Home" with a 🏠 symbol
+    And I see "PLAY AGAIN" with a 🔄 symbol and "HOME" with a 🏠 symbol
 
   Scenario: Play again starts a new round
     Given I am on the result screen
-    When I tap "Play again"
+    When I tap "PLAY AGAIN"
     Then a new round of 10 questions starts
     And I see the progress "1/10"
 
   Scenario: Home returns to the home page
     Given I am on the result screen
-    When I tap "Home"
+    When I tap "HOME"
     Then I am on the home page
 
   Scenario: A finished round is counted in stored progress
@@ -62,7 +62,7 @@ Feature: Compare dinosaurs quiz: the result and the best score
     Given my best score so far is 6
     And my stored progress counts 3 finished rounds
     And I am on question 5 of a round
-    When I tap "Home"
+    When I tap "HOME"
     Then I am on the home page without being asked to confirm
     And my best score stays 6
     And my stored progress counts 3 finished rounds

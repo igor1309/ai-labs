@@ -1,6 +1,6 @@
 Feature: Compare dinosaurs quiz: answering a question
   Answering takes one tap; the answer and both values are then shown,
-  and "Next" moves on.
+  and "NEXT" moves on.
 
   Background:
     Given an iPad in landscape
@@ -12,12 +12,12 @@ Feature: Compare dinosaurs quiz: answering a question
     Then <larger> is marked correct with a ✓
     And both cards show their <attribute>
     And the answer counts as correct
-    And a "Next" button with a ▶ symbol appears
+    And a "NEXT" button with a ▶ symbol appears
 
     Examples:
       | prompt          | attribute | larger        | smaller      |
-      | Who is heavier? | mass      | Triceratops   | Velociraptor |
-      | Who is taller?  | height    | Brachiosaurus | Triceratops  |
+      | WHO IS HEAVIER? | mass      | Triceratops   | Velociraptor |
+      | WHO IS TALLER?  | height    | Brachiosaurus | Triceratops  |
 
   Scenario Outline: A wrong answer shows the right one
     Given the question "<prompt>" about <larger> and <smaller>
@@ -26,12 +26,12 @@ Feature: Compare dinosaurs quiz: answering a question
     And <larger> is marked as the right answer with a ✓
     And both cards show their <attribute>
     And the answer counts as wrong
-    And a "Next" button appears
+    And a "NEXT" button appears
 
     Examples:
       | prompt          | attribute | larger        | smaller      |
-      | Who is heavier? | mass      | Triceratops   | Velociraptor |
-      | Who is taller?  | height    | Brachiosaurus | Triceratops  |
+      | WHO IS HEAVIER? | mass      | Triceratops   | Velociraptor |
+      | WHO IS TALLER?  | height    | Brachiosaurus | Triceratops  |
 
   Scenario: A dinosaur card shows it is pressed
     When I press a dinosaur card
@@ -53,28 +53,28 @@ Feature: Compare dinosaurs quiz: answering a question
 
     Examples:
       | attribute | value   | text   |
-      | mass      | 15 kg   | 15 kg  |
-      | mass      | 14.6 kg | 15 kg  |
-      | mass      | 999 kg  | 999 kg |
-      | mass      | 1000 kg | 1 t    |
-      | mass      | 6543 kg | 6.5 t  |
-      | mass      | 6500 kg | 6.5 t  |
-      | mass      | 7000 kg | 7 t    |
-      | height    | 3 m     | 3 m    |
-      | height    | 0.5 m   | 0.5 m  |
-      | height    | 12.26 m | 12.3 m |
+      | mass      | 15 kg   | 15 KG  |
+      | mass      | 14.6 kg | 15 KG  |
+      | mass      | 999 kg  | 999 KG |
+      | mass      | 1000 kg | 1 T    |
+      | mass      | 6543 kg | 6.5 T  |
+      | mass      | 6500 kg | 6.5 T  |
+      | mass      | 7000 kg | 7 T    |
+      | height    | 3 m     | 3 M    |
+      | height    | 0.5 m   | 0.5 M  |
+      | height    | 12.26 m | 12.3 M |
 
   Scenario: Next moves to the following question
     Given I have answered question 3
-    When I tap "Next"
+    When I tap "NEXT"
     Then I see the progress "4/10"
     And the new question shows no values yet
 
   Scenario: A quick double tap on Next skips nothing
     Given I have answered question 3
-    When I tap "Next" twice quickly
+    When I tap "NEXT" twice quickly
     Then I see the progress "4/10"
 
   Scenario: The last question leads to the result
     When I answer question 10
-    Then the button reads "See result" with a 🏆 symbol instead of "Next"
+    Then the button reads "SEE RESULT" with a 🏆 symbol instead of "NEXT"
