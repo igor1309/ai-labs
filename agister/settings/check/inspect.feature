@@ -1,21 +1,19 @@
 # The behaviours of settings/check, before its code: inspect (ADR-002,
 # rule 8). Its ports are check's (check.feature); its fields port gives a
 # document's fields, each its place, its value as text and its source: a
-# file, a line and the layer of the file. Check spells no field of any
-# kind: it shows them as given, but for a description, which a listing
-# reads by its place.
+# file, a line and the layer of the file, from the document's tree as
+# layered and extended. Check spells no field of any kind: it shows them
+# as given.
 
 Feature: Inspect lists processes, workflows and agents, and shows one
 
   Scenario Outline: A listing gives each name of its kind, with what it is
     Given the layers hold the <kind> "x", in home and the repository,
       and the <kind> "y", in the project
-    And the <kind> "x" has the field "description", "reviews a branch"
     And resolve resolves the <kind> "x" and refuses the <kind> "y"
     When inspect lists the <kind>s
-    Then it gives "x", "reviews a branch", in home and the repository,
-      resolving
-    And it gives "y", with no description, in the project, refused
+    Then it gives "x", in home and the repository, resolving
+    And it gives "y", in the project, refused
 
     Examples:
       | kind     |
@@ -55,6 +53,15 @@ Feature: Inspect lists processes, workflows and agents, and shows one
     Then it gives its fields, then the refusal: the agent "a", reached by
       the workflow "w" at "steps[0].agent", with the problem "runtime is
       missing"
+
+  Scenario: A document that does not type is shown with its fields
+    Given the agent "a" has the field "runtime", "7", from
+      "home/agents/a.yaml", line 1, in home
+    And resolve refuses the agent "a": the agent "a", with the problem
+      at "runtime": a name is text
+    When inspect shows the agent "a"
+    Then it gives "runtime", "7", from "home/agents/a.yaml", line 1, in
+      home, then the refusal
 
   Scenario: A document no layer holds is shown as not held
     Given no layer holds the agent "z"

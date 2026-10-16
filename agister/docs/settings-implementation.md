@@ -264,38 +264,40 @@ Decisions of its reviews, each with its reason:
 ## Check
 
 Check is handed three ports, each declared in its own words (ADR-001,
-rule 1): its names, each document a layer holds, by kind and name, with
-the layers that hold it, which the composition answers from layout; its
-resolve, a document by kind and name to what resolves, with its
-warnings, or a refusal, which the composition answers from resolve,
-asking for a workflow as a caller giving every param it declares, so a
-param with no default refuses no document; and
-its fields, a document's fields, each its place, its value as text and
-its source, which the composition answers from documents. A source is a
-file, a line and the layer of the file; the composition gives the layer
-from the path, in a problem, a link and a field alike. Check spells no
-field of any kind: it shows the fields in the order given, and reads
-one by its place alone, `description`, for a listing.
+rule 1). Its names: each document a layer holds, by kind and name, with
+the layers that hold it, which the composition answers from layout. Its
+resolve: a document by kind and name to what resolves, its documents
+reached, its plans and its warnings, or to a refusal; and the problems
+of no document, which refuse every request, asked once. The composition
+answers it from resolve and resolve's source, asking for a workflow as a
+caller giving every param it declares, so a param with no default
+refuses no document. Its fields: a document's fields, each its place,
+its value as text and its source, from the document's tree as layered
+and extended, so a document that does not type has its fields too, and
+one that does not decode has none; the composition answers it from
+documents. A source is a file, a line and the layer of the file; the
+composition gives the layer from the path, in a problem, a link and a
+field alike. Check spells no field of any kind: it shows the fields in
+the order given.
 
-**Check** asks for every name, of every kind, alone: a document nothing
-uses is checked too. A process alone plans no step; its plan is checked
-where a workflow names it. It reports each fault once, in the order
-first met: the problems of no document first, which refuse every
-request; then each document at fault, with its problems, or the block
-that refuses it, and every name it refuses, by kind and name. Each
-warning is given once, with every name it came with. Then every name,
-by kind, resolving or refused. Names are asked for kind by kind, in
-the order workflow, process, agent, runtime, brief, prompt, schema,
-skill, and by name within a kind. Check reports and does not gate
-(ADR-008, rule 3).
+**Check** asks for the problems of no document, and then for every
+name, of every kind, alone: a document nothing uses is checked too, and
+a layer that cannot be read is reported though no name is held. It
+reports each fault once, in the order first met: the problems of no
+document first, which refuse every request; then each document at
+fault, with its problems, or the block that refuses it, and every name
+it refuses, by kind and name. Each warning is given once, with every
+name it came with; a refusal gives none. Then every name, by kind,
+resolving or refused. Names are asked for kind by kind, in the order
+workflow, process, agent, runtime, brief, prompt, schema, skill, and by
+name within a kind. Check reports and does not gate (ADR-008, rule 3).
 
 **Inspect** lists the processes, the workflows or the agents: each name,
-its description, where it gives one, the layers that hold it, and
-whether it resolves. It shows one of them: each field, its value and
-its source; then what resolve gives: every document it reached, the
-plan of each step and the warnings; or the refusal, each fault with its
-chain. A document no layer holds is shown as such, and resolve is not
-asked.
+the layers that hold it, and whether it resolves. It shows one of them:
+each field, its value and its source; then what resolve gives: every
+document it reached, the plan of each step and the warnings; or the
+refusal, each fault with its chain. A document no layer holds is shown
+as such, and resolve is not asked.
 
 Check gives data; the command line prints it, and is the composition's.
 
@@ -310,6 +312,11 @@ Decisions of its reviews, each with its reason:
 - Resolve's scenarios keep their wording: a block's chain, a refusal
   with no place, and "withheld", which `resolve.Plan` defines, are taste
   and merged; `planning.feature` is at its limit.
+- Check plans no pairing of a process and an agent no workflow names: a
+  step requested alone is a run's request, as a param no caller gives
+  is; a workflow's steps are planned.
+- A warning of a refused name is not reported: resolve gives none with
+  a refusal, and check reports every problem; a warning is no problem.
 
 ## Where each check sits
 
