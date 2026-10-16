@@ -18,6 +18,7 @@ import (
 
 	"github.com/igor1309/ai-labs/agister/supervisor"
 	"github.com/igor1309/ai-labs/gokit/clocktest"
+	group "github.com/igor1309/ai-labs/gokit/supervisor"
 )
 
 // helperEnv set makes the test binary the program its value names, in
@@ -43,6 +44,7 @@ func TestMain(m *testing.M) {
 			os.Exit(2)
 		}
 		os.Stdout.WriteString("started\n")
+		os.Stderr.WriteString("diagnostics\n")
 		os.Exit(0)
 	case "sleep":
 		// Never ends by itself: its test kills it.
@@ -60,7 +62,7 @@ const goneBound = 30 * time.Second
 func newSupervisor(t *testing.T) (*supervisor.Supervisor, *clocktest.Clock) {
 	t.Helper()
 	clock := clocktest.NewClock(time.Time{})
-	s, err := supervisor.New(clock.Timer)
+	s, err := supervisor.New(clock.Timer, group.Exec{}, func(string, int64) {})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -317,14 +319,24 @@ func TestWhatAProgramLeavesRunningIsEndedWhenItExits(t *testing.T) {
 // waited on". The program is the test binary, which starts itself as a
 // sleeper in a session of its own, holding stdout and stderr, and exits:
 // the sleeper never ends by itself, so a run that returns was ended by the
-// grace. What was read before it passed is kept, its size and digest its
-// own, whatever the reads had reached.
+// grace. Both streams report captured bytes before the timer advances;
+// those bytes, their size and digest must survive the cutoff.
 //
 // Contract test: the operating system, a process that leaves its group
 // holding the pipes.
 func TestOutputHeldOpenByWhatLeftTheGroupIsNotWaitedOn(t *testing.T) {
 	t.Parallel()
-	s, clock := newSupervisor(t)
+	clock := clocktest.NewClock(time.Time{})
+	captured := make(chan string, 2)
+	s, err := supervisor.New(clock.Timer, group.Exec{}, func(name string, size int64) {
+		want := map[string]int64{"stdout": int64(len("started\n")), "stderr": int64(len("diagnostics\n"))}
+		if size == want[name] {
+			captured <- name
+		}
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
 	pidFile := filepath.Join(t.TempDir(), "pid")
 	t.Cleanup(func() {
 		if pid, err := strconv.Atoi(readText(pidFile)); err == nil && pid > 1 {
@@ -334,6 +346,10 @@ func TestOutputHeldOpenByWhatLeftTheGroupIsNotWaitedOn(t *testing.T) {
 	done := runInBackground(context.Background(), s, supervisor.Program{
 		Name: os.Args[0], Dir: t.TempDir(), Env: []string{helperEnv + "=escape", "PID_FILE=" + pidFile},
 	})
+	seen := map[string]bool{}
+	for len(seen) < 2 {
+		seen[<-captured] = true
+	}
 	// The program exits by itself: the one grace is the streams'.
 	clock.Started(supervisor.Grace)
 	clock.Advance(supervisor.Grace)
@@ -347,11 +363,11 @@ func TestOutputHeldOpenByWhatLeftTheGroupIsNotWaitedOn(t *testing.T) {
 	for name, kept := range map[string]struct {
 		stream  supervisor.Stream
 		written string
-	}{"stdout": {got.result.Stdout, "started\n"}, "stderr": {got.result.Stderr, ""}} {
-		read := kept.stream.Head
+	}{"stdout": {got.result.Stdout, "started\n"}, "stderr": {got.result.Stderr, "diagnostics\n"}} {
+		read := kept.written
 		sum := sha256.Sum256([]byte(read))
 		want := supervisor.Stream{Head: read, Tail: read, Size: int64(len(read)), Digest: hex.EncodeToString(sum[:]), Incomplete: true}
-		if kept.stream != want || !strings.HasPrefix(kept.written, read) {
+		if kept.stream != want {
 			t.Errorf("%s %+v, want what was read of %q, kept, and marked incomplete", name, kept.stream, kept.written)
 		}
 	}
@@ -382,10 +398,88 @@ func TestASignalFromElsewhereIsGivenByName(t *testing.T) {
 	}
 }
 
-// A supervisor is built with its timer.
-func TestASupervisorNeedsATimer(t *testing.T) {
+// A supervisor requires all its collaborators at construction.
+func TestASupervisorNeedsItsCollaborators(t *testing.T) {
 	t.Parallel()
-	if _, err := supervisor.New(nil); err == nil {
-		t.Error("a supervisor built with no timer, want an error")
+	clock := clocktest.NewClock(time.Time{})
+	progress := func(string, int64) {}
+	if _, err := supervisor.New(nil, group.Exec{}, progress); err == nil {
+		t.Error("a supervisor built with no timer")
+	}
+	if _, err := supervisor.New(clock.Timer, nil, progress); err == nil {
+		t.Error("a supervisor built with no programs")
+	}
+	if _, err := supervisor.New(clock.Timer, group.Exec{}, nil); err == nil {
+		t.Error("a supervisor built with no read progress")
+	}
+}
+
+// unsupportedPrograms refuses exit observation; any start is a test failure.
+type unsupportedPrograms struct{ t *testing.T }
+
+func (unsupportedPrograms) CheckExitObservation() error { return errors.ErrUnsupported }
+func (s unsupportedPrograms) Start(group.Command) (group.Process, error) {
+	s.t.Error("started a program without exit observation")
+	return nil, errors.New("unexpected start")
+}
+
+// supervisor.feature, "Where a program's exit cannot be observed, nothing starts".
+func TestUnsupportedExitObservationStartsNothing(t *testing.T) {
+	t.Parallel()
+	clock := clocktest.NewClock(time.Time{})
+	s, err := supervisor.New(clock.Timer, unsupportedPrograms{t}, func(string, int64) {})
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = s.Run(context.Background(), supervisor.Program{Name: "sh", Args: []string{"-c", "exit 0"}})
+	if !errors.Is(err, supervisor.ErrNotStarted) || !errors.Is(err, errors.ErrUnsupported) {
+		t.Errorf("error %v, want not started and unsupported", err)
+	}
+}
+
+// observationFailure starts real programs but cannot observe their exits.
+type observationFailure struct {
+	group.Exec
+	err     error
+	process group.Process
+}
+
+func (s *observationFailure) Start(c group.Command) (group.Process, error) {
+	p, err := s.Exec.Start(c)
+	if err != nil {
+		return nil, err
+	}
+	s.process = p
+	return failedObservation{Process: p, err: s.err}, nil
+}
+
+type failedObservation struct {
+	group.Process
+	err error
+}
+
+func (p failedObservation) Exited() error { return p.err }
+
+// A failed observation still cleans up the program, and keeps the cause
+// instead of presenting the supervisor's kill as an external signal.
+//
+// Contract test: the operating system, killing and reaping after observation fails.
+func TestAnObservationErrorIsKeptAfterCleanup(t *testing.T) {
+	t.Parallel()
+	clock := clocktest.NewClock(time.Time{})
+	cause := errors.New("cannot observe exit")
+	programs := &observationFailure{err: cause}
+	s, err := supervisor.New(clock.Timer, programs, func(string, int64) {})
+	if err != nil {
+		t.Fatal(err)
+	}
+	dir := t.TempDir()
+	fifo(t, dir, "blocked")
+	_, err = s.Run(context.Background(), sh(`read ignored < blocked`, dir))
+	if !errors.Is(err, cause) || errors.Is(err, supervisor.ErrNotStarted) {
+		t.Errorf("error %v, want observation failure after start", err)
+	}
+	if programs.process != nil {
+		gone(t, programs.process.Group())
 	}
 }

@@ -287,6 +287,8 @@ func planOf(name string, resolved resolve.Resolved, docs runDocuments, bash stri
 
 	// A workflow made of a step declares its process's params.
 	var params []documents.Field[documents.Param]
+	bindingsByStep := map[string][]documents.Field[documents.Binding]{}
+	var outputs []documents.Field[documents.Binding]
 	sources := map[string]string{}
 	if name != "" {
 		definition, problems := docs.Workflow(name)
@@ -294,6 +296,10 @@ func planOf(name string, resolved resolve.Resolved, docs runDocuments, bash stri
 			return plan{}, nil, documentProblems(problems)
 		}
 		params = definition.Params.Value
+		for _, item := range definition.Steps.Value {
+			bindingsByStep[item.Value.Name] = item.Value.Inputs.Value
+		}
+		outputs = definition.Outputs.Value
 		for _, input := range definition.Inputs.Value {
 			sources[input.Value.Name] = input.Value.Source.Value
 		}
@@ -321,14 +327,24 @@ func planOf(name string, resolved resolve.Resolved, docs runDocuments, bash stri
 		if err != nil {
 			return plan{}, nil, err
 		}
-		bindings, err := workflowBindings(item.Inputs)
+		var bindings []workflow.Binding
+		if name == "" {
+			bindings, err = workflowBindings(item.Inputs)
+		} else {
+			bindings, err = documentWorkflowBindings(bindingsByStep[item.Name])
+		}
 		if err != nil {
 			return plan{}, nil, err
 		}
 		built.workflow.Steps = append(built.workflow.Steps, workflow.Step{Name: item.Name, Bindings: bindings})
 		built.calls[item.Name] = planned
 	}
-	if built.workflow.Outputs, err = workflowBindings(w.Outputs); err != nil {
+	if name == "" {
+		built.workflow.Outputs, err = workflowBindings(w.Outputs)
+	} else {
+		built.workflow.Outputs, err = documentWorkflowBindings(outputs)
+	}
+	if err != nil {
 		return plan{}, nil, err
 	}
 	return built, nil, nil
@@ -506,13 +522,40 @@ func documentProblems(problems []documents.Problem) error {
 	return errors.New(strings.Join(texts, "; "))
 }
 
-// workflowBindings is bindings in core/workflow's words.
+// documentWorkflowBindings maps the checked document's executable bindings.
+func documentWorkflowBindings(bindings []documents.Field[documents.Binding]) ([]workflow.Binding, error) {
+	var mapped []workflow.Binding
+	for _, field := range bindings {
+		binding := field.Value
+		value := workflow.Value{Text: binding.Value.Text}
+		if read := binding.Value.From; read.Root != "" {
+			reference := workflow.Reference{Name: read.Name, Field: read.Field, Path: slices.Clone(read.Path)}
+			switch read.Root {
+			case documents.ReadsParam:
+				reference.Of = workflow.Params
+			case documents.ReadsInput:
+				reference.Of = workflow.Inputs
+			case documents.ReadsOutputs:
+				reference.Of = workflow.Outputs
+			default:
+				return nil, fmt.Errorf("%s reads the root %q, which a workflow of steps does not read",
+					problemLine(originOf(field.Origin), binding.Name), read.Root)
+			}
+			value.Reads = &reference
+		}
+		mapped = append(mapped, workflow.Binding{Name: binding.Name, Value: value})
+	}
+	return mapped, nil
+}
+
+// workflowBindings maps the bindings of a standalone step, whose workflow
+// resolve synthesizes without a document (ADR-013).
 func workflowBindings(bindings []resolve.Binding) ([]workflow.Binding, error) {
 	var mapped []workflow.Binding
 	for _, binding := range bindings {
 		value := workflow.Value{Text: binding.Text}
 		if read := binding.From; read != nil {
-			reference := workflow.Reference{Name: read.Name, Field: read.Field, Path: slices.Clone(read.Path)}
+			reference := workflow.Reference{Name: read.Name, Field: read.Field}
 			switch read.Root {
 			case resolve.RootParam:
 				reference.Of = workflow.Params

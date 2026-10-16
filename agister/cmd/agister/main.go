@@ -27,6 +27,7 @@ import (
 	"github.com/igor1309/ai-labs/agister/settings/layout"
 	"github.com/igor1309/ai-labs/agister/settings/resolve"
 	"github.com/igor1309/ai-labs/agister/supervisor"
+	group "github.com/igor1309/ai-labs/gokit/supervisor"
 )
 
 func main() {
@@ -63,7 +64,7 @@ func connect(ctx context.Context, user string, stdout, stderr io.Writer) (*cli.C
 	if err != nil {
 		return nil, err
 	}
-	programs, err := supervisor.New(wallTimer)
+	programs, err := supervisor.New(wallTimer, group.Exec{}, func(string, int64) {})
 	if err != nil {
 		return nil, err
 	}
@@ -76,7 +77,7 @@ func connect(ctx context.Context, user string, stdout, stderr io.Writer) (*cli.C
 	if err != nil {
 		return nil, err
 	}
-	machine := host{ctx: ctx, environ: os.Environ(), clock: wallClock{}, timer: wallTimer, signals: notified(os.Interrupt, syscall.SIGTERM)}
+	machine := host{ctx: ctx, environ: os.Environ(), clock: wallClock{}, timer: wallTimer, signals: cancellationSignals()}
 	return build(user, f, fs, roots, programs, machine, stdout, stderr)
 }
 
@@ -90,6 +91,9 @@ func wallTimer(wait time.Duration) (<-chan time.Time, func()) {
 type wallClock struct{}
 
 func (wallClock) Now() time.Time { return time.Now() }
+
+// cancellationSignals selects the signals that cancel a run.
+func cancellationSignals() signals { return notified(os.Interrupt, syscall.SIGTERM) }
 
 // notified watches the process's signals of kinds.
 func notified(kinds ...os.Signal) signals {

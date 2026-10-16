@@ -156,8 +156,13 @@ func newRunFixture(settings map[string]string, answer func(context.Context, supe
 // run runs "agister <args>" in dir.
 func (f *runFixture) run(t *testing.T, dir string, args ...string) ran {
 	t.Helper()
+	return f.runWatching(t, f.signals.watch, environ, dir, args...)
+}
+
+func (f *runFixture) runWatching(t *testing.T, watch signals, environment []string, dir string, args ...string) ran {
+	t.Helper()
 	var stdout, stderr strings.Builder
-	machine := host{ctx: context.Background(), environ: environ, clock: f.clock, timer: f.clock.Timer, signals: f.signals.watch}
+	machine := host{ctx: context.Background(), environ: environment, clock: f.clock, timer: f.clock.Timer, signals: watch}
 	commandLine, err := build("/u", &linksSpy{}, newFilesystemSpy(f.settings), rootSpy{root: "/r"}, f.supervisor, machine, &stdout, &stderr)
 	if err != nil {
 		t.Fatal(err)
@@ -375,33 +380,63 @@ func TestAStepReachesCoreWithItsProcesssTimeLimitAsLayered(t *testing.T) {
 // run.feature, "A signal to Agister cancels the run". Bash blocks until
 // its context ends, and then exits 0: core's class wins.
 //
-// Contract test: the files home holds, as Agister ships them.
+// Contract test: OS signal registration and delivery, and the shipped home files; integrates the composed run.
+// Serial: SIGINT and SIGTERM are delivered to this process.
 func TestASignalToAgisterCancelsTheRun(t *testing.T) {
-	t.Parallel()
-	started := make(chan struct{})
-	ended := make(chan error, 1)
-	f := newRunFixture(runSettings(t, nil), func(ctx context.Context, _ supervisor.Program) (supervisor.Result, error) {
-		close(started)
-		<-ctx.Done()
-		ended <- ctx.Err()
-		return supervisor.Result{Stdout: kept(""), Stderr: kept("")}, nil
-	})
-	done := make(chan ran)
-	go func() { done <- f.run(t, "/r", "run", "--process", "say", "--agent", "bash", "--param", "what=hi") }()
-	<-started
-	f.signals.fired <- syscall.SIGINT
-	got := <-done
-	if err := <-ended; !errors.Is(err, context.Canceled) {
-		t.Errorf("the turn's context ended with %v, want it cancelled", err)
-	}
-	if got.code != 1 || got.stderr != "" {
-		t.Errorf("stderr %q, exit %d; want none, 1", got.stderr, got.code)
-	}
-	if p := printedOf(t, got); p.Status != "interrupted" || p.Class == nil || *p.Class != "cancelled" {
-		t.Errorf("printed %+v, want interrupted, class cancelled", p)
-	}
-	if started, stopped := f.signals.watches(); started != 1 || stopped != 1 {
-		t.Errorf("signals watched %d times, stopped %d; want once each", started, stopped)
+	for _, sig := range []syscall.Signal{syscall.SIGINT, syscall.SIGTERM} {
+		func() {
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+			started := make(chan struct{})
+			ended := make(chan error, 1)
+			f := newRunFixture(runSettings(t, nil), func(runCtx context.Context, _ supervisor.Program) (supervisor.Result, error) {
+				close(started)
+				select {
+				case <-runCtx.Done():
+					ended <- runCtx.Err()
+				case <-ctx.Done():
+					ended <- ctx.Err()
+				}
+				return supervisor.Result{Stdout: kept(""), Stderr: kept("")}, nil
+			})
+			unwatched := make(chan struct{})
+			watch := cancellationSignals()
+			watched := 0
+			tracked := func() (<-chan os.Signal, func()) {
+				watched++
+				fired, stop := watch()
+				return fired, func() { stop(); close(unwatched) }
+			}
+			done := make(chan ran, 1)
+			go func() {
+				done <- f.runWatching(t, tracked, environ, "/r", "run", "--process", "say", "--agent", "bash", "--param", "what=hi")
+			}()
+			select {
+			case <-started:
+			case got := <-done:
+				t.Fatalf("%s: run ended before the program started: %+v", sig, got)
+			}
+			if err := syscall.Kill(os.Getpid(), sig); err != nil {
+				cancel()
+				<-done
+				t.Fatal(err)
+			}
+			got := <-done
+			// Completion includes stopping the actual signal subscription.
+			<-unwatched
+			if watched != 1 {
+				t.Errorf("%s: watched signals %d times, want once", sig, watched)
+			}
+			if err := <-ended; !errors.Is(err, context.Canceled) {
+				t.Errorf("%s: turn context ended with %v, want cancelled", sig, err)
+			}
+			if got.code != 1 || got.stderr != "" {
+				t.Errorf("%s: stderr %q, exit %d; want none, 1", sig, got.stderr, got.code)
+			}
+			if p := printedOf(t, got); p.Status != "interrupted" || p.Class == nil || *p.Class != "cancelled" {
+				t.Errorf("%s: printed %+v, want interrupted, class cancelled", sig, p)
+			}
+		}()
 	}
 }
 
@@ -804,6 +839,48 @@ func TestNewRunsFailsWithoutACollaborator(t *testing.T) {
 			t.Parallel()
 			if err := build(); err == nil || err.Error() != "runs: no "+name {
 				t.Errorf("runs without %s: %v, want runs: no %s", name, err, name)
+			}
+		})
+	}
+}
+
+// Process environment values come from the checked settings and are evaluated
+// over the step's params and inputs. They replace the host's values; inputs
+// replace a process variable of the same name.
+//
+// Contract test: the files home holds, as Agister ships them; integrates settings and core.
+func TestProcessEnvironmentsReachTheProgram(t *testing.T) {
+	t.Parallel()
+	for _, c := range []struct{ name, value, want string }{
+		{"literal", "quiet", "quiet"},
+		{"param", "{from: params.what}", "hi"},
+		{"input", "{from: inputs.what}", "input-value"},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
+			settings := runSettings(t, map[string]string{
+				"/u/.agister/processes/say.yaml": `schema: agister.process/v1alpha1
+prompt: say
+params:
+  what: {}
+  payload: {default: input-value}
+inputs:
+  what: {source: param, name: payload}
+environment:
+  MODE: ` + c.value + `
+  what: process
+`,
+			})
+			f := newRunFixture(settings, echoes)
+			hostEnv := append(slices.Clone(environ), "MODE=host", "what=host")
+			got := f.runWatching(t, f.signals.watch, hostEnv, "/r", "run", "--process", "say", "--agent", "bash", "--param", "what=hi")
+			if got.code != 0 || got.stderr != "" {
+				t.Fatalf("exit %d, stderr %q", got.code, got.stderr)
+			}
+			want := supervisor.Program{Name: "bash", Args: []string{"-c", `echo "$what"`}, Dir: "/r",
+				Env: append(slices.Clone(environ), "MODE="+c.want, "what=input-value")}
+			if programs := f.supervisor.ran(); !reflect.DeepEqual(programs, []supervisor.Program{want}) {
+				t.Errorf("ran %+v, want %+v", programs, want)
 			}
 		})
 	}

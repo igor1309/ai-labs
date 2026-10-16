@@ -15,7 +15,7 @@ Feature: The adapters map one part's words to another's
       | the state "review"                                                    | the root state, the name "review"                                   |
       | the outputs of the item "a"                                           | the root outputs, the name "a"                                      |
       | the field "v" of the outputs of the item "a"                          | the root outputs, the name "a", the field "v"                       |
-      | the field "head" of the field "stdout" of the outputs of the item "a" | the root outputs, the name "a", the field "stdout", the path "head" |
+      | the field "head" of the field "stdout" of the outputs of the item "a" | the root outputs, the name "a", the field "stdout"                  |
       | the session of the item "a"                                           | the root session, the name "a"                                      |
       | the field "x" of the state "review"                                   | the root state, the name "review", the field "x"                    |
       | the item                                                              | the root item                                                       |

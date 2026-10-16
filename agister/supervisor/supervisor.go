@@ -70,17 +70,35 @@ type Stream struct {
 // releases it.
 type Timer func(wait time.Duration) (fired <-chan time.Time, stop func())
 
-// Supervisor runs programs, the grace before a kill kept on its timer.
-type Supervisor struct {
-	timer Timer
+// starter starts programs whose exit can be observed before reaping.
+type starter interface {
+	CheckExitObservation() error
+	Start(group.Command) (group.Process, error)
 }
 
-// New gives a supervisor whose grace runs on timer.
-func New(timer Timer) (*Supervisor, error) {
+// Captured reports the stream name (stdout or stderr) and total bytes read
+// after a read has been accumulated. Calls for the two streams may overlap.
+type Captured func(name string, size int64)
+
+// Supervisor runs programs, the grace before a kill kept on its timer.
+type Supervisor struct {
+	timer    Timer
+	programs starter
+	captured Captured
+}
+
+// New gives a supervisor over programs, its grace on timer and read progress on captured.
+func New(timer Timer, programs starter, captured Captured) (*Supervisor, error) {
 	if timer == nil {
 		return nil, errors.New("supervisor: no timer")
 	}
-	return &Supervisor{timer: timer}, nil
+	if programs == nil {
+		return nil, errors.New("supervisor: no programs")
+	}
+	if captured == nil {
+		return nil, errors.New("supervisor: no read progress")
+	}
+	return &Supervisor{timer: timer, programs: programs, captured: captured}, nil
 }
 
 // Run runs program and gives how it ended once it and all its group have
@@ -92,6 +110,9 @@ func New(timer Timer) (*Supervisor, error) {
 // no longer than Grace on the timer, and is then incomplete. A program
 // that cannot start is an error wrapping ErrNotStarted.
 func (s *Supervisor) Run(ctx context.Context, program Program) (Result, error) {
+	if err := s.programs.CheckExitObservation(); err != nil {
+		return Result{}, notStarted(program, err)
+	}
 	dir := program.Dir
 	if dir != "" {
 		resolved, err := filepath.EvalSymlinks(dir)
@@ -106,7 +127,7 @@ func (s *Supervisor) Run(ctx context.Context, program Program) (Result, error) {
 	if err != nil {
 		return Result{}, notStarted(program, err)
 	}
-	process, err := group.Exec{}.Start(group.Command{
+	process, err := s.programs.Start(group.Command{
 		Name: program.Name, Args: program.Args, Dir: dir, Env: program.Env, Stderr: stderrWriter,
 	})
 	stderrWriter.Close()
@@ -123,10 +144,12 @@ func (s *Supervisor) Run(ctx context.Context, program Program) (Result, error) {
 	for _, copied := range []struct {
 		to   *stream
 		from io.Reader
-	}{{out, stdout}, {errs, stderr}} {
+		name string
+	}{{out, stdout, "stdout"}, {errs, stderr, "stderr"}} {
 		go func() {
 			defer reading.Done()
-			if _, err := io.Copy(copied.to, copied.from); err != nil {
+			writer := capturedStream{stream: copied.to, name: copied.name, captured: s.captured}
+			if _, err := io.Copy(writer, copied.from); err != nil {
 				copied.to.incomplete = true
 			}
 		}()
@@ -170,9 +193,9 @@ func (s *Supervisor) Run(ctx context.Context, program Program) (Result, error) {
 
 	// What the program left running in its group is killed while the
 	// exited program, not yet reaped, keeps the group's ID; only then is
-	// it reaped. An exit that cannot be observed so, as on a platform
-	// other than macOS, leaves the program to the same kill.
-	_ = process.Exited()
+	// it reaped. If observation fails, cleanup still owns the group, but
+	// the failure is returned instead of attributing its kill to the program.
+	observationErr := process.Exited()
 	mu.Lock()
 	_ = process.Signal(syscall.SIGKILL)
 	reaping = true
@@ -195,6 +218,9 @@ func (s *Supervisor) Run(ctx context.Context, program Program) (Result, error) {
 	result := Result{Signal: exit.Signal, Stdout: out.kept(), Stderr: errs.kept()}
 	if exit.Code != nil {
 		result.Code = *exit.Code
+	}
+	if observationErr != nil {
+		return result, fmt.Errorf("observing %s exiting: %w", program.Name, observationErr)
 	}
 	return result, nil
 }
@@ -231,4 +257,17 @@ func (s *stream) kept() Stream {
 		Head: string(s.head), Tail: string(s.tail), Size: s.size,
 		Digest: hex.EncodeToString(s.digest.Sum(nil)), Incomplete: s.incomplete,
 	}
+}
+
+// capturedStream publishes progress only after the bytes belong to the stream.
+type capturedStream struct {
+	*stream
+	name     string
+	captured Captured
+}
+
+func (s capturedStream) Write(p []byte) (int, error) {
+	n, err := s.stream.Write(p)
+	s.captured(s.name, s.size)
+	return n, err
 }

@@ -3,7 +3,6 @@ package main
 import (
 	"errors"
 	"fmt"
-	"slices"
 
 	"github.com/igor1309/ai-labs/agister/settings/documents"
 	"github.com/igor1309/ai-labs/agister/settings/layout"
@@ -238,7 +237,6 @@ func readOf(reference documents.Reference, origin documents.Origin) *resolve.Rea
 		Root:   rootOf(reference.Root),
 		Name:   reference.Name,
 		Field:  reference.Field,
-		Path:   slices.Clone(reference.Path),
 		Origin: originOf(origin),
 	}
 }
