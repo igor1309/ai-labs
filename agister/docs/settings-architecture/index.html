@@ -72,28 +72,24 @@ that names the chain at fault. Facts and sources are in
 planned; it never runs. An execution starts and ends; it is never declared.</p>
 <p><strong>Definitions</strong>, in settings:</p>
 <ul>
-  <li><span class="k-workflow">workflow</span>: work defined by inputs, an output contract and children, each a <span class="k-step">step</span> or a <span class="k-workflow">workflow</span></li>
-  <li><span class="k-step">step</span>: a process bound to an agent, the one leaf</li>
-  <li><span class="k-process">process</span>: what a step does</li>
+  <li><span class="k-workflow">workflow</span>: work defined by inputs, an output contract and children, each a <span class="k-step">step</span> or a <span class="k-workflow">workflow</span>, composed by sequence, parallel, branch or bounded repetition; its bindings carry data into each child, and its conditions choose a branch and end a repetition</li>
+  <li><span class="k-step">step</span>: a process bound to an agent, the one leaf; its inputs and output contract are its process's</li>
+  <li><span class="k-process">process</span>: what a step does: its prompt, inputs, output schema, permissions and limits</li>
   <li><span class="k-agent">agent</span>: who does it, on which runtime</li>
   <li><span class="k-runtime">runtime mapping</span>: grants and options</li>
-  <li>binding, condition: data flow and decisions</li>
 </ul>
 <p><strong>Executions</strong>, in records; an execution names the definition it executes:</p>
 <ul>
   <li><span class="k-run">run</span>: executes a workflow</li>
   <li><span class="k-run">call</span>: executes a step</li>
-  <li>iteration: one execution of a repetition's body</li>
+  <li>iteration: one execution of a repetition's body, the one child executed more than once; a parallel's and a branch's children execute as calls and runs</li>
   <li>turn: one exchange of a call with its runtime</li>
   <li>session: the conversation a call held</li>
 </ul>
-<p><strong>Machinery</strong>, in code:</p>
+<p><strong>Machinery</strong>, in code, as settings meet it:</p>
 <ul>
-  <li><span class="k-runtime">runtime</span>: a program Agister drives through its wrapper</li>
-  <li>runtime facts: what a runtime can do</li>
-  <li>program: an operating-system process</li>
-  <li>hold: a call's claim on the worktree</li>
-  <li>supervisor: runs every program</li>
+  <li><span class="k-runtime">runtime</span>: a program Agister drives through its wrapper; a runtime mapping names one</li>
+  <li>runtime facts: what a runtime can do, which resolve plans each step against</li>
 </ul>
 <p class="src">ADR-012, terms.</p>
 
@@ -136,7 +132,7 @@ its agent names only the runtime, and its prompt is a script.</p>
   <rect class="box" x="540" y="70" width="120" height="34" rx="4" stroke="#B4B4C0"/>
   <text x="600" y="92" text-anchor="middle">schema</text>
   <rect class="box" x="540" y="120" width="120" height="34" rx="4" stroke="#B4B4C0"/>
-  <text x="600" y="142" text-anchor="middle">brief</text>
+  <text x="600" y="142" text-anchor="middle">brief form</text>
   <rect class="box" x="540" y="170" width="120" height="34" rx="4" stroke="#B4B4C0"/>
   <text x="600" y="192" text-anchor="middle">skill</text>
   <rect class="box" x="540" y="236" width="120" height="34" rx="4" stroke="#FFC24D"/>
@@ -156,13 +152,13 @@ it. Nothing but kind and name joins files across layers.</p>
   <tr><td class="k-process">process</td><td><code>processes/&lt;name&gt;.yaml</code></td></tr>
   <tr><td class="k-workflow">workflow</td><td><code>workflows/&lt;name&gt;.yaml</code></td></tr>
   <tr><td class="k-runtime">runtime mapping</td><td><code>runtimes/&lt;name&gt;.yaml</code></td></tr>
-  <tr><td>brief</td><td><code>briefs/&lt;name&gt;.yaml</code></td></tr>
+  <tr><td>brief form</td><td><code>briefs/&lt;name&gt;.yaml</code></td></tr>
   <tr><td>schema</td><td><code>schemas/&lt;name&gt;.json</code></td></tr>
   <tr><td>prompt</td><td><code>prompts/&lt;name&gt;.md</code></td></tr>
   <tr><td>skill</td><td><code>skills/&lt;name&gt;/SKILL.md</code></td></tr>
 </table>
 <figure>
-<svg viewBox="0 0 670 200" role="img" aria-label="Three layers composed toward the launch directory">
+<svg viewBox="0 0 670 200" role="img" aria-label="Three layers, the nearer over the farther">
   <rect class="box" x="20" y="20" width="460" height="44" rx="4" stroke="#3C3C43"/>
   <text x="36" y="47">home · <tspan font-family="ui-monospace,Menlo,monospace">~/.agister</tspan></text>
   <rect class="box" x="20" y="78" width="460" height="44" rx="4" stroke="#3C3C43"/>
@@ -170,8 +166,8 @@ it. Nothing but kind and name joins files across layers.</p>
   <rect class="box" x="20" y="136" width="460" height="44" rx="4" stroke="#3C3C43"/>
   <text x="36" y="163">project · the nearest <tspan font-family="ui-monospace,Menlo,monospace">.agister</tspan> below the root</text>
   <path class="edge" d="M520,24 L520,176"/>
-  <text class="label" x="534" y="70">composed toward</text>
-  <text class="label" x="534" y="86">the launch directory</text>
+  <text class="label" x="534" y="70">applied home first;</text>
+  <text class="label" x="534" y="86">the nearer wins</text>
   <text class="label" x="534" y="118">maps merge by key</text>
   <text class="label" x="534" y="134">lists, scalars replace</text>
   <text class="label" x="534" y="150">nothing unsets</text>

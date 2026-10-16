@@ -15,13 +15,18 @@ The page states no syntax: settings syntax is specified in
 
 - Settings define; records hold what executed; code is the machinery.
   (ADR-012, terms)
-- Definitions: workflow, step, process, agent, runtime mapping, binding,
-  condition. A definition is declared, resolved and planned; it never
+- Definitions: workflow, step, process, agent, runtime mapping; a
+  workflow's bindings and conditions are part of it. A definition is declared, resolved and planned; it never
   runs. (ADR-012, terms)
 - Executions: a run executes a workflow, a call executes a step;
   iteration, turn, session. (ADR-012, terms; ADR-001, decision)
-- Machinery: runtime, runtime facts, program, hold, supervisor.
-  (ADR-012, terms)
+- Machinery: runtime, runtime facts, program, hold, supervisor; the
+  page names only the runtime and its facts, which settings meet; the
+  rest is core's. (ADR-012, terms)
+- A step's inputs and output contract are its process's. (ADR-010,
+  rule 1; ADR-012, terms)
+- Only a repetition executes a child more than once, so only its body's
+  execution has a name, the iteration. (ADR-011, rules)
 
 ## What settings define
 
