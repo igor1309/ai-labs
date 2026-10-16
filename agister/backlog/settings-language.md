@@ -15,7 +15,10 @@ changes unless a decision below says so.
 `settings/documents` types every kind, and `agister/home` is in the
 language. Next is `settings/resolve` (`docs/settings-implementation.md`,
 step 6): a request, naming a workflow or a step (ADR-013), → what a run
-needs, or a refusal naming the chain. Then `settings/check`.
+needs, or a refusal naming the chain. Then `settings/check`, and the
+composition: `settings/documents` types the repository's blocks file,
+each block a document by kind and name with its reason (ADR-002,
+rule 7; `settings/layout/blocks.feature` shows one with none).
 `agister/.agister` stays: the installed Agister reads it when run in
 this repository.
 

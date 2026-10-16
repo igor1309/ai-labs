@@ -33,7 +33,7 @@ Feature: Documents gives a brief
       | ## Notes | no       |       |           |
       | ## Open  | yes      | None. |           |
     And its template, the template's text
-    And each field's origin is "/home/.agister/briefs/a.yaml"
+    And each field's origin is "/home/.agister/brief-forms/a.yaml"
     And it has no problem
 
   Scenario: A brief needs its parts and its template

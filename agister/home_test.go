@@ -62,7 +62,7 @@ func TestTheShippedRuntimeMappingsType(t *testing.T) {
 // Every agent, brief, process and workflow Agister ships in home types
 // with no problem, extends applied.
 //
-// Contract test: the files home/agents, home/briefs, home/processes and
+// Contract test: the files home/agents, home/brief-forms, home/processes and
 // home/workflows hold, as Agister ships them.
 func TestTheShippedDocumentsType(t *testing.T) {
 	t.Parallel()
@@ -104,7 +104,7 @@ func shipped(t *testing.T) documents.Snapshot {
 		extension string
 	}{
 		{documents.Agent, "home/agents/", ".toml"},
-		{documents.Brief, "home/briefs/", ".yaml"},
+		{documents.Brief, "home/brief-forms/", ".yaml"},
 		{documents.Process, "home/processes/", ".yaml"},
 		{documents.Runtime, "home/runtimes/", ".yaml"},
 		{documents.Workflow, "home/workflows/", ".yaml"},

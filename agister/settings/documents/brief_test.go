@@ -12,8 +12,8 @@ import (
 )
 
 const (
-	homeBrief       = "/home/.agister/briefs/a.yaml"
-	repositoryBrief = "/repo/.agister/briefs/a.yaml"
+	homeBrief       = "/home/.agister/brief-forms/a.yaml"
+	repositoryBrief = "/repo/.agister/brief-forms/a.yaml"
 	briefHeader     = "schema: agister.brief/v1alpha1\n"
 	// validTemplate is the template of validBrief.
 	validTemplate = "## Goal\n\n## Notes\n\n## Open\n\nNone.\n"
@@ -414,7 +414,7 @@ func TestEachBriefIsTypedOnce(t *testing.T) {
 		return documents.TypeBrief(name, root)
 	}
 	brief := func(name, bytes string) documents.Document {
-		return documents.Document{Sources: documents.Sources{Home: source("/home/.agister/briefs/"+name+".yaml", bytes)}}
+		return documents.Document{Sources: documents.Sources{Home: source("/home/.agister/brief-forms/"+name+".yaml", bytes)}}
 	}
 	d := documents.NewTypingWith(documents.Snapshot{Documents: map[documents.Kind]map[string]documents.Document{
 		documents.Brief: {

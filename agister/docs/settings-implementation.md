@@ -156,32 +156,105 @@ The kinds:
 - **brief**: a form a text input may take (ADR-010, rule 5).
 
 Typing knows a kind's shape, not a runtime: an agent that gives a model
-to bash types, and resolve refuses the step that uses it.
+to bash types, and resolve refuses the agent, and every request that
+reaches it.
 
 ## 6. Resolve
 
-Follows every name from the request: a workflow's children, each step's
-process and agent, and each child workflow; a process's prompt, guidance,
-schema, skills and input brief forms; an agent's runtime mapping and
-skills. A tree document named goes through steps 2 to 5; a blob is taken
-from its nearest slot, with its digest, and is a problem if no layer
-holds it.
+Follows every name from the request: a workflow's input brief forms and
+its children, each step's process and agent, and each child workflow; a
+process's prompt, guidance, skills, input brief forms and schema; an
+agent's runtime mapping. A tree document named goes through steps 2 to
+5; a blob is taken from its nearest slot, with its digest; its source
+finds both, and gives a blob no layer holds as a problem. Skills are
+left out for now: a skill named is followed, and its source gives it as
+a problem while no layer holds one. An agent's skills, which documents
+does not type yet, are left out with them (`backlog/skills.md`).
 
-It checks each workflow's boundaries and bindings (ADR-011, rule 6), and
-plans each step: its process's permissions against its agent's runtime
-mapping (ADR-003). A step that needs what its runtime cannot do, by the
-runtime's facts, is refused: an output schema, a continued session,
-skills, an effort, a staleness limit on tool calls (ADR-003, rule 7;
-ADR-012, rule 3). Every step is resolved and planned, those of branches
-a run may not take too.
-
-Resolve gives what a run needs, or a refusal naming the chain to the
-document at fault. What a run needs: the workflow, and every step's
-process, agent, runtime mapping and permission plan.
+It checks each workflow's boundaries and bindings, and each process's
+own references (ADR-011, rule 6), and plans each step: its process's
+permissions against its agent's runtime mapping (ADR-003). A step that
+needs what its runtime cannot do, by the runtime's facts, is refused: an
+output schema, a continued or recovered session, skills, a model, an
+effort, a staleness limit on tool calls or tool commands (ADR-003, rule
+7; ADR-012, rules 2 and 3). Every step is resolved and planned, those of
+branches a run may not take too.
 
 A request that depends on a blocked document is refused, naming the
 block; a block is not a problem, and a block naming no document is a
-warning.
+warning. A blocked document is not asked for, nor followed. The source
+gives the blocks, each a document by kind and name, with its reason and
+origin, and whether a layer holds a document; documents types the
+blocks file, and its problems are problems of no document. A warning
+is given with what resolves; a refusal gives none.
+
+Resolve declares its ports in its own words (ADR-001, rule 1). Its source
+gives a document by kind and name in resolve's types, each holding only what
+resolve reads: the names it references, its params and inputs, its items,
+their bindings and conditions, a repeat's bound, its permissions, and what
+it needs of a runtime: an agent's model and effort; a mapping's contract,
+grants and options; a process's recovery and staleness limits; each with its
+origin: its file, its line and its place in the document, which the
+composition takes from documents. Resolve spells no field of a document: a
+problem is at the origin of what it is about, and a link of a chain at the
+origin of the name it follows; only in the workflow it makes of a step does
+resolve give the places. A reference is given as what it reads, not as its
+text: a param, an input or a repeat's state, by name; an item's outputs, or
+one field of them; an item's session; or the item of an all or any query.
+The composition translates it from documents. A document resolve reads
+nothing of, a brief, a prompt, a schema or a skill, is given as its problems
+alone. The source also gives the problems of no document, which refuse every
+request. The composition answers the source from documents.
+
+Its facts port gives, by a runtime mapping's contract, what the runtime
+wrapper can do: check output against a schema, resume a session, take
+skills, take a model, the efforts it accepts, report tool calls and tool
+commands (ADR-003, rule 7; a model, ADR-012, rule 2). The composition
+answers it from the wrappers; a contract no wrapper takes is the mapping's
+problem. What a process or a step needs of its runtime, and a required
+permission no plan gives, is a problem of the step, at its place in its
+workflow, of no document for a step requested alone; a model or an effort
+the runtime does not take is its agent's. A plan's extra is a warning, at
+its step's place. How a runtime takes its inputs, the fact ADR-003 (rule 7)
+names last, refuses no step, and the port does not give it yet.
+
+Resolve gives what a run needs (ADR-002, rule 6), and its warnings: the
+workflow, requested or made of a step (ADR-013); every document it
+reached, by kind and name; the definitions of the workflows, processes,
+agents and runtime mappings among them, in resolve's types; and each
+step's plan. A document resolve reads nothing of, the composition gives
+from the same fixed snapshot, by the name resolve reached.
+
+A refusal is every document at fault, each with its problems, or the
+block that refuses it, and the first chain that reached it, in the order
+reached; and the problems of no document, the request's among them. A
+link of the chain is a document's kind and name, and where the document
+before it names it.
+
+Resolve comes in four sections, each specified, then coded: the request
+and its references; boundaries and bindings; planning and runtime facts;
+blocks.
+
+Decisions of its reviews, each with its reason:
+
+- A step requested alone is a workflow declaring the process's params;
+  its inputs are its step's, resolved once (ADR-013, rule 1, as revised
+  2026-10-16; `request.feature`).
+- The made workflow's one output, `output`, is the step's output whole:
+  a workflow's outputs are named.
+- A session bound from a step whose runtime keeps none is not refused:
+  a case not yet met.
+- A message is short, as documents' are: what must hold, or what is
+  wrong. The messages stay as they are.
+- A step's output field against its process's schema, a repeat's or a
+  parallel's outputs, and a block
+  reached through `extends`, are backlogged
+  (`backlog/step-output-fields.md`, `backlog/blocks-through-extends.md`).
+- A reference whose root its document may not read, a query's item
+  outside any query, is documents' to type
+  (`backlog/references-typed-in-documents.md`).
+- An agent's effort is checked against its runtime's facts (ADR-003,
+  rule 7); a mapping's `efforts` is not read (`backlog/mapping-efforts.md`).
 
 ## Where each check sits
 
@@ -192,9 +265,13 @@ warning.
 | bytes that are not their format | 2, decode |
 | an `extends` naming no document of its kind, or a cycle | 4, extends |
 | an unknown field, a wrong type, a missing field | 5, type |
-| a name that reaches no document; a blob no layer holds | 6, resolve |
+| a name that reaches no document; a blob no layer holds | 6, resolve, from its source |
 | a blocked document; a block naming no document, a warning | 6, resolve |
 | a binding or a condition that reads what is not there | 6, resolve |
+| an arm that does not give its branch's outputs | 6, resolve |
+| a param a step, a workflow item or a request gives that is not declared, or leaves out with no default | 6, resolve |
+| a workflow that reaches itself | 6, resolve |
+| a runtime mapping of a contract no wrapper takes | 6, resolve |
 | a step its runtime cannot do; a model or effort its runtime does not take | 6, resolve |
 | a required permission its mapping cannot give; a grant beyond the allowed, a warning | 6, resolve |
 
@@ -203,5 +280,5 @@ warning.
 A broken file is a problem of its document, not of the whole: it is kept
 as data with the document, and refuses only what reaches it. A layer
 that cannot be read is a problem of no document, and refuses every
-request. Check shows every problem. How a run's record keeps the problems of documents it did
-not use is open; they are data, so it can.
+request. Check shows every problem. How a run's record keeps the
+problems of documents it did not use is open; they are data, so it can.
