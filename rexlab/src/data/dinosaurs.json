@@ -1,0 +1,182 @@
+[
+  {
+    "id": "tyrannosaurus",
+    "name": {
+      "en": "Tyrannosaurus"
+    },
+    "attributes": {
+      "heightMeters": 3.7,
+      "massKg": 8000
+    }
+  },
+  {
+    "id": "triceratops",
+    "name": {
+      "en": "Triceratops"
+    },
+    "attributes": {
+      "heightMeters": 3,
+      "massKg": 7000
+    }
+  },
+  {
+    "id": "velociraptor",
+    "name": {
+      "en": "Velociraptor"
+    },
+    "attributes": {
+      "heightMeters": 0.5,
+      "massKg": 15
+    }
+  },
+  {
+    "id": "brachiosaurus",
+    "name": {
+      "en": "Brachiosaurus"
+    },
+    "attributes": {
+      "heightMeters": 12.5,
+      "massKg": 40000
+    }
+  },
+  {
+    "id": "stegosaurus",
+    "name": {
+      "en": "Stegosaurus"
+    },
+    "attributes": {
+      "heightMeters": 4,
+      "massKg": 5000
+    }
+  },
+  {
+    "id": "ankylosaurus",
+    "name": {
+      "en": "Ankylosaurus"
+    },
+    "attributes": {
+      "heightMeters": 1.7,
+      "massKg": 6000
+    }
+  },
+  {
+    "id": "spinosaurus",
+    "name": {
+      "en": "Spinosaurus"
+    },
+    "attributes": {
+      "heightMeters": 4.2,
+      "massKg": 7400
+    }
+  },
+  {
+    "id": "diplodocus",
+    "name": {
+      "en": "Diplodocus"
+    },
+    "attributes": {
+      "heightMeters": 5,
+      "massKg": 15000
+    }
+  },
+  {
+    "id": "parasaurolophus",
+    "name": {
+      "en": "Parasaurolophus"
+    },
+    "attributes": {
+      "heightMeters": 2.8,
+      "massKg": 2500
+    }
+  },
+  {
+    "id": "pachycephalosaurus",
+    "name": {
+      "en": "Pachycephalosaurus"
+    },
+    "attributes": {
+      "heightMeters": 1.5,
+      "massKg": 450
+    }
+  },
+  {
+    "id": "iguanodon",
+    "name": {
+      "en": "Iguanodon"
+    },
+    "attributes": {
+      "heightMeters": 2.7,
+      "massKg": 3500
+    }
+  },
+  {
+    "id": "compsognathus",
+    "name": {
+      "en": "Compsognathus"
+    },
+    "attributes": {
+      "heightMeters": 0.25,
+      "massKg": 3
+    }
+  },
+  {
+    "id": "gallimimus",
+    "name": {
+      "en": "Gallimimus"
+    },
+    "attributes": {
+      "heightMeters": 1.9,
+      "massKg": 440
+    }
+  },
+  {
+    "id": "allosaurus",
+    "name": {
+      "en": "Allosaurus"
+    },
+    "attributes": {
+      "heightMeters": 2.9,
+      "massKg": 2300
+    }
+  },
+  {
+    "id": "argentinosaurus",
+    "name": {
+      "en": "Argentinosaurus"
+    },
+    "attributes": {
+      "heightMeters": 7,
+      "massKg": 70000
+    }
+  },
+  {
+    "id": "microraptor",
+    "name": {
+      "en": "Microraptor"
+    },
+    "attributes": {
+      "heightMeters": 0.3,
+      "massKg": 1
+    }
+  },
+  {
+    "id": "protoceratops",
+    "name": {
+      "en": "Protoceratops"
+    },
+    "attributes": {
+      "heightMeters": 0.7,
+      "massKg": 85
+    }
+  },
+  {
+    "id": "dilophosaurus",
+    "name": {
+      "en": "Dilophosaurus"
+    },
+    "attributes": {
+      "heightMeters": 1.5,
+      "massKg": 400
+    }
+  }
+]

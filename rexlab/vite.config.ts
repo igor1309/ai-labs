@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
-import { defineConfig } from "vite";
+import react from "@vitejs/plugin-react";
+import { defineConfig } from "vitest/config";
 import { stampVersion } from "./src/release.ts";
 
 const PACKAGE_JSON = new URL("package.json", import.meta.url);
@@ -12,9 +13,22 @@ export default defineConfig({
     outDir: "dist"
   },
   plugins: [
+    react(),
     {
       name: "rexlab-version",
       transformIndexHtml: (html) => stampVersion(html, VERSION)
     }
-  ]
+  ],
+  test: {
+    projects: [
+      {
+        extends: true,
+        test: { name: "node", include: ["tests/**/*.test.ts"], environment: "node" }
+      },
+      {
+        extends: true,
+        test: { name: "dom", include: ["tests/**/*.test.tsx"], environment: "jsdom", setupFiles: ["tests/setup.ts"] }
+      }
+    ]
+  }
 });
