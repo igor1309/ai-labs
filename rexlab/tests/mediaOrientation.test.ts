@@ -1,20 +1,22 @@
 import { describe, expect, it } from "vitest";
 import { mediaOrientation } from "../src/mediaOrientation.ts";
-import { portraitQuery } from "./support.ts";
+import { mediaQueries } from "./support.ts";
+
+const PORTRAIT = "(orientation: portrait)";
 
 describe("mediaOrientation", () => {
   it("reads portrait from the orientation media query and reports each change until unwatched", () => {
-    const media = portraitQuery(false);
+    const media = mediaQueries({ [PORTRAIT]: false });
     const orientation = mediaOrientation(media.matchMedia);
     const seen: boolean[] = [];
 
     const unwatch = orientation.watch(() => seen.push(orientation.portrait()));
-    media.change(true);
-    media.change(false);
+    media.change(PORTRAIT, true);
+    media.change(PORTRAIT, false);
     unwatch();
-    media.change(true);
+    media.change(PORTRAIT, true);
 
-    expect(media.queries).toEqual(["(orientation: portrait)"]);
+    expect(media.queries).toEqual([PORTRAIT]);
     expect(seen).toEqual([true, false]);
     expect(orientation.portrait()).toBe(true);
   });

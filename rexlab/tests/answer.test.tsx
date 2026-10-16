@@ -6,7 +6,16 @@ import { formatHeight, formatMass } from "../src/formatValue.ts";
 import { QuestionScreen } from "../src/QuestionScreen.tsx";
 import { choose, score, startPlay } from "../src/quiz/play.ts";
 import { largerOf, type Attribute, type Dinosaur, type Question } from "../src/quiz/round.ts";
-import { SHIPPED_DINOSAURS, emptyProgress, englishDevice, manualOrientation, questionView, seededRandom } from "./support.ts";
+import {
+  SHIPPED_DINOSAURS,
+  contrast,
+  emptyProgress,
+  englishDevice,
+  lightDevice,
+  manualOrientation,
+  questionView,
+  seededRandom
+} from "./support.ts";
 
 const ENGLISH_VALUES: Record<Attribute, (value: number) => string> = {
   mass: (value) => formatMass(value, "en"),
@@ -40,7 +49,7 @@ function shownQuestion(): Question {
 const smallerOf = (question: Question) => (largerOf(question) === question.left ? question.right : question.left);
 
 function startRound(seed: number) {
-  render(<App dinosaurs={SHIPPED_DINOSAURS} random={seededRandom(seed)} orientation={manualOrientation("landscape")} progress={emptyProgress()} {...englishDevice()} />);
+  render(<App dinosaurs={SHIPPED_DINOSAURS} random={seededRandom(seed)} orientation={manualOrientation("landscape")} progress={emptyProgress()} {...englishDevice()} {...lightDevice()} />);
   const user = userEvent.setup();
   return { user, start: () => user.click(screen.getByRole("button", { name: "COMPARE" })) };
 }
@@ -52,28 +61,6 @@ async function answerUpTo(user: UserEvent, number: number) {
     if (progress() === `${number}/10`) return;
     await user.click(screen.getByRole("button", { name: "NEXT" }));
   }
-}
-
-function srgb(color: string): [number, number, number] {
-  const hex = /^#([\da-f]{2})([\da-f]{2})([\da-f]{2})$/i.exec(color);
-  const rgb = /^rgba?\((\d+),\s*(\d+),\s*(\d+)/.exec(color);
-  const parts = hex ? hex.slice(1).map((part) => parseInt(part, 16)) : rgb?.slice(1).map(Number);
-  const [r, g, b] = parts ?? [];
-  if (r === undefined || g === undefined || b === undefined) throw new Error(`Cannot read the colour ${color}`);
-  return [r, g, b];
-}
-
-// The WCAG 2 contrast ratio of two colours.
-function contrast(a: string, b: string): number {
-  const luminance = (color: string) => {
-    const [r, g, b] = srgb(color).map((channel) => {
-      const c = channel / 255;
-      return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
-    });
-    return 0.2126 * (r ?? 0) + 0.7152 * (g ?? 0) + 0.0722 * (b ?? 0);
-  };
-  const [light, dark] = [luminance(a), luminance(b)].sort((x, y) => y - x);
-  return ((light ?? 0) + 0.05) / ((dark ?? 0) + 0.05);
 }
 
 describe("answering a question", () => {

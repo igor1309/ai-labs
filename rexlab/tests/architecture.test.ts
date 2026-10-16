@@ -30,7 +30,7 @@ function edges(from: (file: string) => boolean, to: (file: string) => boolean): 
 const inQuiz = (file: string) => file.startsWith("quiz/");
 const SCREENS = ["HomePage.tsx", "OrientationGate.tsx", "QuestionScreen.tsx", "ResultScreen.tsx"];
 const PRESENTATION = [...SCREENS, "formatValue.ts", "usePointerState.ts"];
-const ADAPTERS = ["dinosaurs.ts", "localLanguage.ts", "localProgress.ts", "mediaOrientation.ts"];
+const ADAPTERS = ["dinosaurs.ts", "localLanguage.ts", "localProgress.ts", "localTheme.ts", "mediaAppearance.ts", "mediaOrientation.ts"];
 const COMPOSITION = ["App.tsx", "main.tsx", "presentation.ts", "root.ts"];
 
 describe("the import graph", () => {
@@ -43,8 +43,8 @@ describe("the import graph", () => {
     expect(edges((file) => !inQuiz(file), (target) => inQuiz(target) && target !== "quiz/index.ts")).toEqual([]);
   });
 
-  it("keeps screens, formatting and texts free of the quiz", () => {
-    expect(edges((file) => PRESENTATION.includes(file) || file.startsWith("language/"), inQuiz)).toEqual([]);
+  it("keeps screens, formatting, texts and themes free of the quiz", () => {
+    expect(edges((file) => PRESENTATION.includes(file) || file.startsWith("language/") || file === "theme.ts", inQuiz)).toEqual([]);
   });
 
   it("keeps adapters free of their consumers", () => {

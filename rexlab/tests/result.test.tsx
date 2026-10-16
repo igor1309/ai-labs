@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { App } from "../src/App.tsx";
 import { PROGRESS_KEY, localProgress } from "../src/localProgress.ts";
 import { largerOf, type Question } from "../src/quiz/round.ts";
-import { SHIPPED_DINOSAURS, englishDevice, manualOrientation, memoryStorage, seededRandom, type MemoryStorage } from "./support.ts";
+import { SHIPPED_DINOSAURS, englishDevice, lightDevice, manualOrientation, memoryStorage, seededRandom, type MemoryStorage } from "./support.ts";
 
 afterEach(() => {
   vi.restoreAllMocks();
@@ -47,6 +47,7 @@ function openApp(storage: MemoryStorage, seed = 21) {
       orientation={manualOrientation("landscape")}
       progress={localProgress(() => storage)}
       {...englishDevice()}
+      {...lightDevice()}
     />
   );
   return userEvent.setup();

@@ -11,6 +11,9 @@ export type Texts = {
   quizCardPicture: string;
   // The language switch is for parents, so its label is in normal case.
   languageSwitch: string;
+  // So is the theme switch, with its label and its choices.
+  themeSwitch: string;
+  themes: { system: string; light: string; dark: string };
   turnSideways: string;
   home: string;
   progress: string;

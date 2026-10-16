@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useState, useSyncExternalStore } from "react";
 import { HomePage } from "./HomePage.tsx";
 import { languageOfDevice, type Language } from "./language/language.ts";
 import { OrientationGate, type Orientation } from "./OrientationGate.tsx";
@@ -17,6 +17,7 @@ import {
   type RoundResult
 } from "./quiz/index.ts";
 import { ResultScreen } from "./ResultScreen.tsx";
+import { themeOf, type ThemeChoice } from "./theme.ts";
 
 export type ProgressStore = {
   // The progress kept so far, or undefined when it cannot be read at all.
@@ -30,6 +31,18 @@ export type LanguageStore = {
   save(language: Language): void;
 };
 
+export type ThemeStore = {
+  // The theme a parent chose, or undefined when none can be read.
+  load(): ThemeChoice | undefined;
+  save(choice: ThemeChoice): void;
+};
+
+// Whether the device is set to its dark appearance, and its changes.
+export type Appearance = {
+  isDark(): boolean;
+  subscribe(onChange: () => void): () => void;
+};
+
 export type AppProps = {
   dinosaurs: readonly Dinosaur[];
   random: Random;
@@ -38,11 +51,13 @@ export type AppProps = {
   // The device's language tag, such as "ru-RU".
   deviceLanguage: string;
   languageStore: LanguageStore;
+  appearance: Appearance;
+  themeStore: ThemeStore;
 };
 
 type Screen = { kind: "home" } | { kind: "question"; play: Play } | { kind: "result"; result: RoundResult };
 
-export function App({ dinosaurs, random, orientation, progress, deviceLanguage, languageStore }: AppProps) {
+export function App({ dinosaurs, random, orientation, progress, deviceLanguage, languageStore, appearance, themeStore }: AppProps) {
   const [screen, setScreen] = useState<Screen>({ kind: "home" });
   const [lastPlay, setLastPlay] = useState<Play>();
   // The device language is only the first guess: a parent's choice is kept
@@ -56,6 +71,27 @@ export function App({ dinosaurs, random, orientation, progress, deviceLanguage, 
   const chooseLanguage = (chosen: Language) => {
     setLanguage(chosen);
     languageStore.save(chosen);
+  };
+
+  const [themeChoice, setThemeChoice] = useState<ThemeChoice>(() => themeStore.load() ?? "system");
+  const deviceDark = useSyncExternalStore(appearance.subscribe, appearance.isDark);
+  const theme = themeOf(themeChoice, deviceDark ? "dark" : "light");
+
+  // The theme is set on the whole document, so the page around the app and
+  // the version footer take it too. It is set before the browser paints, so
+  // a screen never shows in the other theme first, and it is taken off with
+  // the app.
+  useLayoutEffect(() => {
+    const root = document.documentElement;
+    root.dataset.theme = theme;
+    return () => {
+      delete root.dataset.theme;
+    };
+  }, [theme]);
+
+  const chooseTheme = (chosen: ThemeChoice) => {
+    setThemeChoice(chosen);
+    themeStore.save(chosen);
   };
 
   const playNewRound = () => {
@@ -99,7 +135,15 @@ export function App({ dinosaurs, random, orientation, progress, deviceLanguage, 
       case "result":
         return <ResultScreen language={language} {...presentResult(screen.result)} onPlayAgain={playNewRound} onHome={home} />;
       case "home":
-        return <HomePage language={language} onLanguage={chooseLanguage} onCompareDinosaurs={playNewRound} />;
+        return (
+          <HomePage
+            language={language}
+            onLanguage={chooseLanguage}
+            theme={themeChoice}
+            onTheme={chooseTheme}
+            onCompareDinosaurs={playNewRound}
+          />
+        );
     }
   };
 

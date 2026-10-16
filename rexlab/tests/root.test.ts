@@ -1,12 +1,16 @@
 import { describe, expect, it } from "vitest";
 import { LANGUAGE_KEY } from "../src/localLanguage.ts";
 import { PROGRESS_KEY } from "../src/localProgress.ts";
+import { THEME_KEY } from "../src/localTheme.ts";
 import { appProps } from "../src/root.ts";
-import { memoryStorage, portraitQuery } from "./support.ts";
+import { mediaQueries, memoryStorage } from "./support.ts";
+
+const PORTRAIT = "(orientation: portrait)";
+const DARK = "(prefers-color-scheme: dark)";
 
 // A browser whose local and session storage the test reads apart.
-function browser({ local = memoryStorage(), language = "en-GB", portrait = false } = {}) {
-  const media = portraitQuery(portrait);
+function browser({ local = memoryStorage(), language = "en-GB", portrait = false, dark = false } = {}) {
+  const media = mediaQueries({ [PORTRAIT]: portrait, [DARK]: dark });
   return {
     localStorage: local,
     sessionStorage: memoryStorage(),
@@ -20,22 +24,25 @@ const record = (bestScore: number, roundsPlayed: number) =>
   JSON.stringify({ schemaVersion: 1, games: { "compare-dinosaurs": { bestScore, roundsPlayed } } });
 
 describe("the app in a browser", () => {
-  it("reads progress and the chosen language from local storage", () => {
-    const props = appProps(browser({ local: memoryStorage({ [PROGRESS_KEY]: record(6, 3), [LANGUAGE_KEY]: "ru" }) }));
+  it("reads progress, the chosen language and the chosen theme from local storage", () => {
+    const props = appProps(browser({ local: memoryStorage({ [PROGRESS_KEY]: record(6, 3), [LANGUAGE_KEY]: "ru", [THEME_KEY]: "dark" }) }));
 
     expect(props.progress.load()).toEqual({ bestScore: 6, roundsPlayed: 3 });
     expect(props.languageStore.load()).toBe("ru");
+    expect(props.themeStore.load()).toBe("dark");
   });
 
-  it("keeps progress and the chosen language in local storage, and nothing in session storage", () => {
+  it("keeps progress, the chosen language and the chosen theme in local storage, and nothing in session storage", () => {
     const given = browser();
     const props = appProps(given);
 
     props.progress.save({ bestScore: 4, roundsPlayed: 1 });
     props.languageStore.save("ru");
+    props.themeStore.save("light");
 
     expect(JSON.parse(given.localStorage.items.get(PROGRESS_KEY) ?? "")).toEqual(JSON.parse(record(4, 1)));
     expect(given.localStorage.items.get(LANGUAGE_KEY)).toBe("ru");
+    expect(given.localStorage.items.get(THEME_KEY)).toBe("light");
     expect([...given.sessionStorage.items]).toEqual([]);
   });
 
@@ -50,9 +57,23 @@ describe("the app in a browser", () => {
     expect(orientation.isPortrait()).toBe(true);
 
     const unsubscribe = orientation.subscribe(() => seen.push(orientation.isPortrait()));
-    given.media.change(false);
+    given.media.change(PORTRAIT, false);
     unsubscribe();
-    given.media.change(true);
+    given.media.change(PORTRAIT, true);
+
+    expect(seen).toEqual([false]);
+  });
+
+  it("follows the dark colour scheme media query", () => {
+    const given = browser({ dark: true });
+    const { appearance } = appProps(given);
+    const seen: boolean[] = [];
+    expect(appearance.isDark()).toBe(true);
+
+    const unsubscribe = appearance.subscribe(() => seen.push(appearance.isDark()));
+    given.media.change(DARK, false);
+    unsubscribe();
+    given.media.change(DARK, true);
 
     expect(seen).toEqual([false]);
   });

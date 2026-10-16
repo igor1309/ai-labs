@@ -4,6 +4,8 @@ export const ru: Texts = {
   quizCard: "СРАВНИ",
   quizCardPicture: "ДВА ДИНОЗАВРА",
   languageSwitch: "Язык",
+  themeSwitch: "Тема",
+  themes: { system: "Системная", light: "Светлая", dark: "Тёмная" },
   turnSideways: "ПОВЕРНИ ПЛАНШЕТ БОКОМ",
   home: "ДОМОЙ",
   progress: "ПРОГРЕСС",

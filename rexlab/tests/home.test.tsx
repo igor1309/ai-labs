@@ -2,10 +2,10 @@ import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 import { App } from "../src/App.tsx";
-import { SHIPPED_DINOSAURS, emptyProgress, englishDevice, manualOrientation, seededRandom } from "./support.ts";
+import { SHIPPED_DINOSAURS, emptyProgress, englishDevice, lightDevice, manualOrientation, seededRandom } from "./support.ts";
 
 function openHomePage() {
-  render(<App dinosaurs={SHIPPED_DINOSAURS} random={seededRandom(7)} orientation={manualOrientation("landscape")} progress={emptyProgress()} {...englishDevice()} />);
+  render(<App dinosaurs={SHIPPED_DINOSAURS} random={seededRandom(7)} orientation={manualOrientation("landscape")} progress={emptyProgress()} {...englishDevice()} {...lightDevice()} />);
   return { user: userEvent.setup(), card: screen.getByRole("button", { name: "COMPARE" }) };
 }
 

@@ -1,20 +1,25 @@
 import { LANGUAGES, type Language } from "./language/language.ts";
 import { TEXTS } from "./language/texts.ts";
+import { THEME_CHOICES, type ThemeChoice } from "./theme.ts";
 import { usePointerState } from "./usePointerState.ts";
+
+const THEME_SYMBOLS: Record<ThemeChoice, string> = { system: "◐", light: "☀️", dark: "🌙" };
 
 export type HomePageProps = {
   language: Language;
   onLanguage: (language: Language) => void;
+  theme: ThemeChoice;
+  onTheme: (theme: ThemeChoice) => void;
   onCompareDinosaurs: () => void;
 };
 
-export function HomePage({ language, onLanguage, onCompareDinosaurs }: HomePageProps) {
+export function HomePage({ language, onLanguage, theme, onTheme, onCompareDinosaurs }: HomePageProps) {
   const text = TEXTS[language];
   const pointer = usePointerState();
   return (
     <main className="home">
-      {/* The switch is for parents: small, faded and out of the way in a
-          corner, and only here, never during a round. */}
+      {/* Both switches are for parents: small, faded and out of the way in
+          a corner, and only here, never during a round. */}
       <nav className="language-switch" aria-label={text.languageSwitch}>
         {LANGUAGES.map((option, index) => (
           <span key={option}>
@@ -23,6 +28,13 @@ export function HomePage({ language, onLanguage, onCompareDinosaurs }: HomePageP
               {option.toUpperCase()}
             </button>
           </span>
+        ))}
+      </nav>
+      <nav className="theme-switch" aria-label={text.themeSwitch}>
+        {THEME_CHOICES.map((option) => (
+          <button key={option} type="button" aria-pressed={option === theme} onClick={() => onTheme(option)}>
+            <span aria-hidden="true">{THEME_SYMBOLS[option]}</span> {text.themes[option]}
+          </button>
         ))}
       </nav>
       <button type="button" className="card quiz-card" aria-label={text.quizCard} onClick={onCompareDinosaurs} {...pointer}>

@@ -13,7 +13,7 @@ description: "RexLab MVP infrastructure and technical architecture: a static Clo
 - **Audience:** Children aged 5–7, who are just learning to read: dinosaur names in large capitals, meaning carried by symbols and pictures, touch-friendly controls.
 - **First game:** Two dinosaur cards; choose the dinosaur that matches a comparison question (e.g., bigger, heavier, taller).
 - **Round:** 10 pairs/questions, with immediate answer feedback and a final score.
-- **First build:** compares mass and height, always asking which dinosaur has more ("WHO IS HEAVIER?", "WHO IS TALLER?"). In English and Russian, chosen from the device language and switchable by a parent; a dark theme follows. Behaviour: `docs/features/`.
+- **First build:** compares mass and height, always asking which dinosaur has more ("WHO IS HEAVIER?", "WHO IS TALLER?"). In English and Russian, chosen from the device language and switchable by a parent. In a light or dark theme that follows the device, or that a parent chooses. Behaviour: `docs/features/`.
 - **Gamification:** Essential. Scores and personal-best celebration in the first build; achievements follow (LAB-266). Compare the new score with the **highest historical score**, never with the most recent score if it is lower.
 - **Accounts:** None for MVP.
 - **Data durability:** Best effort only; losing browser-local scores is acceptable.

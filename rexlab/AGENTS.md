@@ -44,6 +44,8 @@ Vite reloads the page on every save; nothing is deployed.
   in the browser's developer tools to play as a new child.
 - A chosen language lives under `rexlab-language`; delete it to start in the
   device language again.
+- A chosen theme lives under `rexlab-theme`; delete it to follow the device
+  appearance again.
 
 ## Shipping a release
 

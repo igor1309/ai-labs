@@ -2,6 +2,7 @@
 
 ## 2026-10-17
 
+- Added the dark theme: System, Light or Dark, chosen by a parent with a small switch in a corner of the home page and remembered in `localStorage`. System follows the device appearance, also while the app is open, and the ✓ and ✗ marks keep at least 3:1 contrast with their cards in both themes.
 - Wrote all text for children in capitals, in English and Russian: prompts, buttons, marks, score, best score, stars, the turn-sideways picture and units. The language switch and the version footer, for parents, stay in normal case.
 
 ## 2026-10-16

@@ -4,6 +4,8 @@ export const en: Texts = {
   quizCard: "COMPARE",
   quizCardPicture: "TWO DINOSAURS",
   languageSwitch: "Language",
+  themeSwitch: "Theme",
+  themes: { system: "System", light: "Light", dark: "Dark" },
   turnSideways: "TURN THE IPAD SIDEWAYS",
   home: "HOME",
   progress: "PROGRESS",
