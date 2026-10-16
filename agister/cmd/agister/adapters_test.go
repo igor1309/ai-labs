@@ -36,6 +36,8 @@ func TestAReferenceIsGivenToResolveAsWhatItReads(t *testing.T) {
 		{documents.Reference{Root: documents.ReadsState, Name: "review"}, resolve.Read{Root: resolve.RootState, Name: "review"}},
 		{documents.Reference{Root: documents.ReadsOutputs, Name: "a"}, resolve.Read{Root: resolve.RootOutputs, Name: "a"}},
 		{documents.Reference{Root: documents.ReadsOutputs, Name: "a", Field: "v"}, resolve.Read{Root: resolve.RootOutputs, Name: "a", Field: "v"}},
+		{documents.Reference{Root: documents.ReadsOutputs, Name: "a", Field: "stdout", Path: []string{"head"}},
+			resolve.Read{Root: resolve.RootOutputs, Name: "a", Field: "stdout", Path: []string{"head"}}},
 		{documents.Reference{Root: documents.ReadsSession, Name: "a"}, resolve.Read{Root: resolve.RootSession, Name: "a"}},
 		{documents.Reference{Root: documents.ReadsState, Name: "review", Field: "x"}, resolve.Read{Root: resolve.RootState, Name: "review", Field: "x"}},
 		{documents.Reference{Root: documents.ReadsItem}, resolve.Read{Root: resolve.RootQueryItem}},
@@ -56,7 +58,7 @@ func TestAReferenceIsGivenToResolveAsWhatItReads(t *testing.T) {
 			}
 			want := c.read
 			want.Origin = at(file, 5, "outputs.o")
-			if got := workflow.Outputs[0].From; got == nil || *got != want {
+			if got := workflow.Outputs[0].From; got == nil || !reflect.DeepEqual(*got, want) {
 				t.Errorf("it reads %+v, want %+v", got, want)
 			}
 		})

@@ -142,13 +142,15 @@ type Binding struct {
 
 // Read is what a reference reads, where its document gives it (ADR-011,
 // rules 3 and 4): a param, an input or a repeat's state, by Name; an item's
-// outputs, or one Field of them, "" for the whole; an item's session; or
-// the item of an all or any query. The composition translates it from a
-// document's reference, so resolve parses no reference's text.
+// outputs, or one Field of them, "" for the whole, and in Path the fields
+// read within that Field, in order; an item's session; or the item of an
+// all or any query. The composition translates it from a document's
+// reference, so resolve parses no reference's text.
 type Read struct {
 	Root   Root
 	Name   string
 	Field  string
+	Path   []string
 	Origin Origin
 }
 

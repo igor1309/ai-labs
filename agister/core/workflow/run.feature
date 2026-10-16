@@ -12,6 +12,13 @@ Feature: A workflow's steps run in order
     When "w" runs with goal "x"
     Then "a" is called with the param g "x", then "b" with code "0"
 
+  Scenario: A binding reads a field within a step's output field
+    Given the steps "a", then "b", binding "what" from
+      steps.a.outputs.stdout.head
+    And "a" completes, its stdout's head "hi" followed by a newline
+    When the workflow runs
+    Then "b" is called with what "hi" followed by a newline
+
   Scenario: The workflow's inputs are resolved once, at its boundary
     Given the workflow's input "goal" from the source "param", named
       "g", and the step "a" binding "t" from inputs.goal

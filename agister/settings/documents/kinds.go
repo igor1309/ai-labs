@@ -236,12 +236,15 @@ type Value struct {
 // Reference is what a reference reads (ADR-011, rules 3 and 4), typed
 // whole, so no reader of a document parses its text: a param or an input,
 // by Name; a repeat's state, by Name, or one Field of it; an item's
-// outputs, by the item's Name, or one Field of them; an item's session;
-// or the item of an all or any query, or one Field of it.
+// outputs, by the item's Name, or one Field of them, and in Path the
+// fields read within that Field, in order, as "stdout.head" reads the head
+// of a bash call's stdout; an item's session; or the item of an all or any
+// query, or one Field of it.
 type Reference struct {
 	Root  Root
 	Name  string
 	Field string
+	Path  []string
 }
 
 // Root is what a reference reads of.
@@ -296,8 +299,12 @@ func referenceOf(text string) (string, Reference, bool) {
 		return root, Reference{Root: ReadsState, Name: parts[1], Field: fieldOf(parts, 2)}, true
 	case root == "steps" && n == 3 && parts[2] == "session":
 		return root, Reference{Root: ReadsSession, Name: parts[1]}, true
-	case root == "steps" && (n == 3 || n == 4) && parts[2] == "outputs":
-		return root, Reference{Root: ReadsOutputs, Name: parts[1], Field: fieldOf(parts, 3)}, true
+	case root == "steps" && n >= 3 && parts[2] == "outputs":
+		reference := Reference{Root: ReadsOutputs, Name: parts[1], Field: fieldOf(parts, 3)}
+		if n > 4 {
+			reference.Path = parts[4:]
+		}
+		return root, reference, true
 	case root == "item" && n <= 2:
 		return root, Reference{Root: ReadsItem, Field: fieldOf(parts, 1)}, true
 	}

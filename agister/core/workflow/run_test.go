@@ -98,8 +98,8 @@ func input(name string) workflow.Value {
 	return workflow.Value{Reads: &workflow.Reference{Of: workflow.Inputs, Name: name}}
 }
 
-func outputs(step, field string) workflow.Value {
-	return workflow.Value{Reads: &workflow.Reference{Of: workflow.Outputs, Name: step, Field: field}}
+func outputs(step, field string, path ...string) workflow.Value {
+	return workflow.Value{Reads: &workflow.Reference{Of: workflow.Outputs, Name: step, Field: field, Path: path}}
 }
 
 func bind(name string, value workflow.Value) workflow.Binding {
@@ -185,6 +185,24 @@ func TestABindingGivesAValueThatIsNotTextAsItsJSON(t *testing.T) {
 		"literal": "l",
 	}
 	if len(f.caller.params) != 2 || !reflect.DeepEqual(f.caller.params[1], want) {
+		t.Errorf("params %v, want b's %v", f.caller.params, want)
+	}
+}
+
+// run.feature, "A binding reads a field within a step's output field".
+func TestABindingReadsAFieldWithinAStepsOutputField(t *testing.T) {
+	t.Parallel()
+	output := map[string]any{"stdout": map[string]any{"head": "hi\n", "size": int64(3)}}
+	f := newFixture(t, workflow.Boundary{}, map[string]func() workflow.Result{
+		"a": func() workflow.Result { return workflow.Result{Status: workflow.Completed, Output: output} },
+	})
+	f.runner.Run(context.Background(), workflow.Workflow{
+		Steps: []workflow.Step{
+			{Name: "a"},
+			{Name: "b", Bindings: []workflow.Binding{bind("what", outputs("a", "stdout", "head"))}},
+		},
+	}, nil)
+	if want := map[string]string{"what": "hi\n"}; len(f.caller.params) != 2 || !reflect.DeepEqual(f.caller.params[1], want) {
 		t.Errorf("params %v, want b's %v", f.caller.params, want)
 	}
 }
@@ -365,6 +383,14 @@ func TestWhatCannotBeResolvedRefusesTheRun(t *testing.T) {
 		{"a binding reading a field not given", nil, []workflow.Step{
 			{Name: "a"},
 			{Name: "b", Bindings: []workflow.Binding{bind("x", outputs("a", "nothing"))}},
+		}, nil, trail{"resolve", "a"}},
+		{"a binding reading within a field that holds no fields", nil, []workflow.Step{
+			{Name: "a"},
+			{Name: "b", Bindings: []workflow.Binding{bind("x", outputs("a", "exit_code", "head"))}},
+		}, nil, trail{"resolve", "a"}},
+		{"a binding reading within a field not given", nil, []workflow.Step{
+			{Name: "a"},
+			{Name: "b", Bindings: []workflow.Binding{bind("x", outputs("a", "nothing", "head"))}},
 		}, nil, trail{"resolve", "a"}},
 		{"a binding reading a param not given", nil, []workflow.Step{
 			{Name: "a", Bindings: []workflow.Binding{bind("x", param("p"))}},

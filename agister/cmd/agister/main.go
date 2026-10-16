@@ -1,7 +1,8 @@
 // Command agister is the composition root (ADR-001, rule 3): it connects
-// layout, documents, resolve and check to files, git and the runtime
-// wrappers' facts, through the adapters beside it, and answers cli's
-// settings from check.
+// layout, documents, resolve, check and core to files, git, the runtime
+// wrappers and the machine Agister runs on, through the adapters beside
+// it, and answers cli's settings from check and its run from resolve and
+// core.
 package main
 
 import (
@@ -9,7 +10,9 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"os/signal"
 	"path/filepath"
+	"syscall"
 	"time"
 
 	"github.com/igor1309/ai-labs/agister/cli"
@@ -31,7 +34,7 @@ func main() {
 }
 
 // run runs the command args in the working directory, over the user's
-// home directory, files and git, and gives its exit code.
+// home directory, files, git and the machine, and gives its exit code.
 func run(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 	user, err := os.UserHomeDir()
 	if err != nil {
@@ -51,8 +54,10 @@ func run(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 	return commandLine.Run(args, dir)
 }
 
-// connect is the command line build gives over files, git and the
-// supervisor, its grace on the wall clock.
+// connect is the command line build gives over files, git, the
+// supervisor, its grace on the wall clock, and the machine: Agister's
+// environment, the wall clock, and SIGINT and SIGTERM, each cancelling a
+// run.
 func connect(ctx context.Context, user string, stdout, stderr io.Writer) (*cli.CLI, error) {
 	g, err := git.New("git")
 	if err != nil {
@@ -71,7 +76,8 @@ func connect(ctx context.Context, user string, stdout, stderr io.Writer) (*cli.C
 	if err != nil {
 		return nil, err
 	}
-	return build(user, f, fs, roots, programs, stdout, stderr)
+	machine := host{ctx: ctx, environ: os.Environ(), clock: wallClock{}, timer: wallTimer, signals: notified(os.Interrupt, syscall.SIGTERM)}
+	return build(user, f, fs, roots, programs, machine, stdout, stderr)
 }
 
 // wallTimer starts wait on the wall clock.
@@ -80,11 +86,25 @@ func wallTimer(wait time.Duration) (<-chan time.Time, func()) {
 	return timer.C, func() { timer.Stop() }
 }
 
+// wallClock tells the wall clock's time.
+type wallClock struct{}
+
+func (wallClock) Now() time.Time { return time.Now() }
+
+// notified watches the process's signals of kinds.
+func notified(kinds ...os.Signal) signals {
+	return func() (<-chan os.Signal, func()) {
+		fired := make(chan os.Signal, 1)
+		signal.Notify(fired, kinds...)
+		return fired, func() { signal.Stop(fired) }
+	}
+}
+
 // build is the command line over links, fs and roots and every runtime
-// wrapper's facts, the bash wrapper's turns run by programs, for the user
-// whose home directory is user: home's folder is its ".agister" (ADR-002,
-// rule 2).
-func build(user string, links links, fs layout.FileSystem, roots layout.WorktreeRoot, programs bash.Supervisor, stdout, stderr io.Writer) (*cli.CLI, error) {
+// wrapper's facts, the bash wrapper's turns run by programs, its runs on
+// machine, for the user whose home directory is user: home's folder is
+// its ".agister" (ADR-002, rule 2).
+func build(user string, links links, fs layout.FileSystem, roots layout.WorktreeRoot, programs bash.Supervisor, machine host, stdout, stderr io.Writer) (*cli.CLI, error) {
 	b, err := bash.New(programs)
 	if err != nil {
 		return nil, err
@@ -94,34 +114,61 @@ func build(user string, links links, fs layout.FileSystem, roots layout.Worktree
 	if err != nil {
 		return nil, err
 	}
-	return newCommandLine(filepath.Join(user, ".agister"), links, fs, roots, wrappers, stdout, stderr)
+	turns, err := newBashTurns(b)
+	if err != nil {
+		return nil, err
+	}
+	home := filepath.Join(user, ".agister")
+	runner, err := newRuns(home, links, fs, roots, wrappers, turn{contract: b.Facts().Contract, runtime: turns}, machine)
+	if err != nil {
+		return nil, err
+	}
+	return newCommandLine(home, links, fs, roots, wrappers, runner, stdout, stderr)
 }
 
 // newChecker is check over the settings of home's folder and the launch
 // directory, read once: every answer of every part comes from the one
 // snapshot layout gives.
 func newChecker(home, launch string, fs layout.FileSystem, roots layout.WorktreeRoot, wrappers resolve.Wrappers) (*check.Checker, error) {
-	l, err := layout.New(fs, roots)
+	read, err := readSettings(home, launch, fs, roots, wrappers)
 	if err != nil {
 		return nil, err
+	}
+	resolves, err := newCheckResolve(read.resolver, read.source, read.snapshot.Layers)
+	if err != nil {
+		return nil, err
+	}
+	fields, err := newCheckFields(read.documents, read.snapshot.Layers)
+	if err != nil {
+		return nil, err
+	}
+	return check.New(names{snapshot: read.snapshot}, resolves, fields)
+}
+
+// settingsRead is the settings of home's folder and a launch directory,
+// read once: the snapshot layout gives, documents over it, resolve's
+// source over both, and resolve over the source.
+type settingsRead struct {
+	snapshot  layout.Snapshot
+	documents *documents.Documents
+	source    *source
+	resolver  *resolve.Resolver
+}
+
+func readSettings(home, launch string, fs layout.FileSystem, roots layout.WorktreeRoot, wrappers resolve.Wrappers) (settingsRead, error) {
+	l, err := layout.New(fs, roots)
+	if err != nil {
+		return settingsRead{}, err
 	}
 	snapshot := l.Read(home, launch)
 	docs := documents.New(documentsSnapshot(snapshot))
 	source, err := newSource(docs, snapshot)
 	if err != nil {
-		return nil, err
+		return settingsRead{}, err
 	}
 	resolver, err := resolve.New(source, wrappers)
 	if err != nil {
-		return nil, err
+		return settingsRead{}, err
 	}
-	resolves, err := newCheckResolve(resolver, source, snapshot.Layers)
-	if err != nil {
-		return nil, err
-	}
-	fields, err := newCheckFields(docs, snapshot.Layers)
-	if err != nil {
-		return nil, err
-	}
-	return check.New(names{snapshot: snapshot}, resolves, fields)
+	return settingsRead{snapshot: snapshot, documents: docs, source: source, resolver: resolver}, nil
 }

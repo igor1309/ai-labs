@@ -74,11 +74,13 @@ type Value struct {
 }
 
 // Reference reads a param or an input, by Name, or the outputs of the step
-// Name, or one Field of them, "" for the whole.
+// Name, or one Field of them, "" for the whole, and in Path the fields
+// read within that Field, in order.
 type Reference struct {
 	Of    Scope
 	Name  string
 	Field string
+	Path  []string
 }
 
 // Scope is what a reference reads.
@@ -252,6 +254,15 @@ func (r reader) value(value Value) (any, bool) {
 			return output, ok
 		}
 		field, ok := output[ref.Field]
+		for _, name := range ref.Path {
+			if !ok {
+				break
+			}
+			var within map[string]any
+			if within, ok = field.(map[string]any); ok {
+				field, ok = within[name]
+			}
+		}
 		return field, ok
 	}
 	return nil, false

@@ -1,0 +1,703 @@
+package main
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"maps"
+	"os"
+	"slices"
+	"strconv"
+	"strings"
+	"time"
+
+	"github.com/igor1309/ai-labs/agister/cli"
+	"github.com/igor1309/ai-labs/agister/core/call"
+	"github.com/igor1309/ai-labs/agister/core/inputs"
+	"github.com/igor1309/ai-labs/agister/core/workflow"
+	"github.com/igor1309/ai-labs/agister/runtime/bash"
+	"github.com/igor1309/ai-labs/agister/settings/documents"
+	"github.com/igor1309/ai-labs/agister/settings/layout"
+	"github.com/igor1309/ai-labs/agister/settings/resolve"
+	"github.com/igor1309/ai-labs/agister/supervisor"
+)
+
+// signals starts watching the signals that cancel a run: fired delivers
+// each, until stop.
+type signals func() (fired <-chan os.Signal, stop func())
+
+// clock tells the time a run's and a call's timing are measured by.
+type clock interface {
+	Now() time.Time
+}
+
+// host is what a run is given of the machine Agister runs on: the context
+// every run ends within; Agister's own environment, as "KEY=value"; the
+// clock and the timer a call's timing and time limit are kept on; and the
+// signals that cancel a run.
+type host struct {
+	ctx     context.Context
+	environ []string
+	clock   clock
+	timer   call.Timer
+	signals signals
+}
+
+// turn is the one runtime this slice takes a turn on: the contract of its
+// wrapper, and its turns.
+type turn struct {
+	contract string
+	runtime  call.Runtime
+}
+
+// runs answers cli's run from resolve and core (docs/run-implementation.md,
+// "The first run"): a request resolves over the settings of home's folder
+// and its launch directory, read once; what this slice does not run is
+// refused before anything runs; and the workflow runs in the root of the
+// git worktree that holds the launch directory, a signal cancelling it.
+type runs struct {
+	home     string
+	links    links
+	fs       layout.FileSystem
+	roots    layout.WorktreeRoot
+	wrappers resolve.Wrappers
+	turn     turn
+	host     host
+}
+
+func newRuns(home string, links links, fs layout.FileSystem, roots layout.WorktreeRoot, wrappers resolve.Wrappers, turn turn, host host) (*runs, error) {
+	switch {
+	case home == "":
+		return nil, errors.New("runs: no home")
+	case links == nil:
+		return nil, errors.New("runs: no links")
+	case fs == nil:
+		return nil, errors.New("runs: no filesystem")
+	case roots == nil:
+		return nil, errors.New("runs: no worktree root")
+	case wrappers == nil:
+		return nil, errors.New("runs: no wrappers")
+	case turn.contract == "" || turn.runtime == nil:
+		return nil, errors.New("runs: no turn")
+	case host.ctx == nil:
+		return nil, errors.New("runs: no context")
+	case host.clock == nil:
+		return nil, errors.New("runs: no clock")
+	case host.timer == nil:
+		return nil, errors.New("runs: no timer")
+	case host.signals == nil:
+		return nil, errors.New("runs: no signals")
+	}
+	return &runs{home: home, links: links, fs: fs, roots: roots, wrappers: wrappers, turn: turn, host: host}, nil
+}
+
+func (r *runs) Run(launch string, request cli.Request) (cli.Result, error) {
+	resolvedLaunch, err := r.links.Resolved(launch)
+	if err != nil {
+		return cli.Result{}, fmt.Errorf("the launch directory %s: %w", launch, err)
+	}
+	// Layout asks for the launch directory's root, and so does the run: git
+	// is asked once.
+	roots := &knownRoots{roots: r.roots, found: map[string]string{}}
+	read, err := readSettings(r.home, resolvedLaunch, r.fs, roots, r.wrappers)
+	if err != nil {
+		return cli.Result{}, err
+	}
+	resolved, faults := read.resolver.Resolve(resolveRequest(request))
+	if len(faults) > 0 {
+		return cli.Result{}, refused(faultLines(faults))
+	}
+	root, err := roots.Root(resolvedLaunch)
+	if err != nil {
+		return cli.Result{}, err
+	}
+	if root == "" {
+		return cli.Result{}, refused([]string{fmt.Sprintf("the launch directory %q is in no git worktree", launch)})
+	}
+	built, unrun, err := planOf(request.Workflow, resolved, read.documents, r.turn.contract)
+	if err != nil {
+		return cli.Result{}, err
+	}
+	if len(unrun) > 0 {
+		return cli.Result{}, refused(unrun)
+	}
+	runner, err := r.runner(built, root)
+	if err != nil {
+		return cli.Result{}, err
+	}
+	ctx, stop := r.cancelled()
+	defer stop()
+	return cliResult(runner.Run(ctx, built.workflow, request.Params)), nil
+}
+
+// runner is core's runner of built, its calls' turns taken in dir over
+// Agister's environment.
+func (r *runs) runner(built plan, dir string) (*workflow.Runner, error) {
+	caller, err := call.New(r.turn.runtime, r.host.clock, r.host.timer, dir, r.host.environ)
+	if err != nil {
+		return nil, err
+	}
+	resolver, err := inputs.New(map[string]inputs.Source{"param": inputs.ParamSource{}})
+	if err != nil {
+		return nil, err
+	}
+	steps, err := newStepCalls(resolver, caller, r.host.clock, built.calls)
+	if err != nil {
+		return nil, err
+	}
+	return workflow.New(boundary{inputs: resolver}, steps, r.host.clock)
+}
+
+// cancelled is the host's context, ended once a signal arrives; stop ends
+// it and returns once nothing watches the signals any more.
+func (r *runs) cancelled() (context.Context, func()) {
+	fired, unwatch := r.host.signals()
+	ctx, cancel := context.WithCancel(r.host.ctx)
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		select {
+		case <-fired:
+			cancel()
+		case <-ctx.Done():
+		}
+	}()
+	return ctx, func() {
+		cancel()
+		<-done
+		unwatch()
+	}
+}
+
+// resolveRequest is request in resolve's words, giving the names of its
+// params.
+func resolveRequest(request cli.Request) resolve.Request {
+	params := slices.Sorted(maps.Keys(request.Params))
+	if request.Workflow != "" {
+		return resolve.Document(resolve.KindWorkflow, request.Workflow).WithParams(params...)
+	}
+	return resolve.Step(request.Process, request.Agent).WithParams(params...)
+}
+
+// refused is the refusal of a run, nothing run, for each of lines.
+func refused(lines []string) error {
+	return errors.New("the run is refused, and nothing runs:\n  " + strings.Join(lines, "\n  "))
+}
+
+// faultLines is each problem of faults, and each block, after the
+// document at fault.
+func faultLines(faults []resolve.Fault) []string {
+	var lines []string
+	for _, fault := range faults {
+		var document string
+		if len(fault.Chain) > 0 {
+			last := fault.Chain[len(fault.Chain)-1]
+			document = fmt.Sprintf("%s %s: ", last.Kind, last.Name)
+		}
+		for _, problem := range fault.Problems {
+			lines = append(lines, document+problemLine(problem.Origin, problem.Message))
+		}
+		if block := fault.Block; block != nil {
+			lines = append(lines, document+problemLine(block.Origin, "blocked: "+block.Reason))
+		}
+	}
+	return lines
+}
+
+// problemLine is message at origin, as "file:line place: message", each
+// part left out where it is none.
+func problemLine(origin resolve.Origin, message string) string {
+	var where []string
+	if origin.Path != "" {
+		file := origin.Path
+		if origin.Line > 0 {
+			file += ":" + strconv.Itoa(origin.Line)
+		}
+		where = append(where, file)
+	}
+	if origin.Place != "" {
+		where = append(where, origin.Place)
+	}
+	if len(where) == 0 {
+		return message
+	}
+	return strings.Join(where, " ") + ": " + message
+}
+
+// knownRoots answers layout's worktree root from roots, asking for each
+// directory once.
+type knownRoots struct {
+	roots layout.WorktreeRoot
+	found map[string]string
+}
+
+func (k *knownRoots) Root(dir string) (string, error) {
+	if root, ok := k.found[dir]; ok {
+		return root, nil
+	}
+	root, err := k.roots.Root(dir)
+	if err != nil {
+		return "", err
+	}
+	k.found[dir] = root
+	return root, nil
+}
+
+// runDocuments is what a run's plan asks of documents: what resolve does
+// not hold, a param's default, an input's source, a time limit, a
+// prompt's text, and what this slice does not run.
+type runDocuments interface {
+	Workflow(name string) (documents.WorkflowDefinition, []documents.Problem)
+	Process(name string) (documents.ProcessDefinition, []documents.Problem)
+	Blob(kind documents.Kind, name string) (documents.Blob, []documents.Problem)
+}
+
+// plan is a run built for core: its workflow, and each step's call, by
+// the step's name.
+type plan struct {
+	workflow workflow.Workflow
+	calls    map[string]plannedCall
+}
+
+// plannedCall is a step's call: what its process declares, which
+// core/inputs resolves before the call starts, and the call core/call
+// makes, but its environment and inputs, which that gives.
+type plannedCall struct {
+	declared inputs.Declared
+	step     call.Step
+}
+
+// planOf is the run of resolved, the workflow name, "" for one made of a
+// step; or what this slice does not run, each named in the order the
+// request's documents give it. It reads what resolve does not hold from
+// docs, the documents of the snapshot resolve checked, which have composed
+// the layers already (ADR-002). A turn is taken only on the runtime of the
+// contract bash.
+func planOf(name string, resolved resolve.Resolved, docs runDocuments, bash string) (plan, []string, error) {
+	if resolved.Workflow == nil {
+		return plan{}, nil, errors.New("the request resolves to no workflow")
+	}
+	w := *resolved.Workflow
+	unrun, err := notRunOf(name, w, resolved, docs, bash)
+	if err != nil || len(unrun) > 0 {
+		return plan{}, unrun, err
+	}
+
+	// A workflow made of a step declares its process's params.
+	var params []documents.Field[documents.Param]
+	sources := map[string]string{}
+	if name != "" {
+		definition, problems := docs.Workflow(name)
+		if len(problems) > 0 {
+			return plan{}, nil, documentProblems(problems)
+		}
+		params = definition.Params.Value
+		for _, input := range definition.Inputs.Value {
+			sources[input.Value.Name] = input.Value.Source.Value
+		}
+	} else if len(w.Steps) == 1 {
+		definition, problems := docs.Process(w.Steps[0].Process.Value)
+		if len(problems) > 0 {
+			return plan{}, nil, documentProblems(problems)
+		}
+		params = definition.Params.Value
+	}
+	built := plan{calls: map[string]plannedCall{}}
+	defaults := declaredParams(params)
+	for _, param := range w.Params {
+		built.workflow.Params = append(built.workflow.Params, workflow.Param{Name: param.Name, Default: defaults[param.Name]})
+	}
+	for _, input := range w.Inputs {
+		arguments, err := workflowBindings(input.Arguments)
+		if err != nil {
+			return plan{}, nil, err
+		}
+		built.workflow.Inputs = append(built.workflow.Inputs, workflow.Input{Name: input.Name, Source: sources[input.Name], Arguments: arguments})
+	}
+	for _, item := range w.Steps {
+		planned, err := plannedCallOf(item, resolved, docs)
+		if err != nil {
+			return plan{}, nil, err
+		}
+		bindings, err := workflowBindings(item.Inputs)
+		if err != nil {
+			return plan{}, nil, err
+		}
+		built.workflow.Steps = append(built.workflow.Steps, workflow.Step{Name: item.Name, Bindings: bindings})
+		built.calls[item.Name] = planned
+	}
+	if built.workflow.Outputs, err = workflowBindings(w.Outputs); err != nil {
+		return plan{}, nil, err
+	}
+	return built, nil, nil
+}
+
+// notRunOf is what this slice does not run of w, the workflow name, ""
+// for one made of a step, in the order its documents give it: the
+// workflow's inputs and each of its items that is not a step; then, for
+// each step, a runtime with no turn, and what its process declares that
+// is not run, its instruction and its guidance where the step is on bash.
+func notRunOf(name string, w resolve.Workflow, resolved resolve.Resolved, docs runDocuments, bash string) ([]string, error) {
+	var unrun notRun
+	if name != "" {
+		definition, problems := docs.Workflow(name)
+		if len(problems) > 0 {
+			return nil, documentProblems(problems)
+		}
+		owner := fmt.Sprintf("the workflow %q", name)
+		for _, input := range definition.Inputs.Value {
+			unrun.input(owner, input.Value)
+		}
+		for _, item := range w.Steps {
+			if kind := itemKind(item); kind != "" {
+				unrun.add(owner, fmt.Sprintf("the item %q, %s,", item.Name, kind))
+			}
+		}
+	}
+	for _, item := range w.Steps {
+		if itemKind(item) != "" {
+			continue
+		}
+		runtime := resolved.Agents[item.Agent.Value].Runtime.Value
+		onBash := resolved.Runtimes[runtime].Contract.Value == bash
+		if !onBash {
+			unrun.add(fmt.Sprintf("the step %q", item.Name), fmt.Sprintf("the runtime %q's turn", runtime))
+		}
+		definition, problems := docs.Process(item.Process.Value)
+		if len(problems) > 0 {
+			return nil, documentProblems(problems)
+		}
+		owner := fmt.Sprintf("the process %q", item.Process.Value)
+		if onBash && definition.Instruction.Given {
+			unrun.add(owner, "the instruction on bash")
+		}
+		if onBash && len(definition.Guidance.Value) > 0 {
+			unrun.add(owner, "the guidance on bash")
+		}
+		for _, input := range definition.Inputs.Value {
+			unrun.input(owner, input.Value)
+		}
+		workspace := definition.Workspace.Value
+		if workspace.Access.Value == "read-write" {
+			unrun.add(owner, "the workspace's read-write access")
+		}
+		if workspace.Revision.Given {
+			unrun.add(owner, "the workspace's revision")
+		}
+		if workspace.Clean.Given && workspace.Clean.Value {
+			unrun.add(owner, "the workspace's clean")
+		}
+		if definition.Limits.Value.Stale.Given {
+			unrun.add(owner, "the staleness limit")
+		}
+	}
+	return unrun.lines, nil
+}
+
+// plannedCallOf is the call of the step item: its process's params, their
+// defaults, inputs, their sources, and environment; its script, the text
+// of its process's prompt; its process's time limit; and its plan's
+// warnings, those resolve gives at the step.
+func plannedCallOf(item resolve.Item, resolved resolve.Resolved, docs runDocuments) (plannedCall, error) {
+	process := resolved.Processes[item.Process.Value]
+	definition, problems := docs.Process(item.Process.Value)
+	if len(problems) > 0 {
+		return plannedCall{}, documentProblems(problems)
+	}
+	sources := map[string]string{}
+	for _, input := range definition.Inputs.Value {
+		sources[input.Value.Name] = input.Value.Source.Value
+	}
+	var planned plannedCall
+	defaults := declaredParams(definition.Params.Value)
+	for _, param := range process.Params {
+		planned.declared.Params = append(planned.declared.Params, inputs.Param{Name: param.Name, Default: defaults[param.Name]})
+	}
+	for _, input := range process.Inputs {
+		arguments := map[string]inputs.Value{}
+		for _, argument := range input.Arguments {
+			value, err := inputsValue(argument)
+			if err != nil {
+				return plannedCall{}, err
+			}
+			arguments[argument.Name] = value
+		}
+		planned.declared.Inputs = append(planned.declared.Inputs, inputs.Input{Name: input.Name, Source: sources[input.Name], Arguments: arguments})
+	}
+	for _, variable := range process.Environment {
+		value, err := inputsValue(variable)
+		if err != nil {
+			return plannedCall{}, err
+		}
+		planned.declared.Environment = append(planned.declared.Environment, inputs.Variable{Name: variable.Name, Value: value})
+	}
+	if prompt := process.Prompt.Value; prompt != "" {
+		blob, problems := docs.Blob(documents.Prompt, prompt)
+		if len(problems) > 0 {
+			return plannedCall{}, documentProblems(problems)
+		}
+		planned.step.Prompt = string(blob.Bytes)
+	}
+	planned.step.TimeLimit = definition.Limits.Value.Time.Value
+	for _, warning := range resolved.Warnings {
+		if warning.Origin == item.Origin {
+			planned.step.Warnings = append(planned.step.Warnings, problemLine(warning.Origin, warning.Message))
+		}
+	}
+	return planned, nil
+}
+
+// notRun is what this slice does not run, each line once, in the order
+// added.
+type notRun struct {
+	lines []string
+}
+
+// add names what, of owner, as not run yet.
+func (n *notRun) add(owner, what string) {
+	if line := owner + ": " + what + " is not run yet"; !slices.Contains(n.lines, line) {
+		n.lines = append(n.lines, line)
+	}
+}
+
+// input names what this slice does not run of the input of owner: a source
+// other than "param", and a brief form.
+func (n *notRun) input(owner string, input documents.Input) {
+	if source := input.Source.Value; source != "param" {
+		n.add(owner, fmt.Sprintf("the input %q from the source %q", input.Name, source))
+	}
+	if len(input.Form.Value) > 0 {
+		n.add(owner, fmt.Sprintf("the brief form of %q", input.Name))
+	}
+}
+
+// itemKind is what item is when it is not a step, "" for a step.
+func itemKind(item resolve.Item) string {
+	switch {
+	case item.Parallel != nil:
+		return "a parallel"
+	case item.Branch != nil:
+		return "a branch"
+	case item.Repeat != nil:
+		return "a repeat"
+	case item.Workflow.Value != "":
+		return "a workflow"
+	}
+	return ""
+}
+
+// declaredParams is each param's default, by its name, of those that
+// have one.
+func declaredParams(params []documents.Field[documents.Param]) map[string]*string {
+	defaults := map[string]*string{}
+	for _, param := range params {
+		if d := param.Value.Default; d.Given {
+			defaults[param.Value.Name] = &d.Value
+		}
+	}
+	return defaults
+}
+
+// documentProblems is the error of a document's problems, which resolve
+// checked there were none of.
+func documentProblems(problems []documents.Problem) error {
+	texts := make([]string, 0, len(problems))
+	for _, problem := range problems {
+		texts = append(texts, problem.String())
+	}
+	return errors.New(strings.Join(texts, "; "))
+}
+
+// workflowBindings is bindings in core/workflow's words.
+func workflowBindings(bindings []resolve.Binding) ([]workflow.Binding, error) {
+	var mapped []workflow.Binding
+	for _, binding := range bindings {
+		value := workflow.Value{Text: binding.Text}
+		if read := binding.From; read != nil {
+			reference := workflow.Reference{Name: read.Name, Field: read.Field, Path: slices.Clone(read.Path)}
+			switch read.Root {
+			case resolve.RootParam:
+				reference.Of = workflow.Params
+			case resolve.RootInput:
+				reference.Of = workflow.Inputs
+			case resolve.RootOutputs:
+				reference.Of = workflow.Outputs
+			default:
+				return nil, fmt.Errorf("%s reads the root %q, which a workflow of steps does not read",
+					problemLine(read.Origin, binding.Name), read.Root)
+			}
+			value.Reads = &reference
+		}
+		mapped = append(mapped, workflow.Binding{Name: binding.Name, Value: value})
+	}
+	return mapped, nil
+}
+
+// inputsValue is the value of binding in core/inputs' words: a text, or
+// the param or the input it reads.
+func inputsValue(binding resolve.Binding) (inputs.Value, error) {
+	read := binding.From
+	if read == nil {
+		return inputs.Value{Text: binding.Text}, nil
+	}
+	switch read.Root {
+	case resolve.RootParam:
+		return inputs.Value{Reads: &inputs.Reference{Of: inputs.Params, Name: read.Name}}, nil
+	case resolve.RootInput:
+		return inputs.Value{Reads: &inputs.Reference{Of: inputs.Inputs, Name: read.Name}}, nil
+	}
+	return inputs.Value{}, fmt.Errorf("%s reads the root %q, which a process does not read",
+		problemLine(read.Origin, binding.Name), read.Root)
+}
+
+// declaredResolver is what a run asks of core/inputs.
+type declaredResolver interface {
+	Resolve(ctx context.Context, declared inputs.Declared, given map[string]string) (inputs.Resolved, error)
+}
+
+// boundary answers core/workflow's resolver from core/inputs: the
+// workflow's params and inputs resolved at its boundary.
+type boundary struct {
+	inputs declaredResolver
+}
+
+func (b boundary) Resolve(ctx context.Context, params []workflow.Param, ins []workflow.Input, given map[string]string) (workflow.Boundary, error) {
+	var declared inputs.Declared
+	for _, param := range params {
+		declared.Params = append(declared.Params, inputs.Param{Name: param.Name, Default: param.Default})
+	}
+	for _, input := range ins {
+		arguments := map[string]inputs.Value{}
+		for _, argument := range input.Arguments {
+			value := inputs.Value{Text: argument.Value.Text}
+			if read := argument.Value.Reads; read != nil {
+				switch read.Of {
+				case workflow.Params:
+					value.Reads = &inputs.Reference{Of: inputs.Params, Name: read.Name}
+				case workflow.Inputs:
+					value.Reads = &inputs.Reference{Of: inputs.Inputs, Name: read.Name}
+				default:
+					return workflow.Boundary{}, fmt.Errorf("the input %q: its argument %q reads neither a param nor an input", input.Name, argument.Name)
+				}
+			}
+			arguments[argument.Name] = value
+		}
+		declared.Inputs = append(declared.Inputs, inputs.Input{Name: input.Name, Source: input.Source, Arguments: arguments})
+	}
+	resolved, err := b.inputs.Resolve(ctx, declared, given)
+	if err != nil {
+		return workflow.Boundary{}, err
+	}
+	return workflow.Boundary{Params: resolved.Params, Inputs: values(resolved.Inputs)}, nil
+}
+
+// values is each input's value, by its name.
+func values(fixed map[string]inputs.Fixed) map[string]string {
+	mapped := map[string]string{}
+	for name, f := range fixed {
+		mapped[name] = f.Value
+	}
+	return mapped
+}
+
+// turnCaller is what a step's call asks of core/call.
+type turnCaller interface {
+	Call(ctx context.Context, step call.Step) call.Result
+}
+
+// stepCalls answers core/workflow's caller from core/inputs and core/call:
+// a step's process's inputs and environment are resolved over the params
+// its bindings give before its call starts, and one that cannot be
+// resolved refuses the call, its turn not taken.
+type stepCalls struct {
+	inputs declaredResolver
+	caller turnCaller
+	clock  clock
+	calls  map[string]plannedCall
+}
+
+func newStepCalls(inputs declaredResolver, caller turnCaller, clock clock, calls map[string]plannedCall) (*stepCalls, error) {
+	switch {
+	case inputs == nil:
+		return nil, errors.New("step calls: no inputs")
+	case caller == nil:
+		return nil, errors.New("step calls: no caller")
+	case clock == nil:
+		return nil, errors.New("step calls: no clock")
+	}
+	return &stepCalls{inputs: inputs, caller: caller, clock: clock, calls: calls}, nil
+}
+
+func (s *stepCalls) Call(ctx context.Context, name string, params map[string]string) workflow.Result {
+	planned, ok := s.calls[name]
+	if !ok {
+		return s.refused(nil)
+	}
+	resolved, err := s.inputs.Resolve(ctx, planned.declared, params)
+	if err != nil {
+		return s.refused(planned.step.Warnings)
+	}
+	step := planned.step
+	step.Environment, step.Inputs = resolved.Environment, values(resolved.Inputs)
+	called := s.caller.Call(ctx, step)
+	return workflow.Result{
+		Status:   workflow.Status(called.Status),
+		Class:    workflow.Class(called.Class),
+		Output:   called.Output,
+		Timing:   workflow.Timing{Started: called.Timing.Started, Ended: called.Timing.Ended, Duration: called.Timing.Duration},
+		Cost:     called.Cost,
+		Warnings: called.Warnings,
+	}
+}
+
+// refused is a call refused before it started, given its plan's warnings.
+func (s *stepCalls) refused(warnings []string) workflow.Result {
+	now := s.clock.Now()
+	return workflow.Result{Status: workflow.Failed, Class: workflow.Refused, Timing: workflow.Timing{Started: now, Ended: now},
+		Warnings: slices.Clone(warnings)}
+}
+
+// cliResult is a run's result in cli's words.
+func cliResult(result workflow.Result) cli.Result {
+	return cli.Result{
+		Status:   cli.RunStatus(result.Status),
+		Class:    cli.Class(result.Class),
+		Output:   result.Output,
+		Timing:   cli.Timing{Started: result.Timing.Started, Ended: result.Timing.Ended, Duration: result.Timing.Duration},
+		Cost:     result.Cost,
+		Warnings: result.Warnings,
+	}
+}
+
+// bashRuns is what a turn on bash asks of the bash wrapper.
+type bashRuns interface {
+	Run(ctx context.Context, turn bash.Turn) (supervisor.Result, error)
+}
+
+// bashTurns answers core/call's runtime from the bash wrapper: the turn's
+// prompt is its script. A program that could not start is core's
+// ErrNotStarted.
+type bashTurns struct {
+	bash bashRuns
+}
+
+func newBashTurns(bash bashRuns) (*bashTurns, error) {
+	if bash == nil {
+		return nil, errors.New("bash turns: no bash")
+	}
+	return &bashTurns{bash: bash}, nil
+}
+
+func (b *bashTurns) Turn(ctx context.Context, turn call.Turn) (call.Ended, error) {
+	result, err := b.bash.Run(ctx, bash.Turn{Script: turn.Prompt, Dir: turn.Dir, Env: turn.Env})
+	if errors.Is(err, supervisor.ErrNotStarted) {
+		return call.Ended{}, fmt.Errorf("%w: %w", call.ErrNotStarted, err)
+	}
+	if err != nil {
+		return call.Ended{}, err
+	}
+	stream := func(s supervisor.Stream) call.Stream {
+		return call.Stream{Head: s.Head, Tail: s.Tail, Size: s.Size, Digest: s.Digest}
+	}
+	return call.Ended{Code: result.Code, Signal: result.Signal, Stdout: stream(result.Stdout), Stderr: stream(result.Stderr)}, nil
+}
