@@ -16,7 +16,7 @@ const SEEDS = Array.from({ length: 200 }, (_, i) => i + 1);
 const questionKeys = (round: Round) => round.map((q) => `${q.attribute}:${pairKey(q.left, q.right)}`);
 
 function dinosaur(id: string, mass: number, height: number): Dinosaur {
-  return { id, name: id, measures: { mass, height } };
+  return { id, name: { en: id, ru: id }, measures: { mass, height } };
 }
 
 describe("generateRound", () => {

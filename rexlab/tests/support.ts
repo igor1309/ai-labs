@@ -1,5 +1,6 @@
 import records from "../src/data/dinosaurs.json";
 import { readDinosaurs } from "../src/dinosaurs.ts";
+import { localLanguage } from "../src/localLanguage.ts";
 import { localProgress, type KeyValueStorage } from "../src/localProgress.ts";
 import type { Orientation } from "../src/OrientationGate.tsx";
 import type { Random } from "../src/quiz/round.ts";
@@ -64,4 +65,11 @@ export function memoryStorage(
 export function emptyProgress() {
   const storage = memoryStorage();
   return localProgress(() => storage);
+}
+
+// The language for tests that are not about it: an English device, and no
+// language chosen yet.
+export function englishDevice() {
+  const storage = memoryStorage();
+  return { deviceLanguage: "en-GB", languageStore: localLanguage(() => storage) };
 }

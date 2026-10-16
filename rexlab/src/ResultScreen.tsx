@@ -1,11 +1,11 @@
+import type { Language } from "./language/language.ts";
+import { TEXTS } from "./language/texts.ts";
 import type { Celebration } from "./quiz/progress.ts";
 
-const CELEBRATIONS: Record<Celebration, { label: string; symbol: string; text: string }> = {
-  "first-best": { label: "First best score", symbol: "⭐", text: "FIRST BEST!" },
-  "new-best": { label: "New best score", symbol: "🏆", text: "NEW BEST!" }
-};
+const CELEBRATION_SYMBOLS: Record<Celebration, string> = { "first-best": "⭐", "new-best": "🏆" };
 
 export type ResultScreenProps = {
+  language: Language;
   score: number;
   total: number;
   // Undefined when stored progress cannot be read: there is no best to show.
@@ -15,40 +15,40 @@ export type ResultScreenProps = {
   onHome: () => void;
 };
 
-export function ResultScreen({ score, total, best, celebration, onPlayAgain, onHome }: ResultScreenProps) {
-  const party = celebration && CELEBRATIONS[celebration];
+export function ResultScreen({ language, score, total, best, celebration, onPlayAgain, onHome }: ResultScreenProps) {
+  const text = TEXTS[language];
   return (
     <main className="result">
-      {party && (
-        <div className="celebration" role="status" aria-label={party.label}>
+      {celebration && (
+        <div className="celebration" role="status" aria-label={text.celebrations[celebration].label}>
           <span className="celebration-picture" aria-hidden="true">
-            🎉{party.symbol}🎉
+            🎉{CELEBRATION_SYMBOLS[celebration]}🎉
           </span>
-          <span className="celebration-text">{party.text}</span>
+          <span className="celebration-text">{text.celebrations[celebration].text}</span>
         </div>
       )}
       {/* A child who cannot read the numbers yet counts the stars. */}
-      <p className="result-stars" role="img" aria-label={`${score} of ${total} stars`}>
+      <p className="result-stars" role="img" aria-label={text.stars(score, total)}>
         {Array.from({ length: total }, (_, index) => (
           <span key={index} className={index < score ? "star star-won" : "star"} aria-hidden="true">
             ★
           </span>
         ))}
       </p>
-      <p className="result-score" aria-label="Score">
+      <p className="result-score" aria-label={text.score}>
         {score}/{total}
       </p>
       {best !== undefined && (
-        <p className="best-score" aria-label="Best score">
-          <span aria-hidden="true">🏆</span> Best <span className="best-score-value">{best}</span>
+        <p className="best-score" aria-label={text.bestScore}>
+          <span aria-hidden="true">🏆</span> {text.best} <span className="best-score-value">{best}</span>
         </p>
       )}
       <nav className="result-actions">
         <button type="button" className="play-again-button" onClick={onPlayAgain}>
-          <span aria-hidden="true">🔄</span> Play again
+          <span aria-hidden="true">🔄</span> {text.playAgain}
         </button>
         <button type="button" className="home-button" onClick={onHome}>
-          <span aria-hidden="true">🏠</span> Home
+          <span aria-hidden="true">🏠</span> {text.home}
         </button>
       </nav>
     </main>

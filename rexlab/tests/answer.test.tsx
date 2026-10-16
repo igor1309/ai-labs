@@ -6,17 +6,17 @@ import { formatValue } from "../src/formatValue.ts";
 import { QuestionScreen, type QuestionScreenProps } from "../src/QuestionScreen.tsx";
 import { choose, score, startPlay } from "../src/quiz/play.ts";
 import { largerOf, type Attribute, type Dinosaur, type Question } from "../src/quiz/round.ts";
-import { SHIPPED_DINOSAURS, emptyProgress, manualOrientation, seededRandom } from "./support.ts";
+import { SHIPPED_DINOSAURS, emptyProgress, englishDevice, manualOrientation, seededRandom } from "./support.ts";
 
 const byName = (name: string): Dinosaur => {
-  const found = SHIPPED_DINOSAURS.find((d) => d.name === name);
+  const found = SHIPPED_DINOSAURS.find((d) => d.name.en === name);
   if (!found) throw new Error(`No ${name} in the shipped list`);
   return found;
 };
 
 const group = () => screen.getByRole("group", { name: "Dinosaurs" });
 const cards = () => within(group()).getAllByRole("button");
-const cardOf = (dinosaur: Dinosaur) => within(group()).getByRole("button", { name: dinosaur.name });
+const cardOf = (dinosaur: Dinosaur) => within(group()).getByRole("button", { name: dinosaur.name.en });
 const marksOn = (card: HTMLElement) =>
   within(card)
     .queryAllByRole("img", { name: /^(Correct|Wrong)$/ })
@@ -35,7 +35,7 @@ function shownQuestion(): Question {
 const smallerOf = (question: Question) => (largerOf(question) === question.left ? question.right : question.left);
 
 function startRound(seed: number) {
-  render(<App dinosaurs={SHIPPED_DINOSAURS} random={seededRandom(seed)} orientation={manualOrientation("landscape")} progress={emptyProgress()} />);
+  render(<App dinosaurs={SHIPPED_DINOSAURS} random={seededRandom(seed)} orientation={manualOrientation("landscape")} progress={emptyProgress()} {...englishDevice()} />);
   const user = userEvent.setup();
   return { user, start: () => user.click(screen.getByRole("button", { name: "COMPARE" })) };
 }
@@ -91,6 +91,7 @@ describe("answering a question", () => {
       const chosen: Dinosaur[] = [];
       const nothing = () => {};
       const props: Omit<QuestionScreenProps, "choice"> = {
+        language: "en",
         question,
         number: 3,
         total: 10,
@@ -128,7 +129,7 @@ describe("answering a question", () => {
       expect(marksOn(cardOf(right))).toEqual(["Correct ✓"]);
       expect(marksOn(cardOf(wrong))).toEqual(tapped === wrong ? ["Wrong ✗"] : []);
       for (const dinosaur of [right, wrong]) {
-        expect(within(cardOf(dinosaur)).getByText(formatValue(question.attribute, dinosaur.measures[question.attribute]))).toBeDefined();
+        expect(within(cardOf(dinosaur)).getByText(formatValue(question.attribute, dinosaur.measures[question.attribute], "en"))).toBeDefined();
       }
       if (number < 10) await user.click(screen.getByRole("button", { name: "Next" }));
     }
@@ -156,6 +157,7 @@ describe("answering a question", () => {
     const nothing = () => {};
     render(
       <QuestionScreen
+        language="en"
         question={{ attribute: "mass", left: big, right: small }}
         number={1}
         total={10}

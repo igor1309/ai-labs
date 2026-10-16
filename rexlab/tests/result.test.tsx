@@ -4,14 +4,14 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { App } from "../src/App.tsx";
 import { PROGRESS_KEY, localProgress } from "../src/localProgress.ts";
 import { largerOf, type Question } from "../src/quiz/round.ts";
-import { SHIPPED_DINOSAURS, manualOrientation, memoryStorage, seededRandom, type MemoryStorage } from "./support.ts";
+import { SHIPPED_DINOSAURS, englishDevice, manualOrientation, memoryStorage, seededRandom, type MemoryStorage } from "./support.ts";
 
 afterEach(() => {
   vi.restoreAllMocks();
 });
 
 const byName = (name: string) => {
-  const found = SHIPPED_DINOSAURS.find((d) => d.name === name);
+  const found = SHIPPED_DINOSAURS.find((d) => d.name.en === name);
   if (!found) throw new Error(`No ${name} in the shipped list`);
   return found;
 };
@@ -46,6 +46,7 @@ function openApp(storage: MemoryStorage, seed = 21) {
       random={seededRandom(seed)}
       orientation={manualOrientation("landscape")}
       progress={localProgress(() => storage)}
+      {...englishDevice()}
     />
   );
   return userEvent.setup();
@@ -60,7 +61,7 @@ async function answer(user: UserEvent, correct: number, count = 10) {
     const question = shownQuestion();
     const larger = largerOf(question);
     const tapped = number <= correct ? larger : larger === question.left ? question.right : question.left;
-    await user.click(cardOf(tapped.name));
+    await user.click(cardOf(tapped.name.en));
     if (number < 10) await user.click(screen.getByRole("button", { name: "Next" }));
   }
 }

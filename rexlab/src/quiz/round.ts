@@ -1,10 +1,12 @@
+import type { Language } from "../language/language.ts";
+
 export type Attribute = "mass" | "height";
 
 export const ATTRIBUTES: readonly Attribute[] = ["mass", "height"];
 
 export type Dinosaur = {
   id: string;
-  name: string;
+  name: Record<Language, string>;
   measures: Record<Attribute, number>;
 };
 

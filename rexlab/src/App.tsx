@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { HomePage } from "./HomePage.tsx";
+import { languageOfDevice, type Language } from "./language/language.ts";
 import { OrientationGate, type Orientation } from "./OrientationGate.tsx";
 import { QuestionScreen } from "./QuestionScreen.tsx";
 import { ResultScreen } from "./ResultScreen.tsx";
@@ -13,11 +14,20 @@ export type ProgressStore = {
   save(progress: GameProgress): void;
 };
 
+export type LanguageStore = {
+  // The language a parent chose, or undefined when none can be read.
+  load(): Language | undefined;
+  save(language: Language): void;
+};
+
 export type AppProps = {
   dinosaurs: readonly Dinosaur[];
   random: Random;
   orientation: Orientation;
   progress: ProgressStore;
+  // The device's language tag, such as "ru-RU".
+  deviceLanguage: string;
+  languageStore: LanguageStore;
 };
 
 type Result = {
@@ -29,9 +39,21 @@ type Result = {
 
 type Screen = { kind: "home" } | { kind: "question"; play: Play } | { kind: "result"; result: Result };
 
-export function App({ dinosaurs, random, orientation, progress }: AppProps) {
+export function App({ dinosaurs, random, orientation, progress, deviceLanguage, languageStore }: AppProps) {
   const [screen, setScreen] = useState<Screen>({ kind: "home" });
   const [lastRound, setLastRound] = useState<Round>([]);
+  // The device language is only the first guess: a parent's choice is kept
+  // and wins on every later visit.
+  const [language, setLanguage] = useState<Language>(() => languageStore.load() ?? languageOfDevice(deviceLanguage));
+
+  useEffect(() => {
+    document.documentElement.lang = language;
+  }, [language]);
+
+  const chooseLanguage = (chosen: Language) => {
+    setLanguage(chosen);
+    languageStore.save(chosen);
+  };
 
   const startRound = () => {
     const round = generateRound(dinosaurs, random, lastRound);
@@ -73,6 +95,7 @@ export function App({ dinosaurs, random, orientation, progress }: AppProps) {
         const current = screen.play;
         return (
           <QuestionScreen
+            language={language}
             question={currentQuestion(current)}
             number={current.index + 1}
             total={current.round.length}
@@ -85,11 +108,11 @@ export function App({ dinosaurs, random, orientation, progress }: AppProps) {
         );
       }
       case "result":
-        return <ResultScreen {...screen.result} onPlayAgain={startRound} onHome={home} />;
+        return <ResultScreen language={language} {...screen.result} onPlayAgain={startRound} onHome={home} />;
       case "home":
-        return <HomePage onCompareDinosaurs={startRound} />;
+        return <HomePage language={language} onLanguage={chooseLanguage} onCompareDinosaurs={startRound} />;
     }
   };
 
-  return <OrientationGate orientation={orientation}>{content()}</OrientationGate>;
+  return <OrientationGate orientation={orientation} language={language}>{content()}</OrientationGate>;
 }

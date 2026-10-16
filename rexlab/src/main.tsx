@@ -4,6 +4,7 @@ import { App } from "./App.tsx";
 import "./app.css";
 import records from "./data/dinosaurs.json";
 import { readDinosaurs } from "./dinosaurs.ts";
+import { localLanguage } from "./localLanguage.ts";
 import { localProgress } from "./localProgress.ts";
 import { mediaOrientation } from "./mediaOrientation.ts";
 
@@ -19,6 +20,8 @@ createRoot(root).render(
       random={Math.random}
       orientation={mediaOrientation(window.matchMedia.bind(window))}
       progress={localProgress(() => window.localStorage)}
+      deviceLanguage={navigator.language}
+      languageStore={localLanguage(() => window.localStorage)}
     />
   </StrictMode>
 );

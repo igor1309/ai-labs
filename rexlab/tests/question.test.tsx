@@ -4,10 +4,10 @@ import { describe, expect, it } from "vitest";
 import { App } from "../src/App.tsx";
 import { QuestionScreen } from "../src/QuestionScreen.tsx";
 import type { Attribute, Dinosaur } from "../src/quiz/round.ts";
-import { SHIPPED_DINOSAURS, emptyProgress, manualOrientation, seededRandom } from "./support.ts";
+import { SHIPPED_DINOSAURS, emptyProgress, englishDevice, manualOrientation, seededRandom } from "./support.ts";
 
 const byName = (name: string): Dinosaur => {
-  const found = SHIPPED_DINOSAURS.find((d) => d.name === name);
+  const found = SHIPPED_DINOSAURS.find((d) => d.name.en === name);
   if (!found) throw new Error(`No ${name} in the shipped list`);
   return found;
 };
@@ -34,6 +34,7 @@ describe("a question", () => {
     const nothing = () => {};
     render(
       <QuestionScreen
+        language="en"
         question={{ attribute, left: byName("Triceratops"), right: byName("Velociraptor") }}
         number={1}
         total={10}
@@ -77,7 +78,7 @@ describe("a question", () => {
 describe("a round", () => {
   it("asks to turn the iPad sideways in portrait and resumes the same question", async () => {
     const orientation = manualOrientation("landscape");
-    render(<App dinosaurs={SHIPPED_DINOSAURS} random={seededRandom(3)} orientation={orientation} progress={emptyProgress()} />);
+    render(<App dinosaurs={SHIPPED_DINOSAURS} random={seededRandom(3)} orientation={orientation} progress={emptyProgress()} {...englishDevice()} />);
     const user = userEvent.setup();
     await user.click(screen.getByRole("button", { name: "COMPARE" }));
     await answerAndGoOn(user);
@@ -99,7 +100,7 @@ describe("a round", () => {
   // The generator's own tests cover the class of random draws; this one
   // proves the app hands each new round the one played before it.
   it("does not repeat the previous round's questions", async () => {
-    render(<App dinosaurs={SHIPPED_DINOSAURS} random={seededRandom(5)} orientation={manualOrientation("landscape")} progress={emptyProgress()} />);
+    render(<App dinosaurs={SHIPPED_DINOSAURS} random={seededRandom(5)} orientation={manualOrientation("landscape")} progress={emptyProgress()} {...englishDevice()} />);
     const user = userEvent.setup();
 
     async function playRound() {
