@@ -150,18 +150,18 @@ func TestTheShippedSettingsSayWhatTheyMean(t *testing.T) {
 		name, access, revision, schema string
 		require, allow                 []string
 	}{
-		{"implement", "read-write", "inputs.candidate_revision", "implementation",
+		{"implement", "read-write", "candidate_revision", "implementation",
 			[]string{"repository.read", "repository.write", "process.execute"},
 			[]string{"repository.read", "repository.search", "repository.diff", "repository.history.read",
 				"repository.write", "repository.history.write", "process.execute", "network", "host.read", "host.write"}},
-		{"review", "read-only", "inputs.candidate_revision", "review-result", []string{"repository.read", "repository.diff"}, reads},
-		{"adr_review_codex", "read-only", "inputs.candidate_revision", "review-result", []string{"repository.read", "repository.diff"}, reads},
-		{"adversarial_review", "read-only", "inputs.candidate_revision", "review-result", []string{"repository.read", "repository.diff"}, reads},
-		{"architecture_review", "read-only", "inputs.candidate_revision", "review-result", []string{"repository.read", "repository.diff"}, reads},
-		{"clarity_review", "read-only", "inputs.candidate_revision", "review-result", []string{"repository.read", "repository.diff"}, reads},
-		{"intent_review", "read-only", "inputs.candidate_revision", "review-result", []string{"repository.read", "repository.diff"}, reads},
-		{"tests_review", "read-only", "inputs.candidate_revision", "review-result", []string{"repository.read", "repository.diff"}, reads},
-		{"advisor", "read-only", "inputs.revision", "advice", []string{"repository.read"}, reads},
+		{"review", "read-only", "candidate_revision", "review-result", []string{"repository.read", "repository.diff"}, reads},
+		{"adr_review_codex", "read-only", "candidate_revision", "review-result", []string{"repository.read", "repository.diff"}, reads},
+		{"adversarial_review", "read-only", "candidate_revision", "review-result", []string{"repository.read", "repository.diff"}, reads},
+		{"architecture_review", "read-only", "candidate_revision", "review-result", []string{"repository.read", "repository.diff"}, reads},
+		{"clarity_review", "read-only", "candidate_revision", "review-result", []string{"repository.read", "repository.diff"}, reads},
+		{"intent_review", "read-only", "candidate_revision", "review-result", []string{"repository.read", "repository.diff"}, reads},
+		{"tests_review", "read-only", "candidate_revision", "review-result", []string{"repository.read", "repository.diff"}, reads},
+		{"advisor", "read-only", "revision", "advice", []string{"repository.read"}, reads},
 		{"review_judge", "read-only", "", "judgement", []string{}, []string{}},
 	}
 	for _, c := range processes {
@@ -172,8 +172,12 @@ func TestTheShippedSettingsSayWhatTheyMean(t *testing.T) {
 				t.Fatalf("problems %v", problems)
 			}
 			w := p.Workspace.Value
-			if w.Access.Value != c.access || w.Revision.Value != c.revision {
-				t.Errorf("workspace %q at %q, want %q at %q", w.Access.Value, w.Revision.Value, c.access, c.revision)
+			revision := documents.Reference{Root: documents.ReadsInput, Name: c.revision}
+			if c.revision == "" {
+				revision = documents.Reference{}
+			}
+			if w.Access.Value != c.access || w.Revision.Value != revision {
+				t.Errorf("workspace %q at %+v, want %q at %+v", w.Access.Value, w.Revision.Value, c.access, revision)
 			}
 			if w.Clean.Value != (c.access == "read-write") {
 				t.Errorf("clean %v, want it only where the process writes", w.Clean.Value)
@@ -205,7 +209,7 @@ func TestTheShippedSettingsSayWhatTheyMean(t *testing.T) {
 				for _, argument := range input.Arguments {
 					arguments[argument.Value.Name] = argument.Value.Value
 				}
-				want := map[string]documents.Value{"rev": {From: "params." + revision}}
+				want := map[string]documents.Value{"rev": {From: documents.Reference{Root: documents.ReadsParam, Name: revision}}}
 				if input.Source.Value != "git.revision" || !maps.Equal(arguments, want) {
 					t.Errorf("the input %s is %q of %v, want git.revision of %v", revision, input.Source.Value, arguments, want)
 				}
@@ -215,11 +219,14 @@ func TestTheShippedSettingsSayWhatTheyMean(t *testing.T) {
 				t.Fatal("no reviewer")
 			}
 			for _, reviewer := range reviewers {
-				bound := map[string]string{}
+				bound := map[string]documents.Reference{}
 				for _, binding := range reviewer.Value.Inputs.Value {
 					bound[binding.Value.Name] = binding.Value.Value.From
 				}
-				want := map[string]string{"base": "inputs.base", "candidate": "inputs.candidate", "goal": "inputs.goal"}
+				want := map[string]documents.Reference{}
+				for _, name := range []string{"base", "candidate", "goal"} {
+					want[name] = documents.Reference{Root: documents.ReadsInput, Name: name}
+				}
 				if !maps.Equal(bound, want) {
 					t.Errorf("the reviewer %s binds %v, want %v", reviewer.Value.Name, bound, want)
 				}

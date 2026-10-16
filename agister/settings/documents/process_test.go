@@ -91,14 +91,14 @@ func validProcessDefinition() documents.ProcessDefinition {
 		Inputs: given([]documents.Field[documents.Input]{
 			given(documents.Input{Name: "base", Source: given("git.revision", 10), Arguments: []documents.Field[documents.Binding]{
 				given(documents.Binding{Name: "remote", Value: documents.Value{Text: "origin"}}, 10),
-				given(documents.Binding{Name: "rev", Value: documents.Value{From: "params.base"}}, 10),
+				given(documents.Binding{Name: "rev", Value: documents.Value{From: param("base")}}, 10),
 			}}, 10),
 			given(documents.Input{Name: "goal", Source: given("file", 11), Form: given([]string{"goal"}, 11), Arguments: []documents.Field[documents.Binding]{
-				given(documents.Binding{Name: "path", Value: documents.Value{From: "params.goal"}}, 11),
+				given(documents.Binding{Name: "path", Value: documents.Value{From: param("goal")}}, 11),
 			}}, 11),
 		}, 9),
 		Environment: given([]documents.Field[documents.Binding]{
-			given(documents.Binding{Name: "BASE", Value: documents.Value{From: "inputs.base"}}, 14),
+			given(documents.Binding{Name: "BASE", Value: documents.Value{From: input("base")}}, 14),
 			given(documents.Binding{Name: "MODE", Value: documents.Value{Text: "strict"}}, 13),
 		}, 12),
 		Permissions: given(documents.Permissions{
@@ -107,7 +107,7 @@ func validProcessDefinition() documents.ProcessDefinition {
 		}, 15),
 		Workspace: given(documents.Workspace{
 			Access:   given("read-only", 16),
-			Revision: given("inputs.base", 16),
+			Revision: given(input("base"), 16),
 			Clean:    given(true, 16),
 		}, 16),
 		Limits: given(documents.Limits{

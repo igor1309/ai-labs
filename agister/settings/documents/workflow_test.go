@@ -86,7 +86,7 @@ func ofWorkflow[T any](value T, line int) documents.Field[T] {
 }
 
 // binding is the binding name, reading what, on line.
-func binding(name, what string, line int) documents.Field[documents.Binding] {
+func binding(name string, what documents.Reference, line int) documents.Field[documents.Binding] {
 	return ofWorkflow(documents.Binding{Name: name, Value: documents.Value{From: what}}, line)
 }
 
@@ -99,28 +99,28 @@ func bindings(line int, items ...documents.Field[documents.Binding]) documents.F
 // each with its value and the origin of its home file, on its line; a name
 // the name alone, a reference what it reads, and its items in order.
 func validWorkflowDefinition() documents.WorkflowDefinition {
-	present := documents.Condition{Operator: "present", Reads: ofWorkflow("item.fixed", 24)}
-	equals := documents.Condition{Operator: "equals", Reads: ofWorkflow("steps.judge.outputs.verdict", 18), Equals: ofWorkflow[any]("approve", 18)}
+	present := documents.Condition{Operator: "present", Reads: ofWorkflow(queryItem("fixed"), 24)}
+	equals := documents.Condition{Operator: "equals", Reads: ofWorkflow(outputs("judge", "verdict"), 18), Equals: ofWorkflow[any]("approve", 18)}
 	fix := documents.Item{
 		Name: "fix",
 		If:   ofWorkflow(documents.Condition{Operator: "not", Of: []documents.Field[documents.Condition]{ofWorkflow(equals, 18)}}, 18),
 		Repeat: ofWorkflow(documents.Repeat{
-			State: bindings(20, binding("review", "steps.judge.outputs", 20)),
+			State: bindings(20, binding("review", outputs("judge", ""), 20)),
 			Steps: ofWorkflow([]documents.Field[documents.Item]{ofWorkflow(documents.Item{
 				Name: "repair", Process: ofWorkflow("implement", 22), Agent: ofWorkflow("codex", 22),
-				Inputs: bindings(22, binding("review", "state.review", 22)),
+				Inputs: bindings(22, binding("review", state("review", ""), 22)),
 			}, 22)}, 21),
-			Next: bindings(23, binding("review", "steps.repair.outputs", 23)),
-			Until: ofWorkflow(documents.Condition{Operator: "all", Reads: ofWorkflow("state.review.findings", 24),
+			Next: bindings(23, binding("review", outputs("repair", ""), 23)),
+			Until: ofWorkflow(documents.Condition{Operator: "all", Reads: ofWorkflow(state("review", "findings"), 24),
 				Of: []documents.Field[documents.Condition]{ofWorkflow(present, 24)}}, 24),
 			Max: ofWorkflow(3, 25),
 		}, 19),
-		Outputs: bindings(26, binding("summary", "steps.fix.outputs.review", 26)),
+		Outputs: bindings(26, binding("summary", outputs("fix", "review"), 26)),
 	}
 	done := documents.Item{
 		Name: "done", Process: ofWorkflow("summarize", 28), Agent: ofWorkflow("claude-opus", 29),
-		Session: ofWorkflow("steps.judge.session", 30),
-		Outputs: bindings(31, binding("summary", "steps.done.outputs.summary", 31)),
+		Session: ofWorkflow(session("judge"), 30),
+		Outputs: bindings(31, binding("summary", outputs("done", "summary"), 31)),
 	}
 	return documents.WorkflowDefinition{
 		Name: "a",
@@ -129,23 +129,23 @@ func validWorkflowDefinition() documents.WorkflowDefinition {
 		}, 2),
 		Inputs: ofWorkflow([]documents.Field[documents.Input]{
 			ofWorkflow(documents.Input{Name: "base", Source: ofWorkflow("git.revision", 5), Arguments: []documents.Field[documents.Binding]{
-				binding("rev", "params.base", 5),
+				binding("rev", param("base"), 5),
 			}}, 5),
 		}, 4),
 		Steps: ofWorkflow([]documents.Field[documents.Item]{
 			ofWorkflow(documents.Item{Name: "reviews", Parallel: ofWorkflow([]documents.Field[documents.Item]{
 				ofWorkflow(documents.Item{Name: "tests", Process: ofWorkflow("tests_review", 9), Agent: ofWorkflow("codex", 9),
-					Inputs: bindings(9, binding("base", "inputs.base", 9))}, 9),
+					Inputs: bindings(9, binding("base", input("base"), 9))}, 9),
 				ofWorkflow(documents.Item{Name: "intent", Workflow: ofWorkflow("intent", 10),
-					Inputs: bindings(10, binding("base", "inputs.base", 10))}, 10),
+					Inputs: bindings(10, binding("base", input("base"), 10))}, 10),
 			}, 8)}, 7),
 			ofWorkflow(documents.Item{Name: "judge", Process: ofWorkflow("review_judge", 12), Agent: ofWorkflow("claude-opus", 13),
-				Inputs: bindings(14, binding("reviews", "steps.reviews.outputs", 14))}, 11),
+				Inputs: bindings(14, binding("reviews", outputs("reviews", ""), 14))}, 11),
 			ofWorkflow(documents.Item{Name: "decide", Branch: ofWorkflow([]documents.Field[documents.Item]{
 				ofWorkflow(fix, 17), ofWorkflow(done, 27),
 			}, 16)}, 15),
 		}, 6),
-		Outputs: bindings(32, binding("summary", "steps.decide.outputs.summary", 33)),
+		Outputs: bindings(32, binding("summary", outputs("decide", "summary"), 33)),
 	}
 }
 
@@ -248,7 +248,7 @@ func TestAWorkflowsItemsEachHoldWhatTheyName(t *testing.T) {
 		{"a step with no agent", "    agent: claude-opus\n", "", missing("steps[1].agent")},
 		{"the process agent:x", "process: review_judge", "process: agent:x", inHomeWorkflow(12, "steps[1].process", "it names a process")},
 		{"the binding {from: outputs.x}", "{from: steps.reviews.outputs}", "{from: outputs.x}",
-			inHomeWorkflow(14, "steps[1].inputs.reviews", "it reads params.<name>, inputs.<name>, state.<name> or steps.<name>")},
+			inHomeWorkflow(14, "steps[1].inputs.reviews", "it reads params.<name>, inputs.<name>, state.<name>[.<field>] or steps.<name>.<part>")},
 		{"a last arm with an if", "      - name: done\n", "      - name: done\n        if: {present: {from: inputs.base}}\n",
 			inHomeWorkflow(28, "steps[2].branch[1].if", "the last arm is the default, with no if")},
 		{"an arm with no outputs", "        outputs: {summary: {from: steps.done.outputs.summary}}\n", "", missing("steps[2].branch[1].outputs")},
@@ -312,29 +312,29 @@ colour: red
 func TestAConditionOfEachOperator(t *testing.T) {
 	t.Parallel()
 	type conditions = []documents.Field[documents.Condition]
-	present := func(what string) documents.Field[documents.Condition] {
+	present := func(what documents.Reference) documents.Field[documents.Condition] {
 		return ofWorkflow(documents.Condition{Operator: "present", Reads: ofWorkflow(what, 3)}, 3)
 	}
-	equals := func(what string, value any) documents.Condition {
+	equals := func(what documents.Reference, value any) documents.Condition {
 		return documents.Condition{Operator: "equals", Reads: ofWorkflow(what, 3), Equals: ofWorkflow(value, 3)}
 	}
 	cases := []struct {
 		condition string
 		want      documents.Condition
 	}{
-		{"{equals: [{from: steps.x.outputs.verdict}, approve]}", equals("steps.x.outputs.verdict", "approve")},
-		{"{equals: [{from: steps.x.outputs.code}, 0]}", equals("steps.x.outputs.code", int64(0))},
-		{"{equals: [{from: steps.x.outputs.ok}, true]}", equals("steps.x.outputs.ok", true)},
-		{"{present: {from: inputs.a}}", present("inputs.a").Value},
+		{"{equals: [{from: steps.x.outputs.verdict}, approve]}", equals(outputs("x", "verdict"), "approve")},
+		{"{equals: [{from: steps.x.outputs.code}, 0]}", equals(outputs("x", "code"), int64(0))},
+		{"{equals: [{from: steps.x.outputs.ok}, true]}", equals(outputs("x", "ok"), true)},
+		{"{present: {from: inputs.a}}", present(input("a")).Value},
 		{"{all: {in: {from: steps.x.outputs.items}, where: {present: {from: item.ok}}}}",
-			documents.Condition{Operator: "all", Reads: ofWorkflow("steps.x.outputs.items", 3), Of: conditions{present("item.ok")}}},
+			documents.Condition{Operator: "all", Reads: ofWorkflow(outputs("x", "items"), 3), Of: conditions{present(queryItem("ok"))}}},
 		{"{any: {in: {from: steps.x.outputs.items}, where: {present: {from: item.ok}}}}",
-			documents.Condition{Operator: "any", Reads: ofWorkflow("steps.x.outputs.items", 3), Of: conditions{present("item.ok")}}},
+			documents.Condition{Operator: "any", Reads: ofWorkflow(outputs("x", "items"), 3), Of: conditions{present(queryItem("ok"))}}},
 		{"{and: [{present: {from: inputs.a}}, {present: {from: params.b}}]}",
-			documents.Condition{Operator: "and", Of: conditions{present("inputs.a"), present("params.b")}}},
+			documents.Condition{Operator: "and", Of: conditions{present(input("a")), present(param("b"))}}},
 		{"{or: [{present: {from: inputs.a}}, {present: {from: params.b}}]}",
-			documents.Condition{Operator: "or", Of: conditions{present("inputs.a"), present("params.b")}}},
-		{"{not: {present: {from: state.s}}}", documents.Condition{Operator: "not", Of: conditions{present("state.s")}}},
+			documents.Condition{Operator: "or", Of: conditions{present(input("a")), present(param("b"))}}},
+		{"{not: {present: {from: state.s}}}", documents.Condition{Operator: "not", Of: conditions{present(state("s", ""))}}},
 	}
 	for _, c := range cases {
 		t.Run(c.condition, func(t *testing.T) {

@@ -64,7 +64,7 @@ type Permissions struct {
 // content must be its HEAD's.
 type Workspace struct {
 	Access   Field[string]
-	Revision Field[string]
+	Revision Field[Reference]
 	Clean    Field[bool]
 }
 
@@ -125,7 +125,7 @@ func (p ProcessDefinition) clone() ProcessDefinition {
 
 // processReads is what a process's references may read: its params and its
 // inputs.
-func processReads() []string { return []string{"params", "inputs"} }
+func processReads() readable { return readable{roots: []string{"params", "inputs"}} }
 
 func typeProcess(name string, root tree.Node) (ProcessDefinition, []Problem) {
 	t := newTyping(Process, root)
@@ -137,7 +137,7 @@ func typeProcess(name string, root tree.Node) (ProcessDefinition, []Problem) {
 		Skills:      t.references("skills", optional, skill),
 		Params:      typeParams(t),
 		Inputs:      typeInputs(t),
-		Environment: t.bindings("environment", optional, processReads()...),
+		Environment: t.bindings("environment", optional, processReads()),
 	}
 	if permissions := t.mapping("permissions", optional); permissions.Given {
 		p := permissions.Value
@@ -152,7 +152,7 @@ func typeProcess(name string, root tree.Node) (ProcessDefinition, []Problem) {
 		process.Workspace = Field[Workspace]{Value: Workspace{
 			Access: w.oneOf("access", optional, "read-only", "read-write"),
 			// A revision is that of an input (ADR-004, rule 2).
-			Revision: w.from("revision", optional, "inputs"),
+			Revision: w.from("revision", optional, readable{roots: []string{"inputs"}}),
 			Clean:    w.boolean("clean", optional),
 		}, Origin: workspace.Origin, Given: true}
 		w.done()
@@ -211,7 +211,7 @@ func typeInputs(t *fields) Field[[]Field[Input]] {
 			if key == "source" || key == "form" {
 				continue
 			}
-			if value := entry.fields.value(key, required, processReads()...); value.Given {
+			if value := entry.fields.value(key, required, processReads()); value.Given {
 				input.Arguments = append(input.Arguments, Field[Binding]{Value: Binding{Name: key, Value: value.Value}, Origin: value.Origin, Given: true})
 			}
 		}

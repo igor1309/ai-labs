@@ -15,7 +15,7 @@ import (
 type Condition struct {
 	Operator string
 	// Reads is what the reference of equals, present, all and any reads.
-	Reads Field[string]
+	Reads Field[Reference]
 	// Equals is the value of equals: a string, an integer, a number or a
 	// boolean.
 	Equals Field[any]
@@ -28,21 +28,29 @@ func operators() []string {
 	return []string{"equals", "present", "all", "any", "and", "or", "not"}
 }
 
-// conditionReads is what a condition's references may read: what a
-// workflow's may, and an item of all and any.
-func conditionReads() []string { return append(workflowReads(), "item") }
+// conditionReads is what the references of a condition may read: what a
+// workflow's may, and in the where of an all or any query, at any depth,
+// the query's item.
+func conditionReads(where bool) readable {
+	reads := workflowReads()
+	if where {
+		reads.roots = append([]string{"item"}, reads.roots...)
+	}
+	return reads
+}
 
-// condition is the field key, a condition.
-func (f *fields) condition(key string, need need) Field[Condition] {
+// condition is the field key, a condition, in the where of a query or not.
+func (f *fields) condition(key string, need need, where bool) Field[Condition] {
 	node, ok := f.given(key, need)
 	if !ok {
 		return Field[Condition]{}
 	}
-	return f.typing.condition(node, f.at(key))
+	return f.typing.condition(node, f.at(key), where)
 }
 
-// condition is node, the condition at place.
-func (t *typing) condition(node tree.Node, place string) Field[Condition] {
+// condition is node, the condition at place, in the where of a query or
+// not.
+func (t *typing) condition(node tree.Node, place string, where bool) Field[Condition] {
 	if node.Kind() != tree.Map {
 		t.problems = append(t.problems, at(node, place, notA(tree.Map, node.Kind())))
 		return Field[Condition]{}
@@ -57,14 +65,14 @@ func (t *typing) condition(node tree.Node, place string) Field[Condition] {
 	condition := Condition{Operator: operator}
 	switch operator {
 	case "equals":
-		condition.Reads, condition.Equals = c.equals()
+		condition.Reads, condition.Equals = c.equals(where)
 	case "present":
-		condition.Reads = c.from(operator, required, conditionReads()...)
+		condition.Reads = c.from(operator, required, conditionReads(where))
 	case "all", "any":
 		if query := c.mapping(operator, required); query.Given {
 			q := query.Value
-			condition.Reads = q.from("in", required, conditionReads()...)
-			condition.Of = []Field[Condition]{q.condition("where", required)}
+			condition.Reads = q.from("in", required, conditionReads(where))
+			condition.Of = []Field[Condition]{q.condition("where", required, true)}
 			q.done()
 		}
 	case "and", "or":
@@ -74,25 +82,26 @@ func (t *typing) condition(node tree.Node, place string) Field[Condition] {
 			break
 		}
 		for i, item := range list.Items() {
-			condition.Of = append(condition.Of, t.condition(item, itemPlace(c.at(operator), i)))
+			condition.Of = append(condition.Of, t.condition(item, itemPlace(c.at(operator), i), where))
 		}
 	case "not":
 		inner, _ := node.Get(operator)
-		condition.Of = []Field[Condition]{t.condition(inner, c.at(operator))}
+		condition.Of = []Field[Condition]{t.condition(inner, c.at(operator), where)}
 	}
 	return Field[Condition]{Value: condition, Origin: originOf(node), Given: true}
 }
 
-// equals is the reference and the value of the condition c's equals.
-func (c *fields) equals() (Field[string], Field[any]) {
+// equals is the reference and the value of the condition c's equals, in
+// the where of a query or not.
+func (c *fields) equals(where bool) (Field[Reference], Field[any]) {
 	pair, _ := c.node.Get("equals")
 	items := pair.Items()
 	if pair.Kind() != tree.List || len(items) != 2 || items[0].Kind() != tree.Map || scalar(items[1]) == nil {
 		c.typing.problems = append(c.typing.problems, at(pair, c.at("equals"), "it is a reference and a value"))
-		return Field[string]{}, Field[any]{}
+		return Field[Reference]{}, Field[any]{}
 	}
 	reference := &fields{typing: c.typing, node: items[0], place: itemPlace(c.at("equals"), 0), known: map[string]bool{}}
-	return reference.reads(conditionReads()...), Field[any]{Value: scalar(items[1]), Origin: originOf(items[1]), Given: true}
+	return reference.reads(conditionReads(where)), Field[any]{Value: scalar(items[1]), Origin: originOf(items[1]), Given: true}
 }
 
 // scalar is the value of node, a string, an integer, a number or a
