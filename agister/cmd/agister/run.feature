@@ -1,4 +1,5 @@
-# cmd/agister, the run (docs/run-implementation.md, "The first run";
+# cmd/agister, the run (docs/run-implementation.md, "The first run" and
+# "A step on a model runtime";
 # ADR-001, "Starting a run"): cli's run answered from resolve and core,
 # with spies in place of the wrappers (ADR-009, rule 4): the settings,
 # home's as shipped with a bash process "say" whose prompt is the script
@@ -42,16 +43,18 @@ Feature: The composition runs a request
       and it exits 1
 
     Examples:
-      | declares                                     | agent       | what                              |
-      | as it is                                     | claude-opus | the runtime "claude-code"'s turn  |
-      | an input "b" from the source "git.revision"  | bash        | the source "git.revision"         |
-      | the input "what" with the form "goal"        | bash        | the brief form of "what"          |
-      | a workspace revision from inputs.what        | bash        | the workspace's revision          |
-      | a workspace clean                            | bash        | the workspace's clean             |
-      | the workspace access read-write              | bash        | the workspace's read-write access |
-      | the stale limit no_event 1m                  | bash        | the staleness limit               |
-      | an instruction "think"                       | bash        | the instruction on bash           |
-      | the guidance "g", a prompt the settings hold | bash        | the guidance on bash              |
+      | declares                                     | agent       | what                                  |
+      | as it is                                     | pi-m3       | the runtime "pi"'s turn               |
+      | a recovery of 1 resume                       | claude-opus | the recovery                          |
+      | an input "prompt" from the param "what"      | claude-opus | the input "prompt", a document's name |
+      | an input "b" from the source "git.revision"  | bash        | the source "git.revision"             |
+      | the input "what" with the form "goal"        | bash        | the brief form of "what"              |
+      | a workspace revision from inputs.what        | bash        | the workspace's revision              |
+      | a workspace clean                            | bash        | the workspace's clean                 |
+      | the workspace access read-write              | bash        | the workspace's read-write access     |
+      | the stale limit no_event 1m                  | bash        | the staleness limit                   |
+      | an instruction "think"                       | bash        | the instruction on bash               |
+      | the guidance "g", a prompt the settings hold | bash        | the guidance on bash                  |
 
   Scenario: A workflow with an item that is not a step is refused
     When "agister run code_review --param goal=g" runs in "/r"

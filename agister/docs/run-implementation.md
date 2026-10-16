@@ -1,7 +1,7 @@
 ---
 date: 2026-10-16
 model: claude-opus-5-5
-description: "Run implementation notes: how a resolved request becomes a run, built slice by slice; the first slice runs a workflow of bash steps end to end"
+description: "Run implementation notes: how a resolved request becomes a run, built slice by slice; the first slice runs a workflow of bash steps end to end, the second a step on claude-code or codex"
 ---
 
 # Run implementation notes
@@ -132,3 +132,132 @@ Decisions, each with its reason:
   of the snapshot resolve checked: resolve holds only what it reads,
   and the documents have already composed the layers (ADR-002), so a
   value read there is the one resolve checked.
+
+## A step on a model runtime
+
+A step whose agent names claude-code or codex runs: one turn, through
+the supervisor, its output checked against its process's schema. The
+wrappers are the archive's, ported to the supervisor and to their own
+types; what the archive did besides one turn waits (`backlog/run-path.md`).
+
+**The supervisor** writes the text it is given to the program's stdin,
+then closes it, and gives each line of stdout, as it reads it, to a
+function it is given, besides keeping the ends of the stream as before.
+A line longer than 8 MiB is given cut at 8 MiB, marked cut; the rest of
+it is dropped. Stdin closed early by the program is no error.
+
+**The claude-code wrapper** runs a turn: the message on stdin, and `claude
+-p --output-format stream-json --verbose --permission-mode dontAsk
+--tools=<options> --allowedTools=<options> --strict-mcp-config`, then
+`--model`, `--effort`, `--append-system-prompt <instruction>` and
+`--json-schema <schema>` where given; the options joined by commas, none
+given as empty. It reads stdout's lines as stream-json: the session and
+the model from the init event, the last assistant text, and the result
+event: its text, its `structured_output`, its `total_cost_usd`, its
+`usage` (input, output, cache read and cache write tokens, each unknown
+where not reported, never 0). A result that is not a success is the
+runtime's failure, classed by its fields as the archive did: a status
+429 or a rejected rate-limit event seen, `rate_limited`; 401 or 403,
+`auth`; 413,
+a prompt too long or the context window, `context_overflow`; else
+`runtime_error`; its reason the result's errors or text, at most 1 KiB.
+A schema given and no structured output is `invalid_output`. With no
+result event, a program that exited non-zero is `runtime_error`, its
+reason stderr's tail; one that exited 0 is `no_result`. A cut line is
+read as no event. Its tests give a spy in place of the supervisor, fed
+recorded lines.
+
+**The codex wrapper** runs a turn: `<instructions>`, the instruction,
+`</instructions>`, a blank line and the message on stdin, the block left
+out with no instruction; and `codex exec --json --skip-git-repo-check
+--sandbox <option> --config approval_policy="never" --ignore-user-config
+--ignore-rules`, then `--model`,
+`--config model_reasoning_effort="<effort>"`
+and `--output-schema <file>` where given. The schema is written to a
+file in a folder of its own under the folder the composition gives,
+removed once the turn has returned. It is given exactly one option; any
+other number is its error before anything starts. It reads stdout's lines
+as JSON events: the session from `thread.started`, the last
+`agent_message` item's text, the usage of `turn.completed` (input,
+cached input as cache read, output and reasoning tokens) and the message
+of `turn.failed`, classed by its words as the archive did: a rate or
+usage limit or 429, `rate_limited`; unauthorized, 401 or login, `auth`;
+the context window or length, `context_overflow`; else `runtime_error`.
+Only `turn.completed` and `turn.failed` decide; an `error` event does
+not. With a schema, the last message is the structured output: none is
+`invalid_output`, as is one that is not JSON. Its cost is unknown. With
+neither deciding event, it ends as claude-code's does with no result.
+
+**`core/call`.** The runtime protocol grows: a turn is also given the
+instruction, the model, the effort, the options and the schema, each
+none where not given; and a model's turn gives, besides how its program
+ended, its reply: its text, its structured output, its session, its cost
+and usage as reported, and its failure class and reason where it
+reports one. A runtime takes its inputs one of two ways, a fact the
+composition gives with it (ADR-010, rule 1): in its program's
+environment, as bash does, or in its message, as a model does. A model's
+message is a section for each input, then each document the step is
+given, in order: `## <name>`, a blank line, and the text, fenced where it
+has more than one line, by more backticks than the longest run in it, at
+least three; sections apart by a blank line. Its inputs reach no
+environment; the process's environment reaches every program (ADR-012,
+rule 2).
+
+A model's call ends as a bash call does where its context was ended, its
+program could not start or was ended by a signal, or the runtime gave
+an error; otherwise by its reply:
+
+| The reply | Status | Class |
+|---|---|---|
+| a failure class the runtime reports | failed | that class |
+| a schema given, its structured output not valid against it | failed | `invalid_output` |
+| otherwise | completed | |
+
+A completed call's output is its structured output, where a schema was
+given; else `text`, its reply's text. A schema is checked through a
+validator core declares; the composition answers it. The result gains
+the call's `usage`, `session` and `reason`: usage as the runtime
+reported it, each count unknown, printed as `null`, where not reported,
+and none on bash; the session the runtime reported; and the reason of a
+failed call where the runtime gave one. Cost is the runtime's own report,
+unknown where it gives none (ADR-012, rule 5).
+
+**The composition** builds a model step's turn: its message from the
+call's inputs, in the order its process declares them, then the prompt
+document as `prompt`, then each guidance document by its name; its
+instruction, its process's; the model and the effort, its agent's; the
+options, its plan's; the schema, the bytes of its process's output
+schema in the snapshot. The wrappers run through the supervisor; codex's
+schema folder is the system's temporary folder. The validator is
+`github.com/santhosh-tekuri/jsonschema/v6`, which the archive used. What
+this slice does not run is refused before anything runs, naming it, as
+before: a step on pi; a step's session; a process's recovery; an input
+named as a document of its step, `prompt` or a guidance name. Skills
+need no refusal: settings name none yet, and resolve refuses one named
+(`backlog/skills.md`). The rest of the first run's refusals stand:
+sources but
+`param`, brief forms, the workspace, staleness and an item that is not a
+step. Every process `home` ships asks one of these, so none of them runs
+yet: a repository's own process does.
+
+Decisions, each with its reason:
+
+- Pi waits: its wrapper keeps sessions in files of its own, and two
+  runtimes prove the protocol. It is next, in `backlog/run-path.md`.
+- Session, recovery and skills wait: each needs what a resumed turn or
+  a skill's files are given, which the record and the skills backlog
+  settle. The wrappers report the session now, so the record can keep it.
+- Codex's cost waits: the archive priced a thread through `ccusage`, a
+  second program; an unknown cost is honest meanwhile (ADR-012, rule 5).
+- No version warning yet (ADR-003, rule 8): the version is to be read
+  from the turn, never probed; it comes with the record, which keeps
+  what the turn reported.
+- The model is told nothing Agister writes: the instruction as settings
+  give it, and each input and document under its name. What Agister
+  tells an agent is settings' (ADR-001, invariant 2); a section's name
+  and fence arrange, they do not tell.
+- The classes by words follow the archive, which observed the budget
+  subtype and a 429 live and the rest not; a wrong guess is
+  `runtime_error`, still failed.
+- A runtime's failure carries its reason in the result, bounded: a
+  failed model call is otherwise unexplained until the record.
