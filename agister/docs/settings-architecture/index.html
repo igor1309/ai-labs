@@ -70,38 +70,31 @@ that names the chain at fault. Facts and sources are in
 <h2>Three axes</h2>
 <p>Each thing has one name, on one axis. A definition is declared, resolved and
 planned; it never runs. An execution starts and ends; it is never declared.</p>
-<table>
-  <tr><th>Definitions (settings)</th><th>Executions (records)</th><th>Machinery (code)</th></tr>
-  <tr>
-    <td><span class="k-workflow">workflow</span>: work defined by inputs, an output contract and children, each a <span class="k-step">step</span> or a <span class="k-workflow">workflow</span></td>
-    <td><span class="k-run">run</span>: executes a workflow</td>
-    <td><span class="k-runtime">runtime</span>: a program Agister drives through its wrapper</td>
-  </tr>
-  <tr>
-    <td><span class="k-step">step</span>: a process bound to an agent, the one leaf</td>
-    <td><span class="k-run">call</span>: executes a step</td>
-    <td>runtime facts: what a runtime can do</td>
-  </tr>
-  <tr>
-    <td><span class="k-process">process</span>: what a step does</td>
-    <td>iteration: one execution of a repetition's body</td>
-    <td>program: an operating-system process</td>
-  </tr>
-  <tr>
-    <td><span class="k-agent">agent</span>: who does it, on which runtime</td>
-    <td>turn: one exchange of a call with its runtime</td>
-    <td>hold: a call's claim on the worktree</td>
-  </tr>
-  <tr>
-    <td><span class="k-runtime">runtime mapping</span>: grants and options</td>
-    <td>session: the conversation a call held</td>
-    <td>supervisor: runs every program</td>
-  </tr>
-  <tr>
-    <td>binding, condition: data flow and decisions</td>
-    <td></td><td></td>
-  </tr>
-</table>
+<p><strong>Definitions</strong>, in settings:</p>
+<ul>
+  <li><span class="k-workflow">workflow</span>: work defined by inputs, an output contract and children, each a <span class="k-step">step</span> or a <span class="k-workflow">workflow</span></li>
+  <li><span class="k-step">step</span>: a process bound to an agent, the one leaf</li>
+  <li><span class="k-process">process</span>: what a step does</li>
+  <li><span class="k-agent">agent</span>: who does it, on which runtime</li>
+  <li><span class="k-runtime">runtime mapping</span>: grants and options</li>
+  <li>binding, condition: data flow and decisions</li>
+</ul>
+<p><strong>Executions</strong>, in records; an execution names the definition it executes:</p>
+<ul>
+  <li><span class="k-run">run</span>: executes a workflow</li>
+  <li><span class="k-run">call</span>: executes a step</li>
+  <li>iteration: one execution of a repetition's body</li>
+  <li>turn: one exchange of a call with its runtime</li>
+  <li>session: the conversation a call held</li>
+</ul>
+<p><strong>Machinery</strong>, in code:</p>
+<ul>
+  <li><span class="k-runtime">runtime</span>: a program Agister drives through its wrapper</li>
+  <li>runtime facts: what a runtime can do</li>
+  <li>program: an operating-system process</li>
+  <li>hold: a call's claim on the worktree</li>
+  <li>supervisor: runs every program</li>
+</ul>
 <p class="src">ADR-012, terms.</p>
 
 <h2>What a workflow names</h2>
