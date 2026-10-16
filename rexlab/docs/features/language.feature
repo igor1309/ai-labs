@@ -19,6 +19,10 @@ Feature: English and Russian
       | en-GB  | English  |
       | de-DE  | English  |
 
+  Scenario: The language switch is for parents
+    When I open the home page
+    Then the language switch is a small "EN | RU" control in a corner
+
   Scenario: Choosing a language is remembered
     Given the app is open in English on the home page
     When I switch the language to Russian
@@ -32,14 +36,15 @@ Feature: English and Russian
     Then it reads "<text>"
 
     Examples:
-      | item                | text         |
-      | mass prompt         | Кто тяжелее? |
-      | height prompt       | Кто выше?    |
-      | Next button         | Дальше       |
-      | See result button   | Результат    |
-      | Play again button   | Ещё раз      |
-      | Home button         | Домой        |
-      | name of Triceratops | ТРИЦЕРАТОПС  |
+      | item                | text              |
+      | quiz card           | Сравни динозавров |
+      | mass prompt         | Кто тяжелее?      |
+      | height prompt       | Кто выше?         |
+      | Next button         | Дальше            |
+      | See result button   | Результат         |
+      | Play again button   | Ещё раз           |
+      | Home button         | Домой             |
+      | name of Triceratops | ТРИЦЕРАТОПС       |
 
   Scenario Outline: Values are written in the chosen language
     Given the app is in <language>
@@ -50,6 +55,7 @@ Feature: English and Russian
       | language | attribute | value   | text  |
       | English  | mass      | 15 kg   | 15 kg |
       | Russian  | mass      | 15 kg   | 15 кг |
+      | Russian  | mass      | 1000 kg | 1 т   |
       | English  | mass      | 6500 kg | 6.5 t |
       | Russian  | mass      | 6500 kg | 6,5 т |
       | English  | height    | 3 m     | 3 m   |

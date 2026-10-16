@@ -7,7 +7,7 @@ Feature: Compare dinosaurs quiz: starting a round and asking
 
   Scenario: The home page offers the quiz as a card
     When I open the home page
-    Then I see a "Compare dinosaurs" quiz card
+    Then I see a "Compare dinosaurs" quiz card with a picture of two dinosaurs
 
   Scenario: The quiz card brightens under a pointer
     Given I am on the home page
@@ -40,7 +40,7 @@ Feature: Compare dinosaurs quiz: starting a round and asking
     And each name is in large capital letters
     And both pictures are the same size
     And no values are shown yet
-    And I see a "Home" button
+    And I see a "Home" button with a 🏠 symbol, away from the dinosaur cards
 
     Examples:
       | attribute | symbol | prompt          |
@@ -56,4 +56,8 @@ Feature: Compare dinosaurs quiz: starting a round and asking
 
   Scenario: The dinosaur list can always fill a round
     Given the dinosaur list the app ships with
-    Then it holds at least 10 fair pairs that share no pair of dinosaurs
+    Then it holds at least 10 different fair pairs for each attribute
+
+  Scenario: Rounds vary
+    When I play two rounds in a row
+    Then the second round does not repeat the first round's 10 questions

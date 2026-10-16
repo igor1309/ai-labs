@@ -12,7 +12,7 @@ Feature: Compare dinosaurs quiz: answering a question
     Then <larger> is marked correct with a ✓
     And both cards show their <attribute>
     And the answer counts as correct
-    And a "Next" button appears
+    And a "Next" button with a ▶ symbol appears
 
     Examples:
       | prompt          | attribute | larger        | smaller      |
@@ -33,6 +33,10 @@ Feature: Compare dinosaurs quiz: answering a question
       | Who is heavier? | mass      | Triceratops   | Velociraptor |
       | Who is taller?  | height    | Brachiosaurus | Triceratops  |
 
+  Scenario: A dinosaur card shows it is pressed
+    When I press a dinosaur card
+    Then the card shows a pressed state before its mark appears
+
   Scenario: Marks do not rely on colour alone
     When I answer a question
     Then each mark is a symbol as well as a colour
@@ -50,11 +54,15 @@ Feature: Compare dinosaurs quiz: answering a question
     Examples:
       | attribute | value   | text   |
       | mass      | 15 kg   | 15 kg  |
+      | mass      | 14.6 kg | 15 kg  |
       | mass      | 999 kg  | 999 kg |
+      | mass      | 1000 kg | 1 t    |
+      | mass      | 6543 kg | 6.5 t  |
       | mass      | 6500 kg | 6.5 t  |
       | mass      | 7000 kg | 7 t    |
       | height    | 3 m     | 3 m    |
       | height    | 0.5 m   | 0.5 m  |
+      | height    | 12.26 m | 12.3 m |
 
   Scenario: Next moves to the following question
     Given I have answered question 3
@@ -69,4 +77,4 @@ Feature: Compare dinosaurs quiz: answering a question
 
   Scenario: The last question leads to the result
     When I answer question 10
-    Then the button reads "See result" instead of "Next"
+    Then the button reads "See result" with a 🏆 symbol instead of "Next"

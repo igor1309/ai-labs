@@ -9,7 +9,8 @@ Feature: Compare dinosaurs quiz: the result and the best score
     Given I have answered all 10 questions with 7 correct
     When I tap "See result"
     Then I see "7/10"
-    And I see "Play again" and "Home" buttons
+    And I see my best score
+    And I see "Play again" with a 🔄 symbol and "Home" with a 🏠 symbol
 
   Scenario: Play again starts a new round
     Given I am on the result screen
@@ -22,10 +23,10 @@ Feature: Compare dinosaurs quiz: the result and the best score
     When I tap "Home"
     Then I am on the home page
 
-  Scenario: A finished round is counted
-    Given I have finished 3 rounds
+  Scenario: A finished round is counted in stored progress
+    Given my stored progress counts 3 finished rounds
     When I finish another round
-    Then I have finished 4 rounds
+    Then my stored progress counts 4 finished rounds
 
   Scenario: A new best score is celebrated
     Given my best score so far is 6
@@ -59,28 +60,35 @@ Feature: Compare dinosaurs quiz: the result and the best score
 
   Scenario: A round left early is not recorded
     Given my best score so far is 6
-    And I have finished 3 rounds
+    And my stored progress counts 3 finished rounds
     And I am on question 5 of a round
     When I tap "Home"
-    Then I am on the home page
+    Then I am on the home page without being asked to confirm
     And my best score stays 6
-    And I have finished 3 rounds
+    And my stored progress counts 3 finished rounds
 
   Scenario Outline: Unusable stored progress counts as none
     Given the stored progress is <state>
     When I finish a round with 4 correct
-    Then I see "4/10"
-    And I see no celebration
+    Then I see a first best score celebration
     And my best score becomes 4
+    And the stored progress is replaced by a readable record
 
     Examples:
       | state                          |
       | unreadable                     |
       | from an unknown schema version |
 
-  Scenario: The game works when the browser refuses storage
-    Given the browser refuses to store data
+  Scenario: The game works when storage cannot be read
+    Given the browser cannot read stored progress
     When I finish a round with 4 correct
     Then I see "4/10"
     And I see no best score
     And I see no celebration
+
+  Scenario: Progress that cannot be saved is still celebrated
+    Given my best score so far is 6
+    And the browser can read stored progress but not save it
+    When I finish a round with 7 correct
+    Then I see a new best score celebration
+    And the stored best score stays 6

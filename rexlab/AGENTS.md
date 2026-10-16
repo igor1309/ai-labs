@@ -12,12 +12,13 @@ Architecture: `docs/mvp-infrastructure.md`.
 
 ## Product principles
 
-- Gamification is essential, not decoration. Every game rewards the child:
-  scores, best-score celebrations, achievements. Treat a missing or weak
-  reward as a defect.
+- Gamification is essential, not decoration. Every game rewards the child
+  with a score and best-score celebrations, and achievements as they are
+  built (LAB-266). Treat a missing or weak reward as a defect.
 - Children of 5–7 are just learning to read. Write dinosaur names in large
   capitals, keep the interface visually clear and easy to operate, and carry
-  meaning with symbols and pictures rather than text. Guidance text for
+  meaning with symbols and pictures rather than text: every button and card
+  has a symbol or picture beside its words. Guidance text for
   parents, only where it is truly needed, is a small, slightly faded footnote.
 
 ## Specs
