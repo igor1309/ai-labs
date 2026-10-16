@@ -11,10 +11,12 @@ import (
 )
 
 // Origin is where a definition's field came from: the path of the file
-// that gave it, and its line there, 0 for none.
+// that gave it, its line there, 0 for none, and its place in the
+// document, spelled as a problem's place is.
 type Origin struct {
-	Path string
-	Line int
+	Path  string
+	Line  int
+	Place string
 }
 
 // Field is a field of a definition: its value and the origin of the file
@@ -87,7 +89,7 @@ func (f *fields) text(key string, need need) Field[string] {
 		return Field[string]{}
 	}
 	value, _ := node.Text()
-	return Field[string]{Value: value, Origin: originOf(node), Given: true}
+	return Field[string]{Value: value, Origin: originOf(node, f.at(key)), Given: true}
 }
 
 // oneOf is the string field key, which is one of values.
@@ -120,7 +122,7 @@ func (f *fields) boolean(key string, need need) Field[bool] {
 		return Field[bool]{}
 	}
 	value, _ := node.Boolean()
-	return Field[bool]{Value: value, Origin: originOf(node), Given: true}
+	return Field[bool]{Value: value, Origin: originOf(node, f.at(key)), Given: true}
 }
 
 // integer is the integer field key, least or more.
@@ -134,7 +136,7 @@ func (f *fields) integer(key string, need need, least int) Field[int] {
 		f.typing.problems = append(f.typing.problems, at(node, f.at(key), fmt.Sprintf("it is at least %d", least)))
 		return Field[int]{}
 	}
-	return Field[int]{Value: int(value), Origin: originOf(node), Given: true}
+	return Field[int]{Value: int(value), Origin: originOf(node, f.at(key)), Given: true}
 }
 
 // duration is the string field key, a duration in the form of Go's
@@ -179,7 +181,7 @@ func (f *fields) amount(key string, need need) Field[float64] {
 		f.typing.problems = append(f.typing.problems, at(node, f.at(key), "it is more than zero"))
 		return Field[float64]{}
 	}
-	return Field[float64]{Value: value, Origin: originOf(node), Given: true}
+	return Field[float64]{Value: value, Origin: originOf(node, f.at(key)), Given: true}
 }
 
 // reference is the string field key, the name of a document of kind, given
@@ -199,15 +201,16 @@ func (f *fields) reference(key string, need need, kind Kind) Field[string] {
 }
 
 // references is the field key, a list of names of documents of kind, each
-// given bare or with kind before it: none given where an item names
-// another kind, each such item a problem at its place in the list.
-func (f *fields) references(key string, need need, kind Kind) Field[[]string] {
+// given bare or with kind before it, and with its origin: none given where
+// an item names another kind, each such item a problem at its place in the
+// list.
+func (f *fields) references(key string, need need, kind Kind) Field[[]Field[string]] {
 	list := f.texts(key, need)
 	if !list.Given {
-		return list
+		return Field[[]Field[string]]{}
 	}
 	node, _ := f.node.Get(key)
-	names := []string{}
+	names := []Field[string]{}
 	for i, item := range node.Items() {
 		value, _ := item.Text()
 		name, ok := nameOf(kind, value)
@@ -215,25 +218,103 @@ func (f *fields) references(key string, need need, kind Kind) Field[[]string] {
 			f.typing.problems = append(f.typing.problems, at(item, f.item(key, i), namesA(kind)))
 			continue
 		}
-		names = append(names, name)
+		names = append(names, Field[string]{Value: name, Origin: originOf(item, f.item(key, i)), Given: true})
 	}
 	if len(names) < len(list.Value) {
-		return Field[[]string]{}
+		return Field[[]Field[string]]{}
 	}
-	list.Value = names
-	return list
+	return Field[[]Field[string]]{Value: names, Origin: list.Origin, Given: true}
 }
 
 // Value is a value a document gives: a text, or a reference, which holds
-// what it reads in From.
+// what it reads in From, the zero reference for a text.
 type Value struct {
 	Text string
-	From string
+	From Reference
 }
 
-// value is the field key, a string, or a reference that reads one of
-// roots.
-func (f *fields) value(key string, need need, roots ...string) Field[Value] {
+// Reference is what a reference reads (ADR-011, rules 3 and 4), typed
+// whole, so no reader of a document parses its text: a param or an input,
+// by Name; a repeat's state, by Name, or one Field of it; an item's
+// outputs, by the item's Name, or one Field of them; an item's session;
+// or the item of an all or any query, or one Field of it.
+type Reference struct {
+	Root  Root
+	Name  string
+	Field string
+}
+
+// Root is what a reference reads of.
+type Root string
+
+const (
+	ReadsParam   Root = "param"
+	ReadsInput   Root = "input"
+	ReadsState   Root = "state"
+	ReadsOutputs Root = "outputs"
+	ReadsSession Root = "session"
+	ReadsItem    Root = "item"
+)
+
+// readable is what the references of a place may read: the roots, as a
+// reference spells them, in the order a problem names them; and whether
+// the place is a workflow's, where the item of a query is read in the
+// query's where alone.
+type readable struct {
+	roots    []string
+	workflow bool
+}
+
+// formOf is how a reference spells what it reads of root.
+func formOf(root string) string {
+	switch root {
+	case "state":
+		return "state.<name>[.<field>]"
+	case "steps":
+		return "steps.<name>.<part>"
+	case "item":
+		return "item[.<field>]"
+	}
+	return root + ".<name>"
+}
+
+// referenceOf is what text reads, a reference's from: its root, the word
+// before the first ".", and what it reads, false where it is none of its
+// root's forms.
+func referenceOf(text string) (string, Reference, bool) {
+	parts := strings.Split(text, ".")
+	root := parts[0]
+	if slices.Contains(parts, "") {
+		return root, Reference{}, false
+	}
+	switch n := len(parts); {
+	case root == "params" && n == 2:
+		return root, Reference{Root: ReadsParam, Name: parts[1]}, true
+	case root == "inputs" && n == 2:
+		return root, Reference{Root: ReadsInput, Name: parts[1]}, true
+	case root == "state" && (n == 2 || n == 3):
+		return root, Reference{Root: ReadsState, Name: parts[1], Field: fieldOf(parts, 2)}, true
+	case root == "steps" && n == 3 && parts[2] == "session":
+		return root, Reference{Root: ReadsSession, Name: parts[1]}, true
+	case root == "steps" && (n == 3 || n == 4) && parts[2] == "outputs":
+		return root, Reference{Root: ReadsOutputs, Name: parts[1], Field: fieldOf(parts, 3)}, true
+	case root == "item" && n <= 2:
+		return root, Reference{Root: ReadsItem, Field: fieldOf(parts, 1)}, true
+	}
+	return root, Reference{}, false
+}
+
+// fieldOf is the part i of a reference, its field, "" where it has none.
+func fieldOf(parts []string, i int) string {
+	if i < len(parts) {
+		return parts[i]
+	}
+	return ""
+}
+
+// value is the field key, a string, or a reference that reads what
+// readable says.
+func (f *fields) value(key string, need need, readable readable) Field[Value] {
 	node, ok := f.given(key, need)
 	if !ok {
 		return Field[Value]{}
@@ -241,9 +322,9 @@ func (f *fields) value(key string, need need, roots ...string) Field[Value] {
 	switch node.Kind() {
 	case tree.String:
 		text, _ := node.Text()
-		return Field[Value]{Value: Value{Text: text}, Origin: originOf(node), Given: true}
+		return Field[Value]{Value: Value{Text: text}, Origin: originOf(node, f.at(key)), Given: true}
 	case tree.Map:
-		from := f.from(key, need, roots...)
+		from := f.from(key, need, readable)
 		if !from.Given {
 			return Field[Value]{}
 		}
@@ -253,34 +334,39 @@ func (f *fields) value(key string, need need, roots ...string) Field[Value] {
 	return Field[Value]{}
 }
 
-// from is the field key, a reference, {from: <what it reads>}: one of
-// roots, a "." and a name. The field holds what it reads.
-func (f *fields) from(key string, need need, roots ...string) Field[string] {
+// from is the field key, a reference, {from: <what it reads>}, that reads
+// what readable says. The field holds what it reads.
+func (f *fields) from(key string, need need, readable readable) Field[Reference] {
 	reference := f.mapping(key, need)
 	if !reference.Given {
-		return Field[string]{}
+		return Field[Reference]{}
 	}
-	return reference.Value.reads(roots...)
+	return reference.Value.reads(readable)
 }
 
-// reads is what the reference f reads, its one field from: one of roots, a
-// "." and a name; a problem at the reference where it reads another.
-func (f *fields) reads(roots ...string) Field[string] {
+// reads is what the reference f reads, its one field from, in the form of
+// one of readable's roots; a problem at the reference where it reads none
+// of them.
+func (f *fields) reads(readable readable) Field[Reference] {
 	read := f.text("from", required)
 	f.done()
 	if !read.Given {
-		return Field[string]{}
+		return Field[Reference]{}
 	}
-	root, name, _ := strings.Cut(read.Value, ".")
-	if !slices.Contains(roots, root) || name == "" {
-		readable := make([]string, len(roots))
-		for i, root := range roots {
-			readable[i] = root + ".<name>"
+	root, reference, typed := referenceOf(read.Value)
+	switch {
+	case root == "item" && readable.workflow && !slices.Contains(readable.roots, root):
+		f.problem(originOf(f.node, f.place), f.place, "item is read in the where of all or any")
+		return Field[Reference]{}
+	case !typed || !slices.Contains(readable.roots, root):
+		spelled := make([]string, len(readable.roots))
+		for i, root := range readable.roots {
+			spelled[i] = formOf(root)
 		}
-		f.problem(originOf(f.node), f.place, "it reads "+either(readable))
-		return Field[string]{}
+		f.problem(originOf(f.node, f.place), f.place, "it reads "+either(spelled))
+		return Field[Reference]{}
 	}
-	return Field[string]{Value: read.Value, Origin: originOf(f.node), Given: true}
+	return Field[Reference]{Value: reference, Origin: originOf(f.node, f.place), Given: true}
 }
 
 // Binding is a value given by name: a text, or what a reference reads.
@@ -290,8 +376,8 @@ type Binding struct {
 }
 
 // bindings is the field key, a map of values by name, each a string or a
-// reference that reads one of roots, in the order of their names.
-func (f *fields) bindings(key string, need need, roots ...string) Field[[]Field[Binding]] {
+// reference that reads what readable says, in the order of their names.
+func (f *fields) bindings(key string, need need, readable readable) Field[[]Field[Binding]] {
 	mapping := f.mapping(key, need)
 	if !mapping.Given {
 		return Field[[]Field[Binding]]{}
@@ -299,7 +385,7 @@ func (f *fields) bindings(key string, need need, roots ...string) Field[[]Field[
 	m := mapping.Value
 	typed := []Field[Binding]{}
 	for _, name := range m.node.Keys() {
-		if value := m.value(name, required, roots...); value.Given {
+		if value := m.value(name, required, readable); value.Given {
 			typed = append(typed, Field[Binding]{Value: Binding{Name: name, Value: value.Value}, Origin: value.Origin, Given: true})
 		}
 	}
@@ -327,7 +413,7 @@ func (f *fields) texts(key string, need need) Field[[]string] {
 	if !allText {
 		return Field[[]string]{}
 	}
-	return Field[[]string]{Value: values, Origin: originOf(node), Given: true}
+	return Field[[]string]{Value: values, Origin: originOf(node, f.at(key)), Given: true}
 }
 
 // list is the field key, a list of maps in the file's order, whose
@@ -346,7 +432,7 @@ func (f *fields) list(key string, need need) Field[[]*fields] {
 		}
 		items = append(items, &fields{typing: f.typing, node: item, place: f.item(key, i), known: map[string]bool{}})
 	}
-	return Field[[]*fields]{Value: items, Origin: originOf(node), Given: true}
+	return Field[[]*fields]{Value: items, Origin: originOf(node, f.at(key)), Given: true}
 }
 
 // mapping is the field key, a map, whose fields the kind's typer reads and
@@ -356,7 +442,7 @@ func (f *fields) mapping(key string, need need) Field[*fields] {
 	if !ok {
 		return Field[*fields]{}
 	}
-	return Field[*fields]{Value: f.inner(key, node), Origin: originOf(node), Given: true}
+	return Field[*fields]{Value: f.inner(key, node), Origin: originOf(node, f.at(key)), Given: true}
 }
 
 // entries is the field key, a map of items, each a map whose fields the
@@ -375,7 +461,7 @@ func (f *fields) entries(key string, need need) Field[[]entry] {
 			entries = append(entries, entry{name: name, fields: inner.inner(name, item)})
 		}
 	}
-	return Field[[]entry]{Value: entries, Origin: originOf(node), Given: true}
+	return Field[[]entry]{Value: entries, Origin: originOf(node, f.at(key)), Given: true}
 }
 
 // inner is the fields of node, the map at key.
@@ -457,8 +543,9 @@ func at(node tree.Node, place, message string) Problem {
 	return Problem{Path: origin.Path, Line: origin.Line, Place: place, Message: message}
 }
 
-func originOf(node tree.Node) Origin {
-	return Origin{Path: node.Origin().Path, Line: node.Origin().Line}
+// originOf is the origin of node, the value at place.
+func originOf(node tree.Node, place string) Origin {
+	return Origin{Path: node.Origin().Path, Line: node.Origin().Line, Place: place}
 }
 
 // notA is the message of a value of kind got where one of want is due.

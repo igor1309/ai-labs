@@ -36,11 +36,11 @@ command = "/usr/local/bin/claude"
 	assertProblems(t, problems, nil)
 	assertAgent(t, got, documents.AgentDefinition{
 		Name:        "a",
-		Runtime:     text("claude-code", homeAgent, 0),
-		Model:       text("opus", homeAgent, 0),
-		ModelFamily: text("anthropic", homeAgent, 0),
-		Effort:      text("high", homeAgent, 0),
-		Command:     text("/usr/local/bin/claude", homeAgent, 0),
+		Runtime:     text("claude-code", homeAgent, 0, "runtime"),
+		Model:       text("opus", homeAgent, 0, "model"),
+		ModelFamily: text("anthropic", homeAgent, 0, "model_family"),
+		Effort:      text("high", homeAgent, 0, "effort"),
+		Command:     text("/usr/local/bin/claude", homeAgent, 0, "command"),
 	})
 }
 
@@ -55,10 +55,10 @@ func TestAnAgentsRuntimeIsGivenWithItsKindOrWithout(t *testing.T) {
 		want                 documents.AgentDefinition
 		problems             []documents.Problem
 	}{
-		{"bare", "/home", "codex", documents.AgentDefinition{Name: "a", Runtime: text("codex", agentFile("/home", "a"), 0)}, nil},
-		{"with its kind", "/home", "runtime:codex", documents.AgentDefinition{Name: "a", Runtime: text("codex", agentFile("/home", "a"), 0)}, nil},
+		{"bare", "/home", "codex", documents.AgentDefinition{Name: "a", Runtime: text("codex", agentFile("/home", "a"), 0, "runtime")}, nil},
+		{"with its kind", "/home", "runtime:codex", documents.AgentDefinition{Name: "a", Runtime: text("codex", agentFile("/home", "a"), 0, "runtime")}, nil},
 		{"with its kind, in the repository", "/repo", "runtime:claude-code",
-			documents.AgentDefinition{Name: "a", Runtime: text("claude-code", agentFile("/repo", "a"), 0)}, nil},
+			documents.AgentDefinition{Name: "a", Runtime: text("claude-code", agentFile("/repo", "a"), 0, "runtime")}, nil},
 		{"with another kind", "/home", "agent:codex", documents.AgentDefinition{},
 			[]documents.Problem{{Path: agentFile("/home", "a"), Place: "runtime", Message: "it names a runtime"}}},
 		{"with another kind, in the repository", "/repo", "prompt:codex", documents.AgentDefinition{},
@@ -140,9 +140,9 @@ func TestAFieldTheExtendingDocumentLeavesToItsBaseIsTypedFromTheBase(t *testing.
 	assertProblems(t, problems, nil)
 	assertAgent(t, got, documents.AgentDefinition{
 		Name:    "a",
-		Runtime: text("codex", agentFile("/home", "base"), 0),
-		Model:   text("o3", agentFile("/home", "base"), 0),
-		Effort:  text("high", agentFile("/home", "a"), 0),
+		Runtime: text("codex", agentFile("/home", "base"), 0, "runtime"),
+		Model:   text("o3", agentFile("/home", "base"), 0, "model"),
+		Effort:  text("high", agentFile("/home", "a"), 0, "effort"),
 	})
 }
 
@@ -247,7 +247,7 @@ func TestEachAgentIsTypedOnce(t *testing.T) {
 	assertTyped("asked for each agent many times")
 	got, problems := d.Agent("a")
 	assertProblems(t, problems, nil)
-	assertAgent(t, got, documents.AgentDefinition{Name: "a", Runtime: text("codex", agentFile("/home", "a"), 0)})
+	assertAgent(t, got, documents.AgentDefinition{Name: "a", Runtime: text("codex", agentFile("/home", "a"), 0, "runtime")})
 	if _, problems := d.Agent("c"); !slices.Equal(problems, []documents.Problem{missing("runtime")}) {
 		t.Errorf("agent c's problems %q, want its runtime missing", problems)
 	}

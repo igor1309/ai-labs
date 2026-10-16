@@ -1,6 +1,7 @@
 package documents_test
 
 import (
+	"fmt"
 	"reflect"
 	"slices"
 	"strings"
@@ -63,37 +64,44 @@ func inHomeBrief(line int, place, message string) documents.Problem {
 	return documents.Problem{Path: homeBrief, Line: line, Place: place, Message: message}
 }
 
-// boolean is a boolean field given by the file at path, on line.
-func boolean(value bool, path string, line int) documents.Field[bool] {
-	return documents.Field[bool]{Value: value, Origin: documents.Origin{Path: path, Line: line}, Given: true}
+// boolean is a boolean field given by the file at path, on line, at place.
+func boolean(value bool, path string, line int, place string) documents.Field[bool] {
+	return documents.Field[bool]{Value: value, Origin: documents.Origin{Path: path, Line: line, Place: place}, Given: true}
 }
 
-// part is a part given whole by the file at path, on line, as a part on
-// one line is.
-func part(path string, line int, heading string, required bool) documents.Field[documents.Part] {
+// partAt is the place of the part i.
+func partAt(i int) string { return fmt.Sprintf("parts[%d]", i) }
+
+// part is the part i, given whole by the file at path, on line, as a part
+// on one line is.
+func part(path string, line, i int, heading string, required bool) documents.Field[documents.Part] {
 	return documents.Field[documents.Part]{
-		Value:  documents.Part{Heading: text(heading, path, line), Required: boolean(required, path, line)},
-		Origin: documents.Origin{Path: path, Line: line},
+		Value: documents.Part{
+			Heading:  text(heading, path, line, partAt(i)+".heading"),
+			Required: boolean(required, path, line, partAt(i)+".required"),
+		},
+		Origin: documents.Origin{Path: path, Line: line, Place: partAt(i)},
 		Given:  true,
 	}
 }
 
-// parts are a brief's parts, given by the file at path, on line.
+// parts are a brief's parts, given by the file at path, on line, at
+// parts.
 func parts(path string, line int, items ...documents.Field[documents.Part]) documents.Field[[]documents.Field[documents.Part]] {
-	return documents.Field[[]documents.Field[documents.Part]]{Value: items, Origin: documents.Origin{Path: path, Line: line}, Given: true}
+	return documents.Field[[]documents.Field[documents.Part]]{Value: items, Origin: documents.Origin{Path: path, Line: line, Place: "parts"}, Given: true}
 }
 
 // validBriefDefinition is validBrief typed: every field it gives, each
 // with its value and the origin of its home file, on its line.
 func validBriefDefinition() documents.BriefDefinition {
-	goal := part(homeBrief, 3, "## Goal", true)
-	goal.Value.Reference = text("file", homeBrief, 3)
-	open := part(homeBrief, 5, "## Open", true)
-	open.Value.Reads = text("None.", homeBrief, 5)
+	goal := part(homeBrief, 3, 0, "## Goal", true)
+	goal.Value.Reference = text("file", homeBrief, 3, "parts[0].reference")
+	open := part(homeBrief, 5, 2, "## Open", true)
+	open.Value.Reads = text("None.", homeBrief, 5, "parts[2].reads")
 	return documents.BriefDefinition{
 		Name:     "a",
-		Parts:    parts(homeBrief, 2, goal, part(homeBrief, 4, "## Notes", false), open),
-		Template: text(validTemplate, homeBrief, 6),
+		Parts:    parts(homeBrief, 2, goal, part(homeBrief, 4, 1, "## Notes", false), open),
+		Template: text(validTemplate, homeBrief, 6, "template"),
 	}
 }
 
@@ -131,8 +139,8 @@ func TestABriefsPartsAreInTheFilesOrder(t *testing.T) {
 	assertProblems(t, problems, nil)
 	assertBrief(t, got, documents.BriefDefinition{
 		Name:     "a",
-		Parts:    parts(homeBrief, 2, part(homeBrief, 3, "## Open", true), part(homeBrief, 4, "## Goal", true), part(homeBrief, 5, "## Notes", false)),
-		Template: text("## Open\n## Goal\n## Notes\n", homeBrief, 6),
+		Parts:    parts(homeBrief, 2, part(homeBrief, 3, 0, "## Open", true), part(homeBrief, 4, 1, "## Goal", true), part(homeBrief, 5, 2, "## Notes", false)),
+		Template: text("## Open\n## Goal\n## Notes\n", homeBrief, 6, "template"),
 	})
 }
 
@@ -165,8 +173,8 @@ func TestAPartNeedsItsHeadingAndWhetherItIsRequired(t *testing.T) {
 	assertProblems(t, problems, nil)
 	assertBrief(t, got, documents.BriefDefinition{
 		Name:     "a",
-		Parts:    parts(homeBrief, 2, part(homeBrief, 3, "## Goal", false)),
-		Template: text("## Goal\n", homeBrief, 4),
+		Parts:    parts(homeBrief, 2, part(homeBrief, 3, 0, "## Goal", false)),
+		Template: text("## Goal\n", homeBrief, 4, "template"),
 	})
 }
 
@@ -265,8 +273,8 @@ func TestAPartsHeadingIsAMarkdownHeadingLine(t *testing.T) {
 				assertProblems(t, problems, nil)
 				assertBrief(t, got, documents.BriefDefinition{
 					Name:     "a",
-					Parts:    parts(homeBrief, 2, part(homeBrief, 3, c.heading, true)),
-					Template: text(c.heading+"\n", homeBrief, 4),
+					Parts:    parts(homeBrief, 2, part(homeBrief, 3, 0, c.heading, true)),
+					Template: text(c.heading+"\n", homeBrief, 4, "template"),
 				})
 				return
 			}
@@ -338,7 +346,7 @@ func TestATemplateHoldsMoreThanThePartsHeadings(t *testing.T) {
 			t.Parallel()
 			got, problems := homeBriefOf(withParts(c.template, `{heading: "## Goal", required: true}`, `{heading: "## Open", required: false}`))
 			assertProblems(t, problems, nil)
-			if want := text(c.want, homeBrief, 5); got.Template != want {
+			if want := text(c.want, homeBrief, 5, "template"); got.Template != want {
 				t.Errorf("template\n got %+v\nwant %+v", got.Template, want)
 			}
 		})
@@ -388,7 +396,7 @@ func TestABriefsFieldIsOfTheFileThatGaveIt(t *testing.T) {
 	got, problems := brief("parts:\n  - {heading: \"## Goal\", required: false}\n")
 	assertProblems(t, problems, nil)
 	want := validBriefDefinition()
-	want.Parts = parts(repositoryBrief, 1, part(repositoryBrief, 2, "## Goal", false))
+	want.Parts = parts(repositoryBrief, 1, part(repositoryBrief, 2, 0, "## Goal", false))
 	assertBrief(t, got, want)
 
 	got, problems = brief("parts:\n  - {heading: \"## Plan\", required: true}\n")

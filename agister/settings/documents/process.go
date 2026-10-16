@@ -22,8 +22,8 @@ type ProcessDefinition struct {
 	Name        string
 	Prompt      Field[string]
 	Instruction Field[string]
-	Guidance    Field[[]string]
-	Skills      Field[[]string]
+	Guidance    Field[[]Field[string]]
+	Skills      Field[[]Field[string]]
 	Params      Field[[]Field[Param]]
 	Inputs      Field[[]Field[Input]]
 	Environment Field[[]Field[Binding]]
@@ -48,7 +48,7 @@ type Param struct {
 type Input struct {
 	Name      string
 	Source    Field[string]
-	Form      Field[[]string]
+	Form      Field[[]Field[string]]
 	Arguments []Field[Binding]
 }
 
@@ -64,7 +64,7 @@ type Permissions struct {
 // content must be its HEAD's.
 type Workspace struct {
 	Access   Field[string]
-	Revision Field[string]
+	Revision Field[Reference]
 	Clean    Field[bool]
 }
 
@@ -125,7 +125,7 @@ func (p ProcessDefinition) clone() ProcessDefinition {
 
 // processReads is what a process's references may read: its params and its
 // inputs.
-func processReads() []string { return []string{"params", "inputs"} }
+func processReads() readable { return readable{roots: []string{"params", "inputs"}} }
 
 func typeProcess(name string, root tree.Node) (ProcessDefinition, []Problem) {
 	t := newTyping(Process, root)
@@ -137,7 +137,7 @@ func typeProcess(name string, root tree.Node) (ProcessDefinition, []Problem) {
 		Skills:      t.references("skills", optional, skill),
 		Params:      typeParams(t),
 		Inputs:      typeInputs(t),
-		Environment: t.bindings("environment", optional, processReads()...),
+		Environment: t.bindings("environment", optional, processReads()),
 	}
 	if permissions := t.mapping("permissions", optional); permissions.Given {
 		p := permissions.Value
@@ -152,7 +152,7 @@ func typeProcess(name string, root tree.Node) (ProcessDefinition, []Problem) {
 		process.Workspace = Field[Workspace]{Value: Workspace{
 			Access: w.oneOf("access", optional, "read-only", "read-write"),
 			// A revision is that of an input (ADR-004, rule 2).
-			Revision: w.from("revision", optional, "inputs"),
+			Revision: w.from("revision", optional, readable{roots: []string{"inputs"}}),
 			Clean:    w.boolean("clean", optional),
 		}, Origin: workspace.Origin, Given: true}
 		w.done()
@@ -188,7 +188,7 @@ func typeParams(t *fields) Field[[]Field[Param]] {
 	for _, entry := range params.Value {
 		param := Param{Name: entry.name, Default: entry.fields.text("default", optional)}
 		entry.fields.done()
-		typed = append(typed, Field[Param]{Value: param, Origin: originOf(entry.fields.node), Given: true})
+		typed = append(typed, Field[Param]{Value: param, Origin: originOf(entry.fields.node, entry.fields.place), Given: true})
 	}
 	return Field[[]Field[Param]]{Value: typed, Origin: params.Origin, Given: true}
 }
@@ -211,12 +211,12 @@ func typeInputs(t *fields) Field[[]Field[Input]] {
 			if key == "source" || key == "form" {
 				continue
 			}
-			if value := entry.fields.value(key, required, processReads()...); value.Given {
+			if value := entry.fields.value(key, required, processReads()); value.Given {
 				input.Arguments = append(input.Arguments, Field[Binding]{Value: Binding{Name: key, Value: value.Value}, Origin: value.Origin, Given: true})
 			}
 		}
 		entry.fields.done()
-		typed = append(typed, Field[Input]{Value: input, Origin: originOf(entry.fields.node), Given: true})
+		typed = append(typed, Field[Input]{Value: input, Origin: originOf(entry.fields.node, entry.fields.place), Given: true})
 	}
 	return Field[[]Field[Input]]{Value: typed, Origin: inputs.Origin, Given: true}
 }

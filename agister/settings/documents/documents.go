@@ -2,7 +2,8 @@
 // kind and name, or its problems: a tree, its layers' sources decoded in
 // its kind's format and composed, the nearer layer over the farther, and
 // then over the tree of the document of its kind it extends, and typed as
-// a definition of its kind; or a blob, the nearest layer's bytes whole. It
+// a definition of its kind; or a blob, the nearest layer's bytes whole.
+// It gives the repository's blocks, the snapshot's blocks file typed. It
 // is pure: it reads no file, and knows no folder; the composition maps
 // layout's snapshot to its own.
 package documents
@@ -31,9 +32,11 @@ const (
 	Prompt   Kind = "prompt"
 )
 
-// Snapshot is each document, by kind and name.
+// Snapshot is each document, by kind and name, and the repository's
+// blocks file, nil for none.
 type Snapshot struct {
 	Documents map[Kind]map[string]Document
+	Blocks    *Source
 }
 
 // Document is a document's sources and the problems of its files. A
@@ -94,6 +97,8 @@ type Documents struct {
 	processes map[string]definition[ProcessDefinition]
 	// workflows are each workflow typed.
 	workflows map[string]definition[WorkflowDefinition]
+	// blocks are the repository's blocks typed.
+	blocks definition[[]Field[Block]]
 }
 
 type treeResult struct {
@@ -168,6 +173,9 @@ func newDocuments(snapshot Snapshot, decode decoder, typers typers) *Documents {
 	d.briefs = typeEach(d.trees[Brief], typers.brief)
 	d.processes = typeEach(d.trees[Process], typers.process)
 	d.workflows = typeEach(d.trees[Workflow], typers.workflow)
+	if snapshot.Blocks != nil {
+		d.blocks = blocksOf(*snapshot.Blocks, decode)
+	}
 	return d
 }
 

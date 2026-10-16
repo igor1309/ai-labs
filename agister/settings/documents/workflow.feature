@@ -69,19 +69,19 @@ Feature: Documents gives a workflow
     And it has a problem at "<field>": <message>
 
     Examples:
-      | fault                                 | field                           | message                                                              |
-      | the steps []                          | steps                           | it has an item                                                       |
-      | an item with no name                  | steps[1].name                   | it is missing                                                        |
-      | a second item named judge             | steps[2].name                   | no other item of its workflow has it                                 |
-      | an item with a process and a workflow | steps[1]                        | it is a step, a workflow, a parallel, a branch or a repeat           |
-      | an item of its name alone             | steps[1]                        | it is a step, a workflow, a parallel, a branch or a repeat           |
-      | a step with no agent                  | steps[1].agent                  | it is missing                                                        |
-      | the process "agent:x"                 | steps[1].process                | it names a process                                                   |
-      | the binding {from: outputs.x}         | steps[1].inputs.reviews         | it reads params.<name>, inputs.<name>, state.<name> or steps.<name>  |
-      | a last arm with an if                 | steps[2].branch[1].if           | the last arm is the default, with no if                              |
-      | an arm with no outputs                | steps[2].branch[1].outputs      | it is missing                                                        |
-      | the condition {same: [a, b]}          | steps[2].branch[0].if           | it has one operator of equals, present, all, any, and, or, not      |
-      | the condition {equals: [a]}           | steps[2].branch[0].if.equals    | it is a reference and a value                                        |
-      | the condition {and: []}               | steps[2].branch[0].if.and       | it is a list of conditions, one or more                              |
-      | a repeat of max 0                     | steps[2].branch[0].repeat.max   | it is at least 1                                                     |
-      | a repeat with no until                | steps[2].branch[0].repeat.until | it is missing                                                        |
+      | fault                                 | field                           | message                                                                              |
+      | the steps []                          | steps                           | it has an item                                                                       |
+      | an item with no name                  | steps[1].name                   | it is missing                                                                        |
+      | a second item named judge             | steps[2].name                   | no other item of its workflow has it                                                 |
+      | an item with a process and a workflow | steps[1]                        | it is a step, a workflow, a parallel, a branch or a repeat                           |
+      | an item of its name alone             | steps[1]                        | it is a step, a workflow, a parallel, a branch or a repeat                           |
+      | a step with no agent                  | steps[1].agent                  | it is missing                                                                        |
+      | the process "agent:x"                 | steps[1].process                | it names a process                                                                   |
+      | the binding {from: outputs.x}         | steps[1].inputs.reviews         | it reads params.<name>, inputs.<name>, state.<name>[.<field>] or steps.<name>.<part> |
+      | a last arm with an if                 | steps[2].branch[1].if           | the last arm is the default, with no if                                              |
+      | an arm with no outputs                | steps[2].branch[1].outputs      | it is missing                                                                        |
+      | the condition {same: [a, b]}          | steps[2].branch[0].if           | it has one operator of equals, present, all, any, and, or, not                       |
+      | the condition {equals: [a]}           | steps[2].branch[0].if.equals    | it is a reference and a value                                                        |
+      | the condition {and: []}               | steps[2].branch[0].if.and       | it is a list of conditions, one or more                                              |
+      | a repeat of max 0                     | steps[2].branch[0].repeat.max   | it is at least 1                                                                     |
+      | a repeat with no until                | steps[2].branch[0].repeat.until | it is missing                                                                        |

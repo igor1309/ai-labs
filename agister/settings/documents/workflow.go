@@ -30,7 +30,7 @@ type Item struct {
 	If       Field[Condition]
 	Process  Field[string]
 	Agent    Field[string]
-	Session  Field[string]
+	Session  Field[Reference]
 	Workflow Field[string]
 	Inputs   Field[[]Field[Binding]]
 	Parallel Field[[]Field[Item]]
@@ -63,7 +63,9 @@ func (d *Documents) Workflow(name string) (WorkflowDefinition, []Problem) {
 }
 
 // workflowReads is what a workflow's bindings and outputs may read.
-func workflowReads() []string { return []string{"params", "inputs", "state", "steps"} }
+func workflowReads() readable {
+	return readable{roots: []string{"params", "inputs", "state", "steps"}, workflow: true}
+}
 
 // itemKinds are the fields that say what an item is: each item gives one.
 func itemKinds() []string {
@@ -80,7 +82,7 @@ func typeWorkflow(name string, root tree.Node) (WorkflowDefinition, []Problem) {
 		Steps:  items.of(t, "steps"),
 		// Outputs are the workflow's contract: resolve checks the
 		// workflow's callers read only them.
-		Outputs: t.bindings("outputs", optional, workflowReads()...),
+		Outputs: t.bindings("outputs", optional, workflowReads()),
 	}
 	if problems := t.end(); len(problems) > 0 {
 		return WorkflowDefinition{}, problems
@@ -125,12 +127,12 @@ func (s *items) arms(f *fields) Field[[]Field[Item]] {
 	for i, item := range list.Value {
 		arm := func(item *fields, typed *Item) {
 			if i < len(list.Value)-1 {
-				typed.If = item.condition("if", required)
+				typed.If = item.condition("if", required, false)
 			} else if node, ok := item.node.Get("if"); ok {
 				item.known["if"] = true
 				item.typing.problems = append(item.typing.problems, at(node, item.at("if"), "the last arm is the default, with no if"))
 			}
-			typed.Outputs = item.bindings("outputs", required, workflowReads()...)
+			typed.Outputs = item.bindings("outputs", required, workflowReads())
 		}
 		typed = append(typed, s.item(item, arm))
 	}
@@ -159,18 +161,18 @@ func (s *items) item(f *fields, arm func(*fields, *Item)) Field[Item] {
 	// An item that is not one of them has no fields to know: its one
 	// problem is what it is.
 	if len(kinds) != 1 {
-		f.problem(originOf(f.node), f.place, "it is a step, a workflow, a parallel, a branch or a repeat")
+		f.problem(originOf(f.node, f.place), f.place, "it is a step, a workflow, a parallel, a branch or a repeat")
 		return Field[Item]{}
 	}
 	switch kinds[0] {
 	case "process":
 		item.Process = f.reference("process", required, Process)
 		item.Agent = f.reference("agent", required, Agent)
-		item.Session = f.from("session", optional, workflowReads()...)
-		item.Inputs = f.bindings("inputs", optional, workflowReads()...)
+		item.Session = f.from("session", optional, workflowReads())
+		item.Inputs = f.bindings("inputs", optional, workflowReads())
 	case "workflow":
 		item.Workflow = f.reference("workflow", required, Workflow)
-		item.Inputs = f.bindings("inputs", optional, workflowReads()...)
+		item.Inputs = f.bindings("inputs", optional, workflowReads())
 	case "parallel":
 		item.Parallel = s.of(f, "parallel")
 	case "branch":
@@ -179,7 +181,7 @@ func (s *items) item(f *fields, arm func(*fields, *Item)) Field[Item] {
 		item.Repeat = s.repeat(f)
 	}
 	f.done()
-	return Field[Item]{Value: item, Origin: originOf(f.node), Given: true}
+	return Field[Item]{Value: item, Origin: originOf(f.node, f.place), Given: true}
 }
 
 func (s *items) repeat(f *fields) Field[Repeat] {
@@ -189,10 +191,10 @@ func (s *items) repeat(f *fields) Field[Repeat] {
 	}
 	r := repeat.Value
 	typed := Repeat{
-		State: r.bindings("state", required, workflowReads()...),
+		State: r.bindings("state", required, workflowReads()),
 		Steps: s.of(r, "steps"),
-		Next:  r.bindings("next", required, workflowReads()...),
-		Until: r.condition("until", required),
+		Next:  r.bindings("next", required, workflowReads()),
+		Until: r.condition("until", required, false),
 		Max:   r.integer("max", required, 1),
 	}
 	r.done()

@@ -4,6 +4,8 @@
 
 - An ADR states design: parts, rules, invariants. No edge cases, no
   examples of failure, no types, no command lists.
+- Using what the operating system gives (files, the terminal,
+  processes, the clock) is not a design decision, and no ADR states it.
 - An edge case is a test, written with the code it tests.
 - Do not dig for corner cases. Handle a case when it is met.
 

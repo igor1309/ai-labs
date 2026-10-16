@@ -75,7 +75,7 @@ func typeBrief(name string, root tree.Node) (BriefDefinition, []Problem) {
 		part.Reads = p.text("reads", optional)
 		part.Reference = p.oneOf("reference", optional, "file")
 		p.done()
-		typed = append(typed, Field[Part]{Value: part, Origin: originOf(p.node), Given: true})
+		typed = append(typed, Field[Part]{Value: part, Origin: originOf(p.node, p.place), Given: true})
 	}
 	if parts.Given {
 		brief.Parts = Field[[]Field[Part]]{Value: typed, Origin: parts.Origin, Given: true}

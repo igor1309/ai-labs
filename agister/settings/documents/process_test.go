@@ -69,58 +69,60 @@ func inHomeProcess(line int, place, message string) documents.Problem {
 	return documents.Problem{Path: homeProcess, Line: line, Place: place, Message: message}
 }
 
-// given is value, given by the process a's home file, on line.
-func given[T any](value T, line int) documents.Field[T] {
-	return documents.Field[T]{Value: value, Origin: documents.Origin{Path: homeProcess, Line: line}, Given: true}
+// given is value, given by the process a's home file, on line, at place.
+func given[T any](value T, line int, place string) documents.Field[T] {
+	return documents.Field[T]{Value: value, Origin: documents.Origin{Path: homeProcess, Line: line, Place: place}, Given: true}
 }
 
 // validProcessDefinition is validProcess typed: every field it gives, each
-// with its value and the origin of its home file, on its line; a name the
-// name alone, and a reference what it reads.
+// with its value and the origin of its home file, on its line, at its
+// place; a name the name alone, and a reference what it reads.
 func validProcessDefinition() documents.ProcessDefinition {
 	return documents.ProcessDefinition{
 		Name:        "a",
-		Prompt:      given("review", 2),
-		Instruction: given("Review the change.", 3),
-		Guidance:    given([]string{"go-architecture"}, 4),
-		Skills:      given([]string{"go"}, 5),
+		Prompt:      given("review", 2, "prompt"),
+		Instruction: given("Review the change.", 3, "instruction"),
+		Guidance:    given([]documents.Field[string]{given("go-architecture", 4, "guidance[0]")}, 4, "guidance"),
+		Skills:      given([]documents.Field[string]{given("go", 5, "skills[0]")}, 5, "skills"),
 		Params: given([]documents.Field[documents.Param]{
-			given(documents.Param{Name: "base", Default: given("origin/trunk", 7)}, 7),
-			given(documents.Param{Name: "goal"}, 8),
-		}, 6),
+			given(documents.Param{Name: "base", Default: given("origin/trunk", 7, "params.base.default")}, 7, "params.base"),
+			given(documents.Param{Name: "goal"}, 8, "params.goal"),
+		}, 6, "params"),
 		Inputs: given([]documents.Field[documents.Input]{
-			given(documents.Input{Name: "base", Source: given("git.revision", 10), Arguments: []documents.Field[documents.Binding]{
-				given(documents.Binding{Name: "remote", Value: documents.Value{Text: "origin"}}, 10),
-				given(documents.Binding{Name: "rev", Value: documents.Value{From: "params.base"}}, 10),
-			}}, 10),
-			given(documents.Input{Name: "goal", Source: given("file", 11), Form: given([]string{"goal"}, 11), Arguments: []documents.Field[documents.Binding]{
-				given(documents.Binding{Name: "path", Value: documents.Value{From: "params.goal"}}, 11),
-			}}, 11),
-		}, 9),
+			given(documents.Input{Name: "base", Source: given("git.revision", 10, "inputs.base.source"), Arguments: []documents.Field[documents.Binding]{
+				given(documents.Binding{Name: "remote", Value: documents.Value{Text: "origin"}}, 10, "inputs.base.remote"),
+				given(documents.Binding{Name: "rev", Value: documents.Value{From: param("base")}}, 10, "inputs.base.rev"),
+			}}, 10, "inputs.base"),
+			given(documents.Input{Name: "goal", Source: given("file", 11, "inputs.goal.source"),
+				Form: given([]documents.Field[string]{given("goal", 11, "inputs.goal.form[0]")}, 11, "inputs.goal.form"),
+				Arguments: []documents.Field[documents.Binding]{
+					given(documents.Binding{Name: "path", Value: documents.Value{From: param("goal")}}, 11, "inputs.goal.path"),
+				}}, 11, "inputs.goal"),
+		}, 9, "inputs"),
 		Environment: given([]documents.Field[documents.Binding]{
-			given(documents.Binding{Name: "BASE", Value: documents.Value{From: "inputs.base"}}, 14),
-			given(documents.Binding{Name: "MODE", Value: documents.Value{Text: "strict"}}, 13),
-		}, 12),
+			given(documents.Binding{Name: "BASE", Value: documents.Value{From: input("base")}}, 14, "environment.BASE"),
+			given(documents.Binding{Name: "MODE", Value: documents.Value{Text: "strict"}}, 13, "environment.MODE"),
+		}, 12, "environment"),
 		Permissions: given(documents.Permissions{
-			Require: given([]string{"repository.read"}, 15),
-			Allow:   given([]string{"repository.read", "network"}, 15),
-		}, 15),
+			Require: given([]string{"repository.read"}, 15, "permissions.require"),
+			Allow:   given([]string{"repository.read", "network"}, 15, "permissions.allow"),
+		}, 15, "permissions"),
 		Workspace: given(documents.Workspace{
-			Access:   given("read-only", 16),
-			Revision: given("inputs.base", 16),
-			Clean:    given(true, 16),
-		}, 16),
+			Access:   given("read-only", 16, "workspace.access"),
+			Revision: given(input("base"), 16, "workspace.revision"),
+			Clean:    given(true, 16, "workspace.clean"),
+		}, 16, "workspace"),
 		Limits: given(documents.Limits{
-			Time: given(20*time.Minute, 18),
-			Cost: given(2.5, 19),
+			Time: given(20*time.Minute, 18, "limits.time"),
+			Cost: given(2.5, 19, "limits.cost"),
 			Stale: given(documents.Stale{
-				RepeatedToolCalls: given(5, 20),
-				ToolCommand:       given(8*time.Minute, 20),
-				NoEvent:           given(10*time.Minute, 20),
-			}, 20),
-		}, 17),
-		Recovery: given(documents.Recovery{Resumes: given(1, 21), Instruction: given("Go on.", 21)}, 21),
-		Output:   given(documents.Output{Schema: given("review-result", 22)}, 22),
+				RepeatedToolCalls: given(5, 20, "limits.stale.repeated_tool_calls"),
+				ToolCommand:       given(8*time.Minute, 20, "limits.stale.tool_command"),
+				NoEvent:           given(10*time.Minute, 20, "limits.stale.no_event"),
+			}, 20, "limits.stale"),
+		}, 17, "limits"),
+		Recovery: given(documents.Recovery{Resumes: given(1, 21, "recovery.resumes"), Instruction: given("Go on.", 21, "recovery.instruction")}, 21, "recovery"),
+		Output:   given(documents.Output{Schema: given("review-result", 22, "output.schema")}, 22, "output"),
 	}
 }
 
@@ -162,11 +164,11 @@ func TestAProcessGivenIsTheCallersOwn(t *testing.T) {
 		name   string
 		change func(*documents.ProcessDefinition)
 	}{
-		{"its guidance", func(p *documents.ProcessDefinition) { p.Guidance.Value[0] = "x" }},
-		{"its skills", func(p *documents.ProcessDefinition) { p.Skills.Value[0] = "x" }},
+		{"its guidance", func(p *documents.ProcessDefinition) { p.Guidance.Value[0].Value = "x" }},
+		{"its skills", func(p *documents.ProcessDefinition) { p.Skills.Value[0].Value = "x" }},
 		{"its params", func(p *documents.ProcessDefinition) { p.Params.Value[0].Value.Name = "x" }},
 		{"its inputs", func(p *documents.ProcessDefinition) { p.Inputs.Value[0].Value.Name = "x" }},
-		{"an input's form", func(p *documents.ProcessDefinition) { p.Inputs.Value[1].Value.Form.Value[0] = "x" }},
+		{"an input's form", func(p *documents.ProcessDefinition) { p.Inputs.Value[1].Value.Form.Value[0].Value = "x" }},
 		{"an input's arguments", func(p *documents.ProcessDefinition) { p.Inputs.Value[0].Value.Arguments[0].Value.Name = "x" }},
 		{"its environment", func(p *documents.ProcessDefinition) { p.Environment.Value[0].Value.Name = "x" }},
 		{"the permissions it requires", func(p *documents.ProcessDefinition) { p.Permissions.Value.Require.Value[0] = "x" }},

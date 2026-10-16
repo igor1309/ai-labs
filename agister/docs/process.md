@@ -2,9 +2,10 @@
 
 ## Roles
 
-- **Owner**: owns the ADRs and the direction; gives the go after each
-  triage. Asked only what would change an ADR or reverse a recorded
-  decision. Reads no code, approves no finding.
+- **Owner**: owns the ADRs and the direction; gives the go to implement
+  a reviewed spec. Asked only what would change an ADR or reverse a
+  recorded decision; a triage that holds no such question goes on
+  without the owner. Reads no code, approves no finding.
 - **Spec writer** (Claude): writes the feature files and the
   implementation notes; triages every review, deciding each finding with
   its reason; shows every input and output in full.
@@ -49,7 +50,8 @@ goes to `backlog/`; nothing is dropped silently.
    Sections share a round where they can.
 8. **Branch review**: `scripts/loop/branch-review.sh`: agister's
    `code_review` on the goal file, rendered to markdown with a triage
-   skeleton; triage; the owner's go.
+   skeleton; triage; its fixes, and the next round, with no go asked,
+   unless the triage holds the owner's question.
 9. **PR**: `/pr-merge`, merge commit, CI in the background; its body
    lists what was rejected and backlogged. The PR is no goal of its own.
 
