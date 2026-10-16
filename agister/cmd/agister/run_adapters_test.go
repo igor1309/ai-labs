@@ -398,10 +398,11 @@ func TestBashsProgramRunsOnTheSupervisor(t *testing.T) {
 	}
 }
 
-// A program claude-code asks for runs on the supervisor as it is asked,
-// its stdin and its line function included, and gives how it ended, each
-// stream as the supervisor kept it; a program that could not start is
-// claude-code's ErrNotStarted, and any other error passes as it is.
+// A program claude-code asks for runs on the supervisor as it is asked, in
+// its context, its stdin and its line function included, and gives how it
+// ended, each stream as the supervisor kept it; a program that could not
+// start is claude-code's ErrNotStarted, and any other error passes as it
+// is.
 func TestClaudeCodesProgramRunsOnTheSupervisor(t *testing.T) {
 	t.Parallel()
 	other := errors.New("broken pipe")
@@ -425,10 +426,12 @@ func TestClaudeCodesProgramRunsOnTheSupervisor(t *testing.T) {
 		t.Run(c.name, func(t *testing.T) {
 			t.Parallel()
 			var ran []supervisor.Program
-			spy := &supervisorSpy{answer: func(_ context.Context, program supervisor.Program) (supervisor.Result, error) {
+			var ended []error
+			spy := &supervisorSpy{answer: func(ctx context.Context, program supervisor.Program) (supervisor.Result, error) {
 				program.Line("a")
 				program.Line = nil
 				ran = append(ran, program)
+				ended = append(ended, ctx.Err())
 				return c.result, c.err
 			}}
 			programs, err := newClaudeCodeSupervised(spy)
@@ -436,7 +439,7 @@ func TestClaudeCodesProgramRunsOnTheSupervisor(t *testing.T) {
 				t.Fatal(err)
 			}
 			var lines []string
-			got, err := programs.Run(context.Background(), claudecode.Program{Name: "claude", Args: []string{"-p"}, Dir: "/r", Env: []string{"A=1"}, Stdin: "m",
+			got, err := programs.Run(endedContext(), claudecode.Program{Name: "claude", Args: []string{"-p"}, Dir: "/r", Env: []string{"A=1"}, Stdin: "m",
 				Line: func(line string) { lines = append(lines, line) }})
 			if !reflect.DeepEqual(got, c.want) || !errors.Is(err, c.wantErr) || errors.Is(err, claudecode.ErrNotStarted) != c.notStarted {
 				t.Errorf("ended %+v, %v; want %+v, %v, not started %v", got, err, c.want, c.wantErr, c.notStarted)
@@ -446,6 +449,9 @@ func TestClaudeCodesProgramRunsOnTheSupervisor(t *testing.T) {
 			}
 			if want := []string{"a"}; !slices.Equal(lines, want) {
 				t.Errorf("lines %q, want %q", lines, want)
+			}
+			if want := []error{context.Canceled}; !reflect.DeepEqual(ended, want) {
+				t.Errorf("the supervisor's contexts ended by %v, want %v", ended, want)
 			}
 		})
 	}
@@ -459,10 +465,10 @@ func TestNewClaudeCodeSupervisedFailsWithoutPrograms(t *testing.T) {
 	}
 }
 
-// A program codex asks for runs on the supervisor as it is asked, its
-// stdin and its line function included, and gives how it ended, each
-// stream as the supervisor kept it; a program that could not start is
-// codex's ErrNotStarted, and any other error passes as it is.
+// A program codex asks for runs on the supervisor as it is asked, in its
+// context, its stdin and its line function included, and gives how it
+// ended, each stream as the supervisor kept it; a program that could not
+// start is codex's ErrNotStarted, and any other error passes as it is.
 func TestCodexsProgramRunsOnTheSupervisor(t *testing.T) {
 	t.Parallel()
 	other := errors.New("broken pipe")
@@ -486,10 +492,12 @@ func TestCodexsProgramRunsOnTheSupervisor(t *testing.T) {
 		t.Run(c.name, func(t *testing.T) {
 			t.Parallel()
 			var ran []supervisor.Program
-			spy := &supervisorSpy{answer: func(_ context.Context, program supervisor.Program) (supervisor.Result, error) {
+			var ended []error
+			spy := &supervisorSpy{answer: func(ctx context.Context, program supervisor.Program) (supervisor.Result, error) {
 				program.Line("a")
 				program.Line = nil
 				ran = append(ran, program)
+				ended = append(ended, ctx.Err())
 				return c.result, c.err
 			}}
 			programs, err := newCodexSupervised(spy)
@@ -497,7 +505,7 @@ func TestCodexsProgramRunsOnTheSupervisor(t *testing.T) {
 				t.Fatal(err)
 			}
 			var lines []string
-			got, err := programs.Run(context.Background(), codex.Program{Name: "codex", Args: []string{"exec", "-"}, Dir: "/r", Env: []string{"A=1"}, Stdin: "m",
+			got, err := programs.Run(endedContext(), codex.Program{Name: "codex", Args: []string{"exec", "-"}, Dir: "/r", Env: []string{"A=1"}, Stdin: "m",
 				Line: func(line string) { lines = append(lines, line) }})
 			if !reflect.DeepEqual(got, c.want) || !errors.Is(err, c.wantErr) || errors.Is(err, codex.ErrNotStarted) != c.notStarted {
 				t.Errorf("ended %+v, %v; want %+v, %v, not started %v", got, err, c.want, c.wantErr, c.notStarted)
@@ -507,6 +515,9 @@ func TestCodexsProgramRunsOnTheSupervisor(t *testing.T) {
 			}
 			if want := []string{"a"}; !slices.Equal(lines, want) {
 				t.Errorf("lines %q, want %q", lines, want)
+			}
+			if want := []error{context.Canceled}; !reflect.DeepEqual(ended, want) {
+				t.Errorf("the supervisor's contexts ended by %v, want %v", ended, want)
 			}
 		})
 	}

@@ -107,8 +107,9 @@ func (s *stream) reply(ended Ended, schema bool) *Reply {
 	return reply
 }
 
-// class is a failed result's class, by its fields as the archive classed
-// it: only a 429 was observed live, the rest follow the fields' names.
+// class is a failed result's class, by its fields: its status and a
+// rejected rate limit where claude-code reports them, else its words,
+// since a failure before any request, such as no login, has no status.
 func (s *stream) class(r *event) Class {
 	status := 0
 	if r.APIErrorStatus != nil {
@@ -118,7 +119,7 @@ func (s *stream) class(r *event) Class {
 	switch {
 	case status == 429 || s.rejected:
 		return RateLimited
-	case status == 401 || status == 403:
+	case status == 401 || status == 403 || strings.Contains(strings.ToLower(r.Result), "not logged in"):
 		return Auth
 	case status == 413 || strings.Contains(words, "prompt is too long") || strings.Contains(words, "context window"):
 		return ContextOverflow

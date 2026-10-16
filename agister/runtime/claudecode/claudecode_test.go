@@ -11,17 +11,19 @@ import (
 )
 
 // supervisorSpy answers in place of the supervisor: it keeps each program
-// it is asked to run, its line function left out, gives that function the
-// lines its test gives, in order, and gives the result and the error its
-// test gives.
+// it is asked to run, its line function left out, and why its context had
+// ended, nil where it had not; gives that function the lines its test
+// gives, in order, and gives the result and the error its test gives.
 type supervisorSpy struct {
 	lines  []string
 	result claudecode.Ended
 	err    error
 	asked  []claudecode.Program
+	ended  []error
 }
 
-func (s *supervisorSpy) Run(_ context.Context, program claudecode.Program) (claudecode.Ended, error) {
+func (s *supervisorSpy) Run(ctx context.Context, program claudecode.Program) (claudecode.Ended, error) {
+	s.ended = append(s.ended, ctx.Err())
 	for _, line := range s.lines {
 		program.Line(line)
 	}
@@ -195,6 +197,22 @@ func TestAResultWithNoTextKeepsTheLastAssistantText(t *testing.T) {
 	}
 }
 
+// A turn runs on the supervisor in the context it is given: one ended
+// before its program starts reaches the supervisor ended, so the
+// supervisor ends the program as it ends any.
+func TestATurnsContextReachesTheSupervisor(t *testing.T) {
+	t.Parallel()
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	spy := &supervisorSpy{}
+	if _, err := wrapper(t, spy).Run(ctx, claudecode.Turn{Message: "m"}); err != nil {
+		t.Fatal(err)
+	}
+	if want := []error{context.Canceled}; !reflect.DeepEqual(spy.ended, want) {
+		t.Errorf("the supervisor's contexts ended by %v, want %v", spy.ended, want)
+	}
+}
+
 // turn.feature, "A failed result is classed by its fields".
 func TestAFailedResultIsClassedByItsFields(t *testing.T) {
 	t.Parallel()
@@ -212,6 +230,8 @@ func TestAFailedResultIsClassedByItsFields(t *testing.T) {
 			claudecode.Auth, "Invalid API key"},
 		{"status 403", initLine, `{"type":"result","subtype":"success","is_error":true,"api_error_status":403,"result":"Forbidden"}`,
 			claudecode.Auth, "Forbidden"},
+		{"not logged in", initLine, `{"type":"result","subtype":"success","is_error":true,"result":"Not logged in · Please run /login"}`,
+			claudecode.Auth, "Not logged in · Please run /login"},
 		{"status 413", initLine, `{"type":"result","subtype":"success","is_error":true,"api_error_status":413,"result":"Request too large"}`,
 			claudecode.ContextOverflow, "Request too large"},
 		{"a prompt too long", initLine, `{"type":"result","subtype":"success","is_error":true,"result":"Prompt is too long"}`,

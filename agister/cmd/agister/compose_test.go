@@ -243,6 +243,47 @@ func TestTheCommandRunsOverEveryRuntimeWrapperAndTheUsersHome(t *testing.T) {
 	}
 }
 
+// compose.feature, "AGISTER_HOME names home's folder". Home's folder holds
+// a runtime of each wrapper's contract, and no other folder holds any:
+// each resolves only where home is read at the folder AGISTER_HOME names,
+// or at the user's ".agister" where it names none.
+func TestAgisterHomeNamesHomesFolder(t *testing.T) {
+	t.Parallel()
+	cases := []struct {
+		name    string
+		environ []string
+		home    string
+	}{
+		{"set", []string{"HOME=/u", "AGISTER_HOME=/h"}, "/h"},
+		{"set twice, the last kept", []string{"AGISTER_HOME=/x", "AGISTER_HOME=/h"}, "/h"},
+		{"unset", []string{"HOME=/u"}, "/u/.agister"},
+		{"empty", []string{"AGISTER_HOME=/x", "AGISTER_HOME="}, "/u/.agister"},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
+			settings := map[string]string{}
+			for _, contract := range []string{"claude-code/3", "codex/2", "pi/1", "bash/1"} {
+				adapter, _, _ := strings.Cut(contract, "/")
+				settings[c.home+"/runtimes/"+adapter+".yaml"] = fmt.Sprintf(
+					"schema: agister.runtime/v1alpha1\nadapter: %s\ncontract: %s\n", adapter, contract)
+			}
+			machine := idleHost(t)
+			machine.environ = c.environ
+			var stdout, stderr strings.Builder
+			commandLine, err := build("/u", &linksSpy{}, newFilesystemSpy(settings), rootSpy{root: "/r"}, programsSpy{t}, schemaValidator{}, machine, &stdout, &stderr)
+			if err != nil {
+				t.Fatal(err)
+			}
+			code := commandLine.Run([]string{"check"}, "/r")
+			got := ran{stdout: stdout.String(), stderr: stderr.String(), code: code}
+			if want := (ran{stdout: "4 resolve, 0 refused\n"}); got != want {
+				t.Errorf("ran %+v, want %+v", got, want)
+			}
+		})
+	}
+}
+
 // compose.feature, "A launch through a link reads the settings where it
 // leads". "/o/x" leads to "/r/a", below the worktree root "/r", which git
 // gives of either: walked up from "/o/x", "/o/.agister" would be the

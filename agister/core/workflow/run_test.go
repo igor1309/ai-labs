@@ -431,25 +431,45 @@ func TestWhatCannotBeResolvedRefusesTheRun(t *testing.T) {
 }
 
 // run.feature, "The run's usage sums what its calls reported, and its
-// reason is its last call's": a count none reported is unknown, and one a
-// call did not report sums the others'.
+// reason is its last call's": each of the five counts sums its own, a
+// count none reported is unknown, one a call did not report sums the
+// others', and 0 reported is 0.
 func TestTheRunsUsageSumsWhatItsCallsReported(t *testing.T) {
 	t.Parallel()
 	count := func(n int64) *int64 { return &n }
-	f := newFixture(t, workflow.Boundary{}, map[string]func() workflow.Result{
-		"a": func() workflow.Result {
-			return workflow.Result{Status: workflow.Completed, Usage: workflow.Usage{Input: count(10), Output: count(3)}}
-		},
-		"b": func() workflow.Result {
-			return workflow.Result{Status: workflow.Failed, Class: "auth", Usage: workflow.Usage{Input: count(5)}, Reason: "r"}
-		},
-	})
-	got := f.runner.Run(context.Background(), workflow.Workflow{Steps: []workflow.Step{{Name: "a"}, {Name: "b"}}}, nil)
-	if want := (workflow.Usage{Input: count(15), Output: count(3)}); !reflect.DeepEqual(got.Usage, want) {
-		t.Errorf("usage %+v, want %+v", got.Usage, want)
+	cases := []struct {
+		name       string
+		a, b, want workflow.Usage
+	}{
+		{"input and output", workflow.Usage{Input: count(10), Output: count(3)}, workflow.Usage{Input: count(5)},
+			workflow.Usage{Input: count(15), Output: count(3)}},
+		{"every count", workflow.Usage{Input: count(1), Output: count(2), CacheRead: count(3), CacheWrite: count(4), Reasoning: count(5)},
+			workflow.Usage{Input: count(10), Output: count(20), CacheRead: count(30), CacheWrite: count(40), Reasoning: count(50)},
+			workflow.Usage{Input: count(11), Output: count(22), CacheRead: count(33), CacheWrite: count(44), Reasoning: count(55)}},
+		{"each by one call", workflow.Usage{CacheRead: count(3), Reasoning: count(5)}, workflow.Usage{CacheWrite: count(4)},
+			workflow.Usage{CacheRead: count(3), CacheWrite: count(4), Reasoning: count(5)}},
+		{"every count 0", workflow.Usage{Input: count(0), Output: count(0), CacheRead: count(0), CacheWrite: count(0), Reasoning: count(0)},
+			workflow.Usage{},
+			workflow.Usage{Input: count(0), Output: count(0), CacheRead: count(0), CacheWrite: count(0), Reasoning: count(0)}},
+		{"none reported", workflow.Usage{}, workflow.Usage{}, workflow.Usage{}},
 	}
-	if got.Reason != "r" {
-		t.Errorf("reason %q, want r", got.Reason)
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
+			f := newFixture(t, workflow.Boundary{}, map[string]func() workflow.Result{
+				"a": func() workflow.Result { return workflow.Result{Status: workflow.Completed, Usage: c.a} },
+				"b": func() workflow.Result {
+					return workflow.Result{Status: workflow.Failed, Class: "auth", Usage: c.b, Reason: "r"}
+				},
+			})
+			got := f.runner.Run(context.Background(), workflow.Workflow{Steps: []workflow.Step{{Name: "a"}, {Name: "b"}}}, nil)
+			if !reflect.DeepEqual(got.Usage, c.want) {
+				t.Errorf("usage %+v, want %+v", got.Usage, c.want)
+			}
+			if got.Reason != "r" {
+				t.Errorf("reason %q, want r", got.Reason)
+			}
+		})
 	}
 }
 

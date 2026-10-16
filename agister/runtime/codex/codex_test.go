@@ -16,9 +16,10 @@ import (
 
 // supervisorSpy answers in place of the supervisor: it keeps each program
 // it is asked to run, its line function left out, and the bytes of the
-// file its --output-schema names, gives that function the lines its test
-// gives, in order, runs its test's hook, and gives the result and the
-// error its test gives.
+// file its --output-schema names, and why its context had ended, nil
+// where it had not; gives that function the lines its test gives, in
+// order, runs its test's hook, and gives the result and the error its test
+// gives.
 type supervisorSpy struct {
 	lines  []string
 	result codex.Ended
@@ -26,9 +27,11 @@ type supervisorSpy struct {
 	during func()
 	asked  []codex.Program
 	schema []byte
+	ended  []error
 }
 
-func (s *supervisorSpy) Run(_ context.Context, program codex.Program) (codex.Ended, error) {
+func (s *supervisorSpy) Run(ctx context.Context, program codex.Program) (codex.Ended, error) {
+	s.ended = append(s.ended, ctx.Err())
 	if i := slices.Index(program.Args, "--output-schema"); i >= 0 && i+1 < len(program.Args) {
 		schema, err := os.ReadFile(program.Args[i+1])
 		if err != nil {
@@ -412,5 +415,21 @@ func TestTheWrapperNeedsASupervisorAndAFolder(t *testing.T) {
 	}
 	if _, err := codex.New(&supervisorSpy{}, ""); err == nil {
 		t.Error("a codex wrapper built with no folder, want an error")
+	}
+}
+
+// A turn runs on the supervisor in the context it is given: one ended
+// before its program starts reaches the supervisor ended, so the
+// supervisor ends the program as it ends any.
+func TestATurnsContextReachesTheSupervisor(t *testing.T) {
+	t.Parallel()
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	spy := &supervisorSpy{}
+	if _, err := wrapper(t, spy, t.TempDir()).Run(ctx, codex.Turn{Message: "m", Options: []string{"read-only"}}); err != nil {
+		t.Fatal(err)
+	}
+	if want := []error{context.Canceled}; !reflect.DeepEqual(spy.ended, want) {
+		t.Errorf("the supervisor's contexts ended by %v, want %v", spy.ended, want)
 	}
 }

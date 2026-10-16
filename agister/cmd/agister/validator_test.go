@@ -1,6 +1,9 @@
 package main
 
 import (
+	"net/url"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -35,5 +38,21 @@ func TestTheValidatorIsTheSchemasOwn(t *testing.T) {
 				t.Errorf("rejected with %v, want a rejection saying %q", err, c.why)
 			}
 		})
+	}
+}
+
+// model.feature, "The validator is the schema's own": a schema is its
+// bytes alone, so one that refers to a schema in a file fails to compile,
+// and the output is rejected whatever the file holds.
+func TestTheValidatorLoadsNoReferencedFile(t *testing.T) {
+	t.Parallel()
+	referenced := filepath.Join(t.TempDir(), "answer.schema.json")
+	if err := os.WriteFile(referenced, []byte(`{"type":"object"}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	schema := `{"$ref":"` + (&url.URL{Scheme: "file", Path: filepath.ToSlash(referenced)}).String() + `"}`
+	err := schemaValidator{}.Validate([]byte(schema), []byte(`{"ok":true}`))
+	if err == nil || !strings.Contains(err.Error(), "the schema") {
+		t.Errorf("Validate with a schema referring to %s: %v, want the schema rejected", referenced, err)
 	}
 }

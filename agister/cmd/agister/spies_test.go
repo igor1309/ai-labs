@@ -272,3 +272,11 @@ func idleHost(t *testing.T) host {
 			return nil, func() {}
 		}}
 }
+
+// endedContext is a context that has ended, cancelled: one an adapter
+// passes on reaches its collaborator ended.
+func endedContext() context.Context {
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	return ctx
+}

@@ -38,9 +38,9 @@ func TestARequestNamesAWorkflowOrAStepWithItsParams(t *testing.T) {
 }
 
 // run.feature, "The result is printed as JSON, and the exit code says
-// whether the run completed". A cost, a count of usage, a session and a
-// reason the run reports are printed as they are, and a run with no
-// output, no sessions or no warnings prints them as none.
+// whether the run completed". A cost, each count of usage, 0 included, a
+// session and a reason the run reports are printed as they are, and a run
+// with no output, no sessions or no warnings prints them as none.
 func TestTheResultIsPrintedAsJSONAndTheExitCodeSaysWhetherTheRunCompleted(t *testing.T) {
 	t.Parallel()
 	started := time.Date(2026, 10, 16, 10, 0, 0, 0, time.UTC)
@@ -64,6 +64,7 @@ func TestTheResultIsPrintedAsJSONAndTheExitCodeSaysWhetherTheRunCompleted(t *tes
 `
 	cost := 0.25
 	input, output := int64(10), int64(3)
+	count := func(n int64) *int64 { return &n }
 	cases := []struct {
 		name   string
 		result cli.Result
@@ -125,6 +126,42 @@ func TestTheResultIsPrintedAsJSONAndTheExitCodeSaysWhetherTheRunCompleted(t *tes
   "sessions": {
     "ask": "s1"
   },
+  "reason": null,
+  "warnings": []
+}
+`, 0},
+		{"completed, every count of usage reported", cli.Result{Status: cli.RunCompleted, Output: map[string]any{}, Timing: timing,
+			Usage: cli.Usage{Input: count(10), Output: count(3), CacheRead: count(7), CacheWrite: count(5), Reasoning: count(2)}}, `{
+  "status": "completed",
+  "class": null,
+  "output": {},
+` + printedTiming + `  "cost": null,
+  "usage": {
+    "input_tokens": 10,
+    "output_tokens": 3,
+    "cache_read_tokens": 7,
+    "cache_write_tokens": 5,
+    "reasoning_tokens": 2
+  },
+  "sessions": {},
+  "reason": null,
+  "warnings": []
+}
+`, 0},
+		{"completed, every count of usage 0", cli.Result{Status: cli.RunCompleted, Output: map[string]any{}, Timing: timing,
+			Usage: cli.Usage{Input: count(0), Output: count(0), CacheRead: count(0), CacheWrite: count(0), Reasoning: count(0)}}, `{
+  "status": "completed",
+  "class": null,
+  "output": {},
+` + printedTiming + `  "cost": null,
+  "usage": {
+    "input_tokens": 0,
+    "output_tokens": 0,
+    "cache_read_tokens": 0,
+    "cache_write_tokens": 0,
+    "reasoning_tokens": 0
+  },
+  "sessions": {},
   "reason": null,
   "warnings": []
 }

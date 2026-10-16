@@ -198,38 +198,56 @@ func TestACompletedCallsOutputIsWhatTheReplyGives(t *testing.T) {
 }
 
 // reply.feature, "Usage, session and cost are as the runtime reported
-// them", whatever the call's status.
+// them", whatever the call's status: each of the five counts as reported,
+// each its own, 0 kept as 0, and one not reported unknown, printed as null.
 func TestUsageSessionAndCostAreAsTheRuntimeReportedThem(t *testing.T) {
 	t.Parallel()
-	input, output, cost := int64(10), int64(3), 0.25
-	cases := []struct {
+	count := func(n int64) *int64 { return &n }
+	cost := 0.25
+	usages := []struct {
+		name    string
+		usage   call.Usage
+		printed string
+	}{
+		{"input and output", call.Usage{Input: count(10), Output: count(3)},
+			`{"Input":10,"Output":3,"CacheRead":null,"CacheWrite":null,"Reasoning":null}`},
+		{"every count", call.Usage{Input: count(10), Output: count(3), CacheRead: count(7), CacheWrite: count(5), Reasoning: count(2)},
+			`{"Input":10,"Output":3,"CacheRead":7,"CacheWrite":5,"Reasoning":2}`},
+		{"every count 0", call.Usage{Input: count(0), Output: count(0), CacheRead: count(0), CacheWrite: count(0), Reasoning: count(0)},
+			`{"Input":0,"Output":0,"CacheRead":0,"CacheWrite":0,"Reasoning":0}`},
+		{"none reported", call.Usage{},
+			`{"Input":null,"Output":null,"CacheRead":null,"CacheWrite":null,"Reasoning":null}`},
+	}
+	statuses := []struct {
 		name    string
 		failure call.Class
 	}{
 		{"completed", ""},
 		{"failed", call.Auth},
 	}
-	for _, c := range cases {
-		t.Run(c.name, func(t *testing.T) {
-			t.Parallel()
-			spy := &runtimeSpy{turn: replies(call.Reply{
-				Text: "t", Session: "s1", Cost: &cost, Usage: call.Usage{Input: &input, Output: &output}, Failure: c.failure,
-			})}
-			got := modelCaller(t, spy, &validatorSpy{}).Call(context.Background(), call.Step{})
-			if got.Session != "s1" || got.Cost == nil || *got.Cost != 0.25 {
-				t.Errorf("session %q, cost %v; want s1, 0.25", got.Session, got.Cost)
-			}
-			if want := (&call.Usage{Input: &input, Output: &output}); !reflect.DeepEqual(got.Usage, want) {
-				t.Errorf("usage %+v, want %+v", got.Usage, want)
-			}
-			printed, err := json.Marshal(got.Usage)
-			if err != nil {
-				t.Fatal(err)
-			}
-			if want := `{"Input":10,"Output":3,"CacheRead":null,"CacheWrite":null,"Reasoning":null}`; string(printed) != want {
-				t.Errorf("usage printed %s, want %s", printed, want)
-			}
-		})
+	for _, u := range usages {
+		for _, c := range statuses {
+			t.Run(c.name+", "+u.name, func(t *testing.T) {
+				t.Parallel()
+				spy := &runtimeSpy{turn: replies(call.Reply{
+					Text: "t", Session: "s1", Cost: &cost, Usage: u.usage, Failure: c.failure,
+				})}
+				got := modelCaller(t, spy, &validatorSpy{}).Call(context.Background(), call.Step{})
+				if got.Session != "s1" || got.Cost == nil || *got.Cost != 0.25 {
+					t.Errorf("session %q, cost %v; want s1, 0.25", got.Session, got.Cost)
+				}
+				if want := &u.usage; !reflect.DeepEqual(got.Usage, want) {
+					t.Errorf("usage %+v, want %+v", got.Usage, want)
+				}
+				printed, err := json.Marshal(got.Usage)
+				if err != nil {
+					t.Fatal(err)
+				}
+				if string(printed) != u.printed {
+					t.Errorf("usage printed %s, want %s", printed, u.printed)
+				}
+			})
+		}
 	}
 }
 

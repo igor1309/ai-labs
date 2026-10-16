@@ -15,28 +15,33 @@ import (
 )
 
 // claudeCodeRunSpy is a spy of the claude-code wrapper: it keeps each turn
-// and answers result and err.
+// and why its context had ended, nil where it had not, and answers result
+// and err.
 type claudeCodeRunSpy struct {
 	result claudecode.Result
 	err    error
 	turns  []claudecode.Turn
+	ended  []error
 }
 
-func (s *claudeCodeRunSpy) Run(_ context.Context, turn claudecode.Turn) (claudecode.Result, error) {
+func (s *claudeCodeRunSpy) Run(ctx context.Context, turn claudecode.Turn) (claudecode.Result, error) {
 	s.turns = append(s.turns, turn)
+	s.ended = append(s.ended, ctx.Err())
 	return s.result, s.err
 }
 
-// codexRunSpy is a spy of the codex wrapper: it keeps each turn and answers
-// result and err.
+// codexRunSpy is a spy of the codex wrapper: it keeps each turn and why
+// its context had ended, nil where it had not, and answers result and err.
 type codexRunSpy struct {
 	result codex.Result
 	err    error
 	turns  []codex.Turn
+	ended  []error
 }
 
-func (s *codexRunSpy) Run(_ context.Context, turn codex.Turn) (codex.Result, error) {
+func (s *codexRunSpy) Run(ctx context.Context, turn codex.Turn) (codex.Result, error) {
 	s.turns = append(s.turns, turn)
+	s.ended = append(s.ended, ctx.Err())
 	return s.result, s.err
 }
 
@@ -44,12 +49,12 @@ func (s *codexRunSpy) Run(_ context.Context, turn codex.Turn) (codex.Result, err
 var modelTurn = call.Turn{Prompt: "m", Dir: "/r", Env: []string{"A=1"}, Instruction: "i", Model: "opus", Effort: "high",
 	Options: []string{"Read"}, Schema: []byte("{}")}
 
-// A turn on claude-code runs its prompt as the message, with its
-// directory, environment, instruction, model, effort, options and schema,
-// and gives how the program ended and its reply in core's words, its
-// failure class by its name; a program ended by a signal gives no reply; a
-// program that could not start is core's ErrNotStarted, and any other
-// error passes as it is.
+// A turn on claude-code runs its prompt as the message, in its context,
+// with its directory, environment, instruction, model, effort, options and
+// schema, and gives how the program ended and its reply in core's words,
+// its failure class by its name; a program ended by a signal gives no
+// reply; a program that could not start is core's ErrNotStarted, and any
+// other error passes as it is.
 func TestATurnOnClaudeCodeRunsItsPromptAsTheMessage(t *testing.T) {
 	t.Parallel()
 	other := errors.New("broken pipe")
@@ -84,7 +89,7 @@ func TestATurnOnClaudeCodeRunsItsPromptAsTheMessage(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			got, err := turns.Turn(context.Background(), modelTurn)
+			got, err := turns.Turn(endedContext(), modelTurn)
 			if !reflect.DeepEqual(got, c.want) || !errors.Is(err, c.wantErr) || errors.Is(err, call.ErrNotStarted) != c.notStarted {
 				t.Errorf("ended %+v, %v; want %+v, %v, not started %v", got, err, c.want, c.wantErr, c.notStarted)
 			}
@@ -93,16 +98,19 @@ func TestATurnOnClaudeCodeRunsItsPromptAsTheMessage(t *testing.T) {
 			if !reflect.DeepEqual(spy.turns, want) {
 				t.Errorf("turns %+v, want %+v", spy.turns, want)
 			}
+			if want := []error{context.Canceled}; !reflect.DeepEqual(spy.ended, want) {
+				t.Errorf("the wrapper's contexts ended by %v, want %v", spy.ended, want)
+			}
 		})
 	}
 }
 
-// A turn on codex runs its prompt as the message, with its directory,
-// environment, instruction, model, effort, options and schema, and gives
-// how the program ended and its reply in core's words, its failure class
-// by its name and its cost unknown; a program ended by a signal gives no
-// reply; a program that could not start is core's ErrNotStarted, and any
-// other error passes as it is.
+// A turn on codex runs its prompt as the message, in its context, with its
+// directory, environment, instruction, model, effort, options and schema,
+// and gives how the program ended and its reply in core's words, its
+// failure class by its name and its cost unknown; a program ended by a
+// signal gives no reply; a program that could not start is core's
+// ErrNotStarted, and any other error passes as it is.
 func TestATurnOnCodexRunsItsPromptAsTheMessage(t *testing.T) {
 	t.Parallel()
 	other := errors.New("broken pipe")
@@ -136,7 +144,7 @@ func TestATurnOnCodexRunsItsPromptAsTheMessage(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			got, err := turns.Turn(context.Background(), modelTurn)
+			got, err := turns.Turn(endedContext(), modelTurn)
 			if !reflect.DeepEqual(got, c.want) || !errors.Is(err, c.wantErr) || errors.Is(err, call.ErrNotStarted) != c.notStarted {
 				t.Errorf("ended %+v, %v; want %+v, %v, not started %v", got, err, c.want, c.wantErr, c.notStarted)
 			}
@@ -144,6 +152,9 @@ func TestATurnOnCodexRunsItsPromptAsTheMessage(t *testing.T) {
 				Options: []string{"Read"}, Schema: []byte("{}")}}
 			if !reflect.DeepEqual(spy.turns, want) {
 				t.Errorf("turns %+v, want %+v", spy.turns, want)
+			}
+			if want := []error{context.Canceled}; !reflect.DeepEqual(spy.ended, want) {
+				t.Errorf("the wrapper's contexts ended by %v, want %v", spy.ended, want)
 			}
 		})
 	}

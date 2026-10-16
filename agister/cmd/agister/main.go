@@ -12,6 +12,8 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"slices"
+	"strings"
 	"syscall"
 	"time"
 
@@ -114,7 +116,7 @@ func notified(kinds ...os.Signal) signals {
 // wrapper's facts, the bash, claude-code and codex wrappers' turns run by
 // programs, its runs on machine, codex's schemas under its temporary
 // folder, a call's output checked by validator, for the user whose home
-// directory is user: home's folder is its ".agister" (ADR-002, rule 2).
+// directory is user: home's folder is homeFolder's.
 func build(user string, links links, fs layout.FileSystem, roots layout.WorktreeRoot, programs programs, validator call.Validator, machine host, stdout, stderr io.Writer) (*cli.CLI, error) {
 	supervising, err := newSupervised(programs)
 	if err != nil {
@@ -163,12 +165,28 @@ func build(user string, links links, fs layout.FileSystem, roots layout.Worktree
 		{contract: claudeFacts.Contract, inputs: claudeCodeInputs(claudeFacts.Inputs), runtime: claudeTurns},
 		{contract: codexFacts.Contract, inputs: codexInputs(codexFacts.Inputs), runtime: codexTurns},
 	}
-	home := filepath.Join(user, ".agister")
+	home := homeFolder(user, machine.environ)
 	runner, err := newRuns(home, links, fs, roots, wrappers, turns, validator, machine)
 	if err != nil {
 		return nil, err
 	}
 	return newCommandLine(home, links, fs, roots, wrappers, runner, stdout, stderr)
+}
+
+// homeFolder is home's folder (ADR-002, rule 2): AGISTER_HOME where
+// environ sets it, its last value as a child's environment keeps it, else
+// the user's ".agister". It is a seam, so other settings are tried while
+// the runtimes keep their logins under the user's home directory.
+func homeFolder(user string, environ []string) string {
+	for _, v := range slices.Backward(environ) {
+		if folder, ok := strings.CutPrefix(v, "AGISTER_HOME="); ok {
+			if folder != "" {
+				return folder
+			}
+			break
+		}
+	}
+	return filepath.Join(user, ".agister")
 }
 
 // newChecker is check over the settings of home's folder and the launch

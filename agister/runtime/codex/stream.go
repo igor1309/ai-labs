@@ -94,9 +94,8 @@ func output(message string) ([]byte, Class, string) {
 	return []byte(trimmed), "", ""
 }
 
-// class is a failed turn's class, by its message's words as the archive
-// classed it: codex reports a failure as text alone, and none of these was
-// observed live.
+// class is a failed turn's class, by its message's words: codex reports
+// a failure as text alone.
 func class(message string) Class {
 	words := strings.ToLower(message)
 	has := func(found ...string) bool {
