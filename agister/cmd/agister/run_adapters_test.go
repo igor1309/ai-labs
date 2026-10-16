@@ -510,8 +510,8 @@ func (s *groupProcessSpy) Signal(signal syscall.Signal) error {
 func (s *groupProcessSpy) Exited() error    { return s.exited }
 func (s *groupProcessSpy) Wait() group.Exit { return s.exit }
 
-// The supervisor's program is started as gokit's command, its stderr the
-// supervisor's file; what the check, the start and the process answer
+// The supervisor's program is started as gokit's command, its stdin and
+// stderr the supervisor's files; what the check, the start and the process answer
 // passes as gokit gives it, and an exit's code or signal in the
 // supervisor's words.
 func TestTheSupervisorsProgramsStartInGokitsProcessGroups(t *testing.T) {
@@ -528,7 +528,7 @@ func TestTheSupervisorsProgramsStartInGokitsProcessGroups(t *testing.T) {
 	} {
 		t.Run(c.name, func(t *testing.T) {
 			t.Parallel()
-			stderr := new(os.File)
+			stdin, stderr := new(os.File), new(os.File)
 			stdout := io.NopCloser(strings.NewReader("out"))
 			signaled, exited := errors.New("no such group"), errors.New("cannot observe")
 			process := &groupProcessSpy{stdout: stdout, signaled: signaled, exited: exited, exit: c.exit}
@@ -537,11 +537,11 @@ func TestTheSupervisorsProgramsStartInGokitsProcessGroups(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			started, err := starter.Start(supervisor.Program{Name: "bash", Args: []string{"-c", "echo"}, Dir: "/r", Env: []string{"A=1"}}, stderr)
+			started, err := starter.Start(supervisor.Program{Name: "bash", Args: []string{"-c", "echo"}, Dir: "/r", Env: []string{"A=1"}}, stdin, stderr)
 			if err != nil {
 				t.Fatal(err)
 			}
-			want := []group.Command{{Name: "bash", Args: []string{"-c", "echo"}, Dir: "/r", Env: []string{"A=1"}, Stderr: stderr}}
+			want := []group.Command{{Name: "bash", Args: []string{"-c", "echo"}, Dir: "/r", Env: []string{"A=1"}, Stdin: stdin, Stderr: stderr}}
 			if !reflect.DeepEqual(groups.commands, want) {
 				t.Errorf("started %+v, want %+v", groups.commands, want)
 			}
@@ -576,7 +576,7 @@ func TestGokitsFailuresReachTheSupervisorAsTheyAre(t *testing.T) {
 	if err := starter.CheckExitObservation(); err != unsupported {
 		t.Errorf("check: %v, want %v", err, unsupported)
 	}
-	if process, err := starter.Start(supervisor.Program{Name: "bash"}, nil); process != nil || err != broken {
+	if process, err := starter.Start(supervisor.Program{Name: "bash"}, nil, nil); process != nil || err != broken {
 		t.Errorf("start: %v, %v; want no process, %v", process, err, broken)
 	}
 }

@@ -780,8 +780,8 @@ type processGroups interface {
 }
 
 // groupStarter answers the supervisor's starter from gokit's process
-// groups: a program is started as gokit's command, its stderr the file the
-// supervisor gives.
+// groups: a program is started as gokit's command, its stdin and stderr
+// the files the supervisor gives.
 type groupStarter struct {
 	groups processGroups
 }
@@ -795,8 +795,8 @@ func newGroupStarter(groups processGroups) (*groupStarter, error) {
 
 func (g *groupStarter) CheckExitObservation() error { return g.groups.CheckExitObservation() }
 
-func (g *groupStarter) Start(program supervisor.Program, stderr *os.File) (supervisor.Process, error) {
-	process, err := g.groups.Start(group.Command{Name: program.Name, Args: program.Args, Dir: program.Dir, Env: program.Env, Stderr: stderr})
+func (g *groupStarter) Start(program supervisor.Program, stdin, stderr *os.File) (supervisor.Process, error) {
+	process, err := g.groups.Start(group.Command{Name: program.Name, Args: program.Args, Dir: program.Dir, Env: program.Env, Stdin: stdin, Stderr: stderr})
 	if err != nil {
 		return nil, err
 	}

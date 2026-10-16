@@ -231,7 +231,7 @@ func TestANamedWorkflowRunsItsStepsInOrderBound(t *testing.T) {
 		t.Fatalf("stderr %q, exit %d; want none, 0", got.stderr, got.code)
 	}
 	if want := []supervisor.Program{bashProgram(`echo "$what"`, "what=hi"), bashProgram(`echo "$what"`, "what=hi\n")}; !reflect.DeepEqual(f.supervisor.ran(), want) {
-		t.Errorf("ran %q, want %q", f.supervisor.ran(), want)
+		t.Errorf("ran %#v, want %#v", f.supervisor.ran(), want)
 	}
 	if p := printedOf(t, got); p.Status != "completed" || p.Class != nil || !reflect.DeepEqual(p.Output, map[string]any{"said": "hi\n\n"}) {
 		t.Errorf("printed %+v, want completed, no class, said %q", p, "hi\n\n")

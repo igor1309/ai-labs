@@ -1,12 +1,14 @@
 // Package supervisor is a wrapper (ADR-001; ADR-012, rule 6), in its own
 // types: it starts a program in a directory with an environment, the
-// program leading a process group of its own; keeps the ends of its stdout
-// and stderr, with their size and digest; and ends all the group started,
+// program leading a process group of its own; writes its stdin; gives each
+// line of its stdout as it is read; keeps the ends of its stdout and
+// stderr, with their size and digest; and ends all the group started,
 // when its context ends and when the program exits. Output held open by a
 // process that left the group is read no longer than the grace.
 package supervisor
 
 import (
+	"bytes"
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
@@ -28,20 +30,27 @@ const (
 	// group is killed, and how long its streams are read once it and its
 	// group have ended.
 	Grace = 2 * time.Second
+	// LongestLine is the longest line of stdout given, in bytes, its newline
+	// not counted: a longer one is skipped, so a program cannot make the
+	// supervisor hold all it writes.
+	LongestLine = 8 << 20
 )
 
 // ErrNotStarted is the error of a program that could not start.
 var ErrNotStarted = errors.New("the program could not start")
 
 // Program is a program to run: its name, a path or a name looked up on
-// PATH; its arguments; its directory; and its environment, as
-// "KEY=value", over the supervisor's own: an entry replaces a variable of
-// the same name.
+// PATH; its arguments; its directory; its environment, as "KEY=value",
+// over the supervisor's own: an entry replaces a variable of the same
+// name; the text written to its stdin; and the function given each line of
+// its stdout, nil for none.
 type Program struct {
-	Name string
-	Args []string
-	Dir  string
-	Env  []string
+	Name  string
+	Args  []string
+	Dir   string
+	Env   []string
+	Stdin string
+	Line  func(line string)
 }
 
 // Result is how a program ended, and what it wrote.
@@ -73,9 +82,10 @@ type Starter interface {
 	// CheckExitObservation fails where a program's exit cannot be observed
 	// before it is reaped.
 	CheckExitObservation() error
-	// Start starts program as it is given, its stderr written to the file
-	// stderr: no copy of it outlives the program's exit.
-	Start(program Program, stderr *os.File) (Process, error)
+	// Start starts program as it is given, its stdin read from the file
+	// stdin and its stderr written to the file stderr: no copy of either
+	// outlives the program's exit.
+	Start(program Program, stdin, stderr *os.File) (Process, error)
 }
 
 // Process is a started program and the group it leads.
@@ -130,7 +140,11 @@ func New(timer Timer, programs Starter, captured Captured) (*Supervisor, error) 
 
 // Run runs program and gives how it ended once it and all its group have
 // ended. The directory is given with its links resolved, so the program's
-// working directory and its PWD name the same path. When ctx ends, the
+// working directory and its PWD name the same path. Its stdin is written
+// as its stdout is read, then closed; what it does not read is dropped.
+// Each line of stdout, its newline removed, is given to program.Line as it
+// is read, and a last line with no newline once stdout has been read to
+// its end; a line longer than LongestLine is skipped. When ctx ends, the
 // group is sent SIGTERM, then SIGKILL once Grace has passed; when the
 // program exits, what it left running in its group is killed. A stream
 // held open once the group has ended, by a process that left it, is read
@@ -147,35 +161,64 @@ func (s *Supervisor) Run(ctx context.Context, program Program) (Result, error) {
 		}
 		program.Dir = resolved
 	}
-	// stderr is a pipe of its own, given to the program as a file: Wait
-	// then copies nothing, and returns once the program exits.
-	stderr, stderrWriter, err := os.Pipe()
+	// stdin and stderr are pipes of their own, given to the program as
+	// files: Wait then copies nothing, and returns once the program exits.
+	stdinReader, stdin, err := os.Pipe()
 	if err != nil {
 		return Result{}, notStarted(program, err)
 	}
-	process, err := s.programs.Start(program, stderrWriter)
+	stderr, stderrWriter, err := os.Pipe()
+	if err != nil {
+		stdinReader.Close()
+		stdin.Close()
+		return Result{}, notStarted(program, err)
+	}
+	process, err := s.programs.Start(program, stdinReader, stderrWriter)
+	stdinReader.Close()
 	stderrWriter.Close()
 	if err != nil {
+		stdin.Close()
 		stderr.Close()
 		return Result{}, notStarted(program, err)
 	}
+	// Once the program and all who hold stdin are gone, a write fails and
+	// what is left of the text is dropped; closing stdin ends a write in
+	// progress.
+	written := make(chan struct{})
+	go func() {
+		defer close(written)
+		_, _ = io.WriteString(stdin, program.Stdin)
+		stdin.Close()
+	}()
+	defer func() { stdin.Close(); <-written }()
 	stdout := process.Stdout()
 	defer stdout.Close()
 	defer stderr.Close()
 	out, errs := newStream(), newStream()
+	var outWriter io.Writer = capturedStream{stream: out, name: "stdout", captured: s.captured}
+	outEnded := func() {}
+	if program.Line != nil {
+		outLines := &lines{give: program.Line}
+		outWriter, outEnded = io.MultiWriter(outWriter, outLines), outLines.end
+	}
 	var reading sync.WaitGroup
 	reading.Add(2)
 	for _, copied := range []struct {
-		to   *stream
-		from io.Reader
-		name string
-	}{{out, stdout, "stdout"}, {errs, stderr, "stderr"}} {
+		to     *stream
+		writer io.Writer
+		from   io.Reader
+		ended  func()
+	}{
+		{out, outWriter, stdout, outEnded},
+		{errs, capturedStream{stream: errs, name: "stderr", captured: s.captured}, stderr, func() {}},
+	} {
 		go func() {
 			defer reading.Done()
-			writer := capturedStream{stream: copied.to, name: copied.name, captured: s.captured}
-			if _, err := io.Copy(writer, copied.from); err != nil {
+			if _, err := io.Copy(copied.writer, copied.from); err != nil {
 				copied.to.incomplete = true
+				return
 			}
+			copied.ended()
 		}()
 	}
 	read := make(chan struct{})
@@ -277,6 +320,50 @@ func (s *stream) kept() Stream {
 	return Stream{
 		Head: string(s.head), Tail: string(s.tail), Size: s.size,
 		Digest: hex.EncodeToString(s.digest.Sum(nil)), Incomplete: s.incomplete,
+	}
+}
+
+// lines gives each line written to it, its newline removed, once the line
+// is whole, skipping one longer than LongestLine.
+type lines struct {
+	give    func(line string)
+	held    []byte
+	tooLong bool
+}
+
+func (l *lines) Write(p []byte) (int, error) {
+	n := len(p)
+	for {
+		i := bytes.IndexByte(p, '\n')
+		if i < 0 {
+			l.hold(p)
+			return n, nil
+		}
+		l.hold(p[:i])
+		if !l.tooLong {
+			l.give(string(l.held))
+		}
+		l.held, l.tooLong = l.held[:0], false
+		p = p[i+1:]
+	}
+}
+
+func (l *lines) hold(p []byte) {
+	if l.tooLong {
+		return
+	}
+	if len(l.held)+len(p) > LongestLine {
+		l.held, l.tooLong = l.held[:0], true
+		return
+	}
+	l.held = append(l.held, p...)
+}
+
+// end gives the last line of a stream read to its end, written with no
+// newline.
+func (l *lines) end() {
+	if len(l.held) > 0 && !l.tooLong {
+		l.give(string(l.held))
 	}
 }
 

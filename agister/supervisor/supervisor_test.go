@@ -65,8 +65,8 @@ type osPrograms struct{}
 
 func (osPrograms) CheckExitObservation() error { return group.Exec{}.CheckExitObservation() }
 
-func (osPrograms) Start(program supervisor.Program, stderr *os.File) (supervisor.Process, error) {
-	process, err := group.Exec{}.Start(group.Command{Name: program.Name, Args: program.Args, Dir: program.Dir, Env: program.Env, Stderr: stderr})
+func (osPrograms) Start(program supervisor.Program, stdin, stderr *os.File) (supervisor.Process, error) {
+	process, err := group.Exec{}.Start(group.Command{Name: program.Name, Args: program.Args, Dir: program.Dir, Env: program.Env, Stdin: stdin, Stderr: stderr})
 	if err != nil {
 		return nil, err
 	}
@@ -451,7 +451,7 @@ func TestASupervisorNeedsItsCollaborators(t *testing.T) {
 type unsupportedPrograms struct{ t *testing.T }
 
 func (unsupportedPrograms) CheckExitObservation() error { return errors.ErrUnsupported }
-func (s unsupportedPrograms) Start(supervisor.Program, *os.File) (supervisor.Process, error) {
+func (s unsupportedPrograms) Start(supervisor.Program, *os.File, *os.File) (supervisor.Process, error) {
 	s.t.Error("started a program without exit observation")
 	return nil, errors.New("unexpected start")
 }
@@ -477,8 +477,8 @@ type observationFailure struct {
 	process supervisor.Process
 }
 
-func (s *observationFailure) Start(program supervisor.Program, stderr *os.File) (supervisor.Process, error) {
-	p, err := s.osPrograms.Start(program, stderr)
+func (s *observationFailure) Start(program supervisor.Program, stdin, stderr *os.File) (supervisor.Process, error) {
+	p, err := s.osPrograms.Start(program, stdin, stderr)
 	if err != nil {
 		return nil, err
 	}
@@ -515,4 +515,138 @@ func TestAnObservationErrorIsKeptAfterCleanup(t *testing.T) {
 	if programs.process != nil {
 		gone(t, programs.process.(osProcess).Group())
 	}
+}
+
+// supervisor.feature, "The text given is the program's stdin, written as
+// stdout is read". 1 MiB is more than the pipes hold: written before
+// stdout were read, it would leave cat blocked writing, and the run with
+// it.
+//
+// Contract test: the operating system, a real program's pipes.
+func TestTheTextGivenIsTheProgramsStdinWrittenAsStdoutIsRead(t *testing.T) {
+	t.Parallel()
+	s, _ := newSupervisor(t)
+	text := strings.Repeat("0123456789abcde\n", 1<<20/16)
+	result, err := s.Run(context.Background(), supervisor.Program{Name: "cat", Dir: t.TempDir(), Stdin: text})
+	if err != nil {
+		t.Fatal(err)
+	}
+	sum := sha256.Sum256([]byte(text))
+	if result.Stdout.Size != 1<<20 || result.Stdout.Digest != hex.EncodeToString(sum[:]) || result.Stdout.Incomplete {
+		t.Errorf("stdout of size %d, digest %s, incomplete %t; want the text's, size %d, digest %x", result.Stdout.Size, result.Stdout.Digest, result.Stdout.Incomplete, 1<<20, sum)
+	}
+	if result.Code != 0 || result.Signal != "" {
+		t.Errorf("ended with code %d, signal %q, want code 0", result.Code, result.Signal)
+	}
+}
+
+// supervisor.feature, "Each line of stdout is given as it is read". The
+// program prints "b" only once the line function has written the line it
+// was given to the named pipe "given".
+//
+// Contract test: the operating system, a real program's stdout.
+func TestEachLineOfStdoutIsGivenAsItIsRead(t *testing.T) {
+	t.Parallel()
+	s, _ := newSupervisor(t)
+	dir := t.TempDir()
+	given := fifo(t, dir, "given")
+	program := sh(`echo a; read seen < given; [ "$seen" = a ] || exit 9; echo b; printf c`, dir)
+	var lines []string
+	program.Line = func(line string) {
+		lines = append(lines, line)
+		if line == "a" {
+			if err := os.WriteFile(given, []byte(line+"\n"), 0o600); err != nil {
+				t.Errorf("telling the program %q was given: %v", line, err)
+			}
+		}
+	}
+	result, err := s.Run(context.Background(), program)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := []string{"a", "b", "c"}; !slices.Equal(lines, want) {
+		t.Errorf("lines %q, want %q", lines, want)
+	}
+	if result.Code != 0 || result.Signal != "" {
+		t.Errorf("ended with code %d, signal %q, want code 0", result.Code, result.Signal)
+	}
+}
+
+// supervisor.feature, "Stdin a program does not read does not hold the
+// supervisor". 1 MiB is more than the pipe holds, so the text cannot all
+// be written before the program exits.
+//
+// Contract test: the operating system, a real program's stdin.
+func TestStdinAProgramDoesNotReadDoesNotHoldTheSupervisor(t *testing.T) {
+	t.Parallel()
+	s, _ := newSupervisor(t)
+	program := sh("exit 2", t.TempDir())
+	program.Stdin = strings.Repeat("x", 1<<20)
+	result, err := s.Run(context.Background(), program)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.Code != 2 || result.Signal != "" {
+		t.Errorf("ended with code %d, signal %q, want code 2", result.Code, result.Signal)
+	}
+}
+
+// printer starts, in place of a program, one that has printed stdout and
+// exited with the code 0.
+type printer struct{ stdout string }
+
+func (printer) CheckExitObservation() error { return nil }
+
+func (p printer) Start(supervisor.Program, *os.File, *os.File) (supervisor.Process, error) {
+	// Hidden behind a plain reader, stdout comes in the pieces a pipe's
+	// reads give, not in one write.
+	return printed{stdout: io.NopCloser(struct{ io.Reader }{strings.NewReader(p.stdout)})}, nil
+}
+
+// printed is a program printer started: it has exited.
+type printed struct{ stdout io.ReadCloser }
+
+func (p printed) Stdout() io.ReadCloser     { return p.stdout }
+func (printed) Signal(syscall.Signal) error { return nil }
+func (printed) Exited() error               { return nil }
+func (printed) Wait() supervisor.Exit       { return supervisor.Exit{} }
+
+// A line of stdout longer than LongestLine is skipped, as a whole, and the
+// lines around it are given; one of LongestLine is given whole.
+func TestALineTooLongIsSkipped(t *testing.T) {
+	t.Parallel()
+	longest, tooLong := strings.Repeat("y", supervisor.LongestLine), strings.Repeat("x", supervisor.LongestLine+1)
+	for _, c := range []struct {
+		name, stdout string
+		want         []string
+	}{
+		{"between lines", "a\n" + tooLong + "\nb\n", []string{"a", "b"}},
+		{"the longest given", "a\n" + longest + "\nb", []string{"a", longest, "b"}},
+		{"last, with no newline", "a\n" + tooLong, []string{"a"}},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
+			clock := clocktest.NewClock(time.Time{})
+			s, err := supervisor.New(clock.Timer, printer{stdout: c.stdout}, func(string, int64) {})
+			if err != nil {
+				t.Fatal(err)
+			}
+			var lines []string
+			if _, err := s.Run(context.Background(), supervisor.Program{Name: "printer", Line: func(line string) { lines = append(lines, line) }}); err != nil {
+				t.Fatal(err)
+			}
+			if !slices.Equal(lines, c.want) {
+				t.Errorf("%d lines, of %v bytes; want %d, of %v", len(lines), lengths(lines), len(c.want), lengths(c.want))
+			}
+		})
+	}
+}
+
+// lengths is the length of each line.
+func lengths(lines []string) []int {
+	var n []int
+	for _, line := range lines {
+		n = append(n, len(line))
+	}
+	return n
 }
