@@ -11,7 +11,9 @@ source "$dir/config.sh"
 commit=$(git -C "$WT" rev-parse --short "${1:-HEAD}")
 n=$("$bin/next-round.sh" "$dir" spec-review)
 out="$dir/spec-review-$n"
-sed -e "s|{{WT}}|$WT|g" -e "s|{{COMMIT}}|$commit|g" "$bin/spec-review-prompt.tmpl" > "$out-prompt.md"
+sed -e "s|{{WT}}|$WT|g" -e "s|{{COMMIT}}|$commit|g" -e "s|{{FEATURES}}|$FEATURES|g" \
+  -e "s|{{SECTION}}|$SECTION|g" -e "s|{{NOTES}}|$NOTES|g" \
+  "$bin/spec-review-prompt.tmpl" > "$out-prompt.md"
 echo "round $n at $commit: $out-prompt.md"
 
 codex exec -s read-only -C "$WT" -o "$out-codex.md" - < "$out-prompt.md" > "$out-codex.log" 2>&1 &

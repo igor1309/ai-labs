@@ -179,9 +179,9 @@ output schema, a continued or recovered session, skills, a staleness
 limit on tool calls or tool commands (ADR-003, rule 7; ADR-012, rule 3);
 a model or an effort its runtime does not take refuses its agent
 (ADR-012, rule 2). Every step is resolved and planned, those of
-branches a run may not take too. A process, an agent or a runtime
-mapping requested alone is followed and checked as it would be in a
-step, and plans no step.
+branches a run may not take too. A document requested alone, of any
+kind, is followed; a process's own references are checked (ADR-011,
+rule 6); with no agent it plans no step and meets no runtime's facts.
 
 A request that depends on a blocked document is refused, naming the
 block; a block is not a problem, and a block naming no document is a
@@ -233,9 +233,8 @@ all of a document, its limits and its conditions' values among them.
 A refusal is the problems of no document, the source's, then the
 request's; then every document at fault, each with its problems, or the
 block that refuses it, and the first chain that reached it, in the order
-reached. A
-link of the chain is a document's kind and name, and where the document
-before it names it.
+reached. A link of the chain is a document's kind and name, and where
+the document before it names it.
 
 Resolve comes in four sections, each specified, then coded: the request
 and its references; boundaries and bindings; planning and runtime facts;
