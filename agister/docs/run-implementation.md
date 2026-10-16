@@ -178,7 +178,9 @@ out with no instruction; and `codex exec --json --skip-git-repo-check
 model_reasoning_effort="<effort>"` and `--output-schema <file>` where
 given, and last `-`, the prompt read from stdin. The schema is written
 to a file in a folder of its own under the folder the composition gives,
-removed once the turn has returned. It is given exactly one option; any
+removed once the turn has returned, best effort: a folder that cannot
+be removed is left, the turn's end unchanged. It is given exactly one
+option; any
 other number is its error before anything starts. It reads stdout's
 lines as JSON events: the session from `thread.started`, the last
 `agent_message` item's text, the usage of `turn.completed` (input,
