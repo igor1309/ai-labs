@@ -37,7 +37,7 @@ Feature: English and Russian
 
     Examples:
       | item                | text              |
-      | quiz card           | Сравни динозавров |
+      | quiz card           | СРАВНИ            |
       | mass prompt         | Кто тяжелее?      |
       | height prompt       | Кто выше?         |
       | Next button         | Дальше            |
