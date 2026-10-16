@@ -7,7 +7,8 @@ description: "The facts behind index.html, each with its ADR: what settings defi
 # Settings architecture: notes
 
 The facts behind `index.html`, each with its source. ADRs are
-`agister/docs/adr/`, as amended by ADR-011 and ADR-012 (2026-10-15).
+`agister/docs/adr/`, as amended by ADR-011, ADR-012 and ADR-013
+(2026-10-15) and revised 2026-10-16 (ADR-002 rule 1, ADR-013 rule 1).
 The page states no syntax: settings syntax is specified in
 `settings/documents`' feature files (ADR-011, non-goals).
 
@@ -25,8 +26,8 @@ The page states no syntax: settings syntax is specified in
   rest is core's. (ADR-012, terms)
 - A step's inputs and output contract are its process's. (ADR-010,
   rule 1; ADR-012, terms)
-- Only a repetition executes a child more than once, so only its body's
-  execution has a name, the iteration. (ADR-011, rules)
+- A body's execution is an iteration; every other child executes once,
+  as a call or a run. (ADR-011, rule 2)
 
 ## What settings define
 
@@ -59,7 +60,9 @@ The page states no syntax: settings syntax is specified in
   `settings/layout`'s: `agents/<name>.toml`, `processes/<name>.yaml`,
   `workflows/<name>.yaml`, `runtimes/<name>.yaml`,
   `brief-forms/<name>.yaml`, `schemas/<name>.json`, `prompts/<name>.md`,
-  `skills/<name>/SKILL.md`. (`settings/layout/reading.feature`)
+  `skills/<name>/SKILL.md`, which layout does not read yet
+  (`backlog/skills.md`). (`settings/layout/reading.feature`,
+  `names.feature`)
 - The repository layer's `blocks.yaml` names documents it refuses, each
   with a reason. (ADR-002, rule 7)
 
@@ -87,8 +90,9 @@ The page states no syntax: settings syntax is specified in
   that one step, which is no document. (ADR-002, rule 6; ADR-001,
   settings; ADR-013)
 - Resolve follows references, applies blocks, checks boundaries and
-  bindings, plans each step's permissions, and refuses a step that
-  needs what its runtime cannot do, in unselected branches too.
+  bindings, plans each step's permissions, and refuses, with the request
+  that holds it, a step that needs what its runtime cannot do, in
+  unselected branches too.
   (ADR-001, settings; ADR-003, rules 4, 5 and 7; ADR-011, rule 6)
 - A plan gives every required permission or refuses; what it grants
   beyond the allowed is a warning. (ADR-003, rules 4 and 5)

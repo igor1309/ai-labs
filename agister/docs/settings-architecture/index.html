@@ -63,41 +63,43 @@
 
 <p class="intro">Settings define the work; runs and calls are what executed it.
 Agister reads settings from up to three layers, composes each document field by
-field, and resolves a request into definitions core can run, or into a refusal
-that names the chain at fault. Facts and sources are in
-<a href="notes.md">notes.md</a>; the decisions are ADR-001 to ADR-012.</p>
+field, and resolves a request into definitions core executes as a run, or into a
+refusal that names the chain at fault. Definitions live in settings, not in
+code; code adds only a runtime or an input source kind. Facts and sources are in
+<a href="notes.md">notes.md</a>; the decisions are ADR-001, ADR-002, ADR-003,
+ADR-008 and ADR-010 to ADR-013.</p>
 
 <h2>Three axes</h2>
 <p>Each thing has one name, on one axis. A definition is declared, resolved and
 planned; it never runs. An execution starts and ends; it is never declared.</p>
 <p><strong>Definitions</strong>, in settings:</p>
 <ul>
-  <li><span class="k-workflow">workflow</span>: work defined by inputs, an output contract and children, each a <span class="k-step">step</span> or a <span class="k-workflow">workflow</span>, composed by sequence, parallel, branch or bounded repetition; its bindings carry data into each child, and its conditions choose a branch and end a repetition</li>
+  <li><span class="k-workflow">workflow</span>: work defined by inputs, an output contract and children, each a <span class="k-step">step</span> or a <span class="k-workflow">workflow</span>, composed by sequence, parallel, branch or bounded repetition; its bindings carry data into each child, and its conditions choose a branch, accept a result and end a repetition</li>
   <li><span class="k-step">step</span>: a process bound to an agent, the one leaf; its inputs and output contract are its process's</li>
-  <li><span class="k-process">process</span>: what a step does: its prompt, inputs, output schema, permissions and limits</li>
-  <li><span class="k-agent">agent</span>: who does it, on which runtime</li>
-  <li><span class="k-runtime">runtime mapping</span>: grants and options</li>
+  <li><span class="k-process">process</span>: what a step does: its prompt, inputs, environment, output schema, permissions and limits</li>
+  <li><span class="k-agent">agent</span>: who does it: a runtime mapping, and the model, effort and skills its runtime takes; a bash agent names only the runtime</li>
+  <li><span class="k-runtime">runtime mapping</span>: what its runtime grants with no option, and its options with what each grants; bash offers none</li>
 </ul>
 <p><strong>Executions</strong>, in records; an execution names the definition it executes:</p>
 <ul>
   <li><span class="k-run">run</span>: executes a workflow</li>
   <li><span class="k-run">call</span>: executes a step</li>
-  <li>iteration: one execution of a repetition's body, the one child executed more than once; a parallel's and a branch's children execute as calls and runs</li>
+  <li>iteration: one execution of a repetition's body; every other child executes once, as a call (a step) or a run (a workflow)</li>
   <li>turn: one exchange of a call with its runtime</li>
-  <li>session: the conversation a call held</li>
+  <li>session: the conversation a call held, on a runtime that keeps one</li>
 </ul>
 <p><strong>Machinery</strong>, in code, as settings meet it:</p>
 <ul>
   <li><span class="k-runtime">runtime</span>: a program Agister drives through its wrapper; a runtime mapping names one</li>
-  <li>runtime facts: what a runtime can do, which resolve plans each step against</li>
+  <li>runtime facts: what a runtime can do; resolve refuses a step that needs what its runtime cannot do</li>
 </ul>
-<p class="src">ADR-012, terms.</p>
+<p class="src">ADR-012, terms; ADR-011, rules 2 to 4.</p>
 
 <h2>What a workflow names</h2>
 <p>Documents name each other by kind and name, fixed in settings, so they
 resolve without a run. A workflow composes steps and other workflows by
 sequence, parallel, branch or bounded repetition. A step binds a process to an
-agent; nothing but a step chooses an agent. Bash is a runtime like any other:
+agent; nothing but a step chooses an agent. Bash is a runtime, planned as any other:
 its agent names only the runtime, and its prompt is a script.</p>
 <figure>
 <svg viewBox="0 0 670 290" role="img" aria-label="The documents a workflow references">
@@ -138,9 +140,10 @@ its agent names only the runtime, and its prompt is a script.</p>
   <rect class="box" x="540" y="236" width="120" height="34" rx="4" stroke="#FFC24D"/>
   <text x="600" y="258" text-anchor="middle">runtime mapping</text>
 </svg>
-<figcaption>A process names its prompt, its output schema, its skills, and the
-brief forms its text inputs may take; an agent names its runtime mapping and its
-skills. ADR-002, rule 5; ADR-010, rule 5; ADR-011, rule 2; ADR-012, rules 1 and 2.</figcaption>
+<figcaption>A process names its prompt, its guidance, its output schema and its
+skills; a workflow's or a process's text inputs may name brief forms; an agent
+names its runtime mapping and its skills. A child workflow is another workflow:
+references are acyclic. ADR-002, rule 5; ADR-010, rule 5; ADR-011, rule 2; ADR-012, rules 1 and 2.</figcaption>
 </figure>
 
 <h2>Where settings live</h2>
@@ -155,8 +158,9 @@ it. Nothing but kind and name joins files across layers.</p>
   <tr><td>brief form</td><td><code>brief-forms/&lt;name&gt;.yaml</code></td></tr>
   <tr><td>schema</td><td><code>schemas/&lt;name&gt;.json</code></td></tr>
   <tr><td>prompt</td><td><code>prompts/&lt;name&gt;.md</code></td></tr>
-  <tr><td>skill</td><td><code>skills/&lt;name&gt;/SKILL.md</code></td></tr>
+  <tr><td>skill</td><td><code>skills/&lt;name&gt;/SKILL.md</code>, not yet read (<code>backlog/skills.md</code>)</td></tr>
 </table>
+<p class="src"><code>settings/layout</code>; ADR-002, rule 1.</p>
 <figure>
 <svg viewBox="0 0 670 200" role="img" aria-label="Three layers, the nearer over the farther">
   <rect class="box" x="20" y="20" width="460" height="44" rx="4" stroke="#3C3C43"/>
@@ -164,7 +168,7 @@ it. Nothing but kind and name joins files across layers.</p>
   <rect class="box" x="20" y="78" width="460" height="44" rx="4" stroke="#3C3C43"/>
   <text x="36" y="105">repository · <tspan font-family="ui-monospace,Menlo,monospace">.agister</tspan> at the worktree root · <tspan font-family="ui-monospace,Menlo,monospace">blocks.yaml</tspan></text>
   <rect class="box" x="20" y="136" width="460" height="44" rx="4" stroke="#3C3C43"/>
-  <text x="36" y="163">project · the nearest <tspan font-family="ui-monospace,Menlo,monospace">.agister</tspan> below the root</text>
+  <text x="36" y="163">project · the nearest <tspan font-family="ui-monospace,Menlo,monospace">.agister</tspan> from the launch directory up to the root</text>
   <path class="edge" d="M520,24 L520,176"/>
   <text class="label" x="534" y="70">applied home first;</text>
   <text class="label" x="534" y="86">the nearer wins</text>
@@ -172,18 +176,27 @@ it. Nothing but kind and name joins files across layers.</p>
   <text class="label" x="534" y="134">lists, scalars replace</text>
   <text class="label" x="534" y="150">nothing unsets</text>
 </svg>
-<figcaption>Each layer is over its parent alone; outside a git worktree only home
-is read. Schemas, prompts and skills are taken whole from the nearest layer.
-A document may <code>extends</code> another of its kind, composed first. The
-repository blocks documents by kind and name. ADR-002, rules 2, 3, 4 and 7.</figcaption>
+<figcaption>The launch directory is where the command is launched, or
+<code>--dir</code>; the layers select settings, not the place of work. Each layer
+is over its parent alone; outside a git worktree only home is read. Schemas,
+prompts and skills are taken whole from the nearest layer. A document may name
+another of its kind in <code>extends</code>; the extended document is composed
+first, then the extending one over it. The repository's
+<code>blocks.yaml</code> names documents it refuses, each with a reason; what
+depends on a blocked document is refused, naming the block. ADR-002, rules 2,
+3, 4 and 7.</figcaption>
 </figure>
 
 <h2>From files to definitions</h2>
-<p>Resolve is the gate before a run: what resolves may be run, what does not
-never reaches core and leaves no run. A problem in a document refuses only what
-depends on it; a refusal names the chain to the document at fault.</p>
+<p>Resolve takes a request: a document by kind and name (a workflow with its
+parameters), or a step, a process and an agent; a step requested alone resolves
+as a workflow of that one step, which is no document (ADR-013). Resolve is the
+gate before a run: what resolves may be run, what does not never reaches core
+and leaves no run. A problem in a document refuses only what depends on it; a
+problem of no document refuses every request; a refusal names the chain to the
+document at fault.</p>
 <figure>
-<svg viewBox="0 0 670 220" role="img" aria-label="Settings packages from files to core and check">
+<svg viewBox="0 0 670 250" role="img" aria-label="What flows from files to core and check, through the composition">
   <rect class="box" x="10" y="70" width="90" height="56" rx="4" stroke="#3C3C43"/>
   <text x="55" y="102" text-anchor="middle">files</text>
   <rect class="box" x="130" y="70" width="100" height="56" rx="4" stroke="#B4B4C0"/>
@@ -198,36 +211,43 @@ depends on it; a refusal names the chain to the document at fault.</p>
   <text class="label" x="475" y="84" text-anchor="middle">references · blocks</text>
   <text class="label" x="475" y="100" text-anchor="middle">boundaries · bindings</text>
   <text class="label" x="475" y="116" text-anchor="middle">each step's plan</text>
-  <text class="label" x="475" y="132" text-anchor="middle">runtime facts</text>
   <rect class="box" x="570" y="40" width="90" height="44" rx="4" stroke="#F5E6B0"/>
   <text x="615" y="67" text-anchor="middle">core</text>
   <rect class="box" x="570" y="112" width="90" height="44" rx="4" stroke="#3C3C43"/>
   <text x="615" y="139" text-anchor="middle">check</text>
   <rect class="box" x="410" y="176" width="130" height="34" rx="4" stroke="#FFC24D"/>
   <text x="475" y="198" text-anchor="middle">runtime wrappers</text>
+  <text class="label" x="482" y="171">runtime facts</text>
   <path class="edge" d="M100,98 L128,98"/>
   <path class="edge" d="M230,98 L258,98"/>
   <path class="edge" d="M380,98 L408,98"/>
   <path class="edge" d="M540,70 L568,62"/>
-  <path class="edge" d="M568,134 L542,126"/>
+  <path class="edge" d="M542,126 L568,134"/>
+  <path class="edge" d="M180,128 L180,232 L615,232 L615,158"/>
+  <text class="label" x="190" y="226">list names</text>
   <path class="edge" d="M475,176 L475,158"/>
 </svg>
-<figcaption><code>layout</code> and <code>documents</code> make the document
-source; <code>resolve</code> plans each step from its process's permissions and
-its agent's mapping, and refuses a step that needs what its runtime cannot do,
-in unselected branches too; <code>check</code> is handed resolve and resolves
-every document. The composition answers runtime facts from the wrappers.
+<figcaption>An arrow is what flows, and the composition carries every one: no
+settings package imports another. <code>layout</code> and <code>documents</code>
+make the document source; <code>resolve</code> plans each step from its
+process's permissions and its agent's mapping. A plan gives every required
+permission or refuses; what it grants beyond what the process allows is a
+warning. A step that needs what its runtime cannot do refuses, with the request
+that holds it, in unselected branches too. <code>check</code> is handed resolve
+and resolves every document, by the names layout lists. Runtime facts and the
+document source are resolve's ports; the composition answers runtime facts from
+the wrappers.
 ADR-001, settings; ADR-002, rules 6 and 8; ADR-003.</figcaption>
 </figure>
 
 <h2>The parts</h2>
 <table>
   <tr><th>Package</th><th>Owns</th><th>Ports</th></tr>
-  <tr><td><code>settings/layout</code></td><td>where settings live; a kind and name to a file; names</td><td>filesystem; worktree root</td></tr>
+  <tr><td><code>settings/layout</code></td><td>where settings live; a kind and name to a file; lists names</td><td>filesystem; worktree root</td></tr>
   <tr><td><code>settings/documents</code></td><td>bytes to typed definitions with per-field provenance: format, layering, kinds</td><td>none: pure</td></tr>
   <tr><td><code>settings/resolve</code></td><td>a request to definitions or a refusal naming the chain</td><td>document source; runtime facts</td></tr>
   <tr><td><code>settings/check</code></td><td>check (every problem and what it refuses) and inspect (with provenance)</td><td>resolve; list names</td></tr>
-  <tr><td><code>settings/home</code></td><td>install into home and restore; every write can be undone</td><td>filesystem writes; clock</td></tr>
+  <tr><td><code>settings/home</code></td><td>install into home and restore: only home's settings, on a broken home too; every write can be undone</td><td>filesystem writes; clock</td></tr>
 </table>
 <p>No settings package imports another; the composition connects them. Core
 takes the resolved workflow and every step's process, agent, runtime mapping
