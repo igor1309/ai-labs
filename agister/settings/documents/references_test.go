@@ -96,7 +96,7 @@ func TestAReferenceGivesWhatItReads(t *testing.T) {
 			t.Parallel()
 			got, problems := typeWorkflow(t, fmt.Sprintf(workflowReading, c.reads))
 			assertProblems(t, problems, nil)
-			if want := bindings(4, binding("o", c.want, 5)); !reflect.DeepEqual(got.Outputs, want) {
+			if want := bindings(4, "outputs", binding("outputs", "o", c.want, 5)); !reflect.DeepEqual(got.Outputs, want) {
 				t.Errorf("outputs\n got %+v\nwant %+v", got.Outputs, want)
 			}
 		})
@@ -152,21 +152,24 @@ func TestAReferenceThatReadsNoneOfTheseIsAProblem(t *testing.T) {
 func TestTheItemOfAQueryIsReadInTheQuerysWhere(t *testing.T) {
 	t.Parallel()
 	const roots = "it reads item[.<field>], params.<name>, inputs.<name>, state.<name>[.<field>] or steps.<name>.<part>"
-	present := func(what documents.Reference) documents.Field[documents.Condition] {
-		return ofWorkflow(documents.Condition{Operator: "present", Reads: ofWorkflow(what, 9)}, 9)
+	// The where is at where; each condition in it at its place.
+	const where = "steps[0].repeat.until.all.where"
+	present := func(place string, what documents.Reference) documents.Field[documents.Condition] {
+		return ofWorkflow(documents.Condition{Operator: "present", Reads: ofWorkflow(what, 9, place+".present")}, 9, place)
 	}
 	cases := []struct {
 		where string
 		want  documents.Field[documents.Condition]
 	}{
-		{"{present: {from: item}}", present(queryItem(""))},
-		{"{present: {from: item.fixed}}", present(queryItem("fixed"))},
+		{"{present: {from: item}}", present(where, queryItem(""))},
+		{"{present: {from: item.fixed}}", present(where, queryItem("fixed"))},
 		{"{not: {present: {from: item}}}", ofWorkflow(documents.Condition{Operator: "not",
-			Of: []documents.Field[documents.Condition]{present(queryItem(""))}}, 9)},
+			Of: []documents.Field[documents.Condition]{present(where+".not", queryItem(""))}}, 9, where)},
 		{"{equals: [{from: item.verdict}, approve]}", ofWorkflow(documents.Condition{Operator: "equals",
-			Reads: ofWorkflow(queryItem("verdict"), 9), Equals: ofWorkflow[any]("approve", 9)}, 9)},
+			Reads: ofWorkflow(queryItem("verdict"), 9, where+".equals[0]"), Equals: ofWorkflow[any]("approve", 9, where+".equals[1]")}, 9, where)},
 		{"{any: {in: {from: item.notes}, where: {present: {from: item}}}}", ofWorkflow(documents.Condition{Operator: "any",
-			Reads: ofWorkflow(queryItem("notes"), 9), Of: []documents.Field[documents.Condition]{present(queryItem(""))}}, 9)},
+			Reads: ofWorkflow(queryItem("notes"), 9, where+".any.in"),
+			Of:    []documents.Field[documents.Condition]{present(where+".any.where", queryItem(""))}}, 9, where)},
 	}
 	for _, c := range cases {
 		t.Run(c.where, func(t *testing.T) {
@@ -212,6 +215,59 @@ func TestTheItemReadOutsideAQuerysWhereIsAProblem(t *testing.T) {
 			got, problems := typeWorkflow(t, fmt.Sprintf(c.document, c.put))
 			assertNoWorkflow(t, got)
 			assertProblems(t, problems, []documents.Problem{c.want})
+		})
+	}
+}
+
+// operands are the references of condition and of every condition in it,
+// in the order they are read.
+func operands(condition documents.Condition) []documents.Field[documents.Reference] {
+	var all []documents.Field[documents.Reference]
+	if condition.Reads.Given {
+		all = append(all, condition.Reads)
+	}
+	for _, of := range condition.Of {
+		all = append(all, operands(of.Value)...)
+	}
+	return all
+}
+
+// references.feature, "Each operand of a condition has its place": the
+// feature's cases, and an operand of every operator, at any depth.
+func TestEachOperandOfAConditionHasItsPlace(t *testing.T) {
+	t.Parallel()
+	const if0 = "steps[0].branch[0].if"
+	cases := []struct {
+		condition string
+		want      []documents.Field[documents.Reference]
+	}{
+		{"{equals: [{from: params.a}, x]}", []documents.Field[documents.Reference]{
+			ofWorkflow(param("a"), 5, if0+".equals[0]"),
+		}},
+		{"{not: {and: [{present: {from: state.s}}]}}", []documents.Field[documents.Reference]{
+			ofWorkflow(state("s", ""), 5, if0+".not.and[0].present"),
+		}},
+		{"{any: {in: {from: params.l}, where: {present: {from: item}}}}", []documents.Field[documents.Reference]{
+			ofWorkflow(param("l"), 5, if0+".any.in"),
+			ofWorkflow(queryItem(""), 5, if0+".any.where.present"),
+		}},
+		{"{or: [{present: {from: inputs.i}}, {all: {in: {from: params.l}, where: {equals: [{from: item.v}, 1]}}}]}", []documents.Field[documents.Reference]{
+			ofWorkflow(input("i"), 5, if0+".or[0].present"),
+			ofWorkflow(param("l"), 5, if0+".or[1].all.in"),
+			ofWorkflow(queryItem("v"), 5, if0+".or[1].all.where.equals[0]"),
+		}},
+	}
+	for _, c := range cases {
+		t.Run(c.condition, func(t *testing.T) {
+			t.Parallel()
+			got, problems := typeWorkflow(t, fmt.Sprintf(workflowBranching, c.condition))
+			assertProblems(t, problems, nil)
+			if len(got.Steps.Value) == 0 {
+				t.Fatal("no step")
+			}
+			if got := operands(got.Steps.Value[0].Value.Branch.Value[0].Value.If.Value); !reflect.DeepEqual(got, c.want) {
+				t.Errorf("operands\n got %+v\nwant %+v", got, c.want)
+			}
 		})
 	}
 }

@@ -47,8 +47,8 @@ func TestAReferenceIsGivenToResolveAsWhatItReads(t *testing.T) {
 			spy := newDocumentsSpy(t)
 			spy.workflows["w"] = typed[documents.WorkflowDefinition]{value: documents.WorkflowDefinition{
 				Name:    "w",
-				Steps:   given([]documents.Field[documents.Item]{step("s", file, 3)}, file, 2),
-				Outputs: given([]documents.Field[documents.Binding]{reading("o", c.reads, file, 5)}, file, 4),
+				Steps:   given([]documents.Field[documents.Item]{step("s", file, 3, "steps[0]")}, file, 2, "steps"),
+				Outputs: given([]documents.Field[documents.Binding]{reading("o", c.reads, file, 5, "outputs.o")}, file, 4, "outputs"),
 			}}
 			workflow, problems := sourceOf(t, spy, layout.Snapshot{}).Workflow("w")
 			if len(problems) > 0 {
@@ -71,8 +71,8 @@ func TestAValuesOriginCarriesItsPlace(t *testing.T) {
 	spy.workflows["w"] = typed[documents.WorkflowDefinition]{value: documents.WorkflowDefinition{
 		Name: "w",
 		Steps: given([]documents.Field[documents.Item]{
-			given(documents.Item{Name: "s", Process: given("p", file, 3), Agent: given("a", file, 4)}, file, 3),
-		}, file, 2),
+			given(documents.Item{Name: "s", Process: given("p", file, 3, "steps[0].process"), Agent: given("a", file, 4, "steps[0].agent")}, file, 3, "steps[0]"),
+		}, file, 2, "steps"),
 	}}
 	workflow, problems := sourceOf(t, spy, layout.Snapshot{}).Workflow("w")
 	if len(problems) > 0 {
@@ -81,6 +81,72 @@ func TestAValuesOriginCarriesItsPlace(t *testing.T) {
 	want := resolve.Name{Value: "a", Origin: at(file, 4, "steps[0].agent")}
 	if got := workflow.Steps[0].Agent; got != want {
 		t.Errorf("the agent's name %+v, want %+v", got, want)
+	}
+}
+
+// Each value's place is the one documents gives, whatever it spells: the
+// spy gives places no position in a definition spells, so a place the
+// source built would differ.
+func TestEachValuesPlaceIsTheOneDocumentsGives(t *testing.T) {
+	t.Parallel()
+	const file = "/r/.agister/workflows/w.yaml"
+	from := func(place string) documents.Reference {
+		return documents.Reference{Root: documents.ReadsParam, Name: place}
+	}
+	arm := given(documents.Item{
+		Name:    "x",
+		If:      given(documents.Condition{Operator: "present", Reads: given(from("operand"), file, 5, "the operand's")}, file, 5, "the if's"),
+		Process: given("p", file, 6, "the process's"),
+		Agent:   given("a", file, 7, "the agent's"),
+		Session: given(documents.Reference{Root: documents.ReadsSession, Name: "s"}, file, 8, "the session's"),
+		Inputs:  given([]documents.Field[documents.Binding]{reading("i", from("input"), file, 9, "the input's")}, file, 9, "the inputs'"),
+	}, file, 4, "the arm's")
+	spy := newDocumentsSpy(t)
+	spy.workflows["w"] = typed[documents.WorkflowDefinition]{value: documents.WorkflowDefinition{
+		Name: "w",
+		Steps: given([]documents.Field[documents.Item]{
+			given(documents.Item{Name: "b", Branch: given([]documents.Field[documents.Item]{
+				arm, step("y", file, 10, "the other arm's"),
+			}, file, 3, "the branch's arms'")}, file, 2, "the branch's"),
+		}, file, 1, "the steps'"),
+		Outputs: given([]documents.Field[documents.Binding]{reading("o", from("output"), file, 12, "the output's")}, file, 11, "the outputs'"),
+	}}
+	spy.processes["p"] = typed[documents.ProcessDefinition]{value: documents.ProcessDefinition{
+		Name:     "p",
+		Guidance: given([]documents.Field[string]{given("g", file, 14, "the guidance's")}, file, 13, "the guidances'"),
+		Workspace: given(documents.Workspace{
+			Revision: given(documents.Reference{Root: documents.ReadsInput, Name: "r"}, file, 16, "the revision's"),
+		}, file, 15, "the workspace's"),
+	}}
+	spy.blocks = []documents.Field[documents.Block]{given(documents.Block{Kind: documents.Agent, Name: "a"}, file, 17, "the block's")}
+	s := sourceOf(t, spy, layout.Snapshot{})
+	workflow, problems := s.Workflow("w")
+	if len(problems) > 0 {
+		t.Fatalf("problems %+v, want none", problems)
+	}
+	process, problems := s.Process("p")
+	if len(problems) > 0 {
+		t.Fatalf("problems %+v, want none", problems)
+	}
+	if len(workflow.Steps) != 1 || len(workflow.Steps[0].Branch) != 2 || len(workflow.Steps[0].Branch[0].If.Reads) != 1 ||
+		len(workflow.Steps[0].Branch[0].Inputs) != 1 || len(workflow.Outputs) != 1 || len(process.Guidance) != 1 || process.Revision == nil {
+		t.Fatalf("the workflow %+v and the process %+v, want each value given", workflow, process)
+	}
+	branch, x := workflow.Steps[0], workflow.Steps[0].Branch[0]
+	got := []resolve.Origin{
+		branch.Origin, x.Origin, x.If.Reads[0].Origin, x.Process.Origin, x.Agent.Origin, x.Session.Origin,
+		x.Inputs[0].Origin, x.Inputs[0].From.Origin, workflow.Steps[0].Branch[1].Origin,
+		workflow.Outputs[0].Origin, workflow.Outputs[0].From.Origin,
+		process.Guidance[0].Origin, process.Revision.Origin, s.Blocks()[0].Origin,
+	}
+	want := []resolve.Origin{
+		at(file, 2, "the branch's"), at(file, 4, "the arm's"), at(file, 5, "the operand's"), at(file, 6, "the process's"),
+		at(file, 7, "the agent's"), at(file, 8, "the session's"), at(file, 9, "the input's"), at(file, 9, "the input's"),
+		at(file, 10, "the other arm's"), at(file, 12, "the output's"), at(file, 12, "the output's"),
+		at(file, 14, "the guidance's"), at(file, 16, "the revision's"), at(file, 17, "the block's"),
+	}
+	if !slices.Equal(got, want) {
+		t.Errorf("origins\n got %+v\nwant %+v", got, want)
 	}
 }
 
@@ -307,39 +373,102 @@ type bashSpy struct{ facts bash.Facts }
 
 func (s bashSpy) Facts() bash.Facts { return s.facts }
 
-// adapters.feature, "The facts by contract". Each wrapper's spy gives
-// facts no other's does, so each answer tells its wrapper.
+// capabilities are what a runtime can do, each a field of resolve's facts
+// and of every wrapper's, by the same name.
+func capabilities() []string {
+	return []string{"Schema", "Session", "Skills", "Model", "ToolCalls", "ToolCommands"}
+}
+
+// withCapabilities is facts with each of capabilities set.
+func withCapabilities[F any](facts F, capabilities []string) F {
+	for _, capability := range capabilities {
+		reflect.ValueOf(&facts).Elem().FieldByName(capability).SetBool(true)
+	}
+	return facts
+}
+
+// Every capability of resolve's facts is among capabilities.
+func TestCapabilitiesAreEveryOneOfResolvesFacts(t *testing.T) {
+	t.Parallel()
+	var fields []string
+	facts := reflect.TypeFor[resolve.Facts]()
+	for i := range facts.NumField() {
+		if field := facts.Field(i); field.Type.Kind() == reflect.Bool {
+			fields = append(fields, field.Name)
+		}
+	}
+	if !slices.Equal(fields, capabilities()) {
+		t.Errorf("resolve's capabilities %q, want %q", fields, capabilities())
+	}
+}
+
+// adapters.feature, "The facts by contract". For each wrapper, each
+// capability alone, or none, with efforts no other wrapper gives: every
+// other wrapper gives every capability and efforts of its own, so an
+// answer that drops or crosses a capability, or is another wrapper's,
+// differs.
 func TestTheFactsByContract(t *testing.T) {
 	t.Parallel()
-	wrappers, err := newContracts(
-		claudeCodeFacts(claudeCodeSpy{claudecode.Facts{Contract: "claude-code/3", Schema: true, Efforts: []string{"high"}}}),
-		codexFacts(codexSpy{codex.Facts{Contract: "codex/2", Session: true, Skills: true, Efforts: []string{"minimal"}}}),
-		piFacts(piSpy{pi.Facts{Contract: "pi/1", Model: true, ToolCalls: true, Efforts: []string{"off"}}}),
-		bashFacts(bashSpy{bash.Facts{Contract: "bash/1", ToolCommands: true}}),
-	)
-	if err != nil {
-		t.Fatal(err)
-	}
-	cases := []struct {
+	// wrappers are each runtime wrapper's contract, and its facts as a spy
+	// of it gives them: the capabilities and the efforts.
+	wrappers := []struct {
 		contract string
-		facts    resolve.Facts
-		taken    bool
+		facts    func(capabilities, efforts []string) wrapperFacts
 	}{
-		{"claude-code/3", resolve.Facts{Schema: true, Efforts: []string{"high"}}, true},
-		{"codex/2", resolve.Facts{Session: true, Skills: true, Efforts: []string{"minimal"}}, true},
-		{"pi/1", resolve.Facts{Model: true, ToolCalls: true, Efforts: []string{"off"}}, true},
-		{"bash/1", resolve.Facts{ToolCommands: true}, true},
-		{"other/9", resolve.Facts{}, false},
+		{"claude-code/3", func(capabilities, efforts []string) wrapperFacts {
+			return claudeCodeFacts(claudeCodeSpy{withCapabilities(claudecode.Facts{Contract: "claude-code/3", Efforts: efforts}, capabilities)})
+		}},
+		{"codex/2", func(capabilities, efforts []string) wrapperFacts {
+			return codexFacts(codexSpy{withCapabilities(codex.Facts{Contract: "codex/2", Efforts: efforts}, capabilities)})
+		}},
+		{"pi/1", func(capabilities, efforts []string) wrapperFacts {
+			return piFacts(piSpy{withCapabilities(pi.Facts{Contract: "pi/1", Efforts: efforts}, capabilities)})
+		}},
+		{"bash/1", func(capabilities, efforts []string) wrapperFacts {
+			return bashFacts(bashSpy{withCapabilities(bash.Facts{Contract: "bash/1", Efforts: efforts}, capabilities)})
+		}},
 	}
-	for _, c := range cases {
-		t.Run(c.contract, func(t *testing.T) {
-			t.Parallel()
-			facts, taken := wrappers.Facts(c.contract)
-			if !reflect.DeepEqual(facts, c.facts) || taken != c.taken {
-				t.Errorf("facts %+v, %t; want %+v, %t", facts, taken, c.facts, c.taken)
+	// contractsOf are the wrappers' facts, each with every capability and
+	// efforts of its own, but that of contract, which gives facts.
+	contractsOf := func(t *testing.T, contract string, facts wrapperFacts) *contracts {
+		t.Helper()
+		var given []wrapperFacts
+		for _, w := range wrappers {
+			if w.contract == contract {
+				given = append(given, facts)
+				continue
 			}
-		})
+			given = append(given, w.facts(capabilities(), []string{w.contract + "'s effort"}))
+		}
+		c, err := newContracts(given...)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return c
 	}
+	for _, w := range wrappers {
+		alone := [][]string{nil}
+		for _, capability := range capabilities() {
+			alone = append(alone, []string{capability})
+		}
+		for _, capability := range alone {
+			t.Run(fmt.Sprintf("%s %q", w.contract, capability), func(t *testing.T) {
+				t.Parallel()
+				efforts := []string{"only " + w.contract + "'s"}
+				facts, taken := contractsOf(t, w.contract, w.facts(capability, efforts)).Facts(w.contract)
+				want := withCapabilities(resolve.Facts{Efforts: efforts}, capability)
+				if !reflect.DeepEqual(facts, want) || !taken {
+					t.Errorf("facts %+v, %t; want %+v, true", facts, taken, want)
+				}
+			})
+		}
+	}
+	t.Run("other/9", func(t *testing.T) {
+		t.Parallel()
+		if facts, taken := contractsOf(t, "", nil).Facts("other/9"); !reflect.DeepEqual(facts, resolve.Facts{}) || taken {
+			t.Errorf("facts %+v, %t; want none, false", facts, taken)
+		}
+	})
 }
 
 // adapters.feature, "Check's names come from the snapshot, with their
@@ -427,45 +556,74 @@ func TestChecksResolveGivesWhatResolves(t *testing.T) {
 	}
 }
 
-// filesSpy is a spy of files: the entries and the error its test gives,
-// whatever the folder, and the bytes of each file it gives.
+// filesSpy is a spy of files: the entries of each folder its test gives,
+// by folder, and the bytes of each file, by path; a folder or a file it is
+// not given does not exist. It keeps each folder and file it is asked.
 type filesSpy struct {
-	entries []files.Entry
-	err     error
+	entries map[string][]files.Entry
 	bytes   map[string][]byte
+	folders []string
+	files   []string
 }
 
-func (s filesSpy) Entries(string) ([]files.Entry, error) { return slices.Clone(s.entries), s.err }
+func (s *filesSpy) Entries(folder string) ([]files.Entry, error) {
+	s.folders = append(s.folders, folder)
+	entries, ok := s.entries[folder]
+	if !ok {
+		return nil, &fs.PathError{Op: "open", Path: folder, Err: fs.ErrNotExist}
+	}
+	return slices.Clone(entries), nil
+}
 
-func (s filesSpy) Bytes(file string) ([]byte, error) {
+func (s *filesSpy) Bytes(file string) ([]byte, error) {
+	s.files = append(s.files, file)
 	content, ok := s.bytes[file]
 	if !ok {
-		return nil, fs.ErrNotExist
+		return nil, &fs.PathError{Op: "open", Path: file, Err: fs.ErrNotExist}
 	}
-	return content, nil
+	return slices.Clone(content), nil
 }
 
-// adapters.feature, "Layout's filesystem comes from files". A file's bytes
-// are files'.
+// adapters.feature, "Layout's filesystem comes from files". Each folder's
+// entries and each file's bytes are files' for that folder or file.
 func TestLayoutsFilesystemComesFromFiles(t *testing.T) {
 	t.Parallel()
-	l, err := newLayoutFiles(filesSpy{
-		entries: []files.Entry{{Name: "agents", Kind: files.Folder}, {Name: "service.toml", Kind: files.RegularFile}, {Name: "x", Kind: files.Other}},
-		bytes:   map[string][]byte{"/u/.agister/service.toml": []byte("a = 1\n")},
-	})
+	spy := &filesSpy{
+		entries: map[string][]files.Entry{
+			"/u/.agister": {{Name: "agents", Kind: files.Folder}, {Name: "service.toml", Kind: files.RegularFile}, {Name: "x", Kind: files.Other}},
+			"/r/.agister": {{Name: "blocks.yaml", Kind: files.RegularFile}},
+		},
+		bytes: map[string][]byte{
+			"/u/.agister/service.toml": []byte("a = 1\n"),
+			"/r/.agister/blocks.yaml":  []byte("[]\n"),
+		},
+	}
+	l, err := newLayoutFiles(spy)
 	if err != nil {
 		t.Fatal(err)
 	}
-	entries, err := l.Entries("/u/.agister")
-	if err != nil {
-		t.Fatal(err)
+	for _, c := range []struct {
+		folder string
+		want   []layout.Entry
+	}{
+		{"/u/.agister", []layout.Entry{{Name: "agents", Kind: layout.Folder}, {Name: "service.toml", Kind: layout.RegularFile}, {Name: "x", Kind: layout.Other}}},
+		{"/r/.agister", []layout.Entry{{Name: "blocks.yaml", Kind: layout.RegularFile}}},
+	} {
+		if entries, err := l.Entries(c.folder); err != nil || !slices.Equal(entries, c.want) {
+			t.Errorf("the entries of %s %+v, %v; want %+v", c.folder, entries, err, c.want)
+		}
 	}
-	want := []layout.Entry{{Name: "agents", Kind: layout.Folder}, {Name: "service.toml", Kind: layout.RegularFile}, {Name: "x", Kind: layout.Other}}
-	if !slices.Equal(entries, want) {
-		t.Errorf("entries %+v, want %+v", entries, want)
+	for file, want := range map[string]string{"/u/.agister/service.toml": "a = 1\n", "/r/.agister/blocks.yaml": "[]\n"} {
+		if got, err := l.Bytes(file); err != nil || string(got) != want {
+			t.Errorf("the bytes of %s %q, %v; want %q", file, got, err, want)
+		}
 	}
-	if got, err := l.Bytes("/u/.agister/service.toml"); err != nil || string(got) != "a = 1\n" {
-		t.Errorf("bytes %q, %v; want %q", got, err, "a = 1\n")
+	if want := []string{"/u/.agister", "/r/.agister"}; !slices.Equal(spy.folders, want) {
+		t.Errorf("files is asked the folders %q, want %q", spy.folders, want)
+	}
+	slices.Sort(spy.files)
+	if want := []string{"/r/.agister/blocks.yaml", "/u/.agister/service.toml"}; !slices.Equal(spy.files, want) {
+		t.Errorf("files is asked the files %q, want %q", spy.files, want)
 	}
 }
 
@@ -509,15 +667,26 @@ func TestLayoutsWorktreeRootComesFromGit(t *testing.T) {
 }
 
 // adapters.feature, "A folder files does not find is one layout does not
-// find".
+// find", beside one files finds. A file files does not find is one layout
+// does not find too.
 func TestAFolderFilesDoesNotFindIsOneLayoutDoesNotFind(t *testing.T) {
 	t.Parallel()
-	l, err := newLayoutFiles(filesSpy{err: &fs.PathError{Op: "open", Path: "/r/.agister", Err: fs.ErrNotExist}})
+	spy := &filesSpy{entries: map[string][]files.Entry{"/u/.agister": {{Name: "agents", Kind: files.Folder}}}}
+	l, err := newLayoutFiles(spy)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if _, err := l.Entries("/r/.agister"); !errors.Is(err, fs.ErrNotExist) {
 		t.Errorf("error %v, want one that is, or wraps, fs.ErrNotExist", err)
+	}
+	if _, err := l.Bytes("/r/.agister/blocks.yaml"); !errors.Is(err, fs.ErrNotExist) {
+		t.Errorf("error %v, want one that is, or wraps, fs.ErrNotExist", err)
+	}
+	if want := []string{"/r/.agister"}; !slices.Equal(spy.folders, want) {
+		t.Errorf("files is asked the folders %q, want %q", spy.folders, want)
+	}
+	if want := []string{"/r/.agister/blocks.yaml"}; !slices.Equal(spy.files, want) {
+		t.Errorf("files is asked the files %q, want %q", spy.files, want)
 	}
 }
 

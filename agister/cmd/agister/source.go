@@ -3,7 +3,6 @@ package main
 import (
 	"errors"
 	"fmt"
-	"strconv"
 
 	"github.com/igor1309/ai-labs/agister/settings/documents"
 	"github.com/igor1309/ai-labs/agister/settings/layout"
@@ -25,8 +24,9 @@ type definitions interface {
 
 // source answers resolve's source from documents, and from the layout
 // snapshot documents was given: the problems of no document and whether a
-// layer holds a document are layout's. Each value has its origin, its
-// place spelled as documents spells a problem's.
+// layer holds a document are layout's. Each value has its origin, at the
+// place documents gives it: how a document is laid out is documents' to
+// know.
 type source struct {
 	documents definitions
 	snapshot  layout.Snapshot
@@ -47,9 +47,9 @@ func (s *source) Workflow(name string) (resolve.Workflow, []resolve.Problem) {
 	return resolve.Workflow{
 		Name:    workflow.Name,
 		Params:  paramsOf(workflow.Params.Value),
-		Inputs:  inputsOf(workflow.Inputs.Value, "inputs"),
-		Steps:   itemsOf(workflow.Steps.Value, "steps"),
-		Outputs: bindingsOf(workflow.Outputs.Value, "outputs"),
+		Inputs:  inputsOf(workflow.Inputs.Value),
+		Steps:   itemsOf(workflow.Steps.Value),
+		Outputs: bindingsOf(workflow.Outputs.Value),
 	}, nil
 }
 
@@ -60,19 +60,19 @@ func (s *source) Process(name string) (resolve.Process, []resolve.Problem) {
 	}
 	var revision *resolve.Read
 	if r := process.Workspace.Value.Revision; r.Given {
-		revision = readOf(r, "workspace.revision")
+		revision = readOf(r.Value, r.Origin)
 	}
 	stale := process.Limits.Value.Stale.Value
 	return resolve.Process{
 		Name:              process.Name,
-		Prompt:            nameOf(process.Prompt, "prompt"),
-		Guidance:          namesOf(process.Guidance, "guidance"),
-		Skills:            namesOf(process.Skills, "skills"),
+		Prompt:            nameOf(process.Prompt),
+		Guidance:          namesOf(process.Guidance),
+		Skills:            namesOf(process.Skills),
 		Params:            paramsOf(process.Params.Value),
-		Inputs:            inputsOf(process.Inputs.Value, "inputs"),
-		Environment:       bindingsOf(process.Environment.Value, "environment"),
+		Inputs:            inputsOf(process.Inputs.Value),
+		Environment:       bindingsOf(process.Environment.Value),
 		Revision:          revision,
-		Schema:            nameOf(process.Output.Value.Schema, "output.schema"),
+		Schema:            nameOf(process.Output.Value.Schema),
 		Require:           process.Permissions.Value.Require.Value,
 		Allow:             process.Permissions.Value.Allow.Value,
 		Recovery:          process.Recovery.Given,
@@ -87,15 +87,15 @@ func (s *source) Agent(name string) (resolve.Agent, []resolve.Problem) {
 		return resolve.Agent{}, problemsOf(problems)
 	}
 	// An agent gives its model, or the model's family.
-	model := nameOf(agent.Model, "model")
+	model := nameOf(agent.Model)
 	if !agent.Model.Given {
-		model = nameOf(agent.ModelFamily, "model_family")
+		model = nameOf(agent.ModelFamily)
 	}
 	return resolve.Agent{
 		Name:    agent.Name,
-		Runtime: nameOf(agent.Runtime, "runtime"),
+		Runtime: nameOf(agent.Runtime),
 		Model:   model,
-		Effort:  nameOf(agent.Effort, "effort"),
+		Effort:  nameOf(agent.Effort),
 	}, nil
 }
 
@@ -110,7 +110,7 @@ func (s *source) Runtime(name string) (resolve.Runtime, []resolve.Problem) {
 	}
 	return resolve.Runtime{
 		Name:     runtime.Name,
-		Contract: nameOf(runtime.Contract, "contract"),
+		Contract: nameOf(runtime.Contract),
 		Grants:   runtime.Grants.Value,
 		Select:   runtime.Select.Value,
 		Options:  options,
@@ -146,12 +146,12 @@ func (s *source) Problems() []resolve.Problem {
 func (s *source) Blocks() []resolve.Block {
 	typed, _ := s.documents.Blocks()
 	var blocks []resolve.Block
-	for i, block := range typed {
+	for _, block := range typed {
 		blocks = append(blocks, resolve.Block{
 			Kind:   documentsKind(block.Value.Kind).resolve,
 			Name:   block.Value.Name,
 			Reason: block.Value.Reason,
-			Origin: originOf(block.Origin, itemPlace("", i)),
+			Origin: originOf(block.Origin),
 		})
 	}
 	return blocks
@@ -176,25 +176,23 @@ func problemsOf(problems []documents.Problem) []resolve.Problem {
 	return mapped
 }
 
-func originOf(origin documents.Origin, place string) resolve.Origin {
-	return resolve.Origin{Path: origin.Path, Line: origin.Line, Place: place}
+func originOf(origin documents.Origin) resolve.Origin {
+	return resolve.Origin{Path: origin.Path, Line: origin.Line, Place: origin.Place}
 }
 
-// nameOf is the name field gives, at place; none where it gives none.
-func nameOf(field documents.Field[string], place string) resolve.Name {
+// nameOf is the name field gives; none where it gives none.
+func nameOf(field documents.Field[string]) resolve.Name {
 	if !field.Given {
 		return resolve.Name{}
 	}
-	return resolve.Name{Value: field.Value, Origin: originOf(field.Origin, place)}
+	return resolve.Name{Value: field.Value, Origin: originOf(field.Origin)}
 }
 
-// namesOf is each name of the list field gives, at its place in the list
-// at place, on the list's line: documents gives no line of an item of a
-// list of names.
-func namesOf(field documents.Field[[]string], place string) []resolve.Name {
+// namesOf is each name of the list field gives.
+func namesOf(field documents.Field[[]documents.Field[string]]) []resolve.Name {
 	var names []resolve.Name
-	for i, name := range field.Value {
-		names = append(names, resolve.Name{Value: name, Origin: originOf(field.Origin, itemPlace(place, i))})
+	for _, name := range field.Value {
+		names = append(names, nameOf(name))
 	}
 	return names
 }
@@ -207,41 +205,39 @@ func paramsOf(params []documents.Field[documents.Param]) []resolve.Param {
 	return mapped
 }
 
-// inputsOf is inputs, the map at place.
-func inputsOf(inputs []documents.Field[documents.Input], place string) []resolve.Input {
+func inputsOf(inputs []documents.Field[documents.Input]) []resolve.Input {
 	var mapped []resolve.Input
 	for _, input := range inputs {
-		at := key(place, input.Value.Name)
 		mapped = append(mapped, resolve.Input{
 			Name:      input.Value.Name,
-			Forms:     namesOf(input.Value.Form, key(at, "form")),
-			Arguments: bindingsOf(input.Value.Arguments, at),
+			Forms:     namesOf(input.Value.Form),
+			Arguments: bindingsOf(input.Value.Arguments),
 		})
 	}
 	return mapped
 }
 
-// bindingsOf is bindings, the map at place, each at its name's place.
-func bindingsOf(bindings []documents.Field[documents.Binding], place string) []resolve.Binding {
+// bindingsOf is bindings, each a text or what its reference reads, at the
+// binding's origin.
+func bindingsOf(bindings []documents.Field[documents.Binding]) []resolve.Binding {
 	var mapped []resolve.Binding
 	for _, binding := range bindings {
-		at := key(place, binding.Value.Name)
-		b := resolve.Binding{Name: binding.Value.Name, Text: binding.Value.Value.Text, Origin: originOf(binding.Origin, at)}
+		b := resolve.Binding{Name: binding.Value.Name, Text: binding.Value.Value.Text, Origin: originOf(binding.Origin)}
 		if from := binding.Value.Value.From; from.Root != "" {
-			b.From = readOf(documents.Field[documents.Reference]{Value: from, Origin: binding.Origin, Given: true}, at)
+			b.From = readOf(from, binding.Origin)
 		}
 		mapped = append(mapped, b)
 	}
 	return mapped
 }
 
-// readOf is what the reference field reads, at place.
-func readOf(field documents.Field[documents.Reference], place string) *resolve.Read {
+// readOf is what reference reads, at origin.
+func readOf(reference documents.Reference, origin documents.Origin) *resolve.Read {
 	return &resolve.Read{
-		Root:   rootOf(field.Value.Root),
-		Name:   field.Value.Name,
-		Field:  field.Value.Field,
-		Origin: originOf(field.Origin, place),
+		Root:   rootOf(reference.Root),
+		Name:   reference.Name,
+		Field:  reference.Field,
+		Origin: originOf(origin),
 	}
 }
 
@@ -264,40 +260,40 @@ func rootOf(root documents.Root) resolve.Root {
 	return resolve.Root(root)
 }
 
-// itemsOf is items, the list at place. A parallel's and a branch's items
-// are never nil, for resolve tells an item's kind by them.
-func itemsOf(items []documents.Field[documents.Item], place string) []resolve.Item {
+// itemsOf is items. A parallel's and a branch's items are never nil, for
+// resolve tells an item's kind by them.
+func itemsOf(items []documents.Field[documents.Item]) []resolve.Item {
 	mapped := make([]resolve.Item, 0, len(items))
-	for i, field := range items {
-		at, item := itemPlace(place, i), field.Value
+	for _, field := range items {
+		item := field.Value
 		m := resolve.Item{
 			Name:     item.Name,
-			Origin:   originOf(field.Origin, at),
-			Process:  nameOf(item.Process, key(at, "process")),
-			Agent:    nameOf(item.Agent, key(at, "agent")),
-			Workflow: nameOf(item.Workflow, key(at, "workflow")),
-			Inputs:   bindingsOf(item.Inputs.Value, key(at, "inputs")),
-			Outputs:  bindingsOf(item.Outputs.Value, key(at, "outputs")),
+			Origin:   originOf(field.Origin),
+			Process:  nameOf(item.Process),
+			Agent:    nameOf(item.Agent),
+			Workflow: nameOf(item.Workflow),
+			Inputs:   bindingsOf(item.Inputs.Value),
+			Outputs:  bindingsOf(item.Outputs.Value),
 		}
 		if item.If.Given {
-			m.If = resolve.Condition{Reads: readsOf(item.If, key(at, "if"))}
+			m.If = resolve.Condition{Reads: readsOf(item.If.Value)}
 		}
 		if item.Session.Given {
-			m.Session = readOf(item.Session, key(at, "session"))
+			m.Session = readOf(item.Session.Value, item.Session.Origin)
 		}
 		if item.Parallel.Given {
-			m.Parallel = itemsOf(item.Parallel.Value, key(at, "parallel"))
+			m.Parallel = itemsOf(item.Parallel.Value)
 		}
 		if item.Branch.Given {
-			m.Branch = itemsOf(item.Branch.Value, key(at, "branch"))
+			m.Branch = itemsOf(item.Branch.Value)
 		}
 		if item.Repeat.Given {
-			repeat, at := item.Repeat.Value, key(at, "repeat")
+			repeat := item.Repeat.Value
 			m.Repeat = &resolve.Repeat{
-				State: bindingsOf(repeat.State.Value, key(at, "state")),
-				Steps: itemsOf(repeat.Steps.Value, key(at, "steps")),
-				Next:  bindingsOf(repeat.Next.Value, key(at, "next")),
-				Until: resolve.Condition{Reads: readsOf(repeat.Until, key(at, "until"))},
+				State: bindingsOf(repeat.State.Value),
+				Steps: itemsOf(repeat.Steps.Value),
+				Next:  bindingsOf(repeat.Next.Value),
+				Until: resolve.Condition{Reads: readsOf(repeat.Until.Value)},
 				Max:   repeat.Max.Value,
 			}
 		}
@@ -306,50 +302,15 @@ func itemsOf(items []documents.Field[documents.Item], place string) []resolve.It
 	return mapped
 }
 
-// readsOf is every reference the condition at place reads, at any depth,
-// each at its place as documents spells it.
-func readsOf(field documents.Field[documents.Condition], place string) []resolve.Read {
-	condition := field.Value
+// readsOf is every reference condition reads, at any depth, in the order
+// documents gives them.
+func readsOf(condition documents.Condition) []resolve.Read {
 	var reads []resolve.Read
-	read := func(at string) {
-		if condition.Reads.Given {
-			reads = append(reads, *readOf(condition.Reads, at))
-		}
+	if condition.Reads.Given {
+		reads = append(reads, *readOf(condition.Reads.Value, condition.Reads.Origin))
 	}
-	operator := key(place, condition.Operator)
-	switch condition.Operator {
-	case "equals":
-		read(itemPlace(operator, 0))
-	case "present":
-		read(operator)
-	case "all", "any":
-		read(key(operator, "in"))
-		for _, where := range condition.Of {
-			reads = append(reads, readsOf(where, key(operator, "where"))...)
-		}
-	case "and", "or":
-		for i, of := range condition.Of {
-			reads = append(reads, readsOf(of, itemPlace(operator, i))...)
-		}
-	case "not":
-		for _, of := range condition.Of {
-			reads = append(reads, readsOf(of, operator)...)
-		}
+	for _, of := range condition.Of {
+		reads = append(reads, readsOf(of.Value)...)
 	}
 	return reads
-}
-
-// key is the place of the field name of the map at place, as documents
-// spells it: the keys from the root joined by ".".
-func key(place, name string) string {
-	if place == "" {
-		return name
-	}
-	return place + "." + name
-}
-
-// itemPlace is the place of the item i of the list at place, as documents
-// spells it.
-func itemPlace(place string, i int) string {
-	return place + "[" + strconv.Itoa(i) + "]"
 }

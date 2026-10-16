@@ -64,3 +64,33 @@ func TestAFilesBytes(t *testing.T) {
 		t.Errorf("bytes %q, want %q", got, "abc")
 	}
 }
+
+// files.feature, "A folder's path, with its links resolved". The
+// temporary folder's own path may hold a link, as macOS's /var does: the
+// path of "r/a" is the one with the temporary folder's links resolved.
+//
+// Contract test: the operating system's filesystem.
+func TestAFoldersPathWithItsLinksResolved(t *testing.T) {
+	t.Parallel()
+	root, err := filepath.EvalSymlinks(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	a := filepath.Join(root, "r", "a")
+	if err := os.MkdirAll(a, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Mkdir(filepath.Join(root, "o"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(a, filepath.Join(root, "o", "x")); err != nil {
+		t.Fatal(err)
+	}
+	got, err := files.New().Resolved(filepath.Join(root, "o", "x"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got != a {
+		t.Errorf("resolved %q, want %q", got, a)
+	}
+}

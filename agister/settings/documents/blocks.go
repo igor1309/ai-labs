@@ -53,7 +53,7 @@ func blocksOf(file Source, decode decoder) definition[[]Field[Block]] {
 			continue
 		}
 		block := typeBlock(&fields{typing: t, node: item, place: place, known: map[string]bool{}})
-		blocks = append(blocks, Field[Block]{Value: block, Origin: originOf(item), Given: true})
+		blocks = append(blocks, Field[Block]{Value: block, Origin: originOf(item, place), Given: true})
 	}
 	if len(t.problems) > 0 {
 		return definition[[]Field[Block]]{problems: t.problems}
@@ -68,7 +68,7 @@ func typeBlock(f *fields) Block {
 	// A field missing in the one blocks file is at its block's line there.
 	if _, given := f.node.Get("reason"); !given {
 		f.known["reason"] = true
-		f.problem(originOf(f.node), f.at("reason"), "it is missing")
+		f.problem(originOf(f.node, f.place), f.at("reason"), "it is missing")
 	} else {
 		block.Reason = f.text("reason", required).Value
 	}
@@ -85,7 +85,7 @@ func typeBlock(f *fields) Block {
 	}
 	f.done()
 	if len(kinds) != 1 {
-		f.problem(originOf(f.node), f.place, "it names one kind and a name")
+		f.problem(originOf(f.node, f.place), f.place, "it names one kind and a name")
 	}
 	return block
 }

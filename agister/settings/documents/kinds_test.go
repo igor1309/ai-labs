@@ -38,9 +38,9 @@ func assertAgent(t *testing.T, got, want documents.AgentDefinition) {
 	}
 }
 
-// text is a string field given by the file at path, on line.
-func text(value, path string, line int) documents.Field[string] {
-	return documents.Field[string]{Value: value, Origin: documents.Origin{Path: path, Line: line}, Given: true}
+// text is a string field given by the file at path, on line, at place.
+func text(value, path string, line int, place string) documents.Field[string] {
+	return documents.Field[string]{Value: value, Origin: documents.Origin{Path: path, Line: line, Place: place}, Given: true}
 }
 
 func missing(place string) documents.Problem {
@@ -115,7 +115,7 @@ func TestAFieldNoKindKnowsIsAProblem(t *testing.T) {
 			got, problems := typeAgent(t, c.bytes)
 			assertProblems(t, problems, c.want)
 			if c.want == nil {
-				assertAgent(t, got, documents.AgentDefinition{Name: "a", Runtime: text("codex", homeAgent, 0)})
+				assertAgent(t, got, documents.AgentDefinition{Name: "a", Runtime: text("codex", homeAgent, 0, "runtime")})
 				return
 			}
 			assertNoAgent(t, got)
@@ -207,11 +207,11 @@ command: /usr/local/bin/claude
 	assertProblems(t, problems, nil)
 	assertAgent(t, got, documents.AgentDefinition{
 		Name:        "a",
-		Runtime:     text("claude-code", yamlAgent, 2),
-		Model:       text("opus", yamlAgent, 3),
-		ModelFamily: text("anthropic", yamlAgent, 4),
-		Effort:      text("high", yamlAgent, 5),
-		Command:     text("/usr/local/bin/claude", yamlAgent, 6),
+		Runtime:     text("claude-code", yamlAgent, 2, "runtime"),
+		Model:       text("opus", yamlAgent, 3, "model"),
+		ModelFamily: text("anthropic", yamlAgent, 4, "model_family"),
+		Effort:      text("high", yamlAgent, 5, "effort"),
+		Command:     text("/usr/local/bin/claude", yamlAgent, 6, "command"),
 	})
 }
 
@@ -219,7 +219,7 @@ func TestAnAgentNeedsOnlyItsRuntime(t *testing.T) {
 	t.Parallel()
 	got, problems := typeAgent(t, validAgent)
 	assertProblems(t, problems, nil)
-	assertAgent(t, got, documents.AgentDefinition{Name: "a", Runtime: text("codex", homeAgent, 0)})
+	assertAgent(t, got, documents.AgentDefinition{Name: "a", Runtime: text("codex", homeAgent, 0, "runtime")})
 }
 
 func TestAnAgentWithNoRuntimeIsAProblem(t *testing.T) {

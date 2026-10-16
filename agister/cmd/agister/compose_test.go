@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"io"
 	"io/fs"
 	"maps"
 	"os"
@@ -53,15 +54,22 @@ func compose(t *testing.T, repository map[string]string, args ...string) ran {
 
 // asBuilt runs "agister <args>" in "/r", the user's home directory "/u",
 // over the command line build gives over a filesystem holding settings, by
-// path, and a git whose worktree root of "/r" and below is "/r".
+// path, a git whose worktree root of "/r" and below is "/r", and no links.
 func asBuilt(t *testing.T, settings map[string]string, args ...string) ran {
 	t.Helper()
+	return builtIn(t, settings, &linksSpy{}, "/r", args...)
+}
+
+// builtIn runs "agister <args>" in dir as asBuilt does, over links, which
+// git sees through as well.
+func builtIn(t *testing.T, settings map[string]string, links *linksSpy, dir string, args ...string) ran {
+	t.Helper()
 	var stdout, stderr strings.Builder
-	commandLine, err := build("/u", newFilesystemSpy(settings), rootSpy{root: "/r"}, &stdout, &stderr)
+	commandLine, err := build("/u", links, newFilesystemSpy(settings), rootSpy{root: "/r", links: links.links}, &stdout, &stderr)
 	if err != nil {
 		t.Fatal(err)
 	}
-	code := commandLine.Run(args, "/r")
+	code := commandLine.Run(args, dir)
 	return ran{stdout: stdout.String(), stderr: stderr.String(), code: code}
 }
 
@@ -232,5 +240,54 @@ func TestTheCommandRunsOverEveryRuntimeWrapperAndTheUsersHome(t *testing.T) {
 	got := asBuilt(t, settings, "check")
 	if want := (ran{stdout: "4 resolve, 0 refused\n"}); got != want {
 		t.Errorf("ran %+v, want %+v", got, want)
+	}
+}
+
+// compose.feature, "A launch through a link reads the settings where it
+// leads". "/o/x" leads to "/r/a", below the worktree root "/r", which git
+// gives of either: walked up from "/o/x", "/o/.agister" would be the
+// project layer.
+//
+// Contract test: the files home holds, as Agister ships them.
+func TestALaunchThroughALinkReadsTheSettingsWhereItLeads(t *testing.T) {
+	t.Parallel()
+	settings := shippedHome(t)
+	settings["/o/.agister/processes/stray.yaml"] = "schema: agister.process/v1alpha1\ninstruction: Stray.\n"
+	links := &linksSpy{links: map[string]string{"/o/x": "/r/a"}}
+	got := builtIn(t, settings, links, "/o/x", "inspect", "processes")
+	if got.stderr != "" || got.code != 0 {
+		t.Fatalf("stderr %q, exit %d; want none, 0", got.stderr, got.code)
+	}
+	listed := map[string]bool{}
+	for _, line := range lines(got.stdout) {
+		if len(line) > 0 {
+			listed[line[0]] = true
+		}
+	}
+	if listed["stray"] {
+		t.Errorf("listed\n%s\nwant no stray", got.stdout)
+	}
+	for name := range settings {
+		if process, ok := strings.CutPrefix(name, "/u/.agister/processes/"); ok {
+			if process = strings.TrimSuffix(process, path.Ext(process)); !listed[process] {
+				t.Errorf("listed\n%s\nwant %s", got.stdout, process)
+			}
+		}
+	}
+	if want := []string{"/o/x"}; !slices.Equal(links.askedOf(), want) {
+		t.Errorf("links asked %q, want %q", links.askedOf(), want)
+	}
+}
+
+// A launch directory whose links do not resolve fails the command, with
+// the directory and files' error; and a command line is built with links.
+func TestALaunchDirectoryThatDoesNotResolveFailsTheCommand(t *testing.T) {
+	t.Parallel()
+	got := builtIn(t, shippedHome(t), &linksSpy{missing: []string{"/gone"}}, "/gone", "check")
+	if got.code == 0 || got.stdout != "" || !strings.Contains(got.stderr, "/gone") || !strings.Contains(got.stderr, fs.ErrNotExist.Error()) {
+		t.Errorf("ran %+v, want a failure naming /gone and %q", got, fs.ErrNotExist)
+	}
+	if _, err := build("/u", nil, newFilesystemSpy(nil), rootSpy{root: "/r"}, io.Discard, io.Discard); err == nil {
+		t.Error("command line built with no links, want an error")
 	}
 }

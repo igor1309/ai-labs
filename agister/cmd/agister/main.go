@@ -55,7 +55,8 @@ func connect(ctx context.Context, user string, stdout, stderr io.Writer) (*cli.C
 	if err != nil {
 		return nil, err
 	}
-	fs, err := newLayoutFiles(files.New())
+	f := files.New()
+	fs, err := newLayoutFiles(f)
 	if err != nil {
 		return nil, err
 	}
@@ -63,19 +64,19 @@ func connect(ctx context.Context, user string, stdout, stderr io.Writer) (*cli.C
 	if err != nil {
 		return nil, err
 	}
-	return build(user, fs, roots, stdout, stderr)
+	return build(user, f, fs, roots, stdout, stderr)
 }
 
-// build is the command line over fs and roots and every runtime wrapper's
-// facts, for the user whose home directory is user: home's folder is its
-// ".agister" (ADR-002, rule 2).
-func build(user string, fs layout.FileSystem, roots layout.WorktreeRoot, stdout, stderr io.Writer) (*cli.CLI, error) {
+// build is the command line over links, fs and roots and every runtime
+// wrapper's facts, for the user whose home directory is user: home's
+// folder is its ".agister" (ADR-002, rule 2).
+func build(user string, links links, fs layout.FileSystem, roots layout.WorktreeRoot, stdout, stderr io.Writer) (*cli.CLI, error) {
 	wrappers, err := newContracts(
 		claudeCodeFacts(claudecode.New()), codexFacts(codex.New()), piFacts(pi.New()), bashFacts(bash.New()))
 	if err != nil {
 		return nil, err
 	}
-	return newCommandLine(filepath.Join(user, ".agister"), fs, roots, wrappers, stdout, stderr)
+	return newCommandLine(filepath.Join(user, ".agister"), links, fs, roots, wrappers, stdout, stderr)
 }
 
 // newChecker is check over the settings of home's folder and the launch

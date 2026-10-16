@@ -10,9 +10,9 @@ import (
 	"github.com/igor1309/ai-labs/agister/settings/resolve"
 )
 
-// given is a field documents gives, value from path on line.
-func given[T any](value T, path string, line int) documents.Field[T] {
-	return documents.Field[T]{Value: value, Origin: documents.Origin{Path: path, Line: line}, Given: true}
+// given is a field documents gives, value from path on line, at place.
+func given[T any](value T, path string, line int, place string) documents.Field[T] {
+	return documents.Field[T]{Value: value, Origin: documents.Origin{Path: path, Line: line, Place: place}, Given: true}
 }
 
 // at is the origin resolve is given: path, line and place.
@@ -21,13 +21,13 @@ func at(path string, line int, place string) resolve.Origin {
 }
 
 // step is a step item of documents, name binding the process p to the agent
-// a, from path on line.
-func step(name, path string, line int) documents.Field[documents.Item] {
+// a, from path on line, at place.
+func step(name, path string, line int, place string) documents.Field[documents.Item] {
 	return given(documents.Item{
 		Name:    name,
-		Process: given("p", path, line),
-		Agent:   given("a", path, line),
-	}, path, line)
+		Process: given("p", path, line, place+".process"),
+		Agent:   given("a", path, line, place+".agent"),
+	}, path, line, place)
 }
 
 // resolvedStep is step in resolve's words, at place.
@@ -41,9 +41,9 @@ func resolvedStep(name, path string, line int, place string) resolve.Item {
 }
 
 // reading is a binding of documents, name reading reference, from path on
-// line.
-func reading(name string, reference documents.Reference, path string, line int) documents.Field[documents.Binding] {
-	return given(documents.Binding{Name: name, Value: documents.Value{From: reference}}, path, line)
+// line, at place.
+func reading(name string, reference documents.Reference, path string, line int, place string) documents.Field[documents.Binding] {
+	return given(documents.Binding{Name: name, Value: documents.Value{From: reference}}, path, line, place)
 }
 
 // read is what a reference reads, in resolve's words, at origin.
@@ -74,7 +74,7 @@ func TestTheSourceGivesResolveWhatDecidesARefusal(t *testing.T) {
 			name: "an agent's model, effort and runtime, each with its origin",
 			documents: func(d *documentsSpy) {
 				d.agents["a"] = typed[documents.AgentDefinition]{value: documents.AgentDefinition{
-					Name: "a", Runtime: given("r", agentFile, 1), Model: given("opus", agentFile, 2), Effort: given("high", agentFile, 3),
+					Name: "a", Runtime: given("r", agentFile, 1, "runtime"), Model: given("opus", agentFile, 2, "model"), Effort: given("high", agentFile, 3, "effort"),
 				}}
 			},
 			ask: func(s *source) any { return answerOf(s.Agent("a")) },
@@ -89,7 +89,7 @@ func TestTheSourceGivesResolveWhatDecidesARefusal(t *testing.T) {
 			name: "an agent's model's family, where it gives no model",
 			documents: func(d *documentsSpy) {
 				d.agents["a"] = typed[documents.AgentDefinition]{value: documents.AgentDefinition{
-					Name: "a", Runtime: given("r", agentFile, 1), ModelFamily: given("opus", agentFile, 2),
+					Name: "a", Runtime: given("r", agentFile, 1, "runtime"), ModelFamily: given("opus", agentFile, 2, "model_family"),
 				}}
 			},
 			ask: func(s *source) any { return answerOf(s.Agent("a")) },
@@ -103,12 +103,12 @@ func TestTheSourceGivesResolveWhatDecidesARefusal(t *testing.T) {
 			name: "a runtime's contract, grants, select and options with their grants",
 			documents: func(d *documentsSpy) {
 				d.runtimes["r"] = typed[documents.RuntimeDefinition]{value: documents.RuntimeDefinition{
-					Name: "r", Contract: given("c/1", runtimeFile, 2), Grants: given([]string{"read"}, runtimeFile, 3),
-					Select: given("one", runtimeFile, 4),
+					Name: "r", Contract: given("c/1", runtimeFile, 2, "contract"), Grants: given([]string{"read"}, runtimeFile, 3, "grants"),
+					Select: given("one", runtimeFile, 4, "select"),
 					Options: given([]documents.Field[documents.Option]{
-						given(documents.Option{Name: "x", Grants: given([]string{"write"}, runtimeFile, 6)}, runtimeFile, 6),
-						given(documents.Option{Name: "y", Grants: given([]string{"write", "net"}, runtimeFile, 7)}, runtimeFile, 7),
-					}, runtimeFile, 5),
+						given(documents.Option{Name: "x", Grants: given([]string{"write"}, runtimeFile, 6, "options.x.grants")}, runtimeFile, 6, "options.x"),
+						given(documents.Option{Name: "y", Grants: given([]string{"write", "net"}, runtimeFile, 7, "options.y.grants")}, runtimeFile, 7, "options.y"),
+					}, runtimeFile, 5, "options"),
 				}}
 			},
 			ask: func(s *source) any { return answerOf(s.Runtime("r")) },
@@ -126,12 +126,13 @@ func TestTheSourceGivesResolveWhatDecidesARefusal(t *testing.T) {
 				d.processes["p"] = typed[documents.ProcessDefinition]{value: documents.ProcessDefinition{
 					Name: "p",
 					Permissions: given(documents.Permissions{
-						Require: given([]string{"read"}, processFile, 3), Allow: given([]string{"write"}, processFile, 4),
-					}, processFile, 2),
-					Recovery: given(documents.Recovery{Resumes: given(1, processFile, 6)}, processFile, 5),
+						Require: given([]string{"read"}, processFile, 3, "permissions.require"),
+						Allow:   given([]string{"write"}, processFile, 4, "permissions.allow"),
+					}, processFile, 2, "permissions"),
+					Recovery: given(documents.Recovery{Resumes: given(1, processFile, 6, "recovery.resumes")}, processFile, 5, "recovery"),
 					Limits: given(documents.Limits{
-						Stale: given(documents.Stale{RepeatedToolCalls: given(3, processFile, 9)}, processFile, 8),
-					}, processFile, 7),
+						Stale: given(documents.Stale{RepeatedToolCalls: given(3, processFile, 9, "limits.stale.repeated_tool_calls")}, processFile, 8, "limits.stale"),
+					}, processFile, 7, "limits"),
 				}}
 			},
 			ask: func(s *source) any { return answerOf(s.Process("p")) },
@@ -145,8 +146,8 @@ func TestTheSourceGivesResolveWhatDecidesARefusal(t *testing.T) {
 				d.processes["p"] = typed[documents.ProcessDefinition]{value: documents.ProcessDefinition{
 					Name: "p",
 					Limits: given(documents.Limits{
-						Stale: given(documents.Stale{ToolCommand: given(time.Minute, processFile, 4)}, processFile, 3),
-					}, processFile, 2),
+						Stale: given(documents.Stale{ToolCommand: given(time.Minute, processFile, 4, "limits.stale.tool_command")}, processFile, 3, "limits.stale"),
+					}, processFile, 2, "limits"),
 				}}
 			},
 			ask:  func(s *source) any { return answerOf(s.Process("p")) },
@@ -158,8 +159,8 @@ func TestTheSourceGivesResolveWhatDecidesARefusal(t *testing.T) {
 				d.processes["p"] = typed[documents.ProcessDefinition]{value: documents.ProcessDefinition{
 					Name: "p",
 					Workspace: given(documents.Workspace{
-						Revision: given(documents.Reference{Root: documents.ReadsInput, Name: "base"}, processFile, 3),
-					}, processFile, 2),
+						Revision: given(documents.Reference{Root: documents.ReadsInput, Name: "base"}, processFile, 3, "workspace.revision"),
+					}, processFile, 2, "workspace"),
 				}}
 			},
 			ask: func(s *source) any { return answerOf(s.Process("p")) },
@@ -171,10 +172,12 @@ func TestTheSourceGivesResolveWhatDecidesARefusal(t *testing.T) {
 			name: "a process's prompt, guidance and schema, each with its origin",
 			documents: func(d *documentsSpy) {
 				d.processes["p"] = typed[documents.ProcessDefinition]{value: documents.ProcessDefinition{
-					Name:     "p",
-					Prompt:   given("pr", processFile, 2),
-					Guidance: given([]string{"g", "h"}, processFile, 3),
-					Output:   given(documents.Output{Schema: given("sc", processFile, 5)}, processFile, 4),
+					Name:   "p",
+					Prompt: given("pr", processFile, 2, "prompt"),
+					Guidance: given([]documents.Field[string]{
+						given("g", processFile, 3, "guidance[0]"), given("h", processFile, 4, "guidance[1]"),
+					}, processFile, 3, "guidance"),
+					Output: given(documents.Output{Schema: given("sc", processFile, 6, "output.schema")}, processFile, 5, "output"),
 				}}
 			},
 			ask: func(s *source) any { return answerOf(s.Process("p")) },
@@ -183,9 +186,9 @@ func TestTheSourceGivesResolveWhatDecidesARefusal(t *testing.T) {
 				Prompt: resolve.Name{Value: "pr", Origin: at(processFile, 2, "prompt")},
 				Guidance: []resolve.Name{
 					{Value: "g", Origin: at(processFile, 3, "guidance[0]")},
-					{Value: "h", Origin: at(processFile, 3, "guidance[1]")},
+					{Value: "h", Origin: at(processFile, 4, "guidance[1]")},
 				},
-				Schema: resolve.Name{Value: "sc", Origin: at(processFile, 5, "output.schema")},
+				Schema: resolve.Name{Value: "sc", Origin: at(processFile, 6, "output.schema")},
 			}, nil),
 		},
 		{
@@ -194,20 +197,21 @@ func TestTheSourceGivesResolveWhatDecidesARefusal(t *testing.T) {
 				d.processes["p"] = typed[documents.ProcessDefinition]{value: documents.ProcessDefinition{
 					Name: "p",
 					Params: given([]documents.Field[documents.Param]{
-						given(documents.Param{Name: "base"}, processFile, 3),
-						given(documents.Param{Name: "goal", Default: given("x", processFile, 4)}, processFile, 4),
-					}, processFile, 2),
+						given(documents.Param{Name: "base"}, processFile, 3, "params.base"),
+						given(documents.Param{Name: "goal", Default: given("x", processFile, 4, "params.goal.default")}, processFile, 4, "params.goal"),
+					}, processFile, 2, "params"),
 					Inputs: given([]documents.Field[documents.Input]{
 						given(documents.Input{
-							Name: "brief", Source: given("file", processFile, 6), Form: given([]string{"step"}, processFile, 7),
+							Name: "brief", Source: given("file", processFile, 6, "inputs.brief.source"),
+							Form: given([]documents.Field[string]{given("step", processFile, 7, "inputs.brief.form[0]")}, processFile, 7, "inputs.brief.form"),
 							Arguments: []documents.Field[documents.Binding]{
-								reading("path", documents.Reference{Root: documents.ReadsParam, Name: "goal"}, processFile, 8),
+								reading("path", documents.Reference{Root: documents.ReadsParam, Name: "goal"}, processFile, 8, "inputs.brief.path"),
 							},
-						}, processFile, 6),
-					}, processFile, 5),
+						}, processFile, 6, "inputs.brief"),
+					}, processFile, 5, "inputs"),
 					Environment: given([]documents.Field[documents.Binding]{
-						given(documents.Binding{Name: "MODE", Value: documents.Value{Text: "fast"}}, processFile, 10),
-					}, processFile, 9),
+						given(documents.Binding{Name: "MODE", Value: documents.Value{Text: "fast"}}, processFile, 10, "environment.MODE"),
+					}, processFile, 9, "environment"),
 				}}
 			},
 			ask: func(s *source) any { return answerOf(s.Process("p")) },
@@ -227,23 +231,11 @@ func TestTheSourceGivesResolveWhatDecidesARefusal(t *testing.T) {
 			}, nil),
 		},
 		{
-			name: "a document's problems, each at its origin",
-			documents: func(d *documentsSpy) {
-				d.processes["p"] = typed[documents.ProcessDefinition]{problems: []documents.Problem{
-					{Path: processFile, Line: 2, Place: "limits.time", Message: "it is more than zero"},
-				}}
-			},
-			ask: func(s *source) any { return answerOf(s.Process("p")) },
-			want: answerOf(resolve.Process{}, []resolve.Problem{
-				{Origin: at(processFile, 2, "limits.time"), Message: "it is more than zero"},
-			}),
-		},
-		{
 			name: "the blocks, each its document, its reason, at its line",
 			documents: func(d *documentsSpy) {
 				d.blocks = []documents.Field[documents.Block]{
-					given(documents.Block{Kind: documents.Agent, Name: "a", Reason: "old"}, blocksFile, 1),
-					given(documents.Block{Kind: documents.Process, Name: "p", Reason: "not here"}, blocksFile, 2),
+					given(documents.Block{Kind: documents.Agent, Name: "a", Reason: "old"}, blocksFile, 1, "[0]"),
+					given(documents.Block{Kind: documents.Process, Name: "p", Reason: "not here"}, blocksFile, 2, "[1]"),
 				}
 			},
 			ask: func(s *source) any { return s.Blocks() },
@@ -256,7 +248,7 @@ func TestTheSourceGivesResolveWhatDecidesARefusal(t *testing.T) {
 			name: "a skill's block",
 			documents: func(d *documentsSpy) {
 				d.blocks = []documents.Field[documents.Block]{
-					given(documents.Block{Kind: documents.Kind("skill"), Name: "s", Reason: "old"}, blocksFile, 1),
+					given(documents.Block{Kind: documents.Kind("skill"), Name: "s", Reason: "old"}, blocksFile, 1, "[0]"),
 				}
 			},
 			ask:  func(s *source) any { return s.Blocks() },
@@ -268,10 +260,10 @@ func TestTheSourceGivesResolveWhatDecidesARefusal(t *testing.T) {
 				d.workflows["w"] = typed[documents.WorkflowDefinition]{value: documents.WorkflowDefinition{
 					Name: "w",
 					Params: given([]documents.Field[documents.Param]{
-						given(documents.Param{Name: "base"}, workflowFile, 3),
-						given(documents.Param{Name: "goal", Default: given("x", workflowFile, 4)}, workflowFile, 4),
-					}, workflowFile, 2),
-					Steps: given([]documents.Field[documents.Item]{step("s", workflowFile, 6)}, workflowFile, 5),
+						given(documents.Param{Name: "base"}, workflowFile, 3, "params.base"),
+						given(documents.Param{Name: "goal", Default: given("x", workflowFile, 4, "params.goal.default")}, workflowFile, 4, "params.goal"),
+					}, workflowFile, 2, "params"),
+					Steps: given([]documents.Field[documents.Item]{step("s", workflowFile, 6, "steps[0]")}, workflowFile, 5, "steps"),
 				}}
 			},
 			ask: func(s *source) any { return answerOf(s.Workflow("w")) },
@@ -284,14 +276,14 @@ func TestTheSourceGivesResolveWhatDecidesARefusal(t *testing.T) {
 		{
 			name: "a workflow's step continuing the session of a, with its inputs",
 			documents: func(d *documentsSpy) {
-				s := step("s", workflowFile, 4)
-				s.Value.Session = given(documents.Reference{Root: documents.ReadsSession, Name: "a"}, workflowFile, 5)
+				s := step("s", workflowFile, 4, "steps[1]")
+				s.Value.Session = given(documents.Reference{Root: documents.ReadsSession, Name: "a"}, workflowFile, 5, "steps[1].session")
 				s.Value.Inputs = given([]documents.Field[documents.Binding]{
-					reading("goal", documents.Reference{Root: documents.ReadsParam, Name: "goal"}, workflowFile, 7),
-				}, workflowFile, 6)
+					reading("goal", documents.Reference{Root: documents.ReadsParam, Name: "goal"}, workflowFile, 7, "steps[1].inputs.goal"),
+				}, workflowFile, 6, "steps[1].inputs")
 				d.workflows["w"] = typed[documents.WorkflowDefinition]{value: documents.WorkflowDefinition{
 					Name:  "w",
-					Steps: given([]documents.Field[documents.Item]{step("a", workflowFile, 3), s}, workflowFile, 2),
+					Steps: given([]documents.Field[documents.Item]{step("a", workflowFile, 3, "steps[0]"), s}, workflowFile, 2, "steps"),
 				}}
 			},
 			ask: func(s *source) any { return answerOf(s.Workflow("w")) },
@@ -315,23 +307,24 @@ func TestTheSourceGivesResolveWhatDecidesARefusal(t *testing.T) {
 		{
 			name: "a workflow's workflow item, parallel and branch, each with its items",
 			documents: func(d *documentsSpy) {
-				first := step("x", workflowFile, 8)
+				first := step("x", workflowFile, 8, "steps[2].branch[0]")
 				first.Value.If = given(documents.Condition{Operator: "present",
-					Reads: given(documents.Reference{Root: documents.ReadsParam, Name: "a"}, workflowFile, 9)}, workflowFile, 9)
+					Reads: given(documents.Reference{Root: documents.ReadsParam, Name: "a"}, workflowFile, 9, "steps[2].branch[0].if.present"),
+				}, workflowFile, 9, "steps[2].branch[0].if")
 				first.Value.Outputs = given([]documents.Field[documents.Binding]{
-					reading("o", documents.Reference{Root: documents.ReadsOutputs, Name: "x"}, workflowFile, 10),
-				}, workflowFile, 10)
+					reading("o", documents.Reference{Root: documents.ReadsOutputs, Name: "x"}, workflowFile, 10, "steps[2].branch[0].outputs.o"),
+				}, workflowFile, 10, "steps[2].branch[0].outputs")
 				d.workflows["w"] = typed[documents.WorkflowDefinition]{value: documents.WorkflowDefinition{
 					Name: "w",
 					Steps: given([]documents.Field[documents.Item]{
-						given(documents.Item{Name: "c", Workflow: given("v", workflowFile, 3)}, workflowFile, 3),
+						given(documents.Item{Name: "c", Workflow: given("v", workflowFile, 3, "steps[0].workflow")}, workflowFile, 3, "steps[0]"),
 						given(documents.Item{Name: "par", Parallel: given([]documents.Field[documents.Item]{
-							step("p1", workflowFile, 5), step("p2", workflowFile, 6),
-						}, workflowFile, 4)}, workflowFile, 4),
+							step("p1", workflowFile, 5, "steps[1].parallel[0]"), step("p2", workflowFile, 6, "steps[1].parallel[1]"),
+						}, workflowFile, 4, "steps[1].parallel")}, workflowFile, 4, "steps[1]"),
 						given(documents.Item{Name: "b", Branch: given([]documents.Field[documents.Item]{
-							first, step("y", workflowFile, 11),
-						}, workflowFile, 7)}, workflowFile, 7),
-					}, workflowFile, 2),
+							first, step("y", workflowFile, 11, "steps[2].branch[1]"),
+						}, workflowFile, 7, "steps[2].branch")}, workflowFile, 7, "steps[2]"),
+					}, workflowFile, 2, "steps"),
 				}}
 			},
 			ask: func(s *source) any { return answerOf(s.Workflow("w")) },
@@ -370,17 +363,20 @@ func TestTheSourceGivesResolveWhatDecidesARefusal(t *testing.T) {
 					Steps: given([]documents.Field[documents.Item]{
 						given(documents.Item{Name: "r", Repeat: given(documents.Repeat{
 							State: given([]documents.Field[documents.Binding]{
-								reading("f", documents.Reference{Root: documents.ReadsParam, Name: "x"}, workflowFile, 5),
-							}, workflowFile, 5),
-							Steps: given([]documents.Field[documents.Item]{step("a", workflowFile, 7)}, workflowFile, 6),
+								reading("f", documents.Reference{Root: documents.ReadsParam, Name: "x"}, workflowFile, 5, "steps[0].repeat.state.f"),
+							}, workflowFile, 5, "steps[0].repeat.state"),
+							Steps: given([]documents.Field[documents.Item]{
+								step("a", workflowFile, 7, "steps[0].repeat.steps[0]"),
+							}, workflowFile, 6, "steps[0].repeat.steps"),
 							Next: given([]documents.Field[documents.Binding]{
-								reading("f", documents.Reference{Root: documents.ReadsOutputs, Name: "a", Field: "v"}, workflowFile, 8),
-							}, workflowFile, 8),
+								reading("f", documents.Reference{Root: documents.ReadsOutputs, Name: "a", Field: "v"}, workflowFile, 8, "steps[0].repeat.next.f"),
+							}, workflowFile, 8, "steps[0].repeat.next"),
 							Until: given(documents.Condition{Operator: "present",
-								Reads: given(documents.Reference{Root: documents.ReadsState, Name: "f"}, workflowFile, 9)}, workflowFile, 9),
-							Max: given(3, workflowFile, 10),
-						}, workflowFile, 4)}, workflowFile, 3),
-					}, workflowFile, 2),
+								Reads: given(documents.Reference{Root: documents.ReadsState, Name: "f"}, workflowFile, 9, "steps[0].repeat.until.present"),
+							}, workflowFile, 9, "steps[0].repeat.until"),
+							Max: given(3, workflowFile, 10, "steps[0].repeat.max"),
+						}, workflowFile, 4, "steps[0].repeat")}, workflowFile, 3, "steps[0]"),
+					}, workflowFile, 2, "steps"),
 				}}
 			},
 			ask: func(s *source) any { return answerOf(s.Workflow("w")) },
@@ -407,12 +403,14 @@ func TestTheSourceGivesResolveWhatDecidesARefusal(t *testing.T) {
 				d.workflows["w"] = typed[documents.WorkflowDefinition]{value: documents.WorkflowDefinition{
 					Name: "w",
 					Inputs: given([]documents.Field[documents.Input]{
-						given(documents.Input{Name: "goal", Source: given("text", workflowFile, 3), Form: given([]string{"goal"}, workflowFile, 3)}, workflowFile, 3),
-					}, workflowFile, 2),
-					Steps: given([]documents.Field[documents.Item]{step("s", workflowFile, 5)}, workflowFile, 4),
+						given(documents.Input{Name: "goal", Source: given("text", workflowFile, 3, "inputs.goal.source"),
+							Form: given([]documents.Field[string]{given("goal", workflowFile, 3, "inputs.goal.form[0]")}, workflowFile, 3, "inputs.goal.form"),
+						}, workflowFile, 3, "inputs.goal"),
+					}, workflowFile, 2, "inputs"),
+					Steps: given([]documents.Field[documents.Item]{step("s", workflowFile, 5, "steps[0]")}, workflowFile, 4, "steps"),
 					Outputs: given([]documents.Field[documents.Binding]{
-						reading("o", documents.Reference{Root: documents.ReadsOutputs, Name: "s"}, workflowFile, 7),
-					}, workflowFile, 6),
+						reading("o", documents.Reference{Root: documents.ReadsOutputs, Name: "s"}, workflowFile, 7, "outputs.o"),
+					}, workflowFile, 6, "outputs"),
 				}}
 			},
 			ask: func(s *source) any { return answerOf(s.Workflow("w")) },
@@ -503,6 +501,71 @@ func TestTheSourceGivesResolveWhatDecidesARefusal(t *testing.T) {
 	}
 }
 
+// A document documents gives with problems is given to resolve as no
+// definition, the zero one, and every problem, each at its origin: for
+// each kind the source types.
+func TestADocumentsProblemsAreGivenWithNoDefinition(t *testing.T) {
+	t.Parallel()
+	const file = "/r/.agister/x.yaml"
+	problems := []documents.Problem{
+		{Path: file, Line: 2, Place: "limits.time", Message: "it is more than zero"},
+		{Path: file, Line: 5, Place: "steps", Message: "it has an item"},
+		{Place: "schema", Message: "it is missing"},
+	}
+	want := []resolve.Problem{
+		{Origin: at(file, 2, "limits.time"), Message: "it is more than zero"},
+		{Origin: at(file, 5, "steps"), Message: "it has an item"},
+		{Origin: at("", 0, "schema"), Message: "it is missing"},
+	}
+	cases := []struct {
+		kind string
+		// documents gives the document "d" with problems.
+		documents func(*documentsSpy)
+		// ask gives the source's answer for "d", and whether its definition
+		// is the zero one.
+		ask func(*source) (bool, []resolve.Problem)
+	}{
+		{"workflow", func(d *documentsSpy) {
+			d.workflows["d"] = typed[documents.WorkflowDefinition]{problems: problems}
+		}, func(s *source) (bool, []resolve.Problem) {
+			w, p := s.Workflow("d")
+			return reflect.DeepEqual(w, resolve.Workflow{}), p
+		}},
+		{"process", func(d *documentsSpy) {
+			d.processes["d"] = typed[documents.ProcessDefinition]{problems: problems}
+		}, func(s *source) (bool, []resolve.Problem) {
+			v, p := s.Process("d")
+			return reflect.DeepEqual(v, resolve.Process{}), p
+		}},
+		{"agent", func(d *documentsSpy) {
+			d.agents["d"] = typed[documents.AgentDefinition]{problems: problems}
+		}, func(s *source) (bool, []resolve.Problem) {
+			v, p := s.Agent("d")
+			return reflect.DeepEqual(v, resolve.Agent{}), p
+		}},
+		{"runtime", func(d *documentsSpy) {
+			d.runtimes["d"] = typed[documents.RuntimeDefinition]{problems: problems}
+		}, func(s *source) (bool, []resolve.Problem) {
+			v, p := s.Runtime("d")
+			return reflect.DeepEqual(v, resolve.Runtime{}), p
+		}},
+	}
+	for _, c := range cases {
+		t.Run(c.kind, func(t *testing.T) {
+			t.Parallel()
+			spy := newDocumentsSpy(t)
+			c.documents(spy)
+			zero, got := c.ask(sourceOf(t, spy, layout.Snapshot{}))
+			if !zero {
+				t.Errorf("the %s is given a definition, want none", c.kind)
+			}
+			if !reflect.DeepEqual(got, want) {
+				t.Errorf("problems\n got %+v\nwant %+v", got, want)
+			}
+		})
+	}
+}
+
 // answered is a document resolve is given, or its problems.
 type answered[T any] struct {
 	Value    T
@@ -514,47 +577,52 @@ func answerOf[T any](value T, problems []resolve.Problem) answered[T] {
 }
 
 // source.feature, "A condition gives every reference it reads, however
-// nested".
+// nested": each at the place documents gives it, in the order documents
+// gives them.
 func TestAConditionGivesEveryReferenceItReadsHoweverNested(t *testing.T) {
 	t.Parallel()
-	const file = "/r/.agister/workflows/w.yaml"
-	reference := func(root documents.Root, name string, line int) documents.Field[documents.Reference] {
-		return given(documents.Reference{Root: root, Name: name}, file, line)
+	const (
+		file = "/r/.agister/workflows/w.yaml"
+		if0  = "steps[0].branch[0].if.not"
+	)
+	reference := func(root documents.Root, name, field string, line int, place string) documents.Field[documents.Reference] {
+		return given(documents.Reference{Root: root, Name: name, Field: field}, file, line, place)
 	}
-	condition := func(c documents.Condition, line int) documents.Field[documents.Condition] {
-		return given(c, file, line)
+	condition := func(c documents.Condition, line int, place string) documents.Field[documents.Condition] {
+		return given(c, file, line, place)
 	}
 	// not: {and: [{equals: [{from: params.a}, "x"]},
 	//             {all: {in: {from: state.f}, where: {present: {from: item.x}}}}]}
 	nested := condition(documents.Condition{Operator: "not", Of: []documents.Field[documents.Condition]{
 		condition(documents.Condition{Operator: "and", Of: []documents.Field[documents.Condition]{
-			condition(documents.Condition{Operator: "equals", Reads: reference(documents.ReadsParam, "a", 5),
-				Equals: given[any]("x", file, 5)}, 5),
-			condition(documents.Condition{Operator: "all", Reads: reference(documents.ReadsState, "f", 6),
+			condition(documents.Condition{Operator: "equals", Reads: reference(documents.ReadsParam, "a", "", 5, if0+".and[0].equals[0]"),
+				Equals: given[any]("x", file, 5, if0+".and[0].equals[1]")}, 5, if0+".and[0]"),
+			condition(documents.Condition{Operator: "all", Reads: reference(documents.ReadsState, "f", "", 6, if0+".and[1].all.in"),
 				Of: []documents.Field[documents.Condition]{
 					condition(documents.Condition{Operator: "present",
-						Reads: given(documents.Reference{Root: documents.ReadsItem, Field: "x"}, file, 7)}, 7),
-				}}, 6),
-		}}, 4),
-	}}, 4)
-	arm := step("x", file, 3)
+						Reads: reference(documents.ReadsItem, "", "x", 7, if0+".and[1].all.where.present")}, 7, if0+".and[1].all.where"),
+				}}, 6, if0+".and[1]"),
+		}}, 4, if0),
+	}}, 4, "steps[0].branch[0].if")
+	arm := step("x", file, 3, "steps[0].branch[0]")
 	arm.Value.If = nested
 	spy := newDocumentsSpy(t)
 	spy.workflows["w"] = typed[documents.WorkflowDefinition]{value: documents.WorkflowDefinition{
 		Name: "w",
 		Steps: given([]documents.Field[documents.Item]{
-			given(documents.Item{Name: "b", Branch: given([]documents.Field[documents.Item]{arm, step("y", file, 8)}, file, 2)}, file, 2),
-		}, file, 1),
+			given(documents.Item{Name: "b", Branch: given([]documents.Field[documents.Item]{
+				arm, step("y", file, 8, "steps[0].branch[1]"),
+			}, file, 2, "steps[0].branch")}, file, 2, "steps[0]"),
+		}, file, 1, "steps"),
 	}}
 	workflow, problems := sourceOf(t, spy, layout.Snapshot{}).Workflow("w")
 	if len(problems) > 0 {
 		t.Fatalf("problems %+v, want none", problems)
 	}
-	const condition0 = "steps[0].branch[0].if.not"
 	want := []resolve.Read{
-		*read(resolve.RootParam, "a", "", at(file, 5, condition0+".and[0].equals[0]")),
-		*read(resolve.RootState, "f", "", at(file, 6, condition0+".and[1].all.in")),
-		*read(resolve.RootQueryItem, "", "x", at(file, 7, condition0+".and[1].all.where.present")),
+		*read(resolve.RootParam, "a", "", at(file, 5, if0+".and[0].equals[0]")),
+		*read(resolve.RootState, "f", "", at(file, 6, if0+".and[1].all.in")),
+		*read(resolve.RootQueryItem, "", "x", at(file, 7, if0+".and[1].all.where.present")),
 	}
 	if got := workflow.Steps[0].Branch[0].If.Reads; !reflect.DeepEqual(got, want) {
 		t.Errorf("the arm's condition reads\n got %+v\nwant %+v", got, want)

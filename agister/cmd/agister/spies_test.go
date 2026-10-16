@@ -164,16 +164,62 @@ func (s *filesystemSpy) readsOf() map[string]int {
 }
 
 // rootSpy is a spy of layout's worktree root: root is the root of itself
-// and every directory below it, and no other directory has one.
+// and every directory below it, and no other directory has one. As git
+// does, it gives a directory reached through one of links the root of
+// where the link leads.
 type rootSpy struct {
-	root string
+	root  string
+	links map[string]string
 }
 
 func (s rootSpy) Root(dir string) (string, error) {
+	dir = throughLinks(s.links, dir)
 	if dir == s.root || strings.HasPrefix(dir, s.root+"/") {
 		return s.root, nil
 	}
 	return "", nil
+}
+
+// linksSpy is a spy of the command line's links: each link its test gives
+// leads where the test says, and so does every directory below it; a
+// directory its test gives as missing does not exist; any other is its
+// own path. It keeps the directories asked.
+type linksSpy struct {
+	links   map[string]string
+	missing []string
+	mu      sync.Mutex
+	asked   []string
+}
+
+func (s *linksSpy) Resolved(folder string) (string, error) {
+	s.mu.Lock()
+	s.asked = append(s.asked, folder)
+	s.mu.Unlock()
+	if slices.Contains(s.missing, folder) {
+		return "", &fs.PathError{Op: "lstat", Path: folder, Err: fs.ErrNotExist}
+	}
+	return throughLinks(s.links, folder), nil
+}
+
+// throughLinks is dir with each of links replaced by where it leads: a
+// link, or a directory below it.
+func throughLinks(links map[string]string, dir string) string {
+	for link, to := range links {
+		if dir == link {
+			return to
+		}
+		if rest, below := strings.CutPrefix(dir, link+"/"); below {
+			return to + "/" + rest
+		}
+	}
+	return dir
+}
+
+// askedOf is the directories asked, in order.
+func (s *linksSpy) askedOf() []string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return slices.Clone(s.asked)
 }
 
 // wrappersSpy is a spy of resolve's wrappers: the facts its test gives,

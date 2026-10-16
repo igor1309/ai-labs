@@ -450,3 +450,18 @@ func (c *checkFields) Fields(document check.Reference) []check.Field {
 	walk(root, "")
 	return fields
 }
+
+// key is the place of the field name of the map at place, as documents
+// spells a problem's: the keys from the root joined by ".".
+func key(place, name string) string {
+	if place == "" {
+		return name
+	}
+	return place + "." + name
+}
+
+// itemPlace is the place of the item i of the list at place, as documents
+// spells a problem's.
+func itemPlace(place string, i int) string {
+	return place + "[" + strconv.Itoa(i) + "]"
+}

@@ -85,7 +85,7 @@ func typeRuntime(name string, root tree.Node) (RuntimeDefinition, []Problem) {
 			Verified: entry.fields.texts("verified", optional),
 		}
 		entry.fields.done()
-		runtime.Options.Value = append(runtime.Options.Value, Field[Option]{Value: option, Origin: originOf(entry.fields.node), Given: true})
+		runtime.Options.Value = append(runtime.Options.Value, Field[Option]{Value: option, Origin: originOf(entry.fields.node, entry.fields.place), Given: true})
 	}
 	if problems := t.end(); len(problems) > 0 {
 		return RuntimeDefinition{}, problems

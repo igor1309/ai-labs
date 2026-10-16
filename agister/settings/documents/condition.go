@@ -88,7 +88,7 @@ func (t *typing) condition(node tree.Node, place string, where bool) Field[Condi
 		inner, _ := node.Get(operator)
 		condition.Of = []Field[Condition]{t.condition(inner, c.at(operator), where)}
 	}
-	return Field[Condition]{Value: condition, Origin: originOf(node), Given: true}
+	return Field[Condition]{Value: condition, Origin: originOf(node, place), Given: true}
 }
 
 // equals is the reference and the value of the condition c's equals, in
@@ -101,7 +101,8 @@ func (c *fields) equals(where bool) (Field[Reference], Field[any]) {
 		return Field[Reference]{}, Field[any]{}
 	}
 	reference := &fields{typing: c.typing, node: items[0], place: itemPlace(c.at("equals"), 0), known: map[string]bool{}}
-	return reference.reads(conditionReads(where)), Field[any]{Value: scalar(items[1]), Origin: originOf(items[1]), Given: true}
+	value := Field[any]{Value: scalar(items[1]), Origin: originOf(items[1], itemPlace(c.at("equals"), 1)), Given: true}
+	return reference.reads(conditionReads(where)), value
 }
 
 // scalar is the value of node, a string, an integer, a number or a

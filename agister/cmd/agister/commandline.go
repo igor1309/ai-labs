@@ -2,6 +2,7 @@ package main
 
 import (
 	"errors"
+	"fmt"
 	"io"
 
 	"github.com/igor1309/ai-labs/agister/cli"
@@ -10,12 +11,28 @@ import (
 	"github.com/igor1309/ai-labs/agister/settings/resolve"
 )
 
+// links is what the command line asks of files: a launch directory's path
+// with its links resolved.
+type links interface {
+	Resolved(folder string) (string, error)
+}
+
 // newCommandLine is the command line over the settings of home's folder
-// home and each command's launch directory, read through fs and roots,
-// each step planned with the facts of wrappers.
-func newCommandLine(home string, fs layout.FileSystem, roots layout.WorktreeRoot, wrappers resolve.Wrappers, stdout, stderr io.Writer) (*cli.CLI, error) {
+// home and each command's launch directory, its links resolved by links,
+// read through fs and roots, each step planned with the facts of wrappers.
+// Layout walks up the launch directory to the root git gives of it, which
+// git spells as it is asked: a launch through a link would walk up where
+// the link is, and miss the root of where it leads.
+func newCommandLine(home string, links links, fs layout.FileSystem, roots layout.WorktreeRoot, wrappers resolve.Wrappers, stdout, stderr io.Writer) (*cli.CLI, error) {
+	if links == nil {
+		return nil, errors.New("command line: no links")
+	}
 	port, err := newSettings(home, func(home, launch string) (inspector, error) {
-		checker, err := newChecker(home, launch, fs, roots, wrappers)
+		resolved, err := links.Resolved(launch)
+		if err != nil {
+			return nil, fmt.Errorf("the launch directory %s: %w", launch, err)
+		}
+		checker, err := newChecker(home, resolved, fs, roots, wrappers)
 		if err != nil {
 			return nil, err
 		}

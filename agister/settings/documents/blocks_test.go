@@ -17,10 +17,10 @@ func blocksOf(bytes string) ([]documents.Field[documents.Block], []documents.Pro
 }
 
 // block is the block of the document kind and name, for reason, on line of
-// the blocks file.
-func block(kind documents.Kind, name, reason string, line int) documents.Field[documents.Block] {
+// the blocks file, at place.
+func block(kind documents.Kind, name, reason string, line int, place string) documents.Field[documents.Block] {
 	return documents.Field[documents.Block]{Value: documents.Block{Kind: kind, Name: name, Reason: reason},
-		Origin: documents.Origin{Path: blocksFile, Line: line}, Given: true}
+		Origin: documents.Origin{Path: blocksFile, Line: line, Place: place}, Given: true}
 }
 
 func assertBlocks(t *testing.T, got, want []documents.Field[documents.Block]) {
@@ -42,8 +42,8 @@ func TestEachBlockIsADocumentByKindAndName(t *testing.T) {
 	got, problems := blocksOf("- {process: review, reason: it writes to main}\n- {agent: codex, reason: no network here}\n")
 	assertProblems(t, problems, nil)
 	assertBlocks(t, got, []documents.Field[documents.Block]{
-		block(documents.Process, "review", "it writes to main", 1),
-		block(documents.Agent, "codex", "no network here", 2),
+		block(documents.Process, "review", "it writes to main", 1, "[0]"),
+		block(documents.Agent, "codex", "no network here", 2, "[1]"),
 	})
 
 	kinds := []documents.Kind{documents.Workflow, documents.Process, documents.Agent, documents.Runtime,
@@ -53,7 +53,7 @@ func TestEachBlockIsADocumentByKindAndName(t *testing.T) {
 			t.Parallel()
 			got, problems := blocksOf("- {" + string(kind) + ": a, reason: why}\n")
 			assertProblems(t, problems, nil)
-			assertBlocks(t, got, []documents.Field[documents.Block]{block(kind, "a", "why", 1)})
+			assertBlocks(t, got, []documents.Field[documents.Block]{block(kind, "a", "why", 1, "[0]")})
 		})
 	}
 }
@@ -123,5 +123,5 @@ func TestTheBlocksGivenAreTheCallersOwn(t *testing.T) {
 	gotten[0].Value.Name = "x"
 	got, problems := d.Blocks()
 	assertProblems(t, problems, nil)
-	assertBlocks(t, got, []documents.Field[documents.Block]{block(documents.Process, "review", "why", 1)})
+	assertBlocks(t, got, []documents.Field[documents.Block]{block(documents.Process, "review", "why", 1, "[0]")})
 }

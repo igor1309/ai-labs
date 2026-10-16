@@ -1,9 +1,12 @@
 // Package files is the operating system's filesystem, in its own types
-// (ADR-001): a folder's entries, each with what it is, and a file's
-// bytes.
+// (ADR-001): a folder's entries, each with what it is, a file's bytes,
+// and a folder's path with its links resolved.
 package files
 
-import "os"
+import (
+	"os"
+	"path/filepath"
+)
 
 // Entry is a name in a folder and what is there.
 type Entry struct {
@@ -50,3 +53,7 @@ func (*Files) Entries(folder string) ([]Entry, error) {
 
 // Bytes gives file's bytes.
 func (*Files) Bytes(file string) ([]byte, error) { return os.ReadFile(file) }
+
+// Resolved gives folder's path with each link in it replaced by where it
+// leads.
+func (*Files) Resolved(folder string) (string, error) { return filepath.EvalSymlinks(folder) }

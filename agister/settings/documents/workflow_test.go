@@ -80,72 +80,87 @@ func inHomeWorkflow(line int, place, message string) documents.Problem {
 	return documents.Problem{Path: homeWorkflow, Line: line, Place: place, Message: message}
 }
 
-// ofWorkflow is value, given by the workflow a's home file, on line.
-func ofWorkflow[T any](value T, line int) documents.Field[T] {
-	return documents.Field[T]{Value: value, Origin: documents.Origin{Path: homeWorkflow, Line: line}, Given: true}
+// ofWorkflow is value, given by the workflow a's home file, on line, at
+// place.
+func ofWorkflow[T any](value T, line int, place string) documents.Field[T] {
+	return documents.Field[T]{Value: value, Origin: documents.Origin{Path: homeWorkflow, Line: line, Place: place}, Given: true}
 }
 
-// binding is the binding name, reading what, on line.
-func binding(name string, what documents.Reference, line int) documents.Field[documents.Binding] {
-	return ofWorkflow(documents.Binding{Name: name, Value: documents.Value{From: what}}, line)
+// binding is the binding at place, name, reading what, on line.
+func binding(place, name string, what documents.Reference, line int) documents.Field[documents.Binding] {
+	return ofWorkflow(documents.Binding{Name: name, Value: documents.Value{From: what}}, line, place+"."+name)
 }
 
-// bindings are the bindings of a map on line.
-func bindings(line int, items ...documents.Field[documents.Binding]) documents.Field[[]documents.Field[documents.Binding]] {
-	return ofWorkflow(items, line)
+// bindings are the bindings of the map at place, on line.
+func bindings(line int, place string, items ...documents.Field[documents.Binding]) documents.Field[[]documents.Field[documents.Binding]] {
+	return ofWorkflow(items, line, place)
 }
 
 // validWorkflowDefinition is validWorkflow typed: every field it gives,
-// each with its value and the origin of its home file, on its line; a name
-// the name alone, a reference what it reads, and its items in order.
+// each with its value and the origin of its home file, on its line, at its
+// place; a name the name alone, a reference what it reads, and its items
+// in order.
 func validWorkflowDefinition() documents.WorkflowDefinition {
-	present := documents.Condition{Operator: "present", Reads: ofWorkflow(queryItem("fixed"), 24)}
-	equals := documents.Condition{Operator: "equals", Reads: ofWorkflow(outputs("judge", "verdict"), 18), Equals: ofWorkflow[any]("approve", 18)}
+	const (
+		fixAt    = "steps[2].branch[0]"
+		repeatAt = fixAt + ".repeat"
+		repairAt = repeatAt + ".steps[0]"
+		untilAt  = repeatAt + ".until"
+		doneAt   = "steps[2].branch[1]"
+		testsAt  = "steps[0].parallel[0]"
+		intentAt = "steps[0].parallel[1]"
+	)
+	present := documents.Condition{Operator: "present", Reads: ofWorkflow(queryItem("fixed"), 24, untilAt+".all.where.present")}
+	equals := documents.Condition{Operator: "equals",
+		Reads:  ofWorkflow(outputs("judge", "verdict"), 18, fixAt+".if.not.equals[0]"),
+		Equals: ofWorkflow[any]("approve", 18, fixAt+".if.not.equals[1]")}
 	fix := documents.Item{
 		Name: "fix",
-		If:   ofWorkflow(documents.Condition{Operator: "not", Of: []documents.Field[documents.Condition]{ofWorkflow(equals, 18)}}, 18),
+		If: ofWorkflow(documents.Condition{Operator: "not", Of: []documents.Field[documents.Condition]{
+			ofWorkflow(equals, 18, fixAt+".if.not"),
+		}}, 18, fixAt+".if"),
 		Repeat: ofWorkflow(documents.Repeat{
-			State: bindings(20, binding("review", outputs("judge", ""), 20)),
+			State: bindings(20, repeatAt+".state", binding(repeatAt+".state", "review", outputs("judge", ""), 20)),
 			Steps: ofWorkflow([]documents.Field[documents.Item]{ofWorkflow(documents.Item{
-				Name: "repair", Process: ofWorkflow("implement", 22), Agent: ofWorkflow("codex", 22),
-				Inputs: bindings(22, binding("review", state("review", ""), 22)),
-			}, 22)}, 21),
-			Next: bindings(23, binding("review", outputs("repair", ""), 23)),
-			Until: ofWorkflow(documents.Condition{Operator: "all", Reads: ofWorkflow(state("review", "findings"), 24),
-				Of: []documents.Field[documents.Condition]{ofWorkflow(present, 24)}}, 24),
-			Max: ofWorkflow(3, 25),
-		}, 19),
-		Outputs: bindings(26, binding("summary", outputs("fix", "review"), 26)),
+				Name: "repair", Process: ofWorkflow("implement", 22, repairAt+".process"), Agent: ofWorkflow("codex", 22, repairAt+".agent"),
+				Inputs: bindings(22, repairAt+".inputs", binding(repairAt+".inputs", "review", state("review", ""), 22)),
+			}, 22, repairAt)}, 21, repeatAt+".steps"),
+			Next: bindings(23, repeatAt+".next", binding(repeatAt+".next", "review", outputs("repair", ""), 23)),
+			Until: ofWorkflow(documents.Condition{Operator: "all", Reads: ofWorkflow(state("review", "findings"), 24, untilAt+".all.in"),
+				Of: []documents.Field[documents.Condition]{ofWorkflow(present, 24, untilAt+".all.where")}}, 24, untilAt),
+			Max: ofWorkflow(3, 25, repeatAt+".max"),
+		}, 19, repeatAt),
+		Outputs: bindings(26, fixAt+".outputs", binding(fixAt+".outputs", "summary", outputs("fix", "review"), 26)),
 	}
 	done := documents.Item{
-		Name: "done", Process: ofWorkflow("summarize", 28), Agent: ofWorkflow("claude-opus", 29),
-		Session: ofWorkflow(session("judge"), 30),
-		Outputs: bindings(31, binding("summary", outputs("done", "summary"), 31)),
+		Name: "done", Process: ofWorkflow("summarize", 28, doneAt+".process"), Agent: ofWorkflow("claude-opus", 29, doneAt+".agent"),
+		Session: ofWorkflow(session("judge"), 30, doneAt+".session"),
+		Outputs: bindings(31, doneAt+".outputs", binding(doneAt+".outputs", "summary", outputs("done", "summary"), 31)),
 	}
 	return documents.WorkflowDefinition{
 		Name: "a",
 		Params: ofWorkflow([]documents.Field[documents.Param]{
-			ofWorkflow(documents.Param{Name: "base", Default: ofWorkflow("origin/trunk", 3)}, 3),
-		}, 2),
+			ofWorkflow(documents.Param{Name: "base", Default: ofWorkflow("origin/trunk", 3, "params.base.default")}, 3, "params.base"),
+		}, 2, "params"),
 		Inputs: ofWorkflow([]documents.Field[documents.Input]{
-			ofWorkflow(documents.Input{Name: "base", Source: ofWorkflow("git.revision", 5), Arguments: []documents.Field[documents.Binding]{
-				binding("rev", param("base"), 5),
-			}}, 5),
-		}, 4),
+			ofWorkflow(documents.Input{Name: "base", Source: ofWorkflow("git.revision", 5, "inputs.base.source"), Arguments: []documents.Field[documents.Binding]{
+				binding("inputs.base", "rev", param("base"), 5),
+			}}, 5, "inputs.base"),
+		}, 4, "inputs"),
 		Steps: ofWorkflow([]documents.Field[documents.Item]{
 			ofWorkflow(documents.Item{Name: "reviews", Parallel: ofWorkflow([]documents.Field[documents.Item]{
-				ofWorkflow(documents.Item{Name: "tests", Process: ofWorkflow("tests_review", 9), Agent: ofWorkflow("codex", 9),
-					Inputs: bindings(9, binding("base", input("base"), 9))}, 9),
-				ofWorkflow(documents.Item{Name: "intent", Workflow: ofWorkflow("intent", 10),
-					Inputs: bindings(10, binding("base", input("base"), 10))}, 10),
-			}, 8)}, 7),
-			ofWorkflow(documents.Item{Name: "judge", Process: ofWorkflow("review_judge", 12), Agent: ofWorkflow("claude-opus", 13),
-				Inputs: bindings(14, binding("reviews", outputs("reviews", ""), 14))}, 11),
+				ofWorkflow(documents.Item{Name: "tests", Process: ofWorkflow("tests_review", 9, testsAt+".process"), Agent: ofWorkflow("codex", 9, testsAt+".agent"),
+					Inputs: bindings(9, testsAt+".inputs", binding(testsAt+".inputs", "base", input("base"), 9))}, 9, testsAt),
+				ofWorkflow(documents.Item{Name: "intent", Workflow: ofWorkflow("intent", 10, intentAt+".workflow"),
+					Inputs: bindings(10, intentAt+".inputs", binding(intentAt+".inputs", "base", input("base"), 10))}, 10, intentAt),
+			}, 8, "steps[0].parallel")}, 7, "steps[0]"),
+			ofWorkflow(documents.Item{Name: "judge", Process: ofWorkflow("review_judge", 12, "steps[1].process"), Agent: ofWorkflow("claude-opus", 13, "steps[1].agent"),
+				Inputs: bindings(14, "steps[1].inputs", binding("steps[1].inputs", "reviews", outputs("reviews", ""), 14))}, 11, "steps[1]"),
 			ofWorkflow(documents.Item{Name: "decide", Branch: ofWorkflow([]documents.Field[documents.Item]{
-				ofWorkflow(fix, 17), ofWorkflow(done, 27),
-			}, 16)}, 15),
-		}, 6),
-		Outputs: bindings(32, binding("summary", outputs("decide", "summary"), 33)),
+				ofWorkflow(fix, 17, fixAt), ofWorkflow(done, 27, doneAt),
+			}, 16, "steps[2].branch")}, 15, "steps[2]"),
+		}, 6, "steps"),
+		Outputs: bindings(32, "outputs", binding("outputs", "summary", outputs("decide", "summary"), 33)),
 	}
 }
 
@@ -312,11 +327,13 @@ colour: red
 func TestAConditionOfEachOperator(t *testing.T) {
 	t.Parallel()
 	type conditions = []documents.Field[documents.Condition]
-	present := func(what documents.Reference) documents.Field[documents.Condition] {
-		return ofWorkflow(documents.Condition{Operator: "present", Reads: ofWorkflow(what, 3)}, 3)
+	// The arm's condition is at if; each condition in it at its place.
+	const if0 = "steps[0].branch[0].if"
+	present := func(place string, what documents.Reference) documents.Field[documents.Condition] {
+		return ofWorkflow(documents.Condition{Operator: "present", Reads: ofWorkflow(what, 3, place+".present")}, 3, place)
 	}
 	equals := func(what documents.Reference, value any) documents.Condition {
-		return documents.Condition{Operator: "equals", Reads: ofWorkflow(what, 3), Equals: ofWorkflow(value, 3)}
+		return documents.Condition{Operator: "equals", Reads: ofWorkflow(what, 3, if0+".equals[0]"), Equals: ofWorkflow(value, 3, if0+".equals[1]")}
 	}
 	cases := []struct {
 		condition string
@@ -325,16 +342,18 @@ func TestAConditionOfEachOperator(t *testing.T) {
 		{"{equals: [{from: steps.x.outputs.verdict}, approve]}", equals(outputs("x", "verdict"), "approve")},
 		{"{equals: [{from: steps.x.outputs.code}, 0]}", equals(outputs("x", "code"), int64(0))},
 		{"{equals: [{from: steps.x.outputs.ok}, true]}", equals(outputs("x", "ok"), true)},
-		{"{present: {from: inputs.a}}", present(input("a")).Value},
+		{"{present: {from: inputs.a}}", present(if0, input("a")).Value},
 		{"{all: {in: {from: steps.x.outputs.items}, where: {present: {from: item.ok}}}}",
-			documents.Condition{Operator: "all", Reads: ofWorkflow(outputs("x", "items"), 3), Of: conditions{present(queryItem("ok"))}}},
+			documents.Condition{Operator: "all", Reads: ofWorkflow(outputs("x", "items"), 3, if0+".all.in"),
+				Of: conditions{present(if0+".all.where", queryItem("ok"))}}},
 		{"{any: {in: {from: steps.x.outputs.items}, where: {present: {from: item.ok}}}}",
-			documents.Condition{Operator: "any", Reads: ofWorkflow(outputs("x", "items"), 3), Of: conditions{present(queryItem("ok"))}}},
+			documents.Condition{Operator: "any", Reads: ofWorkflow(outputs("x", "items"), 3, if0+".any.in"),
+				Of: conditions{present(if0+".any.where", queryItem("ok"))}}},
 		{"{and: [{present: {from: inputs.a}}, {present: {from: params.b}}]}",
-			documents.Condition{Operator: "and", Of: conditions{present(input("a")), present(param("b"))}}},
+			documents.Condition{Operator: "and", Of: conditions{present(if0+".and[0]", input("a")), present(if0+".and[1]", param("b"))}}},
 		{"{or: [{present: {from: inputs.a}}, {present: {from: params.b}}]}",
-			documents.Condition{Operator: "or", Of: conditions{present(input("a")), present(param("b"))}}},
-		{"{not: {present: {from: state.s}}}", documents.Condition{Operator: "not", Of: conditions{present(state("s", ""))}}},
+			documents.Condition{Operator: "or", Of: conditions{present(if0+".or[0]", input("a")), present(if0+".or[1]", param("b"))}}},
+		{"{not: {present: {from: state.s}}}", documents.Condition{Operator: "not", Of: conditions{present(if0+".not", state("s", ""))}}},
 	}
 	for _, c := range cases {
 		t.Run(c.condition, func(t *testing.T) {
@@ -345,8 +364,8 @@ func TestAConditionOfEachOperator(t *testing.T) {
 			if len(got.Steps.Value) == 0 {
 				t.Fatal("no step")
 			}
-			if condition := got.Steps.Value[0].Value.Branch.Value[0].Value.If; !reflect.DeepEqual(condition, ofWorkflow(c.want, 3)) {
-				t.Errorf("condition\n got %+v\nwant %+v", condition, ofWorkflow(c.want, 3))
+			if condition := got.Steps.Value[0].Value.Branch.Value[0].Value.If; !reflect.DeepEqual(condition, ofWorkflow(c.want, 3, if0)) {
+				t.Errorf("condition\n got %+v\nwant %+v", condition, ofWorkflow(c.want, 3, if0))
 			}
 		})
 	}

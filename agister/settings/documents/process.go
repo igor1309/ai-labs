@@ -22,8 +22,8 @@ type ProcessDefinition struct {
 	Name        string
 	Prompt      Field[string]
 	Instruction Field[string]
-	Guidance    Field[[]string]
-	Skills      Field[[]string]
+	Guidance    Field[[]Field[string]]
+	Skills      Field[[]Field[string]]
 	Params      Field[[]Field[Param]]
 	Inputs      Field[[]Field[Input]]
 	Environment Field[[]Field[Binding]]
@@ -48,7 +48,7 @@ type Param struct {
 type Input struct {
 	Name      string
 	Source    Field[string]
-	Form      Field[[]string]
+	Form      Field[[]Field[string]]
 	Arguments []Field[Binding]
 }
 
@@ -188,7 +188,7 @@ func typeParams(t *fields) Field[[]Field[Param]] {
 	for _, entry := range params.Value {
 		param := Param{Name: entry.name, Default: entry.fields.text("default", optional)}
 		entry.fields.done()
-		typed = append(typed, Field[Param]{Value: param, Origin: originOf(entry.fields.node), Given: true})
+		typed = append(typed, Field[Param]{Value: param, Origin: originOf(entry.fields.node, entry.fields.place), Given: true})
 	}
 	return Field[[]Field[Param]]{Value: typed, Origin: params.Origin, Given: true}
 }
@@ -216,7 +216,7 @@ func typeInputs(t *fields) Field[[]Field[Input]] {
 			}
 		}
 		entry.fields.done()
-		typed = append(typed, Field[Input]{Value: input, Origin: originOf(entry.fields.node), Given: true})
+		typed = append(typed, Field[Input]{Value: input, Origin: originOf(entry.fields.node, entry.fields.place), Given: true})
 	}
 	return Field[[]Field[Input]]{Value: typed, Origin: inputs.Origin, Given: true}
 }

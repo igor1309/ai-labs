@@ -55,23 +55,26 @@ func assertNoRuntime(t *testing.T, got documents.RuntimeDefinition) {
 	}
 }
 
-// texts is a list of strings given by the file at path, on line.
-func texts(path string, line int, values ...string) documents.Field[[]string] {
-	return documents.Field[[]string]{Value: values, Origin: documents.Origin{Path: path, Line: line}, Given: true}
+// texts is a list of strings given by the file at path, on line, at
+// place.
+func texts(path string, line int, place string, values ...string) documents.Field[[]string] {
+	return documents.Field[[]string]{Value: values, Origin: documents.Origin{Path: path, Line: line, Place: place}, Given: true}
 }
 
-// option is the option name, given by the file at path, on line.
+// option is the option name, given by the file at path, on line, at
+// options.<name>.
 func option(path string, line int, name string, grants, verified documents.Field[[]string]) documents.Field[documents.Option] {
 	return documents.Field[documents.Option]{
 		Value:  documents.Option{Name: name, Grants: grants, Verified: verified},
-		Origin: documents.Origin{Path: path, Line: line},
+		Origin: documents.Origin{Path: path, Line: line, Place: "options." + name},
 		Given:  true,
 	}
 }
 
-// options are a runtime's options, given by the file at path, on line.
+// options are a runtime's options, given by the file at path, on line, at
+// options.
 func options(path string, line int, items ...documents.Field[documents.Option]) documents.Field[[]documents.Field[documents.Option]] {
-	return documents.Field[[]documents.Field[documents.Option]]{Value: items, Origin: documents.Origin{Path: path, Line: line}, Given: true}
+	return documents.Field[[]documents.Field[documents.Option]]{Value: items, Origin: documents.Origin{Path: path, Line: line, Place: "options"}, Given: true}
 }
 
 // inHomeRuntime is a problem at place of the runtime a's home file, on
@@ -85,14 +88,16 @@ func inHomeRuntime(line int, place, message string) documents.Problem {
 func validRuntimeDefinition() documents.RuntimeDefinition {
 	return documents.RuntimeDefinition{
 		Name:     "a",
-		Adapter:  text("codex", homeRuntime, 2),
-		Contract: text("codex/2", homeRuntime, 3),
-		Efforts:  texts(homeRuntime, 4, "low", "high"),
-		Grants:   texts(homeRuntime, 5, "host.read"),
-		Select:   text("one", homeRuntime, 6),
+		Adapter:  text("codex", homeRuntime, 2, "adapter"),
+		Contract: text("codex/2", homeRuntime, 3, "contract"),
+		Efforts:  texts(homeRuntime, 4, "efforts", "low", "high"),
+		Grants:   texts(homeRuntime, 5, "grants", "host.read"),
+		Select:   text("one", homeRuntime, 6, "select"),
 		Options: options(homeRuntime, 7,
-			option(homeRuntime, 8, "read-only", texts(homeRuntime, 8, "repository.read"), texts(homeRuntime, 8, "0.161.")),
-			option(homeRuntime, 9, "workspace-write", texts(homeRuntime, 9, "repository.read", "repository.write"), documents.Field[[]string]{}),
+			option(homeRuntime, 8, "read-only", texts(homeRuntime, 8, "options.read-only.grants", "repository.read"),
+				texts(homeRuntime, 8, "options.read-only.verified", "0.161.")),
+			option(homeRuntime, 9, "workspace-write", texts(homeRuntime, 9, "options.workspace-write.grants", "repository.read", "repository.write"),
+				documents.Field[[]string]{}),
 		),
 	}
 }
@@ -143,9 +148,9 @@ func TestARuntimeMayOfferNoOption(t *testing.T) {
 	assertProblems(t, problems, nil)
 	assertRuntime(t, got, documents.RuntimeDefinition{
 		Name:     "a",
-		Adapter:  text("codex", homeRuntime, 2),
-		Contract: text("codex/2", homeRuntime, 3),
-		Grants:   texts(homeRuntime, 4, "process.execute"),
+		Adapter:  text("codex", homeRuntime, 2, "adapter"),
+		Contract: text("codex/2", homeRuntime, 3, "contract"),
+		Grants:   texts(homeRuntime, 4, "grants", "process.execute"),
 	})
 }
 
@@ -158,7 +163,7 @@ func TestARuntimesSelectIsAnyOrOne(t *testing.T) {
 			t.Parallel()
 			got, problems := typeRuntime(t, runtimeHeader+"select: "+value+"\noptions:\n  x: {grants: [a]}\n")
 			assertProblems(t, problems, nil)
-			if want := text(value, homeRuntime, 4); got.Select != want {
+			if want := text(value, homeRuntime, 4, "select"); got.Select != want {
 				t.Errorf("select %+v, want %+v", got.Select, want)
 			}
 		})
@@ -176,7 +181,7 @@ func TestANearerLayerDropsWhatTheRuntimeGrantsWithNoOption(t *testing.T) {
 	}}}).Runtime("a")
 	assertProblems(t, problems, nil)
 	want := validRuntimeDefinition()
-	want.Grants = texts(repositoryRuntime, 1, []string{}...)
+	want.Grants = texts(repositoryRuntime, 1, "grants", []string{}...)
 	assertRuntime(t, got, want)
 }
 
@@ -322,7 +327,8 @@ func TestANestedFieldIsOfTheFileThatGaveIt(t *testing.T) {
 
 	got, problems := runtime("options:\n  read-only: {verified: ['0.162.']}\n")
 	assertProblems(t, problems, nil)
-	if want := option(repositoryRuntime, 2, "read-only", texts(homeRuntime, 8, "repository.read"), texts(repositoryRuntime, 2, "0.162.")); !reflect.DeepEqual(got.Options.Value[0], want) {
+	if want := option(repositoryRuntime, 2, "read-only", texts(homeRuntime, 8, "options.read-only.grants", "repository.read"),
+		texts(repositoryRuntime, 2, "options.read-only.verified", "0.162.")); !reflect.DeepEqual(got.Options.Value[0], want) {
 		t.Errorf("the option read-only\n got %+v\nwant %+v", got.Options.Value[0], want)
 	}
 

@@ -161,7 +161,7 @@ func (s *items) item(f *fields, arm func(*fields, *Item)) Field[Item] {
 	// An item that is not one of them has no fields to know: its one
 	// problem is what it is.
 	if len(kinds) != 1 {
-		f.problem(originOf(f.node), f.place, "it is a step, a workflow, a parallel, a branch or a repeat")
+		f.problem(originOf(f.node, f.place), f.place, "it is a step, a workflow, a parallel, a branch or a repeat")
 		return Field[Item]{}
 	}
 	switch kinds[0] {
@@ -181,7 +181,7 @@ func (s *items) item(f *fields, arm func(*fields, *Item)) Field[Item] {
 		item.Repeat = s.repeat(f)
 	}
 	f.done()
-	return Field[Item]{Value: item, Origin: originOf(f.node), Given: true}
+	return Field[Item]{Value: item, Origin: originOf(f.node, f.place), Given: true}
 }
 
 func (s *items) repeat(f *fields) Field[Repeat] {
