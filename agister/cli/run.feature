@@ -22,6 +22,7 @@ Feature: The command line runs a request
     Then it prints the result as JSON on stdout: status, class, output,
       timing, cost and warnings
     And it exits <code>
+    And an unknown cost is printed as null
 
     Examples:
       | status      | class   | code |

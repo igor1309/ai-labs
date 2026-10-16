@@ -2,7 +2,10 @@
 # ADR-001, "Starting a run"): cli's run answered from resolve and core,
 # with spies in place of the wrappers (ADR-009, rule 4): the settings,
 # home's as shipped with a bash process "say" whose prompt is the script
-# "echo \"$what\"" and its input "what" from the param "what"; a git,
+# "echo \"$what\"" and its input "what" from the param "what", and a
+# workflow "pair" of two "say" steps, "a" given what=hi and "b" given
+# what from steps.a.outputs.stdout.head, its output "said" from
+# steps.b.outputs.stdout.head; a git,
 # whose worktree root of "/r" and below is "/r"; the bash wrapper; and a
 # signal source.
 
@@ -15,6 +18,12 @@ Feature: The composition runs a request
       Agister's and what=hi
     And it prints the result, completed, its output the exit code and
       stdout "hi", and its warnings the plan's
+
+  Scenario: A named workflow runs its steps in order, bound
+    When "agister run pair" runs in "/r"
+    Then bash runs "echo \"$what\"" with what=hi, then with what=hi
+      followed by a newline, the first's stdout
+    And it prints the result, completed, its output "said"
 
   Scenario: A request that does not resolve runs nothing
     When "agister run --process nope --agent bash" runs in "/r"
@@ -33,24 +42,26 @@ Feature: The composition runs a request
       and it exits 1
 
     Examples:
-      | declares                                    | agent       | what                             |
-      | as it is                                    | claude-opus | the runtime "claude-code"'s turn |
-      | an input "b" from the source "git.revision" | bash        | the source "git.revision"        |
-      | the input "what" with the form "goal"       | bash        | the brief form of "what"         |
-      | a workspace revision from inputs.what       | bash        | the workspace's revision         |
-      | a workspace clean                           | bash        | the workspace's clean            |
-      | the stale limit no_event 1m                 | bash        | the staleness limit              |
-      | a recovery of 1 resume                      | bash        | the recovery                     |
-      | an instruction "think"                      | bash        | the instruction on bash          |
-      | the guidance "g"                            | bash        | the guidance on bash             |
+      | declares                                     | agent       | what                              |
+      | as it is                                     | claude-opus | the runtime "claude-code"'s turn  |
+      | an input "b" from the source "git.revision"  | bash        | the source "git.revision"         |
+      | the input "what" with the form "goal"        | bash        | the brief form of "what"          |
+      | a workspace revision from inputs.what        | bash        | the workspace's revision          |
+      | a workspace clean                            | bash        | the workspace's clean             |
+      | the workspace access read-write              | bash        | the workspace's read-write access |
+      | the stale limit no_event 1m                  | bash        | the staleness limit               |
+      | an instruction "think"                       | bash        | the instruction on bash           |
+      | the guidance "g", a prompt the settings hold | bash        | the guidance on bash              |
 
   Scenario: A workflow with an item that is not a step is refused
     When "agister run code_review --param goal=g" runs in "/r"
-    Then it prints to stderr that the item "reviews", a parallel, is not
-      run yet, nothing runs, and it exits 1
+    Then it prints to stderr each thing not run yet, in the order its
+      documents give them, the item "reviews", a parallel, among them;
+      nothing runs, and it exits 1
 
-  Scenario: A step reaches core with its process's time limit
-    Given the process "say" has the time limit 1s
+  Scenario: A step reaches core with its process's time limit, as layered
+    Given home's process "say" has the time limit 1m, and the
+      repository's "say" extends it with the time limit 1s
     When the run of "say" on "bash" is built
     Then core's step has the time limit 1s
 

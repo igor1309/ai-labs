@@ -1,7 +1,7 @@
 # supervisor, a wrapper (docs/run-implementation.md, "The first run";
 # ADR-012, rule 6): starts a program and its group, keeps the ends of its
 # output, and ends all it started. Contract tests against real programs
-# (ADR-009, rule 3).
+# (ADR-009, rule 3); a timer spy keeps the grace (rule 5).
 
 Feature: The supervisor runs a program and ends all it started
 
@@ -29,8 +29,14 @@ Feature: The supervisor runs a program and ends all it started
   Scenario: An ended context ends the program and all it started
     Given a program that starts a child sleeping 60 seconds, then sleeps
     When its context ends after the child has started
-    Then the program and the child are gone within three seconds
+    Then the program and the child are sent SIGTERM, and are gone when
+      the supervisor returns, the grace timer not passed
     And it gives that the program was ended by a signal
+
+  Scenario: A program that ignores SIGTERM is killed when the grace passes
+    Given a program that traps SIGTERM and sleeps on, ready once trapped
+    When its context ends, and the grace timer passes 2s
+    Then it is sent SIGKILL, and is gone when the supervisor returns
 
   Scenario: What a program leaves running is ended when it exits
     Given a program that starts a child sleeping 60 seconds, then exits 0
