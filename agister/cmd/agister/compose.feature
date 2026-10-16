@@ -19,11 +19,12 @@ Feature: The composition checks and inspects settings
     And it exits 1
 
   Scenario: A blocked document is reported with what it refuses
-    Given "/r/.agister/blocks.yaml" blocks the process "implement", for
+    Given "/r/.agister/blocks.yaml" blocks the process "review_judge", for
       "not here"
     When "agister check" runs in "/r"
-    Then it prints the process "implement", blocked on line 1: not here,
-      refusing the process "implement" and each workflow that names it
+    Then it prints the process "review_judge", blocked on line 1: not
+      here, refusing the process "review_judge" and the workflows
+      "adr_review" and "code_review"
     And it exits 1
 
   Scenario: A field is shown with its layer
@@ -35,5 +36,6 @@ Feature: The composition checks and inspects settings
 
   Scenario: A step's plan comes through the source and the facts
     When "agister inspect workflow code_review" runs in "/r"
-    Then it shows the plan of each step, the options its runtime takes
-      among it
+    Then it shows the plans of the five reviews, each taking codex's
+      option "read-only", and of the judge, taking none
+    And no fault: codex and claude-code take the agents' effort "high"

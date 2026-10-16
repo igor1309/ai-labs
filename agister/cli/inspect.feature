@@ -41,6 +41,12 @@ Feature: The command line inspects settings
     Then it prints the fault, its chain and its problem
     And it exits 0
 
+  Scenario: A fault of no document is printed as such
+    Given the port shows the workflow "w", refused, of no document: "home
+      cannot be read"
+    When "agister inspect workflow w" runs
+    Then it prints the problem, of no document, with no chain
+
   Scenario: A document no layer holds is said so
     Given the port shows that no layer holds the agent "z"
     When "agister inspect agent z" runs

@@ -31,15 +31,16 @@ Feature: The command line checks settings
     Then it prints "2 resolve, 0 refused" and exits 0
 
   Scenario Outline: The launch directory and home
-    When "agister check <flags>" runs in "/work", the user's home
+    When "agister <command> <flags>" runs in "/work", the user's home
       directory "/u"
     Then it asks the port with the launch directory "<launch>" and home
       "/u/.agister"
 
     Examples:
-      | flags    | launch |
-      |          | /work  |
-      | --dir /d | /d     |
+      | command           | flags    | launch |
+      | check             |          | /work  |
+      | check             | --dir /d | /d     |
+      | inspect processes | --dir /d | /d     |
 
   Scenario Outline: A bad command prints its usage and exits 2
     When "agister <args>" runs

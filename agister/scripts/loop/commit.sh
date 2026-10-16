@@ -21,6 +21,11 @@ if ! (cd "$TEST_DIR" && ./scripts/test.sh) > "$dir/test-last.log" 2>&1; then
   exit 1
 fi
 tail -1 "$dir/test-last.log"
-git add -- "$@"
+# A deletion already staged is in the index as it is: adding it again fails.
+for f in "$@"; do
+  if [[ -e $f ]] || git ls-files --error-unmatch "$f" > /dev/null 2>&1; then
+    git add -- "$f"
+  fi
+done
 git commit -q -m "$message"
 git log --oneline -1
