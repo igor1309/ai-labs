@@ -1,7 +1,7 @@
 # cli (docs/settings-implementation.md, "The composition"; ADR-001): turns
 # a command into a request on the port it declares, and prints what the
-# port gives. It is given its arguments, its working directory, the
-# user's home directory and its output streams (ADR-009, rule 2); a spy
+# port gives, and the first error writing it. It is given its arguments,
+# its working directory and its output streams (ADR-009, rule 2); a spy
 # answers the port in every test.
 
 Feature: The command line checks settings
@@ -30,11 +30,9 @@ Feature: The command line checks settings
     When "agister check" runs
     Then it prints "2 resolve, 0 refused" and exits 0
 
-  Scenario Outline: The launch directory and home
-    When "agister <command> <flags>" runs in "/work", the user's home
-      directory "/u"
-    Then it asks the port with the launch directory "<launch>" and home
-      "/u/.agister"
+  Scenario Outline: The launch directory
+    When "agister <command> <flags>" runs in "/work"
+    Then it asks the port with the launch directory "<launch>"
 
     Examples:
       | command           | flags    | launch |
@@ -53,3 +51,8 @@ Feature: The command line checks settings
       | inspect process  |
       | check extra      |
       | frobnicate       |
+
+  Scenario: Output that cannot be written is an error
+    Given stdout fails its first write
+    When "agister check" runs, the port's check clean
+    Then it gives the write's error, and no exit 0

@@ -367,12 +367,13 @@ holding home's files as Agister ships them, a git and the facts.
 
 **The command line.** `cli` turns `check` and `inspect` into requests on
 its port, and prints what the port gives; the composition answers the
-port from check. It is given its arguments, its working directory, the
-user's home directory and its output streams. `agister check` prints
-each fault, each warning, then how many names resolve and how many are
-refused, and exits 1 where it reports any fault. `agister inspect
-processes`, `workflows` or `agents` prints each name, the layers that
-hold it and whether it resolves; `agister inspect process <name>`,
+port from check. It is given its arguments, its working directory and
+its output streams; a write that fails is its error. Home is the
+composition's: the user's home directory's `.agister`. `agister check`
+prints each fault, each warning, then how many names resolve and how
+many are refused, and exits 1 where it reports any fault. `agister
+inspect processes`, `workflows` or `agents` prints each name, the layers
+that hold it and whether it resolves; `agister inspect process <name>`,
 `workflow` or `agent` prints each field with its value, its file, line
 and layer, then the documents reached, the plans and the warnings, or
 the refusal with its chains, and a fault of no document as such. Inspect

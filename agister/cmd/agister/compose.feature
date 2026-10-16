@@ -40,3 +40,9 @@ Feature: The composition checks and inspects settings
     Then it shows the plans of the five reviews, each taking codex's
       option "read-only", and of the judge, taking none
     And no fault: codex and claude-code take the agents' effort "high"
+
+  Scenario: The command runs over every runtime wrapper and the user's home
+    Given the program is built as main builds it, the user's home "/u"
+    When "agister check" runs
+    Then the port reads home at "/u/.agister", and the facts of
+      claude-code/3, codex/2, pi/1 and bash/1
