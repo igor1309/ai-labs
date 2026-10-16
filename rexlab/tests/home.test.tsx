@@ -6,7 +6,7 @@ import { SHIPPED_DINOSAURS, manualOrientation, seededRandom } from "./support.ts
 
 function openHomePage() {
   render(<App dinosaurs={SHIPPED_DINOSAURS} random={seededRandom(7)} orientation={manualOrientation("landscape")} />);
-  return { user: userEvent.setup(), card: screen.getByRole("button", { name: "Compare dinosaurs" }) };
+  return { user: userEvent.setup(), card: screen.getByRole("button", { name: "COMPARE" }) };
 }
 
 const brightness = (element: Element) => {
@@ -18,7 +18,7 @@ describe("the home page", () => {
   it("offers the quiz as a card with a picture of two dinosaurs", () => {
     const { card } = openHomePage();
 
-    expect(card.textContent).toContain("Compare dinosaurs");
+    expect(card.textContent).toContain("COMPARE");
     expect(within(card).getByRole("img", { name: "Two dinosaurs" }).textContent).toBe("🦖🦕");
   });
 

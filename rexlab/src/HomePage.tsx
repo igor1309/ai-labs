@@ -4,11 +4,11 @@ export function HomePage({ onCompareDinosaurs }: { onCompareDinosaurs: () => voi
   const pointer = usePointerState();
   return (
     <main className="home">
-      <button type="button" className="card quiz-card" aria-label="Compare dinosaurs" onClick={onCompareDinosaurs} {...pointer}>
+      <button type="button" className="card quiz-card" aria-label="COMPARE" onClick={onCompareDinosaurs} {...pointer}>
         <span className="quiz-card-picture" role="img" aria-label="Two dinosaurs">
           🦖🦕
         </span>
-        <span className="quiz-card-title">Compare dinosaurs</span>
+        <span className="quiz-card-title">COMPARE</span>
       </button>
     </main>
   );

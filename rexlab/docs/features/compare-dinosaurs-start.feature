@@ -7,21 +7,21 @@ Feature: Compare dinosaurs quiz: starting a round and asking
 
   Scenario: The home page offers the quiz as a card
     When I open the home page
-    Then I see a "Compare dinosaurs" quiz card with a picture of two dinosaurs
+    Then I see a "COMPARE" quiz card with a picture of two dinosaurs
 
   Scenario: The quiz card brightens under a pointer
     Given I am on the home page
-    When I hover over the "Compare dinosaurs" card with a pointer
+    When I hover over the "COMPARE" card with a pointer
     Then the card brightens
 
   Scenario: A card shows it is pressed
     Given I am on the home page
-    When I press the "Compare dinosaurs" card
+    When I press the "COMPARE" card
     Then the card shows a pressed state before the round opens
 
   Scenario: Tapping the card starts a round
     Given I am on the home page
-    When I tap the "Compare dinosaurs" card
+    When I tap the "COMPARE" card
     Then a new round of 10 questions starts
     And I see the progress "1/10"
 

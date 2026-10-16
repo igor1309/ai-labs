@@ -37,7 +37,7 @@ const smallerOf = (question: Question) => (largerOf(question) === question.left 
 function startRound(seed: number) {
   render(<App dinosaurs={SHIPPED_DINOSAURS} random={seededRandom(seed)} orientation={manualOrientation("landscape")} />);
   const user = userEvent.setup();
-  return { user, start: () => user.click(screen.getByRole("button", { name: "Compare dinosaurs" })) };
+  return { user, start: () => user.click(screen.getByRole("button", { name: "COMPARE" })) };
 }
 
 // Answers questions until `number` is answered and on screen.

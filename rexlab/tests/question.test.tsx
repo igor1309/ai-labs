@@ -79,7 +79,7 @@ describe("a round", () => {
     const orientation = manualOrientation("landscape");
     render(<App dinosaurs={SHIPPED_DINOSAURS} random={seededRandom(3)} orientation={orientation} />);
     const user = userEvent.setup();
-    await user.click(screen.getByRole("button", { name: "Compare dinosaurs" }));
+    await user.click(screen.getByRole("button", { name: "COMPARE" }));
     await answerAndGoOn(user);
     await answerAndGoOn(user);
     expect(progress()).toBe("3/10");
@@ -103,7 +103,7 @@ describe("a round", () => {
     const user = userEvent.setup();
 
     async function playRound() {
-      await user.click(screen.getByRole("button", { name: "Compare dinosaurs" }));
+      await user.click(screen.getByRole("button", { name: "COMPARE" }));
       const asked = [];
       for (let number = 1; number <= 10; number++) {
         expect(progress()).toBe(`${number}/10`);
