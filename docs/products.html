@@ -287,19 +287,6 @@
       </a>
       <div class="product reveal">
         <div class="product-header">
-          <span class="product-name">Noreta</span>
-        </div>
-        <p class="product-desc">
-          <strong>Local hub for coding-agent sessions.</strong> One place to see active and past work across Claude Code, Codex and Pi — search, filter and group sessions, and read each one with its history and project context. <em>Read-only is a property of the first versions, not of the product</em>: a macOS MVP first, the same view on iPhone next, then interaction with local runtimes (reply, approvals, resume, handoff). Working name; product definition stage, no implementation yet.
-        </p>
-        <div class="product-stack">
-          <span class="tag">Product definition</span>
-          <span class="tag">Naming</span>
-          <span class="tag">macOS</span>
-        </div>
-      </div>
-      <div class="product reveal">
-        <div class="product-header">
           <span class="product-name">Nexum</span>
         </div>
         <p class="product-desc">
@@ -424,20 +411,6 @@
           <strong>Claude Code skills marketplace</strong>
         </p>
       </a>
-      <a class="product reveal" href="../reinix/docs/landing.html">
-        <div class="product-header">
-          <span class="product-name">Reinix</span>
-        </div>
-        <p class="product-desc">
-          <strong>Workflow runner for governed coding-agent loops</strong> Coordinates provider CLI agents — Producer, Reviewer, and optional Remediator — through a loop with pluggable review policy. Every input is a <em>verifiable task with done criteria</em>; settings live in <code>.reinix/</code> YAML files.
-        </p>
-        <div class="product-stack">
-          <span class="tag">Node.js</span>
-          <span class="tag">JavaScript</span>
-          <span class="tag">CLI</span>
-          <span class="tag">Multi-Agent</span>
-        </div>
-      </a>
       <div class="product reveal">
         <div class="product-header">
           <span class="product-name">Session Digest</span>
@@ -460,22 +433,10 @@
         <p class="product-desc">
           <strong>Developer workflow helpers</strong> Git worktree manager, Claude account switcher with usage-limit reporting, Codex CLI profile manager with usage-limit reporting — <em>small shell scripts</em> that smooth out daily friction. (The worktree shared-config symlinker moved into the <code>worktree</code> dev-skill under <code>dev-skills/public/worktree/scripts/</code>.)
         </p>
-        <div class="product-stack">
+      <div class="product-stack">
           <span class="tag">Bash</span>
           <span class="tag">Git</span>
-        </div>
-      </div>
-      <div class="product reveal">
-        <div class="product-header">
-          <span class="product-name">Warder</span>
-        </div>
-        <p class="product-desc">
-          <strong>Local monitor for coding-agent runs, MVP stage</strong> Polls each enabled source — Claude Code through <code>claude agents --json</code> — every few seconds and writes one complete JSONL observation per successful read on stdout (<code>source</code>, <code>observedAt</code>, agents with their state), diagnostics on stderr. <em>Failed or timed-out reads publish nothing</em>; other programs consume the stream.
-        </p>
-        <div class="product-stack">
-          <span class="tag">Go</span>
-          <span class="tag">JSONL</span>
-          <span class="tag">Claude Code</span>
+          <span class="tag">Python 3</span>
         </div>
       </div>
     </div>
@@ -590,6 +551,14 @@
       </div>
       <div class="product reveal">
         <div class="product-header">
+          <span class="product-name">Noreta</span>
+        </div>
+        <p class="product-desc">
+          <strong>Local hub for coding-agent sessions.</strong> One place to see active and past work across Claude Code, Codex and Pi — search, filter and group sessions, and read each one with its history and project context. <em>Read-only is a property of the first versions, not of the product</em>: a macOS MVP first, the same view on iPhone next, then interaction with local runtimes (reply, approvals, resume, handoff). Working name; product definition stage, no implementation yet.
+        </p>
+      </div>
+      <div class="product reveal">
+        <div class="product-header">
           <span class="product-name">Ntfy Sender</span>
         </div>
         <p class="product-desc">
@@ -607,6 +576,14 @@
           <span class="tag">Mixed</span>
           <span class="tag">Prototyping</span>
         </div>
+      </div>
+      <div class="product reveal">
+        <div class="product-header">
+          <span class="product-name">Warder</span>
+        </div>
+        <p class="product-desc">
+          <strong>Local monitor for coding-agent runs, MVP stage</strong> Polls each enabled source — Claude Code through <code>claude agents --json</code> — every few seconds and writes one complete JSONL observation per successful read on stdout (<code>source</code>, <code>observedAt</code>, agents with their state), diagnostics on stderr. <em>Failed or timed-out reads publish nothing</em>; other programs consume the stream.
+        </p>
       </div>
     </div>
 
