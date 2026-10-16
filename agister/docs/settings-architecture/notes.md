@@ -116,7 +116,8 @@ The page states no syntax: settings syntax is specified in
 - `settings/resolve`: a request to definitions or a refusal. Ports: a
   document source; runtime facts. (ADR-001, settings)
 - `settings/check`: check and inspect, built on resolve. Ports: resolve;
-  list names. (ADR-001, settings)
+  list names; a document's fields, each with its source. (ADR-001,
+  settings)
 - `settings/home`: install and restore. Ports: filesystem writes; clock.
   (ADR-001, settings; ADR-008)
 - No settings package imports another; the composition assembles the

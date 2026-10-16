@@ -20,7 +20,7 @@ specified in `settings/documents`' feature files.
 | tree, a library | bytes → a value tree with origins; one tree merged over another | values and origins; no Agister word |
 | `settings/documents` | a snapshot, a kind and a name → one definition, or its problems | what each kind is, and `extends` |
 | `settings/resolve` | a request → what a run needs, or a refusal naming the chain | how documents name one another; blocks; plans |
-| `settings/check` | handed resolve: resolves every document and reports | |
+| `settings/check` | handed resolve: resolves every document and reports; lists and shows documents, each field with its layer | no kind's fields; how a source is read |
 
 Tree is a library, not a part: decode, merge and the value type are
 generic, the one vocabulary that decoding, merging and typing share, and
@@ -255,6 +255,42 @@ Decisions of its reviews, each with its reason:
   (`backlog/references-typed-in-documents.md`).
 - An agent's effort is checked against its runtime's facts (ADR-003,
   rule 7); a mapping's `efforts` is not read (`backlog/mapping-efforts.md`).
+
+## Check
+
+Check is handed three ports, each declared in its own words (ADR-001,
+rule 1): its names, each document a layer holds, by kind and name, with
+the layers that hold it, which the composition answers from layout; its
+resolve, a document by kind and name to what resolves, with its
+warnings, or a refusal, which the composition answers from resolve; and
+its fields, a document's fields, each its place, its value as text and
+its source, which the composition answers from documents. A source is a
+file, a line and the layer of the file; the composition gives the layer
+from the path, in a problem, a link and a field alike. Check spells no
+field of any kind: it shows the fields in the order given, and reads
+one by its place alone, `description`, for a listing.
+
+**Check** asks for every name, of every kind, alone: a document nothing
+uses is checked too. A process alone plans no step; its plan is checked
+where a workflow names it. It reports each fault once, in the order
+first met: the problems of no document first, which refuse every
+request; then each document at fault, with its problems, or the block
+that refuses it, and every name it refuses, by kind and name. Each
+warning is given once, with every name it came with. Then every name,
+by kind, resolving or refused. Names are asked for kind by kind, in
+the order workflow, process, agent, runtime, brief, prompt, schema,
+skill, and by name within a kind. Check reports and does not gate
+(ADR-008, rule 3).
+
+**Inspect** lists the processes, the workflows or the agents: each name,
+its description, where it gives one, the layers that hold it, and
+whether it resolves. It shows one of them: each field, its value and
+its source; then what resolve gives: every document it reached, the
+plan of each step and the warnings; or the refusal, each fault with its
+chain. A document no layer holds is shown as such, and resolve is not
+asked.
+
+Check gives data; the command line prints it, and is the composition's.
 
 ## Where each check sits
 

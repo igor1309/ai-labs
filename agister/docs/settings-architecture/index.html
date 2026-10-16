@@ -225,6 +225,8 @@ document at fault.</p>
   <path class="edge" d="M542,126 L568,134"/>
   <path class="edge" d="M180,128 L180,232 L615,232 L615,158"/>
   <text class="label" x="190" y="226">list names</text>
+  <path class="edge" d="M320,138 L320,244 L645,244 L645,158"/>
+  <text class="label" x="330" y="240">fields, each with its source</text>
   <path class="edge" d="M475,176 L475,158"/>
 </svg>
 <figcaption>An arrow is what flows, and the composition carries every one: no
@@ -246,7 +248,7 @@ ADR-001, settings; ADR-002, rules 6 and 8; ADR-003.</figcaption>
   <tr><td><code>settings/layout</code></td><td>where settings live; a kind and name to a file; lists names</td><td>filesystem; worktree root</td></tr>
   <tr><td><code>settings/documents</code></td><td>bytes to typed definitions with per-field provenance: format, layering, kinds</td><td>none: pure</td></tr>
   <tr><td><code>settings/resolve</code></td><td>a request to definitions or a refusal naming the chain</td><td>document source; runtime facts</td></tr>
-  <tr><td><code>settings/check</code></td><td>check (every problem and what it refuses) and inspect (with provenance)</td><td>resolve; list names</td></tr>
+  <tr><td><code>settings/check</code></td><td>check (every problem and what it refuses) and inspect (with provenance)</td><td>resolve; list names; a document's fields, each with its source</td></tr>
   <tr><td><code>settings/home</code></td><td>install into home and restore: only home's settings, on a broken home too; every write can be undone</td><td>filesystem writes; clock</td></tr>
 </table>
 <p>No settings package imports another; the composition connects them. Core
