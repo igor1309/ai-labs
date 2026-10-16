@@ -358,9 +358,10 @@ func TestAProgramThatCouldNotStartIsTheTurns(t *testing.T) {
 	}
 }
 
-// A schema's folder that cannot be made, or removed once the turn has
-// returned, is the turn's error.
-func TestASchemasFolderThatCannotBeMadeOrRemovedIsTheTurnsError(t *testing.T) {
+// A schema's folder that cannot be made is the turn's error; one that
+// cannot be removed once the turn has returned is left, the turn's end
+// unchanged.
+func TestASchemasFolderThatCannotBeMadeIsTheTurnsErrorAndOneNotRemovedIsLeft(t *testing.T) {
 	t.Parallel()
 	t.Run("made", func(t *testing.T) {
 		t.Parallel()
@@ -379,14 +380,26 @@ func TestASchemasFolderThatCannotBeMadeOrRemovedIsTheTurnsError(t *testing.T) {
 				t.Error(err)
 			}
 		})
-		spy := &supervisorSpy{lines: []string{completedLine}, during: func() {
+		spy := &supervisorSpy{lines: []string{message(`{"ok":true}`), completedLine}, during: func() {
 			if err := os.Chmod(folder, 0o500); err != nil {
 				t.Error(err)
 			}
 		}}
 		got, err := wrapper(t, spy, folder).Run(context.Background(), codex.Turn{Message: "m", Options: []string{"read-only"}, Schema: []byte("{}")})
-		if err == nil || !reflect.DeepEqual(got, codex.Result{}) {
-			t.Errorf("turn gave %+v, %v; want nothing and an error", got, err)
+		if err != nil {
+			t.Fatalf("turn gave the error %v, want none", err)
+		}
+		want := codex.Reply{Text: `{"ok":true}`, Output: []byte(`{"ok":true}`),
+			Usage: codex.Usage{Input: ptr[int64](10), Output: ptr[int64](3), CacheRead: ptr[int64](4), Reasoning: ptr[int64](2)}}
+		if got.Ended != spy.result || got.Reply == nil || !reflect.DeepEqual(*got.Reply, want) {
+			t.Errorf("turn gave %+v, reply %+v; want %+v, reply %+v", got.Ended, got.Reply, spy.result, want)
+		}
+		entries, err := os.ReadDir(folder)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(entries) != 1 {
+			t.Errorf("%s holds %v, want the schema's folder left", folder, entries)
 		}
 	})
 }

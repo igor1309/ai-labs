@@ -1,0 +1,246 @@
+package main
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"reflect"
+	"testing"
+
+	"github.com/igor1309/ai-labs/agister/core/call"
+	"github.com/igor1309/ai-labs/agister/core/inputs"
+	"github.com/igor1309/ai-labs/agister/runtime/claudecode"
+	"github.com/igor1309/ai-labs/agister/runtime/codex"
+	"github.com/igor1309/ai-labs/gokit/clocktest"
+)
+
+// claudeCodeRunSpy is a spy of the claude-code wrapper: it keeps each turn
+// and answers result and err.
+type claudeCodeRunSpy struct {
+	result claudecode.Result
+	err    error
+	turns  []claudecode.Turn
+}
+
+func (s *claudeCodeRunSpy) Run(_ context.Context, turn claudecode.Turn) (claudecode.Result, error) {
+	s.turns = append(s.turns, turn)
+	return s.result, s.err
+}
+
+// codexRunSpy is a spy of the codex wrapper: it keeps each turn and answers
+// result and err.
+type codexRunSpy struct {
+	result codex.Result
+	err    error
+	turns  []codex.Turn
+}
+
+func (s *codexRunSpy) Run(_ context.Context, turn codex.Turn) (codex.Result, error) {
+	s.turns = append(s.turns, turn)
+	return s.result, s.err
+}
+
+// modelTurn is a model's turn as core/call gives it, every field given.
+var modelTurn = call.Turn{Prompt: "m", Dir: "/r", Env: []string{"A=1"}, Instruction: "i", Model: "opus", Effort: "high",
+	Options: []string{"Read"}, Schema: []byte("{}")}
+
+// A turn on claude-code runs its prompt as the message, with its
+// directory, environment, instruction, model, effort, options and schema,
+// and gives how the program ended and its reply in core's words, its
+// failure class by its name; a program ended by a signal gives no reply; a
+// program that could not start is core's ErrNotStarted, and any other
+// error passes as it is.
+func TestATurnOnClaudeCodeRunsItsPromptAsTheMessage(t *testing.T) {
+	t.Parallel()
+	other := errors.New("broken pipe")
+	count := func(n int64) *int64 { return &n }
+	cost := 0.25
+	cases := []struct {
+		name       string
+		result     claudecode.Result
+		err        error
+		want       call.Ended
+		notStarted bool
+		wantErr    error
+	}{
+		{name: "a reply", result: claudecode.Result{
+			Ended: claudecode.Ended{Code: 1, Stdout: claudecode.Stream{Head: "oh", Tail: "ot", Size: 3, Digest: "od", Incomplete: true}, Stderr: claudecode.Stream{Head: "eh"}},
+			Reply: &claudecode.Reply{Text: "t", Output: []byte(`{"ok":true}`), Session: "s1", Cost: &cost,
+				Usage:   claudecode.Usage{Input: count(1), Output: count(2), CacheRead: count(3), CacheWrite: count(4)},
+				Failure: claudecode.RateLimited, Reason: "429"}},
+			want: call.Ended{Code: 1, Stdout: call.Stream{Head: "oh", Tail: "ot", Size: 3, Digest: "od"}, Stderr: call.Stream{Head: "eh"},
+				Reply: &call.Reply{Text: "t", Output: []byte(`{"ok":true}`), Session: "s1", Cost: &cost,
+					Usage:   call.Usage{Input: count(1), Output: count(2), CacheRead: count(3), CacheWrite: count(4)},
+					Failure: call.RateLimited, Reason: "429"}}},
+		{name: "a signal", result: claudecode.Result{Ended: claudecode.Ended{Signal: "killed"}}, want: call.Ended{Signal: "killed"}},
+		{name: "no start", err: fmt.Errorf("claude: %w", claudecode.ErrNotStarted), notStarted: true, wantErr: claudecode.ErrNotStarted},
+		{name: "another error", err: other, wantErr: other},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
+			spy := &claudeCodeRunSpy{result: c.result, err: c.err}
+			turns, err := newClaudeCodeTurns(spy)
+			if err != nil {
+				t.Fatal(err)
+			}
+			got, err := turns.Turn(context.Background(), modelTurn)
+			if !reflect.DeepEqual(got, c.want) || !errors.Is(err, c.wantErr) || errors.Is(err, call.ErrNotStarted) != c.notStarted {
+				t.Errorf("ended %+v, %v; want %+v, %v, not started %v", got, err, c.want, c.wantErr, c.notStarted)
+			}
+			want := []claudecode.Turn{{Message: "m", Dir: "/r", Env: []string{"A=1"}, Instruction: "i", Model: "opus", Effort: "high",
+				Options: []string{"Read"}, Schema: []byte("{}")}}
+			if !reflect.DeepEqual(spy.turns, want) {
+				t.Errorf("turns %+v, want %+v", spy.turns, want)
+			}
+		})
+	}
+}
+
+// A turn on codex runs its prompt as the message, with its directory,
+// environment, instruction, model, effort, options and schema, and gives
+// how the program ended and its reply in core's words, its failure class
+// by its name and its cost unknown; a program ended by a signal gives no
+// reply; a program that could not start is core's ErrNotStarted, and any
+// other error passes as it is.
+func TestATurnOnCodexRunsItsPromptAsTheMessage(t *testing.T) {
+	t.Parallel()
+	other := errors.New("broken pipe")
+	count := func(n int64) *int64 { return &n }
+	cases := []struct {
+		name       string
+		result     codex.Result
+		err        error
+		want       call.Ended
+		notStarted bool
+		wantErr    error
+	}{
+		{name: "a reply", result: codex.Result{
+			Ended: codex.Ended{Code: 1, Stdout: codex.Stream{Head: "oh", Tail: "ot", Size: 3, Digest: "od", Incomplete: true}, Stderr: codex.Stream{Head: "eh"}},
+			Reply: &codex.Reply{Text: "t", Output: []byte(`{"ok":true}`), Session: "t1",
+				Usage:   codex.Usage{Input: count(1), Output: count(2), CacheRead: count(3), Reasoning: count(5)},
+				Failure: codex.NoResult, Reason: "none"}},
+			want: call.Ended{Code: 1, Stdout: call.Stream{Head: "oh", Tail: "ot", Size: 3, Digest: "od"}, Stderr: call.Stream{Head: "eh"},
+				Reply: &call.Reply{Text: "t", Output: []byte(`{"ok":true}`), Session: "t1",
+					Usage:   call.Usage{Input: count(1), Output: count(2), CacheRead: count(3), Reasoning: count(5)},
+					Failure: call.NoResult, Reason: "none"}}},
+		{name: "a signal", result: codex.Result{Ended: codex.Ended{Signal: "killed"}}, want: call.Ended{Signal: "killed"}},
+		{name: "no start", err: fmt.Errorf("codex: %w", codex.ErrNotStarted), notStarted: true, wantErr: codex.ErrNotStarted},
+		{name: "another error", err: other, wantErr: other},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
+			spy := &codexRunSpy{result: c.result, err: c.err}
+			turns, err := newCodexTurns(spy)
+			if err != nil {
+				t.Fatal(err)
+			}
+			got, err := turns.Turn(context.Background(), modelTurn)
+			if !reflect.DeepEqual(got, c.want) || !errors.Is(err, c.wantErr) || errors.Is(err, call.ErrNotStarted) != c.notStarted {
+				t.Errorf("ended %+v, %v; want %+v, %v, not started %v", got, err, c.want, c.wantErr, c.notStarted)
+			}
+			want := []codex.Turn{{Message: "m", Dir: "/r", Env: []string{"A=1"}, Instruction: "i", Model: "opus", Effort: "high",
+				Options: []string{"Read"}, Schema: []byte("{}")}}
+			if !reflect.DeepEqual(spy.turns, want) {
+				t.Errorf("turns %+v, want %+v", spy.turns, want)
+			}
+		})
+	}
+}
+
+// The model turns are built with their wrapper.
+func TestTheModelTurnsNeedTheirWrapper(t *testing.T) {
+	t.Parallel()
+	if _, err := newClaudeCodeTurns(nil); err == nil {
+		t.Error("claude-code turns built with no wrapper, want an error")
+	}
+	if _, err := newCodexTurns(nil); err == nil {
+		t.Error("codex turns built with no wrapper, want an error")
+	}
+}
+
+// Core takes a call's inputs on claude-code and codex as their wrappers'
+// facts say, and each wrapper's say its message.
+func TestCoreTakesTheInputsOnAModelAsItsFactsSay(t *testing.T) {
+	t.Parallel()
+	for _, c := range []struct {
+		claude claudecode.Inputs
+		codex  codex.Inputs
+		want   call.Inputs
+	}{
+		{claudecode.InEnvironment, codex.InEnvironment, call.InEnvironment},
+		{claudecode.InMessage, codex.InMessage, call.InMessage},
+		{0, 0, 0},
+	} {
+		if got := claudeCodeInputs(c.claude); got != c.want {
+			t.Errorf("claude-code's %d taken as %d, want %d", c.claude, got, c.want)
+		}
+		if got := codexInputs(c.codex); got != c.want {
+			t.Errorf("codex's %d taken as %d, want %d", c.codex, got, c.want)
+		}
+	}
+	claude, err := claudecode.New(&claudeCodeRunSupervisor{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := claudeCodeInputs(claude.Facts().Inputs); got != call.InMessage {
+		t.Errorf("claude-code's inputs taken as %d, want in the message", got)
+	}
+	cx, err := codex.New(&codexRunSupervisor{}, "/t")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := codexInputs(cx.Facts().Inputs); got != call.InMessage {
+		t.Errorf("codex's inputs taken as %d, want in the message", got)
+	}
+}
+
+// claudeCodeRunSupervisor and codexRunSupervisor are each wrapper's
+// supervisor for a test that runs nothing.
+type (
+	claudeCodeRunSupervisor struct{}
+	codexRunSupervisor      struct{}
+)
+
+func (claudeCodeRunSupervisor) Run(context.Context, claudecode.Program) (claudecode.Ended, error) {
+	return claudecode.Ended{}, errors.New("nothing runs here")
+}
+
+func (codexRunSupervisor) Run(context.Context, codex.Program) (codex.Ended, error) {
+	return codex.Ended{}, errors.New("nothing runs here")
+}
+
+// Each step's call is made by the caller of its turn's contract, and step
+// calls are built with a caller for every step's.
+func TestEachStepIsCalledByTheCallerOfItsContract(t *testing.T) {
+	t.Parallel()
+	resolver, err := inputs.New(map[string]inputs.Source{"param": inputs.ParamSource{}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	clock := clocktest.NewClock(runStart)
+	onBash, onCodex := sayCall("b"), sayCall("c")
+	onCodex.contract = "codex/2"
+	bashSpy := &turnSpy{result: call.Result{Status: call.Completed}}
+	codexSpy := &turnSpy{result: call.Result{Status: call.Failed, Class: call.Auth}}
+	steps, err := newStepCalls(resolver, map[string]turnCaller{"bash/1": bashSpy, "codex/2": codexSpy}, clock,
+		map[string]plannedCall{"a": onBash, "b": onCodex})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := steps.Call(context.Background(), "b", map[string]string{"what": "hi"}); got.Class != "auth" {
+		t.Errorf("b gave %+v, want codex's answer", got)
+	}
+	if got := steps.Call(context.Background(), "a", map[string]string{"what": "hi"}); got.Status != "completed" {
+		t.Errorf("a gave %+v, want bash's answer", got)
+	}
+	if len(bashSpy.steps) != 1 || bashSpy.steps[0].Prompt != "b" || len(codexSpy.steps) != 1 || codexSpy.steps[0].Prompt != "c" {
+		t.Errorf("bash called %+v, codex %+v; want a on bash, b on codex", bashSpy.steps, codexSpy.steps)
+	}
+
+	_, err = newStepCalls(resolver, map[string]turnCaller{"bash/1": bashSpy}, clock, map[string]plannedCall{"a": onBash, "b": onCodex})
+	if want := `step calls: no caller for the step "b", of the contract "codex/2"`; err == nil || err.Error() != want {
+		t.Errorf("step calls with no caller for b's contract: %v, want %s", err, want)
+	}
+}

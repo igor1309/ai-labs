@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/igor1309/ai-labs/agister/cli"
+	"github.com/igor1309/ai-labs/agister/core/call"
 	"github.com/igor1309/ai-labs/agister/files"
 	"github.com/igor1309/ai-labs/agister/git"
 	"github.com/igor1309/ai-labs/agister/runtime/bash"
@@ -57,7 +58,7 @@ func run(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 
 // connect is the command line build gives over files, git, the
 // supervisor, its programs started in gokit's process groups and its grace
-// on the wall clock, and the machine: Agister's
+// on the wall clock, jsonschema's validator, and the machine: Agister's
 // environment, the wall clock, SIGINT and SIGTERM, each cancelling a
 // run, and the system's temporary folder.
 func connect(ctx context.Context, user string, stdout, stderr io.Writer) (*cli.CLI, error) {
@@ -83,7 +84,7 @@ func connect(ctx context.Context, user string, stdout, stderr io.Writer) (*cli.C
 		return nil, err
 	}
 	machine := host{ctx: ctx, environ: os.Environ(), clock: wallClock{}, timer: wallTimer, signals: cancellationSignals(), temp: os.TempDir()}
-	return build(user, f, fs, roots, programs, machine, stdout, stderr)
+	return build(user, f, fs, roots, programs, schemaValidator{}, machine, stdout, stderr)
 }
 
 // wallTimer starts wait on the wall clock.
@@ -110,10 +111,11 @@ func notified(kinds ...os.Signal) signals {
 }
 
 // build is the command line over links, fs and roots and every runtime
-// wrapper's facts, the bash wrapper's turns run by programs, its runs on
-// machine, a call's output checked by jsonschema, for the user whose home
+// wrapper's facts, the bash, claude-code and codex wrappers' turns run by
+// programs, its runs on machine, codex's schemas under its temporary
+// folder, a call's output checked by validator, for the user whose home
 // directory is user: home's folder is its ".agister" (ADR-002, rule 2).
-func build(user string, links links, fs layout.FileSystem, roots layout.WorktreeRoot, programs programs, machine host, stdout, stderr io.Writer) (*cli.CLI, error) {
+func build(user string, links links, fs layout.FileSystem, roots layout.WorktreeRoot, programs programs, validator call.Validator, machine host, stdout, stderr io.Writer) (*cli.CLI, error) {
 	supervising, err := newSupervised(programs)
 	if err != nil {
 		return nil, err
@@ -143,14 +145,26 @@ func build(user string, links links, fs layout.FileSystem, roots layout.Worktree
 	if err != nil {
 		return nil, err
 	}
-	turns, err := newBashTurns(b)
+	bashTurns, err := newBashTurns(b)
 	if err != nil {
 		return nil, err
 	}
+	claudeTurns, err := newClaudeCodeTurns(claude)
+	if err != nil {
+		return nil, err
+	}
+	codexTurns, err := newCodexTurns(cx)
+	if err != nil {
+		return nil, err
+	}
+	bashFacts, claudeFacts, codexFacts := b.Facts(), claude.Facts(), cx.Facts()
+	turns := []turn{
+		{contract: bashFacts.Contract, inputs: bashInputs(bashFacts.Inputs), runtime: bashTurns},
+		{contract: claudeFacts.Contract, inputs: claudeCodeInputs(claudeFacts.Inputs), runtime: claudeTurns},
+		{contract: codexFacts.Contract, inputs: codexInputs(codexFacts.Inputs), runtime: codexTurns},
+	}
 	home := filepath.Join(user, ".agister")
-	facts := b.Facts()
-	runner, err := newRuns(home, links, fs, roots, wrappers,
-		turn{contract: facts.Contract, inputs: bashInputs(facts.Inputs), runtime: turns}, schemaValidator{}, machine)
+	runner, err := newRuns(home, links, fs, roots, wrappers, turns, validator, machine)
 	if err != nil {
 		return nil, err
 	}

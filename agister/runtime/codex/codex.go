@@ -168,20 +168,18 @@ func (*Wrapper) Facts() Facts {
 // the instruction and the message on stdin, through the supervisor, and
 // gives how the program ended and the reply its JSON events give. A turn
 // not given exactly one option is an error before anything starts. The
-// schema's folder is removed once the turn has returned; one that cannot
-// be is the turn's error, as a supervisor's error is, its error that the
-// program could not start included.
-func (w *Wrapper) Run(ctx context.Context, turn Turn) (result Result, err error) {
+// schema's folder is removed once the turn has returned, best effort: one
+// that cannot be is left, the turn's end unchanged, since the turn has
+// already run and a folder under the system's temporary folder harms
+// nothing. A supervisor's error is the turn's, its error that the program
+// could not start included.
+func (w *Wrapper) Run(ctx context.Context, turn Turn) (Result, error) {
 	if len(turn.Options) != 1 {
 		return Result{}, fmt.Errorf("codex: a turn takes exactly one option, its sandbox, given %q", turn.Options)
 	}
 	dir, schema, err := w.write(turn.Schema)
 	if dir != "" {
-		defer func() {
-			if removed := os.RemoveAll(dir); removed != nil {
-				result, err = Result{}, errors.Join(err, fmt.Errorf("codex: removing the schema's folder: %w", removed))
-			}
-		}()
+		defer func() { _ = os.RemoveAll(dir) }()
 	}
 	if err != nil {
 		return Result{}, err

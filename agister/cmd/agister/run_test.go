@@ -17,6 +17,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/igor1309/ai-labs/agister/core/call"
 	"github.com/igor1309/ai-labs/agister/settings/resolve"
 	"github.com/igor1309/ai-labs/agister/supervisor"
 	"github.com/igor1309/ai-labs/gokit/clocktest"
@@ -131,21 +132,27 @@ var runStart = time.Date(2026, 10, 16, 10, 0, 0, 0, time.UTC)
 
 // runFixture is the composition as build gives it, over a filesystem
 // holding its settings; a git whose worktree root of "/r" and below is
-// "/r"; the supervisor spy; and the machine: Agister's environment
-// environ, a manual clock, and the signals spy.
+// "/r"; the supervisor spy; the validator, jsonschema's unless its test
+// gives another; and the machine: Agister's environment environ, a manual
+// clock, the signals spy, and the temporary folder temp, "/t" unless its
+// test gives one that is there.
 type runFixture struct {
 	settings   map[string]string
 	supervisor *supervisorSpy
+	validator  call.Validator
 	signals    *signalsSpy
 	clock      *clocktest.Clock
+	temp       string
 }
 
 func newRunFixture(settings map[string]string, answer func(context.Context, supervisor.Program) (supervisor.Result, error)) *runFixture {
 	return &runFixture{
 		settings:   settings,
 		supervisor: &supervisorSpy{answer: answer},
+		validator:  schemaValidator{},
 		signals:    &signalsSpy{fired: make(chan os.Signal)},
 		clock:      clocktest.NewClock(runStart),
+		temp:       "/t",
 	}
 }
 
@@ -158,8 +165,8 @@ func (f *runFixture) run(t *testing.T, dir string, args ...string) ran {
 func (f *runFixture) runWatching(t *testing.T, watch signals, environment []string, dir string, args ...string) ran {
 	t.Helper()
 	var stdout, stderr strings.Builder
-	machine := host{ctx: context.Background(), environ: environment, clock: f.clock, timer: f.clock.Timer, signals: watch, temp: "/t"}
-	commandLine, err := build("/u", &linksSpy{}, newFilesystemSpy(f.settings), rootSpy{root: "/r"}, f.supervisor, machine, &stdout, &stderr)
+	machine := host{ctx: context.Background(), environ: environment, clock: f.clock, timer: f.clock.Timer, signals: watch, temp: f.temp}
+	commandLine, err := build("/u", &linksSpy{}, newFilesystemSpy(f.settings), rootSpy{root: "/r"}, f.supervisor, f.validator, machine, &stdout, &stderr)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -282,7 +289,13 @@ func TestWhatThisSliceDoesNotRunIsRefusedBeforeAnything(t *testing.T) {
 		agent       string
 		what        string
 	}{
-		{declares: "as it is", agent: "claude-opus", what: `the step "say": the runtime "claude-code"'s turn`},
+		{declares: "as it is", agent: "pi-m3", what: `the step "say": the runtime "pi"'s turn`},
+		{declares: "a recovery of 1 resume", more: "recovery: {resumes: 1, instruction: resume}\n",
+			agent: "claude-opus", what: `the process "say": the recovery`},
+		{declares: "the cost limit 1", more: "limits: {cost: 1}\n",
+			agent: "claude-opus", what: `the process "say": the cost limit`},
+		{declares: `an input "prompt" from the param "what"`, more: "  prompt: {source: param, name: what}\n",
+			agent: "claude-opus", what: `the process "say": the input "prompt", a document's name,`},
 		{declares: `an input "b" from the source "git.revision"`, more: "  b: {source: git.revision, rev: {from: params.what}}\n",
 			agent: "bash", what: `the process "say": the input "b" from the source "git.revision"`},
 		{declares: `the input "what" with the form "goal"`, input: ", form: [goal]",
@@ -320,8 +333,8 @@ func TestWhatThisSliceDoesNotRunIsRefusedBeforeAnything(t *testing.T) {
 }
 
 // run.feature, "A workflow with an item that is not a step is refused".
-// A process's instruction is named only for a step on bash: on another
-// runtime, the runtime's turn is named instead.
+// A process's instruction is named only for a step on bash: the judge's,
+// on claude-code, is not.
 //
 // Contract test: the files home holds, as Agister ships them.
 func TestAWorkflowWithAnItemThatIsNotAStepIsRefused(t *testing.T) {
@@ -334,7 +347,6 @@ func TestAWorkflowWithAnItemThatIsNotAStepIsRefused(t *testing.T) {
 		`the workflow "code_review": the input "goal" from the source "file" is not run yet`,
 		`the workflow "code_review": the brief form of "goal" is not run yet`,
 		`the workflow "code_review": the item "reviews", a parallel, is not run yet`,
-		`the step "judge": the runtime "claude-code"'s turn is not run yet`,
 		`the process "review_judge": the staleness limit is not run yet`,
 	}
 	want := ran{stderr: "agister: the run is refused, and nothing runs:\n  " + strings.Join(lines, "\n  ") + "\n", code: 1}
@@ -364,7 +376,7 @@ func TestAStepReachesCoreWithItsProcesssTimeLimitAsLayered(t *testing.T) {
 	if len(faults) > 0 {
 		t.Fatalf("faults %+v", faults)
 	}
-	built, unrun, err := planOf("", resolved, read.documents, "bash/1")
+	built, unrun, err := planOf("", resolved, read.documents, map[string]call.Inputs{"bash/1": call.InEnvironment})
 	if err != nil || len(unrun) > 0 {
 		t.Fatalf("not run %q, error %v", unrun, err)
 	}

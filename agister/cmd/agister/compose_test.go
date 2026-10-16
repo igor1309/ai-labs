@@ -65,7 +65,7 @@ func asBuilt(t *testing.T, settings map[string]string, args ...string) ran {
 func builtIn(t *testing.T, settings map[string]string, links *linksSpy, dir string, args ...string) ran {
 	t.Helper()
 	var stdout, stderr strings.Builder
-	commandLine, err := build("/u", links, newFilesystemSpy(settings), rootSpy{root: "/r", links: links.links}, programsSpy{t}, idleHost(t), &stdout, &stderr)
+	commandLine, err := build("/u", links, newFilesystemSpy(settings), rootSpy{root: "/r", links: links.links}, programsSpy{t}, schemaValidator{}, idleHost(t), &stdout, &stderr)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -287,7 +287,7 @@ func TestALaunchDirectoryThatDoesNotResolveFailsTheCommand(t *testing.T) {
 	if got.code == 0 || got.stdout != "" || !strings.Contains(got.stderr, "/gone") || !strings.Contains(got.stderr, fs.ErrNotExist.Error()) {
 		t.Errorf("ran %+v, want a failure naming /gone and %q", got, fs.ErrNotExist)
 	}
-	if _, err := build("/u", nil, newFilesystemSpy(nil), rootSpy{root: "/r"}, programsSpy{t}, idleHost(t), io.Discard, io.Discard); err == nil {
+	if _, err := build("/u", nil, newFilesystemSpy(nil), rootSpy{root: "/r"}, programsSpy{t}, schemaValidator{}, idleHost(t), io.Discard, io.Discard); err == nil {
 		t.Error("command line built with no links, want an error")
 	}
 }

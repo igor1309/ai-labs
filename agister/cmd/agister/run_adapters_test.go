@@ -51,7 +51,7 @@ func TestARunAsksGitForTheRootOnce(t *testing.T) {
 	roots := &countedRoots{asked: map[string]int{}}
 	clock := clocktest.NewClock(runStart)
 	machine := host{ctx: context.Background(), environ: environ, clock: clock, timer: clock.Timer, signals: (&signalsSpy{}).watch, temp: "/t"}
-	commandLine, err := build("/u", &linksSpy{}, newFilesystemSpy(runSettings(t, nil)), roots, &supervisorSpy{answer: echoes}, machine, &strings.Builder{}, &strings.Builder{})
+	commandLine, err := build("/u", &linksSpy{}, newFilesystemSpy(runSettings(t, nil)), roots, &supervisorSpy{answer: echoes}, schemaValidator{}, machine, &strings.Builder{}, &strings.Builder{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -63,10 +63,11 @@ func TestARunAsksGitForTheRootOnce(t *testing.T) {
 	}
 }
 
-// sayCall is the call of the process "say" of runSettings, its script
-// prompt, its time limit a minute and its plan's one warning "w".
+// sayCall is the call of the process "say" of runSettings, on bash/1, its
+// script prompt, its time limit a minute and its plan's one warning "w".
 func sayCall(prompt string) plannedCall {
 	return plannedCall{
+		contract: "bash/1",
 		declared: inputs.Declared{
 			Params: []inputs.Param{{Name: "what"}},
 			Inputs: []inputs.Input{{Name: "what", Source: "param", Arguments: map[string]inputs.Value{"name": {Text: "what"}}}},
@@ -108,7 +109,7 @@ func TestAStepsCallResolvesItsInputsBeforeItStarts(t *testing.T) {
 	planned.declared.Inputs = append(planned.declared.Inputs, inputs.Input{Name: "a", Source: "param", Arguments: map[string]inputs.Value{"name": {Text: "what"}}})
 	unplugged := sayCall("x")
 	unplugged.declared.Inputs[0].Source = "git.revision"
-	steps, err := newStepCalls(resolver, spy, clock, map[string]plannedCall{"a": planned, "b": unplugged})
+	steps, err := newStepCalls(resolver, map[string]turnCaller{"bash/1": spy}, clock, map[string]plannedCall{"a": planned, "b": unplugged})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -147,7 +148,7 @@ func TestAStepsCallGivesItsUsageSessionAndReason(t *testing.T) {
 	count := func(n int64) *int64 { return &n }
 	spy := &turnSpy{result: call.Result{Status: call.Lost, Class: call.NoResult, Session: "s1", Reason: "exited 0",
 		Usage: &call.Usage{Input: count(1), Output: count(2), CacheRead: count(3), CacheWrite: count(4), Reasoning: count(5)}}}
-	steps, err := newStepCalls(resolver, spy, clocktest.NewClock(runStart), map[string]plannedCall{"a": sayCall("x")})
+	steps, err := newStepCalls(resolver, map[string]turnCaller{"bash/1": spy}, clocktest.NewClock(runStart), map[string]plannedCall{"a": sayCall("x")})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -231,7 +232,7 @@ steps:
 	if len(faults) > 0 {
 		t.Fatalf("faults %+v", faults)
 	}
-	built, unrun, err := planOf("greet", resolved, read.documents, "bash/1")
+	built, unrun, err := planOf("greet", resolved, read.documents, map[string]call.Inputs{"bash/1": call.InEnvironment})
 	if err != nil || len(unrun) > 0 {
 		t.Fatalf("not run %q, error %v", unrun, err)
 	}
@@ -519,7 +520,9 @@ func TestNewCodexSupervisedFailsWithoutPrograms(t *testing.T) {
 	}
 }
 
-// The runs take each of their collaborators, and fail without one.
+// The runs take each of their collaborators, and fail without one, or with
+// a turn of no contract, no runtime, no inputs or a contract another turn
+// has.
 func TestNewRunsFailsWithoutACollaborator(t *testing.T) {
 	t.Parallel()
 	clock := clocktest.NewClock(runStart)
@@ -527,9 +530,9 @@ func TestNewRunsFailsWithoutACollaborator(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	full := func() (string, links, *filesystemSpy, rootSpy, wrappersSpy, turn, host) {
+	full := func() (string, links, *filesystemSpy, rootSpy, wrappersSpy, []turn, host) {
 		return "/u/.agister", &linksSpy{}, newFilesystemSpy(nil), rootSpy{root: "/r"}, wrappersSpy{},
-			turn{contract: "bash/1", inputs: call.InEnvironment, runtime: turns},
+			[]turn{{contract: "bash/1", inputs: call.InEnvironment, runtime: turns}},
 			host{ctx: context.Background(), clock: clock, timer: clock.Timer, signals: (&signalsSpy{}).watch}
 	}
 	home, l, fs, roots, wrappers, tu, machine := full()
@@ -546,11 +549,15 @@ func TestNewRunsFailsWithoutACollaborator(t *testing.T) {
 			return err
 		},
 		"turn": func() error {
-			_, err := newRuns(home, l, fs, roots, wrappers, turn{contract: "bash/1", inputs: call.InEnvironment}, schemaValidator{}, machine)
+			_, err := newRuns(home, l, fs, roots, wrappers, []turn{{contract: "bash/1", inputs: call.InEnvironment}}, schemaValidator{}, machine)
+			if err == nil || err.Error() != "runs: no turn" {
+				return err
+			}
+			_, err = newRuns(home, l, fs, roots, wrappers, nil, schemaValidator{}, machine)
 			return err
 		},
 		"turn's inputs": func() error {
-			_, err := newRuns(home, l, fs, roots, wrappers, turn{contract: "bash/1", runtime: turns}, schemaValidator{}, machine)
+			_, err := newRuns(home, l, fs, roots, wrappers, []turn{{contract: "bash/1", runtime: turns}}, schemaValidator{}, machine)
 			return err
 		},
 		"context": func() error {
@@ -587,6 +594,10 @@ func TestNewRunsFailsWithoutACollaborator(t *testing.T) {
 				t.Errorf("runs without %s: %v, want runs: no %s", name, err, name)
 			}
 		})
+	}
+	twice := append(slices.Clone(tu), turn{contract: "bash/1", inputs: call.InMessage, runtime: turns})
+	if _, err := newRuns(home, l, fs, roots, wrappers, twice, schemaValidator{}, machine); err == nil || err.Error() != `runs: two turns of the contract "bash/1"` {
+		t.Errorf("runs with two turns of a contract: %v, want the error that says so", err)
 	}
 }
 
