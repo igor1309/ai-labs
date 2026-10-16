@@ -23,7 +23,11 @@ goes to `backlog/`; nothing is dropped silently.
 ## The loop
 
 1. **Spec**: feature files and the notes, in the part's own ports and
-   words (ADR-001). Committed apart from code.
+   words (ADR-001). Committed apart from code. A part that starts
+   programs or waits says how each ends: on every signal, a child that
+   leaves its group, an open pipe, a cancel before it starts, a platform
+   it cannot serve. Every settings value a scenario uses is one the
+   language says today, or the spec adds it.
 2. **Self-check**: `scripts/loop/spec-check.sh` aligns tables and
    reports wide prose, a feature near 100 lines, a backlog file named
    and missing. By hand: every Background is a document documents
@@ -38,14 +42,20 @@ goes to `backlog/`; nothing is dropped silently.
    ask the owner for each finding, with its reason. Core or cheap is
    taken; taste, churn and corner cases are not. A rejected point goes
    to the notes' Decisions, with its reason, so no reviewer raises it
-   again. The round's table is kept beside the reviews.
+   again. A minor finding rejected in one round and raised in the next
+   is fixed when cheap, or else goes to the Decisions as accepted. The
+   round's table is kept beside the reviews.
 5. **Owner's go**, and the goal file written once: its "Done when" is
-   every scenario proven; the implementer works to it, and the branch
-   review reads it.
+   every scenario proven; its Decisions name the notes' Decisions, so
+   the implementer keeps them; the implementer works to it, and the
+   branch review reads it.
 6. **Implement**: one test per scenario, race detector on, through
-   `./scripts/test.sh`. Committed by `scripts/loop/commit.sh <message>
-   <file>...`, which commits only on green; spec, code, test fix and
-   backlog apart.
+   `./scripts/test.sh`, which also holds a feature file to 100 lines
+   and a test file to 1000. Committed by `scripts/loop/commit.sh
+   <message> <file>...`, which commits only on green and refuses spec
+   and code in one commit; spec, code, test fix and backlog apart. A
+   spec edit in an implementer's diff is read against the notes before
+   it is committed.
 7. **Batch**: no review cycle for a small fix; it rides the next one.
    Sections share a round where they can.
 8. **Branch review**: `scripts/loop/branch-review.sh`: agister's
@@ -76,4 +86,10 @@ goes to `backlog/`; nothing is dropped silently.
 - Absolute paths.
 - A failure's root cause is found, and named, before a fix.
 - Separate reviews asked for stay separate.
+- A brief's "## Open" reads "None.": anything else is refused before
+  the run starts.
+- An implement run stopped by a usage limit leaves its changes in the
+  worktree: save them as a patch beside the briefs, reset the files it
+  touched, and name the patch in the next brief's "Acts on"; a fresh
+  run starts only from a clean worktree.
 - One ntfy push, only for a real block.
