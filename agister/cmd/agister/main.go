@@ -58,8 +58,8 @@ func run(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 // connect is the command line build gives over files, git, the
 // supervisor, its programs started in gokit's process groups and its grace
 // on the wall clock, and the machine: Agister's
-// environment, the wall clock, and SIGINT and SIGTERM, each cancelling a
-// run.
+// environment, the wall clock, SIGINT and SIGTERM, each cancelling a
+// run, and the system's temporary folder.
 func connect(ctx context.Context, user string, stdout, stderr io.Writer) (*cli.CLI, error) {
 	g, err := git.New("git")
 	if err != nil {
@@ -82,7 +82,7 @@ func connect(ctx context.Context, user string, stdout, stderr io.Writer) (*cli.C
 	if err != nil {
 		return nil, err
 	}
-	machine := host{ctx: ctx, environ: os.Environ(), clock: wallClock{}, timer: wallTimer, signals: cancellationSignals()}
+	machine := host{ctx: ctx, environ: os.Environ(), clock: wallClock{}, timer: wallTimer, signals: cancellationSignals(), temp: os.TempDir()}
 	return build(user, f, fs, roots, programs, machine, stdout, stderr)
 }
 
@@ -130,8 +130,16 @@ func build(user string, links links, fs layout.FileSystem, roots layout.Worktree
 	if err != nil {
 		return nil, err
 	}
+	codexSupervising, err := newCodexSupervised(programs)
+	if err != nil {
+		return nil, err
+	}
+	cx, err := codex.New(codexSupervising, machine.temp)
+	if err != nil {
+		return nil, err
+	}
 	wrappers, err := newContracts(
-		claudeCodeFacts(claude), codexFacts(codex.New()), piFacts(pi.New()), bashFacts(b))
+		claudeCodeFacts(claude), codexFacts(cx), piFacts(pi.New()), bashFacts(b))
 	if err != nil {
 		return nil, err
 	}

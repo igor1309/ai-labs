@@ -19,6 +19,7 @@ import (
 	"github.com/igor1309/ai-labs/agister/core/workflow"
 	"github.com/igor1309/ai-labs/agister/runtime/bash"
 	"github.com/igor1309/ai-labs/agister/runtime/claudecode"
+	"github.com/igor1309/ai-labs/agister/runtime/codex"
 	"github.com/igor1309/ai-labs/agister/settings/documents"
 	"github.com/igor1309/ai-labs/agister/settings/layout"
 	"github.com/igor1309/ai-labs/agister/settings/resolve"
@@ -37,14 +38,16 @@ type clock interface {
 
 // host is what a run is given of the machine Agister runs on: the context
 // every run ends within; Agister's own environment, as "KEY=value"; the
-// clock and the timer a call's timing and time limit are kept on; and the
-// signals that cancel a run.
+// clock and the timer a call's timing and time limit are kept on; the
+// signals that cancel a run; and the system's temporary folder, under
+// which codex writes its turns' schemas.
 type host struct {
 	ctx     context.Context
 	environ []string
 	clock   clock
 	timer   call.Timer
 	signals signals
+	temp    string
 }
 
 // turn is the one runtime this slice takes a turn on: the contract of its
@@ -807,6 +810,42 @@ func (s *claudeCodeSupervised) Run(ctx context.Context, program claudecode.Progr
 		return claudecode.Stream{Head: s.Head, Tail: s.Tail, Size: s.Size, Digest: s.Digest, Incomplete: s.Incomplete}
 	}
 	return claudecode.Ended{Code: result.Code, Signal: result.Signal, Stdout: stream(result.Stdout), Stderr: stream(result.Stderr)}, nil
+}
+
+// codexPrograms is what the codex wrapper's supervisor asks of the
+// supervisor.
+type codexPrograms interface {
+	Run(ctx context.Context, program supervisor.Program) (supervisor.Result, error)
+}
+
+// codexSupervised answers the codex wrapper's supervisor from the
+// supervisor: the program's stdin and its line function pass as they are.
+// A program that could not start is codex's ErrNotStarted.
+type codexSupervised struct {
+	programs codexPrograms
+}
+
+func newCodexSupervised(programs codexPrograms) (*codexSupervised, error) {
+	if programs == nil {
+		return nil, errors.New("codex supervised: no programs")
+	}
+	return &codexSupervised{programs: programs}, nil
+}
+
+func (s *codexSupervised) Run(ctx context.Context, program codex.Program) (codex.Ended, error) {
+	result, err := s.programs.Run(ctx, supervisor.Program{
+		Name: program.Name, Args: program.Args, Dir: program.Dir, Env: program.Env, Stdin: program.Stdin, Line: program.Line,
+	})
+	if errors.Is(err, supervisor.ErrNotStarted) {
+		return codex.Ended{}, fmt.Errorf("%w: %w", codex.ErrNotStarted, err)
+	}
+	if err != nil {
+		return codex.Ended{}, err
+	}
+	stream := func(s supervisor.Stream) codex.Stream {
+		return codex.Stream{Head: s.Head, Tail: s.Tail, Size: s.Size, Digest: s.Digest, Incomplete: s.Incomplete}
+	}
+	return codex.Ended{Code: result.Code, Signal: result.Signal, Stdout: stream(result.Stdout), Stderr: stream(result.Stderr)}, nil
 }
 
 // processGroups is what the supervisor's starter asks of gokit's process

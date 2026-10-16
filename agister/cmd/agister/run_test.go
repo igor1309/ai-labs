@@ -158,7 +158,7 @@ func (f *runFixture) run(t *testing.T, dir string, args ...string) ran {
 func (f *runFixture) runWatching(t *testing.T, watch signals, environment []string, dir string, args ...string) ran {
 	t.Helper()
 	var stdout, stderr strings.Builder
-	machine := host{ctx: context.Background(), environ: environment, clock: f.clock, timer: f.clock.Timer, signals: watch}
+	machine := host{ctx: context.Background(), environ: environment, clock: f.clock, timer: f.clock.Timer, signals: watch, temp: "/t"}
 	commandLine, err := build("/u", &linksSpy{}, newFilesystemSpy(f.settings), rootSpy{root: "/r"}, f.supervisor, machine, &stdout, &stderr)
 	if err != nil {
 		t.Fatal(err)

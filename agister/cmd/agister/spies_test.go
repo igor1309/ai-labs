@@ -266,7 +266,7 @@ func (s programsSpy) Run(_ context.Context, program supervisor.Program) (supervi
 // watches its signals fails the test.
 func idleHost(t *testing.T) host {
 	clock := clocktest.NewClock(time.Date(2026, 10, 16, 10, 0, 0, 0, time.UTC))
-	return host{ctx: context.Background(), clock: clock, timer: clock.Timer,
+	return host{ctx: context.Background(), clock: clock, timer: clock.Timer, temp: "/t",
 		signals: func() (<-chan os.Signal, func()) {
 			t.Error("a run watched the signals, want none run")
 			return nil, func() {}

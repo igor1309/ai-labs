@@ -20,6 +20,7 @@ import (
 	"github.com/igor1309/ai-labs/agister/core/workflow"
 	"github.com/igor1309/ai-labs/agister/runtime/bash"
 	"github.com/igor1309/ai-labs/agister/runtime/claudecode"
+	"github.com/igor1309/ai-labs/agister/runtime/codex"
 	"github.com/igor1309/ai-labs/agister/settings/resolve"
 	"github.com/igor1309/ai-labs/agister/supervisor"
 	"github.com/igor1309/ai-labs/gokit/clocktest"
@@ -48,7 +49,7 @@ func TestARunAsksGitForTheRootOnce(t *testing.T) {
 	t.Parallel()
 	roots := &countedRoots{asked: map[string]int{}}
 	clock := clocktest.NewClock(runStart)
-	machine := host{ctx: context.Background(), environ: environ, clock: clock, timer: clock.Timer, signals: (&signalsSpy{}).watch}
+	machine := host{ctx: context.Background(), environ: environ, clock: clock, timer: clock.Timer, signals: (&signalsSpy{}).watch, temp: "/t"}
 	commandLine, err := build("/u", &linksSpy{}, newFilesystemSpy(runSettings(t, nil)), roots, &supervisorSpy{answer: echoes}, machine, &strings.Builder{}, &strings.Builder{})
 	if err != nil {
 		t.Fatal(err)
@@ -427,6 +428,67 @@ func TestClaudeCodesProgramRunsOnTheSupervisor(t *testing.T) {
 func TestNewClaudeCodeSupervisedFailsWithoutPrograms(t *testing.T) {
 	t.Parallel()
 	if _, err := newClaudeCodeSupervised(nil); err == nil {
+		t.Error("built with no programs, want an error")
+	}
+}
+
+// A program codex asks for runs on the supervisor as it is asked, its
+// stdin and its line function included, and gives how it ended, each
+// stream as the supervisor kept it; a program that could not start is
+// codex's ErrNotStarted, and any other error passes as it is.
+func TestCodexsProgramRunsOnTheSupervisor(t *testing.T) {
+	t.Parallel()
+	other := errors.New("broken pipe")
+	cases := []struct {
+		name       string
+		result     supervisor.Result
+		err        error
+		want       codex.Ended
+		notStarted bool
+		wantErr    error
+	}{
+		{name: "an exit", result: supervisor.Result{Code: 3,
+			Stdout: supervisor.Stream{Head: "oh", Tail: "ot", Size: 3, Digest: "od"},
+			Stderr: supervisor.Stream{Head: "eh", Tail: "et", Size: 5, Digest: "ed", Incomplete: true}},
+			want: codex.Ended{Code: 3, Stdout: codex.Stream{Head: "oh", Tail: "ot", Size: 3, Digest: "od"}, Stderr: codex.Stream{Head: "eh", Tail: "et", Size: 5, Digest: "ed", Incomplete: true}}},
+		{name: "a signal", result: supervisor.Result{Signal: "killed"}, want: codex.Ended{Signal: "killed"}},
+		{name: "no start", err: fmt.Errorf("codex: %w", supervisor.ErrNotStarted), notStarted: true, wantErr: supervisor.ErrNotStarted},
+		{name: "another error", err: other, wantErr: other},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
+			var ran []supervisor.Program
+			spy := &supervisorSpy{answer: func(_ context.Context, program supervisor.Program) (supervisor.Result, error) {
+				program.Line("a")
+				program.Line = nil
+				ran = append(ran, program)
+				return c.result, c.err
+			}}
+			programs, err := newCodexSupervised(spy)
+			if err != nil {
+				t.Fatal(err)
+			}
+			var lines []string
+			got, err := programs.Run(context.Background(), codex.Program{Name: "codex", Args: []string{"exec", "-"}, Dir: "/r", Env: []string{"A=1"}, Stdin: "m",
+				Line: func(line string) { lines = append(lines, line) }})
+			if !reflect.DeepEqual(got, c.want) || !errors.Is(err, c.wantErr) || errors.Is(err, codex.ErrNotStarted) != c.notStarted {
+				t.Errorf("ended %+v, %v; want %+v, %v, not started %v", got, err, c.want, c.wantErr, c.notStarted)
+			}
+			if want := []supervisor.Program{{Name: "codex", Args: []string{"exec", "-"}, Dir: "/r", Env: []string{"A=1"}, Stdin: "m"}}; !reflect.DeepEqual(ran, want) {
+				t.Errorf("ran %+v, want %+v", ran, want)
+			}
+			if want := []string{"a"}; !slices.Equal(lines, want) {
+				t.Errorf("lines %q, want %q", lines, want)
+			}
+		})
+	}
+}
+
+// The codex wrapper's supervisor is built with the supervisor.
+func TestNewCodexSupervisedFailsWithoutPrograms(t *testing.T) {
+	t.Parallel()
+	if _, err := newCodexSupervised(nil); err == nil {
 		t.Error("built with no programs, want an error")
 	}
 }
