@@ -1,6 +1,5 @@
 # Build order: the quiz (English only), then language, then dark theme.
 
-@next
 Feature: English and Russian
   Interface text, dinosaur names and units appear in the chosen language.
 
