@@ -18,7 +18,7 @@ Feature: The composition runs a step on a model runtime
     Then claude-code runs the message of the sections "q" of "why",
       "prompt" of "p" and "g" of "rules", in that order, in "/r", its
       environment Agister's and A=1, the instruction "i", the model
-      "opus", the effort "high", the options its plan gives, "Read", and
+      "opus", the effort "high", the options its plan gives, "Glob", and
       the bytes of the schema "answer"
 
   Scenario: A step on codex is given its plan's one option
