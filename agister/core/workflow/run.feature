@@ -25,13 +25,26 @@ Feature: A workflow's steps run in order
     When the workflow runs
     Then "b" is not called, and the run ends interrupted, class "timeout"
 
-  Scenario: The run's output is its output mapping
-    Given the steps "a", then "b", and the output "result" from
-      steps.a.outputs
+  Scenario Outline: The run's output is its output mapping
+    Given the param "p", the input "i" from the source "param" named "p",
+      the steps "a", then "b", and the output "result" from <reads>
     And both complete, "a" with the exit code 7
+    When the workflow runs with p "x"
+    Then the run completes, its output "result" being <value>
+
+    Examples:
+      | reads           | value                         |
+      | steps.a.outputs | "a"'s output, the exit code 7 |
+      | params.p        | "x"                           |
+      | inputs.i        | "x"                           |
+
+  Scenario: The run's timing, cost and warnings cover its calls
+    Given the clock reads 10:00:00 when the run starts and 10:00:09 when
+      it ends, and the steps "a" and "b" complete, each its cost unknown,
+      "a" warning "w1" and "b" "w2"
     When the workflow runs
-    Then the run completes, its output "result" being "a"'s output, the
-      exit code 7
+    Then its timing is 10:00:00 to 10:00:09, its cost unknown, and its
+      warnings "w1", then "w2"
 
   Scenario: A param not given takes its default
     Given the param "base" with the default "main", and the step "a",

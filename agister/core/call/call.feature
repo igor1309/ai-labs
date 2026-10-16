@@ -9,7 +9,7 @@ Feature: A call makes its turn and ends in the result shape
     environment, each input by its name
     Given a step whose script is "s", its environment A=1 and B=2, and
       its input "B" of value "3", in the directory "/r", over Agister's
-      environment PATH=/bin
+      environment PATH=/bin and A=0
     When the call is made
     Then the turn is given "s", "/r", and PATH=/bin, A=1 and B=3
 
@@ -23,7 +23,7 @@ Feature: A call makes its turn and ends in the result shape
       | exits with code 0                         | completed   |                     |
       | exits with code 4                         | completed   |                     |
       | cannot start its program                  | failed      | runtime_unavailable |
-      | runs past the process's time limit of 1s  | interrupted | timeout             |
+      | gives another error                       | failed      | runtime_error       |
       | is running when the caller cancels        | interrupted | cancelled           |
       | is ended by a signal Agister did not send | failed      | killed              |
 
@@ -44,3 +44,9 @@ Feature: A call makes its turn and ends in the result shape
     When the call is made
     Then its timing is from 10:00:00 to 10:00:05, 5s, and its cost is
       unknown
+
+  Scenario: The step's warnings are the call's, whatever its status
+    Given the step's plan warns "grants network beyond what it allows"
+    And the turn is ended by the time limit
+    When the call is made
+    Then it ends interrupted, its warnings that one

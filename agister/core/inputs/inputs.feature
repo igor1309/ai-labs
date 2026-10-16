@@ -15,3 +15,15 @@ Feature: Inputs are resolved from their sources
     When the inputs are resolved
     Then it refuses, failed, class "refused": the source "git.revision"
       is not known
+
+  Scenario: A param not given takes its default
+    Given the param "base" with the default "main", not given, and the
+      input "b" from the source "param", named "base"
+    When the inputs are resolved
+    Then "b" is "main"
+
+  Scenario: The environment's references are evaluated
+    Given the params "p" given "1", the input "i" of value "2", and the
+      environment A="x", B from params.p and C from inputs.i
+    When the environment is resolved
+    Then it is A=x, B=1 and C=2

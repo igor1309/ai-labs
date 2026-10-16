@@ -27,61 +27,77 @@ program that cannot start is an error that says so. Its tests run real
 programs (ADR-009, rule 3).
 
 **The bash wrapper** runs a turn: a script, a directory and an
-environment, as `bash -c`, through the supervisor, and gives what the
-supervisor gives. Its tests run the real bash.
+environment, as `bash -c <script>`, through the supervisor, and gives
+what the supervisor gives, its error that the program could not start
+included. Its tests give a spy in place of the supervisor (ADR-009,
+rule 3).
 
 **`core/call`** declares the runtime protocol: a turn is given the
-prompt, the directory and the environment, and gives the output and
-how the program ended. A call makes one turn on bash (ADR-012, rule 7),
-gives it the process's environment and each input by its name, an
-input's value where a name is both, over the environment the
-composition gives; and ends in the result shape (ADR-001, invariant 3):
+prompt, the directory and the environment, and gives the output and how
+the program ended; or that its program could not start; or another
+error. A call makes one turn on bash (ADR-012, rule 7), over the
+environment the composition gives, then its process's environment, then
+each input by its name; and ends in the result shape (ADR-001,
+invariant 3):
 
 | How the turn ended | Status | Class |
 |---|---|---|
 | the script exited, any code | completed | |
 | the program could not start | failed | `runtime_unavailable` |
+| another error of the runtime | failed | `runtime_error` |
 | the process's time limit | interrupted | `timeout` |
 | the caller cancelled | interrupted | `cancelled` |
 | a signal Agister did not send | failed | `killed` |
 
-A completed bash call's output is its exit code, and stdout and stderr,
-each as the supervisor keeps it. Timing is measured by core, through a
-clock; cost is unknown, bash reporting none (ADR-012, rule 5).
+A completed bash call's output is `exit_code`, and `stdout` and
+`stderr`, each its `head`, `tail`, `size` and `digest`, as the
+supervisor keeps it: the fields a binding or an output reads. Timing is
+measured by core, through a clock; cost is unknown, bash reporting none
+(ADR-012, rule 5). The call's warnings are its step's plan's (ADR-003,
+rule 5), given whatever its status.
 
 **`core/inputs`** resolves a workflow's inputs at its boundary, and a
 call's before it starts (ADR-010, rule 3), from their sources over the
-params given, to a value and its identity, the SHA-256 of its text. The
-source this slice knows is `param`: the param named by its `name`. A
-source it does not know refuses the call before it starts: failed,
-`refused`, naming the source.
+params given, a param not given taking its default, to a value and its
+identity, the SHA-256 of its text; and a process's environment, each
+value a text or a reference to its params and inputs. The source this
+slice knows is `param`: the param named by its `name`. A source it does
+not know refuses the call before it starts: failed, `refused`, naming
+the source.
 
 **`core/workflow`** runs a workflow whose items are steps: in order,
 each step's bindings giving its process's params from the workflow's
 params and inputs and the outputs of the steps before it (ADR-011, rule
 3); a value that is not text is given as its JSON. A step that does not
 complete ends the run with its status and class; no later step starts.
-The run's output is its output mapping, read from its steps; its status
-and class are its last step's; its timing covers the whole run.
+The run's output is its output mapping, read from its params, its
+inputs and its steps; its status and class are its last call's; its
+timing covers the whole run; its cost is unknown where a call's is; its
+warnings are every call's.
 
 **The composition** answers `cli`'s run from resolve and core. A
 request resolves first; a refusal is printed to stderr, and nothing
 runs. It builds core's workflow from the resolved settings and
 documents: each step's script is its process's prompt, the text of the
-prompt document; its time limit is its process's. It runs in the root of
-the git worktree that holds the launch directory (ADR-004, rule 1);
-outside one, the request is refused. A step on a runtime with no turn
-yet, or a workflow with an item that is not a step, is refused before
-anything runs, naming it. The program's environment is Agister's own,
-then the process's, then the inputs.
+prompt document; its time limit is its process's; its warnings its
+plan's. It runs in the root of the git worktree that holds the launch
+directory (ADR-004, rule 1); outside one, the request is refused. What
+this slice does not run is refused before anything runs, naming it: a
+step on a runtime with no turn yet; an item that is not a step; an
+input from a source other than `param`, or with a brief form; a
+workspace's revision or clean; a staleness limit or a recovery; a
+process's instruction or guidance on bash. The program's environment is
+Agister's own, then the process's, then the inputs. SIGINT or SIGTERM
+to Agister cancels the run: the call's program and its group are ended,
+and the result says `cancelled`.
 
 **The command line.** `agister run <workflow>` runs a workflow;
 `agister run --process <name> --agent <name>` runs a step alone
 (ADR-013). `--param <name>=<value>` gives a param, repeated for many;
 `--dir` sets the launch directory. It prints the result as JSON on
-stdout: status, class, output, timing and cost. It exits 0 when the run
-completed, 1 when it did not or was refused, and 2 on a bad command,
-with its usage on stderr.
+stdout: status, class, output, timing, cost and warnings. It exits 0
+when the run completed, 1 when it did not or was refused, and 2 on a bad
+command, with its usage on stderr.
 
 Decisions, each with its reason:
 
@@ -90,3 +106,5 @@ Decisions, each with its reason:
   them. They are next, in `backlog/run-path.md`.
 - The bounds, 16 KiB each end and two seconds' grace, are the
   supervisor's, not settings': nothing yet asks to change them.
+- What the slice cannot honour is refused, never run unchecked: a run
+  that drops a declared check would mislead.

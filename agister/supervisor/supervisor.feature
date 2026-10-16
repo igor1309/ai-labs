@@ -8,7 +8,7 @@ Feature: The supervisor runs a program and ends all it started
   Scenario: A program runs in its directory with its environment
     Given a temporary directory "d"
     When the supervisor runs "sh -c 'pwd; echo $X'" in "d" with X=1
-    Then stdout is the path of "d", then "1"
+    Then stdout is the path of "d", its links resolved, then "1"
     And the program exited with code 0
 
   Scenario: The exit code is kept
