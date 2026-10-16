@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/igor1309/ai-labs/agister/cli"
 	"github.com/igor1309/ai-labs/agister/files"
 	"github.com/igor1309/ai-labs/agister/runtime/bash"
 	"github.com/igor1309/ai-labs/agister/runtime/claudecode"
@@ -28,6 +29,7 @@ type kinds struct {
 	resolve   resolve.Kind
 	documents documents.Kind
 	layout    layout.Kind
+	cli       cli.Kind
 }
 
 // everyKind is each kind of document, in each part's words. Documents types
@@ -35,14 +37,14 @@ type kinds struct {
 // (backlog/skills.md): its block names the kind "skill".
 func everyKind() []kinds {
 	return []kinds{
-		{check.KindWorkflow, resolve.KindWorkflow, documents.Workflow, layout.Workflow},
-		{check.KindProcess, resolve.KindProcess, documents.Process, layout.Process},
-		{check.KindAgent, resolve.KindAgent, documents.Agent, layout.Agent},
-		{check.KindRuntime, resolve.KindRuntime, documents.Runtime, layout.Runtime},
-		{check.KindBrief, resolve.KindBrief, documents.Brief, layout.Brief},
-		{check.KindPrompt, resolve.KindPrompt, documents.Prompt, layout.Prompt},
-		{check.KindSchema, resolve.KindSchema, documents.Schema, layout.Schema},
-		{check.KindSkill, resolve.KindSkill, documents.Kind("skill"), ""},
+		{check.KindWorkflow, resolve.KindWorkflow, documents.Workflow, layout.Workflow, cli.KindWorkflow},
+		{check.KindProcess, resolve.KindProcess, documents.Process, layout.Process, cli.KindProcess},
+		{check.KindAgent, resolve.KindAgent, documents.Agent, layout.Agent, cli.KindAgent},
+		{check.KindRuntime, resolve.KindRuntime, documents.Runtime, layout.Runtime, cli.KindRuntime},
+		{check.KindBrief, resolve.KindBrief, documents.Brief, layout.Brief, cli.KindBrief},
+		{check.KindPrompt, resolve.KindPrompt, documents.Prompt, layout.Prompt, cli.KindPrompt},
+		{check.KindSchema, resolve.KindSchema, documents.Schema, layout.Schema, cli.KindSchema},
+		{check.KindSkill, resolve.KindSkill, documents.Kind("skill"), "", cli.KindSkill},
 	}
 }
 
@@ -69,6 +71,10 @@ func checkKind(kind check.Kind) kinds {
 
 func layoutKind(kind layout.Kind) kinds {
 	return findKind(func(k kinds) bool { return k.layout == kind })
+}
+
+func cliKind(kind cli.Kind) kinds {
+	return findKind(func(k kinds) bool { return k.cli == kind })
 }
 
 // documentsSnapshot is layout's snapshot in documents' words: each

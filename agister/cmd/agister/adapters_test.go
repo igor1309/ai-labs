@@ -582,7 +582,7 @@ func TestAPathsLayerIsTheNearestFoldersHoldingIt(t *testing.T) {
 func TestEveryKindIsOneKindInEachPartsWords(t *testing.T) {
 	t.Parallel()
 	for _, k := range everyKind() {
-		spelled := []string{string(k.check), string(k.resolve), string(k.documents)}
+		spelled := []string{string(k.check), string(k.resolve), string(k.documents), string(k.cli)}
 		if k.layout != "" {
 			spelled = append(spelled, string(k.layout))
 		}
@@ -591,7 +591,7 @@ func TestEveryKindIsOneKindInEachPartsWords(t *testing.T) {
 				t.Errorf("%+v spells the kind %q as %q", k, k.check, s)
 			}
 		}
-		if kindOf(k.resolve) != k || checkKind(k.check) != k || documentsKind(k.documents) != k {
+		if kindOf(k.resolve) != k || checkKind(k.check) != k || documentsKind(k.documents) != k || cliKind(k.cli) != k {
 			t.Errorf("%+v is not found by each of its words", k)
 		}
 	}
