@@ -370,6 +370,73 @@ func TestADocumentOfAnotherKindResolvesAndIsNoWorkflow(t *testing.T) {
 	assertDefinitions(t, got, s, nil, nil, []string{"a"}, []string{"r"})
 }
 
+// request.feature, "A document requested alone is followed, and planned
+// not": a process alone has no agent, so it plans no step, whatever it
+// requires.
+func TestADocumentRequestedAloneIsFollowedAndPlannedNot(t *testing.T) {
+	t.Parallel()
+	for _, test := range []struct {
+		request resolve.Request
+		reached []resolve.Reference
+	}{
+		{resolve.Document(resolve.KindProcess, "p"), []resolve.Reference{ref(resolve.KindProcess, "p"), ref(resolve.KindPrompt, "pr")}},
+		{resolve.Document(resolve.KindPrompt, "pr"), []resolve.Reference{ref(resolve.KindPrompt, "pr")}},
+	} {
+		t.Run(string(test.reached[0].Kind), func(t *testing.T) {
+			t.Parallel()
+			s := newSource()
+			s.processes["p"] = resolve.Process{Name: "p", Prompt: named("pr", "prompt"), Require: []string{"edit"}}
+			s.other(resolve.KindPrompt, "pr")
+
+			got, faults := newResolver(t, s).Resolve(test.request)
+
+			assertResolved(t, faults)
+			if got.Workflow != nil {
+				t.Errorf("workflow %+v, want none", got.Workflow)
+			}
+			if len(got.Plans) > 0 {
+				t.Errorf("plans %+v, want none", got.Plans)
+			}
+			assertReached(t, got, test.reached...)
+		})
+	}
+}
+
+// request.feature, "A process requested alone has its own references
+// checked".
+func TestAProcessRequestedAloneHasItsOwnReferencesChecked(t *testing.T) {
+	t.Parallel()
+	s := newSource()
+	head := param("head")
+	head.Origin = resolve.Origin{Path: "/home/.agister/processes/p.yaml", Line: 3, Place: "environment.HEAD"}
+	s.processes["p"] = resolve.Process{Name: "p", Environment: []resolve.Binding{{Name: "HEAD", From: &head, Origin: head.Origin}}}
+
+	got, faults := newResolver(t, s).Resolve(resolve.Document(resolve.KindProcess, "p"))
+
+	assertFaults(t, got, faults, resolve.Fault{
+		Chain:    []resolve.Link{{Kind: resolve.KindProcess, Name: "p"}},
+		Problems: []resolve.Problem{{Origin: head.Origin, Message: `its process declares the param "head"`}},
+	})
+}
+
+// request.feature, "The problems of no document come before the documents
+// at fault".
+func TestTheProblemsOfNoDocumentComeBeforeTheDocumentsAtFault(t *testing.T) {
+	t.Parallel()
+	s := newSource()
+	none := resolve.Problem{Origin: resolve.Origin{Path: "/repo/.agister"}, Message: "it cannot be listed"}
+	s.none = []resolve.Problem{none}
+	broken := resolve.Problem{Message: "it is broken"}
+	s.fail(resolve.KindProcess, "p", broken)
+
+	got, faults := newResolver(t, s).Resolve(resolve.Document(resolve.KindProcess, "p"))
+
+	assertFaults(t, got, faults,
+		resolve.Fault{Problems: []resolve.Problem{none}},
+		resolve.Fault{Chain: []resolve.Link{{Kind: resolve.KindProcess, Name: "p"}}, Problems: []resolve.Problem{broken}},
+	)
+}
+
 // request.feature, "A problem of no document refuses every request".
 func TestAProblemOfNoDocumentRefusesEveryRequest(t *testing.T) {
 	t.Parallel()
