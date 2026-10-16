@@ -10,38 +10,45 @@ import (
 	"github.com/igor1309/ai-labs/agister/cli"
 )
 
-// request is one request made on the port: its operation, the launch
-// directory, and the kind listed or the document shown.
+// request is one request made on a port: its operation, the launch
+// directory, and the kind listed, the document shown or the run asked.
 type request struct {
 	op       string
 	launch   string
 	kind     cli.Kind
 	document cli.Document
+	run      cli.Request
 }
 
-// settingsSpy is a spy of cli's port: it keeps each request and gives
-// what its test gives, whatever the request.
-type settingsSpy struct {
+// portSpy is a spy of cli's ports: it keeps each request and gives what
+// its test gives, whatever the request.
+type portSpy struct {
 	requests []request
 	report   cli.Report
 	listed   []cli.Listed
 	shown    cli.Shown
+	result   cli.Result
 	err      error
 }
 
-func (s *settingsSpy) Check(launch string) (cli.Report, error) {
+func (s *portSpy) Check(launch string) (cli.Report, error) {
 	s.requests = append(s.requests, request{op: "check", launch: launch})
 	return s.report, s.err
 }
 
-func (s *settingsSpy) List(launch string, kind cli.Kind) ([]cli.Listed, error) {
+func (s *portSpy) List(launch string, kind cli.Kind) ([]cli.Listed, error) {
 	s.requests = append(s.requests, request{op: "list", launch: launch, kind: kind})
 	return s.listed, s.err
 }
 
-func (s *settingsSpy) Show(launch string, document cli.Document) (cli.Shown, error) {
+func (s *portSpy) Show(launch string, document cli.Document) (cli.Shown, error) {
 	s.requests = append(s.requests, request{op: "show", launch: launch, document: document})
 	return s.shown, s.err
+}
+
+func (s *portSpy) Run(launch string, run cli.Request) (cli.Result, error) {
+	s.requests = append(s.requests, request{op: "run", launch: launch, run: run})
+	return s.result, s.err
 }
 
 // ran is what a command printed and its exit code.
@@ -51,10 +58,10 @@ type ran struct {
 }
 
 // run runs "agister <args>" over spy in the working directory "/work".
-func run(t *testing.T, spy *settingsSpy, args ...string) ran {
+func run(t *testing.T, spy *portSpy, args ...string) ran {
 	t.Helper()
 	var stdout, stderr strings.Builder
-	c, err := cli.New(spy, &stdout, &stderr)
+	c, err := cli.New(spy, spy, &stdout, &stderr)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -84,7 +91,7 @@ func source(file string, line int, layer cli.Layer) cli.Source {
 func TestCheckPrintsEveryFaultEveryWarningAndTheCount(t *testing.T) {
 	t.Parallel()
 	w, p := cli.Document{Kind: cli.KindWorkflow, Name: "w"}, cli.Document{Kind: cli.KindProcess, Name: "p"}
-	spy := &settingsSpy{report: cli.Report{
+	spy := &portSpy{report: cli.Report{
 		Findings: []cli.Finding{{Document: p,
 			Problems: []cli.Problem{{Source: source("/h/processes/p.yaml", 2, cli.LayerHome), Message: "prompt is missing"}},
 			Refuses:  []cli.Document{w, p}}},
@@ -105,14 +112,14 @@ warning: /r/.agister/workflows/v.yaml:3 steps[0]: its plan grants "network"
 // 1".
 func TestCheckWithAProblemOfNoDocumentAndNoNameExits1(t *testing.T) {
 	t.Parallel()
-	spy := &settingsSpy{report: cli.Report{Problems: []cli.Problem{{Message: "home cannot be read"}}}}
+	spy := &portSpy{report: cli.Report{Problems: []cli.Problem{{Message: "home cannot be read"}}}}
 	run(t, spy, "check").expect(t, "home cannot be read\n  refuses every request\n0 resolve, 0 refused\n", 1)
 }
 
 // commands.feature, "check with no fault exits 0".
 func TestCheckWithNoFaultExits0(t *testing.T) {
 	t.Parallel()
-	spy := &settingsSpy{report: cli.Report{Names: []cli.Status{
+	spy := &portSpy{report: cli.Report{Names: []cli.Status{
 		{Document: cli.Document{Kind: cli.KindWorkflow, Name: "w"}, Resolves: true},
 		{Document: cli.Document{Kind: cli.KindAgent, Name: "a"}, Resolves: true},
 	}}}
@@ -123,7 +130,7 @@ func TestCheckWithNoFaultExits0(t *testing.T) {
 func TestCheckPrintsABlockWithItsReason(t *testing.T) {
 	t.Parallel()
 	p := cli.Document{Kind: cli.KindProcess, Name: "p"}
-	spy := &settingsSpy{report: cli.Report{
+	spy := &portSpy{report: cli.Report{
 		Findings: []cli.Finding{{Document: p, Block: &cli.Block{Reason: "not here", Source: source("/r/.agister/blocks.yaml", 1, cli.LayerRepository)}, Refuses: []cli.Document{p}}},
 		Names:    []cli.Status{{Document: p}},
 	}}
@@ -151,7 +158,7 @@ func TestTheLaunchDirectory(t *testing.T) {
 	for _, c := range cases {
 		t.Run(strings.Join(c.args, " "), func(t *testing.T) {
 			t.Parallel()
-			spy := &settingsSpy{shown: cli.Shown{Held: true}}
+			spy := &portSpy{shown: cli.Shown{Held: true}}
 			run(t, spy, c.args...)
 			if len(spy.requests) != 1 || spy.requests[0].launch != c.launch {
 				t.Errorf("requests %+v, want one at %q", spy.requests, c.launch)
@@ -178,7 +185,7 @@ func TestABadCommandPrintsItsUsageAndExits2(t *testing.T) {
 	for _, args := range cases {
 		t.Run(strings.Join(args, " "), func(t *testing.T) {
 			t.Parallel()
-			spy := &settingsSpy{}
+			spy := &portSpy{}
 			got := run(t, spy, args...)
 			if got.code != 2 {
 				t.Errorf("exit %d, want 2", got.code)
@@ -202,7 +209,7 @@ func TestAFailureOfThePortIsReportedOnStderr(t *testing.T) {
 	for _, args := range [][]string{{"check"}, {"inspect", "agents"}, {"inspect", "agent", "a"}} {
 		t.Run(strings.Join(args, " "), func(t *testing.T) {
 			t.Parallel()
-			got := run(t, &settingsSpy{err: errors.New("the worktree root of /work: git failed")}, args...)
+			got := run(t, &portSpy{err: errors.New("the worktree root of /work: git failed")}, args...)
 			if want := (ran{stderr: "agister: the worktree root of /work: git failed\n", code: 1}); got != want {
 				t.Errorf("ran %+v, want %+v", got, want)
 			}
@@ -227,15 +234,16 @@ func (w *failingWriter) Write(p []byte) (int, error) {
 }
 
 // commands.feature, "Output that cannot be written is an error". So it is
-// for a listing and a show, each with output of many writes: nothing is
-// written after the write that fails, and its error is the command's.
+// for a listing and a show, each with output of many writes, and for a
+// run: nothing is written after the write that fails, and its error is the
+// command's.
 func TestOutputThatCannotBeWrittenIsAnError(t *testing.T) {
 	t.Parallel()
 	a := cli.Document{Kind: cli.KindAgent, Name: "a"}
-	for _, args := range [][]string{{"check"}, {"inspect", "agents"}, {"inspect", "agent", "a"}} {
+	for _, args := range [][]string{{"check"}, {"inspect", "agents"}, {"inspect", "agent", "a"}, {"run", "w"}} {
 		t.Run(strings.Join(args, " "), func(t *testing.T) {
 			t.Parallel()
-			spy := &settingsSpy{
+			spy := &portSpy{
 				report: cli.Report{Warnings: []cli.Warning{{Problem: cli.Problem{Message: "w"}, With: []cli.Document{a}}},
 					Names: []cli.Status{{Document: a, Resolves: true}}},
 				listed: []cli.Listed{{Name: "a", Resolves: true}, {Name: "b", Resolves: true}},
@@ -244,7 +252,7 @@ func TestOutputThatCannotBeWrittenIsAnError(t *testing.T) {
 			}
 			stdout := &failingWriter{err: errors.New("write /dev/stdout: broken pipe")}
 			var stderr strings.Builder
-			c, err := cli.New(spy, stdout, &stderr)
+			c, err := cli.New(spy, spy, stdout, &stderr)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -277,7 +285,7 @@ func TestInspectAsksThePortToListAKindOrShowOne(t *testing.T) {
 	for _, c := range cases {
 		t.Run(c.args, func(t *testing.T) {
 			t.Parallel()
-			spy := &settingsSpy{shown: cli.Shown{Held: true}}
+			spy := &portSpy{shown: cli.Shown{Held: true}}
 			run(t, spy, append([]string{"inspect"}, strings.Fields(c.args)...)...)
 			if want := []request{c.want}; !reflect.DeepEqual(spy.requests, want) {
 				t.Errorf("requests %+v, want %+v", spy.requests, want)
@@ -290,7 +298,7 @@ func TestInspectAsksThePortToListAKindOrShowOne(t *testing.T) {
 // resolves".
 func TestAListingPrintsEachNameItsLayersAndWhetherItResolves(t *testing.T) {
 	t.Parallel()
-	spy := &settingsSpy{listed: []cli.Listed{
+	spy := &portSpy{listed: []cli.Listed{
 		{Name: "a", Layers: []cli.Layer{cli.LayerHome, cli.LayerRepository}, Resolves: true},
 		{Name: "b", Layers: []cli.Layer{cli.LayerProject}},
 	}}
@@ -301,7 +309,7 @@ func TestAListingPrintsEachNameItsLayersAndWhetherItResolves(t *testing.T) {
 // resolves".
 func TestAShowPrintsEachFieldWithItsSourceThenWhatResolves(t *testing.T) {
 	t.Parallel()
-	spy := &settingsSpy{shown: cli.Shown{
+	spy := &portSpy{shown: cli.Shown{
 		Held:    true,
 		Fields:  []cli.Field{{Place: "steps[0].agent", Value: "a", Source: source("/r/.agister/workflows/w.yaml", 4, cli.LayerRepository)}},
 		Reached: []cli.Document{{Kind: cli.KindWorkflow, Name: "w"}, {Kind: cli.KindAgent, Name: "a"}},
@@ -328,7 +336,7 @@ warning: /r/.agister/workflows/w.yaml:3 steps[0]: its plan grants "host.read" be
 // its chains".
 func TestAShowOfARefusedDocumentPrintsTheRefusalWithItsChains(t *testing.T) {
 	t.Parallel()
-	spy := &settingsSpy{shown: cli.Shown{
+	spy := &portSpy{shown: cli.Shown{
 		Held: true,
 		Faults: []cli.Fault{{
 			Chain: []cli.Link{
@@ -348,20 +356,20 @@ func TestAShowOfARefusedDocumentPrintsTheRefusalWithItsChains(t *testing.T) {
 // inspect.feature, "A fault of no document is printed as such".
 func TestAFaultOfNoDocumentIsPrintedAsSuch(t *testing.T) {
 	t.Parallel()
-	spy := &settingsSpy{shown: cli.Shown{Held: true, Faults: []cli.Fault{{Problems: []cli.Problem{{Message: "home cannot be read"}}}}}}
+	spy := &portSpy{shown: cli.Shown{Held: true, Faults: []cli.Fault{{Problems: []cli.Problem{{Message: "home cannot be read"}}}}}}
 	run(t, spy, "inspect", "workflow", "w").expect(t, "refused\n  of no document\n    home cannot be read\n", 0)
 }
 
 // inspect.feature, "A document no layer holds is said so".
 func TestADocumentNoLayerHoldsIsSaidSo(t *testing.T) {
 	t.Parallel()
-	run(t, &settingsSpy{}, "inspect", "agent", "z").expect(t, "no layer holds the agent z\n", 1)
+	run(t, &portSpy{}, "inspect", "agent", "z").expect(t, "no layer holds the agent z\n", 1)
 }
 
 // A value is printed quoted, so a value of many lines is one line.
 func TestAFieldsValueIsQuoted(t *testing.T) {
 	t.Parallel()
-	spy := &settingsSpy{shown: cli.Shown{Held: true, Fields: []cli.Field{
+	spy := &portSpy{shown: cli.Shown{Held: true, Fields: []cli.Field{
 		{Place: "instruction", Value: "Review it.\nThen judge.", Source: source("/u/.agister/processes/p.yaml", 2, cli.LayerHome)},
 	}}}
 	run(t, spy, "inspect", "process", "p").expect(t, "instruction  \"Review it.\\nThen judge.\"  /u/.agister/processes/p.yaml:2  home\n", 0)
@@ -374,16 +382,18 @@ func TestNewFailsWithoutACollaborator(t *testing.T) {
 	cases := []struct {
 		name           string
 		settings       cli.Settings
+		runner         cli.Runner
 		stdout, stderr io.Writer
 	}{
-		{"no settings", nil, &out, &out},
-		{"no stdout", &settingsSpy{}, nil, &out},
-		{"no stderr", &settingsSpy{}, &out, nil},
+		{"no settings", nil, &portSpy{}, &out, &out},
+		{"no runner", &portSpy{}, nil, &out, &out},
+		{"no stdout", &portSpy{}, &portSpy{}, nil, &out},
+		{"no stderr", &portSpy{}, &portSpy{}, &out, nil},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			t.Parallel()
-			if _, err := cli.New(c.settings, c.stdout, c.stderr); err == nil {
+			if _, err := cli.New(c.settings, c.runner, c.stdout, c.stderr); err == nil {
 				t.Error("built, want an error")
 			}
 		})

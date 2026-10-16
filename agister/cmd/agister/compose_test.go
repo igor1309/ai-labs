@@ -291,3 +291,13 @@ func TestALaunchDirectoryThatDoesNotResolveFailsTheCommand(t *testing.T) {
 		t.Error("command line built with no links, want an error")
 	}
 }
+
+// While the composition builds no run, a run is refused on stderr, and
+// nothing is printed or run.
+func TestARunIsRefusedWhileNoneIsBuilt(t *testing.T) {
+	t.Parallel()
+	got := compose(t, nil, "run", "--process", "say", "--agent", "bash")
+	if want := (ran{stderr: "agister: a run is not built yet: nothing runs\n", code: 1}); got != want {
+		t.Errorf("ran %+v, want %+v", got, want)
+	}
+}

@@ -1,7 +1,7 @@
 // Command agister is the composition root (ADR-001, rule 3): it connects
 // layout, documents, resolve and check to files, git and the runtime
-// wrappers' facts, through the adapters beside it, and answers cli's port
-// from check.
+// wrappers' facts, through the adapters beside it, and answers cli's
+// settings from check.
 package main
 
 import (

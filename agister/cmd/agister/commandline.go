@@ -41,7 +41,16 @@ func newCommandLine(home string, links links, fs layout.FileSystem, roots layout
 	if err != nil {
 		return nil, err
 	}
-	return cli.New(port, stdout, stderr)
+	return cli.New(port, refusedRuns{}, stdout, stderr)
+}
+
+// refusedRuns answers cli's run while the composition builds no run from
+// resolve and core (docs/run-implementation.md, "The first run"): every
+// request is refused, and nothing runs.
+type refusedRuns struct{}
+
+func (refusedRuns) Run(string, cli.Request) (cli.Result, error) {
+	return cli.Result{}, errors.New("a run is not built yet: nothing runs")
 }
 
 // inspector is what cli's port asks of check.

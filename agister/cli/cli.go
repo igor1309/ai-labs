@@ -1,9 +1,9 @@
-// Package cli is the command line (ADR-001): it turns "agister check" and
-// "agister inspect" into requests on the port it declares, and prints what
-// the port gives. It is given its arguments, its working directory and its
-// output streams (ADR-009, rule 2); a write that fails is its error. The
-// composition answers its port, over home's folder, which is the
-// composition's.
+// Package cli is the command line (ADR-001): it turns "agister check",
+// "agister inspect" and "agister run" into requests on the ports it
+// declares, and prints what the ports give. It is given its arguments, its
+// working directory and its output streams (ADR-009, rule 2); a write that
+// fails is its error. The composition answers its ports, over home's
+// folder, which is the composition's.
 package cli
 
 import (
@@ -182,20 +182,27 @@ const usage = `usage:
   agister check [--dir <directory>]
   agister inspect processes|workflows|agents [--dir <directory>]
   agister inspect process|workflow|agent <name> [--dir <directory>]
+  agister run <workflow> [--param <name>=<value>]... [--dir <directory>]
+  agister run --process <name> --agent <name> [--param <name>=<value>]... [--dir <directory>]
 `
 
-// CLI runs commands against its settings, printing to its streams.
+// CLI runs commands against its settings and its runner, printing to its
+// streams.
 type CLI struct {
 	settings Settings
+	runner   Runner
 	stdout   io.Writer
 	stderr   io.Writer
 }
 
-// New gives a command line asking settings, printing what it gives to
-// stdout, and a bad command's usage and a failure to stderr.
-func New(settings Settings, stdout, stderr io.Writer) (*CLI, error) {
+// New gives a command line asking settings and runner, printing what they
+// give to stdout, and a bad command's usage and a failure to stderr.
+func New(settings Settings, runner Runner, stdout, stderr io.Writer) (*CLI, error) {
 	if settings == nil {
 		return nil, errors.New("cli: no settings")
+	}
+	if runner == nil {
+		return nil, errors.New("cli: no runner")
 	}
 	if stdout == nil {
 		return nil, errors.New("cli: no stdout")
@@ -203,7 +210,7 @@ func New(settings Settings, stdout, stderr io.Writer) (*CLI, error) {
 	if stderr == nil {
 		return nil, errors.New("cli: no stderr")
 	}
-	return &CLI{settings: settings, stdout: stdout, stderr: stderr}, nil
+	return &CLI{settings: settings, runner: runner, stdout: stdout, stderr: stderr}, nil
 }
 
 // Run runs the command args, the program's name left out, in the working
@@ -282,10 +289,35 @@ func inspected(word string) (list, show Kind) {
 	return "", ""
 }
 
-// parse parses args: the words of a command, and --dir anywhere among
-// them.
+// flags are the flags of a command: --dir; run's --process, --agent and
+// each --param, in the order given; and ofRun, the first of run's flags as
+// it was given, "" for none.
+type flags struct {
+	dir, process, agent string
+	params              []string
+	ofRun               string
+}
+
+// needs is what flag takes as its value, "" for a flag no command takes.
+func needs(flag string) string {
+	switch flag {
+	case "dir":
+		return "a directory"
+	case "process":
+		return "a process"
+	case "agent":
+		return "an agent"
+	case "param":
+		return "a param"
+	}
+	return ""
+}
+
+// parse parses args: the words of a command, and its flags anywhere among
+// them, a flag given again replacing its value, but --param, which adds
+// one.
 func parse(args []string) (command, error) {
-	var cmd command
+	var f flags
 	var words []string
 	for i := 0; i < len(args); i++ {
 		arg := args[i]
@@ -294,25 +326,50 @@ func parse(args []string) (command, error) {
 			continue
 		}
 		flag, value, given := strings.Cut(strings.TrimPrefix(strings.TrimPrefix(arg, "-"), "-"), "=")
-		if flag != "dir" {
+		need := needs(flag)
+		if need == "" {
 			return command{}, fmt.Errorf("unknown flag %s", arg)
 		}
 		if !given {
 			if i+1 == len(args) {
-				return command{}, fmt.Errorf("%s needs a directory", arg)
+				return command{}, fmt.Errorf("%s needs %s", arg, need)
 			}
 			i++
 			value = args[i]
 		}
 		if value == "" {
-			return command{}, fmt.Errorf("%s needs a directory", arg)
+			return command{}, fmt.Errorf("%s needs %s", arg, need)
 		}
-		cmd.dir = value
+		if flag != "dir" && f.ofRun == "" {
+			f.ofRun = arg
+		}
+		switch flag {
+		case "dir":
+			f.dir = value
+		case "process":
+			f.process = value
+		case "agent":
+			f.agent = value
+		case "param":
+			f.params = append(f.params, value)
+		}
 	}
 	if len(words) == 0 {
 		return command{}, errors.New("no command")
 	}
 	verb, rest := words[0], words[1:]
+	cmd := command{dir: f.dir}
+	if verb == "run" {
+		request, err := parseRun(rest, f)
+		if err != nil {
+			return command{}, err
+		}
+		cmd.run = func(c *CLI, out io.Writer, launch string) (int, error) { return c.runRequest(out, launch, request) }
+		return cmd, nil
+	}
+	if f.ofRun != "" {
+		return command{}, fmt.Errorf("unknown flag %s", f.ofRun)
+	}
 	var list, show Kind
 	if verb == "inspect" && len(rest) > 0 {
 		list, show = inspected(rest[0])
