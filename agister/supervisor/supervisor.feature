@@ -78,3 +78,7 @@ Feature: The supervisor runs a program and ends all it started
     When the supervisor runs a program printing a 9 MiB line, then "x"
     Then the function is given the line's first 8 MiB marked cut, then
       "x", and stdout's size is that of all of it
+
+  Scenario: Stdin a program does not read does not hold the supervisor
+    When the supervisor runs "sh -c 'exit 2'" given 1 MiB of text
+    Then the program exited with code 2, and no error is given

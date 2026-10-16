@@ -20,9 +20,10 @@ Feature: The command line runs a request
     Given the port's run ends <status>, class "<class>"
     When "agister run w" runs
     Then it prints the result as JSON on stdout: status, class, output,
-      timing, cost and warnings
+      timing, cost, usage, reason and warnings
     And it exits <code>
-    And an unknown cost is printed as null
+    And an unknown cost, each unknown count of usage, and no reason are
+      printed as null
 
     Examples:
       | status      | class   | code |

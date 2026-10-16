@@ -15,7 +15,9 @@ order it is needed:
   core, and the record (ADR-001, invariant 6; "Runs").
 - **Holds and admission**: `core/admit`, a reader or a writer, a pinned
   revision, a clean worktree (ADR-004, rules 2 and 3); the owner's
-  identity and reaping what a dead owner left (ADR-012, rule 6).
+  identity and reaping what a dead owner left (ADR-012, rule 6); ending
+  what left a program's group, which the supervisor reads no longer
+  than the grace and does not yet end.
 - **Model runtimes, the rest** (after "A step on a model runtime"): a
   turn on pi; a resumed session, a continuation and recovery; skills
   given to a turn; codex's cost through `ccusage`; the version warning

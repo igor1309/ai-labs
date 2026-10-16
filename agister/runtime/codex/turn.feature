@@ -16,13 +16,13 @@ Feature: The codex wrapper runs a turn
       "read-only", "--config", "approval_policy=\"never\"",
       "--ignore-user-config", "--ignore-rules", "--model", "gpt-6.1-sol",
       "--config", "model_reasoning_effort=\"high\"", "--output-schema",
-      and a file holding "{}"
+      a file holding "{}", and "-"
     And the file is gone once the turn has returned
 
   Scenario: What is not given is left out
     When codex runs the message "m" with the option "read-only" alone
     Then it is given the text "m", and the arguments end at
-      "--ignore-rules"
+      "--ignore-rules", "-"
 
   Scenario Outline: A turn is given exactly one option
     When codex runs the message "m" with <options>

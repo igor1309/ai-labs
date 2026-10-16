@@ -28,27 +28,42 @@ Feature: The composition runs a step on a model runtime
       "high" and the option "read-only", its schema folder the system's
       temporary folder
 
-  Scenario: A completed step prints its reply's output, usage and session
+  Scenario: A completed step prints its reply's output and usage
     Given claude-code replies with the structured output {"ok":true}, the
-      session "s1", the cost 0.25 and the usage of 10 input and 3 output
-      tokens, and the validator accepts it
+      cost 0.25 and the usage of 10 input and 3 output tokens, and the
+      validator accepts it
     When "agister run --process ask --agent claude-opus --param q=why"
       runs in "/r"
     Then it prints the result, completed, its output {"ok":true}, its
       cost 0.25, its usage 10 input and 3 output tokens, the rest null,
-      and its session "s1", and exits 0
+      and its reason null, and exits 0
+
+  Scenario: Each step runs on its own agent's runtime
+    Given the repository's workflow "mixed" of a step "say" on bash, then
+      a step "ask" on codex-sol-61
+    When "agister run mixed --param what=hi --param q=why" runs in "/r"
+    Then bash runs the script of "say", then codex the message of "ask",
+      and claude-code runs nothing
 
   Scenario: Output the schema rejects fails the step
     Given claude-code replies with the structured output {"ok":1}, and
       the validator rejects it
     When "agister run --process ask --agent claude-opus --param q=why"
       runs in "/r"
-    Then it prints the result, failed, class "invalid_output", and exits 1
+    Then it prints the result, failed, class "invalid_output", the
+      validator's reason, and exits 1
 
   Scenario: The validator is the schema's own
     Given the schema "answer" requires the field "ok" a boolean
     Then the composition's validator accepts {"ok":true}, and rejects
-      {"ok":1} and {}
+      {"ok":1} and {}, saying why
+
+  Scenario: A schema that does not compile refuses the request
+    Given the schema "answer" is {"type": 5}
+    When "agister run --process ask --agent claude-opus --param q=why"
+      runs in "/r"
+    Then it prints to stderr that the schema "answer" does not compile,
+      and why; nothing runs, and it exits 1
 
   Scenario: A step given a session is not run yet
     Given a workflow whose second step on claude-opus is given the

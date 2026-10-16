@@ -16,10 +16,17 @@ Feature: A call on a model takes its inputs in its message
       PATH=/bin and A=1
     And its environment holds no input
 
-  Scenario: A fence is longer than any backtick run in its text
-    Given a model step whose input "diff" is "x\n````y"
+  Scenario Outline: A text with a newline is fenced, longer than any
+    backtick run in it
+    Given a model step whose input "diff" is <text>
     When the call is made
-    Then the message is "## diff\n\n`````\nx\n````y\n`````"
+    Then the message is <message>
+
+    Examples:
+      | text       | message                             |
+      | "x\n````y" | "## diff\n\n`````\nx\n````y\n`````" |
+      | "hi\n"     | "## diff\n\n```\nhi\n```"           |
+      | "one line" | "## diff\n\none line"               |
 
   Scenario: The turn is given what the step gives of the model
     Given a model step whose instruction is "i", its model "opus", its
@@ -41,7 +48,8 @@ Feature: A call on a model takes its inputs in its message
       | with a schema  | the validator rejects                 | failed    | invalid_output |
       | with a schema  | of the failure class "invalid_output" | failed    | invalid_output |
       | with no schema | of the failure class "rate_limited"   | failed    | rate_limited   |
-      | with no schema | of the failure class "no_result"      | failed    | no_result      |
+      | with no schema | of the failure class "no_result"      | lost      | no_result      |
+      | with no schema | of the failure class "overloaded"     | failed    | runtime_error  |
 
   Scenario Outline: How the program ended comes before the reply
     Given a model step, and the turn <ended>, with a reply of the
@@ -64,17 +72,3 @@ Feature: A call on a model takes its inputs in its message
       | schema         | output       |
       | with a schema  | {"ok":true}  |
       | with no schema | {"text":"t"} |
-
-  Scenario: Usage, session and cost are as the runtime reported them
-    Given a model step, and the turn's reply of the session "s1", the
-      cost 0.25, and the usage of 10 input and 3 output tokens
-    When the call is made
-    Then its session is "s1", its cost 0.25, and its usage 10 input and
-      3 output tokens, cache read, cache write and reasoning unknown,
-      printed as null
-
-  Scenario: A failed call keeps the runtime's reason
-    Given a model step, and the turn's reply of the failure class "auth"
-      and the reason "not logged in"
-    When the call is made
-    Then it ends failed, class "auth", its reason "not logged in"

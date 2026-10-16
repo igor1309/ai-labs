@@ -68,3 +68,15 @@ Feature: A workflow's steps run in order
       binding "b" from params.base
     When the workflow runs with no param
     Then "a" is called with b "main"
+
+  Scenario Outline: The run's usage sums its calls', and its reason is
+    its last call's
+    Given the step "a" completes, its usage <a>, and the step "b" fails,
+      its usage <b> and its reason "r"
+    When the workflow runs
+    Then its usage is <usage>, and its reason "r"
+
+    Examples:
+      | a                  | b                       | usage                   |
+      | 10 input, 3 output | 5 input, 1 output       | 15 input, 4 output      |
+      | 10 input, 3 output | input unknown, 1 output | input unknown, 4 output |
