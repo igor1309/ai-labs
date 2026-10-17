@@ -17,6 +17,7 @@ Feature: Sort dinosaurs: starting a round and the board
     Then a round of the sorting game starts
     And I see the prompt "SORT THE DINOSAURS"
     And I see two baskets and six dinosaur cards to sort
+    And each card shows its own dinosaur's picture and its name in capitals
 
   Scenario: The first board waits for its pictures
     Given I am on the home page
@@ -27,6 +28,7 @@ Feature: Sort dinosaurs: starting a round and the board
 
   Scenario: A quick double tap on the card starts one round
     Given I am on the home page
+    And the pictures of the round's six dinosaurs are still loading
     When I tap the "SORT" card twice quickly
     Then one round starts
 
@@ -49,6 +51,11 @@ Feature: Sort dinosaurs: starting a round and the board
     And each basket gets at least two of them
     And each dinosaur belongs in exactly one basket, by the shipped facts
 
+  Scenario: The dinosaur list can fill a board of every property
+    Given the dinosaur list the app ships with
+    Then for every property it holds at least two dinosaurs for each basket
+    And at least six dinosaurs in all
+
   Scenario: Only clear facts are asked
     Given a dinosaur whose property the trusted sources leave unclear, or whose picture could mislead
     When a round sorts by that property
@@ -59,12 +66,12 @@ Feature: Sort dinosaurs: starting a round and the board
     Then a dinosaur of <mass> is <place>
 
     Examples:
-      | mass    | place                 |
-      | 1000 kg | in the basket BIG     |
-      | 999 kg  | not on the board      |
-      | 101 kg  | not on the board      |
-      | 100 kg  | in the basket SMALL   |
+      | mass    | place               |
+      | 2000 kg | in the basket BIG   |
+      | 1999 kg | not on the board    |
+      | 101 kg  | not on the board    |
+      | 100 kg  | in the basket SMALL |
 
   Scenario: Rounds vary
-    When I play two rounds in a row
+    When I play two rounds in a row, through PLAY AGAIN or from the home page
     Then the second round sorts by a different property than the first

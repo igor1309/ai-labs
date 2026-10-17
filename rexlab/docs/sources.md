@@ -30,4 +30,11 @@ against these sources only.
   Tyrannosaurus and most large theropods) or when the dinosaur's picture
   could mislead a child (Allosaurus's brow bumps, Pachycephalosaurus's
   knobs and Kentrosaurus's shoulder spikes are not horns). Feathered
-  means feathered in the picture too, as `art/style.md` lists.
+  means feathered in the picture too, as `art/style.md` lists. Feathers
+  are `false` for the plant-eaters drawn without them, Psittacosaurus,
+  with its tail bristles, aside, and for the meat-eaters whose skin
+  impressions show scales (Allosaurus and Carnotaurus); for the other
+  meat-eaters drawn without feathers they are `null`.
+- Size is not stored: the sorting game reads it from mass. A dinosaur
+  of 2000 kg or more is BIG, one of 100 kg or less is SMALL, and one in
+  between is never sorted by size, so no estimate decides a basket.
