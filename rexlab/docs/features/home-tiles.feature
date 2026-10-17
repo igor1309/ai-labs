@@ -21,6 +21,7 @@ Feature: The home page's game tiles
     Then "MORE COMING" shows a faded dinosaur's shape over a lock
     And it neither brightens under a pointer nor shows a pressed state
     And tapping it opens nothing
+    And in Russian its words read "СКОРО ЕЩЁ"
 
   Scenario Outline: The tiles scroll sideways
     Given the screen is <width> by <height> CSS pixels
@@ -50,7 +51,8 @@ Feature: The home page's game tiles
 
   Scenario: The tiles stand at their start again on coming home
     Given I swiped the tiles to "MORE COMING"
-    When I open "FIND THE PAIR" and go back home
+    When I swipe back until I can tap "FIND THE PAIR"
+    And I open "FIND THE PAIR" and go back home
     Then the row shows "ALL DINOSAURS" and "CARE" at its left edge
 
   Scenario Outline: Every tile's words fit it
