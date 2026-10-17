@@ -49,7 +49,19 @@ Feature: Skeleton assembly: revealing and rewarding a dinosaur
     Given a dinosaur's body picture cannot load
     When I finish its skeleton
     Then I see the completed skeleton, its name, fact and reward
+    And the result appears without waiting more than one second for the missing picture
     And I can open the museum or build another dinosaur
+
+  Scenario Outline: Each reveal presents one short anatomy fact
+    Given I finish <dinosaur>
+    Then I see exactly one fact: "<fact>"
+    And the fact is one short sentence in capitals beside the dinosaur picture
+
+    Examples:
+      | dinosaur      | fact                                           |
+      | Tyrannosaurus | T. REX HAD TINY ARMS BUT HUGE LEGS.          |
+      | Triceratops   | TRICERATOPS HAD THREE HORNS AND A BONY FRILL. |
+      | Stegosaurus   | STEGOSAURUS HAD LARGE PLATES ALONG ITS BACK.  |
 
   Scenario: Build another returns to dinosaur selection
     Given I am on a skeleton result screen
@@ -77,8 +89,16 @@ Feature: Skeleton assembly: revealing and rewarding a dinosaur
     Given the app's read-aloud feature is available and enabled
     When I finish a skeleton
     Then its one short fact is spoken once in the chosen language
+    And the visual result and reward stay usable while speech becomes ready
     And repeated completion events do not start overlapping or repeated speech
     And leaving the result stops that speech
+
+  @read-aloud
+  Scenario: Read-aloud readiness does not block the result
+    Given read-aloud is enabled but not ready when I finish a skeleton
+    Then the visual result, fact and reward appear without waiting for speech
+    When read-aloud becomes ready
+    Then the displayed fact is spoken exactly once
 
   Scenario: A fact remains available without speech
     Given read-aloud is unavailable, disabled or unable to play

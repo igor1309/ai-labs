@@ -10,7 +10,7 @@ Feature: Skeleton assembly: the museum and rebuilding
   Scenario: An empty museum shows what the child can build
     Given I have never finished a skeleton
     When I open "MUSEUM"
-    Then I see three empty stands with the silhouettes and names of the skeletons still to build
+    Then I see a museum hall with three empty stands showing the silhouettes and names of the skeletons still to build
     And my collection score is "0/3" beside a star symbol
     And each empty stand offers building its dinosaur with a bone picture
     And I see "BUILD ANOTHER" and "HOME" with their symbols
@@ -31,11 +31,13 @@ Feature: Skeleton assembly: the museum and rebuilding
 
   Scenario: Rebuild scatters an earned skeleton and starts from scratch
     Given Triceratops is displayed on its earned stand
-    And two pieces were fitted in an unfinished Tyrannosaurus puzzle
+    And a separate unfinished Tyrannosaurus puzzle has two pieces fitted
     When I open the museum and tap Triceratops "REBUILD"
     Then the Triceratops bones scatter playfully
     And a Triceratops puzzle starts with all four pieces in the tray
     And the faint full outline has no fitted pieces
+    And the unfinished Tyrannosaurus puzzle is discarded without a star or stand change
+    And reopening the skeleton game later starts at dinosaur selection, not in that Tyrannosaurus puzzle
     And the Triceratops star and ownership of its stand stay earned
     And I see no loss message, score decrease or confirmation dialog
 
@@ -63,9 +65,3 @@ Feature: Skeleton assembly: the museum and rebuilding
     And the Triceratops skeleton returns to the same museum stand
     And my collection score and skeleton best score stay "2/3"
     And I see no new best score celebration or duplicate star
-
-  Scenario: Choosing an earned dinosaur also starts a rebuild
-    Given Stegosaurus is displayed in my museum
-    When I choose Stegosaurus on the dinosaur selection screen
-    Then its bones scatter and a fresh Stegosaurus puzzle starts
-    And its stand is awaiting rebuilding while its star stays earned

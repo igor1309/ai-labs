@@ -4,6 +4,8 @@ Feature: Skeleton assembly: placing bones
   accepts an imprecise drop; any other drop invites another try.
   Each dinosaur's pieces are slices of one full skeleton illustration
   in the shared art/style.md style, so they fit together without gaps.
+  The MVP combines neck and ribs in the spine piece and all legs in one
+  legs piece; later levels may split them.
 
   Background:
     Given an iPad in landscape
@@ -17,9 +19,26 @@ Feature: Skeleton assembly: placing bones
     And the other pieces stay where they are
     And dragging the piece does not scroll the page
 
+  Scenario Outline: Each MVP dinosaur has one home slot per anatomy piece
+    Given I am building <dinosaur>
+    Then its tray contains exactly these four pieces and home slots
+      | piece | anatomy | home slot |
+      | skull | skull   | skull     |
+      | spine | spine, neck and ribs | spine     |
+      | legs  | front and rear legs  | legs      |
+      | tail  | tail    | tail      |
+    And each piece accepts a drop within a snap radius of at least 24 CSS pixels around its home slot
+    And no piece accepts any other slot
+
+    Examples:
+      | dinosaur      |
+      | Tyrannosaurus |
+      | Triceratops   |
+      | Stegosaurus   |
+
   Scenario: A near miss snaps into the correct slot
     Given all four pieces are unplaced
-    When I drop it slightly outside its visible slot but inside that slot's generous snap area
+    When I drag the skull and drop it slightly outside its visible slot but inside its snap radius
     Then the skull animates into exact alignment with its slot
     And it stays on the outline and is no longer available in the tray
     And three pieces remain to place

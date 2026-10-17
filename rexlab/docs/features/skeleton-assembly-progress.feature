@@ -1,8 +1,9 @@
 @next
 Feature: Skeleton assembly: keeping the collection
   Earned stars and museum stand states are kept on this browser, best
-  effort. Unfinished bone placements are not saved. Leaving a puzzle
-  never awards a star or removes a previously earned star or stand.
+  effort. An unfinished rebuild keeps only its earned identity and
+  awaiting-rebuild state; fitted bone placements are not saved. Leaving
+  a puzzle never awards a star or removes a previously earned star or stand.
 
   Background:
     Given an iPad in landscape
@@ -42,6 +43,7 @@ Feature: Skeleton assembly: keeping the collection
     When I close and reopen the app and visit the museum
     Then the Triceratops stand still shows its earned star and a rebuilding invitation
     And its skeleton is absent and my collection best score has not decreased
+    And none of its fitted bone positions are restored
     When I choose its stand
     Then a fresh Triceratops puzzle starts with four unplaced pieces
     When I finish that puzzle
