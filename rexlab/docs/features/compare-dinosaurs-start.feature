@@ -36,7 +36,7 @@ Feature: Compare dinosaurs quiz: starting a round and asking
     Given a round has started
     When the question compares <attribute>
     Then I see the <symbol> symbol and the prompt "<prompt>"
-    And I see two dinosaur cards, each with a picture and a name
+    And I see two dinosaur cards, each with a picture of its own dinosaur and its name
     And each name is in large capital letters
     And both pictures are the same size
     And no values are shown yet
@@ -61,3 +61,8 @@ Feature: Compare dinosaurs quiz: starting a round and asking
   Scenario: Rounds vary
     When I play two rounds in a row
     Then the second round does not repeat the first round's 10 questions
+
+  Scenario: Every dinosaur in the list has its own picture
+    Given the shipped dinosaur list
+    Then every dinosaur has a body picture
+    And all body pictures have the same width and height
