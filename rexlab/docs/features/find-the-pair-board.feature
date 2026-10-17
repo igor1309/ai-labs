@@ -1,4 +1,3 @@
-@next
 Feature: Find the pair: turning cards
   Two cards are open at most. A match stays open; a miss turns back
   with no "wrong" mark, so trying is never punished.
@@ -22,6 +21,7 @@ Feature: Find the pair: turning cards
     When I turn over the other Triceratops card
     Then both cards stay open with a short happy bounce
     And both cards get a green border and the name "TRICERATOPS" in capital letters
+    And the name fits on the card, however long a dinosaur's name is
     And the pair counts as found
 
   Scenario: Two different cards turn back

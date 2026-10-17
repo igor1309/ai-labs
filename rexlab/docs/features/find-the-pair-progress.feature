@@ -1,4 +1,3 @@
-@next
 Feature: Find the pair: keeping progress
   Stars, levels, best scores and found dinosaurs are kept on this
   browser, best effort, and never disturb the other games or the

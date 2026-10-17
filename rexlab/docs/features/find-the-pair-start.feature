@@ -1,4 +1,3 @@
-@next
 Feature: Find the pair: starting a board
   A memory game: the child turns over cards two at a time to find
   matching dinosaur pairs, with no timer and no move limit. Levels grow
@@ -12,7 +11,7 @@ Feature: Find the pair: starting a board
     When I open the home page
     Then I see a "FIND THE PAIR" tile with a two-cards symbol and a dinosaur
     And it takes the place of the "MORE COMING" card in the third column
-    And its title stays on one line
+    And its title sits under its symbol, on two lines at most
     And once I have finished a board it shows my stars with a star symbol
     When I tap "FIND THE PAIR"
     Then I see the find-the-pair welcome screen

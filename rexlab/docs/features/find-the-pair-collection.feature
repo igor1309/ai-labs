@@ -1,4 +1,3 @@
-@next
 Feature: Find the pair: dinosaurs found in the catalogue
   Every dinosaur matched on a finished board is found, and the
   catalogue shows which dinosaurs the child has found so far, so the

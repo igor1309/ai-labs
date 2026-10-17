@@ -1,4 +1,3 @@
-@next
 Feature: Find the pair: stars, levels and the best score
   Every finished board earns a star. Fewer tries is better: each level
   keeps its fewest tries as the best score to beat. Two finished boards

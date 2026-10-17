@@ -2981,23 +2981,23 @@ body:has(.result) footer[aria-label="Version"] {
   color: #5c647a;
 }
 
-/* A found pair is outlined in green over the picture, and named. */
-.pair-card[data-state="found"] {
-  outline: 4px solid #2e7d4f;
-  outline-offset: -4px;
-}
-
+/* The name's size is the card's width over the longest name's, in ems:
+   PACHYCEPHALOSAURUS's 12.7. */
 .pair-card-name {
   flex-shrink: 0;
   padding: 8px 10px 10px;
-  font-size: min(24px, 8.5cqi);
+  font-size: min(24px, (100cqi - 20px) / 12.7);
   font-weight: 700;
   text-align: center;
   white-space: nowrap;
 }
 
-/* The pair just found bounces once it has flipped. */
+/* A found pair is outlined in green over the picture, and named, and
+   bounces once it has flipped. The outline is the face's: the turning
+   face would cover the card's. */
 .pair-card[data-state="found"] .pair-card-face {
+  outline: 4px solid #2e7d4f;
+  outline-offset: -4px;
   animation:
     flip-in var(--motion-standard) var(--ease-out) both,
     bounce var(--motion-screen) var(--ease-overshoot) var(--motion-standard);
@@ -3580,7 +3580,7 @@ body:has(.result) footer[aria-label="Version"] {
   color: #9ca3b6;
 }
 
-[data-theme="dark"] .pair-card[data-state="found"] {
+[data-theme="dark"] .pair-card[data-state="found"] .pair-card-face {
   outline-color: #63c98c;
 }
 

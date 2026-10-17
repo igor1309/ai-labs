@@ -7,6 +7,7 @@ import { LANGUAGE_KEY } from "../src/localLanguage.ts";
 import { PROGRESS_KEY, localCareProgress, localProgress } from "../src/localProgress.ts";
 import { THEME_KEY } from "../src/localTheme.ts";
 import { LEVELS, type Level, type PairsProgress } from "../src/pairs/index.ts";
+import { NAME_EMS } from "./nameWidths.ts";
 import {
   MISS,
   board,
@@ -231,7 +232,27 @@ describe("turning cards", () => {
       ["found", "TRICERATOPS"]
     ]);
     expect(clock.timers()).toEqual([]);
-    expect(getComputedStyle(pair[0] ?? board()).outline).toBe("4px solid #2e7d4f");
+    expect(getComputedStyle(pair[0]?.querySelector(".pair-card-face") ?? board()).outline).toBe("4px solid #2e7d4f");
+  });
+
+  it("names a found card in a size its card's width keeps every dinosaur's name in, in every language", async () => {
+    const { user } = await open();
+
+    await turnCard(user, TRIKE[0] ?? 0);
+    await turnCard(user, TRIKE[1] ?? 0);
+
+    // jsdom works out no size from a card's width, so the size is read as
+    // app.css gives it: at most a cap, otherwise the card's width, less the
+    // name's sides, over a width in ems no name is wider than, which jsdom
+    // keeps as a multiplication by its inverse.
+    const name = pairCards()[TRIKE[0] ?? 0]?.querySelector(".pair-card-name") ?? board();
+    const style = getComputedStyle(name);
+    const size = /^min\((\d+)px, ([\d.]+) \* \(100cqi - (\d+)px\)\)$/.exec(style.fontSize);
+    expect([size?.[1], size?.[3]].map(Number)).toEqual([24, parseFloat(style.paddingLeft) + parseFloat(style.paddingRight)]);
+    expect([style.whiteSpace, style.letterSpacing]).toEqual(["nowrap", "normal"]);
+    const ems = 1 / Number(size?.[2]);
+    const names = SHIPPED_PALS.flatMap(({ name: { en, ru } }) => [en.toLocaleUpperCase("en"), ru.toLocaleUpperCase("ru")]);
+    expect(names.filter((each) => !((NAME_EMS[each] ?? Infinity) <= ems))).toEqual([]);
   });
 
   it("turns a miss back after a second, with no cross, no wrong word and no shake", async () => {
