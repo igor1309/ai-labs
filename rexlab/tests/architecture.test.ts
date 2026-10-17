@@ -51,6 +51,7 @@ const PRESENTATION = [
   ...SCREENS,
   "DietTag.tsx",
   "Festivity.tsx",
+  "FoodChips.tsx",
   "ParentMenu.tsx",
   "ResultParts.tsx",
   "SharedPicture.tsx",

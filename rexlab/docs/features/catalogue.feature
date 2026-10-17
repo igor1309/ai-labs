@@ -74,13 +74,14 @@ Feature: The dinosaur catalogue
 
   Scenario Outline: The catalogue is in the chosen language
     Given the app is in <language>
+    Then the catalogue's tile on the home page reads "<tile>", short enough for a tile among many
     When I open the page of Gallimimus
     Then I see "<title>", the food tag "<food>" and the description in <language>
 
     Examples:
-      | language | title         | food |
-      | English  | ALL DINOSAURS | BOTH |
-      | Russian  | ВСЕ ДИНОЗАВРЫ | ВСЁ  |
+      | language | tile          | title         | food |
+      | English  | ALL DINOSAURS | ALL DINOSAURS | BOTH |
+      | Russian  | ВСЕ           | ВСЕ ДИНОЗАВРЫ | ВСЁ  |
 
   Scenario: Every dinosaur has a food type and a description
     Given the dinosaur list the app ships with
