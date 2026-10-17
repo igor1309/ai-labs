@@ -22941,12 +22941,12 @@
                           "type": "frame",
                           "id": "rINl7",
                           "layoutPosition": "absolute",
-                          "x": 30,
-                          "y": 30,
+                          "x": 36,
+                          "y": 26,
                           "name": "Mini Card Stegosaurus",
                           "rotation": -10,
-                          "width": 110,
-                          "height": 110,
+                          "width": 96,
+                          "height": 96,
                           "fill": "$fm-surface",
                           "cornerRadius": 16,
                           "effect": {
@@ -22982,12 +22982,11 @@
                           "type": "frame",
                           "id": "kzYbp",
                           "layoutPosition": "absolute",
-                          "x": 103,
-                          "y": 6,
+                          "x": 109,
+                          "y": 10,
                           "name": "Mini Card Back",
-                          "rotation": 0,
-                          "width": 110,
-                          "height": 110,
+                          "width": 96,
+                          "height": 96,
                           "fill": "$fm-base",
                           "cornerRadius": 16,
                           "effect": {
@@ -23020,12 +23019,12 @@
                           "type": "frame",
                           "id": "pGMoP",
                           "layoutPosition": "absolute",
-                          "x": 176,
-                          "y": 36,
+                          "x": 182,
+                          "y": 32,
                           "name": "Mini Card Stegosaurus",
                           "rotation": 10,
-                          "width": 110,
-                          "height": 110,
+                          "width": 96,
+                          "height": 96,
                           "fill": "$fm-surface",
                           "cornerRadius": 16,
                           "effect": {
@@ -23102,42 +23101,45 @@
                           "fontFamily": "Lexend",
                           "fontSize": 24,
                           "fontWeight": "700"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "vVvDf",
+                      "layoutPosition": "absolute",
+                      "x": 279,
+                      "y": 12,
+                      "name": "Pair Stars",
+                      "height": 40,
+                      "fill": "#00000026",
+                      "cornerRadius": 20,
+                      "gap": 6,
+                      "padding": [
+                        0,
+                        14
+                      ],
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "icon",
+                          "id": "XDDBw",
+                          "name": "Star Icon",
+                          "width": 18,
+                          "height": 18,
+                          "icon": "star",
+                          "library": "lucide",
+                          "fill": "$fm-ink"
                         },
                         {
-                          "type": "frame",
-                          "id": "vVvDf",
-                          "name": "Pair Stars",
-                          "height": 40,
-                          "fill": "#00000026",
-                          "cornerRadius": 20,
-                          "gap": 6,
-                          "padding": [
-                            0,
-                            14
-                          ],
-                          "alignItems": "center",
-                          "children": [
-                            {
-                              "type": "icon",
-                              "id": "XDDBw",
-                              "name": "Star Icon",
-                              "width": 18,
-                              "height": 18,
-                              "icon": "star",
-                              "library": "lucide",
-                              "fill": "$fm-ink"
-                            },
-                            {
-                              "type": "text",
-                              "id": "3Rb3t",
-                              "name": "Star Text",
-                              "fill": "$fm-ink",
-                              "content": "5",
-                              "fontFamily": "Lexend",
-                              "fontSize": 18,
-                              "fontWeight": "700"
-                            }
-                          ]
+                          "type": "text",
+                          "id": "3Rb3t",
+                          "name": "Star Text",
+                          "fill": "$fm-ink",
+                          "content": "5",
+                          "fontFamily": "Lexend",
+                          "fontSize": 18,
+                          "fontWeight": "700"
                         }
                       ]
                     }
