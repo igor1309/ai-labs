@@ -32,3 +32,15 @@ Add each line to the style prompt in `style.md`.
 - `kentrosaurus`: Kentrosaurus, small plates on the neck turning into long spikes along the back and tail, a spike on each shoulder, ochre and dark green.
 - `baryonyx`: Baryonyx, long narrow crocodile-like snout, big claw on each thumb, walks on two legs, green-brown.
 - `apatosaurus`: Apatosaurus, very long thick neck held low, long whip tail, bulky body, pillar legs, warm grey.
+- `ceratosaurus`: Ceratosaurus, a short horn on its nose and small horns above the eyes, a row of little bumps down its back, walks on two legs, orange and dark brown stripes.
+- `utahraptor`: Utahraptor, big and strong, covered in feathers, long stiff tail, huge sickle claw on each foot, brown with white speckles.
+- `yutyrannus`: Yutyrannus, big two-legged hunter covered in long fluffy feathers, a low crest along its snout, small three-fingered arms, white and grey.
+- `archaeopteryx`: Archaeopteryx, small, feathered wings with three clawed fingers, long feathered tail, small teeth, walks on two legs, black and brown feathers.
+- `troodon`: Troodon, slim, covered in feathers, very big round eyes, long legs and a long tail, walks on two legs, sand and grey feathers.
+- `heterodontosaurus`: Heterodontosaurus, tiny, short beak with two small tusks, long hands, long tail, walks on two legs, green and tan.
+- `mamenchisaurus`: Mamenchisaurus, extremely long neck held straight out forward, level with its back and not raised, small head, long tail, pillar legs, light brown with darker bands.
+- `amargasaurus`: Amargasaurus, small sauropod, two rows of tall thin spines along its neck and back, four legs, long tail, red-brown and cream.
+- `plateosaurus`: Plateosaurus, long neck and small head, walks on two strong back legs, short arms with big thumb claws, long tail, olive green and yellow.
+- `maiasaura`: Maiasaura, duck-like bill, small bony bump above the eyes, stands on all fours, long tail, blue-green and cream.
+- `corythosaurus`: Corythosaurus, tall round crest on the head like a helmet, duck-like bill, stands on all fours, red and gold.
+- `chasmosaurus`: Chasmosaurus, very wide and long solid frill covered in skin, no holes in the frill, short horns, four sturdy legs, purple-grey with a pink frill.

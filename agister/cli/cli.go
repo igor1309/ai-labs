@@ -182,8 +182,8 @@ const usage = `usage:
   agister check [--dir <directory>]
   agister inspect processes|workflows|agents [--dir <directory>]
   agister inspect process|workflow|agent <name> [--dir <directory>]
-  agister run <workflow> [--param <name>=<value>]... [--dir <directory>]
-  agister run --process <name> --agent <name> [--param <name>=<value>]... [--dir <directory>]
+  agister run <workflow> [--param <name>=<value>]... [--continue <run id>] [--dir <directory>]
+  agister run --process <name> --agent <name> [--param <name>=<value>]... [--continue <run id>] [--dir <directory>]
 `
 
 // CLI runs commands against its settings and its runner, printing to its
@@ -289,13 +289,13 @@ func inspected(word string) (list, show Kind) {
 	return "", ""
 }
 
-// flags are the flags of a command: --dir; run's --process, --agent and
-// each --param, in the order given; and ofRun, the first of run's flags as
-// it was given, "" for none.
+// flags are the flags of a command: --dir; run's --process, --agent,
+// --continue and each --param, in the order given; and ofRun, the first of
+// run's flags as it was given, "" for none.
 type flags struct {
-	dir, process, agent string
-	params              []string
-	ofRun               string
+	dir, process, agent, continued string
+	params                         []string
+	ofRun                          string
 }
 
 // needs is what flag takes as its value, "" for a flag no command takes.
@@ -309,6 +309,8 @@ func needs(flag string) string {
 		return "an agent"
 	case "param":
 		return "a param"
+	case "continue":
+		return "a run id"
 	}
 	return ""
 }
@@ -352,6 +354,8 @@ func parse(args []string) (command, error) {
 			f.agent = value
 		case "param":
 			f.params = append(f.params, value)
+		case "continue":
+			f.continued = value
 		}
 	}
 	if len(words) == 0 {

@@ -1,4 +1,3 @@
-@next
 Feature: Dinosaur care: the result and the best score
   A finished visit earns 4 to 8 hearts, befriends its dinosaur and
   is compared with the best care score so far.

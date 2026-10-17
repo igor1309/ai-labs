@@ -1,4 +1,3 @@
-@next
 Feature: Dinosaur care: keeping progress
   Friends and care scores are kept on this browser, best effort, and
   never disturb the other games or the settings.

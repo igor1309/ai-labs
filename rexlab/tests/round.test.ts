@@ -47,7 +47,13 @@ describe("generateRound", () => {
   });
 
   it("asks both attributes across rounds", () => {
-    const asked = new Set(SEEDS.flatMap((seed) => generateRound(SHIPPED_DINOSAURS, seededRandom(seed)).map((q) => q.attribute)));
+    // Rounds are made only until both attributes are asked: making all of
+    // them takes longer than a test may.
+    const asked = new Set<string>();
+    for (const seed of SEEDS) {
+      if (asked.size === ATTRIBUTES.length) break;
+      for (const { attribute } of generateRound(SHIPPED_DINOSAURS, seededRandom(seed))) asked.add(attribute);
+    }
 
     expect([...asked].sort()).toEqual([...ATTRIBUTES].sort());
   });

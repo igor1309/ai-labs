@@ -1,4 +1,3 @@
-@next
 Feature: Dinosaur care: friends
   Every dinosaur cared for to the end becomes a friend the child can
   call back for a fresh visit.
@@ -32,7 +31,7 @@ Feature: Dinosaur care: friends
     Then I return to the care welcome screen
 
   Scenario: Friends remain usable as the collection grows
-    Given all 30 dinosaurs are my friends
+    Given all 42 dinosaurs are my friends
     When I open "FRIENDS"
     Then I can scroll to and tap every friend card
     And each dinosaur appears once, in the shared dinosaur list's order

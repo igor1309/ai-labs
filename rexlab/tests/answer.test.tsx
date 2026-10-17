@@ -11,6 +11,7 @@ import {
   SHIPPED_CATALOGUE,
   SHIPPED_DINOSAURS,
   contrast,
+  emptyCare,
   emptyProgress,
   englishDevice,
   fakeBodyPicture,
@@ -67,7 +68,7 @@ function shownQuestion(): Question {
 const smallerOf = (question: Question) => (largerOf(question) === question.left ? question.right : question.left);
 
 function startRound(seed: number, pictures: ManualPictures | ReturnType<typeof loadedPictures> = loadedPictures()) {
-  render(<App dinosaurs={SHIPPED_DINOSAURS} catalogue={SHIPPED_CATALOGUE} bodyPicture={fakeBodyPicture} random={seededRandom(seed)} orientation={manualOrientation("landscape")} progress={emptyProgress()} {...englishDevice()} {...lightDevice()} {...pictures} />);
+  render(<App dinosaurs={SHIPPED_DINOSAURS} catalogue={SHIPPED_CATALOGUE} bodyPicture={fakeBodyPicture} random={seededRandom(seed)} orientation={manualOrientation("landscape")} progress={emptyProgress()} {...englishDevice()} {...lightDevice()} {...emptyCare()} {...pictures} />);
   const user = userEvent.setup();
   // Taps COMPARE and, with manual pictures, lets the first question's
   // pictures finish loading.

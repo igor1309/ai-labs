@@ -1,4 +1,3 @@
-@next
 Feature: Dinosaur care: earning hearts
   Each successful care action earns a heart. Choosing a suitable item
   on the first attempt for that need earns an extra heart: two instead
@@ -31,9 +30,9 @@ Feature: Dinosaur care: earning hearts
 
   Scenario: Only the first item tap during a reaction is handled
     Given the dinosaur is thirsty
-    And I have 0 hearts and have not offered an item for that need
+    And I have 2 hearts and have not offered an item for that need
     When I tap water twice quickly and tap the bath while it is drinking
-    Then it drinks only once and earns only 2 hearts
+    Then it drinks only once and earns only 2 hearts, for 4 in all
     And no bath is given to the next need
     And the next need still has its first-choice opportunity
 

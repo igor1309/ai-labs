@@ -8,14 +8,14 @@ Feature: The dinosaur catalogue
 
   Scenario: The home page offers the catalogue as a tile
     When I open the home page
-    Then I see an "ALL DINOSAURS" tile with a 📖 symbol, a dinosaur and the count "30"
-    And it is beside the "COMPARE" card, above the locked game
+    Then I see an "ALL DINOSAURS" tile with a 📖 symbol, a dinosaur and the count "42"
+    And it is beside the "COMPARE" card, above the "CARE" tile
 
   Scenario: The tile opens the list of every dinosaur
     Given I am on the home page
     When I tap the "ALL DINOSAURS" tile
-    Then I see the title "ALL DINOSAURS" with a 📖 symbol and the count "30"
-    And I see 30 dinosaur cards, four to a row, in the order of the dinosaur list
+    Then I see the title "ALL DINOSAURS" with a 📖 symbol and the count "42"
+    And I see 42 dinosaur cards, four to a row, in the order of the dinosaur list
     And I see a "HOME" button with a 🏠 symbol
 
   Scenario: Each card shows its dinosaur
@@ -40,7 +40,7 @@ Feature: The dinosaur catalogue
     And right under the name the "MEAT" food tag
     And its description, "A HUGE HUNTER WITH A BIG HEAD AND TINY ARMS. ITS TEETH WERE AS LONG AS BANANAS."
     And its height "3.7 M" beside "TALL" and its weight "8 T" beside "HEAVY"
-    And an "ALL DINOSAURS" button with a 📖 symbol and the position "1 / 30"
+    And an "ALL DINOSAURS" button with a 📖 symbol and the position "1 / 42"
 
   Scenario: A page waits for its picture and loads its neighbours ahead
     Given I am on the list of every dinosaur
@@ -51,17 +51,17 @@ Feature: The dinosaur catalogue
     And when the picture has loaded, or after a second at most, I see the page of Velociraptor
 
   Scenario: Next and previous go round the whole list
-    Given I am on the page of the last dinosaur, at "30 / 30"
+    Given I am on the page of the last dinosaur, at "42 / 42"
     When I tap the → button
-    Then I see the page of Tyrannosaurus, at "1 / 30"
+    Then I see the page of Tyrannosaurus, at "1 / 42"
     When I tap the ← button
-    Then I see the page of the last dinosaur again, at "30 / 30"
+    Then I see the page of the last dinosaur again, at "42 / 42"
 
   Scenario: A quick double tap on an arrow goes one dinosaur on
     Given I am on the page of Tyrannosaurus
     And the picture of Triceratops is still loading
     When I tap the → button twice quickly
-    Then I see the page of Triceratops, at "2 / 30"
+    Then I see the page of Triceratops, at "2 / 42"
 
   Scenario: Back to the list keeps the dinosaur in view
     Given I opened the page of a dinosaur far down the list

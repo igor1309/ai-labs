@@ -1,4 +1,3 @@
-@next
 Feature: Dinosaur care: giving items and leaving a visit
   Items are given with one tap. Leaving, reloading or turning the iPad
   never finishes a visit or changes it.

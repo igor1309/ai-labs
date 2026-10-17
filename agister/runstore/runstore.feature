@@ -1,6 +1,7 @@
-# runstore, a wrapper (docs/run-implementation.md, "Records"; ADR-001,
-# "Runs"): runs kept under a folder, each a folder of its id. Contract
-# tests against real files, in a temporary folder (ADR-009, rule 3).
+# runstore, a wrapper (docs/run-implementation.md, "Records" and
+# "Continuation"; ADR-001, "Runs"): runs kept under a folder, each a folder
+# of its id. Contract tests against real files, in a temporary folder
+# (ADR-009, rule 3).
 
 Feature: runstore keeps runs
 
@@ -25,3 +26,10 @@ Feature: runstore keeps runs
   Scenario: A run not kept is an error
     When the record of the run "y" is asked
     Then it gives an error that is, or wraps, fs.ErrNotExist
+
+  Scenario: The runs kept are given in name order
+    Given the records of the runs "20261017T071618Z-55fd36" and
+      "20261016T090000Z-0a0b0c" written
+    When the runs kept are asked
+    Then they are "20261016T090000Z-0a0b0c", then
+      "20261017T071618Z-55fd36"

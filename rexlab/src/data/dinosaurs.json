@@ -478,5 +478,197 @@
       "en": "A HUGE LONG-NECKED DINOSAUR WITH A VERY THICK, STRONG NECK.",
       "ru": "ОГРОМНЫЙ ДЛИННОШЕЕЙ ДИНОЗАВР С ОЧЕНЬ ТОЛСТОЙ И КРЕПКОЙ ШЕЕЙ."
     }
+  },
+  {
+    "id": "ceratosaurus",
+    "name": {
+      "en": "Ceratosaurus",
+      "ru": "Цератозавр"
+    },
+    "attributes": {
+      "heightMeters": 2,
+      "massKg": 1000
+    },
+    "diet": "meat",
+    "description": {
+      "en": "A HUNTER WITH A HORN ON ITS NOSE AND A ROW OF BONY BUMPS DOWN ITS BACK.",
+      "ru": "ОХОТНИК С РОГОМ НА НОСУ И РЯДОМ КОСТЯНЫХ ШИШЕК ВДОЛЬ СПИНЫ."
+    }
+  },
+  {
+    "id": "utahraptor",
+    "name": {
+      "en": "Utahraptor",
+      "ru": "Ютараптор"
+    },
+    "attributes": {
+      "heightMeters": 1.5,
+      "massKg": 350
+    },
+    "diet": "meat",
+    "description": {
+      "en": "THE BIGGEST RAPTOR, AS HEAVY AS A BEAR, WITH FEATHERS AND A HUGE CLAW ON EACH FOOT.",
+      "ru": "САМЫЙ БОЛЬШОЙ РАПТОР, ТЯЖЁЛЫЙ, КАК МЕДВЕДЬ, С ПЕРЬЯМИ И ОГРОМНЫМ КОГТЕМ НА КАЖДОЙ НОГЕ."
+    }
+  },
+  {
+    "id": "yutyrannus",
+    "name": {
+      "en": "Yutyrannus",
+      "ru": "Ютираннус"
+    },
+    "attributes": {
+      "heightMeters": 2.3,
+      "massKg": 1400
+    },
+    "diet": "meat",
+    "description": {
+      "en": "A BIG COUSIN OF TYRANNOSAURUS, COVERED IN LONG FLUFFY FEATHERS TO KEEP WARM.",
+      "ru": "БОЛЬШОЙ РОДСТВЕННИК ТИРАННОЗАВРА, ПОКРЫТЫЙ ДЛИННЫМИ ПУШИСТЫМИ ПЕРЬЯМИ, ЧТОБЫ НЕ МЁРЗНУТЬ."
+    }
+  },
+  {
+    "id": "archaeopteryx",
+    "name": {
+      "en": "Archaeopteryx",
+      "ru": "Археоптерикс"
+    },
+    "attributes": {
+      "heightMeters": 0.3,
+      "massKg": 1
+    },
+    "diet": "meat",
+    "description": {
+      "en": "A DINOSAUR THE SIZE OF A CROW, WITH FEATHERED WINGS, TEETH AND CLAWS ON ITS WINGS.",
+      "ru": "ДИНОЗАВР РАЗМЕРОМ С ВОРОНУ, С ПЕРНАТЫМИ КРЫЛЬЯМИ, ЗУБАМИ И КОГТЯМИ НА КРЫЛЬЯХ."
+    }
+  },
+  {
+    "id": "troodon",
+    "name": {
+      "en": "Troodon",
+      "ru": "Троодон"
+    },
+    "attributes": {
+      "heightMeters": 0.9,
+      "massKg": 50
+    },
+    "diet": "both",
+    "description": {
+      "en": "A FEATHERED DINOSAUR WITH VERY BIG EYES. IT MAY HAVE HUNTED AT NIGHT.",
+      "ru": "ПЕРНАТЫЙ ДИНОЗАВР С ОЧЕНЬ БОЛЬШИМИ ГЛАЗАМИ. ВОЗМОЖНО, ОН ОХОТИЛСЯ НОЧЬЮ."
+    }
+  },
+  {
+    "id": "heterodontosaurus",
+    "name": {
+      "en": "Heterodontosaurus",
+      "ru": "Гетеродонтозавр"
+    },
+    "attributes": {
+      "heightMeters": 0.3,
+      "massKg": 2
+    },
+    "diet": "plants",
+    "description": {
+      "en": "A TINY PLANT EATER THE SIZE OF A CAT, WITH A BEAK AND TWO LITTLE TUSKS.",
+      "ru": "КРОШЕЧНЫЙ РАСТИТЕЛЬНОЯДНЫЙ ДИНОЗАВР РАЗМЕРОМ С КОШКУ, С КЛЮВОМ И ДВУМЯ МАЛЕНЬКИМИ КЛЫКАМИ."
+    }
+  },
+  {
+    "id": "mamenchisaurus",
+    "name": {
+      "en": "Mamenchisaurus",
+      "ru": "Маменчизавр"
+    },
+    "attributes": {
+      "heightMeters": 4,
+      "massKg": 12000
+    },
+    "diet": "plants",
+    "description": {
+      "en": "ITS NECK WAS HALF AS LONG AS ITS WHOLE BODY, LONGER THAN A BUS.",
+      "ru": "ЕГО ШЕЯ БЫЛА ДЛИНОЙ С ПОЛОВИНУ ТЕЛА, ДЛИННЕЕ АВТОБУСА."
+    }
+  },
+  {
+    "id": "amargasaurus",
+    "name": {
+      "en": "Amargasaurus",
+      "ru": "Амаргазавр"
+    },
+    "attributes": {
+      "heightMeters": 2.5,
+      "massKg": 9000
+    },
+    "diet": "plants",
+    "description": {
+      "en": "A LONG-NECKED DINOSAUR WITH TWO ROWS OF TALL SPINES ALONG ITS NECK AND BACK.",
+      "ru": "ДЛИННОШЕЙНЫЙ ДИНОЗАВР С ДВУМЯ РЯДАМИ ВЫСОКИХ ШИПОВ ВДОЛЬ ШЕИ И СПИНЫ."
+    }
+  },
+  {
+    "id": "plateosaurus",
+    "name": {
+      "en": "Plateosaurus",
+      "ru": "Платеозавр"
+    },
+    "attributes": {
+      "heightMeters": 2,
+      "massKg": 4000
+    },
+    "diet": "plants",
+    "description": {
+      "en": "ONE OF THE FIRST BIG PLANT EATERS. IT STOOD ON ITS BACK LEGS TO REACH HIGH LEAVES.",
+      "ru": "ОДИН ИЗ ПЕРВЫХ БОЛЬШИХ РАСТИТЕЛЬНОЯДНЫХ. ВСТАВАЛ НА ЗАДНИЕ НОГИ, ЧТОБЫ ДОСТАТЬ ВЫСОКИЕ ЛИСТЬЯ."
+    }
+  },
+  {
+    "id": "maiasaura",
+    "name": {
+      "en": "Maiasaura",
+      "ru": "Майазавра"
+    },
+    "attributes": {
+      "heightMeters": 2.5,
+      "massKg": 3000
+    },
+    "diet": "plants",
+    "description": {
+      "en": "ITS NAME MEANS GOOD MOTHER LIZARD: IT LOOKED AFTER ITS BABIES IN THE NEST.",
+      "ru": "ЕЁ ИМЯ ЗНАЧИТ ЯЩЕР — ХОРОШАЯ МАТЬ: ОНА ЗАБОТИЛАСЬ О МАЛЫШАХ В ГНЕЗДЕ."
+    }
+  },
+  {
+    "id": "corythosaurus",
+    "name": {
+      "en": "Corythosaurus",
+      "ru": "Коритозавр"
+    },
+    "attributes": {
+      "heightMeters": 2.8,
+      "massKg": 4000
+    },
+    "diet": "plants",
+    "description": {
+      "en": "A DUCK-BILLED DINOSAUR WITH A ROUND CREST ON ITS HEAD, LIKE A HELMET.",
+      "ru": "УТКОНОСЫЙ ДИНОЗАВР С КРУГЛЫМ ГРЕБНЕМ НА ГОЛОВЕ, ПОХОЖИМ НА ШЛЕМ."
+    }
+  },
+  {
+    "id": "chasmosaurus",
+    "name": {
+      "en": "Chasmosaurus",
+      "ru": "Хасмозавр"
+    },
+    "attributes": {
+      "heightMeters": 1.8,
+      "massKg": 2500
+    },
+    "diet": "plants",
+    "description": {
+      "en": "A COUSIN OF TRICERATOPS WITH A VERY LONG, WIDE FRILL. IT MAY HAVE SHOWN IT OFF IN BRIGHT COLOURS.",
+      "ru": "РОДСТВЕННИК ТРИЦЕРАТОПСА С ОЧЕНЬ ДЛИННЫМ И ШИРОКИМ ВОРОТНИКОМ. ВОЗМОЖНО, ОН БЫЛ ЯРКО ОКРАШЕН."
+    }
   }
 ]
