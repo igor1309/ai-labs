@@ -410,3 +410,85 @@ Decisions, each with its reason:
   early is the caller's choice.
 - A report is given with every call, never left out: core needs no
   fallback for a call with none (ADR-009, rule 2).
+
+## A step in a held worktree
+
+A step whose process pins a revision, asks a clean worktree, writes to
+it, or sets staleness limits runs: home's `implement`, as
+`agister run --process implement --agent claude-opus --param
+brief=<path>`. What the archive also did, recording the worktree's
+changes and resuming a stale turn, waits (`backlog/run-path.md`).
+
+**`git`** gives a worktree's HEAD, and whether its content is HEAD's:
+no change staged, unstaged or untracked, as `git status --porcelain`
+lists them.
+
+**`core/admit`** admits a call before it starts (ADR-004, rules 2 and
+3): where its process pins a revision, the worktree's HEAD is the
+commit its `git.revision` input names, and a pin from any other input
+is refused as not run yet; where it asks a clean worktree, its content
+is HEAD's; and it takes the worktree's hold, alone for a writer, a
+process declaring read-write access, shared for a reader. A call not
+admitted is refused, not queued: failed, `refused`, saying why. Admit
+wraps the call: it makes the call through a port of its own, and
+releases the hold when the call ends, however it ends. The worktree's
+facts, the hold and the call are ports, the composition answers them.
+
+**`core/watch`** observes a turn (ADR-006, rule 1), best effort, over
+what its wrapper reports. The runtime protocol's report grows: besides
+each tool call, a model's wrapper reports every other line it reads,
+which the progress lines skip. Claude-code's and codex's tool calls are
+reported whole, cut only where printed. The watch reports the turn
+stale when the same tool call, its name and all it was given, comes
+the process's `repeated_tool_calls` times in a row, the other lines
+between them not counted; when nothing follows a tool call for its
+`tool_command`; or when nothing comes at all, from the turn's start,
+for its `no_event`. A limit not set is not watched. Its time is a clock
+and a timer (ADR-009, rule 5).
+
+**`core/call`** declares its staleness port (ADR-001): given a turn's
+limits and its reports, it tells when the turn went stale and what went
+stale; the composition answers it with `core/watch`. Core/call ends a
+stale turn, its program's group with it (ADR-006, rule 2); the turn's
+work stays in the worktree. A repeated tool call ends the call failed,
+`budget_exhausted`, which joins core's closed set of classes; a quiet
+turn or a hung tool command ends it interrupted, `timeout`. Its reason
+says what went stale.
+
+**The composition** chains `inputs`, `admit` and `call` for each step
+(ADR-001). The hold is a lock file under `~/.agister/locks/in-place`,
+whatever `AGISTER_HOME` says, named by the SHA-256 of the worktree
+root's path, links resolved: the archive's, so the two Agisters
+exclude each other on a worktree. `files` takes it with `flock`
+without waiting, shared or alone, and the hold ends with the process
+that took it. SIGHUP and SIGQUIT now cancel a run, as SIGINT does. It
+no longer refuses a workspace's revision, clean or read-write access,
+or a staleness limit on a model; on bash, which reports nothing to
+watch, a staleness limit is still refused.
+
+Decisions, each with its reason:
+
+- No record of the worktree's changes yet (ADR-004, rule 4): the
+  changes are in the worktree, and the record is runstore's.
+- No recovery turn yet (ADR-006, rule 3): a stale call ends, and the
+  caller reruns; resuming waits with sessions.
+- Staleness is best effort: what a wrapper does not report is not
+  watched, and a limit is kept to within a timer's tick.
+- A dead owner's hold ends with it, though its programs may run on
+  (ADR-001, "Reaping", asks them ended first): `flock` frees the hold
+  when Agister dies, and Agister ends its programs on SIGINT, SIGTERM,
+  SIGHUP and SIGQUIT. A kill it cannot catch, or a crash, leaves them;
+  reaping is next (`backlog/run-path.md`).
+- A tool command is timed from its call to the next line, not to its
+  own result: best effort and simpler than pairing each call with its
+  result; one command at a time is how both runtimes work in practice.
+- Untracked files make a worktree not clean, as the archive held: an
+  untracked file is content HEAD does not have.
+- Clean is what `git status --porcelain` lists: files marked
+  `assume-unchanged` or `skip-worktree` go unseen; Agister's worktrees
+  do not set those marks.
+- Admit checks, then holds: a writer that commits in between admits a
+  pinned call on a HEAD just moved; a corner case, left.
+- Tests that are detail, left to the implementer: a temporary folder
+  for "/r", quiet from the turn's start, the end-to-end hold, a clean
+  call admitted, a stale call's hold released.

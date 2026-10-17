@@ -17,7 +17,7 @@ import (
 func modelCaller(t *testing.T, spy *runtimeSpy, validator *validatorSpy, env ...string) *call.Caller {
 	t.Helper()
 	clock := clocktest.NewClock(start)
-	c, err := call.New(spy, call.InMessage, validator, clock, clock.Timer, "/r", env)
+	c, err := call.New(spy, call.InMessage, validator, &stalenessSpy{}, clock, clock.Timer, "/r", env)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -80,8 +80,8 @@ func assistant(text string) string {
 func ptr[T any](v T) *T { return &v }
 
 // discard is a report that keeps nothing, for a turn whose test is not
-// about its tool calls.
-func discard(claudecode.Tool) {}
+// about what it reports.
+func discard(claudecode.Report) {}
 
 // facts.feature, "Its facts".
 func TestItsFacts(t *testing.T) {

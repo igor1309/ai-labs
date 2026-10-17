@@ -136,7 +136,8 @@ var runStart = time.Date(2026, 10, 16, 10, 0, 0, 0, time.UTC)
 // "/r"; the runtime wrappers' spies, bash's answering by the answer its
 // test gives, claude-code's and codex's by those it sets; the validator,
 // jsonschema's unless its test gives another; the sources' spy, git's root
-// "/r", holding what its test gives; and the machine: Agister's
+// "/r", holding what its test gives; the holding's spy, git's HEAD of "/r"
+// "c1" and clean, every lock taken; and the machine: Agister's
 // environment environ, a manual clock and the signals spy.
 type runFixture struct {
 	settings  map[string]string
@@ -145,6 +146,7 @@ type runFixture struct {
 	signals   *signalsSpy
 	clock     *clocktest.Clock
 	sources   *sourcesSpy
+	holding   *holdingSpy
 }
 
 func newRunFixture(t *testing.T, settings map[string]string, answer func(context.Context, bash.Turn) (bash.Ended, error)) *runFixture {
@@ -158,6 +160,7 @@ func newRunFixture(t *testing.T, settings map[string]string, answer func(context
 		signals:   &signalsSpy{fired: make(chan os.Signal)},
 		clock:     clocktest.NewClock(runStart),
 		sources:   &sourcesSpy{root: "/r"},
+		holding:   &holdingSpy{root: "/r", head: "c1", clean: true},
 	}
 }
 
@@ -171,7 +174,7 @@ func (f *runFixture) runWatching(t *testing.T, watch signals, environment []stri
 	t.Helper()
 	var stdout, stderr strings.Builder
 	machine := host{ctx: context.Background(), environ: environment, clock: f.clock, timer: f.clock.Timer, signals: watch}
-	commandLine, err := build("/u", &linksSpy{}, newFilesystemSpy(f.settings), rootSpy{root: "/r"}, f.runtimes.runtimes(), f.validator, f.sources.sourcing(), machine, &stdout, &stderr)
+	commandLine, err := build("/u", &linksSpy{}, newFilesystemSpy(f.settings), rootSpy{root: "/r"}, f.runtimes.runtimes(), f.validator, f.sources.sourcing(), f.holding.holding(), machine, &stdout, &stderr)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -321,14 +324,8 @@ func TestWhatThisSliceDoesNotRunIsRefusedBeforeAnything(t *testing.T) {
 			agent: "claude-opus", what: `the process "say": the input "prompt", a document's name,`},
 		{declares: `an input "b" from the source "git.diff"`, more: "  b: {source: git.diff, base: {from: params.what}, head: HEAD}\n",
 			agent: "bash", what: `the process "say": the input "b" from the source "git.diff"`},
-		{declares: "a workspace revision from inputs.what", more: "workspace: {revision: {from: inputs.what}}\n",
-			agent: "bash", what: `the process "say": the workspace's revision`},
-		{declares: "a workspace clean", more: "workspace: {clean: true}\n",
-			agent: "bash", what: `the process "say": the workspace's clean`},
-		{declares: "the workspace access read-write", more: "workspace: {access: read-write}\n",
-			agent: "bash", what: `the process "say": the workspace's read-write access`},
 		{declares: "the stale limit no_event 1m", more: "limits: {stale: {no_event: 1m}}\n",
-			agent: "bash", what: `the process "say": the staleness limit`},
+			agent: "bash", what: `the process "say": the staleness limit on bash`},
 		{declares: `an instruction "think"`, more: "instruction: think\n",
 			agent: "bash", what: `the process "say": the instruction on bash`},
 		{declares: `the guidance "g", a prompt the settings hold`, more: "guidance: [g]\n",
@@ -362,10 +359,10 @@ func TestAWorkflowWithAnItemThatIsNotAStepIsRefused(t *testing.T) {
 	t.Parallel()
 	f := newRunFixture(t, runSettings(t, nil), echoes)
 	got := f.run(t, "/r", "run", "code_review", "--param", "goal=g")
-	// Its inputs, from git.revision and file, a form named, are run now.
+	// Its inputs, from git.revision and file, a form named, are run now,
+	// and so is the judge's staleness limit, on claude-code.
 	lines := []string{
 		`the workflow "code_review": the item "reviews", a parallel, is not run yet`,
-		`the process "review_judge": the staleness limit is not run yet`,
 	}
 	want := ran{stderr: "agister: the run is refused, and nothing runs:\n  " + strings.Join(lines, "\n  ") + "\n", code: 1}
 	if got != want {
@@ -407,9 +404,9 @@ func TestAStepReachesCoreWithItsProcesssTimeLimitAsLayered(t *testing.T) {
 // its context ends, and then exits 0: core's class wins.
 //
 // Contract test: OS signal registration and delivery, and the shipped home files; integrates the composed run.
-// Serial: SIGINT and SIGTERM are delivered to this process.
+// Serial: SIGINT, SIGTERM, SIGHUP and SIGQUIT are delivered to this process.
 func TestASignalToAgisterCancelsTheRun(t *testing.T) {
-	for _, sig := range []syscall.Signal{syscall.SIGINT, syscall.SIGTERM} {
+	for _, sig := range []syscall.Signal{syscall.SIGINT, syscall.SIGTERM, syscall.SIGHUP, syscall.SIGQUIT} {
 		func() {
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()

@@ -13,3 +13,15 @@ Feature: The codex wrapper reports the tool calls it recognizes
     Then it reports a call naming "go test", then one naming "q", and
       nothing for the message
     And its reply is as before
+
+  Scenario: Every other line is reported as a line
+    Given the supervisor's lines: thread.started, a reasoning item, then
+      turn.completed
+    When codex runs a turn
+    Then it reports three lines and no tool call
+
+  Scenario: A command is reported whole
+    Given the supervisor's lines: a command_execution of 500 bytes
+      started, then turn.completed
+    When codex runs a turn
+    Then it reports a call naming the command with all 500 bytes

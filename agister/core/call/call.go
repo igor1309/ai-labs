@@ -1,8 +1,8 @@
 // Package call makes a call (ADR-001, "Core"; ADR-012, rule 7): one turn
 // on the runtime, through the runtime protocol it declares, ended at its
-// time limit and given in the result shape (ADR-001, invariant 3); on a
-// model, its inputs in its message and its output checked against its
-// schema.
+// time limit or when its staleness port says it went stale (ADR-006, rule
+// 2), and given in the result shape (ADR-001, invariant 3); on a model,
+// its inputs in its message and its output checked against its schema.
 package call
 
 import (
@@ -56,6 +56,9 @@ const (
 	ContextOverflow Class = "context_overflow"
 	// NoResult is a turn that ended with no result.
 	NoResult Class = "no_result"
+	// BudgetExhausted is a turn ended for making the same tool call too
+	// many times in a row.
+	BudgetExhausted Class = "budget_exhausted"
 )
 
 // known tells whether class is one of core's, a closed set (ADR-001,
@@ -63,7 +66,7 @@ const (
 func known(class Class) bool {
 	switch class {
 	case RuntimeUnavailable, RuntimeError, Timeout, Cancelled, Killed, Refused,
-		InvalidOutput, RateLimited, Auth, ContextOverflow, NoResult:
+		InvalidOutput, RateLimited, Auth, ContextOverflow, NoResult, BudgetExhausted:
 		return true
 	}
 	return false
@@ -135,17 +138,57 @@ type Stream struct {
 	Digest     string
 }
 
-// Tool is a tool call a turn reports: the tool's name and a short text of
-// what it was given.
+// Report is a line a turn read: the tool call it made, where Tool is not
+// nil; else another line.
+type Report struct {
+	Tool *Tool
+}
+
+// Tool is a tool call a turn reports: the tool's name and all it was
+// given.
 type Tool struct {
 	Name, Input string
 }
 
-// Runtime takes a turn: it gives each tool call it reports to report, as
-// it reads it, and how the turn's program ended, or an error, wrapping
+// Runtime takes a turn: it gives each line it reads to report, as it
+// reads it, and how the turn's program ended, or an error, wrapping
 // ErrNotStarted when the program could not start.
 type Runtime interface {
-	Turn(ctx context.Context, turn Turn, report func(Tool)) (Ended, error)
+	Turn(ctx context.Context, turn Turn, report func(Report)) (Ended, error)
+}
+
+// Limits are a turn's staleness limits (ADR-006, rule 1), each none where
+// zero: the same tool call made so many times in a row; nothing following
+// a tool call, its command running, for so long; and nothing at all for so
+// long.
+type Limits struct {
+	RepeatedToolCalls int
+	ToolCommand       time.Duration
+	NoEvent           time.Duration
+}
+
+// Limit is which of a turn's staleness limits was reached.
+type Limit int
+
+const (
+	RepeatedToolCalls Limit = iota + 1
+	ToolCommand
+	NoEvent
+)
+
+// Stale is what went stale of a turn: the limit reached, and what it says
+// of the turn.
+type Stale struct {
+	Limit Limit
+	What  string
+}
+
+// Staleness watches a turn against its limits, as the turn starts: report
+// is given each line the turn reads, and stale is told what went stale,
+// once, when a limit is reached; stop ends the watch, and returns once
+// stale will be told nothing more.
+type Staleness interface {
+	Watch(limits Limits, stale func(Stale)) (report func(Report), stop func())
 }
 
 // Clock tells the time a call's timing is measured by.
@@ -168,7 +211,7 @@ type Timer func(wait time.Duration) (fired <-chan time.Time, stop func())
 // the order its process declares them, and its documents, in order, which
 // a model takes in its message; the instruction, the model, the effort,
 // the options and the schema the turn is given; its time limit, none when
-// zero; and the warnings of its plan.
+// zero; its staleness limits; and the warnings of its plan.
 type Step struct {
 	Prompt      string
 	Environment map[string]string
@@ -180,6 +223,7 @@ type Step struct {
 	Options     []string
 	Schema      []byte
 	TimeLimit   time.Duration
+	Staleness   Limits
 	Warnings    []string
 }
 
@@ -216,6 +260,7 @@ type Caller struct {
 	runtime   Runtime
 	inputs    Inputs
 	validator Validator
+	staleness Staleness
 	clock     Clock
 	timer     Timer
 	dir       string
@@ -224,9 +269,10 @@ type Caller struct {
 
 // New gives a caller whose turns run on runtime, which takes a call's
 // inputs as inputs says, in dir, over env, as "KEY=value"; whose output is
-// checked by validator; whose timing is read from clock; and whose time
-// limits are kept on timer.
-func New(runtime Runtime, inputs Inputs, validator Validator, clock Clock, timer Timer, dir string, env []string) (*Caller, error) {
+// checked by validator; whose turns are watched for staleness by
+// staleness; whose timing is read from clock; and whose time limits are
+// kept on timer.
+func New(runtime Runtime, inputs Inputs, validator Validator, staleness Staleness, clock Clock, timer Timer, dir string, env []string) (*Caller, error) {
 	switch {
 	case runtime == nil:
 		return nil, errors.New("call: no runtime")
@@ -234,12 +280,14 @@ func New(runtime Runtime, inputs Inputs, validator Validator, clock Clock, timer
 		return nil, errors.New("call: no inputs")
 	case validator == nil:
 		return nil, errors.New("call: no validator")
+	case staleness == nil:
+		return nil, errors.New("call: no staleness")
 	case clock == nil:
 		return nil, errors.New("call: no clock")
 	case timer == nil:
 		return nil, errors.New("call: no timer")
 	}
-	return &Caller{runtime: runtime, inputs: inputs, validator: validator, clock: clock, timer: timer, dir: dir, env: slices.Clone(env)}, nil
+	return &Caller{runtime: runtime, inputs: inputs, validator: validator, staleness: staleness, clock: clock, timer: timer, dir: dir, env: slices.Clone(env)}, nil
 }
 
 var (
@@ -247,17 +295,26 @@ var (
 	errTurnReturn = errors.New("the turn has returned")
 )
 
-// Call makes step's one turn, each tool call it reports given to report,
-// its environment the caller's, then the
-// process's, then, where the runtime takes them there, each input by its
-// name; and ends it at the step's time limit or when ctx ends. A runtime
-// that takes the inputs in its message is given the message of the step's
-// inputs and documents in place of its prompt. A turn whose context the
-// call ended ends interrupted, however its program then exited; a model's
-// turn that ended otherwise ends by its reply. A call whose ctx has
-// already ended makes no turn: its program would start, and act, only to
-// be ended.
-func (c *Caller) Call(ctx context.Context, step Step, report func(Tool)) Result {
+// staleCause is the cause of a turn ended for going stale.
+type staleCause struct {
+	Stale
+}
+
+func (s staleCause) Error() string { return s.What }
+
+// Call makes step's one turn, each line it reports given to report, its
+// environment the caller's, then the process's, then, where the runtime
+// takes them there, each input by its name; and ends it at the step's time
+// limit, when it goes stale, or when ctx ends. A turn is watched for
+// staleness only where its step sets a limit, each line it reports given
+// to the watch after report. A runtime that takes the inputs in its
+// message is given the message of the step's inputs and documents in
+// place of its prompt. A turn whose context the call ended ends
+// interrupted, however its program then exited, and a stale one as what
+// went stale says; a model's turn that ended otherwise ends by its reply.
+// A call whose ctx has already ended makes no turn: its program would
+// start, and act, only to be ended.
+func (c *Caller) Call(ctx context.Context, step Step, report func(Report)) Result {
 	started := c.clock.Now()
 	timed := func() Result {
 		finished := c.clock.Now()
@@ -273,10 +330,16 @@ func (c *Caller) Call(ctx context.Context, step Step, report func(Tool)) Result 
 	}
 	turnCtx, cancel := context.WithCancelCause(ctx)
 	watched := c.watch(turnCtx, cancel, step.TimeLimit)
-	ended, err := c.runtime.Turn(turnCtx, c.turn(step), report)
+	reported, unwatch := report, func() {}
+	if step.Staleness != (Limits{}) {
+		watching, stop := c.staleness.Watch(step.Staleness, func(s Stale) { cancel(staleCause{s}) })
+		reported, unwatch = func(r Report) { report(r); watching(r) }, stop
+	}
+	ended, err := c.runtime.Turn(turnCtx, c.turn(step), reported)
 	// The cause is fixed once the turn has returned: a limit that passes
 	// later ends nothing.
 	cancel(errTurnReturn)
+	unwatch()
 	<-watched
 
 	result := timed()
@@ -284,9 +347,17 @@ func (c *Caller) Call(ctx context.Context, step Step, report func(Tool)) Result 
 		usage := reply.Usage
 		result.Usage, result.Session, result.Cost = &usage, reply.Session, reply.Cost
 	}
+	var stale staleCause
 	switch cause := context.Cause(turnCtx); {
 	case errors.Is(cause, errTimeout):
 		result.Status, result.Class = Interrupted, Timeout
+	case errors.As(cause, &stale):
+		result.Status, result.Class, result.Reason = Interrupted, Timeout, cut(stale.What)
+		// A turn that repeats itself makes no progress, whatever time is
+		// left (ADR-006, rule 2).
+		if stale.Limit == RepeatedToolCalls {
+			result.Status, result.Class = Failed, BudgetExhausted
+		}
 	case !errors.Is(cause, errTurnReturn):
 		result.Status, result.Class = Interrupted, Cancelled
 	case errors.Is(err, ErrNotStarted):

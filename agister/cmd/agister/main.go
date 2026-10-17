@@ -62,9 +62,10 @@ func run(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 // connect is the command line build gives over files, git, the runtime
 // wrappers over the supervisor, its programs started in gokit's process
 // groups and its grace on the wall clock, codex's schemas under the
-// system's temporary folder, jsonschema's validator, and the machine:
-// Agister's environment, the wall clock, and SIGINT and SIGTERM, each
-// cancelling a run.
+// system's temporary folder, jsonschema's validator, a worktree's facts of
+// git and its holds of files' locks, and the machine: Agister's
+// environment, the wall clock, and SIGINT, SIGTERM, SIGHUP and SIGQUIT,
+// each cancelling a run.
 func connect(ctx context.Context, user string, stdout, stderr io.Writer) (*cli.CLI, error) {
 	g, err := git.New("git")
 	if err != nil {
@@ -93,7 +94,7 @@ func connect(ctx context.Context, user string, stdout, stderr io.Writer) (*cli.C
 	}
 	machine := host{ctx: ctx, environ: os.Environ(), clock: wallClock{}, timer: wallTimer, signals: cancellationSignals()}
 	inputsFrom := sourcing{texts: f, paths: f, commits: g, changes: g}
-	return build(user, f, fs, roots, wrappers, schemaValidator{}, inputsFrom, machine, stdout, stderr)
+	return build(user, f, fs, roots, wrappers, schemaValidator{}, inputsFrom, holding{facts: g, locks: f}, machine, stdout, stderr)
 }
 
 // newRuntimes is the runtime wrappers over programs: bash, claude-code and
@@ -139,7 +140,9 @@ type wallClock struct{}
 func (wallClock) Now() time.Time { return time.Now() }
 
 // cancellationSignals selects the signals that cancel a run.
-func cancellationSignals() signals { return notified(os.Interrupt, syscall.SIGTERM) }
+func cancellationSignals() signals {
+	return notified(os.Interrupt, syscall.SIGTERM, syscall.SIGHUP, syscall.SIGQUIT)
+}
 
 // notified watches the process's signals of kinds.
 func notified(kinds ...os.Signal) signals {
@@ -184,11 +187,12 @@ type piWrapper interface {
 
 // build is the command line over links, fs and roots and every runtime
 // wrapper's facts, the turns of runtimes' bash, claude-code and codex, its
-// runs on machine, a call's output checked by validator and its inputs read
-// through inputsFrom, for the user whose home directory is user: home's
-// folder is homeFolder's. A run's result is printed to stdout, and its
-// progress, as it goes, to stderr.
-func build(user string, links links, fs layout.FileSystem, roots layout.WorktreeRoot, runtimes runtimes, validator call.Validator, inputsFrom sourcing, machine host, stdout, stderr io.Writer) (*cli.CLI, error) {
+// runs on machine, a call's output checked by validator, its inputs read
+// through inputsFrom, and the call admitted and held through held's facts
+// and locks, for the user whose home directory is user: home's folder is
+// homeFolder's, and the lock files are under lockFolder's. A run's result
+// is printed to stdout, and its progress, as it goes, to stderr.
+func build(user string, links links, fs layout.FileSystem, roots layout.WorktreeRoot, runtimes runtimes, validator call.Validator, inputsFrom sourcing, held holding, machine host, stdout, stderr io.Writer) (*cli.CLI, error) {
 	if runtimes.bash == nil || runtimes.claude == nil || runtimes.codex == nil || runtimes.pi == nil {
 		return nil, errors.New("build: a runtime wrapper is missing")
 	}
@@ -221,7 +225,8 @@ func build(user string, links links, fs layout.FileSystem, roots layout.Worktree
 	if err != nil {
 		return nil, err
 	}
-	runner, err := newRuns(home, links, fs, roots, wrappers, turns, validator, inputsFrom, machine, events)
+	held.folder = lockFolder(user)
+	runner, err := newRuns(home, links, fs, roots, wrappers, turns, validator, inputsFrom, held, machine, events)
 	if err != nil {
 		return nil, err
 	}
