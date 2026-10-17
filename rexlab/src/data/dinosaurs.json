@@ -1,0 +1,200 @@
+[
+  {
+    "id": "tyrannosaurus",
+    "name": {
+      "en": "Tyrannosaurus",
+      "ru": "Тираннозавр"
+    },
+    "attributes": {
+      "heightMeters": 3.7,
+      "massKg": 8000
+    }
+  },
+  {
+    "id": "triceratops",
+    "name": {
+      "en": "Triceratops",
+      "ru": "Трицератопс"
+    },
+    "attributes": {
+      "heightMeters": 3,
+      "massKg": 7000
+    }
+  },
+  {
+    "id": "velociraptor",
+    "name": {
+      "en": "Velociraptor",
+      "ru": "Велоцираптор"
+    },
+    "attributes": {
+      "heightMeters": 0.5,
+      "massKg": 15
+    }
+  },
+  {
+    "id": "brachiosaurus",
+    "name": {
+      "en": "Brachiosaurus",
+      "ru": "Брахиозавр"
+    },
+    "attributes": {
+      "heightMeters": 12.5,
+      "massKg": 40000
+    }
+  },
+  {
+    "id": "stegosaurus",
+    "name": {
+      "en": "Stegosaurus",
+      "ru": "Стегозавр"
+    },
+    "attributes": {
+      "heightMeters": 4,
+      "massKg": 5000
+    }
+  },
+  {
+    "id": "ankylosaurus",
+    "name": {
+      "en": "Ankylosaurus",
+      "ru": "Анкилозавр"
+    },
+    "attributes": {
+      "heightMeters": 1.7,
+      "massKg": 6000
+    }
+  },
+  {
+    "id": "spinosaurus",
+    "name": {
+      "en": "Spinosaurus",
+      "ru": "Спинозавр"
+    },
+    "attributes": {
+      "heightMeters": 4.2,
+      "massKg": 7400
+    }
+  },
+  {
+    "id": "diplodocus",
+    "name": {
+      "en": "Diplodocus",
+      "ru": "Диплодок"
+    },
+    "attributes": {
+      "heightMeters": 5,
+      "massKg": 15000
+    }
+  },
+  {
+    "id": "parasaurolophus",
+    "name": {
+      "en": "Parasaurolophus",
+      "ru": "Паразауролоф"
+    },
+    "attributes": {
+      "heightMeters": 2.8,
+      "massKg": 2500
+    }
+  },
+  {
+    "id": "pachycephalosaurus",
+    "name": {
+      "en": "Pachycephalosaurus",
+      "ru": "Пахицефалозавр"
+    },
+    "attributes": {
+      "heightMeters": 1.5,
+      "massKg": 450
+    }
+  },
+  {
+    "id": "iguanodon",
+    "name": {
+      "en": "Iguanodon",
+      "ru": "Игуанодон"
+    },
+    "attributes": {
+      "heightMeters": 2.7,
+      "massKg": 3500
+    }
+  },
+  {
+    "id": "compsognathus",
+    "name": {
+      "en": "Compsognathus",
+      "ru": "Компсогнат"
+    },
+    "attributes": {
+      "heightMeters": 0.25,
+      "massKg": 3
+    }
+  },
+  {
+    "id": "gallimimus",
+    "name": {
+      "en": "Gallimimus",
+      "ru": "Галлимим"
+    },
+    "attributes": {
+      "heightMeters": 1.9,
+      "massKg": 440
+    }
+  },
+  {
+    "id": "allosaurus",
+    "name": {
+      "en": "Allosaurus",
+      "ru": "Аллозавр"
+    },
+    "attributes": {
+      "heightMeters": 2.9,
+      "massKg": 2300
+    }
+  },
+  {
+    "id": "argentinosaurus",
+    "name": {
+      "en": "Argentinosaurus",
+      "ru": "Аргентинозавр"
+    },
+    "attributes": {
+      "heightMeters": 7,
+      "massKg": 70000
+    }
+  },
+  {
+    "id": "microraptor",
+    "name": {
+      "en": "Microraptor",
+      "ru": "Микрораптор"
+    },
+    "attributes": {
+      "heightMeters": 0.3,
+      "massKg": 1
+    }
+  },
+  {
+    "id": "protoceratops",
+    "name": {
+      "en": "Protoceratops",
+      "ru": "Протоцератопс"
+    },
+    "attributes": {
+      "heightMeters": 0.7,
+      "massKg": 85
+    }
+  },
+  {
+    "id": "dilophosaurus",
+    "name": {
+      "en": "Dilophosaurus",
+      "ru": "Дилофозавр"
+    },
+    "attributes": {
+      "heightMeters": 1.5,
+      "massKg": 400
+    }
+  }
+]

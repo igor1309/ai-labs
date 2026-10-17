@@ -1,0 +1,552 @@
+/* The light theme is the default; the dark theme, at the end, overrides
+   its colours while the app sets data-theme="dark" on the document. */
+:root {
+  color-scheme: light;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  font-family: "Nunito Variable", system-ui, sans-serif;
+  background: #f5efdd;
+  color: #2f4a1f;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  padding: 1.5rem;
+  border: 4px solid #2f4a1f;
+  border-radius: 1.5rem;
+  background: #ffffff;
+  transition:
+    filter 120ms ease-out,
+    transform 80ms ease-out;
+}
+
+.card[data-hovered] {
+  filter: brightness(1.12);
+}
+
+.card[data-pressed] {
+  filter: brightness(0.9);
+  transform: scale(0.95);
+}
+
+.home {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  min-height: 100vh;
+  box-sizing: border-box;
+  padding: 2rem 2rem 3.5rem;
+  display: grid;
+  place-items: center;
+  background-image: radial-gradient(ellipse 45% 60% at 50% 52%, #fff9e8 0%, transparent 100%);
+}
+
+/* Rolling hills along the bottom, placed as fractions of the page so they
+   keep their shape on every iPad. */
+.hill {
+  position: absolute;
+  z-index: -1;
+  border-radius: 50%;
+  background: #e6e3c4;
+}
+
+.hill-back {
+  left: -18%;
+  top: 78%;
+  width: 76%;
+  height: 58%;
+}
+
+.hill-back-right {
+  left: 53%;
+  top: 80%;
+  width: 69%;
+  height: 53%;
+}
+
+.hill-front {
+  left: 18%;
+  top: 88%;
+  width: 69%;
+  height: 47%;
+  background: #d8ddb5;
+}
+
+/* The quiz card keeps its own warm yellow in both themes, as the design
+   draws it: the one bright thing on the page, for the child to tap. */
+.quiz-card {
+  gap: 0.5rem;
+  padding: 2.75rem 4.5rem 3rem;
+  border: none;
+  border-radius: 3rem;
+  background: #ffcc4d;
+  color: #22331a;
+  box-shadow:
+    0 0.75rem 0 #e3a51c,
+    0 2.5rem 5rem rgba(138, 106, 26, 0.2);
+}
+
+.face-off {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.75rem;
+}
+
+.face-off-picture {
+  display: block;
+  width: 12.5rem;
+  height: 11.375rem;
+  object-fit: contain;
+  object-position: bottom;
+  -webkit-user-drag: none;
+  user-select: none;
+}
+
+.face-off-left {
+  transform: scaleX(-1);
+}
+
+.face-off-badge {
+  display: grid;
+  place-items: center;
+  width: 3.5rem;
+  height: 3.5rem;
+  margin-bottom: 2.125rem;
+  border-radius: 50%;
+  background: #22331a;
+  color: #ffcc4d;
+}
+
+.quiz-card-title {
+  font-size: 5rem;
+  font-weight: 900;
+  letter-spacing: 3px;
+  line-height: 1.2;
+}
+
+/* The menus, the wordmark and the version are for parents: small and in
+   the corners, away from the quiz card. */
+.parent-menus {
+  position: fixed;
+  z-index: 2;
+  top: 1.5rem;
+  right: 1.5rem;
+  display: flex;
+  gap: 4px;
+}
+
+.parent-menu {
+  position: relative;
+}
+
+/* Each button keeps its small symbol, faded, inside a tap area big enough
+   for a parent's finger. */
+.parent-menu-button {
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border: none;
+  border-radius: 8px;
+  background: none;
+  color: #566249;
+  font-size: 12px;
+  font-weight: 700;
+  opacity: 0.75;
+}
+
+.parent-menu-button[aria-expanded="true"] {
+  background: #e6e0d0;
+}
+
+.parent-menu-list {
+  position: absolute;
+  top: calc(100% + 0.5rem);
+  right: 0;
+  width: 184px;
+  box-sizing: border-box;
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  border-radius: 12px;
+  outline: 1px solid rgba(34, 51, 26, 0.12);
+  outline-offset: -0.5px;
+  background: #fffbf0;
+  box-shadow: 0 12px 32px rgba(138, 106, 26, 0.25);
+}
+
+.parent-menu-choice {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border: none;
+  border-radius: 8px;
+  background: none;
+  color: #566249;
+  font-size: 13px;
+  font-weight: 600;
+  text-align: left;
+}
+
+.parent-menu-choice[aria-checked="true"] {
+  background: #f3ead0;
+  color: #22331a;
+  font-weight: 800;
+}
+
+.parent-menu-name {
+  flex: 1 1 0;
+}
+
+.parent-menu-tick {
+  color: #9c6b00;
+}
+
+/* Covers the page under an open menu, to catch a tap outside it. */
+.menu-backdrop {
+  position: fixed;
+  z-index: 1;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+}
+
+.wordmark {
+  position: fixed;
+  bottom: 2rem;
+  left: 2rem;
+  margin: 0;
+  font-family: "Fredoka Variable", system-ui, sans-serif;
+  font-size: 15px;
+  font-weight: 600;
+  color: #566249;
+}
+
+/* The version footer is part of the static page, outside the app. */
+footer[aria-label="Version"] {
+  position: fixed;
+  bottom: 2rem;
+  right: 2rem;
+  font-size: 12px;
+  font-weight: 600;
+  color: #566249;
+}
+
+.question {
+  min-height: 100vh;
+  box-sizing: border-box;
+  padding: 1.5rem 2rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+.question-bar {
+  align-self: stretch;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.home-button,
+.next-button,
+.play-again-button {
+  min-height: 4rem;
+  padding: 0.5rem 1.5rem;
+  border: 3px solid #2f4a1f;
+  border-radius: 2rem;
+  background: #ffffff;
+  font-size: 1.75rem;
+}
+
+.progress {
+  margin: 0;
+  font-size: 2rem;
+  font-weight: 700;
+}
+
+.prompt {
+  margin: 0;
+  font-size: 3rem;
+}
+
+.dinosaur-cards {
+  align-self: stretch;
+  display: flex;
+  justify-content: center;
+  gap: 3rem;
+}
+
+.dinosaur-card {
+  position: relative;
+  flex: 1 1 0;
+  max-width: 28rem;
+}
+
+/* A mark is a symbol in a colour that keeps at least 3:1 contrast with
+   its card, so it reads without telling colours apart. */
+.dinosaur-card[data-mark="correct"] {
+  border-color: #1b6e2d;
+  background: #e6f4e8;
+}
+
+.dinosaur-card[data-mark="wrong"] {
+  border-color: #b3261e;
+  background: #fbe9e7;
+}
+
+.mark {
+  position: absolute;
+  top: 0.75rem;
+  right: 1rem;
+  font-size: 4rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.dinosaur-card[data-mark="correct"] .mark {
+  color: #1b6e2d;
+}
+
+.dinosaur-card[data-mark="wrong"] .mark {
+  color: #b3261e;
+}
+
+.dinosaur-value {
+  font-size: 2.5rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+/* The pictures' own 4:3, so a picture of another shape is fitted inside
+   the same box rather than shown larger. */
+.dinosaur-picture {
+  display: block;
+  width: 16rem;
+  height: 12rem;
+  object-fit: contain;
+  -webkit-user-drag: none;
+  user-select: none;
+}
+
+.dinosaur-name {
+  font-size: 2.25rem;
+  font-weight: 800;
+  overflow-wrap: anywhere;
+}
+
+.turn-sideways {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+}
+
+.turn-sideways-picture {
+  font-size: 10rem;
+}
+
+.result {
+  min-height: 100vh;
+  box-sizing: border-box;
+  padding: 1.5rem 2rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1.5rem;
+}
+
+.celebration {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  animation: celebrate 600ms ease-out both;
+}
+
+.celebration-picture {
+  font-size: 6rem;
+  line-height: 1;
+}
+
+.celebration-text {
+  font-size: 3rem;
+  font-weight: 800;
+  color: #8a4b00;
+}
+
+@keyframes celebrate {
+  0% {
+    transform: scale(0.3);
+    opacity: 0;
+  }
+  70% {
+    transform: scale(1.15);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .celebration {
+    animation: none;
+  }
+}
+
+.result-stars {
+  margin: 0;
+  display: flex;
+  gap: 0.25rem;
+  font-size: 3rem;
+  line-height: 1;
+}
+
+.star {
+  color: #c9d3bd;
+}
+
+.star-won {
+  color: #e0a100;
+}
+
+.result-score {
+  margin: 0;
+  font-size: 5rem;
+  font-weight: 800;
+}
+
+.best-score {
+  margin: 0;
+  font-size: 2.25rem;
+  font-weight: 700;
+}
+
+.result-actions {
+  display: flex;
+  gap: 2rem;
+}
+
+/* The dark theme: the same jungle greens at night. Each surface stays
+   dark and each text light, but for the quiz card's own yellow, and a
+   mark keeps at least 3:1 contrast with its card here too. */
+:root[data-theme="dark"] {
+  color-scheme: dark;
+}
+
+[data-theme="dark"] body {
+  background: #13200e;
+  color: #e4edd6;
+}
+
+[data-theme="dark"] .card,
+[data-theme="dark"] .home-button,
+[data-theme="dark"] .next-button,
+[data-theme="dark"] .play-again-button {
+  border-color: #9fb68a;
+  background: #22331a;
+}
+
+[data-theme="dark"] .home {
+  background-image: radial-gradient(ellipse 45% 60% at 50% 52%, #2b4420 0%, transparent 100%);
+}
+
+[data-theme="dark"] .hill {
+  background: #1a2b13;
+}
+
+[data-theme="dark"] .hill-front {
+  background: #203519;
+}
+
+[data-theme="dark"] .quiz-card {
+  background: #ffd25e;
+  box-shadow:
+    0 0.75rem 0 #c99a22,
+    0 2.5rem 5rem rgba(0, 0, 0, 0.4);
+}
+
+[data-theme="dark"] .face-off-badge {
+  color: #ffd25e;
+}
+
+[data-theme="dark"] .parent-menu-button,
+[data-theme="dark"] .wordmark,
+[data-theme="dark"] footer[aria-label="Version"] {
+  color: #9fb092;
+}
+
+[data-theme="dark"] .parent-menu-button[aria-expanded="true"] {
+  background: #222d1d;
+}
+
+[data-theme="dark"] .parent-menu-list {
+  outline-color: rgba(255, 255, 255, 0.08);
+  background: #1c2b15;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
+}
+
+[data-theme="dark"] .parent-menu-choice {
+  color: #8c9c80;
+}
+
+[data-theme="dark"] .parent-menu-choice[aria-checked="true"] {
+  background: #2a3823;
+  color: #dce5d3;
+}
+
+[data-theme="dark"] .parent-menu-tick {
+  color: #ffd25e;
+}
+
+[data-theme="dark"] .dinosaur-card[data-mark="correct"] {
+  border-color: #6fd387;
+  background: #13361d;
+}
+
+[data-theme="dark"] .dinosaur-card[data-mark="wrong"] {
+  border-color: #ff8a80;
+  background: #3d1714;
+}
+
+[data-theme="dark"] .dinosaur-card[data-mark="correct"] .mark {
+  color: #6fd387;
+}
+
+[data-theme="dark"] .dinosaur-card[data-mark="wrong"] .mark {
+  color: #ff8a80;
+}
+
+[data-theme="dark"] .celebration-text {
+  color: #ffc857;
+}
+
+[data-theme="dark"] .star {
+  color: #3a4a30;
+}
+
+[data-theme="dark"] .star-won {
+  color: #ffc22e;
+}
