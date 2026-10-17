@@ -9,16 +9,19 @@ import { localProgress } from "../src/localProgress.ts";
 import { QuestionScreen } from "../src/QuestionScreen.tsx";
 import { ResultScreen } from "../src/ResultScreen.tsx";
 import { largerOf, type Attribute, type Dinosaur, type Question } from "../src/quiz/round.ts";
+import { endReaction, meets, missesFor, needAsked, trayItem, visitorShown } from "./care.ts";
 import { chooseFrom, choicesIn, openMenu, outsideMenu } from "./menus.ts";
 import {
   PALETTE,
   SHIPPED_CATALOGUE,
   SHIPPED_DINOSAURS,
+  emptyCare,
   emptyProgress,
   fakeBodyPicture,
   lightDevice,
   loadedPictures,
   manualOrientation,
+  manualTimers,
   memoryStorage,
   questionView,
   sameColour,
@@ -26,6 +29,7 @@ import {
   symbolOf,
   words,
   type ManualOrientation,
+  type ManualTimers,
   type MemoryStorage
 } from "./support.ts";
 
@@ -51,12 +55,14 @@ function openApp({
   device,
   storage = memoryStorage(),
   orientation = manualOrientation("landscape"),
-  progress = emptyProgress()
+  progress = emptyProgress(),
+  timers = loadedPictures()
 }: {
   device: string;
   storage?: MemoryStorage;
   orientation?: ManualOrientation;
   progress?: ReturnType<typeof emptyProgress>;
+  timers?: ReturnType<typeof loadedPictures>;
 }) {
   const view = render(
     <App
@@ -69,7 +75,8 @@ function openApp({
       deviceLanguage={device}
       languageStore={localLanguage(() => storage)}
       {...lightDevice()}
-      {...loadedPictures()}
+      {...emptyCare()}
+      {...timers}
     />
   );
   return { user: userEvent.setup(), unmount: view.unmount };
@@ -334,8 +341,10 @@ const BRAND = "RexLab";
 
 // What the child is shown on every screen and in every state: the home
 // page with each menu for parents closed and open, the portrait gate, two
-// rounds, one with mistakes and one without, and both results, played on a
-// device in `language`.
+// rounds, one with mistakes and one without, and both results, the
+// catalogue, and care: its welcome, its friends with none yet, a visit with
+// each need refused once and one without, both results and the friends
+// made, played on a device in `language`.
 type Seen = {
   // Every visible word and every label read out, outside what is for
   // parents.
@@ -351,10 +360,12 @@ type Seen = {
 async function playEveryScreen(language: Language): Promise<Seen> {
   const orientation = manualOrientation("landscape");
   const progressStorage = memoryStorage();
+  const timers = manualTimers();
   const { user } = openApp({
     device: language === "ru" ? "ru-RU" : "en-GB",
     orientation,
-    progress: localProgress(() => progressStorage)
+    progress: localProgress(() => progressStorage),
+    timers
   });
   const seen: Seen = { texts: [], names: [], parentTexts: [], parentLabels: [] };
   const isName = (label: string) => SHIPPED_DINOSAURS.some((dinosaur) => dinosaur.name[language] === label);
@@ -392,6 +403,25 @@ async function playEveryScreen(language: Language): Promise<Seen> {
     if (!left || !right) throw new Error("Expected two dinosaur cards");
     return { attribute, left, right };
   };
+
+  async function playVisit(refuse: boolean) {
+    for (let need = needAsked(); need !== undefined; need = needAsked()) {
+      const visitor = visitorShown();
+      look();
+      if (refuse) {
+        await user.click(trayItem(missesFor(visitor, need)));
+        look();
+        endReaction(timers);
+        look();
+      }
+      await user.click(trayItem(meets(visitor, need)));
+      look();
+      endReaction(timers);
+    }
+    look();
+    endReaction(timers);
+    look();
+  }
 
   async function playRound(correct: number) {
     for (let number = 1; number <= 10; number++) {
@@ -445,6 +475,25 @@ async function playEveryScreen(language: Language): Promise<Seen> {
   await user.click(screen.getByRole("button", { name: BUTTONS[language].home }));
   look();
 
+  const text = TEXTS[language];
+  await user.click(screen.getByRole("button", { name: text.care }));
+  look();
+  await user.click(screen.getByRole("button", { name: text.friends }));
+  look();
+  await user.click(screen.getByRole("button", { name: text.back }));
+  await user.click(screen.getByRole("button", { name: text.newVisitor }));
+  await playVisit(true);
+  expect(screen.getAllByRole("status")).toHaveLength(1);
+  await user.click(screen.getByRole("button", { name: text.newVisitor }));
+  await playVisit(false);
+  expect(screen.getAllByRole("status")).toHaveLength(1);
+  await user.click(screen.getByRole("button", { name: text.friends }));
+  look();
+  await user.click(screen.getByRole("button", { name: text.back }));
+  look();
+  await user.click(screen.getByRole("button", { name: text.home }));
+  look();
+
   return seen;
 }
 
@@ -486,10 +535,10 @@ describe("text for children", () => {
   // Every dictionary entry, including those only shown in a state the
   // round above may not reach, such as either celebration.
   it.each(["en", "ru"] as const)("is written in capitals in the %s dictionary, all but the menus for parents", (language) => {
-    const { languageMenu, themeMenu, themes, sourceNote, stars, ...forChildren } = TEXTS[language];
+    const { languageMenu, themeMenu, themes, sourceNote, stars, heartsOf, ...forChildren } = TEXTS[language];
     const strings = (value: unknown): string[] =>
       typeof value === "string" ? [value] : Object.values(value as Record<string, unknown>).flatMap(strings);
-    const texts = [...strings(forChildren), stars(7, 10)];
+    const texts = [...strings(forChildren), stars(7, 10), heartsOf(6, 8)];
 
     expect(texts.filter((text) => text !== text.toLocaleUpperCase(language))).toEqual([]);
     expect([languageMenu, themeMenu]).toEqual(PARENT_CONTROLS[language]);

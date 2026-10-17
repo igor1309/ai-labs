@@ -7,6 +7,7 @@ import { openMenu, outsideMenu } from "./menus.ts";
 import {
   SHIPPED_CATALOGUE,
   SHIPPED_DINOSAURS,
+  emptyCare,
   emptyProgress,
   englishDevice,
   fakeBodyPicture,
@@ -21,7 +22,7 @@ import {
 } from "./support.ts";
 
 function openHomePage(progress = emptyProgress(), pictures = loadedPictures()) {
-  render(<App dinosaurs={SHIPPED_DINOSAURS} catalogue={SHIPPED_CATALOGUE} bodyPicture={fakeBodyPicture} random={seededRandom(7)} orientation={manualOrientation("landscape")} progress={progress} {...englishDevice()} {...lightDevice()} {...pictures} />);
+  render(<App dinosaurs={SHIPPED_DINOSAURS} catalogue={SHIPPED_CATALOGUE} bodyPicture={fakeBodyPicture} random={seededRandom(7)} orientation={manualOrientation("landscape")} progress={progress} {...englishDevice()} {...lightDevice()} {...emptyCare()} {...pictures} />);
   return { user: userEvent.setup(), card: screen.getByRole("button", { name: "COMPARE" }) };
 }
 
@@ -31,7 +32,6 @@ const withStorage = (storage: MemoryStorage) => localProgress(() => storage);
 const record = (bestScore: number | null) =>
   JSON.stringify({ schemaVersion: 1, games: { "compare-dinosaurs": { bestScore, roundsPlayed: 3 } } });
 
-const lockedTiles = () => [...document.querySelectorAll<HTMLElement>(".locked-tile")];
 // The name of every symbol an element shows, in order.
 const symbolsOf = (element: Element) =>
   [...element.querySelectorAll("svg.lucide")].map((svg) => [...svg.classList].find((name) => name.startsWith("lucide-"))?.slice("lucide-".length));
@@ -52,37 +52,17 @@ describe("the home page", () => {
     expect(pictures.map((picture) => picture.getAttribute("src"))).toEqual([fakeBodyPicture("tyrannosaurus"), fakeBodyPicture("brachiosaurus")]);
   });
 
-  it("shows a locked game beside the quiz card, under the catalogue's tile, a dinosaur with its symbol and a lock, and no words", () => {
+  it("shows the catalogue's tile and, under it, the CARE tile beside the quiz card, and no game locked", () => {
     const { card } = openHomePage();
 
     const games = card.parentElement;
     expect(games?.classList.contains("games")).toBe(true);
-    expect(lockedTiles().every((tile) => games?.contains(tile))).toBe(true);
-    expect(lockedTiles().map((tile) => [tile.querySelector("img")?.getAttribute("src"), ...symbolsOf(tile)])).toEqual([
-      [fakeBodyPicture("triceratops"), "utensils", "lock"]
-    ]);
     const catalogue = screen.getByRole("button", { name: "ALL DINOSAURS" });
+    const care = screen.getByRole("button", { name: "CARE" });
     expect(games?.contains(catalogue)).toBe(true);
-    expect(catalogue.compareDocumentPosition(lockedTiles()[0] ?? catalogue) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    for (const tile of lockedTiles()) {
-      expect(tile.textContent).toBe("");
-      expect(within(tile).queryAllByRole("button")).toEqual([]);
-      expect(tile.closest("button")).toBeNull();
-    }
-  });
-
-  it("does nothing on a tap or a press of a locked game", async () => {
-    const { user } = openHomePage();
-    const before = document.body.innerHTML;
-
-    for (const tile of lockedTiles()) {
-      await user.click(tile);
-      await user.pointer({ keys: "[TouchA>]", target: tile });
-      await user.pointer({ keys: "[/TouchA]", target: tile });
-    }
-
-    expect(document.body.innerHTML).toBe(before);
-    expect(screen.queryByLabelText("PROGRESS")).toBeNull();
+    expect([...(catalogue.parentElement?.children ?? [])]).toEqual([catalogue, care]);
+    expect(document.querySelector(".locked-tile")).toBeNull();
+    expect(symbolsOf(document.body)).not.toContain("lock");
   });
 
   it("shows the best score on the quiz card beside a trophy", () => {

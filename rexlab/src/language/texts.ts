@@ -45,6 +45,25 @@ export type Texts = {
   // The note under a dinosaur's facts is for parents, so it is in normal
   // case: it names the sources the facts were checked with.
   sourceNote: string;
+  // Dinosaur care: its title, also on its home tile.
+  care: string;
+  newVisitor: string;
+  friends: string;
+  back: string;
+  items: { plants: string; meat: string; water: string; bath: string; nest: string };
+  // The four-need display, and each need read out on its symbol.
+  needsLabel: string;
+  needs: { hungry: string; thirsty: string; dirty: string; tired: string };
+  // How a need stands, read out after its name.
+  needStates: { met: string; current: string; pending: string };
+  // The hearts of the visit so far.
+  hearts: string;
+  // The hearts a finished visit earned, such as "6 OF 8 HEARTS".
+  heartsOf: (hearts: number, total: number) => string;
+  newFriend: string;
+  // The friend a visit made, or met again, read out on its chip.
+  friend: string;
+  noFriends: string;
 };
 
 // A celebration's label, read out, and its text, shown.

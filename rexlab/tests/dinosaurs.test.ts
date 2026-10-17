@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import records from "../src/data/dinosaurs.json";
 import { DIETS } from "../src/catalogue.ts";
-import { readCatalogue, readDinosaurs, type DinosaurRecord } from "../src/dinosaurs.ts";
+import { readCatalogue, readDinosaurs, readVisitors, type DinosaurRecord } from "../src/dinosaurs.ts";
 import { SHIPPED_CATALOGUE, SHIPPED_DINOSAURS } from "./support.ts";
 
 const STEGOSAURUS: DinosaurRecord = {
@@ -23,6 +23,18 @@ describe("readDinosaurs", () => {
       { id: "stegosaurus", name: { en: "Stegosaurus", ru: "Стегозавр" }, measures: { mass: 5000, height: 4 } },
       { id: "compsognathus", name: { en: "Compsognathus", ru: "Компсогнат" }, measures: { mass: 3, height: 0.3 } }
     ]);
+  });
+});
+
+describe("readVisitors", () => {
+  it("reads each record's id, names and food type", () => {
+    expect(readVisitors([STEGOSAURUS])).toEqual([{ id: "stegosaurus", name: { en: "Stegosaurus", ru: "Стегозавр" }, diet: "plants" }]);
+  });
+
+  it.each([undefined, "", "fish", "Meat"])("fails on a record whose food type is %j", (diet) => {
+    const record = { ...STEGOSAURUS, diet } as DinosaurRecord;
+
+    expect(() => readVisitors([record])).toThrow(`stegosaurus has no known food type: ${JSON.stringify(diet)}`);
   });
 });
 

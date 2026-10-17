@@ -1,3 +1,4 @@
+import type { Visitor } from "./care/index.ts";
 import { isDiet, type CatalogueEntry } from "./catalogue.ts";
 import type { Dinosaur } from "./quiz/index.ts";
 
@@ -18,6 +19,18 @@ export function readDinosaurs(records: ReadonlyArray<Pick<DinosaurRecord, "id" |
     name: { en: name.en, ru: name.ru },
     measures: { mass: attributes.massKg, height: attributes.heightMeters }
   }));
+}
+
+// Care needs only who visits and what it eats. A record with no known
+// food type fails here, when the app is put together, rather than as a
+// visitor no food can feed.
+export function readVisitors(records: ReadonlyArray<Pick<DinosaurRecord, "id" | "name" | "diet">>): Visitor[] {
+  return records.map(({ id, name, diet }) => {
+    if (!isDiet(diet)) {
+      throw new Error(`${id} has no known food type: ${JSON.stringify(diet)}`);
+    }
+    return { id, name: { en: name.en, ru: name.ru }, diet };
+  });
 }
 
 // A record with no food type the catalogue knows, or with no description

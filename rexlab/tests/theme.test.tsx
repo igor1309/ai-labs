@@ -7,6 +7,7 @@ import { localLanguage } from "../src/localLanguage.ts";
 import { THEME_KEY, localTheme } from "../src/localTheme.ts";
 import { largerOf, type Dinosaur, type Question } from "../src/quiz/round.ts";
 import type { Theme } from "../src/theme.ts";
+import { endReaction, meets, missesFor, needAsked, trayItem, visitorShown } from "./care.ts";
 import { chooseFrom, choicesIn, openMenu, outsideMenu } from "./menus.ts";
 import {
   OVERLAYS,
@@ -14,11 +15,12 @@ import {
   SHIPPED_CATALOGUE,
   SHIPPED_DINOSAURS,
   contrast,
+  emptyCare,
   emptyProgress,
   fakeBodyPicture,
-  loadedPictures,
   manualAppearance,
   manualOrientation,
+  manualTimers,
   memoryStorage,
   sameColour,
   seededRandom,
@@ -28,6 +30,7 @@ import {
   symbolOf,
   type ManualAppearance,
   type ManualOrientation,
+  type ManualTimers,
   type MemoryStorage
 } from "./support.ts";
 
@@ -59,12 +62,14 @@ function openApp({
   device = manualAppearance("light"),
   storage = memoryStorage(),
   orientation = manualOrientation("landscape"),
-  language = "en-GB"
+  language = "en-GB",
+  timers = manualTimers()
 }: {
   device?: ManualAppearance;
   storage?: MemoryStorage;
   orientation?: ManualOrientation;
   language?: string;
+  timers?: ManualTimers;
 } = {}) {
   const languages = memoryStorage();
   const view = render(
@@ -79,7 +84,8 @@ function openApp({
       languageStore={localLanguage(() => languages)}
       appearance={device}
       themeStore={localTheme(() => storage)}
-      {...loadedPictures()}
+      {...emptyCare()}
+      {...timers}
     />
   );
   return { user: userEvent.setup(), unmount: view.unmount };
@@ -125,8 +131,11 @@ function expectScreenIn(theme: Theme) {
 // and open, the portrait gate, a whole round, each question before and
 // after its answer, the first one wrong so both marks show, the result with
 // its celebration, the home page again, the catalogue with a card of each
-// food type, and a page of each.
-async function expectEveryScreenIn(theme: Theme, user: UserEvent, orientation: ManualOrientation) {
+// food type, and a page of each; then care's welcome, its friends with
+// none yet, a visit with each need asked, refused, suggested, met with
+// hearts and the visitor dancing away, its result with its celebration,
+// and the friend made.
+async function expectEveryScreenIn(theme: Theme, user: UserEvent, orientation: ManualOrientation, timers: ManualTimers) {
   expectScreenIn(theme);
   for (const menu of ["Theme", "Language"]) {
     await openMenu(user, menu);
@@ -159,14 +168,42 @@ async function expectEveryScreenIn(theme: Theme, user: UserEvent, orientation: M
     await user.click(screen.getByRole("button", { name: "ALL DINOSAURS" }));
   }
   await user.click(screen.getByRole("button", { name: "HOME" }));
+
+  await user.click(screen.getByRole("button", { name: "CARE" }));
+  expectScreenIn(theme);
+  await user.click(screen.getByRole("button", { name: "FRIENDS" }));
+  expectScreenIn(theme);
+  await user.click(screen.getByRole("button", { name: "BACK" }));
+  await user.click(screen.getByRole("button", { name: "NEW VISITOR" }));
+  for (let need = needAsked(); need !== undefined; need = needAsked()) {
+    expectScreenIn(theme);
+    const visitor = visitorShown();
+    await user.click(trayItem(missesFor(visitor, need)));
+    expectScreenIn(theme);
+    endReaction(timers);
+    expectScreenIn(theme);
+    await user.click(trayItem(meets(visitor, need)));
+    expectScreenIn(theme);
+    endReaction(timers);
+  }
+  expect(document.querySelector(".stage[data-leaving]")).not.toBeNull();
+  expectScreenIn(theme);
+  endReaction(timers);
+  expect(screen.getByRole("status")).toBeDefined();
+  expectScreenIn(theme);
+  await user.click(screen.getByRole("button", { name: "FRIENDS" }));
+  expect(within(screen.getByRole("group", { name: "FRIENDS" })).getAllByRole("button")).toHaveLength(1);
+  expectScreenIn(theme);
+  await user.click(screen.getByRole("button", { name: "HOME" }));
 }
 
 describe("the System theme", () => {
   it.each(["light", "dark"] as const)("follows the device appearance %s on every screen", async (appearance) => {
     const orientation = manualOrientation("landscape");
-    const { user } = openApp({ device: manualAppearance(appearance), orientation });
+    const timers = manualTimers();
+    const { user } = openApp({ device: manualAppearance(appearance), orientation, timers });
 
-    await expectEveryScreenIn(appearance, user, orientation);
+    await expectEveryScreenIn(appearance, user, orientation, timers);
   });
 
   it.each([

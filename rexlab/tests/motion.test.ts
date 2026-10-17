@@ -164,3 +164,40 @@ describe("the catalogue's motion", () => {
     expect(animationsOf(REDUCED).get("::view-transition-group(.dinosaur-share)")).toBe("none");
   });
 });
+
+describe("care's motion", () => {
+  const animations = animationsOf(PLAIN);
+  const delayOf = (selector: string) => declarationsOf(PLAIN.find(({ prelude }) => prelude === selector)?.body ?? "").find(({ property }) => property === "animation-delay")?.value;
+
+  it("walks the visitor in, hops it when happy, turns it away from what it does not need, and dances it off", () => {
+    expect(
+      [".visitor", '.stage[data-reaction="happy"] .visitor', '.stage[data-reaction="refusal"] .visitor', ".stage[data-leaving] .visitor"].map((selector) =>
+        animations.get(selector)
+      )
+    ).toEqual(["walk-in", "hop", "turn-away", "dance"]);
+    const leaving = PLAIN.find(({ prelude }) => prelude === ".stage[data-leaving] .visitor")?.body ?? "";
+    expect(leaving).toMatch(/walk-off var\(--motion-screen\)/);
+  });
+
+  it("flies the item given to the visitor, and its hearts from there to the counter", () => {
+    expect([".given", ".hearts-pop", ".need-bubble", ".knock-bubble"].map((selector) => animations.get(selector))).toEqual(["fly-in", "pop-in", "pop-in", "pop-in"]);
+    const hearts = PLAIN.find(({ prelude }) => prelude === ".hearts-pop")?.body ?? "";
+    expect(hearts).toMatch(/fly-to-counter/);
+    expect(animations.get(".hearts-count")).toBe("bump-in");
+  });
+
+  it("rings what to try in amber by fading the ring in", () => {
+    expect(animations.get(".tray-item[data-suggested]::after")).toBe("fade-in");
+  });
+
+  it("fills the hearts won, and rises friends in, one after the other", () => {
+    expect([".result-heart-won", ".friend-card", ".friend-face"].map((selector) => animations.get(selector))).toEqual(["pop-in", "rise-in", "rise-in"]);
+    expect(delayOf(".result-heart-won")).toBe("calc(var(--heart) * var(--motion-stagger) * 1.5)");
+    expect(delayOf(".friend-card")).toBe("calc(var(--card) * var(--motion-stagger) * 0.75)");
+  });
+
+  it("only fades the need asked now in with reduced motion", () => {
+    const need = REDUCED.find(({ prelude }) => prelude === ".need");
+    expect(declarationsOf(need?.body ?? "")).toEqual([{ property: "transition-property", value: "background-color" }]);
+  });
+});

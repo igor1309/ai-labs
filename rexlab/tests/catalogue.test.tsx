@@ -14,6 +14,7 @@ import {
   PALETTE,
   SHIPPED_CATALOGUE,
   SHIPPED_DINOSAURS,
+  emptyCare,
   emptyProgress,
   fakeBodyPicture,
   loadedPictures,
@@ -48,6 +49,7 @@ function openApp({
       appearance={manualAppearance(theme)}
       themeStore={localTheme(() => themes)}
       {...pictures}
+      {...emptyCare()}
     />
   );
   return userEvent.setup();
@@ -85,7 +87,7 @@ async function openPage(user: ReturnType<typeof userEvent.setup>, id: string, la
 }
 
 describe("the catalogue's tile on the home page", () => {
-  it("reads ALL DINOSAURS beside a book, with a Stegosaurus and the count of every dinosaur, beside the quiz card above the locked game", () => {
+  it("reads ALL DINOSAURS beside a book, with a Stegosaurus and the count of every dinosaur, beside the quiz card above the CARE tile", () => {
     openApp();
 
     const tile = screen.getByRole("button", { name: "ALL DINOSAURS" });
@@ -95,9 +97,8 @@ describe("the catalogue's tile on the home page", () => {
     expect(tile.querySelector(".catalogue-tile-count")?.textContent).toBe(String(SHIPPED_CATALOGUE.length));
     expect(SHIPPED_CATALOGUE).toHaveLength(30);
     const games = screen.getByRole("button", { name: "COMPARE" }).parentElement;
-    const locked = document.querySelector(".locked-tile");
     expect(games?.contains(tile)).toBe(true);
-    expect(locked && tile.compareDocumentPosition(locked) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(tile.nextElementSibling).toBe(screen.getByRole("button", { name: "CARE" }));
   });
 });
 
