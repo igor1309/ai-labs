@@ -2,11 +2,14 @@
 
 ## 2026-10-17
 
+- Added a README that describes the app and points to the features, the architecture notes and `AGENTS.md`.
+- Gave the quiz one entry point and the screens their own display types, so the answer rule lives only in the quiz; tests now enforce these module boundaries, show the celebrations, and check that progress and the language are saved in `localStorage`.
 - Added the dark theme: System, Light or Dark, chosen by a parent with a small switch in a corner of the home page and remembered in `localStorage`. System follows the device appearance, also while the app is open, and the ✓ and ✗ marks keep at least 3:1 contrast with their cards in both themes.
 - Wrote all text for children in capitals, in English and Russian: prompts, buttons, marks, score, best score, stars, the turn-sideways picture and units. The language switch and the version footer, for parents, stay in normal case.
 
 ## 2026-10-16
 
+- Added `AGENTS.md`: product principles (gamification is essential; text for children who are learning to read), where the specs live, running the app locally, and shipping a release.
 - Added English and Russian: interface text from typed dictionaries, dinosaur names in both languages, values written with the chosen language's numbers and units, the device language first, and a small "EN | RU" switch for parents on the home page, remembered in `localStorage`.
 - Added the result screen: the score as a number and in stars, the best score, first-best and new-best celebrations, Play again and Home, and progress kept in `localStorage` in the versioned record, read and saved on a best-effort basis.
 - Added answering a question: a pressed card, ✓ and ✗ marks in colour, both values revealed in kilograms, tonnes or metres, only the first tap counting, and "See result" on the last question.
