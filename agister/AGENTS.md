@@ -19,5 +19,10 @@
 ## How we work
 
 - Work on agister follows `docs/process.md`: spec, reviews, triage, the
-  owner's go, implement, branch review, PR. Its scripts are
+  owner's go, implement, branch review, end to end, PR. Its scripts are
   `scripts/loop/`.
+- `scripts/test.sh` is the check; it uses no model. `scripts/e2e.sh`
+  runs real claude-code and codex steps through the built binary
+  (opt-in, `AGISTER_E2E=1`), before a PR on the run path.
+  `AGISTER_HOME` points the binary at settings other than
+  `~/.agister`, which still holds the archive's.

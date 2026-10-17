@@ -46,11 +46,13 @@ echo "== agister go vet ./...: $packages packages"
 go vet ./...
 
 # go test's events go to a file, so its exit status is kept: a POSIX pipe
-# would give testreport's alone.
+# would give testreport's alone. The check uses no model: AGISTER_E2E is
+# unset for it, so the end-to-end tests skip, each saying so.
 echo "== agister go test -race -count=1 -timeout 1m ./..."
+echo "== agister e2e: skipped; AGISTER_E2E=1 scripts/e2e.sh runs it"
 events=$(mktemp)
 trap 'rm -f "$events"' EXIT
 status=0
-go test -race -count=1 -timeout 1m -json ./... >"$events" || status=$?
+env -u AGISTER_E2E go test -race -count=1 -timeout 1m -json ./... >"$events" || status=$?
 go run github.com/igor1309/ai-labs/gokit/cmd/testreport <"$events" || status=1
 exit "$status"

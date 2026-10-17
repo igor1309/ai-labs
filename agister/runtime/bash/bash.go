@@ -11,7 +11,8 @@ import (
 
 // Facts are the wrapper's contract and what it can do: check output
 // against a schema, resume a session, take skills, take a model, the
-// efforts it accepts, and report tool calls and tool commands.
+// efforts it accepts, report tool calls and tool commands, and how it
+// takes a call's inputs.
 type Facts struct {
 	Contract     string
 	Schema       bool
@@ -21,7 +22,18 @@ type Facts struct {
 	Efforts      []string
 	ToolCalls    bool
 	ToolCommands bool
+	Inputs       Inputs
 }
+
+// Inputs is how a runtime takes a call's inputs.
+type Inputs int
+
+const (
+	// InEnvironment is each input a variable of its program's environment.
+	InEnvironment Inputs = iota + 1
+	// InMessage is each input a section of its message.
+	InMessage
+)
 
 // ErrNotStarted is what the supervisor's error wraps when the program could
 // not start.
@@ -100,5 +112,6 @@ func (*Wrapper) Facts() Facts {
 		Model:        false,
 		ToolCalls:    false,
 		ToolCommands: false,
+		Inputs:       InEnvironment,
 	}
 }

@@ -7,15 +7,19 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"os"
 	"os/signal"
 	"path/filepath"
+	"slices"
+	"strings"
 	"syscall"
 	"time"
 
 	"github.com/igor1309/ai-labs/agister/cli"
+	"github.com/igor1309/ai-labs/agister/core/call"
 	"github.com/igor1309/ai-labs/agister/files"
 	"github.com/igor1309/ai-labs/agister/git"
 	"github.com/igor1309/ai-labs/agister/runtime/bash"
@@ -55,11 +59,12 @@ func run(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 	return commandLine.Run(args, dir)
 }
 
-// connect is the command line build gives over files, git, the
-// supervisor, its programs started in gokit's process groups and its grace
-// on the wall clock, and the machine: Agister's
-// environment, the wall clock, and SIGINT and SIGTERM, each cancelling a
-// run.
+// connect is the command line build gives over files, git, the runtime
+// wrappers over the supervisor, its programs started in gokit's process
+// groups and its grace on the wall clock, codex's schemas under the
+// system's temporary folder, jsonschema's validator, and the machine:
+// Agister's environment, the wall clock, and SIGINT and SIGTERM, each
+// cancelling a run.
 func connect(ctx context.Context, user string, stdout, stderr io.Writer) (*cli.CLI, error) {
 	g, err := git.New("git")
 	if err != nil {
@@ -82,8 +87,43 @@ func connect(ctx context.Context, user string, stdout, stderr io.Writer) (*cli.C
 	if err != nil {
 		return nil, err
 	}
+	wrappers, err := newRuntimes(programs, os.TempDir())
+	if err != nil {
+		return nil, err
+	}
 	machine := host{ctx: ctx, environ: os.Environ(), clock: wallClock{}, timer: wallTimer, signals: cancellationSignals()}
-	return build(user, f, fs, roots, programs, machine, stdout, stderr)
+	return build(user, f, fs, roots, wrappers, schemaValidator{}, machine, stdout, stderr)
+}
+
+// newRuntimes is the runtime wrappers over programs: bash, claude-code and
+// codex each run their turns through it, codex writing its turns' schemas
+// under temp; and pi, which runs nothing yet.
+func newRuntimes(programs programs, temp string) (runtimes, error) {
+	supervising, err := newSupervised(programs)
+	if err != nil {
+		return runtimes{}, err
+	}
+	b, err := bash.New(supervising)
+	if err != nil {
+		return runtimes{}, err
+	}
+	claudeSupervising, err := newClaudeCodeSupervised(programs)
+	if err != nil {
+		return runtimes{}, err
+	}
+	claude, err := claudecode.New(claudeSupervising)
+	if err != nil {
+		return runtimes{}, err
+	}
+	codexSupervising, err := newCodexSupervised(programs)
+	if err != nil {
+		return runtimes{}, err
+	}
+	cx, err := codex.New(codexSupervising, temp)
+	if err != nil {
+		return runtimes{}, err
+	}
+	return runtimes{bash: b, claude: claude, codex: cx, pi: pi.New()}, nil
 }
 
 // wallTimer starts wait on the wall clock.
@@ -109,34 +149,92 @@ func notified(kinds ...os.Signal) signals {
 	}
 }
 
+// runtimes are the runtime wrappers the command line runs over: each
+// one's facts, and the turns of bash, claude-code and codex.
+type runtimes struct {
+	bash   bashWrapper
+	claude claudeCodeWrapper
+	codex  codexWrapper
+	pi     piWrapper
+}
+
+// bashWrapper is what build asks of the bash wrapper.
+type bashWrapper interface {
+	bashRuns
+	Facts() bash.Facts
+}
+
+// claudeCodeWrapper is what build asks of the claude-code wrapper.
+type claudeCodeWrapper interface {
+	claudeCodeRuns
+	Facts() claudecode.Facts
+}
+
+// codexWrapper is what build asks of the codex wrapper.
+type codexWrapper interface {
+	codexRuns
+	Facts() codex.Facts
+}
+
+// piWrapper is what build asks of the pi wrapper.
+type piWrapper interface {
+	Facts() pi.Facts
+}
+
 // build is the command line over links, fs and roots and every runtime
-// wrapper's facts, the bash wrapper's turns run by programs, its runs on
-// machine, for the user whose home directory is user: home's folder is
-// its ".agister" (ADR-002, rule 2).
-func build(user string, links links, fs layout.FileSystem, roots layout.WorktreeRoot, programs programs, machine host, stdout, stderr io.Writer) (*cli.CLI, error) {
-	supervising, err := newSupervised(programs)
-	if err != nil {
-		return nil, err
+// wrapper's facts, the turns of runtimes' bash, claude-code and codex, its
+// runs on machine, a call's output checked by validator, for the user
+// whose home directory is user: home's folder is homeFolder's.
+func build(user string, links links, fs layout.FileSystem, roots layout.WorktreeRoot, runtimes runtimes, validator call.Validator, machine host, stdout, stderr io.Writer) (*cli.CLI, error) {
+	if runtimes.bash == nil || runtimes.claude == nil || runtimes.codex == nil || runtimes.pi == nil {
+		return nil, errors.New("build: a runtime wrapper is missing")
 	}
-	b, err := bash.New(supervising)
-	if err != nil {
-		return nil, err
-	}
+	b, claude, cx := runtimes.bash, runtimes.claude, runtimes.codex
 	wrappers, err := newContracts(
-		claudeCodeFacts(claudecode.New()), codexFacts(codex.New()), piFacts(pi.New()), bashFacts(b))
+		claudeCodeFacts(claude), codexFacts(cx), piFacts(runtimes.pi), bashFacts(b))
 	if err != nil {
 		return nil, err
 	}
-	turns, err := newBashTurns(b)
+	bashTurns, err := newBashTurns(b)
 	if err != nil {
 		return nil, err
 	}
-	home := filepath.Join(user, ".agister")
-	runner, err := newRuns(home, links, fs, roots, wrappers, turn{contract: b.Facts().Contract, runtime: turns}, machine)
+	claudeTurns, err := newClaudeCodeTurns(claude)
+	if err != nil {
+		return nil, err
+	}
+	codexTurns, err := newCodexTurns(cx)
+	if err != nil {
+		return nil, err
+	}
+	bashFacts, claudeFacts, codexFacts := b.Facts(), claude.Facts(), cx.Facts()
+	turns := []turn{
+		{contract: bashFacts.Contract, inputs: bashInputs(bashFacts.Inputs), runtime: bashTurns},
+		{contract: claudeFacts.Contract, inputs: claudeCodeInputs(claudeFacts.Inputs), runtime: claudeTurns},
+		{contract: codexFacts.Contract, inputs: codexInputs(codexFacts.Inputs), runtime: codexTurns},
+	}
+	home := homeFolder(user, machine.environ)
+	runner, err := newRuns(home, links, fs, roots, wrappers, turns, validator, machine)
 	if err != nil {
 		return nil, err
 	}
 	return newCommandLine(home, links, fs, roots, wrappers, runner, stdout, stderr)
+}
+
+// homeFolder is home's folder (ADR-002, rule 2): AGISTER_HOME where
+// environ sets it, its last value as a child's environment keeps it, else
+// the user's ".agister". It is a seam, so other settings are tried while
+// the runtimes keep their logins under the user's home directory.
+func homeFolder(user string, environ []string) string {
+	for _, v := range slices.Backward(environ) {
+		if folder, ok := strings.CutPrefix(v, "AGISTER_HOME="); ok {
+			if folder != "" {
+				return folder
+			}
+			break
+		}
+	}
+	return filepath.Join(user, ".agister")
 }
 
 // newChecker is check over the settings of home's folder and the launch

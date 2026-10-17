@@ -20,15 +20,17 @@ Feature: The command line runs a request
     Given the port's run ends <status>, class "<class>"
     When "agister run w" runs
     Then it prints the result as JSON on stdout: status, class, output,
-      timing, cost and warnings
+      timing, cost, usage, sessions, reason and warnings
     And it exits <code>
-    And an unknown cost is printed as null
+    And an unknown cost, each unknown count of usage, and no reason are
+      printed as null
 
     Examples:
-      | status      | class   | code |
-      | completed   |         | 0    |
-      | failed      | killed  | 1    |
-      | interrupted | timeout | 1    |
+      | status      | class     | code |
+      | completed   |           | 0    |
+      | failed      | killed    | 1    |
+      | interrupted | timeout   | 1    |
+      | lost        | no_result | 1    |
 
   Scenario: A refusal is printed to stderr and exits 1
     Given the port refuses the run: "the process \"p\" is blocked"
