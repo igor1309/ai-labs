@@ -72,7 +72,7 @@ const ADAPTERS = [
   "mediaOrientation.ts"
 ];
 const COMPOSITION = ["App.tsx", "careGame.tsx", "main.tsx", "pairsGame.tsx", "presentation.ts", "root.ts", "screenChange.ts", "sortingGame.tsx"];
-// The best-score rule every game keeps.
+// The best-score rule the composition root gives every game.
 const BEST_SCORE = "bestScore.ts";
 // What waits for pictures, given how to load them and keep time.
 const WAITING = ["pictureWait.ts"];
@@ -109,8 +109,8 @@ describe("the import graph", () => {
     expect(care.filter((file) => /\bbowl\b/i.test(readFileSync(join(SRC, file), "utf8")))).toEqual([]);
   });
 
-  it("keeps dinosaur care free of all but the languages and the best-score rule", () => {
-    expect(edges(inCare, (target) => !inCare(target) && !target.startsWith("language/") && target !== BEST_SCORE)).toEqual([]);
+  it("keeps dinosaur care free of all but the languages", () => {
+    expect(edges(inCare, (target) => !inCare(target) && !target.startsWith("language/"))).toEqual([]);
   });
 
   it("reaches the sorting game only through its entrypoint", () => {
@@ -124,14 +124,22 @@ describe("the import graph", () => {
     expect(edges((file) => PRESENTATION.includes(file) || file.startsWith("language/") || file === "theme.ts", inSorting)).toEqual([]);
   });
 
-  it("keeps the sorting game free of all but the languages and the best-score rule", () => {
-    expect(edges(inSorting, (target) => !inSorting(target) && !target.startsWith("language/") && target !== BEST_SCORE)).toEqual([]);
+  it("keeps the sorting game free of all but the languages", () => {
+    expect(edges(inSorting, (target) => !inSorting(target) && !target.startsWith("language/"))).toEqual([]);
   });
 
-  it("gives every game's progress the one best-score rule, which is free of the rest of the app", () => {
-    expect(["quiz/progress.ts", "care/progress.ts", "sorting/progress.ts"].filter((file) => !GRAPH.get(file)?.includes(BEST_SCORE))).toEqual([]);
+  it("keeps the quiz free of all but the languages", () => {
+    expect(GRAPH.get("quiz/index.ts")).toBeDefined();
+    expect(edges(inQuiz, (target) => !inQuiz(target) && !target.startsWith("language/"))).toEqual([]);
+  });
+
+  // Each game declares the best-score rule it is scored by; only the
+  // composition root names the one rule, which is free of the rest of the
+  // app.
+  it("leaves the one best-score rule to the composition root, which gives it to each game", () => {
+    expect(["App.tsx", "careGame.tsx", "sortingGame.tsx"].filter((file) => !GRAPH.get(file)?.includes(BEST_SCORE))).toEqual([]);
+    expect(edges((file) => !COMPOSITION.includes(file), (target) => target === BEST_SCORE)).toEqual([]);
     expect(edges((file) => file === BEST_SCORE, () => true)).toEqual([]);
-    expect(edges((file) => PRESENTATION.includes(file) || file.startsWith("language/") || file === "theme.ts", (target) => target === BEST_SCORE)).toEqual([]);
   });
 
   it("reaches find the pair only through its entrypoint", () => {

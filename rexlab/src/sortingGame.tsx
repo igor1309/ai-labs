@@ -1,4 +1,5 @@
 import { useCallback, useRef, useState } from "react";
+import { beatBest } from "./bestScore.ts";
 import type { Language } from "./language/language.ts";
 import { waitForPictures, type LoadPicture, type StartTimer } from "./pictureWait.ts";
 import { droppedOn, presentBoard, presentSortingResult } from "./presentation.ts";
@@ -46,8 +47,9 @@ export function useSortingGame({ sortables, sortingProgress, bodyPicture, random
   // A board being started while its pictures load: a second tap meanwhile
   // starts nothing more.
   const starting = useRef(false);
-  // Counts each time the child leaves the game, so pictures that finish
-  // loading after the child has gone home show no board.
+  // Counts each time the child leaves the game or a board being started is
+  // cancelled, so pictures that finish loading after the child has gone
+  // elsewhere show no board.
   const stay = useRef(0);
 
   const show = (next: SortingScreen) => changeScreen(SCREEN_CHANGE, () => setScreen(next));
@@ -72,9 +74,15 @@ export function useSortingGame({ sortables, sortingProgress, bodyPicture, random
     });
   };
 
-  const home = () => {
+  // Drops the board being started, if any: its pictures, once ready, show
+  // nothing, and the next start waits for its own.
+  const cancel = () => {
     stay.current++;
     starting.current = false;
+  };
+
+  const home = () => {
+    cancel();
     onHome();
   };
 
@@ -90,7 +98,7 @@ export function useSortingGame({ sortables, sortingProgress, bodyPicture, random
   // A board is recorded only here, as its result is shown, so a board
   // left early changes nothing. Unreadable progress is not saved over.
   const seeResult = (finished: Sorting) => {
-    const result = finishBoard(finished, sortingProgress.load());
+    const result = finishBoard(finished, sortingProgress.load(), beatBest);
     if (result.progress) sortingProgress.save(result.progress);
     show({ kind: "result", result });
   };
@@ -124,5 +132,5 @@ export function useSortingGame({ sortables, sortingProgress, bodyPicture, random
     }
   };
 
-  return { start, content };
+  return { start, cancel, content };
 }

@@ -2,7 +2,7 @@
 // Everything else under care/ is reached only through this file.
 import type { Visitor } from "./visit.ts";
 
-export type { CareProgress, CareResult, Celebration, KeptCare } from "./progress.ts";
+export type { BeatBest, Beaten, CareProgress, CareResult, Celebration, KeptCare } from "./progress.ts";
 export type { Diet, Item, Need, Reaction, Random, Visit, Visitor } from "./visit.ts";
 export { finishVisit, NO_CARE } from "./progress.ts";
 export { askedNeed, give, isFinished, ITEMS, MOST_HEARTS, NEEDS, pickVisitor, settle, startVisit, suitableItems } from "./visit.ts";

@@ -193,6 +193,22 @@ describe("the sorting game's stored progress", () => {
     expect(storedRecord(storage)).toEqual({ schemaVersion: 1, games: { "sort-dinosaurs": { bestScore: 3, roundsPlayed: 1 } } });
   });
 
+  // A child sees the stylesheet's counter, counting up to `--score`, not
+  // the hidden digits under it that keep its width.
+  it.each([0, 1, 2, 3, 4, 5, 6])("counts the score of a board of %i right up to it, out of 6", async (right) => {
+    const { user, board } = openGame();
+
+    await finishBoard(user, board, right);
+
+    const value = screen.getByLabelText("SCORE").querySelector<HTMLElement>(".result-score-value");
+    expect([
+      value?.style.getPropertyValue("--score"),
+      value && getComputedStyle(value).getPropertyValue("--count"),
+      value?.textContent,
+      screen.getByLabelText("SCORE").querySelector(".result-score-total")?.textContent
+    ]).toEqual([String(right), "var(--score)", String(right), "/6"]);
+  });
+
   it("celebrates progress that cannot be saved against what was read", async () => {
     const kept = sortingRecord({ bestScore: 4, roundsPlayed: 2 });
     const storage = memoryStorage({ [PROGRESS_KEY]: kept }, { save: false });

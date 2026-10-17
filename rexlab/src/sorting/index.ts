@@ -2,10 +2,11 @@
 // it. Everything else under sorting/ is reached only through this file.
 import { BASKETS, generateBoard, type Basket, type Dinosaur, type Property, type Random } from "./board.ts";
 import { isFinished, score, startSorting, type Sorting } from "./play.ts";
-import { finishRound, type Celebration, type SortingProgress } from "./progress.ts";
+import { finishRound, type BeatBest, type Celebration, type SortingProgress } from "./progress.ts";
 
 export type { Basket, Diet, Dinosaur, Property, Random } from "./board.ts";
-export type { Celebration, Sorting, SortingProgress };
+export type { BeatBest, Celebration, Sorting, SortingProgress };
+export type { Beaten } from "./progress.ts";
 export { drop, score } from "./play.ts";
 export { NO_SORTING } from "./progress.ts";
 
@@ -71,10 +72,11 @@ export function boardState(sorting: Sorting): BoardState {
   };
 }
 
-// The finished board's score, set against the progress kept so far.
-export function finishBoard(sorting: Sorting, stored: SortingProgress | undefined): SortingResult {
+// The finished board's score, set against the progress kept so far by the
+// best-score rule.
+export function finishBoard(sorting: Sorting, stored: SortingProgress | undefined, beatBest: BeatBest): SortingResult {
   const right = score(sorting);
-  const outcome = stored === undefined ? undefined : finishRound(stored, right);
+  const outcome = stored === undefined ? undefined : finishRound(stored, right, beatBest);
   return {
     score: right,
     total: sorting.board.cards.length,

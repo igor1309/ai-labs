@@ -159,6 +159,20 @@ const TAPS = [
   ["twice quickly", (user: UserEvent, element: HTMLElement) => user.dblClick(element)]
 ] as const;
 
+// Each screen the child may open from the home page while a board's
+// pictures load, and whether it is on screen.
+const ELSEWHERE = [
+  ["CARE", () => screen.queryByRole("button", { name: "NEW VISITOR" }) !== null],
+  ["ALL DINOSAURS", () => screen.queryByRole("group", { name: "ALL DINOSAURS" }) !== null],
+  ["FIND THE PAIR", () => screen.queryByRole("heading", { name: "FIND THE PAIR" }) !== null]
+] as const;
+
+// Each way a board's wait for its pictures ends.
+const ENDS = [
+  ["its pictures load", (pictures: ManualPictures, asked: readonly string[]) => asked.forEach(pictures.finish)],
+  ["its second runs out", (pictures: ManualPictures) => pictures.fire(1000)]
+] as const;
+
 describe("a new board", () => {
   it.each(STARTS.flatMap((start) => TAPS.map((taps) => [...start, ...taps] as const)))(
     "waits on %s for its six pictures after %s is tapped %s, then starts one board with them",
@@ -216,6 +230,41 @@ describe("a new board", () => {
       pictures.fire(1000);
     });
     expect(document.body.innerHTML).toBe(shown);
+  });
+
+  it.each(ELSEWHERE.flatMap(([name, there]) => ENDS.map(([end, ending]) => [name, end, there, ending] as const)))(
+    "is not shown over %s, tapped while its pictures load, when %s, and SORT starts another later",
+    async (name, _, there, ending) => {
+      const pictures = manualPictures();
+      const { user } = await openOn("home", pictures);
+      await user.click(button("SORT"));
+      const asked = pictures.loading();
+      await user.click(button(name));
+
+      act(() => ending(pictures, asked));
+
+      expect([there(), onBoard()]).toEqual([true, false]);
+      await user.click(button("HOME"));
+      await user.click(button("SORT"));
+      act(() => pictures.loading().forEach(pictures.finish));
+      expect(onBoard()).toBe(true);
+    }
+  );
+
+  it("is not shown when the child taps COMPARE while its pictures load, and the question opens once its own pictures do", async () => {
+    const pictures = manualPictures();
+    const { user } = await openOn("home", pictures);
+    await user.click(button("SORT"));
+    const asked = pictures.loading();
+    await user.click(button("COMPARE"));
+    const question = pictures.loading().slice(asked.length);
+    expect([question.length, question.filter((url) => asked.includes(url))]).toEqual([2, []]);
+
+    act(() => asked.forEach(pictures.finish));
+
+    expect([onHomePage(), onBoard()]).toEqual([true, false]);
+    act(() => question.forEach(pictures.finish));
+    expect([screen.getByRole("heading").textContent, onBoard()]).toEqual([expect.stringMatching(/^WHO IS (HEAVIER|TALLER)\?$/), false]);
   });
 
   it("is not shown on the home page when the child goes home while its pictures load", async () => {

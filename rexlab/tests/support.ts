@@ -140,6 +140,19 @@ export function seededRandom(seed: number): Random {
   };
 }
 
+// A best-score rule that answers `beaten` whatever it is asked, and keeps
+// what it was asked, so a game's scoring is proved apart from the rule.
+export function scoringSpy<Beaten>(beaten: Beaten) {
+  const asked: Array<[previous: number | null, score: number]> = [];
+  return {
+    beatBest: (previous: number | null, score: number) => {
+      asked.push([previous, score]);
+      return beaten;
+    },
+    asked
+  };
+}
+
 // A new board sorting by `property`. A board sorts by any property, so
 // boards are started until one does.
 export function sortingBy(property: Property, dinosaurs: readonly Sortable[] = SHIPPED_SORTABLES, seed = 1): Sorting {

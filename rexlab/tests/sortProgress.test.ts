@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { boardState, drop, finishBoard, NO_SORTING, type Basket, type Celebration, type Sorting, type SortingProgress } from "../src/sorting/index.ts";
-import { sortingBy } from "./support.ts";
+import { boardState, drop, finishBoard, NO_SORTING, type Basket, type Beaten, type Celebration, type Sorting, type SortingProgress } from "../src/sorting/index.ts";
+import { scoringSpy, sortingBy } from "./support.ts";
 
 // A board sorted to the end, the first `right` cards on their first drop
 // and each other one on the wrong basket first.
@@ -15,25 +15,31 @@ function sortedWith(right: number): Sorting {
 }
 
 describe("finishBoard", () => {
-  it.each<[SortingProgress, number, Celebration | null, number, number | undefined]>([
-    [NO_SORTING, 0, null, 0, undefined],
-    [NO_SORTING, 3, "first-best", 3, undefined],
-    [{ bestScore: 0, roundsPlayed: 1 }, 1, "new-best", 1, 0],
-    [{ bestScore: 4, roundsPlayed: 2 }, 5, "new-best", 5, 4],
-    [{ bestScore: 5, roundsPlayed: 2 }, 5, null, 5, 5],
-    [{ bestScore: 5, roundsPlayed: 2 }, 3, null, 5, 5],
-    [{ bestScore: 6, roundsPlayed: 2 }, 0, null, 6, 6]
-  ])("from %j, a board of %i right celebrates %s and leaves a best of %i", (stored, right, celebration, best, previousBest) => {
-    expect(finishBoard(sortedWith(right), stored)).toEqual({
+  it.each<[SortingProgress, number, Celebration | null, number | undefined]>([
+    [NO_SORTING, 0, null, undefined],
+    [NO_SORTING, 3, "first-best", undefined],
+    [{ bestScore: 0, roundsPlayed: 1 }, 1, "new-best", 0],
+    [{ bestScore: 4, roundsPlayed: 2 }, 6, "new-best", 4],
+    [{ bestScore: 5, roundsPlayed: 2 }, 3, null, 5]
+  ])("from %j, asks the best-score rule about a board of %i right, and keeps the best it gives and its %s", (stored, right, celebration, previousBest) => {
+    const scoring = scoringSpy<Beaten>({ best: 9, celebration });
+
+    const result = finishBoard(sortedWith(right), stored, scoring.beatBest);
+
+    expect(scoring.asked).toEqual([[stored.bestScore, right]]);
+    expect(result).toEqual({
       score: right,
       total: 6,
-      progress: { bestScore: best, roundsPlayed: stored.roundsPlayed + 1 },
+      progress: { bestScore: 9, roundsPlayed: stored.roundsPlayed + 1 },
       previousBest,
       celebration
     });
   });
 
-  it("scores a board against no progress, and celebrates nothing, when stored progress cannot be read", () => {
-    expect(finishBoard(sortedWith(4), undefined)).toEqual({ score: 4, total: 6, progress: undefined, previousBest: undefined, celebration: null });
+  it("scores a board against no progress, asks the best-score rule nothing and celebrates nothing, when stored progress cannot be read", () => {
+    const scoring = scoringSpy<Beaten>({ best: 9, celebration: "new-best" });
+
+    expect(finishBoard(sortedWith(4), undefined, scoring.beatBest)).toEqual({ score: 4, total: 6, progress: undefined, previousBest: undefined, celebration: null });
+    expect(scoring.asked).toEqual([]);
   });
 });

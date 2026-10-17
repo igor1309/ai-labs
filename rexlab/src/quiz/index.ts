@@ -1,10 +1,11 @@
 // The quiz's API: its use cases and the types the app speaks with it.
 // Everything else under quiz/ is reached only through this file.
 import { choose, currentChoice, currentQuestion, isLastQuestion, next, score, startPlay, type Play } from "./play.ts";
-import { finishRound, type Celebration, type GameProgress } from "./progress.ts";
+import { finishRound, type BeatBest, type Celebration, type GameProgress } from "./progress.ts";
 import { generateRound, largerOf, type Attribute, type Dinosaur, type Random } from "./round.ts";
 
-export type { Attribute, Celebration, Dinosaur, GameProgress, Play, Random };
+export type { Attribute, BeatBest, Celebration, Dinosaur, GameProgress, Play, Random };
+export type { Beaten } from "./progress.ts";
 export { NO_PROGRESS } from "./progress.ts";
 export { choose, next };
 
@@ -68,10 +69,11 @@ export function questionState(play: Play): QuestionState {
   };
 }
 
-// The round's score, set against the progress kept so far.
-export function finishPlay(play: Play, stored: GameProgress | undefined): RoundResult {
+// The round's score, set against the progress kept so far by the
+// best-score rule.
+export function finishPlay(play: Play, stored: GameProgress | undefined, beatBest: BeatBest): RoundResult {
   const correct = score(play);
-  const outcome = stored === undefined ? undefined : finishRound(stored, correct);
+  const outcome = stored === undefined ? undefined : finishRound(stored, correct, beatBest);
   return {
     score: correct,
     total: play.round.length,

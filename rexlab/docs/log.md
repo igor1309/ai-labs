@@ -2,6 +2,7 @@
 
 ## 2026-10-18
 
+- Fixed the sorting game's review findings (LAB-272): a board SORT started, still waiting for its pictures, is dropped when the child opens COMPARE, CARE, ALL DINOSAURS or FIND THE PAIR, so it never opens over their screen; the quiz, care and sorting each own their scoring types and are given the best-score rule by the app; the drawn score's `--score` is tested for every score a board can end with; and every trait and diet value read for sorting is tested, each shipped dinosaur against its record
 - Put SORT over FIND THE PAIR in the home page's third column (LAB-272), merging find the pair (LAB-280): the columns stay at 3 : 2 : 2, MORE COMING is gone, and the FIND THE PAIR tile is as tall as SORT, its three cards sized by the tile's height and its title beside its symbol
 
 ## 2026-10-17

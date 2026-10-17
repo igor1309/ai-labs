@@ -1,7 +1,7 @@
-// The best-score rule of docs/mvp-infrastructure.md section 5, which every
-// game keeps alike: a finished round is compared with the highest score
-// so far, never with the last one, and a first round of 0 sets the first
-// best but has nothing to celebrate.
+// The best-score rule of docs/mvp-infrastructure.md section 5, which the
+// composition root gives every game alike: a finished round is compared
+// with the highest score so far, never with the last one, and a first
+// round of 0 sets the first best but has nothing to celebrate.
 
 export type Celebration = "first-best" | "new-best";
 

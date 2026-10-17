@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore, ViewTransition } from "react";
+import { beatBest } from "./bestScore.ts";
 import { useCareGame, type CareGameProps } from "./careGame.tsx";
 import { stepFrom, type CatalogueEntry, type Step } from "./catalogue.ts";
 import { CatalogueScreen } from "./CatalogueScreen.tsx";
@@ -182,6 +183,7 @@ export function App({
   const starting = useRef(false);
 
   const playNewRound = () => {
+    leaveHome();
     if (starting.current) return;
     starting.current = true;
     const started = startRound(dinosaurs, random, lastPlay);
@@ -201,23 +203,32 @@ export function App({
 
   const care = useCareGame({ ...careProps, bodyPicture, random, loadPicture, startTimer }, home);
 
-  const openCare = () =>
+  const openCare = () => {
+    leaveHome();
     changeScreen(SCREEN_CHANGE, () => {
       care.open();
       setScreen({ kind: "care" });
     });
+  };
 
   const sorting = useSortingGame({ sortables, sortingProgress, bodyPicture, random, loadPicture, startTimer }, home);
 
   const openSorting = () => sorting.start(() => setScreen({ kind: "sorting" }));
 
+  // A board SORT started, still waiting for its pictures, is dropped as
+  // the child goes anywhere else, so it never opens over the screen they
+  // chose.
+  const leaveHome = () => sorting.cancel();
+
   const pairs = usePairsGame({ pals, pairsProgress, bodyPicture, random, loadPicture, startTimer, reducedMotion: careProps.reducedMotion }, home);
 
-  const openPairs = () =>
+  const openPairs = () => {
+    leaveHome();
     changeScreen(SCREEN_CHANGE, () => {
       pairs.open();
       setScreen({ kind: "pairs" });
     });
+  };
 
   // The next question shows once its pictures are ready, so none pops in,
   // and only if the round is still where Next was tapped: a second tap, or
@@ -232,14 +243,17 @@ export function App({
   // A round is recorded only here, when its result is shown, so a round
   // left early changes nothing.
   const seeResult = (finished: Play) => {
-    const result = finishPlay(finished, progress.load());
+    const result = finishPlay(finished, progress.load(), beatBest);
     if (result.progress) {
       progress.save(result.progress);
     }
     changeScreen(SCREEN_CHANGE, () => setScreen({ kind: "result", result }));
   };
 
-  const openCatalogue = () => changeScreen(SCREEN_CHANGE, () => setScreen({ kind: "catalogue", returning: undefined }));
+  const openCatalogue = () => {
+    leaveHome();
+    changeScreen(SCREEN_CHANGE, () => setScreen({ kind: "catalogue", returning: undefined }));
+  };
 
   const pictureOf = (index: number) => bodyPicture(catalogue[index]?.id ?? "");
 

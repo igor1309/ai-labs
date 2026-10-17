@@ -1,7 +1,4 @@
-import { beatBest, type Celebration } from "../bestScore.ts";
 import { MOST_HEARTS, type Visit, type Visitor } from "./visit.ts";
-
-export type { Celebration };
 
 // What a child has done in care: the best score of a finished visit, null
 // until one is finished, how many visits were finished, and the ids of the
@@ -13,6 +10,16 @@ export type CareProgress = {
 };
 
 export const NO_CARE: CareProgress = { bestScore: null, visitsFinished: 0, friends: [] };
+
+export type Celebration = "first-best" | "new-best";
+
+// The best after a visit, and what the visit celebrates.
+export type Beaten = { best: number; celebration: Celebration | null };
+
+// The best-score rule a visit is scored by, which the app gives: the best
+// after a visit of `score` hearts, from the best before it, null until a
+// visit is finished.
+export type BeatBest = (previous: number | null, score: number) => Beaten;
 
 // The progress care goes by while the app is open. When stored progress
 // cannot be read there is no best to compare with, but friends made meanwhile
@@ -36,7 +43,7 @@ export type CareResult = {
 // A finished visit is scored by the best-score rule and makes its visitor
 // a friend once. `order` is the dinosaur list's ids: friends are kept in
 // its order, and a friend no longer in it is kept after them, untouched.
-export function finishVisit(kept: KeptCare, visit: Visit, order: readonly string[]): { result: CareResult; kept: KeptCare } {
+export function finishVisit(kept: KeptCare, visit: Visit, order: readonly string[], beatBest: BeatBest): { result: CareResult; kept: KeptCare } {
   const { bestScore, visitsFinished, friends } = kept.progress;
   const score = visit.hearts;
   const id = visit.visitor.id;

@@ -75,10 +75,30 @@ describe("readCatalogue", () => {
 });
 
 describe("readSortables", () => {
+  const STEGOSAURUS_SORTABLE: Sortable = {
+    id: "stegosaurus",
+    name: { en: "Stegosaurus", ru: "Стегозавр" },
+    legs: 4,
+    diet: "plants",
+    size: null,
+    horns: null,
+    feathers: false
+  };
+
   it("reads each record's id, names, food type and the facts the sorting game sorts by", () => {
-    expect(readSortables([STEGOSAURUS])).toEqual([
-      { id: "stegosaurus", name: { en: "Stegosaurus", ru: "Стегозавр" }, legs: 4, diet: "plants", size: null, horns: null, feathers: false }
-    ]);
+    expect(readSortables([STEGOSAURUS])).toEqual([STEGOSAURUS_SORTABLE]);
+  });
+
+  // Every value each fact may take, null where the sources give no clear
+  // answer, and each food type, "both" among them.
+  it.each([
+    ...(["meat", "plants", "both"] as const).map((diet) => ["diet", { diet }, { diet }] as const),
+    ...([2, 4, null] as const).map((legs) => ["legs", { traits: { ...STEGOSAURUS.traits, legs } }, { legs }] as const),
+    ...(["big", "small", null] as const).map((size) => ["size", { traits: { ...STEGOSAURUS.traits, size } }, { size }] as const),
+    ...([true, false, null] as const).map((horns) => ["horns", { traits: { ...STEGOSAURUS.traits, horns } }, { horns }] as const),
+    ...([true, false, null] as const).map((feathers) => ["feathers", { traits: { ...STEGOSAURUS.traits, feathers } }, { feathers }] as const)
+  ])("reads %s as the record gives it: %j", (_, change, read) => {
+    expect(readSortables([{ ...STEGOSAURUS, ...change }])).toEqual([{ ...STEGOSAURUS_SORTABLE, ...read }]);
   });
 
   it.each([
@@ -133,6 +153,13 @@ describe("the shipped dinosaur list", () => {
 
     expect(big.filter(({ id }) => !((mass(id) ?? 0) >= 3000)).map(({ id }) => [id, mass(id)])).toEqual([]);
     expect(small.filter(({ id }) => !((mass(id) ?? Infinity) <= 500)).map(({ id }) => [id, mass(id)])).toEqual([]);
+  });
+
+  // The sorting game sorts each dinosaur by its own record's facts.
+  it("gives every sortable the food type and traits of its own record", () => {
+    expect(SHIPPED_SORTABLES).toEqual(
+      records.map(({ id, name, diet, traits }) => ({ id, name, diet, legs: traits.legs, size: traits.size, horns: traits.horns, feathers: traits.feathers }))
+    );
   });
 
   it("gives every dinosaur a food type of meat, plants or both", () => {

@@ -1,4 +1,5 @@
 import { useRef, useState } from "react";
+import { beatBest } from "./bestScore.ts";
 import {
   finishVisit,
   friendsOf,
@@ -145,7 +146,8 @@ export function useCareGame(
     const finished = finishVisit(
       keptNow.current,
       visit,
-      visitors.map(({ id }) => id)
+      visitors.map(({ id }) => id),
+      beatBest
     );
     keptNow.current = finished.kept;
     setKept(finished.kept);
