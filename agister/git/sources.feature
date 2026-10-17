@@ -12,7 +12,7 @@ Feature: git gives a revision's commit and the files changed
   Scenario: A revision that names no commit is an error
     Given a git repository at "r" with one commit
     When git is asked the commit of "nope" in "r"
-    Then it gives an error in git's words, naming "nope"
+    Then it gives an error naming "nope", with git's words
 
   Scenario: The files changed from the merge base to the second revision
     Given a git repository at "r", "main" at "c1"; the branch "b" from

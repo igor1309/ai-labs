@@ -17,6 +17,7 @@ Feature: The composition gives a step its file and git inputs
       | from                                                    | spy                                                         | value      |
       | from the source "file", path "b.md"                     | the file "/r/a/b.md" holds "hi"                             | hi         |
       | from the source "git.revision", rev "main"              | git names "main" in "/r" the commit "c1"                    | c1         |
+      | from the source "file", path "/t/b.md"                  | the file "/t/b.md" holds "hi"                               | hi         |
       | from the source "git.changed_files", base "m", head "h" | git lists in "/r" "a.go" and "b.go" changed from "m" to "h" | a.go\nb.go |
 
   Scenario Outline: A source that cannot give its value refuses the run

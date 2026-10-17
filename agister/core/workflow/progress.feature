@@ -1,6 +1,6 @@
 # core/workflow, progress (docs/run-implementation.md, "Inputs and
 # progress"): each step's start, tool calls and end reported to the events
-# port by the step's name. Spies answer its ports (ADR-012, rule 1).
+# port by the step's name. Spies answer its ports (ADR-009, rule 1).
 
 Feature: A workflow reports what each step is doing
 

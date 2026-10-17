@@ -333,7 +333,8 @@ gave them; what they also declare, a workspace and staleness, waits
 
 **`git`** gives, besides a worktree's root, in a directory: a
 revision's commit, the full id of what `git rev-parse --verify
-<rev>^{commit}` names, or an error in git's words where it names none;
+<rev>^{commit}` names, or an error naming the revision, with git's
+words, where it names none;
 and the files changed between two revisions, from their merge base to
 the second, as `git diff --name-only -z` lists them. Its tests run git
 in a temporary folder (ADR-009, rule 3).
@@ -348,7 +349,8 @@ first such, that exists. A text that takes none of its forms is
 refused: failed, `refused`, naming, for each form, what is wrong; a
 workflow's input refused so ends the run with that reason. Core
 knows no file: whether a path exists is a port, the composition
-answers it.
+answers it. A source may give its value's identity; where it gives
+none, the identity is the SHA-256 of the text, as before.
 
 **The composition** plugs in the sources:
 
@@ -356,11 +358,12 @@ answers it.
 |---|---|---|
 | `param` | `name` | the param, as before |
 | `file` | `path` | the file's text |
-| `git.revision` | `rev` | the commit's full id |
+| `git.revision` | `rev` | the commit's full id, its identity too (ADR-001, invariant 4) |
 | `git.changed_files` | `base`, `head` | the paths, one a line, sorted as git lists them; none is a refusal |
 
 A path, a file's and a brief's reference alike, is relative to the
-launch directory, as the person typed it; the git sources run in the
+launch directory, as the person typed it, or stands as given where it
+is absolute; the git sources run in the
 worktree's root. Each brief form a text input names is the brief
 document of that name in the snapshot resolve checked. A source other
 than these is refused before anything runs, as before; a brief form no
@@ -401,8 +404,5 @@ Decisions, each with its reason:
   a mistake in the request.
 - A path is relative to the launch directory: the person names a brief
   where they stand; the run's root is git's.
-- Each input's identity stays the SHA-256 of its text, a revision's
-  included, whose text is its commit: nothing reads an identity until
-  the record (ADR-001, invariant 4), which settles it.
 - A report is given with every call, never left out: core needs no
   fallback for a call with none (ADR-009, rule 2).
