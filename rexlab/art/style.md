@@ -7,11 +7,12 @@ generate with the style prompt below plus that line.
 ## Style prompt
 
 > Children's picture-book illustration of a single dinosaur, full body,
-> side view facing left, standing on nothing. Friendly and calm, eyes open,
-> mouth closed or gently open, never scary or bloody. Flat bright colours
-> with soft shading and a clean dark outline. Plain transparent background,
-> no ground, no shadow, no plants, no other animals, no text. The dinosaur
-> fills the frame edge to edge with a small even margin.
+> side view facing left, turned slightly toward the viewer, standing on
+> nothing. Friendly and calm, eyes open, mouth closed or gently open, never
+> scary or bloody. Flat bright colours with soft shading and a clean dark
+> outline. Plain transparent background, no ground, no shadow, no plants, no
+> other animals, no text. The dinosaur fills the frame edge to edge with a
+> small even margin.
 
 ## Rules
 
@@ -20,7 +21,7 @@ generate with the style prompt below plus that line.
   revealed values answer it, never the picture.
 - **Feathers where science says so:** Velociraptor and Microraptor are
   feathered.
-- **Delivery:** 800×600 WebP with alpha, about 30–60 KB, at
+- **Delivery:** 800×600 WebP with alpha, about 40–70 KB, at
   `src/assets/dinos/<id>/body.webp`, where `<id>` is the dinosaur's id in
   `src/data/dinosaurs.json`.
 - **Credits:** record the generator and date for each picture in
